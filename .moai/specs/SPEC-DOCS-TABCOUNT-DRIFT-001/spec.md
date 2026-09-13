@@ -2,7 +2,7 @@
 id: SPEC-DOCS-TABCOUNT-DRIFT-001
 title: 설정 탭 수·이름이 문서마다 따로 세어지는 드리프트 차단
 version: "0.3.1"
-status: in-progress
+status: completed
 created: 2026-09-12
 updated: 2026-09-13
 author: manager-spec

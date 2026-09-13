@@ -844,7 +844,7 @@ Total in 2706 ms
 
 ```yaml
 run_complete_at: 2026-09-13
-run_commit_sha: dd66526ff              # M5 커밋. M6 커밋은 자기 해시를 인용할 수 없어 sync 커밋이 backfill 한다
+run_commit_sha: 8382258a9              # M6 커밋(build/parity verification) — sync 커밋이 backfill. M5 는 dd66526ff
 run_status: complete                    # M1~M6 종료
 ac_pass_count: 12                       # AC-TCD-001~012 전부
 ac_fail_count: 0
@@ -870,4 +870,149 @@ m1_to_mN_commit_strategy: "마일스톤당 1커밋, 5커밋 (M1 가드 / M2 A군
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase>_
+sync-phase는 이 워크트리(`.claude/worktrees/t530`, 브랜치 `WT-web-tab-docs`) 안에서, push 없이 닫는다
+(`CLAUDE.local.md` §4.1 — 레인은 push하지 않는다, 리드가 develop 병합 SHA를 모아 일괄로 한다).
+
+#### CHANGELOG
+
+`CHANGELOG.md` `[Unreleased] → ### Changed`에 SPEC 항목 1건 추가. 사전 중복 검사:
+
+```
+$ grep -c 'SPEC-DOCS-TABCOUNT-DRIFT-001' CHANGELOG.md   (커밋 전)
+0
+```
+
+0건 — 중복 없음. 항목은 이 SPEC의 실제 커밋 이력(§E.2 M1~M6)을 읽고 작성했으며, plan.md/acceptance.md
+서술을 그대로 옮기지 않았다. B12 self-test 2(AC 카운트 대조):
+
+```
+$ grep -oE 'AC-TCD-[0-9]+' .moai/specs/SPEC-DOCS-TABCOUNT-DRIFT-001/acceptance.md | sort -u | wc -l
+12
+```
+
+CHANGELOG 항목은 "12 acceptance criteria (`acceptance.md`), all PASS" 로 12를 인용 — 일치. B12
+self-test 3(파일 경로 존재 확인, 13개 전부):
+
+```
+$ for f in internal/web/docs_tab_contract_test.go README.md README.ko.md README.ja.md README.zh.md \
+    docs-site/content/{ko,en,ja,zh}/cli-reference/web.md \
+    docs-site/content/{ko,en,ja,zh}/advanced/moai-web-console.md; do
+    ls "$f" >/dev/null 2>&1 && echo "OK $f" || echo "MISSING $f"
+  done
+OK internal/web/docs_tab_contract_test.go
+OK README.md
+OK README.ko.md
+OK README.ja.md
+OK README.zh.md
+OK docs-site/content/ko/cli-reference/web.md
+OK docs-site/content/en/cli-reference/web.md
+OK docs-site/content/ja/cli-reference/web.md
+OK docs-site/content/zh/cli-reference/web.md
+OK docs-site/content/ko/advanced/moai-web-console.md
+OK docs-site/content/en/advanced/moai-web-console.md
+OK docs-site/content/ja/advanced/moai-web-console.md
+OK docs-site/content/zh/advanced/moai-web-console.md
+```
+
+13/13 OK — 인용된 경로 전부 실재.
+
+#### README / docs-site 동기화 점검
+
+M2~M4가 이미 사용자 대상 콘텐츠를 고쳤다. sync는 새로 고치지 않고, 남겨진 자리가 있는지만 훑었다:
+
+```
+$ grep -rn "아홉\|nine settings\|九个标签\|9개 탭\|9 tabs" \
+    README.md README.ko.md README.ja.md README.zh.md \
+    docs-site/content/*/cli-reference/web.md docs-site/content/*/advanced/moai-web-console.md
+README.ko.md:422:...아홉 가지 형태를 외부 카탈로그 벤치마크로...  (moai-domain-svg-infographic 스킬의
+  "아홉 가지 형태" — 탭 개수와 무관한 별개 문맥, 오탐)
+```
+
+탭-개수 드리프트 재발 없음. 다른 위치에서 놓친 자리는 발견되지 않았다.
+
+#### 상태 전환 (단일 sync 커밋)
+
+`spec.md` `status: in-progress → completed` (단일 sync 커밋에 병합 — 3-phase close, `implemented`
+경유 표시 없이 곧장 `completed`로 전환; `spec-frontmatter-schema.md` § Status Transition Ownership
+Matrix). `updated:` 는 이미 `2026-09-13`(오늘)로 최신 — 갱신 불필요. `plan.md`/`acceptance.md`는
+`status:` 필드를 갖지 않는다(D7 정정, HISTORY 0.2.0) — 갱신 대상 아님. `progress.md`는 frontmatter가
+없다 — 갱신 대상 아님.
+
+#### 무회귀 재검증
+
+```
+$ go test -count=1 ./internal/web/ -run 'TestDocsTabContract' -v
+=== RUN   TestDocsTabContract
+=== RUN   TestDocsTabContract/literals
+    docs_tab_contract_test.go:136: swept 12 files against 16 enumerated literals
+=== RUN   TestDocsTabContract/allowlist
+    docs_tab_contract_test.go:281: allowed rules 1
+    docs_tab_contract_test.go:282: allowed lines 16
+=== RUN   TestDocsTabContract/names
+    docs_tab_contract_test.go:357: README.md: extracted 14 tab names
+    docs_tab_contract_test.go:357: README.ko.md: extracted 14 tab names
+    docs_tab_contract_test.go:357: README.ja.md: extracted 14 tab names
+    docs_tab_contract_test.go:357: README.zh.md: extracted 14 tab names
+    docs_tab_contract_test.go:357: docs-site/content/ko/advanced/moai-web-console.md: extracted 14 tab names
+    docs_tab_contract_test.go:357: docs-site/content/en/advanced/moai-web-console.md: extracted 14 tab names
+    docs_tab_contract_test.go:357: docs-site/content/ja/advanced/moai-web-console.md: extracted 14 tab names
+    docs_tab_contract_test.go:357: docs-site/content/zh/advanced/moai-web-console.md: extracted 14 tab names
+--- PASS: TestDocsTabContract (0.08s)
+    --- PASS: TestDocsTabContract/literals (0.00s)
+    --- PASS: TestDocsTabContract/allowlist (0.07s)
+    --- PASS: TestDocsTabContract/names (0.00s)
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/web	0.600s
+```
+
+sync 시점 재측정이며 §E.3의 M6 관측(`ok … 0.688s`)과 같은 결론(PASS, 8/8 문서 14개 이름)이다 —
+시간 값만 다르다.
+
+```
+$ moai spec audit --json | (SPEC id로 필터)
+{
+  "spec_id": "SPEC-DOCS-TABCOUNT-DRIFT-001",
+  "era": "V3R6",
+  "finding_type": "EraAutoDetected",
+  "severity": "INFO",
+  "details": { "heuristic_matched": "H-5 (modern phase or created date)" }
+}
+```
+
+INFO 등급 1건뿐 — era 자동판정 안내이며 drift 차단 아님. `lint.skip` 불필요.
+
+```yaml
+sync_complete_at: 2026-09-13
+sync_commit_sha: pending-backfill-sync   # 이 커밋은 자기 SHA를 인용할 수 없다 — 후속 커밋이 backfill
+sync_status: complete
+b12_self_test_a: "grep -c SPEC-DOCS-TABCOUNT-DRIFT-001 CHANGELOG.md (pre-commit) = 0 → PASS"
+b12_self_test_b: "AC count acceptance.md = 12 == CHANGELOG cited count 12 → PASS"
+b12_self_test_c: "13/13 cited paths exist via ls → PASS"
+changelog_entry_position: "[Unreleased] > ### Changed, first entry (prepended ahead of SPEC-INIT-QUIET-WIZARD-001)"
+frontmatter_status_transitions:
+  spec_md: "in-progress -> completed (single sync commit, no separate implemented stop)"
+  plan_md: "no status field (D7) - not applicable"
+  acceptance_md: "no status field (D7) - not applicable"
+  progress_md: "no frontmatter - not applicable"
+canary_compliance_check:
+  applicable: false
+  note: "this SPEC defines no forward-looking policy that its own sync tests"
+```
+
+### Gap — sync가 관측하지 못한 것
+
+- **CHANGELOG 산문의 사실관계는 커밋 diff와 대조 검증했지만, 마크다운 렌더링(줄바꿈, 링크)은 별도로
+  렌더해 보지 않았다** — GitHub 렌더 결과는 미확인.
+- **§E.3의 Gap 4건(heading 계수 구조적 패리티만, hugo 버전 미대조, Vercel 바인딩 미검증, D9~D12
+  가드 밖)은 sync가 닫지 않는다** — run-phase 소관이며 그대로 남는다.
+- **rg_maintained 3건(RG-TCD-001~003)을 sync 시점에 재관측하지 않았다** — run-phase M5/M6에서 이미
+  관측했고(§E.2, §E.3), sync는 CHANGELOG·frontmatter·문서 정합성만 재확인했다. 재관측이 필요하다고
+  판단하지 않은 이유: 이 sync 커밋이 run-phase가 검증한 파일(가드 코드·docs)을 전혀 건드리지 않기
+  때문 — 변경 대상은 `CHANGELOG.md`·SPEC frontmatter·`progress.md` 뿐이다.
+
+### Residual-risk
+
+- 4로케일 docs-site 변경이 develop 병합 시 Vercel 프리뷰/프로덕션 배포에 어떻게 반응하는지는 여전히
+  미검증(`CLAUDE.local.md` §4.1) — 이 카드가 아니라 다음 develop 통합 창에서 관측될 사안.
+- 손으로 적힌 4자리(D9~D12, 산문 소개 문장) 및 미열거 수사 표기는 가드 밖에 남아 있다 — 재발
+  가능성은 낮지만(수 자체를 지웠으므로) 0은 아니다.
