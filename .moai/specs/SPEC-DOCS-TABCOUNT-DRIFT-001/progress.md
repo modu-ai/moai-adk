@@ -165,11 +165,149 @@ V5·V6 에서도 FAIL 한다. 종전에는 그 가드가 **모든 기준을 통�
 
 ## §E.2 Run-phase Evidence
 
-_<pending run-phase>_
+### M1 — 가드 작성 (실패하는 상태로)
+
+산출물: `internal/web/docs_tab_contract_test.go` (신규 1파일). 기존 Go 소스는 건드리지 않았다 —
+`consoleTabs()` 와 `wantTabOrder` 는 이 카드의 **읽는 대상**이지 고치는 대상이 아니다(`spec.md §6`).
+
+측정 트리: `.claude/worktrees/t530`, 브랜치 `WT-web-tab-docs`, M1 착수 시 HEAD `0516119e3`.
+아래 모든 수치는 그 트리에서 이번 실행으로 관측했다.
+
+#### RED 관측 (E8) — 가드는 현재 문서에 대해 붉다
+
+`go test ./internal/web/ -run 'TestDocsTabContract' -v` 축어(발췌):
+
+```
+--- FAIL: TestDocsTabContract (0.14s)
+    --- FAIL: TestDocsTabContract/literals (0.00s)
+    --- FAIL: TestDocsTabContract/allowlist (0.13s)
+    --- FAIL: TestDocsTabContract/names (0.00s)
+FAIL	github.com/modu-ai/moai-adk/internal/web	0.763s
+```
+
+세 층이 각각 무엇을 잡았는지:
+
+| 층 | 관측 |
+|---|---|
+| `literals` | `swept 12 files against 16 enumerated literals` · 열거 리터럴 **18**건 잔존 |
+| `allowlist` | `allowed rules 1` · `allowed lines 16` · 미허용 적중 **20**건(숫자 14 + 낱말 6) |
+| `names` | 8자리 전부 `tab 4 name = "3rd Party LLM", console renders "GLM Settings"` |
+
+**`literals` 18 vs 열거 20 — 차이의 정체(추정 아님, 대조 결과).** 셸 재현 명령 2는 `grep -rnF` 로 **행**을
+세어 20을 내고, 가드는 (파일, 리터럴) 쌍을 센다. 같은 파일 안에서 같은 리터럴이 두 행에 있는 두 자리
+(`ko/advanced/…` 의 `14개 탭` :25·:128, `zh/advanced/…` 의 `14 个标签页` :25·:128)가 각각 1건으로 접힌다.
+20 − 2 = 18. 가드의 단정은 "0건" 이므로 이 접힘은 판정에 영향이 없고, 20이라는 수치는 AC-TCD-002 의
+셸 축이 계속 소유한다.
+
+#### AC-TCD-012 가드 축 — 낱말 축 적중 집합 (M2 이전 트리에서 잰 값)
+
+`go test ./internal/web/ -run 'TestDocsTabContract/allowlist' -v 2>&1 | grep '^word-axis hit '` 축어:
+
+```
+word-axis hit README.md: fourteen tabs
+word-axis hit README.ko.md: 열네 개 탭
+word-axis hit README.zh.md: 十四个标签页
+word-axis hit docs-site/content/en/cli-reference/web.md: nine settings tabs
+word-axis hit docs-site/content/zh/cli-reference/web.md: 九个标签页
+word-axis hit docs-site/content/en/advanced/moai-web-console.md: fourteen tabs
+```
+
+행 수 **6**. 열거와의 대조 — 6줄이 A2·A4·B4·C1·C2·C4 와 **같다**:
+
+| 줄 | 열거 자리 | 토큰 | 로케일 |
+|---|---|---|---|
+| `en/cli-reference/web.md: nine settings tabs` | A2 | `nine` | en |
+| `zh/cli-reference/web.md: 九个标签页` | A4 | `九` | zh |
+| `en/advanced/moai-web-console.md: fourteen tabs` | B4 | `fourteen` | en |
+| `README.md: fourteen tabs` | C1 | `fourteen` | en |
+| `README.ko.md: 열네 개 탭` | C2 | `열네` | ko |
+| `README.zh.md: 十四个标签页` | C4 | `十四` | zh |
+
+토큰별 줄 수 실측: `nine 1` · `九 1` · `fourteen 2` · `열네 1` · `十四 1` — 다섯 토큰 모두 1줄 이상.
+ja 줄이 없는 것은 누락이 아니라 실측이다(ja 4자리는 전부 숫자 표기).
+
+**출력이 `t.Logf` 가 아니라 `fmt.Printf` 인 이유**: AC-TCD-012 가 `grep '^word-axis hit '` 로 **0열에 앵커**해
+세는데, `t.Logf` 는 `-v` 에서 들여쓰기와 `file:line` 접두를 붙여 그 앵커에 걸리지 않는다. 나머지 토큰
+(`swept` / `allowed` / `extracted`)은 앵커 없는 grep 이라 `t.Logf` 로 둔다.
+
+#### 변이 1 — 낱말 클래스를 `{fourteen}` 하나로 좁힌 가드는 죽는다
+
+`wordNumeralRe` 의 로케일 클래스를 `fourteen` 단독으로 바꾼 뒤 같은 명령:
+
+```
+word-axis hit README.md: fourteen tabs
+word-axis hit docs-site/content/en/advanced/moai-web-console.md: fourteen tabs
+```
+
+행 수 **2**. `nine` · `九` · `열네` · `十四` 가 각각 **0줄**이다. AC-TCD-012 의 6줄 단정과 다섯 토큰 단정
+양쪽에서 FAIL 한다. 변이 후 원본 정규식으로 되돌렸고, 되돌린 뒤 다시 재어 위 6줄·다섯 토큰이 그대로임을
+확인했다(위 표가 그 재측정값이다).
+
+이것이 plan-audit iter3 의 부채 N1 이 지목한 변이체이며, 명세 텍스트가 아니라 **이 구현**에 대해 죽는 것을
+보인 것이 M1 의 몫이었다.
+
+#### 변이 2 — 읽지 못한 파일은 skip 이 아니라 FAIL 이다 (AC-TCD-005)
+
+대상 12파일 중 하나를 존재하지 않는 경로로 바꾸고 `literals` 를 돌렸다:
+
+```
+docs_tab_contract_test.go:127: docs tab guard: cannot read docs-site/content/zh/cli-reference/web-MUTANT-UNREADABLE.md: open ../../docs-site/content/zh/cli-reference/web-MUTANT-UNREADABLE.md: no such file or directory (a guard that cannot read its target is not passing, it is blind)
+--- FAIL: TestDocsTabContract/literals (0.00s)
+```
+
+`SKIP` 없음, `swept` 줄 없음 — 카운터가 **읽기 성공 뒤에** 증가하므로 실패한 읽기는 수에 들지 않고,
+`t.Fatal` 이 판정 전 이탈을 막는다. 변이 후 원본 경로로 되돌렸다.
+
+#### 기존 테스트 무회귀 (DoD 3)
+
+`go test ./internal/web/ -v` 의 실패 줄 전량:
+
+```
+    --- FAIL: TestDocsTabContract/allowlist (0.07s)
+    --- FAIL: TestDocsTabContract/literals (0.00s)
+    --- FAIL: TestDocsTabContract/names (0.00s)
+--- FAIL: TestDocsTabContract (0.08s)
+```
+
+실패는 새 가드 4줄뿐이다 — 기존 테스트는 하나도 깨지지 않았고, 이 FAIL 은 M1 이 의도한 RED 다.
+
+#### 빌드 · 정적 검사
+
+| 명령 | 관측 |
+|---|---|
+| `go build ./internal/web/` | exit `0` |
+| `go vet ./internal/web/` | 출력 없음, exit `0` |
+| `gofmt -l internal/web/docs_tab_contract_test.go` | 출력 없음 |
+
+#### Gap — M1 이 관측하지 못한 것
+
+- **GREEN 을 보지 못했다.** 세 층 모두 아직 붉다. 초록 전이는 M2~M4 가 문서를 고친 뒤 M5 에서 관측된다.
+  이 M1 은 RED 만 근거로 가진다.
+- **AC-TCD-006 V1~V6 미실행.** 변이 6종은 **가드가 초록인 트리**에서 FAIL→복구를 보이는 시험이라 M5 소관이다.
+  M1 에서 돌린 두 변이는 성격이 다르다 — 가드 구현 자신(낱말 클래스)과 읽기 실패 경로를 겨눈 것이다.
+- **`allowed lines 16` 은 이 트리의 실측이자 baseline 상수다.** 문서 편집이 `codex` 줄 수를 바꾸면 이 단정이
+  붉어진다. M2~M4 의 처분 대상에 `:149` 문단이 없으므로 바뀌지 않을 전망이지만, 전망은 관측이 아니다.
+- **hugo 미실행**(RG-TCD-002) — M6 소관.
+
+#### 잔여 위험 — 가드가 보지 않는 자리 (M1 에서 발견, 범위 밖)
+
+`names` 층은 로케일 문서의 `현지어(English)` 항목에서 **괄호 안 English 만** 대조하고 앞의 현지어는 대조하지
+않는다. 그 자리를 대조하도록 만들면 **이 카드가 고칠 수 없는 붉음**이 생기기 때문이다 — 실측:
+`docs-site/content/zh/advanced/moai-web-console.md:130` 은 1번 탭을 `用户信息（Identity）` 로 적는데
+`internal/web/assets/i18n.js:2708` 의 zh 라벨은 `身份` 다. 이것은 D군(`3rd Party LLM`)과 **다른 자리의 이름
+드리프트**이고, 본 카드의 M4 는 D군 12자리만 고치므로 그 축을 열면 green path 가 이 카드 밖을 지나간다
+(`verification-completeness.md` §2 가 실격시키는 모양). 따라서 가드는 그 축을 **열지 않고, 열지 않았다는
+사실을 여기 적는다.**
+
+괄호가 없는 항목(현지어 단독: ko `피드백`·`품질 게이트`, ja `フィードバック`·`品質ゲート`,
+zh `反馈`·`质量门禁`)은 i18n.js 의 해당 로케일 라벨과 대조하며, 여섯 자리 모두 현재 일치한다.
+
+**후속 카드 요청(리드에게)**: zh 탭 이름 현지어 축의 드리프트 — `用户信息` vs i18n `身份`.
+다른 로케일·다른 탭에도 같은 형태가 있는지는 재지 않았다(가드가 그 축을 열지 않으므로 측정 자체가 없다).
 
 ## §E.3 Run-phase Audit-Ready Signal
 
-_<pending run-phase>_
+_<pending — M1 만 완료. 이 신호는 run-phase 전체(M1~M5)가 닫힐 때 채운다.>_
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
