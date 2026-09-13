@@ -70,9 +70,32 @@ note: Plan artifacts authored (spec.md + plan.md + acceptance.md, Tier M). Plan-
   None of the five preserved files appears (`core.go`, `receipt_history.go`, `request.go`, `family.go`, `gateway_factory.go` — file-level zero-diff); no path under `internal/gateway/receipt/` appears. `gateway_session.go` is the plan-declared EXTEND target; `receipt_history_cause_test.go` is a test file (the freeze binds `receipt_history.go`); `conversation/reroot.go` is a new file (family.go untouched). PASS.
 - **AC-WRR-014 Fork call-site count** — pre-card baseline at merge-base `643abfb8c`: exactly one production (non-test) call site, `internal/cli/gateway_session.go:204` (`families.Fork(`; all other matches are `*_test.go`). At HEAD: exactly one production call site, the same call at `gateway_session.go:232` (line shift only, from the `--reroot` wiring in the same function). Count unchanged 1 → 1; no new gateway-state-changing recovery path. PASS.
 
+### M7 — run-phase verification (E1-E8; 2026-09-14)
+
+- **E1 AC matrix**: AC-WRR-001 PASS (`TestReceiptHistoryClassifiesDesyncWedgeAfterUnpublishedTurn`), 002 PASS (`TestReceiptHistoryAcceptsTailRerootedWedgeReplay`), 003 PASS (`TestReceiptHistoryRejectsMidDropAfterTailReroot`), 004/005/006 PASS (existing locks unchanged), 007 PASS (`TestHistoryReplayErrorGoldenStrings`), 008/009/010/011/016 PASS (`TestGatewayReroot*` 11/11 after coverage completion), 012 PASS (diff-scope assertion above), 013 SKIPPED (M1 disposition — gap stands), 014 PASS (Fork count 1→1), 015 PASS (6/6 element greps ≥1). Totals: 15 PASS / 0 FAIL / 1 SKIPPED.
+- **E2 cross-platform build**: `go build ./...` → exit 0; `GOOS=windows GOARCH=amd64 go build ./...` → exit 0 (this run, this tree).
+- **E3 coverage (this run)**: `go test -cover ./internal/gateway/translate/` → `coverage: 91.9% of statements` (package gate ≥85% PASS); `./internal/gateway/conversation/` → `80.7%` package (pre-existing baseline 77.0% — package-wide figure dominated by pre-existing untested branches, not this card's regression; this card's new code `TranscriptPath` measured `89.5%` after the reroot_test.go additions); cli scoped to the card's tests: `rerootGatewayTranscript 85.4%`, `rerootRefusalError 66.7%` (defensive fallback branch), `gatewayConversationPassthrough 100%`, `prepareGatewayConversation 65.1%` (pre-existing function; its `--reroot` branch covered by the wiring tests).
+- **E4 subagent boundary**: `grep -rn 'AskUserQuestion\|mcp__askuser'` over the touched files (gateway_reroot.go, gateway_session.go, conversation/reroot.go), non-test non-comment → 0 matches.
+- **E5 lint**: `golangci-lint run --new-from-rev=643abfb8cc536b1152efbaf3091efe43dce69222 ./internal/cli/... ./internal/gateway/...` → `0 issues.` exit 0 (no NEW issues vs the card base).
+- **E6 commits + push state**: M2 `54a82200f`, M3 `a2f46eda3`, M4 `abbbb4eb9`, M6 `714aa35c6`, M7 (this commit). Lane does NOT push — the lead batch-pushes origin/develop; unpushed count reported in the completion report.
+- **Full-suite honesty note**: a background full `go test ./internal/cli/` run (M3 tree; Go tree unchanged by M4/M6 doc commits) returned `FAIL github.com/modu-ai/moai-adk/internal/cli 601.239s` — the duration matches the 600s default go-test timeout abort shape on this loaded machine (the package historically measures ~1583s), but per-run detail was lost to output truncation, so the run classifies as UNRESOLVED locally, not as a pass and not as a verified defect. The change-scoped selector (`TestGatewaySession|TestGatewayConversation|TestGatewayReroot`, 17 top-level tests) is green in three separate runs, translate and conversation packages are green, and B5's pre-existing environmental failure (`TestAppServerSubprocessHTTPToolContinuation`) is named to-ignore. The full-suite verdict belongs to CI on the lead's origin/develop push (lane doctrine).
+- **E8**: RED evidence recorded in the M3 section above.
+
 ## §E.3 Run-phase Audit-Ready Signal
 
-_<pending run-phase>_
+run_complete_at: 2026-09-14
+run_commit_sha: pending-backfill-run
+run_status: complete
+ac_pass_count: 15
+ac_fail_count: 0
+ac_skipped_count: 1 (AC-WRR-013 live probe — orchestrator skip decision, gap recorded in §E.2 M1)
+preserve_list_post_run_count: 5 (all five PRESERVE files zero-diff; AC-WRR-012 assertion recorded verbatim)
+new_warnings_or_lints_introduced: 0
+cross_platform_build.native: exit 0
+cross_platform_build.windows: exit 0
+total_run_phase_files: 13
+m1_to_mN_commit_strategy: one commit per milestone (M1 pre-flight by orchestrator; M2 test; M3 feat; M4 docs; M6 docs; M7 test+evidence)
+full_suite_disposition: local full internal/cli run UNRESOLVED (600s default-timeout shape, detail lost to truncation); change-scoped selectors green ×3; full-suite verdict is CI's on the lead's origin/develop push
 
 ## §E.4 Sync-phase Audit-Ready Signal
 

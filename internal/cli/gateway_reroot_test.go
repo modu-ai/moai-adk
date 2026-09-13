@@ -455,6 +455,63 @@ func TestGatewayRerootForgedTailNeverRecoverable(t *testing.T) {
 	}
 }
 
+// TestGatewayRerootRejectsMalformedTranscript locks the conservative parse
+// failure path: an unparseable transcript row refuses the recovery cleanly —
+// error, no marker, no aside, transcript byte-identical.
+func TestGatewayRerootRejectsMalformedTranscript(t *testing.T) {
+	transcript := filepath.Join(t.TempDir(), "u.jsonl")
+	before := rerootWriteTranscript(t, transcript, []any{
+		rerootUserRow("/p", "hello"),
+		rerootAssistantRow("/p", []any{map[string]any{"type": "text", "text": "one"}}),
+	})
+	if err := os.WriteFile(transcript, append(before, []byte("not-json\n")...), 0600); err != nil {
+		t.Fatal(err)
+	}
+	corrupt, err := os.ReadFile(transcript)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err = rerootGatewayTranscript(transcript); err == nil {
+		t.Fatal("malformed transcript accepted")
+	}
+	if _, err = os.Stat(transcript + gatewayRerootMarkerSuffix); !os.IsNotExist(err) {
+		t.Fatal("refusal wrote an attempt marker")
+	}
+	if _, err = os.Stat(transcript + gatewayRerootAsideSuffix); !os.IsNotExist(err) {
+		t.Fatal("refusal wrote an aside copy")
+	}
+	now, _ := os.ReadFile(transcript)
+	if string(now) != string(corrupt) {
+		t.Fatal("refusal mutated the transcript")
+	}
+}
+
+// TestGatewayRerootWiringSurfacesGuidanceOnExhaustedIncident covers the
+// wiring refusal path (REQ-WRR-006): the second --reroot launch attempt on an
+// exhausted incident fails with the fixed guidance instead of removing
+// anything.
+func TestGatewayRerootWiringSurfacesGuidanceOnExhaustedIncident(t *testing.T) {
+	families, d, transcript, _ := rerootFixtureConversation(t, true)
+	if _, err := prepareGatewayConversation(gatewayLaunchRequest{
+		CWD: d.CWD, Project: "proj", Args: []string{"--resume", d.UUID, "--reroot"},
+	}, families); err != nil {
+		t.Fatal(err)
+	}
+	_, err := prepareGatewayConversation(gatewayLaunchRequest{
+		CWD: d.CWD, Project: "proj", Args: []string{"--resume", d.UUID, "--reroot"},
+	}, families)
+	if err == nil || !strings.Contains(err.Error(), "single-shot bound") {
+		t.Fatalf("exhausted incident not surfaced: %v", err)
+	}
+	recovered, readErr := os.ReadFile(transcript)
+	if readErr != nil {
+		t.Fatal(readErr)
+	}
+	if strings.Contains(string(recovered), "half answer") {
+		t.Fatal("exhausted incident removed content again")
+	}
+}
+
 func mustEnvelope(t *testing.T, id, cipher string) *opaque.Envelope {
 	t.Helper()
 	envelope, err := opaque.Encode([]opaque.Item{{OutputIndex: 0, Raw: []byte(`{"type":"reasoning","id":"` + id + `","summary":[],"encrypted_content":"` + cipher + `"}`)}})
