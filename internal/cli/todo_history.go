@@ -74,9 +74,10 @@ observed ref position, 'landing=-' when no record was made, and
 'moai todo history' with no id lists the archive most-recently-archived
 first, bounded at 20 entries ('--limit 0' lifts the bound).
 
-The verb is read-only: it takes no lock, writes nothing, and archived rows
-stay invisible to every other reader (list, next, why, analyze and the
-counts unchanged).`,
+The verb changes no card or schema and takes no queue mutation lock. SQLite
+may use transient coordination files while reading. Archived rows stay
+invisible to every other reader (list, next, why, analyze and the counts
+unchanged).`,
 		Args: cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return runTodoHistory(cmd, args, limit)
@@ -119,7 +120,7 @@ func todoHistoryLandingCell(e *kanban.LandingEvidence) string {
 
 // runTodoHistory renders the fate answer or the archive listing.
 func runTodoHistory(cmd *cobra.Command, args []string, limit int) error {
-	store := newTodoStore()
+	store := newTodoReadStore()
 	// Which store is answering is probed BEFORE the read: opening a
 	// dropped-tables database runs the DDL, whose IF NOT EXISTS recreates
 	// the archive tables and would erase exactly the fact the REQ-TAQ-013
@@ -183,14 +184,14 @@ func renderTodoHistoryLookup(out, errOut io.Writer, rec *kanban.BacklogRecord, i
 	for _, it := range rec.Items {
 		if it.ID == id {
 			_, err := fmt.Fprintf(out, "%s\tlive\t%s\t%s\t%s\n",
-				it.ID, it.State, todoHistoryLandingCell(it.Landing), it.Text)
+				it.ID, it.State, todoHistoryLandingCell(it.Landing), todoPRCell(it.Text))
 			return err
 		}
 	}
 	if at := rec.ArchivedIndex(id); at >= 0 {
 		entry := rec.Archived[at]
 		_, err := fmt.Fprintf(out, "%s\tarchived\t%s\t%s\t%s\n",
-			entry.Item.ID, entry.Item.State, todoHistoryLandingCell(entry.Item.Landing), entry.Item.Text)
+			entry.Item.ID, entry.Item.State, todoHistoryLandingCell(entry.Item.Landing), todoPRCell(entry.Item.Text))
 		return err
 	}
 	_, err := fmt.Fprintf(out, "%s\tabsent\n", id)
@@ -222,7 +223,7 @@ func renderTodoHistoryListing(out, errOut io.Writer, rec *kanban.BacklogRecord, 
 	for i := 0; i < shown; i++ {
 		entry := rec.Archived[total-1-i]
 		if _, err := fmt.Fprintf(out, "%s\tarchived\t%s\t%s\t%s\n",
-			entry.Item.ID, entry.Item.State, todoHistoryLandingCell(entry.Item.Landing), entry.Item.Text); err != nil {
+			entry.Item.ID, entry.Item.State, todoHistoryLandingCell(entry.Item.Landing), todoPRCell(entry.Item.Text)); err != nil {
 			return err
 		}
 	}

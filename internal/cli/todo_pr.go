@@ -1,9 +1,9 @@
 // todo_pr.go — `moai todo pr [<id>]` (SPEC-KANBAN-QUEUE-PR-SYNC-001 REQ-2, M3).
 //
 // The verb answers, for each card in the queue: is somebody already carrying
-// this? It reads, and it writes NOTHING — not a field, not a findings entry,
-// not a timestamp, not a cache, not a lock. That is the ruling in spec.md §B,
-// and it is a property of this file rather than a convention its callers keep.
+// this? It changes no card, finding, timestamp, cache or schema, performs no
+// migration and takes no queue mutation lock. SQLite may use transient
+// coordination files while reading; the command leaves no persistent change.
 //
 // Why a DEDICATED VERB rather than a column on `moai todo list`: one
 // `gh pr list` costs 0.878s, essentially all round-trip. `todo list` is the
@@ -24,6 +24,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/modu-ai/moai-adk/internal/gitenv"
 	"github.com/modu-ai/moai-adk/internal/kanban"
 	"github.com/spf13/cobra"
 )
@@ -79,7 +80,24 @@ const todoPRLandingMarkerMalformed = "malformed"
 var todoRunCommand kanban.CommandRunner = func(name string, args ...string) (string, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), todoPRSubprocessTimeout)
 	defer cancel()
-	out, err := exec.CommandContext(ctx, name, args...).Output()
+	child := exec.CommandContext(ctx, name, args...)
+	// Queue storage may live under the home state directory. Execute against
+	// the launch checkout, whose refs/remotes are shared with its primary,
+	// rather than against process cwd or the queue's storage directory.
+	child.Dir = resolveProjectDir()
+	child.Env = gitenv.Env()
+	if name == "gh" {
+		// GH_REPO overrides cwd just as GIT_DIR does. The queue's project
+		// determines attribution; ambient repository overrides cannot do so.
+		filtered := child.Env[:0]
+		for _, entry := range child.Env {
+			if !strings.HasPrefix(entry, "GH_REPO=") {
+				filtered = append(filtered, entry)
+			}
+		}
+		child.Env = filtered
+	}
+	out, err := child.Output()
 	if ctx.Err() != nil {
 		return "", fmt.Errorf("%s timed out after %s: %w", name, todoPRSubprocessTimeout, ctx.Err())
 	}
@@ -121,8 +139,9 @@ func todoPRLong(landedRef string) string {
 	return `Report, for every queued card, whether an open pull request already
 delivers it or whether its work has already landed on ` + landedRef + `.
 
-The verb writes NOTHING: no card field, no finding, no cache, no lock. It
-computes every outcome live and prints it.
+The verb changes no card field, finding, cache or schema, performs no migration,
+and takes no queue mutation lock. SQLite may use transient coordination files
+while reading. The command computes every outcome live and prints it.
 
 Five outcomes, distinguishable by kind alone:
 
@@ -140,13 +159,17 @@ Five outcomes, distinguishable by kind alone:
              mid-sentence mention, a branch name, and a dependency note do
              NOT count: attribution is a POSITION in the subject, never a
              token occurring anywhere in a message
-  no-link    nobody has started this
+  no-link    a complete query found no open PR and no local attribution
+             (this does not prove nobody started the work)
   unknown    the landing question could not be asked (no such ref, no git, a
-             failed query). This is NOT evidence of not-landed
+             failed query), or an unavailable/incomplete PR page could not
+             establish absence of an open PR. This is NOT evidence of not-landed
 
 The landed check is local git and keeps working when gh does not. When gh is
 absent, unauthenticated, or offline the link column renders empty, the
-degradation is noted on stderr, and the exit code stays 0.`
+degradation is noted on stderr, and the exit code stays 0. JSON rows also
+carry pr_lookup=unavailable or incomplete when the PR query could not fully
+answer; those rows never claim no-link from missing evidence.`
 }
 
 // runTodoPR renders the link view. Every exit path is exit 0 unless the queue
@@ -154,21 +177,26 @@ degradation is noted on stderr, and the exit code stays 0.`
 func runTodoPR(cmd *cobra.Command, only string, jsonOutput bool) error {
 	// REQ-BJD-002 — probed before the read (todo_disclosure.go).
 	_ = discloseQueueLayout(cmd, "pr")
-	rec, err := newTodoStore().Load()
+	rec, err := newTodoReadStore().LoadPure()
 	if err != nil {
 		_, _ = fmt.Fprintf(cmd.ErrOrStderr(), "Error: %v\n", err)
 		return err
 	}
+	if only != "" && !todoCardExists(rec, only) {
+		return fmt.Errorf("no backlog item %s", only)
+	}
 
 	prs, saturated, ghErr := fetchOpenPRs()
+	lookup := ""
 	if saturated {
 		// The page filled exactly. A pull request past the ceiling is invisible
 		// to the resolver, and its card would report `no-link` or `landed` —
 		// wrong, and silent. Saying so is the whole mitigation: paging would
 		// spawn a second `gh` process, which the one-query bound forbids.
 		_, _ = fmt.Fprintf(cmd.ErrOrStderr(),
-			"note: the open pull-request query returned its %d-record ceiling; a card whose pull request sits beyond it is reported as if it had none\n",
+			"note: the open pull-request query returned its %d-record ceiling; cards without an observed link report unknown\n",
 			todoPROpenPRLimit)
+		lookup = "incomplete"
 	}
 	if ghErr != nil {
 		// Fail-open (REQ-2.3): the note names what degraded, so an empty link
@@ -176,6 +204,7 @@ func runTodoPR(cmd *cobra.Command, only string, jsonOutput bool) error {
 		_, _ = fmt.Fprintf(cmd.ErrOrStderr(),
 			"note: open pull requests unavailable (%v); link column left empty, landed check still ran\n", ghErr)
 		prs = nil
+		lookup = "unavailable"
 	}
 
 	landedRef := todoLandedRef()
@@ -192,7 +221,13 @@ func runTodoPR(cmd *cobra.Command, only string, jsonOutput bool) error {
 		}
 		// The record is already in hand from the load this render did
 		// anyway — no new query, no per-card file read (NFR-1 unchanged).
-		rows = append(rows, todoPRRow{PRLinkOutcome: out, Landing: it.Landing})
+		// A missing/incomplete PR page cannot establish the absence of an
+		// open PR, even when local history contains an attribution. Preserve
+		// positive links, but make absence-dependent outcomes unknown.
+		if lookup != "" && (out.Kind == "no-link" || out.Kind == "landed") {
+			out.Kind = "unknown"
+		}
+		rows = append(rows, todoPRRow{PRLinkOutcome: out, Landing: it.Landing, PRLookup: lookup})
 	}
 	if len(degraded) > 0 {
 		_, _ = fmt.Fprintf(cmd.ErrOrStderr(),
@@ -244,7 +279,7 @@ func runTodoPR(cmd *cobra.Command, only string, jsonOutput bool) error {
 		// blank rather than omitted, so every row keeps the same shape.
 		_, _ = fmt.Fprintf(out, "%s\t%s\t%s\t%s\t%s\t%s\t%s\n",
 			o.CardID, o.Kind, formatPRLinks(o.PRs), o.Confidence, state[o.CardID],
-			formatLandingEvidence(r.Landing), text[o.CardID])
+			formatLandingEvidence(r.Landing), todoPRCell(text[o.CardID]))
 	}
 	return nil
 }
@@ -265,6 +300,8 @@ type todoPRRow struct {
 	// omitempty is load-bearing: a card with no record carries no key, which
 	// is how a consumer tells "never recorded" from "recorded and empty".
 	Landing *kanban.LandingEvidence `json:"landing,omitempty"`
+	// Omitted for a complete lookup, preserving existing healthy JSON rows.
+	PRLookup string `json:"pr_lookup,omitempty"`
 }
 
 // formatLandingEvidence renders the evidence cell: empty for no record,
@@ -302,11 +339,8 @@ func abbreviateSHA(sha string) string {
 
 // todoPRCell strips the field and record separators from a cell.
 //
-// Only the evidence cell needs this, and only on the malformed path: every
-// other cell is machine-generated, while a malformed record is by definition
-// external corruption whose bytes nothing here chose. A raw tab in it would
-// split the row and break the seven-field contract for every consumer, turning
-// one bad record into an unparseable listing.
+// Free text is stored verbatim, including multiline operator input. Render
+// it as one cell without changing the stored value or JSON representation.
 func todoPRCell(s string) string {
 	return strings.NewReplacer("\t", " ", "\n", " ", "\r", " ").Replace(s)
 }

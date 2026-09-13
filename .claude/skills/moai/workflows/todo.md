@@ -8,18 +8,19 @@
 ## What It Is
 
 A plain queue of things to work on next. An item is one line of intent — not a
-SPEC, not a plan, not an estimate. It becomes a SPEC only when the operator picks
-it and the lead dispatches it to the `plan` session.
+SPEC, not a plan, not an estimate. After the operator picks it, the lead follows
+the card class: Class A direct close, Class B run → sync, Class C plan → run → sync.
+Only Class C requires SPEC authoring.
 
 The queue is deliberately thin. It records *what the operator wants next*, and
 nothing that a SPEC, a git history, or a board would record better.
 
-State lives at `.moai/state/todo/backlog.db` of the PRIMARY checkout
-(project-local, not committed) — a SQLite database, not a JSON file. A
+State lives at `~/.moai/db/<project-key>/todo/backlog.db`, keyed from the PRIMARY checkout
+(home-scoped, not committed) — a SQLite database, not a JSON file. A
 linked worktree resolves to the same primary queue — one repository, one
 queue: a card worktree's `moai todo` adds to and reads the store the lead
 and the foreman loop see. A project without git metadata keeps its queue at
-`~/.moai/todo/<project-key>/backlog.db` instead — the first run there adopts
+the same project-keyed home path — the first run there adopts
 an existing project-local queue (same items, same states) rather than
 starting an empty one.
 A `backlog.json` at that same path is NOT the queue. It is an export
@@ -190,9 +191,11 @@ work without that answer has preselected, whatever it calls the step.
 
 Once picked:
 
-1. Record it with `moai todo next <n> --spec <SPEC-ID>` (one locked write).
-2. Dispatch to the `plan` session per `kanban-dispatch.md` — the card enters
-   the `plan` column, and SPEC authoring happens there, not here.
+1. Record it with `moai todo next <n> [--spec <SPEC-ID>]` (one locked write).
+   Attach the SPEC only when one exists and its identifier is known.
+2. Follow `kanban-dispatch.md`'s card class: Class A direct close, Class B
+   run → sync without a SPEC, Class C plan → run → sync with SPEC authoring
+   in plan. A pick alone neither creates a SPEC nor requires one.
 
 ## Standing sources
 

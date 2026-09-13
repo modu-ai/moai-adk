@@ -1,0 +1,23 @@
+<!doctype html>
+<html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>$title$</title>
+<link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin><link rel="preconnect" href="https://fonts.googleapis.com" crossorigin>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.css">
+<style>
+:root{--ivory:#FAF9F5;--paper:#fff;--slate:#141413;--clay:#D97757;--clay-d:#B85C3E;--oat:#E3DACC;--olive:#788C5D;--g100:#F0EEE6;--g300:#D1CFC5;--g500:#87867F;--g700:#3D3D3A;--sans:Pretendard,system-ui,sans-serif;--serif:ui-serif,Georgia,serif;--mono:ui-monospace,monospace}*{box-sizing:border-box}body{margin:0;background:var(--ivory);color:var(--slate);font:16px/1.75 var(--sans)}main{max-width:1120px;margin:auto;padding:40px 24px 80px}header{background:var(--slate);color:var(--ivory);padding:28px;border-radius:12px}h1{font-size:30px;line-height:1.35}h2{font-size:23px;margin-top:36px}h3{font-size:19px}section{margin:24px 0;padding:20px;background:var(--paper);border:1px solid var(--g300);border-radius:12px}.strip{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin:20px 0}.strip div{padding:16px;background:var(--oat);border-radius:8px}.strip small{display:block}.strip strong{font-size:18px}a{color:var(--clay-d)}p,li,td{overflow-wrap:anywhere}table{width:100%;border-collapse:collapse;background:var(--paper);font-size:14px}td,th{text-align:left;vertical-align:top;padding:10px;border-bottom:1px solid var(--g300)}th{background:var(--oat)}pre{overflow:auto;background:var(--g100);padding:16px;border-radius:8px;font:12px/1.7 var(--mono)}code{font-family:var(--mono)}blockquote{border-left:4px solid var(--clay);padding:12px;background:var(--oat)}footer{margin-top:32px;font-size:13px;color:var(--g700)}@media(max-width:700px){main{padding:20px 12px}.strip{grid-template-columns:repeat(2,1fr)}table{display:block;overflow:auto}h1{font-size:25px}}@media print{body{background:#fff}main{padding:0}header{background:#eee;color:#000}nav{display:none}pre{white-space:pre-wrap}tr{break-inside:avoid}}
+</style></head><body><main>
+<header><p>MOAI · t648 · 2026-09-11</p><h1>$title$</h1><p>승인 범위 확정 · 선행 변경 통합 완료 · 신규 구현은 실행 환경 제한으로 미착수</p></header>
+<div class="strip"><div><small>카드</small><strong>t648 · picked</strong></div><div><small>통합 기준</small><strong>8ab93ee20</strong></div><div><small>신규 기능</small><strong>미구현</strong></div><div><small>원격 전달</small><strong>미실행</strong></div></div>
+<section><h2>무엇을 한곳에 모으는가</h2><p>두 실행 모드가 카드 상태를 각각 저장하면 완료 여부를 다시 맞춰야 합니다. 새 설계에서는 카드와 실행 권한, 완료를 증명하는 기록을 Todo DB 한곳에서 확정합니다. heartbeat는 작업자가 살아 있는지 참고하는 정보이며, 그 자체로 카드 소유권이나 완료를 결정하지 않습니다.</p>
+<pre class="mermaid">flowchart TD
+K[칸반 모드] --> S[공통 Todo 실행 서비스]
+F[팩토리 모드] --> S
+S --> T[Todo DB: 카드·실행 권한·완료 기록]
+T --> G[근거가 있는 관계 Graph]
+G --> V[읽기 전용 시각화]
+F -. 생존 관측 .-> H[별도 heartbeat·상세 로그]
+</pre><p>설계 순서: 공통 완료 확정·복구 → 관계 Graph → 시각화. 위 도식은 목표 구조이며 현재 구현 상태가 아닙니다.</p><noscript><p>칸반과 팩토리가 같은 Todo 실행 서비스를 사용하고, 그 DB의 확정 정보를 Graph와 화면에서 읽도록 설계합니다.</p></noscript>
+<h3>재시도의 의미</h3><p>예를 들어 t648의 완료 기록을 저장한 직후 응답 전에 프로그램이 종료되었다면, 재시도는 새 완료를 만들지 않고 이미 확정된 기록을 반환해야 합니다. 이 사례는 앞으로 검증할 수용 조건이며 이번에 통과한 테스트가 아닙니다.</p></section>
+<details><summary>목차</summary><nav>$toc$</nav></details>
+$body$
+<footer>plan 모드 · MoAI-Easy에서 도출한 basic 설명형. 사실·명령·미완료 범위는 같은 이름의 Markdown에 보존합니다. 오프라인에서는 도식 원문과 대체 설명을 읽을 수 있습니다.</footer>
+</main><script type="module">import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs';mermaid.initialize({startOnLoad:true,theme:'base',themeVariables:{primaryColor:'#FAF9F5',primaryTextColor:'#141413',primaryBorderColor:'#D97757',lineColor:'#87867F'}});</script></body></html>

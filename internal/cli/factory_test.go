@@ -772,14 +772,19 @@ func TestCCFactoryEntryRecordsFailOpenRunMetadata(t *testing.T) {
 	if err := runCC(ccCmd, []string{"-f"}); err != nil {
 		t.Fatalf("runCC(-f): %v", err)
 	}
-	db, err := homestate.OpenFactory(root)
+	record, err := kanban.NewBacklogStore(kanban.BacklogPathForRoot(root)).LoadPure()
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer func() { _ = db.Close() }()
 	var manifestRaw string
-	if err := db.DB.QueryRow(`SELECT manifest_json FROM runs WHERE run_id=?`, c.runID).Scan(&manifestRaw); err != nil {
-		t.Fatalf("factory run row missing: %v", err)
+	for _, run := range record.Runtime.Runs {
+		if run.RunID == c.runID {
+			manifestRaw = run.ManifestJSON
+			break
+		}
+	}
+	if manifestRaw == "" {
+		t.Fatalf("factory runtime run missing from todo store: %q", c.runID)
 	}
 	var manifest map[string]string
 	if err := json.Unmarshal([]byte(manifestRaw), &manifest); err != nil {

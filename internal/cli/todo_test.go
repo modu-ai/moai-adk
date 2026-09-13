@@ -29,7 +29,6 @@ import (
 	"time"
 
 	"github.com/modu-ai/moai-adk/internal/config"
-	"github.com/modu-ai/moai-adk/internal/homestate"
 	"github.com/modu-ai/moai-adk/internal/kanban"
 )
 
@@ -99,6 +98,21 @@ func TestTodoAdd_PrintsIDAndPosition(t *testing.T) {
 	}
 }
 
+func todoRuntimeAssignment(t *testing.T, root, runID, cardID string) kanban.TodoRuntimeAssignment {
+	t.Helper()
+	record, err := kanban.NewBacklogStore(kanban.BacklogPathForRoot(root)).LoadPure()
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, assignment := range record.Runtime.Assignments {
+		if assignment.RunID == runID && assignment.CardID == cardID {
+			return assignment
+		}
+	}
+	t.Fatalf("todo runtime assignment missing: run=%q card=%q", runID, cardID)
+	return kanban.TodoRuntimeAssignment{}
+}
+
 func TestTodoPickInFactoryRecordsCardAndEvent(t *testing.T) {
 	t.Setenv("MOAI_HOME", t.TempDir())
 	root, store := todoFixture(t)
@@ -133,23 +147,11 @@ func TestTodoPickInFactoryRecordsCardAndEvent(t *testing.T) {
 	if _, _, err := runTodo(t, "next", "--spec", "SPEC-CARD-001", "1"); err != nil {
 		t.Fatal(err)
 	}
-	db, err := homestate.OpenFactory(root)
-	if err != nil {
-		t.Fatal(err)
+	assignment := todoRuntimeAssignment(t, root, "run-card-test", "t1")
+	if assignment.OwnerLabel != "lane-2" || assignment.ReportedState != "picked" || assignment.EventKind != "card.assigned" {
+		t.Fatalf("assignment=(%q,%q,%q), want (lane-2,picked,card.assigned)", assignment.OwnerLabel, assignment.ReportedState, assignment.EventKind)
 	}
-	defer func() { _ = db.Close() }()
-	var owner, state string
-	var version int
-	if err := db.DB.QueryRow(`SELECT owner_label,state,version FROM cards WHERE run_id=? AND card_id=?`, "run-card-test", "t1").Scan(&owner, &state, &version); err != nil {
-		t.Fatalf("factory card row missing: %v", err)
-	}
-	if owner != "lane-2" || state != "picked" || version != 1 {
-		t.Fatalf("card=(%q,%q,%d), want (lane-2,picked,1)", owner, state, version)
-	}
-	var payloadRaw string
-	if err := db.DB.QueryRow(`SELECT payload_json FROM events WHERE run_id=? AND kind='card.assigned'`, "run-card-test").Scan(&payloadRaw); err != nil {
-		t.Fatalf("assignment event missing: %v", err)
-	}
+	payloadRaw := assignment.ProvenanceJSON
 	var payload map[string]string
 	if err := json.Unmarshal([]byte(payloadRaw), &payload); err != nil {
 		t.Fatal(err)
@@ -162,15 +164,9 @@ func TestTodoPickInFactoryRecordsCardAndEvent(t *testing.T) {
 	if _, _, err := runTodo(t, "unpick", "1"); err != nil {
 		t.Fatal(err)
 	}
-	if err := db.DB.QueryRow(`SELECT owner_label,state,version FROM cards WHERE run_id=? AND card_id=?`, "run-card-test", "t1").Scan(&owner, &state, &version); err != nil {
-		t.Fatalf("updated factory card row missing: %v", err)
-	}
-	if owner != "lane-2" || state != "queued" || version != 2 {
-		t.Fatalf("updated card=(%q,%q,%d), want (lane-2,queued,2)", owner, state, version)
-	}
-	var events int
-	if err := db.DB.QueryRow(`SELECT count(*) FROM events WHERE run_id=? AND kind='card.unpicked'`, "run-card-test").Scan(&events); err != nil || events != 1 {
-		t.Fatalf("unpick events=%d err=%v, want 1", events, err)
+	assignment = todoRuntimeAssignment(t, root, "run-card-test", "t1")
+	if assignment.OwnerLabel != "lane-2" || assignment.ReportedState != "queued" || assignment.EventKind != "card.unpicked" {
+		t.Fatalf("updated assignment=(%q,%q,%q), want (lane-2,queued,card.unpicked)", assignment.OwnerLabel, assignment.ReportedState, assignment.EventKind)
 	}
 }
 
@@ -193,15 +189,8 @@ func TestTodoPickInFactoryProvenanceFailsOpenWithoutSpecOrGit(t *testing.T) {
 	if _, _, err := runTodo(t, "next", "--spec", "../../../outside", "1"); err != nil {
 		t.Fatal(err)
 	}
-	db, err := homestate.OpenFactory(root)
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer func() { _ = db.Close() }()
-	var payloadRaw string
-	if err := db.DB.QueryRow(`SELECT payload_json FROM events WHERE run_id=? AND kind='card.assigned'`, "run-fail-open").Scan(&payloadRaw); err != nil {
-		t.Fatal(err)
-	}
+	assignment := todoRuntimeAssignment(t, root, "run-fail-open", "t1")
+	payloadRaw := assignment.ProvenanceJSON
 	var payload map[string]string
 	if err := json.Unmarshal([]byte(payloadRaw), &payload); err != nil {
 		t.Fatal(err)
@@ -255,15 +244,8 @@ func TestTodoPickInFactoryCapturesLinkedWorktreeSpecAndHEAD(t *testing.T) {
 	if _, _, err := runTodo(t, "next", "--spec", "SPEC-LANE-001", "1"); err != nil {
 		t.Fatal(err)
 	}
-	db, err := homestate.OpenFactory(primary)
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer func() { _ = db.Close() }()
-	var raw string
-	if err := db.DB.QueryRow(`SELECT payload_json FROM events WHERE run_id=? AND kind='card.assigned'`, "run-linked-lane").Scan(&raw); err != nil {
-		t.Fatal(err)
-	}
+	assignment := todoRuntimeAssignment(t, primary, "run-linked-lane", "t1")
+	raw := assignment.ProvenanceJSON
 	var payload map[string]string
 	if err := json.Unmarshal([]byte(raw), &payload); err != nil {
 		t.Fatal(err)

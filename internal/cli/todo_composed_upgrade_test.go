@@ -166,7 +166,7 @@ func assertQueueRootIsolated(t *testing.T, root string) {
 //
 // Every limb is t.Errorf rather than t.Fatalf, so one severed step reports
 // every symptom it caused instead of hiding the rest behind the first.
-func assertComposedUpgradeSideEffects(t *testing.T, legacyDir, currentDir string) {
+func assertComposedUpgradeSideEffects(t *testing.T, legacyDir, currentDir, legacyJSON string) {
 	t.Helper()
 
 	// AC-QUP-002 — the directory relocated, and its contents came with it.
@@ -193,8 +193,8 @@ func assertComposedUpgradeSideEffects(t *testing.T, legacyDir, currentDir string
 	quarantine := filepath.Join(currentDir, "backlog.json.migrated")
 	if got, err := os.ReadFile(quarantine); err != nil {
 		t.Errorf("quarantined legacy document %q must exist: %v", quarantine, err)
-	} else if string(got) != f1LegacyBacklogJSON {
-		t.Errorf("quarantined document bytes diverge from the seeded fixture:\n got %q\nwant %q", got, f1LegacyBacklogJSON)
+	} else if string(got) != legacyJSON {
+		t.Errorf("quarantined document bytes diverge from the seeded fixture:\n got %q\nwant %q", got, legacyJSON)
 	}
 	if _, err := os.Stat(filepath.Join(currentDir, "backlog.json")); !os.IsNotExist(err) {
 		t.Errorf("no backlog.json may remain beside the quarantine (stat err = %v)", err)
@@ -209,9 +209,9 @@ func assertComposedUpgradeSideEffects(t *testing.T, legacyDir, currentDir string
 }
 
 // TestTodoComposedUpgrade_FromLegacyV312Layout is the composed-path proof
-// (M1 / G1). One `moai todo` invocation against the F1 layout must fire the
-// directory relocation and then the JSON-to-SQLite conversion, and the queue
-// must come through both intact.
+// (M1 / G1). The first mutating `moai todo` invocation against the F1 layout
+// must fire the directory relocation and then the JSON-to-SQLite conversion;
+// an observational list remains pure and cannot be the migration trigger.
 //
 // Criteria measured here: AC-QUP-001a (cards, states, order), AC-QUP-001b
 // (last_seq high-water mark), AC-QUP-002 (relocation + sentinel), AC-QUP-003
@@ -223,28 +223,38 @@ func TestTodoComposedUpgrade_FromLegacyV312Layout(t *testing.T) {
 	assertPreUpgradeState(t, legacyDir, currentDir, false)
 	assertQueueRootIsolated(t, root)
 
-	// The composed path's single entrance: the first `moai todo` command.
-	out, stderr, err := runTodo(t, "list", "--json")
+	// The composed path's single entrance: the first mutating todo command.
+	// The issued t8 also proves that the legacy last_seq=7 crossed both steps.
+	addOut, stderr, err := runTodo(t, "add", "post-upgrade card")
 	if err != nil {
-		t.Fatalf("first todo command against the legacy layout: %v\nstderr: %s", err, stderr)
+		t.Fatalf("first mutating todo command against the legacy layout: %v\nstderr: %s", err, stderr)
+	}
+	if got := strings.Fields(strings.TrimSpace(addOut)); len(got) == 0 || got[0] != "t8" {
+		t.Errorf("post-upgrade add issued %q, want id t8 (seeded last_seq 7 + 1); "+
+			"t6 would mean the mark was re-derived from the items", strings.TrimSpace(addOut))
 	}
 
 	// The side effects come first, because they are the composition's own
 	// evidence: the relocation and the conversion either happened or they did
 	// not, and a queue-content assertion failing ahead of them would report a
 	// symptom while leaving the named criterion unevaluated.
-	assertComposedUpgradeSideEffects(t, legacyDir, currentDir)
+	assertComposedUpgradeSideEffects(t, legacyDir, currentDir, f1LegacyBacklogJSON)
+
+	out, listStderr, err := runTodo(t, "list", "--json")
+	if err != nil {
+		t.Fatalf("list after the composed upgrade: %v\nstderr: %s", err, listStderr)
+	}
 
 	// AC-QUP-001a — every card, its state, and the seeded order survive.
 	var rec kanban.BacklogRecord
 	if err := json.Unmarshal([]byte(strings.TrimSpace(out)), &rec); err != nil {
 		t.Fatalf("decode `todo list --json` output %q: %v", out, err)
 	}
-	wantIDs := []string{"t2", "t3", "t5"}
+	wantIDs := []string{"t2", "t3", "t5", "t8"}
 	wantStates := []kanban.BacklogState{
-		kanban.BacklogStateQueued, kanban.BacklogStatePicked, kanban.BacklogStateDropped,
+		kanban.BacklogStateQueued, kanban.BacklogStatePicked, kanban.BacklogStateDropped, kanban.BacklogStateQueued,
 	}
-	wantTexts := []string{"legacy queued one", "legacy picked one", "legacy dropped one"}
+	wantTexts := []string{"legacy queued one", "legacy picked one", "legacy dropped one", "post-upgrade card"}
 	if len(rec.Items) != len(wantIDs) {
 		t.Fatalf("composed upgrade yielded %d items, want %d: %+v", len(rec.Items), len(wantIDs), rec.Items)
 	}
@@ -257,19 +267,8 @@ func TestTodoComposedUpgrade_FromLegacyV312Layout(t *testing.T) {
 	if rec.Items[1].SpecID == nil || *rec.Items[1].SpecID != "SPEC-LEGACY-001" {
 		t.Errorf("picked card's spec_id did not survive: %v", rec.Items[1].SpecID)
 	}
-	if rec.LastSeq != 7 {
-		t.Errorf("last_seq after the composed upgrade = %d, want the seeded 7", rec.LastSeq)
-	}
-
-	// AC-QUP-001b — the high-water mark crossed the composition rather than
-	// being re-derived from the items: the next id is last_seq+1, not max+1.
-	addOut, addErr, err := runTodo(t, "add", "post-upgrade card")
-	if err != nil {
-		t.Fatalf("add after the composed upgrade: %v\nstderr: %s", err, addErr)
-	}
-	if got := strings.Fields(strings.TrimSpace(addOut)); len(got) == 0 || got[0] != "t8" {
-		t.Errorf("post-upgrade add issued %q, want id t8 (seeded last_seq 7 + 1); "+
-			"t6 would mean the mark was re-derived from the items", strings.TrimSpace(addOut))
+	if rec.LastSeq != 8 {
+		t.Errorf("last_seq after the composed upgrade and add = %d, want 8", rec.LastSeq)
 	}
 
 }
@@ -295,6 +294,11 @@ func TestTodoComposedUpgrade_ForwardCompatibleFieldsSurvive(t *testing.T) {
 
 	assertPreUpgradeState(t, legacyDir, currentDir, false)
 	assertQueueRootIsolated(t, root)
+
+	if _, stderr, err := runTodo(t, "add", "post-upgrade card"); err != nil {
+		t.Fatalf("first mutating todo command against the forward-compatible layout: %v\nstderr: %s", err, stderr)
+	}
+	assertComposedUpgradeSideEffects(t, legacyDir, currentDir, f2ForwardCompatibleJSON)
 
 	out, stderr, err := runTodo(t, "list", "--json")
 	if err != nil {
