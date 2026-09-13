@@ -1,0 +1,6 @@
+2026/09/13 23:45:23 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT688CLIExistingNonAncestorStampExitsTwoWithRecovery4093057305/001/.moai/config/sections
+--- FAIL: TestT688CLIExistingNonAncestorStampExitsTwoWithRecovery (1.09s)
+    t688_red_ancestry_test.go:38: existing non-ancestor stamp must exit 2; err=graph freshness check failed (stale or absent layer) stdout="codemaps  metric=described-source-diff value=1 threshold=40 verdict=fresh\nmx-index  metric=inventory-content-diff value=0 threshold=1 verdict=fresh\nedges     metric=source-fingerprint-mismatch value=1 threshold=0 verdict=stale  (source set(s) moved: codemaps)\ncitations metric=positive-cited-path-absence value=0 threshold=0 verdict=fresh\n" stderr="graph check: layer edges verdict=stale value=1 threshold=0 — source set(s) moved: codemaps\n"
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/cli	1.953s
+FAIL
