@@ -42,3 +42,26 @@
   2. 운영자가 primary 의 로컬 `interview.yaml` 에 `pull` 을 적용한다. 이 경우 `moai update` 가 `.moai/config` 를 통째로 다시 깔아 키가 사라질 수 있으니, update 뒤에 다시 적용해야 한다.
   3. AC-JFM-023 기준선 export 만 먼저 진행한다(위 Gaps 의 조건 판단이 선행돼야 함).
 - 경로가 정해지기 전에 primary 에서 질문이 계속 쌓이면 push 행만 늘어난다. 이 행들은 pull 분모에 들어가지 않으므로 창이 열린 뒤의 표본에는 영향이 없다.
+
+## 6. 전제 충족 기록 (2026-09-13 갱신 — lane 재배차)
+
+§5 의 경로 2 가 운영자 결정으로 채택됐다.
+
+| 확인 | 명령 / 방법 | 결과 |
+|---|---|---|
+| 적용 시각 | primary `interview.yaml` mtime | `2026-09-13T23:07:40+0900` |
+| 키 존재 | `grep -n recommendation_mode <primary>/interview.yaml` (2026-09-13 23:09) | 6행 `recommendation_mode: pull` 적중 |
+| 미커밋 로컬 | `git status --porcelain -- <primary>/interview.yaml` | ` M` — 커밋 안 된 로컬 수정 (moai update 뒤 재적용 대상) |
+| 적용 주체 | 리드 전달(운영자 결정) | 리드가 수동 추가 — 레인은 리드 보고를 믿지 않고 위 세 행으로 독립 재측정 |
+
+전제는 이제 **충족**이다. 이후 이 판정서의 1-3항은 창 개시 이전 상태의 기록으로 보존한다.
+
+## 7. 수집 대기 상태 (2026-09-13 23:11 기준)
+
+- 분모(`mode=="pull"`) 실측: **0행** — 전 트리 스캔(primary + `.claude/worktrees/*` +
+  `~/.moai/worktrees/*`), 관측 로그 파일 자체가 primary 에만 존재(76행, 전부 push).
+- 적용 뒤 시작한 새 세션이 아직 `AskUserQuestion` 을 발화하지 않았으므로 당장 판정 대상이 없다.
+  → **수집 대기**로 보고하고 정지. 수집 도구(`collect-pull-window.sh`, `--selftest` 양성 대조
+  포함)와 판정 기준(`judgment-criteria.md`)은 같은 커밋으로 확정했다.
+- 선행 조건 플래그: AC-JFM-023 이 여전히 RED — pull 행이 20 을 넣어도 023 이 녹색이기 전에는
+  018 판정이 서지 않는다(`judgment-criteria.md` §6). 023 처분은 리드·운영자 몫.
