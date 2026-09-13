@@ -20,10 +20,13 @@ import (
 var advisoryWBG009Regex = regexp.MustCompile(`worktree.*isolation|use a worktree|moai \(cc\|cg\) -w|claude --worktree`)
 
 // advisoryFalseWording is the exact recommendation wording the false branch
-// (and every degradation path) must keep emitting byte-identically.
+// (and every degradation path) must keep emitting byte-identically. The flag
+// list carries `moai glm -w` (not the retired `cg` token) per the t649
+// gateway rename absorbed into this branch — the byte-identity contract is
+// unchanged, only the retired token was replaced.
 const advisoryFalseWording = "Tip: this checkout is shared across concurrent sessions; " +
 	"for branch-changing work (switch/reset/rebase), use a worktree for isolation — " +
-	"`moai cc -w` / `moai cg -w`, or `claude --worktree`. " +
+	"`moai cc -w` / `moai glm -w`, or `claude --worktree`. " +
 	"See .claude/rules/moai/workflow/main-checkout-branch-guard.md.\n"
 
 // advisoryFixture writes a minimal project workflow.yaml carrying the given
