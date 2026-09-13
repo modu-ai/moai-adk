@@ -99,7 +99,14 @@ full_suite_disposition: local full internal/cli run UNRESOLVED (600s default-tim
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase>_
+- **sync_complete_at**: 2026-09-14 (KST)
+- **sync_commit_sha**: `pending-backfill-sync` — the sync commit cannot cite its own SHA, so it lands first with this placeholder, backfilled in a following commit (spec-frontmatter-schema.md § SHA placeholder backfill exemption).
+- **sync_status**: sync artifacts 3-fold — CHANGELOG `[Unreleased]` `### Added` entry, this §E.4 signal, `spec.md` frontmatter `in-progress → completed` transition (`status` only; `updated` already reads the sync date; zero body edits) — landed in a single sync commit. Run-phase 15 PASS / 0 FAIL / 1 SKIPPED (§E.3) cited to complete the 3-phase close.
+- **b12_self_test_a**: PASS — pre-emission grep `grep -c 'SPEC-GATEWAY-WEDGE-REROOT-001' CHANGELOG.md` = 0 (no duplicate entry from a parallel session).
+- **b12_self_test_b**: PASS — `grep -oE 'AC-([A-Z0-9]+-)*[0-9]+' acceptance.md | sort -u` → 16 distinct identifiers (AC-WRR-001..016); LIVE count 15 — AC-WRR-013 (MINOR, non-gating live probe) skipped by orchestrator decision with the gap recorded in §E.2 M1, matching the entry's "16 defined / 15 PASS" claim and §E.3's ac_pass_count.
+- **b12_self_test_c**: PASS — every file path cited in the CHANGELOG entry verified by Read/`ls` before emission (`internal/cli/gateway_reroot.go`, `internal/cli/gateway_session.go`, `internal/gateway/conversation/reroot.go`, `.moai/docs/gateway-wedge-recovery.md`).
+- **changelog_entry_position**: `CHANGELOG.md` `[Unreleased]` → `### Added` (first entry of the section).
+- **canary_compliance_check / MX validation**: no `@MX` threshold crossed on the sync path — the new exported function `Manager.TranscriptPath` carries its guidance inline in godoc (fan_in 1, no `@MX:ANCHOR` mandate), `rerootGatewayTranscript` is unexported with full doc-comment bounds, and no goroutine / global-state / complexity-≥15 `@MX:WARN` class is present in the new files. Codemaps: no `codemaps/` convention surface exists on this tree — skipped per the sync dispatch ("do not force it").
 
 ---
 
