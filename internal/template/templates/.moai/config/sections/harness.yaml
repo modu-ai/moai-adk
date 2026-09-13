@@ -14,7 +14,6 @@ harness:
   mode_defaults:
     solo: auto            # Sub-agent mode: auto-detect level
     team: auto            # Team mode: auto-detect level
-    cg: thorough          # CG mode: always thorough (natural Generator-Evaluator split)
 
   # Automatic level detection (Complexity Estimator)
   auto_detection:

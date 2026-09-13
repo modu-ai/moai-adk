@@ -152,15 +152,29 @@ func TestResolveTodoQueueRoot_FallbackNoGit(t *testing.T) {
 	// SPEC-TODO-HOME-TEMP-GUARD-001 preservation transfer: t.TempDir() is
 	// inside os.TempDir(), so the temporary-origin guard would refuse this
 	// home queue and the assertion below could never be reached. The fixture
-	// moves to a NON-temporary base through the temp-root seam; the assertion
-	// itself is unchanged and still names the home root.
+	// moves to a NON-temporary base through the temp-root seam.
 	declareNonTemporaryQueueBase(t)
 	assertQueueSeamHeard(t, dir)
 
+	// INTENTIONAL UPDATE (t621): this test's own doc comment states the target
+	// correctly — ONE queue under ~/.moai/db/<project-key>/todo — and the
+	// assertion had drifted off it. The resolver's return is a project ROOT
+	// that the layer below turns into that path; naming a root under ~/.moai
+	// instead got the project key re-derived from a home path, landing the
+	// queue at ~/.moai/db/<key>-<hash>/todo, which the statusline and the
+	// console never read. The launch base is the only root whose key is the
+	// project's own, so it is asserted here and the home property is asserted
+	// where it is decided: on the queue path.
 	got := resolveTodoQueueRoot()
-	want := filepath.Join(home, ".moai", "todo", kanban.TodoQueueProjectKey(dir))
-	if got != want {
-		t.Fatalf("fallback queue root = %q, want %q", got, want)
+	if got != dir {
+		t.Fatalf("fallback queue root = %q, want the launch base %q", got, dir)
+	}
+	queue := kanban.BacklogPathForRoot(got)
+	if !strings.HasPrefix(queue, home+string(filepath.Separator)) {
+		t.Fatalf("fallback queue = %q, want it under the home directory %q", queue, home)
+	}
+	if strings.HasPrefix(queue, dir+string(filepath.Separator)) {
+		t.Fatalf("fallback queue = %q is project-local; the no-git fallback must be home-based", queue)
 	}
 
 	// The key is base name + 8 hex digest chars — readable and collision-safe.
@@ -216,10 +230,18 @@ func TestTodoQueue_FallbackAdoptsExistingLocalQueue(t *testing.T) {
 	}
 
 	// First fallback-resolution run: the root computation itself adopts.
+	//
+	// INTENTIONAL UPDATE (t621): the criterion is adopt-not-shadow, asserted
+	// below on the cards themselves — same count, same states, same high-water
+	// mark. The root VALUE that used to be asserted here was a home-fallback
+	// root, which the layer below re-keys; pinning it pinned a queue location
+	// that the statusline and the console do not read.
 	root := resolveTodoQueueRoot()
-	want := filepath.Join(home, ".moai", "todo", kanban.TodoQueueProjectKey(dir))
-	if root != want {
-		t.Fatalf("fallback queue root = %q, want %q", root, want)
+	if root != dir {
+		t.Fatalf("fallback queue root = %q, want the launch base %q", root, dir)
+	}
+	if queue := kanban.BacklogPathForRoot(root); !strings.HasPrefix(queue, home+string(filepath.Separator)) {
+		t.Fatalf("adopted queue = %q, want it under the home directory %q", queue, home)
 	}
 
 	rec, err := kanban.NewBacklogStore(kanban.BacklogPathForRoot(root)).Load()
@@ -243,8 +265,8 @@ func TestTodoQueue_FallbackAdoptsExistingLocalQueue(t *testing.T) {
 	// A re-run must not duplicate or re-adopt: the populated fallback wins and
 	// the local path (renamed away on the same volume, or an inert leftover
 	// after a cross-volume copy) is never allowed to shadow it.
-	if again := resolveTodoQueueRoot(); again != want {
-		t.Fatalf("second fallback resolution = %q, want %q", again, want)
+	if again := resolveTodoQueueRoot(); again != root {
+		t.Fatalf("second fallback resolution = %q, want the first run's root %q", again, root)
 	}
 	rec2, err := kanban.NewBacklogStore(kanban.BacklogPathForRoot(root)).Load()
 	if err != nil {
@@ -420,10 +442,15 @@ func TestTodoQueueRootGuard_SilentOnHomeFallbackFixture_NonTemp(t *testing.T) {
 	declareNonTemporaryQueueBase(t)
 	assertQueueSeamHeard(t, dir)
 
-	// The subject restored: the resolution really is on a home-fallback root.
+	// The subject restored: the resolution really is on the home-fallback
+	// branch. Since t621 that branch answers the launch base — the only root
+	// whose project key is the project's own — so the subject is identified by
+	// the queue the resolution leads to, which is under the stubbed home, and
+	// not by a root spelled inside it.
 	root := resolveTodoQueueRoot()
-	if want := filepath.Join(home, ".moai", "todo", kanban.TodoQueueProjectKey(dir)); root != want {
-		t.Fatalf("queue root = %q, want the home fallback %q — this copy must exercise the home-fallback shape", root, want)
+	queue := kanban.BacklogPathForRoot(root)
+	if !strings.HasPrefix(queue, home+string(filepath.Separator)) {
+		t.Fatalf("queue = %q, want it under the stubbed home %q — this copy must exercise the home-fallback branch", queue, home)
 	}
 	if reason := liveTodoQueueRootReason(); reason != "" {
 		t.Fatalf("guard fired on the home-fallback fixture root:\n%s", reason)

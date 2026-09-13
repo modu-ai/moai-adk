@@ -119,7 +119,7 @@ archivedエージェント名（`manager-strategy`、`expert-backend`、`researc
 
 #### Agent Teams静的編成レイヤー retired
 
-強制`--team` / `--mode team`は`MODE_TEAM_UNAVAILABLE`を出してサブエージェントモードへフォールバックします。ネイティブClaude Codeチームメイトランタイム（`moai cg` GLMフェイス、`worktree --team`）は影響を受けません。
+強制`--team` / `--mode team`は`MODE_TEAM_UNAVAILABLE`を出してサブエージェントモードへフォールバックします。 CG は廃止されました。`moai migrate cg` で移行先を確認してください。
 
 #### Context7 MCP依存 retired
 

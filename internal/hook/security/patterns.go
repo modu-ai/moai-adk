@@ -158,9 +158,30 @@ var guardianClasses = []VulnClass{
 		Name:        "weak-crypto",
 		Severity:    SevMedium,
 		Description: "Weak hash or cipher mode for security-sensitive data",
+		// Call-context patterns (t683 / ISSUE #1708): the class fires when a
+		// weak hash or ECB mode is USED in code — never when the words appear
+		// in prose (a verdict or evidence log recording that file identity was
+		// confirmed by md5 is a finding only under a bare-word match, which is
+		// exactly the false positive this narrowing removes). The dual
+		// regression lives in weak_crypto_test.go: prose lines stay silent,
+		// code call sites in every named language stay detected, and the
+		// true-positive count over the code corpus does not shrink against
+		// the retired bare-word baseline.
 		Patterns: []*regexp.Regexp{
-			mp(`(?i)\b(MD5|SHA1)\b`), // md5/sha1 for password/token
-			mp(`(?i)\bECB\b`),        // ECB cipher mode
+			// Call / qualified access: md5(password), md5.New(), SHA1.hexdigest(...),
+			// Digest::MD5, Md5::new() — no space allowed between token and the
+			// code punctuator, which keeps prose like "MD5 (RFC 6151)" silent.
+			mp(`(?i)\b(md5|sha1)(\(|::|\.[A-Za-z_][A-Za-z0-9_]*\()`),
+			// Named-algorithm constructors: crypto.createHash('md5'),
+			// MessageDigest.getInstance("MD5").
+			mp(`(?i)\b(createHash|getInstance)\(\s*["'\x60](md5|sha1)["'\x60]\s*\)`),
+			// Go import path: import "crypto/md5" / "crypto/sha1".
+			mp(`(?i)crypto/(md5|sha1)\b`),
+			// ECB in code context only: AES.MODE_ECB, CipherMode.ECB, or a
+			// quoted cipher spec ("AES/ECB/PKCS5Padding"). The bare word "ECB"
+			// in prose no longer fires. (\b cannot see MODE_ECB — `_` is a word
+			// character — so the old bare-word pattern silently missed it.)
+			mp(`(?i)(\bMODE_ECB\b|\bCipherMode\s*\.\s*ECB\b|["'\x60][^"'\x60\n]*\bECB\b[^"'\x60\n]*["'\x60])`),
 		},
 	},
 	{

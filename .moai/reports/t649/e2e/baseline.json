@@ -1,0 +1,13 @@
+{
+  "baseline_head": "81c1d58f9",
+  "branch": "WT-unified-gateway",
+  "binary": "/tmp/moai-t649-implementation",
+  "sha256": "9f2a7b217d731b0c6b8900391c94270ccade5b937c1a815daaa084053789a479",
+  "claude_version": "2.1.268",
+  "host": "macOS",
+  "test_cwd": "/private/tmp/moai-t649-e2e-project",
+  "gpt_status_observed": "GPT: logged in",
+  "paid_answer_attempts": 1,
+  "source_changes": "none by E2E agent",
+  "bootstrap": "only new private family onboarding/trust; local session API key accepted; permission-mode default; hooks disabled; MCP empty"
+}

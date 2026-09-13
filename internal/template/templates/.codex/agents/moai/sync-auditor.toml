@@ -122,7 +122,7 @@ The contract carries per-criterion state: `passed` (met in a previous iteration 
 
 - **final-pass** (standard harness): single post-implementation evaluation
 - **per-iteration** (thorough harness): Phase 10 Evaluation Contract negotiation + post-implementation evaluation
-- **CG mode**: the leader (Claude) performs the evaluation directly, without spawning this agent
+- **Independence**: retain sync-auditor evaluation; retired CG configuration does not authorize leader self-evaluation.
 
 ## Read-Only Per-Dimension Verifier Pilot (RETIRED)
 

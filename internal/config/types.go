@@ -269,12 +269,9 @@ type LLMConfig struct {
 	// predicate (template.IsGLMBackend, REQ-MTP-026) keeps mode=="glm" only as a
 	// defensive OR for this dormant field.
 	Mode string `yaml:"mode"`
-	// TeamMode selection: "" (`moai cc` / unset), "cg" (`moai cg` — Claude leader +
-	// GLM teammates), or "glm" (`moai glm` — all-GLM). These are the values
-	// persistTeamMode (internal/cli/glm.go) actually writes; "claude"/"hybrid" are
-	// legacy non-GLM values retained for backward-compat parsing. The GLM
-	// backend-detection predicate (template.IsGLMBackend) treats team_mode ∈
-	// {cg, glm} as a GLM backend.
+	// TeamMode stores explicit session intent. "glm" selects GLM; "claude"
+	// and unset select ordinary Claude policy. Historical "cg" remains readable
+	// as data, but launch requires explicit migration and never activates GLM.
 	TeamMode string `yaml:"team_mode"`
 	// Environment variable name for GLM API key
 	GLMEnvVar string `yaml:"glm_env_var"`
@@ -621,12 +618,18 @@ type TokenBudgetConfig struct {
 // Distinct from GitStrategyConfig.WorktreeRoot (different key domain, no conflict).
 //
 // Reader status (SPEC-CONFIG-KEY-HONESTY-001 M5, updated by
-// SPEC-INIT-WIZARD-REPAIR-001 REQ-009): AutoCreate is read once by
-// internal/cli/worktree_advisory.go only to select advisory wording — it does
-// not gate worktree creation. AutoCleanup is read by the two auto-cleanup
-// paths (internal/cli/session_worktree.go cleanupSessionWorktree and
+// SPEC-INIT-WIZARD-REPAIR-001 REQ-009 and
+// SPEC-WORKTREE-KEY-WIRING-001 REQ-WKW-012): AutoCreate is read once by
+// internal/cli/worktree_advisory.go only to select advisory wording — its
+// declared scope is the wording; it does not gate worktree creation.
+// AutoCleanup is read by the two auto-cleanup paths
+// (internal/cli/session_worktree.go cleanupSessionWorktree and
 // session_worktree_prmerge.go prMergeCleanup), gating worktree removal.
-// AutoMerge has no production reader (declared but not read).
+// AutoMerge is read by the session-exit auto-merge path
+// (internal/cli/session_worktree_automerge.go sessionExitAutoMerge): when
+// true, a clean session exit merges the session worktree's branch into the
+// configured git-flow develop branch — a local merge inside the
+// release-integration window, never a push.
 // SessionNamePattern has no production reader (no code builds a session name
 // from it).
 type WorkflowWorktreeConfig struct {

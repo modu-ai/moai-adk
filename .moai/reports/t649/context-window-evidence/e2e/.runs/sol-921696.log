@@ -1,0 +1,75 @@
+=== RUN   TestT649ContextLive
+{
+  "body_limit_bytes": 16777216,
+  "duration_seconds": 22.918204,
+  "event": "response.completed",
+  "events": 19,
+  "http_status": 200,
+  "model": "gpt-5.6-sol",
+  "needle_recall": true,
+  "output": "MAPLE71,OTTER83,CEDAR29",
+  "repetitions": 921696,
+  "request_bytes": 1843787,
+  "response_status": "completed",
+  "route": "subscription",
+  "stream_read_ok": true,
+  "timeout": false,
+  "timeout_seconds": 150,
+  "truncation": "server default, three-position recall checked",
+  "unit": " x",
+  "usage": {
+    "attribution": {
+      "items": {
+        "msg_0e6a51ea014d0199016aa4c11d684087d08b0240c70db63699": {
+          "cache_write_tokens": 0,
+          "cached_tokens": 0,
+          "content": [
+            {
+              "cache_write_tokens": 0,
+              "cached_tokens": 0,
+              "input_tokens": 921744,
+              "output_tokens": 0
+            }
+          ],
+          "input_tokens": 921744,
+          "output_tokens": 0
+        },
+        "msg_0e6a51ea014d0199016aa4c1329dc887d0a1c6b93ff77642f0": {
+          "cache_write_tokens": 0,
+          "cached_tokens": 0,
+          "content": [
+            {
+              "cache_write_tokens": 0,
+              "cached_tokens": 0,
+              "input_tokens": 2,
+              "output_tokens": 15
+            }
+          ],
+          "input_tokens": 2,
+          "output_tokens": 15
+        }
+      },
+      "request_fields": {
+        "instructions": {
+          "cache_write_tokens": 0,
+          "cached_tokens": 0,
+          "input_tokens": 21,
+          "output_tokens": 0
+        }
+      }
+    },
+    "input_tokens": 921767,
+    "input_tokens_details": {
+      "cache_write_tokens": 0,
+      "cached_tokens": 0
+    },
+    "output_tokens": 15,
+    "output_tokens_details": {
+      "reasoning_tokens": 0
+    },
+    "total_tokens": 921782
+  }
+}
+--- PASS: TestT649ContextLive (22.92s)
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/cli	23.693s

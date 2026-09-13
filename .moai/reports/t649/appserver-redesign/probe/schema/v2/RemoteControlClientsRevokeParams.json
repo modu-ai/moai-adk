@@ -1,0 +1,17 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "properties": {
+    "clientId": {
+      "type": "string"
+    },
+    "environmentId": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "clientId",
+    "environmentId"
+  ],
+  "title": "RemoteControlClientsRevokeParams",
+  "type": "object"
+}

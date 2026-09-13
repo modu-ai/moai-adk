@@ -1,0 +1,6 @@
+{
+  "Replace": {
+    "/Users/goos/MoAI/moai-adk-go/.claude/worktrees/moai-proxy-unified/internal/gateway/translate/t649_audit_overlay_test.go": "/Users/goos/MoAI/moai-adk-go/.claude/worktrees/moai-proxy-unified/.moai/reports/t649/independent-evidence/audit_test.go",
+    "/Users/goos/MoAI/moai-adk-go/.claude/worktrees/moai-proxy-unified/internal/gateway/t649_audit_overlay_test.go": "/Users/goos/MoAI/moai-adk-go/.claude/worktrees/moai-proxy-unified/.moai/reports/t649/reaudit-evidence/audit_gateway_test.go"
+  }
+}

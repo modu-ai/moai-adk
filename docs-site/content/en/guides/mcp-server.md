@@ -194,7 +194,7 @@ The CLI is used only when the MCP tool is not in the `tools:` list, or when the 
 
 ### GLM (z.ai)
 
-When running in a GLM session (`moai glm` or the GLM pane of `moai cg`), web search and web fetch are routed to z.ai MCP tools instead of the built-in `WebSearch` / `WebFetch`. Authentication is read from `~/.moai/.env.glm`.
+When running in a GLM session (`moai glm`), web search and web fetch are routed to z.ai MCP tools instead of the built-in `WebSearch` / `WebFetch`. Authentication is read from `~/.moai/.env.glm`.
 
 The z.ai MCP servers (`zai-mcp-server`, `web_search_prime`, `web_reader`) are disabled by default and are turned on with `moai glm tools enable` in a GLM session. For the routing rules inside a GLM session, see [Multi-LLM backends](/en/multi-llm/).
 

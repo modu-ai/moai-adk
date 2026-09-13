@@ -1,0 +1,22 @@
+{
+  "version": "v3.2.0-rc.8",
+  "build_id": "v3.2.0-rc.8-t649-model-switch-d40ebe382fb9",
+  "built_at": "2026-09-12T02:00:50Z",
+  "source_go_sha256": "d40ebe382fb91213e0c13f30f7f11aee8827506caa562be7c7b7f9fa9bf739c7",
+  "branch": "WT-unified-gateway",
+  "head": "81c1d58f9",
+  "binary": "/tmp/moai-v3.2.0-rc.8-t649-model-switch",
+  "installed": true,
+  "binary_sha256": "25b68beaadc919b91adab97213b76daa694b284fe3e297958e627c3842bc08c2",
+  "production_files_sha256": {
+    "internal/gateway/conversation/native.go": "393f0c7562cf3c8e6dfcfabd49378d6760558f1c90147ad847a850721984387b",
+    "internal/gateway/translate/receipt_history.go": "56bfca634eeba6d955e2d68f62e5b87dde969f0c577f0c738c8ceaec5e7a3df2",
+    "internal/gateway/openai.go": "a4f00535fcc2dab80dc41ec21a3306614a0a6ccef068d444b552bf8914f29464",
+    "internal/cli/gateway_factory.go": "a12230425c501e271711ff21adcd22c60d94e9087237340dca124344e616ef3b"
+  },
+  "installed_path": "/Users/goos/go/bin/moai",
+  "installed_sha256": "25b68beaadc919b91adab97213b76daa694b284fe3e297958e627c3842bc08c2",
+  "backup_path": "/Users/goos/.moai/releases/moai-v3.2.0-rc.8-before-model-switch-7767eed67b43",
+  "backup_sha256": "7767eed67b43981891f2cd3cf0954d76daf480a5109c8cba14f6efde176d4092",
+  "scope": "local rc8 model-switch repair; not full SPEC or CI acceptance"
+}

@@ -107,7 +107,7 @@ Why this is `[1m]`-safe: the lever operates on the **Default** model resolution 
 
 ### GLM-mode reconciliation
 
-[ZONE:Evolvable] [HARD] With `enforceAvailableModels` unset, GLM mode needs no allowlist reconciliation. When GLM mode is active (`moai glm` whole-session, or the GLM teammate panes of `moai cg`), the GLM activation sets `ANTHROPIC_DEFAULT_OPUS_MODEL` to the configured GLM high model (currently `glm-5.3`; the `DefaultGLMHigh` constant is the SSOT, so read it there rather than trusting this line after a model generation turns over), surfaced in the model UI as the Opus-slot alias. The CC 2.1.176 redirect-blocking semantics — which decline an `ANTHROPIC_DEFAULT_*_MODEL` redirect to a model NOT in `availableModels` — apply ONLY when `enforceAvailableModels` is `true`. Because the template no longer sets that flag, the GLM swap is never checked against an allowlist and is admitted directly; the session runs on the configured GLM model instead of silently falling back to Sonnet.
+[ZONE:Evolvable] [HARD] With `enforceAvailableModels` unset, GLM mode needs no allowlist reconciliation. When GLM mode is active (`moai glm` whole-session), the GLM activation sets `ANTHROPIC_DEFAULT_OPUS_MODEL` to the configured GLM high model (currently `glm-5.3`; the `DefaultGLMHigh` constant is the SSOT, so read it there rather than trusting this line after a model generation turns over), surfaced in the model UI as the Opus-slot alias. The CC 2.1.176 redirect-blocking semantics — which decline an `ANTHROPIC_DEFAULT_*_MODEL` redirect to a model NOT in `availableModels` — apply ONLY when `enforceAvailableModels` is `true`. Because the template no longer sets that flag, the GLM swap is never checked against an allowlist and is admitted directly; the session runs on the configured GLM model instead of silently falling back to Sonnet.
 
 This supersedes the earlier approach of enumerating the GLM model ids in `availableModels` (the `[1m]`-variant + raw-GLM-id expansion). That expansion existed only to satisfy `enforceAvailableModels: true`; removing the enforcement flag removes the need for the expansion entirely. The Default model stays `sonnet` — a non-GLM (`moai cc` / plain Claude) session still resolves its Default to Sonnet; the only change is that no model is hidden and no swap is declined.
 
@@ -200,12 +200,9 @@ The effort comes from `llm.harness_agents[<profile>][<purpose class>].effort`, w
 
 An unrecognized class falls back to `implement`. Because harness agents are **user-owned** (`moai update` never modifies them), assignment happens only at generation time: a later `llm.profile` change does NOT retroactively rewrite an existing harness agent's frontmatter. Re-alignment is an explicit user action (`/moai:harness` re-run or a manual edit).
 
-## CG Mode
+## Legacy CG Configuration
 
-CG Mode (Claude + GLM) uses environment variable overrides, not model field changes:
-- Leader session: Uses Claude models (no GLM env)
-- Teammate sessions: Inherit GLM env from tmux session
-- Activation: `moai cg` (requires tmux)
+`team_mode: cg` is legacy data requiring explicit migration, not an active model-routing mode. Run `moai migrate cg` to preview the choices. Removing automatic GLM teammate assignment requires `--target claude-only --apply --accept-role-change`. The `claude-glm` target remains blocked until actual mixed-provider teammate capability is verified; native Agent Teams availability alone is insufficient. See `glm-web-tooling.md` § CG Retirement and Migration.
 
 ## Effort Levels
 
@@ -232,5 +229,5 @@ Note: `ultrathink` is a Claude Code one-turn keyword that requests deeper reason
 - `model: haiku` is retired from MoAI agent routing per the No-Haiku policy (SPEC-AGENT-ARCH-V2-001 §D); the HaikuResidualRule lint enforces 0 haiku references in agent frontmatter, claude_models, model_routing_profiles, workflow_agents, and the retired Agent Teams `role_profiles` surface (historical configs). Former haiku slots use `sonnet` with `effort: low`.
 - GLM is configured via env vars in settings.json, never via model field
 - Model policy tier (high/medium/low) is a CLI concern, not an agent definition concern
-- CG Mode uses tmux session-level env isolation for model routing
+- Legacy CG configuration never selects a runtime provider or bypasses independent review
 - Old model versions are auto-migrated: do not pin to specific version IDs

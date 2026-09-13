@@ -50,7 +50,7 @@ The console serves the following paths. The five read-only screens refuse any me
 | `/kanban` | GET | Chain session board plus the SPEC pipeline |
 | `/specs` | GET | SPEC catalog. `?q=` searches, `?status=` filters, `?id=` opens the detail |
 | `/monitor` | GET | Sessions, goals, verification, epics |
-| `/settings` | GET | The nine settings tabs. `?tab=` selects the tab, `?profile=` the profile being edited |
+| `/settings` | GET | The settings tabs. `?tab=` selects the tab, `?profile=` the profile being edited |
 | `/todo` | GET | The backlog queue, read-only — every card in all three states (`queued` · `picked` · `dropped`) |
 | `/events` | GET | SSE stream — carries refresh signals only |
 | `/save` | POST | Save settings |

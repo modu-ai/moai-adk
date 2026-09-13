@@ -293,23 +293,13 @@ func SessionGLMReasoningStateForModel(model, effort string) GLMReasoningState {
 	return SessionGLMReasoningStateForEffort(effort)
 }
 
-// IsGLMBackend reports whether the effective session backend is GLM (REQ-MTP-026).
-// It reads the two llm.yaml-persisted intent signals ONLY: team_mode ∈ {cg, glm}
-// (the ACTUAL persisted GLM signals — `moai glm` writes team_mode="glm",
-// `moai cg` writes team_mode="cg", both via persistTeamMode) OR mode == "glm" (a
-// defensive OR for the currently-dormant llm.mode field, which has no non-test
-// writer today). team_mode is the real signal; mode is the defensive fallback —
-// the predicate does NOT rely on mode alone (that would leave the primary all-GLM
-// `moai glm` session, team_mode="glm", undetected — the inert-headline hazard).
-//
-// This is the CONFIG-level intent signal. It deliberately does NOT re-implement
-// the stricter RUNTIME tmux-session + GLM-marker detector in
-// internal/tmux/cg_detect.go IsCGMode (which reads team_mode == "cg" AND the tmux
-// session env) — it cross-references it. When neither field indicates GLM the
-// predicate resolves FALSE and the overlay is an identity no-op.
+// IsGLMBackend reads explicit GLM intent. Legacy CG configuration is never
+// an executable backend; launcher guards require its explicit migration first.
 func IsGLMBackend(cfg config.LLMConfig) bool {
 	switch cfg.TeamMode {
-	case config.TeamModeGLM, config.TeamModeCG:
+	case config.LegacyTeamModeCG:
+		return false
+	case config.TeamModeGLM:
 		return true
 	}
 	return cfg.Mode == config.LLMModeGLM

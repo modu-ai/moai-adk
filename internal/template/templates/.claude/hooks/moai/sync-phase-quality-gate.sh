@@ -25,11 +25,24 @@
 # this script does not parse stopReason, so the carve-out remains documentation-
 # only at this layer (per runtime-recovery-doctrine.md §4).
 #
-# Outcome record: for the HEAD it gates, the hook keeps one line
-# "<head-sha> <outcome>" in .moai/state/sync-quality-gate.last. <outcome> is
-# exactly one of running, pass, fail. The record reads "running" before any check
-# starts, then "fail" if a check failed (whether the mode blocked or only advised)
-# or "pass" otherwise. On a later turn with the same HEAD:
+# Outcome record: for the input it gates, the hook keeps one line
+# "<head-sha> <outcome> <worktree-content-id>" in
+# .moai/state/sync-quality-gate.last. <outcome> is exactly one of running, pass,
+# fail. The record reads "running" before any check starts, then "fail" if a check
+# failed (whether the mode blocked or only advised) or "pass" otherwise.
+#
+# The third field identifies the WORK TREE, because that is what the checks read
+# (go vet ./..., go build ./..., ruff check .) — HEAD alone does not identify their
+# input. A record whose third field differs from the current work tree describes a
+# different input and is re-gated, so a repair landing under an unchanged HEAD
+# runs the checks again instead of re-delivering a block that no longer holds, and
+# a break landing under a stored pass is caught instead of staying silent. The
+# field is absent from a record written before the hook kept it; such a record
+# counts as matching, so an older record behaves exactly as it did before. The
+# hook's own state and log directories are excluded from the identifier — it
+# writes them on every run, and including them would leave no record reusable.
+#
+# On a later turn with the same HEAD and the same work tree:
 #   - pass: no checks, empty stdout.
 #   - fail: no checks. The failing run's exact stdout, its kind (block or
 #     advisory), and the failed-check exit codes are kept in
@@ -46,8 +59,9 @@
 #     is emitted. An older record gets ONE re-run for that HEAD, recorded in
 #     .moai/state/sync-quality-gate.retry; once that re-run is used, later turns
 #     emit a non-blocking notice instead of re-running.
-#   - no record, a record for another HEAD, or an empty, unreadable, legacy
-#     (bare SHA), or malformed record: the checks run.
+#   - no record, a record for another HEAD, a record naming a different work tree,
+#     or an empty, unreadable, multi-line, legacy (bare SHA), or malformed record:
+#     the checks run.
 # Every state write goes through a temporary file renamed into place, and a
 # failing run writes its payload before its "fail" record.
 #
@@ -82,15 +96,44 @@ detect_languages() {
             *) candidates="$candidates $1" ;;
         esac
     }
+    # Heavy directories are pruned instead of capping the depth, so package
+    # nesting and multi-module layouts are covered without guessing a bound.
+    # A depth cap cannot express "conventional layout": src/main/java/<pkg>/ is
+    # already 4 levels down and Sources/<Module>/<Feature>/ is 3, so any bound
+    # low enough to be cheap is also low enough to miss the idiomatic case —
+    # every language whose only evidence is source suffix then resolves to no
+    # language at all, and the gate exits silently (card t664; the same shape
+    # t604 had already worked around for Kotlin alone).
+    #
+    # The prune set mirrors sourceScanSkipDirs in internal/hook/quality/gate.go
+    # so this shell gate and the Go heavy gate skip the same trees; -quit stops
+    # the walk at the first match, so a hit costs a partial traversal.
     has_suffix() {
-        find "$root" -maxdepth 3 -type f -name "$1" -print -quit 2>/dev/null | grep -q .
+        find "$root" \
+            \( -name .git -o -name .hg -o -name .svn \
+               -o -name node_modules -o -name vendor \
+               -o -name .venv -o -name venv -o -name site-packages -o -name __pycache__ \
+               -o -name .tox -o -name .nox -o -name .mypy_cache -o -name .ruff_cache \
+               -o -name .pytest_cache \
+               -o -name dist -o -name build -o -name target -o -name .next -o -name .output \) -prune \
+            -o -type f -name "$1" -print -quit 2>/dev/null | grep -q .
+    }
+    # Kotlin keeps a named source probe because its branch is the one that rests
+    # on source alone: a version-catalog build script (`alias(libs.plugins.jvm)`)
+    # names no Kotlin token, so without the source leg the project falls through
+    # to Java, the Java code-delta pattern misses every .kt file, and the gate
+    # exits silently without even a log line (card t604). Only *.kt counts —
+    # *.kts is the build DSL, and a Java Gradle project's build.gradle.kts must
+    # keep resolving to Java.
+    has_kotlin_source() {
+        has_suffix '*.kt'
     }
 
     if [ -f "$root/go.mod" ] || has_suffix '*.go'; then add_language go; fi
     if [ -f "$root/pyproject.toml" ] || [ -f "$root/requirements.txt" ] || has_suffix '*.py'; then add_language python; fi
     if [ -f "$root/package.json" ] || has_suffix '*.js' || has_suffix '*.ts' || has_suffix '*.jsx' || has_suffix '*.tsx'; then add_language node; fi
     if [ -f "$root/Cargo.toml" ] || has_suffix '*.rs'; then add_language rust; fi
-    if { [ -f "$root/build.gradle.kts" ] && grep -Eiq 'kotlin\(|org\.jetbrains\.kotlin|kotlin-dsl' "$root/build.gradle.kts"; } || has_suffix '*.kt'; then
+    if { [ -f "$root/build.gradle.kts" ] && grep -Eiq 'kotlin\(|org\.jetbrains\.kotlin|kotlin-dsl|libs\.plugins\.kotlin' "$root/build.gradle.kts"; } || has_kotlin_source; then
         add_language kotlin
     elif [ -f "$root/pom.xml" ] || [ -f "$root/build.gradle" ] || [ -f "$root/build.gradle.kts" ] || has_suffix '*.java'; then
         add_language java
@@ -103,7 +146,10 @@ detect_languages() {
     if [ -f "$root/DESCRIPTION" ] || [ -f "$root/renv.lock" ] || has_suffix '*.R' || has_suffix '*.r'; then add_language r; fi
     if [ -f "$root/pubspec.yaml" ] || has_suffix '*.dart'; then add_language flutter; fi
     if [ -f "$root/Package.swift" ] || has_suffix '*.swift'; then add_language swift; fi
-    if [ -d "$root/.vs" ] || find "$root" -maxdepth 3 -name '*.csproj' -print -quit 2>/dev/null | grep -q . || has_suffix '*.cs'; then add_language csharp; fi
+    # The .csproj probe carried its own copy of the same depth cap; a solution
+    # with projects under src/<Module>/ already sits below it. Routed through
+    # the shared probe so one prune set governs every walk in this function.
+    if [ -d "$root/.vs" ] || has_suffix '*.csproj' || has_suffix '*.cs'; then add_language csharp; fi
 
     for language in $candidates; do
         printf '%s\n' "$language"
@@ -127,7 +173,7 @@ code_delta_pattern() {
         node)     echo '\.(js|ts|jsx|tsx|mjs|cjs)$' ;;
         rust)     echo '\.rs$' ;;
         java)     echo '\.java$' ;;
-        kotlin)   echo '\.kt|\.kts$' ;;
+        kotlin)   echo '\.(kt|kts)$' ;;
         csharp)   echo '\.cs$' ;;
         ruby)     echo '\.rb$' ;;
         php)      echo '\.php$' ;;
@@ -292,6 +338,51 @@ record_age_seconds() {
     echo $((ras_now - ras_mtime))
 }
 
+# hash_stdin: a stable digest of stdin. Only stability matters here, not
+# cryptographic strength, so cksum (POSIX) is an acceptable last resort.
+hash_stdin() {
+    if command -v shasum >/dev/null 2>&1; then
+        shasum -a 256 2>/dev/null | cut -d' ' -f1
+    elif command -v sha256sum >/dev/null 2>&1; then
+        sha256sum 2>/dev/null | cut -d' ' -f1
+    else
+        cksum 2>/dev/null | tr -cd '0-9'
+    fi
+}
+
+# worktree_content_id: an identifier for what the checks actually read. The fast
+# checks run over the WORK TREE (go vet ./..., go build ./..., ruff check .), not
+# over HEAD, so HEAD alone does not identify their input: a repair landing under
+# an unchanged HEAD must re-gate rather than reuse the stored outcome.
+# `git diff HEAD` carries the content of every tracked modification; the
+# untracked list carries the names and the contents of files that are new.
+#
+# Two path groups are excluded, for different reasons. This hook's own record and
+# log live under .moai/state and .moai/logs, and it writes them on every run: left
+# in, the identifier would change on every turn and no record would ever be reused,
+# which is the memo defeating itself. The exclusion is by pathspec rather than by
+# .gitignore, because whether a downstream project ignores those two directories is
+# that project's choice and must not decide whether this gate works. git-ignored
+# files are excluded too (--exclude-standard) — build output and caches are not
+# what the checks are being asked about.
+#
+# Prints empty when git cannot answer, which degrades the identifier to HEAD alone:
+# the behavior before it existed, never something looser.
+worktree_content_id() {
+    {
+        git diff HEAD -- "${WCI_EXCLUDES[@]}" 2>/dev/null || true
+        wci_others=$(git ls-files --others --exclude-standard -- "${WCI_EXCLUDES[@]}" 2>/dev/null || true)
+        if [ -n "$wci_others" ]; then
+            printf '%s\n' "$wci_others"
+            printf '%s\n' "$wci_others" | git hash-object --stdin-paths 2>/dev/null || true
+        fi
+    } | hash_stdin
+}
+
+# The gate's own state and log paths, anchored at the repository root so the
+# exclusion holds whatever the hook's working directory is.
+WCI_EXCLUDES=(':(top,exclude).moai/state' ':(top,exclude).moai/logs')
+
 # resolve_gate_mode: sets MODE (blocking|advisory) from MOAI_SYNC_GATE_BLOCKING,
 # MOAI_AUTONOMY_TIER, DECISION, C1_EXIT, and C2_EXIT. A check run and a
 # re-delivery both call it, so a stored failure is re-delivered only under the
@@ -333,17 +424,36 @@ resolve_gate_mode() {
 }
 
 RERUN_OF_RUNNING=0
+WORKTREE_ID=$(worktree_content_id)
 if [ -n "$HEAD_SHA" ]; then
     RECORD_CONTENT=""
     if [ -f "$RECORD_FILE" ]; then
         RECORD_CONTENT=$(cat "$RECORD_FILE" 2>/dev/null || echo "")
     fi
-    case "$RECORD_CONTENT" in
-        "$HEAD_SHA pass")
-            # This HEAD already passed the gate: silent, no re-run.
+    # A record is one line, "<head-sha> <outcome> [<worktree-content-id>]", and
+    # RECORD_OUTCOME below is set only when the record is about this HEAD AND this
+    # work tree. A record naming a different tree describes a different check
+    # input, so it is re-gated rather than reused. A record with no third field
+    # (one written before the hook recorded it) counts as matching, so an older
+    # record behaves exactly as it did. Anything else — multi-line, a foreign
+    # SHA, an unknown outcome, a trailing field — leaves RECORD_OUTCOME empty and
+    # the checks run.
+    R_SHA=""; R_OUTCOME=""; R_WT=""; R_EXTRA=""
+    read -r R_SHA R_OUTCOME R_WT R_EXTRA <<< "$RECORD_CONTENT" || true
+    RECORD_OUTCOME=""
+    if [ "${RECORD_CONTENT%%$'\n'*}" = "$RECORD_CONTENT" ] &&
+        [ "$R_SHA" = "$HEAD_SHA" ] && [ -z "$R_EXTRA" ] &&
+        { [ -z "$R_WT" ] || [ "$R_WT" = "$WORKTREE_ID" ]; }; then
+        case "$R_OUTCOME" in
+            pass|fail|running) RECORD_OUTCOME="$R_OUTCOME" ;;
+        esac
+    fi
+    case "$RECORD_OUTCOME" in
+        pass)
+            # This HEAD and work tree already passed the gate: silent, no re-run.
             exit 0
             ;;
-        "$HEAD_SHA fail")
+        fail)
             PAYLOAD_HEADER=""
             if [ -f "$PAYLOAD_FILE" ]; then
                 PAYLOAD_HEADER=$(head -n 1 "$PAYLOAD_FILE" 2>/dev/null || echo "")
@@ -381,7 +491,7 @@ if [ -n "$HEAD_SHA" ]; then
             fi
             # A "fail" record without a usable payload is an unknown outcome: re-gate.
             ;;
-        "$HEAD_SHA running")
+        running)
             RECORD_AGE=$(record_age_seconds)
             if [ -n "$RECORD_AGE" ] && [ "$RECORD_AGE" -le "$SYNC_GATE_STALE_WINDOW" ]; then
                 emit_gate_notice "sync-phase quality gate: the previous gate run for this HEAD has not completed yet, so no checks ran this turn. To force a new gate run, delete .moai/state/sync-quality-gate.last."
@@ -406,7 +516,7 @@ if [ -n "$HEAD_SHA" ]; then
     else
         rm -f "$RETRY_FILE" 2>/dev/null || true
     fi
-printf '%s running\n' "$HEAD_SHA" | write_state_file "$RECORD_FILE"
+printf '%s running %s\n' "$HEAD_SHA" "$WORKTREE_ID" | write_state_file "$RECORD_FILE"
 fi
 
 # The hook is a direct snapshot consumer. This query is intentionally after
@@ -493,7 +603,40 @@ case "$GATE_LANG" in
         ;;
     cpp)
         C1_LABEL="g++ syntax check"
-        run_step g++ c1 sh -c 'find . -name "*.cpp" -o -name "*.cc" -exec g++ -fsyntax-only -std=c++17 {} \; 2>&1' || true
+        # Three details here are load-bearing:
+        #   \( ... \)  groups the extension conditions so the shared -exec applies to
+        #              EVERY match. Ungrouped, `-name "*.cpp" -o -name "*.cc" -exec`
+        #              parses as `*.cpp -o ( *.cc -a -exec )`: a .cpp file satisfies
+        #              the first branch, short-circuits the -o, and never reaches the
+        #              compiler — and since the expression carries an action, find
+        #              adds no default -print either, so the check passes in silence.
+        #   {} +       propagates the compiler's exit status to find's own. The `\;`
+        #              form does NOT: find exits 0 even when every invocation failed,
+        #              so a real syntax error was recorded as c1=0 (a pass).
+        #   -print     records WHICH files were handed to the compiler, so a passing
+        #              run is distinguishable from one that checked nothing. Empty
+        #              output therefore means zero targets, reported as such below
+        #              rather than as a successful check.
+        #   *.cxx      is scanned alongside *.cpp and *.cc: all three are ordinary
+        #              translation units, and code_delta_pattern already classifies a
+        #              .cxx change as C++ — so without it the gate declared the change
+        #              C++ and then compiled nothing.
+        #   headers    (.h/.hpp/.hxx) are deliberately NOT scanned, even though
+        #              code_delta_pattern accepts them. Measured with this toolchain:
+        #              a self-contained header passes -fsyntax-only cleanly, but a
+        #              header written to be included AFTER another one — an ordinary
+        #              C++ idiom — fails standalone ("error: unknown type name"), so
+        #              scanning headers converts a correct project into a gate
+        #              failure. The residual asymmetry is recorded rather than traded
+        #              for false positives; see .moai/reports/t663/verdict.md.
+        run_step g++ c1 sh -c 'out=$(find . \( -name "*.cpp" -o -name "*.cc" -o -name "*.cxx" \) -print -exec g++ -fsyntax-only -std=c++17 {} + 2>&1); rc=$?; if [ -z "$out" ]; then echo "0 C++ files checked: no *.cpp/*.cc/*.cxx found (not a passing check)"; else echo "$out"; fi; exit $rc' || true
+        # Per-check logs live in GATE_TMPDIR, which the EXIT trap removes, and nothing
+        # reads them — so the zero-target case is promoted to the audit log here. Without
+        # it, "checked nothing" and "checked everything and it passed" are both a silent
+        # c1=0, which is exactly how the original defect stayed invisible.
+        if grep -q '^0 C++ files checked' "$GATE_TMPDIR/c1.log" 2>/dev/null; then
+            log_gate_event "cpp_targets=0 (no *.cpp/*.cc/*.cxx compiled — not a passing check)"
+        fi
         ;;
     scala)
         C1_LABEL="scalac"
@@ -599,9 +742,9 @@ fi
 if [ -n "$HEAD_SHA" ]; then
     if [ -n "$PAYLOAD_KIND" ]; then
         { printf '%s %s %s %s\n' "$HEAD_SHA" "$PAYLOAD_KIND" "$C1_EXIT" "$C2_EXIT"; cat "$GATE_OUTPUT_FILE"; } | write_state_file "$PAYLOAD_FILE"
-        printf '%s fail\n' "$HEAD_SHA" | write_state_file "$RECORD_FILE"
+        printf '%s fail %s\n' "$HEAD_SHA" "$WORKTREE_ID" | write_state_file "$RECORD_FILE"
     else
-        printf '%s pass\n' "$HEAD_SHA" | write_state_file "$RECORD_FILE"
+        printf '%s pass %s\n' "$HEAD_SHA" "$WORKTREE_ID" | write_state_file "$RECORD_FILE"
     fi
 fi
 

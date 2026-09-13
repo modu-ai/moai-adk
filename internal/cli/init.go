@@ -502,6 +502,11 @@ func runInit(cmd *cobra.Command, args []string) (err error) {
 		}
 	}
 	defer func() {
+		// SPEC-WORKTREE-KEY-WIRING-001 M2: auto-merge runs BEFORE disposal —
+		// the merge consumes only committed state, but disposal deletes the
+		// tree, so merge-then-dispose is the only safe order. Independent of
+		// auto_cleanup (REQ-WKW-013): each toggle gates only its own behavior.
+		sessionExitAutoMerge(swCfg, wtPath, err == nil, cmd.ErrOrStderr())
 		cleanupSessionWorktree(swCfg, wtPath, err == nil, cmd.ErrOrStderr())
 	}()
 

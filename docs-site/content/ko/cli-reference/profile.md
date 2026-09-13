@@ -74,7 +74,7 @@ moai profile delete old-profile
 ```bash
 moai cc -p work          # work 프로필로 Claude 실행
 moai glm -p cost-save    # cost-save 프로필로 GLM 실행
-moai cg -p team          # team 프로필로 CG 모드 실행
+moai cc -p team          # team 프로필의 Claude 세션
 ```
 
 {{< callout type="info" >}}
@@ -147,7 +147,6 @@ Notice: profile "work" has no Claude Code configuration yet.
 |------|------|
 | `moai cc` → `moai glm` | GLM 환경 변수 자동 주입 |
 | `moai glm` → `moai cc` | GLM 환경 변수 자동 제거 |
-| `moai cc` → `moai cg` | GLM env를 tmux 세션에만 주입, Leader는 Claude 유지 |
 
 ## 관련 문서
 

@@ -1,0 +1,18 @@
+$ go test -overlay .moai/reports/t649/independent-evidence/overlay.json ./internal/gateway/translate ./internal/gateway -run '^(TestAuditReasoning|TestAuditNativeEgress)' -count=1 -v -timeout=60s
+# github.com/modu-ai/moai-adk/internal/gateway [github.com/modu-ai/moai-adk/internal/gateway.test]
+./.moai/reports/t649/independent-evidence/audit_gateway_test.go:3:6: auditHistory redeclared in this block
+	internal/gateway/replay_egress_test.go:14:6: other declaration of auditHistory
+./.moai/reports/t649/independent-evidence/audit_gateway_test.go:4:19: method auditHistory.Check already declared at internal/gateway/replay_egress_test.go:16:21
+./.moai/reports/t649/independent-evidence/audit_gateway_test.go:5:19: method auditHistory.Publish already declared at internal/gateway/replay_egress_test.go:17:21
+=== RUN   TestAuditReasoningPublicItemOrderAndPhase
+    t649_audit_overlay_test.go:15: observed upstream replay: {"input":[{"content":[{"text":"hello","type":"input_text"}],"role":"user"},{"encrypted_content":"cipher_rs_1","id":"rs_1","summary":[],"type":"reasoning"},{"content":[{"text":"commentary","type":"output_text"}],"phase":"commentary","role":"assistant"},{"encrypted_content":"cipher_rs_2","id":"rs_2","summary":[],"type":"reasoning"},{"content":[{"text":"final","type":"output_text"}],"phase":"final_answer","role":"assistant"},{"content":[{"text":"continue","type":"input_text"}],"role":"user"}],"max_output_tokens":100,"model":"gpt-5.6-sol","store":false}
+--- PASS: TestAuditReasoningPublicItemOrderAndPhase (0.00s)
+=== RUN   TestAuditReasoningAfterTwoMessages
+--- PASS: TestAuditReasoningAfterTwoMessages (0.00s)
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/gateway/translate	0.388s
+FAIL	github.com/modu-ai/moai-adk/internal/gateway [build failed]
+FAIL
+
+exit_code=1
+

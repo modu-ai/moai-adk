@@ -49,7 +49,7 @@ the verdict is actually produced.
 
 #### Infinite goal (`--max-turns 0`)
 
-An infinite goal armed with `moai goal arm "<condition>" --max-turns 0 --max-duration <seconds>` (the wall-clock primary bound) is bounded only by the REAL bounds (wall-clock / cost / stagnation) — but the default `CLAUDE_CODE_STOP_HOOK_BLOCK_CAP=8` silently terminates it first. Raise `CLAUDE_CODE_STOP_HOOK_BLOCK_CAP` (e.g. to 200) when arming a `--max-turns 0` goal. The `moai cc` / `moai cg` launchers inject `CLAUDE_CODE_STOP_HOOK_BLOCK_CAP=200` automatically when an armed `--max-turns 0` goal exists at launch time; for an already-running session, set `CLAUDE_CODE_STOP_HOOK_BLOCK_CAP=200` in the env before arming so the runtime cap does not pre-empt the infinite loop.
+An infinite goal armed with `moai goal arm "<condition>" --max-turns 0 --max-duration <seconds>` (the wall-clock primary bound) is bounded only by the REAL bounds (wall-clock / cost / stagnation) — but the default `CLAUDE_CODE_STOP_HOOK_BLOCK_CAP=8` silently terminates it first. Raise `CLAUDE_CODE_STOP_HOOK_BLOCK_CAP` (e.g. to 200) when arming a `--max-turns 0` goal. The `moai cc` launcher injects `CLAUDE_CODE_STOP_HOOK_BLOCK_CAP=200` automatically when an armed `--max-turns 0` goal exists at launch time; for an already-running session, set `CLAUDE_CODE_STOP_HOOK_BLOCK_CAP=200` in the env before arming so the runtime cap does not pre-empt the infinite loop.
 
 ## Verbs
 

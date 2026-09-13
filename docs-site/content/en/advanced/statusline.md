@@ -66,7 +66,7 @@ Line 2 consists of three gauge bars, each with a different meaning.
 - **5H (5-hour rolling)**: rate-limit depletion over the last 5 hours. The reset time is shown alongside, telling you how long until the limit lifts.
 - **7D (7-day rolling)**: rate-limit depletion over the last 7 days. It lets you gauge how much of the weekly budget remains.
 
-For subscription-plan users, the 5H/7D bars are effectively budget gauges. Reading them lets you decide reasonably between running the heavy job now and handing it to GLM workers in CG mode to save cost. When the CW bar is full and the 5H bar is high too, stopping the session and continuing via a handoff favors both cost and stability.
+For subscription-plan users, the 5H/7D bars help assess the remaining usage budget. When both usage and context are high, consider stopping the session and continuing through a handoff. The retired CG launcher is not an available cost-routing option.
 
 ## Line 3 — where, and on what
 

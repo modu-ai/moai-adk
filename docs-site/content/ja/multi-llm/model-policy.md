@@ -99,7 +99,7 @@ description: 作業の性質と品質/コストの目標に合わせてエージ
 |---------|------|--------|-----|
 | Explore | sonnet / low | sonnet / low | sonnet / low |
 
-> `Explore` はディスク上にエージェントファイルがないため、frontmatter で effort を固定できません。代わりにマトリクスが `sonnet / low` を呼び出し時のデフォルトとして記録し、この値が呼び出しプロンプトにそのまま記載されます。Agent Teams の静的階層 (静的 role profile) は v3.0 で退き、その場所は sub-agent の並列実行と動的ワークフローが埋めました。`moai cg` の teammate ランタイム (tmux pane) はそのまま残っています。
+> `Explore` はディスク上にエージェントファイルがないため、frontmatter で effort を固定できません。 代わりにマトリクスが `sonnet / low` を呼び出し時のデフォルトとして記録し、この値が呼び出しプロンプトにそのまま記載されます。 Agent Teams の静的階層 (静的 role profile) は v3.0 で退き、その場所は sub-agent の並列実行と動的ワークフローが埋めました。 CG は廃止されました。`moai migrate cg` で移行先を確認してください。
 
 > **Haiku 除去** (v3.0): かつての Haiku スロット (ドキュメント化 · MX タグ付け · Git 手続き) は、より低いモデルクラスではなく、より低い推論深度に置き換えられました。コストはモデルの入れ替えではなく、effort の段階分けで削減します。
 
@@ -164,7 +164,7 @@ flowchart TD
 
 ### GLM バックエンドの reasoning 上限
 
-GLM バックエンド（`moai glm`、または `moai cg` の GLM ペイン）では、effort は Claude の 5 段語彙をそのまま使えません。GLM-5.3 は **常に推論します** — reasoning の無効化はサポートされず、それを要求するリクエストは失敗します。制御軸は 3 段階の `reasoning_effort`（low / high / max）1 つであり、Claude effort はその上に collapse します:
+GLM バックエンド（`moai glm`）では、effort は Claude の 5 段語彙をそのまま使えません。GLM-5.3 は **常に推論します** — reasoning の無効化はサポートされず、それを要求するリクエストは失敗します。制御軸は 3 段階の `reasoning_effort`（low / high / max）1 つであり、Claude effort はその上に collapse します:
 
 | Claude effort | GLM reasoning_effort |
 |--------------|---------------------|
@@ -259,6 +259,6 @@ moai init my-project --model-policy low     # 課題あたり最低コスト
 ## 次のステップ
 
 - [プロファイルマトリクス](/ja/advanced/profile-matrix/) — 36 セルの配置根拠 (判断加重ポリシー) とリゾルバの優先順位の詳細
-- [CG モード](/ja/multi-llm/cg-mode) — Claude リーダー + GLM ワーカーのハイブリッドでコスト削減
+- [CG の廃止と設定の移行](/ja/multi-llm/cg-mode/)
 - [自律性ティア](/ja/advanced/autonomy-tier/) — `MOAI_AUTONOMY_TIER` のコスト · 速度トレードオフ
 - [CLI リファレンス](/ja/getting-started/cli) — `moai init`、`moai update`、`moai model profile` の詳細

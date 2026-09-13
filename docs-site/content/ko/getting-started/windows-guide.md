@@ -8,7 +8,7 @@ Windows에서 MoAI-ADK를 사용할 때 알아야 할 환경 요구사항과 흔
 
 MoAI-ADK 는 단일 Go 바이너리라 Windows 에서도 바로 실행되지만, Claude Code 가 다루는 셸 스크립트·경로 구분자·문자 인코딩은 Linux/macOS 의 관행을 따릅니다. 그래서 Windows 명령 프롬프트(cmd.exe) 나 레거시 PowerShell 5.x 에서는 경로 처리가 어긋나거나 훅 스크립트가 실패하기 쉽습니다. WSL 은 Windows 안에서 Linux 환경을 그대로 쓰게 해 주어, 이런 간극을 한 번에 없애 줍니다.
 
-이 페이지는 WSL 설치부터 프로젝트 열기, (선택) CG 모드 구성까지를 한 흐름으로 안내합니다. 이미 WSL 을 쓰고 있다면 [2단계](#2단계--wsl-에-moai-adk-설치)부터 바로 시작해도 됩니다.
+이 페이지는 WSL 설치부터 프로젝트 열기, (선택) 기존 CG 설정 이전까지를 한 흐름으로 안내합니다. 이미 WSL 을 쓰고 있다면 [2단계](#2단계--wsl-에-moai-adk-설치)부터 바로 시작해도 됩니다.
 
 ```mermaid
 flowchart TD
@@ -103,22 +103,13 @@ VS Code 연동은 세 단계입니다.
 
 이제 WSL 터미널에서 `moai init` 으로 프로젝트를 초기화하고, VS Code 안에서 Claude Code 세션을 시작하면 됩니다. VS Code 의 터미널이 WSL 셸로 열리므로, 별도 터미널 창을 띄우지 않고도 한 창에서 `moai` 명령과 Claude Code 를 함께 쓸 수 있습니다.
 
-## 4단계 — (선택) CG 모드와 tmux
+## CG 폐기와 설정 이전
 
-[CG 모드](/ko/multi-llm/cg-mode) (Claude 리더 + GLM 팀원) 를 쓰려면 tmux 가 필요합니다. WSL 에서는 한 줄로 설치합니다.
+`moai cg`는 폐기되었습니다. Claude나 GLM을 실행하지 않고 설정 이전 안내와 함께 종료합니다. `moai cc`의 별칭이 아닙니다. `llm.team_mode: cg`가 남은 프로젝트는 세션을 실행하기 전에 이전할 구성을 명시적으로 선택해야 합니다.
 
-```bash
-# Ubuntu/Debian
-sudo apt install tmux
+`claude-glm` 대상은 Claude 리더와 tmux의 GLM 팀원 구성을 뜻합니다. 현재 TEAMMATE 통합 검증을 통과하지 않아 적용과 실행은 사용할 수 없으며 미리보기만 가능합니다. tmux를 설치하거나 `verified: true`를 적어도 이 제한은 해제되지 않습니다.
 
-# tmux 세션 시작
-tmux new -s moai
-
-# CG 모드 실행
-moai cg
-```
-
-tmux 가 없으면 `moai cg` 가 바로 실패합니다 — CG 모드는 tmux 세션 안에서 GLM 환경변수를 주입하고 여러 창을 띄우는 구조이기 때문입니다.
+[CG 폐기와 설정 이전](/ko/multi-llm/cg-mode/)
 
 ## 한글 사용자명 경로 에러
 
@@ -158,10 +149,9 @@ fsutil 8dot3name set 1
 | 한글 경로 처리 실패 | 한글 사용자명 | 위의 [한글 사용자명 경로 에러](#한글-사용자명-경로-에러) 참조 |
 | 권한 거부 | 설치 스크립트 권한 | `chmod +x install.sh` 후 재실행 |
 | Git 명령 실패 | Git for Windows 미설치 | [Git for Windows](https://gitforwindows.org/) 설치 |
-| tmux 없음 | CG 모드 실행 불가 | `sudo apt install tmux` (WSL에서) |
 
 ## 다음 단계
 
 - [설치](/ko/getting-started/installation) — 설치 상세 가이드
 - [초기 설정](/ko/getting-started/init-wizard) — 프로젝트 초기화
-- [CG 모드](/ko/multi-llm/cg-mode) — Claude + GLM 하이브리드 모드
+- [CG 폐기와 설정 이전](/ko/multi-llm/cg-mode/)

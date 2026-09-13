@@ -309,6 +309,12 @@ func runProfileSetup(cmd *cobra.Command, args []string) (err error) {
 		}
 	}
 	defer func() {
+		// SPEC-WORKTREE-KEY-WIRING-001 M2: auto-merge runs BEFORE disposal —
+		// merge-then-dispose is the only safe order, and independent of
+		// auto_cleanup (REQ-WKW-013).
+		sessionExitAutoMerge(swCfg, wtPath, err == nil, cmd.ErrOrStderr())
+		// cleanup goes through the test seam (t586 M5, AC-ITI-006/007
+		// preservation) which profile.go binds to cleanupSessionWorktree.
 		cleanupSessionWorktreeFn(swCfg, wtPath, err == nil, cmd.ErrOrStderr())
 	}()
 

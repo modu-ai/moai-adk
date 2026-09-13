@@ -99,7 +99,7 @@ description: 讲解按任务性质与质量/成本目标为每个智能体分配
 |---------|------|--------|-----|
 | Explore | sonnet / low | sonnet / low | sonnet / low |
 
-> `Explore` 在磁盘上没有智能体文件，无法用 frontmatter 固定 effort。矩阵改为把 `sonnet / low` 记作调用时的默认值，这个值原样写进调用提示。Agent Teams 静态层（静态 role profile）已在 v3.0 退役，其位置由子智能体并行执行与动态工作流补上。`moai cg` 的 teammate 运行时（tmux pane）保留不变。
+> `Explore` 在磁盘上没有智能体文件，无法用 frontmatter 固定 effort。 矩阵改为把 `sonnet / low` 记作调用时的默认值，这个值原样写进调用提示。 Agent Teams 静态层（静态 role profile）已在 v3.0 退役，其位置由子智能体并行执行与动态工作流补上。 CG 已停用，请用 `moai migrate cg` 预览迁移选项。
 
 > **Haiku 移除**（v3.0）： 原先的 Haiku 槽位（文档化 · MX 标注 · Git 流程）换成了更低的推理深度，而非更低的模型等级。成本不是靠换模型、而是靠按档分配 effort 削减的。
 
@@ -164,7 +164,7 @@ flowchart TD
 
 ### GLM 后端的 reasoning 上限
 
-在 GLM 后端（`moai glm`，或 `moai cg` 的 GLM 面板）上，effort 不能照搬 Claude 的 5 级词汇。GLM-5.3 **始终推理** —— 不支持关闭 reasoning，请求关闭会直接失败。调节轴只有三档 `reasoning_effort`(low / high / max)，Claude effort 向它收拢：
+在 GLM 后端（`moai glm`）上，effort 不能照搬 Claude 的 5 级词汇。GLM-5.3 **始终推理** —— 不支持关闭 reasoning，请求关闭会直接失败。调节轴只有三档 `reasoning_effort`(low / high / max)，Claude effort 向它收拢：
 
 | Claude effort | GLM reasoning_effort |
 |--------------|---------------------|
@@ -259,6 +259,6 @@ moai init my-project --model-policy low     # 每任务成本最低
 ## 下一步
 
 - [配置矩阵](/zh/advanced/profile-matrix/) —— 36 个格子的布置依据（判断加权策略）与解析器优先级细节
-- [CG 模式](/zh/multi-llm/cg-mode) —— Claude 领队 + GLM 工作者的混合省钱方式
+- [CG 停用与配置迁移](/zh/multi-llm/cg-mode/)
 - [自主级别](/zh/advanced/autonomy-tier/) —— `MOAI_AUTONOMY_TIER` 的成本 · 速度取舍
 - [CLI 参考](/zh/getting-started/cli) —— `moai init`、`moai update`、`moai model profile` 详解

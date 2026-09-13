@@ -116,6 +116,32 @@ const (
 	// slow — the signal path returns in microseconds on a healthy filesystem.
 	DefaultTraceFlushTimeout = 2 * time.Second
 
+	// DefaultHookAsyncJoinTimeout bounds how long a hook process waits at
+	// teardown for a handler's own background side-effect goroutine to finish
+	// before abandoning the wait. It is the sibling of
+	// DefaultTraceFlushTimeout on the other async axis: that one drains the
+	// registry's trace writer, this one joins the handlers themselves.
+	//
+	// The budget exists because a `moai hook <event>` process is one-shot. A
+	// handler that hands its real work to a goroutine and returns immediately
+	// (REQ-HAE-002) has no one left to finish that work once Dispatch returns —
+	// the process exits and the goroutine is abandoned mid-flight, so the
+	// result it would have recorded is simply never produced. Measured on the
+	// ConfigChange path: the async validation was reached 0 times out of 5 CLI
+	// runs, while the in-process control that joins the handler's WaitGroup
+	// reached it every time.
+	//
+	// Like the flush budget this is a ceiling, not a cost: the join is
+	// signal-confirmed (it blocks on the handler's WaitGroup, not on the
+	// timer), so the normal path returns as soon as the goroutine finishes.
+	// The timer only fires on a genuinely slow or hung side effect, which must
+	// never stall the user's session. 2s mirrors the flush budget rather than
+	// inventing a second calibration: both bound the same thing — how long a
+	// one-shot hook process may linger at exit — and the bounded work here
+	// (a 20ms debounce, a file read, a YAML parse) sits orders of magnitude
+	// below it.
+	DefaultHookAsyncJoinTimeout = 2 * time.Second
+
 	DefaultBranchPrefix = "moai/"
 	DefaultCommitStyle  = "conventional"
 
@@ -871,6 +897,9 @@ func NewDefaultWorkflowConfig() WorkflowConfig {
 			// SPEC-WORKTREE-ENTRY-STRATEGY-001 M1: web auto-toggles default OFF.
 			// AutoCleanup and AutoMerge mutated true→false (sprawl mitigation,
 			// EnterWorktree-first policy). AutoCreate unchanged (already false).
+			// AutoMerge now has a reader (session-exit auto-merge,
+			// SPEC-WORKTREE-KEY-WIRING-001 REQ-WKW-001) but stays default-OFF:
+			// the local dev repo's auto_merge: true is the operator's opt-in.
 			AutoCleanup:        false,
 			AutoCreate:         false,
 			AutoMerge:          false,

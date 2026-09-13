@@ -1,0 +1,17 @@
+{
+  "head": "81c1d58f9",
+  "branch": "WT-unified-gateway",
+  "files": {
+    "internal/gateway/opaque/codec.go": "36281d08763434acfd2c442497cb268b1039b60fd524ad0b3c4aa043ecc1b55c",
+    "internal/gateway/opaque/codec_test.go": "de5a125c3c7351dbc3570ea4f0b896a29d7ace3616fd1b48886856659e3dee94",
+    "internal/gateway/openai.go": "7baf9dc7258ba2d59b280f2618dff4ecdde99516eef1ff5c7c43367dff16beda",
+    "internal/gateway/replay_egress_test.go": "2553407e18e612f65d2d5f62ef24823603cd53f2e36eea84c507f91b43a2bf76",
+    "internal/gateway/translate/reasoning.go": "02bf3cc04ff0687281af9c2e2708bf5de528432cc1b0e1cf7461a3c805e7f717",
+    "internal/gateway/translate/request.go": "bec5be01b66254d70cbce32754f057c85f36ad2e23c492ebb8545ee691e06865",
+    "internal/gateway/translate/replay_boundaries_test.go": "88c97f431bb5716f0dad246068175aa479cf869220d808c7695294ba5f9ef1b7",
+    "internal/gateway/translate/receipt_history_test.go": "c6b5183f0defa64f2326fc0b030e479f8a33480e586b0452a017becf4b91ac8a",
+    "internal/gateway/translate/native_policy.go": "6c2db5dc781d5b6670b0fda5e8bff0386e344d075e948c403ae282d069f9a22c",
+    "internal/gateway/translate/native_policy_test.go": "955e9e255f14882a25ab635c2ba09f3f1d544a66acdf1ba2cd0e08c10091279b"
+  },
+  "binary_sha256": "5b259dbbaee35c325d3ff8dd959d7192ff9a6ba91edb2dabab5a18bbc8a792d7"
+}

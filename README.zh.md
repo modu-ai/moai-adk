@@ -77,7 +77,7 @@ moai cc -f lane-1             # 一条泳道，在自己的终端里
 moai glm -f lane-3            # ……GLM 后端上的一条泳道
 ```
 
-用 `moai cc -f lane-<n>` 一条一条地加泳道。这种写法已经指定了泳道名，再给 `--name`/`-n` 会报错。只有活着的会话占用的编号才会被跳过 —— 泳道死了，编号就释放，可以再用。泳道归属记录在 `~/.moai/db/<project-key>/factory/factory.db` 中；旧的 `.moai/state/factory/workers.json` 只导入一次，之后仅作为回滚凭据保留。一条泳道最多并发运行 10 个 `Agent()` 子智能体，其中承担写入的生成各自隔离在自己的工作树里。千万不要一次把所有泳道全开 —— 先起第一条，确认它真的开始产出，再激活其余。卡片绝不会被拆到多条泳道上。`-k` 依旧驱动三角色的看板链；一次启动只能带一个进入标记，所以 `-k` 与 `-f` 同时给出会报错，`moai cg` 也拒绝工厂模式。
+用 `moai cc -f lane-<n>` 一条一条地加泳道。这种写法已经指定了泳道名，再给 `--name`/`-n` 会报错。只有活着的会话占用的编号才会被跳过 —— 泳道死了，编号就释放，可以再用。泳道归属记录在 `~/.moai/db/<project-key>/factory/factory.db` 中；旧的 `.moai/state/factory/workers.json` 只导入一次，之后仅作为回滚凭据保留。一条泳道最多并发运行 10 个 `Agent()` 子智能体，其中承担写入的生成各自隔离在自己的工作树里。千万不要一次把所有泳道全开 —— 先起第一条，确认它真的开始产出，再激活其余。卡片绝不会被拆到多条泳道上。`-k` 依旧驱动三角色的看板链；一次启动只能带一个进入标记，所以 `-k` 与 `-f` 同时给出会报错，已停用的 `moai cg` 会显示迁移提示并退出。
 
 > 详见：[看板模式 —— 工厂模式](https://adk.mo.ai.kr/zh/advanced/kanban-mode)
 
@@ -180,7 +180,7 @@ moai-adk 是从外部包裹 Claude Code 的框架（harness）。它不取代 Cl
 | **自主 + 真实边界** | 用 `/moai goal` 声明完成条件，会话就会自主工作直到条件满足。同时绑着四道硬边界 —— 轮次上限（默认 30）、停滞守卫、墙钟预算、事前审批门 —— 不会掉进无限循环。 |
 | **并行安全** | 每个 SPEC 独占一棵工作树，分支状态守卫拦住主检出里误切的分支，启动写入型智能体前先检查与远端的差距。两个可写智能体从不同时运行。 |
 | **长程延续** | 工作跨过 `/clear` 存续。进度留在 `progress.md`，交接消息留在记忆，路由决策留在决策记忆。下一个会话从上一个学会的地方起步，而不是从零开始。 |
-| **成本高效** | 按工作阶段和 SPEC 尺寸声明式地指派模型与推理深度。Claude 主控 + GLM 工人的 CG 模式在实现密集型工作上省 60–70% 成本。复用提示缓存、把长输出排到磁盘，保持上下文轻量。 |
+| **成本高效** | 按工作阶段和 SPEC 尺寸声明式地指派模型与推理深度。复用提示缓存、把长输出排到磁盘，保持上下文轻量。 |
 | **16 种编程语言同等支持** | Go、Python、TypeScript、JavaScript、Rust、Java、Kotlin、C#、Ruby、PHP、Elixir、C++、Scala、R、Flutter、Swift —— 十六种编程语言作为一个集合，用基于标记的自动检测统一处理。没有任何一种受到优待。 |
 | **自我改进** | 观测到反复出现的失败模式就上升为规则修改提案。绝不悄悄应用 —— 先审批再落地。路由决策和门禁证据沉淀进决策记忆，成为下一次运行的材料。 |
 | **母语友好** | 韩语、日语、中文、英语四个语言区在同一 PR 内维护，禁止翻译腔，每种语言各有自己的母语行文。绝不强迫母语用户使用英语。 |
@@ -311,7 +311,7 @@ claude        # 或者 moai cc —— 在项目里运行 Claude Code
 
 - **Git** —— 所有平台必备
 - **Claude Code** —— moai-adk 是为 Claude Code 准备的框架
-- **建议**：`gh` CLI（PR 自动化）、`tmux`（CG 模式）、所用语言的 lint/测试工具链（如 `golangci-lint`）
+- **建议**：`gh` CLI（PR 自动化）、`tmux`（工作树窗口）、所用语言的 lint/测试工具链（如 `golangci-lint`）
 
 ---
 
@@ -365,13 +365,18 @@ claude        # 或者 moai cc —— 在项目里运行 Claude Code
 
 > 详见：[看板模式指南](https://adk.mo.ai.kr/zh/advanced/kanban-mode)
 
-### CG 模式 —— Claude 主控 + GLM 工人
+### CG 停用与配置迁移
 
-Claude 负责战略、计划和审计；GLM 扛大批量实现。两者通过 tmux 会话级环境隔离接起来，在实现密集型工作上省 60–70% 成本。
+`moai cg` 已停用。它会显示迁移提示并退出，不会启动 Claude 或 GLM，也不是 `moai cc` 的别名。项目中若仍有 `llm.team_mode: cg`，必须先明确选择迁移方案，才能启动会话。
 
-<p align="center">
-  <img src="./assets/images/cg-mode-infographic-zh.png" alt="CG 模式 —— Claude 主控 + GLM 工人的混合形态" width="85%">
-</p>
+```bash
+moai migrate cg
+moai migrate cg --target claude-only --apply --accept-role-change
+```
+
+迁移会写入 `llm.team_mode: claude`、`llm.gateway.teammate_mode: in-process` 和 `llm.gateway.teammate_provider: inherit`。这会取消原有混合角色分配，并不会保留 Claude 领队与 GLM 队友窗格的分工。
+
+`claude-glm` 表示 Claude 领队搭配 tmux 中的 GLM 队友。目前 TEAMMATE 集成验证尚未通过，因此不能应用或启动该方案，只能预览。安装 tmux 或设置 `verified: true` 都不能解除限制。
 
 ### 16 种编程语言同等支持
 
@@ -411,7 +416,7 @@ TRUST 5（Tested · Readable · Unified · Secured · Trackable）作用于每�
   <img src="./assets/images/moai-web-settings.png" alt="moai web 控制台设置画面 —— 档案栏和设置标签页" width="90%">
 </p>
 
-`moai web` 打开一个只监听本地主机的控制台。画面共六个 —— Overview、Kanban、Specs、Monitor、Settings、Todo；设置画面分成十四个标签页：Identity、Language、LLM、3rd Party LLM、Workflow、Git & Worktree、Audit、Codex、Agents、Report、MCP、Cross-Session、Feedback、Quality Gate。Codex 标签页把分散的 codex 设置汇总到一屏，是只读画面，取值仍在各自所属的标签页里修改。档案的创建、改名、删除也在同一画面完成。
+`moai web` 打开一个只监听本地主机的控制台。画面共六个 —— Overview、Kanban、Specs、Monitor、Settings、Todo；设置画面分成以下标签页：Identity、Language、LLM、GLM Settings、Workflow、Git & Worktree、Audit、Codex、Agents、Report、MCP、Cross-Session、Feedback、Quality Gate。Codex 标签页把分散的 codex 设置汇总到一屏，是只读画面，取值仍在各自所属的标签页里修改。档案的创建、改名、删除也在同一画面完成。
 
 ### ref / domain 技能
 
@@ -564,18 +569,18 @@ moai cc -w feature-billing --spawn   # billing 开新窗口，保留当前会话
 
 每个 SPEC 独占一棵工作树，两个智能体互不踩踏。分支状态守卫拦住主检出里误切的分支。
 
-### 降低成本（CG 模式）
+### CG 停用与配置迁移
+
+`moai cg` 已停用。它会显示迁移提示并退出，不会启动 Claude 或 GLM，也不是 `moai cc` 的别名。项目中若仍有 `llm.team_mode: cg`，必须先明确选择迁移方案，才能启动会话。
 
 ```bash
-moai glm sk-your-glm-api-key   # 存一次密钥
-moai cg                        # 进入 CG 模式（Claude 主控 + GLM 工人）
+moai migrate cg
+moai migrate cg --target claude-only --apply --accept-role-change
 ```
 
-```text
-/moai run SPEC-DATA-001        # 实现密集型工作 → GLM 工人扛大批量实现
-```
+迁移会写入 `llm.team_mode: claude`、`llm.gateway.teammate_mode: in-process` 和 `llm.gateway.teammate_provider: inherit`。这会取消原有混合角色分配，并不会保留 Claude 领队与 GLM 队友窗格的分工。
 
-CG 模式由 Claude 主控负责战略、计划和审计，GLM 工人扛大批量实现 —— 在实现密集型工作上省 60–70%。框架、SPEC 工作流和质量门禁在三种模式下完全一致。
+`claude-glm` 表示 Claude 领队搭配 tmux 中的 GLM 队友。目前 TEAMMATE 集成验证尚未通过，因此不能应用或启动该方案，只能预览。安装 tmux 或设置 `verified: true` 都不能解除限制。
 
 ### 自动抓 bug（loop）
 
@@ -638,7 +643,7 @@ v3.1.1 又多了四个值得一动的切面。
 | `.claude/settings.json` | 从模板渲染 —— 项目共享配置 | 包含 |
 | `.claude/settings.local.json` | 运行时管理 —— 每台机器的值（tmux pane ID · API 令牌 · 绝对路径） | **绝不包含** |
 
-`settings.local.json` 由 `moai glm`、`moai cc`、`moai cg` 在运行时修改，SessionStart 钩子填充环境。误提交了就用 `git rm --cached .claude/settings.local.json` 摘掉。
+`settings.local.json` 由 `moai glm`、`moai cc` 在运行时修改，SessionStart 钩子填充环境。误提交了就用 `git rm --cached .claude/settings.local.json` 摘掉。
 
 ---
 
@@ -676,13 +681,12 @@ v3.1.1 又多了四个值得一动的切面。
 
 ### Claude + GLM
 
-z.ai GLM 作为 Claude Code 的替代后端。只换环境变量，代码原样不动。共三种运行模式。
+z.ai GLM 作为 Claude Code 的替代后端。只换环境变量，代码原样不动。
 
 | 命令 | 主控 | 工人 | tmux | 省成本 |
 |---|---|---|---|---|
 | `moai cc` | Claude | Claude | 不需要 | — |
 | `moai glm` | GLM | GLM | 建议 | 约 70% |
-| `moai cg` | Claude | GLM | 必需 | 约 60% |
 
 GLM Coding Plan 每月 $10 起。可用 glm-5.3-flash（默认）、glm-5.3、glm-4.7、glm-4.5-air 以及免费模型（GLM-4.7-Flash、GLM-4.5-Flash）。
 
@@ -715,7 +719,7 @@ Claude 的每一档通过 `ANTHROPIC_DEFAULT_*_MODEL` 环境变量映射到 GLM 
 | [实用命令](https://adk.mo.ai.kr/zh/utility-commands) | `fix` · `loop` · `gate` · `review` · `clean` · `codemaps` · `e2e` · `feedback` · `goal` · `todo` |
 | [CLI 参考](https://adk.mo.ai.kr/zh/cli-reference) | 终端 `moai` 二进制的全部命令（共 49 个） |
 | [Claude Code 指南](https://adk.mo.ai.kr/zh/claude-code) | Claude Code 集成 —— 基础 · 上下文/记忆 · 智能体 · 扩展性 |
-| [Multi-LLM](https://adk.mo.ai.kr/zh/multi-llm) | CG 模式与模型策略 |
+| [Multi-LLM](https://adk.mo.ai.kr/zh/multi-llm) | CG 迁移与模型策略 |
 | [成本优化](https://adk.mo.ai.kr/zh/cost-optimization) | 提示缓存策略与 token 成本削减 |
 | [指南](https://adk.mo.ai.kr/zh/guides) | CI 自治化 · 多 LLM CI 等实战运维配方 |
 | [Git Worktree](https://adk.mo.ai.kr/zh/worktree) | 并行 SPEC 开发的工作树指南 |
@@ -735,7 +739,7 @@ Claude 的每一档通过 `ANTHROPIC_DEFAULT_*_MODEL` 环境变量映射到 GLM 
 | `moai status` | 项目状态摘要（Git 分支、质量指标） |
 | `moai update` | 升级到最新版（删除前备份 · 支持自动回滚） |
 | `moai graph <build\|query>` | 生成/查询代码库图（edges.jsonl）—— 找调用方、波及范围、里程碑交叉检查 |
-| `moai cc` / `moai glm` / `moai cg` | Claude 专用 / GLM 专用 / 混合会话 |
+| `moai cc` / `moai glm` | Claude 专用 / GLM 专用会话 |
 | `moai codex [cli\|status\|app]` | Codex 启动器 — 不带动词调用即启动 Codex CLI；`status` 只显示就绪状态，不启动任何东西 |
 | `moai worktree <sync\|done\|remove\|clean\|recover\|snapshot\|verify\|restore>` | Git worktree 维护（进出工作树是启动器的职责） |
 | `moai session <list\|register\|current>` | 多会话协调 |
@@ -747,7 +751,7 @@ Claude 的每一档通过 `ANTHROPIC_DEFAULT_*_MODEL` 环境变量映射到 GLM 
 | `moai memory <doctor\|archive>` | 智能体记忆体检与旧条目归档 |
 | `moai tokens record` | 按池记录 token 使用台账 |
 | `moai clean [--home] [--codex-skills]` | 清理旧的运行产物。加上 `--home` 就在允许清单范围内清理 `~/.moai`；加上 `--codex-skills` 则从 `~/.codex/config.toml` 删除那些声明路径已被证明不存在的 `[[skills.config]]` 注册。一次只能选一个范围。默认是 dry-run，要加 `--force` 才真正删除 |
-| `moai web` | 网页控制台 —— 6 个画面（Overview · Kanban · Specs · Monitor · Settings · Todo）、14 标签页设置 |
+| `moai web` | 网页控制台 —— 6 个画面（Overview · Kanban · Specs · Monitor · Settings · Todo）、设置标签页 |
 
 > 全部 49 个命令：[CLI 参考](https://adk.mo.ai.kr/zh/cli-reference)
 
@@ -785,7 +789,7 @@ Claude 的每一档通过 `ANTHROPIC_DEFAULT_*_MODEL` 环境变量映射到 GLM 
 
 ### 不用 GLM、只用 Claude 可以吗？
 
-可以。`moai cc` 启动纯 Claude 会话。CG 模式（`moai cg`，Claude 主控 + GLM 工人）和纯 GLM（`moai glm`）是省钱选项；框架、SPEC 工作流和质量门禁在三种模式下完全一致。
+可以。`moai cc` 可在不使用 GLM 的情况下启动 Claude 会话。只有保留旧 CG 配置的项目才需要先迁移。
 
 ### 在已有项目上能用吗？
 
