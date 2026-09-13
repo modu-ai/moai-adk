@@ -183,13 +183,19 @@ func TestAnthropicNativeStatusAndRedirectBoundaries(t *testing.T) {
 		r, e := a.Send(context.Background(), nativeQ(t))
 		body := oaiRead(t, r, e)
 		want := status
+		wantCalls := int32(1)
 		if want == 302 {
 			want = 502
 		}
-		if r.StatusCode != want || strings.Contains(body, "private") || r.Header.Get("Location") != "" || calls.Load() != 1 {
+		if status >= 500 && status <= 599 {
+			// 5xx is retryable at the pre-stream boundary (t697): the
+			// always-failing stub exhausts the bounded attempts.
+			wantCalls = 3
+		}
+		if r.StatusCode != want || strings.Contains(body, "private") || r.Header.Get("Location") != "" || calls.Load() != wantCalls {
 			t.Fatal(status, r.StatusCode, body)
 		}
-		if status == 429 && r.Header.Get("Retry-After") != "9" {
+		if (status == 429 || status == 503) && r.Header.Get("Retry-After") != "9" {
 			t.Fatal("retry missing")
 		}
 	}
