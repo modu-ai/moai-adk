@@ -57,17 +57,20 @@ func runClean(cmd *cobra.Command, _ []string) error {
 		return fmt.Errorf("--stale and --merged-only are mutually exclusive")
 	}
 
+	// REQ-WR-013 (issue #1704): --json is the inspect half of this command in
+	// EVERY combination, not only alongside --stale. Routing it here — above
+	// the sweep dispatch — is what keeps `clean --json` from falling through
+	// to the default path, where it pruned and printed a "Cleaned" banner
+	// instead of the JSON the help promises. The report below removes nothing
+	// and prunes nothing, so --yes stays inert with it too.
+	if asJSON, _ := cmd.Flags().GetBool("json"); asJSON {
+		base, _ := cmd.Flags().GetString("base")
+		return reportStaleWorktrees(cmd, base)
+	}
+
 	if stale {
 		base, _ := cmd.Flags().GetString("base")
 		apply, _ := cmd.Flags().GetBool("yes")
-		asJSON, _ := cmd.Flags().GetBool("json")
-		if asJSON {
-			// REQ-WR-013: the reporting path removes nothing. --json is a
-			// report, so it overrides --yes rather than combining with it —
-			// an inventory that could delete on a stray flag is not an
-			// inventory.
-			return reportStaleWorktrees(cmd, base)
-		}
 		return cleanStaleWorktrees(cmd, base, apply)
 	}
 
@@ -398,9 +401,14 @@ func isBaseBranch(branch, base string) bool {
 // worktree — worktree-ness is a checkout property, not a branch-name one — so
 // the report reaches trees no branch-name glob would find.
 func reportStaleWorktrees(cmd *cobra.Command, base string) error {
-	if err := WorktreeProvider.Prune(); err != nil {
-		return fmt.Errorf("prune worktrees: %w", err)
-	}
+	// Pure read (issue #1704): no prune on the reporting path either. The
+	// prune this used to run first is exactly the mutation the issue reports —
+	// the flag an operator reaches for to LOOK must not change what it looks
+	// at. A dangling administrative entry (directory already gone) now
+	// surfaces in the inventory carrying its unreadable-tree keep reason
+	// instead of being silently dropped; dropping it is the prune's job, and
+	// prune stays with the mutating sweeps (the --stale sweep prunes at its
+	// own start, and so does the default path).
 	worktrees, err := WorktreeProvider.List()
 	if err != nil {
 		return fmt.Errorf("list worktrees: %w", err)
