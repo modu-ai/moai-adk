@@ -8,6 +8,7 @@
 **모듈**: `github.com/modu-ai/moai-adk` · **Go**: 1.26.8
 **측정 트리**: worktree `.claude/worktrees/t592`, 브랜치 `WT-home-state-rollout`, HEAD `e7bd89ee3`
 **측정**: 2026-09-10
+**부분 재측정**: worktree `.claude/worktrees/t688`, 브랜치 `WT-graph-stamp-freshness`, HEAD `c613b7c6b`, 2026-09-14 — `internal/graph` 행(비테스트 파일 수와 책임). 나머지 항목은 위 측정 트리의 값이며 이번에 다시 재지 않았습니다.
 
 파일 수는 전부 `find <dir> -name '*.go' -not -name '*_test.go' | wc -l`로 센 **비테스트 파일**이며
 하위 패키지를 포함합니다.
@@ -65,7 +66,7 @@
 | `internal/template` | 30 | `//go:embed all:templates` + `catalog.yaml`. 배포기, 렌더러, settings 생성, 스킬 미러, 카탈로그 트리 해시, 모델 정책·프로파일 매트릭스. **배포 뒤편에 두 개의 기계 방출기와 두 개의 미러 보호·복구 seam이 붙어 있다**(§ 템플릿 방출·미러 계열) | `agentemit`, `commandemit`, `scripts` |
 | `internal/core` | 24 | 응집 없는 우산 패키지 (§ `overview.md` 참조) | `git`, `project`, `quality` |
 | `internal/mx` | 16 | `@MX:` 코드 주석 태그 스캐너·리졸버 (16개 언어) | — |
-| `internal/graph` | 15 | 코드베이스 엣지 리스트를 git-diffable JSONL로 영속화하고 fan-in·최단경로·인용 검증·아키텍처 리포트를 생성 | `symbol` |
+| `internal/graph` | 14 | 코드베이스 엣지 리스트를 git-diffable JSONL로 영속화하고 fan-in·최단경로·인용 검증·아키텍처 리포트를 생성. **freshness 게이트도 여기 있다** — codemaps 층은 값을 재기 전에 비교 가능성부터 판정한다(§ `data-flow.md` I) | `symbol` |
 | `internal/constitution` | 14 | 규칙 트리의 FROZEN/EVOLVABLE 존 모델과 개정 절차 | — |
 | `internal/migration` | 8 | 버전 간 마이그레이션 스텝 레지스트리 | `migrations` |
 | `internal/feedback` | 7 | 피드백 리포트 스크러빙(민감정보 제거)과 재시도 큐 | — |

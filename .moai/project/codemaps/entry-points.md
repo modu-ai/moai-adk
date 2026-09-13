@@ -4,6 +4,7 @@
 
 **측정 트리**: worktree `.claude/worktrees/t592`, 브랜치 `WT-home-state-rollout`, HEAD `e7bd89ee3`
 **측정**: 2026-09-10
+**부분 재측정**: worktree `.claude/worktrees/t688`, 브랜치 `WT-graph-stamp-freshness`, HEAD `c613b7c6b`, 2026-09-14 — § CI가 소비하는 종료 코드 표면. 나머지 항목은 위 측정 트리의 값이며 이번에 다시 재지 않았습니다.
 
 ---
 
@@ -165,3 +166,26 @@ codex 탭(행 모델은 `internal/web/codexmirror.go`, 렌더는 그 짝 `.templ
 패널)은 Audit·MCP 탭에 사는 codex 설정의 읽기 전용 미러입니다. 이 패널은 `name` 속성을 가진 폼 요소를 하나도 내지 않으며, 그 금지는 숨은 bool
 동반자 `<name>__present`까지 덮습니다 — 모든 패널이 한 폼 안에 살고 탭 전환은 표시 전환일
 뿐이라 **비활성 패널도 함께 제출되기** 때문입니다.
+
+---
+
+## CI가 소비하는 종료 코드 표면
+
+`moai graph check`는 사람보다 기계가 먼저 읽는 진입점입니다. `.github/workflows/graph-freshness.yml`의
+`graph-freshness` 잡과 `moai gate`가 **종료 코드만** 소비하므로, 보고만 하고 항상 0으로 끝나는
+구현은 두 소비자를 조용히 무장해제시킵니다.
+
+| 종료 코드 | 의미 | 대표 원인 |
+|---|---|---|
+| `0` | 모든 층 fresh | — |
+| `1` | 한 층 이상 stale 또는 absent | described-source-diff ≥ 40, codemaps 본문 부재(C1), 인용된 경로 부재 |
+| `2` | system error — 측정 자체가 성립하지 않음 | 스탬프 커밋 미해석, 스탬프가 HEAD의 조상이 아님, `gate.yaml` 파싱 실패 |
+
+exit 2 경로는 층 표를 렌더하지 않습니다. 숫자 행이 없는 것이 계약입니다 — 성립한 적 없는
+비교 창에 대해 값을 내놓지 않기 위해서입니다. 도달 불가 스탬프일 때만
+`internal/cli/graph_check.go`가 복구 안내(본문 재생성 → 도달 가능한 커밋으로 재스탬핑)를 덧붙이고,
+해석 불가 스탬프에는 붙이지 않습니다. 둘의 해법이 다르기 때문입니다. 판정 순서는
+§ `data-flow.md` I를 참조하십시오.
+
+워크플로 쪽 대상 선택은 이벤트별로 셋입니다: `push`는 `HEAD`, 일반 `pull_request`는
+`origin/<base_ref>`, `release/*` head의 `pull_request`는 merge preview `HEAD`입니다.
