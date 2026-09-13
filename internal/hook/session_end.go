@@ -897,11 +897,18 @@ func cleanupGLMSettingsLocal(projectDir string) {
 	)
 }
 
-// cleanupBogusRootDir removes a literal "{}" directory from the project root
-// if it exists. This directory is a side-effect of a Claude Code bug where the
-// {project_root} template variable used for agent memory paths (memory: project)
-// is not substituted when spawning agents inside git worktrees, resulting in a
-// directory named "{}" at the worktree root.
+// cleanupBogusRootDir removes MoAI-generated bug residue from a literal "{}"
+// directory at the project root. This directory is a side-effect of a Claude
+// Code bug where the {project_root} template variable used for agent memory
+// paths (memory: project) is not substituted when spawning agents inside git
+// worktrees, resulting in a directory named "{}" at the worktree root.
+//
+// A user's project may legitimately contain a directory named "{}", so the
+// directory is treated as bug residue ONLY when it carries the MoAI evidence
+// signature: a .claude/agent-memory subdirectory (agentMemorySegment). Without
+// that marker, nothing is deleted — the path is preserved with a warning.
+// Removal is scoped to the marked residue subtree only; other contents survive,
+// and the "{}" shell is removed (best-effort) only once it is empty.
 //
 // The cleanup is best-effort: errors are logged with slog.Warn and never returned.
 func cleanupBogusRootDir(projectDir string) {
@@ -922,14 +929,36 @@ func cleanupBogusRootDir(projectDir string) {
 	if !info.IsDir() {
 		return
 	}
-	if err := os.RemoveAll(bogusDir); err != nil {
-		slog.Warn("session_end: could not remove bogus {} directory",
+	residueDir := filepath.Join(bogusDir, strings.TrimSuffix(agentMemorySegment, "/"))
+	residueInfo, err := os.Stat(residueDir)
+	if err != nil || !residueInfo.IsDir() {
+		slog.Warn("session_end: preserved {} directory — no agent-memory evidence, provenance unknown",
 			"path", bogusDir,
+		)
+		return
+	}
+	if err := os.RemoveAll(residueDir); err != nil {
+		slog.Warn("session_end: could not remove bogus {} agent-memory residue",
+			"path", residueDir,
 			"error", err,
 		)
 		return
 	}
-	slog.Info("session_end: removed bogus {} directory caused by unresolved agent memory path",
-		"path", bogusDir,
+	slog.Info("session_end: removed bogus {} agent-memory residue caused by unresolved agent memory path",
+		"path", residueDir,
 	)
+	// Best-effort removal of now-empty shells. os.Remove fails on non-empty
+	// directories, which means unattributed content remains — leave it in place
+	// and say so rather than recursing into unknown provenance.
+	claudeShell := filepath.Join(bogusDir, ".claude")
+	if err := os.Remove(claudeShell); err != nil && !os.IsNotExist(err) {
+		slog.Warn("session_end: preserved content inside {} — non-empty after residue removal",
+			"path", claudeShell,
+		)
+	}
+	if err := os.Remove(bogusDir); err != nil && !os.IsNotExist(err) {
+		slog.Warn("session_end: preserved content inside {} — non-empty after residue removal",
+			"path", bogusDir,
+		)
+	}
 }

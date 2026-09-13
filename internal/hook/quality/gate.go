@@ -464,8 +464,16 @@ func (g *QualityGate) Run(ctx context.Context) (bool, string) {
 		g.summary.seed(typecheckStepName)
 	}
 	for i := range tcs {
-		for _, step := range tcs[i].tc.lintSteps {
-			g.summary.seed(step.name)
+		// The lint axis resolves per entry before seeding: a project's own
+		// scripts.lint replaces the config-gated entries (issue #1631), and
+		// a superseded entry is not a configured step for this project. A
+		// watch-prone script seeds nothing here — execution reports the axis
+		// as skipped, lazily seeding the rows with the reason.
+		steps, _, watchProne := resolveNodeLintSteps(tcs[i].tc.lintSteps, tcs[i].root)
+		if !watchProne {
+			for _, step := range steps {
+				g.summary.seed(step.name)
+			}
 		}
 		if tcs[i].tc.testStep != nil {
 			g.summary.seed(tcs[i].tc.testStep.name)
@@ -562,8 +570,19 @@ func (g *QualityGate) runToolchainStaticSteps(ctx context.Context, dt *detectedT
 		}
 	}
 
-	// Step 2: lint steps
-	for _, step := range dt.tc.lintSteps {
+	// Step 2: lint steps. The axis resolves the same way seeding resolved it
+	// (issue #1631): a declared scripts.lint runs as the toolchain's only
+	// lint step; a watch-prone one is reported, never run — hanging to the
+	// lint timeout would be a false red on every commit, and the skip rows
+	// carry the reason so the substitution stays visible.
+	resolvedLint, lintScript, lintWatchProne := resolveNodeLintSteps(dt.tc.lintSteps, dir)
+	if lintWatchProne {
+		for _, step := range dt.tc.lintSteps {
+			g.summary.markSkipped(step.name, fmt.Sprintf(reasonLintScriptWatchProneFmt, lintScript))
+		}
+		return appendReason(vetReason, passReason), true
+	}
+	for _, step := range resolvedLint {
 		ok, out := g.executeStep(ctx, step, dir, g.config.LintTimeout)
 		if !ok {
 			return out, false
@@ -1133,6 +1152,61 @@ func nodeScriptWatchProne(script string) bool {
 		}
 	}
 	return true
+}
+
+// nodeLintRunScript is the package.json script that, when present, is the
+// project's own lint entry point (issue #1631, the reporter's first
+// preference) and outranks the config-gated table entries.
+const nodeLintRunScript = "lint"
+
+// nodeLintStepName is the run-summary label of the project's own lint step.
+const nodeLintStepName = "npm run " + nodeLintRunScript
+
+// reasonLintScriptWatchProneFmt marks the lint axis skipped when the
+// declared script would never self-terminate; the script text is quoted so
+// the summary names what the project must fix.
+const reasonLintScriptWatchProneFmt = "lint script is watch-prone and would not self-terminate: %q"
+
+// resolveNodeLintSteps returns the lint axis one detected Node toolchain
+// runs, rooted at dir. A package.json that declares scripts.lint is the
+// project telling the gate exactly which lint command to run, so that
+// command replaces the config-gated eslint/biome/oxlint guesses — it
+// generalizes past linter choice, and running both would lint the tree
+// twice. A watch-prone lint script never self-terminates (the same predicate
+// the test step defends with), so watchProne makes the caller report the
+// axis as skipped instead of hanging to the lint timeout — a false red on
+// every commit helps nobody. Every other shape — non-Node toolchains,
+// unreadable manifests, projects without the script — passes the table steps
+// through unchanged, which is the no-scripts.invariance card t687 pins.
+func resolveNodeLintSteps(steps []gateStep, dir string) (resolved []gateStep, script string, watchProne bool) {
+	// Language guard — the same guard the sibling resolveNodeTestStep
+	// carries (step.name != nodeTestStepName): only the Node lint axis
+	// resolves. Without it, a Go-rooted project that also carries a
+	// package.json with scripts.lint would have its golangci-lint axis
+	// silently replaced by the project's Node lint command.
+	if len(steps) == 0 || steps[0].binary != "npx" {
+		return steps, "", false
+	}
+	if dir == "" {
+		return steps, "", false
+	}
+	scripts, ok := readPackageJSONScripts(filepath.Join(dir, "package.json"))
+	if !ok {
+		return steps, "", false
+	}
+	script = strings.TrimSpace(scripts[nodeLintRunScript])
+	if script == "" {
+		return steps, "", false
+	}
+	if nodeScriptWatchProne(script) {
+		return steps, script, true
+	}
+	return []gateStep{{
+		name:     nodeLintStepName,
+		binary:   "npm",
+		args:     []string{"run", nodeLintRunScript},
+		optional: true,
+	}}, script, false
 }
 
 // executeStep runs a single gate step. Optional steps skip silently when the binary is missing.

@@ -56,7 +56,7 @@ Any other argument shape is treated as a description. `/moai todo fix flaky CI c
 
 ## State file
 
-The queue is stored in one SQLite database at `~/.moai/db/<project-key>/todo/backlog.db`. The project key binds linked worktrees to one home-scoped queue, and the database is never committed. The shape below is the record as `moai todo list --json` and `moai todo export-json` emit it — the database holds the same fields. For migration and downgrade details, see `.moai/docs/todo-queue-storage.md` in your project.
+For a regular project directory, the queue is stored in one SQLite database at `~/.moai/db/<project-key>/todo/backlog.db`. When the project originates in a temporary directory (`os.TempDir()`, `/tmp`, or `/var/folders`), the queue stays project-local at `<base>/.moai/state/todo/backlog.db` instead — an absolute `MOAI_HOME` override wins even then. The project key binds linked worktrees to one home-scoped queue, and the database is never committed. The shape below is the record as `moai todo list --json` and `moai todo export-json` emit it — the database holds the same fields. For migration and downgrade details, see `.moai/docs/todo-queue-storage.md` in your project.
 
 ```json
 {
@@ -245,7 +245,7 @@ $ moai todo unrelate 2
 
 The CLI never prompts. It takes arguments and flags, prints one line, and reports errors on stderr — a shape that is safe in scripts and CI.
 
-Run it inside a linked worktree and the queue still **resolves to the primary checkout's project key** — the contract is one repository, one queue. A `moai todo add` from a card worktree lands in the same database the lead and the foreman loop read. Projects without git metadata use the same `~/.moai/db/<project-key>/todo/backlog.db` layout.
+Run it inside a linked worktree and the queue still **resolves to the primary checkout's project key** — the contract is one repository, one queue. A `moai todo add` from a card worktree lands in the same database the lead and the foreman loop read. Projects without git metadata use the same home layout — unless they originate in a temporary directory, in which case the queue is project-local at `<base>/.moai/state/todo/backlog.db` (an absolute `MOAI_HOME` override applies even then).
 
 Both surfaces share the same storage layer. Mutations hold the sibling lock file (backlog.lock) next to the database and land inside one SQLite transaction in WAL mode; reads take no lock. Item ids are issued from the persisted high-water mark (`last_seq`), advanced in the same transaction as the insert and guarded by a UNIQUE constraint on the id, so a removed item's id is never reused even if a process dies mid-mutation.
 
