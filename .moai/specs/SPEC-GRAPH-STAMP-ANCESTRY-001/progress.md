@@ -559,7 +559,20 @@ m1_to_mN_commit_strategy: "마일스톤당 1커밋 — M1 b6e84fe5c, M2 c613b7c6
 
 ### Residual risk
 
-- **스탬프 앵커의 수명.** 스탬프는 merge-base `7097e6e21`이다. 이 브랜치가 develop에 `--no-ff`로 병합되면 그대로 조상으로 남지만, squash로 들어가면 브랜치 로컬 커밋들은 사라져도 merge-base는 develop의 조상이므로 여전히 유효하다. 다만 develop이 크게 앞서간 뒤에는 `described-source-diff`가 다시 40에 접근할 수 있다 — 그때의 복구는 이 SPEC이 명시한 대로 본문 재생성 + 재스탬핑이다.
+- **[측정됨] 통합 뒤 codemaps는 다시 stale이 된다 — 그리고 이것은 이 카드가 고칠 수 있는 것이 아니다.** 스탬프 `7097e6e21`은 `origin/develop`의 조상이므로(exit 0) 조상성은 병합 뒤에도 성립한다. 그러나 값은 다르다:
+
+  ```text
+  command: git diff --name-only 7097e6e214195c45e65cab5fa565b19ca4514c4e origin/develop -- internal cmd pkg | grep -v '_test\.go$' | wc -l
+  tree_sha: dfe04c9b8
+  exit_code: 0
+  stdout: 58
+  command: git rev-list --count --left-right origin/develop...HEAD
+  stdout: 112	9
+  ```
+
+  `origin/develop`이 fork 지점 이후 112커밋 앞서 있고 그 사이 described-worthy 비테스트 파일 58개가 바뀌었다. 이 브랜치가 develop을 흡수하면 `described-source-diff`는 약 60이 되어 임계 40을 다시 넘는다. **이 브랜치에서 도달 가능한 어떤 커밋에 스탬핑해도 마찬가지다** — 그 58개 변경은 이 브랜치의 이력 밖에 있다.
+
+  이것은 이 SPEC이 만든 결함이 아니라 이 SPEC이 이름 붙인 두 번째 적색 원인(freshness 값 초과)이며, 그 복구 절차도 이 SPEC이 규정한 그대로다. 통합 창에서 레인이 develop을 흡수한 뒤 **병합 트리에서 재측정**하면 값이 40을 넘는 것이 드러날 것이고, 그때 흡수된 develop tip으로 재스탬핑하면 anchor가 그리로 옮겨가 값이 다시 2로 떨어진다(본문 재생성은 이 카드에서 이미 진짜로 수행했으므로 bare restamp가 아니다). 이 카드는 병합하지 않으므로 그 단계를 실행하지 않았고, 리드 판정 사항으로 남긴다.
 - **codemaps 부분 재측정의 경계.** 다섯 문서 중 이번에 다시 잰 것은 각 문서 상단의 `**부분 재측정**` 줄이 명시한 절뿐이다. 나머지 서술은 `e7bd89ee3` 시점 값이며, 트리에 문서가 이름조차 대지 않는 패키지가 47개 남아 있다(`internal/core/git`은 의도된 fold라 제외). 그 공백은 codemaps 전면 리프레시 소관이지 이 카드의 범위가 아니다.
 - **조상성 실패를 fail-closed로 처리한다.** `merge-base --is-ancestor`가 비조상 이외의 이유(읽을 수 없는 이력 등)로 non-zero를 내도 unreachable로 분류한다. 안전한 방향이지만, 그런 상태에서는 reason이 원인을 정확히 지목하지 못한다.
 - **`internal/cli` 루트 패키지가 기본 타임아웃을 넘는다(1480s).** 이 카드가 만든 상태는 아니지만, 기본값으로 도는 어떤 소비자든 이 패키지에서 timeout panic을 본다.
