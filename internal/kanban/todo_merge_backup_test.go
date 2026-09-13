@@ -242,3 +242,57 @@ func TestRestoreQueueArtifactsRoundTrip(t *testing.T) {
 		}
 	}
 }
+
+// TestRestoreQueueArtifactsErrorBranches covers the refusal arms: no backup,
+// a missing backup file, and a tampered backup failing the re-hash.
+func TestRestoreQueueArtifactsErrorBranches(t *testing.T) {
+	if err := RestoreQueueArtifacts(nil); err == nil {
+		t.Error("nil backup accepted")
+	}
+
+	_, dir := mergeFixtureStore(t, nil)
+	backupDir := t.TempDir()
+	backup, err := BackupQueueArtifacts([]string{dir}, backupDir)
+	if err != nil {
+		t.Fatalf("backup: %v", err)
+	}
+
+	// Missing backup file: remove the copy, restore must fail on the copy.
+	if err := os.Remove(backup.Artifacts[0].BackupPath); err != nil {
+		t.Fatalf("remove copy: %v", err)
+	}
+	if err := RestoreQueueArtifacts(backup); err == nil {
+		t.Error("restore accepted a missing backup file")
+	}
+
+	// Tampered backup: re-backup, corrupt the copy, restore must fail the
+	// re-hash.
+	backup2, err := BackupQueueArtifacts([]string{dir}, t.TempDir())
+	if err != nil {
+		t.Fatalf("backup2: %v", err)
+	}
+	if err := os.WriteFile(backup2.Artifacts[0].BackupPath, []byte("tampered"), 0o644); err != nil {
+		t.Fatalf("tamper: %v", err)
+	}
+	if err := RestoreQueueArtifacts(backup2); err == nil {
+		t.Error("restore accepted a tampered backup")
+	}
+}
+
+// TestBackupQueueArtifactsErrorBranches covers the directory-artifact refusal
+// and the snapshot walk-error arms.
+func TestBackupQueueArtifactsErrorBranches(t *testing.T) {
+	dir := t.TempDir()
+	if err := os.MkdirAll(filepath.Join(dir, "backlog.db"), 0o755); err != nil {
+		t.Fatalf("mkdir: %v", err)
+	}
+	if _, err := BackupQueueArtifacts([]string{dir}, t.TempDir()); err == nil {
+		t.Error("backup accepted a directory in place of the db artifact")
+	}
+	if _, err := SnapshotStoreDirState(filepath.Join(t.TempDir(), "absent")); err == nil {
+		t.Error("snapshot accepted a nonexistent directory")
+	}
+	if _, err := fileSHA256(filepath.Join(t.TempDir(), "absent")); err == nil {
+		t.Error("fileSHA256 accepted a nonexistent file")
+	}
+}

@@ -434,3 +434,102 @@ func TestMergeBacklogRecordsCollisionWithArchive(t *testing.T) {
 		t.Errorf("renumbered card missing from live items")
 	}
 }
+
+// TestMergeBacklogRecordsNilInputs covers the nil-refusal branch.
+func TestMergeBacklogRecordsNilInputs(t *testing.T) {
+	if _, _, err := MergeBacklogRecords(nil, mergeFixture(nil, 0), MergeOptions{}); err == nil {
+		t.Error("nil home accepted")
+	}
+	if _, _, err := MergeBacklogRecords(mergeFixture(nil, 0), nil, MergeOptions{}); err == nil {
+		t.Error("nil project accepted")
+	}
+}
+
+// TestMergeBacklogRecordsIssuerAlwaysContested covers the issuer-loops branch:
+// an issuer that only reproduces contested values aborts rather than reusing.
+func TestMergeBacklogRecordsIssuerAlwaysContested(t *testing.T) {
+	shared := mergeIdentity(t)
+	home := mergeFixture([]BacklogItem{mergeItem("t1", "home", BacklogStateQueued)}, 1)
+	home.Items[0].CardUUID = &shared
+	project := mergeFixture([]BacklogItem{mergeItem("t1", "different", BacklogStateQueued)}, 1)
+	project.Items[0].CardUUID = &shared
+
+	_, _, err := MergeBacklogRecords(home, project, MergeOptions{
+		NewUUID: func() (string, error) { return shared, nil },
+	})
+	if err == nil {
+		t.Fatal("merge reused the contested UUID")
+	}
+}
+
+// TestMergeBacklogRecordsArchivedFindingRewrite covers rewriteArchivedFindings:
+// a migrated project ARCHIVED entry's findings ride along rewritten.
+func TestMergeBacklogRecordsArchivedFindingRewrite(t *testing.T) {
+	home := mergeFixture([]BacklogItem{
+		mergeItem("t10", "home ten", BacklogStateQueued),
+		mergeItem("t3", "anchor", BacklogStateQueued),
+	}, 10)
+	project := mergeFixture([]BacklogItem{
+		mergeItem("t10", "PROJECT ten (different)", BacklogStateQueued),
+	}, 10)
+	project.Archived = []BacklogArchiveEntry{{
+		Item:     mergeItem("t20", "project archived card about t10", BacklogStateQueued),
+		Position: 0,
+		Findings: []BacklogArchivedFinding{{
+			Finding: BacklogFinding{SubjectID: "t20", RelatedID: "t10", Relation: BacklogRelationNearDuplicate,
+				Source: BacklogSourceMechanical, Note: "t10 pair, distinct from t100"},
+		}},
+	}}
+
+	merged, report, err := MergeBacklogRecords(home, project, MergeOptions{})
+	if err != nil {
+		t.Fatalf("merge: %v", err)
+	}
+	newID := report.Renumbered[0].NewID
+	found := 0
+	for _, e := range merged.Archived {
+		if e.Item.ID != "t20" {
+			continue
+		}
+		for _, af := range e.Findings {
+			if af.Finding.RelatedID == newID && strings.Contains(af.Finding.Note, newID+" pair") && strings.Contains(af.Finding.Note, "t100") {
+				found++
+			}
+			if af.Finding.RelatedID == "t10" {
+				t.Errorf("archived finding kept the old id: %+v", af.Finding)
+			}
+		}
+	}
+	if found != 1 {
+		t.Errorf("rewritten archived finding not found (newID=%s)", newID)
+	}
+}
+
+// TestMergeCardContentEqualSpecCases covers the spec-pointer comparison arms.
+func TestMergeCardContentEqualSpecCases(t *testing.T) {
+	spec := "SPEC-A-001"
+	base := mergeItem("t1", "same text", BacklogStateQueued)
+	other := base
+	other.SpecID = &spec
+	if mergeCardContentEqual(base, other) {
+		t.Error("spec nil vs present judged equal")
+	}
+	spec2 := "SPEC-B-002"
+	other2 := base
+	other2.SpecID = &spec2
+	if mergeCardContentEqual(other, other2) {
+		t.Error("different specs judged equal")
+	}
+	sameSpec := base
+	sameSpec.SpecID = &spec
+	if !mergeCardContentEqual(other, sameSpec) {
+		t.Error("same specs judged different")
+	}
+}
+
+// TestRewriteCardTokensEmptyMapping covers the early-return arm.
+func TestRewriteCardTokensEmptyMapping(t *testing.T) {
+	if got := rewriteCardTokens("t642 and t6420", nil); got != "t642 and t6420" {
+		t.Errorf("nil mapping rewrote text: %q", got)
+	}
+}

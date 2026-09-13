@@ -38,7 +38,7 @@ func rehearsalFixture(t *testing.T) (homeDir, projectDir string) {
 	project := NewBacklogStore(filepath.Join(projectDir, backlogFileName))
 	if err := project.Mutate(func(rec *BacklogRecord) error {
 		rec.Items = append(rec.Items,
-			mergeItem("t10", "shared identical card", BacklogStateQueued), // identical pair
+			mergeItem("t10", "shared identical card", BacklogStateQueued),    // identical pair
 			mergeItem("t11", "DIFFERENT project eleven", BacklogStateQueued), // renumber
 			mergeItem("t20", "project only", BacklogStateDropped),            // migrate
 		)
@@ -222,5 +222,209 @@ func TestRehearseQueueMergeRetireAndUnretire(t *testing.T) {
 	}
 	if _, err := os.Stat(marker); !os.IsNotExist(err) {
 		t.Errorf("fence marker not removed on unretire")
+	}
+}
+
+// TestRetireQueueStoreErrorBranches covers the refusal arms: retiring a
+// nonexistent directory fails at the marker write; unretiring a nonexistent
+// retired path fails at the rename.
+func TestRetireQueueStoreErrorBranches(t *testing.T) {
+	if _, err := RetireQueueStore(filepath.Join(t.TempDir(), "absent"), "2026-09-13"); err == nil {
+		t.Error("retire accepted a nonexistent directory")
+	}
+	if err := UnretireQueueStore(t.TempDir(), filepath.Join(t.TempDir(), "absent-retired")); err == nil {
+		t.Error("unretire accepted a nonexistent retired path")
+	}
+}
+
+// TestRunQueueMergeErrorBranches covers the path-refusal and snapshot-error
+// arms: relative paths refuse (REQ-TQM-018), a nonexistent store directory
+// aborts the ordering snapshot.
+func TestRunQueueMergeErrorBranches(t *testing.T) {
+	homeDir, projectDir := rehearsalFixture(t)
+	_, err := RunQueueMerge(QueueMergePaths{
+		HomeDir: "relative/home", ProjectDir: projectDir, BackupDir: t.TempDir(),
+	}, true)
+	if err == nil || !strings.Contains(err.Error(), "absolute") {
+		t.Errorf("relative home path not refused: %v", err)
+	}
+	_, err = RunQueueMerge(QueueMergePaths{
+		HomeDir: homeDir, ProjectDir: filepath.Join(t.TempDir(), "absent"), BackupDir: t.TempDir(),
+	}, true)
+	if err == nil {
+		t.Error("nonexistent project dir not refused")
+	}
+}
+
+// TestVerifyMergedRecordBranches unit-tests the pure verifier's arms with
+// crafted records: lost text, missing mapping target, target carrying the
+// wrong text, and each unrewritten reference shape.
+func TestVerifyMergedRecordBranches(t *testing.T) {
+	home := mergeFixture([]BacklogItem{mergeItem("t1", "home", BacklogStateQueued)}, 1)
+	project := mergeFixture([]BacklogItem{
+		mergeItem("t2", "project two", BacklogStateQueued),
+	}, 2)
+	project.Findings = []BacklogFinding{
+		{SubjectID: "t2", RelatedID: "t1", Relation: BacklogRelationContains, Source: BacklogSourceAgent, Note: "t2 note"},
+	}
+	project.Runtime.Assignments = []TodoRuntimeAssignment{
+		{RunID: "run-1", CardID: "t2", OwnerLabel: "lane", ReportedState: "picked", EventKind: "assign"},
+	}
+
+	t.Run("clean verification", func(t *testing.T) {
+		merged := cloneBacklogRecord(home)
+		merged.Items = append(merged.Items, mergeItem("t3", "project two", BacklogStateQueued))
+		merged.Findings = append(merged.Findings, BacklogFinding{
+			SubjectID: "t3", RelatedID: "t1", Relation: BacklogRelationContains, Source: BacklogSourceAgent, Note: "t3 note",
+		})
+		merged.Runtime.Runs = []TodoRuntimeRun{{RunID: "run-1"}}
+		merged.Runtime.Assignments = []TodoRuntimeAssignment{
+			{RunID: "run-1", CardID: "t3", OwnerLabel: "lane", ReportedState: "picked", EventKind: "assign"},
+		}
+		report := &MergeReport{Renumbered: []MergeMappingRow{{OldID: "t2", NewID: "t3"}}}
+		v := VerifyMergedRecord(home, project, merged, report)
+		if !v.ZeroLoss || len(v.StaleReferences) != 0 {
+			t.Errorf("clean merge failed verification: %+v", v)
+		}
+		if v.TotalPre != 2 || v.TotalPost != 2 {
+			t.Errorf("union count wrong: %+v", v)
+		}
+	})
+
+	t.Run("lost text and broken mapping", func(t *testing.T) {
+		merged := cloneBacklogRecord(home) // t3 never added
+		report := &MergeReport{Renumbered: []MergeMappingRow{{OldID: "t2", NewID: "t3"}}}
+		v := VerifyMergedRecord(home, project, merged, report)
+		joined := strings.Join(v.StaleReferences, "; ")
+		if !strings.Contains(joined, "text lost") {
+			t.Errorf("lost text undetected: %+v", v.StaleReferences)
+		}
+		if !strings.Contains(joined, "mapping target missing") {
+			t.Errorf("missing mapping target undetected: %+v", v.StaleReferences)
+		}
+	})
+
+	t.Run("target carries wrong text", func(t *testing.T) {
+		merged := cloneBacklogRecord(home)
+		merged.Items = append(merged.Items, mergeItem("t3", "a DIFFERENT t3", BacklogStateQueued))
+		report := &MergeReport{Renumbered: []MergeMappingRow{{OldID: "t2", NewID: "t3"}}}
+		v := VerifyMergedRecord(home, project, merged, report)
+		joined := strings.Join(v.StaleReferences, "; ")
+		if !strings.Contains(joined, "does not carry the renumbered card's text") {
+			t.Errorf("wrong-text target undetected: %+v", v.StaleReferences)
+		}
+	})
+
+	t.Run("unrewritten project finding", func(t *testing.T) {
+		merged := cloneBacklogRecord(home)
+		merged.Items = append(merged.Items, mergeItem("t3", "project two", BacklogStateQueued))
+		// Finding left naming t2 — the unrewritten shape.
+		merged.Findings = append(merged.Findings, BacklogFinding{
+			SubjectID: "t2", RelatedID: "t1", Relation: BacklogRelationContains, Source: BacklogSourceAgent, Note: "t2 note",
+		})
+		report := &MergeReport{Renumbered: []MergeMappingRow{{OldID: "t2", NewID: "t3"}}}
+		v := VerifyMergedRecord(home, project, merged, report)
+		joined := strings.Join(v.StaleReferences, "; ")
+		if !strings.Contains(joined, "not rewritten") {
+			t.Errorf("unrewritten finding undetected: %+v", v.StaleReferences)
+		}
+	})
+
+	t.Run("unrewritten assignment", func(t *testing.T) {
+		merged := cloneBacklogRecord(home)
+		merged.Items = append(merged.Items, mergeItem("t3", "project two", BacklogStateQueued))
+		merged.Runtime.Runs = []TodoRuntimeRun{{RunID: "run-1"}}
+		merged.Runtime.Assignments = []TodoRuntimeAssignment{
+			{RunID: "run-1", CardID: "t2", OwnerLabel: "lane", ReportedState: "picked", EventKind: "assign"},
+		}
+		report := &MergeReport{Renumbered: []MergeMappingRow{{OldID: "t2", NewID: "t3"}}}
+		v := VerifyMergedRecord(home, project, merged, report)
+		joined := strings.Join(v.StaleReferences, "; ")
+		if !strings.Contains(joined, "assignment") {
+			t.Errorf("unrewritten assignment undetected: %+v", v.StaleReferences)
+		}
+	})
+
+	t.Run("archived text lost and boundary contains", func(t *testing.T) {
+		lostArchived := cloneBacklogRecord(project)
+		lostArchived.Archived = []BacklogArchiveEntry{{Item: mergeItem("t9", "archived unique text", BacklogStateQueued)}}
+		report := &MergeReport{}
+		v := VerifyMergedRecord(home, lostArchived, cloneBacklogRecord(home), report)
+		joined := strings.Join(v.StaleReferences, "; ")
+		if !strings.Contains(joined, "archived card text lost") {
+			t.Errorf("archived text loss undetected: %+v", v.StaleReferences)
+		}
+		if !cardTokenBoundaryContains("see t642 here", "t642") ||
+			cardTokenBoundaryContains("see t6420 here", "t642") {
+			t.Errorf("boundary contains wrong")
+		}
+	})
+
+	t.Run("unrewritten archived finding", func(t *testing.T) {
+		withArchived := cloneBacklogRecord(project)
+		withArchived.Archived = []BacklogArchiveEntry{{
+			Item:     mergeItem("t9", "archived carrier", BacklogStateQueued),
+			Findings: []BacklogArchivedFinding{{Finding: BacklogFinding{SubjectID: "t2", RelatedID: "t1", Relation: BacklogRelationContains, Source: BacklogSourceAgent}}},
+		}}
+		merged := cloneBacklogRecord(home)
+		merged.Items = append(merged.Items, mergeItem("t3", "project two", BacklogStateQueued))
+		report := &MergeReport{Renumbered: []MergeMappingRow{{OldID: "t2", NewID: "t3"}}}
+		v := VerifyMergedRecord(home, withArchived, merged, report)
+		joined := strings.Join(v.StaleReferences, "; ")
+		if !strings.Contains(joined, "archived finding") {
+			t.Errorf("unrewritten archived finding undetected: %+v", v.StaleReferences)
+		}
+	})
+}
+
+// TestRunQueueMergeAbortPaths covers the destructive-step abort arms on
+// fixtures: a retired fence marker on the home store refuses the Mutate, and
+// a non-file artifact in the project store aborts the backup.
+func TestRunQueueMergeAbortPaths(t *testing.T) {
+	t.Run("home store fenced", func(t *testing.T) {
+		homeDir, projectDir := rehearsalFixture(t)
+		if err := os.WriteFile(filepath.Join(homeDir, backlogRetiredFileName), []byte("elsewhere"), 0o600); err != nil {
+			t.Fatalf("fence: %v", err)
+		}
+		_, err := RunQueueMerge(QueueMergePaths{
+			HomeDir: homeDir, ProjectDir: projectDir, BackupDir: t.TempDir(),
+		}, false)
+		if err == nil {
+			t.Fatal("merge wrote to a fenced home store")
+		}
+		if got := dbHash(t, homeDir); got == "" {
+			t.Error("home store unreadable after refused run")
+		}
+	})
+	t.Run("project store artifact is a directory", func(t *testing.T) {
+		homeDir, projectDir := rehearsalFixture(t)
+		// backlog.db is already a file in the fixture; a directory in place
+		// of the enumerated WAL sibling triggers the same refusal arm.
+		if err := os.MkdirAll(filepath.Join(projectDir, "backlog.db-wal"), 0o755); err != nil {
+			t.Fatalf("mkdir: %v", err)
+		}
+		_, err := RunQueueMerge(QueueMergePaths{
+			HomeDir: homeDir, ProjectDir: projectDir, BackupDir: t.TempDir(),
+		}, true)
+		if err == nil {
+			t.Fatal("backup accepted a directory artifact")
+		}
+	})
+}
+
+// TestRetireQueueStoreRenameRefused covers the rename-failure branch: the
+// target retired name already exists as a non-empty directory.
+func TestRetireQueueStoreRenameRefused(t *testing.T) {
+	projectDir := t.TempDir()
+	retired := projectDir + ".retired-2026-09-13"
+	if err := os.MkdirAll(filepath.Join(retired, "occupied"), 0o755); err != nil {
+		t.Fatalf("mkdir: %v", err)
+	}
+	if _, err := RetireQueueStore(projectDir, "2026-09-13"); err == nil {
+		t.Fatal("retire succeeded despite an occupied retired name")
+	}
+	// The fence marker is cleaned up on the refused rename.
+	if _, err := os.Stat(filepath.Join(projectDir, backlogRetiredFileName)); !os.IsNotExist(err) {
+		t.Errorf("fence marker left behind on refused rename")
 	}
 }
