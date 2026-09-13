@@ -254,6 +254,8 @@ func (m *Manager) Complete(ctx context.Context, id, transcript string, sequence 
 	return m.replaceLocked(id, r)
 }
 
+// Fork branches the parent at its current lastTurnId: the launcher's
+// --fork-session boundary.
 func (m *Manager) Fork(ctx context.Context, parentID string) (d Descriptor, err error) {
 	p, err := m.Resume(ctx, parentID)
 	if err != nil {
@@ -269,6 +271,44 @@ func (m *Manager) Fork(ctx context.Context, parentID string) (d Descriptor, err 
 	if err != nil {
 		return Descriptor{}, err
 	}
+	chain := snap.Candidates()
+	if len(chain) > 0 {
+		chain, err = snap.ChainTo(chain[len(chain)-1].Prefix)
+		if err != nil {
+			return Descriptor{}, err
+		}
+	}
+	return m.forkAtCandidates(ctx, p, chain)
+}
+
+// ForkAt branches the parent at the exact completedTurnID boundary: only the
+// completed chain up to that boundary is copied into the new family/thread,
+// and a parent that keeps completing turns can never leak post-boundary facts
+// into the child. An unknown origin, or an unknown, zero or broken boundary,
+// is rejected before any child state exists.
+func (m *Manager) ForkAt(ctx context.Context, parentID string, boundary receipt.Digest) (d Descriptor, err error) {
+	p, err := m.Resume(ctx, parentID)
+	if err != nil {
+		return Descriptor{}, err
+	}
+	parentRoot := filepath.Join(m.root, "families", p.FamilyID, "receipt")
+	ps, err := receipt.OpenStore(ctx, parentRoot, p.UUID, false)
+	if err != nil {
+		return Descriptor{}, err
+	}
+	defer func() { _ = ps.Close() }() // read-only parent snapshot; the lock ends at process exit too
+	snap, err := ps.Snapshot(ctx)
+	if err != nil {
+		return Descriptor{}, err
+	}
+	chain, err := snap.ChainTo(boundary)
+	if err != nil {
+		return Descriptor{}, err
+	}
+	return m.forkAtCandidates(ctx, p, chain)
+}
+
+func (m *Manager) forkAtCandidates(ctx context.Context, p Descriptor, chain []receipt.Candidate) (d Descriptor, err error) {
 	id, err := newUUID()
 	if err != nil {
 		return Descriptor{}, err
@@ -288,7 +328,7 @@ func (m *Manager) Fork(ctx context.Context, parentID string) (d Descriptor, err 
 			err = cerr
 		}
 	}()
-	for _, c := range snap.Candidates() {
+	for _, c := range chain {
 		if err = cs.Publish(ctx, c); err != nil {
 			return Descriptor{}, err
 		}

@@ -51,7 +51,7 @@ func TestCompactionIsANormalSummaryTurnWithZeroCompactRPCs(t *testing.T) {
 		t.Fatal("authenticated summary rejected", err)
 	}
 	forged := receipt.CompactBase{Scope: scope, Epoch: 2, Summary: receipt.Hash([]byte(last.Text))}
-	if err = ledger.Rebase(forged, []byte(last.Text + " synthesized tail")); !strings.Contains(err.Error(), "does not match") {
+	if err = ledger.Rebase(forged, []byte(last.Text+" synthesized tail")); !strings.Contains(err.Error(), "does not match") {
 		t.Fatal("non-exact summary accepted", err)
 	}
 }

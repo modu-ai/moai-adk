@@ -53,6 +53,10 @@ type Request struct {
 	Input                                    []any
 	Results                                  []ToolResult
 	Resume                                   bool
+	// Fork starts a brand-new App Server thread that inherits exactly the
+	// completed prefix named by ExpectedPrefix — the explicit session fork
+	// boundary. Never combined with Resume.
+	Fork bool
 }
 type Tool struct {
 	ID, Name  string
@@ -216,9 +220,20 @@ func (e *Engine) get(q Request) (*conversation, error) {
 		return c, nil
 	}
 	if q.Resume {
+		if q.Fork {
+			return nil, ErrScope
+		}
 		return e.resume(q, key)
 	}
-	if len(q.Results) != 0 || q.ExpectedPrefix != "" {
+	inherited := ""
+	if q.Fork {
+		// A fork child inherits exactly the boundary prefix and nothing else;
+		// the boundary is caller-asserted here and ledger-verified upstream.
+		if len(q.Results) != 0 || q.ExpectedPrefix == "" || len(q.ExpectedPrefix) > 256 {
+			return nil, ErrScope
+		}
+		inherited = q.ExpectedPrefix
+	} else if len(q.Results) != 0 || q.ExpectedPrefix != "" {
 		return nil, ErrScope
 	}
 	if len(e.conversations) >= e.cfg.MaxConversations {
@@ -231,7 +246,7 @@ func (e *Engine) get(q Request) (*conversation, error) {
 	if exists {
 		return nil, ErrRecovery
 	}
-	c := &conversation{owner: q.Owner, model: q.Model, cwd: q.CWD, phase: "new", queue: make(chan codexapp.Message, e.cfg.QueueSize), stopped: make(chan struct{})}
+	c := &conversation{owner: q.Owner, model: q.Model, cwd: q.CWD, prefix: inherited, phase: "new", queue: make(chan codexapp.Message, e.cfg.QueueSize), stopped: make(chan struct{})}
 	e.conversations[key] = c
 	return c, nil
 }
