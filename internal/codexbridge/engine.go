@@ -8,6 +8,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io"
 	"strings"
 	"sync"
@@ -51,6 +52,7 @@ type Request struct {
 	References                               []codextools.Reference
 	Input                                    []any
 	Results                                  []ToolResult
+	Resume                                   bool
 }
 type Tool struct {
 	ID, Name  string
@@ -68,6 +70,7 @@ type pending struct {
 type conversation struct {
 	lateCleanupScheduled            bool
 	interruptedTurn                 string
+	attach                          bool
 	op                              sync.Mutex
 	mu                              sync.Mutex
 	owner                           codextools.Binding
@@ -212,6 +215,9 @@ func (e *Engine) get(q Request) (*conversation, error) {
 	if c := e.conversations[key]; c != nil {
 		return c, nil
 	}
+	if q.Resume {
+		return e.resume(q, key)
+	}
 	if len(q.Results) != 0 || q.ExpectedPrefix != "" {
 		return nil, ErrScope
 	}
@@ -234,7 +240,61 @@ func (e *Engine) save(c *conversation, phase string) error {
 	if c.pending != nil {
 		call = c.pending.callID
 	}
-	return e.cfg.Store.save(record{Owner: c.owner, Phase: phase, TurnID: c.turn, CallID: call, Prefix: c.prefix})
+	return e.cfg.Store.save(record{Owner: c.owner, Phase: phase, TurnID: c.turn, CallID: call, Prefix: c.prefix, Model: c.model, CWD: c.cwd})
+}
+
+// resume rebuilds a conversation from a durable idle barrier so a new Engine
+// can continue the owned App Server thread. The thread identity comes only
+// from the record the starting process wrote — never from the caller — and
+// the pinned model, working directory and completed public prefix must match
+// the resume request exactly. Legacy AS3 barriers are rejected, never
+// migrated: they deliberately omit the pinned binding fields a resume needs.
+// e.mu must be held.
+func (e *Engine) resume(q Request, key string) (*conversation, error) {
+	if len(q.Results) != 0 || q.ExpectedPrefix == "" {
+		return nil, ErrScope
+	}
+	rec, found, err := e.cfg.Store.load(q.Owner)
+	if err != nil {
+		return nil, err
+	}
+	if !found {
+		return nil, ErrScope
+	}
+	if rec.Schema != storeSchema {
+		return nil, fmt.Errorf("%w: barrier predates the resumable schema", ErrRecovery)
+	}
+	if rec.Phase != "idle" {
+		return nil, fmt.Errorf("%w: incomplete %q barrier cannot be resumed", ErrRecovery, rec.Phase)
+	}
+	thread := rec.Owner.ThreadID
+	if thread == "" || len(thread) > 256 {
+		return nil, ErrProtocol
+	}
+	if rec.Owner.ConversationID != q.Owner.ConversationID || rec.Owner.AccountScope != q.Owner.AccountScope {
+		return nil, ErrScope
+	}
+	if rec.Model != q.Model || rec.CWD != q.CWD || rec.Prefix != q.ExpectedPrefix {
+		return nil, ErrScope
+	}
+	if len(e.conversations) >= e.cfg.MaxConversations {
+		return nil, ErrLimit
+	}
+	if e.threads[thread] != nil {
+		return nil, ErrProtocol
+	}
+	registry, err := codextools.New(q.Owner, q.Tools)
+	if err != nil {
+		return nil, err
+	}
+	owner, err := registry.BindThread(thread)
+	if err != nil {
+		return nil, err
+	}
+	c := &conversation{owner: owner, registry: registry, model: q.Model, cwd: q.CWD, prefix: rec.Prefix, phase: "idle", attach: true, queue: make(chan codexapp.Message, e.cfg.QueueSize), stopped: make(chan struct{})}
+	e.conversations[key] = c
+	e.threads[thread] = c
+	return c, nil
 }
 func (e *Engine) stop(c *conversation) {
 	c.stopOnce.Do(func() { close(c.stopped) })
@@ -399,9 +459,28 @@ func (e *Engine) Step(ctx context.Context, q Request) (seg Segment, err error) {
 		c.turn = ""
 		err = e.save(c, "active")
 		thread := c.owner.ThreadID
+		attach := c.attach
 		c.mu.Unlock()
 		if err != nil {
 			return seg, err
+		}
+		if attach {
+			// Reattach to the owned thread before the first turn of a resumed
+			// conversation. Resume history and raw reasoning are never injected.
+			var resumed struct {
+				Thread struct {
+					ID string `json:"id"`
+				} `json:"thread"`
+			}
+			if err = e.rpc.Call(ctx, "thread/resume", map[string]any{"threadId": thread}, &resumed); err == nil && resumed.Thread.ID != thread {
+				err = ErrProtocol
+			}
+			if err != nil {
+				return seg, err
+			}
+			c.mu.Lock()
+			c.attach = false
+			c.mu.Unlock()
 		}
 		err = e.startTurn(ctx, c, map[string]any{"threadId": thread, "model": q.Model, "input": q.Input, "environments": []any{}})
 		if err != nil {

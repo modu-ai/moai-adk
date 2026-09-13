@@ -23,6 +23,7 @@ type fakeRPC struct {
 	events         chan codexapp.Message
 	next           int
 	responses      int
+	resumes        []string
 	interrupts     []string
 	fail           error
 	startEntered   chan struct{}
@@ -41,6 +42,9 @@ func (f *fakeRPC) Call(ctx context.Context, method string, p any, out any) error
 	case "thread/start":
 		f.next++
 		result = map[string]any{"thread": map[string]string{"id": fmt.Sprint("thread-", f.next)}}
+	case "thread/resume":
+		f.resumes = append(f.resumes, m["threadId"].(string))
+		result = map[string]any{"thread": map[string]string{"id": m["threadId"].(string)}}
 	case "turn/start":
 		if f.startEntered != nil {
 			close(f.startEntered)
