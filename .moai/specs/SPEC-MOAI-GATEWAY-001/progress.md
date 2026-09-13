@@ -130,11 +130,27 @@
 - Gaps: AS-010의 "새 MoAI process 실제 세션 회상"은 실증 항목으로 미수행(환경상 실제 app-server 서브프로세스 기동 실패 — lifecycle_subprocess 4건과 동일 원인으로 판단, 단 원인 규명은 범위 밖). idle model 변경(M3), compaction(M4), 경계 fork(M5)는 미착수. native fork 양성 실증은 NOT-RUN(전제 실패).
 - Residual-risk: thread/resume의 실제 App Server 응답 형태(`{thread:{id}}` 검증)는 fake 기준이며 실제 서버와의 일치는 실증에서 확인해야 한다. resume 뒤 첫 Step의 attach 실패는 failed 배리어로 귀결되는데, 실제 서버가 일시 오류를 냈을 때의 재시도 정책은 명시적 recovery 가이드 몫이다(자동 재시도 없음 — 의도된 계약).
 
+### 2026-09-14 — t653 AS-4 M3 idle 모델 변경 + M4 compaction + M5 경계 fork + M6 증거
+
+- Claim: (M3) idle 배리어에서만 모델 전환을 허용하고 전환값이 다음 turn/start로 운반되며 배리어에 재고정된다 — waiting 전환은 거절돼 잘못된 turn에 적용되지 않는다. gateway 측 거절군(bare `gpt-6` ErrUnknownModel, 타 provider의 bridge 진입 ErrManagedAuthority)을 테스트로 고정했다. (M4) compaction을 정상 요약 turn으로 처리한다: 반환 summary를 인증된 PostCompact의 exact digest·scope·epoch와 대조해 한 번만 rebase하고, `Manifest.Rebase`·`Store.Rebase`가 public history를 재설정한다 — 중복·stale·gap(유실)·재시작 재생·substring-only는 명시 거절이고 bridge는 compact RPC를 0회 발행하며 RPC id 없는 서버 주도 compaction 알림은 무시된다. PreCompact-after-HTTP 분류와 추가 compact RPC는 도입하지 않았다. (M5) exact completedTurnID 경계 fork를 착지했다: `Manifest.ChainTo`/`ForkAt`이 경계까지의 완료 체인만 복사해 부모가 이후 turn을 완료해도 경계 이후 사실이 자식에 유입되지 않고, 미지·영 경계·사이클·불일치 링크·미지 원본은 자식 상태 생성 전에 거절된다. `Manager.ForkAt`이 family 인덱스에 경계 fork를 노출하고 `Manager.Fork`는 lastTurnId(tip) 분기로 정렬됐다. codexbridge `Request.Fork`는 자식이 부모 thread를 입양하지 않고 inherited prefix로 새 thread를 시작하게 하며, 자식 배리어는 새 프로세스에서 독립 resume된다. (M6) 커버리지·Windows 빌드·lint·gofmt를 실측해 취합했다.
+- Evidence (baseline HEAD `92db2cfe7` → 커밋 `14dba89c5`(M3), `e45f50a8d`(M4), `64885fa06`(M5)):
+  - M3 RED: `go test ./internal/codexbridge/ -run 'TestIdleModelChange|TestWaitingAndNewPhase'` → `model_test.go:28: idle model change rejected` FAIL (`.moai/reports/t653/m3-model-red.log`).
+  - M3 GREEN: codexbridge 패키지 전체 `ok` (`.moai/reports/t653/m3-model-green.log`); gateway 거절군 `ok` (`.moai/reports/t653/m3-model-gateway.log`).
+  - M4 RED: `CompactBase`/`NewRebaseLedger` 등 미정의 컴파일 실패 (`.moai/reports/t653/m4-compact-red.log`).
+  - M4 GREEN: receipt 패키지 `ok` (`.moai/reports/t653/m4-compact-green-receipt.log`); codexbridge compaction 분류 2건 `ok` (`.moai/reports/t653/m4-compact-codexbridge.log`).
+  - M5 RED: `ForkAt`/`ChainTo`/`Request.Fork` 미정의 컴파일 실패 (`.moai/reports/t653/m5-fork-red.log`).
+  - M5 GREEN: receipt·conversation·codexbridge 3패키지 `ok` (`.moai/reports/t653/m5-fork-green.log`).
+  - M6: 커버리지 codexbridge 83.1% / receipt 88.9% / conversation 80.3% / gateway 91.7% (`.moai/reports/t653/m6-coverage.log`); `GOOS=windows GOARCH=amd64 go build ./...` exit 0; `golangci-lint run --timeout=5m` → `0 issues.` exit 0 (`.moai/reports/t653/m6-lint.log`); `gofmt -l` 빈 출력. 요약: `.moai/reports/t653/m6-evidence-summary.md`.
+- Store-contract decisions: (1) ChainTo는 Previous 링크가 manifest에 없는 접두사를 가리키는 것을 체인 뿌리로 취급한다 — 이 원장에서는 그것이 정상이며(core_test 자체가 그렇게 구성), 거절은 미지·영 경계, 사이클, 같은 접두사의 불일치 링크에 국한한다. (2) compaction은 engine 코드 변경 0건으로 분류된다 — 정상 turn 경로가 요약 turn을 운반하고 알림 무시는 기존 fail-open 루프가 수행한다(테스트로 고정). (3) `Manager.Fork`(tip 분기)도 ChainTo로 정렬해 계층 간 fork 의미를 일치시켰다.
+- Baseline-attribution: worktree `.claude/worktrees/t653`, branch `WT-gateway-as4-resume`. 커밋 진행 `92db2cfe7` → `14dba89c5` → `e45f50a8d` → `64885fa06`. 사전 존재 환경 실패 5건(codexbridge lifecycle_subprocess 4건 + gateway `TestAppServerSubprocessHTTPToolContinuation`)은 작업 변경이 없는 커밋 트리(`git archive HEAD` 추출본)에서 동일 재현해 이 diff 이전 환경 의존으로 귀속했다.
+- Gaps: AS-010 새 프로세스 실세션 회상, AS-011 실제 turn model 일치 양성, AS-012 실제 Claude 압축 수집, AS-013 `--fork-session` 실분기·병렬/중첩 자식 격리는 전부 실증 미수행. M1 native fork 전제 실패 NOT-RUN 유지 — AS-013 전체 지원 완료는 계속 보류. 전체 스위트 판정은 CI 소관.
+- Residual-risk: App Server 실제 응답 형태는 fake 기준. RebaseLedger의 재시작 복원은 생성자 `appliedEpoch` 주입에 의존하며 생산 배선(t654)이 그 값을 읽는 위치는 미설계. Fork 자식의 inherited prefix는 engine에서 caller-asserted — 원장 대조는 gateway 계층 책임으로 남는다. idle 전환의 배리어 model 재고정은 turn 성공 시점에 일어난다.
+
 ## §E.3 Run-phase Audit-Ready Signal
 
-감사 준비 미완료. M0는 INCONCLUSIVE다. 0.8.0 인식기와 실제 캡처 판정은 통과했으나 M1 전체 및 제품 AC는 미완료다.
-`run_complete_at`, `run_commit_sha`, AC PASS 수치와 완료 신호는 발행하지 않는다.
-제품 코드 구현 완료·검증 완료를 주장하지 않으며, 저장소 전체 시험 판정은 통합 브랜치 CI의 소관으로 PENDING이다.
+감사 준비 미완료. t653 run-phase의 자동화 가능 부분(M2 resume, M3 idle 모델, M4 compaction, M5 경계 fork)은 커밋 `14dba89c5`·`e45f50a8d`·`64885fa06`로 착지하고 패키지 테스트·커버리지·Windows 빌드·lint 0·gofmt가 이번 실행에서 실측됐으나, 실증 항목(AS-010 실세션 회상, AS-011 실제 turn model 일치, AS-012 실제 Claude 압축 수집, AS-013 실분기 양성)은 전부 미수행이고 M1 native fork 전제 실패 NOT-RUN이 유지된다.
+`run_complete_at`과 완료 신호는 발행하지 않는다(실증 gap이 닫히지 않았다). `run_commit_sha` 후보는 `64885fa06`이지만 이는 완료 신호가 아니다.
+저장소 전체 시험 판정은 통합 브랜치 CI의 소관으로 PENDING이다. 상세 판정 초안: [run-verdict.md](../../reports/t653/run-verdict.md).
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
