@@ -20,7 +20,9 @@ Census of queue-path claims reproduced from acceptance.md §D.5 with per-claim c
 | 14 | `docs-site/content/en/advanced/factory-mode.md:93` | same | NOT VERIFIED | unchanged — follow-up |
 | 15 | `docs-site/content/ja/advanced/factory-mode.md:93` | same | NOT VERIFIED | unchanged — follow-up |
 | 16 | `docs-site/content/zh/advanced/factory-mode.md:93` | same | NOT VERIFIED | unchanged — follow-up |
-| 17-20 | `README.ko.md` / `README.en.md` / `README.ja.md` / `README.zh-CN.md` line 80 | same factory `.db` path claim (4 files) | NOT VERIFIED | unchanged — follow-up |
+| 17-20 | `README.ko.md` / `README.md` / `README.ja.md` / `README.zh.md` line 80 | same factory `.db` path claim (4 files) | NOT VERIFIED | unchanged — follow-up |
 | 21 | `internal/template/templates/.moai/docs/todo-queue-storage.md` lines 4, 106 | home layout explained unconditionally | same defect class; template-shipped doc, out of card scope | unchanged — follow-up finding (t704 owns template doc) |
 
 Count summary: 21 claims — 8 false in-scope (all FIXED), 4 TRUE (unchanged), 8 factory/README not-verified (out of scope), 1 template follow-up (out of scope). Census method per acceptance.md §D.5: `grep -rn 'moai/todo\|moai/db'` over `docs-site/content/` and the four README files, per-hit truth classification against spec.md §2.
+
+Correction (sync-audit F1, card t575): rows 17-20 originally named `README.en.md` / `README.zh-CN.md`, which do not exist in this tree — the actual files are `README.md` and `README.zh.md` (verified via `ls README*.md`). Location cells corrected; the line-80 factory claim itself stands in all four real files.
