@@ -217,5 +217,36 @@ under ~/.moai/db/<project-key>/todo; continuing against the project-local queue 
 - `done` 의 판정값이 플래그 없이도 `landed` 가 될 수 있게 됐다. 운영자가 잘못된 SHA 를
   기록해 두었다면 그 오류가 이제 판정값까지 전파된다 — `landed` 의 ref 소속 검증이 1차
   방어이고, `source=operator` 가 그 값의 출처를 노출하는 것이 2차 방어다.
+
+---
+
+## 8. 통합 창 — develop 흡수 뒤 재측정
+
+### Claim
+
+로컬 `develop` `2448be06650e0b8541fa8ff22687fd444b11ccd6`을 카드 브랜치에 흡수한 트리에서 `Todo|Landing|Landed|History` 범위가 통과했다.
+
+### Evidence
+
+```text
+unset MOAI_KANBAN MOAI_KANBAN_ID MOAI_KANBAN_LABEL MOAI_KANBAN_LEAD_ADDR MOAI_KANBAN_SETTINGS_INJECTED && go test ./internal/cli/ -run 'Todo|Landing|Landed|History' -count=1 -timeout 900s
+ok  github.com/modu-ai/moai-adk/internal/cli  669.763s
+exit=0
+```
+
+원본 출력: `.moai/reports/t665/window-develop-2448be066-todo-scoped.log`.
+
+### Baseline-attribution
+
+흡수 병합 커밋 `413db543d891682b598171cc85c2a9bb8a16ce15`, 부모 `15375bb64a533ea51ef719ecb0f004811676bb4a`와 `2448be06650e0b8541fa8ff22687fd444b11ccd6`, 이 통합 창의 실행.
+
+### Gaps
+
+- `internal/cli` 전체 패키지를 다시 실행하지 않았다. 변경 기능과 이름이 맞는 테스트만 재실행했다.
+- 리드가 사전 귀속한 gateway 3건과 doctor 9건의 RED는 이 실행에서 다시 재지 않았다.
+
+### Residual-risk
+
+흡수 델타에는 `internal/cli` 파일이 여럿 포함됐다. `t665`의 직접 기능 범위는 재측정했지만, 다른 CLI 기능과의 전체 결합은 이 로컬 실행이 아니라 이후 `develop` CI 판정에 남는다.
 - t648(큐 통일)과 같은 영역이다. 충돌은 관측되지 않았으나 두 변경이 같은 파일을 만진다면
   병합 시 재측정이 필요하다.
