@@ -1,7 +1,7 @@
 ---
 id: SPEC-TODO-QUEUE-HOME-CANON-001
 title: "Pin the todo queue to the HOME SQLite store as the single canonical source; consolidate remaining code-path statements and JSON remnants"
-version: "1.1.0"
+version: "1.2.0"
 status: draft
 created: 2026-09-13
 updated: 2026-09-13
@@ -22,7 +22,8 @@ related_specs: [SPEC-TODO-SQLITE-001, SPEC-WEB-TODO-QUEUE-001, SPEC-TODO-HOME-TE
 | Date | Version | Change |
 |------|---------|--------|
 | 2026-09-13 | 1.0.0 | Initial draft (card t658). Authoring only — no implementation in plan-phase. |
-| 2026-09-13 | 1.1.0 | Plan-audit fixes: D1 — plan.md M1 clarified-absence restated in plain sentence (bracket-token form never used in any artifact); D2 — A16 citation corrected to the actual call site session_start_kanban.go:212; D3 — B9 second location re-described as render comment (wal/-shm handling lives only at events.go:167-169). |
+| 2026-09-13 | 1.1.0 | Plan-audit fixes: D1 — removed the bracket-form clarification marker from plan.md M1, re-articulating it as plain prose (even a `none` payload trips the gate — payload content does not exempt existence); D2 — A16 citation corrected to the actual call site session_start_kanban.go:212; D3 — B9 second location re-described as render comment (wal/-shm handling lives only at events.go). |
+| 2026-09-13 | 1.2.0 | Iteration-2 delta fixes: N1 — events.go SHM/WAL line ranges corrected to the full span (SHM :167-168; WAL :169-172) in survey row B9 (spec.md §1.2) and in the 1.1.0 HISTORY row's D3 clause; N2 — 1.1.0 HISTORY row's clean-record claim replaced with an accurate description of what D1 actually removed (the marker existed in the parent commit's plan.md). |
 
 ## 1. Background and Survey Evidence (tree b66789479, branch WT-home-queue-canonical)
 
@@ -70,7 +71,7 @@ adoption candidates in A4.
 | B6 | `cmd/t657-merge/main.go:49-53` | One-off merge utility: builds `<dir>/backlog.json` + `LoadPure` | Caller-supplied dir | **BOUNDARY** — merge CORE logic is t835's; disposition recorded as an exception pending t835 close-out. NOT converged by this SPEC. |
 | B7 | `internal/cli/todo_disclosure.go:2,32,40` | Disclosure TEXT naming backlog.json ("NOT the queue") | n/a (prose only, no read) | **KEEP** — this IS the convergence messaging |
 | B8 | `internal/statusline/backlog.go:50` (card premise) | Direct JSON read | Was project-local (WRONG location) | **ALREADY CONVERGED** on this tree (A14) — verify, no work |
-| B9 | `internal/web/events.go:167-169` (wal/-shm handling); `internal/web/screens_templ.go:1180` (render comment: global backlog.db + kanban live-refresh marker) | Watch/render of the SQLite artifacts | Yes | **KEEP** — SQLite-aware, not a JSON remnant |
+| B9 | `internal/web/events.go` (SHM :167-168; WAL :169-172); `internal/web/screens_templ.go:1180` (render comment: global backlog.db + kanban live-refresh marker) | Watch/render of the SQLite artifacts | Yes | **KEEP** — SQLite-aware, not a JSON remnant |
 
 **Conclusion (b):** ZERO production readers of the legacy path remain outside the
 `internal/kanban` store/adoption machinery itself, one boundary card (B6), and the
