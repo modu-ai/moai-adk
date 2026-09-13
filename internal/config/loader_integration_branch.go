@@ -49,6 +49,21 @@ type GitFlowIntegrationConfig struct {
 	// DevelopBranch is the trimmed develop branch, non-empty only when the
 	// project is git-flow (both halves above hold).
 	DevelopBranch string
+
+	// Workflow is the ACTIVE mode profile's raw workflow value (card t656,
+	// SPEC-GITSTRAT-WORKFLOW-READER-001). Empty when the file is unreadable
+	// or the mode has no active profile — which is "unknown", not invalid.
+	Workflow string
+	// Disposition is the three-way classification of Workflow
+	// (loader_workflow_disposition.go). The zero value means unknown.
+	Disposition WorkflowDisposition
+	// IntegrationTarget is the flow-scoped integration target projected from
+	// the D2 interpretation table: github-flow → "main", git-flow → the
+	// gated DevelopBranch, gitlab-flow → environment, release-flow →
+	// release_branch_prefix; empty on invalid/unknown. git-flow keeps the
+	// Manual && GitFlowWorkflow gate (REQ-GWS-005) — a non-manual git-flow
+	// profile resolves no target, exactly as DevelopBranch stays empty today.
+	IntegrationTarget string
 }
 
 // IsGitFlow reports whether the project's git strategy is git-flow: manual
@@ -76,8 +91,25 @@ func LoadGitFlowIntegrationConfig(projectRoot string) GitFlowIntegrationConfig {
 		Manual:          wrapper.GitStrategy.Mode == "manual",
 		GitFlowWorkflow: ok && profile.Workflow == gitFlowWorkflow,
 	}
+	if ok {
+		// Card t656: carry the raw value and its three-way disposition.
+		// Classified only when a profile exists, so the zero disposition
+		// stays reserved for "unknown" (unreadable file / no active profile).
+		cfg.Workflow = profile.Workflow
+		cfg.Disposition = ClassifyWorkflowDisposition(profile.Workflow)
+	}
 	if cfg.Manual && cfg.GitFlowWorkflow {
 		cfg.DevelopBranch = strings.TrimSpace(profile.DevelopBranch)
+	}
+	if ok {
+		// Project the D2 interpretation table onto the seam. git-flow goes
+		// through the gated DevelopBranch (empty when the manual gate fails
+		// or the key is empty), preserving today's adoption contract.
+		if profile.Workflow == gitFlowWorkflow {
+			cfg.IntegrationTarget = cfg.DevelopBranch
+		} else {
+			cfg.IntegrationTarget = WorkflowIntegrationTarget(profile.Workflow, *profile)
+		}
 	}
 	return cfg
 }
