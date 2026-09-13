@@ -496,11 +496,11 @@ func buildAutoUpdateFunc() hook.AutoUpdateFunc {
 	return func(ctx context.Context) (*hook.AutoUpdateResult, error) {
 		currentVersion := version.GetVersion()
 
-		// Skip dev builds
-		isDevBuild := strings.Contains(currentVersion, "dirty") ||
-			currentVersion == "dev" ||
-			strings.Contains(currentVersion, "none")
-		if isDevBuild {
+		// Skip dev builds. version.IsDevBuild also rejects build codenames
+		// like "moai_cp/20260910_130400" that the legacy substring check let
+		// through — a codename build read as "older than any release" and the
+		// SessionStart auto-update then installed the release over it (card t678).
+		if version.IsDevBuild(currentVersion) {
 			return &hook.AutoUpdateResult{Updated: false}, nil
 		}
 
