@@ -1,0 +1,180 @@
+# tree: HEAD 4061b6bda + uncommitted move (committed next as commit B)
+# cmd: MOAI_PTY_CAPTURE=1 go test ./internal/cli/ptycaptest/... -count=1 -cover -v -timeout 600s
+=== RUN   TestNoProductionImport
+    import_guard_test.go:79: go list scanned 142 packages from /Users/goos/MoAI/moai-adk-go/.claude/worktrees/t586; self github.com/modu-ai/moai-adk/internal/cli/ptycaptest
+    import_guard_test.go:91: test-only importers (allowed): [github.com/modu-ai/moai-adk/internal/cli/wizard]
+--- PASS: TestNoProductionImport (1.82s)
+=== RUN   TestCheckNoProductionImport_Synthetic
+--- PASS: TestCheckNoProductionImport_Synthetic (0.00s)
+=== RUN   TestPtycapStripANSI
+=== RUN   TestPtycapStripANSI/plain_text_unchanged
+=== RUN   TestPtycapStripANSI/sgr_colour
+=== RUN   TestPtycapStripANSI/cursor_movement
+=== RUN   TestPtycapStripANSI/private_mode
+=== RUN   TestPtycapStripANSI/osc_hyperlink_bel
+=== RUN   TestPtycapStripANSI/osc_hyperlink_st
+=== RUN   TestPtycapStripANSI/wide_text_kept
+--- PASS: TestPtycapStripANSI (0.00s)
+    --- PASS: TestPtycapStripANSI/plain_text_unchanged (0.00s)
+    --- PASS: TestPtycapStripANSI/sgr_colour (0.00s)
+    --- PASS: TestPtycapStripANSI/cursor_movement (0.00s)
+    --- PASS: TestPtycapStripANSI/private_mode (0.00s)
+    --- PASS: TestPtycapStripANSI/osc_hyperlink_bel (0.00s)
+    --- PASS: TestPtycapStripANSI/osc_hyperlink_st (0.00s)
+    --- PASS: TestPtycapStripANSI/wide_text_kept (0.00s)
+=== RUN   TestPtycapDisplayColumn
+--- PASS: TestPtycapDisplayColumn (0.00s)
+=== RUN   TestPtycapCompareGolden
+--- PASS: TestPtycapCompareGolden (0.00s)
+=== RUN   TestHomeWatch_ListShape
+--- PASS: TestHomeWatch_ListShape (0.00s)
+=== RUN   TestHomeWatch_PositiveControl
+=== RUN   TestHomeWatch_PositiveControl/(i)_nothing_changed
+    selfcheck_test.go:238: result "(i) nothing changed": entries=16 existing=5 changed=[]
+=== RUN   TestHomeWatch_PositiveControl/(ii)_W3_one_byte_changed
+    selfcheck_test.go:238: result "(ii) W3 one byte changed": entries=16 existing=5 changed=[.claude/settings.json (file size=3 sha256=ca3d163bab055381827226140568f3bef7eaac187cebd76878e0b63e9e442356 -> file size=3 sha256=f545623b541a21d6b8b415ee1793b91001a50ca985d26fad253c3c68aba5ffe9)]
+=== RUN   TestHomeWatch_PositiveControl/(iii)_W6_key_directory_created
+    selfcheck_test.go:238: result "(iii) W6 key directory created": entries=16 existing=6 changed=[.moai/db/001-6aafa367 (absent -> present)]
+=== RUN   TestHomeWatch_PositiveControl/(iv)_new_W2_glob_match
+    selfcheck_test.go:238: result "(iv) new W2 glob match": entries=17 existing=6 changed=[.moai/claude-profiles/p2/preferences.yaml (absent -> file size=2 sha256=73cb3858a687a8494ca3323053016282f3dad39d42cf62ca4e79dda2aac7d9ac) glob:.moai/claude-profiles/*/preferences.yaml (.moai/claude-profiles/p1/preferences.yaml -> .moai/claude-profiles/p1/preferences.yaml,.moai/claude-profiles/p2/preferences.yaml)]
+=== RUN   TestHomeWatch_PositiveControl/(v)_excluded_subtree_written
+    selfcheck_test.go:238: result "(v) excluded subtree written": entries=16 existing=5 changed=[]
+--- PASS: TestHomeWatch_PositiveControl (0.08s)
+    --- PASS: TestHomeWatch_PositiveControl/(i)_nothing_changed (0.00s)
+    --- PASS: TestHomeWatch_PositiveControl/(ii)_W3_one_byte_changed (0.00s)
+    --- PASS: TestHomeWatch_PositiveControl/(iii)_W6_key_directory_created (0.00s)
+    --- PASS: TestHomeWatch_PositiveControl/(iv)_new_W2_glob_match (0.00s)
+    --- PASS: TestHomeWatch_PositiveControl/(v)_excluded_subtree_written (0.00s)
+=== RUN   TestPtycapScrubList_KanbanVarsMatchEnvKeys
+--- PASS: TestPtycapScrubList_KanbanVarsMatchEnvKeys (0.00s)
+=== RUN   TestPtycapChildEnv_Values
+--- PASS: TestPtycapChildEnv_Values (0.00s)
+=== RUN   TestPtycapCheckChildEnvRecord
+--- PASS: TestPtycapCheckChildEnvRecord (0.00s)
+=== RUN   TestPtycapSessionName
+--- PASS: TestPtycapSessionName (0.00s)
+=== RUN   TestPtycapTopLevelResults
+--- PASS: TestPtycapTopLevelResults (0.00s)
+=== RUN   TestPtyCaptureChild
+    selfcheck_test.go:430: runs only inside a pty capture session
+--- SKIP: TestPtyCaptureChild (0.00s)
+=== RUN   TestPtyCaptureSelfTestChild
+    selfcheck_test.go:454: runs only as a self-test child
+--- SKIP: TestPtyCaptureSelfTestChild (0.00s)
+=== RUN   TestPtyCapture_NormalRun
+    selfcheck_test.go:480: built child test binary /var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestPtyCapture_NormalRun1615782599/001/child.test
+    selfcheck_test.go:482: real HOME watch list: 17 entries, 11 present on the real HOME (before)
+    selfcheck_test.go:490: ptycap session: moai-ptycap-TestPtyCapture-NormalRun-9a4e8381
+    selfcheck_test.go:492: child effective environment verified (14 vars); child cwd /var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestPtyCapture_NormalRun1615782599/002; repository /Users/goos/MoAI/moai-adk-go/.claude/worktrees/t586
+    selfcheck_test.go:494: ptycap export: /var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestPtyCapture_NormalRun1615782599/003/normal-run-fixture.txt
+    selfcheck_test.go:502: moai-ptycap- sessions before=[moai-ptycap-sentinel-8db28bfc] after=[moai-ptycap-sentinel-8db28bfc]
+    selfcheck_test.go:506: real HOME watch list: 17 entries, 11 present on the real HOME (after)
+--- PASS: TestPtyCapture_NormalRun (1.07s)
+=== RUN   TestPtyCapture_ForcedFailure
+    selfcheck_test.go:512: built child test binary /var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestPtyCapture_ForcedFailure3353173668/001/child.test
+    selfcheck_test.go:512: real HOME watch list: 17 entries, 11 present on the real HOME (before)
+    selfcheck_test.go:512: self-test child (fail) exit=exit status 1 output:
+        === RUN   TestPtyCaptureSelfTestChild
+            selfcheck_test.go:459: ptycap session: moai-ptycap-TestPtyCaptureSelfTestChild-9d6b5761
+            selfcheck_test.go:463: forced failure after the session opened
+        --- FAIL: TestPtyCaptureSelfTestChild (0.18s)
+        FAIL
+    selfcheck_test.go:512: ptycap export: /var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestPtyCapture_ForcedFailure3353173668/004/selftest-fail-child-output.txt
+    selfcheck_test.go:512: opened=[moai-ptycap-TestPtyCaptureSelfTestChild-9d6b5761] before=[moai-ptycap-sentinel-194998fe] after=[moai-ptycap-sentinel-194998fe]
+    selfcheck_test.go:512: real HOME watch list: 17 entries, 11 present on the real HOME (after)
+--- PASS: TestPtyCapture_ForcedFailure (1.50s)
+=== RUN   TestPtyCapture_ForcedTimeout
+    selfcheck_test.go:518: built child test binary /var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestPtyCapture_ForcedTimeout1481013594/001/child.test
+    selfcheck_test.go:518: real HOME watch list: 17 entries, 11 present on the real HOME (before)
+    selfcheck_test.go:518: self-test child (timeout) exit=exit status 1 output:
+        === RUN   TestPtyCaptureSelfTestChild
+            selfcheck_test.go:459: ptycap session: moai-ptycap-TestPtyCaptureSelfTestChild-2009c3e4
+            selfcheck_test.go:465: ptycap: anchor "ZZ-PTYCAP-ANCHOR-NEVER-RENDERED" not visible within 2s in session moai-ptycap-TestPtyCaptureSelfTestChild-2009c3e4 (last error <nil>); last capture:
+                === RUN   TestPtyCaptureChild
+                PTYCAP FIXTURE READY
+                English
+                Korean (한국어)
+                Japanese (日本語)
+                Chinese (中文)
+                
+                
+                
+                
+                
+                
+                
+                
+                
+                
+                
+                
+                
+                
+                
+                
+                
+                
+                
+                
+                
+                
+                
+                
+        --- FAIL: TestPtyCaptureSelfTestChild (2.14s)
+        FAIL
+    selfcheck_test.go:518: ptycap export: /var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestPtyCapture_ForcedTimeout1481013594/004/selftest-timeout-child-output.txt
+    selfcheck_test.go:518: opened=[moai-ptycap-TestPtyCaptureSelfTestChild-2009c3e4] before=[moai-ptycap-sentinel-7e9a4475] after=[moai-ptycap-sentinel-7e9a4475]
+    selfcheck_test.go:518: real HOME watch list: 17 entries, 11 present on the real HOME (after)
+--- PASS: TestPtyCapture_ForcedTimeout (4.01s)
+=== RUN   TestPtyCapture_SkipWithoutGate
+    selfcheck_test.go:578: built child test binary /var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestPtyCapture_SkipWithoutGate1084503389/001/child.test
+    selfcheck_test.go:578: ungated child exit=<nil> output:
+        === RUN   TestPtyCaptureChild
+            selfcheck_test.go:430: runs only inside a pty capture session
+        --- SKIP: TestPtyCaptureChild (0.00s)
+        === RUN   TestPtyCaptureSelfTestChild
+            selfcheck_test.go:454: runs only as a self-test child
+        --- SKIP: TestPtyCaptureSelfTestChild (0.00s)
+        === RUN   TestPtyCapture_NormalRun
+            selfcheck_test.go:479: pty capture runs only under MOAI_PTY_CAPTURE=1
+        --- SKIP: TestPtyCapture_NormalRun (0.00s)
+        === RUN   TestPtyCapture_ForcedFailure
+            selfcheck_test.go:511: pty capture runs only under MOAI_PTY_CAPTURE=1
+        --- SKIP: TestPtyCapture_ForcedFailure (0.00s)
+        === RUN   TestPtyCapture_ForcedTimeout
+            selfcheck_test.go:517: pty capture runs only under MOAI_PTY_CAPTURE=1
+        --- SKIP: TestPtyCapture_ForcedTimeout (0.00s)
+        === RUN   TestPtyCapture_SkipWithoutGate
+            selfcheck_test.go:577: pty capture runs only under MOAI_PTY_CAPTURE=1
+        --- SKIP: TestPtyCapture_SkipWithoutGate (0.00s)
+        === RUN   TestPtyCapture_FailWithoutTmux
+            selfcheck_test.go:584: pty capture runs only under MOAI_PTY_CAPTURE=1
+        --- SKIP: TestPtyCapture_FailWithoutTmux (0.00s)
+        PASS
+    selfcheck_test.go:578: ptycap export: /var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestPtyCapture_SkipWithoutGate1084503389/003/ac019a-ungated-child-output.txt
+--- PASS: TestPtyCapture_SkipWithoutGate (1.49s)
+=== RUN   TestPtyCapture_FailWithoutTmux
+    selfcheck_test.go:585: built child test binary /var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestPtyCapture_FailWithoutTmux2433118707/001/child.test
+    selfcheck_test.go:585: tmux-less child exit=exit status 1 output:
+        === RUN   TestPtyCapture_NormalRun
+            selfcheck_test.go:479: MOAI_PTY_CAPTURE=1 but tmux is not on PATH: exec: "tmux": executable file not found in $PATH
+        --- FAIL: TestPtyCapture_NormalRun (0.00s)
+        === RUN   TestPtyCapture_ForcedFailure
+            selfcheck_test.go:511: MOAI_PTY_CAPTURE=1 but tmux is not on PATH: exec: "tmux": executable file not found in $PATH
+        --- FAIL: TestPtyCapture_ForcedFailure (0.00s)
+        === RUN   TestPtyCapture_ForcedTimeout
+            selfcheck_test.go:517: MOAI_PTY_CAPTURE=1 but tmux is not on PATH: exec: "tmux": executable file not found in $PATH
+        --- FAIL: TestPtyCapture_ForcedTimeout (0.00s)
+        === RUN   TestPtyCapture_SkipWithoutGate
+            selfcheck_test.go:577: MOAI_PTY_CAPTURE=1 but tmux is not on PATH: exec: "tmux": executable file not found in $PATH
+        --- FAIL: TestPtyCapture_SkipWithoutGate (0.00s)
+        === RUN   TestPtyCapture_FailWithoutTmux
+            selfcheck_test.go:584: MOAI_PTY_CAPTURE=1 but tmux is not on PATH: exec: "tmux": executable file not found in $PATH
+        --- FAIL: TestPtyCapture_FailWithoutTmux (0.00s)
+        FAIL
+    selfcheck_test.go:585: ptycap export: /var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestPtyCapture_FailWithoutTmux2433118707/004/ac019b-no-tmux-child-output.txt
+--- PASS: TestPtyCapture_FailWithoutTmux (1.23s)
+PASS
+coverage: 82.2% of statements
+ok  	github.com/modu-ai/moai-adk/internal/cli/ptycaptest	11.555s	coverage: 82.2% of statements
+# exit=0

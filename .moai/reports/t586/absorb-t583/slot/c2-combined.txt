@@ -1,0 +1,858 @@
+=== RUN   TestWizardResultDefaultsPrePopulated
+=== PAUSE TestWizardResultDefaultsPrePopulated
+=== RUN   TestModelPolicyDescsAgreeWithProfileMatrix
+=== PAUSE TestModelPolicyDescsAgreeWithProfileMatrix
+=== RUN   TestProfileQuestions_IDSetMatchesProfileFieldSet
+--- PASS: TestProfileQuestions_IDSetMatchesProfileFieldSet (0.00s)
+=== RUN   TestProfileQuestions_EveryQuestionVisible
+--- PASS: TestProfileQuestions_EveryQuestionVisible (0.00s)
+=== RUN   TestProfileQuestions_GroupPartition
+--- PASS: TestProfileQuestions_GroupPartition (0.00s)
+=== RUN   TestProfileQuestions_TypesAndOptionsPassThrough
+--- PASS: TestProfileQuestions_TypesAndOptionsPassThrough (0.00s)
+=== RUN   TestProfileQuestions_OptionSlicesAreCopies
+--- PASS: TestProfileQuestions_OptionSlicesAreCopies (0.00s)
+=== RUN   TestProfileQuestions_InitialValuesBecomeDefaults
+--- PASS: TestProfileQuestions_InitialValuesBecomeDefaults (0.00s)
+=== RUN   TestProfileTranslations_FourLocaleKeyParity
+--- PASS: TestProfileTranslations_FourLocaleKeyParity (0.00s)
+=== RUN   TestProfileTranslations_NonEnglishLocalesAreTranslated
+--- PASS: TestProfileTranslations_NonEnglishLocalesAreTranslated (0.00s)
+=== RUN   TestProfileQuestions_EnglishTextSourcedFromTable
+--- PASS: TestProfileQuestions_EnglishTextSourcedFromTable (0.00s)
+=== RUN   TestLocalizeProfileQuestion
+--- PASS: TestLocalizeProfileQuestion (0.00s)
+=== RUN   TestInitWizardQuestionSetHasNoGitCredentialQuestions
+--- PASS: TestInitWizardQuestionSetHasNoGitCredentialQuestions (0.00s)
+=== RUN   TestWizardQuestionTranslationCompleteness
+--- PASS: TestWizardQuestionTranslationCompleteness (0.00s)
+=== RUN   TestWizardResult
+--- PASS: TestWizardResult (0.00s)
+=== RUN   TestWizardResultGitLabFields
+--- PASS: TestWizardResultGitLabFields (0.00s)
+=== RUN   TestReportFormatInWizard
+--- PASS: TestReportFormatInWizard (0.00s)
+=== RUN   TestNewMoAIWizardTheme_ReturnsNonNil
+--- PASS: TestNewMoAIWizardTheme_ReturnsNonNil (0.00s)
+=== RUN   TestNewMoAIWizardTheme_IgnoresHuhBackgroundArgument
+=== RUN   TestNewMoAIWizardTheme_IgnoresHuhBackgroundArgument/resolver_says_dark
+=== RUN   TestNewMoAIWizardTheme_IgnoresHuhBackgroundArgument/resolver_says_light
+--- PASS: TestNewMoAIWizardTheme_IgnoresHuhBackgroundArgument (0.00s)
+    --- PASS: TestNewMoAIWizardTheme_IgnoresHuhBackgroundArgument/resolver_says_dark (0.00s)
+    --- PASS: TestNewMoAIWizardTheme_IgnoresHuhBackgroundArgument/resolver_says_light (0.00s)
+=== RUN   TestCharacterize_WizardTheme_SelectedPrefix
+--- PASS: TestCharacterize_WizardTheme_SelectedPrefix (0.00s)
+=== RUN   TestCharacterize_WizardTheme_UnselectedPrefix
+--- PASS: TestCharacterize_WizardTheme_UnselectedPrefix (0.00s)
+=== RUN   TestCharacterize_WizardTheme_SelectSelectorPrefix
+--- PASS: TestCharacterize_WizardTheme_SelectSelectorPrefix (0.00s)
+=== RUN   TestCharacterize_WizardTheme_BlurredInheritsFromFocused
+--- PASS: TestCharacterize_WizardTheme_BlurredInheritsFromFocused (0.00s)
+=== RUN   TestCharacterize_WizardColors_PrimaryIsCoral
+--- PASS: TestCharacterize_WizardColors_PrimaryIsCoral (0.00s)
+=== RUN   TestCharacterize_WizardColors_NoTerracottaOrPurple
+--- PASS: TestCharacterize_WizardColors_NoTerracottaOrPurple (0.00s)
+=== RUN   TestCharacterize_WizardTheme_UsesDeepTealForTitle
+--- PASS: TestCharacterize_WizardTheme_UsesDeepTealForTitle (0.00s)
+=== RUN   TestCharacterize_WizardTokens_PrimaryIsCoral
+--- PASS: TestCharacterize_WizardTokens_PrimaryIsCoral (0.00s)
+=== CONT  TestWizardResultDefaultsPrePopulated
+--- PASS: TestWizardResultDefaultsPrePopulated (0.00s)
+=== CONT  TestModelPolicyDescsAgreeWithProfileMatrix
+--- PASS: TestModelPolicyDescsAgreeWithProfileMatrix (0.00s)
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/cli/wizard	0.479s
+=== RUN   TestCCCmd_WithProfile
+Launching Claude Code...
+Notice: profile "work" has no Claude Code configuration yet.
+  Claude Code will show the login / onboarding screen on this launch.
+  Account state is not inherited between profiles; sign in once and it
+  persists for this profile.
+--- PASS: TestCCCmd_WithProfile (0.07s)
+=== RUN   TestCharacterize_CC_ProfileFlag
+--- PASS: TestCharacterize_CC_ProfileFlag (0.00s)
+=== RUN   TestCharacterize_CG_ProfileFlag
+--- PASS: TestCharacterize_CG_ProfileFlag (0.00s)
+=== RUN   TestScanHomeCleanable_PreservesActiveProfile
+--- PASS: TestScanHomeCleanable_PreservesActiveProfile (0.00s)
+=== RUN   TestScanHomeCleanable_ProfileProjectsRetentionAndCap
+--- PASS: TestScanHomeCleanable_ProfileProjectsRetentionAndCap (0.00s)
+=== RUN   TestApplyWizardConfig_WithGitHubUser
+--- PASS: TestApplyWizardConfig_WithGitHubUser (0.00s)
+=== RUN   TestApplyWizardConfig_WithGitHubUserAndToken
+--- PASS: TestApplyWizardConfig_WithGitHubUserAndToken (0.00s)
+=== RUN   TestCheckHomeDisk_BreakdownProfilesAndClaudeReportOnlyLine
+--- PASS: TestCheckHomeDisk_BreakdownProfilesAndClaudeReportOnlyLine (0.00s)
+=== RUN   TestHomeDiskReportDetectsInactiveOversizeAndInsecureProfiles
+--- PASS: TestHomeDiskReportDetectsInactiveOversizeAndInsecureProfiles (0.00s)
+=== RUN   TestCheckStatusToTUI
+--- PASS: TestCheckStatusToTUI (0.00s)
+=== RUN   TestDoctorSandbox_ProfileFlag
+=== PAUSE TestDoctorSandbox_ProfileFlag
+=== RUN   TestGLMCmd_WithProfile
+moai-cli-test: userHomeDirFn redirected real home to sandbox /var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/moai-cli-home-135502256
+Launching Claude Code with GLM backend...
+Notice: profile "work" has no Claude Code configuration yet.
+  Claude Code will show the login / onboarding screen on this launch.
+  Account state is not inherited between profiles; sign in once and it
+  persists for this profile.
+--- PASS: TestGLMCmd_WithProfile (0.01s)
+=== RUN   TestParseChangedSurfaceCoverageRejectsMissingZeroAndTamperedProfiles
+--- PASS: TestParseChangedSurfaceCoverageRejectsMissingZeroAndTamperedProfiles (0.00s)
+=== RUN   TestHomeStateChangedSurfaceCoverageConsumesFreshProfile
+--- PASS: TestHomeStateChangedSurfaceCoverageConsumesFreshProfile (2.33s)
+=== RUN   TestResolvePrePushAction_NilProfile
+--- PASS: TestResolvePrePushAction_NilProfile (0.00s)
+=== RUN   TestMoAIHuhTheme_ReturnsNonNil
+--- PASS: TestMoAIHuhTheme_ReturnsNonNil (0.00s)
+=== RUN   TestMoAIHuhTheme_ResolvesDarkAxis
+=== RUN   TestMoAIHuhTheme_ResolvesDarkAxis/resolver_says_dark
+=== RUN   TestMoAIHuhTheme_ResolvesDarkAxis/resolver_says_light
+--- PASS: TestMoAIHuhTheme_ResolvesDarkAxis (0.00s)
+    --- PASS: TestMoAIHuhTheme_ResolvesDarkAxis/resolver_says_dark (0.00s)
+    --- PASS: TestMoAIHuhTheme_ResolvesDarkAxis/resolver_says_light (0.00s)
+=== RUN   TestMoAIHuhTheme_ClosesWizardFactoryDivergence
+=== RUN   TestMoAIHuhTheme_ClosesWizardFactoryDivergence/light
+=== RUN   TestMoAIHuhTheme_ClosesWizardFactoryDivergence/dark
+--- PASS: TestMoAIHuhTheme_ClosesWizardFactoryDivergence (0.00s)
+    --- PASS: TestMoAIHuhTheme_ClosesWizardFactoryDivergence/light (0.00s)
+    --- PASS: TestMoAIHuhTheme_ClosesWizardFactoryDivergence/dark (0.00s)
+=== RUN   TestResolveAgentWiringWithWizard_PrecedenceTable
+=== PAUSE TestResolveAgentWiringWithWizard_PrecedenceTable
+=== RUN   TestResolveAgentWiringWithWizard_NilResultIsClaude
+=== PAUSE TestResolveAgentWiringWithWizard_NilResultIsClaude
+=== RUN   TestRunInit_WizardCodexReachesBothConsumers
+2026/09/12 16:22:16 WARN config sections directory not found, using defaults path=/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t586/internal/cli/.moai/config/sections
+███╗   ███╗          █████╗ ██╗       █████╗ ██████╗ ██╗  ██╗
+████╗ ████║ ██████╗ ██╔══██╗██║      ██╔══██╗██╔══██╗██║ ██╔╝
+██╔████╔██║██║   ██║███████║██║█████╗███████║██║  ██║█████╔╝
+██║╚██╔╝██║██║   ██║██╔══██║██║╚════╝██╔══██║██║  ██║██╔═██╗
+██║ ╚═╝ ██║╚██████╔╝██║  ██║██║      ██║  ██║██████╔╝██║  ██╗
+╚═╝     ╚═╝ ╚═════╝ ╚═╝  ╚═╝╚═╝      ╚═╝  ╚═╝╚═════╝ ╚═╝  ╚═╝
+◆ MoAI-ADK Modu-AI's Agentic Development Kit w/ SuperAgent MoAI
+   v3.1.3   go 1.26.8   claude 
+Welcome to MoAI-ADK Project Initialization!
+
+This wizard will guide you through setting up your MoAI-ADK project.
+You can press Ctrl+C at any time to cancel.
+--- PASS: TestRunInit_WizardCodexReachesBothConsumers (0.57s)
+=== RUN   TestRunInit_WizardCodexDeclinesMCPProvisioning
+2026/09/12 16:22:17 WARN config sections directory not found, using defaults path=/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t586/internal/cli/.moai/config/sections
+███╗   ███╗          █████╗ ██╗       █████╗ ██████╗ ██╗  ██╗
+████╗ ████║ ██████╗ ██╔══██╗██║      ██╔══██╗██╔══██╗██║ ██╔╝
+██╔████╔██║██║   ██║███████║██║█████╗███████║██║  ██║█████╔╝
+██║╚██╔╝██║██║   ██║██╔══██║██║╚════╝██╔══██║██║  ██║██╔═██╗
+██║ ╚═╝ ██║╚██████╔╝██║  ██║██║      ██║  ██║██████╔╝██║  ██╗
+╚═╝     ╚═╝ ╚═════╝ ╚═╝  ╚═╝╚═╝      ╚═╝  ╚═╝╚═════╝ ╚═╝  ╚═╝
+◆ MoAI-ADK Modu-AI's Agentic Development Kit w/ SuperAgent MoAI
+   v3.1.3   go 1.26.8   claude 
+Welcome to MoAI-ADK Project Initialization!
+
+This wizard will guide you through setting up your MoAI-ADK project.
+You can press Ctrl+C at any time to cancel.
+--- PASS: TestRunInit_WizardCodexDeclinesMCPProvisioning (0.34s)
+=== RUN   TestRunInit_FlagClaudeBeatsWizardCodex
+2026/09/12 16:22:17 WARN config sections directory not found, using defaults path=/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t586/internal/cli/.moai/config/sections
+███╗   ███╗          █████╗ ██╗       █████╗ ██████╗ ██╗  ██╗
+████╗ ████║ ██████╗ ██╔══██╗██║      ██╔══██╗██╔══██╗██║ ██╔╝
+██╔████╔██║██║   ██║███████║██║█████╗███████║██║  ██║█████╔╝
+██║╚██╔╝██║██║   ██║██╔══██║██║╚════╝██╔══██║██║  ██║██╔═██╗
+██║ ╚═╝ ██║╚██████╔╝██║  ██║██║      ██║  ██║██████╔╝██║  ██╗
+╚═╝     ╚═╝ ╚═════╝ ╚═╝  ╚═╝╚═╝      ╚═╝  ╚═╝╚═════╝ ╚═╝  ╚═╝
+◆ MoAI-ADK Modu-AI's Agentic Development Kit w/ SuperAgent MoAI
+   v3.1.3   go 1.26.8   claude 
+Welcome to MoAI-ADK Project Initialization!
+
+This wizard will guide you through setting up your MoAI-ADK project.
+You can press Ctrl+C at any time to cancel.
+--- PASS: TestRunInit_FlagClaudeBeatsWizardCodex (0.38s)
+=== RUN   TestRunInit_FlagBothBeatsWizardCodexAndForcesProvisioning
+2026/09/12 16:22:18 WARN config sections directory not found, using defaults path=/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t586/internal/cli/.moai/config/sections
+███╗   ███╗          █████╗ ██╗       █████╗ ██████╗ ██╗  ██╗
+████╗ ████║ ██████╗ ██╔══██╗██║      ██╔══██╗██╔══██╗██║ ██╔╝
+██╔████╔██║██║   ██║███████║██║█████╗███████║██║  ██║█████╔╝
+██║╚██╔╝██║██║   ██║██╔══██║██║╚════╝██╔══██║██║  ██║██╔═██╗
+██║ ╚═╝ ██║╚██████╔╝██║  ██║██║      ██║  ██║██████╔╝██║  ██╗
+╚═╝     ╚═╝ ╚═════╝ ╚═╝  ╚═╝╚═╝      ╚═╝  ╚═╝╚═════╝ ╚═╝  ╚═╝
+◆ MoAI-ADK Modu-AI's Agentic Development Kit w/ SuperAgent MoAI
+   v3.1.3   go 1.26.8   claude 
+Welcome to MoAI-ADK Project Initialization!
+
+This wizard will guide you through setting up your MoAI-ADK project.
+You can press Ctrl+C at any time to cancel.
+--- PASS: TestRunInit_FlagBothBeatsWizardCodexAndForcesProvisioning (0.34s)
+=== RUN   TestRunInit_WizardBothForcesProvisioningOverDecline
+2026/09/12 16:22:18 WARN config sections directory not found, using defaults path=/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t586/internal/cli/.moai/config/sections
+███╗   ███╗          █████╗ ██╗       █████╗ ██████╗ ██╗  ██╗
+████╗ ████║ ██████╗ ██╔══██╗██║      ██╔══██╗██╔══██╗██║ ██╔╝
+██╔████╔██║██║   ██║███████║██║█████╗███████║██║  ██║█████╔╝
+██║╚██╔╝██║██║   ██║██╔══██║██║╚════╝██╔══██║██║  ██║██╔═██╗
+██║ ╚═╝ ██║╚██████╔╝██║  ██║██║      ██║  ██║██████╔╝██║  ██╗
+╚═╝     ╚═╝ ╚═════╝ ╚═╝  ╚═╝╚═╝      ╚═╝  ╚═╝╚═════╝ ╚═╝  ╚═╝
+◆ MoAI-ADK Modu-AI's Agentic Development Kit w/ SuperAgent MoAI
+   v3.1.3   go 1.26.8   claude 
+Welcome to MoAI-ADK Project Initialization!
+
+This wizard will guide you through setting up your MoAI-ADK project.
+You can press Ctrl+C at any time to cancel.
+--- PASS: TestRunInit_WizardBothForcesProvisioningOverDecline (0.34s)
+=== RUN   TestRunWizardFn_ZeroInvocationsNonInteractive
+=== RUN   TestRunWizardFn_ZeroInvocationsNonInteractive/--non-interactive_with_a_TTY_present
+2026/09/12 16:22:18 WARN config sections directory not found, using defaults path=/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t586/internal/cli/.moai/config/sections
+Deploying core templates only (slim mode). Use --all or MOAI_DISTRIBUTE_ALL=1 for full deploy. Note: builder-harness agent is omitted (see SPEC-V3R4-CATALOG-005 for bootstrap).
+· Initializing MoAI project...
+  ● Detection: Analyzing project structure...
+  ✓ Detected project structure
+  ● Validation: Using mode: tdd...
+  ✓ Mode validated
+  ● Validation: Validating project structure...
+  ✓ Validation passed
+  ● Initialization: Creating project structure...
+  ✓ Created 2 files
+
+╭──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╮
+│                                                                                                                                                              │
+│  ✓ MoAI project initialized                                                                                                                                  │
+│   13 dirs    2 files                                                                                                                                         │
+│                                                                                                                                                              │
+│  Next steps:                                                                                                                                                 │
+│    1. cd /var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestRunWizardFn_ZeroInvocationsNonInteractive--non-interactive_2642691034/002/noninteractive-proj  │
+│    2. moai cc                                                                                                                                                │
+│    3. /moai plan "describe your first feature"                                                                                                               │
+│                                                                                                                                                              │
+╰──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
+Tip: this checkout is shared across concurrent sessions; for branch-changing work (switch/reset/rebase), use a worktree for isolation — `moai cc -w` / `moai cg -w`, or `claude --worktree`. See .claude/rules/moai/workflow/main-checkout-branch-guard.md.
+=== RUN   TestRunWizardFn_ZeroInvocationsNonInteractive/absent_TTY
+2026/09/12 16:22:19 WARN config sections directory not found, using defaults path=/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t586/internal/cli/.moai/config/sections
+Deploying core templates only (slim mode). Use --all or MOAI_DISTRIBUTE_ALL=1 for full deploy. Note: builder-harness agent is omitted (see SPEC-V3R4-CATALOG-005 for bootstrap).
+· Initializing MoAI project...
+  ● Detection: Analyzing project structure...
+  ✓ Detected project structure
+  ● Validation: Using mode: tdd...
+  ✓ Mode validated
+  ● Validation: Validating project structure...
+  ✓ Validation passed
+  ● Initialization: Creating project structure...
+  ✓ Created 2 files
+
+╭──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╮
+│                                                                                                                                                      │
+│  ✓ MoAI project initialized                                                                                                                          │
+│   13 dirs    2 files                                                                                                                                 │
+│                                                                                                                                                      │
+│  Next steps:                                                                                                                                         │
+│    1. cd /var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestRunWizardFn_ZeroInvocationsNonInteractiveabsent_TTY1412551421/002/noninteractive-proj  │
+│    2. moai cc                                                                                                                                        │
+│    3. /moai plan "describe your first feature"                                                                                                       │
+│                                                                                                                                                      │
+╰──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
+Tip: this checkout is shared across concurrent sessions; for branch-changing work (switch/reset/rebase), use a worktree for isolation — `moai cc -w` / `moai cg -w`, or `claude --worktree`. See .claude/rules/moai/workflow/main-checkout-branch-guard.md.
+--- PASS: TestRunWizardFn_ZeroInvocationsNonInteractive (0.70s)
+    --- PASS: TestRunWizardFn_ZeroInvocationsNonInteractive/--non-interactive_with_a_TTY_present (0.34s)
+    --- PASS: TestRunWizardFn_ZeroInvocationsNonInteractive/absent_TTY (0.36s)
+=== RUN   TestRunInit_WizardAutonomyTierAppliesBundle
+2026/09/12 16:22:19 WARN config sections directory not found, using defaults path=/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t586/internal/cli/.moai/config/sections
+███╗   ███╗          █████╗ ██╗       █████╗ ██████╗ ██╗  ██╗
+████╗ ████║ ██████╗ ██╔══██╗██║      ██╔══██╗██╔══██╗██║ ██╔╝
+██╔████╔██║██║   ██║███████║██║█████╗███████║██║  ██║█████╔╝
+██║╚██╔╝██║██║   ██║██╔══██║██║╚════╝██╔══██║██║  ██║██╔═██╗
+██║ ╚═╝ ██║╚██████╔╝██║  ██║██║      ██║  ██║██████╔╝██║  ██╗
+╚═╝     ╚═╝ ╚═════╝ ╚═╝  ╚═╝╚═╝      ╚═╝  ╚═╝╚═════╝ ╚═╝  ╚═╝
+◆ MoAI-ADK Modu-AI's Agentic Development Kit w/ SuperAgent MoAI
+   v3.1.3   go 1.26.8   claude 
+Welcome to MoAI-ADK Project Initialization!
+
+This wizard will guide you through setting up your MoAI-ADK project.
+You can press Ctrl+C at any time to cancel.
+--- PASS: TestRunInit_WizardAutonomyTierAppliesBundle (0.37s)
+=== RUN   TestApplyAutonomyTierFromWizard_FlagWinsOverWizard
+--- PASS: TestApplyAutonomyTierFromWizard_FlagWinsOverWizard (0.00s)
+=== RUN   TestApplyAutonomyTierFromWizard_WizardFillsWhenFlagAbsent
+--- PASS: TestApplyAutonomyTierFromWizard_WizardFillsWhenFlagAbsent (0.00s)
+=== RUN   TestApplyAutonomyTierFromWizard_FullyAutonomousDowngradedWithoutProof
+--- PASS: TestApplyAutonomyTierFromWizard_FullyAutonomousDowngradedWithoutProof (0.00s)
+=== RUN   TestApplyAutonomyTierFromWizard_KillSwitchDowngradesEvenWithProof
+sandbox proof kind "docker" accepted as attestation (host GOOS=darwin); boundary not independently verified
+--- PASS: TestApplyAutonomyTierFromWizard_KillSwitchDowngradesEvenWithProof (0.00s)
+=== RUN   TestApplyAutonomyTierFromWizard_FullyAutonomousPassesWithProof
+sandbox proof kind "docker" accepted as attestation (host GOOS=darwin); boundary not independently verified
+--- PASS: TestApplyAutonomyTierFromWizard_FullyAutonomousPassesWithProof (0.00s)
+=== RUN   TestApplyAutonomyTierFromWizard_EmptyWizardLeavesOptsEmpty
+--- PASS: TestApplyAutonomyTierFromWizard_EmptyWizardLeavesOptsEmpty (0.00s)
+=== RUN   TestRunInitWizard_ProjectNotInitialized
+--- PASS: TestRunInitWizard_ProjectNotInitialized (0.00s)
+=== RUN   TestFlagBeatsWizard_Page3Settings
+=== RUN   TestFlagBeatsWizard_Page3Settings/enable-lsp:_explicit_--enable-lsp=false,_wizard_true_->_flag_wins_(false)
+=== RUN   TestFlagBeatsWizard_Page3Settings/enable-lsp:_explicit_--enable-lsp=true,_wizard_false_->_flag_wins_(true)
+=== RUN   TestFlagBeatsWizard_Page3Settings/enable-lsp:_flag_absent,_wizard_true_->_wizard_applies
+=== RUN   TestFlagBeatsWizard_Page3Settings/enable-lsp:_flag_absent,_wizard_false_->_wizard_applies
+=== RUN   TestFlagBeatsWizard_Page3Settings/enforce-quality:_explicit_--enforce-quality=false,_wizard_true_->_flag_wins_(false)
+=== RUN   TestFlagBeatsWizard_Page3Settings/enforce-quality:_explicit_--enforce-quality=true,_wizard_false_->_flag_wins_(true)
+=== RUN   TestFlagBeatsWizard_Page3Settings/enforce-quality:_flag_absent,_wizard_false_->_wizard_applies
+=== RUN   TestFlagBeatsWizard_Page3Settings/enforce-quality:_flag_absent,_wizard_true_->_wizard_applies
+=== RUN   TestFlagBeatsWizard_Page3Settings/enable-design:_explicit_--enable-design=false,_wizard_true_->_flag_wins_(false)
+=== RUN   TestFlagBeatsWizard_Page3Settings/enable-design:_flag_absent,_wizard_false_->_wizard_applies
+=== RUN   TestFlagBeatsWizard_Page3Settings/enable-design:_flag_absent,_wizard_true_->_wizard_applies
+=== RUN   TestFlagBeatsWizard_Page3Settings/all_three_flags_supplied,_wizard_disagrees_on_every_one_->_flags_win
+=== RUN   TestFlagBeatsWizard_Page3Settings/no_flags_supplied,_wizard_answers_every_one_->_wizard_wins_throughout
+--- PASS: TestFlagBeatsWizard_Page3Settings (0.00s)
+    --- PASS: TestFlagBeatsWizard_Page3Settings/enable-lsp:_explicit_--enable-lsp=false,_wizard_true_->_flag_wins_(false) (0.00s)
+    --- PASS: TestFlagBeatsWizard_Page3Settings/enable-lsp:_explicit_--enable-lsp=true,_wizard_false_->_flag_wins_(true) (0.00s)
+    --- PASS: TestFlagBeatsWizard_Page3Settings/enable-lsp:_flag_absent,_wizard_true_->_wizard_applies (0.00s)
+    --- PASS: TestFlagBeatsWizard_Page3Settings/enable-lsp:_flag_absent,_wizard_false_->_wizard_applies (0.00s)
+    --- PASS: TestFlagBeatsWizard_Page3Settings/enforce-quality:_explicit_--enforce-quality=false,_wizard_true_->_flag_wins_(false) (0.00s)
+    --- PASS: TestFlagBeatsWizard_Page3Settings/enforce-quality:_explicit_--enforce-quality=true,_wizard_false_->_flag_wins_(true) (0.00s)
+    --- PASS: TestFlagBeatsWizard_Page3Settings/enforce-quality:_flag_absent,_wizard_false_->_wizard_applies (0.00s)
+    --- PASS: TestFlagBeatsWizard_Page3Settings/enforce-quality:_flag_absent,_wizard_true_->_wizard_applies (0.00s)
+    --- PASS: TestFlagBeatsWizard_Page3Settings/enable-design:_explicit_--enable-design=false,_wizard_true_->_flag_wins_(false) (0.00s)
+    --- PASS: TestFlagBeatsWizard_Page3Settings/enable-design:_flag_absent,_wizard_false_->_wizard_applies (0.00s)
+    --- PASS: TestFlagBeatsWizard_Page3Settings/enable-design:_flag_absent,_wizard_true_->_wizard_applies (0.00s)
+    --- PASS: TestFlagBeatsWizard_Page3Settings/all_three_flags_supplied,_wizard_disagrees_on_every_one_->_flags_win (0.00s)
+    --- PASS: TestFlagBeatsWizard_Page3Settings/no_flags_supplied,_wizard_answers_every_one_->_wizard_wins_throughout (0.00s)
+=== RUN   TestFlagBeatsWizard_MatchesProfilePrecedence
+--- PASS: TestFlagBeatsWizard_MatchesProfilePrecedence (0.00s)
+=== RUN   TestEnableLSPDefault_MatchesWizardDefault
+=== RUN   TestEnableLSPDefault_MatchesWizardDefault/flag_absent_->_LSP_enabled,_matching_the_wizard_default
+=== RUN   TestEnableLSPDefault_MatchesWizardDefault/explicit_--enable-lsp=false_->_LSP_disabled,_flag_wins
+--- PASS: TestEnableLSPDefault_MatchesWizardDefault (0.00s)
+    --- PASS: TestEnableLSPDefault_MatchesWizardDefault/flag_absent_->_LSP_enabled,_matching_the_wizard_default (0.00s)
+    --- PASS: TestEnableLSPDefault_MatchesWizardDefault/explicit_--enable-lsp=false_->_LSP_disabled,_flag_wins (0.00s)
+=== RUN   TestRunInit_QuietWizardUnsetResolvesToDefaults
+2026/09/12 16:22:19 WARN config sections directory not found, using defaults path=/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t586/internal/cli/.moai/config/sections
+███╗   ███╗          █████╗ ██╗       █████╗ ██████╗ ██╗  ██╗
+████╗ ████║ ██████╗ ██╔══██╗██║      ██╔══██╗██╔══██╗██║ ██╔╝
+██╔████╔██║██║   ██║███████║██║█████╗███████║██║  ██║█████╔╝
+██║╚██╔╝██║██║   ██║██╔══██║██║╚════╝██╔══██║██║  ██║██╔═██╗
+██║ ╚═╝ ██║╚██████╔╝██║  ██║██║      ██║  ██║██████╔╝██║  ██╗
+╚═╝     ╚═╝ ╚═════╝ ╚═╝  ╚═╝╚═╝      ╚═╝  ╚═╝╚═════╝ ╚═╝  ╚═╝
+◆ MoAI-ADK Modu-AI's Agentic Development Kit w/ SuperAgent MoAI
+   v3.1.3   go 1.26.8   claude 
+Welcome to MoAI-ADK Project Initialization!
+
+This wizard will guide you through setting up your MoAI-ADK project.
+You can press Ctrl+C at any time to cancel.
+--- PASS: TestRunInit_QuietWizardUnsetResolvesToDefaults (0.47s)
+=== RUN   TestRunInit_QuietWizardObserverDetectsNonDefault
+2026/09/12 16:22:20 WARN config sections directory not found, using defaults path=/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t586/internal/cli/.moai/config/sections
+███╗   ███╗          █████╗ ██╗       █████╗ ██████╗ ██╗  ██╗
+████╗ ████║ ██████╗ ██╔══██╗██║      ██╔══██╗██╔══██╗██║ ██╔╝
+██╔████╔██║██║   ██║███████║██║█████╗███████║██║  ██║█████╔╝
+██║╚██╔╝██║██║   ██║██╔══██║██║╚════╝██╔══██║██║  ██║██╔═██╗
+██║ ╚═╝ ██║╚██████╔╝██║  ██║██║      ██║  ██║██████╔╝██║  ██╗
+╚═╝     ╚═╝ ╚═════╝ ╚═╝  ╚═╝╚═╝      ╚═╝  ╚═╝╚═════╝ ╚═╝  ╚═╝
+◆ MoAI-ADK Modu-AI's Agentic Development Kit w/ SuperAgent MoAI
+   v3.1.3   go 1.26.8   claude 
+Welcome to MoAI-ADK Project Initialization!
+
+This wizard will guide you through setting up your MoAI-ADK project.
+You can press Ctrl+C at any time to cancel.
+--- PASS: TestRunInit_QuietWizardObserverDetectsNonDefault (0.50s)
+=== RUN   TestRunInit_QuietWizardSectionFilesMatchNonInteractive
+=== RUN   TestRunInit_QuietWizardSectionFilesMatchNonInteractive/interactive
+2026/09/12 16:22:20 WARN config sections directory not found, using defaults path=/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t586/internal/cli/.moai/config/sections
+███╗   ███╗          █████╗ ██╗       █████╗ ██████╗ ██╗  ██╗
+████╗ ████║ ██████╗ ██╔══██╗██║      ██╔══██╗██╔══██╗██║ ██╔╝
+██╔████╔██║██║   ██║███████║██║█████╗███████║██║  ██║█████╔╝
+██║╚██╔╝██║██║   ██║██╔══██║██║╚════╝██╔══██║██║  ██║██╔═██╗
+██║ ╚═╝ ██║╚██████╔╝██║  ██║██║      ██║  ██║██████╔╝██║  ██╗
+╚═╝     ╚═╝ ╚═════╝ ╚═╝  ╚═╝╚═╝      ╚═╝  ╚═╝╚═════╝ ╚═╝  ╚═╝
+◆ MoAI-ADK Modu-AI's Agentic Development Kit w/ SuperAgent MoAI
+   v3.1.3   go 1.26.8   claude 
+Welcome to MoAI-ADK Project Initialization!
+
+This wizard will guide you through setting up your MoAI-ADK project.
+You can press Ctrl+C at any time to cancel.
+=== RUN   TestRunInit_QuietWizardSectionFilesMatchNonInteractive/non_interactive
+2026/09/12 16:22:21 WARN config sections directory not found, using defaults path=/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t586/internal/cli/.moai/config/sections
+--- PASS: TestRunInit_QuietWizardSectionFilesMatchNonInteractive (1.03s)
+    --- PASS: TestRunInit_QuietWizardSectionFilesMatchNonInteractive/interactive (0.53s)
+    --- PASS: TestRunInit_QuietWizardSectionFilesMatchNonInteractive/non_interactive (0.39s)
+=== RUN   TestRunInit_QuietWizardProvisionsMCPByDefault
+=== RUN   TestRunInit_QuietWizardProvisionsMCPByDefault/claude
+2026/09/12 16:22:21 WARN config sections directory not found, using defaults path=/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t586/internal/cli/.moai/config/sections
+███╗   ███╗          █████╗ ██╗       █████╗ ██████╗ ██╗  ██╗
+████╗ ████║ ██████╗ ██╔══██╗██║      ██╔══██╗██╔══██╗██║ ██╔╝
+██╔████╔██║██║   ██║███████║██║█████╗███████║██║  ██║█████╔╝
+██║╚██╔╝██║██║   ██║██╔══██║██║╚════╝██╔══██║██║  ██║██╔═██╗
+██║ ╚═╝ ██║╚██████╔╝██║  ██║██║      ██║  ██║██████╔╝██║  ██╗
+╚═╝     ╚═╝ ╚═════╝ ╚═╝  ╚═╝╚═╝      ╚═╝  ╚═╝╚═════╝ ╚═╝  ╚═╝
+◆ MoAI-ADK Modu-AI's Agentic Development Kit w/ SuperAgent MoAI
+   v3.1.3   go 1.26.8   claude 
+Welcome to MoAI-ADK Project Initialization!
+
+This wizard will guide you through setting up your MoAI-ADK project.
+You can press Ctrl+C at any time to cancel.
+=== RUN   TestRunInit_QuietWizardProvisionsMCPByDefault/codex
+2026/09/12 16:22:22 WARN config sections directory not found, using defaults path=/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t586/internal/cli/.moai/config/sections
+███╗   ███╗          █████╗ ██╗       █████╗ ██████╗ ██╗  ██╗
+████╗ ████║ ██████╗ ██╔══██╗██║      ██╔══██╗██╔══██╗██║ ██╔╝
+██╔████╔██║██║   ██║███████║██║█████╗███████║██║  ██║█████╔╝
+██║╚██╔╝██║██║   ██║██╔══██║██║╚════╝██╔══██║██║  ██║██╔═██╗
+██║ ╚═╝ ██║╚██████╔╝██║  ██║██║      ██║  ██║██████╔╝██║  ██╗
+╚═╝     ╚═╝ ╚═════╝ ╚═╝  ╚═╝╚═╝      ╚═╝  ╚═╝╚═════╝ ╚═╝  ╚═╝
+◆ MoAI-ADK Modu-AI's Agentic Development Kit w/ SuperAgent MoAI
+   v3.1.3   go 1.26.8   claude 
+Welcome to MoAI-ADK Project Initialization!
+
+This wizard will guide you through setting up your MoAI-ADK project.
+You can press Ctrl+C at any time to cancel.
+=== RUN   TestRunInit_QuietWizardProvisionsMCPByDefault/both
+2026/09/12 16:22:22 WARN config sections directory not found, using defaults path=/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t586/internal/cli/.moai/config/sections
+███╗   ███╗          █████╗ ██╗       █████╗ ██████╗ ██╗  ██╗
+████╗ ████║ ██████╗ ██╔══██╗██║      ██╔══██╗██╔══██╗██║ ██╔╝
+██╔████╔██║██║   ██║███████║██║█████╗███████║██║  ██║█████╔╝
+██║╚██╔╝██║██║   ██║██╔══██║██║╚════╝██╔══██║██║  ██║██╔═██╗
+██║ ╚═╝ ██║╚██████╔╝██║  ██║██║      ██║  ██║██████╔╝██║  ██╗
+╚═╝     ╚═╝ ╚═════╝ ╚═╝  ╚═╝╚═╝      ╚═╝  ╚═╝╚═════╝ ╚═╝  ╚═╝
+◆ MoAI-ADK Modu-AI's Agentic Development Kit w/ SuperAgent MoAI
+   v3.1.3   go 1.26.8   claude 
+Welcome to MoAI-ADK Project Initialization!
+
+This wizard will guide you through setting up your MoAI-ADK project.
+You can press Ctrl+C at any time to cancel.
+--- PASS: TestRunInit_QuietWizardProvisionsMCPByDefault (1.34s)
+    --- PASS: TestRunInit_QuietWizardProvisionsMCPByDefault/claude (0.43s)
+    --- PASS: TestRunInit_QuietWizardProvisionsMCPByDefault/codex (0.42s)
+    --- PASS: TestRunInit_QuietWizardProvisionsMCPByDefault/both (0.48s)
+=== RUN   TestRunInit_QuietWizardFlagsStillPersist
+2026/09/12 16:22:23 WARN config sections directory not found, using defaults path=/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t586/internal/cli/.moai/config/sections
+███╗   ███╗          █████╗ ██╗       █████╗ ██████╗ ██╗  ██╗
+████╗ ████║ ██████╗ ██╔══██╗██║      ██╔══██╗██╔══██╗██║ ██╔╝
+██╔████╔██║██║   ██║███████║██║█████╗███████║██║  ██║█████╔╝
+██║╚██╔╝██║██║   ██║██╔══██║██║╚════╝██╔══██║██║  ██║██╔═██╗
+██║ ╚═╝ ██║╚██████╔╝██║  ██║██║      ██║  ██║██████╔╝██║  ██╗
+╚═╝     ╚═╝ ╚═════╝ ╚═╝  ╚═╝╚═╝      ╚═╝  ╚═╝╚═════╝ ╚═╝  ╚═╝
+◆ MoAI-ADK Modu-AI's Agentic Development Kit w/ SuperAgent MoAI
+   v3.1.3   go 1.26.8   claude 
+Welcome to MoAI-ADK Project Initialization!
+
+This wizard will guide you through setting up your MoAI-ADK project.
+You can press Ctrl+C at any time to cancel.
+--- PASS: TestRunInit_QuietWizardFlagsStillPersist (0.42s)
+=== RUN   TestValidateInitFlags_ValidProfile
+=== RUN   TestValidateInitFlags_ValidProfile/max
+=== RUN   TestValidateInitFlags_ValidProfile/medium
+=== RUN   TestValidateInitFlags_ValidProfile/low
+--- PASS: TestValidateInitFlags_ValidProfile (0.00s)
+    --- PASS: TestValidateInitFlags_ValidProfile/max (0.00s)
+    --- PASS: TestValidateInitFlags_ValidProfile/medium (0.00s)
+    --- PASS: TestValidateInitFlags_ValidProfile/low (0.00s)
+=== RUN   TestValidateInitFlags_InvalidProfile
+=== RUN   TestValidateInitFlags_InvalidProfile/bogus
+=== RUN   TestValidateInitFlags_InvalidProfile/subscription
+=== RUN   TestValidateInitFlags_InvalidProfile/xhigh
+--- PASS: TestValidateInitFlags_InvalidProfile (0.00s)
+    --- PASS: TestValidateInitFlags_InvalidProfile/bogus (0.00s)
+    --- PASS: TestValidateInitFlags_InvalidProfile/subscription (0.00s)
+    --- PASS: TestValidateInitFlags_InvalidProfile/xhigh (0.00s)
+=== RUN   TestInitCmd_ProfilePersistence
+2026/09/12 16:22:23 WARN config sections directory not found, using defaults path=/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t586/internal/cli/.moai/config/sections
+--- PASS: TestInitCmd_ProfilePersistence (0.34s)
+=== RUN   TestInitNoNetworkBeforeWizard
+2026/09/12 16:22:24 WARN config sections directory not found, using defaults path=/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t586/internal/cli/.moai/config/sections
+███╗   ███╗          █████╗ ██╗       █████╗ ██████╗ ██╗  ██╗
+████╗ ████║ ██████╗ ██╔══██╗██║      ██╔══██╗██╔══██╗██║ ██╔╝
+██╔████╔██║██║   ██║███████║██║█████╗███████║██║  ██║█████╔╝
+██║╚██╔╝██║██║   ██║██╔══██║██║╚════╝██╔══██║██║  ██║██╔═██╗
+██║ ╚═╝ ██║╚██████╔╝██║  ██║██║      ██║  ██║██████╔╝██║  ██╗
+╚═╝     ╚═╝ ╚═════╝ ╚═╝  ╚═╝╚═╝      ╚═╝  ╚═╝╚═════╝ ╚═╝  ╚═╝
+◆ MoAI-ADK Modu-AI's Agentic Development Kit w/ SuperAgent MoAI
+   v3.1.3   go 1.26.8   claude 
+Welcome to MoAI-ADK Project Initialization!
+
+This wizard will guide you through setting up your MoAI-ADK project.
+You can press Ctrl+C at any time to cancel.
+--- PASS: TestInitNoNetworkBeforeWizard (0.36s)
+=== RUN   TestInitWizardIdentityPersisted
+2026/09/12 16:22:24 WARN config sections directory not found, using defaults path=/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t586/internal/cli/.moai/config/sections
+███╗   ███╗          █████╗ ██╗       █████╗ ██████╗ ██╗  ██╗
+████╗ ████║ ██████╗ ██╔══██╗██║      ██╔══██╗██╔══██╗██║ ██╔╝
+██╔████╔██║██║   ██║███████║██║█████╗███████║██║  ██║█████╔╝
+██║╚██╔╝██║██║   ██║██╔══██║██║╚════╝██╔══██║██║  ██║██╔═██╗
+██║ ╚═╝ ██║╚██████╔╝██║  ██║██║      ██║  ██║██████╔╝██║  ██╗
+╚═╝     ╚═╝ ╚═════╝ ╚═╝  ╚═╝╚═╝      ╚═╝  ╚═╝╚═════╝ ╚═╝  ╚═╝
+◆ MoAI-ADK Modu-AI's Agentic Development Kit w/ SuperAgent MoAI
+   v3.1.3   go 1.26.8   claude 
+Welcome to MoAI-ADK Project Initialization!
+
+This wizard will guide you through setting up your MoAI-ADK project.
+You can press Ctrl+C at any time to cancel.
+--- PASS: TestInitWizardIdentityPersisted (0.49s)
+=== RUN   TestRunInit_WorktreeAutoCreateFlagBeatsWizard
+2026/09/12 16:22:24 WARN config sections directory not found, using defaults path=/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t586/internal/cli/.moai/config/sections
+███╗   ███╗          █████╗ ██╗       █████╗ ██████╗ ██╗  ██╗
+████╗ ████║ ██████╗ ██╔══██╗██║      ██╔══██╗██╔══██╗██║ ██╔╝
+██╔████╔██║██║   ██║███████║██║█████╗███████║██║  ██║█████╔╝
+██║╚██╔╝██║██║   ██║██╔══██║██║╚════╝██╔══██║██║  ██║██╔═██╗
+██║ ╚═╝ ██║╚██████╔╝██║  ██║██║      ██║  ██║██████╔╝██║  ██╗
+╚═╝     ╚═╝ ╚═════╝ ╚═╝  ╚═╝╚═╝      ╚═╝  ╚═╝╚═════╝ ╚═╝  ╚═╝
+◆ MoAI-ADK Modu-AI's Agentic Development Kit w/ SuperAgent MoAI
+   v3.1.3   go 1.26.8   claude 
+Welcome to MoAI-ADK Project Initialization!
+
+This wizard will guide you through setting up your MoAI-ADK project.
+You can press Ctrl+C at any time to cancel.
+2026/09/12 16:22:25 WARN config sections directory not found, using defaults path=/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t586/internal/cli/.moai/config/sections
+███╗   ███╗          █████╗ ██╗       █████╗ ██████╗ ██╗  ██╗
+████╗ ████║ ██████╗ ██╔══██╗██║      ██╔══██╗██╔══██╗██║ ██╔╝
+██╔████╔██║██║   ██║███████║██║█████╗███████║██║  ██║█████╔╝
+██║╚██╔╝██║██║   ██║██╔══██║██║╚════╝██╔══██║██║  ██║██╔═██╗
+██║ ╚═╝ ██║╚██████╔╝██║  ██║██║      ██║  ██║██████╔╝██║  ██╗
+╚═╝     ╚═╝ ╚═════╝ ╚═╝  ╚═╝╚═╝      ╚═╝  ╚═╝╚═════╝ ╚═╝  ╚═╝
+◆ MoAI-ADK Modu-AI's Agentic Development Kit w/ SuperAgent MoAI
+   v3.1.3   go 1.26.8   claude 
+Welcome to MoAI-ADK Project Initialization!
+
+This wizard will guide you through setting up your MoAI-ADK project.
+You can press Ctrl+C at any time to cancel.
+--- PASS: TestRunInit_WorktreeAutoCreateFlagBeatsWizard (0.62s)
+=== RUN   TestApplyWizardReconfigureSteps_RunsWorkflowStep
+--- PASS: TestApplyWizardReconfigureSteps_RunsWorkflowStep (0.00s)
+=== RUN   TestFreshProfileNotice_WriterContent
+--- PASS: TestFreshProfileNotice_WriterContent (0.00s)
+=== RUN   TestUnifiedLaunch_FreshProfileNoticeEmittedExactlyOnce
+=== RUN   TestUnifiedLaunch_FreshProfileNoticeEmittedExactlyOnce/A_explicit_p_fresh
+2026/09/12 16:22:25 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestUnifiedLaunch_FreshProfileNoticeEmittedExactlyOnceA_explici4210182303/002/.moai/config/sections
+Launching Claude Code...
+=== RUN   TestUnifiedLaunch_FreshProfileNoticeEmittedExactlyOnce/B_bare_launch_resolves_to_fresh
+2026/09/12 16:22:25 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestUnifiedLaunch_FreshProfileNoticeEmittedExactlyOnceB_bare_la2535794697/002/.moai/config/sections
+Launching Claude Code...
+=== RUN   TestUnifiedLaunch_FreshProfileNoticeEmittedExactlyOnce/C1_explicit_p_populated
+2026/09/12 16:22:25 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestUnifiedLaunch_FreshProfileNoticeEmittedExactlyOnceC1_explic2768941780/002/.moai/config/sections
+Launching Claude Code...
+=== RUN   TestUnifiedLaunch_FreshProfileNoticeEmittedExactlyOnce/C2_bare_launch_resolves_to_populated
+2026/09/12 16:22:25 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestUnifiedLaunch_FreshProfileNoticeEmittedExactlyOnceC2_bare_l2044061517/002/.moai/config/sections
+Launching Claude Code...
+--- PASS: TestUnifiedLaunch_FreshProfileNoticeEmittedExactlyOnce (0.01s)
+    --- PASS: TestUnifiedLaunch_FreshProfileNoticeEmittedExactlyOnce/A_explicit_p_fresh (0.00s)
+    --- PASS: TestUnifiedLaunch_FreshProfileNoticeEmittedExactlyOnce/B_bare_launch_resolves_to_fresh (0.00s)
+    --- PASS: TestUnifiedLaunch_FreshProfileNoticeEmittedExactlyOnce/C1_explicit_p_populated (0.00s)
+    --- PASS: TestUnifiedLaunch_FreshProfileNoticeEmittedExactlyOnce/C2_bare_launch_resolves_to_populated (0.00s)
+=== RUN   TestUnifiedLaunch_FirstTimeNewProfileIsRecorded
+2026/09/12 16:22:25 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestUnifiedLaunch_FirstTimeNewProfileIsRecorded1514747701/002/.moai/config/sections
+Launching Claude Code...
+Notice: profile "brand-new" has no Claude Code configuration yet.
+  Claude Code will show the login / onboarding screen on this launch.
+  Account state is not inherited between profiles; sign in once and it
+  persists for this profile.
+--- PASS: TestUnifiedLaunch_FirstTimeNewProfileIsRecorded (0.00s)
+=== RUN   TestParseProfileFlag
+=== RUN   TestParseProfileFlag/no_flags
+=== RUN   TestParseProfileFlag/-p_with_value
+=== RUN   TestParseProfileFlag/--profile_with_value
+=== RUN   TestParseProfileFlag/--profile=value_form
+=== RUN   TestParseProfileFlag/-p=value_form
+=== RUN   TestParseProfileFlag/-p_with_extra_args
+=== RUN   TestParseProfileFlag/pass-through_after_--
+=== RUN   TestParseProfileFlag/-p_without_value_at_end
+=== RUN   TestParseProfileFlag/--profile_without_value_at_end
+=== RUN   TestParseProfileFlag/-p_followed_by_another_flag
+=== RUN   TestParseProfileFlag/--profile=_empty_value
+=== RUN   TestParseProfileFlag/-p=_empty_value
+=== RUN   TestParseProfileFlag/-p_with_empty_string_value
+=== RUN   TestParseProfileFlag/--profile_with_empty_string_value
+--- PASS: TestParseProfileFlag (0.00s)
+    --- PASS: TestParseProfileFlag/no_flags (0.00s)
+    --- PASS: TestParseProfileFlag/-p_with_value (0.00s)
+    --- PASS: TestParseProfileFlag/--profile_with_value (0.00s)
+    --- PASS: TestParseProfileFlag/--profile=value_form (0.00s)
+    --- PASS: TestParseProfileFlag/-p=value_form (0.00s)
+    --- PASS: TestParseProfileFlag/-p_with_extra_args (0.00s)
+    --- PASS: TestParseProfileFlag/pass-through_after_-- (0.00s)
+    --- PASS: TestParseProfileFlag/-p_without_value_at_end (0.00s)
+    --- PASS: TestParseProfileFlag/--profile_without_value_at_end (0.00s)
+    --- PASS: TestParseProfileFlag/-p_followed_by_another_flag (0.00s)
+    --- PASS: TestParseProfileFlag/--profile=_empty_value (0.00s)
+    --- PASS: TestParseProfileFlag/-p=_empty_value (0.00s)
+    --- PASS: TestParseProfileFlag/-p_with_empty_string_value (0.00s)
+    --- PASS: TestParseProfileFlag/--profile_with_empty_string_value (0.00s)
+=== RUN   TestProfileBaseDirIsSandboxed
+--- PASS: TestProfileBaseDirIsSandboxed (0.00s)
+=== RUN   TestMigrateProfilesMovesTopicFilesAndMergesIndex
+--- PASS: TestMigrateProfilesMovesTopicFilesAndMergesIndex (0.00s)
+=== RUN   TestMigrateProfilesKeepsBothOnContentCollision
+--- PASS: TestMigrateProfilesKeepsBothOnContentCollision (0.00s)
+=== RUN   TestMigrateProfilesSkipsIdenticalContent
+--- PASS: TestMigrateProfilesSkipsIdenticalContent (0.00s)
+=== RUN   TestMigrateProfilesDryRunTouchesNothing
+--- PASS: TestMigrateProfilesDryRunTouchesNothing (0.00s)
+=== RUN   TestMigrateProfilesSecondRunIsQuiet
+--- PASS: TestMigrateProfilesSecondRunIsQuiet (0.00s)
+=== RUN   TestMigrateProfilesNoProfilesIsNotAnError
+--- PASS: TestMigrateProfilesNoProfilesIsNotAnError (0.00s)
+=== RUN   TestResolveModelProfileReport_MaxClaude
+--- PASS: TestResolveModelProfileReport_MaxClaude (0.00s)
+=== RUN   TestResolveModelProfileReport_GLMOverlay
+--- PASS: TestResolveModelProfileReport_GLMOverlay (0.00s)
+=== RUN   TestResolveModelProfileReport_GLMModelExplicitInJSON
+--- PASS: TestResolveModelProfileReport_GLMModelExplicitInJSON (0.00s)
+=== RUN   TestProfileLeaseLifecycleAndNonExecCleanerRace
+--- PASS: TestProfileLeaseLifecycleAndNonExecCleanerRace (0.00s)
+=== RUN   TestCleanHomeReportsProtectedProfileReasonInDryRunAndForce
+--- PASS: TestCleanHomeReportsProtectedProfileReasonInDryRunAndForce (0.00s)
+=== RUN   TestProfileLeaseChildTransferRejectsIndeterminateAndStaleToken
+--- PASS: TestProfileLeaseChildTransferRejectsIndeterminateAndStaleToken (0.00s)
+=== RUN   TestCleanHomeSkipsLiveAndIndeterminateProfiles
+--- PASS: TestCleanHomeSkipsLiveAndIndeterminateProfiles (0.01s)
+=== RUN   TestProfileOptions_ValueSetsEqualSchema
+--- PASS: TestProfileOptions_ValueSetsEqualSchema (0.00s)
+=== RUN   TestProfileOptions_Labels
+--- PASS: TestProfileOptions_Labels (0.00s)
+=== RUN   TestProfileSandbox_HelperSubprocessLeavesNoBaseDir
+--- PASS: TestProfileSandbox_HelperSubprocessLeavesNoBaseDir (0.13s)
+=== RUN   TestProfileText_ModelPolicyLabels
+=== RUN   TestProfileText_ModelPolicyLabels/en
+=== RUN   TestProfileText_ModelPolicyLabels/ko
+=== RUN   TestProfileText_ModelPolicyLabels/ja
+=== RUN   TestProfileText_ModelPolicyLabels/zh
+--- PASS: TestProfileText_ModelPolicyLabels (0.00s)
+    --- PASS: TestProfileText_ModelPolicyLabels/en (0.00s)
+    --- PASS: TestProfileText_ModelPolicyLabels/ko (0.00s)
+    --- PASS: TestProfileText_ModelPolicyLabels/ja (0.00s)
+    --- PASS: TestProfileText_ModelPolicyLabels/zh (0.00s)
+=== RUN   TestProfileSetup_ModelPolicySelectPresent
+--- PASS: TestProfileSetup_ModelPolicySelectPresent (0.00s)
+=== RUN   TestTUINestedConfigNoParallelWriter
+=== PAUSE TestTUINestedConfigNoParallelWriter
+=== RUN   TestTUIEmptyLabelsSchemaSourced
+=== PAUSE TestTUIEmptyLabelsSchemaSourced
+=== RUN   TestProfileSetupConstructsProjectSelects
+=== PAUSE TestProfileSetupConstructsProjectSelects
+=== RUN   TestWizardOmitsRemovedQuestions
+=== PAUSE TestWizardOmitsRemovedQuestions
+=== RUN   TestWizardWritesNoStatuslineTheme
+=== PAUSE TestWizardWritesNoStatuslineTheme
+=== RUN   TestWizardCarriesStoredSegmentsIntoPrefs
+=== PAUSE TestWizardCarriesStoredSegmentsIntoPrefs
+=== RUN   TestWizardPreferencesRoundTripKeepsSegments
+--- PASS: TestWizardPreferencesRoundTripKeepsSegments (0.00s)
+=== RUN   TestWizardSavePreservesStatuslineSegments
+--- PASS: TestWizardSavePreservesStatuslineSegments (0.00s)
+=== RUN   TestWizardSavePreservesGitConventionAndNestedQuality
+--- PASS: TestWizardSavePreservesGitConventionAndNestedQuality (0.00s)
+=== RUN   TestModelPolicyLabels_AgreeWithProfileMatrix
+=== RUN   TestModelPolicyLabels_AgreeWithProfileMatrix/high
+=== RUN   TestModelPolicyLabels_AgreeWithProfileMatrix/medium
+=== RUN   TestModelPolicyLabels_AgreeWithProfileMatrix/low
+--- PASS: TestModelPolicyLabels_AgreeWithProfileMatrix (0.00s)
+    --- PASS: TestModelPolicyLabels_AgreeWithProfileMatrix/high (0.00s)
+    --- PASS: TestModelPolicyLabels_AgreeWithProfileMatrix/medium (0.00s)
+    --- PASS: TestModelPolicyLabels_AgreeWithProfileMatrix/low (0.00s)
+=== RUN   TestPrintProfileSummary_Synced
+--- PASS: TestPrintProfileSummary_Synced (0.00s)
+=== RUN   TestPrintProfileSummary_Skipped
+--- PASS: TestPrintProfileSummary_Skipped (0.00s)
+=== RUN   TestPrintProfileSummary_EmptyFields
+--- PASS: TestPrintProfileSummary_EmptyFields (0.00s)
+=== RUN   TestPrintProfileSummary_AllLanguages
+=== RUN   TestPrintProfileSummary_AllLanguages/en
+=== RUN   TestPrintProfileSummary_AllLanguages/ko
+=== RUN   TestPrintProfileSummary_AllLanguages/ja
+=== RUN   TestPrintProfileSummary_AllLanguages/zh
+--- PASS: TestPrintProfileSummary_AllLanguages (0.00s)
+    --- PASS: TestPrintProfileSummary_AllLanguages/en (0.00s)
+    --- PASS: TestPrintProfileSummary_AllLanguages/ko (0.00s)
+    --- PASS: TestPrintProfileSummary_AllLanguages/ja (0.00s)
+    --- PASS: TestPrintProfileSummary_AllLanguages/zh (0.00s)
+=== RUN   TestGetProfileText_AllLanguages
+=== RUN   TestGetProfileText_AllLanguages/en
+=== RUN   TestGetProfileText_AllLanguages/ko
+=== RUN   TestGetProfileText_AllLanguages/ja
+=== RUN   TestGetProfileText_AllLanguages/zh
+--- PASS: TestGetProfileText_AllLanguages (0.00s)
+    --- PASS: TestGetProfileText_AllLanguages/en (0.00s)
+    --- PASS: TestGetProfileText_AllLanguages/ko (0.00s)
+    --- PASS: TestGetProfileText_AllLanguages/ja (0.00s)
+    --- PASS: TestGetProfileText_AllLanguages/zh (0.00s)
+=== RUN   TestGetProfileText_OpusAliasValues
+--- PASS: TestGetProfileText_OpusAliasValues (0.00s)
+=== RUN   TestGetProfileText_EffortLevelValues
+--- PASS: TestGetProfileText_EffortLevelValues (0.00s)
+=== RUN   TestGetProfileText_PermAutoValues
+--- PASS: TestGetProfileText_PermAutoValues (0.00s)
+=== RUN   TestGetProfileText_PermAutoRuntimeWarning
+--- PASS: TestGetProfileText_PermAutoRuntimeWarning (0.00s)
+=== RUN   TestGetProfileText_MigrationNoticeFields
+--- PASS: TestGetProfileText_MigrationNoticeFields (0.00s)
+=== RUN   TestGetProfileText_SummarySyncSkippedNeutral
+--- PASS: TestGetProfileText_SummarySyncSkippedNeutral (0.00s)
+=== RUN   TestGetProfileText_SummaryHeaderUpdated
+--- PASS: TestGetProfileText_SummaryHeaderUpdated (0.00s)
+=== RUN   TestGetProfileText_FallbackToEnglish
+--- PASS: TestGetProfileText_FallbackToEnglish (0.00s)
+=== RUN   TestGetProfileText_EmptyString
+--- PASS: TestGetProfileText_EmptyString (0.00s)
+=== RUN   TestProfileSetupTranslations_PresetSegments
+=== RUN   TestProfileSetupTranslations_PresetSegments/en
+=== RUN   TestProfileSetupTranslations_PresetSegments/ko
+=== RUN   TestProfileSetupTranslations_PresetSegments/ja
+=== RUN   TestProfileSetupTranslations_PresetSegments/zh
+--- PASS: TestProfileSetupTranslations_PresetSegments (0.00s)
+    --- PASS: TestProfileSetupTranslations_PresetSegments/en (0.00s)
+    --- PASS: TestProfileSetupTranslations_PresetSegments/ko (0.00s)
+    --- PASS: TestProfileSetupTranslations_PresetSegments/ja (0.00s)
+    --- PASS: TestProfileSetupTranslations_PresetSegments/zh (0.00s)
+=== RUN   TestEnterSessionWorktree_ProfileSubcommand
+--- PASS: TestEnterSessionWorktree_ProfileSubcommand (0.12s)
+=== RUN   TestEmitProfileScopeNotice_LoadBearing
+--- PASS: TestEmitProfileScopeNotice_LoadBearing (0.00s)
+=== RUN   TestEmitProfileScopeNotice_FalsificationRoundTrip
+--- PASS: TestEmitProfileScopeNotice_FalsificationRoundTrip (0.00s)
+=== RUN   TestProfileReadOnlySubverbs_DoNotInvokeAutoEntry
+--- PASS: TestProfileReadOnlySubverbs_DoNotInvokeAutoEntry (0.00s)
+=== RUN   TestTUIRendersSchemaFieldSet
+--- PASS: TestTUIRendersSchemaFieldSet (0.00s)
+=== RUN   TestApplyGitConfig_OptionsNoOpNoProfileFields
+--- PASS: TestApplyGitConfig_OptionsNoOpNoProfileFields (0.00s)
+=== RUN   TestApplyGitConfig_ProfileNotConsulted
+--- PASS: TestApplyGitConfig_ProfileNotConsulted (0.00s)
+=== RUN   TestRunInitWizard_NotInitialized
+--- PASS: TestRunInitWizard_NotInitialized (0.00s)
+=== RUN   TestRunInitWizard_ReconfigureNotInitialized
+--- PASS: TestRunInitWizard_ReconfigureNotInitialized (0.00s)
+=== RUN   TestUpdateRepair_WizardModelPolicySurfacesSystemYAMLErrors
+=== RUN   TestUpdateRepair_WizardModelPolicySurfacesSystemYAMLErrors/unparseable_file_is_reported_and_kept
+=== RUN   TestUpdateRepair_WizardModelPolicySurfacesSystemYAMLErrors/unwritable_path_is_reported
+=== RUN   TestUpdateRepair_WizardModelPolicySurfacesSystemYAMLErrors/unwritable_directory_is_reported
+--- PASS: TestUpdateRepair_WizardModelPolicySurfacesSystemYAMLErrors (0.00s)
+    --- PASS: TestUpdateRepair_WizardModelPolicySurfacesSystemYAMLErrors/unparseable_file_is_reported_and_kept (0.00s)
+    --- PASS: TestUpdateRepair_WizardModelPolicySurfacesSystemYAMLErrors/unwritable_path_is_reported (0.00s)
+    --- PASS: TestUpdateRepair_WizardModelPolicySurfacesSystemYAMLErrors/unwritable_directory_is_reported (0.00s)
+=== RUN   TestUpdateVersionDowngradeConfirm_Localized
+=== RUN   TestUpdateVersionDowngradeConfirm_Localized/a-project-ja-profile-ko
+=== RUN   TestUpdateVersionDowngradeConfirm_Localized/b-no-project-profile-ko
+=== RUN   TestUpdateVersionDowngradeConfirm_Localized/c-no-project-no-profile
+=== RUN   TestUpdateVersionDowngradeConfirm_Localized/d-project-without-lang-profile-zh
+--- PASS: TestUpdateVersionDowngradeConfirm_Localized (0.01s)
+    --- PASS: TestUpdateVersionDowngradeConfirm_Localized/a-project-ja-profile-ko (0.00s)
+    --- PASS: TestUpdateVersionDowngradeConfirm_Localized/b-no-project-profile-ko (0.00s)
+    --- PASS: TestUpdateVersionDowngradeConfirm_Localized/c-no-project-no-profile (0.00s)
+    --- PASS: TestUpdateVersionDowngradeConfirm_Localized/d-project-without-lang-profile-zh (0.00s)
+=== RUN   TestValidateUpdateVersionConflicts
+=== RUN   TestValidateUpdateVersionConflicts/version_alone_ok
+=== RUN   TestValidateUpdateVersionConflicts/version+check_conflict
+=== RUN   TestValidateUpdateVersionConflicts/version+templates-only_conflict
+=== RUN   TestValidateUpdateVersionConflicts/version+restore_conflict
+=== RUN   TestValidateUpdateVersionConflicts/version+dry-run_conflict
+=== RUN   TestValidateUpdateVersionConflicts/no_version_flag_unaffected
+--- PASS: TestValidateUpdateVersionConflicts (0.00s)
+    --- PASS: TestValidateUpdateVersionConflicts/version_alone_ok (0.00s)
+    --- PASS: TestValidateUpdateVersionConflicts/version+check_conflict (0.00s)
+    --- PASS: TestValidateUpdateVersionConflicts/version+templates-only_conflict (0.00s)
+    --- PASS: TestValidateUpdateVersionConflicts/version+restore_conflict (0.00s)
+    --- PASS: TestValidateUpdateVersionConflicts/version+dry-run_conflict (0.00s)
+    --- PASS: TestValidateUpdateVersionConflicts/no_version_flag_unaffected (0.00s)
+=== RUN   TestApplyWizardConfig_TokenNotPersisted
+--- PASS: TestApplyWizardConfig_TokenNotPersisted (0.00s)
+=== RUN   TestApplyWizardConfig_TokenOnlyCreatesNoUserYAML
+--- PASS: TestApplyWizardConfig_TokenOnlyCreatesNoUserYAML (0.00s)
+=== RUN   TestApplyWizardConfig_GitHubUsername
+--- PASS: TestApplyWizardConfig_GitHubUsername (0.00s)
+=== RUN   TestApplyWizardConfig_GitHubToken
+--- PASS: TestApplyWizardConfig_GitHubToken (0.00s)
+=== RUN   TestApplyWizardConfig_GitHubUsernameAndToken
+--- PASS: TestApplyWizardConfig_GitHubUsernameAndToken (0.00s)
+=== RUN   TestApplyWizardConfig_NoUserYAMLWhenGitHubFieldsEmpty
+--- PASS: TestApplyWizardConfig_NoUserYAMLWhenGitHubFieldsEmpty (0.00s)
+=== RUN   TestApplyWizardConfig_ExistingUserYAMLPreserved
+--- PASS: TestApplyWizardConfig_ExistingUserYAMLPreserved (0.00s)
+=== RUN   TestApplyWizardConfig_AllFieldsPopulated
+--- PASS: TestApplyWizardConfig_AllFieldsPopulated (0.00s)
+=== RUN   TestApplyWizardConfig_GitStrategyYAML
+--- PASS: TestApplyWizardConfig_GitStrategyYAML (0.00s)
+=== RUN   TestApplyWizardConfig_GitStrategyYAML_NoFileCreatedWhenEmpty
+--- PASS: TestApplyWizardConfig_GitStrategyYAML_NoFileCreatedWhenEmpty (0.00s)
+=== RUN   TestApplyWizardConfig_QualityYAML
+--- PASS: TestApplyWizardConfig_QualityYAML (0.00s)
+=== RUN   TestApplyWizardConfig_QualityYAML_NoFileCreatedWhenEmpty
+--- PASS: TestApplyWizardConfig_QualityYAML_NoFileCreatedWhenEmpty (0.00s)
+=== RUN   TestApplyWizardConfig_GitLabCredentials
+--- PASS: TestApplyWizardConfig_GitLabCredentials (0.00s)
+=== RUN   TestApplyWizardConfig_GitLabInstanceURL
+--- PASS: TestApplyWizardConfig_GitLabInstanceURL (0.00s)
+=== RUN   TestApplyWizardConfig_AllFields
+--- PASS: TestApplyWizardConfig_AllFields (0.00s)
+=== RUN   TestApplyWizardConfig_ConversationLang
+--- PASS: TestApplyWizardConfig_ConversationLang (0.00s)
+=== RUN   TestApplyWizardConfig_ConversationLang_NoFileCreatedWhenEmpty
+--- PASS: TestApplyWizardConfig_ConversationLang_NoFileCreatedWhenEmpty (0.00s)
+=== RUN   TestApplyWizardConfig_UserName
+--- PASS: TestApplyWizardConfig_UserName (0.00s)
+=== RUN   TestApplyWizardConfig_UserNameWithoutGitCredentials
+--- PASS: TestApplyWizardConfig_UserNameWithoutGitCredentials (0.00s)
+=== RUN   TestApplyWizardConfig_UserNamePreservesGitCredentials
+--- PASS: TestApplyWizardConfig_UserNamePreservesGitCredentials (0.00s)
+=== RUN   TestApplyWizardConfig_RejectsMalformedGitLabURL
+--- PASS: TestApplyWizardConfig_RejectsMalformedGitLabURL (0.00s)
+=== RUN   TestApplyWizardConfig_RejectsHTTPGitLabURL
+--- PASS: TestApplyWizardConfig_RejectsHTTPGitLabURL (0.00s)
+=== RUN   TestApplyWizardConfig_RejectsMalformedGitHubUsername
+--- PASS: TestApplyWizardConfig_RejectsMalformedGitHubUsername (0.00s)
+=== RUN   TestApplyWizardConfig_RejectsLeadingHyphenUsername
+--- PASS: TestApplyWizardConfig_RejectsLeadingHyphenUsername (0.00s)
+=== RUN   TestApplyWizardConfig_AcceptsValidIdentityInput
+--- PASS: TestApplyWizardConfig_AcceptsValidIdentityInput (0.00s)
+=== CONT  TestDoctorSandbox_ProfileFlag
+=== CONT  TestProfileSetupConstructsProjectSelects
+--- PASS: TestDoctorSandbox_ProfileFlag (0.00s)
+=== CONT  TestTUINestedConfigNoParallelWriter
+=== CONT  TestWizardOmitsRemovedQuestions
+=== CONT  TestResolveAgentWiringWithWizard_NilResultIsClaude
+--- PASS: TestResolveAgentWiringWithWizard_NilResultIsClaude (0.00s)
+=== CONT  TestWizardWritesNoStatuslineTheme
+=== CONT  TestResolveAgentWiringWithWizard_PrecedenceTable
+=== CONT  TestWizardCarriesStoredSegmentsIntoPrefs
+=== CONT  TestTUIEmptyLabelsSchemaSourced
+=== RUN   TestResolveAgentWiringWithWizard_PrecedenceTable/flag_absent,_wizard_codex
+--- PASS: TestTUINestedConfigNoParallelWriter (0.00s)
+--- PASS: TestWizardWritesNoStatuslineTheme (0.00s)
+--- PASS: TestWizardOmitsRemovedQuestions (0.00s)
+--- PASS: TestProfileSetupConstructsProjectSelects (0.00s)
+=== PAUSE TestResolveAgentWiringWithWizard_PrecedenceTable/flag_absent,_wizard_codex
+=== RUN   TestResolveAgentWiringWithWizard_PrecedenceTable/flag_absent,_wizard_both
+=== PAUSE TestResolveAgentWiringWithWizard_PrecedenceTable/flag_absent,_wizard_both
+=== RUN   TestResolveAgentWiringWithWizard_PrecedenceTable/flag_absent,_wizard_claude
+--- PASS: TestWizardCarriesStoredSegmentsIntoPrefs (0.00s)
+=== PAUSE TestResolveAgentWiringWithWizard_PrecedenceTable/flag_absent,_wizard_claude
+=== RUN   TestResolveAgentWiringWithWizard_PrecedenceTable/flag_absent,_wizard_silent
+=== PAUSE TestResolveAgentWiringWithWizard_PrecedenceTable/flag_absent,_wizard_silent
+=== RUN   TestResolveAgentWiringWithWizard_PrecedenceTable/flag_claude_beats_wizard_codex
+=== PAUSE TestResolveAgentWiringWithWizard_PrecedenceTable/flag_claude_beats_wizard_codex
+=== RUN   TestResolveAgentWiringWithWizard_PrecedenceTable/flag_codex_beats_wizard_claude
+=== PAUSE TestResolveAgentWiringWithWizard_PrecedenceTable/flag_codex_beats_wizard_claude
+=== RUN   TestResolveAgentWiringWithWizard_PrecedenceTable/flag_both_beats_wizard_codex
+=== PAUSE TestResolveAgentWiringWithWizard_PrecedenceTable/flag_both_beats_wizard_codex
+=== RUN   TestResolveAgentWiringWithWizard_PrecedenceTable/flag_claude_beats_wizard_both
+=== PAUSE TestResolveAgentWiringWithWizard_PrecedenceTable/flag_claude_beats_wizard_both
+=== RUN   TestResolveAgentWiringWithWizard_PrecedenceTable/flag_set_empty,_wizard_codex
+=== PAUSE TestResolveAgentWiringWithWizard_PrecedenceTable/flag_set_empty,_wizard_codex
+=== RUN   TestResolveAgentWiringWithWizard_PrecedenceTable/flag_set_empty,_wizard_silent
+=== PAUSE TestResolveAgentWiringWithWizard_PrecedenceTable/flag_set_empty,_wizard_silent
+=== RUN   TestResolveAgentWiringWithWizard_PrecedenceTable/unrecognized_flag_value_falls_back
+=== PAUSE TestResolveAgentWiringWithWizard_PrecedenceTable/unrecognized_flag_value_falls_back
+=== CONT  TestResolveAgentWiringWithWizard_PrecedenceTable/flag_absent,_wizard_codex
+=== CONT  TestResolveAgentWiringWithWizard_PrecedenceTable/unrecognized_flag_value_falls_back
+=== CONT  TestResolveAgentWiringWithWizard_PrecedenceTable/flag_set_empty,_wizard_silent
+=== CONT  TestResolveAgentWiringWithWizard_PrecedenceTable/flag_set_empty,_wizard_codex
+=== CONT  TestResolveAgentWiringWithWizard_PrecedenceTable/flag_claude_beats_wizard_both
+=== CONT  TestResolveAgentWiringWithWizard_PrecedenceTable/flag_both_beats_wizard_codex
+=== CONT  TestResolveAgentWiringWithWizard_PrecedenceTable/flag_codex_beats_wizard_claude
+=== CONT  TestResolveAgentWiringWithWizard_PrecedenceTable/flag_claude_beats_wizard_codex
+=== CONT  TestResolveAgentWiringWithWizard_PrecedenceTable/flag_absent,_wizard_silent
+=== CONT  TestResolveAgentWiringWithWizard_PrecedenceTable/flag_absent,_wizard_claude
+=== CONT  TestResolveAgentWiringWithWizard_PrecedenceTable/flag_absent,_wizard_both
+--- PASS: TestResolveAgentWiringWithWizard_PrecedenceTable (0.00s)
+    --- PASS: TestResolveAgentWiringWithWizard_PrecedenceTable/flag_absent,_wizard_codex (0.00s)
+    --- PASS: TestResolveAgentWiringWithWizard_PrecedenceTable/unrecognized_flag_value_falls_back (0.00s)
+    --- PASS: TestResolveAgentWiringWithWizard_PrecedenceTable/flag_set_empty,_wizard_silent (0.00s)
+    --- PASS: TestResolveAgentWiringWithWizard_PrecedenceTable/flag_set_empty,_wizard_codex (0.00s)
+    --- PASS: TestResolveAgentWiringWithWizard_PrecedenceTable/flag_claude_beats_wizard_both (0.00s)
+    --- PASS: TestResolveAgentWiringWithWizard_PrecedenceTable/flag_both_beats_wizard_codex (0.00s)
+    --- PASS: TestResolveAgentWiringWithWizard_PrecedenceTable/flag_codex_beats_wizard_claude (0.00s)
+    --- PASS: TestResolveAgentWiringWithWizard_PrecedenceTable/flag_claude_beats_wizard_codex (0.00s)
+    --- PASS: TestResolveAgentWiringWithWizard_PrecedenceTable/flag_absent,_wizard_silent (0.00s)
+    --- PASS: TestResolveAgentWiringWithWizard_PrecedenceTable/flag_absent,_wizard_claude (0.00s)
+    --- PASS: TestResolveAgentWiringWithWizard_PrecedenceTable/flag_absent,_wizard_both (0.00s)
+--- PASS: TestTUIEmptyLabelsSchemaSourced (0.00s)
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/cli	12.217s

@@ -1,0 +1,30 @@
+=== RUN   TestPtyCaptureChild
+┃ Downgrade v9.9.9 → v1.0.0?
+┃ The requested tag is older than the running version.
+┃
+┃                     Yes     No
+
+←/→ toggle • enter submit • y Yes • n No
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

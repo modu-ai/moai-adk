@@ -1,0 +1,31 @@
+=== RUN   TestProfileOptions_ValueSetsEqualSchema
+    profile_options_test.go:76: locale en: select "model" values ["" "low" "medium" "high" "xhigh" "max"], want the set ["" "fable[1m]" "opus[1m]" "sonnet[1m]" "haiku"]
+    profile_options_test.go:76: locale ko: select "model" values ["" "low" "medium" "high" "xhigh" "max"], want the set ["" "fable[1m]" "opus[1m]" "sonnet[1m]" "haiku"]
+    profile_options_test.go:76: locale ja: select "model" values ["" "low" "medium" "high" "xhigh" "max"], want the set ["" "fable[1m]" "opus[1m]" "sonnet[1m]" "haiku"]
+    profile_options_test.go:76: locale zh: select "model" values ["" "low" "medium" "high" "xhigh" "max"], want the set ["" "fable[1m]" "opus[1m]" "sonnet[1m]" "haiku"]
+--- FAIL: TestProfileOptions_ValueSetsEqualSchema (0.00s)
+=== RUN   TestProfileOptions_Labels
+    profile_options_test.go:124: locale en: model option "low" label "low - fastest, least thorough", want the bridge label "low"
+    profile_options_test.go:124: locale en: model option "medium" label "medium - balanced", want the bridge label "medium"
+    profile_options_test.go:124: locale en: model option "high" label "high - deep reasoning", want the bridge label "high"
+    profile_options_test.go:124: locale en: model option "xhigh" label "xhigh - extended reasoning (session only; the agent matrix uses high instead)", want the bridge label "xhigh"
+    profile_options_test.go:124: locale en: model option "max" label "max - maximum effort", want the bridge label "max"
+    profile_options_test.go:124: locale ko: model option "low" label "low - 가장 빠름, 간략한 추론", want the bridge label "low"
+    profile_options_test.go:124: locale ko: model option "medium" label "medium - 균형", want the bridge label "medium"
+    profile_options_test.go:124: locale ko: model option "high" label "high - 심층 추론", want the bridge label "high"
+    profile_options_test.go:124: locale ko: model option "xhigh" label "xhigh - 확장 추론 (세션 전용, 에이전트 매트릭스는 high 사용)", want the bridge label "xhigh"
+    profile_options_test.go:124: locale ko: model option "max" label "max - 최대 추론", want the bridge label "max"
+    profile_options_test.go:124: locale ja: model option "low" label "low - 最速、簡易推論", want the bridge label "low"
+    profile_options_test.go:124: locale ja: model option "medium" label "medium - バランス", want the bridge label "medium"
+    profile_options_test.go:124: locale ja: model option "high" label "high - 深い推論", want the bridge label "high"
+    profile_options_test.go:124: locale ja: model option "xhigh" label "xhigh - 拡張推論 (セッション専用、エージェントマトリクスは high を使用)", want the bridge label "xhigh"
+    profile_options_test.go:124: locale ja: model option "max" label "max - 最大推論", want the bridge label "max"
+    profile_options_test.go:124: locale zh: model option "low" label "low - 最快，简略推理", want the bridge label "low"
+    profile_options_test.go:124: locale zh: model option "medium" label "medium - 均衡", want the bridge label "medium"
+    profile_options_test.go:124: locale zh: model option "high" label "high - 深度推理", want the bridge label "high"
+    profile_options_test.go:124: locale zh: model option "xhigh" label "xhigh - 扩展推理 (仅会话；代理矩阵改用 high)", want the bridge label "xhigh"
+    profile_options_test.go:124: locale zh: model option "max" label "max - 最大推理", want the bridge label "max"
+--- FAIL: TestProfileOptions_Labels (0.01s)
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/cli	0.969s
+FAIL

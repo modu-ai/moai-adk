@@ -69,7 +69,7 @@ func TestSchemaSelectOptions_EmptyLabelFromSchema(t *testing.T) {
 		if !sel.withEmpty {
 			for _, o := range opts {
 				if o.Value == "" {
-					t.Errorf("field %q: unexpected empty option %q", sel.field, o.Key)
+					t.Errorf("field %q: unexpected empty option %q", sel.field, o.Label)
 				}
 			}
 			continue
@@ -78,8 +78,8 @@ func TestSchemaSelectOptions_EmptyLabelFromSchema(t *testing.T) {
 		if want == "" {
 			t.Fatalf("field %q declares no empty label but the wizard requests one", sel.field)
 		}
-		if opts[0].Value != "" || opts[0].Key != want {
-			t.Errorf("field %q: first option = {%q, %q}, want {%q, \"\"}", sel.field, opts[0].Key, opts[0].Value, want)
+		if opts[0].Value != "" || opts[0].Label != want {
+			t.Errorf("field %q: first option = {%q, %q}, want {%q, \"\"}", sel.field, opts[0].Label, opts[0].Value, want)
 		}
 	}
 }
@@ -106,10 +106,10 @@ func TestSchemaSelectOptions_Localized(t *testing.T) {
 		txt := getProfileText(lang)
 		for _, field := range []string{"model", "effort_level", "permission_mode", "development_mode"} {
 			for _, o := range schemaSelectOptions(txt, field, false) {
-				if strings.TrimSpace(o.Key) == "" {
+				if strings.TrimSpace(o.Label) == "" {
 					t.Errorf("lang=%q field=%q value=%q: empty label", lang, field, o.Value)
 				}
-				if o.Key == o.Value {
+				if o.Label == o.Value {
 					t.Errorf("lang=%q field=%q value=%q: label fell back to the wire value (missing schemaOptionBridge entry)", lang, field, o.Value)
 				}
 			}

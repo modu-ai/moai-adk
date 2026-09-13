@@ -1,0 +1,38 @@
+package wizard
+
+import (
+	"os"
+	"testing"
+
+	"charm.land/huh/v2"
+)
+
+// PROBE (throwaway, card t586): run the same forms on a real pty so a tmux
+// capture shows what a terminal actually paints. Skipped unless the pty
+// harness sets MOAI_T586_TTY=1; never runs in a normal go test.
+func TestProbeT586TTY(t *testing.T) {
+	if os.Getenv("MOAI_T586_TTY") != "1" {
+		t.Skip("tty probe runs only inside the t586 pty harness")
+	}
+	locale := os.Getenv("MOAI_T586_LOCALE")
+	result := &WizardResult{}
+	var form *huh.Form
+	switch os.Getenv("MOAI_T586_CASE") {
+	case "firstpage":
+		form = buildUnifiedForm(InitQuestions(t.TempDir()), result, locale)
+	default:
+		qa := &Question{ID: "probe_confirm_a", Type: QuestionTypeConfirm, Title: "Enable A?", Description: "First confirm description.", Default: "true"}
+		qb := &Question{ID: "probe_confirm_b", Type: QuestionTypeConfirm, Title: "Enable B?", Description: "Second confirm description.", Default: "false"}
+		qs := &Question{ID: "probe_select", Type: QuestionTypeSelect, Title: "Pick one", Description: "Select description.", Default: "a",
+			Options: []Option{
+				{Label: "Short", Value: "a", Desc: "x"},
+				{Label: "Medium (Recommended)", Value: "b", Desc: "a much longer description string"},
+			}}
+		form = huh.NewForm(huh.NewGroup(
+			buildConfirmField(qa, result, &locale),
+			buildConfirmField(qb, result, &locale),
+			buildSelectField(qs, result, &locale),
+		)).WithTheme(newMoAIWizardTheme()).WithAccessible(false)
+	}
+	_ = form.Run()
+}

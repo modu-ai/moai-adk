@@ -1,0 +1,115 @@
+=== RUN   TestUpdateVersionDowngradeConfirm_Localized
+=== RUN   TestUpdateVersionDowngradeConfirm_Localized/a-project-ja-profile-ko
+=== RUN   TestUpdateVersionDowngradeConfirm_Localized/b-no-project-profile-ko
+=== RUN   TestUpdateVersionDowngradeConfirm_Localized/c-no-project-no-profile
+=== RUN   TestUpdateVersionDowngradeConfirm_Localized/d-project-without-lang-profile-zh
+--- PASS: TestUpdateVersionDowngradeConfirm_Localized (0.01s)
+    --- PASS: TestUpdateVersionDowngradeConfirm_Localized/a-project-ja-profile-ko (0.00s)
+    --- PASS: TestUpdateVersionDowngradeConfirm_Localized/b-no-project-profile-ko (0.00s)
+    --- PASS: TestUpdateVersionDowngradeConfirm_Localized/c-no-project-no-profile (0.00s)
+    --- PASS: TestUpdateVersionDowngradeConfirm_Localized/d-project-without-lang-profile-zh (0.00s)
+=== RUN   TestNormalizeVersionTag
+=== RUN   TestNormalizeVersionTag/v-prefixed_stable
+=== RUN   TestNormalizeVersionTag/bare_stable_gets_v_prefix
+=== RUN   TestNormalizeVersionTag/rc_tag
+=== RUN   TestNormalizeVersionTag/bare_rc_gets_v_prefix
+=== RUN   TestNormalizeVersionTag/previous_version
+=== RUN   TestNormalizeVersionTag/uppercase_V_prefix
+=== RUN   TestNormalizeVersionTag/uppercase_V_bare
+=== RUN   TestNormalizeVersionTag/go-v_prefix_rejected
+=== RUN   TestNormalizeVersionTag/go_prefix_rejected
+=== RUN   TestNormalizeVersionTag/path_traversal_dotdot
+=== RUN   TestNormalizeVersionTag/path_traversal_slash
+=== RUN   TestNormalizeVersionTag/query_fragment
+=== RUN   TestNormalizeVersionTag/hash_fragment
+=== RUN   TestNormalizeVersionTag/plus_build_metadata
+=== RUN   TestNormalizeVersionTag/whitespace
+=== RUN   TestNormalizeVersionTag/empty
+=== RUN   TestNormalizeVersionTag/semicolon
+--- PASS: TestNormalizeVersionTag (0.00s)
+    --- PASS: TestNormalizeVersionTag/v-prefixed_stable (0.00s)
+    --- PASS: TestNormalizeVersionTag/bare_stable_gets_v_prefix (0.00s)
+    --- PASS: TestNormalizeVersionTag/rc_tag (0.00s)
+    --- PASS: TestNormalizeVersionTag/bare_rc_gets_v_prefix (0.00s)
+    --- PASS: TestNormalizeVersionTag/previous_version (0.00s)
+    --- PASS: TestNormalizeVersionTag/uppercase_V_prefix (0.00s)
+    --- PASS: TestNormalizeVersionTag/uppercase_V_bare (0.00s)
+    --- PASS: TestNormalizeVersionTag/go-v_prefix_rejected (0.00s)
+    --- PASS: TestNormalizeVersionTag/go_prefix_rejected (0.00s)
+    --- PASS: TestNormalizeVersionTag/path_traversal_dotdot (0.00s)
+    --- PASS: TestNormalizeVersionTag/path_traversal_slash (0.00s)
+    --- PASS: TestNormalizeVersionTag/query_fragment (0.00s)
+    --- PASS: TestNormalizeVersionTag/hash_fragment (0.00s)
+    --- PASS: TestNormalizeVersionTag/plus_build_metadata (0.00s)
+    --- PASS: TestNormalizeVersionTag/whitespace (0.00s)
+    --- PASS: TestNormalizeVersionTag/empty (0.00s)
+    --- PASS: TestNormalizeVersionTag/semicolon (0.00s)
+=== RUN   TestTagReleaseURL
+=== RUN   TestTagReleaseURL/bare_and_v-prefixed_resolve_identically
+=== RUN   TestTagReleaseURL/host_is_api.github.com_on_https_scheme
+=== RUN   TestTagReleaseURL/invalid_tag_rejected_before_URL_construction
+--- PASS: TestTagReleaseURL (0.00s)
+    --- PASS: TestTagReleaseURL/bare_and_v-prefixed_resolve_identically (0.00s)
+    --- PASS: TestTagReleaseURL/host_is_api.github.com_on_https_scheme (0.00s)
+    --- PASS: TestTagReleaseURL/invalid_tag_rejected_before_URL_construction (0.00s)
+=== RUN   TestValidateUpdateVersionConflicts
+=== RUN   TestValidateUpdateVersionConflicts/version_alone_ok
+=== RUN   TestValidateUpdateVersionConflicts/version+check_conflict
+=== RUN   TestValidateUpdateVersionConflicts/version+templates-only_conflict
+=== RUN   TestValidateUpdateVersionConflicts/version+restore_conflict
+=== RUN   TestValidateUpdateVersionConflicts/version+dry-run_conflict
+=== RUN   TestValidateUpdateVersionConflicts/no_version_flag_unaffected
+--- PASS: TestValidateUpdateVersionConflicts (0.00s)
+    --- PASS: TestValidateUpdateVersionConflicts/version_alone_ok (0.00s)
+    --- PASS: TestValidateUpdateVersionConflicts/version+check_conflict (0.00s)
+    --- PASS: TestValidateUpdateVersionConflicts/version+templates-only_conflict (0.00s)
+    --- PASS: TestValidateUpdateVersionConflicts/version+restore_conflict (0.00s)
+    --- PASS: TestValidateUpdateVersionConflicts/version+dry-run_conflict (0.00s)
+    --- PASS: TestValidateUpdateVersionConflicts/no_version_flag_unaffected (0.00s)
+=== RUN   TestVersionFlagRegistered
+--- PASS: TestVersionFlagRegistered (0.00s)
+=== RUN   TestUpdateFlagsNoVersionDefaultIsNoop
+--- PASS: TestUpdateFlagsNoVersionDefaultIsNoop (0.00s)
+=== RUN   TestInstallVersionTag_HappyPath
+--- PASS: TestInstallVersionTag_HappyPath (1.69s)
+=== RUN   TestInstallVersionTag_BareTagNormalized
+--- PASS: TestInstallVersionTag_BareTagNormalized (1.57s)
+=== RUN   TestInstallVersionTag_404
+--- PASS: TestInstallVersionTag_404 (0.05s)
+=== RUN   TestInstallVersionTag_NoBinaryAsset
+--- PASS: TestInstallVersionTag_NoBinaryAsset (6.04s)
+=== RUN   TestInstallVersionTag_ChecksumMismatch
+--- PASS: TestInstallVersionTag_ChecksumMismatch (1.52s)
+=== RUN   TestInstallVersionTag_NetworkFailureResolution
+--- PASS: TestInstallVersionTag_NetworkFailureResolution (0.04s)
+=== RUN   TestInstallVersionTag_NetworkFailureDownload
+--- PASS: TestInstallVersionTag_NetworkFailureDownload (0.09s)
+=== RUN   TestInstallVersionTag_InvalidTag
+--- PASS: TestInstallVersionTag_InvalidTag (0.04s)
+=== RUN   TestIsVersionDowngrade
+=== RUN   TestIsVersionDowngrade/v3.0.0->v3.2.0
+=== RUN   TestIsVersionDowngrade/v3.2.0->v3.0.0
+=== RUN   TestIsVersionDowngrade/v3.0.0->v3.0.0
+=== RUN   TestIsVersionDowngrade/3.0.0->v3.2.0
+=== RUN   TestIsVersionDowngrade/v3.1.0-rc1->v3.0.0
+=== RUN   TestIsVersionDowngrade/go-v3.0.0->v3.2.0
+--- PASS: TestIsVersionDowngrade (0.00s)
+    --- PASS: TestIsVersionDowngrade/v3.0.0->v3.2.0 (0.00s)
+    --- PASS: TestIsVersionDowngrade/v3.2.0->v3.0.0 (0.00s)
+    --- PASS: TestIsVersionDowngrade/v3.0.0->v3.0.0 (0.00s)
+    --- PASS: TestIsVersionDowngrade/3.0.0->v3.2.0 (0.00s)
+    --- PASS: TestIsVersionDowngrade/v3.1.0-rc1->v3.0.0 (0.00s)
+    --- PASS: TestIsVersionDowngrade/go-v3.0.0->v3.2.0 (0.00s)
+=== RUN   TestCompareVersionLoose
+--- PASS: TestCompareVersionLoose (0.00s)
+=== RUN   TestRunVersionBranch_RejectsPoisonedEnv
+--- PASS: TestRunVersionBranch_RejectsPoisonedEnv (0.00s)
+=== RUN   TestRunVersionBranch_NonTTYProceeds
+    update_version_test.go:645: test requires non-TTY stdin; run via `go test` (pipe), not an interactive shell
+--- SKIP: TestRunVersionBranch_NonTTYProceeds (0.00s)
+=== RUN   TestRunVersionBranch_VersionTagIndependentOfDevBuild
+--- PASS: TestRunVersionBranch_VersionTagIndependentOfDevBuild (0.00s)
+=== RUN   TestEnsureUpdate_DevBranchPreserved
+--- PASS: TestEnsureUpdate_DevBranchPreserved (0.00s)
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/cli	11.905s
