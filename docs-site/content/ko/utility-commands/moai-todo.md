@@ -189,6 +189,10 @@ $ moai todo done 4 --expect "인증 미들웨어"
 # 착지 여부를 물어보고, 아니라는 확답이 나올 때만 거부
 $ moai todo done 4 --require-landed
 
+# 착지한 카드를 일괄 마감 (리드 전용, 배치 push 확인 후) — 드라이런 먼저
+$ moai todo auto-done --fetch --dry-run
+$ moai todo auto-done --fetch
+
 # 대기 중인 항목을 오래된 것부터 출력 (읽기 전용)
 $ moai todo next
 
