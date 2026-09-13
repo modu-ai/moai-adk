@@ -8,7 +8,17 @@ note: Plan artifacts authored (spec.md + plan.md + acceptance.md, Tier M). Plan-
 
 ## §E.2 Run-phase Evidence
 
-_<pending run-phase>_
+### M1 pre-flight record (plan.md §C — executed at absorb HEAD `d025b463c`, 2026-09-14)
+
+- Absorb: `git merge develop` (develop = origin/develop = `643abfb8c`) → merge HEAD `d025b463c`, conflicts 0. Carries `.moai/reports/t838/` (live-instrumentation verdict).
+- Ancestry gate: `git merge-base --is-ancestor f45c2dddf HEAD` → PASS (t697 merge is ancestor).
+- Exported pins: `go doc ./internal/gateway/receipt Manifest.Check` → resolves; `go doc ./internal/gateway/conversation Manager.Fork` → resolves.
+- Unexported pins (declaration grep): `NewReceiptHistory` :86, `NewGPTSubscriptionReceiptHistory` :93, `Check` :197, `replayCause` :223, `Publish` :239, `checkObserved` :262 (receipt_history.go); `authorizeGatewayNativeReceipt` :59, `newGatewayHandlerFactory` :80 (gateway_factory.go); `families.Fork(` :204 (gateway_session.go) — ALL resolve.
+- Characterization baseline: `go test ./internal/gateway/translate/ -run TestReceiptHistory -count=1` → `ok github.com/modu-ai/moai-adk/internal/gateway/translate 1.225s`.
+- Conflict pre-scan: `grep -rn "Retired\|superseded" internal/gateway/translate/ internal/gateway/receipt/` → no conflicts.
+- Scoped lint baseline: `golangci-lint run --new-from-rev=HEAD internal/gateway/... internal/cli/...` → `0 issues.`
+- Kickoff authorization: operator approval relayed by lead (dispatch citing plan-audit-iter2.md PASS 1.00 @ `10f6be792`).
+- AC-WRR-013 disposition: live probe SKIPPED by orchestrator decision — t672 matrix C4b already proves the acceptance shape live; the new surface (client-side transcript surgery) is unit-testable; upstream cost avoided. Gap recorded; revisit only if run-phase evidence leaves the wedge→re-root→retry path in doubt.
 
 ## §E.3 Run-phase Audit-Ready Signal
 
