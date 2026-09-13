@@ -2,7 +2,7 @@
 id: SPEC-HEAVY-TEST-SLOT-001
 title: "Heavy-test execution slot discipline: extend the existing lane slot paragraph with the enforcement code, named heavy packages, and the incident record"
 version: "0.2.0"
-status: draft
+status: completed
 created: 2026-09-14
 updated: 2026-09-14
 author: lane-6
@@ -18,6 +18,7 @@ tier: S
 
 - **2026-09-14** — plan-phase v0.1.0 authored from card t774 ("무거운 테스트 패키지의 실행 순번을 레인이 볼 표면이 없다", lane-6 관측 2026-09-10). Plan-phase investigation (`.moai/reports/t774/investigation.md`) measured that the execution-order surface already exists — `moai slot`, first audit entry 2026-09-12T12:28:42Z (`heavy-test`), 19 events at plan time and growing — and is enforceable (second acquirer of a live holder refused, exit 3, demonstrated live on the card-scoped resource `t774-repro-demo`). The dispatch's shrink conditional fired: visibility + discipline, not surface construction.
 - **2026-09-14** — plan-phase v0.2.0 after plan-audit iteration 1 returned **FAIL 0.70** (`.moai/reports/t774/plan-audit.md`; Tier S single-iteration ceiling). The audit's survey finding was decisive and is folded in whole: **the lane-facing procedure text already exists** — `.claude/rules/local/gitflow-lane-protocol.md` §8 has carried the slot duty (acquire → run → release, `status` lookup, the integration distinction, `--max-duration` expiry, the opt-in guard) since 2026-09-12 (e78fd0ee6, card t607 / SPEC-RESOURCE-SLOT-LEASE-001), and `.claude/rules/moai/workflow/resource-slot-lease.md` already documents the surface **and is template-mirrored to deployment users**. v0.1.0's problem statement ("binding procedure text is still missing") was therefore false on the base tree, and its proposed new standalone document would have created a third procedure copy — the divergence REQ-HTS-003 itself warned against. Consequences: **(1)** the standalone document is DROPPED; the deliverable becomes an extension of the existing §8 slot paragraph with exactly the three genuinely additive items (the refusal exit code 3, the named heavy-package WHEN list, the 2026-09-10 incident/control-group record); **(2)** the mirrored `resource-slot-lease.md` gains nothing — internal card/incident material must not enter a user-shipped document; **(3)** `status:` fields removed from plan.md/acceptance.md frontmatter (artifact statelessness, D2); **(4)** AC-HTS-005's product-untouched check re-based from a pinned SHA to a merge-base-relative diff so a develop absorb cannot false-FAIL it (D3); **(5)** §A's evidence citation now resolves (the investigation record exists, D5); **(6)** the lint-mandated `### Out of scope` heading added (D6). Requirements 4 → 3, criteria 5 → 4.
+- **2026-09-14** — run-phase M1 landed (37b5ede0f): the §8 slot paragraph extended by three sentences (the exit-3 enforcement fact, the named heavy-package WHEN list, the 2026-09-10 incident/control-group record with the re-demonstration prohibition). All four acceptance criteria verified on the merge-base anchor `d416f8162` — AC-HTS-001 exit3=1·internal_cli=1; AC-HTS-002 incident=2·re-demo=2; AC-HTS-003 changed-file set carries none of the three forbidden prefixes; AC-HTS-004 slot.go/slot_test.go diff empty. Evidence: `.moai/reports/t774/verdict.md`. Sync-phase close: status → completed on the sync commit.
 
 ## §B — Problem
 
