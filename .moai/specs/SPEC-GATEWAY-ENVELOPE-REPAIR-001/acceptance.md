@@ -105,7 +105,7 @@ Every REQ has ≥1 AC; every AC traces to ≥1 REQ. No orphan rows.
 
 1. All AC-EVR-### PASS with verbatim evidence (E1).
 2. §D PRESERVE list byte-identical (AC-EVR-011).
-3. plan.md §H clarifications resolved or explicitly dispositioned before M3 exit.
+3. plan.md §H Resolution Record dispositions in effect (recorded per the lead conditional-Kickoff directive, 2026-09-13 — these ARE the §D.4-3 dispositions); any NEW bounded question surfacing in run phase is dispositioned before M3 exit.
 4. M0 seam adjudication recorded.
 5. Documentation deliverable landed (AC-EVR-012).
 6. Integration per gitflow lane protocol; sync closed before the develop merge.
