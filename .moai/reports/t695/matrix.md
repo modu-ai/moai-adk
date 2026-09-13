@@ -106,6 +106,14 @@ cells 5-8 cover session modes; cell 8 is a real subagent spawn.
 | fresh sol + Explore spawn, model arg = opus | GREEN ("done") | no |
 | continued sol session (with history) + Explore spawn, model arg = opus | GREEN ("done") | no |
 
+Code-level note on the lead's hypothesis: a wire model of opus/sonnet can
+never reach the family check — `catalog.Resolve` 404s first (section F, reason-
+ful body). Lane-8's family-body failures therefore carried a GPT wire model
+and failed the receipt/history check on REPLAYED PARENT HISTORY (fork/resume
+of the parent transcript), not on the model id itself. The model arg may still
+be the upstream-of-the-wire trigger (forcing a fork that replays parent
+history); verifying that is t672-scope. See investigation.md §7.
+
 Named-teammate spawn shape (t688 advisor case): NOT instrumented — the
 team-mode surface is not drivable from a `-p` one-shot in this lane. The
 masked-vs-real distinction between the two live mechanisms is still decisive;

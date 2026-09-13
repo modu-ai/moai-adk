@@ -154,3 +154,51 @@ cluster and the single luna+max non-200.
 - The named-teammate spawn shape was not drivable from this lane (interactive
   team-mode surface, not reachable from a `-p` one-shot); it is covered by
   operator/lead live evidence and the mechanism analysis, not by a matrix cell.
+
+## 7. D6 absorption verdict — t695 absorbs NONE of the spawn-surface classes
+
+Code-proven facts (read from `internal/gateway/`):
+
+1. The live "conversation history changed, lacks reasoning, or belongs to
+   another model family/account; start a new conversation" body is
+   `HistoryReplayError.Error()` (`internal/gateway/translate/receipt_history.go:18`)
+   — gateway-authored, in-repo fix ownership.
+2. That error is produced ONLY on the receipt-history path
+   (`receiptHistory.Check` -> `checkObserved`), which runs AFTER catalog
+   resolution and AFTER `historyFamily(model)` succeeded. A request whose wire
+   model were `claude-opus-5`/`sonnet` can never reach it: `catalog.Resolve`
+   404s first (matrix section F: verbatim
+   `{"error":{"message":"Not Found","type":"not_found_error"},"type":"error"}`).
+   Therefore in lane-8's three manager-spec spawn failures the WIRE model was
+   one of the four GPT ids, and the failure was the receipt/history check on
+   replayed assistant history — not the foreign model id on the wire.
+3. The masked teammate 400s (t688 advisor, 08:30:01/08:30:27Z) are a DIFFERENT
+   rejection point from (2): family rejections passed through WITH reasons in
+   the same pre-D1 log (HistoryReplayError branch), so the masked ones were
+   other translate-path rejections whose reason D1 previously hid. Candidates:
+   the effort axis (t695's own root cause — spawn cells at effort low are all
+   green post-fix, sections E/H) or the session-id receipt authorization
+   mismatch (`authorizeGatewayNativeReceipt` requires the request's
+   `metadata.user_id` session to equal the payload session — hypothesis only,
+   unverified: no request-body visibility).
+4. My instrumented spawn cells could NOT reproduce a masked 400 post-fix
+   (fresh + continued, inherit + model-arg opus: all green). With D1 deployed,
+   the next masked spawn 400 in production will show its real reason — the
+   discriminating step this card enables.
+
+Verdict: t695 (effort) absorbs neither spawn class. The spawn surface
+decomposes into (a) the receipt-history/family axis — route to card t672 with
+the lane-8/family-0efb66f7 incident map attached (fork-path intermittence:
+succeeded at 42/101/260/305/356/380 replayed messages, failed at 167/227 —
+slice-boundary-dependent, not size-dependent; plausible trigger a fork slicing
+between reasoning items, hypothesis, t672-scope to verify); and (b) the masked
+teammate 400 axis — unresolved mechanism, D1 makes the next occurrence
+self-identifying. A receipt-desync negative unit test is t672-scope; the
+0efb66f7 desync (502 at 08:42:43Z, then main turns family-failing from
+09:13:36Z, same-family sol->terra switch still masked-400 at 09:18:37 —
+conversation wedged against every model, user un-wedge = new conversation only)
+is recorded here, not fixed.
+
+Residual-risk (out-of-scope observation, verbatim-style): a SubagentStart hook
+injected `additionalContext: spec:SPEC-ARTIFACT-STATELESS-001` — an
+already-completed SPEC (card t357); unrelated to t695, flagged for the lead.
