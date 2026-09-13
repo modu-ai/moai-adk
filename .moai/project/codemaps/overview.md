@@ -8,6 +8,7 @@
 **모듈**: `github.com/modu-ai/moai-adk` · **Go**: 1.26.8
 **측정 트리**: worktree `.claude/worktrees/t592`, 브랜치 `WT-home-state-rollout`, HEAD `e7bd89ee3`
 **측정**: 2026-09-10
+**부분 재측정**: worktree `.claude/worktrees/t688`, 브랜치 `WT-graph-stamp-freshness`, HEAD `c613b7c6b`, 2026-09-14 — 레이어 표 아래 freshness 게이트 절, 관련 문서 목록. 나머지 항목은 위 측정 트리의 값이며 이번에 다시 재지 않았습니다.
 
 ---
 
@@ -125,9 +126,25 @@
 
 ---
 
+## 이 문서 자체가 게이트를 가진다
+
+`.moai/project/codemaps/`의 다섯 문서는 설명이면서 동시에 **측정 대상**입니다. `internal/graph`의
+freshness 게이트가 `provenance.json`의 스탬프를 기준으로 described roots(`internal`, `cmd`,
+`pkg`)의 변경 파일 수를 세고, 임계 40을 넘으면 stale로 판정합니다.
+
+그 판정에는 선행 조건이 있습니다 — 저장된 스탬프가 현재 checkout `HEAD`의 조상이어야
+비교 창이 성립합니다. 객체가 해석되는 것과 조상인 것은 다른 조건이고, squash와 rebase는
+내용을 남기면서 원래 커밋을 이력 밖으로 밀어냅니다. 비조상 상태는 숫자 없는 미측정(exit 2)이지
+큰 숫자의 stale이 아닙니다. 순서와 복구는 § `data-flow.md` I가 소유합니다.
+
+실질적 함의는 하나입니다: **본문을 갱신하지 않은 재스탬프는 이 문서들을 초록으로 만들지
+못합니다.** 값은 스탬프가 아니라 본문이 마지막으로 실제 바뀐 지점에서 측정되기 때문입니다.
+
+---
+
 ## 관련 문서
 
 - `modules.md` — 패키지별 책임과 파일 수
 - `dependencies.md` — fan-in / fan-out 상위와 상호 참조 3쌍
-- `entry-points.md` — `main()`, Cobra 트리, 훅, MCP 표면
-- `data-flow.md` — 계층을 관통하는 경로 4개
+- `entry-points.md` — `main()`, Cobra 트리, 훅, MCP 표면, CI가 읽는 종료 코드 표면
+- `data-flow.md` — 계층을 관통하는 경로와 codemaps freshness 게이트

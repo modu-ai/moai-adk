@@ -1,0 +1,82 @@
+--- FAIL: TestReplayConcurrentPublishDistinctTurns (0.19s)
+    --- FAIL: TestReplayConcurrentPublishDistinctTurns/round-1 (0.05s)
+        replay_seam_test.go:209: branch replay: replayed history rejected: unpaired or duplicate tool result
+--- FAIL: TestReplayConcurrentPublishDistinctTurns (0.16s)
+    --- FAIL: TestReplayConcurrentPublishDistinctTurns/round-0 (0.06s)
+        replay_seam_test.go:209: branch replay: replayed history rejected: unpaired or duplicate tool result
+    --- FAIL: TestReplayConcurrentPublishDistinctTurns/round-1 (0.05s)
+        replay_seam_test.go:209: branch replay: replayed history rejected: unpaired or duplicate tool result
+    --- FAIL: TestReplayConcurrentPublishDistinctTurns/round-2 (0.05s)
+        replay_seam_test.go:209: branch replay: replayed history rejected: unpaired or duplicate tool result
+--- FAIL: TestReplayConcurrentPublishDistinctTurns (0.15s)
+    --- FAIL: TestReplayConcurrentPublishDistinctTurns/round-1 (0.05s)
+        replay_seam_test.go:209: branch replay: replayed history rejected: unpaired or duplicate tool result
+    --- FAIL: TestReplayConcurrentPublishDistinctTurns/round-2 (0.04s)
+        replay_seam_test.go:209: branch replay: replayed history rejected: unpaired or duplicate tool result
+--- FAIL: TestReplayConcurrentPublishDistinctTurns (0.16s)
+    --- FAIL: TestReplayConcurrentPublishDistinctTurns/round-0 (0.05s)
+        replay_seam_test.go:209: branch replay: replayed history rejected: unpaired or duplicate tool result
+    --- FAIL: TestReplayConcurrentPublishDistinctTurns/round-2 (0.05s)
+        replay_seam_test.go:209: branch replay: replayed history rejected: unpaired or duplicate tool result
+--- FAIL: TestReplayConcurrentPublishDistinctTurns (0.13s)
+    --- FAIL: TestReplayConcurrentPublishDistinctTurns/round-0 (0.05s)
+        replay_seam_test.go:209: branch replay: replayed history rejected: unpaired or duplicate tool result
+    --- FAIL: TestReplayConcurrentPublishDistinctTurns/round-2 (0.04s)
+        replay_seam_test.go:209: branch replay: replayed history rejected: unpaired or duplicate tool result
+--- FAIL: TestReplayConcurrentPublishDistinctTurns (0.13s)
+    --- FAIL: TestReplayConcurrentPublishDistinctTurns/round-0 (0.04s)
+        replay_seam_test.go:209: branch replay: replayed history rejected: unpaired or duplicate tool result
+    --- FAIL: TestReplayConcurrentPublishDistinctTurns/round-1 (0.05s)
+        replay_seam_test.go:209: branch replay: replayed history rejected: unpaired or duplicate tool result
+    --- FAIL: TestReplayConcurrentPublishDistinctTurns/round-2 (0.04s)
+        replay_seam_test.go:209: branch replay: replayed history rejected: unpaired or duplicate tool result
+--- FAIL: TestReplayConcurrentPublishDistinctTurns (0.16s)
+    --- FAIL: TestReplayConcurrentPublishDistinctTurns/round-0 (0.05s)
+        replay_seam_test.go:209: branch replay: replayed history rejected: unpaired or duplicate tool result
+--- FAIL: TestReplayConcurrentPublishDistinctTurns (0.13s)
+    --- FAIL: TestReplayConcurrentPublishDistinctTurns/round-0 (0.04s)
+        replay_seam_test.go:209: branch replay: replayed history rejected: unpaired or duplicate tool result
+    --- FAIL: TestReplayConcurrentPublishDistinctTurns/round-1 (0.05s)
+        replay_seam_test.go:209: branch replay: replayed history rejected: unpaired or duplicate tool result
+    --- FAIL: TestReplayConcurrentPublishDistinctTurns/round-2 (0.04s)
+        replay_seam_test.go:209: branch replay: replayed history rejected: unpaired or duplicate tool result
+--- FAIL: TestReplayConcurrentPublishDistinctTurns (0.13s)
+    --- FAIL: TestReplayConcurrentPublishDistinctTurns/round-2 (0.04s)
+        replay_seam_test.go:209: branch replay: replayed history rejected: unpaired or duplicate tool result
+--- FAIL: TestReplayConcurrentPublishDistinctTurns (0.11s)
+    --- FAIL: TestReplayConcurrentPublishDistinctTurns/round-0 (0.04s)
+        replay_seam_test.go:209: branch replay: replayed history rejected: unpaired or duplicate tool result
+    --- FAIL: TestReplayConcurrentPublishDistinctTurns/round-1 (0.03s)
+        replay_seam_test.go:209: branch replay: replayed history rejected: unpaired or duplicate tool result
+--- FAIL: TestReplayConcurrentPublishDistinctTurns (0.14s)
+    --- FAIL: TestReplayConcurrentPublishDistinctTurns/round-2 (0.05s)
+        replay_seam_test.go:209: branch replay: replayed history rejected: unpaired or duplicate tool result
+--- FAIL: TestReplayConcurrentPublishDistinctTurns (0.15s)
+    --- FAIL: TestReplayConcurrentPublishDistinctTurns/round-0 (0.05s)
+        replay_seam_test.go:209: branch replay: replayed history rejected: unpaired or duplicate tool result
+--- FAIL: TestReplayConcurrentPublishDistinctTurns (0.14s)
+    --- FAIL: TestReplayConcurrentPublishDistinctTurns/round-0 (0.04s)
+        replay_seam_test.go:209: branch replay: replayed history rejected: unpaired or duplicate tool result
+--- FAIL: TestReplayConcurrentPublishDistinctTurns (0.14s)
+    --- FAIL: TestReplayConcurrentPublishDistinctTurns/round-1 (0.04s)
+        replay_seam_test.go:209: branch replay: replayed history rejected: unpaired or duplicate tool result
+    --- FAIL: TestReplayConcurrentPublishDistinctTurns/round-2 (0.04s)
+        replay_seam_test.go:209: branch replay: replayed history rejected: unpaired or duplicate tool result
+--- FAIL: TestReplayConcurrentPublishDistinctTurns (0.14s)
+    --- FAIL: TestReplayConcurrentPublishDistinctTurns/round-0 (0.04s)
+        replay_seam_test.go:209: branch replay: replayed history rejected: unpaired or duplicate tool result
+    --- FAIL: TestReplayConcurrentPublishDistinctTurns/round-2 (0.05s)
+        replay_seam_test.go:209: branch replay: replayed history rejected: unpaired or duplicate tool result
+--- FAIL: TestReplayConcurrentPublishDistinctTurns (0.15s)
+    --- FAIL: TestReplayConcurrentPublishDistinctTurns/round-0 (0.06s)
+        replay_seam_test.go:209: branch replay: replayed history rejected: unpaired or duplicate tool result
+    --- FAIL: TestReplayConcurrentPublishDistinctTurns/round-1 (0.05s)
+        replay_seam_test.go:209: branch replay: replayed history rejected: unpaired or duplicate tool result
+--- FAIL: TestReplayConcurrentPublishDistinctTurns (0.18s)
+    --- FAIL: TestReplayConcurrentPublishDistinctTurns/round-0 (0.05s)
+        replay_seam_test.go:209: branch replay: replayed history rejected: unpaired or duplicate tool result
+    --- FAIL: TestReplayConcurrentPublishDistinctTurns/round-2 (0.06s)
+        replay_seam_test.go:209: branch replay: replayed history rejected: unpaired or duplicate tool result
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/gateway/translate	3.186s
+FAIL
