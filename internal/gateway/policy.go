@@ -34,7 +34,7 @@ func readRequestBody(r *http.Request, limit int64) ([]byte, error) {
 		if err != nil {
 			return nil, err
 		}
-		defer z.Close()
+		defer func() { _ = z.Close() }() // gzip over in-memory bytes; Close carries no flush to lose
 		return readBounded(z, limit)
 	default:
 		return nil, errors.New("unsupported content encoding")

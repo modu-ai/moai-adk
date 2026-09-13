@@ -31,7 +31,7 @@ func TestNativeEventRawByteBoundaries(t *testing.T) {
 				}
 				b := newNativeBody(context.Background(), io.NopCloser(reader), "canonical", translate.Limits{MaxOutputBytes: 1 << 20, MaxEventBytes: longest + offset})
 				out, err := io.ReadAll(b)
-				b.Close()
+				_ = b.Close() // nativeBody.Close always returns nil
 				success := strings.Contains(string(out), "event: message_stop")
 				t.Logf("CRLF=%v fragmented=%v largest_raw_event=%d event_limit=%d success=%v err=%v", crlf, fragmented, longest, longest+offset, success, err)
 				if offset < 0 && (err == nil || success) {

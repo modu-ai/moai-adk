@@ -30,7 +30,11 @@ func TestCredentialReferencesNeverLeakAcrossEndpointsOrGenerations(t *testing.T)
 	if e != nil {
 		t.Fatal(e)
 	}
-	defer s.Close()
+	defer func() {
+		if err := s.Close(); err != nil {
+			t.Error(err)
+		}
+	}()
 	gen := loginFixture(t, s)
 	ref, e := s.Resolve()
 	if e != nil {
@@ -80,7 +84,9 @@ func TestCredentialReferencesNeverLeakAcrossEndpointsOrGenerations(t *testing.T)
 }
 func TestStoreRejectsCorruptionPermissionsAndCanceledMutations(t *testing.T) {
 	if s, e := OpenStore("relative"); e == nil {
-		s.Close()
+		if cerr := s.Close(); cerr != nil {
+			t.Error(cerr)
+		}
 		t.Fatal("relative store")
 	}
 	for _, raw := range []string{`{`, `{"generation":0}`, `{"generation":1,"tombstone":true,"auth":{}}`, `{"generation":1,"auth":{}}`} {
@@ -89,7 +95,11 @@ func TestStoreRejectsCorruptionPermissionsAndCanceledMutations(t *testing.T) {
 			if e != nil {
 				t.Fatal(e)
 			}
-			defer s.Close()
+			defer func() {
+				if err := s.Close(); err != nil {
+					t.Error(err)
+				}
+			}()
 			if e = os.WriteFile(filepath.Join(s.dir, "state.json"), []byte(raw), 0600); e != nil {
 				t.Fatal(e)
 			}
@@ -105,7 +115,11 @@ func TestStoreRejectsCorruptionPermissionsAndCanceledMutations(t *testing.T) {
 	if e != nil {
 		t.Fatal(e)
 	}
-	defer s.Close()
+	defer func() {
+		if err := s.Close(); err != nil {
+			t.Error(err)
+		}
+	}()
 	gen := loginFixture(t, s)
 	ctx, cancel := context.WithCancel(context.Background())
 	cancel()
@@ -151,7 +165,11 @@ func TestBrokerTokenValidationRejectsInvalidExpiryAndHeaderInjection(t *testing.
 	if e != nil {
 		t.Fatal(e)
 	}
-	defer s.Close()
+	defer func() {
+		if err := s.Close(); err != nil {
+			t.Error(err)
+		}
+	}()
 	if _, e = s.Login(context.Background(), brokerFunc(func(c context.Context, h string, r bool) error {
 		tokenFixture(t, h, "expired", time.Now().Add(-time.Hour))
 		return nil
@@ -171,7 +189,11 @@ func TestSendRejectsInvalidOptionsBodiesProxyAndGeneration(t *testing.T) {
 	if e != nil {
 		t.Fatal(e)
 	}
-	defer s.Close()
+	defer func() {
+		if err := s.Close(); err != nil {
+			t.Error(err)
+		}
+	}()
 	gen := loginFixture(t, s)
 	options := SendOptions{WriteTimeout: time.Second, PollInterval: time.Millisecond, MaxBodyBytes: 10}
 	request, _ := http.NewRequest("POST", SubscriptionEndpoint, strings.NewReader("{}"))
@@ -203,7 +225,11 @@ func TestBrokerCannotReplaceScratchHomeWithSymlink(t *testing.T) {
 	if e != nil {
 		t.Fatal(e)
 	}
-	defer s.Close()
+	defer func() {
+		if err := s.Close(); err != nil {
+			t.Error(err)
+		}
+	}()
 	outside, e := privateBrokerTestHome(t)
 	if e != nil {
 		t.Fatal(e)
@@ -246,7 +272,11 @@ func TestSendRejectsBodyFailuresAndDialFailure(t *testing.T) {
 	if e != nil {
 		t.Fatal(e)
 	}
-	defer s.Close()
+	defer func() {
+		if err := s.Close(); err != nil {
+			t.Error(err)
+		}
+	}()
 	gen := loginFixture(t, s)
 	options := SendOptions{WriteTimeout: time.Second, PollInterval: time.Millisecond, MaxBodyBytes: 100}
 	tr := &http.Transport{DialTLSContext: func(context.Context, string, string) (net.Conn, error) { return nil, errors.New("secret-dial-error") }}
@@ -268,7 +298,9 @@ func TestBrokerRejectsInvalidLaunchConfiguration(t *testing.T) {
 	if e != nil {
 		t.Fatal(e)
 	}
-	os.Chmod(home, 0700)
+	if err := os.Chmod(home, 0700); err != nil {
+		t.Fatal(err)
+	}
 	for _, b := range []CodexBroker{{}, {Executable: "relative", Timeout: time.Second}, {Executable: "/missing-executable", Timeout: time.Second}, {Executable: "/missing-executable", Timeout: time.Second, OnLogin: func(LoginPrompt) error { return nil }}} {
 		if e = b.Run(context.Background(), home, false); !errors.Is(e, ErrBroker) {
 			t.Fatal(e)
@@ -280,7 +312,11 @@ func TestStoreOverflowAndCanceledBrokerCannotPublish(t *testing.T) {
 	if e != nil {
 		t.Fatal(e)
 	}
-	defer s.Close()
+	defer func() {
+		if err := s.Close(); err != nil {
+			t.Error(err)
+		}
+	}()
 	loginFixture(t, s)
 	ctx, cancel := context.WithCancel(context.Background())
 	_, e = s.Login(ctx, brokerFunc(func(c context.Context, h string, r bool) error {
@@ -304,7 +340,9 @@ func TestStoreOverflowAndCanceledBrokerCannotPublish(t *testing.T) {
 	})); !errors.Is(e, ErrAuthState) {
 		t.Fatal(e)
 	}
-	s.Close()
+	if err := s.Close(); err != nil {
+		t.Fatal(err)
+	}
 	if _, e = s.Status(context.Background()); !errors.Is(e, ErrAuthState) {
 		t.Fatal(e)
 	}
@@ -315,7 +353,11 @@ func TestScratchCleanupFailureDoesNotPublish(t *testing.T) {
 	if e != nil {
 		t.Fatal(e)
 	}
-	defer s.Close()
+	defer func() {
+		if err := s.Close(); err != nil {
+			t.Error(err)
+		}
+	}()
 	gen := loginFixture(t, s)
 	var locked string
 	var releaseCleanup func()

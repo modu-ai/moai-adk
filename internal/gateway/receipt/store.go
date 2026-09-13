@@ -133,7 +133,7 @@ func (s *Store) transaction(ctx context.Context, createLock bool, action func(fu
 	if e != nil {
 		return e
 	}
-	defer f.Close()
+	defer func() { _ = f.Close() }() // lock release is governed by unlock + process exit
 	if e = lock(ctx, f); e != nil {
 		return e
 	}
@@ -191,7 +191,7 @@ func (s *Store) read() (*Manifest, error) {
 	if e != nil {
 		return nil, e
 	}
-	defer f.Close()
+	defer func() { _ = f.Close() }() // read-only manifest source; no write-back to lose
 	raw, e := io.ReadAll(io.LimitReader(f, MaxBytes+1))
 	if e != nil {
 		return nil, ErrState
@@ -221,7 +221,7 @@ func (s *Store) write(ctx context.Context, m *Manifest, guard func() error, expe
 	if e != nil {
 		return e
 	}
-	defer s.root.Remove(name)
+	defer func() { _ = s.root.Remove(name) }() // temp manifest cleanup; the published copy owns the state
 	_, e = f.Write(raw)
 	if e == nil {
 		e = f.Sync()

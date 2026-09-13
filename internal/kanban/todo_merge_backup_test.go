@@ -197,9 +197,12 @@ func TestBackupQueueArtifactsAbortsOnTamperedCopy(t *testing.T) {
 		if err != nil {
 			return err
 		}
-		defer f.Close()
-		_, err = f.WriteString("TAMPERED")
-		return err
+		_, werr := f.WriteString("TAMPERED")
+		cerr := f.Close()
+		if werr != nil {
+			return werr
+		}
+		return cerr
 	}
 	defer func() { copyFilePlain = orig }()
 
