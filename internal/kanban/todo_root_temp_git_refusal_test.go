@@ -47,7 +47,7 @@ func TestTempOriginRefusalMatchesStateDirForRootForTempGit(t *testing.T) {
 	if !isTemp {
 		t.Fatalf("fixture is not inside a temp root; the temp anchors regressed (matched %q)", reason)
 	}
-	if !filepath.HasPrefix(resolved, dir) {
+	if !pathWithin(resolved, dir) {
 		t.Errorf("resolution side: temp-origin git repo resolved OUT of the temp root: %s", resolved)
 	}
 	if !refused {
