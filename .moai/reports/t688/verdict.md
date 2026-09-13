@@ -1,8 +1,8 @@
 # t688 판정서 — SPEC-GRAPH-STAMP-ANCESTRY-001
 
 - card: `t688` · lane-9 (Claude 세션 `aa752bc3-a199-4c10-8ab9-4ecb5a3f912f`)
-- branch: `WT-graph-stamp-freshness` · 인계 HEAD `30d505ac4` → 최종 HEAD `4508b490b`
-- 미푸시: 15 (origin/develop `0c32a15b2` 대비 `112 15`) · push 없음 · PR 없음
+- branch: `WT-graph-stamp-freshness` · 인계 HEAD `30d505ac4` → 최종 HEAD `860685326` (verdict 커밋 포함)
+- 미푸시: 15 (origin/develop 대비 `126 15` — origin 이 그 사이 126 앞으로 이동) · push 없음 · PR 없음
 
 ## Claim
 
