@@ -42,6 +42,20 @@ type ConfigManager struct {
 	// 덮어쓰지 않도록 한다. m.mu 잠금 하에서만 변경된다.
 	// 참조: SPEC-GITSTRATEGY-SAVE-ISOLATION-001.
 	gitStrategyDirty bool
+
+	// gitConventionDirty tracks whether the git_convention section was
+	// mutated through SetSection since the last full-config replacement
+	// (Load/LoadRaw/Reload) or successful Save(). Save() rewrites
+	// git-convention.yaml only when this flag is true or the file does not
+	// exist yet (greenfield creation), the same section isolation the
+	// git-strategy section got from SPEC-GITSTRATEGY-SAVE-ISOLATION-001:
+	// without it, an unrelated scoped write (e.g. the profile wizard's
+	// development_mode persist or the profile sync) round-tripped
+	// git-convention.yaml through the loader's partial-override expansion and
+	// reformatted the hand-edited file on every Save, dropping unmodeled keys
+	// (SPEC-INIT-TUX-I18N-001 AC-ITI-006 (7) byte-identity). Changed only
+	// under m.mu.
+	gitConventionDirty bool
 }
 
 // NewConfigManager creates a new ConfigManager instance in uninitialized state.
@@ -90,7 +104,8 @@ func (m *ConfigManager) Load(projectRoot string) (*Config, error) {
 	m.config = cfg
 	m.root = projectRoot
 	m.state = stateInitialized
-	m.gitStrategyDirty = false // 전체-설정 교체: 이전 dirty 상태 초기화
+	m.gitStrategyDirty = false   // 전체-설정 교체: 이전 dirty 상태 초기화
+	m.gitConventionDirty = false // full-config replacement: reset prior dirty state
 
 	return cfg, nil
 }
@@ -118,7 +133,8 @@ func (m *ConfigManager) LoadRaw(projectRoot string) (*Config, error) {
 	m.config = cfg
 	m.root = projectRoot
 	m.state = stateInitialized
-	m.gitStrategyDirty = false // 전체-설정 교체: 이전 dirty 상태 초기화
+	m.gitStrategyDirty = false   // 전체-설정 교체: 이전 dirty 상태 초기화
+	m.gitConventionDirty = false // full-config replacement: reset prior dirty state
 
 	return cfg, nil
 }
@@ -198,9 +214,20 @@ func (m *ConfigManager) Save() error {
 		return fmt.Errorf("save quality config: %w", err)
 	}
 
-	// Save git convention section
-	if err := saveSection(sectionsDir, "git-convention.yaml", gitConventionFileWrapper{GitConvention: m.config.GitConvention}); err != nil {
-		return fmt.Errorf("save git convention config: %w", err)
+	// Save git convention section — section isolation mirroring git-strategy
+	// (SPEC-GITSTRATEGY-SAVE-ISOLATION-001 precedent, AC-ITI-006 (7)): rewrite
+	// only when the git_convention section was SetSection-mutated this session
+	// or the file does not exist yet. Otherwise the hand-edited
+	// git-convention.yaml is preserved byte-for-byte.
+	gitConventionPath := filepath.Join(sectionsDir, "git-convention.yaml")
+	gitConventionAbsent := false
+	if _, statErr := os.Stat(gitConventionPath); os.IsNotExist(statErr) {
+		gitConventionAbsent = true
+	}
+	if m.gitConventionDirty || gitConventionAbsent {
+		if err := saveSection(sectionsDir, "git-convention.yaml", gitConventionFileWrapper{GitConvention: m.config.GitConvention}); err != nil {
+			return fmt.Errorf("save git convention config: %w", err)
+		}
 	}
 
 	// Save git strategy section — 섹션 격리(SPEC-GITSTRATEGY-SAVE-ISOLATION-001).
@@ -228,6 +255,7 @@ func (m *ConfigManager) Save() error {
 	// 성공적인 Save() 이후 dirty 플래그 초기화(EC-3): 이후 SetSection(git_strategy) 없이
 	// 다시 Save()하면 git-strategy.yaml을 재작성하지 않는다.
 	m.gitStrategyDirty = false
+	m.gitConventionDirty = false
 
 	return nil
 }
@@ -260,7 +288,8 @@ func (m *ConfigManager) Reload() error {
 	}
 
 	m.config = cfg
-	m.gitStrategyDirty = false // 전체-설정 교체: 이전 dirty 상태 초기화
+	m.gitStrategyDirty = false   // 전체-설정 교체: 이전 dirty 상태 초기화
+	m.gitConventionDirty = false // full-config replacement: reset prior dirty state
 
 	// Notify registered callbacks
 	for _, cb := range m.callbacks {
@@ -357,6 +386,9 @@ func (m *ConfigManager) setSectionLocked(name string, value any) error {
 			return fmt.Errorf("%w: expected GitConventionConfig for section %q", ErrSectionTypeMismatch, name)
 		}
 		m.config.GitConvention = v
+		// The section was explicitly mutated; Save() consults this flag to
+		// decide whether git-convention.yaml may be rewritten (AC-ITI-006 (7)).
+		m.gitConventionDirty = true
 	case "system":
 		v, ok := value.(SystemConfig)
 		if !ok {

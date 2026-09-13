@@ -250,33 +250,10 @@ func TestSaveAnswerDevelopmentMode(t *testing.T) {
 	}
 }
 
-// TestDevelopmentModeTranslationsExist verifies translations exist for the new question.
-func TestDevelopmentModeTranslationsExist(t *testing.T) {
-	locales := []string{"ko", "ja", "zh"}
-
-	for _, locale := range locales {
-		langTrans, ok := translations[locale]
-		if !ok {
-			t.Fatalf("translations for locale %q not found", locale)
-		}
-
-		trans, ok := langTrans["development_mode"]
-		if !ok {
-			t.Errorf("translation for 'development_mode' in locale %q not found", locale)
-			continue
-		}
-
-		if trans.Title == "" {
-			t.Errorf("translation for 'development_mode' in locale %q has empty title", locale)
-		}
-		if trans.Description == "" {
-			t.Errorf("translation for 'development_mode' in locale %q has empty description", locale)
-		}
-		if len(trans.Options) != 2 {
-			t.Errorf("locale %q: development_mode should have 2 option translations, got %d", locale, len(trans.Options))
-		}
-	}
-}
+// TestDevelopmentModeTranslationsExist was removed in the M8 key cleanup
+// (REQ-ITI-013): the init/reconfigure sets no longer ask development_mode
+// (the absorbed profile wizard owns it, via profileQuestionTexts), so the
+// init-table entries were orphans and are gone.
 
 // TestRemovedQuestionsAbsent verifies that removed user-level questions are no longer present.
 func TestRemovedQuestionsAbsent(t *testing.T) {

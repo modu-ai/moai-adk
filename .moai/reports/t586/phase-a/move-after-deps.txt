@@ -1,0 +1,8 @@
+# tree: HEAD 4061b6bda + uncommitted move (committed next as commit B)
+# cmd: go list -deps -test ./internal/cli/wizard/ | grep -c moai-adk/internal/cli$   (want 0)
+0
+# control: go list -deps -test ./internal/cli/wizard/ | grep -c internal/cli/ptycaptest$   (want 1)
+1
+# go list -deps ./internal/cli/ptycaptest/ | grep -c moai-adk/internal/cli   (package pulls in nothing under internal/cli except itself; want 1 = itself)
+1
+github.com/modu-ai/moai-adk/internal/cli/ptycaptest
