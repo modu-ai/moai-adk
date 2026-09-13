@@ -80,6 +80,13 @@ Two-input adjudication per plan.md §F M0 / §H Resolution Record row 3. Verdict
 - Gaps: full internal/cli package run = default-10m timeout at 601s — pre-existing baseline (~1583s package total on this machine); CI owns the full verdict. Coverage (E3) deferred to the card's whole diff at a later milestone.
 - Note: mid-milestone the agent hit a transient 429 rate limit and was resumed; no work lost.
 
+### M1b Re-absorb — t653 landed (2026-09-14, lead window)
+
+- Absorb: develop `93ae49ce7` (carries t653: receipt/{core,store,compact}.go + conversation/family.go) → merge HEAD `1aca63da8`, clean, no conflicts. `git merge-base --is-ancestor 93ae49ce7 HEAD` → yes.
+- Pin re-verification on the absorbed tree: Manifest.Check ✓ (go doc), Manager.Fork ✓ (go doc), receipt_history 5/5, projection thinking-skip 1, codec 3, refreshNative method 2 hits. **0 pin breaks.**
+- Test re-runs: conversation `ok 31.839s` (M3 repair 7/7 within), translate `ok 36.059s` (M2 wedge+receipt-history within), cli `-run 'Gateway|Repair'` `ok 13.992s` (38-surface incl. M4 live lock, 0 violations). `GOOS=windows` build exit 0, vet exit 0.
+- Conclusion: t653 changed the same gateway surface but broke no pin and no test; M4's merge-base recomputation picked up `93ae49ce7` and still measures 0 violations.
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 ```yaml
@@ -148,7 +155,7 @@ The optional live-probe milestone was skipped this card; its live-instrumentatio
 ## §E.4 Sync-phase Audit-Ready Signal
 
 sync_complete_at: 2026-09-14
-sync_commit_sha: pending-backfill-sync  # D3 backfill exemption — a commit cannot cite its own SHA; backfilled by the orchestrator in a follow-up commit
+sync_commit_sha: "430cf4429"  # D3 backfill — real SHA of the sync commit, backfilled in this follow-up commit
 sync_status: completed
 sync_summary: CHANGELOG [Unreleased] entry emitted (B12: pre-emission grep 0, AC count 12/12, paths verified); SPEC 3-phase close riding the single sync commit (spec.md frontmatter in-progress → completed, body untouched); docs-site skipped — maintainer-facing launcher flag documented repo-locally at .moai/docs/gateway-envelope-repair.md (M6 artifact).
 
