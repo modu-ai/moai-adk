@@ -19,7 +19,7 @@ func newGatewayChildCommand(factory gatewayHandlerFactory) *cobra.Command {
 		Use: "internal-gateway", Hidden: true, Args: cobra.NoArgs, SilenceUsage: true, SilenceErrors: true,
 		// The private child does not execute root startup hooks or project mutation.
 		PersistentPreRunE: func(*cobra.Command, []string) error { return nil },
-		RunE: func(cmd *cobra.Command, _ []string) error {
+		RunE: func(cmd *cobra.Command, _ []string) (err error) {
 			if factory == nil {
 				return errors.New("gateway transport verification is not complete")
 			}
@@ -29,7 +29,11 @@ func newGatewayChildCommand(factory gatewayHandlerFactory) *cobra.Command {
 			}
 			handler, err := factory(cfg.Payload)
 			if closer, ok := handler.(io.Closer); ok {
-				defer closer.Close()
+				defer func() {
+					if closeErr := closer.Close(); err == nil {
+						err = closeErr
+					}
+				}()
 			}
 			if err != nil || handler == nil {
 				return errors.New("gateway handler initialization failed")

@@ -272,7 +272,7 @@ func (h *gatewayOwnedHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) 
 	h.mu.Lock()
 	if h.closed {
 		h.mu.Unlock()
-		http.Error(w, "gateway closed", 503)
+		http.Error(w, "gateway closed", http.StatusServiceUnavailable)
 		return
 	}
 	h.requests.Add(1)

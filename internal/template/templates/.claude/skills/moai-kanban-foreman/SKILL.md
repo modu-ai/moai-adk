@@ -92,7 +92,18 @@ not something this loop can do for itself.
    - `command`:
 
      ```sh
-     d=.moai/state/todo
+     # The queue directory, resolved the way kanban.StateDirForRoot does for a
+     # standard git-repository project: <moai-home>/db/<project-key>/todo,
+     # keyed by the repository's canonical (primary-checkout) root.
+     mh=${MOAI_HOME:-$HOME/.moai}
+     root=$(git rev-parse --show-toplevel 2>/dev/null) || root=$PWD
+     top=$(git worktree list --porcelain 2>/dev/null | sed -n 's/^worktree //p' | head -n 1)
+     [ -n "$top" ] && root=$top
+     root=$(cd "$root" && pwd -P)
+     key=$(basename "$root"); key=$(printf '%s' "$key" | tr -c 'A-Za-z0-9._-' '-')
+     sum=$(printf '%s' "$root" | sha256sum 2>/dev/null | cut -c1-8)
+     [ -n "$sum" ] || sum=$(printf '%s' "$root" | shasum -a 256 | cut -c1-8)
+     d=$mh/db/$key-$sum/todo
      last=init
      while true; do
        cur=$(cksum "$d"/backlog.db "$d"/backlog.db-wal 2>/dev/null)
@@ -108,7 +119,12 @@ not something this loop can do for itself.
    - `persistent: true`
    - `description: backlog queue watch`
 
-   The queue is the database, and a `backlog.json` beside it is an export or
+   The watch resolves the queue directory the way `kanban.StateDirForRoot`
+   does for a standard git-repository project — a project-keyed directory
+   under the moai home (`MOAI_HOME` when that is set to an absolute path,
+   otherwise `~/.moai`), keyed by the primary checkout's root — so a linked
+   worktree watches the primary checkout's queue, not a directory local to
+   its own tree. The queue is the database, and a `backlog.json` beside it is an export or
    a legacy leftover — never the queue — so a watch pointed at the JSON on a
    migrated project polls a file that never changes and reports nothing,
    forever. The write-ahead log is watched alongside the database because a

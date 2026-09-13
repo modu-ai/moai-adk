@@ -90,7 +90,7 @@ Never activate every lane at once. Activate the first lane, wait for evidence th
 
 ## Lane-number ownership — factory.db
 
-Which lane holds which number is recorded in `~/.moai/db/<project-key>/factory/factory.db`. When a new lane opens, its number skips **only those held by live sessions** and attaches to the next free number — a dead lane's number is released and reused, and its leftover claims are cleared from the database too. A legacy `.moai/state/factory/workers.json` is imported once and retained as rollback evidence. The `-f lane-<n>` form already names the lane, so passing `--name`/`-n` alongside it is an error.
+Which lane holds which number is recorded in `~/.moai/db/<project-key>/factory/factory.db`. A project whose launch directory is a temporary one (no absolute `MOAI_HOME` override) keeps this database project-local at `<base>/.moai/db/<project-key>/factory/factory.db`, the same exception the backlog queue follows. When a new lane opens, its number skips **only those held by live sessions** and attaches to the next free number — a dead lane's number is released and reused, and its leftover claims are cleared from the database too. A legacy `.moai/state/factory/workers.json` is imported once and retained as rollback evidence. The `-f lane-<n>` form already names the lane, so passing `--name`/`-n` alongside it is an error.
 
 ## What does not change
 

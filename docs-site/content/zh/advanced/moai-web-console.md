@@ -127,18 +127,18 @@ SPEC 区域顶部是搜索框与 status 筛选标签。紧接着，两个警示�
 
 在导轨中选择设置后，其下会以纵向列表展开以下标签页。
 
-1. **用户信息（Identity）** — 显示名称与项目级 identity 字段
+1. **身份（Identity）** — 显示名称与项目级 identity 字段
 2. **语言（Language）** — 对话、提交信息、代码注释与文档的语言
 3. **LLM** — 权限模式、模型、推理强度
 4. **GLM设置（GLM Settings）** — 按层级的 GLM 模型、按层级的推理强度、GLM API 密钥
 5. **工作流（Workflow）** — 执行模式、默认模式、agentic-loop、loop-prevention
-6. **Git 与工作树（Git & Worktree）** — `git_strategy.mode`、各配置文件的 `merge_method`、工作树与 branch-guard 开关
+6. **Git·工作树（Git & Worktree）** — `git_strategy.mode`、各配置文件的 `merge_method`、工作树与 branch-guard 开关
 7. **审计（Audit）** — 审计模型与各后端的门禁
-8. **Codex** — 把分散的 12 项 codex 设置汇总到一屏的**只读镜像**：审计后端与 codex 固定值、是否启用 codex、codex 相关的 MCP 工具开关，以及检测到的可执行文件。这里不修改取值，每一行都链接到真正拥有该取值的标签页
+8. **Codex 设置（Codex）** — 把分散的 12 项 codex 设置汇总到一屏的**只读镜像**：审计后端与 codex 固定值、是否启用 codex、codex 相关的 MCP 工具开关，以及检测到的可执行文件。这里不修改取值，每一行都链接到真正拥有该取值的标签页
 9. **代理（Agents）** — 各代理的配置文件与模型分配
 10. **报告（Report）** — 报告格式与输出偏好
 11. **MCP** — `moai mcp-server` 各工具的启用开关。可写工具带有区分标记
-12. **跨会话（Cross-Session）** — 会话间消息收发的接收姿态 (posture)：入站处理方式（`accept` · `hold` · `refuse`）、跨机发送隔离、保留对话的过期。编辑的是 `crosssession.yaml`，启动器从下一次 `moai cc`/`glm` 执行起把该值注入会话 —— 已在运行的会话保持启动时的姿态
+12. **跨会话消息（Cross-Session）** — 会话间消息收发的接收姿态 (posture)：入站处理方式（`accept` · `hold` · `refuse`）、跨机发送隔离、保留对话的过期。编辑的是 `crosssession.yaml`，启动器从下一次 `moai cc`/`glm` 执行起把该值注入会话 —— 已在运行的会话保持启动时的姿态
 13. **反馈** — 反馈工作流提交 issue 的目标仓库，以及提交前的确认开关
 14. **质量门禁** — 提交时是否运行 heavy 门禁。运行器只在 `MOAI_PRECOMMIT=1` 下读取该取值
 

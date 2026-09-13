@@ -35,7 +35,9 @@ func regressionNativeEgress(t *testing.T, stream bool) {
 		b, _ := io.ReadAll(r.Body)
 		sent <- string(b)
 		w.Header().Set("Content-Type", "text/event-stream")
-		io.WriteString(w, oaiSSE())
+		if _, err := io.WriteString(w, oaiSSE()); err != nil {
+			t.Error(err)
+		}
 	})
 	store, ref, gen := oaiStore(t)
 	cfg := oaiConfig(tr)

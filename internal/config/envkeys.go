@@ -419,6 +419,16 @@ const (
 	// Claude Code runtime env); the const centralizes the name per
 	// CLAUDE.local.md §14.
 	EnvClaudeCodeMaxConcurrentSubagents = "CLAUDE_CODE_MAX_CONCURRENT_SUBAGENTS"
+
+	// EnvClaudeCodeHarborKite forces the cross-session messaging channel on
+	// when set: the channel's gate checks this variable BEFORE reading the
+	// machine-global cachedGrowthBookFeatures.tengu_harbor_kite slot in
+	// ~/.claude.json. It is an upstream internal flag rather than a documented
+	// interface, so the name can change without notice; it exists here because
+	// the doctor Shared Flag Slot check reports it (card t702). MoAI neither
+	// reads nor writes it outside that diagnostic; the const centralizes the
+	// name per CLAUDE.local.md §14.
+	EnvClaudeCodeHarborKite = "CLAUDE_CODE_HARBOR_KITE"
 )
 
 // Anthropic API environment variables.

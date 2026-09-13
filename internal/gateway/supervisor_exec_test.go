@@ -33,11 +33,11 @@ func TestSupervisorExecRegressionExecParentProcess(t *testing.T) {
 	}
 	raw, _ := json.Marshal(execRegressionRecord{ChildHandoff: child.ChildHandoff, PID: child.command.Process.Pid})
 	if os.WriteFile(os.Getenv("MOAI_AUDIT_HANDOFF"), raw, 0600) != nil {
-		child.Stop(context.Background())
+		_ = child.Stop(context.Background()) // exec-parent helper; the exit code is the only report channel
 		os.Exit(32)
 	}
 	if syscall.Exec("/bin/sleep", []string{"sleep", "2"}, []string{"PATH=/usr/bin:/bin"}) != nil {
-		child.Stop(context.Background())
+		_ = child.Stop(context.Background()) // exec-parent helper; the exit code is the only report channel
 		os.Exit(33)
 	}
 }
@@ -53,9 +53,9 @@ func TestSupervisorExecRegressionSupervisorSurvivesActualExecAndStopsAfterParent
 	go func() { waited <- cmd.Wait() }()
 	var child *os.Process
 	t.Cleanup(func() {
-		cmd.Process.Kill()
+		_ = cmd.Process.Kill() // an already-exited process is the expected case here
 		if child != nil {
-			child.Kill()
+			_ = child.Kill()
 		}
 	})
 	var rec execRegressionRecord
@@ -77,8 +77,10 @@ func TestSupervisorExecRegressionSupervisorSurvivesActualExecAndStopsAfterParent
 	if err != nil {
 		t.Fatalf("actual exec killed child: %v", err)
 	}
-	io.Copy(io.Discard, resp.Body)
-	resp.Body.Close()
+	_, _ = io.Copy(io.Discard, resp.Body) // drain; the Get result is the verdict
+	if cerr := resp.Body.Close(); cerr != nil {
+		t.Error(cerr)
+	}
 	select {
 	case err := <-waited:
 		if err != nil {
@@ -98,7 +100,7 @@ func TestSupervisorExecRegressionSupervisorSurvivesActualExecAndStopsAfterParent
 			t.Log("child served after actual POSIX exec; port closed after parent exited")
 			return
 		}
-		resp.Body.Close()
+		_ = resp.Body.Close() // unread probe response; the Get result is the verdict
 		time.Sleep(20 * time.Millisecond)
 	}
 	t.Fatal("child listener survived parent exit")

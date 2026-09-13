@@ -192,6 +192,9 @@ func runGroupedChecksObserved(verbose bool, filterCheck string, obs checkObserve
 		{"Claude Code", checkClaudeCode},
 		{"GitHub CLI", checkGitHubCLI},
 		{"ast-grep CLI", checkAstGrep},
+		// Card t702: advisory detection of the shared flag slot state for
+		// third-party-backend sessions — read-only, never gates doctor.
+		{flagSlotCheckName, checkFlagSlot},
 	}
 
 	moaiChecks := []checkFunc{

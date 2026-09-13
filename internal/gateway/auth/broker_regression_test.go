@@ -20,14 +20,18 @@ func TestBrokerRegressionBrokerProcess(t *testing.T) {
 	home := os.Getenv("CODEX_HOME")
 	modeRaw, _ := os.ReadFile(filepath.Join(home, "audit-mode"))
 	mode := string(modeRaw)
-	os.WriteFile(filepath.Join(home, "audit-pid"), []byte(strconv.Itoa(os.Getpid())), 0600)
+	if err := os.WriteFile(filepath.Join(home, "audit-pid"), []byte(strconv.Itoa(os.Getpid())), 0600); err != nil {
+		os.Exit(3) // helper child; stdout is the protocol channel
+	}
 	scan := bufio.NewScanner(os.Stdin)
 	for scan.Scan() {
 		var message struct {
 			ID     int    `json:"id"`
 			Method string `json:"method"`
 		}
-		json.Unmarshal(scan.Bytes(), &message)
+		if json.Unmarshal(scan.Bytes(), &message) != nil {
+			continue
+		}
 		switch message.Method {
 		case "initialize":
 			fmt.Println(`{"id":1,"result":{}}`)
@@ -36,7 +40,9 @@ func TestBrokerRegressionBrokerProcess(t *testing.T) {
 			if mode == "blocked-cancel" {
 				id = strings.Repeat("x", 256<<10)
 			}
-			json.NewEncoder(os.Stdout).Encode(map[string]any{"id": 2, "result": map[string]string{"type": "chatgpt", "authUrl": "https://auth.openai.com/authorize", "loginId": id}})
+			if err := json.NewEncoder(os.Stdout).Encode(map[string]any{"id": 2, "result": map[string]string{"type": "chatgpt", "authUrl": "https://auth.openai.com/authorize", "loginId": id}}); err != nil {
+				os.Exit(3) // helper child; a broken protocol channel cannot recover
+			}
 			if mode == "blocked-cancel" {
 				time.Sleep(20 * time.Second)
 				os.Exit(0)
@@ -60,12 +66,16 @@ func TestBrokerRegressionBrokerCancellationCannotBlockOnPipe(t *testing.T) {
 	if e != nil {
 		t.Fatal(e)
 	}
-	os.Chmod(home, 0700)
-	os.WriteFile(filepath.Join(home, "audit-mode"), []byte("blocked-cancel"), 0600)
+	if err := os.Chmod(home, 0700); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(home, "audit-mode"), []byte("blocked-cancel"), 0600); err != nil {
+		t.Fatal(err)
+	}
 	var process *os.Process
 	t.Cleanup(func() {
 		if process != nil {
-			process.Kill()
+			_ = process.Kill() // an already-exited broker is the expected case
 		}
 	})
 	b := CodexBroker{Executable: executable, Timeout: 150 * time.Millisecond, OnLogin: func(LoginPrompt) error { return nil }, testEnv: []string{"GORACE=atexit_sleep_ms=0"}, testArgs: []string{"-test.run=^TestBrokerRegressionBrokerProcess$", "--"}}
@@ -82,7 +92,7 @@ func TestBrokerRegressionBrokerCancellationCannotBlockOnPipe(t *testing.T) {
 		pid, _ := strconv.Atoi(string(raw))
 		process, _ = os.FindProcess(pid)
 		if process != nil {
-			process.Kill()
+			_ = process.Kill() // an already-exited broker is the expected case
 		}
 		select {
 		case <-done:
@@ -102,10 +112,16 @@ func TestBrokerRegressionForcedBrokerExitCannotPublishSuccess(t *testing.T) {
 	if e != nil {
 		t.Fatal(e)
 	}
-	defer s.Close()
+	defer func() {
+		if err := s.Close(); err != nil {
+			t.Error(err)
+		}
+	}()
 	b := CodexBroker{Executable: executable, Timeout: time.Second, OnLogin: func(LoginPrompt) error { return nil }, testEnv: []string{"GORACE=atexit_sleep_ms=0"}, testArgs: []string{"-test.run=^TestBrokerRegressionBrokerProcess$", "--"}}
 	_, e = s.Login(context.Background(), brokerFunc(func(ctx context.Context, home string, refresh bool) error {
-		os.WriteFile(filepath.Join(home, "audit-mode"), []byte("forced-success"), 0600)
+		if err := os.WriteFile(filepath.Join(home, "audit-mode"), []byte("forced-success"), 0600); err != nil {
+			return err
+		}
 		return b.Run(ctx, home, refresh)
 	}))
 	status, statusErr := s.Status(context.Background())

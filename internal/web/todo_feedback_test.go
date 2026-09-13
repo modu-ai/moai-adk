@@ -88,7 +88,11 @@ func TestTodoCommitsStillRefresh(t *testing.T) {
 				if err != nil {
 					t.Fatal(err)
 				}
-				defer db.Close()
+				defer func() {
+					if cerr := db.Close(); cerr != nil {
+						t.Error(cerr)
+					}
+				}()
 				db.SetMaxOpenConns(1)
 				if _, err := db.Exec("PRAGMA wal_autocheckpoint=0"); err != nil {
 					t.Fatal(err)

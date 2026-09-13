@@ -103,7 +103,11 @@ func TestOAuthNative401AndHeaders(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer r.Body.Close()
+	defer func() {
+		if cerr := r.Body.Close(); cerr != nil {
+			t.Error(cerr)
+		}
+	}()
 	body, readErr := io.ReadAll(r.Body)
 	if readErr != nil || !strings.Contains(string(body), `"authentication_error"`) {
 		t.Fatal("native refresh error type lost")
