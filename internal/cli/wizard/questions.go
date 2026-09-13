@@ -24,8 +24,7 @@ import (
 // REQ-IQW-001), each keeping its group label:
 //
 //	"Basic"              — conversation_language, user_name
-//	"Quality & Workflow" — agent_wiring
-//	"Autonomy"           — autonomy_tier
+//	"Agents & Autonomy"  — agent_wiring, autonomy_tier
 //
 // A page is a run of consecutive UNCONDITIONAL questions sharing one Group
 // label: buildFormGroups (wizard.go) merges each such run into a single huh
@@ -352,8 +351,8 @@ func QuestionByID(questions []Question, id string) *Question {
 	return nil
 }
 
-// Page3Questions returns the init-only questions, in order: agent_wiring
-// ("Quality & Workflow") and autonomy_tier ("Autonomy").
+// Page3Questions returns the init-only questions, in order: agent_wiring and
+// autonomy_tier ("Agents & Autonomy").
 //
 // The other eleven page-3 questions — project mode, worktree auto-creation,
 // backlog queue, feedback auto-submit, project continuation, audit model, the
@@ -375,7 +374,7 @@ func Page3Questions(projectRoot string) []Question {
 		// forces it on).
 		{
 			ID:          "agent_wiring",
-			Group:       "Quality & Workflow",
+			Group:       "Agents & Autonomy",
 			Type:        QuestionTypeSelect,
 			Title:       "Select the agent harness to wire",
 			Description: "Which LLM harness MoAI wires for this project. 'claude' is the recommended default; the --llm flag overrides this answer.",
@@ -390,7 +389,7 @@ func Page3Questions(projectRoot string) []Question {
 		// semi-auto pre-selected (REQ-006); fully-autonomous gated at apply time.
 		{
 			ID:          "autonomy_tier",
-			Group:       "Autonomy",
+			Group:       "Agents & Autonomy",
 			Type:        QuestionTypeSelect,
 			Title:       "Select autonomy tier",
 			Description: "Controls how many turns the session runs without prompting. 'semi-auto' is the recommended default.",

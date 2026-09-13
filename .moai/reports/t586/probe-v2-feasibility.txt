@@ -1,0 +1,83 @@
+=== RUN   TestProbeT586FeasibilityButtonLeft
+    zz_probe_t586_feasibility_test.go:33: PROBE feas-button-left 00|┃·Enable·A?·····································································|
+    zz_probe_t586_feasibility_test.go:33: PROBE feas-button-left 01|┃·First·confirm·description.····················································|
+    zz_probe_t586_feasibility_test.go:33: PROBE feas-button-left 02|┃···············································································|
+    zz_probe_t586_feasibility_test.go:33: PROBE feas-button-left 03|┃···예·····아니오·······························································|
+    zz_probe_t586_feasibility_test.go:33: PROBE feas-button-left 04|················································································|
+    zz_probe_t586_feasibility_test.go:33: PROBE feas-button-left 05|··Enable·B?·····································································|
+    zz_probe_t586_feasibility_test.go:33: PROBE feas-button-left 06|··Second·confirm·description.···················································|
+    zz_probe_t586_feasibility_test.go:33: PROBE feas-button-left 07|················································································|
+    zz_probe_t586_feasibility_test.go:33: PROBE feas-button-left 08|····예·····아니오·······························································|
+    zz_probe_t586_feasibility_test.go:33: PROBE feas-button-left 09||
+    zz_probe_t586_feasibility_test.go:33: PROBE feas-button-left 10|←/→·toggle·•·enter·next·•·y·예·•·n·아니오|
+--- PASS: TestProbeT586FeasibilityButtonLeft (0.00s)
+=== RUN   TestProbeT586FeasibilityInlineConfirm
+    zz_probe_t586_feasibility_test.go:44: PROBE feas-inline 00|┃·Enable·A?First·confirm·description.··········예·····아니오····················|
+    zz_probe_t586_feasibility_test.go:44: PROBE feas-inline 01|················································································|
+    zz_probe_t586_feasibility_test.go:44: PROBE feas-inline 02|··Enable·B?Second·confirm·description.···········예·····아니오··················|
+    zz_probe_t586_feasibility_test.go:44: PROBE feas-inline 03||
+    zz_probe_t586_feasibility_test.go:44: PROBE feas-inline 04|←/→·toggle·•·enter·next·•·y·예·•·n·아니오|
+--- PASS: TestProbeT586FeasibilityInlineConfirm (0.00s)
+=== RUN   TestProbeT586FeasibilityFieldSeparator
+    zz_probe_t586_feasibility_test.go:57: PROBE feas-separator-single 00|┃·Enable·A?·····································································|
+    zz_probe_t586_feasibility_test.go:57: PROBE feas-separator-single 01|┃·First·confirm·description.····················································|
+    zz_probe_t586_feasibility_test.go:57: PROBE feas-separator-single 02|┃···············································································|
+    zz_probe_t586_feasibility_test.go:57: PROBE feas-separator-single 03|┃·······예·····아니오···························································|
+    zz_probe_t586_feasibility_test.go:57: PROBE feas-separator-single 04|··Enable·B?·····································································|
+    zz_probe_t586_feasibility_test.go:57: PROBE feas-separator-single 05|··Second·confirm·description.···················································|
+    zz_probe_t586_feasibility_test.go:57: PROBE feas-separator-single 06|················································································|
+    zz_probe_t586_feasibility_test.go:57: PROBE feas-separator-single 07|········예·····아니오···························································|
+    zz_probe_t586_feasibility_test.go:57: PROBE feas-separator-single 08||
+    zz_probe_t586_feasibility_test.go:57: PROBE feas-separator-single 09|←/→·toggle·•·enter·next·•·y·예·•·n·아니오|
+--- PASS: TestProbeT586FeasibilityFieldSeparator (0.00s)
+=== RUN   TestProbeT586FeasibilitySelectHeight
+    zz_probe_t586_feasibility_test.go:67: PROBE feas-select-height 00|┃·Pick·one······································································|
+    zz_probe_t586_feasibility_test.go:67: PROBE feas-select-height 01|┃·Select·description.···························································|
+    zz_probe_t586_feasibility_test.go:67: PROBE feas-select-height 02|┃·▸·Short·-·x···································································|
+    zz_probe_t586_feasibility_test.go:67: PROBE feas-select-height 03|┃···Medium·(Recommended)·-·a·much·longer·description·string·····················|
+    zz_probe_t586_feasibility_test.go:67: PROBE feas-select-height 04||
+    zz_probe_t586_feasibility_test.go:67: PROBE feas-select-height 05|↑·up·•·↓·down·•·/·filter·•·enter·submit|
+--- PASS: TestProbeT586FeasibilitySelectHeight (0.01s)
+=== RUN   TestProbeT586FeasibilityKeyMapHelp
+    zz_probe_t586_feasibility_test.go:80: PROBE feas-keymap-help 00|┃·Enable·A?·····································································|
+    zz_probe_t586_feasibility_test.go:80: PROBE feas-keymap-help 01|┃·First·confirm·description.····················································|
+    zz_probe_t586_feasibility_test.go:80: PROBE feas-keymap-help 02|┃···············································································|
+    zz_probe_t586_feasibility_test.go:80: PROBE feas-keymap-help 03|┃·······예·····아니오···························································|
+    zz_probe_t586_feasibility_test.go:80: PROBE feas-keymap-help 04||
+    zz_probe_t586_feasibility_test.go:80: PROBE feas-keymap-help 05|←/→·전환·•·enter·submit·•·y·예·•·n·아니오|
+--- PASS: TestProbeT586FeasibilityKeyMapHelp (0.00s)
+=== RUN   TestProbeT586FirstPageHeight30
+    zz_probe_t586_feasibility_test.go:88: PROBE firstpage-h30-ko 00|··●·○·○·○·○·○·○·○·○·○·○·○·○·○·○·○·○·○·1·/·18····································|
+    zz_probe_t586_feasibility_test.go:88: PROBE firstpage-h30-ko 01|················································································|
+    zz_probe_t586_feasibility_test.go:88: PROBE firstpage-h30-ko 02|················································································|
+    zz_probe_t586_feasibility_test.go:88: PROBE firstpage-h30-ko 03|┃·대화·언어·선택································································|
+    zz_probe_t586_feasibility_test.go:88: PROBE firstpage-h30-ko 04|┃·MoAI가·대화할·때·사용하는·언어입니다.·마법사가·즉시·해당·언어로·전환됩니다.···|
+    zz_probe_t586_feasibility_test.go:88: PROBE firstpage-h30-ko 05|┃·▸·English·-·English···························································|
+    zz_probe_t586_feasibility_test.go:88: PROBE firstpage-h30-ko 06|┃···Korean·(한국어)·-·한국어····················································|
+    zz_probe_t586_feasibility_test.go:88: PROBE firstpage-h30-ko 07|┃···Japanese·(日本語)·-·日本語··················································|
+    zz_probe_t586_feasibility_test.go:88: PROBE firstpage-h30-ko 08|┃···Chinese·(中文)·-·中文·······················································|
+    zz_probe_t586_feasibility_test.go:88: PROBE firstpage-h30-ko 09|┃···············································································|
+    zz_probe_t586_feasibility_test.go:88: PROBE firstpage-h30-ko 10|┃···············································································|
+    zz_probe_t586_feasibility_test.go:88: PROBE firstpage-h30-ko 11|┃···············································································|
+    zz_probe_t586_feasibility_test.go:88: PROBE firstpage-h30-ko 12|┃···············································································|
+    zz_probe_t586_feasibility_test.go:88: PROBE firstpage-h30-ko 13|················································································|
+    zz_probe_t586_feasibility_test.go:88: PROBE firstpage-h30-ko 14|··이름·입력·····································································|
+    zz_probe_t586_feasibility_test.go:88: PROBE firstpage-h30-ko 15|··MoAI가·부를·이름입니다.·user.yaml(user.name)에·저장됩니다.·비워두면···········|
+    zz_probe_t586_feasibility_test.go:88: PROBE firstpage-h30-ko 16|··건너뜁니다.···································································|
+    zz_probe_t586_feasibility_test.go:88: PROBE firstpage-h30-ko 17|··>·············································································|
+    zz_probe_t586_feasibility_test.go:88: PROBE firstpage-h30-ko 18|················································································|
+    zz_probe_t586_feasibility_test.go:88: PROBE firstpage-h30-ko 19|··프로젝트·이름·입력····························································|
+    zz_probe_t586_feasibility_test.go:88: PROBE firstpage-h30-ko 20|··프로젝트의·이름입니다.························································|
+    zz_probe_t586_feasibility_test.go:88: PROBE firstpage-h30-ko 21|··>·001·········································································|
+    zz_probe_t586_feasibility_test.go:88: PROBE firstpage-h30-ko 22|················································································|
+    zz_probe_t586_feasibility_test.go:88: PROBE firstpage-h30-ko 23|················································································|
+    zz_probe_t586_feasibility_test.go:88: PROBE firstpage-h30-ko 24|················································································|
+    zz_probe_t586_feasibility_test.go:88: PROBE firstpage-h30-ko 25|················································································|
+    zz_probe_t586_feasibility_test.go:88: PROBE firstpage-h30-ko 26|················································································|
+    zz_probe_t586_feasibility_test.go:88: PROBE firstpage-h30-ko 27|················································································|
+    zz_probe_t586_feasibility_test.go:88: PROBE firstpage-h30-ko 28|················································································|
+    zz_probe_t586_feasibility_test.go:88: PROBE firstpage-h30-ko 29||
+    zz_probe_t586_feasibility_test.go:88: PROBE firstpage-h30-ko 30|↑·up·•·↓·down·•·/·filter·•·enter·select|
+--- PASS: TestProbeT586FirstPageHeight30 (0.04s)
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/cli/wizard	0.458s

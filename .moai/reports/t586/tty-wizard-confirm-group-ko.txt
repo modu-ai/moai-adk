@@ -1,0 +1,30 @@
+┃ Enable A?
+┃ First confirm description.
+┃
+┃       예     아니오
+
+  Enable B?
+  Second confirm description.
+
+        예     아니오
+
+  Pick one
+  Select description.
+  ▸ Short - x
+    Medium (Recommended) - a much longer description string
+
+
+
+
+
+
+
+←/→ toggle • enter next • y 예 • n 아니오
+
+
+
+
+
+
+
+
