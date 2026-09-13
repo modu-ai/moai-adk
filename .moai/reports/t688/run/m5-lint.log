@@ -1,0 +1,114 @@
+internal/cli/gateway_child.go:32:23: Error return value of `closer.Close` is not checked (errcheck)
+				defer closer.Close()
+				                  ^
+internal/cli/gateway_factory_test.go:51:15: Error return value of `s.Close` is not checked (errcheck)
+	defer s.Close()
+	             ^
+internal/cli/gateway_factory_test.go:111:27: Error return value of `(io.Closer).Close` is not checked (errcheck)
+	defer h.(io.Closer).Close()
+	                         ^
+internal/cli/gateway_factory_test.go:251:27: Error return value of `(io.Closer).Close` is not checked (errcheck)
+	defer h.(io.Closer).Close()
+	                         ^
+internal/cli/gateway_factory_test.go:294:27: Error return value of `(io.Closer).Close` is not checked (errcheck)
+	defer h.(io.Closer).Close()
+	                         ^
+internal/cli/gateway_factory_test.go:431:27: Error return value of `(io.Closer).Close` is not checked (errcheck)
+	defer h.(io.Closer).Close()
+	                         ^
+internal/cli/gateway_factory_test.go:463:25: Error return value of `(io.Closer).Close` is not checked (errcheck)
+					h.(io.Closer).Close()
+					                   ^
+internal/cli/gateway_factory_test.go:553:27: Error return value of `(io.Closer).Close` is not checked (errcheck)
+	defer h.(io.Closer).Close()
+	                         ^
+internal/cli/gateway_peer_registry_test.go:15:10: Error return value of `os.Mkdir` is not checked (errcheck)
+	os.Mkdir(filepath.Join(source, "sessions"), 0700)
+	        ^
+internal/cli/gateway_peer_registry_test.go:16:14: Error return value of `os.WriteFile` is not checked (errcheck)
+	os.WriteFile(filepath.Join(source, "sessions", "lead.json"), []byte("lead"), 0600)
+	            ^
+internal/cli/gateway_peer_registry_test.go:23:14: Error return value of `os.WriteFile` is not checked (errcheck)
+	os.WriteFile(filepath.Join(native, "sessions", "lane.json"), []byte("lane"), 0600)
+	            ^
+internal/cli/gateway_product_binding_test.go:100:27: Error return value of `(io.Closer).Close` is not checked (errcheck)
+	defer h.(io.Closer).Close()
+	                         ^
+internal/cli/gateway_session_test.go:154:21: Error return value of `response.Body.Close` is not checked (errcheck)
+	response.Body.Close()
+	                   ^
+internal/cli/gateway_session_test.go:164:22: Error return value of `response.Body.Close` is not checked (errcheck)
+		response.Body.Close()
+		                   ^
+internal/cli/gateway_ui_state.go:44:10: Error return value of `f.Close` is not checked (errcheck)
+		f.Close()
+		       ^
+internal/cli/gateway_ui_state.go:125:9: Error return value of `f.Close` is not checked (errcheck)
+	f.Close()
+	       ^
+internal/cli/gateway_ui_state_test.go:25:17: Error return value of `json.Unmarshal` is not checked (errcheck)
+		json.Unmarshal(b, &d)
+		              ^
+internal/cli/gateway_ui_state_test.go:29:15: Error return value of `os.WriteFile` is not checked (errcheck)
+		os.WriteFile(p, []byte(`{"theme":"light"}`), 0600)
+		            ^
+internal/cli/gateway_ui_state_test.go:54:14: Error return value of `os.WriteFile` is not checked (errcheck)
+	os.WriteFile(filepath.Join(home, ".claude.json"), []byte(`{"projects":{"/workspace/new":{"hasTrustDialogAccepted":true}}}`), 0600)
+	            ^
+internal/cli/gateway_ui_state_test.go:55:14: Error return value of `os.WriteFile` is not checked (errcheck)
+	os.WriteFile(filepath.Join(selected, ".claude.json"), []byte(`{"projects":{"/workspace/approved":{"hasTrustDialogAccepted":true,"allowedTools":["foreign"]},"/workspace/rejected":{"hasTrustDialogAccepted":false},"/other":{"hasTrustDialogAccepted":true}}}`), 0600)
+	            ^
+internal/cli/gateway_ui_state_test.go:63:17: Error return value of `json.Unmarshal` is not checked (errcheck)
+		json.Unmarshal(b, &state)
+		              ^
+internal/cli/gateway_ui_state_test.go:84:13: Error return value of `os.MkdirAll` is not checked (errcheck)
+	os.MkdirAll(filepath.Join(home, ".claude"), 0700)
+	           ^
+internal/cli/gateway_ui_state_test.go:85:14: Error return value of `os.WriteFile` is not checked (errcheck)
+	os.WriteFile(filepath.Join(home, ".claude", "settings.json"), []byte(`{"skipDangerousModePermissionPrompt":true,"env":{"SECRET":"excluded"}}`), 0600)
+	            ^
+internal/cli/gateway_ui_state_test.go:87:14: Error return value of `os.WriteFile` is not checked (errcheck)
+	os.WriteFile(filepath.Join(accepted, "settings.json"), []byte(`{"skipDangerousModePermissionPrompt":true}`), 0600)
+	            ^
+internal/cli/gateway_ui_state_test.go:88:14: Error return value of `os.WriteFile` is not checked (errcheck)
+	os.WriteFile(filepath.Join(declined, "settings.json"), []byte(`{"theme":"light"}`), 0600)
+	            ^
+internal/cli/gateway_ui_state_test.go:114:15: Error return value of `os.WriteFile` is not checked (errcheck)
+		os.WriteFile(p, []byte(`{"theme":"light"}`), 0600)
+		            ^
+internal/cli/gpt_auth.go:40:20: Error return value of `store.Close` is not checked (errcheck)
+		defer store.Close()
+		                 ^
+internal/cli/migrate_cg.go:61:17: Error return value of `fmt.Fprintf` is not checked (errcheck)
+					fmt.Fprintf(cmd.OutOrStdout(), "Unchanged: %s already selected.\n", candidate)
+					           ^
+internal/cli/migrate_cg.go:65:18: Error return value of `fmt.Fprintln` is not checked (errcheck)
+					fmt.Fprintln(cmd.OutOrStdout(), "Preview claude-only: team_mode=claude, teammates=in-process/inherit. Automatic GLM teammate assignment is removed. Applying requires --accept-role-change.")
+					            ^
+internal/cli/migrate_cg.go:67:18: Error return value of `fmt.Fprintln` is not checked (errcheck)
+					fmt.Fprintln(cmd.OutOrStdout(), "Preview claude-glm: team_mode=claude, teammates=tmux/glm. Applying and launching require verified teammate routing capability; currently unavailable.")
+					            ^
+internal/cli/migrate_cg.go:80:16: Error return value of `fmt.Fprintln` is not checked (errcheck)
+			fmt.Fprintln(cmd.OutOrStdout(), "Unchanged: the requested teammate policy is already saved.")
+			            ^
+internal/cli/migrate_cg.go:82:15: Error return value of `fmt.Fprintf` is not checked (errcheck)
+			fmt.Fprintf(cmd.OutOrStdout(), "Applied claude-only: automatic GLM teammate assignment removed. Backup: %s\n", result.Backup)
+			           ^
+internal/cli/migrate_cg.go:147:15: Error return value of `f.Close` is not checked (errcheck)
+	defer f.Close()
+	             ^
+internal/cli/migrate_cg.go:230:13: Error return value of `lock.Close` is not checked (errcheck)
+		lock.Close()
+		          ^
+internal/cli/migrate_cg.go:234:13: Error return value of `lock.Close` is not checked (errcheck)
+		lock.Close()
+		          ^
+internal/cli/migrate_cg.go:282:27: Error return value of `temp.Close` is not checked (errcheck)
+	defer func() { temp.Close(); _ = os.Remove(tempPath) }()
+	                         ^
+internal/cli/gateway_factory.go:275:35: ST1013: should use constant http.StatusServiceUnavailable instead of numeric literal 503 (staticcheck)
+		http.Error(w, "gateway closed", 503)
+		                                ^
+37 issues:
+* errcheck: 36
+* staticcheck: 1

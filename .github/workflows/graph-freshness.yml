@@ -75,10 +75,15 @@ jobs:
             exit 1
           fi
           if [ -z "${GITHUB_BASE_REF:-}" ]; then
-            echo "guard: push event (no base ref) — object presence verified only"
-            exit 0
-          fi
-          if [ "${GITHUB_HEAD_REF#release/}" != "$GITHUB_HEAD_REF" ]; then
+            # push event: there is no base ref to judge against, and the object
+            # probe above answers only whether the commit RESOLVES. A squash or
+            # rebase leaves the stamped commit resolvable while dropping it out
+            # of this ref's history, so object presence alone let an orphaned
+            # stamp pass every push-to-main run. The checkout IS the tree being
+            # judged, so HEAD is the target.
+            TARGET="HEAD"
+            echo "guard: push event (no base ref) — judging reachability from HEAD"
+          elif [ "${GITHUB_HEAD_REF#release/}" != "$GITHUB_HEAD_REF" ]; then
             TARGET="HEAD"
             echo "guard: release lane (${GITHUB_HEAD_REF}) — judging reachability from merge preview HEAD"
           else

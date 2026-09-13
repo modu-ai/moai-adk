@@ -466,6 +466,7 @@ ID)로 `moai glm` gateway 세션을 열고 Z.AI mock upstream이 수신 요청�
 | T09 Claude 구독 OAuth × 로컬 gateway 인증 공존 | (REQ-MG-016 → AC-MG-021) | **이관하지 않음.** 선행 측정으로 수행하고(`plan.md` M0) `REQ-MG-016`을 게이트한다 |
 | T10 외부 auth 보존 | (REQ-MG-025 → AC-MG-020) | `SPEC-MOAI-GPT-AUTH-001` (제안)으로 이관. Codex 쪽 불변식만 이 SPEC에 보존 |
 | T20 `cg`/`gg` 제거와 기존 회귀 | (REQ-MG-004 → AC-MG-015) | `SPEC-MOAI-CG-RETIRE-001` (제안)으로 이관. `gg` 부재만 이 SPEC에 보존 |
+| T21 AS-010·011·012 실세션 양성 실증 | (REQ-MG-015, REQ-MG-017 → AC-MG-009/AS-010, AC-MG-003/AS-011, AC-MG-009/AS-012) | 실세션 양성 실증(실세션 회상·실제 turn model 일치·실제 Claude 압축 수집)은 카드 t844(라이브 계측 세션)로 이관. 자동 거절 변형군과 기계적 검증은 카드 t653 run 커밋 `14dba89c5`·`e45f50a8d`에서 착지. t844의 실세션 양성이 도래하기 전까지 전체 기능 통과는 보류다(AS-012의 “단순 구조 probe나 안전한 거절만으로 전체 기능을 통과 처리하지 않는다”). AS-013은 이관 대상이 아니며 설계된 전제 실패 NOT-RUN을 유지한다 |
 | tmux pane teammate 표면 (옛 `AC-MG-006` teammate 수명 판정, 옛 `AC-MG-018` (a) tmux 주입 판정) | — | 0.6.0에서 `SPEC-MOAI-GATEWAY-TEAMMATE-001` (제안)으로 이관. tmux 세션 env 무기록과 in-process 표시 판정만 이 SPEC에 남음 |
 
 ## 0.9.0 기존 AC의 형식·인증 대조군 보강
