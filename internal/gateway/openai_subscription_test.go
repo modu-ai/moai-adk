@@ -36,14 +36,18 @@ func TestOpenAISubscriptionAbsentMediaStrictSSE(t *testing.T) {
 			w.Header()["Content-Type"] = nil
 			w.WriteHeader(200)
 			if !valid {
-				io.WriteString(w, "<html>invalid</html>")
+				if _, err := io.WriteString(w, "<html>invalid</html>"); err != nil {
+					t.Error(err)
+				}
 				return
 			}
 			var final map[string]any
 			_ = json.Unmarshal([]byte(oaiOutput), &final)
 			final["output"] = []any{}
 			b, _ := json.Marshal(final)
-			io.WriteString(w, strings.Replace(oaiSSE(), oaiOutput, string(b), 1))
+			if _, err := io.WriteString(w, strings.Replace(oaiSSE(), oaiOutput, string(b), 1)); err != nil {
+				t.Error(err)
+			}
 		})
 		cfg := oaiConfig(tr)
 		cfg.Subscription = store
@@ -57,7 +61,9 @@ func TestOpenAISubscriptionAbsentMediaStrictSSE(t *testing.T) {
 			t.Fatal(err)
 		}
 		body, readErr := io.ReadAll(r.Body)
-		r.Body.Close()
+		if cerr := r.Body.Close(); cerr != nil {
+			t.Fatal(cerr)
+		}
 		if valid && (r.StatusCode != 200 || readErr != nil || !strings.Contains(string(body), "message_stop")) {
 			t.Fatalf("valid subscription SSE failed: %d %v", r.StatusCode, readErr)
 		}
@@ -81,7 +87,9 @@ func TestOpenAISubscriptionNonStreamCollectsSSE(t *testing.T) {
 			t.Errorf("subscription request was not forced to stream: %#v", body)
 		}
 		w.Header().Set("Content-Type", "text/event-stream")
-		io.WriteString(w, oaiSSE())
+		if _, err := io.WriteString(w, oaiSSE()); err != nil {
+			t.Error(err)
+		}
 	})
 	cfg := oaiConfig(tr)
 	cfg.Subscription = store
@@ -120,10 +128,14 @@ func TestOpenAISubscriptionOutputPolicyWireAndValidation(t *testing.T) {
 			}
 			if method == AuthPKCE {
 				w.Header().Set("Content-Type", "text/event-stream")
-				io.WriteString(w, oaiSSE())
+				if _, err := io.WriteString(w, oaiSSE()); err != nil {
+					t.Error(err)
+				}
 			} else {
 				w.Header().Set("Content-Type", "application/json")
-				io.WriteString(w, oaiOutput)
+				if _, err := io.WriteString(w, oaiOutput); err != nil {
+					t.Error(err)
+				}
 			}
 		})
 		cfg := oaiConfig(tr)
@@ -149,7 +161,9 @@ func TestOpenAISubscriptionOutputPolicyWireAndValidation(t *testing.T) {
 			if e != nil || r.StatusCode != 400 {
 				t.Fatal("invalid max_tokens accepted")
 			}
-			r.Body.Close()
+			if cerr := r.Body.Close(); cerr != nil {
+				t.Fatal(cerr)
+			}
 		}
 		for _, body := range []string{strings.Replace(oaiInput, `"max_tokens":10,`, "", 1), strings.Replace(oaiInput, `"max_tokens":10`, `"max_tokens":0,"max_tokens":10`, 1), strings.Replace(oaiInput, `"max_tokens":10`, `"max_tokens":10,"max_tokens":0`, 1), strings.Repeat(" ", cfg.Limits.MaxBodyBytes) + oaiInput} {
 			q.Body = []byte(body)
@@ -157,7 +171,9 @@ func TestOpenAISubscriptionOutputPolicyWireAndValidation(t *testing.T) {
 			if e != nil || r.StatusCode != 400 {
 				t.Fatal("missing/duplicate/oversized input accepted")
 			}
-			r.Body.Close()
+			if cerr := r.Body.Close(); cerr != nil {
+				t.Fatal(cerr)
+			}
 		}
 		if calls.Load() != 1 {
 			t.Fatal("invalid input reached external transport")

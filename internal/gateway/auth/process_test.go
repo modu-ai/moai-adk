@@ -22,7 +22,11 @@ func TestAuthStoreProcess(t *testing.T) {
 	if e != nil {
 		t.Fatal(e)
 	}
-	defer s.Close()
+	defer func() {
+		if err := s.Close(); err != nil {
+			t.Error(err)
+		}
+	}()
 	switch mode {
 	case "refresh", "refresh-late":
 		b := brokerFunc(func(ctx context.Context, home string, refresh bool) error {
@@ -30,8 +34,13 @@ func TestAuthStoreProcess(t *testing.T) {
 			if e != nil {
 				return e
 			}
-			f.WriteString("call\n")
-			f.Close()
+			if _, err := f.WriteString("call\n"); err != nil {
+				_ = f.Close() // error path; the write error is what propagates
+				return err
+			}
+			if err := f.Close(); err != nil {
+				return err
+			}
 			if mode == "refresh-late" {
 				if e := os.WriteFile(filepath.Join(dir, "ready"), []byte("ready"), 0600); e != nil {
 					return e
@@ -93,7 +102,11 @@ func TestCrossProcessRefreshSingleExchange(t *testing.T) {
 	if e != nil {
 		t.Fatal(e)
 	}
-	defer s.Close()
+	defer func() {
+		if err := s.Close(); err != nil {
+			t.Error(err)
+		}
+	}()
 	loginFixture(t, s)
 	one := authProcess(t, s.dir, "refresh")
 	two := authProcess(t, s.dir, "refresh")
@@ -127,7 +140,11 @@ func TestCrossProcessLockCrashReleasesOwnership(t *testing.T) {
 	if e != nil {
 		t.Fatal(e)
 	}
-	defer s.Close()
+	defer func() {
+		if err := s.Close(); err != nil {
+			t.Error(err)
+		}
+	}()
 	cmd := authProcess(t, s.dir, "lock")
 	stdout, e := cmd.StdoutPipe()
 	if e != nil {
@@ -136,7 +153,7 @@ func TestCrossProcessLockCrashReleasesOwnership(t *testing.T) {
 	if e = cmd.Start(); e != nil {
 		t.Fatal(e)
 	}
-	t.Cleanup(func() { cmd.Process.Kill() })
+	t.Cleanup(func() { _ = cmd.Process.Kill() })
 	line, e := bufio.NewReader(stdout).ReadString('\n')
 	if e != nil || line != "LOCKED\n" {
 		t.Fatalf("lock handshake %q %v", line, e)
@@ -164,13 +181,17 @@ func TestCrossProcessLateRefreshCannotResurrectLogout(t *testing.T) {
 	if e != nil {
 		t.Fatal(e)
 	}
-	defer s.Close()
+	defer func() {
+		if err := s.Close(); err != nil {
+			t.Error(err)
+		}
+	}()
 	loginFixture(t, s)
 	cmd := authProcess(t, s.dir, "refresh-late")
 	done := make(chan error, 1)
 	t.Cleanup(func() {
 		if cmd.Process != nil {
-			cmd.Process.Kill()
+			_ = cmd.Process.Kill() // an already-exited child is the expected case
 		}
 	})
 	go func() { done <- cmd.Run() }()

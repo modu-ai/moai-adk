@@ -179,7 +179,7 @@ func TestStreamBoundsAndCancellationCloseReader(t *testing.T) {
 		t.Fatal("line bound")
 	}
 	r, w := io.Pipe()
-	defer w.Close()
+	defer func() { _ = w.Close() }() // io.Pipe closes always return nil
 	ctx, cancel := context.WithCancel(context.Background())
 	done := make(chan error, 1)
 	go func() { done <- c.Stream(ctx, r, &out) }()

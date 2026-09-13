@@ -70,7 +70,9 @@ func nativeHandler(status int, payload string) http.HandlerFunc {
 			return
 		}
 		w.Header().Set("Content-Type", "application/json")
-		io.WriteString(w, payload)
+		// A write error is expected when a retry attempt aborts the connection
+		// mid-response; only the final attempt's bytes reach the assertions.
+		_, _ = io.WriteString(w, payload)
 	}
 }
 
@@ -84,7 +86,9 @@ func TestUpstreamRetryRecoversSingleFiveHundred(t *testing.T) {
 			return
 		}
 		w.Header().Set("Content-Type", "application/json")
-		io.WriteString(w, nativeOutput)
+		if _, err := io.WriteString(w, nativeOutput); err != nil {
+			t.Errorf("write response: %v", err)
+		}
 	}, dialBudget(0))
 	a, e := NewAnthropicAdapter(nativeConfig(tr))
 	if e != nil {
@@ -182,7 +186,9 @@ func TestUpstreamRetryDialExhaustionCarriesReason(t *testing.T) {
 func TestUpstreamNoRetryAfterResponseStarted(t *testing.T) {
 	tr, dials := retryTLS(t, func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
-		io.WriteString(w, nativeOutput[:20])
+		if _, err := io.WriteString(w, nativeOutput[:20]); err != nil {
+			t.Errorf("write response: %v", err)
+		}
 		w.(http.Flusher).Flush()
 		panic(http.ErrAbortHandler)
 	}, dialBudget(0))
@@ -235,7 +241,9 @@ func TestOpenAIUpstreamRetryWiring(t *testing.T) {
 				return
 			}
 			w.Header().Set("Content-Type", "application/json")
-			io.WriteString(w, oaiOutput)
+			if _, err := io.WriteString(w, oaiOutput); err != nil {
+				t.Errorf("write response: %v", err)
+			}
 		})
 		a, e := NewOpenAIAdapter(oaiConfig(tr))
 		if e != nil {

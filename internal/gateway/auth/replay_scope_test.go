@@ -14,7 +14,11 @@ func TestReplayScopeSurvivesRefreshButRejectsReplacement(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer s.Close()
+	defer func() {
+		if err := s.Close(); err != nil {
+			t.Error(err)
+		}
+	}()
 	gen := loginFixture(t, s)
 	ref, _ := s.Resolve()
 	first, err := s.ReplayScope(context.Background(), ref)
@@ -60,7 +64,11 @@ func TestReplayScopeRejectsAbsentForeignAndCancelledReferences(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer s.Close()
+	defer func() {
+		if err := s.Close(); err != nil {
+			t.Error(err)
+		}
+	}()
 	loginFixture(t, s)
 	ref, _ := s.Resolve()
 	for _, bad := range []CredentialRef{nil, Absent{ProviderID: ProviderOpenAI}, (*storeRef)(nil)} {
@@ -73,7 +81,9 @@ func TestReplayScopeRejectsAbsentForeignAndCancelledReferences(t *testing.T) {
 	if _, err = s.ReplayScope(ctx, ref); err == nil {
 		t.Fatal("cancelled scope accepted")
 	}
-	s.Logout(context.Background())
+	if _, err := s.Logout(context.Background()); err != nil {
+		t.Fatal(err)
+	}
 	if _, err = s.ReplayScope(context.Background(), ref); err == nil {
 		t.Fatal("logged out scope accepted")
 	}

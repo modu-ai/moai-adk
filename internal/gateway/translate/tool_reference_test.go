@@ -37,7 +37,9 @@ func TestToolReferenceRejectsUnknownMalformedAndWrongPlacement(t *testing.T) {
 		}
 	}
 	var root map[string]any
-	json.Unmarshal([]byte(referenceRequest), &root)
+	if err := json.Unmarshal([]byte(referenceRequest), &root); err != nil {
+		t.Fatal(err)
+	}
 	root["messages"] = []any{map[string]any{"role": "user", "content": []any{map[string]any{"type": "tool_reference", "tool_name": "web.search"}}}}
 	raw, _ := json.Marshal(root)
 	if _, _, err := Request("gpt-5.6-sol", raw, Limits{}); err == nil {
