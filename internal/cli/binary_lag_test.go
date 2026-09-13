@@ -193,10 +193,13 @@ func exprSource(fset *token.FileSet, src []byte, e ast.Expr) string {
 //     (doctor.go registers it as a string literal, hence the quotes).
 //   - flagSlotCheckName — t702, the shared-flag-slot session diagnostic
 //     (registered through the constant, hence bare).
+//   - `"Git Strategy Workflow"` — t656, the git-strategy workflow
+//     interpretation-table diagnostic (string literal, hence the quotes).
 var namesAddedAfterBaseline = map[string]bool{
-	"hookWiringCheckName": true,
-	`"Hook Delivery"`:     true,
-	"flagSlotCheckName":   true,
+	"hookWiringCheckName":     true,
+	`"Hook Delivery"`:         true,
+	"flagSlotCheckName":       true,
+	`"Git Strategy Workflow"`: true,
 }
 
 // TestBinaryLag_AllowlistKeysAreLiveNames asserts that every key of
