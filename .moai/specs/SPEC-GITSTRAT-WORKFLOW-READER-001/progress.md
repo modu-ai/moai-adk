@@ -26,7 +26,11 @@ pre_flight:
   evidence_verified_in_tree: true
 discarded_premise: "git_strategy.<mode>.workflow has 0 production readers — stale; t449/t637 landed the reader"
 m1_commit_sha: "<pinned at M1 completion — AC-GWS-010 diffs against this SHA>"
-next: plan-audit → Implementation Kickoff Approval → run (M1 characterization first)
+plan_audit_verdict: "PASS 0.96 (iter2 of 2; trajectory 0.78→0.96; Tier M ceiling reached)"
+plan_audit_report: ".moai/reports/t656/plan-audit-SPEC-GITSTRAT-WORKFLOW-READER-001-iter2.md"
+plan_complete_at: 2026-09-13T19:30:16Z
+plan_status: audit-ready
+next: Implementation Kickoff Approval (orchestrator → lead relay) → run (M1 characterization first)
 ```
 
 ## §E.2 Run-phase Evidence
