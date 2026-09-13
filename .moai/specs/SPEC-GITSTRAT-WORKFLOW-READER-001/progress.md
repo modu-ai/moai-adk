@@ -121,7 +121,33 @@ follow_ups:
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending run-phase>_
+```yaml
+spec: SPEC-GITSTRAT-WORKFLOW-READER-001
+phase: sync
+card: t656
+branch: WT-git-flow-reader
+base: b1bd81b23
+sync_complete_at: 2026-09-14
+sync_commit_sha: "pending-backfill-sync"   # D3 placeholder — backfilled in the follow-up commit (a commit cannot cite its own SHA)
+sync_status: complete — 3-phase close landed (CHANGELOG entry + spec.md implemented → completed + this signal)
+sync_audit_verdict: "PASS 9.0/10 (cold auditor binding — the shipped 4-dim workflow script failed to parse; Functionality/Security/Craft/Consistency all 9)"
+sync_audit_report: ".moai/reports/t656/sync-audit-SPEC-GITSTRAT-WORKFLOW-READER-001.md"
+changelog_entry_position: "CHANGELOG.md [Unreleased] > Added (first entry)"
+frontmatter_status_transitions:
+  - "in-progress → implemented → completed (single sync commit; status + updated only)"
+canary_compliance_check:
+  spec_id_token_count_pre: 0   # grep -c 'SPEC-GITSTRAT-WORKFLOW-READER-001' CHANGELOG.md
+  spec_id_token_count_post: 1
+  ac_count_vs_acceptance: "13/13 (AC-GWS-001..013 all live, no [RETIRED]/[REF] markers)"
+  file_paths_verified: "internal/config/loader_integration_branch.go, internal/config/loader_workflow_disposition.go, internal/cli/doctor_git_strategy_workflow.go, internal/cli/integration.go, internal/config/testdata/shipped_key_inventory.yaml — all confirmed by ls before CHANGELOG drafting"
+readme_decision: "skipped — grep over README.md for workflow/git-flow/github-flow/trunk-based values found no factually-wrong section (only unrelated CI badge URLs and console-tab prose)"
+docs_site: "out of scope this cycle (lead's judgment)"
+codemaps: "skipped (CI-rebuilt)"
+mx_validation: "already passed this cycle (P1/P2 clean); MX report: added 2 @MX:NOTE + 1 @MX:ANCHOR (fan_in 3, LoadGitFlowIntegrationConfig, commit e6c15e056); no further tagging performed at sync"
+ac_gws_012_disposition: "PASS-WITH-DEBT (operator-bound): coverage 82.2% vs 85.0 literal, baseline b1bd81b23 = 82.0% (shortfall pre-exists); new/extended functions 100%; legacy coverage follow-up card named in §E.3 follow_ups"
+push_state: "NO PUSH PERFORMED (operator ban; lead batch-pushes develop)"
+```
+
 
 ## §F Phase 4 Mode Selection
 
