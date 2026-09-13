@@ -22,7 +22,7 @@ The screen has three parts. The **rail** on the left stacks the six areas vertic
 | Kanban | `/kanban` | Chain session board plus the four-column SPEC pipeline |
 | Specs | `/specs` | SPEC catalog search, filters and detail, close debt and MUST-FIX drift |
 | Monitor | `/monitor` | Sessions, goals, verification and epics in four panels |
-| Settings | `/settings` | Profile preferences and project sections (14 tabs) |
+| Settings | `/settings` | Profile preferences and project sections |
 | Todo | `/todo` | The backlog queue, read-only — every card in all three states |
 
 What sits at the right of the appbar depends on the area. The five observation areas show a **live indicator**; the settings area shows a **save cluster** (the change count and the save button). The context chips (`lang` · `model` · `effort` · `dev`) render in the settings area only — they exist so you can confirm the key values of the profile you are editing before you save.
@@ -125,12 +125,12 @@ One discipline shows up all over the screen.
 
 The settings area is the only place in the console that writes files. It defines no validation rules of its own and calls the **same validation and persistence layer** as the terminal wizard (`moai profile`, `moai update -c`). That is why editing from either side produces the same result.
 
-Choosing Settings in the rail unfolds fourteen tabs below it as a vertical list.
+Choosing Settings in the rail unfolds the tabs below as a vertical list.
 
 1. **Identity** — display name and project-level identity fields
 2. **Language** — conversation, commit message, code comment and documentation language
 3. **LLM** — permission mode, model, effort level
-4. **3rd Party LLM** — per-tier GLM models, per-tier effort, GLM API key
+4. **GLM Settings** — per-tier GLM models, per-tier effort, GLM API key
 5. **Workflow** — execution mode, default mode, agentic-loop, loop-prevention
 6. **Git & Worktree** — `git_strategy.mode`, per-profile `merge_method`, worktree and branch-guard toggles
 7. **Audit** — the audit model and the per-backend gates
@@ -162,7 +162,7 @@ Fields render with the widget that matches the value's real domain. A bool field
 
 ### GLM honesty badge
 
-The only runtime delivery channel for effort is a single session-level environment variable, so per-tier effort values are **stored only**. They persist in the config, but the runtime reads only the session-level value. The 3rd Party LLM tab carries a badge naming the source that actually applies, so this is stated rather than implied.
+The only runtime delivery channel for effort is a single session-level environment variable, so per-tier effort values are **stored only**. They persist in the config, but the runtime reads only the session-level value. The GLM Settings tab carries a badge naming the source that actually applies, so this is stated rather than implied.
 
 ### Editing scope
 
