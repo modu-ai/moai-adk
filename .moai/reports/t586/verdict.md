@@ -53,3 +53,19 @@ Every row above was measured in this run against this tree (worktree `.claude/wo
 ## Window procedure (on lead designation)
 
 acquire → `git merge origin/develop` (absorb) → re-measure in merge tree (scoped: `./internal/cli/...` suites + the 8 sampled ACs' selectors; verify golden/pty tests under the merge tree's TERM) → `EnterWorktree(.claude/worktrees/develop)` → `git merge --no-ff WT-init-tux-i18n` → release → report merge SHA. Push stays lead-batch. Worktree disposal only after the remote merge lands.
+
+## Window execution record (2026-09-13, lane-2)
+
+- Window acquired: `moai integration acquire --name lane-2 --card t586` (holder bba81b70, since 08:32Z).
+- Correction adopted: absorb target was local develop `4f9025151` (lead's figure; my merge-base `03a48b0df` was 145 commits behind — re-measured `git rev-parse develop` = `4f9025151` = `origin/develop`).
+- Absorb merge: `0c369e170` (parents `db6526daf` + `4f9025151`).
+- **Conflicts (2) and resolutions:**
+  1. `CHANGELOG.md` — union: t586 close entry + develop's SPEC-DOCS-TABCOUNT-DRIFT-001 (t530) entry both kept under `[Unreleased] ### Changed`.
+  2. `internal/cli/profile_setup.go` — develop's SPEC-WORKTREE-KEY-WIRING-001 M2 ordering (`sessionExitAutoMerge` BEFORE disposal, REQ-WKW-013) combined with t586 M5's `cleanupSessionWorktreeFn` test seam (AC-ITI-006/007 preservation; seam var still binds to `cleanupSessionWorktree` at `profile.go:83`). `init.go` auto-merged (same pattern resolved by git).
+- Post-resolution: `go build ./internal/cli/...` OK, `go vet ./internal/cli` exit 0, conflict markers 0.
+- **Merge-tree re-measurement (all exit 0, TERM=xterm-256color pinned):**
+  - Sampled AC selectors (wizard pkg): `TestProfileWizardGolden_LocaleFrames|NoEnglishLeak|TestWizardTranslationKeys_ReferencedAndLocaleEquivalent|TestInitRegroup_TwoPages|TestInitStepper_Denominator4|TestGroupLabel_NotRendered` — RUN 4 = top-level PASS 4, FAIL 0.
+  - cli pkg (absorbed/seam/t655): `TestProfileSetupAbsorbed|TestHelpLabels_LocaleGoldenSurfaces|TestAutoMerge|TestSessionWorktree|TestSessionExit` — PASS 26, FAIL 0 (61 RUN incl. subtests).
+  - Gated pty (`MOAI_PTY_CAPTURE=1`): `TestPtyCapture_InitFirstScreen|TestPtyCapture_DowngradeConfirm*` — PASS 3, FAIL/SKIP 0.
+  - Full `./internal/cli/...` suite deliberately NOT run locally (lead directive; CI on origin/develop is the integration verdict).
+- Verdict update committed as `f165ccd8e`.
