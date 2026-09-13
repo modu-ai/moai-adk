@@ -68,4 +68,12 @@
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase — manager-docs 소관>_
+- sync_status: complete (3-phase close — spec.md frontmatter `in-progress → completed`, status + updated only, zero body edits)
+- sync_complete_at: 2026-09-14
+- sync_commit_sha: pending-backfill-sync
+- changelog_entry: none — judgment NO (test-only regression guard, single new test file in internal/graph, zero production code, zero user-facing CLI/docs surface; the sync commit itself is the lifecycle record. B12 pre-emission grep = 0, AC inventory AC-CFG-001..005 = 5, matching the run verdict 5/5 PASS)
+- b12_self_test_a: pass (grep -c 'SPEC-CODEMAPS-FOLD-GUARD-001' CHANGELOG.md = 0)
+- b12_self_test_b: pass (spec.md AC inventory 5 distinct — AC-CFG-001..005; AC-CM2-007 excluded as a cross-reference to SPEC-CODEMAPS-REFRESH-002's acceptance, not this SPEC's AC; matches verdict 5/5)
+- b12_self_test_c: pass (no file paths claimed in a CHANGELOG entry — no entry emitted; the one run-phase file, internal/graph/codemaps_fold_guard_test.go, verified present via git log/tree)
+- mx_tag_compliance_check: pass (test-only file, no exported functions, no new MX obligations)
+- sync_commit_files: spec.md (frontmatter status+updated) + progress.md (§E.4) — no CHANGELOG.md change

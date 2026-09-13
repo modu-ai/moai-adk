@@ -2,7 +2,7 @@
 id: SPEC-CODEMAPS-FOLD-GUARD-001
 title: "codemaps fold 판정 단위 산문 보존 가드 — 재생성이 접힌 단위를 다시 쓰지 못하게 한다"
 version: "0.1.1"
-status: in-progress
+status: completed
 created: 2026-09-14
 updated: 2026-09-14
 author: manager-spec
