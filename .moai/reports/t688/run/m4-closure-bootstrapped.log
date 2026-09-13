@@ -1,0 +1,4 @@
+codemaps  metric=described-source-diff value=2 threshold=40 verdict=fresh
+mx-index  metric=inventory-content-diff value=0 threshold=1 verdict=fresh
+edges     metric=source-fingerprint-mismatch value=0 threshold=0 verdict=fresh
+citations metric=positive-cited-path-absence value=0 threshold=0 verdict=fresh
