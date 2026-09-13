@@ -53,3 +53,18 @@ Two-input adjudication per plan.md §F M0 / §H Resolution Record row 3. Verdict
 **Design directive folded (lead)**: this SPEC's design rests on client-side persistence / replay byte preservation without presupposing any server-side fix. t707's transcript≠request-bytes finding CORROBORATES the design premise: the family transcript retains the correct issued bytes (t708 research addendum: 36 complete carriers measured) while the outgoing request diverges — the launcher-side verbatim re-injection path is exactly the byte-preservation mechanism, and it presupposes no server-side change (REQ-EVR-001 validator lock).
 
 **M0 outcome: PASSED — no adverse scope finding from either input. M1 (develop absorb + pin re-verification) is ready; awaiting the lead's window signal so the absorb carries the t707 merge.**
+
+## §E.2 — M1 Develop Absorb + Pin Re-verification (2026-09-14, lead window)
+
+- Absorb: `git merge develop --no-edit` — develop `4da5d1c4e` (carries t707 merge) → new HEAD `febadc784`, clean merge, no conflicts. Ancestry gate: `git merge-base --is-ancestor 4da5d1c4e HEAD` → yes.
+- Pin re-verification (plan.md §C, absorbed tree, this run):
+  - `go doc ./internal/gateway/receipt Manifest.Check` → resolves (func (m *Manifest) Check(authorizedUUID string, history []Observation) error)
+  - `go doc ./internal/gateway/conversation Manager.Fork` → resolves (func (m *Manager) Fork(ctx context.Context, parentID string) (d Descriptor, err error))
+  - `grep -n 'func (m \*Manager) refreshNative' internal/gateway/conversation/native.go` → native.go:17 (D2-corrected form) + refreshNativeProject :73
+  - receipt_history.go 5/5 symbols (Check/checkObserved/Publish/replayCause/observations) → 5
+  - projection.go thinking-skip → 1; codec.go Decode/BindToolID/RestoreToolID → 3; gateway_factory.go 2 → 2; gateway_session.go flow → 3
+  - Result: 0 pin breaks; no blocker.
+- Characterization baseline: `go test ./internal/gateway/translate/ -run TestReceiptHistory -count=1` → `ok ... 1.065s`
+- Scoped lint delta: `golangci-lint run --new-from-rev=7a7a08f20 internal/gateway/... internal/cli/...` → `0 issues.`, exit 0. (Pre-existing repo-wide lint red, 997 findings on t707's measurement, is t671's scope — 0 NEW issues on this branch's delta.)
+- Cross-build: `GOOS=windows GOARCH=amd64 go build ./...` → exit 0.
+- Note: t707's verdict signature detail observed — `Manager.Fork` returns named `(d Descriptor, err error)`; symbol identity unchanged.
