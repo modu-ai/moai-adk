@@ -58,6 +58,8 @@ func archivedIDsOf(entries []BacklogArchiveEntry) map[string]bool {
 
 // TestMergeBacklogRecordsZeroLoss proves every card in either store appears in
 // the merged record under its original id or a mapping row (AC-TQM-002 shape).
+// The shared-number t5 pair is byte-identical but the project copy is LIVE —
+// under the v0.3.0 discriminator it renumbers (t5→t10), never absorbs.
 func TestMergeBacklogRecordsZeroLoss(t *testing.T) {
 	home := mergeFixture([]BacklogItem{
 		mergeItem("t1", "home only", BacklogStateQueued),
@@ -74,16 +76,19 @@ func TestMergeBacklogRecordsZeroLoss(t *testing.T) {
 		t.Fatalf("merge: %v", err)
 	}
 	got := idsOf(merged.Items)
-	for _, want := range []string{"t1", "t7", "t9"} {
+	for _, want := range []string{"t1", "t7", "t9", "t10"} {
 		if !got[want] {
 			t.Errorf("merged items missing %s: %v", want, got)
 		}
 	}
-	if len(report.Duplicates) != 1 || report.Duplicates[0].ID != "t5" {
-		t.Errorf("want one resolved duplicate t5, got %+v", report.Duplicates)
+	if len(report.Duplicates) != 0 {
+		t.Errorf("live identical pair absorbed as duplicate: %+v", report.Duplicates)
 	}
-	if report.HighWater != 9 {
-		t.Errorf("HighWater = %d, want 9", report.HighWater)
+	if len(report.Renumbered) != 1 || report.Renumbered[0].OldID != "t5" || report.Renumbered[0].NewID != "t10" {
+		t.Errorf("want renumber t5→t10, got %+v", report.Renumbered)
+	}
+	if report.HighWater != 10 {
+		t.Errorf("HighWater = %d, want 10", report.HighWater)
 	}
 }
 
@@ -142,14 +147,14 @@ func mergedLastIndex(items []BacklogItem, id string) int {
 }
 
 // TestMergeBacklogRecordsDuplicateKeepsHome proves the content-identical pair
-// leaves the home copy byte-unchanged and reports the pair (REQ-TQM-006).
+// whose project copy is in the ARCHIVED population leaves the home copy
+// unchanged and reports the pair with its archived origin (REQ-TQM-006 v2).
 func TestMergeBacklogRecordsDuplicateKeepsHome(t *testing.T) {
 	home := mergeFixture([]BacklogItem{
 		mergeItem("t4", "identical card", BacklogStatePicked),
 	}, 4)
-	project := mergeFixture([]BacklogItem{
-		mergeItem("t4", "identical card", BacklogStatePicked),
-	}, 4)
+	project := mergeFixture(nil, 4)
+	project.Archived = []BacklogArchiveEntry{{Item: mergeItem("t4", "identical card", BacklogStatePicked)}}
 
 	merged, report, err := MergeBacklogRecords(home, project, MergeOptions{})
 	if err != nil {
@@ -166,6 +171,9 @@ func TestMergeBacklogRecordsDuplicateKeepsHome(t *testing.T) {
 	}
 	if len(report.Duplicates) != 1 || report.Duplicates[0].ID != "t4" {
 		t.Errorf("want one duplicate row for t4, got %+v", report.Duplicates)
+	}
+	if report.Duplicates[0].Origin != MergeOriginProjectArchived {
+		t.Errorf("duplicate origin = %q, want %q", report.Duplicates[0].Origin, MergeOriginProjectArchived)
 	}
 }
 
@@ -532,4 +540,78 @@ func TestRewriteCardTokensEmptyMapping(t *testing.T) {
 	if got := rewriteCardTokens("t642 and t6420", nil); got != "t642 and t6420" {
 		t.Errorf("nil mapping rewrote text: %q", got)
 	}
+}
+
+// TestMergeBacklogRecordsLiveArchivedPairRenumbers is the M1-delta
+// discriminator test (REQ-TQM-006 v2 / AC-TQM-010): a project LIVE-population
+// card (queued, picked, or dropped) whose id matches a home card — including a
+// home ARCHIVED card — with byte-identical content resolves RENUMBER-MIGRATE,
+// never silent duplicate absorption. RED-FIRST: the pre-discriminator classify
+// absorbed these as duplicates.
+func TestMergeBacklogRecordsLiveArchivedPairRenumbers(t *testing.T) {
+	for _, state := range []BacklogState{BacklogStatePicked, BacklogStateQueued, BacklogStateDropped} {
+		t.Run(string(state)+" project card vs home archived twin", func(t *testing.T) {
+			home := mergeFixture(nil, 0)
+			home.Items = []BacklogItem{mergeItem("t1", "anchor", BacklogStateQueued)}
+			home.Archived = []BacklogArchiveEntry{{
+				Item:     mergeItem("t5", "the same task text", state),
+				Findings: []BacklogArchivedFinding{},
+			}}
+			project := mergeFixture([]BacklogItem{
+				mergeItem("t5", "the same task text", state), // byte-identical, but LIVE population
+				mergeItem("t2", "project only", BacklogStateQueued),
+			}, 5)
+
+			merged, report, err := MergeBacklogRecords(home, project, MergeOptions{})
+			if err != nil {
+				t.Fatalf("merge: %v", err)
+			}
+			if len(report.Duplicates) != 0 {
+				t.Fatalf("LIVE card absorbed as duplicate (the operator-named hazard): %+v", report.Duplicates)
+			}
+			if len(report.Renumbered) != 1 || report.Renumbered[0].OldID != "t5" {
+				t.Fatalf("want renumber of live t5, got %+v", report.Renumbered)
+			}
+			newID := report.Renumbered[0].NewID
+			got := idsOf(merged.Items)
+			if !got[newID] {
+				t.Fatalf("renumbered card missing under %s: %v", newID, got)
+			}
+			for _, it := range merged.Items {
+				if it.ID == newID && it.Text != "the same task text" {
+					t.Errorf("renumbered card content not preserved under %s: %q", newID, it.Text)
+				}
+			}
+			// The home archived card keeps its id and content.
+			if !archivedIDsOf(merged.Archived)["t5"] {
+				t.Errorf("home archived card disturbed")
+			}
+		})
+	}
+
+	t.Run("project archived twin still resolves duplicate", func(t *testing.T) {
+		// Positive control: the discriminator admits ONLY the archived
+		// population.
+		home := mergeFixture(nil, 0)
+		home.Items = []BacklogItem{mergeItem("t1", "anchor", BacklogStateQueued)}
+		home.Archived = []BacklogArchiveEntry{{Item: mergeItem("t5", "done work", BacklogStateQueued)}}
+		project := mergeFixture(nil, 5)
+		project.Items = []BacklogItem{mergeItem("t2", "project only", BacklogStateQueued)}
+		project.Archived = []BacklogArchiveEntry{{Item: mergeItem("t5", "done work", BacklogStateQueued)}}
+
+		merged, report, err := MergeBacklogRecords(home, project, MergeOptions{})
+		if err != nil {
+			t.Fatalf("merge: %v", err)
+		}
+		_ = merged
+		if len(report.Duplicates) != 1 || report.Duplicates[0].ID != "t5" {
+			t.Fatalf("project-archived identical pair not resolved as duplicate: %+v", report.Duplicates)
+		}
+		if len(report.Renumbered) != 0 {
+			t.Fatalf("archived twin wrongly renumbered: %+v", report.Renumbered)
+		}
+		if report.Duplicates[0].Origin != MergeOriginProjectArchived {
+			t.Errorf("duplicate row Origin = %q, want %q", report.Duplicates[0].Origin, MergeOriginProjectArchived)
+		}
+	})
 }

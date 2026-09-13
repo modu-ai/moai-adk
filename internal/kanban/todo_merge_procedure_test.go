@@ -16,9 +16,10 @@ import (
 )
 
 // rehearsalFixture builds a home/project store pair covering every taxonomy
-// branch: an identical shared number, a differing shared number, project-only
-// live and archived cards, and a finding + runtime assignment referencing the
-// to-be-renumbered id.
+// branch UNDER THE v0.3.0 DISCRIMINATOR: a live identical pair (renumbers —
+// the operator-named hazard), a differing shared number (renumbers), a
+// project-only card (migrates), and a project-ARCHIVED identical twin
+// (duplicate — the only admitted duplicate origin).
 func rehearsalFixture(t *testing.T) (homeDir, projectDir string) {
 	t.Helper()
 	homeDir = t.TempDir()
@@ -30,6 +31,9 @@ func rehearsalFixture(t *testing.T) (homeDir, projectDir string) {
 			mergeItem("t10", "shared identical card", BacklogStateQueued),
 			mergeItem("t11", "home eleven", BacklogStatePicked),
 		)
+		rec.Archived = append(rec.Archived, BacklogArchiveEntry{
+			Item: mergeItem("t30", "archived twin card", BacklogStateQueued),
+		})
 		return nil
 	}); err != nil {
 		t.Fatalf("seed home: %v", err)
@@ -38,10 +42,13 @@ func rehearsalFixture(t *testing.T) (homeDir, projectDir string) {
 	project := NewBacklogStore(filepath.Join(projectDir, backlogFileName))
 	if err := project.Mutate(func(rec *BacklogRecord) error {
 		rec.Items = append(rec.Items,
-			mergeItem("t10", "shared identical card", BacklogStateQueued),    // identical pair
-			mergeItem("t11", "DIFFERENT project eleven", BacklogStateQueued), // renumber
+			mergeItem("t10", "shared identical card", BacklogStateQueued),    // live identical → renumber
+			mergeItem("t11", "DIFFERENT project eleven", BacklogStateQueued), // differs → renumber
 			mergeItem("t20", "project only", BacklogStateDropped),            // migrate
 		)
+		rec.Archived = append(rec.Archived, BacklogArchiveEntry{
+			Item: mergeItem("t30", "archived twin card", BacklogStateQueued), // archived twin → duplicate
+		})
 		rec.Findings = append(rec.Findings, BacklogFinding{
 			SubjectID: "t11", RelatedID: "t20", Relation: BacklogRelationContains,
 			Source: BacklogSourceAgent, Note: "project t11 contains t20 (not t110)",
@@ -97,11 +104,19 @@ func TestRehearseQueueMergeDryRunByteIdentity(t *testing.T) {
 	if muts := outcome.OrderingMutations; len(muts) != 0 {
 		t.Errorf("ordering evidence reports mutation across the backup window: %+v", muts)
 	}
-	if len(outcome.Report.Renumbered) != 1 || outcome.Report.Renumbered[0].OldID != "t11" {
+	// Post-discriminator taxonomy: the live identical t10 pair RENUMBERS;
+	// only the project-archived t30 twin resolves as a duplicate.
+	if len(outcome.Report.Renumbered) != 2 || outcome.Report.Renumbered[0].OldID != "t10" || outcome.Report.Renumbered[1].OldID != "t11" {
 		t.Errorf("dry-run renumber decisions wrong: %+v", outcome.Report.Renumbered)
 	}
-	if len(outcome.Report.Duplicates) != 1 || outcome.Report.Duplicates[0].ID != "t10" {
+	if len(outcome.Report.Duplicates) != 1 || outcome.Report.Duplicates[0].ID != "t30" || outcome.Report.Duplicates[0].Origin != MergeOriginProjectArchived {
 		t.Errorf("dry-run duplicate decisions wrong: %+v", outcome.Report.Duplicates)
+	}
+	// Pre-merge population census (AC-TQM-010).
+	c := outcome.Census
+	if c.HomeLive != 2 || c.HomeArchived != 1 || c.ProjectLive != 3 || c.ProjectArchived != 1 ||
+		c.ProjectQueued != 2 || c.ProjectPicked != 0 || c.ProjectDropped != 1 {
+		t.Errorf("census wrong: %+v", c)
 	}
 }
 
@@ -139,32 +154,41 @@ func TestRehearseQueueMergeApplyOneMutateAndRollback(t *testing.T) {
 	if v.TotalPost != v.TotalPre {
 		t.Errorf("post-merge cardinality %d != union %d", v.TotalPost, v.TotalPre)
 	}
-	// AC-TQM-003: |mapping rows| == |renumbered|, new ids live, old ids gone.
-	if v.MappingRows != v.Renumbered || v.MappingRows != 1 {
+	// AC-TQM-003: |mapping rows| == |renumbered| — post-discriminator: t10
+	// (live identical) and t11 (differs) both renumber.
+	if v.MappingRows != v.Renumbered || v.MappingRows != 2 {
 		t.Errorf("mapping completeness: rows=%d renumbered=%d", v.MappingRows, v.Renumbered)
 	}
 	if len(v.StaleReferences) != 0 {
 		t.Errorf("stale old-id references remain: %v", v.StaleReferences)
 	}
 
-	// Reload the merged store from disk: t20 present, renumbered t21 present
-	// (high-water 20 + 1), stale t11 project text gone from live items under
-	// its old id.
+	// Reload the merged store from disk: the renumbered cards present under
+	// t31/t32 (high-water 30), the migrated t20 present, home cards intact.
 	merged, err := NewBacklogStore(filepath.Join(homeDir, backlogFileName)).LoadPure()
 	if err != nil {
 		t.Fatalf("reload merged: %v", err)
 	}
 	ids := idsOf(merged.Items)
-	if !ids["t20"] || !ids["t21"] || !ids["t10"] || !ids["t11"] {
+	if !ids["t20"] || !ids["t31"] || !ids["t32"] || !ids["t10"] || !ids["t11"] {
 		t.Errorf("merged store id set wrong: %v", ids)
 	}
+	// AC-TQM-010: the live identical twin's content survives under the NEW id.
 	for _, it := range merged.Items {
-		if it.ID == "t21" && it.Text != "DIFFERENT project eleven" {
+		if it.ID == "t31" && it.Text != "shared identical card" {
+			t.Errorf("live identical card content not preserved under t31: %q", it.Text)
+		}
+		if it.ID == "t32" && it.Text != "DIFFERENT project eleven" {
 			t.Errorf("renumbered card content wrong: %q", it.Text)
 		}
 		if it.ID == "t11" && it.Text != "home eleven" {
 			t.Errorf("home eleven disturbed: %q", it.Text)
 		}
+	}
+	// The duplicate population: only the project-archived twin, and the home
+	// archived card unchanged.
+	if len(merged.Archived) != 1 || merged.Archived[0].Item.ID != "t30" || merged.Archived[0].Item.Text != "archived twin card" {
+		t.Errorf("archived population wrong: %+v", merged.Archived)
 	}
 
 	// Rollback (plan.md Rollback): restore from the verified backups.
@@ -177,7 +201,7 @@ func TestRehearseQueueMergeApplyOneMutateAndRollback(t *testing.T) {
 		t.Fatalf("reload restored: %v", err)
 	}
 	rids := idsOf(rec.Items)
-	if rids["t20"] || rids["t21"] {
+	if rids["t20"] || rids["t31"] || rids["t32"] {
 		t.Errorf("rollback left merged cards behind: %v", rids)
 	}
 	if !rids["t10"] || !rids["t11"] {

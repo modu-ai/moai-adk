@@ -170,6 +170,7 @@ func main() {
 		"migrated":     len(outcome.Report.Migrated),
 		"renumbered":   len(outcome.Report.Renumbered),
 		"duplicates":   len(outcome.Report.Duplicates),
+		"census":       outcome.Census,
 		"verification": outcome.Verification,
 	})
 }

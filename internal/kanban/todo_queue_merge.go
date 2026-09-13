@@ -36,10 +36,18 @@ type MergeMappingRow struct {
 	NewID string
 }
 
-// MergeDuplicateRow records one number-shared, content-identical pair the
-// merge resolved by keeping the home copy (REQ-TQM-006).
+// MergeOriginProjectArchived is the only population a resolved duplicate may
+// originate from (REQ-TQM-006 v2): the project store's ARCHIVED population —
+// completed work. A live-population card is never admitted as a duplicate.
+const MergeOriginProjectArchived = "project-archived"
+
+// MergeDuplicateRow records one number-shared pair the merge resolved by
+// keeping the home copy (REQ-TQM-006). Origin names the project population
+// the discarded copy came from — always project-archived under the v0.3.0
+// discriminator.
 type MergeDuplicateRow struct {
-	ID string
+	ID     string
+	Origin string
 }
 
 // MergeReconciliationRow is one audit row about a decision that is not a
@@ -233,14 +241,19 @@ func MergeBacklogRecords(home, project *BacklogRecord, opts MergeOptions) (*Back
 	}
 
 	// classify decides one project card's fate against the home id-space.
-	// Returns the id the card carries into the merged record and whether it
-	// migrates at all.
-	classify := func(card BacklogItem) (target *BacklogItem, migrate bool, err error) {
-		homeItem, live := homeLive[card.ID]
-		if !live {
-			homeItem, live = homeArchived[card.ID]
+	// fromArchived records which project population the card came from: the
+	// REQ-TQM-006 v2 discriminator admits a resolved duplicate ONLY from the
+	// ARCHIVED population (completed work). A LIVE-population card (queued,
+	// picked, dropped) whose id matches any home card renumbers regardless of
+	// content similarity — a matching number is not evidence of the same
+	// completed work, so ambiguity always resolves to renumber, never
+	// absorption.
+	classify := func(card BacklogItem, fromArchived bool) (target *BacklogItem, migrate bool, err error) {
+		homeItem, occupied := homeLive[card.ID]
+		if !occupied {
+			homeItem, occupied = homeArchived[card.ID]
 		}
-		if !live {
+		if !occupied {
 			migrated, idErr := resolveIdentity(card.ID, card.CardUUID)
 			if idErr != nil {
 				return nil, false, idErr
@@ -249,11 +262,15 @@ func MergeBacklogRecords(home, project *BacklogRecord, opts MergeOptions) (*Back
 			report.Migrated = append(report.Migrated, card.ID)
 			return &card, true, nil
 		}
-		if mergeCardContentEqual(card, *homeItem) {
-			report.Duplicates = append(report.Duplicates, MergeDuplicateRow{ID: card.ID})
+		if fromArchived && mergeCardContentEqual(card, *homeItem) {
+			report.Duplicates = append(report.Duplicates, MergeDuplicateRow{
+				ID:     card.ID,
+				Origin: MergeOriginProjectArchived,
+			})
 			return nil, false, nil
 		}
-		// Different content: renumber from the high-water (REQ-TQM-005).
+		// Collision without the discriminator's warrant: renumber from the
+		// high-water (REQ-TQM-005).
 		report.HighWater++
 		newID := fmt.Sprintf("t%d", report.HighWater)
 		mapping[card.ID] = newID
@@ -268,7 +285,7 @@ func MergeBacklogRecords(home, project *BacklogRecord, opts MergeOptions) (*Back
 	}
 
 	for _, card := range project.Items {
-		target, migrate, err := classify(card)
+		target, migrate, err := classify(card, false)
 		if err != nil {
 			return nil, nil, err
 		}
@@ -277,7 +294,7 @@ func MergeBacklogRecords(home, project *BacklogRecord, opts MergeOptions) (*Back
 		}
 	}
 	for _, entry := range project.Archived {
-		target, migrate, err := classify(entry.Item)
+		target, migrate, err := classify(entry.Item, true)
 		if err != nil {
 			return nil, nil, err
 		}

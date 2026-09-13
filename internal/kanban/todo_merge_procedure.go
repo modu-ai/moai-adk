@@ -41,11 +41,49 @@ type QueueMergeVerification struct {
 	StaleReferences []string // old-id tokens still present in findings/assignments
 }
 
+// QueuePopulationCensus is the pre-merge population record (AC-TQM-010): the
+// live/archived shape of both stores as read immediately before the merge
+// decision. Every resolved duplicate must trace back to the project's
+// ARCHIVED population — this census is what the population check is verified
+// against.
+type QueuePopulationCensus struct {
+	HomeLive        int `json:"home_live"`
+	HomeArchived    int `json:"home_archived"`
+	ProjectLive     int `json:"project_live"`
+	ProjectQueued   int `json:"project_queued"`
+	ProjectPicked   int `json:"project_picked"`
+	ProjectDropped  int `json:"project_dropped"`
+	ProjectArchived int `json:"project_archived"`
+}
+
+// CensusRecords derives the pre-merge population census from the two pure
+// reads.
+func CensusRecords(home, project *BacklogRecord) QueuePopulationCensus {
+	c := QueuePopulationCensus{
+		HomeLive:     len(home.Items),
+		HomeArchived: len(home.Archived),
+		ProjectLive:  len(project.Items),
+	}
+	for _, it := range project.Items {
+		switch it.State {
+		case BacklogStateQueued:
+			c.ProjectQueued++
+		case BacklogStatePicked:
+			c.ProjectPicked++
+		case BacklogStateDropped:
+			c.ProjectDropped++
+		}
+	}
+	c.ProjectArchived = len(project.Archived)
+	return c
+}
+
 // QueueMergeOutcome carries one procedure run's evidence.
 type QueueMergeOutcome struct {
 	DryRun            bool
 	Backup            *QueueBackup
 	Report            *MergeReport
+	Census            QueuePopulationCensus
 	OrderingBefore    StoreDirSnapshot
 	OrderingAfter     StoreDirSnapshot
 	OrderingMutations []StoreDirMutation
@@ -128,6 +166,7 @@ func RunQueueMerge(paths QueueMergePaths, dryRun bool) (*QueueMergeOutcome, erro
 		DryRun:            dryRun,
 		Backup:            backup,
 		Report:            report,
+		Census:            CensusRecords(homeRec, projectRec),
 		OrderingBefore:    before,
 		OrderingAfter:     after,
 		OrderingMutations: mutations,
@@ -233,6 +272,20 @@ func VerifyMergedRecord(home, project, merged *BacklogRecord, report *MergeRepor
 		projectText[e.Item.ID] = e.Item.Text
 		if !mergedTexts[e.Item.Text] {
 			v.StaleReferences = append(v.StaleReferences, fmt.Sprintf("archived card text lost for %s", e.Item.ID))
+		}
+	}
+
+	// AC-TQM-010 population check: every resolved duplicate's discarded copy
+	// originated from the project store's ARCHIVED population. A duplicate row
+	// naming a project LIVE card means the discriminator failed — a
+	// live-work absorption, which is a zero-loss violation.
+	projectArchivedIDs := map[string]bool{}
+	for _, e := range project.Archived {
+		projectArchivedIDs[e.Item.ID] = true
+	}
+	for _, d := range report.Duplicates {
+		if !projectArchivedIDs[d.ID] {
+			v.StaleReferences = append(v.StaleReferences, fmt.Sprintf("duplicate row %s did not originate from the project ARCHIVED population (AC-TQM-010)", d.ID))
 		}
 	}
 
