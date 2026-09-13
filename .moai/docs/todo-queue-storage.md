@@ -117,4 +117,6 @@ project root used to derive that key.
 Read-only surfaces (the web console and status line) never trigger migration.
 They read the home database when it exists and otherwise read the legacy
 project-local queue. The first adopting `moai todo` command performs the
-verified copy.
+verified copy. The temporary-directory exception above skips all of this: for
+such a project the home database is never read, the verified copy never
+happens, and every surface, read-only or not, uses the project-local queue.
