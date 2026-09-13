@@ -142,7 +142,9 @@ func TestAppServerTextAndToolSSEBoundaries(t *testing.T) {
 			t.Fatal(err)
 		}
 		raw, err := io.ReadAll(response.Body)
-		response.Body.Close()
+		if cerr := response.Body.Close(); cerr != nil {
+			t.Fatal(cerr)
+		}
 		if err != nil {
 			t.Fatal(err)
 		}

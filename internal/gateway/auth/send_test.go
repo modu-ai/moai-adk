@@ -17,7 +17,11 @@ func TestSendRejectsLogoutBeforeWriteAndForeignEndpoint(t *testing.T) {
 	if e != nil {
 		t.Fatal(e)
 	}
-	defer s.Close()
+	defer func() {
+		if err := s.Close(); err != nil {
+			t.Error(err)
+		}
+	}()
 	gen := loginFixture(t, s)
 	req, _ := http.NewRequest("POST", SubscriptionEndpoint, strings.NewReader(`{}`))
 	ref, _ := s.Resolve()
@@ -42,10 +46,14 @@ func TestSendWriteBarrierBlocksLogoutButSSEDoesNot(t *testing.T) {
 	if e != nil {
 		t.Fatal(e)
 	}
-	defer s.Close()
+	defer func() {
+		if err := s.Close(); err != nil {
+			t.Error(err)
+		}
+	}()
 	gen := loginFixture(t, s)
 	client, server := net.Pipe()
-	t.Cleanup(func() { client.Close(); server.Close() })
+	t.Cleanup(func() { _ = client.Close(); _ = server.Close() })
 	dialed := make(chan struct{})
 	tr := &http.Transport{DialTLSContext: func(ctx context.Context, _, _ string) (net.Conn, error) { close(dialed); return client, nil }}
 	req, _ := http.NewRequest("POST", SubscriptionEndpoint, strings.NewReader(`{}`))
@@ -71,10 +79,12 @@ func TestSendWriteBarrierBlocksLogoutButSSEDoesNot(t *testing.T) {
 			received <- ""
 			return
 		}
-		io.Copy(io.Discard, r.Body)
-		r.Body.Close()
+		_, _ = io.Copy(io.Discard, r.Body) // discard; the Authorization header is the signal
+		_ = r.Body.Close()
 		received <- r.Header.Get("Authorization")
-		io.WriteString(server, "HTTP/1.1 200 OK\r\nContent-Type: text/event-stream\r\nTransfer-Encoding: chunked\r\n\r\n")
+		if _, err := io.WriteString(server, "HTTP/1.1 200 OK\r\nContent-Type: text/event-stream\r\nTransfer-Encoding: chunked\r\n\r\n"); err != nil {
+			t.Error(err)
+		}
 	}()
 	if <-received == "" {
 		t.Fatal("missing authentication")
@@ -83,7 +93,11 @@ func TestSendWriteBarrierBlocksLogoutButSSEDoesNot(t *testing.T) {
 	if resultGot.e != nil {
 		t.Fatal(resultGot.e)
 	}
-	defer resultGot.r.Body.Close()
+	defer func() {
+		if err := resultGot.r.Body.Close(); err != nil {
+			t.Error(err)
+		}
+	}()
 	ctx2, cancel2 := context.WithTimeout(context.Background(), time.Second)
 	defer cancel2()
 	if _, e = s.Logout(ctx2); e != nil {
@@ -105,10 +119,14 @@ func TestSendTimeoutCancelsBlockedSocketAndReleasesLock(t *testing.T) {
 	if e != nil {
 		t.Fatal(e)
 	}
-	defer s.Close()
+	defer func() {
+		if err := s.Close(); err != nil {
+			t.Error(err)
+		}
+	}()
 	gen := loginFixture(t, s)
 	client, server := net.Pipe()
-	t.Cleanup(func() { client.Close(); server.Close() })
+	t.Cleanup(func() { _ = client.Close(); _ = server.Close() })
 	tr := &http.Transport{DialTLSContext: func(context.Context, string, string) (net.Conn, error) { return client, nil }}
 	req, _ := http.NewRequest("POST", SubscriptionEndpoint, strings.NewReader(`{}`))
 	_, e = s.SendAuthorized(context.Background(), gen, req, tr, SendOptions{WriteTimeout: 30 * time.Millisecond, PollInterval: 10 * time.Millisecond, MaxBodyBytes: 100})
@@ -127,16 +145,24 @@ func TestEarlyResponseCannotReleaseUnwrittenHeader(t *testing.T) {
 	if e != nil {
 		t.Fatal(e)
 	}
-	defer s.Close()
+	defer func() {
+		if err := s.Close(); err != nil {
+			t.Error(err)
+		}
+	}()
 	gen := loginFixture(t, s)
 	client, server := net.Pipe()
-	t.Cleanup(func() { client.Close(); server.Close() })
+	t.Cleanup(func() { _ = client.Close(); _ = server.Close() })
 	tr := &http.Transport{DialTLSContext: func(context.Context, string, string) (net.Conn, error) { return client, nil }}
 	req, _ := http.NewRequest("POST", SubscriptionEndpoint, strings.NewReader(`{}`))
-	go func() { io.WriteString(server, "HTTP/1.1 403 Forbidden\r\nContent-Length: 0\r\n\r\n") }()
+	go func() {
+		if _, err := io.WriteString(server, "HTTP/1.1 403 Forbidden\r\nContent-Length: 0\r\n\r\n"); err != nil {
+			t.Error(err)
+		}
+	}()
 	r, e := s.SendAuthorized(context.Background(), gen, req, tr, SendOptions{WriteTimeout: 40 * time.Millisecond, PollInterval: 10 * time.Millisecond, MaxBodyBytes: 100})
 	if r != nil {
-		r.Body.Close()
+		_ = r.Body.Close() // unobserved error response; the verdict is e != nil
 	}
 	if e == nil {
 		t.Fatal("response accepted before header write")
@@ -150,11 +176,11 @@ func TestEarlyResponseCannotReleaseUnwrittenHeader(t *testing.T) {
 
 func TestHeaderBoundaryUsesSuccessfulBytesAcrossSplitWrites(t *testing.T) {
 	client, server := net.Pipe()
-	t.Cleanup(func() { client.Close(); server.Close() })
+	t.Cleanup(func() { _ = client.Close(); _ = server.Close() })
 	observed := 0
 	c := &headerConn{Conn: client, done: func() { observed++ }}
 	reads := make(chan struct{})
-	go func() { io.Copy(io.Discard, server); close(reads) }()
+	go func() { _, _ = io.Copy(io.Discard, server); close(reads) }()
 	for _, part := range []string{"POST / HTTP/1.1\r\nAuthorization: Bearer marker\r", "\n\r", "\nbody"} {
 		if _, e := c.Write([]byte(part)); e != nil {
 			t.Fatal(e)
@@ -169,7 +195,7 @@ func TestHeaderBoundaryUsesSuccessfulBytesAcrossSplitWrites(t *testing.T) {
 	if observed != 1 {
 		t.Fatal("duplicate barrier")
 	}
-	client.Close()
-	server.Close()
+	_ = client.Close() // net.Pipe closes always return nil
+	_ = server.Close()
 	<-reads
 }

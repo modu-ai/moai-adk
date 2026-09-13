@@ -22,7 +22,11 @@ func TestSubscriptionReceiptModelSwitchPreservesSourceBindings(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer store.Close()
+	defer func() {
+		if err := store.Close(); err != nil {
+			t.Error(err)
+		}
+	}()
 	ctx := context.Background()
 	strict := NewReceiptHistory(store, id, id)
 	switched := NewGPTSubscriptionReceiptHistory(store, id, id)

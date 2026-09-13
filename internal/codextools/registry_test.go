@@ -199,7 +199,9 @@ func TestNativeToolWireDiscriminator(t *testing.T) {
 	for _, tool := range r.NativeTools() {
 		raw, _ := json.Marshal(tool)
 		var wire map[string]any
-		json.Unmarshal(raw, &wire)
+		if err := json.Unmarshal(raw, &wire); err != nil {
+			t.Fatal(err)
+		}
 		if wire["type"] != "function" {
 			t.Fatal("installed DynamicToolSpec requires function discriminator")
 		}

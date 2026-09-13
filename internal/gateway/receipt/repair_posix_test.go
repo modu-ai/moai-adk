@@ -36,7 +36,11 @@ func TestPrecommitCancellationPreservesSnapshot(t *testing.T) {
 	if e != nil {
 		t.Fatal(e)
 	}
-	defer s.Close()
+	defer func() {
+		if err := s.Close(); err != nil {
+			t.Error(err)
+		}
+	}()
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	atReceiptNonce(t, cancel)
@@ -55,12 +59,20 @@ func TestLockReplacementRejectsStalePublisher(t *testing.T) {
 	if e != nil {
 		t.Fatal(e)
 	}
-	defer a.Close()
+	defer func() {
+		if err := a.Close(); err != nil {
+			t.Error(err)
+		}
+	}()
 	b, e := OpenStore(ctx, dir, testUUID, false)
 	if e != nil {
 		t.Fatal(e)
 	}
-	defer b.Close()
+	defer func() {
+		if err := b.Close(); err != nil {
+			t.Error(err)
+		}
+	}()
 	next := candidate("p", "prior", "B")
 	atReceiptNonce(t, func() {
 		if e := os.Rename(filepath.Join(dir, ".lock"), filepath.Join(dir, ".lock-old")); e != nil {
@@ -88,7 +100,11 @@ func TestSnapshotReplacementRejectsStalePublisher(t *testing.T) {
 	if e != nil {
 		t.Fatal(e)
 	}
-	defer s.Close()
+	defer func() {
+		if err := s.Close(); err != nil {
+			t.Error(err)
+		}
+	}()
 	next := candidate("p", "prior", "B")
 	replacement, _ := New(testUUID)
 	_ = replacement.Publish(next)
@@ -121,7 +137,11 @@ func TestWriteCancellationBeforeAndAfterCommit(t *testing.T) {
 			if e != nil {
 				t.Fatal(e)
 			}
-			defer s.Close()
+			defer func() {
+				if err := s.Close(); err != nil {
+					t.Error(err)
+				}
+			}()
 			e = s.transaction(ctx, false, func(guard func() error) error {
 				m, err := s.read()
 				if err != nil {

@@ -1,0 +1,5 @@
+--- FAIL: TestT688ExistingNonAncestorStampIsUnmeasured (1.02s)
+    t688_red_ancestry_test.go:24: existing non-ancestor stamp must be freshness-unmeasured with a system error; got verdict="fresh" value=1 threshold=40 content_anchor="d9029beaf2be3e6c70b6813e9715594ca8f5d085"
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/graph	1.545s
+FAIL

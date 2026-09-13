@@ -23,7 +23,12 @@ type fakeRPC struct {
 	events         chan codexapp.Message
 	next           int
 	responses      int
+	resumes        []string
 	interrupts     []string
+	models         []string
+	methods        []string
+	turnSeq        map[string]int
+	currentTurn    map[string]string
 	fail           error
 	startEntered   chan struct{}
 	startWait      chan struct{}
@@ -35,21 +40,40 @@ type fakeRPC struct {
 func (f *fakeRPC) Call(ctx context.Context, method string, p any, out any) error {
 	f.mu.Lock()
 	defer f.mu.Unlock()
+	f.methods = append(f.methods, method)
 	m := p.(map[string]any)
 	var result any
 	switch method {
 	case "thread/start":
 		f.next++
 		result = map[string]any{"thread": map[string]string{"id": fmt.Sprint("thread-", f.next)}}
+	case "thread/resume":
+		f.resumes = append(f.resumes, m["threadId"].(string))
+		result = map[string]any{"thread": map[string]string{"id": m["threadId"].(string)}}
 	case "turn/start":
+		f.models = append(f.models, m["model"].(string))
 		if f.startEntered != nil {
 			close(f.startEntered)
 			<-f.startWait
 		}
 		thread := m["threadId"].(string)
+		// Sequential turns on one thread need distinct turn/call identities; the
+		// first turn keeps the historical "turn-<thread>" literals other tests assert.
+		if f.turnSeq == nil {
+			f.turnSeq = map[string]int{}
+			f.currentTurn = map[string]string{}
+		}
+		f.turnSeq[thread]++
+		seq := f.turnSeq[thread]
 		turn := "turn-" + thread
+		call := "call-" + thread
+		if seq > 1 {
+			turn = fmt.Sprintf("%s-%d", turn, seq)
+			call = fmt.Sprintf("%s-%d", call, seq)
+		}
+		f.currentTurn[thread] = turn
 		result = map[string]any{"turn": map[string]string{"id": turn}}
-		raw, _ := json.Marshal(map[string]any{"threadId": thread, "turnId": turn, "callId": "call-" + thread, "tool": "echo", "arguments": map[string]string{"text": "hello"}})
+		raw, _ := json.Marshal(map[string]any{"threadId": thread, "turnId": turn, "callId": call, "tool": "echo", "arguments": map[string]string{"text": "hello"}})
 		event := codexapp.Message{ID: json.RawMessage(fmt.Sprintf("%q", thread)), Method: "item/tool/call", Params: raw}
 		if f.transform != nil {
 			event = f.transform(event)
@@ -77,10 +101,11 @@ func (f *fakeRPC) Respond(ctx context.Context, id json.RawMessage, p any) error 
 		return f.respondFailure()
 	}
 	var thread string
-	json.Unmarshal(id, &thread)
-	raw, _ := json.Marshal(map[string]any{"threadId": thread, "turnId": "turn-" + thread, "itemId": "text", "delta": "answer"})
+	_ = json.Unmarshal(id, &thread) // fixture id is always a JSON string written by this test
+	turn := f.currentTurn[thread]
+	raw, _ := json.Marshal(map[string]any{"threadId": thread, "turnId": turn, "itemId": "text", "delta": "answer"})
 	f.events <- codexapp.Message{Method: "item/agentMessage/delta", Params: raw}
-	raw, _ = json.Marshal(map[string]any{"threadId": thread, "turn": map[string]string{"id": "turn-" + thread, "status": "completed"}})
+	raw, _ = json.Marshal(map[string]any{"threadId": thread, "turn": map[string]string{"id": turn, "status": "completed"}})
 	f.events <- codexapp.Message{Method: "turn/completed", Params: raw}
 	return nil
 }
@@ -296,7 +321,9 @@ func TestUntrustedTurnEventsFailClosed(t *testing.T) {
 			e, rpc, _ := fixture(t)
 			rpc.transform = func(event codexapp.Message) codexapp.Message {
 				var p map[string]any
-				json.Unmarshal(event.Params, &p)
+				if err := json.Unmarshal(event.Params, &p); err != nil {
+					t.Fatal(err)
+				}
 				switch kind {
 				case "wrong-turn":
 					p["turnId"] = "foreign-turn"

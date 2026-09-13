@@ -19,7 +19,11 @@ func TestLogoutOwnedSnapshotAfterLocalCommitWithoutOperationLock(t *testing.T) {
 	if e != nil {
 		t.Fatal(e)
 	}
-	defer s.Close()
+	defer func() {
+		if err := s.Close(); err != nil {
+			t.Error(err)
+		}
+	}()
 	g := loginFixture(t, s)
 	operation, e := s.lock(context.Background(), "operation.lock")
 	if e != nil {
@@ -64,7 +68,11 @@ func TestLogoutOldSnapshotCannotOverwriteNewLogin(t *testing.T) {
 	if e != nil {
 		t.Fatal(e)
 	}
-	defer s.Close()
+	defer func() {
+		if err := s.Close(); err != nil {
+			t.Error(err)
+		}
+	}()
 	g := loginFixture(t, s)
 	out, e := s.LogoutWithBroker(context.Background(), logoutFunc(func(c context.Context, h string) error {
 		newGen, e := s.Login(c, brokerFunc(func(c context.Context, newHome string, _ bool) error {
@@ -95,7 +103,11 @@ func TestLogoutLocalFailureAndAbsentBroker(t *testing.T) {
 			if e != nil {
 				t.Fatal(e)
 			}
-			defer s.Close()
+			defer func() {
+				if err := s.Close(); err != nil {
+					t.Error(err)
+				}
+			}()
 			if kind != "no credential" {
 				loginFixture(t, s)
 			}
@@ -131,7 +143,11 @@ func TestLogoutCanceledBrokerKeepsTombstoneAndCleansScratch(t *testing.T) {
 	if e != nil {
 		t.Fatal(e)
 	}
-	defer s.Close()
+	defer func() {
+		if err := s.Close(); err != nil {
+			t.Error(err)
+		}
+	}()
 	loginFixture(t, s)
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()

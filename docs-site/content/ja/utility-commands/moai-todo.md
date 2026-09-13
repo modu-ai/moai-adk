@@ -56,7 +56,7 @@ flowchart TD
 
 ## 状態ファイル
 
-キューは `~/.moai/db/<project-key>/todo/backlog.db` という 1 つの SQLite データベースに保存されます。プロジェクトキーによってリンクされた worktree がホーム内の 1 つのキューに結び付けられ、データベースはコミットされません。下の形は `moai todo list --json` と `moai todo export-json` が出力するレコードの形で、データベースも同じフィールドを持ちます。移行とダウングレードの方法は、プロジェクト内の `.moai/docs/todo-queue-storage.md` にあります。
+通常のプロジェクトディレクトリであれば、キューは `~/.moai/db/<project-key>/todo/backlog.db` という 1 つの SQLite データベースに保存されます。ただしプロジェクトが一時ディレクトリ(`os.TempDir()`, `/tmp`, `/var/folders` の下)を起点とする場合は、絶対パスの `MOAI_HOME` 上書きがなければホームではなく `<base>/.moai/state/todo/backlog.db` にプロジェクトローカルで保存されます。プロジェクトキーによってリンクされた worktree がホーム内の 1 つのキューに結び付けられ、データベースはコミットされません。下の形は `moai todo list --json` と `moai todo export-json` が出力するレコードの形で、データベースも同じフィールドを持ちます。移行とダウングレードの方法は、プロジェクト内の `.moai/docs/todo-queue-storage.md` にあります。
 
 ```json
 {
@@ -189,6 +189,10 @@ $ moai todo done 4 --expect "auth middleware"
 # 着地したかを尋ね、「着地していない」という肯定的な答えが返ったときだけ拒否
 $ moai todo done 4 --require-landed
 
+# 着地したカードを一括クローズ（リード専用、バッチpush確認後）— まずドライラン
+$ moai todo auto-done --fetch --dry-run
+$ moai todo auto-done --fetch
+
 # 待機中の項目を古いものから出力(読み取り専用)
 $ moai todo next
 
@@ -241,7 +245,7 @@ $ moai todo unrelate 2
 
 CLI はプロンプトを出しません。引数とフラグを受け取り一行を出力し、エラーは stderr へ — スクリプトや CI で安全に使える形です。
 
-リンクされた worktree の中で実行しても、キューは**プライマリチェックアウトの 1 つのプロジェクトキーに帰属**します — リポジトリ 1 つにキュー 1 つという契約です。カードの worktree で `moai todo add` をすると、リードとフォアマンループが読む同じデータベースに追加されます。git メタデータのないプロジェクトも `~/.moai/db/<project-key>/todo/backlog.db` の構成を使います。
+リンクされた worktree の中で実行しても、キューは**プライマリチェックアウトの 1 つのプロジェクトキーに帰属**します — リポジトリ 1 つにキュー 1 つという契約です。カードの worktree で `moai todo add` をすると、リードとフォアマンループが読む同じデータベースに追加されます。git メタデータのないプロジェクトも同じホーム構成を使います — ただし一時ディレクトリを起点とするプロジェクトは、絶対パスの `MOAI_HOME` 上書きがなければ `<base>/.moai/state/todo/backlog.db` を使います。
 
 両表面は同じ保存層を共有します。変更はデータベース横のロックファイル(backlog.lock)を握った後、WAL モードの SQLite トランザクション 1 つで反映され、読み取りはロックを取りません。項目 id はファイルに残った最高水準標識(`last_seq`)から発行されますが、この値は挿入と同じトランザクション内で進み、id には UNIQUE 制約が掛かっているため、プロセスが変更途中で死んでも削除された項目の id が再利用されることはありません。
 

@@ -225,7 +225,8 @@ func validID(id string) bool {
 		return false
 	}
 	for _, c := range id {
-		if !(c >= 'a' && c <= 'z' || c >= 'A' && c <= 'Z' || c >= '0' && c <= '9' || c == '_' || c == '-') {
+		idRune := c >= 'a' && c <= 'z' || c >= 'A' && c <= 'Z' || c >= '0' && c <= '9' || c == '_' || c == '-'
+		if !idRune {
 			return false
 		}
 	}
@@ -281,7 +282,8 @@ func validateItem(raw []byte) (string, error) {
 			if key == "content" {
 				want = "reasoning_text"
 			}
-			if kind != want && !(key == "content" && kind == "text") {
+			contentFallback := key == "content" && kind == "text"
+			if kind != want && !contentFallback {
 				return "", errInvalid
 			}
 		}

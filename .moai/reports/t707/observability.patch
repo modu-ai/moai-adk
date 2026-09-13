@@ -1,0 +1,59 @@
+# t707 temporary observability patch — DO NOT COMMIT
+#
+# Purpose: localize the live receipt-chain CauseChain rejection (card t707).
+# The synthetic round-trip suite (replay_roundtrip_test.go, committed) cannot
+# reproduce the live 400, and no request-body dump exists, so the next live
+# occurrence needs a one-shot boundary measurement. This patch prints, to the
+# gateway process stderr, ONLY structural facts (indexes, booleans, counts) of
+# the first diverging boundary — never message content, digests beyond a
+# 12-hex prefix, or session identifiers beyond what the log context already
+# carries.
+#
+# Apply on a hotfix branch, `make build && make install`, reproduce once,
+# capture stderr, then revert. Never leave this in a commit.
+
+--- a/internal/gateway/translate/receipt_history.go
++++ b/internal/gateway/translate/receipt_history.go
+@@ -197,6 +197,9 @@ import (
+ )
+
++// t707 temporary observability — see .moai/reports/t707/observability.patch
++var receiptDebug = os.Getenv("MOAI_RECEIPT_DEBUG") == "1"
++
+ func (h *receiptHistory) Check(ctx context.Context, model, scope string, raw []byte) error {
+ 	observations, err := h.observations(model, scope, raw)
+ 	if err != nil {
+@@ -210,7 +213,26 @@ func (h *receiptHistory) Check(ctx context.Context, model, scope string, raw []b
+ 	if err = h.checkObserved(manifest, model, scope, raw, observations); err != nil {
+-		return HistoryReplayError{Cause: replayCause(manifest, observations)}
++		cause := replayCause(manifest, observations)
++		if receiptDebug {
++			candidates := manifest.Candidates()
++			first := -1
++			for i, o := range observations {
++				matched := false
++				for _, c := range candidates {
++					if c.Prefix == o.Prefix && c.Previous == o.Previous {
++						matched = true
++						break
++					}
++				}
++				if !matched && first < 0 {
++					first = i
++				}
++			}
++			fmt.Fprintf(os.Stderr, "moai-receipt-divergence: observations=%d candidates=%d first_unmatched_boundary=%d root_unmatched=%v observations_items_first=%d\n",
++				len(observations), len(candidates), first, first == 0, boundaryItems(observations, first))
++		}
++		return HistoryReplayError{Cause: cause}
+ 	}
+ 	return nil
+ }
++
++// t707 temporary helper — items of the first diverging boundary (0 when absent).
++func boundaryItems(observations []receipt.Observation, i int) uint32 {
++	if i < 0 || i >= len(observations) {
++		return 0
++	}
++	return observations[i].Items
++}

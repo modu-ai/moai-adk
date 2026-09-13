@@ -259,7 +259,10 @@ func TestTodoHistoryDisclosesPreArchiveQueue(t *testing.T) {
 	}
 
 	// A never-issued id is not dressed up as a destroyed one: t9999 sits
-	// above the mark, so stdout reports absent and stderr stays silent.
+	// above the mark, so stdout reports absent and stderr carries no
+	// destruction note. The temporary-origin advisory (t705) legitimately
+	// shares stderr in a temp-git fixture, so it is filtered before the
+	// emptiness assertion rather than expected absent.
 	out, errOut, err = runTodo(t, "history", "t9999")
 	if err != nil {
 		t.Fatalf("history t9999: %v", err)
@@ -267,10 +270,25 @@ func TestTodoHistoryDisclosesPreArchiveQueue(t *testing.T) {
 	if out != "t9999\tabsent\n" {
 		t.Errorf("history t9999 stdout = %q, want exactly the single absent line", out)
 	}
-	if errOut != "" {
-		t.Errorf("history t9999 stderr = %q, want empty — an id above the mark gets no destruction note", errOut)
+	if withoutTempOriginAdvisory(errOut) != "" {
+		t.Errorf("history t9999 stderr = %q, want empty beyond the temp-origin advisory — an id above the mark gets no destruction note", errOut)
 	}
 	_ = store
+}
+
+// withoutTempOriginAdvisory strips the temporary-origin advisory lines the
+// command path writes to stderr (t705) so tests can assert on the remaining
+// stderr content of a temp-git fixture.
+func withoutTempOriginAdvisory(errOut string) string {
+	const marker = "moai todo: the launch directory is inside the temporary root"
+	var kept []string
+	for _, line := range strings.Split(errOut, "\n") {
+		if strings.HasPrefix(line, marker) {
+			continue
+		}
+		kept = append(kept, line)
+	}
+	return strings.Join(kept, "\n")
 }
 
 // todoHistoryDegradedStoreNote is what REQ-TAQ-013 requires a store that

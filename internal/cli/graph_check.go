@@ -2,6 +2,7 @@ package cli
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -97,6 +98,7 @@ Thresholds are configured in gate.yaml (graph_freshness section).`,
 				// suppressed by the fang error handler, so without this the
 				// process would exit 2 silently.
 				_, _ = fmt.Fprintf(cmd.ErrOrStderr(), "graph check: system error: %v\n", err)
+				writeUnreachableStampRecovery(cmd.ErrOrStderr(), err)
 				return &exitCodeError{code: exitSystemError, msg: fmt.Sprintf("graph check: %v", err)}
 			}
 
@@ -136,6 +138,29 @@ Thresholds are configured in gate.yaml (graph_freshness section).`,
 	cmd.Flags().BoolVar(&asJSON, "json", false, "machine-readable JSON report on stdout")
 
 	return cmd
+}
+
+// writeUnreachableStampRecovery names the recovery for the one system error
+// whose fix is a WORKFLOW step rather than a git one: the codemaps stamp
+// resolves as an object but is not an ancestor of HEAD, so the two trees share
+// no comparison window and freshness was never measured.
+//
+// The block is specific to that state on purpose. A stamp git cannot resolve at
+// all needs history (a deeper fetch), not a regenerated body, and printing the
+// regenerate-and-restamp advice there would send the reader down a path that
+// cannot work. Both halves of the recovery are stated because the half that is
+// easy to reach for — re-stamping alone — is the one the freshness contract
+// exists to defeat: a stamp rewritten over an untouched body would turn a stale
+// tree green without regenerating anything.
+func writeUnreachableStampRecovery(errs io.Writer, err error) {
+	if !errors.Is(err, graph.ErrStampUnreachable) {
+		return
+	}
+	_, _ = fmt.Fprint(errs,
+		"graph check: unreachable stamp — the codemaps provenance names a commit that exists here\n"+
+			"  but is not an ancestor of this checkout's HEAD, so freshness unmeasured (no value is reported).\n"+
+			"  recovery: regenerate the codemaps body (/moai codemaps), then stamp it at a commit reachable\n"+
+			"  from HEAD (moai graph stamp codemaps). A bare re-stamp over an unchanged body is NOT a fix.\n")
 }
 
 // writeLayerAttribution renders a failing layer's attribution beneath its

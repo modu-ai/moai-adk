@@ -46,12 +46,8 @@ import (
 
 	"github.com/modu-ai/moai-adk/internal/cli/printer"
 	"github.com/modu-ai/moai-adk/internal/codexwiring"
+	"github.com/modu-ai/moai-adk/internal/template"
 )
-
-// mirrorSkillsRel is the skill-mirror root, relative to a project root. It is
-// the path Codex scans (`<cwd>/.agents/skills`), which is also what makes the
-// gate cwd-bound — see the help text this verb prints.
-var mirrorSkillsRel = filepath.Join(".agents", "skills")
 
 // codexSkillWriteFileFn is the file-write seam. The backup and the staged
 // write both go through it so a test can fail the backup alone and observe
@@ -141,11 +137,11 @@ func resolveCodexSkillMirrorPath(projectRoot, homeDir, skill string) codexSkillR
 	if skill == "" || strings.ContainsAny(skill, `/\`) || skill == "." || skill == ".." {
 		return codexSkillResolution{
 			Outcome: codexSkillUnresolved,
-			Reason:  fmt.Sprintf("%q is not a bare skill name — pass the directory name as it appears under %s", skill, mirrorSkillsRel),
+			Reason:  fmt.Sprintf("%q is not a bare skill name — pass the directory name as it appears under %s", skill, template.MirrorSkillsRelDir),
 		}
 	}
 
-	projMirror := filepath.Join(projectRoot, mirrorSkillsRel)
+	projMirror := filepath.Join(projectRoot, template.MirrorSkillsRelDir)
 	if st, err := osStatFn(projMirror); err != nil || !st.IsDir() {
 		return codexSkillResolution{
 			Outcome: codexSkillMirrorAbsent,
@@ -156,7 +152,7 @@ func resolveCodexSkillMirrorPath(projectRoot, homeDir, skill string) codexSkillR
 	type candidate struct{ root, file string }
 	cands := []candidate{{projMirror, filepath.Join(projMirror, skill, "SKILL.md")}}
 	if homeDir != "" {
-		if homeMirror := filepath.Join(homeDir, mirrorSkillsRel); homeMirror != projMirror {
+		if homeMirror := filepath.Join(homeDir, template.MirrorSkillsRelDir); homeMirror != projMirror {
 			cands = append(cands, candidate{homeMirror, filepath.Join(homeMirror, skill, "SKILL.md")})
 		}
 	}

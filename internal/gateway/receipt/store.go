@@ -133,7 +133,7 @@ func (s *Store) transaction(ctx context.Context, createLock bool, action func(fu
 	if e != nil {
 		return e
 	}
-	defer f.Close()
+	defer func() { _ = f.Close() }() // lock release is governed by unlock + process exit
 	if e = lock(ctx, f); e != nil {
 		return e
 	}
@@ -186,12 +186,36 @@ func (s *Store) Publish(ctx context.Context, c Candidate) error {
 		return s.write(ctx, m, guard, &expected)
 	})
 }
+
+// Rebase persists the public-history reset after a verified compaction. The
+// once-per-epoch and digest contrast live in the caller's RebaseLedger; the
+// store only applies the durable reset.
+func (s *Store) Rebase(ctx context.Context) error {
+	return s.transaction(ctx, false, func(guard func() error) error {
+		m, e := s.read()
+		if e != nil {
+			return e
+		}
+		baseline, e := m.Marshal()
+		if e != nil {
+			return e
+		}
+		expected := Hash(baseline)
+		if e = m.Rebase(); e != nil {
+			return e
+		}
+		if e = ctx.Err(); e != nil {
+			return e
+		}
+		return s.write(ctx, m, guard, &expected)
+	})
+}
 func (s *Store) read() (*Manifest, error) {
 	f, e := s.file("manifest.json", os.O_RDONLY)
 	if e != nil {
 		return nil, e
 	}
-	defer f.Close()
+	defer func() { _ = f.Close() }() // read-only manifest source; no write-back to lose
 	raw, e := io.ReadAll(io.LimitReader(f, MaxBytes+1))
 	if e != nil {
 		return nil, ErrState
@@ -221,7 +245,7 @@ func (s *Store) write(ctx context.Context, m *Manifest, guard func() error, expe
 	if e != nil {
 		return e
 	}
-	defer s.root.Remove(name)
+	defer func() { _ = s.root.Remove(name) }() // temp manifest cleanup; the published copy owns the state
 	_, e = f.Write(raw)
 	if e == nil {
 		e = f.Sync()

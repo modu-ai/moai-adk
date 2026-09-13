@@ -117,7 +117,7 @@ func transcriptModel(r record) (string, error) {
 	if err != nil {
 		return "", ErrInvalid
 	}
-	defer f.Close()
+	defer func() { _ = f.Close() }() // read-only index source; no write-back to lose
 	decoder := json.NewDecoder(io.LimitReader(f, maxIndexBytes+1))
 	complete, native := false, false
 	recoverable := false

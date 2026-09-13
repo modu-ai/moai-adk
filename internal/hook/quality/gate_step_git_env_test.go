@@ -278,7 +278,7 @@ func TestRunStep_DoesNotLeakOuterGitEnvToChild(t *testing.T) {
 	t.Setenv(helperGitEnvReportEnv, report)
 
 	name, args := helperStep("TestHelperReportGitEnv")
-	if ok, msg := stepGate(stepDir).runStep(context.Background(), "probe", 60*time.Second, name, args...); !ok {
+	if ok, msg := stepGate(stepDir).runStep(context.Background(), "probe", "", 60*time.Second, name, args...); !ok {
 		t.Fatalf("probe step failed: %s", msg)
 	}
 
@@ -314,7 +314,7 @@ func TestRunStep_ChildFixtureCommitDoesNotLandInOuterRepo(t *testing.T) {
 	t.Setenv(helperGitFixtureEnv, "1")
 
 	name, args := helperStep("TestHelperGitFixtureCommit")
-	if ok, msg := stepGate(stepDir).runStep(context.Background(), "fixture", 60*time.Second, name, args...); !ok {
+	if ok, msg := stepGate(stepDir).runStep(context.Background(), "fixture", "", 60*time.Second, name, args...); !ok {
 		t.Fatalf("fixture step failed: %s", msg)
 	}
 
@@ -378,7 +378,7 @@ func TestRunStep_ChildGitInitDoesNotFlipOuterRepoCoreBare(t *testing.T) {
 	t.Setenv(helperGitEnvReportEnv, report)
 
 	name, args := helperStep("TestHelperGitInit")
-	if ok, msg := stepGate(stepDir).runStep(context.Background(), "init", 60*time.Second, name, args...); !ok {
+	if ok, msg := stepGate(stepDir).runStep(context.Background(), "init", "", 60*time.Second, name, args...); !ok {
 		t.Fatalf("init step failed: %s", msg)
 	}
 

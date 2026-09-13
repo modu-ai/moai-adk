@@ -72,10 +72,10 @@ func (s *Store) lock(ctx context.Context, name string) (func(), error) {
 		return nil, ErrAuthState
 	}
 	if e = lockFile(ctx, f); e != nil {
-		f.Close()
+		_ = f.Close() // lock not held; discarding the descriptor
 		return nil, e
 	}
-	return func() { unlockFile(f); f.Close() }, nil
+	return func() { unlockFile(f); _ = f.Close() }, nil // release path; unlock governs, flock ends at exit
 }
 func (s *Store) read() (state, error) {
 	if e := s.validatePlatformRoot(); e != nil {
@@ -92,7 +92,7 @@ func (s *Store) read() (state, error) {
 	if e != nil {
 		return state{}, ErrAuthState
 	}
-	defer f.Close()
+	defer func() { _ = f.Close() }() // read-only state source; no write-back to lose
 	if e := validateOpenedPrivateFile(f); e != nil {
 		return state{}, e
 	}
@@ -224,7 +224,7 @@ func (s *Store) transact(ctx context.Context, expected uint64, b Broker, verify 
 	if e != nil {
 		return 0, ErrAuthState
 	}
-	defer os.RemoveAll(home)
+	defer func() { _ = os.RemoveAll(home) }() // scratch cleanup; a leftover dotfile is harmless
 	homeInfo, e := privatePathInfo(home, true)
 	if e != nil {
 		return 0, ErrAuthState
@@ -401,7 +401,7 @@ func readPrivateBrokerFile(home string, homeInfo, info os.FileInfo) ([]byte, err
 	if e != nil {
 		return nil, ErrAuthState
 	}
-	defer f.Close()
+	defer func() { _ = f.Close() }() // read-only broker source; no write-back to lose
 	if validateOpenedPrivateFile(f) != nil {
 		return nil, ErrAuthState
 	}

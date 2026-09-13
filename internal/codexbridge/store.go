@@ -19,14 +19,25 @@ import (
 // FileStore records recovery barriers, never credentials, reasoning or tool
 // results. Its directory must be protected by the owner's App Server profile
 // lease for the Engine lifetime; separate processes must not share a store.
-// Records deliberately cannot be resumed by a new Engine in AS3.
+// Since AS4 an idle barrier carries the owned thread identity and persists the
+// pinned model, working directory and completed public prefix, so a new Engine
+// can resume it through thread/resume. Barriers captured mid-turn (waiting,
+// active, responding, starting, failed, canceled) stay non-resumable: an
+// uncertain tool call or an old RPC identity is never replayed or re-executed.
+// Legacy AS3 records (schema below storeSchema) are rejected on resume, never
+// migrated: they deliberately omit the pinned binding fields a resume needs.
 type FileStore struct {
 	mu  sync.Mutex
 	dir string
 }
+
+const storeSchema = 2
+
 type record struct {
+	Schema                        int
 	Owner                         codextools.Binding
 	Phase, TurnID, CallID, Prefix string
+	Model, CWD                    string
 }
 
 func OpenStore(dir string) (*FileStore, error) {
@@ -68,6 +79,7 @@ func (s *FileStore) save(r record) error {
 	if err := codexapp.ValidatePrivatePath(s.dir, true); err != nil {
 		return err
 	}
+	r.Schema = storeSchema
 	raw, err := json.Marshal(r)
 	if err != nil {
 		return err
@@ -85,7 +97,7 @@ func (s *FileStore) save(r record) error {
 		return err
 	}
 	tmp := file.Name()
-	defer os.Remove(tmp)
+	defer func() { _ = os.Remove(tmp) }() // temp file cleanup; the atomic replace owns the live file
 	if _, err = file.Write(raw); err == nil {
 		err = file.Sync()
 	}
@@ -125,4 +137,29 @@ func (s *FileStore) save(r record) error {
 		return closeErr
 	}
 	return nil
+}
+
+// load reads the barrier record for an owner binding. found is false only when
+// no record exists; a record that fails validation or decoding is an error.
+func (s *FileStore) load(owner codextools.Binding) (r record, found bool, err error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if err = codexapp.ValidatePrivatePath(s.dir, true); err != nil {
+		return r, false, err
+	}
+	path := filepath.Join(s.dir, storeKey(owner)+".json")
+	raw, err := os.ReadFile(path)
+	if errors.Is(err, os.ErrNotExist) {
+		return r, false, nil
+	}
+	if err != nil {
+		return r, false, err
+	}
+	if err = codexapp.ValidatePrivatePath(path, false); err != nil {
+		return r, false, err
+	}
+	if err = json.Unmarshal(raw, &r); err != nil {
+		return r, true, err
+	}
+	return r, true, nil
 }

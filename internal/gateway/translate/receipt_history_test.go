@@ -22,7 +22,11 @@ func TestReceiptHistoryRejectsStrippingForeignScopeAndFamily(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer store.Close()
+	defer func() {
+		if err := store.Close(); err != nil {
+			t.Error(err)
+		}
+	}()
 	history := NewReceiptHistory(store, id, id)
 	envelope, err := opaque.Encode([]opaque.Item{{OutputIndex: 0, Raw: []byte(`{"type":"reasoning","id":"rs_1","summary":[],"encrypted_content":"cipher"}`)}})
 	if err != nil {
@@ -63,7 +67,11 @@ func TestReceiptHistoryAuthorizedForkRetainsScope(t *testing.T) {
 		if e != nil {
 			t.Fatal(e)
 		}
-		t.Cleanup(func() { s.Close() })
+		t.Cleanup(func() {
+			if err := s.Close(); err != nil {
+				t.Error(err)
+			}
+		})
 		return s
 	}
 	parent := open(parentID)
@@ -100,12 +108,18 @@ func TestReceiptHistoryRejectsMalformedAndClosedAuthority(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	os.Chmod(dir, 0700)
+	if err := os.Chmod(dir, 0700); err != nil {
+		t.Fatal(err)
+	}
 	store, err := receipt.OpenStore(context.Background(), dir, id, true)
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer store.Close()
+	defer func() {
+		if err := store.Close(); err != nil {
+			t.Error(err)
+		}
+	}()
 	h := NewReceiptHistory(store, id, id)
 	envelope, err := opaque.Encode([]opaque.Item{{OutputIndex: 0, Raw: []byte(`{"type":"reasoning","id":"rs_1","summary":[],"encrypted_content":"cipher"}`)}})
 	if err != nil {
@@ -144,7 +158,9 @@ func TestReceiptHistoryRejectsMalformedAndClosedAuthority(t *testing.T) {
 	if h.Publish(context.Background(), "gpt-6-astra", "owner", j(chained)) == nil {
 		t.Fatal("unreceipted prefix published")
 	}
-	store.Close()
+	if err := store.Close(); err != nil {
+		t.Fatal(err)
+	}
 	if h.Check(context.Background(), "gpt-6-astra", "owner", good) == nil || h.Publish(context.Background(), "gpt-6-astra", "owner", good) == nil {
 		t.Fatal("closed authority accepted")
 	}
@@ -163,7 +179,11 @@ func TestReceiptHistoryRejectsPublicLayoutMutation(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer store.Close()
+	defer func() {
+		if err := store.Close(); err != nil {
+			t.Error(err)
+		}
+	}()
 	h := NewReceiptHistory(store, id, id)
 	items := []opaque.Item{{OutputIndex: 0, Raw: []byte(`{"type":"reasoning","id":"rs_layout","summary":[],"encrypted_content":"synthetic"}`)}}
 	layout := []opaque.PublicItem{{OutputIndex: 1, Type: "message", Blocks: 1, Phase: "final_answer"}}

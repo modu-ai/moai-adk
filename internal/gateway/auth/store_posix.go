@@ -35,7 +35,7 @@ func openPlatformStore(dir string) (*Store, error) {
 	if e != nil {
 		return nil, ErrAuthState
 	}
-	return &Store{dir: dir, root: root}, nil
+	return &Store{dir: dir, root: root, platform: &platformStore{}}, nil
 }
 func (s *Store) writePlatform(raw []byte) error {
 	f, e := os.CreateTemp(s.dir, ".state-")
@@ -43,7 +43,7 @@ func (s *Store) writePlatform(raw []byte) error {
 		return ErrAuthState
 	}
 	name := f.Name()
-	defer os.Remove(name)
+	defer func() { _ = os.Remove(name) }() // temp cleanup; the atomic replace owns the live file
 	if e = f.Chmod(0600); e == nil {
 		_, e = f.Write(raw)
 	}

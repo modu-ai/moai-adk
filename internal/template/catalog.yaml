@@ -6,7 +6,7 @@ catalog:
             - name: moai
               tier: core
               path: templates/.claude/skills/moai/
-              hash: 503876276d61f3aefb7d922a2302c58cc7b62d16cbe9ed128652236a3701ae2c
+              hash: 8fefe00a4f88ad77918ff7c53f084d820881784ee4cbcb5f9c4d106d1dce46ae
               version: 1.0.0
             - name: moai-foundation-cc
               tier: core
@@ -26,7 +26,7 @@ catalog:
             - name: moai-foundation-thinking
               tier: core
               path: templates/.claude/skills/moai-foundation-thinking/
-              hash: 93ba594d3cc2bbad9c8383dedf3d2177e0accd18f3c8c3be40cd923400051950
+              hash: 624cf9766b94b6317e5f6ab171d0fbee9bb7794aa2830c50bfb169f5e8cf5fa7
               version: 1.0.0
             - name: moai-harness-learner
               tier: core
@@ -36,7 +36,7 @@ catalog:
             - name: moai-kanban-foreman
               tier: core
               path: templates/.claude/skills/moai-kanban-foreman/
-              hash: ec5e5517881710e83038c7aec851d9abd2905500d02f01c6c82287b6c6711106
+              hash: 9e2ebb720734e002fcb47c3bb082a5694c368376a48405a01de079c379e66831
               version: 1.0.0
             - name: moai-meta-harness
               tier: core
@@ -76,7 +76,7 @@ catalog:
             - name: moai-workflow-spec
               tier: core
               path: templates/.claude/skills/moai-workflow-spec/
-              hash: ab10fb26f4d04985855f6423cf1c96882cb991eda5bfdb524ed851898b9e0fdc
+              hash: d3a6732c0c2476a251592b3c6d6c8866d8a0e78d16ccb4f8f3706f72ed03ab6e
               version: 1.0.0
             - name: moai-workflow-tdd
               tier: core
@@ -137,7 +137,7 @@ catalog:
             - name: manager-spec
               tier: core
               path: templates/.claude/agents/moai/manager-spec.md
-              hash: 8c7ffaeb94b414d19ae70681c6d9bd3cf578dd7fb302b77a9bc55e2c144270a0
+              hash: d9e44f067572c2ed30da701ab67ce277b281061424b355fdff79eb97d7970fb3
               version: 1.0.0
             - name: plan-auditor
               tier: core

@@ -44,7 +44,8 @@ func NewServer(c ServerConfig) (*Server, error) {
 		}
 	}
 	for _, r := range c.SessionHeader {
-		if !(r >= 'a' && r <= 'z' || r >= 'A' && r <= 'Z' || r >= '0' && r <= '9' || strings.ContainsRune("!#$%&'*+-.^_`|~", r)) {
+		headerRune := r >= 'a' && r <= 'z' || r >= 'A' && r <= 'Z' || r >= '0' && r <= '9' || strings.ContainsRune("!#$%&'*+-.^_`|~", r)
+		if !headerRune {
 			return nil, errors.New("invalid gateway session header")
 		}
 	}
@@ -164,7 +165,7 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		writeError(w, 502, "api_error")
 		return
 	}
-	defer response.Body.Close()
+	defer func() { _ = response.Body.Close() }() // body already streamed as-is; no terminal state to corrupt
 	if response.StatusCode < 200 || response.StatusCode > 599 {
 		writeError(w, 502, "api_error")
 		return
