@@ -12,8 +12,8 @@ package quality
 // Precedence (the design judgment the card asks to pin): when scripts.lint
 // is present it REPLACES the config-gated entries for that toolchain — the
 // project's own command outranks the gate's guesses, and running both would
-// lint the tree twice. The replaced entries stay visible in the run summary
-// as skips, so nothing trades silence for the substitution. A watch-prone
+// lint the tree twice. Superseded entries are not seeded: for such a project
+// the configured lint axis is exactly the declared command. A watch-prone
 // lint script never self-terminates; it is reported, not run — a hang to the
 // lint timeout would be a false red on every commit (the same visible-skip
 // judgment the source-free and config-free skips carry).
@@ -183,6 +183,44 @@ func TestNoScriptsLintLeavesLintAxisUnchanged(t *testing.T) {
 	}
 	if rec := g.summary.recordFor("npm run lint"); rec != nil {
 		t.Errorf("npm run lint row = %v, want no row (no scripts.lint declared)", rec)
+	}
+}
+
+// TestGoToolchainKeepsGolangciLintBesideScriptsLint — the sync-audit F1
+// regression: a Go-rooted project that also carries a package.json with
+// scripts.lint must keep its golangci-lint axis. The fake golangci-lint
+// exits 1, so a gate whose Go axis survived fails naming it; the fake npm
+// exits 0, so a gate that wrongly switched to npm run lint passes — which
+// is exactly the silent coverage loss the language guard prevents.
+func TestGoToolchainKeepsGolangciLintBesideScriptsLint(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("skipping on Windows: shell-script fake binary is not directly executable")
+	}
+
+	dir := writeFixture(t, map[string]string{
+		"go.mod":        "module example.com/goboth\n\ngo 1.21\n",
+		"main.go":       "package main\n\nfunc main() {}\n",
+		"package.json":  `{"name": "goboth", "scripts": {"lint": "exit 0"}}`,
+		".golangci.yml": "",
+	})
+	goDir := writeFakeBinary(t, "go", 0, "")
+	gclDir := writeFakeBinary(t, "golangci-lint", 1, "golangci-lint probe violation")
+	npmDir := writeFakeBinary(t, "npm", 0, "")
+	prependFakes(t, goDir, gclDir, npmDir)
+
+	g := biomeGate(t, dir)
+	passed, out := g.Run(context.Background())
+	if passed {
+		t.Fatalf("gate passed a Go project whose golangci-lint fails — the Go lint axis was replaced by the Node scripts.lint; summary:\n%s", out)
+	}
+	if !strings.Contains(out, "quality gate failed: golangci-lint") {
+		t.Errorf("failure does not name golangci-lint:\n%s", out)
+	}
+	if rec := g.summary.recordFor("npm run lint"); rec != nil {
+		t.Errorf("npm run lint row = %v, want no row (the detected entry is a Go toolchain)", rec)
+	}
+	if rec := g.summary.recordFor("golangci-lint"); rec == nil || rec.outcome != outcomeExecuted {
+		t.Errorf("golangci-lint row = %v, want an executed row", rec)
 	}
 }
 

@@ -1179,6 +1179,14 @@ const reasonLintScriptWatchProneFmt = "lint script is watch-prone and would not 
 // unreadable manifests, projects without the script — passes the table steps
 // through unchanged, which is the no-scripts.invariance card t687 pins.
 func resolveNodeLintSteps(steps []gateStep, dir string) (resolved []gateStep, script string, watchProne bool) {
+	// Language guard — the same guard the sibling resolveNodeTestStep
+	// carries (step.name != nodeTestStepName): only the Node lint axis
+	// resolves. Without it, a Go-rooted project that also carries a
+	// package.json with scripts.lint would have its golangci-lint axis
+	// silently replaced by the project's Node lint command.
+	if len(steps) == 0 || steps[0].binary != "npx" {
+		return steps, "", false
+	}
 	if dir == "" {
 		return steps, "", false
 	}
