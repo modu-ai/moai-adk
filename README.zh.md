@@ -411,7 +411,7 @@ TRUST 5（Tested · Readable · Unified · Secured · Trackable）作用于每�
   <img src="./assets/images/moai-web-settings.png" alt="moai web 控制台设置画面 —— 档案栏和设置标签页" width="90%">
 </p>
 
-`moai web` 打开一个只监听本地主机的控制台。画面共六个 —— Overview、Kanban、Specs、Monitor、Settings、Todo；设置画面分成以下标签页：Identity、Language、LLM、3rd Party LLM、Workflow、Git & Worktree、Audit、Codex、Agents、Report、MCP、Cross-Session、Feedback、Quality Gate。Codex 标签页把分散的 codex 设置汇总到一屏，是只读画面，取值仍在各自所属的标签页里修改。档案的创建、改名、删除也在同一画面完成。
+`moai web` 打开一个只监听本地主机的控制台。画面共六个 —— Overview、Kanban、Specs、Monitor、Settings、Todo；设置画面分成以下标签页：Identity、Language、LLM、GLM Settings、Workflow、Git & Worktree、Audit、Codex、Agents、Report、MCP、Cross-Session、Feedback、Quality Gate。Codex 标签页把分散的 codex 设置汇总到一屏，是只读画面，取值仍在各自所属的标签页里修改。档案的创建、改名、删除也在同一画面完成。
 
 ### ref / domain 技能
 

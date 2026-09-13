@@ -411,7 +411,7 @@ Korean, Japanese, Chinese, and English docs are maintained in the same PR. Trans
   <img src="./assets/images/moai-web-settings.png" alt="moai web console — Settings screen with profile bar and setting tabs" width="90%">
 </p>
 
-`moai web` opens a console bound to localhost. Six screens — Overview, Kanban, Specs, Monitor, Settings, Todo; the settings screen splits into these tabs: Identity, Language, LLM, 3rd Party LLM, Workflow, Git & Worktree, Audit, Codex, Agents, Report, MCP, Cross-Session, Feedback, Quality Gate. The Codex tab is a read-only screen that gathers the scattered codex settings in one place — each value is still edited on its owning tab. Profile create/rename/delete lives on the same screen.
+`moai web` opens a console bound to localhost. Six screens — Overview, Kanban, Specs, Monitor, Settings, Todo; the settings screen splits into these tabs: Identity, Language, LLM, GLM Settings, Workflow, Git & Worktree, Audit, Codex, Agents, Report, MCP, Cross-Session, Feedback, Quality Gate. The Codex tab is a read-only screen that gathers the scattered codex settings in one place — each value is still edited on its owning tab. Profile create/rename/delete lives on the same screen.
 
 ### ref / domain skills
 

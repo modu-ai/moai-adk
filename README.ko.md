@@ -411,7 +411,7 @@ AI 에이전트끼리 컨텍스트·불변 계약·위험 구역을 주고받는
   <img src="./assets/images/moai-web-settings.png" alt="moai web 콘솔 설정 화면 — 프로파일 바와 설정 탭" width="90%">
 </p>
 
-`moai web`이 로컬호스트에만 열리는 콘솔을 띄운다. 화면은 Overview·Kanban·Specs·Monitor·Settings·Todo 여섯 개이고, 설정 화면은 Identity·Language·LLM·3rd Party LLM·Workflow·Git & Worktree·Audit·Codex·Agents·Report·MCP·Cross-Session·Feedback·Quality Gate 탭으로 나뉜다. Codex 탭은 흩어져 있는 codex 설정을 한 화면에 모아 보여주는 읽기 전용 화면이라, 값은 원래 자기 탭에서 고친다. 프로파일 생성·이름 변경·삭제도 같은 화면에서 한다.
+`moai web`이 로컬호스트에만 열리는 콘솔을 띄운다. 화면은 Overview·Kanban·Specs·Monitor·Settings·Todo 여섯 개이고, 설정 화면은 Identity·Language·LLM·GLM Settings·Workflow·Git & Worktree·Audit·Codex·Agents·Report·MCP·Cross-Session·Feedback·Quality Gate 탭으로 나뉜다. Codex 탭은 흩어져 있는 codex 설정을 한 화면에 모아 보여주는 읽기 전용 화면이라, 값은 원래 자기 탭에서 고친다. 프로파일 생성·이름 변경·삭제도 같은 화면에서 한다.
 
 ### ref / domain 스킬
 

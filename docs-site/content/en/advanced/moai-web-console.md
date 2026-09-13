@@ -130,7 +130,7 @@ Choosing Settings in the rail unfolds the tabs below as a vertical list.
 1. **Identity** — display name and project-level identity fields
 2. **Language** — conversation, commit message, code comment and documentation language
 3. **LLM** — permission mode, model, effort level
-4. **3rd Party LLM** — per-tier GLM models, per-tier effort, GLM API key
+4. **GLM Settings** — per-tier GLM models, per-tier effort, GLM API key
 5. **Workflow** — execution mode, default mode, agentic-loop, loop-prevention
 6. **Git & Worktree** — `git_strategy.mode`, per-profile `merge_method`, worktree and branch-guard toggles
 7. **Audit** — the audit model and the per-backend gates
@@ -162,7 +162,7 @@ Fields render with the widget that matches the value's real domain. A bool field
 
 ### GLM honesty badge
 
-The only runtime delivery channel for effort is a single session-level environment variable, so per-tier effort values are **stored only**. They persist in the config, but the runtime reads only the session-level value. The 3rd Party LLM tab carries a badge naming the source that actually applies, so this is stated rather than implied.
+The only runtime delivery channel for effort is a single session-level environment variable, so per-tier effort values are **stored only**. They persist in the config, but the runtime reads only the session-level value. The GLM Settings tab carries a badge naming the source that actually applies, so this is stated rather than implied.
 
 ### Editing scope
 

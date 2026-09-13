@@ -467,6 +467,132 @@ $ go test ./internal/web/ -run 'TestDocsTabContract' -v
 - **hugo 빌드(RG-TCD-002) 미실행.** M6 소관 — 이 커밋의 문구 교체가 마크다운 구조를 바꾸지 않았지만, 바꾸지 않았다는 것은 재지 않았다는 말과 다르다.
 - **AC-TCD-010 패리티 미측정.** M4 까지 끝난 트리에서 한 번에 재는 것이 맞다(merge-base 기준).
 
+### M4 — D군 12자리: 탭 이름을 렌더 라벨에 맞춘다
+
+측정 트리: `.claude/worktrees/t530`, 브랜치 `WT-web-tab-docs`, M4 직전 HEAD `34ef57f79`(M3 커밋).
+결정 근거: `plan.md §C` — 갈래 1(문서를 코드에 맞춘다), 2026-09-12. 한시 허용 목록도 후속 카드 주석도 두지 않았다.
+
+#### 처분 — 12자리, 4로케일 한 커밋 (REQ-TCD-007)
+
+| 자리 | 파일 | 이전 | 이후 |
+|---|---|---|---|
+| D1~D4 | `README{,.ko,.ja,.zh}.md:414` | `3rd Party LLM` | `GLM Settings` |
+| D5 | `ko/advanced/moai-web-console.md:133` | `**서드파티 LLM(3rd Party LLM)**` | `**GLM 설정(GLM Settings)**` |
+| D6 | `en/advanced/moai-web-console.md:133` | `**3rd Party LLM**` | `**GLM Settings**` |
+| D7 | `ja/advanced/moai-web-console.md:133` | `**サードパーティ LLM（3rd Party LLM）**` | `**GLM設定（GLM Settings）**` |
+| D8 | `zh/advanced/moai-web-console.md:133` | `**第三方 LLM（3rd Party LLM）**` | `**GLM设置（GLM Settings）**` |
+| D9 | `ko/advanced/moai-web-console.md:165` | `서드파티 LLM 탭에는 …` | `GLM 설정 탭에는 …` |
+| D10 | `en/advanced/moai-web-console.md:165` | `The 3rd Party LLM tab carries …` | `The GLM Settings tab carries …` |
+| D11 | `ja/advanced/moai-web-console.md:165` | `サードパーティ LLM タブには …` | `GLM設定タブには …` |
+| D12 | `zh/advanced/moai-web-console.md:165` | `第三方 LLM 标签页带有 …` | `GLM设置标签页带有 …` |
+
+D9~D12 는 번호 목록 밖 산문이라 **N2 가드가 보지 않는 자리**다 — 열거표가 그 넷을 표 행으로 올려둔 덕에
+사람이 같은 변경에서 함께 고칠 수 있었다. 가드가 초록이어도 이 넷은 가드가 지켜 주지 않는다는 사실을 여기 남긴다.
+zh D12 의 `第三方` 가 사라지면서 서수 접두 제외 규칙이 겨누던 유일한 오탐 자리도 함께 없어졌다 — 규칙은 그대로 두었다
+(규칙은 미래의 재등장을 막는 장치이지 오늘의 적중을 세는 장치가 아니다).
+
+#### GREEN — AC-TCD-003 축어
+
+```
+$ grep -rn '3rd Party LLM\|서드파티 LLM\|サードパーティ LLM\|第三方 LLM' \
+    README.md README.ko.md README.ja.md README.zh.md \
+    docs-site/content/{ko,en,ja,zh}/advanced/moai-web-console.md | wc -l
+       0
+```
+
+대조군(지우기만 하고 대체 라벨을 넣지 않은 상태를 배제) — 파일별 정본 라벨 실재 확인:
+
+```
+$ grep -c 'GLM Settings' README.md README.ko.md README.ja.md README.zh.md docs-site/content/en/advanced/moai-web-console.md
+README.ko.md:1
+README.zh.md:1
+README.ja.md:1
+README.md:1
+docs-site/content/en/advanced/moai-web-console.md:2
+$ grep -c 'GLM 설정' docs-site/content/ko/advanced/moai-web-console.md
+2
+$ grep -c 'GLM設定' docs-site/content/ja/advanced/moai-web-console.md
+2
+$ grep -c 'GLM设置' docs-site/content/zh/advanced/moai-web-console.md
+2
+```
+
+README 4본 각 1행(번호 목록) + 콘솔 4본 각 2행(번호 목록 + `:165` 산문) = **합계 12행**, D군 12자리와 같다.
+
+#### GREEN — AC-TCD-004 / 005 / 007 / 009: 가드 3층 전부 초록
+
+```
+$ go test -count=1 ./internal/web/ -run 'TestDocsTabContract' -v
+    docs_tab_contract_test.go:136: swept 12 files against 16 enumerated literals
+    docs_tab_contract_test.go:281: allowed rules 1
+    docs_tab_contract_test.go:282: allowed lines 16
+    docs_tab_contract_test.go:357: README.md: extracted 14 tab names
+    docs_tab_contract_test.go:357: README.ko.md: extracted 14 tab names
+    docs_tab_contract_test.go:357: README.ja.md: extracted 14 tab names
+    docs_tab_contract_test.go:357: README.zh.md: extracted 14 tab names
+    docs_tab_contract_test.go:357: docs-site/content/ko/advanced/moai-web-console.md: extracted 14 tab names
+    docs_tab_contract_test.go:357: docs-site/content/en/advanced/moai-web-console.md: extracted 14 tab names
+    docs_tab_contract_test.go:357: docs-site/content/ja/advanced/moai-web-console.md: extracted 14 tab names
+    docs_tab_contract_test.go:357: docs-site/content/zh/advanced/moai-web-console.md: extracted 14 tab names
+--- PASS: TestDocsTabContract (0.08s)
+    --- PASS: TestDocsTabContract/literals (0.00s)
+    --- PASS: TestDocsTabContract/allowlist (0.07s)
+    --- PASS: TestDocsTabContract/names (0.00s)
+```
+
+세 서브테스트 이름이 리터럴로 모두 있고 `--- FAIL` 도 `no tests to run` 도 없다(AC-TCD-004).
+`swept 12 files`(AC-TCD-005) · `allowed rules 1` + `allowed lines 16`(AC-TCD-007) · 8파일 각 `extracted 14`(AC-TCD-009).
+
+#### GREEN — AC-TCD-010 4로케일 패리티 (읽는 시점 merge-base)
+
+```
+$ git merge-base develop HEAD
+1d150a27d4c5cdeedb37df19b7a4a025e5dd2c09
+$ git diff --name-only 1d150a27d4c5cdeedb37df19b7a4a025e5dd2c09 -- <대상 12파일>
+README.ja.md
+README.ko.md
+README.md
+README.zh.md
+docs-site/content/en/advanced/moai-web-console.md
+docs-site/content/en/cli-reference/web.md
+docs-site/content/ja/advanced/moai-web-console.md
+docs-site/content/ja/cli-reference/web.md
+docs-site/content/ko/advanced/moai-web-console.md
+docs-site/content/ko/cli-reference/web.md
+docs-site/content/zh/advanced/moai-web-console.md
+docs-site/content/zh/cli-reference/web.md
+```
+
+변경 파일 **12**(0 이 아니므로 측정이 성립), README **4**본 전부, 로케일 상대 경로
+`advanced/moai-web-console.md` **4회** · `cli-reference/web.md` **4회** — 네 로케일이 빠짐없이 같은 자리에서 움직였다.
+`develop` 흡수 전이라 merge-base 가 분기점(`1d150a27d`)에 머물러 있고, 그 값을 여기 리터럴로 **기록**하되
+판정식에는 읽는 시점 `git merge-base` 를 쓴다(acceptance.md §D 두 축 표).
+
+#### 유지 — RG-TCD-001 (스크린샷 미변경)
+
+```
+$ git diff --quiet 1d150a27d4c5cdeedb37df19b7a4a025e5dd2c09 -- assets/images/
+$ echo $?
+0
+```
+
+#### 유지 — 기존 테스트 미파손 (§D.2 항목 3)
+
+```
+$ go test -count=1 ./internal/web/
+ok  	github.com/modu-ai/moai-adk/internal/web	14.957s
+```
+
+#### Gap — M4 가 관측하지 못한 것
+
+- **AC-TCD-006 변이 6종 미실행** — M5 소관. 지금 가드는 초록이지만 **무엇을 잡는지는 아직 보인 적이 없다**;
+  M1~M4 의 RED→GREEN 전이는 집합 축의 증거이고, 변이는 축 자체의 증거다. 둘은 대체재가 아니다.
+- **AC-TCD-008 오탐 4자리 침묵 미확인** — M5 소관.
+- **AC-TCD-011 / RG-TCD-002 / RG-TCD-003 미측정** — M6 소관(열거표 계수, hugo 빌드).
+- **범위 밖 이름 드리프트 8자리 유지** — Identity(zh)·Git&Worktree(zh)·Codex(ko/ja/zh)·Cross-Session(ko/ja/zh)의
+  현지어 축 드리프트는 M4 가 건드리지 않았다. 가드의 `names` 층이 그 축을 열지 않으므로(위 M1 잔여 위험 절)
+  초록이 그 여덟 자리의 정합을 뜻하지 않는다. 별도 카드 소관이다.
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 _<pending — M1 만 완료. 이 신호는 run-phase 전체(M1~M5)가 닫힐 때 채운다.>_

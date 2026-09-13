@@ -411,7 +411,7 @@ AI エージェント同士がコンテキスト・不変条件・危険区域�
   <img src="./assets/images/moai-web-settings.png" alt="moai web コンソール設定画面 — プロファイルバーと設定タブ" width="90%">
 </p>
 
-`moai web` がローカルホスト限定のコンソールを開く。画面は Overview・Kanban・Specs・Monitor・Settings・Todo の 6 つで、設定画面は Identity・Language・LLM・3rd Party LLM・Workflow・Git & Worktree・Audit・Codex・Agents・Report・MCP・Cross-Session・Feedback・Quality Gate のタブに分かれる。Codex タブは散らばった codex 設定を 1 画面にまとめて見せる読み取り専用の画面で、値の編集は元のタブで行う。プロファイルの作成・改名・削除も同じ画面で行う。
+`moai web` がローカルホスト限定のコンソールを開く。画面は Overview・Kanban・Specs・Monitor・Settings・Todo の 6 つで、設定画面は Identity・Language・LLM・GLM Settings・Workflow・Git & Worktree・Audit・Codex・Agents・Report・MCP・Cross-Session・Feedback・Quality Gate のタブに分かれる。Codex タブは散らばった codex 設定を 1 画面にまとめて見せる読み取り専用の画面で、値の編集は元のタブで行う。プロファイルの作成・改名・削除も同じ画面で行う。
 
 ### ref / domain スキル
 
