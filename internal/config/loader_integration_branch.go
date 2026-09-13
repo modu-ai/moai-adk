@@ -76,6 +76,9 @@ func (c GitFlowIntegrationConfig) IsGitFlow() bool {
 // LoadGitFlowIntegrationConfig reads the git strategy once and reports both
 // halves of the git-flow predicate plus the develop branch it gates. Every
 // failure path — missing file, unparseable file — yields the zero value.
+//
+// @MX:ANCHOR: [AUTO] single read of git-strategy.yaml feeding three production consumers — integration acquire target, session-exit auto-merge gate, doctor Git Strategy Workflow check
+// @MX:REASON: fan_in reached 3 when t656 added the doctor consumer; a signature or semantics change here moves all three callers (SPEC-GITSTRAT-WORKFLOW-READER-001)
 func LoadGitFlowIntegrationConfig(projectRoot string) GitFlowIntegrationConfig {
 	dir := filepath.Join(projectRoot, ".moai", "config", "sections")
 	wrapper := &gitStrategyFileWrapper{}
