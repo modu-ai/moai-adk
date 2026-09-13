@@ -75,3 +75,15 @@ _<pending run-phase>_
 ## §E.4 Sync-phase Audit-Ready Signal
 
 _<pending sync-phase>_
+
+### M3 Launcher-Side Envelope Repair Path (2026-09-14)
+
+- Commit `7ebf85df6` (parent `37987cc3c`), 5 files +966: `internal/gateway/conversation/repair.go` + `repair_test.go` (new), `internal/cli/gateway_repair.go` + `gateway_repair_test.go` (new), `internal/cli/gateway_session.go` (only edit to an existing file — prepareGatewayConversation hook + passthrough case).
+- RED (verbatim, tree `e662531fa`): `go test ./internal/gateway/conversation/ -run 'TestRepair'` → build failed, `m.RepairEnvelope undefined`, `undefined: ErrRepairNotRepairable` / `ErrRepairAlreadyAttempted`.
+- GREEN (verbatim counts, tree `7ebf85df6`): conversation repair 7/7 PASS; cli wiring 4/4 PASS; scoped gateway+repair surface 38 PASS (`-run 'Gateway|Repair'`); M2 translate net ok. `go build`+`GOOS=windows` exit 0; vet exit 0; scoped lint `--new-from-rev=4da5d1c4e` 0 issues.
+- PRESERVE zero-diff vs merge-base `4da5d1c4e`: the 11 §D files → empty diff (directly verified).
+- New surface: `Manager.RepairEnvelope(ctx, id) ([]RepairProvenance, error)`; `ErrRepairNotRepairable`/`ErrRepairAlreadyAttempted`; durable record `families/<FamilyID>/repair/<UUID>.json` {attempted, boundaries[{digest,position}], aside, aside_sha256}; aside `<transcript>.moai-repair-aside` (O_EXCL preimage, never deleted); launcher flag `--repair-envelope` (requires `--resume`, runs before Resume, stripped from child args).
+- Key HOW decisions: marker self-attestation only (no receipt-store read — source-scan test AC-EVR-010); repair writes the TRANSCRIPT (the launcher-owned file the client re-encodes from) and guarantees the persisted source is correct/refusable — never the wire bytes (client encode-time behavior is the documented boundary, t703/t707-consistent); refusals write nothing (do not burn the single-shot); durable record written before transcript rewrite (crash burns the shot conservatively); refusal guidance = `translate.HistoryReplayError{Cause: CauseReasoning}.Error()` at CLI layer (no string duplication); `isSidechain` rows excluded.
+- AC rows: AC-EVR-004..010 all PASS (per-AC evidence in agent report).
+- Gaps: full internal/cli package run = default-10m timeout at 601s — pre-existing baseline (~1583s package total on this machine); CI owns the full verdict. Coverage (E3) deferred to the card's whole diff at a later milestone.
+- Note: mid-milestone the agent hit a transient 429 rate limit and was resumed; no work lost.
