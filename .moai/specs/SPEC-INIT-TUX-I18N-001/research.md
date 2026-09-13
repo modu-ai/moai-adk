@@ -292,7 +292,7 @@ $ grep -n 'AC-TUIM-02[6-9]' .moai/specs/SPEC-CLI-TUI-MODERNIZE-001/acceptance.md
 1단계 — 흐름 파일의 홈 쓰기 호출:
 
 ```
-$ git grep -n -E 'profile\.WritePreferences\(|homestate\.EnsureProjectLayout\(|ApplyAutonomyTierBundle\(|ensureGlobalSettingsEnv\(|globalMoaiHooksDir\(|runShellEnvConfig\(|configureShellEnv\(|RecordLastUsedProfile\(|paths\.(UserSettingsFile|UserConfigSectionsDir|ProfilesDir|StateDir|CacheDir|ReleasesDir|WorktreesDir|GlmEnvFile)\(' -- internal/cli/init.go internal/cli/update.go internal/cli/update_version.go internal/cli/profile_setup.go internal/cli/profile.go internal/core/project/initializer.go ':!*_test.go'
+$ git grep -n -E 'profile\.WritePreferences\(|homestate\.EnsureProjectLayout\(|[Aa]pplyAutonomyTierBundle(Fn)?\(|ensureGlobalSettingsEnv\(|globalMoaiHooksDir\(|runShellEnvConfig\(|configureShellEnv\(|RecordLastUsedProfile\(|paths\.(UserSettingsFile|UserConfigSectionsDir|ProfilesDir|StateDir|CacheDir|ReleasesDir|WorktreesDir|GlmEnvFile)\(' -- internal/cli/init.go internal/cli/update.go internal/cli/update_version.go internal/cli/profile_setup.go internal/cli/profile.go internal/core/project/initializer.go ':!*_test.go'
 internal/cli/init.go:877:	if err := homestate.EnsureProjectLayout(opts.ProjectRoot); err != nil {
 internal/cli/init.go:890:		if tierErr := project.ApplyAutonomyTierBundle(
 internal/cli/init.go:964:	if err := ensureGlobalSettingsEnv(); err != nil {
@@ -308,6 +308,8 @@ derive_exit=0
 ```
 
 패턴에 넣은 `RecordLastUsedProfile(` 와 `paths.UserSettingsFile(` 계열은 이 여섯 파일에서 0건이다. 같은 패턴의 다른 항목이 11줄을 내므로 이 0건은 패턴이 파일을 읽지 못해서 생긴 것이 아니다.
+
+(sync 정정, 2026-09-13, 트리 HEAD `e561b162e`) t656 (`b5b5883e9`) 이 호출을 테스트 시접 변수 `applyAutonomyTierBundleFn` 뒤로 옮겨 위 패턴의 대문자 A 리터럴 `ApplyAutonomyTierBundle\(` 가 그 호출에 더 이상 맞지 않게 됐다 — 시접 호출은 소문자 a 로 시작하고 `Bundle` 뒤에 `Fn` 이 끼어 있다. 그래서 패턴의 해당 항목을 `[Aa]pplyAutonomyTierBundle(Fn)?\(` 로 정정했고, 이 트리에서 다시 돌리면 위 레코드(538b56f19 시점)와 달리 시접 형태 `internal/cli/init.go:858` 한 줄을 포함해 같은 11줄이 나온다. 재측정 원문: `.moai/reports/t586/sync-research14-recheck.txt`. 생산자와 대상 파일은 변하지 않았다 — 같은 호출이 같은 `~/.claude/settings.json` 을 쓰므로 W1~W6 와 AC-ITI-019 는 고칠 것이 없다(`.moai/reports/t586/absorb-t583/slot/c-recheck.md`).
 
 2단계 — 호출 대상의 경로 계산(비테스트 코드를 읽은 좌표):
 

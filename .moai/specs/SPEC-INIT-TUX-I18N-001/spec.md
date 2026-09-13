@@ -4,7 +4,7 @@ title: "init/update/profile wizard TUX repair — v1 profile wizard absorbed int
 version: "0.2.3"
 status: in-progress
 created: 2026-09-11
-updated: 2026-09-11
+updated: 2026-09-13
 author: manager-spec
 priority: P1
 phase: "v3.2.0 target"
@@ -221,7 +221,7 @@ t583 뒤 init 질문 집합: Basic 2개(`conversation_language`, `user_name`) / 
 
 ### Out of Scope — 단계 표시 줄 소실 원인 조사 (D4, 연기)
 
-- 80×30 뷰 문자열에는 있는 단계 표시 줄이 같은 크기 pty 캡처에서 사라지는 현상의 원인 규명과 수리는 이 SPEC 의 요구사항이 아니다. t583 흡수 뒤 다시 재고 결과를 기록만 한다(`plan.md` §G). REQ-ITI-008 은 뷰 문자열(골든) 기준이다.
+- (sync 재판정, 2026-09-13) 이 제외가 처음 놓였던 관측 — "80×30 뷰 문자열에는 있는 단계 표시 줄이 같은 크기 pty 캡처에서 사라진다" — 는 반증됐다. 같은 80×30 pty 재측정에서 단계 표시 줄 `● ○ ○ ○ 1 / 4` 는 그대로 그려진다(첫 화면 캡처 14번째 줄; 증거 `.moai/reports/t586/sync-d4-recheck.txt`·`.moai/reports/t586/sync-d4-recheck-frame/init-first-screen.txt`, M4 뮤턴트 캡처 `.moai/reports/t586/ac003-init-first-screen-m4mutant-green.txt` 도 같은 결과). 소실이 재현되지 않으므로 그 원인 규명은 대상이 아니고, 기록해 둔 재고(`plan.md` §G)는 여기서 닫는다. 남는 것은 판정 배분이다: 단계 표시 줄의 성질은 AC-ITI-021 이 판정하고 AC-ITI-003 은 판정하지 않으며, REQ-ITI-008 은 뷰 문자열(골든) 기준이라는 점은 그대로다.
 
 ### Out of Scope — 질문 집합 변경
 

@@ -149,7 +149,7 @@ t583 뒤 init 질문 4개는 라벨 기준으로 huh 그룹 3개(Basic 2 / Quali
 | 그대로 둠 | 같음 | 기각 — 라벨이 내용과 어긋나는 상태를 방치 |
 | **`agent_wiring` 과 `autonomy_tier` 를 한 그룹으로** | 2페이지. 첫 페이지 대화 언어·이름, 둘째 페이지 하네스·자율성 | **채택** |
 
-결정: 두 질문의 `Group` 을 `Agents & Autonomy` 로 바꾼다. 두 질문 모두 조건이 없어 `buildFormGroups` 가 한 그룹으로 묶는다. 스테퍼 분모는 질문 수 기준이라 4 로 그대로다. 영향: `questions.go` 두 리터럴의 `Group` 값(t583 이 "건드리지 않음"으로 남긴 부분이라 게이트 뒤 편집), `agent_wiring_question_test.go:87-88` 의 그룹 단정, 패키지 주석의 페이지 설명(`questions.go:24-26`, `wizard.go:36`). 이 결정은 리드 판정 Q5 로 확정됐다(`plan.md` §H). 판정은 셋으로 나눈다: 페이지 수 2 는 AC-ITI-018, 스테퍼 분모 4 는 AC-ITI-021, 라벨이 화면에 나오지 않음은 AC-ITI-022. 번역 키: 비테스트 코드에서 질문의 `Group` 을 읽는 곳은 묶기 비교와 대입 두 줄(`wizard.go:183`, `:186`)뿐이고 `buildFormGroups` 는 그룹에 제목을 붙이지 않아(`wizard.go:172`) 라벨을 그리는 경로가 없다(`research.md` §6.1). 따라서 네 로케일 번역 표에 그룹 라벨 키를 두지 않는다.
+결정: 두 질문의 `Group` 을 `Agents & Autonomy` 로 바꾼다. 두 질문 모두 조건이 없어 `buildFormGroups` 가 한 그룹으로 묶는다. 스테퍼 분모는 질문 수 기준이라 4 로 그대로다. 영향: `questions.go` 두 리터럴의 `Group` 값(t583 이 "건드리지 않음"으로 남긴 부분이라 게이트 뒤 편집), `agent_wiring_question_test.go:87-88` 의 그룹 단정, 패키지 주석의 페이지 설명(`questions.go:24-26`, `wizard.go:36`). 이 결정은 리드 판정 Q5 로 확정됐다(`plan.md` §H). 판정은 셋으로 나눈다: 페이지 수 2 는 AC-ITI-018, 스테퍼 분모 4 는 AC-ITI-021, 라벨이 화면에 나오지 않음은 AC-ITI-022. 번역 키: 비테스트 코드에서 질문의 `Group` 을 읽는 곳은 묶기 비교와 대입 두 줄씩 두 곳(`wizard.go:185`, `:188` — M5 흡수로 `buildProfileForm` 의 같은 비교·대입 2줄이 `profile_wizard.go:75`, `:78` 에 더해져 AC-ITI-022 가드 허용 집합은 4줄이다)이고 `buildFormGroups` 는 그룹에 제목을 붙이지 않아(`wizard.go:172`) 라벨을 그리는 경로가 없다(`research.md` §6.1). 따라서 네 로케일 번역 표에 그룹 라벨 키를 두지 않는다.
 
 ## §10 소스 스캔 가드 재조준
 
