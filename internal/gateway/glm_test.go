@@ -20,8 +20,14 @@ func TestGLMNativeStoredKeyAndBetaRemoval(t *testing.T) {
 		t.Fatal(e)
 	}
 	seen := make(chan *http.Request, 1)
-	tr, calls := nativeTLS(t, func(w http.ResponseWriter, r *http.Request) {
-		seen <- r
+	tr, served := nativeTLS(t, func(w http.ResponseWriter, r *http.Request) {
+		// A retried attempt re-enters this handler while the first capture is
+		// still buffered; a blocking send wedges the handler goroutine and
+		// cleanup. First capture wins; excess ones are dropped.
+		select {
+		case seen <- r:
+		default:
+		}
 		w.Header().Set("Content-Type", "application/json")
 		if _, err := io.WriteString(w, nativeOutput); err != nil {
 			t.Error(err)
@@ -46,7 +52,7 @@ func TestGLMNativeStoredKeyAndBetaRemoval(t *testing.T) {
 	}
 	r, e = a.Send(context.Background(), q)
 	_ = oaiRead(t, r, e)
-	if r.StatusCode != 401 || calls.Load() != 1 {
+	if r.StatusCode != 401 || served.Load() != 1 {
 		t.Fatal("rotated key sent")
 	}
 }

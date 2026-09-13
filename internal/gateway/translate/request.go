@@ -102,12 +102,15 @@ func RequestContext(ctx context.Context, model string, body []byte, limits Limit
 		if err != nil {
 			return nil, nil, err
 		}
+		if policy.Effort != "" && !gptModelEffortAllowed(model, policy.Effort) {
+			return nil, nil, errors.New("unsupported effort")
+		}
 		if policy.KeepAll || policy.UserID != "" {
 			if limits.NativeReceiptAuthorize == nil || limits.NativeReceiptAuthorize(ctx, body, policy) != nil {
 				return nil, nil, errors.New("native receipt authorization required")
 			}
 		}
-		policy.applyGPT(model, out, root)
+		policy.applyGPT(out, root)
 	}
 	if v, ok := root["stream"]; ok {
 		b, yes := v.(bool)
