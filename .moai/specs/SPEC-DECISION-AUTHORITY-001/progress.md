@@ -77,7 +77,7 @@ exit=1
 
 ```yaml
 run_complete_at: 2026-09-13T22:10:00+0900
-run_commit_sha: pending-backfill-m5
+run_commit_sha: 25d04f292
 run_status: audit-ready
 ac_pass_count: 19
 ac_fail_count: 0
