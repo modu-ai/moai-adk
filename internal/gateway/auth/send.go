@@ -41,7 +41,7 @@ func (s *Store) SendAuthorized(ctx context.Context, expected uint64, request *ht
 			return nil, ErrSend
 		}
 		payload, e = io.ReadAll(io.LimitReader(body, options.MaxBodyBytes+1))
-		body.Close()
+		_ = body.Close() // in-memory GetBody reader; no flush to lose
 		if e != nil || int64(len(payload)) != request.ContentLength || int64(len(payload)) > options.MaxBodyBytes {
 			return nil, ErrSend
 		}
@@ -134,17 +134,17 @@ func (s *Store) SendAuthorized(ctx context.Context, expected uint64, request *ht
 		if tc, ok := conn.(*tls.Conn); ok {
 			protocol := tc.ConnectionState().NegotiatedProtocol
 			if protocol != "" && protocol != "http/1.1" {
-				conn.Close()
+				_ = conn.Close() // protocol mismatch; the connection is being discarded
 				return nil, ErrSend
 			}
 		}
 		if sendCtx.Err() != nil {
-			conn.Close()
+			_ = conn.Close() // canceled dial; the connection is being discarded
 			return nil, sendCtx.Err()
 		}
 		wrapped := &headerConn{Conn: conn, done: func() { timer.Stop(); releaseLock(); startWatcher() }}
 		if err = conn.SetWriteDeadline(deadline); err != nil {
-			conn.Close()
+			_ = conn.Close() // setup failed; the connection is being discarded
 			return nil, ErrSend
 		}
 		connectionMu.Lock()
@@ -158,7 +158,7 @@ func (s *Store) SendAuthorized(ctx context.Context, expected uint64, request *ht
 		cancel()
 		connectionMu.Lock()
 		if connection != nil {
-			connection.Close()
+			_ = connection.Close() // transport error path; teardown discards the connection
 			connection.writes.Lock()
 			connection.tail = nil
 			connection.writes.Unlock()
@@ -176,7 +176,7 @@ func (s *Store) SendAuthorized(ctx context.Context, expected uint64, request *ht
 	observed := connection != nil && connection.headerWritten.Load()
 	connectionMu.Unlock()
 	if !observed {
-		response.Body.Close()
+		_ = response.Body.Close() // unobserved response; the caller receives ErrSend regardless
 		cancel()
 		return nil, ErrSend
 	}
@@ -196,13 +196,13 @@ type headerConn struct {
 func (c *headerConn) Write(p []byte) (int, error) {
 	c.writes.Lock()
 	defer c.writes.Unlock()
-	n, e := c.Conn.Write(p)
+	n, e := c.Conn.Write(p) //nolint:staticcheck // QF1008: c.Write would recurse into headerConn.Write
 	if n > 0 && !c.headerWritten.Load() {
 		combined := append(c.tail, p[:n]...)
 		if bytes.Contains(combined, []byte("\r\n\r\n")) {
 			c.tail = nil
 			c.headerWritten.Store(true)
-			_ = c.Conn.SetWriteDeadline(time.Time{})
+			_ = c.SetWriteDeadline(time.Time{})
 			c.done()
 		} else {
 			if len(combined) > 3 {

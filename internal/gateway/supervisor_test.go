@@ -147,12 +147,12 @@ func TestSupervisorRunnerLifetimeClosesPortAndOwnedOverlay(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
 	defer cancel()
 	reader, writer := io.Pipe()
-	defer reader.Close()
-	defer writer.Close()
+	defer func() { _ = reader.Close() }() // io.Pipe closes always return nil
+	defer func() { _ = writer.Close() }()
 	done := make(chan error, 1)
 	var calls atomic.Int64
 	go func() {
-		defer writer.Close()
+		defer func() { _ = writer.Close() }() // io.Pipe closes always return nil
 		done <- RunChild(ctx, cfg, http.HandlerFunc(func(http.ResponseWriter, *http.Request) { calls.Add(1) }), writer)
 	}()
 	t.Cleanup(func() {
@@ -195,8 +195,8 @@ func TestSupervisorRunnerParentIdentityAndCancellation(t *testing.T) {
 			ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
 			defer cancel()
 			reader, writer := io.Pipe()
-			defer reader.Close()
-			defer writer.Close()
+			defer func() { _ = reader.Close() }() // io.Pipe closes always return nil
+			defer func() { _ = writer.Close() }() // io.Pipe closes always return nil
 			var checks atomic.Int64
 			probe := func(pid int) (string, homestate.ProcessIdentityState) {
 				if checks.Add(1) > 1 && mode == "changed fingerprint" {
@@ -206,7 +206,7 @@ func TestSupervisorRunnerParentIdentityAndCancellation(t *testing.T) {
 			}
 			done := make(chan error, 1)
 			go func() {
-				defer writer.Close()
+				defer func() { _ = writer.Close() }() // io.Pipe closes always return nil
 				done <- runChild(ctx, cfg, http.HandlerFunc(func(http.ResponseWriter, *http.Request) { t.Error("unexpected request") }), writer, probe)
 			}()
 			var h ChildHandoff
@@ -249,11 +249,11 @@ func TestSupervisorParentProcessDeath(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), 4*time.Second)
 	defer cancel()
 	reader, writer := io.Pipe()
-	defer reader.Close()
-	defer writer.Close()
+	defer func() { _ = reader.Close() }() // io.Pipe closes always return nil
+	defer func() { _ = writer.Close() }()
 	done := make(chan error, 1)
 	go func() {
-		defer writer.Close()
+		defer func() { _ = writer.Close() }() // io.Pipe closes always return nil
 		done <- RunChild(ctx, cfg, http.HandlerFunc(func(http.ResponseWriter, *http.Request) { t.Error("shutdown request") }), writer)
 	}()
 	var h ChildHandoff
@@ -278,7 +278,7 @@ func TestSupervisorOverlayRejectsSymlinkReplacement(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer owned.cleanup()
+	defer func() { _ = owned.cleanup() }() // once-guarded; the body call above asserts the error
 	target := filepath.Join(t.TempDir(), "unrelated")
 	if err := os.WriteFile(target, []byte("preserve"), 0600); err != nil {
 		t.Fatal(err)

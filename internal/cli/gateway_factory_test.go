@@ -48,7 +48,11 @@ func seedGatewayAuthStore(t *testing.T, dir string) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer s.Close()
+	defer func() {
+		if err := s.Close(); err != nil {
+			t.Errorf("close auth store: %v", err)
+		}
+	}()
 	_, err = s.Login(context.Background(), gatewayAuthBroker(func(_ context.Context, home string, _ bool) error {
 		authBody, _ := json.Marshal(map[string]any{"auth_mode": "chatgpt", "tokens": map[string]string{"access_token": gatewayAuthToken(time.Now().Add(time.Hour)), "refresh_token": "refresh", "id_token": "identity", "account_id": "account-1"}})
 		return os.WriteFile(filepath.Join(home, "auth.json"), authBody, 0600)
@@ -108,7 +112,11 @@ func TestGatewayFactoryNativeRoutingAndCancellation(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer h.(io.Closer).Close()
+	defer func() {
+		if err := h.(io.Closer).Close(); err != nil {
+			t.Errorf("close gateway handler: %v", err)
+		}
+	}()
 	send := func(ctx context.Context, token string) int {
 		r := httptest.NewRequest("POST", "/v1/messages", strings.NewReader(`{"model":"claude-opus-5","max_tokens":2,"messages":[{"role":"user","content":"hello"}]}`)).WithContext(ctx)
 		r.Header.Set("X-MoAI-Session-Token", "private-session")
@@ -248,7 +256,11 @@ func TestGatewayFactoryNativeReceiptAuthorizationReachesSubscription(t *testing.
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer h.(io.Closer).Close()
+	defer func() {
+		if err := h.(io.Closer).Close(); err != nil {
+			t.Errorf("close gateway handler: %v", err)
+		}
+	}()
 	body := `{"model":"gpt-5.6-sol","max_tokens":2,"thinking":{"type":"adaptive"},"output_config":{"effort":"high"},"context_management":{"edits":[{"type":"clear_thinking_20251015","keep":"all"}]},"metadata":{"user_id":"{\"account_uuid\":\"\",\"device_id\":\"device\",\"session_id\":\"` + sessionID + `\"}"},"messages":[{"role":"user","content":"hello"}]}`
 	req := httptest.NewRequest("POST", "/v1/messages", strings.NewReader(body))
 	req.Header.Set("Authorization", "Bearer private")
@@ -291,7 +303,11 @@ func TestGatewayFactoryNativeReceiptAuthorizationRejectsForeignSession(t *testin
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer h.(io.Closer).Close()
+	defer func() {
+		if err := h.(io.Closer).Close(); err != nil {
+			t.Errorf("close gateway handler: %v", err)
+		}
+	}()
 	body := `{"model":"gpt-5.6-sol","max_tokens":2,"context_management":{"edits":[{"type":"clear_thinking_20251015","keep":"all"}]},"metadata":{"user_id":"{\"account_uuid\":\"\",\"device_id\":\"device\",\"session_id\":\"33333333-3333-4333-8333-333333333333\"}"},"messages":[{"role":"user","content":"hello"}]}`
 	req := httptest.NewRequest("POST", "/v1/messages", strings.NewReader(body))
 	req.Header.Set("Authorization", "Bearer private")
@@ -428,7 +444,11 @@ func TestGatewayFactoryGLMExactRouteAndBetaRemoval(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer h.(io.Closer).Close()
+	defer func() {
+		if err := h.(io.Closer).Close(); err != nil {
+			t.Errorf("close gateway handler: %v", err)
+		}
+	}()
 	r := httptest.NewRequest("POST", "/v1/messages", strings.NewReader(`{"model":"glm-approved","max_tokens":2,"messages":[{"role":"user","content":"hi"}]}`))
 	r.Header.Set("X-Api-Key", "private-session")
 	r.Header.Set("Authorization", "Bearer must-not-forward")
@@ -460,7 +480,9 @@ func TestGatewayFactoryExactPayloadKeysBeforeStore(t *testing.T) {
 				parts[i] = replacement
 				h, e := f(json.RawMessage("{" + strings.Join(parts, ",") + "}"))
 				if h != nil {
-					h.(io.Closer).Close()
+					if closeErr := h.(io.Closer).Close(); closeErr != nil {
+						t.Errorf("close gateway handler: %v", closeErr)
+					}
 				}
 				if e == nil || h != nil || opens != 0 {
 					t.Errorf("field %d alias or duplicate reached resource", i)
@@ -550,7 +572,11 @@ func TestGatewayFactorySubscriptionSwitchKeepsAuthorizedHistory(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer h.(io.Closer).Close()
+	defer func() {
+		if err := h.(io.Closer).Close(); err != nil {
+			t.Errorf("close gateway handler: %v", err)
+		}
+	}()
 	body := `{"model":"gpt-5.6-sol","max_tokens":2,"thinking":{"type":"adaptive"},"output_config":{"effort":"high"},"context_management":{"edits":[{"type":"clear_thinking_20251015","keep":"all"}]},"metadata":{"user_id":"{\"account_uuid\":\"\",\"device_id\":\"device\",\"session_id\":\"` + sessionID + `\"}"},"messages":[{"role":"user","content":"hello"}]}`
 	req := httptest.NewRequest("POST", "/v1/messages", strings.NewReader(body))
 	req.Header.Set("Authorization", "Bearer private")

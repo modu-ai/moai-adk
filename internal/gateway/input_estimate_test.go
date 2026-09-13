@@ -58,7 +58,9 @@ func TestOpenAIEstimatedOverflowAndFullInputUpstream400(t *testing.T) {
 			t.Error("public input changed")
 		}
 		w.WriteHeader(400)
-		io.WriteString(w, `{"error":{"message":"synthetic upstream private details"}}`)
+		if _, err := io.WriteString(w, `{"error":{"message":"synthetic upstream private details"}}`); err != nil {
+			t.Error(err)
+		}
 	})
 	cfg := oaiConfig(tr)
 	cfg.MeasureInput = EstimateInputTokens

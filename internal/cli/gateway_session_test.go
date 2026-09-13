@@ -151,7 +151,9 @@ func TestGatewaySessionRealSupervisorHandoffAndCleanup(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	response.Body.Close()
+	if err := response.Body.Close(); err != nil {
+		t.Fatal(err)
+	}
 	if response.StatusCode != http.StatusNoContent {
 		t.Fatal(response.StatusCode)
 	}
@@ -161,7 +163,7 @@ func TestGatewaySessionRealSupervisorHandoffAndCleanup(t *testing.T) {
 	}
 	response, err = client.Get(address)
 	if err == nil {
-		response.Body.Close()
+		_ = response.Body.Close() // probe response; failure does not change the verdict
 		t.Fatal("listener survived stop")
 	}
 }

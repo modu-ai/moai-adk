@@ -27,12 +27,20 @@ func TestLogoutScratchCleanupFailurePreservesCanonical(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			defer s.Close()
+			defer func() {
+				if err := s.Close(); err != nil {
+					t.Error(err)
+				}
+			}()
 			second, err := OpenStore(s.dir)
 			if err != nil {
 				t.Fatal(err)
 			}
-			defer second.Close()
+			defer func() {
+				if err := second.Close(); err != nil {
+					t.Error(err)
+				}
+			}()
 			generation := loginFixture(t, s)
 			var scratch string
 			var before []byte
