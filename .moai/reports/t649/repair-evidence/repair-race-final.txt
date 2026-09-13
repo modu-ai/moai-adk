@@ -1,0 +1,6 @@
+ok  	github.com/modu-ai/moai-adk/internal/gateway	9.498s
+ok  	github.com/modu-ai/moai-adk/internal/gateway/auth	6.440s
+ok  	github.com/modu-ai/moai-adk/internal/gateway/conversation	1.546s
+ok  	github.com/modu-ai/moai-adk/internal/gateway/opaque	2.420s
+ok  	github.com/modu-ai/moai-adk/internal/gateway/receipt	3.189s
+ok  	github.com/modu-ai/moai-adk/internal/gateway/translate	2.542s

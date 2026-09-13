@@ -119,7 +119,7 @@ Archived agent names (`manager-strategy`, `expert-backend`, `researcher`, etc.) 
 
 #### Agent Teams static orchestration layer retired
 
-Forced `--team` / `--mode team` emits `MODE_TEAM_UNAVAILABLE` and falls back to subagent mode. The native Claude Code teammate runtime (`moai cg` GLM panes, `worktree --team`) is unaffected.
+Forced `--team` / `--mode team` emits `MODE_TEAM_UNAVAILABLE` and falls back to subagent mode. CG is retired; use `moai migrate cg` to preview explicit migration choices.
 
 #### Context7 MCP dependency retired
 

@@ -144,7 +144,7 @@ The reviewer mode operates as a fresh-judgment auditor:
 WebSearch for targeted queries, WebFetch to verify each URL and read the official documentation,
 then continue — architecture and analysis quality must not depend on MCP availability.
 
-GLM-backend routing: under `moai glm` or the GLM teammate panes of `moai cg`, web search, web
+GLM-backend routing: under `moai glm`, web search, web
 fetch, and image read route to the z.ai MCP tools instead of the built-ins. HARD routing table:
 `.claude/rules/moai/core/glm-web-tooling.md`.
 

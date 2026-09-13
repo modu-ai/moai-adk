@@ -38,7 +38,7 @@ Coordinate Tier L run-phase execution by spawning and orchestrating write-capabl
 
 **Harness note — `subagent-spawn` names the capability, not one harness's tool.** `Agent(...)` is the Claude implementation of it. The capability itself exists on other harnesses (Codex delegates through its own internal collaboration tools); what is not portable is the *per-agent grant* — no agent-file field expresses it outside Claude. A harness without that field still performs the delegation, and records each leaf assignment and its return in the card's progress record so the fold step reads evidence rather than a claim.
 
-This is a serial-shaped delegation target (sequential sub-agent per milestone, fanned out to leaf workers under the lead's supervision). It is NOT a new mode — the Phase 4 mode catalog (direct/serial/fanout/sweep in `.claude/rules/moai/workflow/orchestration-mode-selection.md` §A) is unchanged — and NOT the Agent Teams static layer: agent-team is a separate explicit-request experimental surface (the Tier L auto-route still targets this agent); the native teammate runtime (`moai cg` GLM panes, `worktree --team`, `~/.claude/teams/`) is unaffected.
+This is a serial-shaped delegation target (sequential sub-agent per milestone, fanned out to leaf workers under the lead's supervision). It is NOT a new mode — the Phase 4 mode catalog (direct/serial/fanout/sweep in `.claude/rules/moai/workflow/orchestration-mode-selection.md` §A) is unchanged — and NOT the Agent Teams static layer: agent-team is a separate explicit-request experimental surface (the Tier L auto-route still targets this agent); native Agent Teams remain experimental; retired CG routing does not establish mixed-provider teammate capability.
 
 ## Condition-Triggered Entry (Role A)
 

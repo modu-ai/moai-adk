@@ -1,0 +1,16 @@
+=== RUN   TestPreCommitTemplateMatchesConstant
+=== PAUSE TestPreCommitTemplateMatchesConstant
+=== RUN   TestPrecommitStagedUnformattedWorktreeFormattedBlocks
+--- PASS: TestPrecommitStagedUnformattedWorktreeFormattedBlocks (0.43s)
+=== RUN   TestPrecommitStagedFormattedWorktreeUnformattedAllows
+--- PASS: TestPrecommitStagedFormattedWorktreeUnformattedAllows (0.53s)
+=== RUN   TestPrecommitStagedFormattedNoDivergenceAllows
+--- PASS: TestPrecommitStagedFormattedNoDivergenceAllows (0.48s)
+=== RUN   TestPrecommitStagedGofmtToolFailureBlocks
+--- PASS: TestPrecommitStagedGofmtToolFailureBlocks (0.53s)
+=== RUN   TestPrecommitStagedUnformattedNoDivergenceBlocks
+--- PASS: TestPrecommitStagedUnformattedNoDivergenceBlocks (0.43s)
+=== CONT  TestPreCommitTemplateMatchesConstant
+--- PASS: TestPreCommitTemplateMatchesConstant (0.00s)
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/cli	3.209s

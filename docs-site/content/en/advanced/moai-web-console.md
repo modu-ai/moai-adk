@@ -138,7 +138,7 @@ Choosing Settings in the rail unfolds fourteen tabs below it as a vertical list.
 9. **Agents** — per-agent profile and model assignment
 10. **Report** — report format and output preferences
 11. **MCP** — per-tool activation toggles for `moai mcp-server`. Write-capable tools carry a distinguishing mark
-12. **Cross-Session** — the inbound posture for cross-session messaging: how inbound messages are handled (`accept` · `hold` · `refuse`), cross-machine sending isolation, and held-dialog expiry. It edits `crosssession.yaml`, and the launcher injects this value into sessions from the next `moai cc`/`glm`/`cg` run — sessions already running keep the posture they were launched with
+12. **Cross-Session** — the inbound posture for cross-session messaging: how inbound messages are handled (`accept` · `hold` · `refuse`), cross-machine sending isolation, and held-dialog expiry. It edits `crosssession.yaml`, and the launcher injects this value into sessions from the next `moai cc`/`glm` run — sessions already running keep the posture they were launched with
 13. **Feedback** — the repository the feedback workflow files against, and the pre-submission confirmation toggle
 14. **Quality Gate** — whether the commit-time heavy gate runs. The runner honors this value only under `MOAI_PRECOMMIT=1`
 

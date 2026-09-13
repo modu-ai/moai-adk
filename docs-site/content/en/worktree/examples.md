@@ -480,7 +480,7 @@ $ moai worktree done feature/SPEC-NOTIF-001 --delete-branch
 # - Cost savings from using GLM
 ```
 
-Running the implementation sessions on GLM cut costs noticeably. The size of the savings, and the reasoning behind it, are laid out in [CG Mode](/en/multi-llm/cg-mode).
+[CG retirement and migration](/en/multi-llm/cg-mode/) — CG is retired; use `moai migrate cg` to preview explicit migration choices.
 
 ---
 

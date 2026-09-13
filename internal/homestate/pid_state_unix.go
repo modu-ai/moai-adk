@@ -20,7 +20,7 @@ func platformPIDState(pid int) ProcessIdentityState {
 	if err == nil {
 		return ProcessIdentityLive
 	}
-	if errors.Is(err, syscall.ESRCH) {
+	if errors.Is(err, syscall.ESRCH) || errors.Is(err, os.ErrProcessDone) {
 		return ProcessIdentityDead
 	}
 	return ProcessIdentityIndeterminate

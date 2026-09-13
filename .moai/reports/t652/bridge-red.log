@@ -1,0 +1,14 @@
+# github.com/modu-ai/moai-adk/internal/codexbridge [github.com/modu-ai/moai-adk/internal/codexbridge.test]
+internal/codexbridge/engine_test.go:66:25: undefined: Request
+internal/codexbridge/engine_test.go:67:9: undefined: Request
+internal/codexbridge/engine_test.go:69:30: undefined: Engine
+internal/codexbridge/engine_test.go:69:49: undefined: FileStore
+internal/codexbridge/engine_test.go:71:16: undefined: OpenStore
+internal/codexbridge/engine_test.go:76:17: undefined: New
+internal/codexbridge/engine_test.go:76:48: undefined: Config
+internal/codexbridge/engine_test.go:98:16: undefined: ToolResult
+internal/codexbridge/engine_test.go:98:58: undefined: Content
+internal/codexbridge/engine_test.go:126:16: undefined: ToolResult
+internal/codexbridge/engine_test.go:126:16: too many errors
+FAIL	github.com/modu-ai/moai-adk/internal/codexbridge [build failed]
+FAIL

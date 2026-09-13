@@ -286,7 +286,8 @@ duplicate those values inline.
 | `moai hook <event>` | Hook dispatcher entry point (drives hooks.json / settings.json) |
 | `moai doctor` | Diagnose installation and wiring health |
 | `moai worktree` | Worktree lifecycle (sync / remove / clean / recover / done / snapshot / verify / restore) |
-| `moai cc` / `moai glm` / `moai cg` | Session launchers (Claude, GLM, coordinated pairing) |
+| `moai cc` / `moai glm` / `moai gpt` | Explicit Claude, GLM, or GPT session launchers |
+| `moai migrate cg` | Preview legacy CG migration; role changes require explicit acceptance |
 | `moai version` | Print build version and provenance |
 
 Run `moai --help` for the generated, current command surface.
