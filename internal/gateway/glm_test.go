@@ -23,7 +23,9 @@ func TestGLMNativeStoredKeyAndBetaRemoval(t *testing.T) {
 	tr, calls := nativeTLS(t, func(w http.ResponseWriter, r *http.Request) {
 		seen <- r
 		w.Header().Set("Content-Type", "application/json")
-		io.WriteString(w, nativeOutput)
+		if _, err := io.WriteString(w, nativeOutput); err != nil {
+			t.Error(err)
+		}
 	})
 	a, e := NewGLMAdapter(nativeConfig(tr))
 	if e != nil {

@@ -67,7 +67,7 @@ func oaiRead(t *testing.T, r *http.Response, e error) string {
 	if r == nil {
 		t.Fatal("nil response")
 	}
-	defer r.Body.Close()
+	defer func() { _ = r.Body.Close() }() // body fully read below; no write-back to lose
 	b, e := io.ReadAll(r.Body)
 	if e != nil {
 		t.Fatal(e)
@@ -85,7 +85,9 @@ func TestOpenAIAPIKeyEndpointAndPublicResponse(t *testing.T) {
 		}
 		seen <- r
 		w.Header().Set("Content-Type", "application/json")
-		io.WriteString(w, oaiOutput)
+		if _, err := io.WriteString(w, oaiOutput); err != nil {
+			t.Error(err)
+		}
 	})
 	a, e := NewOpenAIAdapter(oaiConfig(tr))
 	if e != nil {
@@ -155,7 +157,9 @@ func TestOpenAIStatusAndNoRedirect(t *testing.T) {
 				w.Header().Set("Retry-After", "12")
 				w.Header().Set("Location", "https://foreign.invalid/steal")
 				w.WriteHeader(status)
-				io.WriteString(w, `{"secret":"synthetic-api-secret"}`)
+				if _, err := io.WriteString(w, `{"secret":"synthetic-api-secret"}`); err != nil {
+					t.Error(err)
+				}
 			})
 			a, _ := NewOpenAIAdapter(oaiConfig(tr))
 			r, e := a.Send(context.Background(), oaiRequest(t))
@@ -216,7 +220,9 @@ func TestOpenAISubscriptionUsesStoreAuthorizedBoundary(t *testing.T) {
 		}
 		seen <- r.Host + r.URL.Path + " " + r.Header.Get("ChatGPT-Account-Id")
 		w.Header().Set("Content-Type", "application/json")
-		io.WriteString(w, oaiOutput)
+		if _, err := io.WriteString(w, oaiOutput); err != nil {
+			t.Error(err)
+		}
 	})
 	cfg := oaiConfig(tr)
 	cfg.Subscription = s
@@ -242,7 +248,9 @@ func TestOpenAIStreamEOFAndCloseJoin(t *testing.T) {
 			_, _ = io.Copy(io.Discard, r.Body)
 			_ = r.Body.Close()
 			w.Header().Set("Content-Type", "text/event-stream")
-			io.WriteString(w, "data: {\"type\":\"response.created\",\"response\":{\"id\":\"r\",\"model\":\"gpt-5.6-sol\",\"status\":\"in_progress\"}}\n\n")
+			if _, err := io.WriteString(w, "data: {\"type\":\"response.created\",\"response\":{\"id\":\"r\",\"model\":\"gpt-5.6-sol\",\"status\":\"in_progress\"}}\n\n"); err != nil {
+				t.Error(err)
+			}
 			w.(http.Flusher).Flush()
 			if disconnect {
 				select {
@@ -282,7 +290,9 @@ func TestOpenAISubscriptionRejectsDifferentStore(t *testing.T) {
 	_, ref, gen := oaiStore(t)
 	tr, calls := oaiTLS(t, func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
-		io.WriteString(w, oaiOutput)
+		if _, err := io.WriteString(w, oaiOutput); err != nil {
+			t.Error(err)
+		}
 	})
 	cfg := oaiConfig(tr)
 	cfg.Subscription = s
@@ -367,9 +377,11 @@ func TestOpenAIStreamSuccessAndContextCancellation(t *testing.T) {
 	for _, cancelEarly := range []bool{false, true} {
 		tr, _ := oaiTLS(t, func(w http.ResponseWriter, r *http.Request) {
 			_, _ = io.Copy(io.Discard, r.Body)
-			r.Body.Close()
+			_ = r.Body.Close() // server-side discard; assertions read the client side
 			w.Header().Set("Content-Type", "text/event-stream")
-			io.WriteString(w, oaiSSE())
+			if _, err := io.WriteString(w, oaiSSE()); err != nil {
+				t.Error(err)
+			}
 		})
 		a, _ := NewOpenAIAdapter(oaiConfig(tr))
 		q := oaiRequest(t)
@@ -406,18 +418,30 @@ func TestOpenAIMalformedUpstreamAndConfiguration(t *testing.T) {
 			switch kind {
 			case "mime":
 				w.Header().Set("Content-Type", "invalid")
-				io.WriteString(w, oaiOutput)
+				if _, err := io.WriteString(w, oaiOutput); err != nil {
+					t.Error(err)
+				}
 			case "json":
-				io.WriteString(w, "{")
+				if _, err := io.WriteString(w, "{"); err != nil {
+					t.Error(err)
+				}
 			case "size":
-				io.WriteString(w, strings.Repeat("x", 101))
+				if _, err := io.WriteString(w, strings.Repeat("x", 101)); err != nil {
+					t.Error(err)
+				}
 			case "truncated":
 				w.Header().Set("Content-Length", "1000")
-				io.WriteString(w, "{")
+				if _, err := io.WriteString(w, "{"); err != nil {
+					t.Error(err)
+				}
 			case "stream mime":
-				io.WriteString(w, oaiOutput)
+				if _, err := io.WriteString(w, oaiOutput); err != nil {
+					t.Error(err)
+				}
 			case "opaque":
-				io.WriteString(w, strings.Replace(oaiOutput, `"type":"message"`, `"type":"reasoning"`, 1))
+				if _, err := io.WriteString(w, strings.Replace(oaiOutput, `"type":"message"`, `"type":"reasoning"`, 1)); err != nil {
+					t.Error(err)
+				}
 			case "invalid retry":
 				w.Header().Set("Retry-After", "synthetic-secret")
 				w.WriteHeader(429)
