@@ -68,14 +68,6 @@ Two-input adjudication per plan.md §F M0 / §H Resolution Record row 3. Verdict
 - Deviation notes: (1) foreign-item cell initially classified CauseLineage on an empty store — fixture corrected to publish the real conversation first (validator behaved as documented; not a SPEC defect). (2) Public-content-changed shape covered by t707's `TestReplayRoundTripStillRejectsTampering` (no duplicate golden cell added — lead concurred, addition not needed). (3) E8 RED n/a by design (GREEN-at-arrival).
 - Gaps: no local full-suite run (CI owns it); coverage measured at a later milestone over the card's whole diff.
 
-## §E.3 Run-phase Audit-Ready Signal
-
-_<pending run-phase>_
-
-## §E.4 Sync-phase Audit-Ready Signal
-
-_<pending sync-phase>_
-
 ### M3 Launcher-Side Envelope Repair Path (2026-09-14)
 
 - Commit `7ebf85df6` (parent `37987cc3c`), 5 files +966: `internal/gateway/conversation/repair.go` + `repair_test.go` (new), `internal/cli/gateway_repair.go` + `gateway_repair_test.go` (new), `internal/cli/gateway_session.go` (only edit to an existing file — prepareGatewayConversation hook + passthrough case).
@@ -87,3 +79,11 @@ _<pending sync-phase>_
 - AC rows: AC-EVR-004..010 all PASS (per-AC evidence in agent report).
 - Gaps: full internal/cli package run = default-10m timeout at 601s — pre-existing baseline (~1583s package total on this machine); CI owns the full verdict. Coverage (E3) deferred to the card's whole diff at a later milestone.
 - Note: mid-milestone the agent hit a transient 429 rate limit and was resumed; no work lost.
+
+## §E.3 Run-phase Audit-Ready Signal
+
+_<pending run-phase>_
+
+## §E.4 Sync-phase Audit-Ready Signal
+
+_<pending sync-phase>_
