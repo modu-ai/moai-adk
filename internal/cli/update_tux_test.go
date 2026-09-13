@@ -178,9 +178,12 @@ func TestRenderDeployProgress_Bar(t *testing.T) {
 	if !strings.Contains(got, "3/5") {
 		t.Errorf("progress line must show 3/5 step count, got:\n%q", got)
 	}
-	// Running (3<5) → leading ● from StatusIcon("run").
-	if !strings.ContainsRune(got, tui.GlyphRun) {
-		t.Errorf("in-progress deploy line must lead with ● (running), got:\n%q", got)
+	// t694: the line renders AFTER its step completed, so even an
+	// intermediate snapshot leads with ✓ — the former ● left completed steps
+	// looking like in-flight processes that never advanced (the observed
+	// "accumulated progress bar lines" breakage).
+	if !strings.ContainsRune(got, tui.GlyphDone) {
+		t.Errorf("a completed-step snapshot must lead with ✓ (done), got:\n%q", got)
 	}
 }
 
