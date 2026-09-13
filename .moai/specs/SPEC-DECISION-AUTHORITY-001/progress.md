@@ -108,7 +108,14 @@ Template neutrality (REQ-DA-021): `git diff 3318b7775..13486b852` over the three
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase>_
+- **sync_complete_at**: 2026-09-13 (KST)
+- **sync_commit_sha**: `pending-backfill-sync` — the sync commit cannot cite its own SHA; the resolved value is backfilled in the following commit (spec-frontmatter-schema.md § SHA placeholder backfill exemption).
+- **sync_status**: sync artifacts 3-fold — CHANGELOG `[Unreleased]` `### Added` entry, this §E.4 signal, `spec.md` frontmatter `in-progress → completed` transition (`status` + `updated` only; zero body edits) — landed in a single sync commit. All 19 AC PASS (§E.3) cited to complete the 3-phase close.
+- **b12_self_test_a**: PASS — pre-emission grep `grep -c 't692' CHANGELOG.md` = 0 (no duplicate entry from a parallel session).
+- **b12_self_test_b**: PASS — AC count 19 = 19 distinct live identifiers in `acceptance.md` (`grep -oE 'AC-([A-Z0-9]+-)*[0-9]+' … | sort -u`, AC-DA-001..019).
+- **b12_self_test_c**: PASS — every file path cited in the CHANGELOG entry verified with `git diff 3318b7775~1..HEAD --name-only` / `ls` before emission.
+- **changelog_entry_position**: `CHANGELOG.md` `[Unreleased]` → `### Added` (first entry of the section).
+- **canary_compliance_check**: mx tag validation not triggered — the change adds no exported function beyond `ResolvedDecisionGate`, which carries its `@MX:NOTE`-class godoc guidance inline in the resolver comment; no `@MX:ANCHOR` threshold crossed on the sync path. Sync-phase quality gate advisory (sync-phase-quality-gate.sh) evaluated at commit time.
 
 ## §F Phase 4 Mode Selection
 
