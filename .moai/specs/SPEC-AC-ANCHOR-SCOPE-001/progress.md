@@ -77,7 +77,7 @@ Preservation/prose-bound guards were green by design pre-GREEN (they pin the no-
 
 ```yaml
 run_complete_at: 2026-09-14
-run_commit_sha: pending-backfill-run
+run_commit_sha: 2960af5d5  # code-verification baseline (M4+M5); evidence commit 4a66ab689 carries this file
 run_status: complete
 ac_pass_count: 7
 ac_fail_count: 0
