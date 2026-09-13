@@ -2,9 +2,9 @@
 id: SPEC-AUT-PERMMODES-001
 title: "init wizard autonomy question redefined as Claude Code permission modes — acceptEdits default, auto/bypass opt-in, REQ-007 zero-delta re-scoped"
 version: "0.1.1"
-status: in-progress
+status: completed
 created: 2026-09-13
-updated: 2026-09-13
+updated: 2026-09-14
 author: manager-spec
 priority: P1
 phase: "v3.2.1 target"

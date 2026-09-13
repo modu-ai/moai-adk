@@ -146,4 +146,25 @@ gaps:
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase>_
+```yaml
+sync_complete_at: 2026-09-14
+sync_commit_sha: pending-backfill-sync  # placeholder per D3 backfill exemption; resolved SHA backfilled in the follow-up commit
+sync_status: complete
+b12_self_test_a_duplicate_grep: 0  # grep -c 'SPEC-AUT-PERMMODES-001' CHANGELOG.md → 0 before emission
+b12_self_test_b_ac_count: 12  # acceptance.md distinct AC ids = 12; matches run-phase ac_pass 12
+b12_self_test_c_file_paths: pass  # CHANGELOG.md, README.md, README.ko.md, spec paths verified via ls/wc
+changelog_entry_position: CHANGELOG.md §[Unreleased] → ### Changed (first bullet)
+frontmatter_status_transitions:
+  in_progress_to_implemented: merged into sync commit
+  implemented_to_completed: merged into sync commit  # single sync-commit close per 3-phase close doctrine
+canary_compliance_check:
+  mx_tag_validation: not-applicable-code-change-none  # sync phase changed markdown/SPEC artifacts only; run-phase MX state carried from §E.3
+  docs_sync_decision: "CHANGELOG entry emitted (user-facing wizard labels + acceptEdits written default). README.md/README.ko.md: no edit needed — neither documents the init wizard autonomy-tier question (README.md:180 'Autonomy' refers to /moai goal, unrelated). docs-site getting-started/init-wizard pages: out of this dispatch's scope (separate docs-site tree); reported as a finding, not edited."
+evidence_paths:
+  - .moai/state/verify/t584/  # run-phase exported evidence (untouched this phase)
+  - .moai/reports/t584/plan-audit.md, plan-audit-iter2.md  # plan-phase artifacts (untouched)
+gaps:
+  - sync_commit_sha backfill NOT yet verified inside this commit (self-referential; resolved in the follow-up backfill commit)
+  - docs-site init-wizard page currency vs the new labels NOT read this phase (separate tree; finding only)
+  - full Go suites NOT re-run in sync phase per dispatch scope (run-phase evidence at §E.2/§E.3 stands)
+```
