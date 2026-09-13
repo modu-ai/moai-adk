@@ -2,7 +2,7 @@
 id: SPEC-GATEWAY-ENVELOPE-REPAIR-001
 title: "Reasoning-envelope repair — launcher-side verbatim re-injection of gateway-issued envelopes for stripped-replay recovery"
 version: "0.2.2"
-status: completed
+status: in-progress
 created: 2026-09-13
 updated: 2026-09-14
 author: manager-spec (card t708)

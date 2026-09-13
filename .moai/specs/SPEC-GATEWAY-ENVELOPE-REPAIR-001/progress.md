@@ -15,7 +15,7 @@ author: manager-spec (card t708)
 spec: SPEC-GATEWAY-ENVELOPE-REPAIR-001
 card: t708
 phase: plan
-status: draft
+status: completed  # §E.1 snapshot reflects the SPEC's current lifecycle state; the canonical status lives in spec.md frontmatter
 tier: M
 artifacts: [spec.md, plan.md, acceptance.md, progress.md, research.md]
 base: local develop 7a7a08f20
@@ -117,8 +117,8 @@ m1_to_mN_commit_strategy: per-milestone commits (M0/M1 records → M2 test → M
 | AC-EVR-005 | PASS | same | head-position injection PASS; marker-less boundary → refusal zero-mod |
 | AC-EVR-006 | PASS | `go test -run 'TestRepairEnvelopeFlag' ./internal/cli/` | no-flag no-op + repair-then-resume PASS (4/4 wiring) |
 | AC-EVR-007 | PASS | `go test -run TestRepairEnvelope ./internal/gateway/conversation/` | source-gone / digest-mismatch / intact / incomplete refusal cells PASS, zero-mod asserted |
-| AC-EVR-008 | PASS | same | aside byte-identical preimage + `{digest,position}` provenance PASS |
-| AC-EVR-009 | PASS | same | `TestRepairEnvelopeSingleShotTerminatesAcrossRestart` PASS (fresh Manager = fresh process) |
+| AC-EVR-008 | PASS | same | `TestRepairEnvelopeSingleShotTerminatesAcrossRestart` PASS (fresh Manager = fresh process; durable single-shot) |
+| AC-EVR-009 | PASS | same | aside byte-identical preimage + `{digest,position}` provenance PASS |
 | AC-EVR-010 | PASS | `TestRepairPathNeverReadsReceiptStore` | source scan 0 hits for receipt symbols in repair.go |
 | AC-EVR-011 | PASS | `TestGatewayRepairCardDiffTouchesNoPreservedFile` + discriminator | live: 0 violations vs merge-base `4da5d1c4e`; negative cell flags receipt/store.go, receipt_history.go, family.go |
 | AC-EVR-012 | PASS | `TestGatewayEnvelopeRepairOperatorDocExistsWithSections` | `.moai/docs/gateway-envelope-repair.md` exists, section checklist green |
