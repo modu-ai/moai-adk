@@ -1,0 +1,53 @@
+=== RUN   TestSessionStart_DeferredScanDoesNotBlockReturn
+2026/09/12 18:17:30 INFO session started session_id=sess-deferred-scan-pin cwd=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestSessionStart_DeferredScanDoesNotBlockReturn3368394709/002 project_dir=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestSessionStart_DeferredScanDoesNotBlockReturn3368394709/001
+2026/09/12 18:17:30 WARN configuration not available, proceeding with defaults session_id=sess-deferred-scan-pin
+2026/09/12 18:17:30 INFO teammateMode updated mode=auto in_tmux=false
+2026/09/12 18:17:31 INFO session start (deferred): status drift detected count=7
+--- PASS: TestSessionStart_DeferredScanDoesNotBlockReturn (0.45s)
+=== RUN   TestSessionStart_HandleInputLagBudget
+2026/09/12 18:17:31 INFO session started session_id=sess-input-lag-budget cwd=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestSessionStart_HandleInputLagBudget936551915/002 project_dir=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestSessionStart_HandleInputLagBudget936551915/001
+2026/09/12 18:17:31 WARN configuration not available, proceeding with defaults session_id=sess-input-lag-budget
+2026/09/12 18:17:31 INFO teammateMode updated mode=auto in_tmux=false
+--- PASS: TestSessionStart_HandleInputLagBudget (0.19s)
+=== RUN   TestSessionStart_SynchronousSideEffectsPreserved
+2026/09/12 18:17:31 INFO session started session_id=sess-sync-effects-pin cwd=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestSessionStart_SynchronousSideEffectsPreserved162520929/001 project_dir=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestSessionStart_SynchronousSideEffectsPreserved162520929/001
+2026/09/12 18:17:31 WARN configuration not available, proceeding with defaults session_id=sess-sync-effects-pin
+2026/09/12 18:17:31 INFO teammateMode updated mode=auto in_tmux=false
+2026/09/12 18:17:31 INFO session start (deferred): status drift detected count=7
+--- PASS: TestSessionStart_SynchronousSideEffectsPreserved (0.47s)
+=== RUN   TestSessionStart_DeferredScanDoesNotBlockReturn
+2026/09/12 18:17:31 INFO session started session_id=sess-deferred-scan-pin cwd=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestSessionStart_DeferredScanDoesNotBlockReturn2223423166/002 project_dir=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestSessionStart_DeferredScanDoesNotBlockReturn2223423166/001
+2026/09/12 18:17:32 WARN configuration not available, proceeding with defaults session_id=sess-deferred-scan-pin
+2026/09/12 18:17:32 INFO teammateMode updated mode=auto in_tmux=false
+2026/09/12 18:17:32 INFO session start (deferred): status drift detected count=7
+--- PASS: TestSessionStart_DeferredScanDoesNotBlockReturn (0.48s)
+=== RUN   TestSessionStart_HandleInputLagBudget
+2026/09/12 18:17:32 INFO session started session_id=sess-input-lag-budget cwd=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestSessionStart_HandleInputLagBudget3653570778/002 project_dir=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestSessionStart_HandleInputLagBudget3653570778/001
+2026/09/12 18:17:32 WARN configuration not available, proceeding with defaults session_id=sess-input-lag-budget
+2026/09/12 18:17:32 INFO teammateMode updated mode=auto in_tmux=false
+--- PASS: TestSessionStart_HandleInputLagBudget (0.19s)
+=== RUN   TestSessionStart_SynchronousSideEffectsPreserved
+2026/09/12 18:17:32 INFO session started session_id=sess-sync-effects-pin cwd=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestSessionStart_SynchronousSideEffectsPreserved3499206126/001 project_dir=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestSessionStart_SynchronousSideEffectsPreserved3499206126/001
+2026/09/12 18:17:32 WARN configuration not available, proceeding with defaults session_id=sess-sync-effects-pin
+2026/09/12 18:17:32 INFO teammateMode updated mode=auto in_tmux=false
+2026/09/12 18:17:33 INFO session start (deferred): status drift detected count=7
+--- PASS: TestSessionStart_SynchronousSideEffectsPreserved (0.45s)
+=== RUN   TestSessionStart_DeferredScanDoesNotBlockReturn
+2026/09/12 18:17:33 INFO session started session_id=sess-deferred-scan-pin cwd=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestSessionStart_DeferredScanDoesNotBlockReturn3483118035/002 project_dir=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestSessionStart_DeferredScanDoesNotBlockReturn3483118035/001
+2026/09/12 18:17:33 WARN configuration not available, proceeding with defaults session_id=sess-deferred-scan-pin
+2026/09/12 18:17:33 INFO teammateMode updated mode=auto in_tmux=false
+2026/09/12 18:17:33 INFO session start (deferred): status drift detected count=7
+--- PASS: TestSessionStart_DeferredScanDoesNotBlockReturn (0.44s)
+=== RUN   TestSessionStart_HandleInputLagBudget
+2026/09/12 18:17:33 INFO session started session_id=sess-input-lag-budget cwd=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestSessionStart_HandleInputLagBudget1336690328/002 project_dir=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestSessionStart_HandleInputLagBudget1336690328/001
+2026/09/12 18:17:33 WARN configuration not available, proceeding with defaults session_id=sess-input-lag-budget
+2026/09/12 18:17:33 INFO teammateMode updated mode=auto in_tmux=false
+--- PASS: TestSessionStart_HandleInputLagBudget (0.20s)
+=== RUN   TestSessionStart_SynchronousSideEffectsPreserved
+2026/09/12 18:17:33 INFO session started session_id=sess-sync-effects-pin cwd=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestSessionStart_SynchronousSideEffectsPreserved2477581131/001 project_dir=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestSessionStart_SynchronousSideEffectsPreserved2477581131/001
+2026/09/12 18:17:33 WARN configuration not available, proceeding with defaults session_id=sess-sync-effects-pin
+2026/09/12 18:17:33 INFO teammateMode updated mode=auto in_tmux=false
+2026/09/12 18:17:34 INFO session start (deferred): status drift detected count=7
+--- PASS: TestSessionStart_SynchronousSideEffectsPreserved (0.45s)
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/hook	3.994s

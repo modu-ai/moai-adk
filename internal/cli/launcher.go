@@ -223,13 +223,14 @@ func unifiedLaunchWithGateway(profileName, modeOverride string, extraArgs []stri
 		}
 	}
 
-	// 5.5. Translate the user's crosssession.yaml into an injected --settings
-	// file. Covers every launcher (cc / glm / gpt all funnel through here).
+	// 5.5. Translate the user's crosssession.yaml — and the profile's launch
+	// effort — into an injected --settings file. Covers every launcher (cc /
+	// glm / gpt all funnel through here).
 	// No-ops when the operator supplied --settings themselves — which also
 	// covers the kanban/factory branches, whose args already carry the injected
 	// flag by the time they reach this funnel. Fail-open: an unreadable config
 	// or a failed write launches without the injection.
-	extraArgs = appendCrossSessionSettings(root, extraArgs)
+	extraArgs = appendCrossSessionSettings(root, profileName, extraArgs)
 
 	// 6. Launch claude
 	if binding != nil {
@@ -765,9 +766,23 @@ func launchClaudeWithGateway(profileName string, extraArgs []string, binding *ga
 		// (stored high and max both wire as max; flash pins everything to max).
 		launchEnv = buildEnvForGLMLaunch(glmModels, model,
 			resolveGLMMainSessionEffort(model, glmTierEffort, effectiveEffort), os.Environ())
-	} else {
-		// Claude backend: honors the 5-step effort vocabulary (CLAUDE_CODE_EFFORT_LEVEL).
+	} else if binding != nil {
+		// Gateway backend: the adapter reads the effort off the environment it is
+		// handed, so the pin stays here (card t649's
+		// TestGatewayEffortUsesClaudeSettingsDespiteStoredGLMMode asserts it).
+		// The session-freeze this variable causes therefore still applies to a
+		// gateway launch — a known residual, tracked as card t668, NOT a
+		// statement that the gateway path is exempt from the t595 defect.
 		launchEnv = buildEnvForLaunch(effectiveEffort, os.Environ())
+	} else {
+		// Plain Claude backend: the effort travels in the injected --settings
+		// payload (launch_effort_settings.go), NEVER in CLAUDE_CODE_EFFORT_LEVEL.
+		// That variable is an override rather than a default — Claude Code
+		// refuses an in-session /effort or /model change while it is set, which
+		// froze the level for the whole session (card t595). An inherited value
+		// is left untouched: it is the user's own documented per-session
+		// override.
+		launchEnv = buildEnvForClaudeLaunch(os.Environ())
 	}
 	// SPEC-INFINITE-GOAL-001 REQ-2 (OQ-3): when an armed --max-turns 0 goal
 	// exists for the resolving session, raise the runtime Stop-hook block cap so
@@ -1179,7 +1194,12 @@ func splitModelSuffix(model string) (base, suffix string) {
 // in base is replaced to avoid duplicates. When effortLevel is empty, base is
 // returned unchanged.
 //
-// @MX:NOTE: [AUTO] Effort injection point (Claude backend) — model ROUTING (ModelPolicy→model) is orthogonal to effort; effort SOURCING now falls back to a model_policy-derived effort (resolveLaunchEffort→MapModelPolicyToEffort) when prefs.EffortLevel is empty. The routing⊥effort invariant still holds.
+// Since card t595 this is the GATEWAY branch's injection point only: the plain
+// Claude path carries its effort in the injected --settings payload instead, so
+// an in-session /effort change is no longer refused there. The gateway keeps the
+// variable because its adapter reads the environment it is handed.
+//
+// @MX:NOTE: [AUTO] Effort injection point (gateway backend) — model ROUTING (ModelPolicy→model) is orthogonal to effort; effort SOURCING falls back to a model_policy-derived effort (resolveLaunchEffort→MapModelPolicyToEffort) when prefs.EffortLevel is empty. The routing⊥effort invariant still holds.
 func buildEnvForLaunch(effortLevel string, base []string) []string {
 	if effortLevel == "" {
 		return base
@@ -1202,8 +1222,8 @@ func buildEnvForLaunch(effortLevel string, base []string) []string {
 	return result
 }
 
-// resolveLaunchEffort resolves the CLAUDE_CODE_EFFORT_LEVEL value for the launch
-// from the two profile levers: explicit prefs.EffortLevel always wins; otherwise
+// resolveLaunchEffort resolves the launch's effort level from the two profile
+// levers: explicit prefs.EffortLevel always wins; otherwise
 // the model_policy-derived effort (template.MapModelPolicyToEffort) is used as a
 // fallback; both empty → "" (no override, byte-identical to today's launch).
 // model-ROUTING (prefs.Model → DO_CLAUDE_MODEL) remains orthogonal to effort
