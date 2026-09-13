@@ -1,9 +1,9 @@
 ---
 id: SPEC-DOCS-TABCOUNT-DRIFT-001
 title: 구현 계획 — 설정 탭 수·이름 드리프트 차단
-version: "0.3.0"
+version: "0.3.1"
 created: 2026-09-12
-updated: 2026-09-12
+updated: 2026-09-13
 author: manager-spec
 priority: P2
 phase: "v3.1.4 target"
@@ -113,21 +113,33 @@ N1(수사 스윕, 숫자+낱말)이 리터럴을 벗어난 재작성을 잡으�
 
 가드가 실제로 무엇을 잡는지 증명하지 않으면 통과는 근거가 못 된다. 이전 판은 변이 지점을 `README.md` 한 자리로
 두었는데, 그러면 **README 만 읽고 나머지 11파일을 스캔하지 않는 가드**도 FAIL→PASS 를 정상 재현한다. 변이 지점은
-서로 다른 **파일 부류**·**로케일**·**수사 표기(숫자/낱말)** 를 함께 건드려야 한다. run-phase 는 아래 넷을 각각 따로 깨뜨려 보인다.
+서로 다른 **파일 부류**·**로케일**·**수사 표기(숫자/낱말)** 를 함께 건드려야 한다. run-phase 는 아래 여섯을 각각 따로 깨뜨려 보인다.
 
 | 변이 | 대상 | 무엇을 증명하나 |
 |---|---|---|
 | V1 | `README.ko.md` 의 이름 하나 | README 부류 + ko 로케일을 실제로 읽는다 |
 | V2 | `docs-site/content/en/advanced/moai-web-console.md` 의 이름 하나 | docs-site 부류 + en 로케일을 실제로 읽는다 |
 | V3 | `docs-site/content/zh/cli-reference/web.md` 에 `14 个标签页` 를 되살림 | N1 **숫자** 축이 살아 있다 |
-| V4 | `docs-site/content/en/advanced/moai-web-console.md` 의 `fourteen tabs` → `fourteen settings tabs` | N1 **낱말** 축이 살아 있다 — 리터럴을 빗나가는 재작성을 잡는다 |
+| V4 | `docs-site/content/en/advanced/moai-web-console.md` 의 `fourteen tabs` → `fourteen settings tabs` | N1 낱말 축의 **en 토큰(`fourteen`)** — 리터럴을 빗나가는 재작성을 잡는다 |
+| V5 | `README.ko.md` 에 `열네 개 탭` 을 되살림 | N1 낱말 축의 **ko 토큰(`열네`)** |
+| V6 | `docs-site/content/zh/cli-reference/web.md` 에 `设置九个标签页` 를 되살림 | N1 낱말 축의 **zh 토큰(`九`)** — V3 의 숫자 축과 다른 축 |
 
 V4 는 이번 감사가 실제로 성공시킨 변이체다. 리터럴 층만 있던 판에서는 이 변이가 인수 기준을 초록으로 통과시켰다.
+
+**V5·V6 은 그 다음 변이체를 겨눈다 — 낱말 클래스를 `{fourteen}` 하나로만 구현한 가드.** 로케일마다 수사 토큰이
+다르므로(`nine` en · `九` zh · `fourteen` en · `열네` ko · `十四` zh), 한 토큰만 구현한 가드는 V4 를 잡으면서
+열거된 낱말 표기 6자리 중 5자리를 놓친다. 변이 쪽에서 V5·V6 이 그것을 잡고, 집합 쪽에서 AC-TCD-012 의
+가드 축 절이 같은 것을 잡는다.
+
+**그래서 가드는 낱말 축 적중 집합을 스스로 찍는다.** `allowlist` 서브테스트가 적중마다
+`word-axis hit <파일경로>: <적중 구절>` 한 줄을 출력하고, M2 이전 트리에서 그 출력이 정확히 6줄이며 열거 6자리와
+같음을 AC-TCD-012 가 단정한다. 집합을 보이지 않으면 대조할 수 없고, 그러면 가드의 낱말 **클래스 폭**을 구속하는
+자리가 어디에도 없다 — 인수 판정이 셸 파이프라인에 얹혀 있어 Go 구현의 폭과 무관하게 통과하기 때문이다.
 
 추가로 가드는 **실제로 읽어 낸 파일 수를 출력**하고 그것이 선언된 12와 같은지 스스로 단정한다(AC-TCD-005).
 카운터는 **읽기에 성공한 뒤에** 증가하며, 읽기 실패는 `t.Fatal` 이다 — 선언된 슬라이스의 길이를 출력하는 구현은
 한 파일도 열지 않고 `swept 12 files` 를 찍을 수 있어, 이 AC 가 막으려던 혼동을 그대로 통과한다.
-네 변이의 FAIL 출력과 되돌린 뒤의 PASS 출력을 모두 `progress.md` §E.2 에 기록한다. (AC-TCD-006)
+여섯 변이의 FAIL 출력과 되돌린 뒤의 PASS 출력을 모두 `progress.md` §E.2 에 기록한다. (AC-TCD-006)
 
 ---
 
@@ -193,6 +205,9 @@ D군은 이제 미룬 관측이 아니라 M4 의 범위 안 작업이며, N2 가
 - `internal/web/docs_tab_contract_test.go` 작성. 지금 트리에서 **FAIL 해야 한다** — 수 20자리(숫자 14 + 낱말 6)와
   이름 12자리(D군: 목록 8 + 산문 4)가 모두 살아 있기 때문이다.
 - 세 서브테스트를 만든다: `literals`(N0) · `allowlist`(N1, 숫자+낱말 축 + 서수 접두 제외 + 파일 범위 허용 규칙) · `names`(N2).
+- `allowlist` 는 낱말 축 적중마다 `word-axis hit <파일경로>: <적중 구절>` 한 줄을 찍는다.
+  **M2 를 시작하기 전에** 그 출력을 받아 6줄·열거 6자리 일치를 확인하고 축어로 남긴다(AC-TCD-012 가드 축).
+  M2 가 문서를 고치고 나면 이 집합은 0 이 되어 다시 잴 수 없다 — 순서가 판정의 전제다.
 - FAIL 출력을 `progress.md` §E.2 에 기록 — 이 카드가 실재하는 결함을 겨눈다는 증거.
 
 ### M2 (High) — A군: 틀린 수 제거
