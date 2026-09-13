@@ -11,11 +11,50 @@ import (
 	"github.com/modu-ai/moai-adk/internal/gateway/receipt"
 )
 
-// HistoryReplayError exposes only fixed recovery guidance, never history data.
-type HistoryReplayError struct{}
+// ReplayCause classifies why a history replay was rejected. A cause is fixed
+// recovery guidance about the rejection class only — it never carries history
+// data, counts, digests, or session identifiers. Card t672: every production
+// wedge class observable at this boundary is named so the next occurrence
+// self-identifies in the client-visible rejection body.
+type ReplayCause uint8
 
-func (HistoryReplayError) Error() string {
-	return "conversation history changed, lacks reasoning, or belongs to another model family/account; start a new conversation"
+const (
+	// CauseChain: the replayed prefix chain does not match the recorded
+	// receipt chain — history was edited, reordered, sliced, or contains a
+	// boundary that was never published (for example after an upstream
+	// failure the client still recorded).
+	CauseChain ReplayCause = iota
+	// CauseLineage: the receipt root holds no recorded history for this
+	// session, so a replayed assistant history cannot be authorized against
+	// any lineage. The sanctioned fork path seeds a child root through the
+	// launcher; no request metadata can select or seed a receipt root here.
+	CauseLineage
+	// CauseReasoning: a replayed boundary omits the opaque envelope that a
+	// required receipt proves was gateway-issued at that exact position.
+	CauseReasoning
+)
+
+// historyReplayGuidance is the fixed recovery sentence this error has always
+// carried; classified messages keep it verbatim as their prefix so past
+// incident signatures keep matching.
+const historyReplayGuidance = "conversation history changed, lacks reasoning, or belongs to another model family/account; start a new conversation"
+
+// HistoryReplayError exposes only fixed recovery guidance, never history data.
+// The zero value reports the chain cause, whose message is the historical one
+// plus a fixed reason clause.
+type HistoryReplayError struct {
+	Cause ReplayCause
+}
+
+func (e HistoryReplayError) Error() string {
+	switch e.Cause {
+	case CauseLineage:
+		return historyReplayGuidance + " (reason: no recorded history exists for this session; resume or fork through the moai launcher, or start a new conversation)"
+	case CauseReasoning:
+		return historyReplayGuidance + " (reason: replayed history omits gateway-issued reasoning recorded at this position; replay the history unmodified or start a new conversation)"
+	default:
+		return historyReplayGuidance + " (reason: replayed history does not match the recorded receipt chain; start a new conversation)"
+	}
 }
 
 type receiptHistory struct {
@@ -140,9 +179,33 @@ func (h *receiptHistory) Check(ctx context.Context, model, scope string, raw []b
 		return err
 	}
 	if err = h.checkObserved(manifest, model, scope, raw, observations); err != nil {
-		return HistoryReplayError{}
+		return HistoryReplayError{Cause: replayCause(manifest, observations)}
 	}
 	return nil
+}
+
+// replayCause names the rejection class without exposing history data. An
+// empty root against a nonempty replay is a lineage miss; a boundary whose
+// required receipt exists while its opaque envelope is absent is a stripped
+// replay; everything else is a chain mismatch. The compatible-domain check
+// inside checkObserved is not re-derived here, so a stripped replay whose
+// required receipt sits only in the alternate domain classifies as a chain
+// mismatch — the class is recovery guidance, and both classes reject.
+func replayCause(manifest *receipt.Manifest, observations []receipt.Observation) ReplayCause {
+	if len(observations) > 0 && len(manifest.Candidates()) == 0 {
+		return CauseLineage
+	}
+	for _, o := range observations {
+		if o.Opaque != (receipt.Digest{}) || o.Items != 0 {
+			continue
+		}
+		for _, c := range manifest.Candidates() {
+			if c.Required && c.Prefix == o.Prefix && c.Previous == o.Previous {
+				return CauseReasoning
+			}
+		}
+	}
+	return CauseChain
 }
 func (h *receiptHistory) Publish(ctx context.Context, model, scope string, raw []byte) error {
 	observations, err := h.observations(model, scope, raw)
