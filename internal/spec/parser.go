@@ -155,10 +155,14 @@ func sectionHoldsACDeclaration(lines []string, startIdx int) bool {
 }
 
 // findACSectionStart finds the start index of Acceptance Criteria section in markdown:
-// the line after the first heading of level 2 or deeper that names the section and
-// whose section holds at least one criterion line. An empty summary section that
-// precedes the real one does not take the anchor; when every such section is
-// empty, the first one still anchors.
+// the line after the first heading of level 2 or deeper that names the section
+// and whose section holds at least one criterion line. An empty summary section
+// that precedes the real one does not take the anchor; when every vocabulary
+// section is empty, the terminal fallback is declaration-aware (loose axis,
+// SPEC-AC-ANCHOR-SCOPE-001): the first declaration-bearing region anchors, and
+// only a document with no such region falls back to its first vocabulary
+// section (a document with no vocabulary headings at all was previously left
+// unanchored entirely).
 //
 // SPEC-AC-ANCHOR-SCOPE-001 (narrow axis): a heading that does not name the
 // section may still carry its declarations — a heading whose section holds at
@@ -191,10 +195,10 @@ func findACSectionStart(lines []string) int {
 			firstDeclaration = i + 1
 		}
 	}
-	if firstVocabulary >= 0 {
-		return firstVocabulary
+	if firstDeclaration >= 0 {
+		return firstDeclaration
 	}
-	return firstDeclaration
+	return firstVocabulary
 }
 
 // extractACLines extracts parsed line list from AC section. The section ends at
