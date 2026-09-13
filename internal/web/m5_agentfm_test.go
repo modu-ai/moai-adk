@@ -1,15 +1,12 @@
 package web
 
 import (
-	"net/http"
-	"net/http/httptest"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
 
 	"github.com/modu-ai/moai-adk/internal/harness/v4manifest"
-	"github.com/modu-ai/moai-adk/internal/profile"
 )
 
 // Tests for SPEC-WEBCONF-SIMPLIFY-001 M5: agentfm tier-badge UI (REQ-WC-006/007/008,
@@ -104,18 +101,7 @@ func seedAgentFMFile(t *testing.T, root, dir, name, model, effort string) {
 func TestM5AgentFMRenderBadgeAndSelects(t *testing.T) {
 	root := t.TempDir()
 	seedAgentFMFile(t, root, "moai", "manager-spec", "opus", "xhigh")
-	a := newApp(Config{ProjectRoot: root, ProfileName: "default"})
-	a.readPreferences = func(string) (profile.ProfilePreferences, error) {
-		return profile.ProfilePreferences{}, nil
-	}
-	a.writePreferences = func(string, profile.ProfilePreferences) error { return nil }
-	a.syncToProject = func(string, profile.ProfilePreferences) error { return nil }
-
-	req := httptest.NewRequest(http.MethodGet, "/settings", nil)
-	req.Host = "127.0.0.1:8080"
-	rec := httptest.NewRecorder()
-	a.routes().ServeHTTP(rec, req)
-	body := rec.Body.String()
+	body := renderAgentFMBody(t, root)
 
 	// Tier badge renders (🔴 for manager-spec — display-only, from the name table).
 	if !strings.Contains(body, `class="badge"`) {

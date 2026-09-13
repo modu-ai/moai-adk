@@ -133,6 +133,7 @@ $ gofmt -l <변경 Go 파일 10개>
 ## 4. 미검증 (Gaps)
 
 1. **커밋 미수행.** 이 세션은 t841 워크트리에 고정돼 있어 `git -C <t840>`·`cd <t840> && git` 모두 워크트리 세션 가드에 거부됐다. 변경은 t840 작업 트리에 미커밋 상태로 남아 있다. 리드가 t840에 앵커된 세션에서 아래 변경 파일 목록을 명시 pathspec으로 커밋해야 한다. push는 어차피 금지된 카드다.
+   → **(해소 확인, 2026-09-14 재개 세션)** 구현은 `5f6632ef5 feat(web): fix gateway backend model cell to inherit and add gpt profile row (t840)` 으로, 본 판정서는 `091684362` 로 커밋돼 있다.
 2. **실제 gpt 세션에서의 통합 관측 없음.** `MOAI_LAUNCH_PROVIDER=gpt` 접기는 단위 테스트(`TestWithLaunchProvider`)로만 확인했다. 실제 `moai gpt` 세션 안에서 `moai web`을 띄워 inherit 칸이 보이는지, `moai model profile`이 `backend: gpt`를 찍는지는 관측하지 않았다 (이 세션에서 gpt 런치는 트랜스포트 검증 대기 상태로 차단돼 있음).
 3. **브라우저 렌더링 미확인.** 서버 렌더 HTML 문자열만 검증했다. `app.js`의 haiku 잠금 로직은 모델 select가 없는 행에서는 대상 요소를 찾지 못해 자연히 건너뛰지만, 실제 브라우저에서 동작을 보지는 않았다.
 4. **`internal/cli` 패키지 전량 통과를 관측하지 못했다.** 기본 10분·연장 40분 두 번 모두 타임아웃 패닉으로 끝났고 `--- FAIL`은 0건이다. 이번 변경이 닿는 191건의 선택 실행은 통과했다. 전 패키지 판정은 CI 몫이다.
@@ -164,3 +165,57 @@ $ gofmt -l <변경 Go 파일 10개>
 - `internal/web/handlers.go` — POST 파싱 경로에 접기 적용
 - `internal/web/schemaform.go` — GET 뷰 시딩에 접기 적용
 - `internal/web/assets/i18n.js` — `agentfm.gatewaynote` 4개 로케일
+
+## 7. 환경 격리 수리 (2026-09-14 재개 세션, 리드 지시)
+
+### 7.1 주장 (Claim)
+
+결함: 본 카드가 접어 넣은 `MOAI_LAUNCH_PROVIDER` 신호를 기존 web 렌더 테스트들이 전역 환경으로부터 암묵 상속한다. `MOAI_LAUNCH_PROVIDER=gpt` 가 세션 환경에 남아 있는 gpt 런처 세션에서 스위트를 돌리면, team_mode 를 쓰지 않는(Claude 백엔드를 가정한) 렌더 테스트 17건이 게이트웨이 렌더로 접혀 실패한다. 수리는 제품 코드 변경 없이 렌더 하니스가 스스로 환경을 고정하는 것이며, 변경은 `internal/web/*_test.go` 5파일에 국한됐다.
+
+### 7.2 증거 (Evidence)
+
+RED — 수리 전 원본 트리(HEAD `ce9ba57f5`), gpt 환경 재현:
+
+```
+$ MOAI_LAUNCH_PROVIDER=gpt go test -count=1 ./internal/web/ ./internal/template/ ./internal/config/
+--- FAIL 17건 (전부 internal/web):
+  TestAgentSettingsFourSurfacesRendered, TestAgentFMGatewayCellHiddenUnderClaudeAndGLM,
+  TestAgentFMPolicy_SelectorsRenderAtTopOfPanel, TestAgentFMNoSubTabs,
+  TestAgentFMActualValueSelection, TestAgentFMTierSortOrder,
+  TestAgentFMDescriptionAbsentGraceful, TestAgentFMSinglePanel,
+  TestG3ReadPathDerivesFromProfileMatrix, TestG3ReadPathOverrideWins,
+  TestM5AgentFMRenderBadgeAndSelects, TestD1HaikuOptionRendered,
+  TestD1HaikuOverrideRendersSelected, TestD2DefaultCaptionRemovedFromRows,
+  TestHaikuEffortSelectDisabledOnRender, TestHaikuHintRenderedVisibleForHaiku,
+  TestNonHaikuHintHiddenOnRender
+FAIL  github.com/modu-ai/moai-adk/internal/web  47.670s
+ok    github.com/modu-ai/moai-adk/internal/template  68.847s
+ok    github.com/modu-ai/moai-adk/internal/config    6.509s
+exit=1
+```
+(전체 출력: 워크트리 `.moai/state/verify/t840-lane10/prefix-gpt-env.log` — 오염면은 internal/web 하나다.)
+
+clean-env 기준선(수리 전, 환경 없음): `ok github.com/modu-ai/moai-adk/internal/web 53.138s` (`prefix-clean-env.log`) — 브랜치 자체는 환경이 없을 때 녹색이었다.
+
+GREEN — 수리 후 최종 트리, 양쪽 환경 모두:
+
+```
+$ unset MOAI_LAUNCH_PROVIDER && go test -count=1 ./internal/web/ ./internal/template/ ./internal/config/
+ok  web 35.403s / template 55.320s / config 6.705s    exit=0   (final-clean-env.log)
+$ MOAI_LAUNCH_PROVIDER=gpt go test -count=1 (동일 패키지)
+ok  web 37.768s / template 54.314s / config 8.622s    exit=0   (final-gpt-env.log)
+```
+
+수리 내용 (제품 코드 무변경):
+- 렌더 하니스 3곳이 `t.Setenv(config.EnvMoaiLaunchProvider, …)` 로 환경을 고정 — `renderAgentFMBody`(agentfm_polish_test.go), `newAgentTestApp`(agent_settings_test.go), `renderAgentFMGLMBody`(agentfm_glm_reasoning_test.go, 이전 수리 에이전트의 부분 변경을 유지·완성 — 파라미터화, 기존 호출부 5곳은 전부 `""`)
+- `TestM5AgentFMRenderBadgeAndSelects` 는 헬퍼와 동일한 인라인 앱 조립을 `renderAgentFMBody` 재사용으로 교체해 핀을 상속
+- 신규 `TestAgentFMGatewayInheritFromLaunchProviderEnv`: llm.yaml team_mode 없이 env `"gpt"` 만으로 inherit 칸 + 게이트웨이 노트가 렌더되는 접힘 경로(`moai gpt` 세션이 실제로 쓰는 경로)를 핀 — 이 경로는 수리 전 웹 계층에 테스트가 없었다
+
+### 7.3 기준 귀속 (Baseline-attribution)
+
+RED 는 수리 전 커밋 `ce9ba57f5` 트리에서, GREEN 은 수리 적용 최종 트리에서 이 세션이 관측한 출력이다. 증거 로그 4건은 워크트리 `.moai/state/verify/t840-lane10/` 에 보존돼 있다. 다른 트리·시점의 수치를 옮겨 오지 않았다.
+
+### 7.4 잔여 위험 (Residual) — 리드 지시 기록
+
+1. **이 격리 결함의 성격**: `t.Setenv` 핀이 렌더 하니스에서 제거되면 clean-env CI 에서는 재발이 보이지 않는다(gpt 런처 세션에서만 재현하는 결함). 하니스 3곳의 핀 제거는 금지다.
+2. **400 family `4d15208b`**: 리드 지시에 따라 기록한다. 다만 `4d15208b` 는 이 트리에서 커밋으로도(`git rev-parse` 실패) 파일 참조로도(저장소 grep 0건) resolve 되지 않았다 — 참조 대상의 확인은 리드 몫으로 남긴다.

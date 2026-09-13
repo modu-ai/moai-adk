@@ -41,7 +41,7 @@ func TestAgentFMGatewayInheritCell(t *testing.T) {
 	seedAgentFMFile(t, root, "moai", "Explore", "haiku", "low")
 	writeLLMGLMYAML(t, root, "gpt", "medium", "")
 
-	body := renderAgentFMGLMBody(t, root)
+	body := renderAgentFMGLMBody(t, root, "")
 
 	for _, agent := range []string{"manager-develop", "Explore"} {
 		if strings.Contains(body, `name="agentfm.`+agent+`.model"`) {
@@ -69,6 +69,30 @@ func TestAgentFMGatewayInheritCell(t *testing.T) {
 	}
 }
 
+// TestAgentFMGatewayInheritFromLaunchProviderEnv pins the production fold
+// seam: llm.yaml carries no team_mode of its own and the launcher-owned
+// MOAI_LAUNCH_PROVIDER=gpt env folds in (config.WithLaunchProvider), so the
+// panel renders the gateway surface. This is the path a `moai gpt` session
+// actually exercises — and the signal whose uncontrolled leak into the other
+// render tests this file's helper now pins away (t840 env-isolation repair).
+func TestAgentFMGatewayInheritFromLaunchProviderEnv(t *testing.T) {
+	root := t.TempDir()
+	seedAgentFMFile(t, root, "moai", "manager-develop", "opus", "medium")
+	writeLLMGLMYAML(t, root, "", "medium", "")
+
+	body := renderAgentFMGLMBody(t, root, "gpt")
+
+	if strings.Contains(body, `name="agentfm.manager-develop.model"`) {
+		t.Error("a model select rendered although the launch provider folded a gateway backend in")
+	}
+	if !strings.Contains(body, `data-model-inherit="manager-develop"`) {
+		t.Error("rendered body lacks the fixed inherit cell under a folded launch provider")
+	}
+	if !strings.Contains(body, `data-i18n="agentfm.gatewaynote"`) {
+		t.Error("rendered body lacks the gateway-gated agentfm.gatewaynote under a folded launch provider")
+	}
+}
+
 // TestAgentFMGatewayCellHiddenUnderClaudeAndGLM (G1/G2 negative): neither a
 // Claude nor a GLM backend renders the inherit cell or the gateway note; the
 // model select stays editable there.
@@ -79,7 +103,7 @@ func TestAgentFMGatewayCellHiddenUnderClaudeAndGLM(t *testing.T) {
 			seedAgentFMFile(t, root, "moai", "manager-develop", "opus", "medium")
 			writeLLMGLMYAML(t, root, teamMode, "medium", "glm-5.3")
 
-			body := renderAgentFMGLMBody(t, root)
+			body := renderAgentFMGLMBody(t, root, "")
 
 			if strings.Contains(body, "data-model-inherit=") {
 				t.Error("inherit cell rendered outside a gateway backend")
