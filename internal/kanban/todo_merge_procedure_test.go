@@ -399,6 +399,65 @@ func TestVerifyMergedRecordBranches(t *testing.T) {
 			t.Errorf("unrewritten archived finding undetected: %+v", v.StaleReferences)
 		}
 	})
+
+	// The t657 live-merge FAIL shape: a project ARCHIVED entry absorbed as a
+	// duplicate carries a finding naming a renumbered project card. The entry
+	// intentionally does not carry (REQ-TQM-006 v2), so the rewritten tuple
+	// exists nowhere — but the home store's same-id copy holds the identical
+	// finding, and home keeps both referenced ids, so the reference stays
+	// valid. Observed live: archived t538 "t204->t538 contains" on both sides
+	// of the merge (backup-hashes store-1/store-2 seq 217).
+	t.Run("duplicate-absorbed archived finding survives via the home copy", func(t *testing.T) {
+		finding := BacklogFinding{SubjectID: "t204", RelatedID: "t538", Relation: BacklogRelationContains, Source: BacklogSourceAgent, Note: "gate note"}
+		homeDup := mergeFixture(nil, 834)
+		homeDup.Archived = []BacklogArchiveEntry{{
+			Item:     mergeItem("t538", "docs-site refresh", BacklogStatePicked),
+			Findings: []BacklogArchivedFinding{{Finding: finding}},
+		}}
+		projectDup := mergeFixture([]BacklogItem{mergeItem("t204", "release gate", BacklogStateQueued)}, 834)
+		projectDup.Archived = []BacklogArchiveEntry{{
+			Item:     mergeItem("t538", "docs-site refresh", BacklogStatePicked),
+			Findings: []BacklogArchivedFinding{{Finding: finding}},
+		}}
+		merged := cloneBacklogRecord(homeDup)
+		merged.Items = append(merged.Items, mergeItem("t718", "release gate", BacklogStateQueued))
+		report := &MergeReport{
+			Renumbered: []MergeMappingRow{{OldID: "t204", NewID: "t718"}},
+			Duplicates: []MergeDuplicateRow{{ID: "t538", Origin: MergeOriginProjectArchived}},
+		}
+		v := VerifyMergedRecord(homeDup, projectDup, merged, report)
+		joined := strings.Join(v.StaleReferences, "; ")
+		if strings.Contains(joined, "t204->t538") {
+			t.Errorf("duplicate-absorbed host's finding flagged stale despite the identical home copy: %+v", v.StaleReferences)
+		}
+	})
+
+	// The loss arm: a duplicate-absorbed host whose home copy does NOT hold
+	// the finding is a genuine finding loss — the verifier must keep flagging
+	// it. (t657 verdict Gaps: the duplicate absorption drops the entry's
+	// findings; only an identical home copy makes that safe.)
+	t.Run("duplicate-absorbed archived finding lost with the home copy", func(t *testing.T) {
+		homeDup := mergeFixture(nil, 834)
+		homeDup.Archived = []BacklogArchiveEntry{{
+			Item: mergeItem("t538", "docs-site refresh", BacklogStatePicked),
+		}}
+		projectDup := mergeFixture([]BacklogItem{mergeItem("t204", "release gate", BacklogStateQueued)}, 834)
+		projectDup.Archived = []BacklogArchiveEntry{{
+			Item:     mergeItem("t538", "docs-site refresh", BacklogStatePicked),
+			Findings: []BacklogArchivedFinding{{Finding: BacklogFinding{SubjectID: "t204", RelatedID: "t538", Relation: BacklogRelationContains, Source: BacklogSourceAgent, Note: "gate note"}}},
+		}}
+		merged := cloneBacklogRecord(homeDup)
+		merged.Items = append(merged.Items, mergeItem("t718", "release gate", BacklogStateQueued))
+		report := &MergeReport{
+			Renumbered: []MergeMappingRow{{OldID: "t204", NewID: "t718"}},
+			Duplicates: []MergeDuplicateRow{{ID: "t538", Origin: MergeOriginProjectArchived}},
+		}
+		v := VerifyMergedRecord(homeDup, projectDup, merged, report)
+		joined := strings.Join(v.StaleReferences, "; ")
+		if !strings.Contains(joined, "not rewritten") {
+			t.Errorf("finding lost with both the project entry and the home copy undetected: %+v", v.StaleReferences)
+		}
+	})
 }
 
 // TestRunQueueMergeAbortPaths covers the destructive-step abort arms on
