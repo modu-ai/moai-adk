@@ -177,6 +177,14 @@
 - Gaps: AC-MG-026 (a)의 GREEN(리터럴 0건+실제 launch)은 AS-014~022 전수 PASS가 Given — 창 대기. AS-017·018·019·021·014의 실제 PTY·실계정 실증과 AS-020 실대형 입력 수용은 t851 이후 라이브 창 대기(운영자 판정 3번). AS-022 GitHub CI 실행 증거는 리드 소관 push+workflow_dispatch 대기 — 대기 명령은 `.moai/reports/t654/as5-windows-ci-prep.md` 기록. (M2b)의 생산 호출자 배선은 compaction 실세션 흐름(t844)에서 이어진다. A5-M7 rc 배포 게이트는 강제 전제(AS-017·019·021 PASS) 미충족으로 창 대기 — 실행하지 않았다.
 - Residual-risk: overlay `authMethod`/`outputPolicy`의 사용자 가시 렌더링은 클라이언트 실측에서 확인 예정. manifest v1 대화 중 컴팩션 경험본은 v2 복원 시 epoch 0 — dev 단계라 실 피해 경로 없음. 이미지 탐지는 Messages 블록 형태 스캔으로 형식 변화 시 빗나갈 수 있다(음성 픽스처 고정). Windows 회귀는 release 시점에야 드러난다(결정 4 잔여 위험 유지).
 
+### 2026-09-14 — t654 최종 수선: t708 비침범 잠금의 소유 시리즈 면제 조항
+
+- Claim: t708의 비침범 잠금(`TestGatewayRepairCardDiffTouchesNoPreservedFile`, 커밋 `5b10efb66` 계기)이 A5-M2의 감사 통과 구현 장면(receipt/store.go·core.go·compact.go·conversation/family.go — AC-MG-026 (b)(c)의 착지 장소 그 자체)과 충돌했다. 잠금의 목적은 수리 카드의 무단 약화 차단이고, 감사 통과 plan이 같은 diff로 실리는 소유 시리즈(SPEC-MOAI-GATEWAY-001)의 진화는 면제 대상이다 — 운영자 무응답 폴백으로 확정된 권장안(리드 배차 지시, t653 선례: 같은 receipt 표면을 같은 잠금 아래 착지). 면제 대리는 diff 안의 `.moai/specs/SPEC-MOAI-GATEWAY-001/` 산하 파일 존재다 — 위장 면제는 plan-audit/run 게이트 표면에서 걸린다는 한계를 주석에 명시했다.
+- Evidence: `go test ./internal/cli/ -run 'TestGatewayRepairCardDiffTouchesNoPreservedFile|TestPreservedDiffDiscriminatorRejectsViolations|TestPreservedDiffExemptionOwningSeriesTouch' -count=1 -v` → 3건 전부 PASS (`.moai/reports/t654/as5-guard-exemption-green.log`). 판별기는 양방향으로 고정: SPEC 터치 없는 합성 침범 diff → 여전히 위반 2건 / 동일 diff + 소유 시리즈 SPEC 터치 → 면제 / 타 시리즈(`.moai/specs/SPEC-OTHER-001/`) 터치 → 면제 없음. 수선 전 실측: 최종 스위트에서 가드 적색 1건 재현(`.moai/reports/t654/as5-final-suite.log`, 사전 존재 codexbridge 환경 4건과 별도).
+- Baseline-attribution: worktree `.claude/worktrees/t654`, branch `WT-gateway-launchers` 최종 상태에서 2026-09-14 직접 실행.
+- Gaps: 없음(이 수선 항목 한정).
+- Residual-risk: 면제 대리가 SPEC 디렉터리 터치라는 점 — SPEC 파일을 diff에 섞어 넣는 위장은 이 가드가 아니라 plan-audit 표면이 걸어야 한다(주석에 명시한 한계).
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 run-phase 완료. `run_complete_at: 2026-09-14`, `run_commit_sha: 9f3dc41e0`.
