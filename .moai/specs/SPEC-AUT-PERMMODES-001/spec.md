@@ -1,7 +1,7 @@
 ---
 id: SPEC-AUT-PERMMODES-001
 title: "init wizard autonomy question redefined as Claude Code permission modes — acceptEdits default, auto/bypass opt-in, REQ-007 zero-delta re-scoped"
-version: 0.1.0
+version: "0.1.1"
 status: draft
 created: 2026-09-13
 updated: 2026-09-13
@@ -18,6 +18,13 @@ related_specs: [SPEC-AUTONOMY-TIERS-001, SPEC-INIT-WIZARD-REPAIR-001, SPEC-CLI-W
 # SPEC-AUT-PERMMODES-001 — init wizard autonomy question redefined as Claude Code permission modes
 
 > Card: **t584** (operator-approved, from `.moai/reports/init-tui-audit-20260909.md` card-split table C2; the report lives in the primary checkout — `.moai/reports/` content is local-only). Operator decision 2026-09-09: the wizard's autonomy question presents Claude Code's REAL permission modes — three choices `bypassPermissions` / auto mode / `acceptEdits` ("accept edits on") — with **acceptEdits as the new default**.
+
+## HISTORY
+
+| Version | Date | Change | Provenance |
+|---|---|---|---|
+| "0.1.0" | 2026-09-13 | Initial plan-phase draft (spec.md + plan.md + acceptance.md + progress.md) | card t584, commit 0ddd1a282 |
+| "0.1.1" | 2026-09-13 | Plan revision iter2 — AC-011/AC-012 added covering REQ-009/REQ-010 (plan-audit D1), §D.2 traceability rewritten; D2-D5 optional fixes (HISTORY section, quoted version, owning-SPEC line relabel, requirement subjects de-named) | plan-audit iter1 FAIL 0.75 (`.moai/reports/t584/plan-audit.md`) |
 
 ## §A. Background and Motivation
 
@@ -69,7 +76,7 @@ The wizard question SHALL pre-select "Accept edits on" (`Default: "semi-auto"`, 
 
 ### REQ-003 — Tier→knob mapping remap
 
-`TierDefaultMode` SHALL map: `semi-auto` → `"acceptEdits"` (was `"default"`); `automatic` → `"auto"` (unchanged); `fully-autonomous` → `"bypassPermissions"` (unchanged). Any unknown value SHALL still map to `"default"` (the fail-safe never-silently-enable guarantee is retained at the MOST restrictive mode, not the new default).
+The tier-to-mode mapping SHALL map: `semi-auto` → `"acceptEdits"` (was `"default"`); `automatic` → `"auto"` (unchanged); `fully-autonomous` → `"bypassPermissions"` (unchanged). Any unknown value SHALL still map to `"default"` (the fail-safe never-silently-enable guarantee is retained at the MOST restrictive mode, not the new default).
 
 ### REQ-004 — REQ-007 re-scoped (bounded delta, not zero delta)
 
@@ -77,7 +84,7 @@ REQ-007 of SPEC-AUTONOMY-TIERS-001 ("unset / semi-auto → zero behavior delta, 
 
 ### REQ-005 — bypassPermissions gating preserved
 
-The fully-autonomous gating SHALL remain anchored to `bypassPermissions`: when a user selects "Bypass permissions" WITHOUT a sandbox proof, or with the kill-switch active, the selection SHALL downgrade to `automatic` (`defaultMode: "auto"`) and SHALL append an advisory record to `.moai/logs/autonomy-downgrade.log`. `EffectiveTierWithGates` behavior is unchanged.
+The fully-autonomous gating SHALL remain anchored to `bypassPermissions`: when a user selects "Bypass permissions" WITHOUT a sandbox proof, or with the kill-switch active, the selection SHALL downgrade to `automatic` (`defaultMode: "auto"`) and SHALL append an advisory record to `.moai/logs/autonomy-downgrade.log`. The gating logic's behavior is otherwise unchanged.
 
 ### REQ-006 — Downgrade regression tests preserved
 
@@ -125,7 +132,7 @@ The godoc on `TierDefaultMode` and `ApplyAutonomyTierBundle` SHALL state the new
 
 ## §H. Cross-References
 
-- Owning SPEC of the amended invariants: `.moai/specs/SPEC-AUTONOMY-TIERS-001/spec.md` (REQ-006 at spec.md:167, REQ-007 at spec.md:168)
+- Owning SPEC of the amended invariants: `.moai/specs/SPEC-AUTONOMY-TIERS-001/spec.md` (AC-AUTONOMY-TIERS-006 at :167, AC-AUTONOMY-TIERS-007 at :168 — the AC summary rows carrying the REQ-006/REQ-007 invariants; the REQ rows live in that SPEC's §B EARS body)
 - Post-t586 wizard structure: `internal/cli/wizard/questions.go` (autonomy_tier question), `internal/cli/wizard/translations.go`
 - Bundle apply: `internal/core/project/autonomy_bundle.go` (`ApplyAutonomyTierBundle`), `internal/cli/update_settings_snapshot.go` (update-path consumer)
 - Tier mapping + gates: `internal/config/autonomy_tiers.go` (`TierDefaultMode`, `EffectiveTierWithGates`, `AppendDowngradeAdvisory`), `internal/config/defaults.go:161-163` (tier tokens)

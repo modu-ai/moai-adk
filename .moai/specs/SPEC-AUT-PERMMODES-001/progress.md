@@ -11,7 +11,7 @@ card: t584
 tier: M
 artifacts: [spec.md, plan.md, acceptance.md]
 req_count: 10
-ac_count: 10
+ac_count: 12
 id_regex_check: PASS
 owning_spec_of_amended_reqs: SPEC-AUTONOMY-TIERS-001 (REQ-006, REQ-007)
 defaultmode_verdict: "auto is a VALID CC defaultMode value (6-value enum, official docs fetched 2026-09-13); bundled IAM reference stale -> refreshed in-scope (REQ-007)"

@@ -16,15 +16,17 @@
 | AC-008 | REQ-006 | the downgrade regression suite | the affected packages' tests run | `TestApplyAutonomyTierBundle_FullyAutonomousDowngradedWithoutProof`, `TestApplyAutonomyTierBundle_FullyAutonomousWithProofDeploysBypass`, `TestRunInit_FlagFullyAutonomousWithoutProofDowngrades`, `TestAppendDowngradeAdvisory`, and `TestAutonomyTierQuestion_FullyAutonomousNotRecommended` all pass under the new option set |
 | AC-009 | REQ-007 | the bundled IAM reference | its Permission Modes section is read | it lists the six current values including `auto` and `dontAsk`, names both kill switches, and no longer asserts "exactly four values" |
 | AC-010 | REQ-008 | the wizard translations | each of the four locales (ko/en/ja/zh) is inspected | each carries the three new option labels/descriptions, and the translation completeness test passes |
+| AC-011 | REQ-009 | `moai init --help` output | the `--autonomy-tier` flag description is read | it names the three permission-mode choices (accept edits on / auto mode / bypass permissions), states the acceptEdits default, and the closed-set token values (`semi-auto`, `automatic`, `fully-autonomous`) are unchanged |
+| AC-012 | REQ-010 | the godoc on the tier-to-mode mapping function and the init-time bundle-apply function (`TierDefaultMode`, `ApplyAutonomyTierBundle`) | each godoc block is read | the mapping godoc states the new mapping (`semi-auto`→`acceptEdits`, `automatic`→`auto`, `fully-autonomous`→`bypassPermissions`), and the bundle godoc states the re-scoped REQ-004 bounded-delta invariant (USER-scope defaultMode only; everything else byte-identical) |
 
 ## §D.1 Severity
 
 - **Must-pass**: AC-001..AC-008 (behavioral core + preserved gates)
-- **Should-pass**: AC-009, AC-010 (documentation + localization hygiene)
+- **Should-pass**: AC-009..AC-012 (documentation, localization, and doc-comment hygiene)
 
 ## §D.2 Traceability
 
-- REQ-001→AC-001, AC-002 · REQ-002→AC-002, AC-003 · REQ-003→AC-004 · REQ-004→AC-005 · REQ-005→AC-006, AC-007 · REQ-006→AC-008 · REQ-007→AC-009 · REQ-008→AC-010 · REQ-009, REQ-010 verified by §E.4 grep guards (E4) — no dedicated AC needed at Tier M.
+- REQ-001→AC-001, AC-002 · REQ-002→AC-002, AC-003 · REQ-003→AC-004 · REQ-004→AC-005 · REQ-005→AC-006, AC-007 · REQ-006→AC-008 · REQ-007→AC-009 · REQ-008→AC-010 · REQ-009→AC-011 · REQ-010→AC-012. Every REQ carries at least one AC; plan.md §E.4's grep guards (E4) are supplementary drift detection only and are NOT the verification route for any REQ.
 
 ## §D.3 Indirect Verification
 
@@ -50,7 +52,7 @@
 
 ## §D.7 Definition of Done
 
-- [ ] AC-001..AC-010 verified with observed test output recorded in progress.md §E
+- [ ] AC-001..AC-012 verified with observed test output recorded in progress.md §E
 - [ ] M1 version-floor finding recorded (or a blocker returned)
 - [ ] Downgrade regression set intact (AC-008)
 - [ ] Bundled reference refreshed and `make build` green
