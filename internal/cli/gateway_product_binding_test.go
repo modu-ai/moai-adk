@@ -7,6 +7,7 @@ import (
 	"net/http/httptest"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 	"time"
@@ -73,6 +74,20 @@ func TestGPTProductionBindingHasPrivateChildAndExactPayload(t *testing.T) {
 
 func TestProductionGatewayFactoryRejectsUnauthenticatedRequest(t *testing.T) {
 	t.Setenv("MOAI_HOME", t.TempDir())
+	// The factory only requires the codex broker to be locatable at
+	// construction; the 401 rejection below happens before any credential
+	// resolve. A stub keeps the test hermetic on machines without codex.
+	dir := t.TempDir()
+	name := "codex"
+	body := "#!/bin/sh\nexit 0\n"
+	if runtime.GOOS == "windows" {
+		name = "codex.bat"
+		body = "@echo codex-stub\r\n"
+	}
+	if err := os.WriteFile(filepath.Join(dir, name), []byte(body), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	t.Setenv("PATH", dir+string(os.PathListSeparator)+os.Getenv("PATH"))
 	models := gatewayGPTModels()
 	payload, err := marshalGatewayPrivatePayload("private-session", models)
 	if err != nil {

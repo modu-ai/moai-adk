@@ -1,0 +1,19 @@
+=== RUN   TestProbeT586HuhV1Surfaces
+    zz_probe_t586_test.go:33: PROBE profile-confirm 00|┃·No·profile·found.·Set·up·profile·preferences·now?·····························|
+    zz_probe_t586_test.go:33: PROBE profile-confirm 01|┃·Configure·your·name,·language,·and·model·preferences.·························|
+    zz_probe_t586_test.go:33: PROBE profile-confirm 02|┃···············································································|
+    zz_probe_t586_test.go:33: PROBE profile-confirm 03|┃······················Yes·····No···············································|
+    zz_probe_t586_test.go:33: PROBE profile-confirm 04||
+    zz_probe_t586_test.go:33: PROBE profile-confirm 05|←/→·toggle·•·enter·submit·•·y·Yes·•·n·No|
+    zz_probe_t586_test.go:50: PROBE profile-lang-step 00|Language|
+    zz_probe_t586_test.go:50: PROBE profile-lang-step 01|┃·Select·your·language··························································|
+    zz_probe_t586_test.go:50: PROBE profile-lang-step 02|┃·Language·for·this·wizard·and·Claude's·responses.······························|
+    zz_probe_t586_test.go:50: PROBE profile-lang-step 03|┃·▸·English·····································································|
+    zz_probe_t586_test.go:50: PROBE profile-lang-step 04|┃···Korean·(한국어)·····························································|
+    zz_probe_t586_test.go:50: PROBE profile-lang-step 05|┃···Japanese·(日本語)···························································|
+    zz_probe_t586_test.go:50: PROBE profile-lang-step 06|┃···Chinese·(中文)······························································|
+    zz_probe_t586_test.go:50: PROBE profile-lang-step 07||
+    zz_probe_t586_test.go:50: PROBE profile-lang-step 08|↑·up·•·↓·down·•·/·filter·•·enter·submit|
+--- PASS: TestProbeT586HuhV1Surfaces (0.00s)
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/cli	1.063s
