@@ -1,7 +1,7 @@
 ---
 id: SPEC-GRAPH-STAMP-ANCESTRY-001
 title: "Graph codemaps 스탬프 조상성 선판정과 push 가드 종결"
-version: "0.1.0"
+version: "0.1.1"
 status: draft
 created: 2026-09-13
 updated: 2026-09-13
@@ -23,6 +23,7 @@ related_specs: [SPEC-V3R6-GRAPH-FRESHNESS-001, SPEC-V3R6-GRAPH-FRESHNESS-002, SP
 
 | Version | Date | Change | Author |
 |---|---|---|---|
+| 0.1.1 | 2026-09-13 | 중단된 plan 단계를 재개해 실제 checker·CLI·workflow·provenance producer와 관련 완료 SPEC 6개를 대조했다. 선행 SPEC의 두 문구 충돌을 명시적으로 판정했다. 오류 경로의 `VerdictAbsent`는 substantive freshness verdict가 아닌 호환 운반체로 한정하고, push의 object-only 허용은 이 SPEC의 `HEAD` 조상성 검사로 대체한다. release PR의 merge-preview `HEAD` 분기는 현재 workflow의 t407 후속 결정을 보존한다. | manager-spec |
 | 0.1.0 | 2026-09-13 | 카드 t688에서 최초 작성. Git 위상 비교 가능성과 freshness 값 초과를 서로 다른 실패 종류로 고정하고, checker 선판정·push 가드·진짜 codemaps 재생성을 한 실행 계약으로 묶었다. GH issue #1661은 발생 이력과 관계만 기록하며 회신·종료는 리드 소관으로 남겼다. | manager-spec |
 
 ## §A. 문제 진술
@@ -42,11 +43,17 @@ related_specs: [SPEC-V3R6-GRAPH-FRESHNESS-001, SPEC-V3R6-GRAPH-FRESHNESS-002, SP
 
 - **M1**: clean 스탬프의 객체 존재와 checkout `HEAD` 조상성을 freshness 계산보다 먼저 판별한다. 객체가 존재하지만 조상이 아니면 freshness는 미측정이며, `VerdictAbsent` 운반체와 system error/exit 2로 보고한다.
 - **M2**: `push` 이벤트가 clean 스탬프의 조상성을 checkout `HEAD`에 대해 검사하도록 워크플로 가드를 닫는다. 기존 ordinary PR와 `release/*` merge-preview 대상 선택은 유지한다.
-- **M3**: 코드 변경 뒤 codemaps 본문을 실제로 재생성하고 도달 가능한 커밋에 스탬핑해, 위상 비교 가능 상태에서 독립 freshness 값이 40 미만으로 돌아오는 것을 증명한다.
+- **M3**: 코드 변경 뒤 codemaps 생성 계약의 5개 문서를 실제로 재생성하고 해당 실행 경로의 판정 대상에서 도달 가능한 커밋에 스탬핑해, 위상 비교 가능 상태에서 독립 freshness 값이 40 미만으로 돌아오는 것을 증명한다. `docs-truth.md`는 생성기 산출물이 아니므로 에이전트 카탈로그 사실이 바뀐 경우에만 별도 수동 갱신하며, 본 SPEC의 graph 동작 변경만으로는 재생성됐다고 주장하지 않는다.
 
 ### §B.2 핵심 판정
 
 도달 불가의 처분은 기존 계약과의 충돌을 최소화한다. `VerdictAbsent`를 오류 경로의 보고 운반체로 유지하되, reason과 CLI 출력은 **codemaps 본문이 없다는 뜻이 아니라 freshness를 측정하지 못했다는 뜻**을 명시한다. 숫자 `value`, contribution, content anchor, driving paths를 만들지 않으며 system error/exit 2로 fail closed 한다.
+
+### §B.3 선행 계약 충돌의 판정
+
+- `SPEC-V3R6-GRAPH-FRESHNESS-001` REQ-GF-004의 “fresh·stale·absent 중 어느 verdict도 없음”은 **측정된 freshness 의미를 부여하지 말라**는 제약으로 계승한다. 현재 오류 경로가 이미 운반하는 `VerdictAbsent`는 substantive verdict가 아니라 partial report의 호환 표식으로만 유지하며, non-nil system error와 exit 2가 일반 absent/exit 1과 구분한다.
+- `SPEC-STAMP-REACHABILITY-001` §B.2와 그 acceptance의 push object-only 성공은 이 SPEC의 REQ-GSA-008이 **push 분기에 한해 대체**한다. anchorless provenance의 skip-with-reason과 missing-object failure는 그대로 보존한다.
+- `release/*`의 merge-preview `HEAD` 판정은 선행 SPEC 원문 이후 t407에서 현재 workflow에 추가된 후속 계약이다. 이 SPEC은 그 분기를 재설계하지 않고 회귀 잠금한다.
 
 ## §C. 요구사항 (GEARS)
 

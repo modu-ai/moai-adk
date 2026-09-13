@@ -15,6 +15,9 @@
 - `git merge-base --is-ancestor <stamp> origin/main`: exit 1
 - `moai graph check --root .`: codemaps `value=254 threshold=40 verdict=stale`, process exit 1
 - 카드 설명에 있던 값 224는 이 기준 트리에서 재현되지 않았다. 따라서 고정 인수값이나 예상 출력으로 사용하지 않고, 과거 회귀 관측으로만 취급한다.
+- 재시도 기준 트리: `b4626c0421d3b21564fcf7ba08967889af52a278` (`b4626c042`). tracked stamp는 동일한 `f7b4919541f10b6415173b6bc9fb7192e8824450`, `dirty=false`, roots=`internal,cmd,pkg`다.
+- 재시도에서 `git cat-file -e <stamp>^{commit}`, `git merge-base --is-ancestor <stamp> HEAD`, `... origin/develop`은 모두 무출력 exit 0이고, `... origin/main`은 무출력 exit 1이었다.
+- 재시도에서 `moai graph check --root .`은 codemaps `value=254 threshold=40 verdict=stale`를 유지했지만 citations도 `value=1 verdict=stale`였고 전체 exit 1이었다. 따라서 M4의 종결은 codemaps만 보지 않고 다른 어떤 층도 stale이 아님을 확인해야 한다; 이 plan 단계는 전체-green을 주장하지 않는다.
 
 ### §A.3 변경 대상
 

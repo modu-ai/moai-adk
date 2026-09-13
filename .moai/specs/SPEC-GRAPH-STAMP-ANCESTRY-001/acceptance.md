@@ -198,10 +198,18 @@ classification: EXPECTED_RED — both assertions identify the current push early
 
 ```text
 command: .moai/reports/t688/red-history-topologies.sh
-tree_sha: 7097e6e214195c45e65cab5fa565b19ca4514c4e
-exit_code: pending-plan-probe
-stdout_stderr: pending-plan-probe
-classification: must be executed before adoption; if the intended assertion is not reached, classify TOOL_FAILURE rather than EXPECTED_RED.
+tree_sha: b4626c0421d3b21564fcf7ba08967889af52a278
+exit_code: 1
+stdout_stderr:
+--- FAIL: TestT688MergeSquashRebaseLikeTopologies (3.98s)
+    --- FAIL: TestT688MergeSquashRebaseLikeTopologies/squash_retains_object_but_drops_ancestry (1.16s)
+        t688_red_history_test.go:67: object-present non-ancestor stamp must be freshness-unmeasured; got verdict="fresh" value=0 anchor="770551aa3cee29ee6bd552a18b1a55d7b3e72a58"
+    --- FAIL: TestT688MergeSquashRebaseLikeTopologies/rebase-like_rewrite_retains_object_but_drops_ancestry (1.48s)
+        t688_red_history_test.go:78: object-present non-ancestor stamp must be freshness-unmeasured; got verdict="fresh" value=1 anchor="d57906104d1a8d2283bedb7cd7375cf4234b3fa4"
+FAIL
+FAIL\tgithub.com/modu-ai/moai-adk/internal/graph\t4.374s
+FAIL
+classification: EXPECTED_RED — merge 행은 정상 경로를 통과했고, squash와 rebase-like 두 행이 각각 object-present/non-ancestor의 의도한 `err != nil` assertion에 도달해 현 구현의 ancestry 선판정 부재 때문에 실패했다. 도구·fixture 준비 실패가 아니다.
 ```
 
 ## §E. 기준선 및 과거 관측
