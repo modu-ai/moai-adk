@@ -16,6 +16,7 @@ import (
 // os.TempDir() containing {"crossSessionInbound": "accept"} and returns the
 // --settings flag pair pointing at it.
 func TestPrepareKanbanSettingsWritesTransientFile(t *testing.T) {
+	withNoLaunchEffort(t)
 	for _, key := range []string{config.EnvMoaiKanbanSettingsInjected} {
 		t.Setenv(key, "")
 		_ = os.Unsetenv(key)
@@ -26,7 +27,7 @@ func TestPrepareKanbanSettingsWritesTransientFile(t *testing.T) {
 	crossSessionConfigRootFn = func() string { return t.TempDir() }
 	t.Cleanup(func() { crossSessionConfigRootFn = orig })
 
-	flag, cleanup := prepareKanbanSettings([]string{"-p", "dev"})
+	flag, cleanup := prepareKanbanSettings("", []string{"-p", "dev"})
 	t.Cleanup(cleanup)
 
 	if len(flag) != 2 || flag[0] != "--settings" {
@@ -84,7 +85,7 @@ func TestPrepareKanbanSettingsHonorsOperatorSupplied(t *testing.T) {
 	}
 
 	// Long form.
-	flag, cleanup := prepareKanbanSettings([]string{"--settings", "/tmp/operator.json"})
+	flag, cleanup := prepareKanbanSettings("", []string{"--settings", "/tmp/operator.json"})
 	t.Cleanup(cleanup)
 	if len(flag) != 0 {
 		t.Errorf("long form: expected no injection, got %v", flag)
@@ -94,14 +95,14 @@ func TestPrepareKanbanSettingsHonorsOperatorSupplied(t *testing.T) {
 	}
 
 	// Equals form.
-	flag2, cleanup2 := prepareKanbanSettings([]string{"--settings=/tmp/op2.json"})
+	flag2, cleanup2 := prepareKanbanSettings("", []string{"--settings=/tmp/op2.json"})
 	t.Cleanup(cleanup2)
 	if len(flag2) != 0 {
 		t.Errorf("equals form: expected no injection, got %v", flag2)
 	}
 
 	// --settings before the pass-through marker is honored.
-	flag3, cleanup3 := prepareKanbanSettings([]string{"--settings", "/tmp/op3.json", "--", "--settings", "/tmp/decoy.json"})
+	flag3, cleanup3 := prepareKanbanSettings("", []string{"--settings", "/tmp/op3.json", "--", "--settings", "/tmp/decoy.json"})
 	t.Cleanup(cleanup3)
 	if len(flag3) != 0 {
 		t.Errorf("pre-marker form: expected no injection, got %v", flag3)
@@ -111,7 +112,7 @@ func TestPrepareKanbanSettingsHonorsOperatorSupplied(t *testing.T) {
 	// a passthrough arg to claude, not a moai-level flag). The launcher DOES
 	// inject here — the operator's intent to supply --settings to moai's
 	// launcher is expressed before the marker only.
-	flag4, cleanup4 := prepareKanbanSettings([]string{"--", "--settings", "/tmp/post.json"})
+	flag4, cleanup4 := prepareKanbanSettings("", []string{"--", "--settings", "/tmp/post.json"})
 	t.Cleanup(cleanup4)
 	if len(flag4) != 2 {
 		t.Errorf("post-marker form: expected injection (operator --settings is passthrough), got %v", flag4)
@@ -122,6 +123,7 @@ func TestPrepareKanbanSettingsHonorsOperatorSupplied(t *testing.T) {
 // file write fails, the launcher degrades to launching without the injected
 // --settings (never blocks the launch). The flag is empty and cleanup is safe.
 func TestPrepareKanbanSettingsFailsOpenOnWriteError(t *testing.T) {
+	withNoLaunchEffort(t)
 	if runtime.GOOS == "windows" {
 		t.Skip("cannot force the write failure on Windows: a 0444 directory still accepts file creation, and os.TempDir reads TMP/TEMP rather than TMPDIR")
 	}
@@ -134,7 +136,7 @@ func TestPrepareKanbanSettingsFailsOpenOnWriteError(t *testing.T) {
 	}
 	t.Setenv("TMPDIR", unwritable)
 
-	flag, cleanup := prepareKanbanSettings([]string{"-p", "dev"})
+	flag, cleanup := prepareKanbanSettings("", []string{"-p", "dev"})
 	t.Cleanup(cleanup)
 
 	if len(flag) != 0 {

@@ -391,10 +391,12 @@ func runCleanReinstall(ctx context.Context, projectRoot string, opts CleanReinst
 	if cfgBackupErr != nil {
 		return result, recovery.fail("step 4.5: backup .moai/config for merge-preservation", cfgBackupErr)
 	}
-	// Mergeable root files handled by the normal path's 3-way engine (identical
-	// set to update.go collectMergeableFiles). settings.json base is unavailable
-	// in the embedded FS (it ships as settings.json.tmpl), so MergeUserFiles
-	// preserves the user's file wholesale — matching the normal path exactly.
+	// Mergeable root files handled by the normal path's 3-way engine (the
+	// template-sync collectMergeableFiles set minus .mcp.json). MergeUserFiles
+	// merges settings.json against the canonical snapshot of the previously
+	// deployed render when one exists, and against a base derived from the new
+	// render otherwise (SPEC-UPDATE-SETTINGS-BASE-SNAPSHOT-001) — the same
+	// machinery the normal path uses.
 	var mergeableBackups []updatemerge.FileBackup
 	for _, mf := range []string{".claude/settings.json", ".moai/status_line.sh"} {
 		if data, readErr := os.ReadFile(filepath.Join(projectRoot, filepath.FromSlash(mf))); readErr == nil {
@@ -459,6 +461,10 @@ func runCleanReinstall(ctx context.Context, projectRoot string, opts CleanReinst
 	if deployErr := deployWithMirrorNotice(ctx, deployer, projectRoot, mgr, tmplCtx, errOut); deployErr != nil {
 		return result, recovery.fail("step 5: reinstall templates", deployErr)
 	}
+	// SPEC-UPDATE-SETTINGS-BASE-SNAPSHOT-001 (REQ-USB-001): stage the
+	// settings.json render this deploy wrote, before the Step 5.5 merge and the
+	// deny-rule strip rewrite the file. Best-effort: it only warns.
+	backup.StageDeployedSettingsSnapshot(projectRoot, mgr, errOut)
 	_, _ = fmt.Fprintln(out, "[clean-reinstall] Embedded templates reinstalled")
 
 	// ---------------------------------------------------------------
@@ -501,14 +507,15 @@ func runCleanReinstall(ctx context.Context, projectRoot string, opts CleanReinst
 			_, _ = fmt.Fprintf(out, "[clean-reinstall] Cleaned up %d old config backup(s)\n", deleted)
 		}
 	}
-	if len(mergeableBackups) > 0 {
-		// MergeUserFiles preserves the user's version on any merge failure, so a
-		// warning (not a hard error) matches the normal path's tolerance.
-		if mergeErr := updatemerge.MergeUserFiles(projectRoot, mergeableBackups, out); mergeErr != nil {
-			_, _ = fmt.Fprintf(out, "[clean-reinstall] settings merge warning: %v\n", mergeErr)
-		} else {
-			_, _ = fmt.Fprintln(out, "[clean-reinstall] settings.json / status_line.sh merge-preserved")
-		}
+	// MergeUserFiles preserves the user's version on any merge failure, so a
+	// warning (not a hard error) matches the normal path's tolerance. The call
+	// runs even with no backups: it also settles the staged settings.json render
+	// (SPEC-UPDATE-SETTINGS-BASE-SNAPSHOT-001 REQ-USB-005), which must happen
+	// before the deny-rule strip below and regardless of what was backed up.
+	if mergeErr := mergeUserFilesSettlingSnapshot(projectRoot, mergeableBackups, out, errOut); mergeErr != nil {
+		_, _ = fmt.Fprintf(out, "[clean-reinstall] settings merge warning: %v\n", mergeErr)
+	} else if len(mergeableBackups) > 0 {
+		_, _ = fmt.Fprintln(out, "[clean-reinstall] settings.json / status_line.sh merge-preserved")
 	}
 	// Merge .gitignore: preserve user-added patterns via EntryMerge (issues
 	// #1131/#1094) — the same updatemerge.MergeGitignoreFile call the normal

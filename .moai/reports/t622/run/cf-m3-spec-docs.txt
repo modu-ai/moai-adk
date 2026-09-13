@@ -1,0 +1,2 @@
+.moai/specs/SPEC-GIT-DELIVERY-PROCEDURE-001/progress.md 0
+.moai/specs/SPEC-GIT-DELIVERY-PROCEDURE-001/spec.md 0

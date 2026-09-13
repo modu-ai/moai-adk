@@ -299,6 +299,18 @@ func sgfHasBlock(out string) bool {
 
 func sgfHasDecision(out string) bool { return strings.Contains(out, `"decision"`) }
 
+// sgfExpectRecord checks a record by field rather than by exact bytes: it must
+// name this HEAD and this outcome. The third field is the work-tree content
+// identifier (card t601), whose value the hook computes, so a test that spelled
+// it out would be asserting its own arithmetic rather than the hook's.
+func sgfExpectRecord(t *testing.T, tag, rec, head, outcome string) {
+	t.Helper()
+	fields := strings.Fields(rec)
+	if len(fields) < 2 || fields[0] != head || fields[1] != outcome {
+		t.Errorf("%s: record = %q; want a record naming HEAD %s with outcome %q", tag, rec, head, outcome)
+	}
+}
+
 func sgfHasSystemMessage(out string) bool { return strings.Contains(out, `"systemMessage"`) }
 
 // sgfNamesExhaustedRetry reports whether a notice says this HEAD's gate run has
@@ -475,8 +487,8 @@ func TestSyncGateFailState_AC005_UnknownAndLegacyRecordsRegate(t *testing.T) {
 				}
 			}
 			recTag := "AC-005 " + r.id + " record-format [" + rbClass + "]"
-			if rec, ok := f.readRecord(recTag); ok && rec != head+" fail" {
-				t.Errorf("%s: record = %q; want %q", recTag, rec, head+" fail")
+			if rec, ok := f.readRecord(recTag); ok {
+				sgfExpectRecord(t, recTag, rec, head, "fail")
 			}
 		})
 	}
@@ -846,8 +858,8 @@ func TestSyncGateFailState_AC013_RetryByDeletionNoStaleAuxState(t *testing.T) {
 		if delta2 < 1 {
 			t.Errorf("%s setup: call 2 stub count did not increase (delta %d)", tag, delta2)
 		}
-		if rec, ok := f.readRecord(tag); ok && rec != head+" fail" {
-			t.Errorf("%s setup: record after call 2 = %q; want %q", tag, rec, head+" fail")
+		if rec, ok := f.readRecord(tag); ok {
+			sgfExpectRecord(t, tag+" setup", rec, head, "fail")
 		}
 		if t.Failed() {
 			return
@@ -941,4 +953,116 @@ func TestSyncGateFailState_AC014_StaleWindowEqualsRegisteredTimeout(t *testing.T
 	case len(timeouts) == 1 && window != timeouts[0]:
 		t.Errorf("%s: stale window %s=%d differs from the settings timeout %d", tag, names[0], window, timeouts[0])
 	}
+}
+
+// TestSyncGateFailState_T601_WorkTreeContentKeysTheRecord — card t601 (H06 residual).
+//
+// The gate's checks read the WORK TREE (`go vet ./...`, `go build ./...`), while the
+// outcome record named only HEAD. A repair landing in the work tree under an
+// unchanged HEAD therefore re-delivered the stored block forever and never re-ran
+// the checks. Row R1 is the release-blocking row for that; R3 is its symmetric case
+// on a stored pass. R2 is the regression guard that keeps the memo working: with the
+// work tree untouched, the stored block must still be re-delivered without re-running
+// anything, so "always re-gate" cannot pass this suite.
+func TestSyncGateFailState_T601_WorkTreeContentKeysTheRecord(t *testing.T) {
+	// repairWorkTree makes the checks pass and changes tracked work-tree content
+	// under the same HEAD. The stub lives outside the repository, so only the
+	// writeRepoFile call alters the work tree the gate identifies.
+	repairWorkTree := func(f *sgfFixture) {
+		f.setStub(sgfGoStub(0, 0))
+		f.writeRepoFile("main.go", "package main\n\nfunc main() { _ = 42 }\n")
+	}
+	breakWorkTree := func(f *sgfFixture) {
+		f.setStub(sgfGoStub(1, 0))
+		f.writeRepoFile("main.go", "package main\n\nfunc main() { _ = 43 }\n")
+	}
+
+	t.Run("R1-repaired-tree-regates", func(t *testing.T) {
+		tag := "t601 R1 [" + rbClass + "]"
+		f := newSGFFixture(t, sgfOpts{vetExit: 1})
+		head := f.rev("HEAD")
+		out1, _ := f.run("{}")
+		if !sgfHasBlock(out1) {
+			t.Fatalf("%s setup: call 1 did not block; stdout=%q", tag, out1)
+		}
+		repairWorkTree(f)
+		if f.rev("HEAD") != head {
+			t.Fatalf("%s setup: HEAD moved; the row measures an unchanged HEAD", tag)
+		}
+		before := f.count()
+		out2, code := f.run("{}")
+		delta := f.count() - before
+		t.Logf("%s call 2 stub delta=%d stdout=%q", tag, delta, out2)
+		if delta < 1 {
+			t.Errorf("%s: stub invoked %d time(s) after the work tree was repaired; want >= 1 — the checks must re-run", tag, delta)
+		}
+		if sgfHasDecision(out2) {
+			t.Errorf("%s: stdout still carries a decision after the repair; stdout=%q", tag, out2)
+		}
+		if code != 0 {
+			t.Errorf("%s: exit %d; want 0", tag, code)
+		}
+	})
+
+	t.Run("R2-untouched-tree-redelivers", func(t *testing.T) {
+		tag := "t601 R2 [" + rgClass + "]"
+		f := newSGFFixture(t, sgfOpts{vetExit: 1})
+		out1, _ := f.run("{}")
+		if !sgfHasBlock(out1) {
+			t.Fatalf("%s setup: call 1 did not block; stdout=%q", tag, out1)
+		}
+		before := f.count()
+		out2, code := f.run("{}")
+		delta := f.count() - before
+		t.Logf("%s call 2 stub delta=%d stdout=%q", tag, delta, out2)
+		if delta != 0 {
+			t.Errorf("%s: stub invoked %d time(s) with the work tree untouched; want 0 — the record must be reused", tag, delta)
+		}
+		if out2 != out1 {
+			t.Errorf("%s: stdout is not byte-identical to the stored block;\n call1=%q\n call2=%q", tag, out1, out2)
+		}
+		if code != 0 {
+			t.Errorf("%s: exit %d; want 0", tag, code)
+		}
+	})
+
+	// R4 guards the parse this card introduced. Reading the record field by field
+	// instead of matching its exact bytes would, on its own, accept a record whose
+	// first line looks right and whose remaining lines are anything at all — looser
+	// than the exact match it replaced. A multi-line record must re-gate.
+	t.Run("R4-multiline-record-regates", func(t *testing.T) {
+		tag := "t601 R4 [" + rbClass + "]"
+		f := newSGFFixture(t, sgfOpts{vetExit: 1})
+		head := f.rev("HEAD")
+		f.writeRecord(head + " pass\nanything at all\n")
+		before := f.count()
+		out, code := f.run("{}")
+		sgfExpectRegate(t, tag, f.count()-before, out)
+		if code != 0 {
+			t.Errorf("%s: exit %d; want 0", tag, code)
+		}
+	})
+
+	t.Run("R3-broken-after-pass-regates", func(t *testing.T) {
+		tag := "t601 R3 [" + rbClass + "]"
+		f := newSGFFixture(t, sgfOpts{vetExit: 0, buildExit: 0})
+		out1, _ := f.run("{}")
+		if sgfHasDecision(out1) {
+			t.Fatalf("%s setup: call 1 was not a silent pass; stdout=%q", tag, out1)
+		}
+		breakWorkTree(f)
+		before := f.count()
+		out2, code := f.run("{}")
+		delta := f.count() - before
+		t.Logf("%s call 2 stub delta=%d stdout=%q", tag, delta, out2)
+		if delta < 1 {
+			t.Errorf("%s: stub invoked %d time(s) after the work tree broke under a stored pass; want >= 1", tag, delta)
+		}
+		if !sgfHasBlock(out2) {
+			t.Errorf("%s: stdout is not a block after the work tree broke; stdout=%q", tag, out2)
+		}
+		if code != 0 {
+			t.Errorf("%s: exit %d; want 0", tag, code)
+		}
+	})
 }

@@ -1,0 +1,7 @@
+--- FAIL: TestSnapshotRevocationAndDuplicateDiscovery (0.00s)
+    registry_test.go:149: unchanged repeated discovery rejected invalid or unauthorized hybrid tool operation
+--- FAIL: TestNativeToolWireDiscriminator (0.00s)
+    registry_test.go:204: installed DynamicToolSpec requires function discriminator
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/codextools	0.348s
+FAIL

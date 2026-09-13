@@ -661,8 +661,15 @@ func newTodoDoneCmd() *cobra.Command {
 			// disclosure all name the same ref (todoLandedRef's contract).
 			ref, refLevel := todoLandedRefResolved()
 			// Unknown until a query answers otherwise. Absent the flag no
-			// query runs at all, and `unknown` is the honest report of that.
+			// query runs at all, and `unknown` is the honest report of that
+			// — UNLESS the card already carries recorded landing evidence,
+			// which is an answer that was obtained earlier and stored (card
+			// t665). Reporting `unknown` over a validated record was the
+			// reported defect: eight cards archived on 2026-09-12 carried a
+			// recorded delivering SHA and every one of them closed as if
+			// nothing were known.
 			verdict := kanban.LandingUnknown
+			var landing *kanban.LandingEvidence
 			if err := store.Mutate(func(rec *kanban.BacklogRecord) error {
 				// Refused mutations below: Mutate writes nothing, so the
 				// record stays byte-identical on every one of them.
@@ -679,6 +686,11 @@ func newTodoDoneCmd() *cobra.Command {
 				if rec.Items[at].SpecID != nil {
 					specID = *rec.Items[at].SpecID
 				}
+				// Read BEFORE ArchiveCard moves the row: the archive copies
+				// the item, so the record survives either way, but reading it
+				// here keeps the verdict and the line derived from the same
+				// row the mutation addressed.
+				landing = rec.Items[at].Landing
 				if expect != "" && !strings.HasPrefix(rec.Items[at].Text, expect) {
 					return fmt.Errorf("backlog item %s is %q, not matching --expect %q",
 						id, todoTextPrefix(rec.Items[at].Text), expect)
@@ -702,11 +714,24 @@ func newTodoDoneCmd() *cobra.Command {
 			// only when a landing query actually ran: without the flag no ref
 			// answered, and naming one would dress "the guard did not run" up
 			// as "the guard answered against ref X".
-			if requireLanded {
-				_, _ = fmt.Fprintf(cmd.OutOrStdout(), "done %s landing=%s ref=%s\n", id, verdict, ref)
-			} else {
-				_, _ = fmt.Fprintf(cmd.OutOrStdout(), "done %s landing=%s\n", id, verdict)
+			//
+			// The recorded-evidence suffix (card t665) is appended on BOTH
+			// paths and carries its provenance, so a stored operator
+			// assertion is never mistaken for an answer this run's query
+			// produced. Without the flag it also supplies the verdict — a
+			// validated record IS the answer, obtained earlier.
+			recorded := todoDoneLandingSuffix(landing)
+			if recorded != "" && !requireLanded {
+				verdict = kanban.LandingLanded
 			}
+			line := fmt.Sprintf("done %s landing=%s", id, verdict)
+			if requireLanded {
+				line += " ref=" + ref
+			}
+			if recorded != "" {
+				line += " " + recorded
+			}
+			_, _ = fmt.Fprintln(cmd.OutOrStdout(), line)
 			recordFactoryCardState(id, specID, "completed", "card.completed")
 			return nil
 		},
@@ -792,6 +817,30 @@ func todoRequireLanded(cmd *cobra.Command, id, ref string, refLevel kanban.Lande
 			id, q.LandedRef())
 	}
 	return answer, nil
+}
+
+// todoDoneLandingSuffix renders the recorded-evidence suffix of the `done`
+// line, or "" when the card carries nothing worth reporting (card t665).
+//
+// Only a record that carries a delivering SHA and passes its own validation
+// produces a suffix, because only that record answers the question the
+// archive lost: which commit delivered this card. A record holding just the
+// observed ref position asserts no delivering commit, so reporting it here
+// would dress a ref position up as a delivery — the confusion REQ-TLE-013
+// exists to prevent.
+//
+// The provenance travels with the value for the same reason `landed` refuses
+// to store one without the other: `landed` as a verdict and `operator` as its
+// source are two different facts, and a reader who sees only the first cannot
+// tell a stored assertion from a query this run made.
+func todoDoneLandingSuffix(e *kanban.LandingEvidence) string {
+	if e == nil || strings.TrimSpace(e.SHA) == "" {
+		return ""
+	}
+	if err := e.Validate(); err != nil {
+		return ""
+	}
+	return fmt.Sprintf("sha=%s source=%s", e.SHA, e.SHASource)
 }
 
 // newTodoNextCmd — `moai todo next [<n>] [--spec <SPEC-ID>]` (REQ-TODO-005).

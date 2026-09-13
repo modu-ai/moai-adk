@@ -1,0 +1,24 @@
+[
+  {
+    "tool_search": "enabled",
+    "initial_tool_count": 12,
+    "ToolSearch_present": true,
+    "fixture_full_schema_present": false,
+    "fixture_defer_loading": null,
+    "initial_tools_structural_utf8_bytes": 10998,
+    "initial_input_schemas_utf8_bytes": 10534,
+    "request_count": 2,
+    "success": true
+  },
+  {
+    "tool_search": "disabled",
+    "initial_tool_count": 22,
+    "ToolSearch_present": false,
+    "fixture_full_schema_present": true,
+    "fixture_defer_loading": null,
+    "initial_tools_structural_utf8_bytes": 17295,
+    "initial_input_schemas_utf8_bytes": 16476,
+    "request_count": 1,
+    "success": true
+  }
+]

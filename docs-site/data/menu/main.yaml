@@ -401,10 +401,10 @@ main:
           zh: moai session 会话注册表
         ref: /cli-reference/session
       - name:
-          ko: moai cc / cg / glm 런처
-          en: moai cc / cg / glm Launchers
-          ja: moai cc / cg / glm ランチャー
-          zh: moai cc / cg / glm 启动器
+          ko: moai cc / glm 런처
+          en: moai cc / glm Launchers
+          ja: moai cc / glm ランチャー
+          zh: moai cc / glm 启动器
         ref: /cli-reference/launchers
       - name:
           ko: moai worktree 워크트리
@@ -471,10 +471,10 @@ main:
     defaultOpen: true
     sub:
       - name:
-          ko: CG 모드 (Claude + GLM)
-          en: CG Mode
-          ja: CG Mode
-          zh: CG Mode
+          ko: CG 폐기와 설정 이전
+          en: CG retirement and migration
+          ja: CG の廃止と設定の移行
+          zh: CG 停用与配置迁移
         ref: /multi-llm/cg-mode
       - name:
           ko: 모델 정책

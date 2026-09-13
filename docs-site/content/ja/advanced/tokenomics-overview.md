@@ -95,11 +95,13 @@ Layer Bのルーティングを具体化するのがモデルプロファイル�
 - [3層エージェントアーキテクチャ](/ja/advanced/no-haiku-3tier/) — なぜHaikuを除外したか、DeepSWEリーダーボード根拠
 - [プロファイルマトリクス](/ja/advanced/profile-matrix/) — 単一の 3 列 per-agent プロファイルマトリクス
 
-## CGモード (コスト最適化)
+## CG の廃止と設定の移行
 
-`moai cg`はClaudeリーダーとGLMワーカーを組み合わせたハイブリッドモードです。戦略、計画、監査はClaudeが担当し、大規模実装作業はGLMが担当します。実装中心の作業で60-70%のコスト削減効果があります。
+`moai cg` は廃止されました。Claude や GLM を起動せず、移行案内を表示して終了します。`moai cc` の別名ではありません。`llm.team_mode: cg` が残るプロジェクトでは、セッションを起動する前に移行先を明示的に選ぶ必要があります。 [CG の廃止と設定の移行](/ja/multi-llm/cg-mode/)
 
-GLM-5.3は1Mコンテキストの単一モデルで、z.ai暗黙プロンプトキャッシュが自動適用されます。トークン単価はz.aiがまだ公表していません。前世代のGLM-5.2は1Mトークンあたり入力$2 / 出力$8でした。定額のCoding Planで使う場合、この単価が請求を左右することはありません。Claude Code が報告する `context_window_size` は Claude スロット基準であるため、GLM セッションでは生の値が ~180K と出ても、MoAI が 1M に修正して 50% 閾値で運用します。statusline の CW% ゲージを信頼してください。CGモードとGLM単独セッション(`moai glm`)の詳細はMulti-LLMセクションを参照してください。
+`llm.team_mode: claude`、`llm.gateway.teammate_mode: in-process`、`llm.gateway.teammate_provider: inherit` を保存します。従来の混合構成の役割分担を解除する変更です。Claude リーダーと GLM チームメイトのペインを維持する移行ではありません。
+
+`claude-glm` は Claude リーダーと tmux 内の GLM チームメイトを表します。現在は TEAMMATE の統合検証を通過していないため、適用と起動は利用できず、プレビューのみ可能です。tmux のインストールや `verified: true` の設定では、この制限は解除されません。
 
 ## 検証された事実とロードマップ
 

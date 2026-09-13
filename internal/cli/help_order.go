@@ -22,13 +22,13 @@ import (
 // the listed ones — the map does not need to enumerate every member.
 //
 // Frequency rationale (recorded in progress.md §E.2): launch — cc is the
-// default launcher, glm the cost-optimized backend, cg the hybrid mode;
+// default launcher, glm the cost-optimized backend, gpt the GPT gateway;
 // project — init is the canonical entry, status/doctor are the daily
 // health surfaces, update periodic, migrate/pr occasional; tools — hook is
 // machine-invoked by every Claude Code session, spec/session/mx/loop are the
 // core SPEC-lifecycle verbs, the remainder are occasional utilities.
 var helpGroupFrequency = map[string][]string{
-	"launch":  {"cc", "glm", "cg"},
+	"launch":  {"cc", "glm", "gpt"},
 	"project": {"init", "status", "doctor", "update", "migrate", "pr"},
 	"tools":   {"hook", "spec", "session", "mx", "loop", "handoff", "model", "constitution", "state"},
 }

@@ -1,0 +1,31 @@
+{
+  "command": [
+    "/tmp/moai-v3.2.0-rc.8-t649-native-auth-97684da3e8ce",
+    "gpt",
+    "-p",
+    "default",
+    "-f",
+    "lane-6"
+  ],
+  "exit": 0,
+  "capture": {
+    "args": [
+      "--permission-mode",
+      "bypassPermissions",
+      "--no-chrome",
+      "--model",
+      "gpt-5.6-sol",
+      "--session-id",
+      "c0e83931-7578-4fe2-b6c7-3cd4a12296a1",
+      "--name",
+      "lane-6",
+      "--settings",
+      "/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/moai-gateway-overlay-3678963457/settings.json"
+    ],
+    "config_dir": "/Users/goos/.moai/state/gateway-conversations/families/c0e83931-7578-4fe2-b6c7-3cd4a12296a1/native",
+    "base_url": "http://127.0.0.1:56487",
+    "auth_present": false,
+    "max_context": "872000"
+  },
+  "scope": "No model request; actual launcher with fake Claude"
+}

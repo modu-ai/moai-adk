@@ -6,7 +6,7 @@ package hook
 // - pre_tool.go: MergeExtraPatterns (0%)
 // - worktree_registry.go: saveWorktreeEntries (44%)
 // - reflective_write.go: pickEvolvableZone (42%)
-// - session_start.go: isCGMode, Handle with config
+// - session_start.go: hasLegacyCGConfiguration, Handle with config
 
 import (
 	"context"
@@ -260,48 +260,48 @@ Just plain content.
 	}
 }
 
-// --- session_start.go: isCGMode ---
+// --- session_start.go: hasLegacyCGConfiguration ---
 
-// TestIsCGMode_MissingFile returns false when llm.yaml is absent.
-func TestIsCGMode_MissingFile(t *testing.T) {
+// TestLegacyCGConfiguration_MissingFile returns false when llm.yaml is absent.
+func TestLegacyCGConfiguration_MissingFile(t *testing.T) {
 	t.Parallel()
 
 	dir := t.TempDir()
-	if got := isCGMode(dir); got {
-		t.Error("isCGMode() should return false when llm.yaml is missing")
+	if got := hasLegacyCGConfiguration(dir); got {
+		t.Error("hasLegacyCGConfiguration() should return false when llm.yaml is missing")
 	}
 }
 
-// TestIsCGMode_WithCGTeamMode returns true when team_mode: cg.
-func TestIsCGMode_WithCGTeamMode(t *testing.T) {
-	t.Parallel()
-
-	dir := t.TempDir()
-	llmDir := filepath.Join(dir, ".moai", "config", "sections")
-	_ = os.MkdirAll(llmDir, 0o755)
-	_ = os.WriteFile(filepath.Join(llmDir, "llm.yaml"), []byte("team_mode: cg\n"), 0o644)
-
-	if got := isCGMode(dir); !got {
-		t.Error("isCGMode() should return true when team_mode: cg")
-	}
-}
-
-// TestIsCGMode_WithOtherTeamMode returns false for non-cg team_mode.
-func TestIsCGMode_WithOtherTeamMode(t *testing.T) {
+// TestLegacyCGConfiguration_WithCGTeamMode returns true when team_mode: cg.
+func TestLegacyCGConfiguration_WithCGTeamMode(t *testing.T) {
 	t.Parallel()
 
 	dir := t.TempDir()
 	llmDir := filepath.Join(dir, ".moai", "config", "sections")
 	_ = os.MkdirAll(llmDir, 0o755)
-	_ = os.WriteFile(filepath.Join(llmDir, "llm.yaml"), []byte("team_mode: glm\n"), 0o644)
+	_ = os.WriteFile(filepath.Join(llmDir, "llm.yaml"), []byte("llm:\n  team_mode: cg\n"), 0o644)
 
-	if got := isCGMode(dir); got {
-		t.Error("isCGMode() should return false for team_mode: glm")
+	if got := hasLegacyCGConfiguration(dir); !got {
+		t.Error("hasLegacyCGConfiguration() should return true when team_mode: cg")
 	}
 }
 
-// TestIsCGMode_EmptyFile returns false for empty llm.yaml.
-func TestIsCGMode_EmptyFile(t *testing.T) {
+// TestLegacyCGConfiguration_WithOtherTeamMode returns false for non-cg team_mode.
+func TestLegacyCGConfiguration_WithOtherTeamMode(t *testing.T) {
+	t.Parallel()
+
+	dir := t.TempDir()
+	llmDir := filepath.Join(dir, ".moai", "config", "sections")
+	_ = os.MkdirAll(llmDir, 0o755)
+	_ = os.WriteFile(filepath.Join(llmDir, "llm.yaml"), []byte("llm:\n  team_mode: glm\n"), 0o644)
+
+	if got := hasLegacyCGConfiguration(dir); got {
+		t.Error("hasLegacyCGConfiguration() should return false for team_mode: glm")
+	}
+}
+
+// TestLegacyCGConfiguration_EmptyFile returns false for empty llm.yaml.
+func TestLegacyCGConfiguration_EmptyFile(t *testing.T) {
 	t.Parallel()
 
 	dir := t.TempDir()
@@ -309,8 +309,8 @@ func TestIsCGMode_EmptyFile(t *testing.T) {
 	_ = os.MkdirAll(llmDir, 0o755)
 	_ = os.WriteFile(filepath.Join(llmDir, "llm.yaml"), []byte(""), 0o644)
 
-	if got := isCGMode(dir); got {
-		t.Error("isCGMode() should return false for empty llm.yaml")
+	if got := hasLegacyCGConfiguration(dir); got {
+		t.Error("hasLegacyCGConfiguration() should return false for empty llm.yaml")
 	}
 }
 

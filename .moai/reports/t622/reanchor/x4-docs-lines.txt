@@ -1,0 +1,28 @@
+255f88eb08df0d2cbb9f991f28aa8d9c2bd6f089:docs-site/content/en/core-concepts/what-is-moai-adk.md:388:| `sync` | `docs`, `pr` | Documentation sync, codemaps, PR creation | `--merge`, `--skip-mx` |
+255f88eb08df0d2cbb9f991f28aa8d9c2bd6f089:docs-site/content/en/workflow-commands/moai-sync.md:80:The `--merge` and `--team` / `--solo` flags have been **Deprecated** or **removed**.
+255f88eb08df0d2cbb9f991f28aa8d9c2bd6f089:docs-site/content/en/workflow-commands/moai-sync.md:82:- `--merge`: In Hybrid Trunk 1-person OSS operation, Tier S/M push directly to main by default, so PR auto-merge is no longer needed. If a merge is needed after creating a PR at Tier L, run `gh pr merge` manually.
+255f88eb08df0d2cbb9f991f28aa8d9c2bd6f089:docs-site/content/en/workflow-commands/moai-sync.md:188:    Z --> AA{"--merge flag?"}
+255f88eb08df0d2cbb9f991f28aa8d9c2bd6f089:docs-site/content/en/workflow-commands/moai-sync.md:303:**Step 3 - Auto-merge (with the --merge flag):**
+255f88eb08df0d2cbb9f991f28aa8d9c2bd6f089:docs-site/content/en/workflow-commands/moai-sync.md:480:In a worktree context, auto-merge is the default behavior with no extra flag. The `--merge` flag is **Deprecated** (warning shown); to merge a Tier L PR, run `gh pr merge` manually after CI passes. The only flags `/moai sync` supports are `--pr` / `--merge` (deprecated) / `--skip-mx`.
+255f88eb08df0d2cbb9f991f28aa8d9c2bd6f089:docs-site/content/ja/core-concepts/what-is-moai-adk.md:391:| `sync` | `docs`, `pr` | ドキュメント同期、コードマップ、PR 生成 | `--merge`, `--skip-mx` |
+255f88eb08df0d2cbb9f991f28aa8d9c2bd6f089:docs-site/content/ja/workflow-commands/moai-sync.md:80:`--merge` および `--team` / `--solo` フラグは **Deprecated** または **除去** されました。
+255f88eb08df0d2cbb9f991f28aa8d9c2bd6f089:docs-site/content/ja/workflow-commands/moai-sync.md:82:- `--merge`: Hybrid Trunk 1-person OSS 運用で Tier S/M は main 直接 push がデフォルト動作なので PR 自動マージがもう必要ありません。Tier L で PR を生成した後にマージが必要なら `gh pr merge` を手動で実行してください。
+255f88eb08df0d2cbb9f991f28aa8d9c2bd6f089:docs-site/content/ja/workflow-commands/moai-sync.md:299:`--merge` フラグは Deprecated されました。Tier L PR をマージするには CI 通過後 `gh pr merge --squash --delete-branch` を手動で実行してください。
+255f88eb08df0d2cbb9f991f28aa8d9c2bd6f089:docs-site/content/ja/workflow-commands/moai-sync.md:476:| `--merge` | 自動マージ | **Deprecated** (警告を表示) |
+255f88eb08df0d2cbb9f991f28aa8d9c2bd6f089:docs-site/content/ja/workflow-commands/moai-sync.md:477:| `--no-merge` | N/A | 自動マージのスキップ |
+255f88eb08df0d2cbb9f991f28aa8d9c2bd6f089:docs-site/content/ja/workflow-commands/moai-sync.md:482:3. `--no-merge` フラグ未設定
+255f88eb08df0d2cbb9f991f28aa8d9c2bd6f089:docs-site/content/ko/core-concepts/what-is-moai-adk.md:391:| `sync` | `docs`, `pr` | 문서 동기화, 코드맵, PR 생성 | `--merge`, `--skip-mx` |
+255f88eb08df0d2cbb9f991f28aa8d9c2bd6f089:docs-site/content/ko/workflow-commands/moai-sync.md:80:`--merge`와 `--team` / `--solo` 플래그는 **Deprecated**되었거나 아예 **빠졌습니다**.
+255f88eb08df0d2cbb9f991f28aa8d9c2bd6f089:docs-site/content/ko/workflow-commands/moai-sync.md:82:- `--merge`: Hybrid Trunk 1-person OSS 운영에서는 Tier S/M이 main에 바로 push하는 게 기본이라, PR 자동 병합이 더는 필요하지 않습니다. Tier L에서 PR을 만든 뒤 병합해야 한다면 `gh pr merge`를 직접 실행하세요.
+255f88eb08df0d2cbb9f991f28aa8d9c2bd6f089:docs-site/content/ko/workflow-commands/moai-sync.md:299:`--merge` 플래그는 Deprecated되었습니다. Tier L PR을 병합하려면 CI가 통과한 뒤 `gh pr merge --squash --delete-branch`를 직접 실행하세요.
+255f88eb08df0d2cbb9f991f28aa8d9c2bd6f089:docs-site/content/ko/workflow-commands/moai-sync.md:473:워크트리 컨텍스트에서는 플래그를 따로 주지 않아도 자동 머지가 기본입니다. `--merge` 플래그는 **Deprecated**되었으니 (쓰면 경고가 뜹니다), Tier L PR을 병합해야 하면 CI가 통과한 뒤 `gh pr merge`를 직접 실행하세요. `/moai sync`가 받는 플래그는 `--pr` / `--merge` (deprecated) / `--skip-mx` 셋뿐입니다.
+255f88eb08df0d2cbb9f991f28aa8d9c2bd6f089:docs-site/content/zh/core-concepts/what-is-moai-adk.md:389:| `sync` | `docs`, `pr` | 文档同步、代码地图、创建 PR | `--merge`, `--skip-mx` |
+255f88eb08df0d2cbb9f991f28aa8d9c2bd6f089:docs-site/content/zh/workflow-commands/moai-sync.md:77:| `--merge` | 完成后自动合并 PR | `/moai sync --merge` |
+255f88eb08df0d2cbb9f991f28aa8d9c2bd6f089:docs-site/content/zh/workflow-commands/moai-sync.md:92:### --merge 标志
+255f88eb08df0d2cbb9f991f28aa8d9c2bd6f089:docs-site/content/zh/workflow-commands/moai-sync.md:97:> /moai sync --merge
+255f88eb08df0d2cbb9f991f28aa8d9c2bd6f089:docs-site/content/zh/workflow-commands/moai-sync.md:108:  `--merge` 选项 **仅在 CI/CD 通过时** 自动合并 PR。保障安全的
+255f88eb08df0d2cbb9f991f28aa8d9c2bd6f089:docs-site/content/zh/workflow-commands/moai-sync.md:189:    Z --> AA{"--merge 标志?"}
+255f88eb08df0d2cbb9f991f28aa8d9c2bd6f089:docs-site/content/zh/workflow-commands/moai-sync.md:304:**Step 3 - 自动合并(使用 --merge 标志时):**
+255f88eb08df0d2cbb9f991f28aa8d9c2bd6f089:docs-site/content/zh/workflow-commands/moai-sync.md:485:| `--merge` | 自动合并 | **Deprecated** (显示警告) |
+255f88eb08df0d2cbb9f991f28aa8d9c2bd6f089:docs-site/content/zh/workflow-commands/moai-sync.md:486:| `--no-merge` | N/A | 跳过自动合并 |
+255f88eb08df0d2cbb9f991f28aa8d9c2bd6f089:docs-site/content/zh/workflow-commands/moai-sync.md:491:3. 未设置 `--no-merge` 标志

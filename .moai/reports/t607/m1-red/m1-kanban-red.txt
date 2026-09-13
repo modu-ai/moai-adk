@@ -1,0 +1,146 @@
+# --- provenance (added by card t607, sync-audit F9) ---
+# command: go test ./internal/kanban/ -run '^(TestSlotLease|TestResolveSlotLeaseRoot)' -count=1 -v
+# exit: 1
+# tree: the M1 working tree, committed as f20d07c48 - the run predates that commit, so no commit pins the exact bytes measured
+# note: assertion-RED (M1 stubs), 32 FAIL lines
+# ---
+=== RUN   TestSlotLease_ControlGroupTwoSessions
+=== RUN   TestSlotLease_ControlGroupTwoSessions/probe_then_start
+    slot_lease_cross_test.go:191: control: starts=2 (A: RESULT=started SESSION=lane-a | B: RESULT=started SESSION=lane-b)
+=== RUN   TestSlotLease_ControlGroupTwoSessions/lease
+    slot_lease_cross_test.go:215: lease: acquired=0 refused=0 busy=0 other=2 (A: RESULT=error SESSION=lane-a | B: RESULT=error SESSION=lane-b)
+    slot_lease_cross_test.go:220: lease: other=2 — a child reported neither acquired nor held. A: "RESULT=error SESSION=lane-a\nslot-acquire: slot lease: not implemented (M1 stub)\n" B: "RESULT=error SESSION=lane-b\nslot-acquire: slot lease: not implemented (M1 stub)\n"
+--- FAIL: TestSlotLease_ControlGroupTwoSessions (0.05s)
+    --- PASS: TestSlotLease_ControlGroupTwoSessions/probe_then_start (0.03s)
+    --- FAIL: TestSlotLease_ControlGroupTwoSessions/lease (0.02s)
+=== RUN   TestSlotLeaseHelperProcess
+--- PASS: TestSlotLeaseHelperProcess (0.00s)
+=== RUN   TestSlotLease_RecordsAllFields
+=== RUN   TestSlotLease_RecordsAllFields/all_fields
+    slot_lease_test.go:175: acquire on a free resource: slot lease: not implemented (M1 stub)
+=== RUN   TestSlotLease_RecordsAllFields/omitted_name_and_command_recorded_empty
+    slot_lease_test.go:223: acquire without --name/--command must succeed: slot lease: not implemented (M1 stub)
+--- FAIL: TestSlotLease_RecordsAllFields (0.00s)
+    --- FAIL: TestSlotLease_RecordsAllFields/all_fields (0.00s)
+    --- FAIL: TestSlotLease_RecordsAllFields/omitted_name_and_command_recorded_empty (0.00s)
+=== RUN   TestSlotLease_RefusesLiveForeignHolderWritesNothing
+    slot_lease_test.go:258: acquire over a live foreign holder: err = slot lease: not implemented (M1 stub), want the held sentinel
+--- FAIL: TestSlotLease_RefusesLiveForeignHolderWritesNothing (0.00s)
+=== RUN   TestSlotLeaseBusy_IsNotHeld
+=== RUN   TestSlotLeaseBusy_IsNotHeld/acquire_busy
+    slot_lease_test.go:315: acquire under a contended mutation lock: err = slot lease: not implemented (M1 stub), want the busy sentinel
+=== RUN   TestSlotLeaseBusy_IsNotHeld/release_busy
+    slot_lease_test.go:321: release under a contended mutation lock: err = slot lease: not implemented (M1 stub), want the busy sentinel
+=== RUN   TestSlotLeaseBusy_IsNotHeld/held_is_not_busy
+    slot_lease_test.go:333: acquire over a live holder with a free mutation lock: err = slot lease: not implemented (M1 stub), want the held sentinel
+--- FAIL: TestSlotLeaseBusy_IsNotHeld (0.00s)
+    --- FAIL: TestSlotLeaseBusy_IsNotHeld/acquire_busy (0.00s)
+    --- FAIL: TestSlotLeaseBusy_IsNotHeld/release_busy (0.00s)
+    --- FAIL: TestSlotLeaseBusy_IsNotHeld/held_is_not_busy (0.00s)
+=== RUN   TestSlotLease_Liveness
+=== RUN   TestSlotLease_Liveness/stale_takeover
+    slot_lease_test.go:355: acquire over a dead owner without --force: slot lease: not implemented (M1 stub)
+=== RUN   TestSlotLease_Liveness/live_refused
+    slot_lease_test.go:380: acquire over a live owner: err = slot lease: not implemented (M1 stub), want the held sentinel
+=== RUN   TestSlotLease_Liveness/pid_zero_live
+    slot_lease_test.go:392: acquire with an unresolvable owner: slot lease: not implemented (M1 stub)
+--- FAIL: TestSlotLease_Liveness (0.01s)
+    --- FAIL: TestSlotLease_Liveness/stale_takeover (0.01s)
+    --- FAIL: TestSlotLease_Liveness/live_refused (0.00s)
+    --- FAIL: TestSlotLease_Liveness/pid_zero_live (0.00s)
+=== RUN   TestSlotLease_DeclaredBound
+=== RUN   TestSlotLease_DeclaredBound/expired_takeover
+    slot_lease_test.go:430: read before acquire: slot lease: not implemented (M1 stub)
+=== RUN   TestSlotLease_DeclaredBound/not_expired_refused
+    slot_lease_test.go:456: acquire over an unexpired live owner: err = slot lease: not implemented (M1 stub), want the held sentinel
+=== RUN   TestSlotLease_DeclaredBound/holder_reacquire_restarts_bound
+    slot_lease_test.go:474: holder re-acquire: slot lease: not implemented (M1 stub)
+=== RUN   TestSlotLease_DeclaredBound/invalid_bound_rejected
+    slot_lease_test.go:492: acquire with bound 0s: err = slot lease: not implemented (M1 stub), want ErrSlotLeaseBoundInvalid
+    slot_lease_test.go:492: acquire with bound -5m0s: err = slot lease: not implemented (M1 stub), want ErrSlotLeaseBoundInvalid
+    slot_lease_test.go:497: ParseSlotLeaseMaxDuration(""): err = slot lease: not implemented (M1 stub), want ErrSlotLeaseBoundInvalid
+    slot_lease_test.go:497: ParseSlotLeaseMaxDuration("0"): err = slot lease: not implemented (M1 stub), want ErrSlotLeaseBoundInvalid
+    slot_lease_test.go:497: ParseSlotLeaseMaxDuration("-5m"): err = slot lease: not implemented (M1 stub), want ErrSlotLeaseBoundInvalid
+    slot_lease_test.go:497: ParseSlotLeaseMaxDuration("abc"): err = slot lease: not implemented (M1 stub), want ErrSlotLeaseBoundInvalid
+    slot_lease_test.go:497: ParseSlotLeaseMaxDuration("5"): err = slot lease: not implemented (M1 stub), want ErrSlotLeaseBoundInvalid
+    slot_lease_test.go:503: ParseSlotLeaseMaxDuration("5m") = (0s, slot lease: not implemented (M1 stub)), want (5m, nil)
+--- FAIL: TestSlotLease_DeclaredBound (0.01s)
+    --- FAIL: TestSlotLease_DeclaredBound/expired_takeover (0.00s)
+    --- FAIL: TestSlotLease_DeclaredBound/not_expired_refused (0.00s)
+    --- FAIL: TestSlotLease_DeclaredBound/holder_reacquire_restarts_bound (0.00s)
+    --- FAIL: TestSlotLease_DeclaredBound/invalid_bound_rejected (0.00s)
+=== RUN   TestSlotLease_ForceRecordsDisplaced
+    slot_lease_test.go:522: forced acquire over a live holder: slot lease: not implemented (M1 stub)
+--- FAIL: TestSlotLease_ForceRecordsDisplaced (0.00s)
+=== RUN   TestSlotLease_Release
+=== RUN   TestSlotLease_Release/foreign_refused
+    slot_lease_test.go:555: foreign release: err = slot lease: not implemented (M1 stub), want the foreign sentinel
+=== RUN   TestSlotLease_Release/holder_releases
+    slot_lease_test.go:565: holder release: slot lease: not implemented (M1 stub)
+=== RUN   TestSlotLease_Release/empty_release_is_error
+    slot_lease_test.go:580: releasing an unheld resource: err = slot lease: not implemented (M1 stub), want the not-held sentinel
+--- FAIL: TestSlotLease_Release (0.00s)
+    --- FAIL: TestSlotLease_Release/foreign_refused (0.00s)
+    --- FAIL: TestSlotLease_Release/holder_releases (0.00s)
+    --- FAIL: TestSlotLease_Release/empty_release_is_error (0.00s)
+=== RUN   TestSlotLease_RejectsInvalidResourceNames
+    slot_lease_test.go:628: ValidateSlotResourceName("../escape"): err = slot lease: not implemented (M1 stub), want the invalid-name sentinel
+    slot_lease_test.go:633: acquire("../escape"): err = slot lease: not implemented (M1 stub), want the invalid-name sentinel
+    slot_lease_test.go:636: release("../escape"): err = slot lease: not implemented (M1 stub), want the invalid-name sentinel
+    slot_lease_test.go:639: read("../escape"): err = slot lease: not implemented (M1 stub), want the invalid-name sentinel
+    slot_lease_test.go:628: ValidateSlotResourceName("a/b"): err = slot lease: not implemented (M1 stub), want the invalid-name sentinel
+    slot_lease_test.go:633: acquire("a/b"): err = slot lease: not implemented (M1 stub), want the invalid-name sentinel
+    slot_lease_test.go:636: release("a/b"): err = slot lease: not implemented (M1 stub), want the invalid-name sentinel
+    slot_lease_test.go:639: read("a/b"): err = slot lease: not implemented (M1 stub), want the invalid-name sentinel
+    slot_lease_test.go:628: ValidateSlotResourceName("a\\b"): err = slot lease: not implemented (M1 stub), want the invalid-name sentinel
+    slot_lease_test.go:633: acquire("a\\b"): err = slot lease: not implemented (M1 stub), want the invalid-name sentinel
+    slot_lease_test.go:636: release("a\\b"): err = slot lease: not implemented (M1 stub), want the invalid-name sentinel
+    slot_lease_test.go:639: read("a\\b"): err = slot lease: not implemented (M1 stub), want the invalid-name sentinel
+    slot_lease_test.go:628: ValidateSlotResourceName(""): err = slot lease: not implemented (M1 stub), want the invalid-name sentinel
+    slot_lease_test.go:633: acquire(""): err = slot lease: not implemented (M1 stub), want the invalid-name sentinel
+    slot_lease_test.go:636: release(""): err = slot lease: not implemented (M1 stub), want the invalid-name sentinel
+    slot_lease_test.go:639: read(""): err = slot lease: not implemented (M1 stub), want the invalid-name sentinel
+    slot_lease_test.go:628: ValidateSlotResourceName("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"): err = slot lease: not implemented (M1 stub), want the invalid-name sentinel
+    slot_lease_test.go:633: acquire("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"): err = slot lease: not implemented (M1 stub), want the invalid-name sentinel
+    slot_lease_test.go:636: release("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"): err = slot lease: not implemented (M1 stub), want the invalid-name sentinel
+    slot_lease_test.go:639: read("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"): err = slot lease: not implemented (M1 stub), want the invalid-name sentinel
+    slot_lease_test.go:628: ValidateSlotResourceName("Demo"): err = slot lease: not implemented (M1 stub), want the invalid-name sentinel
+    slot_lease_test.go:633: acquire("Demo"): err = slot lease: not implemented (M1 stub), want the invalid-name sentinel
+    slot_lease_test.go:636: release("Demo"): err = slot lease: not implemented (M1 stub), want the invalid-name sentinel
+    slot_lease_test.go:639: read("Demo"): err = slot lease: not implemented (M1 stub), want the invalid-name sentinel
+    slot_lease_test.go:628: ValidateSlotResourceName("a b"): err = slot lease: not implemented (M1 stub), want the invalid-name sentinel
+    slot_lease_test.go:633: acquire("a b"): err = slot lease: not implemented (M1 stub), want the invalid-name sentinel
+    slot_lease_test.go:636: release("a b"): err = slot lease: not implemented (M1 stub), want the invalid-name sentinel
+    slot_lease_test.go:639: read("a b"): err = slot lease: not implemented (M1 stub), want the invalid-name sentinel
+    slot_lease_test.go:628: ValidateSlotResourceName(".."): err = slot lease: not implemented (M1 stub), want the invalid-name sentinel
+    slot_lease_test.go:633: acquire(".."): err = slot lease: not implemented (M1 stub), want the invalid-name sentinel
+    slot_lease_test.go:636: release(".."): err = slot lease: not implemented (M1 stub), want the invalid-name sentinel
+    slot_lease_test.go:639: read(".."): err = slot lease: not implemented (M1 stub), want the invalid-name sentinel
+    slot_lease_test.go:650: ValidateSlotResourceName("demo") = slot lease: not implemented (M1 stub), want nil
+    slot_lease_test.go:650: ValidateSlotResourceName("heavy-test-1") = slot lease: not implemented (M1 stub), want nil
+    slot_lease_test.go:650: ValidateSlotResourceName("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa") = slot lease: not implemented (M1 stub), want nil
+--- FAIL: TestSlotLease_RejectsInvalidResourceNames (0.00s)
+=== RUN   TestSlotLease_SeparateFromIntegrationWindow
+=== RUN   TestSlotLease_SeparateFromIntegrationWindow/slot_acquire_creates_no_integration_files
+    slot_lease_test.go:664: slot acquire: slot lease: not implemented (M1 stub)
+=== RUN   TestSlotLease_SeparateFromIntegrationWindow/integration_acquire_creates_no_slot_dir
+--- FAIL: TestSlotLease_SeparateFromIntegrationWindow (0.00s)
+    --- FAIL: TestSlotLease_SeparateFromIntegrationWindow/slot_acquire_creates_no_integration_files (0.00s)
+    --- PASS: TestSlotLease_SeparateFromIntegrationWindow/integration_acquire_creates_no_slot_dir (0.00s)
+=== RUN   TestResolveSlotLeaseRoot_NormalizesToPrimary
+=== RUN   TestResolveSlotLeaseRoot_NormalizesToPrimary/primary
+    slot_lease_test.go:741: ResolveSlotLeaseRoot(/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestResolveSlotLeaseRoot_NormalizesToPrimary1891136493/001/primary): slot lease: not implemented (M1 stub)
+=== RUN   TestResolveSlotLeaseRoot_NormalizesToPrimary/primary_subdir
+    slot_lease_test.go:741: ResolveSlotLeaseRoot(/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestResolveSlotLeaseRoot_NormalizesToPrimary1891136493/001/primary/sub): slot lease: not implemented (M1 stub)
+=== RUN   TestResolveSlotLeaseRoot_NormalizesToPrimary/linked_worktree
+    slot_lease_test.go:741: ResolveSlotLeaseRoot(/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestResolveSlotLeaseRoot_NormalizesToPrimary1891136493/001/wt): slot lease: not implemented (M1 stub)
+=== RUN   TestResolveSlotLeaseRoot_NormalizesToPrimary/not_a_repository
+    slot_lease_test.go:757: ResolveSlotLeaseRoot(non-repo) answered with the M1 stub error, not a resolution failure: slot lease: not implemented (M1 stub)
+--- FAIL: TestResolveSlotLeaseRoot_NormalizesToPrimary (0.39s)
+    --- FAIL: TestResolveSlotLeaseRoot_NormalizesToPrimary/primary (0.00s)
+    --- FAIL: TestResolveSlotLeaseRoot_NormalizesToPrimary/primary_subdir (0.00s)
+    --- FAIL: TestResolveSlotLeaseRoot_NormalizesToPrimary/linked_worktree (0.00s)
+    --- FAIL: TestResolveSlotLeaseRoot_NormalizesToPrimary/not_a_repository (0.00s)
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/kanban	0.696s
+FAIL

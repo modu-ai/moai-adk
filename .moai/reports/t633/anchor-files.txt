@@ -1,0 +1,16 @@
+.claude/skills/moai/workflows/fix.md
+internal/template/templates/.claude/skills/moai/workflows/fix.md
+.claude/skills/moai/workflows/loop.md
+internal/template/templates/.claude/skills/moai/workflows/loop.md
+.claude/skills/moai/workflows/codemaps.md
+internal/template/templates/.claude/skills/moai/workflows/codemaps.md
+.claude/skills/moai/workflows/clean.md
+internal/template/templates/.claude/skills/moai/workflows/clean.md
+.claude/skills/moai/workflows/mx.md
+internal/template/templates/.claude/skills/moai/workflows/mx.md
+.claude/skills/moai/workflows/project/mode-detection.md
+internal/template/templates/.claude/skills/moai/workflows/project/mode-detection.md
+.claude/skills/moai/workflows/sync/quality-gates-context.md
+internal/template/templates/.claude/skills/moai/workflows/sync/quality-gates-context.md
+.claude/skills/moai/workflows/run/context-loading.md
+internal/template/templates/.claude/skills/moai/workflows/run/context-loading.md

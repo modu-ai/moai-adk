@@ -1,0 +1,105 @@
+# mutant M-9: serialize zone as an integer
+# edits: [["internal/constitution/zone.go", "return z.String(), nil", "return uint8(z), nil"]]
+# $ go test ./internal/constitution/ -run ^TestAppendEvolutionLog_SnakeCaseAndZoneNames$ -count=1 -v
+# exit=1
+=== RUN   TestAppendEvolutionLog_SnakeCaseAndZoneNames
+    evolution_log_reader_test.go:171: zone Evolvable: written log lacks "zone_before: Evolvable":
+        ---
+        id: LEARN-20260911-001
+        rule_id: CONST-V3R2-003
+        zone_before: 1
+        zone_after: 1
+        clause_before: old clause
+        clause_after: new clause
+        canary_verdict: skipped
+        contradictions: []
+        approved_by: human
+        approved_at: 2026-09-11T00:00:00Z
+        rolled_back: false
+        rollback_reason: ""
+        rollback_at: null
+        ---
+    evolution_log_reader_test.go:171: zone Evolvable: written log lacks "zone_after: Evolvable":
+        ---
+        id: LEARN-20260911-001
+        rule_id: CONST-V3R2-003
+        zone_before: 1
+        zone_after: 1
+        clause_before: old clause
+        clause_after: new clause
+        canary_verdict: skipped
+        contradictions: []
+        approved_by: human
+        approved_at: 2026-09-11T00:00:00Z
+        rolled_back: false
+        rollback_reason: ""
+        rollback_at: null
+        ---
+    evolution_log_reader_test.go:180: zone Evolvable: written log carries an integer zone line:
+        ---
+        id: LEARN-20260911-001
+        rule_id: CONST-V3R2-003
+        zone_before: 1
+        zone_after: 1
+        clause_before: old clause
+        clause_after: new clause
+        canary_verdict: skipped
+        contradictions: []
+        approved_by: human
+        approved_at: 2026-09-11T00:00:00Z
+        rolled_back: false
+        rollback_reason: ""
+        rollback_at: null
+        ---
+    evolution_log_reader_test.go:171: zone Frozen: written log lacks "zone_before: Frozen":
+        ---
+        id: LEARN-20260911-001
+        rule_id: CONST-V3R2-003
+        zone_before: 0
+        zone_after: 0
+        clause_before: old clause
+        clause_after: new clause
+        canary_verdict: skipped
+        contradictions: []
+        approved_by: human
+        approved_at: 2026-09-11T00:00:00Z
+        rolled_back: false
+        rollback_reason: ""
+        rollback_at: null
+        ---
+    evolution_log_reader_test.go:171: zone Frozen: written log lacks "zone_after: Frozen":
+        ---
+        id: LEARN-20260911-001
+        rule_id: CONST-V3R2-003
+        zone_before: 0
+        zone_after: 0
+        clause_before: old clause
+        clause_after: new clause
+        canary_verdict: skipped
+        contradictions: []
+        approved_by: human
+        approved_at: 2026-09-11T00:00:00Z
+        rolled_back: false
+        rollback_reason: ""
+        rollback_at: null
+        ---
+    evolution_log_reader_test.go:180: zone Frozen: written log carries an integer zone line:
+        ---
+        id: LEARN-20260911-001
+        rule_id: CONST-V3R2-003
+        zone_before: 0
+        zone_after: 0
+        clause_before: old clause
+        clause_after: new clause
+        canary_verdict: skipped
+        contradictions: []
+        approved_by: human
+        approved_at: 2026-09-11T00:00:00Z
+        rolled_back: false
+        rollback_reason: ""
+        rollback_at: null
+        ---
+--- FAIL: TestAppendEvolutionLog_SnakeCaseAndZoneNames (0.00s)
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/constitution	0.341s
+FAIL

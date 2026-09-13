@@ -12,9 +12,17 @@
 // card text LAST, so a consumer reading the tail is unaffected if a column
 // is ever added — the convention `pr` already holds:
 //
-//	<id>\tlive\tqueued|picked|dropped\t<text>
-//	<id>\tarchived\t<state-at-archive>\t<text>
+//	<id>\tlive\tqueued|picked|dropped\t<landing>\t<text>
+//	<id>\tarchived\t<state-at-archive>\t<landing>\t<text>
 //	<id>\tabsent
+//
+// The landing column (card t665) is the archive's answer to "which commit
+// delivered this card". Before it, `landed --sha <sha>` recorded the evidence
+// and the archive kept it in the column, but no read surface over the archive
+// ever returned it — so a closed card's delivering commit was recoverable
+// only by opening the database. The column is inserted BEFORE the text
+// precisely because the text is last: the shape above is the extension point
+// this file's contract already names.
 //
 // READ-ONLY (REQ-TAQ-010): the verb reads through LoadPure — the read that
 // never adopts, never migrates a legacy queue, and never takes the lock —
@@ -57,6 +65,12 @@ it was closed, or 'absent' when the queue holds no record of it. A bare
 ordinal is normalized to the id form, the same rule done, undone, why and
 next accept.
 
+Every 'live' and 'archived' line carries a landing column before the card
+text: 'landing=<sha>' for a delivering commit the operator recorded with
+'moai todo landed', 'landing=ref-head' for a record holding only the
+observed ref position, 'landing=-' when no record was made, and
+'landing=malformed' when a stored record fails validation.
+
 'moai todo history' with no id lists the archive most-recently-archived
 first, bounded at 20 entries ('--limit 0' lifts the bound).
 
@@ -72,6 +86,36 @@ unchanged).`,
 	cmd.Flags().IntVar(&limit, "limit", todoHistoryDefaultLimit,
 		"Maximum archived entries to list (0 = unbounded)")
 	return cmd
+}
+
+// todoHistoryLandingCell renders the landing column for one card (card
+// t665): `landing=<sha>` when the operator recorded a delivering commit,
+// `landing=ref-head` when the record carries only the observed ref position,
+// `landing=-` when no record was made, and `landing=malformed` when a stored
+// record fails its own validation.
+//
+// The three absences are kept apart deliberately. "No record" and "a record
+// asserting no delivering commit" are different facts about the card, and
+// collapsing them into one dash would let a reader conclude the operator
+// never recorded anything when in fact they recorded an observation without
+// a SHA.
+//
+// The SHA is rendered in FULL here, where `pr` abbreviates it to seven. The
+// two surfaces have different constraints: `pr` renders an aligned table
+// whose column width is the scarce resource, while this line is
+// tab-separated and unaligned, and its whole purpose is to hand back a value
+// an operator can paste into `git show` without a second lookup.
+func todoHistoryLandingCell(e *kanban.LandingEvidence) string {
+	if e == nil {
+		return "landing=-"
+	}
+	if err := e.Validate(); err != nil {
+		return "landing=" + todoPRLandingMarkerMalformed
+	}
+	if e.Marker() == kanban.LandingMarkerRefHead {
+		return "landing=" + kanban.LandingMarkerRefHead
+	}
+	return "landing=" + e.SHA
 }
 
 // runTodoHistory renders the fate answer or the archive listing.
@@ -139,13 +183,15 @@ func runTodoHistory(cmd *cobra.Command, args []string, limit int) error {
 func renderTodoHistoryLookup(out, errOut io.Writer, rec *kanban.BacklogRecord, id string) error {
 	for _, it := range rec.Items {
 		if it.ID == id {
-			_, err := fmt.Fprintf(out, "%s\tlive\t%s\t%s\n", it.ID, it.State, todoPRCell(it.Text))
+			_, err := fmt.Fprintf(out, "%s\tlive\t%s\t%s\t%s\n",
+				it.ID, it.State, todoHistoryLandingCell(it.Landing), todoPRCell(it.Text))
 			return err
 		}
 	}
 	if at := rec.ArchivedIndex(id); at >= 0 {
 		entry := rec.Archived[at]
-		_, err := fmt.Fprintf(out, "%s\tarchived\t%s\t%s\n", entry.Item.ID, entry.Item.State, todoPRCell(entry.Item.Text))
+		_, err := fmt.Fprintf(out, "%s\tarchived\t%s\t%s\t%s\n",
+			entry.Item.ID, entry.Item.State, todoHistoryLandingCell(entry.Item.Landing), todoPRCell(entry.Item.Text))
 		return err
 	}
 	_, err := fmt.Fprintf(out, "%s\tabsent\n", id)
@@ -176,7 +222,8 @@ func renderTodoHistoryListing(out, errOut io.Writer, rec *kanban.BacklogRecord, 
 	}
 	for i := 0; i < shown; i++ {
 		entry := rec.Archived[total-1-i]
-		if _, err := fmt.Fprintf(out, "%s\tarchived\t%s\t%s\n", entry.Item.ID, entry.Item.State, todoPRCell(entry.Item.Text)); err != nil {
+		if _, err := fmt.Fprintf(out, "%s\tarchived\t%s\t%s\t%s\n",
+			entry.Item.ID, entry.Item.State, todoHistoryLandingCell(entry.Item.Landing), todoPRCell(entry.Item.Text)); err != nil {
 			return err
 		}
 	}

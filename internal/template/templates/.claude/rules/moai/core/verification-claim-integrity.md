@@ -138,6 +138,19 @@ live in the detail companion `verification-claim-integrity-detail.md`. Load it w
 evidence-bearing report for the first time, or when tracing a clause back to its originating
 failure.
 
+### 3.1 Refused-tool degradation — a refusal is a Gap, never a silent substitution
+
+[ZONE:Evolvable] [HARD] Where a command a verification rested on was **refused rather than executed** — the worktree-isolation guard, a permission deny, a policy gate — the report names that refusal in its **Gaps** section, together with what the actor did instead.
+
+Falling back to reading the source is a legitimate response to a refusal. Presenting the result of that fallback as the measurement is not: the report then reads as measured where it was inferred, and no reader can tell.
+
+The hazard is quiet in a specific way. A refusal is loud to the actor at the moment it happens and invisible in the artifact afterwards. An auditor whose verification command was refused can still reach a verdict by reading source, and that verdict can still be PASS — "confirmed by measurement" becomes "inferred by reading" with nothing in the verdict's text recording the change. §1 already forbids the resulting claim; this clause fixes WHERE the difference is written down, so the violation has a surface a reviewer can inspect.
+
+Two consequences, and the first is the one actors get wrong:
+
+- **A refusal does not block the verdict.** The actor may proceed on the fallback and may still conclude PASS. What it may not do is let the substitution go unnamed.
+- **The refusal is recorded mechanically as well**, so the Gaps entry is checkable against a record the actor does not write: the failure-event hook records a refused tool call as a `tool_failure:<tool>:<category>` row in `.moai/lessons-inbox.jsonl` — a worktree-guard refusal under the `WorktreeGuardRefusal` category. A Gaps section silent about a refusal the record carries is a divergence a reviewer can find without taking the actor's word for anything.
+
 ---
 
 Version: 1.3.0

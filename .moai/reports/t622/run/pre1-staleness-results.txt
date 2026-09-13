@@ -1,0 +1,2 @@
+snapshot-stale.txt test-e=0 test-s=1
+snapshot-stale-mirror.txt test-e=0 test-s=1

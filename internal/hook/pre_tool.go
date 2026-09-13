@@ -13,6 +13,7 @@ import (
 	"strings"
 	"sync"
 
+	"github.com/modu-ai/moai-adk/internal/config"
 	"github.com/modu-ai/moai-adk/internal/defs"
 	"github.com/modu-ai/moai-adk/internal/hook/quality"
 	"github.com/modu-ai/moai-adk/internal/hook/security"
@@ -555,6 +556,25 @@ func (h *preToolHandler) Handle(ctx context.Context, input *HookInput) (*HookOut
 		}
 	}
 
+	// Resource slot-lease guard (card t607). Sits after the integration guard:
+	// that one serializes `git merge` in the release tree, this one refuses a
+	// configured heavy command while ANOTHER live session holds its resource.
+	// Gated by Workflow.SlotLease.Enabled (default false): on the disabled
+	// path neither the project root, the patterns, nor any lease record is
+	// touched. Fails OPEN on every uncertainty.
+	if input.ToolName == "Bash" && len(input.ToolInput) > 0 {
+		if slotCfg, enabled := h.slotLeaseConfig(); enabled {
+			if decision, reason := checkSlotLease(input, h.projectRoot(), slotCfg, os.Stderr); decision == DecisionDeny {
+				slog.Warn("slot lease denied",
+					"tool_name", input.ToolName,
+					"session_id", input.SessionID,
+					"reason", reason,
+				)
+				return NewDenyOutput(reason), nil
+			}
+		}
+	}
+
 	// Handle Write and Edit tools
 	if (input.ToolName == "Write" || input.ToolName == "Edit") && len(input.ToolInput) > 0 {
 		// Harness-learner FROZEN zone guard (Vision §3.4, W3 first implementer).
@@ -827,6 +847,21 @@ func (h *preToolHandler) integrationLockEnabled() bool {
 		return false
 	}
 	return cfg.Workflow.IntegrationLock.Enabled
+}
+
+// slotLeaseConfig returns the slot-lease section and whether its guard is
+// enabled (card t607). A nil ConfigProvider or nil Config reads as disabled,
+// silently — REQ-RSL-012: unknowable configuration is the quiet off path, not
+// a fail-open uncertainty.
+func (h *preToolHandler) slotLeaseConfig() (config.SlotLeaseConfig, bool) {
+	if h.cfg == nil {
+		return config.SlotLeaseConfig{}, false
+	}
+	cfg := h.cfg.Get()
+	if cfg == nil {
+		return config.SlotLeaseConfig{}, false
+	}
+	return cfg.Workflow.SlotLease, cfg.Workflow.SlotLease.Enabled
 }
 
 // loadGateConfig reads gate configuration from the config provider.

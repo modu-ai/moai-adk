@@ -1,0 +1,15 @@
+# --- provenance (added by card t607, sync-audit F9) ---
+# command: go test ./internal/cli/ -count=1 -timeout 600s
+# exit: 1 (panic: test timed out after 10m0s; FAIL ... 600.769s)
+# tree: the M3 working tree, before the TestSessionPIDStamp_NotSetFromHooks repair (that repair landed in 10b022b59)
+# note: EXCERPT, not the full log - the leading numbers are line numbers in the original captured output. This is the run recorded as a Gap: the full-package cli verdict was never obtained.
+# ---
+676:--- FAIL: TestSessionPIDStamp_NotSetFromHooks (0.04s)
+677:    launch_session_pid_test.go:113: hook sources must not set MOAI_SESSION_PID (a hook PID is dead on arrival): [/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t607/internal/hook/slot_lease_guard_test.go]
+866:panic: test timed out after 10m0s
+867:	running tests:
+868:		TestSyncGitSpecStatuses_NoSpecIDsInGitLog (0s)
+2989:github.com/modu-ai/moai-adk/internal/cli.TestSyncGitSpecStatuses_NoSpecIDsInGitLog.func1({0x1a367ffc2ea0, 0x6, 0x6})
+2991:github.com/modu-ai/moai-adk/internal/cli.TestSyncGitSpecStatuses_NoSpecIDsInGitLog(0x1a3682f56b48)
+3177:FAIL	github.com/modu-ai/moai-adk/internal/cli	600.769s
+3178:FAIL

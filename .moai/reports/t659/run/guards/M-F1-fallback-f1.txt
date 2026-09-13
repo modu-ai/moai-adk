@@ -1,0 +1,17 @@
+# mutant M-F1-fallback: F1 fallback dropped: when either path cannot be stat'ed sameFile returns false instead of comparing absolute paths; run only absent_log_fallback
+# edits: [["internal/constitution/pipeline.go", "\t\treturn os.SameFile(infoA, infoB)\n\t}\n", "\t\treturn os.SameFile(infoA, infoB)\n\t}\n\treturn false\n"]]
+# $ go test ./internal/constitution/ -run ^TestExecute_RuleFileAliasOfRegistryOrLog_Rejected$/^absent_log_fallback$ -count=1 -v
+# exit=1
+=== RUN   TestExecute_RuleFileAliasOfRegistryOrLog_Rejected
+=== RUN   TestExecute_RuleFileAliasOfRegistryOrLog_Rejected/absent_log_fallback/dry_run
+    apply_test.go:1327: error "amendment validation error: rule file /var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestExecute_RuleFileAliasOfRegistryOrLog_Rejectedabsent_log_fal3665060824/001/.moai/research/evolution-log.md: stat /var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestExecute_RuleFileAliasOfRegistryOrLog_Rejectedabsent_log_fal3665060824/001/.moai/research/evolution-log.md: no such file or directory" lacks "is also the registry or the evolution log"
+    apply_test.go:1333: gate doubles called 4 times, want 0 (the check runs before Layer 1)
+=== RUN   TestExecute_RuleFileAliasOfRegistryOrLog_Rejected/absent_log_fallback/real
+    apply_test.go:1327: error "amendment validation error: rule file /var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestExecute_RuleFileAliasOfRegistryOrLog_Rejectedabsent_log_fal1288110838/001/.moai/research/evolution-log.md: stat /var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestExecute_RuleFileAliasOfRegistryOrLog_Rejectedabsent_log_fal1288110838/001/.moai/research/evolution-log.md: no such file or directory" lacks "is also the registry or the evolution log"
+    apply_test.go:1333: gate doubles called 4 times, want 0 (the check runs before Layer 1)
+--- FAIL: TestExecute_RuleFileAliasOfRegistryOrLog_Rejected (0.00s)
+    --- FAIL: TestExecute_RuleFileAliasOfRegistryOrLog_Rejected/absent_log_fallback/dry_run (0.00s)
+    --- FAIL: TestExecute_RuleFileAliasOfRegistryOrLog_Rejected/absent_log_fallback/real (0.00s)
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/constitution	0.365s
+FAIL

@@ -1,0 +1,73 @@
+dr0912 — scan/registry count derivation (vacuous-scan guard)
+
+The guard logs its counts only on failure (`if t.Failed()` in
+update_destructive_registry_test.go:86). The RED and mutant runs therefore
+print them directly; the GREEN run does not, so the post-fix counts are
+derived below from the same scan scope the test uses
+(destructiveScanDir = internal/cli/update, destructiveScanGlob =
+internal/cli/update*.go, both excluding _test.go).
+
+BEFORE (observed, verbatim from red.txt / mutant.txt):
+    scanned 13 (file, function) pair(s) across internal/cli/update and
+    internal/cli/update*.go; registry has 12 row(s)
+
+AFTER (derived — commands and output below):
+
+  registry rows:
+    $ grep -c 'File: "' internal/cli/update_destructive_registry.go
+    13
+
+  scanned call sites, recursive dir scope:
+    $ grep -rn --include='*.go' -e 'os.RemoveAll(' -e 'os.Rename(' internal/cli/update/ | grep -v '_test.go'
+    internal/cli/update/deploy/deploy.go:280            os.Rename       MigrateLegacyMemoryDir
+    internal/cli/update/deploy/deploy.go:301            os.RemoveAll    MigrateLegacyMemoryDir
+    internal/cli/update/deploy/deploy.go:437            os.RemoveAll    backupThenRemove
+    internal/cli/update/deploy/deploy.go:442            os.RemoveAll    backupThenRemove
+    internal/cli/update/deploy/deploy.go:453            os.RemoveAll    backupThenRemove
+    internal/cli/update/deploy/deploy.go:470            os.RemoveAll    removeSymlink
+    internal/cli/update/deploy/deploy.go:477            os.RemoveAll    removeSymlink
+    internal/cli/update/deploy/deploy.go:482            os.RemoveAll    removeSymlink
+    internal/cli/update/deploy/deploy.go:488            os.RemoveAll    removeSymlink
+    internal/cli/update/backup/settings_snapshot.go:168 os.Rename       promoteSettingsSnapshot   <-- the newly registered site
+    internal/cli/update/backup/backup.go:107            os.RemoveAll    BackupMoaiConfig
+    internal/cli/update/backup/backup.go:138            os.RemoveAll    BackupMoaiConfig
+    internal/cli/update/backup/backup.go:143            os.RemoveAll    BackupMoaiConfig
+    internal/cli/update/backup/backup.go:262            os.RemoveAll    CleanupOldBackups
+    => 14 call sites
+
+  scanned call sites, flat glob scope:
+    $ grep -n -e 'os.RemoveAll(' -e 'os.Rename(' internal/cli/update*.go | grep -v '_test.go'
+    internal/cli/update.go:962                    os.RemoveAll    ensureGlobalSettingsEnv
+    internal/cli/update_archive.go:109            os.RemoveAll    archiveSkill
+    internal/cli/update_archive.go:330            os.Rename       archiveLegacySkills
+    internal/cli/update_clean_install.go:339      os.RemoveAll    runCleanReinstall
+    internal/cli/update_cleanup.go:325            os.RemoveAll    removeDeprecatedFile
+    internal/cli/update_namespace_protect.go:225  os.RemoveAll    backupUserOwnedNamespace
+    internal/cli/update_namespace_protect.go:233  os.RemoveAll    backupUserOwnedNamespace
+    internal/cli/update_namespace_protect.go:243  os.RemoveAll    backupUserOwnedNamespace
+    internal/cli/update_residue_cleanup.go:135    os.RemoveAll    runV3ResidueCleanup
+    => 9 call sites
+
+  totals: 14 + 9 = 23 call sites across 13 distinct (file, function) pairs
+          registry: 13 rows, Sites column summing to 23
+
+  AFTER: scanned 13 pairs / 23 sites vs registry 13 rows / 23 sites  ->  13/13.
+
+Non-vacuity notes:
+
+  1. The scan is non-empty. scanDestructiveSites t.Fatal's when the scope
+     yields no source files (test line 99), and both scopes above returned
+     matches, so a PASS cannot be an empty-set pass.
+
+  2. The registry file is itself inside the glob scope
+     (internal/cli/update_destructive_registry.go matches
+     internal/cli/update*.go) but contributes 0 scanned sites: it mentions
+     os.RemoveAll / os.Rename only inside comments and string literals, and
+     the scan counts ast.CallExpr nodes, not text. It is absent from the glob
+     enumeration above, which confirms this.
+
+  3. The product tree is byte-identical across the RED, GREEN and mutant runs —
+     only registry rows changed — so `scanned` is the same 13 in all three.
+     The observed BEFORE line and the derived AFTER line therefore differ in
+     exactly one term, the registry count (12 -> 13), which is the term the
+     fix moves.

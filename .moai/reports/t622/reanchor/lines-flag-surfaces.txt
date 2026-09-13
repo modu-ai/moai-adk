@@ -1,0 +1,28 @@
+== .claude/skills/moai/SKILL.md
+9:argument-hint: "[subcommand] [args] | \"natural language task\""
+140:Modes: auto, force, status, project. Flags: --merge, --skip-mx
+== internal/template/templates/.claude/skills/moai/SKILL.md
+9:argument-hint: "[subcommand] [args] | \"natural language task\""
+140:Modes: auto, force, status, project. Flags: --merge, --skip-mx
+== .claude/skills/moai/references/reference.md
+161:- --merge: Auto-merge PR and clean up branch after sync
+== internal/template/templates/.claude/skills/moai/references/reference.md
+161:- --merge: Auto-merge PR and clean up branch after sync
+== .claude/skills/moai/workflows/sync/quality-gates-context.md
+30:  - Flag: --merge
+98:## Supported Flags
+101:- --merge: After sync, auto-merge PR and clean up branch. Worktree/branch environment is auto-detected from git context.
+== internal/template/templates/.claude/skills/moai/workflows/sync/quality-gates-context.md
+30:  - Flag: --merge
+98:## Supported Flags
+101:- --merge: After sync, auto-merge PR and clean up branch. Worktree/branch environment is auto-detected from git context.
+== .claude/skills/moai/workflows/sync.md
+95:/moai sync [mode] [--pr] [--merge] [--skip-mx]
+114:**Flags**: `--pr` (PR 생성) | `--merge` (deprecated, auto-merge) | `--skip-mx` (MX 검증 스킵)
+== internal/template/templates/.claude/skills/moai/workflows/sync.md
+85:/moai sync [mode] [--pr] [--merge] [--skip-mx]
+104:**Flags**: `--pr` (PR 생성) | `--merge` (deprecated, auto-merge) | `--skip-mx` (MX 검증 스킵)
+== .claude/commands/moai/sync.md
+3:argument-hint: "[SPEC-XXX] [--merge] [--skip-mx]"
+== internal/template/templates/.claude/commands/moai/sync.md.tmpl
+3:argument-hint: "[SPEC-XXX] [--merge] [--skip-mx]"

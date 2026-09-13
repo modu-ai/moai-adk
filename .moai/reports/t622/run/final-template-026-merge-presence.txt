@@ -1,0 +1,4 @@
+final-template-skill.md:1
+final-template-sync.md:1
+final-template-qgc-flags.md:1
+final-template-dl.md:2

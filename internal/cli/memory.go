@@ -21,6 +21,7 @@ import (
 	"strings"
 
 	"github.com/modu-ai/moai-adk/internal/config"
+	gitcore "github.com/modu-ai/moai-adk/internal/core/git"
 	"github.com/modu-ai/moai-adk/internal/hook/memo/taxonomy"
 	"github.com/spf13/cobra"
 )
@@ -55,39 +56,103 @@ func memoryProjectSlug(absPath string) string {
 	return string(out)
 }
 
+// memoryPrimaryCheckout returns the primary checkout of the repository abs
+// belongs to, reached through the git common directory that every linked
+// worktree of a repository shares. It returns "" when abs is not inside a
+// repository, when git cannot answer, or when abs already IS the primary
+// checkout — in each case there is no second key to look at.
+//
+// Two properties of the result were measured rather than assumed:
+//
+//   - Inside a repository the path comes back symlink-RESOLVED. That is git's
+//     own normalization, not a choice made here: on macOS a repository under
+//     the temp root resolves /var/… to /private/var/…. It is a no-op for an
+//     ordinary project path, which carries no symlink.
+//   - Outside a repository, or when git cannot answer, the answer is "" and
+//     the caller's key derivation is untouched.
+func memoryPrimaryCheckout(abs string) string {
+	dirs, err := gitcore.ResolveGitDirs(abs)
+	if err != nil || dirs.CommonDir == "" {
+		return ""
+	}
+	primary := filepath.Dir(dirs.CommonDir)
+	// "Is abs already the primary checkout?" has to be asked with the SAME
+	// normalization on both sides. git hands back a symlink-resolved path, so
+	// comparing it against the raw abs answers "no" for a primary checkout
+	// merely reached through a symlinked parent — which on macOS is every path
+	// under the temp root, and would add a spurious second store to an
+	// ordinary non-worktree run.
+	//
+	// One comparison covers both cases: where abs carries no symlink,
+	// EvalSymlinks returns abs itself.
+	if resolved, err := filepath.EvalSymlinks(abs); err == nil && resolved == primary {
+		return ""
+	}
+	return primary
+}
+
 // memoryCandidateStores returns the stores this project could be using, in
 // the order a session resolves them: the active profile's config dir first,
 // then the default ~/.claude root.
 //
-// Both are returned rather than just the winner because they genuinely
-// co-exist — a session launched under a profile and one launched without it
-// write to different directories and cannot see each other's memories. A
-// health check that reported only one would hide half the store.
+// Every candidate is returned rather than just the winner, because they
+// genuinely co-exist and a health check that reported only one would hide the
+// rest of the store. There are two independent reasons a second store exists:
+//
+//   - A session launched under a profile and one launched without it write to
+//     different config roots and cannot see each other's memories.
+//   - The store is keyed on the session's own working directory, so a session
+//     in a linked worktree keys on the worktree while one in the primary
+//     checkout keys on the repository. That per-cwd divergence is deliberate
+//     — it is what keeps MoAI's writes aligned with Claude Code's native
+//     per-cwd auto-load, and normalizing the WRITE path to the repository
+//     root is refused by .moai/docs/memory-dir-resolution-doctrine.md.
+//
+// So the worktree's own key is kept, and the primary checkout's key is ADDED
+// beside it. Replacing one with the other is what the doctrine forbids;
+// reporting both is what this audit is for. It matters in practice because a
+// worktree store is usually absent — persistence skips a memory directory
+// that does not exist — while the repository's store is the one holding every
+// memory, and a lane session previously saw only "not present".
 func memoryCandidateStores(projectRoot string) ([]memoryStore, error) {
 	abs, err := filepath.Abs(projectRoot)
 	if err != nil {
 		return nil, fmt.Errorf("memory: resolve project root: %w", err)
 	}
-	slug := memoryProjectSlug(abs)
+
+	home, homeErr := userHomeDir()
 
 	var stores []memoryStore
-	if cfg := os.Getenv(config.EnvClaudeConfigDir); cfg != "" {
-		stores = append(stores, memoryStore{
-			Dir:    filepath.Join(cfg, "projects", slug, "memory"),
-			Origin: config.EnvClaudeConfigDir,
-		})
+	add := func(dir, origin string) {
+		for _, s := range stores {
+			if s.Dir == dir {
+				return
+			}
+		}
+		stores = append(stores, memoryStore{Dir: dir, Origin: origin})
 	}
-	home, err := userHomeDir()
-	if err != nil {
-		return stores, nil
+
+	// roots are the keys to audit: the session's own working directory
+	// always, plus the repository's primary checkout when this is a worktree.
+	type keyRoot struct {
+		path   string
+		suffix string
 	}
-	def := filepath.Join(home, ".claude", "projects", slug, "memory")
-	for _, s := range stores {
-		if s.Dir == def {
-			return stores, nil
+	roots := []keyRoot{{path: abs}}
+	if primary := memoryPrimaryCheckout(abs); primary != "" {
+		roots = append(roots, keyRoot{path: primary, suffix: " — primary checkout"})
+	}
+
+	for _, r := range roots {
+		slug := memoryProjectSlug(r.path)
+		if cfg := os.Getenv(config.EnvClaudeConfigDir); cfg != "" {
+			add(filepath.Join(cfg, "projects", slug, "memory"), config.EnvClaudeConfigDir+r.suffix)
+		}
+		if homeErr == nil {
+			add(filepath.Join(home, ".claude", "projects", slug, "memory"), "default ~/.claude"+r.suffix)
 		}
 	}
-	return append(stores, memoryStore{Dir: def, Origin: "default ~/.claude"}), nil
+	return stores, nil
 }
 
 // memoryReport is the doctor result for one store.
@@ -267,8 +332,10 @@ func renderMemoryReports(out io.Writer, reports []memoryReport, jsonOutput bool)
 	}
 
 	if len(reports) > 1 {
-		_, _ = fmt.Fprintf(out, "\nTwo stores resolved. A session launched under a profile and one launched\n"+
-			"without it write to different directories and cannot see each other's memories.\n")
+		_, _ = fmt.Fprintf(out, "\n%d stores resolved. A session launched under a profile and one launched\n"+
+			"without it write to different directories and cannot see each other's memories.\n"+
+			"A store marked \"primary checkout\" is the repository's own, listed because this\n"+
+			"session is in a linked worktree, which keys on its own directory.\n", len(reports))
 	}
 	return nil
 }

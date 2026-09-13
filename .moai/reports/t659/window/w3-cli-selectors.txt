@@ -1,0 +1,7 @@
+=== RUN   TestResolveRegistryPath_MatchesExecute
+--- PASS: TestResolveRegistryPath_MatchesExecute (0.01s)
+=== RUN   TestConstitutionAmend_ContainmentCheck_RelativeEnvEscape
+--- PASS: TestConstitutionAmend_ContainmentCheck_RelativeEnvEscape (0.01s)
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/cli	0.877s
+exit=0

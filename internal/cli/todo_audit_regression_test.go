@@ -68,7 +68,7 @@ func TestTodoAuditMultilineRows(t *testing.T) {
 			if err != nil || strings.Count(out, "\n") != 1 || strings.Contains(out, "\r") {
 				t.Fatalf("stdout=%q err=%v", out, err)
 			}
-			wantTabs := map[string]int{"pr": 6, "list": 2, "next": 1, "history": 3}[verb]
+			wantTabs := map[string]int{"pr": 6, "list": 2, "next": 1, "history": 4}[verb]
 			if strings.Count(out, "\t") != wantTabs {
 				t.Fatalf("row separators=%q", out)
 			}

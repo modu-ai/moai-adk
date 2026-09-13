@@ -1,0 +1,28 @@
+=== RUN   TestT649ContextLive
+{
+  "body_limit_bytes": 16777216,
+  "duration_seconds": 2.882135458,
+  "event": "response.failed",
+  "events": 4,
+  "http_status": 200,
+  "model": "gpt-6-astra",
+  "needle_recall": false,
+  "output": "",
+  "repetitions": 921812,
+  "request_bytes": 1844019,
+  "response_status": "failed",
+  "route": "subscription",
+  "server_error_code": "context_length_exceeded",
+  "server_error_message": "Your input exceeds the context window of this model. Please adjust your input and try again.",
+  "server_error_param": "input",
+  "server_error_type": "invalid_request_error",
+  "stream_read_ok": true,
+  "timeout": false,
+  "timeout_seconds": 150,
+  "truncation": "server default, three-position recall checked",
+  "unit": " x",
+  "usage": null
+}
+--- PASS: TestT649ContextLive (2.88s)
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/cli	3.671s

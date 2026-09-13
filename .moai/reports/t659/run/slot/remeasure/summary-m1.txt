@@ -1,0 +1,10 @@
+M-6: KILLED exit=1 top_level_runs=1 (expect>=1) fails=['TestLoadEvolutionLogs_LegacyKeys']
+M-7: KILLED exit=1 top_level_runs=1 (expect>=1) fails=['TestLoadEvolutionLogs', 'TestLoadEvolutionLogs/유효한_YAML_frontmatter_파싱', 'TestLoadEvolutionLogs/여러_엔트리_파싱']
+M-8a: KILLED exit=1 top_level_runs=2 (expect>=2) fails=['TestLoadEvolutionLogs_HumanFormat', 'TestLoadEvolutionLogs_HumanFormat/verbatim_block', 'TestLoadEvolutionLogs_HumanFormat/real_file_readonly', 'TestLoadEvolutionLogs_HumanFormat/malformed_timestamp_fails_closed', 'TestRateLimiter_SeesHumanFormatEntry']
+M-8b: KILLED exit=1 top_level_runs=2 (expect>=2) fails=['TestLoadEvolutionLogs_HumanFormat', 'TestLoadEvolutionLogs_HumanFormat/malformed_timestamp_fails_closed', 'TestLoadEvolutionLogs_FailClosedErrorLocation', 'TestLoadEvolutionLogs_FailClosedErrorLocation/unparseable_timestamp']
+M-9: KILLED exit=1 top_level_runs=1 (expect>=1) fails=['TestAppendEvolutionLog_SnakeCaseAndZoneNames']
+M-12: KILLED exit=1 top_level_runs=1 (expect>=1) fails=['TestLoadEvolutionLogs_MarkdownNoise']
+M-15i: KILLED exit=1 top_level_runs=1 (expect>=1) fails=['TestLoadEvolutionLogs_FailClosedErrorLocation', 'TestLoadEvolutionLogs_FailClosedErrorLocation/unparseable_timestamp', 'TestLoadEvolutionLogs_FailClosedErrorLocation/missing_timestamp']
+M-15ii: KILLED exit=1 top_level_runs=1 (expect>=1) fails=['TestLoadEvolutionLogs_FailClosedErrorLocation', 'TestLoadEvolutionLogs_FailClosedErrorLocation/unparseable_timestamp', 'TestLoadEvolutionLogs_FailClosedErrorLocation/missing_timestamp']
+M-15iii: KILLED exit=1 top_level_runs=1 (expect>=1) fails=['TestLoadEvolutionLogs_FailClosedErrorLocation', 'TestLoadEvolutionLogs_FailClosedErrorLocation/unparseable_timestamp', 'TestLoadEvolutionLogs_FailClosedErrorLocation/missing_timestamp']
+runner_exit=0

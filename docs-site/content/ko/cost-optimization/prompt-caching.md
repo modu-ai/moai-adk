@@ -2,7 +2,7 @@
 title: 프롬프트 캐싱 — 비용 절감과 손익분기
 weight: 30
 draft: false
-description: "프롬프트 캐싱이 토큰 비용을 어떻게 줄이는지 정리합니다. 읽기 0.1배·쓰기 1.25배의 손익분기, 5분 수명, 자율성 티어(MOAI_AUTONOMY_TIER)와 CG 모드가 비용·속도에 미치는 영향까지 입문서 수준으로 안내합니다."
+description: "프롬프트 캐싱이 토큰 비용을 어떻게 줄이는지 정리합니다. 읽기 0.1배·쓰기 1.25배의 손익분기, 5분 수명, 자율성 티어(MOAI_AUTONOMY_TIER)가 비용·속도에 미치는 영향까지 입문서 수준으로 안내합니다."
 ---
 
 # 프롬프트 캐싱 — 비용 절감과 손익분기
@@ -241,15 +241,13 @@ MoAI-ADK는 두 가지 장치로 이 일관성을 지킵니다.
    남은 뒷정리가 짧다면 캐시를 유지한 채 끝내는 것이, 묵은 맥락을 짊어지고 큰
    작업을 시작하는 것보다 쌉니다.
 
-## CG 모드로 더 아끼기
+## CG 폐기와 설정 이전
 
-캐싱이 "같은 내용을 싸게 다시 쓰는" 축이라면, **CG 모드** (CG Mode)는 "비싼
-모델을 덜 쓰는" 축입니다. 리더는 Claude를, 구현 워커는 저렴한 GLM(z.ai 백엔드)을
-쓰도록 tmux 세션을 갈라 놓아, 구현 중심 작업에서 **비용을 약 60-70% 줄입니다**.
-두 축은 겹치지 않습니다 — CG 모드에서도 각 백엔드의 캐싱은 그 백엔드가 알아서
-합니다(Claude는 프롬프트 캐싱, GLM은 콘텐츠 유사도 기반 암시적 캐싱).
+`moai cg`는 폐기되었습니다. Claude나 GLM을 실행하지 않고 설정 이전 안내와 함께 종료합니다. `moai cc`의 별칭이 아닙니다. `llm.team_mode: cg`가 남은 프로젝트는 세션을 실행하기 전에 이전할 구성을 명시적으로 선택해야 합니다. [CG 폐기와 설정 이전](/ko/multi-llm/cg-mode/)
 
-자세한 구조와 전환 명령은 [CG 모드](/ko/multi-llm/cg-mode)를 보세요.
+`llm.team_mode: claude`, `llm.gateway.teammate_mode: in-process`, `llm.gateway.teammate_provider: inherit`을 저장합니다. 기존 혼합 역할 배정을 없애는 변경이며, Claude 리더와 GLM 팀원 창의 분업을 보존하는 이전이 아닙니다.
+
+`claude-glm` 대상은 Claude 리더와 tmux의 GLM 팀원 구성을 뜻합니다. 현재 TEAMMATE 통합 검증을 통과하지 않아 적용과 실행은 사용할 수 없으며 미리보기만 가능합니다. tmux를 설치하거나 `verified: true`를 적어도 이 제한은 해제되지 않습니다.
 
 ## 비용 모니터링
 
@@ -283,7 +281,7 @@ MoAI-ADK는 두 가지 장치로 이 일관성을 지킵니다.
 
 - [프롬프트 캐싱](/ko/claude-code/context-memory/prompt-caching) — 동작 원리, 접두사 매칭, 컨텍스트 관리 (컨텍스트 관리 관점)
 - [컨텍스트 윈도우](/ko/claude-code/context-memory/context-window) — 컨텍스트 윈도우 크기와 모델별 차이
-- [CG 모드](/ko/multi-llm/cg-mode) — Claude + GLM 하이브리드로 비용 60-70% 절감
+- [CG 폐기와 설정 이전](/ko/multi-llm/cg-mode/)
 - [모델 정책](/ko/multi-llm/model-policy) — 에이전트별 모델 주입과 드리프트 방지
 
 ## 출처 (공식 문서)

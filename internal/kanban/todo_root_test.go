@@ -12,9 +12,12 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"slices"
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/modu-ai/moai-adk/internal/paths"
 )
 
 // initTodoRootGitRepo turns dir into a committed repository so the
@@ -93,8 +96,17 @@ func TestResolveTodoQueueRoot_WorktreeConvergesOnPrimary(t *testing.T) {
 	}
 }
 
-// TestResolveTodoQueueRoot_FallbackNoGit — the home-based fallback root, and
-// the deterministic project key it is named for.
+// TestResolveTodoQueueRoot_FallbackNoGit — the home-based fallback, and the
+// deterministic project key it is named for.
+//
+// INTENTIONAL UPDATE (t621): the asserted value moves from the home fallback
+// ROOT to the launch base, and the home property is asserted where it is now
+// decided — on the queue PATH. The two are not the same claim, and the old one
+// became false: a root under ~/.moai is re-keyed by the layer below, so
+// naming one sent the queue to ~/.moai/db/<key>-<hash>/todo while every
+// anchor-based surface read ~/.moai/db/<key>/todo. What this test exists to
+// pin — a non-git project gets a HOME queue, keyed so two such projects cannot
+// collide — is asserted here directly rather than through a root-value proxy.
 func TestResolveTodoQueueRoot_FallbackNoGit(t *testing.T) {
 	dir := t.TempDir() // deliberately NOT a git repository
 	home := t.TempDir()
@@ -102,14 +114,21 @@ func TestResolveTodoQueueRoot_FallbackNoGit(t *testing.T) {
 	// SPEC-TODO-HOME-TEMP-GUARD-001 preservation transfer: t.TempDir() is
 	// inside os.TempDir(), so the temporary-origin guard would otherwise
 	// refuse this home queue and the assertion below could never be reached.
-	// The fixture moves to a NON-temporary base through the temp-root seam;
-	// the assertion itself is unchanged and still names the home root.
+	// The fixture moves to a NON-temporary base through the temp-root seam.
 	declareNonTemporary(t)
 
 	got := ResolveTodoQueueRoot(dir)
-	want := filepath.Join(home, ".moai", "todo", TodoQueueProjectKey(dir))
-	if got != want {
-		t.Fatalf("fallback queue root = %q, want %q", got, want)
+	if got != dir {
+		t.Fatalf("fallback queue root = %q, want the launch base %q", got, dir)
+	}
+	// The home property, on the value that carries it: the queue itself lands
+	// under the home directory, not inside the project.
+	queue := BacklogPathForRoot(got)
+	if !strings.HasPrefix(queue, home+string(filepath.Separator)) {
+		t.Fatalf("fallback queue = %q, want it under the home directory %q", queue, home)
+	}
+	if strings.HasPrefix(queue, dir+string(filepath.Separator)) {
+		t.Fatalf("fallback queue = %q is project-local; the no-git fallback must be home-based", queue)
 	}
 	key := TodoQueueProjectKey(dir)
 	base := filepath.Base(dir)
@@ -178,35 +197,64 @@ func TestResolveTodoQueueRoot_ReadThroughToProjectLocal(t *testing.T) {
 	}
 }
 
-// TestResolveTodoQueueRoot_PopulatedFallbackWins — the read-through predicate
-// mirrors adoption's early return: once the fallback root holds a queue file,
-// resolution stays on it even though a local file lingers.
-func TestResolveTodoQueueRoot_PopulatedFallbackWins(t *testing.T) {
+// TestResolveTodoQueueRoot_LegacyHomeFallbackQueueIsAdopted — the SUCCESSOR of
+// TestResolveTodoQueueRoot_PopulatedFallbackWins (t621).
+//
+// The predecessor asserted that once the home fallback ROOT held a queue,
+// resolution stayed on it. That root is no longer a resolution target, and an
+// assertion about which of two locations wins cannot be carried over to a
+// design with one. What MUST be carried over is the operator-visible half: a
+// queue already sitting at the old fallback location is not stranded by the
+// collapse. It is reached the same way every other legacy location is — the
+// adoption resolveStateDir performs through legacyHomeStateDirsForRoot, which
+// lists ~/.moai/todo/<key> and its nested state directories.
+//
+// MOAI_HOME is set rather than only stubbing HomeDirFn because the legacy scan
+// resolves its home through paths.MoaiHome, which does not read this package's
+// seam — without the override the scan would look in the operator's real home
+// and the test would assert nothing about the fixture.
+func TestResolveTodoQueueRoot_LegacyHomeFallbackQueueIsAdopted(t *testing.T) {
 	dir := t.TempDir() // no git
 	home := t.TempDir()
+	moaiHome := filepath.Join(home, ".moai")
 	stubHome(t, home)
-	// SPEC-TODO-HOME-TEMP-GUARD-001 preservation transfer (see
-	// TestResolveTodoQueueRoot_FallbackNoGit): the read-priority assertion
-	// keeps walking the home-fallback branch on a non-temporary base.
-	declareNonTemporary(t)
-	seedLocalQueue(t, dir, 2)
+	t.Setenv(paths.EnvHome, moaiHome)
 
-	fallbackRoot := filepath.Join(home, ".moai", "todo", TodoQueueProjectKey(dir))
-	// Seeded through BacklogPathForRoot, the path every consumer resolves: a
-	// queue seeded anywhere else is one the resolvers cannot see.
-	fallbackQueue := BacklogPathForRoot(fallbackRoot)
-	if err := os.MkdirAll(filepath.Dir(fallbackQueue), 0o755); err != nil {
-		t.Fatalf("mkdir fallback root: %v", err)
+	// The exact path the retired fallback wrote: BacklogPathForRoot of the
+	// fallback root, back when that expanded to <root>/.moai/state/todo.
+	legacyRoot := filepath.Join(moaiHome, "todo", TodoQueueProjectKey(dir))
+	legacyQueue := filepath.Join(legacyRoot, ".moai", "state", stateDirName, backlogFileName)
+	if err := os.MkdirAll(filepath.Dir(legacyQueue), 0o755); err != nil {
+		t.Fatalf("mkdir legacy fallback root: %v", err)
 	}
-	if err := os.WriteFile(fallbackQueue,
-		[]byte(`{"version":1,"last_seq":0,"items":[]}`), 0o600); err != nil {
-		t.Fatalf("seed fallback queue: %v", err)
+	if err := os.WriteFile(legacyQueue,
+		[]byte(`{"version":1,"last_seq":2,"items":[`+
+			`{"id":"t1","text":"card 1","added_at":"2026-08-14T00:00:00Z","spec_id":null,"state":"queued"},`+
+			`{"id":"t2","text":"card 2","added_at":"2026-08-14T00:00:00Z","spec_id":null,"state":"queued"}]}`),
+		0o600); err != nil {
+		t.Fatalf("seed legacy fallback queue: %v", err)
+	}
+	// Precondition: the scan really does name this directory. Without it a
+	// PASS below could come from an unrelated path.
+	if !slices.Contains(legacyHomeStateDirsForRoot(dir), filepath.Dir(legacyQueue)) {
+		t.Fatalf("precondition: %q is not among the legacy sources %v",
+			filepath.Dir(legacyQueue), legacyHomeStateDirsForRoot(dir))
 	}
 
-	if got := ResolveTodoQueueRoot(dir); got != fallbackRoot {
-		t.Fatalf("resolved root = %q, want populated fallback %q", got, fallbackRoot)
+	root := ResolveTodoQueueRootAdopting(dir)
+	rec, err := NewBacklogStore(todoBacklogPathForTest(root)).Load()
+	if err != nil {
+		t.Fatalf("load through the resolved root: %v", err)
+	}
+	if len(rec.Items) != 2 {
+		t.Fatalf("the legacy fallback queue was stranded: %d items through %q, want 2",
+			len(rec.Items), todoBacklogPathForTest(root))
 	}
 }
+
+// todoBacklogPathForTest is the command path's own join — the adopting form,
+// which is what carries a legacy queue forward.
+func todoBacklogPathForTest(root string) string { return BacklogPathForRootAdopting(root) }
 
 // TestResolveTodoQueueRoot_HomeUnresolvableWritesNothing — the third branch
 // (plan.md §G): no git AND no home. It returns the in-project root and, like
@@ -256,15 +304,26 @@ func TestResolveTodoQueueRootAdopting_AdoptsLocalQueue(t *testing.T) {
 	// rewritten to the guarded behaviour — rewriting it would withdraw that
 	// criterion silently.
 	declareNonTemporary(t)
-	local := seedLocalQueue(t, dir, 3)
+	seedLocalQueue(t, dir, 3)
 
 	root := ResolveTodoQueueRootAdopting(dir)
-	want := filepath.Join(home, ".moai", "todo", TodoQueueProjectKey(dir))
-	if root != want {
-		t.Fatalf("adopting root = %q, want %q", root, want)
+	// INTENTIONAL UPDATE (t621): the criterion is adopt-NOT-SHADOW — the
+	// command path must surface the project's existing cards rather than an
+	// empty queue beside them. It was asserted through two proxies that have
+	// since stopped tracking it: the root's VALUE (a home root is re-keyed by
+	// the layer below, so naming one forks the queue away from every
+	// anchor-based surface) and the local file's DISAPPEARANCE (seedLocalQueue
+	// resolves through BacklogPathForRoot, which since the home-state migration
+	// already places the file in the home database — so "it moved" now means it
+	// was moved OFF the canonical path, which is the defect, not the
+	// criterion). The criterion itself is asserted below, unweakened: the cards
+	// are readable through the resolved root, in the same count and states.
+	if root != dir {
+		t.Fatalf("adopting root = %q, want the launch base %q", root, dir)
 	}
-	if _, err := os.Stat(local); !os.IsNotExist(err) {
-		t.Fatalf("local queue still at %q after adoption (stat err = %v)", local, err)
+	queue := BacklogPathForRoot(root)
+	if !strings.HasPrefix(queue, home+string(filepath.Separator)) {
+		t.Fatalf("adopted queue = %q, want it under the home directory %q", queue, home)
 	}
 	rec, err := NewBacklogStore(BacklogPathForRoot(root)).Load()
 	if err != nil {

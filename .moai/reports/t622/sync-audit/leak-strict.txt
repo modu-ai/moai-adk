@@ -1,0 +1,4 @@
+=== RUN   TestTemplateNoInternalContentLeak
+--- PASS: TestTemplateNoInternalContentLeak (1.26s)
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/template	1.608s

@@ -30,7 +30,7 @@ handoff:
 session:
   title: "moai session セッションレジストリ"
 launchers:
-  title: "moai cc / cg / glm ランチャー"
+  title: "moai cc / glm ランチャー"
 worktree:
   title: "moai worktree ワークツリー"
 "tool-policy":

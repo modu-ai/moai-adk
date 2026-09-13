@@ -60,6 +60,11 @@ func seedHistoryFates(t *testing.T) {
 
 // AC-TAQ-001 — a live card reports `live` and its own state, one line,
 // exit 0. The three live states are proven distinct rather than collapsed.
+//
+// The `landing=-` column (card t665) sits before the text, the extension
+// point this line shape was designed around; `-` is the no-record case these
+// fixtures hold. The round trip that gives the column a value lives in
+// todo_landing_roundtrip_test.go.
 func TestTodoHistoryReportsLiveCard(t *testing.T) {
 	seedHistoryFates(t)
 
@@ -67,9 +72,9 @@ func TestTodoHistoryReportsLiveCard(t *testing.T) {
 		id   string
 		want string
 	}{
-		{"t1", "t1\tlive\tqueued\twrite the parser for the config file\n"},
-		{"t2", "t2\tlive\tpicked\tpolish the docs landing page\n"},
-		{"t3", "t3\tlive\tdropped\t[DROPPED — superseded by the parser rewrite] drop the legacy cache layer\n"},
+		{"t1", "t1\tlive\tqueued\tlanding=-\twrite the parser for the config file\n"},
+		{"t2", "t2\tlive\tpicked\tlanding=-\tpolish the docs landing page\n"},
+		{"t3", "t3\tlive\tdropped\tlanding=-\t[DROPPED — superseded by the parser rewrite] drop the legacy cache layer\n"},
 	}
 	for _, tc := range cases {
 		out, _, err := runTodo(t, "history", tc.id)
@@ -91,7 +96,7 @@ func TestTodoHistoryReportsArchivedCard(t *testing.T) {
 	if err != nil {
 		t.Fatalf("history t4: %v", err)
 	}
-	want := "t4\tarchived\tqueued\twire the banner into the shell\n"
+	want := "t4\tarchived\tqueued\tlanding=-\twire the banner into the shell\n"
 	if out != want {
 		t.Errorf("history t4 stdout = %q, want %q", out, want)
 	}
@@ -306,7 +311,7 @@ func TestTodoHistoryDegradesWithoutArchiveTables(t *testing.T) {
 		if err != nil {
 			t.Fatalf("history t1: %v (stderr %q)", err, errOut)
 		}
-		if out != "t1\tlive\tqueued\talpha work\n" {
+		if out != "t1\tlive\tqueued\tlanding=-\talpha work\n" {
 			t.Errorf("history t1 stdout = %q, want the live line — the degraded lookup must still answer", out)
 		}
 		if !strings.Contains(errOut, todoHistoryDegradedStoreNote) {

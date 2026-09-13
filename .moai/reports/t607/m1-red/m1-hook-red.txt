@@ -1,0 +1,88 @@
+# --- provenance (added by card t607, sync-audit F9) ---
+# command: go test ./internal/hook/ -run '^TestSlotLeaseGuard_' -count=1 -v
+# exit: 1
+# tree: the M1 working tree, committed as f20d07c48 - the run predates that commit, so no commit pins the exact bytes measured
+# note: assertion-RED (the guard stub allows every call)
+# ---
+=== RUN   TestSlotLeaseGuard_DenyMatrix
+=== RUN   TestSlotLeaseGuard_DenyMatrix/base
+    slot_lease_guard_test.go:232: decision = "", want deny
+=== RUN   TestSlotLeaseGuard_DenyMatrix/n-enabled
+=== RUN   TestSlotLeaseGuard_DenyMatrix/n-match
+=== RUN   TestSlotLeaseGuard_DenyMatrix/n-quoted
+=== RUN   TestSlotLeaseGuard_DenyMatrix/n-self
+    slot_lease_guard_test.go:254: no audit line written, want last event "allow-self"
+=== RUN   TestSlotLeaseGuard_DenyMatrix/n-alive
+    slot_lease_guard_test.go:254: no audit line written, want last event "allow-stale"
+=== RUN   TestSlotLeaseGuard_DenyMatrix/n-bound
+    slot_lease_guard_test.go:254: no audit line written, want last event "allow-expired"
+=== RUN   TestSlotLeaseGuard_DenyMatrix/n-held
+    slot_lease_guard_test.go:254: no audit line written, want last event "allow-unheld"
+=== RUN   TestSlotLeaseGuard_DenyMatrix/multi
+    slot_lease_guard_test.go:232: decision = "", want deny
+--- FAIL: TestSlotLeaseGuard_DenyMatrix (3.36s)
+    --- FAIL: TestSlotLeaseGuard_DenyMatrix/base (0.37s)
+    --- PASS: TestSlotLeaseGuard_DenyMatrix/n-enabled (0.37s)
+    --- PASS: TestSlotLeaseGuard_DenyMatrix/n-match (0.50s)
+    --- PASS: TestSlotLeaseGuard_DenyMatrix/n-quoted (0.35s)
+    --- FAIL: TestSlotLeaseGuard_DenyMatrix/n-self (0.35s)
+    --- FAIL: TestSlotLeaseGuard_DenyMatrix/n-alive (0.38s)
+    --- FAIL: TestSlotLeaseGuard_DenyMatrix/n-bound (0.36s)
+    --- FAIL: TestSlotLeaseGuard_DenyMatrix/n-held (0.35s)
+    --- FAIL: TestSlotLeaseGuard_DenyMatrix/multi (0.34s)
+=== RUN   TestSlotLeaseGuard_FailOpen
+=== RUN   TestSlotLeaseGuard_FailOpen/corrupt_record
+    slot_lease_guard_test.go:312: no "[moai:slot-lease] advisory:" line on the advisory stream; a silent allow makes the guard look enforcing while it is not. got: ""
+    slot_lease_guard_test.go:319: last audit = ("", "", present=false), want a fail-open line carrying its reason
+=== RUN   TestSlotLeaseGuard_FailOpen/missing_session_id
+    slot_lease_guard_test.go:312: no "[moai:slot-lease] advisory:" line on the advisory stream; a silent allow makes the guard look enforcing while it is not. got: ""
+    slot_lease_guard_test.go:319: last audit = ("", "", present=false), want a fail-open line carrying its reason
+=== RUN   TestSlotLeaseGuard_FailOpen/uncompilable_pattern
+    slot_lease_guard_test.go:312: no "[moai:slot-lease] advisory:" line on the advisory stream; a silent allow makes the guard look enforcing while it is not. got: ""
+    slot_lease_guard_test.go:319: last audit = ("", "", present=false), want a fail-open line carrying its reason
+=== RUN   TestSlotLeaseGuard_FailOpen/missing_project_root
+    slot_lease_guard_test.go:312: no "[moai:slot-lease] advisory:" line on the advisory stream; a silent allow makes the guard look enforcing while it is not. got: ""
+=== RUN   TestSlotLeaseGuard_FailOpen/uninterpretable_resource_entry
+    slot_lease_guard_test.go:312: no "[moai:slot-lease] advisory:" line on the advisory stream; a silent allow makes the guard look enforcing while it is not. got: ""
+    slot_lease_guard_test.go:319: last audit = ("", "", present=false), want a fail-open line carrying its reason
+--- FAIL: TestSlotLeaseGuard_FailOpen (1.76s)
+    --- FAIL: TestSlotLeaseGuard_FailOpen/corrupt_record (0.34s)
+    --- FAIL: TestSlotLeaseGuard_FailOpen/missing_session_id (0.37s)
+    --- FAIL: TestSlotLeaseGuard_FailOpen/uncompilable_pattern (0.36s)
+    --- FAIL: TestSlotLeaseGuard_FailOpen/missing_project_root (0.34s)
+    --- FAIL: TestSlotLeaseGuard_FailOpen/uninterpretable_resource_entry (0.35s)
+=== RUN   TestSlotLeaseGuard_DisabledNeverReadsNorDenies
+=== RUN   TestSlotLeaseGuard_DisabledNeverReadsNorDenies/key_absent/live_foreign_holder
+=== RUN   TestSlotLeaseGuard_DisabledNeverReadsNorDenies/key_absent/corrupt_record
+=== RUN   TestSlotLeaseGuard_DisabledNeverReadsNorDenies/explicit_false/live_foreign_holder
+=== RUN   TestSlotLeaseGuard_DisabledNeverReadsNorDenies/explicit_false/corrupt_record
+=== RUN   TestSlotLeaseGuard_DisabledNeverReadsNorDenies/config_unavailable/live_foreign_holder
+=== RUN   TestSlotLeaseGuard_DisabledNeverReadsNorDenies/config_unavailable/corrupt_record
+=== RUN   TestSlotLeaseGuard_DisabledNeverReadsNorDenies/control_enabled/live_foreign_holder_denies
+    slot_lease_guard_test.go:405: enabled guard did not deny a live foreign holder through the handler (decision "allow") — the disabled rows above assert nothing until this passes
+=== RUN   TestSlotLeaseGuard_DisabledNeverReadsNorDenies/control_enabled/corrupt_record_advises
+    slot_lease_guard_test.go:412: enabled guard gave no advisory on a corrupt record through the handler — the stderr capture in the disabled rows cannot be interpreted. stderr: ""
+--- FAIL: TestSlotLeaseGuard_DisabledNeverReadsNorDenies (3.02s)
+    --- PASS: TestSlotLeaseGuard_DisabledNeverReadsNorDenies/key_absent/live_foreign_holder (0.53s)
+    --- PASS: TestSlotLeaseGuard_DisabledNeverReadsNorDenies/key_absent/corrupt_record (0.37s)
+    --- PASS: TestSlotLeaseGuard_DisabledNeverReadsNorDenies/explicit_false/live_foreign_holder (0.34s)
+    --- PASS: TestSlotLeaseGuard_DisabledNeverReadsNorDenies/explicit_false/corrupt_record (0.37s)
+    --- PASS: TestSlotLeaseGuard_DisabledNeverReadsNorDenies/config_unavailable/live_foreign_holder (0.37s)
+    --- PASS: TestSlotLeaseGuard_DisabledNeverReadsNorDenies/config_unavailable/corrupt_record (0.35s)
+    --- FAIL: TestSlotLeaseGuard_DisabledNeverReadsNorDenies/control_enabled/live_foreign_holder_denies (0.35s)
+    --- FAIL: TestSlotLeaseGuard_DisabledNeverReadsNorDenies/control_enabled/corrupt_record_advises (0.35s)
+=== RUN   TestSlotLeaseGuard_NormalizesWorktreeRootToPrimary
+=== RUN   TestSlotLeaseGuard_NormalizesWorktreeRootToPrimary/wt-deny
+    slot_lease_guard_test.go:441: hook root in a linked worktree: decision = "", want deny — the guard read the worktree's empty state instead of the primary's record
+=== RUN   TestSlotLeaseGuard_NormalizesWorktreeRootToPrimary/primary-deny
+    slot_lease_guard_test.go:451: hook root at the primary: decision = "", want deny
+=== RUN   TestSlotLeaseGuard_NormalizesWorktreeRootToPrimary/no-git
+    slot_lease_guard_test.go:464: no advisory for an unresolvable root; got ""
+    slot_lease_guard_test.go:470: last audit under the unnormalized hook root = ("", "", present=false), want a fail-open line
+--- FAIL: TestSlotLeaseGuard_NormalizesWorktreeRootToPrimary (0.45s)
+    --- FAIL: TestSlotLeaseGuard_NormalizesWorktreeRootToPrimary/wt-deny (0.00s)
+    --- FAIL: TestSlotLeaseGuard_NormalizesWorktreeRootToPrimary/primary-deny (0.00s)
+    --- FAIL: TestSlotLeaseGuard_NormalizesWorktreeRootToPrimary/no-git (0.00s)
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/hook	9.227s
+FAIL

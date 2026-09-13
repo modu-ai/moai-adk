@@ -1,0 +1,10 @@
+=== RUN   TestSectionsSnapshot_UnaffectedBySettingsSubpath
+=== RUN   TestSectionsSnapshot_UnaffectedBySettingsSubpath/cell_A_same_sections_tree
+=== RUN   TestSectionsSnapshot_UnaffectedBySettingsSubpath/cell_B_settings_only_is_not_a_sections_snapshot
+    settings_snapshot_test.go:382: HasSnapshot = true with only the settings copy present
+--- FAIL: TestSectionsSnapshot_UnaffectedBySettingsSubpath (18.85s)
+    --- PASS: TestSectionsSnapshot_UnaffectedBySettingsSubpath/cell_A_same_sections_tree (3.90s)
+    --- FAIL: TestSectionsSnapshot_UnaffectedBySettingsSubpath/cell_B_settings_only_is_not_a_sections_snapshot (14.96s)
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/cli/update/backup	19.736s
+FAIL

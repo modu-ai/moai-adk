@@ -1,0 +1,16 @@
+=== RUN   TestSettingsSnapshot_WriteSites
+=== RUN   TestSettingsSnapshot_WriteSites/update_leftover_abort
+    update_settings_snapshot_test.go:376: live a = 2, want 3 (doc {
+          "K": 1,
+          "L": 1,
+          "a": 2
+        })
+=== RUN   TestSettingsSnapshot_WriteSites/update_leftover_version_skip
+    update_settings_snapshot_test.go:407: canonical snapshot = {"a":1}, want {"a":2,"K":1,"permissions":{"deny":["Write(./secrets/**)"]}}
+    update_settings_snapshot_test.go:408: staging copy still present after the flow
+--- FAIL: TestSettingsSnapshot_WriteSites (0.04s)
+    --- FAIL: TestSettingsSnapshot_WriteSites/update_leftover_abort (0.04s)
+    --- FAIL: TestSettingsSnapshot_WriteSites/update_leftover_version_skip (0.00s)
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/cli	1.072s
+FAIL

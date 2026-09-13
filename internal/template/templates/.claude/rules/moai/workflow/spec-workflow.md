@@ -238,7 +238,7 @@ After each methodology cycle, compare planned files against actual modifications
 
 ### Methodology delegation (team mode experimental)
 
-The run-phase methodology (DDD/TDD) is applied by a single `manager-develop` sub-agent (serial), with multi-domain research fanned out via fanout (parallel read-only `Agent()`) where warranted; the Agent Teams layer is an explicit-request experimental alternative (see § Agent Teams Variant). The native `moai cg` teammate runtime is unaffected.
+The run-phase methodology (DDD/TDD) is applied by a single `manager-develop` sub-agent (serial), with multi-domain research fanned out via fanout (parallel read-only `Agent()`) where warranted; the Agent Teams layer is an explicit-request experimental alternative (see § Agent Teams Variant). Native Agent Teams remain experimental; retired CG routing does not establish mixed-provider teammate capability.
 
 ### MX Tag Integration
 
@@ -409,7 +409,7 @@ Two report streams exist for plan audits; they are distinct by design and mutual
 - **plan-phase review stream** — `plan-audit.md` (or `plan-audit-iter<N>.md`, one file per iteration), exported by the plan-auditor to the card evidence path `.moai/reports/<card-id>/` (or `.moai/reports/<SPEC-ID>/` for a SPEC-scoped audit produced without a card) per the audit-artifact convention (`.moai/docs/audit-artifact-convention.md`). Iteration `N` follows the plan-auditor Retry Loop Contract (max 3). Consumed by the plan workflow's assembly/annotation cycle.
 - **run-gate stream** — `<SPEC-ID>-<YYYY-MM-DD>.md`, date-based, under the gitignored runtime record directory `.moai/reports/plan-audit/`. Written by the Phase 1 Plan Audit Gate (`internal/runtime/audit_report.go`). Every gate call persists a record here; multiple calls on the same day append to the same file. This date-file is the verdict **record surface** only — it is never the hash subject for skip-eligibility (see below).
 
-Skip-eligibility inputs (normative, matching the Go implementation): (a) the "most recent plan-auditor verdict" the run-gate consults is the plan-phase review stream's **final-iteration verdict**; (b) the artifact-hash check recomputes and compares the **plan-artifact hash** — `internal/runtime/audit_cache.go` `ComputeHash` hashes the SPEC directory's plan artifacts (the union subject set below) as whitespace-normalized SHA-256, with cache key = (specID, planArtifactHash); (c) the run-gate stream's date-file records the verdict but is not hashed.
+Skip-eligibility inputs (normative, matching the Go implementation): (a) the "most recent plan-auditor verdict" the run-gate consults is the plan-phase review stream's **final-iteration verdict**, resolved by `runtime.ResolveLatestPlanAudit`; (b) the artifact-hash check recomputes and compares the **plan-artifact hash** — `internal/runtime/audit_cache.go` `ComputeHash` hashes the SPEC directory's plan artifacts (the union subject set below) as exact bytes, with cache key = (specID, planArtifactHash); (c) the run-gate stream's date-file records the verdict but is not hashed and never supplies cache identity. A review file without hash/score/version metadata is a cache miss and requires a fresh audit.
 
 **Plan-artifact hash subject list (Go verbatim):** the hash subject set is the union `{acceptance.md, design.md, plan.md, research.md, spec.md, tasks.md}` — matching `internal/runtime/audit_cache.go` `planArtifactNames` verbatim. The set is tier-conditional by construction via the "skip if missing" rule in `ComputeHash`: a Tier S directory (spec.md, plan.md) hashes only those present; a Tier M directory adds acceptance.md; a Tier L directory contributes design.md AND research.md as mechanical subjects (SPEC-AUDIT-SNAPSHOT-001 A1 Tier L extension — changes to design.md/research.md NOW mechanically invalidate a cached skip verdict, replacing the former "manual judgment input" treatment); a grandfathered V3R4 directory carrying tasks.md retains it as a subject (K-2 backward compat).
 
@@ -451,7 +451,4 @@ The default multi-agent surface remains:
 - Coding-heavy implementation → serial (sequential sub-agent) per Anthropic's coding-task parallelism caveat.
 - High-volume mechanical transformation → sweep (dynamic-workflow fan-out).
 
-The native Claude Code teammate runtime is UNAFFECTED and sanctioned: `moai cg` GLM teammate
-panes, `moai cc -w <name> --spawn` teammate windows, the `~/.claude/teams/` registry, and
-`teammateMode` launcher handling remain supported (see
-`.claude/rules/moai/core/glm-web-tooling.md` § CG Mode).
+Native Claude Code Agent Teams remain experimental under the enabled flag and the constraints above. The `~/.claude/teams/` registry is runtime-owned. Retired CG routing is not an active teammate mode; mixed-provider roles require the verified capability described in `.claude/rules/moai/core/glm-web-tooling.md` § CG Retirement and Migration.

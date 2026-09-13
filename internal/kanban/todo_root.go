@@ -9,21 +9,37 @@
 // need different things:
 //
 //   - ResolveTodoQueueRoot is PURE. It performs no MkdirAll, Rename, or
-//     WriteFile on ANY of its three branches. It is what internal/web
-//     imports: a console that rendered a page must not migrate the
-//     operator's backlog as a side effect (REQ-WTQ-001, REQ-WTQ-004).
-//   - ResolveTodoQueueRootAdopting resolves and then adopts. It is what the
-//     `moai todo` command path calls, so that command's behaviour — the
-//     adopt-not-shadow migration — is unchanged (REQ-WTQ-004, AC-WTQ-008).
+//     WriteFile on ANY branch. It is what internal/web imports: a console
+//     that rendered a page must not migrate the operator's backlog as a side
+//     effect (REQ-WTQ-001, REQ-WTQ-004).
+//   - ResolveTodoQueueRootAdopting is what the `moai todo` command path
+//     calls, so that command's behaviour — the adopt-not-shadow migration —
+//     is unchanged (REQ-WTQ-004, AC-WTQ-008).
 //
-// Read-through (decision D-2, REQ-WTQ-005): splitting alone would trade a
-// write hazard for a read divergence — in a non-git launch context the pure
-// resolver would report an empty fallback queue while `moai todo` adopted
-// first and reported N. The pure resolver therefore resolves to the
-// PROJECT-LOCAL root when the fallback root holds no queue file and a
-// project-local one exists, still writing nothing. Its predicate is the
-// mirror of adoptLocalTodoQueue's own early returns, so the two agree by
-// construction rather than by coincidence.
+// This layer answers ONE question: which project root does the queue hang
+// from. Everything ABOUT that root — the redirection into ~/.moai/db/<key>/
+// todo, the temporary-origin refusal that keeps a temp launch project-local,
+// and the adoption of every legacy location including this file's own former
+// ~/.moai/todo/<key> fallback — belongs to resolveStateDir one layer down,
+// which is anchored as the single directory-layer resolver precisely so two
+// copies of that policy cannot drift apart (state_dir.go @MX:ANCHOR).
+//
+// A home-based fallback ROOT used to be computed here as well, and that was
+// the drift (t621). Since the home-state migration, the layer below re-derives
+// the home location from whatever root it is handed — so handing it a home
+// root got the project key computed from a home path, landing the queue in
+// ~/.moai/db/<key>-<hash>/todo. A session that reached the same project
+// through git read ~/.moai/db/<key>/todo and saw an empty queue: the fork this
+// resolution exists to prevent, reintroduced one layer up. The launch base is
+// therefore the answer on every non-git branch, and it is the ONLY root whose
+// project key is the project's own.
+//
+// The same drift made the read-through predicate (decision D-2, REQ-WTQ-005)
+// unserviceable: it asked os.Stat for a `backlog.json` while the engine's
+// steady state is a sibling `backlog.db` with no json beside it, so a real
+// queue in the normal layout was invisible to it. Both predicates are gone
+// with the branch they guarded; resolveStateDir observes layouts through
+// queueExists, which reads both artifacts.
 package kanban
 
 import (
@@ -66,42 +82,20 @@ func ResolveTodoQueueRoot(base string) string {
 	if root, ok := primaryCheckoutRoot(base); ok {
 		return root
 	}
-	if explicitMoaiHome() {
-		return base
-	}
-	if root, _, refused := tempOriginSubstituteRoot(base); refused {
-		return root
-	}
-	if pathInsideTempDir(base) {
-		return fallbackTodoQueueRoot(base)
-	}
 	return base
 }
 
-// ResolveTodoQueueRootAdopting is ResolveTodoQueueRoot plus the queue
-// adoption `moai todo` has always performed: on the home-based fallback
-// branch it carries a pre-existing project-local queue over before returning
-// (adopt-not-shadow). This is the ONLY entry point from which the adoption
-// side effect is reachable.
+// ResolveTodoQueueRootAdopting is the `moai todo` command path's entry point.
+// It resolves to the same root as the pure form; the adoption that used to
+// live here now happens one layer down, in BacklogPathForRootAdopting, where
+// the queue lock is already in play.
+//
+// The two entry points are kept distinct because their CALLERS' contracts
+// differ: the console must reach a resolution that provably writes nothing
+// (REQ-WTQ-001, REQ-WTQ-004), and collapsing the names would let a later edit
+// give the console an adopting path without any caller changing.
 func ResolveTodoQueueRootAdopting(base string) string {
-	if root, ok := primaryCheckoutRoot(base); ok {
-		return root
-	}
-	if explicitMoaiHome() {
-		return base
-	}
-	if root, _, refused := tempOriginSubstituteRoot(base); refused {
-		return root
-	}
-	if pathInsideTempDir(base) {
-		root, ok := homeTodoQueueRoot(base)
-		if !ok {
-			return root
-		}
-		adoptLocalTodoQueue(base, root)
-		return fallbackTodoQueueRoot(base)
-	}
-	return base
+	return ResolveTodoQueueRoot(base)
 }
 
 func pathInsideTempDir(path string) bool {
@@ -184,15 +178,18 @@ func primaryCheckoutRoot(base string) (string, bool) {
 	return "", false
 }
 
-// homeTodoQueueRoot returns the home-based queue root for base, reporting
-// false when no home is resolvable — in which case it returns base itself, the
-// in-project ROOT, keeping the queue usable rather than failing the caller
-// outright. Read-only.
+// homeTodoQueueRoot names the LEGACY home-based queue root for base —
+// ~/.moai/todo/<key> — reporting false when no home is resolvable.
+//
+// It is no longer a resolution target (t621): a root resolved here is re-keyed
+// by the layer below, so returning one forked the queue. What remains is the
+// location's identity, which is still load-bearing on the adoption side —
+// legacyHomeStateDirsForRoot lists this directory and its nested state dirs
+// among the sources resolveStateDir adopts a queue FROM, so an operator whose
+// cards were carried into the old fallback still gets them back.
 //
 // The directory is named for the command that owns the queue (`moai todo` —
-// no `moai kanban` command exists). The project-local state directory now
-// carries that same name (see state_dir.go); the per-session records
-// (<uuid>.json) share it and travel with it.
+// no `moai kanban` command exists). Read-only.
 func homeTodoQueueRoot(base string) (string, bool) {
 	if base == "" {
 		base = "."
@@ -207,72 +204,6 @@ func homeTodoQueueRoot(base string) (string, bool) {
 		return base, false
 	}
 	return filepath.Join(home, ".moai", "todo", TodoQueueProjectKey(base)), true
-}
-
-// fallbackTodoQueueRoot is the PURE fallback: it computes the home-based
-// root and, per decision D-2, reads through to the project-local root when
-// that home root holds no queue file while a project-local one exists. It
-// writes nothing on any path.
-func fallbackTodoQueueRoot(base string) string {
-	if base == "" {
-		base = "."
-	}
-	root, ok := homeTodoQueueRoot(base)
-	if !ok {
-		return root
-	}
-	// The mirror of adoptLocalTodoQueue's early returns: a populated fallback
-	// wins (it was adopted on an earlier run), and with no local file there is
-	// nothing to read through to.
-	if _, err := os.Stat(BacklogPathForRoot(root)); err == nil {
-		return root
-	}
-	if _, err := os.Stat(BacklogPathForRoot(base)); err != nil {
-		return root
-	}
-	return base
-}
-
-// adoptLocalTodoQueue moves a pre-existing project-local queue into a fresh
-// fallback root, so the fallback's first run adopts the project's cards
-// instead of shadowing them behind an empty queue (the lossless-migration
-// requirement: item count and states must survive the cutover).
-//
-// Best-effort throughout — a failure leaves the local queue exactly where it
-// was and the fallback simply starts empty THIS run; the data is never
-// destroyed, so a later run can adopt it again once the obstruction clears.
-// When the fallback already has a queue file the local one is left untouched
-// (adopted on an earlier run; a local file reappearing after that is a
-// downgrade-era snapshot the populated fallback deliberately ignores).
-func adoptLocalTodoQueue(base, fallbackRoot string) {
-	local := BacklogPathForRoot(base)
-	// BacklogPathForRoot, not a bare join: every consumer resolves the store
-	// through it (internal/cli/todo.go, internal/web/todo_queue_read.go), so a
-	// target built any other way is a path nothing reads — the queue would be
-	// moved out of the operator's sight rather than migrated.
-	target := BacklogPathForRoot(fallbackRoot)
-	if _, err := os.Stat(target); err == nil {
-		return
-	}
-	if _, err := os.Stat(local); err != nil {
-		return
-	}
-	if err := os.MkdirAll(filepath.Dir(target), 0o755); err != nil {
-		return
-	}
-	// Same-volume rename is atomic and leaves no duplicate behind.
-	if err := os.Rename(local, target); err == nil {
-		return
-	}
-	// Cross-volume (EXDEV) or rename-refusing filesystem: copy the bytes and
-	// KEEP the original — deletion is the one outcome the lossless
-	// requirement forbids, and a leftover original is inert (the populated
-	// fallback wins on every later run).
-	data, err := os.ReadFile(local)
-	if err != nil {
-		return
-	}
-	_ = os.WriteFile(target, data, 0o600)
 }
 
 // TodoQueueProjectKey derives the fallback queue's directory name from the

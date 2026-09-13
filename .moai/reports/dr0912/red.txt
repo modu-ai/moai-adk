@@ -1,0 +1,7 @@
+=== RUN   TestDestructiveTargetRegistry_CoversAllSites
+    update_destructive_registry_test.go:57: unregistered destructive site: internal/cli/update/backup/settings_snapshot.go promoteSettingsSnapshot has 1 os.RemoveAll/os.Rename call site(s) but no registry row
+    update_destructive_registry_test.go:87: scanned 13 (file, function) pair(s) across internal/cli/update and internal/cli/update*.go; registry has 12 row(s)
+--- FAIL: TestDestructiveTargetRegistry_CoversAllSites (0.01s)
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/cli	0.935s
+FAIL

@@ -1,0 +1,27 @@
+{
+  "binary": "/tmp/moai-v3.2.0-rc.8-t649-tool-error-d123ddaa90fb",
+  "build_id": "v3.2.0-rc.8-t649-tool-error-d123ddaa90fb",
+  "head": "81c1d58f9cf7045594ee61d5e4ff380948ce9eba",
+  "command": [
+    "go",
+    "build",
+    "-p",
+    "1",
+    "-trimpath",
+    "-ldflags",
+    "-X github.com/modu-ai/moai-adk/pkg/version.Version=v3.2.0-rc.8 -X github.com/modu-ai/moai-adk/pkg/version.BuildID=v3.2.0-rc.8-t649-tool-error-d123ddaa90fb -X github.com/modu-ai/moai-adk/pkg/version.Commit=81c1d58f9cf7045594ee61d5e4ff380948ce9eba -X github.com/modu-ai/moai-adk/pkg/version.Date=2026-09-12T08:53:13Z",
+    "-o",
+    "/tmp/moai-v3.2.0-rc.8-t649-tool-error-d123ddaa90fb",
+    "./cmd/moai"
+  ],
+  "sha256": "578beb982c489dc47a6ad11c1396cea3c07ef035677c53eb9aef8f2d2b885991",
+  "source_hashes": {
+    "internal/gateway/translate/request.go": "c37005dd494455659d1d1322a288084355056af824001aa23942b5bd07df85a9",
+    "internal/gateway/translate/adversarial_test.go": "13975d168c7916cefb83c3dca3e01afe4a9884f0fbf43f2342d4c84ac145326b",
+    "internal/gateway/translate/tool_error_result_test.go": "ec3d496e33133b658c51e91aed2c4115e23aedcde4af5ab91465bf08fe9efaa2"
+  },
+  "installed": true,
+  "installed_path": "/Users/goos/go/bin/moai",
+  "backup_path": "/Users/goos/.moai/releases/moai-before-tool-error-06dd7f8fdc30",
+  "version_output": "\u256d\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u256e\n\u2502                        \u2502\n\u2502  moai-adk v3.2.0-rc.8  \u2502\n\u2502                        \u2502\n\u2502                        \u2502\n\u2570\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u256f\n[v3.2.0-rc.8] [v3.2.0-rc.8-t649-tool-error-d123ddaa90fb] [built 2026-09-12T08:53:13Z]\n"
+}

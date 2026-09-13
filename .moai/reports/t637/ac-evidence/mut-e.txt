@@ -1,0 +1,60 @@
+=== RUN   TestIntegrationAcquire_WarningIsOnStderrOnly
+=== RUN   TestIntegrationAcquire_WarningIsOnStderrOnly/text
+    integration_target_test.go:581: stdout = "[moai:integration-lock] warning: git-flow project with no develop branch configured; the window was recorded against the caller's branch \"main\". Set git_strategy.manual.develop_branch, or pass --branch <integration-target>.\nrelease-integration window acquired by sess-lane12 on main\n", want exactly "release-integration window acquired by sess-lane12 on main\n"
+    integration_target_test.go:584: want exactly one warning line on stderr, got 0: []
+=== RUN   TestIntegrationAcquire_WarningIsOnStderrOnly/json
+    integration_target_test.go:603: acquire --json stdout is not JSON (invalid character 'm' looking for beginning of value): "[moai:integration-lock] warning: git-flow project with no develop branch configured; the window was recorded against the caller's branch \"main\". Set git_strategy.manual.develop_branch, or pass --branch <integration-target>.\n{\"acquired\":true,\"branch\":\"main\",\"replaced\":null,\"session\":\"sess-lane12\",\"settings_drift\":{\"match_count\":0,\"path\":\"/private/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestIntegrationAcquire_WarningIsOnStderrOnlyjson420052029/001/.claude/settings.json\",\"status\":\"clean\",\"worktree\":\"/private/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestIntegrationAcquire_WarningIsOnStderrOnlyjson420052029/001\"}}\n"
+--- FAIL: TestIntegrationAcquire_WarningIsOnStderrOnly (1.46s)
+    --- FAIL: TestIntegrationAcquire_WarningIsOnStderrOnly/text (0.87s)
+    --- FAIL: TestIntegrationAcquire_WarningIsOnStderrOnly/json (0.59s)
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/cli	2.540s
+testing: warning: no tests to run
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/cli/agentlint	3.012s [no tests to run]
+testing: warning: no tests to run
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/cli/harness	1.468s [no tests to run]
+testing: warning: no tests to run
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/cli/pr	1.229s [no tests to run]
+testing: warning: no tests to run
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/cli/preference	3.691s [no tests to run]
+testing: warning: no tests to run
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/cli/printer	1.685s [no tests to run]
+testing: warning: no tests to run
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/cli/specid	1.036s [no tests to run]
+testing: warning: no tests to run
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/cli/taskledger	2.841s [no tests to run]
+testing: warning: no tests to run
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/cli/uikit	2.719s [no tests to run]
+testing: warning: no tests to run
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/cli/update	2.179s [no tests to run]
+testing: warning: no tests to run
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/cli/update/backup	3.421s [no tests to run]
+testing: warning: no tests to run
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/cli/update/deploy	3.220s [no tests to run]
+testing: warning: no tests to run
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/cli/update/merge	2.017s [no tests to run]
+testing: warning: no tests to run
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/cli/update/plan	3.551s [no tests to run]
+testing: warning: no tests to run
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/cli/update/report	2.337s [no tests to run]
+testing: warning: no tests to run
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/cli/wizard	2.521s [no tests to run]
+testing: warning: no tests to run
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/cli/worktree	2.862s [no tests to run]
+FAIL

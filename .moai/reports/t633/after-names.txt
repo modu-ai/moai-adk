@@ -1,0 +1,14 @@
+.claude/skills/moai-domain-frontend/SKILL.md:115:- moai-ref-ui-polish - Component library integration
+.claude/skills/moai-domain-frontend/SKILL.md:116:- moai-ref-ui-polish - UI/UX design principles
+internal/template/templates/.claude/skills/moai-domain-frontend/SKILL.md:115:- moai-ref-ui-polish - Component library integration
+internal/template/templates/.claude/skills/moai-domain-frontend/SKILL.md:116:- moai-ref-ui-polish - UI/UX design principles
+.claude/skills/moai-workflow-testing/SKILL.md:184:- moai-domain-database / moai-domain-frontend / moai-domain-backend: Platform-specific testing
+internal/template/templates/.claude/skills/moai-workflow-testing/SKILL.md:184:- moai-domain-database / moai-domain-frontend / moai-domain-backend: Platform-specific testing
+internal/template/templates/.claude/skills/moai-workflow-loop/SKILL.md:40:- .claude/hooks/moai/handle-post-tool.sh (PostToolUse): LSP diagnostics after Write/Edit operations
+internal/template/templates/.claude/skills/moai-workflow-loop/SKILL.md:41:- .claude/hooks/moai/handle-stop.sh (Stop): Loop iteration control
+internal/template/templates/.claude/skills/moai-workflow-loop/SKILL.md:186:The LSP hook is located at .claude/hooks/moai/handle-post-tool.sh.
+internal/template/templates/.claude/skills/moai-workflow-loop/SKILL.md:188:The loop hook is located at .claude/hooks/moai/handle-stop.sh.
+.claude/skills/moai-workflow-loop/SKILL.md:40:- .claude/hooks/moai/handle-post-tool.sh (PostToolUse): LSP diagnostics after Write/Edit operations
+.claude/skills/moai-workflow-loop/SKILL.md:41:- .claude/hooks/moai/handle-stop.sh (Stop): Loop iteration control
+.claude/skills/moai-workflow-loop/SKILL.md:186:The LSP hook is located at .claude/hooks/moai/handle-post-tool.sh.
+.claude/skills/moai-workflow-loop/SKILL.md:188:The loop hook is located at .claude/hooks/moai/handle-stop.sh.

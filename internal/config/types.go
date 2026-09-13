@@ -269,12 +269,9 @@ type LLMConfig struct {
 	// predicate (template.IsGLMBackend, REQ-MTP-026) keeps mode=="glm" only as a
 	// defensive OR for this dormant field.
 	Mode string `yaml:"mode"`
-	// TeamMode selection: "" (`moai cc` / unset), "cg" (`moai cg` — Claude leader +
-	// GLM teammates), or "glm" (`moai glm` — all-GLM). These are the values
-	// persistTeamMode (internal/cli/glm.go) actually writes; "claude"/"hybrid" are
-	// legacy non-GLM values retained for backward-compat parsing. The GLM
-	// backend-detection predicate (template.IsGLMBackend) treats team_mode ∈
-	// {cg, glm} as a GLM backend.
+	// TeamMode stores explicit session intent. "glm" selects GLM; "claude"
+	// and unset select ordinary Claude policy. Historical "cg" remains readable
+	// as data, but launch requires explicit migration and never activates GLM.
 	TeamMode string `yaml:"team_mode"`
 	// Environment variable name for GLM API key
 	GLMEnvVar string `yaml:"glm_env_var"`
@@ -475,6 +472,12 @@ type WorkflowConfig struct {
 	// two refusals at two different surfaces cannot say which one a maintainer
 	// meant to turn off.
 	SettingsDriftGate SettingsDriftGateConfig `yaml:"settings_drift_gate"`
+
+	// SlotLease carries the resource slot lease settings (card t607): the
+	// opt-in PreToolUse guard flag, the default declared maximum duration, and
+	// the per-resource command patterns. Default OFF; the `moai slot` verbs
+	// work regardless of Enabled. Deliberately separate from IntegrationLock.
+	SlotLease SlotLeaseConfig `yaml:"slot_lease"`
 
 	// Codex gates the codex audit backend + the Stop-hook review gate
 	// (SPEC-MOAI-MCP-SERVER-001 M2). The ReviewGate sub-block is the opt-in
@@ -687,6 +690,26 @@ type IntegrationLockConfig struct {
 // the default-OFF posture was chosen for, and would pass every other check.
 type SettingsDriftGateConfig struct {
 	Enabled bool `yaml:"enabled"`
+}
+
+// SlotLeaseConfig mirrors workflow.slot_lease.* (card t607). Enabled gates the
+// PreToolUse guard's deny layer only; DefaultMaxDuration is a duration string
+// parsed at use; Resources maps a resource name to its command patterns.
+// Resource entries decode leniently (slot_lease_config.go) so one malformed
+// entry cannot turn the whole workflow section off.
+type SlotLeaseConfig struct {
+	Enabled            bool                               `yaml:"enabled"`
+	DefaultMaxDuration string                             `yaml:"default_max_duration"`
+	Resources          map[string]SlotLeaseResourceConfig `yaml:"resources"`
+}
+
+// SlotLeaseResourceConfig is one resource entry: RE2 command patterns matched
+// against a Bash command with quoted spans scrubbed. Invalid is non-empty when
+// the entry could not be read as a list of pattern strings; such an entry is
+// reported by the guard (fail-open) rather than failing the whole section.
+type SlotLeaseResourceConfig struct {
+	Commands []string `yaml:"commands"`
+	Invalid  string   `yaml:"-"`
 }
 
 // AgentModelGuardConfig mirrors workflow.agent_model_guard.* — the opt-in

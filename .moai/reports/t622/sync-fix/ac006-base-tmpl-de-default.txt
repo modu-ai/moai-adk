@@ -1,0 +1,1 @@
+8:This affects auto-merge behavior: worktree contexts default to auto-merge.

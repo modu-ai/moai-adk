@@ -138,7 +138,7 @@ Choosing Settings in the rail unfolds fourteen tabs below it as a vertical list.
 9. **Agents** — per-agent profile and model assignment
 10. **Report** — report format and output preferences
 11. **MCP** — per-tool activation toggles for `moai mcp-server`. Write-capable tools carry a distinguishing mark
-12. **Cross-Session** — the inbound posture for cross-session messaging: how inbound messages are handled (`accept` · `hold` · `refuse`), cross-machine sending isolation, and held-dialog expiry. It edits `crosssession.yaml`, and the launcher injects this value into sessions from the next `moai cc`/`glm`/`cg` run — sessions already running keep the posture they were launched with
+12. **Cross-Session** — the inbound posture for cross-session messaging: how inbound messages are handled (`accept` · `hold` · `refuse`), cross-machine sending isolation, and held-dialog expiry. It edits `crosssession.yaml`, and the launcher injects this value into sessions from the next `moai cc`/`glm` run — sessions already running keep the posture they were launched with
 13. **Feedback** — the repository the feedback workflow files against, and the pre-submission confirmation toggle
 14. **Quality Gate** — whether the commit-time heavy gate runs. The runner honors this value only under `MOAI_PRECOMMIT=1`
 
@@ -170,11 +170,11 @@ What can be edited is fixed by a single source of truth, and the console writes 
 
 ## Security model
 
-**Loopback only.** The console binds to `127.0.0.1` alone. Another account on the same machine, or a remote host, cannot reach it.
+**Loopback only.** The console binds to `127.0.0.1` alone, so a remote host cannot reach it. Loopback is not divided by account, though: another account logged in to the same machine can connect to the port.
 
 **No database.** Nothing extra is started. Everything it reads and writes lives in files under the current project's `.moai/`.
 
-**No authentication.** Loopback-only is the premise, so there is no login or token layer.
+**No authentication.** There is no login or token layer. Binding to loopback keeps remote hosts out, but not other accounts on the same machine. On a shared machine, those accounts can reach the console while it is running.
 
 **No command execution.** The observation areas refuse any method other than GET, and no screen runs a command on the server. The console does not perform SPEC status transitions either — those belong to each phase's manager agent.
 

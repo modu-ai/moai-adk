@@ -1,0 +1,10 @@
+# mutant M-6: drop the legacy concatenated-key aliases
+# edits: [["internal/constitution/evolution_log_reader.go", "\"rule_id\", \"ruleid\", \"const_registry_entry\"", "\"rule_id\", \"const_registry_entry\""], ["internal/constitution/evolution_log_reader.go", "\"approved_at\", \"approvedat\", \"timestamp\"", "\"approved_at\", \"timestamp\""], ["internal/constitution/evolution_log_reader.go", "\"zone_before\", \"zonebefore\", \"zone\"", "\"zone_before\", \"zone\""], ["internal/constitution/evolution_log_reader.go", "\"zone_after\", \"zoneafter\", \"zone\"", "\"zone_after\", \"zone\""], ["internal/constitution/evolution_log_reader.go", "\"approved_by\", \"approvedby\", \"approver\"", "\"approved_by\", \"approver\""], ["internal/constitution/evolution_log_reader.go", "\"canary_verdict\", \"canaryverdict\"", "\"canary_verdict\""], ["internal/constitution/evolution_log_reader.go", "\"clause_before\", \"clausebefore\"", "\"clause_before\""], ["internal/constitution/evolution_log_reader.go", "\"clause_after\", \"clauseafter\"", "\"clause_after\""], ["internal/constitution/evolution_log_reader.go", "\"rolled_back\", \"rolledback\"", "\"rolled_back\""], ["internal/constitution/evolution_log_reader.go", "\"rollback_reason\", \"rollbackreason\"", "\"rollback_reason\""], ["internal/constitution/evolution_log_reader.go", "\"rollback_at\", \"rollbackat\"", "\"rollback_at\""]]
+# $ go test ./internal/constitution/ -run ^TestLoadEvolutionLogs_LegacyKeys$ -count=1 -v
+# exit=1
+=== RUN   TestLoadEvolutionLogs_LegacyKeys
+    evolution_log_reader_test.go:212: LoadEvolutionLogs: evolution log /var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestLoadEvolutionLogs_LegacyKeys1396819816/001/evolution-log.md: line 4: key approved_at: entry LEARN-20260911-001: no approval time recorded
+--- FAIL: TestLoadEvolutionLogs_LegacyKeys (0.00s)
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/constitution	0.499s
+FAIL

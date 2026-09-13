@@ -1,0 +1,15 @@
+# mutant M-15i: M-15 variant (i): drop the line number from the fail-closed error
+# edits: [["internal/constitution/evolution_log_reader.go", "return fmt.Errorf(\"evolution log %s: line %d: key %s: entry %s: %s\",\n\t\td.path, line, key, d.id, fmt.Sprintf(format, args...))", "return fmt.Errorf(\"evolution log %s: key %s: entry %s: %s\",\n\t\td.path, key, d.id, fmt.Sprintf(format, args...))"]]
+# $ go test ./internal/constitution/ -run ^TestLoadEvolutionLogs_FailClosedErrorLocation$ -count=1 -v
+# exit=1
+=== RUN   TestLoadEvolutionLogs_FailClosedErrorLocation
+=== RUN   TestLoadEvolutionLogs_FailClosedErrorLocation/unparseable_timestamp
+    evolution_log_reader_test.go:391: error "evolution log /var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestLoadEvolutionLogs_FailClosedErrorLocationunparseable_timest2524539138/001/evolution-log.md: key timestamp: entry EVO-X-001: approval time \"not-a-date\" does not parse (want RFC 3339 or YYYY-MM-DD)" lacks the file line 10 (path-stripped: "evolution log : key timestamp: entry EVO-X-001: approval time \"not-a-date\" does not parse (want RFC 3339 or YYYY-MM-DD)")
+=== RUN   TestLoadEvolutionLogs_FailClosedErrorLocation/missing_timestamp
+    evolution_log_reader_test.go:426: error "evolution log /var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestLoadEvolutionLogs_FailClosedErrorLocationmissing_timestamp2927238366/001/evolution-log.md: key approved_at: entry LEARN-20260911-009: no approval time recorded" lacks the file line 7 (path-stripped: "evolution log : key approved_at: entry LEARN-20260911-009: no approval time recorded")
+--- FAIL: TestLoadEvolutionLogs_FailClosedErrorLocation (0.00s)
+    --- FAIL: TestLoadEvolutionLogs_FailClosedErrorLocation/unparseable_timestamp (0.00s)
+    --- FAIL: TestLoadEvolutionLogs_FailClosedErrorLocation/missing_timestamp (0.00s)
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/constitution	0.370s
+FAIL

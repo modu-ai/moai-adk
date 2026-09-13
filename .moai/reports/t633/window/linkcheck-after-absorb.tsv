@@ -1,0 +1,172 @@
+.claude/skills/moai/workflows/fix.md:52	PATH	OK(ROOT)	.claude/rules/moai/workflow/archived-agent-rejection.md	-> .claude/rules/moai/workflow/archived-agent-rejection.md
+.claude/skills/moai/workflows/fix.md:58	MDLINK	OK(REL)	../../../rules/moai/workflow/spec-workflow.md#subcommand-classification-pipeline-vs-multi-agent	-> .claude/rules/moai/workflow/spec-workflow.md	ANCHOR=OK
+.claude/skills/moai/workflows/fix.md:68	PATH	OK(ROOT)	.claude/skills/moai/workflows/loop.md	-> .claude/skills/moai/workflows/loop.md
+.claude/skills/moai/workflows/fix.md:68	PATH	OK(ROOT)	.claude/rules/moai/workflow/cadence-bridge.md	-> .claude/rules/moai/workflow/cadence-bridge.md
+.claude/skills/moai/workflows/fix.md:143	PATH	OK(ROOT)	.claude/skills/moai/workflows/sync/quality-gates-quality.md	-> .claude/skills/moai/workflows/sync/quality-gates-quality.md
+.claude/skills/moai/workflows/fix.md:177	PATH	OK(ROOT)	.claude/rules/moai/workflow/mx-tag-protocol.md	-> .claude/rules/moai/workflow/mx-tag-protocol.md
+.claude/skills/moai/workflows/fix.md:185	PATH	OK(ROOT)	.claude/rules/moai/workflow/archived-agent-rejection.md	-> .claude/rules/moai/workflow/archived-agent-rejection.md
+.claude/skills/moai/workflows/fix.md:202	PATH	OK(ROOT)	.claude/rules/moai/core/verification-claim-integrity.md	-> .claude/rules/moai/core/verification-claim-integrity.md
+.claude/skills/moai/workflows/fix.md:254	PATH	OK(ROOT)	.claude/rules/moai/workflow/mx-tag-protocol.md	-> .claude/rules/moai/workflow/mx-tag-protocol.md
+.claude/skills/moai/workflows/fix.md:269	PATH	OK(ROOT)	.claude/skills/moai/workflows/loop.md	-> .claude/skills/moai/workflows/loop.md
+internal/template/templates/.claude/skills/moai/workflows/fix.md:52	PATH	OK(ROOT)	.claude/rules/moai/workflow/archived-agent-rejection.md	-> internal/template/templates/.claude/rules/moai/workflow/archived-agent-rejection.md
+internal/template/templates/.claude/skills/moai/workflows/fix.md:58	MDLINK	OK(REL)	../../../rules/moai/workflow/spec-workflow.md#subcommand-classification-pipeline-vs-multi-agent	-> internal/template/templates/.claude/rules/moai/workflow/spec-workflow.md	ANCHOR=OK
+internal/template/templates/.claude/skills/moai/workflows/fix.md:68	PATH	OK(ROOT)	.claude/skills/moai/workflows/loop.md	-> internal/template/templates/.claude/skills/moai/workflows/loop.md
+internal/template/templates/.claude/skills/moai/workflows/fix.md:68	PATH	OK(ROOT)	.claude/rules/moai/workflow/cadence-bridge.md	-> internal/template/templates/.claude/rules/moai/workflow/cadence-bridge.md
+internal/template/templates/.claude/skills/moai/workflows/fix.md:143	PATH	OK(ROOT)	.claude/skills/moai/workflows/sync/quality-gates-quality.md	-> internal/template/templates/.claude/skills/moai/workflows/sync/quality-gates-quality.md
+internal/template/templates/.claude/skills/moai/workflows/fix.md:177	PATH	OK(ROOT)	.claude/rules/moai/workflow/mx-tag-protocol.md	-> internal/template/templates/.claude/rules/moai/workflow/mx-tag-protocol.md
+internal/template/templates/.claude/skills/moai/workflows/fix.md:185	PATH	OK(ROOT)	.claude/rules/moai/workflow/archived-agent-rejection.md	-> internal/template/templates/.claude/rules/moai/workflow/archived-agent-rejection.md
+internal/template/templates/.claude/skills/moai/workflows/fix.md:202	PATH	OK(ROOT)	.claude/rules/moai/core/verification-claim-integrity.md	-> internal/template/templates/.claude/rules/moai/core/verification-claim-integrity.md
+internal/template/templates/.claude/skills/moai/workflows/fix.md:254	PATH	OK(ROOT)	.claude/rules/moai/workflow/mx-tag-protocol.md	-> internal/template/templates/.claude/rules/moai/workflow/mx-tag-protocol.md
+internal/template/templates/.claude/skills/moai/workflows/fix.md:269	PATH	OK(ROOT)	.claude/skills/moai/workflows/loop.md	-> internal/template/templates/.claude/skills/moai/workflows/loop.md
+.claude/skills/moai/workflows/loop.md:48	MDLINK	OK(REL)	../../../rules/moai/workflow/spec-workflow.md#subcommand-classification-pipeline-vs-multi-agent	-> .claude/rules/moai/workflow/spec-workflow.md	ANCHOR=OK
+.claude/skills/moai/workflows/loop.md:62	PATH	OK(ROOT)	.claude/skills/moai/workflows/fix.md	-> .claude/skills/moai/workflows/fix.md
+.claude/skills/moai/workflows/loop.md:62	PATH	OK(ROOT)	.claude/rules/moai/workflow/cadence-bridge.md	-> .claude/rules/moai/workflow/cadence-bridge.md
+.claude/skills/moai/workflows/loop.md:96	PATH	OK(ROOT)	.claude/skills/moai/workflows/review.md	-> .claude/skills/moai/workflows/review.md
+.claude/skills/moai/workflows/loop.md:156	PATH	OK(ROOT)	.claude/rules/moai/core/verification-claim-integrity.md	-> .claude/rules/moai/core/verification-claim-integrity.md
+.claude/skills/moai/workflows/loop.md:176	PATH	OK(ROOT)	.claude/rules/moai/workflow/mx-tag-protocol.md	-> .claude/rules/moai/workflow/mx-tag-protocol.md
+.claude/skills/moai/workflows/loop.md:182	PATH	OK(ROOT)	.claude/rules/moai/workflow/archived-agent-rejection.md	-> .claude/rules/moai/workflow/archived-agent-rejection.md
+.claude/skills/moai/workflows/loop.md:208	PATH	OK(ROOT)	.claude/rules/moai/workflow/mx-tag-protocol.md	-> .claude/rules/moai/workflow/mx-tag-protocol.md
+.claude/skills/moai/workflows/loop.md:331	PATH	OK(ROOT)	.claude/rules/moai/development/coding-standards.md	-> .claude/rules/moai/development/coding-standards.md
+internal/template/templates/.claude/skills/moai/workflows/loop.md:48	MDLINK	OK(REL)	../../../rules/moai/workflow/spec-workflow.md#subcommand-classification-pipeline-vs-multi-agent	-> internal/template/templates/.claude/rules/moai/workflow/spec-workflow.md	ANCHOR=OK
+internal/template/templates/.claude/skills/moai/workflows/loop.md:62	PATH	OK(ROOT)	.claude/skills/moai/workflows/fix.md	-> internal/template/templates/.claude/skills/moai/workflows/fix.md
+internal/template/templates/.claude/skills/moai/workflows/loop.md:62	PATH	OK(ROOT)	.claude/rules/moai/workflow/cadence-bridge.md	-> internal/template/templates/.claude/rules/moai/workflow/cadence-bridge.md
+internal/template/templates/.claude/skills/moai/workflows/loop.md:96	PATH	OK(ROOT)	.claude/skills/moai/workflows/review.md	-> internal/template/templates/.claude/skills/moai/workflows/review.md
+internal/template/templates/.claude/skills/moai/workflows/loop.md:156	PATH	OK(ROOT)	.claude/rules/moai/core/verification-claim-integrity.md	-> internal/template/templates/.claude/rules/moai/core/verification-claim-integrity.md
+internal/template/templates/.claude/skills/moai/workflows/loop.md:176	PATH	OK(ROOT)	.claude/rules/moai/workflow/mx-tag-protocol.md	-> internal/template/templates/.claude/rules/moai/workflow/mx-tag-protocol.md
+internal/template/templates/.claude/skills/moai/workflows/loop.md:182	PATH	OK(ROOT)	.claude/rules/moai/workflow/archived-agent-rejection.md	-> internal/template/templates/.claude/rules/moai/workflow/archived-agent-rejection.md
+internal/template/templates/.claude/skills/moai/workflows/loop.md:208	PATH	OK(ROOT)	.claude/rules/moai/workflow/mx-tag-protocol.md	-> internal/template/templates/.claude/rules/moai/workflow/mx-tag-protocol.md
+internal/template/templates/.claude/skills/moai/workflows/loop.md:331	PATH	OK(ROOT)	.claude/rules/moai/development/coding-standards.md	-> internal/template/templates/.claude/rules/moai/development/coding-standards.md
+.claude/skills/moai/workflows/codemaps.md:55	MDLINK	OK(REL)	../../../rules/moai/workflow/spec-workflow.md#subcommand-classification-pipeline-vs-multi-agent	-> .claude/rules/moai/workflow/spec-workflow.md	ANCHOR=OK
+.claude/skills/moai/workflows/codemaps.md:83	PATH	OK(ROOT)	.claude/workflows/codemaps-extract.js	-> .claude/workflows/codemaps-extract.js
+internal/template/templates/.claude/skills/moai/workflows/codemaps.md:55	MDLINK	OK(REL)	../../../rules/moai/workflow/spec-workflow.md#subcommand-classification-pipeline-vs-multi-agent	-> internal/template/templates/.claude/rules/moai/workflow/spec-workflow.md	ANCHOR=OK
+internal/template/templates/.claude/skills/moai/workflows/codemaps.md:83	PATH	OK(ROOT)	.claude/workflows/codemaps-extract.js	-> internal/template/templates/.claude/workflows/codemaps-extract.js
+.claude/skills/moai/workflows/clean.md:50	PATH	OK(ROOT)	.claude/rules/moai/workflow/archived-agent-rejection.md	-> .claude/rules/moai/workflow/archived-agent-rejection.md
+.claude/skills/moai/workflows/clean.md:56	MDLINK	OK(REL)	../../../rules/moai/workflow/spec-workflow.md#subcommand-classification-pipeline-vs-multi-agent	-> .claude/rules/moai/workflow/spec-workflow.md	ANCHOR=OK
+.claude/skills/moai/workflows/clean.md:60	PATH	OK(ROOT)	.claude/rules/moai/workflow/archived-agent-rejection.md	-> .claude/rules/moai/workflow/archived-agent-rejection.md
+.claude/skills/moai/workflows/clean.md:122	PATH	OK(ROOT)	.claude/rules/moai/workflow/mx-tag-protocol.md	-> .claude/rules/moai/workflow/mx-tag-protocol.md
+internal/template/templates/.claude/skills/moai/workflows/clean.md:50	PATH	OK(ROOT)	.claude/rules/moai/workflow/archived-agent-rejection.md	-> internal/template/templates/.claude/rules/moai/workflow/archived-agent-rejection.md
+internal/template/templates/.claude/skills/moai/workflows/clean.md:56	MDLINK	OK(REL)	../../../rules/moai/workflow/spec-workflow.md#subcommand-classification-pipeline-vs-multi-agent	-> internal/template/templates/.claude/rules/moai/workflow/spec-workflow.md	ANCHOR=OK
+internal/template/templates/.claude/skills/moai/workflows/clean.md:60	PATH	OK(ROOT)	.claude/rules/moai/workflow/archived-agent-rejection.md	-> internal/template/templates/.claude/rules/moai/workflow/archived-agent-rejection.md
+internal/template/templates/.claude/skills/moai/workflows/clean.md:122	PATH	OK(ROOT)	.claude/rules/moai/workflow/mx-tag-protocol.md	-> internal/template/templates/.claude/rules/moai/workflow/mx-tag-protocol.md
+.claude/skills/moai/workflows/mx.md:31	PATH	OK(ROOT)	.claude/rules/moai/workflow/mx-tag-protocol.md	-> .claude/rules/moai/workflow/mx-tag-protocol.md
+.claude/skills/moai/workflows/mx.md:73	MDLINK	OK(REL)	../../../rules/moai/workflow/spec-workflow.md#subcommand-classification-pipeline-vs-multi-agent	-> .claude/rules/moai/workflow/spec-workflow.md	ANCHOR=OK
+internal/template/templates/.claude/skills/moai/workflows/mx.md:31	PATH	OK(ROOT)	.claude/rules/moai/workflow/mx-tag-protocol.md	-> internal/template/templates/.claude/rules/moai/workflow/mx-tag-protocol.md
+internal/template/templates/.claude/skills/moai/workflows/mx.md:73	MDLINK	OK(REL)	../../../rules/moai/workflow/spec-workflow.md#subcommand-classification-pipeline-vs-multi-agent	-> internal/template/templates/.claude/rules/moai/workflow/spec-workflow.md	ANCHOR=OK
+.claude/skills/moai/workflows/project/mode-detection.md:10	PATH	OK(ROOT)	.claude/hooks/moai/trace-ledger.sh	-> .claude/hooks/moai/trace-ledger.sh
+.claude/skills/moai/workflows/project/mode-detection.md:24	MDLINK	OK(REL)	../../../../rules/moai/workflow/spec-workflow.md#subcommand-classification-pipeline-vs-multi-agent	-> .claude/rules/moai/workflow/spec-workflow.md	ANCHOR=OK
+.claude/skills/moai/workflows/project/mode-detection.md:115	PATH	OK(ROOT)	.claude/skills/moai/workflows/plan/clarity-interview.md	-> .claude/skills/moai/workflows/plan/clarity-interview.md
+internal/template/templates/.claude/skills/moai/workflows/project/mode-detection.md:23	MDLINK	OK(REL)	../../../../rules/moai/workflow/spec-workflow.md#subcommand-classification-pipeline-vs-multi-agent	-> internal/template/templates/.claude/rules/moai/workflow/spec-workflow.md	ANCHOR=OK
+internal/template/templates/.claude/skills/moai/workflows/project/mode-detection.md:110	PATH	OK(ROOT)	.claude/skills/moai/workflows/plan/clarity-interview.md	-> internal/template/templates/.claude/skills/moai/workflows/plan/clarity-interview.md
+.claude/skills/moai/workflows/sync/quality-gates-context.md:10	PATH	OK(ROOT)	.claude/hooks/moai/trace-ledger.sh	-> .claude/hooks/moai/trace-ledger.sh
+.claude/skills/moai/workflows/sync/quality-gates-context.md:43	MDLINK	OK(REL)	../../../../rules/moai/workflow/spec-workflow.md#subcommand-classification-pipeline-vs-multi-agent	-> .claude/rules/moai/workflow/spec-workflow.md	ANCHOR=OK
+.claude/skills/moai/workflows/sync/quality-gates-context.md:149	PATH	OK(ROOT)	.claude/rules/moai/workflow/read-only-status-contract.md	-> .claude/rules/moai/workflow/read-only-status-contract.md
+.claude/skills/moai/workflows/sync/quality-gates-context.md:150	PATH	OK(ROOT)	.claude/rules/moai/workflow/verification-plan-contract.md	-> .claude/rules/moai/workflow/verification-plan-contract.md
+.claude/skills/moai/workflows/sync/quality-gates-context.md:150	PATH	OK(ROOT)	.claude/rules/moai/core/verification-claim-integrity.md	-> .claude/rules/moai/core/verification-claim-integrity.md
+internal/template/templates/.claude/skills/moai/workflows/sync/quality-gates-context.md:43	MDLINK	OK(REL)	../../../../rules/moai/workflow/spec-workflow.md#subcommand-classification-pipeline-vs-multi-agent	-> internal/template/templates/.claude/rules/moai/workflow/spec-workflow.md	ANCHOR=OK
+internal/template/templates/.claude/skills/moai/workflows/sync/quality-gates-context.md:143	PATH	OK(ROOT)	.claude/rules/moai/core/verification-claim-integrity.md	-> internal/template/templates/.claude/rules/moai/core/verification-claim-integrity.md
+.claude/skills/moai/workflows/run/context-loading.md:10	PATH	OK(ROOT)	.claude/hooks/moai/trace-ledger.sh	-> .claude/hooks/moai/trace-ledger.sh
+.claude/skills/moai/workflows/run/context-loading.md:19	PATH	OK(ROOT)	.claude/rules/moai/workflow/spec-workflow.md	-> .claude/rules/moai/workflow/spec-workflow.md
+.claude/skills/moai/workflows/run/context-loading.md:39	PATH	OK(ROOT)	.claude/rules/moai/workflow/orchestration-mode-selection.md	-> .claude/rules/moai/workflow/orchestration-mode-selection.md
+.claude/skills/moai/workflows/run/context-loading.md:86	MDLINK	OK(REL)	../../../../rules/moai/workflow/spec-workflow.md#subcommand-classification-pipeline-vs-multi-agent	-> .claude/rules/moai/workflow/spec-workflow.md	ANCHOR=OK
+.claude/skills/moai/workflows/run/context-loading.md:169	PATH	OK(ROOT)	.claude/rules/moai/workflow/context-clear-policy.md	-> .claude/rules/moai/workflow/context-clear-policy.md
+.claude/skills/moai/workflows/run/context-loading.md:202	PATH	OK(ROOT)	.claude/rules/moai/workflow/worktree-integration.md	-> .claude/rules/moai/workflow/worktree-integration.md
+internal/template/templates/.claude/skills/moai/workflows/run/context-loading.md:19	PATH	OK(ROOT)	.claude/rules/moai/workflow/spec-workflow.md	-> internal/template/templates/.claude/rules/moai/workflow/spec-workflow.md
+internal/template/templates/.claude/skills/moai/workflows/run/context-loading.md:39	PATH	OK(ROOT)	.claude/rules/moai/workflow/orchestration-mode-selection.md	-> internal/template/templates/.claude/rules/moai/workflow/orchestration-mode-selection.md
+internal/template/templates/.claude/skills/moai/workflows/run/context-loading.md:86	MDLINK	OK(REL)	../../../../rules/moai/workflow/spec-workflow.md#subcommand-classification-pipeline-vs-multi-agent	-> internal/template/templates/.claude/rules/moai/workflow/spec-workflow.md	ANCHOR=OK
+internal/template/templates/.claude/skills/moai/workflows/run/context-loading.md:193	PATH	OK(ROOT)	.claude/rules/moai/workflow/worktree-integration.md	-> internal/template/templates/.claude/rules/moai/workflow/worktree-integration.md
+.claude/skills/moai-domain-html-report/SKILL.md:137	PATH	OK(ROOT)	.claude/settings.local.json	-> .claude/settings.local.json
+.claude/skills/moai-domain-html-report/SKILL.md:137	PATH	OK(ROOT)	.claude/settings.json	-> .claude/settings.json
+.claude/skills/moai-domain-html-report/SKILL.md:292	MDLINK	OK(REL)	references/fonts.md	-> .claude/skills/moai-domain-html-report/references/fonts.md
+.claude/skills/moai-domain-html-report/SKILL.md:326	MDLINK	OK(REL)	references/templates/	-> .claude/skills/moai-domain-html-report/references/templates
+.claude/skills/moai-domain-html-report/SKILL.md:396	MDLINK	OK(REL)	references/fonts.md	-> .claude/skills/moai-domain-html-report/references/fonts.md
+.claude/skills/moai-domain-html-report/SKILL.md:399	MDLINK	OK(REL)	references/templates/status.html.mustache	-> .claude/skills/moai-domain-html-report/references/templates/status.html.mustache
+.claude/skills/moai-domain-html-report/SKILL.md:400	MDLINK	OK(REL)	references/templates/incident.html.mustache	-> .claude/skills/moai-domain-html-report/references/templates/incident.html.mustache
+.claude/skills/moai-domain-html-report/SKILL.md:401	MDLINK	OK(REL)	references/templates/plan.html.mustache	-> .claude/skills/moai-domain-html-report/references/templates/plan.html.mustache
+.claude/skills/moai-domain-html-report/SKILL.md:402	MDLINK	OK(REL)	references/templates/explainer.html.mustache	-> .claude/skills/moai-domain-html-report/references/templates/explainer.html.mustache
+.claude/skills/moai-domain-html-report/SKILL.md:403	MDLINK	OK(REL)	references/templates/financial.html.mustache	-> .claude/skills/moai-domain-html-report/references/templates/financial.html.mustache
+.claude/skills/moai-domain-html-report/SKILL.md:404	MDLINK	OK(REL)	references/templates/pr.html.mustache	-> .claude/skills/moai-domain-html-report/references/templates/pr.html.mustache
+internal/template/templates/.claude/skills/moai-domain-html-report/SKILL.md:137	PATH	BROKEN(ROOT)	.claude/settings.local.json	-> internal/template/templates/.claude/settings.local.json
+internal/template/templates/.claude/skills/moai-domain-html-report/SKILL.md:137	PATH	OK(ROOT+TMPL)	.claude/settings.json	-> internal/template/templates/.claude/settings.json
+internal/template/templates/.claude/skills/moai-domain-html-report/SKILL.md:292	MDLINK	OK(REL)	references/fonts.md	-> internal/template/templates/.claude/skills/moai-domain-html-report/references/fonts.md
+internal/template/templates/.claude/skills/moai-domain-html-report/SKILL.md:326	MDLINK	OK(REL)	references/templates/	-> internal/template/templates/.claude/skills/moai-domain-html-report/references/templates
+internal/template/templates/.claude/skills/moai-domain-html-report/SKILL.md:396	MDLINK	OK(REL)	references/fonts.md	-> internal/template/templates/.claude/skills/moai-domain-html-report/references/fonts.md
+internal/template/templates/.claude/skills/moai-domain-html-report/SKILL.md:399	MDLINK	OK(REL)	references/templates/status.html.mustache	-> internal/template/templates/.claude/skills/moai-domain-html-report/references/templates/status.html.mustache
+internal/template/templates/.claude/skills/moai-domain-html-report/SKILL.md:400	MDLINK	OK(REL)	references/templates/incident.html.mustache	-> internal/template/templates/.claude/skills/moai-domain-html-report/references/templates/incident.html.mustache
+internal/template/templates/.claude/skills/moai-domain-html-report/SKILL.md:401	MDLINK	OK(REL)	references/templates/plan.html.mustache	-> internal/template/templates/.claude/skills/moai-domain-html-report/references/templates/plan.html.mustache
+internal/template/templates/.claude/skills/moai-domain-html-report/SKILL.md:402	MDLINK	OK(REL)	references/templates/explainer.html.mustache	-> internal/template/templates/.claude/skills/moai-domain-html-report/references/templates/explainer.html.mustache
+internal/template/templates/.claude/skills/moai-domain-html-report/SKILL.md:403	MDLINK	OK(REL)	references/templates/financial.html.mustache	-> internal/template/templates/.claude/skills/moai-domain-html-report/references/templates/financial.html.mustache
+internal/template/templates/.claude/skills/moai-domain-html-report/SKILL.md:404	MDLINK	OK(REL)	references/templates/pr.html.mustache	-> internal/template/templates/.claude/skills/moai-domain-html-report/references/templates/pr.html.mustache
+.claude/skills/moai-workflow-loop/SKILL.md:27	PATH	OK(ROOT)	.claude/skills/moai/workflows/loop.md	-> .claude/skills/moai/workflows/loop.md
+.claude/skills/moai-workflow-loop/SKILL.md:40	PATH	OK(ROOT)	.claude/hooks/moai/handle-post-tool.sh	-> .claude/hooks/moai/handle-post-tool.sh
+.claude/skills/moai-workflow-loop/SKILL.md:41	PATH	OK(ROOT)	.claude/hooks/moai/handle-stop.sh	-> .claude/hooks/moai/handle-stop.sh
+.claude/skills/moai-workflow-loop/SKILL.md:152	PATH	OK(ROOT)	.claude/rules/moai/languages/python.md	-> .claude/rules/moai/languages/python.md
+.claude/skills/moai-workflow-loop/SKILL.md:153	PATH	OK(ROOT)	.claude/rules/moai/languages/typescript.md	-> .claude/rules/moai/languages/typescript.md
+.claude/skills/moai-workflow-loop/SKILL.md:186	PATH	OK(ROOT)	.claude/hooks/moai/handle-post-tool.sh	-> .claude/hooks/moai/handle-post-tool.sh
+.claude/skills/moai-workflow-loop/SKILL.md:188	PATH	OK(ROOT)	.claude/hooks/moai/handle-stop.sh	-> .claude/hooks/moai/handle-stop.sh
+.claude/skills/moai-workflow-loop/SKILL.md:192	PATH	OK(ROOT)	.claude/rules/moai/development/coding-standards.md	-> .claude/rules/moai/development/coding-standards.md
+internal/template/templates/.claude/skills/moai-workflow-loop/SKILL.md:27	PATH	OK(ROOT)	.claude/skills/moai/workflows/loop.md	-> internal/template/templates/.claude/skills/moai/workflows/loop.md
+internal/template/templates/.claude/skills/moai-workflow-loop/SKILL.md:40	PATH	OK(ROOT+TMPL)	.claude/hooks/moai/handle-post-tool.sh	-> internal/template/templates/.claude/hooks/moai/handle-post-tool.sh
+internal/template/templates/.claude/skills/moai-workflow-loop/SKILL.md:41	PATH	OK(ROOT+TMPL)	.claude/hooks/moai/handle-stop.sh	-> internal/template/templates/.claude/hooks/moai/handle-stop.sh
+internal/template/templates/.claude/skills/moai-workflow-loop/SKILL.md:152	PATH	OK(ROOT)	.claude/rules/moai/languages/python.md	-> internal/template/templates/.claude/rules/moai/languages/python.md
+internal/template/templates/.claude/skills/moai-workflow-loop/SKILL.md:153	PATH	OK(ROOT)	.claude/rules/moai/languages/typescript.md	-> internal/template/templates/.claude/rules/moai/languages/typescript.md
+internal/template/templates/.claude/skills/moai-workflow-loop/SKILL.md:186	PATH	OK(ROOT+TMPL)	.claude/hooks/moai/handle-post-tool.sh	-> internal/template/templates/.claude/hooks/moai/handle-post-tool.sh
+internal/template/templates/.claude/skills/moai-workflow-loop/SKILL.md:188	PATH	OK(ROOT+TMPL)	.claude/hooks/moai/handle-stop.sh	-> internal/template/templates/.claude/hooks/moai/handle-stop.sh
+internal/template/templates/.claude/skills/moai-workflow-loop/SKILL.md:192	PATH	OK(ROOT)	.claude/rules/moai/development/coding-standards.md	-> internal/template/templates/.claude/rules/moai/development/coding-standards.md
+.claude/skills/moai-domain-frontend/SKILL.md:117	PATH	OK(ROOT)	.claude/rules/moai/languages/typescript.md	-> .claude/rules/moai/languages/typescript.md
+internal/template/templates/.claude/skills/moai-domain-frontend/SKILL.md:117	PATH	OK(ROOT)	.claude/rules/moai/languages/typescript.md	-> internal/template/templates/.claude/rules/moai/languages/typescript.md
+.claude/skills/moai-workflow-testing/SKILL.md:85	MDLINK	OK(ROOT)	.claude/skills/moai-workflow-testing/references/trust5-framework.md	-> .claude/skills/moai-workflow-testing/references/trust5-framework.md
+.claude/skills/moai-workflow-testing/SKILL.md:111	MDLINK	OK(ROOT)	.claude/skills/moai-workflow-testing/references/workflow-processes.md	-> .claude/skills/moai-workflow-testing/references/workflow-processes.md
+.claude/skills/moai-workflow-testing/SKILL.md:132	MDLINK	OK(ROOT)	.claude/skills/moai-workflow-testing/references/pr-review-multi-agent.md	-> .claude/skills/moai-workflow-testing/references/pr-review-multi-agent.md
+.claude/skills/moai-workflow-testing/SKILL.md:138	MDLINK	OK(ROOT)	.claude/skills/moai-workflow-testing/references/multi-language-support.md	-> .claude/skills/moai-workflow-testing/references/multi-language-support.md
+.claude/skills/moai-workflow-testing/SKILL.md:158	MDLINK	OK(ROOT)	.claude/skills/moai-workflow-testing/references/integration-patterns.md	-> .claude/skills/moai-workflow-testing/references/integration-patterns.md
+.claude/skills/moai-workflow-testing/SKILL.md:162	MDLINK	OK(ROOT)	.claude/skills/moai-workflow-testing/references/playwright-best-practices.md	-> .claude/skills/moai-workflow-testing/references/playwright-best-practices.md
+.claude/skills/moai-workflow-testing/SKILL.md:170	MDLINK	OK(ROOT)	.claude/skills/moai-workflow-testing/modules/INDEX.md	-> .claude/skills/moai-workflow-testing/modules/INDEX.md
+.claude/skills/moai-workflow-testing/SKILL.md:172	MDLINK	OK(ROOT)	.claude/skills/moai-workflow-testing/modules/ai-debugging.md	-> .claude/skills/moai-workflow-testing/modules/ai-debugging.md
+.claude/skills/moai-workflow-testing/SKILL.md:173	MDLINK	OK(ROOT)	.claude/skills/moai-workflow-testing/modules/smart-refactoring.md	-> .claude/skills/moai-workflow-testing/modules/smart-refactoring.md
+.claude/skills/moai-workflow-testing/SKILL.md:174	MDLINK	OK(ROOT)	.claude/skills/moai-workflow-testing/modules/performance-optimization.md	-> .claude/skills/moai-workflow-testing/modules/performance-optimization.md
+.claude/skills/moai-workflow-testing/SKILL.md:175	MDLINK	OK(ROOT)	.claude/skills/moai-workflow-testing/modules/automated-code-review.md	-> .claude/skills/moai-workflow-testing/modules/automated-code-review.md
+internal/template/templates/.claude/skills/moai-workflow-testing/SKILL.md:85	MDLINK	OK(ROOT)	.claude/skills/moai-workflow-testing/references/trust5-framework.md	-> internal/template/templates/.claude/skills/moai-workflow-testing/references/trust5-framework.md
+internal/template/templates/.claude/skills/moai-workflow-testing/SKILL.md:111	MDLINK	OK(ROOT)	.claude/skills/moai-workflow-testing/references/workflow-processes.md	-> internal/template/templates/.claude/skills/moai-workflow-testing/references/workflow-processes.md
+internal/template/templates/.claude/skills/moai-workflow-testing/SKILL.md:132	MDLINK	OK(ROOT)	.claude/skills/moai-workflow-testing/references/pr-review-multi-agent.md	-> internal/template/templates/.claude/skills/moai-workflow-testing/references/pr-review-multi-agent.md
+internal/template/templates/.claude/skills/moai-workflow-testing/SKILL.md:138	MDLINK	OK(ROOT)	.claude/skills/moai-workflow-testing/references/multi-language-support.md	-> internal/template/templates/.claude/skills/moai-workflow-testing/references/multi-language-support.md
+internal/template/templates/.claude/skills/moai-workflow-testing/SKILL.md:158	MDLINK	OK(ROOT)	.claude/skills/moai-workflow-testing/references/integration-patterns.md	-> internal/template/templates/.claude/skills/moai-workflow-testing/references/integration-patterns.md
+internal/template/templates/.claude/skills/moai-workflow-testing/SKILL.md:162	MDLINK	OK(ROOT)	.claude/skills/moai-workflow-testing/references/playwright-best-practices.md	-> internal/template/templates/.claude/skills/moai-workflow-testing/references/playwright-best-practices.md
+internal/template/templates/.claude/skills/moai-workflow-testing/SKILL.md:170	MDLINK	OK(ROOT)	.claude/skills/moai-workflow-testing/modules/INDEX.md	-> internal/template/templates/.claude/skills/moai-workflow-testing/modules/INDEX.md
+internal/template/templates/.claude/skills/moai-workflow-testing/SKILL.md:172	MDLINK	OK(ROOT)	.claude/skills/moai-workflow-testing/modules/ai-debugging.md	-> internal/template/templates/.claude/skills/moai-workflow-testing/modules/ai-debugging.md
+internal/template/templates/.claude/skills/moai-workflow-testing/SKILL.md:173	MDLINK	OK(ROOT)	.claude/skills/moai-workflow-testing/modules/smart-refactoring.md	-> internal/template/templates/.claude/skills/moai-workflow-testing/modules/smart-refactoring.md
+internal/template/templates/.claude/skills/moai-workflow-testing/SKILL.md:174	MDLINK	OK(ROOT)	.claude/skills/moai-workflow-testing/modules/performance-optimization.md	-> internal/template/templates/.claude/skills/moai-workflow-testing/modules/performance-optimization.md
+internal/template/templates/.claude/skills/moai-workflow-testing/SKILL.md:175	MDLINK	OK(ROOT)	.claude/skills/moai-workflow-testing/modules/automated-code-review.md	-> internal/template/templates/.claude/skills/moai-workflow-testing/modules/automated-code-review.md
+.claude/rules/moai/workflow/cadence-bridge.md:3	PATH	SKIP	.claude/skills/moai-workflow-loop/**
+.claude/rules/moai/workflow/cadence-bridge.md:12	PATH	SKIP	.claude/skills/moai-workflow-loop/**
+.claude/rules/moai/workflow/cadence-bridge.md:18	PATH	OK(ROOT)	.claude/skills/moai/workflows/loop.md	-> .claude/skills/moai/workflows/loop.md
+.claude/rules/moai/workflow/cadence-bridge.md:18	PATH	OK(ROOT)	.claude/rules/moai/workflow/goal-directive.md	-> .claude/rules/moai/workflow/goal-directive.md
+.claude/rules/moai/workflow/cadence-bridge.md:26	PATH	OK(ROOT)	.claude/rules/moai/workflow/orchestration-mode-selection.md	-> .claude/rules/moai/workflow/orchestration-mode-selection.md
+.claude/rules/moai/workflow/cadence-bridge.md:66	PATH	OK(ROOT)	.claude/skills/moai/workflows/loop.md	-> .claude/skills/moai/workflows/loop.md
+.claude/rules/moai/workflow/cadence-bridge.md:92	PATH	OK(ROOT)	.claude/rules/moai/workflow/ci-autofix-protocol.md	-> .claude/rules/moai/workflow/ci-autofix-protocol.md
+.claude/rules/moai/workflow/cadence-bridge.md:92	PATH	OK(ROOT)	.claude/skills/moai/workflows/sync/delivery.md	-> .claude/skills/moai/workflows/sync/delivery.md
+.claude/rules/moai/workflow/cadence-bridge.md:103	PATH	OK(ROOT)	.claude/rules/moai/workflow/goal-directive.md	-> .claude/rules/moai/workflow/goal-directive.md
+.claude/rules/moai/workflow/cadence-bridge.md:104	PATH	OK(ROOT)	.claude/skills/moai/workflows/gate.md	-> .claude/skills/moai/workflows/gate.md
+.claude/rules/moai/workflow/cadence-bridge.md:104	PATH	OK(ROOT)	.claude/skills/moai/workflows/review.md	-> .claude/skills/moai/workflows/review.md
+.claude/rules/moai/workflow/cadence-bridge.md:104	PATH	OK(ROOT)	.claude/skills/moai/workflows/fix.md	-> .claude/skills/moai/workflows/fix.md
+.claude/rules/moai/workflow/cadence-bridge.md:105	PATH	OK(ROOT)	.claude/skills/moai/workflows/loop.md	-> .claude/skills/moai/workflows/loop.md
+.claude/rules/moai/workflow/cadence-bridge.md:106	PATH	OK(ROOT)	.claude/rules/moai/workflow/ci-autofix-protocol.md	-> .claude/rules/moai/workflow/ci-autofix-protocol.md
+.claude/rules/moai/workflow/cadence-bridge.md:106	PATH	OK(ROOT)	.claude/skills/moai/workflows/sync/delivery.md	-> .claude/skills/moai/workflows/sync/delivery.md
+.claude/rules/moai/workflow/cadence-bridge.md:107	PATH	OK(ROOT)	.claude/rules/moai/workflow/orchestration-mode-selection.md	-> .claude/rules/moai/workflow/orchestration-mode-selection.md
+.claude/rules/moai/workflow/cadence-bridge.md:108	PATH	OK(ROOT)	.claude/rules/moai/core/askuser-protocol.md	-> .claude/rules/moai/core/askuser-protocol.md
+internal/template/templates/.claude/rules/moai/workflow/cadence-bridge.md:3	PATH	SKIP	.claude/skills/moai-workflow-loop/**
+internal/template/templates/.claude/rules/moai/workflow/cadence-bridge.md:12	PATH	SKIP	.claude/skills/moai-workflow-loop/**
+internal/template/templates/.claude/rules/moai/workflow/cadence-bridge.md:18	PATH	OK(ROOT)	.claude/skills/moai/workflows/loop.md	-> internal/template/templates/.claude/skills/moai/workflows/loop.md
+internal/template/templates/.claude/rules/moai/workflow/cadence-bridge.md:18	PATH	OK(ROOT)	.claude/rules/moai/workflow/goal-directive.md	-> internal/template/templates/.claude/rules/moai/workflow/goal-directive.md
+internal/template/templates/.claude/rules/moai/workflow/cadence-bridge.md:26	PATH	OK(ROOT)	.claude/rules/moai/workflow/orchestration-mode-selection.md	-> internal/template/templates/.claude/rules/moai/workflow/orchestration-mode-selection.md
+internal/template/templates/.claude/rules/moai/workflow/cadence-bridge.md:66	PATH	OK(ROOT)	.claude/skills/moai/workflows/loop.md	-> internal/template/templates/.claude/skills/moai/workflows/loop.md
+internal/template/templates/.claude/rules/moai/workflow/cadence-bridge.md:92	PATH	OK(ROOT)	.claude/rules/moai/workflow/ci-autofix-protocol.md	-> internal/template/templates/.claude/rules/moai/workflow/ci-autofix-protocol.md
+internal/template/templates/.claude/rules/moai/workflow/cadence-bridge.md:92	PATH	OK(ROOT)	.claude/skills/moai/workflows/sync/delivery.md	-> internal/template/templates/.claude/skills/moai/workflows/sync/delivery.md
+internal/template/templates/.claude/rules/moai/workflow/cadence-bridge.md:103	PATH	OK(ROOT)	.claude/rules/moai/workflow/goal-directive.md	-> internal/template/templates/.claude/rules/moai/workflow/goal-directive.md
+internal/template/templates/.claude/rules/moai/workflow/cadence-bridge.md:104	PATH	OK(ROOT)	.claude/skills/moai/workflows/gate.md	-> internal/template/templates/.claude/skills/moai/workflows/gate.md
+internal/template/templates/.claude/rules/moai/workflow/cadence-bridge.md:104	PATH	OK(ROOT)	.claude/skills/moai/workflows/review.md	-> internal/template/templates/.claude/skills/moai/workflows/review.md
+internal/template/templates/.claude/rules/moai/workflow/cadence-bridge.md:104	PATH	OK(ROOT)	.claude/skills/moai/workflows/fix.md	-> internal/template/templates/.claude/skills/moai/workflows/fix.md
+internal/template/templates/.claude/rules/moai/workflow/cadence-bridge.md:105	PATH	OK(ROOT)	.claude/skills/moai/workflows/loop.md	-> internal/template/templates/.claude/skills/moai/workflows/loop.md
+internal/template/templates/.claude/rules/moai/workflow/cadence-bridge.md:106	PATH	OK(ROOT)	.claude/rules/moai/workflow/ci-autofix-protocol.md	-> internal/template/templates/.claude/rules/moai/workflow/ci-autofix-protocol.md
+internal/template/templates/.claude/rules/moai/workflow/cadence-bridge.md:106	PATH	OK(ROOT)	.claude/skills/moai/workflows/sync/delivery.md	-> internal/template/templates/.claude/skills/moai/workflows/sync/delivery.md
+internal/template/templates/.claude/rules/moai/workflow/cadence-bridge.md:107	PATH	OK(ROOT)	.claude/rules/moai/workflow/orchestration-mode-selection.md	-> internal/template/templates/.claude/rules/moai/workflow/orchestration-mode-selection.md
+internal/template/templates/.claude/rules/moai/workflow/cadence-bridge.md:108	PATH	OK(ROOT)	.claude/rules/moai/core/askuser-protocol.md	-> internal/template/templates/.claude/rules/moai/core/askuser-protocol.md

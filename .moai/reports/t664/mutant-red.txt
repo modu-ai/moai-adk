@@ -1,0 +1,1 @@
+FAIL: version-catalog Kotlin project detected as java, want kotlin

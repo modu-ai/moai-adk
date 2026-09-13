@@ -27,6 +27,7 @@ package kanban
 import (
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 )
@@ -125,8 +126,17 @@ func TestAdoptionLandsWhereConsumersRead_NonTemp(t *testing.T) {
 	seedLocalQueue(t, proj, 1)
 
 	root := ResolveTodoQueueRootAdopting(proj)
-	if want := filepath.Join(home, ".moai", "todo", TodoQueueProjectKey(proj)); root != want {
-		t.Fatalf("adopting root = %q, want the home fallback %q — this copy must walk the adopt branch", root, want)
+	// INTENTIONAL UPDATE (t621): the original incident this guards is "adopted
+	// cards were moved to a path no consumer reads", and the assertion below
+	// states exactly that. The home-fallback ROOT that used to be asserted here
+	// first turned out to be one such path itself — the layer below re-keys it,
+	// landing the queue at ~/.moai/db/<key>-<hash>/todo while the statusline and
+	// the console read ~/.moai/db/<key>/todo. What is kept is the home
+	// property, on the queue rather than on the root.
+	queue := BacklogPathForRoot(root)
+	if !strings.HasPrefix(queue, home+string(filepath.Separator)) {
+		t.Fatalf("adopted queue = %q, want it under the home directory %q — this copy must walk the non-git branch",
+			queue, home)
 	}
 	if _, err := os.Stat(BacklogPathForRoot(root)); err != nil {
 		t.Fatalf("the queue is not readable where every consumer looks: %s (%v)",
@@ -140,24 +150,39 @@ func TestAdoptionLandsWhereConsumersRead_NonTemp(t *testing.T) {
 	}
 }
 
-// TestAdoptingAndPureResolversAgreeWhenAdoptionFails_NonTemp — C-row copy of
-// TestAdoptingAndPureResolversAgreeWhenAdoptionFails (REQ-WTQ-005).
+// TestARefusedRelocationStillServesTheCards_NonTemp — C-row copy of
+// TestBothEntryPointsServeTheCardsOnATemporaryBase (REQ-WTQ-005), on the
+// home-based half.
 //
-// The original deliberately makes adoption FAIL, after which both resolvers
-// read through to `proj` — the same value the guard substitutes. Its PASS
-// therefore could not tell the two states apart either.
-func TestAdoptingAndPureResolversAgreeWhenAdoptionFails_NonTemp(t *testing.T) {
+// INTENTIONAL UPDATE (t621): the predecessor blocked adoptLocalTodoQueue's
+// write. That function is gone — the one-time relocation now belongs to
+// resolveStateDir — so the successor blocks THAT relocation instead, which is
+// the same claim one layer down and the only place it can still fail: a
+// relocation that cannot complete must leave the resolution serving the cards
+// from where they already are, never reporting an empty queue beside them.
+func TestARefusedRelocationStillServesTheCards_NonTemp(t *testing.T) {
 	home, proj := t.TempDir(), t.TempDir()
 	stubHome(t, home)
 	declareNonTemporary(t)
 	assertSeamHeard(t, proj)
 
-	seedLocalQueue(t, proj, 1)
+	// A queue at a legacy location, which the resolution wants to relocate into
+	// the home database on the adopting path.
+	legacyDir := LegacyStateDirForRoot(proj)
+	if err := os.MkdirAll(legacyDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(legacyDir, backlogFileName),
+		[]byte(`{"version":1,"last_seq":1,"items":[`+
+			`{"id":"t1","text":"card 1","added_at":"2026-08-14T00:00:00Z","spec_id":null,"state":"queued"}]}`),
+		0o600); err != nil {
+		t.Fatal(err)
+	}
 
-	// Make the fallback root unwritable by occupying its parent with a file:
-	// MkdirAll then fails and adoption returns having moved nothing.
-	fallback, _ := homeTodoQueueRoot(proj)
-	blocker := filepath.Dir(fallback)
+	// Make the relocation target unbuildable by occupying its parent with a
+	// file: MkdirAll then fails and the relocation returns having moved nothing.
+	target := StateDirForRoot(proj)
+	blocker := filepath.Dir(target)
 	if err := os.MkdirAll(filepath.Dir(blocker), 0o755); err != nil {
 		t.Fatal(err)
 	}
@@ -165,13 +190,17 @@ func TestAdoptingAndPureResolversAgreeWhenAdoptionFails_NonTemp(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	adopting := ResolveTodoQueueRootAdopting(proj)
-	pure := ResolveTodoQueueRoot(proj)
-	if adopting != pure {
-		t.Errorf("resolvers diverge when adoption fails: adopting=%s pure=%s", adopting, pure)
+	root := ResolveTodoQueueRootAdopting(proj)
+	path := BacklogPathForRootAdopting(root)
+	t.Logf("legacy=%s target=%s served=%s", legacyDir, target, path)
+	if _, err := os.Stat(target); err == nil {
+		t.Fatalf("precondition: the relocation target %q was built, so nothing was refused", target)
 	}
-	if _, err := os.Stat(BacklogPathForRoot(adopting)); err != nil {
-		t.Errorf("the adopting resolver points at no readable queue: %s (%v)",
-			BacklogPathForRoot(adopting), err)
+	rec, err := NewBacklogStore(path).LoadPure()
+	if err != nil || rec == nil {
+		t.Fatalf("a refused relocation left no readable queue at %s (err %v)", path, err)
+	}
+	if len(rec.Items) != 1 {
+		t.Errorf("a refused relocation serves %d cards from %s, want the 1 already queued", len(rec.Items), path)
 	}
 }

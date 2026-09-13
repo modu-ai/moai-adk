@@ -39,6 +39,10 @@ const (
 	// measured cost before a warning fires. A hypothesis until measured on
 	// this repository (never a foreign figure); overrun warns, never blocks.
 	DefaultGraphFreshnessUpdateBudgetMS = 2000
+	// DefaultSlotLeaseMaxDuration is the declared maximum duration a slot
+	// lease takes when the caller omits --max-duration. A chosen value, not a
+	// measured one (plan.md §B3, OQ-3); this is the one place it is defined.
+	DefaultSlotLeaseMaxDuration = "30m"
 
 	DefaultTestCoverageTarget    = 85
 	DefaultMaxTransformationSize = "small"
@@ -111,6 +115,32 @@ const (
 	// <event>` process lingers at exit, and only when the drain is actually
 	// slow — the signal path returns in microseconds on a healthy filesystem.
 	DefaultTraceFlushTimeout = 2 * time.Second
+
+	// DefaultHookAsyncJoinTimeout bounds how long a hook process waits at
+	// teardown for a handler's own background side-effect goroutine to finish
+	// before abandoning the wait. It is the sibling of
+	// DefaultTraceFlushTimeout on the other async axis: that one drains the
+	// registry's trace writer, this one joins the handlers themselves.
+	//
+	// The budget exists because a `moai hook <event>` process is one-shot. A
+	// handler that hands its real work to a goroutine and returns immediately
+	// (REQ-HAE-002) has no one left to finish that work once Dispatch returns —
+	// the process exits and the goroutine is abandoned mid-flight, so the
+	// result it would have recorded is simply never produced. Measured on the
+	// ConfigChange path: the async validation was reached 0 times out of 5 CLI
+	// runs, while the in-process control that joins the handler's WaitGroup
+	// reached it every time.
+	//
+	// Like the flush budget this is a ceiling, not a cost: the join is
+	// signal-confirmed (it blocks on the handler's WaitGroup, not on the
+	// timer), so the normal path returns as soon as the goroutine finishes.
+	// The timer only fires on a genuinely slow or hung side effect, which must
+	// never stall the user's session. 2s mirrors the flush budget rather than
+	// inventing a second calibration: both bound the same thing — how long a
+	// one-shot hook process may linger at exit — and the bounded work here
+	// (a 20ms debounce, a file read, a YAML parse) sits orders of magnitude
+	// below it.
+	DefaultHookAsyncJoinTimeout = 2 * time.Second
 
 	DefaultBranchPrefix = "moai/"
 	DefaultCommitStyle  = "conventional"
@@ -906,6 +936,16 @@ func NewDefaultWorkflowConfig() WorkflowConfig {
 		// `enabled: true` anywhere under internal/template/templates/.
 		SettingsDriftGate: SettingsDriftGateConfig{
 			Enabled: false,
+		},
+		// The slot-lease guard ships inert: a project that never runs several
+		// sessions against one machine has nothing to serialize. The `moai
+		// slot` verbs work regardless. No resources ship by default — any
+		// shipped pattern would name some programming language's commands.
+		// Template neutrality: no `enabled: true` under
+		// internal/template/templates/.
+		SlotLease: SlotLeaseConfig{
+			Enabled:            false,
+			DefaultMaxDuration: DefaultSlotLeaseMaxDuration,
 		},
 		// The agent-model guard ships with its BLOCKING layer off. Observation
 		// and advisory always run; a maintainer opts into denial via local

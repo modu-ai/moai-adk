@@ -20,7 +20,7 @@ parent: SPEC-V3R4-CC2X-ADOPT-002
 
 Empty stub created by the 2026-08-23 `/harness:release-update` sweep (Phase 5
 Option C). Scope, evidence, and tier tables live in the umbrella research:
-[`../SPEC-V3R4-CC2X-ADOPT-002/research.md`](../SPEC-V3R4-CC2X-ADOPT-002/research.md).
+[`../../research/SPEC-V3R4-CC2X-ADOPT-002-research.md`](../../research/SPEC-V3R4-CC2X-ADOPT-002-research.md).
 
 Scope (one line): note CC 2.1.238's stdio `server/discover`-after-`initialize`
 ordering fix (affects `moai mcp-server` startup expectations — smoke-test under

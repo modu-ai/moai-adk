@@ -45,16 +45,19 @@ func seedOptsFromFlags(cmd *cobra.Command) project.InitOptions {
 // would silently carry Go's zero value where the real wizard carries its own
 // seeded default (RunWithDefaults seeds EnforceQuality/DesignEnabled true),
 // which is exactly the fixture error this signature prevents.
-func wizardAnswers(projectMode string, lsp, quality, design bool) *wizard.WizardResult {
+//
+// The project-mode wizard answer is gone (SPEC-INIT-QUIET-WIZARD-001): the
+// quiet wizard no longer asks it, so --project-mode has nothing to compete
+// with and its precedence rows were removed.
+func wizardAnswers(lsp, quality, design bool) *wizard.WizardResult {
 	return &wizard.WizardResult{
-		ProjectMode:    projectMode,
 		LSPEnabled:     lsp,
 		EnforceQuality: quality,
 		DesignEnabled:  design,
 	}
 }
 
-// TestFlagBeatsWizard_Page3Settings pins AC-WIZ-016: for each of the four
+// TestFlagBeatsWizard_Page3Settings pins AC-WIZ-016: for each of the three
 // overlapping settings, an EXPLICITLY-supplied flag survives the wizard result,
 // and an absent flag yields to it.
 func TestFlagBeatsWizard_Page3Settings(t *testing.T) {
@@ -65,32 +68,6 @@ func TestFlagBeatsWizard_Page3Settings(t *testing.T) {
 		result *wizard.WizardResult
 		want   project.InitOptions
 	}{
-		// --- project-mode (string) ---------------------------------------
-		{
-			name:   "project-mode: flag supplied, wizard disagrees -> flag wins",
-			flags:  map[string]string{"project-mode": "team"},
-			result: wizardAnswers("personal", true, true, true),
-			want:   project.InitOptions{ProjectMode: "team", LSPEnabled: true, EnforceQuality: true, DesignEnabled: true},
-		},
-		{
-			name:   "project-mode: flag supplied, wizard agrees -> flag value retained",
-			flags:  map[string]string{"project-mode": "team"},
-			result: wizardAnswers("team", true, true, true),
-			want:   project.InitOptions{ProjectMode: "team", LSPEnabled: true, EnforceQuality: true, DesignEnabled: true},
-		},
-		{
-			name:   "project-mode: flag absent -> wizard answer applies",
-			flags:  nil,
-			result: wizardAnswers("team", true, true, true),
-			want:   project.InitOptions{ProjectMode: "team", LSPEnabled: true, EnforceQuality: true, DesignEnabled: true},
-		},
-		{
-			name:   "project-mode: flag absent, wizard empty -> stays empty",
-			flags:  nil,
-			result: wizardAnswers("", true, true, true),
-			want:   project.InitOptions{ProjectMode: "", LSPEnabled: true, EnforceQuality: true, DesignEnabled: true},
-		},
-
 		// --- enable-lsp (bool, seed default true) -------------------------
 		{
 			// DISCRIMINATING ROW: same shape as enforce-quality — the seed
@@ -98,25 +75,25 @@ func TestFlagBeatsWizard_Page3Settings(t *testing.T) {
 			// false from an absent flag.
 			name:   "enable-lsp: explicit --enable-lsp=false, wizard true -> flag wins (false)",
 			flags:  map[string]string{"enable-lsp": "false"},
-			result: wizardAnswers("", true, true, true),
+			result: wizardAnswers(true, true, true),
 			want:   project.InitOptions{LSPEnabled: false, EnforceQuality: true, DesignEnabled: true},
 		},
 		{
 			name:   "enable-lsp: explicit --enable-lsp=true, wizard false -> flag wins (true)",
 			flags:  map[string]string{"enable-lsp": "true"},
-			result: wizardAnswers("", false, true, true),
+			result: wizardAnswers(false, true, true),
 			want:   project.InitOptions{LSPEnabled: true, EnforceQuality: true, DesignEnabled: true},
 		},
 		{
 			name:   "enable-lsp: flag absent, wizard true -> wizard applies",
 			flags:  nil,
-			result: wizardAnswers("", true, true, true),
+			result: wizardAnswers(true, true, true),
 			want:   project.InitOptions{LSPEnabled: true, EnforceQuality: true, DesignEnabled: true},
 		},
 		{
 			name:   "enable-lsp: flag absent, wizard false -> wizard applies",
 			flags:  nil,
-			result: wizardAnswers("", false, true, true),
+			result: wizardAnswers(false, true, true),
 			want:   project.InitOptions{LSPEnabled: false, EnforceQuality: true, DesignEnabled: true},
 		},
 
@@ -126,25 +103,25 @@ func TestFlagBeatsWizard_Page3Settings(t *testing.T) {
 			// explicit false from the flag's own true default.
 			name:   "enforce-quality: explicit --enforce-quality=false, wizard true -> flag wins (false)",
 			flags:  map[string]string{"enforce-quality": "false"},
-			result: wizardAnswers("", true, true, true),
+			result: wizardAnswers(true, true, true),
 			want:   project.InitOptions{LSPEnabled: true, EnforceQuality: false, DesignEnabled: true},
 		},
 		{
 			name:   "enforce-quality: explicit --enforce-quality=true, wizard false -> flag wins (true)",
 			flags:  map[string]string{"enforce-quality": "true"},
-			result: wizardAnswers("", true, false, true),
+			result: wizardAnswers(true, false, true),
 			want:   project.InitOptions{LSPEnabled: true, EnforceQuality: true, DesignEnabled: true},
 		},
 		{
 			name:   "enforce-quality: flag absent, wizard false -> wizard applies",
 			flags:  nil,
-			result: wizardAnswers("", true, false, true),
+			result: wizardAnswers(true, false, true),
 			want:   project.InitOptions{LSPEnabled: true, EnforceQuality: false, DesignEnabled: true},
 		},
 		{
 			name:   "enforce-quality: flag absent, wizard true -> wizard applies",
 			flags:  nil,
-			result: wizardAnswers("", true, true, true),
+			result: wizardAnswers(true, true, true),
 			want:   project.InitOptions{LSPEnabled: true, EnforceQuality: true, DesignEnabled: true},
 		},
 
@@ -154,34 +131,32 @@ func TestFlagBeatsWizard_Page3Settings(t *testing.T) {
 			// default is true, so only Changed() distinguishes an explicit false.
 			name:   "enable-design: explicit --enable-design=false, wizard true -> flag wins (false)",
 			flags:  map[string]string{"enable-design": "false"},
-			result: wizardAnswers("", true, true, true),
+			result: wizardAnswers(true, true, true),
 			want:   project.InitOptions{LSPEnabled: true, EnforceQuality: true, DesignEnabled: false},
 		},
 		{
 			name:   "enable-design: flag absent, wizard false -> wizard applies",
 			flags:  nil,
-			result: wizardAnswers("", true, true, false),
+			result: wizardAnswers(true, true, false),
 			want:   project.InitOptions{LSPEnabled: true, EnforceQuality: true, DesignEnabled: false},
 		},
 		{
 			name:   "enable-design: flag absent, wizard true -> wizard applies",
 			flags:  nil,
-			result: wizardAnswers("", true, true, true),
+			result: wizardAnswers(true, true, true),
 			want:   project.InitOptions{LSPEnabled: true, EnforceQuality: true, DesignEnabled: true},
 		},
 
-		// --- all four flags supplied at once ------------------------------
+		// --- all three flags supplied at once -----------------------------
 		{
-			name: "all four flags supplied, wizard disagrees on every one -> flags win",
+			name: "all three flags supplied, wizard disagrees on every one -> flags win",
 			flags: map[string]string{
-				"project-mode":    "team",
 				"enable-lsp":      "false",
 				"enforce-quality": "false",
 				"enable-design":   "false",
 			},
-			result: wizardAnswers("personal", true, true, true),
+			result: wizardAnswers(true, true, true),
 			want: project.InitOptions{
-				ProjectMode:    "team",
 				LSPEnabled:     false,
 				EnforceQuality: false,
 				DesignEnabled:  false,
@@ -190,9 +165,8 @@ func TestFlagBeatsWizard_Page3Settings(t *testing.T) {
 		{
 			name:   "no flags supplied, wizard answers every one -> wizard wins throughout",
 			flags:  nil,
-			result: wizardAnswers("team", true, false, false),
+			result: wizardAnswers(true, false, false),
 			want: project.InitOptions{
-				ProjectMode:    "team",
 				LSPEnabled:     true,
 				EnforceQuality: false,
 				DesignEnabled:  false,
@@ -229,10 +203,12 @@ func TestFlagBeatsWizard_Page3Settings(t *testing.T) {
 }
 
 // TestFlagBeatsWizard_MatchesProfilePrecedence pins the AC-WIZ-016 consistency
-// clause: the four Page-3 settings resolve in the SAME direction as the
-// documented `--profile` rule — an explicitly-supplied flag is never
-// overwritten by the wizard answer. Asserted as one invariant across all four
-// so a future per-field regression cannot pass by covering only the bools.
+// clause: the Page-3 settings resolve in the SAME direction as the documented
+// `--profile` rule — an explicitly-supplied flag is never overwritten by the
+// wizard result. Asserted as one invariant across all four flags so a future
+// per-field regression cannot pass by covering only some of them; project-mode
+// stays in the set because applyWizardPage3ToOpts must leave it alone now that
+// the wizard carries no project-mode answer (SPEC-INIT-QUIET-WIZARD-001).
 func TestFlagBeatsWizard_MatchesProfilePrecedence(t *testing.T) {
 	cmd := newInitTestCmd()
 	for name, val := range map[string]string{
@@ -254,7 +230,6 @@ func TestFlagBeatsWizard_MatchesProfilePrecedence(t *testing.T) {
 
 	// A wizard result that disagrees with every supplied flag.
 	applyWizardPage3ToOpts(cmd, &wizard.WizardResult{
-		ProjectMode:    "personal",
 		LSPEnabled:     true,
 		EnforceQuality: true,
 		DesignEnabled:  true,
@@ -267,7 +242,7 @@ func TestFlagBeatsWizard_MatchesProfilePrecedence(t *testing.T) {
 		t.Errorf("explicitly-supplied flags must survive the wizard result (the --profile rule):\n before: %+v\n after:  %+v", before, opts)
 	}
 	// The --profile seed is untouched by the Page-3 application — the helper
-	// must not reach outside its four fields.
+	// must not reach outside its own fields.
 	if opts.Profile != "low" {
 		t.Errorf("Profile = %q, want %q (applyWizardPage3ToOpts must not touch it)", opts.Profile, "low")
 	}

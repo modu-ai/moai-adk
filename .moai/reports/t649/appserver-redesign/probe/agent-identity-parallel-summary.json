@@ -1,0 +1,94 @@
+[
+  {
+    "request": 1,
+    "identity_headers": {
+      "X-Claude-Code-Session-Id": "721a93ad-9ad5-4ace-9d77-8cd60ec60410"
+    },
+    "claude_header_names": [
+      "x-claude-code-session-id"
+    ],
+    "tool_references": []
+  },
+  {
+    "request": 2,
+    "identity_headers": {
+      "X-Claude-Code-Session-Id": "721a93ad-9ad5-4ace-9d77-8cd60ec60410",
+      "x-claude-code-agent-id": "abdf056abf05980bf"
+    },
+    "claude_header_names": [
+      "x-claude-code-agent-id",
+      "x-claude-code-session-id"
+    ],
+    "tool_references": []
+  },
+  {
+    "request": 3,
+    "identity_headers": {
+      "X-Claude-Code-Session-Id": "721a93ad-9ad5-4ace-9d77-8cd60ec60410",
+      "x-claude-code-agent-id": "a4c9673df8e2241c2"
+    },
+    "claude_header_names": [
+      "x-claude-code-agent-id",
+      "x-claude-code-session-id"
+    ],
+    "tool_references": []
+  },
+  {
+    "request": 4,
+    "identity_headers": {
+      "X-Claude-Code-Session-Id": "721a93ad-9ad5-4ace-9d77-8cd60ec60410",
+      "x-claude-code-agent-id": "a4c9673df8e2241c2"
+    },
+    "claude_header_names": [
+      "x-claude-code-agent-id",
+      "x-claude-code-session-id"
+    ],
+    "tool_references": [
+      "mcp__fixture__echo"
+    ]
+  },
+  {
+    "request": 5,
+    "identity_headers": {
+      "X-Claude-Code-Session-Id": "721a93ad-9ad5-4ace-9d77-8cd60ec60410",
+      "x-claude-code-agent-id": "abdf056abf05980bf"
+    },
+    "claude_header_names": [
+      "x-claude-code-agent-id",
+      "x-claude-code-session-id"
+    ],
+    "tool_references": [
+      "mcp__fixture__echo"
+    ]
+  },
+  {
+    "request": 6,
+    "identity_headers": {
+      "X-Claude-Code-Session-Id": "721a93ad-9ad5-4ace-9d77-8cd60ec60410"
+    },
+    "claude_header_names": [
+      "x-claude-code-session-id"
+    ],
+    "tool_references": []
+  },
+  {
+    "request": 7,
+    "identity_headers": {
+      "X-Claude-Code-Session-Id": "721a93ad-9ad5-4ace-9d77-8cd60ec60410"
+    },
+    "claude_header_names": [
+      "x-claude-code-session-id"
+    ],
+    "tool_references": []
+  },
+  {
+    "request": 8,
+    "identity_headers": {
+      "X-Claude-Code-Session-Id": "721a93ad-9ad5-4ace-9d77-8cd60ec60410"
+    },
+    "claude_header_names": [
+      "x-claude-code-session-id"
+    ],
+    "tool_references": []
+  }
+]

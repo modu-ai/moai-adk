@@ -1,0 +1,28 @@
+=== RUN   TestCleanReinstall_SettingsSnapshotStagedBeforeMerge
+--- PASS: TestCleanReinstall_SettingsSnapshotStagedBeforeMerge (0.02s)
+=== RUN   TestSettingsSnapshot_WriteSites
+=== RUN   TestSettingsSnapshot_WriteSites/clean_reinstall
+=== RUN   TestSettingsSnapshot_WriteSites/template_sync_backup_empty
+2026/09/12 05:01:51 WARN config sections directory not found, using defaults path=.moai/config/sections
+=== RUN   TestSettingsSnapshot_WriteSites/template_sync_backup_filled
+=== RUN   TestSettingsSnapshot_WriteSites/update_leftover_abort
+=== RUN   TestSettingsSnapshot_WriteSites/update_leftover_version_skip
+=== RUN   TestSettingsSnapshot_WriteSites/init
+2026/09/12 05:01:51 WARN config sections directory not found, using defaults path=/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t656/internal/cli/.moai/config/sections
+--- PASS: TestSettingsSnapshot_WriteSites (0.47s)
+    --- PASS: TestSettingsSnapshot_WriteSites/clean_reinstall (0.02s)
+    --- PASS: TestSettingsSnapshot_WriteSites/template_sync_backup_empty (0.03s)
+    --- PASS: TestSettingsSnapshot_WriteSites/template_sync_backup_filled (0.03s)
+    --- PASS: TestSettingsSnapshot_WriteSites/update_leftover_abort (0.03s)
+    --- PASS: TestSettingsSnapshot_WriteSites/update_leftover_version_skip (0.00s)
+    --- PASS: TestSettingsSnapshot_WriteSites/init (0.35s)
+=== RUN   TestSettingsSnapshot_InitLeftoverJudgementPrecedesExecute
+--- PASS: TestSettingsSnapshot_InitLeftoverJudgementPrecedesExecute (0.00s)
+=== RUN   TestSettingsSnapshot_WriteFailureDoesNotBlock
+=== RUN   TestSettingsSnapshot_WriteFailureDoesNotBlock/clean_reinstall
+=== RUN   TestSettingsSnapshot_WriteFailureDoesNotBlock/update_leftover_promote_failure
+--- PASS: TestSettingsSnapshot_WriteFailureDoesNotBlock (0.05s)
+    --- PASS: TestSettingsSnapshot_WriteFailureDoesNotBlock/clean_reinstall (0.04s)
+    --- PASS: TestSettingsSnapshot_WriteFailureDoesNotBlock/update_leftover_promote_failure (0.00s)
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/cli	1.513s

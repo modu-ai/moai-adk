@@ -1,0 +1,25 @@
+=== RUN   TestSettingsSnapshotFlow_PromoteFailureDoesNotBlock
+    settings_snapshot_flow_test.go:265: promote-failed lines = 0, want 1:
+        settings-snapshot-write-failed: rename /var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestSettingsSnapshotFlow_PromoteFailureDoesNotBlock4285736234/001/.moai/cache/template-snapshot/claude/settings.json.pending /var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestSettingsSnapshotFlow_PromoteFailureDoesNotBlock4285736234/001/.moai/cache/template-snapshot/claude/settings.json: file exists
+    settings_snapshot_flow_test.go:268: write-failed lines = 1, want 0:
+        settings-snapshot-write-failed: rename /var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestSettingsSnapshotFlow_PromoteFailureDoesNotBlock4285736234/001/.moai/cache/template-snapshot/claude/settings.json.pending /var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestSettingsSnapshotFlow_PromoteFailureDoesNotBlock4285736234/001/.moai/cache/template-snapshot/claude/settings.json: file exists
+--- FAIL: TestSettingsSnapshotFlow_PromoteFailureDoesNotBlock (0.33s)
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/cli/update/merge	0.933s
+=== RUN   TestSettingsSnapshotPromoteFailureDoesNotBlock
+=== RUN   TestSettingsSnapshotPromoteFailureDoesNotBlock/settle_at_flow_end
+    settings_snapshot_test.go:328: "settings-snapshot-promote-failed:" lines = 0, want 1:
+        settings-snapshot-write-failed: rename /var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestSettingsSnapshotPromoteFailureDoesNotBlocksettle_at_flow_en1458554059/001/.moai/cache/template-snapshot/claude/settings.json.pending /var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestSettingsSnapshotPromoteFailureDoesNotBlocksettle_at_flow_en1458554059/001/.moai/cache/template-snapshot/claude/settings.json: file exists
+    settings_snapshot_test.go:331: "settings-snapshot-write-failed:" lines = 1, want 0:
+        settings-snapshot-write-failed: rename /var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestSettingsSnapshotPromoteFailureDoesNotBlocksettle_at_flow_en1458554059/001/.moai/cache/template-snapshot/claude/settings.json.pending /var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestSettingsSnapshotPromoteFailureDoesNotBlocksettle_at_flow_en1458554059/001/.moai/cache/template-snapshot/claude/settings.json: file exists
+=== RUN   TestSettingsSnapshotPromoteFailureDoesNotBlock/leftover_judgement
+    settings_snapshot_test.go:328: "settings-snapshot-promote-failed:" lines = 0, want 1:
+        settings-snapshot-write-failed: rename /var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestSettingsSnapshotPromoteFailureDoesNotBlockleftover_judgemen1456828922/001/.moai/cache/template-snapshot/claude/settings.json.pending /var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestSettingsSnapshotPromoteFailureDoesNotBlockleftover_judgemen1456828922/001/.moai/cache/template-snapshot/claude/settings.json: file exists
+    settings_snapshot_test.go:331: "settings-snapshot-write-failed:" lines = 1, want 0:
+        settings-snapshot-write-failed: rename /var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestSettingsSnapshotPromoteFailureDoesNotBlockleftover_judgemen1456828922/001/.moai/cache/template-snapshot/claude/settings.json.pending /var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestSettingsSnapshotPromoteFailureDoesNotBlockleftover_judgemen1456828922/001/.moai/cache/template-snapshot/claude/settings.json: file exists
+--- FAIL: TestSettingsSnapshotPromoteFailureDoesNotBlock (1.92s)
+    --- FAIL: TestSettingsSnapshotPromoteFailureDoesNotBlock/settle_at_flow_end (1.86s)
+    --- FAIL: TestSettingsSnapshotPromoteFailureDoesNotBlock/leftover_judgement (0.06s)
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/cli/update/backup	2.982s
+FAIL

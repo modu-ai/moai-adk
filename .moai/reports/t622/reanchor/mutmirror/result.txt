@@ -1,0 +1,3 @@
+pos: new-fail test -s exit=1 () lost-pass test -s exit=1 ()
+newfail: new-fail test -s exit=0 (FAIL TestSanitizedPairParity/agent-common-protocol.md) lost-pass test -s exit=0 (PASS TestSanitizedPairParity/agent-common-protocol.md)
+lostpass: new-fail test -s exit=1 () lost-pass test -s exit=0 (PASS TestSanitizedPairParity/zone-registry.md)

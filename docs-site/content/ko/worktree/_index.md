@@ -98,7 +98,7 @@ flowchart TD
 놓습니다. 그래서 어느 worktree에서 커밋하더라도 다른 worktree가 곧바로 그
 커밋을 인식하고, 브랜치가 꼬이지 않습니다. MoAI-ADK는 그 위에 "어떤 worktree에
 들어갈지"와 "어떤 LLM 모드로 돌릴지"를 한 번에 묶어 주는 진입자(`moai cc` ·
-`moai glm` · `moai cg`)를 얹은 것입니다.
+`moai glm`)를 얹은 것입니다.
 
 ## 핵심 워크플로우
 
@@ -151,8 +151,7 @@ flowchart TD
 #### 2단계: Implement (Terminals 2, 3, 4...)
 
 구현 단계는 물량은 많지만 SPEC이 이미 방향을 잡아 둔 상태라, GLM처럼 값싼
-모델로도 충분히 제 몫을 합니다. 워크트리 진입은 런처(`moai cc` · `moai glm` ·
-`moai cg`)의 `-w` 플래그가 맡습니다. 지정한 이름의 워크트리가 없으면 그 자리에서
+모델로도 충분히 제 몫을 합니다. 워크트리 진입은 런처(`moai cc` · `moai glm`)의 `-w` 플래그가 맡습니다. 지정한 이름의 워크트리가 없으면 그 자리에서
 만들어 줍니다.
 
 ```bash
@@ -175,7 +174,7 @@ $ moai glm -w SPEC-AUTH-002 --spawn
 **장점**:
 
 - 완전히 격리된 작업 환경
-- GLM 비용 효율 (절감 폭은 [CG 모드](/ko/multi-llm/cg-mode) 참고)
+- 명시적 백엔드 선택: 워크트리마다 `moai cc` 또는 `moai glm`을 선택합니다.
 - 충돌 없는 무제한 병렬 개발
 
 #### 3단계: Cleanup
@@ -189,13 +188,13 @@ moai worktree done feature/SPEC-AUTH-001 --delete-branch    # 정리 + 로컬 �
 
 워크트리에 **들어가는** 일과 **목록을 보는** 일은 `moai worktree` 의 몫이 아닙니다.
 진입은 런처가, 조회는 git 이 맡습니다. 역할을 셋으로 나눠 외우면 헷갈리지 않습니다.
-들어갈 때는 런처(`moai cc`/`moai glm`/`moai cg`), 목록을 볼 때는 `git worktree list`,
+들어갈 때는 런처(`moai cc`/`moai glm`), 목록을 볼 때는 `git worktree list`,
 만들어진 worktree를 관리할 때는 `moai worktree`입니다.
 
 | 하려는 일               | 명령어                          | 사용 예시                              |
 | ----------------------- | ------------------------------- | -------------------------------------- |
 | Worktree 만들고 진입    | `moai cc -w <이름>`             | `moai glm -w SPEC-AUTH-001`            |
-| 세션 유지한 채 새 창에서 열기 | `moai cc -w <이름> --spawn` | `moai cg -w SPEC-AUTH-002 --spawn`     |
+| 세션 유지한 채 새 창에서 열기 | `moai cc -w <이름> --spawn` | `moai cc -w SPEC-AUTH-002 --spawn`     |
 | Worktree 목록 확인      | `git worktree list`             | `git worktree list`                    |
 
 `moai worktree` 는 만들어진 워크트리를 관리합니다:
@@ -248,39 +247,9 @@ graph TD
 - 브랜치 간 충돌 없이 작업
 - 완료된 SPEC만 main에 병합
 
-### 2. LLM 독립성 (LLM Independence)
+### 2. LLM 독립성
 
-Worktree마다 LLM 실행 모드를 따로 잡을 수 있습니다. 아래처럼 세 터미널이 각각
-`moai cc`(Claude 전용), `moai glm`(GLM 전용), `moai cg`(Claude 리더 + GLM 워커
-하이브리드)로 다르게 돌아가도 서로 간섭하지 않습니다. 이것이 단계마다 모델을
-다르게 배정하는 토크노믹스의 실체입니다.
-
-```mermaid
-sequenceDiagram
-    participant T1 as Terminal 1<br/>Worktree 1
-    participant T2 as Terminal 2<br/>Worktree 2
-    participant T3 as Terminal 3<br/>Worktree 3
-    participant Main as Main Repository
-
-    T1->>T1: moai cc (Claude)
-    Note over T1: 고추론 모델로<br/>계획 수행
-
-    T2->>T2: moai glm
-    Note over T2: 저비용 모델로<br/>구현 수행
-
-    T3->>T3: moai cg
-    Note over T3: 하이브리드로<br/>품질·비용 균형
-
-    par 병렬 작업
-        T1->>Main: Plan 작업
-        T2->>Main: Implement 작업
-        T3->>Main: Implement 작업
-    end
-
-    Main-->>T1: 완료된 SPEC만 병합
-    Main-->>T2: 완료된 SPEC만 병합
-    Main-->>T3: 완료된 SPEC만 병합
-```
+각 워크트리에서 Claude 세션은 `moai cc`, GLM 세션은 `moai glm`으로 명시적으로 선택합니다. 어느 쪽도 폐기된 혼합 역할을 재현하지 않습니다.
 
 ### 3. 무제한 병렬 개발 (Unlimited Parallel)
 

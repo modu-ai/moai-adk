@@ -1,0 +1,14 @@
+source: before-lint.json (spec lint --json, exit 0, stderr 0 bytes)
+tree: 8479fb2d7a4d45375a2d7e7ad98c0af0e2d3c468 (HEAD 4ac93f755), binary built from that HEAD, invoked by path
+
+jq '[length, error, warning, info]'                          -> [3336, 0, 3133, 203]
+jq severity group_by                                         -> info 203, warning 3133
+non-advisory warnings (severity==warning and advisory!=true) -> 0
+non-advisory per-code group_by                               -> []
+advisory warnings                                            -> 3133
+DuplicateAcceptanceID (all severities)                       -> 0
+positive control MovingRefUnpinned                           -> 116
+positive control REQTableRowsRejected                        -> 84
+negative control NoSuchRuleCodeXYZ                           -> 0
+
+Same totals as the absorbed-tree census (../absorb/census.txt, tree 3b9e8016): 3336 findings, 0 non-advisory.

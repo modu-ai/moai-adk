@@ -1,0 +1,13 @@
+=== RUN   TestIntegrationLock_BranchSourceRoundTripsAndOmitsWhenEmpty
+    integration_lock_test.go:365: a record with no source carries a branch_source key: {
+          "session_id": "lane-5",
+          "pid": 0,
+          "branch": "release/v9.9.9",
+          "worktree": "/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestIntegrationLock_BranchSourceRoundTripsAndOmitsWhenEmpty1771691626/002/wt",
+          "acquired_at": "2026-09-11T11:44:18Z",
+          "branch_source": ""
+        }
+--- FAIL: TestIntegrationLock_BranchSourceRoundTripsAndOmitsWhenEmpty (0.00s)
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/kanban	0.391s
+FAIL

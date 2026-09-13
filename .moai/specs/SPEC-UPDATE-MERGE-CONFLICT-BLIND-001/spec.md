@@ -1,10 +1,10 @@
 ---
 id: SPEC-UPDATE-MERGE-CONFLICT-BLIND-001
 title: "moai update merge: an unreachable conflict detector and no signal when a shared key is preserved"
-version: "0.3.1"
+version: "0.4.0"
 status: in-progress
 created: 2026-09-10
-updated: 2026-09-10
+updated: 2026-09-11
 author: manager-spec
 priority: P1
 phase: "v3.2.0 target"
@@ -12,7 +12,7 @@ module: "internal/merge"
 lifecycle: spec-anchored
 tags: "update, merge, instrumentation, conflict-detection, settings"
 era: V3R6
-related_specs: ["SPEC-UPDATE-TEMPLATE-BASE-SNAPSHOT-001", "SPEC-UPDATE-YAML-PRESERVE-001", "SPEC-PREMERGE-SETTINGS-DRIFT-001"]
+related_specs: ["SPEC-UPDATE-TEMPLATE-BASE-SNAPSHOT-001", "SPEC-UPDATE-YAML-PRESERVE-001", "SPEC-PREMERGE-SETTINGS-DRIFT-001", "SPEC-UPDATE-SETTINGS-BASE-SNAPSHOT-001"]
 tier: M
 ---
 
@@ -25,6 +25,7 @@ tier: M
 - 2026-09-10 — **third framing revision**, authored after M1 was executed. M1's `untouched_shared` cell measured the merge writing the user's value for a key whose template value had changed, which establishes a fact wider than §A's plan-phase premise: for a top-level JSON key the user's file already carries, `moai update` cannot change that key's value at all. Recorded as §A.6. The two earlier framings are **retained** — the withdrawn one in §A.2's opening record, the plan-phase two-defect reading in §A.2 proper — rather than erased; §A.6 supersedes the plan-phase reading in breadth only.
 - 2026-09-10 — **fourth framing revision**, authored after M2.0 measured the recursive and the YAML breadths. The measurement forced a **granularity correction** to §A.6, not a defect discovery: the post-M1 wording — that the merge cannot change the value of a key the user's file already carries — is true at **leaf** granularity and false at **container** granularity, because a container both sides carry gains the template's new leaves. §A.6 is restated around the canonical sentence; its post-M1 wording is **superseded and retained here as the record**, alongside the withdrawn first framing and §A.2's plan-phase reading. §A.3 moves the recursive and YAML breadths from unmeasured to measured and carries M2.0's own Gaps list forward.
 - 2026-09-10 — v0.3.1, **annotation only**: `REQ-UMC-008` and `REQ-UMC-009` still say "shared key", which predates §A.6's leaf/container split. Their text is deliberately left unchanged — restating them is entangled with M2.1's choice of conflict-determination granularity — and each now carries an annotation marking the wording stale, backed by an entry gate at M2.1 in `plan.md` §F. No REQ text changed and no acceptance criterion was added or removed.
+- 2026-09-11 — v0.4.0, **REQ text change, operator decision 2026-09-11.** `REQ-UMC-010` is restated so that it binds only this SPEC's remedies for `REQ-UMC-008` and `REQ-UMC-009`; its former unqualified subsystem-wide first clause ("The merge subsystem shall continue to resolve a shared key in favour of the user's value") is removed, and the matching exclusion in §D is aligned in the same direction. Reason: that clause contradicted `REQ-USB-006` of `SPEC-UPDATE-SETTINGS-BASE-SNAPSHOT-001` (card **t656**), which gives `.claude/settings.json` a deploy-time snapshot base under which a shared leaf the user did not edit receives the template's new value. The operator also decided the landing order: t656 lands first, and when this SPEC's M2.1 resumes, the §A.6 premise is re-measured (see the note under §A.6 and the M2.1 entry gate in `plan.md` §F). Status is unchanged (`in-progress`); no acceptance criterion was added or removed. Cross-reference: `.moai/specs/SPEC-UPDATE-SETTINGS-BASE-SNAPSHOT-001/spec.md` §B.3.
 
 ## §A Context
 
@@ -126,6 +127,8 @@ This is why §A.2's Defect 2 needs a remedy of its own and why `REQ-UMC-010` is 
 
 **The breadth of each sentence above.** The three clauses of the canonical statement, the healing boundary, and the leaf-level reachability reading are **measured** across top-level JSON, nested JSON, and flat and nested YAML (§A.3). The container-arm question is **not observable** and is claimed nowhere. Everything in §A.3's gap list — end-to-end `moai update`, a real checkout, non-string YAML keys, value shapes beyond scalars / string arrays / nested maps, cross-platform behaviour — remains unmeasured, and citing this section as though it covered them is an unobserved claim.
 
+> **Premise re-measurement note (2026-09-11).** Everything in this section was measured under the **derived** base. `SPEC-UPDATE-SETTINGS-BASE-SNAPSHOT-001` (card t656) lands before this SPEC's M2.1 resumes (operator decision, 2026-09-11) and merges `.claude/settings.json` against a deploy-time snapshot base, under which a shared leaf's base can differ from the incoming template — so the only-template-changed and both-changed arms become reachable for that file. When M2.1 resumes, this section's leaf-reachability premise must be re-measured on the resumed tree, separately for `.claude/settings.json` and for the files that still use the derived base, before any M2.1 design is chosen. The entry gate at M2.1 in `plan.md` §F carries the same obligation.
+
 ## §B Requirements (GEARS)
 
 ### §B.1 Observation
@@ -156,7 +159,9 @@ This is why §A.2's Defect 2 needs a remedy of its own and why `REQ-UMC-010` is 
 
 > **Granularity annotation (2026-09-10).** This requirement's "shared key" wording predates the leaf/container split of §A.6 and is stale relative to the measured mechanism. It must be re-adjudicated as leaf, container, or both before M2.1 begins — see the entry gate at M2.1 in `plan.md` §F. The requirement sentence above is unchanged.
 
-**REQ-UMC-010** — The merge subsystem shall continue to resolve a shared key in favour of the user's value, preserving the behaviour `base.go:109-111` states as its intent; no remedy for REQ-UMC-008 or REQ-UMC-009 shall change which value the merge writes for a shared key.
+**REQ-UMC-010** — A remedy for REQ-UMC-008 or REQ-UMC-009 shall not change which value the merge writes for a shared key.
+
+> **Scope annotation (2026-09-11).** Restated from a subsystem-wide invariant to a limit on this SPEC's own remedies (operator decision, 2026-09-11). It does not bind a change to the merge base made by another SPEC: `SPEC-UPDATE-SETTINGS-BASE-SNAPSHOT-001` (card t656, `REQ-USB-006`) gives `.claude/settings.json` a deploy-time snapshot base, under which a shared leaf the user did not edit receives the template's value. The intent `base.go:109-111` states — a user's edit to a key reads as their change — is honoured by that base and is not contradicted.
 
 ### §B.4 Signal on preserved-and-security-relevant state
 
@@ -205,7 +210,7 @@ Decision-reversibility order, most-likely-to-change first. Full plan in `plan.md
 ### Out of Scope — widening beyond the named surface
 
 - Any file, package, or subsystem outside `internal/merge/` and `internal/cli/update/merge/`, except the template-side coupling REQ-UMC-014 names explicitly.
-- Changing which value the merge writes for a shared key (REQ-UMC-010 forbids it).
+- Changing, as part of a remedy for REQ-UMC-008 or REQ-UMC-009, which value the merge writes for a shared key (REQ-UMC-010 forbids it). A merge-base change made by another SPEC is not excluded by this bullet and is not this SPEC's surface — see `SPEC-UPDATE-SETTINGS-BASE-SNAPSHOT-001`.
 
 ## §E Cross-references
 
@@ -216,5 +221,6 @@ Decision-reversibility order, most-likely-to-change first. Full plan in `plan.md
 - `internal/config/toolpolicy/settings_region.go:204` — the in-repo key-omission behaviour that makes the §A.4 boundary observable.
 - `CLAUDE.local.md` §2.3 — the wholesale-redeploy behaviour REQ-UMC-014 derives from.
 - Cards **t598**, **t599** — the sibling instrumentation gaps, excluded above.
+- `.moai/specs/SPEC-UPDATE-SETTINGS-BASE-SNAPSHOT-001/spec.md` (card **t656**) §B.3 and `REQ-USB-006` — the deploy-time `.claude/settings.json` snapshot base whose conflict with the former `REQ-UMC-010` wording was resolved by the 2026-09-11 amendment; it lands before this SPEC's M2.1.
 
 🗿 MoAI

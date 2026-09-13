@@ -333,26 +333,35 @@ Only applies when a PR was created in Step 3.2.
 
 ##### Auto-Merge Trigger Conditions
 
+Merging is opt-in. The single criterion is the `--auto-merge` opt-in defined in `manager-git.md` § PR Auto-Merge; worktree context alone never triggers a merge.
+
 Auto-merge trigger conditions:
-- `is_worktree_context == true` AND `--no-merge` flag NOT set
-- OR `--merge` flag explicitly set (deprecated, logged as warning)
+- `--auto-merge` flag set
+- OR `--merge` flag set (deprecated alias of `--auto-merge`, logged as warning)
+
+Mode conditions (same as `manager-git.md` § PR Auto-Merge):
+- In team mode, `--auto-merge` merges only after all approvals are obtained.
+- In personal and manual modes, `--auto-merge` merges without an approval condition (no teammates to approve).
 
 When auto-merge is triggered:
 1. Verify all CI/CD checks pass (gh pr checks)
 2. Verify zero merge conflicts (gh pr view --json mergeable)
-3. If all checks pass: Execute `gh pr merge --squash --delete-branch`
+3. If all checks pass: Execute `gh pr merge --<merge_method> --delete-branch`
 4. If checks fail: Report error with recovery command, do NOT merge
+
+`<merge_method>` is resolved from `git_strategy.<mode>.merge_method` for the active mode (`squash` | `merge` | `rebase`; default `squash`).
 
 ##### Flag Behavior
 
-- `--no-merge`: Skip auto-merge even in worktree context. PR is created but not merged.
-- `--merge`: Deprecated. Logs warning: "The --merge flag is deprecated. Auto-merge is now the default for worktree contexts."
+- `--auto-merge`: Opt in to merging the PR after sync, under the mode conditions above.
+- `--merge`: deprecated alias of `--auto-merge` (logs a warning).
+- `--no-merge`: Deprecated no-op kept for compatibility (logs a warning); not merging is already the default.
 
 ##### Auto-Merge Execution
 
 1. Check CI/CD status via `gh pr checks --watch` (wait for completion)
 2. Check merge conflicts via `gh pr view --json mergeable`
-3. If passing and mergeable: Execute `gh pr merge --squash --delete-branch`
+3. If passing and mergeable: Execute `gh pr merge --<merge_method> --delete-branch`
 4. Checkout target branch, fetch latest
 5. Verify local is synchronized with remote
 
@@ -401,7 +410,7 @@ Tool: AskUserQuestion with options tailored to delivery result (single-phase con
 
 **If PR was created (github-flow feature branch, or a git-flow PR route):**
 - Review PR on GitHub (Recommended)
-- Auto-Merge PR (/moai sync --merge)
+- Auto-Merge PR (/moai sync --auto-merge)
 - Create Next SPEC (/moai plan)
 - Start New Session (/clear)
 

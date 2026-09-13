@@ -1,0 +1,23 @@
+t645 cross-account loopback probe — darwin, 2026-09-11, run from worktree .claude/worktrees/t645
+
+$ id -un; id -u
+goos
+501
+
+$ netstat -anv -p tcp | awk '/LISTEN/ && $4=="127.0.0.1.8021"' | cut -c1-150
+tcp4       0      0  127.0.0.1.8021         *.*                    LISTEN                 0            0  131072  131072          launchd:1      00180
+
+$ ps -o user=,uid=,pid=,comm= -p 1
+root     0     1 /sbin/launchd
+
+$ nc -z -v -G 3 127.0.0.1 8021        # listener bound to 127.0.0.1 only, owned by root (uid 0)
+Connection to 127.0.0.1 port 8021 [tcp/intu-ec-client] succeeded!
+exit=0
+
+$ nc -z -v -G 3 127.0.0.1 1           # control: loopback port with no listener
+nc: connectx to 127.0.0.1 port 1 (tcp) failed: Connection refused
+exit=1
+
+Reading: a process running as uid 501 completed a TCP connect to a 127.0.0.1-only
+listener owned by uid 0. Loopback TCP on this host applies no per-account filter.
+nc -z sends no payload (connect-only).

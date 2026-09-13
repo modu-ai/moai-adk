@@ -1,0 +1,5 @@
+=== RUN   TestConstitutionAmend_ContainmentCheck_RelativeEnvEscape
+--- PASS: TestConstitutionAmend_ContainmentCheck_RelativeEnvEscape (0.00s)
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/cli	0.768s
+exit=0
