@@ -1,0 +1,12 @@
+=== RUN   TestGraphCheckCmd_ExistingNonAncestorStampExitsTwoWithRecovery
+2026/09/13 23:55:55 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestGraphCheckCmd_ExistingNonAncestorStampExitsTwoWithRecovery251181715/001/.moai/config/sections
+    t688_graph_check_ancestry_test.go:48: stderr missing recovery token "unreachable": graph check: system error: codemaps stamp 710fa422f1a5 not comparable in this checkout: stamped commit is not an ancestor of HEAD
+    t688_graph_check_ancestry_test.go:48: stderr missing recovery token "freshness unmeasured": graph check: system error: codemaps stamp 710fa422f1a5 not comparable in this checkout: stamped commit is not an ancestor of HEAD
+    t688_graph_check_ancestry_test.go:48: stderr missing recovery token "regenerate": graph check: system error: codemaps stamp 710fa422f1a5 not comparable in this checkout: stamped commit is not an ancestor of HEAD
+--- FAIL: TestGraphCheckCmd_ExistingNonAncestorStampExitsTwoWithRecovery (1.05s)
+=== RUN   TestGraphCheckCmd_UnresolvableStampOmitsRegenerationAdvice
+2026/09/13 23:55:55 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestGraphCheckCmd_UnresolvableStampOmitsRegenerationAdvice3636110626/001/.moai/config/sections
+--- PASS: TestGraphCheckCmd_UnresolvableStampOmitsRegenerationAdvice (0.63s)
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/cli	2.614s
+FAIL

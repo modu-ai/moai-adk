@@ -1,10 +1,10 @@
 ---
 id: SPEC-MOAI-GATEWAY-001
 title: "moai 공통 loopback gateway — cc·gpt·glm 세 launcher의 단일 ingress와 제공자별 모델 선택 경계"
-version: "0.11.0"
-status: draft
+version: "0.12.0"
+status: implemented
 created: 2026-09-10
-updated: 2026-09-12
+updated: 2026-09-14
 author: manager-spec
 priority: P1
 phase: "v3.3.0 target"
@@ -17,6 +17,14 @@ tier: L
 # SPEC-MOAI-GATEWAY-001 — 공통 loopback gateway 코어
 
 ## HISTORY
+
+- 0.12.0 (2026-09-14, t653) — 리드 전달 운영자 결정: AS-010·011·012의 실세션 양성 실증(실세션 회상 /
+  실제 turn model 일치 / 실제 Claude 압축 수집)을 카드 t844(라이브 계측 세션)로 이관한다. 자동 거절
+  변형군과 기계적 검증은 이미 카드 t653 run 커밋 `14dba89c5`·`e45f50a8d`에서 착지했으며, t844의
+  실세션 양성이 도래할 때까지 전체 기능 통과는 보류된다(AS-012의 “단순 구조 probe나 안전한 거절만으로
+  전체 기능을 통과 처리하지 않는다”). AS-013의 native fork는 이관 대상이 아니고 설계된 대로 전제 실패
+  NOT-RUN으로 남는다. 이 이관 조항은 `acceptance.md` §E 표의 T21로 기록됐다. status는 바꾸지 않고
+  in-progress를 유지하며 run_complete_at은 이 판에서 발행하지 않는다.
 
 - 0.11.0 (2026-09-12, t649 및 t650~t654) — 운영자가 공식 App Server 문서를 기준으로 전면 재설계,
   HTML 보고, 카드 발행, 구현을 지시했다. GPT 구독 인증·실행·reasoning 이력은 Codex App Server에 맡긴다.

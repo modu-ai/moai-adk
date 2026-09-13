@@ -1,0 +1,8 @@
+=== RUN   TestGraphCheckCmd_ExistingNonAncestorStampExitsTwoWithRecovery
+2026/09/13 23:56:55 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestGraphCheckCmd_ExistingNonAncestorStampExitsTwoWithRecovery2370708948/001/.moai/config/sections
+--- PASS: TestGraphCheckCmd_ExistingNonAncestorStampExitsTwoWithRecovery (0.98s)
+=== RUN   TestGraphCheckCmd_UnresolvableStampOmitsRegenerationAdvice
+2026/09/13 23:56:56 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestGraphCheckCmd_UnresolvableStampOmitsRegenerationAdvice1735323426/001/.moai/config/sections
+--- PASS: TestGraphCheckCmd_UnresolvableStampOmitsRegenerationAdvice (0.60s)
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/cli	2.550s

@@ -1,0 +1,70 @@
+# t707 temporary observability patch v2 — DO NOT COMMIT
+# Supersedes .moai/reports/t707/observability.patch (v1 corrupt at line 26, missed fmt/os imports — card t838 authored this apply-clean version).
+# Purpose unchanged: localize the live receipt-chain CauseChain rejection. Prints, to gateway stderr, ONLY structural facts (indexes, booleans, counts) of the first diverging boundary — never message content, digests beyond a 12-hex prefix, or session identifiers beyond what the log context carries.
+# Apply on a hotfix branch, make build && make install, reproduce once, capture stderr, then revert. Never leave this in a commit.
+# Verified on develop d416f8162 (t838): git apply --check ok, build/vet/test ok.
+
+diff --git a/internal/gateway/translate/receipt_history.go b/internal/gateway/translate/receipt_history.go
+index ae4ad8c26..f03943839 100644
+--- a/internal/gateway/translate/receipt_history.go
++++ b/internal/gateway/translate/receipt_history.go
+@@ -5,6 +5,8 @@ import (
+ 	"encoding/hex"
+ 	"encoding/json"
+ 	"errors"
++	"fmt"
++	"os"
+ 	"strings"
+ 
+ 	"github.com/modu-ai/moai-adk/internal/gateway/opaque"
+@@ -194,6 +196,10 @@ func (h *receiptHistory) observations(model, scope string, raw []byte) ([]receip
+ 	}
+ 	return observations, nil
+ }
++
++// t707 temporary observability — see .moai/reports/t707/observability.patch
++var receiptDebug = os.Getenv("MOAI_RECEIPT_DEBUG") == "1"
++
+ func (h *receiptHistory) Check(ctx context.Context, model, scope string, raw []byte) error {
+ 	observations, err := h.observations(model, scope, raw)
+ 	if err != nil {
+@@ -208,11 +214,38 @@ func (h *receiptHistory) Check(ctx context.Context, model, scope string, raw []b
+ 		return err
+ 	}
+ 	if err = h.checkObserved(manifest, model, scope, raw, observations); err != nil {
+-		return HistoryReplayError{Cause: replayCause(manifest, observations)}
++		cause := replayCause(manifest, observations)
++		if receiptDebug {
++			candidates := manifest.Candidates()
++			first := -1
++			for i, o := range observations {
++				matched := false
++				for _, c := range candidates {
++					if c.Prefix == o.Prefix && c.Previous == o.Previous {
++						matched = true
++						break
++					}
++				}
++				if !matched && first < 0 {
++					first = i
++				}
++			}
++			fmt.Fprintf(os.Stderr, "moai-receipt-divergence: observations=%d candidates=%d first_unmatched_boundary=%d root_unmatched=%v observations_items_first=%d\n",
++				len(observations), len(candidates), first, first == 0, boundaryItems(observations, first))
++		}
++		return HistoryReplayError{Cause: cause}
+ 	}
+ 	return nil
+ }
+ 
++// t707 temporary helper — items of the first diverging boundary (0 when absent).
++func boundaryItems(observations []receipt.Observation, i int) uint32 {
++	if i < 0 || i >= len(observations) {
++		return 0
++	}
++	return observations[i].Items
++}
++
+ // replayCause names the rejection class without exposing history data. An
+ // empty root against a nonempty replay is a lineage miss; a boundary whose
+ // required receipt exists while its opaque envelope is absent is a stripped
