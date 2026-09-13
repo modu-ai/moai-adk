@@ -11,6 +11,14 @@ const (
 	// TeamModeGLM is the llm.team_mode value written by `moai glm` (all-GLM
 	// session) — the PRIMARY GLM backend signal. persistTeamMode(root, "glm").
 	TeamModeGLM = "glm"
+	// TeamModeGPT is the llm.team_mode value that signals a gateway (gpt)
+	// backend (template.IsGatewayBackend). No launcher persists it: a gateway
+	// launch owns its child environment and never mutates llm.yaml (the
+	// TestUnifiedGatewayLaunchSkipsLegacyModeMutation invariant), so at runtime
+	// the value arrives through LLMConfig.WithLaunchProvider folding the
+	// launcher-owned MOAI_LAUNCH_PROVIDER env value. It is also parse-accepted
+	// from llm.yaml so an operator (or a test) can pin the backend explicitly.
+	TeamModeGPT = "gpt"
 	// LegacyTeamModeCG identifies historical data requiring explicit migration.
 	// It is not an executable backend or a provider selection.
 	LegacyTeamModeCG = "cg"
@@ -28,3 +36,26 @@ const (
 // backend-detection predicate (template.IsGLMBackend) for a future launch path
 // that populates mode.
 const LLMModeGLM = "glm"
+
+// LLMModeGPT is the dormant llm.mode counterpart of TeamModeGPT, kept as the
+// same defensive OR in template.IsGatewayBackend. No writer sets it.
+const LLMModeGPT = "gpt"
+
+// WithLaunchProvider folds the launcher-owned initial-provider value
+// (MOAI_LAUNCH_PROVIDER, set by prepareGatewayLaunch on the child env) into
+// the config-level backend signal. A gateway launch persists nothing into
+// llm.yaml, so a config-reading surface (the web console, `moai model
+// profile`) running inside a gpt session would otherwise read a Claude
+// backend and offer per-agent model selection the launcher makes meaningless.
+//
+// Only provider "gpt" folds, and only when llm.yaml carries no team_mode of its
+// own — an explicit team_mode is the operator's intent and wins. "glm" is not
+// folded here because `moai glm` already persists team_mode="glm"; "claude"
+// and any other value leave the config untouched. Value semantics: the
+// receiver is copied, never mutated.
+func (c LLMConfig) WithLaunchProvider(provider string) LLMConfig {
+	if provider == TeamModeGPT && c.TeamMode == "" {
+		c.TeamMode = TeamModeGPT
+	}
+	return c
+}
