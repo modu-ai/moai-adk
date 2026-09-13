@@ -69,6 +69,9 @@ func newGatewaySessionBinding(options gatewaySessionOptions) *gatewayLaunchBindi
 			if err := seedGatewayUIState(descriptor.ConfigDir, in); err != nil {
 				return gateway.LaunchPlan{}, nil, err
 			}
+			if err := seedGatewayBypassAcceptance(descriptor.ConfigDir, in); err != nil {
+				return gateway.LaunchPlan{}, nil, err
+			}
 			if in.ExplicitModel == "" && descriptor.Model != "" {
 				in.ExplicitModel = descriptor.Model
 			}

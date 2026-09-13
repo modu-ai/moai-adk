@@ -90,3 +90,57 @@ func seedGatewayUIState(target string, in gatewayLaunchRequest) error {
 	}
 	return closeErr
 }
+
+// Carry the selected config's existing bypass-permissions acceptance into a
+// fresh family, so an already-accepted warning is not shown again on every
+// new gateway conversation. Only the single boolean is copied, and only when
+// the selected config (named profile, inherited CLAUDE_CONFIG_DIR, or
+// ~/.claude) already recorded it; an existing settings.json is never touched.
+func seedGatewayBypassAcceptance(target string, in gatewayLaunchRequest) error {
+	path := filepath.Join(target, "settings.json")
+	if _, err := os.Lstat(path); err == nil {
+		return nil
+	} else if !os.IsNotExist(err) {
+		return err
+	}
+	selected := profile.GetProfileDir(in.ProfileName)
+	if selected == "" && in.OriginalConfigSet {
+		selected = in.OriginalConfig
+	}
+	if selected == "" {
+		home, err := os.UserHomeDir()
+		if err != nil {
+			return err
+		}
+		selected = filepath.Join(home, ".claude")
+	}
+	f, err := os.Open(filepath.Join(selected, "settings.json"))
+	if os.IsNotExist(err) {
+		return nil
+	}
+	if err != nil {
+		return err
+	}
+	data, err := io.ReadAll(io.LimitReader(f, 4<<20))
+	f.Close()
+	if err != nil {
+		return err
+	}
+	var doc map[string]any
+	if json.Unmarshal(data, &doc) != nil || doc["skipDangerousModePermissionPrompt"] != true {
+		return nil
+	}
+	out, err := os.OpenFile(path, os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0600)
+	if errors.Is(err, os.ErrExist) {
+		return nil
+	}
+	if err != nil {
+		return err
+	}
+	_, writeErr := out.Write([]byte(`{"skipDangerousModePermissionPrompt":true}`))
+	closeErr := out.Close()
+	if writeErr != nil {
+		return writeErr
+	}
+	return closeErr
+}
