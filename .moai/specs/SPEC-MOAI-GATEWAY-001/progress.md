@@ -11,6 +11,8 @@
   생산 호출 지점 부재, `codexbridge`의 `thread/resume` 경로와 compaction 처리 부재, FileStore "재개 불가" AS3 한계의
   AS4 계약 해제 필요 — 상세는 계획서 §1.3 gap 목록.
 
+- 0.12.0 (2026-09-14, t653) — 운영자 결정(리드 전달)으로 AS-010·011·012 실세션 양성 실증을 카드 t844로 이관
+  (`acceptance.md` §E 표 T21). AS-013은 설계된 NOT-RUN 유지. status 변경·run_complete_at 발행 없음.
 - 0.8.0 M5 문서 보강: system 위치·schema·종료 매핑 결정은 design §4.2~4.3, opaque reasoning 운반은 PROBE ONLY다.
   전체 carrier 유실 탐지 계약과 실제 TUI/resume 게이트는 미충족이며 run 증거로 세지 않는다. 새 REQ/AC 번호는 없다.
 
