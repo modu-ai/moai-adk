@@ -1,7 +1,8 @@
 # Sync-Audit Report — SPEC-GATEWAY-ENVELOPE-REPAIR-001 (card t708)
 
-- **FINAL VERDICT: FAIL** (must-pass firewall: Functionality; blocking findings F1, F2, F7)
-- **Overall score: 78/100** (harmonic mean of the four dimensions)
+- **FINAL VERDICT (iteration 2): PASS — overall 92/100** (harmonic mean; delta scope F1+F2+F7)
+- Iteration 1 verdict (history, below): FAIL 78/100 — blocking findings F1, F2, F7
+- **Iteration 2 overall score: 92/100** (harmonic mean of the re-scored dimensions)
 - Auditor: sync-auditor (in-session; no `audit_model: multi` key in `.moai/config/` — the `workflow.yaml` `audit:` block carries backend model pins only, so per contract this audit ran without a cross-backend fan-out; same disposition as the plan-audit)
 - Tree: worktree `.claude/worktrees/t708`, branch `WT-envelope-persist`, HEAD `7d7b29a1e` (re-verified `git rev-parse --show-toplevel` / `--short HEAD` at audit time); card diff measured against `CARD_BASE = git merge-base develop HEAD = 93ae49ce7` (the branch absorbed develop twice — merge-base is the discriminator, per the t543 lesson)
 - Uncommitted tree state at audit time: `M .moai/specs/SPEC-GATEWAY-ENVELOPE-REPAIR-001/progress.md` (one modified tracked file)
@@ -100,3 +101,50 @@ Even after the F1/F2/F7 fixes, the repair's real-world efficacy rests on the unm
 
 Auditor: sync-auditor (in-session, skeptical stance; no cross-backend fan-out — `audit_model` not set to `multi`)
 Baseline attribution: all commands run in this audit session against worktree `.claude/worktrees/t708` @ `7d7b29a1e`, card diff vs merge-base `93ae49ce7`.
+
+---
+
+## Iteration 2 — Delta Re-Audit (F1 + F2 + F7) — PASS 92/100
+
+- **FINAL VERDICT (iteration 2): PASS — overall 92/100** (harmonic mean; no must-pass dimension below threshold; no blocking findings outstanding)
+- Auditor: sync-auditor (in-session; delta scope per the re-audit request — F1+F2+F7 only; passing areas not re-litigated except where the delta touches them)
+- Tree: same worktree, HEAD now `9e71492f7`; delta commits verified: `3c48598b7` (iter-1 report preserved as-is for history), `c9e98df4c` (F7 spec amendment, manager-spec), `b46d33271` (F1 splice + F2 lint + F3 doc line), `9e71492f7` (reopen status flip + F6 row swap)
+
+### Delta verification (each command run by the auditor this session, this tree)
+
+**F1 — byte-preserving splice: VERIFIED FIXED.**
+- `repairInjectLine` replaced by a streaming `json.Decoder` token-walk (`repairContentInsertOffset`, repair.go:282-334) that captures `dec.InputOffset()` just past the `message.content` opening bracket, skipping sibling values via `json.RawMessage` (no re-serialization); the injection is a pure splice: `line[:pos] + canonicalBlock (+ "," unless empty array) + line[pos:]` (repair.go:340-355). Every byte outside the inserted span is the input's own byte — key order, escaping, whitespace preserved. The envelope block is marshaled from a fixed-field struct (deterministic); the carrier digest binds decoded canonical bytes, so block spelling is irrelevant to the Check.
+- The new test `TestRepairInjectLinePreservesRowBytesOutsideInjection` (+ empty-array subtest) uses a genuinely client-shaped row (`"type"` first, `"sessionId"` last, literal `a<b&c` inside tool input) and asserts the **reconstruction invariant**: removing exactly the injected span from the output reproduces the input byte-for-byte — precisely the property AC-EVR-004's evidence line demands, now actually asserted (the iter-1 gap). The literal-`a<b&c` survival assertion closes the HTML-escape vector. RED was captured against the old splice (commit `b46d33271` message records the alphabetical-reorder + escape reproduction).
+- Run this session: `go test ./internal/gateway/conversation/ -run 'TestRepair' -count=1 -v` → **8/8 PASS** including the new test and its empty-array subtest; the integrated `TestRepairEnvelopeRestoresStrippedEnvelopeAtOriginalBoundary` still passes through the new splice. AC-EVR-004's byte-fidelity clause is now met on real-world input shape AND pinned by a test that could fail.
+
+**F2 — lint gate: VERIFIED FIXED.**
+- All 5 call sites now capture the Check error and discard the `goldenReplayOf` return explicitly (`_ = goldenReplayOf(t, err, …)`), per the diff.
+- Independent measurement this session (auditor-run, unscoped, not the orchestrator's): `golangci-lint run --allow-parallel-runners ./internal/gateway/conversation/ ./internal/gateway/translate/ ./internal/cli/` → **`0 issues.`** The translate package is back to its pre-card clean baseline; the CI required check is unblocked.
+
+**F7 — composite-refusal semantics: VERIFIED FIXED.**
+- spec.md v0.2.2 (`c9e98df4c`, authored by manager-spec — correct ownership for body content): §3.3 retitled "Refusal semantics (repair-layer vs composite)"; repair-layer triggers enumerated as exactly four (source-gone, digest-mismatch, already-attempted, incomplete-transcript); missing-marker and Prefix-class mismatch reclassified COMPOSITE with the honest rationale (client-side indistinguishability; receipt reads forbidden by REQ-EVR-003-4); §3.4 cells reworded minimally; HISTORY row recorded.
+- acceptance.md AC-EVR-007 aligned to the same split (lines 47-50): repair-layer preconditions refuse with zero modification; composite cells delegate final adjudication to the unchanged Check via the M2 characterization matrix (AC-EVR-003). This matches the implemented system.
+- **§E.3 E1 row compatibility assessment (the coordinator's specific question)**: progress.md:119 reads "source-gone / digest-mismatch / intact / incomplete refusal cells PASS, zero-mod asserted". Ruling: **compatible subset, no contradiction.** Three of the four named cells (source-gone, digest-mismatch, incomplete) map 1:1 to the amended repair-layer triggers; the fourth ("intact" = no-stripped-boundary) is a real, green, zero-mod refusal cell (`TestRepairEnvelopeIntactHistoryNeedsNoRepair`) that §3.4's shape table and the operator doc both retain — the amended AC does not forbid it. The amended row's fourth trigger (already-attempted) is cited on the AC-EVR-008 row (`TestRepairEnvelopeSingleShotTerminatesAcrossRestart`, green) — coverage exists, distributed across rows rather than contradicted. The composite cells' adjudication rides the M2 matrix per the amended Evidence line. No finding raised.
+
+**Also verified (bonus repairs on optional findings):** F3 aside-crash wedge now documented with manual recovery in the operator doc refusal table (gateway-envelope-repair.md:59); F6 E1 rows 008/009 label swap fixed (progress.md:120-121 now matches acceptance.md's definitions). Status reopened to `in-progress` (`9e71492f7`) — correct lifecycle for re-close after this PASS.
+
+### Iteration-2 delta findings
+
+No new blocking findings. Residual notes (non-gating, carried or new):
+- **N1 [Low] [optional]** — The new `TestRepairInjectLinePreservesRowBytesOutsideInjection` pins the splice on a synthetic client-shaped row; it does not feed a non-canonical row through the full `RepairEnvelope` → transcript-write → re-read pipeline. The integrated test still runs on Go-canonical fixtures. The property proven (pure splice) plus the integrated digest test jointly cover the risk; noted for a future hardening pass, not required.
+- **N2 [Low] [optional]** — spec §3.3's "exactly four" repair-layer triggers is a simplification: the code also refuses on non-JSON rows, undecodable envelopes, path escape, unreadable transcript, and the aside-exists wedge — all fail-closed variants of the four (or of the no-work case). Honest enough at the semantic level; a future amendment could say "four trigger classes".
+
+### Iteration-2 dimension scores (delta-rescored)
+
+| Dimension | Iter-1 | Iter-2 | Basis |
+|---|---|---|---|
+| Functionality | 70 FAIL | **92 PASS** | AC-EVR-004 byte-fidelity now met and tested (F1); AC-EVR-007 letter aligned to implemented semantics (F7). Residual deduction: coverage gate per acceptance §D.3 still not demonstrated at package level (unchanged Gap); AC-EVR-006 no-flag cell still structurally-guaranteed-only. |
+| Security | 95 PASS | **95 PASS** | Splice reviewed: fail-closed offset walk, insertion of a fixed-field struct only, no new surface; digest binding unaffected. |
+| Craft | 72 PASS | **88 PASS** | Lint gate restored (`0 issues.` unscoped, auditor-run); byte-identity test is exemplary verification discipline. Residual: coverage figures unchanged. |
+| Consistency | 78 PASS | **93 PASS** | Doc byte-promise now true at file level; F7 spec/code/doc aligned; F6 fixed; CHANGELOG unchanged and still accurate. |
+
+Harmonic mean: 4 / (1/92 + 1/95 + 1/88 + 1/93) ≈ **92/100**.
+
+### Iteration-2 verdict
+
+**PASS.** All three blocking findings from iteration 1 are repaired and independently re-verified; the delta introduced no new defects; the optional F3/F6 items were closed as well. The orchestrator may re-close the SPEC (status `in-progress` → `completed` riding the close commit). Carry-forward Gaps (non-gating, unchanged from iteration 1): coverage ≥85% on touched packages not demonstrated at package level; `internal/cli` full-package run unmeasured locally; M5 live probe skipped (live client encode-time behavior unmeasured); t700 landing-order confirmation re-rides the develop absorb.
