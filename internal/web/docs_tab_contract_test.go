@@ -345,13 +345,14 @@ func docsTabNames(t *testing.T) {
 
 	for _, rel := range docsTabNameListFiles {
 		content := readRepoFile(t, rel)
+		isREADME := strings.HasPrefix(filepath.Base(rel), "README")
 
 		var got []string
-		var localeOnly map[int]string
-		if strings.HasPrefix(filepath.Base(rel), "README") {
+		var prefixes, localeOnly map[int]string
+		if isREADME {
 			got = extractREADMENames(t, rel, content, enLabels)
 		} else {
-			got, localeOnly = extractConsoleNames(t, rel, content)
+			got, prefixes, localeOnly = extractConsoleNames(t, rel, content)
 		}
 
 		t.Logf("%s: extracted %d tab names", rel, len(got))
@@ -362,6 +363,22 @@ func docsTabNames(t *testing.T) {
 
 		locale := localeOfPath(rel)
 		for i := range tabs {
+			// t677: the localized PREFIX of a glossed entry is now compared
+			// against the locale's rendered label. t530 left this axis
+			// unguarded ("one prefix already diverges"); all eight divergent
+			// positions were doc-side drift and are aligned to the console in
+			// this card, so the axis is assertable from here on.
+			if pfx, isGlossed := prefixes[i]; isGlossed {
+				want := i18n[locale][tabs[i].LabelKey]
+				if want == "" {
+					t.Errorf("%s: tab %d carries a localized name and i18n.js has no %s label for %q", rel, i+1, locale, tabs[i].LabelKey)
+					continue
+				}
+				if pfx != want {
+					t.Errorf("%s: tab %d localized name = %q, console renders %q", rel, i+1, pfx, want)
+				}
+				continue
+			}
 			if _, isLocaleOnly := localeOnly[i]; isLocaleOnly {
 				want := i18n[locale][tabs[i].LabelKey]
 				if want == "" {
@@ -373,11 +390,30 @@ func docsTabNames(t *testing.T) {
 				}
 				continue
 			}
-			if got[i] != enLabels[i] {
-				t.Errorf("%s: tab %d name = %q, console renders %q", rel, i+1, got[i], enLabels[i])
+			if isREADME {
+				if got[i] != enLabels[i] {
+					t.Errorf("%s: tab %d name = %q, console renders %q", rel, i+1, got[i], enLabels[i])
+				}
+				continue
+			}
+			// Console page, bare ASCII entry (no gloss, no localized name):
+			// it must equal what the console renders in THIS locale. A bare
+			// "Codex" in the ko/ja/zh lists read as the English baseline and
+			// passed while those locales render "Codex 설정/設定/设置" (t677);
+			// entries whose label is the same in every locale (LLM, MCP)
+			// keep passing.
+			want := i18n[locale][tabs[i].LabelKey]
+			if want == "" {
+				t.Errorf("%s: tab %d carries no localized name and i18n.js has no %s label for %q", rel, i+1, locale, tabs[i].LabelKey)
+				continue
+			}
+			if got[i] != want {
+				t.Errorf("%s: tab %d name = %q, console renders %q", rel, i+1, got[i], want)
 			}
 		}
 	}
+
+	docsTabProseMentions(t, i18n)
 }
 
 // extractREADMENames pulls the tab-name run out of a README. The run is
@@ -414,17 +450,16 @@ func extractREADMENames(t *testing.T, rel, content string, enLabels []string) []
 // extractConsoleNames pulls the numbered tab list out of a console page and
 // splits each bold entry into the name the document actually asserts.
 //
-// A localized page writes most entries as "localized name(English name)". The
-// English part is what the guard compares, because that is the axis the name
-// drift lives on. An entry written only in the locale's own language (the ones
-// with no English gloss) is reported through localeOnly so the caller compares
-// it against that locale's rendered label instead.
-//
-// The localized PREFIX of a glossed entry is deliberately not compared: at
-// least one of those prefixes already diverges from i18n.js for reasons this
-// card does not touch, and asserting it would make the criterion red forever.
-func extractConsoleNames(t *testing.T, rel, content string) (names []string, localeOnly map[int]string) {
+// A localized page writes most entries as "localized name(English name)".
+// Both parts are compared (t677): the English gloss against the console's
+// English baseline, and the localized prefix against that locale's rendered
+// i18n.js label — the prefix axis t530 left open because eight positions
+// already diverged. An entry written only in the locale's own language (the
+// ones with no English gloss) is reported through localeOnly so the caller
+// compares it against that locale's rendered label instead.
+func extractConsoleNames(t *testing.T, rel, content string) (names []string, prefixes map[int]string, localeOnly map[int]string) {
 	t.Helper()
+	prefixes = map[int]string{}
 	localeOnly = map[int]string{}
 
 	for _, line := range strings.Split(content, "\n") {
@@ -436,6 +471,7 @@ func extractConsoleNames(t *testing.T, rel, content string) (names []string, loc
 		idx := len(names)
 
 		if p := parentheticalRe.FindStringSubmatch(bold); p != nil {
+			prefixes[idx] = strings.TrimSpace(p[1])
 			names = append(names, strings.TrimSpace(p[2]))
 			continue
 		}
@@ -450,7 +486,141 @@ func extractConsoleNames(t *testing.T, rel, content string) (names []string, loc
 	if len(names) == 0 {
 		t.Errorf("%s: no numbered tab list found", rel)
 	}
-	return names, localeOnly
+	return names, prefixes, localeOnly
+}
+
+// ---------------------------------------------------------------------------
+// N2b — prose mentions (t677)
+// ---------------------------------------------------------------------------
+
+// proseNounRe finds each tab-noun occurrence in a line. The CJK nouns match
+// as literals (agglutinated suffixes like 탭에는 / タブには stay attached and
+// are harmless — the scan looks BACKWARD from the noun). The English noun is
+// word-bounded so "acceptable" does not read as a tab.
+var proseNounRe = regexp.MustCompile(`탭|タブ|标签页|\btabs?\b`)
+
+// proseConsoleSuffix narrows the prose scan to the four console pages.
+const proseConsoleSuffix = "advanced/moai-web-console.md"
+
+// proseNoise lists the function words that legally sit immediately before a
+// tab noun without naming a tab, measured at base 16f3b8a81 across the four
+// console pages (e.g. "다음 탭들이", "the tabs below", "each tab"). The list
+// carries the same standing cost as the wordNumeralRe class: a new prose
+// phrasing that is not listed here turns the names layer red, and adding to
+// this list is a deliberate, reviewable edit. Only the SPACE-DELIMITED
+// locales are enforced — see proseAdvisoryLocales.
+var proseNoise = map[string]map[string]bool{
+	"ko": {
+		"다음": true, "각": true, "그": true, "있는": true,
+		"어느": true, "알려면": true, "자기": true, "이": true,
+	},
+	"en": {
+		"the": true, "each": true, "that": true, "a": true,
+		"which": true, "two": true, "owning": true,
+	},
+}
+
+// proseAdvisoryLocales are the locales where the prose axis is ADVISORY only.
+// Japanese and Chinese write no spaces between words, so the run immediately
+// before a tab noun blends function words into content ("存在错误的标签页")
+// and no mechanical name/noise boundary exists. Unanchored mentions there are
+// counted and logged, never failed: the authoritative name fact for every
+// locale stays the numbered list, which axis A pins against i18n.js.
+var proseAdvisoryLocales = map[string]bool{"ja": true, "zh": true}
+
+// docsTabProseMentions guards the prose axis (card t677, D9-D12): the GLM
+// honesty-badge sentence in each console page names the GLM tab in that
+// locale's own language ("GLM 설정 탭", "The GLM Settings tab", "GLM設定タブ",
+// "GLM设置标签页"). Two failure shapes closed here:
+//
+//	paragraph deletion — a page must carry at least ONE prose mention of the
+//	                    rendered GLM label followed by the tab noun;
+//	silent rename      — the mention is matched against the label i18n.js
+//	                    renders TODAY, so a rename without a docs edit fails.
+//
+// In the enforced locales (en, ko) an unanchored candidate — text before a
+// tab noun that is neither a rendered label nor listed noise — is a failure:
+// that is a stale tab name in prose, the exact shape this card repaired
+// (the old "교차 세션 탭" wording). In the advisory locales it is logged.
+func docsTabProseMentions(t *testing.T, i18n map[string]map[string]string) {
+	t.Helper()
+	tabs := consoleTabs()
+
+	var llmTab consoleTab
+	for _, tb := range tabs {
+		if tb.ID == "llm" {
+			llmTab = tb
+		}
+	}
+
+	for _, rel := range docsTabNameListFiles {
+		if !strings.HasSuffix(rel, proseConsoleSuffix) {
+			continue
+		}
+		locale := localeOfPath(rel)
+
+		// A prose mention is anchored when the text before the noun ends
+		// with a label the console renders in this locale — or with its
+		// English baseline, which every locale's prose uses as the codename
+		// shorthand ("Codex 탭", "Codex タブ"). Longest suffix wins so that
+		// multi-word labels ("GLM Settings") anchor ahead of their parts.
+		valid := map[string]bool{}
+		for _, tb := range tabs {
+			valid[tb.Baseline] = true
+			if l := i18n[locale][tb.LabelKey]; l != "" {
+				valid[l] = true
+			}
+		}
+		llmLabel := i18n[locale][llmTab.LabelKey]
+		if llmLabel == "" {
+			llmLabel = llmTab.Baseline
+		}
+
+		content := readRepoFile(t, rel)
+		llmMentions := 0
+		unanchored := 0
+		for _, line := range strings.Split(content, "\n") {
+			// The numbered list is axis A's surface; the prose axis reads
+			// everything else (headings included).
+			if numberedBoldRe.MatchString(line) {
+				continue
+			}
+			for _, loc := range proseNounRe.FindAllStringIndex(line, -1) {
+				pre := strings.TrimSuffix(line[:loc[0]], " ")
+				anchored := ""
+				for l := range valid {
+					if len(l) > len(anchored) && strings.HasSuffix(pre, l) {
+						anchored = l
+					}
+				}
+				if anchored == llmLabel {
+					llmMentions++
+				}
+				if anchored != "" {
+					continue
+				}
+
+				run := pre
+				if k := strings.LastIndexAny(pre, " "); k >= 0 {
+					run = pre[k+1:]
+				}
+				if proseAdvisoryLocales[locale] {
+					unanchored++
+					continue
+				}
+				noise := proseNoise[locale]
+				if run != "" && noise[strings.ToLower(run)] {
+					continue
+				}
+				t.Errorf("%s: prose tab mention %q before the tab noun is neither a rendered label nor listed noise — a stale or unknown tab name", rel, run)
+			}
+		}
+
+		if llmMentions == 0 {
+			t.Errorf("%s: no prose mention of the %q tab followed by the tab noun — the GLM honesty-badge paragraph (D9-D12) was deleted or its tab name no longer matches what the console renders", rel, llmLabel)
+		}
+		t.Logf("%s: prose axis — %d anchored GLM mention(s), %d advisory unanchored", rel, llmMentions, unanchored)
+	}
 }
 
 func isASCII(s string) bool {
