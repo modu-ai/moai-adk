@@ -29,6 +29,28 @@ note: Plan artifacts authored (spec.md + plan.md + acceptance.md, Tier M). Plan-
 - AC-WRR-001 (wedge rejected, chain-classified): `TestReceiptHistoryClassifiesDesyncWedgeAfterUnpublishedTurn` PASS (pre-existing C5 lock, re-confirmed this run).
 - AC-WRR-004/005/006: `TestReceiptHistoryRejectsForeignItemReplay` / `TestReceiptHistoryKeepsStrippedReasoningRejection` PASS unchanged (lineage assertion inside the foreign-item test's CauseLineage section).
 
+### M3 — client-side recovery path (TDD; 2026-09-14)
+
+- **E8 RED evidence (verbatim, pre-GREEN)** — command `go test ./internal/cli/ -run 'TestGatewayReroot' -count=1`:
+  ```
+  # github.com/modu-ai/moai-adk/internal/cli [github.com/modu-ai/moai-adk/internal/cli.test]
+  internal/cli/gateway_reroot_test.go:88:14: undefined: rerootGatewayTranscript
+  internal/cli/gateway_reroot_test.go:130:14: undefined: rerootGatewayTranscript
+  internal/cli/gateway_reroot_test.go:155:16: undefined: rerootGatewayTranscript
+  internal/cli/gateway_reroot_test.go:167:16: undefined: rerootGatewayTranscript
+  internal/cli/gateway_reroot_test.go:177:16: undefined: rerootGatewayTranscript
+  internal/cli/gateway_reroot_test.go:195:14: undefined: rerootGatewayTranscript
+  internal/cli/gateway_reroot_test.go:267:14: undefined: rerootGatewayTranscript
+  internal/cli/gateway_reroot_test.go:426:14: undefined: rerootGatewayTranscript
+  FAIL	github.com/modu-ai/moai-adk/internal/cli [build failed]
+  FAIL
+  ```
+- **GREEN** — `go test ./internal/cli/ -run 'TestGatewayReroot' -count=1` → `ok github.com/modu-ai/moai-adk/internal/cli 1.486s` (9/9 PASS: AC-WRR-009 removal semantics + boundary-only edge, AC-WRR-008 single-shot same/fresh-process + stable guidance, clean refusal edge, AC-WRR-010 structural + store-digest complement, AC-WRR-011 negative + explicit-invocation wiring + passthrough strip, fork-combination refusal, AC-WRR-016 forged tail).
+- Change-scoped regression: `go test ./internal/cli/ -run 'TestGatewaySession|TestGatewayConversation|TestGatewayReroot' -count=1` → `ok ... 1.331s`, swept 17 top-level PASS (non-empty sweep); `go test ./internal/gateway/conversation/ -count=1` → `ok ... 1.859s`.
+- **Surface decisions (HOW, per plan.md M3 license)**: recovery core `internal/cli/gateway_reroot.go` (`rerootGatewayTranscript`); explicit invocation = `--reroot` paired with `--resume <uuid>` in `prepareGatewayConversation` (`internal/cli/gateway_session.go` — the EXTEND target; both frozen files untouched); record access via new `Manager.TranscriptPath` in a NEW file `internal/gateway/conversation/reroot.go` (un-gated transcript pointer resolution — family.go byte-frozen); durable marker + aside = sidecars `<transcript>.reroot.json` / `<transcript>.reroot-aside.jsonl` (marker written first, exclusive-create, so the single-shot bound survives crashes and process restarts; aside-before-replace).
+- **Design notes**: (1) API-error display rows (`isApiErrorMessage`) are NOT treated as the unpublished boundary — the TDD RED-GREEN loop caught the first implementation mis-taking them for the boundary (test `TestGatewayRerootRequiresExplicitInvocation` failed, implementation corrected). (2) A wedge transcript carrying a plain user turn after the unpublished boundary recovers to a shape the native completion gate (transcriptModel) refuses to resume; removal semantics per REQ-WRR-003-1 are unchanged and the aside preserves everything — the launcher-reachable wedge+retry shape (single trailing user row + terminal API-error row) resumes cleanly; the general case's sanctioned fallback is the fork path (documented in the M6 operator doc).
+- Launcher-reachable wedge shape recorded: the phantom boundary carries client-side `end_turn` (stream looked complete, receipt never published) followed by the user's post-failure turn and the API-error display row — this is the only wedge shape that resumes (transcriptModel complete) and therefore the one the 400 chain rejection surfaces through.
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 _<pending run-phase>_

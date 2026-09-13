@@ -199,14 +199,41 @@ func prepareGatewayConversation(in gatewayLaunchRequest, families *conversation.
 			return conversation.Descriptor{}, errors.New("gateway resume requires a UUID")
 		}
 		id := in.Args[i+1]
+		fork, reroot := false, false
 		for _, arg := range in.Args[i+2:] {
-			if arg == "--fork-session" {
-				d, err := families.Fork(context.Background(), id)
-				if err != nil {
-					return conversation.Descriptor{}, fmt.Errorf("gateway fork: %w", err)
-				}
-				return d, nil
+			switch arg {
+			case "--fork-session":
+				fork = true
+			case "--reroot":
+				reroot = true
 			}
+		}
+		if fork && reroot {
+			// Path (a) client-side re-rooting and path (b) gateway-state
+			// forking are distinct recovery classes; one launch takes one.
+			return conversation.Descriptor{}, errors.New("--reroot cannot be combined with --fork-session")
+		}
+		if reroot {
+			// Explicit-user-invoked wedge recovery (REQ-WRR-005): only this
+			// request re-roots the transcript, before the ordinary resume.
+			path, err := families.TranscriptPath(id)
+			if err != nil {
+				return conversation.Descriptor{}, fmt.Errorf("gateway reroot: %w", err)
+			}
+			outcome, err := rerootGatewayTranscript(path)
+			if err != nil {
+				return conversation.Descriptor{}, fmt.Errorf("gateway reroot: %w", err)
+			}
+			if outcome.Guidance != "" {
+				return conversation.Descriptor{}, rerootRefusalError(outcome)
+			}
+		}
+		if fork {
+			d, err := families.Fork(context.Background(), id)
+			if err != nil {
+				return conversation.Descriptor{}, fmt.Errorf("gateway fork: %w", err)
+			}
+			return d, nil
 		}
 		d, err := families.Resume(context.Background(), id)
 		if err != nil {
@@ -229,6 +256,7 @@ func gatewayConversationPassthrough(args []string) []string {
 		case "--resume":
 			i++
 		case "--fork-session":
+		case "--reroot":
 		case "--session-id":
 			i++
 		default:
