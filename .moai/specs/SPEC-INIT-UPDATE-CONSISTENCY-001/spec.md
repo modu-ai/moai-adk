@@ -11,6 +11,7 @@ phase: "v3.2.0"
 module: "internal/cli, internal/config, internal/core/project, internal/template/templates, internal/web"
 lifecycle: spec-anchored
 tags: "init, update, consistency, config-defaults, web-console, update-display"
+tier: M
 ---
 
 # SPEC-INIT-UPDATE-CONSISTENCY-001 — init/update 정합성·문서 정리
