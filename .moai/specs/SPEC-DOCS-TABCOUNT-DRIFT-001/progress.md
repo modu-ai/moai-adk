@@ -593,9 +593,168 @@ ok  	github.com/modu-ai/moai-adk/internal/web	14.957s
   현지어 축 드리프트는 M4 가 건드리지 않았다. 가드의 `names` 층이 그 축을 열지 않으므로(위 M1 잔여 위험 절)
   초록이 그 여덟 자리의 정합을 뜻하지 않는다. 별도 카드 소관이다.
 
+### M5 — 변이 6종 + 오탐 4자리: 가드의 축이 살아 있음을 보인다
+
+측정 트리: `.claude/worktrees/t530`, 브랜치 `WT-web-tab-docs`, M5 착수 시 HEAD `e275edbee`(M4 커밋), 작업 트리 clean.
+아래 모든 출력은 그 트리에서 이번 실행으로 관측했다. 변이는 **한 번에 하나만** 넣었다 — 둘을 겹치면 귀속이 성립하지 않는다.
+
+#### 왜 M5 가 형식이 아닌가 — 낱말 축의 0은 두 가지를 뜻할 수 있다
+
+M2~M4 가 낱말 표기 6자리를 없앤 뒤, `grep -c '^word-axis hit '` 는 **0** 을 낸다. 그런데 낱말 클래스가
+아무것도 매치하지 않는 스테일한 가드도 **똑같이 0** 을 낸다 — 두 판독이 바이트 동일하다.
+`verification-completeness.md` §1.3 이 이름 붙인 「비실행이 성공과 구분되지 않는 검사」가 정확히 이 모양이다.
+V4·V5·V6 이 그 둘을 가르는 유일한 장치이며, 그래서 M5 는 표의 세 행이 아니라 이 마일스톤의 목적이다.
+같은 논리가 `literals`·`names` 층에도 걸린다 — 적중 집합이 빈 초록은 속을 도려낸 검사가 내는 초록과 같다.
+
+#### 베이스라인 — 변이 전 트리는 초록
+
+```
+$ go test -count=1 ./internal/web/ -run 'TestDocsTabContract' -v
+--- PASS: TestDocsTabContract (0.08s)
+    --- PASS: TestDocsTabContract/literals (0.00s)
+    --- PASS: TestDocsTabContract/allowlist (0.07s)
+    --- PASS: TestDocsTabContract/names (0.00s)
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/web	0.584s
+```
+
+#### AC-TCD-006 — 변이 6종 (각각 따로 주입 → FAIL 관측 → 되돌림 → `ok` 재확인)
+
+| 변이 | 대상 | 조작 | 붉어진 서브테스트 | 가드가 찍은 축어 | 되돌림 |
+|---|---|---|---|---|---|
+| V1 | `README.ko.md:414` | `·Audit·` → `·Audits·` | `names` | `README.ko.md: tab 7 name = "Audits", console renders "Audit"` | `ok` |
+| V2 | `en/advanced/moai-web-console.md:139` | `10. **Report**` → `10. **Reports**` | `names` | `docs-site/content/en/advanced/moai-web-console.md: tab 10 name = "Reports", console renders "Report"` | `ok` |
+| V3 | `zh/cli-reference/web.md:53` | `设置标签页界面。` → `设置 14 个标签页。` | `literals` + `allowlist` | `digit axis: docs-site/content/zh/cli-reference/web.md:53 … "14 个标签页"` / `numeral sweep found 1 unallowed hit(s) (0 on the word axis)` | `ok` |
+| V4 | `en/advanced/moai-web-console.md:128` | `unfolds the tabs below …` → `unfolds fourteen settings tabs below it …` | `allowlist` **단독** | `word-axis hit docs-site/content/en/advanced/moai-web-console.md: fourteen settings tabs` | `ok` |
+| V5 | `README.ko.md:414` | `Quality Gate 탭으로` → `Quality Gate 열네 개 탭으로` | `literals` + `allowlist` | `word-axis hit README.ko.md: 열네 개 탭` | `ok` |
+| V6 | `zh/cli-reference/web.md:53` | `设置标签页界面。` → `设置九个标签页。` | `literals` + `allowlist` | `word-axis hit docs-site/content/zh/cli-reference/web.md: 九个标签页` | `ok` |
+
+**여섯 변이 전부 FAIL 을 냈다. 잡히지 않은 변이는 없다.**
+
+**V4 가 이 표에서 가장 무거운 행이다.** 그 변이에서 `literals` 는 **PASS** 했다 —
+`fourteen settings tabs` 는 열거 리터럴 `fourteen tabs` 가 아니므로 리터럴 층에 보이지 않는다.
+낱말 축 하나가 단독으로 잡았고, 축이 없었다면 손으로 적힌 수가 살아 있는 채 AC-TCD-002 가 초록이 됐다.
+축어:
+
+```
+word-axis hit docs-site/content/en/advanced/moai-web-console.md: fourteen settings tabs
+    docs_tab_contract_test.go:300: word axis: …:128 writes a settings tab count by hand: "fourteen settings tabs"
+--- FAIL: TestDocsTabContract (0.09s)
+    --- PASS: TestDocsTabContract/literals (0.00s)
+    --- FAIL: TestDocsTabContract/allowlist (0.08s)
+    --- PASS: TestDocsTabContract/names (0.00s)
+```
+
+**V3 와 V6 은 같은 파일·같은 줄을 겨누지만 다른 축이다.** V3 는 숫자 `14 个` 이고 가드는
+`digit axis` 로 보고하며 `(0 on the word axis)` 를 함께 찍었다. V6 은 낱말 `九` 이고 `word-axis hit` 줄을 냈다.
+한 변이가 두 축을 동시에 증명하지 않는다는 것이 이 두 행의 존재 이유다.
+
+**토큰별 자기 줄 확인 (V4·V5·V6 개별 단정)** — 세 변이가 각각 **자기 토큰의** `word-axis hit` 줄을 냈다:
+
+| 변이 | 토큰 | 로케일 | 그 변이에서 관측된 `word-axis hit` 줄 |
+|---|---|---|---|
+| V4 | `fourteen` | en | `word-axis hit docs-site/content/en/advanced/moai-web-console.md: fourteen settings tabs` |
+| V5 | `열네` | ko | `word-axis hit README.ko.md: 열네 개 탭` |
+| V6 | `九` | zh | `word-axis hit docs-site/content/zh/cli-reference/web.md: 九个标签页` |
+
+en 토큰 하나가 셋을 대신 운반한 것이 아니다 — ko·zh 변이는 en 문서를 건드리지 않았고, 각 줄의 파일 경로가 그 사실이다.
+낱말 클래스를 `{fourteen}` 하나로 좁힌 가드라면 V5·V6 에서 0줄을 찍고 통과했을 것이며, 그것이 plan-audit iter3
+부채 N1 이 지목한 변이체다(M1 이 구현 측에서, 여기가 문서 측에서 각각 죽인다).
+
+#### AC-TCD-008 — 오탐 4자리에 대해 가드가 침묵한다
+
+네 자리가 실재함을 먼저 확인하고(구절까지 고정), 가드를 돌렸다:
+
+```
+$ grep -c 'measured nine forms' README.md                                    → 1
+$ grep -c 'Eleven ref skills' README.md                                      → 1
+$ grep -c 'stays selectable' README.md                                       → 1
+$ grep -c '4 タブ' docs-site/content/ja/claude-code/extensibility/plugins.md  → 1
+$ go test -count=1 ./internal/web/ -run 'TestDocsTabContract'
+ok  	github.com/modu-ai/moai-adk/internal/web	0.584s
+```
+
+침묵의 **직접** 근거 — 가드의 `-v` 출력 전량에서 네 자리를 가리키는 문자열을 셌다:
+
+```
+$ go test -count=1 ./internal/web/ -run 'TestDocsTabContract' -v > /tmp/t530-m5-base.txt
+$ grep -cE 'selectable|measured nine forms|Eleven ref skills|plugins\.md' /tmp/t530-m5-base.txt
+0
+```
+
+네 자리가 각각 다른 장치로 닫힌다(`tab-count-sites.md §7-A`): `stays selectable` 은 낱말 경계 `\btabs?\b`,
+`measured nine forms` 와 `Eleven ref skills` 는 수-명사 인접(탭 명사 부재), `4 タブ` 는 파일 목록(대상 12파일 밖).
+`ok` 하나만으로는 "가드가 이 자리를 보고 통과시켰다" 와 "가드가 이 자리를 애초에 읽지 않았다" 가 구분되지 않으므로,
+적중 0을 출력 검색으로 함께 쟀다.
+
+#### 되돌림 — 작업 트리는 깨끗하다
+
+여섯 변이를 모두 되돌린 뒤:
+
+```
+$ git status --short
+(출력 없음)
+$ go test -count=1 ./internal/web/ -run 'TestDocsTabContract' -v
+--- PASS: TestDocsTabContract (0.11s)
+    --- PASS: TestDocsTabContract/literals (0.00s)
+    --- PASS: TestDocsTabContract/allowlist (0.10s)
+    --- PASS: TestDocsTabContract/names (0.00s)
+ok  	github.com/modu-ai/moai-adk/internal/web	0.704s
+```
+
+`no tests to run` 토큰 없음, `--- FAIL` 없음 — AC-TCD-004 의 세 줄 단정이 이 트리에서도 성립한다.
+변이는 하나도 남지 않았다(위 `git status --short` 가 그 관측이며, 이 M5 커밋이 담는 것은 `progress.md` 뿐이다).
+
+#### 무회귀 · 빌드 · 정적 검사
+
+| 명령 | 관측 |
+|---|---|
+| `go test -count=1 ./internal/web/` | `ok  github.com/modu-ai/moai-adk/internal/web  18.561s` |
+| `go build ./internal/web/` | exit `0` |
+| `GOOS=windows GOARCH=amd64 go build ./internal/web/` | exit `0` |
+| `gofmt -l internal/web/` | 출력 없음 |
+| `go vet ./internal/web/` | 출력 없음, exit `0` |
+
+#### Gap — M5 가 관측하지 못한 것
+
+- **가드가 잡지 못하는 변이가 없다고 단정하지 않는다.** 이 여섯은 acceptance.md 가 지정한 여섯이고,
+  **여섯 자리 × 세 층**에 대한 증거다. 열거되지 않은 표기(새 로케일, 새 수사 낱말)를 이 마일스톤은 재지 않았다 —
+  낱말 클래스의 유지 비용은 `spec.md §7` 이 이미 소유한다.
+- **D9~D12 산문 4자리는 여전히 가드 밖이다**(M4 절에 기록). V1·V2 는 번호 목록·이름 배열 축의 변이이며
+  산문 축을 겨누지 않았다.
+- **`names` 층의 현지어 축은 열지 않았다**(M1 잔여 위험 절). 범위 밖 이름 드리프트 8자리는 별도 카드 소관이다.
+- **AC-TCD-011 / RG-TCD-002 / RG-TCD-003 미측정** — M6 소관(열거표 계수, hugo 빌드).
+- **머신 부하.** M5 실행 구간의 `uptime` 1분 평균은 4.85 → 17.48 로 상승했다. 측정은 `./internal/web/` 로
+  한정했고 `go test ./...` 는 돌리지 않았으나, 이 수치들의 벽시계 시간은 부하의 함수이지 코드의 함수가 아니다
+  — 판정은 PASS/FAIL 이고 소요 시간을 근거로 쓰지 않는다.
+
 ## §E.3 Run-phase Audit-Ready Signal
 
-_<pending — M1 만 완료. 이 신호는 run-phase 전체(M1~M5)가 닫힐 때 채운다.>_
+```yaml
+run_complete_at: 2026-09-13
+run_commit_sha: pending-backfill-run   # 이 커밋은 자기 해시를 인용할 수 없다 — 후속 커밋에서 채운다
+run_status: complete                    # M1~M5 종료. M6(열거표 계수 + hugo)은 sync 전 잔여 마일스톤
+ac_pass_count: 11                       # AC-TCD-001~010, 012
+ac_fail_count: 0
+ac_pending_count: 1                     # AC-TCD-011 — M6 소관
+rg_maintained: 1                        # RG-TCD-001 유지. RG-TCD-002 / 003 은 M6 소관 (미측정)
+preserve_list_post_run_count: 0         # PRESERVE 목록 침범 0 — 기존 Go 소스(schemaform.go / tab_layout_test.go),
+                                        # 스크린샷, 범위 밖 로케일 이름 8자리 전부 미변경
+l44_pre_commit_fetch: "git fetch origin develop → rc=0 (M5 커밋 직전)"
+l44_post_push_fetch: "N/A — 레인은 push 하지 않는다 (CLAUDE.local.md §4.1, 리드 일괄 push)"
+new_warnings_or_lints_introduced: 0     # go vet 무출력, gofmt 무출력
+cross_platform_build:
+  darwin: "go build ./internal/web/ → exit 0"
+  windows: "GOOS=windows GOARCH=amd64 go build ./internal/web/ → exit 0"
+total_run_phase_files: 14               # 신규 1 (internal/web/docs_tab_contract_test.go)
+                                        # + 문서 12 (README 4본 + docs-site 8본)
+                                        # + progress.md
+m1_to_mN_commit_strategy: "마일스톤당 1커밋, 5커밋 (M1 가드 / M2 A군 / M3 B·C군 / M4 D군 / M5 변이 증거).
+  Conventional Commits, 모든 커밋 메시지에 카드 id t530. WT 브랜치 push 없음 — 로컬 병합 SHA 를 리드에게 보고한다."
+```
+
+**§E.3 의 근거는 이 문서 §E.2 의 M1~M5 절이다.** 각 AC 의 RED-now 출력과 GREEN 출력이 축어로 그 안에 있으며
+(`§D.2` 항목 2), 이 YAML 은 그 관측의 요약이지 별개의 측정이 아니다.
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
