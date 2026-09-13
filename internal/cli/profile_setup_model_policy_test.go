@@ -1,9 +1,10 @@
 package cli
 
 import (
-	"os"
 	"strings"
 	"testing"
+
+	"github.com/modu-ai/moai-adk/internal/cli/wizard"
 )
 
 // TestProfileText_ModelPolicyLabels verifies AC-WC2-006: the model_policy select
@@ -29,35 +30,37 @@ func TestProfileText_ModelPolicyLabels(t *testing.T) {
 	}
 }
 
-// TestProfileSetup_ModelPolicySelectPresent is the AC-WC2-006 grep guard: the
-// wizard source must construct a model_policy-bound huh.Select (offering the 3
-// canonical policy values plus an empty "(project default)" option) AND persist
-// the value into the written ProfilePreferences. The TUI form cannot be driven
-// without a TTY, so a source-level guard confirms the wiring exists.
+// TestProfileSetup_ModelPolicySelectPresent is the AC-ITI-010 S1 guard,
+// re-aimed per design.md §10 from a source grep to a behavior test over the
+// ABSORBED question set: the profile wizard asks model_policy with the three
+// canonical policy values plus the schema's empty option (labels non-empty),
+// and the chosen policy reaches preferences.yaml through the wizard save path
+// — the persistence half is shared with
+// TestProfileSetupAbsorbed_SavePersistsAcrossSurfaces, which asserts the
+// saved ModelPolicy value end to end.
 func TestProfileSetup_ModelPolicySelectPresent(t *testing.T) {
-	src, err := os.ReadFile("profile_setup.go")
-	if err != nil {
-		t.Fatalf("read profile_setup.go: %v", err)
+	opts := buildProfileOptions(getProfileText("en"))
+	qs := wizard.ProfileQuestions(opts, wizard.ProfileResult{})
+	q := wizard.QuestionByID(qs, "model_policy")
+	if q == nil {
+		t.Fatal("the absorbed profile question set has no model_policy question")
 	}
-	body := string(src)
 
-	// A model_policy value variable must be initialized from existing prefs.
-	if !strings.Contains(body, "existingPrefs.ModelPolicy") {
-		t.Error("model_policy value not initialized from existingPrefs.ModelPolicy")
+	offered := map[string]string{}
+	for _, o := range q.Options {
+		offered[o.Value] = o.Label
 	}
-	// The model-settings group must contain a select bound to the policy var,
-	// titled with the localized ModelPolicyTitle.
-	if !strings.Contains(body, "t.ModelPolicyTitle") {
-		t.Error("model-settings group does not present a t.ModelPolicyTitle select")
-	}
-	// The select must offer the 3 canonical policy values.
-	for _, v := range []string{`"high"`, `"medium"`, `"low"`} {
-		if !strings.Contains(body, "ModelPolicy") || !strings.Contains(body, v) {
-			t.Errorf("model_policy select missing canonical value %s", v)
+	// The empty option must exist (AC-ITI-005 (4)); its label is the schema's
+	// EmptyLabelFor accessor, which returns "" while model_policy has no
+	// schema field — a documented pre-existing blank, not asserted non-empty.
+	for _, v := range []string{"", "high", "medium", "low"} {
+		label, ok := offered[v]
+		if !ok {
+			t.Errorf("model_policy select does not offer the canonical value %q", v)
+			continue
 		}
-	}
-	// The written ProfilePreferences must carry ModelPolicy.
-	if !strings.Contains(body, "ModelPolicy:") {
-		t.Error("saved ProfilePreferences does not include a ModelPolicy field")
+		if v != "" && strings.TrimSpace(label) == "" {
+			t.Errorf("model_policy option %q renders an empty label", v)
+		}
 	}
 }

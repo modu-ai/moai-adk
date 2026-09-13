@@ -15,8 +15,6 @@ type OptionTranslation struct {
 
 // UIStrings holds translated UI strings.
 type UIStrings struct {
-	HelpSelect    string
-	HelpInput     string
 	ErrorRequired string
 	// ConfirmYes / ConfirmNo localize the huh Confirm affirmative/negative
 	// button labels. huh v2's Confirm exposes only static Affirmative/Negative
@@ -42,14 +40,6 @@ var translations = map[string]map[string]QuestionTranslation{
 		"project_name": {
 			Title:       "프로젝트 이름 입력",
 			Description: "프로젝트의 이름입니다.",
-		},
-		"development_mode": {
-			Title:       "개발 방법론 선택",
-			Description: "구현 시 사용할 개발 워크플로우 사이클을 설정합니다.",
-			Options: []OptionTranslation{
-				{Label: "TDD (권장)", Desc: "테스트 주도 개발: RED-GREEN-REFACTOR"},
-				{Label: "DDD", Desc: "도메인 주도 개발: ANALYZE-PRESERVE-IMPROVE"},
-			},
 		},
 		"report_format": {
 			Title:       "리포트 형식 선택",
@@ -137,14 +127,6 @@ var translations = map[string]map[string]QuestionTranslation{
 			Title:       "プロジェクト名を入力",
 			Description: "プロジェクトの名前です。",
 		},
-		"development_mode": {
-			Title:       "開発方法論を選択",
-			Description: "実装時に使用する開発ワークフローサイクルを制御します。",
-			Options: []OptionTranslation{
-				{Label: "TDD (推奨)", Desc: "テスト駆動開発: RED-GREEN-REFACTOR"},
-				{Label: "DDD", Desc: "ドメイン駆動開発: ANALYZE-PRESERVE-IMPROVE"},
-			},
-		},
 		"report_format": {
 			Title:       "レポート形式を選択",
 			Description: "レポートをHTML+Markdownで生成するか、Markdownのみで生成するかを設定します。",
@@ -231,14 +213,6 @@ var translations = map[string]map[string]QuestionTranslation{
 			Title:       "输入项目名称",
 			Description: "项目的名称。",
 		},
-		"development_mode": {
-			Title:       "选择开发方法论",
-			Description: "控制实施期间使用的开发工作流程周期。",
-			Options: []OptionTranslation{
-				{Label: "TDD (推荐)", Desc: "测试驱动开发: RED-GREEN-REFACTOR"},
-				{Label: "DDD", Desc: "领域驱动开发: ANALYZE-PRESERVE-IMPROVE"},
-			},
-		},
 		"report_format": {
 			Title:       "选择报告格式",
 			Description: "控制报告生成为HTML+Markdown还是仅Markdown。",
@@ -317,29 +291,21 @@ var translations = map[string]map[string]QuestionTranslation{
 // uiStrings maps language code to UI strings.
 var uiStrings = map[string]UIStrings{
 	"en": {
-		HelpSelect:    "Use arrow keys to navigate, Enter to select, Esc to cancel",
-		HelpInput:     "Type your answer, Enter to confirm, Esc to cancel",
 		ErrorRequired: "This field is required",
 		ConfirmYes:    "Yes",
 		ConfirmNo:     "No",
 	},
 	"ko": {
-		HelpSelect:    "방향키로 이동, Enter로 선택, Esc로 취소",
-		HelpInput:     "답변 입력 후 Enter로 확인, Esc로 취소",
 		ErrorRequired: "필수 입력 항목입니다",
 		ConfirmYes:    "예",
 		ConfirmNo:     "아니오",
 	},
 	"ja": {
-		HelpSelect:    "矢印キーで移動、Enterで選択、Escでキャンセル",
-		HelpInput:     "入力してEnterで確定、Escでキャンセル",
 		ErrorRequired: "この項目は必須です",
 		ConfirmYes:    "はい",
 		ConfirmNo:     "いいえ",
 	},
 	"zh": {
-		HelpSelect:    "使用方向键导航，Enter选择，Esc取消",
-		HelpInput:     "输入答案，Enter确认，Esc取消",
 		ErrorRequired: "此字段为必填项",
 		ConfirmYes:    "是",
 		ConfirmNo:     "否",
@@ -402,4 +368,106 @@ func GetUIStrings(locale string) UIStrings {
 		return strings
 	}
 	return uiStrings["en"]
+}
+
+// ============================================================================
+// M1/M2 absorbed wizard strings (plan.md M7: folded into the translations.go
+// scheme so every wizard UI string table lives in one file).
+// ============================================================================
+
+// helpActionLabels maps the English help action strings of huh's default key
+// map to each locale (design.md §7). The en column is the identity so every
+// locale carries the same action set. Key names (enter, ↑, …) are never
+// translated; only the action after them is.
+var helpActionLabels = map[string]map[string]string{
+	"en": {"next": "next", "submit": "submit", "back": "back", "select": "select", "up": "up", "down": "down",
+		"filter": "filter", "set filter": "set filter", "clear filter": "clear filter", "toggle": "toggle", "complete": "complete"},
+	"ko": {"next": "다음", "submit": "제출", "back": "이전", "select": "선택", "up": "위", "down": "아래",
+		"filter": "검색", "set filter": "검색 적용", "clear filter": "검색 해제", "toggle": "전환", "complete": "자동 완성"},
+	"ja": {"next": "次へ", "submit": "送信", "back": "戻る", "select": "選択", "up": "上", "down": "下",
+		"filter": "絞り込み", "set filter": "絞り込み確定", "clear filter": "絞り込み解除", "toggle": "切替", "complete": "補完"},
+	"zh": {"next": "下一步", "submit": "提交", "back": "返回", "select": "选择", "up": "上", "down": "下",
+		"filter": "筛选", "set filter": "应用筛选", "clear filter": "清除筛选", "toggle": "切换", "complete": "补全"},
+}
+
+// downgradeConfirmText is the localized title format (current, target) and
+// description of the `moai update --version` downgrade confirmation.
+type downgradeConfirmText struct {
+	TitleFormat string
+	Description string
+}
+
+// downgradeConfirmTexts holds the downgrade confirmation strings for the four
+// locales (design.md §6).
+var downgradeConfirmTexts = map[string]downgradeConfirmText{
+	"en": {TitleFormat: "Downgrade %s → %s?", Description: "The requested tag is older than the running version."},
+	"ko": {TitleFormat: "다운그레이드할까요? %s → %s", Description: "요청한 태그가 지금 실행 중인 버전보다 오래되었습니다."},
+	"ja": {TitleFormat: "ダウングレードしますか？ %s → %s", Description: "指定したタグは実行中のバージョンより古いバージョンです。"},
+	"zh": {TitleFormat: "要降级吗？%s → %s", Description: "请求的标签比当前运行的版本旧。"},
+}
+
+// profileQuestionTexts maps locale -> profile question id -> translation
+// for the profile wizard (`moai profile setup`); moved here from
+// profile_translations.go in the M7 strings fold (plan.md M7).
+// profileQuestionTexts maps locale -> profile question id -> translation for
+// the profile wizard (`moai profile setup`). The strings are the form strings
+// the v1 profile wizard carried in the cli package (profileSetupText), moved
+// here unchanged so the absorbed v2 form renders the same text in every
+// locale.
+//
+// The table is keyed separately from the init wizard's `translations` because
+// four profile ids (conversation_language, user_name, model_policy,
+// development_mode) also exist in the init set with different wording; one
+// shared id-keyed table cannot hold both. Option labels are NOT carried here:
+// the caller resolves them (schema label bridge) and passes them in through
+// ProfileOptions.
+var profileQuestionTexts = map[string]map[string]QuestionTranslation{
+	"en": {
+		"conversation_language": {Title: "Select your language", Description: "Language for this wizard and Claude's responses."},
+		"user_name":             {Title: "User name", Description: "Your display name for configuration files. Press Enter to skip."},
+		"git_commit_lang":       {Title: "Git commit message language", Description: "Language for commit messages."},
+		"code_comment_lang":     {Title: "Code comment language", Description: "Language for code comments."},
+		"doc_lang":              {Title: "Documentation language", Description: "Language for documentation files."},
+		"model":                 {Title: "Default model override", Description: "Override the model when launching with this profile."},
+		"model_policy":          {Title: "Agent model policy", Description: "Controls token consumption by assigning optimal models to each agent."},
+		"effort_level":          {Title: "Session effort level", Description: "Reasoning depth for the Claude session launched with this profile. xhigh/max need a model that supports them (Opus 5, Sonnet 5, Opus 4.7+). Per-agent effort comes from the agent model policy instead."},
+		"permission_mode":       {Title: "Permission mode", Description: "Controls how Claude asks for permission before taking actions."},
+		"development_mode":      {Title: "Development mode", Description: "Project methodology written to quality.yaml. Empty keeps the project default."},
+	},
+	"ko": {
+		"conversation_language": {Title: "언어를 선택하세요", Description: "이 설정 마법사와 Claude 응답에 사용할 언어입니다."},
+		"user_name":             {Title: "사용자 이름", Description: "설정 파일에 표시될 이름입니다. Enter를 눌러 건너뛰세요."},
+		"git_commit_lang":       {Title: "Git 커밋 메시지 언어", Description: "커밋 메시지에 사용할 언어입니다."},
+		"code_comment_lang":     {Title: "코드 주석 언어", Description: "코드 주석에 사용할 언어입니다."},
+		"doc_lang":              {Title: "문서 언어", Description: "문서 파일에 사용할 언어입니다."},
+		"model":                 {Title: "기본 모델 오버라이드", Description: "이 프로필로 실행할 때 모델을 오버라이드합니다."},
+		"model_policy":          {Title: "에이전트 모델 정책", Description: "각 에이전트에 최적 모델을 할당하여 토큰 소비를 제어합니다."},
+		"effort_level":          {Title: "세션 추론 강도", Description: "이 프로필로 실행하는 Claude 세션의 추론 깊이입니다. xhigh/max는 이를 지원하는 모델(Opus 5, Sonnet 5, Opus 4.7 이상)이 필요합니다. 에이전트별 추론 강도는 에이전트 모델 정책에서 정해집니다."},
+		"permission_mode":       {Title: "권한 모드", Description: "Claude가 작업 수행 전 권한을 요청하는 방식을 제어합니다."},
+		"development_mode":      {Title: "개발 방법론", Description: "quality.yaml에 기록되는 프로젝트 개발 방법론. 비워두면 프로젝트 기본값을 유지합니다."},
+	},
+	"ja": {
+		"conversation_language": {Title: "言語を選択してください", Description: "このウィザードとClaudeの応答に使用する言語です。"},
+		"user_name":             {Title: "ユーザー名", Description: "設定ファイルに表示される名前です。Enterでスキップできます。"},
+		"git_commit_lang":       {Title: "Gitコミットメッセージ言語", Description: "コミットメッセージに使用する言語です。"},
+		"code_comment_lang":     {Title: "コードコメント言語", Description: "コードコメントに使用する言語です。"},
+		"doc_lang":              {Title: "ドキュメント言語", Description: "ドキュメントファイルに使用する言語です。"},
+		"model":                 {Title: "デフォルトモデルオーバーライド", Description: "このプロファイルで起動する際のモデルをオーバーライドします。"},
+		"model_policy":          {Title: "エージェントモデルポリシー", Description: "各エージェントに最適なモデルを割り当て、トークン消費を制御します。"},
+		"effort_level":          {Title: "セッション推論レベル", Description: "このプロファイルで起動する Claude セッションの推論深度です。xhigh/max は対応モデル（Opus 5、Sonnet 5、Opus 4.7 以降）が必要です。エージェントごとの推論強度はエージェントモデルポリシーで決まります。"},
+		"permission_mode":       {Title: "権限モード", Description: "Claudeがアクション実行前に権限を要求する方法を制御します。"},
+		"development_mode":      {Title: "開発方法論", Description: "quality.yaml に記録されるプロジェクトの開発方法論。空欄の場合はプロジェクトのデフォルトを維持します。"},
+	},
+	"zh": {
+		"conversation_language": {Title: "请选择语言", Description: "用于此向导和Claude响应的语言。"},
+		"user_name":             {Title: "用户名", Description: "配置文件中显示的名称。按Enter跳过。"},
+		"git_commit_lang":       {Title: "Git提交消息语言", Description: "提交消息使用的语言。"},
+		"code_comment_lang":     {Title: "代码注释语言", Description: "代码注释使用的语言。"},
+		"doc_lang":              {Title: "文档语言", Description: "文档文件使用的语言。"},
+		"model":                 {Title: "默认模型覆盖", Description: "使用此配置文件启动时覆盖模型。"},
+		"model_policy":          {Title: "代理模型策略", Description: "通过为每个代理分配最优模型来控制token消耗。"},
+		"effort_level":          {Title: "会话推理强度", Description: "使用此配置文件启动的 Claude 会话的推理深度。xhigh/max 需要支持它们的模型（Opus 5、Sonnet 5、Opus 4.7 及以上）。各代理的推理强度由代理模型策略决定。"},
+		"permission_mode":       {Title: "权限模式", Description: "控制Claude在执行操作前如何请求权限。"},
+		"development_mode":      {Title: "开发方法论", Description: "写入 quality.yaml 的项目开发方法论。留空则保留项目默认值。"},
+	},
 }

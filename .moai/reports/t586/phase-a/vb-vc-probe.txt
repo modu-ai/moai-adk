@@ -1,0 +1,47 @@
+=== RUN   TestProbeT586VbKeyMapConfirm
+    zz_probe_t586_phasea_test.go:45: PROBE vb-no-keymap 00|┃ 다운그레이드 하시겠습니까?                                                    |
+    zz_probe_t586_phasea_test.go:45: PROBE vb-no-keymap 01|┃ probe description                                                             |
+    zz_probe_t586_phasea_test.go:45: PROBE vb-no-keymap 02|┃                                                                               |
+    zz_probe_t586_phasea_test.go:45: PROBE vb-no-keymap 03|┃       예     아니오                                                           |
+    zz_probe_t586_phasea_test.go:45: PROBE vb-no-keymap 04||
+    zz_probe_t586_phasea_test.go:45: PROBE vb-no-keymap 05|←/→ toggle • enter submit • y 예 • n 아니오|
+    zz_probe_t586_phasea_test.go:57: PROBE vb-ko-keymap-frame1 00|┃ 다운그레이드 하시겠습니까?                                                    |
+    zz_probe_t586_phasea_test.go:57: PROBE vb-ko-keymap-frame1 01|┃ probe description                                                             |
+    zz_probe_t586_phasea_test.go:57: PROBE vb-ko-keymap-frame1 02|┃                                                                               |
+    zz_probe_t586_phasea_test.go:57: PROBE vb-ko-keymap-frame1 03|┃       예     아니오                                                           |
+    zz_probe_t586_phasea_test.go:57: PROBE vb-ko-keymap-frame1 04||
+    zz_probe_t586_phasea_test.go:57: PROBE vb-ko-keymap-frame1 05|←/→ 전환 • enter 제출 • y 예 • n 아니오|
+    zz_probe_t586_phasea_test.go:58: PROBE vb-ko-keymap-frame2 00|┃ 다운그레이드 하시겠습니까?                                                    |
+    zz_probe_t586_phasea_test.go:58: PROBE vb-ko-keymap-frame2 01|┃ probe description                                                             |
+    zz_probe_t586_phasea_test.go:58: PROBE vb-ko-keymap-frame2 02|┃                                                                               |
+    zz_probe_t586_phasea_test.go:58: PROBE vb-ko-keymap-frame2 03|┃       예     아니오                                                           |
+    zz_probe_t586_phasea_test.go:58: PROBE vb-ko-keymap-frame2 04||
+    zz_probe_t586_phasea_test.go:58: PROBE vb-ko-keymap-frame2 05|←/→ 전환 • enter 제출 • y 예 • n 아니오|
+--- PASS: TestProbeT586VbKeyMapConfirm (0.01s)
+=== RUN   TestProbeT586VcGeneralizedStepper
+    zz_probe_t586_phasea_test.go:115: PROBE vc-before 00|  ● ○ 1 / 2                                                                     |
+    zz_probe_t586_phasea_test.go:115: PROBE vc-before 01|                                                                                |
+    zz_probe_t586_phasea_test.go:115: PROBE vc-before 02|                                                                                |
+    zz_probe_t586_phasea_test.go:115: PROBE vc-before 03|┃ First?                                                                        |
+    zz_probe_t586_phasea_test.go:115: PROBE vc-before 04|┃ ▸ no                                                                          |
+    zz_probe_t586_phasea_test.go:115: PROBE vc-before 05|┃   yes                                                                         |
+    zz_probe_t586_phasea_test.go:115: PROBE vc-before 06|                                                                                |
+    zz_probe_t586_phasea_test.go:115: PROBE vc-before 07|  Last                                                                          |
+    zz_probe_t586_phasea_test.go:115: PROBE vc-before 08|  >                                                                             |
+    zz_probe_t586_phasea_test.go:115: PROBE vc-before 09||
+    zz_probe_t586_phasea_test.go:115: PROBE vc-before 10|↑ up • ↓ down • / filter • enter select|
+    zz_probe_t586_phasea_test.go:119: PROBE vc-after 00|  ● ○ ○ 1 / 3                                                                   |
+    zz_probe_t586_phasea_test.go:119: PROBE vc-after 01|                                                                                |
+    zz_probe_t586_phasea_test.go:119: PROBE vc-after 02|                                                                                |
+    zz_probe_t586_phasea_test.go:119: PROBE vc-after 03|  First?                                                                        |
+    zz_probe_t586_phasea_test.go:119: PROBE vc-after 04|    no                                                                          |
+    zz_probe_t586_phasea_test.go:119: PROBE vc-after 05|  ▸ yes                                                                         |
+    zz_probe_t586_phasea_test.go:119: PROBE vc-after 06|                                                                                |
+    zz_probe_t586_phasea_test.go:119: PROBE vc-after 07|┃ Last                                                                          |
+    zz_probe_t586_phasea_test.go:119: PROBE vc-after 08|┃ >                                                                             |
+    zz_probe_t586_phasea_test.go:119: PROBE vc-after 09||
+    zz_probe_t586_phasea_test.go:119: PROBE vc-after 10|shift+tab back • enter submit|
+    zz_probe_t586_phasea_test.go:120: PROBE vc res.First="yes"
+--- PASS: TestProbeT586VcGeneralizedStepper (0.07s)
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/cli/wizard	0.586s

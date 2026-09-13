@@ -1,0 +1,16 @@
+=== RUN   TestProbeT586VdChild
+    zz_probe_t586_vd_test.go:60: child runs only under MOAI_PTY_CAPTURE_SELFTEST=fail
+--- SKIP: TestProbeT586VdChild (0.00s)
+=== RUN   TestProbeT586VdParent
+    zz_probe_t586_vd_test.go:83: BEFORE [moai-ptycap-sentinel-702d48a1]
+    zz_probe_t586_vd_test.go:90: CHILD exit err=exit status 1
+        === RUN   TestProbeT586VdChild
+            zz_probe_t586_vd_test.go:64: CHILD-SESSION moai-ptycap-vdchild-b33421a3
+            zz_probe_t586_vd_test.go:65: forced failure after opening the session
+        --- FAIL: TestProbeT586VdChild (0.01s)
+        FAIL
+    zz_probe_t586_vd_test.go:93: AFTER [moai-ptycap-sentinel-702d48a1]
+    zz_probe_t586_vd_test.go:111: VERDICT childFailed=true childSession="moai-ptycap-vdchild-b33421a3" childSessionSurvived=false sentinelAlive=true beforeEqualsAfter=true
+--- PASS: TestProbeT586VdParent (0.96s)
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/cli/wizard	1.364s
