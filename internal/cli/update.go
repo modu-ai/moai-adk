@@ -682,13 +682,9 @@ func shouldSkipBinaryUpdate(cmd *cobra.Command) bool {
 		return true
 	}
 
-	// Dev build detection (reuse pattern from buildAutoUpdateFunc in deps.go)
-	v := version.GetVersion()
-	if strings.Contains(v, "dirty") || v == "dev" || strings.Contains(v, "none") {
-		return true
-	}
-
-	return false
+	// Dev build detection (shared discriminator in pkg/version — also rejects
+	// build codenames like "moai_cp/..." that a substring check let through, card t678)
+	return version.IsDevBuild(version.GetVersion())
 }
 
 // @MX:NOTE: [AUTO] runBinaryUpdateStep — M4-S4d-1 DDD migration. New-version notice uses

@@ -73,10 +73,39 @@ func TestGetCurrentName_WithProfile(t *testing.T) {
 }
 
 func TestGetCurrentName_UnrelatedPath(t *testing.T) {
+	tmpDir := t.TempDir()
+	orig := BaseDirOverride
+	defer func() { BaseDirOverride = orig }()
+	BaseDirOverride = tmpDir
+
+	// t667: a config dir outside the profile base is not a named profile —
+	// the derivation must degrade to "default", never leak the raw path as a
+	// profile name (the web console's name validator refused it and broke the
+	// settings screen).
 	t.Setenv("CLAUDE_CONFIG_DIR", "/some/random/path")
-	name := GetCurrentName()
-	if name != "/some/random/path" {
-		t.Errorf("GetCurrentName() = %q, want raw path", name)
+	if name := GetCurrentName(); name != "default" {
+		t.Errorf("GetCurrentName() = %q, want %q", name, "default")
+	}
+}
+
+// TestGetCurrentName_GatewayFamilyPath is the t667 regression: a gateway
+// conversation family config dir (the exact shape observed on the live web
+// console) must resolve to "default", not to the family path.
+func TestGetCurrentName_GatewayFamilyPath(t *testing.T) {
+	tmpDir := t.TempDir()
+	orig := BaseDirOverride
+	defer func() { BaseDirOverride = orig }()
+	BaseDirOverride = tmpDir
+
+	home, err := os.UserHomeDir()
+	if err != nil {
+		t.Skip("cannot determine home directory")
+	}
+	familyDir := filepath.Join(home, ".moai", "state", "gateway-conversations",
+		"families", "40827bc6-7d20-4373-abb4-58c9138a0ea5", "native")
+	t.Setenv("CLAUDE_CONFIG_DIR", familyDir)
+	if name := GetCurrentName(); name != "default" {
+		t.Errorf("GetCurrentName() = %q, want %q", name, "default")
 	}
 }
 

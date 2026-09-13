@@ -128,7 +128,7 @@ func RepairSkillMirror(fsys fs.FS, projectRoot string) *MirrorRepairResult {
 // repairPathA restores the symlink mirror for the candidates whose canonical
 // directory exists.
 func (r *MirrorRepairResult) repairPathA(projectRoot string, candidates []string) {
-	mirrorDir := filepath.Join(projectRoot, mirrorSkillsRelDir)
+	mirrorDir := filepath.Join(projectRoot, MirrorSkillsRelDir)
 
 	var present []string
 	for _, name := range candidates {

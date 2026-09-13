@@ -143,7 +143,9 @@ func (a *MessagesAdapter) Send(ctx context.Context, q RoutedRequest) (*http.Resp
 	if e != nil || generation != q.Generation {
 		return openAIError(401), nil
 	}
-	up, e := a.config.Transport.RoundTrip(req)
+	up, attempts, e := upstreamSend(ctx, req, func() (*http.Response, error) {
+		return a.config.Transport.RoundTrip(req)
+	})
 	if e != nil {
 		if up != nil && up.Body != nil {
 			_ = up.Body.Close() // error-path discard; the mapped client error is already fixed
@@ -151,7 +153,7 @@ func (a *MessagesAdapter) Send(ctx context.Context, q RoutedRequest) (*http.Resp
 		if ctx.Err() != nil {
 			return nil, ctx.Err()
 		}
-		return openAIError(502), nil
+		return openAIErrorMessage(502, gatewayConnectMessage(attempts, e)), nil
 	}
 	if up == nil || up.Body == nil {
 		return openAIError(502), nil
@@ -162,7 +164,11 @@ func (a *MessagesAdapter) Send(ctx context.Context, q RoutedRequest) (*http.Resp
 		if status < 400 || status > 599 {
 			status = 502
 		}
-		out := openAIError(status)
+		message := http.StatusText(status)
+		if up.StatusCode >= 500 && up.StatusCode <= 599 {
+			message = upstreamStatusMessage(up.StatusCode, attempts)
+		}
+		out := openAIErrorMessage(status, message)
 		if status == 429 || status == 503 {
 			if v := validRetryAfter(up.Header.Get("Retry-After")); v != "" {
 				out.Header.Set("Retry-After", v)

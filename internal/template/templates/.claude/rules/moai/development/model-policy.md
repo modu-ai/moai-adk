@@ -165,6 +165,23 @@ moai model profile          # human table
 moai model profile --json   # machine-readable
 ```
 
+The `--json` form emits a single JSON **OBJECT** — the per-agent cells live under the `agents` array INSIDE it, never at the top level. A consumer that guesses a top-level array (`jq '.[0]'`, `jq 'length'`) fails with a jq type error (exit 5). Shape and correct filter (t696):
+
+```json
+{
+  "profile": "high",
+  "backend": "claude",
+  "agents": [
+    {"agent": "manager-develop", "group": "develop", "model": "opus", "effort": "medium"}
+  ]
+}
+```
+
+```bash
+moai model profile --json | jq -r '.agents[] | select(.agent == "manager-develop") | .model'  # correct
+moai model profile --json | jq '.[0]'   # WRONG — Cannot index object with number (jq exit 5)
+```
+
 The resolver maps the active profile + optional `llm.agent_overrides` to each retained agent's `{model, effort}` by agent NAME. Lookup is per-agent, not per-group: per-agent cells split two of the former groups, so the group layer no longer carries routing information and survives only as a display classification. Precedence: `agent_overrides[agent]` → active profile cell (config `llm.profiles`) → Go-default cell → `inherit`. Only agents outside the retained catalog (any user-added agent) resolve to `inherit`; `Explore` is an explicit matrix row. A pre-rename `llm.profiles` mirror still keyed by GROUP name simply misses on lookup and falls through to the Go default — a stale mirror degrades, it does not break.
 
 The resolved **model** is the value the orchestrator injects as a per-spawn `Agent(model: <alias>)` runtime arg — `[1m]`-safe and distinct from the frontmatter `model:` field (see § Inherit-by-Default Convention), so a profile change never re-introduces the concrete-frontmatter-`model:` spawn-failure risk. Agent `.md` frontmatter stays at `model: inherit`; no init / update / web save mutates it.

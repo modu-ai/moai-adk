@@ -30,7 +30,7 @@ func TestRunStep_TerminatesTheStepsDescendant(t *testing.T) {
 	defer cancel()
 
 	name, args := orphanCommand()
-	g.runStep(parent, "orphan", 2*time.Second, name, args...)
+	g.runStep(parent, "orphan", "", 2*time.Second, name, args...)
 
 	pid, err := readOrphanPID(pidPath)
 	if err != nil {
