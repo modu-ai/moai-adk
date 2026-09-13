@@ -1,6 +1,9 @@
 package version
 
-import "fmt"
+import (
+	"fmt"
+	"strings"
+)
 
 // Build-time variables injected via -ldflags.
 // Default version for RC/test builds (overridden by -ldflags in production)
@@ -44,6 +47,40 @@ func GetBuildID() string {
 // GetDate returns the build date.
 func GetDate() string {
 	return Date
+}
+
+// IsDevBuild reports whether v identifies a non-release build and therefore
+// must never take part in binary self-update (the SessionStart auto-update
+// handler and the moai update binary step both gate on this). A version is
+// a release build only when it parses as a three-part numeric version with
+// an optional leading "v" and prerelease suffix; anything else — build
+// codenames like "moai_cp/20260910_130400", "dev", VCS-local markers like
+// "-dirty", or empty — is a dev build. The dirty/none substring checks are
+// kept because "-dirty"/"-none" suffixes themselves parse as valid
+// prereleases.
+func IsDevBuild(v string) bool {
+	if v == "" || strings.Contains(v, "dirty") || strings.Contains(v, "none") {
+		return true
+	}
+	s := strings.TrimPrefix(v, "v")
+	if i := strings.Index(s, "-"); i >= 0 {
+		s = s[:i]
+	}
+	parts := strings.Split(s, ".")
+	if len(parts) != 3 {
+		return true
+	}
+	for _, p := range parts {
+		if p == "" {
+			return true
+		}
+		for _, r := range p {
+			if r < '0' || r > '9' {
+				return true
+			}
+		}
+	}
+	return false
 }
 
 // GetFullVersion returns a formatted full version string.
