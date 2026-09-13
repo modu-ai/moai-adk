@@ -82,7 +82,68 @@ Two-input adjudication per plan.md §F M0 / §H Resolution Record row 3. Verdict
 
 ## §E.3 Run-phase Audit-Ready Signal
 
-_<pending run-phase>_
+```yaml
+run_complete_at: 2026-09-14
+run_commit_sha: 3d4415676   # code close; the close-out commit (status flip + this §E.3) lands after
+run_status: complete
+ac_pass_count: 12
+ac_fail_count: 0
+preserve_list_post_run_count: 11   # §D files, all zero-diff (M4 lock enforces mechanically)
+l44_pre_commit_fetch: not-run (lane-local card worktree; lane does not push — lead batch-pushes origin/develop)
+l44_post_push_fetch: not-run (same lane push policy; remote landing is the lead's verification)
+new_warnings_or_lints_introduced: 0   # golangci-lint --new-from-rev=4da5d1c4e internal/cli/ internal/gateway/conversation/ → 0 issues
+cross_platform_build:
+  native: exit 0   # go build ./...
+  windows_amd64: exit 0   # GOOS=windows GOARCH=amd64 go build ./...
+total_run_phase_files: 9   # 2 test (M2) + 5 (M3: repair.go, repair_test.go, gateway_repair.go, gateway_repair_test.go, gateway_session.go) + 2 (M4/M6: gateway_preserve_test.go, gateway_repair_doc_test.go) + 1 doc (.moai/docs/gateway-envelope-repair.md)
+m1_to_mN_commit_strategy: per-milestone commits (M0/M1 records → M2 test → M3 feat → M4 test → M6 docs → close-out chore); lane does not push
+```
+
+### E1 AC matrix (all evidence commands + observed output this run, tree `3d4415676` unless noted)
+
+| AC | Status | Command | Observed output |
+|---|---|---|---|
+| AC-EVR-001 | PASS | `go test ./internal/gateway/translate/ ./internal/gateway/receipt/ -count=1` | `ok ... translate 33.825s` / `ok ... receipt 12.989s`; M2 wedge matrix 6/6 GREEN (`TestWedgePolicy*` PASS) |
+| AC-EVR-002 | PASS | `go test -run TestWedgePolicy ./internal/gateway/translate/` | golden byte-identity cells PASS incl. zero-value chain default |
+| AC-EVR-003 | PASS | same as 001 | mid-drop / foreign-item / stripped-reasoning / lineage-miss cells PASS with unchanged classes |
+| AC-EVR-004 | PASS | `go test -run TestRepairEnvelope ./internal/gateway/conversation/` | restores cell PASS; `sha256(injected raw) == marker.opaque_sha256` asserted |
+| AC-EVR-005 | PASS | same | head-position injection PASS; marker-less boundary → refusal zero-mod |
+| AC-EVR-006 | PASS | `go test -run 'TestRepairEnvelopeFlag' ./internal/cli/` | no-flag no-op + repair-then-resume PASS (4/4 wiring) |
+| AC-EVR-007 | PASS | `go test -run TestRepairEnvelope ./internal/gateway/conversation/` | source-gone / digest-mismatch / intact / incomplete refusal cells PASS, zero-mod asserted |
+| AC-EVR-008 | PASS | same | aside byte-identical preimage + `{digest,position}` provenance PASS |
+| AC-EVR-009 | PASS | same | `TestRepairEnvelopeSingleShotTerminatesAcrossRestart` PASS (fresh Manager = fresh process) |
+| AC-EVR-010 | PASS | `TestRepairPathNeverReadsReceiptStore` | source scan 0 hits for receipt symbols in repair.go |
+| AC-EVR-011 | PASS | `TestGatewayRepairCardDiffTouchesNoPreservedFile` + discriminator | live: 0 violations vs merge-base `4da5d1c4e`; negative cell flags receipt/store.go, receipt_history.go, family.go |
+| AC-EVR-012 | PASS | `TestGatewayEnvelopeRepairOperatorDocExistsWithSections` | `.moai/docs/gateway-envelope-repair.md` exists, section checklist green |
+
+### E2 cross-platform build
+`go build ./...` exit 0; `GOOS=windows GOARCH=amd64 go build ./...` exit 0 (observed on trees `7ebf85df6` and `58587fada`).
+
+### E3 coverage (per-package figures, verbatim)
+- `go test -cover ./internal/gateway/conversation/ -count=1` → `coverage: 79.5% of statements` (whole package incl. pre-existing family/native code). New `repair.go` scoped: RepairEnvelope 75.5%, repairPlan 87.0%, helpers 44.4–100%.
+- `go test -cover ./internal/cli/` full-package: NOT measurable in-bounds — twice observed failing at the 10m timeout (591s/601s) against the known ~1583s package baseline; CI owns the full verdict. Scoped substitute `-run 'Gateway|Repair' -coverprofile`: new-file figures `gateway_repair.go` guidance 100.0% / repairGatewayEnvelope 87.0%, `gatewayConversationPassthrough` 100.0%; scoped-run aggregate 13.5% is meaningless (dominated by in-scope-untouched pre-existing code) — reported only for completeness.
+- Caveat: neither aggregate is the strict-profile ≥85% gate reading; the new-code per-file figures above are the card-attributable measurement.
+
+### E4 subagent boundary grep (card-scoped)
+`grep -rn 'AskUserQuestion\|mcp__askuser' <card's 3 production files>` → exit 1, zero hits. (Repo-wide form hits pre-existing doc-comments in files this card never touched — harness.go, pr_watch_cmd.go, agentlint — baseline, not new.)
+
+### E5 lint
+`golangci-lint run --new-from-rev=4da5d1c4e internal/cli/ internal/gateway/conversation/` → `0 issues.`
+
+### E6 commit inventory (branch WT-envelope-persist, unpushed; lane does not push)
+- `f50120ddd` M2 wedge-policy characterization matrix (test-only)
+- `7ebf85df6` M3 launcher-side envelope repair verb (feat; 5 files, +966)
+- `5b10efb66` M4 non-invasiveness lock (test-only)
+- `3d4415676` M6 operator documentation + AC check (docs)
+- close-out commit: status flip + this §E.3 (this commit)
+
+### E8 RED evidence pointers
+- M2: GREEN-at-arrival by design (characterization lock; no RED exists — plan §F M2).
+- M3: verbatim compile-failure run of `repair_test.go` against the undefined API recorded in the M3 report and §E.2 (tree `e662531fa`).
+- M6: verbatim missing-doc failure of `TestGatewayEnvelopeRepairOperatorDocExistsWithSections` (tree `3d4415676^` work).
+
+### Gap — M5 live probe (skipped by coordinator decision)
+The optional live-probe milestone was skipped this card; its live-instrumentation axis is owned by card t707's follow-up. Unmeasured consequences: (1) transcript envelope-retention under real client compaction/`--continue` slicing (plan §H row-2 disposition covers it — the repair refuses on source-gone); (2) no live end-to-end probe of a repaired transcript against a real client replay — in-repo tests prove the transcript-side machinery and unchanged-Check composition, not external encode-time behavior. Not silent: recorded here, in the M6 report, and in the operator doc's non-recoverable-shapes section.
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
