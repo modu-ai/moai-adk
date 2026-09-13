@@ -13,7 +13,8 @@ baseline:
   branch: worktree-t738
   measured_at: 2026-09-14
 ruling: template policy canonical (templates/.gitignore L193-226); dev root .gitignore L133-170 divergent
-operator_gate: pending — plan.md §H question text ready for lead AskUserQuestion round
+operator_gate: RESOLVED — option A chosen; decider = operator; channel = the lead's AskUserQuestion round, 2026-09-14; dev-repo alignment split into a follow-up card (plan.md §H.1 draft), gated on t498/t510 close; this card applies nothing
+follow_up_card: draft text at plan.md §H.1 — awaits lead routing for operator approval to publish
 card: t738
 ```
 

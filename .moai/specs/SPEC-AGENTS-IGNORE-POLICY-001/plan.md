@@ -27,7 +27,7 @@ Card t738 (Class C, policy adjudication). The dev repo's root `.gitignore` (line
 - [x] `git check-ignore -v` probes run on both trees; outputs recorded verbatim (spec.md §D.1/§D.2).
 - [x] Present-state measurement: `.agents/skills/` holds exactly the 16 tracked published dirs; `git status --porcelain .agents/` empty; no ignored-but-present content.
 - [x] SPEC ID `SPEC-AGENTS-IGNORE-POLICY-001` regex PASS; no collision with existing SPEC ids (`SPEC-AGENTS-MD-CANON-001` etc. are distinct).
-- [ ] Operator adjudication of the remediation option (gate below). [NEEDS CLARIFICATION: operator adjudication of the remediation option (A/B/C) and confirmation of the ruling]
+- [x] Operator adjudication recorded: **Option A chosen** — the template policy is confirmed canonical (default-allow, ignore only the regenerated `moai*` mirrors). Decider: operator; channel: the lead's AskUserQuestion round, 2026-09-14. The dev-repo root `.gitignore` alignment work is split into a follow-up card (draft text in §H) and executes only after cards t498 and t510 close; THIS card applies nothing.
 
 ## §D Constraints
 
@@ -75,7 +75,7 @@ Gaps: the t701 "removed 171-174 re-include was a no-op" archaeology was NOT re-d
 ## §G Milestones (priority-ordered; no time estimates)
 
 - **M1 (High) — Record the ruling**: spec.md §D carries the ruling with both policies, line citations, and probe evidence. DONE at plan-phase (this artifact set).
-- **M2 (High) — Operator adjudication**: surface §F + the gate question (below) through the lead; record the operator decision + rationale in progress.md. [NEEDS CLARIFICATION: operator adjudication of the remediation option]
+- **M2 (High) — Operator adjudication**: DONE 2026-09-14. Operator chose Option A via the lead's question round; decision recorded in progress.md §E.1 and the follow-up card drafted (§H).
 - **M3 (Medium) — Application plan hand-off**: on operator approval of Option A, register the follow-up card that applies the dev-side alignment AFTER t498 and t510 close; the follow-up card owns the `.gitignore` edit, `make build` (embed check), and the post-change `git check-ignore` regression probes.
 
 ## §H Operator Gate — question text (Korean, operator-readable)
@@ -86,6 +86,20 @@ Gaps: the t701 "removed 171-174 re-include was a no-op" archaeology was NOT re-d
 > - **옵션 B**: 반대로 템플릿을 화이트리스트 정책으로 변경. `moai update`로 전 사용자 프로젝트에 배포되며, 사용자가 만든 `.agents` 항목이 조용히 무시됨. 마이그레이션 고지 필요 — 전 사용자 영향.
 > - **옵션 C**: 현상 유지 + 분기 문서화만. 양쪽 실패 축이 열린 채로 남음.
 > - **보류**: 판정에 필요한 추가 조사를 지시.
+
+### §H.1 후속 카드 텍스트 (안) — 옵션 A 적용 전용 카드 (리드가 운영자 승인 후 발행)
+
+> **카드 제목**: `.agents gitignore 정합화 — 개발 저장소를 템플릿 정책으로 (적용 전용)`
+>
+> **내용**: 루트 `.gitignore` 133-170행의 화이트리스트 체인(`.agents/*` → `!.agents/skills/` → `.agents/skills/*` → 16개 `!dir` → `.agents/skills/*/*` → 16개 `!SKILL.md`)을 제거하고, 템플릿 정책과 동일한 규칙으로 교체한다 — `.agents/skills/moai*`(재생성 미러만 무시) + 16개 `!.agents/skills/moai-<command>/` 재포함(디렉터리 전체 내용 추적, 내용 재제외 없음), `.agents/` 루트 자체는 추적 영역으로 둔다.
+>
+> **판정 근거**: SPEC-AGENTS-IGNORE-POLICY-001 (운영자 옵션 A 확정, 2026-09-14). 이 카드는 판정을 다루지 않는다 — 적용만 한다.
+>
+> **전제 (게이트)**: t498, t510 이 모두 종결된 뒤에만 착수한다. 그 전에는 어떤 `.gitignore` 수정도 금지다 — 두 카드가 현재의 `.agents` 부재 상태를 관측 대상으로 사용한다.
+>
+> **범위**: 루트 `.gitignore` 한 파일. 템플릿 측(`internal/template/templates/.gitignore`) 변경 없음 — 사용자 영향 0. Go 코드·퍼블리셔 로직 변경 없음.
+>
+> **검증**: `make build`(embed 재생성) 후 `git check-ignore -v` 프로브로 spec.md §D.3 표의 기대값을 재현한다 — (1) 16개 SKILL.md 추적 유지, (2) `moai-clean/manifest.json` 류 사이드카 추적 전환, (3) `my-custom/`·루트 `notes.md` 추적 전환, (4) `moai-workflow-*` 미러는 계속 무시. `git ls-files .agents | wc -l`는 16 유지.
 
 ## §I Anti-Patterns
 

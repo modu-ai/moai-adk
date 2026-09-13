@@ -1,7 +1,7 @@
 ---
 id: SPEC-AGENTS-IGNORE-POLICY-001
 title: ".agents .gitignore policy ruling — template default-allow vs dev-repo whitelist"
-version: "0.1.0"
+version: "0.1.1"
 status: draft
 created: 2026-09-14
 updated: 2026-09-14
@@ -22,6 +22,7 @@ related_specs: [SPEC-GITIGNORE-ROOT-GUARD-001, SPEC-CODEX-DUAL-AGENTS-001]
 | Version | Date | Author | Change |
 |---------|------|--------|--------|
 | 0.1.0 | 2026-09-14 | manager-spec | Initial plan-phase artifacts (Tier M, card t738). Ruling authored; application deferred. |
+| 0.1.1 | 2026-09-14 | manager-spec | Operator adjudication recorded: Option A (template policy canonical) via the lead's question round; follow-up card for the dev-repo alignment drafted at plan.md §H.1, gated on t498/t510 close. |
 
 ## §B Overview
 
