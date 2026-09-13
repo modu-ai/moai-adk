@@ -78,7 +78,7 @@ func TestManifestRebaseResetsPublicHistory(t *testing.T) {
 	if err = m.Check(testUUID, []Observation{observation}); err != nil {
 		t.Fatal(err)
 	}
-	if err = m.Rebase(); err != nil {
+	if err = m.Rebase(1); err != nil {
 		t.Fatal(err)
 	}
 	if err = m.Check(testUUID, []Observation{observation}); !errors.Is(err, ErrInvalid) {
@@ -108,7 +108,7 @@ func TestStoreRebaseResetsDurableHistory(t *testing.T) {
 	if err = s.Publish(ctx, c); err != nil {
 		t.Fatal(err)
 	}
-	if err = s.Rebase(ctx); err != nil {
+	if err = s.Rebase(ctx, 1); err != nil {
 		t.Fatal(err)
 	}
 	snap, err := s.Snapshot(ctx)

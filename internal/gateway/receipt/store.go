@@ -189,8 +189,10 @@ func (s *Store) Publish(ctx context.Context, c Candidate) error {
 
 // Rebase persists the public-history reset after a verified compaction. The
 // once-per-epoch and digest contrast live in the caller's RebaseLedger; the
-// store only applies the durable reset.
-func (s *Store) Rebase(ctx context.Context) error {
+// store applies the durable reset and records appliedEpoch in the same
+// manifest transaction (AC-MG-026 (b)) so a restart can restore the exact
+// value.
+func (s *Store) Rebase(ctx context.Context, appliedEpoch uint64) error {
 	return s.transaction(ctx, false, func(guard func() error) error {
 		m, e := s.read()
 		if e != nil {
@@ -201,7 +203,7 @@ func (s *Store) Rebase(ctx context.Context) error {
 			return e
 		}
 		expected := Hash(baseline)
-		if e = m.Rebase(); e != nil {
+		if e = m.Rebase(appliedEpoch); e != nil {
 			return e
 		}
 		if e = ctx.Err(); e != nil {
@@ -209,6 +211,17 @@ func (s *Store) Rebase(ctx context.Context) error {
 		}
 		return s.write(ctx, m, guard, &expected)
 	})
+}
+
+// RestoreRebaseLedger reopens a scope's compaction ledger from the durable
+// manifest. A scope that never rebased restores zero; unreadable or corrupt
+// state is an explicit error — never an approximated epoch.
+func (s *Store) RestoreRebaseLedger(ctx context.Context, scope string) (*RebaseLedger, error) {
+	m, err := s.Snapshot(ctx)
+	if err != nil {
+		return nil, err
+	}
+	return NewRebaseLedger(scope, m.AppliedEpoch()), nil
 }
 func (s *Store) read() (*Manifest, error) {
 	f, e := s.file("manifest.json", os.O_RDONLY)

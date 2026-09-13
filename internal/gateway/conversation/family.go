@@ -23,6 +23,7 @@ var (
 	ErrBusy       = errors.New("conversation family is busy")
 	ErrIncomplete = errors.New("native transcript is incomplete")
 	ErrAmbiguous  = errors.New("conversation completion is ambiguous")
+	ErrPrefixMismatch = errors.New("fork inherited prefix does not match the recorded receipt chain")
 )
 
 const maxIndexBytes = 8 << 20
@@ -304,6 +305,36 @@ func (m *Manager) ForkAt(ctx context.Context, parentID string, boundary receipt.
 	chain, err := snap.ChainTo(boundary)
 	if err != nil {
 		return Descriptor{}, err
+	}
+	return m.forkAtCandidates(ctx, p, chain)
+}
+
+// ForkSession branches the parent at the caller-named boundary only when the
+// claimed inherited prefix matches the parent's completed chain (AC-MG-026
+// (c)). The contrast runs against Manifest.ChainTo at the boundary before any
+// child state exists, so tampered, mismatched and unknown-origin claims leave
+// no fork directory behind.
+func (m *Manager) ForkSession(ctx context.Context, parentID string, boundary, claimed receipt.Digest) (d Descriptor, err error) {
+	p, err := m.Resume(ctx, parentID)
+	if err != nil {
+		return Descriptor{}, err
+	}
+	parentRoot := filepath.Join(m.root, "families", p.FamilyID, "receipt")
+	ps, err := receipt.OpenStore(ctx, parentRoot, p.UUID, false)
+	if err != nil {
+		return Descriptor{}, err
+	}
+	defer func() { _ = ps.Close() }() // read-only parent snapshot; the lock ends at process exit too
+	snap, err := ps.Snapshot(ctx)
+	if err != nil {
+		return Descriptor{}, err
+	}
+	chain, err := snap.ChainTo(boundary)
+	if err != nil {
+		return Descriptor{}, err
+	}
+	if receipt.ChainDigest(chain) != claimed {
+		return Descriptor{}, ErrPrefixMismatch
 	}
 	return m.forkAtCandidates(ctx, p, chain)
 }
