@@ -167,3 +167,5 @@ push_state: "NO PUSH PERFORMED (operator ban; lead batch-pushes develop)"
 **Decision**: serial
 
 **Justification**: The SPEC's defining constraint is behavior preservation under characterization tests — M1 must pass against the unmodified tree before any extension lands, so milestones are strictly ordered and a single writer (manager-develop) is the correct envelope. Fan-out would split the characterization ordering across agents for no research benefit. Agent Teams not requested by the operator.
+
+**Gate provenance footnote**: Implementation Kickoff Approval — 운영자 레인 터미널 직접 입력으로 승인(04:30 plan 보고 직후~05:01 run 첫 기록 사이; 리드 경유 아님).
