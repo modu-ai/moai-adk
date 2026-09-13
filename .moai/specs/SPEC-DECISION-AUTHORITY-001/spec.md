@@ -1,7 +1,7 @@
 ---
 id: SPEC-DECISION-AUTHORITY-001
 title: "Human Decision Authority Guardrail: decision-index authority routing at the Implementation Kickoff gate (card t692, issue #1683 item 1)"
-version: "0.1.0"
+version: "0.1.1"
 status: draft
 created: 2026-09-13
 updated: 2026-09-13
@@ -23,6 +23,7 @@ depends_on: [SPEC-JUDGMENT-FIRST-MODE-001]
 | Version | Date | Author | Description |
 |---|---|---|---|
 | 0.1.0 | 2026-09-13 | manager-spec | Initial Tier L authoring: decision-gate mode axis, decision-index.md plan-phase artifact, four-label authority routing, committed-only authority register, kickoff-gate enrichment, verdict recording, pull-mode composition. Card t692, issue #1683 item #1; composes with landed SPEC-JUDGMENT-FIRST-MODE-001 (item #2). |
+| 0.1.1 | 2026-09-13 | manager-spec | Iteration-2 scoped fix pass (plan-audit iter1 FAIL 0.85: blocking D1-D4 closed, optional D5-D6 taken). D1: REQ-DA-005/REQ-DA-012 population predicate reworded — the index carries all four label classes; "whose authority no document carries" now scopes only the FOUNDER/EVIDENCE-NEEDED intake, so the DECIDED/POLICY-COVERED routing of REQ-DA-008/009 is reachable (§B D5 sentence aligned). D2: P11 rebuilt as a single-invocation probe (distinctive token `Detect → Explain`, paths expanded, no pipe) and re-measured at `6732d1461`. D3: AC-DA-019 reclassified regression-guard — no behavioral RED is producible at plan time (design §5 principle). D4: plan-auditor.md byte-identity preserve instrument added (`git diff --stat 62fbd6baf..HEAD` → empty, ledger P21) wired into AC-DA-012 and closure gate 2. D5: P20 coupling-grep ledger entry added for AC-DA-017. D6: §E.5 locator corrected to the `:217-223` block. REQ/AC counts unchanged at 21/19. |
 
 ## §A Context and Problem
 
@@ -141,8 +142,9 @@ settings, and the project constitution (`AGENTS.md` + `.claude/rules/moai/core/`
 material — `.moai/reports/**` working copies included — is not citable authority.
 
 **D5 — Flow owner.** The flow change lands in manager-spec's plan phase
-(`clarity-interview.md` + `spec-assembly.md`): a decision whose authority no document carries
-becomes an index row instead of being silently resolved. **plan-auditor is UNCHANGED in v1** —
+(`clarity-interview.md` + `spec-assembly.md`): a decision the operator does not settle in the
+interview becomes an index row — routed per its authority status by the four labels — instead
+of being silently resolved. **plan-auditor is UNCHANGED in v1** —
 the t401 §F report-contract exclusion binds until separately justified; the
 auditor-integration question is recorded as an explicit deferral (§E.2), the same way t401
 deferred this card.
@@ -199,8 +201,11 @@ at base commit `62fbd6baf` for every consumer that does not set the key.
 
 **REQ-DA-005** (While — state-driven) — While the decision gate is `on`, when manager-spec
 executes its plan phase, manager-spec shall author `decision-index.md` inside the SPEC
-directory, containing one row per decision encountered during clarification or assembly whose
-authority no document carries, in the fixed row shape of §B.
+directory, containing one row for every decision surfaced during clarification or assembly
+that the operator does not settle in the interview, in the fixed row shape of §B. The
+population spans all four label classes: rows already routed by existing authority
+(`DECIDED`, `POLICY-COVERED` — per REQ-DA-008/009) and rows with no owned authority
+(`EVIDENCE-NEEDED`, `FOUNDER` — per REQ-DA-011).
 
 **REQ-DA-006** (Ubiquitous) — The `decision-index.md` artifact shall be stateless on the
 status axis: it shall carry no `status:` frontmatter field, per
@@ -234,9 +239,11 @@ of an unverifiable citation.
 ### C.4 Flow owner and the kickoff gate
 
 **REQ-DA-012** (While — state-driven) — While the decision gate is `on`, when the plan phase
-(clarity interview or SPEC assembly) encounters a decision whose authority no document
-carries, manager-spec shall record it as a decision-index row instead of resolving it with a
-reasonable default.
+(clarity interview or SPEC assembly) encounters a decision the operator does not settle
+during the interview, manager-spec shall record it as a decision-index row instead of
+resolving it with a reasonable default, routing it per REQ-DA-008 through REQ-DA-011; a
+decision the operator settles inline is recorded as a `DECIDED` or `POLICY-COVERED` row
+citing its authority anchor, not omitted from the index.
 
 **REQ-DA-013** (Where — capability gate) — Where the decision gate is `on`, the Implementation
 Kickoff Approval gate shall present the SPEC's decision index as part of its review surface,
@@ -362,10 +369,11 @@ quoted doctrine strings stay verbatim.
 This SPEC **depends on** SPEC-JUDGMENT-FIRST-MODE-001 (frontmatter `depends_on`; status
 `completed` — the Depends_on pre-flight fulfillment definition is satisfied). Composition
 points: (1) REQ-DA-017 inherits the pull convention for the kickoff question that presents the
-index; (2) the `spec-assembly.md:212` clause that SPEC-JFM 0.2.2 conditioned ("the `(권장)`
-first-option label withheld under `recommendation_mode: pull`") is the same clause this SPEC
-enriches — the decision-index presentation rides inside that already-mode-conditioned gate and
-touches no part of it.
+index; (2) the `spec-assembly.md` `:217-223` `[HARD]` block's label clause (at `:221` at the
+authoring baseline; located by content, not arithmetic) that SPEC-JFM 0.2.2 conditioned ("the
+`(권장)` first-option label withheld under `recommendation_mode: pull`") is the same clause
+this SPEC enriches — the decision-index presentation rides inside that already-mode-conditioned
+gate and touches no part of it.
 
 ## §F Exclusions
 

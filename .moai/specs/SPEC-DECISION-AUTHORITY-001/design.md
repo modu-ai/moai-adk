@@ -113,13 +113,18 @@ Two axes, mirroring the sibling SPEC's measured approach:
   with its exit code and is never read as a pass). Every RED-now cell is a single-invocation
   read-only command with verbatim stdout + exit code + tree SHA `62fbd6baf`, captured in the
   §E evidence ledger before implementation.
-- **Behavioral axis (release-blocking, M5)** — two throwaway plan-phase passes under `/tmp`:
+- **Behavioral axis (regression-guard, M5)** — two throwaway plan-phase passes under `/tmp`:
   off-mode asserts no index is created and the flow composes unchanged; on-mode asserts the
-  index appears with the four labels and an unverifiable anchor routes to `FOUNDER`.
+  index appears with the four labels and an unverifiable anchor routes to `FOUNDER`. The
+  off-mode half is green-at-arrival by design — at base the flow cannot create an index, so
+  no behavioral RED is producible at plan time — and is therefore classified regression-guard
+  (AC-DA-019, the undecidable disposition of verification-completeness §2.1), with the M5
+  repro as its completing act.
 
-Regression-guard ACs (gate-count preserve, auditor-unchanged) are green-at-arrival by design;
-they are classified regression-guard — not release-blocking — and pin `62fbd6baf`, per
-verification-completeness §2.1's undecidable disposition.
+Regression-guard ACs (gate-count preserve, auditor-unchanged incl. byte-identity, off-mode
+behavioral repro) are green-at-arrival by design; they are classified regression-guard — not
+release-blocking — and pin `62fbd6baf`, per verification-completeness §2.1's undecidable
+disposition.
 
 ## §6 Rejected alternatives (recorded for traceability)
 

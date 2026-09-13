@@ -29,21 +29,22 @@ swept-count floor (§1.1 empty-sweep visibility).
 | AC-DA-009 | Unverifiable anchor → `FOUNDER` (escalate, never downgrade) stated on the flow surfaces | REQ-DA-011 | release-blocking | P10 | M2 |
 | AC-DA-010 | spec-assembly carries the kickoff decision-index presentation step (enrichment, fail-open, gate unchanged) | REQ-DA-013 | release-blocking | P7 (spec-assembly row = 0) | M3 |
 | AC-DA-011 | Gate-count preserve: `spec-assembly.md` carries exactly the ONE `[HARD] The Implementation Kickoff Approval ... gate stays MANDATORY` clause it carries at base | — (preserve) | regression-guard | P19 (exactly 1 hit at `62fbd6baf`; assert still exactly 1 at close, same clause text) | preserve-through-close |
-| AC-DA-012 | plan-auditor unchanged: `decision-index` occurrences in `plan-auditor.md` = 0 at close | REQ-DA-014 | regression-guard | P7 (auditor row = 0 at base) | preserve-through-close |
+| AC-DA-012 | plan-auditor unchanged: `decision-index` occurrences in `plan-auditor.md` = 0 at close AND byte-identity to `62fbd6baf` holds (`git diff --stat 62fbd6baf..HEAD -- .claude/agents/moai/plan-auditor.md` prints nothing — P21) | REQ-DA-014 | regression-guard | P7 (auditor row = 0 at base), P21 (empty diff at `6732d1461`) | preserve-through-close |
 | AC-DA-013 | Verdict-action vocabulary (`DECIDE` / `NEED_ANALYSIS` / `NEED_EVIDENCE` / `DEFER`) present on the kickoff surface | REQ-DA-015 | release-blocking | P13 | M3 |
 | AC-DA-014 | The `product.md` ownership boundary is surfaced as a named kickoff decision (manager-docs owns project-doc scaffolding) | REQ-DA-016 | release-blocking | P15 | M3 |
 | AC-DA-015 | Zero-rows ≠ approval clause present on the kickoff surface | REQ-DA-019 | release-blocking | P16 | M3 |
 | AC-DA-016 | Index rows carry Detect → Explain → Ask and never an embedded preferred answer (either recommendation mode) | REQ-DA-017 | release-blocking | P11 | M2 |
-| AC-DA-017 | Axis orthogonality: no resolver/default/test branch reads both keys; an independence test exists | REQ-DA-018 | release-blocking | P1, P3 (+ coupling grep: 0 co-occurrences of `decision_gate` and `recommendation_mode` in one resolver body — 0 at base) | M1 |
+| AC-DA-017 | Axis orthogonality: no resolver/default/test branch reads both keys; an independence test exists | REQ-DA-018 | release-blocking | P3, P20 | M1 |
 | AC-DA-018 | Mirrored-change obligation: every file edited in M2/M3 has the same change in its `internal/template/templates/**` mirror — verified by token presence in BOTH trees per file (not `diff -q`; C1↔C2 branching is intentional) | REQ-DA-020 | release-blocking | P12 | M4 |
-| AC-DA-019 | End-to-end off-mode behavioral repro: plan-phase pass with the key absent creates no `decision-index.md` and composes the kickoff unchanged | REQ-DA-002, REQ-DA-007 | release-blocking | static cells P5/P12 (behavioral RED not statically observable — covered by AC-DA-004's static floor) | M5 (throwaway SPEC under `/tmp`) |
+| AC-DA-019 | End-to-end off-mode behavioral repro: plan-phase pass with the key absent creates no `decision-index.md` and composes the kickoff unchanged | REQ-DA-002, REQ-DA-007 | regression-guard (no behavioral RED is producible at plan time — at base the flow cannot create an index; undecidable disposition, verification-completeness §2.1) | static cells P5/P12 only (necessary, not sufficient — §D.4); the M5 repro is the completing act | M5 (throwaway SPEC under `/tmp`) |
 
 ## §D.1 Severity
 
-- **Critical (release-blocking)**: AC-DA-001..010, 013..019. Any FAIL blocks sync.
-- **Guard (regression)**: AC-DA-011, AC-DA-012. Green at arrival by design; verified by
-  re-measurement at close with the pinned tree SHA and the re-measured current SHA both
-  recorded.
+- **Critical (release-blocking)**: AC-DA-001..010, 013..018. Any FAIL blocks sync.
+- **Guard (regression)**: AC-DA-011, AC-DA-012, AC-DA-019. Green at arrival by design (the
+  off-mode behavioral repro cannot be red at plan time — at base the flow cannot create an
+  index); verified by re-measurement at close with the pinned tree SHA and the re-measured
+  current SHA both recorded.
 
 ## §D.2 Swept-count floors
 
@@ -105,9 +106,14 @@ P10 $ grep -rn "Never downgrade" .claude/agents/moai/manager-spec.md .claude/ski
     (no output)
     exit=1
 
-P11 $ grep -rn "Detect" <manager-spec.md spec-assembly.md clarity-interview.md> | grep -c "Explain"
-    0
-    exit=1
+P11 $ grep -c "Detect → Explain" .claude/agents/moai/manager-spec.md .claude/skills/moai/workflows/plan/spec-assembly.md .claude/skills/moai/workflows/plan/clarity-interview.md
+    .claude/skills/moai/workflows/plan/clarity-interview.md:0
+    .claude/agents/moai/manager-spec.md:0
+    .claude/skills/moai/workflows/plan/spec-assembly.md:0
+    exit=1        (rebuilt at iteration 2 per plan-audit iter1 D2: single invocation,
+                   no pipe, paths expanded, distinctive convention token. Measured at
+                   6732d1461 — the earlier piped `<...>` form was non-conforming under
+                   §2.1(a)/(b) and took the undecidable disposition.)
 
 P12 $ grep -rc "decision_gate" internal/template/templates/.claude/agents/moai/manager-spec.md internal/template/templates/.claude/skills/moai/workflows/plan/spec-assembly.md internal/template/templates/.claude/skills/moai/workflows/plan/clarity-interview.md
     internal/template/templates/.claude/skills/moai/workflows/plan/clarity-interview.md:0
@@ -143,6 +149,21 @@ P18 $ grep -c "recommendation_mode" .claude/rules/moai/core/askuser-protocol.md
 P19 $ grep -n "HARD] The Implementation Kickoff Approval" .claude/skills/moai/workflows/plan/spec-assembly.md
     217:[HARD] The Implementation Kickoff Approval `AskUserQuestion` gate stays MANDATORY
     exit=0        (exactly 1 hit at 62fbd6baf — AC-DA-011's preserve baseline)
+
+P20 $ grep -cE "decision_gate.*recommendation_mode|recommendation_mode.*decision_gate" internal/config/types.go
+    0
+    exit=1        (coupling co-occurrence count in the resolver file — 0 co-occurring
+                   lines at 6732d1461; AC-DA-017's ledger carrier. Green path: M1 adds
+                   the independence test; this count must STILL be 0 at close — the
+                   resolvers never reference each other's key.)
+
+P21 $ git diff --stat 62fbd6baf..HEAD -- .claude/agents/moai/plan-auditor.md
+    (no output)
+    exit=0        (plan-auditor.md byte-identity vs the authoring baseline holds at
+                   6732d1461 — AC-DA-012's preserve instrument per plan-audit iter1 D4;
+                   green-at-arrival by design, re-measured at close per §D.5 gate 2.
+                   Pinned SHAs: 62fbd6baf = authoring baseline, both ends re-read at
+                   each measurement.)
 ```
 
 ## §D.3 Traceability
@@ -180,7 +201,9 @@ P19 $ grep -n "HARD] The Implementation Kickoff Approval" .claude/skills/moai/wo
 
 1. All Critical ACs PASS with their green-path milestone reached; each flipped RED cell
    re-measured and re-pinned at the closing tree SHA.
-2. Both guard ACs re-measured at close: P19 shape still exactly 1; P7 auditor row still 0.
+2. Both guard ACs re-measured at close: P19 shape still exactly 1; P7 auditor row still 0;
+   P21 still an empty diff (`62fbd6baf..close`); AC-DA-019's M5 behavioral repro executed and
+   observed.
 3. `go test ./internal/config/...` green; coverage ≥ 85% (E3).
 4. Template neutrality guard green on all changed template files.
 
