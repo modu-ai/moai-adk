@@ -106,4 +106,48 @@ func TestDoctorGitStrategyWorkflow(t *testing.T) {
 			t.Errorf("message %q does not name the flow", check.Message)
 		}
 	})
+
+	// The remaining flow arm: release-flow resolves release_branch_prefix.
+	t.Run("release-flow resolves the prefix", func(t *testing.T) {
+		root := t.TempDir()
+		writeGitStrategyBody(t, root,
+			"git_strategy:\n    mode: manual\n    manual:\n        workflow: release-flow\n        release_branch_prefix: release/\n")
+
+		check := checkGitStrategyWorkflow(root, false)
+		if check.Status != uikit.CheckOK {
+			t.Errorf("status = %v, want OK on release-flow", check.Status)
+		}
+		if !strings.Contains(check.Message, "release-flow") || !strings.Contains(check.Message, "release/") {
+			t.Errorf("message %q does not name the flow and resolved target", check.Message)
+		}
+	})
+
+	// Verbose mode carries Detail on every state, and the R2 discretion note
+	// flags a shipped environment-label default as a non-branch target.
+	t.Run("verbose detail names what was read", func(t *testing.T) {
+		root := t.TempDir()
+		writeGitStrategyWorkflowFixture(t, root, "git-flow")
+		if check := checkGitStrategyWorkflow(root, true); check.Detail == "" {
+			t.Error("verbose git-flow check carries no Detail")
+		}
+
+		root = t.TempDir()
+		writeGitStrategyBody(t, root,
+			"git_strategy:\n    mode: manual\n    manual:\n        workflow: gitlab-flow\n        environment: local\n")
+		check := checkGitStrategyWorkflow(root, true)
+		if !strings.Contains(check.Detail, "local") || !strings.Contains(check.Detail, "not a branch name") {
+			t.Errorf("verbose gitlab-flow Detail %q does not flag the shipped label default", check.Detail)
+		}
+
+		root = t.TempDir()
+		writeGitStrategyWorkflowFixture(t, root, "git-flwo")
+		if check := checkGitStrategyWorkflow(root, true); !strings.Contains(check.Detail, "trunk-based") {
+			t.Errorf("verbose invalid Detail %q does not note the trunk-based exclusion", check.Detail)
+		}
+
+		root = t.TempDir() // unreadable: verbose Detail names the setup step
+		if check := checkGitStrategyWorkflow(root, true); check.Detail == "" {
+			t.Error("verbose unknown-state check carries no Detail")
+		}
+	})
 }

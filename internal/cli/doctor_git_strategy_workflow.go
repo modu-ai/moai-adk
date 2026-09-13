@@ -33,9 +33,10 @@ func workflowStandingBranches(flow string) string {
 		return "one long-lived branch per deploy environment (environment key)"
 	case config.WorkflowReleaseFlow:
 		return "release/* branches cut per release from the integration branch"
-	default:
-		return "no interpretation for an unrecognized flow"
 	}
+	// Unreachable through checkGitStrategyWorkflow: the disposition gate
+	// routes every non-allowed value to the invalid state before this runs.
+	return ""
 }
 
 // knownEnvironmentLabels are the SHIPPED DEFAULT values of the environment
