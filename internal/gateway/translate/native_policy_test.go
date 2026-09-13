@@ -179,23 +179,30 @@ func TestNativePolicyObservedMediumEffort(t *testing.T) {
 	}
 }
 
-// Card t695 D3: the upstream-verified effort allowlist covers every value
-// Claude Code can emit; astra+max maps to the nearest accepted tier, xhigh.
+// Card t841: the effort allowlist is per model and follows the official OpenAI
+// model pages. gpt-5.6-sol, gpt-5.6-terra and gpt-5.6-luna accept
+// none/low/medium/high/xhigh/max; gpt-6-astra accepts low..max and rejects
+// none. Every accepted value is projected unchanged (no astra max clamp).
 func TestNativePolicyGPTEffortAllowlistAndMapping(t *testing.T) {
-	for _, model := range []string{"gpt-6-astra", "gpt-5.6-sol", "gpt-5.6-terra", "gpt-5.6-luna"} {
-		for _, effort := range []string{"low", "medium", "high", "xhigh", "max"} {
+	official := map[string][]string{
+		"gpt-6-astra":   {"low", "medium", "high", "xhigh", "max"},
+		"gpt-5.6-sol":   {"none", "low", "medium", "high", "xhigh", "max"},
+		"gpt-5.6-terra": {"none", "low", "medium", "high", "xhigh", "max"},
+		"gpt-5.6-luna":  {"none", "low", "medium", "high", "xhigh", "max"},
+	}
+	for model, efforts := range official {
+		for _, effort := range efforts {
 			out, _, err := Request(model, policyInput(`,"output_config":{"effort":"`+effort+`"}`), Limits{PolicyProfile: PolicyGPTNative})
 			if err != nil {
 				t.Fatalf("%s %s: %v", model, effort, err)
 			}
-			want := effort
-			if model == "gpt-6-astra" && effort == "max" {
-				want = "xhigh"
-			}
-			if decode(t, out)["reasoning"].(map[string]any)["effort"] != want {
-				t.Fatalf("%s %s: wire effort is not %s", model, effort, want)
+			if decode(t, out)["reasoning"].(map[string]any)["effort"] != effort {
+				t.Fatalf("%s %s: wire effort is not %s", model, effort, effort)
 			}
 		}
+	}
+	if _, _, err := Request("gpt-6-astra", policyInput(`,"output_config":{"effort":"none"}`), Limits{PolicyProfile: PolicyGPTNative}); err == nil {
+		t.Fatal("astra accepted effort none")
 	}
 	if _, _, err := Request("gpt-5.6-sol", policyInput(`,"output_config":{"effort":"ultra"}`), Limits{PolicyProfile: PolicyGPTNative}); err == nil {
 		t.Fatal("unknown effort accepted")

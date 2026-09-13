@@ -10,6 +10,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -61,7 +62,18 @@ for line in sys.stdin:
  else: raise RuntimeError('unexpected protocol')
 `
 			source = strings.ReplaceAll(source, "'chatgpt'", "'"+kind+"'")
-			if err = os.WriteFile(script, []byte("#!"+python+"\n"+source), 0700); err != nil {
+			// A pyenv-shim python3 is itself a script, and macOS rejects the
+			// nested shebang with ENOEXEC (Go's fork/exec has no userspace
+			// fallback); exec python through a binary interpreter instead.
+			bash, err := exec.LookPath("bash")
+			if err != nil {
+				t.Skip("bash unavailable")
+			}
+			impl := filepath.Join(dir, "fake-codex-impl.py")
+			if err = os.WriteFile(impl, []byte(source), 0600); err != nil {
+				t.Fatal(err)
+			}
+			if err = os.WriteFile(script, []byte("#!"+bash+"\nexec "+strconv.Quote(python)+" "+strconv.Quote(impl)+" \"$@\"\n"), 0700); err != nil {
 				t.Fatal(err)
 			}
 			ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)

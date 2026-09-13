@@ -31,9 +31,15 @@ func regressionNativeEgress(t *testing.T, stream bool) {
 	// The handler goroutine must hand the observed bytes through a channel: a
 	// shared variable would be a data race against the test goroutine's read.
 	sent := make(chan string, 1)
-	tr, calls := oaiTLS(t, func(w http.ResponseWriter, r *http.Request) {
+	tr, served := oaiTLS(t, func(w http.ResponseWriter, r *http.Request) {
 		b, _ := io.ReadAll(r.Body)
-		sent <- string(b)
+		// A retried attempt re-enters this handler while the first capture is
+		// still buffered; a blocking send wedges the handler goroutine and
+		// cleanup. First capture wins; excess ones are dropped.
+		select {
+		case sent <- string(b):
+		default:
+		}
 		w.Header().Set("Content-Type", "text/event-stream")
 		if _, err := io.WriteString(w, oaiSSE()); err != nil {
 			t.Error(err)
@@ -49,10 +55,10 @@ func regressionNativeEgress(t *testing.T, stream bool) {
 	}
 	resp, e := adapter.Send(context.Background(), RoutedRequest{Entry: oaiEntry(AuthPKCE), Body: body, Credential: ref, Generation: gen})
 	respBody := oaiRead(t, resp, e)
-	if calls.Load() != 1 || resp.StatusCode != 200 {
+	if served.Load() != 1 || resp.StatusCode != 200 {
 		// The collected body is the only diagnostic the 502 short-circuit in
 		// the adapter carries; surface it verbatim for CI failure logs.
-		t.Fatalf("probe failed status=%d calls=%d body=%s", resp.StatusCode, calls.Load(), respBody)
+		t.Fatalf("probe failed status=%d served=%d body=%s", resp.StatusCode, served.Load(), respBody)
 	}
 	select {
 	case observed := <-sent:

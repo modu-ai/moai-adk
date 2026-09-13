@@ -25,20 +25,27 @@ func nativeConfig(tr *http.Transport) MessagesConfig {
 }
 func nativeTLS(t *testing.T, h http.HandlerFunc) (*http.Transport, *atomic.Int32) {
 	t.Helper()
-	s := httptest.NewTLSServer(h)
+	// The returned counter is a server-side hit count, not a TLS dial count:
+	// under -race a first-send attempt can fail at the transport layer after
+	// the handler already served it, and upstreamSend re-drives the handler
+	// per retry. Dials count those retries; a dropped egress attempt never
+	// reaches this handler at all (CI race job 34765755281).
+	served := &atomic.Int32{}
+	s := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		served.Add(1)
+		h(w, r)
+	}))
 	t.Cleanup(s.Close)
 	tr := s.Client().Transport.(*http.Transport).Clone()
 	tr.Proxy = nil
 	cfg := tr.TLSClientConfig.Clone()
-	calls := &atomic.Int32{}
 	tr.DialTLSContext = func(ctx context.Context, n, addr string) (net.Conn, error) {
-		calls.Add(1)
 		if addr != "api.anthropic.com:443" && addr != "api.z.ai:443" {
 			t.Errorf("unexpected destination %s", addr)
 		}
 		return (&tls.Dialer{Config: cfg}).DialContext(ctx, "tcp", s.Listener.Addr().String())
 	}
-	return tr, calls
+	return tr, served
 }
 func nativeQ(t *testing.T) RoutedRequest {
 	ref, e := auth.NewAnthropicAPIKey("synthetic-anthropic")
@@ -83,7 +90,7 @@ func TestAnthropicNativeMessagesPreserveAndFilter(t *testing.T) {
 	}
 }
 func TestAnthropicNativeInvalidHistoryNoEgress(t *testing.T) {
-	tr, calls := nativeTLS(t, func(w http.ResponseWriter, r *http.Request) { t.Error("unexpected send") })
+	tr, served := nativeTLS(t, func(w http.ResponseWriter, r *http.Request) { t.Error("unexpected send") })
 	for _, kind := range []string{"opaque", "pair", "context", "provider", "generation", "policy", "image", "json", "tools capability", "stream capability", "OAuth"} {
 		q := nativeQ(t)
 		cfg := nativeConfig(tr)
@@ -122,8 +129,8 @@ func TestAnthropicNativeInvalidHistoryNoEgress(t *testing.T) {
 			t.Fatal(kind, r.StatusCode)
 		}
 	}
-	if calls.Load() != 0 {
-		t.Fatal(calls.Load())
+	if served.Load() != 0 {
+		t.Fatal(served.Load())
 	}
 }
 func nativeSSE() string {
@@ -183,7 +190,7 @@ func TestAnthropicNativeStreamSuccessEOFAndClose(t *testing.T) {
 
 func TestAnthropicNativeStatusAndRedirectBoundaries(t *testing.T) {
 	for _, status := range []int{401, 429, 302, 503} {
-		tr, calls := nativeTLS(t, func(w http.ResponseWriter, r *http.Request) {
+		tr, served := nativeTLS(t, func(w http.ResponseWriter, r *http.Request) {
 			w.Header().Set("Retry-After", "9")
 			w.Header().Set("Location", "https://foreign.invalid")
 			w.WriteHeader(status)
@@ -195,16 +202,16 @@ func TestAnthropicNativeStatusAndRedirectBoundaries(t *testing.T) {
 		r, e := a.Send(context.Background(), nativeQ(t))
 		body := oaiRead(t, r, e)
 		want := status
-		wantCalls := int32(1)
+		wantServed := int32(1)
 		if want == 302 {
 			want = 502
 		}
 		if status >= 500 && status <= 599 {
 			// 5xx is retryable at the pre-stream boundary (t697): the
-			// always-failing stub exhausts the bounded attempts.
-			wantCalls = 3
+			// always-failing stub serves every bounded attempt.
+			wantServed = 3
 		}
-		if r.StatusCode != want || strings.Contains(body, "private") || r.Header.Get("Location") != "" || calls.Load() != wantCalls {
+		if r.StatusCode != want || strings.Contains(body, "private") || r.Header.Get("Location") != "" || served.Load() != wantServed {
 			t.Fatal(status, r.StatusCode, body)
 		}
 		if (status == 429 || status == 503) && r.Header.Get("Retry-After") != "9" {
