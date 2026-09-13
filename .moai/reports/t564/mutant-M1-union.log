@@ -1,0 +1,17 @@
+=== RUN   TestParser_DuplicateID_CitingAboveKeepsDeclarationMapping
+    parser_duplicate_union_test.go:44: REQ-DUP-001-001 not collected from the duplicate declaration; covered = map[]
+    parser_duplicate_union_test.go:49: leaf = [{ID:AC-DUP-001-01.a Given: When: Then:cited here only as a cross-reference note RequirementIDs:[] Children:[]}], want one child carrying DUP-001-001
+--- FAIL: TestParser_DuplicateID_CitingAboveKeepsDeclarationMapping (0.00s)
+=== RUN   TestParser_DuplicateID_UnionsMappingsOfEveryLine
+    parser_duplicate_union_test.go:71: REQ-DUP-002-001 not collected; covered = map[REQ-DUP-002-002:true]
+--- FAIL: TestParser_DuplicateID_UnionsMappingsOfEveryLine (0.00s)
+=== RUN   TestParser_DuplicateID_DeclarationAboveStillReported
+--- PASS: TestParser_DuplicateID_DeclarationAboveStillReported (0.00s)
+=== RUN   TestLintDuplicateACID_ReportsDuplicateAndKeepsCoverage
+    lint_duplicate_acid_test.go:80: CoverageIncomplete findings = [{File:testdata/duplicateacid/citing-above/spec.md Line:13 Severity:warning Code:CoverageIncomplete Message:REQ REQ-DAI-001-001 is not referenced by any AC Advisory:true}], want none
+--- FAIL: TestLintDuplicateACID_ReportsDuplicateAndKeepsCoverage (0.62s)
+=== RUN   TestLintDuplicateACID_NoDuplicateNoFinding
+--- PASS: TestLintDuplicateACID_NoDuplicateNoFinding (0.40s)
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/spec	1.390s
+FAIL

@@ -1,0 +1,4 @@
+ internal/spec/lint_coverage_sibling.go         |   2 +-
+ internal/spec/parser.go                        |  77 ++++++++++++-
+ internal/spec/parser_ac_heading_anchor_test.go | 143 +++++++++++++++++++++++++
+ 3 files changed, 216 insertions(+), 6 deletions(-)

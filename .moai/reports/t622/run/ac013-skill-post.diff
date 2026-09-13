@@ -1,0 +1,80 @@
+125c125
+< For detailed orchestration: Read ${CLAUDE_SKILL_DIR}/workflows/plan.md
+---
+> For detailed orchestration: Read .claude/skills/moai/workflows/plan.md
+133c133
+< For detailed orchestration: Read ${CLAUDE_SKILL_DIR}/workflows/run.md
+---
+> For detailed orchestration: Read .claude/skills/moai/workflows/run.md
+141c141
+< For detailed orchestration: Read ${CLAUDE_SKILL_DIR}/workflows/sync.md
+---
+> For detailed orchestration: Read .claude/skills/moai/workflows/sync.md
+149c149
+< For detailed orchestration: Read ${CLAUDE_SKILL_DIR}/workflows/gate.md
+---
+> For detailed orchestration: Read .claude/skills/moai/workflows/gate.md
+157c157
+< For detailed orchestration: Read ${CLAUDE_SKILL_DIR}/workflows/e2e.md
+---
+> For detailed orchestration: Read .claude/skills/moai/workflows/e2e.md
+164c164
+< For detailed orchestration: Read ${CLAUDE_SKILL_DIR}/workflows/goal.md
+---
+> For detailed orchestration: Read .claude/skills/moai/workflows/goal.md
+170c170
+< State: `.moai/state/todo/backlog.db` — project-local, not committed, a SQLite database every mutation takes a cross-process lock over. A `backlog.json` sitting beside it is an export or a legacy leftover, never the queue; the read verbs say so on stderr when one is present.
+---
+> State: `~/.moai/db/<project-key>/todo/backlog.db` — home-scoped, project-keyed, not committed, a SQLite database every mutation takes a cross-process lock over. A `backlog.json` at the former project-local path is an export or a legacy leftover, never the queue; the read verbs say so on stderr when one is present.
+173c173
+< For detailed orchestration: Read ${CLAUDE_SKILL_DIR}/workflows/todo.md
+---
+> For detailed orchestration: Read .claude/skills/moai/workflows/todo.md
+181c181
+< For detailed orchestration: Read ${CLAUDE_SKILL_DIR}/workflows/fix.md
+---
+> For detailed orchestration: Read .claude/skills/moai/workflows/fix.md
+189c189
+< For detailed orchestration: Read ${CLAUDE_SKILL_DIR}/workflows/loop.md
+---
+> For detailed orchestration: Read .claude/skills/moai/workflows/loop.md
+196c196
+< For detailed orchestration: Read ${CLAUDE_SKILL_DIR}/workflows/mx.md
+---
+> For detailed orchestration: Read .claude/skills/moai/workflows/mx.md
+204c204
+< For detailed orchestration: Read ${CLAUDE_SKILL_DIR}/workflows/review.md
+---
+> For detailed orchestration: Read .claude/skills/moai/workflows/review.md
+212c212
+< For detailed orchestration: Read ${CLAUDE_SKILL_DIR}/workflows/clean.md
+---
+> For detailed orchestration: Read .claude/skills/moai/workflows/clean.md
+219c219
+< For detailed orchestration: Read ${CLAUDE_SKILL_DIR}/workflows/codemaps.md
+---
+> For detailed orchestration: Read .claude/skills/moai/workflows/codemaps.md
+228c228
+< For detailed orchestration: Read ${CLAUDE_SKILL_DIR}/workflows/moai.md
+---
+> For detailed orchestration: Read .claude/skills/moai/workflows/moai.md
+236c236
+< For detailed orchestration: Read ${CLAUDE_SKILL_DIR}/workflows/project.md
+---
+> For detailed orchestration: Read .claude/skills/moai/workflows/project.md
+242c242
+< For detailed orchestration: Read ${CLAUDE_SKILL_DIR}/workflows/feedback.md
+---
+> For detailed orchestration: Read .claude/skills/moai/workflows/feedback.md
+259c259
+< For detailed orchestration: Read ${CLAUDE_SKILL_DIR}/workflows/harness.md
+---
+> For detailed orchestration: Read .claude/skills/moai/workflows/harness.md
+273,274c273,274
+< Builder: orchestrator-direct processing (NOT a dynamic-workflow script) — the entry's Phases 0-3 hand off to `${CLAUDE_SKILL_DIR}/workflows/harness-builder.md` for the 4-phase creation logic. The orchestrator holds the PLAN→GENERATE AskUserQuestion approval gate directly; that gate round also carries the recurrence question (optional manifest `schedule`, discovery-only scheduled runs), and ACTIVATE registers a declared schedule after the smoke gate. A request referencing an EXISTING harness together with scheduling intent routes to the entry workflow's Schedule Retrofit branch (evaluated before name-collision handling) instead of the creation pipeline.
+< For detailed orchestration: Read ${CLAUDE_SKILL_DIR}/workflows/harness-build-entry.md
+---
+> Builder: orchestrator-direct processing (NOT a dynamic-workflow script) — the entry's Phases 0-3 hand off to `.claude/skills/moai/workflows/harness-builder.md` for the 4-phase creation logic. The orchestrator holds the PLAN→GENERATE AskUserQuestion approval gate directly; that gate round also carries the recurrence question (optional manifest `schedule`, discovery-only scheduled runs), and ACTIVATE registers a declared schedule after the smoke gate. A request referencing an EXISTING harness together with scheduling intent routes to the entry workflow's Schedule Retrofit branch (evaluated before name-collision handling) instead of the creation pipeline.
+> For detailed orchestration: Read .claude/skills/moai/workflows/harness-build-entry.md
+392d391
+< Last Updated: 2026-07-07

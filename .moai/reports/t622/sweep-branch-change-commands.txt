@@ -1,0 +1,12 @@
+HEAD:internal/template/templates/.claude/agents/moai/manager-git.md:8
+HEAD:internal/template/templates/.claude/rules/moai/core/verification-claim-integrity-detail.md:1
+HEAD:internal/template/templates/.claude/rules/moai/development/coding-standards.md:1
+HEAD:internal/template/templates/.claude/rules/moai/workflow/main-checkout-branch-guard-detail.md:4
+HEAD:internal/template/templates/.claude/rules/moai/workflow/main-checkout-branch-guard.md:3
+HEAD:internal/template/templates/.claude/rules/moai/workflow/spec-workflow.md:3
+HEAD:internal/template/templates/.claude/settings.json.tmpl:1
+HEAD:internal/template/templates/.claude/skills/moai-ref-git-workflow/SKILL.md:2
+HEAD:internal/template/templates/.claude/skills/moai-workflow-worktree/modules/troubleshooting.md:2
+HEAD:internal/template/templates/.claude/skills/moai/workflows/plan/spec-assembly.md:1
+HEAD:internal/template/templates/.claude/skills/moai/workflows/sync/delivery.md:2
+HEAD:internal/template/templates/AGENTS.md:3

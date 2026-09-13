@@ -41,7 +41,7 @@ func RenderOutcome(kind OutcomeKind, fileCount int, backupPath string) string {
 		result = "✓ Up to date · Skipping sync"
 		if backupPath != "" {
 			result += "\n\nBackup: " + backupPath
-			result += "\nRecover: moai update --restore-config " + backupPath
+			result += "\nRecover: moai update --restore " + backupPath
 		}
 
 	case OutcomeUpdatedFiles:
@@ -53,7 +53,7 @@ func RenderOutcome(kind OutcomeKind, fileCount int, backupPath string) string {
 		}
 		if backupPath != "" {
 			result += "\n\nBackup: " + backupPath
-			result += "\nRecover: moai update --restore-config " + backupPath
+			result += "\nRecover: moai update --restore " + backupPath
 		}
 
 	case OutcomeDryRun:
@@ -66,7 +66,7 @@ func RenderOutcome(kind OutcomeKind, fileCount int, backupPath string) string {
 		result += " would be updated"
 		if backupPath != "" {
 			result += "\n\nBackup: " + backupPath
-			result += "\nRecover: moai update --restore-config " + backupPath
+			result += "\nRecover: moai update --restore " + backupPath
 		}
 	}
 

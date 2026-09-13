@@ -1,0 +1,15 @@
+{
+  "no-optional-locks": {
+    "mode": "no-optional-locks",
+    "writes_attempted": 150,
+    "add_failures": 0,
+    "add_lock_failures": 0,
+    "commit_failures": 0,
+    "commit_lock_failures": 0,
+    "status_runs": 379,
+    "status_failures": 0,
+    "status_lock_failures": 0,
+    "status_thread_alive_after_join": false,
+    "failure_samples": []
+  }
+}

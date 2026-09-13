@@ -1,0 +1,49 @@
+t654 guard reproduction — darwin, 2026-09-11
+session: worktree-isolated in .claude/worktrees/t654 (branch WT-guard-quoted-span, base local develop 00ae57ad7)
+installed binary: /Users/goos/go/bin/moai  v3.2.0-rc.7  moai_cp/20260910_130400-275-ged71054d3-dirty  built 2026-09-10T19:18:41Z
+branch_guard.go last change 7d6f11687 is an ancestor of ed71054d3 (git merge-base --is-ancestor → exit 0)
+branch guard enabled: .moai/config/sections/workflow.yaml workflow.branch_guard.enabled: true (worktree and primary)
+
+== A. Worktree guard (Claude Code binary) — Bash tool calls issued from this session ==
+Every probe is `moai handoff save --help ...`: --help prints usage and saves nothing.
+
+W1 control (heredoc, no git text)
+  moai handoff save --help <<'EOF' > /dev/null
+  resume note: continue card work after clear
+  EOF
+  → W1-control-exit=0
+
+W2 (heredoc body names git merge)
+  body: resume note: after clear, run git merge --no-ff abc1234 in the develop worktree
+  → refused before execution: "This session is isolated in the worktree /Users/goos/MoAI/moai-adk-go/.claude/worktrees/t654, but this command names git in a form too complex to verify that it stays inside the worktree. Refusing to run it — a worktree-isolated session's git operations must target its own worktree. Split it into plain, separate commands and run them from /Users/goos/MoAI/moai-adk-go/.claude/worktrees/t654."
+
+W3 (heredoc body names git checkout -b)
+  body: resume note: after clear, run git checkout -b feat/x in a new worktree
+  → refused, same sentence as W2
+
+W4 (same git text as a double-quoted argument, no heredoc)
+  moai handoff save --help --body "resume note: after clear, run git merge --no-ff abc1234 in the develop worktree" > /dev/null
+  → W4-quoted-arg-exit=0
+
+W5 (body read from a file; the command line carries no git text)
+  moai handoff save --help --stdin < .moai/state/verify/t654/body-with-git.txt > /dev/null
+  → W5-stdin-file-exit=0
+
+== B. Branch guard (internal/hook/branch_guard.go) — PreToolUse decision only, command never executed ==
+Each probe: moai hook pre-tool < <payload>.json   (payload files under .moai/state/verify/t654/)
+
+P1 primary cwd, heredoc body "…run git merge --no-ff abc1234…"
+  {"hookSpecificOutput":{"hookEventName":"PreToolUse","permissionDecision":"deny","permissionDecisionReason":"BRANCH_GUARD_VIOLATION: git merge in primary checkout (use a worktree; the manager-git identity and MOAI_BRANCH_GUARD_EXEMPT exemptions fire only for main-thread launches, not for tool-spawned subagents)"}}
+  P1-exit=0
+P2 primary cwd, same text as a double-quoted --body argument
+  {"hookSpecificOutput":{"hookEventName":"PreToolUse","permissionDecision":"allow"}}
+  P2-exit=0
+P3 primary cwd, real command `git merge --no-ff abc1234` (positive control)
+  {"hookSpecificOutput":{"hookEventName":"PreToolUse","permissionDecision":"deny","permissionDecisionReason":"BRANCH_GUARD_VIOLATION: git merge in primary checkout (…)"}}
+  P3-exit=0
+P4 worktree cwd (.claude/worktrees/t654), same command as P1
+  {"hookSpecificOutput":{"hookEventName":"PreToolUse","permissionDecision":"allow"}}
+  P4-exit=0
+P5 primary cwd, heredoc body "…run git checkout -b feat/x…"
+  {"hookSpecificOutput":{"hookEventName":"PreToolUse","permissionDecision":"deny","permissionDecisionReason":"BRANCH_GUARD_VIOLATION: git checkout <branch/-b> in primary checkout (…)"}}
+  P5-exit=0

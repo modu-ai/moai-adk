@@ -1,0 +1,11 @@
+# mutant M-5c: rename the log before the registry
+# edits: [["internal/constitution/pipeline.go", "return []*fileChange{source, registry, logFile}, log, nil", "return []*fileChange{source, logFile, registry}, log, nil"]]
+# $ go test ./internal/constitution/ -run ^TestApply_RenameOrder$ -count=1 -v
+# exit=1
+=== RUN   TestApply_RenameOrder
+    apply_seams_test.go:162: rename 2 destination = /var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestApply_RenameOrder247136467/001/.moai/research/evolution-log.md, want /var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestApply_RenameOrder247136467/001/.claude/rules/moai/core/zone-registry.md
+    apply_seams_test.go:162: rename 3 destination = /var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestApply_RenameOrder247136467/001/.claude/rules/moai/core/zone-registry.md, want /var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestApply_RenameOrder247136467/001/.moai/research/evolution-log.md
+--- FAIL: TestApply_RenameOrder (0.00s)
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/constitution	0.358s
+FAIL

@@ -1,0 +1,8 @@
+local mode-lines body diff exit=0
+local merge-lines body diff exit=0
+local final mode-line coordinates: final-local-mg.md:3 final-local-mg.md:4 final-local-mg.md:5 final-local-dl.md:7 final-local-dl.md:10 final-local-dl.md:11 final-local-dl.md:14 final-local-dl.md:15 final-local-dl.md:27 final-local-dl.md:28 final-local-dl.md:42 final-local-dl.md:43 final-local-dl.md:59 final-local-dl.md:60 
+local final merge-line coordinates: final-local-skill.md:1 final-local-qgc-flags.md:5 final-local-sync.md:1 final-local-dl.md:11 final-local-dl.md:28 
+template mode-lines body diff exit=0
+template merge-lines body diff exit=0
+template final mode-line coordinates: final-template-mg.md:3 final-template-mg.md:4 final-template-mg.md:5 final-template-dl.md:7 final-template-dl.md:10 final-template-dl.md:11 final-template-dl.md:14 final-template-dl.md:15 final-template-dl.md:27 final-template-dl.md:28 final-template-dl.md:42 final-template-dl.md:43 final-template-dl.md:59 final-template-dl.md:60 
+template final merge-line coordinates: final-template-skill.md:1 final-template-qgc-flags.md:5 final-template-sync.md:1 final-template-dl.md:11 final-template-dl.md:28 

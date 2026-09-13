@@ -1,0 +1,22 @@
+diff --git a/internal/spec/parser.go b/internal/spec/parser.go
+index e5cebb4cd..fa5c1e59b 100644
+--- a/internal/spec/parser.go
++++ b/internal/spec/parser.go
+@@ -184,15 +184,14 @@ func buildTree(acLines []acParsedLine, _ bool, result *ParseResult) []Acceptance
+ 		}
+ 	}
+ 
+-	// Merge before auto-wrapping, which copies RequirementIDs into the wrapper's
+-	// child and would otherwise leave the merged ids on the empty wrapper.
+-	mergeDuplicateReqIDs(roots, duplicateReqIDs)
++	// MUTANT M3: merge moved after auto-wrap
+ 
+ 	for i := range roots {
+ 		if len(roots[i].Children) == 0 && !hasIDSuffix(roots[i].ID) {
+ 			roots[i] = autoWrapSingle(roots[i])
+ 		}
+ 	}
++	mergeDuplicateReqIDs(roots, duplicateReqIDs) // MUTANT M3
+ 
+ 	return roots
+ }

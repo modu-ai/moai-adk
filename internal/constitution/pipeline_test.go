@@ -8,12 +8,9 @@ import (
 	"testing"
 )
 
-// fakeOversight is a test double for the HumanOversight interface that
-// auto-approves every proposal. It lets non-dry-run Execute tests run without
-// blocking on os.Stdin (NewHumanOversight hardcodes os.Stdin as its reader).
-type fakeOversight struct{}
-
-func (fakeOversight) Approve(*AmendmentProposal, bool) (bool, error) { return true, nil }
+// Non-dry-run Execute tests approve through recordingGates (apply_test.go),
+// which replaced the former fakeOversight double together with the stub tests
+// that used it (SPEC-CON-AMEND-APPLY-001, plan.md §C.2).
 
 // rejectingOversight is a test double that always rejects (returns false, nil),
 // letting Execute tests exercise the "user rejected the amendment" return path.
@@ -30,12 +27,20 @@ func (erroringOversight) Approve(*AmendmentProposal, bool) (bool, error) {
 }
 
 // writeTestRegistry writes a zone-registry.md fixture containing one Frozen and
-// one Evolvable rule under projectDir so that LoadRegistry can parse it during
-// Execute integration tests. All paths stay under the caller's t.TempDir()
-// (CLAUDE.local.md §6 isolation). The referenced rule files do not need to
-// exist on disk: the loader marks missing files orphan (a warning, not fatal).
+// two Evolvable rules under projectDir so that LoadRegistry can parse it during
+// Execute integration tests, plus the dummy.md rule file every entry points at,
+// holding each clause exactly once: since SPEC-CON-AMEND-APPLY-001 REQ-CAA-012
+// a dry-run validates the rule file, so a missing one now fails (plan.md §C.2).
+// All paths stay under the caller's t.TempDir() (CLAUDE.local.md §6
+// isolation). It also sets both registry-resolution variables empty, so a
+// session-exported value cannot redirect the resolver (REQ-CAA-015).
 func writeTestRegistry(t *testing.T, projectDir string) {
 	t.Helper()
+	isolateEnv(t)
+	ruleBody := "# Dummy rules\n\nTRUST 5 framework\n\nNever use time predictions.\n\nUse canary evaluation.\n"
+	if err := os.WriteFile(filepath.Join(projectDir, "dummy.md"), []byte(ruleBody), 0o644); err != nil {
+		t.Fatalf("write dummy.md: %v", err)
+	}
 	registryDir := filepath.Join(projectDir, ".claude", "rules", "moai", "core")
 	if err := os.MkdirAll(registryDir, 0o755); err != nil {
 		t.Fatalf("mkdir registry dir: %v", err)
@@ -142,33 +147,10 @@ func TestPipeline_Execute_FrozenGuard_Rejects(t *testing.T) {
 	}
 }
 
-func TestPipeline_Execute_NonDryRun_AmendmentStubError(t *testing.T) {
-	// Non-dry-run Execute reaches applyAmendment, which calls updateSourceFile.
-	// updateSourceFile is a documented stub that always errors, so Execute
-	// returns the wrapped amendment error. This characterizes the current
-	// (stub) behavior without modifying production code (C-3).
-	dir := t.TempDir()
-	writeTestRegistry(t, dir)
-	p := NewPipeline()
-	p.HumanOversight = fakeOversight{}                     // avoid stdin block
-	p.LockFilePath = filepath.Join(dir, ".amendment.lock") // pin lock to TempDir (EC-5)
-	proposal := &AmendmentProposal{
-		RuleID: "CONST-V3R2-003",
-		Before: "Never use time predictions.",
-		After:  "Never use time predictions in plans.",
-	}
-	_, err := p.Execute(proposal, dir, false)
-	if err == nil {
-		t.Fatal("Execute: expected amendment error (updateSourceFile stub)")
-	}
-	if !strings.Contains(err.Error(), "amendment application error") {
-		t.Errorf("Execute err = %v, want 'amendment application error'", err)
-	}
-	// The deferred releaseLock must have removed the lock file despite the error.
-	if _, statErr := os.Stat(p.LockFilePath); !os.IsNotExist(statErr) {
-		t.Error("Execute non-dry-run: lock file not released after error")
-	}
-}
+// TestPipeline_Execute_NonDryRun_AmendmentStubError pinned the apply stub; it is
+// replaced by TestApply_ExactlyOnce_Success (AC-CAA-001) and
+// TestApply_OccurrenceCount_Rejected (AC-CAA-002) in apply_test.go
+// (SPEC-CON-AMEND-APPLY-001 REQ-CAA-014, plan.md §C.2).
 
 func TestPipeline_Execute_CanaryUnavailable_Continues(t *testing.T) {
 	// A rule with canary_gate=true triggers Canary.Evaluate. With no
@@ -332,30 +314,11 @@ func TestPipeline_createLogEntry(t *testing.T) {
 	}
 }
 
-func TestPipeline_applyAmendment_StubError(t *testing.T) {
-	// updateSourceFile is a documented stub returning "not yet implemented",
-	// so applyAmendment's only reachable path is the source-file-update error
-	// wrap. The registry/evolution-log update lines that follow are unreachable
-	// until the stub is implemented; this test characterizes the reachable path.
-	p := NewPipeline()
-	dir := t.TempDir()
-	proposal := &AmendmentProposal{RuleID: "CONST-V3R2-003", Before: "a", After: "b"}
-	rule := Rule{
-		ID:     "CONST-V3R2-003",
-		Zone:   ZoneEvolvable,
-		File:   filepath.Join(dir, "dummy.md"),
-		Anchor: "#section",
-		Clause: "a",
-	}
-	registryPath := filepath.Join(dir, "zone-registry.md")
-	err := p.applyAmendment(proposal, rule, dir, registryPath)
-	if err == nil {
-		t.Fatal("applyAmendment: expected error (updateSourceFile stub)")
-	}
-	if !strings.Contains(err.Error(), "source file update error") {
-		t.Errorf("applyAmendment err = %v, want 'source file update error'", err)
-	}
-}
+// TestPipeline_applyAmendment_StubError pinned the apply stub; the apply step is
+// covered by TestApply_ExactlyOnce_Success, TestApply_OccurrenceCount_Rejected,
+// TestApply_RegistryReparse_Rejects, TestApply_NewClausePresent_Rejected
+// (apply_test.go) and TestApply_RenameFault_RestoresAll,
+// TestApply_RestoreFault_KeepsBackups (apply_seams_test.go).
 
 func TestPipeline_acquireLock_DryRunNoOp(t *testing.T) {
 	p := NewPipeline()
@@ -398,29 +361,11 @@ func TestPipeline_acquireLock_AlreadyInProgress(t *testing.T) {
 	}
 }
 
-// updateSourceFile and updateRegistryClause are documented stubs (TODO: not yet
-// implemented). These characterization tests pin the current error behavior
-// without modifying production code (C-3). When the stubs gain real
-// implementations, these tests should be updated to assert success-path behavior.
-func TestUpdateSourceFile_StubError(t *testing.T) {
-	err := updateSourceFile("dummy.go", "#anchor", "new clause")
-	if err == nil {
-		t.Fatal("updateSourceFile: expected not-implemented error")
-	}
-	if !strings.Contains(err.Error(), "not yet implemented") {
-		t.Errorf("updateSourceFile err = %v, want 'not yet implemented'", err)
-	}
-}
-
-func TestUpdateRegistryClause_StubError(t *testing.T) {
-	err := updateRegistryClause("zone-registry.md", "CONST-V3R2-001", "new clause")
-	if err == nil {
-		t.Fatal("updateRegistryClause: expected not-implemented error")
-	}
-	if !strings.Contains(err.Error(), "not yet implemented") {
-		t.Errorf("updateRegistryClause err = %v, want 'not yet implemented'", err)
-	}
-}
+// TestUpdateSourceFile_StubError and TestUpdateRegistryClause_StubError pinned
+// the two apply stubs; the transforms are covered by TestApply_ExactlyOnce_Success,
+// TestApply_OccurrenceCount_Rejected, TestApply_NoWhitespaceNormalization,
+// TestApply_NewClausePresent_Rejected, TestUpdateRegistryClause_SingleLineRoundTrip,
+// and TestApply_RegistryReparse_Rejects (apply_test.go).
 
 // TestValidationError_Error covers the ValidationError.Error() stringer (used
 // for fatal validation failures). Co-located here to lift package coverage.

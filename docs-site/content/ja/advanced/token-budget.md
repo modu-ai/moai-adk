@@ -28,7 +28,7 @@ Anthropic SSEストリームはコンテキストウィンドウの天井に近�
 | Sonnet / Opus 標準 (200K) | 200,000 トークン | 90% | ~180,000 トークン |
 | Haiku (200K) | 200,000 トークン | 90% | ~180,000 トークン |
 
-GLM-5.3(`moai glm` / `moai cg` GLMパネル)は1Mコンテキストモデルなので50%しきい値で運用します。Claude Codeが報告する`context_window_size`はClaudeスロット基準(Opus=1M, Sonnet/Haiku=200K)なので、GLMセッションで生のtelemetryが~180Kを示してもMoAIが1Mに補正します。statuslineのCW%ゲージを信頼してください。
+GLM-5.3(`moai glm`)は1Mコンテキストモデルなので50%しきい値で運用します。Claude Codeが報告する`context_window_size`はClaudeスロット基準(Opus=1M, Sonnet/Haiku=200K)なので、GLMセッションで生のtelemetryが~180Kを示してもMoAIが1Mに補正します。statuslineのCW%ゲージを信頼してください。
 
 ## 2段階ハンドオフマーカー
 

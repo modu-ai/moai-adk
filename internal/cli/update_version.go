@@ -10,8 +10,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/charmbracelet/huh"
 	"github.com/mattn/go-isatty"
+	"github.com/modu-ai/moai-adk/internal/cli/wizard"
 	"github.com/modu-ai/moai-adk/internal/config"
 	"github.com/modu-ai/moai-adk/internal/tui"
 	"github.com/modu-ai/moai-adk/internal/update"
@@ -323,12 +323,11 @@ func runVersionBranch(cmd *cobra.Command, versionTag string) error {
 	currentVersion := version.GetVersion()
 	assumeYes := getBoolFlag(cmd, "yes")
 	if !assumeYes && isatty.IsTerminal(os.Stdin.Fd()) && isVersionDowngrade(versionTag, currentVersion) {
+		// REQ-ITI-011: the confirmation speaks the project language, else the
+		// active profile's, else English (resolveDowngradeLocale).
 		var confirm bool
-		prompt := huh.NewConfirm().
-			Title(fmt.Sprintf("Downgrade %s → %s?", currentVersion, versionTag)).
-			Description("The requested tag is older than the running version.").
-			Value(&confirm)
-		form := huh.NewForm(huh.NewGroup(prompt)).WithTheme(moaiHuhTheme())
+		cwd, _ := os.Getwd()
+		form := wizard.NewDowngradeConfirmForm(resolveDowngradeLocale(cwd), currentVersion, versionTag, &confirm)
 		if err := form.Run(); err != nil {
 			return fmt.Errorf("downgrade confirmation: %w", err)
 		}

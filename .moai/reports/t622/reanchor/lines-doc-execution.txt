@@ -1,0 +1,6 @@
+== .claude/skills/moai/workflows/sync/doc-execution.md
+29:##### Worktree Context Detection
+36:This affects auto-merge behavior: worktree contexts default to auto-merge.
+== internal/template/templates/.claude/skills/moai/workflows/sync/doc-execution.md
+29:##### Worktree Context Detection
+36:This affects auto-merge behavior: worktree contexts default to auto-merge.

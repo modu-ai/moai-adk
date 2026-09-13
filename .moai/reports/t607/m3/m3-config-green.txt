@@ -1,0 +1,31 @@
+# --- provenance (added by card t607, sync-audit F9) ---
+# command: go test ./internal/config/ -run '^(TestLoadSlotLeaseDefaultMaxDuration|TestDefaults_SlotLeaseDisabled|TestSlotLeaseConfig_)' -count=1 -v
+# exit: 0
+# tree: 10b022b59 (M3 commit)
+# ---
+=== RUN   TestDefaults_SlotLeaseDisabled
+--- PASS: TestDefaults_SlotLeaseDisabled (0.00s)
+=== RUN   TestSlotLeaseConfig_KeyShape
+=== RUN   TestSlotLeaseConfig_KeyShape/round_trip
+=== RUN   TestSlotLeaseConfig_KeyShape/absent_key_keeps_defaults
+--- PASS: TestSlotLeaseConfig_KeyShape (0.00s)
+    --- PASS: TestSlotLeaseConfig_KeyShape/round_trip (0.00s)
+    --- PASS: TestSlotLeaseConfig_KeyShape/absent_key_keeps_defaults (0.00s)
+=== RUN   TestSlotLeaseConfig_MalformedResourceKeepsEnabled
+--- PASS: TestSlotLeaseConfig_MalformedResourceKeepsEnabled (0.00s)
+=== RUN   TestLoadSlotLeaseDefaultMaxDuration
+=== RUN   TestLoadSlotLeaseDefaultMaxDuration/no_file
+=== RUN   TestLoadSlotLeaseDefaultMaxDuration/configured
+=== RUN   TestLoadSlotLeaseDefaultMaxDuration/key_absent
+=== RUN   TestLoadSlotLeaseDefaultMaxDuration/blank_value
+=== RUN   TestLoadSlotLeaseDefaultMaxDuration/unparseable_file
+--- PASS: TestLoadSlotLeaseDefaultMaxDuration (0.00s)
+    --- PASS: TestLoadSlotLeaseDefaultMaxDuration/no_file (0.00s)
+    --- PASS: TestLoadSlotLeaseDefaultMaxDuration/configured (0.00s)
+    --- PASS: TestLoadSlotLeaseDefaultMaxDuration/key_absent (0.00s)
+    --- PASS: TestLoadSlotLeaseDefaultMaxDuration/blank_value (0.00s)
+    --- PASS: TestLoadSlotLeaseDefaultMaxDuration/unparseable_file (0.00s)
+=== RUN   TestSlotLeaseConfig_NonMappingEntriesAreMarked
+--- PASS: TestSlotLeaseConfig_NonMappingEntriesAreMarked (0.00s)
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/config	0.394s

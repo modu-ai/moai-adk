@@ -1,0 +1,1 @@
+32552 go               go build -o /tmp/moai-t574-audit ./cmd/moai

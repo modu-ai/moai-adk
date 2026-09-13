@@ -1,0 +1,11 @@
+--- internal/spec/parser.go	2026-09-11 03:18:01
++++ /private/tmp/claude-501/-Users-goos-MoAI-moai-adk-go/e5c0032b-ffbd-44b0-8997-c16d09d3541b/scratchpad/mutants/M4/parser.go	2026-09-11 03:21:38
+@@ -139,7 +139,7 @@
+ 			continue
+ 		}
+ 
+-		if level := markdownHeadingLevel(trimmed); level > 0 && level <= anchorLevel {
++		if level := markdownHeadingLevel(trimmed); strings.HasPrefix(trimmed, "##") || (anchorLevel < 0 && level > 0) {
+ 			break
+ 		}
+ 

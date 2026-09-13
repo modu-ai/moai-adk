@@ -1,0 +1,35 @@
+=== RUN   TestSyncGateFailState_AC008_RedeliveryFollowsModeResolution
+=== RUN   TestSyncGateFailState_AC008_RedeliveryFollowsModeResolution/A1
+    sync_gate_failstate_test.go:684: AC-008 A1 [regression-guard] call1="{\"systemMessage\":\"sync-phase quality gate WARNING (advisory, not blocking): go build failed (go vet=0 go build=1 deps_modified=0). Heavy lint/tests run in CI. Detail: .moai/logs/sync-quality-gate.log\"}\n" call2="" stub 2 -> 2
+=== RUN   TestSyncGateFailState_AC008_RedeliveryFollowsModeResolution/A2
+    sync_gate_failstate_test.go:684: AC-008 A2 [regression-guard] call1="{\"systemMessage\":\"sync-phase quality gate WARNING (advisory, not blocking): go vet failed (go vet=1 go build=0 deps_modified=0). Heavy lint/tests run in CI. Detail: .moai/logs/sync-quality-gate.log\"}\n" call2="" stub 2 -> 2
+=== RUN   TestSyncGateFailState_AC008_RedeliveryFollowsModeResolution/A3
+    sync_gate_failstate_test.go:684: AC-008 A3 [regression-guard] call1="{\"systemMessage\":\"sync-phase quality gate WARNING (advisory, not blocking): go vet failed (go vet=1 go build=0 deps_modified=0). Heavy lint/tests run in CI. Detail: .moai/logs/sync-quality-gate.log\"}\n" call2="" stub 2 -> 2
+=== RUN   TestSyncGateFailState_AC008_RedeliveryFollowsModeResolution/A4
+    sync_gate_failstate_test.go:684: AC-008 A4 [release-blocking] call1="{\"hookSpecificOutput\":{\"hookEventName\":\"Stop\",\"decision\":\"block\",\"reason\":\"go build failed\"},\"systemMessage\":\"sync-phase quality gate BLOCKED: go build failed (go vet=0 go build=1 deps_modified=0). Detail: .moai/logs/sync-quality-gate.log\"}\n" call2="{\"hookSpecificOutput\":{\"hookEventName\":\"Stop\",\"decision\":\"block\",\"reason\":\"go build failed\"},\"systemMessage\":\"sync-phase quality gate BLOCKED: go build failed (go vet=0 go build=1 deps_modified=0). Detail: .moai/logs/sync-quality-gate.log\"}\n" stub 2 -> 2
+=== RUN   TestSyncGateFailState_AC008_RedeliveryFollowsModeResolution/A5
+    sync_gate_failstate_test.go:684: AC-008 A5 [regression-guard] call1="{\"hookSpecificOutput\":{\"hookEventName\":\"Stop\",\"decision\":\"block\",\"reason\":\"go vet failed\"},\"systemMessage\":\"sync-phase quality gate BLOCKED: go vet failed (go vet=1 go build=0 deps_modified=0). Detail: .moai/logs/sync-quality-gate.log\"}\n" call2="{\"hookSpecificOutput\":{\"hookEventName\":\"Stop\",\"decision\":\"block\",\"reason\":\"go vet failed\"},\"systemMessage\":\"sync-phase quality gate BLOCKED: go vet failed (go vet=1 go build=0 deps_modified=0). Detail: .moai/logs/sync-quality-gate.log\"}\n" stub 2 -> 2
+    sync_gate_failstate_test.go:698: AC-008 A5 [regression-guard]: call 2 stdout = "{\"hookSpecificOutput\":{\"hookEventName\":\"Stop\",\"decision\":\"block\",\"reason\":\"go vet failed\"},\"systemMessage\":\"sync-phase quality gate BLOCKED: go vet failed (go vet=1 go build=0 deps_modified=0). Detail: .moai/logs/sync-quality-gate.log\"}\n"; want empty
+=== RUN   TestSyncGateFailState_AC008_RedeliveryFollowsModeResolution/A6
+    sync_gate_failstate_test.go:684: AC-008 A6 [regression-guard] call1="{\"systemMessage\":\"sync-phase quality gate WARNING (advisory, not blocking): go vet failed (go vet=1 go build=0 deps_modified=0). Heavy lint/tests run in CI. Detail: .moai/logs/sync-quality-gate.log\"}\n" call2="" stub 2 -> 2
+=== RUN   TestSyncGateFailState_AC008_RedeliveryFollowsModeResolution/A7
+    sync_gate_failstate_test.go:684: AC-008 A7 [regression-guard] call1="{\"hookSpecificOutput\":{\"hookEventName\":\"Stop\",\"decision\":\"block\",\"reason\":\"go vet failed\"},\"systemMessage\":\"sync-phase quality gate BLOCKED: go vet failed (go vet=1 go build=0 deps_modified=0). Detail: .moai/logs/sync-quality-gate.log\"}\n" call2="{\"hookSpecificOutput\":{\"hookEventName\":\"Stop\",\"decision\":\"block\",\"reason\":\"go vet failed\"},\"systemMessage\":\"sync-phase quality gate BLOCKED: go vet failed (go vet=1 go build=0 deps_modified=0). Detail: .moai/logs/sync-quality-gate.log\"}\n" stub 2 -> 2
+    sync_gate_failstate_test.go:698: AC-008 A7 [regression-guard]: call 2 stdout = "{\"hookSpecificOutput\":{\"hookEventName\":\"Stop\",\"decision\":\"block\",\"reason\":\"go vet failed\"},\"systemMessage\":\"sync-phase quality gate BLOCKED: go vet failed (go vet=1 go build=0 deps_modified=0). Detail: .moai/logs/sync-quality-gate.log\"}\n"; want empty
+=== RUN   TestSyncGateFailState_AC008_RedeliveryFollowsModeResolution/A8
+    sync_gate_failstate_test.go:684: AC-008 A8 [regression-guard] call1="{\"hookSpecificOutput\":{\"hookEventName\":\"Stop\",\"decision\":\"block\",\"reason\":\"go vet failed\"},\"systemMessage\":\"sync-phase quality gate BLOCKED: go vet failed (go vet=1 go build=0 deps_modified=0). Detail: .moai/logs/sync-quality-gate.log\"}\n" call2="{\"hookSpecificOutput\":{\"hookEventName\":\"Stop\",\"decision\":\"block\",\"reason\":\"go vet failed\"},\"systemMessage\":\"sync-phase quality gate BLOCKED: go vet failed (go vet=1 go build=0 deps_modified=0). Detail: .moai/logs/sync-quality-gate.log\"}\n" stub 2 -> 2
+    sync_gate_failstate_test.go:698: AC-008 A8 [regression-guard]: call 2 stdout = "{\"hookSpecificOutput\":{\"hookEventName\":\"Stop\",\"decision\":\"block\",\"reason\":\"go vet failed\"},\"systemMessage\":\"sync-phase quality gate BLOCKED: go vet failed (go vet=1 go build=0 deps_modified=0). Detail: .moai/logs/sync-quality-gate.log\"}\n"; want empty
+=== RUN   TestSyncGateFailState_AC008_RedeliveryFollowsModeResolution/A9
+    sync_gate_failstate_test.go:684: AC-008 A9 [release-blocking] call1="{\"hookSpecificOutput\":{\"hookEventName\":\"Stop\",\"decision\":\"block\",\"reason\":\"go vet failed\"},\"systemMessage\":\"sync-phase quality gate BLOCKED: go vet failed (go vet=1 go build=1 deps_modified=0). Detail: .moai/logs/sync-quality-gate.log\"}\n" call2="{\"hookSpecificOutput\":{\"hookEventName\":\"Stop\",\"decision\":\"block\",\"reason\":\"go vet failed\"},\"systemMessage\":\"sync-phase quality gate BLOCKED: go vet failed (go vet=1 go build=1 deps_modified=0). Detail: .moai/logs/sync-quality-gate.log\"}\n" stub 2 -> 2
+--- FAIL: TestSyncGateFailState_AC008_RedeliveryFollowsModeResolution (11.80s)
+    --- PASS: TestSyncGateFailState_AC008_RedeliveryFollowsModeResolution/A1 (2.28s)
+    --- PASS: TestSyncGateFailState_AC008_RedeliveryFollowsModeResolution/A2 (1.04s)
+    --- PASS: TestSyncGateFailState_AC008_RedeliveryFollowsModeResolution/A3 (1.01s)
+    --- PASS: TestSyncGateFailState_AC008_RedeliveryFollowsModeResolution/A4 (1.49s)
+    --- FAIL: TestSyncGateFailState_AC008_RedeliveryFollowsModeResolution/A5 (1.51s)
+    --- PASS: TestSyncGateFailState_AC008_RedeliveryFollowsModeResolution/A6 (1.11s)
+    --- FAIL: TestSyncGateFailState_AC008_RedeliveryFollowsModeResolution/A7 (1.05s)
+    --- FAIL: TestSyncGateFailState_AC008_RedeliveryFollowsModeResolution/A8 (1.14s)
+    --- PASS: TestSyncGateFailState_AC008_RedeliveryFollowsModeResolution/A9 (1.17s)
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/hook	12.477s
+FAIL

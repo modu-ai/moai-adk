@@ -108,7 +108,13 @@ func GetCurrentNameForProject(projectRoot string) string {
 
 	rel, err := filepath.Rel(baseDir, configDir)
 	if err != nil || strings.HasPrefix(rel, "..") || rel == "." {
-		return configDir
+		// t667: a config dir outside the profile base is not a named profile
+		// (a gateway conversation family dir, or the user's own
+		// CLAUDE_CONFIG_DIR). Returning the raw path leaked it into
+		// profile-name consumers — the web console's name validator refused
+		// it and the settings screen broke. Degrade to "default", the same
+		// fallback the ledger path uses.
+		return "default"
 	}
 
 	parts := strings.SplitN(rel, string(filepath.Separator), 2)

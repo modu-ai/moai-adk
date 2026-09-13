@@ -1,0 +1,3 @@
+e415c6a957ecceb360d0b481ff957401b7b89544b8d1e631ec637f102af19dee  /Users/goos/MoAI/moai-adk-go/.claude/worktrees/t587/internal/cli/update/report/outcome.go
+c5a1e86e7281f1ad876d70c7f741ff2cd0dfda2ae555735109dd470bc4fdd05c  /Users/goos/MoAI/moai-adk-go/.claude/worktrees/t587/internal/cli/update_template_sync.go
+c0d30be7c8f99b5b02ae85078caa47675dc172272b20acde1dd0c3c4e3df3a2c  /Users/goos/MoAI/moai-adk-go/.claude/worktrees/t587/internal/cli/update_wizard.go

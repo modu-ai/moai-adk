@@ -1,0 +1,86 @@
+sync_gate_failstate_test.go:332: AC-001 [release-blocking] call1 stdout (237 bytes)="{\"hookSpecificOutput\":{\"hookEventName\":\"Stop\",\"decision\":\"block\",\"reason\":\"go vet failed\"},\"systemMessage\":\"sync-phase quality gate BLOCKED: go vet failed (go vet=1 go build=0 deps_modified=0). Detail: .moai/logs/sync-quality-gate.log\"}\n" stub=2; call2 stdout (0 bytes)="" stub=2
+sync_gate_failstate_test.go:337: AC-001 [release-blocking]: call 2 stdout is not byte-identical to call 1 (call1 237 bytes, call2 0 bytes); call2=""
+sync_gate_failstate_test.go:410: AC-004 F1 (b) [release-blocking]: unflagged call after the flag is not byte-identical to call 1 (call1 237 bytes, now 0 bytes); stdout=""
+sync_gate_failstate_test.go:410: AC-004 F2 (b) [release-blocking]: unflagged call after the flag is not byte-identical to call 1 (call1 237 bytes, now 0 bytes); stdout=""
+sync_gate_failstate_test.go:410: AC-004 F3 (b) [release-blocking]: unflagged call after the flag is not byte-identical to call 1 (call1 237 bytes, now 0 bytes); stdout=""
+sync_gate_failstate_test.go:410: AC-004 F4 (b) [release-blocking]: unflagged call after the flag is not byte-identical to call 1 (call1 237 bytes, now 0 bytes); stdout=""
+sync_gate_failstate_test.go:420: AC-004 (c) [release-blocking]: stdout is not byte-identical to call 1 (call1 237 bytes, now 0 bytes); stdout=""
+sync_gate_failstate_test.go:456: AC-005 L1 run-and-block [release-blocking]: stub invoked 0 time(s) on this call; want >= 1 (checks must run)
+sync_gate_failstate_test.go:456: AC-005 L1 run-and-block [release-blocking]: stdout is not a block; stdout=""
+sync_gate_failstate_test.go:467: AC-005 L1 record-format [release-blocking]: record = "ec02ad1775d6100b00619fd57b95658a56b8f501"; want "ec02ad1775d6100b00619fd57b95658a56b8f501 fail"
+sync_gate_failstate_test.go:467: AC-005 U1 record-format [release-blocking]: record = "94ff23c07afb529b42150633bf1379f4ec4c62e4"; want "94ff23c07afb529b42150633bf1379f4ec4c62e4 fail"
+sync_gate_failstate_test.go:467: AC-005 U2 record-format [release-blocking]: record = "90c2b2f96069911cef0cf4c98e697b4e56177e45"; want "90c2b2f96069911cef0cf4c98e697b4e56177e45 fail"
+sync_gate_failstate_test.go:467: AC-005 U3 record-format [release-blocking]: record = "f6ab533d7778a1823c38b5a044beb4e52a3c14ab"; want "f6ab533d7778a1823c38b5a044beb4e52a3c14ab fail"
+sync_gate_failstate_test.go:467: AC-005 U4 record-format [release-blocking]: record = "58f144313005495b771a5498be3f1fc50f2971db"; want "58f144313005495b771a5498be3f1fc50f2971db fail"
+sync_gate_failstate_test.go:467: AC-005 U5 record-format [release-blocking]: record = "152c395570e86b621251d76dbf39d4976f47277c"; want "152c395570e86b621251d76dbf39d4976f47277c fail"
+sync_gate_failstate_test.go:530: AC-005 TA1 [release-blocking]: stub invoked 2 time(s) on this call; want 0 (checks must not run)
+sync_gate_failstate_test.go:530: AC-005 TA1 [release-blocking]: stdout carries "decision"; want none; stdout="{\"hookSpecificOutput\":{\"hookEventName\":\"Stop\",\"decision\":\"block\",\"reason\":\"go vet failed\"},\"systemMessage\":\"sync-phase quality gate BLOCKED: go vet failed (go vet=1 go build=0 deps_modified=0). Detail: .moai/logs/sync-quality-gate.log\"}\n"
+sync_gate_failstate_test.go:532: AC-005 TA4 [release-blocking]: stub invoked 0 time(s) on this call; want >= 1 (checks must run)
+sync_gate_failstate_test.go:532: AC-005 TA4 [release-blocking]: stdout is not a block; stdout=""
+sync_gate_failstate_test.go:530: AC-005 TB1 [release-blocking]: stub invoked 2 time(s) on this call; want 0 (checks must not run)
+sync_gate_failstate_test.go:530: AC-005 TB1 [release-blocking]: stdout carries "decision"; want none; stdout="{\"hookSpecificOutput\":{\"hookEventName\":\"Stop\",\"decision\":\"block\",\"reason\":\"go vet failed\"},\"systemMessage\":\"sync-phase quality gate BLOCKED: go vet failed (go vet=1 go build=0 deps_modified=0). Detail: .moai/logs/sync-quality-gate.log\"}\n"
+sync_gate_failstate_test.go:564: AC-006 a0 [release-blocking]: stub invoked 2 time(s) on this call; want 0 (checks must not run)
+sync_gate_failstate_test.go:564: AC-006 a0 [release-blocking]: stdout carries "decision"; want none; stdout="{\"hookSpecificOutput\":{\"hookEventName\":\"Stop\",\"decision\":\"block\",\"reason\":\"go vet failed\"},\"systemMessage\":\"sync-phase quality gate BLOCKED: go vet failed (go vet=1 go build=0 deps_modified=0). Detail: .moai/logs/sync-quality-gate.log\"}\n"
+sync_gate_failstate_test.go:564: AC-006 a50 [release-blocking]: stub invoked 2 time(s) on this call; want 0 (checks must not run)
+sync_gate_failstate_test.go:564: AC-006 a50 [release-blocking]: stdout carries "decision"; want none; stdout="{\"hookSpecificOutput\":{\"hookEventName\":\"Stop\",\"decision\":\"block\",\"reason\":\"go vet failed\"},\"systemMessage\":\"sync-phase quality gate BLOCKED: go vet failed (go vet=1 go build=0 deps_modified=0). Detail: .moai/logs/sync-quality-gate.log\"}\n"
+sync_gate_failstate_test.go:684: AC-008 A1 [regression-guard] call1="{\"systemMessage\":\"sync-phase quality gate WARNING (advisory, not blocking): go build failed (go vet=0 go build=1 deps_modified=0). Heavy lint/tests run in CI. Detail: .moai/logs/sync-quality-gate.log\"}\n" call2="" stub 2 -> 2
+sync_gate_failstate_test.go:684: AC-008 A2 [regression-guard] call1="{\"systemMessage\":\"sync-phase quality gate WARNING (advisory, not blocking): go vet failed (go vet=1 go build=0 deps_modified=0). Heavy lint/tests run in CI. Detail: .moai/logs/sync-quality-gate.log\"}\n" call2="" stub 2 -> 2
+sync_gate_failstate_test.go:684: AC-008 A3 [regression-guard] call1="{\"systemMessage\":\"sync-phase quality gate WARNING (advisory, not blocking): go vet failed (go vet=1 go build=0 deps_modified=0). Heavy lint/tests run in CI. Detail: .moai/logs/sync-quality-gate.log\"}\n" call2="" stub 2 -> 2
+sync_gate_failstate_test.go:684: AC-008 A4 [release-blocking] call1="{\"hookSpecificOutput\":{\"hookEventName\":\"Stop\",\"decision\":\"block\",\"reason\":\"go build failed\"},\"systemMessage\":\"sync-phase quality gate BLOCKED: go build failed (go vet=0 go build=1 deps_modified=0). Detail: .moai/logs/sync-quality-gate.log\"}\n" call2="" stub 2 -> 2
+sync_gate_failstate_test.go:693: AC-008 A4 [release-blocking]: call 2 stdout is not byte-identical to call 1's block (call1 241 bytes, call2 0 bytes); call2=""
+sync_gate_failstate_test.go:684: AC-008 A5 [regression-guard] call1="{\"hookSpecificOutput\":{\"hookEventName\":\"Stop\",\"decision\":\"block\",\"reason\":\"go vet failed\"},\"systemMessage\":\"sync-phase quality gate BLOCKED: go vet failed (go vet=1 go build=0 deps_modified=0). Detail: .moai/logs/sync-quality-gate.log\"}\n" call2="" stub 2 -> 2
+sync_gate_failstate_test.go:684: AC-008 A6 [regression-guard] call1="{\"systemMessage\":\"sync-phase quality gate WARNING (advisory, not blocking): go vet failed (go vet=1 go build=0 deps_modified=0). Heavy lint/tests run in CI. Detail: .moai/logs/sync-quality-gate.log\"}\n" call2="" stub 2 -> 2
+sync_gate_failstate_test.go:684: AC-008 A7 [regression-guard] call1="{\"hookSpecificOutput\":{\"hookEventName\":\"Stop\",\"decision\":\"block\",\"reason\":\"go vet failed\"},\"systemMessage\":\"sync-phase quality gate BLOCKED: go vet failed (go vet=1 go build=0 deps_modified=0). Detail: .moai/logs/sync-quality-gate.log\"}\n" call2="" stub 2 -> 2
+sync_gate_failstate_test.go:684: AC-008 A8 [regression-guard] call1="{\"hookSpecificOutput\":{\"hookEventName\":\"Stop\",\"decision\":\"block\",\"reason\":\"go vet failed\"},\"systemMessage\":\"sync-phase quality gate BLOCKED: go vet failed (go vet=1 go build=0 deps_modified=0). Detail: .moai/logs/sync-quality-gate.log\"}\n" call2="" stub 2 -> 2
+sync_gate_failstate_test.go:684: AC-008 A9 [release-blocking] call1="{\"hookSpecificOutput\":{\"hookEventName\":\"Stop\",\"decision\":\"block\",\"reason\":\"go vet failed\"},\"systemMessage\":\"sync-phase quality gate BLOCKED: go vet failed (go vet=1 go build=1 deps_modified=0). Detail: .moai/logs/sync-quality-gate.log\"}\n" call2="" stub 2 -> 2
+sync_gate_failstate_test.go:693: AC-008 A9 [release-blocking]: call 2 stdout is not byte-identical to call 1's block (call1 237 bytes, call2 0 bytes); call2=""
+sync_gate_failstate_test.go:771: AC-014 [release-blocking] stale-window assignments found: []
+sync_gate_failstate_test.go:807: AC-014 [release-blocking] settings timeouts for sync-phase-quality-gate.sh entries: [60]
+sync_gate_failstate_test.go:814: AC-014 [release-blocking]: the template hook declares no named stale-window variable (no NAME=<int> assignment whose name contains STALE)
+sync_gate_failstate_unix_test.go:114: AC-006c run 1: marker observed for this run; process group killed
+sync_gate_failstate_unix_test.go:114: AC-006c run 2: marker not observed; hook exited on its own; output=""
+sync_gate_failstate_unix_test.go:119: AC-006c [release-blocking] assertion 2: run 2 did not observe its own marker — the one allowed stale re-run did not start
+sync_gate_failstate_unix_test.go:128: AC-006c [release-blocking] run 3 stdout (0 bytes)="" stub delta=0 exit=0
+sync_gate_failstate_unix_test.go:136: AC-006c [release-blocking] assertion 5: run 3 stdout is not a systemMessage saying the gate run has not completed and naming deletion of sync-quality-gate.last; stdout=""
+sync_gate_failstate_unix_test.go:197: AC-015 N1 run 1: marker observed for this run; process group killed
+sync_gate_failstate_unix_test.go:197: AC-015 N1 run 2: marker not observed; hook exited on its own; output=""
+sync_gate_failstate_unix_test.go:202: AC-015 N1 [release-blocking] setup assertion 2: run 2 did not observe its own marker — the one allowed stale re-run did not start
+sync_gate_failstate_unix_test.go:173: call 1 stdin={} exit=0 stdout=""
+sync_gate_failstate_unix_test.go:173: call 2 stdin={"stop_hook_active":true} exit=0 stdout=""
+sync_gate_failstate_unix_test.go:173: call 3 stdin={} exit=0 stdout=""
+sync_gate_failstate_unix_test.go:173: call 4 stdin={"stop_hook_active":true} exit=0 stdout=""
+sync_gate_failstate_unix_test.go:173: call 5 stdin={} exit=0 stdout=""
+sync_gate_failstate_unix_test.go:173: call 6 stdin={"stop_hook_active":true} exit=0 stdout=""
+sync_gate_failstate_unix_test.go:173: call 7 stdin={} exit=0 stdout=""
+sync_gate_failstate_unix_test.go:173: call 8 stdin={"stop_hook_active":true} exit=0 stdout=""
+sync_gate_failstate_unix_test.go:173: call 9 stdin={} exit=0 stdout=""
+sync_gate_failstate_unix_test.go:211: AC-015 N1 [release-blocking] summary: nonzero-exit=0 missing-systemMessage=9 decision-count=0 stub-delta=0
+sync_gate_failstate_unix_test.go:211: AC-015 N1 [release-blocking]: 9 of 9 stdouts lack "systemMessage"
+sync_gate_failstate_unix_test.go:213: AC-015 N1 [release-blocking]: 9 of 9 notices do not say the gate run has not completed and name deleting sync-quality-gate.last
+sync_gate_failstate_unix_test.go:173: call 1 stdin={} exit=0 stdout="{\"hookSpecificOutput\":{\"hookEventName\":\"Stop\",\"decision\":\"block\",\"reason\":\"go vet failed\"},\"systemMessage\":\"sync-phase quality gate BLOCKED: go vet failed (go vet=1 go build=0 deps_modified=0). Detail: .moai/logs/sync-quality-gate.log\"}\n"
+sync_gate_failstate_unix_test.go:173: call 2 stdin={"stop_hook_active":true} exit=0 stdout=""
+sync_gate_failstate_unix_test.go:173: call 3 stdin={} exit=0 stdout=""
+sync_gate_failstate_unix_test.go:173: call 4 stdin={"stop_hook_active":true} exit=0 stdout=""
+sync_gate_failstate_unix_test.go:173: call 5 stdin={} exit=0 stdout=""
+sync_gate_failstate_unix_test.go:173: call 6 stdin={"stop_hook_active":true} exit=0 stdout=""
+sync_gate_failstate_unix_test.go:173: call 7 stdin={} exit=0 stdout=""
+sync_gate_failstate_unix_test.go:173: call 8 stdin={"stop_hook_active":true} exit=0 stdout=""
+sync_gate_failstate_unix_test.go:173: call 9 stdin={} exit=0 stdout=""
+sync_gate_failstate_unix_test.go:224: AC-015 N2a [release-blocking] summary: nonzero-exit=0 missing-systemMessage=8 decision-count=1 stub-delta=2
+sync_gate_failstate_unix_test.go:224: AC-015 N2a [release-blocking]: 8 of 9 stdouts lack "systemMessage"
+sync_gate_failstate_unix_test.go:224: AC-015 N2a [release-blocking]: 1 of 9 stdouts carry "decision"; want exactly 0
+sync_gate_failstate_unix_test.go:224: AC-015 N2a [release-blocking]: stub count grew by 2 across the 9 runs; want 0
+sync_gate_failstate_unix_test.go:226: AC-015 N2a [release-blocking]: record after run 9 = "a570028487af8b103d10c98dd93bb67e6e8cf960"; want "a570028487af8b103d10c98dd93bb67e6e8cf960 running"
+sync_gate_failstate_unix_test.go:173: call 1 stdin={} exit=0 stdout="{\"hookSpecificOutput\":{\"hookEventName\":\"Stop\",\"decision\":\"block\",\"reason\":\"go vet failed\"},\"systemMessage\":\"sync-phase quality gate BLOCKED: go vet failed (go vet=1 go build=0 deps_modified=0). Detail: .moai/logs/sync-quality-gate.log\"}\n"
+sync_gate_failstate_unix_test.go:173: call 2 stdin={"stop_hook_active":true} exit=0 stdout="{\"hookSpecificOutput\":{\"hookEventName\":\"Stop\",\"decision\":\"block\",\"reason\":\"go vet failed\"},\"systemMessage\":\"sync-phase quality gate BLOCKED: go vet failed (go vet=1 go build=0 deps_modified=0). Detail: .moai/logs/sync-quality-gate.log\"}\n"
+sync_gate_failstate_unix_test.go:173: call 3 stdin={} exit=0 stdout="{\"hookSpecificOutput\":{\"hookEventName\":\"Stop\",\"decision\":\"block\",\"reason\":\"go vet failed\"},\"systemMessage\":\"sync-phase quality gate BLOCKED: go vet failed (go vet=1 go build=0 deps_modified=0). Detail: .moai/logs/sync-quality-gate.log\"}\n"
+sync_gate_failstate_unix_test.go:173: call 4 stdin={"stop_hook_active":true} exit=0 stdout="{\"hookSpecificOutput\":{\"hookEventName\":\"Stop\",\"decision\":\"block\",\"reason\":\"go vet failed\"},\"systemMessage\":\"sync-phase quality gate BLOCKED: go vet failed (go vet=1 go build=0 deps_modified=0). Detail: .moai/logs/sync-quality-gate.log\"}\n"
+sync_gate_failstate_unix_test.go:173: call 5 stdin={} exit=0 stdout="{\"hookSpecificOutput\":{\"hookEventName\":\"Stop\",\"decision\":\"block\",\"reason\":\"go vet failed\"},\"systemMessage\":\"sync-phase quality gate BLOCKED: go vet failed (go vet=1 go build=0 deps_modified=0). Detail: .moai/logs/sync-quality-gate.log\"}\n"
+sync_gate_failstate_unix_test.go:173: call 6 stdin={"stop_hook_active":true} exit=0 stdout="{\"hookSpecificOutput\":{\"hookEventName\":\"Stop\",\"decision\":\"block\",\"reason\":\"go vet failed\"},\"systemMessage\":\"sync-phase quality gate BLOCKED: go vet failed (go vet=1 go build=0 deps_modified=0). Detail: .moai/logs/sync-quality-gate.log\"}\n"
+sync_gate_failstate_unix_test.go:173: call 7 stdin={} exit=0 stdout="{\"hookSpecificOutput\":{\"hookEventName\":\"Stop\",\"decision\":\"block\",\"reason\":\"go vet failed\"},\"systemMessage\":\"sync-phase quality gate BLOCKED: go vet failed (go vet=1 go build=0 deps_modified=0). Detail: .moai/logs/sync-quality-gate.log\"}\n"
+sync_gate_failstate_unix_test.go:173: call 8 stdin={"stop_hook_active":true} exit=0 stdout="{\"hookSpecificOutput\":{\"hookEventName\":\"Stop\",\"decision\":\"block\",\"reason\":\"go vet failed\"},\"systemMessage\":\"sync-phase quality gate BLOCKED: go vet failed (go vet=1 go build=0 deps_modified=0). Detail: .moai/logs/sync-quality-gate.log\"}\n"
+sync_gate_failstate_unix_test.go:173: call 9 stdin={} exit=0 stdout="{\"hookSpecificOutput\":{\"hookEventName\":\"Stop\",\"decision\":\"block\",\"reason\":\"go vet failed\"},\"systemMessage\":\"sync-phase quality gate BLOCKED: go vet failed (go vet=1 go build=0 deps_modified=0). Detail: .moai/logs/sync-quality-gate.log\"}\n"
+sync_gate_failstate_unix_test.go:239: AC-015 N2b [release-blocking] summary: nonzero-exit=0 missing-systemMessage=0 decision-count=9 stub-delta=18
+sync_gate_failstate_unix_test.go:239: AC-015 N2b [release-blocking]: 9 of 9 stdouts carry "decision"; want exactly 0
+sync_gate_failstate_unix_test.go:239: AC-015 N2b [release-blocking]: stub count grew by 18 across the 9 runs; want 0
+sync_gate_failstate_unix_test.go:242: AC-015 swept invocations: 27 (want 27)

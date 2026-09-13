@@ -1,0 +1,6 @@
+release-integration window: held
+  holder:   lane-4 (fx-lane4, pid 14968)
+  card:     tB
+  branch:   develop (source: config)
+  worktree: /private/tmp/t637-fx-wt/develop
+  since:    2026-09-11T19:16:00Z

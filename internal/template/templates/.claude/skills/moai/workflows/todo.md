@@ -8,8 +8,9 @@
 ## What It Is
 
 A plain queue of things to work on next. An item is one line of intent — not a
-SPEC, not a plan, not an estimate. It becomes a SPEC only when the operator picks
-it and the lead dispatches it to the `plan` session.
+SPEC, not a plan, not an estimate. After the operator picks it, the lead follows
+the card class: Class A direct close, Class B run → sync, Class C plan → run → sync.
+Only Class C requires SPEC authoring.
 
 The queue is deliberately thin. It records *what the operator wants next*, and
 nothing that a SPEC, a git history, or a board would record better.
@@ -39,7 +40,7 @@ When the operator says `/moai todo "<description>"`, run
 |---|---|
 | `moai todo add "<text>"` | Append an item under the lock. Prints the issued id (`t<n>`) and its queue position. |
 | `moai todo list` | Render the queue, lock-free. The default view is the live load: `queued` and `picked` cards, with the dropped set collapsed into one count line naming `--dropped`. `moai todo list --dropped` renders the discarded set with its markers — the surface `undrop` reads. The render is bounded at 20 rows (`--limit <n>` adjusts, `0` lifts the bound); a truncated listing states the withheld count on stderr, because a truncated read must never be mistaken for a complete one. `--json` emits the structured records — every card, dropped included, and never bounded — so a machine consumer filters by the `state` field rather than by absence. |
-| `moai todo done <n> [--expect <prefix>] [--require-landed]` | Take the addressed row out of the live queue under the lock. A bare `<n>` means `t<n>`; the explicit id (`moai todo done t3`) is the preferred form because positions move. The card and every finding naming it are ARCHIVED rather than discarded, so `undone` restores both; archived rows are invisible to `list`, `next`, `why`, `analyze`, and the counts. `--expect <prefix>` refuses unless the card's text starts with the prefix — the guard against closing the wrong card. `--require-landed` refuses unless a commit on the landed ref names the card; see the note below for what it can and cannot answer. Every successful `done` prints exactly one landing verdict on stdout — `done <id> landing=landed|not-landed|unknown` — and absent the flag the verdict is `unknown`, because no query ran. |
+| `moai todo done <n> [--expect <prefix>] [--require-landed]` | Take the addressed row out of the live queue under the lock. A bare `<n>` means `t<n>`; the explicit id (`moai todo done t3`) is the preferred form because positions move. The card and every finding naming it are ARCHIVED rather than discarded, so `undone` restores both; archived rows are invisible to `list`, `next`, `why`, `analyze`, and the counts. `--expect <prefix>` refuses unless the card's text starts with the prefix — the guard against closing the wrong card. `--require-landed` refuses unless a commit on the landed ref names the card; see the note below for what it can and cannot answer. Every successful `done` prints exactly one landing verdict on stdout — `done <id> landing=landed|not-landed|unknown`. Absent the flag the verdict is `unknown` because no query ran, UNLESS the card already carries landing evidence recorded by `moai todo landed`: a validated record naming a delivering commit IS an answer, obtained earlier and stored, so the verdict reads `landed` and the line appends `sha=<delivering commit> source=operator`. The provenance travels with the value, so a stored assertion is never read as an answer this run produced. A record holding only the observed ref position appends nothing — it asserts no delivering commit. |
 | `moai todo undone <n>` | Restore an archived card to the live queue at the position it held, together with every finding that named it, and empty the archive entry. `done` + `undone` returns the queue record to the same bytes. Refused when the id has since been reissued to a different live card — the collision is named and the live card is left alone. |
 | `moai todo next` | Print the queued items oldest-first — read-only candidates. |
 | `moai todo next <n> [--spec <SPEC-ID>]` | Mark the addressed item `picked` (attaching `spec_id` when given) as one locked write. |
@@ -53,9 +54,10 @@ When the operator says `/moai todo "<description>"`, run
 | `moai todo relate <a> <b> --relation (contains\|absorbs\|replaces\|conflicts) [--note <text>]` | Record one relation between two existing cards. The verb writes a record and touches neither card; `absorbs` does not absorb. |
 | `moai todo unrelate <index>` | Remove the addressed record. The index is the one `why` prints. No card changes. |
 | `moai todo why <n>` | Print every record naming the card, or an explicit no-findings line. A card the queue knows nothing about says so rather than printing nothing. |
-| `moai todo history [<id\|n>]` | Answer what became of a card — read-only, lock-free, writes nothing. One line per lookup: `live` with the card's current state (`queued`\|`picked`\|`dropped`), `archived` with the state it held when it was closed, or `absent` when the queue holds no record — an id at or below the issued-id mark qualifies its `absent` on stderr, because a card closed by a binary predating the archive leaves none. A bare lookup id accepts the bare `<n>` form too. With no id, the archive lists newest-first, bounded at 20 (`--limit <n>` adjusts, `--limit 0` unbounded; a truncated listing states the withheld count on stderr). A store that cannot vouch for an archive — a database predating the archive tables, or a legacy `backlog.json` serving with no `backlog.db` — names itself on stderr and says no archive is available, rather than letting `absent` read as authoritative. |
+| `moai todo history [<id\|n>]` | Answer what became of a card — read-only, lock-free, writes nothing. One line per lookup: `live` with the card's current state (`queued`\|`picked`\|`dropped`), `archived` with the state it held when it was closed, or `absent` when the queue holds no record — an id at or below the issued-id mark qualifies its `absent` on stderr, because a card closed by a binary predating the archive leaves none. Each `live` and `archived` line carries a landing column before the card text — `landing=<delivering commit>` when the operator recorded one, `landing=ref-head` when the record holds only the observed ref position, `landing=-` when no record was made, and `landing=malformed` when a stored record fails validation. The SHA is rendered in full here, unlike the abbreviated cell `pr` renders into its aligned table, so a closed card's delivering commit is readable without a second lookup. The card text stays LAST, so a consumer reading the tail is unaffected by the added column. A bare lookup id accepts the bare `<n>` form too. With no id, the archive lists newest-first, bounded at 20 (`--limit <n>` adjusts, `--limit 0` unbounded; a truncated listing states the withheld count on stderr). A store that cannot vouch for an archive — a database predating the archive tables, or a legacy `backlog.json` serving with no `backlog.db` — names itself on stderr and says no archive is available, rather than letting `absent` read as authoritative. |
 | `moai todo pr [<id>]` | Report each card's open pull request or landed state — read-only, and it writes nothing. The landed question is asked about the branch this project INTEGRATES on: the ref resolves from the configured worktree base branch (`origin/<that branch>`) and falls back to `origin/main` when none is configured. A project that integrates elsewhere would otherwise read every card that shipped as not-landed — silently, because an empty commit set and a wrong ref look identical. Five outcomes: `linked` (one open PR carries the card id; confidence `exact` from the PR title, `inferred` from a single PR body), `ambiguous` (several PR bodies carry it — every candidate is listed and none is chosen), `landed` (no open PR, but the resolved ref's history names the card), `no-link` (nobody has started it), and `unknown` (the landing question could not be asked — no such ref, no git, a failed query). Two limits belong to THIS list, not to the opt-in guard alone. `landed` means SOMETHING naming the card landed on that ref — NOT that the card's LAST step landed; a card whose run commit shipped reads as landed while its sync commit is still unpushed. And `unknown` is NOT evidence of not-landed: it says the question went unasked, which is a different fact from an answer of no. The row carries seven tab-separated columns — card id, outcome, pull requests, confidence, queue state, landing evidence, card text — so a `picked` card with no commits and a `queued`, never-started one no longer render alike, and an operator's recorded landing reads beside the resolver's own verdict instead of nowhere. The evidence cell is empty for a card with no record, and the marker in it says which kind of SHA is being shown: `(operator)` for a delivering commit the operator asserted, `(ref-head)` for the machine's observation of where the ref stood. `--json` carries the same record under a `landing` key, present only on a card that has one. The card text stays the LAST field, so a consumer reading the tail is unaffected by either added column. One `gh` query per invocation, never one per card, which is why the link is a separate verb rather than a column on `list`: the queue's cheapest read stays free of the network. When `gh` is absent, unauthenticated, or offline the link column renders empty, the degradation is noted on stderr, and the exit code stays 0 — the landed check is local git and keeps running. |
 | `moai todo landed <n> [--sha <sha>] [--ref <ref>]` · `--clear` | Record — or clear — what the operator observed about a card's landing, as one locked write of one column. The record carries the ref the observation was made against, that ref's head at the observation instant, the instant itself, and the SPEC status read at record time (an explicit `unknown` when it could not be read, never a guess). `--sha` adds the delivering commit **on the operator's authority**, stored together with the fact that an operator asserted it — the machine never fills this in, because a commit that mentions a card is not a commit that delivered it. A `--sha` is checked for referential integrity before anything is stored (the object must exist, and be reachable from the ref) and the check names which half failed; a check that cannot be run at all refuses rather than degrades, because a read that cannot answer may stay permissive but a write that cannot validate may not. Recording changes nothing else — not the card's state, not its position, not its text. A second `landed` replaces the record; `--clear` removes it, and the two are mutually exclusive. |
+| `moai todo auto-done [--fetch] [--dry-run] [--json]` | The lead's post-push batch closer — never a lane surface. After a batch push is confirmed on the remote (`git fetch origin develop && git rev-parse origin/develop` shows the ref moved), the lead runs it `--dry-run` first to read the planned closes, then live. The scan closes cards whose SPEC reads `completed` and whose landing is proven by one of two evidence forms — a recorded delivering SHA, or a landing commit whose subject attributes the card id (a subject carrying two distinct card tokens attributes nothing; a reissued id skips `ambiguous-id`). Everything else skips with a stated reason from the closed four-token vocabulary (`skip <id> reason=<reason>`); a close prints `done <id> landing=landed source=auto-land ref=<ref> form=<form>`. Closes apply in one locked write, an append-only JSONL log under the runtime state dir records every execution, and `undone` reverses any close. `--fetch` runs exactly one `git fetch`; absent the flag, zero network fetches. `--dry-run` writes nothing. Exit 0 covers closes and skips alike; exit 1 only when the store is unreadable. |
 
 [HARD] `edit`, `move`, `drop`, `undrop`, `done`, and `undone` are operator
 acts, exactly like `add` and the pick. Correct a card's wording, move it, or discard it because
@@ -67,6 +69,8 @@ records the operator's intent; it does not curate it.
 transition. Recording that a card's work landed does not close the card, move it, or mark it
 done — the operator still decides that, with `done`. The queue stores what the operator
 observed; it never acts on it.
+
+[HARD] `auto-done` is a LEAD surface, never a lane one. It closes cards the operator already picked, after the remote landing is confirmed; a lane never runs it, and it is never a substitute for reading the evidence — the printed close and skip lines plus the audit log are what the lead reads.
 
 [HARD] `--require-landed` is OPT-IN and honestly limited. It asks whether ANY
 commit on the landed ref names the card — not whether the card's LAST step
@@ -110,6 +114,7 @@ Acting on a record is the operator's act, performed through `drop`, `edit`, or
 
 ```json
 {
+  "project_uuid": "<uuid>",
   "version": 1,
   "last_seq": 12,
   "items": [
@@ -131,8 +136,18 @@ Acting on a record is the operator's act, performed through `drop`, `edit`, or
       "note": "",
       "at": "<RFC3339 timestamp>"
     }
-  ]
+  ],
+  "archived": []
 }
+```
+
+The top level is a single JSON OBJECT — the card array lives under `items`, so a
+consumer must reach it through that key. A guess that the top level is an array
+(`jq '.[0]'`, `jq 'length'`) fails with a jq type error (exit 5) (t696):
+
+```bash
+moai todo list --json | jq -r '.items[] | select(.state == "queued") | .id'  # correct
+moai todo list --json | jq '.[0]'                                            # WRONG — Cannot index object with number
 ```
 
 - `id` — assigned on append, never reused after removal (`last_seq` is the
@@ -190,9 +205,11 @@ work without that answer has preselected, whatever it calls the step.
 
 Once picked:
 
-1. Record it with `moai todo next <n> --spec <SPEC-ID>` (one locked write).
-2. Dispatch to the `plan` session per `kanban-dispatch.md` — the card enters
-   the `plan` column, and SPEC authoring happens there, not here.
+1. Record it with `moai todo next <n> [--spec <SPEC-ID>]` (one locked write).
+   Attach the SPEC only when one exists and its identifier is known.
+2. Follow `kanban-dispatch.md`'s card class: Class A direct close, Class B
+   run → sync without a SPEC, Class C plan → run → sync with SPEC authoring
+   in plan. A pick alone neither creates a SPEC nor requires one.
 
 ## Standing sources
 

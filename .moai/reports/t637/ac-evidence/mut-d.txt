@@ -1,0 +1,66 @@
+=== RUN   TestIntegrationAcquire_RecordsBranchSource
+=== RUN   TestIntegrationAcquire_RecordsBranchSource/flag
+    integration_target_test.go:372: branch_source = "caller", want "flag"
+=== RUN   TestIntegrationAcquire_RecordsBranchSource/config
+    integration_target_test.go:410: branch_source = "caller", want "config"
+    integration_target_test.go:424: status text does not show the provenance on the branch line:
+        release-integration window: held
+          holder:   sess-lane12 (pid 14968)
+          branch:   fixture-integration (source: caller)
+          worktree: /private/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestIntegrationAcquire_RecordsBranchSourceconfig3030092702/002/integration-tree
+          since:    2026-09-11T19:10:55Z
+    integration_target_test.go:431: status --json lock object does not carry branch_source: {"held":true,"lock":{"session_id":"sess-lane12","pid":14968,"pid_source":"session-owner","branch":"fixture-integration","worktree":"/private/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestIntegrationAcquire_RecordsBranchSourceconfig3030092702/002/integration-tree","acquired_at":"2026-09-11T19:10:55Z","branch_source":"caller"},"root":"/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestIntegrationAcquire_RecordsBranchSourceconfig3030092702/001","stale":false}
+--- FAIL: TestIntegrationAcquire_RecordsBranchSource (1.10s)
+    --- FAIL: TestIntegrationAcquire_RecordsBranchSource/flag (0.55s)
+    --- FAIL: TestIntegrationAcquire_RecordsBranchSource/config (0.55s)
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/cli	2.069s
+testing: warning: no tests to run
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/cli/agentlint	1.307s [no tests to run]
+testing: warning: no tests to run
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/cli/harness	2.527s [no tests to run]
+testing: warning: no tests to run
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/cli/pr	2.165s [no tests to run]
+testing: warning: no tests to run
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/cli/preference	2.015s [no tests to run]
+testing: warning: no tests to run
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/cli/printer	1.448s [no tests to run]
+testing: warning: no tests to run
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/cli/specid	3.018s [no tests to run]
+testing: warning: no tests to run
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/cli/taskledger	1.132s [no tests to run]
+testing: warning: no tests to run
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/cli/uikit	2.367s [no tests to run]
+testing: warning: no tests to run
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/cli/update	1.003s [no tests to run]
+testing: warning: no tests to run
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/cli/update/backup	1.870s [no tests to run]
+testing: warning: no tests to run
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/cli/update/deploy	1.660s [no tests to run]
+testing: warning: no tests to run
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/cli/update/merge	2.900s [no tests to run]
+testing: warning: no tests to run
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/cli/update/plan	2.657s [no tests to run]
+testing: warning: no tests to run
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/cli/update/report	3.333s [no tests to run]
+testing: warning: no tests to run
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/cli/wizard	3.193s [no tests to run]
+testing: warning: no tests to run
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/cli/worktree	2.540s [no tests to run]
+FAIL

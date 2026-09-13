@@ -269,12 +269,9 @@ type LLMConfig struct {
 	// predicate (template.IsGLMBackend, REQ-MTP-026) keeps mode=="glm" only as a
 	// defensive OR for this dormant field.
 	Mode string `yaml:"mode"`
-	// TeamMode selection: "" (`moai cc` / unset), "cg" (`moai cg` — Claude leader +
-	// GLM teammates), or "glm" (`moai glm` — all-GLM). These are the values
-	// persistTeamMode (internal/cli/glm.go) actually writes; "claude"/"hybrid" are
-	// legacy non-GLM values retained for backward-compat parsing. The GLM
-	// backend-detection predicate (template.IsGLMBackend) treats team_mode ∈
-	// {cg, glm} as a GLM backend.
+	// TeamMode stores explicit session intent. "glm" selects GLM; "claude"
+	// and unset select ordinary Claude policy. Historical "cg" remains readable
+	// as data, but launch requires explicit migration and never activates GLM.
 	TeamMode string `yaml:"team_mode"`
 	// Environment variable name for GLM API key
 	GLMEnvVar string `yaml:"glm_env_var"`
@@ -476,6 +473,12 @@ type WorkflowConfig struct {
 	// meant to turn off.
 	SettingsDriftGate SettingsDriftGateConfig `yaml:"settings_drift_gate"`
 
+	// SlotLease carries the resource slot lease settings (card t607): the
+	// opt-in PreToolUse guard flag, the default declared maximum duration, and
+	// the per-resource command patterns. Default OFF; the `moai slot` verbs
+	// work regardless of Enabled. Deliberately separate from IntegrationLock.
+	SlotLease SlotLeaseConfig `yaml:"slot_lease"`
+
 	// Codex gates the codex audit backend + the Stop-hook review gate
 	// (SPEC-MOAI-MCP-SERVER-001 M2). The ReviewGate sub-block is the opt-in
 	// toggle for `moai hook codex-review-gate` — it ships default-OFF (C6);
@@ -615,12 +618,18 @@ type TokenBudgetConfig struct {
 // Distinct from GitStrategyConfig.WorktreeRoot (different key domain, no conflict).
 //
 // Reader status (SPEC-CONFIG-KEY-HONESTY-001 M5, updated by
-// SPEC-INIT-WIZARD-REPAIR-001 REQ-009): AutoCreate is read once by
-// internal/cli/worktree_advisory.go only to select advisory wording — it does
-// not gate worktree creation. AutoCleanup is read by the two auto-cleanup
-// paths (internal/cli/session_worktree.go cleanupSessionWorktree and
+// SPEC-INIT-WIZARD-REPAIR-001 REQ-009 and
+// SPEC-WORKTREE-KEY-WIRING-001 REQ-WKW-012): AutoCreate is read once by
+// internal/cli/worktree_advisory.go only to select advisory wording — its
+// declared scope is the wording; it does not gate worktree creation.
+// AutoCleanup is read by the two auto-cleanup paths
+// (internal/cli/session_worktree.go cleanupSessionWorktree and
 // session_worktree_prmerge.go prMergeCleanup), gating worktree removal.
-// AutoMerge has no production reader (declared but not read).
+// AutoMerge is read by the session-exit auto-merge path
+// (internal/cli/session_worktree_automerge.go sessionExitAutoMerge): when
+// true, a clean session exit merges the session worktree's branch into the
+// configured git-flow develop branch — a local merge inside the
+// release-integration window, never a push.
 // SessionNamePattern has no production reader (no code builds a session name
 // from it).
 type WorkflowWorktreeConfig struct {
@@ -687,6 +696,26 @@ type IntegrationLockConfig struct {
 // the default-OFF posture was chosen for, and would pass every other check.
 type SettingsDriftGateConfig struct {
 	Enabled bool `yaml:"enabled"`
+}
+
+// SlotLeaseConfig mirrors workflow.slot_lease.* (card t607). Enabled gates the
+// PreToolUse guard's deny layer only; DefaultMaxDuration is a duration string
+// parsed at use; Resources maps a resource name to its command patterns.
+// Resource entries decode leniently (slot_lease_config.go) so one malformed
+// entry cannot turn the whole workflow section off.
+type SlotLeaseConfig struct {
+	Enabled            bool                               `yaml:"enabled"`
+	DefaultMaxDuration string                             `yaml:"default_max_duration"`
+	Resources          map[string]SlotLeaseResourceConfig `yaml:"resources"`
+}
+
+// SlotLeaseResourceConfig is one resource entry: RE2 command patterns matched
+// against a Bash command with quoted spans scrubbed. Invalid is non-empty when
+// the entry could not be read as a list of pattern strings; such an entry is
+// reported by the guard (fail-open) rather than failing the whole section.
+type SlotLeaseResourceConfig struct {
+	Commands []string `yaml:"commands"`
+	Invalid  string   `yaml:"-"`
 }
 
 // AgentModelGuardConfig mirrors workflow.agent_model_guard.* — the opt-in
@@ -1325,6 +1354,7 @@ type ContextTokenBudget struct {
 // plan.questions_per_round, and skip_conditions to control Socratic interview behavior.
 type InterviewConfig struct {
 	ClarityThreshold   int           `yaml:"clarity_threshold"`
+	DecisionGate       string        `yaml:"decision_gate"`
 	Enabled            bool          `yaml:"enabled"`
 	Plan               InterviewMode `yaml:"plan"`
 	Project            InterviewMode `yaml:"project"`
@@ -1342,6 +1372,20 @@ func (c InterviewConfig) ResolvedRecommendationMode() string {
 		return "pull"
 	}
 	return "push"
+}
+
+// ResolvedDecisionGate returns the resolved decision-gate axis: "on" only
+// when the key holds exactly "on"; "off" otherwise — including when the key
+// is absent, empty, or unrecognized (REQ-DA-002, REQ-DA-003). The raw value
+// stays on DecisionGate, so an unrecognized setting is recorded verbatim
+// rather than silently discarded. This resolver reads its own field only: the
+// decision-gate axis is orthogonal to the recommendation-mode axis above and
+// neither reads, writes, nor conditions on the other (REQ-DA-018).
+func (c InterviewConfig) ResolvedDecisionGate() string {
+	if c.DecisionGate == "on" {
+		return "on"
+	}
+	return "off"
 }
 
 // InterviewMode holds per-mode interview settings.

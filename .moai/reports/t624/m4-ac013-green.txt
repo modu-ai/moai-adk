@@ -1,0 +1,15 @@
+=== RUN   TestSyncGateFailState_AC013_RetryByDeletionNoStaleAuxState
+=== RUN   TestSyncGateFailState_AC013_RetryByDeletionNoStaleAuxState/D1
+=== RUN   TestSyncGateFailState_AC013_RetryByDeletionNoStaleAuxState/S1
+=== RUN   TestSyncGateFailState_AC013_RetryByDeletionNoStaleAuxState/S2
+    sync_gate_failstate_test.go:785: AC-013 S2 [regression-guard] call 2 stub delta=2 observations=[absent absent] stdout="{\"hookSpecificOutput\":{\"hookEventName\":\"Stop\",\"decision\":\"block\",\"reason\":\"go vet failed\"},\"systemMessage\":\"sync-phase quality gate BLOCKED: go vet failed (go vet=1 go build=0 deps_modified=0). Detail: .moai/logs/sync-quality-gate.log\"}\n"
+=== RUN   TestSyncGateFailState_AC013_RetryByDeletionNoStaleAuxState/S3
+    sync_gate_failstate_test.go:841: AC-013 S3 [regression-guard] call 2 stub delta=2 refused-moves=1 stdout="{\"hookSpecificOutput\":{\"hookEventName\":\"Stop\",\"decision\":\"block\",\"reason\":\"go vet failed\"},\"systemMessage\":\"sync-phase quality gate BLOCKED: go vet failed (go vet=1 go build=0 deps_modified=0). Detail: .moai/logs/sync-quality-gate.log\"}\n"
+    sync_gate_failstate_test.go:863: AC-013 S3 [regression-guard] call 3 stub delta=2 stdout="{\"hookSpecificOutput\":{\"hookEventName\":\"Stop\",\"decision\":\"block\",\"reason\":\"go vet failed\"},\"systemMessage\":\"sync-phase quality gate BLOCKED: go vet failed (go vet=1 go build=0 deps_modified=0). Detail: .moai/logs/sync-quality-gate.log\"}\n"
+--- PASS: TestSyncGateFailState_AC013_RetryByDeletionNoStaleAuxState (6.20s)
+    --- PASS: TestSyncGateFailState_AC013_RetryByDeletionNoStaleAuxState/D1 (1.68s)
+    --- PASS: TestSyncGateFailState_AC013_RetryByDeletionNoStaleAuxState/S1 (1.29s)
+    --- PASS: TestSyncGateFailState_AC013_RetryByDeletionNoStaleAuxState/S2 (1.23s)
+    --- PASS: TestSyncGateFailState_AC013_RetryByDeletionNoStaleAuxState/S3 (2.01s)
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/hook	6.945s

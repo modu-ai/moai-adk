@@ -75,6 +75,8 @@ PRESERVE targets (do NOT reimplement): `internal/profile/` read/write/sync logic
 - Tests: loopback Host passes; foreign Host on a `POST` → 403 + state unchanged; `GET` is not Host-gated (read-only is safe).
 - Deliverable: Host-check middleware + tests. Depends on: Phase 5.
 
+> **Superseded in part — 2026-09-10 (card t613).** The Phase 6 method scope ("mutating methods") and the test bullet "`GET` is not Host-gated (read-only is safe)" are superseded; the text above is kept as written. REQ-WC-009 as amended gates every method on every route, `/static/` included, and the GET test is inverted. See `spec.md` § REQ-WC-009 supersession block and `acceptance.md` § AC-WC-009 as amended.
+
 ### Phase 7 — Golden-path integration test (all REQs)
 - Bootstrap a temp env with `t.TempDir()` (isolated profile dir + project config sections).
 - Start the Console on a random free port (avoid 8080 conflicts).
@@ -100,6 +102,8 @@ manager-develop reports completion with: AC PASS/FAIL matrix (acceptance.md SSOT
 | R5: Direct YAML write bypasses sync semantics | `statusline.yaml` segment defaults / migration lost | Persist ONLY via `WritePreferences` + `SyncToProjectConfig` (REQ-WC-007); the latter owns `syncStatusline` defaults. |
 | R6: Cross-platform build break (signal/exec) | Windows build fails | Use stdlib `os/signal` (cross-platform). If any platform-specific primitive is needed, isolate with build tags; verify `GOOS=windows GOARCH=amd64 go build ./...`. |
 | R7: Over-engineering creep (auth/SPA/DB) | Scope bloat, Goal Anti violation | Exclusions section is HARD; reviewer rejects any auth/session/DB/SPA/SSE addition. |
+
+> **R3 analysis note — 2026-09-10 (card t613).** R3's impact column lists "Unauthorized mutation" only. The read-exposure impact of DNS rebinding was never analyzed, and the mitigation "Loopback bind is the outer boundary" does not hold for reads: the rebinding browser connects to 127.0.0.1 while sending `Host: <attacker domain>`, and, being same-origin from its own view, it reads the response. The R3 row above and the §C "Write-safety" row ("Host-header check on mutating requests") are kept as written. Their method scope is superseded by the all-route Host check in `spec.md` § REQ-WC-009 as amended. Evidence: `.moai/reports/t613/verdict.md` §2.
 
 ## G. MX Tag Plan
 

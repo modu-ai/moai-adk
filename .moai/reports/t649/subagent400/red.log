@@ -1,0 +1,9 @@
+--- FAIL: TestToolReferenceActivatesOnlySelectedSchema (0.00s)
+    tool_reference_test.go:13: only text is supported here
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/gateway/translate	0.728s
+--- FAIL: TestToolReferenceCanonicalPrefixPreservesName (0.00s)
+    tool_reference_test.go:11: invalid conversation receipt
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/gateway/receipt	0.405s
+FAIL

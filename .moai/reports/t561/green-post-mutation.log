@@ -1,0 +1,16 @@
+=== RUN   TestCoverageSiblingTable_HeaderColumnWithSameCellExpansion
+--- PASS: TestCoverageSiblingTable_HeaderColumnWithSameCellExpansion (0.39s)
+=== RUN   TestCoverageSiblingTable_OnlyHeaderColumnsAndOnlySameCell
+--- PASS: TestCoverageSiblingTable_OnlyHeaderColumnsAndOnlySameCell (0.42s)
+=== RUN   TestCoverageSiblingTable_RowWithoutACIsNotCoverage
+--- PASS: TestCoverageSiblingTable_RowWithoutACIsNotCoverage (0.44s)
+=== RUN   TestCoverageSiblingTable_UnidentifiedHeaderCollectsNothing
+--- PASS: TestCoverageSiblingTable_UnidentifiedHeaderCollectsNothing (0.46s)
+=== RUN   TestCoverageSibling_CoveredByAcceptanceMD
+--- PASS: TestCoverageSibling_CoveredByAcceptanceMD (0.40s)
+=== RUN   TestCoverageSibling_UncoveredStillFires
+--- PASS: TestCoverageSibling_UncoveredStillFires (0.37s)
+=== RUN   TestCoverageSibling_NoAcceptanceArtifact
+--- PASS: TestCoverageSibling_NoAcceptanceArtifact (0.34s)
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/spec	3.067s

@@ -1,0 +1,47 @@
+=== RUN   TestMergeUserFiles_SnapshotBaseDeliversTemplateValueChange
+=== RUN   TestMergeUserFiles_SnapshotBaseDeliversTemplateValueChange/with_canonical
+    settings_snapshot_base_test.go:105: statusLine.command = old, want new
+    settings_snapshot_base_test.go:108: env.PATH = /old, want /new
+    settings_snapshot_base_test.go:111: permissions.deny = [A], want [A B]
+=== RUN   TestMergeUserFiles_SnapshotBaseDeliversTemplateValueChange/control_no_canonical
+--- FAIL: TestMergeUserFiles_SnapshotBaseDeliversTemplateValueChange (0.01s)
+    --- FAIL: TestMergeUserFiles_SnapshotBaseDeliversTemplateValueChange/with_canonical (0.00s)
+    --- PASS: TestMergeUserFiles_SnapshotBaseDeliversTemplateValueChange/control_no_canonical (0.00s)
+=== RUN   TestMergeUserFiles_SnapshotBaseKeepsUserEdit
+--- PASS: TestMergeUserFiles_SnapshotBaseKeepsUserEdit (0.00s)
+=== RUN   TestMergeUserFiles_SnapshotBaseBothChangedReportsConflict
+    settings_snapshot_base_test.go:158: conflict line count = 0, want 1:
+          ✓ .claude/settings.json user customizations preserved
+          ✓ Merged 1 file(s) with 3-way merge engine
+--- FAIL: TestMergeUserFiles_SnapshotBaseBothChangedReportsConflict (0.00s)
+=== RUN   TestMergeUserFiles_SnapshotFallbackMatchesDerivedBase
+=== RUN   TestMergeUserFiles_SnapshotFallbackMatchesDerivedBase/absent
+=== RUN   TestMergeUserFiles_SnapshotFallbackMatchesDerivedBase/unreadable_dir
+=== RUN   TestMergeUserFiles_SnapshotFallbackMatchesDerivedBase/invalid_json
+=== RUN   TestMergeUserFiles_SnapshotFallbackMatchesDerivedBase/json_array
+=== RUN   TestMergeUserFiles_SnapshotFallbackMatchesDerivedBase/json_null
+--- PASS: TestMergeUserFiles_SnapshotFallbackMatchesDerivedBase (0.02s)
+    --- PASS: TestMergeUserFiles_SnapshotFallbackMatchesDerivedBase/absent (0.00s)
+    --- PASS: TestMergeUserFiles_SnapshotFallbackMatchesDerivedBase/unreadable_dir (0.00s)
+    --- PASS: TestMergeUserFiles_SnapshotFallbackMatchesDerivedBase/invalid_json (0.00s)
+    --- PASS: TestMergeUserFiles_SnapshotFallbackMatchesDerivedBase/json_array (0.00s)
+    --- PASS: TestMergeUserFiles_SnapshotFallbackMatchesDerivedBase/json_null (0.00s)
+=== RUN   TestMergeUserFiles_SnapshotBaseAddsNewTemplateKey
+--- PASS: TestMergeUserFiles_SnapshotBaseAddsNewTemplateKey (0.00s)
+=== RUN   TestMergeUserFiles_SnapshotBaseScopedToSettingsJSON
+--- PASS: TestMergeUserFiles_SnapshotBaseScopedToSettingsJSON (0.00s)
+=== RUN   TestMergeUserFiles_SnapshotBaseHonorsUserKeyDeletion
+=== RUN   TestMergeUserFiles_SnapshotBaseHonorsUserKeyDeletion/with_canonical
+    settings_snapshot_base_test.go:249: user-deleted statusLine came back: map[model:sonnet statusLine:map[command:x]]
+=== RUN   TestMergeUserFiles_SnapshotBaseHonorsUserKeyDeletion/control_no_canonical
+--- FAIL: TestMergeUserFiles_SnapshotBaseHonorsUserKeyDeletion (0.00s)
+    --- FAIL: TestMergeUserFiles_SnapshotBaseHonorsUserKeyDeletion/with_canonical (0.00s)
+    --- PASS: TestMergeUserFiles_SnapshotBaseHonorsUserKeyDeletion/control_no_canonical (0.00s)
+=== RUN   TestMergeUserFiles_SnapshotBaseArrayIsWholeLeaf
+    settings_snapshot_base_test.go:275: conflict line count = 0, want 1:
+          ✓ .claude/settings.json user customizations preserved
+          ✓ Merged 1 file(s) with 3-way merge engine
+--- FAIL: TestMergeUserFiles_SnapshotBaseArrayIsWholeLeaf (0.00s)
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/cli/update/merge	0.601s
+FAIL

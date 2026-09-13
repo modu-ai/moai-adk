@@ -1,0 +1,26 @@
+=== root .claude md-files-scanned=     385
+--- 'SPEC-review' / 'SPEC review':
+.claude/skills/moai/workflows/plan/spec-assembly.md:252:For `thorough` harness with `cross_validate_with_evaluator_active: true`: after plan-auditor PASS, additionally invoke sync-auditor in SPEC-review mode to cross-validate must-pass criteria. If sync-auditor disagrees with plan-auditor's PASS, treat as FAIL and trigger one additional iteration.
+--- 'run_in_background: false':
+.claude/agents/harness/hns-release-update-specialist.md:152:Delegate to manager-docs (foreground, `run_in_background: false`): update
+.claude/agents/harness/hns-release-update-specialist.md:162:Step 7b — Delegate to manager-git (`run_in_background: false`):
+.claude/skills/moai/workflows/run.md:191:| Foreground | sub-agent runs `run_in_background: false` (it patches code; background-write prohibition binds) | `agent-common-protocol.md` § Background Agent Execution |
+--- '§E Recursive Self-Diagnosis':
+.claude/skills/moai/workflows/run.md:193:| Ledger | [HARD] each iteration appended to `progress.md` `## §E Recursive Self-Diagnosis Log` (iteration #, classification, root-cause, patch, VERIFY result, escalation reason); grep-verifiable via `grep -A 10 "Recursive Self-Diagnosis Log" .moai/specs/<SPEC-ID>/progress.md` | `runtime-recovery-doctrine.md` §3 invariant 4 (abort-closes-ledger) |
+--- 'background-write prohibition':
+.claude/skills/moai/workflows/run.md:191:| Foreground | sub-agent runs `run_in_background: false` (it patches code; background-write prohibition binds) | `agent-common-protocol.md` § Background Agent Execution |
+--- control 'Recursive Self-Diagnosis Log' (any letter):
+.claude/rules/moai/development/spec-frontmatter-schema.md:122:| `## §H Recursive Self-Diagnosis Log` | Phase 2 bounded recursive self-diagnosis loop record (DIAGNOSE-PATCH-VERIFY, mechanical failures) | No | manager-develop / orchestrator (run-phase) |
+.claude/skills/moai/workflows/run.md:193:| Ledger | [HARD] each iteration appended to `progress.md` `## §E Recursive Self-Diagnosis Log` (iteration #, classification, root-cause, patch, VERIFY result, escalation reason); grep-verifiable via `grep -A 10 "Recursive Self-Diagnosis Log" .moai/specs/<SPEC-ID>/progress.md` | `runtime-recovery-doctrine.md` §3 invariant 4 (abort-closes-ledger) |
+=== root internal/template/templates/.claude md-files-scanned=     341
+--- 'SPEC-review' / 'SPEC review':
+internal/template/templates/.claude/skills/moai/workflows/plan/spec-assembly.md:252:For `thorough` harness with `cross_validate_with_evaluator_active: true`: after plan-auditor PASS, additionally invoke sync-auditor in SPEC-review mode to cross-validate must-pass criteria. If sync-auditor disagrees with plan-auditor's PASS, treat as FAIL and trigger one additional iteration.
+--- 'run_in_background: false':
+internal/template/templates/.claude/skills/moai/workflows/run.md:191:| Foreground | sub-agent runs `run_in_background: false` (it patches code; background-write prohibition binds) | `agent-common-protocol.md` § Background Agent Execution |
+--- '§E Recursive Self-Diagnosis':
+internal/template/templates/.claude/skills/moai/workflows/run.md:193:| Ledger | [HARD] each iteration appended to `progress.md` `## §E Recursive Self-Diagnosis Log` (iteration #, classification, root-cause, patch, VERIFY result, escalation reason); grep-verifiable via `grep -A 10 "Recursive Self-Diagnosis Log" .moai/specs/<SPEC-ID>/progress.md` | `runtime-recovery-doctrine.md` §3 invariant 4 (abort-closes-ledger) |
+--- 'background-write prohibition':
+internal/template/templates/.claude/skills/moai/workflows/run.md:191:| Foreground | sub-agent runs `run_in_background: false` (it patches code; background-write prohibition binds) | `agent-common-protocol.md` § Background Agent Execution |
+--- control 'Recursive Self-Diagnosis Log' (any letter):
+internal/template/templates/.claude/rules/moai/development/spec-frontmatter-schema.md:122:| `## §H Recursive Self-Diagnosis Log` | Phase 2 bounded recursive self-diagnosis loop record (DIAGNOSE-PATCH-VERIFY, mechanical failures) | No | manager-develop / orchestrator (run-phase) |
+internal/template/templates/.claude/skills/moai/workflows/run.md:193:| Ledger | [HARD] each iteration appended to `progress.md` `## §E Recursive Self-Diagnosis Log` (iteration #, classification, root-cause, patch, VERIFY result, escalation reason); grep-verifiable via `grep -A 10 "Recursive Self-Diagnosis Log" .moai/specs/<SPEC-ID>/progress.md` | `runtime-recovery-doctrine.md` §3 invariant 4 (abort-closes-ledger) |

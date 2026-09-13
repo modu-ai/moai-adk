@@ -1,0 +1,53 @@
+=== RUN   TestToolPolicyList_QueryFilters
+=== PAUSE TestToolPolicyList_QueryFilters
+=== CONT  TestToolPolicyList_QueryFilters
+=== RUN   TestToolPolicyList_QueryFilters/all_entries
+=== PAUSE TestToolPolicyList_QueryFilters/all_entries
+=== RUN   TestToolPolicyList_QueryFilters/filter_irreversible
+=== PAUSE TestToolPolicyList_QueryFilters/filter_irreversible
+=== RUN   TestToolPolicyList_QueryFilters/filter_allow
+=== PAUSE TestToolPolicyList_QueryFilters/filter_allow
+=== RUN   TestToolPolicyList_QueryFilters/filter_deny
+=== PAUSE TestToolPolicyList_QueryFilters/filter_deny
+=== RUN   TestToolPolicyList_QueryFilters/filter_ask
+=== PAUSE TestToolPolicyList_QueryFilters/filter_ask
+=== RUN   TestToolPolicyList_QueryFilters/filter_tool_Bash
+=== PAUSE TestToolPolicyList_QueryFilters/filter_tool_Bash
+=== CONT  TestToolPolicyList_QueryFilters/all_entries
+=== CONT  TestToolPolicyList_QueryFilters/filter_deny
+=== CONT  TestToolPolicyList_QueryFilters/filter_irreversible
+=== CONT  TestToolPolicyList_QueryFilters/filter_ask
+=== NAME  TestToolPolicyList_QueryFilters/filter_irreversible
+    tool_policy_test.go:110: entry rows = 1; want 2;
+        got:
+        TOOL  ARGS                RISK          DECISION  OWNER         AUDIT
+        Bash  git push --force:*  irreversible  deny      orchestrator  rewrites shared history
+=== CONT  TestToolPolicyList_QueryFilters/filter_tool_Bash
+    tool_policy_test.go:110: entry rows = 2; want 3;
+        got:
+        TOOL  ARGS                RISK          DECISION  OWNER         AUDIT
+        Bash  git push --force:*  irreversible  deny      orchestrator  rewrites shared history
+        Bash  go test:*           read          allow     orchestrator  runs unit checks
+=== CONT  TestToolPolicyList_QueryFilters/filter_allow
+=== NAME  TestToolPolicyList_QueryFilters/all_entries
+    tool_policy_test.go:110: entry rows = 3; want 5;
+        got:
+        TOOL  ARGS                RISK          DECISION  OWNER         AUDIT
+        Bash  git push --force:*  irreversible  deny      orchestrator  rewrites shared history
+        Bash  go test:*           read          allow     orchestrator  runs unit checks
+        Read  (tool-level)        read          allow     orchestrator  reads files
+=== NAME  TestToolPolicyList_QueryFilters/filter_ask
+    tool_policy_test.go:110: entry rows = 0; want 2;
+        got:
+        TOOL  ARGS  RISK  DECISION  OWNER  AUDIT
+--- FAIL: TestToolPolicyList_QueryFilters (0.00s)
+    --- FAIL: TestToolPolicyList_QueryFilters/filter_irreversible (0.00s)
+    --- FAIL: TestToolPolicyList_QueryFilters/filter_tool_Bash (0.00s)
+    --- FAIL: TestToolPolicyList_QueryFilters/all_entries (0.00s)
+    --- PASS: TestToolPolicyList_QueryFilters/filter_allow (0.00s)
+    --- PASS: TestToolPolicyList_QueryFilters/filter_deny (0.00s)
+    --- FAIL: TestToolPolicyList_QueryFilters/filter_ask (0.00s)
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/cli	0.963s
+FAIL
+EXIT=1

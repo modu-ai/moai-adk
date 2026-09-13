@@ -1,0 +1,24 @@
+== local
+006 dl-default test-e=0 test-s=1
+006 de-default grep-exit=1
+006 source: final-local-dl.md:2 final-local-de.md:1 
+026 (i): final-local-skill.md:1 final-local-ref.md:1 final-local-sync.md:1 final-local-dl.md:7 final-local-sync-usage.md:1 final-local-hint.md:1 final-local-dl-next.md:1  | qgc: final-local-qgc-args.md:1 final-local-qgc-flags.md:2 
+026 (ii) test-e=0 test-s=1
+026 (iii): final-local-skill.md:1 final-local-sync.md:1 final-local-qgc-flags.md:1 final-local-dl.md:2 
+026 merge-lines: 5
+027 dl-count=1 (i) test-e=0 test-s=1 (ii) test-e=0 test-s=1
+028 (a) mg=1 dl=1 (b) test-e=0 test-s=1
+029 (a) mg=1 dl=1 (b) test-e=0 test-s=1
+028 mode-lines: 14
+== template
+006 dl-default test-e=0 test-s=1
+006 de-default grep-exit=1
+006 source: final-template-dl.md:2 final-template-de.md:1 
+026 (i): final-template-skill.md:1 final-template-ref.md:1 final-template-sync.md:1 final-template-dl.md:7 final-template-sync-usage.md:1 final-template-hint.md:1 final-template-dl-next.md:1  | qgc: final-template-qgc-args.md:1 final-template-qgc-flags.md:2 
+026 (ii) test-e=0 test-s=1
+026 (iii): final-template-skill.md:1 final-template-sync.md:1 final-template-qgc-flags.md:1 final-template-dl.md:2 
+026 merge-lines: 5
+027 dl-count=1 (i) test-e=0 test-s=1 (ii) test-e=0 test-s=1
+028 (a) mg=1 dl=1 (b) test-e=0 test-s=1
+029 (a) mg=1 dl=1 (b) test-e=0 test-s=1
+028 mode-lines: 14

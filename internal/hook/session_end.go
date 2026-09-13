@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io/fs"
 	"log/slog"
 	"os"
 	"os/exec"
@@ -13,6 +14,7 @@ import (
 	"time"
 
 	"github.com/modu-ai/moai-adk/internal/config"
+	"github.com/modu-ai/moai-adk/internal/gitenv"
 	"github.com/modu-ai/moai-adk/internal/graph"
 	"github.com/modu-ai/moai-adk/internal/homestate"
 	"github.com/modu-ai/moai-adk/internal/hook/handoff"
@@ -259,6 +261,10 @@ func projectSlug(absPath string) string {
 func getModifiedGoFiles(ctx context.Context, projectDir string) []string {
 	cmd := exec.CommandContext(ctx, "git", "diff", "--name-only", "HEAD")
 	cmd.Dir = projectDir
+	// cmd.Dir does not decide which repository this reads: a GIT_DIR inherited
+	// from a hook outranks it, and the modified-file list would then come from
+	// another repository entirely.
+	cmd.Env = gitenv.Env()
 	out, err := cmd.Output()
 	if err != nil {
 		// git diff may fail in non-git environments; this is expected
@@ -425,9 +431,59 @@ func cleanupCurrentSessionTeam(sessionID, homeDir string) {
 	}
 }
 
-// garbageCollectStaleTeams removes team directories that have not been
-// modified in more than 24 hours. This catches teams left behind by
-// interrupted sessions. Errors are logged and never returned.
+// newestActivity reports the most recent modification time anywhere under
+// root, including root itself.
+//
+// A directory's own mtime advances only when an entry is created, removed, or
+// renamed inside it — never when an existing file is rewritten in place. A team
+// whose config.json is updated over and over therefore keeps the mtime it was
+// born with, so the directory clock on its own reads a busy tree as silent.
+// Walking the tree measures what actually happened in it.
+//
+// An unreadable entry makes the answer incomplete rather than old, and is
+// returned as an error: an open question is never grounds for deleting data.
+func newestActivity(root string) (time.Time, error) {
+	info, err := os.Stat(root)
+	if err != nil {
+		return time.Time{}, err
+	}
+
+	newest := info.ModTime()
+	var walkErr error
+	err = filepath.WalkDir(root, func(_ string, d fs.DirEntry, err error) error {
+		if err != nil {
+			walkErr = err
+			return nil
+		}
+		entryInfo, err := d.Info()
+		if err != nil {
+			walkErr = err
+			return nil
+		}
+		if entryInfo.ModTime().After(newest) {
+			newest = entryInfo.ModTime()
+		}
+		return nil
+	})
+	if err != nil {
+		return time.Time{}, err
+	}
+	if walkErr != nil {
+		return time.Time{}, walkErr
+	}
+	return newest, nil
+}
+
+// garbageCollectStaleTeams removes team directories that have gone completely
+// quiet for more than 24 hours, catching teams left behind by interrupted
+// sessions.
+//
+// Quiet is measured across the team directory's contents AND its matching task
+// directory's contents, not from the team directory's own inode clock: that
+// clock stops advancing while a live team rewrites its files in place, and
+// reading it as an age deletes a running team's data along with the task list
+// it is still working on — including a team this session does not own. Anything
+// that cannot be measured is kept. Errors are logged and never returned.
 func garbageCollectStaleTeams(homeDir string) {
 	const staleDuration = 24 * time.Hour
 
@@ -451,48 +507,75 @@ func garbageCollectStaleTeams(homeDir string) {
 			continue
 		}
 
-		info, err := entry.Info()
+		teamDir := filepath.Join(teamsDir, entry.Name())
+		taskDir := filepath.Join(homeDir, ".claude", "tasks", entry.Name())
+
+		newest, err := newestActivity(teamDir)
 		if err != nil {
-			slog.Warn("session_end: could not stat team directory",
-				"name", entry.Name(),
+			if !os.IsNotExist(err) {
+				slog.Warn("session_end: could not measure team directory activity; keeping it",
+					"path", teamDir,
+					"error", err,
+				)
+			}
+			continue
+		}
+
+		// The task list is part of the same team's activity: a lead that is
+		// only writing tasks is still working.
+		taskNewest, err := newestActivity(taskDir)
+		switch {
+		case err == nil:
+			if taskNewest.After(newest) {
+				newest = taskNewest
+			}
+		case !os.IsNotExist(err):
+			slog.Warn("session_end: could not measure task directory activity; keeping the team",
+				"path", taskDir,
 				"error", err,
 			)
 			continue
 		}
 
-		if info.ModTime().Before(cutoff) {
-			teamDir := filepath.Join(teamsDir, entry.Name())
-			if err := os.RemoveAll(teamDir); err != nil {
-				slog.Warn("session_end: could not remove stale team directory",
-					"path", teamDir,
-					"error", err,
-				)
-			} else {
-				slog.Info("session_end: removed stale team directory",
-					"path", teamDir,
-					"age", time.Since(info.ModTime()).Round(time.Minute),
-				)
-				// Also remove the corresponding task directory when a stale team directory is successfully deleted
-				taskDir := filepath.Join(homeDir, ".claude", "tasks", entry.Name())
-				if err := os.RemoveAll(taskDir); err != nil {
-					slog.Warn("session_end: could not remove stale task directory",
-						"path", taskDir,
-						"error", err,
-					)
-				} else {
-					slog.Info("session_end: removed stale task directory",
-						"path", taskDir,
-					)
-				}
-			}
+		if !newest.Before(cutoff) {
+			continue
+		}
+
+		if err := os.RemoveAll(teamDir); err != nil {
+			slog.Warn("session_end: could not remove stale team directory",
+				"path", teamDir,
+				"error", err,
+			)
+			continue
+		}
+		slog.Info("session_end: removed stale team directory",
+			"path", teamDir,
+			"age", time.Since(newest).Round(time.Minute),
+		)
+
+		// Also remove the corresponding task directory when a stale team directory is successfully deleted
+		if err := os.RemoveAll(taskDir); err != nil {
+			slog.Warn("session_end: could not remove stale task directory",
+				"path", taskDir,
+				"error", err,
+			)
+		} else {
+			slog.Info("session_end: removed stale task directory",
+				"path", taskDir,
+			)
 		}
 	}
 }
 
 // garbageCollectOrphanedTasks cleans up orphaned task directories under ~/.claude/tasks/
-// that have no corresponding team directory. Collects task directories left behind by
-// interrupted sessions or incomplete cleanup. Errors are logged and never returned.
+// that have no corresponding team directory AND have not been modified in more than
+// 24 hours. Collects task directories left behind by interrupted sessions or
+// incomplete cleanup, while leaving lists a concurrent session is still working on
+// — including lists this session does not own — untouched. A team directory that
+// cannot be stat'ed counts as present, not absent. Errors are logged and never returned.
 func garbageCollectOrphanedTasks(homeDir string) {
+	const staleDuration = 24 * time.Hour
+
 	tasksDir := filepath.Join(homeDir, ".claude", "tasks")
 	teamsDir := filepath.Join(homeDir, ".claude", "teams")
 
@@ -507,19 +590,45 @@ func garbageCollectOrphanedTasks(homeDir string) {
 		return
 	}
 
+	cutoff := time.Now().Add(-staleDuration)
+
 	for _, entry := range taskEntries {
 		if !entry.IsDir() {
 			continue
 		}
 
-		// Check whether the corresponding team directory exists
+		// Check whether the corresponding team directory exists. Only a
+		// definite "does not exist" proves the task is orphaned; any other
+		// Stat error (a permission failure, say) leaves the question open,
+		// and an open question is never grounds for deleting data.
 		teamDir := filepath.Join(teamsDir, entry.Name())
-		if _, err := os.Stat(teamDir); err == nil {
-			// Team directory exists, so this is not an orphan — keep it
+		if _, err := os.Stat(teamDir); !os.IsNotExist(err) {
+			if err != nil {
+				slog.Warn("session_end: could not stat team directory for orphan GC; keeping task directory",
+					"path", teamDir,
+					"error", err,
+				)
+			}
 			continue
 		}
 
-		// No team directory, so remove the orphaned task directory
+		// A task directory with no team directory is only abandoned once it
+		// has also gone quiet. Without this the collector deletes lists a
+		// concurrent session created moments ago — including lists it does
+		// not own. Mirrors garbageCollectStaleTeams above.
+		info, err := entry.Info()
+		if err != nil {
+			slog.Warn("session_end: could not stat task directory for orphan GC; keeping it",
+				"name", entry.Name(),
+				"error", err,
+			)
+			continue
+		}
+		if !info.ModTime().Before(cutoff) {
+			continue
+		}
+
+		// No team directory and gone quiet, so remove the orphaned task directory
 		taskDir := filepath.Join(tasksDir, entry.Name())
 		if err := os.RemoveAll(taskDir); err != nil {
 			slog.Warn("session_end: could not remove orphaned task directory",
@@ -644,6 +753,9 @@ var glmEnvVarsToClean = []string{
 // This ensures that after --team mode, the leader returns to using Claude models
 // instead of continuing to use GLM from the tmux session-level env vars.
 func clearTmuxSessionEnv(ctx context.Context) {
+	if isGatewaySession() {
+		return
+	}
 	// Skip if not in tmux
 	if os.Getenv("TMUX") == "" {
 		return
@@ -680,6 +792,9 @@ func clearTmuxSessionEnv(ctx context.Context) {
 // All operations are best-effort. Errors are logged with slog.Warn and never
 // returned, following the SessionEnd convention of non-fatal cleanup.
 func cleanupGLMSettingsLocal(projectDir string) {
+	if isGatewaySession() {
+		return
+	}
 	settingsPath := filepath.Join(projectDir, ".claude", "settings.local.json")
 
 	data, err := os.ReadFile(settingsPath)
@@ -782,11 +897,18 @@ func cleanupGLMSettingsLocal(projectDir string) {
 	)
 }
 
-// cleanupBogusRootDir removes a literal "{}" directory from the project root
-// if it exists. This directory is a side-effect of a Claude Code bug where the
-// {project_root} template variable used for agent memory paths (memory: project)
-// is not substituted when spawning agents inside git worktrees, resulting in a
-// directory named "{}" at the worktree root.
+// cleanupBogusRootDir removes MoAI-generated bug residue from a literal "{}"
+// directory at the project root. This directory is a side-effect of a Claude
+// Code bug where the {project_root} template variable used for agent memory
+// paths (memory: project) is not substituted when spawning agents inside git
+// worktrees, resulting in a directory named "{}" at the worktree root.
+//
+// A user's project may legitimately contain a directory named "{}", so the
+// directory is treated as bug residue ONLY when it carries the MoAI evidence
+// signature: a .claude/agent-memory subdirectory (agentMemorySegment). Without
+// that marker, nothing is deleted — the path is preserved with a warning.
+// Removal is scoped to the marked residue subtree only; other contents survive,
+// and the "{}" shell is removed (best-effort) only once it is empty.
 //
 // The cleanup is best-effort: errors are logged with slog.Warn and never returned.
 func cleanupBogusRootDir(projectDir string) {
@@ -807,14 +929,36 @@ func cleanupBogusRootDir(projectDir string) {
 	if !info.IsDir() {
 		return
 	}
-	if err := os.RemoveAll(bogusDir); err != nil {
-		slog.Warn("session_end: could not remove bogus {} directory",
+	residueDir := filepath.Join(bogusDir, strings.TrimSuffix(agentMemorySegment, "/"))
+	residueInfo, err := os.Stat(residueDir)
+	if err != nil || !residueInfo.IsDir() {
+		slog.Warn("session_end: preserved {} directory — no agent-memory evidence, provenance unknown",
 			"path", bogusDir,
+		)
+		return
+	}
+	if err := os.RemoveAll(residueDir); err != nil {
+		slog.Warn("session_end: could not remove bogus {} agent-memory residue",
+			"path", residueDir,
 			"error", err,
 		)
 		return
 	}
-	slog.Info("session_end: removed bogus {} directory caused by unresolved agent memory path",
-		"path", bogusDir,
+	slog.Info("session_end: removed bogus {} agent-memory residue caused by unresolved agent memory path",
+		"path", residueDir,
 	)
+	// Best-effort removal of now-empty shells. os.Remove fails on non-empty
+	// directories, which means unattributed content remains — leave it in place
+	// and say so rather than recursing into unknown provenance.
+	claudeShell := filepath.Join(bogusDir, ".claude")
+	if err := os.Remove(claudeShell); err != nil && !os.IsNotExist(err) {
+		slog.Warn("session_end: preserved content inside {} — non-empty after residue removal",
+			"path", claudeShell,
+		)
+	}
+	if err := os.Remove(bogusDir); err != nil && !os.IsNotExist(err) {
+		slog.Warn("session_end: preserved content inside {} — non-empty after residue removal",
+			"path", bogusDir,
+		)
+	}
 }

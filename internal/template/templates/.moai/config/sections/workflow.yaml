@@ -49,10 +49,16 @@ workflow:
     # Values mirror internal/config/defaults.go (WorkflowWorktreeConfig): all
     # three auto-* toggles default false — the EnterWorktree-first policy.
     # auto_create: read once (internal/cli/worktree_advisory.go) only to select
-    # advisory wording; it does not gate worktree creation.
-    # auto_merge / auto_cleanup: declared but not read — no code path consumes
-    # them (reserved). Kept aligned with defaults.go so the shipped file does
-    # not state the opposite of the recorded policy.
+    # advisory wording; its declared scope is the wording — it does not gate
+    # worktree creation. Set workflow.session_worktree.enabled for real
+    # automatic isolation.
+    # auto_cleanup: read by the two auto-cleanup paths (session-exit disposal
+    # and the PR-merge sweep); gates worktree removal only.
+    # auto_merge: read by the session-exit auto-merge path — when true, a clean
+    # session exit merges the session branch into the configured git-flow
+    # develop branch (a local merge inside the release-integration window,
+    # never a push). Inert unless the project is manual git-flow with
+    # git_strategy.<mode>.develop_branch set.
     worktree:
         auto_create: false
         auto_merge: false
@@ -106,6 +112,28 @@ workflow:
     multi:
         review_gate:
             enabled: false
+    # slot_lease: leases on named heavy resources, so two sessions sharing one
+    # machine do not start the same heavy work at once. The
+    # `moai slot acquire|status|release` verbs work whatever `enabled` says;
+    # `enabled` gates ONLY the PreToolUse guard that refuses a matching command
+    # while ANOTHER live session holds the resource. Ships OFF, and with no
+    # resources: every pattern below is yours to write, because a shipped one
+    # would name some language's commands.
+    #
+    # default_max_duration is the bound an acquire declares when
+    # --max-duration is omitted. Past it the lease reads expired and another
+    # session may take it over without --force, so size it to the work.
+    #
+    # resources maps a resource name (a-z, 0-9, '-') to the RE2 patterns that
+    # attribute a Bash command to it, matched with quoted spans removed:
+    #     resources:
+    #         <resource-name>:
+    #             commands:
+    #                 - '<command-regex>'
+    slot_lease:
+        enabled: false
+        default_max_duration: 30m
+        resources: {}
     # workflow_agents: dynamic-workflow purpose taxonomy -> {model, effort}
     # DEFAULTS. This block is the SSOT for workflow agent() model/effort
     # defaults; per-script literals in .claude/workflows/*.js override it.

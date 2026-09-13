@@ -1,0 +1,22 @@
+# card t659 F1 — mutant run after the sameFile identity fix (GREEN commit on top of 2496053a8)
+# $ python3 .moai/reports/t659/run/mutate.py .moai/reports/t659/run/guards/mutants-guards-f1.json M-F1-samefile M-F1-fallback M-GA M-GB M-GB-reg M-GB-log M-GB-always
+# exit=0
+M-F1-samefile: KILLED exit=1 top_level_runs=1 (expect>=1) fails=['TestExecute_RuleFileAliasOfRegistryOrLog_Rejected', 'TestExecute_RuleFileAliasOfRegistryOrLog_Rejected/hardlink_registry/dry_run', 'TestExecute_RuleFileAliasOfRegistryOrLog_Rejected/hardlink_registry/real', 'TestExecute_RuleFileAliasOfRegistryOrLog_Rejected/case_variant_registry/dry_run', 'TestExecute_RuleFileAliasOfRegistryOrLog_Rejected/case_variant_registry/real', 'TestExecute_RuleFileAliasOfRegistryOrLog_Rejected/symlink_registry/dry_run', 'TestExecute_RuleFileAliasOfRegistryOrLog_Rejected/symlink_registry/real']
+M-F1-fallback: KILLED exit=1 top_level_runs=1 (expect>=1) fails=['TestExecute_RuleFileAliasOfRegistryOrLog_Rejected', 'TestExecute_RuleFileAliasOfRegistryOrLog_Rejected/absent_log_fallback/dry_run', 'TestExecute_RuleFileAliasOfRegistryOrLog_Rejected/absent_log_fallback/real']
+M-GA: KILLED exit=1 top_level_runs=1 (expect>=1) fails=['TestExecute_EmptyAfter_Rejected', 'TestExecute_EmptyAfter_Rejected/dry_run', 'TestExecute_EmptyAfter_Rejected/real']
+M-GB: KILLED exit=1 top_level_runs=1 (expect>=1) fails=['TestExecute_RuleFileIsRegistryOrLog_Rejected', 'TestExecute_RuleFileIsRegistryOrLog_Rejected/registry/dry_run', 'TestExecute_RuleFileIsRegistryOrLog_Rejected/registry/real', 'TestExecute_RuleFileIsRegistryOrLog_Rejected/evolution_log/dry_run', 'TestExecute_RuleFileIsRegistryOrLog_Rejected/evolution_log/real']
+M-GB-reg: KILLED exit=1 top_level_runs=1 (expect>=1) fails=['TestExecute_RuleFileIsRegistryOrLog_Rejected', 'TestExecute_RuleFileIsRegistryOrLog_Rejected/registry/dry_run', 'TestExecute_RuleFileIsRegistryOrLog_Rejected/registry/real']
+M-GB-log: KILLED exit=1 top_level_runs=1 (expect>=1) fails=['TestExecute_RuleFileIsRegistryOrLog_Rejected', 'TestExecute_RuleFileIsRegistryOrLog_Rejected/evolution_log/dry_run', 'TestExecute_RuleFileIsRegistryOrLog_Rejected/evolution_log/real']
+M-GB-always: KILLED exit=1 top_level_runs=1 (expect>=1) fails=['TestExecute_RuleFileIsRegistryOrLog_Rejected', 'TestExecute_RuleFileIsRegistryOrLog_Rejected/distinct_control/dry_run', 'TestExecute_RuleFileIsRegistryOrLog_Rejected/distinct_control/real']
+#
+# Restoration: shasum -a 256 internal/constitution/pipeline.go
+#   before 1ef48dcc63aab40177ac03504f50eee762d5ac7de8b724a77fc340f0355b2467
+#   after  1ef48dcc63aab40177ac03504f50eee762d5ac7de8b724a77fc340f0355b2467
+# git status --short after the run: only untracked evidence files under this directory.
+# Top-level `=== RUN` count, grep -c '^=== RUN   [A-Za-z0-9_]*$' per output file: 1 in each of the 7.
+# Failure reasons: M-F1-samefile — "want a rule-file-is-registry-or-log error, got nil" in all six alias
+#   subtests (absent_log_fallback still passes, as it exercises only the fallback). M-F1-fallback — the
+#   pre-move behavior returns: Stat "no such file or directory" after the gates, with 4 gate calls (Layers 1, 3, 4, 5 —
+#   Canary is skipped for canary_gate: false), i.e. after Layer 5 approval.
+# Anchors: the M-GA / M-GB* anchors still match unchanged; the specs were copied into this file only
+#   to write -f1 outputs without overwriting the *-moved.txt evidence.

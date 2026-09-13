@@ -1,0 +1,15 @@
+# mutant M-GB-reg: G-B registry half dropped: only the evolution-log half remains; run only the registry subtests (re-run after F1)
+# edits: [["internal/constitution/pipeline.go", "if sameFile(rulePath, registryPath) || sameFile(rulePath, evolutionLogPath) {", "if sameFile(rulePath, evolutionLogPath) {"]]
+# $ go test ./internal/constitution/ -run ^TestExecute_RuleFileIsRegistryOrLog_Rejected$/^registry$ -count=1 -v
+# exit=1
+=== RUN   TestExecute_RuleFileIsRegistryOrLog_Rejected
+=== RUN   TestExecute_RuleFileIsRegistryOrLog_Rejected/registry/dry_run
+    apply_test.go:1255: Execute: want a rule-file-is-registry-or-log error, got nil
+=== RUN   TestExecute_RuleFileIsRegistryOrLog_Rejected/registry/real
+    apply_test.go:1255: Execute: want a rule-file-is-registry-or-log error, got nil
+--- FAIL: TestExecute_RuleFileIsRegistryOrLog_Rejected (0.01s)
+    --- FAIL: TestExecute_RuleFileIsRegistryOrLog_Rejected/registry/dry_run (0.00s)
+    --- FAIL: TestExecute_RuleFileIsRegistryOrLog_Rejected/registry/real (0.00s)
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/constitution	0.363s
+FAIL

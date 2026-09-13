@@ -1,0 +1,2 @@
+.moai/reports/t622/sync-fix/ac006-local-de.md:1
+.moai/reports/t622/sync-fix/ac006-tmpl-de.md:1

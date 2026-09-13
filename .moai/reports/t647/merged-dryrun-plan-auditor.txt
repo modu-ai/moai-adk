@@ -1,0 +1,3 @@
+Computing hash for entry "plan-auditor"...
+  [dry-run] plan-auditor: 621cb9eea7abe2c649be12d5aa3f494feb7fd525b3f278f94c497b6f9d306298 (source: internal/template/templates/.claude/agents/moai/plan-auditor.md)
+[dry-run] catalog.yaml not modified

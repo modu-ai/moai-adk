@@ -1,0 +1,6 @@
+.moai/reports/t622/run/base-manager-git.md:34:- `merge_method = git_strategy.{mode}.merge_method` (`squash` | `merge` | `rebase`; default `squash`) — every merge is executed as `gh pr merge --<merge_method> --delete-branch`, which under the squash default renders `gh pr merge --squash --delete-branch`
+.moai/reports/t622/run/base-manager-git.md:116:gh pr merge <PR> --squash --delete-branch   # squash default
+.moai/reports/t622/run/base-delivery.md:368:3. If all checks pass: Execute `gh pr merge --squash --delete-branch`
+.moai/reports/t622/run/base-delivery.md:380:3. If passing and mergeable: Execute `gh pr merge --squash --delete-branch`
+.moai/reports/t622/run/base-manager-git.toml:26:- `merge_method = git_strategy.{mode}.merge_method` (`squash` | `merge` | `rebase`; default `squash`) — every merge is executed as `gh pr merge --<merge_method> --delete-branch`, which under the squash default renders `gh pr merge --squash --delete-branch`
+.moai/reports/t622/run/base-manager-git.toml:108:gh pr merge <PR> --squash --delete-branch   # squash default

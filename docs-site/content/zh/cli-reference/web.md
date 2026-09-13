@@ -50,7 +50,7 @@ moai web --no-reuse      # 端口被占用时不回收而是失败
 | `/kanban` | GET | 链会话看板 + SPEC 流水线 |
 | `/specs` | GET | SPEC 目录。`?q=` 搜索、`?status=` 筛选、`?id=` 打开详情 |
 | `/monitor` | GET | 会话・目标・验证・史诗 |
-| `/settings` | GET | 设置九个标签页。`?tab=` 指定标签页，`?profile=` 指定编辑对象配置文件 |
+| `/settings` | GET | 设置标签页界面。`?tab=` 指定标签页，`?profile=` 指定编辑对象配置文件 |
 | `/todo` | GET | 待办队列的只读视图 — 三种状态（`queued`、`picked`、`dropped`）的卡片全部列出 |
 | `/events` | GET | SSE 流 — 只推送更新信号 |
 | `/save` | POST | 保存设置 |

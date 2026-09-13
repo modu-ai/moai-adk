@@ -14,8 +14,7 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/charmbracelet/huh"
-	"github.com/mattn/go-isatty"
+	"github.com/modu-ai/moai-adk/internal/cli/update/backup"
 	"github.com/modu-ai/moai-adk/internal/cli/update/deploy"
 	"github.com/modu-ai/moai-adk/internal/cli/update/report"
 	"github.com/modu-ai/moai-adk/internal/config"
@@ -169,27 +168,9 @@ func runUpdate(cmd *cobra.Command, _ []string) error {
 		return fmt.Errorf("--binary and --templates-only are mutually exclusive")
 	}
 
-	// Auto-prompt profile setup if no profile exists yet
-	nonInteractive := getBoolFlag(cmd, "yes")
-	if !nonInteractive && isatty.IsTerminal(os.Stdin.Fd()) {
-		profileName := profile.GetCurrentName()
-		if !profile.IsSetup(profileName) {
-			var wantSetup bool
-			confirm := huh.NewConfirm().
-				Title("No profile found. Set up profile preferences now?").
-				Description("Configure your name, language, and model preferences.").
-				Value(&wantSetup)
-			// Wrap the standalone confirm in a themed form: field.Run() cannot take
-			// a theme, so the MoAI-branded dark-readable theme is applied at the
-			// form level (parity with the wizard fix for the other huh surfaces).
-			confirmForm := huh.NewForm(huh.NewGroup(confirm)).WithTheme(moaiHuhTheme())
-			if err := confirmForm.Run(); err == nil && wantSetup {
-				if err := runProfileSetup(cmd, nil); err != nil {
-					_, _ = fmt.Fprintf(out, "Warning: profile setup failed: %v\n", err)
-				}
-			}
-		}
-	}
+	// REQ-ITI-001: `moai update` carries NO profile entry — no confirmation, no
+	// profile wizard, whatever stdin and the flags are. The profile wizard
+	// starts only from `moai profile setup` / `--setup`.
 
 	// Handle --config / -c mode (edit configuration only, no template updates)
 	// This takes priority over all other flags
@@ -364,6 +345,25 @@ func runUpdate(cmd *cobra.Command, _ []string) error {
 		return emitDryRunReinstallPlan(cmd, cwd, getBoolFlag(cmd, "force"), th)
 	}
 
+	// SPEC-UPDATE-SETTINGS-BASE-SNAPSHOT-001 (REQ-USB-005): settle a
+	// .claude/settings.json staging copy an interrupted earlier flow left
+	// behind, comparing it with the live file BEFORE any step below can remove
+	// or rewrite that file. The deny-rule strip just below is the first such
+	// step; the clean-reinstall branch and both version-match skips come later,
+	// so this one point covers every update flow. After the --dry-run return,
+	// because a dry run must not change anything. Best-effort: it only warns.
+	//
+	// @MX:WARN: [AUTO] leftover judgement placement — keep above stripRetiredV2DenyEntries
+	// @MX:REASON: below the strip, the deploy, or the backup step the live file may already be rewritten,
+	// so an abort with no revert would be discarded instead of promoted (plan.md B8, M-D5g-w)
+	{
+		cwd, err := os.Getwd()
+		if err != nil {
+			return fmt.Errorf("get working directory for settings snapshot: %w", err)
+		}
+		backup.JudgeLeftoverSettingsSnapshot(cwd, cmd.ErrOrStderr())
+	}
+
 	// Retired-deny-rule migration on the v3 path (issue #1101 follow-up). The
 	// same one-shot strip runs inside runCleanReinstall, but that path opens
 	// only on a v2 fingerprint — a project already on v3 keeps the retired
@@ -483,16 +483,9 @@ func runUpdate(cmd *cobra.Command, _ []string) error {
 		}
 	}
 
-	// t40 defect 1: snapshot (read-only) which legacy skills exist BEFORE the
-	// template sync — the sync's managed cleanup removes .claude/skills/moai*
-	// before the archive step runs, and without this snapshot the resulting
-	// "total: 0 skills archived" is indistinguishable from "nothing to
-	// archive".
-	var preSyncLegacySkills []string
-	if cwd, err := os.Getwd(); err == nil {
-		preSyncLegacySkills = presentLegacySkillIDs(cwd)
-	}
-
+	// Legacy skills are archived inside the template sync, before its managed
+	// cleanup removes .claude/skills/moai*; a skipped sync archives nothing,
+	// which keeps REQ-UAC-004.
 	syncSkipped, err := runTemplateSyncWithProgress(cmd)
 	if err != nil {
 		return err
@@ -553,26 +546,6 @@ func runUpdate(cmd *cobra.Command, _ []string) error {
 		if notice := migrateProfileAdvisory(cwd); notice != "" {
 			_, _ = fmt.Fprintln(out, notice)
 		}
-	}
-
-	// Archive legacy skills (BC-V3R3-007): move 16 removed static skills to
-	// .moai/archive/skills/v2.16/ before they are cleaned from .claude/skills/.
-	// SPEC-V3R6-UPDATE-ARCHIVE-CONTRACT-001 REQ-UAC-002: --force is propagated
-	// so that drift-detection routes through the overwrite + backup path
-	// instead of returning ARCHIVE_DRIFT.
-	{
-		cwd, err := os.Getwd()
-		if err != nil {
-			return fmt.Errorf("get working directory for archive: %w", err)
-		}
-		archived, archiveErr := archiveLegacySkills(cwd, out, getBoolFlag(cmd, "force"))
-		if archiveErr != nil {
-			_, _ = fmt.Fprintln(out, tui.CheckLine("warn", "Legacy skill archive", "failed", archiveErr.Error(), &th))
-		}
-		// t40 defect 1: make the shortfall loud — skills that existed before
-		// the sync but were not archived (their sources were removed by the
-		// managed cleanup before this step) are reported as a loss.
-		reportArchiveShortfall(preSyncLegacySkills, archived, out)
 	}
 
 	// Ensure .moai/evolution/ directory tree exists for existing projects
@@ -709,13 +682,9 @@ func shouldSkipBinaryUpdate(cmd *cobra.Command) bool {
 		return true
 	}
 
-	// Dev build detection (reuse pattern from buildAutoUpdateFunc in deps.go)
-	v := version.GetVersion()
-	if strings.Contains(v, "dirty") || v == "dev" || strings.Contains(v, "none") {
-		return true
-	}
-
-	return false
+	// Dev build detection (shared discriminator in pkg/version — also rejects
+	// build codenames like "moai_cp/..." that a substring check let through, card t678)
+	return version.IsDevBuild(version.GetVersion())
 }
 
 // @MX:NOTE: [AUTO] runBinaryUpdateStep — M4-S4d-1 DDD migration. New-version notice uses

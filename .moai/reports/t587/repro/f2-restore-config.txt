@@ -1,0 +1,9 @@
+time=2026-09-10T23:12:02.877+09:00 level=WARN msg="config sections directory not found, using defaults" path=/tmp/t587-repro/f2/.moai/config/sections
+          
+   ERROR  
+          
+  Unknown flag: --restore-config.                                                                                     
+
+  Try --help for usage.
+
+exit=1

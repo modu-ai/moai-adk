@@ -1,0 +1,3 @@
+261a262,263
+> 
+> The Pre-Spawn Sync Check Lane A commands (`git fetch origin main` and `git rev-list --count --left-right origin/main...HEAD`) are independent read-only verifications and may be issued as parallel Bash calls in one turn.

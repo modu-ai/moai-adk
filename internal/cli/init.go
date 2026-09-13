@@ -11,12 +11,11 @@ import (
 	"slices"
 	"strings"
 
-	"github.com/charmbracelet/huh"
-	"github.com/mattn/go-isatty"
 	"github.com/spf13/cobra"
 
 	"github.com/modu-ai/moai-adk/internal/cli/printer"
 	"github.com/modu-ai/moai-adk/internal/cli/uikit"
+	"github.com/modu-ai/moai-adk/internal/cli/update/backup"
 	"github.com/modu-ai/moai-adk/internal/cli/update/deploy"
 	"github.com/modu-ai/moai-adk/internal/cli/wizard"
 	"github.com/modu-ai/moai-adk/internal/codexwiring"
@@ -236,12 +235,14 @@ func getBoolFlag(cmd *cobra.Command, name string) bool {
 }
 
 // provisionMCPEntryUnlessDeclined writes the single neutral `moai` entry into
-// the project's .mcp.json unless the user explicitly declined through the
-// wizard's mcp_provision question (default-on per SPEC-MCP-DEFAULT-ON-001).
+// the project's .mcp.json unless the caller declined it (default-on per
+// SPEC-MCP-DEFAULT-ON-001). On `moai init` the decline comes from the harness
+// selection (codex) or from the non-interactive path, never from a wizard
+// question.
 //
 // It is the call site that makes the MCP server reachable at runtime: without
-// it the wizard answer is collected into opts and then dropped, leaving the
-// stdio server registered in code but absent from every host's config.
+// it the provisioning default is collected into opts and then dropped, leaving
+// the stdio server registered in code but absent from every host's config.
 //
 // The write goes through the shared atomic-config seam
 // (provisionMoaiMCPServerEntryAt -> mutateClaudeJSONAtomic), so it inherits the
@@ -261,23 +262,27 @@ func provisionMCPEntryUnlessDeclined(out, errOut io.Writer, projectRoot string, 
 	_, _ = fmt.Fprintln(out, "Provisioned the moai MCP server entry in .mcp.json (default-on).")
 }
 
-// applyWizardPage3ToOpts applies the always-visible Page-3 wizard answers to
+// applyWizardPage3ToOpts applies the wizard result's fixed Page-3 seeds to
 // opts, honouring flag-over-wizard precedence (REQ-WIZ-020).
 //
-// Page 3 is ungated, so without this rule the wizard result would
-// unconditionally overwrite every flag-seeded value — inverting the documented
-// `--profile` precedence above ("the wizard fills opts.Profile only when the
-// flag is absent"). Each of the four overlapping settings therefore yields to
-// the wizard ONLY when its flag was not explicitly supplied.
+// The seeds reach opts on every interactive run, so without this rule the
+// wizard result would unconditionally overwrite every flag-seeded value —
+// inverting the documented `--profile` precedence above ("the wizard fills
+// opts.Profile only when the flag is absent"). Each of the three overlapping
+// settings therefore yields to the wizard ONLY when its flag was not
+// explicitly supplied.
+//
+// The page-3 questions removed by SPEC-INIT-QUIET-WIZARD-001 (project mode,
+// worktree auto-create, todo, feedback, continuation, audit, MCP) carry no
+// result field, so they are not mapped here: their keys resolve to shipped
+// defaults, and --project-mode / --worktree-auto-create still reach opts
+// through the flag path.
 //
 // Explicitness is probed with cmd.Flags().Changed(name), never by value:
 // getBoolFlag / getBoolFlagWithDefault cannot distinguish "flag absent" from
 // "flag explicitly set to the same value as the default", so a value-only
 // check would silently drop `--enable-lsp=false` and `--enforce-quality=false`.
 func applyWizardPage3ToOpts(cmd *cobra.Command, result *wizard.WizardResult, opts *project.InitOptions) {
-	if !cmd.Flags().Changed("project-mode") && result.ProjectMode != "" {
-		opts.ProjectMode = result.ProjectMode
-	}
 	if !cmd.Flags().Changed("enable-lsp") {
 		opts.LSPEnabled = result.LSPEnabled
 	}
@@ -296,46 +301,6 @@ func applyWizardPage3ToOpts(cmd *cobra.Command, result *wizard.WizardResult, opt
 
 	// claude_design_enabled is wizard-only (no CLI flag), so it always applies.
 	opts.ClaudeDesignEnabled = result.ClaudeDesignEnabled
-
-	// Worktree advisory (Issue 3): wizard-only confirm, applies when the wizard
-	// ran AND --worktree-auto-create was not explicitly supplied (REQ-005
-	// flag-over-wizard precedence, SPEC-INIT-WIZARD-REPAIR-001 — the formerly
-	// unconditional assignment here was the clobber bug). The --non-interactive
-	// path leaves WorktreeAutoCreate false.
-	if !cmd.Flags().Changed("worktree-auto-create") {
-		opts.WorktreeAutoCreate = result.WorktreeAutoCreate
-	}
-
-	// Backlog-queue guidance gate (SPEC-TODO-ENABLE-FLAG-001 REQ-4). Wizard-only
-	// confirm, no CLI flag, so it always applies when the wizard ran. The
-	// pointer carries "was it asked" as well as the answer — --non-interactive
-	// leaves it nil and the writer then touches nothing.
-	opts.TodoEnabled = result.TodoEnabled
-
-	// Feedback pre-submission gate. Wizard-only confirm, no CLI flag, so it
-	// always applies when the wizard ran. The pointer carries "was it asked"
-	// as well as the answer — --non-interactive leaves it nil and the writer
-	// then touches nothing.
-	opts.FeedbackAutoSubmit = result.FeedbackAutoSubmit
-
-	// /moai project completion continuation (SPEC-PROJECT-CONTINUATION-KEY-001
-	// REQ-PCK-010). Wizard-only select, no CLI flag. The empty string carries
-	// "was it asked" — --non-interactive leaves it empty and the writer then
-	// touches nothing, leaving the template-shipped `continuation: card` alone.
-	opts.ProjectContinuation = result.ProjectContinuation
-
-	// M4 audit + MCP opt-in (SPEC-MOAI-MCP-SERVER-001 REQ-MCP-015 / AC-MCP-020).
-	// The audit selection reuses the M3 typed-config vocabulary. AuditConfigSet
-	// is the opt-in tracker: it flips true ONLY when the wizard collected a
-	// selection, so writeWorkflowAuditYAML persists the block exclusively on
-	// the interactive path (C6 opt-in-default-off).
-	opts.AuditModel = result.AuditModel
-	opts.AuditGateClaude = result.AuditGateClaude
-	opts.AuditGateCodex = result.AuditGateCodex
-	opts.AuditGateGLM = result.AuditGateGLM
-	opts.CodexAuditEnabled = result.CodexAuditEnabled
-	opts.MCPProvision = result.MCPProvision
-	opts.AuditConfigSet = true
 }
 
 // getBoolFlagWithDefault retrieves a bool flag value, returning defaultVal when
@@ -537,6 +502,11 @@ func runInit(cmd *cobra.Command, args []string) (err error) {
 		}
 	}
 	defer func() {
+		// SPEC-WORKTREE-KEY-WIRING-001 M2: auto-merge runs BEFORE disposal —
+		// the merge consumes only committed state, but disposal deletes the
+		// tree, so merge-then-dispose is the only safe order. Independent of
+		// auto_cleanup (REQ-WKW-013): each toggle gates only its own behavior.
+		sessionExitAutoMerge(swCfg, wtPath, err == nil, cmd.ErrOrStderr())
 		cleanupSessionWorktree(swCfg, wtPath, err == nil, cmd.ErrOrStderr())
 	}()
 
@@ -644,24 +614,11 @@ func runInit(cmd *cobra.Command, args []string) (err error) {
 	// "moai profile setup" and stored in ~/.moai/claude-profiles/<name>/preferences.yaml.
 	profileName := profile.GetCurrentName()
 
-	// Auto-prompt profile setup if no profile exists yet
-	if !nonInteractive && isatty.IsTerminal(os.Stdin.Fd()) && !profile.IsSetup(profileName) {
-		var wantSetup bool
-		confirm := huh.NewConfirm().
-			Title("No profile found. Set up profile preferences now?").
-			Description("Configure your name, language, and model preferences.").
-			Value(&wantSetup)
-		// Wrap the standalone confirm in a themed form: field.Run() cannot take a
-		// theme, so the MoAI-branded dark-readable theme is applied at the form
-		// level (parity with the wizard fix for the other huh surfaces).
-		confirmForm := huh.NewForm(huh.NewGroup(confirm)).WithTheme(moaiHuhTheme())
-		if err := confirmForm.Run(); err == nil && wantSetup {
-			if err := runProfileSetup(cmd, nil); err != nil {
-				p.Warn("profile setup failed: %v", err)
-			}
-		}
-	}
-
+	// REQ-ITI-001: `moai init` carries NO profile entry — no confirmation, no
+	// profile wizard, whatever stdin and the flags are. A missing profile just
+	// leaves the preference values empty, and the init wizard asks the
+	// conversation language once as its first question (REQ-ITI-002). The
+	// profile wizard starts only from `moai profile setup` / `--setup`.
 	prefs, err := profile.ReadPreferences(profileName)
 	if err != nil {
 		p.Warn("failed to read profile preferences: %v", err)
@@ -725,10 +682,12 @@ func runInit(cmd *cobra.Command, args []string) (err error) {
 			prefs.UserName = result.UserName
 		}
 
-		// Apply wizard results to opts (wizard values override empty flags)
-		if opts.ProjectName == "" {
-			opts.ProjectName = result.ProjectName
-		}
+		// Apply wizard results to opts (wizard values override empty flags).
+		// Project name, model policy, and report format are no longer asked on
+		// the init path (SPEC-INIT-QUIET-WIZARD-001): the project name falls to
+		// the directory-name default, the model profile to medium, and the
+		// report format to html+md — the same values a user accepting every
+		// former default received.
 		if opts.DevelopmentMode == "" {
 			opts.DevelopmentMode = result.DevelopmentMode
 		}
@@ -736,22 +695,21 @@ func runInit(cmd *cobra.Command, args []string) (err error) {
 		// init path: mode/provider come from remote detection above, and the
 		// remaining Git values stay flag-fed (--github-username,
 		// --gitlab-instance-url). The reconfigure wizard still asks them.
-		if result.ModelPolicy != "" {
-			opts.ModelPolicy = result.ModelPolicy
-		}
-		// SPEC-MODEL-PROFILE-MATRIX-001 (REQ-MPM-014/016): the model-routing wizard
-		// answer IS the profile selection; it flows through opts.ModelPolicy and is
-		// normalized to {high, medium, low} at profile persistence (the --profile flag
-		// takes precedence over it).
-		// Report format is wizard-only (no CLI flag); empty resolves to the
-		// html+md default at persistence time (initializer.writeReportConfig).
-		if opts.ReportFormat == "" && result.ReportFormat != "" {
-			opts.ReportFormat = result.ReportFormat
-		}
-		// Apply the Page-3 wizard results. The former mode gate on the wizard
-		// result is removed (REQ-WIZ-001/002): Page 3 is always visible, so its
-		// answers always reach opts.
+
+		// Apply the fixed Page-3 seeds. The former mode gate on the wizard
+		// result is removed (REQ-WIZ-001/002), so they always reach opts.
 		applyWizardPage3ToOpts(cmd, result, &opts)
+
+		// The interactive path provisions the .mcp.json moai entry by default:
+		// the mcp_provision question is gone, so no wizard answer can decline
+		// it. The non-interactive path leaves the zero value false and skips
+		// the ensure-entry call — an intended asymmetry that preserves the
+		// pinned non-interactive behaviour (REQ-IQW-006). The harness switch
+		// below still overrides this default (codex declines, both forces on).
+		// @MX:NOTE: [AUTO] Interactive default-on MCP provisioning with no
+		// wizard question; non-interactive stays false by design.
+		// @MX:SPEC: SPEC-INIT-QUIET-WIZARD-001
+		opts.MCPProvision = true
 	}
 
 	// Chain ① wizard+flag → opts link (SPEC-INIT-WIZARD-REPAIR-001 REQ-001 /
@@ -864,6 +822,15 @@ func runInit(cmd *cobra.Command, args []string) (err error) {
 	// effects (acceptance.md §C).
 	flushUpdateNotice := startDeferredUpdateNotice(cmd)
 
+	// SPEC-UPDATE-SETTINGS-BASE-SNAPSHOT-001 (REQ-USB-005): settle a
+	// .claude/settings.json staging copy an interrupted earlier flow left behind
+	// before executor.Execute — init's first step that can rewrite the file.
+	//
+	// @MX:WARN: [AUTO] leftover judgement placement — keep above executor.Execute
+	// @MX:REASON: after the deploy the live file is the new render, so an abort with no revert
+	// would be discarded instead of promoted (plan.md B8)
+	backup.JudgeLeftoverSettingsSnapshot(opts.ProjectRoot, cmd.ErrOrStderr())
+
 	result, err := executor.Execute(ctx, opts)
 	if err != nil {
 		// REQ-TUX2-015: re-running init on an initialized project without
@@ -874,6 +841,12 @@ func runInit(cmd *cobra.Command, args []string) (err error) {
 		}
 		return fmt.Errorf("initialization failed: %w", err)
 	}
+	// SPEC-UPDATE-SETTINGS-BASE-SNAPSHOT-001 (REQ-USB-001/003/016): stage the
+	// settings.json render the deploy inside executor.Execute wrote — only when
+	// the manifest proves it wrote it (a skipped existing file records nothing)
+	// — before the autonomy tier bundle below can rewrite the file.
+	backup.StageDeployedSettingsSnapshot(opts.ProjectRoot, mgr, cmd.ErrOrStderr())
+
 	if err := homestate.EnsureProjectLayout(opts.ProjectRoot); err != nil {
 		return fmt.Errorf("initialize private MoAI home layout: %w", err)
 	}
@@ -887,7 +860,7 @@ func runInit(cmd *cobra.Command, args []string) (err error) {
 	// warns without failing the init.
 	// @MX:SPEC: SPEC-INIT-WIZARD-REPAIR-001
 	if homeDir, homeErr := userHomeDirFn(); homeErr == nil {
-		if tierErr := project.ApplyAutonomyTierBundle(
+		if tierErr := applyAutonomyTierBundleFn(
 			opts.ProjectRoot,
 			filepath.Join(homeDir, ".claude", "settings.json"),
 			filepath.Join(opts.ProjectRoot, ".claude", "settings.json"),
@@ -898,6 +871,11 @@ func runInit(cmd *cobra.Command, args []string) (err error) {
 	} else {
 		p.Warn("Failed to resolve home directory for autonomy tier bundle: %v", homeErr)
 	}
+
+	// SPEC-UPDATE-SETTINGS-BASE-SNAPSHOT-001 (REQ-USB-005): init has no merge,
+	// so it never takes a preserve path — the staged render (if any) becomes the
+	// canonical base the first update merges against.
+	backup.SettleSettingsSnapshot(opts.ProjectRoot, false, cmd.ErrOrStderr())
 
 	// Route executor result warnings into the collector (they surface once,
 	// in the exit summary panel — REQ-TUX2-013) and display the completion
@@ -977,9 +955,11 @@ func runInit(cmd *cobra.Command, args []string) (err error) {
 	// alongside the slim-mode notice (informational, not a gate).
 	emitWorktreeAdvisory(cmd.OutOrStdout(), opts.ProjectRoot)
 
-	// SPEC-MCP-DEFAULT-ON-001 (default-on, REQ-A-3): turn the wizard's
-	// mcp_provision answer into the single neutral .mcp.json entry. Default is
-	// provision (true); an explicit decline is honored silently.
+	// SPEC-MCP-DEFAULT-ON-001 (default-on, REQ-A-3): turn opts.MCPProvision
+	// into the single neutral .mcp.json entry. The interactive path sets it
+	// true with no wizard question (SPEC-INIT-QUIET-WIZARD-001 REQ-IQW-005);
+	// the non-interactive path leaves it false and skips the ensure-entry call
+	// (REQ-IQW-006).
 	// SPEC-CODEX-WIRING-001 D3 stacks on top, restated by
 	// SPEC-INIT-HARNESS-PROMPT-001 (REQ-IHP-009/010) now that the harness is
 	// itself a wizard axis: the harness selection is the more specific
@@ -987,20 +967,15 @@ func runInit(cmd *cobra.Command, args []string) (err error) {
 	// flag or wizard. codex declines provisioning (the user declared their
 	// harness is Codex, and the moai MCP server is registered for them through
 	// .codex/config.toml instead), both forces it on, claude leaves the
-	// mcp_provision answer intact.
-	//
-	// The former justification appealed to flag-over-wizard precedence, and is
-	// FALSIFIED: a wizard harness answer of codex now overrides a wizard
-	// mcp_provision answer of yes with no flag present at all, so what happens
-	// here is a wizard answer overriding a wizard answer. Flag-over-wizard
-	// precedence still holds, but it is a DIFFERENT rule, resolved upstream in
+	// opts.MCPProvision default intact. Flag-over-wizard precedence for the
+	// harness itself is a different rule, resolved upstream in
 	// resolveAgentWiringWithWizard rather than here.
 	//
-	// Accepted cost (plan.md §B Decision B1): a user selecting codex is still
-	// asked mcp_provision, and their answer is then overridden. Hiding the
-	// question would leave WizardResult.MCPProvision — a plain bool, unlike its
-	// *bool neighbours — indistinguishable between "not asked" and "declined".
+	// The former plan.md §B Decision B1 ("mcp_provision is asked
+	// unconditionally, even under codex") is superseded: the question no
+	// longer exists, so there is no wizard answer for the harness to override.
 	// @MX:SPEC: SPEC-INIT-HARNESS-PROMPT-001
+	// @MX:SPEC: SPEC-INIT-QUIET-WIZARD-001
 	mcpDeclined := !opts.MCPProvision
 	switch agentWiringSelection {
 	case agentWiringCodex:

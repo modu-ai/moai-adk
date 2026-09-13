@@ -28,6 +28,7 @@ import (
 	"sort"
 	"strings"
 
+	"github.com/modu-ai/moai-adk/internal/gitenv"
 	"github.com/modu-ai/moai-adk/internal/hook/memo/taxonomy"
 )
 
@@ -137,7 +138,11 @@ func revParseDirs(dir string) (string, string, error) {
 // gitOutput runs `git -C dir <args>` and returns its stdout.
 func gitOutput(dir string, args ...string) (string, error) {
 	full := append([]string{"-C", dir}, args...)
-	out, err := exec.Command("git", full...).Output()
+	cmd := exec.Command("git", full...)
+	// `git -C dir` only changes the directory; a GIT_DIR inherited from a hook
+	// outranks it, so the scrub is what confines this read to dir.
+	cmd.Env = gitenv.Env()
+	out, err := cmd.Output()
 	if err != nil {
 		return "", fmt.Errorf("git %v: %w", args, err)
 	}

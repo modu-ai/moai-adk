@@ -19,6 +19,7 @@ package cli
 
 import (
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/spf13/cobra"
@@ -138,20 +139,33 @@ func newTodoAnalyzeCmd() *cobra.Command {
 // deduplicated rather than doubled.
 func analyzeQueue(rec *kanban.BacklogRecord) (pairs, recorded int) {
 	now := time.Now().UTC().Format(time.RFC3339)
+	// Prepare once per card while preserving the exact historical comparator:
+	// NFC/case/whitespace normalization and sets of normalized words.
+	normalized := make([]string, len(rec.Items))
+	tokens := make([]map[string]struct{}, len(rec.Items))
+	for i, item := range rec.Items {
+		if item.State == kanban.BacklogStateDropped {
+			continue
+		}
+		normalized[i] = kanban.NormalizeCardText(item.Text)
+		tokens[i] = make(map[string]struct{})
+		for _, token := range strings.Fields(normalized[i]) {
+			tokens[i][token] = struct{}{}
+		}
+	}
 	for j, subject := range rec.Items {
 		if subject.State == kanban.BacklogStateDropped {
 			continue
 		}
-		for _, related := range rec.Items[:j] {
+		for i, related := range rec.Items[:j] {
 			if related.State == kanban.BacklogStateDropped {
 				continue
 			}
 			pairs++
 			relation := ""
-			score := kanban.TokenSetJaccard(subject.Text, related.Text)
+			score := todoTokenSetScore(tokens[j], tokens[i])
 			switch {
-			case kanban.NormalizeCardText(subject.Text) != "" &&
-				kanban.NormalizeCardText(subject.Text) == kanban.NormalizeCardText(related.Text):
+			case normalized[j] != "" && normalized[j] == normalized[i]:
 				relation, score = kanban.BacklogRelationDuplicateForced, 1
 			case score >= kanban.BacklogNearDuplicateThreshold && score < 1.0:
 				relation = kanban.BacklogRelationNearDuplicate
@@ -171,6 +185,19 @@ func analyzeQueue(rec *kanban.BacklogRecord) (pairs, recorded int) {
 		}
 	}
 	return pairs, recorded
+}
+
+func todoTokenSetScore(a, b map[string]struct{}) float64 {
+	if len(a) == 0 || len(b) == 0 {
+		return 0
+	}
+	intersection := 0
+	for token := range a {
+		if _, ok := b[token]; ok {
+			intersection++
+		}
+	}
+	return float64(intersection) / float64(len(a)+len(b)-intersection)
 }
 
 // todoFindingLine renders one finding beneath the card it names in
@@ -204,7 +231,7 @@ func todoFindingLine(rec *kanban.BacklogRecord, cardID string, f kanban.BacklogF
 	}
 	note := ""
 	if f.Note != "" {
-		note = fmt.Sprintf(" — %s", f.Note)
+		note = fmt.Sprintf(" — %s", todoPRCell(f.Note))
 	}
 	return fmt.Sprintf("\t↳ %s %s (%s%s%s)%s — moai todo drop %s | moai todo edit %s \"<text>\"",
 		f.Relation, counterpart, f.Source, score, mark, note, cardID, cardID)

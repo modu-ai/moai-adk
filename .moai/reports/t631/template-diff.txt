@@ -1,0 +1,31 @@
+diff --git a/internal/template/templates/.claude/skills/moai/workflows/plan.md b/internal/template/templates/.claude/skills/moai/workflows/plan.md
+index 2fa70b609..b13ae6f64 100644
+--- a/internal/template/templates/.claude/skills/moai/workflows/plan.md
++++ b/internal/template/templates/.claude/skills/moai/workflows/plan.md
+@@ -37 +37 @@ triggers:
+-Phase Owners: `manager-spec` (SPEC artifact authoring — spec.md/plan.md/acceptance.md/design.md/research.md/progress.md §E.1) + `Explore` (read-only codebase investigation; Anthropic built-in agent) + `manager-git` (worktree/branch creation when Phase 3 worktree env opt-in).
++Phase Owners: `manager-spec` (SPEC artifact authoring — spec.md/plan.md/acceptance.md/design.md/research.md/progress.md §E.1, lettered per `.claude/rules/moai/development/spec-frontmatter-schema.md` § progress.md Section Map) + `Explore` (read-only codebase investigation; Anthropic built-in agent) + `manager-git` (worktree/branch creation when Phase 3 worktree env opt-in).
+diff --git a/internal/template/templates/.claude/skills/moai/workflows/plan/spec-assembly.md b/internal/template/templates/.claude/skills/moai/workflows/plan/spec-assembly.md
+index 86ceb429f..59222eefa 100644
+--- a/internal/template/templates/.claude/skills/moai/workflows/plan/spec-assembly.md
++++ b/internal/template/templates/.claude/skills/moai/workflows/plan/spec-assembly.md
+@@ -252 +252 @@ Harness configuration reference (harness.yaml):
+-For `thorough` harness with `cross_validate_with_evaluator_active: true`: after plan-auditor PASS, additionally invoke sync-auditor in SPEC-review mode to cross-validate must-pass criteria. If sync-auditor disagrees with plan-auditor's PASS, treat as FAIL and trigger one additional iteration.
++For `thorough` harness with `cross_validate_with_evaluator_active: true`: after plan-auditor PASS, invoke plan-auditor again as an independent re-review — a fresh spawn that receives the SPEC artifacts but not the first pass's verdict, score, or findings — to cross-validate must-pass criteria. If the re-review does not also PASS, treat the iteration as FAIL and trigger one additional iteration. sync-auditor is not used here: it audits implemented code against acceptance criteria and never reviews plan-phase documents (role boundary: `.claude/agents/moai/sync-auditor.md`).
+diff --git a/internal/template/templates/.claude/skills/moai/workflows/run.md b/internal/template/templates/.claude/skills/moai/workflows/run.md
+index 0d6829e0d..219ca0dc3 100644
+--- a/internal/template/templates/.claude/skills/moai/workflows/run.md
++++ b/internal/template/templates/.claude/skills/moai/workflows/run.md
+@@ -191 +191 @@ The bounded self-diagnosis loop handles MECHANICAL run-phase failures fast (DIAG
+-| Foreground | sub-agent runs `run_in_background: false` (it patches code; background-write prohibition binds) | `agent-common-protocol.md` § Background Agent Execution |
++| Concurrency | the sub-agent patches code, so it is the only write-capable agent running; orchestrator work alongside it stays read-only, and foreground vs background is left to the runtime | `agent-common-protocol.md` § Background Agent Execution |
+@@ -193 +193 @@ The bounded self-diagnosis loop handles MECHANICAL run-phase failures fast (DIAG
+-| Ledger | [HARD] each iteration appended to `progress.md` `## §E Recursive Self-Diagnosis Log` (iteration #, classification, root-cause, patch, VERIFY result, escalation reason); grep-verifiable via `grep -A 10 "Recursive Self-Diagnosis Log" .moai/specs/<SPEC-ID>/progress.md` | `runtime-recovery-doctrine.md` §3 invariant 4 (abort-closes-ledger) |
++| Ledger | [HARD] each iteration appended to the `progress.md` Recursive Self-Diagnosis Log section, lettered per `spec-frontmatter-schema.md` § progress.md Section Map (iteration #, classification, root-cause, patch, VERIFY result, escalation reason); grep-verifiable via `grep -A 10 "Recursive Self-Diagnosis Log" .moai/specs/<SPEC-ID>/progress.md` | `runtime-recovery-doctrine.md` §3 invariant 4 (abort-closes-ledger) |
+diff --git a/internal/template/templates/.claude/skills/moai/workflows/sync.md b/internal/template/templates/.claude/skills/moai/workflows/sync.md
+index c11122f6b..d10b1a3a3 100644
+--- a/internal/template/templates/.claude/skills/moai/workflows/sync.md
++++ b/internal/template/templates/.claude/skills/moai/workflows/sync.md
+@@ -41 +41 @@ Skill injection: at each `manager-docs` spawn the orchestrator injects `At start
+-Phase Owners: `manager-docs` (sync-phase artifact authoring — CHANGELOG.md + README.md + docs-site + progress.md §E.4 + frontmatter `in-progress → implemented` transition for all SPEC artifacts; MUST NOT modify spec.md/plan.md/acceptance.md body content per `.claude/rules/moai/development/spec-frontmatter-schema.md` § Status Transition Ownership Matrix) + `manager-git` (PR creation per branching strategy when Tier L OR `--pr` flag per the canonical Tier-based PR routing policy).
++Phase Owners: `manager-docs` (sync-phase artifact authoring — CHANGELOG.md + README.md + docs-site + progress.md §E.4 (lettered per `spec-frontmatter-schema.md` § progress.md Section Map) + the frontmatter status transition that rides the sync commit for all SPEC artifacts, states per `.claude/rules/moai/development/spec-frontmatter-schema.md` § Status Transition Ownership Matrix; MUST NOT modify spec.md/plan.md/acceptance.md body content per the same matrix) + `manager-git` (PR creation per branching strategy when Tier L OR `--pr` flag per the canonical Tier-based PR routing policy).

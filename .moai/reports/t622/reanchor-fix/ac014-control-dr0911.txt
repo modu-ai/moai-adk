@@ -1,0 +1,2 @@
+internal/template/templates/.codex/agents/moai/manager-docs.toml
+internal/template/templates/.codex/agents/moai/plan-auditor.toml

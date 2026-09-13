@@ -193,6 +193,20 @@ func prMergeCleanup(cfg *config.Config, out io.Writer) {
 			_, _ = fmt.Fprintf(out, "moai: PR-merge cleanup skipped (cause=dirty; uncommitted changes): worktree %s preserved (dispose manually via 'moai worktree remove' or 'git worktree remove')\n", e.path)
 			continue
 		}
+		// Card t673: a merged verdict does not cover commits added to the
+		// branch AFTER the merge, and the dirty guard above cannot see
+		// committed work at all. A clean tree holding unpushed commits is
+		// exactly the state the "unpushed branch's worktree is the only copy"
+		// discipline protects — the unpushed predicate preserves it.
+		unpushed, uerr := sessionWorktreeGitHasUnpushed(e.path)
+		if uerr != nil {
+			_, _ = fmt.Fprintf(out, "moai: PR-merge cleanup skipped (cause=unpushed-check-failed; unpushed-check failed: %v): worktree %s preserved\n", uerr, e.path)
+			continue
+		}
+		if unpushed {
+			_, _ = fmt.Fprintf(out, "moai: PR-merge cleanup skipped (cause=unpushed-commits; branch has commits not on its upstream or any remote): worktree %s preserved\n", e.path)
+			continue
+		}
 		// t73 anchor guard: never remove a worktree a live session is
 		// anchored in — the anchored session's shell dies with the tree
 		// (Claude Code blocks all its Bash once the tree is gone). Same

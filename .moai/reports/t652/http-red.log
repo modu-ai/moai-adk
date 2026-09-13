@@ -1,0 +1,5 @@
+# github.com/modu-ai/moai-adk/internal/gateway [github.com/modu-ai/moai-adk/internal/gateway.test]
+internal/gateway/appserver_integration_test.go:90:18: undefined: NewAppServerAdapter
+internal/gateway/appserver_integration_test.go:90:38: undefined: AppServerAdapterConfig
+FAIL	github.com/modu-ai/moai-adk/internal/gateway [build failed]
+FAIL

@@ -28,10 +28,15 @@ package merge
 //
 // The one thing this base cannot express is a value change the template made to
 // a key the user never touched: with base and updated agreeing on that value,
-// the template's edit is invisible and the user's copy stands. That limitation
-// is inherited, not introduced — the previous base had it too, for the same
-// reason — and closing it needs the deployed template content to be snapshotted
-// at deploy time so a genuine base exists on the next update.
+// the template's edit is invisible and the user's copy stands.
+//
+// For .claude/settings.json that gap is closed where a genuine base exists: the
+// render each flow deploys is snapshotted (backup.StageDeployedSettingsSnapshot)
+// and, once promoted, MergeUserFilesWithOutcome merges the next update against it
+// instead of this derived base (SPEC-UPDATE-SETTINGS-BASE-SNAPSHOT-001). The
+// limitation therefore remains only on the paths that still use this function:
+// settings.json with no usable canonical snapshot (first cycle, cleared cache,
+// corrupt copy), and every other mergeable file (.mcp.json, status_line.sh).
 
 import (
 	"encoding/json"

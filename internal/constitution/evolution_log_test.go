@@ -48,10 +48,17 @@ rolled_back: false
 			t.Errorf("expected no error, got %v", err)
 		}
 		if len(logs) != 1 {
-			t.Errorf("expected 1 log, got %d", len(logs))
+			t.Fatalf("expected 1 log, got %d", len(logs))
 		}
 		if logs[0].ID != "LEARN-20260428-001" {
 			t.Errorf("ID mismatch: got %s", logs[0].ID)
+		}
+		// SPEC-CON-AMEND-APPLY-001 AC-CAA-008: the snake_case fields read back.
+		if logs[0].RuleID != "CONST-V3R2-008" {
+			t.Errorf("RuleID mismatch: got %q, want CONST-V3R2-008", logs[0].RuleID)
+		}
+		if want := time.Date(2026, 4, 28, 10, 0, 0, 0, time.UTC); !logs[0].ApprovedAt.Equal(want) {
+			t.Errorf("ApprovedAt mismatch: got %v, want %v", logs[0].ApprovedAt, want)
 		}
 	})
 
@@ -97,7 +104,11 @@ rolled_back: false
 			t.Errorf("expected no error, got %v", err)
 		}
 		if len(logs) != 2 {
-			t.Errorf("expected 2 logs, got %d", len(logs))
+			t.Fatalf("expected 2 logs, got %d", len(logs))
+		}
+		// SPEC-CON-AMEND-APPLY-001 AC-CAA-008: RuleID of both entries.
+		if logs[0].RuleID != "CONST-V3R2-008" || logs[1].RuleID != "CONST-V3R2-009" {
+			t.Errorf("RuleIDs = %q, %q; want CONST-V3R2-008, CONST-V3R2-009", logs[0].RuleID, logs[1].RuleID)
 		}
 	})
 }

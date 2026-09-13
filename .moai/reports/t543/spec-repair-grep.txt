@@ -1,0 +1,10 @@
+## positive control: new read-time form present (expect hits)
+.moai/specs/SPEC-UPDATE-DOC-DRIFT-001/acceptance.md:661:CARD_BASE=$(git merge-base develop HEAD)
+.moai/specs/SPEC-UPDATE-DOC-DRIFT-001/plan.md:54:CARD_BASE=$(git merge-base develop HEAD)      # left endpoint: derive at read time, never pin
+.moai/specs/SPEC-UPDATE-DOC-DRIFT-001/spec.md:29:| 0.3.1 | 2026-09-10 | **Scope-criterion left endpoint (t543).** acceptance.md AC-UDD-023 and plan.md §C pre-flight measured "no Go change" and "only the declared write surface" as a name-diff over a literal range pinned at `7f61332ef`, which turns false once the branch absorbs the integration branch before re-measuring: the range then holds other work's commits (the t543 reproduction on 2026-09-10 counted 51 Go files from other cards in a tree whose own contribution was 0 Go). Both now derive the left endpoint at read time as `CARD_BASE=$(git merge-base develop HEAD)`, add an unfiltered control (`>= 1`; `0` = not measurable), and are stated pre-merge only, per `.claude/rules/local/gitflow-lane-protocol.md` §8. The v0.3.0 reading is kept as a dated reference. No requirement, status, or other criterion changed; AC-UDD-021 carries the same literal range over the template tree and is not revised here. |
+EXIT=0
+## target: literal 7f61332ef..HEAD range in acceptance.md / plan.md / spec.md
+.moai/specs/SPEC-UPDATE-DOC-DRIFT-001/acceptance.md:610:git diff --stat 7f61332ef..HEAD -- internal/template/templates/
+.moai/specs/SPEC-UPDATE-DOC-DRIFT-001/acceptance.md:611:git log --oneline 7f61332ef..HEAD -- internal/template/templates/ | wc -l
+EXIT=0
+## note: the two target hits above are acceptance.md:610-611, inside AC-UDD-021 (template-tree range), outside this card's stated scope (AC-UDD-023 + plan.md pre-flight); no hit remains in AC-UDD-023 or plan.md

@@ -1,0 +1,7 @@
+{
+  "accuracy": {
+    "plain": "## main...origin/main [ahead 1, behind 1]\n M m.txt\nM  s.txt\n?? u.txt\n",
+    "no_optional_locks": "## main...origin/main [ahead 1, behind 1]\n M m.txt\nM  s.txt\n?? u.txt\n",
+    "byte_equal": true
+  }
+}

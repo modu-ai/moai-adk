@@ -14,6 +14,8 @@ type TodoVM struct {
 	// primary's cards, and the operator can see which file that was.
 	Root  string
 	Items []TodoItemVM
+	// Unavailable distinguishes a read failure from a successfully empty queue.
+	Unavailable bool
 }
 
 // TodoItemVM is one backlog card. The five-field item contract the store holds
@@ -31,4 +33,27 @@ type TodoItemVM struct {
 // working view cannot.
 func (a *app) buildTodo() TodoVM {
 	return readTodoQueue(a.cfg.ProjectRoot)
+}
+
+// todoStateCount keeps the Overview summary read-only and derived from the
+// same item list the /todo page renders. Unknown states are counted nowhere;
+// the full queue remains visible on /todo for diagnosis.
+func todoStateCount(items []TodoItemVM, state string) int {
+	count := 0
+	for _, item := range items {
+		if item.State == state {
+			count++
+		}
+	}
+	return count
+}
+
+// boundedTodoItems prevents a large operator queue from pushing the Overview
+// actions below the fold. The /todo route remains the complete read-only list.
+func boundedTodoItems(items []TodoItemVM) []TodoItemVM {
+	const overviewTodoLimit = 5
+	if len(items) <= overviewTodoLimit {
+		return items
+	}
+	return items[:overviewTodoLimit]
 }

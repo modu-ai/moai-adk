@@ -1,0 +1,42 @@
+event: response.created
+data: {"response":{"id":"resp-1","model":"gpt-5.6-sol","status":"in_progress"},"type":"response.created"}
+
+event: response.output_item.added
+data: {"item":{"content":[],"id":"item-0","role":"assistant","status":"in_progress","type":"message"},"output_index":0,"type":"response.output_item.added"}
+
+event: response.output_item.added
+data: {"item":{"content":[],"id":"item-1","role":"assistant","status":"in_progress","type":"message"},"output_index":1,"type":"response.output_item.added"}
+
+event: response.content_part.added
+data: {"content_index":0,"item_id":"item-1","output_index":1,"part":{"annotations":[],"text":"","type":"output_text"},"type":"response.content_part.added"}
+
+event: response.output_text.delta
+data: {"content_index":0,"delta":"second","item_id":"item-1","output_index":1,"type":"response.output_text.delta"}
+
+event: response.output_text.done
+data: {"content_index":0,"item_id":"item-1","output_index":1,"text":"second","type":"response.output_text.done"}
+
+event: response.content_part.done
+data: {"content_index":0,"item_id":"item-1","output_index":1,"part":{"annotations":[],"text":"second","type":"output_text"},"type":"response.content_part.done"}
+
+event: response.output_item.done
+data: {"item":{"content":[{"annotations":[],"text":"second","type":"output_text"}],"id":"item-1","role":"assistant","status":"completed","type":"message"},"output_index":1,"type":"response.output_item.done"}
+
+event: response.content_part.added
+data: {"content_index":0,"item_id":"item-0","output_index":0,"part":{"annotations":[],"text":"","type":"output_text"},"type":"response.content_part.added"}
+
+event: response.output_text.delta
+data: {"content_index":0,"delta":"first","item_id":"item-0","output_index":0,"type":"response.output_text.delta"}
+
+event: response.output_text.done
+data: {"content_index":0,"item_id":"item-0","output_index":0,"text":"first","type":"response.output_text.done"}
+
+event: response.content_part.done
+data: {"content_index":0,"item_id":"item-0","output_index":0,"part":{"annotations":[],"text":"first","type":"output_text"},"type":"response.content_part.done"}
+
+event: response.output_item.done
+data: {"item":{"content":[{"annotations":[],"text":"first","type":"output_text"}],"id":"item-0","role":"assistant","status":"completed","type":"message"},"output_index":0,"type":"response.output_item.done"}
+
+event: response.completed
+data: {"response":{"id":"resp-1","model":"gpt-5.6-sol","output":[{"content":[{"annotations":[],"text":"first","type":"output_text"}],"id":"item-0","role":"assistant","status":"completed","type":"message"},{"content":[{"annotations":[],"text":"second","type":"output_text"}],"id":"item-1","role":"assistant","status":"completed","type":"message"}],"status":"completed","usage":{"input_tokens":7,"output_tokens":3}},"type":"response.completed"}
+

@@ -292,11 +292,18 @@ func resolveHomeStateCoverageChangeSet(root string) (homeStateCoverageChangeSet,
 			}
 		}
 	}
+	// Name every mismatch in sorted order: reporting the first map hit made the
+	// named file depend on iteration order, so it changed from run to run.
+	var changed []string
 	for file, expected := range expectedBlobs {
 		headBlob, err := gitCoverageOutput(root, "rev-parse", "HEAD:"+file)
 		if err != nil || headBlob != expected {
-			return result, fmt.Errorf("audited production file changed after coverage tip: %s", file)
+			changed = append(changed, file)
 		}
+	}
+	if len(changed) > 0 {
+		sort.Strings(changed)
+		return result, fmt.Errorf("audited production file changed after coverage tip: %s", strings.Join(changed, ", "))
 	}
 
 	dirtyStatus, err := gitCoverageOutput(root, "diff", "--name-status", "-M", "HEAD", "--", ":(glob)**/*.go")
@@ -341,10 +348,17 @@ func resolveHomeStateCoverageChangeSet(root string) (homeStateCoverageChangeSet,
 		}
 		result.Ranges[file] = []changedLineRange{{Start: 1, End: 1 + strings.Count(string(raw), "\n")}}
 	}
+	var missing []string
 	for file := range all {
 		if _, ok := result.Ranges[file]; !ok {
-			return result, fmt.Errorf("changed production file missing from diff: %s", file)
+			missing = append(missing, file)
 		}
+	}
+	if len(missing) > 0 {
+		sort.Strings(missing)
+		return result, fmt.Errorf("changed production file missing from diff: %s", strings.Join(missing, ", "))
+	}
+	for file := range all {
 		if strings.HasSuffix(file, "_windows.go") && runtime.GOOS != "windows" || strings.HasSuffix(file, "_unix.go") && runtime.GOOS == "windows" {
 			result.Disposition = append(result.Disposition, file+":cross-compile")
 			delete(result.Ranges, file)

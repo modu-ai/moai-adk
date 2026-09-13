@@ -1,4 +1,5 @@
-// 재설계본 셸 — 좌측 레일(5영역 + 설정 탭) + 상단바(문맥 칩 · 실시간 · 저장) + 본문.
+// 재설계본 셸 — 좌측 레일(Overview · Todo · Settings + 설정 탭) + 상단바
+// (문맥 칩 · 실시간 · 저장) + 본문.
 //
 // handoff 원본 대비 로컬 보정:
 //   1) profilePop 의 폼 계약을 실제 서버 라우트에 맞췄다. 원본은 존재하지 않는
@@ -83,6 +84,10 @@ type TabVM struct {
 	// 사전에 없어서 4개 로케일 전부에서 빈 라벨로 떨어진다.
 	LabelKey string
 	Label    string
+	DescKey  string
+	Desc     string
+	EffectKey string
+	Effect    string
 	Fields   int
 	HasErr   bool
 }
@@ -128,11 +133,8 @@ templ rail(vm ShellVM) {
 		</div>
 		<ul class="nav">
 			@navRow(vm, "overview", "Overview", "/")
-			@navRow(vm, "kanban", "Kanban", "/kanban")
-			@navRow(vm, "specs", "Specs", "/specs")
-			@navRow(vm, "monitor", "Monitor", "/monitor")
-			@navRow(vm, "settings", "Settings", "/settings")
 			@navRow(vm, "todo", "Todo", "/todo")
+			@navRow(vm, "settings", "Settings", "/settings")
 			if vm.Area == "settings" && len(vm.Tabs) > 0 {
 				<li>
 					// 탭 순서는 schemaform.go consoleTabs() 가 소유한다 (C6).

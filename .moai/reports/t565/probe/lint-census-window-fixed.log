@@ -1,0 +1,7 @@
+=== RUN   TestT565LintCensus
+    zz_t565_lint_census_test.go:95: OUT = /private/tmp/claude-501/-Users-goos-MoAI-moai-adk-go/e5c0032b-ffbd-44b0-8997-c16d09d3541b/scratchpad/census-window-fixed
+    zz_t565_lint_census_test.go:96: findings = 3325  CoverageIncomplete = 2010  DuplicateAcceptanceID = 0
+--- PASS: TestT565LintCensus (430.16s)
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/spec	430.573s
+exit=0

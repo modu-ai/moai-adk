@@ -1,0 +1,4 @@
+5a6,8
+> < gh pr merge <PR> --<merge_method> --delete-branch
+> ---
+> > gh pr merge <PR> --squash --delete-branch   # squash default

@@ -1,0 +1,2 @@
+.claude/agents/moai/manager-git.md:4
+internal/template/templates/.claude/agents/moai/manager-git.md:4

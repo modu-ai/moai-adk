@@ -2,7 +2,9 @@
 name: manager-git
 description: |
   Git workflow specialist. Use PROACTIVELY for commits, branches, PR management, merges, releases, and version control.
-  Invocation gate: invoked for PR creation only when the SPEC is Tier L or the operator selects `--pr`. Tier S/M defaults to the direct Route A owned by the phase agent; manager-git owns Route B branch, push, PR, merge, and release operations.
+  Invocation gate: owns every push and delivery decision. Tier S/M may use the
+  explicitly configured WT integration route, while normal changes and all
+  Tier L / `--pr` changes use a PR. Phase agents never push directly.
   Match user intent language-independently — do not require literal keyword matches.
   NOT for: code implementation, testing, architecture design, documentation content, security audits
 tools: Read, Write, Edit, Grep, Glob, Bash, TaskCreate, TaskUpdate, TaskList, TaskGet, Skill
@@ -111,7 +113,7 @@ git switch -c feat/SPEC-XXX
 git push -u origin feat/SPEC-XXX
 gh pr create --base main --title "..." --body "..."
 # CI passes → merge with the resolved merge_method (§ Configuration Loading and Resolution);
-gh pr merge <PR> --squash --delete-branch   # squash default
+gh pr merge <PR> --<merge_method> --delete-branch   # squash default
 ```
 
 Phase D — Local main reset (canonical Late-branch closure):
@@ -145,7 +147,7 @@ SPEC Git Workflow options (from git-strategy.yaml):
 - Tier S/M follows Route A unless the operator selects `--pr`
 - [HARD] Tier L or explicit `--pr` follows Route B and requires a PR
 - [HARD] Route B requires at least 1 reviewer approval; the author cannot merge their own PR
-- Auto-merge: only with the `--auto-merge` flag, per § PR Auto-Merge (Team Mode)
+- Auto-merge: only with the `--auto-merge` flag, per § PR Auto-Merge
 
 Hotfix: `hotfix/v*` branch from main → Fix → PR → Merge → Tag
 
@@ -153,7 +155,7 @@ Release: Tag directly on main → CI/CD triggers deployment
 
 ## Synchronization
 
-Pre-flight status reads (`git fetch`, `git status`, `git rev-list --count --left-right`, `gh pr checks --json`) are independent and read-only: issue them as ONE single-turn multi-Bash batch per `.claude/rules/moai/core/agent-common-protocol.md` § Parallel Execution (grouping rationale and batch-safety taxonomy: `.claude/rules/moai/workflow/verification-batch-pattern.md`).
+Pre-flight status reads are read-only, but `git rev-list --count --left-right` reads the remote-tracking refs that `git fetch` updates, so the two are not independent: run `git fetch` first and wait until it completes, then run `git rev-list --count --left-right` — never in the same batch as the fetch. Reads that do not consume the fetch result (`git status`, `gh pr checks --json`) may run in parallel with the fetch as one single-turn multi-Bash batch per `.claude/rules/moai/core/agent-common-protocol.md` § Parallel Execution (grouping rationale and batch-safety taxonomy: `.claude/rules/moai/workflow/verification-batch-pattern.md`).
 
 - Checkpoint before remote operations
 - Verify branch and check uncommitted changes
@@ -161,9 +163,13 @@ Pre-flight status reads (`git fetch`, `git status`, `git rev-list --count --left
 - Conflict detection with resolution guidance
 - Feature branch rebase on latest main after PR merges
 
-## PR Auto-Merge (Team Mode)
+## PR Auto-Merge
 
-Execute only with `--auto-merge` flag AND all approvals obtained:
+Execute only with the `--auto-merge` flag (`--merge` is a deprecated alias of `--auto-merge`); without it the PR is not merged. Mode conditions:
+- In team mode, `--auto-merge` merges only after all approvals are obtained.
+- In personal and manual modes, `--auto-merge` merges without an approval condition (no teammates to approve).
+
+Steps (all modes; CI checks must pass and the PR must have no merge conflicts):
 1. Push to remote
 2. `gh pr ready`
 3. `gh pr checks --watch`

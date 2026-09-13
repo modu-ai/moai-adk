@@ -1,0 +1,7 @@
+=== RUN   TestManifestHashFormat
+=== PAUSE TestManifestHashFormat
+=== CONT  TestManifestHashFormat
+    catalog_tier_audit_test.go:456: audited 45 catalog entries for hash validity
+--- PASS: TestManifestHashFormat (0.01s)
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/template	0.442s

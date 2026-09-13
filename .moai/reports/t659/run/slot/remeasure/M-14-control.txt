@@ -1,0 +1,5 @@
+# mutant M-14-control: the same mutant under the scrubbed environment (unset run of AC-CAA-017): expected to pass, so the two runs disagree and AC-CAA-017's same-result assertion fails
+# edits: [["internal/constitution/apply_test.go", "\tt.Setenv(\"MOAI_CONSTITUTION_REGISTRY\", \"\")\n\tt.Setenv(\"CLAUDE_PROJECT_DIR\", \"\")\n}", "\t_ = t\n}"]]
+# $ go test ./internal/constitution/ -count=1
+# exit=0
+ok  	github.com/modu-ai/moai-adk/internal/constitution	0.601s

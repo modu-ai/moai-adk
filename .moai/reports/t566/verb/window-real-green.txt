@@ -1,0 +1,5 @@
+doc: internal/template/templates/.claude/skills/moai/workflows/codemaps.md
+--- stdout ---
+COLLECTED: fold=5 omission=15
+--- stderr ---
+EXIT=0

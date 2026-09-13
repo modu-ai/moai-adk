@@ -13,7 +13,6 @@ package web
 
 import (
 	"net/http"
-	"net/http/httptest"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -61,9 +60,7 @@ func todoBodyFor(t *testing.T, projectRoot string) string {
 	t.Helper()
 	a := newApp(Config{ProjectRoot: projectRoot, ProfileName: "default"})
 	a.recordLastProfile = func(string) error { return nil }
-	req := httptest.NewRequest(http.MethodGet, "/todo", nil)
-	rec := httptest.NewRecorder()
-	a.routes().ServeHTTP(rec, req)
+	rec := serveGet(t, a.routes(), "/todo")
 	if rec.Code != http.StatusOK {
 		t.Fatalf("GET /todo status = %d, want 200\nbody:\n%s", rec.Code, rec.Body.String())
 	}
@@ -111,16 +108,15 @@ func TestTodoSectionListsAllThreeStates(t *testing.T) {
 	}
 }
 
-// TestTodoSectionEmptyStates — AC-WTQ-009: an absent, empty or malformed queue
-// file renders the empty state at 200, never an error response.
+// An absent or valid empty legacy queue remains an empty state at 200. Corruption
+// is covered separately: it must not claim that the queue is empty (t647).
 func TestTodoSectionEmptyStates(t *testing.T) {
 	cases := []struct {
 		name string
 		body *string
 	}{
 		{"absent file", nil},
-		{"empty file", strPtr("")},
-		{"malformed JSON", strPtr(`{"version":1,"items":[{"id":`)},
+		{"empty queue", strPtr(`{"version":1,"items":[]}`)},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
@@ -245,8 +241,7 @@ func TestConsoleRoutesLeaveBacklogUntouched(t *testing.T) {
 	h := a.routes()
 	time.Sleep(10 * time.Millisecond)
 	for _, p := range []string{"/", "/kanban", "/specs", "/monitor", "/settings", "/todo"} {
-		req := httptest.NewRequest(http.MethodGet, p, nil)
-		h.ServeHTTP(httptest.NewRecorder(), req)
+		serveGet(t, h, p)
 	}
 
 	afterBytes, err := os.ReadFile(path)

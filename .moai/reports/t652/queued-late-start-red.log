@@ -1,0 +1,5 @@
+--- FAIL: TestStopRetainsAlreadyQueuedLateStartIdentity (0.00s)
+    engine_test.go:454: stop discarded allocated turn identity 
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/codexbridge	0.346s
+FAIL

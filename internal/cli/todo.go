@@ -107,6 +107,13 @@ func newTodoStore() *kanban.BacklogStore {
 	return kanban.NewBacklogStore(todoBacklogPath(resolveTodoQueueRoot()))
 }
 
+// Observational commands must not relocate a legacy queue while constructing
+// their store, before LoadPure even gets a chance to preserve it.
+func newTodoReadStore() *kanban.BacklogStore {
+	root := kanban.ResolveTodoQueueRoot(resolveProjectDir())
+	return kanban.NewBacklogStore(kanban.BacklogPathForRoot(root))
+}
+
 // todoLandedRef is the single place the todo surface resolves the ref the
 // landing question is asked about, so the help text, the flag description, the
 // refusal, and the query itself can never name different refs.
@@ -115,7 +122,7 @@ func newTodoStore() *kanban.BacklogStore {
 // because the queue and the integration branch are properties of one
 // repository, not of whichever worktree the command happens to run in.
 func todoLandedRef() string {
-	return kanban.LandedRefFor(resolveTodoQueueRoot())
+	return kanban.LandedRefFor(kanban.ResolveTodoQueueRoot(resolveProjectDir()))
 }
 
 // todoLandedRefResolved is todoLandedRef with its provenance: which chain
@@ -124,7 +131,7 @@ func todoLandedRef() string {
 // own recorded default rather than through configuration is the exceptional
 // path, and a silent fallback is exactly how the wrong-ref answer hid.
 func todoLandedRefResolved() (string, kanban.LandedRefLevel) {
-	return kanban.LandedRefForWithLevel(resolveTodoQueueRoot())
+	return kanban.LandedRefForWithLevel(kanban.ResolveTodoQueueRoot(resolveProjectDir()))
 }
 
 // todoRefLevelSource names where a chain level's answer came from, for the
@@ -256,7 +263,7 @@ mentions an id later in the sentence still falls through, and
 		newTodoUnpickCmd(), newTodoEditCmd(), newTodoMoveCmd(),
 		newTodoDropCmd(), newTodoUndropCmd(),
 		newTodoAnalyzeCmd(), newTodoRelateCmd(), newTodoUnrelateCmd(), newTodoWhyCmd(),
-		newTodoPRCmd(), newTodoLandedCmd(), newTodoExportJSONCmd(), newTodoHistoryCmd())
+		newTodoPRCmd(), newTodoLandedCmd(), newTodoAutoDoneCmd(), newTodoExportJSONCmd(), newTodoHistoryCmd())
 	return cmd
 }
 
@@ -534,11 +541,14 @@ const todoListDefaultLimit = 20
 // structured record is the full read, and a bounded JSON would be the same
 // silent truncation.
 func runTodoList(cmd *cobra.Command, jsonOutput bool, droppedOnly bool, limit int) error {
-	store := newTodoStore()
-	// REQ-BJD-002 — probed before the read, because Load adopts (see
-	// todo_disclosure.go). stderr only: stdout is what the foreman reads.
+	if !jsonOutput && limit < 0 {
+		return fmt.Errorf("todo list: --limit must be >= 0 (got %d)", limit)
+	}
+	store := newTodoReadStore()
+	// REQ-BJD-002 — probed before the read. stderr only: stdout is what the
+	// foreman reads.
 	_ = discloseQueueLayout(cmd, "todo")
-	rec, err := store.Load()
+	rec, err := store.LoadPure()
 	if err != nil {
 		_, _ = fmt.Fprintf(cmd.ErrOrStderr(), "Error: %v\n", err)
 		return err
@@ -555,9 +565,6 @@ func runTodoList(cmd *cobra.Command, jsonOutput bool, droppedOnly bool, limit in
 	if len(rec.Items) == 0 {
 		_, _ = fmt.Fprintln(out, "queue is empty")
 		return nil
-	}
-	if limit < 0 {
-		return fmt.Errorf("todo list: --limit must be >= 0 (got %d)", limit)
 	}
 	var visible []kanban.BacklogItem
 	dropped := 0
@@ -576,7 +583,7 @@ func runTodoList(cmd *cobra.Command, jsonOutput bool, droppedOnly bool, limit in
 		shown = limit
 	}
 	for _, it := range visible[:shown] {
-		_, _ = fmt.Fprintf(out, "%s\t%s\t%s\n", it.ID, it.State, it.Text)
+		_, _ = fmt.Fprintf(out, "%s\t%s\t%s\n", it.ID, it.State, todoPRCell(it.Text))
 		for _, f := range rec.Findings {
 			if !f.Names(it.ID) {
 				continue
@@ -654,8 +661,15 @@ func newTodoDoneCmd() *cobra.Command {
 			// disclosure all name the same ref (todoLandedRef's contract).
 			ref, refLevel := todoLandedRefResolved()
 			// Unknown until a query answers otherwise. Absent the flag no
-			// query runs at all, and `unknown` is the honest report of that.
+			// query runs at all, and `unknown` is the honest report of that
+			// — UNLESS the card already carries recorded landing evidence,
+			// which is an answer that was obtained earlier and stored (card
+			// t665). Reporting `unknown` over a validated record was the
+			// reported defect: eight cards archived on 2026-09-12 carried a
+			// recorded delivering SHA and every one of them closed as if
+			// nothing were known.
 			verdict := kanban.LandingUnknown
+			var landing *kanban.LandingEvidence
 			if err := store.Mutate(func(rec *kanban.BacklogRecord) error {
 				// Refused mutations below: Mutate writes nothing, so the
 				// record stays byte-identical on every one of them.
@@ -672,6 +686,11 @@ func newTodoDoneCmd() *cobra.Command {
 				if rec.Items[at].SpecID != nil {
 					specID = *rec.Items[at].SpecID
 				}
+				// Read BEFORE ArchiveCard moves the row: the archive copies
+				// the item, so the record survives either way, but reading it
+				// here keeps the verdict and the line derived from the same
+				// row the mutation addressed.
+				landing = rec.Items[at].Landing
 				if expect != "" && !strings.HasPrefix(rec.Items[at].Text, expect) {
 					return fmt.Errorf("backlog item %s is %q, not matching --expect %q",
 						id, todoTextPrefix(rec.Items[at].Text), expect)
@@ -695,11 +714,24 @@ func newTodoDoneCmd() *cobra.Command {
 			// only when a landing query actually ran: without the flag no ref
 			// answered, and naming one would dress "the guard did not run" up
 			// as "the guard answered against ref X".
-			if requireLanded {
-				_, _ = fmt.Fprintf(cmd.OutOrStdout(), "done %s landing=%s ref=%s\n", id, verdict, ref)
-			} else {
-				_, _ = fmt.Fprintf(cmd.OutOrStdout(), "done %s landing=%s\n", id, verdict)
+			//
+			// The recorded-evidence suffix (card t665) is appended on BOTH
+			// paths and carries its provenance, so a stored operator
+			// assertion is never mistaken for an answer this run's query
+			// produced. Without the flag it also supplies the verdict — a
+			// validated record IS the answer, obtained earlier.
+			recorded := todoDoneLandingSuffix(landing)
+			if recorded != "" && !requireLanded {
+				verdict = kanban.LandingLanded
 			}
+			line := fmt.Sprintf("done %s landing=%s", id, verdict)
+			if requireLanded {
+				line += " ref=" + ref
+			}
+			if recorded != "" {
+				line += " " + recorded
+			}
+			_, _ = fmt.Fprintln(cmd.OutOrStdout(), line)
 			recordFactoryCardState(id, specID, "completed", "card.completed")
 			return nil
 		},
@@ -787,6 +819,30 @@ func todoRequireLanded(cmd *cobra.Command, id, ref string, refLevel kanban.Lande
 	return answer, nil
 }
 
+// todoDoneLandingSuffix renders the recorded-evidence suffix of the `done`
+// line, or "" when the card carries nothing worth reporting (card t665).
+//
+// Only a record that carries a delivering SHA and passes its own validation
+// produces a suffix, because only that record answers the question the
+// archive lost: which commit delivered this card. A record holding just the
+// observed ref position asserts no delivering commit, so reporting it here
+// would dress a ref position up as a delivery — the confusion REQ-TLE-013
+// exists to prevent.
+//
+// The provenance travels with the value for the same reason `landed` refuses
+// to store one without the other: `landed` as a verdict and `operator` as its
+// source are two different facts, and a reader who sees only the first cannot
+// tell a stored assertion from a query this run made.
+func todoDoneLandingSuffix(e *kanban.LandingEvidence) string {
+	if e == nil || strings.TrimSpace(e.SHA) == "" {
+		return ""
+	}
+	if err := e.Validate(); err != nil {
+		return ""
+	}
+	return fmt.Sprintf("sha=%s source=%s", e.SHA, e.SHASource)
+}
+
 // newTodoNextCmd — `moai todo next [<n>] [--spec <SPEC-ID>]` (REQ-TODO-005).
 // Bare: print the queued items oldest-first as read-only candidates — the
 // pick stays the operator's act. With <n>: mark the addressed item picked
@@ -823,7 +879,7 @@ refuses the pick unless the addressed card's text starts with the prefix.`,
 						continue
 					}
 					queued++
-					_, _ = fmt.Fprintf(out, "%s\t%s\n", it.ID, it.Text)
+					_, _ = fmt.Fprintf(out, "%s\t%s\n", it.ID, todoPRCell(it.Text))
 				}
 				if queued == 0 {
 					_, _ = fmt.Fprintln(out, "queue is empty")
@@ -836,6 +892,9 @@ refuses the pick unless the addressed card's text starts with the prefix.`,
 			if err := store.Mutate(func(rec *kanban.BacklogRecord) error {
 				for i := range rec.Items {
 					if rec.Items[i].ID == id {
+						if rec.Items[i].State == kanban.BacklogStateDropped {
+							return fmt.Errorf("backlog item %s is dropped — use moai todo undrop %s before picking", id, id)
+						}
 						if expect != "" && !strings.HasPrefix(rec.Items[i].Text, expect) {
 							// Refused mutation: Mutate writes nothing, so the
 							// file stays byte-identical on a mismatch.
@@ -945,9 +1004,9 @@ const todoTextPrefixMax = 40
 // multi-byte card texts (ko/ja/zh), and a byte slice could cut a character
 // mid-sequence. Truncated text is marked with a trailing ellipsis.
 func todoTextPrefix(text string) string {
-	runes := []rune(text)
+	runes := []rune(todoPRCell(text))
 	if len(runes) <= todoTextPrefixMax {
-		return text
+		return string(runes)
 	}
 	return string(runes[:todoTextPrefixMax]) + "..."
 }

@@ -1,0 +1,3 @@
+internal/template/templates/.claude/agents/moai/plan-auditor.md silence_or_corroboration_clause=0 shorthand_normalization=0 control_traceability=6 control_AC-4=1
+.claude/agents/moai/plan-auditor.md silence_or_corroboration_clause=0 shorthand_normalization=0 control_traceability=6 control_AC-4=1
+grep_exit=0

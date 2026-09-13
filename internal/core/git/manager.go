@@ -100,7 +100,13 @@ func (m *gitManager) Status() (*GitStatus, error) {
 	// --branch adds a leading `## ` header carrying the branch, its upstream,
 	// and the ahead/behind counts — the same three facts that otherwise cost a
 	// separate `symbolic-ref` and `rev-list` spawn apiece.
-	out, err := execGit(ctx, m.root, "status", "--porcelain", "--branch")
+	//
+	// --no-optional-locks keeps status read-only. A plain status refreshes the
+	// index stat cache and takes the index write lock to save it; the
+	// statusline calls Status on every render, so that lock collides with a
+	// concurrent add, commit or merge in the same worktree ("index.lock: File
+	// exists"). The flag changes no output, only that write.
+	out, err := execGit(ctx, m.root, "--no-optional-locks", "status", "--porcelain", "--branch")
 	if err != nil {
 		return nil, fmt.Errorf("status: %w", err)
 	}

@@ -1,0 +1,5 @@
+mutant B (header identification removed: every column is a REQ column)
+predicted before run:
+  FAIL OnlyHeaderColumnsAndOnlySameCell  (got [REQ-CST-002-002]: Note-column 003 now covered)
+  FAIL UnidentifiedHeaderCollectsNothing (got []: 설명-column REQ-CST-003-001 now covered)
+  PASS HeaderColumnWithSameCellExpansion, RowWithoutACIsNotCoverage, 3 existing sibling tests

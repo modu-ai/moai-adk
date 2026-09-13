@@ -85,10 +85,14 @@ func writeKanbanSessionRecord(input *HookInput) {
 		dir = input.ProjectDir
 	}
 
+	backend := os.Getenv(config.EnvMoaiKanbanBackend)
+	if isGatewaySession() {
+		backend = os.Getenv(config.EnvMoaiLaunchProvider)
+	}
 	rec := kanban.NewRecord(
 		input.SessionID,
 		os.Getenv(config.EnvMoaiKanbanSpec),
-		os.Getenv(config.EnvMoaiKanbanBackend),
+		backend,
 	).WithRole(role).WithLane(lane).WithCard(resolveSessionCardID(dir))
 
 	kanban.WriteBestEffort(root, rec)

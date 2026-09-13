@@ -1,0 +1,14 @@
+--- internal/spec/parser.go	2026-09-11 03:18:01
++++ /private/tmp/claude-501/-Users-goos-MoAI-moai-adk-go/e5c0032b-ffbd-44b0-8997-c16d09d3541b/scratchpad/mutants/M3/parser.go	2026-09-11 03:21:33
+@@ -68,11 +68,6 @@
+ // sibling file does not name the section.
+ var acSectionVocabulary = []string{
+ 	"acceptance",
+-	"success criteria",
+-	"ac matrix",
+-	"수락 기준",
+-	"인수 기준",
+-	"검수 기준",
+ }
+ 
+ // acNegativeSectionMarkers mark a heading about what the SPEC does not cover;

@@ -549,9 +549,6 @@
   // htmx boost 가 body 를 swap 한 직후 document 에서 발생한다. afterSettle 없으면
   // swap 이후 DOMContentLoaded 가 재발생하지 않아 초기화가 누락된다.
   document.addEventListener("htmx:afterSettle", initConsole);
-  // Fires only after a swap actually landed, so a rejected refresh leaves the
-  // clock reading its last real value instead of claiming a fetch that failed.
-  document.addEventListener("htmx:afterSettle", stampRefreshed);
 
   // SPEC-WEB-CONSOLE-011 M5 — SPEC 보드의 remediation 명령 복사 버튼.
   // document 레벨 위임 리스너를 IIFE 최상위에서 "한 번만" 등록한다(initConsole
@@ -721,6 +718,13 @@
     el.textContent =
       pad(d.getHours()) + ":" + pad(d.getMinutes()) + ":" + pad(d.getSeconds());
   }
+
+  // The refresh listener belongs to this IIFE because stampRefreshed is scoped
+  // here. Registering it in the earlier console IIFE raises a ReferenceError
+  // before the live refresh handlers can finish loading.
+  // It fires only after a swap actually landed, so a rejected refresh leaves
+  // the clock reading its last real value instead of claiming a fetch that failed.
+  document.addEventListener("htmx:afterSettle", stampRefreshed);
 
   function setLive(on) {
     var el = document.querySelector("[data-live-indicator]");

@@ -278,25 +278,16 @@ func TestGetLocalizedQuestion(t *testing.T) {
 }
 
 func TestGetUIStrings(t *testing.T) {
-	// Test English
-	enStrings := GetUIStrings("en")
-	if enStrings.HelpSelect == "" {
-		t.Error("English HelpSelect should not be empty")
-	}
-
 	// Test Korean
 	koStrings := GetUIStrings("ko")
-	if koStrings.HelpSelect == enStrings.HelpSelect {
-		t.Error("Korean HelpSelect should be different from English")
-	}
 	if koStrings.ErrorRequired != "필수 입력 항목입니다" {
 		t.Errorf("expected Korean error '필수 입력 항목입니다', got %q", koStrings.ErrorRequired)
 	}
 
 	// Test unknown locale (should return English)
 	unknownStrings := GetUIStrings("xx")
-	if unknownStrings.HelpSelect != enStrings.HelpSelect {
-		t.Error("unknown locale should return English strings")
+	if unknownStrings.ErrorRequired != "This field is required" {
+		t.Errorf("unknown locale should return the English ErrorRequired, got %q", unknownStrings.ErrorRequired)
 	}
 }
 
@@ -652,13 +643,13 @@ func TestStepperTotal_DynamicDenominator(t *testing.T) {
 	}
 
 	// Adding page 3 expands the denominator further: 6 unconditional defaults
-	// (git conditionals hidden for manual) + 13 page-3 questions = 19.
-	// SPEC-INIT-HARNESS-PROMPT-001 added agent_wiring to page 3 (11 -> 12).
-	// SPEC-PROJECT-CONTINUATION-KEY-001 added project_continuation (12 -> 13).
+	// (git conditionals hidden for manual) + 2 page-3 questions = 8.
+	// SPEC-INIT-QUIET-WIZARD-001 left page 3 with agent_wiring and
+	// autonomy_tier only (13 -> 2).
 	all := append(ReconfigureQuestions("/tmp/steppertotal"), Page3Questions("/tmp/steppertotal")...)
 	std := &WizardResult{GitMode: "manual", DesignEnabled: true}
-	if got := stepperDenominator(all, std); got != 19 {
-		t.Errorf("page-3 denominator: expected 19 (6 + 13 page-3), got %d", got)
+	if got := stepperDenominator(all, std); got != 8 {
+		t.Errorf("page-3 denominator: expected 8 (6 + 2 page-3), got %d", got)
 	}
 	// Single dynamic source invariant: stepperDenominator == TotalVisibleQuestions.
 	if stepperDenominator(all, std) != TotalVisibleQuestions(all, std) {
@@ -1253,12 +1244,6 @@ func TestGetUIStrings_AllLocales(t *testing.T) {
 	locales := []string{"en", "ko", "ja", "zh"}
 	for _, locale := range locales {
 		str := GetUIStrings(locale)
-		if str.HelpSelect == "" {
-			t.Errorf("locale %q: HelpSelect should not be empty", locale)
-		}
-		if str.HelpInput == "" {
-			t.Errorf("locale %q: HelpInput should not be empty", locale)
-		}
 		if str.ErrorRequired == "" {
 			t.Errorf("locale %q: ErrorRequired should not be empty", locale)
 		}

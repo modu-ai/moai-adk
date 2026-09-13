@@ -1,0 +1,2 @@
+internal/core/git/manager.go
+internal/core/git/status_optional_locks_test.go

@@ -1,0 +1,8 @@
+entries_before 5
+entries_after  3
+ask_lines_before 2
+ask_lines_after  0
+before dac099f591af1b4d5073932c4f3719f81b250d26b40e483bb5069ecc25cf5ebc
+after  f04bae8ba0be63630003edf77045fabd64e52926a460bc18d61d4e5547b8563f
+backup dac099f591af1b4d5073932c4f3719f81b250d26b40e483bb5069ecc25cf5ebc
+EXIT=0

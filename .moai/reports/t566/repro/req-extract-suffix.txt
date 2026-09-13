@@ -1,0 +1,6 @@
+pattern: reqLineWidePattern (internal/spec/lint_req_widen.go) transcribed to Python re; the pattern uses no RE2-only syntax
+definition lines found for REQ-CM2-014 (line-anchored, bullet then optional bold then the id): 1
+control: spec.md:305 -> MATCH id=REQ-CM2-014
+control id is REQ-CM2-014: True
+suffixed (same line, the defining id replaced by REQ-CM2-003a): NO MATCH
+note: lint_req_widen.go documents lowercase-token suffixes (REQ-BDR-005b) as a known residual form deliberately out of scope for the line-based parser

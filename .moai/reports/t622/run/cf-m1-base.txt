@@ -1,0 +1,14 @@
+base-command-sync-template.md 0
+base-command-sync.md 0
+base-delivery-template.md 0
+base-delivery.md 0
+base-doc-execution-template.md 0
+base-doc-execution.md 0
+base-qgc-template.md 0
+base-qgc.md 0
+base-reference-template.md 0
+base-reference.md 0
+base-skill-template.md 0
+base-skill.md 0
+base-sync-template.md 0
+base-sync.md 0

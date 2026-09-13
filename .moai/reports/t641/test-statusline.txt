@@ -1,0 +1,1975 @@
+=== RUN   TestRendererBacklogSegmentGating
+=== PAUSE TestRendererBacklogSegmentGating
+=== RUN   TestResolveBacklogCounts_DatabaseLayoutIsReadPurely
+=== PAUSE TestResolveBacklogCounts_DatabaseLayoutIsReadPurely
+=== RUN   TestResolveBacklogCounts_LegacyLayoutIsReadWithoutRelocating
+=== PAUSE TestResolveBacklogCounts_LegacyLayoutIsReadWithoutRelocating
+=== RUN   TestResolveBacklogCounts_UnreadableIsUnavailableNotZero
+=== PAUSE TestResolveBacklogCounts_UnreadableIsUnavailableNotZero
+=== RUN   TestResolveBacklogCounts_LatencyBudget
+    backlog_sqlite_test.go:233: AC-TOSQ-012: 500-item fixture, 41 interleaved render pairs
+          database : median 1.281458ms  p95 4.972959ms  max 5.52575ms
+          json     : median 48.239ms  p95 98.373917ms  max 124.344875ms
+          ADDED    : median -46.957542ms  p95 -93.400958ms   (budget: median <=10ms, ceiling 25ms)
+--- PASS: TestResolveBacklogCounts_LatencyBudget (2.43s)
+=== RUN   TestBuilder_Build_FullData
+--- PASS: TestBuilder_Build_FullData (1.01s)
+=== RUN   TestBuilder_Build_NilReader
+--- PASS: TestBuilder_Build_NilReader (0.24s)
+=== RUN   TestBuilder_Build_InvalidJSON
+--- PASS: TestBuilder_Build_InvalidJSON (0.23s)
+=== RUN   TestBuilder_Build_EmptyReader
+--- PASS: TestBuilder_Build_EmptyReader (0.22s)
+=== RUN   TestBuilder_Build_GitProviderFailure
+--- PASS: TestBuilder_Build_GitProviderFailure (0.00s)
+=== RUN   TestBuilder_Build_AllProvidersFail
+--- PASS: TestBuilder_Build_AllProvidersFail (0.00s)
+=== RUN   TestBuilder_SetMode
+=== RUN   TestBuilder_SetMode/default
+=== RUN   TestBuilder_SetMode/full
+=== RUN   TestBuilder_SetMode/compact
+=== RUN   TestBuilder_SetMode/minimal
+=== RUN   TestBuilder_SetMode/verbose
+--- PASS: TestBuilder_SetMode (0.00s)
+    --- PASS: TestBuilder_SetMode/default (0.00s)
+    --- PASS: TestBuilder_SetMode/full (0.00s)
+    --- PASS: TestBuilder_SetMode/compact (0.00s)
+    --- PASS: TestBuilder_SetMode/minimal (0.00s)
+    --- PASS: TestBuilder_SetMode/verbose (0.00s)
+=== RUN   TestBuilder_Build_NoNewline
+--- PASS: TestBuilder_Build_NoNewline (0.00s)
+=== RUN   TestBuilder_Build_ContextCancellation
+--- PASS: TestBuilder_Build_ContextCancellation (0.00s)
+=== RUN   TestBuilder_Build_MissingContextWindow
+--- PASS: TestBuilder_Build_MissingContextWindow (0.26s)
+=== RUN   TestBuilder_Build_MissingCost
+--- PASS: TestBuilder_Build_MissingCost (0.20s)
+=== RUN   TestBuilder_DefaultMode
+--- PASS: TestBuilder_DefaultMode (0.19s)
+=== RUN   TestBuilderNormalizesMode
+--- PASS: TestBuilderNormalizesMode (0.84s)
+=== RUN   TestBuilderCollectsTask
+--- PASS: TestBuilderCollectsTask (0.00s)
+=== RUN   TestBuilderCollectsTask_FieldExists
+--- PASS: TestBuilderCollectsTask_FieldExists (0.00s)
+=== RUN   TestIntegration_ModeLineCount
+=== RUN   TestIntegration_ModeLineCount/AC-V3-01:_minimal→default_3_lines
+=== RUN   TestIntegration_ModeLineCount/AC-V3-02:_verbose→default_3_lines
+=== RUN   TestIntegration_ModeLineCount/AC-V3-03:_compact→default_3_lines
+=== RUN   TestIntegration_ModeLineCount/AC-V3-04:_default_exactly_3_lines
+=== RUN   TestIntegration_ModeLineCount/AC-V3-05:_full→default_3_lines
+--- PASS: TestIntegration_ModeLineCount (0.70s)
+    --- PASS: TestIntegration_ModeLineCount/AC-V3-01:_minimal→default_3_lines (0.13s)
+    --- PASS: TestIntegration_ModeLineCount/AC-V3-02:_verbose→default_3_lines (0.12s)
+    --- PASS: TestIntegration_ModeLineCount/AC-V3-03:_compact→default_3_lines (0.13s)
+    --- PASS: TestIntegration_ModeLineCount/AC-V3-04:_default_exactly_3_lines (0.18s)
+    --- PASS: TestIntegration_ModeLineCount/AC-V3-05:_full→default_3_lines (0.14s)
+=== RUN   TestIntegration_NoUsageLineCount
+=== RUN   TestIntegration_NoUsageLineCount/AC-V3-06b:_default_+_no_usage_→_L2_CW+5H+7D
+--- PASS: TestIntegration_NoUsageLineCount (0.13s)
+    --- PASS: TestIntegration_NoUsageLineCount/AC-V3-06b:_default_+_no_usage_→_L2_CW+5H+7D (0.13s)
+=== RUN   TestIntegration_GradientBar
+=== RUN   TestIntegration_GradientBar/AC-V3-07:_60%_→_6_of_10_CW_blocks_filled
+--- PASS: TestIntegration_GradientBar (0.33s)
+    --- PASS: TestIntegration_GradientBar/AC-V3-07:_60%_→_6_of_10_CW_blocks_filled (0.33s)
+=== RUN   TestIntegration_SessionTime
+=== RUN   TestIntegration_SessionTime/AC-V3-08:_4980000ms_→_⏳_1h_23m
+--- PASS: TestIntegration_SessionTime (0.22s)
+    --- PASS: TestIntegration_SessionTime/AC-V3-08:_4980000ms_→_⏳_1h_23m (0.22s)
+=== RUN   TestIntegration_NoCost
+=== RUN   TestIntegration_NoCost/default
+=== RUN   TestIntegration_NoCost/full
+--- PASS: TestIntegration_NoCost (0.44s)
+    --- PASS: TestIntegration_NoCost/default (0.24s)
+    --- PASS: TestIntegration_NoCost/full (0.20s)
+=== RUN   TestIntegration_GitDirtyCount
+=== RUN   TestIntegration_GitDirtyCount/AC-V3-09:_clean_state_→_+0
+--- PASS: TestIntegration_GitDirtyCount (0.00s)
+    --- PASS: TestIntegration_GitDirtyCount/AC-V3-09:_clean_state_→_+0 (0.00s)
+=== RUN   TestIntegration_NoColor
+=== RUN   TestIntegration_NoColor/default
+=== RUN   TestIntegration_NoColor/full
+--- PASS: TestIntegration_NoColor (0.33s)
+    --- PASS: TestIntegration_NoColor/default (0.15s)
+    --- PASS: TestIntegration_NoColor/full (0.18s)
+=== RUN   TestIntegration_BatteryIcon
+=== RUN   TestIntegration_BatteryIcon/AC-V3-13:_75%_→_CW_🪫
+=== RUN   TestIntegration_BatteryIcon/60%_→_CW_🔋
+--- PASS: TestIntegration_BatteryIcon (0.58s)
+    --- PASS: TestIntegration_BatteryIcon/AC-V3-13:_75%_→_CW_🪫 (0.39s)
+    --- PASS: TestIntegration_BatteryIcon/60%_→_CW_🔋 (0.19s)
+=== RUN   TestIntegration_BackwardCompat
+--- PASS: TestIntegration_BackwardCompat (0.76s)
+=== RUN   TestBuild_OfficialSchema
+--- PASS: TestBuild_OfficialSchema (0.42s)
+=== RUN   TestBuild_RateLimitsPreferredOverUsage
+--- PASS: TestBuild_RateLimitsPreferredOverUsage (0.15s)
+=== RUN   TestBuild_SkipsUsageProviderWhenRateLimitsPresent
+--- PASS: TestBuild_SkipsUsageProviderWhenRateLimitsPresent (0.14s)
+=== RUN   TestBuild_CallsUsageProviderWhenRateLimitsAbsent
+--- PASS: TestBuild_CallsUsageProviderWhenRateLimitsAbsent (0.14s)
+=== RUN   TestBuilderSetModeNormalizes
+--- PASS: TestBuilderSetModeNormalizes (0.32s)
+=== RUN   TestCollectAll_ExtractsEffortThinking
+=== RUN   TestCollectAll_ExtractsEffortThinking/effort_level_present:_propagated_to_StatusData
+=== RUN   TestCollectAll_ExtractsEffortThinking/thinking_enabled:_propagated_to_StatusData
+=== RUN   TestCollectAll_ExtractsEffortThinking/both_present:_both_propagated
+=== RUN   TestCollectAll_ExtractsEffortThinking/both_absent:_StatusData_fields_remain_nil
+=== RUN   TestCollectAll_ExtractsEffortThinking/nil_input:_StatusData_fields_remain_nil
+--- PASS: TestCollectAll_ExtractsEffortThinking (0.00s)
+    --- PASS: TestCollectAll_ExtractsEffortThinking/effort_level_present:_propagated_to_StatusData (0.00s)
+    --- PASS: TestCollectAll_ExtractsEffortThinking/thinking_enabled:_propagated_to_StatusData (0.00s)
+    --- PASS: TestCollectAll_ExtractsEffortThinking/both_present:_both_propagated (0.00s)
+    --- PASS: TestCollectAll_ExtractsEffortThinking/both_absent:_StatusData_fields_remain_nil (0.00s)
+    --- PASS: TestCollectAll_ExtractsEffortThinking/nil_input:_StatusData_fields_remain_nil (0.00s)
+=== RUN   TestCollectAll_ExtractsWorktree
+=== RUN   TestCollectAll_ExtractsWorktree/worktree_path_present:_stored_in_StatusData.Worktree
+=== RUN   TestCollectAll_ExtractsWorktree/no_worktree:_empty_string
+=== RUN   TestCollectAll_ExtractsWorktree/workspace_nil:_empty_string
+--- PASS: TestCollectAll_ExtractsWorktree (0.16s)
+    --- PASS: TestCollectAll_ExtractsWorktree/worktree_path_present:_stored_in_StatusData.Worktree (0.08s)
+    --- PASS: TestCollectAll_ExtractsWorktree/no_worktree:_empty_string (0.08s)
+    --- PASS: TestCollectAll_ExtractsWorktree/workspace_nil:_empty_string (0.00s)
+=== RUN   TestBuild_EffortThinking_FullPipeline
+=== RUN   TestBuild_EffortThinking_FullPipeline/GWT-7:_effort=high_thinking=true_produces_🧠_high·t
+=== RUN   TestBuild_EffortThinking_FullPipeline/GWT-8:_segment_disabled_→_effort_thinking_absent_from_output
+=== RUN   TestBuild_EffortThinking_FullPipeline/GWT-9:_missing_effort/thinking_fields_→_no_indicator
+=== RUN   TestBuild_EffortThinking_FullPipeline/GWT-10:_backward_compat_input_without_effort/thinking_fields
+--- PASS: TestBuild_EffortThinking_FullPipeline (0.87s)
+    --- PASS: TestBuild_EffortThinking_FullPipeline/GWT-7:_effort=high_thinking=true_produces_🧠_high·t (0.14s)
+    --- PASS: TestBuild_EffortThinking_FullPipeline/GWT-8:_segment_disabled_→_effort_thinking_absent_from_output (0.15s)
+    --- PASS: TestBuild_EffortThinking_FullPipeline/GWT-9:_missing_effort/thinking_fields_→_no_indicator (0.16s)
+    --- PASS: TestBuild_EffortThinking_FullPipeline/GWT-10:_backward_compat_input_without_effort/thinking_fields (0.43s)
+=== RUN   TestExtractProjectDirectory_SandboxCwdPriority
+=== RUN   TestExtractProjectDirectory_SandboxCwdPriority/stdin_workspace.project_dir_takes_priority
+=== RUN   TestExtractProjectDirectory_SandboxCwdPriority/stdin_workspace.current_dir_as_fallback
+=== RUN   TestExtractProjectDirectory_SandboxCwdPriority/stdin_cwd_as_final_fallback
+=== RUN   TestExtractProjectDirectory_SandboxCwdPriority/nil_input_falls_back_to_os.Getwd()
+=== RUN   TestExtractProjectDirectory_SandboxCwdPriority/empty_workspace_fields_fall_back_to_cwd
+--- PASS: TestExtractProjectDirectory_SandboxCwdPriority (0.00s)
+    --- PASS: TestExtractProjectDirectory_SandboxCwdPriority/stdin_workspace.project_dir_takes_priority (0.00s)
+    --- PASS: TestExtractProjectDirectory_SandboxCwdPriority/stdin_workspace.current_dir_as_fallback (0.00s)
+    --- PASS: TestExtractProjectDirectory_SandboxCwdPriority/stdin_cwd_as_final_fallback (0.00s)
+    --- PASS: TestExtractProjectDirectory_SandboxCwdPriority/nil_input_falls_back_to_os.Getwd() (0.00s)
+    --- PASS: TestExtractProjectDirectory_SandboxCwdPriority/empty_workspace_fields_fall_back_to_cwd (0.00s)
+=== RUN   TestExtractProjectDirectory_GetwdFallback
+--- PASS: TestExtractProjectDirectory_GetwdFallback (0.00s)
+=== RUN   TestCollectAll_PR_DataFlow
+=== RUN   TestCollectAll_PR_DataFlow/PR_present:_stored_in_StatusData.PR
+=== RUN   TestCollectAll_PR_DataFlow/PR_absent:_nil_pointer_preserved
+=== RUN   TestCollectAll_PR_DataFlow/nil_input:_PR_remains_nil
+--- PASS: TestCollectAll_PR_DataFlow (0.00s)
+    --- PASS: TestCollectAll_PR_DataFlow/PR_present:_stored_in_StatusData.PR (0.00s)
+    --- PASS: TestCollectAll_PR_DataFlow/PR_absent:_nil_pointer_preserved (0.00s)
+    --- PASS: TestCollectAll_PR_DataFlow/nil_input:_PR_remains_nil (0.00s)
+=== RUN   TestBuild_PRSegment_DefaultOn
+=== RUN   TestBuild_PRSegment_DefaultOn/segment_config_nil:_pr_shown_(default-on)
+=== RUN   TestBuild_PRSegment_DefaultOn/segment_config_without_pr_key:_pr_shown_(default-on)
+=== RUN   TestBuild_PRSegment_DefaultOn/segment_config_pr:_false:_pr_omitted_(explicit_opt-out)
+--- PASS: TestBuild_PRSegment_DefaultOn (0.48s)
+    --- PASS: TestBuild_PRSegment_DefaultOn/segment_config_nil:_pr_shown_(default-on) (0.15s)
+    --- PASS: TestBuild_PRSegment_DefaultOn/segment_config_without_pr_key:_pr_shown_(default-on) (0.18s)
+    --- PASS: TestBuild_PRSegment_DefaultOn/segment_config_pr:_false:_pr_omitted_(explicit_opt-out) (0.15s)
+=== RUN   TestBuild_PRSegment_EnabledRender
+--- PASS: TestBuild_PRSegment_EnabledRender (0.15s)
+=== RUN   TestBuild_PRSegment_AbsenceHandling
+=== RUN   TestBuild_PRSegment_AbsenceHandling/pr_field_absent
+=== RUN   TestBuild_PRSegment_AbsenceHandling/pr_null
+=== RUN   TestBuild_PRSegment_AbsenceHandling/pr.number_zero
+--- PASS: TestBuild_PRSegment_AbsenceHandling (0.60s)
+    --- PASS: TestBuild_PRSegment_AbsenceHandling/pr_field_absent (0.24s)
+    --- PASS: TestBuild_PRSegment_AbsenceHandling/pr_null (0.15s)
+    --- PASS: TestBuild_PRSegment_AbsenceHandling/pr.number_zero (0.21s)
+=== RUN   TestBuild_WritesContextUsageWithSessionID
+--- PASS: TestBuild_WritesContextUsageWithSessionID (0.04s)
+=== RUN   TestCacheHitPercent
+=== RUN   TestCacheHitPercent/read2000_create5000_→_28%
+=== RUN   TestCacheHitPercent/read_equals_create_→_50%
+=== RUN   TestCacheHitPercent/all_read,_some_create_→_high
+=== RUN   TestCacheHitPercent/zero_creation_→_degrade_(no_ratio)
+=== RUN   TestCacheHitPercent/both_zero_→_degrade_(no_0/0)
+=== RUN   TestCacheHitPercent/negative_creation_→_degrade
+=== RUN   TestCacheHitPercent/negative_read_canceling_creation_→_denom==0_divide-by-zero_defense
+=== RUN   TestCacheHitPercent/very_large_counts_→_no_overflow
+--- PASS: TestCacheHitPercent (0.00s)
+    --- PASS: TestCacheHitPercent/read2000_create5000_→_28% (0.00s)
+    --- PASS: TestCacheHitPercent/read_equals_create_→_50% (0.00s)
+    --- PASS: TestCacheHitPercent/all_read,_some_create_→_high (0.00s)
+    --- PASS: TestCacheHitPercent/zero_creation_→_degrade_(no_ratio) (0.00s)
+    --- PASS: TestCacheHitPercent/both_zero_→_degrade_(no_0/0) (0.00s)
+    --- PASS: TestCacheHitPercent/negative_creation_→_degrade (0.00s)
+    --- PASS: TestCacheHitPercent/negative_read_canceling_creation_→_denom==0_divide-by-zero_defense (0.00s)
+    --- PASS: TestCacheHitPercent/very_large_counts_→_no_overflow (0.00s)
+=== RUN   TestRenderCacheHit
+=== RUN   TestRenderCacheHit/present_with_cache_→_renders_%
+=== RUN   TestRenderCacheHit/null_current_usage_→_omit
+=== RUN   TestRenderCacheHit/zero_cache_creation_→_omit
+=== RUN   TestRenderCacheHit/both_zero_→_omit_(no_0/0)
+--- PASS: TestRenderCacheHit (0.00s)
+    --- PASS: TestRenderCacheHit/present_with_cache_→_renders_% (0.00s)
+    --- PASS: TestRenderCacheHit/null_current_usage_→_omit (0.00s)
+    --- PASS: TestRenderCacheHit/zero_cache_creation_→_omit (0.00s)
+    --- PASS: TestRenderCacheHit/both_zero_→_omit_(no_0/0) (0.00s)
+=== RUN   TestCacheHitSegmentToggle
+--- PASS: TestCacheHitSegmentToggle (0.00s)
+=== RUN   TestWriteContextUsage_ConfigIndependent
+=== PAUSE TestWriteContextUsage_ConfigIndependent
+=== RUN   TestWriteContextUsage_Atomic
+=== PAUSE TestWriteContextUsage_Atomic
+=== RUN   TestWriteContextUsage_SilentFail
+=== PAUSE TestWriteContextUsage_SilentFail
+=== RUN   TestContextUsage_Schema
+=== PAUSE TestContextUsage_Schema
+=== RUN   TestWriteContextUsage_ThrottleSkipUnchanged
+=== PAUSE TestWriteContextUsage_ThrottleSkipUnchanged
+=== RUN   TestReadContextUsage_Corrupt
+=== PAUSE TestReadContextUsage_Corrupt
+=== RUN   TestResolveStateAnchor_Chain
+=== PAUSE TestResolveStateAnchor_Chain
+=== RUN   TestWriteContextUsage_TemplateSourceGuard
+=== PAUSE TestWriteContextUsage_TemplateSourceGuard
+=== RUN   TestWriteContextUsage_TemplateSourceGuard_InertForNormalDir
+=== PAUSE TestWriteContextUsage_TemplateSourceGuard_InertForNormalDir
+=== RUN   TestWriteContextUsage_TemplateSourceGuard_SubstringNoMatch
+=== PAUSE TestWriteContextUsage_TemplateSourceGuard_SubstringNoMatch
+=== RUN   TestIsTemplateSourceDir
+=== PAUSE TestIsTemplateSourceDir
+=== RUN   TestRefreshGitHubCounts_FetchesValuesViaGitHubStub
+--- PASS: TestRefreshGitHubCounts_FetchesValuesViaGitHubStub (0.33s)
+=== RUN   TestRefreshGitHubCounts_SkipsFetchNearTheRateFloor
+--- PASS: TestRefreshGitHubCounts_SkipsFetchNearTheRateFloor (0.33s)
+=== RUN   TestRefreshGitHubCounts_UnreadableBudgetStillFetches
+--- PASS: TestRefreshGitHubCounts_UnreadableBudgetStillFetches (0.33s)
+=== RUN   TestRefreshGitHubCounts_ShortTotalsAnswerKeepsStaleValues
+--- PASS: TestRefreshGitHubCounts_ShortTotalsAnswerKeepsStaleValues (0.33s)
+=== RUN   TestRefreshGitHubCounts_FetchesValuesViaGitLabStub
+--- PASS: TestRefreshGitHubCounts_FetchesValuesViaGitLabStub (0.33s)
+=== RUN   TestRefreshGitHubCounts_FailingForgeKeepsStaleValues
+--- PASS: TestRefreshGitHubCounts_FailingForgeKeepsStaleValues (0.33s)
+=== RUN   TestRender_ForgePairFourStateContract
+=== PAUSE TestRender_ForgePairFourStateContract
+=== RUN   TestMaybeRefreshGitHubCounts_ExplicitNoForgeSpawnsNothing
+=== RUN   TestMaybeRefreshGitHubCounts_ExplicitNoForgeSpawnsNothing/forge_none,_absent_cache
+=== RUN   TestMaybeRefreshGitHubCounts_ExplicitNoForgeSpawnsNothing/forge_off,_absent_cache
+=== RUN   TestMaybeRefreshGitHubCounts_ExplicitNoForgeSpawnsNothing/forge_none,_stale_cache_still_spawns_nothing
+=== RUN   TestMaybeRefreshGitHubCounts_ExplicitNoForgeSpawnsNothing/a_typo_names_no_forge_either
+--- PASS: TestMaybeRefreshGitHubCounts_ExplicitNoForgeSpawnsNothing (0.00s)
+    --- PASS: TestMaybeRefreshGitHubCounts_ExplicitNoForgeSpawnsNothing/forge_none,_absent_cache (0.00s)
+    --- PASS: TestMaybeRefreshGitHubCounts_ExplicitNoForgeSpawnsNothing/forge_off,_absent_cache (0.00s)
+    --- PASS: TestMaybeRefreshGitHubCounts_ExplicitNoForgeSpawnsNothing/forge_none,_stale_cache_still_spawns_nothing (0.00s)
+    --- PASS: TestMaybeRefreshGitHubCounts_ExplicitNoForgeSpawnsNothing/a_typo_names_no_forge_either (0.00s)
+=== RUN   TestMaybeRefreshGitHubCounts_UnsetOverrideStillSpawns
+--- PASS: TestMaybeRefreshGitHubCounts_UnsetOverrideStillSpawns (0.00s)
+=== RUN   TestMaybeRefreshGitHubCounts_NoConfigSpawnsOnce
+--- PASS: TestMaybeRefreshGitHubCounts_NoConfigSpawnsOnce (0.00s)
+=== RUN   TestBuilder_SegmentGateSuppressesPairAndSpawn
+--- PASS: TestBuilder_SegmentGateSuppressesPairAndSpawn (0.09s)
+=== RUN   TestBuilder_NilSegmentsPreservesSpawn
+--- PASS: TestBuilder_NilSegmentsPreservesSpawn (0.04s)
+=== RUN   TestForgeOptOut_TwoWayRevert
+--- PASS: TestForgeOptOut_TwoWayRevert (0.33s)
+=== RUN   TestResolveGitHubCounts_ExplicitOptOutSuppresses
+=== PAUSE TestResolveGitHubCounts_ExplicitOptOutSuppresses
+=== RUN   TestRender_ForgePairSuppressedRendersNoPair
+=== PAUSE TestRender_ForgePairSuppressedRendersNoPair
+=== RUN   TestRefreshGitHubCounts_NoForgeWritesSuppressed
+--- PASS: TestRefreshGitHubCounts_NoForgeWritesSuppressed (0.02s)
+=== RUN   TestRefreshGitHubCounts_MissingCLIWritesSuppressed
+--- PASS: TestRefreshGitHubCounts_MissingCLIWritesSuppressed (0.00s)
+=== RUN   TestRefreshGitHubCounts_SuccessClearsSuppressed
+--- PASS: TestRefreshGitHubCounts_SuccessClearsSuppressed (0.33s)
+=== RUN   TestRefreshGitHubCounts_FailedFetchDoesNotSuppress
+--- PASS: TestRefreshGitHubCounts_FailedFetchDoesNotSuppress (0.34s)
+=== RUN   TestRefreshGitHubCounts_SuppressionHoldsUntilForgeIsValidated
+--- PASS: TestRefreshGitHubCounts_SuppressionHoldsUntilForgeIsValidated (0.02s)
+=== RUN   TestRemoteHost
+=== PAUSE TestRemoteHost
+=== RUN   TestForgeFromRemote
+=== PAUSE TestForgeFromRemote
+=== RUN   TestResolveForge
+=== PAUSE TestResolveForge
+=== RUN   TestForgeArgs_StateHandlingDiffers
+=== PAUSE TestForgeArgs_StateHandlingDiffers
+=== RUN   TestForgeArgs_GitLabUsesLongFormOutput
+=== PAUSE TestForgeArgs_GitLabUsesLongFormOutput
+=== RUN   TestForgeArgs_AllEndInACount
+=== PAUSE TestForgeArgs_AllEndInACount
+=== RUN   TestForgeArgs_PRAndIssueDiffer
+=== PAUSE TestForgeArgs_PRAndIssueDiffer
+=== RUN   TestForgeOverride
+=== PAUSE TestForgeOverride
+=== RUN   TestForgeOverride_EmptyRootIsANoOp
+=== PAUSE TestForgeOverride_EmptyRootIsANoOp
+=== RUN   TestGitCollector_CollectGitStatus
+=== RUN   TestGitCollector_CollectGitStatus/valid_git_status
+=== RUN   TestGitCollector_CollectGitStatus/nil_repo
+=== RUN   TestGitCollector_CollectGitStatus/branch_error_-_graceful_degradation
+=== RUN   TestGitCollector_CollectGitStatus/status_error_-_returns_partial_data_with_branch
+=== RUN   TestGitCollector_CollectGitStatus/clean_repo_with_no_changes
+=== RUN   TestGitCollector_CollectGitStatus/repo_with_ahead_and_behind
+--- PASS: TestGitCollector_CollectGitStatus (0.00s)
+    --- PASS: TestGitCollector_CollectGitStatus/valid_git_status (0.00s)
+    --- PASS: TestGitCollector_CollectGitStatus/nil_repo (0.00s)
+    --- PASS: TestGitCollector_CollectGitStatus/branch_error_-_graceful_degradation (0.00s)
+    --- PASS: TestGitCollector_CollectGitStatus/status_error_-_returns_partial_data_with_branch (0.00s)
+    --- PASS: TestGitCollector_CollectGitStatus/clean_repo_with_no_changes (0.00s)
+    --- PASS: TestGitCollector_CollectGitStatus/repo_with_ahead_and_behind (0.00s)
+=== RUN   TestGitCollector_BranchSourcePreference
+=== RUN   TestGitCollector_BranchSourcePreference/header_carries_the_branch:_no_fallback_query
+=== RUN   TestGitCollector_BranchSourcePreference/detached_HEAD:_header_is_empty,_fallback_runs_and_also_fails
+=== RUN   TestGitCollector_BranchSourcePreference/status_failed:_fallback_supplies_the_branch
+--- PASS: TestGitCollector_BranchSourcePreference (0.00s)
+    --- PASS: TestGitCollector_BranchSourcePreference/header_carries_the_branch:_no_fallback_query (0.00s)
+    --- PASS: TestGitCollector_BranchSourcePreference/detached_HEAD:_header_is_empty,_fallback_runs_and_also_fails (0.00s)
+    --- PASS: TestGitCollector_BranchSourcePreference/status_failed:_fallback_supplies_the_branch (0.00s)
+=== RUN   TestResolveGitHubCounts
+=== PAUSE TestResolveGitHubCounts
+=== RUN   TestWriteGitHubCache_RoundTrips
+=== PAUSE TestWriteGitHubCache_RoundTrips
+=== RUN   TestMaybeRefreshGitHubCounts_FreshCacheSpawnsNothing
+=== PAUSE TestMaybeRefreshGitHubCounts_FreshCacheSpawnsNothing
+=== RUN   TestIsSelfInvocable
+=== PAUSE TestIsSelfInvocable
+=== RUN   TestIsSelfInvocable_RejectsThisTestBinary
+=== PAUSE TestIsSelfInvocable_RejectsThisTestBinary
+=== RUN   TestMaybeRefreshGitHubCounts_EmptyRootIsANoOp
+=== PAUSE TestMaybeRefreshGitHubCounts_EmptyRootIsANoOp
+=== RUN   TestRenderSessionLine_GitHubCounts
+=== PAUSE TestRenderSessionLine_GitHubCounts
+=== RUN   TestRender_ForgePairIsIssuesOverPRs
+=== PAUSE TestRender_ForgePairIsIssuesOverPRs
+=== RUN   TestRender_ForgePairUnknownIsNotZero
+=== PAUSE TestRender_ForgePairUnknownIsNotZero
+=== RUN   TestRender_ForgePairSegmentGate
+=== PAUSE TestRender_ForgePairSegmentGate
+=== RUN   TestInterpolateGradientColor
+=== RUN   TestInterpolateGradientColor/start_(green)
+=== RUN   TestInterpolateGradientColor/quarter_(mid_green-yellow)
+=== RUN   TestInterpolateGradientColor/mid_(yellow)
+=== RUN   TestInterpolateGradientColor/three-quarter_(mid_yellow-red)
+=== RUN   TestInterpolateGradientColor/end_(red)
+--- PASS: TestInterpolateGradientColor (0.00s)
+    --- PASS: TestInterpolateGradientColor/start_(green) (0.00s)
+    --- PASS: TestInterpolateGradientColor/quarter_(mid_green-yellow) (0.00s)
+    --- PASS: TestInterpolateGradientColor/mid_(yellow) (0.00s)
+    --- PASS: TestInterpolateGradientColor/three-quarter_(mid_yellow-red) (0.00s)
+    --- PASS: TestInterpolateGradientColor/end_(red) (0.00s)
+=== RUN   TestInterpolateGradientColor_Clamp
+--- PASS: TestInterpolateGradientColor_Clamp (0.00s)
+=== RUN   TestBuildGradientBar
+=== RUN   TestBuildGradientBar/60%_of_40
+=== RUN   TestBuildGradientBar/60%_of_10
+=== RUN   TestBuildGradientBar/0%
+=== RUN   TestBuildGradientBar/100%
+=== RUN   TestBuildGradientBar/50%_of_10
+=== RUN   TestBuildGradientBar/zero_width
+--- PASS: TestBuildGradientBar (0.00s)
+    --- PASS: TestBuildGradientBar/60%_of_40 (0.00s)
+    --- PASS: TestBuildGradientBar/60%_of_10 (0.00s)
+    --- PASS: TestBuildGradientBar/0% (0.00s)
+    --- PASS: TestBuildGradientBar/100% (0.00s)
+    --- PASS: TestBuildGradientBar/50%_of_10 (0.00s)
+    --- PASS: TestBuildGradientBar/zero_width (0.00s)
+=== RUN   TestBuildGradientBar_NoColor
+--- PASS: TestBuildGradientBar_NoColor (0.00s)
+=== RUN   TestBuildGradientBar_WithColor
+--- PASS: TestBuildGradientBar_WithColor (0.00s)
+=== RUN   TestBuildGradientBar_FilledCountWithColor
+--- PASS: TestBuildGradientBar_FilledCountWithColor (0.00s)
+=== RUN   TestBuildGradientBar_SingleFilled
+--- PASS: TestBuildGradientBar_SingleFilled (0.00s)
+=== RUN   TestAC004_ArmedGoalSuppressesClearDirective
+--- PASS: TestAC004_ArmedGoalSuppressesClearDirective (0.00s)
+=== RUN   TestHandoffGuideStage_WrapperEquivalence
+=== PAUSE TestHandoffGuideStage_WrapperEquivalence
+=== RUN   TestRenderBarsInline_TwoStageSuffix
+=== PAUSE TestRenderBarsInline_TwoStageSuffix
+=== RUN   TestHardCeiling_Formula
+=== PAUSE TestHardCeiling_Formula
+=== RUN   TestHardCeiling_ClampBelowSoft
+--- PASS: TestHardCeiling_ClampBelowSoft (0.00s)
+=== RUN   TestNoM1Regression_SuffixUnconditional
+=== PAUSE TestNoM1Regression_SuffixUnconditional
+=== RUN   TestResolveLandedCounts_UnknownStates
+=== PAUSE TestResolveLandedCounts_UnknownStates
+=== RUN   TestResolveLandedCounts_ObservedZeroIsAFact
+=== PAUSE TestResolveLandedCounts_ObservedZeroIsAFact
+=== RUN   TestRenderer_LandedAnnotation
+=== PAUSE TestRenderer_LandedAnnotation
+=== RUN   TestLandedRenderPath_SpawnsNoGit
+--- PASS: TestLandedRenderPath_SpawnsNoGit (0.00s)
+=== RUN   TestRefreshLandedCounts_OneInvocationRegardlessOfCardCount
+--- PASS: TestRefreshLandedCounts_OneInvocationRegardlessOfCardCount (0.13s)
+=== RUN   TestRefreshLandedCounts_TimestampPrecedesTheWork
+--- PASS: TestRefreshLandedCounts_TimestampPrecedesTheWork (0.07s)
+=== RUN   TestRefreshLandedCounts_FailedQueryKeepsThePriorMeasurement
+--- PASS: TestRefreshLandedCounts_FailedQueryKeepsThePriorMeasurement (0.07s)
+=== RUN   TestRefreshLandedCounts_NeverMeasuredStaysUnknownOnFailure
+--- PASS: TestRefreshLandedCounts_NeverMeasuredStaysUnknownOnFailure (0.10s)
+=== RUN   TestMaybeRefreshLandedCounts_StampedeGuard
+--- PASS: TestMaybeRefreshLandedCounts_StampedeGuard (0.00s)
+=== RUN   TestRefreshLandedCounts_EmptyQueueNeedsNoQuery
+--- PASS: TestRefreshLandedCounts_EmptyQueueNeedsNoQuery (0.07s)
+=== RUN   TestRefreshLandedCounts_AsksTheConfiguredRef
+--- PASS: TestRefreshLandedCounts_AsksTheConfiguredRef (0.09s)
+=== RUN   TestCountNamed_WordBoundaryCriterion
+=== PAUSE TestCountNamed_WordBoundaryCriterion
+=== RUN   TestCollectMemory
+=== RUN   TestCollectMemory/valid_context_window_data_(legacy_fields)
+=== RUN   TestCollectMemory/nil_input
+=== RUN   TestCollectMemory/nil_context_window
+=== RUN   TestCollectMemory/zero_values_-_session_start_state
+=== RUN   TestCollectMemory/full_context_window_(legacy_fields)
+=== RUN   TestCollectMemory/used_percentage_takes_priority
+=== RUN   TestCollectMemory/current_usage_calculation
+--- PASS: TestCollectMemory (0.00s)
+    --- PASS: TestCollectMemory/valid_context_window_data_(legacy_fields) (0.00s)
+    --- PASS: TestCollectMemory/nil_input (0.00s)
+    --- PASS: TestCollectMemory/nil_context_window (0.00s)
+    --- PASS: TestCollectMemory/zero_values_-_session_start_state (0.00s)
+    --- PASS: TestCollectMemory/full_context_window_(legacy_fields) (0.00s)
+    --- PASS: TestCollectMemory/used_percentage_takes_priority (0.00s)
+    --- PASS: TestCollectMemory/current_usage_calculation (0.00s)
+=== RUN   TestCollectMemory_AutoCompactScaling
+=== RUN   TestCollectMemory_AutoCompactScaling/default_threshold_85%:_83%_used_→_~97%_display
+=== RUN   TestCollectMemory_AutoCompactScaling/default_threshold_85%:_85%_used_→_100%_display
+=== RUN   TestCollectMemory_AutoCompactScaling/threshold_90%:_83%_used_→_92%_display
+=== RUN   TestCollectMemory_AutoCompactScaling/threshold_100%_(no_scaling)
+=== RUN   TestCollectMemory_AutoCompactScaling/exceeded_threshold_capped_at_100%
+--- PASS: TestCollectMemory_AutoCompactScaling (0.00s)
+    --- PASS: TestCollectMemory_AutoCompactScaling/default_threshold_85%:_83%_used_→_~97%_display (0.00s)
+    --- PASS: TestCollectMemory_AutoCompactScaling/default_threshold_85%:_85%_used_→_100%_display (0.00s)
+    --- PASS: TestCollectMemory_AutoCompactScaling/threshold_90%:_83%_used_→_92%_display (0.00s)
+    --- PASS: TestCollectMemory_AutoCompactScaling/threshold_100%_(no_scaling) (0.00s)
+    --- PASS: TestCollectMemory_AutoCompactScaling/exceeded_threshold_capped_at_100% (0.00s)
+=== RUN   TestContextUsageLevel
+=== RUN   TestContextUsageLevel/green_-_low_usage_25%
+=== RUN   TestContextUsageLevel/green_-_zero_usage
+=== RUN   TestContextUsageLevel/green_-_49%
+=== RUN   TestContextUsageLevel/yellow_-_exactly_50%
+=== RUN   TestContextUsageLevel/yellow_-_65%
+=== RUN   TestContextUsageLevel/yellow_-_79%
+=== RUN   TestContextUsageLevel/red_-_exactly_80%
+=== RUN   TestContextUsageLevel/red_-_90%
+=== RUN   TestContextUsageLevel/red_-_100%
+=== RUN   TestContextUsageLevel/green_-_zero_total
+=== RUN   TestContextUsageLevel/green_-_negative_total
+--- PASS: TestContextUsageLevel (0.00s)
+    --- PASS: TestContextUsageLevel/green_-_low_usage_25% (0.00s)
+    --- PASS: TestContextUsageLevel/green_-_zero_usage (0.00s)
+    --- PASS: TestContextUsageLevel/green_-_49% (0.00s)
+    --- PASS: TestContextUsageLevel/yellow_-_exactly_50% (0.00s)
+    --- PASS: TestContextUsageLevel/yellow_-_65% (0.00s)
+    --- PASS: TestContextUsageLevel/yellow_-_79% (0.00s)
+    --- PASS: TestContextUsageLevel/red_-_exactly_80% (0.00s)
+    --- PASS: TestContextUsageLevel/red_-_90% (0.00s)
+    --- PASS: TestContextUsageLevel/red_-_100% (0.00s)
+    --- PASS: TestContextUsageLevel/green_-_zero_total (0.00s)
+    --- PASS: TestContextUsageLevel/green_-_negative_total (0.00s)
+=== RUN   TestUsagePercent
+=== RUN   TestUsagePercent/25%
+=== RUN   TestUsagePercent/50%
+=== RUN   TestUsagePercent/100%
+=== RUN   TestUsagePercent/0%
+=== RUN   TestUsagePercent/zero_total
+=== RUN   TestUsagePercent/negative_total
+--- PASS: TestUsagePercent (0.00s)
+    --- PASS: TestUsagePercent/25% (0.00s)
+    --- PASS: TestUsagePercent/50% (0.00s)
+    --- PASS: TestUsagePercent/100% (0.00s)
+    --- PASS: TestUsagePercent/0% (0.00s)
+    --- PASS: TestUsagePercent/zero_total (0.00s)
+    --- PASS: TestUsagePercent/negative_total (0.00s)
+=== RUN   TestCollectMemory_GLMContextOverride
+=== RUN   TestCollectMemory_GLMContextOverride/glm-5.1_opus_slot_overrides_1M_to_200K
+=== RUN   TestCollectMemory_GLMContextOverride/glm-4.5-air_haiku_slot
+=== RUN   TestCollectMemory_GLMContextOverride/claude_model_preserves_reported_size
+=== RUN   TestCollectMemory_GLMContextOverride/unknown_non-claude_model_falls_back_to_reported
+--- PASS: TestCollectMemory_GLMContextOverride (0.00s)
+    --- PASS: TestCollectMemory_GLMContextOverride/glm-5.1_opus_slot_overrides_1M_to_200K (0.00s)
+    --- PASS: TestCollectMemory_GLMContextOverride/glm-4.5-air_haiku_slot (0.00s)
+    --- PASS: TestCollectMemory_GLMContextOverride/claude_model_preserves_reported_size (0.00s)
+    --- PASS: TestCollectMemory_GLMContextOverride/unknown_non-claude_model_falls_back_to_reported (0.00s)
+=== RUN   TestCollectMemory_ExplicitOverride
+--- PASS: TestCollectMemory_ExplicitOverride (0.00s)
+=== RUN   TestCollectMemory_LLMYAMLOverride
+=== RUN   TestCollectMemory_LLMYAMLOverride/llm.yaml_overrides_built-in_for_glm-5.1_(200K→230K)
+=== RUN   TestCollectMemory_LLMYAMLOverride/llm.yaml_adds_previously_unknown_custom-model
+--- PASS: TestCollectMemory_LLMYAMLOverride (0.00s)
+    --- PASS: TestCollectMemory_LLMYAMLOverride/llm.yaml_overrides_built-in_for_glm-5.1_(200K→230K) (0.00s)
+    --- PASS: TestCollectMemory_LLMYAMLOverride/llm.yaml_adds_previously_unknown_custom-model (0.00s)
+=== RUN   TestCollectMemory_EnvOverridesLLMYAML
+--- PASS: TestCollectMemory_EnvOverridesLLMYAML (0.00s)
+=== RUN   TestResolveGLMContextWindow
+=== RUN   TestResolveGLMContextWindow/built-in_table_match
+=== RUN   TestResolveGLMContextWindow/built-in_table_match/glm-5.2_1M_context
+=== RUN   TestResolveGLMContextWindow/built-in_table_match/glm-5.2[1m]_suffix_resolves_via_substring_match
+=== RUN   TestResolveGLMContextWindow/built-in_table_match/glm-5.3-flash_direct_table_entry_(divergence_guard)
+=== RUN   TestResolveGLMContextWindow/built-in_table_match/glm-5.3_retained_entry
+=== RUN   TestResolveGLMContextWindow/built-in_table_match/unregistered_glm-5.3-*_variant_inherits_1M_via_substring
+=== RUN   TestResolveGLMContextWindow/built-in_table_match/glm-5.1_substring_match_(longest_wins)
+=== RUN   TestResolveGLMContextWindow/built-in_table_match/glm-4.5-air_longest_match_wins_over_glm-4.5
+=== RUN   TestResolveGLMContextWindow/built-in_table_match/glm-4.5_fallback_when_no_-air_suffix
+=== RUN   TestResolveGLMContextWindow/built-in_table_match/glm-4.6_known_model
+=== RUN   TestResolveGLMContextWindow/built-in_table_match/empty_input_returns_0
+=== RUN   TestResolveGLMContextWindow/built-in_table_match/claude_prefix_returns_0_(not_GLM)
+=== RUN   TestResolveGLMContextWindow/built-in_table_match/unknown_model_returns_0
+=== RUN   TestResolveGLMContextWindow/built-in_table_match/case_insensitive
+=== RUN   TestResolveGLMContextWindow/built-in_table_match/case_insensitive_glm-5.2[1m]
+=== RUN   TestResolveGLMContextWindow/built-in_table_match/trims_whitespace
+=== RUN   TestResolveGLMContextWindow/llm.yaml_override_wins_over_built-in
+--- PASS: TestResolveGLMContextWindow (0.00s)
+    --- PASS: TestResolveGLMContextWindow/built-in_table_match (0.00s)
+        --- PASS: TestResolveGLMContextWindow/built-in_table_match/glm-5.2_1M_context (0.00s)
+        --- PASS: TestResolveGLMContextWindow/built-in_table_match/glm-5.2[1m]_suffix_resolves_via_substring_match (0.00s)
+        --- PASS: TestResolveGLMContextWindow/built-in_table_match/glm-5.3-flash_direct_table_entry_(divergence_guard) (0.00s)
+        --- PASS: TestResolveGLMContextWindow/built-in_table_match/glm-5.3_retained_entry (0.00s)
+        --- PASS: TestResolveGLMContextWindow/built-in_table_match/unregistered_glm-5.3-*_variant_inherits_1M_via_substring (0.00s)
+        --- PASS: TestResolveGLMContextWindow/built-in_table_match/glm-5.1_substring_match_(longest_wins) (0.00s)
+        --- PASS: TestResolveGLMContextWindow/built-in_table_match/glm-4.5-air_longest_match_wins_over_glm-4.5 (0.00s)
+        --- PASS: TestResolveGLMContextWindow/built-in_table_match/glm-4.5_fallback_when_no_-air_suffix (0.00s)
+        --- PASS: TestResolveGLMContextWindow/built-in_table_match/glm-4.6_known_model (0.00s)
+        --- PASS: TestResolveGLMContextWindow/built-in_table_match/empty_input_returns_0 (0.00s)
+        --- PASS: TestResolveGLMContextWindow/built-in_table_match/claude_prefix_returns_0_(not_GLM) (0.00s)
+        --- PASS: TestResolveGLMContextWindow/built-in_table_match/unknown_model_returns_0 (0.00s)
+        --- PASS: TestResolveGLMContextWindow/built-in_table_match/case_insensitive (0.00s)
+        --- PASS: TestResolveGLMContextWindow/built-in_table_match/case_insensitive_glm-5.2[1m] (0.00s)
+        --- PASS: TestResolveGLMContextWindow/built-in_table_match/trims_whitespace (0.00s)
+    --- PASS: TestResolveGLMContextWindow/llm.yaml_override_wins_over_built-in (0.00s)
+=== RUN   TestGLMContextWindowsFlashDirectEntry
+--- PASS: TestGLMContextWindowsFlashDirectEntry (0.00s)
+=== RUN   TestCollectMetrics_ModelFallbackChain
+=== RUN   TestCollectMetrics_ModelFallbackChain/AC-SF-003:_stdin_has_model_→_use_stdin_model
+=== RUN   TestCollectMetrics_ModelFallbackChain/AC-SF-003:_no_stdin_model_+_MOAI_LAST_MODEL_env_→_use_env
+=== RUN   TestCollectMetrics_ModelFallbackChain/no_stdin_model,_empty_env_→_unavailable
+=== RUN   TestCollectMetrics_ModelFallbackChain/AC-SF-004:_no_stdin_model,_no_env,_cache_file_→_use_cache
+=== RUN   TestCollectMetrics_ModelFallbackChain/all_fallbacks_exhausted_→_unavailable
+--- PASS: TestCollectMetrics_ModelFallbackChain (0.00s)
+    --- PASS: TestCollectMetrics_ModelFallbackChain/AC-SF-003:_stdin_has_model_→_use_stdin_model (0.00s)
+    --- PASS: TestCollectMetrics_ModelFallbackChain/AC-SF-003:_no_stdin_model_+_MOAI_LAST_MODEL_env_→_use_env (0.00s)
+    --- PASS: TestCollectMetrics_ModelFallbackChain/no_stdin_model,_empty_env_→_unavailable (0.00s)
+    --- PASS: TestCollectMetrics_ModelFallbackChain/AC-SF-004:_no_stdin_model,_no_env,_cache_file_→_use_cache (0.00s)
+    --- PASS: TestCollectMetrics_ModelFallbackChain/all_fallbacks_exhausted_→_unavailable (0.00s)
+=== RUN   TestCollectMetrics
+=== RUN   TestCollectMetrics/valid_cost_and_model_data
+=== RUN   TestCollectMetrics/nil_input
+=== RUN   TestCollectMetrics/nil_cost
+=== RUN   TestCollectMetrics/empty_model
+=== RUN   TestCollectMetrics/zero_cost
+=== RUN   TestCollectMetrics/display_name_takes_priority_over_name
+--- PASS: TestCollectMetrics (0.00s)
+    --- PASS: TestCollectMetrics/valid_cost_and_model_data (0.00s)
+    --- PASS: TestCollectMetrics/nil_input (0.00s)
+    --- PASS: TestCollectMetrics/nil_cost (0.00s)
+    --- PASS: TestCollectMetrics/empty_model (0.00s)
+    --- PASS: TestCollectMetrics/zero_cost (0.00s)
+    --- PASS: TestCollectMetrics/display_name_takes_priority_over_name (0.00s)
+=== RUN   TestShortenModelName
+=== RUN   TestShortenModelName/claude-sonnet-4-20250514
+=== RUN   TestShortenModelName/claude-opus-4-5-20251101
+=== RUN   TestShortenModelName/claude-haiku-3-5-20241022
+=== RUN   TestShortenModelName/claude-sonnet-4
+=== RUN   TestShortenModelName/claude-opus-4-5
+=== RUN   TestShortenModelName/gpt-4
+=== RUN   TestShortenModelName/glm-5.1
+=== RUN   TestShortenModelName/glm-5.1[1m]
+=== RUN   TestShortenModelName/glm-4.7[1m]
+=== RUN   TestShortenModelName/#00
+=== RUN   TestShortenModelName/claude-
+--- PASS: TestShortenModelName (0.00s)
+    --- PASS: TestShortenModelName/claude-sonnet-4-20250514 (0.00s)
+    --- PASS: TestShortenModelName/claude-opus-4-5-20251101 (0.00s)
+    --- PASS: TestShortenModelName/claude-haiku-3-5-20241022 (0.00s)
+    --- PASS: TestShortenModelName/claude-sonnet-4 (0.00s)
+    --- PASS: TestShortenModelName/claude-opus-4-5 (0.00s)
+    --- PASS: TestShortenModelName/gpt-4 (0.00s)
+    --- PASS: TestShortenModelName/glm-5.1 (0.00s)
+    --- PASS: TestShortenModelName/glm-5.1[1m] (0.00s)
+    --- PASS: TestShortenModelName/glm-4.7[1m] (0.00s)
+    --- PASS: TestShortenModelName/#00 (0.00s)
+    --- PASS: TestShortenModelName/claude- (0.00s)
+=== RUN   TestCollectMetrics_SessionDuration
+=== RUN   TestCollectMetrics_SessionDuration/extracts_duration
+=== RUN   TestCollectMetrics_SessionDuration/zero_duration
+=== RUN   TestCollectMetrics_SessionDuration/nil_cost
+--- PASS: TestCollectMetrics_SessionDuration (0.00s)
+    --- PASS: TestCollectMetrics_SessionDuration/extracts_duration (0.00s)
+    --- PASS: TestCollectMetrics_SessionDuration/zero_duration (0.00s)
+    --- PASS: TestCollectMetrics_SessionDuration/nil_cost (0.00s)
+=== RUN   TestFormatCost
+=== RUN   TestFormatCost/$0.05
+=== RUN   TestFormatCost/$0.15
+=== RUN   TestFormatCost/$1.23
+=== RUN   TestFormatCost/$0.00
+=== RUN   TestFormatCost/$10.50
+--- PASS: TestFormatCost (0.00s)
+    --- PASS: TestFormatCost/$0.05 (0.00s)
+    --- PASS: TestFormatCost/$0.15 (0.00s)
+    --- PASS: TestFormatCost/$1.23 (0.00s)
+    --- PASS: TestFormatCost/$0.00 (0.00s)
+    --- PASS: TestFormatCost/$10.50 (0.00s)
+=== RUN   TestResolveGLMModelName
+=== RUN   TestResolveGLMModelName/Opus_display_name_with_GLM_env
+=== RUN   TestResolveGLMModelName/Opus_4.6_display_name_with_GLM_env
+=== RUN   TestResolveGLMModelName/Sonnet_display_name_with_GLM_env
+=== RUN   TestResolveGLMModelName/Haiku_display_name_with_GLM_env
+=== RUN   TestResolveGLMModelName/Opus_without_GLM_env_(Claude_mode)
+=== RUN   TestResolveGLMModelName/Opus_with_Claude_model_env_(not_GLM)
+=== RUN   TestResolveGLMModelName/Opus_with_[1m]_suffix_in_GLM_mode
+=== RUN   TestResolveGLMModelName/Sonnet_with_[1m]_suffix_in_GLM_mode
+=== RUN   TestResolveGLMModelName/GLM_model_name_passed_directly_with_[1m]
+=== RUN   TestResolveGLMModelName/Non-Claude_display_name_unchanged
+=== RUN   TestResolveGLMModelName/Empty_display_name
+--- PASS: TestResolveGLMModelName (0.00s)
+    --- PASS: TestResolveGLMModelName/Opus_display_name_with_GLM_env (0.00s)
+    --- PASS: TestResolveGLMModelName/Opus_4.6_display_name_with_GLM_env (0.00s)
+    --- PASS: TestResolveGLMModelName/Sonnet_display_name_with_GLM_env (0.00s)
+    --- PASS: TestResolveGLMModelName/Haiku_display_name_with_GLM_env (0.00s)
+    --- PASS: TestResolveGLMModelName/Opus_without_GLM_env_(Claude_mode) (0.00s)
+    --- PASS: TestResolveGLMModelName/Opus_with_Claude_model_env_(not_GLM) (0.00s)
+    --- PASS: TestResolveGLMModelName/Opus_with_[1m]_suffix_in_GLM_mode (0.00s)
+    --- PASS: TestResolveGLMModelName/Sonnet_with_[1m]_suffix_in_GLM_mode (0.00s)
+    --- PASS: TestResolveGLMModelName/GLM_model_name_passed_directly_with_[1m] (0.00s)
+    --- PASS: TestResolveGLMModelName/Non-Claude_display_name_unchanged (0.00s)
+    --- PASS: TestResolveGLMModelName/Empty_display_name (0.00s)
+=== RUN   TestCollectMetrics_GLMMode
+--- PASS: TestCollectMetrics_GLMMode (0.00s)
+=== RUN   TestCollectMetrics_GLMMode_Strips1M
+--- PASS: TestCollectMetrics_GLMMode_Strips1M (0.00s)
+=== RUN   TestFormatTokens
+=== RUN   TestFormatTokens/50K
+=== RUN   TestFormatTokens/200K
+=== RUN   TestFormatTokens/1K
+=== RUN   TestFormatTokens/500
+=== RUN   TestFormatTokens/0
+=== RUN   TestFormatTokens/999
+--- PASS: TestFormatTokens (0.00s)
+    --- PASS: TestFormatTokens/50K (0.00s)
+    --- PASS: TestFormatTokens/200K (0.00s)
+    --- PASS: TestFormatTokens/1K (0.00s)
+    --- PASS: TestFormatTokens/500 (0.00s)
+    --- PASS: TestFormatTokens/0 (0.00s)
+    --- PASS: TestFormatTokens/999 (0.00s)
+=== RUN   TestReadModelCache_Success
+--- PASS: TestReadModelCache_Success (0.00s)
+=== RUN   TestReadModelCache_FileNotExist
+--- PASS: TestReadModelCache_FileNotExist (0.00s)
+=== RUN   TestReadModelCache_Corrupted
+--- PASS: TestReadModelCache_Corrupted (0.00s)
+=== RUN   TestWriteModelCache_CreatesDirectory
+--- PASS: TestWriteModelCache_CreatesDirectory (0.00s)
+=== RUN   TestWriteModelCache_AtomicReplace
+--- PASS: TestWriteModelCache_AtomicReplace (0.00s)
+=== RUN   TestWriteModelCache_ReadOnlyDir
+--- PASS: TestWriteModelCache_ReadOnlyDir (0.00s)
+=== RUN   TestProfilePhaseDistributions
+    profile_bench_test.go:306: set MOAI_PROFILE_PHASES=1 to emit the per-phase distribution table
+--- SKIP: TestProfilePhaseDistributions (0.00s)
+=== RUN   TestRender_MinimalMode
+--- PASS: TestRender_MinimalMode (0.00s)
+=== RUN   TestRender_DefaultMode
+--- PASS: TestRender_DefaultMode (0.00s)
+=== RUN   TestRender_VerboseMode_MultiLine
+--- PASS: TestRender_VerboseMode_MultiLine (0.00s)
+=== RUN   TestRender_VerboseMode_OmitsEmptyLines
+--- PASS: TestRender_VerboseMode_OmitsEmptyLines (0.00s)
+=== RUN   TestRender_VerboseMode_CostRendering
+--- PASS: TestRender_VerboseMode_CostRendering (0.00s)
+=== RUN   TestRender_VerboseMode_ZeroCostOmitted
+--- PASS: TestRender_VerboseMode_ZeroCostOmitted (0.00s)
+=== RUN   TestRender_MinimalMode_OutputStyle
+--- PASS: TestRender_MinimalMode_OutputStyle (0.00s)
+=== RUN   TestRender_EmptyGit
+--- PASS: TestRender_EmptyGit (0.00s)
+=== RUN   TestRender_EmptyMemory
+--- PASS: TestRender_EmptyMemory (0.00s)
+=== RUN   TestRender_NilData
+--- PASS: TestRender_NilData (0.00s)
+=== RUN   TestRender_AllEmpty
+--- PASS: TestRender_AllEmpty (0.00s)
+=== RUN   TestRender_GitOnlyBranch
+--- PASS: TestRender_GitOnlyBranch (0.00s)
+=== RUN   TestRender_GitOnlyBranch_NoRepo
+--- PASS: TestRender_GitOnlyBranch_NoRepo (0.00s)
+=== RUN   TestRender_Separator
+--- PASS: TestRender_Separator (0.00s)
+=== RUN   TestRender_NoNewline
+--- PASS: TestRender_NoNewline (0.00s)
+=== RUN   TestNewRenderer_ThemeVariants
+=== RUN   TestNewRenderer_ThemeVariants/default
+=== RUN   TestNewRenderer_ThemeVariants/default#01
+=== RUN   TestNewRenderer_ThemeVariants/catppuccin-mocha
+=== RUN   TestNewRenderer_ThemeVariants/catppuccin-latte
+=== RUN   TestNewRenderer_ThemeVariants/unknown
+--- PASS: TestNewRenderer_ThemeVariants (0.00s)
+    --- PASS: TestNewRenderer_ThemeVariants/default (0.00s)
+    --- PASS: TestNewRenderer_ThemeVariants/default#01 (0.00s)
+    --- PASS: TestNewRenderer_ThemeVariants/catppuccin-mocha (0.00s)
+    --- PASS: TestNewRenderer_ThemeVariants/catppuccin-latte (0.00s)
+    --- PASS: TestNewRenderer_ThemeVariants/unknown (0.00s)
+=== RUN   TestNewRenderer_ThemeIsStored
+--- PASS: TestNewRenderer_ThemeIsStored (0.00s)
+=== RUN   TestNewRenderer_NoColorIgnoresTheme
+--- PASS: TestNewRenderer_NoColorIgnoresTheme (0.00s)
+=== RUN   TestRender_ContextBarGraph
+--- PASS: TestRender_ContextBarGraph (0.00s)
+=== RUN   TestRender_HighContextUsage
+--- PASS: TestRender_HighContextUsage (0.00s)
+=== RUN   TestRender_ModelShortening
+=== RUN   TestRender_ModelShortening/Opus_4.5
+=== RUN   TestRender_ModelShortening/Sonnet_4
+=== RUN   TestRender_ModelShortening/Sonnet_3.5
+=== RUN   TestRender_ModelShortening/Haiku_3.5
+=== RUN   TestRender_ModelShortening/Non-Claude
+--- PASS: TestRender_ModelShortening (0.00s)
+    --- PASS: TestRender_ModelShortening/Opus_4.5 (0.00s)
+    --- PASS: TestRender_ModelShortening/Sonnet_4 (0.00s)
+    --- PASS: TestRender_ModelShortening/Sonnet_3.5 (0.00s)
+    --- PASS: TestRender_ModelShortening/Haiku_3.5 (0.00s)
+    --- PASS: TestRender_ModelShortening/Non-Claude (0.00s)
+=== RUN   TestRender_WithOutputStyle
+--- PASS: TestRender_WithOutputStyle (0.00s)
+=== RUN   TestRender_VersionUpdateNotification
+--- PASS: TestRender_VersionUpdateNotification (0.00s)
+=== RUN   TestRender_VersionNoUpdate
+--- PASS: TestRender_VersionNoUpdate (0.00s)
+=== RUN   TestRender_WithDirectory
+--- PASS: TestRender_WithDirectory (0.00s)
+=== RUN   TestRender_SegmentFiltering
+=== RUN   TestRender_SegmentFiltering/nil_config_shows_all_segments
+=== RUN   TestRender_SegmentFiltering/empty_config_shows_all_segments
+=== RUN   TestRender_SegmentFiltering/model_disabled_hides_model
+=== RUN   TestRender_SegmentFiltering/minimal_preset_config
+=== RUN   TestRender_SegmentFiltering/all_segments_disabled_returns_MoAI_fallback
+=== RUN   TestRender_SegmentFiltering/unknown_segment_key_defaults_to_enabled
+=== RUN   TestRender_SegmentFiltering/only_context_disabled
+--- PASS: TestRender_SegmentFiltering (0.00s)
+    --- PASS: TestRender_SegmentFiltering/nil_config_shows_all_segments (0.00s)
+    --- PASS: TestRender_SegmentFiltering/empty_config_shows_all_segments (0.00s)
+    --- PASS: TestRender_SegmentFiltering/model_disabled_hides_model (0.00s)
+    --- PASS: TestRender_SegmentFiltering/minimal_preset_config (0.00s)
+    --- PASS: TestRender_SegmentFiltering/all_segments_disabled_returns_MoAI_fallback (0.00s)
+    --- PASS: TestRender_SegmentFiltering/unknown_segment_key_defaults_to_enabled (0.00s)
+    --- PASS: TestRender_SegmentFiltering/only_context_disabled (0.00s)
+=== RUN   TestRender_SegmentFiltering_MinimalModeRespectsConfig
+--- PASS: TestRender_SegmentFiltering_MinimalModeRespectsConfig (0.00s)
+=== RUN   TestCostNotRendered
+--- PASS: TestCostNotRendered (0.00s)
+=== RUN   TestRenderSessionTime
+=== RUN   TestRenderSessionTime/83_minutes
+=== RUN   TestRenderSessionTime/45_minutes
+=== RUN   TestRenderSessionTime/zero
+=== RUN   TestRenderSessionTime/exactly_1_hour
+=== RUN   TestRenderSessionTime/26_hours
+=== RUN   TestRenderSessionTime/48_hours
+--- PASS: TestRenderSessionTime (0.00s)
+    --- PASS: TestRenderSessionTime/83_minutes (0.00s)
+    --- PASS: TestRenderSessionTime/45_minutes (0.00s)
+    --- PASS: TestRenderSessionTime/zero (0.00s)
+    --- PASS: TestRenderSessionTime/exactly_1_hour (0.00s)
+    --- PASS: TestRenderSessionTime/26_hours (0.00s)
+    --- PASS: TestRenderSessionTime/48_hours (0.00s)
+=== RUN   TestIsSegmentEnabled
+=== RUN   TestIsSegmentEnabled/nil_config_always_enabled
+=== RUN   TestIsSegmentEnabled/empty_config_always_enabled
+=== RUN   TestIsSegmentEnabled/enabled_segment
+=== RUN   TestIsSegmentEnabled/disabled_segment
+=== RUN   TestIsSegmentEnabled/unknown_key_defaults_to_enabled
+--- PASS: TestIsSegmentEnabled (0.00s)
+    --- PASS: TestIsSegmentEnabled/nil_config_always_enabled (0.00s)
+    --- PASS: TestIsSegmentEnabled/empty_config_always_enabled (0.00s)
+    --- PASS: TestIsSegmentEnabled/enabled_segment (0.00s)
+    --- PASS: TestIsSegmentEnabled/disabled_segment (0.00s)
+    --- PASS: TestIsSegmentEnabled/unknown_key_defaults_to_enabled (0.00s)
+=== RUN   TestRenderDefaultV3_ThreeLines
+--- PASS: TestRenderDefaultV3_ThreeLines (0.00s)
+=== RUN   TestRenderDefaultV3_Line1
+--- PASS: TestRenderDefaultV3_Line1 (0.00s)
+=== RUN   TestRenderDefaultV3_Line2_BarsInline
+--- PASS: TestRenderDefaultV3_Line2_BarsInline (0.00s)
+=== RUN   TestRenderDefaultV3_Line3
+--- PASS: TestRenderDefaultV3_Line3 (0.00s)
+=== RUN   TestRenderDefaultV3_StyleInL1
+--- PASS: TestRenderDefaultV3_StyleInL1 (0.00s)
+=== RUN   TestRenderFullV3_Line1_WithPrefixes
+--- PASS: TestRenderFullV3_Line1_WithPrefixes (0.00s)
+=== RUN   TestRenderV3_OmitsEmptyLines_Default
+--- PASS: TestRenderV3_OmitsEmptyLines_Default (0.00s)
+=== RUN   TestRender_ModeRouting
+=== RUN   TestRender_ModeRouting/default
+=== RUN   TestRender_ModeRouting/full
+=== RUN   TestRender_ModeRouting/compact
+=== RUN   TestRender_ModeRouting/minimal
+=== RUN   TestRender_ModeRouting/verbose
+--- PASS: TestRender_ModeRouting (0.00s)
+    --- PASS: TestRender_ModeRouting/default (0.00s)
+    --- PASS: TestRender_ModeRouting/full (0.00s)
+    --- PASS: TestRender_ModeRouting/compact (0.00s)
+    --- PASS: TestRender_ModeRouting/minimal (0.00s)
+    --- PASS: TestRender_ModeRouting/verbose (0.00s)
+=== RUN   TestRenderUsageBar
+=== RUN   TestRenderUsageBar/CW_88%_noColor
+=== RUN   TestRenderUsageBar/5H_45%_noColor
+--- PASS: TestRenderUsageBar (0.00s)
+    --- PASS: TestRenderUsageBar/CW_88%_noColor (0.00s)
+    --- PASS: TestRenderUsageBar/5H_45%_noColor (0.00s)
+=== RUN   TestRender_V3Separator
+--- PASS: TestRender_V3Separator (0.00s)
+=== RUN   TestFormatResetTimeRelative
+=== PAUSE TestFormatResetTimeRelative
+=== RUN   TestFormatResetTimeAbsolute
+=== PAUSE TestFormatResetTimeAbsolute
+=== RUN   TestRenderUsageBarWithReset
+=== PAUSE TestRenderUsageBarWithReset
+=== RUN   TestRenderDirGitLine_WorktreeIndicator
+=== RUN   TestRenderDirGitLine_WorktreeIndicator/worktree_present_and_segment_enabled:_no_[WT],_branch_renders
+=== RUN   TestRenderDirGitLine_WorktreeIndicator/worktree_present_but_segment_disabled:_no_[WT],_branch_renders
+=== RUN   TestRenderDirGitLine_WorktreeIndicator/no_worktree_with_segment_enabled:_no_[WT],_branch_renders
+=== RUN   TestRenderDirGitLine_WorktreeIndicator/no_worktree_and_segment_disabled:_no_[WT],_branch_renders
+--- PASS: TestRenderDirGitLine_WorktreeIndicator (0.00s)
+    --- PASS: TestRenderDirGitLine_WorktreeIndicator/worktree_present_and_segment_enabled:_no_[WT],_branch_renders (0.00s)
+    --- PASS: TestRenderDirGitLine_WorktreeIndicator/worktree_present_but_segment_disabled:_no_[WT],_branch_renders (0.00s)
+    --- PASS: TestRenderDirGitLine_WorktreeIndicator/no_worktree_with_segment_enabled:_no_[WT],_branch_renders (0.00s)
+    --- PASS: TestRenderDirGitLine_WorktreeIndicator/no_worktree_and_segment_disabled:_no_[WT],_branch_renders (0.00s)
+=== RUN   TestRenderer_EffortThinking_InfoLine
+=== RUN   TestRenderer_EffortThinking_InfoLine/GWT-1:_effort=high,_thinking=false_→_🧠_high_present,_·t_absent
+=== RUN   TestRenderer_EffortThinking_InfoLine/GWT-2:_effort=max,_thinking=true_→_🧠_max_🧠_max·t_present
+=== RUN   TestRenderer_EffortThinking_InfoLine/GWT-3:_effort_absent,_thinking=true_→_·t_only
+=== RUN   TestRenderer_EffortThinking_InfoLine/GWT-4:_both_absent_→_neither_🧠_nor_·t
+=== RUN   TestRenderer_EffortThinking_InfoLine/GWT-5:_effort_empty_string_→_silent_omit
+=== RUN   TestRenderer_EffortThinking_InfoLine/GWT-6:_unknown_level_ultra_→_🧠_ultra_(raw_passthrough)
+--- PASS: TestRenderer_EffortThinking_InfoLine (0.00s)
+    --- PASS: TestRenderer_EffortThinking_InfoLine/GWT-1:_effort=high,_thinking=false_→_🧠_high_present,_·t_absent (0.00s)
+    --- PASS: TestRenderer_EffortThinking_InfoLine/GWT-2:_effort=max,_thinking=true_→_🧠_max_🧠_max·t_present (0.00s)
+    --- PASS: TestRenderer_EffortThinking_InfoLine/GWT-3:_effort_absent,_thinking=true_→_·t_only (0.00s)
+    --- PASS: TestRenderer_EffortThinking_InfoLine/GWT-4:_both_absent_→_neither_🧠_nor_·t (0.00s)
+    --- PASS: TestRenderer_EffortThinking_InfoLine/GWT-5:_effort_empty_string_→_silent_omit (0.00s)
+    --- PASS: TestRenderer_EffortThinking_InfoLine/GWT-6:_unknown_level_ultra_→_🧠_ultra_(raw_passthrough) (0.00s)
+=== RUN   TestRenderPRSegment_Format
+=== RUN   TestRenderPRSegment_Format/approved_pr_1023
+=== RUN   TestRenderPRSegment_Format/pending_pr_42
+=== RUN   TestRenderPRSegment_Format/changes_requested_pr_7
+=== RUN   TestRenderPRSegment_Format/draft_pr_99
+=== RUN   TestRenderPRSegment_Format/empty_url_tolerated
+=== RUN   TestRenderPRSegment_Format/empty_review_state:_no_marker
+--- PASS: TestRenderPRSegment_Format (0.00s)
+    --- PASS: TestRenderPRSegment_Format/approved_pr_1023 (0.00s)
+    --- PASS: TestRenderPRSegment_Format/pending_pr_42 (0.00s)
+    --- PASS: TestRenderPRSegment_Format/changes_requested_pr_7 (0.00s)
+    --- PASS: TestRenderPRSegment_Format/draft_pr_99 (0.00s)
+    --- PASS: TestRenderPRSegment_Format/empty_url_tolerated (0.00s)
+    --- PASS: TestRenderPRSegment_Format/empty_review_state:_no_marker (0.00s)
+=== RUN   TestRenderPRSegment_Absence
+=== RUN   TestRenderPRSegment_Absence/pr_nil_+_enabled
+=== RUN   TestRenderPRSegment_Absence/pr_Number_zero_+_enabled
+=== RUN   TestRenderPRSegment_Absence/pr_present_+_disabled
+--- PASS: TestRenderPRSegment_Absence (0.00s)
+    --- PASS: TestRenderPRSegment_Absence/pr_nil_+_enabled (0.00s)
+    --- PASS: TestRenderPRSegment_Absence/pr_Number_zero_+_enabled (0.00s)
+    --- PASS: TestRenderPRSegment_Absence/pr_present_+_disabled (0.00s)
+=== RUN   TestRenderPRSegment_DefaultOn
+--- PASS: TestRenderPRSegment_DefaultOn (0.00s)
+=== RUN   TestRenderPRSegment_ZeroNumber
+--- PASS: TestRenderPRSegment_ZeroNumber (0.00s)
+=== RUN   TestRenderPRSegment_Nil
+--- PASS: TestRenderPRSegment_Nil (0.00s)
+=== RUN   TestPRReviewStateColor
+=== RUN   TestPRReviewStateColor/approved_→_green_styled
+=== RUN   TestPRReviewStateColor/pending_→_yellow_styled
+=== RUN   TestPRReviewStateColor/changes_requested_→_red_styled
+=== RUN   TestPRReviewStateColor/draft_→_gray/muted_styled
+=== RUN   TestPRReviewStateColor/unknown_state:_raw_passthrough_no_color
+=== RUN   TestPRReviewStateColor/empty_state:_no_marker_no_color
+--- PASS: TestPRReviewStateColor (0.00s)
+    --- PASS: TestPRReviewStateColor/approved_→_green_styled (0.00s)
+    --- PASS: TestPRReviewStateColor/pending_→_yellow_styled (0.00s)
+    --- PASS: TestPRReviewStateColor/changes_requested_→_red_styled (0.00s)
+    --- PASS: TestPRReviewStateColor/draft_→_gray/muted_styled (0.00s)
+    --- PASS: TestPRReviewStateColor/unknown_state:_raw_passthrough_no_color (0.00s)
+    --- PASS: TestPRReviewStateColor/empty_state:_no_marker_no_color (0.00s)
+=== RUN   TestPRReviewStateColor_NoColor
+=== RUN   TestPRReviewStateColor_NoColor/approved
+=== RUN   TestPRReviewStateColor_NoColor/pending
+=== RUN   TestPRReviewStateColor_NoColor/changes_requested
+=== RUN   TestPRReviewStateColor_NoColor/draft
+=== RUN   TestPRReviewStateColor_NoColor/merged
+=== RUN   TestPRReviewStateColor_NoColor/#00
+--- PASS: TestPRReviewStateColor_NoColor (0.00s)
+    --- PASS: TestPRReviewStateColor_NoColor/approved (0.00s)
+    --- PASS: TestPRReviewStateColor_NoColor/pending (0.00s)
+    --- PASS: TestPRReviewStateColor_NoColor/changes_requested (0.00s)
+    --- PASS: TestPRReviewStateColor_NoColor/draft (0.00s)
+    --- PASS: TestPRReviewStateColor_NoColor/merged (0.00s)
+    --- PASS: TestPRReviewStateColor_NoColor/#00 (0.00s)
+=== RUN   TestRenderDirGitLine_PRSegment
+=== RUN   TestRenderDirGitLine_PRSegment/pr_enabled_+_approved:_segment_appears_on_L3
+=== RUN   TestRenderDirGitLine_PRSegment/pr_disabled:_segment_absent_from_L3
+=== RUN   TestRenderDirGitLine_PRSegment/pr_nil:_segment_absent_from_L3
+--- PASS: TestRenderDirGitLine_PRSegment (0.00s)
+    --- PASS: TestRenderDirGitLine_PRSegment/pr_enabled_+_approved:_segment_appears_on_L3 (0.00s)
+    --- PASS: TestRenderDirGitLine_PRSegment/pr_disabled:_segment_absent_from_L3 (0.00s)
+    --- PASS: TestRenderDirGitLine_PRSegment/pr_nil:_segment_absent_from_L3 (0.00s)
+=== RUN   TestRenderRepoBranchSegment_BranchSurvivesMissingForgeInfo
+=== PAUSE TestRenderRepoBranchSegment_BranchSurvivesMissingForgeInfo
+=== RUN   TestRenderRepoBranchSegment_ForgeHalfStillJoinsWhenPresent
+=== PAUSE TestRenderRepoBranchSegment_ForgeHalfStillJoinsWhenPresent
+=== RUN   TestRenderRepoBranchSegment_DirtySuffixOmittedWhenClean
+=== PAUSE TestRenderRepoBranchSegment_DirtySuffixOmittedWhenClean
+=== RUN   TestRenderRepoBranchSegment_DirtyCountSumsAllThreeCategories
+=== PAUSE TestRenderRepoBranchSegment_DirtyCountSumsAllThreeCategories
+=== RUN   TestRenderRepoBranchSegment_AheadBehindRendersAsArrows
+=== PAUSE TestRenderRepoBranchSegment_AheadBehindRendersAsArrows
+=== RUN   TestRenderRepoBranchSegment_ArrowsPrecedeDirtyCount
+=== PAUSE TestRenderRepoBranchSegment_ArrowsPrecedeDirtyCount
+=== RUN   TestRenderRepoBranchSegment_OnlyOneSlashPair
+=== PAUSE TestRenderRepoBranchSegment_OnlyOneSlashPair
+=== RUN   TestRenderRepoBranchSegment_NoGitContextStaysEmpty
+=== PAUSE TestRenderRepoBranchSegment_NoGitContextStaysEmpty
+=== RUN   TestRenderRepoBranchSegment_WorktreeSessionKeepsItsBranch
+=== PAUSE TestRenderRepoBranchSegment_WorktreeSessionKeepsItsBranch
+=== RUN   TestRenderSessionLine_OrdersIdentityThenWorkload
+=== PAUSE TestRenderSessionLine_OrdersIdentityThenWorkload
+=== RUN   TestRenderSessionLine_EmptyWhenNothingToSay
+=== PAUSE TestRenderSessionLine_EmptyWhenNothingToSay
+=== RUN   TestRenderSessionLine_UnreadableBacklogRendersNoCounts
+=== PAUSE TestRenderSessionLine_UnreadableBacklogRendersNoCounts
+=== RUN   TestRenderSessionLine_SegmentsDisablable
+=== PAUSE TestRenderSessionLine_SegmentsDisablable
+=== RUN   TestRenderDefaultV3_SessionLineClosesTheStatusline
+=== PAUSE TestRenderDefaultV3_SessionLineClosesTheStatusline
+=== RUN   TestOtherLines_CarryNoSessionIdentity
+=== PAUSE TestOtherLines_CarryNoSessionIdentity
+=== RUN   TestResolveBacklogCounts
+=== PAUSE TestResolveBacklogCounts
+=== RUN   TestResolveBoardRoot_PrefersPrimaryCheckoutOverWorktree
+--- PASS: TestResolveBoardRoot_PrefersPrimaryCheckoutOverWorktree (0.16s)
+=== RUN   TestHostileKeyIsRefused
+=== RUN   TestHostileKeyIsRefused/empty
+=== RUN   TestHostileKeyIsRefused/parent_traversal
+=== RUN   TestHostileKeyIsRefused/path_separator
+=== RUN   TestHostileKeyIsRefused/absolute_path
+--- PASS: TestHostileKeyIsRefused (0.15s)
+    --- PASS: TestHostileKeyIsRefused/empty (0.04s)
+    --- PASS: TestHostileKeyIsRefused/parent_traversal (0.04s)
+    --- PASS: TestHostileKeyIsRefused/path_separator (0.04s)
+    --- PASS: TestHostileKeyIsRefused/absolute_path (0.04s)
+=== RUN   TestSessionTelemetryPathRefusesHostileKeys
+=== PAUSE TestSessionTelemetryPathRefusesHostileKeys
+=== RUN   TestRecordedModelIsBackendResolved
+--- PASS: TestRecordedModelIsBackendResolved (0.05s)
+=== RUN   TestModelAndEffortRoundTripAndOmit
+--- PASS: TestModelAndEffortRoundTripAndOmit (0.04s)
+=== RUN   TestReadsPreviousSchemaRecord
+=== PAUSE TestReadsPreviousSchemaRecord
+=== RUN   TestThrottleUnaffectedByModelAndEffort
+=== PAUSE TestThrottleUnaffectedByModelAndEffort
+=== RUN   TestPerSessionRecordPath
+--- PASS: TestPerSessionRecordPath (0.04s)
+=== RUN   TestRecordKeyIsThePayloadSessionID
+--- PASS: TestRecordKeyIsThePayloadSessionID (0.04s)
+=== RUN   TestContextUsageAnchorsToProjectDir
+--- PASS: TestContextUsageAnchorsToProjectDir (0.04s)
+=== RUN   TestNoProjectNoState
+--- PASS: TestNoProjectNoState (0.12s)
+=== RUN   TestDisplaySegmentUnchangedByAnchorRepair
+--- PASS: TestDisplaySegmentUnchangedByAnchorRepair (0.08s)
+=== RUN   TestBoardRootResolvesThroughStateAnchor
+--- PASS: TestBoardRootResolvesThroughStateAnchor (0.23s)
+=== RUN   TestGoalArmedReadsFromStateAnchor
+--- PASS: TestGoalArmedReadsFromStateAnchor (0.22s)
+=== RUN   TestShouldShowHandoffGuide_OneMillionFiftyPercentTrue
+=== PAUSE TestShouldShowHandoffGuide_OneMillionFiftyPercentTrue
+=== RUN   TestShouldShowHandoffGuide_OneMillionFortyNinePercentFalse
+=== PAUSE TestShouldShowHandoffGuide_OneMillionFortyNinePercentFalse
+=== RUN   TestShouldShowHandoffGuide_TwoHundredKNinetyPercentTrue
+=== PAUSE TestShouldShowHandoffGuide_TwoHundredKNinetyPercentTrue
+=== RUN   TestShouldShowHandoffGuide_TwoHundredKEightyNinePercentFalse
+=== PAUSE TestShouldShowHandoffGuide_TwoHundredKEightyNinePercentFalse
+=== RUN   TestShouldShowHandoffGuide_UnknownCwSizeFalse
+=== PAUSE TestShouldShowHandoffGuide_UnknownCwSizeFalse
+=== RUN   TestShouldShowHandoffGuide_NilDataFalse
+=== PAUSE TestShouldShowHandoffGuide_NilDataFalse
+=== RUN   TestShouldShowHandoffGuide_TwoHundredFiftySixKNinetyPercentTrue
+=== PAUSE TestShouldShowHandoffGuide_TwoHundredFiftySixKNinetyPercentTrue
+=== RUN   TestShouldShowHandoffGuide_TwoHundredFiftySixKEightyNinePercentFalse
+=== PAUSE TestShouldShowHandoffGuide_TwoHundredFiftySixKEightyNinePercentFalse
+=== RUN   TestShouldShowHandoffGuide_FiveHundredKFiftyPercentTrue
+=== PAUSE TestShouldShowHandoffGuide_FiveHundredKFiftyPercentTrue
+=== RUN   TestShouldShowHandoffGuide_JustBelowFiveHundredKFiftyPercentFalse
+=== PAUSE TestShouldShowHandoffGuide_JustBelowFiveHundredKFiftyPercentFalse
+=== RUN   TestCollectAll_RepoAndExceedsLongPropagation
+=== PAUSE TestCollectAll_RepoAndExceedsLongPropagation
+=== RUN   TestPRSegment_NilPRGracefulNoOutput
+=== PAUSE TestPRSegment_NilPRGracefulNoOutput
+=== RUN   TestNewTaskCollector_DefaultPath
+--- PASS: TestNewTaskCollector_DefaultPath (0.00s)
+=== RUN   TestTaskCollector_Read_EmptyPath
+--- PASS: TestTaskCollector_Read_EmptyPath (0.00s)
+=== RUN   TestTaskCollector_Read_NonExistentFile
+--- PASS: TestTaskCollector_Read_NonExistentFile (0.00s)
+=== RUN   TestTaskCollector_Read_ValidFile
+--- PASS: TestTaskCollector_Read_ValidFile (0.00s)
+=== RUN   TestTaskCollector_Read_NoActiveTask
+--- PASS: TestTaskCollector_Read_NoActiveTask (0.00s)
+=== RUN   TestTaskCollector_Read_InvalidJSON
+--- PASS: TestTaskCollector_Read_InvalidJSON (0.00s)
+=== RUN   TestTaskCollector_Get_CachesResult
+--- PASS: TestTaskCollector_Get_CachesResult (0.00s)
+=== RUN   TestTaskCollector_Get_RefreshesAfterTTL
+--- PASS: TestTaskCollector_Get_RefreshesAfterTTL (0.01s)
+=== RUN   TestTaskCollector_Get_ConcurrentAccess
+--- PASS: TestTaskCollector_Get_ConcurrentAccess (0.00s)
+=== RUN   TestTaskData_Format_Active
+=== RUN   TestTaskData_Format_Active/command_only
+=== RUN   TestTaskData_Format_Active/command_and_spec
+=== RUN   TestTaskData_Format_Active/command_spec_and_stage
+=== RUN   TestTaskData_Format_Active/command_and_stage_no_spec
+=== RUN   TestTaskData_Format_Active/not_active_returns_empty
+=== RUN   TestTaskData_Format_Active/active_but_empty_command_returns_empty
+--- PASS: TestTaskData_Format_Active (0.00s)
+    --- PASS: TestTaskData_Format_Active/command_only (0.00s)
+    --- PASS: TestTaskData_Format_Active/command_and_spec (0.00s)
+    --- PASS: TestTaskData_Format_Active/command_spec_and_stage (0.00s)
+    --- PASS: TestTaskData_Format_Active/command_and_stage_no_spec (0.00s)
+    --- PASS: TestTaskData_Format_Active/not_active_returns_empty (0.00s)
+    --- PASS: TestTaskData_Format_Active/active_but_empty_command_returns_empty (0.00s)
+=== RUN   TestCollectTask_ReturnsData
+--- PASS: TestCollectTask_ReturnsData (0.00s)
+=== RUN   TestThemeInterface
+=== RUN   TestThemeInterface/default
+=== RUN   TestThemeInterface/catppuccin-mocha
+=== RUN   TestThemeInterface/catppuccin-latte
+=== RUN   TestThemeInterface/unknown_falls_back_to_default
+--- PASS: TestThemeInterface (0.00s)
+    --- PASS: TestThemeInterface/default (0.00s)
+    --- PASS: TestThemeInterface/catppuccin-mocha (0.00s)
+    --- PASS: TestThemeInterface/catppuccin-latte (0.00s)
+    --- PASS: TestThemeInterface/unknown_falls_back_to_default (0.00s)
+=== RUN   TestDefaultThemeColors
+--- PASS: TestDefaultThemeColors (0.00s)
+=== RUN   TestCatppuccinMochaColors
+=== RUN   TestCatppuccinMochaColors/Primary
+=== RUN   TestCatppuccinMochaColors/Muted
+=== RUN   TestCatppuccinMochaColors/Success
+=== RUN   TestCatppuccinMochaColors/Warning
+=== RUN   TestCatppuccinMochaColors/Danger
+=== RUN   TestCatppuccinMochaColors/Text
+--- PASS: TestCatppuccinMochaColors (0.00s)
+    --- PASS: TestCatppuccinMochaColors/Primary (0.00s)
+    --- PASS: TestCatppuccinMochaColors/Muted (0.00s)
+    --- PASS: TestCatppuccinMochaColors/Success (0.00s)
+    --- PASS: TestCatppuccinMochaColors/Warning (0.00s)
+    --- PASS: TestCatppuccinMochaColors/Danger (0.00s)
+    --- PASS: TestCatppuccinMochaColors/Text (0.00s)
+=== RUN   TestCatppuccinLatteColors
+=== RUN   TestCatppuccinLatteColors/Primary
+=== RUN   TestCatppuccinLatteColors/Muted
+=== RUN   TestCatppuccinLatteColors/Success
+=== RUN   TestCatppuccinLatteColors/Warning
+=== RUN   TestCatppuccinLatteColors/Danger
+=== RUN   TestCatppuccinLatteColors/Text
+--- PASS: TestCatppuccinLatteColors (0.00s)
+    --- PASS: TestCatppuccinLatteColors/Primary (0.00s)
+    --- PASS: TestCatppuccinLatteColors/Muted (0.00s)
+    --- PASS: TestCatppuccinLatteColors/Success (0.00s)
+    --- PASS: TestCatppuccinLatteColors/Warning (0.00s)
+    --- PASS: TestCatppuccinLatteColors/Danger (0.00s)
+    --- PASS: TestCatppuccinLatteColors/Text (0.00s)
+=== RUN   TestBarGradient_Stages
+=== RUN   TestBarGradient_Stages/mocha/0%_=_stage_1_(green)
+=== RUN   TestBarGradient_Stages/latte/0%_=_stage_1_(green)
+=== RUN   TestBarGradient_Stages/mocha/25%_=_stage_1_(green)
+=== RUN   TestBarGradient_Stages/latte/25%_=_stage_1_(green)
+=== RUN   TestBarGradient_Stages/mocha/26%_=_stage_2_(yellow)
+=== RUN   TestBarGradient_Stages/latte/26%_=_stage_2_(yellow)
+=== RUN   TestBarGradient_Stages/mocha/50%_=_stage_2_(yellow)
+=== RUN   TestBarGradient_Stages/latte/50%_=_stage_2_(yellow)
+=== RUN   TestBarGradient_Stages/mocha/51%_=_stage_3_(peach)
+=== RUN   TestBarGradient_Stages/latte/51%_=_stage_3_(peach)
+=== RUN   TestBarGradient_Stages/mocha/75%_=_stage_3_(peach)
+=== RUN   TestBarGradient_Stages/latte/75%_=_stage_3_(peach)
+=== RUN   TestBarGradient_Stages/mocha/76%_=_stage_4_(red)
+=== RUN   TestBarGradient_Stages/latte/76%_=_stage_4_(red)
+=== RUN   TestBarGradient_Stages/mocha/100%_=_stage_4_(red)
+=== RUN   TestBarGradient_Stages/latte/100%_=_stage_4_(red)
+--- PASS: TestBarGradient_Stages (0.00s)
+    --- PASS: TestBarGradient_Stages/mocha/0%_=_stage_1_(green) (0.00s)
+    --- PASS: TestBarGradient_Stages/latte/0%_=_stage_1_(green) (0.00s)
+    --- PASS: TestBarGradient_Stages/mocha/25%_=_stage_1_(green) (0.00s)
+    --- PASS: TestBarGradient_Stages/latte/25%_=_stage_1_(green) (0.00s)
+    --- PASS: TestBarGradient_Stages/mocha/26%_=_stage_2_(yellow) (0.00s)
+    --- PASS: TestBarGradient_Stages/latte/26%_=_stage_2_(yellow) (0.00s)
+    --- PASS: TestBarGradient_Stages/mocha/50%_=_stage_2_(yellow) (0.00s)
+    --- PASS: TestBarGradient_Stages/latte/50%_=_stage_2_(yellow) (0.00s)
+    --- PASS: TestBarGradient_Stages/mocha/51%_=_stage_3_(peach) (0.00s)
+    --- PASS: TestBarGradient_Stages/latte/51%_=_stage_3_(peach) (0.00s)
+    --- PASS: TestBarGradient_Stages/mocha/75%_=_stage_3_(peach) (0.00s)
+    --- PASS: TestBarGradient_Stages/latte/75%_=_stage_3_(peach) (0.00s)
+    --- PASS: TestBarGradient_Stages/mocha/76%_=_stage_4_(red) (0.00s)
+    --- PASS: TestBarGradient_Stages/latte/76%_=_stage_4_(red) (0.00s)
+    --- PASS: TestBarGradient_Stages/mocha/100%_=_stage_4_(red) (0.00s)
+    --- PASS: TestBarGradient_Stages/latte/100%_=_stage_4_(red) (0.00s)
+=== RUN   TestDefaultTheme_BarGradient_Stages
+--- PASS: TestDefaultTheme_BarGradient_Stages (0.00s)
+=== RUN   TestNewTheme_UnknownFallsBackToDefault
+--- PASS: TestNewTheme_UnknownFallsBackToDefault (0.00s)
+=== RUN   TestNormalizeMode
+=== RUN   TestNormalizeMode/minimal_converts_to_default
+=== RUN   TestNormalizeMode/compact_converts_to_default
+=== RUN   TestNormalizeMode/verbose_converts_to_full
+=== RUN   TestNormalizeMode/default_unchanged
+=== RUN   TestNormalizeMode/full_unchanged
+=== RUN   TestNormalizeMode/empty_unchanged
+=== RUN   TestNormalizeMode/unknown_unchanged
+--- PASS: TestNormalizeMode (0.00s)
+    --- PASS: TestNormalizeMode/minimal_converts_to_default (0.00s)
+    --- PASS: TestNormalizeMode/compact_converts_to_default (0.00s)
+    --- PASS: TestNormalizeMode/verbose_converts_to_full (0.00s)
+    --- PASS: TestNormalizeMode/default_unchanged (0.00s)
+    --- PASS: TestNormalizeMode/full_unchanged (0.00s)
+    --- PASS: TestNormalizeMode/empty_unchanged (0.00s)
+    --- PASS: TestNormalizeMode/unknown_unchanged (0.00s)
+=== RUN   TestStdinData_UnmarshalJSON_ResetsAtInteger
+--- PASS: TestStdinData_UnmarshalJSON_ResetsAtInteger (0.00s)
+=== RUN   TestStdinData_UnmarshalJSON_SevenDayResetsAt
+--- PASS: TestStdinData_UnmarshalJSON_SevenDayResetsAt (0.00s)
+=== RUN   TestStdinData_UnmarshalJSON_ModelAsString
+--- PASS: TestStdinData_UnmarshalJSON_ModelAsString (0.00s)
+=== RUN   TestStdinData_UnmarshalJSON_ModelAsObject
+--- PASS: TestStdinData_UnmarshalJSON_ModelAsObject (0.00s)
+=== RUN   TestStdinData_UnmarshalJSON_OfficialSchema
+--- PASS: TestStdinData_UnmarshalJSON_OfficialSchema (0.00s)
+=== RUN   TestWorkspaceInfo_UnmarshalJSON_GitWorktree
+=== RUN   TestWorkspaceInfo_UnmarshalJSON_GitWorktree/worktree_path_present:_parsed_correctly
+=== RUN   TestWorkspaceInfo_UnmarshalJSON_GitWorktree/no_worktree:_empty_string
+=== RUN   TestWorkspaceInfo_UnmarshalJSON_GitWorktree/git_worktree_empty_string
+--- PASS: TestWorkspaceInfo_UnmarshalJSON_GitWorktree (0.00s)
+    --- PASS: TestWorkspaceInfo_UnmarshalJSON_GitWorktree/worktree_path_present:_parsed_correctly (0.00s)
+    --- PASS: TestWorkspaceInfo_UnmarshalJSON_GitWorktree/no_worktree:_empty_string (0.00s)
+    --- PASS: TestWorkspaceInfo_UnmarshalJSON_GitWorktree/git_worktree_empty_string (0.00s)
+=== RUN   TestStdinData_UnmarshalJSON_EffortThinking
+=== RUN   TestStdinData_UnmarshalJSON_EffortThinking/effort_level_present:_high
+=== RUN   TestStdinData_UnmarshalJSON_EffortThinking/thinking_enabled:_true
+=== RUN   TestStdinData_UnmarshalJSON_EffortThinking/both_present
+=== RUN   TestStdinData_UnmarshalJSON_EffortThinking/thinking_enabled:_false
+=== RUN   TestStdinData_UnmarshalJSON_EffortThinking/effort_level_empty_string
+=== RUN   TestStdinData_UnmarshalJSON_EffortThinking/effort_absent:_nil
+=== RUN   TestStdinData_UnmarshalJSON_EffortThinking/effort_null:_nil
+=== RUN   TestStdinData_UnmarshalJSON_EffortThinking/unknown_effort_level:_raw_passthrough_(REQ-CC2122-004)
+--- PASS: TestStdinData_UnmarshalJSON_EffortThinking (0.00s)
+    --- PASS: TestStdinData_UnmarshalJSON_EffortThinking/effort_level_present:_high (0.00s)
+    --- PASS: TestStdinData_UnmarshalJSON_EffortThinking/thinking_enabled:_true (0.00s)
+    --- PASS: TestStdinData_UnmarshalJSON_EffortThinking/both_present (0.00s)
+    --- PASS: TestStdinData_UnmarshalJSON_EffortThinking/thinking_enabled:_false (0.00s)
+    --- PASS: TestStdinData_UnmarshalJSON_EffortThinking/effort_level_empty_string (0.00s)
+    --- PASS: TestStdinData_UnmarshalJSON_EffortThinking/effort_absent:_nil (0.00s)
+    --- PASS: TestStdinData_UnmarshalJSON_EffortThinking/effort_null:_nil (0.00s)
+    --- PASS: TestStdinData_UnmarshalJSON_EffortThinking/unknown_effort_level:_raw_passthrough_(REQ-CC2122-004) (0.00s)
+=== RUN   TestSegmentEffortThinking_Constant
+--- PASS: TestSegmentEffortThinking_Constant (0.00s)
+=== RUN   TestStatusData_EffortThinking_Fields
+--- PASS: TestStatusData_EffortThinking_Fields (0.00s)
+=== RUN   TestSegmentWorktree_Constant
+--- PASS: TestSegmentWorktree_Constant (0.00s)
+=== RUN   TestStatusData_Worktree_Field
+--- PASS: TestStatusData_Worktree_Field (0.00s)
+=== RUN   TestStatuslineEffortThinking_MXTags
+--- PASS: TestStatuslineEffortThinking_MXTags (0.00s)
+=== RUN   TestSegmentPR_Constant
+--- PASS: TestSegmentPR_Constant (0.00s)
+=== RUN   TestStdinData_UnmarshalJSON_PRInfo
+=== RUN   TestStdinData_UnmarshalJSON_PRInfo/full_pr_object:_number+url+review_state
+=== RUN   TestStdinData_UnmarshalJSON_PRInfo/pending_review
+=== RUN   TestStdinData_UnmarshalJSON_PRInfo/changes_requested_review
+=== RUN   TestStdinData_UnmarshalJSON_PRInfo/draft_pr_without_review_state
+=== RUN   TestStdinData_UnmarshalJSON_PRInfo/explicit_draft_review_state
+=== RUN   TestStdinData_UnmarshalJSON_PRInfo/pr_absent:_nil
+=== RUN   TestStdinData_UnmarshalJSON_PRInfo/pr_null:_nil
+=== RUN   TestStdinData_UnmarshalJSON_PRInfo/pr_number_only:_empty_url_tolerated
+--- PASS: TestStdinData_UnmarshalJSON_PRInfo (0.00s)
+    --- PASS: TestStdinData_UnmarshalJSON_PRInfo/full_pr_object:_number+url+review_state (0.00s)
+    --- PASS: TestStdinData_UnmarshalJSON_PRInfo/pending_review (0.00s)
+    --- PASS: TestStdinData_UnmarshalJSON_PRInfo/changes_requested_review (0.00s)
+    --- PASS: TestStdinData_UnmarshalJSON_PRInfo/draft_pr_without_review_state (0.00s)
+    --- PASS: TestStdinData_UnmarshalJSON_PRInfo/explicit_draft_review_state (0.00s)
+    --- PASS: TestStdinData_UnmarshalJSON_PRInfo/pr_absent:_nil (0.00s)
+    --- PASS: TestStdinData_UnmarshalJSON_PRInfo/pr_null:_nil (0.00s)
+    --- PASS: TestStdinData_UnmarshalJSON_PRInfo/pr_number_only:_empty_url_tolerated (0.00s)
+=== RUN   TestWorkspaceInfo_UnmarshalJSON_Repo
+=== RUN   TestWorkspaceInfo_UnmarshalJSON_Repo/full_repo_object
+=== RUN   TestWorkspaceInfo_UnmarshalJSON_Repo/repo_with_worktree_active
+=== RUN   TestWorkspaceInfo_UnmarshalJSON_Repo/repo_absent:_nil
+=== RUN   TestWorkspaceInfo_UnmarshalJSON_Repo/repo_null:_nil
+--- PASS: TestWorkspaceInfo_UnmarshalJSON_Repo (0.00s)
+    --- PASS: TestWorkspaceInfo_UnmarshalJSON_Repo/full_repo_object (0.00s)
+    --- PASS: TestWorkspaceInfo_UnmarshalJSON_Repo/repo_with_worktree_active (0.00s)
+    --- PASS: TestWorkspaceInfo_UnmarshalJSON_Repo/repo_absent:_nil (0.00s)
+    --- PASS: TestWorkspaceInfo_UnmarshalJSON_Repo/repo_null:_nil (0.00s)
+=== RUN   TestStdinData_UnmarshalJSON_V2145Schema
+--- PASS: TestStdinData_UnmarshalJSON_V2145Schema (0.00s)
+=== RUN   TestStatusData_PR_Field
+--- PASS: TestStatusData_PR_Field (0.00s)
+=== RUN   TestUpdateChecker_CheckUpdate
+=== RUN   TestUpdateChecker_CheckUpdate/update_available
+=== RUN   TestUpdateChecker_CheckUpdate/no_update_-_same_version
+=== RUN   TestUpdateChecker_CheckUpdate/fetch_error_-_no_cache
+=== RUN   TestUpdateChecker_CheckUpdate/nil_fetch_function
+--- PASS: TestUpdateChecker_CheckUpdate (0.00s)
+    --- PASS: TestUpdateChecker_CheckUpdate/update_available (0.00s)
+    --- PASS: TestUpdateChecker_CheckUpdate/no_update_-_same_version (0.00s)
+    --- PASS: TestUpdateChecker_CheckUpdate/fetch_error_-_no_cache (0.00s)
+    --- PASS: TestUpdateChecker_CheckUpdate/nil_fetch_function (0.00s)
+=== RUN   TestUpdateChecker_CacheHit
+--- PASS: TestUpdateChecker_CacheHit (0.00s)
+=== RUN   TestUpdateChecker_CacheExpiry
+--- PASS: TestUpdateChecker_CacheExpiry (0.01s)
+=== RUN   TestUpdateChecker_FetchErrorWithCache
+--- PASS: TestUpdateChecker_FetchErrorWithCache (0.01s)
+=== RUN   TestUsageCache_ReadWrite
+=== PAUSE TestUsageCache_ReadWrite
+=== RUN   TestUsageCache_TTL
+=== PAUSE TestUsageCache_TTL
+=== RUN   TestUsageCache_NotExist
+=== PAUSE TestUsageCache_NotExist
+=== RUN   TestUsageCache_InvalidJSON
+=== PAUSE TestUsageCache_InvalidJSON
+=== RUN   TestReadOAuthToken_Keychain
+=== PAUSE TestReadOAuthToken_Keychain
+=== RUN   TestReadOAuthToken_Fallback
+=== PAUSE TestReadOAuthToken_Fallback
+=== RUN   TestReadOAuthToken_DotPrefixCredentials
+=== PAUSE TestReadOAuthToken_DotPrefixCredentials
+=== RUN   TestReadOAuthToken_DotPrefixNestedCredentials
+=== PAUSE TestReadOAuthToken_DotPrefixNestedCredentials
+=== RUN   TestReadOAuthToken_DotPrefixTakesPrecedenceOverPlain
+=== PAUSE TestReadOAuthToken_DotPrefixTakesPrecedenceOverPlain
+=== RUN   TestReadOAuthToken_PriorityChain
+=== PAUSE TestReadOAuthToken_PriorityChain
+=== RUN   TestReadOAuthToken_NotFound
+=== PAUSE TestReadOAuthToken_NotFound
+=== RUN   TestFetchUsageFromAPI_Success
+=== PAUSE TestFetchUsageFromAPI_Success
+=== RUN   TestFetchUsageFromAPI_Retry429
+=== PAUSE TestFetchUsageFromAPI_Retry429
+=== RUN   TestFetchUsageFromAPI_NonRetryableError
+=== PAUSE TestFetchUsageFromAPI_NonRetryableError
+=== RUN   TestUsageProvider_CollectUsage_CacheHit
+=== PAUSE TestUsageProvider_CollectUsage_CacheHit
+=== RUN   TestGetStaleCache
+=== PAUSE TestGetStaleCache
+=== RUN   TestUsageProvider_CollectUsage_GracefulDegradation
+=== PAUSE TestUsageProvider_CollectUsage_GracefulDegradation
+=== RUN   TestIsInFailureCooldown_Active
+=== PAUSE TestIsInFailureCooldown_Active
+=== RUN   TestIsInFailureCooldown_Expired
+=== PAUSE TestIsInFailureCooldown_Expired
+=== RUN   TestIsInFailureCooldown_NoFailure
+=== PAUSE TestIsInFailureCooldown_NoFailure
+=== RUN   TestSaveFailure
+=== PAUSE TestSaveFailure
+=== RUN   TestCollectUsage_SkipsDuringCooldown
+=== PAUSE TestCollectUsage_SkipsDuringCooldown
+=== RUN   TestCollectUsage_RetriesAfterCooldownExpires
+=== PAUSE TestCollectUsage_RetriesAfterCooldownExpires
+=== RUN   TestCalcCooldown
+=== PAUSE TestCalcCooldown
+=== RUN   TestFetchUsageFromHeaders_Success
+=== PAUSE TestFetchUsageFromHeaders_Success
+=== RUN   TestFetchUsageFromHeaders_429WithHeaders
+=== PAUSE TestFetchUsageFromHeaders_429WithHeaders
+=== RUN   TestFetchUsageFromHeaders_NoHeaders
+=== PAUSE TestFetchUsageFromHeaders_NoHeaders
+=== RUN   TestExponentialBackoff_ProgressiveCooldown
+=== PAUSE TestExponentialBackoff_ProgressiveCooldown
+=== RUN   TestCollectUsage_BoundedWithoutCallerDeadline
+=== PAUSE TestCollectUsage_BoundedWithoutCallerDeadline
+=== RUN   TestVersionCollector_CheckUpdate
+=== RUN   TestVersionCollector_CheckUpdate/valid_config_with_version,_same_as_binary
+=== RUN   TestVersionCollector_CheckUpdate/binary_newer_than_template
+=== RUN   TestVersionCollector_CheckUpdate/valid_config_with_v_prefix
+=== RUN   TestVersionCollector_CheckUpdate/no_config_file_falls_back_to_binary_version
+=== RUN   TestVersionCollector_CheckUpdate/empty_version_falls_back_to_binary_version
+=== RUN   TestVersionCollector_CheckUpdate/no_config_and_no_binary_version
+=== RUN   TestVersionCollector_CheckUpdate/no_binary_version_provided
+--- PASS: TestVersionCollector_CheckUpdate (0.01s)
+    --- PASS: TestVersionCollector_CheckUpdate/valid_config_with_version,_same_as_binary (0.00s)
+    --- PASS: TestVersionCollector_CheckUpdate/binary_newer_than_template (0.00s)
+    --- PASS: TestVersionCollector_CheckUpdate/valid_config_with_v_prefix (0.00s)
+    --- PASS: TestVersionCollector_CheckUpdate/no_config_file_falls_back_to_binary_version (0.00s)
+    --- PASS: TestVersionCollector_CheckUpdate/empty_version_falls_back_to_binary_version (0.00s)
+    --- PASS: TestVersionCollector_CheckUpdate/no_config_and_no_binary_version (0.00s)
+    --- PASS: TestVersionCollector_CheckUpdate/no_binary_version_provided (0.00s)
+=== RUN   TestVersionCollector_PrefersTemplateVersion
+--- PASS: TestVersionCollector_PrefersTemplateVersion (0.00s)
+=== RUN   TestVersionCollector_FallbackToMoaiVersion
+--- PASS: TestVersionCollector_FallbackToMoaiVersion (0.00s)
+=== RUN   TestFormatVersion
+=== RUN   TestFormatVersion/v1.14.0
+=== RUN   TestFormatVersion/1.14.0
+=== RUN   TestFormatVersion/v2.0.0
+=== RUN   TestFormatVersion/2.0.0
+=== RUN   TestFormatVersion/v
+=== RUN   TestFormatVersion/#00
+--- PASS: TestFormatVersion (0.00s)
+    --- PASS: TestFormatVersion/v1.14.0 (0.00s)
+    --- PASS: TestFormatVersion/1.14.0 (0.00s)
+    --- PASS: TestFormatVersion/v2.0.0 (0.00s)
+    --- PASS: TestFormatVersion/2.0.0 (0.00s)
+    --- PASS: TestFormatVersion/v (0.00s)
+    --- PASS: TestFormatVersion/#00 (0.00s)
+=== CONT  TestRendererBacklogSegmentGating
+=== CONT  TestReadsPreviousSchemaRecord
+=== CONT  TestFetchUsageFromAPI_Retry429
+=== CONT  TestOtherLines_CarryNoSessionIdentity
+=== RUN   TestRendererBacklogSegmentGating/todo_disabled,_backlog_segment_key_absent
+=== CONT  TestCollectUsage_BoundedWithoutCallerDeadline
+=== CONT  TestResolveBacklogCounts
+=== RUN   TestResolveBacklogCounts/counts_picked_and_queued,_ignores_dropped
+=== PAUSE TestResolveBacklogCounts/counts_picked_and_queued,_ignores_dropped
+=== RUN   TestResolveBacklogCounts/empty_board_is_available_but_zero
+=== PAUSE TestResolveBacklogCounts/empty_board_is_available_but_zero
+=== RUN   TestResolveBacklogCounts/unknown_states_are_not_counted
+=== CONT  TestExponentialBackoff_ProgressiveCooldown
+=== CONT  TestSessionTelemetryPathRefusesHostileKeys
+--- PASS: TestSessionTelemetryPathRefusesHostileKeys (0.00s)
+=== CONT  TestFetchUsageFromHeaders_Success
+=== CONT  TestCalcCooldown
+=== RUN   TestCalcCooldown/count=0
+=== CONT  TestUsageProvider_CollectUsage_GracefulDegradation
+--- PASS: TestOtherLines_CarryNoSessionIdentity (0.00s)
+=== CONT  TestGetStaleCache
+=== RUN   TestCalcCooldown/count=1
+=== CONT  TestUsageProvider_CollectUsage_CacheHit
+=== CONT  TestFetchUsageFromAPI_NonRetryableError
+=== CONT  TestIsInFailureCooldown_Active
+=== CONT  TestFetchUsageFromHeaders_429WithHeaders
+=== PAUSE TestResolveBacklogCounts/unknown_states_are_not_counted
+=== CONT  TestFetchUsageFromHeaders_NoHeaders
+=== CONT  TestReadOAuthToken_DotPrefixTakesPrecedenceOverPlain
+=== RUN   TestRendererBacklogSegmentGating/control:_todo_key_absent,_backlog_segment_key_absent
+=== RUN   TestCalcCooldown/count=2
+=== RUN   TestRendererBacklogSegmentGating/control:_todo_explicitly_true,_backlog_segment_key_absent
+=== RUN   TestRendererBacklogSegmentGating/the_pre-existing_statusline.yaml_path_still_suppresses
+=== RUN   TestCalcCooldown/count=3
+=== RUN   TestRendererBacklogSegmentGating/both_off
+=== RUN   TestResolveBacklogCounts/corrupt_json_fails_open
+=== RUN   TestCalcCooldown/count=4
+=== CONT  TestCollectUsage_RetriesAfterCooldownExpires
+--- PASS: TestRendererBacklogSegmentGating (0.00s)
+    --- PASS: TestRendererBacklogSegmentGating/todo_disabled,_backlog_segment_key_absent (0.00s)
+    --- PASS: TestRendererBacklogSegmentGating/control:_todo_key_absent,_backlog_segment_key_absent (0.00s)
+    --- PASS: TestRendererBacklogSegmentGating/control:_todo_explicitly_true,_backlog_segment_key_absent (0.00s)
+    --- PASS: TestRendererBacklogSegmentGating/the_pre-existing_statusline.yaml_path_still_suppresses (0.00s)
+    --- PASS: TestRendererBacklogSegmentGating/both_off (0.00s)
+=== PAUSE TestResolveBacklogCounts/corrupt_json_fails_open
+=== RUN   TestResolveBacklogCounts/absent_file_fails_open
+=== RUN   TestCalcCooldown/count=5
+=== RUN   TestCalcCooldown/count=6
+=== PAUSE TestResolveBacklogCounts/absent_file_fails_open
+=== CONT  TestCollectUsage_SkipsDuringCooldown
+=== RUN   TestCalcCooldown/count=7
+=== RUN   TestCalcCooldown/count=10
+--- PASS: TestCalcCooldown (0.00s)
+    --- PASS: TestCalcCooldown/count=0 (0.00s)
+    --- PASS: TestCalcCooldown/count=1 (0.00s)
+    --- PASS: TestCalcCooldown/count=2 (0.00s)
+    --- PASS: TestCalcCooldown/count=3 (0.00s)
+    --- PASS: TestCalcCooldown/count=4 (0.00s)
+    --- PASS: TestCalcCooldown/count=5 (0.00s)
+    --- PASS: TestCalcCooldown/count=6 (0.00s)
+    --- PASS: TestCalcCooldown/count=7 (0.00s)
+    --- PASS: TestCalcCooldown/count=10 (0.00s)
+=== CONT  TestSaveFailure
+--- PASS: TestFetchUsageFromHeaders_Success (0.00s)
+=== CONT  TestIsInFailureCooldown_NoFailure
+--- PASS: TestFetchUsageFromAPI_NonRetryableError (0.00s)
+=== CONT  TestIsInFailureCooldown_Expired
+--- PASS: TestFetchUsageFromHeaders_429WithHeaders (0.00s)
+=== CONT  TestReadOAuthToken_NotFound
+--- PASS: TestFetchUsageFromHeaders_NoHeaders (0.00s)
+=== CONT  TestFetchUsageFromAPI_Success
+--- PASS: TestUsageProvider_CollectUsage_GracefulDegradation (0.00s)
+=== CONT  TestShouldShowHandoffGuide_JustBelowFiveHundredKFiftyPercentFalse
+--- PASS: TestShouldShowHandoffGuide_JustBelowFiveHundredKFiftyPercentFalse (0.00s)
+=== CONT  TestReadOAuthToken_DotPrefixNestedCredentials
+--- PASS: TestReadsPreviousSchemaRecord (0.00s)
+=== CONT  TestReadOAuthToken_DotPrefixCredentials
+--- PASS: TestFetchUsageFromAPI_Success (0.00s)
+=== CONT  TestReadOAuthToken_Fallback
+--- PASS: TestExponentialBackoff_ProgressiveCooldown (0.00s)
+=== CONT  TestReadOAuthToken_Keychain
+    usage_test.go:186: TODO: mock security command for unit testing
+--- SKIP: TestReadOAuthToken_Keychain (0.00s)
+=== CONT  TestUsageCache_InvalidJSON
+--- PASS: TestIsInFailureCooldown_Active (0.00s)
+=== CONT  TestUsageCache_NotExist
+--- PASS: TestGetStaleCache (0.00s)
+=== CONT  TestUsageCache_TTL
+--- PASS: TestCollectUsage_SkipsDuringCooldown (0.01s)
+=== CONT  TestUsageCache_ReadWrite
+--- PASS: TestUsageCache_NotExist (0.00s)
+=== CONT  TestPRSegment_NilPRGracefulNoOutput
+--- PASS: TestPRSegment_NilPRGracefulNoOutput (0.00s)
+=== CONT  TestCollectAll_RepoAndExceedsLongPropagation
+=== RUN   TestCollectAll_RepoAndExceedsLongPropagation/repo_+_exceeds_200k_both_present
+=== RUN   TestCollectAll_RepoAndExceedsLongPropagation/both_absent_(backward_compat)
+=== RUN   TestCollectAll_RepoAndExceedsLongPropagation/nil_input_safe
+--- PASS: TestCollectAll_RepoAndExceedsLongPropagation (0.00s)
+    --- PASS: TestCollectAll_RepoAndExceedsLongPropagation/repo_+_exceeds_200k_both_present (0.00s)
+    --- PASS: TestCollectAll_RepoAndExceedsLongPropagation/both_absent_(backward_compat) (0.00s)
+    --- PASS: TestCollectAll_RepoAndExceedsLongPropagation/nil_input_safe (0.00s)
+=== CONT  TestShouldShowHandoffGuide_UnknownCwSizeFalse
+--- PASS: TestShouldShowHandoffGuide_UnknownCwSizeFalse (0.00s)
+=== CONT  TestShouldShowHandoffGuide_FiveHundredKFiftyPercentTrue
+--- PASS: TestShouldShowHandoffGuide_FiveHundredKFiftyPercentTrue (0.00s)
+=== CONT  TestShouldShowHandoffGuide_TwoHundredFiftySixKEightyNinePercentFalse
+--- PASS: TestShouldShowHandoffGuide_TwoHundredFiftySixKEightyNinePercentFalse (0.00s)
+=== CONT  TestShouldShowHandoffGuide_TwoHundredFiftySixKNinetyPercentTrue
+--- PASS: TestShouldShowHandoffGuide_TwoHundredFiftySixKNinetyPercentTrue (0.00s)
+=== CONT  TestShouldShowHandoffGuide_NilDataFalse
+--- PASS: TestShouldShowHandoffGuide_NilDataFalse (0.00s)
+=== CONT  TestReadOAuthToken_PriorityChain
+=== RUN   TestReadOAuthToken_PriorityChain/keychain_wins_over_all_files
+=== PAUSE TestReadOAuthToken_PriorityChain/keychain_wins_over_all_files
+=== RUN   TestReadOAuthToken_PriorityChain/dot-prefix_file_wins_when_keychain_fails
+=== PAUSE TestReadOAuthToken_PriorityChain/dot-prefix_file_wins_when_keychain_fails
+=== RUN   TestReadOAuthToken_PriorityChain/plain_credentials.json_used_as_last_resort
+=== PAUSE TestReadOAuthToken_PriorityChain/plain_credentials.json_used_as_last_resort
+=== CONT  TestShouldShowHandoffGuide_OneMillionFortyNinePercentFalse
+--- PASS: TestShouldShowHandoffGuide_OneMillionFortyNinePercentFalse (0.00s)
+=== CONT  TestShouldShowHandoffGuide_TwoHundredKEightyNinePercentFalse
+--- PASS: TestShouldShowHandoffGuide_TwoHundredKEightyNinePercentFalse (0.00s)
+=== CONT  TestShouldShowHandoffGuide_TwoHundredKNinetyPercentTrue
+--- PASS: TestShouldShowHandoffGuide_TwoHundredKNinetyPercentTrue (0.00s)
+=== CONT  TestIsSelfInvocable_RejectsThisTestBinary
+--- PASS: TestIsSelfInvocable_RejectsThisTestBinary (0.00s)
+=== CONT  TestRenderDefaultV3_SessionLineClosesTheStatusline
+--- PASS: TestRenderDefaultV3_SessionLineClosesTheStatusline (0.00s)
+=== CONT  TestRenderSessionLine_SegmentsDisablable
+--- PASS: TestRenderSessionLine_SegmentsDisablable (0.00s)
+=== CONT  TestRenderSessionLine_UnreadableBacklogRendersNoCounts
+--- PASS: TestRenderSessionLine_UnreadableBacklogRendersNoCounts (0.00s)
+=== CONT  TestRenderSessionLine_EmptyWhenNothingToSay
+--- PASS: TestRenderSessionLine_EmptyWhenNothingToSay (0.00s)
+=== CONT  TestRenderSessionLine_OrdersIdentityThenWorkload
+--- PASS: TestRenderSessionLine_OrdersIdentityThenWorkload (0.00s)
+=== CONT  TestRenderRepoBranchSegment_WorktreeSessionKeepsItsBranch
+--- PASS: TestRenderRepoBranchSegment_WorktreeSessionKeepsItsBranch (0.00s)
+=== CONT  TestRenderRepoBranchSegment_NoGitContextStaysEmpty
+--- PASS: TestRenderRepoBranchSegment_NoGitContextStaysEmpty (0.00s)
+=== CONT  TestRenderRepoBranchSegment_OnlyOneSlashPair
+--- PASS: TestRenderRepoBranchSegment_OnlyOneSlashPair (0.00s)
+=== CONT  TestRenderRepoBranchSegment_ArrowsPrecedeDirtyCount
+--- PASS: TestRenderRepoBranchSegment_ArrowsPrecedeDirtyCount (0.00s)
+=== CONT  TestRenderRepoBranchSegment_AheadBehindRendersAsArrows
+--- PASS: TestRenderRepoBranchSegment_AheadBehindRendersAsArrows (0.00s)
+=== CONT  TestRenderRepoBranchSegment_DirtyCountSumsAllThreeCategories
+--- PASS: TestRenderRepoBranchSegment_DirtyCountSumsAllThreeCategories (0.00s)
+=== CONT  TestRenderRepoBranchSegment_DirtySuffixOmittedWhenClean
+--- PASS: TestRenderRepoBranchSegment_DirtySuffixOmittedWhenClean (0.00s)
+=== CONT  TestRenderRepoBranchSegment_ForgeHalfStillJoinsWhenPresent
+--- PASS: TestRenderRepoBranchSegment_ForgeHalfStillJoinsWhenPresent (0.00s)
+=== CONT  TestRenderRepoBranchSegment_BranchSurvivesMissingForgeInfo
+=== RUN   TestRenderRepoBranchSegment_BranchSurvivesMissingForgeInfo/repo_absent
+=== PAUSE TestRenderRepoBranchSegment_BranchSurvivesMissingForgeInfo/repo_absent
+=== RUN   TestRenderRepoBranchSegment_BranchSurvivesMissingForgeInfo/repo_present_but_incomplete
+=== PAUSE TestRenderRepoBranchSegment_BranchSurvivesMissingForgeInfo/repo_present_but_incomplete
+=== CONT  TestRenderUsageBarWithReset
+--- PASS: TestRenderUsageBarWithReset (0.00s)
+=== CONT  TestFormatResetTimeAbsolute
+=== RUN   TestFormatResetTimeAbsolute/empty_string
+=== RUN   TestFormatResetTimeAbsolute/invalid_format
+=== RUN   TestFormatResetTimeAbsolute/valid_RFC3339
+--- PASS: TestFormatResetTimeAbsolute (0.00s)
+    --- PASS: TestFormatResetTimeAbsolute/empty_string (0.00s)
+    --- PASS: TestFormatResetTimeAbsolute/invalid_format (0.00s)
+    --- PASS: TestFormatResetTimeAbsolute/valid_RFC3339 (0.00s)
+=== CONT  TestFormatResetTimeRelative
+=== RUN   TestFormatResetTimeRelative/empty_string
+=== RUN   TestFormatResetTimeRelative/invalid_format
+=== RUN   TestFormatResetTimeRelative/future_2h30m
+=== RUN   TestFormatResetTimeRelative/future_45m
+=== RUN   TestFormatResetTimeRelative/past_time
+=== RUN   TestFormatResetTimeRelative/7D:_future_1d3h30m
+=== RUN   TestFormatResetTimeRelative/7D:_future_2d_only
+--- PASS: TestFormatResetTimeRelative (0.00s)
+    --- PASS: TestFormatResetTimeRelative/empty_string (0.00s)
+    --- PASS: TestFormatResetTimeRelative/invalid_format (0.00s)
+    --- PASS: TestFormatResetTimeRelative/future_2h30m (0.00s)
+    --- PASS: TestFormatResetTimeRelative/future_45m (0.00s)
+    --- PASS: TestFormatResetTimeRelative/past_time (0.00s)
+    --- PASS: TestFormatResetTimeRelative/7D:_future_1d3h30m (0.00s)
+    --- PASS: TestFormatResetTimeRelative/7D:_future_2d_only (0.00s)
+=== CONT  TestCountNamed_WordBoundaryCriterion
+=== RUN   TestCountNamed_WordBoundaryCriterion/prefix_collision,_both_named
+=== PAUSE TestCountNamed_WordBoundaryCriterion/prefix_collision,_both_named
+=== RUN   TestCountNamed_WordBoundaryCriterion/prefix_collision,_only_the_longer_named
+=== PAUSE TestCountNamed_WordBoundaryCriterion/prefix_collision,_only_the_longer_named
+=== RUN   TestCountNamed_WordBoundaryCriterion/a_substring_is_not_a_mention
+=== PAUSE TestCountNamed_WordBoundaryCriterion/a_substring_is_not_a_mention
+=== RUN   TestCountNamed_WordBoundaryCriterion/start_of_body
+=== PAUSE TestCountNamed_WordBoundaryCriterion/start_of_body
+=== RUN   TestCountNamed_WordBoundaryCriterion/end_of_body
+=== PAUSE TestCountNamed_WordBoundaryCriterion/end_of_body
+=== RUN   TestCountNamed_WordBoundaryCriterion/parenthesised_scope
+=== PAUSE TestCountNamed_WordBoundaryCriterion/parenthesised_scope
+=== RUN   TestCountNamed_WordBoundaryCriterion/trailing_colon
+=== PAUSE TestCountNamed_WordBoundaryCriterion/trailing_colon
+=== RUN   TestCountNamed_WordBoundaryCriterion/sentence_punctuation
+=== PAUSE TestCountNamed_WordBoundaryCriterion/sentence_punctuation
+=== RUN   TestCountNamed_WordBoundaryCriterion/hyphen_is_a_boundary,_not_part_of_the_token
+=== PAUSE TestCountNamed_WordBoundaryCriterion/hyphen_is_a_boundary,_not_part_of_the_token
+=== RUN   TestCountNamed_WordBoundaryCriterion/many_mentions_of_one_card_count_once
+=== PAUSE TestCountNamed_WordBoundaryCriterion/many_mentions_of_one_card_count_once
+=== RUN   TestCountNamed_WordBoundaryCriterion/no_ids_is_zero_without_touching_the_body
+=== PAUSE TestCountNamed_WordBoundaryCriterion/no_ids_is_zero_without_touching_the_body
+=== RUN   TestCountNamed_WordBoundaryCriterion/an_empty_history_names_nobody
+=== PAUSE TestCountNamed_WordBoundaryCriterion/an_empty_history_names_nobody
+=== CONT  TestRenderer_LandedAnnotation
+=== RUN   TestRenderer_LandedAnnotation/unknown_renders_the_segment_unchanged
+=== PAUSE TestRenderer_LandedAnnotation/unknown_renders_the_segment_unchanged
+=== RUN   TestRenderer_LandedAnnotation/cache_read_but_never_measured_renders_unchanged
+=== PAUSE TestRenderer_LandedAnnotation/cache_read_but_never_measured_renders_unchanged
+=== RUN   TestRenderer_LandedAnnotation/measured_count_annotates
+=== PAUSE TestRenderer_LandedAnnotation/measured_count_annotates
+=== RUN   TestRenderer_LandedAnnotation/observed_zero_annotates
+=== PAUSE TestRenderer_LandedAnnotation/observed_zero_annotates
+=== CONT  TestResolveLandedCounts_ObservedZeroIsAFact
+--- PASS: TestUsageProvider_CollectUsage_CacheHit (0.01s)
+=== CONT  TestResolveLandedCounts_UnknownStates
+=== RUN   TestResolveLandedCounts_UnknownStates/absent_cache_is_unknown
+=== PAUSE TestResolveLandedCounts_UnknownStates/absent_cache_is_unknown
+=== RUN   TestResolveLandedCounts_UnknownStates/corrupt_cache_is_unknown
+=== PAUSE TestResolveLandedCounts_UnknownStates/corrupt_cache_is_unknown
+=== RUN   TestResolveLandedCounts_UnknownStates/timestamp-only_placeholder_is_unknown
+=== PAUSE TestResolveLandedCounts_UnknownStates/timestamp-only_placeholder_is_unknown
+=== RUN   TestResolveLandedCounts_UnknownStates/empty_board_root_is_unknown
+=== PAUSE TestResolveLandedCounts_UnknownStates/empty_board_root_is_unknown
+=== CONT  TestNoM1Regression_SuffixUnconditional
+--- PASS: TestNoM1Regression_SuffixUnconditional (0.00s)
+=== CONT  TestHardCeiling_Formula
+--- PASS: TestHardCeiling_Formula (0.00s)
+=== CONT  TestRenderBarsInline_TwoStageSuffix
+=== RUN   TestRenderBarsInline_TwoStageSuffix/none
+=== PAUSE TestRenderBarsInline_TwoStageSuffix/none
+=== RUN   TestRenderBarsInline_TwoStageSuffix/soft
+=== PAUSE TestRenderBarsInline_TwoStageSuffix/soft
+=== RUN   TestRenderBarsInline_TwoStageSuffix/hard
+=== PAUSE TestRenderBarsInline_TwoStageSuffix/hard
+=== CONT  TestHandoffGuideStage_WrapperEquivalence
+--- PASS: TestHandoffGuideStage_WrapperEquivalence (0.00s)
+=== CONT  TestRender_ForgePairSegmentGate
+--- PASS: TestRender_ForgePairSegmentGate (0.00s)
+=== CONT  TestRender_ForgePairUnknownIsNotZero
+--- PASS: TestRender_ForgePairUnknownIsNotZero (0.00s)
+=== CONT  TestRender_ForgePairIsIssuesOverPRs
+--- PASS: TestRender_ForgePairIsIssuesOverPRs (0.00s)
+=== CONT  TestRenderSessionLine_GitHubCounts
+--- PASS: TestRenderSessionLine_GitHubCounts (0.00s)
+=== CONT  TestMaybeRefreshGitHubCounts_EmptyRootIsANoOp
+--- PASS: TestMaybeRefreshGitHubCounts_EmptyRootIsANoOp (0.00s)
+=== CONT  TestShouldShowHandoffGuide_OneMillionFiftyPercentTrue
+--- PASS: TestShouldShowHandoffGuide_OneMillionFiftyPercentTrue (0.00s)
+=== CONT  TestThrottleUnaffectedByModelAndEffort
+--- PASS: TestReadOAuthToken_NotFound (0.01s)
+=== CONT  TestResolveGitHubCounts_ExplicitOptOutSuppresses
+=== RUN   TestResolveGitHubCounts_ExplicitOptOutSuppresses/forge_none,_no_cache
+=== PAUSE TestResolveGitHubCounts_ExplicitOptOutSuppresses/forge_none,_no_cache
+=== RUN   TestResolveGitHubCounts_ExplicitOptOutSuppresses/forge_off,_no_cache
+=== PAUSE TestResolveGitHubCounts_ExplicitOptOutSuppresses/forge_off,_no_cache
+=== RUN   TestResolveGitHubCounts_ExplicitOptOutSuppresses/forge_none_beats_a_populated_cache
+=== PAUSE TestResolveGitHubCounts_ExplicitOptOutSuppresses/forge_none_beats_a_populated_cache
+=== RUN   TestResolveGitHubCounts_ExplicitOptOutSuppresses/a_typo_names_no_forge_either
+=== PAUSE TestResolveGitHubCounts_ExplicitOptOutSuppresses/a_typo_names_no_forge_either
+=== RUN   TestResolveGitHubCounts_ExplicitOptOutSuppresses/a_real_forge_does_not_suppress
+=== PAUSE TestResolveGitHubCounts_ExplicitOptOutSuppresses/a_real_forge_does_not_suppress
+=== RUN   TestResolveGitHubCounts_ExplicitOptOutSuppresses/no_config_at_all_leaves_detection_to_the_child
+=== PAUSE TestResolveGitHubCounts_ExplicitOptOutSuppresses/no_config_at_all_leaves_detection_to_the_child
+=== CONT  TestIsSelfInvocable
+=== RUN   TestIsSelfInvocable//Users/x/go/bin/moai
+=== PAUSE TestIsSelfInvocable//Users/x/go/bin/moai
+=== RUN   TestIsSelfInvocable/moai
+=== PAUSE TestIsSelfInvocable/moai
+=== RUN   TestIsSelfInvocable/moai.exe
+=== PAUSE TestIsSelfInvocable/moai.exe
+=== RUN   TestIsSelfInvocable//tmp/go-build123/b001/statusline.test
+=== PAUSE TestIsSelfInvocable//tmp/go-build123/b001/statusline.test
+=== RUN   TestIsSelfInvocable//usr/local/bin/moai-adk
+=== PAUSE TestIsSelfInvocable//usr/local/bin/moai-adk
+=== RUN   TestIsSelfInvocable//usr/local/bin/claude
+=== PAUSE TestIsSelfInvocable//usr/local/bin/claude
+=== RUN   TestIsSelfInvocable/#00
+=== PAUSE TestIsSelfInvocable/#00
+=== CONT  TestMaybeRefreshGitHubCounts_FreshCacheSpawnsNothing
+--- PASS: TestReadOAuthToken_DotPrefixNestedCredentials (0.01s)
+=== CONT  TestWriteContextUsage_ThrottleSkipUnchanged
+--- PASS: TestIsInFailureCooldown_Expired (0.01s)
+=== CONT  TestRender_ForgePairFourStateContract
+=== RUN   TestRender_ForgePairFourStateContract/fetched_counts_render_as_issues/PRs
+=== PAUSE TestRender_ForgePairFourStateContract/fetched_counts_render_as_issues/PRs
+=== RUN   TestRender_ForgePairFourStateContract/zeros_a_successful_fetch_produced_are_honest_zeros
+=== PAUSE TestRender_ForgePairFourStateContract/zeros_a_successful_fetch_produced_are_honest_zeros
+=== RUN   TestRender_ForgePairFourStateContract/stale_zeros_stay_honest_—_a_later_rate-limited_refresh_must_not_rewrite_them_as_unknown
+=== PAUSE TestRender_ForgePairFourStateContract/stale_zeros_stay_honest_—_a_later_rate-limited_refresh_must_not_rewrite_them_as_unknown
+=== RUN   TestRender_ForgePairFourStateContract/absent_cache_is_unknown,_not_zero
+=== PAUSE TestRender_ForgePairFourStateContract/absent_cache_is_unknown,_not_zero
+=== RUN   TestRender_ForgePairFourStateContract/corrupt_cache_is_unknown_too
+=== PAUSE TestRender_ForgePairFourStateContract/corrupt_cache_is_unknown_too
+=== RUN   TestRender_ForgePairFourStateContract/suppressed_from_an_explicit_no-forge_override_renders_no_pair
+=== PAUSE TestRender_ForgePairFourStateContract/suppressed_from_an_explicit_no-forge_override_renders_no_pair
+=== CONT  TestIsTemplateSourceDir
+=== RUN   TestIsTemplateSourceDir/empty
+=== PAUSE TestIsTemplateSourceDir/empty
+=== RUN   TestIsTemplateSourceDir/exact_templates_dir_(absolute)
+=== PAUSE TestIsTemplateSourceDir/exact_templates_dir_(absolute)
+=== RUN   TestIsTemplateSourceDir/subdir_of_templates_(deep_path)
+=== PAUSE TestIsTemplateSourceDir/subdir_of_templates_(deep_path)
+=== RUN   TestIsTemplateSourceDir/root-level_templates_dir
+=== PAUSE TestIsTemplateSourceDir/root-level_templates_dir
+=== RUN   TestIsTemplateSourceDir/substring_fused_no_match
+=== PAUSE TestIsTemplateSourceDir/substring_fused_no_match
+=== RUN   TestIsTemplateSourceDir/suffix__bar_no_match
+=== PAUSE TestIsTemplateSourceDir/suffix__bar_no_match
+=== RUN   TestIsTemplateSourceDir/normal_project_dir
+=== PAUSE TestIsTemplateSourceDir/normal_project_dir
+=== CONT  TestWriteContextUsage_TemplateSourceGuard_SubstringNoMatch
+=== RUN   TestIsTemplateSourceDir/normal_dir_with_internal_subdir_(not_template_tree)
+=== PAUSE TestIsTemplateSourceDir/normal_dir_with_internal_subdir_(not_template_tree)
+=== RUN   TestIsTemplateSourceDir/normal_dir_ending_in_template_(singular)
+=== PAUSE TestIsTemplateSourceDir/normal_dir_ending_in_template_(singular)
+--- PASS: TestIsInFailureCooldown_NoFailure (0.01s)
+=== CONT  TestWriteContextUsage_TemplateSourceGuard_InertForNormalDir
+--- PASS: TestReadOAuthToken_DotPrefixCredentials (0.01s)
+=== CONT  TestWriteContextUsage_TemplateSourceGuard
+--- PASS: TestCollectUsage_RetriesAfterCooldownExpires (0.01s)
+=== CONT  TestResolveStateAnchor_Chain
+--- PASS: TestSaveFailure (0.01s)
+=== CONT  TestReadContextUsage_Corrupt
+--- PASS: TestUsageCache_InvalidJSON (0.01s)
+=== CONT  TestWriteGitHubCache_RoundTrips
+--- PASS: TestReadOAuthToken_DotPrefixTakesPrecedenceOverPlain (0.02s)
+=== CONT  TestResolveGitHubCounts
+=== RUN   TestResolveGitHubCounts/valid_cache
+=== PAUSE TestResolveGitHubCounts/valid_cache
+=== RUN   TestResolveGitHubCounts/zero_counts_are_still_a_real_answer
+=== PAUSE TestResolveGitHubCounts/zero_counts_are_still_a_real_answer
+=== RUN   TestResolveGitHubCounts/corrupt_json_fails_open
+=== PAUSE TestResolveGitHubCounts/corrupt_json_fails_open
+=== RUN   TestResolveGitHubCounts/never_fetched_fails_open
+=== PAUSE TestResolveGitHubCounts/never_fetched_fails_open
+=== CONT  TestForgeOverride_EmptyRootIsANoOp
+--- PASS: TestForgeOverride_EmptyRootIsANoOp (0.00s)
+=== CONT  TestForgeOverride
+=== RUN   TestForgeOverride/reads_the_key
+=== PAUSE TestForgeOverride/reads_the_key
+=== RUN   TestForgeOverride/trims_whitespace
+=== PAUSE TestForgeOverride/trims_whitespace
+=== RUN   TestForgeOverride/absent_key_yields_empty
+=== PAUSE TestForgeOverride/absent_key_yields_empty
+=== RUN   TestForgeOverride/malformed_yaml_fails_open
+=== PAUSE TestForgeOverride/malformed_yaml_fails_open
+=== RUN   TestForgeOverride/missing_file_fails_open
+=== PAUSE TestForgeOverride/missing_file_fails_open
+=== CONT  TestForgeArgs_PRAndIssueDiffer
+--- PASS: TestForgeArgs_PRAndIssueDiffer (0.00s)
+--- PASS: TestReadOAuthToken_Fallback (0.02s)
+=== CONT  TestRemoteHost
+=== RUN   TestRemoteHost/https
+=== PAUSE TestRemoteHost/https
+=== RUN   TestRemoteHost/https_no_suffix
+=== PAUSE TestRemoteHost/https_no_suffix
+=== RUN   TestRemoteHost/ssh_scheme
+=== PAUSE TestRemoteHost/ssh_scheme
+=== RUN   TestRemoteHost/ssh_scheme_with_port
+=== PAUSE TestRemoteHost/ssh_scheme_with_port
+=== RUN   TestRemoteHost/scp-like
+=== PAUSE TestRemoteHost/scp-like
+=== RUN   TestRemoteHost/scp-like_no_user
+=== PAUSE TestRemoteHost/scp-like_no_user
+=== RUN   TestRemoteHost/uppercase_is_normalised
+=== PAUSE TestRemoteHost/uppercase_is_normalised
+=== RUN   TestRemoteHost/empty
+=== PAUSE TestRemoteHost/empty
+=== RUN   TestRemoteHost/whitespace_only
+=== PAUSE TestRemoteHost/whitespace_only
+=== RUN   TestRemoteHost/no_host_at_all
+=== PAUSE TestRemoteHost/no_host_at_all
+=== CONT  TestRender_ForgePairSuppressedRendersNoPair
+--- PASS: TestRender_ForgePairSuppressedRendersNoPair (0.00s)
+=== CONT  TestForgeArgs_GitLabUsesLongFormOutput
+--- PASS: TestForgeArgs_GitLabUsesLongFormOutput (0.00s)
+=== CONT  TestForgeArgs_AllEndInACount
+--- PASS: TestForgeArgs_AllEndInACount (0.00s)
+=== CONT  TestForgeArgs_StateHandlingDiffers
+--- PASS: TestForgeArgs_StateHandlingDiffers (0.00s)
+=== CONT  TestWriteContextUsage_ConfigIndependent
+=== CONT  TestForgeFromRemote
+=== RUN   TestForgeFromRemote/https://github.com/o/r.git
+=== PAUSE TestForgeFromRemote/https://github.com/o/r.git
+=== RUN   TestForgeFromRemote/git@gitlab.com:g/p.git
+=== PAUSE TestForgeFromRemote/git@gitlab.com:g/p.git
+=== RUN   TestForgeFromRemote/https://git.example.com/g/p.git
+=== PAUSE TestForgeFromRemote/https://git.example.com/g/p.git
+=== RUN   TestForgeFromRemote/https://bitbucket.org/o/r.git
+=== PAUSE TestForgeFromRemote/https://bitbucket.org/o/r.git
+=== RUN   TestForgeFromRemote/#00
+=== PAUSE TestForgeFromRemote/#00
+=== CONT  TestResolveForge
+=== RUN   TestResolveForge/detection_when_no_override
+=== PAUSE TestResolveForge/detection_when_no_override
+=== RUN   TestResolveForge/override_beats_detection
+=== PAUSE TestResolveForge/override_beats_detection
+=== RUN   TestResolveForge/override_is_case_insensitive
+=== PAUSE TestResolveForge/override_is_case_insensitive
+=== RUN   TestResolveForge/override_is_trimmed
+=== PAUSE TestResolveForge/override_is_trimmed
+=== RUN   TestResolveForge/none_disables_the_segment
+=== PAUSE TestResolveForge/none_disables_the_segment
+=== RUN   TestResolveForge/off_disables_the_segment
+=== PAUSE TestResolveForge/off_disables_the_segment
+=== RUN   TestResolveForge/unknown_override_does_not_fall_back
+=== PAUSE TestResolveForge/unknown_override_does_not_fall_back
+=== RUN   TestResolveForge/override_rescues_a_self-hosted_host
+=== PAUSE TestResolveForge/override_rescues_a_self-hosted_host
+=== RUN   TestResolveForge/no_remote_and_no_override
+=== PAUSE TestResolveForge/no_remote_and_no_override
+=== CONT  TestWriteContextUsage_SilentFail
+--- PASS: TestUsageCache_ReadWrite (0.02s)
+=== CONT  TestResolveBacklogCounts_LegacyLayoutIsReadWithoutRelocating
+--- PASS: TestUsageCache_TTL (0.02s)
+=== CONT  TestResolveBacklogCounts_UnreadableIsUnavailableNotZero
+=== RUN   TestResolveBacklogCounts_UnreadableIsUnavailableNotZero/absent_queue
+--- PASS: TestResolveLandedCounts_ObservedZeroIsAFact (0.02s)
+=== CONT  TestContextUsage_Schema
+--- PASS: TestWriteContextUsage_TemplateSourceGuard_InertForNormalDir (0.02s)
+=== CONT  TestWriteContextUsage_Atomic
+--- PASS: TestWriteGitHubCache_RoundTrips (0.02s)
+=== CONT  TestResolveBacklogCounts_DatabaseLayoutIsReadPurely
+--- PASS: TestMaybeRefreshGitHubCounts_FreshCacheSpawnsNothing (0.02s)
+=== CONT  TestResolveBacklogCounts/counts_picked_and_queued,_ignores_dropped
+--- PASS: TestWriteContextUsage_SilentFail (0.01s)
+=== CONT  TestResolveBacklogCounts/corrupt_json_fails_open
+--- PASS: TestWriteContextUsage_TemplateSourceGuard (0.02s)
+=== CONT  TestResolveBacklogCounts/absent_file_fails_open
+--- PASS: TestReadContextUsage_Corrupt (0.02s)
+=== CONT  TestResolveBacklogCounts/unknown_states_are_not_counted
+--- PASS: TestWriteContextUsage_ThrottleSkipUnchanged (0.03s)
+=== CONT  TestResolveBacklogCounts/empty_board_is_available_but_zero
+--- PASS: TestThrottleUnaffectedByModelAndEffort (0.03s)
+=== CONT  TestReadOAuthToken_PriorityChain/keychain_wins_over_all_files
+--- PASS: TestWriteContextUsage_ConfigIndependent (0.02s)
+=== CONT  TestReadOAuthToken_PriorityChain/plain_credentials.json_used_as_last_resort
+--- PASS: TestWriteContextUsage_Atomic (0.01s)
+=== CONT  TestReadOAuthToken_PriorityChain/dot-prefix_file_wins_when_keychain_fails
+--- PASS: TestContextUsage_Schema (0.02s)
+=== CONT  TestRenderRepoBranchSegment_BranchSurvivesMissingForgeInfo/repo_absent
+=== CONT  TestRenderRepoBranchSegment_BranchSurvivesMissingForgeInfo/repo_present_but_incomplete
+--- PASS: TestRenderRepoBranchSegment_BranchSurvivesMissingForgeInfo (0.00s)
+    --- PASS: TestRenderRepoBranchSegment_BranchSurvivesMissingForgeInfo/repo_absent (0.00s)
+    --- PASS: TestRenderRepoBranchSegment_BranchSurvivesMissingForgeInfo/repo_present_but_incomplete (0.00s)
+=== CONT  TestCountNamed_WordBoundaryCriterion/prefix_collision,_both_named
+=== CONT  TestRenderer_LandedAnnotation/unknown_renders_the_segment_unchanged
+=== CONT  TestCountNamed_WordBoundaryCriterion/an_empty_history_names_nobody
+=== CONT  TestCountNamed_WordBoundaryCriterion/no_ids_is_zero_without_touching_the_body
+=== CONT  TestCountNamed_WordBoundaryCriterion/many_mentions_of_one_card_count_once
+=== CONT  TestCountNamed_WordBoundaryCriterion/hyphen_is_a_boundary,_not_part_of_the_token
+=== CONT  TestCountNamed_WordBoundaryCriterion/sentence_punctuation
+=== CONT  TestCountNamed_WordBoundaryCriterion/trailing_colon
+=== CONT  TestCountNamed_WordBoundaryCriterion/parenthesised_scope
+=== CONT  TestCountNamed_WordBoundaryCriterion/end_of_body
+=== CONT  TestCountNamed_WordBoundaryCriterion/start_of_body
+=== CONT  TestCountNamed_WordBoundaryCriterion/a_substring_is_not_a_mention
+=== CONT  TestCountNamed_WordBoundaryCriterion/prefix_collision,_only_the_longer_named
+--- PASS: TestCountNamed_WordBoundaryCriterion (0.00s)
+    --- PASS: TestCountNamed_WordBoundaryCriterion/prefix_collision,_both_named (0.00s)
+    --- PASS: TestCountNamed_WordBoundaryCriterion/an_empty_history_names_nobody (0.00s)
+    --- PASS: TestCountNamed_WordBoundaryCriterion/no_ids_is_zero_without_touching_the_body (0.00s)
+    --- PASS: TestCountNamed_WordBoundaryCriterion/many_mentions_of_one_card_count_once (0.00s)
+    --- PASS: TestCountNamed_WordBoundaryCriterion/hyphen_is_a_boundary,_not_part_of_the_token (0.00s)
+    --- PASS: TestCountNamed_WordBoundaryCriterion/sentence_punctuation (0.00s)
+    --- PASS: TestCountNamed_WordBoundaryCriterion/trailing_colon (0.00s)
+    --- PASS: TestCountNamed_WordBoundaryCriterion/parenthesised_scope (0.00s)
+    --- PASS: TestCountNamed_WordBoundaryCriterion/end_of_body (0.00s)
+    --- PASS: TestCountNamed_WordBoundaryCriterion/start_of_body (0.00s)
+    --- PASS: TestCountNamed_WordBoundaryCriterion/a_substring_is_not_a_mention (0.00s)
+    --- PASS: TestCountNamed_WordBoundaryCriterion/prefix_collision,_only_the_longer_named (0.00s)
+=== CONT  TestResolveLandedCounts_UnknownStates/absent_cache_is_unknown
+=== CONT  TestResolveLandedCounts_UnknownStates/empty_board_root_is_unknown
+=== CONT  TestRenderBarsInline_TwoStageSuffix/none
+=== CONT  TestResolveLandedCounts_UnknownStates/timestamp-only_placeholder_is_unknown
+=== CONT  TestResolveLandedCounts_UnknownStates/corrupt_cache_is_unknown
+--- PASS: TestReadOAuthToken_PriorityChain (0.00s)
+    --- PASS: TestReadOAuthToken_PriorityChain/keychain_wins_over_all_files (0.01s)
+    --- PASS: TestReadOAuthToken_PriorityChain/plain_credentials.json_used_as_last_resort (0.00s)
+    --- PASS: TestReadOAuthToken_PriorityChain/dot-prefix_file_wins_when_keychain_fails (0.00s)
+=== CONT  TestRenderBarsInline_TwoStageSuffix/hard
+=== CONT  TestRenderer_LandedAnnotation/observed_zero_annotates
+=== CONT  TestRenderer_LandedAnnotation/cache_read_but_never_measured_renders_unchanged
+=== CONT  TestRenderBarsInline_TwoStageSuffix/soft
+=== CONT  TestResolveGitHubCounts_ExplicitOptOutSuppresses/forge_none,_no_cache
+--- PASS: TestWriteContextUsage_TemplateSourceGuard_SubstringNoMatch (0.03s)
+=== CONT  TestRenderer_LandedAnnotation/measured_count_annotates
+--- PASS: TestRenderer_LandedAnnotation (0.00s)
+    --- PASS: TestRenderer_LandedAnnotation/unknown_renders_the_segment_unchanged (0.00s)
+    --- PASS: TestRenderer_LandedAnnotation/observed_zero_annotates (0.00s)
+    --- PASS: TestRenderer_LandedAnnotation/cache_read_but_never_measured_renders_unchanged (0.00s)
+    --- PASS: TestRenderer_LandedAnnotation/measured_count_annotates (0.00s)
+--- PASS: TestRenderBarsInline_TwoStageSuffix (0.00s)
+    --- PASS: TestRenderBarsInline_TwoStageSuffix/none (0.00s)
+    --- PASS: TestRenderBarsInline_TwoStageSuffix/hard (0.00s)
+    --- PASS: TestRenderBarsInline_TwoStageSuffix/soft (0.00s)
+=== CONT  TestResolveGitHubCounts_ExplicitOptOutSuppresses/a_typo_names_no_forge_either
+=== CONT  TestResolveGitHubCounts_ExplicitOptOutSuppresses/no_config_at_all_leaves_detection_to_the_child
+=== CONT  TestResolveGitHubCounts_ExplicitOptOutSuppresses/a_real_forge_does_not_suppress
+--- PASS: TestResolveLandedCounts_UnknownStates (0.00s)
+    --- PASS: TestResolveLandedCounts_UnknownStates/empty_board_root_is_unknown (0.00s)
+    --- PASS: TestResolveLandedCounts_UnknownStates/absent_cache_is_unknown (0.00s)
+    --- PASS: TestResolveLandedCounts_UnknownStates/corrupt_cache_is_unknown (0.00s)
+    --- PASS: TestResolveLandedCounts_UnknownStates/timestamp-only_placeholder_is_unknown (0.00s)
+=== CONT  TestResolveGitHubCounts_ExplicitOptOutSuppresses/forge_none_beats_a_populated_cache
+=== CONT  TestResolveGitHubCounts_ExplicitOptOutSuppresses/forge_off,_no_cache
+=== CONT  TestIsSelfInvocable//Users/x/go/bin/moai
+=== CONT  TestIsSelfInvocable//usr/local/bin/moai-adk
+=== CONT  TestIsSelfInvocable/#00
+=== CONT  TestIsSelfInvocable//usr/local/bin/claude
+=== CONT  TestIsSelfInvocable/moai.exe
+=== CONT  TestIsSelfInvocable//tmp/go-build123/b001/statusline.test
+=== CONT  TestIsSelfInvocable/moai
+--- PASS: TestIsSelfInvocable (0.00s)
+    --- PASS: TestIsSelfInvocable//Users/x/go/bin/moai (0.00s)
+    --- PASS: TestIsSelfInvocable//usr/local/bin/moai-adk (0.00s)
+    --- PASS: TestIsSelfInvocable/#00 (0.00s)
+    --- PASS: TestIsSelfInvocable//usr/local/bin/claude (0.00s)
+    --- PASS: TestIsSelfInvocable/moai.exe (0.00s)
+    --- PASS: TestIsSelfInvocable//tmp/go-build123/b001/statusline.test (0.00s)
+    --- PASS: TestIsSelfInvocable/moai (0.00s)
+=== CONT  TestRender_ForgePairFourStateContract/fetched_counts_render_as_issues/PRs
+=== CONT  TestIsTemplateSourceDir/empty
+=== CONT  TestRender_ForgePairFourStateContract/suppressed_from_an_explicit_no-forge_override_renders_no_pair
+=== CONT  TestRender_ForgePairFourStateContract/corrupt_cache_is_unknown_too
+=== CONT  TestRender_ForgePairFourStateContract/absent_cache_is_unknown,_not_zero
+=== CONT  TestRender_ForgePairFourStateContract/stale_zeros_stay_honest_—_a_later_rate-limited_refresh_must_not_rewrite_them_as_unknown
+--- PASS: TestResolveGitHubCounts_ExplicitOptOutSuppresses (0.00s)
+    --- PASS: TestResolveGitHubCounts_ExplicitOptOutSuppresses/a_typo_names_no_forge_either (0.00s)
+    --- PASS: TestResolveGitHubCounts_ExplicitOptOutSuppresses/forge_none,_no_cache (0.00s)
+    --- PASS: TestResolveGitHubCounts_ExplicitOptOutSuppresses/no_config_at_all_leaves_detection_to_the_child (0.01s)
+    --- PASS: TestResolveGitHubCounts_ExplicitOptOutSuppresses/forge_off,_no_cache (0.00s)
+    --- PASS: TestResolveGitHubCounts_ExplicitOptOutSuppresses/forge_none_beats_a_populated_cache (0.01s)
+    --- PASS: TestResolveGitHubCounts_ExplicitOptOutSuppresses/a_real_forge_does_not_suppress (0.01s)
+=== CONT  TestRender_ForgePairFourStateContract/zeros_a_successful_fetch_produced_are_honest_zeros
+=== CONT  TestIsTemplateSourceDir/suffix__bar_no_match
+=== CONT  TestIsTemplateSourceDir/normal_dir_ending_in_template_(singular)
+=== CONT  TestIsTemplateSourceDir/normal_dir_with_internal_subdir_(not_template_tree)
+=== CONT  TestIsTemplateSourceDir/normal_project_dir
+=== CONT  TestIsTemplateSourceDir/root-level_templates_dir
+=== CONT  TestIsTemplateSourceDir/substring_fused_no_match
+=== CONT  TestIsTemplateSourceDir/subdir_of_templates_(deep_path)
+=== CONT  TestIsTemplateSourceDir/exact_templates_dir_(absolute)
+--- PASS: TestIsTemplateSourceDir (0.00s)
+    --- PASS: TestIsTemplateSourceDir/empty (0.00s)
+    --- PASS: TestIsTemplateSourceDir/suffix__bar_no_match (0.00s)
+    --- PASS: TestIsTemplateSourceDir/normal_dir_ending_in_template_(singular) (0.00s)
+    --- PASS: TestIsTemplateSourceDir/normal_dir_with_internal_subdir_(not_template_tree) (0.00s)
+    --- PASS: TestIsTemplateSourceDir/normal_project_dir (0.00s)
+    --- PASS: TestIsTemplateSourceDir/root-level_templates_dir (0.00s)
+    --- PASS: TestIsTemplateSourceDir/substring_fused_no_match (0.00s)
+    --- PASS: TestIsTemplateSourceDir/subdir_of_templates_(deep_path) (0.00s)
+    --- PASS: TestIsTemplateSourceDir/exact_templates_dir_(absolute) (0.00s)
+=== CONT  TestResolveGitHubCounts/valid_cache
+=== CONT  TestForgeOverride/reads_the_key
+=== CONT  TestResolveGitHubCounts/never_fetched_fails_open
+=== CONT  TestResolveGitHubCounts/corrupt_json_fails_open
+=== CONT  TestResolveGitHubCounts/zero_counts_are_still_a_real_answer
+--- PASS: TestRender_ForgePairFourStateContract (0.00s)
+    --- PASS: TestRender_ForgePairFourStateContract/fetched_counts_render_as_issues/PRs (0.01s)
+    --- PASS: TestRender_ForgePairFourStateContract/suppressed_from_an_explicit_no-forge_override_renders_no_pair (0.01s)
+    --- PASS: TestRender_ForgePairFourStateContract/absent_cache_is_unknown,_not_zero (0.00s)
+    --- PASS: TestRender_ForgePairFourStateContract/corrupt_cache_is_unknown_too (0.00s)
+    --- PASS: TestRender_ForgePairFourStateContract/zeros_a_successful_fetch_produced_are_honest_zeros (0.00s)
+    --- PASS: TestRender_ForgePairFourStateContract/stale_zeros_stay_honest_—_a_later_rate-limited_refresh_must_not_rewrite_them_as_unknown (0.00s)
+=== CONT  TestForgeOverride/absent_key_yields_empty
+=== CONT  TestForgeOverride/malformed_yaml_fails_open
+=== CONT  TestForgeOverride/missing_file_fails_open
+=== CONT  TestForgeOverride/trims_whitespace
+=== CONT  TestRemoteHost/https
+=== CONT  TestRemoteHost/scp-like_no_user
+=== CONT  TestRemoteHost/no_host_at_all
+=== CONT  TestRemoteHost/whitespace_only
+=== CONT  TestRemoteHost/empty
+=== CONT  TestRemoteHost/uppercase_is_normalised
+=== CONT  TestRemoteHost/ssh_scheme_with_port
+=== CONT  TestRemoteHost/scp-like
+=== CONT  TestRemoteHost/ssh_scheme
+=== CONT  TestRemoteHost/https_no_suffix
+--- PASS: TestRemoteHost (0.00s)
+    --- PASS: TestRemoteHost/https (0.00s)
+    --- PASS: TestRemoteHost/scp-like_no_user (0.00s)
+    --- PASS: TestRemoteHost/no_host_at_all (0.00s)
+    --- PASS: TestRemoteHost/whitespace_only (0.00s)
+    --- PASS: TestRemoteHost/empty (0.00s)
+    --- PASS: TestRemoteHost/uppercase_is_normalised (0.00s)
+    --- PASS: TestRemoteHost/ssh_scheme_with_port (0.00s)
+    --- PASS: TestRemoteHost/scp-like (0.00s)
+    --- PASS: TestRemoteHost/ssh_scheme (0.00s)
+    --- PASS: TestRemoteHost/https_no_suffix (0.00s)
+=== CONT  TestForgeFromRemote/https://github.com/o/r.git
+=== CONT  TestResolveForge/detection_when_no_override
+=== CONT  TestForgeFromRemote/#00
+=== CONT  TestForgeFromRemote/https://bitbucket.org/o/r.git
+=== CONT  TestForgeFromRemote/https://git.example.com/g/p.git
+=== CONT  TestForgeFromRemote/git@gitlab.com:g/p.git
+--- PASS: TestForgeFromRemote (0.00s)
+    --- PASS: TestForgeFromRemote/https://github.com/o/r.git (0.00s)
+    --- PASS: TestForgeFromRemote/#00 (0.00s)
+    --- PASS: TestForgeFromRemote/https://bitbucket.org/o/r.git (0.00s)
+    --- PASS: TestForgeFromRemote/https://git.example.com/g/p.git (0.00s)
+    --- PASS: TestForgeFromRemote/git@gitlab.com:g/p.git (0.00s)
+=== CONT  TestResolveForge/override_rescues_a_self-hosted_host
+=== CONT  TestResolveForge/no_remote_and_no_override
+=== CONT  TestResolveForge/override_is_trimmed
+=== CONT  TestResolveForge/none_disables_the_segment
+=== CONT  TestResolveForge/off_disables_the_segment
+=== CONT  TestResolveForge/unknown_override_does_not_fall_back
+=== CONT  TestResolveForge/override_is_case_insensitive
+=== CONT  TestResolveForge/override_beats_detection
+--- PASS: TestResolveForge (0.00s)
+    --- PASS: TestResolveForge/detection_when_no_override (0.00s)
+    --- PASS: TestResolveForge/override_rescues_a_self-hosted_host (0.00s)
+    --- PASS: TestResolveForge/no_remote_and_no_override (0.00s)
+    --- PASS: TestResolveForge/override_is_trimmed (0.00s)
+    --- PASS: TestResolveForge/none_disables_the_segment (0.00s)
+    --- PASS: TestResolveForge/off_disables_the_segment (0.00s)
+    --- PASS: TestResolveForge/unknown_override_does_not_fall_back (0.00s)
+    --- PASS: TestResolveForge/override_is_case_insensitive (0.00s)
+    --- PASS: TestResolveForge/override_beats_detection (0.00s)
+--- PASS: TestResolveGitHubCounts (0.00s)
+    --- PASS: TestResolveGitHubCounts/never_fetched_fails_open (0.00s)
+    --- PASS: TestResolveGitHubCounts/valid_cache (0.00s)
+    --- PASS: TestResolveGitHubCounts/zero_counts_are_still_a_real_answer (0.00s)
+    --- PASS: TestResolveGitHubCounts/corrupt_json_fails_open (0.00s)
+--- PASS: TestForgeOverride (0.00s)
+    --- PASS: TestForgeOverride/reads_the_key (0.00s)
+    --- PASS: TestForgeOverride/missing_file_fails_open (0.00s)
+    --- PASS: TestForgeOverride/absent_key_yields_empty (0.00s)
+    --- PASS: TestForgeOverride/malformed_yaml_fails_open (0.00s)
+    --- PASS: TestForgeOverride/trims_whitespace (0.00s)
+=== RUN   TestResolveBacklogCounts_UnreadableIsUnavailableNotZero/corrupt_database
+--- PASS: TestResolveStateAnchor_Chain (0.07s)
+--- PASS: TestResolveBacklogCounts_LegacyLayoutIsReadWithoutRelocating (0.07s)
+--- PASS: TestResolveBacklogCounts_DatabaseLayoutIsReadPurely (0.06s)
+--- PASS: TestResolveBacklogCounts (0.00s)
+    --- PASS: TestResolveBacklogCounts/counts_picked_and_queued,_ignores_dropped (0.06s)
+    --- PASS: TestResolveBacklogCounts/absent_file_fails_open (0.06s)
+    --- PASS: TestResolveBacklogCounts/unknown_states_are_not_counted (0.06s)
+    --- PASS: TestResolveBacklogCounts/empty_board_is_available_but_zero (0.06s)
+    --- PASS: TestResolveBacklogCounts/corrupt_json_fails_open (0.06s)
+=== RUN   TestResolveBacklogCounts_UnreadableIsUnavailableNotZero/empty_board_root
+--- PASS: TestResolveBacklogCounts_UnreadableIsUnavailableNotZero (0.10s)
+    --- PASS: TestResolveBacklogCounts_UnreadableIsUnavailableNotZero/absent_queue (0.06s)
+    --- PASS: TestResolveBacklogCounts_UnreadableIsUnavailableNotZero/corrupt_database (0.04s)
+    --- PASS: TestResolveBacklogCounts_UnreadableIsUnavailableNotZero/empty_board_root (0.00s)
+--- PASS: TestFetchUsageFromAPI_Retry429 (0.15s)
+--- PASS: TestCollectUsage_BoundedWithoutCallerDeadline (3.00s)
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/statusline	21.003s
+EXIT=0

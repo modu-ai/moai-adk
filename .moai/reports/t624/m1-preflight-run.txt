@@ -1,0 +1,24 @@
+=== RUN   TestAC004_SyncGateAdvisoryAtFullyAutonomous
+=== RUN   TestAC004_SyncGateAdvisoryAtFullyAutonomous/fully-autonomous_→_advisory_only_(no_decision:block)
+=== RUN   TestAC004_SyncGateAdvisoryAtFullyAutonomous/semi-auto_→_retains_decision:block_(regression_guard)
+--- PASS: TestAC004_SyncGateAdvisoryAtFullyAutonomous (6.36s)
+    --- PASS: TestAC004_SyncGateAdvisoryAtFullyAutonomous/fully-autonomous_→_advisory_only_(no_decision:block) (4.07s)
+    --- PASS: TestAC004_SyncGateAdvisoryAtFullyAutonomous/semi-auto_→_retains_decision:block_(regression_guard) (2.29s)
+=== RUN   TestAC002_NonSyncHeadSkipsVetBuild
+--- PASS: TestAC002_NonSyncHeadSkipsVetBuild (1.36s)
+=== RUN   TestHookWrapperCopiesStayIdentical
+=== RUN   TestHookWrapperCopiesStayIdentical/handle-agent-hook.sh
+=== RUN   TestHookWrapperCopiesStayIdentical/handle-task-completed.sh
+=== RUN   TestHookWrapperCopiesStayIdentical/handle-teammate-idle.sh
+=== RUN   TestHookWrapperCopiesStayIdentical/handle-session-start-compact.sh
+=== RUN   TestHookWrapperCopiesStayIdentical/status-transition-ownership.sh
+=== RUN   TestHookWrapperCopiesStayIdentical/sync-phase-quality-gate.sh
+--- PASS: TestHookWrapperCopiesStayIdentical (0.00s)
+    --- PASS: TestHookWrapperCopiesStayIdentical/handle-agent-hook.sh (0.00s)
+    --- PASS: TestHookWrapperCopiesStayIdentical/handle-task-completed.sh (0.00s)
+    --- PASS: TestHookWrapperCopiesStayIdentical/handle-teammate-idle.sh (0.00s)
+    --- PASS: TestHookWrapperCopiesStayIdentical/handle-session-start-compact.sh (0.00s)
+    --- PASS: TestHookWrapperCopiesStayIdentical/status-transition-ownership.sh (0.00s)
+    --- PASS: TestHookWrapperCopiesStayIdentical/sync-phase-quality-gate.sh (0.00s)
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/hook	8.597s

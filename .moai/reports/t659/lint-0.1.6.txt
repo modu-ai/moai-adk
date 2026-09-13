@@ -1,0 +1,6 @@
+SEVERITY  CODE                           FILE                                                                                              LINE  MESSAGE
+--------  ----                           ----                                                                                              ----  -------
+INFO      OwnershipTransitionUnmeasured  /Users/goos/MoAI/moai-adk-go/.claude/worktrees/t659/.moai/specs/SPEC-CON-AMEND-APPLY-001/spec.md  1     SPEC SPEC-CON-AMEND-APPLY-001 transition "(none)" → "draft" expected owner "manager-spec" but commit 7b4d1ac895e93786aa87cc25ed92cfd5a1fdffc3 (feat(SPEC-CON-AMEND-APPLY-001): plan-phase artifacts (Tier M, 3 artifacts) (card t659)) has no Authored-By-Agent trailer — ownership transition unmeasured
+
+0 error(s), 0 warning(s)
+LINT_EXIT=0

@@ -1,0 +1,2 @@
+.claude/rules/moai/core/zone-registry.md:0
+internal/template/templates/.claude/rules/moai/core/zone-registry.md:0

@@ -43,7 +43,18 @@ func CanonicalProjectRoot(projectRoot string) string {
 		projectRoot = abs
 	}
 	if dirs, err := gitcore.ResolveGitDirs(projectRoot); err == nil && dirs.CommonDir != "" {
-		projectRoot = filepath.Dir(dirs.CommonDir)
+		if dirs.GitDir == dirs.CommonDir {
+			// Metadata may live outside the checkout (--separate-git-dir).
+			if out, err := gitcore.ExecCommand("git", "-C", projectRoot, "rev-parse", "--show-toplevel").Output(); err == nil {
+				projectRoot = strings.TrimSpace(string(out))
+			}
+		} else if out, err := gitcore.ExecCommand("git", "-C", projectRoot, "worktree", "list", "--porcelain").Output(); err == nil {
+			// Git lists the primary checkout first, even with external metadata.
+			first, _, _ := strings.Cut(string(out), "\n")
+			if root, ok := strings.CutPrefix(first, "worktree "); ok {
+				projectRoot = root
+			}
+		}
 	}
 	if resolved, err := filepath.EvalSymlinks(projectRoot); err == nil {
 		projectRoot = resolved

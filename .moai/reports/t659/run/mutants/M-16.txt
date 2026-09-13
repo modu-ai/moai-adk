@@ -1,0 +1,15 @@
+# mutant M-16: allow a pre-existing occurrence of the new clause
+# edits: [["internal/constitution/apply_transform.go", "if n := countOccurrences(content, next); n != 0 {", "if n := countOccurrences(content, next); n < 0 {"]]
+# $ go test ./internal/constitution/ -run ^TestApply_NewClausePresent_Rejected$ -count=1 -v
+# exit=1
+=== RUN   TestApply_NewClausePresent_Rejected
+=== RUN   TestApply_NewClausePresent_Rejected/elsewhere
+    apply_test.go:517: Execute: want a new-clause error, got nil
+=== RUN   TestApply_NewClausePresent_Rejected/inside_current_clause
+    apply_test.go:517: Execute: want a new-clause error, got nil
+--- FAIL: TestApply_NewClausePresent_Rejected (0.01s)
+    --- FAIL: TestApply_NewClausePresent_Rejected/elsewhere (0.00s)
+    --- FAIL: TestApply_NewClausePresent_Rejected/inside_current_clause (0.00s)
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/constitution	0.367s
+FAIL

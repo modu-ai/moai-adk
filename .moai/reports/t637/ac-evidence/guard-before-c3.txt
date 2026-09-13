@@ -1,0 +1,1 @@
+063ae13b46b700f78ae34e9418bac488933033bf  /Users/goos/MoAI/moai-adk-go/.moai/state/integration-lock.json

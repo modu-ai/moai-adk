@@ -1,0 +1,10 @@
+=== RUN   TestProbeT545FormNameMultiplicity
+2026/09/10 22:55:06 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestProbeT545FormNameMultiplicity2796717291/001/.moai/config/sections
+2026/09/10 22:55:06 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestProbeT545FormNameMultiplicity2796717291/001/.moai/config/sections
+2026/09/10 22:55:06 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestProbeT545FormNameMultiplicity2796717291/001/.moai/config/sections
+    zz_probe_t545_test.go:108: PROBE forms_in_page=3
+    zz_probe_t545_test.go:103: PROBE settings-form: controls=198 distinct_names=125 dup_radio_only_names=54 dup_other_names=0
+    zz_probe_t545_test.go:103: PROBE page: controls=199 distinct_names=126 dup_radio_only_names=54 dup_other_names=0
+--- PASS: TestProbeT545FormNameMultiplicity (0.02s)
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/web	0.818s

@@ -12,8 +12,10 @@ import (
 	"encoding/json"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
+	"github.com/google/uuid"
 	"github.com/modu-ai/moai-adk/internal/kanban"
 )
 
@@ -78,7 +80,7 @@ func TestTodoDoneReclaimsFindings(t *testing.T) {
 // TestTodoLegacyRecordRoundTrips — AC-TA-012 (REQ-TA-006): a queue file
 // written before this feature loads unchanged, `findings` renders as an
 // empty array rather than null or an omitted key, and the per-item contract
-// stays exactly five fields.
+// keeps the original five fields and adds only the identity card_uuid field.
 //
 // The item key set is counted DIRECTLY rather than inferred from a
 // successful decode: encoding/json silently ignores unknown fields, so
@@ -108,6 +110,19 @@ func TestTodoLegacyRecordRoundTrips(t *testing.T) {
 	}
 	if string(rendered["findings"]) != "[]" {
 		t.Errorf("findings rendered as %s, want an empty array", rendered["findings"])
+	}
+	var legacyItems []map[string]json.RawMessage
+	if err := json.Unmarshal(rendered["items"], &legacyItems); err != nil {
+		t.Fatalf("parse legacy item objects: %v", err)
+	}
+	if len(legacyItems) != 2 {
+		t.Fatalf("legacy item objects = %d, want 2", len(legacyItems))
+	}
+	for i, it := range legacyItems {
+		got, present := it["card_uuid"]
+		if !present || string(got) != "null" {
+			t.Errorf("legacy item %d card_uuid = %s, present=%v; want key-present literal null", i, got, present)
+		}
 	}
 	var roundTripped []kanban.BacklogItem
 	if err := json.Unmarshal(rendered["items"], &roundTripped); err != nil {
@@ -141,7 +156,7 @@ func TestTodoLegacyRecordRoundTrips(t *testing.T) {
 	if len(items) != 3 {
 		t.Fatalf("items = %d, want 3", len(items))
 	}
-	want := map[string]bool{"id": true, "text": true, "added_at": true, "spec_id": true, "state": true}
+	want := map[string]bool{"id": true, "text": true, "added_at": true, "spec_id": true, "state": true, "card_uuid": true}
 	for i, it := range items {
 		if len(it) != len(want) {
 			t.Errorf("item %d has %d keys, want exactly %d: %v", i, len(it), len(want), todoJSONKeys(it))
@@ -151,6 +166,14 @@ func TestTodoLegacyRecordRoundTrips(t *testing.T) {
 				t.Errorf("item %d carries an out-of-contract key %q", i, k)
 			}
 		}
+	}
+	var addedUUID string
+	if err := json.Unmarshal(items[2]["card_uuid"], &addedUUID); err != nil {
+		t.Fatalf("new item card_uuid is not a JSON string: %s: %v", items[2]["card_uuid"], err)
+	}
+	parsed, err := uuid.Parse(addedUUID)
+	if err != nil || parsed == uuid.Nil || parsed.String() != addedUUID || strings.ToLower(addedUUID) != addedUUID || parsed.Version() != 7 {
+		t.Errorf("new item card_uuid = %q, want canonical lowercase nonzero UUIDv7 (parse err=%v)", addedUUID, err)
 	}
 }
 

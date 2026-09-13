@@ -1,0 +1,9 @@
+=== RUN   TestCommittedCoverageChangeSetNamesEveryPostTipChangeDeterministically
+    home_state_coverage_test.go:731: messages across 20 runs = map[audited production file changed after coverage tip: internal/x/a.go:17 audited production file changed after coverage tip: internal/y/b.go:3], want only "audited production file changed after coverage tip: internal/x/a.go, internal/y/b.go"
+--- FAIL: TestCommittedCoverageChangeSetNamesEveryPostTipChangeDeterministically (13.96s)
+=== RUN   TestCommittedCoverageChangeSetNamesEveryFileMissingFromDiffDeterministically
+    home_state_coverage_test.go:750: messages across 20 runs = map[changed production file missing from diff: internal/x/b.go:16 changed production file missing from diff: internal/x/c.go:4], want only "changed production file missing from diff: internal/x/b.go, internal/x/c.go"
+--- FAIL: TestCommittedCoverageChangeSetNamesEveryFileMissingFromDiffDeterministically (27.11s)
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/cli	42.236s
+FAIL

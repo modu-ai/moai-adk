@@ -2,10 +2,10 @@ package web
 
 // todo_route_test.go — SPEC-WEB-TODO-QUEUE-001 M2: the /todo route surface.
 //
-// Resolved decision G-4 chose a top-level route over a panel on /kanban, so the
-// cost is in scope and pinned here: one route, a sixth navigation row marked as
-// the current location, an iconAt case (a missing one renders a blank glyph
-// rather than an error), and nav.todo in all four locale maps.
+// Resolved decision G-4 chose a top-level route over a panel on /kanban. The
+// route remains a first-class screen, while the primary rail is intentionally
+// limited to Overview, Todo, and Settings; the route's icon and four-locale
+// translation remain covered here.
 
 import (
 	"net/http"
@@ -20,10 +20,7 @@ import (
 // recorder.
 func getTodoPage(t *testing.T, a *app) *httptest.ResponseRecorder {
 	t.Helper()
-	req := httptest.NewRequest(http.MethodGet, "/todo", nil)
-	rec := httptest.NewRecorder()
-	a.routes().ServeHTTP(rec, req)
-	return rec
+	return serveGet(t, a.routes(), "/todo")
 }
 
 // navRowHrefRe captures the href of every rendered rail navigation row.
@@ -51,9 +48,12 @@ func TestTodoRouteRejectsNonGET(t *testing.T) {
 	// what a request that never reached the method gate returns.
 
 	// POST/PUT/PATCH are stopped FIRST by the CSRF guard (hostCheckMiddleware,
-	// app.go), which refuses before routing and is the stronger protection.
+	// app.go), which refuses before routing and is the stronger protection. The
+	// request carries a loopback Host so the refusal is the CSRF guard's, not the
+	// Host gate's.
 	for _, method := range []string{http.MethodPost, http.MethodPut, http.MethodPatch} {
 		req := httptest.NewRequest(method, "/todo", nil)
+		req.Host = "127.0.0.1:8080"
 		rec := httptest.NewRecorder()
 		a.routes().ServeHTTP(rec, req)
 
@@ -85,27 +85,26 @@ func TestTodoRouteRejectsNonGET(t *testing.T) {
 	}
 }
 
-// TestTodoNavRowIsSixthAndCurrent — AC-WTQ-002 second half: the rail carries
-// six rows, the sixth links to /todo, and it is marked as the current location
-// while /todo is being served (REQ-WTQ-002).
-func TestTodoNavRowIsSixthAndCurrent(t *testing.T) {
+// TestTodoNavRowIsSecondAndCurrent — the rail carries the three primary rows,
+// the second links to /todo, and it is marked current on the Todo route.
+func TestTodoNavRowIsSecondAndCurrent(t *testing.T) {
 	a := newTestApp(t)
 
 	body := getTodoPage(t, a).Body.String()
 
 	hrefs := navRowHrefRe.FindAllStringSubmatch(body, -1)
-	if len(hrefs) != 6 {
+	if len(hrefs) != 3 {
 		got := make([]string, 0, len(hrefs))
 		for _, m := range hrefs {
 			got = append(got, m[1])
 		}
-		t.Fatalf("rail carries %d navigation rows (%v), want 6", len(hrefs), got)
+		t.Fatalf("rail carries %d navigation rows (%v), want 3", len(hrefs), got)
 	}
-	if hrefs[5][1] != "/todo" {
-		t.Errorf("sixth navigation row links to %q, want \"/todo\"", hrefs[5][1])
+	if hrefs[1][1] != "/todo" {
+		t.Errorf("second navigation row links to %q, want \"/todo\"", hrefs[1][1])
 	}
-	// The six rows keep their existing order with todo appended sixth.
-	want := []string{"/", "/kanban", "/specs", "/monitor", "/settings", "/todo"}
+	// The primary rail deliberately exposes only the three focused surfaces.
+	want := []string{"/", "/todo", "/settings"}
 	for i, w := range want {
 		if hrefs[i][1] != w {
 			t.Errorf("navigation row %d links to %q, want %q", i, hrefs[i][1], w)
@@ -121,9 +120,10 @@ func TestTodoNavRowIsSixthAndCurrent(t *testing.T) {
 func TestTodoNavRowNotCurrentElsewhere(t *testing.T) {
 	a := newTestApp(t)
 
-	req := httptest.NewRequest(http.MethodGet, "/kanban", nil)
-	rec := httptest.NewRecorder()
-	a.routes().ServeHTTP(rec, req)
+	rec := serveGet(t, a.routes(), "/kanban")
+	if rec.Code != http.StatusOK {
+		t.Fatalf("GET /kanban status = %d, want 200", rec.Code)
+	}
 
 	if strings.Contains(rec.Body.String(), `href="/todo" aria-current="page"`) {
 		t.Errorf("the /todo row is marked current while /kanban is served")

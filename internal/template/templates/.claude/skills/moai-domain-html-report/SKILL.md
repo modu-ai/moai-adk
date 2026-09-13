@@ -323,7 +323,7 @@ Every mode declares the same 8 CSS variables at `:root`.
 
 Greyscale: `--g100: #F0EEE6`, `--g300: #D1CFC5`, `--g500: #87867F`, `--g700: #3D3D3A`
 
-Full contrast verification and print tokens: [`references/design-tokens.md`](references/design-tokens.md)
+The token block above is the full CSS variable contract. Print rules (`@media print`) live in each mode template under [`references/templates/`](references/templates/).
 
 ---
 
@@ -393,7 +393,6 @@ The explicit `audience: expert` wins over the derived tier, so no primers or dia
 ## References
 
 ### Design documents
-- [`references/design-tokens.md`](references/design-tokens.md) — CSS variable contract, palette, accessibility
 - [`references/fonts.md`](references/fonts.md) — font mapping, CDN URLs, preconnect pattern
 
 ### Templates

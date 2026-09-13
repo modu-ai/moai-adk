@@ -1,0 +1,5 @@
+.moai/reports/t543/repro/s0-literal-all.txt
+.moai/reports/t543/repro/s0-literal-go.txt
+.moai/reports/t543/repro/s0-mergebase-local.txt
+.moai/reports/t543/repro/s0-mergebase-origin.txt
+EXIT=0

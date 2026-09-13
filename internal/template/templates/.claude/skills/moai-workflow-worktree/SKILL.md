@@ -92,25 +92,31 @@ Detailed Reference: Refer to Worktree Management Module at modules/worktree-mana
 
 ### 2. CLI Commands - Complete Command Interface
 
-Purpose: Provide intuitive CLI commands for worktree management.
+Purpose: Map each worktree task to the command that actually performs it.
 
-Core Commands:
+Entering a worktree is the launcher's job — `moai worktree` has no creation verb:
 
-To create a new worktree for a SPEC, use the new command followed by the SPEC ID and description. To list all worktrees, use the list command. To switch to a specific worktree, use the switch command with the SPEC ID. To get the worktree path for shell integration, use the go command with eval. To sync a worktree with its base branch, use the sync command. To remove a worktree, use the remove command. To clean up merged worktrees, use the clean command. To show worktree status, use the status command. For configuration management, use the config command with get or set subcommands.
+- `moai cc -w <name>` — work inside the worktree
+- `moai cc -w <name> --spawn` — open it in a new tmux window, keeping this session
 
-Command Categories:
+For inspection, use git directly: `git worktree list`.
 
-1. Creation: The new command creates an isolated worktree
-2. Navigation: The list, switch, and go commands enable browsing and navigating
-3. Management: The sync, remove, and clean commands maintain worktrees
-4. Status: The status command checks worktree state
-5. Configuration: The config command manages settings
+Management commands, as `moai worktree --help` lists them:
 
-Shell Integration:
+| Command | Purpose |
+|---|---|
+| `sync [branch-name]` | Sync worktree with base branch |
+| `remove [path]` | Remove a worktree |
+| `clean` | Clean stale worktree references |
+| `recover` | Repair worktree registry |
+| `done [branch-name]` | Complete worktree and cleanup |
+| `snapshot` | Capture working tree state snapshot for guard verification |
+| `verify` | Verify working tree state against snapshot + check agent response |
+| `restore` | Restore working tree to a snapshot's HEAD state |
 
-For switching to a worktree directory, two approaches work well. The switch command directly changes to the worktree directory. The go command outputs a cd command that can be evaluated by the shell, which is the recommended pattern for shell scripts and automation.
+This table is a copy of the help output. `moai worktree --help` is the authoritative list; where the two differ, the help output wins.
 
-Detailed Reference: Refer to Worktree Commands Module at modules/worktree-commands.md
+Detailed Reference: Refer to Worktree Commands Module at modules/worktree-commands.md. Its command examples predate the current command set; where they differ from the table above, the table and `moai worktree --help` win.
 
 ---
 
@@ -120,7 +126,7 @@ Purpose: Enable true parallel development without context switching.
 
 Workflow Integration:
 
-During the Plan Phase using /moai plan, the SPEC is created and the worktree new command sets up automatic worktree isolation.
+During the Plan Phase using /moai plan, the SPEC is created, and the launcher (`moai cc -w <name>`) enters an isolated worktree for it.
 
 During the Development Phase, the isolated worktree environment provides independent Git state with zero context switching overhead.
 
@@ -150,7 +156,7 @@ Purpose: Seamless integration with MoAI-ADK Plan-Run-Sync workflow.
 
 Integration Points:
 
-During Plan Phase Integration with /moai plan, after SPEC creation, create the worktree using the new command with the SPEC ID. The output provides guidance for switching to the worktree using either the switch command or the shell eval pattern with the go command.
+During Plan Phase Integration with /moai plan, after SPEC creation, enter the worktree through the launcher: `moai cc -w <name>` works inside it, and `moai cc -w <name> --spawn` opens it in a new tmux window.
 
 During Development Phase with /moai run, worktree isolation provides a clean development environment with independent Git state preventing conflicts and automatic registry tracking.
 
@@ -158,7 +164,7 @@ During Sync Phase with /moai sync, before PR creation run the sync command for t
 
 Auto-Detection Patterns:
 
-The system detects worktree environments by checking for the registry file in the parent directory. When detected, the SPEC ID is extracted from the current directory name. The status command with sync-check option automatically identifies worktrees that need synchronization.
+The system detects worktree environments by checking for the registry file in the parent directory. When detected, the SPEC ID is extracted from the current directory name.
 
 Configuration Integration:
 
@@ -172,12 +178,12 @@ Detailed Reference: Refer to Integration Patterns Module at modules/integration-
 
 Purpose: start a Claude or GLM session in a worktree **without giving up the session you are in**.
 
-The launch commands (`moai cc`, `moai glm`, `moai cg`) normally replace the running shell, which is right for "work here now" but cannot express "keep going and start a teammate alongside me". `--spawn` re-issues the same command in a new tmux window instead, then returns so the caller keeps working.
+The launch commands (`moai cc`, `moai glm`) normally replace the running shell, which is right for "work here now" but cannot express "keep going and start a teammate alongside me". `--spawn` re-issues the same command in a new tmux window instead, then returns so the caller keeps working.
 
 Combined with `-w <name>`, one command opens a teammate in an isolated worktree:
 
 ```bash
-moai cg -w feat-auth --spawn    # GLM teammate in .claude/worktrees/feat-auth
+moai glm -w feat-auth --spawn   # Explicit all-GLM session in .claude/worktrees/feat-auth
 moai cc -w feat-auth --spawn    # Claude teammate, same worktree
 moai glm -w feat-auth --spawn   # all-GLM teammate
 ```
@@ -207,29 +213,13 @@ Detailed Reference: the launcher's spawn entry point — flag stripping, command
 
 ## Advanced Implementation (10+ minutes)
 
-### Multi-Developer Worktree Coordination
+### Synchronization Strategies
 
-Shared Worktree Registry:
+`moai worktree sync` merges the base branch into the worktree by default; `--strategy rebase` rebases the worktree onto the base instead, and `--base` selects the base branch. When a sync stops on a conflict, resolve it with ordinary git inside the worktree and rerun the sync.
 
-Configure team worktree settings by setting the registry type to team mode and specifying a shared registry path accessible to all team members. For developer-specific worktrees within the shared environment, use the developer flag when creating worktrees to prefix entries with the developer name. The list command with all-developers flag shows worktrees from all team members, and the status command with team-overview provides a consolidated team view.
+### Capabilities Not Provided
 
-### Advanced Synchronization Strategies
-
-Selective Sync Patterns:
-
-The sync command supports selective synchronization with include and exclude patterns to sync only specific directories or files. For conflict resolution, choose between auto-resolve for simple conflicts, interactive resolution for manual conflict handling, or abort to cancel the sync operation.
-
-### Worktree Templates and Presets
-
-Custom Worktree Templates:
-
-Create worktrees with specific setups using the template flag. A frontend template might include npm install and eslint setup with pre-commit hooks. A backend template might include virtual environment creation, activation, and dependency installation. Configure custom templates through the config command by setting template-specific setup commands.
-
-### Performance Optimization
-
-Optimized Worktree Operations:
-
-For faster worktree creation, use the shallow flag with a depth value for shallow clones. The background flag enables background synchronization. The parallel flag with all option enables parallel operations across all worktrees. Enable caching through configuration with cache enable and cache TTL settings for faster repeated operations.
+`moai worktree` has no shared or team registry mode, no per-developer prefixing, no selective sync patterns, no conflict auto-resolution or interactive mode, no worktree templates, and no shallow, background, parallel, or cache options. Prepare a worktree after entering it, and see `modules/worktree-commands.md` for the flags that exist.
 
 ---
 
@@ -257,9 +247,9 @@ Tools:
 
 For new SPEC development, use the worktree isolation pattern with auto-setup. The primary approach is worktree isolation and the supporting pattern is integration with /moai plan.
 
-For parallel development across multiple SPECs, use multiple worktrees with shell integration. The primary approach is maintaining multiple worktrees and the supporting pattern is fast switching between them.
+For parallel development across multiple SPECs, use one worktree and one session per SPEC. The primary approach is maintaining multiple worktrees and the supporting pattern is opening each in its own tmux window with `moai cc -w <name> --spawn`.
 
-For team coordination in shared environments, use shared registry with developer prefixes. The primary approach is the shared registry pattern and the supporting pattern is conflict resolution.
+For team coordination, give each developer their own worktrees and branches. The primary approach is per-developer isolation and the supporting pattern is integrating through the base branch and pull requests.
 
 For code review workflows, use isolated review worktrees. The primary approach is worktree isolation for reviews and the supporting pattern is clean sync after review completion.
 
@@ -282,7 +272,7 @@ External Resources: Refer to references/reference.md
 |---|---|
 | "Worktree isolation is overkill for this small change" | Small changes on main cause merge conflicts when parallel work is in progress. Worktrees prevent this. |
 | "I will just work on the main branch, it is faster" | Working on main blocks other agents from writing. Worktrees enable parallelism. |
-| "Read-only agents need worktree isolation too, for safety" | Read-only agents cannot write because their tools list omits Write/Edit (the spawn-time mode parameter is deprecated and ignored). Adding isolation wastes resources with no benefit. |
+| "Read-only agents need worktree isolation too, for safety" | Isolation is unnecessary only for an agent whose tools list holds no tool that can write. The spawn-time mode parameter is deprecated and ignored, so it blocks nothing. Omitting Write, Edit, and NotebookEdit is not enough: Bash writes through the shell, and so can any other file-mutating tool (another shell, an MCP tool, or an Agent that spawns a writer). While any such tool is present, read-only is not guaranteed and isolation is not wasted. |
 | "I can skip worktree cleanup, git handles it" | Stale worktree branches accumulate and confuse git worktree list. Always prune after use. |
 | "Absolute paths in agent prompts are fine since the worktree has the same structure" | Absolute paths to the main repo bypass worktree isolation entirely. Use relative paths. |
 
@@ -292,7 +282,7 @@ External Resources: Refer to references/reference.md
 ## Red Flags
 
 - Implementation agent spawned without isolation: worktree in team mode
-- Read-only agent spawned with isolation: worktree (unnecessary overhead)
+- Agent whose tools list holds no tool that can write, spawned with isolation: worktree (unnecessary overhead)
 - Agent prompt contains absolute path to the main project directory for write targets
 - Worktree not pruned after team session completes (stale branches remain)
 - cd /absolute/project/path in Bash commands inside worktree-isolated agent prompts
@@ -303,7 +293,7 @@ External Resources: Refer to references/reference.md
 ## Verification
 
 - [ ] Implementation teammates use isolation: worktree (check agent spawn parameters)
-- [ ] Read-only teammates do NOT use isolation: worktree (verify the tools list omits Write/Edit)
+- [ ] Teammates spawned without isolation: worktree hold no tool that can write (check the tools list for Write, Edit, NotebookEdit, Bash, and any other file-mutating tool; with any present, read-only is not guaranteed)
 - [ ] Agent prompts reference write-target files by relative paths only
 - [ ] `git worktree list` shows no stale worktrees after session ends
 - [ ] Worktree CWD isolation verified on Claude Code >= 2.1.97 (check version)

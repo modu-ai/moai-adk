@@ -1,0 +1,32 @@
+=== RUN   TestSettingsSnapshot_WriteFailureDoesNotBlock
+=== RUN   TestSettingsSnapshot_WriteFailureDoesNotBlock/clean_reinstall
+    update_settings_snapshot_test.go:511: runCleanReinstall returned mutant M-08: stat /var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestSettingsSnapshot_WriteFailureDoesNotBlockclean_reinstall3159873935/003/.moai/cache/template-snapshot/claude/settings.json.pending: not a directory, want nil
+        out:
+        [clean-reinstall] v2 fingerprint detected (signals: version=true agency=true deprecated=true)
+        [clean-reinstall] PRESERVE inventory: 3 files
+        [clean-reinstall] Backup created at /var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestSettingsSnapshot_WriteFailureDoesNotBlockclean_reinstall3159873935/003/.moai/backups/v2-to-v3-2026-09-11T19-01-09Z
+        [clean-reinstall] .agency/ → .moai/ migration completed
+        [clean-reinstall] Deprecated paths backed up at /var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestSettingsSnapshot_WriteFailureDoesNotBlockclean_reinstall3159873935/003/.moai/backup/agency-2026-09-11T19-01-09Z (2 files)
+        [clean-reinstall] Removed 2 deprecated paths
+        [clean-reinstall]   - .agency
+        [clean-reinstall]   - .claude/agents/moai/manager-strategy.md
+        
+        moai update failed after the first destructive step.
+        
+          failed step:  mutant M-08
+          error:        stat /var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestSettingsSnapshot_WriteFailureDoesNotBlockclean_reinstall3159873935/003/.moai/cache/template-snapshot/claude/settings.json.pending: not a directory
+          backup dir:   /var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestSettingsSnapshot_WriteFailureDoesNotBlockclean_reinstall3159873935/003/.moai/backups/v2-to-v3-2026-09-11T19-01-09Z
+          restore with: moai update --restore "/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestSettingsSnapshot_WriteFailureDoesNotBlockclean_reinstall3159873935/003/.moai/backups/v2-to-v3-2026-09-11T19-01-09Z"
+        
+        No automatic rollback was attempted. The project tree is in a
+        partially updated state; inspect the backup directory above, then run the
+        restore command to reapply it.
+        
+        
+        err:
+        settings-snapshot-write-failed: mkdir /var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestSettingsSnapshot_WriteFailureDoesNotBlockclean_reinstall3159873935/003/.moai/cache/template-snapshot/claude: not a directory
+--- FAIL: TestSettingsSnapshot_WriteFailureDoesNotBlock (0.09s)
+    --- FAIL: TestSettingsSnapshot_WriteFailureDoesNotBlock/clean_reinstall (0.09s)
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/cli	1.028s
+FAIL

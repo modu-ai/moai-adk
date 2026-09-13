@@ -6,8 +6,9 @@ metadata:
   phase: "Phase 4 through Decision Point 1: Clarity Interview, Research, and Plan Review"
 ---
 
-<!-- TRACE PROBE: workflow-split baseline trace mechanism -->
-<!-- Activated by MOAI_TRACE_PHASES=1 environment variable -->
+<!-- TRACE PROBE: activation hint only; runtime evidence is .moai/state/workflow-trace.jsonl -->
+<!-- When MOAI_TRACE_PHASES=1, call .claude/hooks/moai/trace-ledger.sh record at each phase entry/exit. -->
+<!-- A comment or empty ledger is not an execution trace; see trace-ledger-contract.md. -->
 
 ### Phase 4: Deep Interview Loop (Conditional)
 
@@ -16,6 +17,16 @@ Purpose: Gather missing context through a structured, topic-focused interview be
 **Entry condition:** Clarity score 4-10 AND skip conditions not met (from Phase 3).
 
 **Guard:** [HARD] During the interview loop, the agent MUST NOT write implementation code or start codebase exploration. The sole output is `.moai/specs/SPEC-{ID}/interview.md`.
+
+**Provisional tier before research:** At the end of the clarity loop, record a
+`provisional_tier` in the interview handoff before Phase 6 research starts.
+Reuse an explicit user tier; otherwise classify from the observed scope,
+number of affected files/domains, and security or compatibility risk. This is a
+routing hint, not a final artifact decision. Research may promote S→M or M→L
+when it discovers cross-domain or constitutional risk, but it must not create a
+research artifact solely to decide a tier that was already explicit and narrow.
+If the evidence is ambiguous, carry `provisional_tier: undecided` and ask the
+final Tier question once in spec assembly.
 
 **Round topics:**
 
@@ -59,6 +70,8 @@ Initial: {N}/10
 Final: {N}/10
 Rounds completed: {N}
 ```
+
+**Decision-index candidates (decision gate):** Where the `interview.decision_gate` setting is `on`, a decision the user does not settle during the interview is not silently resolved with a reasonable default — record it as a `decision-index.md` row candidate instead, routed per its authority status by the label rules carried in the manager-spec agent definition. Where the setting is `off` (the distributed default) or absent, collect nothing and behave exactly as before. Each candidate row carries Detect → Explain → Ask — the unresolved question, why no committed document answers it, and what to ask — and never an embedded preferred answer, in either recommendation mode. When a row's authority anchor cannot be verified in the committed tree, it routes to `FOUNDER`: escalate — Never downgrade.
 
 **Context passing:** Pass `interview.md` to Phase 6 (Deep Research) and Phase 8 (SPEC Planning) as additional context. Both agents MUST read interview.md before proceeding.
 
@@ -171,6 +184,8 @@ Tasks for manager-spec:
 - When reference implementations are found, include them in the plan as "Reference: {file_path}:{line_range}" to improve implementation quality
 
 Output: Implementation plan with SPEC candidates, GEARS-notation requirements (EARS legacy form accepted for pre-v3 SPECs until 2026-11-22), and technical constraints.
+
+**Decision-index authoring (decision gate):** Where the `interview.decision_gate` setting is `on`, SPEC planning authors `.moai/specs/SPEC-{ID}/decision-index.md` (stateless — no `status:` field) alongside the plan-phase artifact set: every decision surfaced during planning that the operator does not settle becomes a row instead of a silently applied default. Where the setting is `off` or absent, no index is created and planning behaves unchanged. Rows carry Detect → Explain → Ask, never a preferred answer; `DECIDED` and `POLICY-COVERED` rows cite an authority anchor in the committed tree (the authority register: `.moai/project/product.md`, completed SPEC HISTORY/`## Amendments` rows, `.moai/config/sections/*.yaml`, the constitution); an unverifiable anchor routes to `FOUNDER` — escalate, Never downgrade.
 
 Implementation guard: [HARD] During Phases 6, 2, and 8, all agent prompts MUST include the instruction: "DO NOT write implementation code. Focus exclusively on research, analysis, and planning." This separation of thinking and typing is the foundation of effective AI-assisted development.
 

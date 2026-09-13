@@ -1,0 +1,53 @@
+HEAD:internal/web/agentfm_ordering_test.go:82:		if prev, dup := seen[label]; dup {
+HEAD:internal/web/agentfm_ordering_test.go:85:		seen[label] = rank
+HEAD:internal/web/audit_option_desc_test.go:99:			if seen[key] {
+HEAD:internal/web/audit_option_desc_test.go:102:			seen[key] = true
+HEAD:internal/web/board_test.go:277:		if seen[key] {
+HEAD:internal/web/board_test.go:280:		seen[key] = true
+HEAD:internal/web/dead_config_guard_test.go:29:// 7 removed names appears in settings.AllFields(), so the generic form parser
+HEAD:internal/web/factory_lanes_test.go:6:// The join is non-unique on BOTH sides (spec.md §A.4, REQ-WC15-047): the
+HEAD:internal/web/factory_lanes_test.go:8:// deduplicates by session id alone, so two of its entries may carry one pid.
+HEAD:internal/web/factory_lanes_test.go:151:// TestFactoryLanesDuplicatePIDFactorySide — AC-WC15-047 first half: two lanes
+HEAD:internal/web/factory_lanes_test.go:153:func TestFactoryLanesDuplicatePIDFactorySide(t *testing.T) {
+HEAD:internal/web/factory_lanes_test.go:177:// TestFactoryLanesDuplicatePIDSessionSide — AC-WC15-047 second half: one lane,
+HEAD:internal/web/factory_lanes_test.go:178:// one pid, but TWO session entries bearing it. The registry deduplicates by
+HEAD:internal/web/factory_lanes_test.go:179:// session id alone, so this is reachable with no factory-side duplication.
+HEAD:internal/web/factory_lanes_test.go:180:func TestFactoryLanesDuplicatePIDSessionSide(t *testing.T) {
+HEAD:internal/web/i18n_governance_test.go:302:		if _, dup := seen[e.Key]; dup {
+HEAD:internal/web/i18n_governance_test.go:303:			t.Errorf("duplicate allowlist entry for key %q", e.Key)
+HEAD:internal/web/i18n_governance_test.go:305:		seen[e.Key] = struct{}{}
+HEAD:internal/web/i18n_governance_test.go:511:// doc-comment contract without duplicating the contract text.
+HEAD:internal/web/i18n_test.go:355:	// Locate the langpick <select ...> opening tag (anchored on its unique
+HEAD:internal/web/i18n_untranslated_allowlist_test.go:267:		Justification: "English reads the agent .md frontmatter description (the SSOT) as the server-rendered baseline; applyI18n leaves the node untouched when the key is absent, so an en copy would duplicate the .md text into a second surface that silently goes stale.",
+HEAD:internal/web/mcp_glmkey_surface_test.go:120:// introduce a duplicate credential read. Generated _templ.go files are excluded
+HEAD:internal/web/option_desc_test.go:68:			if opt.OptionDesc == "" || seen[opt.OptionDesc] {
+HEAD:internal/web/option_desc_test.go:71:			seen[opt.OptionDesc] = true
+HEAD:internal/web/profile_bar_test.go:7:// separate card duplicating switch + create + delete. M5 removes the card and
+HEAD:internal/web/profile_bar_test.go:27:// TestProfileManagerCardAbsent verifies AC-WCR-040: the duplicate card is gone.
+HEAD:internal/web/schemaform_test.go:56:// report.format select, while the launch panel no longer duplicates
+HEAD:internal/web/schemaform_test.go:57:// report.format (de-duplication after the field moved to its own tab).
+HEAD:internal/web/schemaform_test.go:69:	// De-duplication boundary: report.format must NOT render inside the launch panel.
+HEAD:internal/web/schemaform_test.go:79:		t.Error("launch panel still renders report.format (de-duplication failed)")
+HEAD:internal/web/webux_followup_test.go:305:// server-side baseline (so en renders the SSOT, never a duplicated copy).
+HEAD:internal/web/webux_followup_test.go:350:// would duplicate the .md text into a second surface that silently goes stale
+HEAD:internal/web/webux_followup_test.go:356:		t.Error("the en locale defines agentdesc.* keys — en must read the agent .md description (SSOT), not a duplicated copy")
+HEAD:internal/web/widget_contract_test.go:175:			if seen[got] {
+HEAD:internal/web/widget_contract_test.go:176:				t.Errorf("roNoteBaseline(%q) duplicates another baseline — the distinction is not visible", key)
+HEAD:internal/web/widget_contract_test.go:178:			seen[got] = true
+HEAD:internal/web/write_safety_test.go:5:// AC-WWS-006 (duplicate form values are not silently resolved to the first
+HEAD:internal/web/write_safety_test.go:228:// TestParseSchemaFormDuplicateFormValuesNotSilentlyFirst carries AC-WWS-006
+HEAD:internal/web/write_safety_test.go:231:// duplicate into the atomic-reject error set (or apply a documented resolution
+HEAD:internal/web/write_safety_test.go:234:func TestParseSchemaFormDuplicateFormValuesNotSilentlyFirst(t *testing.T) {
+HEAD:internal/web/write_safety_test.go:235:	// Use a real TypeText schema field so the duplicate rides the same code
+HEAD:internal/web/write_safety_test.go:236:	// path a browser duplicate submission would.
+HEAD:internal/web/write_safety_test.go:259:		t.Errorf("duplicate form value for %q not detected — parser silently adopted %q", textField, edits[textField])
+HEAD:internal/web/write_safety_test.go:261:	if _, duplicated := edits[textField]; duplicated {
+HEAD:internal/web/write_safety_test.go:262:		t.Errorf("duplicate form value for %q resolved to a single edit %q instead of being detected", textField, edits[textField])
+HEAD:internal/web/write_safety_test.go:266:// TestParseSchemaFormDuplicateCompanionRejected covers the hidden-bool
+HEAD:internal/web/write_safety_test.go:267:// companion duplicate branch: name+"__present" submitted twice is the same
+HEAD:internal/web/write_safety_test.go:268:// defect shape as a duplicated value field.
+HEAD:internal/web/write_safety_test.go:269:func TestParseSchemaFormDuplicateCompanionRejected(t *testing.T) {
+HEAD:internal/web/write_safety_test.go:293:		t.Errorf("duplicate companion for %q not detected; edits=%v errs=%v", boolField, edits, errs)
+HEAD:internal/web/write_safety_test.go:295:	if _, duplicated := edits[boolField]; duplicated {
+HEAD:internal/web/write_safety_test.go:296:		t.Errorf("duplicated companion still produced an edit for %q", boolField)
+HEAD:internal/web/write_safety_test.go:301:// duplicate guard must not break: for those fields a "" submission IS the

@@ -1,0 +1,23 @@
+# mutant M-8b: treat an unparseable human timestamp as zero time instead of an error
+# edits: [["internal/constitution/evolution_log_reader.go", "if f.value.Kind != yaml.ScalarNode || !parsed {", "if false && (f.value.Kind != yaml.ScalarNode || !parsed) {"]]
+# $ go test ./internal/constitution/ -run ^(TestLoadEvolutionLogs_HumanFormat|TestLoadEvolutionLogs_FailClosedErrorLocation)$ -count=1 -v
+# exit=1
+=== RUN   TestLoadEvolutionLogs_HumanFormat
+=== RUN   TestLoadEvolutionLogs_HumanFormat/verbatim_block
+=== RUN   TestLoadEvolutionLogs_HumanFormat/real_file_readonly
+=== RUN   TestLoadEvolutionLogs_HumanFormat/malformed_timestamp_fails_closed
+    evolution_log_reader_test.go:332: LoadEvolutionLogs: want an error for an unparseable timestamp, got nil
+--- FAIL: TestLoadEvolutionLogs_HumanFormat (0.00s)
+    --- PASS: TestLoadEvolutionLogs_HumanFormat/verbatim_block (0.00s)
+    --- PASS: TestLoadEvolutionLogs_HumanFormat/real_file_readonly (0.00s)
+    --- FAIL: TestLoadEvolutionLogs_HumanFormat/malformed_timestamp_fails_closed (0.00s)
+=== RUN   TestLoadEvolutionLogs_FailClosedErrorLocation
+=== RUN   TestLoadEvolutionLogs_FailClosedErrorLocation/unparseable_timestamp
+    evolution_log_reader_test.go:378: want an error, got nil
+=== RUN   TestLoadEvolutionLogs_FailClosedErrorLocation/missing_timestamp
+--- FAIL: TestLoadEvolutionLogs_FailClosedErrorLocation (0.00s)
+    --- FAIL: TestLoadEvolutionLogs_FailClosedErrorLocation/unparseable_timestamp (0.00s)
+    --- PASS: TestLoadEvolutionLogs_FailClosedErrorLocation/missing_timestamp (0.00s)
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/constitution	0.344s
+FAIL

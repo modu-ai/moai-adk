@@ -1,6 +1,9 @@
 interview:
   enabled: true
   clarity_threshold: 4
+  # Dogfood: this repository runs the decision gate (on) so plan phases author
+  # the decision index and the kickoff gate reviews it.
+  decision_gate: on
   # Dogfood: this repository runs judgment-first (pull) to exercise the
   # withholding path and collect the M6 falsifier sample.
   recommendation_mode: pull

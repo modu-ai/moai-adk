@@ -1,0 +1,186 @@
+=== RUN   TestHostCheckRejectsForeignHostOnPost
+--- PASS: TestHostCheckRejectsForeignHostOnPost (0.00s)
+=== RUN   TestHostCheckDoesNotGateGet
+2026/09/10 15:28:17 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestHostCheckDoesNotGateGet725444439/001/.moai/config/sections
+2026/09/10 15:28:17 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestHostCheckDoesNotGateGet725444439/001/.moai/config/sections
+2026/09/10 15:28:17 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestHostCheckDoesNotGateGet725444439/001/.moai/config/sections
+--- PASS: TestHostCheckDoesNotGateGet (0.01s)
+=== RUN   TestT613HostMatrix
+=== RUN   TestT613HostMatrix/localhost/settings
+2026/09/10 15:28:17 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT613HostMatrixlocalhostsettings4216541074/001/.moai/config/sections
+2026/09/10 15:28:17 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT613HostMatrixlocalhostsettings4216541074/001/.moai/config/sections
+2026/09/10 15:28:17 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT613HostMatrixlocalhostsettings4216541074/001/.moai/config/sections
+    t613_probe_test.go:56: RESULT method=GET host=localhost path=/settings status=200 bytes=107706 marker=true
+=== RUN   TestT613HostMatrix/localhost/
+2026/09/10 15:28:17 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT613HostMatrixlocalhost43885072/001/.moai/config/sections
+    t613_probe_test.go:56: RESULT method=GET host=localhost path=/ status=200 bytes=10247 marker=false
+=== RUN   TestT613HostMatrix/localhost/kanban
+2026/09/10 15:28:18 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT613HostMatrixlocalhostkanban3732301639/001/.moai/config/sections
+    t613_probe_test.go:56: RESULT method=GET host=localhost path=/kanban status=200 bytes=16953 marker=false
+=== RUN   TestT613HostMatrix/localhost/monitor
+2026/09/10 15:28:18 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT613HostMatrixlocalhostmonitor631852811/001/.moai/config/sections
+    t613_probe_test.go:56: RESULT method=GET host=localhost path=/monitor status=200 bytes=9533 marker=false
+=== RUN   TestT613HostMatrix/localhost/todo
+2026/09/10 15:28:18 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT613HostMatrixlocalhosttodo867834731/001/.moai/config/sections
+    t613_probe_test.go:56: RESULT method=GET host=localhost path=/todo status=200 bytes=8610 marker=false
+=== RUN   TestT613HostMatrix/localhost/specs
+2026/09/10 15:28:18 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT613HostMatrixlocalhostspecs3756527709/001/.moai/config/sections
+    t613_probe_test.go:56: RESULT method=GET host=localhost path=/specs status=200 bytes=10416 marker=false
+=== RUN   TestT613HostMatrix/localhost/static/app.js
+    t613_probe_test.go:56: RESULT method=GET host=localhost path=/static/app.js status=200 bytes=34665 marker=false
+=== RUN   TestT613HostMatrix/ipv4-loopback/settings
+2026/09/10 15:28:18 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT613HostMatrixipv4-loopbacksettings3869727627/001/.moai/config/sections
+2026/09/10 15:28:18 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT613HostMatrixipv4-loopbacksettings3869727627/001/.moai/config/sections
+2026/09/10 15:28:18 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT613HostMatrixipv4-loopbacksettings3869727627/001/.moai/config/sections
+    t613_probe_test.go:56: RESULT method=GET host=ipv4-loopback path=/settings status=200 bytes=107710 marker=true
+=== RUN   TestT613HostMatrix/ipv4-loopback/
+2026/09/10 15:28:18 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT613HostMatrixipv4-loopback100275956/001/.moai/config/sections
+    t613_probe_test.go:56: RESULT method=GET host=ipv4-loopback path=/ status=200 bytes=10252 marker=false
+=== RUN   TestT613HostMatrix/ipv4-loopback/kanban
+2026/09/10 15:28:18 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT613HostMatrixipv4-loopbackkanban1361688875/001/.moai/config/sections
+    t613_probe_test.go:56: RESULT method=GET host=ipv4-loopback path=/kanban status=200 bytes=16957 marker=false
+=== RUN   TestT613HostMatrix/ipv4-loopback/monitor
+2026/09/10 15:28:18 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT613HostMatrixipv4-loopbackmonitor459912039/001/.moai/config/sections
+    t613_probe_test.go:56: RESULT method=GET host=ipv4-loopback path=/monitor status=200 bytes=9541 marker=false
+=== RUN   TestT613HostMatrix/ipv4-loopback/todo
+2026/09/10 15:28:18 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT613HostMatrixipv4-loopbacktodo1317223502/001/.moai/config/sections
+    t613_probe_test.go:56: RESULT method=GET host=ipv4-loopback path=/todo status=200 bytes=8625 marker=false
+=== RUN   TestT613HostMatrix/ipv4-loopback/specs
+2026/09/10 15:28:18 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT613HostMatrixipv4-loopbackspecs1351822366/001/.moai/config/sections
+    t613_probe_test.go:56: RESULT method=GET host=ipv4-loopback path=/specs status=200 bytes=10420 marker=false
+=== RUN   TestT613HostMatrix/ipv4-loopback/static/app.js
+    t613_probe_test.go:56: RESULT method=GET host=ipv4-loopback path=/static/app.js status=200 bytes=34665 marker=false
+=== RUN   TestT613HostMatrix/ipv6-loopback/settings
+2026/09/10 15:28:18 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT613HostMatrixipv6-loopbacksettings3838009346/001/.moai/config/sections
+2026/09/10 15:28:18 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT613HostMatrixipv6-loopbacksettings3838009346/001/.moai/config/sections
+2026/09/10 15:28:18 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT613HostMatrixipv6-loopbacksettings3838009346/001/.moai/config/sections
+    t613_probe_test.go:56: RESULT method=GET host=ipv6-loopback path=/settings status=200 bytes=107710 marker=true
+=== RUN   TestT613HostMatrix/ipv6-loopback/
+2026/09/10 15:28:18 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT613HostMatrixipv6-loopback116355585/001/.moai/config/sections
+    t613_probe_test.go:56: RESULT method=GET host=ipv6-loopback path=/ status=200 bytes=10252 marker=false
+=== RUN   TestT613HostMatrix/ipv6-loopback/kanban
+2026/09/10 15:28:18 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT613HostMatrixipv6-loopbackkanban2039912102/001/.moai/config/sections
+    t613_probe_test.go:56: RESULT method=GET host=ipv6-loopback path=/kanban status=200 bytes=16957 marker=false
+=== RUN   TestT613HostMatrix/ipv6-loopback/monitor
+2026/09/10 15:28:18 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT613HostMatrixipv6-loopbackmonitor1664629716/001/.moai/config/sections
+    t613_probe_test.go:56: RESULT method=GET host=ipv6-loopback path=/monitor status=200 bytes=9543 marker=false
+=== RUN   TestT613HostMatrix/ipv6-loopback/todo
+2026/09/10 15:28:18 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT613HostMatrixipv6-loopbacktodo1223965810/001/.moai/config/sections
+    t613_probe_test.go:56: RESULT method=GET host=ipv6-loopback path=/todo status=200 bytes=8625 marker=false
+=== RUN   TestT613HostMatrix/ipv6-loopback/specs
+2026/09/10 15:28:18 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT613HostMatrixipv6-loopbackspecs2560797331/001/.moai/config/sections
+    t613_probe_test.go:56: RESULT method=GET host=ipv6-loopback path=/specs status=200 bytes=10420 marker=false
+=== RUN   TestT613HostMatrix/ipv6-loopback/static/app.js
+    t613_probe_test.go:56: RESULT method=GET host=ipv6-loopback path=/static/app.js status=200 bytes=34665 marker=false
+=== RUN   TestT613HostMatrix/foreign/settings
+2026/09/10 15:28:18 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT613HostMatrixforeignsettings3386038876/001/.moai/config/sections
+2026/09/10 15:28:18 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT613HostMatrixforeignsettings3386038876/001/.moai/config/sections
+2026/09/10 15:28:18 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT613HostMatrixforeignsettings3386038876/001/.moai/config/sections
+    t613_probe_test.go:56: RESULT method=GET host=foreign path=/settings status=200 bytes=107704 marker=true
+=== RUN   TestT613HostMatrix/foreign/
+2026/09/10 15:28:18 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT613HostMatrixforeign2276456133/001/.moai/config/sections
+    t613_probe_test.go:56: RESULT method=GET host=foreign path=/ status=200 bytes=10247 marker=false
+=== RUN   TestT613HostMatrix/foreign/kanban
+2026/09/10 15:28:19 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT613HostMatrixforeignkanban1756863789/001/.moai/config/sections
+    t613_probe_test.go:56: RESULT method=GET host=foreign path=/kanban status=200 bytes=16951 marker=false
+=== RUN   TestT613HostMatrix/foreign/monitor
+2026/09/10 15:28:19 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT613HostMatrixforeignmonitor186297573/001/.moai/config/sections
+    t613_probe_test.go:56: RESULT method=GET host=foreign path=/monitor status=200 bytes=9529 marker=false
+=== RUN   TestT613HostMatrix/foreign/todo
+2026/09/10 15:28:19 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT613HostMatrixforeigntodo2238061544/001/.moai/config/sections
+    t613_probe_test.go:56: RESULT method=GET host=foreign path=/todo status=200 bytes=8607 marker=false
+=== RUN   TestT613HostMatrix/foreign/specs
+2026/09/10 15:28:19 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT613HostMatrixforeignspecs598330990/001/.moai/config/sections
+    t613_probe_test.go:56: RESULT method=GET host=foreign path=/specs status=200 bytes=10413 marker=false
+=== RUN   TestT613HostMatrix/foreign/static/app.js
+    t613_probe_test.go:56: RESULT method=GET host=foreign path=/static/app.js status=200 bytes=34665 marker=false
+=== RUN   TestT613HostMatrix/absent/settings
+2026/09/10 15:28:19 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT613HostMatrixabsentsettings1079639284/001/.moai/config/sections
+2026/09/10 15:28:19 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT613HostMatrixabsentsettings1079639284/001/.moai/config/sections
+2026/09/10 15:28:19 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT613HostMatrixabsentsettings1079639284/001/.moai/config/sections
+    t613_probe_test.go:56: RESULT method=GET host=absent path=/settings status=200 bytes=107703 marker=true
+=== RUN   TestT613HostMatrix/absent/
+2026/09/10 15:28:19 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT613HostMatrixabsent384340075/001/.moai/config/sections
+    t613_probe_test.go:56: RESULT method=GET host=absent path=/ status=200 bytes=10245 marker=false
+=== RUN   TestT613HostMatrix/absent/kanban
+2026/09/10 15:28:19 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT613HostMatrixabsentkanban3312190519/001/.moai/config/sections
+    t613_probe_test.go:56: RESULT method=GET host=absent path=/kanban status=200 bytes=16950 marker=false
+=== RUN   TestT613HostMatrix/absent/monitor
+2026/09/10 15:28:19 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT613HostMatrixabsentmonitor2297600339/001/.moai/config/sections
+    t613_probe_test.go:56: RESULT method=GET host=absent path=/monitor status=200 bytes=9529 marker=false
+=== RUN   TestT613HostMatrix/absent/todo
+2026/09/10 15:28:19 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT613HostMatrixabsenttodo1592286083/001/.moai/config/sections
+    t613_probe_test.go:56: RESULT method=GET host=absent path=/todo status=200 bytes=8604 marker=false
+=== RUN   TestT613HostMatrix/absent/specs
+2026/09/10 15:28:19 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT613HostMatrixabsentspecs4188299830/001/.moai/config/sections
+    t613_probe_test.go:56: RESULT method=GET host=absent path=/specs status=200 bytes=10413 marker=false
+=== RUN   TestT613HostMatrix/absent/static/app.js
+    t613_probe_test.go:56: RESULT method=GET host=absent path=/static/app.js status=200 bytes=34665 marker=false
+=== RUN   TestT613HostMatrix/POST-save-localhost
+2026/09/10 15:28:19 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT613HostMatrixPOST-save-localhost2298904832/001/.moai/config/sections
+2026/09/10 15:28:19 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT613HostMatrixPOST-save-localhost2298904832/001/.moai/config/sections
+2026/09/10 15:28:19 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT613HostMatrixPOST-save-localhost2298904832/001/.moai/config/sections
+2026/09/10 15:28:19 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT613HostMatrixPOST-save-localhost2298904832/001/.moai/config/sections
+2026/09/10 15:28:19 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT613HostMatrixPOST-save-localhost2298904832/001/.moai/config/sections
+    t613_probe_test.go:77: RESULT method=POST host=localhost path=/save status=200 wrote=true
+=== RUN   TestT613HostMatrix/POST-save-ipv4-loopback
+2026/09/10 15:28:19 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT613HostMatrixPOST-save-ipv4-loopback846798949/001/.moai/config/sections
+2026/09/10 15:28:19 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT613HostMatrixPOST-save-ipv4-loopback846798949/001/.moai/config/sections
+2026/09/10 15:28:19 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT613HostMatrixPOST-save-ipv4-loopback846798949/001/.moai/config/sections
+2026/09/10 15:28:19 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT613HostMatrixPOST-save-ipv4-loopback846798949/001/.moai/config/sections
+2026/09/10 15:28:19 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT613HostMatrixPOST-save-ipv4-loopback846798949/001/.moai/config/sections
+    t613_probe_test.go:77: RESULT method=POST host=ipv4-loopback path=/save status=200 wrote=true
+=== RUN   TestT613HostMatrix/POST-save-ipv6-loopback
+2026/09/10 15:28:19 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT613HostMatrixPOST-save-ipv6-loopback1574986690/001/.moai/config/sections
+2026/09/10 15:28:19 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT613HostMatrixPOST-save-ipv6-loopback1574986690/001/.moai/config/sections
+2026/09/10 15:28:19 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT613HostMatrixPOST-save-ipv6-loopback1574986690/001/.moai/config/sections
+2026/09/10 15:28:19 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT613HostMatrixPOST-save-ipv6-loopback1574986690/001/.moai/config/sections
+2026/09/10 15:28:19 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestT613HostMatrixPOST-save-ipv6-loopback1574986690/001/.moai/config/sections
+    t613_probe_test.go:77: RESULT method=POST host=ipv6-loopback path=/save status=200 wrote=true
+=== RUN   TestT613HostMatrix/POST-save-foreign
+    t613_probe_test.go:77: RESULT method=POST host=foreign path=/save status=403 wrote=false
+=== RUN   TestT613HostMatrix/POST-save-absent
+    t613_probe_test.go:77: RESULT method=POST host=absent path=/save status=403 wrote=false
+--- PASS: TestT613HostMatrix (1.84s)
+    --- PASS: TestT613HostMatrix/localhost/settings (0.01s)
+    --- PASS: TestT613HostMatrix/localhost/ (0.00s)
+    --- PASS: TestT613HostMatrix/localhost/kanban (0.30s)
+    --- PASS: TestT613HostMatrix/localhost/monitor (0.00s)
+    --- PASS: TestT613HostMatrix/localhost/todo (0.09s)
+    --- PASS: TestT613HostMatrix/localhost/specs (0.00s)
+    --- PASS: TestT613HostMatrix/localhost/static/app.js (0.00s)
+    --- PASS: TestT613HostMatrix/ipv4-loopback/settings (0.01s)
+    --- PASS: TestT613HostMatrix/ipv4-loopback/ (0.00s)
+    --- PASS: TestT613HostMatrix/ipv4-loopback/kanban (0.28s)
+    --- PASS: TestT613HostMatrix/ipv4-loopback/monitor (0.00s)
+    --- PASS: TestT613HostMatrix/ipv4-loopback/todo (0.08s)
+    --- PASS: TestT613HostMatrix/ipv4-loopback/specs (0.00s)
+    --- PASS: TestT613HostMatrix/ipv4-loopback/static/app.js (0.00s)
+    --- PASS: TestT613HostMatrix/ipv6-loopback/settings (0.01s)
+    --- PASS: TestT613HostMatrix/ipv6-loopback/ (0.00s)
+    --- PASS: TestT613HostMatrix/ipv6-loopback/kanban (0.26s)
+    --- PASS: TestT613HostMatrix/ipv6-loopback/monitor (0.00s)
+    --- PASS: TestT613HostMatrix/ipv6-loopback/todo (0.08s)
+    --- PASS: TestT613HostMatrix/ipv6-loopback/specs (0.00s)
+    --- PASS: TestT613HostMatrix/ipv6-loopback/static/app.js (0.00s)
+    --- PASS: TestT613HostMatrix/foreign/settings (0.01s)
+    --- PASS: TestT613HostMatrix/foreign/ (0.00s)
+    --- PASS: TestT613HostMatrix/foreign/kanban (0.23s)
+    --- PASS: TestT613HostMatrix/foreign/monitor (0.00s)
+    --- PASS: TestT613HostMatrix/foreign/todo (0.08s)
+    --- PASS: TestT613HostMatrix/foreign/specs (0.00s)
+    --- PASS: TestT613HostMatrix/foreign/static/app.js (0.00s)
+    --- PASS: TestT613HostMatrix/absent/settings (0.01s)
+    --- PASS: TestT613HostMatrix/absent/ (0.00s)
+    --- PASS: TestT613HostMatrix/absent/kanban (0.26s)
+    --- PASS: TestT613HostMatrix/absent/monitor (0.00s)
+    --- PASS: TestT613HostMatrix/absent/todo (0.09s)
+    --- PASS: TestT613HostMatrix/absent/specs (0.00s)
+    --- PASS: TestT613HostMatrix/absent/static/app.js (0.00s)
+    --- PASS: TestT613HostMatrix/POST-save-localhost (0.01s)
+    --- PASS: TestT613HostMatrix/POST-save-ipv4-loopback (0.01s)
+    --- PASS: TestT613HostMatrix/POST-save-ipv6-loopback (0.01s)
+    --- PASS: TestT613HostMatrix/POST-save-foreign (0.00s)
+    --- PASS: TestT613HostMatrix/POST-save-absent (0.00s)
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/web	2.463s

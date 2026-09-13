@@ -1,0 +1,6 @@
+internal/template/templates/.claude/agents/moai/manager-docs.md
+internal/template/templates/.claude/agents/moai/plan-auditor.md
+internal/template/templates/.claude/hooks/moai/sync-phase-quality-gate.sh
+internal/template/templates/.claude/rules/moai/core/agent-common-protocol.md
+internal/template/templates/.codex/agents/moai/manager-docs.toml
+internal/template/templates/.codex/agents/moai/plan-auditor.toml

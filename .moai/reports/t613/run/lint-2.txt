@@ -1,0 +1,14 @@
+# t613 follow-up increment — lint on the final GREEN tree (RED 32ea783c4 + app.go EqualFold fix + final godoc)
+# Measured twice: before and after the godoc-only edit that documents Unicode folding; both runs identical (below = final run).
+
+$ go vet ./internal/web/...
+(no output)
+exit=0
+
+$ golangci-lint run ./internal/web/...
+0 issues.
+exit=0
+
+$ gofmt -l internal/web
+(no output)
+exit=0

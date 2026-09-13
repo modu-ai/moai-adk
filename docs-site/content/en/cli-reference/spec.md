@@ -60,6 +60,9 @@ moai spec lint [SPEC-ID | path/to/spec.md | SPEC directory ...]
 | `--sarif` | SARIF 2.1.0 format output |
 | `--strict` | Treat warnings as errors |
 | `--format <fmt>` | Output format (table) |
+| `--baseline <path>` | Gate on a checked-in per-rule baseline instead of `--strict`: errors always fail, a rule's non-advisory warning count is only blocked when it rises above its recorded value, and the standing warning total stays visible in the output |
+| `--update-baseline` | Recompute and rewrite the `--baseline` file (requires `--reason`) |
+| `--reason "<text>"` | Mandatory non-empty rationale recorded by `--update-baseline`; an empty or missing reason is rejected |
 
 | Argument shape | Example |
 |--------|------|

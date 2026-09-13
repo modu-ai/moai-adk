@@ -1,0 +1,9 @@
+=== RUN   TestHookWrapperConventions
+=== PAUSE TestHookWrapperConventions
+=== RUN   TestHookWrapperPairParity
+    hook_wrapper_pair_parity_test.go:73: verified 4 hook wrapper pairs are byte-identical
+--- PASS: TestHookWrapperPairParity (0.00s)
+=== CONT  TestHookWrapperConventions
+--- PASS: TestHookWrapperConventions (0.00s)
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/template	0.413s

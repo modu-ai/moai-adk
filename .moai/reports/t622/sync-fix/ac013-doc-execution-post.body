@@ -1,0 +1,57 @@
+< <!-- TRACE PROBE: activation hint only; runtime evidence is .moai/state/workflow-trace.jsonl -->
+< <!-- When MOAI_TRACE_PHASES=1, call .claude/hooks/moai/trace-ledger.sh record at each phase entry/exit. -->
+< <!-- A comment or empty ledger is not an execution trace; see trace-ledger-contract.md. -->
+---
+> <!-- TRACE PROBE: workflow-split baseline trace mechanism -->
+> <!-- Activated by MOAI_TRACE_PHASES=1 environment variable -->
+> <!-- Emits one line per Phase entry/exit to stderr in format: [trace] /moai sync Phase <N> <enter|exit> -->
+< #### Step 1.5.0: Freeze the Sync Input Snapshot
+< 
+< Before Phase 7 audit work or the Phase 12 documentation fan-out begins, the
+< orchestrator MUST create one immutable `sync_snapshot_id`. The snapshot records
+< the HEAD SHA, porcelain-v2 status, diff hash, SPEC artifact hashes, and the
+< complete Step 1.5 divergence report. D1-D5 drafters receive that snapshot ID
+< and read only its contents; they do not wait for a later Phase 11 result.
+< 
+< If the tree or SPEC artifacts change after the snapshot is sealed, the
+< orchestrator invalidates the ID and creates a new snapshot before launching
+< any remaining drafter. A missing or stale snapshot is a blocker, not an
+< invitation to read whichever phase output happens to be available.
+< 
+< - Abort (exit with a mutation-aware report; “no changes” requires verified key equality)
+---
+> - Abort (exit with no changes)
+< - Copy critical files: README.md, docs/, .moai/specs/ (record absent paths as
+<   explicit backup failures rather than silently skipping them)
+< - Create a SHA-256 `manifest.tsv` and verify every copied file with
+<   `.claude/hooks/moai/verify-sync-backup.sh verify`; a non-empty directory is
+<   not an integrity check
+< - Before applying document writes, perform a restore/readback check against the
+<   manifest and record the backup path, file count, and result in the sync report
+---
+> - Copy critical files: README.md, docs/, .moai/specs/
+> - Verify backup integrity (non-empty directory check)
+< **`FO-SYNC-4`.** **Where** the sync scope spans several independent document families, the orchestrator shall draft them in parallel before any final artifact is written. Admission is governed by the shared `max_concurrency` queue in `.claude/rules/moai/workflow/resource-budget-contract.md`; the five-drafter shape is an upper bound, not five slots reserved in addition to MX or judge work. Five read-only drafters launch in a single turn when the queue admits them — five is the top of the fanout concurrency ceiling of 3-5 concurrent `Agent()` calls (`.claude/rules/moai/workflow/orchestration-mode-selection.md` §C.2), so a sixth output family is folded into one of the five rather than added as a sixth drafter:
+---
+> **`FO-SYNC-4`.** **Where** the sync scope spans several independent document families, the orchestrator shall draft them in parallel before any final artifact is written. Five read-only drafters launch in a single turn — five is the top of the fanout concurrency ceiling of 3-5 concurrent `Agent()` calls (`.claude/rules/moai/workflow/orchestration-mode-selection.md` §C.2), so a sixth output family is folded into one of the five rather than added as a sixth drafter:
+< **Concurrent scheduling with the Phase 7-10 audit (A5 — SPEC-SYNC-PARALLEL-DOCS-001).** After the immutable `sync_snapshot_id` is sealed, the `FO-SYNC-4` drafter fan-out launches CONCURRENTLY with the Phase 7 audit fan-out, in the same turn Phase 7 is entered — NOT serially after the audit completes (the prior scheduling read the Phase Routing Table top-to-bottom and serialized the docs draft behind the full quality pipeline). The orchestrator spawns the drafter fan-out in the same single-turn multi-`Agent()` batch that enters Phase 7; the drafts are ready when the audit returns.
+< 
+< **Drafter input independence (SPEC-SYNC-PARALLEL-DOCS-001 A5).** Each D1-D5 drafter reads the immutable `sync_snapshot_id` (SPEC artifacts + git diff + the Step 1.5 divergence report). A drafter does NOT read the concurrent audit's quality report, verdict, or per-dimension scores, and it does not require a future Phase 11 output. The docs draft and the audit are input-independent; a drafter that consumed "the audit's functionality score" to decide CHANGELOG tone would create a hidden serial dependency that defeats the A5 concurrency.
+< 
+< **Single-writer applier sequencing at gate-sync-2 (SPEC-SYNC-PARALLEL-DOCS-001 A5).** The A5 concurrency is bought entirely by making the D1-D5 drafters read-only. `manager-docs` is the sole write-capable agent and applies the five drafts sequentially AFTER both the docs-drafter fan-out AND the audit fan-out return — the single-writer applier pass runs at the existing `gate-sync-2` HUMAN GATE 2 (Documentation Scope). The `[HARD]` concurrency guard (`agent-common-protocol.md` § Background Agent Execution — no two write-capable agents run concurrently) holds throughout the concurrent fan-out; the audit verdict is surfaced to the user at the same gate-sync-2 round, with NO extra human round-trip introduced by A5.
+< 
+< - Classify SPEC divergence and hand body changes to `manager-spec`; manager-docs
+<   may update only approved frontmatter fields and sync-facing documentation
+---
+> - Update SPEC documents based on divergence analysis and lifecycle level (see Step 2.2.1)
+< ##### Step 2.2.1: SPEC Body Handoff (Based on Divergence Report)
+---
+> ##### Step 2.2.1: SPEC Document Update (Based on Divergence Report)
+< `manager-docs` MUST NOT edit `spec.md`, `plan.md`, or `acceptance.md` body
+< content. It writes a structured blocker/handoff containing the divergence ID,
+< affected artifact, proposed change, and evidence. The orchestrator delegates
+< that handoff to `manager-spec`, which performs the body edit and independent
+< re-review before `manager-docs` resumes CHANGELOG and project-document work.
+< Frontmatter `status` and `updated` transitions remain the only SPEC edits owned
+< by `manager-docs` during sync.
+< 

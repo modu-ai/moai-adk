@@ -1,0 +1,6 @@
+12c12
+< git fetch origin main 2>&1
+---
+> git fetch origin main 2>&1; git rev-list --count --left-right origin/main...HEAD
+18d17
+< git rev-list --count --left-right origin/main...HEAD

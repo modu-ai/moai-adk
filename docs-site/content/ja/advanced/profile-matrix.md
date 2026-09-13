@@ -119,7 +119,7 @@ moai model profile --json   # 機械可読
 
 {{< icon warning warn >}} **正直性の告知**: GLM バックエンドの effort オーバーレイは **実装 + 配線完了** の状態ですが、wire の有効性（ライブ有効性）は実証予定です — 「動作保証」としては記述しません。
 
-GLM バックエンド（`moai glm` / `moai cg` の GLM ペイン）では、プロファイルマトリクスの上にオーバーレイが適用されます:
+GLM バックエンド（`moai glm`）では、プロファイルマトリクスの上にオーバーレイが適用されます:
 
 - モデルスロットのマッピング: `fable` → `glm-5.3-flash`（Fable スロット、`ANTHROPIC_DEFAULT_FABLE_MODEL`）。このスロットは GLM 環境のバインディングであり、プロファイルマトリクスとは独立です — マトリクスのどのセルも Fable を選択しませんが、配線は維持されます。
 - Claude の 5 段 effort は z.ai の reasoning 上限に collapse します。GLM-5.3 は **常に推論します** — reasoning を無効化することはサポートされず、それを要求する呼び出しは失敗します。したがって制御軸は 3 段階の `reasoning_effort`（low / high / max）1 つです:

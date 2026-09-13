@@ -48,7 +48,7 @@ $ moai glm -f lane-3
 
 Attach no count to `-f` and the run starts with one lane (`lane-1`) by default. As the queue piles up, add one lane at a time with `moai cc -f lane-<n>` (or `moai glm -f lane-<n>`). Like kanban's companions, lanes are launched **by hand, each in its own terminal** — there is no path by which a session launches another session.
 
-One launch takes one entry token — passing `-k` and `-f` together is an error. The v1.2.0 unified entry forms — `-k <N>` (lead) and `-k <N> --name lane-<i>` (lane) — remain valid compatibility forms (a bare `-k --name lane-<i>` with no N defaults to 8 lanes). The mixed-backend launcher `moai cg` refuses the factory for the same reason as kanban (`FACTORY_MODE_UNSUPPORTED_BACKEND`). As the kanban lead's socket opens at `/tmp/moai-socket-kanban/<run-id>`, the factory lead's socket opens at `/tmp/moai-socket-factory/<run-id>`, and the bootstrap notice carries the actual path.
+One launch takes one entry token — passing `-k` and `-f` together is an error. The v1.2.0 unified entry forms — `-k <N>` (lead) and `-k <N> --name lane-<i>` (lane) — remain valid compatibility forms (a bare `-k --name lane-<i>` with no N defaults to 8 lanes). As the kanban lead's socket opens at `/tmp/moai-socket-kanban/<run-id>`, the factory lead's socket opens at `/tmp/moai-socket-factory/<run-id>`, and the bootstrap notice carries the actual path. CG is retired; use `moai migrate cg` to preview explicit migration choices.
 
 ## The lead's routing — whole cards to free lanes
 

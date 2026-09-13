@@ -1,0 +1,6 @@
+ac003-base.md test-s exit=0 lines=35
+ac003-base-template.md test-s exit=0 lines=35
+ac003-local.md test-s exit=0 lines=35
+ac003-template.md test-s exit=0 lines=35
+ac003 local diff exit=0
+ac003 template diff exit=0

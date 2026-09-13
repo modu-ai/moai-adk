@@ -1,0 +1,3 @@
+Computing hash for entry "moai-workflow-worktree"...
+  moai-workflow-worktree: ea5542b821932564a3ae1b296536229969e52a7c06c9daf39fbc3ec8e0675caa
+catalog.yaml updated successfully (12899 bytes)

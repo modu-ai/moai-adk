@@ -36,9 +36,7 @@ func TestStatuslineSectionAbsentFromConsole(t *testing.T) {
 		}, nil
 	}
 	h := a.routes()
-	req := httptest.NewRequest(http.MethodGet, "/settings", nil)
-	rec := httptest.NewRecorder()
-	h.ServeHTTP(rec, req)
+	rec := serveGet(t, h, "/settings")
 	if rec.Code != http.StatusOK {
 		t.Fatalf("GET / status = %d", rec.Code)
 	}

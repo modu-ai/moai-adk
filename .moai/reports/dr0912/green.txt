@@ -1,0 +1,4 @@
+=== RUN   TestDestructiveTargetRegistry_CoversAllSites
+--- PASS: TestDestructiveTargetRegistry_CoversAllSites (0.01s)
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/cli	1.036s

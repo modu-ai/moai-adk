@@ -125,16 +125,15 @@ func renderClassificationSummary(add, update, conflict int, th tui.Theme) string
 }
 
 // renderDeployProgress renders the deploy-step progress as a leading status
-// glyph (● while running, ✓ once all steps complete — resolved from
-// tui.StatusIcon) followed by a block progress bar (tui.Progress, ██████░░░░)
-// reflecting done/total and the "N/M steps" count. It replaces the legacy
-// "N/M steps complete" plain text with the block bar (REQ-TUXIU-014,
-// AC-TUXIU-005).
+// glyph (✓ — t694: this renders AFTER the step completed, so the previous
+// running glyph made every intermediate bar read as an in-flight process that
+// never advanced; the operator-observed "accumulated progress bar lines" were
+// completed snapshots still claiming to be running) followed by a block
+// progress bar (tui.Progress, ██████░░░░) reflecting done/total and the
+// "N/M steps" count. It replaces the legacy "N/M steps complete" plain text
+// with the block bar (REQ-TUXIU-014, AC-TUXIU-005).
 func renderDeployProgress(done, total int, th tui.Theme) string {
-	lead := deployStepStateIcon(stepRunning, th)
-	if done >= total {
-		lead = deployStepStateIcon(stepDone, th)
-	}
+	lead := deployStepStateIcon(stepDone, th)
 	bar := tui.Progress(done, total, tui.ProgressOpts{Theme: &th, Width: 10})
 	return fmt.Sprintf("  %s %s %d/%d steps", lead, bar, done, total)
 }
@@ -184,7 +183,7 @@ func renderUpdateOutcome(w io.Writer, fileCount int, detail updateOutcomeDetail,
 		_, _ = fmt.Fprintln(w, paintToken(breakdown, th.Dim, false))
 	}
 	if backupPath != "" {
-		note := "Backup: " + backupPath + "\nRecover: moai update --restore-config " + backupPath
+		note := "Backup: " + backupPath + "\nRecover: moai update --restore " + backupPath
 		_, _ = fmt.Fprintln(w, paintToken(note, th.Dim, false))
 	}
 }

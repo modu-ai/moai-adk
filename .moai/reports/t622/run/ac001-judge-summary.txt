@@ -1,0 +1,2 @@
+local: section-test-s=0 paras=1 autofail test-e=0 test-s=1 listgroup test-s=1
+template: section-test-s=0 paras=1 autofail test-e=0 test-s=1 listgroup test-s=1

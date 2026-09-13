@@ -1,0 +1,22 @@
+# mutant M-5b-ii: restore bytes but skip removing a file recorded absent
+# edits: [["internal/constitution/apply_commit.go", "\t\tif err := os.Remove(path); err != nil && !errors.Is(err, fs.ErrNotExist) {\n\t\t\treturn err\n\t\t}\n\t\treturn nil", "\t\treturn nil"]]
+# $ go test ./internal/constitution/ -run ^TestApply_RenameFault_RestoresAll$ -count=1 -v
+# exit=1
+=== RUN   TestApply_RenameFault_RestoresAll
+=== RUN   TestApply_RenameFault_RestoresAll/first_rename_applied
+=== RUN   TestApply_RenameFault_RestoresAll/second_rename
+=== RUN   TestApply_RenameFault_RestoresAll/third_rename
+=== RUN   TestApply_RenameFault_RestoresAll/third_rename_applied
+=== RUN   TestApply_RenameFault_RestoresAll/third_rename_log_absent
+    apply_seams_test.go:118: third_rename_log_absent: tree /var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestApply_RenameFault_RestoresAllthird_rename_log_absent541081105/001 changed: [added .moai/research/evolution-log.md]
+=== RUN   TestApply_RenameFault_RestoresAll/no_fault_clean
+--- FAIL: TestApply_RenameFault_RestoresAll (0.04s)
+    --- PASS: TestApply_RenameFault_RestoresAll/first_rename_applied (0.01s)
+    --- PASS: TestApply_RenameFault_RestoresAll/second_rename (0.01s)
+    --- PASS: TestApply_RenameFault_RestoresAll/third_rename (0.01s)
+    --- PASS: TestApply_RenameFault_RestoresAll/third_rename_applied (0.01s)
+    --- FAIL: TestApply_RenameFault_RestoresAll/third_rename_log_absent (0.00s)
+    --- PASS: TestApply_RenameFault_RestoresAll/no_fault_clean (0.01s)
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/constitution	0.385s
+FAIL

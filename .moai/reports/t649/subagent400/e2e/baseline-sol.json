@@ -1,0 +1,36 @@
+{
+  "model": "gpt-5.6-sol",
+  "binary_sha256": "25b68beaadc919b91adab97213b76daa694b284fe3e297958e627c3842bc08c2",
+  "meta": {
+    "exit_code": 0,
+    "elapsed_seconds": 4.22,
+    "timeout": false,
+    "group_cleanup_attempted": true,
+    "picker_command_sent": false,
+    "selection_sent": false,
+    "interactive_prompt_sent": false,
+    "test_family_api_key_accepted": false,
+    "cleanup_errors": [
+      "signal_permission_denied"
+    ]
+  },
+  "tool_uses": [],
+  "tool_references": [],
+  "marker_seen": true,
+  "errors": [],
+  "results": [
+    {
+      "subtype": "success",
+      "is_error": false,
+      "num_turns": 1,
+      "result": "T649_TOOLSEARCH_COMPLETE"
+    }
+  ],
+  "event_types": [
+    "system",
+    "assistant",
+    "assistant",
+    "result"
+  ],
+  "success": false
+}

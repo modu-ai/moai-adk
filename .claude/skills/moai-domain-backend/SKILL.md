@@ -75,7 +75,7 @@ Create a UserService class that initializes with an AsyncIOMotorClient. Set up t
 
 Service Discovery with Consul:
 
-Create a ServiceRegistry class that connects to Consul. Implement register_service method that registers a service with name, id, port, and health check endpoint. Implement discover_service method that queries healthy services and returns list of adddess:port strings.
+Create a ServiceRegistry class that connects to Consul. Implement register_service method that registers a service with name, id, port, and health check endpoint. Implement discover_service method that queries healthy services and returns list of address:port strings.
 
 Event-Driven Architecture:
 
@@ -137,12 +137,7 @@ Integration Patterns:
 
 ---
 
-## Resources
-
-For working code examples, see [examples.md](examples.md).
-
 Status: Production Ready
-Last Updated: 2026-01-11
 Maintained by: MoAI-ADK Backend Team
 
 <!-- moai:evolvable-start id="rationalizations" -->
@@ -185,12 +180,3 @@ Maintained by: MoAI-ADK Backend Team
 - [ ] Authentication required on all non-public endpoints (show auth middleware)
 
 <!-- moai:evolvable-end -->
-
-## Refactor Notes
-
-**Refactor scope** (deferred to future sub-SPEC):
-- Narrow body to API design decision matrix (REST vs GraphQL vs tRPC vs gRPC)
-- Extract language-specific implementation details into Level-3 modules
-- Remove framework-specific content that duplicates language skill coverage
-
-This skill is retained in v3.0 but its body will be restructured in a follow-up SPEC.

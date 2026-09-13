@@ -1,0 +1,11 @@
+slot pre-check before the RED run
+2026-09-10T18:07:54Z
+3:07  up 2 days, 21:01, 18 users, load averages: 49.48 26.39 17.15
+  PID     ELAPSED COMM             ARGS
+(snapshot lines: 1479)
+observer control - the ps process itself: 1
+go test/.test lines (zsh/python excluded): 4
+  42895 01:52 go test ./internal/spec -count=1 -run ^TestT565LintCensus$ -v -timeout 900s
+  43281 01:48 /var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/go-build2938209230/b001/spec.test -test.paniconexit0 -test.count=1 -test.run=^TestT565LintCensus$ -test.v=true 
+  43341 01:48 go test ./internal/hook/ -run ^TestSyncGateFailState -count=1 -v
+  43917 01:42 /var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/go-build2856226804/b001/hook.test -test.paniconexit0 -test.timeout=10m0s -test.run=^TestSyncGateFailState -test

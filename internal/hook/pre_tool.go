@@ -13,6 +13,7 @@ import (
 	"strings"
 	"sync"
 
+	"github.com/modu-ai/moai-adk/internal/config"
 	"github.com/modu-ai/moai-adk/internal/defs"
 	"github.com/modu-ai/moai-adk/internal/hook/quality"
 	"github.com/modu-ai/moai-adk/internal/hook/security"
@@ -555,6 +556,25 @@ func (h *preToolHandler) Handle(ctx context.Context, input *HookInput) (*HookOut
 		}
 	}
 
+	// Resource slot-lease guard (card t607). Sits after the integration guard:
+	// that one serializes `git merge` in the release tree, this one refuses a
+	// configured heavy command while ANOTHER live session holds its resource.
+	// Gated by Workflow.SlotLease.Enabled (default false): on the disabled
+	// path neither the project root, the patterns, nor any lease record is
+	// touched. Fails OPEN on every uncertainty.
+	if input.ToolName == "Bash" && len(input.ToolInput) > 0 {
+		if slotCfg, enabled := h.slotLeaseConfig(); enabled {
+			if decision, reason := checkSlotLease(input, h.projectRoot(), slotCfg, os.Stderr); decision == DecisionDeny {
+				slog.Warn("slot lease denied",
+					"tool_name", input.ToolName,
+					"session_id", input.SessionID,
+					"reason", reason,
+				)
+				return NewDenyOutput(reason), nil
+			}
+		}
+	}
+
 	// Handle Write and Edit tools
 	if (input.ToolName == "Write" || input.ToolName == "Edit") && len(input.ToolInput) > 0 {
 		// Harness-learner FROZEN zone guard (Vision §3.4, W3 first implementer).
@@ -829,6 +849,21 @@ func (h *preToolHandler) integrationLockEnabled() bool {
 	return cfg.Workflow.IntegrationLock.Enabled
 }
 
+// slotLeaseConfig returns the slot-lease section and whether its guard is
+// enabled (card t607). A nil ConfigProvider or nil Config reads as disabled,
+// silently — REQ-RSL-012: unknowable configuration is the quiet off path, not
+// a fail-open uncertainty.
+func (h *preToolHandler) slotLeaseConfig() (config.SlotLeaseConfig, bool) {
+	if h.cfg == nil {
+		return config.SlotLeaseConfig{}, false
+	}
+	cfg := h.cfg.Get()
+	if cfg == nil {
+		return config.SlotLeaseConfig{}, false
+	}
+	return cfg.Workflow.SlotLease, cfg.Workflow.SlotLease.Enabled
+}
+
 // loadGateConfig reads gate configuration from the config provider.
 // Falls back to DefaultGateConfig when the config is not available.
 func (h *preToolHandler) loadGateConfig() *quality.GateConfig {
@@ -972,6 +1007,38 @@ func (h *preToolHandler) checkBashCommand(toolInput json.RawMessage) (string, st
 	return "", ""
 }
 
+// resolveThroughExistingParent resolves the symlinks of the nearest EXISTING
+// ancestor of absPath and rejoins the not-yet-existing remainder onto it.
+//
+// It exists for the new-file case that plain EvalSymlinks cannot serve: a Write
+// to a path whose leaf does not exist yet fails EvalSymlinks outright, which
+// hides a directory symlink in the path's parents. Resolving the deepest
+// ancestor that DOES exist makes such an escape visible without denying a
+// legitimate new file (the resolved ancestor of an in-project new file is still
+// in-project).
+//
+// absPath must already be absolute. The second return is false when no ancestor
+// could be resolved, in which case the caller keeps its unresolved fallback.
+func resolveThroughExistingParent(absPath string) (string, bool) {
+	remainder := ""
+	dir := absPath
+	for {
+		parent := filepath.Dir(dir)
+		if parent == dir {
+			// Reached the filesystem root without resolving anything.
+			return "", false
+		}
+		remainder = filepath.Join(filepath.Base(dir), remainder)
+		dir = parent
+
+		realDir, err := filepath.EvalSymlinks(dir)
+		if err != nil {
+			continue
+		}
+		return filepath.Join(realDir, remainder), true
+	}
+}
+
 // checkFileAccess checks file path and content against security patterns.
 // Returns (decision, reason) where decision is "deny", "ask", or "" for allow.
 func (h *preToolHandler) checkFileAccess(toolInput json.RawMessage, toolName string) (string, string) {
@@ -1005,8 +1072,21 @@ func (h *preToolHandler) checkFileAccess(toolInput json.RawMessage, toolName str
 	// still succeed. When EvalSymlinks returns an error (not-exist for a
 	// new-file Write, or otherwise unresolvable), fall back to the unresolved
 	// path and do NOT deny (NFR-SEC-003 behavior preservation, AC-SEC-007c).
+	//
+	// Falling back to the FULL unresolved path, however, loses the boundary
+	// check for a new file whose PARENT escapes: with `linked -> /outside`, the
+	// path `<project>/linked/new.txt` has no existing leaf to resolve, so the
+	// lexical check sees the in-project relative form `linked/new.txt` and
+	// allows a Write that lands outside the project (CWE-61 on the parent
+	// rather than on the leaf). resolveThroughExistingParent narrows the
+	// fallback: it resolves the nearest EXISTING ancestor and rejoins the
+	// not-yet-existing remainder, so the escape is visible while a plain new
+	// file still resolves to an in-project path.
 	resolvedSymlink := false
 	if realPath, evalErr := filepath.EvalSymlinks(resolvedPath); evalErr == nil {
+		resolvedPath = realPath
+		resolvedSymlink = true
+	} else if realPath, ok := resolveThroughExistingParent(resolvedPath); ok {
 		resolvedPath = realPath
 		resolvedSymlink = true
 	}
@@ -1162,13 +1242,25 @@ func (h *preToolHandler) isAllowedExternalPath(resolvedPath string) bool {
 		if err != nil {
 			continue
 		}
-		nfcAllowed := norm.NFC.String(absAllowed)
-		rel, err := filepath.Rel(nfcAllowed, resolvedPath)
-		if err != nil {
-			continue
+		// Compare against BOTH the lexical and the symlink-resolved form of the
+		// allowed directory: the caller's path may have arrived either way.
+		// An allowlist entry is routinely a symlink (macOS /tmp -> /private/tmp),
+		// so comparing only the lexical form rejects a resolved path that is in
+		// fact inside the allowed directory. Both sides of an identity
+		// comparison need the same normalization.
+		candidates := []string{absAllowed}
+		if realAllowed, evalErr := filepath.EvalSymlinks(absAllowed); evalErr == nil && realAllowed != absAllowed {
+			candidates = append(candidates, realAllowed)
 		}
-		if !strings.HasPrefix(rel, "..") {
-			return true
+		for _, candidate := range candidates {
+			nfcAllowed := norm.NFC.String(candidate)
+			rel, relErr := filepath.Rel(nfcAllowed, resolvedPath)
+			if relErr != nil {
+				continue
+			}
+			if !strings.HasPrefix(rel, "..") {
+				return true
+			}
 		}
 	}
 	return false

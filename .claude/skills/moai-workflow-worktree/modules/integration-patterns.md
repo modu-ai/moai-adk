@@ -1,9 +1,8 @@
 # Integration Patterns Module
 
-Purpose: Overview of integration patterns for moai-worktree with MoAI-ADK workflow, development tools, and external systems.
+Purpose: Overview of integration patterns for the moai-workflow-worktree skill with MoAI-ADK workflow, development tools, and external systems.
 
 Version: 2.0.0
-Last Updated: 2026-01-06
 
 ---
 
@@ -17,7 +16,7 @@ Integration Points:
 
 Core Integration Pattern:
 
-The basic integration workflow follows three phases. During the Plan Phase, the /moai plan command auto-creates a worktree for the SPEC. During the Development Phase, use the moai-worktree go command to navigate to the isolated environment and run /moai run for DDD implementation. During the Sync Phase, use moai-worktree sync to update the worktree and /moai sync for documentation synchronization.
+The basic integration workflow follows three phases. During the Plan Phase, the launcher (`moai cc -w <name>`) creates and enters the worktree, and /moai plan writes the SPEC inside it. During the Development Phase, run /moai run in that same session. During the Sync Phase, use moai worktree sync to update the worktree and /moai sync for documentation synchronization.
 
 ---
 
@@ -145,5 +144,4 @@ Tools Integration (tools-integration.md):
 ---
 
 Version: 2.0.0
-Last Updated: 2026-01-06
 Module: Integration patterns overview with progressive disclosure to sub-modules

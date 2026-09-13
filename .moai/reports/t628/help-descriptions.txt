@@ -1,0 +1,8 @@
+Sync worktree with base branch
+Remove a worktree
+Clean stale worktree references
+Repair worktree registry
+Complete worktree and cleanup
+Capture working tree state snapshot for guard verification
+Verify working tree state against snapshot + check agent response
+Restore working tree to a snapshot's HEAD state

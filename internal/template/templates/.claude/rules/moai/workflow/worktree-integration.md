@@ -222,7 +222,7 @@ Claude can move the session into a worktree mid-session via the `EnterWorktree` 
 `EnterWorktree` is complementary to, not replaced by, the launcher flag `moai cc -w <name-or-abs-path>`:
 
 - **`EnterWorktree(<path>)`** — current-session re-entry (no `/clear`, same session continuing). Use this when the orchestrator is mid-turn and needs to move the active session into an existing worktree.
-- **`moai cc -w <name>` (or `moai glm -w` / `moai cg -w`)** — new-session launch (post-`/clear` or new terminal). Use this as the Block 0 new-terminal launcher of the paste-ready resume. The `-w` flag accepts BOTH short names (resolved against `.claude/worktrees/<name>/`) AND absolute paths under `~/.moai/worktrees/<project>/...` (L2 persistent worktrees — see the `claude --worktree` (`-w`) Flag section above for the L2 absolute-path extension).
+- **`moai cc -w <name>` (or `moai glm -w`)** — new-session launch (post-`/clear` or new terminal). Use this as the Block 0 new-terminal launcher of the paste-ready resume. The `-w` flag accepts BOTH short names (resolved against `.claude/worktrees/<name>/`) AND absolute paths under `~/.moai/worktrees/<project>/...` (L2 persistent worktrees — see the `claude --worktree` (`-w`) Flag section above for the L2 absolute-path extension).
 
 The shell-`cd` form (`cd <path> && <launcher>`), the `git -C <path>` form, and the subshell-`cd` form (`(cd <path> && ...)`) are DEPRECATED for orchestrator-emitted current-session worktree entry guidance. They break `Agent(isolation: "worktree")` CWD isolation (the agent's CWD is the worktree root; a `cd /absolute/path` bypasses it) and were the root cause of prior incidents where a sub-agent used `git -C` instead of `EnterWorktree` and was corrected mid-run.
 
@@ -419,9 +419,9 @@ Both share the same project structure. `src/auth/handler.go` resolves correctly 
 
 ## Teammate Session Launch (`--spawn`)
 
-`moai cc -w <name> --spawn` (likewise `moai glm` / `moai cg`) opens a session in the named worktree in a NEW tmux window and returns, so the caller keeps its own session. Without `--spawn` the same command enters the worktree in place by replacing the current process. See `.claude/skills/moai-workflow-worktree/SKILL.md` § `--spawn` for requirements, error messages, and example invocations.
+`moai cc -w <name> --spawn` (likewise `moai glm`) opens a session in the named worktree in a NEW tmux window and returns, so the caller keeps its own session. Without `--spawn` the same command enters the worktree in place by replacing the current process. See `.claude/skills/moai-workflow-worktree/SKILL.md` § `--spawn` for requirements, error messages, and example invocations.
 
-> **Two distinct `teammateMode` fields — do not conflate.** MoAI's own `.claude/settings.local.json` launcher-selection field (values `"tmux"` / `"glm"` / `"claude"`) is set by `moai cg` / `moai glm` / `moai cc` and selects which launcher a session runs. This is SEPARATE from the Claude Code runtime `teammateMode` setting, whose default changed from `auto` to `in-process` as of Claude Code v2.1.179 — with the in-process default, split panes no longer auto-open. Additionally, as of Claude Code v2.1.181, an idle teammate's agent-panel row hides after 30 seconds and reappears on the next turn. These two CC-runtime behaviors govern how teammates are displayed. Both fields happen to share the name `teammateMode`.
+> **Keep policy and display fields separate.** `llm.team_mode` and `llm.gateway.teammate_mode` / `teammate_provider` in `llm.yaml` describe launcher and teammate-role policy. Claude Code `teammateMode` controls display. Legacy `team_mode: cg` cannot select a launcher; run `moai migrate cg` for explicit migration. A tmux display setting alone does not verify mixed-provider teammate routing.
 
 ### HARD Rules
 
@@ -490,14 +490,15 @@ The full refusal reads:
 
 > This session is isolated in the worktree `<worktree-path>`, but this command is too complex to verify that it stays inside the worktree.
 
-**This table is a record of what has been seen, not a specification.** It is explicitly non-exhaustive, and two observations do not establish a general rule — the trigger condition was never narrowed, so do not infer from it that "complex commands are refused", and do not infer a tokenization mechanism from the shape of these cases.
+**This table is a record of what has been seen, not a specification.** It is explicitly non-exhaustive, and a handful of observations do not establish a general rule — the trigger condition was never narrowed, so do not infer from it that "complex commands are refused", and do not infer a tokenization mechanism from the shape of these cases.
 
 | Observed trigger | Provenance | Notes |
 |---|---|---|
 | A quoted-delimiter heredoc (`<<'EOF'`) whose **body contains braces wrapping quoted key/value pairs** — a JSON line, for example | **First-hand** — measured by paired probes in a worktree-isolated session | Body size, pipes, backticks, and command substitution are **not** the trigger: a body of roughly 6.7 KB of prose was accepted, a ten-character JSON line in the same position was refused, and a command substitution in the body was folded correctly and passed |
 | **Several mutation steps bundled into one compound command** | **Second-hand** — reported by another working lane, not measured here | Recorded because it carried the same refusal sentence; it has not been reproduced by the session that wrote this section |
+| A heredoc whose **body names a git subcommand** — prose such as `run git merge --no-ff <sha>` or `git checkout -b <branch>` fed to a non-git command | **First-hand** — measured by paired probes in a worktree-isolated session | Refused with the variant sentence `… this command names git in a form too complex to verify …`. The same heredoc without git text passed, and the same git text passed when carried as a double-quoted argument or read from a file (`--stdin < <file>`) |
 
-**Gap**: the boundary between an accepted and a refused command is unmeasured in both rows. Anything outside these two observations is unknown, not permitted.
+**Gap**: the boundary between an accepted and a refused command is unmeasured in every row. Anything outside these observations is unknown, not permitted.
 
 ### Why the two heredoc delimiter forms differ
 

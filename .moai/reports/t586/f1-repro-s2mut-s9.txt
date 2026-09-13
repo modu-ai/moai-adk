@@ -1,0 +1,6 @@
+=== RUN   TestWizardCarriesStoredSegmentsIntoPrefs
+=== PAUSE TestWizardCarriesStoredSegmentsIntoPrefs
+=== CONT  TestWizardCarriesStoredSegmentsIntoPrefs
+    profile_setup_removed_questions_test.go:131: persistProjectConfig must be called with an empty convention so git-convention.yaml is preserved
+--- FAIL: TestWizardCarriesStoredSegmentsIntoPrefs (0.00s)
+FAIL

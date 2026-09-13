@@ -63,7 +63,7 @@ graph TD
 
 2. **並列開発** — 複数の SPEC を同時に進められます
 3. **衝突防止** — 作業空間が別々に動くので衝突がほとんど起きません
-4. **コスト削減** — 実装ステップに GLM を使うとコストが減ります。削減幅は [CG モード](/ja/multi-llm/cg-mode) にまとめてあります
+4. バックエンドの明示的な選択：worktree ごとに `moai cc` または `moai glm` を選びます。
 
 ```mermaid
 graph TD
@@ -102,7 +102,7 @@ moai glm -w SPEC-AUTH-001
 moai cc -w SPEC-AUTH-001
 
 # Claude リーダー + GLM チームメイトのハイブリッドで進入
-moai cg -w SPEC-AUTH-001
+moai cc -w SPEC-AUTH-001
 ```
 
 短い名前は `.claude/worktrees/<名前>/` の下で解決されます。すでに作ってあるワークツリーが

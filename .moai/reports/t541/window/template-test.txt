@@ -1,0 +1,2 @@
+ok  	github.com/modu-ai/moai-adk/internal/template	59.688s
+exit=0

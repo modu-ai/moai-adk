@@ -1,0 +1,7 @@
+HEAD:internal/template/templates/.claude/agents/moai/manager-git.md:32:- `merge_method = git_strategy.{mode}.merge_method` (`squash` | `merge` | `rebase`; default `squash`) — every merge is executed as `gh pr merge --<merge_method> --delete-branch`, which under the squash default renders `gh pr merge --squash --delete-branch`
+HEAD:internal/template/templates/.claude/agents/moai/manager-git.md:114:gh pr merge <PR> --squash --delete-branch   # squash default
+HEAD:internal/template/templates/.claude/skills/moai-ref-git-workflow/SKILL.md:133:| Squash merge | Feature branches (clean history) | `gh pr merge --squash` |
+HEAD:internal/template/templates/.claude/skills/moai/workflows/sync/delivery.md:343:3. If all checks pass: Execute `gh pr merge --squash --delete-branch`
+HEAD:internal/template/templates/.claude/skills/moai/workflows/sync/delivery.md:355:3. If passing and mergeable: Execute `gh pr merge --squash --delete-branch`
+HEAD:internal/template/templates/.codex/agents/moai/manager-git.toml:26:- `merge_method = git_strategy.{mode}.merge_method` (`squash` | `merge` | `rebase`; default `squash`) — every merge is executed as `gh pr merge --<merge_method> --delete-branch`, which under the squash default renders `gh pr merge --squash --delete-branch`
+HEAD:internal/template/templates/.codex/agents/moai/manager-git.toml:108:gh pr merge <PR> --squash --delete-branch   # squash default

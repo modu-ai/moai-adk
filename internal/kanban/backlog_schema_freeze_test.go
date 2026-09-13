@@ -37,7 +37,8 @@ func TestTodoHistoryAddsNoSchemaChange(t *testing.T) {
 	defer func() { _ = eng.close() }()
 	ctx := context.Background()
 
-	// The table set is exactly the five the DDL defines — no more, no less.
+	// The table set is exactly the five core tables plus the additive identity
+	// side table — no more, no less. The core schema stamp remains version 1.
 	var tables []string
 	rows, err := eng.db.QueryContext(ctx,
 		`SELECT name FROM sqlite_master WHERE type = 'table' AND name NOT LIKE 'sqlite_%' ORDER BY name`)
@@ -54,7 +55,7 @@ func TestTodoHistoryAddsNoSchemaChange(t *testing.T) {
 	if err := rows.Err(); err != nil {
 		t.Fatalf("iterate tables: %v", err)
 	}
-	wantTables := "archived_findings archived_items findings items meta"
+	wantTables := "archived_findings archived_items findings items meta todo_identities"
 	if got := strings.Join(tables, " "); got != wantTables {
 		t.Errorf("table set = %q, want %q", got, wantTables)
 	}

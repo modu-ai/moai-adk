@@ -45,12 +45,12 @@ func TestStaticAssetsServedFromEmbed(t *testing.T) {
 		{"/static/app.js", "MoAI Web Console", []string{"javascript"}},
 	}
 	for _, c := range cases {
-		// GET on a static asset must NOT be Host-gated; use a foreign host to
-		// prove read assets are reachable regardless.
-		req := httptest.NewRequest(http.MethodGet, c.path, nil)
-		req.Host = "evil.example.com"
-		rec := httptest.NewRecorder()
-		h.ServeHTTP(rec, req)
+		// Static assets are Host-gated like every other route (AC-WC-009 as
+		// amended): a foreign Host is refused, a loopback Host is served.
+		if rec := serveWithHost(t, h, http.MethodGet, c.path, "evil.example.com"); rec.Code != http.StatusForbidden {
+			t.Errorf("%s from a foreign Host: status = %d, want 403", c.path, rec.Code)
+		}
+		rec := serveGet(t, h, c.path)
 
 		if rec.Code != http.StatusOK {
 			t.Errorf("%s: status = %d, want 200", c.path, rec.Code)
@@ -487,29 +487,47 @@ func TestHostCheckAllowsLoopbackHostsOnPost(t *testing.T) {
 	}
 }
 
-// TestHostCheckDoesNotGateGet verifies AC-WC-009: GET is not Host-gated — read
-// remains accessible even with a foreign Host header.
-func TestHostCheckDoesNotGateGet(t *testing.T) {
+// TestHostCheckGatesGetFromForeignHost verifies AC-WC-009 as amended: a GET
+// from a foreign Host is refused 403 and carries none of the page's content,
+// while the same GET from a loopback Host still renders the profile value.
+func TestHostCheckGatesGetFromForeignHost(t *testing.T) {
+	const marker = "host-gate-profile-marker"
 	a := newTestApp(t)
 	a.readPreferences = func(string) (profile.ProfilePreferences, error) {
-		return profile.ProfilePreferences{}, nil
+		return profile.ProfilePreferences{UserName: marker}, nil
 	}
 	h := a.routes()
 
-	req := httptest.NewRequest(http.MethodGet, "/settings", nil)
-	req.Host = "attacker.example.com"
-	rec := httptest.NewRecorder()
-	h.ServeHTTP(rec, req)
-
-	if rec.Code == http.StatusForbidden {
-		t.Error("GET / was Host-gated (403); read must remain accessible")
+	rec := serveWithHost(t, h, http.MethodGet, "/settings", "attacker.example.com")
+	if rec.Code != http.StatusForbidden {
+		t.Errorf("GET /settings with foreign Host status = %d, want 403", rec.Code)
 	}
+	if strings.Contains(rec.Body.String(), marker) {
+		t.Error("the foreign-Host response carried the profile value it must withhold")
+	}
+
+	// Loopback control: the same request from a loopback Host renders the value,
+	// so the refusal above is the Host gate and not a page that fails to render.
+	rec = serveGet(t, h, "/settings")
 	if rec.Code != http.StatusOK {
-		t.Errorf("GET / with foreign Host status = %d, want 200", rec.Code)
+		t.Fatalf("GET /settings with loopback Host status = %d, want 200", rec.Code)
+	}
+	if !strings.Contains(rec.Body.String(), marker) {
+		t.Error("the loopback-Host page did not render the profile value")
 	}
 }
 
 // --- helpers ---
+
+// serveWithHost sends one request with the given Host header; "" sends none.
+func serveWithHost(t *testing.T, h http.Handler, method, path, host string) *httptest.ResponseRecorder {
+	t.Helper()
+	req := httptest.NewRequest(method, path, nil)
+	req.Host = host
+	rec := httptest.NewRecorder()
+	h.ServeHTTP(rec, req)
+	return rec
+}
 
 func serveGet(t *testing.T, h http.Handler, path string) *httptest.ResponseRecorder {
 	t.Helper()

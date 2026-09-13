@@ -1,0 +1,16 @@
+=== RUN   TestLoadGitFlowIntegrationConfig_SeparatesGitFlowFromBranch
+=== RUN   TestLoadGitFlowIntegrationConfig_SeparatesGitFlowFromBranch/a_manual_git-flow_with_develop_set
+=== RUN   TestLoadGitFlowIntegrationConfig_SeparatesGitFlowFromBranch/b_manual_git-flow_with_develop_empty
+=== RUN   TestLoadGitFlowIntegrationConfig_SeparatesGitFlowFromBranch/c_manual_github-flow
+=== RUN   TestLoadGitFlowIntegrationConfig_SeparatesGitFlowFromBranch/d_personal_git-flow
+    loader_integration_branch_test.go:168: IsGitFlow() = true, want false (config {Manual:false GitFlowWorkflow:true DevelopBranch:})
+=== RUN   TestLoadGitFlowIntegrationConfig_SeparatesGitFlowFromBranch/e_no_file
+--- FAIL: TestLoadGitFlowIntegrationConfig_SeparatesGitFlowFromBranch (0.00s)
+    --- PASS: TestLoadGitFlowIntegrationConfig_SeparatesGitFlowFromBranch/a_manual_git-flow_with_develop_set (0.00s)
+    --- PASS: TestLoadGitFlowIntegrationConfig_SeparatesGitFlowFromBranch/b_manual_git-flow_with_develop_empty (0.00s)
+    --- PASS: TestLoadGitFlowIntegrationConfig_SeparatesGitFlowFromBranch/c_manual_github-flow (0.00s)
+    --- FAIL: TestLoadGitFlowIntegrationConfig_SeparatesGitFlowFromBranch/d_personal_git-flow (0.00s)
+    --- PASS: TestLoadGitFlowIntegrationConfig_SeparatesGitFlowFromBranch/e_no_file (0.00s)
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/config	0.387s
+FAIL

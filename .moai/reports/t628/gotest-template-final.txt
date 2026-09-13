@@ -1,0 +1,12 @@
+--- FAIL: TestManifestHashFormat (0.10s)
+    catalog_tier_audit_test.go:451: CATALOG_HASH_UNSTABLE: moai-workflow-worktree stored hash=05920664ac48c144d23360f58c8cd932a3095cdfa56c4b290165968d0d89f762, computed hash=ea5542b821932564a3ae1b296536229969e52a7c06c9daf39fbc3ec8e0675caa (source=.claude/skills/moai-workflow-worktree/ (whole tree))
+    catalog_tier_audit_test.go:456: audited 45 catalog entries for hash validity
+--- FAIL: TestCatalogHashCoversSkillSubfiles (0.11s)
+    catalog_tier_audit_test.go:491: CATALOG_HASH_SKINNY: moai-workflow-worktree hash=05920664ac48c144d23360f58c8cd932a3095cdfa56c4b290165968d0d89f762 does not cover the deployed directory tree (whole-tree hash ea5542b821932564a3ae1b296536229969e52a7c06c9daf39fbc3ec8e0675caa) — run gen-catalog-hashes.go --all (card t323)
+    catalog_tier_audit_test.go:499: audited 34 directory entries for whole-tree hash coverage
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/template	35.270s
+ok  	github.com/modu-ai/moai-adk/internal/template/agentemit	1.228s
+ok  	github.com/modu-ai/moai-adk/internal/template/commandemit	0.373s
+?   	github.com/modu-ai/moai-adk/internal/template/scripts	[no test files]
+FAIL

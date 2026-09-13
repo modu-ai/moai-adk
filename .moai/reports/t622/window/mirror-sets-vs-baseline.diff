@@ -1,0 +1,7 @@
+1,2c1
+< FAIL TestRuleTemplateMirrorDrift
+< FAIL TestRuleTemplateMirrorDrift/spec-workflow.md
+---
+> PASS TestRuleTemplateMirrorDrift
+8a8
+> PASS TestRuleTemplateMirrorDrift/spec-workflow.md

@@ -1,0 +1,6 @@
+redefined sample (lead ruling): an AC-less REQ row counts only when the same REQ is NOT mapped by any other table row in the same acceptance.md.
+independent source-text predicate (not the linter output): a line of that acceptance.md that starts with "|", carries an AC-<id> token, and names the REQ either as a full id (non-alnum boundaries) or as a same-line comma tail after a full id with the same prefix.
+predicted before run:
+  mapped elsewhere   = 15 rows, exactly SPEC-ZONE-REGISTRY-RESYNC-001 REQ-ZRR-001..015
+  not mapped elsewhere = 55 rows
+  not mapped elsewhere AND missing from corpus-after-coverage.tsv = 0 rows

@@ -1,0 +1,25 @@
+# mutant M-GB: G-B removed: the rule-file-is-registry-or-log check never fires (re-run after the F1 sameFile change) [re-run after the D1/D2 commit 3949cdba4]
+# edits: [["internal/constitution/pipeline.go", "if sameFile(rulePath, registryPath) || sameFile(rulePath, evolutionLogPath) {", "if false {"]]
+# $ go test ./internal/constitution/ -run ^TestExecute_RuleFileIsRegistryOrLog_Rejected$ -count=1 -v
+# exit=1
+=== RUN   TestExecute_RuleFileIsRegistryOrLog_Rejected
+=== RUN   TestExecute_RuleFileIsRegistryOrLog_Rejected/registry/dry_run
+    apply_test.go:1255: Execute: want a rule-file-is-registry-or-log error, got nil
+=== RUN   TestExecute_RuleFileIsRegistryOrLog_Rejected/registry/real
+    apply_test.go:1255: Execute: want a rule-file-is-registry-or-log error, got nil
+=== RUN   TestExecute_RuleFileIsRegistryOrLog_Rejected/evolution_log/dry_run
+    apply_test.go:1255: Execute: want a rule-file-is-registry-or-log error, got nil
+=== RUN   TestExecute_RuleFileIsRegistryOrLog_Rejected/evolution_log/real
+    apply_test.go:1255: Execute: want a rule-file-is-registry-or-log error, got nil
+=== RUN   TestExecute_RuleFileIsRegistryOrLog_Rejected/distinct_control/dry_run
+=== RUN   TestExecute_RuleFileIsRegistryOrLog_Rejected/distinct_control/real
+--- FAIL: TestExecute_RuleFileIsRegistryOrLog_Rejected (0.02s)
+    --- FAIL: TestExecute_RuleFileIsRegistryOrLog_Rejected/registry/dry_run (0.00s)
+    --- FAIL: TestExecute_RuleFileIsRegistryOrLog_Rejected/registry/real (0.00s)
+    --- FAIL: TestExecute_RuleFileIsRegistryOrLog_Rejected/evolution_log/dry_run (0.00s)
+    --- FAIL: TestExecute_RuleFileIsRegistryOrLog_Rejected/evolution_log/real (0.00s)
+    --- PASS: TestExecute_RuleFileIsRegistryOrLog_Rejected/distinct_control/dry_run (0.00s)
+    --- PASS: TestExecute_RuleFileIsRegistryOrLog_Rejected/distinct_control/real (0.00s)
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/constitution	0.397s
+FAIL

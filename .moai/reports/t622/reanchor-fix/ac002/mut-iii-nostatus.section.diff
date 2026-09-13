@@ -1,0 +1,6 @@
+13,17d12
+< fetch_status=$?
+< if [ "$fetch_status" -ne 0 ]; then
+<   printf 'pre-spawn sync blocked: fetch origin/main failed (status=%s)\n' "$fetch_status" >&2
+<   exit "$fetch_status"
+< fi

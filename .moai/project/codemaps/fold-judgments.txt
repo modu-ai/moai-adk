@@ -1,0 +1,24 @@
+# Fold and omission judgments from the last codemaps refresh.
+# fold <unit>: folded into a parent's description; the unit stays unnamed.
+# omission <unit>: left out earlier; the documents owe it a description.
+fold internal/core/git
+fold internal/cli/doctor_hook_delivery.go
+fold internal/hook/quality/step_git_env.go
+fold internal/kanban/prlink_landedref.go
+fold internal/web/fieldsets_codex_templ.go
+
+omission internal/chain
+omission internal/stateanchor
+omission internal/settings/yamlpatch
+omission internal/template/agentemit
+omission internal/template/commandemit
+omission internal/template/published_skills.go
+omission internal/template/skill_mirror_repair.go
+omission internal/cli/skills.go
+omission internal/cli/codex_skills_disable.go
+omission internal/cli/codex_skills_prune.go
+omission internal/cli/integration_settings_drift.go
+omission internal/cli/update_mirror_heal.go
+omission internal/kanban/settings_drift.go
+omission internal/statusline/state_anchor.go
+omission internal/web/codexmirror.go

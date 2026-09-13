@@ -222,7 +222,7 @@ const (
 	EnvMoaiKanbanLeadAddr = "MOAI_KANBAN_LEAD_ADDR"
 
 	// EnvMoaiKanbanBackend names the backend the launcher opened the session
-	// on: kanban.BackendClaude or kanban.BackendGLM.
+	// on: kanban.BackendClaude, kanban.BackendGLM, or kanban.BackendGPT.
 	//
 	// It exists because the backend is the one launch fact a session cannot
 	// observe for itself. Before this key the value reached the kanban record
@@ -233,6 +233,9 @@ const (
 	// from it would be a guess dressed as a measurement
 	// (SPEC-KANBAN-RECORD-SESSION-KEY-001 REQ-KRS-006).
 	EnvMoaiKanbanBackend = "MOAI_KANBAN_BACKEND"
+
+	// EnvMoaiLaunchProvider records the gateway initial provider, never the current request route.
+	EnvMoaiLaunchProvider = "MOAI_LAUNCH_PROVIDER"
 
 	// EnvMoaiKanbanCard names the queue card the session is working, and is
 	// the EXPLICIT OVERRIDE of the card identifier a session otherwise derives
@@ -345,6 +348,13 @@ const (
 
 	// EnvTestGLMKey provides a test GLM API key for integration tests.
 	EnvTestGLMKey = "MOAI_TEST_GLM_KEY"
+
+	// EnvTestHomeStateLiveCoverage opts in to the internal/cli test that
+	// measures home-state changed-surface coverage against the live repository
+	// when set to "1". It resolves the audited evidence chain at HEAD, so it
+	// fails whenever an audited production file changed after the last
+	// certification marker — the live pre-apply gate refusing, as designed.
+	EnvTestHomeStateLiveCoverage = "MOAI_TEST_HOME_STATE_LIVE_COVERAGE"
 )
 
 // Claude Code environment variables (set by Claude Code runtime).
@@ -409,6 +419,16 @@ const (
 	// Claude Code runtime env); the const centralizes the name per
 	// CLAUDE.local.md §14.
 	EnvClaudeCodeMaxConcurrentSubagents = "CLAUDE_CODE_MAX_CONCURRENT_SUBAGENTS"
+
+	// EnvClaudeCodeHarborKite forces the cross-session messaging channel on
+	// when set: the channel's gate checks this variable BEFORE reading the
+	// machine-global cachedGrowthBookFeatures.tengu_harbor_kite slot in
+	// ~/.claude.json. It is an upstream internal flag rather than a documented
+	// interface, so the name can change without notice; it exists here because
+	// the doctor Shared Flag Slot check reports it (card t702). MoAI neither
+	// reads nor writes it outside that diagnostic; the const centralizes the
+	// name per CLAUDE.local.md §14.
+	EnvClaudeCodeHarborKite = "CLAUDE_CODE_HARBOR_KITE"
 )
 
 // Anthropic API environment variables.

@@ -1,9 +1,8 @@
 # MoAI Worktree Reference
 
-Purpose: External resources, documentation, and additional learning materials for moai-worktree skill.
+Purpose: External resources, documentation, and additional learning materials for the moai-workflow-worktree skill.
 
 Version: 1.0.0
-Last Updated: 2025-11-29
 
 ---
 
@@ -27,23 +26,6 @@ Last Updated: 2025-11-29
  - Setting up multi-root workspaces for worktree development
  - Workspace configuration and task automation
  - Extension management across worktrees
-
-- Click Framework: [https://click.palletsprojects.com/](https://click.palletsprojects.com/)
- - Command-line interface framework used by moai-worktree
- - Advanced CLI patterns and argument parsing
- - Custom command development
-
-### Python Development Resources
-
-- Rich Library: [https://rich.readthedocs.io/](https://rich.readthedocs.io/)
- - Terminal output formatting used by moai-worktree
- - Tables, progress bars, and syntax highlighting
- - Advanced terminal UI patterns
-
-- Pathlib Documentation: [https://docs.python.org/3/library/pathlib.html](https://docs.python.org/3/library/pathlib.html)
- - Modern path manipulation for cross-platform compatibility
- - File system operations and directory traversal
- - Path validation and security considerations
 
 ---
 
@@ -124,23 +106,6 @@ Last Updated: 2025-11-29
  - Reduce overhead for large codebase worktrees
  - Improve sync performance across multiple worktrees
 
-### Optimization Techniques
-
-1. Shallow Worktrees: For fast prototyping and testing
- ```bash
- moai-worktree new SPEC-PROTO-001 "Prototype" --shallow --depth 1
- ```
-
-2. Selective Synchronization: Sync only essential files
- ```bash
- moai-worktree sync SPEC-001 --include "src/" --exclude "node_modules/"
- ```
-
-3. Background Operations: Non-blocking worktree operations
- ```bash
- moai-worktree sync --all --background
- ```
-
 ---
 
 ## Security Considerations
@@ -173,100 +138,6 @@ Last Updated: 2025-11-29
  - Comprehensive security audit across worktrees
  - API key and credential detection
  - Custom pattern matching for project-specific secrets
-
----
-
-## Integration Examples
-
-### CI/CD Integration
-
-#### GitHub Actions Workflow
-
-```yaml
-# .github/workflows/worktree-testing.yml
-name: Worktree Testing
-
-on:
- push:
- branches: [ "feature/SPEC-*" ]
-
-jobs:
- test-worktree:
- runs-on: ubuntu-latest
- steps:
- - uses: actions/checkout@v3
- with:
- fetch-depth: 0
-
- - name: Setup moai-worktree
- run: |
- go install github.com/modu-ai/moai-adk/cmd/moai@latest
- echo "Setting up worktree environment..."
-
- - name: Test Worktree Operations
- run: |
- # Test worktree creation
- moai-worktree new test-spec "Test Worktree"
-
- # Test worktree synchronization
- moai-worktree sync test-spec
-
- # Test worktree cleanup
- moai-worktree remove test-spec
-```
-
-#### Jenkins Pipeline
-
-```groovy
-// Jenkinsfile for worktree testing
-pipeline {
- agent any
-
- stages {
- stage('Setup') {
- steps {
- sh '''
- go install github.com/modu-ai/moai-adk/cmd/moai@latest
- moai-worktree config set worktree_root $WORKSPACE/worktrees
- '''
- }
- }
-
- stage('Test') {
- parallel {
- stage('Auth Worktree') {
- steps {
- sh '''
- moai-worktree new SPEC-AUTH-001 "Authentication Worktree"
- cd $(moai-worktree go SPEC-AUTH-001)
- npm test
- '''
- }
- }
-
- stage('Payment Worktree') {
- steps {
- sh '''
- moai-worktree new SPEC-PAY-001 "Payment Worktree"
- cd $(moai-worktree go SPEC-PAY-001)
- npm test
- '''
- }
- }
- }
- }
-
- stage('Cleanup') {
- steps {
- sh '''
- moai-worktree clean --force
- rm -rf $WORKSPACE/worktrees
- '''
- }
- }
- }
-}
-```
 
 ---
 
@@ -353,5 +224,4 @@ mkdocs build
 ---
 
 Version: 1.0.0
-Last Updated: 2025-11-29
-Reference: External resources and additional learning materials for moai-worktree
+Reference: External resources and additional learning materials for the moai-workflow-worktree skill

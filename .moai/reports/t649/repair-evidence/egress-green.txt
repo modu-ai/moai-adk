@@ -1,0 +1,10 @@
+=== RUN   TestRegressionNativeEgressPreservesOpaqueItemBytes
+=== RUN   TestRegressionNativeEgressPreservesOpaqueItemBytes/false
+    replay_egress_test.go:51: observed subscription request: {"input":[{"content":[{"text":"hello","type":"input_text"}],"role":"user"},{ "type":"reasoning", "id":"rs_audit", "summary":[], "encrypted_content":"synthetic_cipher" },{"content":[{"text":"answer","type":"output_text"}],"role":"assistant"},{"content":[{"text":"continue","type":"input_text"}],"role":"user"}],"model":"gpt-5.6-sol","store":false,"stream":true}
+=== RUN   TestRegressionNativeEgressPreservesOpaqueItemBytes/true
+    replay_egress_test.go:51: observed subscription request: {"input":[{"content":[{"text":"hello","type":"input_text"}],"role":"user"},{ "type":"reasoning", "id":"rs_audit", "summary":[], "encrypted_content":"synthetic_cipher" },{"content":[{"text":"answer","type":"output_text"}],"role":"assistant"},{"content":[{"text":"continue","type":"input_text"}],"role":"user"}],"model":"gpt-5.6-sol","store":false,"stream":true}
+--- PASS: TestRegressionNativeEgressPreservesOpaqueItemBytes (0.04s)
+    --- PASS: TestRegressionNativeEgressPreservesOpaqueItemBytes/false (0.03s)
+    --- PASS: TestRegressionNativeEgressPreservesOpaqueItemBytes/true (0.01s)
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/gateway	0.435s

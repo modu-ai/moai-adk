@@ -8,6 +8,7 @@ import (
 
 	"charm.land/huh/v2"
 	"charm.land/lipgloss/v2"
+	"github.com/mattn/go-runewidth"
 
 	"github.com/modu-ai/moai-adk/internal/tui"
 )
@@ -33,8 +34,8 @@ func Run(questions []Question, styles *Styles) (*WizardResult, error) {
 // retired (SPEC-CLI-WIZARD-RESTRUCTURE-001 REQ-WIZ-018), because every user now
 // sees the same three pages and no flag changes what is asked.
 func RunWithDefaults(projectRoot, locale, userName string) (*WizardResult, error) {
-	// The full 3-page init set (Basic / Model & Report / Quality & Workflow).
-	// Page 3 is unconditional — every user sees it
+	// The full 2-page init set (Basic / Agents & Autonomy), the Q5 regroup.
+	// Both pages are unconditional — every user sees them
 	// (SPEC-CLI-WIZARD-RESTRUCTURE-001 REQ-WIZ-001/002).
 	questions := InitQuestions(projectRoot)
 
@@ -145,6 +146,7 @@ func buildUnifiedForm(questions []Question, result *WizardResult, locale string)
 	groups := buildFormGroups(questions, result, &currentLocale)
 	return huh.NewForm(groups...).
 		WithTheme(newMoAIWizardTheme()).
+		WithKeyMap(localizedKeyMap(locale)).
 		WithAccessible(false)
 }
 
@@ -254,19 +256,95 @@ func visibleQuestionIndex(questions []Question, result *WizardResult, id string)
 	return idx
 }
 
-// stepperNote renders the live step indicator above each group (AC-CLI-TUI-007
-// succession). The huh v2 eval mechanism re-computes TitleFunc whenever the
-// bound result struct changes (hashstructure deep-hash), so numerator and
-// denominator both track conditional-question visibility as answers land.
+// questionVisibility carries the live stepper arithmetic behind closures so
+// the stepper does not name a result type (design.md §4): count returns how
+// many questions are currently visible; index returns the 1-based position of
+// the question with the given ID among the visible ones.
+type questionVisibility struct {
+	count func() int
+	index func(id string) int
+}
+
+// wizardResultVisibility adapts the init wizard's *WizardResult to the
+// generalized stepper — the thin wrapper design.md §4 names, so the init
+// wizard's rendered stepper strings stay byte-identical (AC-ITI-009's init
+// control group).
+func wizardResultVisibility(questions []Question, result *WizardResult) questionVisibility {
+	return questionVisibility{
+		count: func() int { return stepperDenominator(questions, result) },
+		index: func(id string) int { return visibleQuestionIndex(questions, result, id) },
+	}
+}
+
+// stepperNote renders the live step indicator above each init-wizard group
+// (AC-CLI-TUI-007 succession): the generalized stepper bound to *WizardResult
+// through wizardResultVisibility.
 func stepperNote(questions []Question, first *Question, result *WizardResult) *huh.Note {
-	id := first.ID
+	return genericStepperNote(first.ID, result, wizardResultVisibility(questions, result))
+}
+
+// genericStepperNote renders the step indicator for any binding target. The
+// huh v2 eval mechanism re-computes TitleFunc whenever the bound value
+// changes (hashstructure deep-hash), so numerator and denominator both track
+// visibility as answers land. The string itself is tui.Stepper(k, N, nil) for
+// every wizard — profile and init render the same format (design.md §4,
+// REQ-ITI-008).
+func genericStepperNote(id string, bind any, vis questionVisibility) *huh.Note {
 	return huh.NewNote().TitleFunc(func() string {
-		return tui.Stepper(
-			visibleQuestionIndex(questions, result, id),
-			stepperDenominator(questions, result),
-			nil,
-		)
-	}, result)
+		return tui.Stepper(vis.index(id), vis.count(), nil)
+	}, bind)
+}
+
+// optionColumnWidthCap caps the option-label padding target so the aligned
+// description column never exceeds a standard terminal's usable width
+// (design.md §8: "터미널 폭을 넘지 않게 자름").
+const optionColumnWidthCap = 80
+
+// selectFieldUsableWidth is the content width a select field wraps its
+// description at, after the card border and padding (measured on the 80-col
+// form: content spans columns 2-77).
+const selectFieldUsableWidth = 76
+
+// selectHeight computes the TOTAL field height (title + wrapped description
+// + every option row) for a select whose OptionsFunc carries the dynamic
+// option set. huh v2 subtracts the title/description rows from this value to
+// size the option viewport, so passing the exact total renders every option
+// with no blank card rows (REQ-ITI-015, AC-ITI-016). The description wrap is
+// recomputed at the usable width so a long description never hides options.
+func selectHeight(q *Question) int {
+	descLines := lipgloss.Height(lipgloss.NewStyle().Width(selectFieldUsableWidth).Render(q.Description))
+	return 1 + descLines + len(q.Options)
+}
+
+// alignOptionLabels renders one option per label/desc pair with the
+// DESCRIPTION column aligned: every label is padded — by DISPLAY width (East
+// Asian wide runes count 2, via go-runewidth), never by runes or bytes — to
+// the widest label in the set (capped at optionColumnWidthCap), then the
+// description follows after " - ". This replaces the wizard.go:290 simple
+// label+" - "+desc concat (design.md §8, REQ-ITI-016/AC-ITI-017).
+func alignOptionLabels(opts []Option) []huh.Option[string] {
+	maxW := 0
+	for _, o := range opts {
+		if w := runewidth.StringWidth(o.Label); w > maxW {
+			maxW = w
+		}
+	}
+	if maxW > optionColumnWidthCap {
+		maxW = optionColumnWidthCap
+	}
+	out := make([]huh.Option[string], len(opts))
+	for i, o := range opts {
+		pad := maxW - runewidth.StringWidth(o.Label)
+		if pad < 0 {
+			pad = 0
+		}
+		key := o.Label + strings.Repeat(" ", pad)
+		if o.Desc != "" {
+			key += " - " + o.Desc
+		}
+		out[i] = huh.NewOption(key, o.Value)
+	}
+	return out
 }
 
 // buildSelectField creates a huh.Select field for a select-type question.
@@ -280,18 +358,11 @@ func buildSelectField(q *Question, result *WizardResult, locale *string) *huh.Se
 
 	// optionsFn re-derives the localized huh options from the current locale.
 	// It is used two ways below: once eagerly to seed the materialized option
-	// set (Options), and again as the reactive OptionsFunc.
+	// set (Options), and again as the reactive OptionsFunc. The description
+	// column is aligned by display width (AC-ITI-017).
 	optionsFn := func() []huh.Option[string] {
 		lq := GetLocalizedQuestion(q, *locale)
-		opts := make([]huh.Option[string], len(lq.Options))
-		for i, opt := range lq.Options {
-			key := opt.Label
-			if opt.Desc != "" {
-				key = opt.Label + " - " + opt.Desc
-			}
-			opts[i] = huh.NewOption(key, opt.Value)
-		}
-		return opts
+		return alignOptionLabels(lq.Options)
 	}
 
 	// Seed the materialized option set (Options) with the build-time locale AND
@@ -319,6 +390,7 @@ func buildSelectField(q *Question, result *WizardResult, locale *string) *huh.Se
 		}, locale).
 		Options(optionsFn()...).
 		OptionsFunc(optionsFn, locale).
+		Height(selectHeight(q)).
 		Value(&selected)
 
 	// Wire up value storage (huh runs Validate on field completion/blur).
@@ -429,24 +501,11 @@ func saveAnswer(id, value string, result *WizardResult, locale *string) {
 		result.GitLabUsername = value
 	case "gitlab_token":
 		result.GitLabToken = value
-	// Page-3 field (REQ-IWE-001). harness_profile is no longer asked
-	// (REQ-WIZ-012), so it has no capture branch.
-	case "project_mode":
-		result.ProjectMode = value
+	// Page-3 field. harness_profile (REQ-WIZ-012) and the eleven page-3
+	// questions removed by SPEC-INIT-QUIET-WIZARD-001 are no longer asked, so
+	// they have no capture branch.
 	case "autonomy_tier":
 		result.AutonomyTier = value
-	// SPEC-PROJECT-CONTINUATION-KEY-001 (REQ-PCK-010): the /moai project
-	// completion selection, persisted to workflow.project.continuation.
-	case "project_continuation":
-		result.ProjectContinuation = value
-	case "audit_model":
-		result.AuditModel = value
-	case "audit_gate_claude":
-		result.AuditGateClaude = value
-	case "audit_gate_codex":
-		result.AuditGateCodex = value
-	case "audit_gate_glm":
-		result.AuditGateGLM = value
 	// SPEC-INIT-HARNESS-PROMPT-001 (REQ-IHP-002): the harness selection, read
 	// downstream by resolveAgentWiringWithWizard.
 	case "agent_wiring":
@@ -457,31 +516,16 @@ func saveAnswer(id, value string, result *WizardResult, locale *string) {
 
 // saveBoolAnswer stores a boolean answer in the result.
 //
-// The four former page-3 confirm questions (lsp_enabled, enforce_quality,
-// design_enabled, claude_design_enabled) are no longer asked — fixed at their
-// shipped true defaults (removed 2026-08-03). Their capture branches are gone
-// (M3 invariant: a removed question stores nothing). No page-3 boolean
-// question remains interactive, so this is now a no-op for the init/update
-// set; it is still wired through buildConfirmField for any future confirm
-// question and is exercised by the removal tests.
-func saveBoolAnswer(id string, value bool, result *WizardResult) {
-	switch id {
-	case "worktree_auto_create":
-		result.WorktreeAutoCreate = value
-	case "codex_audit_enabled":
-		result.CodexAuditEnabled = value
-	case "mcp_provision":
-		result.MCPProvision = value
-	case "todo_enabled":
-		// Recorded as an explicit answer either way: reaching this branch means
-		// the question was asked, which is precisely what nil does not mean.
-		result.TodoEnabled = &value
-	case "feedback_auto_submit":
-		// Pointer for the same reason as todo_enabled: reaching this branch
-		// means the question was asked, which nil does not mean.
-		result.FeedbackAutoSubmit = &value
-	}
-}
+// No confirm question remains in the init or reconfigure set: the four former
+// page-3 confirms (lsp_enabled, enforce_quality, design_enabled,
+// claude_design_enabled) are fixed at their shipped true defaults (removed
+// 2026-08-03), and the five remaining confirms (worktree auto-creation,
+// backlog queue, feedback auto-submit, codex review gate, MCP provisioning)
+// were removed by SPEC-INIT-QUIET-WIZARD-001. A removed question stores
+// nothing (M3 invariant), so this is a no-op; it stays wired through
+// buildConfirmField for any future confirm question and is exercised by the
+// removal tests.
+func saveBoolAnswer(id string, value bool, result *WizardResult) {}
 
 // buildConfirmField creates a huh.Confirm field for a boolean question.
 func buildConfirmField(q *Question, result *WizardResult, locale *string) *huh.Confirm {
@@ -508,6 +552,7 @@ func buildConfirmField(q *Question, result *WizardResult, locale *string) *huh.C
 		}, locale).
 		Affirmative(ui.ConfirmYes).
 		Negative(ui.ConfirmNo).
+		WithButtonAlignment(lipgloss.Left).
 		Value(&value)
 
 	qID := q.ID
@@ -554,7 +599,7 @@ func moaiWizardStyles(isDark bool) *huh.Styles {
 	t.Focused.Base = t.Focused.Base.BorderForeground(fg(c.Border))
 	t.Focused.Card = t.Focused.Base
 	t.Focused.Title = t.Focused.Title.Foreground(fg(c.Primary)).Bold(true)
-	t.Focused.NoteTitle = t.Focused.NoteTitle.Foreground(fg(c.Primary)).Bold(true).MarginBottom(1)
+	t.Focused.NoteTitle = t.Focused.NoteTitle.Foreground(fg(c.Primary)).Bold(true)
 	t.Focused.Description = t.Focused.Description.Foreground(fg(c.Body))
 	t.Focused.ErrorIndicator = t.Focused.ErrorIndicator.Foreground(fg(c.Error))
 	t.Focused.ErrorMessage = t.Focused.ErrorMessage.Foreground(fg(c.Error))
@@ -576,6 +621,13 @@ func moaiWizardStyles(isDark bool) *huh.Styles {
 	t.Focused.BlurredButton = t.Focused.BlurredButton.
 		Foreground(fg(c.Text)).
 		Background(fg(c.ButtonBlurredBg))
+	// REQ-ITI-014: huh's default button style pads the label 2 columns left,
+	// which pushed the confirm button's LABEL to column 4 while the question
+	// description starts at column 2 (AC-ITI-015). Dropping the left padding
+	// puts the label on the description's column; WithButtonAlignment(Left)
+	// (set on each confirm field) handles the rest.
+	t.Focused.FocusedButton = t.Focused.FocusedButton.PaddingLeft(0)
+	t.Focused.BlurredButton = t.Focused.BlurredButton.PaddingLeft(0)
 	t.Focused.Next = t.Focused.FocusedButton
 
 	t.Blurred = t.Focused
@@ -586,6 +638,11 @@ func moaiWizardStyles(isDark bool) *huh.Styles {
 
 	t.Group.Title = t.Focused.Title
 	t.Group.Description = t.Focused.Description
+
+	// REQ-ITI-015: huh's default FieldSeparator renders a BLANK line between
+	// consecutive fields; a single newline joins them directly (AC-ITI-016 —
+	// pre-fix the init first page carried 4 empty card rows).
+	t.FieldSeparator = lipgloss.NewStyle().SetString("\n")
 
 	return t
 }

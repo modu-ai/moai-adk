@@ -1,0 +1,171 @@
+2026/09/11 04:22:51 INFO agentStartHandler: blocked retired agent spawn agent=manager-tdd replacement=manager-develop
+2026/09/11 04:22:51 INFO agentStartHandler: blocked retired agent spawn agent=manager-tdd replacement=manager-develop
+2026/09/11 04:22:51 INFO agentStartHandler: blocked retired agent spawn agent=manager-tdd replacement=manager-develop
+2026/09/11 04:22:51 INFO agentStartHandler: blocked retired agent spawn agent=manager-tdd replacement=manager-develop
+2026/09/11 04:22:51 INFO agentStartHandler: blocked retired agent spawn agent=manager-tdd replacement=manager-develop
+2026/09/11 04:22:51 INFO agentStartHandler: blocked retired agent spawn agent=manager-tdd replacement=manager-develop
+2026/09/11 04:22:51 INFO agentStartHandler: blocked retired agent spawn agent=manager-tdd replacement=manager-develop
+2026/09/11 04:22:51 INFO agentStartHandler: blocked retired agent spawn agent=manager-tdd replacement=manager-develop
+2026/09/11 04:22:51 INFO agentStartHandler: blocked retired agent spawn agent=manager-tdd replacement=manager-develop
+2026/09/11 04:22:51 INFO agentStartHandler: blocked retired agent spawn agent=manager-tdd replacement=manager-develop
+2026/09/11 04:22:51 INFO agentStartHandler: blocked retired agent spawn agent=manager-tdd replacement=manager-develop
+2026/09/11 04:22:51 INFO agentStartHandler: blocked retired agent spawn agent=manager-tdd replacement=manager-develop
+2026/09/11 04:22:51 INFO agentStartHandler: blocked retired agent spawn agent=manager-tdd replacement=manager-develop
+2026/09/11 04:22:51 INFO agentStartHandler: blocked retired agent spawn agent=manager-tdd replacement=manager-develop
+2026/09/11 04:22:51 INFO agentStartHandler: blocked retired agent spawn agent=manager-tdd replacement=manager-develop
+2026/09/11 04:22:51 INFO agentStartHandler: blocked retired agent spawn agent=manager-tdd replacement=manager-develop
+2026/09/11 04:22:51 INFO agentStartHandler: blocked retired agent spawn agent=manager-tdd replacement=manager-develop
+2026/09/11 04:22:51 INFO agentStartHandler: blocked retired agent spawn agent=manager-tdd replacement=manager-develop
+2026/09/11 04:22:51 INFO agentStartHandler: blocked retired agent spawn agent=manager-tdd replacement=manager-develop
+2026/09/11 04:22:51 INFO agentStartHandler: blocked retired agent spawn agent=manager-tdd replacement=manager-develop
+2026/09/11 04:22:51 INFO agentStartHandler: blocked retired agent spawn agent=manager-tdd replacement=manager-develop
+2026/09/11 04:22:51 INFO agentStartHandler: blocked retired agent spawn agent=manager-tdd replacement=manager-develop
+2026/09/11 04:22:51 INFO agentStartHandler: blocked retired agent spawn agent=manager-tdd replacement=manager-develop
+2026/09/11 04:22:51 INFO agentStartHandler: blocked retired agent spawn agent=manager-tdd replacement=manager-develop
+2026/09/11 04:22:51 INFO agentStartHandler: blocked retired agent spawn agent=manager-tdd replacement=manager-develop
+2026/09/11 04:22:51 INFO agentStartHandler: blocked retired agent spawn agent=manager-tdd replacement=manager-develop
+2026/09/11 04:22:51 INFO agentStartHandler: blocked retired agent spawn agent=manager-tdd replacement=manager-develop
+2026/09/11 04:22:51 INFO agentStartHandler: blocked retired agent spawn agent=manager-tdd replacement=manager-develop
+2026/09/11 04:22:51 INFO agentStartHandler: blocked retired agent spawn agent=manager-tdd replacement=manager-develop
+2026/09/11 04:22:51 INFO agentStartHandler: blocked retired agent spawn agent=manager-tdd replacement=manager-develop
+2026/09/11 04:22:51 INFO agentStartHandler: blocked retired agent spawn agent=manager-tdd replacement=manager-develop
+2026/09/11 04:22:51 INFO agentStartHandler: blocked retired agent spawn agent=manager-tdd replacement=manager-develop
+2026/09/11 04:22:51 INFO agentStartHandler: blocked retired agent spawn agent=manager-tdd replacement=manager-develop
+2026/09/11 04:22:51 INFO agentStartHandler: blocked retired agent spawn agent=manager-tdd replacement=manager-develop
+2026/09/11 04:22:51 INFO agentStartHandler: blocked retired agent spawn agent=manager-tdd replacement=manager-develop
+2026/09/11 04:22:51 INFO agentStartHandler: blocked retired agent spawn agent=manager-tdd replacement=manager-develop
+2026/09/11 04:22:51 INFO agentStartHandler: blocked retired agent spawn agent=manager-tdd replacement=manager-develop
+2026/09/11 04:22:51 INFO agentStartHandler: blocked retired agent spawn agent=manager-tdd replacement=manager-develop
+2026/09/11 04:22:51 INFO agentStartHandler: blocked retired agent spawn agent=manager-tdd replacement=manager-develop
+2026/09/11 04:22:51 INFO agentStartHandler: blocked retired agent spawn agent=manager-tdd replacement=manager-develop
+2026/09/11 04:22:51 INFO agentStartHandler: blocked retired agent spawn agent=manager-tdd replacement=manager-develop
+2026/09/11 04:22:51 INFO agentStartHandler: blocked retired agent spawn agent=manager-tdd replacement=manager-develop
+2026/09/11 04:22:51 INFO agentStartHandler: blocked retired agent spawn agent=manager-tdd replacement=manager-develop
+2026/09/11 04:22:51 INFO agentStartHandler: blocked retired agent spawn agent=manager-tdd replacement=manager-develop
+2026/09/11 04:22:51 INFO agentStartHandler: blocked retired agent spawn agent=manager-tdd replacement=manager-develop
+2026/09/11 04:22:51 INFO agentStartHandler: blocked retired agent spawn agent=manager-tdd replacement=manager-develop
+2026/09/11 04:22:51 INFO agentStartHandler: blocked retired agent spawn agent=manager-tdd replacement=manager-develop
+2026/09/11 04:22:51 INFO agentStartHandler: blocked retired agent spawn agent=manager-tdd replacement=manager-develop
+2026/09/11 04:22:51 INFO agentStartHandler: blocked retired agent spawn agent=manager-tdd replacement=manager-develop
+2026/09/11 04:22:51 INFO agentStartHandler: blocked retired agent spawn agent=manager-tdd replacement=manager-develop
+2026/09/11 04:22:51 INFO agentStartHandler: blocked retired agent spawn agent=manager-tdd replacement=manager-develop
+2026/09/11 04:22:51 INFO agentStartHandler: blocked retired agent spawn agent=manager-tdd replacement=manager-develop
+2026/09/11 04:22:51 INFO agentStartHandler: blocked retired agent spawn agent=manager-tdd replacement=manager-develop
+2026/09/11 04:22:51 INFO agentStartHandler: blocked retired agent spawn agent=manager-tdd replacement=manager-develop
+2026/09/11 04:22:51 INFO agentStartHandler: blocked retired agent spawn agent=manager-tdd replacement=manager-develop
+2026/09/11 04:22:51 INFO agentStartHandler: blocked retired agent spawn agent=manager-tdd replacement=manager-develop
+2026/09/11 04:22:51 INFO agentStartHandler: blocked retired agent spawn agent=manager-tdd replacement=manager-develop
+2026/09/11 04:22:51 INFO agentStartHandler: blocked retired agent spawn agent=manager-tdd replacement=manager-develop
+2026/09/11 04:22:51 INFO agentStartHandler: blocked retired agent spawn agent=manager-tdd replacement=manager-develop
+2026/09/11 04:22:51 INFO agentStartHandler: blocked retired agent spawn agent=manager-tdd replacement=manager-develop
+2026/09/11 04:22:51 INFO agentStartHandler: blocked retired agent spawn agent=manager-tdd replacement=manager-develop
+2026/09/11 04:22:51 INFO agentStartHandler: blocked retired agent spawn agent=manager-tdd replacement=manager-develop
+2026/09/11 04:22:51 INFO agentStartHandler: blocked retired agent spawn agent=manager-tdd replacement=manager-develop
+2026/09/11 04:22:51 INFO agentStartHandler: blocked retired agent spawn agent=manager-tdd replacement=manager-develop
+2026/09/11 04:22:51 INFO agentStartHandler: blocked retired agent spawn agent=manager-tdd replacement=manager-develop
+2026/09/11 04:22:51 INFO agentStartHandler: blocked retired agent spawn agent=manager-tdd replacement=manager-develop
+2026/09/11 04:22:51 INFO agentStartHandler: blocked retired agent spawn agent=manager-tdd replacement=manager-develop
+2026/09/11 04:22:51 INFO agentStartHandler: blocked retired agent spawn agent=manager-tdd replacement=manager-develop
+2026/09/11 04:22:51 INFO agentStartHandler: blocked retired agent spawn agent=manager-tdd replacement=manager-develop
+2026/09/11 04:22:51 INFO agentStartHandler: blocked retired agent spawn agent=manager-tdd replacement=manager-develop
+2026/09/11 04:22:51 INFO agentStartHandler: blocked retired agent spawn agent=manager-tdd replacement=manager-develop
+2026/09/11 04:22:51 INFO agentStartHandler: blocked retired agent spawn agent=manager-tdd replacement=manager-develop
+2026/09/11 04:22:51 INFO agentStartHandler: blocked retired agent spawn agent=manager-tdd replacement=manager-develop
+2026/09/11 04:22:51 INFO agentStartHandler: blocked retired agent spawn agent=manager-tdd replacement=manager-develop
+2026/09/11 04:22:51 INFO agentStartHandler: blocked retired agent spawn agent=manager-tdd replacement=manager-develop
+2026/09/11 04:22:51 INFO agentStartHandler: blocked retired agent spawn agent=manager-tdd replacement=manager-develop
+2026/09/11 04:22:51 INFO agentStartHandler: blocked retired agent spawn agent=manager-tdd replacement=manager-develop
+2026/09/11 04:22:51 INFO agentStartHandler: blocked retired agent spawn agent=manager-tdd replacement=manager-develop
+2026/09/11 04:22:51 INFO agentStartHandler: blocked retired agent spawn agent=manager-tdd replacement=manager-develop
+2026/09/11 04:22:51 INFO agentStartHandler: blocked retired agent spawn agent=manager-tdd replacement=manager-develop
+2026/09/11 04:22:51 INFO agentStartHandler: blocked retired agent spawn agent=manager-tdd replacement=manager-develop
+2026/09/11 04:22:51 INFO agentStartHandler: blocked retired agent spawn agent=manager-tdd replacement=manager-develop
+2026/09/11 04:22:51 INFO agentStartHandler: blocked retired agent spawn agent=manager-tdd replacement=manager-develop
+2026/09/11 04:22:51 INFO agentStartHandler: blocked retired agent spawn agent=manager-tdd replacement=manager-develop
+2026/09/11 04:22:51 INFO agentStartHandler: blocked retired agent spawn agent=manager-tdd replacement=manager-develop
+2026/09/11 04:22:51 INFO agentStartHandler: blocked retired agent spawn agent=manager-tdd replacement=manager-develop
+2026/09/11 04:22:51 INFO agentStartHandler: blocked retired agent spawn agent=manager-tdd replacement=manager-develop
+2026/09/11 04:22:51 INFO agentStartHandler: blocked retired agent spawn agent=manager-tdd replacement=manager-develop
+2026/09/11 04:22:51 INFO agentStartHandler: blocked retired agent spawn agent=manager-tdd replacement=manager-develop
+2026/09/11 04:22:51 INFO agentStartHandler: blocked retired agent spawn agent=manager-tdd replacement=manager-develop
+2026/09/11 04:22:51 INFO agentStartHandler: blocked retired agent spawn agent=manager-tdd replacement=manager-develop
+2026/09/11 04:22:51 INFO agentStartHandler: blocked retired agent spawn agent=manager-tdd replacement=manager-develop
+2026/09/11 04:22:51 INFO agentStartHandler: blocked retired agent spawn agent=manager-tdd replacement=manager-develop
+2026/09/11 04:22:51 INFO agentStartHandler: blocked retired agent spawn agent=manager-tdd replacement=manager-develop
+2026/09/11 04:22:51 INFO agentStartHandler: blocked retired agent spawn agent=manager-tdd replacement=manager-develop
+2026/09/11 04:22:51 INFO agentStartHandler: blocked retired agent spawn agent=manager-tdd replacement=manager-develop
+2026/09/11 04:22:51 INFO agentStartHandler: blocked retired agent spawn agent=manager-tdd replacement=manager-develop
+2026/09/11 04:22:51 INFO agentStartHandler: blocked retired agent spawn agent=manager-tdd replacement=manager-develop
+2026/09/11 04:22:51 INFO agentStartHandler: blocked retired agent spawn agent=manager-tdd replacement=manager-develop
+2026/09/11 04:22:51 INFO agentStartHandler: blocked retired agent spawn agent=manager-tdd replacement=manager-develop
+2026/09/11 04:22:52 WARN askuser_observer: failed to create logs dir dir=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestAskUserQuestionObserverFailOpenUnwritableLogPath2749696833/001/.moai/logs error="mkdir /var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestAskUserQuestionObserverFailOpenUnwritableLogPath2749696833/001/.moai/logs: not a directory"
+2026/09/11 04:22:52 WARN askuser_observer: failed to open observation log path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestAskUserQuestionObserverFailOpenUnwritableLogFile3040757269/001/.moai/logs/askuser-observations.jsonl error="open /var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestAskUserQuestionObserverFailOpenUnwritableLogFile3040757269/001/.moai/logs/askuser-observations.jsonl: is a directory"
+2026/09/11 04:22:53 INFO auto-update completed previous=v2.0.0 new=v2.0.1
+branch_guard: fail-open for command "git rebase origin/main" at cwd "/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestBranchGuard_AuditLog_Placement2634986842/002/wt" (audit-log dir "/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestBranchGuard_AuditLog_Placement2634986842/001"): resolve git dirs: --absolute-git-dir failed: git rev-parse --absolute-git-dir: exited with status 1 ()
+2026/09/11 04:22:58 INFO chain-event: completion edge appended parent=N0 child=N1 milestone=M2
+2026/09/11 04:22:58 INFO chain-event: completion edge appended parent="" child=N1 milestone=M2-done
+2026/09/11 04:22:58 INFO working directory changed session_id=sess-t74-relocate old_cwd=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestCwdChangedHandler_RelocatesRegistryCwd3027196406/001 new_cwd=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestCwdChangedHandler_RelocatesRegistryCwd3027196406/002
+2026/09/11 04:22:58 INFO working directory changed session_id=sess-t74-exit old_cwd=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestCwdChangedHandler_RelocateIsSymmetricOnExit1047346929/002 new_cwd=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestCwdChangedHandler_RelocateIsSymmetricOnExit1047346929/001
+2026/09/11 04:22:58 INFO working directory changed session_id=sess-t74-none old_cwd="" new_cwd=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestCwdChangedHandler_RelocateNoRegistryNoOp186774415/002
+2026/09/11 04:22:58 INFO working directory changed session_id=sess-append old_cwd="" new_cwd=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestCwdChangedHandler_EnvFileAppendPreservesContent3510163575/001
+2026/09/11 04:22:58 INFO working directory changed session_id=sess-append old_cwd="" new_cwd=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestCwdChangedHandler_EnvFileAppendPreservesContent3510163575/001
+2026/09/11 04:22:58 INFO working directory changed session_id=sess-001 old_cwd=/Users/user/project new_cwd=/Users/user/project/src
+2026/09/11 04:22:58 INFO working directory changed session_id="" old_cwd="" new_cwd=""
+2026/09/11 04:22:58 INFO working directory changed session_id=sess-002 old_cwd="" new_cwd=/
+2026/09/11 04:22:58 INFO working directory changed session_id=sess-env old_cwd="" new_cwd=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestCwdChangedHandler_EnvFile3849766086/001
+2026/09/11 04:22:58 INFO working directory changed session_id=sess-no-moai old_cwd="" new_cwd=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestCwdChangedHandler_NoEnvFileWithoutMoaiDir373019479/001
+2026/09/11 04:22:58 WARN evidence writer: failed to record tool=Bash session_id=sess-fail error="telemetry: mkdir: mkdir /var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestLogEvidence_FailOpen_ReadOnlyParent3273313296/001/.moai/evolution: not a directory"
+2026/09/11 04:22:59 INFO tool execution failed session_id=sess-fail-001 tool_name=Bash tool_use_id=tool-123 error="exit status 1" is_interrupt=false category=ExitError
+2026/09/11 04:22:59 INFO tool execution failed session_id=sess-ec1 tool_name="" tool_use_id="" error="exit status 2" is_interrupt=false category=ExitError
+2026/09/11 04:22:59 WARN file_changed async: FilePath escapes project root, skipping MX scan (containment) path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestRunMXScan_RejectsUncontainedSidecarCWD3932283205/001/ok.go project_root=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestRunMXScan_RejectsUncontainedSidecarCWD3932283205/002
+2026/09/11 04:23:17 WARN session_start: handoff: embedded goal is unbounded (MaxTurns=0 with no real bound); rejecting rearm (D8 defense-in-depth) condition="unbounded exits 0"
+[moai:integration-lock] advisory: cannot read the integration lock (integration lock at /var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestCheckIntegrationLock_FailsOpenunreadable_record3577861762/001/.moai/state/integration-lock.json is unreadable: invalid character 'n' looking for beginning of object key string); allowing
+[moai:integration-lock] advisory: this session has no id; cannot tell it from the holder (sess-holder) — allowing
+[moai:integration-lock] advisory: holder sess-dead (pid 2147483632) is gone; allowing — reclaim with `moai integration acquire`
+[moai:integration-lock] advisory: holder sess-holder (pid 2147483632) is gone; allowing — reclaim with `moai integration acquire`
+branch_guard: fail-open for command "git switch -c feat/test" at cwd "/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestBranchGuard_FailOpenOnGitError2689179557/001" (audit-log dir "/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestBranchGuard_FailOpenOnGitError2689179557/001"): resolve git dirs: --absolute-git-dir failed: git rev-parse --absolute-git-dir: exited with status 128 (fatal: not a git repository (or any of the parent directories): .git)
+preedit_session_guard: 2 foreign active session(s) detected during Edit edit (this session self-ses) — Pre-Edit Sync Check applies; see agent-common-protocol.md § Pre-Edit Sync Check
+preedit_session_guard: 1 foreign active session(s) detected during Write edit (this session self-id) — Pre-Edit Sync Check applies; see agent-common-protocol.md § Pre-Edit Sync Check
+<system-reminder>
+Multi-Session Coordination: 1 other active session(s) on this host
+(this session uuid-cur):
+  - uuid-oth spec=SPEC-X phase=plan age=0m pid=13226 cwd=/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t560/internal/hook
+</system-reminder>
+warning: SessionStart received empty session_id; multi-session registry write bypassed (source_session_id attribution will fall back to the environment-fallback pattern)
+--- FAIL: TestEnsureGLMCredentials (0.00s)
+    --- FAIL: TestEnsureGLMCredentials/GLM_models_without_AUTH_TOKEN_auto-injects_from_env.glm (0.00s)
+        session_start_test.go:322: expected non-empty msg when credentials auto-injected
+        session_start_test.go:342: AUTH_TOKEN = "", want "test-glm-key-123"
+        session_start_test.go:345: BASE_URL = "", want Z.AI endpoint
+        session_start_test.go:348: DISABLE_EXPERIMENTAL_BETAS should be set to 1
+--- FAIL: TestEnsureGLMCredentialsFilePerm (0.00s)
+    settings_perm_test.go:83: expected credential injection message, got empty (env file: /var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestEnsureGLMCredentialsFilePerm2320834462/001/.moai/.env.glm, exists: true)
+[evidence-gate] session sess-stdout-contract claimed success without observed binary evidence (path-kind=code-change, success claims=1, binary pass observed=false, binary fail observed=true); verify the claimed completion was actually observed
+[evidence-gate] session sess-gate-direct claimed success without observed binary evidence (path-kind=code-change, success claims=1, binary pass observed=false, binary fail observed=true); verify the claimed completion was actually observed
+branch_guard: fail-open for command "git rebase origin/main" at cwd "/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestBranchGuard_FailOpen_NonGitCwd1269649944/002" (audit-log dir "/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestBranchGuard_FailOpen_NonGitCwd1269649944/001"): resolve git dirs: --absolute-git-dir failed: git rev-parse --absolute-git-dir: exited with status 128 (fatal: not a git repository (or any of the parent directories): .git)
+branch_guard: fail-open for command "git switch -c x" at cwd "/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestAppendBranchGuardAdvisory_WriteFailure83436137/001" (audit-log dir "/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestAppendBranchGuardAdvisory_WriteFailure83436137/001"): simulated
+branch_guard: fail-open for command "git switch -c x" at cwd "/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestAppendBranchGuardAdvisory_UnwritableDir1668491569/001/notadir" (audit-log dir "/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestAppendBranchGuardAdvisory_UnwritableDir1668491569/001/notadir"): simulated rev-parse failure
+Quality gate failed for teammate "researcher": Quality Gate Check:
+  Errors: 2 (max: 0) [EXCEEDED]
+  Warnings: 0 (max: 0)
+  Status: BLOCKED - error threshold exceeded
+
+Fix errors before going idle.Quality gate failed for teammate "worker-1": Quality Gate Check:
+  Errors: 2 (max: 0) [EXCEEDED]
+  Warnings: 0 (max: 0)
+  Status: BLOCKED - error threshold exceeded
+
+Fix errors before going idle.Quality gate failed for teammate "worker-1": Quality Gate Check:
+  Errors: 3 (max: 0) [EXCEEDED]
+  Warnings: 0 (max: 0)
+  Status: BLOCKED - error threshold exceeded
+
+Fix errors before going idle.Coverage gate failed for teammate "worker-1": 50.0% < 85.0% required. Run tests to improve coverage.Task "Implement SPEC-TEAM-001 quality hooks" references SPEC SPEC-TEAM-001 but spec.md not found at /var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestTaskCompletedHandler_OfficialTaskNameKeyofficial_task_name_3150686980/001/.moai/specs/SPEC-TEAM-001/spec.md.
+Create the SPEC document before marking task complete.Task "Implement SPEC-TEAM-001 quality hooks" references SPEC SPEC-TEAM-001 but spec.md not found at /var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestTaskCompletedHandler_Handleteam_mode_with_SPEC_ID_but_spec.4036874436/001/.moai/specs/SPEC-TEAM-001/spec.md.
+Create the SPEC document before marking task complete.Task "Implement SPEC-TEAM-001 quality hooks" has 2 unchecked acceptance criteria in SPEC SPEC-TEAM-001:
+  - [ ] Requirement 2 needs testing
+  - [ ] Requirement 4 is pending
+Mark these criteria as complete ([x]) in spec.md before marking the task complete.[evidence-gate] session sess-finding claimed success without observed binary evidence (path-kind=code-change, success claims=1, binary pass observed=false, binary fail observed=true); verify the claimed completion was actually observed
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/hook	81.644s
+FAIL

@@ -219,7 +219,7 @@ workflow:
 
 ## crosssession.yaml — 세션 간 메시지
 
-내 다른 Claude Code 세션이 보내는 메시지를 이 세션이 어떻게 다룰지 정합니다. `moai cc` · `moai glm` · `moai cg` 런처가 실행 시점에 이 값을 임시 `--settings` 파일로 옮겨 담고, 웹 콘솔은 설정 seam을 통해 이 파일을 편집합니다. 런처를 거치지 않고 맨손으로 `claude`를 실행한 세션은 이 파일을 읽지 않습니다.
+내 다른 Claude Code 세션이 보내는 메시지를 이 세션이 어떻게 다룰지 정합니다. `moai cc` · `moai glm` 런처가 실행 시점에 이 값을 임시 `--settings` 파일로 옮겨 담고, 웹 콘솔은 설정 seam을 통해 이 파일을 편집합니다. 런처를 거치지 않고 맨손으로 `claude`를 실행한 세션은 이 파일을 읽지 않습니다.
 
 ```yaml
 crosssession:

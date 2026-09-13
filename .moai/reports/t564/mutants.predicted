@@ -1,0 +1,13 @@
+t564 mutants — predicted before running; each applied alone on the fix, run with
+go test ./internal/spec -count=1 -run '^(TestParser_DuplicateID_|TestLintDuplicateACID_)' -v
+then reverted before the next.
+
+M1 union disabled (parser.go: later line's reqIDs not collected)
+  FAIL CitingAboveKeepsDeclarationMapping, FAIL UnionsMappingsOfEveryLine, FAIL LintDuplicateACID_ReportsDuplicateAndKeepsCoverage (CoverageIncomplete 1)
+  PASS DeclarationAboveStillReported, PASS NoDuplicateNoFinding
+M2 lint capture disabled (lint.go parseSPECDoc: duplicates not kept on the doc)
+  FAIL LintDuplicateACID_ReportsDuplicateAndKeepsCoverage (0 findings); the other four PASS
+M3 merge moved after auto-wrap (parser.go)
+  FAIL CitingAboveKeepsDeclarationMapping (leaf .a lacks DUP-001-001); the other four PASS
+M4 duplicate line not recorded (parser.go: Line left 0)
+  FAIL LintDuplicateACID_ReportsDuplicateAndKeepsCoverage (line 0, want second occurrence); the other four PASS

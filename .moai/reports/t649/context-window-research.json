@@ -1,0 +1,32 @@
+{
+  "observed_at": "2026-09-12T02:42:20.056790+00:00",
+  "evidence_kind": "local Codex model metadata cache and source inspection; no long-request measurement",
+  "cache_fetched_at": "2026-09-12T02:42:06.406279Z",
+  "client_version": "0.153.4",
+  "models": [
+    {
+      "slug": "gpt-6-astra",
+      "context_window": 272000,
+      "max_context_window": 872000,
+      "effective_context_window_percent": 95
+    },
+    {
+      "slug": "gpt-5.6-sol",
+      "context_window": 272000,
+      "max_context_window": 872000,
+      "effective_context_window_percent": 95
+    }
+  ],
+  "codex_source_head": "5a9eb14",
+  "source_override_rule": "context_window.min(max_context_window)",
+  "api_documented_context": 1050000,
+  "runtime_long_request_verified": false,
+  "settings_changed": false,
+  "sources": [
+    "https://learn.chatgpt.com/docs/config-file/config-reference",
+    "https://learn.chatgpt.com/docs/pricing",
+    "https://developers.openai.com/api/docs/models/gpt-5.6-sol",
+    "https://developers.openai.com/api/docs/models/gpt-6-astra",
+    "https://code.claude.com/docs/en/model-config#correct-the-window-for-a-gateway-or-custom-model-id"
+  ]
+}

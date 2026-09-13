@@ -1,0 +1,27 @@
+[
+  {
+    "path": "internal/cli/gateway_prepare.go",
+    "before": "8e3807e11690165a204fc96348b2a6aafca7f46b11db7e3928c0bbb1eaeb08bf",
+    "after": "f6c80e675f7e5afdd410bcaa1881ca791f5d5a2e24d10d2b156d544ad4c011b0"
+  },
+  {
+    "path": "internal/cli/gateway_product_binding.go",
+    "before": "4c29fedf81b67476de2372a3e61808dd4480f4018bfb900be2a9ca29d34e75db",
+    "after": "324d9187808fddd65584216a5f2f7f25252fa593f12335eacacfacb063af83b9"
+  },
+  {
+    "path": "internal/cli/gateway_provider_contract_test.go",
+    "before": "26794986ce8f09f3d93258d5dc6e39b990f61dfd973e3ab424045008ecc1d0ed",
+    "after": "e66f2fbe2105a00679af0bf048292a2bc1f5486ebde2a1089219c5a21b82373f"
+  },
+  {
+    "path": "internal/gateway/catalog.go",
+    "before": "1f2073fb741027947f5142f7352964431d850deb57c74d58d1db0ed9c726d47f",
+    "after": "8e3bc23b4acf7e4febdccdb81e93e9c743805f03073d834483e16089d1b50588"
+  },
+  {
+    "path": "internal/gateway/catalog_test.go",
+    "before": "e97b55df86edc27c58efca53f9f6c538ce826eacb312b9fac106aa6a0c5af177",
+    "after": "59b69232867c734dbb274ae046100b41789a4b9d23bc592a42731b31274f6fc1"
+  }
+]

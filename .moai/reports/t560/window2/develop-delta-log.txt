@@ -1,0 +1,13 @@
+526249cf6 Merge WT-mcp-project-root: premise recheck and GH #1640 comment record (card t553)
+6d9bcb97a Merge local develop 8d9441683 into WT-mcp-project-root for integration (card t553)
+8d9441683 merge: WT-update-test-home into develop (card t661)
+ec678fe50 test(t661): record window absorb delta and card-test re-measure (card t661)
+c005ec1f1 merge: absorb local develop 84e5666d9 into WT-update-test-home (card t661)
+e09900ef5 docs(t661): add verdict for update test home isolation (card t661)
+1694ff8c0 test(t661): record full internal/cli run slot (timeout, known reds only) (card t661)
+8861553bd test(t661): record mutant RED controls and post-slot home fingerprint (card t661)
+f84538b14 test(t661): pin RED prediction and slot evidence before mutant controls (card t661)
+c3c8f867f docs(t661): export code-reading findings for update test home isolation (card t661)
+7de194e23 test(cli): sandbox userHomeDirFn and isolate update tests from the real home (card t661)
+21ee20493 Merge local develop 1bea05daa as base for card t661
+10de35928 docs(t553): premise re-check + the GH #1640 comment it produced

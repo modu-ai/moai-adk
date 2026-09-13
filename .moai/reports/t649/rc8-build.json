@@ -1,0 +1,16 @@
+{
+  "branch": "WT-unified-gateway",
+  "head": "81c1d58f9",
+  "version": "v3.2.0-rc.8",
+  "build_id": "v3.2.0-rc.8-t649-81c1d58f9-local-1e2ae87f405f",
+  "built_at": "2026-09-12T01:30:40Z",
+  "source_go_sha256": "1e2ae87f405f9c7e77d84d1b2b0b0f5a1006af502b1dde655229bfef370d1322",
+  "binary": "/tmp/moai-v3.2.0-rc.8-t649",
+  "binary_sha256": "7767eed67b43981891f2cd3cf0954d76daf480a5109c8cba14f6efde176d4092",
+  "installed": true,
+  "installed_path": "/Users/goos/go/bin/moai",
+  "backup_path": "/Users/goos/.moai/releases/moai-v3.2.0-rc.7-before-t649-d1fc54bb2a4d",
+  "backup_sha256": "d1fc54bb2a4d1a17e7c56b9f981a8612aa363c97f11a2d2dae2c3e925ab1b378",
+  "installed_sha256": "7767eed67b43981891f2cd3cf0954d76daf480a5109c8cba14f6efde176d4092",
+  "scope": "local test candidate; full SPEC and CI not accepted"
+}

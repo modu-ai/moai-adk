@@ -1,0 +1,10 @@
+CHANGELOG.md  +2/-0
+internal/cli/doctor.go  +1/-0
+internal/cli/doctor_mcp_version.go  +104/-0
+internal/cli/doctor_mcp_version_test.go  +149/-0
+internal/cli/mcp_server.go  +28/-1
+internal/cli/mcp_server_runtime.go  +150/-0
+internal/cli/mcp_server_runtime_test.go  +154/-0
+internal/cli/testdata/doctor-dark.golden  +3/-2
+internal/cli/testdata/doctor-light.golden  +3/-2
+internal/cli/testdata/doctor-nocolor.golden  +3/-2

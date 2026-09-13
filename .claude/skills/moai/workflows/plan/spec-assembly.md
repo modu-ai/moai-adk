@@ -6,8 +6,9 @@ metadata:
   phase: "Phase 9 through Decision Point 3.5: SPEC Assembly, Review, and Environment Setup"
 ---
 
-<!-- TRACE PROBE: workflow-split baseline trace mechanism -->
-<!-- Activated by MOAI_TRACE_PHASES=1 environment variable -->
+<!-- TRACE PROBE: activation hint only; runtime evidence is .moai/state/workflow-trace.jsonl -->
+<!-- When MOAI_TRACE_PHASES=1, call .claude/hooks/moai/trace-ledger.sh record at each phase entry/exit. -->
+<!-- A comment or empty ledger is not an execution trace; see trace-ledger-contract.md. -->
 
 ### Phase 9: Pre-Creation Validation Gate
 
@@ -28,7 +29,12 @@ Composite domain rules: Maximum 2 domains recommended, maximum 3 allowed.
 
 ### Phase 9: Tier Judgment Socratic Question (LEAN Workflow)
 
-[ZONE:Evolvable] [HARD] Before artifact creation begins, the orchestrator MUST present a Tier judgment AskUserQuestion to classify the SPEC's complexity tier (S, M, or L). This drives the artifact set, the manager-develop delegation prompt template applicability, and the plan-auditor PASS threshold. Origin: the LEAN-tier workflow policy.
+[ZONE:Evolvable] [HARD] Before artifact creation begins, the orchestrator MUST
+resolve the final Tier (S, M, or L). It first consumes the interview's
+`provisional_tier`; it asks this question only when the tier was absent,
+ambiguous, or changed by research. This drives the artifact set, the
+manager-develop delegation prompt template applicability, and the plan-auditor
+PASS threshold.
 
 Skip condition: when the user explicitly provided the tier in the original request (e.g., "Tier S", "small SPEC, Tier S"), the orchestrator MAY skip the question and record the user-provided tier directly.
 
@@ -167,7 +173,10 @@ Skip conditions:
 
 Harness-level intensity (plan-audit ALWAYS runs — the level changes rigor, not whether it runs):
 - `minimal`: lightweight, non-blocking 1-iteration audit (`max_iterations: 1`, `require_must_pass: false`) — a FAIL verdict is logged but does not block Phase 12
-- `standard`/`thorough`: full retry loop up to 3 iterations, blocking (`max_iterations: 3`, `require_must_pass: true`)
+- `standard`/`thorough`: blocking retry loop using the tier-resolved ceiling
+  from `.moai/config/sections/harness.yaml` (`S=1`, `M=2`, `L=3`); the
+  `remaining_attempts` counter is owned by the orchestrator and is consumed by
+  every reviewer invocation, including cross-validation.
 
 #### Parallel Review Lenses (read-only, conditional)
 
@@ -217,6 +226,37 @@ Fail-open: if the renderer is unavailable or the review file is absent, the
 emission step is skipped silently — the plan-phase pipeline is NOT blocked. The
 plan HTML report is enrichment, not a gate.
 
+#### Step 2.3.3b: Decision-Index Presentation (decision gate)
+
+**Where** the `interview.decision_gate` setting resolves `on` and the SPEC's
+`.moai/specs/{SPEC-ID}/decision-index.md` exists, the orchestrator surfaces the
+index rows as additive prose context in the SAME turn the Implementation
+Kickoff Approval `AskUserQuestion` fires — beside the plan HTML report path,
+never instead of it. The rows state what is unresolved and why; the index
+itself never carries a preferred answer, in either recommendation mode, and the
+gate question follows the landed `recommendation_mode` convention unchanged.
+
+Fail-open, like the plan HTML report: **where** the decision gate is `off` or
+the index is absent or unreadable, this presentation step is skipped silently —
+the gate is unchanged and the plan-phase pipeline is NOT blocked. No second
+human gate is introduced.
+
+After the gate, operator verdicts per row are written back into the row's
+`Operator verdict:` line using exactly the verdict-action vocabulary `DECIDE`,
+`NEED_ANALYSIS`, `NEED_EVIDENCE`, `DEFER`. When a recorded verdict is
+product-level (MVP or phase scope, tier behavior, UX flow, pricing, privacy or
+security promise), the kickoff flow surfaces the reconciliation of
+`.moai/project/product.md` as a named design decision: `.moai/project/**`
+scaffolding is owned by manager-docs, so the reconcile act is delegated to
+manager-docs or taken explicitly by the operator — never performed silently by
+manager-spec. A SPEC-level verdict (retry count, internal algorithm, query
+shape) touches the decision index and the SPEC only.
+
+Zero rows is not approval: a decision index with zero judgment points means
+only that this pass found no unresolved decisions — the Implementation
+Kickoff Approval gate remains a separate affirmative act that fires regardless
+of the row count.
+
 #### Step 2.3.4: FAIL Path — Retry Loop (max 3 iterations)
 
 If verdict is FAIL:
@@ -246,10 +286,10 @@ Present the full defect history to the user:
 
 Harness configuration reference (harness.yaml):
 - `minimal`: plan_audit.enabled: true, max_iterations: 1, require_must_pass: false (lightweight, non-blocking 1-iteration audit — NOT skipped; `plan_audit_global.always_enabled: true` guarantees this phase always runs)
-- `standard`: plan_audit.enabled: true, max_iterations: 3, require_must_pass: true
-- `thorough`: plan_audit.enabled: true, max_iterations: 3, require_must_pass: true, cross_validate_with_evaluator_active: true
+- `standard`: plan_audit.enabled: true, tier-resolved ceiling, require_must_pass: true
+- `thorough`: plan_audit.enabled: true, tier-resolved ceiling, require_must_pass: true, cross_validate_with_evaluator_active: true
 
-For `thorough` harness with `cross_validate_with_evaluator_active: true`: after plan-auditor PASS, additionally invoke sync-auditor in SPEC-review mode to cross-validate must-pass criteria. If sync-auditor disagrees with plan-auditor's PASS, treat as FAIL and trigger one additional iteration.
+For `thorough` harness with `cross_validate_with_evaluator_active: true`: after plan-auditor PASS, invoke plan-auditor again as an independent re-review — a fresh spawn that receives the SPEC artifacts but not the first pass's verdict, score, or findings — to cross-validate must-pass criteria. If the re-review does not also PASS, treat the iteration as FAIL and trigger one additional iteration. sync-auditor is not used here: it audits implemented code against acceptance criteria and never reviews plan-phase documents (role boundary: `.claude/agents/moai/sync-auditor.md`).
 
 ### Phase 12: GitHub Issue Creation (Conditional, opt-in)
 
@@ -476,7 +516,7 @@ Purpose: After SPEC creation, detect execution environment and present optimal i
 Read `.moai/config/sections/llm.yaml` → `llm.team_mode` field:
 - `""` (empty) or `"cc"`: CC mode (Claude-only)
 - `"glm"`: GLM mode (GLM-only)
-- `"cg"`: CG mode (Claude Leader + GLM Workers)
+- `"cg"`: legacy configuration; stop execution-mode selection and show `moai migrate cg`. Do not activate or silently replace mixed roles.
 
 **Step 2: Detect tmux availability**
 Check `$TMUX` environment variable via Bash: `test -n "$TMUX" && echo "tmux" || echo "no-tmux"`
@@ -489,7 +529,6 @@ When tmux IS available: AskUserQuestion with 3 options (descriptions adapt to ac
 - Option 1 (Recommended): Worktree + {active_mode}
   - CC: "Create MoAI worktree with tmux session. All agents use Claude. Highest quality."
   - GLM: "Create MoAI worktree with tmux session. All agents use GLM. Cost optimized."
-  - CG: "Create MoAI worktree with tmux session. Leader=Claude, Workers=GLM. Balanced quality-cost."
 - Option 2: Sub-agent Mode (sequential): Use sequential sub-agents. Best for simple, single-domain tasks. (Agent Teams in-process mode retired.)
 
 When tmux is NOT available: AskUserQuestion with 1 option:
@@ -498,8 +537,8 @@ When tmux is NOT available: AskUserQuestion with 1 option:
 **Step 4: Execute selected mode**
 - **Sub-agent mode**: Proceed to `/moai run SPEC-{ID} --solo`
 - **Isolated-workspace mode**: tell the user to enter a workspace and run there —
-  `moai cc -w <name>` in place, or `moai cg -w <name> --spawn` for a teammate
-  window that leaves this session running. Plan does not create the workspace.
+  `moai cc -w <name>` in place, or `moai cc -w <name> --spawn` for a separate
+  Claude session window that leaves this session running. Neither command preserves legacy CG mixed roles. Plan does not create the workspace.
 
 **Step 5: Gate result passing**
 - Pass the selected execution mode to the run workflow

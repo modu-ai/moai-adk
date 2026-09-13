@@ -160,7 +160,7 @@ Agents follow MoAI's core execution directives defined in CLAUDE.md (auto-loaded
 
 [ZONE:Evolvable] [HARD] When spawning a subagent, pass the model the active profile resolves for that agent as an explicit `model` argument on the spawn. (Why omitting is not neutral, and the full profile matrix: `agent-common-protocol-reference.md` § Per-Spawn Model Injection rationale; policy SSOT `.claude/rules/moai/development/model-policy.md`.)
 
-- Resolve the value with `moai model profile --json` (reports the `{model, effort}` cell per retained agent under the active profile)
+- Resolve the value with `moai model profile --json` (a single JSON OBJECT whose `agents` array carries the `{model, effort}` cell per retained agent under the active profile — filter with `jq '.agents[]'`, never a top-level array; shape + filters: `model-policy.md` § Per-Agent Profile Resolver)
 - Pass `model` per spawn. `effort` has no spawn-time parameter — it travels only through the agent file's frontmatter
 - A spawn whose declared model differs from the resolved one is drift, not an override — change the profile instead
 - Agents outside the retained catalog resolve to the inherit sentinel and take no injection
@@ -289,19 +289,32 @@ detail; pattern file `.claude/rules/moai/workflow/verification-batch-pattern.md`
 
 ### Pre-Spawn Sync Check (Multi-Session Race Mitigation)
 
-[ZONE:Evolvable] [HARD] Before spawning any implementation `Agent()` (manager-develop / manager-docs / per-spawn `Agent(general-purpose)` with a domain whitelist) that will commit or modify shared working-tree files, the orchestrator MUST execute the following parallel batch and surface any divergence to the user.
+[ZONE:Evolvable] [HARD] Before spawning any implementation `Agent()` (manager-develop / manager-docs / per-spawn `Agent(general-purpose)` with a domain whitelist) that will commit or modify shared working-tree files, the orchestrator MUST execute the following two-lane batch and surface any divergence to the user.
+
+The lanes have one deliberate dependency boundary:
+
+* **Lane A (ordered):** `git fetch origin main` MUST finish and its exit status be observed before `git rev-list --count --left-right origin/main...HEAD` starts. The divergence count is only attributable to the ref that the completed fetch installed; never run these two commands as one parallel batch or as a shell line whose completion cannot be distinguished.
+* **Lane B (independent):** `moai session list --json --filter-spec=<SPEC-ID>` may run concurrently with Lane A's fetch because it does not read `origin/main`. Its result is joined with Lane A after both lanes complete.
 
 ```bash
-# 1. Fetch latest origin/main without merging
+# Lane A — ordered; wait for fetch completion before reading origin/main.
 git fetch origin main 2>&1
-
-# 2. Count divergence between local HEAD and origin/main
+fetch_status=$?
+if [ "$fetch_status" -ne 0 ]; then
+  printf 'pre-spawn sync blocked: fetch origin/main failed (status=%s)\n' "$fetch_status" >&2
+  exit "$fetch_status"
+fi
 git rev-list --count --left-right origin/main...HEAD
 
-# 3. Query active sessions on this host for the same SPEC scope (L1 of the
-#    canonical 4-layer multi-session race mitigation policy).
+# Lane B — can be started while Lane A is fetching, then joined before the
+# divergence/session decision is surfaced (L1 of the canonical 4-layer policy).
 moai session list --json --filter-spec=<SPEC-ID>
 ```
+
+The orchestrator MUST retain the fetch completion status (and, where the
+runner exposes it, the fetched-ref timestamp) beside the divergence output.
+This prevents a delayed or failed fetch from being mistaken for a current
+`origin/main` baseline.
 
 Interpretation matrix (git divergence):
 
