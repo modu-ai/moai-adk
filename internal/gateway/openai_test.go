@@ -161,13 +161,19 @@ func TestOpenAIStatusAndNoRedirect(t *testing.T) {
 			r, e := a.Send(context.Background(), oaiRequest(t))
 			body := oaiRead(t, r, e)
 			want := status
+			wantCalls := int32(1)
 			if status == 302 {
 				want = 502
 			}
-			if r.StatusCode != want || strings.Contains(body, "secret") || r.Header.Get("Location") != "" || calls.Load() != 1 {
+			if status >= 500 && status <= 599 {
+				// 5xx is retryable at the pre-stream boundary (t697): the
+				// always-failing stub exhausts the bounded attempts.
+				wantCalls = 3
+			}
+			if r.StatusCode != want || strings.Contains(body, "secret") || r.Header.Get("Location") != "" || calls.Load() != wantCalls {
 				t.Fatal(r.StatusCode, body, calls.Load())
 			}
-			if status == 429 && r.Header.Get("Retry-After") != "12" {
+			if (status == 429 || status == 503) && r.Header.Get("Retry-After") != "12" {
 				t.Fatal("retry-after lost")
 			}
 		})
@@ -448,7 +454,10 @@ func TestOpenAIMalformedUpstreamAndConfiguration(t *testing.T) {
 	a, _ := NewOpenAIAdapter(oaiConfig(tr))
 	r, e := a.Send(context.Background(), oaiRequest(t))
 	body := oaiRead(t, r, e)
-	if r.StatusCode != 502 || strings.Contains(body, "private") {
+	// t697: on bounded-retry exhaustion the underlying transport reason is
+	// delivered to the session-authenticated local client instead of a bare
+	// "Bad Gateway".
+	if r.StatusCode != 502 || !strings.Contains(body, "gateway upstream connection failed after 3 attempts") || !strings.Contains(body, "synthetic-private-transport") {
 		t.Fatal(r.StatusCode, body)
 	}
 	for _, value := range []string{"", strings.Repeat("x", 65), "1\r\nsecret", "-1", "secret"} {

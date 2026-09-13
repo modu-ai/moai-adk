@@ -53,6 +53,23 @@ func commitOnRef(t *testing.T, root, subject string) string {
 	return gitOut(t, root, "rev-parse", "HEAD")
 }
 
+// commitOnRefAt adds one empty commit with the given subject and a pinned
+// GIT_COMMITTER_DATE, returning its full SHA. The commitOnRef twin for the
+// generation-crossing fixtures: a reissued id's predecessor landed BEFORE
+// the reissued card was created, and only the committer date reproduces
+// that ordering (the author date is not what the scan reads).
+func commitOnRefAt(t *testing.T, root, subject string, when time.Time) string {
+	t.Helper()
+	cmd := exec.Command("git", "-C", root, "commit", "--allow-empty", "-q", "-m", subject)
+	cmd.Env = append(os.Environ(),
+		"GIT_CONFIG_GLOBAL=/dev/null", "GIT_CONFIG_SYSTEM=/dev/null",
+		"GIT_COMMITTER_DATE="+when.Format(time.RFC3339))
+	if out, err := cmd.CombinedOutput(); err != nil {
+		t.Fatalf("git commit (date %s): %v\n%s", when, err, out)
+	}
+	return gitOut(t, root, "rev-parse", "HEAD")
+}
+
 // materializeOriginDevelop points refs/remotes/origin/develop at HEAD — the
 // fixture's stand-in for the lead's pushed develop.
 func materializeOriginDevelop(t *testing.T, root string) string {
@@ -958,6 +975,43 @@ func TestTodoAutoDone_FalseNegativeShapes(t *testing.T) {
 	}
 	if !strings.Contains(stdout2, "skip t6032 reason=ambiguous-id") {
 		t.Errorf("contrast: stdout %q lacks skip t6032 reason=ambiguous-id — the comma form loosened the gate", stdout2)
+	}
+}
+
+// AC-AD-018 — the t684 field defect: a generation-crossing reissue whose
+// predecessor is NOWHERE in the store (not live, not archived). Guard M1
+// counts distinct texts across the live queue and the archive only, so the
+// store holds ONE text for the id and the collision gate cannot see the
+// reissue; the subject attribution then sweeps the whole develop history
+// and attributes the old generation's landing to the new card. The
+// reproducing shape is temporal: the attributing commit's committer date
+// precedes the card's creation, which is the one fact that can tell the
+// generations apart when the store cannot.
+func TestTodoAutoDone_ReissuedIDOlderCommitSkips(t *testing.T) {
+	root, store := autoDoneFixture(t)
+
+	// The old generation lands FIRST — a full day before the reissued card
+	// is created.
+	commitOnRefAt(t, root, "feat(t9988): old-generation landing work", time.Now().UTC().Add(-24*time.Hour))
+
+	// THEN the id is reissued: same id, different text, and NO predecessor
+	// anywhere in the store — DistinctTexts reads 1, so guard M1 stays
+	// silent (the exact reach gap the t684 verdict recorded).
+	seedCard(t, store, "t9988", "reissued text — a different card under a reused id", kanban.BacklogStateQueued)
+	materializeOriginDevelop(t, root)
+
+	stdout, _, err := runTodo(t, "auto-done")
+	if err != nil {
+		t.Fatalf("auto-done: %v", err)
+	}
+	if strings.Contains(stdout, "done t9988") {
+		t.Errorf("stdout %q closes t9988 on the old generation's commit — the time-unbounded attribution regressed", stdout)
+	}
+	if !strings.Contains(stdout, "skip t9988 reason=not-landed") {
+		t.Errorf("stdout %q lacks skip t9988 reason=not-landed", stdout)
+	}
+	if _, ok := liveItemOK(t, store, "t9988"); !ok {
+		t.Error("t9988 archived on a commit older than the card itself")
 	}
 }
 

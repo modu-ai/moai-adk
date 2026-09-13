@@ -159,10 +159,13 @@ func (a *OpenAIAdapter) Send(ctx context.Context, q RoutedRequest) (*http.Respon
 	} else {
 		req.Header.Set("Accept", "application/json")
 	}
-	var upstream *http.Response
-	if q.Entry.AuthMethod == AuthPKCE {
-		upstream, e = a.config.Subscription.SendAuthorized(ctx, q.Generation, req, a.config.Transport, a.config.SendOptions)
-	} else {
+	egress := func() (*http.Response, error) {
+		if q.Entry.AuthMethod == AuthPKCE {
+			return a.config.Subscription.SendAuthorized(ctx, q.Generation, req, a.config.Transport, a.config.SendOptions)
+		}
+		return a.config.Transport.RoundTrip(req)
+	}
+	if q.Entry.AuthMethod != AuthPKCE {
 		if e = q.Credential.Apply(req); e != nil {
 			return openAIError(401), nil
 		}
@@ -174,8 +177,8 @@ func (a *OpenAIAdapter) Send(ctx context.Context, q RoutedRequest) (*http.Respon
 		if e != nil || current != q.Generation {
 			return openAIError(401), nil
 		}
-		upstream, e = a.config.Transport.RoundTrip(req)
 	}
+	upstream, attempts, e := upstreamSend(ctx, req, egress)
 	if e != nil {
 		if upstream != nil && upstream.Body != nil {
 			_ = upstream.Body.Close()
@@ -186,7 +189,7 @@ func (a *OpenAIAdapter) Send(ctx context.Context, q RoutedRequest) (*http.Respon
 		if errors.Is(e, auth.ErrCredentialAbsent) || errors.Is(e, auth.ErrCredentialChanged) || errors.Is(e, auth.ErrWrongProvider) {
 			return openAIError(401), nil
 		}
-		return openAIError(502), nil
+		return openAIErrorMessage(502, gatewayConnectMessage(attempts, e)), nil
 	}
 	if upstream == nil || upstream.Body == nil {
 		return openAIError(502), nil
@@ -197,7 +200,11 @@ func (a *OpenAIAdapter) Send(ctx context.Context, q RoutedRequest) (*http.Respon
 		if status < 400 || status > 599 {
 			status = 502
 		}
-		r := openAIError(status)
+		message := http.StatusText(status)
+		if upstream.StatusCode >= 500 && upstream.StatusCode <= 599 {
+			message = upstreamStatusMessage(upstream.StatusCode, attempts)
+		}
+		r := openAIErrorMessage(status, message)
 		if status == 429 || status == 503 {
 			if retry := validRetryAfter(upstream.Header.Get("Retry-After")); retry != "" {
 				r.Header.Set("Retry-After", retry)
