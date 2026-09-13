@@ -44,6 +44,87 @@ MoAI 바이트·취소 제한을 Claude 생성 토큰 상한과 동일하게 표
 현재 미커밋 gateway 의존을 새 원격 기준 worktree에 있다고 가정하지 않는다. 오케스트레이터가 재현 가능한 의존
 snapshot·소유권을 확인한 격리 트리를 정하고 카드별 근거를 남긴다. 추적 하위 카드를 독립 통합 완료로 표시하지 않는다.
 
+## 0.13.0 AS-5 실행 계획 (t654)
+
+카드 t654의 범위: 세 launcher 통합, context 실증, 로컬 배포 판정. 선행 t653 완료. 바인딩 조건 —
+API 과금 자동전환 금지, 구독은 공식 App Server managed auth 사용(직접 구독 backend 호출·토큰 읽기의
+실행 경로 대체), 구독/API 모두 공식 App Server 출력 정책(운영자 추가 승인, MoAI 바이트·취소 제한 유지,
+Claude max_tokens 동일 생성 상한 보장 표기 금지), 완료 주장은 카드별 실제 명령·출력·기준 SHA·Gaps로 증명,
+push·PR·병합·워크트리 제거는 별도 지시. CHANGELOG는 t653 판정(`.moai/reports/t653/verdict.md` § CHANGELOG
+결정)을 계승해 이 카드에서 사용자 가시 표면 기준으로 발행 검토한다. 공식 기준 문서:
+https://learn.chatgpt.com/docs/app-server . 증거는 전부 `.moai/reports/t654/` 아래 `as5-` 접두사로
+남긴다 — 그 디렉터리에 옛 t654 가드 보고서(`verdict.md`, `probe-outputs.txt`)가 이미 있어 충돌을 피한다.
+
+기준선(착수 시 재측정): worktree `.claude/worktrees/t654`, branch `WT-gateway-launchers`, base
+`d416f8162`(로컬 develop head). 착지 시점 코드 상태는 `research.md` §20 — `moai gpt` 대기 오류 경로,
+`NewRebaseLedger` 비-테스트 호출자 0건, `gateway_product_binding.go` 공통 capability 선언, ci.yml의
+windows Go-test 레그 부재.
+
+### 마일스톤 (통합 → 검증 → 배포 게이트 순)
+
+| 마일스톤 | 우선순위 | 범위 | 대응 AC | 증거 |
+|---|---|---|---|---|
+| A5-M1 | High | launcher 생산 통합 | AC-MG-026 (a) | as5-launcher-integration.md |
+| A5-M2 | High | compaction epoch 생산 복원 + fork prefix 원장 대조 | AC-MG-026 (b)(c) | as5-epoch-fork-wiring.md |
+| A5-M3 | High | 경로별 context 재판정·표시 | AS-020 (AC-MG-010) | as5-context-paths.md |
+| A5-M4 | High | 구독/API 이중 경로 검증 | AS-021 (AC-MG-020), AS-014 인증 표시 | as5-auth-modes.md |
+| A5-M5 | High | 실제 PTY 실증 스윕 | AS-014·AS-017·AS-018·AS-019 | as5-pty-*.log |
+| A5-M6 | Medium | Windows GitHub CI 실행 증거 | AS-022 (AC-MG-006) | as5-windows-ci-verdict.md |
+| A5-M7 | High (종결) | rc 로컬 배포 게이트 + CHANGELOG 발행 검토 | AC-MG-026 (d) | as5-deploy-verdict.md |
+
+**A5-M1 — launcher 생산 통합 (우선순위: High).** 세 launcher가 provider 전용 catalog·picker
+구성(`REQ-MG-019`)·인증 방식 표시·App Server transport를 하나의 launch 조립으로 결합한다.
+예상 변경: `internal/cli/gpt.go`(대기 오류 경로의 게이트화 — 검증 AC 통과 전 유지, 통과 후 제거),
+`internal/cli/gateway_launcher.go`·`gateway_prepare.go`·`gateway_session.go`(조립 결합),
+`internal/cli/gateway_product_binding.go`(provider별 auth 표시 전달). RED→GREEN: 대기 오류 리터럴의
+비-테스트 존재 판정 시험을 먼저 적색으로 세우고(게이트 통과 트리 기준), 제거로 녹색 만든다. 게이트
+통과 전 트리에서는 같은 시험이 대조군(대기 오류 유지)으로 남는다.
+
+**A5-M2 — epoch 생산 복원 + fork prefix 원장 대조 (우선순위: High).** t653 잔여 위험 두 가지를
+닫는다. (b) rebase 성공 지점(`Store.Rebase`)에서 마지막 적용 epoch를 대화 scope 영구 상태에
+기록하고, 세션 재시작 시 그 값을 판독해 `NewRebaseLedger`에 주입한다 — 기록 없음은 0, 판독 불가·훼손은
+명시 오류(높은 값의 stale 오판 방향을 피하기 위한 정확값 원칙). (c) `--fork-session` 자식 배리어
+수용 전 gateway 계층이 `Manifest.ChainTo(경계)` 완료 체인과 자식 prefix를 대조하고, 불일치·변조·미지
+원본은 자식 상태 생성 전 명시 거절한다. 예상 변경: `internal/gateway/`(어댑터 배선),
+`internal/codexbridge/`(호출 경계), `internal/gateway/receipt/`(판독 보조). RED→GREEN:
+`TestRebaseLedgerRestoration*`(고정값 주입 현행 구현이 적색), `TestForkPrefixCrossCheck*`
+(caller-asserted 수용이 변조 변형에서 적색).
+
+**A5-M3 — 경로별 context 재판정·표시 (우선순위: High).** `gateway_product_binding.go`의 공통
+`Capabilities{ContextTokens: 1000000, Images: true}`를 provider별 양성·음성으로 재판정한다 — GLM은
+text-only(이미지 입력 명시 거절), Claude는 이미지 수용. UI 표시는 모델 명목 창·현재 경로 유효 한도·
+누적 사용량의 세 값을 구분하고, 미검증 수치(1M·921k·872k)를 수용 보장으로 표시하지 않는다
+(`plan.md` "Native 정책 구현 인계" 절의 AS5 조항 집행). RED→GREEN: provider별 capability 시험.
+
+**A5-M4 — 구독/API 이중 경로 검증 (우선순위: High).** Given 구독 managed 계정과 API 키 프로필일 때,
+두 모드를 각각 실제 선택·실행하고 표시된 인증 방식이 실제 선택과 일치함을 확인한다. 음성: 구독 실패·
+만료 유도 시 API 과금 경로 요청 계수 0(자동전환 금지), MoAI의 토큰 파일 접근 0. 구독 인증의 근거는
+공식 App Server managed auth다.
+
+**A5-M5 — 실제 PTY 실증 스윕 (우선순위: High).** 실제 launcher PTY에서 도구검색(hybrid ToolSearch
+제품 실행), 서브에이전트(네 슬롯 별칭의 제공자 경계 해석), 재개·모델전환(Claude/GLM launcher 측 —
+AS-010·011·012의 GPT thread 실세션 양성은 T21대로 t844 소관이며 이 카드가 흡수하지 않는다),
+picker 제공자 경계(AS-014 재판정)를 각각 수행한다. 실제 계정 권한이 필요한 항목은 이 세션 환경에서
+불가할 수 있다 — 그 경우 Gap으로 기록하고 운영자 판정(라이브 계측 창)을 요청한다. 임시 Claude 직접
+실험으로 제품 판정을 대체하지 않는다.
+
+**A5-M6 — Windows GitHub CI 실행 증거 (우선순위: Medium).** 기본 경로: `release-pr-multi-os.yml`의
+`workflow_dispatch` 실행 → windows-latest 레그가 `-tags=integration` 없이 `./...`를 실행 →
+`test-stream-release-verify-windows-latest` 아티팩트 판독(`AC-MG-006`의 판독 절차 준용 — 이름을 정한
+시험별 `"Action":"pass"`, skip·부재는 PASS 아님). ci.yml에 상시 windows 레그를 추가하는 안은 카드·
+develop CI 시간 비용이 매 변경에 붙으므로 기본 채택하지 않고 운영자 결정 사항으로 남긴다. cross-compile
+exit 0만으로 이 마일스톤을 PASS로 세지 않는다.
+
+**A5-M7 — rc 로컬 배포 게이트 + CHANGELOG 발행 검토 (우선순위: High, 종결).** 전제: A5-M1~M6와
+AS-014~AS-022의 판정이 PASS(또는 근거 갖춘 Gap — 단 배포 게이트 자체의 전제는 검증 PASS)다. 절차는
+`AC-MG-026` (d)의 명령 형태를 따른다: `make build VERSION=v<다음 미사용 rc>` → `rm -f ~/go/bin/moai
+&& cp bin/moai ~/go/bin/moai`(clean 재설치 — 생략 시 exit 137 전례) → `~/go/bin/moai version` exit 0 →
+`strings ~/go/bin/moai | grep <기준 SHA>` binary lag 검증. rc 번호는 `.moai/docs/version-management.md`
+Local RC Numbering의 다음 미사용 번호다 — 카드 문구의 "rc.8"은 2026-09-12 발행 시점 표기이며 발행 시점에
+이미 소비됐으면 다음 번호를 쓴다(이 차이는 조용히 흡수하지 않고 배포 판정 보고서에 명시한다). 같은 보고서에
+CHANGELOG 발행 검토 결과(사용자 가시 표면 기준, B12 사전-발행 grep `grep -c 'SPEC-MOAI-GATEWAY-001'
+CHANGELOG.md` 포함)를 남긴다. push·PR·병합·워크트리 제거는 없다.
+
 ## A. Context
 
 `spec.md` §A가 배경이고 `research.md`가 근거다. 이 문서는 그 위에서 무엇을 어떤
@@ -517,8 +598,8 @@ iter4 감사(FAIL 0.80, STOP 신호)의 차단 넷 가운데 셋(G4-B1, G4-B3, G
 
 | 축 | 사용 | Tier L 상한 | 판정 |
 |---|---|---|---|
-| 요구사항 | 24 (그 밖에 폐기 묘비 `REQ-MG-007`·`REQ-MG-020` 두 줄, 계수 제외) | 25 | 여유 1 — 0.6.0에서 `REQ-MG-020`을 형제 SPEC으로 이관 |
-| 수용 기준 | 24 (그 밖에 폐기 묘비 `AC-MG-002` 한 줄, 계수 제외) | 25 | 여유 1 — 0.6.0에서 `AC-MG-002`를 형제 SPEC으로 이관 |
+| 요구사항 | 25 (그 밖에 폐기 묘비 `REQ-MG-007`·`REQ-MG-020` 두 줄, 계수 제외) | 25 | 상한 도달 — 0.13.0에서 `REQ-MG-027` 신설로 0.6.0의 여유 1을 소비했다. 추가 요구사항은 형제 SPEC 분리부터 다시 정해야 한다 |
+| 수용 기준 | 25 (그 밖에 폐기 묘비 `AC-MG-002` 한 줄, 계수 제외) | 25 | 상한 도달 — 0.13.0에서 `AC-MG-026` 신설로 여유 1을 소비했다 |
 
 0.5.0까지는 두 축이 모두 상한에 정확히 닿았다. 0.6.0은 결정 11로 두 표면을 형제 SPEC 제안으로 옮겨 각 축에 여유 하나를
 만들었고, 결정 12는 새 번호 없이 `REQ-MG-021`에 접었다. **이 여유는 범위를 다시 넓히라는 뜻이 아니다.** 0.3.0부터 0.5.0까지의 개정은 새 요구사항이나

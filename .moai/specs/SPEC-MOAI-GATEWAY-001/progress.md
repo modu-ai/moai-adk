@@ -2,6 +2,17 @@
 
 ## §E.1 Plan-phase Audit-Ready Signal
 
+- 0.13.0 (2026-09-14, t654) — AS-5 plan-phase 개정: 세 launcher 생산 통합·구독/API 이중 경로 검증·
+  실제 Claude PTY 표면(도구검색·서브에이전트·재개·모델전환) 실증·경로별 context 판정·Windows GitHub CI
+  실행 증거·rc 로컬 배포 게이트. `REQ-MG-027`/`AC-MG-026` 신설(요구사항 25 / 수용 기준 25 — Tier L
+  상한 도달, `plan.md` §I), 기존 AC 하위 시나리오 AS-017~AS-022 신설, §E 표에 T22 경계 정합 행 추가.
+  t653 잔여 위험 흡수 — compaction `appliedEpoch` 생산 판독(`REQ-MG-027` (b), `design.md` §11.2)과
+  fork 자식 inherited prefix 원장 대조((c), §11.3). T21(t844 이관)·AS-013 NOT-RUN은 유지. status
+  implemented → in-progress(다중 카드 시리즈 재개; implemented→completed는 후속 sync 몫).
+  마일스톤 A5-M1~M7(통합 → 검증 → 배포 게이트), 증거는 `.moai/reports/t654/`의 `as5-` 접두사
+  (옛 t654 가드 보고서와 충돌 방지). `design.md` §11·`research.md` §20 신설, §E.2~§E.4 미접촉.
+  open question: 카드 문구 "rc.8"은 발행 시점 표기 — 배포 시 다음 미사용 rc 번호 적용
+  (`.moai/docs/version-management.md` Local RC Numbering, 보고서에 명시).
 - t653 (AS-4: 소유 thread resume·model 변경·fork·compaction) plan-phase 기록 — 2026-09-13.
   기준선: worktree `.claude/worktrees/t653`, branch `WT-gateway-as4-resume`, HEAD `74d872aaf` (선행 t652 = `530bd7330`).
   범위: 계정·family·agent·thread와 완료 public prefix 원장 고정, resume 및 idle 모델 변경 연결, compaction의 정상 요약 turn 처리

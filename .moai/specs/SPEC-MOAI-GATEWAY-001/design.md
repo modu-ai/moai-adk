@@ -1008,3 +1008,75 @@ t650~t654의 managed/API 인증, 도구 실행권, pending 복구, resume/fork/c
 | `BackendGPT`를 감사 backend 집합에도 추가 | 감사 backend는 다른 개념이다. 추가하면 수렴 엔진이 존재하지 않는 backend를 기다린다 |
 | GPT PKCE 구현을 이 SPEC에 흡수 | 3분할 Epic 경계를 무너뜨린다. 인터페이스만 고정하고 구체 타입은 형제 SPEC에 둔다 |
 
+## 11. AS-5 launcher 생산 배선 (0.13.0, t654)
+
+착수 시점 코드 상태의 측정 근거는 `research.md` §20(base `d416f8162`)이다.
+
+### 11.1 launch 조립의 생산 경로
+
+세 launcher는 이미 같은 진입 형태(`runClaudeEntry` → gateway launch plan, §3.2·§6.1)를 공유한다.
+남은 것은 결합이다: provider 전용 세션 snapshot과 picker 구성(§6.7), 인증 방식(구독/API) 표시,
+App Server transport가 하나의 launch 조립에서 함께 연결되어야 한다. `internal/cli/gpt.go`의
+launch 경로는 `services.Launch`가 없을 때 "GPT gateway launch is awaiting transport verification"
+대기 오류를 돌려주는 게이트로 살아 있다. 이 게이트는 코드 상수나 설정 플래그가 아니라 **AC 증거로
+판정한다** — AS-014~AS-022 전수가 PASS한 트리에서 대기 오류가 제거되고, 통과 전 트리는 대기 오류를
+유지해 `AC-MG-026` (a)의 대조군이 된다. 어느 하나의 결합이 빠진 채 다른 하나만 열리는 부분 개방은
+`REQ-MG-027` 위반이다.
+
+### 11.2 compaction `appliedEpoch`의 생산 판독
+
+현행 `receipt.NewRebaseLedger(scope, appliedEpoch)`의 비-테스트 호출자는 0건이다(`research.md` §20)
+— 재시작 복원이 호출자 추측에 맡겨진 t653 잔여 위험 그대로다. 생산 판독 위치는 이렇게 정한다:
+
+- **쓰기** — rebase가 성공해 원장이 전진하는 지점(`Store.Rebase`)에서 마지막으로 수용한
+  `CompactBase.Epoch`를 대화 scope의 영구 receipt 상태에 같은 트랜잭션으로 기록한다. 원장 전진과
+  기록이 어긋나면 복원값이 틀리므로 원자성이 계약이다.
+- **읽기** — 어댑터가 세션을 다시 열 때 그 값을 읽어 `NewRebaseLedger`에 주입한다. 기록 없음은 새
+  scope로 0이다. 판독 불가·훼손은 명시 오류다 — `AC-MG-009`의 실패 의미론(합성 성공 금지)과 같은
+  방향이다.
+- **정확값 원칙** — 복원값을 후하게(높게) 읽으면 이후 `base.Epoch`가 모두 stale로 거절되고,
+  낮게 읽으면 같은 요약을 두 번 rebase한다. 어느 쪽도 조용한 방향이 아니므로 정확값 원칙이며,
+  판독 실패 시 근사값으로 때우는 폴백은 두지 않는다.
+
+### 11.3 fork 자식 inherited prefix의 원장 대조
+
+engine은 caller가 주장한 inherited prefix를 그대로 믿는다(t653 잔여 위험). gateway 계층이
+`--fork-session` 자식 배리어를 수용하기 전에 `Manifest.ChainTo(경계 Digest)`가 돌려주는 완료
+체인과 자식이 주장하는 prefix를 대조하고, 일치할 때만 수용한다. 불일치·변조·미지 원본의 거절 지점은
+자식 상태 생성 **전**이어야 한다 — 생성 뒤 거절은 이미 격리 상태로 존재하는 자식을 남기므로
+`REQ-MG-015`의 실행 전 거절을 벗어난다. 이 대조는 `AC-MG-009`/AS-013의 명시 분기 계약이 gateway
+계층에서 맺어지는 지점이다.
+
+### 11.4 context 경로 표시와 capability 재판정
+
+`internal/cli/gateway_product_binding.go`는 전 provider에 공통
+`Capabilities{ContextTokens: 1000000, Images: true, Tools: true, Streaming: true}`를 선언하고
+Anthropic 항목에 한해 `RouteID = id + "[1m]"` 변형을 추가한다. 이는 소스 선언이지 수용 보장이
+아니다. t654는 provider별 양성·음성으로 재판정한다 — GLM은 text-only(이미지 입력 명시 거절),
+Claude는 이미지 수용. UI 표시는 모델 명목 창·현재 경로 유효 한도·누적 사용량의 세 값을 구분하며
+(§4 "context와 기능 표시"의 집행), 미검증 수치(1M·921k·872k)를 수용 보장으로 표시하지 않는다.
+
+### 11.5 Windows GitHub CI 실행 증거
+
+기본 경로는 `release-pr-multi-os.yml`의 `workflow_dispatch`다 — windows-latest 레그가
+`-tags=integration` 없이 `./...`를 실행하고 `test-stream-release-verify-windows-latest`
+아티팩트를 올린다. 판독은 결정 4와 `AC-MG-006`의 절차를 준용한다: 이름을 정한 시험별
+`"Action":"pass"`, skip·부재·아티팩트 부재는 PASS가 아니다. 카드·develop CI(`ci.yml`)의 Go test
+job은 ubuntu 전용이며 windows Go-test 레그는 release 시점으로 옮겨져 있다(`research.md` §20).
+ci.yml에 상시 windows 레그를 추가하는 안은 그 비용이 모든 변경에 붙으므로 기본 채택하지 않고
+운영자 결정 사항으로 남긴다. cross-compile exit 0는 이 마일스톤의 PASS 근거가 아니다.
+
+### 11.6 배포 게이트와 CHANGELOG
+
+배포 게이트(`AC-MG-026` (d))의 절차 근거: git-flow 레인 프로토콜 §9 rc 런북(clean 재설치
+`rm -f` + `cp`, 맨손 `go install ./cmd/moai` 금지 — LDFLAGS 누락)과 `CLAUDE.local.md` §11
+(exit 137 전례, `strings | grep <SHA>` binary lag 검증). rc 번호는
+`.moai/docs/version-management.md` Local RC Numbering의 다음 미사용 번호다 — 카드 문구의 "rc.8"은
+2026-09-12 발행 시점 표기이며, 발행 시점에 이미 소비됐으면 다음 번호를 쓰고 그 사실을 배포 판정
+보고서에 명시한다. CHANGELOG는 t653 판정(`.moai/reports/t653/verdict.md` § CHANGELOG 결정)을
+계승해 이 카드에서 사용자 가시 표면 기준으로 발행 검토하며, 발행 여부와 근거(사전-발행 grep 포함)를
+같은 보고서에 남긴다. push·PR·병합·워크트리 제거는 게이트 밖이다(§G).
+
+공식 기준 문서(구독 인증·출력 정책): https://learn.chatgpt.com/docs/app-server (§4.4와 같은 출처,
+접근 2026-09-12).
+
