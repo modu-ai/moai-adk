@@ -111,6 +111,7 @@ Acting on a record is the operator's act, performed through `drop`, `edit`, or
 
 ```json
 {
+  "project_uuid": "<uuid>",
   "version": 1,
   "last_seq": 12,
   "items": [
@@ -132,8 +133,18 @@ Acting on a record is the operator's act, performed through `drop`, `edit`, or
       "note": "",
       "at": "<RFC3339 timestamp>"
     }
-  ]
+  ],
+  "archived": []
 }
+```
+
+The top level is a single JSON OBJECT — the card array lives under `items`, so a
+consumer must reach it through that key. A guess that the top level is an array
+(`jq '.[0]'`, `jq 'length'`) fails with a jq type error (exit 5) (t696):
+
+```bash
+moai todo list --json | jq -r '.items[] | select(.state == "queued") | .id'  # correct
+moai todo list --json | jq '.[0]'                                            # WRONG — Cannot index object with number
 ```
 
 - `id` — assigned on append, never reused after removal (`last_seq` is the
