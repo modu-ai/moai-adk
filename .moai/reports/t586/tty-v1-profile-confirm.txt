@@ -1,0 +1,30 @@
+┃ No profile found. Set up profile preferences now?
+┃ Configure your name, language, and model preferences.
+┃
+┃                      Yes     No
+
+←/→ toggle • enter submit • y Yes • n No
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

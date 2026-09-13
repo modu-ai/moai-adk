@@ -1,0 +1,19 @@
+# Harness mutants re-run on the moved code (tree = HEAD 4061b6bda + uncommitted move)
+# H-a: remove tb.Cleanup(killSession) from ptycaptest.Start
+# cmd: MOAI_PTY_CAPTURE=1 go test ./internal/cli/ptycaptest/ -run ^TestPtyCapture_ForcedFailure$ -count=1 -v
+--- FAIL: TestPtyCapture_ForcedFailure (2.29s)
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/cli/ptycaptest	2.806s
+FAIL
+# exit=1
+    selfcheck_test.go:512: session moai-ptycap-TestPtyCaptureSelfTestChild-61e7d4aa opened by the failing child survived
+# H-a restored (Cleanup re-added); the leaked session was killed by its exact name (moai-ptycap-TestPtyCaptureSelfTestChild-61e7d4aa)
+# H-c: WaitFor returns the last capture on timeout instead of failing
+# cmd: MOAI_PTY_CAPTURE=1 go test ./internal/cli/ptycaptest/ -run ^TestPtyCapture_ForcedTimeout$ -count=1 -v
+    selfcheck_test.go:518: self-test child output lacks "not visible within"
+--- FAIL: TestPtyCapture_ForcedTimeout (3.62s)
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/cli/ptycaptest	4.087s
+FAIL
+# exit=1
+# H-c restored

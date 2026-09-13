@@ -1,0 +1,28 @@
+--- FAIL: TestAppServerSubprocessHTTPToolContinuation (0.01s)
+    --- FAIL: TestAppServerSubprocessHTTPToolContinuation/chatgpt (0.01s)
+        appserver_integration_test.go:71: App Server start failed
+    --- FAIL: TestAppServerSubprocessHTTPToolContinuation/apiKey (0.00s)
+        appserver_integration_test.go:71: App Server start failed
+--- FAIL: TestAppServerSubprocessHTTPToolContinuation (0.01s)
+    --- FAIL: TestAppServerSubprocessHTTPToolContinuation/chatgpt (0.00s)
+        appserver_integration_test.go:71: App Server start failed
+    --- FAIL: TestAppServerSubprocessHTTPToolContinuation/apiKey (0.00s)
+        appserver_integration_test.go:71: App Server start failed
+--- FAIL: TestAppServerSubprocessHTTPToolContinuation (0.01s)
+    --- FAIL: TestAppServerSubprocessHTTPToolContinuation/chatgpt (0.00s)
+        appserver_integration_test.go:71: App Server start failed
+    --- FAIL: TestAppServerSubprocessHTTPToolContinuation/apiKey (0.00s)
+        appserver_integration_test.go:71: App Server start failed
+--- FAIL: TestAppServerSubprocessHTTPToolContinuation (0.03s)
+    --- FAIL: TestAppServerSubprocessHTTPToolContinuation/chatgpt (0.01s)
+        appserver_integration_test.go:71: App Server start failed
+    --- FAIL: TestAppServerSubprocessHTTPToolContinuation/apiKey (0.01s)
+        appserver_integration_test.go:71: App Server start failed
+--- FAIL: TestAppServerSubprocessHTTPToolContinuation (0.01s)
+    --- FAIL: TestAppServerSubprocessHTTPToolContinuation/chatgpt (0.00s)
+        appserver_integration_test.go:71: App Server start failed
+    --- FAIL: TestAppServerSubprocessHTTPToolContinuation/apiKey (0.00s)
+        appserver_integration_test.go:71: App Server start failed
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/gateway	38.911s
+FAIL

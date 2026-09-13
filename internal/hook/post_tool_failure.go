@@ -4,6 +4,7 @@ package hook
 import (
 	"context"
 	"log/slog"
+	"regexp"
 	"strings"
 )
 
@@ -44,6 +45,11 @@ const (
 // dependency is pinned, and where the choice of this token over the refusal's
 // later clauses is argued.
 const worktreeGuardAnchor = "isolated in the worktree"
+
+// oomExitCodeRe matches the OOM exit code 137 only in delimiter-bounded form
+// (card t674). See the OOM branch in classifyError for why the bare substring
+// was a misclassification source.
+var oomExitCodeRe = regexp.MustCompile(`\b137\b`)
 
 // postToolUseFailureHandler processes PostToolUseFailure events.
 // It classifies errors by signature and provides actionable messages.
@@ -174,8 +180,14 @@ func (h *postToolUseFailureHandler) classifyError(input *HookInput) ErrorCategor
 		return SandboxViolation
 	}
 
-	// Check for OOM killed (exit code 137 or "oom" in error)
-	if strings.Contains(errorText, "oom") || strings.Contains(errorText, "out of memory") || strings.Contains(errorText, "137") {
+	// Check for OOM killed (exit code 137 or "oom" in error). Card t674: 137
+	// matches only in delimiter-bounded form — the earlier bare-substring
+	// Contains matched the card-id fragment of worktree paths
+	// (.claude/worktrees/t137) and longer numbers (exit status 1375), routing
+	// unrelated failures to OOMKilled. Word boundaries keep every real OOM
+	// phrasing ("exit status 137", "exit code 137", "(137)") matching while
+	// rejecting the fragments. Guarded by TestOOMExitCode137Boundary.
+	if strings.Contains(errorText, "oom") || strings.Contains(errorText, "out of memory") || oomExitCodeRe.MatchString(errorText) {
 		return OOMKilled
 	}
 

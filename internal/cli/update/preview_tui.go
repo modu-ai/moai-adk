@@ -94,7 +94,7 @@ const (
 // (REQ-TUIM-015).
 //
 // It is a package-level var so tests can force a specific axis without mutating
-// the process environment, mirroring cli.huhThemeIsDark and wizard.wizardIsDark.
+// the process environment, mirroring wizard.wizardIsDark.
 // Forcing it BYPASSES the precedence chain, so a test that verifies the chain
 // itself must leave this var at its default and drive the environment instead.
 var previewResolveTheme = tui.ResolveOS

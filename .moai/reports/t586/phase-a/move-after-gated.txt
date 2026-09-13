@@ -1,0 +1,50 @@
+# tree: HEAD 4061b6bda + uncommitted move (committed next as commit B)
+# cmd: MOAI_PTY_CAPTURE=1 go test ./internal/cli/wizard/ -run Ptycap|PtyCapture|HomeWatch -count=1 -v -timeout 600s
+=== RUN   TestPtyCaptureChild
+    ptycap_test.go:27: runs only inside a pty capture session
+--- SKIP: TestPtyCaptureChild (0.00s)
+=== RUN   TestPtyCapture_NormalRun
+    ptycap_test.go:47: built child test binary /var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestPtyCapture_NormalRun2545064614/001/child.test
+    ptycap_test.go:49: real HOME watch list: 17 entries, 11 present on the real HOME (before)
+    ptycap_test.go:57: ptycap session: moai-ptycap-TestPtyCapture-NormalRun-7152ae8b
+    ptycap_test.go:59: child effective environment verified (14 vars); child cwd /var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestPtyCapture_NormalRun2545064614/002; repository /Users/goos/MoAI/moai-adk-go/.claude/worktrees/t586
+    ptycap_test.go:62: ptycap export: /var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestPtyCapture_NormalRun2545064614/003/normal-run-init-first-page.txt
+    ptycap_test.go:70: moai-ptycap- sessions before=[moai-ptycap-sentinel-f232d972] after=[moai-ptycap-sentinel-f232d972]
+    ptycap_test.go:74: real HOME watch list: 17 entries, 11 present on the real HOME (after)
+--- PASS: TestPtyCapture_NormalRun (1.93s)
+=== RUN   TestPtyCapture_SkipWithoutGate
+    ptycap_test.go:81: built child test binary /var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestPtyCapture_SkipWithoutGate2855814642/001/child.test
+    ptycap_test.go:81: ungated child exit=<nil> output:
+        === RUN   TestPtyCaptureChild
+            ptycap_test.go:27: runs only inside a pty capture session
+        --- SKIP: TestPtyCaptureChild (0.00s)
+        === RUN   TestPtyCapture_NormalRun
+            ptycap_test.go:46: pty capture runs only under MOAI_PTY_CAPTURE=1
+        --- SKIP: TestPtyCapture_NormalRun (0.00s)
+        === RUN   TestPtyCapture_SkipWithoutGate
+            ptycap_test.go:80: pty capture runs only under MOAI_PTY_CAPTURE=1
+        --- SKIP: TestPtyCapture_SkipWithoutGate (0.00s)
+        === RUN   TestPtyCapture_FailWithoutTmux
+            ptycap_test.go:87: pty capture runs only under MOAI_PTY_CAPTURE=1
+        --- SKIP: TestPtyCapture_FailWithoutTmux (0.00s)
+        PASS
+    ptycap_test.go:81: ptycap export: /var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestPtyCapture_SkipWithoutGate2855814642/003/ac019a-ungated-child-output.txt
+--- PASS: TestPtyCapture_SkipWithoutGate (1.52s)
+=== RUN   TestPtyCapture_FailWithoutTmux
+    ptycap_test.go:88: built child test binary /var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestPtyCapture_FailWithoutTmux568289903/001/child.test
+    ptycap_test.go:88: tmux-less child exit=exit status 1 output:
+        === RUN   TestPtyCapture_NormalRun
+            ptycap_test.go:46: MOAI_PTY_CAPTURE=1 but tmux is not on PATH: exec: "tmux": executable file not found in $PATH
+        --- FAIL: TestPtyCapture_NormalRun (0.00s)
+        === RUN   TestPtyCapture_SkipWithoutGate
+            ptycap_test.go:80: MOAI_PTY_CAPTURE=1 but tmux is not on PATH: exec: "tmux": executable file not found in $PATH
+        --- FAIL: TestPtyCapture_SkipWithoutGate (0.00s)
+        === RUN   TestPtyCapture_FailWithoutTmux
+            ptycap_test.go:87: MOAI_PTY_CAPTURE=1 but tmux is not on PATH: exec: "tmux": executable file not found in $PATH
+        --- FAIL: TestPtyCapture_FailWithoutTmux (0.00s)
+        FAIL
+    ptycap_test.go:88: ptycap export: /var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestPtyCapture_FailWithoutTmux568289903/004/ac019b-no-tmux-child-output.txt
+--- PASS: TestPtyCapture_FailWithoutTmux (1.73s)
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/cli/wizard	5.746s
+# exit=0
