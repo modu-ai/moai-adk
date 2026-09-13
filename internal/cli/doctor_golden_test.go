@@ -110,6 +110,14 @@ func captureDoctorCmd(t *testing.T) (string, string) {
 	// (SPEC-V3R6-MOAI-CLEAN-HOME-001 REQ-MCH-008 hermeticity discipline).
 	t.Setenv("HOME", t.TempDir())
 	t.Setenv("MOAI_HOME", "")
+	// Scrub the backend env so the Shared Flag Slot check (card t702) reports
+	// its first-party baseline on every machine. A development shell running
+	// under a third-party backend (moai glm injects ANTHROPIC_BASE_URL) would
+	// otherwise steer the check into the slot-reading branch, whose output
+	// depends on the machine's real ~/.claude.json — the snapshots encode the
+	// env-scrubbed first-party baseline instead.
+	t.Setenv(config.EnvAnthropicBaseURL, "")
+	t.Setenv(config.EnvClaudeCodeHarborKite, "")
 	// Pin the codex PATH lookup absent for the same hermeticity reason: the
 	// Codex Wiring check reports an unwired project differently depending on
 	// whether codex is installed, so the machine's real PATH would otherwise
