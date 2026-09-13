@@ -253,3 +253,91 @@ func TestReceiptHistoryClassifiesDesyncWedgeAfterUnpublishedTurn(t *testing.T) {
 		t.Fatalf("exact retry after the failed turn rejected: %v", err)
 	}
 }
+
+// wedgeFixture extends the published conversation with the full wedge shape of
+// SPEC-GATEWAY-WEDGE-REROOT-001: a user turn, a trailing assistant boundary
+// the gateway never published (carrying an envelope-bound tool_use), its
+// dependent tool_result, and a plain user turn after it. Removing exactly the
+// unpublished boundary and its dependent tool results is the recovery shape.
+func wedgeFixture(t *testing.T, h HistoryAuthority, cipher string) (wedge, rerooted []any) {
+	t.Helper()
+	turn1, turn2, turn3 := causeConversation(t, h, cipher)
+	ctx := context.Background()
+	env := causeEnvelope(t, "rs_wedge", cipher+"-wedge")
+	marker, err := opaque.BindToolID("call_wedge", env)
+	if err != nil {
+		t.Fatal(err)
+	}
+	wedge = append(append([]any{}, turn1...), turn2...)
+	wedge = append(wedge, turn3...)
+	wedge = append(wedge,
+		map[string]any{"role": "user", "content": "fix it"},
+		map[string]any{"role": "assistant", "content": []any{
+			map[string]any{"type": "redacted_thinking", "data": env.Data()},
+			map[string]any{"type": "tool_use", "id": marker, "name": "write", "input": map[string]any{}},
+		}},
+		map[string]any{"role": "user", "content": []any{map[string]any{"type": "tool_result", "tool_use_id": marker, "content": "done"}}},
+		map[string]any{"role": "user", "content": "continue"},
+	)
+	if err = h.Check(ctx, "gpt-5.6-sol", "owner", j(wedge)); err == nil {
+		t.Fatal("wedge-shaped replay accepted before recovery")
+	}
+	// The client-side recovery shape: drop only the unpublished assistant
+	// boundary and its dependent tool_result; every user turn stays.
+	rerooted = append(append([]any{}, turn1...), turn2...)
+	rerooted = append(rerooted, turn3...)
+	rerooted = append(rerooted,
+		map[string]any{"role": "user", "content": "fix it"},
+		map[string]any{"role": "user", "content": "continue"},
+	)
+	return wedge, rerooted
+}
+
+func TestReceiptHistoryAcceptsTailRerootedWedgeReplay(t *testing.T) {
+	const id = "52525252-5252-8252-8252-525252525252"
+	h := NewGPTSubscriptionReceiptHistory(causeStore(t, id), id, id)
+	_, rerooted := wedgeFixture(t, h, "cipher")
+	// REQ-WRR-001 invariance: the tail-re-rooted replay is accepted by the
+	// unchanged check — it is a published-chain prefix (the already-locked
+	// tail-truncation tolerance), not a new acceptance.
+	if err := h.Check(context.Background(), "gpt-5.6-sol", "owner", j(rerooted)); err != nil {
+		t.Fatalf("tail-re-rooted wedge replay rejected: %v", err)
+	}
+}
+
+func TestReceiptHistoryRejectsMidDropAfterTailReroot(t *testing.T) {
+	const id = "53535353-5353-8353-8353-535353535353"
+	h := NewGPTSubscriptionReceiptHistory(causeStore(t, id), id, id)
+	_, rerooted := wedgeFixture(t, h, "cipher")
+	// Drop the mid-history turn2 assistant boundary (with its tool_result) on
+	// top of the tail re-root: recovery cannot and does not repair mid-history
+	// divergence, so the replay stays rejected with the chain class.
+	// rerooted layout: [t1-user, t1-assistant, t2-user, t2-assistant,
+	// t2-tool_result, t3-user, t3-assistant, fix-it, continue].
+	midDropped := append(append([]any{}, rerooted[0:3]...), rerooted[5:]...)
+	replay := replayCauseOf(t, h.Check(context.Background(), "gpt-5.6-sol", "owner", j(midDropped)))
+	if replay.Cause != CauseChain {
+		t.Fatalf("cause = %d, want CauseChain", replay.Cause)
+	}
+	if !strings.Contains(replay.Error(), "(reason: replayed history does not match the recorded receipt chain") {
+		t.Fatal(replay.Error())
+	}
+}
+
+// Card t700 (REQ-WRR-002): the guidance sentence and the three reason clauses
+// are pinned as full literals. A golden built from the production constants
+// would pass any edit of those constants, so the expected strings are spelled
+// out byte-for-byte here instead.
+func TestHistoryReplayErrorGoldenStrings(t *testing.T) {
+	const goldenGuidance = "conversation history changed, lacks reasoning, or belongs to another model family/account; start a new conversation"
+	golden := map[ReplayCause]string{
+		CauseChain:     goldenGuidance + " (reason: replayed history does not match the recorded receipt chain; start a new conversation)",
+		CauseLineage:   goldenGuidance + " (reason: no recorded history exists for this session; resume or fork through the moai launcher, or start a new conversation)",
+		CauseReasoning: goldenGuidance + " (reason: replayed history omits gateway-issued reasoning recorded at this position; replay the history unmodified or start a new conversation)",
+	}
+	for cause, want := range golden {
+		if got := (HistoryReplayError{Cause: cause}).Error(); got != want {
+			t.Fatalf("cause %d golden drift:\n got: %q\nwant: %q", cause, got, want)
+		}
+	}
+}
