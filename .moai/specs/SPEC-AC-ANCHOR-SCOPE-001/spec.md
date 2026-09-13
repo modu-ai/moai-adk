@@ -40,7 +40,7 @@ related_specs: [SPEC-AC-COLLECTOR-ANCHOR-001]
 | Declarations in-section under the current anchor | 1240 |
 | Declarations out-section | 165 |
 | **Narrow axis** — declarations exist, NO anchor | **14 files** (`probe/anchor-missed.txt`) |
-| **Loose axis** — anchored but 0 in-section while declarations exist elsewhere | **9 files** (`probe/empty-anchor.txt`), all 9 via the empty-first-section fallback |
+| **Loose axis** — anchored but 0 in-section while declarations exist elsewhere | **9 files** (`probe/empty-anchor.txt`), each anchored at an empty vocabulary section; the empty-first-section fallback is the measured-likely route (the probe's fallback counter reuses the empty-anchor condition, so the route attribution is approximate) |
 
 Root causes (both measured, not inferred):
 
@@ -51,8 +51,14 @@ Root causes (both measured, not inferred):
    parser never sees their AC sections.
 2. **Loose axis (empty-anchor preemption)** — when several vocabulary headings exist and ALL
    their sections are empty of AC lines, the fallback (`parser.go:137`, `return first`) anchors
-   the FIRST, empty one. The real declarations (1–28 per file) sit under later headings, so the
-   file is "anchored" at nothing.
+   the FIRST, empty one — mechanistically the only code path by which an empty vocabulary
+   section can anchor, though the probe attributes the route as measured-likely rather than
+   traced per file. The real declarations (1–28 per file) sit under later headings, so the file
+   is "anchored" at nothing.
+
+Corpus note: the 860-file denominator uniformly includes `.moai/specs/_archive/` directories
+(e.g. `_archive/SPEC-DESIGN-CONST-AMEND-001` appears in `probe/empty-anchor.txt`); archived and
+active SPECs are measured on the same terms.
 
 Comparability baseline: t528 (`.moai/reports/t528/probe/merged-tree-remeasure.md` — denominator
 815, in-section 1167, frozen-anchor accepted 216), probe committed as
@@ -100,6 +106,11 @@ layer (REQ-ACAS-004).
   before-images frozen and never overwritten, `declRe` (discriminator B) byte-frozen, corpus
   numbers re-derived in-run and never carried across two runs or two trees.
 
+- **REQ-ACAS-007 (sibling path preservation)** — The acceptance.md sibling path shall continue
+  to parse via `ExtractRequirementMappings` over the file's full text with zero behavior
+  change; this SPEC's anchor repair shall not alter the sibling rule's covered set, findings,
+  or tests.
+
 ## §C Constraints
 
 - Only `internal/spec` parser behavior changes; no public CLI surface change
@@ -119,8 +130,11 @@ layer (REQ-ACAS-004).
 
 ### Out of Scope — out-section prose-layer reclassification
 
-- The ~165 out-section declarations outside the 23 defect files are NOT reclassified by this
-  SPEC. Sample-reading them (which are prose mentions vs missed anchors) is run-phase
+- The 165 out-section declarations live in 29 files (`probe/outside-decls.txt`); 16 of those
+  files are members of the 23-file defect set (narrow-miss + empty-anchor union), and the
+  remaining 13 files — including the in=10/out=1 specimens (SPEC-CLAUDEMD-DIET-V2-001,
+  SPEC-DB-SYNC-HARDEN-001) — are the correctly-excluded prose layer this SPEC does NOT
+  reclassify. Sample-reading them (which are prose mentions vs missed anchors) is run-phase
   verification input, not a deliverable.
 
 ### Out of Scope — extractACLines anchor-level break semantics
@@ -144,6 +158,7 @@ layer (REQ-ACAS-004).
 - Prose bound: every newly in-section declaration attributable to a defect repair or justified
   delta (AC-747-004).
 
-Dependency note: the no-regression control set is "declaration-bearing files not in the defect
-lists"; its exact membership and count are derived in-run by the committed probe (the plan
-figures ~129–142 differ by overlap accounting; the in-run derivation is authoritative).
+Dependency note: the no-regression control set is the complement of the frozen defect lists
+within the declaration-bearing files — 129 files exactly (152 decl-bearing − 14 narrow-miss −
+9 empty-anchor; the two frozen lists are disjoint, 14∩9=0). The committed probe re-derives this
+membership in-run; the in-run derivation is authoritative over this figure.

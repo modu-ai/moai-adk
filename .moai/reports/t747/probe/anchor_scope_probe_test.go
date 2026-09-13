@@ -1,6 +1,11 @@
-// zz_t747_anchor_probe_test.go — t747 plan-phase measurement probe.
-// UNCOMMITTED measurement tool: this file is deleted before any commit; its
-// outputs are pinned under .moai/reports/t747/probe/.
+// anchor_scope_probe_test.go — t747 plan-phase measurement probe.
+// PRESERVATION DECISION (plan-audit iter1, finding D4): originally authored as
+// an UNCOMMITTED measurement tool ("zz_t747_anchor_probe_test.go", deleted
+// before any commit; outputs pinned under .moai/reports/t747/probe/), this
+// file is now COMMITTED for durability (8665f80b3). Promotion into the tree as
+// a permanent committed probe (the zz_t528 pattern) remains run-phase M1's
+// decision; this committed copy under .moai/reports/ does not by itself
+// promote it, and the original self-name above is retired.
 //
 // RE-DERIVATION
 //

@@ -19,7 +19,7 @@ two-column probe (M1); unit-level ACs by table-driven parser tests.
 | AC-747-004 | REQ-ACAS-004 | Must | Newly-included declaration attribution audit |
 | AC-747-005 | REQ-ACAS-005 | Must | Probe output shape (two-column, single-run) |
 | AC-747-006 | REQ-ACAS-006 | Must | Frozen-before-image integrity + in-run re-derivation |
-| AC-747-007 | §D Out of Scope | Should | Sibling path untouched (no diff in `lint_coverage_sibling.go` behavior) |
+| AC-747-007 | REQ-ACAS-007 | Should | Sibling path untouched (no diff in `lint_coverage_sibling.go` behavior) |
 
 ### AC-747-001 — Narrow axis: 14 → 0 repaired-or-justified
 
@@ -73,7 +73,7 @@ run evidence is attributed to an in-run command output.
 
 ### AC-747-007 — Sibling path untouched
 
-**Given** `lint_coverage_sibling.go`'s `ExtractRequirementMappings` acceptance.md path
+**Given** REQ-ACAS-007 and `lint_coverage_sibling.go`'s `ExtractRequirementMappings` acceptance.md path
 **When** the repair lands
 **Then** the sibling rule's behavior is unchanged (existing sibling tests pass without
 modification) and no commit in the SPEC touches that file.
@@ -108,4 +108,4 @@ modification) and no commit in the SPEC touches that file.
 
 REQ-ACAS-001→AC-747-001 · REQ-ACAS-002→AC-747-002 · REQ-ACAS-003→AC-747-003 ·
 REQ-ACAS-004→AC-747-004 · REQ-ACAS-005→AC-747-005 · REQ-ACAS-006→AC-747-006 ·
-§D exclusions→AC-747-007
+REQ-ACAS-007→AC-747-007

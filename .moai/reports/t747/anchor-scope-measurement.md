@@ -36,4 +36,4 @@ in=10/out=1 꼴(CLAUDEMD-DIET-V2, DB-SYNC-HARDEN 등)은 산문 속 AC id 언급
 
 - in-section 스캔은 t528 프로브와 동일 형태(모든 `##` 접두 행에서 break)라 216/1167과 비교 가능. `extractACLines`의 앵커-수준 break(### 하위 절 포함 독해)와의 2차 차이는 여기서 해소하지 않고 기록만.
 - declRe는 discriminator B의 동결 사본 — 편집 금지.
-- 프로브 소스: `probe/anchor_scope_probe_test.go` (트리 밖 보존, 커밋 대상 아님)
+- 프로브 소스: `probe/anchor_scope_probe_test.go` — 본래 미커밋 측정 도구(zz_t747_anchor_probe_test.go, 커밋 전 삭제)였으나 plan-audit iter1 D4에 따라 내구성을 위해 커밋됨(8665f80b3). 트리 상수 프로브(zz_t528 패턴)로의 승격 여부는 run 단계 M1의 판단이며, 이 커밋 자체가 승격을 뜻하지 않는다.

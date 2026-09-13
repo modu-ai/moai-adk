@@ -38,6 +38,10 @@ Pre-flight (run-phase entry):
       is a PRESERVE surface: the repair must not regress the 216 frozen-anchor acceptances of
       t528's baseline).
 - [ ] Confirm no file under `.moai/reports/t528/**` is touched.
+- [ ] Freeze the pre-repair anchor behavior as a baseline column re-derived in-run
+      (zz_t528 pattern), per file, over the control set (129 decl-bearing files outside the
+      defect lists) — this frozen per-file baseline is the comparison instrument for
+      AC-747-003.
 
 Design space weighed (decision record — the run phase implements, this plan commits direction):
 
@@ -89,7 +93,7 @@ harness (M1) precedes them only because both consume its in-run before-column; m
 
 | ID | Priority | Milestone | Deliverable |
 |----|----------|-----------|-------------|
-| M1 | High | Probe promotion + RED baseline | Probe committed in-tree as a two-column corpus test (t528 pattern, denominator frozen via `filelist.txt` artifact); in-run before-column recorded (14 / 9 / 1240 / 165); no-regression control set derived in-run and frozen as test data |
+| M1 | High | Probe promotion + RED baseline | Probe committed in-tree as a two-column corpus test (t528 pattern, denominator frozen via `filelist.txt` artifact); in-run before-column recorded (14 / 9 / 1240 / 165); no-regression control set derived in-run and frozen as per-file baseline data — the comparison instrument for AC-747-003 |
 | M2 | High | Narrow-axis anchor criteria | Declaration-presence-based region selection with vocabulary headings as the common case; negative markers preserved; unit fixtures from the narrow-miss shapes (SPEC-AC-COLLECTOR-ANCHOR-001, SPEC-CC297-001, SPEC-STATUS-AUTO-001) |
 | M3 | High | Loose-axis fallback ordering | Declaration-aware terminal fallback (design §C(ii)(a)); unit fixtures from `probe/empty-anchor.txt` shapes; all 9 files anchor a declaration-bearing region |
 | M4 | Medium | No-regression + prose-bound verification | Control set byte-identical (or justified-delta list); prose bound AC-747-004 verified; t528 frozen-anchor PRESERVE check green |
