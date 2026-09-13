@@ -103,6 +103,17 @@ func gatewayNativeModels(mode string, tiers config.GLMModels) ([]gateway.ModelEn
 	default:
 		return nil, errors.New("unsupported native gateway provider")
 	}
+	// AS-020 capability re-verdict: the declarations are nominal metadata from
+	// the official model tables, never an acceptance guarantee. Claude routes
+	// declare image acceptance at the 1M nominal context; GLM routes are
+	// text-only (image input is refused explicitly at the request boundary)
+	// at the documented 200K nominal context.
+	images := true
+	nominalContext := 1000000
+	if provider == gateway.ProviderZAI {
+		images = false
+		nominalContext = 200000
+	}
 	rows := []gateway.ModelEntry{}
 	seen := map[string]bool{}
 	for _, id := range ids {
@@ -113,7 +124,7 @@ func gatewayNativeModels(mode string, tiers config.GLMModels) ([]gateway.ModelEn
 			continue
 		}
 		seen[id] = true
-		rows = append(rows, gateway.ModelEntry{RouteID: id, UpstreamID: id, Provider: provider, AuthMethod: method, Capabilities: gateway.Capabilities{ContextTokens: 1000000, Images: true, Tools: true, Streaming: true}})
+		rows = append(rows, gateway.ModelEntry{RouteID: id, UpstreamID: id, Provider: provider, AuthMethod: method, Capabilities: gateway.Capabilities{ContextTokens: nominalContext, Images: images, Tools: true, Streaming: true}})
 		if provider == gateway.ProviderAnthropic {
 			qualified := rows[len(rows)-1]
 			qualified.RouteID = id + "[1m]"

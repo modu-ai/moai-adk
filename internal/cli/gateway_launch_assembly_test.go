@@ -123,6 +123,44 @@ func authDisplayMatchesSessionEnv(display string, env []string) bool {
 	return false
 }
 
+// TestGatewayNativeModelCapabilitiesPerProvider pins the AS-020 capability
+// re-verdict of the production native model declarations: GLM routes are
+// text-only with the officially documented nominal 200K context, Claude
+// routes declare image acceptance with the 1M nominal context. The declared
+// numbers are nominal metadata, never an acceptance guarantee.
+func TestGatewayNativeModelCapabilitiesPerProvider(t *testing.T) {
+	glmRows, err := gatewayNativeModels("glm", config.GLMModels{High: "glm-tier-high", Medium: "glm-tier-medium", Low: "glm-tier-low", Fable: "glm-tier-fable"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, row := range glmRows {
+		if row.Provider != gateway.ProviderZAI {
+			t.Fatalf("glm row %s has provider %s", row.RouteID, row.Provider)
+		}
+		if row.Capabilities.Images {
+			t.Fatalf("glm row %s declares image acceptance; GLM is text-only (AS-020)", row.RouteID)
+		}
+		if row.Capabilities.ContextTokens != 200000 {
+			t.Fatalf("glm row %s nominal context = %d, want the documented 200000", row.RouteID, row.Capabilities.ContextTokens)
+		}
+	}
+	claudeRows, err := gatewayNativeModels("claude", config.GLMModels{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, row := range claudeRows {
+		if row.Provider != gateway.ProviderAnthropic {
+			t.Fatalf("claude row %s has provider %s", row.RouteID, row.Provider)
+		}
+		if !row.Capabilities.Images {
+			t.Fatalf("claude row %s lost its declared image capability", row.RouteID)
+		}
+		if row.Capabilities.ContextTokens != 1000000 {
+			t.Fatalf("claude row %s nominal context = %d, want 1000000", row.RouteID, row.Capabilities.ContextTokens)
+		}
+	}
+}
+
 // TestGatewayLaunchTransportGateControl is the AC-MG-026 (a) control group:
 // until the AS-014~AS-022 verification gate has passed, BOTH wait-error sites
 // (internal/cli/gpt.go and internal/cli/launcher.go) retain the transport
