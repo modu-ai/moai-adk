@@ -1,0 +1,8 @@
+--- FAIL: TestGraphFreshnessReachabilityGuard_TargetSelection (4.69s)
+    --- FAIL: TestGraphFreshnessReachabilityGuard_TargetSelection/push_rejects_an_object-present_non-ancestor_stamp (0.76s)
+        t688_push_guard_test.go:44: guard output (env=map[GITHUB_BASE_REF: GITHUB_HEAD_REF:]):
+            guard: push event (no base ref) — object presence verified only
+        t688_push_guard_test.go:46: push guard exited 0 on a stamp that is not an ancestor of HEAD — object presence was accepted as reachability
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/graph	5.349s
+FAIL

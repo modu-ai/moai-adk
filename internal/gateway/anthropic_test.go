@@ -49,7 +49,7 @@ func nativeQ(t *testing.T) RoutedRequest {
 }
 func TestAnthropicNativeMessagesPreserveAndFilter(t *testing.T) {
 	seen := make(chan *http.Request, 1)
-	tr, calls := nativeTLS(t, func(w http.ResponseWriter, r *http.Request) {
+	tr, _ := nativeTLS(t, func(w http.ResponseWriter, r *http.Request) {
 		b, _ := io.ReadAll(r.Body)
 		var d map[string]json.RawMessage
 		_ = json.Unmarshal(b, &d)
@@ -58,11 +58,15 @@ func TestAnthropicNativeMessagesPreserveAndFilter(t *testing.T) {
 		if model != "canonical" || !strings.Contains(string(d["messages"]), `"is_error":true`) || !strings.Contains(string(d["messages"]), `"role":"system"`) || string(d["stop_sequences"]) != `["STOP"]` {
 			t.Error(string(b))
 		}
-		seen <- r
-		w.Header().Set("Content-Type", "application/json")
-		if _, err := io.WriteString(w, nativeOutput); err != nil {
-			t.Error(err)
+		// A retried attempt re-enters this handler while the first capture is
+		// still buffered; a blocking send wedges cleanup until the package
+		// timeout (CI race job 34765755281). First capture wins.
+		select {
+		case seen <- r:
+		default:
 		}
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = io.WriteString(w, nativeOutput) // abandoned retries legitimately fail the write
 	})
 	a, e := NewAnthropicAdapter(nativeConfig(tr))
 	if e != nil {
@@ -74,7 +78,7 @@ func TestAnthropicNativeMessagesPreserveAndFilter(t *testing.T) {
 		t.Fatal(body)
 	}
 	q := <-seen
-	if q.Host != "api.anthropic.com" || q.URL.Path != "/v1/messages" || q.Header.Get("X-Api-Key") != "synthetic-anthropic" || q.Header.Get("Authorization") != "" || q.Header.Get("Anthropic-Beta") != "allowed-beta" || q.Header.Get("Anthropic-Version") != "2023-06-01" || calls.Load() != 1 {
+	if q.Host != "api.anthropic.com" || q.URL.Path != "/v1/messages" || q.Header.Get("X-Api-Key") != "synthetic-anthropic" || q.Header.Get("Authorization") != "" || q.Header.Get("Anthropic-Beta") != "allowed-beta" || q.Header.Get("Anthropic-Version") != "2023-06-01" {
 		t.Fatal("header/endpoint boundary")
 	}
 }

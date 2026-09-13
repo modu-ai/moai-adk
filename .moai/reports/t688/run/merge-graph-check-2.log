@@ -1,0 +1,6 @@
+codemaps  metric=described-source-diff value=2 threshold=40 verdict=fresh
+mx-index  metric=inventory-content-diff value=94 threshold=1 verdict=stale  (94 inventoried file(s) changed content)
+edges     metric=source-fingerprint-mismatch value=1 threshold=0 verdict=stale  (source set(s) moved: reports)
+citations metric=positive-cited-path-absence value=0 threshold=0 verdict=fresh
+graph check: layer mx-index verdict=stale value=94 threshold=1 — 94 inventoried file(s) changed content
+graph check: layer edges verdict=stale value=1 threshold=0 — source set(s) moved: reports
