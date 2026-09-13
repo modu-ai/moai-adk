@@ -193,7 +193,7 @@ residual_risks:
 
 ```yaml
 sync_complete_at: 2026-09-13
-sync_commit_sha: pending-backfill-sync
+sync_commit_sha: 61ef78596
 sync_status: completed
 changelog_entry_position: CHANGELOG.md [Unreleased] → Added (first entry)
 ac_pass_count: 17
