@@ -24,6 +24,7 @@ package cli
 import (
 	"encoding/json"
 	"fmt"
+	"os"
 	"path/filepath"
 	"text/tabwriter"
 
@@ -45,12 +46,18 @@ type modelProfileEntry struct {
 	// per-agent overlay state — the only differentiating axis under GLM.
 	GLMModel     string `json:"glm_model,omitempty"`
 	GLMReasoning string `json:"glm_reasoning,omitempty"`
+	// Gateway (gpt) overlay field — populated only under a gateway backend, the
+	// t840 mirror of the GLM fold: always the explicit inherit sentinel for
+	// mapped agents, because the launcher pins every alias slot to ONE gpt
+	// model id (internal/cli/gateway_prepare.go), so no per-agent model routing
+	// exists. Effort (the plain column) is the only per-agent axis under gpt.
+	GatewayModel string `json:"gateway_model,omitempty"`
 }
 
 // modelProfileReport is the full `moai model profile --json` payload.
 type modelProfileReport struct {
 	Profile string              `json:"profile"`
-	Backend string              `json:"backend"` // "claude" | "glm"
+	Backend string              `json:"backend"` // "claude" | "glm" | "gpt"
 	Agents  []modelProfileEntry `json:"agents"`
 	// WireNote carries the honesty constraint (REQ-MPM-039 / AC-MPM-023): under
 	// GLM the overlay is implemented + wired, but live z.ai wire-effectiveness is
@@ -87,6 +94,7 @@ override for a named subagent.`,
 // unit testing without a project on disk).
 func resolveModelProfileReport(llm config.LLMConfig) modelProfileReport {
 	glm := template.IsGLMBackend(llm)
+	gateway := template.IsGatewayBackend(llm)
 	rpt := modelProfileReport{
 		Profile: llm.EffectiveProfile(),
 		Backend: "claude",
@@ -94,6 +102,10 @@ func resolveModelProfileReport(llm config.LLMConfig) modelProfileReport {
 	if glm {
 		rpt.Backend = "glm"
 		rpt.WireNote = "GLM sub-agent models are session-inherited (llm.glm.models to ANTHROPIC_DEFAULT_*_MODEL); per-agent routing differs by reasoning only. Overlay implemented + wired; live z.ai wire-effectiveness pending"
+	}
+	if gateway {
+		rpt.Backend = "gpt"
+		rpt.WireNote = "Gateway sub-agent models are session-inherited (the launcher pins ANTHROPIC_DEFAULT_*_MODEL to one gpt model id); per-agent routing differs by effort only"
 	}
 	for _, agent := range template.ProfileMatrixAgents() {
 		me, hasGroup := template.ResolveAgentModelEffort(llm, agent)
@@ -116,6 +128,12 @@ func resolveModelProfileReport(llm config.LLMConfig) modelProfileReport {
 			entry.GLMModel = template.ModelInherit
 			entry.GLMReasoning = template.ResolveGLMReasoningForModel(llm.GLM.Models.High, agent, me.Effort).Name
 		}
+		if gateway && hasGroup {
+			// t840 fold: the gateway launcher pins every alias slot to one gpt
+			// model id, so state session inheritance explicitly; effort (the
+			// plain column) is the only per-agent axis under a gateway backend.
+			entry.GatewayModel = template.ModelInherit
+		}
 		rpt.Agents = append(rpt.Agents, entry)
 	}
 	return rpt
@@ -130,7 +148,10 @@ func runModelProfile(cmd *cobra.Command, _ []string) error {
 	if err != nil {
 		return fmt.Errorf("load config: %w", err)
 	}
-	rpt := resolveModelProfileReport(cfg.LLM)
+	// t840: fold the launcher-owned gateway signal (MOAI_LAUNCH_PROVIDER) — a
+	// gateway launch persists nothing into llm.yaml, so inside a gpt session
+	// the config alone would report a Claude backend.
+	rpt := resolveModelProfileReport(cfg.LLM.WithLaunchProvider(os.Getenv(config.EnvMoaiLaunchProvider)))
 
 	asJSON, _ := cmd.Flags().GetBool("json")
 	out := cmd.OutOrStdout()
@@ -142,12 +163,18 @@ func runModelProfile(cmd *cobra.Command, _ []string) error {
 
 	_, _ = fmt.Fprintf(out, "profile: %s   backend: %s\n", rpt.Profile, rpt.Backend)
 	tw := tabwriter.NewWriter(out, 0, 2, 2, ' ', 0)
-	if rpt.Backend == "glm" {
+	switch rpt.Backend {
+	case "glm":
 		_, _ = fmt.Fprintln(tw, "AGENT\tGROUP\tMODEL\tEFFORT\tGLM_MODEL\tGLM_REASONING")
 		for _, e := range rpt.Agents {
 			_, _ = fmt.Fprintf(tw, "%s\t%s\t%s\t%s\t%s\t%s\n", e.Agent, e.Group, e.Model, e.Effort, e.GLMModel, e.GLMReasoning)
 		}
-	} else {
+	case "gpt":
+		_, _ = fmt.Fprintln(tw, "AGENT\tGROUP\tMODEL\tEFFORT\tGATEWAY_MODEL")
+		for _, e := range rpt.Agents {
+			_, _ = fmt.Fprintf(tw, "%s\t%s\t%s\t%s\t%s\n", e.Agent, e.Group, e.Model, e.Effort, e.GatewayModel)
+		}
+	default:
 		_, _ = fmt.Fprintln(tw, "AGENT\tGROUP\tMODEL\tEFFORT")
 		for _, e := range rpt.Agents {
 			_, _ = fmt.Fprintf(tw, "%s\t%s\t%s\t%s\n", e.Agent, e.Group, e.Model, e.Effort)
