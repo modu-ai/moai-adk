@@ -90,7 +90,7 @@ func TestRunStep_ChildGitInitFromWorktreeDoesNotFlipOuterCoreBare(t *testing.T) 
 	t.Setenv(helperGitEnvReportEnv, report)
 
 	name, args := helperStep("TestHelperGitInit")
-	if ok, msg := stepGate(stepDir).runStep(context.Background(), "init", 60*time.Second, name, args...); !ok {
+	if ok, msg := stepGate(stepDir).runStep(context.Background(), "init", "", 60*time.Second, name, args...); !ok {
 		t.Fatalf("init step failed: %s", msg)
 	}
 
