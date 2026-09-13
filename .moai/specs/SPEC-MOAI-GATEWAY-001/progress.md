@@ -238,10 +238,10 @@ as013_disposition: designed NOT-RUN maintained (M1 pre-condition failure probe, 
 
 sync_status: audit-ready (card t654 sync — AS-5 launcher integration; the umbrella SPEC does NOT close — live-window cards t844·t851 remain, so spec.md stays in-progress)
 sync_complete_at: 2026-09-14
-sync_commit_sha: "pending-backfill" (worktree `.claude/worktrees/t654`, branch `WT-gateway-launchers`, run-phase HEAD `059f4e700`)
+sync_commit_sha: "ce4a3c6ed" (backfilled 2026-09-14 — worktree `.claude/worktrees/t654`, branch `WT-gateway-launchers`, run-phase HEAD `059f4e700`→verdict head)
 frontmatter_status_transitions: NONE this window (spec.md는 in-progress 유지 — t654 plan이 재개한 implemented→in-progress 상태 그대로; implemented→completed 전이는 라이브 창 카드 t844·t851 착지 뒤 후속 sync 몫)
-card_verdict: .moai/reports/t654/as5-verdict.md (pending — 레인이 sync-audit 뒤 작성; 5-section format)
-sync_audit: .moai/reports/t654/as5-sync-audit.md (pending — sync-auditor가 다음에 작성; 4-dimension score — Functionality/Security/Craft/Consistency)
+card_verdict: .moai/reports/t654/as5-verdict.md (written 2026-09-14 — 레인 verdict; 5-section format; 가드 개정 diff 명시 포함)
+sync_audit: .moai/reports/t654/as5-sync-audit.md (written 2026-09-14 — sync-auditor, PASS 0.93: Functionality 95·Security 94·Craft 90·Consistency 93 조화평균)
 changelog_entry: deferred to AC-MG-026 (d) deploy-gate window (B12 pre-emission grep `grep -c 'SPEC-MOAI-GATEWAY-001' CHANGELOG.md` → 0 — 이번 창의 사용자 가시 표면은 아직 라이브가 아니다: launcher 통합 게이트는 AC-MG-026 (a) GREEN이 라이브 창에서 열려야 한다; t653 선례와 동일 판정)
 b12_self_test_a: pass (pre-emission grep count 0 — 중복 발행 위험 없음; halt 조건 없음)
 b12_self_test_b: n/a (CHANGELOG 항목 미발행 — AC-count match 대상 없음)
