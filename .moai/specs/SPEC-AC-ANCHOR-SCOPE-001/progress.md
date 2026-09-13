@@ -95,7 +95,7 @@ m1_to_mN_commit_strategy: one commit per milestone (M1; M2-RED; M2-GREEN; M3; M4
 
 sync_status: complete (3-phase close — in-progress → implemented → merged into the single sync commit)
 sync_complete_at: 2026-09-14
-sync_commit_sha: pending-backfill-sync
+sync_commit_sha: 4c87fef9b (backfilled per D3 placeholder pattern; sync commit subject `docs(SPEC-AC-ANCHOR-SCOPE-001): sync-phase — 3-phase close`)
 backfill_commit_subject: docs(SPEC-AC-ANCHOR-SCOPE-001): backfill sync_commit_sha
 sync_commit_subject: docs(SPEC-AC-ANCHOR-SCOPE-001): sync-phase — 3-phase close
 changelog_entry_position: [Unreleased] → ### Fixed → first entry (append-only; no other entries reordered)
@@ -104,6 +104,6 @@ b12_self_test_b: PASS — `grep -oE 'AC-([A-Z0-9]+-)*[0-9]+' acceptance.md | sor
 b12_self_test_c: PASS (after 1 correction) — initial draft named `internal/spec/anchor.go`; `ls` refuted it (findACSectionStart is at `internal/spec/parser.go:177`), entry corrected before commit; .moai/specs/SPEC-AC-ANCHOR-SCOPE-001/ verified present
 frontmatter_status_transitions: {from: in-progress, via: implemented, to: completed, fields_touched: [status, updated], body_edits: none}
 canary_compliance_check: PASS — `go test ./internal/spec/ -run 'TestT528Anchor|TestT747AnchorScope' -count=1` green at close (t528 corpus 14-file + empty-anchor 9-file probes; 129-file control byte-identical per §E.2)
-close_sanity_check: `go test ./internal/spec/ -run 'TestT528Anchor|TestT747AnchorScope' -count=1` + `go vet ./internal/spec/` — outputs recorded in the sync report
+close_sanity_check: PASS — `go test ./internal/spec/ -run 'TestT528Anchor|TestT747AnchorScope' -count=1` → `ok github.com/modu-ai/moai-adk/internal/spec 0.752s`; `go vet ./internal/spec/` → exit 0 (both run post-sync-commit at 4c87fef9b, this tree)
 mx_tag_validation: sync sub-step — no new exported symbols added at run phase beyond `sectionHoldsACDeclaration`/`isNegativeSectionHeading`/`isACSectionHeading` (unexported helpers, M5 doc comments landed with M2/M3); no @MX additions required
 docs_site: no edit — internal parser behavior (`findACSectionStart` anchor selection); no user-facing CLI surface beyond lint accuracy; no docs-site page documents per-AC anchor mechanics
