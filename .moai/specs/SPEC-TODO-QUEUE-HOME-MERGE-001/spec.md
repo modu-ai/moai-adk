@@ -1,7 +1,7 @@
 ---
 id: SPEC-TODO-QUEUE-HOME-MERGE-001
 title: "Merge the diverged project todo queue into the canonical home SQLite store"
-version: "0.2.0"
+version: "0.3.0"
 status: in-progress
 created: 2026-09-13
 updated: 2026-09-13
@@ -23,6 +23,7 @@ related_specs: [SPEC-WEB-TODO-QUEUE-001, SPEC-TODO-SQLITE-001, SPEC-TODO-LANDING
 |---|---|---|
 | 0.1.0 | 2026-09-13 | Initial draft (card t657, plan phase, manager-spec) |
 | 0.2.0 | 2026-09-13 | Plan-audit delta (D1-D8): AC coverage for REQ-TQM-003/006/018; GEARS grammar fixes (REQ-TQM-007/010/017); high-water formula includes project `last_seq`; `Names` exact-match correction; identity-UUID collision edge case; REQ-count over-budget debt accepted on coordinator authority |
+| 0.3.0 | 2026-09-13 | Re-plan against the measured M3 baseline (operator decision via lead): REQ-TQM-006 rewritten as the explicit duplicate discriminator (archived-population + byte-exact content; live cards default to renumber); §6 baseline replaced with measured store figures (home mtime moving); AC-TQM-010 (live-card discriminator) and AC-TQM-011 (runtime-persistence decision record) added; M4 execution forbidden until re-audit |
 
 ## 1. Background
 
@@ -74,7 +75,7 @@ Observed on this worktree (branch WT-todo-queue-merge, base origin/develop 5e0f7
 
 **REQ-TQM-005** — When a project-only card's id collides with a DIFFERENT home card, the merge shall reissue the project-only card's id from the merged high-water mark (`max(last_seq_home, last_seq_project, max id home, max id project)`), preserve the card's UUIDv7 identity, rewrite references to the old id in finding texts and runtime assignments, and append one `old → new` row to the mapping-table file.
 
-**REQ-TQM-006** — When a number is shared and the content is identical (the 53 plan-time pairs), the merge shall keep the home copy unchanged and record the pair as resolved-duplicate in the merge report.
+**REQ-TQM-006** — When a number is shared, the merge shall classify the pair as a resolved duplicate ONLY when the discriminator holds: the project card is in the project store's ARCHIVED population (completed work), AND the two cards are content-equal — byte-identical text, equal state, and equal `SpecID` (both present and equal, or both absent); metadata (AddedAt, landing evidence) is outside the comparison. Any project card in the LIVE population (queued, picked, or dropped) whose id matches a home card — live or archived — shall default to renumber-migrate per REQ-TQM-005, never to duplicate absorption, however similar the content: a matching number is not evidence of the same completed work. The merge report shall carry one resolved-duplicate row per duplicate, naming both stores' ids.
 
 **REQ-TQM-007** — When a number is shared and the content differs (the 20 plan-time pairs), the home card shall keep the number, and the project variant shall be inserted under a newly issued id per REQ-TQM-005; the mapping table is the only traceability bridge for commit messages and `.moai/reports/<card-id>/` paths that reference the old number.
 
@@ -138,7 +139,12 @@ Observed on this worktree (branch WT-todo-queue-merge, base origin/develop 5e0f7
 ### Out of Scope — queue content decisions
 - Which unresolved reconciliation cards the operator later drops or re-prioritizes is operator work, recorded post-merge; the merge guarantees truthfulness of states, not prioritization.
 
-## 6. Plan-time baseline (subject to REQ-TQM-014 freshness re-check)
+## 6. Measured baseline (M3 dry-run, 2026-09-13 — supersedes the plan-time §1 figures; still subject to REQ-TQM-014 in-window re-derivation)
 
-- Post-merge expected cardinality: 95 (home) + 32 (project-only) = **127 cards**, of which 32 project-only carry their original ids or a mapping-table row.
-- The 32 project-only ids are enumerated in §1; the merge report must reconcile against THIS enumeration, re-derived fresh at execution time.
+| Store | Live | Archived | last_seq | mtime |
+|---|---|---|---|---|
+| Home (canonical) | 59 (6 queued / 24 picked / 29 done) | 349 | 697 | **MOVING — live store**; home figures valid only inside the M4 freshness window |
+| Project (legacy) | 105 (72 queued / 6 picked / 27 done) | 267 | 661 | stable since 2026-09-11 |
+
+- Observed dry-run taxonomy (pre-discriminator): 290 duplicates / 82 renumbered / 0 pure migrations; union 780; high-water 779; zero-loss 780/780 PASS; 0 identity-UUID collisions.
+- The 290/82 figures are NOT a baseline: REQ-TQM-006's discriminator reclassifies every duplicate whose project card is in the LIVE population to renumber-migrate. Post-discriminator counts are unknown until the M3-delta dry-run re-runs (plan.md §F M3-delta).

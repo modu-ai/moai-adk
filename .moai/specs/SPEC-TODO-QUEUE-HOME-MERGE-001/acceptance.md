@@ -1,7 +1,7 @@
 ---
 id: SPEC-TODO-QUEUE-HOME-MERGE-001
 title: "Merge the diverged project todo queue into the canonical home SQLite store"
-version: "0.2.0"
+version: "0.3.0"
 created: 2026-09-13
 ---
 
@@ -20,6 +20,8 @@ created: 2026-09-13
 | AC-TQM-007 | REQ-TQM-015/016 | Rollback | Restore rehearsal on fixtures hash-verifies |
 | AC-TQM-008 | REQ-TQM-012/013/014 | Approval + timing gates | Evidenced as preconditions in the verdict |
 | AC-TQM-009 | REQ-TQM-009/§B | Mechanism + testability | Merge-core unit-tested on fixtures; write via one Mutate |
+| AC-TQM-010 | REQ-TQM-006 (discriminator) | Live-card discriminator | Active project card vs matching home archived card resolves renumber, never duplicate |
+| AC-TQM-011 | plan.md §F0 | Runtime-persistence decision record | Operator's option choice + loss ceiling recorded in the verdict |
 
 ## AC-TQM-001 — Backup integrity
 
@@ -27,7 +29,7 @@ created: 2026-09-13
 
 ## AC-TQM-002 — Zero-loss invariant
 
-**Given** the union U of card ids read from both stores immediately pre-merge (via `LoadPure`), **When** the merge completes, **Then** for every card in U the merged home store contains that card either under its original id or under the new id paired to it by a mapping-table row — checked per population (queued, picked, dropped, archived) and per card's text — with total = |U| (freshness-corrected; plan-time figure 127). The check is a programmatic id/text set comparison, not a count assertion alone. **And** the merge report carries one resolved-duplicate row per content-identical number-shared pair, naming both stores' ids (REQ-TQM-006).
+**Given** the union U of card ids read from both stores immediately pre-merge (via `LoadPure`), **When** the merge completes, **Then** for every card in U the merged home store contains that card either under its original id or under the new id paired to it by a mapping-table row — checked per population (queued, picked, dropped, archived) and per card's text — with total = |U| (re-derived inside the M4 window; the M3-delta dry-run's union, plan-basis 780). The check is a programmatic id/text set comparison, not a count assertion alone. **And** the merge report carries one resolved-duplicate row per duplicate pair, naming both stores' ids (REQ-TQM-006) — and every duplicate row's project card originated from the project store's ARCHIVED population (AC-TQM-010): a live-population absorption is a zero-loss violation.
 
 ## AC-TQM-003 — Mapping-table completeness
 
@@ -60,7 +62,15 @@ Not machine-testable code; each gate is EVIDENCED in the verdict as follows:
 
 **Given** the merge tooling, **When** its unit suite runs, **Then** the merge-core is exercised purely on fixture stores with ≥85% coverage on new code, and the real-data write path issues exactly ONE `Mutate` transaction on the home store (asserted in tests; no direct SQL mutation, no byte-level edits). **And** the tool resolves both stores by absolute path and refuses a queue resolved from the current working tree (REQ-TQM-018).
 
-## §D.1 Severity — AC-TQM-001/002 are MUST-PASS (data loss = card failure); AC-TQM-003..007 MUST-PASS; AC-TQM-008 is a gate whose absence of evidence blocks M4 entry; AC-TQM-009 MUST-PASS.
+## AC-TQM-010 — Live-card discriminator (no silent absorption)
+
+**Given** a project card in the LIVE population (queued, picked, or dropped) whose id matches a home card — including a home ARCHIVED card — with byte-identical text, equal state, and equal `SpecID`, **When** the merge classifies it, **Then** it resolves to renumber-migrate with a mapping row and its content is present in the merged store under the new id; it is never classified duplicate and never dropped. **And** across the whole merge, every entry in the duplicate population originated from the project record's ARCHIVED population, verified by a population check over the merge report against the pre-merge project record. Unit-tested on fixtures (M1-delta), including the operator's named scenario: a PICKED project card vs a matching home archived card.
+
+## AC-TQM-011 — Runtime-persistence decision record
+
+**Given** the two runtime-persistence options of plan.md §F0 — (a) persist `todo_runtime_runs`/`todo_runtime_assignments` to home via a sibling upsert-path write, or (b) exclude runtime persistence from merge scope — **When** the operator decides via the lead, **Then** the verdict records the chosen option and the comparison's decisive factors. **And** where (b) is chosen, the verdict states the explicit loss ceiling: project-store HISTORICAL runtime rows are not migrated; active leases heal on their next slot-lease write (the machinery upserts run and assignment rows itself); the project-store backup remains the permanent recovery path for the audit trail; and the merge report's runtime projection is preserved as evidence. The operator's decision is a precondition for M4 entry.
+
+## §D.1 Severity — AC-TQM-001/002/010 are MUST-PASS (data loss or live-work absorption = card failure); AC-TQM-003..007 and AC-TQM-009 MUST-PASS; AC-TQM-008 and AC-TQM-011 are gates whose absence of evidence blocks M4 entry.
 
 ## §D.2 Quality gates (TRUST 5)
 
