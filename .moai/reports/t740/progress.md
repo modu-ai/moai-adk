@@ -30,4 +30,15 @@
 
 ## 남은 절차
 
-- 커밋 → 리드 완료 보고 + 통합 창 요청 (push·CI 직접 요청 금지 준수, t700 워크트리 원격 착지 전까지 유지는 리드 소관 그대로).
+- ~~커밋 → 리드 완료 보고 + 통합 창 요청~~ 완료(2026-09-14, 리드 창 지명 접수).
+
+## 창 집행 기록 (2026-09-14, lane-7)
+
+1. `moai integration acquire --name lane-7 --card t740` → 창 획득(settings drift 프리플라이트 통과, 거절 없음).
+2. 흡수 선확인: `git rev-parse develop` → b1bd81b23 (변화 없음), `git merge develop` → Already up to date.
+3. 제품코드 diff 0: `git diff --stat develop HEAD -- internal/ pkg/ cmd/` → 0행. 전체 diff = 보고서 3파일뿐.
+4. 병합 전 재측정 (커밋 c3d720bfb 트리):
+   - `go run ./cmd/moai spec lint --baseline .moai/spec-lint-baseline.json` → **baseline rc=0**, `baseline: OK`, `inventory: 3147 warning(s) total (advisory included), 0 non-advisory tracked across 0 recorded rule(s)`.
+   - `go run ./cmd/moai spec lint` → **plain rc=0**, `0 error(s), 3147 warning(s)`.
+5. EnterWorktree(.claude/worktrees/develop) → `git merge --no-ff WT-spec-lint-gate` → 트리 동일성 확인. 병합 SHA 와 동일성 SHA 는 이 커밋 이후 사건이므로 완료 보고(리드 전언)와 develop 이력이 정본 기록이다.
+
