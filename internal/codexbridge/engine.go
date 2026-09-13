@@ -332,11 +332,14 @@ func (e *Engine) Step(ctx context.Context, q Request) (seg Segment, err error) {
 		c.mu.Unlock()
 		return seg, ErrRecovery
 	}
-	if c.model != q.Model || c.cwd != q.CWD || c.prefix != q.ExpectedPrefix {
+	phase := c.phase
+	// AS4: only an idle barrier may switch the model — the new value repins the
+	// conversation below and rides the next turn/start. A waiting or active
+	// turn keeps its pinned model so a switch can never land on the wrong turn.
+	if (phase != "idle" && c.model != q.Model) || c.cwd != q.CWD || c.prefix != q.ExpectedPrefix {
 		c.mu.Unlock()
 		return seg, ErrScope
 	}
-	phase := c.phase
 	if phase == "waiting" {
 		if len(q.Input) != 0 || len(q.Results) != 1 || c.pending == nil || q.Results[0].ID != c.pending.publicID {
 			c.mu.Unlock()
@@ -455,6 +458,7 @@ func (e *Engine) Step(ctx context.Context, q Request) (seg Segment, err error) {
 			return seg, ErrRecovery
 		}
 		c.prefix = q.PrefixDigest
+		c.model = q.Model
 		c.phase = "active"
 		c.turn = ""
 		err = e.save(c, "active")
