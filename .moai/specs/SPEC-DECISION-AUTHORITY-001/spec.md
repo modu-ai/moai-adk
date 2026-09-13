@@ -2,7 +2,7 @@
 id: SPEC-DECISION-AUTHORITY-001
 title: "Human Decision Authority Guardrail: decision-index authority routing at the Implementation Kickoff gate (card t692, issue #1683 item 1)"
 version: "0.1.1"
-status: draft
+status: in-progress
 created: 2026-09-13
 updated: 2026-09-13
 author: manager-spec
