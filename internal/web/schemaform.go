@@ -438,8 +438,10 @@ func (a *app) applySchemaCurrent(view *pageView) error {
 
 	// G3-1/G3-4: seed the loaded LLM config so the agentfm rows resolve each
 	// agent's model/effort through the profile matrix, and preselect the Custom
-	// pseudo-tier when any per-agent override is present.
-	view.LLM = cfg.LLM
+	// pseudo-tier when any per-agent override is present. t840: fold the
+	// launcher-owned gateway signal so a console started inside a gpt session
+	// renders the inherit cell (llm.yaml carries no gpt signal of its own).
+	view.LLM = agentFMLiveLLM(cfg.LLM)
 	view.PerfTierCustom = len(cfg.LLM.AgentOverrides) > 0
 	return nil
 }
