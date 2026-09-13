@@ -1,0 +1,5 @@
+--- FAIL: TestForkPrefixCrossCheck (0.16s)
+    fork_prefix_test.go:63: tampered prefix accepted: <nil>
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/gateway/conversation	0.529s
+FAIL

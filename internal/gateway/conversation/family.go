@@ -18,11 +18,11 @@ import (
 )
 
 var (
-	ErrInvalid    = errors.New("invalid conversation family")
-	ErrMissing    = errors.New("conversation family not found")
-	ErrBusy       = errors.New("conversation family is busy")
-	ErrIncomplete = errors.New("native transcript is incomplete")
-	ErrAmbiguous  = errors.New("conversation completion is ambiguous")
+	ErrInvalid        = errors.New("invalid conversation family")
+	ErrMissing        = errors.New("conversation family not found")
+	ErrBusy           = errors.New("conversation family is busy")
+	ErrIncomplete     = errors.New("native transcript is incomplete")
+	ErrAmbiguous      = errors.New("conversation completion is ambiguous")
 	ErrPrefixMismatch = errors.New("fork inherited prefix does not match the recorded receipt chain")
 )
 

@@ -26,7 +26,9 @@ func TestGatewayContextPathCapabilityGate(t *testing.T) {
 		t.Fatal(err)
 	}
 	a := &testAdapter{body: "{}"}
-	s, err := NewServer(ServerConfig{SessionHeader: "X-Test-Session", SessionToken: "local-secret", MaxBodyBytes: 4096, Catalog: catalog, ResolveCredential: func(_ context.Context, e ModelEntry) (CredentialRef, error) { return &testCredential{provider: e.Provider}, nil }, Adapters: map[ProviderID]Adapter{ProviderZAI: a, ProviderAnthropic: a}})
+	s, err := NewServer(ServerConfig{SessionHeader: "X-Test-Session", SessionToken: "local-secret", MaxBodyBytes: 4096, Catalog: catalog, ResolveCredential: func(_ context.Context, e ModelEntry) (CredentialRef, error) {
+		return &testCredential{provider: e.Provider}, nil
+	}, Adapters: map[ProviderID]Adapter{ProviderZAI: a, ProviderAnthropic: a}})
 	if err != nil {
 		t.Fatal(err)
 	}
