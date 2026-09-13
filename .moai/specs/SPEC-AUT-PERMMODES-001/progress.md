@@ -148,7 +148,7 @@ gaps:
 
 ```yaml
 sync_complete_at: 2026-09-14
-sync_commit_sha: pending-backfill-sync  # placeholder per D3 backfill exemption; resolved SHA backfilled in the follow-up commit
+sync_commit_sha: 07eed817c  # resolved sync commit (backfilled per D3 placeholder exemption; full SHA 07eed817c…)
 sync_status: complete
 b12_self_test_a_duplicate_grep: 0  # grep -c 'SPEC-AUT-PERMMODES-001' CHANGELOG.md → 0 before emission
 b12_self_test_b_ac_count: 12  # acceptance.md distinct AC ids = 12; matches run-phase ac_pass 12
