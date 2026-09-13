@@ -51,7 +51,7 @@ func TestRunStep_ParentDeadlineIsNotBlamedOnTheStep(t *testing.T) {
 	defer cancel()
 
 	name, args := sleeperCommand()
-	ok, msg := g.runStep(parent, "go test", 2*time.Minute, name, args...)
+	ok, msg := g.runStep(parent, "go test", "", 2*time.Minute, name, args...)
 	if ok {
 		t.Fatal("a step outliving the parent deadline must fail")
 	}
@@ -72,7 +72,7 @@ func TestRunStep_StepDeadlineStillBlamesTheStep(t *testing.T) {
 	defer cancel()
 
 	name, args := sleeperCommand()
-	ok, msg := g.runStep(parent, "go test", 100*time.Millisecond, name, args...)
+	ok, msg := g.runStep(parent, "go test", "", 100*time.Millisecond, name, args...)
 	if ok {
 		t.Fatal("a step exceeding its own budget must fail")
 	}

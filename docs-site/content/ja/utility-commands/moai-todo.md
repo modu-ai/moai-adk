@@ -189,6 +189,10 @@ $ moai todo done 4 --expect "auth middleware"
 # 着地したかを尋ね、「着地していない」という肯定的な答えが返ったときだけ拒否
 $ moai todo done 4 --require-landed
 
+# 着地したカードを一括クローズ（リード専用、バッチpush確認後）— まずドライラン
+$ moai todo auto-done --fetch --dry-run
+$ moai todo auto-done --fetch
+
 # 待機中の項目を古いものから出力(読み取り専用)
 $ moai todo next
 

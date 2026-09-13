@@ -189,6 +189,10 @@ $ moai todo done 4 --expect "auth middleware"
 # Ask whether the card landed, and refuse only on a positive "not landed" answer
 $ moai todo done 4 --require-landed
 
+# Batch-close landed cards (lead only, after the batch push is confirmed) — dry-run first
+$ moai todo auto-done --fetch --dry-run
+$ moai todo auto-done --fetch
+
 # Print queued items oldest-first (read-only)
 $ moai todo next
 
