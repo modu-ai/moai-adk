@@ -49,10 +49,16 @@ workflow:
     # Values mirror internal/config/defaults.go (WorkflowWorktreeConfig): all
     # three auto-* toggles default false — the EnterWorktree-first policy.
     # auto_create: read once (internal/cli/worktree_advisory.go) only to select
-    # advisory wording; it does not gate worktree creation.
-    # auto_merge / auto_cleanup: declared but not read — no code path consumes
-    # them (reserved). Kept aligned with defaults.go so the shipped file does
-    # not state the opposite of the recorded policy.
+    # advisory wording; its declared scope is the wording — it does not gate
+    # worktree creation. Set workflow.session_worktree.enabled for real
+    # automatic isolation.
+    # auto_cleanup: read by the two auto-cleanup paths (session-exit disposal
+    # and the PR-merge sweep); gates worktree removal only.
+    # auto_merge: read by the session-exit auto-merge path — when true, a clean
+    # session exit merges the session branch into the configured git-flow
+    # develop branch (a local merge inside the release-integration window,
+    # never a push). Inert unless the project is manual git-flow with
+    # git_strategy.<mode>.develop_branch set.
     worktree:
         auto_create: false
         auto_merge: false
