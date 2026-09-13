@@ -11,14 +11,14 @@ Cards t449 and t637 already landed the reader (provenance attributed to the orch
 | Card | Landed | Evidence in-tree (measured 2026-09-14) |
 |---|---|---|
 | t449 | `LoadGitFlowDevelopBranch` — single-key reader for the git-flow integration branch | `internal/config/loader_integration_branch.go` header comment "card t449"; function at line 34 |
-| t637 | `GitFlowIntegrationConfig` struct + `IsGitFlow()` — separates "is this project git-flow" from "what is its develop branch" | same file, lines 43-83; t637 sync-audit recorded loader functions 100% covered |
-| t655 | Connected `develop_branch` as the acquire/automerge integration target | `internal/cli/integration.go:283` (`gitFlow := config.LoadGitFlowIntegrationConfig(root)` feeding `resolveIntegrationTarget`); `internal/cli/session_worktree_automerge.go:75,169` |
+| t637 | `GitFlowIntegrationConfig` struct + `IsGitFlow()` — separates "is this project git-flow" from "what is its develop branch"; connected `develop_branch` as the acquire integration target | same file, lines 43-83; t637 sync-audit recorded loader functions 100% covered; `git log -S LoadGitFlowIntegrationConfig -- internal/cli/integration.go` → `ba0725be8` (t637) landed the `integration.go:283` consumer |
+| t655 | Connected `develop_branch` as the session-exit auto-merge integration target | `git log -S` → `1d0f08f10` (SPEC-WORKTREE-KEY-WIRING-001) created `internal/cli/session_worktree_automerge.go` (consumer lines 75,169). t655 did NOT touch integration.go:283 |
 
 ## §2 In-tree verified evidence (this run, this tree)
 
 - `internal/config/types.go:107` — `ModeProfile.Workflow string \`yaml:"workflow"\`` (per-mode profile struct manual/personal/team). Confirmed by Read.
 - `internal/config/loader_integration_branch.go` — `const gitFlowWorkflow = "git-flow"` (line 25); `LoadGitFlowIntegrationConfig` reads `.moai/config/sections/git-strategy.yaml` via `ActiveModeProfile()`; `GitFlowWorkflow = profile.Workflow == "git-flow"`; `Manual = mode == "manual"`; `IsGitFlow() = Manual && GitFlowWorkflow`; every failure path yields zero value. Confirmed by Read (full file).
-- Production consumers (grep, non-test files only): `internal/cli/integration.go:283,318` (acquire integration-target resolution + t637 warn-only fallback); `internal/cli/session_worktree_automerge.go:75,169` (auto-merge gate: `!gitFlow.IsGitFlow() || gitFlow.DevelopBranch == ""`); `internal/config/loader_slot_lease.go` (slot acquire via `LoadGitFlowDevelopBranch`).
+- Production consumers (grep, non-test files only): `internal/cli/integration.go:283,318` (acquire integration-target resolution + t637 warn-only fallback) and `internal/cli/session_worktree_automerge.go:75,169` (auto-merge gate: `!gitFlow.IsGitFlow() || gitFlow.DevelopBranch == ""`). TWO consumer sites — corrected per plan-audit iter1 D5: `internal/config/loader_slot_lease.go` is NOT a consumer; its line-6 comment says it is *modelled on* `LoadGitFlowDevelopBranch` (design precedent) and it reads `workflow.slot_lease.default_max_duration`; non-test `LoadGitFlowDevelopBranch(` callers from slot-lease code: 0.
 - Existing tests: `internal/config/loader_integration_branch_test.go` (t637 suite — M1 extends this file).
 - Fail-open single-key reader precedent: `internal/config/loader_worktree_base.go` (`LoadWorktreeBaseBranch`). Doctor-diagnostic precedent: `internal/cli/doctor_worktree_base.go` (four-state check, distinct repair next-steps, seams for test injection).
 - Templates: `internal/template/templates/.moai/config/sections/git-strategy.yaml.tmpl` — `workflow: github-flow` at lines 18, 50, 86 (all 3 modes). Confirmed by grep. `internal/config/defaults.go:763,775,788` also set `Workflow: "github-flow"` for all three profiles. **Template default = github-flow confirmed** (card claim verified).
@@ -32,4 +32,4 @@ Today the reader is binary: `Workflow == "git-flow"` or not. `github-flow` (the 
 
 ## §4 Open items
 
-None — [NEEDS CLARIFICATION] count: 0. The card was operator-resolved at dispatch; design decisions D1-D4 are owned in spec.md §C. The wizard question (D3) is deferred with rationale, not open.
+Open questions: none — the card was operator-resolved at dispatch; design decisions D1-D4 are owned in spec.md §C. The wizard question (D3) is deferred with rationale, not open. (Repair note: this section previously carried the literal clarification-marker token in a negative count statement; rephrased per plan-audit iter1 D8 — a resolution statement containing the token still trips the mechanical grep gate.)

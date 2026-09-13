@@ -25,6 +25,7 @@ pre_flight:
   id_collision: none    # ls .moai/specs/ | grep -x ... → no match
   evidence_verified_in_tree: true
 discarded_premise: "git_strategy.<mode>.workflow has 0 production readers — stale; t449/t637 landed the reader"
+m1_commit_sha: "<pinned at M1 completion — AC-GWS-010 diffs against this SHA>"
 next: plan-audit → Implementation Kickoff Approval → run (M1 characterization first)
 ```
 

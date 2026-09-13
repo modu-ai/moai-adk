@@ -9,7 +9,7 @@ Tier M · cycle_type: tdd · Card t656 (re-scoped) · Branch WT-git-flow-reader
 ## §B Known issues / gaps this plan closes
 
 - G1: Invalid workflow values (typos, `trunk-based`) are indistinguishable from deliberate non-git-flow choices — no diagnostic surface exists.
-- G2: Only git-flow has a target-branch interpretation; github-flow (the shipped default!) resolves its target through the caller fallback even though `main` is well-defined.
+- G2: Only git-flow has a target-branch interpretation, and no production surface consumes ANY interpretation today — github-flow (the shipped default!) resolves its target through the caller fallback even though `main` is well-defined. This plan closes G2 at the reader + doctor level: the interpretation table gains exactly one production consumer (the new doctor check, REQ-GWS-009). Wiring per-flow targets into acquire/automerge resolution is explicitly NOT in this plan (REQ-GWS-008 / AC-GWS-011 freeze their behavior) — follow-up card candidate.
 - G3: `shipped_key_inventory.yaml` evidence for the three workflow keys names a generic "reader" — after extension it should name the validated surface.
 
 ## §C Pre-flight
@@ -48,14 +48,15 @@ Tier M · cycle_type: tdd · Card t656 (re-scoped) · Branch WT-git-flow-reader
 
 ### M2 — Multi-flow validation + interpretation table (Priority High, RED→GREEN)
 - `internal/config`: add the allowed-set constant (4 values), the three-way disposition type (`WorkflowDisposition`: git-flow / valid-non-git-flow / invalid), extend `GitFlowIntegrationConfig` with `Workflow string` + disposition fields; add the per-flow integration-target resolver implementing the D2 table (github-flow→main fixed; git-flow→develop_branch gated as today; gitlab-flow→environment; release-flow→release_branch_prefix; empty key → empty string).
+- **[HARD] M2's new tests go in a SEPARATE file** `internal/config/loader_workflow_disposition_test.go` (test functions `TestWorkflowDisposition`, `TestWorkflowTargetResolution`) — M1 stays the SOLE owner of `loader_integration_branch_test.go`, which is what keeps AC-GWS-010's pinned-SHA diff executable. The M1 commit SHA is recorded in progress.md §E.1 (`m1_commit_sha`) at M1 completion.
 - Unit tests RED first (invalid value, each allowed value, empty target keys), then GREEN.
 - Existing characterization tests (M1) MUST pass unmodified.
 - Commit: `feat(config): validate git_strategy workflow against 4 flows + per-flow target table (t656)`
 
-### M3 — Consumer diagnosability (Priority Medium)
+### M3 — Consumer diagnosability + interpretation-table consumer (Priority Medium)
 - `internal/cli`: invalid-disposition warning in `moai integration acquire` (alongside the t637 git-flow fallback warning, same stderr fail-open pattern); extend/parallel in the auto-merge gate path only if it has a warning surface (gate skip stays silent as today — the diagnostic lives in doctor).
-- New `moai doctor` check item (precedent `doctor_worktree_base.go`): reports invalid workflow value + the 4 allowed entries + repair next-step (edit git-strategy.yaml). OK for git-flow, OK-silent for valid-non-git-flow, WARN for invalid.
-- Tests: doctor check four-state table; acquire warning emission on invalid fixture (stderr capture).
+- New `moai doctor` check item (precedent `doctor_worktree_base.go`) — the production consumer of the interpretation table (D1 decision (b), REQ-GWS-009). Three states: invalid → WARN naming the offending value + the 4 allowed entries + repair next-step (edit git-strategy.yaml); git-flow → OK reporting the flow and its resolved target (develop_branch or empty-key fallback); valid-non-git-flow → OK reporting the flow, its standing-branch interpretation, and resolved target (e.g. github-flow → main). NOT a silent pass for any state — every state names what was read (auditor iter1 clarification).
+- Tests: doctor check three-state table, pinned test name `TestDoctorGitStrategyWorkflow` in `internal/cli/`; acquire warning emission on invalid fixture (stderr capture).
 - Commit: `feat(cli): diagnose invalid git_strategy workflow values in acquire + doctor (t656)`
 
 ### M4 — Inventory evidence + gates (Priority Medium)
