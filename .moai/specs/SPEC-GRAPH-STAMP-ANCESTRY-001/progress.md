@@ -579,4 +579,46 @@ m1_to_mN_commit_strategy: "마일스톤당 1커밋 — M1 b6e84fe5c, M2 c613b7c6
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_대기 중._
+```yaml
+sync_complete_at: "2026-09-14T01:20:00+0900"
+sync_commit_sha: "pending-backfill-sync"   # 이 커밋 자신의 해시라 착지 후 backfill
+sync_status: PASS
+b12_self_test_a: "grep -c 'SPEC-GRAPH-STAMP-ANCESTRY-001' CHANGELOG.md → 0 (삽입 전). 중복 없음"
+b12_self_test_b: "acceptance.md AC 고유 식별자 12개 (AC-GSA-001~012) = CHANGELOG 항목이 적은 12개. 일치"
+b12_self_test_c: "CHANGELOG가 이름 대는 경로 7개 전부 ls 확인 — MISSING 0"
+changelog_entry_position: "[Unreleased] › Changed 선두"
+frontmatter_status_transitions:
+  spec_md: "in-progress → implemented (updated: 2026-09-13 → 2026-09-14)"
+  plan_md: "해당 없음 — frontmatter 블록이 없다"
+  acceptance_md: "해당 없음 — frontmatter 블록이 없다"
+  progress_md: "해당 없음 — frontmatter 블록이 없다"
+canary_compliance_check:
+  applicable: false
+  reason: "이 SPEC은 자기 sync가 시험하는 전방적 정책을 정의하지 않는다"
+codemaps_provenance_ancestry:
+  command: "git merge-base --is-ancestor 7097e6e214195c45e65cab5fa565b19ca4514c4e HEAD"
+  exit_code: 0
+  note: "M4에서 이미 재생성했으므로 재스탬프하지 않았다"
+spec_lint: "moai spec lint SPEC-GRAPH-STAMP-ANCESTRY-001 --strict → exit 0, '✓ No findings'"
+spec_audit: "mcp spec_audit → total_specs=1, modern_era_clean=1, drift_findings=[]"
+```
+
+### 문서 동기화 판정
+
+- **README — 변경 없음.** `moai graph check`의 종료 코드나 graph freshness 워크플로를 설명하는 절이 README 4개 로케일 어느 쪽에도 없다.
+- **docs-site — 변경 없음, 단 한 줄을 간극으로 남긴다.** `docs-site/content/{ko,en,ja,zh}/cli-reference/graph.md`가 종료 코드 0/1/2와 CI 가드를 설명한다. 종료 코드 서술(약 70행)은 이 변경 뒤에도 그대로 참이다 — 도달 불가 스탬프는 시스템 오류(2)로 닫힌다. CI 가드 서술(약 98행)은 가드가 "풀 리퀘스트의 베이스 브랜치"에 대해 조상성을 검사한다고만 적는다. PR 경로에 대해서는 여전히 참이지만, 이제 push 이벤트도 `HEAD` 조상성을 판정하므로 **범위를 좁게 적고 있다**. 거짓 진술이 아니라 새 문장을 더해야 메워지는 부족이므로, 이번 sync 범위("틀린 것만 고친다")에서는 고치지 않고 후속 카드 후보로 남긴다. 고치려면 4개 로케일을 같은 변경에서 함께 손봐야 한다.
+- **codemaps — 재생성하지 않았다.** M4에서 이미 수행됐고, 다시 찍으면 값이 움직인다. 조상성만 확인했다(위 yaml).
+
+### Gaps — 이 sync 단계가 관측하지 않은 것
+
+- 테스트를 다시 돌리지 않았다. AC 12건은 전부 §E.2.2의 run 단계 측정을 귀속시킨 것이며, 이 커밋은 문서만 바꾸므로 재측정 근거가 아니다.
+- `go test ./...`을 돌리지 않았다(배차 제약).
+- hugo 빌드를 돌리지 않았다 — docs-site를 건드리지 않았기 때문이다.
+- push도 PR도 하지 않았다. 원격 반영과 develop 병합은 리드 소관이다.
+- issue #1661에 아무것도 쓰지 않았다.
+
+### Residual risk
+
+- `sync_commit_sha`가 플레이스홀더로 남는다. backfill을 빠뜨리면 이 신호는 자기 커밋을 가리키지 못한다.
+- docs-site 약 98행의 범위 부족을 고치지 않고 남겼다. push 실행에서 exit 2를 맞은 독자가 그 문서를 읽으면 가드가 PR 전용이라고 오해할 수 있다.
+- run 단계가 기록한 잔여 위험(통합 뒤 codemaps가 다시 stale이 된다, windows 빌드 미측정, 워크플로 가드의 실제 이벤트 미검증)은 이 sync가 해소하지 않았다. §E.3 Residual risk가 그대로 유효하다.
