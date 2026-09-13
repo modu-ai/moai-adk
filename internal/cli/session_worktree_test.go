@@ -33,6 +33,12 @@ type swSeams struct {
 	// because the dirty check is shared with the session-exit path and must
 	// not inherit this SPEC's ignored-content policy (design.md §B.6a).
 	ignoredPorc func(wtPath string) (string, error)
+	// hasUnpushed is the card t673 committed-work seam. When a test leaves it
+	// nil, the swapper installs a neutral (false, nil) stub: the existing
+	// tests describe clean REMOVABLE trees and stub every other git touchpoint,
+	// so defaulting to real git here would fail them on a fake path rather
+	// than on the guard each test actually exercises.
+	hasUnpushed func(wtPath string) (bool, error)
 }
 
 // swapSessionWorktreeSeams replaces the seams and registers restoration.
@@ -45,6 +51,7 @@ func swapSessionWorktreeSeams(t *testing.T, s swSeams) {
 		remove:      sessionWorktreeGitWorktreeRemove,
 		statusPorc:  sessionWorktreeGitStatusPorcelain,
 		ignoredPorc: sessionWorktreeGitStatusIgnored,
+		hasUnpushed: sessionWorktreeGitHasUnpushed,
 	}
 	if s.add != nil {
 		sessionWorktreeGitWorktreeAdd = s.add
@@ -70,6 +77,14 @@ func swapSessionWorktreeSeams(t *testing.T, s swSeams) {
 	if s.ignoredPorc != nil {
 		sessionWorktreeGitStatusIgnored = s.ignoredPorc
 	}
+	if s.hasUnpushed != nil {
+		sessionWorktreeGitHasUnpushed = s.hasUnpushed
+	} else {
+		// Neutral default: the existing tests describe clean REMOVABLE trees
+		// (see the field comment) — the unpushed guard must not preempt the
+		// guard each test actually exercises.
+		sessionWorktreeGitHasUnpushed = func(string) (bool, error) { return false, nil }
+	}
 	t.Cleanup(func() {
 		sessionWorktreeGitWorktreeAdd = orig.add
 		sessionWorktreeInGitWorktree = orig.inWt
@@ -79,6 +94,7 @@ func swapSessionWorktreeSeams(t *testing.T, s swSeams) {
 		sessionWorktreeGitWorktreeRemove = orig.remove
 		sessionWorktreeGitStatusPorcelain = orig.statusPorc
 		sessionWorktreeGitStatusIgnored = orig.ignoredPorc
+		sessionWorktreeGitHasUnpushed = orig.hasUnpushed
 	})
 }
 
