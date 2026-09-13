@@ -499,7 +499,7 @@
   evidence: reader
 - path: "git_strategy.manual.workflow"
   class: W
-  evidence: reader
+  evidence: config.LoadGitFlowIntegrationConfig + config.ClassifyWorkflowDisposition (validated 4-flow reader, SPEC-GITSTRAT-WORKFLOW-READER-001)
 - path: "git_strategy.mode"
   class: W
   evidence: reader
@@ -556,7 +556,7 @@
   evidence: reader
 - path: "git_strategy.personal.workflow"
   class: W
-  evidence: reader
+  evidence: config.LoadGitFlowIntegrationConfig + config.ClassifyWorkflowDisposition (validated 4-flow reader, SPEC-GITSTRAT-WORKFLOW-READER-001)
 - path: "git_strategy.provider"
   class: W
   evidence: reader
@@ -622,7 +622,7 @@
   evidence: reader
 - path: "git_strategy.team.workflow"
   class: W
-  evidence: reader
+  evidence: config.LoadGitFlowIntegrationConfig + config.ClassifyWorkflowDisposition (validated 4-flow reader, SPEC-GITSTRAT-WORKFLOW-READER-001)
 - path: "git_strategy.worktree_base_branch"
   class: W
   evidence: reader
