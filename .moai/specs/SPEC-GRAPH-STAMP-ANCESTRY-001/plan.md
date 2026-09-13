@@ -78,13 +78,14 @@ run 시작 시 manager-develop은 아래를 다시 측정한다. 계획 단계 �
 
 clean `commit_sha` 경로에서는 아래 순서를 지킨다.
 
+0. codemaps 본문 존재 여부 — 본문 부재(C1)는 기존 nil error / exit 1 경로를 유지하며 이 순서의 1~5로 진입하지 않는다
 1. commit 객체 해석 가능성
 2. stamped commit이 checkout `HEAD`의 조상인지 여부
 3. content-anchor 해석
 4. `described-source-diff`와 귀속 계산
 5. threshold 40 비교
 
-1 또는 2에서 실패하면 그 뒤 계산은 실행하지 않는다. 비조상 report는 `Layer=codemaps`, metric 식별자와 호환용 `VerdictAbsent`, 미측정 reason만 운반한다. `Value`, `ContentAnchor`, `ContentAnchorSource`, `Contribution`, `ContributionBase`, `DrivingPaths`, `DrivingPathsOmitted`는 측정 결과로 제시하지 않는다.
+1 또는 2에서 실패하면 그 뒤 계산은 실행하지 않는다(0은 실패가 아니라 별도 경로다). 비조상 report는 `Layer=codemaps`, metric 식별자와 호환용 `VerdictAbsent`, 미측정 reason만 운반한다. `Value`, `ContentAnchor`, `ContentAnchorSource`, `Contribution`, `ContributionBase`, `DrivingPaths`, `DrivingPathsOmitted`는 측정 결과로 제시하지 않는다.
 
 ### §D.2 CLI와 workflow 경계
 
