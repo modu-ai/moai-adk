@@ -20,7 +20,8 @@ package cli
 // per-session override (.claude/rules/moai/core/settings-management.md), and
 // the launcher no longer creates one of its own, so no new pin is manufactured.
 //
-// Scope: the Claude backend only. Under a GLM backend z.ai honors
+// Scope: the Claude backend, including every gateway binding (claude / gpt /
+// glm gateway modes host Claude Code too — card t668). Under a GLM backend without a gateway z.ai honors
 // ANTHROPIC_REASONING_EFFORT and treats Claude's 5-step vocabulary as inert —
 // buildEnvForGLMLaunch owns that path and is untouched here.
 
