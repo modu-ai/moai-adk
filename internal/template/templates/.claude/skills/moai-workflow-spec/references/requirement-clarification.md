@@ -4,7 +4,7 @@
 
 ## Step 0 — Assumption Analysis (Philosopher Framework)
 
-Before defining scope, surface and validate underlying assumptions via AskUserQuestion.
+Before defining scope, surface and validate underlying assumptions via the harness's `question-channel` capability (where the harness lacks it, name the open question in the report instead of asking).
 
 ### Assumption Categories
 
