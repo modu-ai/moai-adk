@@ -1002,8 +1002,8 @@ func TestWarnNoModelResolved(t *testing.T) {
 	}
 }
 
-// --- buildEnvForLaunch (restored on the t595 merge: plan A keeps the function
-// alive for the gateway branch, so its tests stay live too) ---
+// --- buildEnvForLaunch (restored on the t595 merge; since t668 no launch branch
+// calls the function, and these tests cover it only while it is retained) ---
 
 // TestBuildEnvForLaunch verifies that CLAUDE_CODE_EFFORT_LEVEL is injected
 // when EffortLevel is set and absent when empty.
