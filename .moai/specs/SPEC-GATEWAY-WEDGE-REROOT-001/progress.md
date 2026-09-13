@@ -51,6 +51,25 @@ note: Plan artifacts authored (spec.md + plan.md + acceptance.md, Tier M). Plan-
 - **Design notes**: (1) API-error display rows (`isApiErrorMessage`) are NOT treated as the unpublished boundary — the TDD RED-GREEN loop caught the first implementation mis-taking them for the boundary (test `TestGatewayRerootRequiresExplicitInvocation` failed, implementation corrected). (2) A wedge transcript carrying a plain user turn after the unpublished boundary recovers to a shape the native completion gate (transcriptModel) refuses to resume; removal semantics per REQ-WRR-003-1 are unchanged and the aside preserves everything — the launcher-reachable wedge+retry shape (single trailing user row + terminal API-error row) resumes cleanly; the general case's sanctioned fallback is the fork path (documented in the M6 operator doc).
 - Launcher-reachable wedge shape recorded: the phantom boundary carries client-side `end_turn` (stream looked complete, receipt never published) followed by the user's post-failure turn and the API-error display row — this is the only wedge shape that resumes (transcriptModel complete) and therefore the one the 400 chain rejection surfaces through.
 
+### M4 — gateway non-invasiveness lock (AC-WRR-012 / AC-WRR-014; 2026-09-14)
+
+- **AC-WRR-012 diff-scope assertion (verbatim)** — command `git diff --name-only 643abfb8cc536b1152efbaf3091efe43dce69222..HEAD` (merge-base re-derived at measurement time on this tree; develop had not moved between derivation and diff):
+  ```
+  .moai/reports/t700/plan-audit-iter2.md
+  .moai/reports/t700/plan-audit.md
+  .moai/specs/SPEC-GATEWAY-WEDGE-REROOT-001/acceptance.md
+  .moai/specs/SPEC-GATEWAY-WEDGE-REROOT-001/plan.md
+  .moai/specs/SPEC-GATEWAY-WEDGE-REROOT-001/progress.md
+  .moai/specs/SPEC-GATEWAY-WEDGE-REROOT-001/spec.md
+  internal/cli/gateway_reroot.go
+  internal/cli/gateway_reroot_test.go
+  internal/cli/gateway_session.go
+  internal/gateway/conversation/reroot.go
+  internal/gateway/translate/receipt_history_cause_test.go
+  ```
+  None of the five preserved files appears (`core.go`, `receipt_history.go`, `request.go`, `family.go`, `gateway_factory.go` — file-level zero-diff); no path under `internal/gateway/receipt/` appears. `gateway_session.go` is the plan-declared EXTEND target; `receipt_history_cause_test.go` is a test file (the freeze binds `receipt_history.go`); `conversation/reroot.go` is a new file (family.go untouched). PASS.
+- **AC-WRR-014 Fork call-site count** — pre-card baseline at merge-base `643abfb8c`: exactly one production (non-test) call site, `internal/cli/gateway_session.go:204` (`families.Fork(`; all other matches are `*_test.go`). At HEAD: exactly one production call site, the same call at `gateway_session.go:232` (line shift only, from the `--reroot` wiring in the same function). Count unchanged 1 → 1; no new gateway-state-changing recovery path. PASS.
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 _<pending run-phase>_
