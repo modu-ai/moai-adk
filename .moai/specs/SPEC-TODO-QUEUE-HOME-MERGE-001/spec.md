@@ -2,7 +2,7 @@
 id: SPEC-TODO-QUEUE-HOME-MERGE-001
 title: "Merge the diverged project todo queue into the canonical home SQLite store"
 version: "0.2.0"
-status: draft
+status: in-progress
 created: 2026-09-13
 updated: 2026-09-13
 author: manager-spec
