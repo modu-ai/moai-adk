@@ -2,7 +2,7 @@
 id: SPEC-AC-ANCHOR-SCOPE-001
 title: "findACSectionStart anchor scope repair — narrow-miss and empty-anchor axes"
 version: "0.1.0"
-status: in-progress
+status: completed
 created: 2026-09-14
 updated: 2026-09-14
 author: manager-spec
