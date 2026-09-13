@@ -1,7 +1,7 @@
 ---
 id: SPEC-DOCS-TODO-TEMP-GUARD-001
 title: "docs-site 4-locale moai-todo pages: correct the queue-location claim made false by the temporary-origin guard"
-version: "1.0.0"
+version: "1.1.0"
 status: draft
 created: 2026-09-13
 updated: 2026-09-13
@@ -9,7 +9,7 @@ author: manager-spec
 priority: P2
 phase: "v3.2.0 target"
 module: "docs-site/content"
-lifecycle: spec-first
+lifecycle: spec-anchored
 tags: "docs, docs-site, todo-queue, temp-guard, i18n"
 tier: S
 related_specs: [SPEC-TODO-HOME-TEMP-GUARD-001]
@@ -22,6 +22,7 @@ related_specs: [SPEC-TODO-HOME-TEMP-GUARD-001]
 | Date | Version | Change |
 |------|---------|--------|
 | 2026-09-13 | 1.0.0 | Initial draft (card t575). Authoring only — docs pages are NOT edited in plan-phase. |
+| 2026-09-13 | 1.1.0 | Plan-audit D1-D4 fixes: `lifecycle` corrected to the canonical enum value `spec-anchored` (was invalid `spec-first`); census row renumbering for per-claim counts; §-reference and REQ-001 parenthetical clarifications. |
 
 ## 1. Background
 
@@ -74,7 +75,7 @@ temporary/임시/一時/临时 across the four pages: 0 hits).
 - REQ-001 (Ubiquitous): The four docs-site `utility-commands/moai-todo.md` pages
   shall state the queue location for every project class the queue-root resolver
   distinguishes — git project, non-git non-temporary base, and temporary-origin
-  base — per the truth table in §2.
+  base — per the truth table in §2 (full five-row §2 table).
 - REQ-002 (Event-driven): **When** a launch base is classified as a
   temporary-directory origin without an absolute `MOAI_HOME` override, the pages
   shall describe the queue as project-local at `<base>/.moai/state/todo/`

@@ -24,6 +24,7 @@ grounding_evidence:
   spec_id_check: "ID=SPEC-DOCS-TODO-TEMP-GUARD-001 regex ^SPEC(-[A-Z][A-Z0-9]*)+-[0-9]{3}$ → PASS (verbatim Bash output); uniqueness → no existing directory"
 premise_correction: card quotes the stale path ~/.moai/todo/<key>/; current pages say ~/.moai/db/<key>/todo/backlog.db (post-t621 rekey) — defect class unchanged
 doc_pages_edited: false   # authoring only per delegation prompt
+plan_audit_fixes: v1.1.0 — D1 lifecycle enum corrected to spec-anchored (blocking, SSOT-confirmed); D2 census renumber 13-20 with per-row multiplier; D3 plan.md AC-section pointer §3→§4; D4 REQ-001 five-row-table parenthetical
 ```
 
 ## §E.2 Run-phase Evidence

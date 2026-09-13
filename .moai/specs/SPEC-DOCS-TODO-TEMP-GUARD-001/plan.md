@@ -1,10 +1,10 @@
 # SPEC-DOCS-TODO-TEMP-GUARD-001 — Implementation Plan
 
 Tier: S (4 files affected, doc-only, < 300 LOC). Artifact-set note: the Tier S
-default set is spec.md + plan.md with AC inline in spec.md §3, but the
+default set is spec.md + plan.md with AC inline in spec.md §4, but the
 delegation prompt explicitly requires acceptance.md; the 4-file set
 (spec/plan/acceptance/progress) is emitted as instructed. AC are inline in
-spec.md §3 AND enumerated in acceptance.md.
+spec.md §4 AND enumerated in acceptance.md.
 
 ## §A Context
 

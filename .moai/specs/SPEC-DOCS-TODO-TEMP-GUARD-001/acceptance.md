@@ -66,8 +66,8 @@ Plan-phase census of queue-path claims (hits + truth status at authoring time):
 | 1-4 | `docs-site/content/<locale>/utility-commands/moai-todo.md` line 59 (ko/en/ja/zh) | queue stored at `~/.moai/db/<project-key>/todo/backlog.db` (unconditional) | FALSE for temporary-origin bases (in scope — AC-004) |
 | 5-8 | same files, line 248 | projects without git metadata use the same home layout | FALSE for temporary-origin bases (in scope — AC-003) |
 | 9-12 | `docs-site/content/<locale>/advanced/moai-web-console.md` line 108 | kanban search-order list: project-local `.moai/state/todo` first, then home `~/.moai/db/<project-key>/todo` | TRUE (describes lookup candidates in order) |
-| 13-16 | `docs-site/content/<locale>/advanced/factory-mode.md` line 93 + `README*.md` line 80 | factory lane ownership at `~/.moai/db/<project-key>/factory/factory.db` | NOT VERIFIED this pass — factory store, separate from the todo queue; follow-up candidate |
-| 17 | `internal/template/templates/.moai/docs/todo-queue-storage.md` lines 4, 106 | home layout explained unconditionally | Same defect class; template-shipped doc, out of card scope — follow-up finding |
+| 13-20 | `docs-site/content/<locale>/advanced/factory-mode.md` line 93 + `README*.md` line 80 | factory lane ownership at `~/.moai/db/<project-key>/factory/factory.db` | NOT VERIFIED this pass — factory store, separate from the todo queue; follow-up candidate. Row covers 8 claims: factory-mode.md ×4 locales + README ×4 files (2 per row-slot multiplier) |
+| 21 | `internal/template/templates/.moai/docs/todo-queue-storage.md` lines 4, 106 | home layout explained unconditionally | Same defect class; template-shipped doc, out of card scope — follow-up finding |
 
 Census method: `grep -rn 'moai/todo\|moai/db'` over `docs-site/content/` and
 the four README files, then per-hit truth classification against the spec.md §2
