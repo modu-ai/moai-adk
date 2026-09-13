@@ -370,7 +370,47 @@ ConfigManager.Save git_convention 격리(승인), 집합 E 판독 (B)(동의), b
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase>_
+- **sync_complete_at**: 2026-09-13 (KST)
+- **sync_commit_sha**: `pending-backfill-sync` — 커밋은 자기 SHA를 인용할 수 없으므로 표준
+  플레이스홀더이며, 후속 커밋에서 실제 SHA로 백필한다(spec-frontmatter-schema.md § SHA
+  placeholder backfill exemption).
+- **sync_status**: sync 산출물 3종 — CHANGELOG `[Unreleased]` 항목, 본 §E.4 신호,
+  `spec.md` frontmatter `in-progress → completed` 전이(status + updated 만; 본문 무변경) —
+  를 단일 싱크 커밋으로 착지한다. AC 22개 전부 PASS(§E.3)를 인용해 3-phase close 를 완성한다.
+- **changelog_entry_position**: `CHANGELOG.md` `[Unreleased]` → `### Changed` 선두.
+- **canary_compliance_check**: B12 자가검증 3건 통과 — (1) 선발행 grep `SPEC-INIT-TUX-I18N-001`
+  계수 0(중복 없음), (2) AC 계수 22 = `acceptance.md` 라이브 식별자 22개
+  (AC-ITI-001..022, [RETIRED]/[REF] 토큰 0건), (3) 항목이 인용한 파일 경로 전수
+  `git diff --name-only` 로 존재 확인.
+
+### 싱크 페이즈 기록
+
+**(a) plan 산출물 정정 3건 — `33d81b8ff` 에서 착지**(manager-spec 위임, 싱크 착지; 본문
+소관이 싱크와 겹쳐 소유 규정대로 먼저 위임했다):
+
+- `research.md` §14 유도 명령의 패턴을 `[Aa]pplyAutonomyTierBundleFn?\(` 로 정정 — t656
+  (`b5b5883e9`)이 호출을 테스트 시움 `applyAutonomyTierBundleFn` 뒤로 옮겨 기록된
+  대문자 리터럴이 더는 맞지 않았다. 생산자와 감시 목록은 불변. 근거
+  `.moai/reports/t586/sync-research14-recheck.txt`.
+- `spec.md` §D D4 의 관측 근거를 재측정으로 정정 — M4 뮤턴트 캡처에서 스텝 표시 줄이
+  80×30 pty 에서 보였고, D4 가 세운 "같은 pty 크기에서 보이지 않는다"는 관측을 뒤집었음.
+  제외 결론 자체는 유지(잘못된 이유 위의 제외는 생존 가능). 근거
+  `.moai/reports/t586/sync-d4-recheck.txt` + `.moai/reports/t586/sync-d4-recheck-frame/`.
+- `design.md` §9 허용 집합 문단 갱신 — M5 흡수로 buildProfileForm 에 늘어난 묶기
+  비교/대입 2줄을 AC-ITI-022 가드 허용 집합에 반영.
+
+**(b) 오퍼레이터 보고 이관 잔여 — 본 SPEC 에서 수리하지 않음**(리드 오퍼레이터 보고용):
+
+- **REQ-ITI-007 옵션 라벨 로케일 고정 잔여**: 폼 안 언어 변경 시 제목·설명·도움말은
+  재현역화되나 옵션 라벨은 실행 초기 로케일에 고정된다. en 고정 대상: `model_policy`
+  라벨 텍스트 2종 + 스키마 빈 옵션 리터럴 `"(runtime default)"` / `"(project default)"`.
+  엄격 판독 시 번역 카드 1장 분량.
+- **AC-ITI-011 (3) 축 골든의 TERM 민감성**: 골든이 truecolor ANSI 시퀀스를 포함하므로
+  색 프로파일 감지 환경이 다른 재실행은 불일치할 수 있다(절 (3)이 ANSI 포함 비교를
+  요구하는 귀결).
+
+**(c) 본 커밋에서 `spec.md` frontmatter 상태가 `in-progress → completed` 로 전이된다.**
+`status:` + `updated:` 만 손대고 본문 §A~§H 는 무변경이다(소유 규정 준수).
 
 ### Carried sync obligations
 
