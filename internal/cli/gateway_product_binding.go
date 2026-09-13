@@ -26,6 +26,31 @@ import (
 const gatewayContextWindow = 872000
 const gatewayRequestBodyLimit = 16 << 20
 
+// gatewayOutputPolicyDisplay names the output policy every launch assembly
+// delivers: both the subscription and the explicit API path use the official
+// App Server output policy (operator decision, 0.11.0). The display never
+// claims Claude generation-token ceilings carry over — byte and cancellation
+// limits stay separate budgets.
+const gatewayOutputPolicyDisplay = "app-server"
+
+// gatewayAuthDisplay names the authentication surface a launch actually uses,
+// derived from the resolved catalog entry's declared auth method — never from
+// request-time state — so the displayed method cannot drift from the session
+// environment the child receives (AC-MG-026 (a) assembly combination,
+// AS-014/AS-021 display consistency).
+func gatewayAuthDisplay(method gateway.AuthMethod) string {
+	switch method {
+	case gateway.AuthPKCE, gateway.AuthOAuthPassthrough:
+		return "subscription"
+	case gateway.AuthAppServer:
+		return "app-server-managed"
+	case gateway.AuthAPIKey:
+		return "api-key"
+	default:
+		return "existing-credential"
+	}
+}
+
 // newGPTGatewayBinding is the production launch seam. It creates only the
 // private child configuration; credentials remain in the child-owned store and
 // are resolved by the request adapter at send time.
