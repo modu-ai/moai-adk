@@ -1,0 +1,72 @@
+{
+  "exit_code": -9,
+  "elapsed_seconds": 21.65,
+  "timeout": true,
+  "group_cleanup_attempted": true,
+  "picker_command_sent": true,
+  "selection_sent": true,
+  "test_family_api_key_accepted": true,
+  "cleanup_errors": [],
+  "prompt_categories": [
+    "Do you want to use this API key?"
+  ],
+  "diagnostic_categories": [],
+  "error_categories": [],
+  "observed_model_ids": [
+    "gpt-5.6-luna",
+    "gpt-5.6-lunaCustommodel",
+    "gpt-5.6-sol",
+    "gpt-5.6-terra",
+    "gpt-5.6-terraCustommodel",
+    "gpt-6-astra",
+    "gpt-6-astraCustommodel"
+  ],
+  "picker_visible": true,
+  "picker_rows": [
+    {
+      "default": true,
+      "model_ids": []
+    },
+    {
+      "default": false,
+      "model_ids": [
+        "gpt-6-astra"
+      ]
+    },
+    {
+      "default": false,
+      "model_ids": [
+        "gpt-5.6-sol"
+      ]
+    },
+    {
+      "default": false,
+      "model_ids": [
+        "gpt-5.6-terra"
+      ]
+    },
+    {
+      "default": false,
+      "model_ids": [
+        "gpt-5.6-luna"
+      ]
+    }
+  ],
+  "selected_model_ids": [
+    "gpt-6-astra"
+  ],
+  "selected_default": false,
+  "session_only_selection_confirmed": true,
+  "assistant_models": [],
+  "tool_names": [],
+  "result_event_count": 0,
+  "marker_in_final_result": false,
+  "session_id": null,
+  "result_subtypes": [],
+  "success": true,
+  "journey": "picker",
+  "mode": "gpt",
+  "requested_model": "gpt-5.6-sol",
+  "binary_sha256": "5b259dbbaee35c325d3ff8dd959d7192ff9a6ba91edb2dabab5a18bbc8a792d7",
+  "picker_exact_allowlist": true
+}

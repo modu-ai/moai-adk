@@ -38,7 +38,7 @@ func TestInitQuestions_QuietSet(t *testing.T) {
 	questions := InitQuestions(t.TempDir())
 
 	wantIDs := []string{"conversation_language", "user_name", "agent_wiring", "autonomy_tier"}
-	wantGroups := []string{"Basic", "Basic", "Quality & Workflow", "Autonomy"}
+	wantGroups := []string{"Basic", "Basic", "Agents & Autonomy", "Agents & Autonomy"}
 
 	if len(questions) != len(wantIDs) {
 		got := make([]string, 0, len(questions))

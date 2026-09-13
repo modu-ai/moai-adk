@@ -88,8 +88,11 @@ func TestAgentWiringQuestion_PrecedesAutonomyTier(t *testing.T) {
 	if harness != autonomy-1 {
 		t.Errorf("agent_wiring is at index %d and autonomy_tier at %d; the harness question must sit immediately before it", harness, autonomy)
 	}
-	if got := questions[harness].Group; got != "Quality & Workflow" {
-		t.Errorf("agent_wiring group = %q, want %q", got, "Quality & Workflow")
+	if got := questions[harness].Group; got != "Agents & Autonomy" {
+		t.Errorf("agent_wiring group = %q, want %q (Q5 regroup)", got, "Agents & Autonomy")
+	}
+	if got := questions[autonomy].Group; got != "Agents & Autonomy" {
+		t.Errorf("autonomy_tier group = %q, want %q (Q5 regroup)", got, "Agents & Autonomy")
 	}
 }
 

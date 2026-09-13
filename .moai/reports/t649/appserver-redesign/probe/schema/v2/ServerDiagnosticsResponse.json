@@ -1,0 +1,68 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "definitions": {
+    "ServerDiagnosticsGauge": {
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "value": {
+          "format": "uint64",
+          "minimum": 0.0,
+          "type": "integer"
+        }
+      },
+      "required": [
+        "name",
+        "value"
+      ],
+      "type": "object"
+    },
+    "ServerDiagnosticsProcess": {
+      "properties": {
+        "id": {
+          "format": "uint32",
+          "minimum": 0.0,
+          "type": "integer"
+        },
+        "physicalFootprintBytes": {
+          "format": "uint64",
+          "minimum": 0.0,
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "residentMemoryBytes": {
+          "format": "uint64",
+          "minimum": 0.0,
+          "type": [
+            "integer",
+            "null"
+          ]
+        }
+      },
+      "required": [
+        "id"
+      ],
+      "type": "object"
+    }
+  },
+  "properties": {
+    "gauges": {
+      "items": {
+        "$ref": "#/definitions/ServerDiagnosticsGauge"
+      },
+      "type": "array"
+    },
+    "process": {
+      "$ref": "#/definitions/ServerDiagnosticsProcess"
+    }
+  },
+  "required": [
+    "gauges",
+    "process"
+  ],
+  "title": "ServerDiagnosticsResponse",
+  "type": "object"
+}

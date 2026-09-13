@@ -1,0 +1,66 @@
+--- a/internal/cli/gateway_prepare.go
++++ b/internal/cli/gateway_prepare.go
+@@ -122,8 +122,11 @@
+ 	case gateway.ProviderZAI:
+ 		provider = "glm"
+ 	}
+-	// Exact route IDs do not include Claude's implicit [1m] picker variants.
+-	env = append(env, "CLAUDE_CODE_DISABLE_1M_CONTEXT=1")
++	// Native Claude context qualifiers are explicit catalog entries. Other
++	// providers must not inherit Claude's implicit 1M picker variants.
++	if in.Mode != "claude" {
++		env = append(env, "CLAUDE_CODE_DISABLE_1M_CONTEXT=1")
++	}
+ 	// Native GPT translation has no tool_reference mapping; load full MCP schemas.
+ 	if in.Mode == "gpt" {
+ 		env = append(env, "ENABLE_TOOL_SEARCH=false")
+--- a/internal/cli/gateway_product_binding.go
++++ b/internal/cli/gateway_product_binding.go
+@@ -86,6 +86,11 @@
+ 		}
+ 		seen[id] = true
+ 		rows = append(rows, gateway.ModelEntry{RouteID: id, UpstreamID: id, Provider: provider, AuthMethod: method, Capabilities: gateway.Capabilities{ContextTokens: 1000000, Images: true, Tools: true, Streaming: true}})
++		if provider == gateway.ProviderAnthropic {
++			qualified := rows[len(rows)-1]
++			qualified.RouteID = id + "[1m]"
++			rows = append(rows, qualified)
++		}
+ 	}
+ 	return rows, nil
+ }
+--- a/internal/cli/gateway_provider_contract_test.go
++++ b/internal/cli/gateway_provider_contract_test.go
+@@ -154,8 +154,11 @@
+ 			k, v, _ := strings.Cut(s, "=")
+ 			values[k] = v
+ 		}
+-		if values["CLAUDE_CODE_DISABLE_1M_CONTEXT"] != "1" {
++		if mode != "claude" && values["CLAUDE_CODE_DISABLE_1M_CONTEXT"] != "1" {
+ 			t.Errorf("%s permits implicit unregistered [1m] ID", mode)
++		}
++		if mode == "claude" && values["CLAUDE_CODE_DISABLE_1M_CONTEXT"] != "" {
++			t.Error("Claude context policy inherited instead of using registered models")
+ 		}
+ 		if mode == "gpt" && values["ENABLE_TOOL_SEARCH"] != "false" {
+ 			t.Error("GPT permits unsupported tool_reference deferral")
+--- a/internal/gateway/catalog.go
++++ b/internal/gateway/catalog.go
+@@ -100,6 +100,7 @@
+ 	var entries []ModelEntry
+ 	for _, id := range []string{"claude-opus-5", "claude-sonnet-5"} {
+ 		entries = append(entries, ModelEntry{RouteID: id, UpstreamID: id, Provider: ProviderAnthropic, AuthMethod: AuthOAuthPassthrough})
++		entries = append(entries, ModelEntry{RouteID: id + "[1m]", UpstreamID: id, Provider: ProviderAnthropic, AuthMethod: AuthOAuthPassthrough})
+ 	}
+ 	for _, id := range []string{"gpt-6-astra", "gpt-5.6-sol", "gpt-5.6-terra", "gpt-5.6-luna"} {
+ 		entries = append(entries, ModelEntry{RouteID: id, UpstreamID: id, Provider: ProviderOpenAI, AuthMethod: AuthPKCE})
+--- a/internal/gateway/catalog_test.go
++++ b/internal/gateway/catalog_test.go
+@@ -24,7 +24,7 @@
+ 		}
+ 	}
+ 	entries := cat.Entries()
+-	if len(entries) != 9 {
++	if len(entries) != 11 {
+ 		t.Fatalf("duplicate GLM IDs not deduplicated: %d", len(entries))
+ 	}
+ 	entries[0].RouteID = "mutated"

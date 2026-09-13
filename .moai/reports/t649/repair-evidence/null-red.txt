@@ -1,0 +1,5 @@
+--- FAIL: TestRegressionReasoningMultipartAndNullPhase (0.00s)
+    replay_boundaries_test.go:72: explicit null phase lost
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/gateway/translate	0.334s
+FAIL

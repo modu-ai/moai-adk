@@ -64,7 +64,7 @@ graph TD
 
 2. **Parallel development** — you can run multiple SPECs at once
 3. **Conflict prevention** — separate workspaces mean conflicts almost never happen
-4. **Cost savings** — using GLM at the implementation stage cuts cost. The size of the savings is laid out in [CG Mode](/en/multi-llm/cg-mode)
+4. Explicit backend selection: choose `moai cc` or `moai glm` for each worktree.
 
 ```mermaid
 graph TD
@@ -103,7 +103,7 @@ moai glm -w SPEC-AUTH-001
 moai cc -w SPEC-AUTH-001
 
 # Enter with the Claude leader + GLM teammate hybrid
-moai cg -w SPEC-AUTH-001
+moai cc -w SPEC-AUTH-001
 ```
 
 A short name resolves under `.claude/worktrees/<name>/`. If a worktree you

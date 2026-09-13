@@ -1,0 +1,13 @@
+{
+  "binary": "/tmp/moai-v3.2.0-rc.8-t649-onboarding-17eeb425153a",
+  "build_id": "v3.2.0-rc.8-t649-onboarding-17eeb425153a",
+  "sha256": "0ba66bf4fce728af5d8fce5a8228f84d224b23bc98378541b81b1ba251679ca4",
+  "source_hashes": {
+    "internal/cli/gateway_ui_state.go": "6e193c8943c4a8ee534ba031c711a090c85a8182c65022f79d00d8bf3e928887",
+    "internal/cli/gateway_session.go": "567f6c0c545c74c2ef2450be499c6c49a74ce31194c512c8b2cf39c13dda3d01"
+  },
+  "installed_path": "/Users/goos/go/bin/moai",
+  "backup_path": "/Users/goos/.moai/releases/moai-before-onboarding-0bd8320e7e53",
+  "installed": true,
+  "version_output": "╭────────────────────────╮\n│                        │\n│  moai-adk v3.2.0-rc.8  │\n│                        │\n│                        │\n╰────────────────────────╯\n[v3.2.0-rc.8] [v3.2.0-rc.8-t649-onboarding-17eeb425153a] [built 2026-09-12T06:56:13Z]\n"
+}

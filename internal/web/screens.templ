@@ -59,12 +59,16 @@ templ Overview(vm ShellVM, o OverviewVM, q TodoVM) {
 					</a>
 				</div>
 				<p class="panel__help" data-i18n="overview.todo.desc">Cards stay in their operator-owned queue; this summary never mutates it.</p>
+				if !q.Unavailable {
 				<div class="todo-summary__metrics">
 					<div class="todo-summary__metric"><strong>{ itoa(todoStateCount(q.Items, "queued")) }</strong><span data-i18n="todo.state.queued">queued</span></div>
 					<div class="todo-summary__metric"><strong>{ itoa(todoStateCount(q.Items, "picked")) }</strong><span data-i18n="todo.state.picked">picked</span></div>
 					<div class="todo-summary__metric"><strong>{ itoa(todoStateCount(q.Items, "dropped")) }</strong><span data-i18n="todo.state.dropped">dropped</span></div>
 				</div>
-				if len(q.Items) == 0 {
+				}
+				if q.Unavailable {
+					<p class="panel__meta" role="status" data-todo-unavailable data-i18n="todo.unavailable">The queue could not be read. Retry or check it with moai todo list.</p>
+				} else if len(q.Items) == 0 {
 					<p class="panel__meta" data-i18n="todo.empty">The backlog queue is empty.</p>
 				} else {
 					<div class="rows">
@@ -296,10 +300,14 @@ templ Todo(vm ShellVM, q TodoVM) {
 			<div class="panel__head" style="border-bottom-color:var(--line)">
 				<h2 class="panel__title" data-i18n="todo.title">Backlog queue</h2>
 				<span class="panel__meta" data-i18n="todo.count">Cards</span>
-				<span class="mono">{ itoa(len(q.Items)) }</span>
+				if !q.Unavailable {
+					<span class="mono">{ itoa(len(q.Items)) }</span>
+				}
 				<span class="panel__meta mono todo-root" title={ q.Root }>{ q.Root }</span>
 			</div>
-			if len(q.Items) == 0 {
+			if q.Unavailable {
+				<p class="panel__meta" role="status" data-todo-unavailable data-i18n="todo.unavailable">The queue could not be read. Retry or check it with moai todo list.</p>
+			} else if len(q.Items) == 0 {
 				<p class="panel__meta" data-todo-empty data-i18n="todo.empty">The backlog queue is empty.</p>
 			} else {
 				// 세 상태를 모두 싣는다(결정 G-5). queued 만 보여주는 작업 화면으로는

@@ -150,6 +150,9 @@ func checkSpawnPrereqs() error {
 // Nothing has been mutated at this point (the caller invokes spawnLaunch before
 // any settings write), so an error here leaves the environment untouched.
 func spawnLaunch(out io.Writer, subcommand string, args []string) error {
+	if subcommand == "cg" {
+		return errCGRetired
+	}
 	if err := checkSpawnPrereqs(); err != nil {
 		return err
 	}

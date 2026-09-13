@@ -39,7 +39,7 @@ Unit prices dropped 98% in three years (Linux Foundation), yet enterprise AI spe
 
 {{< icon target >}} **Claude Code alone / Generic wrapper** — The model plans its own steps, and the user watches cost. Even with low unit prices, many steps still make large bills.
 
-{{< icon target primary >}} **MoAI-ADK** — What divides cost is not unit price but **assignment**. In the DeepSWE benchmark, Opus 5's lowest inference scored higher than Sonnet 5's highest while costing one-sixteenth per task. Retry loops write the bill, not token unit prices. So assign the right model and inference depth per task, diet the context, and stop before budget overflow. `moai cg`'s Claude+GLM hybrid mode brings 60-70% cost reduction on implementation-heavy work.
+{{< icon target primary >}} **MoAI-ADK** — What divides cost is not unit price but **assignment**. In the DeepSWE benchmark, Opus 5's lowest inference scored higher than Sonnet 5's highest while costing one-sixteenth per task. Retry loops write the bill, not token unit prices. So assign the right model and inference depth per task, diet the context, and stop before budget overflow. CG is retired; use `moai migrate cg` to preview explicit migration choices.
 
 Covered in detail in [Tokenomics overview](/en/advanced/tokenomics-overview/) and [Cost optimization](/en/cost-optimization/).
 

@@ -950,8 +950,8 @@ func TestCharacterize_GLM_WarningPrintedToStderr(t *testing.T) {
 	if !strings.Contains(got, "WARNING") {
 		t.Errorf("stderr should contain WARNING about GLM limitations, got: %q", got)
 	}
-	if !strings.Contains(got, "moai cg") {
-		t.Errorf("stderr should mention 'moai cg' as alternative, got: %q", got)
+	if !strings.Contains(got, "Mixed Claude/GLM teammate roles") {
+		t.Errorf("stderr should mention the mixed Claude/GLM teammate-routing constraint, got: %q", got)
 	}
 }
 

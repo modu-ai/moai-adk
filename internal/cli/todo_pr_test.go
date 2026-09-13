@@ -291,9 +291,10 @@ func TestTodoPR_FailOpenNoGh(t *testing.T) {
 	if strings.Contains(errOut, "Error:") {
 		t.Errorf("stderr = %q; a degradation is a note, not an error", errOut)
 	}
-	// The landed check still runs (REQ-2.3): local git does not need gh.
-	if !strings.Contains(lines[0], string(kanban.PRLinkLanded)) {
-		t.Errorf("landed card row = %q, want the landed outcome", lines[0])
+	// Local attribution alone cannot establish that no open PR carries the
+	// card. The unavailable PR lookup makes the combined outcome unknown.
+	if !strings.Contains(lines[0], string(kanban.PRLinkUnknown)) {
+		t.Errorf("landed card row = %q, want unknown while gh is unavailable", lines[0])
 	}
 }
 
@@ -310,8 +311,8 @@ func TestTodoPR_FailOpenGhNonZero(t *testing.T) {
 	if !strings.Contains(errOut, "note:") {
 		t.Errorf("stderr = %q, want a degradation note", errOut)
 	}
-	if !strings.Contains(out, string(kanban.PRLinkNoLink)) {
-		t.Errorf("stdout = %q, want the no-link outcome rendered", out)
+	if !strings.Contains(out, string(kanban.PRLinkUnknown)) {
+		t.Errorf("stdout = %q, want the unknown outcome rendered", out)
 	}
 }
 

@@ -20,9 +20,9 @@ func TestIsGLMBackend(t *testing.T) {
 	}{
 		// TRUE cases — a GLM backend signal is present.
 		{"team_mode=glm (primary moai glm signal)", "", config.TeamModeGLM, true},
-		{"team_mode=cg (moai cg signal)", "", config.TeamModeCG, true},
+		{"team_mode=cg is retired", "", config.LegacyTeamModeCG, false},
 		{"mode=glm (defensive dormant-field OR)", config.LLMModeGLM, "", true},
-		{"mode=glm AND team_mode=cg", config.LLMModeGLM, config.TeamModeCG, true},
+		{"retired cg conflicts with mode=glm", config.LLMModeGLM, config.LegacyTeamModeCG, false},
 		// FALSE cases — no GLM signal (legacy non-GLM team_mode values + empty).
 		{"team_mode=claude (legacy non-GLM)", "", config.TeamModeClaude, false},
 		{"team_mode=hybrid (legacy non-GLM)", "", config.TeamModeHybrid, false},

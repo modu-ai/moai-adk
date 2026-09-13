@@ -96,24 +96,37 @@ detect_languages() {
             *) candidates="$candidates $1" ;;
         esac
     }
+    # Heavy directories are pruned instead of capping the depth, so package
+    # nesting and multi-module layouts are covered without guessing a bound.
+    # A depth cap cannot express "conventional layout": src/main/java/<pkg>/ is
+    # already 4 levels down and Sources/<Module>/<Feature>/ is 3, so any bound
+    # low enough to be cheap is also low enough to miss the idiomatic case —
+    # every language whose only evidence is source suffix then resolves to no
+    # language at all, and the gate exits silently (card t664; the same shape
+    # t604 had already worked around for Kotlin alone).
+    #
+    # The prune set mirrors sourceScanSkipDirs in internal/hook/quality/gate.go
+    # so this shell gate and the Go heavy gate skip the same trees; -quit stops
+    # the walk at the first match, so a hit costs a partial traversal.
     has_suffix() {
-        find "$root" -maxdepth 3 -type f -name "$1" -print -quit 2>/dev/null | grep -q .
-    }
-    # Kotlin sources sit under the conventional Gradle layout
-    # (src/main/kotlin/<package>/…), deeper than has_suffix's shared bound, so
-    # they need a probe of their own. Without one the Kotlin branch rests
-    # entirely on the build script's wording, and a version-catalog script
-    # (`alias(libs.plugins.jvm)`) names no Kotlin token at all: the project then
-    # falls through to Java, the Java code-delta pattern misses every .kt file,
-    # and the gate exits silently without even a log line (card t604).
-    # Only *.kt counts — *.kts is the build DSL, and a Java Gradle project's
-    # build.gradle.kts must keep resolving to Java. Heavy directories are pruned
-    # instead of capping the depth, so package nesting and multi-module layouts
-    # are covered without guessing a bound.
-    has_kotlin_source() {
         find "$root" \
-            \( -name .git -o -name build -o -name target -o -name node_modules \) -prune \
-            -o -type f -name '*.kt' -print -quit 2>/dev/null | grep -q .
+            \( -name .git -o -name .hg -o -name .svn \
+               -o -name node_modules -o -name vendor \
+               -o -name .venv -o -name venv -o -name site-packages -o -name __pycache__ \
+               -o -name .tox -o -name .nox -o -name .mypy_cache -o -name .ruff_cache \
+               -o -name .pytest_cache \
+               -o -name dist -o -name build -o -name target -o -name .next -o -name .output \) -prune \
+            -o -type f -name "$1" -print -quit 2>/dev/null | grep -q .
+    }
+    # Kotlin keeps a named source probe because its branch is the one that rests
+    # on source alone: a version-catalog build script (`alias(libs.plugins.jvm)`)
+    # names no Kotlin token, so without the source leg the project falls through
+    # to Java, the Java code-delta pattern misses every .kt file, and the gate
+    # exits silently without even a log line (card t604). Only *.kt counts —
+    # *.kts is the build DSL, and a Java Gradle project's build.gradle.kts must
+    # keep resolving to Java.
+    has_kotlin_source() {
+        has_suffix '*.kt'
     }
 
     if [ -f "$root/go.mod" ] || has_suffix '*.go'; then add_language go; fi
@@ -133,7 +146,10 @@ detect_languages() {
     if [ -f "$root/DESCRIPTION" ] || [ -f "$root/renv.lock" ] || has_suffix '*.R' || has_suffix '*.r'; then add_language r; fi
     if [ -f "$root/pubspec.yaml" ] || has_suffix '*.dart'; then add_language flutter; fi
     if [ -f "$root/Package.swift" ] || has_suffix '*.swift'; then add_language swift; fi
-    if [ -d "$root/.vs" ] || find "$root" -maxdepth 3 -name '*.csproj' -print -quit 2>/dev/null | grep -q . || has_suffix '*.cs'; then add_language csharp; fi
+    # The .csproj probe carried its own copy of the same depth cap; a solution
+    # with projects under src/<Module>/ already sits below it. Routed through
+    # the shared probe so one prune set governs every walk in this function.
+    if [ -d "$root/.vs" ] || has_suffix '*.csproj' || has_suffix '*.cs'; then add_language csharp; fi
 
     for language in $candidates; do
         printf '%s\n' "$language"
@@ -601,13 +617,25 @@ case "$GATE_LANG" in
         #              run is distinguishable from one that checked nothing. Empty
         #              output therefore means zero targets, reported as such below
         #              rather than as a successful check.
-        run_step g++ c1 sh -c 'out=$(find . \( -name "*.cpp" -o -name "*.cc" \) -print -exec g++ -fsyntax-only -std=c++17 {} + 2>&1); rc=$?; if [ -z "$out" ]; then echo "0 C++ files checked: no *.cpp/*.cc found (not a passing check)"; else echo "$out"; fi; exit $rc' || true
+        #   *.cxx      is scanned alongside *.cpp and *.cc: all three are ordinary
+        #              translation units, and code_delta_pattern already classifies a
+        #              .cxx change as C++ — so without it the gate declared the change
+        #              C++ and then compiled nothing.
+        #   headers    (.h/.hpp/.hxx) are deliberately NOT scanned, even though
+        #              code_delta_pattern accepts them. Measured with this toolchain:
+        #              a self-contained header passes -fsyntax-only cleanly, but a
+        #              header written to be included AFTER another one — an ordinary
+        #              C++ idiom — fails standalone ("error: unknown type name"), so
+        #              scanning headers converts a correct project into a gate
+        #              failure. The residual asymmetry is recorded rather than traded
+        #              for false positives; see .moai/reports/t663/verdict.md.
+        run_step g++ c1 sh -c 'out=$(find . \( -name "*.cpp" -o -name "*.cc" -o -name "*.cxx" \) -print -exec g++ -fsyntax-only -std=c++17 {} + 2>&1); rc=$?; if [ -z "$out" ]; then echo "0 C++ files checked: no *.cpp/*.cc/*.cxx found (not a passing check)"; else echo "$out"; fi; exit $rc' || true
         # Per-check logs live in GATE_TMPDIR, which the EXIT trap removes, and nothing
         # reads them — so the zero-target case is promoted to the audit log here. Without
         # it, "checked nothing" and "checked everything and it passed" are both a silent
         # c1=0, which is exactly how the original defect stayed invisible.
         if grep -q '^0 C++ files checked' "$GATE_TMPDIR/c1.log" 2>/dev/null; then
-            log_gate_event "cpp_targets=0 (no *.cpp/*.cc compiled — not a passing check)"
+            log_gate_event "cpp_targets=0 (no *.cpp/*.cc/*.cxx compiled — not a passing check)"
         fi
         ;;
     scala)

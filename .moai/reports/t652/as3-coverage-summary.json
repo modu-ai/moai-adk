@@ -1,0 +1,27 @@
+{
+  "github.com/modu-ai/moai-adk/internal/codexapp/private.go": {
+    "statements": 13,
+    "covered": 9,
+    "percent": 69.2
+  },
+  "github.com/modu-ai/moai-adk/internal/codexbridge/engine.go": {
+    "statements": 281,
+    "covered": 223,
+    "percent": 79.4
+  },
+  "github.com/modu-ai/moai-adk/internal/codexbridge/store.go": {
+    "statements": 67,
+    "covered": 48,
+    "percent": 71.6
+  },
+  "github.com/modu-ai/moai-adk/internal/gateway/appserver.go": {
+    "statements": 70,
+    "covered": 50,
+    "percent": 71.4
+  },
+  "github.com/modu-ai/moai-adk/internal/gateway/appserver_authority.go": {
+    "statements": 24,
+    "covered": 18,
+    "percent": 75.0
+  }
+}

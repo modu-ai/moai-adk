@@ -7,8 +7,6 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
-
-	"github.com/modu-ai/moai-adk/internal/homestate"
 )
 
 func TestRecordFactoryRunStartRecordsMetadataWithoutClaimingSpecProvenance(t *testing.T) {
@@ -37,15 +35,14 @@ func TestRecordFactoryRunStartRecordsMetadataWithoutClaimingSpecProvenance(t *te
 	if err := RecordFactoryRunStart(root, "run-spec", BackendClaude, "SPEC-X"); err != nil {
 		t.Fatal(err)
 	}
-	db, err := homestate.OpenFactory(root)
+	record, err := NewBacklogStore(BacklogPathForRoot(root)).LoadPure()
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer func() { _ = db.Close() }()
-	var raw string
-	if err := db.DB.QueryRow(`SELECT manifest_json FROM runs WHERE run_id='run-spec'`).Scan(&raw); err != nil {
-		t.Fatal(err)
+	if len(record.Runtime.Runs) != 1 {
+		t.Fatalf("run count=%d", len(record.Runtime.Runs))
 	}
+	raw := record.Runtime.Runs[0].ManifestJSON
 	var got factoryProvenance
 	if err := json.Unmarshal([]byte(raw), &got); err != nil {
 		t.Fatal(err)

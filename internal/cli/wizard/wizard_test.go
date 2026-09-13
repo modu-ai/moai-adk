@@ -278,25 +278,16 @@ func TestGetLocalizedQuestion(t *testing.T) {
 }
 
 func TestGetUIStrings(t *testing.T) {
-	// Test English
-	enStrings := GetUIStrings("en")
-	if enStrings.HelpSelect == "" {
-		t.Error("English HelpSelect should not be empty")
-	}
-
 	// Test Korean
 	koStrings := GetUIStrings("ko")
-	if koStrings.HelpSelect == enStrings.HelpSelect {
-		t.Error("Korean HelpSelect should be different from English")
-	}
 	if koStrings.ErrorRequired != "필수 입력 항목입니다" {
 		t.Errorf("expected Korean error '필수 입력 항목입니다', got %q", koStrings.ErrorRequired)
 	}
 
 	// Test unknown locale (should return English)
 	unknownStrings := GetUIStrings("xx")
-	if unknownStrings.HelpSelect != enStrings.HelpSelect {
-		t.Error("unknown locale should return English strings")
+	if unknownStrings.ErrorRequired != "This field is required" {
+		t.Errorf("unknown locale should return the English ErrorRequired, got %q", unknownStrings.ErrorRequired)
 	}
 }
 
@@ -1253,12 +1244,6 @@ func TestGetUIStrings_AllLocales(t *testing.T) {
 	locales := []string{"en", "ko", "ja", "zh"}
 	for _, locale := range locales {
 		str := GetUIStrings(locale)
-		if str.HelpSelect == "" {
-			t.Errorf("locale %q: HelpSelect should not be empty", locale)
-		}
-		if str.HelpInput == "" {
-			t.Errorf("locale %q: HelpInput should not be empty", locale)
-		}
 		if str.ErrorRequired == "" {
 			t.Errorf("locale %q: ErrorRequired should not be empty", locale)
 		}

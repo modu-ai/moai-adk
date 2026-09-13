@@ -9,6 +9,7 @@
 package cli
 
 import (
+	"reflect"
 	"strings"
 	"testing"
 
@@ -214,7 +215,7 @@ func TestTodoMove_PreservesEveryItem(t *testing.T) {
 		if !ok {
 			t.Fatalf("item %s lost by the move", want.ID)
 		}
-		if got != want {
+		if !reflect.DeepEqual(got, want) {
 			t.Errorf("item %s changed by the move: %+v, want %+v", want.ID, got, want)
 		}
 	}

@@ -77,7 +77,7 @@ moai cc -f lane-1             # レーン 1 本、各自別ターミナルで
 moai glm -f lane-3            # …GLM バックエンドのレーンも同じ形
 ```
 
-レーンは `moai cc -f lane-<n>` で 1 本ずつ増やす。この形はレーン名を既に決めているので、`--name`/`-n` を併せて渡すとエラーになる。番号は生きているセッションが握っているものだけを飛ばす — 死んだレーンの番号は解放され、また使われる。レーンの所有権は `~/.moai/db/<project-key>/factory/factory.db` に記録される。従来の `.moai/state/factory/workers.json` は一度だけ取り込まれ、ロールバック用の証跡として残る。1 本のレーンは最大 10 個の `Agent()` サブエージェントを同時に走らせ、書き込みを担うスポーンはそれぞれの worktree に隔離される。レーンを一度に全部立ち上げてはいけない — まず最初の 1 本を上げ、実際に出力が出ているのを確かめてから残りを活性化する。カードがレーンをまたいで分割されることはない。`-k` は 3 役割のカンバンチェーンを回すトークンのままで、1 回の起動に進入トークンは 1 つだけだから `-k` と `-f` の併用はエラーになる。`moai cg` はファクトリーモードを拒否する。
+レーンは `moai cc -f lane-<n>` で 1 本ずつ増やす。この形はレーン名を既に決めているので、`--name`/`-n` を併せて渡すとエラーになる。番号は生きているセッションが握っているものだけを飛ばす — 死んだレーンの番号は解放され、また使われる。レーンの所有権は `~/.moai/db/<project-key>/factory/factory.db` に記録される。従来の `.moai/state/factory/workers.json` は一度だけ取り込まれ、ロールバック用の証跡として残る。1 本のレーンは最大 10 個の `Agent()` サブエージェントを同時に走らせ、書き込みを担うスポーンはそれぞれの worktree に隔離される。レーンを一度に全部立ち上げてはいけない — まず最初の 1 本を上げ、実際に出力が出ているのを確かめてから残りを活性化する。カードがレーンをまたいで分割されることはない。`-k` は 3 役割のカンバンチェーンを回すトークンのままで、1 回の起動に進入トークンは 1 つだけだから `-k` と `-f` の併用はエラーになる。廃止された `moai cg` は移行案内を表示して終了する。
 
 > 詳しくは: [カンバンモード — ファクトリーモード](https://adk.mo.ai.kr/ja/advanced/kanban-mode)
 
@@ -180,7 +180,7 @@ moai-adk は Claude Code を外から包むハーネスである。Claude Code �
 | **自律 + 本物の境界** | `/moai goal` が完了条件を宣言すると、セッションは条件が満たされるまで自力で作業する。ただしターン上限（デフォルト 30）、停滞ガード、実時間予算、事前承認ゲートという 4 つのハードな境界が付いており、無限ループに陥らない。 |
 | **並行安全** | SPEC ごとに独立した作業ツリーを与え、ブランチ状態ガードがプライマリ・チェックアウトでの誤ったブランチ切替を防ぎ、書き込みエージェントの起動前にリモートとの乖離を検査する。書き込み可能なエージェント 2 つが同時に動くことはない。 |
 | **長期の継続** | `/clear` を越えて作業は続く。進行状況は `progress.md` に、ハンドオフ・メッセージはメモリに、ルーティング決定は決定メモリに残る。次のセッションは更地からではなく、前のセッションが学んだ地点から始める。 |
-| **コスト効率** | モデルと推論の深さを作業段階と SPEC サイズに合わせて宣言的に割り当てる。Claude リーダー + GLM ワーカーの CG モードは実装中心の作業でコストを 60–70% 減らす。プロンプト・キャッシュを再利用し、長い出力はディスクに流してコンテキストを軽く保つ。 |
+| **コスト効率** | モデルと推論の深さを作業段階と SPEC サイズに合わせて宣言的に割り当てる。プロンプト・キャッシュを再利用し、長い出力はディスクに流してコンテキストを軽く保つ。 |
 | **16 プログラミング言語の同等サポート** | Go、Python、TypeScript、JavaScript、Rust、Java、Kotlin、C#、Ruby、PHP、Elixir、C++、Scala、R、Flutter、Swift — 16 のプログラミング言語をマーカー・ベースの自動検出でひとつの集合として扱う。どれか 1 つが優遇されることはない。 |
 | **自己改善** | 繰り返される失敗パターンを観測すると、ルール変更提案として上げる。黙って適用せず、承認を受けて反映する。ルーティング決定とゲート証拠が決定メモリに蓄積され、次の実行の材料になる。 |
 | **母語への配慮** | 韓国語・日本語・中国語・英語の 4 ロケールを同じ PRで扱い、翻訳調を禁じ、母語の文を別に持つ。母語を使うユーザーに英語を強要しない。 |
@@ -311,7 +311,7 @@ claude        # または moai cc — プロジェクト内で Claude Code を�
 
 - **Git** — 全プラットフォームで必須
 - **Claude Code** — moai-adk は Claude Code のためのハーネスである
-- **推奨**: `gh` CLI（PR 自動化）、`tmux`（CG モード）、使用言語のリント/テスト・ツールチェーン（例: `golangci-lint`）
+- **推奨**: `gh` CLI（PR 自動化）、`tmux`（worktree ウィンドウ）、使用言語のリント/テスト・ツールチェーン（例: `golangci-lint`）
 
 ---
 
@@ -365,13 +365,18 @@ SPEC ごとに独立した作業ツリーを与える。`moai cc -w <名前>` �
 
 > 詳しくは: [カンバンモード・ガイド](https://adk.mo.ai.kr/ja/advanced/kanban-mode)
 
-### CG モード — Claude リーダー + GLM ワーカー
+### CG の廃止と設定の移行
 
-Claude が戦略・計画・監査を担い、GLM が大量実装を担う。tmux セッション単位の環境分離で両者をつなぎ、実装中心の作業でコストを 60–70% 減らす。
+`moai cg` は廃止されました。Claude や GLM を起動せず、移行案内を表示して終了します。`moai cc` の別名ではありません。`llm.team_mode: cg` が残るプロジェクトでは、セッションを起動する前に移行先を明示的に選ぶ必要があります。
 
-<p align="center">
-  <img src="./assets/images/cg-mode-infographic-ja.png" alt="CG モード — Claude リーダー + GLM ワーカーのハイブリッド" width="85%">
-</p>
+```bash
+moai migrate cg
+moai migrate cg --target claude-only --apply --accept-role-change
+```
+
+`llm.team_mode: claude`、`llm.gateway.teammate_mode: in-process`、`llm.gateway.teammate_provider: inherit` を保存します。従来の混合構成の役割分担を解除する変更です。Claude リーダーと GLM チームメイトのペインを維持する移行ではありません。
+
+`claude-glm` は Claude リーダーと tmux 内の GLM チームメイトを表します。現在は TEAMMATE の統合検証を通過していないため、適用と起動は利用できず、プレビューのみ可能です。tmux のインストールや `verified: true` の設定では、この制限は解除されません。
 
 ### 16 プログラミング言語の同等サポート
 
@@ -411,7 +416,7 @@ AI エージェント同士がコンテキスト・不変条件・危険区域�
   <img src="./assets/images/moai-web-settings.png" alt="moai web コンソール設定画面 — プロファイルバーと設定タブ" width="90%">
 </p>
 
-`moai web` がローカルホスト限定のコンソールを開く。画面は Overview・Kanban・Specs・Monitor・Settings・Todo の 6 つで、設定画面は Identity・Language・LLM・3rd Party LLM・Workflow・Git & Worktree・Audit・Codex・Agents・Report・MCP・Cross-Session・Feedback・Quality Gate の 14 タブに分かれる。Codex タブは散らばった codex 設定を 1 画面にまとめて見せる読み取り専用の画面で、値の編集は元のタブで行う。プロファイルの作成・改名・削除も同じ画面で行う。
+`moai web` がローカルホスト限定のコンソールを開く。画面は Overview・Kanban・Specs・Monitor・Settings・Todo の 6 つで、設定画面は Identity・Language・LLM・GLM Settings・Workflow・Git & Worktree・Audit・Codex・Agents・Report・MCP・Cross-Session・Feedback・Quality Gate のタブに分かれる。Codex タブは散らばった codex 設定を 1 画面にまとめて見せる読み取り専用の画面で、値の編集は元のタブで行う。プロファイルの作成・改名・削除も同じ画面で行う。
 
 ### ref / domain スキル
 
@@ -564,18 +569,18 @@ moai cc -w feature-billing --spawn   # billing は新しいウィンドウで、
 
 SPEC ごとに独立した作業ツリーを与え、2 つのエージェントが互いを踏まないようにする。ブランチ状態ガードがプライマリ・チェックアウトでの誤ったブランチ切替を防ぐ。
 
-### コストを減らす (CG モード)
+### CG の廃止と設定の移行
+
+`moai cg` は廃止されました。Claude や GLM を起動せず、移行案内を表示して終了します。`moai cc` の別名ではありません。`llm.team_mode: cg` が残るプロジェクトでは、セッションを起動する前に移行先を明示的に選ぶ必要があります。
 
 ```bash
-moai glm sk-your-glm-api-key   # キーを一度保存
-moai cg                        # Claude リーダー + GLM ワーカーのハイブリッドへ
+moai migrate cg
+moai migrate cg --target claude-only --apply --accept-role-change
 ```
 
-```text
-/moai run SPEC-DATA-001        # 実装中心の作業 → GLM ワーカーが大量実装を担当
-```
+`llm.team_mode: claude`、`llm.gateway.teammate_mode: in-process`、`llm.gateway.teammate_provider: inherit` を保存します。従来の混合構成の役割分担を解除する変更です。Claude リーダーと GLM チームメイトのペインを維持する移行ではありません。
 
-CG モードは Claude リーダーが戦略・計画・監査を担い、GLM ワーカーが大量実装を担う。実装中心の作業でコストを 60–70% 減らす。ハーネス・SPEC ワークフロー・品質ゲートは 3 モードすべてで同一に動く。
+`claude-glm` は Claude リーダーと tmux 内の GLM チームメイトを表します。現在は TEAMMATE の統合検証を通過していないため、適用と起動は利用できず、プレビューのみ可能です。tmux のインストールや `verified: true` の設定では、この制限は解除されません。
 
 ### バグを自動で直す (loop)
 
@@ -638,7 +643,7 @@ v3.1.1 で手を入れる価値のあるセクションが 4 つ増えた。
 | `.claude/settings.json` | テンプレートからレンダリング — プロジェクト共有設定 | 含む |
 | `.claude/settings.local.json` | ランタイム管理 — マシンごとの値 (tmux pane ID · API トークン · 絶対パス) | **絶対に含めない** |
 
-`settings.local.json` は `moai glm`・`moai cc`・`moai cg` がランタイムに書き換え、SessionStart フックが環境を満たす。誤ってコミットしたら `git rm --cached .claude/settings.local.json` で除外する。
+`settings.local.json` は `moai glm`・`moai cc` がランタイムに書き換え、SessionStart フックが環境を満たす。誤ってコミットしたら `git rm --cached .claude/settings.local.json` で除外する。
 
 ---
 
@@ -676,13 +681,12 @@ v3.1.1 で手を入れる価値のあるセクションが 4 つ増えた。
 
 ### Claude + GLM
 
-z.ai GLM を Claude Code の代替バックエンドとして使う。環境変数を変えるだけでコードはそのままだ。3 つの実行モードがある。
+z.ai GLM を Claude Code の代替バックエンドとして使う。環境変数を変えるだけでコードはそのままだ。
 
 | コマンド | リーダー | ワーカー | tmux | コスト削減 |
 |---|---|---|---|---|
 | `moai cc` | Claude | Claude | 不要 | — |
 | `moai glm` | GLM | GLM | 推奨 | 約 70% |
-| `moai cg` | Claude | GLM | **必須** | 約 60% |
 
 GLM Coding Plan は月 $10 から。glm-5.3-flash（デフォルト）、glm-5.3、glm-4.7、glm-4.5-air と無料モデル (GLM-4.7-Flash, GLM-4.5-Flash) が使える。
 
@@ -715,7 +719,7 @@ Claude の各ティアは `ANTHROPIC_DEFAULT_*_MODEL` 環境変数を通じて G
 | [ユーティリティ・コマンド](https://adk.mo.ai.kr/ja/utility-commands) | `fix` · `loop` · `gate` · `review` · `clean` · `codemaps` · `e2e` · `feedback` · `goal` · `todo` |
 | [CLI リファレンス](https://adk.mo.ai.kr/ja/cli-reference) | ターミナル `moai` バイナリのすべてのコマンド (全 49 個) |
 | [Claude Code ガイド](https://adk.mo.ai.kr/ja/claude-code) | Claude Code 統合 — 基礎 · コンテキスト/メモリ · エージェンティック · 拡張性 |
-| [Multi-LLM](https://adk.mo.ai.kr/ja/multi-llm) | CG モードとモデル方針 |
+| [Multi-LLM](https://adk.mo.ai.kr/ja/multi-llm) | CG の移行とモデル方針 |
 | [コスト最適化](https://adk.mo.ai.kr/ja/cost-optimization) | プロンプト・キャッシュ戦略とトークン費用の削減 |
 | [ガイド](https://adk.mo.ai.kr/ja/guides) | CI 自動化 · マルチ LLM CI などの実運用レシピ |
 | [Git Worktree](https://adk.mo.ai.kr/ja/worktree) | 並行 SPEC 開発のための worktree ガイド |
@@ -735,7 +739,7 @@ Claude の各ティアは `ANTHROPIC_DEFAULT_*_MODEL` 環境変数を通じて G
 | `moai status` | プロジェクト状態の要約 (Git ブランチ、品質指標) |
 | `moai update` | 最新版へ更新 (削除前バックアップ · 自動ロールバック対応) |
 | `moai graph <build\|query>` | コードベースグラフ (edges.jsonl) の生成・照会 — 呼び出し元の検索、影響半径、マイルストーンの交差検査 |
-| `moai cc` / `moai glm` / `moai cg` | Claude 専用 / GLM 専用 / ハイブリッドのセッション |
+| `moai cc` / `moai glm` | Claude 専用 / GLM 専用のセッション |
 | `moai codex [cli\|status\|app]` | Codex ランチャー — 引数なしで呼ぶと Codex CLI を起動する。`status` は準備状態を表示するだけで何も起動しない |
 | `moai worktree <sync\|done\|remove\|clean\|recover\|snapshot\|verify\|restore>` | Git worktree の保守 (ワークツリーへの出入りはランチャーの仕事) |
 | `moai session <list\|register\|current>` | マルチセッション調整 |
@@ -747,7 +751,7 @@ Claude の各ティアは `ANTHROPIC_DEFAULT_*_MODEL` 環境変数を通じて G
 | `moai memory <doctor\|archive>` | エージェント・メモリの点検と古い項目の保管 |
 | `moai tokens record` | プール別トークン使用の台帳記録 |
 | `moai clean [--home] [--codex-skills]` | 古い実行成果物の整理。`--home` を付けると `~/.moai` を許可リストの範囲で片付け、`--codex-skills` を付けると `~/.codex/config.toml` から、宣言されたパスが不在と証明された `[[skills.config]]` 登録を削除する。スコープは一度に一つだけ。既定は dry-run で、`--force` を与えて初めて実際に消す |
-| `moai web` | Web コンソール — 6 画面 (Overview · Kanban · Specs · Monitor · Settings · Todo)、14 タブ設定 |
+| `moai web` | Web コンソール — 6 画面 (Overview · Kanban · Specs · Monitor · Settings · Todo)、設定タブ |
 
 > 全 49 コマンド: [CLI リファレンス](https://adk.mo.ai.kr/ja/cli-reference)
 
@@ -785,7 +789,7 @@ Claude の各ティアは `ANTHROPIC_DEFAULT_*_MODEL` 環境変数を通じて G
 
 ### GLM なしで Claude だけ使える?
 
-使える。`moai cc` が Claude 専用セッションを立ち上げる。CG モード (`moai cg`、Claude リーダー + GLM ワーカー) と GLM 専用 (`moai glm`) はコスト削減オプションであり、ハーネス·SPEC ワークフロー·品質ゲートは 3 モードすべてで同一に動く。
+使えます。`moai cc` で GLM なしの Claude セッションを起動できます。旧 CG 設定が残るプロジェクトに限り、先に移行が必要です。
 
 ### 既存プロジェクトでも使える?
 

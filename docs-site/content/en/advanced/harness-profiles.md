@@ -63,7 +63,7 @@ flowchart TD
 
 One caution. The minimal level skips most verification steps, but the **plan-audit (plan-auditor) gate is on without exception**. In the past, when the minimal level had plan audits disabled, 30 SPECs were created without passing audit, and 386 cross-defects burst at once. After that incident, the plan-audit gate was pinned globally on, regardless of level — verification depth is economized, but a plan that goes unexamined never happens again.
 
-In CG mode (the hybrid execution of a Claude leader + GLM workers), the level stays thorough regardless of auto-detection. Handing implementation to GLM workers and evaluation to the Claude leader naturally forms a Generator-Evaluator separation.
+CG is retired; use `moai migrate cg` to preview explicit migration choices.
 
 ## 4-dimension scoring
 

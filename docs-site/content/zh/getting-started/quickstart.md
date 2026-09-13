@@ -12,7 +12,7 @@ draft: false
 
 - [x] 安装 MoAI-ADK（[安装指南](./installation)）
 - [x] 完成初始设置（[初始设置](./init-wizard)）
-- [ ] 获取 GLM API 密钥（可选 — 想用 CG 模式降低 token 成本时）
+- [ ] GLM API 密钥（可选，用于明确选择的 GLM 会话）
 
 ## 创建第一个项目
 

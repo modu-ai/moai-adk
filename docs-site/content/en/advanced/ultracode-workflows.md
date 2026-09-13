@@ -54,7 +54,7 @@ A mode where multiple teammates collaborate via a **shared TaskList**.
 - Collaboration and review between teammates needed
 
 {{< callout type="warning" >}}
-In v3.0, MoAI's Agent Teams **static orchestration layer was retired**. Forcing `--team` falls back to sub-agent mode. The native Claude Code teammate runtime (e.g. the GLM panes of `moai cg`) continues to operate.
+In v3.0, MoAI's Agent Teams **static orchestration layer was retired**. Forcing `--team` falls back to sub-agent mode. CG is retired; use `moai migrate cg` to preview explicit migration choices.
 {{< /callout >}}
 
 ### 3. Dynamic Workflows

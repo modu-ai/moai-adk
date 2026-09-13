@@ -60,7 +60,7 @@ MCP tools (when a user configures their own `.mcp.json`) are deferred by default
 | `agent` | v2.1.157+ | User/Project/Local (not Managed) | The top-level `agent` key (example `"code-reviewer"`) runs the main thread as a named subagent and sets the default agent for sessions dispatched from `claude agents`, applying that subagent's system prompt, tool restrictions, and model. MoAI invokes its retained agent catalog via explicit delegation, not a session-wide default agent (orchestrator-is-main-thread model). |
 | `requiredMinimumVersion` | v2.1.163+ | Managed | Hard version-gate — Claude Code refuses to start when its version is below the floor. An org/admin decision, parallel to the `disableWorkflows` stance. Distinct from the older advisory `minimumVersion`. |
 | `requiredMaximumVersion` | v2.1.163+ | Managed | Hard version-ceiling — refuses to start above the cap. Likewise an org/admin decision. |
-| `effortLevel` | v2.1.110+ | User/Project/Local | Intentionally NOT shipped in `settings.json.tmpl`. Per-session effort is controlled by the `ultrathink` keyword or the `CLAUDE_CODE_EFFORT_LEVEL` environment variable; pinning a fixed high effort level project-wide would force elevated token cost on every user session. |
+| `effortLevel` | v2.1.110+ | User/Project/Local | Intentionally NOT shipped in `settings.json.tmpl`. The launcher passes the profile's effort as an `effortLevel` in the transient `--settings` file it injects — a launch DEFAULT an in-session `/effort` or `/model` change may replace. Do NOT pin the level through `CLAUDE_CODE_EFFORT_LEVEL`: that variable is an OVERRIDE, so while it is set Claude Code refuses every in-session effort change for the rest of the session. Pinning a fixed high effort level project-wide would also force elevated token cost on every user session. |
 | `workflowSizeGuideline` | v2.1.219+ | Any settings file | Sets the advisory Dynamic workflow size guideline (`small` / `medium` / `large` / `unrestricted`; default `medium` — aim for fewer than 15 agents); the `/config` row is hidden while one is set. MoAI does not pin a size — the choice is left to the user/org (see `.claude/rules/moai/workflow/dynamic-workflows.md`). |
 
 Reference: https://code.claude.com/docs/en/settings.
@@ -234,9 +234,7 @@ Agent Teams usage is ALLOWED as an experimental surface (operator decision): the
 auto-select thresholds (≥ 3 domains / ≥ 10 files / score ≥ 7) remain prose-only SSOT in
 `.claude/rules/moai/workflow/orchestration-mode-selection.md` §B.1 (no team auto-selection was reinstated).
 
-The native Claude Code teammate runtime (`moai cg` GLM teammate panes,
-`moai cc -w <name> --spawn` teammate windows) is unaffected and sanctioned — see
-`.claude/rules/moai/core/glm-web-tooling.md` § CG Mode.
+Native Claude Code Agent Teams remain experimental under the constraints above. Retired CG routing is not a capability guarantee for mixed-provider teammates; see `.claude/rules/moai/core/glm-web-tooling.md` § CG Retirement and Migration.
 
 ## Output Style Configuration
 

@@ -19,9 +19,6 @@ package kanban
 
 import (
 	"context"
-	"database/sql"
-	"fmt"
-	"net/url"
 )
 
 // Store names InspectBacklogArchiveVouch reports.
@@ -78,19 +75,15 @@ func InspectBacklogArchiveVouch(queuePath string) BacklogArchiveVouch {
 // not-vouched: the honest direction, since an unreadable database cannot
 // answer archive questions authoritatively either.
 func archiveTablesPresent(dbPath string) bool {
-	v := url.Values{}
-	v.Add("_pragma", fmt.Sprintf("busy_timeout(%d)", backlogBusyTimeoutMS))
-	u := url.URL{Scheme: "file", Path: dbPath, RawQuery: v.Encode()}
-	db, err := sql.Open(sqliteDriverName, u.String())
+	reader, err := openBacklogReader(dbPath)
 	if err != nil {
 		return false
 	}
-	defer func() { _ = db.Close() }()
-	db.SetMaxOpenConns(1)
+	defer func() { _ = reader.close() }()
 	ctx, cancel := context.WithTimeout(context.Background(), backlogOpenTimeout)
 	defer cancel()
 	var n int
-	if err := db.QueryRowContext(ctx,
+	if err := reader.db.QueryRowContext(ctx,
 		`SELECT count(*) FROM sqlite_master WHERE type = 'table' AND name IN ('archived_items','archived_findings')`).Scan(&n); err != nil {
 		return false
 	}

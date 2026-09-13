@@ -90,11 +90,30 @@ func TestSessionStart_DeferredScanDoesNotBlockReturn(t *testing.T) {
 		t.Fatal("Handle returned nil output")
 	}
 
-	// The deferred scan must NOT block the synchronous return. A 500ms budget
-	// is well under the 2s injected block, so a passing run proves the scan
-	// was deferred rather than run synchronously.
-	if elapsed > 500*time.Millisecond {
-		t.Fatalf("Handle blocked %v waiting for advisory scan; expected deferred (non-blocking) return", elapsed)
+	// Threshold derivation (t662). This assertion discriminates two states:
+	//
+	//	deferred (correct)     434.93ms .. 646.52ms   measured, n=160
+	//	synchronous (defect)   ~2s                    the block injected above
+	//
+	// The bound must clear the correct state's observed maximum and stay well
+	// under what the defect costs:
+	//
+	//	lower  646.52ms * 1.5 = 969.8ms   headroom over the correct state
+	//	upper  2s / 2         = 1000ms    separation from the defect state
+	//
+	// 1s is the round value in [970ms, 1000ms].
+	//
+	// It is NOT an input-lag budget. The previous 500ms bound sat at 1.1x the
+	// correct state's median, so it fired on slow-but-correct runs while the
+	// message blamed deferral — a failure none of the 160 observations ever
+	// showed. The input-lag contract is asserted separately, under normal
+	// (non-pathological) scan conditions, by TestSessionStart_HandleInputLagBudget.
+	//
+	// Measurement: .moai/reports/t662/verdict.md
+	const deferralDiscriminationBound = 1 * time.Second
+	if elapsed > deferralDiscriminationBound {
+		t.Fatalf("Handle blocked %v (bound %v); the advisory scan ran on the synchronous path instead of being deferred",
+			elapsed, deferralDiscriminationBound)
 	}
 
 	// Turn-visible attribution MUST remain synchronous.
@@ -107,6 +126,74 @@ func TestSessionStart_DeferredScanDoesNotBlockReturn(t *testing.T) {
 	// reached the drift fn (or never respected driftAbort), which would itself
 	// be a defect.
 	close(driftAbort)
+	waitDeferred(t, completedCh, 3*time.Second)
+}
+
+// TestSessionStart_HandleInputLagBudget pins the OTHER contract that used to
+// ride on TestSessionStart_DeferredScanDoesNotBlockReturn's 500ms threshold:
+// SessionStart must not add unbounded input lag under NORMAL conditions — a
+// drift scan that completes promptly, so the bounded join contributes ~0 and
+// the elapsed time is Handle's own synchronous work.
+//
+// It is a separate test because it answers a separate question. Deferral is a
+// structural property (did the scan run on the critical path?); input lag is a
+// wall-clock property (how long did the user wait?). Riding both on one
+// threshold is what let a slow-but-correct run fail with a message blaming
+// deferral (t662).
+//
+// Threshold derivation (t662):
+//
+//	observed max, this condition   539.75ms   measured, n=300
+//	* 2.5                        = 1349ms     -> 1.5s
+//
+// The 2.5x covers two axes the measurement did NOT reach: the CI machine class
+// (all figures are from one darwin developer machine) and a real repository's
+// scan cost (the measurement ran against an empty t.TempDir).
+//
+// This is deliberately a GROSS-REGRESSION guard — roughly 7x the 218ms median —
+// NOT a latency SLO. A tight wall-clock budget on a contended machine is
+// precisely the defect t662 diagnosed: it fires on load rather than on code.
+// Tightening it requires re-deriving the bound from a fresh measurement that
+// covers the two axes above.
+//
+// Measurement: .moai/reports/t662/verdict.md
+func TestSessionStart_HandleInputLagBudget(t *testing.T) {
+	t.Setenv("ANTHROPIC_BASE_URL", "")
+
+	origFn := driftCountFn
+	t.Cleanup(func() { driftCountFn = origFn })
+	// A drift fn representing the NORMAL case: the scan completes promptly, so
+	// the join returns immediately and elapsed is Handle's synchronous work.
+	driftCountFn = func(_ context.Context, _ string) (int, error) { return 0, nil }
+	completedCh := registerDeferredScanSeam(t)
+
+	projectDir := t.TempDir()
+	mkStateDir(t, projectDir)
+	h := NewSessionStartHandler(nil)
+	input := &HookInput{
+		SessionID:     "sess-input-lag-budget",
+		CWD:           t.TempDir(),
+		ProjectDir:    projectDir,
+		HookEventName: "SessionStart",
+	}
+
+	start := time.Now()
+	out, err := h.Handle(context.Background(), input)
+	elapsed := time.Since(start)
+	if err != nil {
+		t.Fatalf("Handle error: %v", err)
+	}
+	if out == nil {
+		t.Fatal("Handle returned nil output")
+	}
+
+	const inputLagBudget = 1500 * time.Millisecond
+	if elapsed > inputLagBudget {
+		t.Fatalf("SessionStart added %v of input lag with a prompt advisory scan (budget %v); "+
+			"the synchronous path regressed — see .moai/reports/t662/verdict.md for the derivation",
+			elapsed, inputLagBudget)
+	}
+
 	waitDeferred(t, completedCh, 3*time.Second)
 }
 

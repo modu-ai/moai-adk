@@ -3,81 +3,24 @@ package wizard
 // SPEC-CLI-TUX-V3-002 M2c — unified multi-group form tests (REQ-TUX2-006/008,
 // AC-TUX2-006/007). The form is driven programmatically with bubbletea v2
 // messages (the M2a spike technique): no TTY, no form.Run, cross-platform.
+// The driver itself lives in internal/cli/ptycaptest and is shared with the
+// profile-wizard golden tests.
 
 import (
 	"errors"
 	"strings"
 	"testing"
-	"time"
 
-	tea "charm.land/bubbletea/v2"
 	"charm.land/huh/v2"
+
+	"github.com/modu-ai/moai-adk/internal/cli/ptycaptest"
 )
 
-// formDriver drives a huh v2 form via Update messages, executing returned
-// commands with a bounded timeout so sleeping tick commands (cursor blink)
-// are abandoned instead of recursing.
-type formDriver struct {
-	t *testing.T
-	m huh.Model
+// newFormDriver hands the shared ptycaptest driver to this package's tests
+// under the name the call sites use.
+func newFormDriver(t *testing.T, f *huh.Form) *ptycaptest.FormDriver {
+	return ptycaptest.NewFormDriver(t, f)
 }
-
-func newFormDriver(t *testing.T, f *huh.Form) *formDriver {
-	t.Helper()
-	d := &formDriver{t: t, m: f}
-	d.drain(f.Init())
-	d.send(tea.WindowSizeMsg{Width: 80, Height: 40})
-	return d
-}
-
-func (d *formDriver) send(msg tea.Msg) {
-	nm, cmd := d.m.Update(msg)
-	d.m = nm
-	d.drain(cmd)
-}
-
-func (d *formDriver) drain(cmd tea.Cmd) {
-	if cmd == nil {
-		return
-	}
-	msg := execBoundedCmd(cmd)
-	if msg == nil {
-		return
-	}
-	if batch, ok := msg.(tea.BatchMsg); ok {
-		for _, c := range batch {
-			d.drain(c)
-		}
-		return
-	}
-	nm, next := d.m.Update(msg)
-	d.m = nm
-	d.drain(next)
-}
-
-// execBoundedCmd runs a tea.Cmd with a timeout: huh's internal routing
-// messages return instantly; sleeping tick commands are abandoned.
-func execBoundedCmd(cmd tea.Cmd) tea.Msg {
-	ch := make(chan tea.Msg, 1)
-	go func() { ch <- cmd() }()
-	select {
-	case msg := <-ch:
-		return msg
-	case <-time.After(50 * time.Millisecond):
-		return nil
-	}
-}
-
-func (d *formDriver) typeText(s string) {
-	for _, r := range s {
-		d.send(tea.KeyPressMsg{Code: r, Text: string(r)})
-	}
-}
-
-func (d *formDriver) enter() { d.send(tea.KeyPressMsg{Code: tea.KeyEnter}) }
-func (d *formDriver) down()  { d.send(tea.KeyPressMsg{Code: tea.KeyDown}) }
-
-func (d *formDriver) view() string { return d.m.(*huh.Form).View() }
 
 // TestUnifiedForm_MultiGroupSinglePage asserts the one-question-one-form
 // workaround is gone: a topic page renders multiple fields on ONE page
@@ -95,12 +38,12 @@ func TestUnifiedForm_MultiGroupSinglePage(t *testing.T) {
 	// report_format — the init set asks nothing about Git, and the
 	// advanced_bridge gate is retired by C1).
 	// The stepper note renders the dynamic denominator "1 / 5" (REQ-TUX2-008).
-	if initial := d.view(); !strings.Contains(initial, "1 / 5") {
+	if initial := d.View(); !strings.Contains(initial, "1 / 5") {
 		t.Errorf("initial stepper note must render dynamic denominator '1 / 5', frame:\n%s", initial)
 	}
 
 	// Page 1 "Basic" renders all three of its fields together.
-	frame := d.view()
+	frame := d.View()
 	for _, want := range []string{
 		"Select conversation language",
 		"Enter your name",
@@ -112,11 +55,11 @@ func TestUnifiedForm_MultiGroupSinglePage(t *testing.T) {
 	}
 
 	// Advance past the three Basic fields to reach the merged Model & Report page.
-	d.enter() // conversation_language = en
-	d.enter() // user_name (empty)
-	d.enter() // project_name (default) -> Model & Report page
+	d.Enter() // conversation_language = en
+	d.Enter() // user_name (empty)
+	d.Enter() // project_name (default) -> Model & Report page
 
-	frame = d.view()
+	frame = d.View()
 	for _, want := range []string{
 		"Select model policy",
 		"Select report format",
@@ -138,31 +81,31 @@ func TestUnifiedForm_ConditionalGroupsAppear(t *testing.T) {
 	d := newFormDriver(t, form)
 
 	// Page 1 (Language): default "en" selected.
-	d.enter() // conversation_language = en -> Identity page
+	d.Enter() // conversation_language = en -> Identity page
 	// Page 2 (Identity): user_name input.
-	d.typeText("octo-dev")
-	d.enter() // user_name -> Project page
+	d.TypeText("octo-dev")
+	d.Enter() // user_name -> Project page
 
 	// Group (Project): project name + 3 selects. The input pre-fills the
 	// default (directory basename, v1-preserved behavior) — clear it first,
 	// then type a fresh name.
 	for range len("unified-cond") {
-		d.send(tea.KeyPressMsg{Code: tea.KeyBackspace})
+		d.Backspace()
 	}
-	d.typeText("uniproj")
-	d.enter() // project_name -> model_policy
-	d.enter() // model_policy (medium — the new default)
-	d.enter() // report_format (html+md) -> next group
+	d.TypeText("uniproj")
+	d.Enter() // project_name -> model_policy
+	d.Enter() // model_policy (medium — the new default)
+	d.Enter() // report_format (html+md) -> next group
 
 	// Group (Git): git_mode manual -> personal (one cursor down).
-	frame := d.view()
+	frame := d.View()
 	if !strings.Contains(frame, "Select Git automation mode") {
 		t.Fatalf("expected git_mode group, frame:\n%s", frame)
 	}
-	d.down()
-	d.enter() // git_mode = personal -> conditional git_provider group appears
+	d.Down()
+	d.Enter() // git_mode = personal -> conditional git_provider group appears
 
-	frame = d.view()
+	frame = d.View()
 	if !strings.Contains(frame, "Select your Git provider") {
 		t.Fatalf("conditional git_provider group must appear for personal mode, frame:\n%s", frame)
 	}
@@ -173,9 +116,9 @@ func TestUnifiedForm_ConditionalGroupsAppear(t *testing.T) {
 	if !strings.Contains(frame, "7 / 7") {
 		t.Errorf("git_provider stepper must render '7 / 7' (dynamic), frame:\n%s", frame)
 	}
-	d.enter() // git_provider = github -> github_username group
+	d.Enter() // git_provider = github -> github_username group
 
-	frame = d.view()
+	frame = d.View()
 	if !strings.Contains(frame, "GitHub username") {
 		t.Fatalf("github_username group must appear for github provider, frame:\n%s", frame)
 	}
@@ -185,9 +128,9 @@ func TestUnifiedForm_ConditionalGroupsAppear(t *testing.T) {
 	if !strings.Contains(frame, "8 / 9") {
 		t.Errorf("github_username stepper must render '8 / 9' (dynamic), frame:\n%s", frame)
 	}
-	d.typeText("octocat")
-	d.enter() // github_username
-	d.enter() // github_token (empty, optional) -> form complete
+	d.TypeText("octocat")
+	d.Enter() // github_username
+	d.Enter() // github_token (empty, optional) -> form complete
 
 	if form.State != huh.StateCompleted {
 		t.Fatalf("form must complete, state=%v", form.State)
@@ -216,17 +159,17 @@ func TestUnifiedForm_ManualModeSkipsConditionals(t *testing.T) {
 	form := buildUnifiedForm(questions, result, "")
 	d := newFormDriver(t, form)
 
-	d.enter() // conversation_language = en -> Identity page
-	d.enter() // user_name (empty) -> Project page
-	d.enter() // project_name (keep default) -> model_policy
-	d.enter() // model_policy
-	d.enter() // report_format -> Git page
+	d.Enter() // conversation_language = en -> Identity page
+	d.Enter() // user_name (empty) -> Project page
+	d.Enter() // project_name (keep default) -> model_policy
+	d.Enter() // model_policy
+	d.Enter() // report_format -> Git page
 
-	frame := d.view()
+	frame := d.View()
 	if strings.Contains(frame, "Select your Git provider") {
 		t.Fatalf("git_provider must stay hidden before git_mode is answered, frame:\n%s", frame)
 	}
-	d.enter() // git_mode = manual -> all git conditionals hidden -> complete
+	d.Enter() // git_mode = manual -> all git conditionals hidden -> complete
 
 	if form.State != huh.StateCompleted {
 		t.Fatalf("form must complete after manual git_mode, state=%v", form.State)

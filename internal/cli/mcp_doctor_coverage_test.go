@@ -415,7 +415,47 @@ func TestSyncPermissionModeToSettingsLocal_PreservesExistingEnv(t *testing.T) {
 	}
 }
 
-// --- buildEnvForLaunch ---
+// TestSyncBypassToSettingsLocal_TrueSetsBypass backward-compat wrapper.
+func TestSyncBypassToSettingsLocal_TrueSetsBypass(t *testing.T) {
+	t.Parallel()
+
+	dir := t.TempDir()
+	path := filepath.Join(dir, "settings.local.json")
+
+	if err := syncBypassToSettingsLocal(path, true); err != nil {
+		t.Fatalf("error: %v", err)
+	}
+
+	data, _ := os.ReadFile(path)
+	var s SettingsLocal
+	_ = json.Unmarshal(data, &s)
+	if s.Permissions["defaultMode"] != "bypassPermissions" {
+		t.Errorf("defaultMode = %v, want bypassPermissions", s.Permissions["defaultMode"])
+	}
+}
+
+// TestSyncBypassToSettingsLocal_FalseRemovesBypass removes override.
+func TestSyncBypassToSettingsLocal_FalseRemovesBypass(t *testing.T) {
+	t.Parallel()
+
+	dir := t.TempDir()
+	path := filepath.Join(dir, "settings.local.json")
+
+	_ = syncBypassToSettingsLocal(path, true)
+	if err := syncBypassToSettingsLocal(path, false); err != nil {
+		t.Fatalf("error: %v", err)
+	}
+
+	data, _ := os.ReadFile(path)
+	var s SettingsLocal
+	_ = json.Unmarshal(data, &s)
+	if _, ok := s.Permissions["defaultMode"]; ok {
+		t.Error("defaultMode should be absent after bypass=false")
+	}
+}
+
+// --- buildEnvForLaunch (restored on the t595 merge; since t668 no launch branch
+// calls the function, and these tests cover it only while it is retained) ---
 
 // TestBuildEnvForLaunch_EmptyEffort returns base unchanged.
 func TestBuildEnvForLaunch_EmptyEffort(t *testing.T) {
@@ -488,44 +528,5 @@ func TestBuildEnvForLaunch_PreservesOtherVars(t *testing.T) {
 	}
 	if !seen["CLAUDE_CODE_EFFORT_LEVEL"] {
 		t.Error("CLAUDE_CODE_EFFORT_LEVEL not present")
-	}
-}
-
-// TestSyncBypassToSettingsLocal_TrueSetsBypass backward-compat wrapper.
-func TestSyncBypassToSettingsLocal_TrueSetsBypass(t *testing.T) {
-	t.Parallel()
-
-	dir := t.TempDir()
-	path := filepath.Join(dir, "settings.local.json")
-
-	if err := syncBypassToSettingsLocal(path, true); err != nil {
-		t.Fatalf("error: %v", err)
-	}
-
-	data, _ := os.ReadFile(path)
-	var s SettingsLocal
-	_ = json.Unmarshal(data, &s)
-	if s.Permissions["defaultMode"] != "bypassPermissions" {
-		t.Errorf("defaultMode = %v, want bypassPermissions", s.Permissions["defaultMode"])
-	}
-}
-
-// TestSyncBypassToSettingsLocal_FalseRemovesBypass removes override.
-func TestSyncBypassToSettingsLocal_FalseRemovesBypass(t *testing.T) {
-	t.Parallel()
-
-	dir := t.TempDir()
-	path := filepath.Join(dir, "settings.local.json")
-
-	_ = syncBypassToSettingsLocal(path, true)
-	if err := syncBypassToSettingsLocal(path, false); err != nil {
-		t.Fatalf("error: %v", err)
-	}
-
-	data, _ := os.ReadFile(path)
-	var s SettingsLocal
-	_ = json.Unmarshal(data, &s)
-	if _, ok := s.Permissions["defaultMode"]; ok {
-		t.Error("defaultMode should be absent after bypass=false")
 	}
 }

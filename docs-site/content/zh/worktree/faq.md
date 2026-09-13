@@ -63,7 +63,7 @@ graph TD
 
 2. **并行开发** —— 可以同时推进多个 SPEC
 3. **冲突防止** —— 工作空间各自独立,几乎不会起冲突
-4. **成本节约** —— 在实现阶段使用 GLM 可以降低成本。节省幅度整理在 [CG 模式](/zh/multi-llm/cg-mode)中
+4. 明确选择后端：每个工作树可选择 `moai cc` 或 `moai glm`。
 
 ```mermaid
 graph TD
@@ -102,7 +102,7 @@ moai glm -w SPEC-AUTH-001
 moai cc -w SPEC-AUTH-001
 
 # 以 Claude 领导 + GLM 队友的混合模式进入
-moai cg -w SPEC-AUTH-001
+moai cc -w SPEC-AUTH-001
 ```
 
 短名称会在 `.claude/worktrees/<名称>/` 下解析。如果已经建好的工作树在别处,给出

@@ -58,6 +58,7 @@ jobs:
               - 'go.sum'
               - 'Makefile'
               - '.github/workflows/release-pr-multi-os.yml'
+              - 'scripts/ci-census/windows-gateway-*'
               - '.github/workflows/codeql.yml'
       - id: gate
         run: echo "proceed=true" >> $GITHUB_OUTPUT
@@ -204,6 +205,13 @@ jobs:
           bash scripts/ci-census/test-census.sh test-stream.json
           exit $rc
 
+      # A green process exit cannot establish that native ACL/lifecycle tests ran.
+      # Check before gzip, even when go test failed; missing/skip never means PASS.
+      - name: Require Windows gateway native test evidence
+        if: always() && runner.os == 'Windows'
+        shell: bash
+        run: bash scripts/ci-census/windows-gateway-evidence.sh test-stream.json
+
       - name: Compress test event stream
         if: always()
         shell: bash
@@ -217,7 +225,7 @@ jobs:
           name: test-stream-release-verify-${{ matrix.os }}
           path: test-stream.json.gz
           retention-days: 7
-          if-no-files-found: warn
+          if-no-files-found: ${{ runner.os == 'Windows' && 'error' || 'warn' }}
 
       # --- t169 diagnostic (windows only, temporary) ------------------------
       # always(): the failing run is the one worth reading, so this must not be
