@@ -202,7 +202,7 @@ to adjudicate).
 
 ```yaml
 sync_complete_at: 2026-09-13
-sync_commit_sha: "pending-backfill-sync"   # backfilled in a follow-up commit (D3)
+sync_commit_sha: "da3e72ea5"   # backfilled (D3) — sync commit above
 sync_status: complete
 b12_self_test_a: "grep -c SPEC-TODO-QUEUE-HOME-CANON-001 CHANGELOG.md → 0 (pre-emission, safe)"
 b12_self_test_b: "acceptance.md distinct AC = 6; §E.3 ac_pass_count = 6; match"
