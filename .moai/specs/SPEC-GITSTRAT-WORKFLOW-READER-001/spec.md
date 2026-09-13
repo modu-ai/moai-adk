@@ -2,7 +2,7 @@
 id: SPEC-GITSTRAT-WORKFLOW-READER-001
 title: "Validated multi-flow interpreter for git_strategy.<mode>.workflow — 4-value validation, per-flow integration-target interpretation, characterization-first extension"
 version: "0.1.0"
-status: draft
+status: in-progress
 created: 2026-09-14
 updated: 2026-09-14
 author: GOOS행님
