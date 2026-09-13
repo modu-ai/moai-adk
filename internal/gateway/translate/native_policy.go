@@ -48,7 +48,8 @@ func nativePolicy(root map[string]any, profile PolicyProfile) (p NativePolicy, e
 			return p, errors.New("invalid output_config")
 		}
 		if effort, ok := m["effort"]; ok {
-			if effort != "high" && !(profile == PolicyGPTNative && effort == "medium") {
+			mediumAllowed := profile == PolicyGPTNative && effort == "medium"
+			if effort != "high" && !mediumAllowed {
 				return p, errors.New("unsupported effort")
 			}
 			p.High = effort == "high"
@@ -90,7 +91,8 @@ func nativePolicy(root map[string]any, profile PolicyProfile) (p NativePolicy, e
 		}
 		switch typ {
 		case "adaptive":
-			if !p.High && !(profile == PolicyGPTNative && p.Effort == "medium") {
+			mediumAllowed := profile == PolicyGPTNative && p.Effort == "medium"
+			if !p.High && !mediumAllowed {
 				return p, errors.New("adaptive requires validated high profile")
 			}
 		case "disabled":
