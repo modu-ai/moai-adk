@@ -191,4 +191,34 @@ residual_risks:
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase>_
+```yaml
+sync_complete_at: 2026-09-13
+sync_commit_sha: pending-backfill-sync
+sync_status: completed
+changelog_entry_position: CHANGELOG.md [Unreleased] → Added (first entry)
+ac_pass_count: 17
+ac_fail_count: 0
+doc_step:
+  - M3 lead-procedure docs landed: .claude/skills/moai/workflows/todo.md +
+    internal/template/templates/.claude/skills/moai/workflows/todo.md
+    (byte-identical mirrors, table row + [HARD] lead-only clause);
+    catalog.yaml hash regenerated via make build (exit 0)
+  - docs-site 4-locale CLI surface (ko/en/ja/zh utility-commands/moai-todo.md):
+    auto-done added beside --require-landed in each locale
+docs_site_finding:
+  - the 4-locale utility-commands/moai-todo.md pages DO enumerate todo
+    subcommands, so auto-done received the same 4-locale treatment per
+    .moai/docs/docs-site-i18n-rules.md (same line-count delta per locale
+    preserves section/parity counts)
+  - the four READMEs also enumerate todo verbs and now omit auto-done
+    (and landed, per SPEC-TODO-LANDING-EVIDENCE-001's disclosed follow-up) —
+    README paths are outside this SPEC's module scope, left to a follow-up card
+b12_self_test_a: grep -c SPEC-TODO-LAND-AUTO-DONE-001 CHANGELOG.md → 0 before emission
+b12_self_test_b: distinct AC ids in acceptance.md → 17; CHANGELOG entry cites 17
+b12_self_test_c: every file path claimed in the entry verified to exist via ls/diff
+frontmatter_status_transitions:
+  spec_md: in-progress → completed (single sync commit; updated already 2026-09-13)
+canary_compliance_check:
+  scan_invoked_never_ambient: documented in todo.md row + [HARD] clause
+  lanes_never_run_auto_done: stated in both mirrors and the docs-site blocks
+```

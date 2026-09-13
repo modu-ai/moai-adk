@@ -2,7 +2,7 @@
 id: SPEC-TODO-LAND-AUTO-DONE-001
 title: "Auto-done on remote land — an evidence-gated landing scan that closes landed cards at the moment the lead confirms origin/develop, with three misfire guards and a reversible audit log"
 version: "0.4.0"
-status: in-progress
+status: completed
 created: 2026-09-13
 updated: 2026-09-13
 author: manager-spec (card t684)
