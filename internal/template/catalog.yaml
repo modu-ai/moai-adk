@@ -36,7 +36,7 @@ catalog:
             - name: moai-kanban-foreman
               tier: core
               path: templates/.claude/skills/moai-kanban-foreman/
-              hash: ec5e5517881710e83038c7aec851d9abd2905500d02f01c6c82287b6c6711106
+              hash: 9e2ebb720734e002fcb47c3bb082a5694c368376a48405a01de079c379e66831
               version: 1.0.0
             - name: moai-meta-harness
               tier: core
