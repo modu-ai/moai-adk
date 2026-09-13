@@ -1,11 +1,18 @@
 # t530 sync-audit — SPEC-DOCS-TABCOUNT-DRIFT-001
 
-- 판정: **FAIL** (blocking 1건: F1)
-- 가중 점수: **0.80 / 1.00** (조화평균 0.75) — 점수만으로는 통과선이며, FAIL 을 만드는 것은 must-pass 방화벽이 아니라 F1 이다
+> **iter2 (2026-09-13, HEAD `3abdf003e`) — 판정 뒤집힘: FAIL → PASS.**
+> blocking finding F1 이 닫혔다. 델타 재감사 기록은 **§9** 에 있다. §1~§8 은 iter1 판정
+> (HEAD `c5b72f275`) 의 기록이며 **그대로 보존한다** — 그때 잰 값이 지금 다시 잰 값처럼 읽히지
+> 않도록, 수정하지 않고 §9 를 덧붙이는 방식을 택했다.
+
+- 판정 (iter2): **PASS** — blocking 0건
+- 판정 (iter1): FAIL (blocking 1건: F1)
+- 가중 점수 (iter2): **0.85 / 1.00** (조화평균 0.79). iter1 은 0.80 / 0.75
 - 평가 프로필: `default` (`.moai/config/evaluator-profiles/default.md`; `harness.yaml default_profile: "default"`, spec.md 에 `evaluator_profile` 없음)
-- must-pass 방화벽 (Functionality + Security): **둘 다 PASS** — 방화벽이 발동한 것이 아니다
-- 감사 트리: `.claude/worktrees/t530`, 브랜치 `WT-web-tab-docs`, HEAD `c5b72f275`, merge-base `1d150a27d`
-- 감사 일자: 2026-09-13 / 감사자: sync-auditor (독립 재실행, progress.md 기록은 주장으로만 취급)
+- must-pass 방화벽 (Functionality + Security): 두 iter 모두 PASS
+- 감사 트리: `.claude/worktrees/t530`, 브랜치 `WT-web-tab-docs`, merge-base `1d150a27d`
+  - iter1 HEAD `c5b72f275` · iter2 HEAD `3abdf003e`
+- 감사 일자: 2026-09-13 / 감사자: sync-auditor (독립 재실행, progress.md·리드 보고는 주장으로만 취급)
 
 ---
 
@@ -151,9 +158,9 @@ must-pass 방화벽(Functionality, Security)은 **양쪽 다 통과**했다. Cra
 
 ## 5. Findings
 
-- **F1** [Medium] [**blocking**] `CHANGELOG.md:12` — 항목이 *"Two of the 20 sites were already wrong (`9` instead of `14`, both in `cli-reference/web.md`, one numeral and one spelled out in English and Chinese)"* 라고 적는다. 이 카드 자신의 열거 산출물 `tab-count-sites.md §3` (A1~A4) 과 `acceptance.md` AC-TCD-001 은 **4자리**(ko·en·ja·zh, 전부 `cli-reference/web.md:53`)를 기록하고, 감사가 잰 A군 리터럴 4줄도 그 4자리다. "both"·"Two" 는 사실과 다르다. 뒤따르는 표기 설명도 어긋난다 — A1(ko)·A3(ja)이 숫자, A2(en)·A4(zh)가 낱말이므로 "one numeral and one spelled out" 은 성립하지 않는다. 확신도: 높음(카드 자신의 산출물과 감사 실측이 함께 반증). **손으로 적힌 수가 어긋난다는 것이 이 카드의 논지인데 카드가 배달한 사용자 대면 문서가 바로 그 오류를 담고 있다.** — Required fix: 해당 문장을 `Four of the 20 sites were already wrong (9 instead of 14 — all four locale copies of cli-reference/web.md:53; ko/ja write the digit, en/zh spell the numeral out)` 취지로 정정한다.
+- **F1** [Medium] [**blocking**] [**iter2 에서 CLOSED — §9.2**] `CHANGELOG.md:12` — 항목이 *"Two of the 20 sites were already wrong (`9` instead of `14`, both in `cli-reference/web.md`, one numeral and one spelled out in English and Chinese)"* 라고 적는다. 이 카드 자신의 열거 산출물 `tab-count-sites.md §3` (A1~A4) 과 `acceptance.md` AC-TCD-001 은 **4자리**(ko·en·ja·zh, 전부 `cli-reference/web.md:53`)를 기록하고, 감사가 잰 A군 리터럴 4줄도 그 4자리다. "both"·"Two" 는 사실과 다르다. 뒤따르는 표기 설명도 어긋난다 — A1(ko)·A3(ja)이 숫자, A2(en)·A4(zh)가 낱말이므로 "one numeral and one spelled out" 은 성립하지 않는다. 확신도: 높음(카드 자신의 산출물과 감사 실측이 함께 반증). **손으로 적힌 수가 어긋난다는 것이 이 카드의 논지인데 카드가 배달한 사용자 대면 문서가 바로 그 오류를 담고 있다.** — Required fix: 해당 문장을 `Four of the 20 sites were already wrong (9 instead of 14 — all four locale copies of cli-reference/web.md:53; ko/ja write the digit, en/zh spell the numeral out)` 취지로 정정한다.
 
-- **F2** [Low] [optional] `CHANGELOG.md:12` — *"a one-rule/16-line allowlist for a legitimate rhetorical count inside `ja/advanced/moai-web-console.md`"*. 허용 규칙의 파일 범위는 접미사 `advanced/moai-web-console.md`(`docs_tab_contract_test.go:224`)라서 **4로케일 사본 전부**를 덮고, 실제 면제 줄 수도 로케일당 4줄 × 4 = 16 이다(`allowed lines 16`). ja 하나만 지목하면 면제 표면을 축소해 읽힌다. 게다가 현재 트리에서 실제로 살아남는 스윕 적중은 `en/advanced/moai-web-console.md:149` 다(§2.1). 확신도: 높음. — Required fix: "in the four `advanced/moai-web-console.md` locale copies" 로 범위를 정정.
+- **F2** [Low] [optional] [**iter2 에서 CLOSED — §9.2**] `CHANGELOG.md:12` — *"a one-rule/16-line allowlist for a legitimate rhetorical count inside `ja/advanced/moai-web-console.md`"*. 허용 규칙의 파일 범위는 접미사 `advanced/moai-web-console.md`(`docs_tab_contract_test.go:224`)라서 **4로케일 사본 전부**를 덮고, 실제 면제 줄 수도 로케일당 4줄 × 4 = 16 이다(`allowed lines 16`). ja 하나만 지목하면 면제 표면을 축소해 읽힌다. 게다가 현재 트리에서 실제로 살아남는 스윕 적중은 `en/advanced/moai-web-console.md:149` 다(§2.1). 확신도: 높음. — Required fix: "in the four `advanced/moai-web-console.md` locale copies" 로 범위를 정정.
 
 - **F3** [Low] [optional] `acceptance.md` AC-TCD-003 And 절 — 각 README 에서 **그 로케일의** 라벨(`GLM 설정`/`GLM設定`/`GLM设置`)이 1행 이상일 것을 요구하지만, 실측은 `README.ko.md`·`README.ja.md`·`README.zh.md` 모두 그 라벨 **0행**이고 영어 `GLM Settings` 1행이다. 다만 README 의 탭 이름 나열은 14개 전부를 영어로 적는 것이 정본이며 가드의 `names` 층이 그 영어 표기를 강제하므로, **구현이 아니라 기준 문구가 틀렸다.** 실질(정본 라벨 합계 12행, 구 라벨 0행)은 충족된다. 확신도: 높음. — Required fix: AC 문구를 "README 4본은 영어 라벨 `GLM Settings` 1행 이상" 으로 정정(문서 쪽을 바꾸지 말 것 — 바꾸면 `names` 가드가 붉어진다).
 
@@ -196,6 +203,179 @@ blocking finding 은 F1 하나다. 재감사는 전면 재실행이 아니라 �
 3. 가드 재실행 1회(`go test ./internal/web/ -run 'TestDocsTabContract'`) — 회귀 없음 확인용.
 
 AC 12건·RG 3건·변이 재현·3-phase close 는 이 판정서가 이미 통과로 확정했으므로 다시 재지 않는다.
+
+---
+
+## 9. iter2 — 델타 재감사 (HEAD `3abdf003e`)
+
+리드가 F1·F2 를 고쳤다고 보고했고, §8 이 정한 델타 범위로만 재감사했다. AC/RG 매트릭스·변이·close 검사는
+iter1 이 확정했으므로 다시 재지 않았다(리드 지시와도 일치).
+
+### 9.1 Claim (iter2)
+
+1. 커밋 `3abdf003e` 가 `CHANGELOG.md` **한 파일, 한 줄**만 바꿨다.
+2. 그 한 줄에서 F1·F2 두 문장이 정정됐고, 정정문의 사실 주장이 실측과 맞다.
+3. 가드가 여전히 초록이다.
+4. (리드가 스스로 "새로 의존하게 된 유일한 주장" 이라 지목한 것) `CHANGELOG.md` 는 가드가 훑는 집합
+   **밖**이므로, 정정문에 새로 들어간 한자 수사 `九个` 가 리터럴 스윕을 건드릴 수 없다.
+
+### 9.2 Evidence (iter2)
+
+**① 단일 파일·단일 줄 커밋**
+```
+$ git show --stat 3abdf003e
+docs(SPEC-DOCS-TABCOUNT-DRIFT-001): correct the CHANGELOG drift-site count (t530)
+ CHANGELOG.md | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+```
+`CHANGELOG.md` 외 파일 없음. 줄 단위로도 1추가/1삭제 — 같은 줄의 교체다. **PASS.**
+
+**② 정정문 대조 — 리드 보고를 믿지 않고 diff 에서 직접 읽음**
+
+F1 자리: `Two of the 20 sites were already wrong (…both in `cli-reference/web.md`, one numeral and one spelled out in English and Chinese)`
+→ `Four of the 20 sites were already wrong (`9` instead of `14` — all four locale copies of `cli-reference/web.md:53`; Korean and Japanese write the digit, English `nine` and Chinese `九个` spell the numeral out)`
+
+F2 자리: `…allowlist for a legitimate rhetorical count inside `ja/advanced/moai-web-console.md``
+→ `…allowlist for a legitimate rhetorical count in the four `advanced/moai-web-console.md` locale copies (the rule matches on that path suffix, 4 exempt lines per locale)`
+
+정정문의 사실 주장을 산출물이 아니라 **트리에서 다시 재 확인**했다:
+```
+$ grep -n '^| A[0-9]' .moai/reports/t530/tab-count-sites.md
+| A1 | `…/ko/cli-reference/web.md` | 53 | ko | `설정 9개 탭`        | 숫자      |
+| A2 | `…/en/cli-reference/web.md` | 53 | en | `The nine settings tabs` | **낱말** |
+| A3 | `…/ja/cli-reference/web.md` | 53 | ja | `設定 9 タブ`         | 숫자      |
+| A4 | `…/zh/cli-reference/web.md` | 53 | zh | `设置九个标签页`      | **한자 수사** |
+
+$ git diff 1d150a27d… HEAD -- <cli-reference/web.md 4본> | grep '^-' | grep -v '^---'
+-| `/settings` | GET | The nine settings tabs. …
+-| `/settings` | GET | 設定 9 タブ。…
+-| `/settings` | GET | 설정 9개 탭. …
+-| `/settings` | GET | 设置九个标签页。…
+```
+제거 **정확히 4행**, 로케일당 1행, 전부 `:53`. ko(`9개`)·ja(`9 タブ`)가 숫자, en(`nine`)·zh(`九个`)가 낱말 —
+정정문이 말하는 배분과 일치한다. F2 쪽은 `docs_tab_contract_test.go:224` 의
+`fileSuffix: "advanced/moai-web-console.md"` (접미사 매치 → 4로케일 전부)와 실측 `allowed lines 16`
+(= 로케일당 4행 × 4)이 정정문과 일치한다. **F1·F2 CLOSED.**
+
+**③ 가드 재실행** (`-count=1` 으로 캐시 배제)
+```
+$ go test -count=1 ./internal/web/ -run 'TestDocsTabContract' -v
+    docs_tab_contract_test.go:136: swept 12 files against 16 enumerated literals
+    docs_tab_contract_test.go:281: allowed rules 1
+    docs_tab_contract_test.go:282: allowed lines 16
+--- PASS: TestDocsTabContract (0.08s)
+    --- PASS: TestDocsTabContract/literals (0.00s)
+    --- PASS: TestDocsTabContract/allowlist (0.07s)
+    --- PASS: TestDocsTabContract/names (0.00s)
+ok  	github.com/modu-ai/moai-adk/internal/web	0.582s
+```
+`swept 12` · `allowed lines 16` 가 함께 나오므로 공허한 초록이 아니다. `no tests to run` 없음. **PASS.**
+
+**④ 리드가 검증을 요청한 주장 — `CHANGELOG.md` 는 훑는 집합 밖이다**
+
+추론이 아니라 **읽기 지점 전수 열거**로 확정했다. 가드가 파일을 읽는 경로는 `readRepoFile` 하나뿐이고,
+호출 지점은 다섯이다:
+```
+$ grep -n 'readRepoFile(' internal/web/docs_tab_contract_test.go
+ 88: func readRepoFile(...)        ← 정의
+127:   content := readRepoFile(t, rel)   ← docsTabTargetFiles 루프 (12파일 리터럴 목록)
+154:   raw := readRepoFile(t, countLiteralsPath)   ← ".moai/reports/t530/count-literals.txt"
+253:   content := readRepoFile(t, rel)   ← docsTabTargetFiles 루프
+347:   content := readRepoFile(t, rel)   ← docsTabNameListFiles 루프 (8파일 리터럴 목록)
+489:   content := readRepoFile(t, "internal/web/assets/i18n.js")
+```
+경로 인자는 전부 **리터럴 슬라이스 두 개 + 상수 두 개**에서 나오고 글로브가 없다. 두 슬라이스
+(`docs_tab_contract_test.go:42-55`, `:59-68`)에 `CHANGELOG.md` 는 없다. 따라서 이 가드가
+`CHANGELOG.md` 를 읽는 경로는 **존재하지 않는다.** 리드의 주장 **확인됨.**
+
+곁가지 하나를 함께 닫았다 — `grep -rn 'CHANGELOG' internal/web/` 은 3건을 내지만 전부
+`assets/i18n.js` 안의 UI 라벨 문자열(`agentdesc.manager-docs`)이다. `i18n.js` 는 가드가 읽는 파일이 맞지만,
+`loadI18nLabels` 는 `"key": "value"` 를 라벨 맵으로 넣을 뿐이고 그 키는 탭 `LabelKey` 가 아니므로 판정에
+닿지 않는다.
+
+**⑤ 정정이 잠재 위험을 새로 만들지 않았음 (요청 범위 밖, 확인차)**
+
+`CHANGELOG.md` 가 언젠가 스윕 대상에 들어가면 어떻게 되는지를 재 보았다. 정정 **전후**를 같은 명령으로 대조:
+```
+$ sed -n '12p' CHANGELOG.md | grep -oEi '(nine|fourteen|열네|十四|九|…)[^.。]{0,12}(\btabs?\b|탭|タブ|标签页)'
+(무출력)
+$ git show c5b72f275:CHANGELOG.md | sed -n '12p' | (같은 명령)
+(무출력)
+```
+낱말 축은 정정 전에도 후에도 **0적중**이다 — 새로 들어간 `九个`·`nine` 어느 쪽도 탭 명사와 12자 이내로
+붙어 있지 않기 때문이다. 숫자 축은 양쪽 다 `530/tab` 하나를 내는데, 이는 경로
+`.moai/reports/t530/tab-count-sites.md` 의 조각이지 탭 수가 아니며 **정정 전과 동일**하다.
+리터럴 축은 `grep -nF -f count-literals.txt CHANGELOG.md` → 무적중(`rc=1`).
+**정정이 새로 만든 적중은 0건이다.**
+
+**⑥ 리드의 사전 점검 재도출**
+```
+$ grep -rnF -f .moai/reports/t530/count-literals.txt README.md README.ko.md README.ja.md README.zh.md docs-site/content/ | wc -l
+0
+$ grep -rnF -f … <AC-TCD-002 의 12파일 범위> | wc -l
+0
+$ wc -l < .moai/reports/t530/count-literals.txt
+16
+```
+리드가 쓴 넓은 재귀 스윕과 AC-TCD-002 의 정본 12파일 범위 둘 다 `0`, 패턴 파일은 16줄로 비어 있지 않다.
+리드가 보고한 값과 일치한다.
+
+### 9.3 Baseline-attribution (iter2)
+
+- 측정 트리 `/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t530`, HEAD `3abdf003e`
+  (재감사 시작·종료 시점 동일, `git status --porcelain` 무출력)
+- 비교 기준: iter1 HEAD `c5b72f275` (내 판정 커밋 `8a0110fdf` 이 그 사이에 있고, 그 뒤 새 커밋은
+  `3abdf003e` 하나뿐임을 `git log --oneline c5b72f275..HEAD` 로 확인)
+- 범위 왼쪽 끝은 다시 `git merge-base develop HEAD` = `1d150a27d`
+- §9 의 모든 수치는 이 실행에서 이 트리를 대상으로 직접 잰 값이다. 리드가 보고한 출력은 재도출 대상으로만
+  다뤘고 근거로 인용하지 않았다
+
+### 9.4 차원 점수 (iter2)
+
+| Dimension | iter1 | iter2 | Verdict | 변동 사유 |
+|---|---|---|---|---|
+| Functionality (40%) | 0.75 | **1.00** | PASS | F1 이 닫히고 남은 감점 사유가 F3 뿐인데, F3 은 구현이 아니라 AC 문구의 결함이고 실질은 충족된다(§5 F3). 구현 축에서 미달이 없다 |
+| Security (25%) | 1.00 | 1.00 | PASS | 변경이 `CHANGELOG.md` 1줄 — 보안 표면 없음 |
+| Craft (20%) | 0.50 | 0.50 | FAIL (임계 미달, 카드 귀속 아님) | F4 그대로. 커버리지는 이 커밋과 무관 |
+| Consistency (15%) | 1.00 | 1.00 | PASS | 변경 없음 |
+
+가중 합: `1.00×0.40 + 1.00×0.25 + 0.50×0.20 + 1.00×0.15 = 0.85`. 조화평균 `0.79`.
+
+Functionality 를 1.00 으로 올린 것은 판정을 맞추려는 조정이 아니다 — F3 이 "구현이 틀렸다" 가 아니라
+"기준 문구가 틀렸다" 임을 iter1 에서 이미 실측으로 확정했고(정본 라벨 12행, 구 라벨 0행), 그렇다면
+구현 축의 감점 사유는 F1 이 유일했다. F1 이 닫히면 남지 않는다.
+
+### 9.5 Gaps (iter2 — 이번에 관측하지 않은 것)
+
+- **AC/RG 매트릭스·변이 6종·3-phase close 를 다시 재지 않았다.** iter1 이 확정했고 리드가 범위를 그렇게
+  지정했다. 다만 이 커밋이 `CHANGELOG.md` 만 건드렸다는 것을 ① 에서 직접 확인했으므로, 재측정을 생략한
+  근거는 "이미 쟀다" 가 아니라 **"측정 대상이 바뀌지 않았다"** 다
+- **`CHANGELOG.md` 의 나머지 서술은 이번에도 전수 대조하지 않았다.** iter1 Gaps 와 같다
+- **원격 CI 미판정** — 로컬 트리 판정이다. darwin/windows 매트릭스와 전체 스위트는 `origin/develop` push 가
+  일으키는 실행에 남는다
+- **`go test ./...` 미실행** — 지시대로 `./internal/web/` 로 한정
+
+### 9.6 Residual-risk (iter2 추가분)
+
+- **`CHANGELOG.md` 가 가드 밖이라는 성질은 리터럴 목록에 기대고 있다.** 지금은 `docsTabTargetFiles` 에
+  없어서 안전하지만, 누군가 그 목록을 넓히면 `CHANGELOG.md` 의 과거 항목들이 함께 걸린다 — 실측으로
+  숫자 축이 `:12`·`:52`·`:913`·`:915`·`:922` 에서 적중한다(대부분 `t530/tab` 같은 경로 조각과 다른 카드의
+  서술). 이 카드가 만든 위험은 아니고(§9.2 ⑤), 목록을 넓히는 카드가 감당할 몫이다
+- iter1 §7 의 잔여 위험(낱말 클래스 수기 유지, 허용 규칙 16줄 면제 표면, `allowedLinesBaseline` 상수성,
+  D9~D12 산문 4자리, 패키지 커버리지)은 **전부 그대로**다
+
+### 9.7 남은 finding 처분
+
+| ID | 상태 | 비고 |
+|---|---|---|
+| F1 | **CLOSED** (iter2) | §9.2 ② |
+| F2 | **CLOSED** (iter2) | §9.2 ② |
+| F3 | OPEN (optional) | AC 문구 수정 대상. 리드 판단대로 이 카드에서 닫지 않는다 — README 를 고치면 `names` 가드가 붉어진다 |
+| F4 | OPEN (optional) | 커버리지 67.5%. 카드 귀속 아님 |
+| F5 | OPEN (info) | 후속 카드 2건 실재는 큐에서 확인 |
+| F6 | OPEN (info) | 산출물 행 지목 시점 차이 |
+
+blocking 0건. **전체 판정 PASS.**
 
 ---
 
