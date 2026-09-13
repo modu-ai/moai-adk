@@ -105,6 +105,17 @@ This file is the **verification layer**, and Given-When-Then is its correct form
 
 **progress.md**: Canonical §E section skeleton (placeholder headings only — see § progress.md §E Skeleton Generation below).
 
+**decision-index.md** (conditional): **Where** the `interview.decision_gate` setting is `on`, author `.moai/specs/SPEC-{ID}/decision-index.md` alongside the Tier artifact set — one row for every decision surfaced during clarification or assembly that the operator does not settle in the interview. The artifact is **stateless on the status axis**: it carries no `status:` frontmatter field; the SPEC's lifecycle lives in `spec.md` alone. **Where** the setting is `off` (the distributed default) or absent, do not create the artifact and do not reference a decision index anywhere in the plan phase — the flow behaves exactly as before.
+
+**Decision-index rows (decision gate on).** Each row uses the fixed shape — a `### Q<N>:` heading stating the decision as a question, a `Label:` line, an `Authority anchor:` line, a `Why unresolved:` line, and an `Operator verdict:` line left empty at authoring. Every row carries Detect → Explain → Ask: it states what is unresolved and why, and never carries an embedded recommendation or preferred answer, in either recommendation mode. Route every row using exactly the four labels `DECIDED`, `POLICY-COVERED`, `EVIDENCE-NEEDED`, `FOUNDER` — no second label vocabulary:
+
+1. A prior completed SPEC's HISTORY or `## Amendments` row decides the identical question under identical conditions → `DECIDED` (anchor: that SPEC plus its row).
+2. An explicit operator setting in `.moai/config/sections/*.yaml`, or a constitution clause, covers the question as written → `POLICY-COVERED` (anchor: file plus section).
+3. The decision needs data or measurements that do not exist yet → `EVIDENCE-NEEDED`.
+4. Otherwise → `FOUNDER`.
+
+`DECIDED` and `POLICY-COVERED` rows require an authority anchor — a file plus a section that exists in the committed tree, so any later reader can resolve it with `git show`. The **authority register** is committed artifacts only: `.moai/project/product.md`, prior completed SPECs' HISTORY and `## Amendments` rows, `.moai/config/sections/*.yaml` operator settings, and the project constitution. Untracked material — including card evidence under `.moai/reports/` — is never cited as authority. When a row's candidate anchor cannot be verified in the committed tree, the row routes to `FOUNDER`: escalate — Never downgrade. An unverifiable citation never relabels a row `DECIDED` or `POLICY-COVERED`, and never demotes the question to an implementation detail.
+
 #### [HARD] progress.md §E Skeleton Generation
 
 [HARD] When creating the plan-phase artifact set, emit a `progress.md` file carrying the canonical `§E` section skeleton with all four placeholder headings, in this exact order:
