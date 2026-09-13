@@ -2,7 +2,7 @@
 id: SPEC-GRAPH-STAMP-ANCESTRY-001
 title: "Graph codemaps 스탬프 조상성 선판정과 push 가드 종결"
 version: "0.2.0"
-status: draft
+status: in-progress
 created: 2026-09-13
 updated: 2026-09-13
 author: manager-spec

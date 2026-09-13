@@ -227,7 +227,53 @@ var (
 	// it, absent-plus-error is the safe disposition and fresh is never one
 	// (REQ-GGR-007).
 	errNoBodyCommit = errors.New("no commit in the stamped history touches the codemaps body")
+	// errStampUnreachable is the object-exists-but-not-an-ancestor state: the
+	// stamped commit resolves in this checkout, yet HEAD's history does not
+	// contain it, so the two trees share no comparison window. Squash and
+	// rebase both produce it — they preserve the content and drop the commit.
+	// Distinct from a resolution failure so the CLI can name the recovery that
+	// actually applies (regenerate the body, then stamp at a reachable commit).
+	errStampUnreachable = errors.New("stamped commit is not an ancestor of HEAD")
 )
+
+// codemapsBodyPresent reports whether any codemaps body document exists in
+// this checkout — tracked or untracked, with the provenance sidecar excluded
+// so a bare re-stamp cannot answer for the prose. It is the step-0 probe of
+// checkCodemaps: absence is C1, a determinate observation that outranks the
+// comparability precheck (spec.md §D row 1).
+func codemapsBodyPresent(projectRoot string) (bool, error) {
+	body := codemapsBodyPathspec()
+	tracked, err := gitOutput(projectRoot, append([]string{"ls-files", "--"}, body...)...)
+	if err != nil {
+		return false, fmt.Errorf("git ls-files (codemaps body): %w", err)
+	}
+	if hasNonBlankLine(tracked) {
+		return true, nil
+	}
+	untracked, err := gitOutput(projectRoot, append([]string{"ls-files", "--others", "--exclude-standard", "--"}, body...)...)
+	if err != nil {
+		return false, fmt.Errorf("git ls-files --others (codemaps body): %w", err)
+	}
+	return hasNonBlankLine(untracked), nil
+}
+
+// verifyStampReachable answers whether the stamped commit can be compared
+// against this checkout at all, as two ordered conditions: the object must
+// resolve, and it must be an ancestor-or-self of HEAD. Ancestor-OR-SELF is
+// deliberate — a tree stamped at its own HEAD is comparable, and a strict
+// test would turn every just-stamped tree into a system error.
+func verifyStampReachable(projectRoot, sha string) error {
+	if _, err := gitOutput(projectRoot, "cat-file", "-e", sha+"^{commit}"); err != nil {
+		return fmt.Errorf("git cat-file -e %s: %w", shortHash(sha), err)
+	}
+	// `merge-base --is-ancestor` exits non-zero both for a genuine non-ancestor
+	// and for an unreadable history. Both are treated as unreachable: fail
+	// closed, since neither state establishes a comparison window.
+	if _, err := gitOutput(projectRoot, "merge-base", "--is-ancestor", sha, "HEAD"); err != nil {
+		return errStampUnreachable
+	}
+	return nil
+}
 
 // resolveContentAnchor answers WHERE the described-source diff should be
 // measured from, given the stamped sha S. The stamp itself is the wrong
@@ -390,6 +436,44 @@ func checkCodemaps(projectRoot string, th Thresholds) (LayerReport, error) {
 		rep.Reason = "clean stamp carries no commit sha — freshness-unjudgeable"
 		return rep, nil
 	}
+	// Step 0 — body presence. C1 (no codemaps prose at all) is a determinate
+	// observation, not a failed measurement, and it OUTRANKS the comparability
+	// precheck below: a tree with nothing to be stale about is absent with a
+	// nil error (exit 1), the disposition the sibling citations layer already
+	// uses. Deciding it here rather than inside resolveContentAnchor is what
+	// keeps an unreachable stamp from relabelling a body-absent tree as a
+	// failed measurement (spec.md §D row 1 vs row 3).
+	present, err := codemapsBodyPresent(projectRoot)
+	if err != nil {
+		rep.Verdict = VerdictAbsent
+		rep.Reason = "stamped commit not comparable (unmeasured, system error follows)"
+		return rep, fmt.Errorf("codemaps stamp %s not comparable in this checkout: %w", shortHash(pv.CommitSHA), err)
+	}
+	if !present {
+		rep.Verdict = VerdictAbsent
+		rep.Reason = "no codemaps documents to anchor on — freshness-unjudgeable, not fresh"
+		return rep, nil
+	}
+
+	// Steps 1-2 — comparability, BEFORE any anchor or diff work. Object
+	// resolution and HEAD ancestry are SEPARATE conditions: `git cat-file -e`
+	// answers only the first, and a squash or a rebase leaves the original
+	// commit resolvable while dropping it out of HEAD's history. Measuring a
+	// diff across that gap produces a number for a window that was never
+	// established, which is why neither failure yields a freshness value
+	// (REQ-GSA-001/002/004). The two carry DIFFERENT reasons so the recovery
+	// differs: an unresolved object needs history, an unreachable one needs a
+	// regenerated body stamped at a reachable commit.
+	if err := verifyStampReachable(projectRoot, pv.CommitSHA); err != nil {
+		rep.Verdict = VerdictAbsent
+		if errors.Is(err, errStampUnreachable) {
+			rep.Reason = "unreachable stamp: stamped commit exists but is not an ancestor of this checkout's HEAD — freshness unmeasured"
+		} else {
+			rep.Reason = "stamped commit not comparable (unmeasured, system error follows)"
+		}
+		return rep, fmt.Errorf("codemaps stamp %s not comparable in this checkout: %w", shortHash(pv.CommitSHA), err)
+	}
+
 	anchor, anchorSource, err := resolveContentAnchor(projectRoot, pv.CommitSHA)
 	if err != nil {
 		rep.Verdict = VerdictAbsent

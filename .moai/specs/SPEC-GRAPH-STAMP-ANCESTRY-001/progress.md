@@ -84,7 +84,119 @@ No drift findings — all modern-era SPECs clean.
 
 ## §E.2 Run-phase Evidence
 
-_대기 중 — Implementation Kickoff Approval 전에는 run을 시작하지 않는다._
+### §E.2.0 실행 전 재측정 (`plan.md §C`)
+
+Implementation Kickoff Approval 뒤, 코드 편집 **전에** 워크트리 `.claude/worktrees/t688`, `HEAD 8275c82a5f706e4cc0830a6c093bc1d988358dd3`, 브랜치 `WT-graph-stamp-freshness`에서 여섯 항목을 다시 쟀다. plan 단계 수치는 `7097e6e21`/`b4626c042`에 귀속된 관측이며 아래가 run 시점 기준선이다.
+
+**1. HEAD / branch**
+
+```text
+command: git rev-parse HEAD; git branch --show-current
+exit_code: 0
+stdout:
+8275c82a5f706e4cc0830a6c093bc1d988358dd3
+WT-graph-stamp-freshness
+```
+
+**2. tracked provenance 스탬프의 객체 존재와 조상성**
+
+```text
+command: python3 -c "... json.load('.moai/project/codemaps/provenance.json')"
+stamp: f7b4919541f10b6415173b6bc9fb7192e8824450
+dirty: false
+described_roots: internal, cmd, pkg
+
+command: git cat-file -e f7b4919541f10b6415173b6bc9fb7192e8824450^{commit}   → exit 0 (무출력)
+command: git merge-base --is-ancestor f7b491954 HEAD                          → exit 0 (무출력)
+command: git merge-base --is-ancestor f7b491954 origin/develop                → exit 0 (무출력)
+command: git merge-base --is-ancestor f7b491954 origin/main                   → exit 1 (무출력)
+```
+
+plan `§A.2`의 관측과 같은 위상이다. 이 워크트리의 스탬프는 `HEAD`의 조상이므로, 이 트리 자체는 이 SPEC이 새로 닫는 비조상 경로에 해당하지 않는다 — 비조상 판정은 합성 fixture로만 검증한다.
+
+**3. `moai graph check --root .` codemaps 행과 종료코드**
+
+```text
+command: moai graph check --root .
+tree_sha: 8275c82a5
+exit_code: 1
+selected_stdout:
+codemaps  metric=described-source-diff value=254 threshold=40 verdict=stale
+mx-index  metric=inventory-content-diff value=0 threshold=1 verdict=absent  (mx-index absent (untracked runtime artifact — fresh worktree state))
+edges     metric=source-fingerprint-mismatch value=0 threshold=0 verdict=absent  (edges.jsonl absent (untracked derived artifact — fresh worktree state))
+citations metric=positive-cited-path-absence value=1 threshold=0 verdict=stale  (1 positively-cited path(s) absent from the tree (first cited in dependencies.md))
+```
+
+`value=254 threshold=40`은 `BASE-GSA-001`(`7097e6e21`)과 같은 값으로 이 트리에서도 재현됐다. 가정하지 않고 다시 쟀다. 다만 codemaps 외에 **citations도 `value=1 verdict=stale`**이며(`dependencies.md`가 인용한 `internal/cli/huh_theme.go`가 트리에 없다), mx-index와 edges는 워크트리에 untracked 산출물이 없어 `absent`다. plan `§A.2` 재시도 관측과 같은 구도이므로, M4 종결은 codemaps 행만으로 전체-green을 주장할 수 없다.
+
+**4. 테스트 선택자가 실제로 테스트를 실행하는지**
+
+RED 4건 재실행이 그 자체로 이 항목의 증거다(아래 5·`§E.2.1`). `internal/graph` 선택자는 1개 테스트와 3개 서브테스트를, `internal/cli` 선택자는 1개 테스트를 실제로 실행했다. `[no tests to run]`은 없었다.
+
+**5. RED 원장 4건의 현재 트리 재현**
+
+```text
+command: bash .moai/reports/t688/red-ancestry.sh
+tree_sha: 8275c82a5
+exit_code: 1
+stdout_stderr:
+--- FAIL: TestT688ExistingNonAncestorStampIsUnmeasured (1.02s)
+    t688_red_ancestry_test.go:24: existing non-ancestor stamp must be freshness-unmeasured with a system error; got verdict="fresh" value=1 threshold=40 content_anchor="d9029beaf2be3e6c70b6813e9715594ca8f5d085"
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/graph	1.545s
+classification: EXPECTED_RED (RED-GSA-001 재현)
+```
+
+```text
+command: bash .moai/reports/t688/red-cli-unreachable.sh
+tree_sha: 8275c82a5
+exit_code: 1
+stdout_stderr:
+--- FAIL: TestT688CLIExistingNonAncestorStampExitsTwoWithRecovery (1.09s)
+    t688_red_ancestry_test.go:38: existing non-ancestor stamp must exit 2; err=graph freshness check failed (stale or absent layer) stdout="codemaps  metric=described-source-diff value=1 threshold=40 verdict=fresh\n..." stderr="graph check: layer edges verdict=stale value=1 threshold=0 — source set(s) moved: codemaps\n"
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/cli	1.953s
+classification: EXPECTED_RED (RED-GSA-002 재현)
+```
+
+```text
+command: bash .moai/reports/t688/red-history-topologies.sh
+tree_sha: 8275c82a5
+exit_code: 1
+stdout_stderr:
+--- FAIL: TestT688MergeSquashRebaseLikeTopologies (3.69s)
+    --- FAIL: .../squash_retains_object_but_drops_ancestry (1.12s)
+        t688_red_history_test.go:67: object-present non-ancestor stamp must be freshness-unmeasured; got verdict="fresh" value=0 anchor="7ecbb2b135fa62ee6fc9808c309810bede814a73"
+    --- FAIL: .../rebase-like_rewrite_retains_object_but_drops_ancestry (1.30s)
+        t688_red_history_test.go:78: object-present non-ancestor stamp must be freshness-unmeasured; got verdict="fresh" value=1 anchor="ec12109ed5c697a077a3e295a14f374acbf8197e"
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/graph	4.206s
+classification: EXPECTED_RED (RED-GSA-008 재현). merge 행은 통과했고 squash·rebase-like 두 행만 의도한 assertion에서 실패했다.
+```
+
+```text
+command: python3 .moai/reports/t688/red-push-guard.py
+tree_sha: 8275c82a5
+exit_code: 1
+stdout:
+push_branch_has_target_head=false
+push_branch_exits_before_ancestry=true
+classification: EXPECTED_RED (RED-GSA-006 재현)
+```
+
+**6. workflow의 세 대상 선택과 관련 여섯 SPEC 상태**
+
+`.github/workflows/graph-freshness.yml` reachability step 현재 상태: ordinary PR는 `TARGET="origin/${GITHUB_BASE_REF}"`, `release/*` head는 `TARGET="HEAD"`(merge preview), push는 `GITHUB_BASE_REF` 공백 분기에서 `echo "guard: push event (no base ref) — object presence verified only"` 뒤 **`exit 0`**으로 조상성 검사 전에 빠져나간다. 이것이 `REQ-GSA-008`이 닫는 틈이다.
+
+```text
+command: grep -m1 '^status:' .moai/specs/<SPEC>/spec.md  (6건)
+SPEC-V3R6-GRAPH-FRESHNESS-001: status: completed
+SPEC-V3R6-GRAPH-FRESHNESS-002: status: completed
+SPEC-GRAPH-FRESHNESS-CADENCE-001: status: completed
+SPEC-STAMP-REACHABILITY-001: status: completed
+SPEC-GRAPH-GATE-RESTAMP-001: status: completed
+SPEC-CODEMAPS-REFRESH-002: status: completed
+```
 
 ## §E.3 Run-phase Audit-Ready Signal
 
