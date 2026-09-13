@@ -1,0 +1,550 @@
+=== RUN   TestAgentWiringQuestion_InInitSetWithClosedOptionSet
+=== PAUSE TestAgentWiringQuestion_InInitSetWithClosedOptionSet
+=== RUN   TestAgentWiringQuestion_PrecedesMCPProvision
+=== PAUSE TestAgentWiringQuestion_PrecedesMCPProvision
+=== RUN   TestAgentWiringQuestion_EnglishSourceTextPresent
+=== PAUSE TestAgentWiringQuestion_EnglishSourceTextPresent
+=== RUN   TestSaveAnswer_CapturesAgentWiring
+=== PAUSE TestSaveAnswer_CapturesAgentWiring
+=== RUN   TestReconfigureQuestions_NoHarnessLeak
+=== PAUSE TestReconfigureQuestions_NoHarnessLeak
+=== RUN   TestInitQuestions_HasAutonomyTierPage
+--- PASS: TestInitQuestions_HasAutonomyTierPage (0.00s)
+=== RUN   TestAutonomyTierQuestion_FullyAutonomousNotRecommended
+--- PASS: TestAutonomyTierQuestion_FullyAutonomousNotRecommended (0.00s)
+=== RUN   TestDefaultQuestions_DotPath
+--- PASS: TestDefaultQuestions_DotPath (0.00s)
+=== RUN   TestDefaultQuestions_SlashPath
+--- PASS: TestDefaultQuestions_SlashPath (0.00s)
+=== RUN   TestGetLocalizedQuestion_EmptyOptionLabelFallback
+--- PASS: TestGetLocalizedQuestion_EmptyOptionLabelFallback (0.00s)
+=== RUN   TestGetLocalizedQuestion_ZhTranslation
+--- PASS: TestGetLocalizedQuestion_ZhTranslation (0.00s)
+=== RUN   TestBuildSelectField_ValidateCallback
+--- PASS: TestBuildSelectField_ValidateCallback (0.00s)
+=== RUN   TestBuildInputField_ValidateCallback_WithValue
+--- PASS: TestBuildInputField_ValidateCallback_WithValue (0.00s)
+=== RUN   TestBuildInputField_ValidateCallback_EmptyWithDefault
+--- PASS: TestBuildInputField_ValidateCallback_EmptyWithDefault (0.00s)
+=== RUN   TestBuildInputField_ValidateCallback_RequiredEmpty
+--- PASS: TestBuildInputField_ValidateCallback_RequiredEmpty (0.00s)
+=== RUN   TestRunWithDefaults_ReturnsError
+    coverage_boost_test.go:232: RunWithDefaults returned: wizard error: huh: bubbletea: error opening TTY: bubbletea: could not open TTY: open /dev/tty: device not configured
+--- PASS: TestRunWithDefaults_ReturnsError (0.01s)
+=== RUN   TestBuildQuestionGroup_HideFunc_Condition_True
+--- PASS: TestBuildQuestionGroup_HideFunc_Condition_True (0.00s)
+=== RUN   TestBuildQuestionGroup_HideFunc_Condition_False
+--- PASS: TestBuildQuestionGroup_HideFunc_Condition_False (0.00s)
+=== RUN   TestBuildSelectField_WithKoLocale
+--- PASS: TestBuildSelectField_WithKoLocale (0.00s)
+=== RUN   TestBuildInputField_WithKoLocale
+--- PASS: TestBuildInputField_WithKoLocale (0.00s)
+=== RUN   TestRun_PreCheckConditionSkips
+--- PASS: TestRun_PreCheckConditionSkips (0.00s)
+=== RUN   TestRun_AllConditionsFalse_ContinueAndReturnSuccess
+--- PASS: TestRun_AllConditionsFalse_ContinueAndReturnSuccess (0.00s)
+=== RUN   TestBuildInputField_ValidateCallback_RequiredEmptyDirectly
+--- PASS: TestBuildInputField_ValidateCallback_RequiredEmptyDirectly (0.00s)
+=== RUN   TestPage3QuestionsStructure
+=== PAUSE TestPage3QuestionsStructure
+=== RUN   TestPage3VisibleWithoutBridge
+=== PAUSE TestPage3VisibleWithoutBridge
+=== RUN   TestPage3Questions_Ungated
+=== PAUSE TestPage3Questions_Ungated
+=== RUN   TestPage3Questions_NoConditional
+=== PAUSE TestPage3Questions_NoConditional
+=== RUN   TestProjectModeQuestion
+=== PAUSE TestProjectModeQuestion
+=== RUN   TestSaveAnswerPhase1
+=== PAUSE TestSaveAnswerPhase1
+=== RUN   TestSaveBoolAnswer
+=== PAUSE TestSaveBoolAnswer
+=== RUN   TestBuildQuestionGroup_ConfirmType
+=== PAUSE TestBuildQuestionGroup_ConfirmType
+=== RUN   TestWizardResultDefaultsPrePopulated
+=== PAUSE TestWizardResultDefaultsPrePopulated
+=== RUN   TestBuildConfirmField_DefaultFalse
+=== PAUSE TestBuildConfirmField_DefaultFalse
+=== RUN   TestBuildConfirmField_DefaultTrue
+=== PAUSE TestBuildConfirmField_DefaultTrue
+=== RUN   TestTotalVisibleQuestions_Page3AlwaysCounted
+=== PAUSE TestTotalVisibleQuestions_Page3AlwaysCounted
+=== RUN   TestFeedbackAutoSubmitQuestion
+--- PASS: TestFeedbackAutoSubmitQuestion (0.00s)
+=== RUN   TestSaveBoolAnswerFeedbackAutoSubmit
+--- PASS: TestSaveBoolAnswerFeedbackAutoSubmit (0.00s)
+=== RUN   TestFeedbackAutoSubmitTranslationsExist
+--- PASS: TestFeedbackAutoSubmitTranslationsExist (0.00s)
+=== RUN   TestPage3Questions_AuditSelectionSurfaced
+=== PAUSE TestPage3Questions_AuditSelectionSurfaced
+=== RUN   TestAuditModelQuestion_UsesM3EnumVocabulary
+=== PAUSE TestAuditModelQuestion_UsesM3EnumVocabulary
+=== RUN   TestAuditGateQuestions_UsesM3EnumVocabulary
+=== PAUSE TestAuditGateQuestions_UsesM3EnumVocabulary
+=== RUN   TestAuditModelQuestion_DefaultIsClaude
+=== PAUSE TestAuditModelQuestion_DefaultIsClaude
+=== RUN   TestAuditGateQuestions_DefaultProfile
+=== PAUSE TestAuditGateQuestions_DefaultProfile
+=== RUN   TestOptInFlags_Defaults
+=== PAUSE TestOptInFlags_Defaults
+=== RUN   TestModelPolicyDefaultIsMedium
+=== PAUSE TestModelPolicyDefaultIsMedium
+=== RUN   TestModelPolicyRecommendedMarkerPerLocale
+=== PAUSE TestModelPolicyRecommendedMarkerPerLocale
+=== RUN   TestModelPolicyDescsAgreeWithProfileMatrix
+=== PAUSE TestModelPolicyDescsAgreeWithProfileMatrix
+=== RUN   TestPATMaskEchoModeWired
+--- PASS: TestPATMaskEchoModeWired (0.00s)
+=== RUN   TestPATMaskSecretIDs
+--- PASS: TestPATMaskSecretIDs (0.00s)
+=== RUN   TestProfileQuestions_IDSetMatchesProfileFieldSet
+--- PASS: TestProfileQuestions_IDSetMatchesProfileFieldSet (0.00s)
+=== RUN   TestProfileQuestions_EveryQuestionVisible
+--- PASS: TestProfileQuestions_EveryQuestionVisible (0.00s)
+=== RUN   TestProfileQuestions_GroupPartition
+--- PASS: TestProfileQuestions_GroupPartition (0.00s)
+=== RUN   TestProfileQuestions_TypesAndOptionsPassThrough
+--- PASS: TestProfileQuestions_TypesAndOptionsPassThrough (0.00s)
+=== RUN   TestProfileQuestions_OptionSlicesAreCopies
+--- PASS: TestProfileQuestions_OptionSlicesAreCopies (0.00s)
+=== RUN   TestProfileQuestions_InitialValuesBecomeDefaults
+--- PASS: TestProfileQuestions_InitialValuesBecomeDefaults (0.00s)
+=== RUN   TestProfileTranslations_FourLocaleKeyParity
+--- PASS: TestProfileTranslations_FourLocaleKeyParity (0.00s)
+=== RUN   TestProfileTranslations_NonEnglishLocalesAreTranslated
+--- PASS: TestProfileTranslations_NonEnglishLocalesAreTranslated (0.00s)
+=== RUN   TestProfileQuestions_EnglishTextSourcedFromTable
+--- PASS: TestProfileQuestions_EnglishTextSourcedFromTable (0.00s)
+=== RUN   TestLocalizeProfileQuestion
+--- PASS: TestLocalizeProfileQuestion (0.00s)
+=== RUN   TestProjectContinuationQuestion
+--- PASS: TestProjectContinuationQuestion (0.00s)
+=== RUN   TestProjectContinuationTranslationsExist
+--- PASS: TestProjectContinuationTranslationsExist (0.00s)
+=== RUN   TestProjectContinuationNotOptionTranslationExempt
+--- PASS: TestProjectContinuationNotOptionTranslationExempt (0.00s)
+=== RUN   TestPtycapStripANSI
+=== RUN   TestPtycapStripANSI/plain_text_unchanged
+=== RUN   TestPtycapStripANSI/sgr_colour
+=== RUN   TestPtycapStripANSI/cursor_movement
+=== RUN   TestPtycapStripANSI/private_mode
+=== RUN   TestPtycapStripANSI/osc_hyperlink_bel
+=== RUN   TestPtycapStripANSI/osc_hyperlink_st
+=== RUN   TestPtycapStripANSI/wide_text_kept
+--- PASS: TestPtycapStripANSI (0.00s)
+    --- PASS: TestPtycapStripANSI/plain_text_unchanged (0.00s)
+    --- PASS: TestPtycapStripANSI/sgr_colour (0.00s)
+    --- PASS: TestPtycapStripANSI/cursor_movement (0.00s)
+    --- PASS: TestPtycapStripANSI/private_mode (0.00s)
+    --- PASS: TestPtycapStripANSI/osc_hyperlink_bel (0.00s)
+    --- PASS: TestPtycapStripANSI/osc_hyperlink_st (0.00s)
+    --- PASS: TestPtycapStripANSI/wide_text_kept (0.00s)
+=== RUN   TestPtycapDisplayColumn
+--- PASS: TestPtycapDisplayColumn (0.00s)
+=== RUN   TestPtycapCompareGolden
+--- PASS: TestPtycapCompareGolden (0.00s)
+=== RUN   TestHomeWatch_ListShape
+--- PASS: TestHomeWatch_ListShape (0.00s)
+=== RUN   TestHomeWatch_PositiveControl
+=== RUN   TestHomeWatch_PositiveControl/(i)_nothing_changed
+    ptycap_selfcheck_test.go:215: result "(i) nothing changed": entries=16 existing=5 changed=[]
+=== RUN   TestHomeWatch_PositiveControl/(ii)_W3_one_byte_changed
+    ptycap_selfcheck_test.go:215: result "(ii) W3 one byte changed": entries=16 existing=5 changed=[.claude/settings.json (file size=3 sha256=ca3d163bab055381827226140568f3bef7eaac187cebd76878e0b63e9e442356 -> file size=3 sha256=f545623b541a21d6b8b415ee1793b91001a50ca985d26fad253c3c68aba5ffe9)]
+=== RUN   TestHomeWatch_PositiveControl/(iii)_W6_key_directory_created
+    ptycap_selfcheck_test.go:215: result "(iii) W6 key directory created": entries=16 existing=6 changed=[.moai/db/001-a766cefe (absent -> present)]
+=== RUN   TestHomeWatch_PositiveControl/(iv)_new_W2_glob_match
+    ptycap_selfcheck_test.go:215: result "(iv) new W2 glob match": entries=17 existing=6 changed=[.moai/claude-profiles/p2/preferences.yaml (absent -> file size=2 sha256=73cb3858a687a8494ca3323053016282f3dad39d42cf62ca4e79dda2aac7d9ac) glob:.moai/claude-profiles/*/preferences.yaml (.moai/claude-profiles/p1/preferences.yaml -> .moai/claude-profiles/p1/preferences.yaml,.moai/claude-profiles/p2/preferences.yaml)]
+=== RUN   TestHomeWatch_PositiveControl/(v)_excluded_subtree_written
+    ptycap_selfcheck_test.go:215: result "(v) excluded subtree written": entries=16 existing=5 changed=[]
+--- PASS: TestHomeWatch_PositiveControl (0.06s)
+    --- PASS: TestHomeWatch_PositiveControl/(i)_nothing_changed (0.00s)
+    --- PASS: TestHomeWatch_PositiveControl/(ii)_W3_one_byte_changed (0.00s)
+    --- PASS: TestHomeWatch_PositiveControl/(iii)_W6_key_directory_created (0.00s)
+    --- PASS: TestHomeWatch_PositiveControl/(iv)_new_W2_glob_match (0.00s)
+    --- PASS: TestHomeWatch_PositiveControl/(v)_excluded_subtree_written (0.00s)
+=== RUN   TestPtycapScrubList_KanbanVarsMatchEnvKeys
+--- PASS: TestPtycapScrubList_KanbanVarsMatchEnvKeys (0.00s)
+=== RUN   TestPtycapChildEnv_Values
+--- PASS: TestPtycapChildEnv_Values (0.00s)
+=== RUN   TestPtycapCheckChildEnvRecord
+--- PASS: TestPtycapCheckChildEnvRecord (0.00s)
+=== RUN   TestPtycapSessionName
+--- PASS: TestPtycapSessionName (0.00s)
+=== RUN   TestPtyCaptureChild
+    ptycap_selfcheck_test.go:392: runs only inside a pty capture session
+--- SKIP: TestPtyCaptureChild (0.00s)
+=== RUN   TestPtyCaptureSelfTestChild
+    ptycap_selfcheck_test.go:414: runs only as a self-test child
+--- SKIP: TestPtyCaptureSelfTestChild (0.00s)
+=== RUN   TestPtyCapture_NormalRun
+    ptycap_selfcheck_test.go:439: pty capture runs only under MOAI_PTY_CAPTURE=1
+--- SKIP: TestPtyCapture_NormalRun (0.00s)
+=== RUN   TestPtyCapture_ForcedFailure
+    ptycap_selfcheck_test.go:471: pty capture runs only under MOAI_PTY_CAPTURE=1
+--- SKIP: TestPtyCapture_ForcedFailure (0.00s)
+=== RUN   TestPtyCapture_ForcedTimeout
+    ptycap_selfcheck_test.go:476: pty capture runs only under MOAI_PTY_CAPTURE=1
+--- SKIP: TestPtyCapture_ForcedTimeout (0.00s)
+=== RUN   TestPtyCapture_SkipWithoutGate
+    ptycap_selfcheck_test.go:535: pty capture runs only under MOAI_PTY_CAPTURE=1
+--- SKIP: TestPtyCapture_SkipWithoutGate (0.00s)
+=== RUN   TestPtyCapture_FailWithoutTmux
+    ptycap_selfcheck_test.go:567: pty capture runs only under MOAI_PTY_CAPTURE=1
+--- SKIP: TestPtyCapture_FailWithoutTmux (0.00s)
+=== RUN   TestPtycapTopLevelResults
+--- PASS: TestPtycapTopLevelResults (0.00s)
+=== RUN   TestRemovedQuestionsAbsentFromInitSet
+=== PAUSE TestRemovedQuestionsAbsentFromInitSet
+=== RUN   TestRemovedQuestionsHaveNoOrphanTranslations
+=== PAUSE TestRemovedQuestionsHaveNoOrphanTranslations
+=== RUN   TestRemovedQuestionsHaveNoCaptureBranch
+=== PAUSE TestRemovedQuestionsHaveNoCaptureBranch
+=== RUN   TestLSPEnabledFixedAtTrueDefault
+=== PAUSE TestLSPEnabledFixedAtTrueDefault
+=== RUN   TestReportFormatQuestion
+--- PASS: TestReportFormatQuestion (0.00s)
+=== RUN   TestSaveAnswerReportFormat
+--- PASS: TestSaveAnswerReportFormat (0.00s)
+=== RUN   TestReportFormatTranslationsExist
+--- PASS: TestReportFormatTranslationsExist (0.00s)
+=== RUN   TestQuestionOrder
+--- PASS: TestQuestionOrder (0.00s)
+=== RUN   TestDefaultQuestionsHasNoGitQuestions
+--- PASS: TestDefaultQuestionsHasNoGitQuestions (0.00s)
+=== RUN   TestInitWizardQuestionSetHasNoGitCredentialQuestions
+--- PASS: TestInitWizardQuestionSetHasNoGitCredentialQuestions (0.00s)
+=== RUN   TestGitQuestionsReturnsExactSet
+--- PASS: TestGitQuestionsReturnsExactSet (0.00s)
+=== RUN   TestReconfigureQuestionsOrder
+--- PASS: TestReconfigureQuestionsOrder (0.00s)
+=== RUN   TestSaveAnswerDevelopmentMode
+--- PASS: TestSaveAnswerDevelopmentMode (0.00s)
+=== RUN   TestDevelopmentModeTranslationsExist
+--- PASS: TestDevelopmentModeTranslationsExist (0.00s)
+=== RUN   TestRemovedQuestionsAbsent
+--- PASS: TestRemovedQuestionsAbsent (0.00s)
+=== RUN   TestQuestionsAllPresent
+--- PASS: TestQuestionsAllPresent (0.00s)
+=== RUN   TestGitConditionalFilteredByMode
+--- PASS: TestGitConditionalFilteredByMode (0.00s)
+=== RUN   TestConversationLanguageQuestion
+--- PASS: TestConversationLanguageQuestion (0.00s)
+=== RUN   TestUserNameQuestion
+--- PASS: TestUserNameQuestion (0.00s)
+=== RUN   TestSaveAnswerConversationLanguage
+--- PASS: TestSaveAnswerConversationLanguage (0.00s)
+=== RUN   TestSaveAnswerUserName
+--- PASS: TestSaveAnswerUserName (0.00s)
+=== RUN   TestNewQuestionTranslationsExist
+--- PASS: TestNewQuestionTranslationsExist (0.00s)
+=== RUN   TestPrefillIdentityDefaults
+--- PASS: TestPrefillIdentityDefaults (0.00s)
+=== RUN   TestPrefillLocaleDefault
+--- PASS: TestPrefillLocaleDefault (0.00s)
+=== RUN   TestSaveAnswerModelPolicy
+--- PASS: TestSaveAnswerModelPolicy (0.00s)
+=== RUN   TestInitPages_Membership
+=== PAUSE TestInitPages_Membership
+=== RUN   TestInitPages_MergeIntoOneGroupPerPage
+=== PAUSE TestInitPages_MergeIntoOneGroupPerPage
+=== RUN   TestPage3_NoModeGate
+=== PAUSE TestPage3_NoModeGate
+=== RUN   TestReconfigureMembershipExcludesPage3
+=== PAUSE TestReconfigureMembershipExcludesPage3
+=== RUN   TestAdvancedBridgeRemoved
+=== PAUSE TestAdvancedBridgeRemoved
+=== RUN   TestBasicPage_LocaleLiveRender
+=== PAUSE TestBasicPage_LocaleLiveRender
+=== RUN   TestTodoEnabledQuestion
+--- PASS: TestTodoEnabledQuestion (0.00s)
+=== RUN   TestSaveBoolAnswerTodoEnabled
+--- PASS: TestSaveBoolAnswerTodoEnabled (0.00s)
+=== RUN   TestTodoEnabledTranslationsExist
+--- PASS: TestTodoEnabledTranslationsExist (0.00s)
+=== RUN   TestModelPolicyTranslationsExist
+--- PASS: TestModelPolicyTranslationsExist (0.00s)
+=== RUN   TestGetLocalizedModelPolicyFullyTranslated
+--- PASS: TestGetLocalizedModelPolicyFullyTranslated (0.00s)
+=== RUN   TestWizardQuestionTranslationCompleteness
+--- PASS: TestWizardQuestionTranslationCompleteness (0.00s)
+=== RUN   TestConfirmButtonLocalization
+=== RUN   TestConfirmButtonLocalization/en
+=== RUN   TestConfirmButtonLocalization/ko
+=== RUN   TestConfirmButtonLocalization/ja
+=== RUN   TestConfirmButtonLocalization/zh
+--- PASS: TestConfirmButtonLocalization (0.00s)
+    --- PASS: TestConfirmButtonLocalization/en (0.00s)
+    --- PASS: TestConfirmButtonLocalization/ko (0.00s)
+    --- PASS: TestConfirmButtonLocalization/ja (0.00s)
+    --- PASS: TestConfirmButtonLocalization/zh (0.00s)
+=== RUN   TestUnifiedForm_MultiGroupSinglePage
+--- PASS: TestUnifiedForm_MultiGroupSinglePage (0.14s)
+=== RUN   TestUnifiedForm_ConditionalGroupsAppear
+--- PASS: TestUnifiedForm_ConditionalGroupsAppear (2.02s)
+=== RUN   TestUnifiedForm_ManualModeSkipsConditionals
+--- PASS: TestUnifiedForm_ManualModeSkipsConditionals (0.15s)
+=== RUN   TestBuildFormGroups_Partition
+--- PASS: TestBuildFormGroups_Partition (0.00s)
+=== RUN   TestMapFormErr
+--- PASS: TestMapFormErr (0.00s)
+=== RUN   TestWizardResult
+--- PASS: TestWizardResult (0.00s)
+=== RUN   TestGetLanguageName
+=== RUN   TestGetLanguageName/en
+=== RUN   TestGetLanguageName/ko
+=== RUN   TestGetLanguageName/ja
+=== RUN   TestGetLanguageName/zh
+=== RUN   TestGetLanguageName/unknown
+=== RUN   TestGetLanguageName/#00
+--- PASS: TestGetLanguageName (0.00s)
+    --- PASS: TestGetLanguageName/en (0.00s)
+    --- PASS: TestGetLanguageName/ko (0.00s)
+    --- PASS: TestGetLanguageName/ja (0.00s)
+    --- PASS: TestGetLanguageName/zh (0.00s)
+    --- PASS: TestGetLanguageName/unknown (0.00s)
+    --- PASS: TestGetLanguageName/#00 (0.00s)
+=== RUN   TestNewStyles
+--- PASS: TestNewStyles (0.00s)
+=== RUN   TestNoColorStyles
+--- PASS: TestNoColorStyles (0.00s)
+=== RUN   TestDefaultQuestions
+--- PASS: TestDefaultQuestions (0.00s)
+=== RUN   TestFilteredQuestions
+--- PASS: TestFilteredQuestions (0.00s)
+=== RUN   TestTotalVisibleQuestions
+--- PASS: TestTotalVisibleQuestions (0.00s)
+=== RUN   TestQuestionByID
+--- PASS: TestQuestionByID (0.00s)
+=== RUN   TestRunWithEmptyQuestions
+--- PASS: TestRunWithEmptyQuestions (0.00s)
+=== RUN   TestErrors
+--- PASS: TestErrors (0.00s)
+=== RUN   TestSaveAnswer_AllFields
+=== RUN   TestSaveAnswer_AllFields/project_name
+=== RUN   TestSaveAnswer_AllFields/development_mode
+=== RUN   TestSaveAnswer_AllFields/report_format
+=== RUN   TestSaveAnswer_AllFields/git_mode
+=== RUN   TestSaveAnswer_AllFields/git_provider
+=== RUN   TestSaveAnswer_AllFields/github_username
+=== RUN   TestSaveAnswer_AllFields/github_token
+=== RUN   TestSaveAnswer_AllFields/gitlab_instance_url
+=== RUN   TestSaveAnswer_AllFields/gitlab_username
+=== RUN   TestSaveAnswer_AllFields/gitlab_token
+--- PASS: TestSaveAnswer_AllFields (0.00s)
+    --- PASS: TestSaveAnswer_AllFields/project_name (0.00s)
+    --- PASS: TestSaveAnswer_AllFields/development_mode (0.00s)
+    --- PASS: TestSaveAnswer_AllFields/report_format (0.00s)
+    --- PASS: TestSaveAnswer_AllFields/git_mode (0.00s)
+    --- PASS: TestSaveAnswer_AllFields/git_provider (0.00s)
+    --- PASS: TestSaveAnswer_AllFields/github_username (0.00s)
+    --- PASS: TestSaveAnswer_AllFields/github_token (0.00s)
+    --- PASS: TestSaveAnswer_AllFields/gitlab_instance_url (0.00s)
+    --- PASS: TestSaveAnswer_AllFields/gitlab_username (0.00s)
+    --- PASS: TestSaveAnswer_AllFields/gitlab_token (0.00s)
+=== RUN   TestSaveAnswer_UnknownID
+--- PASS: TestSaveAnswer_UnknownID (0.00s)
+=== RUN   TestGetLocalizedQuestion
+--- PASS: TestGetLocalizedQuestion (0.00s)
+=== RUN   TestGetUIStrings
+--- PASS: TestGetUIStrings (0.00s)
+=== RUN   TestGitProviderQuestion
+--- PASS: TestGitProviderQuestion (0.00s)
+=== RUN   TestGitLabQuestionsConditional
+--- PASS: TestGitLabQuestionsConditional (0.00s)
+=== RUN   TestGitHubQuestionsHiddenForGitLab
+--- PASS: TestGitHubQuestionsHiddenForGitLab (0.00s)
+=== RUN   TestWizardResultGitLabFields
+--- PASS: TestWizardResultGitLabFields (0.00s)
+=== RUN   TestReportFormatInWizard
+--- PASS: TestReportFormatInWizard (0.00s)
+=== RUN   TestBuildQuestionGroup_Select
+--- PASS: TestBuildQuestionGroup_Select (0.00s)
+=== RUN   TestBuildQuestionGroup_Input
+--- PASS: TestBuildQuestionGroup_Input (0.00s)
+=== RUN   TestBuildQuestionGroup_WithCondition
+--- PASS: TestBuildQuestionGroup_WithCondition (0.00s)
+=== RUN   TestNewMoAIWizardTheme_ReturnsNonNil
+--- PASS: TestNewMoAIWizardTheme_ReturnsNonNil (0.00s)
+=== RUN   TestNewMoAIWizardTheme_IgnoresHuhBackgroundArgument
+=== RUN   TestNewMoAIWizardTheme_IgnoresHuhBackgroundArgument/resolver_says_dark
+=== RUN   TestNewMoAIWizardTheme_IgnoresHuhBackgroundArgument/resolver_says_light
+--- PASS: TestNewMoAIWizardTheme_IgnoresHuhBackgroundArgument (0.00s)
+    --- PASS: TestNewMoAIWizardTheme_IgnoresHuhBackgroundArgument/resolver_says_dark (0.00s)
+    --- PASS: TestNewMoAIWizardTheme_IgnoresHuhBackgroundArgument/resolver_says_light (0.00s)
+=== RUN   TestCharacterize_WizardTheme_SelectedPrefix
+--- PASS: TestCharacterize_WizardTheme_SelectedPrefix (0.00s)
+=== RUN   TestCharacterize_WizardTheme_UnselectedPrefix
+--- PASS: TestCharacterize_WizardTheme_UnselectedPrefix (0.00s)
+=== RUN   TestCharacterize_WizardTheme_SelectSelectorPrefix
+--- PASS: TestCharacterize_WizardTheme_SelectSelectorPrefix (0.00s)
+=== RUN   TestCharacterize_WizardTheme_BlurredInheritsFromFocused
+--- PASS: TestCharacterize_WizardTheme_BlurredInheritsFromFocused (0.00s)
+=== RUN   TestStepperTotal_DynamicDenominator
+=== RUN   TestStepperTotal_DynamicDenominator/manual
+=== RUN   TestStepperTotal_DynamicDenominator/personal-github
+=== RUN   TestStepperTotal_DynamicDenominator/personal-gitlab
+--- PASS: TestStepperTotal_DynamicDenominator (0.00s)
+    --- PASS: TestStepperTotal_DynamicDenominator/manual (0.00s)
+    --- PASS: TestStepperTotal_DynamicDenominator/personal-github (0.00s)
+    --- PASS: TestStepperTotal_DynamicDenominator/personal-gitlab (0.00s)
+=== RUN   TestCharacterize_WizardColors_PrimaryIsCoral
+--- PASS: TestCharacterize_WizardColors_PrimaryIsCoral (0.00s)
+=== RUN   TestCharacterize_WizardColors_NoTerracottaOrPurple
+--- PASS: TestCharacterize_WizardColors_NoTerracottaOrPurple (0.00s)
+=== RUN   TestCharacterize_WizardTheme_UsesDeepTealForTitle
+--- PASS: TestCharacterize_WizardTheme_UsesDeepTealForTitle (0.00s)
+=== RUN   TestCharacterize_WizardTokens_PrimaryIsCoral
+--- PASS: TestCharacterize_WizardTokens_PrimaryIsCoral (0.00s)
+=== RUN   TestGetLocalizedQuestion_EmptyLocale
+--- PASS: TestGetLocalizedQuestion_EmptyLocale (0.00s)
+=== RUN   TestGetLocalizedQuestion_KnownLocaleUnknownID
+--- PASS: TestGetLocalizedQuestion_KnownLocaleUnknownID (0.00s)
+=== RUN   TestGetLocalizedQuestion_OptionTranslation
+--- PASS: TestGetLocalizedQuestion_OptionTranslation (0.00s)
+=== RUN   TestGetLocalizedQuestion_MismatchedOptionCount
+--- PASS: TestGetLocalizedQuestion_MismatchedOptionCount (0.00s)
+=== RUN   TestGetLocalizedQuestion_PreservesNonTranslatedFields
+--- PASS: TestGetLocalizedQuestion_PreservesNonTranslatedFields (0.00s)
+=== RUN   TestBuildSelectField_WithDefault
+--- PASS: TestBuildSelectField_WithDefault (0.00s)
+=== RUN   TestBuildSelectField_WithoutDefault
+--- PASS: TestBuildSelectField_WithoutDefault (0.00s)
+=== RUN   TestBuildSelectField_WithDescriptions
+--- PASS: TestBuildSelectField_WithDescriptions (0.00s)
+=== RUN   TestBuildInputField_WithDefault
+--- PASS: TestBuildInputField_WithDefault (0.00s)
+=== RUN   TestBuildInputField_WithoutDefault
+--- PASS: TestBuildInputField_WithoutDefault (0.00s)
+=== RUN   TestBuildInputField_Required
+--- PASS: TestBuildInputField_Required (0.00s)
+=== RUN   TestBuildInputField_RequiredWithDefault
+--- PASS: TestBuildInputField_RequiredWithDefault (0.00s)
+=== RUN   TestDefaultQuestions_AllQuestionTypesValid
+--- PASS: TestDefaultQuestions_AllQuestionTypesValid (0.00s)
+=== RUN   TestDefaultQuestions_SelectQuestionsHaveOptions
+--- PASS: TestDefaultQuestions_SelectQuestionsHaveOptions (0.00s)
+=== RUN   TestDefaultQuestions_ConditionalQuestionsHaveConditions
+--- PASS: TestDefaultQuestions_ConditionalQuestionsHaveConditions (0.00s)
+=== RUN   TestDefaultQuestions_UniqueIDs
+--- PASS: TestDefaultQuestions_UniqueIDs (0.00s)
+=== RUN   TestRunWithDefaults_CreatesQuestions
+--- PASS: TestRunWithDefaults_CreatesQuestions (0.00s)
+=== RUN   TestRunWithDefaults_AcceptsLocaleParameter
+--- PASS: TestRunWithDefaults_AcceptsLocaleParameter (0.00s)
+=== RUN   TestDefaultQuestions_GitHubUsernameDefaultOverride
+--- PASS: TestDefaultQuestions_GitHubUsernameDefaultOverride (0.00s)
+=== RUN   TestDefaultQuestions_GitLabUsernameDefaultOverride
+--- PASS: TestDefaultQuestions_GitLabUsernameDefaultOverride (0.00s)
+=== RUN   TestDefaultQuestions_GitHubTokenCondition
+--- PASS: TestDefaultQuestions_GitHubTokenCondition (0.00s)
+=== RUN   TestIsGhAuthenticated_ReturnsBoolean
+--- PASS: TestIsGhAuthenticated_ReturnsBoolean (0.49s)
+=== RUN   TestReadLocaleFromProject_ReturnsLocale
+--- PASS: TestReadLocaleFromProject_ReturnsLocale (0.00s)
+=== RUN   TestReadLocaleFromProject_MissingFile_ReturnsEmpty
+--- PASS: TestReadLocaleFromProject_MissingFile_ReturnsEmpty (0.00s)
+=== RUN   TestReadLocaleFromProject_InvalidYAML_ReturnsEmpty
+--- PASS: TestReadLocaleFromProject_InvalidYAML_ReturnsEmpty (0.00s)
+=== RUN   TestReadLocaleFromProject_NoLanguageKey_ReturnsEmpty
+--- PASS: TestReadLocaleFromProject_NoLanguageKey_ReturnsEmpty (0.00s)
+=== RUN   TestReadGitHubUsernameFromConfig_ReturnsUsername
+--- PASS: TestReadGitHubUsernameFromConfig_ReturnsUsername (0.00s)
+=== RUN   TestReadGitHubUsernameFromConfig_MissingFile_ReturnsEmpty
+--- PASS: TestReadGitHubUsernameFromConfig_MissingFile_ReturnsEmpty (0.00s)
+=== RUN   TestReadGitLabUsernameFromConfig_ReturnsUsername
+--- PASS: TestReadGitLabUsernameFromConfig_ReturnsUsername (0.00s)
+=== RUN   TestReadGitLabUsernameFromConfig_MissingFile_ReturnsEmpty
+--- PASS: TestReadGitLabUsernameFromConfig_MissingFile_ReturnsEmpty (0.00s)
+=== RUN   TestGetUIStrings_AllLocales
+--- PASS: TestGetUIStrings_AllLocales (0.00s)
+=== RUN   TestGetLocalizedQuestion_AllLocales_ForGitModeQuestion
+--- PASS: TestGetLocalizedQuestion_AllLocales_ForGitModeQuestion (0.00s)
+=== RUN   TestBuildQuestionGroup_SelectType
+--- PASS: TestBuildQuestionGroup_SelectType (0.00s)
+=== RUN   TestBuildQuestionGroup_InputType
+--- PASS: TestBuildQuestionGroup_InputType (0.00s)
+=== RUN   TestBuildQuestionGroup_WithCondition_Personal
+--- PASS: TestBuildQuestionGroup_WithCondition_Personal (0.00s)
+=== RUN   TestBuildQuestionGroup_WithoutCondition
+--- PASS: TestBuildQuestionGroup_WithoutCondition (0.00s)
+=== RUN   TestWorktreeAutoCreateQuestion
+--- PASS: TestWorktreeAutoCreateQuestion (0.00s)
+=== RUN   TestSaveBoolAnswerWorktreeAutoCreate
+--- PASS: TestSaveBoolAnswerWorktreeAutoCreate (0.00s)
+=== RUN   TestWorktreeAutoCreateTranslationsExist
+--- PASS: TestWorktreeAutoCreateTranslationsExist (0.00s)
+=== CONT  TestAuditGateQuestions_UsesM3EnumVocabulary
+=== CONT  TestAgentWiringQuestion_InInitSetWithClosedOptionSet
+=== CONT  TestRemovedQuestionsHaveNoCaptureBranch
+--- PASS: TestRemovedQuestionsHaveNoCaptureBranch (0.00s)
+=== CONT  TestBasicPage_LocaleLiveRender
+=== CONT  TestModelPolicyRecommendedMarkerPerLocale
+=== CONT  TestOptInFlags_Defaults
+=== CONT  TestRemovedQuestionsAbsentFromInitSet
+=== CONT  TestSaveAnswerPhase1
+=== CONT  TestWizardResultDefaultsPrePopulated
+=== CONT  TestModelPolicyDescsAgreeWithProfileMatrix
+=== CONT  TestBuildQuestionGroup_ConfirmType
+=== CONT  TestBuildConfirmField_DefaultTrue
+=== CONT  TestAuditModelQuestion_UsesM3EnumVocabulary
+=== CONT  TestPage3Questions_AuditSelectionSurfaced
+=== CONT  TestTotalVisibleQuestions_Page3AlwaysCounted
+=== CONT  TestModelPolicyDefaultIsMedium
+=== CONT  TestAuditGateQuestions_DefaultProfile
+--- PASS: TestSaveAnswerPhase1 (0.00s)
+--- PASS: TestWizardResultDefaultsPrePopulated (0.00s)
+=== CONT  TestBuildConfirmField_DefaultFalse
+=== CONT  TestRemovedQuestionsHaveNoOrphanTranslations
+--- PASS: TestBuildConfirmField_DefaultTrue (0.00s)
+=== CONT  TestSaveBoolAnswer
+--- PASS: TestBuildConfirmField_DefaultFalse (0.00s)
+--- PASS: TestSaveBoolAnswer (0.00s)
+--- PASS: TestRemovedQuestionsHaveNoOrphanTranslations (0.00s)
+=== CONT  TestInitPages_MergeIntoOneGroupPerPage
+=== CONT  TestInitPages_Membership
+=== CONT  TestAdvancedBridgeRemoved
+--- PASS: TestBuildQuestionGroup_ConfirmType (0.00s)
+=== CONT  TestLSPEnabledFixedAtTrueDefault
+=== CONT  TestPage3QuestionsStructure
+--- PASS: TestAuditModelQuestion_UsesM3EnumVocabulary (0.00s)
+=== CONT  TestProjectModeQuestion
+--- PASS: TestBasicPage_LocaleLiveRender (0.00s)
+=== CONT  TestPage3Questions_NoConditional
+--- PASS: TestAuditGateQuestions_UsesM3EnumVocabulary (0.00s)
+=== CONT  TestPage3Questions_Ungated
+--- PASS: TestModelPolicyRecommendedMarkerPerLocale (0.00s)
+=== CONT  TestPage3VisibleWithoutBridge
+--- PASS: TestRemovedQuestionsAbsentFromInitSet (0.00s)
+--- PASS: TestModelPolicyDescsAgreeWithProfileMatrix (0.00s)
+=== CONT  TestAuditModelQuestion_DefaultIsClaude
+--- PASS: TestInitPages_Membership (0.00s)
+=== CONT  TestSaveAnswer_CapturesAgentWiring
+--- PASS: TestPage3Questions_AuditSelectionSurfaced (0.00s)
+--- PASS: TestSaveAnswer_CapturesAgentWiring (0.00s)
+=== CONT  TestReconfigureMembershipExcludesPage3
+=== CONT  TestReconfigureQuestions_NoHarnessLeak
+--- PASS: TestOptInFlags_Defaults (0.00s)
+=== CONT  TestAgentWiringQuestion_EnglishSourceTextPresent
+--- PASS: TestAgentWiringQuestion_InInitSetWithClosedOptionSet (0.00s)
+=== CONT  TestAgentWiringQuestion_PrecedesMCPProvision
+--- PASS: TestTotalVisibleQuestions_Page3AlwaysCounted (0.01s)
+=== CONT  TestPage3_NoModeGate
+--- PASS: TestProjectModeQuestion (0.00s)
+--- PASS: TestPage3Questions_Ungated (0.00s)
+--- PASS: TestPage3QuestionsStructure (0.01s)
+--- PASS: TestModelPolicyDefaultIsMedium (0.01s)
+--- PASS: TestLSPEnabledFixedAtTrueDefault (0.01s)
+--- PASS: TestAdvancedBridgeRemoved (0.01s)
+--- PASS: TestAuditGateQuestions_DefaultProfile (0.01s)
+--- PASS: TestReconfigureQuestions_NoHarnessLeak (0.01s)
+--- PASS: TestPage3VisibleWithoutBridge (0.01s)
+--- PASS: TestPage3Questions_NoConditional (0.01s)
+--- PASS: TestAuditModelQuestion_DefaultIsClaude (0.01s)
+--- PASS: TestAgentWiringQuestion_EnglishSourceTextPresent (0.01s)
+--- PASS: TestAgentWiringQuestion_PrecedesMCPProvision (0.01s)
+--- PASS: TestPage3_NoModeGate (0.00s)
+--- PASS: TestReconfigureMembershipExcludesPage3 (0.01s)
+--- PASS: TestInitPages_MergeIntoOneGroupPerPage (0.01s)
+PASS
+coverage: 92.9% of statements
+ok  	github.com/modu-ai/moai-adk/internal/cli/wizard	3.369s	coverage: 92.9% of statements

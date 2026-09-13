@@ -1,0 +1,5 @@
+=== RUN   TestTUINestedConfigNoParallelWriter
+=== PAUSE TestTUINestedConfigNoParallelWriter
+=== CONT  TestTUINestedConfigNoParallelWriter
+--- PASS: TestTUINestedConfigNoParallelWriter (0.00s)
+PASS

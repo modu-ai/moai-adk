@@ -1,0 +1,35 @@
+# Post-fix PTY capture — same scenario, fixed binary (WT-update-tui-layout)
+# Observed repair: the two conflict rows now lead the table (were below the
+# fold), and the visible row count grows with the real terminal height
+# (Window-size aware) — 20 file rows visible at 120x30 vs 14 pre-fix.
+
+Analyzing merge changes ---
+│  add         30          │
+│  update      30          │
+│  conflict    2           │
+│                          │
+╰──────────────────────────╯
+
+ Class			   File
+────────────────────────────────────────────────────────────────────────────────
+ conflict                  .claude/settings.json
+ conflict                  CLAUDE.md
+ add                       .agents/skills/moai-clean/SKILL.md
+ add                       .agents/skills/moai-codemaps/SKILL.md
+ add                       .agents/skills/moai-e2e/SKILL.md
+ add                       .agents/skills/moai-feedback/SKILL.md
+ add                       .agents/skills/moai-fix/SKILL.md
+ add                       .agents/skills/moai-gate/SKILL.md
+ add                       .agents/skills/moai-goal/SKILL.md
+ add                       .agents/skills/moai-harness/SKILL.md
+ add                       .agents/skills/moai-loop/SKILL.md
+ add                       .agents/skills/moai-mx/SKILL.md
+ add                       .agents/skills/moai-plan/SKILL.md
+ add                       .agents/skills/moai-project/SKILL.md
+ add                       .agents/skills/moai-review/SKILL.md
+ add                       .agents/skills/moai-run/SKILL.md
+ add                       .agents/skills/moai-sync/SKILL.md
+ add                       .agents/skills/moai-todo/SKILL.md
+ add                       .codex/agents/moai/builder-harness.toml
+ add                       .codex/agents/moai/e2e-tester.toml
+enter view diff · y confirm · n/q cancel

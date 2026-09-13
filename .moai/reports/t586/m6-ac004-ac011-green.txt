@@ -1,0 +1,28 @@
+=== AC-ITI-004 (1) non-test huh v1 imports (want 0 lines exit 1) ===
+exit=1
+
+=== AC-ITI-004 (2) test huh v1 imports (want 0 lines exit 1) ===
+exit=1
+
+=== AC-ITI-004 (3) go.mod huh v1 count (want 0) ===
+0
+exit=1
+
+=== AC-ITI-004 (3) control go.mod huh v2 count (want 1) ===
+1
+exit=0
+
+=== AC-ITI-011 (1) ls-files (want exactly wizard.go) ===
+internal/cli/wizard/wizard.go
+exit=0
+
+=== AC-ITI-011 (2) theme symbols (want 0 lines) ===
+exit=1
+
+=== AC-ITI-011 (2) control wizardIsDark (want 1 line) ===
+internal/cli/wizard/wizard.go:521:var wizardIsDark = tui.IsDarkOS
+exit=0
+
+=== AC-ITI-004 (5) GOOS=windows build ===
+win-exit=0
+

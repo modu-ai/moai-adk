@@ -1,0 +1,5 @@
+--- FAIL: TestProductionGatewayFactoryRejectsUnauthenticatedRequest (0.00s)
+    gateway_product_binding_test.go:83: gateway private configuration or verified dependencies unavailable
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/cli	1.162s
+FAIL

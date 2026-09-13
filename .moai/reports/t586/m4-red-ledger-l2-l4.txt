@@ -1,0 +1,13 @@
+RED ledger L2 / L4 — SPEC-INIT-TUX-I18N-001 acceptance.md §D.3
+Baseline: HEAD e5f5692c6, worktree .claude/worktrees/t586, branch WT-init-tux-i18n
+Judgement: 0 output lines = GREEN. Both rows print lines below, so both are RED.
+
+$ git grep -n 'No profile found' -- '*.go' ':!*_test.go'
+internal/cli/init.go:618:			Title("No profile found. Set up profile preferences now?").
+internal/cli/update.go:180:				Title("No profile found. Set up profile preferences now?").
+exit=0   (2 lines -> RED)
+
+$ git grep -n 'runProfileSetup(' -- internal/cli/init.go internal/cli/update.go
+internal/cli/init.go:626:			if err := runProfileSetup(cmd, nil); err != nil {
+internal/cli/update.go:188:				if err := runProfileSetup(cmd, nil); err != nil {
+exit=0   (2 lines -> RED)

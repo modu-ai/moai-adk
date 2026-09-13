@@ -28,10 +28,12 @@ func regressionNativeEgress(t *testing.T, stream bool) {
 	}
 	input := map[string]any{"model": "gpt-5.6-sol", "max_tokens": 10, "stream": stream, "messages": []any{map[string]any{"role": "user", "content": "hello"}, map[string]any{"role": "assistant", "content": []any{map[string]any{"type": "redacted_thinking", "data": env.Data()}, map[string]any{"type": "text", "text": "answer"}}}, map[string]any{"role": "user", "content": "continue"}}}
 	body, _ := json.Marshal(input)
-	var sent string
+	// The handler goroutine must hand the observed bytes through a channel: a
+	// shared variable would be a data race against the test goroutine's read.
+	sent := make(chan string, 1)
 	tr, calls := oaiTLS(t, func(w http.ResponseWriter, r *http.Request) {
 		b, _ := io.ReadAll(r.Body)
-		sent = string(b)
+		sent <- string(b)
 		w.Header().Set("Content-Type", "text/event-stream")
 		io.WriteString(w, oaiSSE())
 	})
@@ -44,12 +46,19 @@ func regressionNativeEgress(t *testing.T, stream bool) {
 		t.Fatal(e)
 	}
 	resp, e := adapter.Send(context.Background(), RoutedRequest{Entry: oaiEntry(AuthPKCE), Body: body, Credential: ref, Generation: gen})
-	oaiRead(t, resp, e)
+	respBody := oaiRead(t, resp, e)
 	if calls.Load() != 1 || resp.StatusCode != 200 {
-		t.Fatalf("probe failed status=%d calls=%d", resp.StatusCode, calls.Load())
+		// The collected body is the only diagnostic the 502 short-circuit in
+		// the adapter carries; surface it verbatim for CI failure logs.
+		t.Fatalf("probe failed status=%d calls=%d body=%s", resp.StatusCode, calls.Load(), respBody)
 	}
-	t.Logf("observed subscription request: %s", sent)
-	if !strings.Contains(sent, raw) {
-		t.Fatal("opaque item original bytes lost at subscription egress")
+	select {
+	case observed := <-sent:
+		t.Logf("observed subscription request: %s", observed)
+		if !strings.Contains(observed, raw) {
+			t.Fatal("opaque item original bytes lost at subscription egress")
+		}
+	default:
+		t.Fatal("subscription request was not observed")
 	}
 }
