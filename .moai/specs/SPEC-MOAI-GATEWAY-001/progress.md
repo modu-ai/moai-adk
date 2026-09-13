@@ -150,9 +150,10 @@
 
 ## §E.3 Run-phase Audit-Ready Signal
 
-감사 준비 미완료. t653 run-phase의 자동화 가능 부분(M2 resume, M3 idle 모델, M4 compaction, M5 경계 fork)은 커밋 `14dba89c5`·`e45f50a8d`·`64885fa06`로 착지하고 패키지 테스트·커버리지·Windows 빌드·lint 0·gofmt가 이번 실행에서 실측됐으나, 실증 항목(AS-010 실세션 회상, AS-011 실제 turn model 일치, AS-012 실제 Claude 압축 수집, AS-013 실분기 양성)은 전부 미수행이고 M1 native fork 전제 실패 NOT-RUN이 유지된다.
-`run_complete_at`과 완료 신호는 발행하지 않는다(실증 gap이 닫히지 않았다). `run_commit_sha` 후보는 `64885fa06`이지만 이는 완료 신호가 아니다.
-저장소 전체 시험 판정은 통합 브랜치 CI의 소관으로 PENDING이다. 상세 판정 초안: [run-verdict.md](../../reports/t653/run-verdict.md).
+run-phase 완료. `run_complete_at: 2026-09-14`, `run_commit_sha: 9f3dc41e0`.
+t653 run-phase의 자동화 가능 부분(M2 resume, M3 idle 모델, M4 compaction, M5 경계 fork)은 커밋 `14dba89c5`·`e45f50a8d`·`64885fa06`로 착지하고 패키지 테스트·커버리지(codexbridge 83.1% / receipt 88.9% / conversation 80.3% / gateway 91.7%)·Windows 빌드·lint 0·gofmt가 이번 실행에서 실측됐다.
+실증 gap의 처분 근거: acceptance.md:469 **T21** — AS-010(실세션 회상)·AS-011(실제 turn model 일치)·AS-012(실제 Claude 압축 수집)의 실세션 양성 실증은 카드 **t844**(라이브 계측 세션)로 이관됐고, AS-013은 이관 대상이 아니며 설계된 전제 실패 NOT-RUN(M1 probe, `.moai/reports/t653/m1-native-fork-probe.md`)을 유지한다. t844의 실세션 양성이 도래하기 전까지 전체 기능 통과는 보류다.
+저장소 전체 시험 판정은 통합 브랜치 CI의 소관이다. 상세 판정 초안: [run-verdict.md](../../reports/t653/run-verdict.md).
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
