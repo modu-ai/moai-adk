@@ -53,7 +53,7 @@
 ## §E.3 Run-phase Audit-Ready Signal
 
 - run_complete_at: 2026-09-14
-- run_commit_sha: "pending-backfill-run" (M2 커밋이 이 필드를 운반 — 후속 커밋에서 실측 SHA로 backfill)
+- run_commit_sha: "ffc872ae5" (backfilled — M2 증거 커밋; 본 필드를 운반하는 M3 커밋은 자기 SHA를 알 수 없어 후속 커밋에서 backfill)
 - run_status: complete
 - ac_pass_count: 5
 - ac_fail_count: 0
