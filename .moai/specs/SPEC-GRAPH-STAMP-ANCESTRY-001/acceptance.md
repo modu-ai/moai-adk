@@ -4,7 +4,7 @@
 
 - Tier: M
 - 요구사항: REQ-GSA-001~REQ-GSA-012
-- 기준 RED 트리: `7097e6e214195c45e65cab5fa565b19ca4514c4e`
+- 문서 수준 기준 RED 트리: `7097e6e214195c45e65cab5fa565b19ca4514c4e`. 이 핀은 **자기 핀을 갖지 않은 모든 기준에 대해서만** 유효하다. `§D` 원장의 항목이 자기 `tree_sha`를 담고 있으면 그쪽이 이긴다 — 실제로 `RED-GSA-008`은 `b4626c0421d3b21564fcf7ba08967889af52a278`에서 측정됐다. 두 값이 다른 것은 드리프트가 아니라 두 측정이 서로 다른 트리에서 났다는 사실의 기록이다(`.claude/rules/moai/development/verification-completeness.md §2.1a`).
 - release-blocking 기준은 아래 RED 원장에 명령·원문 출력·종료코드·트리 SHA가 모두 있는 항목뿐이다.
 - 현재 트리에서 다시 실행할 수 없는 과거 수치나 사건은 regression guard로만 분류하며 PASS로 기록하지 않는다.
 - selector가 0개 테스트를 실행하거나 `[no tests to run]`을 출력하면 해당 AC는 FAIL이다.

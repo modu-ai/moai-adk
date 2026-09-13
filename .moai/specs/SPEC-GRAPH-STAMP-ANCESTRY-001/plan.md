@@ -28,7 +28,7 @@
 | CLI | `internal/cli/graph_check.go` | system error 출력에 `unreachable stamp`, `freshness unmeasured`, genuine regeneration + reachable stamp 복구를 식별 가능하게 싣고 숫자 row를 만들지 않는다. |
 | CLI tests | `internal/cli/graph_check*_test.go` | exit 2와 복구 문구, 숫자 출력 부재를 고정한다. |
 | workflow | `.github/workflows/graph-freshness.yml` | push의 early-success 경로를 제거하고 target을 `HEAD`로 정해 동일 조상성 검사를 수행한다. ordinary PR와 `release/*` 대상 선택은 보존한다. |
-| codemaps | `.moai/project/codemaps/**` | 코드·워크플로 변경을 실제로 반영해 본문을 재생성하고, 도달 가능한 커밋으로 스탬핑한다. |
+| codemaps | `.moai/project/codemaps/{overview,modules,dependencies,entry-points,data-flow}.md` | 코드·워크플로 변경을 실제로 반영해 본문을 재생성하고, 도달 가능한 커밋으로 스탬핑한다. 같은 디렉터리의 `docs-truth.md`, `fold-judgments.txt`, `provenance.json`은 생성기 산출물이 아니므로 재생성 대상 밖이다(`spec.md §B.1 G3`). |
 | evidence | `.moai/reports/t688/**`, 이 SPEC의 `progress.md` | RED/GREEN 명령, 출력, 종료코드, 트리 SHA와 감사 결과를 보존한다. |
 
 ### §A.4 반드시 보존할 대상
@@ -144,7 +144,7 @@ clean `commit_sha` 경로에서는 아래 순서를 지킨다.
 
 ### M4 — 실제 codemaps 재생성 및 reachable stamp (Priority High)
 
-- `/moai codemaps --force`의 생성기 계약에 따라 5문서를 현재 변경에 맞게 실제 재생성한다.
+- `/moai codemaps --force`의 생성기 계약에 따라 5문서(`overview` / `modules` / `dependencies` / `entry-points` / `data-flow`)를 현재 변경에 맞게 실제 재생성한다. `docs-truth.md`는 이 다섯에 들지 않는다.
 - 본문 변경을 검토하고, checkout에서 도달 가능한 commit으로 스탬핑한다.
 - ancestry 성공과 `described-source-diff < 40`을 서로 다른 검사로 관측한다. bare restamp만으로는 M4를 완료할 수 없다.
 

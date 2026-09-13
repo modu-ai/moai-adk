@@ -1,7 +1,7 @@
 ---
 id: SPEC-GRAPH-STAMP-ANCESTRY-001
 title: "Graph codemaps 스탬프 조상성 선판정과 push 가드 종결"
-version: "0.1.1"
+version: "0.2.0"
 status: draft
 created: 2026-09-13
 updated: 2026-09-13
@@ -23,6 +23,7 @@ related_specs: [SPEC-V3R6-GRAPH-FRESHNESS-001, SPEC-V3R6-GRAPH-FRESHNESS-002, SP
 
 | Version | Date | Change | Author |
 |---|---|---|---|
+| 0.2.0 | 2026-09-13 | plan 산출물 네 개를 함께 읽고 교차 불일치를 메웠다. §B.1의 목표 식별자를 `G1~G3`으로 바꿔 `plan.md §F`의 마일스톤 `M1~M5`와 겹치던 라벨 충돌을 없앴다(종전 `M3`은 두 문서에서 서로 다른 일을 가리켰다). §D 판정 순서표에 본문 부재(C1) 행을 추가해 `VerdictAbsent` 두 용법이 규범 표에서 갈리도록 했다. 생성기 5문서의 이름을 §B.1에 명시해 `docs-truth.md` 제외가 검증 가능해졌다. warning-only 완화를 §G 제외 범위로 승격했다(종전에는 `progress.md` 메모에만 있었다). | manager-spec |
 | 0.1.1 | 2026-09-13 | 중단된 plan 단계를 재개해 실제 checker·CLI·workflow·provenance producer와 관련 완료 SPEC 6개를 대조했다. 선행 SPEC의 두 문구 충돌을 명시적으로 판정했다. 오류 경로의 `VerdictAbsent`는 substantive freshness verdict가 아닌 호환 운반체로 한정하고, push의 object-only 허용은 이 SPEC의 `HEAD` 조상성 검사로 대체한다. release PR의 merge-preview `HEAD` 분기는 현재 workflow의 t407 후속 결정을 보존한다. | manager-spec |
 | 0.1.0 | 2026-09-13 | 카드 t688에서 최초 작성. Git 위상 비교 가능성과 freshness 값 초과를 서로 다른 실패 종류로 고정하고, checker 선판정·push 가드·진짜 codemaps 재생성을 한 실행 계약으로 묶었다. GH issue #1661은 발생 이력과 관계만 기록하며 회신·종료는 리드 소관으로 남겼다. | manager-spec |
 
@@ -41,9 +42,11 @@ related_specs: [SPEC-V3R6-GRAPH-FRESHNESS-001, SPEC-V3R6-GRAPH-FRESHNESS-002, SP
 
 ### §B.1 목표
 
-- **M1**: clean 스탬프의 객체 존재와 checkout `HEAD` 조상성을 freshness 계산보다 먼저 판별한다. 객체가 존재하지만 조상이 아니면 freshness는 미측정이며, `VerdictAbsent` 운반체와 system error/exit 2로 보고한다.
-- **M2**: `push` 이벤트가 clean 스탬프의 조상성을 checkout `HEAD`에 대해 검사하도록 워크플로 가드를 닫는다. 기존 ordinary PR와 `release/*` merge-preview 대상 선택은 유지한다.
-- **M3**: 코드 변경 뒤 codemaps 생성 계약의 5개 문서를 실제로 재생성하고 해당 실행 경로의 판정 대상에서 도달 가능한 커밋에 스탬핑해, 위상 비교 가능 상태에서 독립 freshness 값이 40 미만으로 돌아오는 것을 증명한다. `docs-truth.md`는 생성기 산출물이 아니므로 에이전트 카탈로그 사실이 바뀐 경우에만 별도 수동 갱신하며, 본 SPEC의 graph 동작 변경만으로는 재생성됐다고 주장하지 않는다.
+목표 식별자는 `G1~G3`이다. `plan.md §F`의 마일스톤 `M1~M5`와 **겹치지 않는 축**이며, 서로 1:1로 대응하지도 않는다(예: `G3`은 `plan.md`의 `M4`가 수행한다). 두 축에 같은 라벨을 쓰면 같은 이름이 서로 다른 일을 가리키므로 분리한다.
+
+- **G1**: clean 스탬프의 객체 존재와 checkout `HEAD` 조상성을 freshness 계산보다 먼저 판별한다. 객체가 존재하지만 조상이 아니면 freshness는 미측정이며, `VerdictAbsent` 운반체와 system error/exit 2로 보고한다.
+- **G2**: `push` 이벤트가 clean 스탬프의 조상성을 checkout `HEAD`에 대해 검사하도록 워크플로 가드를 닫는다. 기존 ordinary PR와 `release/*` merge-preview 대상 선택은 유지한다.
+- **G3**: 코드 변경 뒤 codemaps 생성 계약의 5개 문서를 실제로 재생성하고 해당 실행 경로의 판정 대상에서 도달 가능한 커밋에 스탬핑해, 위상 비교 가능 상태에서 독립 freshness 값이 40 미만으로 돌아오는 것을 증명한다. 생성기 5문서는 `overview.md`, `modules.md`, `dependencies.md`, `entry-points.md`, `data-flow.md`이다(`.claude/skills/moai/workflows/codemaps.md` § Output Files). `docs-truth.md`는 이 다섯에 들지 않는 생성기 밖 문서이므로 에이전트 카탈로그 사실이 바뀐 경우에만 별도 수동 갱신하며, 본 SPEC의 graph 동작 변경만으로는 재생성됐다고 주장하지 않는다. `fold-judgments.txt`와 `provenance.json`도 생성기 5문서가 아니다.
 
 ### §B.2 핵심 판정
 
@@ -99,7 +102,7 @@ Clean `commit_sha`가 있는 codemaps checker는 어떤 freshness 값이나 cont
 
 ### REQ-GSA-011 — 진짜 재생성 종결 (When, event-driven)
 
-**When** M1과 M2의 코드·워크플로 변경 뒤 codemaps가 stale이면, M3는 codemaps 본문을 실제 변경 내용에 맞게 재생성한 뒤 checkout에서 도달 가능한 커밋으로 스탬핑해야 하며(shall), 그 결과 clean 스탬프 조상성 검사가 통과하고 `described-source-diff`가 40 미만임을 함께 증명해야 한다(shall).
+**When** checker·CLI·워크플로 변경이 트리에 반영된 뒤 codemaps가 stale이면, 종결 작업은 codemaps 본문을 실제 변경 내용에 맞게 재생성한 뒤 checkout에서 도달 가능한 커밋으로 스탬핑해야 하며(shall), 그 결과 clean 스탬프 조상성 검사가 통과하고 `described-source-diff`가 40 미만임을 함께 증명해야 한다(shall).
 
 ### REQ-GSA-012 — 기존 freshness 계약 보존 (Ubiquitous)
 
@@ -109,14 +112,15 @@ Clean `commit_sha`가 있는 codemaps checker는 어떤 freshness 값이나 cont
 
 checker는 아래 표를 위에서 아래로 적용한다. freshness 값은 비교 가능한 행에서만 계산한다.
 
-| 순서 | provenance/위상 상태 | freshness 계산 | report 의미 | CLI 종료 |
-|---|---|---|---|---|
-| 1 | clean 스탬프 객체를 해석할 수 없음 | 하지 않음 | `VerdictAbsent`; stamp unresolved, freshness unmeasured | 2 |
-| 2 | clean 스탬프 객체는 존재하지만 checkout `HEAD`의 조상이 아님 | 하지 않음 | `VerdictAbsent`; stamp unreachable, freshness unmeasured | 2 |
-| 3 | clean 스탬프가 checkout `HEAD`의 조상 | `described-source-diff` 계산 | 값 ≥40은 stale, 값 <40은 fresh | stale 1 / 전체 fresh 0 |
-| 4 | 유효한 dirty fingerprint anchor | 기존 fingerprint 비교만 수행 | mismatch는 stale, match는 fresh | stale 1 / 전체 fresh 0 |
+| 순서 | provenance/위상 상태 | freshness 계산 | report 의미 | system error | CLI 종료 |
+|---|---|---|---|---|---|
+| 1 | codemaps 본문이 실제로 없음 (C1) | 하지 않음 | `VerdictAbsent`; body absent — **기존 계약 그대로, 이 SPEC이 바꾸지 않는다** | nil | 1 |
+| 2 | clean 스탬프 객체를 해석할 수 없음 | 하지 않음 | `VerdictAbsent`; stamp unresolved, freshness unmeasured | non-nil | 2 |
+| 3 | clean 스탬프 객체는 존재하지만 checkout `HEAD`의 조상이 아님 | 하지 않음 | `VerdictAbsent`; stamp unreachable, freshness unmeasured | non-nil | 2 |
+| 4 | clean 스탬프가 checkout `HEAD`의 조상 | `described-source-diff` 계산 | 값 ≥40은 stale, 값 <40은 fresh | nil | stale 1 / 전체 fresh 0 |
+| 5 | 유효한 dirty fingerprint anchor | 기존 fingerprint 비교만 수행 | mismatch는 stale, match는 fresh | nil | stale 1 / 전체 fresh 0 |
 
-`VerdictAbsent`라는 문자열만으로 1·2행과 실제 본문 부재를 합치지 않는다. reason과 system-error 유무가 의미를 구분한다.
+1행이 표에 있는 이유는 그것이 이 SPEC의 변경 대상이어서가 아니라 **`VerdictAbsent`가 세 행에 걸쳐 서로 다른 뜻으로 나타나기 때문**이다. 그 문자열만 읽고 1행과 2·3행을 합치는 것이 REQ-GSA-003이 막는 오독이며, 규범 표가 세 경우를 모두 담고 있어야 그 구분이 검증 가능하다. 갈라내는 신호는 두 가지다 — **system error의 유무**(1행 nil, 2·3행 non-nil)와 **reason 문자열**. 종료코드만으로는 부족하다: 1행과 4행의 stale이 둘 다 exit 1이기 때문이다.
 
 ## §E. 제약
 
@@ -142,6 +146,12 @@ checker는 아래 표를 위에서 아래로 적용한다. freshness 값은 비�
 
 - 도달 불가나 stale을 자동으로 재스탬핑하지 않는다.
 - codemaps 본문을 재생성하지 않은 채 provenance만 다시 쓰는 복구를 추가하거나 권하지 않는다.
+
+### Out of Scope — warning-only 완화
+
+- 도달 불가 스탬프를 경고로만 보고하고 exit 0으로 통과시키는 모드를 만들지 않는다. 이 경로는 fail closed(exit 2)이며 완화 스위치도, 설정 키도 추가하지 않는다.
+- push 가드에 warn-only 옵션을 붙이지 않는다. 비조상은 job failure다.
+- 이 제외는 종전에 `progress.md` 메모에만 있었다. 제외 범위는 SPEC이 소유해야 진행 기록이 지워져도 살아남으므로 여기로 올린다.
 
 ### Out of Scope — 병합 정책 변경
 
