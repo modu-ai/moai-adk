@@ -439,86 +439,67 @@ func (g *QualityGate) Run(ctx context.Context) (bool, string) {
 		return false, gfBlockReason
 	}
 
-	detected := g.detectToolchain()
-	if detected == nil {
+	tcs := g.detectToolchains()
+	if len(tcs) == 0 {
 		// No recognized language at any scanned level — pass, carrying the
 		// graph-freshness notice (the step ran before detection; dropping its
 		// notice here is the silence REQ-GF-005 forbids).
 		return true, gfNotice
 	}
-	tc := detected.tc
-	// detected.tc's steps execute at detected.root — detectToolchain bound it
-	// into g.detectedRoot, and every toolchain-scoped step below resolves its
-	// directory through stepDir. Without that binding, a newly detected nested
-	// Go module would run `go vet ./...` from the project top — outside its
-	// module — and flip the failure from silent-pass to loud-fail (GH #1680
-	// layer 3).
+	// A monorepo can carry several language toolchains at once (package.json
+	// at the top plus go.mod under apps/id/, say); each detected entry runs
+	// its steps rooted at the directory whose marker matched it (GH #1680).
 
 	// Seed one record per configured step BEFORE anything runs, so a step the
 	// run never reaches is reportable as such. Populating the summary as steps
 	// complete instead would leave an aborted run silent about everything after
 	// the failure — which is indistinguishable from those steps having passed.
 	g.summary = newRunSummary()
-	for _, step := range tc.vetSteps {
-		g.summary.seed(step.name)
+	for i := range tcs {
+		for _, step := range tcs[i].tc.vetSteps {
+			g.summary.seed(step.name)
+		}
 	}
 	if g.config.TypecheckEnabled {
 		g.summary.seed(typecheckStepName)
 	}
-	for _, step := range tc.lintSteps {
-		g.summary.seed(step.name)
-	}
-	if tc.testStep != nil {
-		g.summary.seed(tc.testStep.name)
-	}
-
-	// Step 1: vet steps
-	var vetReason string
-	for _, step := range tc.vetSteps {
-		ok, out := g.executeStep(ctx, step, g.config.VetTimeout)
-		if !ok {
-			return false, g.withSummary(out)
+	for i := range tcs {
+		// The lint axis resolves per entry before seeding: a project's own
+		// scripts.lint replaces the config-gated entries (issue #1631), and
+		// a superseded entry is not a configured step for this project. A
+		// watch-prone script seeds nothing here — execution reports the axis
+		// as skipped, lazily seeding the rows with the reason.
+		steps, _, watchProne := resolveNodeLintSteps(tcs[i].tc.lintSteps, tcs[i].root)
+		if !watchProne {
+			for _, step := range steps {
+				g.summary.seed(step.name)
+			}
 		}
-		vetReason = appendReason(vetReason, out)
+		if tcs[i].tc.testStep != nil {
+			g.summary.seed(tcs[i].tc.testStep.name)
+		}
 	}
 
 	// passReason carries a passing step's notice out to Run's caller. Dropping
 	// it here is what left an absent ast-grep scanner indistinguishable from a
 	// clean scan: the step reported the skip and this frame threw it away.
 	// The graph-freshness notice (step 0) leads: it is the outermost wrap.
-	passReason := appendReason(gfNotice, vetReason)
+	passReason := gfNotice
 
-	// Step 1.5: typecheck axis.
-	//
-	// It runs after vet and before lint so a type error surfaces before the
-	// slower style pass, and so a project whose linter is absent still gets a
-	// correctness gate. Every outcome is reported: a skip is not a failure,
-	// but it is never silent — that silence is what let a broken build through.
-	if g.config.TypecheckEnabled {
-		step, reason, ok := resolveTypecheckStep(tc.typecheckStep, g.stepDir("QualityGate.Run.typecheck"), g.config.TypecheckCommand)
-		switch {
-		case ok:
-			passed, out := g.executeStep(ctx, step, g.config.TypecheckTimeout)
-			if !passed {
-				return false, g.withSummary(out)
-			}
-			passReason = appendReason(passReason, out)
-		default:
-			g.summary.markSkipped(typecheckStepName, condenseSkipReason(typecheckStepName, reason))
-			passReason = appendReason(passReason, reason)
-		}
-	}
-
-	// Step 2: lint steps
-	for _, step := range tc.lintSteps {
-		ok, out := g.executeStep(ctx, step, g.config.LintTimeout)
+	// Steps 1, 1.5, and 2 per toolchain: vet, then typecheck, then lint —
+	// a type error still surfaces before the slower style pass, and a
+	// toolchain whose linter is absent still gets its correctness gate before
+	// the next toolchain's steps begin.
+	for i := range tcs {
+		out, ok := g.runToolchainStaticSteps(ctx, &tcs[i])
 		if !ok {
 			return false, g.withSummary(out)
 		}
 		passReason = appendReason(passReason, out)
 	}
 
-	// Step 2.5: ast-grep domain rules
+	// Step 2.5: ast-grep domain rules — project-level, run once rather than
+	// per toolchain; the rules are language-agnostic domain patterns.
 	// ASTG-UPGRADE-001: switched to RunAstGrepGateV2 which uses the unified Scanner
 	if g.config.AstGrepGate != nil && g.config.AstGrepGate.Enabled {
 		// REQ-HCWA-007: route cwd resolution through resolveQualityProjectDir.
@@ -530,33 +511,114 @@ func (g *QualityGate) Run(ctx context.Context) (bool, string) {
 		passReason = appendReason(passReason, out)
 	}
 
-	// Step 3: test step (skippable)
-	if tc.testStep != nil && g.config.SkipTests {
-		g.summary.markSkipped(tc.testStep.name, reasonSkipTests)
-	}
-	if !g.config.SkipTests && tc.testStep != nil {
-		// The Node test step is resolved to a self-terminating (run-form)
-		// command right before execution, reading the project's package.json
-		// scripts from the resolved project dir.
-		// Every other toolchain's step passes through unchanged.
-		// REQ-HCWA-007: route cwd resolution through resolveQualityProjectDir.
-		// The module root bound by detection (stepDir) is what a nested
-		// package's scripts are read from.
-		testStep := resolveNodeTestStep(*tc.testStep, g.stepDir("QualityGate.Run.nodeTestStep"))
-		// The resolved step reaches executeStep under its own name, so the
-		// seeded row follows it; otherwise the run would report the configured
-		// step as never reached and the resolved one as an extra.
-		g.summary.relabel(tc.testStep.name, testStep.name)
-		ok, out := g.executeStep(ctx, testStep, g.config.TestTimeout)
+	// Step 3: test step per toolchain (skippable) — the slowest axis runs
+	// last, so a lint failure in a later toolchain does not wait behind an
+	// earlier toolchain's full test suite.
+	for i := range tcs {
+		out, ok := g.runToolchainTestStep(ctx, &tcs[i])
 		if !ok {
 			return false, g.withSummary(out)
 		}
-		// The test step's pass-side value used to be discarded outright — the
-		// one axis whose notice never reached the caller at all.
 		passReason = appendReason(passReason, out)
 	}
 
 	return true, g.withSummary(passReason)
+}
+
+// runToolchainStaticSteps runs one detected toolchain's vet, typecheck, and
+// lint axes, rooted at the directory whose marker matched it. A nested
+// module's steps MUST execute at the module root: the project top is not
+// inside the nested module, so toolchain arguments like ./... only resolve
+// there — a step run at the top would flip the failure from silent-pass to
+// loud-fail ("go: cannot find main module"), the direction GH #1680's layer 3
+// warns against.
+func (g *QualityGate) runToolchainStaticSteps(ctx context.Context, dt *detectedToolchain) (string, bool) {
+	dir := dt.root
+	if dir == "" {
+		dir = resolveQualityProjectDir(*g.config, "QualityGate.runToolchainStaticSteps")
+	}
+
+	// Step 1: vet steps
+	var vetReason string
+	for _, step := range dt.tc.vetSteps {
+		ok, out := g.executeStep(ctx, step, dir, g.config.VetTimeout)
+		if !ok {
+			return out, false
+		}
+		vetReason = appendReason(vetReason, out)
+	}
+
+	var passReason string
+	// Step 1.5: typecheck axis.
+	//
+	// It runs after vet and before lint so a type error surfaces before the
+	// slower style pass, and so a project whose linter is absent still gets a
+	// correctness gate. Every outcome is reported: a skip is not a failure,
+	// but it is never silent — that silence is what let a broken build through.
+	if g.config.TypecheckEnabled {
+		step, reason, ok := resolveTypecheckStep(dt.tc.typecheckStep, dir, g.config.TypecheckCommand)
+		switch {
+		case ok:
+			passed, out := g.executeStep(ctx, step, dir, g.config.TypecheckTimeout)
+			if !passed {
+				return out, false
+			}
+			passReason = appendReason(passReason, out)
+		default:
+			g.summary.markSkipped(typecheckStepName, condenseSkipReason(typecheckStepName, reason))
+			passReason = appendReason(passReason, reason)
+		}
+	}
+
+	// Step 2: lint steps. The axis resolves the same way seeding resolved it
+	// (issue #1631): a declared scripts.lint runs as the toolchain's only
+	// lint step; a watch-prone one is reported, never run — hanging to the
+	// lint timeout would be a false red on every commit, and the skip rows
+	// carry the reason so the substitution stays visible.
+	resolvedLint, lintScript, lintWatchProne := resolveNodeLintSteps(dt.tc.lintSteps, dir)
+	if lintWatchProne {
+		for _, step := range dt.tc.lintSteps {
+			g.summary.markSkipped(step.name, fmt.Sprintf(reasonLintScriptWatchProneFmt, lintScript))
+		}
+		return appendReason(vetReason, passReason), true
+	}
+	for _, step := range resolvedLint {
+		ok, out := g.executeStep(ctx, step, dir, g.config.LintTimeout)
+		if !ok {
+			return out, false
+		}
+		passReason = appendReason(passReason, out)
+	}
+
+	return appendReason(vetReason, passReason), true
+}
+
+// runToolchainTestStep runs one detected toolchain's test step, rooted at the
+// directory whose marker matched it.
+func (g *QualityGate) runToolchainTestStep(ctx context.Context, dt *detectedToolchain) (string, bool) {
+	if dt.tc.testStep == nil {
+		return "", true
+	}
+	if g.config.SkipTests {
+		g.summary.markSkipped(dt.tc.testStep.name, reasonSkipTests)
+		return "", true
+	}
+	dir := dt.root
+	if dir == "" {
+		dir = resolveQualityProjectDir(*g.config, "QualityGate.runToolchainTestStep")
+	}
+	// The Node test step is resolved to a self-terminating (run-form)
+	// command right before execution, reading the project's package.json
+	// scripts from the toolchain's own root — a nested package's scripts are
+	// read from the nested package.json, not the project top's.
+	// Every other toolchain's step passes through unchanged.
+	testStep := resolveNodeTestStep(*dt.tc.testStep, dir)
+	// The resolved step reaches executeStep under its own name, so the
+	// seeded row follows it; otherwise the run would report the configured
+	// step as never reached and the resolved one as an extra.
+	g.summary.relabel(dt.tc.testStep.name, testStep.name)
+	ok, out := g.executeStep(ctx, testStep, dir, g.config.TestTimeout)
+	return out, ok
 }
 
 // withSummary stacks the run's execution summary beneath whatever the run
@@ -570,48 +632,37 @@ func (g *QualityGate) withSummary(out string) string {
 // detectedToolchain pairs the matched language toolchain with the directory
 // whose marker files matched. root is the resolved project directory for a
 // top-level match and the nested module root for one found by the recursive
-// scan — steps execute there (stepDir), so `go vet ./...` in a monorepo runs
-// inside the module that owns it instead of at the project top (GH #1680).
+// scan — steps execute there, so `go vet ./...` in a monorepo runs inside the
+// module that owns it instead of at the project top (GH #1680). tableIdx
+// carries the toolchains-table position of the matched entry so a caller that
+// wants a single winner can rank entries by the same precedence the scan
+// uses.
 type detectedToolchain struct {
-	tc   *langToolchain
-	root string
+	tc       *langToolchain
+	root     string
+	tableIdx int
 }
 
-// detectToolchain finds the matching toolchain for the project. The project
-// directory is scanned first, preserving existing precedence: a root-level
-// marker outranks any nested one. When the top level carries no marker, a
-// bounded recursive scan below it picks up modules whose markers live in a
-// subdirectory (GH #1680) — a monorepo whose only go.mod sits at apps/<svc>
-// previously detected nothing and the gate passed with zero coverage.
-//
-// The recursive scan skips dependency/build/cache directories
-// (sourceScanSkipDirs: vendor, node_modules, .git, dist among them), never
-// descends below a directory whose marker matched (what lives under a module
-// root belongs to it), and stops config.DefaultGateMarkerScanDepth levels
-// below the project root. nil means no recognized language at any scanned
-// level.
-//
-// detectToolchain binds the match's directory into g.detectedRoot as a side
-// effect — detection and root binding are one act, so a caller (Run, or a
-// test) cannot observe a detection whose steps would run at the wrong level.
+// detectToolchain finds the single best-matching toolchain: the root-level
+// match when there is one (existing precedence — a root marker outranks any
+// nested one), otherwise the nested entry ranked first by toolchains-table
+// order. Kept as a thin wrapper over detectToolchains for callers that want
+// one entry; Run consumes the full list.
 func (g *QualityGate) detectToolchain() *detectedToolchain {
-	// REQ-HCWA-007: route cwd resolution through resolveQualityProjectDir.
-	dir := resolveQualityProjectDir(*g.config, "QualityGate.detectToolchain")
-	if dir == "" {
-		g.detectedRoot = ""
+	tcs := g.detectToolchains()
+	if len(tcs) == 0 {
 		return nil
 	}
-	if d, _ := g.matchToolchainAt(dir); d != nil {
-		g.detectedRoot = d.root
-		return d
+	if dir := resolveQualityProjectDir(*g.config, "QualityGate.detectToolchain"); dir != "" && tcs[0].root == dir {
+		return &tcs[0]
 	}
-	d := g.detectNestedToolchain(dir)
-	if d == nil {
-		g.detectedRoot = ""
-		return nil
+	best := 0
+	for i := 1; i < len(tcs); i++ {
+		if tcs[i].tableIdx < tcs[best].tableIdx {
+			best = i
+		}
 	}
-	g.detectedRoot = d.root
-	return d
+	return &tcs[best]
 }
 
 // matchToolchainAt returns the first toolchain whose marker files exist in
@@ -621,101 +672,131 @@ func (g *QualityGate) detectToolchain() *detectedToolchain {
 // rank candidates across directories by the same precedence.
 func (g *QualityGate) matchToolchainAt(dir string) (*detectedToolchain, int) {
 	for i := range toolchains {
-		for _, marker := range toolchains[i].markerFiles {
-			matched := false
-			if strings.Contains(marker, "*") {
-				// Glob pattern (e.g., "*.csproj")
-				matches, err := filepath.Glob(filepath.Join(dir, marker))
-				matched = err == nil && len(matches) > 0
-			} else {
-				matched = fileExists(filepath.Join(dir, marker))
-			}
-			if matched {
-				return &detectedToolchain{
-					tc:   resolvePythonRunner(resolveGoBuildTags(resolveDartFlutter(&toolchains[i], dir), g.config.GoBuildTags), dir),
-					root: dir,
-				}, i
-			}
+		if g.matchMarker(dir, &toolchains[i]) {
+			return &detectedToolchain{
+				tc:   g.resolveToolchainAt(i, dir),
+				root: dir,
+			}, i
 		}
 	}
 	return nil, -1
 }
 
-// nestedCandidate is one module root the recursive scan found, carried with
-// its toolchains-table position so the best candidate can be selected by
-// table order rather than by walk order.
-type nestedCandidate struct {
-	tableIdx int
-	dt       detectedToolchain
+// matchMarker reports whether any of the toolchain's marker files exist at
+// dir — literal names by existence, glob patterns (e.g. "*.csproj") by match
+// count.
+func (g *QualityGate) matchMarker(dir string, tc *langToolchain) bool {
+	for _, marker := range tc.markerFiles {
+		if strings.Contains(marker, "*") {
+			matches, err := filepath.Glob(filepath.Join(dir, marker))
+			if err == nil && len(matches) > 0 {
+				return true
+			}
+			continue
+		}
+		if fileExists(filepath.Join(dir, marker)) {
+			return true
+		}
+	}
+	return false
 }
 
-// detectNestedToolchain scans below root for module roots the top-level
-// check missed (GH #1680) and returns the best one: lowest toolchains-table
-// index, with WalkDir's deterministic order (shallowest, then
-// lexicographically first) breaking ties — so nested apps/api/go.mod wins
-// over nested apps/web/package.json exactly as the table orders Go before
-// Node. A read error on root itself yields nil (no detection); errors on
-// directories below it skip that directory only, so one permission hole
-// cannot erase a module the scan did reach.
-func (g *QualityGate) detectNestedToolchain(root string) *detectedToolchain {
-	maxDepth := config.DefaultGateMarkerScanDepth
-	var candidates []nestedCandidate
+// resolveToolchainAt applies the per-language variants (Flutter vs Dart, Go
+// build tags, Python runner) rooted at dir — the composition
+// matchToolchainAt has always applied to its single hit.
+func (g *QualityGate) resolveToolchainAt(i int, dir string) *langToolchain {
+	return resolvePythonRunner(resolveGoBuildTags(resolveDartFlutter(&toolchains[i], dir), g.config.GoBuildTags), dir)
+}
 
-	walkErr := filepath.WalkDir(root, func(path string, d fs.DirEntry, err error) error {
+// detectToolchains finds every language toolchain applicable to the project:
+// the root-level first match — preserving detectToolchain's original
+// precedence — plus, from a bounded walk below the project dir, one entry
+// per language whose marker matched a directory the walk reached. The defect
+// this closes (GH #1680 residual): the scan previously returned on the first
+// match, so a monorepo whose Node marker sits at the top and whose Go module
+// lives below ran one toolchain and silently contributed zero coverage for
+// the other — the gate's nil-detection pass made the omission invisible.
+// Entries run in collection order: the root-level project first, then the
+// nested modules in WalkDir order (shallowest, then lexicographically
+// first).
+//
+// The walk never descends into dependency/build/cache directories
+// (sourceScanSkipDirs), stops config.DefaultGateMarkerScanDepth levels below
+// the project root, and does not descend below a directory whose marker
+// matched — what lives under a module root belongs to it, and walking on
+// would let nested dependency trees surface as phantom modules. detectTool-
+// chains binds the first entry's root into g.detectedRoot as a side effect,
+// keeping stepDir's resolution meaningful for callers that resolve through
+// it.
+func (g *QualityGate) detectToolchains() []detectedToolchain {
+	// REQ-HCWA-007: route cwd resolution through resolveQualityProjectDir.
+	dir := resolveQualityProjectDir(*g.config, "QualityGate.detectToolchains")
+	if dir == "" {
+		g.detectedRoot = ""
+		return nil
+	}
+
+	detected := make(map[int]bool, len(toolchains))
+	var found []detectedToolchain
+
+	// The root-level first match keeps the original precedence.
+	if d, idx := g.matchToolchainAt(dir); d != nil {
+		d.tableIdx = idx
+		found = append(found, *d)
+		detected[idx] = true
+	}
+
+	_ = filepath.WalkDir(dir, func(path string, d fs.DirEntry, err error) error {
 		if err != nil {
-			// The root failing is the whole scan failing — answer no
-			// detection, the same fail-open shape detectToolchain has always
-			// had for an unreadable project directory.
-			if path == root {
-				return err
-			}
-			// A permission hole somewhere below is skipped instead: it must
-			// not decide the whole scan.
+			// A permission hole somewhere below is skipped instead of
+			// deciding the scan; the walk error must not erase candidates
+			// already collected either way.
 			if d != nil && d.IsDir() {
 				return fs.SkipDir
 			}
 			return nil
 		}
-		if !d.IsDir() || path == root {
+		if !d.IsDir() || path == dir {
 			return nil
 		}
 		if _, skip := sourceScanSkipDirs[d.Name()]; skip {
 			return fs.SkipDir
 		}
-		depth, ok := depthBelow(root, path)
-		if !ok || depth > maxDepth {
+		depth, ok := depthBelow(dir, path)
+		if !ok || depth > config.DefaultGateMarkerScanDepth {
 			// Out of the depth bound: prune without checking this level's
 			// markers — the bound is what keeps the scan bounded on large
 			// trees.
 			return fs.SkipDir
 		}
-		match, idx := g.matchToolchainAt(path)
-		if match != nil {
-			// Record the module root but do not descend into it: what lives
-			// below a module root belongs to that module, and walking on
-			// would let nested dependency trees surface as phantom modules.
-			candidates = append(candidates, nestedCandidate{tableIdx: idx, dt: *match})
+		matched := false
+		for i := range toolchains {
+			if detected[i] {
+				continue // one entry per language; the root-level match outranks
+			}
+			if g.matchMarker(path, &toolchains[i]) {
+				found = append(found, detectedToolchain{
+					tc:       g.resolveToolchainAt(i, path),
+					root:     path,
+					tableIdx: i,
+				})
+				detected[i] = true
+				matched = true
+			}
+		}
+		if matched {
+			// What lives below a module root belongs to that module.
 			return fs.SkipDir
 		}
 		return nil
 	})
-	// A walk error other than the root failing (err improper) must not erase
-	// candidates already collected; with none collected, nil is the answer
-	// either way.
-	if walkErr != nil && len(candidates) == 0 {
-		return nil
-	}
 
-	best := -1
-	for i := range candidates {
-		if best == -1 || candidates[i].tableIdx < candidates[best].tableIdx {
-			best = i
-		}
+	if len(found) > 0 {
+		g.detectedRoot = found[0].root
+	} else {
+		g.detectedRoot = ""
 	}
-	if best == -1 {
-		return nil
-	}
-	return &candidates[best].dt
+	return found
 }
 
 // depthBelow reports how many directory levels path sits below root, and
@@ -1073,10 +1154,74 @@ func nodeScriptWatchProne(script string) bool {
 	return true
 }
 
+// nodeLintRunScript is the package.json script that, when present, is the
+// project's own lint entry point (issue #1631, the reporter's first
+// preference) and outranks the config-gated table entries.
+const nodeLintRunScript = "lint"
+
+// nodeLintStepName is the run-summary label of the project's own lint step.
+const nodeLintStepName = "npm run " + nodeLintRunScript
+
+// reasonLintScriptWatchProneFmt marks the lint axis skipped when the
+// declared script would never self-terminate; the script text is quoted so
+// the summary names what the project must fix.
+const reasonLintScriptWatchProneFmt = "lint script is watch-prone and would not self-terminate: %q"
+
+// resolveNodeLintSteps returns the lint axis one detected Node toolchain
+// runs, rooted at dir. A package.json that declares scripts.lint is the
+// project telling the gate exactly which lint command to run, so that
+// command replaces the config-gated eslint/biome/oxlint guesses — it
+// generalizes past linter choice, and running both would lint the tree
+// twice. A watch-prone lint script never self-terminates (the same predicate
+// the test step defends with), so watchProne makes the caller report the
+// axis as skipped instead of hanging to the lint timeout — a false red on
+// every commit helps nobody. Every other shape — non-Node toolchains,
+// unreadable manifests, projects without the script — passes the table steps
+// through unchanged, which is the no-scripts.invariance card t687 pins.
+func resolveNodeLintSteps(steps []gateStep, dir string) (resolved []gateStep, script string, watchProne bool) {
+	// Language guard — the same guard the sibling resolveNodeTestStep
+	// carries (step.name != nodeTestStepName): only the Node lint axis
+	// resolves. Without it, a Go-rooted project that also carries a
+	// package.json with scripts.lint would have its golangci-lint axis
+	// silently replaced by the project's Node lint command.
+	if len(steps) == 0 || steps[0].binary != "npx" {
+		return steps, "", false
+	}
+	if dir == "" {
+		return steps, "", false
+	}
+	scripts, ok := readPackageJSONScripts(filepath.Join(dir, "package.json"))
+	if !ok {
+		return steps, "", false
+	}
+	script = strings.TrimSpace(scripts[nodeLintRunScript])
+	if script == "" {
+		return steps, "", false
+	}
+	if nodeScriptWatchProne(script) {
+		return steps, script, true
+	}
+	return []gateStep{{
+		name:     nodeLintStepName,
+		binary:   "npm",
+		args:     []string{"run", nodeLintRunScript},
+		optional: true,
+	}}, script, false
+}
+
 // executeStep runs a single gate step. Optional steps skip silently when the binary is missing.
 // Steps with configFiles skip silently when none of the listed config files exist.
 // Steps with changedExts skip silently when no staged file matches any of the listed extensions.
-func (g *QualityGate) executeStep(ctx context.Context, step gateStep, timeout time.Duration) (bool, string) {
+// dir is the directory the step belongs to — the detected toolchain's own
+// root, so a nested module's config files, sources, and subprocess cwd all
+// resolve there instead of at the project top (GH #1680). Empty falls back to
+// the resolved project dir, preserving the behavior root-level projects have
+// always had.
+func (g *QualityGate) executeStep(ctx context.Context, step gateStep, dir string, timeout time.Duration) (bool, string) {
+	if dir == "" {
+		dir = resolveQualityProjectDir(*g.config, "QualityGate.executeStep")
+	}
+
 	// Fix 3: explicitly disable via DisabledSteps configuration
 	if disabled, ok := g.config.DisabledSteps[step.name]; ok && !disabled {
 		g.summary.markDisabled(step.name, reasonDisabledByConfig)
@@ -1089,16 +1234,16 @@ func (g *QualityGate) executeStep(ctx context.Context, step gateStep, timeout ti
 			return true, ""
 		}
 	}
-	if len(step.configFiles) > 0 && !g.anyConfigFileExists(step.configFiles) {
+	if len(step.configFiles) > 0 && !anyConfigFileExistsIn(dir, step.configFiles) {
 		g.summary.markSkipped(step.name, fmt.Sprintf(reasonConfigFilesAbsentFmt, strings.Join(step.configFiles, ", ")))
 		return true, ""
 	}
 
 	// Fix 1: skip when no staged file matches changedExts.
 	// If stagedFiles lookup fails or we are outside a git repository, run the step conservatively.
+	// `git diff --cached` resolves the enclosing repository from any
+	// subdirectory, so the toolchain's own root yields the repo-wide staged set.
 	if len(step.changedExts) > 0 {
-		// REQ-HCWA-007: route cwd resolution through resolveQualityProjectDir.
-		dir := resolveQualityProjectDir(*g.config, "QualityGate.executeStep.extfilter")
 		staged := g.cachedStagedFiles(ctx, dir)
 		// If staged is nil, cannot determine — run step conservatively
 		if staged != nil && !hasStagedExt(staged, step.changedExts) {
@@ -1109,10 +1254,10 @@ func (g *QualityGate) executeStep(ctx context.Context, step gateStep, timeout ti
 
 	// Skip when the project holds no source this step could check. A scaffold
 	// that has declared its language but not written code yet must not fail
-	// its first gate for having no code. The scan scopes to the module root
-	// (stepDir) so a nested module's own tree is what is asked.
+	// its first gate for having no code. The scan scopes to the toolchain's
+	// own root: a nested module is judged on its own sources, not the whole
+	// repository's.
 	if len(step.sourceExts) > 0 {
-		dir := g.stepDir("QualityGate.executeStep.srcfilter")
 		if found, determined := projectHasSourceFile(dir, step.sourceExts); determined && !found {
 			slog.Warn("no sources for step: treating as skip",
 				"step", step.name,
@@ -1124,7 +1269,7 @@ func (g *QualityGate) executeStep(ctx context.Context, step gateStep, timeout ti
 		}
 	}
 
-	return g.runStep(ctx, step.name, timeout, step.binary, step.args...)
+	return g.runStep(ctx, step.name, dir, timeout, step.binary, step.args...)
 }
 
 // cachedStagedFiles queries stagedFiles exactly once per Run call and caches the result.
@@ -1286,6 +1431,14 @@ func stagedFiles(ctx context.Context, dir string) ([]string, error) {
 func (g *QualityGate) anyConfigFileExists(configFiles []string) bool {
 	// REQ-HCWA-007: route cwd resolution through resolveQualityProjectDir.
 	dir := g.stepDir("QualityGate.anyConfigFileExists")
+	return anyConfigFileExistsIn(dir, configFiles)
+}
+
+// anyConfigFileExistsIn reports whether at least one of the given config
+// files exists at dir — the toolchain's own root for a detected nested
+// module, whose linter configs live beside its marker file, not at the
+// project top (GH #1680).
+func anyConfigFileExistsIn(dir string, configFiles []string) bool {
 	if dir == "" {
 		return false
 	}
@@ -1299,7 +1452,9 @@ func (g *QualityGate) anyConfigFileExists(configFiles []string) bool {
 
 // runStep executes a single quality gate command with the given timeout.
 // Returns (true, "") on success, (false, errorMessage) on failure or timeout.
-func (g *QualityGate) runStep(ctx context.Context, stepName string, timeout time.Duration, name string, args ...string) (bool, string) {
+// dir is the directory the command runs in — the detected toolchain's own
+// root; empty falls back to the resolved project dir.
+func (g *QualityGate) runStep(ctx context.Context, stepName string, dir string, timeout time.Duration, name string, args ...string) (bool, string) {
 	// Which budget can kill this step is decided BEFORE it starts, by comparing
 	// the caller's remaining time (the hook dispatcher's, when the gate runs
 	// from a hook) with the step's own. Deciding afterwards from ctx.Err() would
@@ -1346,10 +1501,14 @@ func (g *QualityGate) runStep(ctx context.Context, stepName string, timeout time
 	// which is the project root only by coincidence — so a gate configured for
 	// one directory would grade another. Under `go test` that coincidence
 	// breaks: the cwd is the package under test, so a "go test ./..." step
-	// re-executes the suite that invoked it. stepDir resolves to the detected
-	// module root when recursive detection bound one (GH #1680), so a nested
-	// module's steps run inside their own module.
-	if dir := g.stepDir("QualityGate.runStep"); dir != "" {
+	// re-executes the suite that invoked it. The caller's dir — the detected
+	// toolchain's own root, bound at detection time — is what a nested
+	// module's steps run inside (GH #1680); empty falls back to the resolved
+	// project dir.
+	if dir == "" {
+		dir = resolveQualityProjectDir(*g.config, "QualityGate.runStep")
+	}
+	if dir != "" {
 		cmd.Dir = dir
 	}
 	// cmd.Dir is not, on its own, isolation. Left nil, cmd.Env hands the child

@@ -1,0 +1,244 @@
+// Command t672probe drives an isolated moai internal-gateway child and runs
+// real parent/spawn/fork/wedge history cells against it. Card t672 D4 evidence
+// tool. Untracked scratch: deleted after evidence collection.
+package main
+
+import (
+	"bytes"
+	"context"
+	"crypto/rand"
+	"encoding/hex"
+	"encoding/json"
+	"flag"
+	"fmt"
+	"io"
+	"net/http"
+	"os"
+	"path/filepath"
+	"strings"
+	"time"
+
+	"github.com/modu-ai/moai-adk/internal/gateway"
+	"github.com/modu-ai/moai-adk/internal/gateway/opaque"
+	"github.com/modu-ai/moai-adk/internal/gateway/receipt"
+)
+
+const userPrompt = "Reply with the single word: ok"
+
+func newUUID() string {
+	var b [16]byte
+	if _, err := rand.Read(b[:]); err != nil {
+		panic(err)
+	}
+	b[6] = (b[6] & 15) | 64
+	b[8] = (b[8] & 63) | 128
+	return fmt.Sprintf("%08x-%04x-%04x-%04x-%012x", b[0:4], b[4:6], b[6:8], b[8:10], b[10:16])
+}
+
+func post(client *http.Client, address, token string, body any) (int, string) {
+	raw, err := json.Marshal(body)
+	if err != nil {
+		return 0, "marshal: " + err.Error()
+	}
+	req, err := http.NewRequest(http.MethodPost, "http://"+address+"/v1/messages", bytes.NewReader(raw))
+	if err != nil {
+		return 0, "build: " + err.Error()
+	}
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Authorization", "Bearer "+token)
+	resp, err := client.Do(req)
+	if err != nil {
+		return 0, "transport: " + err.Error()
+	}
+	defer resp.Body.Close()
+	b, _ := io.ReadAll(io.LimitReader(resp.Body, 1<<16))
+	return resp.StatusCode, string(b)
+}
+
+func cellReq(model string, messages []any, extra map[string]any) map[string]any {
+	out := map[string]any{"model": model, "max_tokens": 64, "messages": messages, "output_config": map[string]any{"effort": "low"}}
+	for k, v := range extra {
+		out[k] = v
+	}
+	return out
+}
+
+func userMsg(text string) map[string]any {
+	return map[string]any{"role": "user", "content": text}
+}
+
+func assistantFrom(response string) (map[string]any, error) {
+	var parsed struct {
+		Content []any `json:"content"`
+	}
+	if err := json.Unmarshal([]byte(response), &parsed); err != nil {
+		return nil, err
+	}
+	if len(parsed.Content) == 0 {
+		return nil, fmt.Errorf("no content in response: %.200s", response)
+	}
+	return map[string]any{"role": "assistant", "content": parsed.Content}, nil
+}
+
+func stripThinking(a map[string]any) map[string]any {
+	blocks, _ := a["content"].([]any)
+	kept := []any{}
+	for _, b := range blocks {
+		m, _ := b.(map[string]any)
+		if m["type"] == "redacted_thinking" {
+			continue
+		}
+		kept = append(kept, b)
+	}
+	return map[string]any{"role": "assistant", "content": kept}
+}
+
+func phantomAssistant() map[string]any {
+	env, err := opaque.Encode([]opaque.Item{{OutputIndex: 0, Raw: []byte(`{"type":"reasoning","id":"rs_phantom","summary":[],"encrypted_content":"never-published-cipher"}`)}})
+	if err != nil {
+		panic(err)
+	}
+	return map[string]any{"role": "assistant", "content": []any{
+		map[string]any{"type": "redacted_thinking", "data": env.Data()},
+		map[string]any{"type": "text", "text": "half answer"},
+	}}
+}
+
+func main() {
+	bin := flag.String("bin", "", "moai binary under test")
+	flag.Parse()
+	if *bin == "" {
+		fatal("usage: t672probe -bin <path>")
+	}
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	receiptDir, err := filepath.EvalSymlinks("/tmp")
+	if err != nil {
+		fatal("resolve /tmp: %v", err)
+	}
+	receiptDir = filepath.Join(receiptDir, "t672", "receipts-"+newUUID())
+	if err = os.MkdirAll(receiptDir, 0700); err != nil {
+		fatal("mkdir: %v", err)
+	}
+	if err = os.Chmod(receiptDir, 0700); err != nil {
+		fatal("chmod: %v", err)
+	}
+	family, session := newUUID(), newUUID()
+	if _, err = receipt.OpenStore(ctx, receiptDir, session, true); err != nil {
+		fatal("init receipt store: %v", err)
+	}
+	// The child opens its own store instance; the initializer closes immediately.
+
+	token := make([]byte, 32)
+	if _, err = rand.Read(token); err != nil {
+		fatal("token: %v", err)
+	}
+	sessionToken := hex.EncodeToString(token)
+	payload, _ := json.Marshal(map[string]any{
+		"version":       1,
+		"session_token": sessionToken,
+		"model_ids":     []string{"gpt-6-astra", "gpt-5.6-sol", "gpt-5.6-terra", "gpt-5.6-luna"},
+		"conversation":  map[string]any{"family_id": family, "session_id": session, "receipt_dir": receiptDir},
+	})
+
+	scrub := map[string]bool{"Z_AI_API_KEY": true, "OPENAI_API_KEY": true, "ANTHROPIC_API_KEY": true, "CODEX_HOME": true}
+	env := []string{}
+	for _, item := range os.Environ() {
+		key, _, _ := strings.Cut(item, "=")
+		if !scrub[key] {
+			env = append(env, item)
+		}
+	}
+	child, err := gateway.StartChild(ctx, gateway.StartOptions{
+		Executable:     *bin,
+		Args:           []string{"internal-gateway"},
+		Env:            env,
+		StartupTimeout: 15 * time.Second,
+		Config: gateway.ChildConfig{
+			Lifetime:     1 * time.Hour,
+			PollInterval: 100 * time.Millisecond,
+			Payload:      payload,
+		},
+	})
+	if err != nil {
+		fatal("start child: %v", err)
+	}
+	stop := func() {
+		sctx, scancel := context.WithTimeout(context.Background(), 3*time.Second)
+		defer scancel()
+		_ = child.Stop(sctx)
+	}
+	defer stop()
+	fmt.Fprintf(os.Stderr, "gateway child at %s receipt=%s\n", child.Address, receiptDir)
+
+	client := &http.Client{Timeout: 120 * time.Second}
+	sol := "gpt-5.6-sol"
+
+	// C1 — parent fresh turn.
+	status, body := post(client, child.Address, sessionToken, cellReq(sol, []any{userMsg(userPrompt)}, nil))
+	report("C1 parent fresh turn", status, body)
+	if status != 200 {
+		fatal("C1 failed; fork cells need a published turn")
+	}
+	a1, err := assistantFrom(body)
+	if err != nil {
+		fatal("%v", err)
+	}
+
+	// C1b — a terra turn, whose responses carry opaque reasoning items; its
+	// assistant message backs the wedge/stripped-reasoning cells.
+	status, body = post(client, child.Address, sessionToken, cellReq("gpt-5.6-terra", []any{userMsg("Think briefly, then reply with the single word: ok")}, nil))
+	report("C1b terra reasoning-bearing turn", status, body)
+	if status != 200 {
+		fatal("C1b failed")
+	}
+	a1t, err := assistantFrom(body)
+	if err != nil {
+		fatal("%v", err)
+	}
+	if len(a1t["content"].([]any)) < 2 {
+		fmt.Printf("C1b NOTE\tterra response carried no reasoning items; C6 will not exercise the stripped class\n")
+	}
+
+	// C2 — spawn-shaped request with a model argument (Agent tool def carries model).
+	spawnTool := []any{map[string]any{
+		"name": "Agent", "description": "Spawn a subagent to do a task",
+		"input_schema": map[string]any{"type": "object", "properties": map[string]any{"model": map[string]any{"type": "string"}, "prompt": map[string]any{"type": "string"}}, "required": []string{"prompt"}},
+	}}
+	spawnMsgs := []any{userMsg("Use the Agent tool to spawn a worker whose model argument is opus and whose prompt is: " + userPrompt)}
+	status, body = post(client, child.Address, sessionToken, cellReq(sol, spawnMsgs, map[string]any{"tools": spawnTool}))
+	report("C2 spawn-shape with model arg", status, body)
+
+	// C3 — spawn-shaped request without a model argument.
+	spawnMsgsNoArg := []any{userMsg("Use the Agent tool to spawn a worker whose prompt is: " + userPrompt)}
+	status, body = post(client, child.Address, sessionToken, cellReq(sol, spawnMsgsNoArg, map[string]any{"tools": spawnTool}))
+	report("C3 spawn-shape no model arg", status, body)
+
+	// C4 — parent second turn, then a fork-shaped truncated replay of turn 1 only.
+	status, body = post(client, child.Address, sessionToken, cellReq(sol, []any{userMsg(userPrompt), a1, userMsg(userPrompt)}, nil))
+	report("C4a parent second turn", status, body)
+	status, body = post(client, child.Address, sessionToken, cellReq(sol, []any{userMsg(userPrompt), a1, userMsg("Now reply with the single word: done")}, nil))
+	report("C4b fork-shaped truncated replay", status, body)
+
+	// C5 — wedge shape: an assistant turn the gateway never published.
+	status, body = post(client, child.Address, sessionToken, cellReq("gpt-5.6-terra", []any{userMsg("Think briefly, then reply with the single word: ok"), a1t, phantomAssistant(), userMsg("continue")}, nil))
+	report("C5 wedge replay (unpublished turn)", status, body)
+
+	// C6 — stripped-reasoning replay of a published boundary.
+	status, body = post(client, child.Address, sessionToken, cellReq("gpt-5.6-terra", []any{userMsg("Think briefly, then reply with the single word: ok"), stripThinking(a1t), userMsg("continue")}, nil))
+	report("C6 stripped-reasoning replay", status, body)
+}
+
+func report(label string, status int, body string) {
+	one := strings.Join(strings.Fields(body), " ")
+	if len(one) > 400 {
+		one = one[:400] + "..."
+	}
+	fmt.Printf("%s\t%d\t%s\n", label, status, one)
+}
+
+func fatal(format string, args ...any) {
+	fmt.Fprintf(os.Stderr, "t672probe: "+format+"\n", args...)
+	os.Exit(1)
+}

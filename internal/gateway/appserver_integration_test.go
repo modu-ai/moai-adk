@@ -70,7 +70,11 @@ for line in sys.stdin:
 			if err != nil {
 				t.Fatal(err)
 			}
-			defer client.Close()
+			defer func() {
+				if cerr := client.Close(); cerr != nil {
+					t.Error(cerr)
+				}
+			}()
 			if _, err = client.Initialize(ctx, "fixture", "1"); err != nil {
 				t.Fatal(err)
 			}

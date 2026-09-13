@@ -29,7 +29,9 @@ func TestRegressionReasoningPublicItemOrderAndPhase(t *testing.T) {
 		t.Fatal(e)
 	}
 	var root map[string]any
-	json.Unmarshal(replay, &root)
+	if err := json.Unmarshal(replay, &root); err != nil {
+		t.Fatal(err)
+	}
 	rows := root["input"].([]any)
 	t.Logf("observed upstream replay: %s", replay)
 	if len(rows) != 6 {

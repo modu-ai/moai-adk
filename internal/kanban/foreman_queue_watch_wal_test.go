@@ -98,8 +98,12 @@ func commitDeferred(t *testing.T, db *sql.DB, seq int, id, text string) {
 // swapped to backlog.db and nothing else. It is pinned here as the control
 // that decides the watch target: if this stays silent under a deferred
 // commit while the shipped block's successor fires, then covering the WAL
-// is a measured requirement rather than a precaution.
-const dbOnlyWatchScript = `f=.moai/state/todo/backlog.db
+// is a measured requirement rather than a precaution. Since
+// SPEC-TODO-QUEUE-HOME-CANON-001 the fixture's queue lives in the
+// resolver's home-canonical directory, so the control's target follows the
+// queue through MOAI_TEST_QUEUE_DIR — same directory as the shipped
+// successor, one file narrower.
+const dbOnlyWatchScript = `f=$MOAI_TEST_QUEUE_DIR/backlog.db
 last=init
 while true; do
   if [ -f "$f" ]; then cur=$(cksum "$f"); else cur=missing; fi
@@ -116,7 +120,8 @@ done`
 // silent blind spot for another.
 func TestForemanQueueWatch_DBOnlyTargetMissesWALDeferral(t *testing.T) {
 	requirePOSIXWatchTools(t)
-	root, store := watchFixture(t)
+	root, queueDir, store := watchFixture(t)
+	t.Setenv("MOAI_TEST_QUEUE_DIR", queueDir)
 	dbPath := store.EnginePath()
 	baseline := cksumOf(t, dbPath)
 	conn := openDeferringConn(t, dbPath)
@@ -143,7 +148,7 @@ func TestForemanQueueWatch_DBOnlyTargetMissesWALDeferral(t *testing.T) {
 // TestForemanQueueWatch_SeesWALDeferredCommit — AC-BJD-010.
 func TestForemanQueueWatch_SeesWALDeferredCommit(t *testing.T) {
 	requirePOSIXWatchTools(t)
-	root, store := watchFixture(t)
+	root, _, store := watchFixture(t)
 	dbPath := store.EnginePath()
 	walPath := dbPath + "-wal"
 

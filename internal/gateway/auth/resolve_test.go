@@ -17,7 +17,11 @@ func freshFixture(t *testing.T, expired bool) *Store {
 	if e != nil {
 		t.Fatal(e)
 	}
-	t.Cleanup(func() { s.Close() })
+	t.Cleanup(func() {
+		if err := s.Close(); err != nil {
+			t.Error(err)
+		}
+	})
 	loginFixture(t, s) // Establish the explicit-login store and its sidecar locks first.
 	expiry := time.Now().Add(time.Hour)
 	if expired {
@@ -54,7 +58,11 @@ func TestResolveFreshDoesNotAutoLoginOrRefreshValid(t *testing.T) {
 	if e != nil {
 		t.Fatal(e)
 	}
-	defer empty.Close()
+	defer func() {
+		if err := empty.Close(); err != nil {
+			t.Error(err)
+		}
+	}()
 	if ref, e = empty.ResolveFresh(context.Background(), b, v); !errors.Is(e, ErrCredentialAbsent) || ref != nil || calls.Load() != 0 {
 		t.Fatal("missing store auto-login")
 	}

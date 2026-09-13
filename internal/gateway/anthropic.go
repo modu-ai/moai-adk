@@ -143,26 +143,32 @@ func (a *MessagesAdapter) Send(ctx context.Context, q RoutedRequest) (*http.Resp
 	if e != nil || generation != q.Generation {
 		return openAIError(401), nil
 	}
-	up, e := a.config.Transport.RoundTrip(req)
+	up, attempts, e := upstreamSend(ctx, req, func() (*http.Response, error) {
+		return a.config.Transport.RoundTrip(req)
+	})
 	if e != nil {
 		if up != nil && up.Body != nil {
-			up.Body.Close()
+			_ = up.Body.Close() // error-path discard; the mapped client error is already fixed
 		}
 		if ctx.Err() != nil {
 			return nil, ctx.Err()
 		}
-		return openAIError(502), nil
+		return openAIErrorMessage(502, gatewayConnectMessage(attempts, e)), nil
 	}
 	if up == nil || up.Body == nil {
 		return openAIError(502), nil
 	}
 	if up.StatusCode != 200 {
-		up.Body.Close()
+		_ = up.Body.Close() // error-path discard; the upstream status is forwarded below
 		status := up.StatusCode
 		if status < 400 || status > 599 {
 			status = 502
 		}
-		out := openAIError(status)
+		message := http.StatusText(status)
+		if up.StatusCode >= 500 && up.StatusCode <= 599 {
+			message = upstreamStatusMessage(up.StatusCode, attempts)
+		}
+		out := openAIErrorMessage(status, message)
 		if status == 429 || status == 503 {
 			if v := validRetryAfter(up.Header.Get("Retry-After")); v != "" {
 				out.Header.Set("Retry-After", v)
@@ -172,19 +178,19 @@ func (a *MessagesAdapter) Send(ctx context.Context, q RoutedRequest) (*http.Resp
 	}
 	media, _, e := mime.ParseMediaType(up.Header.Get("Content-Type"))
 	if e != nil {
-		up.Body.Close()
+		_ = up.Body.Close() // error-path discard; the mapped client error is already fixed
 		return openAIError(502), nil
 	}
 	if stream {
 		if media != "text/event-stream" {
-			up.Body.Close()
+			_ = up.Body.Close() // error-path discard; the mapped client error is already fixed
 			return openAIError(502), nil
 		}
 		b := newNativeBody(ctx, up.Body, q.Entry.UpstreamID, a.config.Limits)
 		b.nativePolicy = nativePolicy
 		return &http.Response{StatusCode: 200, Header: http.Header{"Content-Type": {"text/event-stream"}}, Body: b}, nil
 	}
-	defer up.Body.Close()
+	defer func() { _ = up.Body.Close() }() // body fully read before this point; no write-back to lose
 	if media != "application/json" {
 		return openAIError(502), nil
 	}
@@ -460,19 +466,19 @@ func (b *nativeBody) Read(p []byte) (int, error) {
 		return 0, nil
 	}
 	if e := b.ctx.Err(); e != nil {
-		b.Close()
+		_ = b.Close() // nativeBody.Close always returns nil
 		return 0, e
 	}
 	if b.pending != nil && b.pending.Len() > 0 {
 		return b.pending.Read(p)
 	}
 	if b.terminal {
-		b.Close()
+		_ = b.Close() // nativeBody.Close always returns nil
 		return 0, io.EOF
 	}
 	raw, e := b.next()
 	if e != nil {
-		b.Close()
+		_ = b.Close() // nativeBody.Close always returns nil
 		return 0, errors.New("native response stream failed")
 	}
 	b.pending = bytes.NewReader(raw)

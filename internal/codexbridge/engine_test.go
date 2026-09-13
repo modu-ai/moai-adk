@@ -81,7 +81,7 @@ func (f *fakeRPC) Respond(ctx context.Context, id json.RawMessage, p any) error 
 		return f.respondFailure()
 	}
 	var thread string
-	json.Unmarshal(id, &thread)
+	_ = json.Unmarshal(id, &thread) // fixture id is always a JSON string written by this test
 	raw, _ := json.Marshal(map[string]any{"threadId": thread, "turnId": "turn-" + thread, "itemId": "text", "delta": "answer"})
 	f.events <- codexapp.Message{Method: "item/agentMessage/delta", Params: raw}
 	raw, _ = json.Marshal(map[string]any{"threadId": thread, "turn": map[string]string{"id": "turn-" + thread, "status": "completed"}})
@@ -300,7 +300,9 @@ func TestUntrustedTurnEventsFailClosed(t *testing.T) {
 			e, rpc, _ := fixture(t)
 			rpc.transform = func(event codexapp.Message) codexapp.Message {
 				var p map[string]any
-				json.Unmarshal(event.Params, &p)
+				if err := json.Unmarshal(event.Params, &p); err != nil {
+					t.Fatal(err)
+				}
 				switch kind {
 				case "wrong-turn":
 					p["turnId"] = "foreign-turn"

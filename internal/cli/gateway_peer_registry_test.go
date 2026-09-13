@@ -12,15 +12,21 @@ func TestGatewayPeerRegistryBidirectionalAndPrivateHistory(t *testing.T) {
 	source := t.TempDir()
 	native := t.TempDir()
 	in := gatewayLaunchRequest{OriginalConfig: source, OriginalConfigSet: true}
-	os.Mkdir(filepath.Join(source, "sessions"), 0700)
-	os.WriteFile(filepath.Join(source, "sessions", "lead.json"), []byte("lead"), 0600)
+	if err := os.Mkdir(filepath.Join(source, "sessions"), 0700); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(source, "sessions", "lead.json"), []byte("lead"), 0600); err != nil {
+		t.Fatal(err)
+	}
 	if err := shareGatewayPeerRegistry(native, in); err != nil {
 		t.Fatal(err)
 	}
 	if b, err := os.ReadFile(filepath.Join(native, "sessions", "lead.json")); err != nil || string(b) != "lead" {
 		t.Fatal("lead invisible", err)
 	}
-	os.WriteFile(filepath.Join(native, "sessions", "lane.json"), []byte("lane"), 0600)
+	if err := os.WriteFile(filepath.Join(native, "sessions", "lane.json"), []byte("lane"), 0600); err != nil {
+		t.Fatal(err)
+	}
 	if b, err := os.ReadFile(filepath.Join(source, "sessions", "lane.json")); err != nil || string(b) != "lane" {
 		t.Fatal("lane invisible", err)
 	}

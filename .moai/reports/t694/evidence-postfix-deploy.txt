@@ -1,0 +1,17 @@
+# Post-fix PTY capture — deploy phase, fixed binary
+# Observed repair: every bar line leads with the ✓ done glyph — no completed
+# step renders as a never-advancing in-flight (●) process. The per-step bar
+# lines remain a compact history by design (REQ-TUXIU-014 retained); what the
+# fix removes is the false running state.
+
+  ✓ ████████░░ 4/5 steps
+  ✓ User settings restored
+  ✓ 2 user settings key(s) preserved (run with --verbose to list)
+  ✓ .gitignore user patterns preserved
+  ✓ .claude/settings.json user customizations preserved
+  ✓ .moai/status_line.sh user content preserved
+  ✓ .mcp.json user customizations preserved
+  ✓ Merged 3 file(s) with 3-way merge engine
+  ✓ ██████████ 5/5 steps
+
+ ✓ Updated 584 files

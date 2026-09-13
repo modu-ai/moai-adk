@@ -172,7 +172,7 @@ func (m *Manager) Resume(ctx context.Context, id string) (Descriptor, error) {
 	if err != nil {
 		return Descriptor{}, err
 	}
-	defer store.Close()
+	defer func() { _ = store.Close() }() // read-only snapshot session; the lock ends at process exit too
 	if _, err = store.Snapshot(ctx); err != nil {
 		return Descriptor{}, err
 	}
@@ -254,7 +254,7 @@ func (m *Manager) Complete(ctx context.Context, id, transcript string, sequence 
 	return m.replaceLocked(id, r)
 }
 
-func (m *Manager) Fork(ctx context.Context, parentID string) (Descriptor, error) {
+func (m *Manager) Fork(ctx context.Context, parentID string) (d Descriptor, err error) {
 	p, err := m.Resume(ctx, parentID)
 	if err != nil {
 		return Descriptor{}, err
@@ -264,7 +264,7 @@ func (m *Manager) Fork(ctx context.Context, parentID string) (Descriptor, error)
 	if err != nil {
 		return Descriptor{}, err
 	}
-	defer ps.Close()
+	defer func() { _ = ps.Close() }() // read-only parent snapshot; the lock ends at process exit too
 	snap, err := ps.Snapshot(ctx)
 	if err != nil {
 		return Descriptor{}, err
@@ -282,7 +282,12 @@ func (m *Manager) Fork(ctx context.Context, parentID string) (Descriptor, error)
 	if err != nil {
 		return Descriptor{}, err
 	}
-	defer cs.Close()
+	// The fork publishes into cs; a failed release must not report success.
+	defer func() {
+		if cerr := cs.Close(); err == nil {
+			err = cerr
+		}
+	}()
 	for _, c := range snap.Candidates() {
 		if err = cs.Publish(ctx, c); err != nil {
 			return Descriptor{}, err
@@ -294,7 +299,7 @@ func (m *Manager) Fork(ctx context.Context, parentID string) (Descriptor, error)
 	if err = m.addLocked(r); err != nil {
 		return Descriptor{}, err
 	}
-	d := descriptor(r, []string{"--resume", p.UUID, "--fork-session", "--session-id", id})
+	d = descriptor(r, []string{"--resume", p.UUID, "--fork-session", "--session-id", id})
 	d.Model = p.Model
 	return d, nil
 }

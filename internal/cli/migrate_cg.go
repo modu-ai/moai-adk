@@ -58,13 +58,19 @@ func newMigrateCGCommand(rootFn func() (string, error)) *cobra.Command {
 					return err
 				}
 				if plan.Unchanged {
-					fmt.Fprintf(cmd.OutOrStdout(), "Unchanged: %s already selected.\n", candidate)
+					if _, err := fmt.Fprintf(cmd.OutOrStdout(), "Unchanged: %s already selected.\n", candidate); err != nil {
+						return err
+					}
 					continue
 				}
 				if candidate == "claude-only" {
-					fmt.Fprintln(cmd.OutOrStdout(), "Preview claude-only: team_mode=claude, teammates=in-process/inherit. Automatic GLM teammate assignment is removed. Applying requires --accept-role-change.")
+					if _, err := fmt.Fprintln(cmd.OutOrStdout(), "Preview claude-only: team_mode=claude, teammates=in-process/inherit. Automatic GLM teammate assignment is removed. Applying requires --accept-role-change."); err != nil {
+						return err
+					}
 				} else {
-					fmt.Fprintln(cmd.OutOrStdout(), "Preview claude-glm: team_mode=claude, teammates=tmux/glm. Applying and launching require verified teammate routing capability; currently unavailable.")
+					if _, err := fmt.Fprintln(cmd.OutOrStdout(), "Preview claude-glm: team_mode=claude, teammates=tmux/glm. Applying and launching require verified teammate routing capability; currently unavailable."); err != nil {
+						return err
+					}
 				}
 			}
 			return nil
@@ -77,11 +83,11 @@ func newMigrateCGCommand(rootFn func() (string, error)) *cobra.Command {
 			return err
 		}
 		if result.Unchanged {
-			fmt.Fprintln(cmd.OutOrStdout(), "Unchanged: the requested teammate policy is already saved.")
+			_, err = fmt.Fprintln(cmd.OutOrStdout(), "Unchanged: the requested teammate policy is already saved.")
 		} else {
-			fmt.Fprintf(cmd.OutOrStdout(), "Applied claude-only: automatic GLM teammate assignment removed. Backup: %s\n", result.Backup)
+			_, err = fmt.Fprintf(cmd.OutOrStdout(), "Applied claude-only: automatic GLM teammate assignment removed. Backup: %s\n", result.Backup)
 		}
-		return nil
+		return err
 	}
 	return cmd
 }
@@ -144,7 +150,7 @@ func readCGSource(path string) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	defer f.Close()
+	defer func() { _ = f.Close() }() // read-only source; Close carries no write-back to lose
 	opened, err := f.Stat()
 	if err != nil || !os.SameFile(info, opened) {
 		return nil, errors.New("migration source changed while opening")
@@ -227,11 +233,11 @@ func applyCGMigration(root, target string, ops cgMigrationIO) (result cgMigratio
 	}
 	lockInfo, err := lock.Stat()
 	if err != nil {
-		lock.Close()
+		_ = lock.Close() // lock release is governed by Remove + process exit, not Close
 		return result, err
 	}
 	defer func() {
-		lock.Close()
+		_ = lock.Close() // lock release is governed by Remove + process exit, not Close
 		if info, e := os.Lstat(lockPath); e == nil && os.SameFile(lockInfo, info) {
 			_ = os.Remove(lockPath)
 		}
@@ -279,7 +285,9 @@ func applyCGMigration(root, target string, ops cgMigrationIO) (result cgMigratio
 		return result, err
 	}
 	tempPath := temp.Name()
-	defer func() { temp.Close(); _ = os.Remove(tempPath) }()
+	// The explicit Close below owns the meaningful error; this deferred Close is
+	// only an error-path safety net (a second Close on the same file is a no-op).
+	defer func() { _ = temp.Close(); _ = os.Remove(tempPath) }()
 	if ops.WriteTemp != nil {
 		err = ops.WriteTemp(temp, plan.Bytes)
 	} else {

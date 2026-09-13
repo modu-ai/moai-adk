@@ -61,7 +61,8 @@ func TestAnthropicOAuthMalformedPaddingAndContext(t *testing.T) {
 			t.Fatal("invalid token accepted")
 		}
 	}
-	if _, err := NewAnthropicOAuth(nil, nil); !errors.Is(err, ErrCredentialAbsent) {
+	// Deliberate contract test: the resolver must reject a nil Context instead of panicking.
+	if _, err := NewAnthropicOAuth(nil, nil); !errors.Is(err, ErrCredentialAbsent) { //nolint:staticcheck // SA1012: nil-Context rejection is the behavior under test
 		t.Fatal("nil context")
 	}
 	ctx, cancel := context.WithCancel(context.Background())
