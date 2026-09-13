@@ -385,18 +385,22 @@ func Page3Questions(projectRoot string) []Question {
 			},
 			Default: "claude",
 		},
-		// SPEC-AUTONOMY-TIERS-001 M7 — interactive autonomy-tier selector.
-		// semi-auto pre-selected (REQ-006); fully-autonomous gated at apply time.
+		// SPEC-AUT-PERMMODES-001 REQ-001/REQ-002 — the autonomy question
+		// speaks Claude Code's real permission modes: "Accept edits on"
+		// (acceptEdits) is the pre-selected default; "Bypass permissions"
+		// (fully-autonomous) stays gated at apply time (sandbox proof +
+		// kill-switch, REQ-005). Persisted values are the unchanged tier
+		// tokens — only labels, descriptions, and the knob mapping moved.
 		{
 			ID:          "autonomy_tier",
 			Group:       "Agents & Autonomy",
 			Type:        QuestionTypeSelect,
-			Title:       "Select autonomy tier",
-			Description: "Controls how many turns the session runs without prompting. 'semi-auto' is the recommended default.",
+			Title:       "Select the session permission mode",
+			Description: "Chooses the Claude Code permission mode written to your user settings. 'Accept edits on' is the recommended default.",
 			Options: []Option{
-				{Label: "Semi-auto (Recommended)", Value: config.AutonomyTierSemiAuto, Desc: "Prompt before each non-trivial action"},
-				{Label: "Automatic", Value: config.AutonomyTierAutomatic, Desc: "Run milestones autonomously; prompt at gates"},
-				{Label: "Fully-autonomous", Value: config.AutonomyTierFullyAutonomous, Desc: "Requires sandbox proof (Docker/gVisor/etc.)"},
+				{Label: "Accept edits on (Recommended)", Value: config.AutonomyTierSemiAuto, Desc: "Auto-accept file edits; prompt for other tools"},
+				{Label: "Auto mode", Value: config.AutonomyTierAutomatic, Desc: "Auto-approve tool calls under classifier safety checks"},
+				{Label: "Bypass permissions", Value: config.AutonomyTierFullyAutonomous, Desc: "Skip all prompts; requires sandbox proof (Docker/gVisor/etc.)"},
 			},
 			Default:  config.AutonomyTierSemiAuto,
 			Required: true,

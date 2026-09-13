@@ -66,7 +66,7 @@ func TestInputEstimateIncludesOutputSchemaOnly(t *testing.T) {
 
 func TestNativePolicyWireAndProviderIsolation(t *testing.T) {
 	raw := `{ "model":"claude-opus-5", "max_tokens":32000,"thinking":{"type":"adaptive"},"output_config":{"effort":"high"},"messages":[{"role":"user","content":"synthetic"}] }`
-	tr, calls := nativeTLS(t, func(w http.ResponseWriter, r *http.Request) {
+	tr, served := nativeTLS(t, func(w http.ResponseWriter, r *http.Request) {
 		got, _ := io.ReadAll(r.Body)
 		if string(got) != raw {
 			t.Error("same-model native wire rewritten")
@@ -94,7 +94,7 @@ func TestNativePolicyWireAndProviderIsolation(t *testing.T) {
 	}
 	q.Entry.UpstreamID = "unverified"
 	resp, e = a.Send(context.Background(), q)
-	if e != nil || resp.StatusCode != 400 || calls.Load() != 1 {
+	if e != nil || resp.StatusCode != 400 || served.Load() != 1 {
 		t.Fatal("unknown profile model sent")
 	}
 	if cerr := resp.Body.Close(); cerr != nil {
@@ -110,7 +110,7 @@ func TestInputEstimateRejectsMalformedOutputProjection(t *testing.T) {
 	}
 }
 func TestNativePolicyRequestRejectsMalformedBeforeWire(t *testing.T) {
-	tr, calls := nativeTLS(t, func(w http.ResponseWriter, r *http.Request) { t.Error("invalid policy reached endpoint") })
+	tr, served := nativeTLS(t, func(w http.ResponseWriter, r *http.Request) { t.Error("invalid policy reached endpoint") })
 	cfg := nativeConfig(tr)
 	cfg.Limits.PolicyProfile = translate.PolicyAnthropicNative
 	a, e := NewAnthropicAdapter(cfg)
@@ -129,7 +129,7 @@ func TestNativePolicyRequestRejectsMalformedBeforeWire(t *testing.T) {
 			t.Fatal(cerr)
 		}
 	}
-	if calls.Load() != 0 {
+	if served.Load() != 0 {
 		t.Fatal("invalid native requests sent")
 	}
 }

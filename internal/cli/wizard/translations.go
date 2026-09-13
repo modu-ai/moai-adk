@@ -96,12 +96,12 @@ var translations = map[string]map[string]QuestionTranslation{
 			},
 		},
 		"autonomy_tier": {
-			Title:       "자율성 등급 선택",
-			Description: "프롬프트 없이 세션이 몇 턴까지 실행될지 제어합니다. 'semi-auto'가 권장 기본값입니다.",
+			Title:       "세션 권한 모드 선택",
+			Description: "Claude Code 권한 모드를 사용자 설정에 기록합니다. '편집 자동 수락'이 권장 기본값입니다.",
 			Options: []OptionTranslation{
-				{Label: "Semi-auto (권장)", Desc: "중요하지 않은 동작 전에 항상 확인"},
-				{Label: "Automatic", Desc: "마일스톤 자율 실행; 게이트에서 확인"},
-				{Label: "Fully-autonomous", Desc: "샌드박스 증명 필요 (Docker/gVisor 등)"},
+				{Label: "편집 자동 수락 (권장)", Desc: "파일 편집은 자동 수락; 다른 도구는 확인"},
+				{Label: "자동 모드", Desc: "분류기 안전 검사 하에 도구 호출 자동 승인"},
+				{Label: "권한 우회", Desc: "모든 프롬프트 생략; 샌드박스 증명 필요 (Docker/gVisor 등)"},
 			},
 		},
 		"agent_wiring": {
@@ -182,12 +182,12 @@ var translations = map[string]map[string]QuestionTranslation{
 			},
 		},
 		"autonomy_tier": {
-			Title:       "自律レベルを選択",
-			Description: "プロンプトなしでセッションが何ターン実行するかを制御します。'semi-auto' が推奨デフォルトです。",
+			Title:       "セッションの権限モードを選択",
+			Description: "Claude Code の権限モードをユーザー設定に書き込みます。「編集を自動承認」が推奨デフォルトです。",
 			Options: []OptionTranslation{
-				{Label: "Semi-auto (推奨)", Desc: "重要でない操作の前に常に確認"},
-				{Label: "Automatic", Desc: "マイルストーンを自律実行; ゲートで確認"},
-				{Label: "Fully-autonomous", Desc: "サンドボックス証明が必要 (Docker/gVisor 等)"},
+				{Label: "編集を自動承認 (推奨)", Desc: "ファイル編集は自動承認; その他のツールは確認"},
+				{Label: "自動モード", Desc: "分類器の安全検査のもとでツール呼び出しを自動承認"},
+				{Label: "権限をバイパス", Desc: "すべてのプロンプトを省略; サンドボックス証明が必要 (Docker/gVisor 等)"},
 			},
 		},
 		"agent_wiring": {
@@ -268,12 +268,12 @@ var translations = map[string]map[string]QuestionTranslation{
 			},
 		},
 		"autonomy_tier": {
-			Title:       "选择自主等级",
-			Description: "控制会话在不提示的情况下运行多少轮。'semi-auto' 是推荐默认值。",
+			Title:       "选择会话权限模式",
+			Description: "将 Claude Code 权限模式写入用户设置。「自动接受编辑」是推荐默认值。",
 			Options: []OptionTranslation{
-				{Label: "Semi-auto (推荐)", Desc: "每个重要操作前都确认"},
-				{Label: "Automatic", Desc: "自主运行里程碑;在关卡确认"},
-				{Label: "Fully-autonomous", Desc: "需要沙箱证明 (Docker/gVisor 等)"},
+				{Label: "自动接受编辑 (推荐)", Desc: "自动接受文件编辑;其他工具仍需确认"},
+				{Label: "自动模式", Desc: "在分类器安全检查下自动批准工具调用"},
+				{Label: "跳过权限检查", Desc: "跳过所有提示;需要沙箱证明 (Docker/gVisor 等)"},
 			},
 		},
 		"agent_wiring": {

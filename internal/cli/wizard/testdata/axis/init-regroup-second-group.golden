@@ -5,12 +5,12 @@
 ┃ ▸ Claude (Recommended) - Wire the Claude side only (.mcp.json provisioning)   
 ┃   Codex                - Wire the .codex/ hook layer + MCP config; skips .mcp.
 ┃   json provisioning                                                           
-  Select autonomy tier                                                          
-  Controls how many turns the session runs without prompting. 'semi-auto' is the
-  recommended default.                                                          
-  ▸ Semi-auto (Recommended) - Prompt before each non-trivial action             
-    Automatic               - Run milestones autonomously; prompt at gates      
-    Fully-autonomous        - Requires sandbox proof (Docker/gVisor/etc.)       
+  Select the session permission mode                                            
+  Chooses the Claude Code permission mode written to your user settings. 'Accept
+  edits on' is the recommended default.                                         
+  ▸ Accept edits on (Recommended) - Auto-accept file edits; prompt for other    
+    tools                                                                       
+    Auto mode                     - Auto-approve tool calls under classifier    
                                                                                 
                                                                                 
 

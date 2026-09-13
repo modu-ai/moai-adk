@@ -19,7 +19,9 @@ package project
 //     tool-policy.yaml is available, else toolpolicy.WriteUserDefaultMode (M9
 //     USER-scope fallback that reuses the same RenderSettingsJSON codegen).
 //
-// REQ-007 invariant: semi-auto / unset → ZERO behavior delta (no file written).
+// REQ-004 invariant (SPEC-AUT-PERMMODES-001, re-scoped from SPEC-AUTONOMY-TIERS-001
+// REQ-007): semi-auto / unset writes ONLY the USER-scope defaultMode="acceptEdits"
+// record — the PROJECT file and every other deployed file stay byte-identical.
 // REQ-006 invariant: init MUST NOT default to fully-autonomous (it never passes
 // fully-autonomous in unless the user explicitly selected it, and even then the
 // gates downgrade it without a sandbox proof).
@@ -46,19 +48,36 @@ import (
 // template deployer just wrote. persistedTier is opts.AutonomyTier (already
 // gate-applied on the wizard path; re-gated here so the flag path is covered).
 //
-// Behavior:
+// Behavior (SPEC-AUT-PERMMODES-001):
 //
-//   - semi-auto / unset → ZERO delta (REQ-007): no file is written or modified.
+//   - semi-auto / unset → BOUNDED delta (REQ-004, re-scoped from
+//     SPEC-AUTONOMY-TIERS-001 REQ-007): ONLY the USER-scope
+//     defaultMode="acceptEdits" record is written. The PROJECT-scope
+//     allow/ask/deny arrays, the deployed template files, and every other
+//     file stay byte-identical — the sanctioned delta is exactly one JSON key
+//     in exactly one file.
 //   - automatic → defaultMode="auto" written to USER scope; deny/ask regenerated
 //     in PROJECT scope when a tool-policy.yaml is available (otherwise the
 //     template-shipped deny/ask stay untouched and only the USER defaultMode is
 //     written).
 //   - fully-autonomous → gated by sandbox proof + kill-switch (AC-002/AC-005);
 //     a downgrade to automatic is advisory-logged and then behaves as automatic.
+//
+// The USER-scope write is what makes all three values effective: per the
+// official Claude Code permission-modes docs, "auto" and "bypassPermissions"
+// set in PROJECT-scope settings files are silently ignored — only
+// acceptEdits applies from every scope, and auto/bypass take effect from USER
+// scope (M1 scope finding, progress.md §E.2).
 func ApplyAutonomyTierBundle(projectRoot, userSettingsPath, projectSettingsPath, persistedTier string) error {
 	effective := config.ResolveEffectiveTier(persistedTier)
 	if effective == config.AutonomyTierSemiAuto {
-		// REQ-007: zero behavior delta. Do NOT touch either file.
+		// REQ-004 (re-scoped): bounded delta — the USER-scope acceptEdits
+		// record is the ONLY sanctioned write. The gates never bind semi-auto
+		// (EffectiveTierWithGates passes lower tiers through) and the
+		// PROJECT-scope deny/ask are tier-invariant, so neither is touched.
+		if err := toolpolicy.WriteUserDefaultMode(userSettingsPath, config.TierDefaultMode(effective)); err != nil {
+			return fmt.Errorf("write user defaultMode: %w", err)
+		}
 		return nil
 	}
 
@@ -75,10 +94,6 @@ func ApplyAutonomyTierBundle(projectRoot, userSettingsPath, projectSettingsPath,
 			filepath.Join(projectRoot, ".moai", "logs", "autonomy-downgrade.log"),
 			effective, gated, "init: no sandbox proof or kill-switch engaged",
 		)
-	}
-	if gated == config.AutonomyTierSemiAuto {
-		// A gate forced the selection all the way back to semi-auto → zero delta.
-		return nil
 	}
 
 	defaultMode := config.TierDefaultMode(gated)
