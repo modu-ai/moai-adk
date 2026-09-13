@@ -124,19 +124,99 @@ func (m *Manifest) Check(authorizedUUID string, history []Observation) error {
 	}
 	return nil
 }
+
+// Fork copies the completed chain up to the current lastTurnId boundary into
+// a child manifest. It is ForkAt at the parent's latest completed candidate.
 func (m *Manifest) Fork(authorizedChildUUID string) (*Manifest, error) {
 	if m.session == (Digest{}) || m.generation == 0 {
 		return nil, ErrInvalid
 	}
+	if len(m.candidates) == 0 {
+		return m.uncheckedFork(authorizedChildUUID, nil)
+	}
+	return m.ForkAt(authorizedChildUUID, m.candidates[len(m.candidates)-1].Prefix)
+}
+
+// ForkAt copies only the completed prefix chain up to the exact boundary
+// candidate into a child manifest. Candidates completed after the boundary —
+// including anything the parent completes later — are never copied, and an
+// unknown, zero or structurally broken boundary is rejected before any child
+// state exists.
+func (m *Manifest) ForkAt(authorizedChildUUID string, boundary Digest) (*Manifest, error) {
+	if m.session == (Digest{}) || m.generation == 0 {
+		return nil, ErrInvalid
+	}
+	chain, e := m.ChainTo(boundary)
+	if e != nil {
+		return nil, e
+	}
+	return m.uncheckedFork(authorizedChildUUID, chain)
+}
+
+func (m *Manifest) uncheckedFork(authorizedChildUUID string, chain []Candidate) (*Manifest, error) {
 	n, e := New(authorizedChildUUID)
 	if e != nil {
 		return nil, e
 	}
-	n.candidates = m.Candidates()
+	n.candidates = chain
 	if _, e = n.Marshal(); e != nil {
 		return nil, e
 	}
 	return n, nil
+}
+
+// ChainTo resolves the boundary candidate and walks its Previous links back
+// through the stored chain, returning every candidate whose prefix lies on
+// that walk. A Previous link that points at a prefix with no completed
+// candidate is a chain root, not an error — evidence before it is simply not
+// in this manifest. A boundary with no completed candidate, a cycle, or
+// disagreeing links for one prefix is rejected.
+func (m *Manifest) ChainTo(boundary Digest) ([]Candidate, error) {
+	if m.session == (Digest{}) || m.generation == 0 || boundary == (Digest{}) {
+		return nil, ErrInvalid
+	}
+	visited := map[Digest]bool{}
+	cur := boundary
+	for {
+		if visited[cur] {
+			return nil, ErrInvalid // cycle
+		}
+		visited[cur] = true
+		var previous *Digest
+		for i := range m.candidates {
+			if m.candidates[i].Prefix != cur {
+				continue
+			}
+			if previous != nil && *previous != m.candidates[i].Previous {
+				return nil, ErrInvalid // disagreeing chain links
+			}
+			d := m.candidates[i].Previous
+			previous = &d
+		}
+		if previous == nil {
+			return nil, ErrInvalid // boundary has no completed candidate
+		}
+		if *previous == (Digest{}) || !m.hasCandidate(*previous) {
+			break // chain root: dangling link or empty previous
+		}
+		cur = *previous
+	}
+	chain := make([]Candidate, 0, len(visited))
+	for _, c := range m.candidates {
+		if visited[c.Prefix] {
+			chain = append(chain, c)
+		}
+	}
+	return chain, nil
+}
+
+func (m *Manifest) hasCandidate(prefix Digest) bool {
+	for _, c := range m.candidates {
+		if c.Prefix == prefix {
+			return true
+		}
+	}
+	return false
 }
 func (m *Manifest) Marshal() ([]byte, error) {
 	if len(m.candidates) > MaxCandidates {

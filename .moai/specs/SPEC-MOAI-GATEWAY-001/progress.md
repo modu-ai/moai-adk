@@ -2,6 +2,17 @@
 
 ## §E.1 Plan-phase Audit-Ready Signal
 
+- t653 (AS-4: 소유 thread resume·model 변경·fork·compaction) plan-phase 기록 — 2026-09-13.
+  기준선: worktree `.claude/worktrees/t653`, branch `WT-gateway-as4-resume`, HEAD `74d872aaf` (선행 t652 = `530bd7330`).
+  범위: 계정·family·agent·thread와 완료 public prefix 원장 고정, resume 및 idle 모델 변경 연결, compaction의 정상 요약 turn 처리
+  (PostCompact digest 대조 뒤 public history 재설정), 명시 세션 fork의 lastTurnId 분기, native Agent(fork)/subtask 가용성
+  probe 기록. 마일스톤 M1~M6와 AC 대응(AS-010~AS-013), 위험·제약은 카드 실행 계획
+  [.moai/reports/t653/plan.md](../../reports/t653/plan.md) 참조. 전제 관측: `NewAppServerAdapter`·`codexbridge.New`의
+  생산 호출 지점 부재, `codexbridge`의 `thread/resume` 경로와 compaction 처리 부재, FileStore "재개 불가" AS3 한계의
+  AS4 계약 해제 필요 — 상세는 계획서 §1.3 gap 목록.
+
+- 0.12.0 (2026-09-14, t653) — 운영자 결정(리드 전달)으로 AS-010·011·012 실세션 양성 실증을 카드 t844로 이관
+  (`acceptance.md` §E 표 T21). AS-013은 설계된 NOT-RUN 유지. status 변경·run_complete_at 발행 없음.
 - 0.8.0 M5 문서 보강: system 위치·schema·종료 매핑 결정은 design §4.2~4.3, opaque reasoning 운반은 PROBE ONLY다.
   전체 carrier 유실 탐지 계약과 실제 TUI/resume 게이트는 미충족이며 run 증거로 세지 않는다. 새 REQ/AC 번호는 없다.
 
@@ -106,12 +117,60 @@
 - Gaps: M0 인증 운반 키·요청별 OAuth·provider factory 제품 연결, PICKER/source precedence/fallback, 실제 Claude/Codex 계정·GLM effort wire·Windows runtime·전체 AC는 미검증이다. session record의 실제 초기 provider와 factory launch event의 command backend는 현재 구분한다.
 - Residual-risk: settings.env 메모리 이동은 실제 Claude 우선순위 동등성이 검증되지 않은 후보이며 inherited ANTHROPIC_REASONING_EFFORT 영향은 남은 정책 게이트다. AUTH Store의 Windows 지원은 현재 명시 거절 상태다. 전체 저장소 판정은 통합 브랜치 CI로 PENDING이다.
 
+### 2026-09-13 — t653 AS-4 M1 probe + M2 소유 thread resume
+
+- Claim: (M1) 설치본 Claude Code 2.1.270의 호출 표면에서 native Agent(fork)/subtask 파라미터를 확인하지 못해 전제 실패 NOT-RUN으로 기록했다 — native fork 양성 의무는 유지되고 AS-013 전체 완료는 보류다. (M2) Engine에 소유 thread resume 경로를 추가했다: idle 배리어에서만 재개, thread 신원은 store 레코드에서만, model·CWD·완료 public prefix 고정 대조, legacy AS3 레코드는 명시 거절(마이그레이션 없음), 비-idle 배리어는 재개 불가 유지(AS-008 보존).
+- Evidence (baseline HEAD `3c34e90ee` → 커밋 `e573ad720`, `4976e5a06`):
+  - M1 RED 조건 없음(실증 probe). probe 방법·출력 전문: `.moai/reports/t653/m1-native-fork-probe.md`. 핵심 관측: `claude --help`의 fork 계열은 launcher 세션 플래그 `--fork-session`뿐, Agent 도구 파라미터는 `prompt`/`subagent_type`/`run_in_background`/`name`/`isolation("worktree")`/`model`/`effort`이고 `fork` 파라미터 0건(바이너리 문자열 실측).
+  - M2 RED: `go test ./internal/codexbridge/ -run 'TestResume' -count=1` → `internal/codexbridge/resume_test.go:38:4: q.Resume undefined (type Request has no field or method Resume)` / `FAIL` (`.moai/reports/t653/m2-resume-red.log`).
+  - M2 GREEN: `go test ./internal/codexbridge/ -run 'TestResume' -count=1 -v` → PASS 4 (`TestResumeAttachesOwnedThreadWithoutRebuild`, `TestResumeRejectsLegacyBarrierRecord`, `TestResumeRejectsIncompleteBarrier`, `TestResumeRejectsForeignBindings` 6 서브케이스 전부) (`.moai/reports/t653/m2-resume-green.log`). 패키지 전체 `-count=1`: 21 PASS + 실패 4건(`TestAudit*`, `TestCanceledStart*` — lifecycle_subprocess, 아래 Gaps).
+  - race: `go test ./internal/codexbridge/ -race -count=1` → DATA RACE 경고 0건, 실패는 동일 4건뿐.
+  - Windows: `GOOS=windows GOARCH=amd64 go build ./...` → exit 0.
+  - lint: `golangci-lint run ./internal/codexbridge/...` → 18건, 전부 기존 코드(줄번호 이동 포함)이고 added-line과의 기계 대조(`/tmp/t653.diff` 기준)에서 신규 이슈 0건. gofmt 정리 완료.
+- Store-contract decision: legacy AS3 레코드는 **거절**(마이그레이션 없음). 이유 — 구 레코드는 resume에 필요한 고정 model/CWD 필드를 의도적으로 운반하지 않았으므로 마이그레이션은 결핍된 귀속 사실을 조작해 만드는 것이고, 묵시적 스키마 확장은 금지됐다. 거절은 `ErrRecovery` 래핑 명시 오류("barrier predates the resumable schema")로 한다. 레코드 스키마는 `Schema=2` + `Model`/`CWD` 추가이며 save가 스키마를 기록한다.
+- Baseline-attribution: worktree `.claude/worktrees/t653`, branch `WT-gateway-as4-resume`, HEAD `3c34e90ee` 기준 측정, 커밋 `e573ad720`(M1)·`4976e5a06`(M2). 4건의 lifecycle_subprocess 실패는 이 diff 없는 기준 커밋에서 동일 재현해 사전 존재 환경 의존으로 귀속했다(stash SHA `33a6ed820`으로 임시 분리 측정).
+- Gaps: AS-010의 "새 MoAI process 실제 세션 회상"은 실증 항목으로 미수행(환경상 실제 app-server 서브프로세스 기동 실패 — lifecycle_subprocess 4건과 동일 원인으로 판단, 단 원인 규명은 범위 밖). idle model 변경(M3), compaction(M4), 경계 fork(M5)는 미착수. native fork 양성 실증은 NOT-RUN(전제 실패).
+- Residual-risk: thread/resume의 실제 App Server 응답 형태(`{thread:{id}}` 검증)는 fake 기준이며 실제 서버와의 일치는 실증에서 확인해야 한다. resume 뒤 첫 Step의 attach 실패는 failed 배리어로 귀결되는데, 실제 서버가 일시 오류를 냈을 때의 재시도 정책은 명시적 recovery 가이드 몫이다(자동 재시도 없음 — 의도된 계약).
+
+### 2026-09-14 — t653 AS-4 M3 idle 모델 변경 + M4 compaction + M5 경계 fork + M6 증거
+
+- Claim: (M3) idle 배리어에서만 모델 전환을 허용하고 전환값이 다음 turn/start로 운반되며 배리어에 재고정된다 — waiting 전환은 거절돼 잘못된 turn에 적용되지 않는다. gateway 측 거절군(bare `gpt-6` ErrUnknownModel, 타 provider의 bridge 진입 ErrManagedAuthority)을 테스트로 고정했다. (M4) compaction을 정상 요약 turn으로 처리한다: 반환 summary를 인증된 PostCompact의 exact digest·scope·epoch와 대조해 한 번만 rebase하고, `Manifest.Rebase`·`Store.Rebase`가 public history를 재설정한다 — 중복·stale·gap(유실)·재시작 재생·substring-only는 명시 거절이고 bridge는 compact RPC를 0회 발행하며 RPC id 없는 서버 주도 compaction 알림은 무시된다. PreCompact-after-HTTP 분류와 추가 compact RPC는 도입하지 않았다. (M5) exact completedTurnID 경계 fork를 착지했다: `Manifest.ChainTo`/`ForkAt`이 경계까지의 완료 체인만 복사해 부모가 이후 turn을 완료해도 경계 이후 사실이 자식에 유입되지 않고, 미지·영 경계·사이클·불일치 링크·미지 원본은 자식 상태 생성 전에 거절된다. `Manager.ForkAt`이 family 인덱스에 경계 fork를 노출하고 `Manager.Fork`는 lastTurnId(tip) 분기로 정렬됐다. codexbridge `Request.Fork`는 자식이 부모 thread를 입양하지 않고 inherited prefix로 새 thread를 시작하게 하며, 자식 배리어는 새 프로세스에서 독립 resume된다. (M6) 커버리지·Windows 빌드·lint·gofmt를 실측해 취합했다.
+- Evidence (baseline HEAD `92db2cfe7` → 커밋 `14dba89c5`(M3), `e45f50a8d`(M4), `64885fa06`(M5)):
+  - M3 RED: `go test ./internal/codexbridge/ -run 'TestIdleModelChange|TestWaitingAndNewPhase'` → `model_test.go:28: idle model change rejected` FAIL (`.moai/reports/t653/m3-model-red.log`).
+  - M3 GREEN: codexbridge 패키지 전체 `ok` (`.moai/reports/t653/m3-model-green.log`); gateway 거절군 `ok` (`.moai/reports/t653/m3-model-gateway.log`).
+  - M4 RED: `CompactBase`/`NewRebaseLedger` 등 미정의 컴파일 실패 (`.moai/reports/t653/m4-compact-red.log`).
+  - M4 GREEN: receipt 패키지 `ok` (`.moai/reports/t653/m4-compact-green-receipt.log`); codexbridge compaction 분류 2건 `ok` (`.moai/reports/t653/m4-compact-codexbridge.log`).
+  - M5 RED: `ForkAt`/`ChainTo`/`Request.Fork` 미정의 컴파일 실패 (`.moai/reports/t653/m5-fork-red.log`).
+  - M5 GREEN: receipt·conversation·codexbridge 3패키지 `ok` (`.moai/reports/t653/m5-fork-green.log`).
+  - M6: 커버리지 codexbridge 83.1% / receipt 88.9% / conversation 80.3% / gateway 91.7% (`.moai/reports/t653/m6-coverage.log`); `GOOS=windows GOARCH=amd64 go build ./...` exit 0; `golangci-lint run --timeout=5m` → `0 issues.` exit 0 (`.moai/reports/t653/m6-lint.log`); `gofmt -l` 빈 출력. 요약: `.moai/reports/t653/m6-evidence-summary.md`.
+- Store-contract decisions: (1) ChainTo는 Previous 링크가 manifest에 없는 접두사를 가리키는 것을 체인 뿌리로 취급한다 — 이 원장에서는 그것이 정상이며(core_test 자체가 그렇게 구성), 거절은 미지·영 경계, 사이클, 같은 접두사의 불일치 링크에 국한한다. (2) compaction은 engine 코드 변경 0건으로 분류된다 — 정상 turn 경로가 요약 turn을 운반하고 알림 무시는 기존 fail-open 루프가 수행한다(테스트로 고정). (3) `Manager.Fork`(tip 분기)도 ChainTo로 정렬해 계층 간 fork 의미를 일치시켰다.
+- Baseline-attribution: worktree `.claude/worktrees/t653`, branch `WT-gateway-as4-resume`. 커밋 진행 `92db2cfe7` → `14dba89c5` → `e45f50a8d` → `64885fa06`. 사전 존재 환경 실패 5건(codexbridge lifecycle_subprocess 4건 + gateway `TestAppServerSubprocessHTTPToolContinuation`)은 작업 변경이 없는 커밋 트리(`git archive HEAD` 추출본)에서 동일 재현해 이 diff 이전 환경 의존으로 귀속했다.
+- Gaps: AS-010 새 프로세스 실세션 회상, AS-011 실제 turn model 일치 양성, AS-012 실제 Claude 압축 수집, AS-013 `--fork-session` 실분기·병렬/중첩 자식 격리는 전부 실증 미수행. M1 native fork 전제 실패 NOT-RUN 유지 — AS-013 전체 지원 완료는 계속 보류. 전체 스위트 판정은 CI 소관.
+- Residual-risk: App Server 실제 응답 형태는 fake 기준. RebaseLedger의 재시작 복원은 생성자 `appliedEpoch` 주입에 의존하며 생산 배선(t654)이 그 값을 읽는 위치는 미설계. Fork 자식의 inherited prefix는 engine에서 caller-asserted — 원장 대조는 gateway 계층 책임으로 남는다. idle 전환의 배리어 model 재고정은 turn 성공 시점에 일어난다.
+
 ## §E.3 Run-phase Audit-Ready Signal
 
-감사 준비 미완료. M0는 INCONCLUSIVE다. 0.8.0 인식기와 실제 캡처 판정은 통과했으나 M1 전체 및 제품 AC는 미완료다.
-`run_complete_at`, `run_commit_sha`, AC PASS 수치와 완료 신호는 발행하지 않는다.
-제품 코드 구현 완료·검증 완료를 주장하지 않으며, 저장소 전체 시험 판정은 통합 브랜치 CI의 소관으로 PENDING이다.
+run-phase 완료. `run_complete_at: 2026-09-14`, `run_commit_sha: 9f3dc41e0`.
+t653 run-phase의 자동화 가능 부분(M2 resume, M3 idle 모델, M4 compaction, M5 경계 fork)은 커밋 `14dba89c5`·`e45f50a8d`·`64885fa06`로 착지하고 패키지 테스트·커버리지(codexbridge 83.1% / receipt 88.9% / conversation 80.3% / gateway 91.7%)·Windows 빌드·lint 0·gofmt가 이번 실행에서 실측됐다.
+실증 gap의 처분 근거: acceptance.md:469 **T21** — AS-010(실세션 회상)·AS-011(실제 turn model 일치)·AS-012(실제 Claude 압축 수집)의 실세션 양성 실증은 카드 **t844**(라이브 계측 세션)로 이관됐고, AS-013은 이관 대상이 아니며 설계된 전제 실패 NOT-RUN(M1 probe, `.moai/reports/t653/m1-native-fork-probe.md`)을 유지한다. t844의 실세션 양성이 도래하기 전까지 전체 기능 통과는 보류다.
+저장소 전체 시험 판정은 통합 브랜치 CI의 소관이다. 상세 판정 초안: [run-verdict.md](../../reports/t653/run-verdict.md).
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase>_
+sync_status: audit-ready (card t653 sync — the umbrella SPEC does NOT close per card; t654 and later cards remain)
+sync_complete_at: 2026-09-14
+sync_commit_sha: "pending-backfill"
+frontmatter_status_transitions:
+  - transition: "in-progress → implemented (NOT completed — SPEC-MOAI-GATEWAY-001 is a multi-card Tier L series; the implemented → completed transition rides a later sync after t654+ cards land)"
+    owner: manager-docs
+    surfaces: spec.md only (plan.md / acceptance.md are frontmatter-stateless; progress.md carries no status axis)
+card_verdict: .moai/reports/t653/verdict.md (5-section format; absorbs the run-verdict.md draft)
+sync_audit: .moai/reports/t653/sync-audit.md (4-dimension score — Functionality/Security/Craft/Consistency)
+sync_remeasurement: 변경 패키지 재측정(이 실행) — receipt 88.9% / conversation 80.3% / gateway 91.7%(-skip 사전존재 1건) ok; codexbridge는 skip 없이 사전 존재 lifecycle_subprocess 4건만 실패(신규 0), 4건 skip 시 82.5%(atomic 82.7%). run-phase 기록 83.1%와의 잔차는 skip 표현식 미기록 attribution gap으로 verdict Gaps에 기록.
+changelog_entry: deferred (B12 pre-emission grep `grep -c 'SPEC-MOAI-GATEWAY-001' CHANGELOG.md` → 0; series convention documents at release/launcher-wiring time — card t653's surface is internal packages only, user-visible effect first exposed by t654 launcher wiring; decision recorded in .moai/reports/t653/verdict.md § CHANGELOG 결정)
+b12_self_test_a: pass (pre-emission grep count 0 — no duplicate-emission risk; no halt condition)
+b12_self_test_b: n/a (no CHANGELOG entry emitted — AC-count match test has no target)
+b12_self_test_c: n/a (no CHANGELOG entry emitted — no file paths claimed in an entry)
+mx_tag_validation: pass (@MX:WARN/REASON annotations observed in 11 files across internal/codexbridge·internal/gateway — sync sub-step scan 2026-09-14)
+t21_transfer_consistency: acceptance.md:469 ↔ spec.md HISTORY 0.12.0 ↔ progress.md §E.3 — three surfaces carry the same t844 transfer content (verified by sync-audit)
+as013_disposition: designed NOT-RUN maintained (M1 pre-condition failure probe, .moai/reports/t653/m1-native-fork-probe.md) — not a transfer target; AS4 overall-support completion remains deferred

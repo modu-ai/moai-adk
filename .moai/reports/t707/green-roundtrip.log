@@ -1,0 +1,26 @@
+=== RUN   TestReplayRoundTripMarkerToolID
+--- PASS: TestReplayRoundTripMarkerToolID (0.03s)
+=== RUN   TestReplayRoundTripConsecutiveReasoningItems
+--- PASS: TestReplayRoundTripConsecutiveReasoningItems (0.02s)
+=== RUN   TestReplayRoundTripInterleavedReasoning
+--- PASS: TestReplayRoundTripInterleavedReasoning (0.02s)
+=== RUN   TestReplayRoundTripRawCallIDWithoutReasoning
+--- PASS: TestReplayRoundTripRawCallIDWithoutReasoning (0.02s)
+=== RUN   TestReplayRoundTripEditReplaceAllUnicode
+--- PASS: TestReplayRoundTripEditReplaceAllUnicode (0.02s)
+=== RUN   TestReplayRoundTripTextAnswer
+--- PASS: TestReplayRoundTripTextAnswer (0.02s)
+=== RUN   TestReplayRoundTripReasoningWithSummary
+--- PASS: TestReplayRoundTripReasoningWithSummary (0.02s)
+=== RUN   TestReplayRoundTripTwoSerialTurns
+--- PASS: TestReplayRoundTripTwoSerialTurns (0.03s)
+=== RUN   TestReplayRoundTripStillRejectsTampering
+=== RUN   TestReplayRoundTripStillRejectsTampering/edited_tool_input
+=== RUN   TestReplayRoundTripStillRejectsTampering/renamed_tool
+=== RUN   TestReplayRoundTripStillRejectsTampering/dropped_tool_result
+--- PASS: TestReplayRoundTripStillRejectsTampering (0.06s)
+    --- PASS: TestReplayRoundTripStillRejectsTampering/edited_tool_input (0.02s)
+    --- PASS: TestReplayRoundTripStillRejectsTampering/renamed_tool (0.02s)
+    --- PASS: TestReplayRoundTripStillRejectsTampering/dropped_tool_result (0.02s)
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/gateway/translate	(cached)

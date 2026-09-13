@@ -14,6 +14,7 @@ import (
 	"os/exec"
 	"strings"
 	"testing"
+	"time"
 )
 
 // TestLandedPredicate_NegationAttributesNothing — REQ-AD-008 (guard M3): a
@@ -196,6 +197,57 @@ func TestScanLandedSubjects_LandedAttributions(t *testing.T) {
 	}
 }
 
+// TestScanLandedSubjects_CarriesCommitTime — the t684 generation boundary's
+// input: the stream's rows carry a parseable unix committer time, and a
+// malformed time field is an error, not a zero.
+func TestScanLandedSubjects_CarriesCommitTime(t *testing.T) {
+	dir := scanRepo(t, "fix(t901): timed landing")
+	commits, err := ScanLandedSubjects(gitIn(dir), "origin/develop")
+	if err != nil {
+		t.Fatalf("ScanLandedSubjects: %v", err)
+	}
+	if len(commits) == 0 {
+		t.Fatal("empty stream")
+	}
+	for _, c := range commits {
+		if c.CommitTime <= 0 {
+			t.Errorf("commit %s carries CommitTime %d, want a positive unix timestamp", c.SHA, c.CommitTime)
+		}
+	}
+	// The newest commit's time is within a minute of now — a real parse of
+	// %ct, not a zero from a missing field.
+	newest := time.Now().Unix()
+	if d := newest - commits[0].CommitTime; d < 0 || d > 60 {
+		t.Errorf("newest CommitTime %d is %ds from now, want within a minute", commits[0].CommitTime, d)
+	}
+}
+
+// TestAutoDoneSubjectFresh — the t684 generation boundary in both directions:
+// a commit older than the card is stale (the old generation's landing must
+// not close the reissued card), a commit at or after creation is fresh, and
+// an undecidable card time fails CLOSED.
+func TestAutoDoneSubjectFresh(t *testing.T) {
+	cardAt := time.Date(2026, 9, 13, 12, 0, 0, 0, time.UTC)
+	addedAt := cardAt.Format(time.RFC3339)
+	hit := LandedCommit{SHA: "abc", Subject: "fix(t1): x", CommitTime: cardAt.Unix()}
+
+	if AutoDoneSubjectFresh(LandedCommit{SHA: "abc", CommitTime: cardAt.Add(-24 * time.Hour).Unix()}, addedAt) {
+		t.Error("a day-older commit reads fresh — the old generation would close the reissued card")
+	}
+	if !AutoDoneSubjectFresh(hit, addedAt) {
+		t.Error("a same-second commit reads stale — the boundary is generation separation, not second-level forensics")
+	}
+	if !AutoDoneSubjectFresh(LandedCommit{SHA: "abc", CommitTime: cardAt.Add(time.Hour).Unix()}, addedAt) {
+		t.Error("a commit after card creation reads stale — the boundary over-blocks real landings")
+	}
+	if AutoDoneSubjectFresh(hit, "not-a-timestamp") {
+		t.Error("an unparseable added_at fails OPEN — no subject close without a decidable boundary")
+	}
+	if AutoDoneSubjectFresh(hit, "") {
+		t.Error("an empty added_at fails OPEN — no subject close without a decidable boundary")
+	}
+}
+
 // shaReachableFacts builds facts with a recorded SHA and a given reachability.
 func shaReachableFacts(sha string, reachable AutoDoneTri) AutoDoneFacts {
 	return AutoDoneFacts{RecordedSHA: sha, SHAReachable: reachable, SubjectKnown: true, DistinctTexts: 1, SpecSyncGate: AutoDoneYes}
@@ -283,5 +335,8 @@ func TestLandedScanArgsShape(t *testing.T) {
 	}
 	if !strings.Contains(joined, "%H") {
 		t.Errorf("argv %v carries no SHA field — the log row needs the attributing commit's SHA", args)
+	}
+	if !strings.Contains(joined, "%ct") {
+		t.Errorf("argv %v carries no committer-time field — the t684 generation boundary needs %%%%ct to judge added_at", args)
 	}
 }

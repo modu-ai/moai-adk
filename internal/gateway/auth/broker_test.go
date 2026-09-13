@@ -66,11 +66,12 @@ func TestCodexBrokerProcess(t *testing.T) {
 				continue
 			}
 			tokenFixture(t, home, "broker", time.Now().Add(time.Hour))
-			if mode == "wrong" {
+			switch mode {
+			case "wrong":
 				fmt.Println(`{"method":"account/login/completed","params":{"loginId":"other","success":true}}`)
-			} else if mode == "failed" {
+			case "failed":
 				fmt.Println(`{"method":"account/login/completed","params":{"loginId":"current","success":false,"error":"secret-error"}}`)
-			} else {
+			default:
 				fmt.Println(`{"method":"account/login/completed","params":{"loginId":"current","success":true}}`)
 			}
 		case "account/read":
@@ -175,7 +176,9 @@ func TestCodexBrokerRejectsSymlinkedEnvironmentDirectories(t *testing.T) {
 	if e != nil {
 		t.Fatal(e)
 	}
-	os.Chmod(home, 0700)
+	if err := os.Chmod(home, 0700); err != nil {
+		t.Fatal(err)
+	}
 	if e = os.Symlink(t.TempDir(), filepath.Join(home, "config")); e != nil {
 		t.Fatal(e)
 	}
@@ -195,8 +198,12 @@ func TestCodexBrokerRefreshRejectsWrongRPCAndAccountType(t *testing.T) {
 		if e != nil {
 			t.Fatal(e)
 		}
-		os.Chmod(home, 0700)
-		os.WriteFile(filepath.Join(home, "mock-mode"), []byte(mode), 0600)
+		if err := os.Chmod(home, 0700); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(filepath.Join(home, "mock-mode"), []byte(mode), 0600); err != nil {
+			t.Fatal(err)
+		}
 		b := CodexBroker{Executable: executable, Timeout: time.Second, testEnv: []string{"GORACE=atexit_sleep_ms=0"}, testArgs: []string{"-test.run=TestCodexBrokerProcess", "--"}}
 		if e = b.Run(context.Background(), home, true); e == nil {
 			t.Fatal("invalid refresh RPC accepted")

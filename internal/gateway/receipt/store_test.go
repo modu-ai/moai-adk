@@ -68,7 +68,11 @@ func TestStorePersistenceConcurrentAndLoss(t *testing.T) {
 	if e != nil {
 		t.Fatal(e)
 	}
-	defer resumed.Close()
+	defer func() {
+		if err := resumed.Close(); err != nil {
+			t.Error(err)
+		}
+	}()
 	m, e := resumed.Snapshot(ctx)
 	if e != nil || len(m.Candidates()) != 12 {
 		t.Fatal(e, len(m.Candidates()))
@@ -105,7 +109,11 @@ func TestStoreRejectsUnsafePathsAndReplacement(t *testing.T) {
 	if e != nil {
 		t.Fatal(e)
 	}
-	defer s.Close()
+	defer func() {
+		if err := s.Close(); err != nil {
+			t.Error(err)
+		}
+	}()
 	manifest := filepath.Join(dir, "manifest.json")
 	if e = os.Chmod(manifest, 0644); e != nil {
 		t.Fatal(e)
@@ -166,7 +174,11 @@ func TestStoreRejectsForeignConversation(t *testing.T) {
 	if e != nil {
 		t.Fatal(e)
 	}
-	defer s.Close()
+	defer func() {
+		if err := s.Close(); err != nil {
+			t.Error(err)
+		}
+	}()
 	if _, e = OpenStore(ctx, dir, "00000000-0000-4000-8000-000000000001", false); e == nil {
 		t.Fatal("manifest accepted for another conversation")
 	}

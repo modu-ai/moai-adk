@@ -64,14 +64,16 @@ func runChildWithListener(ctx context.Context, cfg ChildConfig, handler http.Han
 	if err != nil {
 		return errors.New("gateway loopback bind failed")
 	}
-	defer listener.Close()
+	defer func() { _ = listener.Close() }() // Serve owns the listener from here; Close is already forced
 	var overlay *ownedOverlay
 	if len(cfg.Overlay) > 0 {
 		overlay, err = newOwnedOverlay(cfg.Overlay)
 		if err != nil {
 			return err
 		}
-		defer overlay.cleanup()
+		// once-guarded; every path that can surface the cleanup error does so
+		// explicitly below. This defer is the error-path safety net.
+		defer func() { _ = overlay.cleanup() }()
 	}
 	h := ChildHandoff{Address: listener.Addr().String()}
 	if overlay != nil {
@@ -163,7 +165,7 @@ func newOwnedOverlay(content []byte) (*ownedOverlay, error) {
 }
 func (o *ownedOverlay) cleanup() error {
 	o.once.Do(func() {
-		defer o.root.Close()
+		defer func() { _ = o.root.Close() }() // matches the success-path Close below; o.err already owns the signal
 		directory, dirErr := o.root.Stat(".")
 		pathInfo, pathErr := os.Lstat(filepath.Dir(o.path))
 		if dirErr != nil || pathErr != nil || !pathInfo.IsDir() || !os.SameFile(directory, pathInfo) {

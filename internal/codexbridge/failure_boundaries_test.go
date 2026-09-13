@@ -46,7 +46,7 @@ func TestStateStoreRejectsUnsafeExistingEntries(t *testing.T) {
 				err = os.Remove(dir)
 			case "read-only-directory":
 				err = os.Chmod(dir, 0500)
-				defer os.Chmod(dir, 0700)
+				defer func() { _ = os.Chmod(dir, 0700) }() // restore permissions for later cases
 			}
 			if err != nil {
 				t.Fatal(err)

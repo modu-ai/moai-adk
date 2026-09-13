@@ -1,0 +1,14 @@
+# github.com/modu-ai/moai-adk/internal/gateway/receipt [github.com/modu-ai/moai-adk/internal/gateway/receipt.test]
+internal/gateway/receipt/compact_test.go:16:47: undefined: CompactBase
+internal/gateway/receipt/compact_test.go:17:9: undefined: CompactBase
+internal/gateway/receipt/compact_test.go:21:7: undefined: NewRebaseLedger
+internal/gateway/receipt/compact_test.go:29:77: undefined: ErrCompactDuplicate
+internal/gateway/receipt/compact_test.go:33:104: undefined: ErrCompactDigest
+internal/gateway/receipt/compact_test.go:39:21: undefined: CompactBase
+internal/gateway/receipt/compact_test.go:39:137: undefined: ErrCompactForeign
+internal/gateway/receipt/compact_test.go:42:77: undefined: ErrCompactAmbiguous
+internal/gateway/receipt/compact_test.go:51:7: undefined: NewRebaseLedger
+internal/gateway/receipt/compact_test.go:54:77: undefined: ErrCompactDuplicate
+internal/gateway/receipt/compact_test.go:54:77: too many errors
+FAIL	github.com/modu-ai/moai-adk/internal/gateway/receipt [build failed]
+FAIL

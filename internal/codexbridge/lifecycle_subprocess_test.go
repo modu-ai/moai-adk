@@ -18,7 +18,9 @@ func TestAuditRealTransportEOFWakesBridge(t *testing.T) {
 		t.Skip(err)
 	}
 	dir, _ := filepath.EvalSymlinks(t.TempDir())
-	os.Chmod(dir, 0700)
+	if err := os.Chmod(dir, 0700); err != nil {
+		t.Fatal(err)
+	}
 	script := filepath.Join(dir, "fake-codex")
 	body := `import sys,json,time
 for line in sys.stdin:
@@ -30,19 +32,27 @@ for line in sys.stdin:
   time.sleep(0.15)
   sys.exit(0)
 `
-	os.WriteFile(script, []byte("#!"+py+"\n"+body), 0700)
+	if err := os.WriteFile(script, []byte("#!"+py+"\n"+body), 0700); err != nil {
+		t.Fatal(err)
+	}
 	life, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 	client, err := codexapp.Start(life, codexapp.Config{Binary: script, Home: dir})
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer client.Close()
+	defer func() {
+		if err := client.Close(); err != nil {
+			t.Error(err)
+		}
+	}()
 	if _, err = client.Initialize(life, "audit", "1"); err != nil {
 		t.Fatal(err)
 	}
 	state := filepath.Join(dir, "state")
-	os.Mkdir(state, 0700)
+	if err := os.Mkdir(state, 0700); err != nil {
+		t.Fatal(err)
+	}
 	store, err := OpenStore(state)
 	if err != nil {
 		t.Fatal(err)
@@ -74,7 +84,9 @@ func testCanceledStart(t *testing.T, late bool) {
 		t.Skip(err)
 	}
 	dir, _ := filepath.EvalSymlinks(t.TempDir())
-	os.Chmod(dir, 0700)
+	if err := os.Chmod(dir, 0700); err != nil {
+		t.Fatal(err)
+	}
 	script := filepath.Join(dir, "fake-codex")
 	body := `import sys,json,time,os
 for line in sys.stdin:
@@ -94,19 +106,27 @@ for line in sys.stdin:
 		body = strings.Replace(body, "time.sleep(0.25)", "time.sleep(6)\n  for turn in ['eof-turn','eof-turn','unowned-turn']:\n   print(json.dumps({'method':'turn/started','params':{'threadId':'eof-thread','turn':{'id':turn,'status':'inProgress'}}}),flush=True)", 1)
 	}
 
-	os.WriteFile(script, []byte("#!"+py+"\n"+body), 0700)
+	if err := os.WriteFile(script, []byte("#!"+py+"\n"+body), 0700); err != nil {
+		t.Fatal(err)
+	}
 	life, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 	client, err := codexapp.Start(life, codexapp.Config{Binary: script, Home: dir})
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer client.Close()
+	defer func() {
+		if err := client.Close(); err != nil {
+			t.Error(err)
+		}
+	}()
 	if _, err = client.Initialize(life, "audit", "1"); err != nil {
 		t.Fatal(err)
 	}
 	state := filepath.Join(dir, "state")
-	os.Mkdir(state, 0700)
+	if err := os.Mkdir(state, 0700); err != nil {
+		t.Fatal(err)
+	}
 	store, err := OpenStore(state)
 	if err != nil {
 		t.Fatal(err)
@@ -162,7 +182,9 @@ func TestAuditCanceledRPCDoesNotExhaustSharedTransport(t *testing.T) {
 		t.Skip(err)
 	}
 	dir, _ := filepath.EvalSymlinks(t.TempDir())
-	os.Chmod(dir, 0700)
+	if err := os.Chmod(dir, 0700); err != nil {
+		t.Fatal(err)
+	}
 	script := filepath.Join(dir, "fake-codex")
 	body := `import sys,json
 counter=0
@@ -181,19 +203,27 @@ for line in sys.stdin:
   emit({'id':m['id'],'result':{}})
   emit({'method':'turn/completed','params':{'threadId':p['threadId'],'turn':{'id':p['turnId'],'status':'interrupted'}}})
 `
-	os.WriteFile(script, []byte("#!"+py+"\n"+body), 0700)
+	if err := os.WriteFile(script, []byte("#!"+py+"\n"+body), 0700); err != nil {
+		t.Fatal(err)
+	}
 	life, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 	client, err := codexapp.Start(life, codexapp.Config{Binary: script, Home: dir, QueueSize: 2})
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer client.Close()
+	defer func() {
+		if err := client.Close(); err != nil {
+			t.Error(err)
+		}
+	}()
 	if _, err = client.Initialize(life, "audit", "1"); err != nil {
 		t.Fatal(err)
 	}
 	state := filepath.Join(dir, "state")
-	os.Mkdir(state, 0700)
+	if err := os.Mkdir(state, 0700); err != nil {
+		t.Fatal(err)
+	}
 	store, err := OpenStore(state)
 	if err != nil {
 		t.Fatal(err)

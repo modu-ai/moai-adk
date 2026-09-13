@@ -41,7 +41,7 @@ func seedGatewayUIState(target string, in gatewayLaunchRequest) error {
 			return err
 		}
 		data, readErr := io.ReadAll(io.LimitReader(f, 4<<20))
-		f.Close()
+		_ = f.Close() // read-only source; Close carries no write-back to lose
 		if readErr != nil {
 			return readErr
 		}
@@ -122,7 +122,7 @@ func seedGatewayBypassAcceptance(target string, in gatewayLaunchRequest) error {
 		return err
 	}
 	data, err := io.ReadAll(io.LimitReader(f, 4<<20))
-	f.Close()
+	_ = f.Close() // read-only source; Close carries no write-back to lose
 	if err != nil {
 		return err
 	}

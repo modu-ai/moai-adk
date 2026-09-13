@@ -1,0 +1,35 @@
+=== RUN   TestGraphFreshnessReachabilityGuard_TargetSelection
+=== RUN   TestGraphFreshnessReachabilityGuard_TargetSelection/push_rejects_an_object-present_non-ancestor_stamp
+    t688_push_guard_test.go:44: guard output (env=map[GITHUB_BASE_REF: GITHUB_HEAD_REF:]):
+        guard: push event (no base ref) — judging reachability from HEAD
+        ::error::codemaps provenance stamp 2b9fd07bdc24ce82da2d6c0292742cc56856effe is NOT reachable from HEAD — orphan-bound stamp (the merge would strand it)
+=== RUN   TestGraphFreshnessReachabilityGuard_TargetSelection/push_accepts_an_ancestor_stamp
+    t688_push_guard_test.go:54: guard output (env=map[GITHUB_BASE_REF: GITHUB_HEAD_REF:]):
+        guard: push event (no base ref) — judging reachability from HEAD
+        guard: stamp 482e36abd15ede07500dc507a1488f98ad474e2d reachable from HEAD
+=== RUN   TestGraphFreshnessReachabilityGuard_TargetSelection/ordinary_PR_judges_base_ancestry,_not_HEAD
+    t688_push_guard_test.go:65: guard output (env=map[GITHUB_BASE_REF:main GITHUB_HEAD_REF:feature/x]):
+        ::error::codemaps provenance stamp 3140e2ad4439391a30a6c9f3f7f73a19cb56fa56 is NOT reachable from origin/main — orphan-bound stamp (the merge would strand it)
+=== RUN   TestGraphFreshnessReachabilityGuard_TargetSelection/release_PR_judges_the_merge-preview_HEAD
+    t688_push_guard_test.go:78: guard output (env=map[GITHUB_BASE_REF:main GITHUB_HEAD_REF:release/v1.0.0]):
+        guard: release lane (release/v1.0.0) — judging reachability from merge preview HEAD
+        guard: stamp 9a8a0c01e1840b8c34a410e4ee28d0dde061ecb4 reachable from HEAD
+=== RUN   TestGraphFreshnessReachabilityGuard_TargetSelection/anchorless_provenance_skips_with_a_reason
+    t688_push_guard_test.go:87: guard output (env=map[GITHUB_BASE_REF: GITHUB_HEAD_REF:]):
+        guard: provenance carries no commit anchor (dirty/content-fingerprint anchor) — reachability not judgeable, skipping
+=== RUN   TestGraphFreshnessReachabilityGuard_TargetSelection/missing_object_fails_on_every_event_shape
+    t688_push_guard_test.go:100: guard output (env=map[GITHUB_BASE_REF: GITHUB_HEAD_REF:]):
+        ::error::codemaps provenance names commit 0000000000000000000000000000000000000000 which does not exist in this checkout's history
+    t688_push_guard_test.go:100: guard output (env=map[GITHUB_BASE_REF:main GITHUB_HEAD_REF:feature/x]):
+        ::error::codemaps provenance names commit 0000000000000000000000000000000000000000 which does not exist in this checkout's history
+    t688_push_guard_test.go:100: guard output (env=map[GITHUB_BASE_REF:main GITHUB_HEAD_REF:release/v1.0.0]):
+        ::error::codemaps provenance names commit 0000000000000000000000000000000000000000 which does not exist in this checkout's history
+--- PASS: TestGraphFreshnessReachabilityGuard_TargetSelection (4.49s)
+    --- PASS: TestGraphFreshnessReachabilityGuard_TargetSelection/push_rejects_an_object-present_non-ancestor_stamp (0.76s)
+    --- PASS: TestGraphFreshnessReachabilityGuard_TargetSelection/push_accepts_an_ancestor_stamp (0.57s)
+    --- PASS: TestGraphFreshnessReachabilityGuard_TargetSelection/ordinary_PR_judges_base_ancestry,_not_HEAD (0.63s)
+    --- PASS: TestGraphFreshnessReachabilityGuard_TargetSelection/release_PR_judges_the_merge-preview_HEAD (0.65s)
+    --- PASS: TestGraphFreshnessReachabilityGuard_TargetSelection/anchorless_provenance_skips_with_a_reason (0.45s)
+    --- PASS: TestGraphFreshnessReachabilityGuard_TargetSelection/missing_object_fails_on_every_event_shape (1.42s)
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/graph	4.930s

@@ -40,7 +40,11 @@ func TestStoreLoginAtomicPrivateAndLogoutGeneration(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer s.Close()
+	defer func() {
+		if err := s.Close(); err != nil {
+			t.Error(err)
+		}
+	}()
 	if _, err = s.Resolve(); !errors.Is(err, ErrCredentialAbsent) {
 		t.Fatal(err)
 	}
@@ -72,7 +76,11 @@ func TestStoreRejectsPartialFailureAndLateLoginAfterLogout(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer s.Close()
+	defer func() {
+		if err := s.Close(); err != nil {
+			t.Error(err)
+		}
+	}()
 	gen := loginFixture(t, s)
 	for _, b := range []brokerFunc{
 		func(c context.Context, h string, r bool) error {
@@ -126,7 +134,11 @@ func TestRefreshRequiresChangedTokenAndProviderAcceptance(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer s.Close()
+	defer func() {
+		if err := s.Close(); err != nil {
+			t.Error(err)
+		}
+	}()
 	gen := loginFixture(t, s)
 	unchanged := brokerFunc(func(context.Context, string, bool) error { return nil })
 	accept := func(context.Context, CredentialRef) error { return nil }
@@ -160,7 +172,9 @@ func TestStoreRejectsSymlinkAndPublicPermissions(t *testing.T) {
 		t.Fatal(err)
 	}
 	if s, e := OpenStore(public); e == nil {
-		s.Close()
+		if cerr := s.Close(); cerr != nil {
+			t.Error(cerr)
+		}
 		t.Fatal("public store accepted")
 	}
 	link := filepath.Join(dir, "link")
@@ -168,7 +182,9 @@ func TestStoreRejectsSymlinkAndPublicPermissions(t *testing.T) {
 		t.Fatal(err)
 	}
 	if s, e := OpenStore(link); e == nil {
-		s.Close()
+		if cerr := s.Close(); cerr != nil {
+			t.Error(cerr)
+		}
 		t.Fatal("symlink store accepted")
 	}
 }

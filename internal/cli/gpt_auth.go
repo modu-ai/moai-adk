@@ -32,12 +32,16 @@ func openGPTAuthStore() (*auth.Store, error) {
 }
 
 func newGPTAuthServices(out io.Writer, broker auth.Broker) gptCommandServices {
-	withStore := func(ctx context.Context, operation func(*auth.Store) error) error {
+	withStore := func(ctx context.Context, operation func(*auth.Store) error) (err error) {
 		store, err := openGPTAuthStore()
 		if err != nil {
 			return err
 		}
-		defer store.Close()
+		defer func() {
+			if closeErr := store.Close(); err == nil {
+				err = closeErr
+			}
+		}()
 		return operation(store)
 	}
 	return gptCommandServices{

@@ -56,7 +56,7 @@ flowchart TD
 
 ## 状态文件
 
-队列保存在 `~/.moai/db/<project-key>/todo/backlog.db` 这一个 SQLite 数据库里。项目键会把链接型工作树统一到主目录中的同一条队列，数据库不会被提交。下面的形状是 `moai todo list --json` 与 `moai todo export-json` 输出的记录形状，数据库里也是同样的字段。迁移与降级方法见项目内的 `.moai/docs/todo-queue-storage.md`。
+对于常规项目目录，队列保存在 `~/.moai/db/<project-key>/todo/backlog.db` 这一个 SQLite 数据库里。不过，如果项目起点位于临时目录（`os.TempDir()`、`/tmp`、`/var/folders` 之下），在没有绝对路径 `MOAI_HOME` 覆盖的情况下，队列会改为项目本地保存在 `<base>/.moai/state/todo/backlog.db`。项目键会把链接型工作树统一到主目录中的同一条队列，数据库不会被提交。下面的形状是 `moai todo list --json` 与 `moai todo export-json` 输出的记录形状，数据库里也是同样的字段。迁移与降级方法见项目内的 `.moai/docs/todo-queue-storage.md`。
 
 ```json
 {
@@ -245,7 +245,7 @@ $ moai todo unrelate 2
 
 CLI 不会弹出提示。它接受参数和标志、输出一行、把错误写到 stderr——在脚本和 CI 中都能安全使用的形态。
 
-在链接型 worktree 里执行时，队列也**归属到 primary 检出的同一个项目键**——一个仓库一条队列的契约。在卡片 worktree 里执行 `moai todo add`，追加的就是主控和工头循环读取的同一个数据库。没有 git 元数据的项目也使用 `~/.moai/db/<project-key>/todo/backlog.db` 结构。
+在链接型 worktree 里执行时，队列也**归属到 primary 检出的同一个项目键**——一个仓库一条队列的契约。在卡片 worktree 里执行 `moai todo add`，追加的就是主控和工头循环读取的同一个数据库。没有 git 元数据的项目也使用同一套主目录结构——不过起点位于临时目录的项目，在没有绝对路径 `MOAI_HOME` 覆盖时使用 `<base>/.moai/state/todo/backlog.db`。
 
 两个表面共享同一个存储层。变更先抓住数据库旁边的锁文件（backlog.lock），再由一个 WAL 模式的 SQLite 事务落盘；读取则不加锁。条目 id 从持久化的最高水位标记（`last_seq`）签发，而该值在与插入相同的事务内推进，id 上还有 UNIQUE 约束，因此即使进程在变更途中死掉，被移除条目的 id 也永不复用。
 
