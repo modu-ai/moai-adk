@@ -57,6 +57,23 @@ func (e HistoryReplayError) Error() string {
 	}
 }
 
+// classifiedError carries the replay cause of an observations-level rejection
+// so Check can surface the same fixed recovery guidance the manifest-level
+// classes use. Card t703: these paths previously leaked the bare
+// receipt.ErrInvalid body, leaving the failing check unidentifiable. The
+// cause is recovery guidance only — no request-derived detail is added.
+type classifiedError struct {
+	err   error
+	cause ReplayCause
+}
+
+func (e classifiedError) Error() string { return e.err.Error() }
+func (e classifiedError) Unwrap() error { return e.err }
+
+func classify(cause ReplayCause, err error) error {
+	return classifiedError{err: err, cause: cause}
+}
+
 type receiptHistory struct {
 	store         *receipt.Store
 	session       string
@@ -96,7 +113,7 @@ func (h *receiptHistory) observations(model, scope string, raw []byte) ([]receip
 	}
 	var messages []map[string]any
 	if json.Unmarshal(raw, &messages) != nil {
-		return nil, receipt.ErrInvalid
+		return nil, classify(CauseChain, receipt.ErrInvalid)
 	}
 	ids := map[string]string{}
 	observations := []receipt.Observation{}
@@ -130,13 +147,18 @@ func (h *receiptHistory) observations(model, scope string, raw []byte) ([]receip
 			if envelope != nil {
 				original, err = opaque.RestoreToolID(id, envelope)
 				if err != nil {
-					return nil, err
+					return nil, classify(CauseChain, err)
 				}
 			} else if strings.HasPrefix(id, opaque.ToolPrefix) {
-				return nil, receipt.ErrInvalid
+				// The reasoning envelope that binds this gateway-issued tool
+				// marker was dropped from the replay, so the marker cannot be
+				// restored and the request is untranslatable. Card t703: a
+				// mid-conversation model switch produces exactly this shape
+				// when the client re-encodes prior turns.
+				return nil, classify(CauseReasoning, receipt.ErrInvalid)
 			}
 			if previous, ok := ids[id]; ok && previous != original {
-				return nil, receipt.ErrInvalid
+				return nil, classify(CauseChain, receipt.ErrInvalid)
 			}
 			ids[id] = original
 		}
@@ -151,8 +173,11 @@ func (h *receiptHistory) observations(model, scope string, raw []byte) ([]receip
 		}
 		return id, nil
 	})
-	if err != nil || len(boundaries) != len(observations) {
-		return nil, receipt.ErrInvalid
+	if err != nil {
+		return nil, classify(CauseChain, err)
+	}
+	if len(boundaries) != len(observations) {
+		return nil, classify(CauseChain, receipt.ErrInvalid)
 	}
 	// Hash-only domain separation binds the existing receipt schema to the stable
 	// credential owner and verified model family without retaining private data.
@@ -172,6 +197,10 @@ func (h *receiptHistory) observations(model, scope string, raw []byte) ([]receip
 func (h *receiptHistory) Check(ctx context.Context, model, scope string, raw []byte) error {
 	observations, err := h.observations(model, scope, raw)
 	if err != nil {
+		var classified classifiedError
+		if errors.As(err, &classified) {
+			return HistoryReplayError{Cause: classified.cause}
+		}
 		return err
 	}
 	manifest, err := h.store.Snapshot(ctx)
