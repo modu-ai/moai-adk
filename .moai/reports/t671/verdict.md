@@ -103,4 +103,12 @@ Baseline: HEAD `fac132d38` (= origin/develop), branch `WT-gateway-lint-sweep`, w
 - **테스트가 t.Error로 바뀐 cleanup Close들**(`t.Cleanup` 내 store/client Close): 머신 고부하 시 3초 타임아웃류 정리 실패가 새로 테스트 실패로 드러날 수 있다 — 이는 기존에 조용히 사라지던 실제 신호의 노출이며, flake가 아니라 지연의 가시화다.
 - **ST1005 소문자화로 에러 문자열이 바뀜**(`codex app server ...`, `app server ...`): sentinel 비교만 쓰는 현재 코드베이스에는 문자열 매칭 의존이 없음을 grep으로 확인했으나, 외부 스크립트가 stderr 문자열을 파싱한다면 영향 가능(내부 CLI이므로 가능성 낮음).
 
+---
+
+## 병합 분기 추가 기록 (2026-09-13, lane-5 — develop 흡수 후)
+
+- 흡수: `git merge develop`(0c32a15b2) → 충돌 1파일 `internal/gateway/translate/native_policy.go`(t695의 gptEffortAllowlist 함수형 변경 vs 본 카드의 QF1001 조건 추출) → **develop 측 채택**(신규 형태에서 본 카드 수리 대상 연산자가 소멸). 병합 커밋 `27d189d89`.
+- 흡수로 유입된 신규 errcheck 5건 수리(커밋 `ed0dcf900`): upstream_retry_test.go 4곳(핸들러 고루틴이라 t.Errorf; nativeHandler 1곳은 재시도 중단 연결 쓰기 = 예상 경로로 명시적 `_, _ =` + 사유 주석), todo_merge_backup_test.go 1곳(WriteString/Close 오류 전파).
+- 병합 트리 재측정: `golangci-lint run --timeout=5m` **exit 0 (0 issues)** · `go test -count=1 ./internal/gateway/...` — gateway 본체 1건 실패 = `TestAppServerSubprocessHTTPToolContinuation`(판정서 §Gaps 2대로 본 머신 환경 한정, CI 녹색), auth·conversation·opaque·receipt·translate 전부 ok · `go test ./internal/kanban/` ok · `go vet` ok · gofmt clean.
+
 🗿 MoAI
