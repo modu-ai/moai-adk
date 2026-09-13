@@ -13,6 +13,9 @@
   (옛 t654 가드 보고서와 충돌 방지). `design.md` §11·`research.md` §20 신설, §E.2~§E.4 미접촉.
   open question: 카드 문구 "rc.8"은 발행 시점 표기 — 배포 시 다음 미사용 rc 번호 적용
   (`.moai/docs/version-management.md` Local RC Numbering, 보고서에 명시).
+  plan-audit: CONDITIONAL PASS 0.90(`.moai/reports/t654/as5-plan-audit.md`) — 수선 3건(D1 런처 대기
+  오류 제2 위치 `launcher.go:142`를 A5-M1 예상 변경에 추가, D2 `AC-MG-026` (d) 강제 전제 집합 명명,
+  D3 `design.md` §11.1 진입 함수 비공유 정정) 반영으로 루프 없이 종결.
 - t653 (AS-4: 소유 thread resume·model 변경·fork·compaction) plan-phase 기록 — 2026-09-13.
   기준선: worktree `.claude/worktrees/t653`, branch `WT-gateway-as4-resume`, HEAD `74d872aaf` (선행 t652 = `530bd7330`).
   범위: 계정·family·agent·thread와 완료 public prefix 원장 고정, resume 및 idle 모델 변경 연결, compaction의 정상 요약 turn 처리

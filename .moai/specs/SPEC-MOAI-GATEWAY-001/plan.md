@@ -75,6 +75,9 @@ windows Go-test 레그 부재.
 **A5-M1 — launcher 생산 통합 (우선순위: High).** 세 launcher가 provider 전용 catalog·picker
 구성(`REQ-MG-019`)·인증 방식 표시·App Server transport를 하나의 launch 조립으로 결합한다.
 예상 변경: `internal/cli/gpt.go`(대기 오류 경로의 게이트화 — 검증 AC 통과 전 유지, 통과 후 제거),
+`internal/cli/launcher.go`(같은 대기 오류 리터럴의 두 번째 위치 — 공통 launch 경로의
+`mode == "gpt" && binding == nil` 분기, `launcher.go:142`. `AC-MG-026` (a)의 리터럴 0건 판정은
+`internal/cli` 전체를 보므로 이 위치의 게이트화가 빠지면 첫 GREEN이 낙오된다),
 `internal/cli/gateway_launcher.go`·`gateway_prepare.go`·`gateway_session.go`(조립 결합),
 `internal/cli/gateway_product_binding.go`(provider별 auth 표시 전달). RED→GREEN: 대기 오류 리터럴의
 비-테스트 존재 판정 시험을 먼저 적색으로 세우고(게이트 통과 트리 기준), 제거로 녹색 만든다. 게이트

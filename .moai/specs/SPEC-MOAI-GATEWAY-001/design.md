@@ -1014,10 +1014,14 @@ t650~t654의 managed/API 인증, 도구 실행권, pending 복구, resume/fork/c
 
 ### 11.1 launch 조립의 생산 경로
 
-세 launcher는 이미 같은 진입 형태(`runClaudeEntry` → gateway launch plan, §3.2·§6.1)를 공유한다.
-남은 것은 결합이다: provider 전용 세션 snapshot과 picker 구성(§6.7), 인증 방식(구독/API) 표시,
+세 launcher의 진입 함수는 공유되지 않는다 — `glm`은 `unifiedLaunch(profileName, "glm", args)`
+직행(`internal/cli/glm.go:314`)이고 `cc`·`gpt`만 `runClaudeEntry`를 경유한다
+(`internal/cli/cc.go:126`, `internal/cli/gpt.go:56`). 공유되는 것은 그 뒤의 launch 조립
+(assembly — provider 전용 snapshot·picker 구성·슬롯·`MOAI_LAUNCH_PROVIDER`, §3.2·§6.1)이지 진입
+함수가 아니다. 남은 것은 결합이다: provider 전용 세션 snapshot과 picker 구성(§6.7), 인증 방식(구독/API) 표시,
 App Server transport가 하나의 launch 조립에서 함께 연결되어야 한다. `internal/cli/gpt.go`의
-launch 경로는 `services.Launch`가 없을 때 "GPT gateway launch is awaiting transport verification"
+launch 경로와 공통 launch 경로의 `mode == "gpt" && binding == nil` 분기
+(`internal/cli/launcher.go:142`)가 "GPT gateway launch is awaiting transport verification"
 대기 오류를 돌려주는 게이트로 살아 있다. 이 게이트는 코드 상수나 설정 플래그가 아니라 **AC 증거로
 판정한다** — AS-014~AS-022 전수가 PASS한 트리에서 대기 오류가 제거되고, 통과 전 트리는 대기 오류를
 유지해 `AC-MG-026` (a)의 대조군이 된다. 어느 하나의 결합이 빠진 채 다른 하나만 열리는 부분 개방은

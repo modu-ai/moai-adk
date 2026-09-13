@@ -465,8 +465,10 @@ ID)로 `moai glm` gateway 세션을 열고 Z.AI mock upstream이 수신 요청�
   경계와 일치할 때만 수용되고, 변조·불일치·미지 원본은 자식 상태 생성 전에 명시 거절된다. engine의
   caller-asserted 값을 대조 없이 수용하는 구현은 변조 변형에서 적색이다. 기계 판정:
   `go test ./internal/gateway/... -run 'TestForkPrefixCrossCheck'` RED→GREEN.
-- (d) **rc 로컬 배포 게이트(종결).** Given (a)~(c)와 AS-014~AS-022 전수가 PASS(또는 근거를 갖춘 Gap —
-  단 (d) 자체의 전제는 검증 PASS)일 때, When 배포 절차를 실행하면, Then 다음 네 증거가 각각의 실제
+- (d) **rc 로컬 배포 게이트(종결).** Given (a)·(b)·(c)가 PASS이고 AS-017·AS-019·AS-021이 PASS이며
+  AS-014·AS-018·AS-020·AS-022가 PASS 또는 근거를 갖춘 Gap일 때 — 즉 강제 전제 집합은
+  {(a), (b), (c), AS-017, AS-019, AS-021}의 전수 PASS다(이 여섯에 Gap은 허용되지 않는다) — When
+  배포 절차를 실행하면, Then 다음 네 증거가 각각의 실제
   명령과 출력과 함께 `.moai/reports/t654/as5-deploy-verdict.md`에 남는다.
   1. `make build VERSION=v<다음 미사용 rc>` → exit 0. 버전 번호는 `.moai/docs/version-management.md`
      Local RC Numbering의 다음 미사용 번호다 — 카드 문구의 rc.8은 2026-09-12 발행 시점 표기이며,
