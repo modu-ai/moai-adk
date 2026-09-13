@@ -371,9 +371,9 @@ ConfigManager.Save git_convention 격리(승인), 집합 E 판독 (B)(동의), b
 ## §E.4 Sync-phase Audit-Ready Signal
 
 - **sync_complete_at**: 2026-09-13 (KST)
-- **sync_commit_sha**: `pending-backfill-sync` — 커밋은 자기 SHA를 인용할 수 없으므로 표준
-  플레이스홀더이며, 후속 커밋에서 실제 SHA로 백필한다(spec-frontmatter-schema.md § SHA
-  placeholder backfill exemption).
+- **sync_commit_sha**: `533cf5fa4` — 싱크 커밋은 자기 SHA를 인용할 수 없어 처음에는 표준
+  플레이스홀더 `pending-backfill-sync` 로 착지했고, 본 백필 커밋에서 실제 SHA로 갱신했다
+  (spec-frontmatter-schema.md § SHA placeholder backfill exemption).
 - **sync_status**: sync 산출물 3종 — CHANGELOG `[Unreleased]` 항목, 본 §E.4 신호,
   `spec.md` frontmatter `in-progress → completed` 전이(status + updated 만; 본문 무변경) —
   를 단일 싱크 커밋으로 착지한다. AC 22개 전부 PASS(§E.3)를 인용해 3-phase close 를 완성한다.
