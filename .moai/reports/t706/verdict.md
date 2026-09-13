@@ -55,6 +55,7 @@ factory-mode.md:93 + README 4파일:80의 "레인 소유권은 `~/.moai/db/<proj
 
 ## Gaps
 
+- golangci-lint 미측정 — 이번 카드의 병합 전 재측정은 vet+test만 수행했다. 병합 트리(develop `e6d6d2af6`)에서 리드 lint 스윕이 본 파일의 errcheck 2건(t.Cleanup 내 os.RemoveAll)을 지적했고, t671 관례형(`if err := os.RemoveAll(dir); err != nil { t.Error(err) }`)로 후속 커밋에서 수리했다.
 - factory.db **쓰기 경로의 종단 간 실행 미수행** — `moai cc -f` 런처는 실제 세션을 띄우므로 실험에서 제외했고, factory.db 개방은 해석 함수 + `-materialize`(디렉터리 생성 관측) + 단위/패리티 테스트로 대체했다. 런치 레벨 스모크는 미측정.
 - docs-site hugo 빌드 미실행 — 변경은 평문 문장 1개×4로 shortcode·mermaid 비접촉이나, 빌드 판정은 리드 게이트 몫.
 - CI 판정 미측정 — push 금지. 리드 일괄 push 이후 통합 판정.

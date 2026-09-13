@@ -34,7 +34,11 @@ func TestTempDiscriminantParity(t *testing.T) {
 			t.Fatalf("create /tmp base: %v", err)
 		}
 		varUnderTmp = dir
-		t.Cleanup(func() { os.RemoveAll(dir) })
+		t.Cleanup(func() {
+			if err := os.RemoveAll(dir); err != nil {
+				t.Error(err)
+			}
+		})
 	} else {
 		t.Log("/tmp unavailable; skipping the /tmp anchor case")
 	}
@@ -46,7 +50,11 @@ func TestTempDiscriminantParity(t *testing.T) {
 			t.Fatalf("create /var/tmp base: %v", err)
 		}
 		varUnderVarTmp = dir
-		t.Cleanup(func() { os.RemoveAll(dir) })
+		t.Cleanup(func() {
+			if err := os.RemoveAll(dir); err != nil {
+				t.Error(err)
+			}
+		})
 	}
 
 	cases := []struct {
