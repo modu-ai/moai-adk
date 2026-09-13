@@ -1,0 +1,87 @@
+{
+  "created_at": "2026-09-13T12:55:34.803693Z",
+  "artifacts": [
+    {
+      "store": "/Users/goos/MoAI/moai-adk-go/.moai/state/todo",
+      "name": "backlog.db",
+      "source_path": "/Users/goos/MoAI/moai-adk-go/.moai/state/todo/backlog.db",
+      "backup_path": "/Users/goos/MoAI/moai-adk-go/.moai/state/todo-merge-backup-20260913/store-1/backlog.db",
+      "source_sha256": "9802d3f6d1c4e7c6d3c4d38d15e13a8d8283ff0eff5a5a0c992a8d45d26ce590",
+      "copy_sha256": "9802d3f6d1c4e7c6d3c4d38d15e13a8d8283ff0eff5a5a0c992a8d45d26ce590",
+      "bytes": 811008
+    },
+    {
+      "store": "/Users/goos/MoAI/moai-adk-go/.moai/state/todo",
+      "name": "backlog.db-wal",
+      "source_path": "/Users/goos/MoAI/moai-adk-go/.moai/state/todo/backlog.db-wal",
+      "backup_path": "/Users/goos/MoAI/moai-adk-go/.moai/state/todo-merge-backup-20260913/store-1/backlog.db-wal",
+      "source_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "copy_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    {
+      "store": "/Users/goos/MoAI/moai-adk-go/.moai/state/todo",
+      "name": "backlog.db-shm",
+      "source_path": "/Users/goos/MoAI/moai-adk-go/.moai/state/todo/backlog.db-shm",
+      "backup_path": "/Users/goos/MoAI/moai-adk-go/.moai/state/todo-merge-backup-20260913/store-1/backlog.db-shm",
+      "source_sha256": "fd4c9fda9cd3f9ae7c962b0ddf37232294d55580e1aa165aa06129b8549389eb",
+      "copy_sha256": "fd4c9fda9cd3f9ae7c962b0ddf37232294d55580e1aa165aa06129b8549389eb",
+      "bytes": 32768
+    },
+    {
+      "store": "/Users/goos/MoAI/moai-adk-go/.moai/state/todo",
+      "name": "backlog.json",
+      "source_path": "/Users/goos/MoAI/moai-adk-go/.moai/state/todo/backlog.json",
+      "backup_path": "/Users/goos/MoAI/moai-adk-go/.moai/state/todo-merge-backup-20260913/store-1/backlog.json",
+      "source_sha256": "f5273bb4061612535a9497fc283187786aacb7b5a7ffccc61344cabe862d8c33",
+      "copy_sha256": "f5273bb4061612535a9497fc283187786aacb7b5a7ffccc61344cabe862d8c33",
+      "bytes": 652478
+    },
+    {
+      "store": "/Users/goos/MoAI/moai-adk-go/.moai/state/todo",
+      "name": "backlog.json.migrated",
+      "source_path": "/Users/goos/MoAI/moai-adk-go/.moai/state/todo/backlog.json.migrated",
+      "backup_path": "/Users/goos/MoAI/moai-adk-go/.moai/state/todo-merge-backup-20260913/store-1/backlog.json.migrated",
+      "source_sha256": "85d470261a11a29e7c3c2c4ff3ffb738595ae95e8d5a6761097ed080b667944e",
+      "copy_sha256": "85d470261a11a29e7c3c2c4ff3ffb738595ae95e8d5a6761097ed080b667944e",
+      "bytes": 155043
+    },
+    {
+      "store": "/Users/goos/.moai/db/moai-adk-go-1bd3d038/todo",
+      "name": "backlog.db",
+      "source_path": "/Users/goos/.moai/db/moai-adk-go-1bd3d038/todo/backlog.db",
+      "backup_path": "/Users/goos/MoAI/moai-adk-go/.moai/state/todo-merge-backup-20260913/store-2/backlog.db",
+      "source_sha256": "e190c863fca8503114f8049bdd345ca3b5d5d4c5f66a395ad79c95d97e525904",
+      "copy_sha256": "e190c863fca8503114f8049bdd345ca3b5d5d4c5f66a395ad79c95d97e525904",
+      "bytes": 950272
+    },
+    {
+      "store": "/Users/goos/.moai/db/moai-adk-go-1bd3d038/todo",
+      "name": "backlog.db-wal",
+      "source_path": "/Users/goos/.moai/db/moai-adk-go-1bd3d038/todo/backlog.db-wal",
+      "backup_path": "/Users/goos/MoAI/moai-adk-go/.moai/state/todo-merge-backup-20260913/store-2/backlog.db-wal",
+      "source_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "copy_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    {
+      "store": "/Users/goos/.moai/db/moai-adk-go-1bd3d038/todo",
+      "name": "backlog.db-shm",
+      "source_path": "/Users/goos/.moai/db/moai-adk-go-1bd3d038/todo/backlog.db-shm",
+      "backup_path": "/Users/goos/MoAI/moai-adk-go/.moai/state/todo-merge-backup-20260913/store-2/backlog.db-shm",
+      "source_sha256": "fd4c9fda9cd3f9ae7c962b0ddf37232294d55580e1aa165aa06129b8549389eb",
+      "copy_sha256": "fd4c9fda9cd3f9ae7c962b0ddf37232294d55580e1aa165aa06129b8549389eb",
+      "bytes": 32768
+    }
+  ],
+  "absent": [
+    {
+      "store": "/Users/goos/.moai/db/moai-adk-go-1bd3d038/todo",
+      "name": "backlog.json"
+    },
+    {
+      "store": "/Users/goos/.moai/db/moai-adk-go-1bd3d038/todo",
+      "name": "backlog.json.migrated"
+    }
+  ]
+}
