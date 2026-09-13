@@ -115,3 +115,50 @@ func TestVersionVariables_Modifiable(t *testing.T) {
 		t.Errorf("GetFullVersion() with modified values = %q, want %q", got, expected)
 	}
 }
+
+// TestIsDevBuild pins the dev-build discriminator that guards binary
+// self-update. Regression context (card t678, 2026-09-13): a dev binary
+// stamped with the build codename "moai_cp/20260910_130400" was NOT
+// classified as a dev build by the legacy dirty/dev/none substring check,
+// so the SessionStart auto-update handler installed release v3.1.2 over
+// it three minutes after a manual make install. Any version string that
+// does not parse as a release version must classify as a dev build.
+func TestIsDevBuild(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		version string
+		isDev   bool
+	}{
+		// The incident string — a build codename, not a semver release.
+		{"moai_cp/20260910_130400", true},
+		// Legacy dev markers.
+		{"dev", true},
+		{"dev-build", true},
+		{"devel", true},
+		{"", true},
+		{"2871559-dirty", true},
+		{"v3.1.2-dirty", true},
+		{"v0.0.0-none", true},
+		{"none", true},
+		// Unparseable shapes.
+		{"abcdef1", true},
+		{"3.1", true},
+		{"v3.1", true},
+		{"vX.Y.Z", true},
+		// Release versions — must NOT be treated as dev.
+		{"v3.1.2", false},
+		{"3.1.2", false},
+		{"v3.2.0-rc.1", false},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.version, func(t *testing.T) {
+			t.Parallel()
+			got := IsDevBuild(tt.version)
+			if got != tt.isDev {
+				t.Errorf("IsDevBuild(%q) = %v, want %v", tt.version, got, tt.isDev)
+			}
+		})
+	}
+}

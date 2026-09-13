@@ -189,6 +189,10 @@ $ moai todo done 4 --expect "auth middleware"
 # 询问是否已落地，只在得到"未落地"的肯定答案时拒绝
 $ moai todo done 4 --require-landed
 
+# 批量关闭已落地的卡片（仅限 lead，确认批量 push 之后）— 先 dry-run
+$ moai todo auto-done --fetch --dry-run
+$ moai todo auto-done --fetch
+
 # 按从旧到新输出排队中的条目（只读）
 $ moai todo next
 

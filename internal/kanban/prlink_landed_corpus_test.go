@@ -1,10 +1,20 @@
 // prlink_landed_corpus_test.go — SPEC-TODO-LANDING-ATTRIBUTION-001 corpus
 // reproduction contract (constraint D8): the predicate must reproduce card
 // t482's exhaustive classification over the PINNED corpus commit 7835148d3 —
-// of the ids appearing anywhere in a subject, exactly 309 attributed / 38
+// of the ids appearing anywhere in a subject, exactly 310 attributed / 37
 // unattributed (347 total). The reference transcription is
 // .moai/reports/t482/forms.py; this test drives the GO predicate over the
 // same subject stream and pins the partition.
+//
+// RE-PIN (SPEC-TODO-LAND-AUTO-DONE-001, 2026-09-13): form 2c (the
+// comma-form trailing parenthetical, AC-AD-017) reclassified exactly one
+// corpus id. t68's subject `merge: Factory Mode -f N worker fan-out (t68,
+// SPEC-FACTORY-WORKER-FANOUT-001)` is the comma-form shape the SPEC makes
+// first-class — the group opens with the card id and continues with a
+// non-card qualifier. The pre-form-2c partition measured 309/38 with t68 in
+// the residual; the negation guard (REQ-AD-008) moved no corpus id. A reader
+// who needs the pre-form-2c figures re-runs at the pre-amendment predicate
+// rather than re-citing this note.
 //
 // The pin is to a COMMIT, not a branch name (VCI §2.1 remedy R1). The test
 // skips when the pinned commit is absent (a shallow CI clone), and the
@@ -28,7 +38,7 @@ const pinnedCorpusCommit = "7835148d3"
 // output over the pinned corpus. Pinning the SET, not just the counts, is
 // what makes the partition checkable rather than merely plausible.
 var pinnedResidual = []string{
-	"t2", "t21", "t40", "t46", "t68", "t73", "t74", "t80", "t94",
+	"t2", "t21", "t40", "t46", "t73", "t74", "t80", "t94",
 	"t121", "t123", "t124", "t128", "t129", "t131", "t132", "t133", "t134",
 	"t135", "t137", "t139", "t141", "t142", "t143", "t144", "t147", "t148",
 	"t149", "t155", "t157", "t158", "t216", "t225", "t250", "t311", "t409",
@@ -88,11 +98,11 @@ func TestLandedPredicate_PinnedCorpusReproduction(t *testing.T) {
 	if len(mentioned) != 347 {
 		t.Errorf("ids appearing anywhere in a subject = %d, want 347", len(mentioned))
 	}
-	if len(attributed) != 309 {
-		t.Errorf("ids attributed = %d, want 309", len(attributed))
+	if len(attributed) != 310 {
+		t.Errorf("ids attributed = %d, want 310", len(attributed))
 	}
-	if len(residual) != 38 {
-		t.Errorf("subject-present but unattributed = %d, want 38", len(residual))
+	if len(residual) != 37 {
+		t.Errorf("subject-present but unattributed = %d, want 37", len(residual))
 	}
 	if strings.Join(residual, " ") != strings.Join(pinnedResidual, " ") {
 		t.Errorf("residual set diverged:\n got: %s\nwant: %s", strings.Join(residual, " "), strings.Join(pinnedResidual, " "))
