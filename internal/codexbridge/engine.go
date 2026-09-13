@@ -35,6 +35,12 @@ type RPC interface {
 type Config struct {
 	Store                                       *FileStore
 	QueueSize, MaxConversations, MaxOutputBytes int
+	// ForkPrefix contrasts a fork child's claimed inherited prefix with the
+	// durable receipt ledger before the child conversation is created
+	// (AC-MG-026 (c)). The gateway wires the receipt-backed authority here;
+	// nil keeps the caller-asserted acceptance so bridge-only tests stay
+	// self-contained.
+	ForkPrefix func(claimed string) error
 }
 type Content struct {
 	Type string `json:"type"`
@@ -228,9 +234,15 @@ func (e *Engine) get(q Request) (*conversation, error) {
 	inherited := ""
 	if q.Fork {
 		// A fork child inherits exactly the boundary prefix and nothing else;
-		// the boundary is caller-asserted here and ledger-verified upstream.
+		// the boundary is contrasted with the durable receipt ledger here
+		// when the gateway wired a ForkPrefix authority (AC-MG-026 (c)).
 		if len(q.Results) != 0 || q.ExpectedPrefix == "" || len(q.ExpectedPrefix) > 256 {
 			return nil, ErrScope
+		}
+		if e.cfg.ForkPrefix != nil {
+			if err := e.cfg.ForkPrefix(q.ExpectedPrefix); err != nil {
+				return nil, fmt.Errorf("%w: fork inherited prefix rejected: %v", ErrScope, err)
+			}
 		}
 		inherited = q.ExpectedPrefix
 	} else if len(q.Results) != 0 || q.ExpectedPrefix != "" {
