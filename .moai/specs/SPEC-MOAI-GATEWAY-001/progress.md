@@ -2,6 +2,15 @@
 
 ## §E.1 Plan-phase Audit-Ready Signal
 
+- t653 (AS-4: 소유 thread resume·model 변경·fork·compaction) plan-phase 기록 — 2026-09-13.
+  기준선: worktree `.claude/worktrees/t653`, branch `WT-gateway-as4-resume`, HEAD `74d872aaf` (선행 t652 = `530bd7330`).
+  범위: 계정·family·agent·thread와 완료 public prefix 원장 고정, resume 및 idle 모델 변경 연결, compaction의 정상 요약 turn 처리
+  (PostCompact digest 대조 뒤 public history 재설정), 명시 세션 fork의 lastTurnId 분기, native Agent(fork)/subtask 가용성
+  probe 기록. 마일스톤 M1~M6와 AC 대응(AS-010~AS-013), 위험·제약은 카드 실행 계획
+  [.moai/reports/t653/plan.md](../../reports/t653/plan.md) 참조. 전제 관측: `NewAppServerAdapter`·`codexbridge.New`의
+  생산 호출 지점 부재, `codexbridge`의 `thread/resume` 경로와 compaction 처리 부재, FileStore "재개 불가" AS3 한계의
+  AS4 계약 해제 필요 — 상세는 계획서 §1.3 gap 목록.
+
 - 0.8.0 M5 문서 보강: system 위치·schema·종료 매핑 결정은 design §4.2~4.3, opaque reasoning 운반은 PROBE ONLY다.
   전체 carrier 유실 탐지 계약과 실제 TUI/resume 게이트는 미충족이며 run 증거로 세지 않는다. 새 REQ/AC 번호는 없다.
 
