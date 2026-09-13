@@ -77,3 +77,46 @@ func TestGatewayUIStateRetainsOnlySelectedWorkspaceTrust(t *testing.T) {
 		}
 	}
 }
+
+func TestGatewayBypassAcceptanceFollowsSelectedConfigOnly(t *testing.T) {
+	home := t.TempDir()
+	t.Setenv("HOME", home)
+	os.MkdirAll(filepath.Join(home, ".claude"), 0700)
+	os.WriteFile(filepath.Join(home, ".claude", "settings.json"), []byte(`{"skipDangerousModePermissionPrompt":true,"env":{"SECRET":"excluded"}}`), 0600)
+	accepted, declined := t.TempDir(), t.TempDir()
+	os.WriteFile(filepath.Join(accepted, "settings.json"), []byte(`{"skipDangerousModePermissionPrompt":true}`), 0600)
+	os.WriteFile(filepath.Join(declined, "settings.json"), []byte(`{"theme":"light"}`), 0600)
+	cases := []struct {
+		name string
+		in   gatewayLaunchRequest
+		want bool
+	}{
+		{"default config", gatewayLaunchRequest{}, true},
+		{"selected accepted", gatewayLaunchRequest{OriginalConfig: accepted, OriginalConfigSet: true}, true},
+		{"selected never accepted", gatewayLaunchRequest{OriginalConfig: declined, OriginalConfigSet: true}, false},
+	}
+	for _, tc := range cases {
+		target := t.TempDir()
+		if err := seedGatewayBypassAcceptance(target, tc.in); err != nil {
+			t.Fatal(tc.name, err)
+		}
+		p := filepath.Join(target, "settings.json")
+		b, err := os.ReadFile(p)
+		if !tc.want {
+			if !os.IsNotExist(err) {
+				t.Fatalf("%s: invented acceptance: %s", tc.name, b)
+			}
+			continue
+		}
+		if string(b) != `{"skipDangerousModePermissionPrompt":true}` {
+			t.Fatalf("%s: %s", tc.name, b)
+		}
+		os.WriteFile(p, []byte(`{"theme":"light"}`), 0600)
+		if err := seedGatewayBypassAcceptance(target, tc.in); err != nil {
+			t.Fatal(err)
+		}
+		if b, _ := os.ReadFile(p); string(b) != `{"theme":"light"}` {
+			t.Fatalf("%s: existing settings overwritten", tc.name)
+		}
+	}
+}
