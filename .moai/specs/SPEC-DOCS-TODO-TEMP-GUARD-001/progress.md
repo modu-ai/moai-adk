@@ -109,4 +109,24 @@ gaps:
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase>_
+```yaml
+phase: sync
+spec: SPEC-DOCS-TODO-TEMP-GUARD-001
+tier: S
+card: t575
+sync_status: audit-ready
+sync_commit_sha: pending-backfill-sync   # placeholder — commit cannot cite its own hash; backfilled in the following commit
+changelog_entry: CHANGELOG.md [Unreleased] → Fixed (single entry, first position)
+changelog_b12_self_test:
+  pre_emission_grep: 0   # grep -c 'SPEC-DOCS-TODO-TEMP-GUARD-001' CHANGELOG.md → 0 before emission
+  ac_count_match: 7 == 7 # acceptance.md distinct AC ids = 7; entry references 7
+  file_path_verify: PASS # docs-site/content/{ko,en,ja,zh}/utility-commands/moai-todo.md, .moai/reports/t575/docs-census.md all resolve
+mx_tag_validation: not-applicable   # docs-only SPEC — no exported Go symbols introduced or modified
+canary_compliance_check:
+  close_subject_single_full_id: PASS   # chore/commit subject names SPEC-DOCS-TODO-TEMP-GUARD-001 exactly once
+  heading_parity_post_close: 29/29/29/29
+frontmatter_status_transitions:
+  draft_to_in_progress: "55adec04f (run-phase first commit)"
+  in_progress_to_completed: "this sync commit (pending-backfill-sync)"
+out_of_scope_followups: [t704, t705, t706]
+```

@@ -2,7 +2,7 @@
 id: SPEC-DOCS-TODO-TEMP-GUARD-001
 title: "docs-site 4-locale moai-todo pages: correct the queue-location claim made false by the temporary-origin guard"
 version: "1.1.0"
-status: in-progress
+status: completed
 created: 2026-09-13
 updated: 2026-09-13
 author: manager-spec
