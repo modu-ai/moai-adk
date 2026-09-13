@@ -12,6 +12,26 @@ files with the 129-file no-regression control set byte-identical on both compari
 shapes, the prose layer untouched, and the t528 frozen-anchor PRESERVE (216) intact.
 Residual 14 defect files carry written justified dispositions; unjustified residual 0.
 
+### Headline clarification (sync-audit F3)
+
+"Repairs 3 narrow-miss and 6 empty-anchor files" spans three mechanically distinct
+classes, recorded here so no reader takes one for another:
+
+1. **End-to-end criteria recovery (+4 criteria across 2 files)** — the only net
+   parse change: SPEC-AC-COLLECTOR-ANCHOR-001 (+3, its `## 1. 배경과 문제` region
+   declarations become parsed criteria) and SPEC-V3R6-I18N-VALIDATOR-BUDGET-001
+   (+1 via the loose-axis fallback).
+2. **Anchor-only selection, zero parseable lines** — SPEC-CC297-001 (19) and
+   SPEC-STATUS-AUTO-001 (25) now anchor correctly, but their `AC-1.1` numeric-sub
+   ids do not match `acIDPattern` (parser.go:407), so the parse still yields
+   empty-with-discarded-error and lint output is identical. The anchor repair is
+   real; the criteria recovery belongs to the line-grammar axis (t528 line, out
+   of scope per §D).
+3. **Strict-shape measurement artifacts** — 5 of the 6 empty-axis "repairs" have
+   base==live anchor in `defect-disposition.txt` (the anchor never moved; only the
+   dual-shape instrument stopped misreporting them). The strict-shape empty count
+   is reported as after(strict-shape)=1240-line comparability only.
+
 ## Evidence
 
 All commands run in this worktree; verbatim outputs persisted under
@@ -67,7 +87,10 @@ values the in-run baseline column had to reproduce — and did.
 
 ## Gaps
 
-- The 11 narrow PROSE-SHAPED-NO-COLON-FORM dispositions and 3 empty residuals
+- The 11 narrow dispositions carry written justifications in two classes (sync-audit
+  F2 relabel): (a) 7 genuinely prose-shaped mentions, (b) 4 colon-less AC bullets
+  awaiting the line-grammar axis (CODERABBIT-ADOPTION, AGENT-MODEL-ROUTING,
+  SKILL-COMPRESS, SKILL-CONSOLIDATE); and 3 empty residuals
   (GLM-EFFORT-MAX-001 metric artifact; OUTOFSCOPE-GUIDANCE-ALIGN-001 and
   _archive/SPEC-DESIGN-CONST-AMEND-001 colon-less declarations) are dispositioned,
   not repaired. Recovering the colon-less classes requires widening the LINE grammar
