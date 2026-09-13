@@ -66,24 +66,29 @@ func ResolveEffectiveTier(persistedTier string) string {
 }
 
 // TierDefaultMode maps an autonomy tier to its Claude Code permissions
-// defaultMode value (the mode-token → knob mapping from spec.md §C).
+// defaultMode value (SPEC-AUT-PERMMODES-001 REQ-003; the labels the wizard
+// presents are Claude Code's real permission-mode vocabulary).
 //
-//   - semi-auto        → "default"     (today's behavior; full per-tool prompt)
-//   - automatic        → "auto"        (per-tool auto-approval)
-//   - fully-autonomous → "bypassPermissions" (all prompts skipped; sandbox-gated)
+//   - semi-auto        → "acceptEdits"        (auto-accept file edits; the new default)
+//   - automatic        → "auto"               (classifier-checked auto-approval)
+//   - fully-autonomous → "bypassPermissions"  (all prompts skipped; sandbox-gated)
 //
-// deny/ask arrays are tier-INVARIANT (REQ-004) and are NOT part of this
-// mapping — the renderer loads them identically for every tier. An unknown
-// tier maps to "default" (the fail-safe never-silently-enable guarantee).
+// deny/ask arrays are tier-INVARIANT (REQ-004 of SPEC-AUTONOMY-TIERS-001) and
+// are NOT part of this mapping — the renderer loads them identically for every
+// tier. An unknown tier maps to "default" (the MOST restrictive mode): the
+// fail-safe never-silently-enable guarantee is retained at the restrictive
+// mode, NOT at the new acceptEdits default.
 func TierDefaultMode(tier string) string {
 	switch tier {
+	case AutonomyTierSemiAuto:
+		return "acceptEdits"
 	case AutonomyTierAutomatic:
 		return "auto"
 	case AutonomyTierFullyAutonomous:
 		return "bypassPermissions"
 	default:
-		// semi-auto AND any unknown value → "default". A bad tier never
-		// silently enables bypassPermissions.
+		// Any unknown value falls to "default", the most restrictive mode.
+		// A bad tier never silently enables acceptEdits or bypassPermissions.
 		return "default"
 	}
 }
