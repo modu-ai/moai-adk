@@ -225,6 +225,9 @@ func (m *Manifest) hasCandidate(prefix Digest) bool {
 // deterministic hash of the chain in stored order. A fork child's claimed
 // inherited prefix is contrasted against this digest — never accepted on the
 // caller's word.
+//
+// @MX:NOTE: [AUTO] order-sensitive: the digest binds chain content and order.
+// @MX:SPEC: SPEC-MOAI-GATEWAY-001 (AC-MG-026 (c)).
 func ChainDigest(chain []Candidate) Digest {
 	raw, err := json.Marshal(chain)
 	if err != nil {

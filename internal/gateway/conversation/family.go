@@ -314,6 +314,9 @@ func (m *Manager) ForkAt(ctx context.Context, parentID string, boundary receipt.
 // (c)). The contrast runs against Manifest.ChainTo at the boundary before any
 // child state exists, so tampered, mismatched and unknown-origin claims leave
 // no fork directory behind.
+//
+// @MX:NOTE: [AUTO] the caller-asserted prefix is never trusted — acceptance is
+// @MX:SPEC: SPEC-MOAI-GATEWAY-001 (AC-MG-026 (c)); rejection precedes child state creation.
 func (m *Manager) ForkSession(ctx context.Context, parentID string, boundary, claimed receipt.Digest) (d Descriptor, err error) {
 	p, err := m.Resume(ctx, parentID)
 	if err != nil {

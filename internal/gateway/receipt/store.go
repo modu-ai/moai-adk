@@ -216,6 +216,10 @@ func (s *Store) Rebase(ctx context.Context, appliedEpoch uint64) error {
 // RestoreRebaseLedger reopens a scope's compaction ledger from the durable
 // manifest. A scope that never rebased restores zero; unreadable or corrupt
 // state is an explicit error — never an approximated epoch.
+//
+// @MX:NOTE: [AUTO] exact-value restoration: a generous read would reject live
+// epochs as stale, a low read would double-rebase — no fallback exists by design.
+// @MX:SPEC: SPEC-MOAI-GATEWAY-001 (AC-MG-026 (b)).
 func (s *Store) RestoreRebaseLedger(ctx context.Context, scope string) (*RebaseLedger, error) {
 	m, err := s.Snapshot(ctx)
 	if err != nil {
