@@ -107,7 +107,7 @@ func TestSubscriptionStreamBoundsCancelAndTerminalOrder(t *testing.T) {
 		}
 	}
 	reader, writer := io.Pipe()
-	defer writer.Close()
+	defer func() { _ = writer.Close() }() // io.Pipe closes always return nil
 	ctx, cancel := context.WithCancel(context.Background())
 	done := make(chan error, 1)
 	go func() { done <- c.SubscriptionStream(ctx, reader, io.Discard) }()

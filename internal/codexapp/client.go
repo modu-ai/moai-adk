@@ -21,11 +21,11 @@ import (
 )
 
 var (
-	ErrClosed   = errors.New("Codex App Server closed")
-	ErrRead     = errors.New("Codex App Server read failed")
-	ErrEOF      = errors.New("Codex App Server EOF")
+	ErrClosed   = errors.New("codex app server closed")
+	ErrRead     = errors.New("codex app server read failed")
+	ErrEOF      = errors.New("codex app server EOF")
 	ErrProtocol = errors.New("invalid Codex App Server protocol message")
-	ErrLimit    = errors.New("Codex App Server message or event limit exceeded")
+	ErrLimit    = errors.New("codex app server message or event limit exceeded")
 )
 
 // RPCError deliberately excludes server-provided message/data, which can contain secrets.
@@ -89,31 +89,31 @@ func startProcess(ctx context.Context, cfg Config, args []string) (*Client, erro
 		return nil, errors.New("invalid App Server lifetime context")
 	}
 	if !filepath.IsAbs(cfg.Home) || !filepath.IsAbs(cfg.Binary) {
-		return nil, errors.New("App Server paths must be absolute")
+		return nil, errors.New("app server paths must be absolute")
 	}
 	info, err := os.Lstat(cfg.Home)
 	if err != nil || !info.IsDir() || info.Mode()&os.ModeSymlink != 0 || !privateOwner(cfg.Home, info) {
-		return nil, errors.New("App Server home must be a private directory")
+		return nil, errors.New("app server home must be a private directory")
 	}
 	resolved, err := filepath.EvalSymlinks(cfg.Home)
 	if err != nil || resolved != filepath.Clean(cfg.Home) {
-		return nil, errors.New("App Server home must not traverse symlinks")
+		return nil, errors.New("app server home must not traverse symlinks")
 	}
 	configPath := filepath.Join(cfg.Home, "config.toml")
 	if info, err := os.Lstat(configPath); err == nil {
 		if cfg.ExpectedConfigSHA256 == "" || !info.Mode().IsRegular() || !privateOwner(configPath, info) || info.Size() > 1<<20 {
-			return nil, errors.New("App Server profile configuration is not authorized")
+			return nil, errors.New("app server profile configuration is not authorized")
 		}
 		raw, err := os.ReadFile(configPath)
 		if err != nil {
-			return nil, errors.New("App Server profile configuration unavailable")
+			return nil, errors.New("app server profile configuration unavailable")
 		}
 		sum := sha256.Sum256(raw)
 		if hex.EncodeToString(sum[:]) != cfg.ExpectedConfigSHA256 {
-			return nil, errors.New("App Server profile configuration digest mismatch")
+			return nil, errors.New("app server profile configuration digest mismatch")
 		}
 	} else if !os.IsNotExist(err) || cfg.ExpectedConfigSHA256 != "" {
-		return nil, errors.New("App Server profile configuration unavailable")
+		return nil, errors.New("app server profile configuration unavailable")
 	}
 	if cfg.MaxMessageBytes == 0 {
 		cfg.MaxMessageBytes = 8 << 20
@@ -126,12 +126,13 @@ func startProcess(ctx context.Context, cfg Config, args []string) (*Client, erro
 	}
 	lease, err := profileLease(filepath.Join(cfg.Home, ".moai-appserver.lock"))
 	if err != nil {
-		return nil, errors.New("App Server profile is busy or cannot be locked")
+		return nil, errors.New("app server profile is busy or cannot be locked")
 	}
 	started := false
 	defer func() {
 		if !started {
-			lease.Close()
+			// Construction failed; the flock is released by process exit too.
+			_ = lease.Close()
 		}
 	}()
 	cmd := exec.Command(cfg.Binary, args...)
@@ -144,18 +145,18 @@ func startProcess(ctx context.Context, cfg Config, args []string) (*Client, erro
 	cmd.Env = append(cmd.Env, "CODEX_HOME="+cfg.Home, "HOME="+cfg.Home, "USERPROFILE="+cfg.Home)
 	in, err := cmd.StdinPipe()
 	if err != nil {
-		return nil, errors.New("App Server stdin unavailable")
+		return nil, errors.New("app server stdin unavailable")
 	}
 	out, err := cmd.StdoutPipe()
 	if err != nil {
-		in.Close()
-		return nil, errors.New("App Server stdout unavailable")
+		_ = in.Close() // process never started; discarding the pipe
+		return nil, errors.New("app server stdout unavailable")
 	}
 	cmd.Stderr = io.Discard
 	if err = cmd.Start(); err != nil {
-		in.Close()
-		out.Close()
-		return nil, errors.New("App Server start failed")
+		_ = in.Close() // start failed; discarding the pipes
+		_ = out.Close()
+		return nil, errors.New("app server start failed")
 	}
 	started = true
 	c := &Client{lease: lease, cmd: cmd, in: in, max: cfg.MaxMessageBytes, events: make(chan Message, cfg.QueueSize), done: make(chan struct{}), exited: make(chan struct{}), write: make(chan struct{}, 1), pending: map[string]chan reply{}, requests: map[string]bool{}}
@@ -189,7 +190,10 @@ func idKey(raw json.RawMessage) (string, error) {
 func (c *Client) read(out io.ReadCloser) {
 	defer close(c.events)
 	defer close(c.exited)
-	defer func() { c.cmd.Wait(); c.lease.Close() }()
+	// The failure surface already fired from the read side (fail is once-only),
+	// so the Wait status cannot change the reported error; the flock is also
+	// released by process exit.
+	defer func() { _ = c.cmd.Wait(); _ = c.lease.Close() }()
 	scan := bufio.NewScanner(out)
 	scan.Buffer(make([]byte, 0, 4096), c.max+1)
 	for scan.Scan() {
@@ -266,8 +270,8 @@ func (c *Client) fail(err error) {
 		}
 		c.mu.Unlock()
 		close(c.done)
-		c.in.Close()
-		c.cmd.Process.Kill()
+		_ = c.in.Close()         // shutdown path; pipe discards carry no payload
+		_ = c.cmd.Process.Kill() // an already-exited process is the expected case
 	})
 }
 func (c *Client) Err() error             { c.mu.Lock(); defer c.mu.Unlock(); return c.err }
@@ -278,12 +282,12 @@ func (c *Client) Close() error {
 	case <-c.exited:
 		return nil
 	case <-time.After(3 * time.Second):
-		return errors.New("App Server cleanup did not complete")
+		return errors.New("app server cleanup did not complete")
 	}
 }
 func (c *Client) send(ctx context.Context, m Message) error {
 	if ctx == nil {
-		return errors.New("RPC context required")
+		return errors.New("rpc context required")
 	}
 	b, e := json.Marshal(m)
 	if e != nil {

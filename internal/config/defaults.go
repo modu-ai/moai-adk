@@ -1151,6 +1151,7 @@ func defaultContextConfig() ContextConfig {
 func defaultInterviewConfig() InterviewConfig {
 	return InterviewConfig{
 		ClarityThreshold: 4,
+		DecisionGate:     "off",
 		Enabled:          true,
 		Plan: InterviewMode{
 			MaxRounds:         5,

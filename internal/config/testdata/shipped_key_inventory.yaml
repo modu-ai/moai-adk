@@ -831,6 +831,9 @@
 - path: "interview.clarity_threshold"
   class: R
   evidence: none
+- path: "interview.decision_gate"
+  class: W
+  evidence: reader
 - path: "interview.enabled"
   class: R
   evidence: none

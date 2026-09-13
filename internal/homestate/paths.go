@@ -62,10 +62,41 @@ func CanonicalProjectRoot(projectRoot string) string {
 	return filepath.Clean(projectRoot)
 }
 
+// tempRoots mirrors the production anchor set of kanban's TempOriginReason
+// (internal/kanban/temp_origin.go defaultTempRoots, REQ-THG-002): os.TempDir()
+// plus the /tmp and /var/folders spellings, whose containment os.TempDir()
+// alone misses on machines where TMPDIR points at the per-user directory
+// (/var/folders/... on macOS) while a project sits under /tmp. /var/tmp stays
+// excluded for the same reboot-survival reason the kanban set records. The
+// set is duplicated here — homestate cannot import kanban (kanban imports
+// homestate) — and TestTempDiscriminantParity asserts the two discriminants
+// agree so the sibling resolvers cannot split again.
+func tempRoots() []string {
+	return []string{os.TempDir(), "/tmp", "/var/folders"}
+}
+
+// insideTempRoots reports whether path lies within any temp anchor.
+// pathInside resolves the anchor side through EvalSymlinks, so the
+// macOS /tmp -> /private/tmp spelling is covered without a second anchor
+// form; path is the canonical root, already resolved by
+// CanonicalProjectRoot.
+func insideTempRoots(path string) bool {
+	for _, root := range tempRoots() {
+		rootAbs, err := filepath.Abs(root)
+		if err != nil {
+			continue
+		}
+		if pathInside(path, rootAbs) {
+			return true
+		}
+	}
+	return false
+}
+
 // ProjectDir returns ~/.moai/db/<project-key>.
 func ProjectDir(projectRoot string) (string, error) {
 	canonical := CanonicalProjectRoot(projectRoot)
-	if !explicitMoaiHome() && pathInside(canonical, os.TempDir()) {
+	if !explicitMoaiHome() && insideTempRoots(canonical) {
 		return filepath.Join(canonical, ".moai", "db", ProjectKey(canonical)), nil
 	}
 	home, err := paths.MoaiHome()
@@ -174,7 +205,7 @@ func EnsureHomeLayout() error {
 // permissions and records the canonical root used to derive the key.
 func EnsureProjectLayout(projectRoot string) error {
 	canonical := CanonicalProjectRoot(projectRoot)
-	if explicitMoaiHome() || !pathInside(canonical, os.TempDir()) {
+	if explicitMoaiHome() || !insideTempRoots(canonical) {
 		if err := EnsureHomeLayout(); err != nil {
 			return err
 		}
@@ -191,7 +222,7 @@ func EnsureProjectLayout(projectRoot string) error {
 			return err
 		}
 	}
-	if explicitMoaiHome() || !pathInside(canonical, os.TempDir()) {
+	if explicitMoaiHome() || !insideTempRoots(canonical) {
 		searchPath, err := SearchDBPath(projectRoot)
 		if err != nil {
 			return err

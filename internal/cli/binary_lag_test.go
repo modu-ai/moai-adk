@@ -191,9 +191,12 @@ func exprSource(fset *token.FileSet, src []byte, e ast.Expr) string {
 //     drift diagnostic.
 //   - `"Hook Delivery"` — t466, the hook-delivery workspace diagnostic
 //     (doctor.go registers it as a string literal, hence the quotes).
+//   - flagSlotCheckName — t702, the shared-flag-slot session diagnostic
+//     (registered through the constant, hence bare).
 var namesAddedAfterBaseline = map[string]bool{
 	"hookWiringCheckName": true,
 	`"Hook Delivery"`:     true,
+	"flagSlotCheckName":   true,
 }
 
 // TestBinaryLag_AllowlistKeysAreLiveNames asserts that every key of

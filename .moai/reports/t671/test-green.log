@@ -1,0 +1,12 @@
+ok  	github.com/modu-ai/moai-adk/internal/cli	1122.248s
+ok  	github.com/modu-ai/moai-adk/internal/codexapp	2.383s
+ok  	github.com/modu-ai/moai-adk/internal/gateway	6.987s
+ok  	github.com/modu-ai/moai-adk/internal/gateway/auth	5.060s
+ok  	github.com/modu-ai/moai-adk/internal/gateway/conversation	3.160s
+ok  	github.com/modu-ai/moai-adk/internal/gateway/opaque	0.828s
+ok  	github.com/modu-ai/moai-adk/internal/gateway/receipt	3.737s
+ok  	github.com/modu-ai/moai-adk/internal/gateway/translate	3.907s
+ok  	github.com/modu-ai/moai-adk/internal/codexbridge	4.641s
+ok  	github.com/modu-ai/moai-adk/internal/codextools	2.607s
+ok  	github.com/modu-ai/moai-adk/internal/web	28.166s
+ok  	github.com/modu-ai/moai-adk/internal/config	1.857s

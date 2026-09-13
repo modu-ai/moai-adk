@@ -85,7 +85,7 @@ func (s *FileStore) save(r record) error {
 		return err
 	}
 	tmp := file.Name()
-	defer os.Remove(tmp)
+	defer func() { _ = os.Remove(tmp) }() // temp file cleanup; the atomic replace owns the live file
 	if _, err = file.Write(raw); err == nil {
 		err = file.Sync()
 	}

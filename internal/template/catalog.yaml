@@ -6,7 +6,7 @@ catalog:
             - name: moai
               tier: core
               path: templates/.claude/skills/moai/
-              hash: 608219f27f04f6c981bb004a00f2fc9ce795b810c9a2fc3e793d48620eefc13d
+              hash: 8fefe00a4f88ad77918ff7c53f084d820881784ee4cbcb5f9c4d106d1dce46ae
               version: 1.0.0
             - name: moai-foundation-cc
               tier: core
@@ -36,7 +36,7 @@ catalog:
             - name: moai-kanban-foreman
               tier: core
               path: templates/.claude/skills/moai-kanban-foreman/
-              hash: ec5e5517881710e83038c7aec851d9abd2905500d02f01c6c82287b6c6711106
+              hash: 9e2ebb720734e002fcb47c3bb082a5694c368376a48405a01de079c379e66831
               version: 1.0.0
             - name: moai-meta-harness
               tier: core
@@ -137,7 +137,7 @@ catalog:
             - name: manager-spec
               tier: core
               path: templates/.claude/agents/moai/manager-spec.md
-              hash: 8c7ffaeb94b414d19ae70681c6d9bd3cf578dd7fb302b77a9bc55e2c144270a0
+              hash: d9e44f067572c2ed30da701ab67ce277b281061424b355fdff79eb97d7970fb3
               version: 1.0.0
             - name: plan-auditor
               tier: core

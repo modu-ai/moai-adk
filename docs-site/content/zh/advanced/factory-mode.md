@@ -90,7 +90,7 @@ flowchart TD
 
 ## 泳道编号的归属 —— factory.db
 
-哪个编号被哪条泳道握着，记录在 `~/.moai/db/<project-key>/factory/factory.db` 里。新泳道启动时，编号只跳过**仍被活着的会话握住的**那些，落到下一个空号 —— 已死泳道的编号会被释放并重新使用，残留的占用也从数据库中清掉。旧的 `.moai/state/factory/workers.json` 只导入一次，之后作为回滚凭据保留。`-f lane-<n>` 形式已经定下了名字，所以与 `--name`/`-n` 同时给出会报错。
+哪个编号被哪条泳道握着，记录在 `~/.moai/db/<project-key>/factory/factory.db` 里。启动目录是临时目录的项目（没有绝对 `MOAI_HOME` 覆盖）会把这一数据库放在项目本地的 `<base>/.moai/db/<project-key>/factory/factory.db` —— 与 backlog 队列同一例外。新泳道启动时，编号只跳过**仍被活着的会话握住的**那些，落到下一个空号 —— 已死泳道的编号会被释放并重新使用，残留的占用也从数据库中清掉。旧的 `.moai/state/factory/workers.json` 只导入一次，之后作为回滚凭据保留。`-f lane-<n>` 形式已经定下了名字，所以与 `--name`/`-n` 同时给出会报错。
 
 ## 不变的东西
 

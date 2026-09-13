@@ -21,7 +21,9 @@ func TestHelperProcess(t *testing.T) {
 	scan := bufio.NewScanner(os.Stdin)
 	for scan.Scan() {
 		var m Message
-		json.Unmarshal(scan.Bytes(), &m)
+		if json.Unmarshal(scan.Bytes(), &m) != nil {
+			continue
+		}
 		switch m.Method {
 		case "initialize":
 			fmt.Printf("{\"id\":%s,\"result\":{\"userAgent\":\"fake\"}}\n", m.ID)
@@ -50,7 +52,7 @@ func TestHelperProcess(t *testing.T) {
 		case "lease":
 			file, err := profileLease(filepath.Join(os.Getenv("CODEX_HOME"), ".moai-appserver.lock"))
 			if err == nil {
-				file.Close()
+				_ = file.Close() // probe answers the acquire flag; the lease is released by exit
 			}
 			fmt.Printf("{\"id\":%s,\"result\":{\"acquired\":%t}}\n", m.ID, err == nil)
 		case "env":
@@ -66,13 +68,19 @@ func TestHelperProcess(t *testing.T) {
 func helper(t *testing.T) *Client {
 	t.Helper()
 	home, _ := filepath.EvalSymlinks(t.TempDir())
-	os.Chmod(home, 0700)
+	if err := os.Chmod(home, 0700); err != nil {
+		t.Fatal(err)
+	}
 	exe, _ := os.Executable()
 	c, err := startProcess(context.Background(), Config{Binary: exe, Home: home, MaxMessageBytes: 2048, QueueSize: 8}, []string{"-test.run=TestHelperProcess", "codexapp-helper"})
 	if err != nil {
 		t.Fatal(err)
 	}
-	t.Cleanup(func() { c.Close() })
+	t.Cleanup(func() {
+		if err := c.Close(); err != nil {
+			t.Errorf("close client: %v", err)
+		}
+	})
 	return c
 }
 func TestRoutingEventsAndResponse(t *testing.T) {
@@ -203,11 +211,17 @@ func TestConcurrentResponses(t *testing.T) {
 }
 func TestRejectProfileConfigAndSymlink(t *testing.T) {
 	home, _ := filepath.EvalSymlinks(t.TempDir())
-	os.Chmod(home, 0700)
+	if err := os.Chmod(home, 0700); err != nil {
+		t.Fatal(err)
+	}
 	exe, _ := os.Executable()
-	os.WriteFile(filepath.Join(home, "config.toml"), []byte("model_provider='foreign'"), 0600)
+	if err := os.WriteFile(filepath.Join(home, "config.toml"), []byte("model_provider='foreign'"), 0600); err != nil {
+		t.Fatal(err)
+	}
 	if c, err := Start(context.Background(), Config{Binary: exe, Home: home}); err == nil {
-		c.Close()
+		if closeErr := c.Close(); closeErr != nil {
+			t.Errorf("close client: %v", closeErr)
+		}
 		t.Fatal("foreign config accepted")
 	}
 }
@@ -216,15 +230,21 @@ func TestProfileLeaseAndRelease(t *testing.T) {
 	c := helper(t)
 	cfg := Config{Binary: c.cmd.Path, Home: c.cmd.Dir}
 	if other, err := startProcess(context.Background(), cfg, []string{"-test.run=TestHelperProcess", "codexapp-helper"}); err == nil {
-		other.Close()
+		if closeErr := other.Close(); closeErr != nil {
+			t.Errorf("close client: %v", closeErr)
+		}
 		t.Fatal("parallel profile accepted")
 	}
-	c.Close()
+	if err := c.Close(); err != nil {
+		t.Errorf("close client: %v", err)
+	}
 	other, err := startProcess(context.Background(), cfg, []string{"-test.run=TestHelperProcess", "codexapp-helper"})
 	if err != nil {
 		t.Fatal(err)
 	}
-	other.Close()
+	if err := other.Close(); err != nil {
+		t.Errorf("close client: %v", err)
+	}
 }
 
 func TestLeaseAcrossChildProcess(t *testing.T) {
@@ -272,7 +292,9 @@ func TestValidationAndClosedConnection(t *testing.T) {
 	if err := c.Respond(ctx, json.RawMessage(`null`), nil); err != ErrProtocol {
 		t.Fatal(err)
 	}
-	c.Close()
+	if err := c.Close(); err != nil {
+		t.Errorf("close client: %v", err)
+	}
 	if c.Err() == nil {
 		t.Fatal("missing terminal error")
 	}
@@ -285,11 +307,15 @@ func TestValidationAndClosedConnection(t *testing.T) {
 }
 func TestStartupValidation(t *testing.T) {
 	home, _ := filepath.EvalSymlinks(t.TempDir())
-	os.Chmod(home, 0700)
+	if err := os.Chmod(home, 0700); err != nil {
+		t.Fatal(err)
+	}
 	exe, _ := os.Executable()
 	for _, cfg := range []Config{{Binary: "relative", Home: home}, {Binary: exe, Home: "relative"}, {Binary: exe, Home: home, QueueSize: -1}, {Binary: exe, Home: home, MaxMessageBytes: 1}, {Binary: "/missing-codex-binary", Home: home}} {
 		if c, err := Start(context.Background(), cfg); err == nil {
-			c.Close()
+			if closeErr := c.Close(); closeErr != nil {
+				t.Errorf("close client: %v", closeErr)
+			}
 			t.Fatal("accepted invalid startup")
 		}
 	}
@@ -306,14 +332,20 @@ func TestInstalledAppServerNoAuthSmoke(t *testing.T) {
 		t.Skip("explicit installed binary required")
 	}
 	home, _ := filepath.EvalSymlinks(t.TempDir())
-	os.Chmod(home, 0700)
+	if err := os.Chmod(home, 0700); err != nil {
+		t.Fatal(err)
+	}
 	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
 	defer cancel()
 	c, err := Start(ctx, Config{Binary: binary, Home: home})
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer c.Close()
+	defer func() {
+		if err := c.Close(); err != nil {
+			t.Errorf("close client: %v", err)
+		}
+	}()
 	init, err := c.Initialize(ctx, "moai_as1_probe", "0.1.0")
 	if err != nil {
 		t.Fatal(err)
@@ -330,30 +362,44 @@ func TestInstalledAppServerNoAuthSmoke(t *testing.T) {
 
 func TestAuthorizedConfigDigest(t *testing.T) {
 	home, _ := filepath.EvalSymlinks(t.TempDir())
-	os.Chmod(home, 0700)
+	if err := os.Chmod(home, 0700); err != nil {
+		t.Fatal(err)
+	}
 	exe, _ := os.Executable()
 	raw := []byte("features.shell_tool = false\n")
-	os.WriteFile(filepath.Join(home, "config.toml"), raw, 0600)
+	if err := os.WriteFile(filepath.Join(home, "config.toml"), raw, 0600); err != nil {
+		t.Fatal(err)
+	}
 	sum := sha256.Sum256(raw)
 	cfg := Config{Binary: exe, Home: home, ExpectedConfigSHA256: hex.EncodeToString(sum[:])}
 	c, err := startProcess(context.Background(), cfg, []string{"-test.run=TestHelperProcess", "codexapp-helper"})
 	if err != nil {
 		t.Fatal(err)
 	}
-	c.Close()
-	os.WriteFile(filepath.Join(home, "config.toml"), []byte("changed"), 0600)
+	if err := c.Close(); err != nil {
+		t.Errorf("close client: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(home, "config.toml"), []byte("changed"), 0600); err != nil {
+		t.Fatal(err)
+	}
 	if other, err := startProcess(context.Background(), cfg, nil); err == nil {
-		other.Close()
+		if closeErr := other.Close(); closeErr != nil {
+			t.Errorf("close client: %v", closeErr)
+		}
 		t.Fatal("changed authorized config accepted")
 	}
-	os.Remove(filepath.Join(home, "config.toml"))
+	if err := os.Remove(filepath.Join(home, "config.toml")); err != nil {
+		t.Fatal(err)
+	}
 	if _, err := startProcess(context.Background(), cfg, nil); err == nil {
 		t.Fatal("missing authorized config accepted")
 	}
 }
 func TestLifetimeCancellation(t *testing.T) {
 	home, _ := filepath.EvalSymlinks(t.TempDir())
-	os.Chmod(home, 0700)
+	if err := os.Chmod(home, 0700); err != nil {
+		t.Fatal(err)
+	}
 	exe, _ := os.Executable()
 	ctx, cancel := context.WithCancel(context.Background())
 	c, err := startProcess(ctx, Config{Binary: exe, Home: home}, []string{"-test.run=TestHelperProcess", "codexapp-helper"})
@@ -369,7 +415,9 @@ func TestLifetimeCancellation(t *testing.T) {
 	if c.Err() != context.Canceled {
 		t.Fatal(c.Err())
 	}
-	c.Close()
+	if err := c.Close(); err != nil {
+		t.Errorf("close client: %v", err)
+	}
 }
 
 func TestDiscardRequestPreservesOtherIDsAndRejectsReplay(t *testing.T) {

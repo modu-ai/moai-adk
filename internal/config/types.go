@@ -1354,6 +1354,7 @@ type ContextTokenBudget struct {
 // plan.questions_per_round, and skip_conditions to control Socratic interview behavior.
 type InterviewConfig struct {
 	ClarityThreshold   int           `yaml:"clarity_threshold"`
+	DecisionGate       string        `yaml:"decision_gate"`
 	Enabled            bool          `yaml:"enabled"`
 	Plan               InterviewMode `yaml:"plan"`
 	Project            InterviewMode `yaml:"project"`
@@ -1371,6 +1372,20 @@ func (c InterviewConfig) ResolvedRecommendationMode() string {
 		return "pull"
 	}
 	return "push"
+}
+
+// ResolvedDecisionGate returns the resolved decision-gate axis: "on" only
+// when the key holds exactly "on"; "off" otherwise — including when the key
+// is absent, empty, or unrecognized (REQ-DA-002, REQ-DA-003). The raw value
+// stays on DecisionGate, so an unrecognized setting is recorded verbatim
+// rather than silently discarded. This resolver reads its own field only: the
+// decision-gate axis is orthogonal to the recommendation-mode axis above and
+// neither reads, writes, nor conditions on the other (REQ-DA-018).
+func (c InterviewConfig) ResolvedDecisionGate() string {
+	if c.DecisionGate == "on" {
+		return "on"
+	}
+	return "off"
 }
 
 // InterviewMode holds per-mode interview settings.

@@ -60,7 +60,9 @@ func TestAnthropicNativeMessagesPreserveAndFilter(t *testing.T) {
 		}
 		seen <- r
 		w.Header().Set("Content-Type", "application/json")
-		io.WriteString(w, nativeOutput)
+		if _, err := io.WriteString(w, nativeOutput); err != nil {
+			t.Error(err)
+		}
 	})
 	a, e := NewAnthropicAdapter(nativeConfig(tr))
 	if e != nil {
@@ -127,7 +129,7 @@ func TestAnthropicNativeStreamSuccessEOFAndClose(t *testing.T) {
 	for _, kind := range []string{"success", "EOF", "disconnect", "error", "opaque"} {
 		tr, _ := nativeTLS(t, func(w http.ResponseWriter, r *http.Request) {
 			_, _ = io.Copy(io.Discard, r.Body)
-			r.Body.Close()
+			_ = r.Body.Close() // server-side discard; assertions read the client side
 			w.Header().Set("Content-Type", "text/event-stream")
 			s := nativeSSE()
 			switch kind {
@@ -138,7 +140,9 @@ func TestAnthropicNativeStreamSuccessEOFAndClose(t *testing.T) {
 			case "opaque":
 				s = strings.Replace(s, `"type":"text","text":""`, `"type":"thinking","thinking":"private"`, 1)
 			}
-			io.WriteString(w, s)
+			if _, err := io.WriteString(w, s); err != nil {
+				t.Error(err)
+			}
 			w.(http.Flusher).Flush()
 			if kind == "disconnect" {
 				select {
@@ -156,11 +160,13 @@ func TestAnthropicNativeStreamSuccessEOFAndClose(t *testing.T) {
 			t.Fatal(e)
 		}
 		if kind == "disconnect" {
-			r.Body.Close()
+			_ = r.Body.Close() // canceled stream; the verdict is the cancel signal
 			continue
 		}
 		b, e := io.ReadAll(r.Body)
-		r.Body.Close()
+		if cerr := r.Body.Close(); cerr != nil {
+			t.Error(cerr)
+		}
 		if kind == "success" {
 			if e != nil || string(b) != nativeSSE() {
 				t.Fatal(string(b), e)
@@ -177,7 +183,9 @@ func TestAnthropicNativeStatusAndRedirectBoundaries(t *testing.T) {
 			w.Header().Set("Retry-After", "9")
 			w.Header().Set("Location", "https://foreign.invalid")
 			w.WriteHeader(status)
-			io.WriteString(w, "synthetic-private-body")
+			if _, err := io.WriteString(w, "synthetic-private-body"); err != nil {
+				t.Error(err)
+			}
 		})
 		a, _ := NewAnthropicAdapter(nativeConfig(tr))
 		r, e := a.Send(context.Background(), nativeQ(t))
@@ -254,7 +262,7 @@ func TestAnthropicNativeStreamStateAdversaries(t *testing.T) {
 	for i, s := range cases {
 		b := newNativeBody(context.Background(), io.NopCloser(strings.NewReader(s)), "canonical", nativeConfig(&http.Transport{}).Limits)
 		out, e := io.ReadAll(b)
-		b.Close()
+		_ = b.Close() // nativeBody.Close always returns nil
 		if e == nil || strings.Contains(string(out), "message_stop") {
 			t.Fatal(i, string(out), e)
 		}
@@ -263,21 +271,21 @@ func TestAnthropicNativeStreamStateAdversaries(t *testing.T) {
 	if _, e := io.ReadAll(b); e != nil {
 		t.Fatal(e)
 	}
-	b.Close()
+	_ = b.Close() // nativeBody.Close always returns nil
 	cfg := nativeConfig(&http.Transport{})
 	cfg.Limits.MaxEventBytes = 16
 	b = newNativeBody(context.Background(), io.NopCloser(strings.NewReader(valid)), "canonical", cfg.Limits)
 	if _, e := io.ReadAll(b); e == nil {
 		t.Fatal("event bound")
 	}
-	b.Close()
+	_ = b.Close() // nativeBody.Close always returns nil
 	cfg = nativeConfig(&http.Transport{})
 	cfg.Limits.MaxOutputBytes = 16
 	b = newNativeBody(context.Background(), io.NopCloser(strings.NewReader(valid)), "canonical", cfg.Limits)
 	if _, e := io.ReadAll(b); e == nil {
 		t.Fatal("total bound")
 	}
-	b.Close()
+	_ = b.Close() // nativeBody.Close always returns nil
 }
 
 func TestAnthropicNativeInterleavedToolStreams(t *testing.T) {
@@ -305,7 +313,7 @@ func TestAnthropicNativeInterleavedToolStreams(t *testing.T) {
 		s.WriteString(encode(map[string]any{"type": "message_stop"}))
 		b := newNativeBody(context.Background(), io.NopCloser(strings.NewReader(s.String())), "canonical", nativeConfig(&http.Transport{}).Limits)
 		out, e := io.ReadAll(b)
-		b.Close()
+		_ = b.Close() // nativeBody.Close always returns nil
 		if broken {
 			if e == nil || strings.Contains(string(out), "message_stop") {
 				t.Fatal("broken arguments accepted")
@@ -317,11 +325,11 @@ func TestAnthropicNativeInterleavedToolStreams(t *testing.T) {
 }
 func TestAnthropicNativeCancellationClosesBlockedRead(t *testing.T) {
 	r, w := io.Pipe()
-	t.Cleanup(func() { r.Close(); w.Close() })
+	t.Cleanup(func() { _ = r.Close(); _ = w.Close() }) // io.Pipe closes always return nil
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	b := newNativeBody(ctx, r, "canonical", nativeConfig(&http.Transport{}).Limits)
-	defer b.Close()
+	defer func() { _ = b.Close() }() // nativeBody.Close always returns nil
 	done := make(chan error, 1)
 	go func() { _, e := b.Read(make([]byte, 100)); done <- e }()
 	cancel()
@@ -347,7 +355,7 @@ func TestAnthropicNativeRawWireBoundaries(t *testing.T) {
 				}
 				b := newNativeBody(context.Background(), io.NopCloser(reader), "canonical", limits)
 				out, e := io.ReadAll(b)
-				b.Close()
+				_ = b.Close() // nativeBody.Close always returns nil
 				success := strings.Contains(string(out), "event: message_stop")
 				if offset < 0 && (e == nil || success) {
 					t.Errorf("%s fragmented=%t exceeded raw limit", name, fragmented)
@@ -361,7 +369,7 @@ func TestAnthropicNativeRawWireBoundaries(t *testing.T) {
 	for _, raw := range []string{strings.TrimSuffix(nativeSSE(), "\n\n"), ": unterminated\r", strings.Split(nativeSSE(), "event: message_stop")[0]} {
 		b := newNativeBody(context.Background(), io.NopCloser(iotest.OneByteReader(strings.NewReader(raw))), "canonical", nativeConfig(&http.Transport{}).Limits)
 		out, e := io.ReadAll(b)
-		b.Close()
+		_ = b.Close() // nativeBody.Close always returns nil
 		if e == nil || strings.Contains(string(out), "event: message_stop") {
 			t.Fatal("EOF before complete terminal accepted")
 		}
