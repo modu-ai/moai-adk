@@ -38,7 +38,8 @@ func NewAnthropicOAuth(ctx context.Context, headers http.Header) (CredentialRef,
 			padding = true
 			continue
 		}
-		if padding || !(c >= 'a' && c <= 'z' || c >= 'A' && c <= 'Z' || c >= '0' && c <= '9' || strings.ContainsRune("-._~+/", c)) {
+		tokenRune := c >= 'a' && c <= 'z' || c >= 'A' && c <= 'Z' || c >= '0' && c <= '9' || strings.ContainsRune("-._~+/", c)
+		if padding || !tokenRune {
 			return nil, ErrCredentialAbsent
 		}
 	}

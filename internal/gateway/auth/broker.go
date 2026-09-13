@@ -88,12 +88,12 @@ func (b CodexBroker) run(ctx context.Context, home string, operation string) (re
 	}
 	stdout, e := cmd.StdoutPipe()
 	if e != nil {
-		stdin.Close()
+		_ = stdin.Close() // process never started; discarding the pipe
 		return ErrBroker
 	}
 	if e = cmd.Start(); e != nil {
-		stdin.Close()
-		stdout.Close()
+		_ = stdin.Close() // start failed; discarding the pipes
+		_ = stdout.Close()
 		return ErrBroker
 	}
 	bounded, cancel := context.WithTimeout(ctx, b.Timeout)
@@ -145,7 +145,7 @@ func (b CodexBroker) run(ctx context.Context, home string, operation string) (re
 	// Wait starts only during teardown, after protocol messages have been read;
 	// os/exec.Wait otherwise closes StdoutPipe before the scanner finishes.
 	defer func() {
-		stdin.Close()
+		_ = stdin.Close() // teardown; the encoder has finished or the protocol already failed
 		go func() { waitDone <- cmd.Wait() }()
 		select {
 		case waitErr := <-waitDone:
@@ -159,7 +159,7 @@ func (b CodexBroker) run(ctx context.Context, home string, operation string) (re
 			<-waitDone
 		}
 		stopRead()
-		stdout.Close()
+		_ = stdout.Close() // teardown discard
 		<-scanDone
 	}()
 	encoder := json.NewEncoder(stdin)
