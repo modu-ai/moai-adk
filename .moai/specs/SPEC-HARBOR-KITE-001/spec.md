@@ -2,7 +2,7 @@
 id: SPEC-HARBOR-KITE-001
 title: "런처는 CLAUDE_CODE_HARBOR_KITE를 주입하지 않는다 — 공유 플래그 슬롯 비주입 판정 기록"
 version: "0.1.0"
-status: draft
+status: completed
 created: 2026-09-13
 updated: 2026-09-13
 author: manager-spec
