@@ -305,6 +305,67 @@ zh `反馈`·`质量门禁`)은 i18n.js 의 해당 로케일 라벨과 대조하
 **후속 카드 요청(리드에게)**: zh 탭 이름 현지어 축의 드리프트 — `用户信息` vs i18n `身份`.
 다른 로케일·다른 탭에도 같은 형태가 있는지는 재지 않았다(가드가 그 축을 열지 않으므로 측정 자체가 없다).
 
+### M2 — A군 4자리: 틀린 수(9) 제거
+
+측정 트리: `.claude/worktrees/t530`, 브랜치 `WT-web-tab-docs`, M2 직전 HEAD `d85ac3e9e`.
+
+#### 처분 — 수를 지운다(고쳐 쓰지 않는다)
+
+| 자리 | 파일 `:53` | 이전 | 이후 |
+|---|---|---|---|
+| A1 | `docs-site/content/ko/cli-reference/web.md` | `설정 9개 탭.` | `설정 탭 화면.` |
+| A2 | `docs-site/content/en/cli-reference/web.md` | `The nine settings tabs.` | `The settings tabs.` |
+| A3 | `docs-site/content/ja/cli-reference/web.md` | `設定 9 タブ。` | `設定タブ画面。` |
+| A4 | `docs-site/content/zh/cli-reference/web.md` | `设置九个标签页。` | `设置标签页界面。` |
+
+`?tab=` / `?profile=` 설명은 네 자리 모두 그대로 두었다 — 그 부분이 이 표 행의 실제 정보다.
+
+#### RED (M2 이전, HEAD `d85ac3e9e`) — AC-TCD-001 축어
+
+```
+$ head -4 .moai/reports/t530/count-literals.txt > /tmp/t530-a.txt
+$ wc -l < /tmp/t530-a.txt
+       4
+$ grep -rnF -f /tmp/t530-a.txt docs-site/content/{ko,en,ja,zh}/cli-reference/web.md | wc -l
+       4
+```
+
+리터럴 파일이 4줄임을 함께 쟀다 — 빈 패턴 파일도 `0` 을 내므로 `0` 만으로는 통과 근거가 되지 않는다(AC-TCD-001).
+
+#### GREEN (M2 이후) — AC-TCD-001 축어
+
+```
+$ head -4 .moai/reports/t530/count-literals.txt > /tmp/t530-a.txt
+$ wc -l < /tmp/t530-a.txt
+       4
+$ grep -rnF -f /tmp/t530-a.txt docs-site/content/{ko,en,ja,zh}/cli-reference/web.md | wc -l
+       0
+```
+
+#### 가드 상태 — 세 층 모두 여전히 RED (예정된 부분 진척)
+
+```
+$ go test ./internal/web/ -run 'TestDocsTabContract' -v
+    docs_tab_contract_test.go:136: swept 12 files against 16 enumerated literals
+    docs_tab_contract_test.go:145: 14 enumerated literal(s) still present; the run phase removes the count, it does not rewrite it
+    docs_tab_contract_test.go:281: allowed rules 1
+    docs_tab_contract_test.go:282: allowed lines 16
+    docs_tab_contract_test.go:303: numeral sweep found 16 unallowed hit(s) (4 on the word axis); every one is a count that can drift
+--- FAIL: TestDocsTabContract (0.08s)
+    --- FAIL: TestDocsTabContract/literals (0.00s)
+    --- FAIL: TestDocsTabContract/allowlist (0.07s)
+    --- FAIL: TestDocsTabContract/names (0.00s)
+```
+
+M1 baseline(리터럴 18 / 스윕 20 · 낱말 6) 대비 리터럴 18→14, 스윕 20→16, 낱말 축 6→4.
+낱말 축에서 빠진 둘은 A2(`nine settings tabs`)·A4(`九个标签页`) 이며, 이는 A군 처분과 정확히 대응한다.
+`allowed rules 1` / `allowed lines 16` 은 불변 — A군 편집이 `codex` 허용 면을 건드리지 않았다는 관측이다.
+
+#### Gap — M2 가 관측하지 못한 것
+
+- 세 층 모두 아직 붉다. B·C군(M3)과 D군(M4)이 남아 있으므로 예정된 상태다.
+- `names` 층은 A군과 무관하다(cli-reference 4본은 이름 목록을 담지 않는다) — M2 는 그 층에 어떤 영향도 주지 않았고, 실제로 출력이 변하지 않았다.
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 _<pending — M1 만 완료. 이 신호는 run-phase 전체(M1~M5)가 닫힐 때 채운다.>_
