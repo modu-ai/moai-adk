@@ -77,11 +77,17 @@ func findCodemapsRoot(t *testing.T) string {
 	}
 }
 
-// foldToken returns the violation token for a protected unit: the exact
-// recorded form. A file unit also exposes its filename stem (e.g.
-// fieldsets_codex_templ), mirroring the spec §A.2 grep convention. The
-// directory unit internal/core/git exposes only the full path, so the folded
-// short form `core/git` surviving in parent prose stays legal.
+// foldToken returns the violation token for a protected unit: the
+// `.go`-stripped recorded path for a file unit (e.g.
+// internal/kanban/prlink_landedref), and the recorded path as-is for a
+// directory unit (internal/core/git), so the folded short form `core/git`
+// surviving in parent prose stays legal.
+//
+// Residual (F1, accepted): a bare-stem mention (filename without directory,
+// e.g. `prlink_landedref.go`) does NOT hit — the token requires the
+// directory-qualified form. The §A.2 baseline grep used bare stems, which is
+// wider than this scan; the incident signature (full-path mentions) is
+// covered.
 func foldToken(unit string) string {
 	if suffix := ".go"; strings.HasSuffix(unit, suffix) {
 		return strings.TrimSuffix(unit, suffix)
@@ -334,8 +340,7 @@ func TestCodemapsFoldGuardFloorCoverage(t *testing.T) {
 		}
 		seen[token] = true
 	}
-	if strings.Contains(foldToken("internal/core/git"), "core/git") &&
-		foldToken("internal/core/git") != "internal/core/git" {
-		t.Errorf("directory token must be the full path so `core/git` stays legal")
+	if got := foldToken("internal/core/git"); got != "internal/core/git" {
+		t.Errorf("directory token = %q, want the full path internal/core/git so `core/git` stays legal", got)
 	}
 }

@@ -72,6 +72,8 @@ Commits on `WT-codemaps-fold-ac`: `128474b19` (M1 guard + spec.md draft→in-pro
 
 ## Residual-risk
 
+- **Bare-stem evasion (sync-audit F1, follow-up card candidate)**: the guard's token is the directory-qualified recorded path minus `.go`, so a generator doc mentioning only the filename (e.g. `prlink_landedref.go` without `internal/kanban/`) escapes detection. The incident's signature (full-path mentions, t475 §④-b ×6) is fully covered; the accepted residual per REQ-CFG-002's detection-limit clause covers token-less rewrites — the bare-stem gap is narrower than both. Fix = add the filename stem as a second token plus a bare-stem-absent control assertion (separate small card or SPEC amendment).
+
 - Detection limit accepted by spec REQ-CFG-002: a regeneration that rewrites fold-unit prose without ever naming the unit's path or filename token passes this guard. The incident's regenerator signature carried tokens (t475 §④-b:558), so the observed recurrence class is covered.
 - The guard runs wherever `go test ./internal/graph/` runs; if a future change excludes the default test suite or the file, the guard stops firing without a signal (verification-completeness §1.3 continued-firing is owned by CI keeping the default suite intact).
 
