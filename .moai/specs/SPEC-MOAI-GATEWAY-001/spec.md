@@ -2,9 +2,9 @@
 id: SPEC-MOAI-GATEWAY-001
 title: "moai 공통 loopback gateway — cc·gpt·glm 세 launcher의 단일 ingress와 제공자별 모델 선택 경계"
 version: "0.11.0"
-status: draft
+status: in-progress
 created: 2026-09-10
-updated: 2026-09-12
+updated: 2026-09-13
 author: manager-spec
 priority: P1
 phase: "v3.3.0 target"
