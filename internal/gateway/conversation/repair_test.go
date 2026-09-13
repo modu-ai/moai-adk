@@ -422,3 +422,44 @@ func TestRepairPathNeverReadsReceiptStore(t *testing.T) {
 		}
 	}
 }
+
+// F1 (sync-audit t708): the injection is a byte-preserving splice. A real
+// client row keeps Node JSON.stringify insertion order ("type" first,
+// "sessionId" last) and literal < and & bytes — a whole-row re-marshal
+// reorders keys and HTML-escapes public bytes. Invariant: removing exactly
+// the injected span from the output reproduces the input byte-for-byte.
+func TestRepairInjectLinePreservesRowBytesOutsideInjection(t *testing.T) {
+	line := `{"type":"assistant","cwd":"/p","version":3,"message":{"role":"assistant","model":"gpt-5.6-sol","stop_reason":"end_turn","content":[{"type":"tool_use","id":"toolu_moai_v1_abc","name":"Edit","input":{"old_string":"a<b&c"}}]},"sessionId":"u","userType":"external"}`
+	out, err := repairInjectLine(line, "moai_opaque_v2_abc")
+	if err != nil {
+		t.Fatal(err)
+	}
+	block := `{"type":"redacted_thinking","data":"moai_opaque_v2_abc"}`
+	i := strings.Index(out, block)
+	if i < 0 {
+		t.Fatalf("envelope block not found in output: %s", out)
+	}
+	rest := out[i+len(block):]
+	if !strings.HasPrefix(rest, ",") {
+		t.Fatalf("injected block must be followed by the array comma, got %.20q", rest)
+	}
+	if reconstructed := out[:i] + rest[1:]; reconstructed != line {
+		t.Fatalf("non-injected bytes rewritten:\n got: %s\nwant: %s", reconstructed, line)
+	}
+	if !strings.Contains(out, `a<b&c`) {
+		t.Fatal("HTML escaping rewrote public bytes")
+	}
+	t.Run("empty content array", func(t *testing.T) {
+		empty := `{"type":"assistant","message":{"role":"assistant","content":[]},"sessionId":"u"}`
+		got, err := repairInjectLine(empty, "moai_opaque_v2_abc")
+		if err != nil {
+			t.Fatal(err)
+		}
+		if !strings.Contains(got, `"content":[{"type":"redacted_thinking","data":"moai_opaque_v2_abc"}]`) {
+			t.Fatalf("empty-array splice malformed: %s", got)
+		}
+		if reconstructed := strings.Replace(got, block, "", 1); reconstructed != empty {
+			t.Fatalf("non-injected bytes rewritten: %s", reconstructed)
+		}
+	})
+}

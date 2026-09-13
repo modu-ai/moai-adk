@@ -269,28 +269,89 @@ func repairMarkerDigest(marker string) (string, error) {
 	return b.Digest, nil
 }
 
-// repairInjectLine re-emits one transcript row with the verbatim envelope
-// prepended to the assistant content array — the position the gateway itself
-// emits it (content head). No other field is touched.
+// repairEnvelopeBlock is the injected block; the struct fixes a
+// deterministic JSON key order.
+type repairEnvelopeBlock struct {
+	Type string `json:"type"`
+	Data string `json:"data"`
+}
+
+// repairContentInsertOffset streams the row JSON only far enough to locate
+// the byte offset just past the opening bracket of message.content, so the
+// splice can insert without re-serializing anything.
+func repairContentInsertOffset(line string) (int, bool) {
+	dec := json.NewDecoder(strings.NewReader(line))
+	if t, err := dec.Token(); err != nil {
+		return 0, false
+	} else if d, ok := t.(json.Delim); !ok || d != '{' {
+		return 0, false
+	}
+	for {
+		keyTok, err := dec.Token()
+		if err != nil {
+			return 0, false
+		}
+		key, ok := keyTok.(string)
+		if !ok {
+			return 0, false // row object closed: no message
+		}
+		if key != "message" {
+			var skip json.RawMessage
+			if dec.Decode(&skip) != nil {
+				return 0, false
+			}
+			continue
+		}
+		if t, err := dec.Token(); err != nil {
+			return 0, false
+		} else if d, ok := t.(json.Delim); !ok || d != '{' {
+			return 0, false
+		}
+		for {
+			mKeyTok, err := dec.Token()
+			if err != nil {
+				return 0, false
+			}
+			mKey, ok := mKeyTok.(string)
+			if !ok {
+				return 0, false // message object closed: no content array
+			}
+			if mKey != "content" {
+				var skip json.RawMessage
+				if dec.Decode(&skip) != nil {
+					return 0, false
+				}
+				continue
+			}
+			if t, err := dec.Token(); err != nil {
+				return 0, false
+			} else if d, ok := t.(json.Delim); !ok || d != '[' {
+				return 0, false
+			}
+			return int(dec.InputOffset()), true
+		}
+	}
+}
+
+// repairInjectLine splices the verbatim envelope block into the head of the
+// row's message.content array — the position the gateway itself emits it —
+// WITHOUT re-serializing the row: every byte outside the inserted span is
+// the input's own byte (key order, escaping, whitespace all preserved).
 func repairInjectLine(line, data string) (string, error) {
-	var row map[string]any
-	if err := json.Unmarshal([]byte(line), &row); err != nil {
-		return "", err
-	}
-	msg, ok := row["message"].(map[string]any)
-	if !ok {
-		return "", errors.New("row lost its message during injection")
-	}
-	blocks, ok := msg["content"].([]any)
-	if !ok {
-		return "", errors.New("row lost its content during injection")
-	}
-	msg["content"] = append([]any{map[string]any{"type": "redacted_thinking", "data": data}}, blocks...)
-	patched, err := json.Marshal(row)
+	block, err := json.Marshal(repairEnvelopeBlock{Type: "redacted_thinking", Data: data})
 	if err != nil {
 		return "", err
 	}
-	return string(patched), nil
+	pos, ok := repairContentInsertOffset(line)
+	if !ok {
+		return "", errors.New("message content array not located in row")
+	}
+	rest := line[pos:]
+	if strings.HasPrefix(strings.TrimLeft(rest, " \t\r\n"), "]") {
+		// Empty array: no separator needed.
+		return line[:pos] + string(block) + rest, nil
+	}
+	return line[:pos] + string(block) + "," + rest, nil
 }
 
 func writeExclusive(path string, raw []byte) error {

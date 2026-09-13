@@ -58,7 +58,8 @@ func TestWedgePolicyTrailingUnpublishedBoundaryIsChainRejected(t *testing.T) {
 		}},
 		map[string]any{"role": "user", "content": "continue"},
 	)
-	goldenReplayOf(t, h.Check(context.Background(), "gpt-5.6-sol", "owner", j(messages)), CauseChain, goldenChainBody)
+	err := h.Check(context.Background(), "gpt-5.6-sol", "owner", j(messages))
+	_ = goldenReplayOf(t, err, CauseChain, goldenChainBody)
 }
 
 // Group 2 — removing the trailing unpublished turn re-roots the tail: the
@@ -85,7 +86,8 @@ func TestWedgePolicyRejectionClassesStayWithGoldenBodies(t *testing.T) {
 		turn1, _, turn3 := causeConversation(t, h, "cipher")
 		messages := append(append([]any{}, turn1...), turn3...)
 		messages = append(messages, map[string]any{"role": "user", "content": "summarize"})
-		goldenReplayOf(t, h.Check(ctx, "gpt-5.6-sol", "owner", j(messages)), CauseChain, goldenChainBody)
+		err := h.Check(ctx, "gpt-5.6-sol", "owner", j(messages))
+		_ = goldenReplayOf(t, err, CauseChain, goldenChainBody)
 	})
 	t.Run("foreign item is a digest mismatch", func(t *testing.T) {
 		const id = "70800004-0000-4708-8708-000000000004"
@@ -102,7 +104,8 @@ func TestWedgePolicyRejectionClassesStayWithGoldenBodies(t *testing.T) {
 				map[string]any{"type": "text", "text": "one"},
 			}},
 		}
-		goldenReplayOf(t, h.Check(ctx, "gpt-5.6-sol", "owner", j(foreign)), CauseChain, goldenChainBody)
+		err := h.Check(ctx, "gpt-5.6-sol", "owner", j(foreign))
+		_ = goldenReplayOf(t, err, CauseChain, goldenChainBody)
 	})
 	t.Run("stripped reasoning with surviving marker", func(t *testing.T) {
 		const id = "70800005-0000-4708-8708-000000000005"
@@ -112,7 +115,8 @@ func TestWedgePolicyRejectionClassesStayWithGoldenBodies(t *testing.T) {
 			turn1[0],
 			map[string]any{"role": "assistant", "content": []any{map[string]any{"type": "text", "text": "one"}}},
 		}
-		goldenReplayOf(t, h.Check(ctx, "gpt-5.6-sol", "owner", j(stripped)), CauseReasoning, goldenReasoningBody)
+		err := h.Check(ctx, "gpt-5.6-sol", "owner", j(stripped))
+		_ = goldenReplayOf(t, err, CauseReasoning, goldenReasoningBody)
 	})
 	t.Run("lineage miss on an unrelated empty root", func(t *testing.T) {
 		const id = "70800006-0000-4708-8708-000000000006"
@@ -123,7 +127,8 @@ func TestWedgePolicyRejectionClassesStayWithGoldenBodies(t *testing.T) {
 		// lineage miss: the recorded source is gone from this root.
 		foreignRoot := NewGPTSubscriptionReceiptHistory(causeStore(t, other), other, id)
 		messages := append(append([]any{}, turn1...), turn2...)
-		goldenReplayOf(t, foreignRoot.Check(ctx, "gpt-5.6-sol", "owner", j(messages)), CauseLineage, goldenLineageBody)
+		err := foreignRoot.Check(ctx, "gpt-5.6-sol", "owner", j(messages))
+		_ = goldenReplayOf(t, err, CauseLineage, goldenLineageBody)
 	})
 }
 
