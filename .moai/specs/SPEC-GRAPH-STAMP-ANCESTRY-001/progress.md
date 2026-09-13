@@ -581,7 +581,7 @@ m1_to_mN_commit_strategy: "마일스톤당 1커밋 — M1 b6e84fe5c, M2 c613b7c6
 
 ```yaml
 sync_complete_at: "2026-09-14T01:20:00+0900"
-sync_commit_sha: "pending-backfill-sync"   # 이 커밋 자신의 해시라 착지 후 backfill
+sync_commit_sha: 5ea0bac5fe43e7feb4bb872f675bf69f6e9b3714
 sync_status: PASS
 b12_self_test_a: "grep -c 'SPEC-GRAPH-STAMP-ANCESTRY-001' CHANGELOG.md → 0 (삽입 전). 중복 없음"
 b12_self_test_b: "acceptance.md AC 고유 식별자 12개 (AC-GSA-001~012) = CHANGELOG 항목이 적은 12개. 일치"
@@ -622,3 +622,4 @@ spec_audit: "mcp spec_audit → total_specs=1, modern_era_clean=1, drift_finding
 - `sync_commit_sha`가 플레이스홀더로 남는다. backfill을 빠뜨리면 이 신호는 자기 커밋을 가리키지 못한다.
 - docs-site 약 98행의 범위 부족을 고치지 않고 남겼다. push 실행에서 exit 2를 맞은 독자가 그 문서를 읽으면 가드가 PR 전용이라고 오해할 수 있다.
 - run 단계가 기록한 잔여 위험(통합 뒤 codemaps가 다시 stale이 된다, windows 빌드 미측정, 워크플로 가드의 실제 이벤트 미검증)은 이 sync가 해소하지 않았다. §E.3 Residual risk가 그대로 유효하다.
+mx_commit_sha: (this commit)
