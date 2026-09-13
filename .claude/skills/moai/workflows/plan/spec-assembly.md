@@ -226,6 +226,37 @@ Fail-open: if the renderer is unavailable or the review file is absent, the
 emission step is skipped silently — the plan-phase pipeline is NOT blocked. The
 plan HTML report is enrichment, not a gate.
 
+#### Step 2.3.3b: Decision-Index Presentation (decision gate)
+
+**Where** the `interview.decision_gate` setting resolves `on` and the SPEC's
+`.moai/specs/{SPEC-ID}/decision-index.md` exists, the orchestrator surfaces the
+index rows as additive prose context in the SAME turn the Implementation
+Kickoff Approval `AskUserQuestion` fires — beside the plan HTML report path,
+never instead of it. The rows state what is unresolved and why; the index
+itself never carries a preferred answer, in either recommendation mode, and the
+gate question follows the landed `recommendation_mode` convention unchanged.
+
+Fail-open, like the plan HTML report: **where** the decision gate is `off` or
+the index is absent or unreadable, this presentation step is skipped silently —
+the gate is unchanged and the plan-phase pipeline is NOT blocked. No second
+human gate is introduced.
+
+After the gate, operator verdicts per row are written back into the row's
+`Operator verdict:` line using exactly the verdict-action vocabulary `DECIDE`,
+`NEED_ANALYSIS`, `NEED_EVIDENCE`, `DEFER`. When a recorded verdict is
+product-level (MVP or phase scope, tier behavior, UX flow, pricing, privacy or
+security promise), the kickoff flow surfaces the reconciliation of
+`.moai/project/product.md` as a named design decision: `.moai/project/**`
+scaffolding is owned by manager-docs, so the reconcile act is delegated to
+manager-docs or taken explicitly by the operator — never performed silently by
+manager-spec. A SPEC-level verdict (retry count, internal algorithm, query
+shape) touches the decision index and the SPEC only.
+
+Zero rows is not approval: a decision index with zero judgment points means
+only that this pass found no unresolved decisions — the Implementation
+Kickoff Approval gate remains a separate affirmative act that fires regardless
+of the row count.
+
 #### Step 2.3.4: FAIL Path — Retry Loop (max 3 iterations)
 
 If verdict is FAIL:
