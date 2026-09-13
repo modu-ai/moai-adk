@@ -18,10 +18,10 @@ import (
 )
 
 var (
-	ErrRecovery = errors.New("App Server conversation requires explicit recovery")
+	ErrRecovery = errors.New("app server conversation requires explicit recovery")
 	ErrScope    = errors.New("invalid App Server conversation or tool result")
 	ErrProtocol = errors.New("invalid App Server turn event")
-	ErrLimit    = errors.New("App Server bridge limit exceeded")
+	ErrLimit    = errors.New("app server bridge limit exceeded")
 )
 
 type RPC interface {

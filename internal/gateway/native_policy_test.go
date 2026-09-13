@@ -39,7 +39,7 @@ func TestNativeThinkingStream(t *testing.T) {
 	body := newNativeBody(context.Background(), io.NopCloser(strings.NewReader(s)), "canonical", translate.Limits{MaxOutputBytes: 1 << 20, MaxEventBytes: 1 << 16})
 	body.nativePolicy = true
 	got, e := io.ReadAll(body)
-	body.Close()
+	_ = body.Close() // nativeBody.Close always returns nil
 	if e != nil || string(got) != s {
 		t.Fatalf("%v %s", e, got)
 	}
@@ -49,7 +49,7 @@ func TestNativeThinkingStream(t *testing.T) {
 		if _, e := io.ReadAll(b); e == nil {
 			t.Fatal("accepted malformed stream")
 		}
-		b.Close()
+		_ = b.Close() // nativeBody.Close always returns nil
 	}
 }
 func TestInputEstimateIncludesOutputSchemaOnly(t *testing.T) {
@@ -72,7 +72,9 @@ func TestNativePolicyWireAndProviderIsolation(t *testing.T) {
 			t.Error("same-model native wire rewritten")
 		}
 		w.Header().Set("Content-Type", "application/json")
-		io.WriteString(w, strings.ReplaceAll(nativeOutput, "canonical", "claude-opus-5"))
+		if _, err := io.WriteString(w, strings.ReplaceAll(nativeOutput, "canonical", "claude-opus-5")); err != nil {
+			t.Error(err)
+		}
 	})
 	cfg := nativeConfig(tr)
 	cfg.Limits.PolicyProfile = translate.PolicyAnthropicNative
@@ -87,13 +89,17 @@ func TestNativePolicyWireAndProviderIsolation(t *testing.T) {
 	if e != nil || resp.StatusCode != 200 {
 		t.Fatal(e, resp)
 	}
-	resp.Body.Close()
+	if cerr := resp.Body.Close(); cerr != nil {
+		t.Fatal(cerr)
+	}
 	q.Entry.UpstreamID = "unverified"
 	resp, e = a.Send(context.Background(), q)
 	if e != nil || resp.StatusCode != 400 || calls.Load() != 1 {
 		t.Fatal("unknown profile model sent")
 	}
-	resp.Body.Close()
+	if cerr := resp.Body.Close(); cerr != nil {
+		t.Fatal(cerr)
+	}
 }
 
 func TestInputEstimateRejectsMalformedOutputProjection(t *testing.T) {
@@ -119,7 +125,9 @@ func TestNativePolicyRequestRejectsMalformedBeforeWire(t *testing.T) {
 		if e != nil || r.StatusCode != 400 {
 			t.Fatal(e, r)
 		}
-		r.Body.Close()
+		if cerr := r.Body.Close(); cerr != nil {
+			t.Fatal(cerr)
+		}
 	}
 	if calls.Load() != 0 {
 		t.Fatal("invalid native requests sent")
