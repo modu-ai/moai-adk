@@ -178,7 +178,7 @@ PASS  ok  github.com/modu-ai/moai-adk/internal/kanban 124.668s
 
 ```yaml
 run_complete_at: 2026-09-13
-run_commit_sha: "pending-backfill-run"
+run_commit_sha: "d26091f5b"
 run_status: complete
 ac_pass_count: 6
 ac_fail_count: 0
@@ -200,4 +200,17 @@ to adjudicate).
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase>_
+```yaml
+sync_complete_at: 2026-09-13
+sync_commit_sha: "pending-backfill-sync"   # backfilled in a follow-up commit (D3)
+sync_status: complete
+b12_self_test_a: "grep -c SPEC-TODO-QUEUE-HOME-CANON-001 CHANGELOG.md → 0 (pre-emission, safe)"
+b12_self_test_b: "acceptance.md distinct AC = 6; §E.3 ac_pass_count = 6; match"
+b12_self_test_c: "all CHANGELOG-cited paths ls-verified (.claude/skills/moai-kanban-foreman/SKILL.md)"
+changelog_entry_position: "[Unreleased] → Fixed, first bullet"
+frontmatter_status_transitions.in_progress_to_implemented: merged into sync commit
+frontmatter_status_transitions.implemented_to_completed: merged into sync commit (3-phase close, no separate Mx commit)
+frontmatter_updated_refresh: "2026-09-13 (all 4 artifacts unchanged date)"
+mx_tag_validation: "sync sub-step — no new exported symbols in sync scope; template artifact only"
+canary_compliance_check: "n/a — this SPEC defines no forward-looking policy for its own sync tests"
+```

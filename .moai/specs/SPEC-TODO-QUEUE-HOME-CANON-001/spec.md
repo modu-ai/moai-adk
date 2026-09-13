@@ -2,7 +2,7 @@
 id: SPEC-TODO-QUEUE-HOME-CANON-001
 title: "Pin the todo queue to the HOME SQLite store as the single canonical source; consolidate remaining code-path statements and JSON remnants"
 version: "1.2.0"
-status: in-progress
+status: completed
 created: 2026-09-13
 updated: 2026-09-13
 author: manager-spec
