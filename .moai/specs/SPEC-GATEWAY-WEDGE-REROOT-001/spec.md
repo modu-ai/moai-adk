@@ -2,9 +2,9 @@
 id: SPEC-GATEWAY-WEDGE-REROOT-001
 title: "Wedge-safe re-rooting policy — client-side single-shot re-rooting with a locked receipt-chain authorization determination"
 version: "0.1.1"
-status: draft
+status: in-progress
 created: 2026-09-13
-updated: 2026-09-13
+updated: 2026-09-14
 author: manager-spec (card t700)
 priority: P1
 phase: "v3.2.0 target"

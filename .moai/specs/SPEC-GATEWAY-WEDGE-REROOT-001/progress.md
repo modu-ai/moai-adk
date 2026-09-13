@@ -20,6 +20,15 @@ note: Plan artifacts authored (spec.md + plan.md + acceptance.md, Tier M). Plan-
 - Kickoff authorization: operator approval relayed by lead (dispatch citing plan-audit-iter2.md PASS 1.00 @ `10f6be792`).
 - AC-WRR-013 disposition: live probe SKIPPED by orchestrator decision — t672 matrix C4b already proves the acceptance shape live; the new surface (client-side transcript surgery) is unit-testable; upstream cost avoided. Gap recorded; revisit only if run-phase evidence leaves the wedge→re-root→retry path in doubt.
 
+### M2 — validator characterization lock (commit at HEAD recorded in the M2 commit; 2026-09-14)
+
+- Command: `go test ./internal/gateway/translate/ -run 'TestReceiptHistory|TestHistoryReplayError' -count=1` → `ok github.com/modu-ai/moai-adk/internal/gateway/translate 0.884s` — 14/14 PASS, including the three new characterization tests:
+  - `TestReceiptHistoryAcceptsTailRerootedWedgeReplay` (AC-WRR-002): wedge shape (published turns + user turn + never-published assistant boundary with tool_use + dependent tool_result + plain user turn) rejected pre-recovery; tail-re-rooted remainder accepted by the unchanged check.
+  - `TestReceiptHistoryRejectsMidDropAfterTailReroot` (AC-WRR-003): mid-history boundary drop stays rejected, chain-classified, after a tail re-root.
+  - `TestHistoryReplayErrorGoldenStrings` (AC-WRR-007): all three `HistoryReplayError` messages byte-identical to full literals (guidance prefix + clause), independent of the production constants.
+- AC-WRR-001 (wedge rejected, chain-classified): `TestReceiptHistoryClassifiesDesyncWedgeAfterUnpublishedTurn` PASS (pre-existing C5 lock, re-confirmed this run).
+- AC-WRR-004/005/006: `TestReceiptHistoryRejectsForeignItemReplay` / `TestReceiptHistoryKeepsStrippedReasoningRejection` PASS unchanged (lineage assertion inside the foreign-item test's CauseLineage section).
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 _<pending run-phase>_
