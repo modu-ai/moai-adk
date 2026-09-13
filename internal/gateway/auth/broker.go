@@ -92,8 +92,8 @@ func (b CodexBroker) run(ctx context.Context, home string, operation string) (re
 		return ErrBroker
 	}
 	if e = cmd.Start(); e != nil {
-		_ = stdin.Close() // start failed; discarding the pipes
-		_ = stdout.Close()
+		_ = stdin.Close()  // start failed; discarding the pipes
+		_ = stdout.Close() // start failed; discarding the pipes
 		return ErrBroker
 	}
 	bounded, cancel := context.WithTimeout(ctx, b.Timeout)

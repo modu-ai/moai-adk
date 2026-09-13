@@ -349,7 +349,7 @@ func convertedOpenAIStream(ctx context.Context, upstream io.ReadCloser, c *trans
 func (b *openAIStreamBody) Read(p []byte) (int, error) {
 	n, e := b.reader.Read(p)
 	if e != nil {
-		_ = b.Close()
+		_ = b.Close() // nativeBody.Close always returns nil
 	}
 	return n, e
 }

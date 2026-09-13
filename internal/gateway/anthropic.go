@@ -460,19 +460,19 @@ func (b *nativeBody) Read(p []byte) (int, error) {
 		return 0, nil
 	}
 	if e := b.ctx.Err(); e != nil {
-		_ = b.Close()
+		_ = b.Close() // nativeBody.Close always returns nil
 		return 0, e
 	}
 	if b.pending != nil && b.pending.Len() > 0 {
 		return b.pending.Read(p)
 	}
 	if b.terminal {
-		_ = b.Close()
+		_ = b.Close() // nativeBody.Close always returns nil
 		return 0, io.EOF
 	}
 	raw, e := b.next()
 	if e != nil {
-		_ = b.Close()
+		_ = b.Close() // nativeBody.Close always returns nil
 		return 0, errors.New("native response stream failed")
 	}
 	b.pending = bytes.NewReader(raw)
