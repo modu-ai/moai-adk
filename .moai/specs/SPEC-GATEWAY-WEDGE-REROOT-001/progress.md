@@ -2,9 +2,9 @@
 
 ## §E.1 Plan-phase Audit-Ready Signal
 
-plan_status: audit-pending
+plan_status: audit-ready
 plan_complete_at: 2026-09-13
-note: Plan artifacts authored (spec.md + plan.md + acceptance.md, Tier M). Flips to `audit-ready` on plan-auditor PASS (card t700 lead flow, task after SPEC authoring).
+note: Plan artifacts authored (spec.md + plan.md + acceptance.md, Tier M). Plan-audit iteration-2 delta PASS 1.00 (Tier M threshold 0.80; iteration 1 COND-FAIL 0.6875, D1-D7 fix pass applied). Evidence: .moai/reports/t700/plan-audit.md (iter-1), .moai/reports/t700/plan-audit-iter2.md (iter-2). Symbol pins re-verified on the absorbed tree (a86ff2e3c); t707 consistency checked — no contradiction.
 
 ## §E.2 Run-phase Evidence
 
