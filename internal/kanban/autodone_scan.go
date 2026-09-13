@@ -30,7 +30,9 @@ package kanban
 
 import (
 	"fmt"
+	"strconv"
 	"strings"
+	"time"
 )
 
 // The skip-reason vocabulary is CLOSED at exactly four tokens (REQ-AD-010).
@@ -201,23 +203,27 @@ func AutoDoneDistinctTexts(rec *BacklogRecord, id string) int {
 }
 
 // LandedCommit is one commit of the landed ref's subject stream: its full
-// SHA and its subject line. The scan's log rows carry both when a close rides
-// on the subject's attribution.
+// SHA, its subject line, and its committer time (unix seconds, from %ct).
+// The scan's log rows carry all three when a close rides on the subject's
+// attribution; the committer time is what the generation boundary
+// (AutoDoneSubjectFresh) judges.
 type LandedCommit struct {
-	SHA     string
-	Subject string
+	SHA        string
+	Subject    string
+	CommitTime int64
 }
 
 // LandedScanArgs builds the argv for the scan's ONE subject-stream query
 // against ref. Like LandedSubjectArgs, it is a SUBJECT stream (%s), never a
 // whole-message stream (%B); the %H prefix keys each subject to its commit so
-// a form-2 close can name the commit that attributed the card, and the %x00
-// separator keeps the two fields separable for any subject content.
+// a form-2 close can name the commit that attributed the card, the %ct field
+// carries the committer time the generation boundary reads, and the %x00
+// separator keeps the three fields separable for any subject content.
 func LandedScanArgs(ref string) []string {
 	if strings.TrimSpace(ref) == "" {
 		ref = DefaultLandedRef
 	}
-	return []string{"log", ref, "--format=%H%x00%s"}
+	return []string{"log", ref, "--format=%H%x00%ct%x00%s"}
 }
 
 // ScanLandedSubjects runs the scan's one query and returns the landed ref's
@@ -242,11 +248,19 @@ func ScanLandedSubjects(run CommandRunner, ref string) ([]LandedCommit, error) {
 		if strings.TrimSpace(line) == "" {
 			continue
 		}
-		sha, subject, ok := strings.Cut(line, "\x00")
+		sha, rest, ok := strings.Cut(line, "\x00")
 		if !ok {
 			return nil, fmt.Errorf("kanban: git log %s: malformed scan line %q — no SHA separator", ref, line)
 		}
-		commits = append(commits, LandedCommit{SHA: sha, Subject: subject})
+		timeStr, subject, ok := strings.Cut(rest, "\x00")
+		if !ok {
+			return nil, fmt.Errorf("kanban: git log %s: malformed scan line %q — no time separator", ref, line)
+		}
+		ct, err := strconv.ParseInt(timeStr, 10, 64)
+		if err != nil {
+			return nil, fmt.Errorf("kanban: git log %s: malformed scan line %q — committer time %q is not unix seconds", ref, line, timeStr)
+		}
+		commits = append(commits, LandedCommit{SHA: sha, Subject: subject, CommitTime: ct})
 	}
 	return commits, nil
 }
@@ -268,4 +282,25 @@ func LandedAttributions(commits []LandedCommit, landedBranch string) map[string]
 		}
 	}
 	return out
+}
+
+// AutoDoneSubjectFresh answers whether an attributed subject hit may close
+// THIS card: the attributing commit's committer time must not precede the
+// card's creation time (added_at). This is the t684 generation boundary —
+// the subject attribution reads the landed ref's WHOLE history, so a
+// reissued id would otherwise inherit its old generation's landing; the
+// store cannot tell the generations apart (a cross-store reissue counts one
+// distinct text, so guard M1 stays silent), but the clock can: the old
+// generation's commits are older than the reissued card.
+//
+// A card whose added_at cannot be parsed (an empty or corrupt field) fails
+// CLOSED — no subject close without a decidable boundary. Same-second
+// granularity counts as fresh: the boundary separates generations, it is
+// not second-level forensics.
+func AutoDoneSubjectFresh(hit LandedCommit, addedAt string) bool {
+	t, err := time.Parse(time.RFC3339, strings.TrimSpace(addedAt))
+	if err != nil {
+		return false
+	}
+	return hit.CommitTime >= t.Unix()
 }
