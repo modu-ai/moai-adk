@@ -983,7 +983,7 @@ INFO 등급 1건뿐 — era 자동판정 안내이며 drift 차단 아님. `lint
 
 ```yaml
 sync_complete_at: 2026-09-13
-sync_commit_sha: pending-backfill-sync   # 이 커밋은 자기 SHA를 인용할 수 없다 — 후속 커밋이 backfill
+sync_commit_sha: 4d214b66b               # sync 커밋 (backfill — 자기 해시를 인용할 수 없었던 앞 커밋을 이 후속 커밋이 채운다)
 sync_status: complete
 b12_self_test_a: "grep -c SPEC-DOCS-TABCOUNT-DRIFT-001 CHANGELOG.md (pre-commit) = 0 → PASS"
 b12_self_test_b: "AC count acceptance.md = 12 == CHANGELOG cited count 12 → PASS"
