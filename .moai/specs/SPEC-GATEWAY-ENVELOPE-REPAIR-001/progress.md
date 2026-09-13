@@ -15,7 +15,7 @@ author: manager-spec (card t708)
 spec: SPEC-GATEWAY-ENVELOPE-REPAIR-001
 card: t708
 phase: plan
-status: completed  # §E.1 snapshot reflects the SPEC's current lifecycle state; the canonical status lives in spec.md frontmatter
+status: completed  # §E.1 mirrors spec.md frontmatter (re-closed after sync-audit iter2 PASS 92/100)
 tier: M
 artifacts: [spec.md, plan.md, acceptance.md, progress.md, research.md]
 base: local develop 7a7a08f20
@@ -156,6 +156,7 @@ The optional live-probe milestone was skipped this card; its live-instrumentatio
 
 sync_complete_at: 2026-09-14
 sync_commit_sha: "430cf4429"  # D3 backfill — real SHA of the sync commit, backfilled in this follow-up commit
-sync_status: completed
+sync_status: completed  # re-close
+re_close: sync-audit iter1 FAIL 78 (F1/F2/F7) → repair commits b46d33271/c9e98df4c → iter2 PASS 92 (.moai/reports/t708/sync-audit.md) → this commit re-closes; sync_commit_sha 430cf4429 remains the original close, this commit is the re-close record
 sync_summary: CHANGELOG [Unreleased] entry emitted (B12: pre-emission grep 0, AC count 12/12, paths verified); SPEC 3-phase close riding the single sync commit (spec.md frontmatter in-progress → completed, body untouched); docs-site skipped — maintainer-facing launcher flag documented repo-locally at .moai/docs/gateway-envelope-repair.md (M6 artifact).
 
