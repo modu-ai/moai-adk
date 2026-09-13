@@ -13,6 +13,7 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
+	"reflect"
 	"strings"
 	"testing"
 
@@ -195,8 +196,27 @@ func TestTodoUndone_SurvivesMigrationFromLegacyJSON(t *testing.T) {
 	if _, _, err := runTodo(t, "undone", "t1"); err != nil {
 		t.Fatalf("undone: %v", err)
 	}
-	if got := readBacklogBytes(t, root); string(got) != string(before) {
-		t.Errorf("legacy-origin round trip is not byte-identical.\n got: %s\nwant: %s", got, before)
+	after := readBacklogBytes(t, root)
+	var beforeRecord, afterRecord kanban.BacklogRecord
+	if err := json.Unmarshal(before, &beforeRecord); err != nil {
+		t.Fatalf("decode legacy projection: %v", err)
+	}
+	if err := json.Unmarshal(after, &afterRecord); err != nil {
+		t.Fatalf("decode migrated projection: %v", err)
+	}
+	if beforeRecord.ProjectUUID != nil || beforeRecord.Items[0].CardUUID != nil || beforeRecord.Items[1].CardUUID != nil {
+		t.Fatalf("pure legacy projection must carry nullable identities: %s", before)
+	}
+	if afterRecord.ProjectUUID == nil || afterRecord.Items[0].CardUUID == nil || afterRecord.Items[1].CardUUID == nil {
+		t.Fatalf("approved writer must backfill project and card identities: %s", after)
+	}
+	beforeRecord.ProjectUUID, afterRecord.ProjectUUID = nil, nil
+	for i := range beforeRecord.Items {
+		beforeRecord.Items[i].CardUUID = nil
+		afterRecord.Items[i].CardUUID = nil
+	}
+	if !reflect.DeepEqual(afterRecord, beforeRecord) {
+		t.Errorf("legacy-origin round trip changed non-identity data.\n got: %s\nwant: %s", after, before)
 	}
 }
 
@@ -345,23 +365,9 @@ func TestTodoDone_NoLandingQueryWithoutTheFlag(t *testing.T) {
 
 // AC-TDG-011 — every refusal path writes nothing.
 func TestTodoDoneUndone_RefusalsWriteNothing(t *testing.T) {
-	root, store := todoFixture(t)
+	root, _ := todoFixture(t)
 	seedTodo(t, "alpha work")
 	stubLandingQuery(t, "", nil)
-	// Archive t1, then reissue the id to a different live card so the
-	// collision path is reachable.
-	if _, _, err := runTodo(t, "done", "t1"); err != nil {
-		t.Fatalf("seed done: %v", err)
-	}
-	if err := store.Mutate(func(rec *kanban.BacklogRecord) error {
-		rec.Items = append(rec.Items, kanban.BacklogItem{
-			ID: "t1", Text: "a different card", AddedAt: "2026-01-01T00:00:00Z",
-			State: kanban.BacklogStateQueued,
-		})
-		return nil
-	}); err != nil {
-		t.Fatalf("seed reissue: %v", err)
-	}
 	before := readBacklogBytes(t, root)
 
 	refusals := []struct {
@@ -372,7 +378,6 @@ func TestTodoDoneUndone_RefusalsWriteNothing(t *testing.T) {
 		{"expect mismatch", []string{"done", "t1", "--expect", "zzz"}},
 		{"require-landed", []string{"done", "t1", "--require-landed"}},
 		{"undone of an id never archived", []string{"undone", "t99"}},
-		{"undone into a reissued id", []string{"undone", "t1"}},
 	}
 	for _, r := range refusals {
 		_, stderr, err := runTodo(t, r.args...)
@@ -409,46 +414,35 @@ func TestTodoDoneUndone_NeverPrompt(t *testing.T) {
 	}
 }
 
-// AC-TDG-013 — a reissued id refuses restore and does not overwrite the live card.
+// AC-TDG-013 — the persistent identity invariant refuses a reissued id before
+// restore can overwrite either lifetime. RestoreCard's in-memory collision
+// guard remains covered in internal/kanban/backlog_archive_test.go.
 func TestTodoUndone_ReissuedIDRefuses(t *testing.T) {
 	root, store := todoFixture(t)
 	seedTodo(t, "alpha work")
 	if _, _, err := runTodo(t, "done", "t1"); err != nil {
 		t.Fatalf("done: %v", err)
 	}
-	if err := store.Mutate(func(rec *kanban.BacklogRecord) error {
+	before := readBacklogBytes(t, root)
+	err := store.Mutate(func(rec *kanban.BacklogRecord) error {
 		rec.Items = append(rec.Items, kanban.BacklogItem{
 			ID: "t1", Text: "a different card", AddedAt: "2026-01-01T00:00:00Z",
 			State: kanban.BacklogStateQueued,
 		})
 		return nil
-	}); err != nil {
-		t.Fatalf("seed reissue: %v", err)
-	}
-	before := readBacklogBytes(t, root)
-
-	_, stderr, err := runTodo(t, "undone", "t1")
-	if err == nil {
-		t.Fatal("undone must refuse when the id has been reissued")
-	}
-	// "names the collision" means naming the reissue, not merely echoing the
-	// argument back: the parent command's mistyped-verb guard already emits an
-	// error carrying `t1` at the base tree, so an id-only assertion passes for
-	// the wrong reason.
-	if !strings.Contains(stderr, "t1") || !strings.Contains(stderr, "reissued") {
-		t.Errorf("refusal %q must name the collision (the id AND the reissue)", stderr)
+	})
+	if !kanban.IsBacklogIDConflict(err) {
+		t.Fatalf("reissuing archived t1 must fail with an identity conflict, got %v", err)
 	}
 	if got := readBacklogBytes(t, root); string(got) != string(before) {
-		t.Errorf("refused undone wrote to the record.\n got: %s\nwant: %s", got, before)
+		t.Errorf("refused reissue wrote to the record.\n got: %s\nwant: %s", got, before)
 	}
 	rec, err := store.Load()
 	if err != nil {
 		t.Fatalf("load: %v", err)
 	}
-	for _, it := range rec.Items {
-		if it.ID == "t1" && it.Text != "a different card" {
-			t.Errorf("the live t1 was overwritten: %q", it.Text)
-		}
+	if len(rec.Items) != 0 || len(rec.Archived) != 1 || rec.Archived[0].Item.Text != "alpha work" {
+		t.Errorf("refused reissue changed card lifetimes: %+v", rec)
 	}
 }
 

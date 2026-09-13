@@ -1,0 +1,41 @@
+{
+  "exit_code": 0,
+  "elapsed_seconds": 4.21,
+  "timeout": false,
+  "group_cleanup_attempted": true,
+  "picker_command_sent": false,
+  "selection_sent": false,
+  "interactive_prompt_sent": false,
+  "test_family_api_key_accepted": false,
+  "cleanup_errors": [
+    "signal_permission_denied"
+  ],
+  "prompt_categories": [],
+  "diagnostic_categories": [],
+  "error_categories": [],
+  "observed_model_ids": [
+    "claude-api",
+    "claude-code",
+    "gpt-5.6-sol"
+  ],
+  "picker_visible": false,
+  "picker_rows": [],
+  "selected_model_ids": [],
+  "selected_default": false,
+  "session_only_selection_confirmed": false,
+  "assistant_models": [
+    "gpt-5.6-sol"
+  ],
+  "tool_names": [],
+  "result_event_count": 1,
+  "marker_in_final_result": true,
+  "session_id": "13a5508a-0cf3-4e44-ac37-ef115822594a",
+  "result_subtypes": [
+    "success"
+  ],
+  "success": true,
+  "journey": "answer",
+  "mode": "gpt",
+  "requested_model": "gpt-5.6-sol",
+  "binary_sha256": "85c4b5b541273d7164ecd415692df9f17fc0fe2ba5e9090deab6b852f0d579d4"
+}

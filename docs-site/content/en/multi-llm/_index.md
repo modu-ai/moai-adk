@@ -8,7 +8,6 @@ draft: false
 {{< /callout >}}
 <!-- @value: tokenomics -->
 
-![CG Mode structure](/images/sections/multi-llm-en.png)
 
 Beyond the Claude API, MoAI-ADK supports **z.ai GLM** as an alternative AI
 backend. This is not a convenience feature — it is the **cost dimension** of
@@ -54,37 +53,30 @@ MoAI-ADK points all four Claude tiers at the same GLM model, through the
 
 > Free models are also available: GLM-4.7-Flash, GLM-4.5-Flash. See [z.ai Pricing](https://docs.z.ai/guides/overview/pricing) for full pricing.
 
-## 3 execution modes
+## Execution modes
 
-MoAI-ADK offers 3 LLM execution modes. Choose based on "what do you want to
+MoAI-ADK offers Claude and GLM launchers. Choose based on "what do you want to
 optimize":
 
 | Command | Leader | Workers | tmux required | Cost savings | Use case |
 |--------|------|------|----------|----------|------|
 | `moai cc` | Claude | Claude | No | - | Highest quality, complex work |
 | `moai glm` | GLM | GLM | Recommended | ~70% | Cost optimization |
-| `moai cg` | Claude | GLM | **Required** | **~60%** | Quality + cost balance |
 
 ```mermaid
 graph TD
     A["MoAI Orchestrator"] --> B{"Select execution mode"}
     B -->|"moai cc"| C["Claude Only<br/>Highest quality"]
     B -->|"moai glm"| D["GLM Only<br/>Cost savings"]
-    B -->|"moai cg"| E["CG Hybrid<br/>Balanced"]
 
     C --> F["Leader: Claude<br/>Workers: Claude"]
     D --> G["Leader: GLM<br/>Workers: GLM"]
-    E --> H["Leader: Claude<br/>Workers: GLM"]
 
     style C fill:#7C3AED,color:#fff
     style D fill:#059669,color:#fff
-    style E fill:#D97706,color:#fff
 ```
 
-CG mode is the flagship example of Tokenomics. Work where reasoning quality
-matters — strategy, planning, auditing — goes to the Claude leader, while
-volume-heavy work like bulk implementation goes to GLM workers. For
-implementation-heavy work, this saves roughly 60-70% of the cost.
+`moai cg` has been retired. It exits with a migration diagnostic without starting Claude or GLM. It is not an alias for `moai cc`. Projects with `llm.team_mode: cg` must make an explicit migration choice before launching a session. [CG retirement and migration](/en/multi-llm/cg-mode/)
 
 ### Quick start
 
@@ -95,10 +87,9 @@ moai glm setup sk-your-glm-api-key
 # 2. Pick a mode
 moai cc            # Claude only
 moai glm           # GLM only
-moai cg            # CG hybrid (tmux required)
 ```
 
 ## Next steps
 
-- [CG Mode (Claude + GLM)](/en/multi-llm/cg-mode) — details of the tmux isolation architecture
+- [CG retirement and migration](/en/multi-llm/cg-mode/)
 - [Model Policy](/en/multi-llm/model-policy) — the per-agent model assignment table

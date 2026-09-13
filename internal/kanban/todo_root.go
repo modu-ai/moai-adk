@@ -173,7 +173,7 @@ func explicitMoaiHome() bool {
 // reporting false when git cannot answer. Read-only.
 func primaryCheckoutRoot(base string) (string, bool) {
 	if dirs, err := gitcore.ResolveGitDirs(base); err == nil && dirs.CommonDir != "" {
-		return filepath.Dir(dirs.CommonDir), true
+		return homestate.CanonicalProjectRoot(base), true
 	}
 	return "", false
 }

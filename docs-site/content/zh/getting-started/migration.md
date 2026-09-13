@@ -119,7 +119,7 @@ archived 代理名称(`manager-strategy`、`expert-backend`、`researcher` 等)�
 
 #### Agent Teams 静态编组层退休
 
-强制 `--team` / `--mode team` 输出 `MODE_TEAM_UNAVAILABLE` 并回退到子代理模式。原生 Claude Code 队友运行时(`moai cg` GLM 面、`worktree --team`)不受影响。
+强制 `--team` / `--mode team` 输出 `MODE_TEAM_UNAVAILABLE` 并回退到子代理模式。 CG 已停用，请用 `moai migrate cg` 预览迁移选项。
 
 #### Context7 MCP 依赖退休
 

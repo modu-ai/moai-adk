@@ -1,0 +1,5 @@
+# github.com/modu-ai/moai-adk/internal/gateway/translate [github.com/modu-ai/moai-adk/internal/gateway/translate.test]
+internal/gateway/translate/reasoning_roundtrip_test.go:16:116: unknown field History in struct literal of type Limits
+internal/gateway/translate/reasoning_roundtrip_test.go:28:60: unknown field History in struct literal of type Limits
+FAIL	github.com/modu-ai/moai-adk/internal/gateway/translate [build failed]
+FAIL

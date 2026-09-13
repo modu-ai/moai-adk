@@ -590,7 +590,7 @@ func TestAuditLagUsesBinlagSeam(t *testing.T) {
 	// primitives across internal/cli non-test sources equals the measured
 	// baseline exactly (baseline 64bba61aa: 3 hits; additions AND removals
 	// both fail — equal counts alone would not).
-	// todo_landed.go:216 and home_state_coverage.go:245/253 are DECLARED
+	// todo_landed.go:217 and home_state_coverage.go:245/253 are DECLARED
 	// additions, not second binary-lag comparisons. SPEC-TODO-LANDING-EVIDENCE-001
 	// REQ-TLE-020 requires the
 	// recording verb to check that an operator-supplied delivering SHA is
@@ -616,7 +616,7 @@ func TestAuditLagUsesBinlagSeam(t *testing.T) {
 		"home_state_coverage.go:245": true,
 		"home_state_coverage.go:253": true,
 		"mcp_review_material.go:95":  true,
-		"todo_landed.go:216":         true,
+		"todo_landed.go:217":         true,
 	}
 	got := map[string]bool{}
 	entries, err := os.ReadDir(".")

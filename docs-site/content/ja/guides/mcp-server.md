@@ -194,7 +194,7 @@ CLI は MCP ツールが `tools:` リストにないとき、またはメイン�
 
 ### GLM (z.ai)
 
-GLM セッション（`moai glm` または `moai cg` の GLM パネル）で実行すると、ウェブ検索とウェブ照会が組み込みの `WebSearch` / `WebFetch` の代わりに z.ai MCP ツールへルーティングされます。認証は `~/.moai/.env.glm` から読み込まれます。
+GLM セッション（`moai glm`）で実行すると、ウェブ検索とウェブ照会が組み込みの `WebSearch` / `WebFetch` の代わりに z.ai MCP ツールへルーティングされます。認証は `~/.moai/.env.glm` から読み込まれます。
 
 z.ai MCP サーバー（`zai-mcp-server`, `web_search_prime`, `web_reader`）はデフォルトで無効で、GLM セッションで `moai glm tools enable` で有効にします。GLM セッションでのルーティング規則は[マルチ LLM バックエンド](/ja/multi-llm/)を参照してください。
 

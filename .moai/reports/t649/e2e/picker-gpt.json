@@ -1,0 +1,29 @@
+{
+  "exit_code": -9,
+  "elapsed_seconds": 25.62,
+  "timeout": true,
+  "group_cleanup_attempted": true,
+  "picker_command_sent": true,
+  "selection_sent": true,
+  "cleanup_errors": [],
+  "prompt_categories": [],
+  "error_categories": [],
+  "observed_model_ids": [
+    "gpt-5.6-sol"
+  ],
+  "picker_visible": false,
+  "picker_rows": [],
+  "session_only_selection_confirmed": false,
+  "assistant_models": [],
+  "tool_names": [],
+  "result_event_count": 0,
+  "marker_in_final_result": false,
+  "session_id": null,
+  "result_subtypes": [],
+  "success": false,
+  "journey": "picker",
+  "mode": "gpt",
+  "requested_model": "gpt-5.6-sol",
+  "binary_sha256": "9f2a7b217d731b0c6b8900391c94270ccade5b937c1a815daaa084053789a479",
+  "picker_exact_allowlist": false
+}

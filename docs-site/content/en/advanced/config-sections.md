@@ -219,7 +219,7 @@ Reach for this key when the per-session backlog summary reads as noise on a smal
 
 ## crosssession.yaml — cross-session messaging
 
-Decides how this session treats messages from your other Claude Code sessions. The `moai cc` · `moai glm` · `moai cg` launchers translate these values into a transient `--settings` file at launch, and the web console edits this file through the settings seam. A session launched without the launcher — a bare `claude` command — does not read this file.
+Decides how this session treats messages from your other Claude Code sessions. The `moai cc` · `moai glm` launchers translate these values into a transient `--settings` file at launch, and the web console edits this file through the settings seam. A session launched without the launcher — a bare `claude` command — does not read this file.
 
 ```yaml
 crosssession:

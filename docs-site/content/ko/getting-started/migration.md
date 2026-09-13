@@ -121,7 +121,7 @@ archived 에이전트 이름(`manager-strategy`, `expert-backend`, `researcher` 
 
 #### Agent Teams 정적 편성 계층 은퇴
 
-강제 `--team` / `--mode team` 은 `MODE_TEAM_UNAVAILABLE` 을 내고 서브에이전트 모드로 폴백합니다. 네이티브 Claude Code 팀메이트 런타임(`moai cg` GLM 페이스, `worktree --team`) 은 영향을 받지 않습니다.
+강제 `--team` / `--mode team` 은 `MODE_TEAM_UNAVAILABLE` 을 내고 서브에이전트 모드로 폴백합니다. CG는 폐기되었습니다. `moai migrate cg`로 이전 선택지를 먼저 확인하세요.
 
 #### Context7 MCP 의존성 은퇴
 

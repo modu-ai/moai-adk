@@ -1,0 +1,12 @@
+# github.com/modu-ai/moai-adk/internal/gateway [github.com/modu-ai/moai-adk/internal/gateway.test]
+internal/gateway/appserver_test.go:20:13: undefined: AppServerAuthority
+internal/gateway/appserver_test.go:25:30: r.Managed undefined (type RoutedRequest has no field or method Managed)
+internal/gateway/appserver_test.go:26:15: undefined: ErrManagedAuthority
+internal/gateway/appserver_test.go:28:37: r.Managed undefined (type RoutedRequest has no field or method Managed)
+internal/gateway/appserver_test.go:36:20: undefined: NewAppServerAuthority
+internal/gateway/appserver_test.go:41:126: undefined: AuthAppServer
+internal/gateway/appserver_test.go:46:139: unknown field ManagedAuthority in struct literal of type ServerConfig
+internal/gateway/appserver_test.go:70:20: undefined: NewAppServerAuthority
+internal/gateway/appserver_test.go:74:107: undefined: AuthAppServer
+FAIL	github.com/modu-ai/moai-adk/internal/gateway [build failed]
+FAIL

@@ -108,16 +108,15 @@ func TestTodoSectionListsAllThreeStates(t *testing.T) {
 	}
 }
 
-// TestTodoSectionEmptyStates — AC-WTQ-009: an absent, empty or malformed queue
-// file renders the empty state at 200, never an error response.
+// An absent or valid empty legacy queue remains an empty state at 200. Corruption
+// is covered separately: it must not claim that the queue is empty (t647).
 func TestTodoSectionEmptyStates(t *testing.T) {
 	cases := []struct {
 		name string
 		body *string
 	}{
 		{"absent file", nil},
-		{"empty file", strPtr("")},
-		{"malformed JSON", strPtr(`{"version":1,"items":[{"id":`)},
+		{"empty queue", strPtr(`{"version":1,"items":[]}`)},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {

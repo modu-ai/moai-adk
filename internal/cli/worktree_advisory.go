@@ -47,7 +47,7 @@ func emitWorktreeAdvisory(out io.Writer, projectRoot string) {
 	_, _ = fmt.Fprintln(out,
 		"Tip: this checkout is shared across concurrent sessions; "+
 			"for branch-changing work (switch/reset/rebase), use a worktree for isolation — "+
-			"`moai cc -w` / `moai cg -w`, or `claude --worktree`. "+
+			"`moai cc -w` / `moai glm -w`, or `claude --worktree`. "+
 			"See .claude/rules/moai/workflow/main-checkout-branch-guard.md.")
 }
 

@@ -65,17 +65,19 @@ flowchart TD
 - [三层代理架构](/zh/advanced/no-haiku-3tier/) — 为什么排除 Haiku、DeepSWE 排行榜依据
 - [配置矩阵](/zh/advanced/profile-matrix/) — 单一 3 列 per-agent 配置矩阵
 
-## CG 模式 (成本优化)
+## CG 停用与配置迁移
 
-`moai cg` 是结合 Claude 领导者和 GLM 工作进程的混合模式。战略、规划、审计由 Claude 担当，大规模实现工作由 GLM 担当。在实现密集型任务上可实现 60-70% 的成本削减。
+`moai cg` 已停用。它会显示迁移提示并退出，不会启动 Claude 或 GLM，也不是 `moai cc` 的别名。项目中若仍有 `llm.team_mode: cg`，必须先明确选择迁移方案，才能启动会话。 [CG 停用与配置迁移](/zh/multi-llm/cg-mode/)
 
-GLM-5.3 是 1M 上下文的单一模型，自动应用 z.ai 隐式提示缓存。z.ai 尚未公布其按量单价；上一代 GLM-5.2 为每 1M 代币输入 $2 / 输出 $8。在定额 Coding Plan 下使用时，该单价不会左右账单。Claude Code 报告的 `context_window_size` 按 Claude 槽位为准，所以 GLM 会话中原始值显示为 ~180K，但 MoAI 把它纠正为 1M、按 50% 阈值运作。请信任 statusline 的 CW% 表盘。CG 模式和 GLM 独立会话(`moai glm`)的详情请参阅 Multi-LLM 部分。
+迁移会写入 `llm.team_mode: claude`、`llm.gateway.teammate_mode: in-process` 和 `llm.gateway.teammate_provider: inherit`。这会取消原有混合角色分配，并不会保留 Claude 领队与 GLM 队友窗格的分工。
+
+`claude-glm` 表示 Claude 领队搭配 tmux 中的 GLM 队友。目前 TEAMMATE 集成验证尚未通过，因此不能应用或启动该方案，只能预览。安装 tmux 或设置 `verified: true` 都不能解除限制。
 
 ## 已验证的事实与路线图
 
 本页内容的实现状态明确区分如下。
 
-{{< icon check ok >}} **已实现 (已发布)** — 四层结构(A/B/C/D)全部、三层模型策略(配置矩阵解析器)、CG 模式、验证节食文件重定向契约、正常中止机制。
+{{< icon check ok >}} **已实现 (已发布)** — 四层结构(A/B/C/D)全部、三层模型策略(配置矩阵解析器)、验证节食文件重定向契约、正常中止机制。
 
 {{< icon clock >}} **设计阶段 (路线图)** — GLM 后端 effort 叠加的 wire 有效性是需要实时 GLM 会话出站观测的实证课题。在配置矩阵页面中明确标注此区分。
 

@@ -1,0 +1,9 @@
+{
+  "binary": "/tmp/moai-v3.2.0-rc.8-t649-trust-e78be44aa9ce",
+  "build_id": "v3.2.0-rc.8-t649-trust-e78be44aa9ce",
+  "sha256": "83043d23e897f483ead58cdbc25e44a715a6e9f9989b681ae05ccd99814a5a37",
+  "source_hashes": {
+    "internal/cli/gateway_ui_state.go": "5b8fce2f903951be129f91c6544b237461e60d02e30b49a77110e0db4832a9e0",
+    "internal/cli/gateway_session.go": "567f6c0c545c74c2ef2450be499c6c49a74ce31194c512c8b2cf39c13dda3d01"
+  }
+}

@@ -269,12 +269,9 @@ type LLMConfig struct {
 	// predicate (template.IsGLMBackend, REQ-MTP-026) keeps mode=="glm" only as a
 	// defensive OR for this dormant field.
 	Mode string `yaml:"mode"`
-	// TeamMode selection: "" (`moai cc` / unset), "cg" (`moai cg` — Claude leader +
-	// GLM teammates), or "glm" (`moai glm` — all-GLM). These are the values
-	// persistTeamMode (internal/cli/glm.go) actually writes; "claude"/"hybrid" are
-	// legacy non-GLM values retained for backward-compat parsing. The GLM
-	// backend-detection predicate (template.IsGLMBackend) treats team_mode ∈
-	// {cg, glm} as a GLM backend.
+	// TeamMode stores explicit session intent. "glm" selects GLM; "claude"
+	// and unset select ordinary Claude policy. Historical "cg" remains readable
+	// as data, but launch requires explicit migration and never activates GLM.
 	TeamMode string `yaml:"team_mode"`
 	// Environment variable name for GLM API key
 	GLMEnvVar string `yaml:"glm_env_var"`
