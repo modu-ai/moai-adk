@@ -1,0 +1,175 @@
+// Command t695probe drives an isolated moai internal-gateway child and runs
+// real upstream effort probes against it. Card t695 D2 evidence tool.
+// Untracked scratch: never committed.
+package main
+
+import (
+	"bytes"
+	"context"
+	"crypto/rand"
+	"encoding/hex"
+	"encoding/json"
+	"flag"
+	"fmt"
+	"io"
+	"net/http"
+	"os"
+	"path/filepath"
+	"strings"
+	"time"
+
+	"github.com/modu-ai/moai-adk/internal/gateway"
+	"github.com/modu-ai/moai-adk/internal/gateway/receipt"
+)
+
+type probe struct {
+	Label string          `json:"label"`
+	Body  json.RawMessage `json:"body"`
+}
+
+type result struct {
+	Label  string `json:"label"`
+	Status int    `json:"status"`
+	Body   string `json:"body"`
+	MS     int64  `json:"ms"`
+}
+
+func main() {
+	bin := flag.String("bin", "", "moai binary path (default: ../bin/moai relative to cwd)")
+	probesFile := flag.String("probes", "", "JSON file with array of {label, body}")
+	out := flag.String("out", "", "results output JSONL (default stdout only)")
+	receiptDir := flag.String("receipt-dir", "", "isolated receipt dir; enables Conversation payload")
+	familyID := flag.String("family", "6d392874-816f-4140-8503-ee35df921e2c", "family UUID for Conversation payload")
+	sessionID := flag.String("session", "6d392874-816f-4140-8503-ee35df921e2d", "session UUID for Conversation payload")
+	flag.Parse()
+
+	executable := *bin
+	if executable == "" {
+		wd, _ := os.Getwd()
+		executable = filepath.Join(wd, "bin", "moai")
+	}
+	if _, err := os.Stat(executable); err != nil {
+		fatal("binary missing: %v", err)
+	}
+	raw, err := os.ReadFile(*probesFile)
+	if err != nil {
+		fatal("read probes: %v", err)
+	}
+	var probes []probe
+	if err := json.Unmarshal(raw, &probes); err != nil {
+		fatal("parse probes: %v", err)
+	}
+
+	token := make([]byte, 32)
+	if _, err := rand.Read(token); err != nil {
+		fatal("token: %v", err)
+	}
+	sessionToken := hex.EncodeToString(token)
+	models := []string{"gpt-6-astra", "gpt-5.6-sol", "gpt-5.6-terra", "gpt-5.6-luna"}
+	payloadAny := map[string]any{"version": 1, "session_token": sessionToken, "model_ids": models}
+	if *receiptDir != "" {
+		// Initialize an isolated receipt store (create=true) for the Conversation
+		// payload so opaque reasoning responses are authorized in probes.
+		if _, err := receipt.OpenStore(context.Background(), *receiptDir, *sessionID, true); err != nil {
+			fatal("open receipt store: %v", err)
+		}
+		payloadAny["conversation"] = map[string]any{"family_id": *familyID, "session_id": *sessionID, "receipt_dir": *receiptDir}
+	}
+	payload, _ := json.Marshal(payloadAny)
+
+	// Scrub credential-bearing env the way the production launcher does.
+	scrub := map[string]bool{"Z_AI_API_KEY": true, "OPENAI_API_KEY": true, "ANTHROPIC_API_KEY": true, "CODEX_HOME": true}
+	env := []string{}
+	for _, item := range os.Environ() {
+		key, _, _ := strings.Cut(item, "=")
+		if !scrub[key] {
+			env = append(env, item)
+		}
+	}
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	child, err := gateway.StartChild(ctx, gateway.StartOptions{
+		Executable:     executable,
+		Args:           []string{"internal-gateway"},
+		Env:            env,
+		StartupTimeout: 15 * time.Second,
+		Config: gateway.ChildConfig{
+			Lifetime:     2 * time.Hour,
+			PollInterval: 100 * time.Millisecond,
+			Payload:      payload,
+		},
+	})
+	if err != nil {
+		fatal("start child: %v", err)
+	}
+	stop := func() {
+		sctx, scancel := context.WithTimeout(context.Background(), 3*time.Second)
+		defer scancel()
+		_ = child.Stop(sctx)
+	}
+	defer stop()
+	fmt.Fprintf(os.Stderr, "gateway child at %s\n", child.Address)
+
+	client := &http.Client{Timeout: 120 * time.Second}
+	var results []result
+	for _, p := range probes {
+		r := runProbe(client, child.Address, sessionToken, p)
+		results = append(results, r)
+		fmt.Printf("%s\t%d\t%dms\t%s\n", r.Label, r.Status, r.MS, oneLine(r.Body))
+	}
+	if *out != "" {
+		f, err := os.Create(*out)
+		if err != nil {
+			fatal("create out: %v", err)
+		}
+		defer f.Close()
+		enc := json.NewEncoder(f)
+		for _, r := range results {
+			if err := enc.Encode(r); err != nil {
+				fatal("encode: %v", err)
+			}
+		}
+	}
+}
+
+func runProbe(client *http.Client, address, token string, p probe) result {
+	start := time.Now()
+	r := result{Label: p.Label}
+	req, err := http.NewRequest(http.MethodPost, "http://"+address+"/v1/messages", bytes.NewReader(p.Body))
+	if err != nil {
+		r.Body = "request build failed: " + err.Error()
+		return r
+	}
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Authorization", "Bearer "+token)
+	resp, err := client.Do(req)
+	if err != nil {
+		r.Body = "transport error: " + err.Error()
+		r.MS = time.Since(start).Milliseconds()
+		return r
+	}
+	defer resp.Body.Close()
+	body, err := io.ReadAll(io.LimitReader(resp.Body, 1<<16))
+	if err != nil {
+		r.Body = "read error: " + err.Error()
+	} else {
+		r.Body = string(body)
+	}
+	r.Status = resp.StatusCode
+	r.MS = time.Since(start).Milliseconds()
+	return r
+}
+
+func oneLine(s string) string {
+	s = strings.Join(strings.Fields(s), " ")
+	if len(s) > 300 {
+		s = s[:300] + "..."
+	}
+	return s
+}
+
+func fatal(format string, args ...any) {
+	fmt.Fprintf(os.Stderr, "t695probe: "+format+"\n", args...)
+	os.Exit(1)
+}

@@ -106,6 +106,15 @@ var landedSubjectForms = struct {
 	// form 2b — a card-bearing parenthetical group followed by exactly one
 	// pull-request reference group that closes the subject.
 	trailingRef *regexp.Regexp
+	// form 2c — a comma-form trailing parenthetical: the group OPENS with the
+	// card id and continues with comma-separated qualifiers. Measured shape:
+	// `fix(hooks): … (t603, H08)` landed without attributing because no form
+	// read a group carrying anything after the id; SPEC-TODO-LAND-AUTO-DONE-001
+	// AC-AD-017 makes it first-class. The boundaries stay pinned: the id must
+	// OPEN the group (a group like `(branch WT-t80)` attributes nothing — a
+	// branch name is a place), and a group carrying two or more DISTINCT card
+	// tokens attributes nothing (§D: that shape delivered neither card).
+	commaForm *regexp.Regexp
 	// form 3a — merge, card-led: `Merge card <card>`.
 	mergeCard *regexp.Regexp
 	// form 3c — merge, card-led, the local-merge spelling: `merge: <card>`.
@@ -119,15 +128,22 @@ var landedSubjectForms = struct {
 	mergeCommit *regexp.Regexp
 	// form 3b's trailing parenthetical group.
 	trailingGroup *regexp.Regexp
+	// the non-landing declaration (t581 / REQ-AD-008): a subject carrying it
+	// attributes NOTHING, whatever shape it also carries. Case-insensitive;
+	// subject-stream only — a negation in a commit BODY is out of scope and
+	// never seen by this predicate.
+	negation *regexp.Regexp
 }{
 	scope:         regexp.MustCompile(`^[a-z]+\((t[0-9]+)\)!?:`),
 	trailing:      regexp.MustCompile(`\((?:card )?(t[0-9]+)\)$`),
 	trailingRef:   regexp.MustCompile(`\(([^()]*t[0-9]+[^()]*)\) \(#[0-9]+\)$`),
+	commaForm:     regexp.MustCompile(`\((t[0-9]+)[^()]*\)$`),
 	mergeCard:     regexp.MustCompile(`^Merge card (t[0-9]+)`),
 	mergeColon:    regexp.MustCompile(`^merge: (t[0-9]+)`),
 	mergeTarget:   regexp.MustCompile(`^[Mm]erge\b.* into ([A-Za-z0-9/_.-]+)`),
 	mergeCommit:   regexp.MustCompile(`^Merge\b`),
 	trailingGroup: regexp.MustCompile(`\(([^()]*)\)$`),
+	negation:      regexp.MustCompile(`(?i)\bnot (merged|landed)\b`),
 }
 
 // subjectCardToken is the whole-token extractor for subject attribution. The
@@ -170,6 +186,14 @@ func distinctCardTokens(s string) []string {
 // — measured over the pinned corpus, keying the rule on lowercase subjects
 // too would lose t78, the only id whose sole attribution is such a subject.
 func subjectAttribution(subject, landedBranch string) string {
+	// The non-landing declaration (t581 / REQ-AD-008). Checked first: a
+	// subject that says the work did NOT land attributes nothing through ANY
+	// shape it carries — the marker is the commit recording its own
+	// non-delivery, and no positional shape may override that record.
+	if landedSubjectForms.negation.MatchString(subject) {
+		return ""
+	}
+
 	// The non-attribution rule. Checked first: an absorb-direction merge
 	// attributes nothing through ANY shape its subject carries.
 	if m := landedSubjectForms.mergeTarget.FindStringSubmatch(subject); m != nil &&
@@ -187,6 +211,18 @@ func subjectAttribution(subject, landedBranch string) string {
 	if m := landedSubjectForms.trailingRef.FindStringSubmatch(subject); m != nil {
 		if toks := distinctCardTokens(m[1]); len(toks) == 1 {
 			return toks[0]
+		}
+	}
+	// Form 2c — the comma-form trailing parenthetical: the group opens with
+	// the card id and carries comma-separated qualifiers after it. The two
+	// guards keep the pinned boundaries intact: the id must OPEN the group
+	// (so `(branch WT-t80)` still attributes nothing), and a group carrying
+	// two or more DISTINCT card tokens attributes nothing (§D).
+	if m := landedSubjectForms.commaForm.FindStringSubmatch(subject); m != nil {
+		if g := landedSubjectForms.trailingGroup.FindStringSubmatch(subject); g != nil {
+			if toks := distinctCardTokens(g[1]); len(toks) == 1 && strings.HasPrefix(g[1], m[1]+",") {
+				return toks[0]
+			}
 		}
 	}
 	// Form 1 — conventional-commit scope at subject start.
@@ -223,6 +259,16 @@ func landedBranchFromRef(ref string) string {
 		r = DefaultLandedRef
 	}
 	return strings.TrimPrefix(r, "origin/")
+}
+
+// LandedBranchFromRef is the exported form of landedBranchFromRef, for the
+// auto-done scan (SPEC-TODO-LAND-AUTO-DONE-001), which attributes the whole
+// subject stream in one pass and therefore needs the same ref→branch
+// derivation the per-card querier performs internally. A second derivation
+// in the caller would be a second chance for the two readings of "the branch
+// the resolved landed ref names" to diverge.
+func LandedBranchFromRef(ref string) string {
+	return landedBranchFromRef(ref)
 }
 
 // LandedSubjectArgs builds the exact argv the landed check runs against ref.
