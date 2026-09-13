@@ -66,8 +66,8 @@ Planned §E.2 evidence at run-phase close:
 Confirm or amend the B1-B9 dispositions (spec.md §1.2) against the run-phase HEAD.
 Every production legacy-JSON reader ends with `converge` or a recorded
 justification. Decision-dense: do FIRST, because it fixes the guard's exemption
-list. `[NEEDS CLARIFICATION: none at authoring — B6 handled as recorded exception;
-if t835's scope changes before run-phase, re-confirm B6 here.]`
+list. No open clarifications at authoring — B6 handled as recorded exception;
+re-confirm B6 in M1 if t835's scope changes before run-phase.
 
 ### M2 — Foreman skill canonical-path correction (Priority High)
 

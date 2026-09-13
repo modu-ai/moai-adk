@@ -1,7 +1,7 @@
 ---
 id: SPEC-TODO-QUEUE-HOME-CANON-001
 title: "Pin the todo queue to the HOME SQLite store as the single canonical source; consolidate remaining code-path statements and JSON remnants"
-version: "1.0.0"
+version: "1.1.0"
 status: draft
 created: 2026-09-13
 updated: 2026-09-13
@@ -22,6 +22,7 @@ related_specs: [SPEC-TODO-SQLITE-001, SPEC-WEB-TODO-QUEUE-001, SPEC-TODO-HOME-TE
 | Date | Version | Change |
 |------|---------|--------|
 | 2026-09-13 | 1.0.0 | Initial draft (card t658). Authoring only — no implementation in plan-phase. |
+| 2026-09-13 | 1.1.0 | Plan-audit fixes: D1 — plan.md M1 clarified-absence restated in plain sentence (bracket-token form never used in any artifact); D2 — A16 citation corrected to the actual call site session_start_kanban.go:212; D3 — B9 second location re-described as render comment (wal/-shm handling lives only at events.go:167-169). |
 
 ## 1. Background and Survey Evidence (tree b66789479, branch WT-home-queue-canonical)
 
@@ -48,7 +49,7 @@ its results ground every requirement below.
 | A13 | `internal/web/events.go:200` | Watch path keyed on A3's directory (`"kanban"` label) — watches the home SQLite dir for the standard git-repo case. |
 | A14 | `internal/statusline/backlog.go:50` `resolveBacklogCounts` | **CONVERGED** — delegates to `kanban.BacklogCountsForRoot` (`backlog_store.go:496`); the direct `boardRoot/.moai/state/kanban/backlog.json` read named in the card's premise was removed by t306 (SPEC-TODO-SQLITE-001 M3+M4) / t510 (SPEC-STATE-ANCHOR-001). Card premise is STALE on this tree. |
 | A15 | `internal/statusline/landed.go:210` | Reads through the seam: `kanban.NewBacklogStore(kanban.BacklogPathForRoot(boardRoot)).LoadPure()`. |
-| A16 | `internal/hook/session_start_kanban.go:219` | `kanban.QueuedBacklogCountForRoot` — shared count seam, same home store. |
+| A16 | `internal/hook/session_start_kanban.go:212` (call site; named in the comment at :197) | `kanban.QueuedBacklogCountForRoot` — shared count seam, same home store. |
 | A17 | `internal/cli/migrate_home_state.go:55,382,538` | One-time project→home `backlog.db` migration tool paths (adjacent, not a resolver). |
 
 **Conclusion (a):** path resolution is ALREADY single-seam. One root resolver (A1/A2),
@@ -69,7 +70,7 @@ adoption candidates in A4.
 | B6 | `cmd/t657-merge/main.go:49-53` | One-off merge utility: builds `<dir>/backlog.json` + `LoadPure` | Caller-supplied dir | **BOUNDARY** — merge CORE logic is t835's; disposition recorded as an exception pending t835 close-out. NOT converged by this SPEC. |
 | B7 | `internal/cli/todo_disclosure.go:2,32,40` | Disclosure TEXT naming backlog.json ("NOT the queue") | n/a (prose only, no read) | **KEEP** — this IS the convergence messaging |
 | B8 | `internal/statusline/backlog.go:50` (card premise) | Direct JSON read | Was project-local (WRONG location) | **ALREADY CONVERGED** on this tree (A14) — verify, no work |
-| B9 | `internal/web/events.go:167-169`, `internal/web/screens_templ.go:1180` | Watch/render of `backlog.db-wal`/`-shm` | Yes | **KEEP** — SQLite-aware, not a JSON remnant |
+| B9 | `internal/web/events.go:167-169` (wal/-shm handling); `internal/web/screens_templ.go:1180` (render comment: global backlog.db + kanban live-refresh marker) | Watch/render of the SQLite artifacts | Yes | **KEEP** — SQLite-aware, not a JSON remnant |
 
 **Conclusion (b):** ZERO production readers of the legacy path remain outside the
 `internal/kanban` store/adoption machinery itself, one boundary card (B6), and the
