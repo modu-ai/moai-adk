@@ -261,6 +261,16 @@ func landedBranchFromRef(ref string) string {
 	return strings.TrimPrefix(r, "origin/")
 }
 
+// LandedBranchFromRef is the exported form of landedBranchFromRef, for the
+// auto-done scan (SPEC-TODO-LAND-AUTO-DONE-001), which attributes the whole
+// subject stream in one pass and therefore needs the same ref→branch
+// derivation the per-card querier performs internally. A second derivation
+// in the caller would be a second chance for the two readings of "the branch
+// the resolved landed ref names" to diverge.
+func LandedBranchFromRef(ref string) string {
+	return landedBranchFromRef(ref)
+}
+
 // LandedSubjectArgs builds the exact argv the landed check runs against ref.
 //
 // The query is a SUBJECT stream (`--format=%s`), never a whole-message

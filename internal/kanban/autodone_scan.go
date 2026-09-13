@@ -59,6 +59,10 @@ const (
 // AutoDoneSkipReasons returns the closed skip-reason vocabulary in its
 // canonical order. The scan's `--help` body and the closed-set test render
 // from this one enumeration.
+//
+// @MX:NOTE: [AUTO] the vocabulary is CLOSED at four tokens (SPEC-TODO-LAND-AUTO-DONE-001
+// REQ-AD-010); a new skip reason is a one-place change here plus the
+// closed-set test — never a new literal at a call site.
 func AutoDoneSkipReasons() []string {
 	return []string{
 		AutoDoneSkipAmbiguousID,

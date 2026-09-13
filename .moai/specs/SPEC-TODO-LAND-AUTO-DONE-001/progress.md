@@ -87,9 +87,103 @@ lane_decisions:
   `ok github.com/modu-ai/moai-adk/internal/kanban 172.818s` (whole package,
   this run, this tree).
 
+### M2 — CLI verb `moai todo auto-done` (2026-09-13)
+
+- `internal/cli/todo_autodone.go` (new): the scan verb (`--fetch`, `--dry-run`,
+  `--json`) wiring the M1 decision function; facts gathered OUTSIDE the queue
+  lock, closes applied inside ONE locked `Mutate` whose callback re-checks
+  each planned close (C3 byte-identity inherited); canonical close-line
+  contract `done <id> landing=landed source=auto-land ref=<ref> form=<form>`
+  (C4) + `skip <id> reason=<reason>` + summary last; exit 0 for skip
+  outcomes, exit 1 only when the store is unreadable; `--fetch` runs exactly
+  one `git fetch <remote> <branch>`, absent it zero network fetches;
+  `--dry-run` writes nothing (no Mutate, no log rows); `recordFactoryCardState`
+  preserved per closed card; append-only JSONL execution log under
+  `RuntimeStateDirForRoot` (`auto-done-log.jsonl`) carrying card id, RFC 3339
+  UTC instant, form, subject+SHA / recorded SHA, ref + ref head, skip reason,
+  source `auto-land`; NO Landing-column writes (REQ-AD-009); help documents
+  the two evidence forms, the closed four-token skip set, the exit-code
+  policy, and the dry-run contract.
+- `internal/cli/todo_undone.go`: `undone` appends a reversal row naming the
+  original closure row when it restores a scan-closed card (REQ-AD-012);
+  fail-open, manual closures log nothing.
+- `internal/cli/todo.go`: verb registered; `internal/kanban/prlink_landed.go`:
+  `LandedBranchFromRef` exported (single ref→branch derivation for the scan's
+  one-pass attribution); `internal/cli/todo_surface_test.go`:
+  `auto-done` declared as a permitted verb addition with the SPEC citation.
+- `internal/cli/todo_autodone_test.go` (new): 19 tests covering
+  AC-AD-001..017 plus the help DoD.
+- RED evidence: first M2 run → `unknown command "auto-done" for "todo"`
+  across the suite (verbatim captured), plus the fixture-layer discovery
+  below.
+- GREEN evidence: `go test ./internal/cli/ -run 'TestTodoAutoDone' -count=1`
+  → `ok github.com/modu-ai/moai-adk/internal/cli 28.398s`, 19/19 PASS.
+
+### M2 finding — the reissued-id fixture premise vs the identity invariant
+
+`todo_identity.go` `ensureRecordIdentities` refuses, on EVERY whole-record
+write, a record holding the same card id live AND archived. The AC-AD-004/005
+"given" (predecessor archived + reissued live card in one record) is
+therefore unwritable through the store — and AC-AD-005's close-through-
+collision would be refused at the write even if SQL-injected. Resolutions
+taken in run-phase (no SPEC body change required):
+
+- AC-AD-004: the fixture injects the predecessor via direct SQL
+  (`injectArchivedPredecessor`); the collision card skips, the scan issues no
+  mutation, and the criterion's observable (skip `ambiguous-id`, card stays
+  live) passes end-to-end.
+- AC-AD-005: the DECISION is proven twice —
+  `TestAutoDoneDecide/"recorded SHA closes through a collision"` (unit) and
+  the CLI-level `--dry-run` run over the injected reissue state, which prints
+  the `form=sha-recorded` close end-to-end; the non-dry write is then
+  asserted to be REFUSED loudly by the identity invariant
+  (`duplicate card identity`), queue record byte-identical. In the field the
+  reissue predecessor sits in another store (the allocator's blind spot), so
+  the live record holds no duplicate and the close applies.
+
 ## §E.3 Run-phase Audit-Ready Signal
 
-_<pending run-phase>_
+```yaml
+run_complete_at: 2026-09-13
+run_commit_sha: pending-backfill-run
+run_status: implemented-run-phase
+ac_pass_count: 17
+ac_fail_count: 0
+ac_notes:
+  - AC-AD-004/005 fixtures inject the reissued-id predecessor via direct SQL;
+    the store's identity invariant (todo_identity.go) refuses that state on
+    any whole-record write — see §E.2 M2 finding for the resolution and the
+    two-level (unit + CLI dry-run) proof of AC-AD-005's observable
+ac_edge_cases:
+  - recorded-SHA-on-different-ref → skip not-landed (decision table row)
+  - SPEC unreadable → skip spec-not-completed (TestTodoAutoDone_SpecUnreadableIsNotCompleted)
+  - no SpecID → gate not applied (AC-AD-001..003 fixtures carry no spec id)
+  - body negation with clean subject → attributes normally
+    (TestLandedPredicate_NegationIsSubjectStreamOnly)
+l44_pre_commit_fetch: not-run (lane does not push; worktree-scoped)
+l44_post_push_fetch: not-run (push is the lead's batch act)
+new_warnings_or_lints_introduced: 0 (golangci-lint over internal/kanban +
+  internal/cli: zero findings in touched files; 37 pre-existing baseline
+  findings in untouched files)
+cross_platform_build:
+  darwin_arm64: go build ./... exit 0
+  windows: not-run (lane-local; CI matrix owns it)
+total_run_phase_files: 8
+m1_to_m2_commit_strategy: one commit per milestone (M1 a5c0c0eca; M2 this)
+milestones:
+  - M1 guard predicates + scan substrate (kanban) — done
+  - M2 CLI verb + log + reversibility — done
+  - M3 lead-procedure docs (todo.md skill + template mirror) — deferred to
+    sync phase per run-phase delegation instruction
+doc_step_owner: manager-docs (sync phase), per delegation instruction
+residual_risks:
+  - the negation guard is subject-stream-only; a body negation with a clean
+    attributing subject still attributes (recorded §D.1 edge, SPEC-TODO-
+    LANDING-ATTRIBUTION-001's domain)
+  - the collision gate can never fire on a writable in-store record while
+    the identity invariant holds; it guards cross-store/divergent-queue
+    reissue shapes and legacy records
+```
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
