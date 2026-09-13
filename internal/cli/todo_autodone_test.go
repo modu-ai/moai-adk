@@ -961,6 +961,75 @@ func TestTodoAutoDone_FalseNegativeShapes(t *testing.T) {
 	}
 }
 
+// §D.1 edge — a recorded SHA the ref NO LONGER reaches (the ref moved
+// backward after the record was made) is not evidence: the card skips
+// not-landed, never closes.
+func TestTodoAutoDone_RecordedSHAUnreachableSkips(t *testing.T) {
+	root, store := autoDoneFixture(t)
+	seedCard(t, store, "t9984", "recorded then left behind", kanban.BacklogStateQueued)
+	commitOnRef(t, root, "chore: the delivering commit")
+	materializeOriginDevelop(t, root)
+	sha := gitOut(t, root, "rev-parse", "refs/remotes/origin/develop")
+	if _, _, err := runTodo(t, "landed", "t9984", "--sha", sha); err != nil {
+		t.Fatalf("record sha: %v", err)
+	}
+	// The ref moves BACKWARD (an integration-branch rollback shape): the
+	// recorded commit is no longer reachable from it.
+	earlier := gitOut(t, root, "rev-parse", "HEAD~1")
+	runGitIn(t, root, "update-ref", "refs/remotes/origin/develop", earlier)
+
+	stdout, _, err := runTodo(t, "auto-done")
+	if err != nil {
+		t.Fatalf("auto-done: %v", err)
+	}
+	if !strings.Contains(stdout, "skip t9984 reason=not-landed") {
+		t.Errorf("stdout %q lacks skip t9984 reason=not-landed", stdout)
+	}
+	if _, ok := liveItemOK(t, store, "t9984"); !ok {
+		t.Error("t9984 archived on a recorded SHA the ref no longer reaches")
+	}
+}
+
+// The --json surface (plan §F M2): the same decisions, machine-readable.
+func TestTodoAutoDone_JSONOutput(t *testing.T) {
+	root, store := autoDoneFixture(t)
+	seedCard(t, store, "t9985", "closes", kanban.BacklogStateQueued)
+	seedCard(t, store, "t9986", "skips", kanban.BacklogStateQueued)
+	commitOnRef(t, root, "fix(t9985): landed work")
+	materializeOriginDevelop(t, root)
+
+	stdout, _, err := runTodo(t, "auto-done", "--json")
+	if err != nil {
+		t.Fatalf("auto-done --json: %v", err)
+	}
+	var report struct {
+		Ref    string `json:"ref"`
+		Closed []struct {
+			Card string `json:"card"`
+			Form string `json:"form"`
+		} `json:"closed"`
+		Skipped []struct {
+			Card   string `json:"card"`
+			Reason string `json:"reason"`
+		} `json:"skipped"`
+	}
+	if err := json.Unmarshal([]byte(stdout), &report); err != nil {
+		t.Fatalf("stdout is not the JSON report: %v\n%s", err, stdout)
+	}
+	if report.Ref != "origin/develop" {
+		t.Errorf("report ref = %q, want origin/develop", report.Ref)
+	}
+	if len(report.Closed) != 1 || report.Closed[0].Card != "t9985" || report.Closed[0].Form != kanban.AutoDoneFormSubject {
+		t.Errorf("closed = %+v, want t9985 subject-attribution", report.Closed)
+	}
+	if len(report.Skipped) != 1 || report.Skipped[0].Card != "t9986" || report.Skipped[0].Reason == "" {
+		t.Errorf("skipped = %+v, want t9986 with a reason", report.Skipped)
+	}
+	if _, ok := liveItemOK(t, store, "t9985"); ok {
+		t.Error("--json run did not close t9985")
+	}
+}
+
 // DoD — --help documents the two evidence forms, the canonical four-token
 // skip set, the exit-code policy, and the dry-run contract.
 func TestTodoAutoDone_HelpDocumentsContract(t *testing.T) {

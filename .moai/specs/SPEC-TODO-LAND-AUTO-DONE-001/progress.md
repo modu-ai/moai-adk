@@ -111,8 +111,12 @@ lane_decisions:
   `LandedBranchFromRef` exported (single ref→branch derivation for the scan's
   one-pass attribution); `internal/cli/todo_surface_test.go`:
   `auto-done` declared as a permitted verb addition with the SPEC citation.
-- `internal/cli/todo_autodone_test.go` (new): 19 tests covering
-  AC-AD-001..017 plus the help DoD.
+- `internal/cli/todo_autodone_test.go` (new): 21 tests covering
+  AC-AD-001..017, the §D.1 edges (recorded SHA unreachable after a ref
+  rollback → skip not-landed; unreadable SPEC → skip; no SpecID → gate not
+  applied), the `--json` surface, and the help DoD. Coverage of
+  todo_autodone.go: every decision path >= 89%, remaining sub-100% lines are
+  IO-failure/stderr branches.
 - RED evidence: first M2 run → `unknown command "auto-done" for "todo"`
   across the suite (verbatim captured), plus the fixture-layer discovery
   below.
