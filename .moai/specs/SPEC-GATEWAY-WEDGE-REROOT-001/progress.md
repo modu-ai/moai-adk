@@ -100,7 +100,7 @@ full_suite_disposition: local full internal/cli run UNRESOLVED (600s default-tim
 ## §E.4 Sync-phase Audit-Ready Signal
 
 - **sync_complete_at**: 2026-09-14 (KST)
-- **sync_commit_sha**: `pending-backfill-sync` — the sync commit cannot cite its own SHA, so it lands first with this placeholder, backfilled in a following commit (spec-frontmatter-schema.md § SHA placeholder backfill exemption).
+- **sync_commit_sha**: `f5d865d38` (backfilled from `pending-backfill-sync` in the post-sync-audit evidence commit — D3 placeholder window closure; the sync commit is `f5d865d38` "docs(SPEC-GATEWAY-WEDGE-REROOT-001): sync-phase artifacts — 3-phase close (card t700)").
 - **sync_status**: sync artifacts 3-fold — CHANGELOG `[Unreleased]` `### Added` entry, this §E.4 signal, `spec.md` frontmatter `in-progress → completed` transition (`status` only; `updated` already reads the sync date; zero body edits) — landed in a single sync commit. Run-phase 15 PASS / 0 FAIL / 1 SKIPPED (§E.3) cited to complete the 3-phase close.
 - **b12_self_test_a**: PASS — pre-emission grep `grep -c 'SPEC-GATEWAY-WEDGE-REROOT-001' CHANGELOG.md` = 0 (no duplicate entry from a parallel session).
 - **b12_self_test_b**: PASS — `grep -oE 'AC-([A-Z0-9]+-)*[0-9]+' acceptance.md | sort -u` → 16 distinct identifiers (AC-WRR-001..016); LIVE count 15 — AC-WRR-013 (MINOR, non-gating live probe) skipped by orchestrator decision with the gap recorded in §E.2 M1, matching the entry's "16 defined / 15 PASS" claim and §E.3's ac_pass_count.
