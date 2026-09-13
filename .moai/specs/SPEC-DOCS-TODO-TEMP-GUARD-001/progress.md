@@ -115,7 +115,7 @@ spec: SPEC-DOCS-TODO-TEMP-GUARD-001
 tier: S
 card: t575
 sync_status: audit-ready
-sync_commit_sha: pending-backfill-sync   # placeholder — commit cannot cite its own hash; backfilled in the following commit
+sync_commit_sha: 03d72705b   # backfilled — the sync close commit (docs(SPEC-DOCS-TODO-TEMP-GUARD-001): sync-phase — 3-phase close)
 changelog_entry: CHANGELOG.md [Unreleased] → Fixed (single entry, first position)
 changelog_b12_self_test:
   pre_emission_grep: 0   # grep -c 'SPEC-DOCS-TODO-TEMP-GUARD-001' CHANGELOG.md → 0 before emission
