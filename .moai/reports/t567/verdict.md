@@ -197,3 +197,43 @@ registry-absent is a tree git no longer manages.
    toggle.
 
 🗿 MoAI
+
+---
+
+## Continuation — 2026-09-13 (lane-3, resuming from this evidence)
+
+### Dispositions of the findings above (all verified today, against origin/develop `6916f9e83`)
+
+| Finding | Disposition | Verified by |
+|---|---|---|
+| 4 — `clean --json` emits no JSON and prunes | REPAIRED: card t681, merged `ae980ef2d` — `--json` routes to the inventory in every flag combination; the reporting path no longer prunes; regression tests pin it | `git merge-base --is-ancestor ae980ef2d origin/develop` → true; t681 verdict `.moai/reports/t681/verdict.md` |
+| 5 + 6 — the two auto-cleanup sweeps reach L1 trees; dirty guard is porcelain-only | REPAIRED: card t673, merged `6916f9e83` — shared unpushed predicate in both paths; committed-unpushed and detached-HEAD trees observed preserved (real-git RED→GREEN), pushed control still removable | `git merge-base --is-ancestor 6916f9e83 origin/develop` → true; t673 verdict `.moai/reports/t673/verdict.md` |
+| 7 — template says auto_cleanup is a reserved unread key | REPAIRED twice over: prose fixed on develop (`390d71753`, t655 family — per lead's re-measurement) and drift guard landed card t682, merged `d84458994` (`internal/config/workflow_key_honesty_test.go`) | `git merge-base --is-ancestor d84458994 origin/develop` → true; t682 verdict `.moai/reports/t682/verdict.md` |
+| 1, 2, 3 — hypothesis falsified; live vanish observed; full-removal signature | STAND (this card's own conclusion) | unchanged |
+
+### Continuation probes (2026-09-13, this session)
+
+The four experiment subjects and the vanished tree, re-measured one day after the reproduction run:
+
+| Subject | Branch ref | Directory |
+|---|---|---|
+| `worktree-t567-a` | PRESENT `aeab4bac1` | ABSENT |
+| `worktree-t567-b` | PRESENT `7ae0f48b7` | PRESENT |
+| `worktree-t567-c` | PRESENT `99b0c4063` | ABSENT |
+| `worktree-t567-d` | PRESENT `05a4dcb14` | ABSENT |
+| `agent-abbf2b88afd6960f2` (claim 2's subject) | ABSENT | ABSENT |
+
+### New narrowing: the t528/agent-abbf actor is distinguishable by signature
+
+Between the reproduction run (2026-09-12) and this probe (2026-09-13), the directories of subjects a, c, and d disappeared while their branch refs survived. This matches the known disposal signature of a session-end keep/remove disposal and a plain `git worktree remove` — the directory goes, the branch ref is left behind (recorded in project memory: "폐기가 브랜치까지 안 지움"). The card's subject — agent-abbf2b88, and before it t528 — lost DIRECTORY AND BRANCH TOGETHER.
+
+The two signatures differ, so the actors differ:
+
+- the disposer that took a/c/d leaves refs — NOT the actor this card hunts;
+- the t528/agent-abbf actor removes the ref as well — i.e. it performs a branch deletion on top of (or instead of) a worktree removal. Remaining candidates: `moai worktree done` / explicit branch delete, the Claude Code runtime's `Agent(isolation: "worktree")` auto-clean (documented "auto-cleaned if unchanged" — the subject was an unchanged agent-* tree at its base), or an external actor. The session-end disposer drops out of the candidate set.
+
+This is the continuation's one new fact; the actor is still not observed in the act. The residual gap below stands.
+
+### Residual gap (unchanged)
+
+The actor behind claim 2 is not established. What is new: the session-end disposal path is now excluded by signature, leaving `moai worktree done`-class full disposal, the runtime's Agent-isolation auto-clean, and external actors. A next experiment, if this card is ever reopened: park an unchanged dummy `agent-`-prefixed tree and a changed one, and diff which disappears.
