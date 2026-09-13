@@ -28,28 +28,35 @@ type NativePolicy struct {
 	UserID  string
 }
 
-// gptEffortAllowlist is the upstream-verified effort set for every catalog GPT
-// model (card t695 D2 real-request sweep, 2026-09-13). The subscription
-// upstream accepted each value on gpt-6-astra, gpt-5.6-sol, gpt-5.6-terra and
-// gpt-5.6-luna, with one per-model exception recorded by maxEffortRejected.
-// The Anthropic profile keeps its previously validated {high} subset; the D2
-// evidence was collected against the GPT subscription upstream only.
+// gptEffortAllowlist is the union of every effort the official OpenAI model
+// pages list for a catalog GPT model; the per-model split lives in
+// gptModelEffortAllowed. History: card t695 D2 (2026-09-13) verified
+// low..max by real request against the subscription upstream and recorded
+// gpt-6-astra rejecting max; card t841 (2026-09-14) re-aligned the set with
+// the official model pages, which now govern: none joins the union, and the
+// astra max clamp is withdrawn. The Anthropic profile keeps its previously
+// validated {high} subset; no OpenAI evidence applies to it.
 func gptEffortAllowlist(profile PolicyProfile, value string) bool {
 	if profile != PolicyGPTNative {
 		return value == "high"
 	}
 	switch value {
-	case "low", "medium", "high", "xhigh", "max":
+	case "none", "low", "medium", "high", "xhigh", "max":
 		return true
 	}
 	return false
 }
 
-// maxEffortRejected reports the one upstream exception found by the D2 sweep:
-// gpt-6-astra rejects reasoning.effort=max consistently (4/4 non-200) while
-// accepting xhigh. The nearest accepted tier, xhigh, is the fixed mapping.
-func maxEffortRejected(model string) bool {
-	return model == "gpt-6-astra"
+// gptModelEffortAllowed is the per-model effort set from the official model
+// pages (developers.openai.com/api/docs/models/<model>, fetched 2026-09-14):
+// gpt-5.6-sol, gpt-5.6-terra and gpt-5.6-luna list none, low, medium
+// (default), high, xhigh and max; gpt-6-astra lists low, medium, high, xhigh
+// and max, so none fails closed there. An accepted value is projected as-is.
+func gptModelEffortAllowed(model, value string) bool {
+	if model == "gpt-6-astra" && value == "none" {
+		return false
+	}
+	return gptEffortAllowlist(PolicyGPTNative, value)
 }
 
 // ValidateNativePolicy validates only policy fields of a strict JSON request.
@@ -173,13 +180,9 @@ func nativePolicy(root map[string]any, profile PolicyProfile) (p NativePolicy, e
 	}
 	return p, nil
 }
-func (p NativePolicy) applyGPT(model string, out map[string]any, root map[string]any) {
+func (p NativePolicy) applyGPT(out map[string]any, root map[string]any) {
 	if p.Effort != "" {
-		effort := p.Effort
-		if maxEffortRejected(model) && effort == "max" {
-			effort = "xhigh"
-		}
-		reasoning := map[string]any{"effort": effort}
+		reasoning := map[string]any{"effort": p.Effort}
 		if p.Display == "summarized" {
 			reasoning["summary"] = "auto"
 		}
