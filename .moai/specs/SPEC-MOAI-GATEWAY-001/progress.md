@@ -233,3 +233,25 @@ b12_self_test_c: n/a (no CHANGELOG entry emitted — no file paths claimed in an
 mx_tag_validation: pass (@MX:WARN/REASON annotations observed in 11 files across internal/codexbridge·internal/gateway — sync sub-step scan 2026-09-14)
 t21_transfer_consistency: acceptance.md:469 ↔ spec.md HISTORY 0.12.0 ↔ progress.md §E.3 — three surfaces carry the same t844 transfer content (verified by sync-audit)
 as013_disposition: designed NOT-RUN maintained (M1 pre-condition failure probe, .moai/reports/t653/m1-native-fork-probe.md) — not a transfer target; AS4 overall-support completion remains deferred
+
+### t654 sync signal (2026-09-14)
+
+sync_status: audit-ready (card t654 sync — AS-5 launcher integration; the umbrella SPEC does NOT close — live-window cards t844·t851 remain, so spec.md stays in-progress)
+sync_complete_at: 2026-09-14
+sync_commit_sha: "pending-backfill" (worktree `.claude/worktrees/t654`, branch `WT-gateway-launchers`, run-phase HEAD `059f4e700`)
+frontmatter_status_transitions: NONE this window (spec.md는 in-progress 유지 — t654 plan이 재개한 implemented→in-progress 상태 그대로; implemented→completed 전이는 라이브 창 카드 t844·t851 착지 뒤 후속 sync 몫)
+card_verdict: .moai/reports/t654/as5-verdict.md (pending — 레인이 sync-audit 뒤 작성; 5-section format)
+sync_audit: .moai/reports/t654/as5-sync-audit.md (pending — sync-auditor가 다음에 작성; 4-dimension score — Functionality/Security/Craft/Consistency)
+changelog_entry: deferred to AC-MG-026 (d) deploy-gate window (B12 pre-emission grep `grep -c 'SPEC-MOAI-GATEWAY-001' CHANGELOG.md` → 0 — 이번 창의 사용자 가시 표면은 아직 라이브가 아니다: launcher 통합 게이트는 AC-MG-026 (a) GREEN이 라이브 창에서 열려야 한다; t653 선례와 동일 판정)
+b12_self_test_a: pass (pre-emission grep count 0 — 중복 발행 위험 없음; halt 조건 없음)
+b12_self_test_b: n/a (CHANGELOG 항목 미발행 — AC-count match 대상 없음)
+b12_self_test_c: n/a (CHANGELOG 항목 미발행 — 항목이 주장하는 파일 경로 없음)
+mx_tag_validation: pass (변경 36파일 중 @MX 태그 보유 .go 5곳 — internal/cli/gateway_session.go, internal/codexbridge/engine.go, internal/gateway/conversation/family.go, internal/gateway/receipt/core.go, internal/gateway/receipt/store.go; A5 신설 seam의 @MX:NOTE는 run 커밋 `886959071`에서 착지. sync sub-step scan 2026-09-14)
+surface_consistency: spec.md 0.13.0 in-progress ↔ progress §E.2(t654 run evidence)·§E.3(t654 run signal)·§E.4(이 signal) ↔ acceptance DoD 25개(AC-MG-001~026 중 묘비 AC-MG-002 제외, acceptance.md:490) — 4표면 일치 확인(2026-09-14 직접 판독)
+window_waiting: (§E.3 t654 run signal의 window_waiting 5건 전수 인용 + §E.2 t654 Gaps의 생산 배선 1건 보강으로 자기충족)
+  - AC-MG-026 (a) GREEN — 대기 조건: AS-014~AS-022 전수 PASS 후 리터럴 2곳 제거+TestGatewayLaunchTransportGateControl gate-open 전환
+  - AS-014·017·018·019 실제 PTY 실증 — 대기 조건: t851 gateway 400 해소 뒤 라이브 창
+  - AS-021 실계정 이중 모드 실측 — 동일 라이브 창
+  - AS-022 GitHub CI 실행 증거 — 리드 push + workflow_dispatch, 판독 절차는 `.moai/reports/t654/as5-windows-ci-prep.md`
+  - AC-MG-026 (d) rc 배포 게이트 — 강제 전제 {(a),(b),(c),AS-017,AS-019,AS-021} PASS 후 실행(이 창 미실행)
+  - M2b appliedEpoch 생산 호출자 배선 — compaction 실세션 흐름(카드 t844)에서 이어진다(§E.2 t654 Gaps에서 보강)
