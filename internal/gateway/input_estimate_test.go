@@ -41,7 +41,7 @@ func TestEstimateInputMatchesCountProjection(t *testing.T) {
 func TestOpenAIEstimatedOverflowAndFullInputUpstream400(t *testing.T) {
 	first, last := strings.Repeat("처음", 300), strings.Repeat("끝", 300)
 	raw, _ := json.Marshal(map[string]any{"model": "gpt-5.6-sol", "max_tokens": 10, "system": "system preserved", "messages": []any{map[string]string{"role": "user", "content": first}, map[string]string{"role": "assistant", "content": "middle"}, map[string]string{"role": "user", "content": last}}})
-	tr, calls := oaiTLS(t, func(w http.ResponseWriter, r *http.Request) {
+	tr, served := oaiTLS(t, func(w http.ResponseWriter, r *http.Request) {
 		var body struct {
 			Instructions string `json:"instructions"`
 			Truncation   string `json:"truncation"`
@@ -77,14 +77,14 @@ func TestOpenAIEstimatedOverflowAndFullInputUpstream400(t *testing.T) {
 	q.Entry.Capabilities.ContextTokens = int(estimate) - 1
 	r, e := a.Send(context.Background(), q)
 	_ = oaiRead(t, r, e)
-	if r.StatusCode != 400 || calls.Load() != 0 {
-		t.Fatal("estimated overflow crossed egress", r.StatusCode, calls.Load())
+	if r.StatusCode != 400 || served.Load() != 0 {
+		t.Fatal("estimated overflow crossed egress", r.StatusCode, served.Load())
 	}
 	q.Entry.Capabilities.ContextTokens = int(estimate)
 	r, e = a.Send(context.Background(), q)
 	body := oaiRead(t, r, e)
-	if r.StatusCode != 400 || calls.Load() != 1 || strings.Contains(body, "private") || !strings.Contains(body, "invalid_request_error") {
-		t.Fatal("upstream context rejection not preserved safely", r.StatusCode, calls.Load(), body)
+	if r.StatusCode != 400 || served.Load() != 1 || strings.Contains(body, "private") || !strings.Contains(body, "invalid_request_error") {
+		t.Fatal("upstream context rejection not preserved safely", r.StatusCode, served.Load(), body)
 	}
 }
 
