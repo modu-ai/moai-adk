@@ -1,7 +1,7 @@
 ---
 id: SPEC-GATEWAY-ENVELOPE-REPAIR-001
 title: "Reasoning-envelope repair — launcher-side verbatim re-injection of gateway-issued envelopes for stripped-replay recovery"
-version: "0.2.1"
+version: "0.2.2"
 status: completed
 created: 2026-09-13
 updated: 2026-09-14
@@ -26,6 +26,7 @@ related_specs:
 | 0.1.0 | 2026-09-13 | manager-spec | Initial plan-phase emission (card t708, Class C). Evidence base: `.moai/reports/t708/research.md` (4-lens synthesis + orchestrator addendum), `.moai/reports/t703/verdict.md` (incident ground truth), `.moai/reports/t672/{verdict,investigation,matrix}.md` (binding invariant). Sibling SPEC `SPEC-GATEWAY-WEDGE-REROOT-001` (card t700, draft, sibling worktree) cross-referenced by path + requirement IDs; the interpretive seam between the two SPECs is surfaced in §4, not resolved silently. Symbol pins verified on tree `WT-envelope-persist` (base local develop `7a7a08f20`). |
 | 0.2.0 | 2026-09-13 | manager-spec | Plan-audit iteration-1 repair pass (card t708; iter-1 COND-FAIL 0.8375, report `.moai/reports/t708/plan-audit.md`; the §3 security determination was verified SOUND against code by the auditor). D1: AC-EVR-003 added to the acceptance.md §D.1 traceability matrix (was an orphan row). D2: plan.md §C pre-flight `refreshNative` grep corrected to its method form (rc=1 as written). D4: REQ-EVR-003-1 aligned with the all-or-nothing refusal semantics of REQ-EVR-007/AC-EVR-005 — a non-self-attesting boundary aborts the entire repair. D3: §3.4 relocated before §4 (H2 scan order). D5: carrier count restated per the research addendum measurement (36 main transcript, 37 incl. a subagent-row boundary). New lead design input folded in: the serial-turn `CauseChain` 400 class (production family `1f14d174`, card t707 reproducing) declared out of scope with a §3.4 row; BerriAI/litellm #40288 recorded as external byte-stability prior art in §4.1; plan.md gains a third bounded clarification entry and M0's adjudication gate extends to t707's verdict as a second input. |
 | 0.2.1 | 2026-09-13 | manager-spec | Clarification-resolution pass per lead conditional-Kickoff directive (2026-09-13): plan.md §H converted from three open clarification entries to a zero-entry Resolution Record (topic / DECISION / basis / route per row; dispositions ARE the acceptance.md §D.4-3 clause). No design change — every disposition follows the audited bounded paths (REQ-EVR-007 refusals, M0 two-input gate). Cross-references updated (spec.md §3.3/§4.1, plan.md §A/§I, acceptance.md §D.4-3). |
+| 0.2.2 | 2026-09-14 | manager-spec | Composite-refusal semantics correction per sync-audit F7 (`.moai/reports/t708/sync-audit.md`; no design change). §3.3 restated honestly: the repair-layer refusal triggers are ONLY source-gone / digest-mismatch / already-attempted / incomplete-transcript; the missing-marker shape (client-side indistinguishable from a text-only turn) and the Prefix-class public-content-mismatch shape (undetectable without the receipt reads REQ-EVR-003-4 forbids) have COMPOSITE semantics — the repair injects (or skips) on marker-attested boundaries only and the unchanged Check delivers the final classified refusal at request time. AC-EVR-007's letter aligned to the same split. §3.4 wording touched minimally for the same honesty. |
 
 ## 1. Problem — measured shape
 
@@ -109,10 +110,19 @@ On top of these, the **surviving tool markers make the repair provable before in
 
 **Consequence (the no-bypass statement):** for every history H and gateway state S, if the repaired H is accepted, then the unchanged `Manifest.Check` accepts it on H's own observations — the repair path and the unchanged check have identical acceptance sets. The repair adds a *procedure*, not an *authorization*.
 
-### 3.3 Residual risks (bounded)
+### 3.3 Refusal semantics (repair-layer vs composite) and residual risks (bounded)
 
-- If the client's switch-turn re-encode altered public content as well as envelopes, the repair correctly refuses (Prefix-class mismatch, REQ-EVR-007); the conversation is not made worse by the attempt. Whether this occurred in t703 is unmeasured (t703 verdict Gaps) and bounded by the refusal path.
-- If the transcript source is gone (compaction, slicing, record loss), the repair refuses for lack of a verbatim source (REQ-EVR-007). Retention under client compaction / `--continue` slicing is unmeasured and recorded as a bounded gap (plan.md).
+The repair layer's OWN refusal triggers are exactly four: (a) **source-gone** — no verbatim carrier in the transcript for an attested digest; (b) **digest-mismatch** — candidate carrier bytes fail the marker's self-attested sha256; (c) **already-attempted** — the durable single-shot record; (d) **incomplete transcript** — the capture source is not a completed record. Each refuses with zero modification and preserves the non-destructive state (REQ-EVR-007/008).
+
+Two further shapes have **composite** refusal semantics, and this SPEC does not claim repair-layer refusal for them:
+
+- **Missing marker**: a boundary stripped of both envelope and marker is client-side indistinguishable from an ordinary text-only assistant turn — the indistinguishability t700's REQ-WRR-007 codifies — so the repair cannot see it and cannot abort on it. For the CauseReasoning target class the marker provably survived (the classification fires at the marker-without-envelope site, t703 verdict §1), so the shape sits outside the repair's trigger class: the repair finds nothing attested at that boundary and injects nothing there.
+- **Public-content changed (Prefix-class mismatch)**: the repair path is forbidden from reading the receipt store (REQ-EVR-003-4) and holds no public-content reference, so it cannot detect a Prefix mismatch. The refusal is COMPOSITE: the repair performs (or skips) injection on marker-attested boundaries only, and the UNCHANGED Check delivers the final refusal at request time with the classified guidance. The operator-visible outcome is still a classified rejection, never an accepted bad replay. REQ-EVR-007's refusal obligation for this shape is read through these composite semantics: its zero-modification bound holds (the repair modifies only attested boundaries; the aside preserves the preimage), while the Check adjudicates the binding.
+
+Residual risks (bounded):
+
+- Whether the t703 switch turn also altered public content is unmeasured (t703 verdict Gaps). Under composite semantics the outcome is the Check's chain/reasoning-classified rejection either way — the conversation is never made worse by the attempt.
+- Transcript retention under client compaction / `--continue` slicing is unmeasured; source-gone is a repair-layer refusal, so degradation is bounded by design.
 - The transcript-retention measurement sampled carrier well-formedness (6 of 37 decoded) rather than proving all carriers; the repair's own digest self-attestation is the per-use gate, so an unverified carrier is refused at repair time, not silently injected.
 
 ## 3.4 Recoverable vs non-recoverable shapes
@@ -121,8 +131,8 @@ On top of these, the **surviving tool markers make the repair provable before in
 |---|---|---|
 | Stripped-envelope replay, markers survive, transcript source retains verbatim envelopes, public content unchanged | **Repairable** — explicit-user-invoked, single-shot, byte-exact re-injection per REQ-EVR-004/002/003 | After repair: accepted by the unchanged Check; conversation survives |
 | Stripped-envelope replay, transcript source gone (compaction / `--continue` slicing / record loss) | **Not repairable** — refusal per REQ-EVR-007 | Still rejected, reasoning-classified (frozen body) |
-| Stripped-envelope replay with public content also changed (Prefix mismatch) | **Not repairable** — refusal per REQ-EVR-007; repair never edits public content | Still rejected (chain- or reasoning-classified per the changed legs) |
-| Stripped boundary without a surviving self-attesting marker, or digest mismatch | **Not repairable** — refusal per REQ-EVR-007 (no admissible position/digest proof) | Still rejected, reasoning-classified |
+| Stripped-envelope replay with public content also changed (Prefix mismatch) | **Composite** — repair cannot detect a Prefix mismatch (no receipt reads, REQ-EVR-003-4); it injects marker-attested boundaries only, never edits public content, and the unchanged Check delivers the final refusal | Still rejected (chain- or reasoning-classified per the changed legs) |
+| Stripped boundary without a surviving self-attesting marker, or digest mismatch | Digest mismatch: **repair-layer refusal** (no admissible digest proof). Marker-less boundary: client-side indistinguishable from a text-only turn — outside the repair's trigger class; the repair injects nothing there and the Check adjudicates | Still rejected, reasoning-classified |
 | Serial-turn chain-class 400 (fresh session, no model switch, all prior receipts complete — production family `1f14d174`, model luna, 12th request) | **Not covered by this SPEC — under determination by card t707**; this SPEC's repair path (REQ-EVR-004) is CauseReasoning-scoped and fires only on the stripped-envelope shape | Per t707's verdict |
 | Trailing-unpublished-turn wedge (t700's shape) | **Out of scope here** — governed by `SPEC-GATEWAY-WEDGE-REROOT-001`'s client-side re-rooting policy | Per t700's policy |
 | Lineage miss | **Not repairable here** — the sanctioned path remains the launcher-driven fork (`conversation.Manager.Fork`), untouched by this card (research F6: fork cannot repair mid-history stripping) | Still rejected, lineage-classified; fork per t700 REQ-WRR-008 |

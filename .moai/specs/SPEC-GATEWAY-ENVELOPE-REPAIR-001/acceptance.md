@@ -44,9 +44,10 @@ Every AC is binary-testable. The controlling principle: the repair is verified b
   - **Given** a classified `CauseReasoning` 400, **When** no user invocation occurs, **Then** no history, payload, transcript, or record is modified (automatic-surgery test: rejection handling produces a byte-identical state), and **When** the user invokes the repair, the repaired replay proceeds to the unchanged Check.
   - Evidence: TDD tests, both branches.
 
-- **AC-EVR-007** — Refusal on non-repairable preconditions:
-  - **Given** each of: source-gone (no verbatim carrier in transcript), digest mismatch between carrier and marker, missing marker, Prefix-class public-content mismatch, **When** the repair is invoked, **Then** each case refuses with zero modification, preserves non-destructive state, and surfaces the classified guidance unchanged.
-  - Evidence: four refusal TDD cells, green.
+- **AC-EVR-007** — Refusal on non-repairable preconditions (repair-layer + composite):
+  - **Given** each repair-layer refusal precondition — source-gone (no verbatim carrier for an attested digest), digest mismatch between carrier and marker, already-attempted (durable single-shot record), incomplete transcript — **When** the repair is invoked, **Then** the repair refuses with zero modification, preserves non-destructive state, and surfaces the classified guidance unchanged.
+  - **Composite cells**: for a missing marker and a Prefix-class public-content mismatch, the repair layer performs (or skips) injection on marker-attested boundaries only — it cannot detect either shape (a marker-less boundary is client-side indistinguishable from a text-only turn; receipt reads are forbidden by AC-EVR-010) — and the UNCHANGED Check delivers the final refusal at request time with the classified guidance; the operator-visible outcome is a classified rejection, never an accepted bad replay.
+  - Evidence: refusal TDD cells for the repair-layer preconditions, green; the composite cells are adjudicated by the M2 characterization matrix (AC-EVR-003) at the unchanged Check.
 
 - **AC-EVR-008** — Single-shot with durable termination:
   - **Given** a repair attempt whose retry is still rejected, **When** the same conversation is presented again (including from a fresh process reading the durable record), **Then** the repair path performs no further injection and surfaces the guidance unchanged.
