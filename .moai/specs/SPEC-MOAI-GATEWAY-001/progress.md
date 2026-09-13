@@ -157,4 +157,20 @@ t653 run-phase의 자동화 가능 부분(M2 resume, M3 idle 모델, M4 compacti
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase>_
+sync_status: audit-ready (card t653 sync — the umbrella SPEC does NOT close per card; t654 and later cards remain)
+sync_complete_at: 2026-09-14
+sync_commit_sha: "pending-backfill"
+frontmatter_status_transitions:
+  - transition: "in-progress → implemented (NOT completed — SPEC-MOAI-GATEWAY-001 is a multi-card Tier L series; the implemented → completed transition rides a later sync after t654+ cards land)"
+    owner: manager-docs
+    surfaces: spec.md only (plan.md / acceptance.md are frontmatter-stateless; progress.md carries no status axis)
+card_verdict: .moai/reports/t653/verdict.md (5-section format; absorbs the run-verdict.md draft)
+sync_audit: .moai/reports/t653/sync-audit.md (4-dimension score — Functionality/Security/Craft/Consistency)
+sync_remeasurement: 변경 패키지 재측정(이 실행) — receipt 88.9% / conversation 80.3% / gateway 91.7%(-skip 사전존재 1건) ok; codexbridge는 skip 없이 사전 존재 lifecycle_subprocess 4건만 실패(신규 0), 4건 skip 시 82.5%(atomic 82.7%). run-phase 기록 83.1%와의 잔차는 skip 표현식 미기록 attribution gap으로 verdict Gaps에 기록.
+changelog_entry: deferred (B12 pre-emission grep `grep -c 'SPEC-MOAI-GATEWAY-001' CHANGELOG.md` → 0; series convention documents at release/launcher-wiring time — card t653's surface is internal packages only, user-visible effect first exposed by t654 launcher wiring; decision recorded in .moai/reports/t653/verdict.md § CHANGELOG 결정)
+b12_self_test_a: pass (pre-emission grep count 0 — no duplicate-emission risk; no halt condition)
+b12_self_test_b: n/a (no CHANGELOG entry emitted — AC-count match test has no target)
+b12_self_test_c: n/a (no CHANGELOG entry emitted — no file paths claimed in an entry)
+mx_tag_validation: pass (@MX:WARN/REASON annotations observed in 11 files across internal/codexbridge·internal/gateway — sync sub-step scan 2026-09-14)
+t21_transfer_consistency: acceptance.md:469 ↔ spec.md HISTORY 0.12.0 ↔ progress.md §E.3 — three surfaces carry the same t844 transfer content (verified by sync-audit)
+as013_disposition: designed NOT-RUN maintained (M1 pre-condition failure probe, .moai/reports/t653/m1-native-fork-probe.md) — not a transfer target; AS4 overall-support completion remains deferred
