@@ -1,0 +1,26 @@
+2026/09/13 23:57:16 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestGraphCheckCmd_StaleStderrNamesDrivingPaths1974912081/001/.moai/config/sections
+2026/09/13 23:57:17 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestGraphCheckCmd_JSONCarriesAttribution2548754145/001/.moai/config/sections
+2026/09/13 23:57:18 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestGraphCheckCmd_CitationsRowStaleExitsOne895238083/001/.moai/config/sections
+2026/09/13 23:57:18 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestGraphCheckCmd_CitationsRowStaleExitsOne895238083/001/.moai/config/sections
+2026/09/13 23:57:19 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestGraphCheckCmd_AllFreshExitZero2494395845/001/.moai/config/sections
+2026/09/13 23:57:20 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestGraphCheckCmd_StaleExitsOne1662769898/001/.moai/config/sections
+2026/09/13 23:57:21 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestGraphCheckCmd_NotComparableExitsTwo328947751/001/.moai/config/sections
+--- FAIL: TestGraphCheckCmd_NotComparableExitsTwo (0.43s)
+    graph_check_test.go:208: unresolvable stamp must exit 2 (system error), got graph freshness check failed (stale or absent layer)
+2026/09/13 23:57:22 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestGraphCheckCmd_AbsentExitsOne689247287/001/.moai/config/sections
+2026/09/13 23:57:22 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestGraphQueryCmd_Callers1121073304/001/.moai/config/sections
+2026/09/13 23:57:22 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestGraphQueryCmd_Blast2401692695/001/.moai/config/sections
+2026/09/13 23:57:22 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestGraphQueryCmd_FanIn1411770274/001/.moai/config/sections
+2026/09/13 23:57:22 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestGraphQueryCmd_SpecsNoCodeIncludesCaveat2579178446/001/.moai/config/sections
+2026/09/13 23:57:23 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestGraphQueryCmd_MilestonesNoCard4185226356/001/.moai/config/sections
+2026/09/13 23:57:23 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestGraphQueryCmd_MilestonesNoCardQueueUnreadableSkipsComparison1715598808/001/.moai/config/sections
+2026/09/13 23:57:23 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestGraphQueryDebtFanIn3834366804/001/.moai/config/sections
+2026/09/13 23:57:23 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestGraphQuery_RefreshesStaleEdges3194418875/001/.moai/config/sections
+2026/09/13 23:57:23 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestGraphQuery_NoRefreshWhenFresh661249000/001/.moai/config/sections
+2026/09/13 23:57:23 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestGraphQuery_PerTreeIsolation3204156020/001/.moai/config/sections
+2026/09/13 23:57:23 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestGraphQuery_PerTreeIsolation3204156020/002/.moai/config/sections
+2026/09/13 23:57:29 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestGraphCheckCmd_ExistingNonAncestorStampExitsTwoWithRecovery3054580322/001/.moai/config/sections
+2026/09/13 23:57:30 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestGraphCheckCmd_UnresolvableStampOmitsRegenerationAdvice267986075/001/.moai/config/sections
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/cli	15.268s
+FAIL
