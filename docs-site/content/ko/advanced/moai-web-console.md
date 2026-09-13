@@ -134,11 +134,11 @@ SPEC 영역 맨 위에는 검색창과 status 필터 칩이 있습니다. 그 �
 5. **워크플로우(Workflow)** — 실행 모드 · 기본 모드 · agentic-loop · loop-prevention
 6. **Git·워크트리(Git & Worktree)** — `git_strategy.mode`, 프로필별 `merge_method`, 워크트리 · branch-guard 토글
 7. **감사(Audit)** — 감사 모델과 백엔드별 게이트
-8. **Codex** — 흩어져 있는 codex 설정 12개를 한 화면에 모아 보여주는 **읽기 전용 미러**. 감사 백엔드와 codex 고정값, codex 사용 여부, codex 관련 MCP 도구 토글, 감지된 실행 파일이 한자리에 놓입니다. 값을 고치는 곳은 아니고, 각 줄이 그 값을 실제로 가진 탭으로 이어집니다
+8. **Codex 설정(Codex)** — 흩어져 있는 codex 설정 12개를 한 화면에 모아 보여주는 **읽기 전용 미러**. 감사 백엔드와 codex 고정값, codex 사용 여부, codex 관련 MCP 도구 토글, 감지된 실행 파일이 한자리에 놓입니다. 값을 고치는 곳은 아니고, 각 줄이 그 값을 실제로 가진 탭으로 이어집니다
 9. **에이전트(Agents)** — 에이전트별 프로필 · 모델 할당
 10. **리포트(Report)** — 리포트 형식과 출력 선호
 11. **MCP** — `moai mcp-server` 도구별 활성 토글. 쓰기 가능 도구에는 구분 표식이 붙습니다
-12. **교차 세션(Cross-Session)** — 세션 간 메시징의 수신 자세(posture): 인바운드 처리 방식(`accept` · `hold` · `refuse`), 머신 간 전송 격리, 보류 대화 만료. `crosssession.yaml`을 편집하며, 런처가 다음 `moai cc`/`glm` 실행부터 이 값을 세션에 주입합니다 — 이미 돌고 있는 세션은 띄울 때의 자세를 유지합니다
+12. **세션 간 메시지(Cross-Session)** — 세션 간 메시징의 수신 자세(posture): 인바운드 처리 방식(`accept` · `hold` · `refuse`), 머신 간 전송 격리, 보류 대화 만료. `crosssession.yaml`을 편집하며, 런처가 다음 `moai cc`/`glm` 실행부터 이 값을 세션에 주입합니다 — 이미 돌고 있는 세션은 띄울 때의 자세를 유지합니다
 13. **피드백** — 피드백 워크플로우가 이슈를 낼 대상 저장소와 제출 전 확인 토글
 14. **품질 게이트** — 커밋 시점 heavy-gate 사용 여부. 러너는 `MOAI_PRECOMMIT=1` 일 때만 이 값을 봅니다
 

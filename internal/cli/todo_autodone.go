@@ -312,7 +312,7 @@ func planAutoDone(snapshot *kanban.BacklogRecord, root, ref string, subjectKnown
 			facts.SHAReachable = todoAutoDoneSHAReachable(o.recordedSHA, ref)
 		}
 		if subjectKnown {
-			if hit, ok := attributions[it.ID]; ok {
+			if hit, ok := attributions[it.ID]; ok && kanban.AutoDoneSubjectFresh(hit, it.AddedAt) {
 				o.subject = hit.Subject
 				o.commitSHA = hit.SHA
 				facts.SubjectHit = &hit
