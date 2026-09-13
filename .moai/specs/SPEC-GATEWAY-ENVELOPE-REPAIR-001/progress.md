@@ -147,4 +147,8 @@ The optional live-probe milestone was skipped this card; its live-instrumentatio
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase>_
+sync_complete_at: 2026-09-14
+sync_commit_sha: pending-backfill-sync  # D3 backfill exemption — a commit cannot cite its own SHA; backfilled by the orchestrator in a follow-up commit
+sync_status: completed
+sync_summary: CHANGELOG [Unreleased] entry emitted (B12: pre-emission grep 0, AC count 12/12, paths verified); SPEC 3-phase close riding the single sync commit (spec.md frontmatter in-progress → completed, body untouched); docs-site skipped — maintainer-facing launcher flag documented repo-locally at .moai/docs/gateway-envelope-repair.md (M6 artifact).
+
