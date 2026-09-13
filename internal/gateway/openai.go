@@ -277,12 +277,16 @@ func openAIResponseMedia(headers http.Header, subscription, stream bool) (string
 	return media, nil
 }
 
+// openAITranslationError surfaces the translate failure reason in the 400 body.
+// Translation errors are this adapter's own validation strings (never upstream
+// payloads or credentials), so a reason-less "Bad Request" only masks the cause
+// from client debug logs. History replay keeps its guided-recovery message.
 func openAITranslationError(err error) *http.Response {
 	var replay translate.HistoryReplayError
 	if errors.As(err, &replay) {
 		return openAIErrorMessage(400, replay.Error())
 	}
-	return openAIError(400)
+	return openAIErrorMessage(400, err.Error())
 }
 func openAIError(status int) *http.Response {
 	return openAIErrorMessage(status, http.StatusText(status))

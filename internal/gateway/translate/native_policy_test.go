@@ -53,7 +53,10 @@ func TestNativePolicyObservedClaudeRequest(t *testing.T) {
 }
 
 func TestNativePolicyInvalidAndReceiptGate(t *testing.T) {
-	for _, extra := range []string{`,"thinking":null`, `,"thinking":{"type":"disabled"}`, `,"thinking":{"type":"enabled","budget_tokens":10}`, `,"thinking":{"type":"adaptive","unknown":true}`, `,"thinking":{"type":"adaptive","display":"summarized"}`, `,"thinking":{"type":"adaptive","display":null}`, `,"thinking":{"type":"adaptive"}`, `,"output_config":null`, `,"output_config":{"effort":"low"}`, `,"output_config":{"effort":"high","effort":"high"}`, `,"output_config":{"format":{"type":"json_schema","schema":{}}}`, `,"context_management":{"edits":[{"type":"clear_thinking_20251015","keep":"all"}]}`, `,"metadata":{"user_id":"{\"session_id\":\"synthetic\"}"}`} {
+	// Card t695 D3: low effort and non-title json_schema formats are now valid
+	// GPT policy (upstream-verified); unknown efforts and non-object schemas
+	// still fail closed.
+	for _, extra := range []string{`,"thinking":null`, `,"thinking":{"type":"disabled"}`, `,"thinking":{"type":"enabled","budget_tokens":10}`, `,"thinking":{"type":"adaptive","unknown":true}`, `,"thinking":{"type":"adaptive","display":null}`, `,"thinking":{"type":"adaptive"}`, `,"output_config":null`, `,"output_config":{"effort":"ultra"}`, `,"output_config":{"effort":"high","effort":"high"}`, `,"output_config":{"format":{"type":"json_schema"}}`, `,"output_config":{"format":{"type":"json_schema","schema":1}}`, `,"context_management":{"edits":[{"type":"clear_thinking_20251015","keep":"all"}]}`, `,"metadata":{"user_id":"{\"session_id\":\"synthetic\"}"}`} {
 		if raw, _, e := Request("gpt-5.6-sol", policyInput(extra), Limits{PolicyProfile: PolicyGPTNative}); e == nil || raw != nil {
 			t.Fatalf("accepted %s", extra)
 		}
@@ -173,5 +176,78 @@ func TestNativePolicyObservedMediumEffort(t *testing.T) {
 				t.Fatal("medium not preserved")
 			}
 		}
+	}
+}
+
+// Card t695 D3: the upstream-verified effort allowlist covers every value
+// Claude Code can emit; astra+max maps to the nearest accepted tier, xhigh.
+func TestNativePolicyGPTEffortAllowlistAndMapping(t *testing.T) {
+	for _, model := range []string{"gpt-6-astra", "gpt-5.6-sol", "gpt-5.6-terra", "gpt-5.6-luna"} {
+		for _, effort := range []string{"low", "medium", "high", "xhigh", "max"} {
+			out, _, err := Request(model, policyInput(`,"output_config":{"effort":"`+effort+`"}`), Limits{PolicyProfile: PolicyGPTNative})
+			if err != nil {
+				t.Fatalf("%s %s: %v", model, effort, err)
+			}
+			want := effort
+			if model == "gpt-6-astra" && effort == "max" {
+				want = "xhigh"
+			}
+			if decode(t, out)["reasoning"].(map[string]any)["effort"] != want {
+				t.Fatalf("%s %s: wire effort is not %s", model, effort, want)
+			}
+		}
+	}
+	if _, _, err := Request("gpt-5.6-sol", policyInput(`,"output_config":{"effort":"ultra"}`), Limits{PolicyProfile: PolicyGPTNative}); err == nil {
+		t.Fatal("unknown effort accepted")
+	}
+	if _, err := ValidateNativePolicy(policyInput(`,"output_config":{"effort":"low"}`), PolicyAnthropicNative); err == nil {
+		t.Fatal("anthropic effort allowlist changed")
+	}
+}
+
+// Card t695 D3: adaptive thinking is valid with every validated GPT effort,
+// and summarized display maps to the auto reasoning summary.
+func TestNativePolicyGPTAdaptiveEffortCouplingAndDisplayMapping(t *testing.T) {
+	out, _, err := Request("gpt-5.6-luna", policyInput(`,"output_config":{"effort":"low"},"thinking":{"type":"adaptive","display":"summarized"}`), Limits{PolicyProfile: PolicyGPTNative})
+	if err != nil {
+		t.Fatal(err)
+	}
+	reasoning := decode(t, out)["reasoning"].(map[string]any)
+	if reasoning["effort"] != "low" || reasoning["summary"] != "auto" {
+		t.Fatal(reasoning)
+	}
+	out, _, err = Request("gpt-5.6-luna", policyInput(`,"output_config":{"effort":"low"},"thinking":{"type":"adaptive","display":"omitted"}`), Limits{PolicyProfile: PolicyGPTNative})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, ok := decode(t, out)["reasoning"].(map[string]any)["summary"]; ok {
+		t.Fatal("omitted display leaked a summary")
+	}
+	if _, _, err = Request("gpt-5.6-luna", policyInput(`,"thinking":{"type":"adaptive"}`), Limits{PolicyProfile: PolicyGPTNative}); err == nil {
+		t.Fatal("adaptive accepted without a validated effort")
+	}
+}
+
+// Card t695 D3: non-title json_schema formats pass through to the wire for
+// GPT (upstream-verified); the title response contract stays tied to the
+// exact title-only schema, and Anthropic keeps the exact-schema rule.
+func TestNativePolicyGPTFormatPassthrough(t *testing.T) {
+	alt := `{"type":"object","properties":{"answer":{"type":"string"}},"required":["answer"],"additionalProperties":false}`
+	out, c, err := Request("gpt-5.6-sol", policyInput(`,"output_config":{"format":{"type":"json_schema","schema":`+alt+`}}`), Limits{PolicyProfile: PolicyGPTNative})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if c.title {
+		t.Fatal("non-title schema claimed the title response contract")
+	}
+	f := decode(t, out)["text"].(map[string]any)["format"].(map[string]any)
+	if f["name"] != "moai_native_output" || f["strict"] != true {
+		t.Fatal(f)
+	}
+	if f["schema"].(map[string]any)["required"].([]any)[0] != "answer" {
+		t.Fatal(f)
+	}
+	if _, err := ValidateNativePolicy(policyInput(`,"output_config":{"format":{"type":"json_schema","schema":`+alt+`}}`), PolicyAnthropicNative); err == nil {
+		t.Fatal("anthropic format rule changed")
 	}
 }

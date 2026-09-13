@@ -107,7 +107,7 @@ func RequestContext(ctx context.Context, model string, body []byte, limits Limit
 				return nil, nil, errors.New("native receipt authorization required")
 			}
 		}
-		policy.applyGPT(out, root)
+		policy.applyGPT(model, out, root)
 	}
 	if v, ok := root["stream"]; ok {
 		b, yes := v.(bool)

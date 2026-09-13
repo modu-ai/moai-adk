@@ -21,12 +21,35 @@ type NativePolicy struct {
 	High, Title, KeepAll bool
 	// Effort is the explicitly validated GPT effort; an absent effort stays absent.
 	Effort string
-	// Display records the validated native thinking presentation. GPT's
-	// Responses projection currently supports only the omitted form, which is
-	// intentionally left out of the wire request because reasoning summaries
-	// are not part of this adapter's supported response subset.
+	// Display records the validated native thinking presentation. The GPT
+	// Responses projection maps omitted to no reasoning summary and summarized
+	// to the auto reasoning summary; other values fail closed.
 	Display string
 	UserID  string
+}
+
+// gptEffortAllowlist is the upstream-verified effort set for every catalog GPT
+// model (card t695 D2 real-request sweep, 2026-09-13). The subscription
+// upstream accepted each value on gpt-6-astra, gpt-5.6-sol, gpt-5.6-terra and
+// gpt-5.6-luna, with one per-model exception recorded by maxEffortRejected.
+// The Anthropic profile keeps its previously validated {high} subset; the D2
+// evidence was collected against the GPT subscription upstream only.
+func gptEffortAllowlist(profile PolicyProfile, value string) bool {
+	if profile != PolicyGPTNative {
+		return value == "high"
+	}
+	switch value {
+	case "low", "medium", "high", "xhigh", "max":
+		return true
+	}
+	return false
+}
+
+// maxEffortRejected reports the one upstream exception found by the D2 sweep:
+// gpt-6-astra rejects reasoning.effort=max consistently (4/4 non-200) while
+// accepting xhigh. The nearest accepted tier, xhigh, is the fixed mapping.
+func maxEffortRejected(model string) bool {
+	return model == "gpt-6-astra"
 }
 
 // ValidateNativePolicy validates only policy fields of a strict JSON request.
@@ -48,22 +71,35 @@ func nativePolicy(root map[string]any, profile PolicyProfile) (p NativePolicy, e
 			return p, errors.New("invalid output_config")
 		}
 		if effort, ok := m["effort"]; ok {
-			if effort != "high" && !(profile == PolicyGPTNative && effort == "medium") {
+			value, valid := effort.(string)
+			if !valid || !gptEffortAllowlist(profile, value) {
 				return p, errors.New("unsupported effort")
 			}
-			p.High = effort == "high"
-			p.Effort = effort.(string)
+			p.High = value == "high"
+			p.Effort = value
 		}
 		if v, ok := m["format"]; ok {
+			// GPT: any json_schema format is forwarded; the subscription upstream
+			// validates the schema itself (card t695 D2). Response-side title
+			// validation stays tied to the exact title-only schema, where the
+			// output contract is verified. Anthropic keeps the exact-schema rule:
+			// its native body is forwarded verbatim without D2 evidence.
 			f, ok := v.(map[string]any)
 			if !ok || len(f) != 2 || f["type"] != "json_schema" || keys(f, "type", "schema") != nil {
 				return p, errors.New("invalid output format")
 			}
-			schema, _ := objectJSON([]byte(`{"type":"object","properties":{"title":{"type":"string"}},"required":["title"],"additionalProperties":false}`))
-			if !reflect.DeepEqual(f["schema"], schema) {
-				return p, errors.New("unsupported output schema")
+			if _, ok := f["schema"].(map[string]any); !ok {
+				return p, errors.New("invalid output format")
 			}
-			p.Title = true
+			titleSchema, _ := objectJSON([]byte(`{"type":"object","properties":{"title":{"type":"string"}},"required":["title"],"additionalProperties":false}`))
+			if profile != PolicyGPTNative {
+				if !reflect.DeepEqual(f["schema"], titleSchema) {
+					return p, errors.New("unsupported output schema")
+				}
+				p.Title = true
+			} else if reflect.DeepEqual(f["schema"], titleSchema) {
+				p.Title = true
+			}
 		}
 	}
 	if v, ok := root["thinking"]; ok {
@@ -83,14 +119,17 @@ func nativePolicy(root map[string]any, profile PolicyProfile) (p NativePolicy, e
 			if typ == "disabled" {
 				return p, errors.New("thinking display conflicts with disabled policy")
 			}
-			if profile == PolicyGPTNative && value != "omitted" {
-				return p, errors.New("unverified thinking display mapping")
-			}
 			p.Display = value
 		}
 		switch typ {
 		case "adaptive":
-			if !p.High && !(profile == PolicyGPTNative && p.Effort == "medium") {
+			if profile == PolicyGPTNative {
+				// Adaptive reasoning is upstream-verified with every allowlisted
+				// effort (card t695 D2); it only requires a validated one.
+				if p.Effort == "" {
+					return p, errors.New("adaptive requires a validated effort")
+				}
+			} else if !p.High {
 				return p, errors.New("adaptive requires validated high profile")
 			}
 		case "disabled":
@@ -134,13 +173,25 @@ func nativePolicy(root map[string]any, profile PolicyProfile) (p NativePolicy, e
 	}
 	return p, nil
 }
-func (p NativePolicy) applyGPT(out map[string]any, root map[string]any) {
+func (p NativePolicy) applyGPT(model string, out map[string]any, root map[string]any) {
 	if p.Effort != "" {
-		out["reasoning"] = map[string]any{"effort": p.Effort}
+		effort := p.Effort
+		if maxEffortRejected(model) && effort == "max" {
+			effort = "xhigh"
+		}
+		reasoning := map[string]any{"effort": effort}
+		if p.Display == "summarized" {
+			reasoning["summary"] = "auto"
+		}
+		out["reasoning"] = reasoning
 	}
-	if p.Title {
-		schema := root["output_config"].(map[string]any)["format"].(map[string]any)["schema"]
-		out["text"] = map[string]any{"format": map[string]any{"type": "json_schema", "name": "moai_native_output", "strict": true, "schema": schema}}
+	if v, ok := root["output_config"]; ok {
+		if m, ok := v.(map[string]any); ok {
+			if f, ok := m["format"].(map[string]any); ok {
+				schema, _ := f["schema"].(map[string]any)
+				out["text"] = map[string]any{"format": map[string]any{"type": "json_schema", "name": "moai_native_output", "strict": true, "schema": schema}}
+			}
+		}
 	}
 }
 func validateTitle(blocks []any, stop string) error {
