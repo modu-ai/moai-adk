@@ -38,7 +38,9 @@ func TestReasoningRoundTripUsesFinalEncryptedItem(t *testing.T) {
 		t.Fatal(err)
 	}
 	var response map[string]any
-	json.Unmarshal(out, &response)
+	if err := json.Unmarshal(out, &response); err != nil {
+		t.Fatal(err)
+	}
 	if len(h.published) == 0 {
 		t.Fatal("completed prefix not published")
 	}
@@ -48,7 +50,9 @@ func TestReasoningRoundTripUsesFinalEncryptedItem(t *testing.T) {
 		t.Fatal(err)
 	}
 	var upstream map[string]any
-	json.Unmarshal(translated, &upstream)
+	if err := json.Unmarshal(translated, &upstream); err != nil {
+		t.Fatal(err)
+	}
 	input := upstream["input"].([]any)
 	if input[1].(map[string]any)["encrypted_content"] != "final_ciphertext" {
 		t.Fatalf("lost final reasoning: %s", translated)
@@ -89,7 +93,9 @@ func TestReasoningToolRoundTripAndPublicationFailure(t *testing.T) {
 	blocks := response["content"].([]any)
 	tool := blocks[1].(map[string]any)
 	var root map[string]any
-	json.Unmarshal(body, &root)
+	if err := json.Unmarshal(body, &root); err != nil {
+		t.Fatal(err)
+	}
 	root["messages"] = []any{map[string]any{"role": "user", "content": "use tool"}, map[string]any{"role": "assistant", "content": blocks}, map[string]any{"role": "user", "content": []any{map[string]any{"type": "tool_result", "tool_use_id": tool["id"], "content": "file data"}}}}
 	translated, _, err := Request("gpt-5.6-sol", j(root), Limits{History: h})
 	if err != nil {

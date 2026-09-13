@@ -231,7 +231,7 @@ func (a *OpenAIAdapter) Send(ctx context.Context, q RoutedRequest) (*http.Respon
 		}
 		return &http.Response{StatusCode: 200, Header: http.Header{"Content-Type": {"application/json"}}, Body: io.NopCloser(bytes.NewReader(converted)), ContentLength: int64(len(converted))}, nil
 	}
-	defer upstream.Body.Close()
+	defer func() { _ = upstream.Body.Close() }() // body fully read before this point; no write-back to lose
 	if media != "application/json" {
 		return openAIError(502), nil
 	}
@@ -360,7 +360,7 @@ func convertedOpenAIStream(ctx context.Context, upstream io.ReadCloser, c *trans
 func (b *openAIStreamBody) Read(p []byte) (int, error) {
 	n, e := b.reader.Read(p)
 	if e != nil {
-		_ = b.Close()
+		_ = b.Close() // nativeBody.Close always returns nil
 	}
 	return n, e
 }

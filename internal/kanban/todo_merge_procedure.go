@@ -279,6 +279,10 @@ func VerifyMergedRecord(home, project, merged *BacklogRecord, report *MergeRepor
 	// originated from the project store's ARCHIVED population. A duplicate row
 	// naming a project LIVE card means the discriminator failed — a
 	// live-work absorption, which is a zero-loss violation.
+	duplicated := map[string]bool{}
+	for _, d := range report.Duplicates {
+		duplicated[d.ID] = true
+	}
 	projectArchivedIDs := map[string]bool{}
 	for _, e := range project.Archived {
 		projectArchivedIDs[e.Item.ID] = true
@@ -379,7 +383,17 @@ func VerifyMergedRecord(home, project, merged *BacklogRecord, report *MergeRepor
 			want.RelatedID = rewriteCardTokens(f.RelatedID, mapping)
 			want.Note = rewriteCardTokens(f.Note, mapping)
 			if !mergedHasFinding(want) {
-				v.StaleReferences = append(v.StaleReferences, fmt.Sprintf("project archived finding %s->%s not rewritten", f.SubjectID, f.RelatedID))
+				// REQ-TQM-006 v2: a duplicate-origin entry intentionally does
+				// not carry into the merged record — the home store's same-id
+				// copy is the surviving record. An identical home-original
+				// finding keeps the reference valid (home keeps both
+				// referenced ids), satisfying the rewrite the same way an
+				// identical home card text satisfies the text check above. A
+				// duplicate host whose home copy lacks the finding is still a
+				// loss and stays flagged (t657 post-verify FAIL root cause).
+				if !duplicated[e.Item.ID] || !mergedHasFinding(f) {
+					v.StaleReferences = append(v.StaleReferences, fmt.Sprintf("project archived finding %s->%s not rewritten", f.SubjectID, f.RelatedID))
+				}
 			}
 		}
 	}

@@ -22,11 +22,15 @@ func TestGatewayUIStateSeedsEveryFreshFamilyWithoutSecrets(t *testing.T) {
 		p := filepath.Join(target, ".claude.json")
 		b, _ := os.ReadFile(p)
 		var d map[string]any
-		json.Unmarshal(b, &d)
+		if err := json.Unmarshal(b, &d); err != nil {
+			t.Fatal(err)
+		}
 		if len(d) != 3 || d["theme"] != "dark-ansi" || d["hasCompletedOnboarding"] != true {
 			t.Fatal(string(b))
 		}
-		os.WriteFile(p, []byte(`{"theme":"light"}`), 0600)
+		if err := os.WriteFile(p, []byte(`{"theme":"light"}`), 0600); err != nil {
+			t.Fatal(err)
+		}
 		if err := seedGatewayUIState(target, gatewayLaunchRequest{}); err != nil {
 			t.Fatal(err)
 		}
@@ -51,16 +55,24 @@ func TestGatewayUIStateRetainsOnlySelectedWorkspaceTrust(t *testing.T) {
 	home := t.TempDir()
 	t.Setenv("HOME", home)
 	selected := t.TempDir()
-	os.WriteFile(filepath.Join(home, ".claude.json"), []byte(`{"projects":{"/workspace/new":{"hasTrustDialogAccepted":true}}}`), 0600)
-	os.WriteFile(filepath.Join(selected, ".claude.json"), []byte(`{"projects":{"/workspace/approved":{"hasTrustDialogAccepted":true,"allowedTools":["foreign"]},"/workspace/rejected":{"hasTrustDialogAccepted":false},"/other":{"hasTrustDialogAccepted":true}}}`), 0600)
+	if err := os.WriteFile(filepath.Join(home, ".claude.json"), []byte(`{"projects":{"/workspace/new":{"hasTrustDialogAccepted":true}}}`), 0600); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(selected, ".claude.json"), []byte(`{"projects":{"/workspace/approved":{"hasTrustDialogAccepted":true,"allowedTools":["foreign"]},"/workspace/rejected":{"hasTrustDialogAccepted":false},"/other":{"hasTrustDialogAccepted":true}}}`), 0600); err != nil {
+		t.Fatal(err)
+	}
 	for _, cwd := range []string{"/workspace/approved", "/workspace/rejected", "/workspace/new"} {
 		target := t.TempDir()
 		if err := seedGatewayUIState(target, gatewayLaunchRequest{CWD: cwd, OriginalConfig: selected, OriginalConfigSet: true}); err != nil {
 			t.Fatal(err)
 		}
-		b, _ := os.ReadFile(filepath.Join(target, ".claude.json"))
 		var state map[string]any
-		json.Unmarshal(b, &state)
+		// An absent file is a valid fresh state (nil map); malformed JSON is not.
+		if b, readErr := os.ReadFile(filepath.Join(target, ".claude.json")); readErr == nil {
+			if err := json.Unmarshal(b, &state); err != nil {
+				t.Fatal(err)
+			}
+		}
 		if cwd == "/workspace/new" {
 			if state["projects"] != nil {
 				t.Fatal("borrowed global trust")
@@ -81,11 +93,19 @@ func TestGatewayUIStateRetainsOnlySelectedWorkspaceTrust(t *testing.T) {
 func TestGatewayBypassAcceptanceFollowsSelectedConfigOnly(t *testing.T) {
 	home := t.TempDir()
 	t.Setenv("HOME", home)
-	os.MkdirAll(filepath.Join(home, ".claude"), 0700)
-	os.WriteFile(filepath.Join(home, ".claude", "settings.json"), []byte(`{"skipDangerousModePermissionPrompt":true,"env":{"SECRET":"excluded"}}`), 0600)
+	if err := os.MkdirAll(filepath.Join(home, ".claude"), 0700); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(home, ".claude", "settings.json"), []byte(`{"skipDangerousModePermissionPrompt":true,"env":{"SECRET":"excluded"}}`), 0600); err != nil {
+		t.Fatal(err)
+	}
 	accepted, declined := t.TempDir(), t.TempDir()
-	os.WriteFile(filepath.Join(accepted, "settings.json"), []byte(`{"skipDangerousModePermissionPrompt":true}`), 0600)
-	os.WriteFile(filepath.Join(declined, "settings.json"), []byte(`{"theme":"light"}`), 0600)
+	if err := os.WriteFile(filepath.Join(accepted, "settings.json"), []byte(`{"skipDangerousModePermissionPrompt":true}`), 0600); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(declined, "settings.json"), []byte(`{"theme":"light"}`), 0600); err != nil {
+		t.Fatal(err)
+	}
 	cases := []struct {
 		name string
 		in   gatewayLaunchRequest
@@ -111,7 +131,9 @@ func TestGatewayBypassAcceptanceFollowsSelectedConfigOnly(t *testing.T) {
 		if string(b) != `{"skipDangerousModePermissionPrompt":true}` {
 			t.Fatalf("%s: %s", tc.name, b)
 		}
-		os.WriteFile(p, []byte(`{"theme":"light"}`), 0600)
+		if err := os.WriteFile(p, []byte(`{"theme":"light"}`), 0600); err != nil {
+			t.Fatal(err)
+		}
 		if err := seedGatewayBypassAcceptance(target, tc.in); err != nil {
 			t.Fatal(err)
 		}

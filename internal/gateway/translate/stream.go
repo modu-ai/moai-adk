@@ -83,7 +83,7 @@ func (c *ResponseContext) streamResult(ctx context.Context, upstream io.ReadClos
 	if upstream == nil {
 		return errors.New("upstream missing")
 	}
-	defer upstream.Close()
+	defer func() { _ = upstream.Close() }() // the context hook below already closes; a second close error carries no signal
 	stop := context.AfterFunc(ctx, func() { _ = upstream.Close() })
 	defer stop()
 	if c == nil || w == nil {

@@ -89,7 +89,7 @@ func TestCodexBrokerLogoutRPCAndReaping(t *testing.T) {
 			}
 			p, e := os.FindProcess(pid)
 			if e == nil {
-				defer p.Release()
+				defer func() { _ = p.Release() }() // os.Process.Release always returns nil
 				if p.Signal(syscall.Signal(0)) == nil {
 					t.Fatal("broker process still alive")
 				}

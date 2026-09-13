@@ -20,11 +20,11 @@ func profileLease(path string) (*os.File, error) {
 	file := os.NewFile(uintptr(fd), path)
 	info, err := file.Stat()
 	if err != nil || !info.Mode().IsRegular() || !privateOwner(path, info) {
-		file.Close()
+		_ = file.Close() // lease rejected; the descriptor is being discarded
 		return nil, os.ErrPermission
 	}
 	if err = syscall.Flock(fd, syscall.LOCK_EX|syscall.LOCK_NB); err != nil {
-		file.Close()
+		_ = file.Close() // lock unavailable; the descriptor is being discarded
 		return nil, err
 	}
 	return file, nil

@@ -23,7 +23,11 @@ func TestReceiptLockHelper(t *testing.T) {
 	if e != nil {
 		t.Fatal(e)
 	}
-	defer f.Close()
+	defer func() {
+		if err := f.Close(); err != nil {
+			t.Error(err)
+		}
+	}()
 	if e = lock(context.Background(), f); e != nil {
 		t.Fatal(e)
 	}
@@ -38,7 +42,11 @@ func TestProcessLockCancellationAndCrashRelease(t *testing.T) {
 	if e != nil {
 		t.Fatal(e)
 	}
-	defer s.Close()
+	defer func() {
+		if err := s.Close(); err != nil {
+			t.Error(err)
+		}
+	}()
 	childCtx, cancel := context.WithTimeout(ctx, 10*time.Second)
 	defer cancel()
 	cmd := exec.CommandContext(childCtx, os.Args[0], "-test.run=^TestReceiptLockHelper$")
@@ -126,7 +134,11 @@ func TestStoreStateFailureBoundaries(t *testing.T) {
 	if e != nil {
 		t.Fatal(e)
 	}
-	defer s.Close()
+	defer func() {
+		if err := s.Close(); err != nil {
+			t.Error(err)
+		}
+	}()
 	target := filepath.Join(privateDir(t), "hardlink")
 	if e = os.Link(filepath.Join(dir, "manifest.json"), target); e != nil {
 		t.Fatal(e)
@@ -148,7 +160,11 @@ func TestFailedPublicationPreservesPreviousSnapshot(t *testing.T) {
 	if e != nil {
 		t.Fatal(e)
 	}
-	defer s.Close()
+	defer func() {
+		if err := s.Close(); err != nil {
+			t.Error(err)
+		}
+	}()
 	// A privileged runner bypasses directory permissions; exercise a closed
 	// filesystem handle instead, still requiring the previous disk state intact.
 	if os.Geteuid() == 0 {

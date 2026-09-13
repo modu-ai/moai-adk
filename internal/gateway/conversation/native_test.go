@@ -17,7 +17,9 @@ func TestNativeCompletedTranscriptIsDiscoveredOnExactResume(t *testing.T) {
 		t.Fatal(err)
 	}
 	path := filepath.Join(d.ConfigDir, "projects", "encoded-project", d.UUID+".jsonl")
-	os.MkdirAll(filepath.Dir(path), 0700)
+	if err := os.MkdirAll(filepath.Dir(path), 0700); err != nil {
+		t.Fatal(err)
+	}
 	raw := fmt.Sprintf("{\"type\":\"last-prompt\",\"sessionId\":%q}\n{\"type\":\"file-history-snapshot\",\"messageId\":\"u1\",\"snapshot\":{}}\n{\"type\":\"user\",\"sessionId\":%q,\"cwd\":%q,\"message\":{\"role\":\"user\",\"content\":\"hello\"}}\n{\"type\":\"assistant\",\"sessionId\":%q,\"cwd\":%q,\"message\":{\"role\":\"assistant\",\"model\":\"gpt-6-astra\",\"stop_reason\":\"end_turn\",\"content\":[{\"type\":\"text\",\"text\":\"answer\"}]}}\n", d.UUID, d.UUID, cwd, d.UUID, cwd)
 	if err = os.WriteFile(path, []byte(raw), 0600); err != nil {
 		t.Fatal(err)
@@ -59,13 +61,13 @@ func TestNativeIncompleteAndForeignRowsNeverRegister(t *testing.T) {
 				t.Fatal(err)
 			}
 			path := filepath.Join(d.ConfigDir, "projects", "encoded", d.UUID+".jsonl")
-			os.MkdirAll(filepath.Dir(path), 0700)
+			if err := os.MkdirAll(filepath.Dir(path), 0700); err != nil {
+				t.Fatal(err)
+			}
 			sid := d.UUID
 			stop := "end_turn"
-			failure := false
-			if mutation == "error" {
-				failure = true
-			}
+			failure := mutation == "error"
+
 			if mutation == "foreign" {
 				sid = "foreign"
 			}
@@ -76,7 +78,9 @@ func TestNativeIncompleteAndForeignRowsNeverRegister(t *testing.T) {
 			if mutation == "later-user" {
 				raw += fmt.Sprintf("{\"type\":\"user\",\"sessionId\":%q,\"cwd\":%q}\n", sid, cwd)
 			}
-			os.WriteFile(path, []byte(raw), 0600)
+			if err := os.WriteFile(path, []byte(raw), 0600); err != nil {
+				t.Fatal(err)
+			}
 			if _, err = m.Resume(context.Background(), d.UUID); err == nil {
 				t.Fatal("unverified native completion resumed")
 			}
@@ -101,12 +105,16 @@ func TestNativeTranscriptRejectsMalformedIdentityAndPaths(t *testing.T) {
 			t.Error("malformed native transcript accepted")
 		}
 	}
-	os.Remove(path)
+	if err := os.Remove(path); err != nil {
+		t.Fatal(err)
+	}
 	if _, err = transcriptModel(r); err == nil {
 		t.Fatal("missing transcript accepted")
 	}
 	external := filepath.Join(m.root, "outside.jsonl")
-	os.WriteFile(external, []byte(`{}`), 0600)
+	if err := os.WriteFile(external, []byte(`{}`), 0600); err != nil {
+		t.Fatal(err)
+	}
 	if err = os.Symlink(external, path); err != nil {
 		t.Fatal(err)
 	}
@@ -129,11 +137,19 @@ func TestNativeDiscoveryRejectsDuplicateAndSymlinkCandidates(t *testing.T) {
 			}
 			a := filepath.Join(d.ConfigDir, "projects", "a")
 			b := filepath.Join(d.ConfigDir, "projects", "b")
-			os.MkdirAll(a, 0700)
-			os.MkdirAll(b, 0700)
-			os.WriteFile(filepath.Join(a, d.UUID+".jsonl"), []byte(`{}`), 0600)
+			if err := os.MkdirAll(a, 0700); err != nil {
+				t.Fatal(err)
+			}
+			if err := os.MkdirAll(b, 0700); err != nil {
+				t.Fatal(err)
+			}
+			if err := os.WriteFile(filepath.Join(a, d.UUID+".jsonl"), []byte(`{}`), 0600); err != nil {
+				t.Fatal(err)
+			}
 			if kind == "duplicate" {
-				os.WriteFile(filepath.Join(b, d.UUID+".jsonl"), []byte(`{}`), 0600)
+				if err := os.WriteFile(filepath.Join(b, d.UUID+".jsonl"), []byte(`{}`), 0600); err != nil {
+					t.Fatal(err)
+				}
 			} else {
 				if err = os.Symlink(a, filepath.Join(b, "link")); err != nil {
 					t.Fatal(err)

@@ -97,7 +97,11 @@ func TestProductionGatewayFactoryRejectsUnauthenticatedRequest(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer h.(io.Closer).Close()
+	defer func() {
+		if err := h.(io.Closer).Close(); err != nil {
+			t.Errorf("close gateway handler: %v", err)
+		}
+	}()
 	req := httptest.NewRequest("POST", "/v1/messages", strings.NewReader(`{"model":"gpt-6-astra","max_tokens":2,"messages":[{"role":"user","content":"hello"}]}`))
 	req.Header.Set("Authorization", "Bearer private-session")
 	res := httptest.NewRecorder()
