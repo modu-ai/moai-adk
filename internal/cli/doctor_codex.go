@@ -31,6 +31,7 @@ import (
 	"github.com/modu-ai/moai-adk/internal/cli/uikit"
 	"github.com/modu-ai/moai-adk/internal/codexadapter"
 	"github.com/modu-ai/moai-adk/internal/codexwiring"
+	"github.com/modu-ai/moai-adk/internal/template"
 )
 
 // codexWiringLookPath is the PATH-resolution seam (stubbed in tests so the
@@ -78,18 +79,6 @@ const halfWiredAbsentMessage = halfWiredSummary + " — codex not on PATH"
 // short-circuit returns before the deploy step that owns mirror creation.
 // This exact invocation restored it (root-cause.md Claim 2).
 const mirrorRedeployAdvice = "run moai update --templates-only --force --yes"
-
-// mirrorSkillsRelDir / canonicalSkillsRelDir are the mirror layout.
-//
-// They restate the producer's paths as literals rather than importing them:
-// package template's own mirrorSkillsRelDir and mirrorLinkTarget are
-// unexported, and exporting them is outside this SPEC's scope. The drift risk
-// that follows — the producer moving its layout without this reader noticing —
-// is recorded rather than closed, and is a candidate for its own card.
-var (
-	mirrorSkillsRelDir    = filepath.Join(".agents", "skills")
-	canonicalSkillsRelDir = filepath.Join(".claude", "skills")
-)
 
 // codexHomeConfigDisplay / codexHomeConfigEnvDisplay are how the user-layer
 // config is NAMED in a finding summary. The symbolic form keeps the summary
@@ -418,7 +407,7 @@ type skillMirrorState struct {
 func inspectSkillMirror(root string) skillMirrorState {
 	var st skillMirrorState
 
-	mirrorDir := filepath.Join(root, mirrorSkillsRelDir)
+	mirrorDir := filepath.Join(root, template.MirrorSkillsRelDir)
 	entries, err := os.ReadDir(mirrorDir)
 	switch {
 	case err == nil:
@@ -467,7 +456,7 @@ func inspectSkillMirror(root string) skillMirrorState {
 		}
 	}
 
-	canonical, cerr := os.ReadDir(filepath.Join(root, canonicalSkillsRelDir))
+	canonical, cerr := os.ReadDir(filepath.Join(root, template.CanonicalSkillsRelDir))
 	if cerr != nil {
 		if !errors.Is(cerr, fs.ErrNotExist) {
 			st.indeterminate++
@@ -507,14 +496,14 @@ func codexMirrorObservations(st skillMirrorState) ([]codexFinding, []string) {
 	case st.dirIndeterminate:
 		detail = append(detail, fmt.Sprintf(
 			"%s could not be read (%v) — mirror state not checked, and NOT reported as absent",
-			mirrorSkillsRelDir, st.dirReadErr))
+			template.MirrorSkillsRelDir, st.dirReadErr))
 		return problems, detail
 	case !st.dirPresent:
 		problems = append(problems, codexFinding{
-			summary: fmt.Sprintf("%s mirror absent — %s", mirrorSkillsRelDir, mirrorRedeployAdvice),
+			summary: fmt.Sprintf("%s mirror absent — %s", template.MirrorSkillsRelDir, mirrorRedeployAdvice),
 			detail: fmt.Sprintf(
 				"%s is absent, so Codex CLI — which does not scan %s — sees no MoAI skills in this project; the mirror is created at deploy time, and `moai update` now repairs it in projects whose recorded template_version is at or above the release that introduced it; where it is still absent after an update, %s",
-				mirrorSkillsRelDir, canonicalSkillsRelDir, mirrorRedeployAdvice),
+				template.MirrorSkillsRelDir, template.CanonicalSkillsRelDir, mirrorRedeployAdvice),
 		})
 		return problems, detail
 	}
@@ -522,27 +511,27 @@ func codexMirrorObservations(st skillMirrorState) ([]codexFinding, []string) {
 	if n := len(st.dangling); n > 0 {
 		problems = append(problems, codexFinding{
 			summary: fmt.Sprintf("%s: %d dangling mirror %s — %s",
-				mirrorSkillsRelDir, n, pluralCodexEntries(n), mirrorRedeployAdvice),
+				template.MirrorSkillsRelDir, n, pluralCodexEntries(n), mirrorRedeployAdvice),
 			detail: fmt.Sprintf(
 				"%s: %d %s are symlinks whose %s target no longer exists (%s) — %s",
-				mirrorSkillsRelDir, n, pluralCodexEntries(n), canonicalSkillsRelDir,
+				template.MirrorSkillsRelDir, n, pluralCodexEntries(n), template.CanonicalSkillsRelDir,
 				strings.Join(st.dangling, ", "), mirrorRedeployAdvice),
 		})
 	}
 	if st.copyMode > 0 {
 		detail = append(detail, fmt.Sprintf(
 			"%s: %d %s materialized as a real directory (copy fallback — functional, but a copy does not follow later updates to %s)",
-			mirrorSkillsRelDir, st.copyMode, pluralCodexEntries(st.copyMode), canonicalSkillsRelDir))
+			template.MirrorSkillsRelDir, st.copyMode, pluralCodexEntries(st.copyMode), template.CanonicalSkillsRelDir))
 	}
 	if st.unmirrored > 0 {
 		detail = append(detail, fmt.Sprintf(
 			"%s: %d %s with no %s entry (reported, not a finding: the set a deploy actually mirrored is not observable here)",
-			canonicalSkillsRelDir, st.unmirrored, pluralCodexEntries(st.unmirrored), mirrorSkillsRelDir))
+			template.CanonicalSkillsRelDir, st.unmirrored, pluralCodexEntries(st.unmirrored), template.MirrorSkillsRelDir))
 	}
 	if st.indeterminate > 0 {
 		detail = append(detail, fmt.Sprintf(
 			"%s: %d %s could not be read — not checked, and NOT counted as dangling",
-			mirrorSkillsRelDir, st.indeterminate, pluralCodexEntries(st.indeterminate)))
+			template.MirrorSkillsRelDir, st.indeterminate, pluralCodexEntries(st.indeterminate)))
 	}
 	return problems, detail
 }
