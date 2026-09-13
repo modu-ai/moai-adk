@@ -1,7 +1,7 @@
 ---
 id: SPEC-TODO-QUEUE-HOME-MERGE-001
 title: "Merge the diverged project todo queue into the canonical home SQLite store"
-version: "0.3.0"
+version: "0.4.0"
 created: 2026-09-13
 ---
 
@@ -55,7 +55,7 @@ git symbolic-ref refs/remotes/origin/HEAD
 
 ## §D Constraints
 
-- Destructive steps (M4, M5) NEVER run without: (1) lead-designated window, (2) operator approval recorded via the lead, (3) freshness bracket PASS, (4) the §F0 runtime decision recorded.
+- Destructive steps (M4, M5) NEVER run without: (1) lead-designated window, (2) operator approval recorded via the lead, (3) freshness bracket PASS, (4) the §F0 runtime decision — recorded 2026-09-13, option (b).
 - The merge write is ONE `Mutate` transaction on the home store; a failed transaction leaves the prior store intact (engine guarantee).
 - Backup, verification, mapping table, reconciliation evidence under `.moai/reports/t657/`.
 - 85% coverage on new/changed code; merge-core tests use `t.TempDir()` fixture stores only — tests never touch real queues.
@@ -64,7 +64,13 @@ git symbolic-ref refs/remotes/origin/HEAD
 
 M1-delta: unit tests (discriminator fixtures). M2: restore rehearsal output (already rehearsed; re-run if restore path changed). M3-delta: fresh dry-run report = the new baseline, diffed against §A.1 with reclassification deltas explained row-by-row. M4/M5: evidence per acceptance.md — counts, id sets, hashes, bracket readings; commands + verbatim output in the verdict.
 
-## §F0 Runtime persistence — decision support (OPERATOR DECIDES; [NEEDS CLARIFICATION: runtime persistence option (a) vs (b) — operator decides via lead before M4 entry])
+## §F0 Runtime persistence — decision record (RESOLVED 2026-09-13)
+
+> **Decision: option (b) — merge-scope exclusion of runtime persistence.**
+> Decider: the operator. Channel: the lead's question round, 2026-09-13.
+> Falsifier retained: (a) becomes justified only if the operator names a live consumer of project-side runtime history — none is known.
+> Loss ceiling: the project store's HISTORICAL `todo_runtime_runs` / `todo_runtime_assignments` rows (past factory-run audit trail) are not migrated. Active leases heal on their next slot-lease write (the machinery upserts run and assignment rows itself); dead leases have no live consumer.
+> Recovery path: the project-store backup (hash-gated, never deleted) preserves the audit trail permanently; the merge report's runtime projection documents what would have migrated.
 
 **What is at stake**: the project store holds `todo_runtime_runs` + `todo_runtime_assignments` rows (factory/slot-lease history: run registrations, per-card lease owners, reported states). The merge's ONE-`Mutate` home write does not persist them — they are dropped. The merge core already builds the would-be projection (new runs join; assignments join under rewritten card ids, home winning collisions).
 
@@ -78,9 +84,9 @@ M1-delta: unit tests (discriminator fixtures). M2: restore rehearsal output (alr
 - Recovery: the project-store backup (never deleted) preserves the audit trail permanently and readably (SQLite); the merge report's runtime projection documents what WOULD have migrated.
 - Risk: an operator auditing historical factory runs loses the project-side half of the story unless they consult the backup.
 
-**Recommendation: (b).** Reasons: (i) the projection's producer heals live state by construction — what (a) would add over (b) is exclusively dead history; (ii) (a)'s second transaction buys non-atomic complexity on a one-off procedure; (iii) the backup makes (b)'s loss reversible-by-hand forever, which is the reversibility posture this SPEC already commits to. (a) becomes justified only if the operator names a live consumer of project-side runtime history — none is known.
+**Recommendation (presented to the operator): (b).** Reasons: (i) the projection's producer heals live state by construction — what (a) would add over (b) is exclusively dead history; (ii) (a)'s second transaction buys non-atomic complexity on a one-off procedure; (iii) the backup makes (b)'s loss reversible-by-hand forever, which is the reversibility posture this SPEC already commits to.
 
-The operator's choice is recorded per AC-TQM-011.
+**The operator adopted the recommendation: option (b)** — see the decision record atop this section. The choice is recorded per AC-TQM-011.
 
 ## §F Milestones (destructive steps LAST and gated)
 
@@ -95,11 +101,11 @@ The operator's choice is recorded per AC-TQM-011.
 - Re-run the dry-run against the LIVE stores after M1-delta lands. Output = the NEW authoritative baseline: counts, union, high-water, post-discriminator taxonomy, identity-collision count, and the reclassification ledger (which of the 290 duplicates became renumbers). Diffed against §A.1 and recorded; the diff is verdict evidence. This milestone replaces the stale 290/82 figures and is the LAST read before M4.
 
 ### M4 (High, DESTRUCTIVE, GATED) — Execute the merge
-Gate sequence — ALL recorded in the verdict before proceeding: lead-designated window + quiesced lanes → blocker-report approval returned through the lead → §F0 runtime decision recorded → freshness bracket P1+P2 PASS (both bracket readings still).
+Gate sequence — ALL recorded in the verdict before proceeding: lead-designated window + quiesced lanes → blocker-report approval returned through the lead → §F0 runtime decision (satisfied 2026-09-13, option b) → freshness bracket P1+P2 PASS (both bracket readings still).
 Procedure:
 1. Backup (M2) + verify hashes → verdict.
 2. `moai todo landed <id>` evidence recording per M3 reconciliation rows resolving to landed.
-3. Merge: `LoadPure` ×2 → merge core → ONE `Mutate` on home (+ §F0-chosen runtime handling).
+3. Merge: `LoadPure` ×2 → merge core → ONE `Mutate` on home (runtime handling per §F0: option (b) — none; the report's runtime projection is preserved as evidence).
 4. Post-write freshness bracket reading (must equal pre-write).
 5. Verify: post-count = re-derived union; id-set comparison programmatic; zero-loss vs both pre-reads (duplicates restricted to project-archived origins per AC-TQM-010); mapping table committed to `.moai/reports/t657/id-mapping.tsv`.
 6. On ANY verification failure: restore both stores (M2 procedure), re-verify hashes, report failure.

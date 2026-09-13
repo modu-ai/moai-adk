@@ -1,7 +1,7 @@
 ---
 id: SPEC-TODO-QUEUE-HOME-MERGE-001
 title: "Merge the diverged project todo queue into the canonical home SQLite store"
-version: "0.3.0"
+version: "0.4.0"
 status: in-progress
 created: 2026-09-13
 updated: 2026-09-13
@@ -24,6 +24,7 @@ related_specs: [SPEC-WEB-TODO-QUEUE-001, SPEC-TODO-SQLITE-001, SPEC-TODO-LANDING
 | 0.1.0 | 2026-09-13 | Initial draft (card t657, plan phase, manager-spec) |
 | 0.2.0 | 2026-09-13 | Plan-audit delta (D1-D8): AC coverage for REQ-TQM-003/006/018; GEARS grammar fixes (REQ-TQM-007/010/017); high-water formula includes project `last_seq`; `Names` exact-match correction; identity-UUID collision edge case; REQ-count over-budget debt accepted on coordinator authority |
 | 0.3.0 | 2026-09-13 | Re-plan against the measured M3 baseline (operator decision via lead): REQ-TQM-006 rewritten as the explicit duplicate discriminator (archived-population + byte-exact content; live cards default to renumber); §6 baseline replaced with measured store figures (home mtime moving); AC-TQM-010 (live-card discriminator) and AC-TQM-011 (runtime-persistence decision record) added; M4 execution forbidden until re-audit |
+| 0.4.0 | 2026-09-13 | §F0 runtime-persistence decision gate SATISFIED: operator chose option (b) — merge-scope exclusion — via the lead's question round 2026-09-13; decision record (falsifier + loss ceiling + hash-gated backup recovery path) in plan.md §F0; AC-TQM-011 precondition marked satisfied; M4 remains forbidden until re-audit |
 
 ## 1. Background
 

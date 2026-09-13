@@ -1,7 +1,7 @@
 ---
 id: SPEC-TODO-QUEUE-HOME-MERGE-001
 title: "Merge the diverged project todo queue into the canonical home SQLite store"
-version: "0.3.0"
+version: "0.4.0"
 created: 2026-09-13
 ---
 
@@ -69,6 +69,8 @@ Not machine-testable code; each gate is EVIDENCED in the verdict as follows:
 ## AC-TQM-011 — Runtime-persistence decision record
 
 **Given** the two runtime-persistence options of plan.md §F0 — (a) persist `todo_runtime_runs`/`todo_runtime_assignments` to home via a sibling upsert-path write, or (b) exclude runtime persistence from merge scope — **When** the operator decides via the lead, **Then** the verdict records the chosen option and the comparison's decisive factors. **And** where (b) is chosen, the verdict states the explicit loss ceiling: project-store HISTORICAL runtime rows are not migrated; active leases heal on their next slot-lease write (the machinery upserts run and assignment rows itself); the project-store backup remains the permanent recovery path for the audit trail; and the merge report's runtime projection is preserved as evidence. The operator's decision is a precondition for M4 entry.
+
+> **Precondition status: SATISFIED — decision recorded 2026-09-13, option (b) (plan.md §F0 decision record; decider = operator, channel = the lead's question round 2026-09-13).** The Given/When/Then above remains the machine-checkable form: the M4 verdict must still carry the recorded option, the loss ceiling, and the recovery-path statement.
 
 ## §D.1 Severity — AC-TQM-001/002/010 are MUST-PASS (data loss or live-work absorption = card failure); AC-TQM-003..007 and AC-TQM-009 MUST-PASS; AC-TQM-008 and AC-TQM-011 are gates whose absence of evidence blocks M4 entry.
 

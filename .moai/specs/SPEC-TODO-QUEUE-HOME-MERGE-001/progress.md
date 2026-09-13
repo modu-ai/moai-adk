@@ -4,10 +4,10 @@
 
 plan_status: audit-ready
 plan_complete_at: 2026-09-13
-plan_version: 0.3.0 (re-planned against the measured M3 baseline per operator decision via lead; M4 live execution FORBIDDEN until re-audit)
+plan_version: 0.4.0 (0.3.0 re-plan against the measured M3 baseline + §F0 runtime decision resolved; M4 live execution FORBIDDEN until re-audit)
 artifacts: spec.md, plan.md, acceptance.md, progress.md (Tier M, 4 files)
 baseline: worktree .claude/worktrees/t657-queue-merge, branch WT-todo-queue-merge, base origin/develop 5e0f71175
-notes: destructive steps (M4/M5) gated behind lead window + operator approval via lead + freshness bracket; gates are verdict-evidenced preconditions per acceptance.md §AC-TQM-008. v0.3.0 additions: duplicate discriminator (REQ-TQM-006 v2, AC-TQM-010), runtime-persistence decision gate ([NEEDS CLARIFICATION] plan.md §F0, AC-TQM-011), measured baseline supersedes plan-time figures.
+notes: destructive steps (M4/M5) gated behind lead window + operator approval via lead + freshness bracket; gates are verdict-evidenced preconditions per acceptance.md §AC-TQM-008. v0.3.0 additions: duplicate discriminator (REQ-TQM-006 v2, AC-TQM-010), the §F0 decision gate (AC-TQM-011), measured baseline supersedes plan-time figures. v0.4.0: the §F0 decision gate SATISFIED — option (b) merge-scope exclusion, decider = operator, via the lead's question round 2026-09-13; falsifier and loss ceiling recorded in plan.md §F0.
 accepted_debt: 18 REQs vs Tier M ceiling 16 — knowingly over budget, accepted on coordinator authority (dangerous-operation granularity defensible; SPEC NOT split).
 
 ## §E.2 Run-phase Evidence
