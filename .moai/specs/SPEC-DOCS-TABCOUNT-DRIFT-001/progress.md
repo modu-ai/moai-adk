@@ -366,6 +366,107 @@ M1 baseline(리터럴 18 / 스윕 20 · 낱말 6) 대비 리터럴 18→14, 스�
 - 세 층 모두 아직 붉다. B·C군(M3)과 D군(M4)이 남아 있으므로 예정된 상태다.
 - `names` 층은 A군과 무관하다(cli-reference 4본은 이름 목록을 담지 않는다) — M2 는 그 층에 어떤 영향도 주지 않았고, 실제로 출력이 변하지 않았다.
 
+### M3 — B군 8자리 + C군 8자리: 남은 수 제거
+
+측정 트리: `.claude/worktrees/t530`, 브랜치 `WT-web-tab-docs`, M3 직전 HEAD `b34b7b4e6`(M2 커밋).
+
+#### 처분 — B군 8자리 (`advanced/moai-web-console.md`, 4로케일 × 2자리)
+
+| 자리 | 로케일 | 이전 | 이후 |
+|---|---|---|---|
+| B1 | ko `:25` | `… 프로젝트 섹션 편집 (14개 탭)` | `… 프로젝트 섹션 편집` |
+| B3 | en `:25` | `Profile preferences and project sections (14 tabs)` | `Profile preferences and project sections` |
+| B5 | ja `:25` | `… プロジェクトセクションの編集（14 タブ）` | `… プロジェクトセクションの編集` |
+| B7 | zh `:25` | `… 项目章节的编辑（14 个标签页）` | `… 项目章节的编辑` |
+| B2 | ko `:128` | `그 아래로 14개 탭이 세로 목록으로 펼쳐집니다.` | `그 아래로 다음 탭들이 세로 목록으로 펼쳐집니다.` |
+| B4 | en `:128` | `unfolds fourteen tabs below it as a vertical list.` | `unfolds the tabs below as a vertical list.` |
+| B6 | ja `:128` | `その下に 14 のタブが縦のリストとして開きます。` | `その下に次のタブが縦のリストとして開きます。` |
+| B8 | zh `:128` | `其下会展开 14 个标签页的纵向列表。` | `其下会以纵向列表展开以下标签页。` |
+
+`:128` 네 자리는 수를 지우고 **바로 아래 번호 목록을 가리키는 말**로 바꿨다 — 이름 14개가 그 자리에 이미 있으므로
+수는 중복 정보였다(plan.md §B).
+
+#### 처분 — C군 8자리 (README 4본 × 2자리)
+
+| 자리 | 파일 | 이전 | 이후 |
+|---|---|---|---|
+| C1 | `README.md:414` | `splits into fourteen tabs: Identity, …` | `splits into these tabs: Identity, …` |
+| C2 | `README.ko.md:414` | `… Quality Gate 열네 개 탭으로 나뉜다.` | `… Quality Gate 탭으로 나뉜다.` |
+| C3 | `README.ja.md:414` | `… Quality Gate の 14 タブに分かれる。` | `… Quality Gate のタブに分かれる。` |
+| C4 | `README.zh.md:414` | `设置画面分成十四个标签页：Identity、…` | `设置画面分成以下标签页：Identity、…` |
+| C5 | `README.md:750` | `… · Todo), 14-tab settings` | `… · Todo), settings tabs` |
+| C6 | `README.ko.md:750` | `… · Todo), 14-탭 설정` | `… · Todo), 설정 탭` |
+| C7 | `README.ja.md:750` | `… · Todo)、14 タブ設定` | `… · Todo)、設定タブ` |
+| C8 | `README.zh.md:750` | `… · Todo）、14 标签页设置` | `… · Todo）、设置标签页` |
+
+`:414` 네 자리는 **이름 목록을 그대로 두고 수만** 뺐다 — 목록이 정보를 운반하고, 수는 그 목록을 세면 나온다.
+
+#### GREEN — AC-TCD-002 축어 (열거 20자리 리터럴 전부)
+
+```
+$ wc -l < .moai/reports/t530/count-literals.txt
+      16
+$ grep -rnF -f .moai/reports/t530/count-literals.txt \
+    README.md README.ko.md README.ja.md README.zh.md \
+    docs-site/content/{ko,en,ja,zh}/cli-reference/web.md \
+    docs-site/content/{ko,en,ja,zh}/advanced/moai-web-console.md | wc -l
+       0
+```
+
+패턴 파일이 16줄임을 함께 쟀다 — 빈 패턴 파일의 공허한 `0` 을 차단하는 대조군이다(AC-TCD-002).
+
+#### GREEN — AC-TCD-012 셸 축 축어 (`tab-count-sites.md § 재현 명령 5`)
+
+```
+$ grep -rniE '(one|two|…|twenty|하나|…|네|[一二三四五六七八九十])[^.。]{0,12}(\btabs?\b|탭|タブ|标签页)' \
+    <대상 12파일> \
+  | sed 's/第[一二三四五六七八九十]/第X/g' \
+  | grep -iE '(nine|fourteen|열네|十四|九|…)[^.。]{0,12}(\btabs?\b|탭|タブ|标签页)' \
+  | grep -vE '^docs-site/content/[a-z]+/advanced/moai-web-console\.md:[0-9]+:.*codex'
+(출력 없음)
+```
+
+M2 이전 6행 → M3 이후 **0행**. 허용 규칙의 `grep -vE` 에 파일 경로가 포함된 형태를 그대로 썼다.
+
+#### GREEN — AC-TCD-012 가드 축 축어 (낱말 축 적중 집합)
+
+```
+$ go test -count=1 ./internal/web/ -run 'TestDocsTabContract/allowlist' -v 2>&1 | grep '^word-axis hit '
+(출력 없음)
+$ go test -count=1 ./internal/web/ -run 'TestDocsTabContract/allowlist' -v 2>&1 | grep -c '^word-axis hit '
+0
+```
+
+**이 0 은 M1 의 6줄과 짝을 이루어야만 의미를 가진다.** M1 이 같은 명령으로 6줄
+(A2 `nine settings tabs` · A4 `九个标签页` · B4 `fourteen tabs` · C1 `fourteen tabs` · C2 `열네 개 탭` · C4 `十四个标签页`)을
+찍은 기록이 위 M1 절에 축어로 남아 있고, M2 가 그중 둘(A2·A4)을, M3 가 나머지 넷(B4·C1·C2·C4)을 없앴다.
+M1 기록이 없었다면 이 `0` 은 "적중이 없다" 와 "가드가 낱말 축을 구현하지 않았다" 를 구분하지 못한다 —
+AC-TCD-012 가 측정 순서를 판정의 전제로 못 박은 이유가 이것이다.
+
+#### 가드 상태 — 3층 중 2층 GREEN
+
+```
+$ go test ./internal/web/ -run 'TestDocsTabContract' -v
+    docs_tab_contract_test.go:136: swept 12 files against 16 enumerated literals
+    docs_tab_contract_test.go:281: allowed rules 1
+    docs_tab_contract_test.go:282: allowed lines 16
+--- FAIL: TestDocsTabContract (0.08s)
+    --- PASS: TestDocsTabContract/literals (0.00s)
+    --- PASS: TestDocsTabContract/allowlist (0.07s)
+    --- FAIL: TestDocsTabContract/names (0.00s)
+```
+
+`numeral sweep found N unallowed hit(s)` 줄과 `enumerated literal(s) still present` 줄이 **사라졌다** —
+두 층이 적중 0 으로 통과했다는 뜻이다. `swept 12 files` 는 그대로이며, 읽기 자체는 계속 일어나고 있음을 보인다.
+`names` 층은 D군 12자리가 남아 있어 붉고, M4 가 뒤집는다.
+
+#### Gap — M3 가 관측하지 못한 것
+
+- **`names` 층 GREEN 미관측.** M4 소관이다.
+- **AC-TCD-006 변이 6종 미실행.** 가드가 완전히 초록인 트리에서 도는 시험이라 M5 소관이다.
+- **hugo 빌드(RG-TCD-002) 미실행.** M6 소관 — 이 커밋의 문구 교체가 마크다운 구조를 바꾸지 않았지만, 바꾸지 않았다는 것은 재지 않았다는 말과 다르다.
+- **AC-TCD-010 패리티 미측정.** M4 까지 끝난 트리에서 한 번에 재는 것이 맞다(merge-base 기준).
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 _<pending — M1 만 완료. 이 신호는 run-phase 전체(M1~M5)가 닫힐 때 채운다.>_
