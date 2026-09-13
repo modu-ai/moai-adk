@@ -128,7 +128,7 @@ card: t656
 branch: WT-git-flow-reader
 base: b1bd81b23
 sync_complete_at: 2026-09-14
-sync_commit_sha: "pending-backfill-sync"   # D3 placeholder — backfilled in the follow-up commit (a commit cannot cite its own SHA)
+sync_commit_sha: "d0fe0cc2a"   # backfilled (D3 placeholder exemption); sync commit d0fe0cc2a carried the 3-phase close
 sync_status: complete — 3-phase close landed (CHANGELOG entry + spec.md implemented → completed + this signal)
 sync_audit_verdict: "PASS 9.0/10 (cold auditor binding — the shipped 4-dim workflow script failed to parse; Functionality/Security/Craft/Consistency all 9)"
 sync_audit_report: ".moai/reports/t656/sync-audit-SPEC-GITSTRAT-WORKFLOW-READER-001.md"
