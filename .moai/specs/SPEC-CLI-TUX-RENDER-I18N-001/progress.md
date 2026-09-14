@@ -155,7 +155,7 @@ spec: SPEC-CLI-TUX-RENDER-I18N-001
 card: t756
 phase: sync
 sync_complete_at: 2026-09-14
-sync_commit_sha: "pending-backfill-sync"  # self-reference impossible in the sync commit itself; backfilled in the immediately following commit (D3 exemption)
+sync_commit_sha: "4c4534419"  # backfilled (D3 exemption): the sync commit itself wrote the pending-backfill-sync placeholder
 sync_status: complete
 b12_self_test_a: "pre-emission grep 'SPEC-CLI-TUX-RENDER-I18N-001' CHANGELOG.md = 0 (no duplicate entry)"
 b12_self_test_b: "AC count — 9 live AC-TRI-001..009 (acceptance.md §C matrix); AC-ITI-019 grep hit is the predecessor SPEC's inherited-contract reference, excluded"
