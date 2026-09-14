@@ -2,7 +2,7 @@
 id: SPEC-GIT-PROC-SAFE-001
 title: "Git 절차 교정 — Late-Branch 워크트리 전환 및 auto-merge 레시피 SSOT 정리"
 version: "1.0.0"
-status: in-progress
+status: completed
 created: 2026-09-14
 updated: 2026-09-14
 author: manager-spec

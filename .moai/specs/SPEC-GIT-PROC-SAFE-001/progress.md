@@ -105,4 +105,23 @@ agents_emit_required: true
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase>_
+```yaml
+spec: SPEC-GIT-PROC-SAFE-001
+card: t782
+sync_complete_at: 2026-09-14
+sync_commit_sha: pending-backfill
+sync_status: completed
+changelog_entry_position: CHANGELOG.md [Unreleased] ### Fixed (first bullet)
+frontmatter_status_transitions:
+  in-progress: implemented
+  implemented: completed
+  merged_into_sync_commit: true   # 3-phase close — no separate chore commit
+b12_self_test_a_duplicate_grep: 0   # grep -c 'SPEC-GIT-PROC-SAFE-001' CHANGELOG.md before emission
+b12_self_test_b_ac_count: 8         # acceptance.md live AC identifiers == CHANGELOG AC references
+b12_self_test_c_paths_verified: true # all doctrine paths named in the entry test -f verified
+codemaps: not-applicable — docs-only SPEC; no Go code surface changed, codemap extraction scope unchanged
+mx_tags: not-applicable — no exported functions or code annotations touched; doctrine prose only
+scope: docs-only — 6 doctrine files (local + template copies) + codex agent emit mirror; zero Go/runtime change
+```
+
+Sync summary: CHANGELOG entry added under `[Unreleased]` → `### Fixed`; spec.md frontmatter carried `in-progress → implemented → completed` on this single sync commit (`status` + `updated` only, zero body edits in spec.md/plan.md/acceptance.md); the 6 doctrine files from the run phase (commits `75cc17a29`..`1138b8daa`, agents-emit `b6984e8e9`) are frozen and untouched by sync. `sync_commit_sha` is the D3-convention placeholder `pending-backfill` — a commit cannot contain its own SHA — and is backfilled by the orchestrator in a follow-up commit.
