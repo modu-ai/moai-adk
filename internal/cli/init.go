@@ -129,7 +129,10 @@ func init() {
 	// set {claude, codex, both} validated fail-loud in validateInitFlags;
 	// help names all three values. Default claude = flag-absent behavior
 	// byte-identical to today (AC-CW-004).
-	initCmd.Flags().String("llm", "", "LLM harness to wire: claude, codex, or both (default: claude; codex skips .mcp.json provisioning and wires the .codex/ hook layer + MCP config)")
+	// SPEC-INIT-HARNESS-001 (D2): the codex value now means CODEX-ONLY
+	// deployment — AGENTS.md + Codex surfaces, no .claude/ tree, no CLAUDE.md,
+	// no .mcp.json (operator-accepted value redefinition, plan.md §I NC-1).
+	initCmd.Flags().String("llm", "", "LLM harness to deploy and wire: claude, codex, or both (default: claude; codex deploys AGENTS.md + Codex surfaces only — no .claude/ tree; both adds Codex wiring to the claude deployment)")
 }
 
 // agentWiring is the SPEC-CODEX-WIRING-001 harness selection. The D3
@@ -929,6 +932,17 @@ func runInit(cmd *cobra.Command, args []string) (err error) {
 				p.Warn("Failed to apply profile: %v", err)
 			}
 		}
+	}
+
+	// SPEC-INIT-HARNESS-001 (REQ-IH-002): persist the RESOLVED harness value to
+	// llm.harness on every init run — all three closed-set values INCLUDING the
+	// claude default. agentWiringSelection is already the single resolution
+	// (SPEC-INIT-HARNESS-PROMPT-001 REQ-IHP-004: flag > wizard > claude), so the
+	// persisted value can never disagree with what the deployment below did.
+	// Explicit record over implicit absence: doctor (REQ-IH-011) and update
+	// re-deployment (REQ-IH-010) read the key instead of inferring claude.
+	if err := template.ApplyHarness(opts.ProjectRoot, string(agentWiringSelection)); err != nil {
+		p.Warn("Failed to apply harness: %v", err)
 	}
 
 	// Scaffold .moai/evolution/ directory structure (R2: Directory Scaffolding).

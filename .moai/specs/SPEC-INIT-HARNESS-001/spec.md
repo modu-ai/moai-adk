@@ -2,7 +2,7 @@
 id: SPEC-INIT-HARNESS-001
 title: "moai init 하니스 3-way 배포 — agent_wiring 선택이 배포를 지배한다"
 version: "0.1.0"
-status: draft
+status: in-progress
 created: 2026-09-14
 updated: 2026-09-14
 author: manager-spec
