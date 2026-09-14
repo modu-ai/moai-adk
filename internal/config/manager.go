@@ -180,7 +180,19 @@ func (m *ConfigManager) SetSection(name string, value any) error {
 
 // @MX:ANCHOR: [AUTO] Save is the config persistence path — atomic multi-section write to disk
 // @MX:REASON: fan_in=12 across 4 files (profile sync, project initializer, CLI); atomic write via temp+rename is critical for data integrity — do not replace with direct os.WriteFile
+// @MX:DEBT: [AUTO] Save persists SIX sections only — user, language, quality, git-convention, git-strategy, llm (SPEC-INIT-UPDATE-CONSISTENCY-001 REQ-ICU-007, record-only disposition)
+// @MX:CEILING: the remaining sections persist through the yamlpatch seam or typed dedicated writers (init/web write paths); Save's scope is a structural fact, not an oversight
+// @MX:UPGRADE: extend Save only when a new section joins the SetSection flow with a typed FileWrapper AND a byte-preservation disposition (dirty-gate or equivalent) — extending it to all 32 sections would re-break the hand-edit preservation that SPEC-GITSTRATEGY-SAVE-ISOLATION-001 fixed (REQ-GSI-001/002)
 // Save persists the current configuration to disk atomically.
+//
+// Scope: Save writes exactly six section files — user.yaml, language.yaml,
+// quality.yaml, git-convention.yaml, git-strategy.yaml, and llm.yaml. No
+// other section reaches disk through this path: the remaining sections
+// persist through the yamlpatch seam or dedicated typed writers (the init and
+// web-console write paths). git-convention and git-strategy carry a dirty
+// gate (rewritten only when SetSection-mutated this session or absent) so
+// hand-edited content survives byte-for-byte (SPEC-GITSTRATEGY-SAVE-ISOLATION-001).
+//
 // Each section is saved to its corresponding YAML file using
 // temp file + os.Rename for atomic writes.
 // Returns ErrNotInitialized if Load() has not been called.
