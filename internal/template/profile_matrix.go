@@ -118,11 +118,11 @@ func ApplyProfile(projectRoot, profile string) error {
 var llmRootRegex = regexp.MustCompile(`(?m)^llm:[ \t]*$`)
 
 // harnessLineRegex matches the harness: line in llm.yaml for a value-replacing
-// write, capturing the leading indentation (group 1). Uses `[\w-]*` so an
-// empty value is also matched and rewritten. The trailing `:` anchors the
-// match: `harness_agents:` does NOT collide (the underscore ends the word
-// before the colon).
-var harnessLineRegex = regexp.MustCompile(`(?m)^(\s*)harness:\s*["']?[\w-]*["']?`)
+// write. Group 1 carries the leading indentation, group 2 the raw value (with
+// optional surrounding quotes so an already-correct line is recognized and
+// left byte-identical — a first deploy must ship the template verbatim, and
+// rewriting `harness: "claude"` into `harness: claude` would violate that).
+var harnessLineRegex = regexp.MustCompile(`(?m)^(\s*)harness:\s*["']?([\w-]*)["']?`)
 
 // ApplyHarness patches the harness field in llm.yaml under the given project
 // root (SPEC-INIT-HARNESS-001 REQ-IH-002), mirroring ApplyProfile. It reads
@@ -149,7 +149,14 @@ func ApplyHarness(projectRoot, harness string) error {
 	}
 
 	var newContent []byte
-	if harnessLineRegex.Match(content) {
+	if m := harnessLineRegex.FindSubmatch(content); m != nil {
+		// Already carries the target value (any quoting style): no-op. A
+		// first deploy ships the template llm.yaml verbatim — rewriting
+		// `harness: "claude"` into `harness: claude` there would break the
+		// byte-identity contract the update tests pin.
+		if strings.TrimSpace(string(m[2])) == harness {
+			return nil
+		}
 		newContent = harnessLineRegex.ReplaceAll(content, []byte("${1}harness: "+harness))
 	} else {
 		// A llm.yaml predating this SPEC has no harness key: insert one right
