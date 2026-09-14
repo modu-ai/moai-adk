@@ -119,4 +119,39 @@
   scope, which is residue only. It belongs to t536 and is reported to the lead
   rather than acted on here.
 
+## Addendum — 2026-09-14: recurrence observed (first post-sweep orphan)
+
+The Gaps section recorded "Recurrence is not measured" and Residual-risk
+predicted "the count grows again from 3, and nothing currently watches it."
+Both are closed by observation ~19.5 hours after the sweep (lane-3, card t542
+continuation dispatched by the lead; totals updated, no deletion performed).
+
+**Observation.** The queue holds **4** directories, not the 3 this verdict
+left. The newcomer is `001-3d9b96cd` — birth 2026-09-14 04:19:58 +0900
+(`added_at 2026-09-13T19:19:58Z`, identical), 8K. Nested
+`.moai/state/kanban/` layout (`backlog.json` + `backlog.lock`), one item:
+`first card`, state `queued` — a fresh fixture scaffold, zero operator data.
+
+**What this strengthens.** Claim 2 (inflow open) no longer rests on a single
+non-test-shaped specimen. `001-3d9b96cd` is exactly the `001-*` test shape
+the t422 guard was supposed to stop, arriving twelve days after the guard
+landed in develop (`a1cba5425`, 2026-09-02 04:14) — test-origin inflow is
+open too. It also uses the nested kanban layout previously seen only on the
+two production-origin directories, so the nested-layout producer now emits
+`001-*` names as well. That is an observation, not a producer
+identification; the producer-unidentified Gap above stands.
+
+**Disposition.** NOT deleted. The 2026-09-13 operator approval covered the
+341 `001-*` directories enumerated that day; this one did not exist yet, and
+the card's [HARD] clause requires re-approval immediately before any
+home-directory deletion. Preserved alongside the other three as t536
+material — arguably the sharpest of the four specimens, since it shows the
+guard failing at its own stated job. Deletion awaits the operator's call,
+routed through the lead.
+
+**Totals after this addendum:** 4 directories, 96K — `001-3d9b96cd` (8K,
+recurrence specimen), `youtube-4ee46d07` (non-test-shaped specimen),
+`proj-325ca0b6`, `t203-probe-d7a16ea2` (production-origin). Commands and
+verbatim outputs: `11-recurrence-20260914.txt`.
+
 🗿 MoAI
