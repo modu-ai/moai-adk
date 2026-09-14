@@ -307,16 +307,81 @@ func TestPtyCapture_ConfirmGapBudget(t *testing.T) {
 	}
 }
 
+// TestPtyCapture_I18nKoSweep is AC-TRI-006: on the ko-forced frames of the
+// captured surfaces, no string that HAS a ko entry in the translation tables
+// may still show its English original. Each entry pairs an English original
+// with its ko translation; the ko frame must contain the translation and must
+// NOT contain the original. Option labels for the language selects are
+// intentionally native-form ("Options intentionally omitted" per the
+// translations table) and are therefore not swept.
+func TestPtyCapture_I18nKoSweep(t *testing.T) {
+	ptycaptest.Gate(t)
+	bin := ptycaptest.BuildChild(t, ".")
+
+	for _, tc := range []struct {
+		name      string
+		childCase string
+		pairs     [][2]string // {english original, ko translation}
+	}{
+		{
+			name: "init-first-page-ko", childCase: ptycapCaseInitFirstPageKo,
+			pairs: [][2]string{
+				{"Select conversation language", "대화 언어 선택"},
+				{"Enter your name", "이름 입력"},
+			},
+		},
+		{
+			name: "profile-groups-ko", childCase: ptycapCaseProfileGroupsKo,
+			pairs: [][2]string{
+				{"Select your language", "언어를 선택하세요"},
+			},
+		},
+		{
+			name: "downgrade-confirm-ko", childCase: ptycapCaseDowngradeConfirmKo,
+			pairs: [][2]string{
+				{"Downgrade v9.9.9", "다운그레이드할까요?"},
+				{"The requested tag is older", "요청한 태그가"},
+				{"Yes", "예"},
+				{"No", "아니오"},
+			},
+		},
+		{
+			name: "confirm-fixture-ko", childCase: ptycapCaseConfirmFixtureKo,
+			pairs: [][2]string{
+				{"Yes", "예"},
+				{"No", "아니오"},
+			},
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			c := ptycaptest.NewCase(t, "")
+			s := ptycaptest.Start(t, c, bin, tc.childCase)
+			frame := ptycaptest.StripANSI(s.WaitFor(tc.pairs[0][1], ptycaptest.AnchorTimeout))
+			for _, pair := range tc.pairs {
+				en, ko := pair[0], pair[1]
+				if !strings.Contains(frame, ko) {
+					t.Errorf("ko frame lacks the ko translation %q (REQ-TRI-006)", ko)
+				}
+				if strings.Contains(frame, en) {
+					t.Errorf("ko frame still shows the English original %q (REQ-TRI-006 residue)", en)
+				}
+			}
+			s.SendKeys("C-c")
+			s.Close()
+		})
+	}
+}
+
 // TestPtyCapture_SkipWithoutGate — AC-ITI-019 (a) over this package's capture
 // tests.
 func TestPtyCapture_SkipWithoutGate(t *testing.T) {
 	ptycaptest.Gate(t)
-	ptycaptest.AssertSkipWithoutGate(t, ptycaptest.BuildChild(t, "."), "^TestPtyCapture", 6)
+	ptycaptest.AssertSkipWithoutGate(t, ptycaptest.BuildChild(t, "."), "^TestPtyCapture", 7)
 }
 
 // TestPtyCapture_FailWithoutTmux — AC-ITI-019 (b) over this package's
 // TestPtyCapture_ tests (the Child test is excluded by the underscore).
 func TestPtyCapture_FailWithoutTmux(t *testing.T) {
 	ptycaptest.Gate(t)
-	ptycaptest.AssertFailWithoutTmux(t, ptycaptest.BuildChild(t, "."), "^TestPtyCapture_", 5)
+	ptycaptest.AssertFailWithoutTmux(t, ptycaptest.BuildChild(t, "."), "^TestPtyCapture_", 6)
 }
