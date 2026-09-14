@@ -60,6 +60,39 @@ func runTemplateSync(cmd *cobra.Command) error {
 	return runTemplateSyncWithReporter(cmd, nil, false)
 }
 
+// managedRedeployCount derives the outcome-summary accounting from the
+// template list the deployer reports: the rendered-target set (each entry
+// stripped of its .tmpl suffix — the deployed path) for the removal
+// accounting, and the count of MoAI-managed files the deploy writes.
+//
+// Each rendered deployment target counts ONCE: a `.sh`/`.sh.tmpl` deployment
+// pair (both list entries converging on the same stripped target — the 4
+// hook-wrapper pairs) is one deployed file, not two
+// (SPEC-INIT-UPDATE-CONSISTENCY-001 REQ-ICU-003). The ListTemplates
+// stripped-target contract itself is untouched — the dedupe lives in the
+// counting source only (plan §G).
+func managedRedeployCount(templateFiles []string) (managedRedeployed int, restoredSet map[string]bool) {
+	restoredSet = make(map[string]bool, len(templateFiles))
+	seenTargets := make(map[string]bool, len(templateFiles))
+	for _, tmpl := range templateFiles {
+		if before, ok := strings.CutSuffix(tmpl, ".tmpl"); ok {
+			tmpl = before
+		}
+		target := filepath.ToSlash(tmpl)
+		restoredSet[target] = true
+		if seenTargets[target] {
+			// A .tmpl entry whose stripped target was already counted via
+			// its rendered sibling is the same deployed file.
+			continue
+		}
+		seenTargets[target] = true
+		if plan.IsMoaiManaged(target) {
+			managedRedeployed++
+		}
+	}
+	return managedRedeployed, restoredSet
+}
+
 // @MX:NOTE: [AUTO] runTemplateSyncWithReporter — M4-S4d-2 DDD migration. Top-level header/section/
 // final-outcome lines are converted to tui.KV / tui.Section / tui.CheckLine / tui.Pill. Sub-step
 // micro messages (\r-prefixed sym* helpers) are preserved because they drive the progress display.
@@ -153,17 +186,7 @@ func runTemplateSyncWithReporter(cmd *cobra.Command, reporter project.ProgressRe
 	// the deploy writes anyway (and keep the rendered-target set for the
 	// removal accounting) so the outcome summary reports the real total.
 	templateFiles := deployer.ListTemplates()
-	managedRedeployed := 0
-	restoredSet := make(map[string]bool, len(templateFiles))
-	for _, tmpl := range templateFiles {
-		if before, ok := strings.CutSuffix(tmpl, ".tmpl"); ok {
-			tmpl = before
-		}
-		restoredSet[filepath.ToSlash(tmpl)] = true
-		if plan.IsMoaiManaged(tmpl) {
-			managedRedeployed++
-		}
-	}
+	managedRedeployed, restoredSet := managedRedeployCount(templateFiles)
 
 	// Analyze merge changes. The "Analyzing merge changes" header + the
 	// classification card are shown only when this function owns the
