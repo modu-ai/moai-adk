@@ -4,7 +4,7 @@
 - 감사일: 2026-09-14
 - 대상 트리: `WT-tux-render` @ `3edcd2391` (base `a404132e7`, tree clean)
 - Harness: standard (Tier M)
-- **Overall Verdict: FAIL** — 점수 95.7/100. 차단 결함 1건(F1, 문서 정확성). **코드 구현 자체는 PASS 등급**이며, FAIL 의 원인은 sync 산출물(CHANGELOG)의 사실 오류다. 수리는 문장 1개 수정 규모다.
+- **Overall Verdict: PASS (final, iteration 2)** — 최종 점수 98.3/100. 1차 95.7/FAIL(차단 결함 F1·F2, sync 산출물의 사실 오류) → 수리 커밋 `63d040fac` → 2차 델타 재판정 PASS(§7). 코드 구현은 1차부터 PASS 등급이었다. 이하 §1-§6 은 1차 기록으로 이력 보존한다.
 
 ---
 
@@ -55,3 +55,45 @@ FAIL 은 한 가지다. **CHANGELOG 엔트리가 고지문의 명령 표면과 �
 ## 6. 수리 경로 (re-audit scope)
 
 F1+F2 는 동일 원인의 문서 정정이다 — CHANGELOG 문장 1개(표면+스트림), progress.md §E.4 1단어, residual-defects.md 1단어. 수리 커밋 후 재감사는 **이 결함 델타만** 재판정한다(전수 재감사 아님). 코드·테스트·AC 판정에는 영향이 없으므로 §2의 Functionality/Security/Craft 재측정은 불요다.
+
+---
+
+# Iteration 2 (delta re-judgment) — 2026-09-14
+
+Scope: `46a9a5248..63d040fac` 델타만 — 1차 차단 결함 F1·F2 의 수리 확인이 본체, 델타 신규 결함 스캔이 부수체(재감사 계약: 결함 델타 외 전수 재판정 아님). 델타가 코드 파일을 하나도 건드리지 않았으므로 1차의 §2-§3 코드·AC 판정은 그대로 유효하다.
+
+## 결함별 델타 판정
+
+- **F1 — [RESOLVED]**: CHANGELOG 엔트리가 "the `acceptEdits` normalization notice that `moai profile setup` prints to stdout" 으로 정정됨 — 표면(`moai profile setup`)·스트림(stdout) 모두 1차의 기계적 관측(`internal/cli/profile.go:59-63` REQ-ITI-001 프로필 진입 부재, `internal/cli/profile_setup.go:387` `cmd.OutOrStdout()`, absorb 테스트의 `run.stdout` 계수)과 정확히 일치한다. 행의 나머지는 바이트 동일이며, 문맥의 "init/update TUI repair follow-up" 은 카드·SPEC 타이틀의 계보 서술로 적합하다(고지문 발화 표면 주장이 아니다).
+- **F2 — [RESOLVED]**: progress.md §E.4 canary 가 "undocumented stdout detail" 로, residual-defects.md 4행이 "acceptEdits stdout 고지문"(`internal/cli/profile_setup.go:31` 앵커 유지)으로 각각 정정됨.
+- **F3 / F4 — [불변, optional]**: 델타 대상 아님 — 선택 수리로 남으며 판정 불변이다.
+
+## 델타 신규 결함 스캔 — 0건
+
+- `git show 63d040fac --stat` → 3 파일 3행(`CHANGELOG.md`·`progress.md`·`evidence/residual-defects.md` 각 1행 대체) — 예상 범위와 정확히 일치, 코드 파일 0건.
+- 본 감사 재grep: `progress.md`·`residual-defects.md` 의 "stderr" 0건(grep exit=1 ×2). CHANGELOG 의 잔존 "stderr" 적중(38·53·71·108행)은 전부 타 카드(t525·t655·t520·t395) 엔트리가 서술하는 다른 표면의 stderr 로 무관하다.
+- `spec.md`·`plan.md`·`acceptance.md`: `git diff --stat 46a9a5248..63d040fac` 해당 경로 빈 출력 — 미건드림. `status: completed` 유지, `sync_commit_sha: "4c4534419"` 유지(progress.md:158).
+- 정정된 3행의 전/후 전문 대조: 각 행에서 표면·스트림 토큰만 변경, 그 외 불변 — 우발적 의미 변화 없음.
+
+## Dimension (델타 반영)
+
+| Dimension | 1차 | 2차 | 근거 |
+|---|---|---|---|
+| Functionality | 100 | 100 | 델타 코드 0건 — 1차 판정 승계 |
+| Security | 100 | 100 | 동일 |
+| Craft | 95 | 95 | 동일 (F3 optional 잔존) |
+| Consistency | 78 | 95 | 배포 기록의 사실 오류 해소 — CHANGELOG·코드·SPEC 본문의 3자 일치 회복 |
+
+**최종 점수: 98.3/100** (0.40×100 + 0.25×100 + 0.20×95 + 0.15×95). must-pass(Functionality·Security) 유지 통과.
+
+## 최종 판정
+
+**PASS** (iteration 2/2 — 최종). 차단 결함 0건. 잔존은 optional 2건(F3 공허 단언, F4 범위 밖 기존 결함)뿐이다.
+
+## Claim / Evidence / Baseline-attribution / Gaps / Residual-risk (iteration 2)
+
+- **Claim**: `63d040fac` 의 수리는 1차 MUST-FIX 2건(F1·F2)을 전부 해소했고, 델타는 새 결함을 유입하지 않았다.
+- **Evidence**: 위 결함별 판정 + 본 감사의 자체 실행(`git show 63d040fac --stat`, 전문 diff 판독, 3-델리버러블 grep, SPEC 3파일 무변경 diff, sync_commit_sha grep) 출력.
+- **Baseline-attribution**: 이번 실행, 이 트리(`WT-tux-render` @ `63d040fac`). F1·F2 판정의 근거 값(`cmd.OutOrStdout`, REQ-ITI-001, `run.stdout`)은 1차에서 본 감사가 직접 관측해 기록한 값과의 대조다.
+- **Gaps**: 1차의 상주 갭을 승계한다(전체 스위트·`-race`·linux 크로스빌드·`internal/cli` 커버리지·기준 프레임 7매 전문 판독은 미관측). 델타 신규 갭 없음 — 문서 3행 대체라 재측정 대상이 없다.
+- **Residual-risk**: 1차 잔여 위험 중 huh 버전 상승 시 인용·휴리스틱 스테일과 settings 스키마 신규 로케일의 영어 폴백 2건을 승계한다. F1 수리가 develop 병합 전에 완료됐으므로 "오기가 배포 노트에 잔존" 위험은 소멸했다. F3 잔존으로 en 고지문 "no override" 의미 고정은 여전히 느슨하다.
