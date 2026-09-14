@@ -1,7 +1,7 @@
 ---
 id: SPEC-CLI-TUX-RENDER-I18N-001
 title: "init/update TUX render residual repair and i18n unification — card t756 follow-up over SPEC-INIT-TUX-I18N-001"
-version: "0.1.0"
+version: "0.1.1"
 status: draft
 created: 2026-09-14
 updated: 2026-09-14
@@ -24,6 +24,7 @@ related_specs: [SPEC-INIT-TUX-I18N-001, SPEC-CLI-WIZARD-RESTRUCTURE-001, SPEC-CL
 | Version | Date | Author | Change |
 |---------|------|--------|--------|
 | 0.1.0 | 2026-09-14 | manager-spec | 최초 작성(카드 t756 plan 단계). 카드의 F10/F11 을 현재 트리(a404132e7)에 재고정한 결과, 선행 SPEC-INIT-TUX-I18N-001(t586, completed)이 이미 흡수·정렬·간격·폭·현지화 대부분을 전달했음을 확인하고, 본 SPEC 을 **잔여 결함 수리 + 재발 방지 가드 + 캡처 기반 재검증**으로 범위 확정했다. |
+| 0.1.1 | 2026-09-14 | manager-spec | plan-audit 1차(FAIL 0.925) 결함 D1~D3 반영. REQ-TRI-003 의 기본 수리 경로를 로컬 확인 필드 래퍼로 확정하고 라이브러리 인라인 모드를 구조적 부적합(huh `field_confirm.go:254`·`:293`)으로 M1 측정 참고로 격하했다. huh 고정 빈 줄 인용을 `:261-263` 으로 재고정했고, 실존 검사 기호(`TestLayout_NoBlankBetweenFields`, `TestEmitAcceptEditsConfirmationAnchor`)로 판정 명령을 바로잡았으며, 앵커 토큰 계약의 소유 SPEC(SPEC-V3R6-CLI-CONFIG-INTEGRITY-001)을 명명했다. |
 
 ## §A 배경
 
@@ -34,7 +35,7 @@ related_specs: [SPEC-INIT-TUX-I18N-001, SPEC-CLI-WIZARD-RESTRUCTURE-001, SPEC-CL
 | 카드 판정 | 현재 트리 상태 | 본 SPEC 처리 |
 |---|---|---|
 | F11-(1) 예/아니오 버튼 중앙정렬 | 수리됨 — 확인 필드 2곳 모두 좌측 정렬 지정 + 버튼 좌패딩 제거(t586 REQ-ITI-014/AC-ITI-015) | 재발 방지 가드(REQ-TRI-002) + 캡처 재검증 |
-| F11-(2) 질문 사이 빈 공간 3겹 | 부분 수리 — 필드 사이 빈 줄 0/빈 카드 줄 0(t586 REQ-ITI-015/AC-ITI-016). **잔여**: huh 라이브러리 확인 필드가 제목과 버튼 사이에 고정 빈 줄 2개를 내부에서 출력(라이브러리 소스 `field_confirm.go:270-274`, 테마로 제거 불가) | 잔여 간격 수리(REQ-TRI-003/004) |
+| F11-(2) 질문 사이 빈 공간 3겹 | 부분 수리 — 필드 사이 빈 줄 0/빈 카드 줄 0(t586 REQ-ITI-015/AC-ITI-016). **잔여**: huh 라이브러리 확인 필드가 제목과 버튼 사이에 고정 빈 줄 2개를 내부에서 출력(라이브러리 소스 `field_confirm.go:261-263`, 테마로 제거 불가) | 잔여 간격 수리(REQ-TRI-003/004) |
 | F11-(3) 선택 항목 폭 | 수리됨 — 표시 폭 기준 설명 열 정렬 + 폭 상한(t586 REQ-ITI-016/AC-ITI-017, 캡처·뮤턴트 대조군 포함) | 캡처 재검증 + 회귀 금지(REQ-TRI-005) |
 | F10-(1) init 프로필 확인 프롬프트·구형 위저드 영어 고정 | 수리됨 — init 은 프로필 확인 질문을 아예 묻지 않고(t586 REQ-ITI-001), 구형 v1 프로필 위저드는 v2 로 흡수·현지화됨 | i18n 잔여 훑기(REQ-TRI-006)로 미번역 표면이 더 있는지 전수 확인 |
 | F10-(2) 버튼 Yes/No 고정 | 수리됨 — 확인 버튼 라벨이 로케일 문자열 표에서 해석됨, 키맵도 로케일별 제공 | 캡처 재검증(ko 프레임) |
@@ -58,7 +59,7 @@ related_specs: [SPEC-INIT-TUX-I18N-001, SPEC-CLI-WIZARD-RESTRUCTURE-001, SPEC-CL
 
 - **REQ-TRI-001** (baseline capture gate) **When** run phase 가 시작되면, the run-phase executor shall 수리 편집에 앞서 §B 의 모든 대화형 표면을 고정 로케일(en·ko)·고정 지오메트리(80열)로 PTY 캡처해 기준 프레임을 만들고, 각 프레임을 카드 6개 판정(F10-(1)(2)(3), F11-(1)(2)(3))에 대응시켜 잔여 결함 표를 산출한다. 캡처 프레임과 잔여 표는 SPEC 디렉터리 아래 증거로 남긴다.
 - **REQ-TRI-002** (alignment sweep guard) The wizard package shall 모든 `huh.NewConfirm` 생성 지점이 버튼 좌측 정렬을 명시하도록 유지하며, 정렬 지정이 없는 새 확인 필드 생성 지점이 생기면 실패하는 소스 스윕 가드 검사를 둔다. (huh 기본값은 중앙 정렬이므로 무방비 상태에서는 결함이 재발한다.)
-- **REQ-TRI-003** (confirm internal gap) The wizard confirm surfaces shall 확인 필드의 제목(묻는 말)과 버튼 줄 사이의 빈 행이 캡처 프레임에서 1개 이하가 되게 한다. 라이브러리가 확인 필드 내부에 고정 빈 줄 2개를 출력하는 것은 테마로 제거할 수 없으므로, 라이브러리가 제공하는 우리 쪽 설정 지점(인라인 모드 등)으로 달성한다.
+- **REQ-TRI-003** (confirm internal gap) The wizard confirm surfaces shall 확인 필드의 제목(묻는 말)과 버튼 줄 사이의 빈 행이 캡처 프레임에서 1개 이하가 되게 한다. 라이브러리가 확인 필드 내부에 고정 빈 줄 2개를 출력하는 것은 테마로 제거할 수 없으므로, **기본 경로는 로컬 확인 필드 래퍼**(huh.Field 를 구현한 우리 쪽 타입이 자체 View 조합으로 제목·설명과 버튼 줄 사이 간격을 제어)로 달성한다. 라이브러리의 인라인 모드는 구조적으로 부적합하다 — 제목과 설명 사이 개행을 함께 제거하고 버튼 줄을 앞 줄과 합쳐 한 줄로 만들기 때문에 간격 축소 수단으로 쓸 수 없으며, M1 측정 참고용으로만 관찰한다.
 - **REQ-TRI-004** (gap non-regression) While consecutive fields render, the wizard shall 필드 사이 빈 줄 0·선택 필드 아래 빈 카드 줄 0 상태를 유지한다(선행 SPEC의 기준을 감쇠시키지 않는다).
 - **REQ-TRI-005** (selection width) The select option rows shall 같은 선택 목록 안에서 모든 옵션 줄의 설명 시작 표시 열(동아시아 전각 2칸 기준)이 같도록 유지한다.
 - **REQ-TRI-006** (i18n sweep) The init/update/profile interactive surfaces shall 모든 사용자 대상 문자열을 로케일 계층으로 해석하며, ko 로케일 캡처 프레임에는 번역 표에 ko 항목이 존재하는 문자열의 영어 원문이 나오지 않게 한다. M1 조사에서 영어 고정 잔여가 발견되면 번역 표에 넣어 해석한다. 표준 출력 고지문 중 grep 고정 앵커 토큰 계약(예: acceptEdits 정규화 고지의 `acceptEdits`·`settings.local.json` 토큰)이 있는 문자열은 현지화하더라도 앵커 토큰을 번역문 안에 보존해 기존 앵커 검사를 깨지 않게 한다.
