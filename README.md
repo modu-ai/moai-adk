@@ -287,6 +287,22 @@ cd my-project
 
 The interactive wizard auto-detects language, framework, and methodology, walks you through model policy, and generates the Claude Code integration files.
 
+#### Choosing the agent harness
+
+The wizard asks which agent harness to deploy and wire; `--llm` gives the same choice non-interactively:
+
+| Selection | What lands at the project root |
+|---|---|
+| `claude` (default) | The full `.claude/` surface plus `AGENTS.md` — today's default behavior |
+| `codex` | Codex only deployment: `AGENTS.md` and Codex surfaces (`.codex/`, `.agents/skills/`, `.moai/`) only. No `.claude/` tree, no `CLAUDE.md`, no `.mcp.json`. Claude-only runtime features (AskUserQuestion, sub-agent spawning, output styles, slash commands, Workflow scripts) are not available |
+| `both` | Same `claude` deployment plus `.codex/` wiring; `.mcp.json` provisioning forced on |
+
+```bash
+moai init my-project --llm codex   # Codex-only project
+```
+
+A project initialized before this choice existed has no `llm.harness` key and keeps the `claude` behavior on update — nothing to migrate.
+
 ### First workflow
 
 ```bash

@@ -287,6 +287,22 @@ cd my-project
 
 対話式ウィザードが言語・フレームワーク・方法論を自動検出し、モデル方針を選んだうえで Claude Code 統合ファイルまで生成する。
 
+#### エージェントハーネスの選択
+
+ウィザードは、プロジェクトにデプロイして接続するエージェントハーネスを尋ねます。`--llm` フラグで非対話的に同じ選択ができます:
+
+| 選択 | プロジェクトルートに生成されるもの |
+|---|---|
+| `claude` (デフォルト) | `.claude/` サーフェス全体と `AGENTS.md` — 従来のデフォルト動作 |
+| `codex` | Codex のみのデプロイ: `AGENTS.md` と Codex サーフェス（`.codex/`、`.agents/skills/`、`.moai/`）のみ。`.claude/` ツリー、`CLAUDE.md`、`.mcp.json` は生成されません。Claude 専用ランタイム機能（AskUserQuestion、サブエージェント、output style、スラッシュコマンド、Workflow スクリプト）は利用できません |
+| `both` | `claude` デプロイに `.codex/` 接続を追加。`.mcp.json` のプロビジョニングは強制有効化されます |
+
+```bash
+moai init my-project --llm codex   # Codex のみのプロジェクト
+```
+
+この選択が存在する前に初期化されたプロジェクトには `llm.harness` キーがなく、update でも claude の動作を保ちます — 移行作業は不要です。
+
 ### 最初のワークフロー
 
 ```bash

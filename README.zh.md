@@ -287,6 +287,22 @@ cd my-project
 
 交互式向导自动检测语言、框架和方法论，选好模型策略后一直生成到 Claude Code 集成文件。
 
+#### 选择代理框架
+
+向导会询问要为项目部署并接入哪个代理框架；`--llm` 参数可在非交互模式下做出同样的选择：
+
+| 选择 | 项目根目录生成的内容 |
+|---|---|
+| `claude`（默认） | 完整的 `.claude/` 表面与 `AGENTS.md` — 沿用至今的默认行为 |
+| `codex` | 仅 Codex 部署：只安装 `AGENTS.md` 与 Codex 表面（`.codex/`、`.agents/skills/`、`.moai/`）。不会生成 `.claude/` 目录、`CLAUDE.md` 和 `.mcp.json`。Claude 专属运行时功能（AskUserQuestion、子代理、output style、斜杠命令、Workflow 脚本）不可用 |
+| `both` | 在 `claude` 部署之上追加 `.codex/` 接入。`.mcp.json` 供应强制开启 |
+
+```bash
+moai init my-project --llm codex   # 仅 Codex 项目
+```
+
+在此选项存在之前初始化的项目没有 `llm.harness` 键，update 时仍保持 claude 行为 — 无需迁移。
+
 ### 第一个工作流
 
 ```bash

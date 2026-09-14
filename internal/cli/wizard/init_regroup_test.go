@@ -147,14 +147,16 @@ func TestGroupLabel_NotRendered(t *testing.T) {
 	}
 
 	// Real init half: page 2 (after answering the Basic page) carries the
-	// agent_wiring question title and never the group label.
+	// agent_wiring question title and never the group label. The title string
+	// tracks the REQ-IH-013 (SPEC-INIT-HARNESS-001) deployment-consequence
+	// wording — this is the render pin, updated with the wording change.
 	result := &WizardResult{}
 	initForm := buildUnifiedForm(InitQuestions("/tmp/init-label"), result, "")
 	id := ptycaptest.NewFormDriver(t, initForm)
 	id.Enter() // conversation_language
 	id.Enter() // user_name -> regrouped page
 	initFrame := ptycaptest.StripANSI(id.View())
-	if !strings.Contains(initFrame, "Select the agent harness to wire") {
+	if !strings.Contains(initFrame, "Select the agent harness to deploy and wire") {
 		t.Error("init frames lack the agent_wiring title — the walk did not cover the regrouped group")
 	}
 	if strings.Contains(initFrame, "Agents & Autonomy") {

@@ -287,6 +287,22 @@ cd my-project
 
 대화형 마법사가 언어·프레임워크·방법론을 자동으로 감지하고, 모델 정책을 고른 뒤 Claude Code 통합 파일까지 만든다.
 
+#### 에이전트 하니스 고르기
+
+마법사가 프로젝트에 배포하고 연결할 에이전트 하니스를 묻는다. `--llm` 플래그로 비대화형으로 같은 선택을 할 수 있다:
+
+| 선택 | 프로젝트 루트에 생기는 것 |
+|---|---|
+| `claude` (기본값) | `.claude/` 표면 전체와 `AGENTS.md` — 지금까지의 기본 동작 |
+| `codex` | Codex 단독 배포: `AGENTS.md`와 Codex 표면(`.codex/`, `.agents/skills/`, `.moai/`)만 설치. `.claude/` 디렉터, `CLAUDE.md`, `.mcp.json`은 생기지 않는다. Claude 전용 런타임 기능(AskUserQuestion, 서브에이전트 소환, output style, 슬래시 명령, Workflow 스크립트)은 사용할 수 없다 |
+| `both` | `claude` 배포에 `.codex/` 연결을 더한다. `.mcp.json` 프로비저닝은 강제로 켜진다 |
+
+```bash
+moai init my-project --llm codex   # Codex 단독 프로젝트
+```
+
+이 선택이 생기기 전에 초기화한 프로젝트에는 `llm.harness` 키가 없어 update에서도 claude 동작을 유지한다 — 마이그레이션할 것이 없다.
+
 ### 첫 워크플로우
 
 ```bash
