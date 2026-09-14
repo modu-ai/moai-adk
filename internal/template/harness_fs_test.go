@@ -7,6 +7,7 @@ package template
 
 import (
 	"context"
+	"errors"
 	"io/fs"
 	"os"
 	"path/filepath"
@@ -124,6 +125,74 @@ func TestCodexOnlyDeployerRealDeployment(t *testing.T) {
 	for _, rel := range []string{".claude", "CLAUDE.md", ".mcp.json", ".claudeignore", ".moai/status_line.sh"} {
 		if _, err := os.Stat(filepath.Join(root, rel)); err == nil {
 			t.Errorf("%s deployed by codex-only deployer (REQ-IH-005 violation)", rel)
+		}
+	}
+}
+
+// TestCodexOnlyForceUpdateVariant deploys through the update-path constructor
+// (force-update semantics) and re-checks the codex-only file set.
+func TestCodexOnlyForceUpdateVariant(t *testing.T) {
+	cat, err := LoadEmbeddedCatalog()
+	if err != nil {
+		t.Fatalf("load catalog: %v", err)
+	}
+	embedded, err := EmbeddedTemplates()
+	if err != nil {
+		t.Fatalf("embedded: %v", err)
+	}
+	d, err := NewCodexOnlyDeployerWithRendererAndForceUpdate(cat, NewRenderer(embedded))
+	if err != nil {
+		t.Fatalf("new codex-only force-update deployer: %v", err)
+	}
+	rd, ok := d.(ResultDeployer)
+	if !ok {
+		t.Fatal("force-update codex deployer must satisfy ResultDeployer")
+	}
+
+	root := t.TempDir()
+	mgr := manifest.NewManager()
+	if _, err := mgr.Load(root); err != nil {
+		t.Fatalf("load manifest: %v", err)
+	}
+	if err := rd.Deploy(context.Background(), root, mgr, nil); err != nil {
+		t.Fatalf("deploy: %v", err)
+	}
+	if _, err := os.Stat(filepath.Join(root, "AGENTS.md")); err != nil {
+		t.Errorf("AGENTS.md missing from force-update codex deploy: %v", err)
+	}
+	if _, err := os.Stat(filepath.Join(root, ".claude")); err == nil {
+		t.Error(".claude/ deployed by the force-update codex deployer")
+	}
+}
+
+// TestCodexOnlyHiddenPathsErrNotExist pins the Open/Stat hiding contract
+// directly: hidden paths answer fs.ErrNotExist through both entry points.
+func TestCodexOnlyHiddenPathsErrNotExist(t *testing.T) {
+	cat, err := LoadEmbeddedCatalog()
+	if err != nil {
+		t.Fatalf("load catalog: %v", err)
+	}
+	embedded, err := EmbeddedTemplates()
+	if err != nil {
+		t.Fatalf("embedded: %v", err)
+	}
+	d, err := NewCodexOnlyDeployerWithRenderer(cat, NewRenderer(embedded))
+	if err != nil {
+		t.Fatalf("new deployer: %v", err)
+	}
+	for _, p := range []string{".claude/skills/moai/SKILL.md", "CLAUDE.md", ".mcp.json", ".claudeignore", ".moai/status_line.sh"} {
+		// ExtractTemplate wraps ErrTemplateNotFound — the hidden contract is
+		// "reads as absent", whichever error shape the entry point wraps.
+		if _, err := d.ExtractTemplate(p); err == nil {
+			t.Errorf("hidden path %q readable via ExtractTemplate — not hidden", p)
+		} else if !errors.Is(err, ErrTemplateNotFound) && !os.IsNotExist(err) {
+			t.Errorf("hidden path %q: unexpected error shape: %v", p, err)
+		}
+		entries := d.ListTemplates()
+		for _, listed := range entries {
+			if listed == p {
+				t.Errorf("hidden path %q visible in listing", p)
+			}
 		}
 	}
 }
