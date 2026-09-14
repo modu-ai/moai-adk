@@ -242,6 +242,9 @@ secret-*.*
 !.moai/reports/t530/
 .moai/reports/t530/*
 !.moai/reports/t530/count-literals.txt
+!.moai/reports/t229/
+.moai/reports/t229/*
+!.moai/reports/t229/live-probe-body.txt
 
 # ===========================================
 # Claude Code Configuration
