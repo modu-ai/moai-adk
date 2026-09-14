@@ -24,7 +24,7 @@ func TestGatewayGPTModelsAreExactAndFullyBound(t *testing.T) {
 		t.Fatalf("model count = %d, want %d", len(models), len(want))
 	}
 	for i, model := range models {
-		if model.RouteID != want[i] || model.UpstreamID != want[i] || model.Provider != gateway.ProviderOpenAI || model.AuthMethod != gateway.AuthPKCE {
+		if model.RouteID != want[i] || model.UpstreamID != want[i] || model.Provider != gateway.ProviderOpenAI || model.AuthMethod != gateway.AuthAppServer {
 			t.Fatalf("model[%d] = %+v", i, model)
 		}
 		if model.Capabilities.ContextTokens != gatewayContextWindow || !model.Capabilities.Tools || !model.Capabilities.Streaming {

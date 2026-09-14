@@ -5,7 +5,161 @@
 > 코어가 소유한다. 0.6.0~0.9.0의 교차 제공자 전환과 PICKER 이관·출시 대기 결정 중 이 범위는 대체되었다.
 > 아래 과거 결정·프로브 기록은 당시 근거로 보존하며 현재 판정은 spec.md REQ-MG-019와 acceptance.md t649 보강을 따른다.
 
-## 0.11.0 현재 실행 계획
+## 0.16.0 현재 실행 계획 — 승인된 GPT 직접 매핑과 Factory 단일화
+
+이 절이 0.13.0 이전의 충돌하는 실행·명칭·모델 tier 계획을 대체한다. 사용자는 source session
+`01a09c3b-3734-7c30-b65d-650e3c63d0aa`에서 Implementation Kickoff와 TDD 실행을 승인했다.
+구현은 RED→GREEN→REFACTOR 순서를 지키며 첫 구현 전 이 SPEC의 독립 plan audit를 통과해야 한다.
+plan-audit iteration 5는 D9·D10·D12·D13·D14·D15로 FAIL했다. 앞선 자동 재감사 상한 뒤 사용자가
+`계속 진행해라`와 `오류나 RED는 모두 해결 방안을 제시 후 해결해서 완료 해야 한다`고 명시했으므로,
+scope reduction이나 PASS-with-debt 없이 M14-R0.2 test-only RED와 실행 책임을 보정한 뒤 재감사한다.
+이는 감사 우회가 아니라 D9·D10·D12·D13·D14·D15의 실제 보정 결과를 다시 판정하라는 명시적 예외 승인이다.
+현재 tree에는 아래 RED-now 행동 시험과 원문 carrier가 추가되었고 제품 구현은 아직 바뀌지 않았다.
+구현 진입 순서는 다음과 같이 고정한다.
+
+- **M14-R0.2 — test-only RED 보정 (owner: manager-develop, ITERATION-6 AUDIT INPUT).** 제품 소스를 바꾸지 않고
+  `TestGPTAliasEffortMatrix`(21 cases), `TestGPTAliasEffortRPCMatrix`(21 cases), gateway package의
+  `TestGPTProductionAppServerToolRoundTrip`(8), CLI package의
+  `TestGPTProductionAppServerWiring`(6),
+  `TestGPTFactoryAndRetiredKanbanContract`(7),
+  `TestGPTAppServerLifecycleAndHistoryAttribution`(11),
+  `TestNamingMigrationManifestContract`(5), `TestGatewayProcessContractPortable`(6)을 먼저
+  추가했다. App Server 왕복은 PASS 5·RED 3이고 portable process 6/6과 lifecycle/history 양성 6개는
+  구현 전 이미 충족된 회귀 가드다. 실제 RED는 alias env 15, 실제 `turn/start` model/effort 20,
+  App Server multi-call 3, production wiring 6, Factory unit boundary 7, history 원인/logger 5,
+  naming schema/current equality 2다. 각 selector의 전체 stdout/stderr와 exit를
+  `.moai/reports/SPEC-MOAI-GATEWAY-001/m14-r0/`에 보존하고 `SHA256SUMS`로 고정했으며,
+  test-only source는 `TEST-SHA256SUMS`로 고정했다. 실측은 `acceptance.md` §D와
+  `progress.md` §E.1에 있다. 아래 M14-R0.2까지 완료되어 다음 단계는 독립 plan audit 재판정이다.
+- **M14-R0.2 testability detail — production wiring/history/validator 보정 (owner: manager-develop, TEST-ONLY,
+  COMPLETE / AUDIT INPUT).** 제품 코드는 수정하지 않았다. `internal/cli/gpt_appserver_factory_contract_test.go`의
+  protocol-speaking fake는 독립 self-probe 뒤 production log를 reset한다. deterministic close는 성공한
+  Start→Initialize→Account→Close 뒤 같은 private profile/lease에서 두 번째 Start→Initialize→Close가 성공하는
+  것으로 판정하며 EOF/finally marker를 성공 근거로 쓰지 않는다. absent/poisoned legacy auth store의
+  open/read/refresh 0 subcase를 포함한 selector는 6 RED/exit 1이다. raw log SHA-256은
+  `c6a107951d539950363c3e150544bc7a80bb73951cf0f093582ee09bf10a1905`, exit carrier는
+  `4355a46b19d348dc2f57c046f8ef63d4538ebb936000f3c9ee954a27460dd865`, test source는
+  `ce4b731f49cb83c08449bb7e5ab0e35b0c1eddd153f355c48418da19bfb87c19`다.
+- **M14-R1 — model contract (owner: manager-develop, RB-GPT-ALIAS-ENV, RB-GPT-EFFORT-RPC).**
+  1. `internal/cli/gateway_prepare.go`의 GPT alias 해석을 fable/astra, opus/sol, sonnet/terra,
+     haiku/luna의 직접 표로 바꾸고 선택 model이 네 슬롯 전체를 덮는 경로를 제거한다.
+  2. `internal/cli/gpt.go`, `gateway_product_binding.go`, model picker/settings 조립에서 기본 model은
+     `gpt-5.6-sol`, 네 `ANTHROPIC_DEFAULT_*_MODEL` 값은 각각의 고정 GPT ID로 운반한다. GLM/Claude
+     조립과 공유 설정은 건드리지 않는다.
+  3. `internal/codexbridge` request와 `turn/start` 조립에 독립 `effort`를 추가해
+     `max|high|medium|low|ultra` 또는 누락을 그대로 전달하고 alias에서 effort를 추론하지 않는다.
+  4. `TestGPTAliasEffortMatrix` 21개와 실제 fake App Server `turn/start` payload를 보는
+     `TestGPTAliasEffortRPCMatrix` 21개를 각각 같은 selector로 GREEN한 뒤 기존 CLI focused 회귀를 실행한다.
+     alias 표나 effort 전달이 회귀하면 이 milestone만 되돌릴 수 있도록 App Server wiring 변경과 분리한다.
+- **M14-R2 — App Server production bridge (owner: manager-develop, RB-APP-SERVER-RPC,
+  RB-APP-SERVER-WIRING, RB-HISTORY-400-LOGGER).**
+  1. M14-R0.2의 protocol self-probe와 reset, 같은 private profile/lease의 두 번 Start/Initialize/Close를
+     보존한다. EOF/finally marker를 clean-close 근거로 쓰지 않고 selector를 `-count=20`으로 재확인한다.
+  2. `internal/gateway/catalog.go`와 `internal/cli/gateway_product_binding.go`의 네 GPT route를
+     `AuthAppServer`로 고정한다. `internal/cli/gateway_product_binding.go`의
+     `productionGatewayHandlerFactory`와 `internal/cli/gateway_factory.go`의 `newGatewayHandlerFactory`
+     composition helper가
+     private `MOAI_HOME` auth profile과 PATH의 Codex binary를 사용해 `codexapp.Client`를 시작·initialize하고
+     `AppServerAuthority`→`codexbridge.Engine`→`AppServerAdapter`를 조립하게 한다. handler `Close`는
+     engine/client를 정확히 한 번 닫으며 부분 조립 실패도 역순 정리한다. direct `OpenAIAdapter`와 구독
+     token 읽기/refresh/private endpoint fallback은 GPT managed route에서 제거한다. absent 또는 poisoned
+     legacy store에서도 open/read/refresh는 0이어야 한다.
+  3. `internal/gateway/appserver.go`, `internal/codexbridge/engine.go`, `store.go`의 단일 pending을
+     thread/turn별 ordered pending batch로 바꾼다. 첫 HTTP는 같은 turn의 두 tool call을 모두 Claude
+     `tool_use`로 내보내고, 다음 HTTP의 역순 결과를 call ID로 찾아 각각 저장된 raw JSON-RPC ID
+     `rpc-b`, `rpc-a`에 정확히 한 번 응답한다. 일부 결과, duplicate, foreign, cross-thread는 어떤 다른
+     pending도 소비하지 않고 명시 거절한다.
+  4. `internal/gateway/translate`의 history 오류를 네 SSOT cause로 타입화하고 `internal/gateway/server.go`의
+     production error encoder가 이를 HTTP 400 `invalid_request_error`와 동일 cause로 내보내게 한다.
+     `ServerConfig.RejectionLogger`에 `RecordGatewayRejection(fields map[string]string)` recorder를 주입한다.
+     server가 소유하는 구조화 logger는 `cause`, `route`, 길이 64의 비식별 `digest`만 기록하고
+     prompt/summary/tool result/reasoning/token/credential/canary는 기록하지 않는다. adapter는 생성·RPC·
+     upstream HTTP 전에 거절하며 logger 호출을 합성하지 않는다.
+  5. history 계약에서 같은 `Idempotency-Key`로 실제 transport 요청을 두 번 보내고 둘 다 200인지 확인하며,
+     완료 prefix 뒤 새 사용자 입력을 한 번 추가하는 양성 요청과 구조적
+     `{"type":"agent_summary","summary":"CANARY-SUMMARY-92","source":"untrusted"}` 거절을 실행한다.
+     네 음성은 실제 Server의 HTTP 400 `invalid_request_error`/CauseCode, 생성·RPC·upstream HTTP 0과 recorder의
+     exact safe 3필드/금지 필드 0을 함께 판정한다. logger seam 부재는 제품 RED로 유지한다.
+  6. `TestGPTProductionAppServerWiring` 6개, `TestGPTProductionAppServerToolRoundTrip` 8개,
+     `TestGPTAppServerLifecycleAndHistoryAttribution` 11개를 같은 selector로 GREEN하고 기존 gateway/
+     codexbridge 회귀를 실행한다. wiring은 auth seed+fake codex+실 factory+reflection+두 번 close와 legacy
+     store 0-use를, multi-call은 exact RPC ID를, history는 실제 Server envelope/recorder를 계속 관측해야 한다.
+  7. rollback은 GPT catalog/factory를 direct adapter로 되돌리는 것이 아니라 launch를 fail-closed로 막는
+     방식만 허용한다. managed profile이나 App Server 준비 실패를 API 과금 또는 사설 endpoint로 우회하지 않는다.
+- **M14-R3 — Factory·naming migration (owner: manager-develop, RB-GPT-FACTORY,
+  RB-NAMING-MANIFEST).**
+  1. `internal/cli/gpt.go`, `cc.go`, `factory.go`의 parser에서 `-k`/`--kanban`을 spawn/worktree/settings/env/
+     Todo mutation 전에 non-zero로 거절하고 `-f`를 안내한다. `-f` lead/worker/dispatch와 `-p` 원문,
+     `--model`, effort를 launch boundary까지 보존한다. 활성 write는 `MOAI_DISPATCH_*`만 사용하고 구
+     `MOAI_KANBAN_*`는 legacy reader 외에는 쓰지 않는다.
+  2. `internal/kanban/**` 47 production+85 test를 같은 suffix의 `internal/orchestration/**`로 옮기고 package,
+     36 active importer, `cmd/t657-merge/main.go` import를 새 이름으로 바꾼다. 활성 CLI/UI는 Factory/Todo/
+     Tasks/Dispatch/Orchestration으로 통일한다. 과거 ID/comment와 `legacy_env.go`, `legacy_env_test.go`,
+     `legacy_store_test.go`의 read-only migration만 exact allowlist에 남긴다.
+  3. 같은 변경에서 `.moai/specs/SPEC-MOAI-GATEWAY-001/naming-migration-manifest.json`을 생성한다.
+     exact baseline source inventory, 모든 source→destination의 1:1 path mapping, effective worktree와 같은
+     post-migration current 네 배열, legacy allowlist, 새 이름 사전을 정렬·중복 없이 기록한다.
+  4. `TestGPTFactoryAndRetiredKanbanContract` 7개와 `TestNamingMigrationManifestContract` 5개를 GREEN하고,
+     exact `new_names`, exact 3-row legacy allowlist, exact t657 historical utility, 47/85/36/1 category
+     cardinality/membership, mapping category와 source/destination category 일치, 양방향 mutation을 검증한다.
+     Factory 시험은 stdout/stderr, 명령 전후 env, launch/Todo/Tasks/Dispatch/Factory 불변과 active 출력의
+     폐기 token 0을 함께 판정한다. 단위 시험은 prompt/env/무부작용만
+     판정하고 실제 Agent/tool/Tasks/Dispatch 양성을 주장하지 않는다.
+  5. rollback은 path mapping을 역으로 적용하고 manifest를 같은 변경에서 되돌린다. 새 write 뒤 legacy
+     저장으로 회귀하거나 양쪽 package를 동시에 활성화하는 부분 rollback은 금지한다.
+- **M14-R4 — cross-platform process (owner: manager-develop, CD-WINDOWS-BUILD,
+  CD-WINDOWS-RUNTIME).**
+  1. 이미 GREEN인 `TestGatewayProcessContractPortable` 6개를 변경 전후 모두 실행해 readiness·HTTP/overlay·
+     0600·cancel·wait·exit 23을 회귀 가드로 보존한다.
+  2. `internal/gateway/supervisor.go`, `supervisor_runner.go`의 `StartChild`/`RunChildWithControl` 계약을
+     공통 interface로 유지하고, `internal/cli/launch_exec_posix.go`의 `//go:build !windows` 및
+     `internal/cli/launch_exec_windows.go`의 `//go:build windows` companion을 보존한 뒤 `GOOS=windows`
+     compile을 먼저 통과시킨다.
+  3. release `windows-latest` runner에서 이름을 정한 build/runtime test를 실제 실행하고 pass event가 있는
+     artifact를 남긴다. compile은 runtime을 대체하지 않으며 실패하면 배포를 중단한다.
+- **M14-R5 — live-only closure (owner: manager-develop + release operator).**
+  1. 설치 Codex schema/initialize/account와 구독 managed/API-key profile을 분리해 AS-001·002·015·021을
+     실행하고 direct backend/token read/API fallback 0을 기록한다.
+  2. 실제 Claude Code PTY에서 native 도구 0, Claude approval/hook, 초기 native schema와 후발 dispatcher,
+     두 dynamic call 역순 결과, ToolSearch를 실행해 AS-003~009·017을 닫는다.
+  3. 같은 PTY와 Factory command에서 lead/worker/Agent가 실제로 한 번 실행되고 provider/model/effort가
+     recorder와 App Server `turn/start`에 일치하며 Tasks/Dispatch가 의미 있게 갱신되는 것을 확인한다.
+     이는 R3 단위 prompt-forwarding GREEN과 별도인 AS-017·018 live evidence다.
+  4. AS-010·011·012의 t844 실세션 회상/model/compaction 증거를 이 SPEC의 evidence index에 실제로 소비하고,
+     AS-013 native fork를 설치본에서 실행한다. t844 증거 부재 또는 native fork NOT-RUN은 완료 차단이다.
+  5. 세 launcher picker/resume/context/auth를 AS-014·019·020·021로 판정하고 Windows artifact로
+     AS-016·022를 닫는다. AS-001~022 매핑표의 각 경로에 원문 명령·출력·기준 SHA를 남긴다.
+  6. 모든 RED selector GREEN, 모든 live gate PASS, focused regression, vet/lint, coverage, rc 로컬 배포
+     게이트를 순서대로 확인한다. 하나라도 Error/RED/Gap/NOT-RUN이면 원인·해결·재실행을 기록하고 완료로
+     승격하지 않는다. Anthropic이 비-Claude 모델 라우팅을 지원한다고 또는 양사 약관상 무위험이라고
+     표현하지 않는다.
+
+결정 가능성이 큰 순서로 실행한다.
+
+1. **모델·effort 계약** — GPT 네 별칭 직접 매핑을 launch env, picker, 서브에이전트, resume에 하나의
+   계약으로 적용한다. 기본 `gpt-5.6-sol`과 네 별칭 슬롯을 구분하고, effort 직교 조합의 RED를 먼저 만든다.
+2. **App Server 도구 왕복** — 일반 Messages ingress를 App Server thread/turn에 연결하고, dynamic tool
+   JSON-RPC ID와 Claude tool 결과의 1:1 상관·중복/교차 대화 거절을 RED로 고정한다. native Codex 도구는
+   활성화하지 않는다.
+3. **Factory 단일 실행 표면** — `moai gpt -f`의 lead/worker와 Agent 경로를 실증하고 `-k`/`--kanban`의
+   부작용 없는 거절을 고정한다. 활성 명칭을 Factory/Todo/Tasks/Dispatch/Orchestration으로 이관한다.
+4. **생산 경로·회귀** — launcher 대기 게이트를 실제 App Server transport로 교체한 뒤 resume·compact·fork·
+   400 오류 귀속·Windows 시험·기존 cc/glm 회귀를 범위별로 실행한다. 400 fixture는 동일 prefix retry,
+   changed history, `agent_summary`, receipt/manifest mismatch, resume duplicate를 분리하고 외부 생성·
+   `turn/start`·HTTP·redacted 로그의 네 축을 각각 계수한다. 구조화 cause SSOT는
+   `history_changed`·`agent_summary_untrusted`·`receipt_manifest_mismatch`·
+   `resume_duplicate_input`이다.
+5. **실계정·PTY 종결 판정** — 승인된 계정 경계 안에서 model/effort/tool/Factory 왕복을 실제 Claude Code
+   PTY로 확인한다. 계정·조직 정책이나 공식 지원성은 추정하지 않고 관측과 Gap을 분리한다.
+
+활성 이름 전수 이관이 여러 패키지·문서·migration을 가로지르므로, 현재 SPEC은 `moai gpt -f`와 활성 CLI/
+런타임 식별자의 이관을 완료 조건으로 둔다. 과거 SPEC·commit·report ID와 legacy 저장 판독은 소급 변경하지
+않는다. 별도 저장 형식 migration이 필요하면 현재 기능의 호환 판독을 보존한 후 후속 SPEC으로 분리한다.
+완료 판정은 `acceptance.md` §D의 RED-now 전 행 GREEN, 이미 GREEN인 회귀 가드 유지, 별도 completion
+dependency 전 행 PASS를 모두 요구한다. 실계정·Windows 창이 없으면 NOT-RUN/Gap으로 남으며 완료로
+승격하지 않는다.
+
+## 0.11.0~0.13.0 실행 계획 (역사적 기준)
 
 운영자의 App Server 전면 재설계 지시와 HTML 보고 뒤 발급된 t650~t654를 순서대로 실행한다.
 기존 M0~M9 중 direct GPT backend·자체 구독 token/opaque 처리 부분은 아래 현재 계획으로 대체한다.
@@ -134,8 +288,9 @@ CHANGELOG.md` 포함)를 남긴다. push·PR·병합·워크트리 제거는 없
 순서로 만들지를 정한다. 시간 추정은 쓰지 않는다 — 우선순위(High/Medium/Low)와 단계
 순서로만 표기한다.
 
-기준선: 작업 트리 `.claude/worktrees/moai-proxy-unified`(세션 고정 경로라 디렉터리 이름은
-그대로다), 브랜치 `WT-unified-gateway`, HEAD `ed71054d3`(0.6.0 재기준. 0.5.0까지는 `d060e0d13`). 착수 시점에는 §C에 따라 다시 잰다.
+현재 기준선: 작업 트리 `.claude/worktrees/develop`, 브랜치 `develop`, HEAD
+`4056f69e1c20d942d4f9fc7363d3d79bffde899a`. M14 구현 착수 직전에 §C에 따라 다시 잰다.
+`ed71054d3`와 `.claude/worktrees/moai-proxy-unified`는 0.6.0 당시의 역사적 기준선일 뿐 현재 판정에 쓰지 않는다.
 
 명칭 대응: 설계 원문·핸드오프·iter1 감사는 "proxy" / `REQ-MP` / `AC-MP`, 이 문서는
 "gateway" / `REQ-MG` / `AC-MG`를 쓴다(`spec.md` §0).
@@ -144,7 +299,7 @@ CHANGELOG.md` 포함)를 남긴다. push·PR·병합·워크트리 제거는 없
 
 | SPEC | 범위 | 관계 |
 |---|---|---|
-| `SPEC-MOAI-GATEWAY-001` (이 문서) | gateway 코어 — CLI 계약(kanban/factory 포함), supervisor, ingress, adapter, registry, launch provider signal, `settings.local.json` 계약, `CredentialRef` 인터페이스, 실패·보안 | 나머지 둘의 기반 |
+| `SPEC-MOAI-GATEWAY-001` (이 문서) | gateway 코어 — Factory/Dispatch/Orchestration CLI 계약과 폐기 `-k` 거절, supervisor, ingress, App Server adapter, registry, launch provider signal, `settings.local.json` 계약, `CredentialRef` 인터페이스, 실패·보안 | 나머지 둘의 기반 |
 | `SPEC-MOAI-GPT-AUTH-001` (제안) | GPT PKCE login/logout, MoAI 소유 credential 저장, GPT `CredentialRef` 구체 타입 | 이 SPEC이 고정한 인터페이스 뒤에 구현. 독립 착수 가능 |
 | `SPEC-MOAI-CG-RETIRE-001` (제안) | `moai cg` 철거 스윕, `team_mode: cg` 마이그레이션, 문서 4-locale, `internal/tmux`의 `sessionEnvHasGLM`·`hasGLMEnv` 처리 | 이 SPEC과 병행 가능하나 `REQ-MG-021`(launch provider signal)이 선행되면 쉬워진다 |
 | `SPEC-MOAI-GATEWAY-PICKER-001` (제안, 0.6.0) | picker·모델 선택 표면 — picker overlay 구성과 "Default" 행 불변식, 초기 모델 전달 방식(명시 `--model`, 빈 기본값, 재개 경로), `/model <id>` 저장 기본값의 안내 | t649에서 이 범위를 코어로 회수. 별도 PICKER 착지를 요구하지 않음 |
@@ -175,7 +330,10 @@ CHANGELOG.md` 포함)를 남긴다. push·PR·병합·워크트리 제거는 없
 
 ## D. 제약
 
-- POSIX `syscall.Exec` 보존 (`REQ-MG-005`). `MOAI_SESSION_PID` 각인이 여기 올라타 있다.
+- cross-platform exemption은 `spec.md` §E를 따른다. POSIX 프로세스 파일은
+  `//go:build !windows`와 `syscall.Exec`를 보존하고, Windows companion은 `//go:build windows`와
+  독립 spawn-and-wait를 사용한다. `MOAI_SESSION_PID` 각인과 종료 코드 전파를 두 플랫폼에서
+  각각 고정한다(`REQ-MG-005`, `REQ-MG-009`, M14-R4).
 - 새 환경변수 이름은 `internal/config/envkeys.go`를 거친다. 맨몸 `ANTHROPIC_*` 리터럴은
   AST 기반 가드 시험 `TestNoBareAnthropicEnvVarLiteralsInProduction`이 잡는다 — 이 가드는
   **빌드가 아니라 변경 패키지 테스트에서 실패**하므로 `go build` 통과를 근거로 삼지 않는다.
@@ -283,7 +441,7 @@ seam이므로 M1 직후에 둔다.
 - 직접 secret route의 `CredentialRef`와 App Server `ManagedSessionAuthority`를 구분한다(`design.md` §2.1). profile/account/auth mode/generation/model 불일치는 실행 전 거절한다.
 - 대응 REQ: MG-011(부분), MG-017, MG-019, MG-023 / AC: AC-MG-001, AC-MG-021
 
-### M3 — CLI 계약: `moai gpt` 등록, 공통 launch plan, kanban/factory 진입 (우선순위: High)
+### M3 — [SUPERSEDED BY 0.15.0 §현재 실행 계획] 옛 CLI·병행 모드 계획 (역사 기록)
 
 사용자에게 보이는 표면이므로 앞쪽에 둔다.
 
@@ -301,14 +459,17 @@ seam이므로 M1 직후에 둔다.
   제공자·대화별 저장 격리를 구현한다. 타 제공자 ID는 UI와 무관하게 송신 전에 거절한다.
 
 
-- **`BackendGPT`와 kanban/factory 진입** (`design.md` §7):
-  - `internal/kanban`에 `BackendGPT = "gpt"` 추가. 감사 backend 집합에는 추가하지 않는다.
-  - `moai gpt`에 `moai cc`·`moai glm`과 같은 네 진입 분기(factory lead, factory worker, kanban lead,
-    kanban companion)를 신설한다. 네 분기 모두 `exportKanbanLaunchFacts`에 `kanban.BackendGPT`를
-    넘기고, factory lead 분기는 `RecordFactoryRunStart`에도 넘긴다.
-  - backend 상수 선언 주석, `Record.Backend` 주석, `EnvMoaiKanbanBackend` 주석을 "launcher의
-    초기 provider" 의미로 다시 쓴다.
-  - 웹 콘솔 `backendBadge`가 `gpt`에 대해 과금 방식을 단정해 표시하지 않게 한다.
+- **직접 모델 매핑** (`design.md` §12):
+  - `fable`→`gpt-6-astra`, `opus`→`gpt-5.6-sol`, `sonnet`→`gpt-5.6-terra`,
+    `haiku`→`gpt-5.6-luna`의 네 슬롯을 서로 다른 값으로 고정한다.
+  - `gpt-5.6-sol` 기본값이 다른 슬롯을 덮는 뮤턴트와 model↔effort 결합 뮤턴트를 RED로 만든다.
+- **Factory와 활성 명칭** (`design.md` §12):
+  - `internal/orchestration`의 `BackendGPT = "gpt"`와 Dispatch 기록을 사용한다.
+  - `moai gpt -f`의 Factory lead/worker를 `moai cc`·`moai glm`과 같은 조건으로 연결한다.
+  - `-k`/`--kanban`은 실행·Todo·Tasks·Dispatch 부작용 0건으로 거절하고 `-f`를 안내한다.
+  - 활성 CLI/코드/사용자 출력은 Factory/Todo/Tasks/Dispatch/Orchestration으로 통일한다. 과거 ID와
+    이름을 표시한 legacy/migration 판독만 옛 명칭을 보존한다.
+  - UI의 `gpt` 표시는 정액제/API 과금을 추정하지 않는다.
 - **출시 판단 입력.** 이 SPEC만 착지하면 `moai gpt`는 GPT credential 구체 타입이 없어 초기 모델
   요청이 모두 명시 오류로 끝난다. 도움말 노출과 출시는 `SPEC-MOAI-GPT-AUTH-001`(제안)의 착지와
   함께 판단하도록 오케스트레이터에 넘긴다(`design.md` §7.4). 이 SPEC은 출시 시점을 정하지 않는다.
@@ -363,7 +524,10 @@ Z.AI로 곧장 가거나, 세션 종료마다 사용자 설정이 변형될 수 
 - **Claude child env의 상속 키 정리 (iter5 G5-B1)** — 세 launcher는 자식 env를 조립하기 전에 상속 env에서 GLM 정리 키
   집합 14키를 지우고, `moai cc`·`moai gpt`는 `Z_AI_API_KEY`도 지운다. gateway `moai glm`은 GLM credential 저장소에서 읽은
   `Z_AI_API_KEY`를 싣고, 네 GLM tier 모델 슬롯 키 `ANTHROPIC_DEFAULT_{OPUS,SONNET,HAIKU,FABLE}_MODEL`을 `llm.glm.models`의
-  `high`·`medium`·`low`·`fable` 값으로 더한다(2026-09-11 운영자 결정, `design.md` §6.7). `moai cc`·`moai gpt`도 네 슬롯을 해당 제공자의 허용 ID로 더한다. 정리는 launcher가 더하는 키보다 먼저 한다(`design.md` §3.2 6a, §6.1 프로세스 env 투영). 오늘
+  `high`·`medium`·`low`·`fable` 값으로 더한다(2026-09-11 운영자 결정, `design.md` §6.7).
+  `moai gpt`는 네 슬롯을 `FABLE=gpt-6-astra`, `OPUS=gpt-5.6-sol`,
+  `SONNET=gpt-5.6-terra`, `HAIKU=gpt-5.6-luna`로 직접 매핑하고, `moai cc`는 Claude 허용 ID를
+  사용한다. 정리는 launcher가 더하는 키보다 먼저 한다(`design.md` §3.2 6a, §6.1 프로세스 env 투영). 오늘
   조립기는 `os.Environ()`을 그대로 넘기므로 그대로 쓰면 계약을 채우지 못한다. 판정은 `AC-MG-018` (a)의 상속 키 판정이고,
   슬롯 키가 가리키는 ID의 route 해석은 `AC-MG-025`가 본다.
 - **기록 금지** — 어떤 gateway launch도 `injectGLMEnv`를 부르지 않고, base URL이나 GLM credential을
@@ -446,7 +610,9 @@ iter1 감사가 지목한 열린 질문 6건과 iter2 감사가 드러낸 설계
 결정과 그 반영 위치다. 결정 8은 iter3 감사에서, 결정 9·10은 0.5.0의 클라이언트 실측에서, 결정 11·12는 iter4 감사(0.6.0)에서
 나왔다. 0.6.0에서 결정 6·10은 형제 SPEC으로 옮겼고, 결정 8은 결정 12로 대체되었으며, 결정 9는 M1 진입 게이트를 더해 코어에 남았다. 이 결정들은 Implementation Kickoff Approval을 대신하지 않는다.
 
-**결정 1 — `moai gpt`의 `-k` / `-f`: `BackendGPT`를 추가해 완전 지원한다.**
+**[SUPERSEDED BY 0.15.0 §현재 실행 계획] 결정 1 — `moai gpt`의 옛 `-k` / `-f` 병행 지원 기록.**
+이 항목은 당시 결정의 감사 기록이며 현재 구현 지시가 아니다. 현재 계약은 `-f`만 실행하고 `-k`를
+부작용 없이 거절한다.
 운영자는 요구사항 예산 비용을 알고 이 선택을 했다. `REQ-MG-026`을 신설했고, 자리는
 `REQ-MP-007`을 `REQ-MG-005`에 통합해 만들었다(두 요구사항은 같은 판정 표면 `AC-MG-006`을
 공유한다). 수용 기준 예산도 25/25이므로 새 AC를 만들지 않고 launcher CLI 표면 AC인
@@ -623,7 +789,7 @@ GLM tier ID의 registry 해석 판정이 더해졌고 번호는 늘지 않았다
 
 - `spec.md` — 요구사항 SSOT, ID 대응표
 - `acceptance.md` — 수용 기준과 이관·게이트 시험 표
-- `design.md` — 내부 경계, `CredentialRef`, 프로세스 모델, launch provider signal, `settings.local.json` 계약, kanban backend 의미
+- `design.md` — 내부 경계, `CredentialRef`, 프로세스 모델, launch provider signal, `settings.local.json` 계약, Factory/Dispatch/Orchestration 의미와 폐기 입력 거절
 - `research.md` — 코드베이스 근거와 교차 렌즈 모순 C1~C4
 - `reports/moai-proxy-three-provider-redesign-20260910.md` — 설계 원문(읽기 전용, 파일명 유지)
 - `reports/moai-proxy-next-session-handoff-20260910.md` — 핸드오프(읽기 전용, 파일명 유지)

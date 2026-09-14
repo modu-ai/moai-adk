@@ -2,6 +2,112 @@
 
 ## §E.1 Plan-phase Audit-Ready Signal
 
+- 0.16.0 / M14-R0.2 (2026-09-14) — plan-audit iteration 5의 D9·D10·D12·D13·D14·D15를
+  test-only로 보정했다. 기준선은 `4056f69e1c20d942d4f9fc7363d3d79bffde899a`, production unchanged다.
+  실제 결과는 alias env 21=6 PASS/15 RED, effort RPC 21=1 PASS/20 RED, App Server 8=5 PASS/3 RED,
+  wiring 6 RED(`-count=20` fixture 안정성 별도 확인), Factory 7 RED, lifecycle/history 11=6 PASS/5 RED,
+  naming 5=3 PASS/2 RED, portable 6 PASS다. `acceptance.md` §D는 실제 RED selector마다 명령·전체 tree
+  SHA·원문 stdout 실패 일부·exit·raw log/exit path와 digest를 결합한 고유 fenced ledger ID를 제공한다.
+  이미 GREEN인 App Server/lifecycle/portable은 회귀 가드, Windows·실계정·Factory live·t844·rc는 완료
+  의존성으로 분리했으며 RED라고 부르지 않는다. wiring close는 같은 private profile/lease에서 두 번의
+  Start/Initialize/Close 성공으로 판정하고 EOF/finally marker를 쓰지 않는다. legacy auth store 0-use,
+  실제 두 번 retry, 새 입력, 구조적 agent_summary, structured rejection recorder, exact naming validator,
+  stdout/stderr와 실행 전후 env 검사를 plan/design/research에 반영했다. 현재 GPT transport는 공식 Codex
+  App Server뿐이고 활성 용어는 Factory/Dispatch/Orchestration이다. 제품 GREEN·live/Windows 완료는 아직
+  아니다. D4 `StatusTransitionInvalid implemented → in-progress` warning은 amendment가 미완료인 사실을
+  정직하게 나타내므로 skip이나 거짓 status로 숨기지 않고 sync의 lifecycle/close 증거로 해소한다.
+  M14-R0.2 source digest는 alias
+  `0198b4cc7df4f182484ff008775d4ecbdff607275b7a37b73f39e266c5ac7ec0`, CLI wiring/Factory
+  `ce4b731f49cb83c08449bb7e5ab0e35b0c1eddd153f355c48418da19bfb87c19`, portable
+  `8e65483efe8b1473cc5a3e153fa03b5db5abbcb97b90c798214d96942a963c73`, lifecycle/history
+  `078cda9fc7a9a84cd906b5b598a459501ec40eb421ee3f5c8c444afff14c80ae`, App Server roundtrip
+  `262728e94a663b30b1830bece09c00fd7c3497ba208339bb3a9e6bed4a5c82d1`, naming
+  `538ba84c679056e15637836155d82d073191db0c59c0a6da49d8b95129ea3b0c`다. baseline log는 CLI
+  `bdb51cd75392f517af914f5d6b53f442784234ee2b3b134b479c475e4d669e84`, gateway/codexbridge
+  `cf500f2fec76c447061d8b4724c26ad28a61e14a4095f610d4892fbc977d02bc`다.
+  최종 문서 검사 원문은 다음과 같다. D4 warning은 optional gap이며 숨기지 않았다.
+
+  ```text
+  $ moai spec lint SPEC-MOAI-GATEWAY-001
+  SEVERITY  CODE                     FILE                                                                                              LINE  MESSAGE
+  --------  ----                     ----                                                                                              ----  -------
+  WARNING   StatusTransitionInvalid  /Users/goos/MoAI/moai-adk-go/.claude/worktrees/develop/.moai/specs/SPEC-MOAI-GATEWAY-001/spec.md  1     SPEC SPEC-MOAI-GATEWAY-001 status transition "implemented" → "in-progress" is not a canonical lifecycle edge (commit 15a3a21f5971096147944483d8f0b3fc1e0d8485)
+
+  0 error(s), 1 warning(s)
+  exit 0
+
+  $ git diff --check -- .moai/specs/SPEC-MOAI-GATEWAY-001/spec.md .moai/specs/SPEC-MOAI-GATEWAY-001/plan.md .moai/specs/SPEC-MOAI-GATEWAY-001/acceptance.md .moai/specs/SPEC-MOAI-GATEWAY-001/design.md .moai/specs/SPEC-MOAI-GATEWAY-001/research.md .moai/specs/SPEC-MOAI-GATEWAY-001/progress.md
+  <empty output>
+  exit 0
+  ```
+
+- 0.14.0 (2026-09-14) — source session `01a09c3b-3734-7c30-b65d-650e3c63d0aa`에서 사용자가
+  GPT 직접 alias 매핑, model/effort 독립, Messages ingress↔Codex App Server dynamic tool 왕복,
+  Factory 단일 실행 표면, 폐기된 옛 명칭 제거 및 구현·시험을 명시 승인했다. 기존 25 REQ/25 AC
+  상한을 유지해 REQ-MG-013·017·019·021·026과 AC-MG-001·003·004·014·018의 본문을 보강했다.
+  `design.md` §12와 `research.md` §21이 0.13.0 이전 충돌 설계의 현재 대체 기준이다.
+  Implementation Kickoff: APPROVED. 개발 방식: TDD RED→GREEN→REFACTOR. 첫 코드 수정 전 독립
+  plan-auditor의 0.14.0 판정이 필요하다. 이 항목은 코드 구현·실계정 PTY·Factory E2E·Windows CI·
+  약관 검토 완료를 주장하지 않는다.
+- 0.14.0 plan-audit iter1: FAIL 0.69, merge-blocking D1~D3. 정식 보고서는
+  `.moai/reports/SPEC-MOAI-GATEWAY-001/plan-audit-v0.14-iter1.md`다. D1 release-blocking 행렬과
+  RED-now, D2 history 400 행렬, D3 47/85/36+historical 1 inventory/allowlist, D5 WHAT/HOW 분리,
+  D6 historical path 표지, D7 행 단위 superseded 표지를 반영하고 재감사를 기다린다.
+  lifecycle warning D4는 과거 t654 sync가 기록한 `implemented` 뒤 같은 umbrella SPEC을
+  `in-progress`로 되돌린 역사 때문에 발생한다. 현재 amendment가 미구현이므로 `implemented`로 바꾸거나
+  lint skip으로 숨기면 상태를 거짓 표시한다. 별도 amendment SPEC 생성은 이번 기존 SPEC 6파일 한정 범위를
+  벗어나므로, 정직한 `in-progress`를 유지하고 warning을 잔여 gap으로 재감사에 제출한다.
+- 0.14.0 plan-audit iter2: FAIL 0.81, merge-blocking D8~D12. `spec.md` §E에 explicit
+  cross-platform exemption·POSIX `//go:build !windows`·Windows `//go:build windows` spawn-and-wait
+  계약을 복원했다. 기존 source grep·placeholder·복합 shell을 RED 증거로 인용한 블록은
+  폐기했다. M14-R0의 manager-develop이 6개 named behavioral test를 test-only로 만들어
+  실제 실패 원문을 남기기 전의 상태는 `RED EVIDENCE PENDING TEST-ONLY REMEDIATION`이며,
+  이 문서는 존재하지 않는 테스트의 출력이나 실패를 주장하지 않는다. M14-R3이 미래
+  `naming-migration-manifest.json`을 생성·갱신하며, 현재 SPEC writer는 그 파일을 생성하지 않았다.
+  D4 lifecycle warning은 상태를 거짓으로 바꾸지 않고 optional gap으로 유지한다.
+- **[HISTORICAL, superseded by 0.16.0 M14-R0.2]** M14-R0 iteration-5 test-only 보정 (tree `4056f69e1`, production unchanged): plan-audit iter4의
+  D9·D10·D12·D13·D14·D15 FAIL 뒤 사용자의 모든 RED 해결 승인을 적용했다. scope reduction과
+  PASS-with-debt는 채택하지 않았다. 전체 stdout/stderr·exit carrier는
+  `.moai/reports/SPEC-MOAI-GATEWAY-001/m14-r0/`에 있고 `SHA256SUMS` 및
+  `TEST-SHA256SUMS`로 byte 식별한다. 이 보정은 audit 우회가 아니라 iteration 5 입력이다.
+  실측 결과: alias 21 cases FAIL 15·PASS 6(exit 1); 실제 fake App Server subprocess+HTTP 두 message는
+  정상 5 PASS, 첫 batch 두 call·역순 continuation·exact dual RPC 3 FAIL(exit 1); production wiring은
+  private auth seed+fake codex+실 factory+reflection+close에서 catalog 네 행과 concrete adapter 모두
+  FAIL 5(exit 1); Factory unit 7 cases는 새 dispatch env 없음·구 env write·prompt 유실·폐기 flag 부작용으로
+  모두 FAIL(exit 1); lifecycle/history 9 cases는 durable resume/model/compact/fork/same-prefix PASS 5,
+  승인 SSOT cause `history_changed`·`agent_summary_untrusted`·`receipt_manifest_mismatch`·
+  `resume_duplicate_input`의 실제 Server envelope/CauseCode FAIL 4(exit 1); naming은 exact baseline
+  47/85/36/1 self-check와 mutation/legacy 3 PASS, manifest 부재로 schema/current-equality 2 FAIL(exit 1);
+  portable process는 실제 `gateway.StartChild`/`RunChildWithControl`의 readiness·HTTP/overlay·0600·cancel·
+  wait·exit 23 모두 PASS 6(exit 0)다. portable 6, lifecycle 정상 5, App Server 정상 5는 회귀 가드이며
+  release RED로 세지 않는다. 실제 Factory Agent/tool/approval/hooks/Tasks/Dispatch 양성은 M14-R5다.
+  정확한 명령·고유 carrier ID·log/exit digest·후속 GREEN owner는 `acceptance.md` §D다.
+  test-only SHA-256은 `TEST-SHA256SUMS` 기준
+  `ab1e7bfb0b2470c69bb87be329b62538e9680a9ce338ef7527173e470846699c`(alias),
+  `26ab278f711b60faf6179479eb565d2790a1255b0a5ab0e5fd84e43386b328f7`(CLI wiring/Factory),
+  `8e65483efe8b1473cc5a3e153fa03b5db5abbcb97b90c798214d96942a963c73`(portable),
+  `6e0bd6fc1086a18c7216e9de5d7fcd3d0788cfdb930782cb952aec145dc6ee57`(lifecycle/history),
+  `262728e94a663b30b1830bece09c00fd7c3497ba208339bb3a9e6bed4a5c82d1`(gateway App Server roundtrip),
+  `14d42f8cf9e3618aa3f0b4a51127c491127342fe4918d9acd42f06d508172fd4`(naming)다.
+  구현과 live acceptance는 아직 시작하지 않았다.
+- 0.15.0 문서 검증 — `shasum -a 256 -c .../SHA256SUMS`와 `.../TEST-SHA256SUMS`는 log/exit
+  20개와 test source 6개를 모두 `OK`로 확인했다. `moai spec lint SPEC-MOAI-GATEWAY-001`의 verbatim
+  summary는 `0 error(s), 1 warning(s)`이며 warning은 기존
+  `StatusTransitionInvalid ... status transition "implemented" → "in-progress" ... (commit
+  15a3a21f5971096147944483d8f0b3fc1e0d8485)` 하나다. 현재 amendment가 미완료라 status를 거짓으로
+  되돌리거나 lint skip으로 숨기지 않는다. 여섯 SPEC 경로를 명시한 `git diff --check -- <paths>`는
+  출력 없이 exit 0이었다. 이는 문서·carrier 무결성 검증이며 제품 GREEN이나 live acceptance가 아니다.
+- **[HISTORICAL, superseded by 0.16.0 M14-R0.2]** M14-R0.1 testability 보정 완료 — manager-develop이 제품 수정 없이 production wiring fake를
+  protocol-speaking subprocess로 바꿨다. fixture self-probe는 `codexapp.Start`→`Initialize`→`account/read`→
+  `Close`→EOF marker를 확인하고 production 관측 전에 log/marker를 초기화한다. selector는 1 test/5
+  subcases/5 intended RED/exit 1이며 실패 원인은 네 `AuthPKCE`와 concrete `*gateway.OpenAIAdapter`
+  mismatch뿐이다. production wiring log SHA-256은
+  `e1f97883dbd6169f8d4889185e59439b56fa968ac450df5c2db673aaf012ec8b`, exit는
+  `4355a46b19d348dc2f57c046f8ef63d4538ebb936000f3c9ee954a27460dd865`, test source는
+  `26ab278f711b60faf6179479eb565d2790a1255b0a5ab0e5fd84e43386b328f7`다. 새 test source를 포함한
+  CLI existing baseline log도 `4e6e79dbbdf082107e2157fdb8778cc9763366956d7b879838d205f7255aacfb`로 갱신됐다.
+  현재 0.15.0은 독립 plan audit iteration 5 입력 준비 상태다.
+
 - 0.13.0 (2026-09-14, t654) — AS-5 plan-phase 개정: 세 launcher 생산 통합·구독/API 이중 경로 검증·
   실제 Claude PTY 표면(도구검색·서브에이전트·재개·모델전환) 실증·경로별 context 판정·Windows GitHub CI
   실행 증거·rc 로컬 배포 게이트. `REQ-MG-027`/`AC-MG-026` 신설(요구사항 25 / 수용 기준 25 — Tier L
@@ -81,8 +187,12 @@
 
 ## §Mode Selection
 
-- 마일스톤 구현은 순차 진행하고, 서로 독립적인 읽기 전용 준비·검증만 병렬로 진행한다.
-- 현재 단계는 M0 인증 측정과 M1 원본 요청 캡처 게이트다. 검증 요청 인식기와 제품 gateway 구현은 M1 게이트 해결 뒤에 착수한다.
+- Phase 4 선택: Tier L 단일 writer 순차 구현. manager-develop 한 명만 코드와 §E.2/§E.3을 쓰고,
+  독립 읽기 전용 조사와 감사만 병렬로 진행한다.
+- cycle_type: `tdd`. 각 마일스톤은 의도한 assertion에서 실패하는 RED 원문을 보존한 뒤 GREEN과
+  회귀를 실행하고, REFACTOR 뒤 같은 범위를 다시 검증한다.
+- 현재 단계는 0.16.0 M14-R0.2 독립 plan audit 대기다. audit PASS 전 코드 구현 완료나 제품 지원을
+  주장하지 않는다.
 
 ## §E.2 Run-phase Evidence
 

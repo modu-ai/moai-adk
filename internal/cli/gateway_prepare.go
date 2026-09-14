@@ -110,10 +110,18 @@ func prepareGatewayLaunch(in gatewayPrepareInput) (gateway.LaunchPlan, error) {
 		}
 		env = append(env, "Z_AI_API_KEY="+in.GLMKey, "ANTHROPIC_DEFAULT_OPUS_MODEL="+in.GLM.High, "ANTHROPIC_DEFAULT_SONNET_MODEL="+in.GLM.Medium, "ANTHROPIC_DEFAULT_HAIKU_MODEL="+in.GLM.Low, "ANTHROPIC_DEFAULT_FABLE_MODEL="+in.GLM.Fable)
 	}
-	if in.Mode != "glm" {
+	if in.Mode == "claude" {
 		for _, tier := range []string{"OPUS", "SONNET", "HAIKU", "FABLE"} {
 			env = append(env, "ANTHROPIC_DEFAULT_"+tier+"_MODEL="+model)
 		}
+	}
+	if in.Mode == "gpt" {
+		env = append(env,
+			"ANTHROPIC_DEFAULT_FABLE_MODEL=gpt-6-astra",
+			"ANTHROPIC_DEFAULT_OPUS_MODEL=gpt-5.6-sol",
+			"ANTHROPIC_DEFAULT_SONNET_MODEL=gpt-5.6-terra",
+			"ANTHROPIC_DEFAULT_HAIKU_MODEL=gpt-5.6-luna",
+		)
 	}
 	provider := "claude"
 	switch entry.Provider {

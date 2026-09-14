@@ -236,6 +236,31 @@ func unifiedLaunchWithGateway(profileName, modeOverride string, extraArgs []stri
 	if binding != nil {
 		return launchClaudeWithGateway(profileName, extraArgs, binding)
 	}
+	return launchClaudeForProvider(profileName, extraArgs, mode)
+}
+
+// launchClaudeForProvider carries the launcher-selected initial provider into
+// the Claude Code child. The audit MCP uses this trusted launch fact to decide
+// whether a supplied Claude verdict is the current in-session anchor or must be
+// replaced by an independent subscription audit. The process environment is
+// restored when the launch seam returns (tests and Windows); on POSIX a real
+// launch replaces the process, so the child simply inherits the marker.
+func launchClaudeForProvider(profileName string, extraArgs []string, provider string) (err error) {
+	previous, existed := os.LookupEnv(config.EnvMoaiLaunchProvider)
+	if err := os.Setenv(config.EnvMoaiLaunchProvider, provider); err != nil {
+		return fmt.Errorf("set launch provider: %w", err)
+	}
+	defer func() {
+		var restoreErr error
+		if existed {
+			restoreErr = os.Setenv(config.EnvMoaiLaunchProvider, previous)
+		} else {
+			restoreErr = os.Unsetenv(config.EnvMoaiLaunchProvider)
+		}
+		if err == nil && restoreErr != nil {
+			err = fmt.Errorf("restore launch provider: %w", restoreErr)
+		}
+	}()
 	return launchClaude(profileName, extraArgs)
 }
 

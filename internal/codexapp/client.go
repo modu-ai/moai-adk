@@ -79,7 +79,7 @@ type Client struct {
 // @MX:REASON: Authentication, discovery and conversation clients share this boundary.
 func Start(ctx context.Context, cfg Config) (*Client, error) {
 	args := []string{"app-server", "--stdio"}
-	for _, value := range []string{`approval_policy="never"`, `sandbox_mode="read-only"`, `web_search="disabled"`, `features.shell_tool=false`, `features.codex_hooks=false`, `features.hooks=false`, `features.plugin_hooks=false`, `features.plugins=false`, `features.apps=false`, `features.view_image=false`, `features.multi_agent=false`, `features.multi_agent_v2=false`, `tools.update_plan.enabled=false`, `tools.experimental_request_user_input.enabled=false`} {
+	for _, value := range []string{`cli_auth_credentials_store="file"`, `approval_policy="never"`, `sandbox_mode="read-only"`, `web_search="disabled"`, `features.shell_tool=false`, `features.codex_hooks=false`, `features.hooks=false`, `features.plugin_hooks=false`, `features.plugins=false`, `features.apps=false`, `features.view_image=false`, `features.multi_agent=false`, `features.multi_agent_v2=false`, `tools.update_plan.enabled=false`, `tools.experimental_request_user_input.enabled=false`} {
 		args = append(args, "-c", value)
 	}
 	return startProcess(ctx, cfg, args)

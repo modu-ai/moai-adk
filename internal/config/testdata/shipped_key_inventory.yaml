@@ -2568,6 +2568,12 @@
 - path: "workflow.auto_clear.token_threshold"
   class: W
   evidence: reader
+- path: "workflow.audit.claude.effort"
+  class: W
+  evidence: reader
+- path: "workflow.audit.claude.model"
+  class: W
+  evidence: reader
 - path: "workflow.audit.codex.effort"
   class: W
   evidence: reader

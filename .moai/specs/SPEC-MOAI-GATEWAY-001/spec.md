@@ -1,22 +1,104 @@
 ---
 id: SPEC-MOAI-GATEWAY-001
 title: "moai 공통 loopback gateway — cc·gpt·glm 세 launcher의 단일 ingress와 제공자별 모델 선택 경계"
-version: "0.13.0"
+version: "0.16.0"
 status: in-progress
 created: 2026-09-10
 updated: 2026-09-14
 author: manager-spec
 priority: P1
 phase: "v3.3.0 target"
-module: "internal/gateway, internal/cli, internal/kanban, internal/hook"
+module: "internal/gateway, internal/cli, internal/orchestration, internal/hook"
 lifecycle: spec-anchored
-tags: "gateway, launcher, model-routing, anthropic-ingress, sse, loopback, kanban"
+tags: "gateway, launcher, model-routing, anthropic-ingress, app-server, factory, orchestration"
 tier: L
 ---
 
 # SPEC-MOAI-GATEWAY-001 — 공통 loopback gateway 코어
 
 ## HISTORY
+
+- 0.16.0 (2026-09-14, source session `01a09c3b-3734-7c30-b65d-650e3c63d0aa`) — plan-audit
+  iteration 5의 D9·D10·D12·D13·D14·D15를 M14-R0.2 test-only 증거로 보정했다. 현재 제품 기준선은
+  `4056f69e1c20d942d4f9fc7363d3d79bffde899a`이며 제품 구현은 바뀌지 않았다. alias env 21건(6 PASS/15 RED),
+  실제 App Server `turn/start` model/effort 21건(1 PASS/20 RED), component 왕복 8건(5 PASS/3 RED),
+  production wiring 6 RED, Factory 경계 7 RED, lifecycle/history 11건(6 PASS/5 RED), naming 5건
+  (3 PASS/2 RED), portable process 6 PASS를 새 원문 carrier와 source digest로 고정했다. 각 실제 RED
+  selector는 `acceptance.md` §D의 fenced evidence ledger가 명령·전체 기준 SHA·원문 실패 일부·exit·raw
+  log/exit 경로와 digest를 한 ID로 결합한다. 이미 GREEN인 component/lifecycle/portable 행은 회귀 가드,
+  Windows와 실계정·Factory live 행은 완료 의존성으로 분리했다. M14-R0.2 wiring fixture는 첫 번째
+  Start→Initialize→Account→Close 성공 뒤 같은 private profile/lease에서 두 번째 Start→Initialize→Close를
+  성공시켜 deterministic close를 검증하며 EOF/finally marker를 성공 근거로 쓰지 않는다. absent/poisoned
+  legacy auth store는 open/read/refresh 0이어야 한다. history 시험은 같은 Idempotency-Key의 실제 두 요청,
+  완료 prefix 뒤 새 사용자 입력, 구조적 `agent_summary`, 실제 `gateway.Server` envelope/CauseCode와 주입 가능한
+  `RecordGatewayRejection(map[string]string)` recorder를 요구한다. recorder가 제품에 없는 현재 상태는 실제
+  RED다. naming validator는 exact 이름·allowlist·historical utility·category cardinality/membership·mapping
+  category를, Factory 시험은 stdout/stderr 및 실행 전후 env와 Todo/Tasks/Dispatch/Factory 불변을 판정한다.
+  현재 GPT transport 책임은 공식 Codex App Server뿐이며 직접 Responses 또는 구독 API endpoint 구현은 범위가
+  아니다. 활성 명칭은 Factory/Dispatch/Orchestration이며 `-k`/`--kanban`은 폐기 입력이다. D4의 기존
+  `implemented → in-progress` lint warning은 거짓 상태 전환이나 skip으로 숨기지 않고 sync 시 해소할 optional
+  gap으로 유지한다. 이 판은 독립 재감사 준비 상태이며 제품 GREEN·live acceptance·Windows 완료를 주장하지 않는다.
+
+- 0.15.0 (2026-09-14, source session `01a09c3b-3734-7c30-b65d-650e3c63d0aa`) — plan-audit
+  iteration 4의 차단 D9·D10·D12·D13·D14·D15를 iteration-5 test-only 증거와 실행 계획으로 보정했다.
+  제품 코드는 여전히 baseline `4056f69e1c20d942d4f9fc7363d3d79bffde899a`와 같고, 새 시험 여섯 개와
+  원시 carrier만 바뀌었다. production wiring 시험은 네 catalog 행뿐 아니라 private `MOAI_HOME`의 유효한
+  auth seed, PATH의 fake `codex`, 실제 `productionGatewayHandlerFactory`, handler close, reflection으로 읽은
+  concrete adapter를 거쳐 현재 `*gateway.OpenAIAdapter`를 `*gateway.AppServerAdapter` 기대와 비교한다.
+  App Server 왕복 시험은 한 turn의 `rpc-a`·`rpc-b` 두 dynamic call을 첫 응답 한 batch로 내보내고 Claude가
+  역순 결과를 다음 HTTP로 돌려도 각 원래 JSON-RPC ID에 정확히 한 번 응답해야 하는 계약을 고정했다.
+  history 시험은 실제 `gateway.Server`와 거절 adapter를 통과해 네 SSOT cause, HTTP 400
+  `invalid_request_error`, 생성·RPC·upstream HTTP 0, canary/redacted log 0을 함께 요구한다. 구조화 운영 로그의
+  sink와 필드 검증은 M14-R2가 소유하고 M14-R5가 live evidence를 남긴다. naming 시험은 exact baseline의
+  47 production/85 test/36 active importer/1 historical utility를 `git ls-tree`로 복원하고, stage 여부와 무관한
+  effective worktree current set, `source_inventory`, `path_mappings`, post-migration current 배열, legacy 예외를
+  양방향 비교한다. Factory 단위 시험은 Agent 실행을 합성하지 않고 prompt/env/폐기 flag/무부작용 경계만
+  판정하며, 실제 Agent·tool·approval·hook·Tasks·Dispatch 양성은 M14-R5 live gate로 분리했다. portable process
+  6/6과 lifecycle 정상 5개는 release RED가 아닌 회귀 가드다. 모든 release RED와 live gate가 PASS하기 전에는
+  구현 완료로 판정하지 않는다. M14-R0.1은 제품 수정 없이 production wiring fake를 protocol-speaking
+  subprocess로 보정했다. 독립 self-probe가 `codexapp.Start`→`Initialize`→`account/read`→`Close`와 EOF
+  marker를 확인하고 production 관측 전에 log/marker를 초기화한다. production selector는 fixture 오류가 아니라
+  네 `AuthPKCE`와 concrete `*gateway.OpenAIAdapter` mismatch 5개에서만 실패하며 새 raw carrier/hash를
+  발행했다. 따라서 0.15.0은 독립 plan audit iteration 5 입력 준비 상태다.
+
+- 0.14.0 (2026-09-14, source session `01a09c3b-3734-7c30-b65d-650e3c63d0aa`) — 운영자가
+  `moai gpt` 최종 설계와 Implementation Kickoff를 승인했다. 기존 요구사항·수용 기준 번호를 유지하면서
+  GPT 별칭을 `fable`→`gpt-6-astra`, `opus`→`gpt-5.6-sol`, `sonnet`→`gpt-5.6-terra`,
+  `haiku`→`gpt-5.6-luna`로 직접 매핑했다. 별도 MoAI 모델 tier는 두지 않으며
+  `max`·`high`·`medium`·`low`·`ultra`는 모델 별칭과 독립적인 effort 값으로 규정했다. GPT 기본 모델
+  `gpt-5.6-sol`은 `--model`이 없을 때의 시작값이고 네 별칭 슬롯 계약을 대체하지 않는다.
+  일반 Anthropic Messages ingress와 공식 Codex App Server의 연결, Claude Code가 소유하는 승인·hook·도구
+  실행, App Server JSON-RPC ID와 tool call의 정확한 상관관계를 `REQ-MG-013`·`015`·`017`에 흡수했다.
+  활성 제품 명칭은 실행=Factory, 큐=Todo, UI 상태=Tasks, 배차=Dispatch, 공통 조정=Orchestration으로
+  통일하고 `-k`/`--kanban`은 실행하지 않는 폐기 입력으로 바꿨다. 과거 SPEC·commit·report ID와 명시적
+  migration/legacy 경계의 옛 명칭은 감사 추적을 위해 보존한다. 요구사항 25개와 수용 기준 25개의 상한은
+  유지한다. Claude Code에서 비-Claude 모델을 라우팅하는 이 조합은 Anthropic이 공식 지원하는 경로가
+  아니므로, 양사 약관상 무위험 또는 공식 지원이라고 단정하지 않는다. 이 판은 구현 승인과 실행 계약을
+  기록할 뿐 구현·실증 완료를 주장하지 않는다.
+  같은 판의 plan-audit iter1 FAIL(0.69) 뒤 D1~D7을 보정했다: release-blocking 전수 PASS 행렬과 현재
+  release-blocking 계약, history-change 400의 생성/RPC/HTTP/log 귀속, 명칭 47/85/36+historical 1 inventory와
+  경로·심볼 allowlist, WHAT/HOW 분리, historical report 경계, 옛 `-k` 지시의 행 단위 superseded 표지.
+  기존 lifecycle의 implemented→in-progress 경고는 현재 미구현 amendment를 implemented로 거짓 표시하거나
+  lint skip으로 숨기지 않고 잔여 gap으로 유지한다.
+  iter2 FAIL(0.81) 후 D8~D12를 보정했다: 플랫폼 build-tag·spawn-and-wait 제약을
+  복원하고, 실제 시험 출력으로 오인할 수 있는 source grep·placeholder·복합 shell 증거를
+  제거했다. 아직 없는 6개 named behavioral test는 test/case 수·RED assertion·단일
+  RED/GREEN command·owner milestone만 미래 계약으로 고정하고 현재 증거는
+  `RED EVIDENCE PENDING TEST-ONLY REMEDIATION`으로 표시했다. naming manifest의 미래 경로·schema·
+  47+85+36+1 source set·생성 owner를 고정했지만 manifest 파일 생성은 주장하지 않는다.
+  이후 M14-R0 test-only RED가 추가되어 여섯 named selector의 실제 실패를 재실행했다.
+  상태는 `RED captured / production unchanged`이며 세부 case·exit·hash·한계는 `acceptance.md`
+  §D와 `progress.md` §E.1에 기록했다. 이는 GREEN 구현 완료 주장이 아니다.
+  plan-audit iter3은 raw stdout carrier 부재(D9), 얕은 App Server/history/process RED(D10),
+  tracked tree와 naming manifest의 불충분한 비교(D12), Factory 실제 부작용 미계측(D13)으로
+  FAIL(0.81)했다. 세 차례 자동 재감사 상한 뒤 사용자는 scope reduction이나 PASS-with-debt가 아니라
+  강한 test-only 보정과 모든 실제 RED의 GREEN 해결을 명시 승인했다. iteration 4는 감사 우회가 아닌
+  재감사 예외다. M14-R0 보정은 원문 stdout/stderr·exit와 해시를 보존하고, 실제 fake App Server
+  subprocess+HTTP 8/8 및 실제 portable process 6/6을 양성 전제로 재분류했다. 실제 RED는 alias,
+  production App Server auth wiring, Factory Agent/tool·폐기 flag, 네 history cause, naming
+  schema/current equality다. history cause SSOT는 `history_changed`·`agent_summary_untrusted`·
+  `receipt_manifest_mismatch`·`resume_duplicate_input`이며, naming manifest의 current 배열은 migration
+  이후 canonical 경로여야 한다. 이 판도 제품 구현·실계정·Windows live 완료를 주장하지 않는다.
 
 - 0.13.0 (2026-09-14, t654) — AS-5 plan-phase 개정: 세 launcher 생산 통합, 구독/API 이중 경로 검증,
   실제 Claude PTY 표면(도구검색·서브에이전트·재개·모델전환) 실증, 경로별 context 판정, Windows GitHub
@@ -121,7 +203,8 @@ tier: L
 - 0.2.0 (2026-09-10) — plan-audit iter1 FAIL(0.70) 반영, 명칭 변경, clarification 6건 확정.
 
   **입력.** iter1 감사 보고서는 `.moai/reports/SPEC-MOAI-PROXY-001/plan-audit-iter1.md`에
-  옛 경로·옛 식별자 그대로 남는다. 감사 증거이므로 이동·수정하지 않는다(핸드오프 §8).
+  옛 경로·옛 식별자 그대로 남는다. **historical report path; no SPEC dependency.** 감사 증거이므로
+  이동·수정하지 않는다(핸드오프 §8).
   브랜치는 `WT-unified-gateway`로 바뀌었고 HEAD는 `d060e0d13` 그대로다. 작업 트리
   디렉터리 이름은 세션이 그 경로에 고정되어 있어 바뀌지 않았다.
 
@@ -460,7 +543,8 @@ ID와 이전 대화 기록을 함께 실었다(프로브 1은 `/model <id>`로 c
 
 ## B. 범위 요약
 
-이 SPEC은 **gateway 코어**만 정의한다. 세 launcher의 CLI 계약(kanban/factory 진입 포함),
+이 SPEC은 **gateway 코어**만 정의한다. 세 launcher의 CLI 계약(Factory/Dispatch/Orchestration 진입과
+폐기 `-k`/`--kanban`의 무부작용 거절 포함),
 공통 supervisor, Anthropic 형태 ingress 정규화, 세 provider adapter, 공유 model registry,
 launch 시점 provider signal과 `settings.local.json`·teammate 표시 계약, 실패 의미론, 보안 경계가
 여기 들어간다. provider 중립 credential 참조 인터페이스는 이 SPEC이 고정하고, GPT 연결은 코어의 App Server managed/API 경로로 구현한다. 제공자별 picker는 코어 소관이고,
@@ -484,11 +568,9 @@ MoAI 자체 PKCE, `moai cg` 철거 스윕과 tmux pane teammate 표면은 §G의
 
 ### D.1 CLI 표면
 
-**REQ-MG-001** (Ubiquitous) — `moai` CLI는 `gpt`를 `launch` cobra 그룹의 launcher로
-등록해야 한다. launcher 이름은 단일 원천에서 오지 않으므로 등록은 **최소 세 곳**에 반영해야
-한다: 도움말 정렬표 `helpGroupFrequency`의 `launch` 항목, `rootHelpGroups()`의 Launchers 행,
-그리고 각 launcher 실행 함수 안에서 `spawnLaunch`에 넘기는 launcher 이름 리터럴. 한 곳이라도
-빠지면 도움말 표시나 `--spawn` 재발행이 어긋난다.
+**REQ-MG-001** (Ubiquitous) — `moai` CLI는 `gpt`를 Launchers 그룹에 등록하고, 도움말·직접 실행·
+`--spawn` 재발행에서 일관되게 `moai gpt`라는 사용자 표면을 제공해야 한다. 구체 등록 지점과
+중복 방지 방식은 `plan.md` M3와 `design.md` §1에 둔다.
 
 **REQ-MG-002** (Ubiquitous) — `moai cc`, `moai gpt`, `moai glm` 세 launcher는 동일한
 공통 launch plan을 거쳐야 하며, 기존 `-p/--profile`, `-w/--worktree`, `--spawn`,
@@ -504,19 +586,10 @@ help 출력과 command tree 어디에도 `gg`가 나타나서는 안 된다.
 
 ### D.2 공통 supervisor와 프로세스 수명
 
-**REQ-MG-005** (Ubiquitous) — supervisor는 gateway를 **별도의 `moai` child 프로세스**로
-실행해야 하며, gateway를 launcher 프로세스 내부 goroutine으로 두어서는 안 된다. supervisor는
-현재 launcher가 각 플랫폼에서 제공하는 다섯 가지 보장 — `MOAI_SESSION_PID` 각인, 종료 코드
-전파, signal 전달(Ctrl-C·Ctrl-Z·fg), PTY 동작, job control — 을 그대로 보존해야 한다.
-POSIX에서는 Claude child를 띄우는 `syscall.Exec` 호출을 보존하며, POSIX의 이 보장들은 그
-현재 플랫폼 계약은 `internal/cli/launch_exec_posix.go`의 `//go:build !windows`에서만 syscall.Exec를 사용하고,
-`internal/cli/launch_exec_windows.go`의 `//go:build windows`에서는 자식 실행·대기·종료 코드 전달을 사용하는 것이다.
-공통 파일에 무조건 syscall.Exec를 넣지 않는다. Windows 실행 검증은 GitHub CI에서 수행한다.
-호출이 프로세스를 치환하는 데서 나온다(`MOAI_SESSION_PID` 각인은 현재 POSIX 경로에서만
-이루어진다). **종료 코드 전파는 플랫폼과 무관하게 보존해야 한다** — Windows에서는
-`execOrSpawnClaude`의 Windows 구현이 `child.Wait()`로 자식을 기다린 뒤
-`os.Exit(ee.ExitCode())`로 자식의 종료 코드를 launcher 프로세스의 종료 코드로 삼는 현재
-동작이 그 근거이며, 그 경로는 `REQ-MG-009`의 spawn-and-wait 경로다.
+**REQ-MG-005** (Ubiquitous) — supervisor는 launcher와 독립된 수명의 gateway 프로세스를 제공하고,
+세션 PID 귀속, 종료 코드, Ctrl-C 종료, PTY 입출력과 foreground job control을 플랫폼별 기존 launcher와
+동일하게 보존해야 한다. lead 세션 종료 뒤 gateway가 남거나 gateway 때문에 Claude 종료 의미가 바뀌어서는
+안 된다. POSIX/Windows의 구체 프로세스 API와 build 분리는 `design.md` §3과 `plan.md` M4에 둔다.
 
 **REQ-MG-006** (Event-driven + Ubiquitous) — **When** gateway child가 loopback listener bind를 마치면,
 supervisor는 bind된 포트를 포트 인계 채널로 돌려받고 그 값으로
@@ -537,10 +610,9 @@ supervisor는 bind된 포트를 포트 인계 채널로 돌려받고 그 값으�
 않았으며, 이 요구사항은 그런 프로세스의 부재도, 그 요청이 다른 경로로 새지 않는다는 것도 주장하지 않는다(§E, `plan.md`
 M7). tmux pane teammate의 수명 계약은 형제 `SPEC-MOAI-GATEWAY-TEAMMATE-001`(제안) 소관이다.
 
-**REQ-MG-009** (Where Windows) — **Where** 플랫폼이 Windows이면, supervisor는 부모가
-살아 있는 spawn-and-wait 경로(`execOrSpawnClaude`의 Windows 구현)를 사용하며 gateway
-child의 수명을 그 부모 또는 job object에 묶어야 한다. POSIX 계약을 그대로 가져다 쓰지
-않는다.
+**REQ-MG-009** (Where Windows) — **Where** 플랫폼이 Windows이면, supervisor는 lead 종료·취소·
+비정상 종료 때 gateway를 함께 끝내고 Claude 종료 코드를 보존해야 한다. POSIX 전용 프로세스 의미를
+Windows 동작으로 가정해서는 안 된다. API 선택과 CI 배치는 `design.md` §3.5와 `plan.md` M4에 둔다.
 
 **REQ-MG-010** (Event-driven) — **When** loopback bind가 실패하면, gateway는 명시 오류로
 종료해야 하며 비-loopback 주소로 대체 bind해서는 안 된다. 포트는 `0`(임의 여유 포트)로
@@ -564,6 +636,12 @@ When 전체 완료의 출력 배열이 비어 있으면, the gateway shall 앞�
 **REQ-MG-013** (Ubiquitous) — tool_use / tool_result는 요청별 상태로 왕복해야 한다.
 도구 이름 축약은 충돌을 감지하고 **요청 단위로** 역매핑해야 하며, 전역 tool ID map을
 두어서는 안 된다. 여러 tool call이 섞여 들어오면 index와 ID를 구분해야 한다.
+**When** Codex App Server가 dynamic tool call을 JSON-RPC 요청으로 보내면, the gateway shall
+그 요청의 RPC ID·thread ID·turn ID·call ID를 대화 소유 범위에 묶어 Claude `tool_use`로 변환하고,
+Claude Code의 승인·hook·도구 실행을 거친 정확히 한 개의 `tool_result`만 동일한 RPC ID의 응답으로
+돌려줘야 한다. 다른 대화·turn·call의 결과, 중복 결과, 알 수 없거나 이미 완료된 RPC ID는 App Server에
+전달하기 전에 명시 오류로 거절해야 한다. HTTP 응답 종료를 App Server turn 또는 pending RPC 종료로
+간주해서는 안 된다.
 
 **REQ-MG-014** (Ubiquitous) — `/v1/messages/count_tokens`는 provider별 정확성 수준을
 응답 또는 문서에 명시해야 하고 추정치를 실제 tokenizer 값으로 표시해서는 안 된다.
@@ -580,6 +658,14 @@ Where GPT 대화가 App Server로 이어지는 경우, the gateway shall Codex�
 불명확하면 외부 실행 전에 명시 오류로 거절해야 한다. reasoning 암호문을 직접 읽거나 Claude history에서 복원해서는 안 된다.
 When pending 도구 호출 중 프로세스가 끊기면, the gateway shall 실행 여부가 불명확한 도구를 자동 재실행하지 않고
 안전하게 재연결할 수 없는 상태를 명시 실패로 알려야 한다. 이미 끝난 HTTP 응답을 App Server turn 종료로 간주해서는 안 된다.
+**When** GPT history를 재개하거나 같은 공개 prefix를 다시 제출하면, the gateway shall 저장된 receipt/manifest와
+요청 history를 대화 소유 범위에서 대조해야 한다. 동일 prefix의 안전한 재시도는 새 사용자 입력을 중복 반영하지
+않고 외부 생성과 App Server turn/start를 합계 한 번만 허용해야 한다. changed history, 출처가 불명확한
+`agent_summary`, receipt/manifest 불일치, resume 직후 이미 반영된 입력의 재제출은 외부 생성 0회와
+App Server turn/start 0회로 거절하고 HTTP 400 `invalid_request_error`를 반환해야 한다. 오류 응답과 로그는
+원인 분류(`same_prefix_retry`·`history_changed`·`agent_summary_untrusted`·`receipt_manifest_mismatch`·
+`resume_duplicate_input`)와 비식별 대화 ID만 남기며 prompt·tool 결과·reasoning·token·credential 원문을
+기록해서는 안 된다.
 The gateway shall 같은 제공자 모델 변경·정상 resume·Claude Agent의 독립 대화·native Agent fork·명시 세션 fork·compaction을 대화 소유권과 이력 정합성 아래
 지원해야 한다. 미확인 family 호환성이나 압축 표면을 추정하지 않고, 지원 검증 전 해당 상태는 명시 오류로 알려야 한다.
 검증 전 오류 처리는 완료 기준을 낮추지 않으며 t653에서 해당 경로의 양성·음성 증거를 확보해야 한다.
@@ -615,6 +701,10 @@ thinking을 끄는 방식으로 성공을 만들어서는 안 된다.
 **REQ-MG-017** (Ubiquitous + When) — The GPT adapter shall Claude Code UI를 유지하며 Codex App Server를
 통해 GPT 구독 및 명시 API 키 모드를 제공해야 한다. GPT 허용 ID와 설치 경로의 지원 모델을 교차 검증하고
 `gpt-6-astra`를 정확히 사용해야 한다. 미지원 ID를 다른 모델로 대체해서는 안 된다.
+일반 Anthropic Messages gateway는 Claude Code의 `/v1/messages` 계약을 수신하고, GPT route만 공식 Codex
+App Server의 stdio JSON-RPC thread/turn 계약으로 변환해야 한다. 이 통합은 Anthropic이 비-Claude 모델
+라우팅 용도로 공식 지원하는 Claude Code 경로가 아니므로 launcher와 문서는 이를 공식 지원 또는 약관상
+무위험으로 표시해서는 안 된다. 사용 계정의 계약·조직 정책 확인은 운영 배포의 별도 조건이다.
 The launcher shall 로그인 방식으로 ChatGPT 브라우저 managed, ChatGPT device-code managed, OpenAI API 키를
 제공하고 앞의 둘은 구독, 마지막은 API 과금임을 표시해야 한다. 구독 OAuth·토큰 저장·갱신은 Codex가 소유하며
 MoAI는 구독 토큰 파일을 읽거나 직접 구독 backend를 호출해서는 안 된다. 구독 실패를 API 과금으로 자동 전환해서는 안 된다.
@@ -654,10 +744,12 @@ teammate의 GLM tier 매핑도 그 SPEC 소관이다.
 **REQ-MG-019** (Ubiquitous + When) — The launcher shall 세션별 모델 선택과 요청 허용 범위를
 `moai cc`는 Claude/Anthropic, `moai glm`은 GLM/Z.AI, `moai gpt`는 GPT/OpenAI로 제한해야 한다.
 공통 catalog 원천을 재사용하더라도 각 세션에 노출·허용하는 ID 집합에는 해당 제공자만 있어야 한다.
-GPT 집합은 `gpt-6-astra`를 포함하며 `gpt-6`를 그 모델의 별칭으로 임의 해석해서는 안 된다.
+GPT 집합은 정확히 `gpt-6-astra`·`gpt-5.6-sol`·`gpt-5.6-terra`·`gpt-5.6-luna`이며
+`fable`·`opus`·`sonnet`·`haiku`를 순서대로 이 네 ID에 직접 매핑해야 한다. `gpt-6`를
+`gpt-6-astra`의 별칭으로 임의 해석해서는 안 된다.
 GLM 집합은 설정된 high·medium·low·fable ID의 중복을 제거한 집합이다.
 
-The launcher shall 시작 모델, picker의 Default·현재 모델·선택 행, 보조 모델·fallback·네 tier 슬롯을
+The launcher shall 시작 모델, picker의 Default·현재 모델·선택 행, 보조 모델·fallback·네 모델 별칭 슬롯을
 같은 제공자의 허용 ID로 한정해야 한다. 새 세션의 기본값은 설정된 Claude 기본값(비어 있으면 허용된 Claude
 기본 모델), GPT는 `gpt-5.6-sol`, GLM은 high이다. 명시한 허용 모델은 이 기본값보다 우선한다.
 재개는 같은 제공자·대화 소유권이 확인된 기록에 한정하고 명시 모델, 재개 모델, 제공자 기본값 순으로 결정한다.
@@ -670,13 +762,24 @@ The launcher shall 모델 선택·발견 캐시·재개 상태를 제공자 및 
 When 상위 managed 정책과 제공자 전용 목록이 충돌하거나 목록이 비면, the launcher shall 충돌을 알리고
 잘못된 제공자 목록을 정상 지원으로 표시해서는 안 된다. UI 제한과 별개로 gateway 허용 목록은 항상 적용한다.
 
+The launcher shall GPT 모델 별칭과 effort를 서로 독립적으로 운반해야 한다. GPT에는 별도의 MoAI 모델
+tier가 없다. `max`·`high`·`medium`·`low`·`ultra`는 effort 값일 뿐이며, 모델 별칭 선택이 effort를
+강제·변환·폴백하거나 effort 선택이 모델 ID를 바꾸게 해서는 안 된다. 명시 effort는 지원 여부를 실제
+App Server 계약으로 검증해 그대로 전달하거나 명시 오류로 거절하고, 다른 effort나 모델로 조용히 대체해서는
+안 된다. effort 누락은 누락 상태로 보존한다.
+
 **REQ-MG-020** — [RETIRED] 0.6.0에서 형제 `SPEC-MOAI-GATEWAY-PICKER-001`(제안)로 이관되어 폐기되었다. picker 이관은 당시 결정이며 t649의 회수 범위는 REQ-MG-019에서 규정한다. 이 요구사항에 있던 `~/.claude/settings.json` 쓰기 배제 불변식만
 `REQ-MG-006`으로 옮겼다. 번호는 재사용하지 않는다. 이 줄은 결번 표시일 뿐 요구사항이 아니며, GEARS 패턴을 갖지 않고
 요구사항 예산 계수에서 제외한다.
 
 **REQ-MG-021** (Ubiquitous + While) — gateway launcher는 launch 시점의 초기 provider를
-`internal/config/envkeys.go`에 등록한 환경변수 `MOAI_LAUNCH_PROVIDER`(값: `claude` |
-`gpt` | `glm`)로 자식 env에 실어야 한다.
+자식 세션에 명시적으로 전달하고, 상속된 다른 provider의 주소·credential·모델 선택·동작 영향 설정이
+선택한 세션을 우회하거나 오염하지 않게 해야 한다. 세 launcher는 사용자의 공유 설정과 부모 shell을
+바꾸지 않고, child의 loopback 주소·선택 provider·직접 모델 alias만 세션 범위에서 관측 가능하게 해야 한다.
+gateway launch의 hook은 같은 세션에 credential을 재주입하거나 다른 세션의 조정 환경을 지워서는 안 된다.
+
+아래 0.13.0까지의 키 목록·함수명·조립 순서 기록은 이 요구사항의 구현 이력이며 0.15.0의 HOW 기준은
+`design.md` §5·§6·§12와 `plan.md` M7이다. 아래 기록 안의 구현 식별자는 외부 계약이 아니다.
 
 `.claude/settings.local.json`에 대해서는 다음 계약을 지켜야 한다.
 
@@ -721,16 +824,21 @@ Claude child env에 대해서는 다음 계약을 지켜야 한다(2026-09-11 �
   값이 아니라 launcher가 GLM credential 저장소에서 읽어 설정한 값이어야 한다.
 - `ANTHROPIC_AUTH_TOKEN` — 세 launcher 모두 상속 값은 위 정리로 지워진다. M0에서 별도 세션 헤더를 선택했으므로
   launcher는 이 키에 세션 토큰을 다시 넣지 않으며 Claude child env에 `ANTHROPIC_AUTH_TOKEN`이 없다(`design.md` §3.2).
-- 모델 슬롯 (2026-09-11 운영자 결정) — 세 launcher 모두 상속된 `ANTHROPIC_DEFAULT_*_MODEL` 값을 Claude child env에 싣지
+- 모델 슬롯 (2026-09-14 운영자 결정) — 세 launcher 모두 상속된 `ANTHROPIC_DEFAULT_*_MODEL` 값을 Claude child env에 싣지
   않는다(위 상속 env 정리). gateway `moai glm` launcher는 그 정리 뒤에 네 슬롯 키를 설정된 GLM tier 모델 ID로 더해야
   한다 — `ANTHROPIC_DEFAULT_OPUS_MODEL`에 `llm.glm.models`의 `high`, `ANTHROPIC_DEFAULT_SONNET_MODEL`에 `medium`,
   `ANTHROPIC_DEFAULT_HAIKU_MODEL`에 `low`, `ANTHROPIC_DEFAULT_FABLE_MODEL`에 `fable`. 오늘 `setGLMEnv`의 대응과 같다
-  (`internal/cli/glm.go:367-370`, HEAD `81c1d58f9`). 그래서 별칭 tier 요청(`opus`·`sonnet`·`haiku`·`fable`)이 GLM 모델 ID를
+  (`internal/cli/glm.go:367-370`, HEAD `81c1d58f9`). 그래서 GLM 별칭 요청(`opus`·`sonnet`·`haiku`·`fable`)이 GLM 모델 ID를
   싣고 registry exact match로 Z.AI route에 해석된다(`REQ-MG-018`, `REQ-MG-019`). 슬롯 키가 없으면 그런 요청은 Claude Code의
   기본 Claude 모델 ID를 싣고 exact match가 그 요청을 Anthropic route로 보낼 수 있다 — Claude Code 문서의 슬롯 변수 설명에서
   끌어낸 추론이며 실행하지 않았다(§E). 이 슬롯 키는 launcher가 더하는 키이므로 정리 뒤에도 남고, `settings.local.json`과
-  tmux 세션 env에는 쓰지 않는다. `moai cc`와 `moai gpt`도 정리 뒤 네 슬롯을 해당 제공자의 허용 ID로
-  설정한다. Default·fallback·서브에이전트와 picker의 모델 범위는 REQ-MG-019를 따른다.
+  tmux 세션 env에는 쓰지 않는다. `moai gpt`는 정리 뒤
+  `ANTHROPIC_DEFAULT_FABLE_MODEL=gpt-6-astra`,
+  `ANTHROPIC_DEFAULT_OPUS_MODEL=gpt-5.6-sol`,
+  `ANTHROPIC_DEFAULT_SONNET_MODEL=gpt-5.6-terra`,
+  `ANTHROPIC_DEFAULT_HAIKU_MODEL=gpt-5.6-luna`를 정확히 더한다. 이 네 값은 model alias 직접 매핑이며
+  effort tier가 아니다. `moai cc`는 같은 네 슬롯을 해당 Claude 허용 ID로 설정한다.
+  Default·fallback·서브에이전트와 picker의 모델 범위는 REQ-MG-019를 따른다.
 
 teammate 표시와 tmux 세션 env에 대해서는 다음 계약을 지켜야 한다(`plan.md` 결정 12). gateway launch에서는 이 계약이
 `applyGLMMode`가 하던 tmux 세션 env 주입과 `applyCCMode`가 하던 tmux 세션 env 정리를 대체한다.
@@ -742,34 +850,31 @@ teammate 표시와 tmux 세션 env에 대해서는 다음 계약을 지켜야 �
   Z.AI base URL, loopback gateway 주소, `MOAI_LAUNCH_PROVIDER` 어느 것도 gateway launch를 통해 tmux 세션 env에 실리지
   않는다.
 
-`MOAI_LAUNCH_PROVIDER`가 없는 세션의 `ensureTeammateMode`는 오늘 동작(tmux 안 `tmux`, 밖 `auto`)을 유지한다. Claude Code가
+`MOAI_LAUNCH_PROVIDER`가 없는 세션은 오늘의 teammate 표시 동작(tmux 안 `tmux`, 밖 `auto`)을 유지한다. Claude Code가
 `in-process` 설정을 따르는지, in-process teammate가 lead의 gateway 주소를 물려받는지는 측정하지 않았다(§E).
 
-GLM 활성 판정의 이관 대상은 두 지점이다.
-
-- `internal/hook`의 `hookProcessEnvHasGLM` — 훅 프로세스 env의 `ANTHROPIC_BASE_URL`에
-  `"z.ai"`가 들어 있는지만 보는 단일 부분 문자열 술어. `MOAI_LAUNCH_PROVIDER`가 `glm`인지를
-  읽도록 옮긴다.
-- `internal/hook`의 `cleanupGLMSettingsLocal` — `settings.local.json`의 `env` 블록에
-  `ANTHROPIC_BASE_URL` 키가 있는지로 GLM 활성을 판정하는 존재 술어.
+GLM 활성 판정의 이관 대상은 훅 프로세스 env에서 기본 URL의 `z.ai` 부분 문자열로
+판정하던 지점과, SessionEnd에서 `settings.local.json` `env` 블록의 기본 URL 키 존재로
+판정하던 지점 두 곳이다. 신호가 있으면 두 곳은 `MOAI_LAUNCH_PROVIDER == glm`일 때만
+GLM으로 판정해야 한다. 구체적 함수·파일 대응은 `design.md` §5.3과 `plan.md` M7이 소유한다.
 
 `MOAI_LAUNCH_PROVIDER`가 없는 세션에서는 두 지점 모두 기존 판정을 유지한다. **While** 세션이
 gateway launch로 시작되어 `MOAI_LAUNCH_PROVIDER`가 설정되어 있으면, 다음 네 훅 동작은 실행되어서는 안 된다.
 
-- SessionEnd의 `settings.local.json` GLM teardown(`cleanupGLMSettingsLocal`)
-- SessionEnd의 tmux 세션 env 정리(`internal/hook`의 `clearTmuxSessionEnv`)
-- SessionStart의 `ensureGLMCredentials`
-- SessionStart의 `ensureTmuxGLMEnv`가 하는 tmux 세션 env 쓰기
+- SessionEnd의 `settings.local.json` GLM teardown
+- SessionEnd의 tmux 세션 env 정리
+- SessionStart의 GLM credential·context 설정 쓰기
+- SessionStart의 tmux 세션 env 쓰기
 
 그런 세션의 훅은 GLM 정리 키 집합을 `settings.local.json`에 써서는 안 되고, tmux 세션 env에 쓰거나 그 env에서
 지워서도 안 된다. gateway launch는 tmux 세션 env에 아무것도 쓰지 않았으므로 그 세션의 훅이 치울 것이 없고, 남아 있는
 키는 같은 tmux 세션의 다른 launch가 쓴 것이다. `ensureTmuxGLMEnv`의 억제는 launch 정리가 복원한 사용자 토큰이 tmux
 세션 env로 새는 경로를 막는다(`design.md` §5.4).
-`ensureGLMCredentials`의 억제는 그 함수가 파일에 하는 **모든** 쓰기를 덮어야 한다 —
-토큰이 없을 때의 credential 주입뿐 아니라, 토큰이 있을 때 context 창 키
+SessionStart 억제는 그 경로가 파일에 하는 **모든** 쓰기를 덮어야 한다 — 토큰이
+없을 때의 credential 주입뿐 아니라, 토큰이 있을 때 context 창 키
 (`CLAUDE_CODE_AUTO_COMPACT_WINDOW`, `CLAUDE_CODE_MAX_CONTEXT_TOKENS`)를 쓰는 분기도 포함한다.
 
-`internal/tmux`의 `sessionEnvHasGLM`과 `hasGLMEnv`는 이 SPEC의 이관 대상이 아니며 형제
+상위 tmux 세션 env의 legacy GLM 감지 두 경로는 이 SPEC의 이관 대상이 아니며 형제
 `SPEC-MOAI-CG-RETIRE-001`(제안)이 맡는다. 이 signal은 exec 시점에 고정되는 launch 시점 값만
 담는다 — 요청별 provider는 gateway 내부에서만 알 수 있다.
 
@@ -782,7 +887,7 @@ gateway launch로 시작되어 `MOAI_LAUNCH_PROVIDER`가 설정되어 있으면,
 단계 정리가 막는다. tmux 세션 env에 남은 GLM 키 때문에 teammate pane의 요청이 gateway를 거치지 않고
 Z.AI로 곧장 가는 경로도 포함된다. `REQ-MG-021`이 gateway launch의 teammate를 in-process로 한정해 이 경로를 좁히지만
 닫지는 못한다. 남는 여지는 셋이다 — `teammateMode`는 프로젝트가 함께 쓰는 `settings.local.json`의 키라서 나중에 시작한
-gateway 아닌 세션의 SessionStart(`ensureTeammateMode`)가 tmux 안에서 `tmux`로 다시 쓸 수 있고(`design.md` §6.6), 이미
+gateway 아닌 세션의 SessionStart가 tmux 안에서 `tmux`로 다시 쓸 수 있고(`design.md` §6.6), 이미
 떠 있는 gateway 세션이 그 값을 언제 다시 읽는지는 측정하지 않았으며, gateway launch는 tmux 세션 env에 남은 GLM 키를
 치우지 않는다(`design.md` §6.5). 이 경로를 닫는 일은 형제 `SPEC-MOAI-GATEWAY-TEAMMATE-001`(제안) 소관이고, 이 SPEC이
 판정하는 것은 좁히는 의무(`AC-MG-018` (a))까지다. Claude Code가 `in-process` 설정을 따르는지도 측정하지 않았다(§E).
@@ -812,28 +917,29 @@ provider 중립 credential 참조 seam으로 검증한다. App Server 경로는 
 
 **REQ-MG-024** (Ubiquitous) — gateway는 loopback에만 bind해야 하고, credential을 argv와
 기본 로그에서 제외해야 하며, 본문·API key·OAuth token·reasoning을 기본 로그에 남기지
-않아야 한다. 새로 도입하는 환경변수 이름은 `internal/config/envkeys.go`에 상수로
-등록해야 한다. 이 저장소에는 production Go의 맨몸 `ANTHROPIC_*` 리터럴을 잡아내는 AST 기반
-가드 시험 `TestNoBareAnthropicEnvVarLiteralsInProduction`이 있으며, 이 가드는 빌드가 아니라
-변경 패키지 테스트에서 실패한다.
+않아야 한다. 새로 도입하는 환경변수 이름은 단일 저장소에 등록하고 production
+소스에 맨몸 `ANTHROPIC_*` 리터럴을 남기지 않아야 한다. 구현 가드와 파일 대응은
+`design.md` §5.1과 `plan.md` M8이 소유한다.
 
 **REQ-MG-025** (Unwanted) — The MoAI adapter shall Codex credential 파일의 토큰을 읽거나 직접
 쓰거나 지워서는 안 된다. 사용자가 선택한 managed 로그인·갱신·로그아웃은 Codex가 자신의 저장소에서 수행한다.
 기존 일반 Codex 프로필과 다른 계정·API 프로필을 묵시 변경해서는 안 된다. 승인된 인증 작업에 따른 Codex 자체 쓰기와
 MoAI의 직접 파일 변경을 구분하여 검증해야 한다.
 
-### D.7 kanban / factory 진입
+### D.7 Factory 진입과 활성 제품 명칭
 
-**REQ-MG-026** (Event-driven) — **When** `moai gpt`가 `-k`(kanban) 또는 `-f`(factory)
-진입 형태로 실행되면, launcher는 `moai cc`·`moai glm`과 같은 조건으로 Kanban Mode 또는
-Factory Mode에 진입해야 하며 kanban 기록의 backend 값으로 `gpt`를 남겨야 한다. gateway
-아래에서는 모든 세션이 `/model`로 provider를 바꿀 수 있으므로, kanban 기록의 backend 값은
-세 값(`claude`·`glm`·`gpt`) 모두 **launcher의 초기 provider**를 뜻해야 하고 세션의 provider를
-뜻해서는 안 된다. `gpt` 값은 kanban backend 집합에만 추가하며, 같은 이름의 상수를 쓰는 감사
-backend 집합(`claude`·`codex`·`glm`)에는 추가해서는 안 된다. 웹 콘솔은 `gpt` 기록에 대해
-과금 방식을 단정해 표시해서는 안 된다 — 현재 backend 배지(`backendBadge`)는 `glm`이 아닌
-모든 값을 정액제로 표시하므로, 손대지 않으면 `gpt` lane에 검증되지 않은 과금 주장이 붙는다.
-GPT 구독 경로와 API key 경로는 과금 방식이 다르며 그 판정은 형제 SPEC의 소관이다.
+**REQ-MG-026** (Event-driven + Unwanted) — **When** `moai gpt`가 `-f`(Factory) 진입 형태로
+실행되면, launcher는 `moai cc`·`moai glm`과 같은 Factory lead/worker 계약으로 진입하고 Dispatch
+기록에 초기 provider `gpt`를 남겨야 한다. 이 값은 세션 중 선택 모델이나 인증·과금 방식을 뜻하지
+않는다. **When** 사용자가 폐기된 `-k` 또는 `--kanban`을 입력하면, the CLI shall 실행·큐 변경·세션
+생성 없이 명시 오류와 `-f` 안내를 반환해야 한다. 다른 이름의 대체 모드를 신설해서는 안 된다.
+
+활성 제품 표면과 새 코드에서 명칭은 실행=Factory, 큐=Todo, UI 상태=Tasks, 배차=Dispatch, 공통
+조정=Orchestration으로 통일해야 한다. `internal/kanban`·`package kanban`·`kanban.BackendGPT` 같은
+활성 식별자는 각각 `internal/orchestration`·`package orchestration`·`orchestration.BackendGPT`로
+이관하고 저장 값 `"gpt"`는 호환을 위해 유지해야 한다. 과거 SPEC·commit·report ID와 명시적
+migration/legacy 판독 경계에서는 옛 명칭을 보존할 수 있지만, 새 사용자 출력이나 일반 런타임 식별자에
+노출해서는 안 된다. UI의 `gpt` 표시는 확인되지 않은 정액제·API 과금 방식을 단정해서는 안 된다.
 
 ### D.8 launcher 생산 통합과 배포 게이트 (0.13.0, t654)
 
@@ -860,6 +966,10 @@ Where 이 카드의 검증 수용 기준 전수가 PASS한 경우, the launcher 
 
 ## E. 제약
 
+- **cross-platform exemption.** 프로세스 치환 `syscall` 사용은 POSIX 전용 구현에만
+  허용하며 그 플랫폼 파일은 `//go:build !windows` 제약을 가져야 한다. Windows 구현은
+  같은 파일을 공유하거나 `syscall.Exec` 호출을 포함하지 않고 `//go:build windows` 파일의
+  독립 spawn-and-wait 계약으로 child 준비·취소·종료 코드 전파·정리를 제공해야 한다.
 - POSIX `syscall.Exec` 보존은 협상 대상이 아니다. `MOAI_SESSION_PID` 각인이 여기에
   올라타 있다.
 - 새 환경변수 이름은 `envkeys.go` SSOT를 거쳐야 한다. 이를 어기면 변경 패키지 테스트의
@@ -868,7 +978,8 @@ Where 이 카드의 검증 수용 기준 전수가 PASS한 경우, the launcher 
   Claude Code는 그 헤더를 보내지 않고 `/v1/messages`는 POST 전용이다.
 - upstream SSE **중계** 선례가 저장소에 없다. `internal/web/events.go`의 Hub는 계약상
   신호 전용이다.
-- OpenAI/GPT HTTP 클라이언트가 저장소에 전혀 없다.
+- **[HISTORICAL 0.6.0 observation]** 당시 OpenAI/GPT HTTP 클라이언트가 저장소에 없었다. 현재 GPT
+  책임은 존재하는 공식 Codex App Server bridge이며 직접 Responses·구독 API endpoint 구현은 범위 밖이다.
 - `settings.local.json`의 `env` 값과 프로세스 env 사이의 우선순위는 측정하지 않은 Claude Code
   동작이다. 이 SPEC의 어떤 문장도 그 우선순위를 전제로 삼지 않는다.
 - Windows supervisor 계약(`REQ-MG-009`)의 실행 판정은 운영자 결정에 따라 release PR 게이트의 Windows
@@ -952,11 +1063,11 @@ Where 이 카드의 검증 수용 기준 전수가 PASS한 경우, the launcher 
 - 분리 근거: tmux 세션 하나에는 env가 하나뿐이어서 소유권 설계 없이는 계약이 성립하지 않는다(G4-B1). 코어는 그 설계를
   기다리지 않도록 gateway launch를 in-process teammate로 한정한다(`REQ-MG-021`).
 
-### Out of Scope — kanban 기록 필드 통합
+### Out of Scope — legacy 저장 필드의 즉시 제거
 
-- 기존 `MOAI_KANBAN_BACKEND`와 새 `MOAI_LAUNCH_PROVIDER`를 하나로 합치는 작업
-- 이유: 두 키는 같은 값 어휘를 쓰지만 설정 범위가 다르다(전자는 kanban/factory 경로에서만
-  실린다). 통합은 이 SPEC의 판정 표면을 넓힌다.
+- 기존 저장 자료를 읽기 위한 `MOAI_KANBAN_BACKEND` 호환 입력과 migration 판독 경계를 즉시 삭제하는 작업
+- 새 출력·코드·일반 런타임은 Dispatch/Orchestration 명칭을 쓰되, 저장 형식 전환은 구버전 판독과 롤백
+  검증을 갖춘 migration으로 수행한다.
 
 ### Out of Scope — 원격 배포·통합 행위 (0.13.0)
 
@@ -979,7 +1090,8 @@ Where 이 카드의 검증 수용 기준 전수가 PASS한 경우, the launcher 
 
 - 설계 원문: `reports/moai-proxy-three-provider-redesign-20260910.md` (읽기 전용, 파일명 유지)
 - 핸드오프: `reports/moai-proxy-next-session-handoff-20260910.md` (읽기 전용, 파일명 유지)
-- iter1 감사: `.moai/reports/SPEC-MOAI-PROXY-001/plan-audit-iter1.md` (옛 경로·옛 식별자 보존)
+- iter1 감사: `.moai/reports/SPEC-MOAI-PROXY-001/plan-audit-iter1.md`
+  (**historical report path; no SPEC dependency** — 옛 경로·옛 식별자 보존)
 - iter2 감사: `.moai/reports/SPEC-MOAI-GATEWAY-001/plan-audit-iter2.md`
 - iter3 감사: `.moai/reports/SPEC-MOAI-GATEWAY-001/plan-audit-iter3.md`
 - iter4 감사: `.moai/reports/SPEC-MOAI-GATEWAY-001/plan-audit-iter4.md` (0.6.0 입력)

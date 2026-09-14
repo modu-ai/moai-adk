@@ -1008,6 +1008,10 @@ func NewDefaultWorkflowConfig() WorkflowConfig {
 		// fallback when workflow.yaml omits the block.
 		Audit: AuditConfig{
 			Model: AuditModelClaude,
+			Claude: ModelEffort{
+				Model:  "sonnet",
+				Effort: "high",
+			},
 			Gates: AuditGates{
 				Claude: AuditGateRequired,
 				Codex:  AuditGateRequired,

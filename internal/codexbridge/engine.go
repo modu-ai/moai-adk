@@ -52,13 +52,14 @@ type ToolResult struct {
 	Success bool
 }
 type Request struct {
-	Owner                                    codextools.Binding
-	Model, CWD, ExpectedPrefix, PrefixDigest string
-	Tools                                    []codextools.Definition
-	References                               []codextools.Reference
-	Input                                    []any
-	Results                                  []ToolResult
-	Resume                                   bool
+	Owner                            codextools.Binding
+	Model, Effort, CWD, Instructions string
+	ExpectedPrefix, PrefixDigest     string
+	Tools                            []codextools.Definition
+	References                       []codextools.Reference
+	Input                            []any
+	Results                          []ToolResult
+	Resume                           bool
 	// Fork starts a brand-new App Server thread that inherits exactly the
 	// completed prefix named by ExpectedPrefix — the explicit session fork
 	// boundary. Never combined with Resume.
@@ -69,9 +70,10 @@ type Tool struct {
 	Arguments json.RawMessage
 }
 type Segment struct {
-	Text string
-	Tool *Tool
-	Done bool
+	Text  string
+	Tool  *Tool
+	Tools []Tool
+	Done  bool
 }
 type pending struct {
 	rpcID            json.RawMessage
@@ -86,7 +88,7 @@ type conversation struct {
 	owner                           codextools.Binding
 	registry                        *codextools.Registry
 	model, cwd, prefix, phase, turn string
-	pending                         *pending
+	pending                         []*pending
 	queue                           chan codexapp.Message
 	stopped                         chan struct{}
 	stopOnce                        sync.Once
@@ -264,8 +266,8 @@ func (e *Engine) get(q Request) (*conversation, error) {
 }
 func (e *Engine) save(c *conversation, phase string) error {
 	call := ""
-	if c.pending != nil {
-		call = c.pending.callID
+	if len(c.pending) != 0 {
+		call = c.pending[0].callID
 	}
 	return e.cfg.Store.save(record{Owner: c.owner, Phase: phase, TurnID: c.turn, CallID: call, Prefix: c.prefix, Model: c.model, CWD: c.cwd})
 }
@@ -325,10 +327,10 @@ func (e *Engine) resume(q Request, key string) (*conversation, error) {
 }
 func (e *Engine) stop(c *conversation) {
 	c.stopOnce.Do(func() { close(c.stopped) })
-	if c.pending != nil {
-		_ = e.rpc.DiscardRequest(c.pending.rpcID)
-		c.pending = nil
+	for _, pending := range c.pending {
+		_ = e.rpc.DiscardRequest(pending.rpcID)
 	}
+	c.pending = nil
 	for {
 		select {
 		case event := <-c.queue:
@@ -363,30 +365,57 @@ func (e *Engine) Step(ctx context.Context, q Request) (seg Segment, err error) {
 	// AS4: only an idle barrier may switch the model — the new value repins the
 	// conversation below and rides the next turn/start. A waiting or active
 	// turn keeps its pinned model so a switch can never land on the wrong turn.
-	if (phase != "idle" && c.model != q.Model) || c.cwd != q.CWD || c.prefix != q.ExpectedPrefix {
+	if phase != "idle" && c.model != q.Model {
 		c.mu.Unlock()
-		return seg, ErrScope
+		return seg, fmt.Errorf("%w: active model mismatch", ErrScope)
+	}
+	if c.cwd != q.CWD {
+		c.mu.Unlock()
+		return seg, fmt.Errorf("%w: working directory mismatch", ErrScope)
+	}
+	if c.prefix != q.ExpectedPrefix {
+		c.mu.Unlock()
+		return seg, fmt.Errorf("%w: history prefix mismatch", ErrScope)
 	}
 	if phase == "waiting" {
-		if len(q.Input) != 0 || len(q.Results) != 1 || c.pending == nil || q.Results[0].ID != c.pending.publicID {
+		if len(q.Input) != 0 {
 			c.mu.Unlock()
-			return seg, ErrScope
+			return seg, fmt.Errorf("%w: new input arrived while tools are pending", ErrScope)
+		}
+		if len(q.Results) != len(c.pending) || len(c.pending) == 0 {
+			c.mu.Unlock()
+			return seg, fmt.Errorf("%w: tool result count mismatch", ErrScope)
+		}
+		pendingIDs := make(map[string]bool, len(c.pending))
+		for _, pending := range c.pending {
+			pendingIDs[pending.publicID] = true
 		}
 		size := 0
-		for _, content := range q.Results[0].Content {
-			if content.Type != "inputText" {
+		seen := make(map[string]bool, len(q.Results))
+		for _, result := range q.Results {
+			if !pendingIDs[result.ID] || seen[result.ID] {
 				c.mu.Unlock()
-				return seg, ErrScope
+				return seg, fmt.Errorf("%w: unknown or duplicate tool result", ErrScope)
 			}
-			size += len(content.Text)
+			seen[result.ID] = true
+			for _, content := range result.Content {
+				if content.Type != "inputText" {
+					c.mu.Unlock()
+					return seg, fmt.Errorf("%w: unsupported tool result content", ErrScope)
+				}
+				size += len(content.Text)
+			}
 		}
 		if size > e.cfg.MaxOutputBytes {
 			c.mu.Unlock()
 			return seg, ErrLimit
 		}
-	} else if len(q.Results) != 0 || len(q.Input) == 0 {
+	} else if len(q.Results) != 0 {
 		c.mu.Unlock()
-		return seg, ErrScope
+		return seg, fmt.Errorf("%w: unexpected tool result", ErrScope)
+	} else if len(q.Input) == 0 {
+		c.mu.Unlock()
+		return seg, fmt.Errorf("%w: empty turn input", ErrScope)
 	}
 	c.mu.Unlock()
 	// Any failure after an operation starts is uncertain. Persist a barrier and
@@ -421,7 +450,11 @@ func (e *Engine) Step(ctx context.Context, q Request) (seg Segment, err error) {
 				ID string `json:"id"`
 			} `json:"thread"`
 		}
-		err = e.rpc.Call(ctx, "thread/start", map[string]any{"model": q.Model, "cwd": q.CWD, "dynamicTools": registry.NativeTools(), "approvalPolicy": "never", "sandbox": "read-only", "environments": []any{}}, &started)
+		start := map[string]any{"model": q.Model, "cwd": q.CWD, "dynamicTools": registry.NativeTools(), "approvalPolicy": "never", "sandbox": "read-only", "environments": []any{}}
+		if q.Instructions != "" {
+			start["developerInstructions"] = q.Instructions
+		}
+		err = e.rpc.Call(ctx, "thread/start", start, &started)
 		if err != nil {
 			return seg, err
 		}
@@ -449,12 +482,18 @@ func (e *Engine) Step(ctx context.Context, q Request) (seg Segment, err error) {
 			c.mu.Unlock()
 			return seg, ErrRecovery
 		}
-		p := c.pending
+		pending := append([]*pending(nil), c.pending...)
+		results := make(map[string]ToolResult, len(q.Results))
+		for _, result := range q.Results {
+			results[result.ID] = result
+		}
 		if len(q.References) > 0 {
 			err = c.registry.Discover(c.owner, q.References, q.Tools)
 		}
-		if err == nil {
-			err = c.registry.Complete(c.owner, c.turn, p.callID, q.Tools)
+		for _, p := range pending {
+			if err == nil {
+				err = c.registry.Complete(c.owner, c.turn, p.callID, q.Tools)
+			}
 		}
 		if err == nil {
 			c.prefix = q.PrefixDigest
@@ -466,9 +505,12 @@ func (e *Engine) Step(ctx context.Context, q Request) (seg Segment, err error) {
 		}
 		c.phase = "responding"
 		c.mu.Unlock()
-		err = e.rpc.Respond(ctx, p.rpcID, map[string]any{"contentItems": q.Results[0].Content, "success": q.Results[0].Success})
-		if err != nil {
-			return seg, err
+		for _, p := range pending {
+			result := results[p.publicID]
+			err = e.rpc.Respond(ctx, p.rpcID, map[string]any{"contentItems": result.Content, "success": result.Success})
+			if err != nil {
+				return seg, err
+			}
 		}
 		c.mu.Lock()
 		c.pending = nil
@@ -513,7 +555,11 @@ func (e *Engine) Step(ctx context.Context, q Request) (seg Segment, err error) {
 			c.attach = false
 			c.mu.Unlock()
 		}
-		err = e.startTurn(ctx, c, map[string]any{"threadId": thread, "model": q.Model, "input": q.Input, "environments": []any{}})
+		turn := map[string]any{"threadId": thread, "model": q.Model, "input": q.Input, "environments": []any{}}
+		if q.Effort != "" {
+			turn["effort"] = q.Effort
+		}
+		err = e.startTurn(ctx, c, turn)
 		if err != nil {
 			return seg, err
 		}
@@ -542,9 +588,10 @@ func (e *Engine) Step(ctx context.Context, q Request) (seg Segment, err error) {
 				Turn      struct{ ID, Status string } `json:"turn"`
 			}
 			decodeErr := json.Unmarshal(event.Params, &p)
-			if decodeErr != nil || p.ThreadID != c.owner.ThreadID || (p.TurnID != "" && p.TurnID != c.turn) {
+			turnBound := event.Method != "thread/tokenUsage/updated"
+			if decodeErr != nil || p.ThreadID != c.owner.ThreadID || (turnBound && p.TurnID != "" && p.TurnID != c.turn) {
 				c.mu.Unlock()
-				return seg, ErrProtocol
+				return seg, fmt.Errorf("%w: invalid %s event binding", ErrProtocol, event.Method)
 			}
 			switch event.Method {
 			case "item/tool/call":
@@ -563,14 +610,71 @@ func (e *Engine) Step(ctx context.Context, q Request) (seg Segment, err error) {
 					return seg, err
 				}
 				publicID := "toolu_moai_" + hex.EncodeToString(nonce)
-				c.pending = &pending{rpcID: append(json.RawMessage(nil), event.ID...), callID: p.CallID, publicID: publicID}
-				c.phase = "waiting"
-				err = e.save(c, "waiting")
-				if err == nil {
-					seg.Tool = &Tool{ID: publicID, Name: invocation.Name, Arguments: invocation.Arguments}
+				c.pending = append(c.pending, &pending{rpcID: append(json.RawMessage(nil), event.ID...), callID: p.CallID, publicID: publicID})
+				tool := Tool{ID: publicID, Name: invocation.Name, Arguments: invocation.Arguments}
+				seg.Tools = append(seg.Tools, tool)
+				if seg.Tool == nil {
+					first := tool
+					seg.Tool = &first
 				}
 				c.mu.Unlock()
-				return seg, err
+
+				// App Server emits a turn's dynamic-tool requests as one ordered
+				// burst. A short quiet boundary collects that burst so Claude gets
+				// one parallel tool_use batch and can return results in any order.
+				quiet := time.NewTimer(5 * time.Millisecond)
+				for {
+					select {
+					case extra := <-c.queue:
+						if !quiet.Stop() {
+							<-quiet.C
+						}
+						quiet.Reset(5 * time.Millisecond)
+						if extra.Method != "item/tool/call" || len(extra.ID) == 0 {
+							quiet.Stop()
+							return seg, ErrProtocol
+						}
+						var next struct {
+							ThreadID  string          `json:"threadId"`
+							TurnID    string          `json:"turnId"`
+							CallID    string          `json:"callId"`
+							Tool      string          `json:"tool"`
+							Arguments json.RawMessage `json:"arguments"`
+						}
+						if json.Unmarshal(extra.Params, &next) != nil || next.ThreadID != c.owner.ThreadID || next.TurnID != c.turn {
+							quiet.Stop()
+							return seg, ErrProtocol
+						}
+						c.mu.Lock()
+						invocation, beginErr = c.registry.Begin(c.owner, codextools.Call{TurnID: c.turn, CallID: next.CallID, Tool: next.Tool, Arguments: next.Arguments}, q.Tools)
+						if beginErr != nil {
+							c.mu.Unlock()
+							quiet.Stop()
+							return seg, beginErr
+						}
+						if _, err = rand.Read(nonce); err != nil {
+							c.mu.Unlock()
+							quiet.Stop()
+							return seg, err
+						}
+						publicID = "toolu_moai_" + hex.EncodeToString(nonce)
+						c.pending = append(c.pending, &pending{rpcID: append(json.RawMessage(nil), extra.ID...), callID: next.CallID, publicID: publicID})
+						seg.Tools = append(seg.Tools, Tool{ID: publicID, Name: invocation.Name, Arguments: invocation.Arguments})
+						c.mu.Unlock()
+					case <-quiet.C:
+						c.mu.Lock()
+						c.phase = "waiting"
+						err = e.save(c, "waiting")
+						c.mu.Unlock()
+						return seg, err
+					case <-ctx.Done():
+						quiet.Stop()
+						return seg, ctx.Err()
+					case <-e.ctx.Done():
+						quiet.Stop()
+						return seg, e.failure()
+					}
+				}
 			case "item/agentMessage/delta":
 				if len(seg.Text)+len(p.Delta) > e.cfg.MaxOutputBytes {
 					c.mu.Unlock()
@@ -580,7 +684,7 @@ func (e *Engine) Step(ctx context.Context, q Request) (seg Segment, err error) {
 			case "turn/completed":
 				if p.Turn.ID != c.turn || p.Turn.Status != "completed" {
 					c.mu.Unlock()
-					return seg, ErrProtocol
+					return seg, fmt.Errorf("%w: invalid turn/completed state", ErrProtocol)
 				}
 				c.phase = "idle"
 				err = e.save(c, "idle")
@@ -589,11 +693,11 @@ func (e *Engine) Step(ctx context.Context, q Request) (seg Segment, err error) {
 				return seg, err
 			case "error":
 				c.mu.Unlock()
-				return seg, ErrProtocol
+				return seg, fmt.Errorf("%w: App Server error event", ErrProtocol)
 			default:
 				if len(event.ID) > 0 {
 					c.mu.Unlock()
-					return seg, ErrProtocol
+					return seg, fmt.Errorf("%w: unsupported App Server request %s", ErrProtocol, event.Method)
 				}
 			}
 			c.mu.Unlock()

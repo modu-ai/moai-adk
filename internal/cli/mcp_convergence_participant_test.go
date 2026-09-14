@@ -218,32 +218,34 @@ func TestConverge_BelowTwo_NoDivergence_FlagNilNotFalse_AC_APC_002(t *testing.T)
 		})
 	}
 
-	// The DQ-2 refusal path: zero participants by construction — the engine
-	// refuses before any backend contributes a verdict (acceptance §B row).
-	t.Run("DQ-2 refusal (zero participants)", func(t *testing.T) {
-		rc := &recordingCaller{}
+	// An unavailable actual Claude backend contributes an inconclusive record,
+	// but remains zero comparable participants and blocks its required gate.
+	t.Run("actual Claude inconclusive (zero participants)", func(t *testing.T) {
 		orig := backendCall
-		backendCall = rc.call
+		backendCall = func(_ context.Context, backend, _, _, _ string) ReviewOutput {
+			return ReviewOutput{Verdict: VerdictInconclusive, Summary: backend + ": unavailable", Findings: []Finding{}, NextSteps: []string{}}
+		}
 		t.Cleanup(func() { backendCall = orig })
 
 		r := runMultiAudit(context.Background(), ReviewOutput{}, "uncommittedChanges", "concurrency", MultiAuditConfig{
+			OriginProvider: "gpt",
 			Gates: config.AuditGates{
 				Claude: config.AuditGateRequired,
-				Codex:  config.AuditGateRequired,
-				GLM:    config.AuditGateAdvisory,
+				Codex:  config.AuditGateOff,
+				GLM:    config.AuditGateOff,
 			},
 		}, nil)
 		if r.ParticipantCount != 0 {
-			t.Errorf("participant_count = %d, want 0 (a refusal compares nobody)", r.ParticipantCount)
+			t.Errorf("participant_count = %d, want 0 (inconclusive is not a participant)", r.ParticipantCount)
 		}
 		if r.DisagreementFlag != nil {
-			t.Errorf("disagreement_flag non-nil (points at %t); want nil — a refusal must not read as \"the participants agreed\"", *r.DisagreementFlag)
+			t.Errorf("disagreement_flag non-nil (points at %t); want nil — no comparable participant pair exists", *r.DisagreementFlag)
 		}
 		if r.OverallVerdict != overallVerdictFail {
-			t.Errorf("overall_verdict = %q, want fail (refusal, unchanged)", r.OverallVerdict)
+			t.Errorf("overall_verdict = %q, want fail (required Claude gate unmet)", r.OverallVerdict)
 		}
 		if r.ResidualRiskNote == "" {
-			t.Error("residual_risk_note empty; want the missing-anchor note preserved")
+			t.Error("residual_risk_note empty; want required-gate evidence")
 		}
 	})
 }

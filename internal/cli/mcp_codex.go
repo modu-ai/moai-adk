@@ -266,6 +266,11 @@ type ReviewOutput struct {
 	Findings  []Finding `json:"findings"`
 	NextSteps []string  `json:"next_steps"`
 
+	// Provenance identifies the backend transport that actually produced the
+	// review. It is optional so the existing Codex/GLM output remains byte-for-
+	// byte compatible until those backends opt into the common metadata.
+	Provenance *AuditProvenance `json:"provenance,omitempty"`
+
 	// SynthesisNote records that the verdict signals inside ONE backend's review
 	// body disagreed, and which way they were resolved. Empty whenever they
 	// agreed — a note present on every review would mark nothing.
@@ -306,6 +311,26 @@ type ReviewOutput struct {
 	// commits. Empty on every other verdict, so the advisory speaks only when
 	// the binary really is running code the tree has moved past (REQ-ABI-006).
 	BuildLag string `json:"build_lag,omitempty"`
+}
+
+// AuditProvenance is backend-supplied evidence about how a review was made.
+// Token fields are pointers so an unavailable provider metric is serialized as
+// JSON null instead of being misreported as a measured zero.
+type AuditProvenance struct {
+	Backend           string `json:"backend"`
+	Transport         string `json:"transport"`
+	AuthMode          string `json:"auth_mode"`
+	Source            string `json:"source,omitempty"`
+	RequestedModel    string `json:"requested_model"`
+	ResolvedModel     string `json:"resolved_model"`
+	RequestedEffort   string `json:"requested_effort"`
+	ToolSurface       string `json:"tool_surface"`
+	SessionPersisted  bool   `json:"session_persisted"`
+	UsageSource       string `json:"usage_source"`
+	InputTokens       *int64 `json:"input_tokens"`
+	CachedInputTokens *int64 `json:"cached_input_tokens"`
+	OutputTokens      *int64 `json:"output_tokens"`
+	ErrorCode         string `json:"error_code"`
 }
 
 // Finding is a single review finding (§G.4).
