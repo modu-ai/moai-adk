@@ -109,7 +109,7 @@ agents_emit_required: true
 spec: SPEC-GIT-PROC-SAFE-001
 card: t782
 sync_complete_at: 2026-09-14
-sync_commit_sha: pending-backfill
+sync_commit_sha: "d8748f618"
 sync_status: completed
 changelog_entry_position: CHANGELOG.md [Unreleased] ### Fixed (first bullet)
 frontmatter_status_transitions:
