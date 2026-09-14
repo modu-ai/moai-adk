@@ -30,6 +30,14 @@ card t783 · branch `WT-syncgate-hook` · base `a404132e7`
   F6: baseline-hook gate-layout note added (plan.md B10 + pre-flight). Artifact hash
   changed ⇒ the run-phase Plan Audit Gate re-executes (skip-eligibility intentionally
   invalidated).
+- **v0.2.1 amendment (2026-09-14)** — iter-2 verdict PASS 0.94, F1-F6 verified closed; one
+  residual Low (F7) folded in: the stale-clause removal patterns have 0 hits on the
+  `2213871af` baseline doc (measured this run; the relationship paragraph postdates the
+  baseline via t624's M3 `c0e56ab09`), so their pattern-proof is re-scoped to the CURRENT
+  pre-M3 tree (1 hit each in both current copies), and the `2213871af` baseline positive
+  control applies to the H01 hook-state arms and the H03 absence pattern only. Amended:
+  AC-SGV-006 Given, AC-SGV-005 Given (absence-pattern scoping, same class), acceptance §A,
+  plan M1 row. No milestone work started (plan-phase amendment only).
 
 ## §E.1 Plan-phase Audit-Ready Signal
 

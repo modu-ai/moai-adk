@@ -1,7 +1,7 @@
 ---
 id: SPEC-SYNC-GATE-VERDICT-001
 title: "Sync quality gate: three-arm outcome-record execution proof on the current tree, severity-to-verdict unification in the template doc copy, and manifest-observation wording truth"
-version: "0.2.0"
+version: "0.2.1"
 status: draft
 created: 2026-09-14
 updated: 2026-09-14
@@ -21,6 +21,7 @@ related_specs: [SPEC-SYNC-GATE-FAILSTATE-001]
 
 | Version | Date | Author | Change |
 |---------|------|--------|--------|
+| 0.2.1 | 2026-09-14 | manager-spec | iter-2 residual F7 folded in: stale-clause removal patterns' positive control re-scoped to the current pre-M3 tree (measured 0 hits on the `2213871af` baseline doc — the clauses postdate it via t624's M3); the baseline positive control applies to the H01 hook-state arms and the H03 absence pattern only (AC-SGV-005/006, acceptance §A, plan M1) |
 | 0.2.0 | 2026-09-14 | manager-spec | Plan-audit findings F1-F6 applied (PASS 0.88, `.moai/reports/t783/plan-audit.md`). F1 (High): option A — the Phase 8 relationship paragraph's two stale clauses are ALIGNED OUT of both copies (freeze dropped); F2: all REQ bodies reflowed SHALL-first; F3: write-ordering clause declared consumed-from-FAILSTATE-001; F4: parity mechanical proxy named; F5: hook neutrality tightened to no-NEW-card-IDs-on-edited-lines; F6: baseline-hook gate-layout note added |
 | 0.1.0 | 2026-09-14 | manager-spec | Initial plan-phase draft (card t783, branch `WT-syncgate-hook`, base `a404132e7`) |
 

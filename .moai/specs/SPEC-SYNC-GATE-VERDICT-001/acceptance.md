@@ -9,8 +9,10 @@ claim is an executed command in the claiming run (verification-claim-integrity �
 ## §A Scope of Verification
 
 Three headline executions (arms A/B/C) with a positive control against the `2213871af` hook
-copy; the doc-pair wording surface (H03 + SX-R05) verified by phrase greps whose patterns are
-first proven against the audit-baseline copies; pairing and scope-fence checks. Two
+copy; the doc-pair wording surface (H03 + SX-R05) verified by phrase greps whose patterns
+are first proven against the correct pre-change tree per AC-SGV-005/006 (the `2213871af`
+baseline doc for the H03 absence pattern; the current pre-M3 tree for the stale-clause
+removal patterns — plan-audit F7); pairing and scope-fence checks. Two
 release-blocking executions (AC-SGV-001, AC-SGV-006) carry the card's mandatory
 execution/wording burden; the remainder are regression-guards and pairing checks.
 
@@ -80,9 +82,10 @@ arm's minimal scope is a FAIL.
 
 ### AC-SGV-005 — H03 wording truth and gate preservation
 
-**Given** the M1-proven grep patterns (each pattern demonstrated with ≥1 hit against the
-`2213871af` baseline doc copy BEFORE any absence is claimed on the current tree — the 계기
-observer contract)
+**Given** the M1-proven grep patterns (each ABSENCE pattern demonstrated with ≥1 hit against
+the `2213871af` baseline doc copy BEFORE any absence is claimed on the current tree — the
+계기 observer contract; the presence patterns' positive control is the current tree, where
+they already hold)
 **When** the patterns run against both current doc copies and the hook
 **Then** the baseline false-promise phrasing ("vulnerability scan runs automatically" family)
 has 0 hits in both copies; "not a vulnerability scan" is present in both copies (≥1 each) and
@@ -93,7 +96,10 @@ the per-language fast-check `case` survive verbatim).
 ### AC-SGV-006 — Severity-to-verdict unified across both copies
 
 **Given** the M1-proven patterns for the superseded trio and the two stale relationship
-clauses
+clauses — where the pattern-proof for the stale-clause removal greps runs against the
+CURRENT pre-M3 tree (1 hit each in both current copies; the clauses are absent from the
+`2213871af` baseline doc, which predates t624's M3), while the `2213871af` baseline positive
+control applies to the H01 hook-state arms and the H03 absence pattern only (plan-audit F7)
 **When** the greps run against both doc copies after M3
 **Then** "Only CRITICAL findings block", "HIGH findings are reported as warnings", and
 "Continue with warning" each have 0 hits in BOTH copies; the two clauses the unified gate
