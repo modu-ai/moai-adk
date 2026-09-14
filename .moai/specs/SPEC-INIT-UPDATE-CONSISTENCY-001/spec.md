@@ -34,7 +34,7 @@ init/update 전수 조사(2026-09-09, `.moai/reports/init-tui-audit-20260909.md`
 | F9 | `workflow.execution_mode` 기본값 갈라짐 — 컴파일 기본 `internal/config/defaults.go:882` `"team"` vs 템플릿 `workflow.yaml:20` `auto` | **fix** — 컴파일 기본을 `auto`로 정렬 | default↔template parity 테스트 |
 | F12 | "Updated N" 과대 — `.sh`/`.sh.tmpl` 4페어(hook 래퍼)가 `ListTemplates` (`internal/template/deployer.go:314`) 에서 stripped-target 기준 2회 계수 → `managedRedeployed` 4 과대, `update_tux.go:165` `fileCount+detail.ManagedRedeployed` 로 합산 | **fix** — stripped-target 기준 dedupe | 페어 포함 목록 카운트 단위 테스트 |
 | F13 | 백업 뿌리 3곳 분산 + 결과 요약이 config 백업 1곳만 인쇄 (`update_tux.go:185-186`) — 단, 3-뿌리 분산 자체는 `update_namespace_protect.go` 패키지 문서가 "No consolidation" 으로 기록한 의사결정 | **분산=record-only / 요약 누락=fix** | 렌더 테스트 (존재하는 뿌리 전부 표기) |
-| F14 | (a) 탭 수 기록 14 vs 실측 12 드리프트 → **이 트리에서 소멸**: `consoleTabs()` (`internal/web/schemaform.go:34-86`) 실측 14탭, `tab_layout_test.go:11` · `primary_surface_test.go:67` 가 14탭 계약 고정. (b) model_policy 숨은 키 → **소멸**: `handlers.go:380-385` G3-5 주석이 의도적 carry-forward 로 문서화. (c) FieldDefs 파싱-렌더 갭 잔존 가능 — `parseSchemaForm` (`schemaform.go:324`) 이 `AllFields()` 전체를 파싱하는데 `SectionHarness` 필드(`schema_sections.go:301-315, 433-443`)의 렌더 패널이 `schemaSectionMetas()` 에 없음 | **fix** — parity 가드 테스트로 잔존 간극 고정 | AllFields-editable ⊆ 렌더됨 ∪ 면서(exempt) 테스트 |
+| F14 | (a) 탭 수 기록 14 vs 실측 12 드리프트 → **이 트리에서 소멸**: `consoleTabs()` (`internal/web/schemaform.go:34-86`) 실측 14탭, `tab_layout_test.go:11` · `primary_surface_test.go:67` 가 14탭 계약 고정. (b) model_policy 숨은 키 → **소멸**: `handlers.go:380-385` G3-5 주석이 의도적 carry-forward 로 문서화. (c) FieldDefs 파싱-렌더 갭 잔존 가능 — `parseSchemaForm` (`schemaform.go:324`) 이 `AllFields()` 전체를 파싱하는데 `SectionHarness` 필드(`internal/settings/schema_sections.go:310, 433-443` — 주의: `internal/web/schema_sections_test.go` 는 동명의 테스트 파일이며, 렌더 측은 `internal/web/schemaform.go:213`)의 렌더 패널이 `schemaSectionMetas()` 에 없음 | **fix** — parity 가드 테스트로 잔존 간극 고정 | AllFields-editable ⊆ 렌더됨 ∪ 면서(exempt) 테스트 |
 | F15 | update 사전 청소(`.moai/config` 통째 삭제) 후 복원이 `sections/*.yaml` 한정 (`internal/cli/update/backup/restore.go:92-100` — sections 디렉터리 walk + 비-YAML skip). `evaluator-profiles/*.md`, `astgrep-rules/**` 사용자 수정은 병합 복원 대상 아님 | **accept (수동 복구) + 안내 문구** | 요약 안내 문구 존재 grep/렌더 테스트 |
 | F16 | "update -c 가 감사 선택 재묻기 없음" | **소멸 (dissolved)** — 아래 §3 실측 근거 | 소멸 근거 = 아래 4건 코드 판독 |
 | F17 | `ConfigManager.Save` 6섹션 한정(user/language/quality/git-convention/git-strategy/llm, `internal/config/manager.go:186-262`) + init/web 쓰기가 yamlpatch·전용 writer 로 우회 — 구조적 사실이며 회귀 방지 설계(REQ-GSI-001/002 byte 보존)와 일치 | **record-only** — @MX:DEBT 어노테이션으로 기록 내구화 | `@MX:DEBT` 존재 grep |
@@ -46,7 +46,7 @@ init/update 전수 조사(2026-09-09, `.moai/reports/init-tui-audit-20260909.md`
 
 **Where** 프로젝트가 초기화되는 상황에서, the init pipeline shall not persist `project.mode` configuration key that has no Go consumer. The init pipeline shall not register a `--project-mode` flag whose value no component reads.
 
-- 대상: `internal/core/project/initializer_expansion.go` `writeProjectModeYAML` (+ `WritePhase1Configs` 내 호출), `internal/core/project/initializer.go:50` `ProjectMode` 필드, `internal/cli/init.go:369-375,581` 플래그·검증, `internal/template/templates/.moai/config/sections/project.yaml.tmpl` `mode:` 키와 주석.
+- 대상: `internal/core/project/initializer_expansion.go` `writeProjectModeYAML` (+ `WritePhase1Configs` 내 호출), `internal/core/project/initializer.go:50` `ProjectMode` 필드, `internal/cli/init.go:91,369-375,581` 플래그 등록·검증·할당, `internal/template/templates/.moai/config/sections/project.yaml.tmpl` `mode:` 키와 주석.
 - 기존 프로젝트의 잔존 키는 다음 update 사이클의 config 재배포로 자연 소멸한다 — 별도 마이그레이션 없음.
 
 ### REQ-ICU-002 — execution_mode 기본값 정렬 (F9)
@@ -54,7 +54,7 @@ init/update 전수 조사(2026-09-09, `.moai/reports/init-tui-audit-20260909.md`
 The compiled default for `workflow.execution_mode` shall equal the value shipped in the template workflow.yaml. **When** the loader seeds a workflow.yaml whose `execution_mode` key is absent, the effective value shall not invert the template-declared meaning (`auto` — 하네스 자동 선택 위임, `internal/config/closed_sets.go:20-22`).
 
 - 방향 판정: `auto` 가 정답이다 — (1) 템플릿이 `auto` 를 배포하고, (2) `closed_sets.go` 가 `ExecutionModeAuto` 를 "defers the choice to harness auto-selection" 으로 정의하며, (3) `execution_modes_test.go:55` 가 `auto` 를 "the defer-to-harness default" 로 부른다. `"team"` 은 `auto` 값 도입 이전의 잔재다.
-- 현재 Go 리더 0건(`closed_sets.go:27` 주석 "Nothing in the Go tree reads ExecutionMode" — 이 트리에서 grep으로 재확인)이지만, 로더 부분-재정의 계약(키 없으면 컴파일 기본 시딩)상 파일 키 삭제가 의미 반전을 일으키므로 정렬한다.
+- 현재 Go 리더 0건(`closed_sets.go:35` 주석 "Nothing in the Go tree reads ExecutionMode" — 이 트리에서 grep으로 재확인)이지만, 로더 부분-재정의 계약(키 없으면 컴파일 기본 시딩)상 파일 키 삭제가 의미 반전을 일으키므로 정렬한다.
 
 ### REQ-ICU-003 — "Updated N" 페어 이중 계수 제거 (F12)
 

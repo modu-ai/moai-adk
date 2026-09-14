@@ -33,7 +33,7 @@ created: 2026-09-13
 - E1: 축별 AC PASS/FAIL 행렬 — acceptance.md §D 대조.
 - E2: `GOOS=windows go build ./...` 크로스 빌드(config/template 수정 동반).
 - E3: 영향 패키지 커버리지 — baseline 대비 감소 없음.
-- E4: 유령 잔존 grep — `project.mode`, `ProjectMode`, `--project-mode` 리더 0건 확인.
+- E4: 유령 잔존 grep — `project.mode`, `ProjectMode`, `--project-mode` 리더 0건 확인. 플래그 등록 부재도 단정한다 — `grep -rc 'Flags().String("project-mode"' internal/cli/init.go` → 0 (등록 잔존은 리더 grep 이 못 잡는 반쪽 제거 형태를 기계적으로 차단).
 - E5: `golangci-lint run` 영향 패키지 clean.
 
 ## §F Milestones
@@ -51,7 +51,7 @@ created: 2026-09-13
 
 - `internal/core/project/initializer_expansion.go`: `writeProjectModeYAML` 삭제 + `WritePhase1Configs` 호출부 정리.
 - `internal/core/project/initializer.go:50`: `ProjectMode` 필드 삭제.
-- `internal/cli/init.go`: `--project-mode` 플래그(:581)·검증 블록(:369-375) 삭제.
+- `internal/cli/init.go`: `--project-mode` 플래그 등록(:91)·할당(:581)·검증 블록(:369-375) 삭제.
 - `internal/template/templates/.moai/config/sections/project.yaml.tmpl`: `mode:` 키+주석 삭제 → `make build`.
 - 관련 테스트(expansion_test.go 등) 갱신 — "테스트가 false만 재어 미탐지"(F1 전례) 반복 금지: 제거 대상 키의 부재를 assert 하는 방향으로 재작성.
 - 완료 판정: E4 grep 0건 + 프로젝트 패키지 테스트 통과.

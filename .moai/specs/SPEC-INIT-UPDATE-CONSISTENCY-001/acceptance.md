@@ -65,7 +65,7 @@ created: 2026-09-13
 - **When** godoc과 어노테이션을 grep 하면
 - **Then** 6섹션 범위 선언 godoc + `@MX:DEBT` + `@MX:CEILING` + `@MX:UPGRADE` 가 각 1건 이상 존재한다.
 
-### AC-008 (소멸 회귀 가드 — F16)
+### AC-008 (REQ 없음 — F16 소멸 회귀 가드)
 
 - **Given** 재구성 질문 집합
 - **When** `ReconfigureQuestions` 와 `InitQuestions` 의 ID 집합을 대조하면
