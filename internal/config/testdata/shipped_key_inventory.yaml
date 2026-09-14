@@ -891,6 +891,9 @@
 - path: "llm.claude_bin"
   class: W
   evidence: reader
+- path: "llm.harness"
+  class: W
+  evidence: reader
 - path: "llm.glm.base_url"
   class: W
   evidence: reader

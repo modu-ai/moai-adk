@@ -22,6 +22,7 @@ import (
 	"github.com/modu-ai/moai-adk/internal/binlag"
 	"github.com/modu-ai/moai-adk/internal/cli/printer"
 	"github.com/modu-ai/moai-adk/internal/cli/uikit"
+	"github.com/modu-ai/moai-adk/internal/config"
 	"github.com/modu-ai/moai-adk/internal/constitution"
 	"github.com/modu-ai/moai-adk/internal/defs"
 	"github.com/modu-ai/moai-adk/internal/migration"
@@ -263,11 +264,61 @@ func runGroupedChecksObserved(verbose bool, filterCheck string, obs checkObserve
 		return results
 	}
 
-	return []checkGroup{
+	groups := []checkGroup{
 		{title: "System", checks: run("System", systemChecks)},
 		{title: "MoAI-ADK", checks: run("MoAI-ADK", moaiChecks)},
 		{title: "Workspace", checks: run("Workspace", workspaceChecks)},
 	}
+
+	// SPEC-INIT-HARNESS-001 (REQ-IH-011, design.md D7): on a codex-only
+	// project the claude-only surfaces were never deployed, so their absence
+	// findings would all be false alarms. Downgrade them to an explicit
+	// informational line — never a failure — while the Codex checks (wiring,
+	// config.toml, skills registration) stay untouched. The harness is read
+	// once, here, from the project the cwd names.
+	if config.ReadHarness(cwd) == "codex" {
+		groups = downgradeClaudeSurfaceChecks(groups)
+	}
+	return groups
+}
+
+// claudeSurfaceCheckNames names the doctor checks whose subject is a
+// claude-only surface (settings.json, hooks wiring, slash commands,
+// .claude/skills, .claude/rules) — the set REQ-IH-011 downgrades on a
+// codex-only project.
+var claudeSurfaceCheckNames = map[string]bool{
+	"Claude Config":         true,
+	"Hooks Config":          true,
+	hookWiringCheckName:     true,
+	"Hook Delivery":         true,
+	"Slash Commands":        true,
+	"Skills Allowlist":      true,
+	"Constitution Registry": true,
+}
+
+// claudeSurfaceDowngradedMessage is the explicit INFO line a codex-only
+// project's claude-surface checks carry instead of their absence warnings.
+const claudeSurfaceDowngradedMessage = "claude surface: not deployed (harness=codex)"
+
+// downgradeClaudeSurfaceChecks rewrites every failing-or-warning claude
+// surface check into an informational line. An OK check is left alone: it
+// means the user re-added the surface by hand (design.md §3 — user files are
+// respected, never second-guessed).
+func downgradeClaudeSurfaceChecks(groups []checkGroup) []checkGroup {
+	for gi, g := range groups {
+		for ci, c := range g.checks {
+			if !claudeSurfaceCheckNames[c.Name] || c.Status == uikit.CheckOK {
+				continue
+			}
+			g.checks[ci] = DiagnosticCheck{
+				Name:    c.Name,
+				Status:  uikit.CheckInfo,
+				Message: claudeSurfaceDowngradedMessage,
+			}
+		}
+		groups[gi] = g
+	}
+	return groups
 }
 
 // runDiagnosticChecks runs all diagnostic checks and returns a flat list.

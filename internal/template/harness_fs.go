@@ -227,11 +227,11 @@ func (h *harnessFS) ReadDir(name string) ([]fs.DirEntry, error) {
 	return filtered, nil
 }
 
-// NewCodexOnlyDeployerWithRenderer constructs the deployer a codex-only
-// init/update writes through: the catalog-tier deploy FS a claude
-// deployment would use, wrapped in harnessFS, with the .agents/skills mirror
-// disabled (the catalog is re-homed as real directories; no symlink can
-// point at a .claude/skills that will never exist — REQ-IH-006).
+// NewCodexOnlyDeployerWithRenderer constructs the deployer a codex-only init
+// writes through: the catalog-tier deploy FS a claude deployment would use,
+// wrapped in harnessFS, with the .agents/skills mirror disabled (the catalog
+// is re-homed as real directories; no symlink can point at a .claude/skills
+// that will never exist — REQ-IH-006).
 //
 // The harness contract outranks the distribute-all mode: a codex-only
 // deployment's file set is fixed by REQ-IH-005, and the slim/full split
@@ -244,6 +244,19 @@ func (h *harnessFS) ReadDir(name string) ([]fs.DirEntry, error) {
 // @MX:ANCHOR: [AUTO] sole external entry point for codex-only deployment
 // @MX:REASON: [AUTO] REQ-IH-005/006 enforcement point — both init (M2) and update re-deploy (M4) construct their deployer here
 func NewCodexOnlyDeployerWithRenderer(cat *Catalog, renderer Renderer) (Deployer, error) {
+	return newCodexOnlyDeployer(cat, renderer, false)
+}
+
+// NewCodexOnlyDeployerWithRendererAndForceUpdate is the update-path twin of
+// NewCodexOnlyDeployerWithRenderer: force-update semantics (template-managed
+// files are refreshed even when present) over the same codex-only file set.
+// The published-skill provenance check survives forceUpdate exactly as in the
+// claude deployer (deployer.go protectedScope), so R-011 holds here too.
+func NewCodexOnlyDeployerWithRendererAndForceUpdate(cat *Catalog, renderer Renderer) (Deployer, error) {
+	return newCodexOnlyDeployer(cat, renderer, true)
+}
+
+func newCodexOnlyDeployer(cat *Catalog, renderer Renderer, forceUpdate bool) (Deployer, error) {
 	if cat == nil {
 		return nil, errors.New("codex-only deployer: nil catalog")
 	}
@@ -261,5 +274,5 @@ func NewCodexOnlyDeployerWithRenderer(cat *Catalog, renderer Renderer) (Deployer
 	if err != nil {
 		return nil, fmt.Errorf("codex-only deployer: %w", err)
 	}
-	return NewDeployerWithRenderer(h, renderer, WithSkillMirror(false)), nil
+	return NewDeployerWithRendererAndForceUpdate(h, renderer, forceUpdate, WithSkillMirror(false)), nil
 }
