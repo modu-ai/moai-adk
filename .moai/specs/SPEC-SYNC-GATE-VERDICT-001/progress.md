@@ -12,24 +12,37 @@ card t783 · branch `WT-syncgate-hook` · base `a404132e7`
 - Key plan-phase finding recorded for the auditor: card t783's H01 machinery was already
   delivered by SPEC-SYNC-GATE-FAILSTATE-001 (card t624, completed 2026-09-11); t783's H01
   residual is the card-mandated three-arm EXECUTION proof on the current tree plus a
-  conditional minimal repair (REQ-SGV-003). SX-R05 is genuinely unresolved in the template
-  doc copy (measured: old trio 1 hit, "Continue with warning" 1 hit, unified text 0 hits —
-  FAILSTATE-001 AC-012(b) deliberately preserved the CRITICAL-only gate) and is this SPEC's
-  substantive edit. H03 is wording-verified only (baseline phrases demonstrably present on
-  `2213871af`, absent on both develop copies).
+  conditional minimal repair (REQ-SGV-003). SX-R05 is genuinely unresolved (measured: old
+  trio live in the template copy; BOTH copies carry the relationship paragraph's two stale
+  clauses — the local copy already contradicts itself) and is this SPEC's substantive edit.
+  H03 is wording-verified only (baseline phrases demonstrably present on `2213871af`,
+  absent on both develop copies).
+- **v0.2.0 amendment (2026-09-14)** — plan-audit PASS 0.88 (threshold 0.80), 6 findings,
+  `.moai/reports/t783/plan-audit.md`. F1 (High) resolved as **option A**: the Phase 8
+  relationship paragraph's two stale clauses ("its CRITICAL-only stop gate below"; "a HIGH
+  finding that Phase 8 reports only as a warning") are aligned OUT of BOTH copies in M3 —
+  the freeze is dropped, the clauses leave the text (AC-SGV-006/009 removal greps evidence
+  the removal; option B's grep-watched survival was rejected as the vacuous-green shape).
+  F2: all REQ bodies reflowed SHALL-first. F3: write-ordering clause declared
+  consumed-from-FAILSTATE-001 (torn-write shims own it; AC-SGV-003 states the boundary).
+  F4: AC-SGV-007(b) parity given a mechanical proxy (normalized-file diff, exit 0).
+  F5: hook neutrality tightened to no-NEW-card-IDs-on-edited-lines (AC-SGV-007(e)).
+  F6: baseline-hook gate-layout note added (plan.md B10 + pre-flight). Artifact hash
+  changed ⇒ the run-phase Plan Audit Gate re-executes (skip-eligibility intentionally
+  invalidated).
 
 ## §E.1 Plan-phase Audit-Ready Signal
 
 plan_status: audit-ready
 plan_complete_at: 2026-09-14
 
-Plan-phase self-check: frontmatter carries the canonical 12 fields + `tier: M` +
-`related_specs` (no snake_case aliases); REQ count 8 / AC count 9 — inside Tier M ceilings
-(≤16 / ≤16); acceptance.md carries Given-When-Then per AC; plan.md names Template-First
-ordering and the divergence-integration requirement (deliberate merge, no verbatim cp) as
-explicit M3 steps and anti-patterns; no `make build` anywhere in the plan; evidence
-convention `.moai/reports/t783/` (untracked, primary checkout) named in REQ-SGV-008 and
-AC-SGV-008; the 계기 observer contract is encoded as the M1 positive controls
+Plan-phase self-check (re-affirmed at v0.2.0): frontmatter carries the canonical 12 fields +
+`tier: M` + `related_specs` (no snake_case aliases); REQ count 8 / AC count 9 — inside Tier M
+ceilings (≤16 / ≤16); acceptance.md carries Given-When-Then per AC; plan.md names
+Template-First ordering and the divergence-integration requirement (deliberate merge, no
+verbatim cp) as explicit M3 steps and anti-patterns; no `make build` anywhere in the plan;
+evidence convention `.moai/reports/t783/` (untracked, primary checkout) named in REQ-SGV-008
+and AC-SGV-008; the 계기 observer contract is encoded as the M1 positive controls
 (AC-SGV-001 baseline-hook reproduction; AC-SGV-005 baseline-proven grep patterns).
 
 ## §E.2 Run-phase Evidence

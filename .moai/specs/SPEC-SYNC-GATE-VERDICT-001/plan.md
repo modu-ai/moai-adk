@@ -6,8 +6,8 @@ SPEC: `.moai/specs/SPEC-SYNC-GATE-VERDICT-001/spec.md` · card t783 · branch `W
 ## §A Context
 
 - Defect surface (all paths work-tree-relative):
-  - Hook pair (byte-identical, no neutrality constraint):
-    `.claude/hooks/moai/sync-phase-quality-gate.sh` and
+  - Hook pair (byte-identical, no source-neutrality constraint but no NEW internal card IDs on
+    edited lines): `.claude/hooks/moai/sync-phase-quality-gate.sh` and
     `internal/template/templates/.claude/hooks/moai/sync-phase-quality-gate.sh`.
   - Doc pair (diverged):
     `.claude/skills/moai/workflows/sync/quality-gates-quality.md` (local, 27018 bytes) and
@@ -17,11 +17,20 @@ SPEC: `.moai/specs/SPEC-SYNC-GATE-VERDICT-001/spec.md` · card t783 · branch `W
   machinery was already delivered by SPEC-SYNC-GATE-FAILSTATE-001 (card t624, completed) and
   subsequent hook commits (t603/t604/t663/t664) touched the same file after that close. The
   line numbers in the audit record are main-based — locate every target by symbol/phrase.
-- Key measured deltas on `a404132e7` (this run, verbatim phrase counts):
+- Plan-audit provenance: PASS 0.88 (threshold 0.80), 6 findings, report
+  `.moai/reports/t783/plan-audit.md`; v0.2.0 applies F1-F6. F1 (High) chose repair option A:
+  the Phase 8 relationship paragraph's two stale clauses are aligned OUT of both copies
+  (measured byte-identical in both at template line 148 / local line 164), because the
+  clauses must actually leave both copies — a stale-clause grep guarding a surviving false
+  sentence is the vacuous-green shape (verification-completeness §2) — and because the local
+  copy already carries the contradiction today, so option A repairs a live defect where
+  option B would enshrine it. The amendment changes the artifact hash, so the run-phase
+  Plan Audit Gate re-executes (skip-eligibility invalidated by design).
+- Key measured deltas on `a404132e7` (verbatim phrase counts):
   - template doc: "Only CRITICAL findings block" = 1; "Continue with warning" = 1;
-    "Continue by approved exception" = 0; "sync-auditor FAIL" = 1 (t624 canonical sentence);
-    "security-decision-contract" = 0.
-  - local doc: all mirrored (0 / 0 / 1 / 1 / 2 — the local-only rule is referenced twice).
+    "Continue by approved exception" = 0; "sync-auditor FAIL" = 1 (t624 canonical sentence,
+    carrying the two stale clauses); "security-decision-contract" = 0.
+  - local doc: mirrored counts (0 / 0 / 1 / 1 / 2 — the local-only rule is referenced twice).
   - `security-decision-contract.md` exists at `.claude/rules/moai/core/` and is ABSENT from
     `internal/template/templates/.claude/rules/` — the template doc's integrated text must
     state the contract inline.
@@ -33,13 +42,15 @@ SPEC: `.moai/specs/SPEC-SYNC-GATE-VERDICT-001/spec.md` · card t783 · branch `W
 | # | Issue | Evidence |
 |---|-------|----------|
 | B1 | Template doc copy internally contradicts itself: old severity trio (lines 136-138) + old CRITICAL-only gate (150-156) sit under the t624 canonical sentence (line 148) | phrase counts §A; template doc read |
-| B2 | The unified decision text lives ONLY in the local copy (later local-only edit, Template-First violated) | local doc lines 154/164/166-177 |
+| B2 | The unified decision text lives ONLY in the local copy (later local-only edit, Template-First violated) | local doc lines 154/166-177 |
 | B3 | The model rule `.claude/rules/moai/core/security-decision-contract.md` is not template-mirrored — a verbatim cp of the local text into the template would create a dangling reference (the same doc-promises-more-than-exists class H03 names) | `ls` both trees |
 | B4 | Hook pair byte-identical today (`diff -q` exit 0); any M2 repair must preserve that byte-identity | measured this run |
 | B5 | H01 execution proof does not exist against the current tree; hook file changed after FAILSTATE-001's close (t603/t604/t663/t664) | git log on the hook path |
 | B6 | The Stop-hook block path requires a sync-phase commit subject (`docs(...): sync-phase` family), a detected language, and a non-zero code-file delta — the harness fixture must satisfy all three gates or the arms measure nothing | hook lines 208-253 |
 | B7 | `worktree_content_id` excludes `.moai/state` and `.moai/logs` — the harness's own state writes must not invalidate the same-HEAD arms; conversely a worktree edit invalidates them (that IS arm B's mechanism) | hook lines 371-384 |
 | B8 | `moai update` deletes and redeploys `.claude/skills/moai*`; until the template copy is corrected, the local copy's unified text is one update away from being reverted — this is why the template edit lands first | CLAUDE.local.md §2.3 |
+| B9 | BOTH copies carry the Phase 8 relationship paragraph's two stale clauses ("its CRITICAL-only stop gate below"; "a HIGH finding that Phase 8 reports only as a warning") — false once the unified Critical/High gate lands, and already false in the local copy today | template line 148 / local line 164, byte-identical |
+| B10 | The `2213871af` baseline hook has a distinct gate layout (single sentinel file, SHA recorded before checks) — the fixture recipe tuned to the current hook's gates may need adaptation for the positive control | baseline hook extract; M1 self-catches the difference and records the adaptation as an evidence row |
 
 ## §C Pre-flight (run-phase entry)
 
@@ -55,7 +66,10 @@ SPEC: `.moai/specs/SPEC-SYNC-GATE-VERDICT-001/spec.md` · card t783 · branch `W
 - [ ] Confirm the harness fixture recipe satisfies B6/B7: temp git repo under `/tmp`
       (auto-cleaned), `go.mod` + one Go file with a deliberate fast-check failure, HEAD commit
       subject in the sync-phase family, `CLAUDE_PROJECT_DIR` pointed at the fixture, blocking
-      mode default (no `MOAI_SYNC_GATE_BLOCKING`), stdin `echo '{}'`.
+      mode default (no `MOAI_SYNC_GATE_BLOCKING`), stdin `echo '{}'`. The baseline hook's
+      gate layout differs (B10): if the current-hook recipe does not drive the baseline copy
+      to its checks, adapt the fixture for the positive control and record the adaptation as
+      an M1 evidence row — the control observes the defect shape, not a shared recipe.
 - [ ] Confirm the hook copies are byte-identical at pre-flight (`diff -q`, exit 0) — the
       pairing precondition for any M2 repair.
 - [ ] Confirm `security-decision-contract.md` is still local-only (B3) — if a parallel card
@@ -63,41 +77,54 @@ SPEC: `.moai/specs/SPEC-SYNC-GATE-VERDICT-001/spec.md` · card t783 · branch `W
 
 ## §C.2 Design decisions (committed direction)
 
-**(i) Template severity text = inline contract, not a path reference.** The template doc's
-Step 0.55.1/0.55.2 replacement text states the verdict mapping verbatim (Critical and High
-block; Medium and Low advisory; exception-record fields) and keeps the existing t624
-canonical sentence ("sync-auditor rubric is canonical; Phase 8's gate never clears an earlier
-sync-auditor FAIL") and the line-71 HARD THRESHOLD untouched. Model text: the local copy's
-lines 154/164/166-177, with the `security-decision-contract.md` path reference replaced by
-the inline statement (B3). "Continue with warning" becomes "Continue by approved exception".
+**(i) Severity unification = decision block AND relationship-paragraph clauses, both copies
+(option A).** The template doc's Step 0.55.1/0.55.2 replacement text states the verdict
+mapping verbatim (Critical and High block; Medium and Low advisory; exception-record fields)
+with the contract INLINE (B3). The Phase 8 relationship paragraph keeps its canonical claim
+(Step 0.5.4 rubric canonical; Phase 8 additional lens; its stop gate never clears an earlier
+sync-auditor FAIL) but LOSES the two clauses the unified gate falsifies — "its CRITICAL-only
+stop gate below" and "a HIGH finding that Phase 8 reports only as a warning" (B9). The
+alignment lands in BOTH copies, template first; exact replacement wording for the
+never-clears clause is the run phase's, subject to the AC-SGV-009 greps. Option B (keep the
+freeze, grep-watch the false clauses) was rejected: it would guard a known-false sentence
+surviving — the vacuous-green shape — and would leave the local copy's live contradiction in
+place. "Continue with warning" becomes "Continue by approved exception".
 
-**(ii) Local copy: no body change required on the scoped passages.** It already carries the
-unified text. The plan still VERIFIES it (AC-SGV-006/007) and aligns it only if pre-flight
-finds drift. The one deliberate pair delta is documented (local names the local-only rule
-path; template states inline) — REQ-SGV-007.
+**(ii) Local copy: body change limited to the two-clause alignment.** Its decision block
+already carries the unified text (verify, align only on drift), but its relationship
+paragraph carries the same two stale clauses as the template (B9) — that paragraph is inside
+the scoped surface (AC-SGV-007(b)) and is aligned in M3. The one deliberate pair delta stays
+documented (local names the local-only rule path; template states inline) — REQ-SGV-007.
 
 **(iii) H01 arms measure behavior, never source.** The three arms run the deployed hook
 script against `/tmp` fixtures; source reading may explain a failure but never substitutes
 for the executed evidence. Positive control first: the `2213871af` hook copy must reproduce
 the defect (call1 block JSON, call2 empty stdout) before any current-tree arm result is
-interpreted.
+interpreted (B10 governs fixture adaptation for the older gate layout).
 
 **(iv) Conditional repair fence.** All-arms-green ⇒ zero hook code change, proof is the
 deliverable (REQ-SGV-003). Any red arm ⇒ minimal repair in BOTH hook copies, template first,
 same commit, byte-identity re-proven, arms re-run. No drive-by hook cleanup.
 
+**(v) Write-ordering provenance.** The payload-before-fail-record ordering is
+FAILSTATE-001's verified surface (its torn-write shims and mutants M23/M24); this SPEC
+consumes it (REQ-SGV-002) and verifies only the post-hoc state shape (AC-SGV-003), so no
+mutant writing the record first can pass HERE unobserved-and-unowned — it is owned upstream.
+
 ## §D Constraints
 
 - No `make build` (lead builds at batch end); no settings.json edits; no commandemit surface
   (verified unaffected).
-- Template-copy edited passages carry NO internal SPEC IDs, no audit citations, no internal
-  dates, no commit SHAs, no non-shipped rule paths (template neutrality; the hook file is
-  exempt).
+- Template DOC-copy edited passages carry NO internal SPEC IDs, no audit citations, no
+  internal dates, no commit SHAs, no non-shipped rule paths (template neutrality). The HOOK
+  copies are exempt from source neutrality but carry a tighter rule: NO NEW internal card IDs
+  on edited/added lines — pre-existing citations (t604/t663/t664) on untouched lines are
+  preserved verbatim (plan-audit F5).
 - Stage by explicit pathspec; commit subject per the ownership matrix
   (`feat(SPEC-SYNC-GATE-VERDICT-001): ...` for plan; run-phase commits per convention).
 - Verdict-bearing commands: file redirect + exit code, no pipes (card measurement contract).
-- Do not touch the fenced doc passages (§B of spec.md); do not edit anything under
-  `.moai/reports/t783/` expectations — those files stay UNTRACKED in the primary checkout.
+- Do not touch the fenced doc passages (§B of spec.md); `.moai/reports/t783/` files stay
+  UNTRACKED in the primary checkout.
 - Existing gates preserved verbatim (REQ-SGV-005): the `deps_modified` block, the
   per-language fast-check `case`, and every early-exit path.
 
@@ -111,10 +138,10 @@ verification command form and expected output shape before implementation starts
 
 | ID | Priority | Milestone | Deliverable |
 |----|----------|-----------|-------------|
-| M1 | High | Reproduction + positive control | Baseline hook + baseline doc extracted from `2213871af` (read-only); positive-control two-call sequence against the baseline hook copy reproduces the H01 defect shape (call1 block, call2 empty); baseline-doc phrase greps prove the grep patterns catch the existing target (H03/SX-R05 patterns green on the baseline before any absence is claimed); fixture recipe frozen under `.moai/reports/t783/` |
+| M1 | High | Reproduction + positive control | Baseline hook + baseline doc extracted from `2213871af` (read-only); positive-control two-call sequence against the baseline hook copy reproduces the H01 defect shape (call1 block, call2 empty; fixture adapted to the older gate layout per B10, adaptation recorded); baseline-doc phrase greps prove the grep patterns catch the existing target (H03/SX-R05 patterns green on the baseline before any absence is claimed); fixture recipe frozen under `.moai/reports/t783/` |
 | M2 | High | H01 three-arm execution on the current tree | Arms A/B/C executed against the deployed hook via `/tmp` fixtures with file-redirect + exit-code evidence: (A) same-HEAD failing check twice → call2 re-delivers the block byte-identically, no check re-run; (B) worktree input change under unchanged HEAD → checks re-execute; (C) pass record → silent empty stdout. Conditional minimal repair per REQ-SGV-003 if any arm is red (both copies, template first, byte-identity re-proven, arms re-run); §E.2 evidence written |
-| M3 | High | SX-R05 template-first doc alignment + H03 verification | Template doc Step 0.55.1/0.55.2 replaced with the unified inline severity contract (design §C.2(i)), old trio + "Continue with warning" removed, canonical sentence + HARD THRESHOLD preserved; H03 wording verified present in both copies + hook comment; local copy verified aligned on scoped passages (edit only on drift); neutrality scan of the template edits |
-| M4 | Medium | Source-axis verification + close | Pairing evidence (hook pair byte-identical full-file; doc scoped-passage semantic parity with the one documented delta), scope-fence diff audit (no gate deletion, no scanner, fenced passages untouched), all evidence under `.moai/reports/t783/` (untracked, primary checkout), progress.md §E.2/§E.3 populated |
+| M3 | High | SX-R05 template-first doc alignment + H03 verification | Template doc Step 0.55.1/0.55.2 replaced with the unified inline severity contract (design §C.2(i)); old trio + "Continue with warning" removed; Phase 8 relationship paragraph's two stale clauses aligned out of BOTH copies (option A, B9) while the canonical-direction claim and never-clears semantics are retained; H03 wording verified present in both copies + hook comment; local copy verified aligned on the decision block (edit only on drift) and aligned on the relationship paragraph; neutrality scan of the template edits |
+| M4 | Medium | Source-axis verification + close | Pairing evidence (hook pair byte-identical full-file; doc scoped-passage parity via the AC-SGV-007(b) mechanical proxy with the one documented delta), scope-fence diff audit (no gate deletion, no scanner, fenced passages untouched, no NEW card IDs on hook edited lines), all evidence under `.moai/reports/t783/` (untracked, primary checkout), progress.md §E.2/§E.3 populated |
 
 ## §G Anti-Patterns
 
@@ -123,10 +150,13 @@ verification command form and expected output shape before implementation starts
   passages and (b) reference a non-shipped rule path.
 - Do NOT add the security-decision-contract path reference to the template copy while the
   rule is local-only (B3) — that re-creates the H03 defect class in new form.
+- Do NOT freeze a sentence whose neighbors you falsify: after unifying the gate, the
+  relationship paragraph's "CRITICAL-only" and "HIGH-as-warning" clauses are false text, and
+  a grep that watches them survive is a vacuous green, not a guard (F1 option-A rationale).
 - Do NOT accept arm evidence from source reading, a stale run, or another tree; each arm is
   an executed command on the current tree in this run.
 - Do NOT run the positive control against a re-written "old hook" — extract it from git
-  (`git show 2213871af:...`), read-only.
+  (`git show 2213871af:...`), read-only, and adapt the fixture to ITS gate layout (B10).
 - Do NOT delete or weaken any gate check while repairing (REQ-SGV-005); a repair that passes
   arms by loosening a check is a FAIL.
 - Do NOT leave the doc pair "fixed" only in the local copy (B8) — template first, always.
@@ -134,10 +164,12 @@ verification command form and expected output shape before implementation starts
 ## §H Cross-References
 
 - Owning predecessor: SPEC-SYNC-GATE-FAILSTATE-001 (card t624, completed) — outcome-record
-  machinery, payload/retry design, AC-011 (H03), AC-012 (SX-R05 partial, regression-guard
-  preserved the CRITICAL-only gate).
+  machinery, payload/retry design, write-ordering shims (consumed by REQ-SGV-002), AC-011
+  (H03), AC-012 (SX-R05 partial, regression-guard preserved the CRITICAL-only gate).
 - Card: t783 (H01 · H03 · SX-R05; audit baseline `main` `2213871af`).
+- Plan-audit: `.moai/reports/t783/plan-audit.md` (PASS 0.88; F1-F6 applied in v0.2.0).
 - Evidence: `.moai/reports/t783/` (untracked, primary checkout).
 - Governing rules: verification-claim-integrity.md (§1.1 surface 3 — the develop-side
   repair-status claims here are execution-verified, not text-inferred);
+  verification-completeness.md §2 (the option-B vacuous-green rejection);
   CLAUDE.local.md §2.3 (update deletes `.claude/skills/moai*` — why the template edit leads).

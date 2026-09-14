@@ -33,7 +33,7 @@ claim.
 | AC-SGV-006 | REQ-SGV-006 | Must (release-blocking) | SX-R05 unification greps, both copies |
 | AC-SGV-007 | REQ-SGV-007 | Must | Template-first order + scoped-passage parity + neutrality scan |
 | AC-SGV-008 | REQ-SGV-008 | Must | Evidence-path + process fences |
-| AC-SGV-009 | REQ-SGV-006 (Phase 8 clause) | Must | Phase 8 additional-lens statement present in both copies |
+| AC-SGV-009 | REQ-SGV-006 (Phase 8 clause) | Must | Phase 8 additional-lens statement present + stale-clause removal greps, both copies |
 
 ### AC-SGV-001 — Same-HEAD failing check re-delivers the stored block (Arm A), with positive control
 
@@ -62,8 +62,11 @@ check-run record, not a re-delivery), the emitted decision reflects the repaired
 **When** the hook is invoked again under the same HEAD and unchanged work tree
 **Then** stdout is empty (redirected file byte-count 0) and exit 0 — no stale block is
 re-delivered; and across Arms A-C the record file always reads `<sha> <running|pass|fail>
-<worktree-id>` with the failing run's payload file present and written before the `fail`
-record (state-shape read recorded in the evidence).
+<worktree-id>` with the failing run's payload file present (state-shape read recorded in the
+evidence). **Boundary (F3):** this AC verifies post-hoc state shape only — it is NOT a
+write-ordering proof. The payload-before-fail-record ordering is owned and verified by
+SPEC-SYNC-GATE-FAILSTATE-001's torn-write shims (its AC-005 rows, mutants M23/M24), consumed
+by REQ-SGV-002; no ordering claim is made here.
 
 ### AC-SGV-004 — Conditional-repair fence
 
@@ -89,15 +92,19 @@ the per-language fast-check `case` survive verbatim).
 
 ### AC-SGV-006 — Severity-to-verdict unified across both copies
 
-**Given** the M1-proven patterns for the superseded trio
+**Given** the M1-proven patterns for the superseded trio and the two stale relationship
+clauses
 **When** the greps run against both doc copies after M3
 **Then** "Only CRITICAL findings block", "HIGH findings are reported as warnings", and
-"Continue with warning" each have 0 hits in BOTH copies; "Continue by approved exception" is
-present in both; each copy's Step 0.55.2 carries the single verdict mapping (Critical and
-High block; Medium and Low advisory; user-approved exception record fields: finding ID,
-rationale, scope, approver, expiry, review condition); and the template copy's edited
-passages reference no rule file absent from the distributed template (inline contract, not a
-`security-decision-contract.md` path).
+"Continue with warning" each have 0 hits in BOTH copies; the two clauses the unified gate
+falsifies — "CRITICAL-only stop gate" and "reports only as a warning" — each have 0 hits in
+BOTH copies (plan-audit F1 option A: the clauses leave the text, they are not grep-watched
+surviving); "Continue by approved exception" is present in both; each copy's Step 0.55.2
+carries the single verdict mapping (Critical and High block; Medium and Low advisory;
+user-approved exception record fields: finding ID, rationale, scope, approver, expiry,
+review condition); and the template copy's edited passages reference no rule file absent
+from the distributed template (inline contract, not a `security-decision-contract.md`
+path).
 
 ### AC-SGV-007 — Template-first order, scoped-passage parity, neutrality
 
@@ -105,12 +112,15 @@ passages reference no rule file absent from the distributed template (inline con
 **When** the pairing and neutrality checks run
 **Then** (a) the hook pair is byte-identical (`diff -q` exit 0); (b) the doc pair's SCOPED
 passages (Step 0.55.1 severity application + Step 0.55.2 decision block + Phase 8
-relationship paragraph) agree semantically, with exactly the one documented delta (local copy
-may name the local-only rule path; template states inline); (c) the template doc's edited
-passages contain no internal SPEC IDs, no audit citations, no internal dates, and no commit
-SHAs (grep 0 hits over the diff-added lines); (d) no whole-file copy occurred (the doc diff
-touches only the scoped passages — the fenced divergence passages of spec.md §B show zero
-diff lines).
+relationship paragraph) agree semantically, verified by this MECHANICAL PROXY (plan-audit
+F4): each copy's scoped passage is extracted to a file, the one documented delta sentence
+(the local copy's rule-path reference) is excluded, whitespace is normalized, and `diff` of
+the two normalized files exits 0; (c) the template doc's edited passages contain no internal
+SPEC IDs, no audit citations, no internal dates, and no commit SHAs (grep 0 hits over the
+diff-added lines); (d) no whole-file copy occurred (the doc diff touches only the scoped
+passages — the fenced divergence passages of spec.md §B show zero diff lines); (e) on the
+hook copies, diff-ADDED lines carry no internal card IDs (plan-audit F5: pre-existing
+citations on untouched lines are preserved verbatim and exempt).
 
 ### AC-SGV-008 — Evidence path and process fences
 
@@ -122,14 +132,17 @@ run evidence; every verdict-bearing command's evidence row carries command + ver
 + exit code + tree, in file-redirect form; and the SPEC's commits contain no `.moai/reports/`
 paths.
 
-### AC-SGV-009 — Phase 8 classified as an additional lens
+### AC-SGV-009 — Phase 8 classified as an additional lens, stale clauses gone
 
-**Given** both doc copies after M3
-**When** the Phase 8 relationship statement is read in each copy
+**Given** both doc copies after M3 (plan-audit F1 option A)
+**When** the Phase 8 relationship statement is read and grepped in each copy
 **Then** each copy states that the sync-auditor rubric (Step 0.5.4, Critical/High → FAIL) is
 canonical, that Phase 8 is an additional lens, and that its stop gate never clears an earlier
-sync-auditor FAIL (the existing t624 canonical sentence preserved; ≥1 hit of
-"sync-auditor FAIL" in both copies, in the canonical-direction sentence).
+sync-auditor FAIL (≥1 hit of "sync-auditor FAIL" in both copies, in the canonical-direction
+sentence) — AND the relationship paragraph no longer carries the two clauses the unified
+gate falsifies: "CRITICAL-only stop gate" and "reports only as a warning" each have 0 hits
+in both copies (same removal greps as AC-SGV-006; the alignment is the fix, the greps are
+its evidence — not a guard over surviving text).
 
 ## §E Definition of Done
 
