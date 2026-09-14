@@ -741,6 +741,11 @@ func runInit(cmd *cobra.Command, args []string) (err error) {
 		cmd.Flags().Changed("llm"), getStringFlag(cmd, "llm"), wizardResult,
 	)
 
+	// SPEC-INIT-HARNESS-001 (REQ-IH-005): the initializer suppresses every
+	// claude-surface write while the selection is codex — the .claude/ scaffold
+	// and CLAUDE.md never materialize under the project root.
+	opts.Harness = string(agentWiringSelection)
+
 	// Default git provider to "github" for backward compatibility
 	if opts.GitProvider == "" {
 		opts.GitProvider = "github"
@@ -778,7 +783,21 @@ func runInit(cmd *cobra.Command, args []string) (err error) {
 	renderer := template.NewRenderer(embeddedFS)
 
 	var deployer template.Deployer
-	if shouldDistributeAll(cmd) {
+	// SPEC-INIT-HARNESS-001 M2 (REQ-IH-005/006, design.md D3): a codex-only
+	// selection reroutes the WHOLE deployment through the harnessFS wrapper —
+	// claude-only surfaces hidden, the skill catalog re-homed to
+	// .agents/skills as real directories, skill mirror off. The harness
+	// contract outranks the distribute-all mode (REQ-IH-005 fixes the codex
+	// file set; the slim/full split lives entirely inside .claude/** which
+	// harnessFS hides). claude and both keep the deployers below untouched
+	// (REQ-IH-003/004).
+	if agentWiringSelection == agentWiringCodex {
+		var codexErr error
+		deployer, codexErr = template.NewCodexOnlyDeployerWithRenderer(cat, renderer)
+		if codexErr != nil {
+			return fmt.Errorf("codex-only deployer: %w", codexErr)
+		}
+	} else if shouldDistributeAll(cmd) {
 		deployer = template.NewDeployerWithRenderer(embeddedFS, renderer)
 	} else {
 		var slimErr error
@@ -864,10 +883,18 @@ func runInit(cmd *cobra.Command, args []string) (err error) {
 	// a failure warns without failing the init.
 	// @MX:SPEC: SPEC-INIT-WIZARD-REPAIR-001
 	if homeDir, homeErr := userHomeDirFn(); homeErr == nil {
+		// SPEC-INIT-HARNESS-001 (REQ-IH-005): a codex-only project carries no
+		// .claude/ surface, so the bundle gets an empty projectSettingsPath —
+		// its contract is USER-scope-only writes in that case, never a
+		// project-root .claude/settings.json.
+		projectSettingsPath := filepath.Join(opts.ProjectRoot, ".claude", "settings.json")
+		if agentWiringSelection == agentWiringCodex {
+			projectSettingsPath = ""
+		}
 		if tierErr := applyAutonomyTierBundleFn(
 			opts.ProjectRoot,
 			filepath.Join(homeDir, ".claude", "settings.json"),
-			filepath.Join(opts.ProjectRoot, ".claude", "settings.json"),
+			projectSettingsPath,
 			opts.AutonomyTier,
 		); tierErr != nil {
 			p.Warn("Failed to apply autonomy tier bundle: %v", tierErr)
