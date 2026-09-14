@@ -1,9 +1,0 @@
-=== RUN   TestSessionStart_DeferredScanDoesNotBlockReturn
-2026/09/12 17:55:12 INFO session started session_id=sess-deferred-scan-pin cwd=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestSessionStart_DeferredScanDoesNotBlockReturn3228743405/002 project_dir=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestSessionStart_DeferredScanDoesNotBlockReturn3228743405/001
-2026/09/12 17:55:13 WARN configuration not available, proceeding with defaults session_id=sess-deferred-scan-pin
-2026/09/12 17:55:13 INFO teammateMode updated mode=auto in_tmux=false
-    session_start_parallel_test.go:97: Handle blocked 763.17675ms waiting for advisory scan; expected deferred (non-blocking) return
---- FAIL: TestSessionStart_DeferredScanDoesNotBlockReturn (0.77s)
-FAIL
-FAIL	github.com/modu-ai/moai-adk/internal/hook	1.265s
-FAIL

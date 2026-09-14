@@ -2,6 +2,20 @@
 
 ## §E.1 Plan-phase Audit-Ready Signal
 
+- 0.13.0 (2026-09-14, t654) — AS-5 plan-phase 개정: 세 launcher 생산 통합·구독/API 이중 경로 검증·
+  실제 Claude PTY 표면(도구검색·서브에이전트·재개·모델전환) 실증·경로별 context 판정·Windows GitHub CI
+  실행 증거·rc 로컬 배포 게이트. `REQ-MG-027`/`AC-MG-026` 신설(요구사항 25 / 수용 기준 25 — Tier L
+  상한 도달, `plan.md` §I), 기존 AC 하위 시나리오 AS-017~AS-022 신설, §E 표에 T22 경계 정합 행 추가.
+  t653 잔여 위험 흡수 — compaction `appliedEpoch` 생산 판독(`REQ-MG-027` (b), `design.md` §11.2)과
+  fork 자식 inherited prefix 원장 대조((c), §11.3). T21(t844 이관)·AS-013 NOT-RUN은 유지. status
+  implemented → in-progress(다중 카드 시리즈 재개; implemented→completed는 후속 sync 몫).
+  마일스톤 A5-M1~M7(통합 → 검증 → 배포 게이트), 증거는 `.moai/reports/t654/`의 `as5-` 접두사
+  (옛 t654 가드 보고서와 충돌 방지). `design.md` §11·`research.md` §20 신설, §E.2~§E.4 미접촉.
+  open question: 카드 문구 "rc.8"은 발행 시점 표기 — 배포 시 다음 미사용 rc 번호 적용
+  (`.moai/docs/version-management.md` Local RC Numbering, 보고서에 명시).
+  plan-audit: CONDITIONAL PASS 0.90(`.moai/reports/t654/as5-plan-audit.md`) — 수선 3건(D1 런처 대기
+  오류 제2 위치 `launcher.go:142`를 A5-M1 예상 변경에 추가, D2 `AC-MG-026` (d) 강제 전제 집합 명명,
+  D3 `design.md` §11.1 진입 함수 비공유 정정) 반영으로 루프 없이 종결.
 - t653 (AS-4: 소유 thread resume·model 변경·fork·compaction) plan-phase 기록 — 2026-09-13.
   기준선: worktree `.claude/worktrees/t653`, branch `WT-gateway-as4-resume`, HEAD `74d872aaf` (선행 t652 = `530bd7330`).
   범위: 계정·family·agent·thread와 완료 public prefix 원장 고정, resume 및 idle 모델 변경 연결, compaction의 정상 요약 turn 처리
@@ -148,12 +162,57 @@
 - Gaps: AS-010 새 프로세스 실세션 회상, AS-011 실제 turn model 일치 양성, AS-012 실제 Claude 압축 수집, AS-013 `--fork-session` 실분기·병렬/중첩 자식 격리는 전부 실증 미수행. M1 native fork 전제 실패 NOT-RUN 유지 — AS-013 전체 지원 완료는 계속 보류. 전체 스위트 판정은 CI 소관.
 - Residual-risk: App Server 실제 응답 형태는 fake 기준. RebaseLedger의 재시작 복원은 생성자 `appliedEpoch` 주입에 의존하며 생산 배선(t654)이 그 값을 읽는 위치는 미설계. Fork 자식의 inherited prefix는 engine에서 caller-asserted — 원장 대조는 gateway 계층 책임으로 남는다. idle 전환의 배리어 model 재고정은 turn 성공 시점에 일어난다.
 
+### 2026-09-14 — t654 AS-5 M1 launcher 통합 + M2 epoch 복원·fork 대조 + M3 capability 재판정 + M4 이중경로 자동화 + M6 Windows 준비
+
+- Claim: (M1) launch 조립이 provider별 auth 방식 표시(`authMethod`)와 App Server 출력 정책 표시(`outputPolicy: app-server`)를 provider 전용 catalog와 함께 전달한다 — 표시는 catalog 선언에서 파생돼 실제 세션 env와 화드할 수 없다. 대기 오류 게이트 2곳은 검증 게이트 통과 전 대조군으로 유지되며 소스 스캔 시험이 고정한다. (M2b) `Store.Rebase`가 적용 epoch를 같은 manifest 트랜잭션에 기록(diskManifest v2 `applied_epoch`, v1 읽기 호환)하고 `Store.RestoreRebaseLedger`가 기록값을 정확히 복원한다 — 기록 없음 0, 훼손 명시 오류, 고·저 근사 없음. (M2c) `Manager.ForkSession`이 `Manifest.ChainTo(boundary)` 완료 체인의 `receipt.ChainDigest`와 자식 주장 prefix를 대조해 일치 시에만 수용하고 변조·불일치·미지 원본은 자식 상태 생성 전 거절한다. codexbridge Engine에 gateway 주입형 `ForkPrefix` 호출 경계를 뒀다. (M3) GLM 경로는 text-only(이미지 입력 명시 400, upstream 0)·명목 200K, Claude는 이미지 수용·명목 1M으로 재판정됐다 — 명목값은 수용 보장이 아니다. gpt 모드 유효 한도 env(선택 경로 최솟값)는 기존 구현이 유지한다. (M4) GPT catalog는 구독(PKCE)만 선언해 API 과금 자동전환이 구조적으로 불가능하고, 구독 실패는 명시 401+upstream 0(양성 대조군 포함), launcher 바인딩 경로의 구독 토큰 저장소 접근은 0이다(격리 home 양성 대조군 포함). (M6) Windows cross-compile·시험 바이너리 컴파일·명명 시험 무skip을 로컬 실측했다.
+- Evidence (baseline HEAD `6de8dd489` → 커밋 `5672f5029`(M1), `aec09a5d6`(M2), `3e28b60e3`(M3/M4)):
+  - M1 RED(조립 표시): `go test ./internal/cli/ -run 'TestGatewayLaunchAssemblyCarriesAuthDisplay' -count=1` → 3모드 전부 `authMethod display = <nil>` FAIL (`.moai/reports/t654/as5-m1-auth-display-red.log`). 게이트 기계 판정 명령 `grep -rn 'awaiting transport verification' internal/cli --include='*.go' | grep -v _test` → 2건(exit 0, 대조군) (`.moai/reports/t654/as5-m1-launch-red.log`).
+  - M1 GREEN: 조립 표시+대조군 시험 `ok` (커밋 `5672f5029`). cli 전체 스위트(1차) `ok 1306.951s`.
+  - M2b RED: `TestRebaseLedgerRestoration` → `restoration_test.go:55: restored ledger applied epoch = 0, want the recorded 3` (`.moai/reports/t654/as5-m2-epoch-red.log`). GREEN: receipt 패키지 `ok` (`as5-m2-epoch-green.log`).
+  - M2c RED: `TestForkPrefixCrossCheck` → `fork_prefix_test.go:63: tampered prefix accepted: <nil>` (`.moai/reports/t654/as5-m2-forkprefix-red.log`). GREEN: `go test ./internal/gateway/... -run 'TestForkPrefixCrossCheck|TestRebaseLedgerRestoration'` 전 패키지 `ok` (`as5-m2-abc-green.log`).
+  - M3 RED: 서버 게이트 `image input on a text-only route answered 200, want explicit 400` + cli 선언 `glm row ... declares image acceptance` (`.moai/reports/t654/as5-m3-context-red.log`, `as5-m3-capabilities-red.log`). GREEN: gateway 패키지 `ok 7.440s`(사전존재 2하위시험 skip) (`as5-m3-context-green.log`).
+  - M4 GREEN: `TestGatewaySubscriptionFailureNeverSwitchesToAPI`+`TestGatewayAuthModesDualPath` `ok` (`as5-m4-authmodes-green.log`).
+  - M6: `GOOS=windows GOARCH=amd64 go build ./...` exit 0, `go vet`(windows) exit 0, `go test -c`(auth·cli) exit 0, Windows 명명 시험 16개 t.Skip 0건 (`.moai/reports/t654/as5-windows-ci-prep.md`).
+- Baseline-attribution: worktree `.claude/worktrees/t654`, branch `WT-gateway-launchers`, base `6de8dd489`(plan 병합 커밋)에서 2026-09-14 직접 측정. 사전 존재 환경 실패(codexbridge lifecycle_subprocess 4건 + gateway `TestAppServerSubprocessHTTPToolContinuation`)는 baseline server.go 재실행으로 동일 재현해 이 diff 이전 환경 의존으로 귀속했다(python shim 하위프로세스 시작).
+- Gaps: AC-MG-026 (a)의 GREEN(리터럴 0건+실제 launch)은 AS-014~022 전수 PASS가 Given — 창 대기. AS-017·018·019·021·014의 실제 PTY·실계정 실증과 AS-020 실대형 입력 수용은 t851 이후 라이브 창 대기(운영자 판정 3번). AS-022 GitHub CI 실행 증거는 리드 소관 push+workflow_dispatch 대기 — 대기 명령은 `.moai/reports/t654/as5-windows-ci-prep.md` 기록. (M2b)의 생산 호출자 배선은 compaction 실세션 흐름(t844)에서 이어진다. A5-M7 rc 배포 게이트는 강제 전제(AS-017·019·021 PASS) 미충족으로 창 대기 — 실행하지 않았다.
+- Residual-risk: overlay `authMethod`/`outputPolicy`의 사용자 가시 렌더링은 클라이언트 실측에서 확인 예정. manifest v1 대화 중 컴팩션 경험본은 v2 복원 시 epoch 0 — dev 단계라 실 피해 경로 없음. 이미지 탐지는 Messages 블록 형태 스캔으로 형식 변화 시 빗나갈 수 있다(음성 픽스처 고정). Windows 회귀는 release 시점에야 드러난다(결정 4 잔여 위험 유지).
+
+### 2026-09-14 — t654 최종 수선: t708 비침범 잠금의 소유 시리즈 면제 조항
+
+- Claim: t708의 비침범 잠금(`TestGatewayRepairCardDiffTouchesNoPreservedFile`, 커밋 `5b10efb66` 계기)이 A5-M2의 감사 통과 구현 장면(receipt/store.go·core.go·compact.go·conversation/family.go — AC-MG-026 (b)(c)의 착지 장소 그 자체)과 충돌했다. 잠금의 목적은 수리 카드의 무단 약화 차단이고, 감사 통과 plan이 같은 diff로 실리는 소유 시리즈(SPEC-MOAI-GATEWAY-001)의 진화는 면제 대상이다 — 운영자 무응답 폴백으로 확정된 권장안(리드 배차 지시, t653 선례: 같은 receipt 표면을 같은 잠금 아래 착지). 면제 대리는 diff 안의 `.moai/specs/SPEC-MOAI-GATEWAY-001/` 산하 파일 존재다 — 위장 면제는 plan-audit/run 게이트 표면에서 걸린다는 한계를 주석에 명시했다.
+- Evidence: `go test ./internal/cli/ -run 'TestGatewayRepairCardDiffTouchesNoPreservedFile|TestPreservedDiffDiscriminatorRejectsViolations|TestPreservedDiffExemptionOwningSeriesTouch' -count=1 -v` → 3건 전부 PASS (`.moai/reports/t654/as5-guard-exemption-green.log`). 판별기는 양방향으로 고정: SPEC 터치 없는 합성 침범 diff → 여전히 위반 2건 / 동일 diff + 소유 시리즈 SPEC 터치 → 면제 / 타 시리즈(`.moai/specs/SPEC-OTHER-001/`) 터치 → 면제 없음. 수선 전 실측: 최종 스위트에서 가드 적색 1건 재현(`.moai/reports/t654/as5-final-suite.log`, 사전 존재 codexbridge 환경 4건과 별도).
+- Baseline-attribution: worktree `.claude/worktrees/t654`, branch `WT-gateway-launchers` 최종 상태에서 2026-09-14 직접 실행.
+- Gaps: 없음(이 수선 항목 한정).
+- Residual-risk: 면제 대리가 SPEC 디렉터리 터치라는 점 — SPEC 파일을 diff에 섞어 넣는 위장은 이 가드가 아니라 plan-audit 표면이 걸어야 한다(주석에 명시한 한계).
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 run-phase 완료. `run_complete_at: 2026-09-14`, `run_commit_sha: 9f3dc41e0`.
 t653 run-phase의 자동화 가능 부분(M2 resume, M3 idle 모델, M4 compaction, M5 경계 fork)은 커밋 `14dba89c5`·`e45f50a8d`·`64885fa06`로 착지하고 패키지 테스트·커버리지(codexbridge 83.1% / receipt 88.9% / conversation 80.3% / gateway 91.7%)·Windows 빌드·lint 0·gofmt가 이번 실행에서 실측됐다.
 실증 gap의 처분 근거: acceptance.md:469 **T21** — AS-010(실세션 회상)·AS-011(실제 turn model 일치)·AS-012(실제 Claude 압축 수집)의 실세션 양성 실증은 카드 **t844**(라이브 계측 세션)로 이관됐고, AS-013은 이관 대상이 아니며 설계된 전제 실패 NOT-RUN(M1 probe, `.moai/reports/t653/m1-native-fork-probe.md`)을 유지한다. t844의 실세션 양성이 도래하기 전까지 전체 기능 통과는 보류다.
 저장소 전체 시험 판정은 통합 브랜치 CI의 소관이다. 상세 판정 초안: [run-verdict.md](../../reports/t653/run-verdict.md).
+
+### t654 run-phase signal (2026-09-14)
+
+run_status: audit-ready-with-window-gaps (자동화 가능 전 항목 착지·실측; 실계정 실증과 배포 게이트는 창 대기 Gap으로 명시)
+run_complete_at: 2026-09-14
+run_commit_sha: "3e28b60e3" (M1 `5672f5029` → M2 `aec09a5d6` → M3/M4 `3e28b60e3`; worktree `.claude/worktrees/t654`, branch `WT-gateway-launchers`, base `6de8dd489`)
+ac_pass_count: AC-MG-026 (b)(c) 기계 판정 GREEN, AS-020 자동화 축 GREEN, AS-021 자동화 축 GREEN — 세부는 §E.2 t654 절과 `.moai/reports/t654/as5-*.md`
+ac_fail_count: 0 (창 대기 Gap은 FAIL로 세지 않는다 — AC-MG-026 (a) GREEN, AS-014·017·018·019 실측, AS-021 실측, AS-022 CI 증거, AC-MG-026 (d) 배포 게이트)
+window_waiting:
+  - AC-MG-026 (a) GREEN — 대기 조건: AS-014~AS-022 전수 PASS 후 리터럴 2곳 제거+TestGatewayLaunchTransportGateControl gate-open 전환
+  - AS-014·017·018·019 실제 PTY 실증 — 대기 조건: t851 gateway 400 해소 뒤 라이브 창
+  - AS-021 실계정 이중 모드 실측 — 동일 라이브 창
+  - AS-022 GitHub CI 실행 증거 — 리드 push + workflow_dispatch, 판독 절차는 `.moai/reports/t654/as5-windows-ci-prep.md`
+  - AC-MG-026 (d) rc 배포 게이트 — 강제 전제 {(a),(b),(c),AS-017,AS-019,AS-021} PASS 후 실행(이 창 미실행)
+preserve_list_post_run_count: 3 (gateway_session.go 대기 오류 게이트 2곳 + TestGatewayLaunchTransportGateControl 대조군 — 게이트 개방 시 함께 전환)
+l44_pre_commit_fetch: n/a (레인 push 금지 — 리드 일괄, 2026-09-02)
+l44_post_push_fetch: n/a (동일)
+new_warnings_or_lints_introduced: 0 (golangci-lint run internal/cli/ → 0 issues; go vet 변경 패키지 전부 exit 0)
+cross_platform_build.windows: pass (GOOS=windows GOARCH=amd64 go build ./... → exit 0; 시험 바이너리 컴파일 exit 0; 명명 시험 t.Skip 0건)
+total_run_phase_files: 16 (신규 6: receipt/restoration_test.go, conversation/fork_prefix_test.go, gateway/context_paths_test.go, gateway/gateway_auth_modes_test.go, cli/gateway_auth_modes_test.go, cli/gateway_launch_assembly_test.go · 수정 10: receipt store/compact/core+compact_test, conversation/family, codexbridge engine+fork_test, gateway/server, cli gateway_product_binding+gateway_session — `git diff --name-only 6de8dd489..3e28b60e3` 실측)
+m1_to_mN_commit_strategy: 마일스톤별 증분 커밋(M1/M2/M3+M4) — Conventional Commits + card t654 트레일러
+
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
@@ -174,3 +233,25 @@ b12_self_test_c: n/a (no CHANGELOG entry emitted — no file paths claimed in an
 mx_tag_validation: pass (@MX:WARN/REASON annotations observed in 11 files across internal/codexbridge·internal/gateway — sync sub-step scan 2026-09-14)
 t21_transfer_consistency: acceptance.md:469 ↔ spec.md HISTORY 0.12.0 ↔ progress.md §E.3 — three surfaces carry the same t844 transfer content (verified by sync-audit)
 as013_disposition: designed NOT-RUN maintained (M1 pre-condition failure probe, .moai/reports/t653/m1-native-fork-probe.md) — not a transfer target; AS4 overall-support completion remains deferred
+
+### t654 sync signal (2026-09-14)
+
+sync_status: audit-ready (card t654 sync — AS-5 launcher integration; the umbrella SPEC does NOT close — live-window cards t844·t851 remain, so spec.md stays in-progress)
+sync_complete_at: 2026-09-14
+sync_commit_sha: "ce4a3c6ed" (backfilled 2026-09-14 — worktree `.claude/worktrees/t654`, branch `WT-gateway-launchers`, run-phase HEAD `059f4e700`→verdict head)
+frontmatter_status_transitions: NONE this window (spec.md는 in-progress 유지 — t654 plan이 재개한 implemented→in-progress 상태 그대로; implemented→completed 전이는 라이브 창 카드 t844·t851 착지 뒤 후속 sync 몫)
+card_verdict: .moai/reports/t654/as5-verdict.md (written 2026-09-14 — 레인 verdict; 5-section format; 가드 개정 diff 명시 포함)
+sync_audit: .moai/reports/t654/as5-sync-audit.md (written 2026-09-14 — sync-auditor, PASS 0.93: Functionality 95·Security 94·Craft 90·Consistency 93 조화평균)
+changelog_entry: deferred to AC-MG-026 (d) deploy-gate window (B12 pre-emission grep `grep -c 'SPEC-MOAI-GATEWAY-001' CHANGELOG.md` → 0 — 이번 창의 사용자 가시 표면은 아직 라이브가 아니다: launcher 통합 게이트는 AC-MG-026 (a) GREEN이 라이브 창에서 열려야 한다; t653 선례와 동일 판정)
+b12_self_test_a: pass (pre-emission grep count 0 — 중복 발행 위험 없음; halt 조건 없음)
+b12_self_test_b: n/a (CHANGELOG 항목 미발행 — AC-count match 대상 없음)
+b12_self_test_c: n/a (CHANGELOG 항목 미발행 — 항목이 주장하는 파일 경로 없음)
+mx_tag_validation: pass (변경 36파일 중 @MX 태그 보유 .go 5곳 — internal/cli/gateway_session.go, internal/codexbridge/engine.go, internal/gateway/conversation/family.go, internal/gateway/receipt/core.go, internal/gateway/receipt/store.go; A5 신설 seam의 @MX:NOTE는 run 커밋 `886959071`에서 착지. sync sub-step scan 2026-09-14)
+surface_consistency: spec.md 0.13.0 in-progress ↔ progress §E.2(t654 run evidence)·§E.3(t654 run signal)·§E.4(이 signal) ↔ acceptance DoD 25개(AC-MG-001~026 중 묘비 AC-MG-002 제외, acceptance.md:490) — 4표면 일치 확인(2026-09-14 직접 판독)
+window_waiting: (§E.3 t654 run signal의 window_waiting 5건 전수 인용 + §E.2 t654 Gaps의 생산 배선 1건 보강으로 자기충족)
+  - AC-MG-026 (a) GREEN — 대기 조건: AS-014~AS-022 전수 PASS 후 리터럴 2곳 제거+TestGatewayLaunchTransportGateControl gate-open 전환
+  - AS-014·017·018·019 실제 PTY 실증 — 대기 조건: t851 gateway 400 해소 뒤 라이브 창
+  - AS-021 실계정 이중 모드 실측 — 동일 라이브 창
+  - AS-022 GitHub CI 실행 증거 — 리드 push + workflow_dispatch, 판독 절차는 `.moai/reports/t654/as5-windows-ci-prep.md`
+  - AC-MG-026 (d) rc 배포 게이트 — 강제 전제 {(a),(b),(c),AS-017,AS-019,AS-021} PASS 후 실행(이 창 미실행)
+  - M2b appliedEpoch 생산 호출자 배선 — compaction 실세션 흐름(카드 t844)에서 이어진다(§E.2 t654 Gaps에서 보강)

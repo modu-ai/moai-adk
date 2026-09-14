@@ -1,6 +1,0 @@
-=== RUN   TestReceiptHistoryRejectsStrippingForeignScopeAndFamily
---- PASS: TestReceiptHistoryRejectsStrippingForeignScopeAndFamily (0.04s)
-=== RUN   TestReceiptHistoryAuthorizedForkRetainsScope
---- PASS: TestReceiptHistoryAuthorizedForkRetainsScope (0.04s)
-PASS
-ok  	github.com/modu-ai/moai-adk/internal/gateway/translate	0.472s

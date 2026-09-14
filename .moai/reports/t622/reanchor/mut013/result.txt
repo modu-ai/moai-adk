@@ -1,2 +1,0 @@
-MUTANT one-copy body compare exit=1 (expect 1 = FAIL detected)
-POSITIVE both-copies body compare exit=0 (expect 0 = PASS)

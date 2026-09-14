@@ -1,9 +1,0 @@
-../../.moai/specs/SPEC-DESIGN-ATTACH-001/spec.md	L2:## Acceptance Criteria
-../../.moai/specs/SPEC-GLM-EFFORT-MAX-001/spec.md	L2:## §3 Acceptance Criteria (inline, Given-When-Then)
-../../.moai/specs/SPEC-HANDOFF-MSGMODE-001/spec.md	L2:## §3 인수 기준 (Tier S 인라인)
-../../.moai/specs/SPEC-HOOK-EVENT-REGISTRY-001/spec.md	L2:## 3. 요구사항 (Requirements — GEARS) + 수용 기준 (Acceptance Criteria INLINE)
-../../.moai/specs/SPEC-V3R5-WORKFLOW-LEAN-001/spec.md	L2:## 3. EARS Requirements + Acceptance Criteria (inline)
-../../.moai/specs/SPEC-V3R6-HOOK-OBSERVE-OPT-IN-001/spec.md	L2:## Section D — Requirements (GEARS Notation) & Acceptance Criteria
-../../.moai/specs/SPEC-V3R6-I18N-VALIDATOR-BUDGET-001/spec.md	L2:## §C Acceptance Criteria
-../../.moai/specs/SPEC-V3R6-OUTOFSCOPE-GUIDANCE-ALIGN-001/spec.md	L2:## D. Acceptance Criteria (inline — Tier S)
-../../.moai/specs/_archive/SPEC-DESIGN-CONST-AMEND-001/spec.md	L2:## Acceptance Criteria

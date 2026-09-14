@@ -1,2 +1,0 @@
-docs-site/layouts/index.html
-docs-site/static/moai-docs-layout.css

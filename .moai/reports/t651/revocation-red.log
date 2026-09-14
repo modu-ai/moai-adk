@@ -1,5 +1,0 @@
---- FAIL: TestRevocationBeforeInvocation (0.00s)
-    registry_test.go:213: revoked tool returned executable invocation
-FAIL
-FAIL	github.com/modu-ai/moai-adk/internal/codextools	0.347s
-FAIL

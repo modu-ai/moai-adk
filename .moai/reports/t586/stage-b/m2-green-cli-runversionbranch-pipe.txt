@@ -1,9 +1,0 @@
-=== RUN   TestRunVersionBranch_RejectsPoisonedEnv
---- PASS: TestRunVersionBranch_RejectsPoisonedEnv (0.00s)
-=== RUN   TestRunVersionBranch_NonTTYProceeds
-    update_version_test.go:645: test requires non-TTY stdin; run via `go test` (pipe), not an interactive shell
---- SKIP: TestRunVersionBranch_NonTTYProceeds (0.00s)
-=== RUN   TestRunVersionBranch_VersionTagIndependentOfDevBuild
---- PASS: TestRunVersionBranch_VersionTagIndependentOfDevBuild (0.00s)
-PASS
-ok  	github.com/modu-ai/moai-adk/internal/cli	0.784s

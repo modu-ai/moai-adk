@@ -107,6 +107,13 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		writeError(w, 404, "not_found_error")
 		return
 	}
+	if !entry.Capabilities.Images && requestCarriesImageInput(payload) {
+		// Provider capability re-verdict (AS-020): a text-only route refuses
+		// image input explicitly, before credential resolution and before any
+		// upstream send — the upstream request count stays 0.
+		writeError(w, 400, "invalid_request_error")
+		return
+	}
 	if r.URL.Path == "/v1/messages/count_tokens" {
 		writeCount(w, entry, payload)
 		return
@@ -182,6 +189,36 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 }
 
 type flushingWriter struct{ http.ResponseWriter }
+
+// requestCarriesImageInput reports whether the Messages request body carries
+// an image input block anywhere in its message history. String content and
+// unparseable shapes carry no image blocks.
+func requestCarriesImageInput(payload map[string]json.RawMessage) bool {
+	raw, ok := payload["messages"]
+	if !ok {
+		return false
+	}
+	var messages []struct {
+		Content json.RawMessage `json:"content"`
+	}
+	if json.Unmarshal(raw, &messages) != nil {
+		return false
+	}
+	for _, m := range messages {
+		var blocks []struct {
+			Type string `json:"type"`
+		}
+		if json.Unmarshal(m.Content, &blocks) != nil {
+			continue
+		}
+		for _, b := range blocks {
+			if b.Type == "image" {
+				return true
+			}
+		}
+	}
+	return false
+}
 
 func (w flushingWriter) Write(p []byte) (int, error) {
 	n, err := w.ResponseWriter.Write(p)

@@ -1,5 +1,0 @@
-=== RUN   TestWizardCarriesStoredSegmentsIntoPrefs
-=== PAUSE TestWizardCarriesStoredSegmentsIntoPrefs
-=== CONT  TestWizardCarriesStoredSegmentsIntoPrefs
---- PASS: TestWizardCarriesStoredSegmentsIntoPrefs (0.00s)
-PASS

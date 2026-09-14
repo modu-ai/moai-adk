@@ -1,6 +1,0 @@
-github.com/modu-ai/moai-adk/internal/cli/downgrade_locale.go:16:		resolveDowngradeLocale			100.0%
-github.com/modu-ai/moai-adk/internal/cli/profile_options.go:21:			profileLanguageOptions			88.9%
-github.com/modu-ai/moai-adk/internal/cli/profile_options.go:37:			profileModelPolicyOptions		87.5%
-github.com/modu-ai/moai-adk/internal/cli/profile_options.go:61:			buildProfileOptions			100.0%
-github.com/modu-ai/moai-adk/internal/cli/profile_setup.go:129:			schemaSelectOptions			100.0%
-github.com/modu-ai/moai-adk/internal/cli/profile_setup.go:145:			huhV1Options				100.0%

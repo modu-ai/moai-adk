@@ -1,8 +1,0 @@
---- FAIL: TestT688MergeSquashRebaseLikeTopologies (3.69s)
-    --- FAIL: TestT688MergeSquashRebaseLikeTopologies/squash_retains_object_but_drops_ancestry (1.12s)
-        t688_red_history_test.go:67: object-present non-ancestor stamp must be freshness-unmeasured; got verdict="fresh" value=0 anchor="7ecbb2b135fa62ee6fc9808c309810bede814a73"
-    --- FAIL: TestT688MergeSquashRebaseLikeTopologies/rebase-like_rewrite_retains_object_but_drops_ancestry (1.30s)
-        t688_red_history_test.go:78: object-present non-ancestor stamp must be freshness-unmeasured; got verdict="fresh" value=1 anchor="ec12109ed5c697a077a3e295a14f374acbf8197e"
-FAIL
-FAIL	github.com/modu-ai/moai-adk/internal/graph	4.206s
-FAIL

@@ -1,4 +1,0 @@
-hook	.claude/hooks/moai/sync-phase-quality-gate.sh
-reps	3
-sec_per_detect_languages	1.598
-candidates	go,python,node,rust,kotlin,ruby,php,elixir,cpp,scala,swift,csharp

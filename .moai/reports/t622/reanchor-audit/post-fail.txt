@@ -1,2 +1,0 @@
-FAIL TestRuleTemplateMirrorDrift
-FAIL TestRuleTemplateMirrorDrift/spec-workflow.md

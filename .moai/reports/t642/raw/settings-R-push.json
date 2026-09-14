@@ -1,7 +1,0 @@
-{
-  "permissions": {
-    "deny": [
-      "Bash(git * push --force*)"
-    ]
-  }
-}

@@ -1,2 +1,0 @@
-internal/harness/observer_test.go
-internal/telemetry/async_recorder_test.go

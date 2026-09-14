@@ -1,2 +1,0 @@
-EXIT=0
-GOFMT_EXIT=0

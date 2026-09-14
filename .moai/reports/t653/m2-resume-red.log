@@ -1,4 +1,0 @@
-# github.com/modu-ai/moai-adk/internal/codexbridge [github.com/modu-ai/moai-adk/internal/codexbridge.test]
-internal/codexbridge/resume_test.go:38:4: q.Resume undefined (type Request has no field or method Resume)
-FAIL	github.com/modu-ai/moai-adk/internal/codexbridge [build failed]
-FAIL

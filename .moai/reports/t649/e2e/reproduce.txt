@@ -1,7 +1,0 @@
-# GPT-6 Astra 실제 답변 실패 재현 (첫 실행 당시 --permission-mode default 추가 전)
-python3 .claude/worktrees/moai-proxy-unified/.moai/reports/t649/e2e/gateway_probe.py --binary /tmp/moai-t649-implementation --cwd /tmp/moai-t649-e2e-project --output .claude/worktrees/moai-proxy-unified/.moai/reports/t649/e2e/answer-first.json --mode gpt --model gpt-6-astra --journey answer --allow-live --seconds 55
-
-# 최종 모델 선택기 하네스 실행 환경
-MOAI_CLAUDE_BIN=/Users/goos/MoAI/moai-adk-go/.claude/worktrees/moai-proxy-unified/.moai/reports/t649/e2e/claude_fixture.py
-# gateway_probe.py는 현재 --permission-mode default와 새 테스트 family의 로컬 API key 확인 처리를 포함한다.
-# 실제 답변은 1회만 호출했고 변경된 하네스로 유료 재시도하지 않았다.

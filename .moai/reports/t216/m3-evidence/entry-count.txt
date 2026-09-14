@@ -1,4 +1,0 @@
-events        : 20
-matcher groups: 23
-hook entries  : 33
-statusLine present: True

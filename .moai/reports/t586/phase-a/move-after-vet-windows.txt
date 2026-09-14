@@ -1,3 +1,0 @@
-# tree: HEAD 4061b6bda + uncommitted move (committed next as commit B)
-# cmd: GOOS=windows GOARCH=amd64 go vet ./internal/cli/ptycaptest/ ./internal/cli/wizard/
-# exit=0

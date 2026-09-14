@@ -1,7 +1,0 @@
---- FAIL: TestAppServerSubprocessHTTPToolContinuation (2.19s)
-    --- FAIL: TestAppServerSubprocessHTTPToolContinuation/apiKey (0.96s)
-        appserver_integration_test.go:133: 502 {"error":{"message":"Bad Gateway","type":"api_error"},"type":"error"}
-            
-FAIL
-FAIL	github.com/modu-ai/moai-adk/internal/gateway	2.770s
-FAIL

@@ -1,2 +1,0 @@
-ok  	github.com/modu-ai/moai-adk/internal/cli/wizard	3.942s
-wizard-exit=0

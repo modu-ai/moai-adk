@@ -1,3 +1,0 @@
-auto
-/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t610/go.mod
-go1.26.8

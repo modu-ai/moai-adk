@@ -1,3 +1,0 @@
-.claude/rules/moai/workflow/kanban-dispatch-detail.md
-.claude/rules/moai/workflow/kanban-dispatch.md
-.claude/skills/moai/workflows/todo.md

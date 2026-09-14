@@ -1,3 +1,0 @@
-sed_exit=0
-grep_toolchain_exit=1
-grep_go_exit=0
