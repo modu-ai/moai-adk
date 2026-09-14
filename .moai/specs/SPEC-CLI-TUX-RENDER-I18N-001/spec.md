@@ -2,7 +2,7 @@
 id: SPEC-CLI-TUX-RENDER-I18N-001
 title: "init/update TUX render residual repair and i18n unification — card t756 follow-up over SPEC-INIT-TUX-I18N-001"
 version: "0.1.1"
-status: draft
+status: in-progress
 created: 2026-09-14
 updated: 2026-09-14
 author: manager-spec
