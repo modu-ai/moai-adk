@@ -271,6 +271,42 @@ func confirmBlankRows(t *testing.T, frame, header, affirmative string) int {
 	return n
 }
 
+// TestPtyCapture_ConfirmGapBudget is REQ-TRI-003 frozen at the M1 measured
+// value: the blank rows between a confirm field's header and its button row
+// must stay <= 1 on the captured frames. M1 measured 1 on every confirm
+// surface (huh v2.0.3 field_confirm.go:261-263 writes a fixed "\n\n", which
+// renders as exactly one blank row under moaiWizardTheme) — the budget is
+// already met, so per REQ-TRI-008 the confirm composition is NOT repaired and
+// this guard freezes the compliant state instead.
+func TestPtyCapture_ConfirmGapBudget(t *testing.T) {
+	ptycaptest.Gate(t)
+	bin := ptycaptest.BuildChild(t, ".")
+
+	for _, tc := range []struct {
+		name        string
+		childCase   string
+		header      string
+		affirmative string
+	}{
+		{"confirm-fixture-en", ptycapCaseConfirmFixtureEn, "Fixture confirm description text", "Yes"},
+		{"confirm-fixture-ko", ptycapCaseConfirmFixtureKo, "Fixture confirm description text", "예"},
+		{"downgrade-confirm-en", ptycapCaseDowngradeConfirmEn, "The requested tag is older", "Yes"},
+		{"downgrade-confirm-ko", ptycapCaseDowngradeConfirmKo, "요청한 태그가", "예"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			c := ptycaptest.NewCase(t, "")
+			s := ptycaptest.Start(t, c, bin, tc.childCase)
+			frame := s.WaitFor(tc.header, ptycaptest.AnchorTimeout)
+			n := confirmBlankRows(t, frame, tc.header, tc.affirmative)
+			if n > 1 {
+				t.Errorf("confirm-internal blank rows = %d, want <= 1 (REQ-TRI-003)", n)
+			}
+			s.SendKeys("C-c")
+			s.Close()
+		})
+	}
+}
+
 // TestPtyCapture_SkipWithoutGate — AC-ITI-019 (a) over this package's capture
 // tests.
 func TestPtyCapture_SkipWithoutGate(t *testing.T) {
