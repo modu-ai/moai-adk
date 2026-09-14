@@ -1,8 +1,8 @@
 ---
 id: SPEC-MOAI-GATEWAY-001
 title: "moai 공통 loopback gateway — cc·gpt·glm 세 launcher의 단일 ingress와 제공자별 모델 선택 경계"
-version: "0.12.0"
-status: implemented
+version: "0.13.0"
+status: in-progress
 created: 2026-09-10
 updated: 2026-09-14
 author: manager-spec
@@ -17,6 +17,21 @@ tier: L
 # SPEC-MOAI-GATEWAY-001 — 공통 loopback gateway 코어
 
 ## HISTORY
+
+- 0.13.0 (2026-09-14, t654) — AS-5 plan-phase 개정: 세 launcher 생산 통합, 구독/API 이중 경로 검증,
+  실제 Claude PTY 표면(도구검색·서브에이전트·재개·모델전환) 실증, 경로별 context 판정, Windows GitHub
+  CI 실행 증거, 이 카드의 종결 게이트인 rc 로컬 배포 판정을 요구사항 `REQ-MG-027`과 수용 기준
+  `AC-MG-026`으로 신설하고 기존 AC의 하위 시나리오 AS-017~AS-022를 더했다(요구사항 25 / 수용 기준 25 —
+  Tier L 상한 도달). t653 잔여 위험 두 가지 — RebaseLedger 재시작 복원의 `appliedEpoch` 생산 판독
+  위치와 fork 자식 inherited prefix의 원장 대조 — 를 각각 (b)·(c) 조항으로 흡수했다(`design.md` §11,
+  `research.md` §20). 구독과 API 키 모두 공식 App Server 출력 정책을 사용한다(운영자 추가 승인) —
+  MoAI는 응답 바이트 제한·취소를 적용하며 Claude max_tokens와 같은 생성 토큰 상한을 보장한다고
+  표시하지 않는다. API 과금 자동전환은 금지된다(`REQ-MG-017` 유지). CHANGELOG는 t653 판정
+  (`.moai/reports/t653/verdict.md` § CHANGELOG 결정)을 계승해 이 카드에서 사용자 가시 표면 기준으로
+  발행 검토한다. 다중 카드 Tier L 시리즈가 재개되므로 status를 implemented에서 in-progress로
+  되돌리며, implemented→completed 전이는 후속 sync의 몫이다. run_complete_at은 이 판에서 발행하지
+  않는다. push·PR·병합·워크트리 제거는 리드 소관이며 §G에 명시했다. AS-010·011·012의 t844 이관(T21)과
+  AS-013 NOT-RUN은 이 판에서 바꾸지 않는다.
 
 - 0.12.0 (2026-09-14, t653) — 리드 전달 운영자 결정: AS-010·011·012의 실세션 양성 실증(실세션 회상 /
   실제 turn model 일치 / 실제 Claude 압축 수집)을 카드 t844(라이브 계측 세션)로 이관한다. 자동 거절
@@ -820,6 +835,29 @@ backend 집합(`claude`·`codex`·`glm`)에는 추가해서는 안 된다. 웹 �
 모든 값을 정액제로 표시하므로, 손대지 않으면 `gpt` lane에 검증되지 않은 과금 주장이 붙는다.
 GPT 구독 경로와 API key 경로는 과금 방식이 다르며 그 판정은 형제 SPEC의 소관이다.
 
+### D.8 launcher 생산 통합과 배포 게이트 (0.13.0, t654)
+
+**REQ-MG-027** (Ubiquitous + Where) — The launcher shall 세 gateway launcher의 launch 경로를
+하나의 생산 경로로 결합해야 한다. 제공자 전용 세션 catalog와 picker 구성(`REQ-MG-019`), 인증
+방식(구독/API) 표시, App Server transport가 같은 launch 조립 안에서 함께 연결되며, 어느 하나가
+빠진 채 다른 하나만 생산 경로로 열려서는 안 된다. `moai gpt`의 launch는 검증 게이트 통과 전까지
+"transport verification 대기" 명시 오류를 유지해야 하고, **Where** 이 카드의 검증 수용 기준
+(AS-014~AS-022)가 통과한 경우에는 그 대기 오류가 launch 경로에 남아서는 안 된다.
+
+When gateway가 세션 재시작 뒤 compaction 원장을 복원할 때, the gateway shall 마지막 적용 epoch를
+세션의 영구 상태에서 판독해 주입해야 하며 임의 고정값이나 호출자 추측에 의존해서는 안 된다. 영구
+상태가 없으면 새 scope로 0에서 시작한다. 판독 불가·훼손은 드러나는 실패다 — 임의값 복원은 재적용
+중복이나 stale 거절 오판을 만든다(`design.md` §11.2).
+
+When 명시 세션 fork의 자식이 inherited prefix로 새 thread를 시작할 때, the gateway shall 자식
+배리어를 수용하기 전에 그 prefix가 원본 family의 완료 원장 경계(`Manifest.ChainTo`)와 일치하는지
+대조해야 하며, 불일치·변조·미지 원본은 외부 실행 전에 명시 오류로 거절해야 한다. engine의
+caller-asserted 값을 대조 없이 그대로 수용해서는 안 된다(`design.md` §11.3).
+
+Where 이 카드의 검증 수용 기준 전수가 PASS한 경우, the launcher shall 다음 미사용 로컬 rc 버전으로
+빌드·clean 재설치·버전 스탬프 검증을 수행하고 배포 판정 보고서를 남겨야 한다(`AC-MG-026` (d)).
+원격 push·PR·병합·워크트리 제거는 이 게이트에 포함되지 않는다(§G).
+
 ## E. 제약
 
 - POSIX `syscall.Exec` 보존은 협상 대상이 아니다. `MOAI_SESSION_PID` 각인이 여기에
@@ -861,7 +899,7 @@ GPT 구독 경로와 API key 경로는 과금 방식이 다르며 그 판정은 
 
 ## F. 성공 기준
 
-- §D의 24개 요구사항(폐기 묘비 `REQ-MG-007`·`REQ-MG-020` 두 줄은 요구사항이 아니므로 제외) 각각이
+- §D의 25개 요구사항(폐기 묘비 `REQ-MG-007`·`REQ-MG-020` 두 줄은 요구사항이 아니므로 제외) 각각이
   `acceptance.md`에서 하나 이상 AC의 헤더 추적 괄호에 등장한다.
 - 새 코드 경로의 테스트 커버리지가 85% 이상이다.
 - `go vet ./...`, `golangci-lint run`, 변경 패키지 테스트가 통과한다.
@@ -920,6 +958,13 @@ GPT 구독 경로와 API key 경로는 과금 방식이 다르며 그 판정은 
 - 이유: 두 키는 같은 값 어휘를 쓰지만 설정 범위가 다르다(전자는 kanban/factory 경로에서만
   실린다). 통합은 이 SPEC의 판정 표면을 넓힌다.
 
+### Out of Scope — 원격 배포·통합 행위 (0.13.0)
+
+- 원격 push, PR 생성, 병합, 워크트리 제거 — 카드 조건상 리드 소관이며 별도 지시가 필요하다.
+  이 카드의 배포 게이트(`AC-MG-026` (d))는 로컬 빌드·clean 재설치·버전 스탬프 검증과 배포 판정
+  보고서 발행까지다.
+- release 브랜치 분기와 릴리스 PR — git-flow 통합 체인상 리드·릴리스 하네스 소관이며 레인 범위 밖이다.
+
 ### Out of Scope — 과거 기록 재작성
 
 - 과거 SPEC, release note, 감사 증거의 일괄 치환
@@ -944,4 +989,8 @@ GPT 구독 경로와 API key 경로는 과금 방식이 다르며 그 판정은 
 - 클라이언트 실측(0.5.0): `.moai/state/verify/25b43a41-c0ac-4110-9dad-f3983da6a527/gwprobe/README.md`,
   `.moai/state/verify/25b43a41-c0ac-4110-9dad-f3983da6a527/gwprobe2/README.md` (기계 로컬 경로, 요약은 `research.md` §15)
 - Claude Code agent teams 문서(`teammateMode`): `https://code.claude.com/docs/en/agent-teams` (2026-09-11 판독, 요약 `research.md` §16)
+- 공식 App Server 문서(구독 인증·출력 정책 기준): `https://learn.chatgpt.com/docs/app-server` (접근 2026-09-12, `design.md` §4.4)
+- t653 카드 판정서와 CHANGELOG 보류 결정(0.13.0이 계승): `.moai/reports/t653/verdict.md`
+- t653 run 증거: `.moai/reports/t653/` (m1~m6 로그, `run-verdict.md`, `sync-audit.md`)
+- t654 AS-5 증거(착지 시 축적, `as5-` 접두사): `.moai/reports/t654/`
 - 형제 SPEC(제안): `SPEC-MOAI-GPT-AUTH-001`, `SPEC-MOAI-CG-RETIRE-001`, `SPEC-MOAI-GATEWAY-PICKER-001`(0.6.0), `SPEC-MOAI-GATEWAY-TEAMMATE-001`(0.6.0)
