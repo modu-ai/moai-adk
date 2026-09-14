@@ -2,9 +2,9 @@
 id: SPEC-INIT-UPDATE-CONSISTENCY-001
 title: "init/update 정합성·문서 정리 (F8·F9·F12-F15·F17, F16 소멸 판정 포함)"
 version: "0.1.0"
-status: draft
+status: in-progress
 created: 2026-09-13
-updated: 2026-09-13
+updated: 2026-09-14
 author: manager-spec
 priority: P2
 phase: "v3.2.0"
