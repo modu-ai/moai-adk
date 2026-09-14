@@ -3,10 +3,10 @@
 // AC-AMM-013 / AC-AMM-014).
 //
 // mcp_audit_multi.go is a THIN WRAPPER over runMultiAudit (mcp_convergence.go).
-// It maps the JSON-RPC tool params → (claude_verdict ReviewOutput, target,
+// It maps the JSON-RPC tool params → (optional claude_verdict ReviewOutput, target,
 // focus, MultiAuditConfig), calls runMultiAudit, and shapes the
 // ConvergenceResult into the tool's declared output. The handler does NOT
-// re-implement the codex/glm backends (C1 — additive, no fork), does NOT call
+// re-implement the Claude/codex/GLM backends (C1 — additive, no fork), does NOT call
 // AskUserQuestion (subagent boundary, REQ-AMM-018 / C5), and NEVER returns a
 // hard Go error — every fail-open path produces a structured result so the
 // orchestrator translates through its own channel.
@@ -18,6 +18,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"os"
 
 	"github.com/mark3labs/mcp-go/mcp"
 
@@ -31,12 +32,13 @@ const auditMultiToolName = "audit_multi"
 
 // handleAuditMulti is the thin-wrapper MCP tool handler for `audit_multi`
 // (REQ-AMM-010 / AC-AMM-013). It:
-//  1. Assembles the claude_verdict ReviewOutput (the always-available anchor)
-//     from the structured claude_verdict argument.
+//  1. Assembles the optional claude_verdict ReviewOutput. It is an anchor only
+//     in a Claude-origin session; GPT/GLM/unknown origins ignore it and invoke
+//     the independent subscription-backed Claude backend.
 //  2. Reads the per-auditor audit_gate from the `gates` argument (with
 //     distributed defaults applied for any gate the caller omits).
 //  3. Fans out by calling runMultiAudit — which reuses the existing
-//     codex/glm handler paths (NO backend re-implementation, AC-AMM-013).
+//     Claude/codex/GLM handler paths (NO backend re-implementation, AC-AMM-013).
 //  4. Shapes the ConvergenceResult into the tool's declared output.
 //
 // The handler NEVER invokes AskUserQuestion (subagent boundary, REQ-AMM-018):
@@ -45,9 +47,10 @@ const auditMultiToolName = "audit_multi"
 func handleAuditMulti(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 	claudeVerdict, ok := readClaudeVerdict(req)
 	if !ok {
-		// Missing/malformed claude_verdict anchor — fall through with an empty
-		// ReviewOutput so runMultiAudit applies its DQ-2 refusal (structured
-		// overall=fail + a residual_risk_note). NEVER a hard error.
+		// Missing/malformed claude_verdict — fall through with an empty
+		// ReviewOutput. All origins then use the independent Claude backend;
+		// GPT/GLM/unknown origins would do so even if a verdict were supplied.
+		// NEVER a hard error.
 		claudeVerdict = ReviewOutput{}
 	}
 
@@ -74,9 +77,10 @@ func handleAuditMulti(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallTo
 	}
 
 	cfg := MultiAuditConfig{
-		Gates:       gates,
-		SessionID:   req.GetString("session_id", ""),
-		ProjectRoot: projectRoot,
+		Gates:          gates,
+		SessionID:      req.GetString("session_id", ""),
+		ProjectRoot:    projectRoot,
+		OriginProvider: os.Getenv(config.EnvMoaiLaunchProvider),
 	}
 
 	token := extractProgressToken(req)
@@ -88,7 +92,7 @@ func handleAuditMulti(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallTo
 
 // readClaudeVerdict extracts + assembles the ReviewOutput from the structured
 // claude_verdict argument. Returns (zero, false) when the argument is absent OR
-// not an object — the caller lets runMultiAudit's DQ-2 refusal handle it
+// not an object. runMultiAudit applies the origin-sensitive fallback
 // structurally (NOT a hard error).
 func readClaudeVerdict(req mcp.CallToolRequest) (ReviewOutput, bool) {
 	raw, ok := req.GetArguments()["claude_verdict"]

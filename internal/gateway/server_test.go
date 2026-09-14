@@ -69,7 +69,7 @@ func testStoredCredentialCatalog(glm []string) (CatalogSnapshot, error) {
 	}
 	entries := c.Entries()
 	for i := range entries {
-		if entries[i].Provider == ProviderAnthropic {
+		if entries[i].Provider == ProviderAnthropic || entries[i].Provider == ProviderOpenAI {
 			entries[i].AuthMethod = AuthAPIKey
 		}
 	}

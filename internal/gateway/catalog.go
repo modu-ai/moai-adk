@@ -104,7 +104,7 @@ func NewSessionCatalog(glmTierIDs []string) (CatalogSnapshot, error) {
 		entries = append(entries, ModelEntry{RouteID: id + "[1m]", UpstreamID: id, Provider: ProviderAnthropic, AuthMethod: AuthOAuthPassthrough})
 	}
 	for _, id := range []string{"gpt-6-astra", "gpt-5.6-sol", "gpt-5.6-terra", "gpt-5.6-luna"} {
-		entries = append(entries, ModelEntry{RouteID: id, UpstreamID: id, Provider: ProviderOpenAI, AuthMethod: AuthPKCE})
+		entries = append(entries, ModelEntry{RouteID: id, UpstreamID: id, Provider: ProviderOpenAI, AuthMethod: AuthAppServer})
 	}
 	for _, id := range glmTierIDs {
 		entries = append(entries, ModelEntry{RouteID: id, UpstreamID: id, Provider: ProviderZAI, AuthMethod: AuthExistingGLM})

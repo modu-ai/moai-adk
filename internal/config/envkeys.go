@@ -234,7 +234,8 @@ const (
 	// (SPEC-KANBAN-RECORD-SESSION-KEY-001 REQ-KRS-006).
 	EnvMoaiKanbanBackend = "MOAI_KANBAN_BACKEND"
 
-	// EnvMoaiLaunchProvider records the gateway initial provider, never the current request route.
+	// EnvMoaiLaunchProvider records the launcher-selected initial provider
+	// (claude, glm, or gpt), never the current request route.
 	EnvMoaiLaunchProvider = "MOAI_LAUNCH_PROVIDER"
 
 	// EnvMoaiKanbanCard names the queue card the session is working, and is

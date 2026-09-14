@@ -77,6 +77,22 @@ func TestResumeAttachesOwnedThreadWithoutRebuild(t *testing.T) {
 	}
 }
 
+func TestBarrierExposesOnlyResumeMetadata(t *testing.T) {
+	e, _, store := fixture(t)
+	completeConversation(t, e, "barrier")
+	q := request("barrier")
+	barrier, found, err := store.Barrier(q.Owner)
+	if err != nil || !found {
+		t.Fatal(found, err)
+	}
+	if barrier.Phase != "idle" || barrier.Prefix != "prefix-2" || barrier.Model != q.Model || barrier.CWD != q.CWD {
+		t.Fatalf("barrier=%+v", barrier)
+	}
+	if _, found, err = store.Barrier(request("absent").Owner); err != nil || found {
+		t.Fatalf("absent found=%v err=%v", found, err)
+	}
+}
+
 func TestResumeRejectsLegacyBarrierRecord(t *testing.T) {
 	e, _, store := fixture(t)
 	completeConversation(t, e, "legacy")

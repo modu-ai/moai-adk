@@ -60,7 +60,7 @@ func TestGatewayLaunchAssemblyCarriesAuthDisplay(t *testing.T) {
 		mode, sessionEnv, wantAuthDisplay string
 		glmKey                            string
 	}{
-		{mode: "gpt", sessionEnv: "ANTHROPIC_AUTH_TOKEN=fixture-token", wantAuthDisplay: "subscription"},
+		{mode: "gpt", sessionEnv: "ANTHROPIC_AUTH_TOKEN=fixture-token", wantAuthDisplay: "app-server-managed"},
 		{mode: "claude", sessionEnv: "ANTHROPIC_CUSTOM_HEADERS=X-MoAI-Session-Token: fixture-token", wantAuthDisplay: "subscription"},
 		{mode: "glm", glmKey: "fixture-glm-key", wantAuthDisplay: "existing-credential"},
 	}
@@ -108,6 +108,10 @@ func authDisplayMatchesSessionEnv(display string, env []string) bool {
 		switch display {
 		case "subscription":
 			if strings.HasPrefix(item, "ANTHROPIC_AUTH_TOKEN=") || strings.HasPrefix(item, "ANTHROPIC_CUSTOM_HEADERS=X-MoAI-Session-Token:") {
+				return true
+			}
+		case "app-server-managed":
+			if strings.HasPrefix(item, "ANTHROPIC_AUTH_TOKEN=") {
 				return true
 			}
 		case "existing-credential":

@@ -42,6 +42,7 @@ type gatewayPrivateConversation struct {
 	FamilyID   string `json:"family_id"`
 	SessionID  string `json:"session_id"`
 	ReceiptDir string `json:"receipt_dir"`
+	CWD        string `json:"cwd,omitempty"`
 }
 
 var errGatewayFactory = errors.New("gateway private configuration or verified dependencies unavailable")
@@ -53,7 +54,10 @@ func validGatewayConversation(c gatewayPrivateConversation) bool {
 	if _, err := receipt.New(c.SessionID); err != nil {
 		return false
 	}
-	return filepath.IsAbs(c.ReceiptDir) && filepath.Clean(c.ReceiptDir) == c.ReceiptDir && !strings.ContainsAny(c.ReceiptDir, "\x00\r\n")
+	if !filepath.IsAbs(c.ReceiptDir) || filepath.Clean(c.ReceiptDir) != c.ReceiptDir || strings.ContainsAny(c.ReceiptDir, "\x00\r\n") {
+		return false
+	}
+	return c.CWD == "" || filepath.IsAbs(c.CWD) && filepath.Clean(c.CWD) == c.CWD && !strings.ContainsAny(c.CWD, "\x00\r\n")
 }
 
 func authorizeGatewayNativeReceipt(ctx context.Context, _ []byte, policy translate.NativePolicy, c gatewayPrivateConversation, store *receipt.Store) error {
@@ -266,6 +270,7 @@ type gatewayOwnedHandler struct {
 	requests sync.WaitGroup
 	once     sync.Once
 	closeErr error
+	managed  func() error
 }
 
 func (h *gatewayOwnedHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
@@ -291,8 +296,13 @@ func (h *gatewayOwnedHandler) Close() error {
 		h.cancel()
 		h.mu.Unlock()
 		h.requests.Wait()
+		if h.managed != nil {
+			h.closeErr = h.managed()
+		}
 		if h.store != nil {
-			h.closeErr = h.store.Close()
+			if err := h.store.Close(); h.closeErr == nil {
+				h.closeErr = err
+			}
 		}
 		if h.receipts != nil {
 			if err := h.receipts.Close(); h.closeErr == nil {

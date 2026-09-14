@@ -205,12 +205,7 @@ func productionGatewayHandlerFactory(raw json.RawMessage) (http.Handler, error) 
 	var policy translate.PolicyProfile
 	first := selection.ModelIDs[0]
 	if strings.HasPrefix(first, "gpt-") {
-		var err error
-		broker, err = installedGPTBrokerForGateway()
-		if err != nil {
-			return nil, errGatewayFactory
-		}
-		policy = translate.PolicyGPTNative
+		return newGPTAppServerGatewayHandler(raw)
 	} else if strings.HasPrefix(first, "claude-") {
 		models, _ = gatewayNativeModels("claude", config.GLMModels{})
 	} else {
@@ -273,7 +268,7 @@ func gatewayGPTModels() []gateway.ModelEntry {
 	ids := []string{"gpt-6-astra", "gpt-5.6-sol", "gpt-5.6-terra", "gpt-5.6-luna"}
 	models := make([]gateway.ModelEntry, 0, len(ids))
 	for _, id := range ids {
-		models = append(models, gateway.ModelEntry{RouteID: id, UpstreamID: id, Provider: gateway.ProviderOpenAI, AuthMethod: gateway.AuthPKCE, Capabilities: gateway.Capabilities{ContextTokens: gatewayContextWindow, Images: true, Tools: true, Streaming: true}})
+		models = append(models, gateway.ModelEntry{RouteID: id, UpstreamID: id, Provider: gateway.ProviderOpenAI, AuthMethod: gateway.AuthAppServer, Capabilities: gateway.Capabilities{ContextTokens: gatewayContextWindow, Images: true, Tools: true, Streaming: true}})
 	}
 	return models
 }
@@ -299,7 +294,7 @@ func marshalGatewayPrivatePayloadWithConversation(token string, models []gateway
 	for _, model := range models {
 		ids = append(ids, model.RouteID)
 	}
-	conversation := &gatewayPrivateConversation{FamilyID: descriptor.FamilyID, SessionID: descriptor.UUID, ReceiptDir: descriptor.ReceiptDir}
+	conversation := &gatewayPrivateConversation{FamilyID: descriptor.FamilyID, SessionID: descriptor.UUID, ReceiptDir: descriptor.ReceiptDir, CWD: descriptor.CWD}
 	return json.Marshal(gatewayPrivatePayload{Version: 1, SessionToken: token, ModelIDs: ids, Conversation: conversation})
 }
 

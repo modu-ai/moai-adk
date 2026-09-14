@@ -151,8 +151,9 @@ func init() {
 		return nil
 	}
 
-	// Gateway commands remain closed for launch until verified transport binding.
-	gptServices := newGPTAuthServices(os.Stdout, installedGPTBroker{Out: os.Stdout})
+	// GPT authentication and generation share one official App Server profile;
+	// the CLI never copies subscription tokens into a MoAI-owned broker store.
+	gptServices := newGPTAppServerAuthServices(os.Stdout)
 	gptServices.Launch = func(profile, mode string, args []string) error {
 		binding, err := newGPTGatewayBinding()
 		if err != nil {

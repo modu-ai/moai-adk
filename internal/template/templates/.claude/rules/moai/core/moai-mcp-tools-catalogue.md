@@ -1,5 +1,5 @@
 ---
-description: "Detail companion for moai-mcp-tools.md — the full 21-tool moai MCP catalogue with per-family tables (SPEC lifecycle, verification snapshots, goal+session, cross-model audit, codex delegation, GLM delegation), their consumers, and CLI equivalents"
+description: "Detail companion for moai-mcp-tools.md — the full 30-tool moai MCP catalogue with per-family tables, consumers, and CLI equivalents"
 paths: "**/moai-mcp-tools.md,**/internal/cli/mcp_server.go,**/.claude/agents/moai/*.md"
 ---
 
@@ -7,11 +7,11 @@ paths: "**/moai-mcp-tools.md,**/internal/cli/mcp_server.go,**/.claude/agents/moa
 
 > Detail companion of `moai-mcp-tools.md` (the always-loaded stub). The stub owns the
 > MCP-over-CLI preference rule, the family index, and the unwired-by-design note. This file owns
-> the per-tool catalogue: purpose, wired consumer, and CLI equivalent for each of the 21 tools.
+> the per-tool catalogue: purpose, wired consumer, and CLI equivalent for each of the 30 tools.
 > Load it when wiring a tool into an agent's `tools:` list, or when choosing between an MCP tool
 > and its Bash equivalent for a specific capability.
 
-## Tool catalogue (21 tools)
+## Tool catalogue (30 tools)
 
 ### SPEC lifecycle
 
@@ -60,14 +60,23 @@ mitigation before fan-out.
 | Tool | Purpose | Consumer | CLI equivalent |
 |------|---------|----------|----------------|
 | `mcp__moai__audit_multi` | Multi-auditor convergence (claude + codex + glm) | plan-auditor, sync-auditor | — (MCP-only convergence entry) |
+| `mcp__moai__claude_audit` | Independent Claude subscription audit (`claude -p` with read-only isolation and structured output) | plan-auditor, sync-auditor; automatically by `audit_multi` in GPT/GLM sessions | — |
 | `mcp__moai__codex_audit` | codex backend single audit (native/adversarial) | plan-auditor, sync-auditor | — |
 | `mcp__moai__glm_audit` | GLM (z.ai) backend single audit | plan-auditor, sync-auditor | — |
 | `mcp__moai__audit_cache` | plan-audit PASS cache (compute_hash/lookup/store, process-shared) | sync-auditor | `moai audit cache` (none — MCP-only) |
 
-Single-backend audit mode is selected per the project's `audit_model`:
-`codex+glm` (default, converge via `audit_multi`) | `glm` | `codex` | `none`
-(Claude-only, no backend call). All backends are fail-open: an unavailable
-backend returns `inconclusive`, never a Go error.
+`claude_audit` accepts `target`, `focus`, optional `model`/`effort`, and
+`project_root`. It permits subscription login only (`authMethod=claude.ai`,
+`apiProvider=firstParty`), defaults to `sonnet/high`, strips gateway/provider
+environment variables, disables tools and session persistence, and reports
+resolved-model plus usage provenance without exposing credentials.
+
+`audit_multi` chooses the Claude participant from the launch provider. A Claude
+main session reuses its in-session `claude_verdict` as an anchor. A GPT, GLM, or
+unknown-origin session ignores any caller-supplied Claude verdict and invokes
+the independent `claude_audit` backend. Codex and GLM continue to run as their
+configured gates require. Every backend tool fails open to `inconclusive`; an
+explicitly required gate left inconclusive makes the convergence verdict fail.
 
 ### Codex delegation (background jobs)
 

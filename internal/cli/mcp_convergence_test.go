@@ -280,16 +280,17 @@ func (r *recordingCaller) call(_ context.Context, backend, target, focus, projec
 	return ReviewOutput{Verdict: "pass", Summary: backend + ":pass", Findings: []Finding{}, NextSteps: []string{}}
 }
 
-// DQ-2: claude_verdict absent → the engine REFUSES to synthesize. Returns a
-// structured ConvergenceResult (NOT a hard error), overall_verdict = fail,
-// residual_risk_note explains the missing anchor. Fail-open direction preserved.
-func TestRunMultiAudit_DQ2_MissingClaudeAnchor_Refuses(t *testing.T) {
+// AC-CLA-009: a GPT-origin session without a Claude anchor invokes the real
+// Claude backend seam instead of treating the caller's missing verdict as a
+// permanent gate failure.
+func TestRunMultiAudit_GPTOriginMissingClaudeAnchor_InvokesClaudeBackend(t *testing.T) {
 	rc := &recordingCaller{}
 	orig := backendCall
 	backendCall = rc.call
 	t.Cleanup(func() { backendCall = orig })
 
 	cfg := MultiAuditConfig{
+		OriginProvider: BackendCodex,
 		Gates: config.AuditGates{
 			Claude: config.AuditGateRequired,
 			Codex:  config.AuditGateRequired,
@@ -298,15 +299,17 @@ func TestRunMultiAudit_DQ2_MissingClaudeAnchor_Refuses(t *testing.T) {
 	}
 	// No claude verdict provided — Verdict field empty.
 	r := runMultiAudit(context.Background(), ReviewOutput{}, "uncommittedChanges", "concurrency", cfg, nil)
-	if r.OverallVerdict != "fail" {
-		t.Errorf("overall = %q, want fail (missing claude anchor refuses to synthesize)", r.OverallVerdict)
+	if r.OverallVerdict != "pass" {
+		t.Errorf("overall = %q, want pass after independent Claude audit", r.OverallVerdict)
 	}
-	if r.ResidualRiskNote == "" {
-		t.Error("residual_risk_note empty; want the missing-anchor explanation")
+	gotBackends := map[string]bool{}
+	for _, call := range rc.calls {
+		gotBackends[call.Backend] = true
 	}
-	// No backend should have been invoked once the anchor was found missing.
-	if len(rc.calls) != 0 {
-		t.Errorf("backend invoked %d time(s) despite missing claude anchor; want 0", len(rc.calls))
+	for _, backend := range []string{BackendClaude, BackendCodex, BackendGLM} {
+		if !gotBackends[backend] {
+			t.Errorf("backend %q was not invoked; calls=%v", backend, rc.calls)
+		}
 	}
 }
 
@@ -331,6 +334,7 @@ func TestRunMultiAudit_Independence_ClaudeVerdictNotInSecondaryPayload_AC_AMM_00
 		NextSteps: []string{claudeSecret},
 	}
 	cfg := MultiAuditConfig{
+		OriginProvider: BackendClaude,
 		Gates: config.AuditGates{
 			Claude: config.AuditGateRequired,
 			Codex:  config.AuditGateRequired,
@@ -385,7 +389,8 @@ func TestRunMultiAudit_ParallelFanOut_AC_AMM_002(t *testing.T) {
 	t.Cleanup(func() { backendCall = orig })
 
 	cfg := MultiAuditConfig{
-		Gates: config.AuditGates{Claude: config.AuditGateRequired, Codex: config.AuditGateRequired, GLM: config.AuditGateRequired},
+		OriginProvider: BackendClaude,
+		Gates:          config.AuditGates{Claude: config.AuditGateRequired, Codex: config.AuditGateRequired, GLM: config.AuditGateRequired},
 	}
 	// Run in a goroutine so we can coordinate the release timing.
 	done := make(chan ConvergenceResult, 1)

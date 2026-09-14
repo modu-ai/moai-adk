@@ -1,8 +1,9 @@
 # SPEC-MOAI-GATEWAY-001 — 내부 설계
 
-기준 트리: `/Users/goos/MoAI/moai-adk-go/.claude/worktrees/moai-proxy-unified`,
-HEAD `ed71054d3`(0.6.0 재기준. 0.5.0까지는 `d060e0d13`이었고, 이 문서가 행 번호로 인용하는 코드 파일은 두 커밋 사이에 바뀌지 않았다 — `research.md` §0). 아래 package·파일 이름은 **구현할 책임 경계**이며 현재 존재한다는
-뜻이 아니다. `internal/gateway`는 이 트리에 없다.
+현재 기준 트리: `/Users/goos/MoAI/moai-adk-go/.claude/worktrees/develop`, 브랜치 `develop`,
+HEAD `4056f69e1c20d942d4f9fc7363d3d79bffde899a`. 아래 package·파일 이름은 이 기준선에서 다시 판독한
+현재 구현 경계와 M14의 구현 책임을 함께 나타낸다. `internal/gateway`와 `internal/codexbridge`는 존재한다.
+`ed71054d3`와 `.claude/worktrees/moai-proxy-unified`는 0.6.0 역사 기록에만 적용된다.
 
 명칭 대응: 설계 원문과 iter1 감사는 이 구성 요소를 "proxy"라 부른다. 이 문서는 "gateway"라
 부른다(`spec.md` §0). 상류 프로젝트 `ccmproxy`는 원래 이름을 유지한다.
@@ -16,15 +17,18 @@ HEAD `ed71054d3`(0.6.0 재기준. 0.5.0까지는 `d060e0d13`이었고, 이 문�
 
 | 파일 / 경계 | 책임 | 금지할 결합 |
 |---|---|---|
-| `internal/cli/gpt.go` | `moai gpt` 등록, 닫힌 동사 집합 라우팅, kanban/factory 진입, launch 조립 | HTTP 변환 로직 직접 포함 |
-| `internal/cli/gateway_launch.go` | cc/gpt/glm 공통 launch plan, `settings.local.json`과 상속 env의 GLM 정리 키 집합 정리, `moai glm`의 GLM tier 모델 슬롯 키 설정, gateway child 기동, 포트 인계, `MOAI_LAUNCH_PROVIDER` 설정 | 기존 worktree·profile·session 옵션 누락, `settings.local.json`에 base URL·GLM credential 기록 |
+| `internal/cli/gpt.go` | `moai gpt` 등록, 닫힌 동사 집합 라우팅, Factory 진입, launch 조립 | HTTP 변환 로직 직접 포함 |
+| `internal/cli/gateway_launch.go` | cc/gpt/glm 공통 launch plan, 상속 env 정리, provider별 직접 모델 슬롯, gateway child 기동, 포트 인계, `MOAI_LAUNCH_PROVIDER` 설정 | 기존 worktree·profile·session 옵션 누락, `settings.local.json`에 base URL·credential 기록 |
+| `internal/orchestration` | Factory/Todo/Tasks/Dispatch 공통 조정과 초기 provider 기록 | 과거 기록과 migration 근거의 소급 재작성 |
 | `internal/gateway/server.go` | loopback listener, 세션 접근 통제, graceful 종료 | `internal/cli`·`internal/config` import |
 | `internal/gateway/catalog.go` | 모델·계정 권한·capability snapshot | 접두사 추측 라우팅 |
 | `internal/gateway/router.go` | 요청 모델 검증, adapter 선택 | 공유 `currentProvider` 변수 |
 | `internal/gateway/anthropic.go` | Claude Messages, OAuth/API 인증 분기 (passthrough는 T09 게이트 뒤) | 다른 provider 인증 전달 |
-| `internal/gateway/openai.go` | GPT transport 선택, Responses 호출 | API와 구독 backend 정책 혼합 |
+| `internal/gateway/appserver.go` | 공식 Codex App Server와 Anthropic Messages ingress 사이의 GPT adapter | 직접 Responses·구독 token store·비공개 endpoint 호출 |
+| `internal/codexbridge/` | App Server thread/turn/dynamic-tool JSON-RPC와 pending 원장 | Claude approval/hook 실행 또는 native Codex 도구 실행 |
+| `internal/gateway/openai.go` | **[HISTORICAL/INACTIVE for GPT]** 과거 direct Responses 구현 | 현재 GPT transport나 구독/API fallback으로 선택 |
 | `internal/gateway/glm.go` | Z.AI Messages 경로 | OpenAI endpoint로 임의 대체 |
-| `internal/gateway/translate/` | Messages↔Responses, tool, SSE 변환 | 전역 tool ID map |
+| `internal/gateway/translate/` | 공통 Anthropic ingress 정규화와 history 오류 | 현재 GPT 경로에서 Responses wire format 생성 |
 | `internal/gateway/auth/` | `CredentialRef` 인터페이스 정의, Anthropic·GLM 구체 구현 | Codex CLI 저장소 수정 |
 | `internal/gateway/policy.go` | 전환·기능·본문 크기·외부 송신·path 정책 | 실패 시 무단 fallback |
 
@@ -545,20 +549,17 @@ errors=[]를 담는다. hooks/native 호출은 이 단일 실행에서 관측되
 
 gateway launcher는 launch 시점의 초기 provider를 새 환경변수 `MOAI_LAUNCH_PROVIDER`로 자식
 env에 싣는다. `internal/config/envkeys.go`에 `EnvMoaiLaunchProvider`로 등록한다. 값 어휘는
-kanban backend 상수와 같은 `claude` | `gpt` | `glm`이며, 두 키가 같은 값을 다른 뜻으로 읽는
-일이 없게 한다.
+`claude` | `gpt` | `glm`이며, 활성 Dispatch/Orchestration이 provider 사실로 읽는다.
 
-이름은 기존 규약을 따른다 — launcher가 운반하는 launch 사실은 `EnvMoaiKanbanBackend`,
-`EnvMoaiSessionPID`처럼 `EnvMoai*` 상수에 `MOAI_*` 값을 쓴다. 이 트리에서
+이름은 기존 규약을 따른다 — launcher가 운반하는 launch 사실은 `EnvMoaiSessionPID`처럼
+`EnvMoai*` 상수에 `MOAI_*` 값을 쓴다. 이 트리에서
 `MOAI_LAUNCH_PROVIDER` / `EnvMoaiLaunchProvider`는 사용처 0이다(`research.md` §1.4).
 
-선례도 같은 방향을 가리킨다. `EnvMoaiKanbanBackend`의 주석은 backend를 "deliberately carried
-rather than inferred"라 적고, `ANTHROPIC_BASE_URL`에서 backend를 추론하는 것을 "a guess dressed
-as a measurement"라 부른다. 이 SPEC은 같은 원칙을 kanban 밖의 모든 launch로 넓힌다.
+역사적 `EnvMoaiKanbanBackend` 주석의 “추론하지 말고 운반한다” 원칙만 provenance로 차용한다.
+그 식별자와 명칭은 활성 계약이나 새 write가 아니다.
 
-`MOAI_KANBAN_BACKEND`를 재사용하지 않는 이유: 그 키는 `exportKanbanLaunchFacts`가 kanban·factory
-진입 경로에서만 설정한다. 평범한 `moai cc` launch에는 실리지 않으므로 모든 세션의 훅이 읽어야
-하는 판정 근거가 될 수 없다.
+역사적 `MOAI_KANBAN_BACKEND`는 migration reader 외에 재사용하지 않는다. 일반 런타임은
+`MOAI_LAUNCH_PROVIDER`와 `MOAI_DISPATCH_*`만 쓰며 폐기 입력은 env write 전에 거절한다.
 
 ### 5.2 정직한 경계와 판정 전제
 
@@ -903,9 +904,12 @@ Default·현재 행과 `[1m]` 등 클라이언트 접미사는 실제 요청 캡
 직접 Claude 임시 실험은 조사 보고서에 보존하며 제품 성공 근거로 승격하지 않는다.
 
 
-## 7. kanban backend의 의미 재정의 (`REQ-MG-026`)
+## 7. [SUPERSEDED BY 0.15.0 §12.3] 옛 kanban backend 설계 (역사 기록)
 
-### 7.1 `BackendGPT` 추가와 의미 변화
+이 절의 현재형 문장은 0.15.0 이전 결정의 원문을 보존한 것이며 구현 지시가 아니다. 활성 설계는 §12.3의
+Factory/Todo/Tasks/Dispatch/Orchestration 계약과 `-k` 무부작용 폐기다.
+
+### 7.1 [SUPERSEDED BY 0.15.0 §12.3] `BackendGPT` 옛 추가안
 
 `internal/kanban`의 backend 상수 집합에 `BackendGPT = "gpt"`를 더한다.
 
@@ -923,7 +927,7 @@ kanban session, so no third value exists"라고 적는다. gateway 아래에서�
 - `Record.Backend` 필드 주석 — "BackendClaude or BackendGLM"을 세 값과 새 의미로.
 - `EnvMoaiKanbanBackend` 상수 주석 — 같은 열거를 세 값으로.
 
-### 7.2 이름이 같은 다른 개념 — 건드리지 않는다
+### 7.2 [SUPERSEDED BY 0.15.0 §12.3] 이름이 같은 다른 개념
 
 `BackendGPT`는 **`internal/kanban`에만** 추가한다.
 
@@ -933,7 +937,7 @@ kanban session, so no third value exists"라고 적는다. gateway 아래에서�
 - `internal/cli/model.go`의 모델 프로필 보고서 `Backend` 필드(`"claude"`/`"glm"`)도 LLM 설정에서
   유도한 별개 개념이다. 이 SPEC의 범위가 아니다.
 
-### 7.3 소비자
+### 7.3 [SUPERSEDED BY 0.15.0 §12.3] 옛 소비자 표
 
 `moai cc`와 `moai glm`의 진입 경로는 네 분기로 나뉜다 — factory lead, factory worker, kanban lead,
 kanban companion. 네 분기 모두 `exportKanbanLaunchFacts`에 backend 값을 넘기고, factory lead 분기만
@@ -958,7 +962,7 @@ kanban companion. 네 분기 모두 `exportKanbanLaunchFacts`에 backend 값을 
 든다. gateway 아래에서는 "one-backend" 전제가 `cc`·`glm`에서도 성립하지 않지만, 그 메시지는
 `moai cg` 철거와 함께 사라지므로 형제 SPEC `SPEC-MOAI-CG-RETIRE-001`(제안)에서 처리한다.
 
-### 7.4 현재 출시 판단 입력
+### 7.4 [SUPERSEDED BY 0.15.0 §12.3] 당시 출시 판단 입력
 
 t650~t654의 managed/API 인증, 도구 실행권, pending 복구, resume/fork/compact, 실제 세 picker와 Windows 실행을
 각각 증거로 판정한다. AUTH/PICKER 형제의 문서 착지만으로 지원을 선언하지 않는다. 사용자 인증 오류에는 내부 SPEC명을
@@ -1084,3 +1088,133 @@ ci.yml에 상시 windows 레그를 추가하는 안은 그 비용이 모든 변�
 공식 기준 문서(구독 인증·출력 정책): https://learn.chatgpt.com/docs/app-server (§4.4와 같은 출처,
 접근 2026-09-12).
 
+## 12. 0.16.0 최종 설계 — 직접 모델 계약과 Factory 단일화
+
+이 절은 §7의 옛 Kanban/Factory 병행 설계와 §6.7의 GPT 슬롯 일반화를 대체한다. §7은 결정 당시의
+감사 이력으로만 읽는다.
+
+### 12.1 모델과 effort의 두 독립 축
+
+| Claude 역할 별칭 | GPT 모델 ID | 의미 |
+|---|---|---|
+| `fable` | `gpt-6-astra` | 모델 직접 선택 |
+| `opus` | `gpt-5.6-sol` | 모델 직접 선택이자 무명시 기본값 |
+| `sonnet` | `gpt-5.6-terra` | 모델 직접 선택 |
+| `haiku` | `gpt-5.6-luna` | 모델 직접 선택 |
+
+MoAI는 이 표 위에 별도 모델 tier를 만들지 않는다. `max`·`high`·`medium`·`low`·`ultra`는
+App Server에 전달할 effort 축이며 모델 ID와 직교한다. launch 조립은 먼저 상속 슬롯을 제거하고 표의
+네 값을 명시적으로 넣는다. 그 뒤 명시 effort가 있으면 원값을 별도 필드로 운반하고, 없으면 누락으로
+둔다. 지원되지 않는 조합은 모델이나 effort를 바꾸지 않고 명시 오류로 끝낸다.
+
+### 12.2 Messages ingress와 App Server 소유권
+
+Claude Code는 일반 Anthropic Messages `/v1/messages` 입구와 `tool_use`/`tool_result`, 승인, hook,
+실제 도구 실행을 소유한다. GPT route는 공식 Codex App Server를 `initialize`한 뒤 thread/turn을 소유하게
+한다. production entry `productionGatewayHandlerFactory`는 `internal/cli/gateway_product_binding.go`에,
+composition helper `newGatewayHandlerFactory`는 `internal/cli/gateway_factory.go`에 둔다. 조립은 private
+`MOAI_HOME`의 유효 auth profile과 명시 Codex binary를 입력으로
+`codexapp.Client` initialize → `AppServerAuthority` → durable `codexbridge.Engine` →
+`AppServerAdapter` 순서로 만든다. 부분 실패 시 역순 정리하고 handler `Close`가 engine/client를 정확히
+한 번 닫는다. GPT managed route에 `OpenAIAdapter`, 구독 token 직접 읽기/refresh, private endpoint 또는
+API 과금 fallback은 남지 않는다.
+
+adapter는 App Server의 dynamic tool JSON-RPC 요청마다 raw RPC ID와 thread/turn/call ID를 대화별 ordered
+pending batch에 기록하고, 한 turn에서 barrier 전에 도착한 모든 call을 첫 HTTP의 복수 `tool_use`로 반환한다.
+후속 HTTP의 `tool_result` 순서는 call 발생 순서와 달라도 된다. 예를 들어 Claude가 `call-b`, `call-a`
+순으로 결과를 보내면 원장은 각각 저장한 `rpc-b`, `rpc-a`에 정확히 한 번 응답한다. 일부 결과는 남은
+pending을 보존하고, 중복·foreign·cross-thread·이미 완료된 ID·schema 변경은 다른 call을 소비하거나
+App Server에 응답하기 전에 거절한다. 모든 pending이 해결된 뒤에만 같은 turn의 최종 text를 이어서
+Claude 화면에 반환한다. HTTP 수명과 App Server turn/RPC 수명은 분리한다.
+
+Codex native shell·file·MCP·agent·hook은 이 경로에서 비활성화한다. tool 실행을 App Server와 Claude
+Code 양쪽에 허용하면 같은 외부 효과가 두 번 발생하고 Claude approval/hook 경계를 우회할 수 있기 때문이다.
+
+이 결합은 Anthropic이 비-Claude 모델용으로 공식 지원하는 Claude Code 경로가 아니다. 따라서 공식 지원,
+약관상 무위험, 기능 동등성을 제품 문구로 약속하지 않는다. OpenAI App Server의 문서화된 인증·프로토콜을
+사용하는 것과 전체 조합의 지원 여부는 별개다.
+
+### 12.3 Factory와 이름 사전
+
+활성 실행 모드는 Factory 하나다. `-f`가 Factory lead/worker를 선택하며 `-k`/`--kanban`은 부작용 없이
+거절하고 `-f`를 안내한다. 활성 이름은 다음 하나씩만 사용한다.
+
+| 목적 | 활성 이름 |
+|---|---|
+| 실행 모드 | Factory |
+| 작업 큐 | Todo |
+| UI 상태 | Tasks |
+| 배차·실행 기록 | Dispatch |
+| 공통 내부 조정 | Orchestration |
+
+따라서 새 패키지/import는 `internal/orchestration`, GPT 상수는 `orchestration.BackendGPT`이며 저장 값
+`"gpt"`는 호환을 위해 유지한다. 과거 SPEC·commit·report ID와 명시적 migration/legacy reader만 옛
+명칭을 가질 수 있다. 저장 필드의 물리적 migration이 이 구현에서 안전하게 끝나지 않으면 legacy reader를
+유지하고 별도 SPEC으로 분리하되, 활성 CLI와 일반 런타임 식별자의 이관은 미루지 않는다.
+
+구 환경 이름을 읽는 경계는 `research.md` §22.5의 두 legacy reader와 시험으로만 제한한다. reader는 구
+이름을 새 Dispatch 구조로 변환할 뿐 구 이름을 다시 쓰지 않는다. 일반 runtime은 `MOAI_DISPATCH_*` 이름을
+사용하고 사용자 출력은 Todo/Tasks/Dispatch/Orchestration만 사용한다. allowlist 판정은 경로만 보지 않고
+허용 심볼과 read-only 사용까지 AST 또는 소스 가드로 대조한다.
+
+### 12.4 history 400 귀속 상태기계
+
+대화별 상태는 `last completed public prefix`, receipt chain digest, manifest generation, App Server thread와
+마지막 완료 turn을 함께 고정한다. transport retry는 동일 요청 idempotency key와 동일 digest일 때 기존
+진행/결과에 attach하고 새 `turn/start`를 만들지 않는다. 새 사용자 입력은 완료 prefix 바로 뒤에 정확히
+한 번만 추가한다.
+
+다음은 서로 다른 거절 원인이다.
+
+- 공개 history bytes가 바뀜: `history_changed`
+- gateway가 발행·인증하지 않은 `agent_summary`: `agent_summary_untrusted`
+- request prefix와 receipt/manifest chain 또는 generation 불일치: `receipt_manifest_mismatch`
+- resume barrier 뒤 이미 반영한 입력 재제출: `resume_duplicate_input`
+
+네 거절은 App Server 호출 전에 끝나며 production `gateway.Server` error encoder가 HTTP 400,
+Anthropic envelope `type=invalid_request_error`, 위 exact cause를 함께 쓴다. 오류 타입이 구현하는
+`CauseCode()`도 같은 SSOT token을 반환한다. `ServerConfig.RejectionLogger`에는
+`RecordGatewayRejection(fields map[string]string)` recorder를 주입한다. server가 소유하는 recorder는 정확히
+`cause`, `route`, 길이 64의 비식별 `digest` 세 필드만 받으며 adapter의 자유형 오류 문자열을 기록하지 않는다.
+prompt, summary, tool result, reasoning, token, credential, canary는 key나 value로 싣지 않는다. 단위 fixture는
+실제 `gateway.Server`와 error encoder를 지나 envelope, 생성/RPC/upstream HTTP 0, recorder의 safe/forbidden
+필드를 검증한다. recorder seam이 없는 현재 상태는 제품 RED이며 M14-R5는 실제 sink record를 따로 보존한다.
+`acceptance.md` AC-MG-009의 양성 행이 실제 계수를 움직이는 대조군이고, 음성 행 0회만으로 성공을 주장할 수 없다.
+
+### 12.5 test-first seam·platform·manifest 구현 경계 (M14-R0.2)
+
+`plan.md` M14-R0은 소스 literal grep이 아니라 실제 fake Codex App Server subprocess와 HTTP 두
+message, production catalog wiring, temp Todo/Tasks digest, BacklogStore Dispatch/Factory runtime,
+launch/prompt, durable engine과 receipt/history HTTP, 실제 tracked Git source set을 계수한다. 명명
+시험과 case 수는 `acceptance.md` §D가 소유한다. RED-only 단계에서는 제품 파일을 수정하지 않고
+이미 충족된 회귀 가드와 의도한 RED assertion을 구분한다. iteration-5 App Server component는 정상
+initialize/thread/turn과 duplicate/foreign/cross-thread 5개가 회귀 가드이고, 두 call 첫 batch·역순
+continuation·exact `rpc-a/rpc-b` 3개가 실제 RED다. portable process 6개와 lifecycle 정상 5개는 회귀
+가드다. alias env 15, effort RPC 20, production wiring 6, Factory unit boundary 7,
+history cause/logger 5, naming schema/current 2는 실제 RED다. `claude-tool-result-continuation`은 Claude가 실행한 tool result를 동일 call로 이어 주는
+계약이며 approval/hook 자체를 이 component 시험이 실증했다고 표현하지 않는다. Factory 단위 시험도
+`-p`·model·effort·env 전달과 폐기 flag 무부작용만 판정하며 실제 Agent/tool/Tasks/Dispatch는
+`acceptance.md`의 AS-017·018 live gate가 소유한다.
+
+M14-R0.2는 production wiring PATH fake `codex`를 protocol-speaking subprocess로 유지하고 독립 self-probe
+뒤 production log를 초기화한다. clean close는 EOF/finally marker가 아니라 성공한 첫
+Start→Initialize→Account→Close 뒤 같은 private profile/lease에서 두 번째 Start→Initialize→Close가 성공하는
+것으로 판정한다. 현재 production selector는 네 `AuthPKCE`, concrete `*gateway.OpenAIAdapter`, absent/poisoned
+legacy auth store를 건드리는 조립까지 6 RED다. product GREEN은 managed App Server 조립에서 legacy store
+open/read/refresh 0을 함께 증명해야 한다.
+
+프로세스 구현은 플랫폼 파일로 분리한다. POSIX 파일은 `//go:build !windows`와
+`syscall.Exec`를 갖고, Windows companion은 `//go:build windows`와 독립 spawn-and-wait를 갖는다.
+`TestGatewayProcessContractPortable`은 OS API를 source token으로 검사하지 않고 fake child의 readiness,
+wait, cancellation, exit code, flush/atomic replace, permission 결과를 공통 interface 뒤에서 검증한다.
+현재 시험은 실제 `gateway.StartChild`/`RunChildWithControl` 경로에서 readiness와 HTTP/overlay,
+0600 permission, cancellation, wait, exit 23을 6/6 PASS했다. 이전의 분리된 지역 변수 기반 wait/exit
+RED는 제품 경로를 측정하지 않은 무효 증거라 폐기한다.
+release CI Windows live 행은 이 portable 시험을 대체하지 않는 별도 완료 gate다.
+
+naming checker는 `research.md` §22.6의 정확한 JSON 경로와 schema를 읽고, migration 이후 tracked Go
+source를 네 category로 재분류한 뒤 manifest의 post-migration canonical current set과 양방향 차집합을
+구한다. baseline의 옛 `internal/kanban/**` 경로는 provenance/mapping 입력일 뿐 current 배열에 남기지
+않는다. `missing_from_tree`,
+`extra_in_tree`, `schema_error`는 서로 다른 실패 축이며 어느 하나도 자동으로 manifest를
+수정하지 않는다. manifest 생성·갱신은 M14-R3 구현 owner의 소유다.

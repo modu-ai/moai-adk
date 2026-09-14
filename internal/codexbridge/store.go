@@ -6,6 +6,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -29,6 +30,10 @@ import (
 type FileStore struct {
 	mu  sync.Mutex
 	dir string
+}
+
+type Barrier struct {
+	Phase, Prefix, Model, CWD string
 }
 
 const storeSchema = 2
@@ -162,4 +167,18 @@ func (s *FileStore) load(owner codextools.Binding) (r record, found bool, err er
 		return r, true, err
 	}
 	return r, true, nil
+}
+
+func (s *FileStore) Barrier(owner codextools.Binding) (Barrier, bool, error) {
+	r, found, err := s.load(owner)
+	if err != nil || !found {
+		return Barrier{}, found, err
+	}
+	if r.Schema != storeSchema {
+		return Barrier{}, true, fmt.Errorf("%w: barrier predates the resumable schema", ErrRecovery)
+	}
+	if r.Owner.ConversationID != owner.ConversationID || r.Owner.AccountScope != owner.AccountScope {
+		return Barrier{}, true, ErrScope
+	}
+	return Barrier{Phase: r.Phase, Prefix: r.Prefix, Model: r.Model, CWD: r.CWD}, true, nil
 }

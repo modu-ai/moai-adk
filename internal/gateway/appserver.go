@@ -67,7 +67,7 @@ func (a *AppServerAdapter) Send(ctx context.Context, r RoutedRequest) (*http.Res
 // the tool barrier is durable or the actual turn/completed event is accepted.
 // This does not claim incremental token delivery latency or measured token usage.
 func appServerResponse(model string, stream bool, segment codexbridge.Segment) (*http.Response, error) {
-	if !segment.Done && segment.Tool == nil {
+	if !segment.Done && segment.Tool == nil && len(segment.Tools) == 0 {
 		return nil, codexbridge.ErrProtocol
 	}
 	nonce := make([]byte, 16)
@@ -80,9 +80,15 @@ func appServerResponse(model string, stream bool, segment codexbridge.Segment) (
 		blocks = append(blocks, map[string]any{"type": "text", "text": segment.Text})
 	}
 	reason := "end_turn"
-	if segment.Tool != nil {
+	tools := segment.Tools
+	if len(tools) == 0 && segment.Tool != nil {
+		tools = []codexbridge.Tool{*segment.Tool}
+	}
+	if len(tools) != 0 {
 		reason = "tool_use"
-		blocks = append(blocks, map[string]any{"type": "tool_use", "id": segment.Tool.ID, "name": segment.Tool.Name, "input": segment.Tool.Arguments})
+		for _, tool := range tools {
+			blocks = append(blocks, map[string]any{"type": "tool_use", "id": tool.ID, "name": tool.Name, "input": tool.Arguments})
+		}
 	}
 	message := map[string]any{"id": id, "type": "message", "role": "assistant", "model": model, "content": blocks, "stop_reason": reason, "stop_sequence": nil, "usage": map[string]int{"input_tokens": 0, "output_tokens": 0}}
 	var body bytes.Buffer
