@@ -444,9 +444,50 @@ ID)로 `moai glm` gateway 세션을 열고 Z.AI mock upstream이 수신 요청�
 검증 가능성: 부분 — 헤더·인증 해석·매핑·하위 명령은 mock과 시험 seam(`MOAI_TEST_GLM_KEY`)으로
 판정된다. 실제 Z.AI inference 왕복은 계정 권한이 필요하므로 **Gap**.
 
+**AC-MG-026** (REQ-MG-027, REQ-MG-019) — launcher 생산 통합과 로컬 배포 게이트(0.13.0, t654).
+네 하위 판정은 서로 독립적으로 PASS 또는 Gap을 받는다.
+
+- (a) **launcher 생산 통합.** Given AS-014~AS-022의 검증 게이트가 통과한 트리일 때, When 이 트리에서
+  빌드한 `moai gpt`를 launch 인수와 함께 실행하면, Then launch가 "GPT gateway launch is awaiting
+  transport verification" 대기 오류로 끝나지 않고 실제 launch 경로로 진행하며, 세 launcher 모두
+  provider 전용 catalog·인증 방식 표시·App Server transport를 같은 launch 조립에서 넘긴다. 검증
+  게이트 통과 전 트리에서는 같은 실행이 대기 오류로 끝나는 대조군이 된다. 기계 판정: 게이트 통과
+  트리에서 비-테스트 `internal/cli`에 그 대기 오류 리터럴이 0건 —
+  `grep -rn 'awaiting transport verification' internal/cli --include='*.go' | grep -v _test` → 0,
+  launch 조립 시험 `go test ./internal/cli/ -run 'TestGatewayLaunch'` PASS(RED→GREEN 로그 보존).
+- (b) **compaction epoch 생산 복원.** Given 세션 영구 상태에 마지막 적용 epoch가 기록된 대화 scope가
+  있을 때, When 프로세스를 다시 띄워 compaction 원장을 복원하면, Then 주입된 applied epoch가 기록값과
+  같고 뒤이은 첫 rebase가 그 값 기준으로 판정된다. 영구 상태가 없으면 0으로 시작하고, 판독 불가·훼손
+  상태는 명시 오류다. 기계 판정: `go test ./internal/gateway/... -run 'TestRebaseLedgerRestoration'`
+  RED→GREEN — 고정값·호출자 추측 주입(현행, 비-테스트 호출자 0) 구현은 복원 시험에서 적색이다.
+- (c) **fork inherited prefix 원장 대조.** Given 원본 family의 완료 원장과 `--fork-session` 자식의
+  inherited prefix가 있을 때, When gateway가 자식 배리어를 수용하면, Then prefix가 `Manifest.ChainTo`
+  경계와 일치할 때만 수용되고, 변조·불일치·미지 원본은 자식 상태 생성 전에 명시 거절된다. engine의
+  caller-asserted 값을 대조 없이 수용하는 구현은 변조 변형에서 적색이다. 기계 판정:
+  `go test ./internal/gateway/... -run 'TestForkPrefixCrossCheck'` RED→GREEN.
+- (d) **rc 로컬 배포 게이트(종결).** Given (a)·(b)·(c)가 PASS이고 AS-017·AS-019·AS-021이 PASS이며
+  AS-014·AS-018·AS-020·AS-022가 PASS 또는 근거를 갖춘 Gap일 때 — 즉 강제 전제 집합은
+  {(a), (b), (c), AS-017, AS-019, AS-021}의 전수 PASS다(이 여섯에 Gap은 허용되지 않는다) — When
+  배포 절차를 실행하면, Then 다음 네 증거가 각각의 실제
+  명령과 출력과 함께 `.moai/reports/t654/as5-deploy-verdict.md`에 남는다.
+  1. `make build VERSION=v<다음 미사용 rc>` → exit 0. 버전 번호는 `.moai/docs/version-management.md`
+     Local RC Numbering의 다음 미사용 번호다 — 카드 문구의 rc.8은 2026-09-12 발행 시점 표기이며,
+     발행 시점에 이미 소비됐으면 다음 번호를 쓰고 그 사실을 보고서에 명시한다.
+  2. `rm -f ~/go/bin/moai && cp bin/moai ~/go/bin/moai` → clean 재설치(inode 갱신; 맨 cp 덮어쓰기는
+     exit 137 전례가 있어 clean 재설치가 계약이다).
+  3. `~/go/bin/moai version; echo $?` → exit 0.
+  4. `strings ~/go/bin/moai | grep <기준 SHA>` → 기준 SHA(측정 시점 HEAD)가 바이너리에 박혀 있다
+     (binary lag 검증).
+  보고서는 CHANGELOG 발행 검토 결과(사용자 가시 표면 기준, 사전-발행 grep
+  `grep -c 'SPEC-MOAI-GATEWAY-001' CHANGELOG.md` 포함)를 함께 담는다.
+  push·PR·병합·워크트리 제거는 없으며, 배포 절차 후 `git status --short`가 증거 파일 외 로컬 변경
+  없음을 보이는 것까지 판정에 포함한다.
+검증 가능성: (a)~(c)는 기계 시험으로, (d)는 명령 출력과 보고서로 판정된다. (d)의 전제인 실제 계정
+실증(AS-017·AS-019·AS-021)이 세션 환경에서 불가하면 (d)는 창 대기 상태로 남고 PASS로 세지 않는다.
+
 ## D. Definition of Done
 
-- `AC-MG-001` ~ `AC-MG-025` 가운데 폐기 묘비 `AC-MG-002`를 뺀 24개 각각이 PASS 또는 근거를 갖춘 Gap으로 판정되었다.
+- `AC-MG-001` ~ `AC-MG-026` 가운데 폐기 묘비 `AC-MG-002`를 뺀 25개 각각이 PASS 또는 근거를 갖춘 Gap으로 판정되었다.
 - Gap으로 남은 항목(미리 선언한 Gap 포함)이 완료 보고의 Gaps 구획에 이유와 함께 열거되었다.
 - `AC-MG-006`의 Windows 절반이 카드 종료 시점에 Gap(판정 대기)으로 기록되었고, release PR 판정의 기록 위치
   (`.moai/reports/SPEC-MOAI-GATEWAY-001/windows-release-verdict.md`)가 완료 보고에 적혔다.
@@ -467,6 +508,7 @@ ID)로 `moai glm` gateway 세션을 열고 Z.AI mock upstream이 수신 요청�
 | T10 외부 auth 보존 | (REQ-MG-025 → AC-MG-020) | `SPEC-MOAI-GPT-AUTH-001` (제안)으로 이관. Codex 쪽 불변식만 이 SPEC에 보존 |
 | T20 `cg`/`gg` 제거와 기존 회귀 | (REQ-MG-004 → AC-MG-015) | `SPEC-MOAI-CG-RETIRE-001` (제안)으로 이관. `gg` 부재만 이 SPEC에 보존 |
 | T21 AS-010·011·012 실세션 양성 실증 | (REQ-MG-015, REQ-MG-017 → AC-MG-009/AS-010, AC-MG-003/AS-011, AC-MG-009/AS-012) | 실세션 양성 실증(실세션 회상·실제 turn model 일치·실제 Claude 압축 수집)은 카드 t844(라이브 계측 세션)로 이관. 자동 거절 변형군과 기계적 검증은 카드 t653 run 커밋 `14dba89c5`·`e45f50a8d`에서 착지. t844의 실세션 양성이 도래하기 전까지 전체 기능 통과는 보류다(AS-012의 “단순 구조 probe나 안전한 거절만으로 전체 기능을 통과 처리하지 않는다”). AS-013은 이관 대상이 아니며 설계된 전제 실패 NOT-RUN을 유지한다 |
+| T22 AS-019와 T21의 경계 정합 (0.13.0, t654) | (REQ-MG-019, REQ-MG-015 → AC-MG-001/AS-019) | 카드 t654 문구의 "실제 Claude PTY … 재개·모델전환"은 launcher 측(Claude/GLM 재개·전환과 provider 경계)으로 판정한다. AS-010·011·012의 GPT thread 실세션 양성은 T21대로 t844에 유지되며 AS-019가 흡수·대체하지 않는다 — 두 표면이 같은 "재개·모델전환" 어휘를 쓰지만 판정 대상이 다르다. t844 이관 내용이 바뀌지 않는 한 T21 행은 이 판에서 수정하지 않는다 |
 | tmux pane teammate 표면 (옛 `AC-MG-006` teammate 수명 판정, 옛 `AC-MG-018` (a) tmux 주입 판정) | — | 0.6.0에서 `SPEC-MOAI-GATEWAY-TEAMMATE-001` (제안)으로 이관. tmux 세션 env 무기록과 in-process 표시 판정만 이 SPEC에 남음 |
 
 ## 0.9.0 기존 AC의 형식·인증 대조군 보강
@@ -630,10 +672,46 @@ Given 설치본의 native Agent(fork)/subtask 가용성을 확인한 실제 Clau
 Windows process 종료·재개·파일 flush/원자교체·권한 시험을 실행하면, Then 기존 review 의미와 승인된 Windows API 계약이 유지된다.
 Windows cross compile만으로 runtime AC를 통과시키지 않는다.
 
+**AC-MG-004 / AS-017 (REQ-MG-015, REQ-MG-017)** Given 실제 launcher PTY 세션과 초기 완전 정의 도구, ToolSearch 뒤 처음 발견하는
+도구가 있을 때, When 실제 turn에서 초기 도구와 후발 도구를 각각 실행하면, Then 초기 도구는 native schema로, 후발 도구는 dispatcher로
+정확히 한 번 실행되고 등록 때문에 추가된 thread/start·fork·resume 호출은 0이다. t651의 fake 기반 AS-004를 대체하지 않고 제품 판정을
+더한다. 증거: `.moai/reports/t654/as5-pty-toolsearch.log` + gateway 요청 기록. 검증 가능성: 실제 계정 권한 필요 — 불가하면 Gap.
+
+**AC-MG-011 / AS-018 (REQ-MG-019, REQ-MG-015)** Given 세 launcher PTY 세션과 서브에이전트의 네 슬롯 별칭 요청을 유도하는 작업이 있을
+때, When 서브에이전트가 별칭·모델로 요청을 보내면, Then 요청은 해당 제공자 세션 catalog 안에서 해석되고 타 upstream 요청 계수는 0이며,
+미등록 ID는 자동 확장 없이 거절된다. 증거: `.moai/reports/t654/as5-pty-subagent.log`. 검증 가능성: 실제 PTY 필요.
+
+**AC-MG-001 / AS-019 (REQ-MG-019, REQ-MG-015)** Given 같은 제공자의 세션 기록이 있을 때, When launcher 재개 플로우와 `/model` 전환을
+실제 PTY에서 수행하면, Then 재개는 같은 제공자·대화 소유권이 확인된 기록에 한해 수용되고, 전환 뒤 실제 turn 요청의 `model`이 선택 ID와
+일치하며 타 provider 요청 계수는 0이다. **t844 경계**: AS-010(GPT thread 실세션 회상)·AS-011(GPT 실제 turn model 일치)·AS-012(실제
+Claude 압축 수집)의 실세션 양성은 T21대로 t844 소관이며, 이 AS는 그것을 흡수·대체하지 않는다 — 이 AS는 launcher 측(Claude/GLM 재개·
+전환과 provider 경계)과 GPT 측 picker·인증 표시(AS-014)까지만 판정한다. 증거: `.moai/reports/t654/as5-pty-resume-model.log`. 검증
+가능성: 실제 PTY 필요.
+
+**AC-MG-010 / AS-020 (REQ-MG-011, REQ-MG-014)** Given 설치 App Server model metadata와 provider별 capability 선언이 있을 때, When
+GLM 세션에서 이미지 입력과 Claude 세션에서 이미지 입력을 각각 시도하면, Then GLM은 text-only로 명시 거절하고 Claude는 선언 capability대로
+수용하며, 표시는 모델 명목 창·현재 경로 유효 한도·누적 사용량을 구분한다. `gateway_product_binding.go`의 공통
+`Capabilities{ContextTokens: 1000000, Images: true}`는 provider별 양성·음성 시험으로 재판정한다 — 그 선언 자체는 수용 보장이 아니다.
+증거: `.moai/reports/t654/as5-context-paths.md`. 검증 가능성: 부분 — capability 음성·양성은 mock/합성 입력으로 결정적, 실제 대형 입력
+수용은 실계정 권한이 필요하므로 Gap 가능.
+
+**AC-MG-020 / AS-021 (REQ-MG-017, REQ-MG-025)** Given 구독 managed 계정과 API 키 전용 프로필이 있을 때, When 두 모드를 실제 PTY에서
+각각 선택·실행하면, Then 표시된 인증 방식이 실제 선택과 일치하고, MoAI의 구독 토큰 파일 접근은 0이며, 구독 실패·만료 유도 시 API 과금
+경로의 요청 계수는 0이다(자동전환 금지). 두 모드 모두 공식 App Server 출력 정책을 사용함을 표시하고 Claude 생성 토큰 상한과 같다고
+표시하지 않는다. 증거: `.moai/reports/t654/as5-auth-modes.md`. 검증 가능성: 실제 계정 권한 필요.
+
+**AC-MG-006 / AS-022 (REQ-MG-009, REQ-MG-015)** Given supervisor·launcher의 이름을 정한 Windows 시험과 `release-pr-multi-os.yml`의
+`workflow_dispatch` 트리거가 있을 때, When GitHub CI windows-latest 레그를 실행하면, Then `test-stream-release-verify-windows-latest`
+아티팩트에서 이름을 정한 시험 각각의 종료 이벤트가 `"Action":"pass"`임을 확인하고 결과를
+`.moai/reports/t654/as5-windows-ci-verdict.md`에 기록한다. 시험 부재·skip·아티팩트 부재는 PASS가 아니다. Windows cross compile exit 0만으로
+이 AS를 PASS로 세지 않는다. 검증 가능성: GitHub CI 실행 필요(로컬 darwin에서 불가 — 원격 실행 또는 창 대기).
+
 
 완료 판정: t650→t651→t652→t653→t654 의존 순서로 실제 증거를 기록하고 독립 감사를 통과한다.
 단일 App Server moai_echo 프로브, account/read 또는 compile 성공으로 실제 Claude PTY·tool·resume·fork·compact
-전체를 완료하지 않는다. Windows는 GitHub CI의 실행 증거를 요구한다.
+전체를 완료하지 않는다. Windows는 GitHub CI의 실행 증거를 요구한다. t654의 종결 판정은 AS-014~AS-022와
+`AC-MG-026` (d)의 rc 로컬 배포 게이트다 — 배포 게이트는 검증 전수 PASS를 전제로 하며, push·PR·병합·
+워크트리 제거는 포함하지 않는다.
 
 ### AS-002·AS-007의 관리 세션 권한 대조군 (REQ-MG-023)
 

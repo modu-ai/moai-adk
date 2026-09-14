@@ -111,3 +111,52 @@ func TestForkRequestRejectionGroups(t *testing.T) {
 		}
 	})
 }
+
+// TestForkPrefixAuthorityGatesForkAcceptance pins the AC-MG-026 (c) call
+// boundary: a gateway-wired ForkPrefix authority rejects a tampered claim
+// before the child conversation (or any App Server thread) exists, and a
+// matching claim proceeds into a new thread.
+func TestForkPrefixAuthorityGatesForkAcceptance(t *testing.T) {
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	t.Run("rejects-tampered-claim", func(t *testing.T) {
+		store := newStore(t)
+		rpc := &fakeRPC{events: make(chan codexapp.Message, 32)}
+		e, err := New(context.Background(), rpc, Config{Store: store, ForkPrefix: func(string) error {
+			return errors.New("fork inherited prefix does not match the recorded receipt chain")
+		}})
+		if err != nil {
+			t.Fatal(err)
+		}
+		t.Cleanup(func() { e.Close() })
+		q := request("child")
+		q.Fork = true
+		q.ExpectedPrefix = "prefix-2"
+		q.PrefixDigest = "prefix-3"
+		if _, err := e.Step(ctx, q); !errors.Is(err, ErrScope) {
+			t.Fatalf("tampered fork claim accepted: %v", err)
+		}
+		if rpc.next != 0 {
+			t.Fatal("rejected fork started a thread")
+		}
+	})
+	t.Run("accepts-matching-claim", func(t *testing.T) {
+		store := newStore(t)
+		rpc := &fakeRPC{events: make(chan codexapp.Message, 32)}
+		e, err := New(context.Background(), rpc, Config{Store: store, ForkPrefix: func(string) error { return nil }})
+		if err != nil {
+			t.Fatal(err)
+		}
+		t.Cleanup(func() { e.Close() })
+		q := request("child")
+		q.Fork = true
+		q.ExpectedPrefix = "prefix-2"
+		q.PrefixDigest = "prefix-3"
+		if _, err := e.Step(ctx, q); err != nil {
+			t.Fatal("matching fork claim rejected", err)
+		}
+		if rpc.next != 1 {
+			t.Fatal("accepted fork did not start a thread", rpc.next)
+		}
+	})
+}

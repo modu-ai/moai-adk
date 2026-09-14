@@ -26,6 +26,31 @@ import (
 const gatewayContextWindow = 872000
 const gatewayRequestBodyLimit = 16 << 20
 
+// gatewayOutputPolicyDisplay names the output policy every launch assembly
+// delivers: both the subscription and the explicit API path use the official
+// App Server output policy (operator decision, 0.11.0). The display never
+// claims Claude generation-token ceilings carry over — byte and cancellation
+// limits stay separate budgets.
+const gatewayOutputPolicyDisplay = "app-server"
+
+// gatewayAuthDisplay names the authentication surface a launch actually uses,
+// derived from the resolved catalog entry's declared auth method — never from
+// request-time state — so the displayed method cannot drift from the session
+// environment the child receives (AC-MG-026 (a) assembly combination,
+// AS-014/AS-021 display consistency).
+func gatewayAuthDisplay(method gateway.AuthMethod) string {
+	switch method {
+	case gateway.AuthPKCE, gateway.AuthOAuthPassthrough:
+		return "subscription"
+	case gateway.AuthAppServer:
+		return "app-server-managed"
+	case gateway.AuthAPIKey:
+		return "api-key"
+	default:
+		return "existing-credential"
+	}
+}
+
 // newGPTGatewayBinding is the production launch seam. It creates only the
 // private child configuration; credentials remain in the child-owned store and
 // are resolved by the request adapter at send time.
@@ -78,6 +103,17 @@ func gatewayNativeModels(mode string, tiers config.GLMModels) ([]gateway.ModelEn
 	default:
 		return nil, errors.New("unsupported native gateway provider")
 	}
+	// AS-020 capability re-verdict: the declarations are nominal metadata from
+	// the official model tables, never an acceptance guarantee. Claude routes
+	// declare image acceptance at the 1M nominal context; GLM routes are
+	// text-only (image input is refused explicitly at the request boundary)
+	// at the documented 200K nominal context.
+	images := true
+	nominalContext := 1000000
+	if provider == gateway.ProviderZAI {
+		images = false
+		nominalContext = 200000
+	}
 	rows := []gateway.ModelEntry{}
 	seen := map[string]bool{}
 	for _, id := range ids {
@@ -88,7 +124,7 @@ func gatewayNativeModels(mode string, tiers config.GLMModels) ([]gateway.ModelEn
 			continue
 		}
 		seen[id] = true
-		rows = append(rows, gateway.ModelEntry{RouteID: id, UpstreamID: id, Provider: provider, AuthMethod: method, Capabilities: gateway.Capabilities{ContextTokens: 1000000, Images: true, Tools: true, Streaming: true}})
+		rows = append(rows, gateway.ModelEntry{RouteID: id, UpstreamID: id, Provider: provider, AuthMethod: method, Capabilities: gateway.Capabilities{ContextTokens: nominalContext, Images: images, Tools: true, Streaming: true}})
 		if provider == gateway.ProviderAnthropic {
 			qualified := rows[len(rows)-1]
 			qualified.RouteID = id + "[1m]"

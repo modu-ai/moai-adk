@@ -1110,3 +1110,33 @@ Messages 형식에는 옮기지 않는다. reasoning item의 opaque 왕복과 re
 실측은 stream 강제·필드 shape 호환과 실패 경계를 보강한 것이며, 실제 GPT
 생성 성공·추론량 동등·same-provider resume·tool_reference 후속 로딩을
 입증하지 않는다.
+
+## 20. AS-5 착수 시점 코드 상태 (0.13.0, t654)
+
+모든 측정은 worktree `.claude/worktrees/t654`, branch `WT-gateway-launchers`, base 커밋
+`d416f8162`(로컬 develop head, `git log --oneline -1` 실측)에서 2026-09-14에 잰 것이다.
+
+- `internal/cli/gpt.go` — launch 경로는 `services.Launch == nil`일 때
+  `"GPT gateway launch is awaiting transport verification; use moai gpt status to inspect login"`
+  대기 오류를 돌려주고, 그렇지 않으면
+  `runClaudeEntry(cmd, args, "gpt", "gpt", kanban.BackendGPT, launch)` 진입이 이미 존재한다.
+  `login`/`logout`/`status` 닫힌 동사 집합(`REQ-MG-003` 형태)도 구현돼 있다. 생산 transport 결합이
+  남은 부분이다.
+- `internal/gateway/receipt/compact.go:42-46` — `NewRebaseLedger(scope, appliedEpoch)`의 비-테스트
+  호출자는 0건이다(`grep -rn NewRebaseLedger internal/ --include='*.go' | grep -v _test` → 정의와
+  주석만, 이 판 측정). 재시작 복원의 생산 판독 위치가 미배선 — t653 잔여 위험이 그대로다.
+- `internal/gateway/receipt/core.go:174` `Manifest.ChainTo`, `receipt/store.go:193`
+  `Store.Rebase`, `receipt/compact.go:87` `Manifest.Rebase`, `conversation/family.go:289`
+  `Manager.ForkAt` — fork·원장 API는 착지돼 있고 gateway 계층의 자식 prefix 대조는 미배선이다.
+- `internal/cli/gateway_product_binding.go:88` 부근 — 전 provider 공통
+  `Capabilities{ContextTokens: 1000000, Images: true, Tools: true, Streaming: true}` 선언,
+  Anthropic 항목에 한해 `RouteID = id + "[1m]"` 변형을 추가. provider별 수용 재판정 전까지 소스
+  선언이다.
+- `.github/workflows/ci.yml` — Go test job(`runs-on: ubuntu-latest`, `:46`)은 ubuntu 전용이고
+  windows Go-test 레그는 release 시점으로 옮겨져 있다(`:190` 부근 주석).
+  `test-integration` job의 matrix(`:378`)는 windows-latest를 포함하지만 `integration` 빌드 태그
+  하네스 job으로, `REQ-MG-009` 판정 대상 시험과 다른 축이다.
+- `CHANGELOG.md` — `grep -c 'SPEC-MOAI-GATEWAY-001' CHANGELOG.md` → `0` (2026-09-14, 이 트리).
+  t653 판정의 보류 결정과 일치하며, t654에서 발행 검토의 입력이다.
+- 버전 — 카드 문구의 "rc.8"은 2026-09-12 발행 시점 표기다. 배포 게이트의 번호는
+  `.moai/docs/version-management.md` Local RC Numbering의 다음 미사용 번호를 따른다.

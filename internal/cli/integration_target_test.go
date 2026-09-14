@@ -644,3 +644,59 @@ func TestIntegrationAcquire_RefusedAcquireDoesNotWarn(t *testing.T) {
 		t.Errorf("a refused acquire rewrote the record: holder %q", lock.SessionID)
 	}
 }
+
+// SPEC-GITSTRAT-WORKFLOW-READER-001 (card t656) — AC-GWS-004: an invalid
+// git_strategy workflow value is diagnosed, not silently treated as
+// non-git-flow. The stderr names the offending value AND the allowed set;
+// the exit code and the lock record are IDENTICAL to the pre-change
+// non-git-flow path (github-flow control).
+func TestIntegrationAcquire_InvalidWorkflowValueWarnsButRecordsIdentically(t *testing.T) {
+	repo, _ := scratchRepo(t)
+	writeGitStrategyFixture(t, repo, "git-flwo", `""`)
+	chdirRepo(t, repo)
+
+	_, stderr, err := runIntegrationStreams(t, repo, "acquire", "--session", "sess-lane12")
+	if err != nil {
+		t.Fatalf("acquire: %v", err)
+	}
+
+	// The diagnostic names the offending value and the allowed set.
+	got := warningLines(stderr)
+	if len(got) == 0 {
+		t.Fatalf("an invalid workflow value produced no warning; stderr:\n%s", stderr)
+	}
+	joined := strings.Join(got, "\n")
+	if !strings.Contains(joined, "git-flwo") {
+		t.Errorf("warning %q does not name the offending value", joined)
+	}
+	for _, allowed := range []string{"github-flow", "gitlab-flow", "release-flow"} {
+		if !strings.Contains(joined, allowed) {
+			t.Errorf("warning %q does not name allowed entry %q", joined, allowed)
+		}
+	}
+
+	// The record is the ordinary caller-fallback record, unchanged.
+	lock := readLock(t, repo)
+	if lock.BranchSource != kanban.BranchSourceCaller {
+		t.Errorf("branch_source = %q, want %q (fallback identical to the non-git-flow path)", lock.BranchSource, kanban.BranchSourceCaller)
+	}
+
+	// Control: the github-flow path stays silent (a deliberate choice is
+	// never warned about) and records the same shape.
+	controlRepo, _ := scratchRepo(t)
+	writeGitStrategyFixture(t, controlRepo, "github-flow", `""`)
+	chdirRepo(t, controlRepo)
+
+	_, controlStderr, err := runIntegrationStreams(t, controlRepo, "acquire", "--session", "sess-lane12")
+	if err != nil {
+		t.Fatalf("control acquire: %v", err)
+	}
+	if got := warningLines(controlStderr); len(got) != 0 {
+		t.Errorf("a valid non-git-flow value warned: %q", got)
+	}
+	controlLock := readLock(t, controlRepo)
+	if controlLock.BranchSource != kanban.BranchSourceCaller || controlLock.Branch != lock.Branch {
+		t.Errorf("control record (%q, %v) differs from the invalid-value record (%q, %v)",
+			controlLock.Branch, controlLock.BranchSource, lock.Branch, lock.BranchSource)
+	}
+}

@@ -98,6 +98,15 @@ func newGatewaySessionBinding(options gatewaySessionOptions) *gatewayLaunchBindi
 		}
 		overlay["teammateMode"] = "in-process"
 		overlay["model"] = preview.InitialModel
+		// The launch assembly carries the auth-method display and the App
+		// Server output-policy marker next to the provider-exclusive catalog
+		// it resolved them from (AC-MG-026 (a)). The display derives from the
+		// catalog entry, so it cannot drift from the session env the child
+		// actually receives.
+		if entry, entryErr := preview.Catalog.Resolve(preview.InitialModel); entryErr == nil {
+			overlay["authMethod"] = gatewayAuthDisplay(entry.AuthMethod)
+			overlay["outputPolicy"] = gatewayOutputPolicyDisplay
+		}
 		pickerOptions := []any{}
 		available := []string{}
 		for _, model := range preview.Catalog.Entries() {

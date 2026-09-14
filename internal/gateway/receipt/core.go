@@ -53,17 +53,19 @@ type Observation struct {
 	Items            uint32
 }
 type Manifest struct {
-	session    Digest
-	generation uint64
-	candidates []Candidate
+	session      Digest
+	generation   uint64
+	appliedEpoch uint64
+	candidates   []Candidate
 }
 type diskManifest struct {
-	Version    uint32      `json:"version"`
-	Session    Digest      `json:"session"`
-	Generation uint64      `json:"generation"`
-	Count      uint32      `json:"count"`
-	Candidates []Candidate `json:"candidates"`
-	Checksum   Digest      `json:"checksum"`
+	Version      uint32      `json:"version"`
+	Session      Digest      `json:"session"`
+	Generation   uint64      `json:"generation"`
+	AppliedEpoch uint64      `json:"applied_epoch"`
+	Count        uint32      `json:"count"`
+	Candidates   []Candidate `json:"candidates"`
+	Checksum     Digest      `json:"checksum"`
 }
 
 func New(authorizedUUID string) (*Manifest, error) {
@@ -218,11 +220,26 @@ func (m *Manifest) hasCandidate(prefix Digest) bool {
 	}
 	return false
 }
+
+// ChainDigest derives the comparable form of a completed chain: the
+// deterministic hash of the chain in stored order. A fork child's claimed
+// inherited prefix is contrasted against this digest — never accepted on the
+// caller's word.
+//
+// @MX:NOTE: [AUTO] order-sensitive: the digest binds chain content and order.
+// @MX:SPEC: SPEC-MOAI-GATEWAY-001 (AC-MG-026 (c)).
+func ChainDigest(chain []Candidate) Digest {
+	raw, err := json.Marshal(chain)
+	if err != nil {
+		return Digest{}
+	}
+	return Hash(raw)
+}
 func (m *Manifest) Marshal() ([]byte, error) {
 	if len(m.candidates) > MaxCandidates {
 		return nil, ErrLimit
 	}
-	d := diskManifest{Version: 1, Session: m.session, Generation: m.generation, Count: uint32(len(m.candidates)), Candidates: m.candidates}
+	d := diskManifest{Version: 2, Session: m.session, Generation: m.generation, AppliedEpoch: m.appliedEpoch, Count: uint32(len(m.candidates)), Candidates: m.candidates}
 	payload, e := json.Marshal(d)
 	if e != nil {
 		return nil, ErrInvalid
@@ -250,11 +267,23 @@ func Parse(raw []byte, authorizedUUID string) (*Manifest, error) {
 		return nil, e
 	}
 	fields, ok := object.(map[string]any)
-	if !ok || len(fields) != 6 {
+	if !ok || (len(fields) != 6 && len(fields) != 7) {
 		return nil, ErrInvalid
 	}
 	for _, key := range []string{"version", "session", "generation", "count", "candidates", "checksum"} {
 		if _, ok := fields[key]; !ok {
+			return nil, ErrInvalid
+		}
+	}
+	// Version 1 manifests predate the applied-epoch record and read back as
+	// zero. Version 2 must carry the record; anything else is corrupt state.
+	switch {
+	case len(fields) == 6:
+		if fields["version"] != float64(1) {
+			return nil, ErrInvalid
+		}
+	case len(fields) == 7:
+		if _, ok := fields["applied_epoch"]; !ok {
 			return nil, ErrInvalid
 		}
 	}
@@ -283,7 +312,7 @@ func Parse(raw []byte, authorizedUUID string) (*Manifest, error) {
 	if dec.Decode(&extra) != io.EOF {
 		return nil, ErrInvalid
 	}
-	if d.Version != 1 || d.Session != m.session || d.Generation == 0 || d.Count != uint32(len(d.Candidates)) || d.Candidates == nil {
+	if (d.Version != 1 && d.Version != 2) || d.Session != m.session || d.Generation == 0 || d.Count != uint32(len(d.Candidates)) || d.Candidates == nil {
 		return nil, ErrInvalid
 	}
 	if len(d.Candidates) > MaxCandidates {
@@ -303,6 +332,7 @@ func Parse(raw []byte, authorizedUUID string) (*Manifest, error) {
 		seen[c] = true
 	}
 	m.generation = d.Generation
+	m.appliedEpoch = d.AppliedEpoch
 	m.candidates = d.Candidates
 	return m, nil
 }

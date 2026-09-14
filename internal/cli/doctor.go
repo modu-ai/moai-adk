@@ -239,6 +239,9 @@ func runGroupedChecksObserved(verbose bool, filterCheck string, obs checkObserve
 		// SPEC-WORKTREE-BASEREF-001 REQ-WBR-012: the read-only counterpart of
 		// the SessionStart origin/HEAD alignment step.
 		{"Worktree Base Branch", func(v bool) DiagnosticCheck { return checkWorktreeBaseBranch(cwd, v) }},
+		// SPEC-GITSTRAT-WORKFLOW-READER-001 REQ-GWS-009: the production
+		// consumer of the git-strategy workflow interpretation table.
+		{"Git Strategy Workflow", func(v bool) DiagnosticCheck { return checkGitStrategyWorkflow(cwd, v) }},
 		{"BODP Config", func(v bool) DiagnosticCheck { return checkBODPConfig(cwd, v) }},
 		{"Telemetry Config", func(v bool) DiagnosticCheck { return checkTelemetryConfig(cwd, v) }},
 		{"Glamour Cache", checkGlamourCache},

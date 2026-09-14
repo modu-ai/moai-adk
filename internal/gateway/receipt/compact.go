@@ -83,14 +83,21 @@ func (l *RebaseLedger) Rebase(base CompactBase, summary []byte) error {
 
 // Rebase resets the public history after a verified compaction: the session
 // keeps its identity and generation, but no completed prefix validates
-// history observations until the compacted base republishes.
-func (m *Manifest) Rebase() error {
-	if m.session == (Digest{}) || m.generation == 0 {
+// history observations until the compacted base republishes. appliedEpoch is
+// the epoch whose rebase this reset completes — recorded in the same manifest
+// transaction so a restart restores the exact value (AC-MG-026 (b)).
+func (m *Manifest) Rebase(appliedEpoch uint64) error {
+	if m.session == (Digest{}) || m.generation == 0 || appliedEpoch == 0 {
 		return ErrInvalid
 	}
 	m.candidates = []Candidate{}
+	m.appliedEpoch = appliedEpoch
 	if _, e := m.Marshal(); e != nil {
 		return e
 	}
 	return nil
 }
+
+// AppliedEpoch reports the last compaction epoch whose rebase this manifest
+// durably records. Zero means the scope never rebased.
+func (m *Manifest) AppliedEpoch() uint64 { return m.appliedEpoch }
