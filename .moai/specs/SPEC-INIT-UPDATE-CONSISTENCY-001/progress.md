@@ -67,7 +67,18 @@ deviations: M3 extraction note (counting loop extracted verbatim into `managedRe
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase>_
+sync_complete_at: 2026-09-14
+sync_commit_sha: pending-backfill-sync
+sync_status: complete
+run_to_sync_transition: in-progress → implemented → completed (3-phase close, single sync commit)
+changelog_entry_emitted: yes (1 entry, `[Unreleased]`/`### Changed`, English-only; pre-emission grep count 0 — no duplicate)
+b12_self_test_a: pass (grep -c 'SPEC-INIT-UPDATE-CONSISTENCY-001' CHANGELOG.md = 0 pre-emission)
+b12_self_test_b: pass (live AC identifiers in acceptance.md §D = 8: AC-001..AC-008; `AC-WIZ-012a` counted as a prior-test reference, not a live AC — CHANGELOG entry references 8)
+b12_self_test_c: pass (every file path named in the CHANGELOG entry verified present in this tree)
+frontmatter_status_transitions.spec_md: in-progress → completed (sync commit; `updated: 2026-09-14`)
+canary_compliance_check.catalog_hashes: clean (orchestrator ran `go run ./internal/template/scripts/gen-catalog-hashes.go --all` this turn — output byte-identical, zero diff; catalog.yaml untouched)
+docs_surface_assessment: docs-site 4 locales still mention the removed `--project-mode` flag / `project.mode` key (13 files: `getting-started/cli.md`, `getting-started/init-wizard.md`, `cli-reference/init.md` in en/ja/ko/zh + `en/workflow-commands/moai-project.md`) — out of this sync commit's scope; recorded in the CHANGELOG residual and handed to a separate docs card. No README surface mentions either token (README.ko.md grep 0).
+mx_tag_validation: AC-007 annotations verified present in `internal/config/manager.go` (1× `@MX:DEBT`, 1× `@MX:CEILING`, 1× `@MX:UPGRADE`) per §E.2 — no new annotations required by sync phase
 
 ## §F Phase 4 Mode Selection
 
