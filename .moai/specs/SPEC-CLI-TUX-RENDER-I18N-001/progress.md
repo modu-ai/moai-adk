@@ -1,7 +1,7 @@
 ---
 spec: SPEC-CLI-TUX-RENDER-I18N-001
 card: t756
-phase: run
+phase: sync
 plan_status: audit-ready (draft 0.1.1)
 updated: 2026-09-14
 ---
@@ -150,4 +150,26 @@ blockers: none
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase>_
+```yaml
+spec: SPEC-CLI-TUX-RENDER-I18N-001
+card: t756
+phase: sync
+sync_complete_at: 2026-09-14
+sync_commit_sha: "pending-backfill-sync"  # self-reference impossible in the sync commit itself; backfilled in the immediately following commit (D3 exemption)
+sync_status: complete
+b12_self_test_a: "pre-emission grep 'SPEC-CLI-TUX-RENDER-I18N-001' CHANGELOG.md = 0 (no duplicate entry)"
+b12_self_test_b: "AC count — 9 live AC-TRI-001..009 (acceptance.md §C matrix); AC-ITI-019 grep hit is the predecessor SPEC's inherited-contract reference, excluded"
+b12_self_test_c: "all file paths cited in the CHANGELOG entry verified via ls (profile_setup.go, wizard ptycap_test.go, confirm_alignment_sweep_test.go, huh_v1_guard_test.go, 2 profile_setup test files)"
+changelog_entry_position: "CHANGELOG.md [Unreleased] ### Added, first bullet"
+frontmatter_status_transitions:
+  spec.md: "in-progress → completed (status only; updated already 2026-09-14)"
+  plan.md: "none — stateless on the status axis (no frontmatter, per spec-frontmatter-schema § Artifact Statelessness)"
+  acceptance.md: "none — stateless on the status axis (no frontmatter)"
+  progress.md: "phase: run → sync; no status field by design"
+canary_compliance_check:
+  readme_docs_site: "no change — wizard flow/options/prompts behaviorally unchanged; the acceptEdits notice locale is an undocumented stderr detail, so the README 4-locale same-change obligation is not triggered"
+  codemaps: "skipped — no architecture change in this SPEC (test guards + one function-body localization)"
+  mx_tags: "validated during sync sub-step; no new exported production symbols beyond emitAcceptEditsConfirmation change (existing anchor contract unchanged)"
+verification_basis: "run-phase §E.2 AC matrix (9/9 PASS, this tree, orchestrator-verified zero repair diff); lint/vet/GOOS=windows results carried from §E.3; sync phase added docs only — no source re-measurement needed beyond B12 self-tests"
+blockers: none
+```
