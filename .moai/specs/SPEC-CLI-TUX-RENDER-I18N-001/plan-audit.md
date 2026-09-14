@@ -63,3 +63,41 @@ Nits (class: optional — 판정 불변):
 3. (D3) progress.md §D 1행 선택자를 `TestLayout_NoBlankBetweenFields`(실재 검사)로 정정. TestOptionColumn·TestDrawInit 삭제.
 
 세 수정 모두 1-2줄 규모다. 수리 후 iteration 2 는 본 결함 델타(D1-D3)만 재판정한다.
+
+---
+
+# Iteration 2 (delta re-audit) — 2026-09-14
+
+Scope: `1a32ebd1a..0c5aad95f` 델타만 — 1차 결함 D1-D3 + nits N1-N3 의 회귀 확인이 본체, 델타가 건드린 섹션의 신규 결함 스캔이 부수체(Tier M 재감사 계약: 결함 델타 외 전수 재판정 아님).
+
+Verdict: **PASS**
+Overall Score: 1.0 (Clarity 1.0 · Completeness 1.0 · Testability 1.0 · Traceability 1.0)
+
+## Claim / Evidence / Baseline-attribution / Gaps / Residual-risk
+
+- **Claim**: 0c5aad95f 의 수정은 1차 MUST-FIX 3건(D1-D3)과 nits 3건(N1-N3)을 전부 해소했고, 델타가 새 결함을 유입하지 않았다.
+- **Evidence**: 이하 결함별 판정. 핵심 관측 — (1) SPEC 아티팩트 전체 `grep '270-274'` = 0건(plan-audit.md 의 1차 기록만 해당 문자열 보유 — 이력으로 정상), `:261-263` 5개 사이트 존재(spec.md:38, plan.md:18, plan.md:77, progress.md:26, progress.md:44). (2) `grep 'TestOptionColumn|TestDrawInit'` = 0건(1차 감사 기록 제외). (3) SPEC-V3R6-CLI-CONFIG-INTEGRITY-001 실재 확인 — `status: completed`, 그 spec.md:115 에 REQ-CCI-006(acceptEdits 마법사 확인, 앵커 토큰 계약) 존재. (4) acceptance.md 섹션 §A-§F 연속, 유일한 자기참조(AC-TRI-001 → §B) 갱신 확인.
+- **Baseline-attribution**: 이번 실행, 이 트리(HEAD `0c5aad95f`, branch `WT-tux-render`). huh 라인 근거(`:254`·`:261-263`·`:293`)는 1차에서 본 감사가 모듈 캐시(`charm.land/huh/v2@v2.0.3`)로 직접 판독한 값과 일치 — 작성자의 재검증 주장과 독립 일치.
+- **Gaps**: 1차의 상주 갭 외 신규 없음(수리 전 프레임 실측은 M1 몫). 본 iteration 에서 테스트 재실행은 불요 — D3 의 수정은 1차 `-v` 실행으로 스윕·통과를 직접 관측한 기호로의 선택자 정정이고, AC-TRI-007 의 명령은 불변이며 1차에서 PASS 관측됐다.
+- **Residual-risk**: 1차와 동일(huh 버튼업 시 `:261-263` 재스테일 가능, M1 이 AC-TRI-003 전제값 재판정 가능). 추가: 래퍼 경로의 구체 메커니즘(타입·위치)은 SPEC 이 특정하지 않는다 — M2 구현 자유이며 AC-TRI-003/004 프레임이 경계를 세운다. 계획 변경 불요.
+
+## 결함별 델타 판정
+
+- **D1 — [RESOLVED]**: spec.md REQ-TRI-003 재작성 — 기본 경로 = 로컬 확인 필드 래퍼(huh.Field 구현, 자체 View 조합), 인라인 모드는 구조적 부적합(제목↔설명 개행 제거 + 버튼 줄 합침)으로 명시하고 M1 측정 참고로만 격하. plan.md M2 첫 불릿("기본 경로: 로컬 확인 필드 래퍼… M2 구현 경로에서 제외")과 plan.md §B 2행이 일치. 고지된 추가 수정 progress.md §B D3 도 같은 방향으로 갱신돼 판쇄된 모순 없음. GEARS Ubiquitous 형태 유지("The wizard confirm surfaces shall … 달성한다"), REQ 본문에 file:line 유입 없음. 신규 근거 `:254`/`:293` 은 본 감사의 1차 소스 판독과 정확히 일치.
+- **D2 — [RESOLVED]**: 아티팩트 잔존 `270-274` 0건. `:261-263` 전 사이트 재고정 — 내가 지목한 4곳(spec.md §A.1, plan.md §B, progress.md §C, progress.md §D 6행) + 고지된 plan.md §H. 참고: 고지 fix map 은 "6 sites"라 했으나 아티팩트 grep 실측은 5 사이트다 — 고지의 계수 차이일 뿐 아티팩트 결함 아니다(grep 이 권위: 잔존 0).
+- **D3 — [RESOLVED]**: progress.md §D 1행이 `TestLayout_NoBlankBetweenFields` 로 정정되고 스윕이 1건임을 정직히 명기("plan-audit 1차 -v 관측: 해당 셀렉터 목록과 일치하는 검사는 이 1건"). 고지된 plan.md §C 1항도 동일 실존 기호로 정정. 유령 기호 잔존 0건.
+- **N1 — [RESOLVED]**: acceptance.md §A→§F 연속 재번호. 자기참조 갱신(AC-TRI-001 의 "§C 표면 목록"→"§B"). §F 의 `progress.md §E.2` 는 파일 간 참조로 재번호 대상 아님 — 올바르게 불변. 스테일 문자 잔존 0건(grep).
+- **N2 — [RESOLVED]**: AC-TRI-007 이 `internal/cli/profile_setup_acceptEdits_test.go:21` 을 직접 명기(1차에서 본 감사가 실재·PASS 관측한 기호; 명령 불변), 미루기 표현 삭제.
+- **N3 — [RESOLVED]**: plan.md §B 가 소유 SPEC 을 명명 — SPEC-V3R6-CLI-CONFIG-INTEGRITY-001 실재·completed·REQ-CCI-006 이 그 spec.md:115 에 동일 내용으로 존재함을 대조 확인.
+
+## Regression Check (Iteration 1 결함)
+
+- D1: [RESOLVED] — 상기. D2: [RESOLVED] — 상기. D3: [RESOLVED] — 상기. N1/N2/N3: [RESOLVED] — 상기.
+
+## 델타 신규 결함 스캔 — 0건
+
+diff 전수 판독 기준 확인 항목: (a) 재작성된 REQ-TRI-003 의 GEARS 형태 유지(MP-2), REQ 본문 오염 없음. (b) frontmatter 12/12 유지, `version: "0.1.1"` quoted semver(MP-3), `updated: 2026-09-14` 유지. (c) REQ-TRI-001~008 번호 불변(MP-1). (d) AC-TRI-003 불변 — 경로 불지정(outcome-based)이라 래퍼 경로와 모순 없음. (e) 재번호가 남긴 스테일 참조 0건. (f) HISTORY 0.1.1 행이 실제 변경을 정확히 서술. (g) D1 표기의 `:254`/`:293` 이 모듈 캐시 소스와 일치.
+
+## 판정
+
+**PASS** (iteration 2/2 — 최종). must-pass MP-1~MP-7 유지 통과, 델타 결함 전건 해소, 신규 결함 0건. skip-eligibility: verdict PASS + 1.0 ≥ Tier M 역치 0.80 + plan 아티팩트 해시 불변(본 보고서 commit 은 `plan-audit.md` 만 건드리며 해시 대상 집합 {spec,plan,acceptance,design,research,tasks}.md 에 미포함). Kickoff 게이트(운영자 최종 확인 — progress.md §B D1 포함)는 스코어와 무관하게 그대로 요구된다.
