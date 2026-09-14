@@ -167,7 +167,7 @@ frontmatter_status_transitions:
   acceptance.md: "none — stateless on the status axis (no frontmatter)"
   progress.md: "phase: run → sync; no status field by design"
 canary_compliance_check:
-  readme_docs_site: "no change — wizard flow/options/prompts behaviorally unchanged; the acceptEdits notice locale is an undocumented stderr detail, so the README 4-locale same-change obligation is not triggered"
+  readme_docs_site: "no change — wizard flow/options/prompts behaviorally unchanged; the acceptEdits notice locale is an undocumented stdout detail, so the README 4-locale same-change obligation is not triggered"
   codemaps: "skipped — no architecture change in this SPEC (test guards + one function-body localization)"
   mx_tags: "validated during sync sub-step; no new exported production symbols beyond emitAcceptEditsConfirmation change (existing anchor contract unchanged)"
 verification_basis: "run-phase §E.2 AC matrix (9/9 PASS, this tree, orchestrator-verified zero repair diff); lint/vet/GOOS=windows results carried from §E.3; sync phase added docs only — no source re-measurement needed beyond B12 self-tests"

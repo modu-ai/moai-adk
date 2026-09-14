@@ -26,7 +26,7 @@ REQ-TRI-003 의 합격 기준(빈 행 ≤ 1)은 **이미 충족** — REQ-TRI-00
 | 1 | F11-(1) 예/아니오 버튼 중앙정렬 | en/ko confirm 프레임 전부 버튼 라벨이 설명 첫 열과 동일 표시 열에서 시작 (`baseline-confirm-fixture-en.txt` 4↔6행, `baseline-downgrade-confirm-*.txt`) | **검증만 종결** (t586 수리 유지) — REQ-TRI-002 소스 스윕 가드로 재발 방지 (M2) |
 | 2 | F11-(2) 확인 필드 내부 빈 행 | 실측 **1행** (전 confirm 표면) — ≤1 기준 충족, "수리 전 = 2" 전제는 실측 1로 조정 | **검증만 종결** (REQ-TRI-008) — 빈 행 ≤1 캡처 회귀 가드로 고정 (M2) |
 | 3 | F11-(3) 선택 항목 설명 열 폭 | init/profile ko·en 프레임에서 옵션 4줄의 " - " 설명 시작 표시 열 동일 (`TestOptionDescriptionColumn_DisplayWidthAligned` 동반 PASS) | **검증만 종결** (t586 수리 유지) — 기존 View 검사 + 프레임로 비-회귀 (REQ-TRI-005) |
-| 4 | F10-(1) init/프로필 프롬프트 영어 고정 | ko 프레임에 번역 표 ko 항목 문자열의 영어 원문 없음 — **예외 1건 발견**: acceptEdits stderr 고지문(`internal/cli/profile_setup.go:31`)은 여전히 영어 고정 (프레임 백로그, S5) | **수리 대상** — M3: 앵커 토큰 보존 현지화 (REQ-TRI-006/AC-TRI-007) |
+| 4 | F10-(1) init/프로필 프롬프트 영어 고정 | ko 프레임에 번역 표 ko 항목 문자열의 영어 원문 없음 — **예외 1건 발견**: acceptEdits stdout 고지문(`internal/cli/profile_setup.go:31`)은 여전히 영어 고정 (프레임 백로그, S5) | **수리 대상** — M3: 앵커 토큰 보존 현지화 (REQ-TRI-006/AC-TRI-007) |
 | 5 | F10-(2) 버튼 Yes/No 고정 | ko 프레임 버튼 라벨 `예`/`아니오`, help 행도 `y 예 • n 아니오` 현지화 (`baseline-downgrade-confirm-ko.txt`) | **검증만 종결** |
 | 6 | F10-(3) v1 위저드 처분 | huh v1 import 0건 (`go.mod`+import grep, plan §D 3행) — D1(v2 흡수 유지) 확인 | **검증만 종결** — huh v1 비-회귀 가드 (M3, REQ-TRI-007) |
 
