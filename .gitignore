@@ -229,6 +229,20 @@ secret-*.*
 .moai/reports/plan-audit/*
 !.moai/reports/plan-audit/.gitkeep
 
+# Narrow exceptions: test guard fixtures under reports stay tracked — CI reads
+# them (operator-approved 2026-09-14). Reports themselves remain local-only.
+!.moai/reports/t338/
+.moai/reports/t338/*
+!.moai/reports/t338/ac-count-baseline.txt
+!.moai/reports/t528/
+.moai/reports/t528/*
+!.moai/reports/t528/probe/
+.moai/reports/t528/probe/*
+!.moai/reports/t528/probe/nondecl-bullets.txt
+!.moai/reports/t530/
+.moai/reports/t530/*
+!.moai/reports/t530/count-literals.txt
+
 # ===========================================
 # Claude Code Configuration
 # ===========================================

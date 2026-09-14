@@ -1,0 +1,335 @@
+../../.moai/specs/SPEC-AC-COLLECTOR-ANCHOR-001/spec.md:416:- `acceptance.md` 쪽은 `lint_coverage_sibling.go`가 `ExtractRequirementMappings`로 이미 우회 처리했다. 그 파일의 머리주석이 왜 인라인 스코핑 두 개를 형제 파일에 적용하지 않는지 설명한다.
+../../.moai/specs/SPEC-AGENCY-ABSORB-001/spec.md:407:- `moai migrate agency`: 기존 `.agency/` 데이터 0% 손실, 롤백 가능
+../../.moai/specs/SPEC-AGENCY-ABSORB-001/spec.md:408:- `/moai design`: 경로 A/B 분기 정상 동작
+../../.moai/specs/SPEC-AGENCY-ABSORB-001/spec.md:409:- 제거된 에이전트 참조 0건 (저장소 전체 `grep` 검증)
+../../.moai/specs/SPEC-AGENCY-ABSORB-001/spec.md:410:- `go test ./...` 전체 통과
+../../.moai/specs/SPEC-AGENCY-ABSORB-001/spec.md:411:- `internal/template/commands_audit_test.go` 통과 (thin command pattern)
+../../.moai/specs/SPEC-AGENCY-ABSORB-001/spec.md:412:- `make build` 성공 및 embedded.go 갱신
+../../.moai/specs/SPEC-AGENCY-ABSORB-001/spec.md:413:- `/agency` deprecation 경고가 모든 서브커맨드에서 출력됨
+../../.moai/specs/SPEC-CI-MULTI-LLM-001/spec.md:790:- **기능 검증**: 31개 REQ 모두 자동 테스트로 검증 가능 (table-driven Go test)
+../../.moai/specs/SPEC-CI-MULTI-LLM-001/spec.md:791:- **보안 검증**: REQ-SEC-001 ~ 010 모두 정적 분석 + 워크플로우 lint 통과
+../../.moai/specs/SPEC-CI-MULTI-LLM-001/spec.md:792:- **언어 중립성**: REQ-CI-012 16개 언어 모두에 대해 detect-language action 동작 확인
+../../.moai/specs/SPEC-CI-MULTI-LLM-001/spec.md:793:- **Template-First**: REQ-CI-019 `internal/template/commands_audit_test.go` 패턴 동일 적용
+../../.moai/specs/SPEC-DIVECC-COMPACTION-LAYER-NAMING-001/spec.md:133:- GIVEN the run-phase edits to the two target files
+../../.moai/specs/SPEC-DIVECC-COMPACTION-LAYER-NAMING-001/spec.md:134:- WHEN `grep -F -e "Budget Reduction" -e "Snip" -e "Microcompact" -e "Context Collapse" -e "Auto-Compact" <file>` is run on the added cross-reference region
+../../.moai/specs/SPEC-DIVECC-COMPACTION-LAYER-NAMING-001/spec.md:135:- THEN all five literal layer names appear in the added cross-reference of `context-window-management.md` AND the same five capitalized layer names appear in the `runtime-recovery-doctrine.md` mapping (both arms binary-gated by a dedicated for-loop).
+../../.moai/specs/SPEC-DIVECC-COMPACTION-LAYER-NAMING-001/spec.md:136:- Verification (CWM arm): `for n in "Budget Reduction" "Snip" "Microcompact" "Context Collapse" "Auto-Compact"; do grep -qF "$n" .claude/rules/moai/workflow/context-window-management.md || echo "MISSING: $n"; done` → no output.
+../../.moai/specs/SPEC-DIVECC-COMPACTION-LAYER-NAMING-001/spec.md:137:- Verification (rrd arm): `for n in "Budget Reduction" "Snip" "Microcompact" "Context Collapse" "Auto-Compact"; do grep -qF "$n" .claude/rules/moai/workflow/runtime-recovery-doctrine.md || echo "MISSING: $n"; done` → no output. (Mirrors the CWM arm so the runtime-recovery-doctrine.md capitalized-name mapping is also binary-gated, not asserted by prose alone.)
+../../.moai/specs/SPEC-DIVECC-COMPACTION-LAYER-NAMING-001/spec.md:140:- GIVEN the added cross-reference(s)
+../../.moai/specs/SPEC-DIVECC-COMPACTION-LAYER-NAMING-001/spec.md:141:- WHEN `grep -E "2604.14228|VILA-Lab|Dive into Claude Code|Dive-into-Claude-Code" <file>` is run
+../../.moai/specs/SPEC-DIVECC-COMPACTION-LAYER-NAMING-001/spec.md:142:- THEN the paper is cited in BOTH edited files (`context-window-management.md` AND `runtime-recovery-doctrine.md`).
+../../.moai/specs/SPEC-DIVECC-COMPACTION-LAYER-NAMING-001/spec.md:143:- Verification: `grep -lE "2604.14228|VILA-Lab" .claude/rules/moai/workflow/context-window-management.md .claude/rules/moai/workflow/runtime-recovery-doctrine.md` lists BOTH files.
+../../.moai/specs/SPEC-DIVECC-COMPACTION-LAYER-NAMING-001/spec.md:146:- GIVEN the added cross-reference(s)
+../../.moai/specs/SPEC-DIVECC-COMPACTION-LAYER-NAMING-001/spec.md:147:- WHEN the added prose is read
+../../.moai/specs/SPEC-DIVECC-COMPACTION-LAYER-NAMING-001/spec.md:148:- THEN it explicitly frames the five layers as Claude Code's graduated-compaction layers that moai-adk **consumes** (NOT implements), with the consume / not-implement language **co-located with a layer name** (`Budget Reduction` or the phrase `graduated-compaction`).
+../../.moai/specs/SPEC-DIVECC-COMPACTION-LAYER-NAMING-001/spec.md:149:- Verification (non-vacuous co-location anchor): `grep -niE 'consume[sd]?.{0,80}(Budget Reduction|graduated[- ]compaction)|(Budget Reduction|graduated[- ]compaction).{0,80}(consume[sd]?|does not implement|not implement)' .claude/rules/moai/workflow/context-window-management.md` returns ≥ 1 match in the added region.
+../../.moai/specs/SPEC-DIVECC-COMPACTION-LAYER-NAMING-001/spec.md:150:- Non-vacuity note: this anchor pattern was confirmed to return **0 matches** against the current (pre-edit) `context-window-management.md` (whose only pre-existing `consume` token — `Trigger #1 consumes the model-specific threshold table` on line 73 — is NOT co-located with any layer name), so the AC can pass ONLY after the run-phase adds the framed cross-reference. The whole-file `grep "consume"` of the prior AC version was vacuous because line 73 already matched it pre-edit; this co-location anchor (mirroring the contrastive pattern of AC-CLN-007) re-anchors the AC onto the SPEC's central consume-not-implement hazard.
+../../.moai/specs/SPEC-DIVECC-COMPACTION-LAYER-NAMING-001/spec.md:153:- GIVEN `context-window-management.md` was edited locally
+../../.moai/specs/SPEC-DIVECC-COMPACTION-LAYER-NAMING-001/spec.md:154:- WHEN `diff .claude/rules/moai/workflow/context-window-management.md internal/template/templates/.claude/rules/moai/workflow/context-window-management.md` is run
+../../.moai/specs/SPEC-DIVECC-COMPACTION-LAYER-NAMING-001/spec.md:155:- THEN the diff is empty (exit 0) — the mirror received the identical edit.
+../../.moai/specs/SPEC-DIVECC-COMPACTION-LAYER-NAMING-001/spec.md:156:- Verification: `diff <local> <mirror>; echo "exit=$?"` → `exit=0`.
+../../.moai/specs/SPEC-DIVECC-COMPACTION-LAYER-NAMING-001/spec.md:159:- GIVEN the `context-window-management.md` edit was mirrored
+../../.moai/specs/SPEC-DIVECC-COMPACTION-LAYER-NAMING-001/spec.md:160:- WHEN the neutrality gate runs
+../../.moai/specs/SPEC-DIVECC-COMPACTION-LAYER-NAMING-001/spec.md:161:- THEN the mirrored file contains no forbidden internal-content class (no internal `SPEC-DIVECC` token, no internal date, no commit SHA, no internal-only path) — the five layer names + public paper citation + consume framing are all acceptable content class.
+../../.moai/specs/SPEC-DIVECC-COMPACTION-LAYER-NAMING-001/spec.md:162:- Verification: `go test ./internal/template/... -run 'TestTemplateNeutralityAudit|TestTemplateNoInternalContentLeak'` passes (run-phase gate) AND `grep -E "SPEC-DIVECC|2026-06-22" internal/template/templates/.claude/rules/moai/workflow/context-window-management.md` returns NO match.
+../../.moai/specs/SPEC-DIVECC-COMPACTION-LAYER-NAMING-001/spec.md:163:- Coverage note: the `go test` arm is the **authoritative** neutrality gate — it covers the full forbidden-content class set REQ-CLN-005 enumerates (internal `SPEC-DIVECC` ID, internal date, **commit SHA, internal-only path**). The inline `grep -E "SPEC-DIVECC|2026-06-22"` arm is an **illustrative spot-check** of only 2 of those 4 classes (it omits the commit-SHA and internal-only-path classes); it is a convenience signal, NOT the SSOT. When the inline grep and the `go test` arm disagree, the `go test` arm wins.
+../../.moai/specs/SPEC-DIVECC-COMPACTION-LAYER-NAMING-001/spec.md:166:- GIVEN the `runtime-recovery-doctrine.md` edit
+../../.moai/specs/SPEC-DIVECC-COMPACTION-LAYER-NAMING-001/spec.md:167:- WHEN `grep -F` is run for each AP-RR-004 named term after the edit
+../../.moai/specs/SPEC-DIVECC-COMPACTION-LAYER-NAMING-001/spec.md:168:- THEN all seven terms (`withheld-recoverable`, `cheapest-first`, `death-spiral`, `narrative consistency`, `hasAttemptedReactiveCompact`, `truncateHeadForPTLRetry`, `MAX_CONSECUTIVE_AUTOCOMPACT_FAILURES`) remain present.
+../../.moai/specs/SPEC-DIVECC-COMPACTION-LAYER-NAMING-001/spec.md:169:- Verification: `for t in "withheld-recoverable" "cheapest-first" "death-spiral" "narrative consistency" "hasAttemptedReactiveCompact" "truncateHeadForPTLRetry" "MAX_CONSECUTIVE_AUTOCOMPACT_FAILURES"; do grep -qF "$t" .claude/rules/moai/workflow/runtime-recovery-doctrine.md || echo "REGRESSED: $t"; done` → no output.
+../../.moai/specs/SPEC-DIVECC-COMPACTION-LAYER-NAMING-001/spec.md:172:- GIVEN the added `runtime-recovery-doctrine.md` cross-reference
+../../.moai/specs/SPEC-DIVECC-COMPACTION-LAYER-NAMING-001/spec.md:173:- WHEN the added prose is read
+../../.moai/specs/SPEC-DIVECC-COMPACTION-LAYER-NAMING-001/spec.md:174:- THEN it explicitly states the VILA-Lab paper is a convergent / second source to book1 ch03 naming the same graduated-compaction concept.
+../../.moai/specs/SPEC-DIVECC-COMPACTION-LAYER-NAMING-001/spec.md:175:- Verification: `grep -niE "convergent|second source|same (graduated[- ])?compaction" .claude/rules/moai/workflow/runtime-recovery-doctrine.md` returns ≥ 1 match in the added region, AND that region also references both `book1` and the VILA-Lab paper.
+../../.moai/specs/SPEC-DIVECC-COMPACTION-LAYER-NAMING-001/spec.md:178:- GIVEN the run-phase commit diff
+../../.moai/specs/SPEC-DIVECC-COMPACTION-LAYER-NAMING-001/spec.md:179:- WHEN `git show --stat <run-commit>` is inspected
+../../.moai/specs/SPEC-DIVECC-COMPACTION-LAYER-NAMING-001/spec.md:180:- THEN the only changed files are the three named in §B.3 (CWM local + CWM mirror + runtime-recovery-doctrine.md local, plus the spec.md frontmatter `status` transition); no `internal/template/templates/.claude/rules/moai/workflow/runtime-recovery-doctrine.md` is created; no hook script, skill body, plugin, MCP config, or Go source is touched.
+../../.moai/specs/SPEC-DIVECC-COMPACTION-LAYER-NAMING-001/spec.md:181:- Verification: `git show --stat <run-commit>` file list ⊆ {CWM local, CWM mirror, runtime-recovery-doctrine.md local, spec.md} AND `ls internal/template/templates/.claude/rules/moai/workflow/runtime-recovery-doctrine.md` returns "No such file".
+../../.moai/specs/SPEC-DIVECC-DELEGATION-TOKEN-COST-001/spec.md:112:- GIVEN the run-phase edit to `.claude/output-styles/moai/moai.md`
+../../.moai/specs/SPEC-DIVECC-DELEGATION-TOKEN-COST-001/spec.md:113:- WHEN `grep -n -i "7×\|7x\|isolated context\|Skill injects\|token cost" .claude/output-styles/moai/moai.md` is run within the §4 Delegation Decision region
+../../.moai/specs/SPEC-DIVECC-DELEGATION-TOKEN-COST-001/spec.md:114:- THEN the Skill-injects-current-context (cheap) vs Agent-spawns-isolated-context (~7×) asymmetry appears in §4.
+../../.moai/specs/SPEC-DIVECC-DELEGATION-TOKEN-COST-001/spec.md:115:- Verification: `grep -i "7×\|7x" .claude/output-styles/moai/moai.md` returns ≥ 1 match in the §4 region.
+../../.moai/specs/SPEC-DIVECC-DELEGATION-TOKEN-COST-001/spec.md:118:- GIVEN the added signal
+../../.moai/specs/SPEC-DIVECC-DELEGATION-TOKEN-COST-001/spec.md:119:- WHEN the §4 region is read
+../../.moai/specs/SPEC-DIVECC-DELEGATION-TOKEN-COST-001/spec.md:120:- THEN it states "prefer Skill injection when shared context is acceptable; spawn an Agent only when isolation is genuinely needed".
+../../.moai/specs/SPEC-DIVECC-DELEGATION-TOKEN-COST-001/spec.md:121:- Verification: `grep -i "prefer Skill\|isolation is genuinely needed\|only when isolation" .claude/output-styles/moai/moai.md` returns ≥ 1 match.
+../../.moai/specs/SPEC-DIVECC-DELEGATION-TOKEN-COST-001/spec.md:124:- GIVEN the added signal
+../../.moai/specs/SPEC-DIVECC-DELEGATION-TOKEN-COST-001/spec.md:125:- WHEN `grep "2604.14228\|Dive into Claude Code" .claude/output-styles/moai/moai.md` is run
+../../.moai/specs/SPEC-DIVECC-DELEGATION-TOKEN-COST-001/spec.md:126:- THEN the ~7× figure is attributed to the paper, with no moai-tree verification claim for the figure (a "paper claim" / "per the paper" / equivalent qualifier is present near the figure).
+../../.moai/specs/SPEC-DIVECC-DELEGATION-TOKEN-COST-001/spec.md:127:- Verification: `grep -i "paper\|2604.14228" .claude/output-styles/moai/moai.md` returns ≥ 1 match near the token-cost signal.
+../../.moai/specs/SPEC-DIVECC-DELEGATION-TOKEN-COST-001/spec.md:130:- GIVEN `moai.md` is template-distributed
+../../.moai/specs/SPEC-DIVECC-DELEGATION-TOKEN-COST-001/spec.md:131:- WHEN the run-phase mirrors the §4 edit to `internal/template/templates/.claude/output-styles/moai/moai.md` and runs `make build`
+../../.moai/specs/SPEC-DIVECC-DELEGATION-TOKEN-COST-001/spec.md:132:- THEN the mirrored content matches the local edit AND contains no forbidden internal-content class (no internal SPEC ID, no REQ/AC token, no commit SHA, no internal date, no `CLAUDE.local.md` reference) per `.moai/docs/template-internal-isolation-doctrine.md`.
+../../.moai/specs/SPEC-DIVECC-DELEGATION-TOKEN-COST-001/spec.md:133:- Verification: `go test ./internal/template/... -run TestTemplateNeutralityAudit` passes (run-phase gate); `diff <(sed -n '/Delegation Decision/,/Checkpoint/p' .claude/output-styles/moai/moai.md) <(sed -n '/Delegation Decision/,/Checkpoint/p' internal/template/templates/.claude/output-styles/moai/moai.md)` shows the token-cost signal in both.
+../../.moai/specs/SPEC-DIVECC-DELEGATION-TOKEN-COST-001/spec.md:136:- GIVEN the run-phase edit
+../../.moai/specs/SPEC-DIVECC-DELEGATION-TOKEN-COST-001/spec.md:137:- WHEN the §4 region is read
+../../.moai/specs/SPEC-DIVECC-DELEGATION-TOKEN-COST-001/spec.md:138:- THEN the existing three weighing questions (specialist domain / agent exists / quality·independence·bias), the Forced Delegation Table, and the Volume Triggers are all still present and unchanged in meaning.
+../../.moai/specs/SPEC-DIVECC-DELEGATION-TOKEN-COST-001/spec.md:139:- Verification: `grep -c "specialist domain\|Forced Delegation\|Volume Trigger" .claude/output-styles/moai/moai.md` ≥ 3.
+../../.moai/specs/SPEC-DIVECC-DELEGATION-TOKEN-COST-001/spec.md:142:- GIVEN the OPTIONAL `CLAUDE.local.md` §16 edit (if the run-phase chooses to make it)
+../../.moai/specs/SPEC-DIVECC-DELEGATION-TOKEN-COST-001/spec.md:143:- WHEN `git show --stat <run-commit>` is inspected
+../../.moai/specs/SPEC-DIVECC-DELEGATION-TOKEN-COST-001/spec.md:144:- THEN any `CLAUDE.local.md` change is NOT accompanied by a corresponding template-tree change (CLAUDE.local.md is local-only, never mirrored); the template diff contains only the `moai.md` mirror.
+../../.moai/specs/SPEC-DIVECC-DELEGATION-TOKEN-COST-001/spec.md:145:- Verification: the run-commit's template-tree diff contains `moai.md` but NOT any `CLAUDE.local.md`-derived content.
+../../.moai/specs/SPEC-DIVECC-DELEGATION-TOKEN-COST-001/spec.md:148:- GIVEN the run-phase commit diff
+../../.moai/specs/SPEC-DIVECC-DELEGATION-TOKEN-COST-001/spec.md:149:- WHEN `git show --stat <run-commit>` is inspected
+../../.moai/specs/SPEC-DIVECC-DELEGATION-TOKEN-COST-001/spec.md:150:- THEN `.claude/rules/moai/development/agent-authoring.md` is NOT modified by this SPEC's run-phase (that surface is owned by N2).
+../../.moai/specs/SPEC-DIVECC-DELEGATION-TOKEN-COST-001/spec.md:151:- Verification: `git show --stat <run-commit>` file list does not include `agent-authoring.md`.
+../../.moai/specs/SPEC-DIVECC-EXTENSION-COST-LADDER-001/spec.md:111:- GIVEN the run-phase edit to `.claude/rules/moai/development/agent-authoring.md`
+../../.moai/specs/SPEC-DIVECC-EXTENSION-COST-LADDER-001/spec.md:112:- WHEN `grep -i -E "hooks?.*zero|skills?.*low|plugins?.*medium|mcp.*high" .claude/rules/moai/development/agent-authoring.md` is run
+../../.moai/specs/SPEC-DIVECC-EXTENSION-COST-LADDER-001/spec.md:113:- THEN at least the four tier labels (Hooks/zero, Skills/low, Plugins/medium, MCP/high) appear in the added ladder section.
+../../.moai/specs/SPEC-DIVECC-EXTENSION-COST-LADDER-001/spec.md:114:- Verification: `grep -c -i "context-cost ladder\|extension-mechanism" .claude/rules/moai/development/agent-authoring.md` ≥ 1.
+../../.moai/specs/SPEC-DIVECC-EXTENSION-COST-LADDER-001/spec.md:117:- GIVEN the added ladder section
+../../.moai/specs/SPEC-DIVECC-EXTENSION-COST-LADDER-001/spec.md:118:- WHEN the section is read
+../../.moai/specs/SPEC-DIVECC-EXTENSION-COST-LADDER-001/spec.md:119:- THEN it states the "choosing an extension mechanism is a context-cost decision / prefer the cheapest mechanism that meets the capability requirement" criterion.
+../../.moai/specs/SPEC-DIVECC-EXTENSION-COST-LADDER-001/spec.md:120:- Verification: `grep -i "context-cost decision\|cheapest mechanism" .claude/rules/moai/development/agent-authoring.md` returns ≥ 1 match.
+../../.moai/specs/SPEC-DIVECC-EXTENSION-COST-LADDER-001/spec.md:123:- GIVEN the added ladder section
+../../.moai/specs/SPEC-DIVECC-EXTENSION-COST-LADDER-001/spec.md:124:- WHEN `grep "2604.14228\|Dive into Claude Code" .claude/rules/moai/development/agent-authoring.md` is run
+../../.moai/specs/SPEC-DIVECC-EXTENSION-COST-LADDER-001/spec.md:125:- THEN the paper is cited as the source of the cost claim, and the section contains no moai-tree verification claim for the figures (a "paper claim" / "as the paper observes" / equivalent attribution qualifier is present near the ladder).
+../../.moai/specs/SPEC-DIVECC-EXTENSION-COST-LADDER-001/spec.md:126:- Verification: `grep -i "paper claim\|the paper\|2604.14228" .claude/rules/moai/development/agent-authoring.md` returns ≥ 1 match.
+../../.moai/specs/SPEC-DIVECC-EXTENSION-COST-LADDER-001/spec.md:129:- GIVEN the added ladder section
+../../.moai/specs/SPEC-DIVECC-EXTENSION-COST-LADDER-001/spec.md:130:- WHEN `grep -E "skill-authoring|Progressive Disclosure" .claude/rules/moai/development/agent-authoring.md && grep -E "dynamic-workflows|Purpose-driven" .claude/rules/moai/development/agent-authoring.md` is run
+../../.moai/specs/SPEC-DIVECC-EXTENSION-COST-LADDER-001/spec.md:131:- THEN both cross-references resolve to ≥ 1 match each.
+../../.moai/specs/SPEC-DIVECC-EXTENSION-COST-LADDER-001/spec.md:132:- Verification: two grep commands each return ≥ 1 match.
+../../.moai/specs/SPEC-DIVECC-EXTENSION-COST-LADDER-001/spec.md:135:- GIVEN the run-phase commit diff
+../../.moai/specs/SPEC-DIVECC-EXTENSION-COST-LADDER-001/spec.md:136:- WHEN `git show --stat <run-commit>` is inspected
+../../.moai/specs/SPEC-DIVECC-EXTENSION-COST-LADDER-001/spec.md:137:- THEN no file under `.claude/hooks/`, `.claude/skills/*/SKILL.md` body, plugin manifests, or MCP config (`.mcp.json`, settings MCP entries) is modified; the only changed file is `.claude/rules/moai/development/agent-authoring.md` (plus optional builder-harness policy pointer per REQ-ECL-005, and the template mirror if `agent-authoring.md` is template-distributed).
+../../.moai/specs/SPEC-DIVECC-EXTENSION-COST-LADDER-001/spec.md:138:- Verification: `git show --stat <run-commit>` file list contains only the rule file (+ optional mirror + optional policy pointer).
+../../.moai/specs/SPEC-DIVECC-EXTENSION-COST-LADDER-001/spec.md:141:- GIVEN `agent-authoring.md` is template-distributed (it lives under `.claude/rules/`)
+../../.moai/specs/SPEC-DIVECC-EXTENSION-COST-LADDER-001/spec.md:142:- WHEN the run-phase mirrors the edit to `internal/template/templates/.claude/rules/moai/development/agent-authoring.md`
+../../.moai/specs/SPEC-DIVECC-EXTENSION-COST-LADDER-001/spec.md:143:- THEN the mirrored content contains no forbidden internal-content class (no internal SPEC ID, no REQ/AC token, no commit SHA, no internal date) per `.moai/docs/template-internal-isolation-doctrine.md` — the ladder + paper citation + generic cross-references are all in the acceptable class.
+../../.moai/specs/SPEC-DIVECC-EXTENSION-COST-LADDER-001/spec.md:144:- Verification: `go test ./internal/template/... -run TestTemplateNeutralityAudit` passes (run-phase gate).
+../../.moai/specs/SPEC-DRIFT-001/spec.md:87:- Given a SPEC with 5 tasks and 12 planned files
+../../.moai/specs/SPEC-DRIFT-001/spec.md:88:- When all 5 tasks complete modifying exactly the 12 planned files
+../../.moai/specs/SPEC-DRIFT-001/spec.md:89:- Then tasks.md shows all tasks as "completed"
+../../.moai/specs/SPEC-DRIFT-001/spec.md:90:- And progress.md shows "drift: 0%" for each cycle
+../../.moai/specs/SPEC-DRIFT-001/spec.md:91:- And no alerts are generated
+../../.moai/specs/SPEC-DRIFT-001/spec.md:94:- Given a SPEC with 10 planned files
+../../.moai/specs/SPEC-DRIFT-001/spec.md:95:- When implementation adds 1 unplanned utility file (10% drift)
+../../.moai/specs/SPEC-DRIFT-001/spec.md:96:- Then progress.md records "drift: 10%" as informational
+../../.moai/specs/SPEC-DRIFT-001/spec.md:97:- And no alert is generated (below 20% threshold)
+../../.moai/specs/SPEC-DRIFT-001/spec.md:100:- Given a SPEC with 10 planned files
+../../.moai/specs/SPEC-DRIFT-001/spec.md:101:- When implementation adds 4 unplanned files (40% drift)
+../../.moai/specs/SPEC-DRIFT-001/spec.md:102:- Then progress.md records drift warning with details of unplanned files
+../../.moai/specs/SPEC-DRIFT-001/spec.md:103:- And the Phase 2.7 re-planning gate triggers (>30% cumulative)
+../../.moai/specs/SPEC-DRIFT-001/spec.md:104:- And the user is informed of scope expansion
+../../.moai/specs/SPEC-EVAL-001/spec.md:109:- Given a SPEC with harness level = standard
+../../.moai/specs/SPEC-EVAL-001/spec.md:110:- When the Run phase reaches Phase 2.8a
+../../.moai/specs/SPEC-EVAL-001/spec.md:111:- Then evaluator-active evaluates the implementation against acceptance criteria
+../../.moai/specs/SPEC-EVAL-001/spec.md:112:- And produces a PASS/FAIL verdict with per-dimension scores
+../../.moai/specs/SPEC-EVAL-001/spec.md:113:- And Phase 2.8b (manager-quality) runs after 2.8a completes
+../../.moai/specs/SPEC-EVAL-001/spec.md:116:- Given a SPEC with harness level = thorough
+../../.moai/specs/SPEC-EVAL-001/spec.md:117:- When the Run phase starts
+../../.moai/specs/SPEC-EVAL-001/spec.md:118:- Then Phase 2.0 sprint contract negotiation executes before Phase 2.1
+../../.moai/specs/SPEC-EVAL-001/spec.md:119:- And the contract is recorded in contract.md
+../../.moai/specs/SPEC-EVAL-001/spec.md:120:- And Phase 2.8a evaluates the final implementation
+../../.moai/specs/SPEC-EVAL-001/spec.md:121:- And a maximum of 3 retry cycles is enforced on failure
+../../.moai/specs/SPEC-EVAL-001/spec.md:124:- Given an implementation with a security vulnerability
+../../.moai/specs/SPEC-EVAL-001/spec.md:125:- When evaluator-active evaluates the implementation
+../../.moai/specs/SPEC-EVAL-001/spec.md:126:- Then the Security dimension returns FAIL
+../../.moai/specs/SPEC-EVAL-001/spec.md:127:- And the overall verdict is FAIL regardless of other dimension scores
+../../.moai/specs/SPEC-EVALLIB-001/spec.md:105:- Given a SPEC with `evaluator_profile: frontend` in frontmatter
+../../.moai/specs/SPEC-EVALLIB-001/spec.md:106:- When evaluator-active is invoked
+../../.moai/specs/SPEC-EVALLIB-001/spec.md:107:- Then frontend.md profile criteria are loaded
+../../.moai/specs/SPEC-EVALLIB-001/spec.md:108:- And the 3 frontend-specific dimensions (Originality, Design Quality, Craft & Functionality) are used
+../../.moai/specs/SPEC-EVALLIB-001/spec.md:111:- Given a SPEC with no evaluator_profile field
+../../.moai/specs/SPEC-EVALLIB-001/spec.md:112:- And harness.yaml specifies default_profile: "default"
+../../.moai/specs/SPEC-EVALLIB-001/spec.md:113:- When evaluator-active is invoked
+../../.moai/specs/SPEC-EVALLIB-001/spec.md:114:- Then default.md profile criteria are loaded
+../../.moai/specs/SPEC-EVALLIB-001/spec.md:115:- And the 4 standard dimensions are used
+../../.moai/specs/SPEC-EVALLIB-001/spec.md:118:- Given a React component with stock card layout, purple gradient, and "Welcome to our platform" text
+../../.moai/specs/SPEC-EVALLIB-001/spec.md:119:- When evaluator-active evaluates with frontend.md profile
+../../.moai/specs/SPEC-EVALLIB-001/spec.md:120:- Then at least 3 AI-slop flags are raised
+../../.moai/specs/SPEC-EVALLIB-001/spec.md:121:- And Originality score is below 50%
+../../.moai/specs/SPEC-EVALLIB-001/spec.md:122:- And the evaluation report lists each detected pattern
+../../.moai/specs/SPEC-EVALLIB-001/spec.md:125:- Given 3 consecutive SPEC evaluations
+../../.moai/specs/SPEC-EVALLIB-001/spec.md:126:- When all evaluations complete
+../../.moai/specs/SPEC-EVALLIB-001/spec.md:127:- Then evaluation-log.jsonl contains exactly 3 new entries
+../../.moai/specs/SPEC-EVALLIB-001/spec.md:128:- And each entry has valid JSON with all required fields
+../../.moai/specs/SPEC-GIT-STATUS-FIXTURE-001/spec.md:45:- RED-now: `grep -n '"--bare"' internal/core/git/status_branch_test.go` shows lines 99 and 235 WITHOUT an adjacent `"-b", "main"` token — the CI-red state (probe L6).
+../../.moai/specs/SPEC-GIT-STATUS-FIXTURE-001/spec.md:46:- Green path (M1): the same grep shows `init -q --bare -b main` at both sites, matching the `helpers_test.go:42` shape. **Mutant probe**: a mutant reverting either pin must flip this AC to FAIL — run the grep form, not a visual read.
+../../.moai/specs/SPEC-GIT-STATUS-FIXTURE-001/spec.md:48:- RED-now: `go test ./internal/core/git/ -count=1` is green locally and CI-red on develop (dual-job red relayed in the dispatch) — local green is not discriminating evidence (probe L0/L7).
+../../.moai/specs/SPEC-GIT-STATUS-FIXTURE-001/spec.md:49:- Green path (M2): `go test ./internal/core/git/ -count=1` exits 0 with `ok github.com/modu-ai/moai-adk/internal/core/git` AND a non-zero test count visible (`-v` or `-json` sweep) — not a selector that matches zero tests.
+../../.moai/specs/SPEC-GIT-STATUS-FIXTURE-001/spec.md:51:- RED-now: the deciding environment (CI, no `init.defaultBranch` config) shows the two tests red on develop — evidence: dispatch CI excerpt + probe L4/L5 mechanism reproduction with byte-identical fatal signature.
+../../.moai/specs/SPEC-GIT-STATUS-FIXTURE-001/spec.md:52:- Green path (M3, external): the CI run on the **merged develop tree after the lead's push** is green on `Test (ubuntu-latest)` and `Race Test`. This is a bidirectional confirmation that only the merged-tree CI can deliver — the plan does NOT claim local equivalence and the card does not close before this verdict lands.
+../../.moai/specs/SPEC-GIT-STATUS-FIXTURE-001/spec.md:54:- RED-now: n/a (scope assertion; RED-now baseline is the pre-change tree at `25a3212a9`).
+../../.moai/specs/SPEC-GIT-STATUS-FIXTURE-001/spec.md:55:- Green path (M2): `git diff --name-only 25a3212a9...HEAD` lists only `internal/core/git/status_branch_test.go` (plus, if accepted at kickoff, the same file for `:315` — same file either way). Any `.go` non-test file in the list fails this AC.
+../../.moai/specs/SPEC-GIT-STATUS-FIXTURE-001/spec.md:57:- RED-now: n/a (formatting is not the defect).
+../../.moai/specs/SPEC-GIT-STATUS-FIXTURE-001/spec.md:58:- Green path (M2): `gofmt -l .` prints 0 rows after the change.
+../../.moai/specs/SPEC-GIT-STATUS-FIXTURE-001/spec.md:60:- RED-now: `status_branch_test.go:315` carries the unpinned bare-init shape (probe L6: benign today — nothing clones from it).
+../../.moai/specs/SPEC-GIT-STATUS-FIXTURE-001/spec.md:61:- Green path (M1 or kickoff): the Implementation Kickoff Approval gate records accept-or-drop for the `:315` consistency pin; if accepted, the AC-GSF-001 grep form also matches `:315`; if dropped, `:315` is byte-unchanged. Never bundled silently.
+../../.moai/specs/SPEC-HANDOFF-GOALFIX-001/spec.md:149:- Negative space: `# /goal` → 0 (baseline 6/6/1/1), `re-set` → 0 (baseline 4/4/1/1/3/3), goal-directive "Block 1 `/goal` line" phrase → 0 (baseline 1 line / 2 in-line occurrences).
+../../.moai/specs/SPEC-HANDOFF-GOALFIX-001/spec.md:150:- Positive space: `## Post-Paste /goal Follow-up Block` = 1, `## Paste-Time Activation Matrix` = 1, both official URLs present, FANOUT debt phrase = 1, Localization row = 1, `reminder obligation` token on 2 surfaces, `goal-first bootstrap` + `model discretion` tokens (REQ-GF-009).
+../../.moai/specs/SPEC-HANDOFF-GOALFIX-001/spec.md:151:- Structural: 3× live↔template byte-identical diff, `make build` exit 0, template SPEC-ID neutrality grep = 0.
+../../.moai/specs/SPEC-HARNESS-OUTCOME-CAPTURE-001/spec.md:162:- `TestSafetyArchitecture_LayerCount`
+../../.moai/specs/SPEC-HARNESS-OUTCOME-CAPTURE-001/spec.md:163:- `TestSafetyArchitecture_FrozenZoneUnchanged`
+../../.moai/specs/SPEC-HARNESS-OUTCOME-CAPTURE-001/spec.md:164:- `TestIsFrozen_*` (table, `internal/harness/safety`)
+../../.moai/specs/SPEC-HARNESS-OUTCOME-CAPTURE-001/spec.md:165:- `TestSentinelCatalog_*`
+../../.moai/specs/SPEC-HARNESS-OUTCOME-CAPTURE-001/spec.md:166:- `TestSubagentBoundary_NoAskUserQuestion`
+../../.moai/specs/SPEC-HARNESS-OUTCOME-CAPTURE-001/spec.md:167:- P1 regression-gate tests (`TestApply_Regression_*`) — MUST stay GREEN (the outcome capture must not break the gate's keep/rollback paths)
+../../.moai/specs/SPEC-HARNESS-OUTCOME-CAPTURE-001/spec.md:168:- tier tests (`internal/harness/tier`)
+../../.moai/specs/SPEC-HARNESS-REGRESSION-GATE-001/spec.md:159:- `TestSafetyArchitecture_LayerCount`
+../../.moai/specs/SPEC-HARNESS-REGRESSION-GATE-001/spec.md:160:- `TestSafetyArchitecture_FrozenZoneUnchanged`
+../../.moai/specs/SPEC-HARNESS-REGRESSION-GATE-001/spec.md:161:- `TestIsFrozen_*` (table)
+../../.moai/specs/SPEC-HARNESS-REGRESSION-GATE-001/spec.md:162:- `TestSentinelCatalog_*`
+../../.moai/specs/SPEC-HARNESS-REGRESSION-GATE-001/spec.md:163:- `TestSubagentBoundary_NoAskUserQuestion`
+../../.moai/specs/SPEC-HARNESS-REGRESSION-GATE-001/spec.md:164:- tier tests (`internal/harness/tier`)
+../../.moai/specs/SPEC-KARPATHY-001/spec.md:218:- Implementation order: see `plan.md`
+../../.moai/specs/SPEC-MODEL-TIER-PLANTYPE-001/spec.md:456:- M1: config field + validation + fable enum (AC-MTP-001..005b, 024)
+../../.moai/specs/SPEC-MODEL-TIER-PLANTYPE-001/spec.md:457:- M2: profile structure + matrices fidelity + unified apply pass (AC-MTP-006..013)
+../../.moai/specs/SPEC-MODEL-TIER-PLANTYPE-001/spec.md:458:- M3: CLI flags (init + update) + wizard + persistence (AC-MTP-014..018b)
+../../.moai/specs/SPEC-MODEL-TIER-PLANTYPE-001/spec.md:459:- M4: web preview + persisting selector + scoped-write invariant + i18n + reachability
+../../.moai/specs/SPEC-MODEL-TIER-PLANTYPE-001/spec.md:461:- M5: GLM backend detection + collapse mapping + coding-max override + overlay scope +
+../../.moai/specs/SPEC-MODEL-TIER-PLANTYPE-001/spec.md:463:- Global: full test suite, vet/lint, coverage, spec-lint delta (AC-MTP-026)
+../../.moai/specs/SPEC-PLAYWRIGHT-001/spec.md:94:- Given a React application with login form and dashboard
+../../.moai/specs/SPEC-PLAYWRIGHT-001/spec.md:95:- And harness level = thorough
+../../.moai/specs/SPEC-PLAYWRIGHT-001/spec.md:96:- When Phase 2.8a evaluator-active runs
+../../.moai/specs/SPEC-PLAYWRIGHT-001/spec.md:97:- Then evaluator-active navigates to the login page
+../../.moai/specs/SPEC-PLAYWRIGHT-001/spec.md:98:- And submits test credentials via the form
+../../.moai/specs/SPEC-PLAYWRIGHT-001/spec.md:99:- And verifies dashboard loads with expected components
+../../.moai/specs/SPEC-PLAYWRIGHT-001/spec.md:100:- And reports interactive test results in the evaluation
+../../.moai/specs/SPEC-PLAYWRIGHT-001/spec.md:103:- Given a Go CLI application with no web interface
+../../.moai/specs/SPEC-PLAYWRIGHT-001/spec.md:104:- And harness level = thorough
+../../.moai/specs/SPEC-PLAYWRIGHT-001/spec.md:105:- When Phase 2.8a evaluator-active runs
+../../.moai/specs/SPEC-PLAYWRIGHT-001/spec.md:106:- Then Playwright testing is skipped with informational log
+../../.moai/specs/SPEC-PLAYWRIGHT-001/spec.md:107:- And static code evaluation proceeds normally
+../../.moai/specs/SPEC-PLAYWRIGHT-001/spec.md:108:- And no error is raised for missing web frontend
+../../.moai/specs/SPEC-PLAYWRIGHT-001/spec.md:111:- Given a web application with harness level = standard
+../../.moai/specs/SPEC-PLAYWRIGHT-001/spec.md:112:- When Phase 2.8a evaluator-active runs
+../../.moai/specs/SPEC-PLAYWRIGHT-001/spec.md:113:- Then Playwright testing is skipped
+../../.moai/specs/SPEC-PLAYWRIGHT-001/spec.md:114:- And only static evaluation and acceptance criteria testing occur
+../../.moai/specs/SPEC-PLAYWRIGHT-001/spec.md:117:- Given a web form with missing label associations and no focus indicators
+../../.moai/specs/SPEC-PLAYWRIGHT-001/spec.md:118:- And harness level = thorough
+../../.moai/specs/SPEC-PLAYWRIGHT-001/spec.md:119:- When evaluator-active runs Playwright testing
+../../.moai/specs/SPEC-PLAYWRIGHT-001/spec.md:120:- Then accessibility issues are detected and reported
+../../.moai/specs/SPEC-PLAYWRIGHT-001/spec.md:121:- And the Functionality dimension score reflects the accessibility gap
+../../.moai/specs/SPEC-SDD-001/spec.md:112:- Given a SPEC with complexity score = 8 (3 domains, 15 files)
+../../.moai/specs/SPEC-SDD-001/spec.md:113:- When the Complexity Estimator runs in moai.md
+../../.moai/specs/SPEC-SDD-001/spec.md:114:- Then harness level = thorough is auto-selected
+../../.moai/specs/SPEC-SDD-001/spec.md:115:- And all thorough-level quality gates are activated
+../../.moai/specs/SPEC-SDD-001/spec.md:118:- Given a SPEC with [MODIFY] markers on 3 existing service files
+../../.moai/specs/SPEC-SDD-001/spec.md:119:- When the DDD ANALYZE phase runs
+../../.moai/specs/SPEC-SDD-001/spec.md:120:- Then characterization tests are generated for all 3 [MODIFY] files before any changes
+../../.moai/specs/SPEC-SDD-001/spec.md:121:- And the characterization tests pass against the current codebase
+../../.moai/specs/SPEC-SDD-001/spec.md:124:- Given a SPEC whose spec.md is 8000 tokens
+../../.moai/specs/SPEC-SDD-001/spec.md:125:- When the Plan phase completes and spec-compact.md is generated
+../../.moai/specs/SPEC-SDD-001/spec.md:126:- Then spec-compact.md is approximately 5600 tokens or less (30% reduction)
+../../.moai/specs/SPEC-SDD-001/spec.md:127:- And the Run phase loads spec-compact.md successfully
+../../.moai/specs/SPEC-SDD-001/spec.md:130:- Given an existing SPEC created before v2.9.0 (no spec-compact.md, no delta markers)
+../../.moai/specs/SPEC-SDD-001/spec.md:131:- When the Run phase starts
+../../.moai/specs/SPEC-SDD-001/spec.md:132:- Then the system loads full spec.md without errors
+../../.moai/specs/SPEC-SDD-001/spec.md:133:- And no delta marker processing occurs
+../../.moai/specs/SPEC-SEC-DEEPSCAN-001/spec.md:197:- Deep scan reachable via `/moai review --deep` (argument-hint + playbook section present in BOTH trees, byte-identical workflow skill).
+../../.moai/specs/SPEC-SEC-DEEPSCAN-001/spec.md:198:- Six phases documented in order; adversarial 2-of-3 quorum + non-unanimous "medium" cap present.
+../../.moai/specs/SPEC-SEC-DEEPSCAN-001/spec.md:199:- Patch gate: scratch-clone drafting + independent 3-claim vouch + never-auto-apply, all documented; `--patch` opt-in default-off.
+../../.moai/specs/SPEC-SEC-DEEPSCAN-001/spec.md:200:- Results-dir schema: human `.md` (F-IDs), machine `.jsonl`, revision stamp, self-`.gitignore` — all specified.
+../../.moai/specs/SPEC-SEC-DEEPSCAN-001/spec.md:201:- Graceful degradation ladder documented with availability signal; degraded path preserves the adversarial quorum.
+../../.moai/specs/SPEC-SEC-DEEPSCAN-001/spec.md:202:- Template-First: no template/local drift; 16-language neutrality grep clean; no internal SPEC-ID/date/SHA leak in template content.
+../../.moai/specs/SPEC-SEC-DEEPSCAN-001/spec.md:203:- No `/moai security` revival; no new agent; no Go runtime; no shipped `.js`.
+../../.moai/specs/SPEC-SEC-GUARDIAN-001/spec.md:202:- Layer 1 PostToolUse hook wired (template + local, byte-lockstep) and forwards to a compiled Go handler that flags the enumerated vulnerability classes across ≥16 languages from a single-source pattern table.
+../../.moai/specs/SPEC-SEC-GUARDIAN-001/spec.md:203:- Layer 1 is regex-only (no LLM), async, advisory (never blocks the edit); pattern count ≈ 25 across classes.
+../../.moai/specs/SPEC-SEC-GUARDIAN-001/spec.md:204:- Layer 2 Stop hook reviews the turn's diff; advisory-by-default (regex engine); LLM/blocking escalation opt-in via env flag.
+../../.moai/specs/SPEC-SEC-GUARDIAN-001/spec.md:205:- Layer 3 commit-time cross-file review is opt-in (dormant by default); reuses the commit-aware gate model; advisory-by-default when enabled.
+../../.moai/specs/SPEC-SEC-GUARDIAN-001/spec.md:206:- Hook boundary: `grep -rn 'AskUserQuestion\|mcp__askuser' .claude/hooks/moai/` → no matches; blocks emit structured JSON translated by the orchestrator.
+../../.moai/specs/SPEC-SEC-GUARDIAN-001/spec.md:207:- Fail-open: every guardian hook degrades to a silent no-op when `moai`/`jq`/`git` is absent.
+../../.moai/specs/SPEC-SEC-GUARDIAN-001/spec.md:208:- Template-First + 16-language neutrality: no PRIMARY-language elevation, no internal SPEC-ID/date/SHA leak in template content; `internal_content_leak_test.go` PASS.
+../../.moai/specs/SPEC-SEC-GUARDIAN-001/spec.md:209:- Go handlers + pattern engine carry tests (`t.TempDir`, no OTEL env in parallel tests); `go build ./...` (host + `GOOS=windows`) exit 0; catalog agent/skill counts unchanged.
+../../.moai/specs/SPEC-SEC-HARDEN-002/spec.md:95:- `moai worktree new '../../../../tmp/evil'` (M2 — currently creates a worktree dir OUTSIDE `~/.moai/worktrees/<project>/`)
+../../.moai/specs/SPEC-SEC-HARDEN-002/spec.md:96:- `moai worktree new '--upload-pack=x'` (M2 — argv option smuggling)
+../../.moai/specs/SPEC-SEC-HARDEN-002/spec.md:97:- `moai spec view '../../../../etc'` (M3 — read-path traversal)
+../../.moai/specs/SPEC-SEC-HARDEN-002/spec.md:98:- `go test > /etc/cron.d/payload`, `go test >> ~/.bashrc`, `go test 2> /tmp/x`, `go test < /etc/shadow` (M4 — currently ALLOW)
+../../.moai/specs/SPEC-SEMAP-001/spec.md:108:- Given manager-ddd has a contract with postcondition "all new functions have tests"
+../../.moai/specs/SPEC-SEMAP-001/spec.md:109:- When manager-ddd completes implementation with 2 untested functions
+../../.moai/specs/SPEC-SEMAP-001/spec.md:110:- Then a contract violation report is generated
+../../.moai/specs/SPEC-SEMAP-001/spec.md:111:- And the report lists the 2 untested function names
+../../.moai/specs/SPEC-SEMAP-001/spec.md:112:- And the violation severity is "warning" (Phase 1, non-blocking)
+../../.moai/specs/SPEC-SEMAP-001/spec.md:113:- And implementation proceeds to the next phase
+../../.moai/specs/SPEC-SEMAP-001/spec.md:116:- Given manager-quality has a contract with postcondition "LSP errors = 0"
+../../.moai/specs/SPEC-SEMAP-001/spec.md:117:- When manager-quality completes with 3 remaining LSP errors
+../../.moai/specs/SPEC-SEMAP-001/spec.md:118:- Then a contract violation report is generated
+../../.moai/specs/SPEC-SEMAP-001/spec.md:119:- And the report includes error count and file locations
+../../.moai/specs/SPEC-SEMAP-001/spec.md:120:- And the violation is logged as warning (Phase 1)
+../../.moai/specs/SPEC-SEMAP-001/spec.md:123:- Given an existing agent definition (e.g., expert-backend) with no Contract section
+../../.moai/specs/SPEC-SEMAP-001/spec.md:124:- When the agent is invoked and completes
+../../.moai/specs/SPEC-SEMAP-001/spec.md:125:- Then no contract verification occurs
+../../.moai/specs/SPEC-SEMAP-001/spec.md:126:- And the agent behaves exactly as before SEMAP introduction
+../../.moai/specs/SPEC-SEMAP-001/spec.md:129:- Given manager-ddd.md with a Contract section
+../../.moai/specs/SPEC-SEMAP-001/spec.md:130:- When the contract is inspected
+../../.moai/specs/SPEC-SEMAP-001/spec.md:131:- Then preconditions include "SPEC document loaded and parsed"
+../../.moai/specs/SPEC-SEMAP-001/spec.md:132:- And postconditions include "all modified files pass go vet"
+../../.moai/specs/SPEC-SEMAP-001/spec.md:133:- And invariants include "existing tests continue to pass"
+../../.moai/specs/SPEC-SEMAP-001/spec.md:134:- And forbidden includes "deleting test files"
+../../.moai/specs/SPEC-SKILL-BODY-NEUTRALITY-001/spec.md:177:- Part A: every CLASS 1-4 leak in §B is generic-ized with meaning preserved; allow-listed placeholders untouched; local mirror synced.
+../../.moai/specs/SPEC-SKILL-BODY-NEUTRALITY-001/spec.md:178:- Part B: the neutrality guard (RED before Part A, GREEN after) fails on the current leaks and passes once they are purged; the skill-body leak classes (CI-test path, Go-impl path, broadened SPEC-ID) are added without overlapping the ISOLATION-001 date/sha classes; legitimate placeholders are allow-listed.
+../../.moai/specs/SPEC-SKILL-BODY-NEUTRALITY-001/spec.md:179:- Build + tests: `go test ./internal/template/...` passes (including the existing `agentless_audit_test.go` sentinel-presence tests and the extended leak test); `go build ./...` succeeds.
+../../.moai/specs/SPEC-SKILL-GATE-001/spec.md:113:- `grep -n '### Phase 2.10' .claude/skills/moai/workflows/run.md`
+../../.moai/specs/SPEC-SKILL-GATE-001/spec.md:114:- `grep -n '### Phase 0.05' .claude/skills/moai/workflows/sync.md`
+../../.moai/specs/SPEC-SKILL-GATE-001/spec.md:115:- `grep -n '### Simplify Pass' .claude/skills/moai/workflows/review.md`
+../../.moai/specs/SPEC-STEERING-ALIGN-RULE-SCOPING-001/spec.md:46:- The exact `paths:` frontmatter syntax used in-repo is a comma-separated quoted glob string, e.g. `paths: "**/*.go,**/go.mod,**/go.sum"` (`.claude/rules/moai/languages/go.md`) and `paths: "**/.claude/agents/**"` (`.claude/rules/moai/development/agent-authoring.md`). Note the `**/` precedent prefix.
+../../.moai/specs/SPEC-STEERING-ALIGN-RULE-SCOPING-001/spec.md:47:- `.claude/rules/` is embedded into the binary via `//go:embed all:templates` (`internal/template/embed.go:28`). The TEMPLATE SSOT is `internal/template/templates/.claude/rules/moai/...`; the live `.claude/rules/moai/...` is the deployed copy. The template tree is a subset of the live tree (live-only files like `lifecycle-sync-gate.md` exist in deployed projects but are not redistributed via the template).
+../../.moai/specs/SPEC-V3R3-CI-AUTONOMY-001/spec.md:295:- **T1 (Pre-Push)**: AC-CIAUT-001 (lint block), AC-CIAUT-002 (16-language detect), AC-CIAUT-003 (`--no-verify` log)
+../../.moai/specs/SPEC-V3R3-CI-AUTONOMY-001/spec.md:296:- **T2 (CI Watch)**: AC-CIAUT-004 (auto-invoke), AC-CIAUT-005 (required vs auxiliary)
+../../.moai/specs/SPEC-V3R3-CI-AUTONOMY-001/spec.md:297:- **T3 (Auto-Fix)**: AC-CIAUT-006 (mechanical resolve), AC-CIAUT-007 (semantic escalate), AC-CIAUT-008 (iteration cap 3)
+../../.moai/specs/SPEC-V3R3-CI-AUTONOMY-001/spec.md:298:- **T4 (Aux Cleanup)**: AC-CIAUT-009 (non-blocking), AC-CIAUT-010 (Release Drafter cleanup)
+../../.moai/specs/SPEC-V3R3-CI-AUTONOMY-001/spec.md:299:- **T5 (Branch Protection)**: AC-CIAUT-011 (force-push block), AC-CIAUT-012 (no required → no merge), AC-CIAUT-013 (no release automation), AC-CIAUT-021 (required-checks SSoT), AC-CIAUT-022 (gh auth fail graceful)
+../../.moai/specs/SPEC-V3R3-CI-AUTONOMY-001/spec.md:300:- **T6 (Worktree Guard)**: AC-CIAUT-014 (divergence detect), AC-CIAUT-015 (empty worktreePath suspect)
+../../.moai/specs/SPEC-V3R3-CI-AUTONOMY-001/spec.md:301:- **T7 (i18n Validator)**: AC-CIAUT-016 (mockReleaseData block), AC-CIAUT-017 (magic comment exempt), AC-CIAUT-023 (30s budget)
+../../.moai/specs/SPEC-V3R3-CI-AUTONOMY-001/spec.md:302:- **T8 (BODP)**: AC-CIAUT-018 (current session replay), AC-CIAUT-019 (stacked PR), AC-CIAUT-024 (off-protocol reminder), AC-CIAUT-025 (CLAUDE.local.md §18.12)
+../../.moai/specs/SPEC-V3R3-CI-AUTONOMY-001/spec.md:303:- **Cross-Tier**: AC-CIAUT-020 (5-PR sweep replay — manual validation)
+../../.moai/specs/SPEC-V3R3-PATTERNS-001/spec.md:170:- Implementation order: see `plan.md`
+../../.moai/specs/SPEC-V3R3-PATTERNS-001/spec.md:171:- Task breakdown: see `tasks.md`
+../../.moai/specs/SPEC-V3R3-UPDATE-CLEANUP-001/spec.md:210:- REQ-UPC-001~005 → acceptance.md §1 Idempotent Deployment scenarios
+../../.moai/specs/SPEC-V3R3-UPDATE-CLEANUP-001/spec.md:211:- REQ-UPC-006~008 → acceptance.md §2 Deprecated Path Detection scenarios
+../../.moai/specs/SPEC-V3R3-UPDATE-CLEANUP-001/spec.md:212:- REQ-UPC-009~011 → acceptance.md §3 Backup scenarios
+../../.moai/specs/SPEC-V3R3-UPDATE-CLEANUP-001/spec.md:213:- REQ-UPC-012~014 → acceptance.md §4 User Confirmation scenarios
+../../.moai/specs/SPEC-V3R3-UPDATE-CLEANUP-001/spec.md:214:- REQ-UPC-015 / 015a / 015b / 015c / 016 / 017 / 018 → acceptance.md §5 Customization Safety scenarios (삼분 분류 + opt-out marker)
+../../.moai/specs/SPEC-V3R3-UPDATE-CLEANUP-001/spec.md:215:- REQ-UPC-019~021 → acceptance.md §6 Regression Test scenarios
+../../.moai/specs/SPEC-V3R3-UPDATE-CLEANUP-001/spec.md:216:- REQ-UPC-022~026 → acceptance.md §7 Observability and Environment Safety scenarios (AC-UPC-022b telemetry permission 포함)
+../../.moai/specs/SPEC-V3R3-UPDATE-CLEANUP-001/spec.md:217:- 통합 시나리오 A–F → acceptance.md §8 End-to-End Regression Scenarios
+../../.moai/specs/SPEC-V3R3-UPDATE-CLEANUP-001/spec.md:218:- NFR-UPC-P1 벤치마크 → acceptance.md §9 NFR Benchmark Verification (benchstat 통계 검증)
+../../.moai/specs/SPEC-V3R4-LINT-STATUS-CHORE-SKIP-001/spec.md:153:- Case (a): A sweep commit hides a real `impl(spec):` commit — walker returns the real status.
+../../.moai/specs/SPEC-V3R4-LINT-STATUS-CHORE-SKIP-001/spec.md:154:- Case (b): A `chore(spec):` commit precedes a real `feat(SPEC-XXX):` commit — walker skips chore and returns implemented.
+../../.moai/specs/SPEC-V3R4-LINT-STATUS-CHORE-SKIP-001/spec.md:155:- Case (c): Only chore commits exist in the SPEC's git history — walker returns unknown/error within the N-commit budget.
+../../.moai/specs/SPEC-V3R4-LINT-STATUS-CHORE-SKIP-001/spec.md:156:- Case (d) [control case]: Latest commit is a real `impl(spec):` commit — walker returns its status without invoking the skip filter.
+../../.moai/specs/SPEC-V3R5-CORE-SLIM-001/spec.md:118:- Given: Track A LR-08 rule fix is applied to `internal/cli/agent_lint.go`
+../../.moai/specs/SPEC-V3R5-CORE-SLIM-001/spec.md:119:- When: `./bin/moai agent lint --strict 2>&1 | grep "LR-08"` runs against `.claude/agents/moai/`
+../../.moai/specs/SPEC-V3R5-CORE-SLIM-001/spec.md:120:- Then: every leaf below returns zero matching lines
+../../.moai/specs/SPEC-V3R5-CORE-SLIM-001/spec.md:127:- Given: Track B preload addition is applied to 4 expert agents
+../../.moai/specs/SPEC-V3R5-CORE-SLIM-001/spec.md:128:- When: `./bin/moai agent lint --strict 2>&1 | grep "LR-08" | grep "moai-foundation-quality"` runs
+../../.moai/specs/SPEC-V3R5-CORE-SLIM-001/spec.md:129:- Then: the command emits zero matching lines (LR-08 warning count for `moai-foundation-quality` across the expert category = 0)
+../../.moai/specs/SPEC-V3R5-CORE-SLIM-001/spec.md:132:- Given: Track B source edits committed to `feat/SPEC-V3R5-CORE-SLIM-001`
+../../.moai/specs/SPEC-V3R5-CORE-SLIM-001/spec.md:133:- When: `diff .claude/agents/moai/expert-<name>.md internal/template/templates/.claude/agents/moai/expert-<name>.md` is run for each of `backend, frontend, refactoring, devops`
+../../.moai/specs/SPEC-V3R5-CORE-SLIM-001/spec.md:134:- Then: every diff returns empty output and exit code 0 for all 4 pairs
+../../.moai/specs/SPEC-V3R5-CORE-SLIM-001/spec.md:141:- Given: source + mirror edits committed
+../../.moai/specs/SPEC-V3R5-CORE-SLIM-001/spec.md:142:- When: `go run internal/template/scripts/gen-catalog-hashes.go --all` runs and writes `internal/template/catalog.yaml`
+../../.moai/specs/SPEC-V3R5-CORE-SLIM-001/spec.md:143:- Then: `go test ./internal/template/...` passes (catalog hash audit test green), and `internal/template/catalog.yaml` diff shows updates for exactly 4 entries (`expert-backend`, `expert-frontend`, `expert-refactoring`, `expert-devops`)
+../../.moai/specs/SPEC-V3R5-CORE-SLIM-001/spec.md:146:- Given: Track A code change applied to `internal/cli/agent_lint.go` + 4 new test cases added to `internal/cli/agent_lint_test.go`
+../../.moai/specs/SPEC-V3R5-CORE-SLIM-001/spec.md:147:- When: `go test ./internal/cli/... -run "TestSkillPreloadDriftExemption"` runs
+../../.moai/specs/SPEC-V3R5-CORE-SLIM-001/spec.md:148:- Then: every leaf below returns PASS
+../../.moai/specs/SPEC-V3R5-CORE-SLIM-001/spec.md:155:- Given: Tracks A and B both committed on `main` HEAD post-merge
+../../.moai/specs/SPEC-V3R5-CORE-SLIM-001/spec.md:156:- When: `./bin/moai agent lint --strict 2>&1 | grep "LR-08" | wc -l` runs across all categories (manager, expert, builder, evaluator)
+../../.moai/specs/SPEC-V3R5-CORE-SLIM-001/spec.md:157:- Then: total LR-08 warning count = 0. **This is the primary binary success metric for the SPEC.**
+../../.moai/specs/SPEC-V3R5-CORE-SLIM-001/spec.md:160:- Given: Tracks A and B both committed
+../../.moai/specs/SPEC-V3R5-CORE-SLIM-001/spec.md:161:- When: `./bin/moai agent lint --strict 2>&1 | grep -E "^! \[LR-" | grep -v "^! \[LR-08\]" | wc -l` runs
+../../.moai/specs/SPEC-V3R5-CORE-SLIM-001/spec.md:162:- Then: output is equal to the pre-merge complement baseline (auto-tracks ALL LR rules except LR-08 without manual enumeration; baseline pre-recorded in `acceptance.md` § Verification Matrix as `N`; post-merge MUST equal N to prove no orthogonal regression was introduced as a side effect of Track A logic refactor)
+../../.moai/specs/SPEC-V3R5-CORE-SLIM-001/spec.md:165:- Given: spec.md §5 EC-6 documents the `MIRROR_MISSING_BLOCKER` sentinel contract
+../../.moai/specs/SPEC-V3R5-CORE-SLIM-001/spec.md:166:- When: `grep -c "MIRROR_MISSING_BLOCKER" .moai/specs/SPEC-V3R5-CORE-SLIM-001/spec.md` runs
+../../.moai/specs/SPEC-V3R5-CORE-SLIM-001/spec.md:167:- Then: output ≥ 1 (verifies the sentinel contract is durably documented; actual run-phase enforcement is the implementer's responsibility per Scenario 6 in `acceptance.md`)
+../../.moai/specs/SPEC-V3R6-LIFECYCLE-SYNC-GATE-001/spec.md:230:- 15 functional AC-LSG items binding 1:1 to REQ-LSG-001..015
+../../.moai/specs/SPEC-V3R6-LIFECYCLE-SYNC-GATE-001/spec.md:231:- 5 NFR verification AC items (AC-LSG-016 NFR-001 / AC-LSG-017 NFR-002 / AC-LSG-019 NFR-003 / AC-LSG-020 NFR-004 / AC-LSG-021 NFR-005 — formerly AC-018a, renumbered per D4) — NFR coverage 5/5 (100%)
+../../.moai/specs/SPEC-V3R6-LIFECYCLE-SYNC-GATE-001/spec.md:232:- 1 M6 dogfood AC (AC-LSG-018) verifying the 5 remaining violations are resolved via `moai spec close --backfill-only` after implementation
+../../.moai/specs/SPEC-V3R6-LIFECYCLE-SYNC-GATE-001/spec.md:233:- 1 backfill-only semantics AC (AC-LSG-022 per D7) specifying input precondition + operation + exit codes + verification command
+../../.moai/specs/SPEC-V3R6-STATUSLINE-PRESET-RETIRE-001/spec.md:360:- **MUST ACs**: 25 (grep-verifiable structural removals + behavior parity + mode-axis removal + fieldset-caller removal)
+../../.moai/specs/SPEC-V3R6-STATUSLINE-PRESET-RETIRE-001/spec.md:361:- **SHOULD ACs**: 3 (docs-site polish, wizard flow cleanup niceties)
+../../.moai/specs/SPEC-V3R6-STATUSLINE-PRESET-RETIRE-001/spec.md:362:- **Total**: 28
+../../.moai/specs/SPEC-V3R6-STATUSLINE-PRESET-RETIRE-001/spec.md:365:- `grep -rn 'compact\|minimal' internal/statusline/preset.go` → 0 matches
+../../.moai/specs/SPEC-V3R6-STATUSLINE-PRESET-RETIRE-001/spec.md:366:- `grep -rn 'PresetToSegments\|presetToSegments' internal/ pkg/` → 0 matches (both capital and lowercase)
+../../.moai/specs/SPEC-V3R6-STATUSLINE-PRESET-RETIRE-001/spec.md:367:- `grep -n 'Preset' pkg/models/config.go internal/profile/preferences.go internal/cli/statusline.go` → 0 matches
+../../.moai/specs/SPEC-V3R6-STATUSLINE-PRESET-RETIRE-001/spec.md:368:- `grep -n 'Preset\|StatuslineMode\|statuslineMode' internal/profile/preferences.go` → 0 matches (both preset AND mode fields gone)
+../../.moai/specs/SPEC-V3R6-STATUSLINE-PRESET-RETIRE-001/spec.md:369:- `grep -rn 'StatuslinePreset\|statuslinePreset\|StatuslineMode\|statuslineMode' internal/cli/profile_setup.go internal/cli/profile_setup_translations.go` → 0 matches (wizard + i18n cleaned)
+../../.moai/specs/SPEC-V3R6-STATUSLINE-PRESET-RETIRE-001/spec.md:370:- `grep -n 'preset:\|mode:' internal/template/templates/.moai/config/sections/statusline.yaml` → 0 matches (template already has no mode: line; preset: removed)
+../../.moai/specs/SPEC-V3R6-STATUSLINE-PRESET-RETIRE-001/spec.md:371:- `grep -n 'id="statusline_preset"\|fieldsetStatusline' internal/web/fieldsets.templ internal/web/root.templ` → 0 matches (fieldset + caller both gone)
+../../.moai/specs/SPEC-V3R6-STATUSLINE-PRESET-RETIRE-001/spec.md:372:- 4-locale `preset:` AND `mode:` line removal parity via `scripts/docs-i18n-check.sh`
+../../.moai/specs/SPEC-V3R6-STATUSLINE-PRESET-RETIRE-001/spec.md:373:- Segment rendering byte-parity via existing renderer tests (zero modifications to renderer_test.go expectation values)
+../../.moai/specs/SPEC-ZONE-REGISTRY-HARDEN-001/spec.md:57:- 문서: `.moai/specs/SPEC-ZONE-REGISTRY-RESYNC-001/plan.md:108` — 리터럴 체크 설계 문단이 `strings.Count(rawFileContent, clause)`(**발생 의미론**: 같은 행 2회 적중 = 2)로 기술
+../../.moai/specs/SPEC-ZONE-REGISTRY-HARDEN-001/spec.md:58:- 구현: `internal/constitution/registry_sync_test.go:363-379` `literalHitCount` — 주석이 명시적으로 "the `grep -F -c` equivalent: the number of **LINES** in raw that contain clause"(**라인 수 의미론**: 같은 행 2회 적중 = 1)
+../../.moai/specs/SPEC-ZONE-REGISTRY-HARDEN-001/spec.md:59:- acceptance: `SPEC-ZONE-REGISTRY-RESYNC-001/acceptance.md:50` — `grep -F -c` 로 이미 구현과 일치
+../../.moai/specs/SPEC-ZONE-REGISTRY-HARDEN-001/spec.md:60:- 현 데이터는 양쪽 의미론에서 once=97(감사 독립 측정)이라 양쪽 통과 — 동작 결함이 아니라 **설계 문단의 서술 오기**다.
