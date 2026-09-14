@@ -1,0 +1,30 @@
+=== RUN   TestPtyCaptureChild
+  ● 1 / 1
+┃ Fixture confirm title
+┃ Fixture confirm description text
+┃
+┃ Yes   No
+
+←/→ toggle • enter submit • y Yes • n No
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

@@ -314,8 +314,19 @@ func TestProfileSetupAbsorbed_PreservationTable(t *testing.T) {
 				if prefs.PermissionMode != "" {
 					t.Errorf("saved permission mode = %q, want the empty string", prefs.PermissionMode)
 				}
-				if got := strings.Count(run.stdout.String(), acceptEditsConfirmationLine); got != 1 {
-					t.Errorf("acceptEdits confirmation line printed %d times, want exactly 1; output:\n%s", got, run.stdout.String())
+				// Counted via the locale-stable anchor tokens: the notice is
+				// localized per the wizard's ending locale (REQ-TRI-006), so
+				// the English sentence is not guaranteed to be the one that
+				// rendered. The "acceptEdits"+"settings.local.json" token pair
+				// survives verbatim in every locale.
+				notices := 0
+				for _, line := range strings.Split(run.stdout.String(), "\n") {
+					if strings.Contains(line, "acceptEdits") && strings.Contains(line, "settings.local.json") {
+						notices++
+					}
+				}
+				if notices != 1 {
+					t.Errorf("acceptEdits confirmation line printed %d times, want exactly 1; output:\n%s", notices, run.stdout.String())
 				}
 			},
 		},
