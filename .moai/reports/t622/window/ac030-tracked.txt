@@ -1,2 +1,0 @@
-.agents/skills/moai-sync/SKILL.md
-internal/template/templates/.agents/skills/moai-sync/SKILL.md

@@ -1,2 +1,0 @@
-internal/cli/launcher.go:142:		return errors.New("GPT gateway launch is awaiting transport verification; use moai gpt status to inspect login")
-internal/cli/gpt.go:54:			return errors.New("GPT gateway launch is awaiting transport verification; use moai gpt status to inspect login")

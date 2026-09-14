@@ -1,6 +1,0 @@
-internal/migration/version.go
-internal/migration/version_windows.go
-internal/session/store.go
-internal/spec/lock_windows.go
-internal/tui/detect.go
-internal/tui/detect_test.go

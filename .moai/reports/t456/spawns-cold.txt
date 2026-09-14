@@ -1,3 +1,0 @@
-rev-parse --git-dir --show-toplevel
-status --porcelain --branch
-log origin/develop --format=%B

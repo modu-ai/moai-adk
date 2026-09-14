@@ -1,2 +1,0 @@
-../../../../.claude/skills/moai/workflows/sync/delivery.md 0
-../../../../internal/template/templates/.claude/skills/moai/workflows/sync/delivery.md 0

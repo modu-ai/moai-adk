@@ -1,1 +1,0 @@
-.moai/specs/SPEC-CHAIN-CORE-001/progress.md

@@ -1,4 +1,0 @@
-# github.com/modu-ai/moai-adk/internal/cli [github.com/modu-ai/moai-adk/internal/cli.test]
-internal/cli/gateway_provider_contract_test.go:76:19: undefined: newNativeGatewayBindingWithStart
-FAIL	github.com/modu-ai/moai-adk/internal/cli [build failed]
-FAIL

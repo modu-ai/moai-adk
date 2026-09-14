@@ -1,8 +1,0 @@
---- FAIL: TestIdleModelChangeRepinsAndCarriesNewModel (0.35s)
-    model_test.go:28: idle model change rejected invalid App Server conversation or tool result
---- FAIL: TestWaitingAndNewPhaseModelChangeStayRejected (0.32s)
-    --- FAIL: TestWaitingAndNewPhaseModelChangeStayRejected/new (0.15s)
-        model_test.go:108: first-turn model change accepted <nil>
-FAIL
-FAIL	github.com/modu-ai/moai-adk/internal/codexbridge	1.212s
-FAIL

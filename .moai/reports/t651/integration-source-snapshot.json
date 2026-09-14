@@ -1,9 +1,0 @@
-{
-  "source_session_id": "01a08e7b-6aa0-7361-ab7e-ea8da1f02228",
-  "source_worktree": "/Users/goos/MoAI/moai-adk-go/.claude/worktrees/moai-proxy-unified",
-  "source_head": "81c1d58f9",
-  "snapshot_directory": "/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/moai-gateway-source-9lbccel0",
-  "files": 122,
-  "state": "preserved only; no integration claim",
-  "tracked_files": "not copied; selective gateway CLI patches required"
-}

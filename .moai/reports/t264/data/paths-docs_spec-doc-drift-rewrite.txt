@@ -1,3 +1,0 @@
-.moai/specs/SPEC-UPDATE-DOC-DRIFT-001/acceptance.md
-.moai/specs/SPEC-UPDATE-DOC-DRIFT-001/plan.md
-.moai/specs/SPEC-UPDATE-DOC-DRIFT-001/spec.md

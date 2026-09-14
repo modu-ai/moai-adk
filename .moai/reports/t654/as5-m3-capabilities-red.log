@@ -1,5 +1,0 @@
---- FAIL: TestGatewayNativeModelCapabilitiesPerProvider (0.00s)
-    gateway_launch_assembly_test.go:141: glm row glm-tier-high declares image acceptance; GLM is text-only (AS-020)
-FAIL
-FAIL	github.com/modu-ai/moai-adk/internal/cli	0.948s
-FAIL

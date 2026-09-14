@@ -1,3 +1,0 @@
-total 0
-drwxr-xr-x@ 2 goos  wheel   64 Sep 10 23:12 .
-drwxr-xr-x@ 5 goos  wheel  160 Sep 10 23:12 ..

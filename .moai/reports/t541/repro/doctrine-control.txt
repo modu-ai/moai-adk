@@ -1,3 +1,0 @@
-/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t541/internal/template/templates/.claude/agents/moai/plan-auditor.md:8
-/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t541/.claude/agents/moai/plan-auditor.md:8
-exit=0

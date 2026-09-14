@@ -1,5 +1,0 @@
---- FAIL: TestGatewayContextPathCapabilityGate (0.00s)
-    context_paths_test.go:38: image input on a text-only route answered 200, want explicit 400
-FAIL
-FAIL	github.com/modu-ai/moai-adk/internal/gateway	0.570s
-FAIL

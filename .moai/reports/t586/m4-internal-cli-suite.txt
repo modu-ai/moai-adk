@@ -1,2 +1,0 @@
-ok  	github.com/modu-ai/moai-adk/internal/cli	1582.680s
-exit=0

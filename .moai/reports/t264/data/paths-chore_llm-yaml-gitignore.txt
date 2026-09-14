@@ -1,2 +1,0 @@
-.gitignore
-.moai/config/sections/llm.yaml

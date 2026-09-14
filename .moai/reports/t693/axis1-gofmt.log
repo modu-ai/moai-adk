@@ -1,8 +1,0 @@
-=== RED: gofmt -l .moai/reports/t649/ (baseline 74d872aaf) ===
-.moai/reports/t649/context-window-evidence/e2e/context_probe_test.go
-.moai/reports/t649/independent-evidence/audit_gateway_test.go
-.moai/reports/t649/independent-evidence/audit_test.go
-.moai/reports/t649/reaudit-evidence/audit_gateway_test.go
-=== FIX ===
-gofmt -w (4 files above)
-=== GREEN: gofmt -l (empty below = clean) ===
