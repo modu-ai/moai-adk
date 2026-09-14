@@ -122,7 +122,7 @@ needs_clarification_markers: none
 spec: SPEC-CLI-TUX-RENDER-I18N-001
 phase: run
 run_complete_at: 2026-09-14
-run_commit_sha: "pending-backfill-run"  # M4 커밋 SHA — 후속 커밋에서 백필 (D3 자기참조 면제)
+run_commit_sha: "66d790960"  # M4 커밋 — pending-backfill-run 플레이스홀더 백필 (D3 자기참조 면제)
 run_status: complete
 ac_pass_count: 9
 ac_fail_count: 0
