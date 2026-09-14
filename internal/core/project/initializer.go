@@ -49,11 +49,11 @@ type InitOptions struct {
 	// Phase 1 wizard fields (REQ-IWE-001..005) — populated from wizard result or CLI flags.
 	// (The former project-mode field was removed by SPEC-INIT-UPDATE-CONSISTENCY-001
 	// REQ-ICU-001: project.mode had no Go reader.)
-	LSPEnabled                bool   // lsp.enabled (B3)
-	EnforceQuality            bool   // quality.enforce_quality (B5); default true
-	CoverageExemptionsEnabled bool   // quality.coverage_exemptions.enabled (B5); default false
-	DesignEnabled             bool   // design.enabled (B8); default true
-	ClaudeDesignEnabled       bool   // design.claude_design.enabled (B8); default true
+	LSPEnabled                bool // lsp.enabled (B3)
+	EnforceQuality            bool // quality.enforce_quality (B5); default true
+	CoverageExemptionsEnabled bool // quality.coverage_exemptions.enabled (B5); default false
+	DesignEnabled             bool // design.enabled (B8); default true
+	ClaudeDesignEnabled       bool // design.claude_design.enabled (B8); default true
 
 	// Worktree advisory. Persisted to workflow.worktree.auto_create at init
 	// ONLY when the WorktreeAutoCreateSet tracker fired — an explicit
