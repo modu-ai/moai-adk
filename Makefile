@@ -24,7 +24,7 @@ LOCAL_RELEASE_DIR ?= $(HOME)/.moai/releases
 PLATFORM := $(shell go env GOOS)-$(shell go env GOARCH)
 RELEASE_BINARY := moai-$(VERSION)-$(PLATFORM)
 
-.PHONY: all build test lint fix clean install generate templ-generate help release-local constitution-check ci-local pr-merge ci-disable verify-required-checks tui-snapshot tui-snapshot-verify preflight lint-fast test-race-short agents-emit agents-emit-check commands-emit commands-emit-check embed-check fmt-check tool-policy-drift-check
+.PHONY: all build test lint fix clean install verify-local-install generate templ-generate help release-local constitution-check ci-local pr-merge ci-disable verify-required-checks tui-snapshot tui-snapshot-verify preflight lint-fast test-race-short agents-emit agents-emit-check commands-emit commands-emit-check embed-check fmt-check tool-policy-drift-check
 
 all: lint test build ## Run lint, test, and build
 
@@ -89,6 +89,16 @@ release-local: build ## Create a local release for development updates
 
 install: ## Install the binary
 	go install $(LDFLAGS) ./cmd/moai
+
+# Prove that the installed executable is the exact file just built, then prove
+# that it can report its injected provenance. Byte identity is stronger than
+# scanning printable strings and avoids macOS /usr/bin/strings, which is gated
+# behind the system-wide Xcode licence on some developer machines.
+verify-local-install: ## Verify installed binary identity and version (BIN=<built>, LOCAL_INSTALL_BIN=<installed>)
+	@sh ./scripts/verify-local-install.sh \
+		"$(or $(BIN),bin/$(BINARY_NAME))" \
+		"$(or $(LOCAL_INSTALL_BIN),$(HOME)/go/bin/$(BINARY_NAME))" \
+		"$(COMMIT)"
 
 test: templ-generate ## Run tests with race detection
 	go test -race -coverprofile=coverage.out -covermode=atomic ./...
