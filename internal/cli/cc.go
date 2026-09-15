@@ -178,7 +178,7 @@ func runClaudeEntry(cmd *cobra.Command, args []string, commandName, mode, backen
 		restoreFactory := enterFactoryLeadMode(entry.FactoryWorkers, leadLabel)
 		defer restoreFactory()
 		_ = kanban.RecordFactoryRunStart(launchProjectRoot(), os.Getenv(config.EnvMoaiKanbanID), backend, entry.Spec)
-		defer exportKanbanLaunchFacts(entry.Spec, backend)()
+		defer exportFactoryLaunchFacts(entry.Spec, backend)()
 		var leadName string
 		filteredArgs, leadName = appendLeadName(filteredArgs, launchProjectRoot(), cmd.ErrOrStderr())
 		defer exportLeadSessionName(leadName)()
@@ -197,7 +197,7 @@ func runClaudeEntry(cmd *cobra.Command, args []string, commandName, mode, backen
 		}
 		filteredArgs = replaceNamedLabel(filteredArgs, factoryLabel, finalLabel)
 		defer enterFactoryWorkerMode(finalLabel, entry.FactoryWorkers)()
-		defer exportKanbanLaunchFacts(entry.Spec, backend)()
+		defer exportFactoryLaunchFacts(entry.Spec, backend)()
 		settingsFlag, settingsCleanup := prepareKanbanSettings(profileName, filteredArgs)
 		if len(settingsFlag) > 0 {
 			filteredArgs = append(filteredArgs, settingsFlag...)

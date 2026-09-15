@@ -660,7 +660,9 @@ func launchClaudeWithGateway(profileName string, extraArgs []string, binding *ga
 	for i := 0; i < len(extraArgs); i++ {
 		arg := extraArgs[i]
 		if arg == "--" {
-			passThrough = append(passThrough, extraArgs[i:]...)
+			// Consume MoAI's separator, not Claude's flags. A second separator
+			// in the tail belongs to Claude and must remain byte-for-byte intact.
+			passThrough = append(passThrough, extraArgs[i+1:]...)
 			break
 		}
 		switch arg {

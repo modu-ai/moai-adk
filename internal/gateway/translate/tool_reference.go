@@ -1,23 +1,37 @@
 package translate
 
-import "errors"
+import (
+	"encoding/json"
+	"errors"
+)
 
 // toolResultContent preserves text and represents discovered tool references using
 // their request-local Responses names. Only supplied schemas can be activated.
-func toolResultContent(v any, forward map[string]string, definitions map[string]any) ([]string, []string, error) {
+func toolResultContent(v any, forward map[string]string, definitions map[string]any, images bool) ([]any, []string, error) {
 	blocks, err := contentBlocks(v)
 	if err != nil {
 		return nil, nil, err
 	}
-	texts := []string{}
+	content := []any{}
 	references := []string{}
 	for _, block := range blocks {
+		if block["type"] == "image" && images {
+			raw, _ := json.Marshal(block)
+			imageURL, err := ImageSourceURL(raw)
+			if err != nil {
+				return nil, nil, err
+			}
+			content = append(content, map[string]any{"type": "input_image", "image_url": imageURL})
+			continue
+		}
 		if block["type"] != "tool_reference" {
 			part, err := textContent([]any{block})
 			if err != nil {
 				return nil, nil, err
 			}
-			texts = append(texts, part...)
+			for _, text := range part {
+				content = append(content, map[string]any{"type": "input_text", "text": text})
+			}
 			continue
 		}
 		if err := keys(block, "type", "tool_name"); err != nil {
@@ -27,8 +41,8 @@ func toolResultContent(v any, forward map[string]string, definitions map[string]
 		if err != nil || definitions[name] == nil || forward[name] == "" {
 			return nil, nil, errors.New("invalid or unavailable tool reference")
 		}
-		texts = append(texts, "Tool available: "+forward[name])
+		content = append(content, map[string]any{"type": "input_text", "text": "Tool available: " + forward[name]})
 		references = append(references, name)
 	}
-	return texts, references, nil
+	return content, references, nil
 }

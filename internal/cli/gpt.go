@@ -53,7 +53,22 @@ func newGPTCommand(services gptCommandServices) *cobra.Command {
 
 			return errors.New("GPT gateway launch is awaiting transport verification; use moai gpt status to inspect login")
 		}
+		if err := rejectRetiredGPTKanban(args); err != nil {
+			return err
+		}
 		return runClaudeEntry(cmd, args, "gpt", "gpt", kanban.BackendGPT, launch)
 	}
 	return cmd
+}
+
+func rejectRetiredGPTKanban(args []string) error {
+	for _, arg := range args {
+		if arg == "--" {
+			break
+		}
+		if arg == kanbanFlagShort || arg == kanbanFlagLong || strings.HasPrefix(arg, kanbanFlagShort+"=") || strings.HasPrefix(arg, kanbanFlagLong+"=") {
+			return errors.New("moai gpt -k/--kanban is retired; use moai gpt -f [N] for Factory Mode")
+		}
+	}
+	return nil
 }

@@ -43,6 +43,9 @@ type record struct {
 	Owner                         codextools.Binding
 	Phase, TurnID, CallID, Prefix string
 	Model, CWD                    string
+	// Optional for schema-2 compatibility. Older idle barriers update the
+	// thread's developer instructions once when next attached.
+	InstructionDigest string `json:",omitempty"`
 }
 
 func OpenStore(dir string) (*FileStore, error) {
@@ -181,4 +184,43 @@ func (s *FileStore) Barrier(owner codextools.Binding) (Barrier, bool, error) {
 		return Barrier{}, true, ErrScope
 	}
 	return Barrier{Phase: r.Phase, Prefix: r.Prefix, Model: r.Model, CWD: r.CWD}, true, nil
+}
+
+// removeCompleted deletes only an acknowledged idle ephemeral owner's barrier.
+// The profile lease excludes concurrent external writers; verify identity and
+// file permissions again before removing the exact hashed regular file.
+func (s *FileStore) removeCompleted(owner codextools.Binding) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if err := codexapp.ValidatePrivatePath(s.dir, true); err != nil {
+		return err
+	}
+	path := filepath.Join(s.dir, storeKey(owner)+".json")
+	if err := codexapp.ValidatePrivatePath(path, false); err != nil {
+		return err
+	}
+	raw, err := os.ReadFile(path)
+	if err != nil {
+		return err
+	}
+	var r record
+	if json.Unmarshal(raw, &r) != nil || r.Schema != storeSchema || r.Owner != owner || r.Phase != "idle" {
+		return ErrScope
+	}
+	if err = os.Remove(path); err != nil {
+		return err
+	}
+	if runtime.GOOS == "windows" {
+		return nil
+	}
+	dir, err := os.Open(s.dir)
+	if err != nil {
+		return err
+	}
+	syncErr := dir.Sync()
+	closeErr := dir.Close()
+	if syncErr != nil {
+		return syncErr
+	}
+	return closeErr
 }

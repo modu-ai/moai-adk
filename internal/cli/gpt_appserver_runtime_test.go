@@ -58,7 +58,7 @@ func TestManagedGPTLiveSimpleTurn(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer client.Close()
+	defer func() { _ = client.Close() }()
 	if _, err = client.Initialize(ctx, "moai-gpt-live-test", "1"); err != nil {
 		t.Fatal(err)
 	}
@@ -153,7 +153,7 @@ func TestManagedGPTLiveSimpleTurn(t *testing.T) {
 	if err != nil {
 		t.Fatalf("live tool continuation: %T %v", err, err)
 	}
-	defer continued.Body.Close()
+	defer func() { _ = continued.Body.Close() }()
 	continuedRaw, err := io.ReadAll(continued.Body)
 	if err != nil || continued.StatusCode != 200 || !strings.Contains(strings.ToLower(string(continuedRaw)), "pong") {
 		t.Fatalf("live continuation status=%d body=%s err=%v", continued.StatusCode, continuedRaw, err)
@@ -232,7 +232,7 @@ func TestManagedGPTLiveResume(t *testing.T) {
 
 	secondClient, secondEngine, secondAdapter, secondGrant := start()
 	defer secondEngine.Close()
-	defer secondClient.Close()
+	defer func() { _ = secondClient.Close() }()
 	secondBody, _ := json.Marshal(map[string]any{"model": entry.RouteID, "max_tokens": 64, "stream": false, "messages": []any{
 		map[string]string{"role": "user", "content": "Reply with exactly LIVE_RESUME_BASE_OK."},
 		map[string]string{"role": "assistant", "content": "LIVE_RESUME_BASE_OK"},
@@ -242,7 +242,7 @@ func TestManagedGPTLiveResume(t *testing.T) {
 	if err != nil {
 		t.Fatalf("resume send: %T %v", err, err)
 	}
-	defer second.Body.Close()
+	defer func() { _ = second.Body.Close() }()
 	secondRaw, err := io.ReadAll(second.Body)
 	if err != nil || !strings.Contains(string(secondRaw), "LIVE_RESUME_OK") {
 		t.Fatalf("resume body=%s err=%v", secondRaw, err)
