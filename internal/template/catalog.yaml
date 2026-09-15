@@ -6,7 +6,7 @@ catalog:
             - name: moai
               tier: core
               path: templates/.claude/skills/moai/
-              hash: 94fcaf199cb59d72c2d36249d2f7b0ee3efe1a42e538fe000a59a11b4d36b142
+              hash: 0afffd09267343bd8398003cc846a40031e571051435060090b60ad4241996a3
               version: 1.0.0
             - name: moai-foundation-cc
               tier: core
@@ -148,6 +148,11 @@ catalog:
               tier: core
               path: templates/.claude/agents/moai/super-advisor.md
               hash: 529819c72e932597cf367ac158f7f138751f8d3cef833941955b09bb05db386e
+              version: 1.0.0
+            - name: mission-governor
+              tier: core
+              path: templates/.claude/agents/moai/mission-governor.md
+              hash: 5cb809a101714dc020ee26749ebf393413b14047042b237cec2a727a0271bb96
               version: 1.0.0
             - name: manager-design
               tier: core

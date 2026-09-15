@@ -253,9 +253,9 @@ func TestAllAgentsInCatalog(t *testing.T) {
 	// retained agent — /moai e2e revival, web/mobile/desktop E2E execution owner);
 	// net +1 = 10.
 	// SPEC-NAVIGATOR-SYNC hierarchical-team (2026-08): manager-kanban added
-	// (11th MoAI-custom retained agent — depth-1 Agent fan-out coordinator);
-	// net +1 = 11.
-	const expectedAgentCount = 11
+	// (11th MoAI-custom retained agent — depth-1 Agent fan-out coordinator),
+	// plus mission-governor; net +2 = 12.
+	const expectedAgentCount = 12
 	if len(diskAgents) != expectedAgentCount {
 		t.Errorf("expected %d agent files on disk, found %d: %v", expectedAgentCount, len(diskAgents), diskAgents)
 	}

@@ -127,7 +127,7 @@ func TestResolveAgentModelEffort_LowColumn(t *testing.T) {
 }
 
 // TestDefaultProfileMatrix_Shape asserts the structural invariants of the
-// per-agent matrix: 3 profiles x 12 agents = 36 cells, models restricted to
+// per-agent matrix: 3 profiles x 13 agents = 39 cells, models restricted to
 // {opus, sonnet} (fable is retired from the matrix — it is dominated by Opus 5
 // on the coding axis at every effort), efforts restricted to
 // {low, medium, high, max} (no `xhigh` cell — on Opus 5 xhigh scores the same
@@ -167,8 +167,8 @@ func TestDefaultProfileMatrix_Shape(t *testing.T) {
 			}
 		}
 	}
-	if total != 36 {
-		t.Errorf("matrix cell count = %d, want 36", total)
+	if total != 39 {
+		t.Errorf("matrix cell count = %d, want 39", total)
 	}
 }
 

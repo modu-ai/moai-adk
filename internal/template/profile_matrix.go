@@ -125,7 +125,7 @@ const (
 	GroupSpecAuditors = "spec_auditors"
 	// GroupDevelop covers manager-develop.
 	GroupDevelop = "develop"
-	// GroupAdvisor covers super-advisor.
+	// GroupAdvisor covers the non-writing super-advisor and mission-governor.
 	GroupAdvisor = "advisor"
 	// GroupDesignHarnessE2E covers manager-design, builder-harness, e2e-tester.
 	GroupDesignHarnessE2E = "design_harness_e2e"
@@ -150,21 +150,22 @@ const (
 // built-in Explore now has an explicit group, so only user-added agents
 // inherit).
 var agentGroupMembership = map[string]string{
-	"manager-spec":    GroupSpecAuditors,
-	"plan-auditor":    GroupSpecAuditors,
-	"sync-auditor":    GroupSpecAuditors,
-	"manager-develop": GroupDevelop,
-	"super-advisor":   GroupAdvisor,
-	"manager-design":  GroupDesignHarnessE2E,
-	"manager-lead":    GroupLead,
-	"builder-harness": GroupDesignHarnessE2E,
-	"e2e-tester":      GroupDesignHarnessE2E,
-	"manager-docs":    GroupDocs,
-	"manager-git":     GroupGit,
-	"Explore":         GroupExplore,
+	"manager-spec":     GroupSpecAuditors,
+	"plan-auditor":     GroupSpecAuditors,
+	"sync-auditor":     GroupSpecAuditors,
+	"manager-develop":  GroupDevelop,
+	"super-advisor":    GroupAdvisor,
+	"mission-governor": GroupAdvisor,
+	"manager-design":   GroupDesignHarnessE2E,
+	"manager-lead":     GroupLead,
+	"builder-harness":  GroupDesignHarnessE2E,
+	"e2e-tester":       GroupDesignHarnessE2E,
+	"manager-docs":     GroupDocs,
+	"manager-git":      GroupGit,
+	"Explore":          GroupExplore,
 }
 
-// profileMatrixAgentOrder is the canonical display/derivation order of the 12
+// profileMatrixAgentOrder is the canonical display/derivation order of the 13
 // retained agents for the model-profile preview surfaces (REQ-MPM-020). Explore
 // is included in the display and now resolves to its own explore group cell
 // (sonnet/low, profile-invariant), no longer the inherit sentinel.
@@ -179,6 +180,7 @@ var profileMatrixAgentOrder = []string{
 	"sync-auditor",
 	"manager-develop",
 	"super-advisor",
+	"mission-governor",
 	"manager-design",
 	"manager-lead",
 	"builder-harness",
@@ -197,8 +199,8 @@ func ProfileMatrixAgents() []string {
 	return out
 }
 
-// defaultProfileMatrix is the per-AGENT model+effort Go-code SSOT: 12 mapped
-// agents x 3 profiles = 36 cells. Outer key: profile {high, medium, low}. Inner
+// defaultProfileMatrix is the per-AGENT model+effort Go-code SSOT: 13 mapped
+// agents x 3 profiles = 39 cells. Outer key: profile {high, medium, low}. Inner
 // key: retained agent NAME (not a group — the group layer is display-only now,
 // because per-agent cells split two of the former groups). Value: {model,
 // effort}. This is the authoritative fallback for any cell absent from config
@@ -256,50 +258,53 @@ func ProfileMatrixAgents() []string {
 // `inherit` never appears inside the matrix — it survives only as the
 // unmapped-agent fallback.
 //
-// @MX:ANCHOR: [AUTO] defaultProfileMatrix — per-agent model+effort SSOT (33 cells)
+// @MX:ANCHOR: [AUTO] defaultProfileMatrix — per-agent model+effort SSOT (39 cells)
 // @MX:REASON: [AUTO] fan_in >= 3 (ResolveAgentModelEffort resolver + moai model profile CLI + web preview + harness class derivation); cells are settled design input, re-derivation forbidden
 var defaultProfileMatrix = map[string]map[string]config.ModelEffort{
 	PerformanceTierHigh: {
-		"manager-spec":    {Model: "opus", Effort: EffortLevelMedium},
-		"plan-auditor":    {Model: "opus", Effort: EffortLevelHigh},
-		"sync-auditor":    {Model: "opus", Effort: EffortLevelHigh},
-		"manager-develop": {Model: "opus", Effort: EffortLevelMedium},
-		"super-advisor":   {Model: "opus", Effort: EffortLevelHigh},
-		"manager-design":  {Model: "opus", Effort: EffortLevelHigh},
-		"manager-lead":    {Model: "opus", Effort: EffortLevelHigh},
-		"builder-harness": {Model: "opus", Effort: EffortLevelHigh},
-		"e2e-tester":      {Model: "opus", Effort: EffortLevelMedium},
-		"manager-docs":    {Model: "sonnet", Effort: EffortLevelLow},
-		"manager-git":     {Model: "sonnet", Effort: EffortLevelLow},
-		"Explore":         {Model: "sonnet", Effort: EffortLevelLow},
+		"manager-spec":     {Model: "opus", Effort: EffortLevelMedium},
+		"plan-auditor":     {Model: "opus", Effort: EffortLevelHigh},
+		"sync-auditor":     {Model: "opus", Effort: EffortLevelHigh},
+		"manager-develop":  {Model: "opus", Effort: EffortLevelMedium},
+		"super-advisor":    {Model: "opus", Effort: EffortLevelHigh},
+		"mission-governor": {Model: "opus", Effort: EffortLevelHigh},
+		"manager-design":   {Model: "opus", Effort: EffortLevelHigh},
+		"manager-lead":     {Model: "opus", Effort: EffortLevelHigh},
+		"builder-harness":  {Model: "opus", Effort: EffortLevelHigh},
+		"e2e-tester":       {Model: "opus", Effort: EffortLevelMedium},
+		"manager-docs":     {Model: "sonnet", Effort: EffortLevelLow},
+		"manager-git":      {Model: "sonnet", Effort: EffortLevelLow},
+		"Explore":          {Model: "sonnet", Effort: EffortLevelLow},
 	},
 	PerformanceTierMedium: {
-		"manager-spec":    {Model: "opus", Effort: EffortLevelMedium},
-		"plan-auditor":    {Model: "opus", Effort: EffortLevelHigh},
-		"sync-auditor":    {Model: "opus", Effort: EffortLevelHigh},
-		"manager-develop": {Model: "opus", Effort: EffortLevelMedium},
-		"super-advisor":   {Model: "opus", Effort: EffortLevelHigh},
-		"manager-design":  {Model: "opus", Effort: EffortLevelHigh},
-		"manager-lead":    {Model: "opus", Effort: EffortLevelHigh},
-		"builder-harness": {Model: "opus", Effort: EffortLevelMedium},
-		"e2e-tester":      {Model: "opus", Effort: EffortLevelLow},
-		"manager-docs":    {Model: "sonnet", Effort: EffortLevelLow},
-		"manager-git":     {Model: "sonnet", Effort: EffortLevelLow},
-		"Explore":         {Model: "sonnet", Effort: EffortLevelLow},
+		"manager-spec":     {Model: "opus", Effort: EffortLevelMedium},
+		"plan-auditor":     {Model: "opus", Effort: EffortLevelHigh},
+		"sync-auditor":     {Model: "opus", Effort: EffortLevelHigh},
+		"manager-develop":  {Model: "opus", Effort: EffortLevelMedium},
+		"super-advisor":    {Model: "opus", Effort: EffortLevelHigh},
+		"mission-governor": {Model: "opus", Effort: EffortLevelHigh},
+		"manager-design":   {Model: "opus", Effort: EffortLevelHigh},
+		"manager-lead":     {Model: "opus", Effort: EffortLevelHigh},
+		"builder-harness":  {Model: "opus", Effort: EffortLevelMedium},
+		"e2e-tester":       {Model: "opus", Effort: EffortLevelLow},
+		"manager-docs":     {Model: "sonnet", Effort: EffortLevelLow},
+		"manager-git":      {Model: "sonnet", Effort: EffortLevelLow},
+		"Explore":          {Model: "sonnet", Effort: EffortLevelLow},
 	},
 	PerformanceTierLow: {
-		"manager-spec":    {Model: "opus", Effort: EffortLevelMedium},
-		"plan-auditor":    {Model: "opus", Effort: EffortLevelMedium},
-		"sync-auditor":    {Model: "opus", Effort: EffortLevelMedium},
-		"manager-develop": {Model: "opus", Effort: EffortLevelMedium},
-		"super-advisor":   {Model: "opus", Effort: EffortLevelHigh},
-		"manager-design":  {Model: "opus", Effort: EffortLevelMedium},
-		"manager-lead":    {Model: "opus", Effort: EffortLevelMedium},
-		"builder-harness": {Model: "opus", Effort: EffortLevelLow},
-		"e2e-tester":      {Model: "sonnet", Effort: EffortLevelLow},
-		"manager-docs":    {Model: "sonnet", Effort: EffortLevelLow},
-		"manager-git":     {Model: "sonnet", Effort: EffortLevelLow},
-		"Explore":         {Model: "sonnet", Effort: EffortLevelLow},
+		"manager-spec":     {Model: "opus", Effort: EffortLevelMedium},
+		"plan-auditor":     {Model: "opus", Effort: EffortLevelMedium},
+		"sync-auditor":     {Model: "opus", Effort: EffortLevelMedium},
+		"manager-develop":  {Model: "opus", Effort: EffortLevelMedium},
+		"super-advisor":    {Model: "opus", Effort: EffortLevelHigh},
+		"mission-governor": {Model: "opus", Effort: EffortLevelHigh},
+		"manager-design":   {Model: "opus", Effort: EffortLevelMedium},
+		"manager-lead":     {Model: "opus", Effort: EffortLevelMedium},
+		"builder-harness":  {Model: "opus", Effort: EffortLevelLow},
+		"e2e-tester":       {Model: "sonnet", Effort: EffortLevelLow},
+		"manager-docs":     {Model: "sonnet", Effort: EffortLevelLow},
+		"manager-git":      {Model: "sonnet", Effort: EffortLevelLow},
+		"Explore":          {Model: "sonnet", Effort: EffortLevelLow},
 	},
 }
 

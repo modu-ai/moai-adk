@@ -84,9 +84,11 @@ moai glm -f lane-3            # …GLM 백엔드로 띄운 레인 하나
 보드는 `backlog → plan → run → sync → done` 다섯 칸이다. `backlog`에는 주인 세션이 일부러 없다. 그래서 일감은 사람이 넣을 때만 보드에 들어온다.
 
 ```text
-/moai todo "rename 힌트가 낡았다"   # 카드 추가
-/moai todo                          # 큐 확인
+/moai gtd "rename 힌트가 낡았다"   # 카드 추가
+/moai gtd                          # 큐 확인
 ```
+
+`/moai gtd`가 정식 작업 관리 표면입니다. `/moai todo`는 같은 SQLite 대기열, 카드 ID, 순서, 보관·복원 동작을 쓰는 호환 이름으로 남습니다. `moai gtd capture|clarify|organize|reflect|engage`는 승인된 일이 기존 `backlog → plan → run → sync → done` 개발 흐름에 들어가기 전에 Capture → Clarify → Organize → Reflect → Engage를 실제 SQLite 상태로 이어 갑니다. 작업 receipt와 실제 상태 재확인이 중간 종료 뒤 발행·선택·배차의 중복을 막습니다.
 
 보드를 정직하게 유지하는 규칙이 둘 있다. 리드는 카드의 `progress.md`에서 **직접 읽은 증거로만** 카드를 넘긴다 — 동반 세션의 답장으로는 넘기지 않는다. 답장은 관측이 아니라 주장이고, 세션 간 전달은 보장되지도 않기 때문이다. 그리고 단계가 끝나면 리드가 해당 세션을 `/clear` 해달라고 요청한다. `/clear`는 사람이 직접 치는 명령이라 지시로 보낼 수 없다.
 
@@ -345,6 +347,10 @@ Codex가 활성화된 하네스(`moai init --llm codex|both`)에서 Codex의 상
 ### goal 엔진 — 진짜 경계가 있는 자율 루프
 
 완료 조건을 선언하면 세션이 조건을 채울 때까지 알아서 일한다. 턴 한도, 정체 가드, 벽시계 예산, 사전 승인 게이트가 묶여 있어 무한 루프에 빠지지 않는다. 기계적 조건(명령 종료 코드)과 모델 조건(대화 기록의 주장)을 같이 쓴다. `--max-turns 0`으로 auto-compact 기반 무한 골을 무장할 수도 있다 — 이때는 `--max-duration`과 정체 가드가 경계를 만든다.
+
+`moai goal --auto "<임무>"`는 별도의 `mission_mode=auto` 초안을 만들고, `approve`가 범위·행위·근거·한도를 한 번 봉인한다. 이후 `run`, `status`, `revoke`, 정책으로 제한된 `resume`가 그 저장 계약을 사용한다. `super-advisor`는 비구속 조언자이고 읽기 전용 `mission-governor`가 구조화된 결정을 내며, 결정적 owner adapter가 receipt 기반 대기열·배차, 명시 경로 커밋, lease가 있는 local develop `--no-ff` 병합을 수행한다. 지속 실행 능력이 실제 공급자에서 입증되지 않으면 `active-session-only`로 낮아지고, 원격 push·PR·병합 완료는 아직 입증되지 않았다. [GTD와 auto 임무 안내](https://adk.mo.ai.kr/ko/utility-commands/moai-gtd)
+
+최종 실행 경계는 더 엄격하다. `run --supervise`는 publish→pick→lease 기반 디스크 배차→commit→local develop `--no-ff` 계획을 제한 반복한다. 감독 Git 효과에는 분리된 `--card-worktree`와 `--develop-worktree` 경로가 필요하며, 기존 `--repo`만 쓰면 효과는 0건이다. 완료에는 참으로 판정된 typed evidence와 병합 ancestry를 봉인한 `0600` `--completion-receipt`가 추가로 필요하므로, 행동 목록 소진만으로 완료되지 않는다. 완료 상태 재실행도 효과 0건이다. `--recommend`는 권한이 아니며 각 효과에는 저장소 안의 `0600` governor receipt와 독립 감사 PASS receipt가 모두 필요하다. 미구성 원격·release provider는 성공을 흉내 내지 않고 `provider_unsupported`를 반환한다.
 
 ### 병렬 worktree
 
@@ -716,7 +722,7 @@ Claude의 각 티어는 `ANTHROPIC_DEFAULT_*_MODEL` 환경변수를 통해 GLM �
 | [시작하기](https://adk.mo.ai.kr/ko/getting-started) | 소개 · 설치 · Windows 가이드 · init 마법사 · 퀵스타트 · CLI 개요 · FAQ |
 | [핵심 개념](https://adk.mo.ai.kr/ko/core-concepts) | 정체성 · 컨스티튜션 · 하네스 엔지니어링 · SPEC 기반 개발 · DDD · TRUST 5 |
 | [워크플로우 커맨드](https://adk.mo.ai.kr/ko/workflow-commands) | `plan` · `run` · `sync` — SPEC 파이프라인 주축 |
-| [유틸리티 커맨드](https://adk.mo.ai.kr/ko/utility-commands) | `fix` · `loop` · `gate` · `review` · `clean` · `codemaps` · `e2e` · `feedback` · `goal` · `todo` |
+| [유틸리티 커맨드](https://adk.mo.ai.kr/ko/utility-commands) | `fix` · `loop` · `gate` · `review` · `clean` · `codemaps` · `e2e` · `feedback` · `goal` · `gtd` (`todo` 호환) |
 | [CLI 레퍼런스](https://adk.mo.ai.kr/ko/cli-reference) | 터미널 `moai` 바이너리의 모든 커맨드 (전체 49개) |
 | [Claude Code 가이드](https://adk.mo.ai.kr/ko/claude-code) | Claude Code 통합 — 기초 · 컨텍스트/메모리 · 에이전틱 · 확장성 |
 | [Multi-LLM](https://adk.mo.ai.kr/ko/multi-llm) | CG 설정 이전과 모델 정책 |

@@ -8,6 +8,12 @@ added_in: "v3.1"
 
 {{< new-badge v3.1 >}}
 
+{{< callout type="warning" >}}
+`/moai goal --auto "<임무>"`는 아래의 조건 선언형 루프와 다른 경로입니다. 자연어를 `mission_mode=auto`, `state=draft`로 저장할 뿐이며 승인이 필요합니다. 실제 공급자의 지속 실행 능력이 확인되지 않으면 `active-session-only`로 동작합니다. [명령 참고서](/ko/utility-commands/moai-goal#auto-임무-모드)
+{{< /callout >}}
+
+Auto 임무를 승인한 뒤에는 `goal run --supervise`가 봉인된 계획을 제한 반복합니다. 감독 Git 효과에는 분리된 `--card-worktree`와 `--develop-worktree`가 필요하며, 기존 `--repo`는 효과 0건으로 거절됩니다. `--recommend`는 권한이 아니고, 각 효과에는 typed true evidence와 결속된 `0600` governor 결정 receipt 및 별도의 독립 감사 PASS receipt가 필요합니다. 완료에는 행동 소진이 아니라 병합 ancestry가 담긴 `0600` 완료 receipt가 추가로 필요합니다. 미구성 원격·release provider는 `provider_unsupported`로 멈춥니다.
+
 # /moai goal
 
 끝나는 조건만 선언하면, 세션이 그 조건이 성립할 때까지 턴을 이어가는 **조건 선언형 자율 루프**입니다. 매 턴 끝에 평가기가 조건을 검사해, 조건이 채워지면 루프가 스스로 멈춥니다. 사용자가 매 단계마다 "계속"을 누르지 않아도 됩니다.

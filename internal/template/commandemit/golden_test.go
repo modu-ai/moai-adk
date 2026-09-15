@@ -29,7 +29,7 @@ const templatesDir = "../templates"
 
 // expectedCommandCount is the published-set size: one per command source
 // (AC-001).
-const expectedCommandCount = 16
+const expectedCommandCount = 17
 
 // emitRealSet runs the emitter over the committed template tree.
 func emitRealSet(t *testing.T) *commandemit.Publication {

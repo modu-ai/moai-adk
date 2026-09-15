@@ -48,7 +48,7 @@ llm:
   performance_tier: "medium"
 
   # Profile matrix (transparency + editability). Each profile column maps each
-  # retained agent NAME to a {model, effort} pair — 12 agents x 3 columns = 36
+  # retained agent NAME to a {model, effort} pair — 13 agents x 3 columns = 39
   # cells. The Go default (template.DefaultProfileMatrix) is the authoritative
   # fallback for any cell absent here. Agents not listed (any user-added agent)
   # stay model: inherit and are never injected.
@@ -105,6 +105,7 @@ llm:
       sync-auditor:    { model: opus,   effort: high }
       manager-develop: { model: opus,   effort: medium }
       super-advisor:   { model: opus,   effort: high }
+      mission-governor: { model: opus,  effort: high }
       manager-design:  { model: opus,   effort: high }
       manager-lead:    { model: opus,   effort: high }
       builder-harness: { model: opus,   effort: high }
@@ -118,6 +119,7 @@ llm:
       sync-auditor:    { model: opus,   effort: high }
       manager-develop: { model: opus,   effort: medium }
       super-advisor:   { model: opus,   effort: high }
+      mission-governor: { model: opus,  effort: high }
       manager-design:  { model: opus,   effort: high }
       manager-lead:    { model: opus,   effort: high }
       builder-harness: { model: opus,   effort: medium }
@@ -131,6 +133,7 @@ llm:
       sync-auditor:    { model: opus,   effort: medium }
       manager-develop: { model: opus,   effort: medium }
       super-advisor:   { model: opus,   effort: high }
+      mission-governor: { model: opus,  effort: high }
       manager-design:  { model: opus,   effort: medium }
       manager-lead:    { model: opus,   effort: medium }
       builder-harness: { model: opus,   effort: low }

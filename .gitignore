@@ -142,6 +142,7 @@ logs/*
 !.agents/skills/moai-fix/
 !.agents/skills/moai-gate/
 !.agents/skills/moai-goal/
+!.agents/skills/moai-gtd/
 !.agents/skills/moai-harness/
 !.agents/skills/moai-loop/
 !.agents/skills/moai-mx/
@@ -159,6 +160,7 @@ logs/*
 !.agents/skills/moai-fix/SKILL.md
 !.agents/skills/moai-gate/SKILL.md
 !.agents/skills/moai-goal/SKILL.md
+!.agents/skills/moai-gtd/SKILL.md
 !.agents/skills/moai-harness/SKILL.md
 !.agents/skills/moai-loop/SKILL.md
 !.agents/skills/moai-mx/SKILL.md
