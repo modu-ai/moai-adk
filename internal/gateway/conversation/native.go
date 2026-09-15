@@ -122,6 +122,7 @@ func transcriptModel(r record) (string, error) {
 	complete, native := false, false
 	recoverable := false
 	model := ""
+	compactParent := ""
 	rows := 0
 	for {
 		var row map[string]any
@@ -161,16 +162,32 @@ func transcriptModel(r record) (string, error) {
 			return "", ErrInvalid
 		}
 		switch typ {
+		case "system":
+			if row["subtype"] == "compact_boundary" {
+				compactParent = ""
+				if complete {
+					compactParent, _ = row["uuid"].(string)
+				}
+				// A boundary without its persisted summary is not a completed
+				// compaction. Nor may compaction complete an unfinished tool turn.
+				complete, recoverable = false, false
+			}
 		case "user":
 			if row["cwd"] != r.CWD {
 				return "", ErrInvalid
 			}
+			if compactParent != "" && nativeCompactSummary(row, compactParent) {
+				complete, compactParent = true, ""
+				continue
+			}
+			compactParent = ""
 			if nativeLocalUserRow(row) {
 				continue
 			}
 			recoverable = complete
 			complete = false
 		case "assistant":
+			compactParent = ""
 			if row["cwd"] != r.CWD {
 				return "", ErrInvalid
 			}
@@ -203,6 +220,27 @@ func transcriptModel(r record) (string, error) {
 		return "", ErrIncomplete
 	}
 	return model, nil
+}
+
+// Claude Code persists its generated compaction summary as a user row, but it
+// is not a new unanswered request. Require native flags and boundary lineage;
+// pasted summary text must never acquire completion authority.
+func nativeCompactSummary(row map[string]any, parent string) bool {
+	if row["parentUuid"] != parent || row["isCompactSummary"] != true || row["isVisibleInTranscriptOnly"] != true {
+		return false
+	}
+	if _, ok := row["origin"]; ok {
+		return false
+	}
+	if _, ok := row["promptSource"]; ok {
+		return false
+	}
+	message, ok := row["message"].(map[string]any)
+	if !ok || message["role"] != "user" {
+		return false
+	}
+	content, ok := message["content"].(string)
+	return ok && strings.HasPrefix(content, "This session is being continued from a previous conversation that ran out of context. The summary below covers the earlier portion of the conversation.\n\n")
 }
 
 // nativeAPIError recognizes Claude Code's terminal text-only failure display.

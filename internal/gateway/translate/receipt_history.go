@@ -1,6 +1,7 @@
 package translate
 
 import (
+	"bytes"
 	"context"
 	"encoding/hex"
 	"encoding/json"
@@ -44,6 +45,53 @@ const historyReplayGuidance = "conversation history changed, lacks reasoning, or
 // plus a fixed reason clause.
 type HistoryReplayError struct {
 	Cause ReplayCause
+	code  string
+}
+
+func (e HistoryReplayError) CauseCode() string {
+	if e.code != "" {
+		return e.code
+	}
+	if e.Cause == CauseLineage {
+		return "receipt_manifest_mismatch"
+	}
+	return "history_changed"
+}
+
+// rejectedHistory adds diagnostics only after the receipt verifier rejected
+// the request. Shapes here cannot authorize history or relax replay checks.
+func rejectedHistory(cause ReplayCause, raw []byte) HistoryReplayError {
+	err := HistoryReplayError{Cause: cause}
+	var messages []struct {
+		Role    string          `json:"role"`
+		Content json.RawMessage `json:"content"`
+	}
+	if json.Unmarshal(raw, &messages) != nil {
+		return err
+	}
+	var previous json.RawMessage
+	for _, message := range messages {
+		if message.Role != "assistant" {
+			previous = nil
+			continue
+		}
+		var blocks []struct {
+			Type string `json:"type"`
+		}
+		_ = json.Unmarshal(message.Content, &blocks)
+		for _, block := range blocks {
+			if block.Type == "agent_summary" {
+				err.code = "agent_summary_untrusted"
+				return err
+			}
+		}
+		if previous != nil && bytes.Equal(previous, message.Content) {
+			err.code = "resume_duplicate_input"
+			return err
+		}
+		previous = message.Content
+	}
+	return err
 }
 
 func (e HistoryReplayError) Error() string {
@@ -199,7 +247,7 @@ func (h *receiptHistory) Check(ctx context.Context, model, scope string, raw []b
 	if err != nil {
 		var classified classifiedError
 		if errors.As(err, &classified) {
-			return HistoryReplayError{Cause: classified.cause}
+			return rejectedHistory(classified.cause, raw)
 		}
 		return err
 	}
@@ -208,7 +256,7 @@ func (h *receiptHistory) Check(ctx context.Context, model, scope string, raw []b
 		return err
 	}
 	if err = h.checkObserved(manifest, model, scope, raw, observations); err != nil {
-		return HistoryReplayError{Cause: replayCause(manifest, observations)}
+		return rejectedHistory(replayCause(manifest, observations), raw)
 	}
 	return nil
 }

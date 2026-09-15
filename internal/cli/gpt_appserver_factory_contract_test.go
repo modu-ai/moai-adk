@@ -23,7 +23,7 @@ import (
 )
 
 func TestGPTProductionAppServerWiring(t *testing.T) {
-	home, err := filepath.EvalSymlinks(t.TempDir())
+	home, err := filepath.EvalSymlinks(sharedGPTFixtureHome(t))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -34,6 +34,7 @@ func TestGPTProductionAppServerWiring(t *testing.T) {
 	seedGatewayAuthStore(t, filepath.Join(home, "gateway-auth"))
 	binDir, protocolLog := installProductionWiringFakeCodex(t)
 	verifyProductionWiringFakeCodex(t, binDir, protocolLog)
+	startSharedGPTWiringFixture(t, home, protocolLog)
 	t.Setenv("PATH", binDir+string(os.PathListSeparator)+os.Getenv("PATH"))
 	models := gatewayGPTModels()
 	for _, model := range gatewayGPTModels() {
@@ -95,7 +96,7 @@ func TestGPTProductionAppServerWiring(t *testing.T) {
 	}
 
 	t.Run("managed-without-legacy-store", func(t *testing.T) {
-		isolated, err := filepath.EvalSymlinks(t.TempDir())
+		isolated, err := filepath.EvalSymlinks(sharedGPTFixtureHome(t))
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -106,6 +107,7 @@ func TestGPTProductionAppServerWiring(t *testing.T) {
 			t.Fatal(err)
 		}
 		t.Setenv("MOAI_HOME", isolated)
+		startSharedGPTWiringFixture(t, isolated, protocolLog)
 		managed, err := productionGatewayHandlerFactory(payload)
 		if err != nil || managed == nil {
 			t.Errorf("managed App Server assembly touched absent/poisoned legacy auth store: handler=%T err=%v, want success with zero legacy open/read/refresh", managed, err)

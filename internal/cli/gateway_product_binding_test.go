@@ -7,7 +7,6 @@ import (
 	"net/http/httptest"
 	"os"
 	"path/filepath"
-	"runtime"
 	"strings"
 	"testing"
 	"time"
@@ -73,20 +72,15 @@ func TestGPTProductionBindingHasPrivateChildAndExactPayload(t *testing.T) {
 }
 
 func TestProductionGatewayFactoryRejectsUnauthenticatedRequest(t *testing.T) {
-	t.Setenv("MOAI_HOME", t.TempDir())
-	// The factory only requires the codex broker to be locatable at
-	// construction; the 401 rejection below happens before any credential
-	// resolve. A stub keeps the test hermetic on machines without codex.
-	dir := t.TempDir()
-	name := "codex"
-	body := "#!/bin/sh\nexit 0\n"
-	if runtime.GOOS == "windows" {
-		name = "codex.bat"
-		body = "@echo codex-stub\r\n"
-	}
-	if err := os.WriteFile(filepath.Join(dir, name), []byte(body), 0o755); err != nil {
+	home, err := filepath.EvalSymlinks(sharedGPTFixtureHome(t))
+	if err != nil {
 		t.Fatal(err)
 	}
+	t.Setenv("MOAI_HOME", home)
+	// Production assembly verifies the managed App Server account first.
+	// Supply that dependency, then test the independent local session gate.
+	dir, protocolLog := installProductionWiringFakeCodex(t)
+	startSharedGPTWiringFixture(t, home, protocolLog)
 	t.Setenv("PATH", dir+string(os.PathListSeparator)+os.Getenv("PATH"))
 	models := gatewayGPTModels()
 	payload, err := marshalGatewayPrivatePayload("private-session", models)
@@ -103,7 +97,7 @@ func TestProductionGatewayFactoryRejectsUnauthenticatedRequest(t *testing.T) {
 		}
 	}()
 	req := httptest.NewRequest("POST", "/v1/messages", strings.NewReader(`{"model":"gpt-6-astra","max_tokens":2,"messages":[{"role":"user","content":"hello"}]}`))
-	req.Header.Set("Authorization", "Bearer private-session")
+	req.Header.Set("Authorization", "Bearer wrong-session")
 	res := httptest.NewRecorder()
 	h.ServeHTTP(res, req)
 	if res.Code != 401 {

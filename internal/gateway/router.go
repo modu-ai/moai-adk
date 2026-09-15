@@ -19,6 +19,8 @@ type RoutedRequest struct {
 	Credential CredentialRef
 	Generation uint64
 	Managed    *ManagedGrant
+	// SummaryDiagnostic is allocated by the App Server adapter, never decoded from HTTP.
+	SummaryDiagnostic *AppServerSummaryDiagnostic
 }
 
 // Adapter sends to its configured provider endpoint only. It returns the upstream

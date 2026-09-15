@@ -8,6 +8,7 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
+	"strings"
 	"testing"
 	"time"
 )
@@ -85,27 +86,48 @@ func TestBridgeRejectsMalformedAndForeignServerRequests(t *testing.T) {
 	}
 }
 
-func TestWaitingConversationQueueOverflowFailsClosed(t *testing.T) {
+func TestWaitingConversationQueueOverflowFailsOnlyOwnedTurn(t *testing.T) {
 	e, rpc, _ := fixture(t)
+	e.cfg.MaxOutputBytes = 1024
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 	q := request("queue")
 	if _, err := e.Step(ctx, q); err != nil {
 		t.Fatal(err)
 	}
-	for i := 0; i < e.cfg.QueueSize+1; i++ {
-		select {
-		case rpc.events <- codexapp.Message{Method: "item/agentMessage/delta", Params: json.RawMessage(`{"threadId":"thread-1","turnId":"turn-thread-1","delta":"late"}`)}:
-		case <-e.done:
-		}
+	c, err := e.get(q)
+	if err != nil {
+		t.Fatal(err)
 	}
+	rpc.events <- codexapp.Message{ID: json.RawMessage(`"queued-tool"`), Method: "item/tool/call", Params: json.RawMessage(`{"threadId":"thread-1","turnId":"turn-thread-1"}`)}
+	raw, _ := json.Marshal(map[string]string{"threadId": "thread-1", "turnId": "turn-thread-1", "delta": strings.Repeat("x", 64<<10)})
+	rpc.events <- codexapp.Message{ID: json.RawMessage(`"overflow-tool"`), Method: "item/tool/call", Params: raw}
 	select {
-	case <-e.done:
+	case <-c.stopped:
 	case <-ctx.Done():
 		t.Fatal("queue overflow blocked reader")
 	}
-	if !errors.Is(e.failure(), ErrLimit) {
-		t.Fatal(e.failure())
+	if !errors.Is(c.stopError(), ErrLimit) {
+		t.Fatal(c.stopError())
+	}
+	var cause interface{ CauseCode() string }
+	if !errors.As(c.stopError(), &cause) || cause.CauseCode() != "appserver_event_queue_bytes_exceeded" || c.stopError().Error() != "app server bridge event queue byte limit exceeded" {
+		t.Fatalf("overflow lost stable private diagnostics: %v", c.stopError())
+	}
+	if _, err := e.Step(ctx, q); !errors.Is(err, ErrLimit) {
+		t.Fatalf("owner lost exact failure: %v", err)
+	}
+	if _, err := e.Step(ctx, request("unaffected")); err != nil {
+		t.Fatalf("overflow poisoned unrelated owner: %v", err)
+	}
+	e.workers.Wait()
+	rpc.mu.Lock()
+	defer rpc.mu.Unlock()
+	if len(rpc.interrupts) != 1 || rpc.interrupts[0] != "thread-1" {
+		t.Fatalf("overflow did not interrupt exact owned turn: %v", rpc.interrupts)
+	}
+	if strings.Join(rpc.discarded, ",") != `"thread-1","queued-tool","overflow-tool"` {
+		t.Fatalf("pending RPC requests not discarded: %v", rpc.discarded)
 	}
 }
 

@@ -19,6 +19,7 @@ const (
 // caller's receipt/UUID authorization; syntax alone never authorizes history.
 type NativePolicy struct {
 	High, Title, KeepAll bool
+	outputSchema         map[string]any
 	// Effort is the explicitly validated GPT effort; an absent effort stays absent.
 	Effort string
 	// Display records the validated native thinking presentation. The GPT
@@ -86,8 +87,8 @@ func nativePolicy(root map[string]any, profile PolicyProfile) (p NativePolicy, e
 			p.Effort = value
 		}
 		if v, ok := m["format"]; ok {
-			// GPT: any json_schema format is forwarded; the subscription upstream
-			// validates the schema itself (card t695 D2). Response-side title
+			// GPT schemas are normalized to the upstream strict object contract.
+			// Response-side title
 			// validation stays tied to the exact title-only schema, where the
 			// output contract is verified. Anthropic keeps the exact-schema rule:
 			// its native body is forwarded verbatim without D2 evidence.
@@ -106,6 +107,12 @@ func nativePolicy(root map[string]any, profile PolicyProfile) (p NativePolicy, e
 				p.Title = true
 			} else if reflect.DeepEqual(f["schema"], titleSchema) {
 				p.Title = true
+			}
+			if profile == PolicyGPTNative {
+				p.outputSchema, e = strictOutputSchema(f["schema"], 0)
+				if e != nil {
+					return p, e
+				}
 			}
 		}
 	}
@@ -190,8 +197,8 @@ func (p NativePolicy) applyGPT(out map[string]any, root map[string]any) {
 	}
 	if v, ok := root["output_config"]; ok {
 		if m, ok := v.(map[string]any); ok {
-			if f, ok := m["format"].(map[string]any); ok {
-				schema, _ := f["schema"].(map[string]any)
+			if _, ok := m["format"].(map[string]any); ok {
+				schema := p.outputSchema
 				out["text"] = map[string]any{"format": map[string]any{"type": "json_schema", "name": "moai_native_output", "strict": true, "schema": schema}}
 			}
 		}

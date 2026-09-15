@@ -6,9 +6,58 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/modu-ai/moai-adk/internal/profile"
 )
+
+// Headless Claude cannot ask for workspace trust and otherwise silently ignores
+// project allow rules. Never infer worktree trust from a trusted ancestor.
+func requireGatewayPrintTrust(target string, in gatewayLaunchRequest) error {
+	headless := false
+	for _, arg := range in.Args {
+		if arg == "--" {
+			break
+		}
+		if arg == "--print" || arg == "-p" || strings.HasPrefix(arg, "--print=") {
+			headless = true
+		}
+	}
+	if !headless {
+		return nil
+	}
+	denied := errors.New("headless gateway requires existing trust for this exact workspace; approve this directory interactively in the selected Claude profile, or resume an already trusted family")
+	if !filepath.IsAbs(in.CWD) {
+		return denied
+	}
+	path := filepath.Join(target, ".claude.json")
+	info, err := os.Lstat(path)
+	if err != nil || !info.Mode().IsRegular() || info.Size() > 4<<20 {
+		return denied
+	}
+	f, err := os.Open(path)
+	if err != nil {
+		return denied
+	}
+	defer func() { _ = f.Close() }()
+	opened, err := f.Stat()
+	if err != nil || !os.SameFile(info, opened) {
+		return denied
+	}
+	data, err := io.ReadAll(io.LimitReader(f, (4<<20)+1))
+	if err != nil || len(data) > 4<<20 {
+		return denied
+	}
+	var state struct {
+		Projects map[string]struct {
+			Trusted bool `json:"hasTrustDialogAccepted"`
+		} `json:"projects"`
+	}
+	if json.Unmarshal(data, &state) != nil || !state.Projects[in.CWD].Trusted {
+		return denied
+	}
+	return nil
+}
 
 // Seed presentation/onboarding facts and the selected profile's existing trust
 // decision for this exact workspace. Never copy credentials or other projects.

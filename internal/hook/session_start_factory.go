@@ -77,10 +77,27 @@ func factoryWorkersEnv() int {
 	return n
 }
 
+// factoryLaunchEntry maps launcher provenance to fixed CLI tokens. Unknown
+// values never enter the copyable shell command.
+func factoryLaunchEntry() string {
+	provider := os.Getenv(config.EnvMoaiLaunchProvider)
+	if provider == "" {
+		provider = os.Getenv(config.EnvMoaiKanbanBackend)
+	}
+	switch provider {
+	case "gpt":
+		return "gpt"
+	case "glm":
+		return "glm"
+	default:
+		return "cc"
+	}
+}
+
 // factoryLeadNotice is the factory lead branch. It carries, in order:
 // (a) the run id and the session name that must accompany it; (b) why
 // bootstrap is manual and how lane names are assigned; (c) the N lane
-// launch lines; (d) the entry-point guide — cc vs glm backend choice, the
+// launch lines; (d) the entry-point guide — cc/glm/gpt backend choice, the
 // -f N form, the incremental -f lane-<n> form, the per-lane fan-out — plus
 // the leader socket path; (e) the dispatch discipline — whole-card routing
 // (each card to ONE lane, which runs the serial plan -> run -> sync path
@@ -123,16 +140,17 @@ func factoryLeadNotice(runID string, workers int, root, lang string) string {
 	}
 
 	// (c) the lane launch lines, one per lane.
+	entry := factoryLaunchEntry()
 	launch := make([]string, 0, workers)
 	for i := 1; i <= workers; i++ {
-		launch = append(launch, "moai cc -f "+kanban.FactoryLaneLabel(i))
+		launch = append(launch, "moai "+entry+" -f "+kanban.FactoryLaneLabel(i))
 	}
 	blocks = append(blocks, strings.Join(launch, "\n"))
 
-	// (d) the entry-point guide — the cc/glm backend choice, the -f forms,
+	// (d) the entry-point guide — the cc/glm/gpt backend choice, the -f forms,
 	// and the per-lane fan-out — plus the leader socket path when the
 	// launcher captured one.
-	backend := []string{fmt.Sprintf(m.entryGuide, workers, workers), m.agentFanout}
+	backend := []string{fmt.Sprintf(m.entryGuide, workers, entry), m.agentFanout}
 	if addr := os.Getenv(config.EnvMoaiKanbanLeadAddr); addr != "" {
 		backend = append(backend, fmt.Sprintf(m.leaderSocket, addr))
 	}

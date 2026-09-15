@@ -72,7 +72,7 @@ func TestGatewayGPTDeclaresCatalogWindowForEverySelectableModel(t *testing.T) {
 		for _, env := range plan.ChildEnv {
 			if strings.HasPrefix(env, "CLAUDE_CODE_MAX_CONTEXT_TOKENS=") {
 				count++
-				if env != "CLAUDE_CODE_MAX_CONTEXT_TOKENS=872000" {
+				if env != "CLAUDE_CODE_MAX_CONTEXT_TOKENS=272000" {
 					t.Fatal(env)
 				}
 			}

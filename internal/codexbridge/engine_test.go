@@ -25,7 +25,12 @@ type fakeRPC struct {
 	responses      int
 	resumes        []string
 	interrupts     []string
+	discarded      []string
 	models         []string
+	schemas        []json.RawMessage
+	resultContents []Content
+	resultSuccess  []bool
+	respondEvents  []codexapp.Message
 	methods        []string
 	turnSeq        map[string]int
 	currentTurn    map[string]string
@@ -52,6 +57,9 @@ func (f *fakeRPC) Call(ctx context.Context, method string, p any, out any) error
 		result = map[string]any{"thread": map[string]string{"id": m["threadId"].(string)}}
 	case "turn/start":
 		f.models = append(f.models, m["model"].(string))
+		if schema, ok := m["outputSchema"].(json.RawMessage); ok {
+			f.schemas = append(f.schemas, append(json.RawMessage(nil), schema...))
+		}
 		if f.startEntered != nil {
 			close(f.startEntered)
 			<-f.startWait
@@ -97,6 +105,11 @@ func (f *fakeRPC) Respond(ctx context.Context, id json.RawMessage, p any) error 
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	f.responses++
+	f.resultSuccess = append(f.resultSuccess, p.(map[string]any)["success"] == true)
+	f.resultContents = append(f.resultContents, p.(map[string]any)["contentItems"].([]Content)...)
+	for _, event := range f.respondEvents {
+		f.events <- event
+	}
 	if f.respondFailure != nil {
 		return f.respondFailure()
 	}
@@ -346,6 +359,15 @@ func TestUntrustedTurnEventsFailClosed(t *testing.T) {
 			ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 			defer cancel()
 			segment, err := e.Step(ctx, request(kind))
+			if kind == "invalid-arguments" {
+				// A known, authorized tool with schema-invalid model arguments
+				// is denied execution but can return corrective feedback. Binding
+				// and unknown-tool violations below still fail without a response.
+				if err != nil || !segment.Done || segment.Tool != nil || len(segment.Tools) != 0 || rpc.responses != 1 || len(rpc.resultSuccess) != 1 || rpc.resultSuccess[0] {
+					t.Fatal("invalid arguments executed or feedback failed", segment, err, rpc.resultSuccess)
+				}
+				return
+			}
 			if err == nil || segment.Done || segment.Tool != nil || rpc.responses != 0 {
 				t.Fatal(segment, err, rpc.responses)
 			}
@@ -461,7 +483,12 @@ func TestScopeDelimiterCannotAliasAnotherConversation(t *testing.T) {
 	}
 }
 
-func (f *fakeRPC) DiscardRequest(json.RawMessage) error { return nil }
+func (f *fakeRPC) DiscardRequest(id json.RawMessage) error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.discarded = append(f.discarded, string(id))
+	return nil
+}
 
 func TestStopRetainsAlreadyQueuedLateStartIdentity(t *testing.T) {
 	e, _, _ := fixture(t)
@@ -473,7 +500,9 @@ func TestStopRetainsAlreadyQueuedLateStartIdentity(t *testing.T) {
 	c.mu.Lock()
 	c.owner.ThreadID = "owned-thread"
 	c.phase = "failed"
-	c.queue <- codexapp.Message{Method: "turn/started", Params: json.RawMessage(`{"threadId":"owned-thread","turn":{"id":"late-turn"}}`)}
+	if !c.queue.push(codexapp.Message{Method: "turn/started", Params: json.RawMessage(`{"threadId":"owned-thread","turn":{"id":"late-turn"}}`)}) {
+		t.Fatal("queue admission failed")
+	}
 	e.stop(c)
 	got := c.turn
 	c.mu.Unlock()

@@ -4,17 +4,25 @@ import (
 	"context"
 	"crypto/sha256"
 	"crypto/subtle"
+	"encoding/hex"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io"
 	"math"
 	"net/http"
 	"strings"
+
+	"github.com/modu-ai/moai-adk/internal/codexapp"
+	"github.com/modu-ai/moai-adk/internal/codexbridge"
 )
+
+type RejectionLogger interface{ RecordGatewayRejection(map[string]string) }
 
 // ServerConfig has no implicit session-auth header or body-size default. The
 // launcher chooses the transport header only after its authentication gate.
 type ServerConfig struct {
+	RejectionLogger   RejectionLogger
 	ManagedAuthority  *AppServerAuthority
 	SessionHeader     string
 	SessionToken      string
@@ -25,6 +33,7 @@ type ServerConfig struct {
 }
 
 type Server struct {
+	rejectionLogger   RejectionLogger
 	managedAuthority  *AppServerAuthority
 	sessionHeader     string
 	tokenHash         [32]byte
@@ -53,6 +62,7 @@ func NewServer(c ServerConfig) (*Server, error) {
 		return nil, errors.New("invalid gateway session token")
 	}
 	s := &Server{managedAuthority: c.ManagedAuthority, sessionHeader: http.CanonicalHeaderKey(c.SessionHeader), tokenHash: sha256.Sum256([]byte(c.SessionToken)), maxBodyBytes: c.MaxBodyBytes, catalog: c.Catalog, resolveCredential: c.ResolveCredential, adapters: make(map[ProviderID]Adapter, len(c.Adapters))}
+	s.rejectionLogger = c.RejectionLogger
 	for id, a := range c.Adapters {
 		s.adapters[id] = a
 	}
@@ -157,6 +167,13 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	headers := make(http.Header)
+	if entry.AuthMethod == AuthAppServer {
+		for _, key := range []string{"X-Claude-Code-Session-Id", "X-Claude-Code-Agent-Id"} {
+			if values := r.Header.Values(key); len(values) != 0 {
+				headers[key] = append([]string(nil), values...)
+			}
+		}
+	}
 	for _, key := range []string{"Anthropic-Version", "Anthropic-Beta"} {
 		if !strings.EqualFold(key, s.sessionHeader) {
 			if values := r.Header.Values(key); len(values) != 0 {
@@ -169,7 +186,38 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		if response != nil && response.Body != nil {
 			_ = response.Body.Close()
 		}
-		writeError(w, 502, "api_error")
+		status, kind, cause := appServerError(err)
+		if entry.AuthMethod != AuthAppServer {
+			var classified interface{ CauseCode() string }
+			if !errors.As(err, &classified) || status != http.StatusBadRequest {
+				writeError(w, http.StatusBadGateway, "api_error")
+				return
+			}
+		}
+		digest := sha256.Sum256(body)
+		requestID := hex.EncodeToString(digest[:])
+		w.Header().Set("Request-Id", requestID)
+		if s.rejectionLogger != nil {
+			fields := map[string]string{"cause": cause, "route": entry.RouteID, "digest": requestID}
+			var rpcError *codexapp.RPCError
+			if errors.As(err, &rpcError) && rpcError.Code >= -2147483648 && rpcError.Code <= 2147483647 {
+				fields["rpc_code"] = fmt.Sprint(rpcError.Code)
+			}
+			if reason := appServerScopeReason(err); reason != "" {
+				fields["reason"] = reason
+			}
+			var diagnostic *appServerDiagnosticError
+			if errors.As(err, &diagnostic) {
+				d := diagnostic.diagnostic
+				fields["summary_classified"] = fmt.Sprint(d.Classified)
+				fields["agent_header_present"] = fmt.Sprint(d.AgentHeaderPresent)
+				fields["summary_prompt_match"] = fmt.Sprint(d.PromptMatch)
+				fields["last_message_role"] = d.LastRole
+				fields["last_content_type"] = d.LastContent
+			}
+			s.rejectionLogger.RecordGatewayRejection(fields)
+		}
+		writeJSON(w, status, map[string]any{"type": "error", "error": map[string]string{"type": kind, "message": cause}})
 		return
 	}
 	defer func() { _ = response.Body.Close() }() // body already streamed as-is; no terminal state to corrupt
@@ -186,6 +234,36 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	// A truncated/erroring body is copied as-is. Never synthesize a terminal event
 	// or retry once the response status or bytes have been exposed to the caller.
 	_, _ = io.Copy(flushingWriter{w}, response.Body)
+}
+
+// appServerError exposes only constant cause codes, never provider text, prompts
+// or tool arguments. Deterministic local rejection must not trigger HTTP retries.
+func appServerError(err error) (int, string, string) {
+	var classified interface{ CauseCode() string }
+	if errors.As(err, &classified) {
+		switch cause := classified.CauseCode(); cause {
+		case "history_changed", "agent_summary_untrusted", "history_scope_mismatch", "receipt_manifest_mismatch", "resume_duplicate_input", "history_receipt_missing", "history_prefix_mismatch", "appserver_event_queue_bytes_exceeded", "native_receipt_authorization_required":
+			return http.StatusBadRequest, "invalid_request_error", cause
+		}
+	}
+	switch {
+	case errors.Is(err, codexbridge.ErrScope):
+		return http.StatusBadRequest, "invalid_request_error", "appserver_scope_mismatch"
+	case errors.Is(err, codexbridge.ErrRecovery):
+		return http.StatusBadRequest, "invalid_request_error", "appserver_recovery_required"
+	case errors.Is(err, codexbridge.ErrProtocol):
+		return http.StatusBadRequest, "invalid_request_error", "appserver_protocol_error"
+	case errors.Is(err, codexbridge.ErrLimit):
+		return http.StatusBadRequest, "invalid_request_error", "appserver_limit_exceeded"
+	case errors.Is(err, ErrManagedAuthority):
+		return http.StatusUnauthorized, "authentication_error", "appserver_authority_changed"
+	case errors.Is(err, context.Canceled):
+		return http.StatusBadRequest, "invalid_request_error", "appserver_request_canceled"
+	case errors.Is(err, context.DeadlineExceeded):
+		return http.StatusRequestTimeout, "timeout_error", "appserver_request_timeout"
+	default:
+		return http.StatusBadGateway, "api_error", "appserver_transport_error"
+	}
 }
 
 type flushingWriter struct{ http.ResponseWriter }
