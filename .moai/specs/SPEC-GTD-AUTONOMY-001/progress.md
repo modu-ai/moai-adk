@@ -175,7 +175,7 @@ new_directories:
 
 ```yaml
 sync_complete_at: 2026-09-15
-sync_commit_sha: pending-backfill-sync
+sync_commit_sha: 5ec516165ef5c5e31cdf372b28e6e538f8347719
 sync_status: completed-independent-audit-pass
 b12_self_test_a:
   command: grep -c SPEC-GTD-AUTONOMY-001 CHANGELOG.md
