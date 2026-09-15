@@ -524,16 +524,19 @@ ID)로 `moai glm` gateway 세션을 열고 Z.AI mock upstream이 수신 요청�
 - (d) **rc 로컬 배포 게이트(종결).** Given (a)·(b)·(c)가 PASS이고 AS-017·AS-019·AS-021이 PASS이며
   AS-014·AS-018·AS-020·AS-022가 PASS 또는 근거를 갖춘 Gap일 때 — 즉 강제 전제 집합은
   {(a), (b), (c), AS-017, AS-019, AS-021}의 전수 PASS다(이 여섯에 Gap은 허용되지 않는다) — When
-  배포 절차를 실행하면, Then 다음 네 증거가 각각의 실제
+  배포 절차를 실행하면, Then 다음 세 증거가 각각의 실제
   명령과 출력과 함께 `.moai/reports/t654/as5-deploy-verdict.md`에 남는다.
   1. `make build VERSION=v<다음 미사용 rc>` → exit 0. 버전 번호는 `.moai/docs/version-management.md`
      Local RC Numbering의 다음 미사용 번호다 — 카드 문구의 rc.8은 2026-09-12 발행 시점 표기이며,
      발행 시점에 이미 소비됐으면 다음 번호를 쓰고 그 사실을 보고서에 명시한다.
   2. `rm -f ~/go/bin/moai && cp bin/moai ~/go/bin/moai` → clean 재설치(inode 갱신; 맨 cp 덮어쓰기는
      exit 137 전례가 있어 clean 재설치가 계약이다).
-  3. `~/go/bin/moai version; echo $?` → exit 0.
-  4. `strings ~/go/bin/moai | grep <기준 SHA>` → 기준 SHA(측정 시점 HEAD)가 바이너리에 박혀 있다
-     (binary lag 검증).
+  3. `sh scripts/verify-local-install.sh` → `bin/moai`와 `~/go/bin/moai`가 byte 단위로 같고 설치본의
+     `version` 명령이 exit 0이며 측정 시점 HEAD의 short SHA를 출력한다. macOS `strings`나 Xcode
+     라이선스 상태에 의존하는 판정은 허용하지 않는다.
+  macOS의 기본 `make`·`git`이 Xcode 라이선스 exit 69를 내는 호스트는
+  `.claude/rules/local/gitflow-lane-protocol.md` §9의 Command Line Tools PATH 전처리를 배포 명령 묶음
+  전에 적용하며, 자동 라이선스 동의나 `|| true`로 대체하지 않는다.
   보고서는 CHANGELOG 발행 검토 결과(사용자 가시 표면 기준, 사전-발행 grep
   `grep -c 'SPEC-MOAI-GATEWAY-001' CHANGELOG.md` 포함)를 함께 담는다.
   push·PR·병합·워크트리 제거는 없으며, 배포 절차 후 `git status --short`가 증거 파일 외 로컬 변경
