@@ -1,10 +1,10 @@
 ---
 id: SPEC-MOAI-GATEWAY-001
 title: "moai 공통 loopback gateway — cc·gpt·glm 세 launcher의 단일 ingress와 제공자별 모델 선택 경계"
-version: "0.16.0"
+version: "0.16.1"
 status: in-progress
 created: 2026-09-10
-updated: 2026-09-14
+updated: 2026-09-15
 author: manager-spec
 priority: P1
 phase: "v3.3.0 target"
@@ -17,6 +17,11 @@ tier: L
 # SPEC-MOAI-GATEWAY-001 — 공통 loopback gateway 코어
 
 ## HISTORY
+
+- 0.16.1 (2026-09-15, source session `01a09ebc-fbd0-7683-ac83-b9d315338def`) — rc 로컬 배포 게이트의
+  binary provenance 판정을 macOS `strings`에서 `scripts/verify-local-install.sh`로 교체했다. 새 판정은
+  빌드 산출물과 설치본의 byte 동일성, 설치본 `version` exit 0, 측정 시점 HEAD short SHA를 함께 요구하며,
+  시스템 전역 Xcode 라이선스 상태가 제품 배포 검증을 중단시키지 않는다.
 
 - 0.16.0 (2026-09-14, source session `01a09c3b-3734-7c30-b65d-650e3c63d0aa`) — plan-audit
   iteration 5의 D9·D10·D12·D13·D14·D15를 M14-R0.2 test-only 증거로 보정했다. 현재 제품 기준선은

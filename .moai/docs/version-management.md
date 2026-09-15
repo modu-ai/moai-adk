@@ -108,8 +108,14 @@ among them, with `workflow: git-flow` and the develop/release branch keys — ar
 reset to template defaults by every `moai update` and must be re-applied after
 each update (re-application procedure: CLAUDE.local.md §2.3).
 
-The clean-reinstall runbook (`rm -f` + `cp`, the exit-137 guard) is owned by
-`.claude/rules/local/gitflow-lane-protocol.md` §9 and is not duplicated here.
+The clean-reinstall runbook (`rm -f` + `cp`, `scripts/verify-local-install.sh`, and
+the exit-137 guard) is owned by `.claude/rules/local/gitflow-lane-protocol.md`
+§9 and is not duplicated here. The verifier compares the built and installed
+files byte-for-byte, executes the installed binary's `version` command, and
+requires that output to contain the measured HEAD short SHA. It deliberately
+does not call macOS `strings`; when the default `git` is blocked by Xcode licence
+state it retries the Command Line Tools `git`. `make verify-local-install` is a
+convenience alias for the same standalone script.
 
 ### Files Requiring Version Sync
 

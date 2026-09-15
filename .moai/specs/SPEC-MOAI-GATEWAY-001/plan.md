@@ -276,7 +276,10 @@ exit 0만으로 이 마일스톤을 PASS로 세지 않는다.
 AS-014~AS-022의 판정이 PASS(또는 근거 갖춘 Gap — 단 배포 게이트 자체의 전제는 검증 PASS)다. 절차는
 `AC-MG-026` (d)의 명령 형태를 따른다: `make build VERSION=v<다음 미사용 rc>` → `rm -f ~/go/bin/moai
 && cp bin/moai ~/go/bin/moai`(clean 재설치 — 생략 시 exit 137 전례) → `~/go/bin/moai version` exit 0 →
-`strings ~/go/bin/moai | grep <기준 SHA>` binary lag 검증. rc 번호는 `.moai/docs/version-management.md`
+`sh scripts/verify-local-install.sh`로 빌드 산출물과 설치본의 byte 동일성, 설치본 `version` exit 0,
+측정 시점 HEAD short SHA 검증. macOS
+`strings`는 시스템 전역 Xcode 라이선스 상태에 따라 중단될 수 있으므로 이 게이트에서 사용하지 않는다.
+rc 번호는 `.moai/docs/version-management.md`
 Local RC Numbering의 다음 미사용 번호다 — 카드 문구의 "rc.8"은 2026-09-12 발행 시점 표기이며 발행 시점에
 이미 소비됐으면 다음 번호를 쓴다(이 차이는 조용히 흡수하지 않고 배포 판정 보고서에 명시한다). 같은 보고서에
 CHANGELOG 발행 검토 결과(사용자 가시 표면 기준, B12 사전-발행 grep `grep -c 'SPEC-MOAI-GATEWAY-001'
