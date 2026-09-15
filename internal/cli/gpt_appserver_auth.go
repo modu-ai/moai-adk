@@ -113,7 +113,11 @@ func newGPTAppServerAuthServices(out io.Writer) gptCommandServices {
 			if err != nil {
 				return errors.New("codex CLI path is unavailable")
 			}
-			loggedIn, err := codexapp.LoginStatus(ctx, codexapp.Config{Binary: binary, Home: profile})
+			config, err := managedGPTAppServerConfig(binary, profile)
+			if err != nil {
+				return errors.New("GPT App Server profile configuration is unavailable")
+			}
+			loggedIn, err := codexapp.LoginStatus(ctx, config)
 			if err != nil {
 				return err
 			}

@@ -2,10 +2,14 @@ package cli
 
 import (
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
 	"errors"
+	"io"
 	"os"
 	"os/exec"
 	"os/signal"
+	"path/filepath"
 	"runtime"
 	"syscall"
 	"time"
@@ -25,6 +29,11 @@ func startSharedGPTAppServer(ctx context.Context, cfg codexapp.Config) (*codexap
 	if err := ctx.Err(); err != nil {
 		return nil, err
 	}
+	bound, err := managedGPTAppServerConfig(cfg.Binary, cfg.Home)
+	if err != nil || cfg.ExpectedConfigSHA256 != "" && cfg.ExpectedConfigSHA256 != bound.ExpectedConfigSHA256 {
+		return nil, errors.New("GPT App Server profile configuration is unavailable")
+	}
+	cfg = bound
 	if err := codexapp.ValidatePrivatePath(cfg.Home, true); err != nil {
 		return nil, errors.New("GPT App Server profile is not private")
 	}
@@ -67,6 +76,33 @@ func startSharedGPTAppServer(ctx context.Context, cfg codexapp.Config) (*codexap
 			}
 		}
 	}
+}
+
+// managedGPTAppServerConfig binds the exact optional profile configuration to
+// every shared-owner connection and launch. The codexapp boundary validates the
+// digest again immediately before use, so a concurrent change fails closed.
+func managedGPTAppServerConfig(binary, home string) (codexapp.Config, error) {
+	cfg := codexapp.Config{Binary: binary, Home: home}
+	path := filepath.Join(home, "config.toml")
+	info, err := os.Lstat(path)
+	if os.IsNotExist(err) {
+		return cfg, nil
+	}
+	if err != nil || info.Size() > 1<<20 || codexapp.ValidatePrivatePath(path, false) != nil {
+		return codexapp.Config{}, errors.New("GPT App Server profile configuration is unavailable")
+	}
+	file, err := os.Open(path)
+	if err != nil {
+		return codexapp.Config{}, errors.New("GPT App Server profile configuration is unavailable")
+	}
+	raw, readErr := io.ReadAll(io.LimitReader(file, (1<<20)+1))
+	closeErr := file.Close()
+	if readErr != nil || closeErr != nil || len(raw) > 1<<20 {
+		return codexapp.Config{}, errors.New("GPT App Server profile configuration is unavailable")
+	}
+	sum := sha256.Sum256(raw)
+	cfg.ExpectedConfigSHA256 = hex.EncodeToString(sum[:])
+	return cfg, nil
 }
 
 func newGPTAppServerSharedCommand() *cobra.Command {

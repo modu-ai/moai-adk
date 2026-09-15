@@ -2,7 +2,10 @@ package cli
 
 import (
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
+	"io"
 	"net"
 	"net/http"
 	"os"
@@ -17,6 +20,93 @@ import (
 	"github.com/modu-ai/moai-adk/internal/codexapp"
 	"golang.org/x/net/websocket"
 )
+
+func TestManagedGPTAppServerConfigBindsProfileConfiguration(t *testing.T) {
+	home := sharedGPTFixtureHome(t)
+	home, err := filepath.EvalSymlinks(home)
+	if err != nil {
+		t.Fatal(err)
+	}
+	config, err := managedGPTAppServerConfig("/absolute/codex", home)
+	if err != nil || config.ExpectedConfigSHA256 != "" {
+		t.Fatalf("empty profile config: digest_present=%v err=%v", config.ExpectedConfigSHA256 != "", err)
+	}
+	raw := []byte("model = \"managed-fixture\"\n")
+	path := filepath.Join(home, "config.toml")
+	if err := os.WriteFile(path, raw, 0600); err != nil {
+		t.Fatal(err)
+	}
+	want := sha256.Sum256(raw)
+	config, err = managedGPTAppServerConfig("/absolute/codex", home)
+	if err != nil || config.ExpectedConfigSHA256 != hex.EncodeToString(want[:]) {
+		t.Fatalf("profile config binding: digest_match=%v err=%v", config.ExpectedConfigSHA256 == hex.EncodeToString(want[:]), err)
+	}
+	if err := os.Chmod(path, 0644); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := managedGPTAppServerConfig("/absolute/codex", home); err == nil {
+		t.Fatal("weak profile configuration accepted")
+	}
+}
+
+func TestManagedGPTAppServerConfigRejectsChangedProfileConfiguration(t *testing.T) {
+	root, err := filepath.EvalSymlinks(sharedGPTFixtureHome(t))
+	if err != nil {
+		t.Fatal(err)
+	}
+	startSharedGPTWiringFixture(t, root, filepath.Join(root, "protocol.jsonl"))
+	home := filepath.Join(root, "gpt-appserver")
+	path := filepath.Join(home, "config.toml")
+	if err := os.WriteFile(path, []byte("model = \"before\"\n"), 0600); err != nil {
+		t.Fatal(err)
+	}
+	config, err := managedGPTAppServerConfig("/absolute/codex", home)
+	if err != nil {
+		t.Fatal(err)
+	}
+	client, err := codexapp.ConnectShared(context.Background(), config)
+	if err != nil {
+		t.Fatal("unchanged profile configuration was rejected")
+	}
+	if err := client.Close(); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(path, []byte("model = \"after\"\n"), 0600); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := codexapp.ConnectShared(context.Background(), config); err == nil {
+		t.Fatal("stale profile configuration digest accepted")
+	}
+}
+
+func TestGPTGatewayFactoryConnectsSharedOwnerWithManagedConfiguration(t *testing.T) {
+	root, err := filepath.EvalSymlinks(sharedGPTFixtureHome(t))
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Setenv("MOAI_HOME", root)
+	protocolLog := filepath.Join(root, "protocol.jsonl")
+	startSharedGPTWiringFixture(t, root, protocolLog)
+	profile := filepath.Join(root, "gpt-appserver")
+	if err := os.WriteFile(filepath.Join(profile, "config.toml"), []byte("model = \"managed-fixture\"\n"), 0600); err != nil {
+		t.Fatal(err)
+	}
+	payload, err := json.Marshal(gatewayPrivatePayload{Version: 1, SessionToken: "private-fixture", ModelIDs: []string{"gpt-5.6-sol"}, ContextTokens: gatewayContextWindow})
+	if err != nil {
+		t.Fatal(err)
+	}
+	handler, err := newGPTAppServerGatewayHandler(payload)
+	if err != nil {
+		t.Fatal("stage=factory")
+	}
+	closer, ok := handler.(io.Closer)
+	if !ok {
+		t.Fatal("factory handler lifecycle unavailable")
+	}
+	if err := closer.Close(); err != nil {
+		t.Fatal("stage=factory_close")
+	}
+}
 
 func sharedGPTFixtureHome(t *testing.T) string {
 	t.Helper()
@@ -107,6 +197,52 @@ func startSharedGPTWiringFixture(t *testing.T, home, protocolLog string) {
 			t.Error("shared fixture did not stop")
 		}
 	})
+}
+
+// TestSharedGPTStartupStageProbe is an opt-in, read-only startup diagnostic.
+// It deliberately reports only stable stage codes: underlying App Server
+// errors may contain operator-local paths or other private state.
+func TestSharedGPTStartupStageProbe(t *testing.T) {
+	if os.Getenv("MOAI_GPT_STARTUP_PROBE") != "1" {
+		t.Skip("set MOAI_GPT_STARTUP_PROBE=1 to inspect the existing shared owner")
+	}
+	profile := os.Getenv("MOAI_GPT_PROBE_HOME")
+	if profile == "" {
+		var err error
+		profile, err = managedGPTProfile()
+		if err != nil {
+			t.Fatal("stage=profile")
+		}
+	}
+	binary, err := exec.LookPath("codex")
+	if err != nil {
+		t.Fatal("stage=codex_lookup")
+	}
+	binary, err = filepath.Abs(binary)
+	if err != nil {
+		t.Fatal("stage=codex_path")
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), 8*time.Second)
+	defer cancel()
+	config, err := managedGPTAppServerConfig(binary, profile)
+	if err != nil {
+		t.Fatal("stage=config_binding")
+	}
+	client, err := codexapp.ConnectShared(ctx, config)
+	if err != nil {
+		t.Fatal("stage=shared_connect")
+	}
+	defer func() { _ = client.Close() }()
+	if _, err = client.Initialize(ctx, "moai-startup-probe", "1"); err != nil {
+		t.Fatal("stage=initialize")
+	}
+	account, err := client.Account(ctx)
+	if err != nil {
+		t.Fatal("stage=account_read")
+	}
+	if account.Account == nil || account.Account.Type != "chatgpt" {
+		t.Fatal("stage=account_scope")
+	}
 }
 
 func TestSharedGPTSupervisorTerminatesOfficialOwner(t *testing.T) {
