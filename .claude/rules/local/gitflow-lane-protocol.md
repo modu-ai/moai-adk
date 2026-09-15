@@ -110,6 +110,11 @@ git branch --show-current
 
 ```bash
 # .claude/worktrees/develop 안에서
+# macOS의 /usr/bin 개발 도구가 Xcode 라이선스 exit 69이면 설치된 CLT를 우선한다.
+if [ -x /Library/Developer/CommandLineTools/usr/bin/make ]; then
+  PATH="/Library/Developer/CommandLineTools/usr/bin:$PATH"
+  export PATH
+fi
 make build VERSION=vX.Y.Z-rc.N
 rm -f ~/go/bin/moai && cp bin/moai ~/go/bin/moai
 sh scripts/verify-local-install.sh       # byte 동일성 + 설치본 version SHA/exit 0
@@ -118,6 +123,7 @@ sh scripts/verify-local-install.sh       # byte 동일성 + 설치본 version SH
 - [HARD] `rm -f` 를 생략한 맨 `cp` 덮어쓰기는 다음 호출에서 **exit 137(SIGKILL)** 을 낸 전례가 있다 — inode를 갈아끼우는 clean 재설치여야 한다. (`make install` 도 동등하다.)
 - [HARD] **맨손 `go install ./cmd/moai` 금지.** Makefile의 `LDFLAGS`를 안 실어서 버전/커밋/날짜가 컴파일 기본값으로 박히고, 그러면 binary lag 검증 자체가 불가능해진다.
 - [HARD] 설치본 검증에 macOS `strings`를 쓰지 않는다. Xcode 라이선스 동의 여부가 제품 binary 판정을 중단시키기 때문이다. `scripts/verify-local-install.sh`는 `cmp`로 `bin/moai`와 설치본의 byte 동일성을 확인하고, 설치본의 `version`을 직접 실행해 측정 시점 HEAD의 short SHA와 exit 0을 함께 관측한다. 기본 `git`이 불가하면 macOS Command Line Tools의 `git`을 자동으로 재시도하며, 둘 다 불가하면 세 번째 인자로 기대 short SHA를 받아야 한다. `make verify-local-install`은 같은 script를 호출하는 편의 alias다.
+- [HARD] macOS에서 `/usr/bin/make` 또는 `/usr/bin/git`이 Xcode 라이선스 exit 69를 내면 위 전처리로 설치된 Command Line Tools 경로를 PATH 선두에 둔다. `sudo xcodebuild -license`를 자동 실행하거나 검증 실패를 `|| true`로 숨기지 않는다.
 - 137이 나오면 `rm -f` + `cp` 를 다시 한다.
 
 ## 10. 릴리스 — 레인의 범위 밖

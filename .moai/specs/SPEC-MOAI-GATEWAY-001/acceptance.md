@@ -534,6 +534,9 @@ ID)로 `moai glm` gateway 세션을 열고 Z.AI mock upstream이 수신 요청�
   3. `sh scripts/verify-local-install.sh` → `bin/moai`와 `~/go/bin/moai`가 byte 단위로 같고 설치본의
      `version` 명령이 exit 0이며 측정 시점 HEAD의 short SHA를 출력한다. macOS `strings`나 Xcode
      라이선스 상태에 의존하는 판정은 허용하지 않는다.
+  macOS의 기본 `make`·`git`이 Xcode 라이선스 exit 69를 내는 호스트는
+  `.claude/rules/local/gitflow-lane-protocol.md` §9의 Command Line Tools PATH 전처리를 배포 명령 묶음
+  전에 적용하며, 자동 라이선스 동의나 `|| true`로 대체하지 않는다.
   보고서는 CHANGELOG 발행 검토 결과(사용자 가시 표면 기준, 사전-발행 grep
   `grep -c 'SPEC-MOAI-GATEWAY-001' CHANGELOG.md` 포함)를 함께 담는다.
   push·PR·병합·워크트리 제거는 없으며, 배포 절차 후 `git status --short`가 증거 파일 외 로컬 변경

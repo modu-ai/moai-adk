@@ -115,7 +115,10 @@ files byte-for-byte, executes the installed binary's `version` command, and
 requires that output to contain the measured HEAD short SHA. It deliberately
 does not call macOS `strings`; when the default `git` is blocked by Xcode licence
 state it retries the Command Line Tools `git`. `make verify-local-install` is a
-convenience alias for the same standalone script.
+convenience alias for the same standalone script. On a macOS host where
+`/usr/bin/make` or `/usr/bin/git` exits 69 for the same reason, the canonical §9
+runbook prepends `/Library/Developer/CommandLineTools/usr/bin` to `PATH` when
+that installed toolchain exists; it never auto-accepts the system-wide licence.
 
 ### Files Requiring Version Sync
 
