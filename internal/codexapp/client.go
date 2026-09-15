@@ -21,11 +21,12 @@ import (
 )
 
 var (
-	ErrClosed   = errors.New("codex app server closed")
-	ErrRead     = errors.New("codex app server read failed")
-	ErrEOF      = errors.New("codex app server EOF")
-	ErrProtocol = errors.New("invalid Codex App Server protocol message")
-	ErrLimit    = errors.New("codex app server message or event limit exceeded")
+	ErrClosed      = errors.New("codex app server closed")
+	ErrRead        = errors.New("codex app server read failed")
+	ErrEOF         = errors.New("codex app server EOF")
+	ErrProtocol    = errors.New("invalid Codex App Server protocol message")
+	ErrLimit       = errors.New("codex app server message or event limit exceeded")
+	ErrProfileBusy = errors.New("app server profile is busy or cannot be locked")
 )
 
 // RPCError deliberately excludes server-provided message/data, which can contain secrets.
@@ -78,42 +79,56 @@ type Client struct {
 // @MX:ANCHOR: [AUTO] Managed App Server process startup.
 // @MX:REASON: Authentication, discovery and conversation clients share this boundary.
 func Start(ctx context.Context, cfg Config) (*Client, error) {
-	args := []string{"app-server", "--stdio"}
-	for _, value := range []string{`cli_auth_credentials_store="file"`, `approval_policy="never"`, `sandbox_mode="read-only"`, `web_search="disabled"`, `features.shell_tool=false`, `features.codex_hooks=false`, `features.hooks=false`, `features.plugin_hooks=false`, `features.plugins=false`, `features.apps=false`, `features.view_image=false`, `features.multi_agent=false`, `features.multi_agent_v2=false`, `tools.update_plan.enabled=false`, `tools.experimental_request_user_input.enabled=false`} {
+	return startProcess(ctx, cfg, appServerArgs("stdio://"))
+}
+
+func appServerArgs(listen string) []string {
+	args := []string{"app-server", "--listen", listen}
+	// Model metadata can override the multi_agent feature flags. The agent-level
+	// switch keeps orchestration in Claude Code rather than spawning native children.
+	// Claude Code enforces external-tool permissions; native tools stay disabled.
+	for _, value := range []string{`cli_auth_credentials_store="file"`, `approval_policy="never"`, `sandbox_mode="workspace-write"`, `web_search="disabled"`, `features.shell_tool=false`, `features.codex_hooks=false`, `features.hooks=false`, `features.plugin_hooks=false`, `features.plugins=false`, `features.apps=false`, `features.view_image=false`, `agents.enabled=false`, `features.multi_agent=false`, `features.multi_agent_v2=false`, `tools.update_plan.enabled=false`, `tools.experimental_request_user_input.enabled=false`} {
 		args = append(args, "-c", value)
 	}
-	return startProcess(ctx, cfg, args)
+	return args
 }
-func startProcess(ctx context.Context, cfg Config, args []string) (*Client, error) {
+func validateConfig(ctx context.Context, cfg Config) error {
 	if ctx == nil || ctx.Err() != nil {
-		return nil, errors.New("invalid App Server lifetime context")
+		return errors.New("invalid App Server lifetime context")
 	}
 	if !filepath.IsAbs(cfg.Home) || !filepath.IsAbs(cfg.Binary) {
-		return nil, errors.New("app server paths must be absolute")
+		return errors.New("app server paths must be absolute")
 	}
 	info, err := os.Lstat(cfg.Home)
 	if err != nil || !info.IsDir() || info.Mode()&os.ModeSymlink != 0 || !privateOwner(cfg.Home, info) {
-		return nil, errors.New("app server home must be a private directory")
+		return errors.New("app server home must be a private directory")
 	}
 	resolved, err := filepath.EvalSymlinks(cfg.Home)
 	if err != nil || resolved != filepath.Clean(cfg.Home) {
-		return nil, errors.New("app server home must not traverse symlinks")
+		return errors.New("app server home must not traverse symlinks")
 	}
 	configPath := filepath.Join(cfg.Home, "config.toml")
 	if info, err := os.Lstat(configPath); err == nil {
 		if cfg.ExpectedConfigSHA256 == "" || !info.Mode().IsRegular() || !privateOwner(configPath, info) || info.Size() > 1<<20 {
-			return nil, errors.New("app server profile configuration is not authorized")
+			return errors.New("app server profile configuration is not authorized")
 		}
 		raw, err := os.ReadFile(configPath)
 		if err != nil {
-			return nil, errors.New("app server profile configuration unavailable")
+			return errors.New("app server profile configuration unavailable")
 		}
 		sum := sha256.Sum256(raw)
 		if hex.EncodeToString(sum[:]) != cfg.ExpectedConfigSHA256 {
-			return nil, errors.New("app server profile configuration digest mismatch")
+			return errors.New("app server profile configuration digest mismatch")
 		}
 	} else if !os.IsNotExist(err) || cfg.ExpectedConfigSHA256 != "" {
-		return nil, errors.New("app server profile configuration unavailable")
+		return errors.New("app server profile configuration unavailable")
+	}
+	return nil
+}
+
+func startProcess(ctx context.Context, cfg Config, args []string) (*Client, error) {
+	if err := validateConfig(ctx, cfg); err != nil {
+		return nil, err
 	}
 	if cfg.MaxMessageBytes == 0 {
 		cfg.MaxMessageBytes = 8 << 20
@@ -126,7 +141,7 @@ func startProcess(ctx context.Context, cfg Config, args []string) (*Client, erro
 	}
 	lease, err := profileLease(filepath.Join(cfg.Home, ".moai-appserver.lock"))
 	if err != nil {
-		return nil, errors.New("app server profile is busy or cannot be locked")
+		return nil, ErrProfileBusy
 	}
 	started := false
 	defer func() {
@@ -136,25 +151,19 @@ func startProcess(ctx context.Context, cfg Config, args []string) (*Client, erro
 		}
 	}()
 	cmd := exec.Command(cfg.Binary, args...)
-	cmd.Dir = cfg.Home
-	for _, key := range []string{"PATH", "LANG", "LC_ALL", "SYSTEMROOT", "SystemRoot", "WINDIR", "TEMP", "TMP", "TMPDIR"} {
-		if value, ok := os.LookupEnv(key); ok {
-			cmd.Env = append(cmd.Env, key+"="+value)
-		}
-	}
-	cmd.Env = append(cmd.Env, "CODEX_HOME="+cfg.Home, "HOME="+cfg.Home, "USERPROFILE="+cfg.Home)
+	configureProcess(cmd, cfg.Home)
 	in, err := cmd.StdinPipe()
 	if err != nil {
 		return nil, errors.New("app server stdin unavailable")
 	}
 	out, err := cmd.StdoutPipe()
 	if err != nil {
-		_ = in.Close() // process never started; discarding the pipe
+		_ = in.Close()
 		return nil, errors.New("app server stdout unavailable")
 	}
 	cmd.Stderr = io.Discard
 	if err = cmd.Start(); err != nil {
-		_ = in.Close() // start failed; discarding the pipes
+		_ = in.Close()
 		_ = out.Close()
 		return nil, errors.New("app server start failed")
 	}
@@ -169,6 +178,16 @@ func startProcess(ctx context.Context, cfg Config, args []string) (*Client, erro
 		}
 	}()
 	return c, nil
+}
+
+func configureProcess(cmd *exec.Cmd, home string) {
+	cmd.Dir = home
+	for _, key := range []string{"PATH", "LANG", "LC_ALL", "SYSTEMROOT", "SystemRoot", "WINDIR", "TEMP", "TMP", "TMPDIR"} {
+		if value, ok := os.LookupEnv(key); ok {
+			cmd.Env = append(cmd.Env, key+"="+value)
+		}
+	}
+	cmd.Env = append(cmd.Env, "CODEX_HOME="+home, "HOME="+home, "USERPROFILE="+home)
 }
 func idKey(raw json.RawMessage) (string, error) {
 	var s string
@@ -193,7 +212,14 @@ func (c *Client) read(out io.ReadCloser) {
 	// The failure surface already fired from the read side (fail is once-only),
 	// so the Wait status cannot change the reported error; the flock is also
 	// released by process exit.
-	defer func() { _ = c.cmd.Wait(); _ = c.lease.Close() }()
+	defer func() {
+		if c.cmd != nil {
+			_ = c.cmd.Wait()
+		}
+		if c.lease != nil {
+			_ = c.lease.Close()
+		}
+	}()
 	scan := bufio.NewScanner(out)
 	scan.Buffer(make([]byte, 0, 4096), c.max+1)
 	for scan.Scan() {
@@ -270,8 +296,10 @@ func (c *Client) fail(err error) {
 		}
 		c.mu.Unlock()
 		close(c.done)
-		_ = c.in.Close()         // shutdown path; pipe discards carry no payload
-		_ = c.cmd.Process.Kill() // an already-exited process is the expected case
+		_ = c.in.Close() // shutdown path; pipe discards carry no payload
+		if c.cmd != nil {
+			_ = c.cmd.Process.Kill()
+		} // an already-exited process is expected
 	})
 }
 func (c *Client) Err() error             { c.mu.Lock(); defer c.mu.Unlock(); return c.err }

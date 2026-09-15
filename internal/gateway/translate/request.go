@@ -107,7 +107,7 @@ func RequestContext(ctx context.Context, model string, body []byte, limits Limit
 		}
 		if policy.KeepAll || policy.UserID != "" {
 			if limits.NativeReceiptAuthorize == nil || limits.NativeReceiptAuthorize(ctx, body, policy) != nil {
-				return nil, nil, errors.New("native receipt authorization required")
+				return nil, nil, nativeReceiptAuthorizationError{}
 			}
 		}
 		policy.applyGPT(out, root)
@@ -343,6 +343,16 @@ func RequestContext(ctx context.Context, model string, body []byte, limits Limit
 					kind = "output_text"
 				}
 				pending = append(pending, map[string]any{"type": kind, "text": s})
+			case "image":
+				if limits.PolicyProfile != PolicyGPTNative || role != "user" {
+					return nil, nil, errors.New("image input requires GPT native user content")
+				}
+				raw, _ := json.Marshal(b)
+				imageURL, imageErr := ImageSourceURL(raw)
+				if imageErr != nil {
+					return nil, nil, imageErr
+				}
+				pending = append(pending, map[string]any{"type": "input_image", "image_url": imageURL})
 			case "tool_use":
 				flush()
 				if role != "assistant" {
@@ -405,7 +415,7 @@ func RequestContext(ctx context.Context, model string, body []byte, limits Limit
 						return nil, nil, errors.New("is_error must be boolean")
 					}
 				}
-				texts, references, e := toolResultContent(b["content"], forward, toolDefinitions)
+				content, references, e := toolResultContent(b["content"], forward, toolDefinitions, limits.PolicyProfile == PolicyGPTNative)
 				for _, name := range references {
 					if !loadedTools[name] {
 						out["tools"] = append(out["tools"].([]any), toolDefinitions[name])
@@ -422,9 +432,7 @@ func RequestContext(ctx context.Context, model string, body []byte, limits Limit
 				if isError {
 					result = append(result, map[string]any{"type": "input_text", "text": "Tool execution failed (is_error=true)."})
 				}
-				for _, text := range texts {
-					result = append(result, map[string]any{"type": "input_text", "text": text})
-				}
+				result = append(result, content...)
 				input = append(input, map[string]any{"type": "function_call_output", "call_id": id, "output": result})
 			default:
 				return nil, nil, fmt.Errorf("unsupported content type %q (opaque reasoning is not enabled)", typ)

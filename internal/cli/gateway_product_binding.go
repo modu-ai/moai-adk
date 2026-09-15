@@ -6,9 +6,9 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"errors"
+	"io"
 	"net/http"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"strings"
 	"time"
@@ -21,9 +21,15 @@ import (
 	"github.com/modu-ai/moai-adk/internal/paths"
 )
 
-// Current subscription model metadata permits this maximum configuration.
-// Official App Server long-history probes are recorded under t649.
-const gatewayContextWindow = 872000
+// Supported four-model default, verified against App Server 0.154.0 metadata:
+// context_window=272000, effective_context_window_percent=95 (258400 native).
+// max_context_window=872000 is opt-in capacity, not the active thread default.
+// Claude reserves its own compact headroom from this declared default window.
+const gatewayContextWindow = 272000
+
+// A parser safety ceiling, not a model capability declaration. Larger metadata
+// requires an explicit compatibility review before changing Claude's global limit.
+const gatewayContextWindowLimit = 2000000
 const gatewayRequestBodyLimit = 16 << 20
 
 // gatewayOutputPolicyDisplay names the output policy every launch assembly
@@ -59,7 +65,11 @@ func newGPTGatewayBinding() (*gatewayLaunchBinding, error) {
 }
 
 func newGPTGatewayBindingWithStart(start func(context.Context, gateway.StartOptions) (gatewayStartedChild, error)) (*gatewayLaunchBinding, error) {
-	return newProviderGatewayBinding("gpt", gatewayGPTModels(), config.GLMModels{}, "", start)
+	models, err := installedGatewayGPTModels()
+	if err != nil {
+		return nil, err
+	}
+	return newProviderGatewayBinding("gpt", models, config.GLMModels{}, "", start)
 }
 
 func newNativeGatewayBinding(mode string) (*gatewayLaunchBinding, error) {
@@ -200,7 +210,7 @@ func productionGatewayHandlerFactory(raw json.RawMessage) (http.Handler, error) 
 	if json.Unmarshal(raw, &selection) != nil || len(selection.ModelIDs) == 0 {
 		return nil, errGatewayFactory
 	}
-	models := gatewayGPTModels()
+	var models []gateway.ModelEntry
 	var broker auth.Broker
 	var policy translate.PolicyProfile
 	first := selection.ModelIDs[0]
@@ -238,18 +248,6 @@ func productionGatewayHandlerFactory(raw json.RawMessage) (http.Handler, error) 
 	return factory(raw)
 }
 
-func installedGPTBrokerForGateway() (auth.Broker, error) {
-	executable, err := exec.LookPath("codex")
-	if err != nil {
-		return nil, errors.New("GPT authentication broker unavailable")
-	}
-	executable, err = filepath.Abs(executable)
-	if err != nil {
-		return nil, errors.New("GPT authentication broker unavailable")
-	}
-	return auth.CodexBroker{Executable: executable, Timeout: 10 * time.Minute}, nil
-}
-
 func verifyGPTCredentialOwnership(ctx context.Context, ref auth.CredentialRef) error {
 	if err := ctx.Err(); err != nil {
 		return err
@@ -273,6 +271,68 @@ func gatewayGPTModels() []gateway.ModelEntry {
 	return models
 }
 
+func installedGatewayGPTModels() ([]gateway.ModelEntry, error) {
+	home, err := paths.MoaiHome()
+	if err != nil || !filepath.IsAbs(home) {
+		return nil, errors.New("GPT model metadata profile unavailable")
+	}
+	return gatewayGPTModelsForProfile(filepath.Join(home, "gpt-appserver"))
+}
+
+// Only an absent cache uses the observed conservative default. Invalid present
+// metadata must not silently widen or guess the single Claude session window.
+func gatewayGPTModelsForProfile(profile string) ([]gateway.ModelEntry, error) {
+	models := gatewayGPTModels()
+	f, err := os.Open(filepath.Join(profile, "models_cache.json"))
+	if errors.Is(err, os.ErrNotExist) {
+		return models, nil
+	}
+	invalid := errors.New("GPT context metadata invalid; refresh the managed Codex models cache")
+	if err != nil {
+		return nil, invalid
+	}
+	defer func() { _ = f.Close() }()
+	info, err := f.Stat()
+	if err != nil || !info.Mode().IsRegular() || info.Size() > 4<<20 {
+		return nil, invalid
+	}
+	raw, err := io.ReadAll(io.LimitReader(f, (4<<20)+1))
+	if err != nil || len(raw) > 4<<20 || gateway.ValidateJSONObject(raw) != nil {
+		return nil, invalid
+	}
+	var cache struct {
+		Models []struct {
+			Slug   string `json:"slug"`
+			Window int    `json:"context_window"`
+		} `json:"models"`
+	}
+	if json.Unmarshal(raw, &cache) != nil {
+		return nil, invalid
+	}
+	windows := make(map[string]int, len(models))
+	for _, row := range models {
+		windows[row.RouteID] = 0
+	}
+	window := 0
+	for _, row := range cache.Models {
+		previous, supported := windows[row.Slug]
+		if !supported {
+			continue
+		}
+		if previous != 0 || row.Window <= 0 || row.Window > gatewayContextWindowLimit || (window != 0 && window != row.Window) {
+			return nil, invalid
+		}
+		windows[row.Slug], window = row.Window, row.Window
+	}
+	for i := range models {
+		if windows[models[i].RouteID] == 0 {
+			return nil, invalid
+		}
+		models[i].Capabilities.ContextTokens = window
+	}
+	return models, nil
+}
+
 func newGatewaySessionToken() (string, error) {
 	var raw [32]byte
 	if _, err := rand.Read(raw[:]); err != nil {
@@ -286,7 +346,7 @@ func marshalGatewayPrivatePayload(token string, models []gateway.ModelEntry) ([]
 	for _, model := range models {
 		ids = append(ids, model.RouteID)
 	}
-	return json.Marshal(gatewayPrivatePayload{Version: 1, SessionToken: token, ModelIDs: ids})
+	return json.Marshal(gatewayPrivatePayload{Version: 1, SessionToken: token, ModelIDs: ids, ContextTokens: gatewayPayloadContext(models)})
 }
 
 func marshalGatewayPrivatePayloadWithConversation(token string, models []gateway.ModelEntry, descriptor conversation.Descriptor) ([]byte, error) {
@@ -295,7 +355,14 @@ func marshalGatewayPrivatePayloadWithConversation(token string, models []gateway
 		ids = append(ids, model.RouteID)
 	}
 	conversation := &gatewayPrivateConversation{FamilyID: descriptor.FamilyID, SessionID: descriptor.UUID, ReceiptDir: descriptor.ReceiptDir, CWD: descriptor.CWD}
-	return json.Marshal(gatewayPrivatePayload{Version: 1, SessionToken: token, ModelIDs: ids, Conversation: conversation})
+	return json.Marshal(gatewayPrivatePayload{Version: 1, SessionToken: token, ModelIDs: ids, Conversation: conversation, ContextTokens: gatewayPayloadContext(models)})
+}
+
+func gatewayPayloadContext(models []gateway.ModelEntry) int {
+	if len(models) > 0 && models[0].Provider == gateway.ProviderOpenAI {
+		return models[0].Capabilities.ContextTokens
+	}
+	return 0
 }
 
 func gatewayChildEnvironment(inherited []string) []string {

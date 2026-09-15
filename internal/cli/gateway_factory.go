@@ -32,10 +32,11 @@ type gatewayFactoryDependencies struct {
 }
 
 type gatewayPrivatePayload struct {
-	Version      int                         `json:"version"`
-	SessionToken string                      `json:"session_token"`
-	ModelIDs     []string                    `json:"model_ids"`
-	Conversation *gatewayPrivateConversation `json:"conversation,omitempty"`
+	Version       int                         `json:"version"`
+	SessionToken  string                      `json:"session_token"`
+	ModelIDs      []string                    `json:"model_ids"`
+	ContextTokens int                         `json:"context_tokens,omitempty"`
+	Conversation  *gatewayPrivateConversation `json:"conversation,omitempty"`
 }
 
 type gatewayPrivateConversation struct {

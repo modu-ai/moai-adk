@@ -75,7 +75,11 @@ for line in sys.stdin:
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer client.Close()
+	defer func() {
+		if err := client.Close(); err != nil {
+			t.Errorf("close App Server client: %v", err)
+		}
+	}()
 	if _, err = client.Initialize(ctx, "fixture", "1"); err != nil {
 		t.Fatal(err)
 	}
@@ -211,7 +215,11 @@ func readAppServerContractLog(t *testing.T, path string) []string {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer f.Close()
+	defer func() {
+		if err := f.Close(); err != nil {
+			t.Errorf("close contract log: %v", err)
+		}
+	}()
 	var lines []string
 	s := bufio.NewScanner(f)
 	for s.Scan() {

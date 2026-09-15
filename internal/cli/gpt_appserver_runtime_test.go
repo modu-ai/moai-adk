@@ -58,7 +58,7 @@ func TestManagedGPTLiveSimpleTurn(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer client.Close()
+	defer func() { _ = client.Close() }()
 	if _, err = client.Initialize(ctx, "moai-gpt-live-test", "1"); err != nil {
 		t.Fatal(err)
 	}
@@ -79,27 +79,36 @@ func TestManagedGPTLiveSimpleTurn(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer engine.Close()
-	prepare := newManagedGPTPrepare("live-simple", t.TempDir(), translate.Limits{PolicyProfile: translate.PolicyGPTNative, MaxBodyBytes: 1 << 20, MaxEventBytes: 1 << 20, MaxOutputBytes: 1 << 20}, store)
-	adapter, err := gateway.NewAppServerAdapter(gateway.AppServerAdapterConfig{Engine: engine, Authority: authority, Prepare: prepare})
-	if err != nil {
-		t.Fatal(err)
+	for _, model := range []string{"gpt-6-astra", "gpt-5.6-sol", "gpt-5.6-terra", "gpt-5.6-luna"} {
+		t.Run(model, func(t *testing.T) {
+			prepare := newManagedGPTPrepare("live-simple-"+model, t.TempDir(), translate.Limits{PolicyProfile: translate.PolicyGPTNative, MaxBodyBytes: 1 << 20, MaxEventBytes: 1 << 20, MaxOutputBytes: 1 << 20}, store)
+			adapter, adapterErr := gateway.NewAppServerAdapter(gateway.AppServerAdapterConfig{Engine: engine, Authority: authority, Prepare: prepare})
+			if adapterErr != nil {
+				t.Fatal(adapterErr)
+			}
+			entry := gateway.ModelEntry{RouteID: model, UpstreamID: model, Provider: gateway.ProviderOpenAI, AuthMethod: gateway.AuthAppServer}
+			grant, authorizeErr := authority.Authorize(ctx, entry)
+			if authorizeErr != nil {
+				t.Fatal(authorizeErr)
+			}
+			body, _ := json.Marshal(map[string]any{"model": entry.RouteID, "max_tokens": 64, "stream": false, "thinking": map[string]any{"type": "adaptive"}, "output_config": map[string]any{"effort": "low"}, "messages": []any{map[string]string{"role": "user", "content": "Reply with exactly LIVE_APP_SERVER_OK."}}, "tools": []any{}})
+			response, sendErr := adapter.Send(ctx, gateway.RoutedRequest{Entry: entry, Body: body, Managed: grant})
+			if sendErr != nil {
+				t.Fatalf("live adapter send: %T %v", sendErr, sendErr)
+			}
+			raw, readErr := io.ReadAll(response.Body)
+			_ = response.Body.Close()
+			if readErr != nil || response.StatusCode != 200 || !strings.Contains(string(raw), "LIVE_APP_SERVER_OK") {
+				t.Fatalf("live response status=%d body=%s err=%v", response.StatusCode, raw, readErr)
+			}
+		})
 	}
+
 	entry := gateway.ModelEntry{RouteID: "gpt-5.6-sol", UpstreamID: "gpt-5.6-sol", Provider: gateway.ProviderOpenAI, AuthMethod: gateway.AuthAppServer}
 	grant, err := authority.Authorize(ctx, entry)
 	if err != nil {
 		t.Fatal(err)
 	}
-	body, _ := json.Marshal(map[string]any{"model": entry.RouteID, "max_tokens": 64, "stream": false, "thinking": map[string]any{"type": "adaptive"}, "output_config": map[string]any{"effort": "low"}, "messages": []any{map[string]string{"role": "user", "content": "Reply with exactly LIVE_APP_SERVER_OK."}}, "tools": []any{}})
-	response, err := adapter.Send(ctx, gateway.RoutedRequest{Entry: entry, Body: body, Managed: grant})
-	if err != nil {
-		t.Fatalf("live adapter send: %T %v", err, err)
-	}
-	defer response.Body.Close()
-	raw, err := io.ReadAll(response.Body)
-	if err != nil || response.StatusCode != 200 || !strings.Contains(string(raw), "LIVE_APP_SERVER_OK") {
-		t.Fatalf("live response status=%d body=%s err=%v", response.StatusCode, raw, err)
-	}
-
 	toolPrepare := newManagedGPTPrepare("live-tool", t.TempDir(), translate.Limits{PolicyProfile: translate.PolicyGPTNative, MaxBodyBytes: 1 << 20, MaxEventBytes: 1 << 20, MaxOutputBytes: 1 << 20}, store)
 	toolAdapter, err := gateway.NewAppServerAdapter(gateway.AppServerAdapterConfig{Engine: engine, Authority: authority, Prepare: toolPrepare})
 	if err != nil {
@@ -144,7 +153,7 @@ func TestManagedGPTLiveSimpleTurn(t *testing.T) {
 	if err != nil {
 		t.Fatalf("live tool continuation: %T %v", err, err)
 	}
-	defer continued.Body.Close()
+	defer func() { _ = continued.Body.Close() }()
 	continuedRaw, err := io.ReadAll(continued.Body)
 	if err != nil || continued.StatusCode != 200 || !strings.Contains(strings.ToLower(string(continuedRaw)), "pong") {
 		t.Fatalf("live continuation status=%d body=%s err=%v", continued.StatusCode, continuedRaw, err)
@@ -223,7 +232,7 @@ func TestManagedGPTLiveResume(t *testing.T) {
 
 	secondClient, secondEngine, secondAdapter, secondGrant := start()
 	defer secondEngine.Close()
-	defer secondClient.Close()
+	defer func() { _ = secondClient.Close() }()
 	secondBody, _ := json.Marshal(map[string]any{"model": entry.RouteID, "max_tokens": 64, "stream": false, "messages": []any{
 		map[string]string{"role": "user", "content": "Reply with exactly LIVE_RESUME_BASE_OK."},
 		map[string]string{"role": "assistant", "content": "LIVE_RESUME_BASE_OK"},
@@ -233,7 +242,7 @@ func TestManagedGPTLiveResume(t *testing.T) {
 	if err != nil {
 		t.Fatalf("resume send: %T %v", err, err)
 	}
-	defer second.Body.Close()
+	defer func() { _ = second.Body.Close() }()
 	secondRaw, err := io.ReadAll(second.Body)
 	if err != nil || !strings.Contains(string(secondRaw), "LIVE_RESUME_OK") {
 		t.Fatalf("resume body=%s err=%v", secondRaw, err)

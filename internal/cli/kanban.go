@@ -503,6 +503,30 @@ func exportKanbanLaunchFacts(specID, backend string) func() {
 	}
 }
 
+// exportFactoryLaunchFacts keeps GPT Factory provenance off the retired
+// kanban backend variable while preserving the established carrier for the
+// Claude and GLM launchers until their legacy migration lands separately.
+func exportFactoryLaunchFacts(specID, backend string) func() {
+	if backend != kanban.BackendGPT {
+		return exportKanbanLaunchFacts(specID, backend)
+	}
+	restoreDispatch := captureEnvState("MOAI_DISPATCH_BACKEND")
+	restoreLegacy := captureEnvState(config.EnvMoaiKanbanBackend)
+	restoreSpec := captureEnvState(config.EnvMoaiKanbanSpec)
+
+	_ = os.Setenv("MOAI_DISPATCH_BACKEND", backend)
+	_ = os.Unsetenv(config.EnvMoaiKanbanBackend)
+	if specID != "" {
+		_ = os.Setenv(config.EnvMoaiKanbanSpec, specID)
+	}
+
+	return func() {
+		restoreSpec()
+		restoreLegacy()
+		restoreDispatch()
+	}
+}
+
 // The tokens claude uses to name a session. moai RECOGNIZES them; it never
 // consumes them — the value has to reach claude unchanged.
 const (

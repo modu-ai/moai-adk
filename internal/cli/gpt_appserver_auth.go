@@ -29,9 +29,9 @@ func newGPTAppServerAuthServices(out io.Writer) gptCommandServices {
 		}
 		binary, err = filepath.Abs(binary)
 		if err != nil {
-			return errors.New("Codex CLI path is unavailable")
+			return errors.New("codex CLI path is unavailable")
 		}
-		client, err := codexapp.Start(ctx, codexapp.Config{Binary: binary, Home: profile})
+		client, err := startSharedGPTAppServer(ctx, codexapp.Config{Binary: binary, Home: profile})
 		if err != nil {
 			return errors.New("GPT App Server failed to start")
 		}
@@ -101,18 +101,28 @@ func newGPTAppServerAuthServices(out io.Writer) gptCommandServices {
 			})
 		},
 		Status: func(ctx context.Context) error {
-			return withClient(ctx, func(ctx context.Context, client *codexapp.Client) error {
-				account, err := client.Account(ctx)
-				if err != nil {
-					return errors.New("GPT App Server account status is unavailable")
-				}
-				if account.Account == nil || account.Account.Type != "chatgpt" {
-					_, err = fmt.Fprintln(out, "GPT: not logged in")
-					return err
-				}
-				_, err = fmt.Fprintf(out, "GPT: logged in via managed App Server (%s)\n", account.Account.PlanType)
+			profile, err := managedGPTProfile()
+			if err != nil {
+				return errors.New("GPT App Server profile is unavailable")
+			}
+			binary, err := exec.LookPath("codex")
+			if err != nil {
+				return errors.New("install the Codex CLI before using moai gpt")
+			}
+			binary, err = filepath.Abs(binary)
+			if err != nil {
+				return errors.New("codex CLI path is unavailable")
+			}
+			loggedIn, err := codexapp.LoginStatus(ctx, codexapp.Config{Binary: binary, Home: profile})
+			if err != nil {
 				return err
-			})
+			}
+			if loggedIn {
+				_, err = fmt.Fprintln(out, "GPT: logged in using ChatGPT (managed profile)")
+			} else {
+				_, err = fmt.Fprintln(out, "GPT: not logged in")
+			}
+			return err
 		},
 		Logout: func(ctx context.Context) error {
 			return withClient(ctx, func(ctx context.Context, client *codexapp.Client) error {

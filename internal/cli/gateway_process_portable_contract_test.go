@@ -62,7 +62,11 @@ func TestGatewayProcessContractPortable(t *testing.T) {
 		if getErr != nil {
 			t.Fatalf("portable readiness GET: %v", getErr)
 		}
-		defer resp.Body.Close()
+		defer func() {
+			if err := resp.Body.Close(); err != nil {
+				t.Errorf("close readiness response: %v", err)
+			}
+		}()
 		raw, _ := io.ReadAll(resp.Body)
 		if resp.StatusCode != http.StatusOK || string(raw) != "ready" {
 			t.Errorf("portable readiness status=%d body=%q, want 200/ready", resp.StatusCode, raw)

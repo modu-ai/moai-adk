@@ -138,10 +138,8 @@ func newSessionListCmd() *cobra.Command {
 		Short: "List active sessions (optionally filtered by --filter-spec)",
 		Args:  cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			// SPEC-SESSION-WORKTREE-001 M8: on-touch PR-merge cleanup fires
-			// here (REQ-SW-022). Gated by the AutoCleanup toggle inside
-			// prMergeCleanup; fail-open, non-blocking.
-			prMergeCleanup(loadSessionWorktreeConfig(cmd), cmd.ErrOrStderr())
+			// Listing must remain read-only and independent of external PR
+			// probes. Auto-cleanup belongs to mutation paths, not this query.
 			entries, err := session.QueryActiveWork(filterSpec)
 			if err != nil {
 				return fmt.Errorf("list: %w", err)
