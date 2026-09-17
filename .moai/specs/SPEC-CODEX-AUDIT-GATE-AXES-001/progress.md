@@ -172,7 +172,7 @@ push_state: NOT PUSHED                  # 리드 일괄 push 대기
 
 ```yaml
 sync_complete_at: 2026-09-18
-sync_commit_sha: pending-backfill-sync   # 이 절을 담는 첫 sync 커밋(19d90298b)의 SHA는 그 커밋 전에 알 수 없어 후속 커밋에서 백필
+sync_commit_sha: 391113875   # completes the 3-phase close (spec.md status -> completed)
 sync_status: audit-ready
 b12_self_test_a: pass   # grep -c 'CODEX-AUDIT-GATE-AXES-001' CHANGELOG.md == 0 before emission (checked pre-edit)
 b12_self_test_b: pass   # acceptance.md 고유 AC id 14개, CHANGELOG 본문 "14/14 acceptance criteria PASS"로 동일 수 인용
