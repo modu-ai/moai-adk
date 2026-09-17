@@ -140,7 +140,7 @@ func TestParseFactoryFlag(t *testing.T) {
 		wantEnabled   bool
 		wantWorkers   int
 		wantWorkerNum int
-		wantAgent    bool
+		wantAgent     bool
 		wantRest      []string
 		wantErr       bool
 		errMarker     string
@@ -710,9 +710,9 @@ func TestFactoryGenealogyInHelp(t *testing.T) {
 		for _, marker := range []string{
 			"--factory", "#1513", "7f61332ef", "RENAMED", "RETIRED",
 			"-f, --factory", // the lead entry (numeric count retired 2026-09-16)
-			"-f lane-<n>",       // the incremental single-lane form
-			"-k <N>",            // the v1.2.0 unified shapes remain documented
-			"t118",              // the revival names its own card
+			"-f lane-<n>",   // the incremental single-lane form
+			"-k <N>",        // the v1.2.0 unified shapes remain documented
+			"t118",          // the revival names its own card
 		} {
 			if !strings.Contains(cmd, marker) {
 				t.Errorf("help text missing genealogy/entry marker %q", marker)

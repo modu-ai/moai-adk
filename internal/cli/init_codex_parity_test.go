@@ -9,8 +9,8 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
-	"strings"
 	"sort"
+	"strings"
 	"testing"
 
 	"github.com/modu-ai/moai-adk/internal/cli/wizard"

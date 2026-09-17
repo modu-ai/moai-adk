@@ -45,16 +45,16 @@ Use 'moai cc' or 'moai glm' to launch Claude Code.`,
 // on that path is loadGLMConfig's nil-safe branch (glm.go), which falls back to
 // reading llm.yaml from disk — its documented live runtime path.
 var trivialCommands = map[string]bool{
-	"--version":              true,
-	"version":                true,
-	"-v":                     true,
-	"help":                   true,
-	"--help":                 true,
-	"-h":                     true,
-	"completion":             true, // cobra built-in
-	"cc":                     true, // launcher: exec's claude, discards the graph
-	"cg":                     true, // retired token: never initialize launch dependencies
-	"glm":                    true, // launcher: exec's claude, discards the graph
+	"--version":  true,
+	"version":    true,
+	"-v":         true,
+	"help":       true,
+	"--help":     true,
+	"-h":         true,
+	"completion": true, // cobra built-in
+	"cc":         true, // launcher: exec's claude, discards the graph
+	"cg":         true, // retired token: never initialize launch dependencies
+	"glm":        true, // launcher: exec's claude, discards the graph
 }
 
 // @MX:ANCHOR: [AUTO] Execute is the main entry point for the moai CLI

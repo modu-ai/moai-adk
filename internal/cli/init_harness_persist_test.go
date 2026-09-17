@@ -41,9 +41,9 @@ func readLLMHarness(t *testing.T, projectDir string) string {
 // AND for the flag-absent default (explicit record of claude included).
 func TestInitPersistsHarnessKey(t *testing.T) {
 	cases := []struct {
-		name  string
-		flag  string
-		want  string
+		name string
+		flag string
+		want string
 	}{
 		{"flag absent records claude", "", "claude"},
 		{"claude records claude", "claude", "claude"},
