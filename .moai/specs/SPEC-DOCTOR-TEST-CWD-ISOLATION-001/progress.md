@@ -30,11 +30,52 @@ next_action: Hand off the unchanged Tier S plan artifacts to `plan-auditor`; no 
 
 ## §E.2 Run-phase Evidence
 
-- 상태: pending — plan 단계 미완료
+- 측정일: 2026-09-18 · 편집 전 트리 HEAD `aead782bc` · 구현 커밋 M1 `85f1ba686` · 로컬 develop = merge-base = `a851b205ccb525db537733111a3938ddd74ff801`
+- 테스트 결과는 M1 편집 직후의 워킹 트리에서 측정했고, 그 트리를 수정 없이 `85f1ba686` 으로 커밋했다. diff 기준 AC 는 커밋 뒤 `85f1ba686` 에서 측정했다.
+- 원본 출력: `.moai/reports/t675/run/` (`red-e8-nine.txt`, `green-nine-poisoned.txt`, `green-nine-natural.txt`, `ac-001-002-003-004-005-static.txt`)
+
+### E8 RED (편집 전, HEAD `aead782bc`)
+
+`MOAI_EMBED_CHECK_BIN=/usr/bin/false go test -count=1 -v -run '^(TestRunDoctor_(WithExport|WithFix|Verbose|AllFlags|VerboseAndDetail|ExportMode)|TestDoctorCmd_(Execution|ExportFlag|VerboseExecution))$' ./internal/cli/` → exit 1. `--- FAIL` 9줄이 대상 9개 테스트를 각각 가리키고, 모두 `doctor: 1 check(s) failed`. AllFlags 추적에 `✗ Error: could not extract embedded artifacts from /usr/bin/false: false init: exit status 1 ()` 가 찍혔다. 마지막 줄은 `FAIL	github.com/modu-ai/moai-adk/internal/cli	132.787s`.
+
+### AC 판정표
+
+| AC | 상태 | 명령 | 실제 출력 |
+|----|------|------|-----------|
+| AC-DTC-001 | PASS | `MOAI_EMBED_CHECK_BIN=/usr/bin/false go test -count=1 -v -run '^TestDoctorCmd_Execution$' ./internal/cli/` | exit 0 · `--- PASS: TestDoctorCmd_Execution (11.11s)` · `ok  	github.com/modu-ai/moai-adk/internal/cli	11.723s` · `--- FAIL` 0줄 |
+| AC-DTC-002 | PASS | E-RED-002 명령을 그대로 재실행 + `go test ./internal/cli -list '^(TestRunDoctor_(…)|TestDoctorCmd_(…))$'` | exit 0 · `--- PASS:` 9줄(대상 9개) · `--- FAIL` 0줄 · `ok  	github.com/modu-ai/moai-adk/internal/cli	113.530s` · AllFlags 에서 `✓ Agent Emit Embed`; `-list` 는 exit 0 으로 9개 이름을 모두 나열 |
+| AC-DTC-003 | PASS | `git diff --name-only develop...HEAD -- '*.go'` | exit 0 · `internal/cli/coverage_improvement_test.go` / `internal/cli/doctor_test.go` / `internal/cli/integration_test.go` (정확히 3줄) |
+| AC-DTC-004 | PASS | `git diff -U0 --no-color develop...HEAD -- internal/cli/coverage_improvement_test.go internal/cli/doctor_test.go internal/cli/integration_test.go` | exit 0 · 제거된 내용 줄 0개 · 추가된 내용 줄 정확히 9개, 모두 `+	t.Chdir(t.TempDir())` |
+| AC-DTC-005 | PASS | AC-DTC-004 와 같은 명령 | `os.Chdir(` 추가 줄 0개. hunk 헤더가 `func TestRunDoctor_WithExport` · `WithFix` · `Verbose` · `AllFlags` · `VerboseAndDetail` · `ExportMode` · `TestDoctorCmd_Execution` · `ExportFlag` · `VerboseExecution` 을 각각 한 번씩 가리킨다 |
+
+### 일반 환경 회귀 (오염 주입 없음)
+
+`go test -count=1 -v -run '^(…9개 앵커…)$' ./internal/cli/` → exit 0 · `--- PASS:` 9줄 · `--- FAIL` 0줄 · `ok  	github.com/modu-ai/moai-adk/internal/cli	107.697s`
+
+### 정적 검사
+
+- `gofmt -l <세 파일>` → exit 0, 출력 없음
+- `go vet ./internal/cli/` → exit 0, 출력 없음
+- `golangci-lint run ./internal/cli/` → exit 1, staticcheck 2건: `internal/cli/gtd_answer.go:84:15 S1038`, `internal/cli/launcher.go:811:3 S1021`. 둘 다 이 카드의 diff 밖에 있는 파일이므로(AC-DTC-003) 기존 결함이며, **새로 생긴 lint 는 0건**이다.
 
 ## §E.3 Run-phase Audit-Ready Signal
 
-- 상태: pending — plan 단계 미완료
+```yaml
+run_complete_at: 2026-09-18
+run_commit_sha: 85f1ba686
+run_status: audit-ready
+ac_pass_count: 5
+ac_fail_count: 0
+preserve_list_post_run_count: 0   # 비테스트 Go 파일 변경 0건 (AC-DTC-003)
+l44_pre_commit_fetch: not-run     # 리드 일괄 push 체계라 레인은 fetch/push 하지 않는다
+l44_post_push_fetch: not-applicable
+new_warnings_or_lints_introduced: 0
+cross_platform_build:
+  darwin: not-run-separately      # 세 test 파일만 바뀌었고, go vet 로 패키지 컴파일을 확인했다
+  windows: not-run                # CI(origin/develop) 소관
+total_run_phase_files: 4          # test 파일 3개 + spec.md 프런트매터
+m1_to_mN_commit_strategy: "M1 = test isolation + status draft->in-progress; evidence commit follows"
+```
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
