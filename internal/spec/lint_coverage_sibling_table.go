@@ -106,9 +106,18 @@ func splitTableRow(row string) []string {
 	return cells
 }
 
-// cellREQIDs returns the full REQ ids in one cell, expanding each bare numeric
-// tail that follows a full id (directly, or through an earlier expanded tail)
-// by comma within the same cell.
+// cellREQIDs returns the full REQ ids in one textual unit, expanding each bare
+// numeric tail that follows a full id (directly, or through an earlier expanded
+// tail) by comma within that same unit.
+//
+// THE UNIT IS SUPPLIED BY THE CALLER, and there are two of them. The table path
+// above hands it one table cell. The `maps`-list path hands it the capture of
+// the widened `maps` locator (lint_coverage_sibling_maps.go, card t801). This is
+// the package's ONE numeric-tail expansion rule; REQ-SMS-002 forbids a second,
+// independently-written one, so a third caller reuses this function rather than
+// re-implementing it. What every caller owes is the unit's boundedness: this
+// function scans whatever string it is given, so a caller that hands it a whole
+// line counts REQ ids the author never wrote as a mapping.
 func cellREQIDs(cell string) []string {
 	var ids []string
 	for _, loc := range fullREQIDPattern.FindAllStringIndex(cell, -1) {
