@@ -65,3 +65,64 @@
   포함)와 판정 기준(`judgment-criteria.md`)은 같은 커밋으로 확정했다.
 - 선행 조건 플래그: AC-JFM-023 이 여전히 RED — pull 행이 20 을 넣어도 023 이 녹색이기 전에는
   018 판정이 서지 않는다(`judgment-criteria.md` §6). 023 처분은 리드·운영자 몫.
+
+## 8. 창 재측정 (2026-09-18T01:10 KST — 리드 재배차)
+
+### Claim
+
+AC-JFM-018 은 **녹색이 아니다**. 동시에 이번 행들을 **유효한 반증으로도 읽을 수 없다** — 창이
+오염돼 있다. 판정은 **gap(창 무효)** 이며 처분은 리드·운영자 몫이다.
+
+### Evidence
+
+| 확인 | 명령 | 관측 |
+|---|---|---|
+| 필터 양성 대조 | `collect-pull-window.sh --selftest` | `selftest PASS: fixture 3 rows (2 pull, 1 push) -> export rows=2 violations=1` |
+| 전 트리 스캔 | primary + `.claude/worktrees/*` + `~/.moai/worktrees/*` 의 `askuser-observations.jsonl` 에 `jq 'select(.mode=="pull")'` | 로그 파일은 primary 에만 존재: `total=81 pull=5 viol=4 last=2026-09-17T16:07:14Z` |
+| 구성 | `grep -n recommendation_mode` primary / `git show develop:` | 둘 다 `recommendation_mode: pull` |
+| 질문 규칙 트리 | `git grep -n -i "recommendation_mode\|pull" <ref> -- .claude/rules/moai/core/askuser-protocol.md` | `develop`: 64·117·120·265행 pull 분기 존재 / `HEAD`(primary=`main`) 와 primary 워킹 사본: **0건** |
+
+pull 행 5건(전부 창 앵커 `2026-09-13T14:07:40Z` 이후):
+
+```
+2026-09-13T17:17:35Z b6556473 label_present=false q=1 opt=3
+2026-09-13T20:17:26Z 764312c6 label_present=true  q=4 opt=11
+2026-09-13T20:19:53Z 41de9342 label_present=true  q=1 opt=3
+2026-09-13T20:31:58Z 764312c6 label_present=true  q=4 opt=11
+2026-09-17T16:07:14Z 1f4f7f28 label_present=true  q=2 opt=5
+```
+
+### Baseline-attribution
+
+이 실행(2026-09-18 01:10 KST), primary 로그 81행과 위 두 ref 에 대해 직접 잰 값이다. §7 의 0행은
+2026-09-13 23:11 측정이며 이번 값과 비교 대상일 뿐 재사용하지 않았다.
+
+### 판독
+
+1. **분모 부족**: n=5 < 20 — §3 에 따라 gap.
+2. **오염 원인(관측)**: 관측기는 `mode` 를 질문 세션 트리의 `interview.yaml` 로 찍는다. primary
+   체크아웃은 `main` 에 있고, 그 트리의 `askuser-protocol.md` 에는 pull 분기가 없어 `(권장)` 라벨을
+   여전히 [HARD] 로 요구한다. 즉 primary 세션은 **구성은 pull, 로드된 질문 규칙은 push** 인 상태로
+   질문했다. `label_present:true` 4건은 이 불일치와 정합한다 — 규칙을 어긴 증거가 아니라 규칙이
+   pull 을 모르는 트리에서 나온 행이다.
+3. 따라서 이 행들은 "pull 규칙 하에서의 준수/위반" 표본이 아니다. 계속 모아도 같은 오염이 쌓인다.
+
+### Gaps
+
+- 각 세션(`764312c6` 등)이 실제로 어느 트리의 규칙을 로드했는지는 세션 내부를 보지 못해 직접
+  확인하지 않았다 — 로그가 primary 에만 있다는 사실과 primary 규칙 트리 판독으로 추론했다.
+- 세션별 `calls_issued` 는 묻지 않았다(§5-3 은 n≥20 일 때만 수행).
+- AC-JFM-023 상태는 재측정하지 않았다 — §6 플래그 그대로.
+- export(`.moai/reports/t401/pull-window.jsonl`)·provenance 는 만들지 않았다 — 판정 가능한 창이
+  아니므로 표본으로 오인될 산출물을 남기지 않는다.
+
+### Residual-risk
+
+- 추론 2가 틀렸다면(세션이 develop 규칙 트리를 로드했다면) 4건은 실제 위반이고 018 은 반증된다.
+  이 가능성은 세션 트랜스크립트 확인 없이는 배제되지 않는다.
+
+### 처분 선택지 (리드·운영자 결정 — 레인은 고르지 않는다)
+
+- 창 재개시: pull 규칙이 있는 트리(develop 기반 워크트리)에서 도는 세션만 표본으로 인정하고, 그
+  트리 로그를 수집 대상으로 삼는다. 앵커 시각은 그 결정 시점으로 다시 잡는다.
+- 또는 primary 에서 pull 구성을 되돌려 오염 행 생성을 멈춘다.
