@@ -162,9 +162,9 @@ const (
 // SPEC-INIT-HARNESS-PROMPT-001 resolution point, which also reads the wizard's
 // answer) both delegate here, so the two inputs cannot drift apart.
 func normalizeAgentWiring(value string) agentWiring {
-	switch agentWiring(value) {
+	switch wiring := agentWiring(config.CanonicalAgentHarness(value)); wiring {
 	case agentWiringGPT, agentWiringBoth:
-		return agentWiring(value)
+		return wiring
 	default:
 		return agentWiringClaude
 	}
@@ -404,7 +404,7 @@ func validateInitFlags(cmd *cobra.Command, _ []string) error {
 	// fail-loud, naming the valid values (autonomy-tier closed-set pattern).
 	llm := getStringFlag(cmd, "llm")
 	if llm != "" {
-		switch agentWiring(llm) {
+		switch agentWiring(config.CanonicalAgentHarness(llm)) {
 		case agentWiringClaude, agentWiringGPT, agentWiringBoth:
 		default:
 			return fmt.Errorf("invalid --llm value %q: must be one of: claude, gpt, both", llm)
