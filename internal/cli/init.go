@@ -129,7 +129,7 @@ func init() {
 	// set {claude, codex, both} validated fail-loud in validateInitFlags;
 	// help names all three values. Default claude = flag-absent behavior
 	// byte-identical to today (AC-CW-004).
-	initCmd.Flags().String("llm", "", "LLM harness to wire: claude, codex, or both (default: claude; codex skips .mcp.json provisioning and wires the .codex/ hook layer + MCP config)")
+	initCmd.Flags().String("llm", "", "LLM harness to wire: claude, gpt, or both (default: claude; gpt deploys Codex-only surfaces and wires the .codex/ hook layer + MCP config)")
 }
 
 // agentWiring is the SPEC-CODEX-WIRING-001 harness selection. The D3
@@ -147,7 +147,7 @@ type agentWiring string
 
 const (
 	agentWiringClaude agentWiring = "claude"
-	agentWiringCodex  agentWiring = "codex"
+	agentWiringGPT    agentWiring = "gpt"
 	agentWiringBoth   agentWiring = "both"
 )
 
@@ -158,7 +158,7 @@ const (
 // answer) both delegate here, so the two inputs cannot drift apart.
 func normalizeAgentWiring(value string) agentWiring {
 	switch agentWiring(value) {
-	case agentWiringCodex, agentWiringBoth:
+	case agentWiringGPT, agentWiringBoth:
 		return agentWiring(value)
 	default:
 		return agentWiringClaude
@@ -198,7 +198,7 @@ func wireCodexUnlessClaude(cmd *cobra.Command, wiring agentWiring, projectRoot s
 }
 
 // addCodexReinitGuidance is the redirect note printed when init runs
-// --llm codex|both against an already-initialized project (the --force
+// --llm gpt|both against an already-initialized project (the --force
 // reinit path): the preferred additive verb is `moai tool enable codex`,
 // which wires Codex in place without reinitializing and is the only additive
 // command. The reinit itself proceeds as requested.
@@ -411,9 +411,9 @@ func validateInitFlags(cmd *cobra.Command, _ []string) error {
 	llm := getStringFlag(cmd, "llm")
 	if llm != "" {
 		switch agentWiring(llm) {
-		case agentWiringClaude, agentWiringCodex, agentWiringBoth:
+		case agentWiringClaude, agentWiringGPT, agentWiringBoth:
 		default:
-			return fmt.Errorf("invalid --llm value %q: must be one of: claude, codex, both", llm)
+			return fmt.Errorf("invalid --llm value %q: must be one of: claude, gpt, both", llm)
 		}
 	}
 
@@ -979,7 +979,7 @@ func runInit(cmd *cobra.Command, args []string) (err error) {
 	// @MX:SPEC: SPEC-INIT-QUIET-WIZARD-001
 	mcpDeclined := !opts.MCPProvision
 	switch agentWiringSelection {
-	case agentWiringCodex:
+	case agentWiringGPT:
 		mcpDeclined = true
 	case agentWiringBoth:
 		mcpDeclined = false
@@ -987,7 +987,7 @@ func runInit(cmd *cobra.Command, args []string) (err error) {
 	provisionMCPEntryUnlessDeclined(cmd.OutOrStdout(), cmd.ErrOrStderr(), opts.ProjectRoot, mcpDeclined)
 
 	// SPEC-CODEX-WIRING-001 (REQ-CW-002/004/008/013): wire the Codex side for
-	// --llm codex|both — hooks.json (EventTable-derived, whitelist-gated),
+	// --llm gpt|both — hooks.json (EventTable-derived, whitelist-gated),
 	// config.toml (mcp_servers.moai + tui.status_line), trust sidecar, and
 	// the Codex trust guidance. Adjacent to the .mcp.json provisioning call
 	// so both harness sides of the init tail read as one unit.

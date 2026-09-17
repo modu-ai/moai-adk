@@ -330,7 +330,7 @@ var codexCmd = &cobra.Command{
 		"reports six rows and starts nothing - the codex binary, CODEX_HOME,\n" +
 		"the auth provider, the project wiring, the generated agent TOMLs, and\n" +
 		"the harness entry. An incomplete wiring row is informational, not an\n" +
-		"error: moai init --llm codex generates the .codex wiring files.\n" +
+		"error: moai init --llm gpt generates the .codex wiring files.\n" +
 		"If AGENTS.local.md exists at the project root, its content is injected\n" +
 		"as Codex-only developer instructions for the launched session.\n" +
 		"\n" +

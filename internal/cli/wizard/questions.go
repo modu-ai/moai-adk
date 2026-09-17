@@ -380,7 +380,7 @@ func Page3Questions(projectRoot string) []Question {
 			Description: "Which LLM harness MoAI wires for this project. 'claude' is the recommended default; the --llm flag overrides this answer.",
 			Options: []Option{
 				{Label: "Claude (Recommended)", Value: "claude", Desc: "Wire the Claude side only (.mcp.json provisioning)"},
-				{Label: "Codex", Value: "codex", Desc: "Wire the .codex/ hook layer + MCP config; skips .mcp.json provisioning"},
+				{Label: "GPT (Codex)", Value: "gpt", Desc: "Deploy Codex-only surfaces (.codex/ hook layer + MCP config); skips .mcp.json provisioning"},
 				{Label: "Both", Value: "both", Desc: "Wire both harnesses; forces .mcp.json provisioning on"},
 			},
 			Default: "claude",

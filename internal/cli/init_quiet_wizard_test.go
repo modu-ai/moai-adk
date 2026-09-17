@@ -478,7 +478,7 @@ func TestRunInit_QuietWizardProvisionsMCPByDefault(t *testing.T) {
 		wantAnnouncement bool
 	}{
 		{wiring: "claude", wantAnnouncement: true},
-		{wiring: "codex", wantAnnouncement: false},
+		{wiring: "gpt", wantAnnouncement: false},
 		{wiring: "both", wantAnnouncement: true},
 	}
 	for _, tc := range cases {
@@ -488,7 +488,7 @@ func TestRunInit_QuietWizardProvisionsMCPByDefault(t *testing.T) {
 			if got := strings.Contains(stdout, mcpProvisionAnnouncement); got != tc.wantAnnouncement {
 				t.Errorf("harness %s: provisioning announcement present = %t, want %t\nstdout:\n%s", tc.wiring, got, tc.wantAnnouncement, stdout)
 			}
-			if tc.wiring == "codex" {
+			if tc.wiring == "gpt" {
 				// Reachability: the codex selection reached the wiring consumer,
 				// so the absent announcement is the harness rule, not a lost answer.
 				assertCodexArtifacts(t, projectDir, true)
