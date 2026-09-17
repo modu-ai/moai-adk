@@ -697,6 +697,7 @@ func TestExportDiagnostics_Success(t *testing.T) {
 // =============================================================================
 
 func TestRunDoctor_WithExport(t *testing.T) {
+	t.Chdir(t.TempDir())
 	tmpDir := t.TempDir()
 	exportPath := filepath.Join(tmpDir, "export.json")
 
@@ -722,6 +723,7 @@ func TestRunDoctor_WithExport(t *testing.T) {
 }
 
 func TestRunDoctor_WithFix(t *testing.T) {
+	t.Chdir(t.TempDir())
 	cmd := &cobra.Command{Use: "doctor-test"}
 	var buf bytes.Buffer
 	cmd.SetOut(&buf)
@@ -762,6 +764,7 @@ func TestRunDoctor_WithCheckFilter(t *testing.T) {
 }
 
 func TestRunDoctor_Verbose(t *testing.T) {
+	t.Chdir(t.TempDir())
 	cmd := &cobra.Command{Use: "doctor-test"}
 	var buf bytes.Buffer
 	cmd.SetOut(&buf)
@@ -4909,6 +4912,7 @@ func TestSaveGLMKey_CreatesDirectory(t *testing.T) {
 // --- runDoctor: verbose + fix + export combined ---
 
 func TestRunDoctor_AllFlags(t *testing.T) {
+	t.Chdir(t.TempDir())
 	tmpDir := t.TempDir()
 	exportPath := filepath.Join(tmpDir, "diagnostics.json")
 
@@ -5738,6 +5742,7 @@ func TestRestoreMoaiConfigLegacy_MergeWithExistingTarget(t *testing.T) {
 // --- runDoctor with verbose, fix, and export ---
 
 func TestRunDoctor_VerboseAndDetail(t *testing.T) {
+	t.Chdir(t.TempDir())
 	cmd := &cobra.Command{Use: "doctor"}
 	cmd.Flags().Bool("verbose", false, "")
 	cmd.Flags().Bool("fix", false, "")
@@ -5785,6 +5790,7 @@ func TestRunDoctor_FixMode(t *testing.T) {
 }
 
 func TestRunDoctor_ExportMode(t *testing.T) {
+	t.Chdir(t.TempDir())
 	tmpDir := t.TempDir()
 	exportPath := filepath.Join(tmpDir, "diagnostics.json")
 

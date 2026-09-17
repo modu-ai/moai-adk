@@ -2,9 +2,8 @@
 
 > `/moai codemaps`로 생성됐습니다.
 
-**측정 트리**: worktree `.claude/worktrees/t592`, 브랜치 `WT-home-state-rollout`, HEAD `e7bd89ee3`
-**측정**: 2026-09-10
-**부분 재측정**: worktree `.claude/worktrees/t688`, 브랜치 `WT-graph-stamp-freshness`, HEAD `c613b7c6b`, 2026-09-14 — § CI가 소비하는 종료 코드 표면. 나머지 항목은 위 측정 트리의 값이며 이번에 다시 재지 않았습니다.
+**최초 측정 트리**: worktree `.claude/worktrees/t592`, 브랜치 `WT-home-state-rollout`, HEAD `e7bd89ee3`, 2026-09-10
+**재측정 트리**: worktree `.claude/worktrees/t869`, 브랜치 `WT-codemaps-refresh`, HEAD `a851b205c`, 2026-09-18 — § `main()`, § Cobra 명령 트리의 모든 수치와 등록 목록, § 훅의 개수 네 가지(설정 엔트리 38, 셸 래퍼 48, 이벤트 서브커맨드 26, `Register` 30), § MCP 서버 표면 전체. 훅 절의 부가 `RunE` 목록은 다시 대조하지 않았습니다. § HOME 상태·웹 콘솔·CI 종료 코드 절은 이번 변경과 무관해 앞 판을 이어받았습니다.
 
 ---
 
@@ -17,9 +16,12 @@
   거부**하므로 서브프로세스의 종료 코드를 그대로 채택하지 않습니다 — 이것이 rc=128 무성 실패를
   막습니다.
 
-나머지 `main()` 4개는 배포 대상이 아닌 도구입니다:
-`internal/template/scripts/gen-catalog-hashes.go`, `scripts/i18n-validator/main.go`,
-`scripts/docs-version-snapshot/main.go`, `scripts/convert-nextra-to-hextra/main.go`.
+나머지 main 패키지 5개는 배포 대상이 아닌 도구입니다:
+`cmd/t657-merge/main.go`(카드 t657의 일회성 큐 병합 도구 — 사용자 verb가 아니며 실제 저장소를
+명시적 절대 경로 플래그로만 받는다), `internal/template/scripts/gen-catalog-hashes.go`,
+`scripts/i18n-validator/main.go`, `scripts/docs-version-snapshot/main.go`,
+`scripts/convert-nextra-to-hextra/main.go`. 산출: `grep -rl '^package main' cmd scripts internal/template/scripts`
+(i18n-validator는 한 패키지에 파일 셋).
 
 **빌드 타깃으로만 진입하는 방출기 2개**는 `main()`이 아니라 Makefile 타깃과 골든 테스트를
 통해 실행됩니다 — `internal/template/agentemit`(`make agents-emit`, `.md` × 매니페스트 →
@@ -47,25 +49,30 @@ root.go Execute()
 
 **lazy-init 패스**: `root.go`의 `trivialCommands` 맵에 10개가 있습니다 —
 `--version` · `version` · `-v` · `help` · `--help` · `-h` · `completion` · `cc` · `cg` · `glm`.
-이들은 의존성 그래프 조립을 건너뜁니다. `cc` / `cg` / `glm`이 포함된 이유는 `syscall.Exec`로
-프로세스를 통째 교체하기 때문입니다.
+이들은 의존성 그래프 조립을 건너뜁니다. `cc` / `glm`이 포함된 이유는 `syscall.Exec`로
+프로세스를 통째 교체하기 때문입니다. **`cg`는 명령이 아니라 은퇴 토큰**입니다 — 맵의 주석이
+"retired token: never initialize launch dependencies"라고 적고, `moai --help`의 LAUNCH COMMANDS
+그룹에는 `cc` · `glm` · `codex`만 렌더됩니다.
 
 **등록 사이트가 두 갈래**입니다.
 
 1. **`root.go`의 `init()`** — 명시적 `rootCmd.AddCommand(...)` **30회**.
    worktree, agentlint(agent/workflow 2종), statusline, ast-grep, ast-edit, telemetry,
    constitution, state, tokens, clean, **skills**, navigator 5종(enrich/sync/tiers/route/fix),
-   migration, **chain**, harness-router, tool-policy, mcp-server, mcp, inventory, preference,
+   migration, **chain**, harness-router, tool-policy, tool, mcp-server, mcp, inventory, preference,
    model, plan, feedback, inbox.
-   - `skills`(`newSkillsCmd()`, `root.go:177`) — `moai skills disable <name> --codex` 형태로
+   - `skills`(`newSkillsCmd()`, `root.go:187`) — `moai skills disable <name> --codex` 형태로
      **계층을 플래그로 명명**하는 스킬 노출 제어 트리. `--codex`가 필수인 것이 opt-in의
      기계적 형태이며, 어떤 프로젝트 설정 키도 이 verb를 구동하지 않습니다(사용자 HOME에
      쓰는 일을 프로젝트 설정이 요청하게 두지 않는다).
-   - `chain`(`newChainCmd()`, `root.go:204`) — 워크트리 세션 origin-trail 원장 조회·정리.
-2. **자기 파일의 `init()`에서 스스로 등록** — `AddCommand`를 호출하는 파일이 **67개**입니다
+   - `chain`(`newChainCmd()`, `root.go:214`) — 워크트리 세션 origin-trail 원장 조회·정리.
+2. **자기 파일의 `init()`에서 스스로 등록** — `AddCommand`를 호출하는 파일이 **70개**입니다
    (`grep -rl "AddCommand" internal/cli --include='*.go' | grep -v _test`).
    `hook.go`, `todo.go`, `kanban.go`, `glm.go`, `cc.go`, `update.go`, `doctor.go`, `spec.go`,
-   `gate.go`, `graph.go`, `goal.go`, `integration.go` 등이 이 방식입니다.
+   `gate.go`, `graph.go`, `goal.go`, `integration.go` 등이 이 방식이고, 이 판에서
+   `gtd.go`(`NewGTDCommand()` — todo 명령 트리를 감싸 `Use`만 `gtd`로 바꾼 두 번째 이름)와
+   `slot.go`(`moai slot` — 무거운 실행용 세션 간 자원 임대)가 더해졌습니다.
+   비테스트 `AddCommand(` 호출은 모두 **219회**, 그중 `rootCmd.AddCommand(`는 **65회**입니다.
 
 **합성 루트**: `internal/cli/deps.go` — `type Dependencies` + `InitDependencies()`.
 Config · Git(Repository/Branch/Worktree) · HookRegistry · HookProtocol · UpdateChecker/Orchestrator ·
@@ -121,7 +128,7 @@ args: ["-c", "[ -f \"$0\" ] && exec bash \"$0\"; ...missing 로그 후 exit 0",
 
 래퍼 스크립트가 없으면 `.moai/logs/hook-missing.log`에 남기고 **exit 0으로 fail-open** 합니다.
 
-**2. 셸 래퍼** — `internal/template/templates/.claude/hooks/moai/` 아래 47개 `.sh` / `.sh.tmpl`.
+**2. 셸 래퍼** — `internal/template/templates/.claude/hooks/moai/` 아래 48개 `.sh` / `.sh.tmpl`.
 예: `handle-pre-tool.sh.tmpl`이 `printf '%s' "$payload" | moai hook pre-tool`.
 
 **3. CLI 디스패처** — `internal/cli/hook.go`의 `hookCmd`. `init()`에서 26개 이벤트 서브커맨드를
@@ -142,18 +149,21 @@ args: ["-c", "[ -f \"$0\" ] && exec bash \"$0\"; ...missing 로그 후 exit 0",
 - **명령**: `internal/cli/mcp_server.go`의 `newMCPServerCmd()` — `root.go`에서 등록. stdio
   JSON-RPC이고 `mark3labs/mcp-go` SDK는 전송만 담당합니다. **기본 off**이며 `.mcp.json`
   프로비저닝은 opt-in입니다.
-- **도구 수**: `mcp_server.go` 안 `add(...)` 호출 **29회**(그중 28개는 이름 리터럴,
-  1개는 `auditMultiToolName` 상수 경유 — `mcp_server.go:414`). 카탈로그
-  `internal/mcp/catalog.go`도 **29개**를 선언하며 두 수가 일치합니다.
+- **도구 수**: `mcp_server.go` 안 `add(...)` 호출 **30회**(그중 28개는 이름 리터럴,
+  2개는 상수 경유 — `claudeAuditToolName`과 `auditMultiToolName`). 카탈로그
+  `internal/mcp/catalog.go`도 **30개**를 선언하며 두 수가 일치합니다.
 - **도구 목록**: `session_list`, `goal_status`, `goal_arm`, `spec_progress`, `verify_snapshot`,
   `verify_trend`, `spec_audit`, `spec_drift`, `audit_cache`,
-  `codex_{audit,setup,task,job_status,job_result,job_cancel}`,
+  `codex_{audit,setup,task,job_status,job_result,job_cancel}`, `claude_audit`,
   `glm_{task,job_status,job_result,job_cancel,audit}`, `audit_multi`,
   `session_msg_{register,list,send,poll}`,
   `graph_{file_api,find_code,trace_calls,shortest_path}`.
 - **가드**: `mcp.yaml`에서 도구별 활성화를 읽고, `add()` 헬퍼의 첫 인자가 `mcp.NewTool` 이름 및
   카탈로그와 일치해야 한다는 계약을 가드 테스트가 강제합니다
   (`mcp_annotation_guard_test.go`, `mcp_boundary_test.go`).
+- **`claude_audit`은 이 판에서 더해진 도구**입니다(`internal/cli/mcp_claude.go`). 읽기 전용 코드
+  리뷰를 `claude` CLI 서브프로세스로 수행하고, 자식 환경에서 `CLAUDE_CODE_*`·`CLAUDECODE`를
+  지운 뒤 출력 크기에 상한을 둡니다. `audit_multi` 수렴도 같은 수행 함수를 Claude 백엔드로 씁니다.
 - **엔트리 관리와 서버 실행은 별개 서브트리**입니다 — `newMCPCmd()`(`mcp.go`)가 `.mcp.json`의
   add/remove/list를, `mcp-server`가 실행을 담당합니다.
 
