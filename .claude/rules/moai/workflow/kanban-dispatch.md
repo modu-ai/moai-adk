@@ -91,7 +91,13 @@ lens: --security --deep
 - `wt` names the new card's worktree, never a previous card's tree; where the lane may still be anchored elsewhere, it carries the exit-first instruction (`ExitWorktree` → `EnterWorktree(<card-id>)` → `git branch -m WT-<slug>`). The tree keeps the card id; the branch takes a descriptive slug — see the naming rule below.
 - **No explanatory prose.** Procedure, background, and justification live in the card text and the SPEC artifacts the block points at; a dispatch that restates them makes the operator read the same thing twice. What does not fit a field belongs in the card, not around the block.
 - **Ceiling: the block is at most 10 lines.** A dispatch that does not fit is trying to be a handoff; move the payload into the card and send the block.
-- **[HARD] The send is read, not assumed.** A `routing` object on the result means an in-process mailbox took the block and it is lost; re-send to `name [ref]`. Conditional: `cross-session-messaging.md`.
+- **[HARD] The send is read, not assumed.** The result has three shapes and only one of them delivered:
+  a `routing` object means an in-process mailbox took the block and it is lost (re-send to `name [ref]`);
+  a following `[Cross-session delivery notice]` means the lane's permission policy is holding the block for
+  its operator or refused it (surface it — re-sending hits the same policy); anything else queued it.
+  None of the three establishes that the lane's Claude read it, and a Remote Control or cloud lane reports
+  nothing at all. The card still advances on evidence, never on a send result. Conditional:
+  `cross-session-messaging.md` § A send result has three shapes.
 
 ## Deputy dispatch surface
 

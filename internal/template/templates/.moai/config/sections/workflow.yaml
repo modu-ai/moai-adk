@@ -73,6 +73,24 @@ workflow:
         #     - "src/"
         #     - "tests/"
         #     - "config/"
+    # drift_cache_fill: the out-of-band fill of the SPEC status-drift cache.
+    # When the session-start advisory finds no cached result for the current
+    # commit, it starts one short-lived background process to compute and store
+    # it, and returns without waiting. The next session reads the stored result.
+    #
+    # This key ships ENABLED, unlike the opt-in guards elsewhere in this file.
+    # Those ship inert; this one is not inert when on — it starts a child
+    # process on a cache miss — and the default is an accepted cost rather than
+    # a neutral one, because without the fill the drift advisory never appears
+    # after the commit changes. The child is short-lived, bounded by its own
+    # deadline, limited to one at a time, and silent.
+    #
+    # Set to false to stop the handler starting any fill; the advisory then
+    # resolves from whatever the cache already holds.
+    # The compiled default in internal/config/defaults.go is the source of
+    # truth; this block documents it.
+    drift_cache_fill:
+        enabled: true
     token_budget:
         plan: 30000
         run: 180000
