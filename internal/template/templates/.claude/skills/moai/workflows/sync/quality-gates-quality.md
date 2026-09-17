@@ -132,10 +132,7 @@ Then call the **revision-match predicate** with the results directory recorded f
 
 Agent: per-spawn `Agent(general-purpose)` security reviewer (security whitelist per `.claude/rules/moai/workflow/archived-agent-rejection.md` §C row 9).
 
-Delegate to a per-spawn `Agent(general-purpose)` security reviewer loading the retained `moai-ref-owasp-checklist` / `moai-ref-secops` skills (the documented security replacement path) in inline mode:
-- Only CRITICAL findings block the sync pipeline
-- HIGH findings are reported as warnings in PR description
-- MEDIUM and LOW findings are logged in sync report
+Delegate to a per-spawn `Agent(general-purpose)` security reviewer loading the retained `moai-ref-owasp-checklist` / `moai-ref-secops` skills (the documented security replacement path) in inline mode. Apply a single severity contract: Critical and High findings block; Medium and Low findings are advisory and are recorded in the sync report.
 
 **Dependency manifest-change observation (hook-side, informational)** — a SEPARATE, automatic mechanism distinct from the agent-invoked security analysis above:
 
@@ -145,15 +142,17 @@ A dependency or supply-chain review is a separate, agent-invoked step, not a sta
 
 #### Step 0.55.2: Security Gate Decision
 
-**Relationship to the sync-auditor Security rule.** The sync-auditor rubric in Step 0.5.4 is canonical: any Critical or High security finding makes its result FAIL. Phase 8 is an additional lens, and its CRITICAL-only stop gate below never clears an earlier sync-auditor FAIL — a HIGH finding that Phase 8 reports only as a warning still leaves a sync-auditor FAIL standing.
+**Relationship to the sync-auditor Security rule.** The sync-auditor rubric in Step 0.5.4 is canonical: any Critical or High security finding makes its result FAIL. Phase 8 is an additional lens, and its stop gate below never clears an earlier sync-auditor FAIL — an outcome Phase 8 reaches, including an approved exception, leaves a sync-auditor FAIL standing.
 
-If CRITICAL findings exist:
+Severity decision: Critical and High findings block; Medium and Low findings are advisory. A blocking finding may proceed only through a user-approved exception record carrying the finding ID, rationale, scope, approver, expiry, and review condition.
+
+If a Critical or High finding exists:
 - Present findings via AskUserQuestion:
   - Fix now (Recommended): Delegate to a per-spawn `Agent(general-purpose)` security reviewer for auto-fix, then re-scan
-  - Continue with warning: Proceed to Phase 9 with security warnings embedded in PR description
+  - Continue by approved exception: proceed only after recording the required exception fields
   - Abort: Exit sync workflow
 
-If no CRITICAL findings: Proceed to Phase 9. Include any HIGH/MEDIUM findings in the sync report.
+If no blocking finding exists: Proceed to Phase 9. Include all advisory findings in the sync report.
 
 ### Phase 9: MX Tag Validation (Multi-Language)
 

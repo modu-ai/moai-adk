@@ -132,19 +132,24 @@ func baseOpts(root, name string) InitOptions {
 }
 
 // TestDeployerPath_Page3AnswersPersist_ScenarioA is AC-WIZ-010 Scenario A:
-// project_mode=team, lsp_enabled=true, enforce_quality=false, design_enabled=true,
+// lsp_enabled=true, enforce_quality=false, design_enabled=true,
 // claude_design_enabled=false — each read back from its on-disk yaml.
 //
+// (Former row 1, project_mode=team, was removed by
+// SPEC-INIT-UPDATE-CONSISTENCY-001 REQ-ICU-001: project.mode is a ghost key
+// with no Go reader, so its writer and this assertion were deleted together.
+// The ghost-free contract is pinned in
+// initializer_project_mode_ghost_test.go.)
+//
 // Non-vacuity (acceptance.md AC-WIZ-010, corrected at v0.2.1): against the
-// pre-change tree rows 1, 2, 3 and 5 MUST fail, because the Page-3 writes were
-// unreachable and each of those four answers differs from its shipped default.
+// pre-change tree rows 2, 3 and 5 MUST fail, because the Page-3 writes were
+// unreachable and each of those three answers differs from its shipped default.
 // Row 4 is default-coincident (design.yaml already ships enabled: true) and is
 // retained only as a template-default regression guard.
 func TestDeployerPath_Page3AnswersPersist_ScenarioA(t *testing.T) {
 	root := t.TempDir()
 
 	opts := baseOpts(root, "persist-scenario-a")
-	opts.ProjectMode = "team"        // row 1 — shipped default: personal
 	opts.LSPEnabled = true           // row 2 — shipped default: false
 	opts.EnforceQuality = false      // row 3 — shipped default renders true
 	opts.DesignEnabled = true        // row 4 — shipped default: true (coincident)
@@ -158,7 +163,6 @@ func TestDeployerPath_Page3AnswersPersist_ScenarioA(t *testing.T) {
 		path string
 		want any
 	}{
-		{"row 1 project_mode=team", "project.yaml", "project.mode", "team"},
 		{"row 2 lsp_enabled=true", "lsp.yaml", "lsp.enabled", true},
 		{"row 3 enforce_quality=false", "quality.yaml", "constitution.enforce_quality", false},
 		{"row 4 design_enabled=true (default-coincident)", "design.yaml", "design.enabled", true},
@@ -202,7 +206,6 @@ func TestDeployerPath_PersistenceIsNonDestructive(t *testing.T) {
 	root := t.TempDir()
 
 	opts := baseOpts(root, "persist-nondestructive")
-	opts.ProjectMode = "team"
 	opts.LSPEnabled = true
 	opts.EnforceQuality = false
 	opts.DesignEnabled = true
@@ -277,14 +280,21 @@ func TestDeployerPath_SlimDeployerAlsoPersists(t *testing.T) {
 	root := t.TempDir()
 
 	opts := baseOpts(root, "persist-slim")
-	opts.ProjectMode = "team"
 	opts.LSPEnabled = true
 	opts.EnforceQuality = false
 
 	runDeployerInit(t, opts, false)
 
-	if got := yamlLookup(t, sectionPath(root, "project.yaml"), "project.mode"); got != "team" {
-		t.Errorf("slim deployer: project.mode = %v, want team", got)
+	// REQ-ICU-001: the slim-deployer path must not write a project.mode key —
+	// the ghost writer is gone, so assert the key's absence rather than a value.
+	projectData, readErr := os.ReadFile(sectionPath(root, "project.yaml"))
+	if readErr != nil {
+		t.Fatalf("read project.yaml: %v", readErr)
+	}
+	for _, line := range strings.Split(string(projectData), "\n") {
+		if strings.HasPrefix(strings.TrimSpace(line), "mode:") {
+			t.Errorf("slim deployer: project.yaml still carries a mode key (REQ-ICU-001): %q", line)
+		}
 	}
 	if got := yamlLookup(t, sectionPath(root, "lsp.yaml"), "lsp.enabled"); got != true {
 		t.Errorf("slim deployer: lsp.enabled = %v, want true", got)

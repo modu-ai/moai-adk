@@ -46,7 +46,8 @@ func newInitTestCmd() *cobra.Command {
 	cmd.Flags().Bool("force", false, "")
 	cmd.Flags().Bool("no-hooks", true, "")
 	cmd.Flags().Bool("all", false, "")
-	cmd.Flags().String("project-mode", "", "")
+	// (--project-mode removed from the production surface by
+	// SPEC-INIT-UPDATE-CONSISTENCY-001 REQ-ICU-001; not mirrored here.)
 	cmd.Flags().Bool("enable-lsp", false, "")
 	cmd.Flags().Bool("enforce-quality", true, "")
 	cmd.Flags().Bool("enable-design", true, "")

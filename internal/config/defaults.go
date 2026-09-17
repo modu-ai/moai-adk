@@ -884,8 +884,16 @@ func NewDefaultWorkflowConfig() WorkflowConfig {
 			AfterRun:       false,
 			TokenThreshold: 150000,
 		},
-		DefaultMode:   "",
-		ExecutionMode: "team",
+		DefaultMode: "",
+		// "auto" (not "team") aligns with the template SSOT
+		// workflow.yaml (execution_mode: auto) per SPEC-INIT-UPDATE-CONSISTENCY-001
+		// REQ-ICU-002: the loader's partial-override contract seeds this default
+		// when the file key is absent, so a split between the two sources would
+		// invert the template-declared meaning. "auto" is the aligned value —
+		// ExecutionModeAuto (closed_sets.go) defers the choice to harness
+		// auto-selection; "team" predates the auto value's introduction.
+		// TestExecutionModeDefaultMatchesTemplate pins the parity.
+		ExecutionMode: "auto",
 		AgenticLoop: AgenticLoopConfig{
 			MaxIterations: DefaultAgenticLoopMaxIterations,
 		},
