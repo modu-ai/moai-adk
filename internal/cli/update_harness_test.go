@@ -87,11 +87,13 @@ func TestUpdateCodexOnlyNoClaudeResurrection(t *testing.T) {
 }
 
 // TestUpdatePreservesHarnessKey verifies AC-IH-015: the llm.harness value init
-// wrote survives the update's 3-way config merge.
+// wrote survives the update's 3-way config merge. The project is initialized
+// with the legacy --llm codex spelling, which init persists under its current
+// name gpt.
 func TestUpdatePreservesHarnessKey(t *testing.T) {
 	projectDir := runCodexOnlyProjectThenUpdate(t)
 
-	if got := readLLMHarness(t, projectDir); got != "codex" {
-		t.Errorf("llm.harness after update = %q, want codex (3-way merge survival)", got)
+	if got := readLLMHarness(t, projectDir); got != "gpt" {
+		t.Errorf("llm.harness after update = %q, want gpt (3-way merge survival)", got)
 	}
 }

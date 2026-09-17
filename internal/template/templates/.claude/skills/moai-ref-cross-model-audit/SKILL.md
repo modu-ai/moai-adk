@@ -242,13 +242,31 @@ residual-risk section so a human reader sees which backend disagreed with which.
 
 ## Cross-references
 
-- `mcp__moai__claude_audit`, `mcp__moai__codex_audit`, `mcp__moai__glm_audit` — the single-backend tools
-  whose handlers the convergence engine reuses (the engine does NOT re-implement
-  them).
+- `mcp__moai__claude_audit`, `mcp__moai__codex_audit`, `mcp__moai__glm_audit` — the single-backend
+  tools. The convergence engine calls the same backends through its own fan-out
+  and does NOT route through these handlers, so a behavior read from one surface
+  must be confirmed on the other rather than assumed shared.
 - `workflow.audit.gates.*` — the per-auditor gate map (`off`/`advisory`/`required`).
-  An explicit `required` is enforced: an unmet required gate (its backend
-  `inconclusive`) fails `overall_verdict`. Absent keys fall back to the
-  distributed defaults WITHOUT that enforcement — write the key to opt in.
+  An explicit `required` is enforced on BOTH surfaces: on the convergence result
+  an unmet required gate (its backend `inconclusive`) fails `overall_verdict`,
+  and the single-backend `codex_audit` tool likewise returns `verdict: fail`
+  with a non-empty `gate_unmet` and `isError: false` when an explicitly required
+  codex gate is left without a verdict. Absent keys fall back to the distributed
+  defaults WITHOUT that enforcement — write the key to opt in.
+- **Audit receipts.** Where the codex gate is explicitly `required`, the server
+  records a receipt for every codex audit it performs and returns its id on the
+  result as `audit_receipt`. Cite the ids you received in the verdict line that
+  ends your report:
+
+  ```
+  AUDIT-VERDICT: <PASS|PASS-WITH-DEBT|FAIL> spec=<SPEC-ID> receipts=<receipt-id>[,<receipt-id>...]
+  ```
+
+  The line is the LAST non-empty line of the final message; `receipts=none` says
+  no receipt was issued. A PASS the receipt store cannot corroborate is refused
+  at subagent stop, and the phase-entry spawns stay denied until a PASS citing a
+  valid receipt is recorded. The check reads the store, never the report text —
+  quoting an id the store does not carry proves nothing.
 - `workflow.multi.review_gate.enabled` — opt-in toggle for the multi-review-gate
   Stop hook (the Path C fully-autonomous gate). Default OFF; opt in via local
   config.

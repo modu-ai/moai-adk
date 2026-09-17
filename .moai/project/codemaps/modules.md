@@ -6,7 +6,8 @@
 
 **모듈**: `github.com/modu-ai/moai-adk` · **Go**: 1.26.8
 **최초 측정 트리**: worktree `.claude/worktrees/t592`, 브랜치 `WT-home-state-rollout`, HEAD `e7bd89ee3`, 2026-09-10
-**재측정 트리**: worktree `.claude/worktrees/t869`, 브랜치 `WT-codemaps-refresh`, HEAD `a851b205c`, 2026-09-18 — 모든 표의 비테스트 파일 수, `internal/cli` 클러스터 표, fan-in 칸, 신규·누락 패키지 행(`internal/mission` · `internal/codextools` · `internal/gitenv` · `internal/orchestration` · `cmd/t657-merge`), § 네거티브 스페이스의 목록과 파일 크기. 책임 칸의 서술형 판단 중 이번 변경과 무관한 것은 앞 판을 이어받았습니다.
+**재측정 트리**: worktree `.claude/worktrees/t869`, 브랜치 `WT-codemaps-refresh`, HEAD `a851b205c`, 2026-09-18 — 모든 표의 비테스트 파일 수, `internal/cli` 클러스터 표, fan-in 칸, 신규·누락 패키지 행(`internal/mission` · `internal/codextools` · `internal/gitenv` · `cmd/t657-merge`), § 네거티브 스페이스의 목록과 파일 크기. 책임 칸의 서술형 판단 중 이번 변경과 무관한 것은 앞 판을 이어받았습니다.
+**정정 재측정**: worktree `.claude/worktrees/t872`, 브랜치 `WT-codemaps-citations`, HEAD `9a8cc4277`, 2026-09-18 — cross-cutting 표에서 삭제된 패키지 행 하나를 빼고, § 프로덕션 코드 없이 테스트만 있는 자리를 다시 셌습니다. 다른 표의 파일 수는 같은 명령으로 재확인해 변동이 없었습니다.
 
 파일 수는 전부 `find <dir> -name '*.go' -not -name '*_test.go' | wc -l`로 센 **비테스트 파일**이며
 하위 패키지를 포함합니다.
@@ -202,7 +203,6 @@ round-trip 테스트가 그 범위를 고정합니다. 노드 삭제는 지원�
 | `internal/timing` | 1 | 0 | 테스트용 보정된 지연 상한 (비테스트 fan-in 0) |
 | `internal/codextools` | 2 | 0 | 네이티브·지연 디스패처 도구 레지스트리를 인증된 대화 하나에 묶는다(패키지 주석: 도구나 RPC를 실행하지 않는다). `github.com/santhosh-tekuri/jsonschema/v6`를 직접 쓰는 유일한 패키지다. **비테스트 fan-in 0 — 아래 §네거티브 스페이스** |
 | `internal/skills` | 0 | 0 | 프로덕션 코드 없음 |
-| `internal/orchestration` | 0 | 0 | 프로덕션 코드 없음 — `naming_manifest_contract_test.go` 하나가 네이밍 마이그레이션 매니페스트의 스키마와 인벤토리 일치를 검증한다 |
 
 ### `internal/stateanchor` — 상태를 어디에 쓸지 정하는 단일 seam
 
@@ -244,15 +244,21 @@ statusline의 `extractProjectDirectory`에 남아 있습니다. statusline 쪽 �
 
 테스트 비율이 1.67:1이므로 **테스트 부족은 이 코드베이스의 약점이 아닙니다.**
 
-### 프로덕션 코드 없이 테스트만 있는 자리 — 3개
+### 프로덕션 코드 없이 테스트만 있는 자리 — 2개
 
 - **`internal/skills`** — `workflow_split_test.go` 하나뿐, 비테스트 파일 0개.
-- **`internal/orchestration`** — 이 판에서 새로 잡혔습니다. `naming_manifest_contract_test.go` 하나뿐이고
-  비테스트 파일 0개입니다. 테스트가 읽는 것은 SPEC 디렉터리의 네이밍 마이그레이션 매니페스트입니다.
 - **`internal/tui/golden`** — `doc.go`와 `index_test.go`뿐.
 
-셋 다 "테스트가 다른 곳(템플릿 트리, 골든 파일, SPEC 산출물)을 검증하는데 담을 자리가 없어
-만들어진 빈 패키지"로 보입니다. 필요한 것은 패키지가 아니라 테스트 파일을 둘 자리입니다.
+둘 다 "테스트가 다른 곳(템플릿 트리, 골든 파일)을 검증하는데 담을 자리가 없어 만들어진 빈
+패키지"로 보입니다. 필요한 것은 패키지가 아니라 테스트 파일을 둘 자리입니다.
+
+> **이 자리에 있던 세 번째 항목이 사라진 경위.** 앞 판은 `internal/orchestration`을 같은 계열로
+> 적었지만, 그 디렉터리와 유일한 파일(`naming_manifest_contract_test.go`)은 커밋 `ae3075280`에서
+> 삭제됐습니다. 그 테스트가 고정하던 매니페스트 JSON은 어느 커밋에도 존재한 적이 없고
+> (`git log --all` 출력 없음), 준비 대상이던 코드 경로는 이미 철회된 상태였습니다. 즉 "테스트만
+> 있는 빈 패키지"가 아니라 **한 번도 생성되지 않은 산출물을 검증하던 테스트**였습니다.
+> 삭제는 테스트를 지워 초록을 만들지 않는다는 규칙에 대한 운영자 승인 예외로, 그 파일 하나에만
+> 적용됐습니다.
 
 ### 비테스트 코드에서 아무도 import 하지 않는 패키지
 

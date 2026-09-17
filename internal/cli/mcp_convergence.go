@@ -50,6 +50,7 @@ import (
 	"sync"
 
 	"github.com/mark3labs/mcp-go/mcp"
+	"github.com/modu-ai/moai-adk/internal/auditreceipt"
 	"github.com/modu-ai/moai-adk/internal/config"
 	"golang.org/x/sync/errgroup"
 )
@@ -139,6 +140,13 @@ type ConvergenceResult struct {
 	ResidualRiskNote string   `json:"residual_risk_note"`
 	FailOpenBackends []string `json:"fail_open_backends"`
 	GateUnmet        string   `json:"gate_unmet,omitempty"`
+
+	// AuditReceipt carries the id of the receipt recorded for THIS fan-out,
+	// present only where the audited tree explicitly declared
+	// workflow.audit.gates.codex: required and codex actually participated.
+	// Additive + omitempty — the only change this SPEC makes to a convergence
+	// result, and invisible to every project that did not declare the gate.
+	AuditReceipt string `json:"audit_receipt,omitempty"`
 
 	// BuildCommit / BuildLag record the identity of the ONE binary that
 	// serviced all three backends (SPEC-AUDIT-BUILD-IDENTITY-001) —
@@ -741,6 +749,15 @@ func runMultiAudit(ctx context.Context, claudeVerdict ReviewOutput, target, focu
 	}
 	result = enforceRequiredGateUnmet(result, verdicts, enforcementGates)
 
+	// ── audit receipt (SPEC-CODEX-AUDIT-GATE-AXES-001 axis (b)) ──
+	// A receipt is recorded only when codex actually took part: a fan-out that
+	// skipped codex is not evidence that a codex audit ran, and recording one
+	// would let an auditor cite it as if it were. Runs BEFORE persist so the
+	// state file carries the same id the caller receives.
+	if codexVerdict, participated := codexParticipation(verdicts); participated {
+		result.AuditReceipt = recordAuditReceipt(auditreceipt.ToolAuditMulti, cfg.ProjectRoot, codexVerdict, result.GateUnmet)
+	}
+
 	// ── DQ-1: persist to .moai/state/audit-multi/<session>.json ──
 	// Best-effort: a write failure is logged via the returned error but MUST NOT
 	// block the flow (fail-open). The convergence result is valid regardless of
@@ -749,6 +766,18 @@ func runMultiAudit(ctx context.Context, claudeVerdict ReviewOutput, target, focu
 		_ = persistConvergenceResult(result, cfg.SessionID, cfg.ProjectRoot)
 	}
 	return result
+}
+
+// codexParticipation reports the codex backend's verdict in this fan-out and
+// whether codex took part at all. A gate set to off keeps codex out of the
+// backend loop, so no codex entry reaches the verdicts slice.
+func codexParticipation(verdicts []PerBackendVerdict) (string, bool) {
+	for _, v := range verdicts {
+		if v.Backend == BackendCodex {
+			return v.Verdict, true
+		}
+	}
+	return "", false
 }
 
 // gateOr returns g unless empty, in which case it returns dflt. Used to honor

@@ -27,8 +27,7 @@ those were illustrative-only and have been removed.
 
 ## Permission Modes
 
-The `permissions.defaultMode` field accepts six values (official docs,
-re-verified 2026-09-13):
+The `permissions.defaultMode` field accepts six values (official docs):
 
 | Mode | Behavior |
 |------|----------|
