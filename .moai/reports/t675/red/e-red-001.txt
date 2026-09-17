@@ -1,0 +1,6 @@
+=== RUN   TestDoctorCmd_Execution
+    doctor_test.go:76: doctor command RunE error: doctor: 1 check(s) failed
+--- FAIL: TestDoctorCmd_Execution (12.47s)
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/cli	13.272s
+FAIL

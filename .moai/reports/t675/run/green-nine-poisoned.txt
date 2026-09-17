@@ -1,0 +1,88 @@
+# Tree: working tree after M1 edit (committed unchanged as 85f1ba686), 2026-09-18
+# Command: MOAI_EMBED_CHECK_BIN=/usr/bin/false go test -count=1 -v -run '^(TestRunDoctor_(WithExport|WithFix|Verbose|AllFlags|VerboseAndDetail|ExportMode)|TestDoctorCmd_(Execution|ExportFlag|VerboseExecution))$' ./internal/cli/
+# Exit code: 0
+# Output (verbatim, captured from tool result):
+=== RUN   TestRunDoctor_WithExport
+--- PASS: TestRunDoctor_WithExport (10.97s)
+=== RUN   TestRunDoctor_WithFix
+--- PASS: TestRunDoctor_WithFix (12.87s)
+=== RUN   TestRunDoctor_Verbose
+--- PASS: TestRunDoctor_Verbose (12.31s)
+=== RUN   TestRunDoctor_AllFlags
+  ○ Go Runtime
+  ✓ Go Runtime
+  ○ Git
+  ✓ Git
+  ○ Claude Code
+  ✓ Claude Code
+  ○ GitHub CLI
+  ✓ GitHub CLI
+  ○ ast-grep CLI
+  ✓ ast-grep CLI
+  ○ Shared Flag Slot
+  ✓ Shared Flag Slot
+  ○ MoAI Config
+  ✓ MoAI Config
+  ○ Claude Config
+  ✓ Claude Config
+  ○ MoAI Version
+  ✓ MoAI Version
+  ○ Binary Freshness
+  ✓ Binary Freshness
+  ○ MCP Scope Duplicates
+  ✓ MCP Scope Duplicates
+  ○ MCP Server Version
+  ✓ MCP Server Version
+  ○ Agent Emit Embed
+  ✓ Agent Emit Embed
+  ○ Constitution Registry
+  ✓ Constitution Registry
+  ○ Harness 5-Layer
+  ✓ Harness 5-Layer
+  ○ Migration
+  ✓ Migration
+  ○ Plugin Deployment
+  ✓ Plugin Deployment
+  ○ Home Disk Usage
+  ✓ Home Disk Usage
+  ○ Hooks Config
+  ✓ Hooks Config
+  ○ Hook Wiring
+  ✓ Hook Wiring
+  ○ Hook Delivery
+  ✓ Hook Delivery
+  ○ Hook opt-in:
+  ✓ Hook opt-in:
+  ○ Slash Commands
+  ✓ Slash Commands
+  ○ Skills Allowlist
+  ✓ Skills Allowlist
+  ○ MX Tag Config
+  ✓ MX Tag Config
+  ○ Worktree State
+  ✓ Worktree State
+  ○ Worktree Base Branch
+  ✓ Worktree Base Branch
+  ○ Git Strategy Workflow
+  ✓ Git Strategy Workflow
+  ○ BODP Config
+  ✓ BODP Config
+  ○ Telemetry Config
+  ✓ Telemetry Config
+  ○ Glamour Cache
+  ✓ Glamour Cache
+  ○ Codex Wiring
+  ✓ Codex Wiring
+--- PASS: TestRunDoctor_AllFlags (11.43s)
+=== RUN   TestRunDoctor_VerboseAndDetail
+--- PASS: TestRunDoctor_VerboseAndDetail (10.16s)
+=== RUN   TestRunDoctor_ExportMode
+--- PASS: TestRunDoctor_ExportMode (14.68s)
+=== RUN   TestDoctorCmd_Execution
+--- PASS: TestDoctorCmd_Execution (15.42s)
+=== RUN   TestDoctorCmd_ExportFlag
+--- PASS: TestDoctorCmd_ExportFlag (11.16s)
+=== RUN   TestDoctorCmd_VerboseExecution
+--- PASS: TestDoctorCmd_VerboseExecution (13.75s)
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/cli	113.530s
