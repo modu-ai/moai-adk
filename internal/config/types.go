@@ -1650,14 +1650,28 @@ type gateFileWrapper struct {
 // systemFileWrapper handles the system.yaml section file.
 //
 // system.yaml ships four top-level blocks (moai / github / hook /
-// document_management), but only `hook` maps to a SystemConfig sub-struct.
-// The wrapper therefore binds only the Hook field; the other three blocks have
-// no SystemConfig field and are intentionally ignored by the loader (they are
-// classified R in the M1 inventory and read, where read at all, by ad-hoc
-// inline structs elsewhere). Seeding Hook with cfg.System.Hook preserves the
-// partial-override contract parallel to loadGateSection / loadHandoffSection.
+// document_management), and of those only `hook` maps to a SystemConfig
+// sub-struct. The other three have no SystemConfig field and are intentionally
+// ignored by the loader (they are classified R in the M1 inventory and read,
+// where read at all, by ad-hoc inline structs elsewhere).
+//
+// `migrations` is bound too, though the template ships no such block (card
+// t795). It is the fifth key a user can write here, and it is NOT in the
+// intentionally-ignored set above: SystemConfig.Migrations carries a yaml tag
+// AND has a real consumer — internal/hook/session_start.go runMigration reads
+// cfg.System.Migrations.Disabled and logs "migrations disabled via config" on
+// the false branch. Unbound, that branch was unreachable from configuration:
+// a user who wrote `migrations: {disabled: true}` had the edit ignored with no
+// signal (yaml.v3 runs non-strict, so an unbound key is silently dropped), and
+// the migrations ran anyway. The same criterion M4 used to bind `hook` — a
+// genuine SystemConfig consumer — selects this block; it was overlooked rather
+// than excluded.
+//
+// Seeding both fields from cfg preserves the partial-override contract
+// parallel to loadGateSection / loadHandoffSection.
 type systemFileWrapper struct {
-	Hook SystemHookConfig `yaml:"hook"`
+	Hook       SystemHookConfig `yaml:"hook"`
+	Migrations MigrationsConfig `yaml:"migrations"`
 }
 
 // ralphFileWrapper handles the ralph.yaml section file.
