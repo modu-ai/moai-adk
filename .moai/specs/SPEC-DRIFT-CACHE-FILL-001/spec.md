@@ -2,7 +2,7 @@
 id: SPEC-DRIFT-CACHE-FILL-001
 title: "Out-of-band drift cache fill for session start"
 version: "0.4.0"
-status: draft
+status: in-progress
 created: 2026-09-18
 updated: 2026-09-18
 author: manager-spec
