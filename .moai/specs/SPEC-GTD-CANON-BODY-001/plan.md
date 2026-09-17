@@ -9,9 +9,21 @@ Tier M, Class C. Body migration from `workflows/todo.md` to `workflows/gtd.md`, 
 - **Decision (operator):** delete `workflows/todo.md` in both trees, no stub.
 - **Decision (operator):** retarget the 4 Go tests.
 - **Decision (lane, final):** the comment-only Go citations are updated (required, not discretionary).
-- **Decision (orchestrator):** the pre-existing red tests (spec.md §C.3) are NOT fixed by this SPEC. Verification is a baseline delta over the same test-name set.
+- **Decision (orchestrator):** the five pre-existing red tests owned by card t854 (spec.md §C.3) are NOT fixed by this SPEC. Verification is a baseline delta over that five-name set.
+- **Decision (lead, scope change):** `TestGTDCanonicalSurfaceGolden` and `TestGTDAllTodoVerbsParity` are owned by this SPEC (REQ-GCB-014, spec.md §C.4). They must pass by name and are never part of the baseline delta.
 - **Plan-time finding:** `internal/cli/todo.go:211` names `workflows/todo.md` inside the Cobra Long help string. That is user-visible text, so fixing it is required.
-- **Plan-time finding:** `internal/template/gtd_canonical_surface_test.go` is **already red on the base tree** (plan-audit iteration 1). It fails because `commands/moai/todo.md` lost the literal `arguments: gtd $ARGUMENTS` in cards t860/t861, which is unrelated to this SPEC. This SPEC does not touch that file. The test stays red and is carried in the baseline set.
+- **Measured (`e4cc628e9`):** `internal/template/gtd_canonical_surface_test.go:24` fails because the literal it requires (`arguments: gtd $ARGUMENTS`, line 23) predates the t860/t861 wording ``with arguments: `gtd` $ARGUMENTS``. The repair aligns the test literal to the landed wording (spec.md §C.4). It needs no command-body change and no operator decision.
+
+### §B.1 Operator decision — parity repair [NEEDS CLARIFICATION: TestGTDAllTodoVerbsParity repair direction]
+
+`internal/cli/gtd_compat_test.go:61` fails because `moai gtd` has `answer` (commit `1b644372d`) and the test's `gtdWant` does not. `moai todo` has no `answer` subcommand. Both options stay inside `internal/cli` and keep `moai todo` / `/moai:todo` working. Choosing between them changes (or preserves) the CLI surface, so this SPEC does not decide.
+
+| Option | Change | Consequence |
+|---|---|---|
+| A — `answer` stays gtd-only | Add `"answer"` to `gtdWant` only (test file). No Go production change. | The CLI surface is unchanged. `answer` joins capture/clarify/organize/reflect/engage as a gtd-only verb, so the todo alias keeps exactly the historical todo verb set. `moai todo answer …` stays unavailable. How a multi-word `moai todo answer t1 text` is treated today (refused as a mistyped verb, or added as a card via the phrase fallthrough) was **not measured**; run-phase must observe it in an isolated `todoFixture` queue before landing, and the verdict records it. |
+| B — expose `answer` on the todo alias | Register `answer` on the `moai todo` command in `internal/cli`, and add `"answer"` to both `todoWant` and `gtdWant`. | A CLI behavior change: the compat alias gains a verb it never had. The parity loop then also asserts identical Use/Short/flags/help for `answer` on both roots. `workflows/gtd.md` must list `answer` among the verbs the alias shares, and the alias stops being "the historical todo verbs". |
+
+Run-phase applies whichever option the operator selects. Until then, AC-GCB-012 is satisfiable by either option and the M3.7 step is blocked.
 - **Plan-time finding:** `make build` runs `gen-catalog-hashes.go --all` (Makefile:35). Changing the `moai` skill tree, `moai-kanban-foreman` and `manager-lead` therefore changes `internal/template/catalog.yaml` hashes, which `TestCatalogHashCoversSkillSubfiles` pins. The regenerated catalog must be committed.
 - **Plan-time finding:** the template mirror `SKILL.md` must not contain `${CLAUDE_SKILL_DIR}` (`TestSkillTreeHasNoClaudeSkillDirToken`). The mirror writes `.claude/skills/moai/workflows/<x>.md` (mirror SKILL.md lines 126/134/142/150).
 - **Plan-time finding:** `Makefile`, `internal/template/skill_mirror*.go` and `internal/template/commandemit/*` enumerate no `workflows/todo.md`. The `todo.md` that `commandemit` mentions is `commands/moai/todo.md`, which is retained.
@@ -26,6 +38,7 @@ Tier M, Class C. Body migration from `workflows/todo.md` to `workflows/gtd.md`, 
 
 ## §D Constraints
 
+- **Before run-phase starts:** absorb local `develop` into `WT-gtd-canon`. At plan time local develop was `27220fb94` with the t783 merge pending; re-read `git rev-parse develop` at absorption. Measure the M0 baseline on the absorbed tree, never on the pre-absorption tree. Scope judgments use `git merge-base develop HEAD` as their left end.
 - Template-First: every doc edit lands in the local file and its mirror in the same commit, then `make build`.
 - `manager-lead.toml` is regenerated only via `make agents-emit`; `catalog.yaml` only via `make build`.
 - No local `go test ./...`. Each heavy package run takes its own lease (`moai slot acquire --resource go-test --max-duration 45m`) and releases it before the next package. Acquire exit 3 or 4 means wait and retry, bounded; if the lease stays unavailable, record a Gap. A package never runs unleased (acceptance.md AC-GCB-010).
@@ -59,6 +72,8 @@ Record the failing test-name sets at pre-edit HEAD for both packages (AC-GCB-010
 4. `backlog_json_disclosure_mirror_test.go`: file list (line 25) and comment (line 5) → `workflows/gtd.md`.
 5. `todo.go:211` Long help → `workflows/gtd.md`.
 6. Comments (required): `todo_drop.go:16`, `todo_edit_move.go:8`, `todo_edit_move.go:100`, `todo_test.go:665`.
+7. `internal/template/gtd_canonical_surface_test.go:23`: align the thin-path literal to the landed dispatch wording (``arguments: `gtd` $ARGUMENTS``). Then confirm by name that both todo paths and the `publishedSkillNames == 17` check are reached and pass. Those two checks were not reached at plan time.
+8. `internal/cli/gtd_compat_test.go`: apply the operator's §B.1 option (A: test expectation only; B: todo registration plus both expectations). **Blocked until selected.**
 
 ### M4 — Delete todo body and clean residual references (Priority Medium)
 
@@ -79,7 +94,8 @@ Record the failing test-name sets at pre-edit HEAD for both packages (AC-GCB-010
 - Hand-editing `manager-lead.toml` or `catalog.yaml`, or leaving the regenerated catalog uncommitted.
 - Documenting GTD flags absent from `--help`, or presenting `answer` as a stage.
 - Making a check pass by weakening it (loosening the `compat alias` marker, deleting a test assertion, dropping a flag from the required list).
-- Fixing or deleting the §C.3 pre-existing failing tests inside this SPEC.
+- Fixing or deleting the five t854-owned §C.3 failing tests inside this SPEC.
+- Making the two t867-owned tests pass by deleting or weakening their assertions (for example removing the thin-path check or the verb-set comparison).
 - Editing historical SPEC, report, or CHANGELOG files to silence citations.
 
 ## §H Cross-References

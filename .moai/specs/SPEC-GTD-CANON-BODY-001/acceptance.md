@@ -24,6 +24,8 @@ The `workflows/todo.md` citation check (AC-GCB-005) covers `.claude internal cmd
 | L12 | `bash $SPEC/check-gtd-body.sh <wrapper> good.md` (wrapper = real binary plus one extra `--zz-extra` line on `gtd engage --help`) | 1 | `CHECK 002-flag-set-equal:engage FAIL frozen=[… --run-id] help=[… --run-id --zz-extra]` | scratch |
 | L8 | `grep -rn 'workflows/todo\.md' .claude internal cmd pkg .moai/docs Makefile` piped to `wc -l` | 0 | `21` | 114737ea1 |
 | L9 | `grep -n '### todo - Backlog Queue' .claude/skills/moai/SKILL.md` | 0 | `169:### todo - Backlog Queue` | 114737ea1 |
+| L13 | `go test -timeout 5m -count=1 -v -run '^TestGTDCanonicalSurfaceGolden$' ./internal/template/` | 1 | `gtd_canonical_surface_test.go:24: templates/.claude/commands/moai/todo.md is not a thin gtd compatibility path` / `--- FAIL: TestGTDCanonicalSurfaceGolden (0.00s)` | e4cc628e9 |
+| L14 | `go test -timeout 5m -count=1 -v -run '^TestGTDAllTodoVerbsParity$' ./internal/cli/` | 1 | `gtd_compat_test.go:61: gtd verbs = [add analyze answer auto-done capture clarify done drop edit engage export-json history landed list move next organize pr reflect relate undone undrop unpick unrelate why], want [add analyze auto-done capture clarify done drop edit engage export-json history landed list move next organize pr reflect relate undone undrop unpick unrelate why]` / `--- FAIL: TestGTDAllTodoVerbsParity (0.00s)` | e4cc628e9 |
 
 ## §D AC Matrix
 
@@ -79,7 +81,7 @@ Given the migrated tree and `$BIN`, Then all of the following hold:
 - `grep -cE 'gtd.*\$ARGUMENTS' .claude/commands/moai/todo.md internal/template/templates/.claude/commands/moai/todo.md internal/template/templates/.agents/skills/moai-todo/SKILL.md` prints ≥ 1 for each of the three files.
 - `go test -timeout 10m -count=1 -v -run '^TestTodoBareInvocationLists$' ./internal/cli/` prints exactly one `--- PASS:` line and no `--- FAIL:`.
 
-`TestGTDCanonicalSurfaceGolden` and `TestGTDAllTodoVerbsParity` are pre-existing red (spec.md §C.3). They are judged only by AC-GCB-010's baseline delta, never as must-pass here.
+`TestGTDCanonicalSurfaceGolden` and `TestGTDAllTodoVerbsParity` are owned by this SPEC and must pass by name under AC-GCB-012.
 - RED-now: not applicable. This is a preserved-behavior guard (regression-guard class) and holds on 114737ea1; its failure direction is a migration that breaks the alias dispatch line.
 
 ### AC-GCB-008 — retargeted tests read gtd.md and pass by name (REQ-GCB-008)
@@ -118,13 +120,23 @@ Timeout handling applies to M0 and M5 alike. A log containing `panic: test timed
 
 Given `m0-<pkg>.fail-names` and `m5-<pkg>.fail-names` for both packages (neither a Gap), Then:
 - `comm -13 m0-<pkg>.fail-names m5-<pkg>.fail-names` prints nothing for each package (no new failing test name).
+- `grep -cxE 'TestGTDCanonicalSurfaceGolden|TestGTDAllTodoVerbsParity' m5-template.fail-names m5-cli.fail-names` prints `0` for both files. These two t867-owned names are never excused by the delta, even though they appear in m0.
 - Each m5 log contains at least one `ok ` or `FAIL\t` package line (non-empty sweep).
 - No m5 log contains a `[build failed]` or `[setup failed]` line, and no `FAIL\t<package>` line appears in m5 whose package line was absent at m0.
 - `go vet ./internal/cli/... ./internal/template/...` exits 0.
 - No `go test ./...` invocation appears in progress.md §E.2.
 
-The M0 name set is expected to match spec.md §C.3; any difference is recorded in the verdict. A test in the baseline set that turns green is reported, not required.
+The M0 name set is expected to be the five t854-owned names in spec.md §C.3, plus the two t867-owned names in §C.4 while they are still red. Any other difference is recorded in the verdict. A test in the baseline set that turns green is reported, not required.
 - Two-cell note: this criterion is a delta guard, not a RED-now criterion. Its baseline IS the red set, and it measures only this SPEC's contribution.
+
+### AC-GCB-012 — t867-owned GTD surface tests pass by name (REQ-GCB-014)
+
+Given the migrated tree, When each of these runs, Then each prints exactly one `--- PASS:` line, no `--- FAIL:` line, and no `[no tests to run]`, and exits 0:
+- `go test -timeout 5m -count=1 -v -run '^TestGTDCanonicalSurfaceGolden$' ./internal/template/`
+- `go test -timeout 5m -count=1 -v -run '^TestGTDAllTodoVerbsParity$' ./internal/cli/`
+
+Neither test file may lose an assertion. `git diff <base>...HEAD -- internal/template/gtd_canonical_surface_test.go internal/cli/gtd_compat_test.go` must show no removed `t.Fatalf` / `t.Errorf` line without a replacement assertion of the same check.
+- RED-now: L13 and L14. Green path: M3.7 (literal alignment) and M3.8 (the operator's §B.1 option). Under option B, `$BIN todo answer --help` must also print the `answer` usage (`moai todo answer <t-id> <text>`).
 
 ### AC-GCB-011 — config key, historical records, citation inventory (REQ-GCB-010, REQ-GCB-011, REQ-GCB-012)
 

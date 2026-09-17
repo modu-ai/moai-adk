@@ -34,7 +34,17 @@
 - Extras taken: N3 (`[build failed]` / new package FAIL line counts as a new failure), N7 (inventory excludes this SPEC's own review files), N8 (`TestManifestHashFormat` added to AC-GCB-009).
 - Not taken: N9 (line-based survivor rule accepts an unrelated `compat alias` on the same line; accepted as inherent).
 
-plan_audit: iteration 2 PASS 0.86
+### Scope change 0.3.0 (lead, card t854 handover)
+
+- `TestGTDCanonicalSurfaceGolden` and `TestGTDAllTodoVerbsParity` are now owned by t867 (REQ-GCB-014, AC-GCB-012). They were removed from the baseline set, which keeps the five t854-owned tests.
+- Measured at `e4cc628e9`, each test run alone:
+  - L13: `gtd_canonical_surface_test.go:24 … is not a thin gtd compatibility path`. The literal the test requires predates the t860/t861 wording.
+  - L14: `gtd_compat_test.go:61 gtd verbs = [.. answer ..], want [..no answer..]`. The `answer` verb landed in `1b644372d`; `moai todo` has no `answer` subcommand.
+- The parity repair direction (A: `answer` stays gtd-only, test expectation only; B: expose `answer` on the todo alias) is an open operator decision, recorded in plan.md §B.1 and blocking M3.8.
+- plan.md §D now requires absorbing local develop (plan-time `27220fb94`, t783 merge pending) before M0, and measuring the M0 baseline on the absorbed tree.
+- This amendment changes the plan-artifact hash, so the cached iteration-2 PASS no longer satisfies the skip-eligibility hash condition; a Phase 1 re-audit follows.
+
+plan_audit: iteration 2 PASS 0.86 (pre-0.3.0 artifacts)
 plan_complete_at: 2026-09-18T01:45:23+09:00
 plan_status: audit-ready
 

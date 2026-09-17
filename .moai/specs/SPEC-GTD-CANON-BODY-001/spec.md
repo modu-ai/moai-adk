@@ -1,7 +1,7 @@
 ---
 id: SPEC-GTD-CANON-BODY-001
 title: "gtd canonical body migration — move the workflows/todo.md body into workflows/gtd.md and retire the todo body"
-version: "0.2.1"
+version: "0.3.0"
 status: draft
 created: 2026-09-18
 updated: 2026-09-18
@@ -25,6 +25,7 @@ related_specs: []
 | 0.1.0 | 2026-09-18 | manager-spec | Initial plan-phase draft for kanban card t867 (Tier M, Class C). |
 | 0.2.0 | 2026-09-18 | manager-spec | Plan-audit iteration 1 (FAIL 0.71) revisions D1-D14: baseline-delta test gate, script-based residual and body checks with observed RED and mutant controls, mirror `${CLAUDE_SKILL_DIR}` rule, catalog hash regeneration, per-verb GTD stage checks, historical set widened to CHANGELOG.md and top-level reports/, measured file count, comment citations made required, REQ-GCB-011 split. |
 | 0.2.1 | 2026-09-18 | manager-spec | Plan-audit iteration 2 PASS 0.86; pre-run amendments N1 (bash-only guard + 113-line PASS floor), N2 (two-way flag set equality), N4 (per-package slot lease, exit 3/4 handling), N5 (M0 timeout is a Gap), N6 (6th/sixth-stage regex), N10 (single evidence file naming); cheap extras N3 (build-failed delta), N7 (exclude own review files), N8 (TestManifestHashFormat). |
+| 0.3.0 | 2026-09-18 | manager-spec | Scope change from the lead: `TestGTDCanonicalSurfaceGolden` and `TestGTDAllTodoVerbsParity` now owned by t867 (moved from t854). Added REQ-GCB-014 and AC-GCB-012; both tests removed from the baseline set; failure causes measured (§C.4); parity repair left as an operator decision (plan.md §B.1); develop absorption before M0 (plan.md §D). |
 
 ## §A Context
 
@@ -93,7 +94,11 @@ When the deletion leaves citations of `workflows/todo.md` in the historical reco
 
 ### REQ-GCB-013 — Scoped verification judged against a named baseline
 
-While verifying this change locally, the implementer shall not run `go test ./...`. It shall run `./internal/cli/...` and `./internal/template/...` with an explicit `-timeout` and judge them as "no NEW failing test name versus the baseline set recorded at pre-edit HEAD". The pre-existing failures shall be recorded as a finding for the lead, not fixed by this SPEC.
+While verifying this change locally, the implementer shall not run `go test ./...`. It shall run `./internal/cli/...` and `./internal/template/...` with an explicit `-timeout` and judge them as "no NEW failing test name versus the baseline set recorded at pre-edit HEAD". The five baseline failures owned by card t854 (§C.3) shall be recorded as a finding for the lead, not fixed by this SPEC. The two GTD-surface tests owned by this SPEC (REQ-GCB-014) are excluded from that baseline and are judged by name.
+
+### REQ-GCB-014 — GTD surface tests owned by this card pass
+
+When run-phase completes, `TestGTDCanonicalSurfaceGolden` (`./internal/template/`) and `TestGTDAllTodoVerbsParity` (`./internal/cli/`) shall each pass when run alone by exact name. The repair shall keep the `moai todo` and `/moai:todo` compat aliases working. It shall touch no Go code outside `internal/cli` and `internal/template`. It shall make no CLI behavior change beyond the one the operator selects for the parity decision in plan.md §B.1.
 
 ## §C Scope
 
@@ -122,19 +127,32 @@ Template tree only: `internal/template/templates/.codex/agents/moai/manager-lead
 - Generated: `internal/template/catalog.yaml` (via `make build`)
 - Evidence: `.moai/reports/t867/verdict.md`
 
-### §C.3 Pre-existing baseline failures (finding, not fixed)
+### §C.3 Pre-existing baseline failures owned by card t854 (finding, not fixed)
 
-The plan auditor observed these at `114737ea1`, recorded in `.moai/reports/plan-audit/SPEC-GTD-CANON-BODY-001-review-1.md`. This SPEC author did not re-measure them, so the run phase re-measures before editing:
+The plan auditor observed these at `114737ea1`, recorded in `.moai/reports/plan-audit/SPEC-GTD-CANON-BODY-001-review-1.md`. The run phase re-measures them on the absorbed tree at M0:
 
-- `./internal/template/...`: `TestGTDCanonicalSurfaceGolden`, `TestRealSetCodexShape`, `TestBoundaryFlagsRecorded`
-- `./internal/cli/...`: `TestGTDAllTodoVerbsParity`, `TestCGRetirementCompleteEntryShapesAndCounters`, `TestInitRegroup_SecondGroupGolden`, `TestAgentWiringOptions`, plus a 10-minute package timeout under load
+- `./internal/template/...`: `TestRealSetCodexShape`, `TestBoundaryFlagsRecorded`
+- `./internal/cli/...`: `TestCGRetirementCompleteEntryShapesAndCounters`, `TestInitRegroup_SecondGroupGolden`, `TestAgentWiringOptions`, plus a 10-minute package timeout under load
 
-Causal statement: two of these sit on the gtd/todo surface but are **not caused by the surface this SPEC rewrites**.
+Card t854 owns these five; this SPEC does not fix them.
 
-- `TestGTDCanonicalSurfaceGolden` fails because `commands/moai/todo.md` no longer contains the literal `arguments: gtd $ARGUMENTS`. That wording changed in cards t860/t861, and this SPEC does not edit `commands/moai/todo.md` or `.agents/skills/moai-todo/SKILL.md`.
-- `TestGTDAllTodoVerbsParity` fails because the `answer` verb was added (cards t863/t864). This SPEC changes no Go behavior or verb set.
+### §C.4 GTD surface tests owned by this card (REQ-GCB-014)
 
-Neither is absorbed or fixed here; both go to the lead as findings.
+Ownership moved to t867 from card t854 because both tests overlap this card's GTD surface. I measured each on this tree at `e4cc628e9`, running it alone with `-timeout 5m -count=1 -v -run '^<Test>$'`:
+
+- `TestGTDCanonicalSurfaceGolden`: `internal/template/gtd_canonical_surface_test.go:24`, output `templates/.claude/commands/moai/todo.md is not a thin gtd compatibility path`.
+  - Cause: the assertion (line 23) requires the literal `arguments: gtd $ARGUMENTS`. The template body now reads ``invoke `Skill("moai")` with arguments: `gtd` $ARGUMENTS`` (line 8), with backticks around `gtd`. Cards t860/t861 introduced that wording; the published `.agents/skills/moai-todo/SKILL.md` line 8 carries the same wording.
+  - The test calls `t.Fatalf` on the first path, so the second todo path and the `publishedSkillNames == 17` check were **not reached** in this measurement.
+  - Repair class: test-literal alignment inside `internal/template`. No CLI behavior change and no command-body change: reverting the bodies would undo t860 and break the `commandemit` golden.
+- `TestGTDAllTodoVerbsParity`: `internal/cli/gtd_compat_test.go:61`, output `gtd verbs = [add analyze answer auto-done capture clarify done drop edit engage export-json history landed list move next organize pr reflect relate undone undrop unpick unrelate why], want [add analyze auto-done capture clarify done drop edit engage export-json history landed list move next organize pr reflect relate undone undrop unpick unrelate why]`.
+  - Cause: `moai gtd` gained the `answer` verb (commit `1b644372d`, cards t863/t864), but the test's `gtdWant` (lines 51-54) was not updated.
+  - The `t.Fatalf` at line 61 stops the test, so the todo-surface check (line 63) and the per-verb help/flag parity loop were **not reached**.
+  - `moai todo answer --help` (scratch binary built from this tree) exits 0 and prints the todo root Long help, so `answer` is not a todo subcommand.
+  - Repair class: **undecided**; see plan.md §B.1.
+
+### §C.5 Local command-body divergence (finding only)
+
+The local `.claude/commands/moai/todo.md` line 7 still reads `Use Skill("moai") with arguments: gtd $ARGUMENTS`, while the template reads the harness-neutral form. This SPEC does not change it; the verdict records it as a finding.
 
 ## §D Exclusions
 
@@ -146,7 +164,8 @@ Neither is absorbed or fixed here; both go to the lead as findings.
 
 ### Out of Scope — pre-existing test failures
 
-- Fixing any test in §C.3, including the two gtd-adjacent ones (`TestGTDCanonicalSurfaceGolden`, `TestGTDAllTodoVerbsParity`)
+- Fixing any of the five t854-owned tests in §C.3 (the two GTD-surface tests in §C.4 are in scope)
+- Changing the local `.claude/commands/moai/todo.md` dispatch line (§C.5)
 
 ### Out of Scope — runtime wording and generated project docs
 
