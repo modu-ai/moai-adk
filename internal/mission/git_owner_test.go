@@ -9,10 +9,21 @@ import (
 	"testing"
 )
 
+// testGitBinary resolves git from PATH so the fixtures run on every CI
+// platform instead of only where a host-specific install path exists.
+func testGitBinary(t *testing.T) string {
+	t.Helper()
+	path, err := exec.LookPath("git")
+	if err != nil {
+		t.Fatalf("git not found on PATH: %v", err)
+	}
+	return path
+}
+
 func gitFixtureRun(t *testing.T, dir string, args ...string) string {
 	t.Helper()
 	all := append([]string{"-C", dir}, args...)
-	cmd := exec.Command("/Library/Developer/CommandLineTools/usr/bin/git", all...)
+	cmd := exec.Command(testGitBinary(t), all...)
 	cmd.Env = append(os.Environ(), "GIT_AUTHOR_NAME=Test", "GIT_AUTHOR_EMAIL=test@example.invalid", "GIT_COMMITTER_NAME=Test", "GIT_COMMITTER_EMAIL=test@example.invalid")
 	out, err := cmd.CombinedOutput()
 	if err != nil {
@@ -37,7 +48,7 @@ func TestGitOwnerCommitExplicitPathsAndReadback(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(repo, "foreign.txt"), []byte("foreign"), 0600); err != nil {
 		t.Fatal(err)
 	}
-	owner := GitOwnerAdapter{GitBinary: "/Library/Developer/CommandLineTools/usr/bin/git", Effect: GitEffect{Action: ActionCommit, Repository: repo, WorktreeBranch: "WT-card", ExplicitPaths: []string{"tracked.txt"}, CommitMessage: "feat: card"}}
+	owner := GitOwnerAdapter{GitBinary: testGitBinary(t), Effect: GitEffect{Action: ActionCommit, Repository: repo, WorktreeBranch: "WT-card", ExplicitPaths: []string{"tracked.txt"}, CommitMessage: "feat: card"}}
 	if applied, err := owner.Readback(context.Background(), "op-commit"); err != nil || applied {
 		t.Fatalf("pre readback=%v err=%v", applied, err)
 	}
@@ -78,7 +89,7 @@ func TestGitOwnerLocalDevelopNoFFLeaseAndCrashReadback(t *testing.T) {
 	if err := WriteIntegrationLease(lease, IntegrationLease{SessionID: "018f4f4a-7b7c-7a11-8f4d-777777777777", BaseSHA: base}); err != nil {
 		t.Fatal(err)
 	}
-	owner := GitOwnerAdapter{GitBinary: "/Library/Developer/CommandLineTools/usr/bin/git", Effect: GitEffect{Action: ActionLocalMerge, Repository: repo, IntegrationWorktree: repo, WorktreeBranch: "WT-card", CardSHA: card, BaseSHA: base, LeasePath: lease, SessionID: "018f4f4a-7b7c-7a11-8f4d-777777777777"}}
+	owner := GitOwnerAdapter{GitBinary: testGitBinary(t), Effect: GitEffect{Action: ActionLocalMerge, Repository: repo, IntegrationWorktree: repo, WorktreeBranch: "WT-card", CardSHA: card, BaseSHA: base, LeasePath: lease, SessionID: "018f4f4a-7b7c-7a11-8f4d-777777777777"}}
 	if err := owner.Apply(context.Background(), "op-merge"); err != nil {
 		t.Fatal(err)
 	}
@@ -110,7 +121,7 @@ func TestGitOwnerSafetyMutants(t *testing.T) {
 	}
 	for name, effect := range map[string]GitEffect{"wrong-branch": {Action: ActionCommit, Repository: repo, WorktreeBranch: "WT-card", ExplicitPaths: []string{"x"}, CommitMessage: "x"}, "unsafe-path": {Action: ActionCommit, Repository: repo, WorktreeBranch: "main", ExplicitPaths: []string{"../x"}, CommitMessage: "x"}, "empty-paths": {Action: ActionCommit, Repository: repo, WorktreeBranch: "main", CommitMessage: "x"}, "unsupported": {Action: ActionForcePush, Repository: repo}} {
 		t.Run(name, func(t *testing.T) {
-			owner := GitOwnerAdapter{GitBinary: "/Library/Developer/CommandLineTools/usr/bin/git", Effect: effect}
+			owner := GitOwnerAdapter{GitBinary: testGitBinary(t), Effect: effect}
 			if err := owner.Apply(ctx, "op"); err == nil {
 				t.Fatal("unsafe effect allowed")
 			}
@@ -148,7 +159,7 @@ func TestGitOwnerReadbackLeaseAndSnapshotRefusals(t *testing.T) {
 	gitFixtureRun(t, repo, "add", "base")
 	gitFixtureRun(t, repo, "commit", "-qm", "base")
 	base := gitFixtureRun(t, repo, "rev-parse", "HEAD")
-	owner := GitOwnerAdapter{GitBinary: "/Library/Developer/CommandLineTools/usr/bin/git", Effect: GitEffect{Repository: repo}}
+	owner := GitOwnerAdapter{GitBinary: testGitBinary(t), Effect: GitEffect{Repository: repo}}
 	if head, branch, err := owner.Snapshot(ctx); err != nil || head != base || branch != "develop" {
 		t.Fatalf("snapshot head=%q branch=%q err=%v", head, branch, err)
 	}
