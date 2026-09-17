@@ -62,6 +62,12 @@ func (h *subagentStartHandler) Handle(ctx context.Context, input *HookInput) (*H
 		"agent_transcript_path", input.AgentTranscriptPath,
 	)
 
+	// Audit-receipt guard (SPEC-CODEX-AUDIT-GATE-AXES-001 REQ-CAG-010): record
+	// that an auditor instance began, so a receipt minted earlier cannot later
+	// be cited as evidence for it. Inert unless the tree declared the codex
+	// gate required; never affects this handler's output.
+	recordAuditorStart(input)
+
 	contextStr := h.buildContext(input)
 	if contextStr == "" {
 		return &HookOutput{}, nil

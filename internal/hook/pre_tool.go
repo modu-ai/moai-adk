@@ -636,6 +636,15 @@ func (h *preToolHandler) Handle(ctx context.Context, input *HookInput) (*HookOut
 		}
 		agentAdvisory = advisory
 
+		// Audit-receipt consumer (SPEC-CODEX-AUDIT-GATE-AXES-001 REQ-CAG-014).
+		// Sibling of the model guard: a phase-entry spawn is denied while an
+		// auditor PASS stands unproven in this tree. Activation is the raw
+		// workflow.audit.gates.codex == required value itself — writing that
+		// value IS the opt-in, so there is no separate flag.
+		if decision, reason := checkAuditReceiptSpawn(input); decision == DecisionDeny {
+			return NewDenyOutput(reason), nil
+		}
+
 		// Deliberate-revival escape hatch (stop-guard, REQ-TRG-005): a fresh
 		// spawn carrying a stopped teammate's name clears the registry entry
 		// BEFORE the spawn proceeds. Never denies; fail-open on removal error

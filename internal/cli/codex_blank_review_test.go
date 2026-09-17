@@ -415,8 +415,10 @@ func TestCodexBlankReview_AC007_RequiredGateAnnotatesBlankOutput(t *testing.T) {
 		t.Fatalf("fail-open stays a structured result, never a tool error")
 	}
 	got := structuredMap(t, res)
-	if v, _ := got["verdict"].(string); v != VerdictInconclusive {
-		t.Errorf("verdict = %q, want %q", v, VerdictInconclusive)
+	// Superseded verdict clause: an explicitly required gate now blocks with
+	// verdict fail; the gate_unmet annotation below is kept unchanged.
+	if v, _ := got["verdict"].(string); v != "fail" {
+		t.Errorf("verdict = %q, want fail", v)
 	}
 	if g, _ := got["gate_unmet"].(string); g == "" {
 		t.Error("gate_unmet is empty — a required gate whose backend produced no verdict text must be recorded as unmet")

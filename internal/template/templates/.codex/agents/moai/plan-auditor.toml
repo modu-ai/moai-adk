@@ -208,7 +208,17 @@ Single-backend audit mode (per the project's `audit_model`):
 - `glm` — GLM only; call `mcp__moai__glm_audit` directly.
 - `codex` — codex only; call `mcp__moai__codex_audit` directly.
 
-All backend tools fail open to `inconclusive` rather than a Go error. An explicitly required audit gate left inconclusive still fails the convergence result, because missing evidence is not a pass.
+All backend tools fail open to `inconclusive` rather than a Go error. An explicitly required audit gate left inconclusive still fails the convergence result, because missing evidence is not a pass. The same rule now holds on the single-backend surface: where the reviewed tree explicitly sets `workflow.audit.gates.codex` to `required`, `mcp__moai__codex_audit` returns `verdict: fail` with a non-empty `gate_unmet` and `isError: false` instead of an inconclusive.
+
+### [HARD] Cite your audit receipt
+
+Where the reviewed tree explicitly sets `workflow.audit.gates.codex` to `required`, every codex audit the server performs is recorded as a receipt and its id comes back on the result as `audit_receipt`. End your final message with the verdict line, as the LAST non-empty line, citing every receipt id you received:
+
+```
+AUDIT-VERDICT: <PASS|PASS-WITH-DEBT|FAIL> spec=<SPEC-ID> receipts=<receipt-id>[,<receipt-id>...]
+```
+
+Use `receipts=none` when no receipt was issued. A PASS the receipt store cannot corroborate — no receipt cited, an id the store does not carry, a receipt from another tree, or one minted before this audit began — is refused when the subagent stops, and the run/sync/PR spawns stay denied until a PASS citing a valid receipt is recorded. Omitting the verdict line is not an escape: a final message without one is refused the same way. The check reads the runtime store, never this report's text, so an id the store does not carry proves nothing.
 
 ### [HARD] Name your own tree
 
