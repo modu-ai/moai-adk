@@ -28,7 +28,8 @@ Tier M, Class C. Body migration from `workflows/todo.md` to `workflows/gtd.md`, 
 
 - Template-First: every doc edit lands in the local file and its mirror in the same commit, then `make build`.
 - `manager-lead.toml` is regenerated only via `make agents-emit`; `catalog.yaml` only via `make build`.
-- No local `go test ./...`. Heavy package runs take `moai slot acquire --resource go-test --max-duration 40m` first.
+- No local `go test ./...`. Each heavy package run takes its own lease (`moai slot acquire --resource go-test --max-duration 45m`) and releases it before the next package. Acquire exit 3 or 4 means wait and retry, bounded; if the lease stays unavailable, record a Gap. A package never runs unleased (acceptance.md AC-GCB-010).
+- Both check scripts run under bash only; they refuse other shells with exit 2.
 - Template neutrality: no SPEC IDs, card ids, dates or SHAs inside `internal/template/templates/**`.
 - Every allowed `moai todo` survivor line carries the literal marker `compat alias`.
 
@@ -36,7 +37,7 @@ Tier M, Class C. Body migration from `workflows/todo.md` to `workflows/gtd.md`, 
 
 ### M0 — Baseline capture (Priority High)
 
-Record the failing test-name sets at pre-edit HEAD for both packages (AC-GCB-010 procedure), and store them at `.moai/reports/t867/baseline-{template,cli}.txt`. Record RED-now for both check scripts at `.moai/reports/t867/red-{residual,body}.txt`.
+Record the failing test-name sets at pre-edit HEAD for both packages (AC-GCB-010 procedure) as `.moai/reports/t867/m0-{template,cli}.{log,exit,fail-names}`. An M0 timeout is a Gap: re-run the package once, and never treat a truncated baseline as authoritative. Record RED-now for both check scripts at `.moai/reports/t867/m0-check-{residual,body}.txt`.
 
 ### M1 — gtd.md canonical body (Priority High)
 
@@ -68,7 +69,7 @@ Record the failing test-name sets at pre-edit HEAD for both packages (AC-GCB-010
 ### M5 — Build, verify, record (Priority Medium)
 
 1. `make build`: agents-emit-check, commands-emit-check, and `gen-catalog-hashes.go --all` (rewrites `internal/template/catalog.yaml` — commit it).
-2. Run `check-residual.sh` and `check-gtd-body.sh` (PASS required); run the retargeted tests by name; run the baseline-delta package runs.
+2. Run `check-residual.sh` and `check-gtd-body.sh` (PASS required); run the retargeted tests by name; run the baseline-delta package runs, writing `.moai/reports/t867/m5-{template,cli}.{log,exit,fail-names}`.
 3. Write `.moai/reports/t867/verdict.md` with the `workflow.todo.enabled` finding, the §C.3 pre-existing failures as a lead finding, and the path:line inventory of historical `workflows/todo.md` citations across `.moai/specs`, `.moai/reports`, `CHANGELOG.md` and `reports/`.
 
 ## §G Anti-Patterns

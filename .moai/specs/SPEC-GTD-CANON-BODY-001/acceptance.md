@@ -17,8 +17,11 @@ The `workflows/todo.md` citation check (AC-GCB-005) covers `.claude internal cmd
 | L3 | `bash $SPEC/check-residual.sh clean.md planted.md planted2.md` (planted: "(incompatible alias)", "(incompat alias)") | 1 | `offending=2 survivors=1` / both planted lines / `FAIL` | scratch |
 | L4 | `bash $SPEC/check-residual.sh missing.md` | 2 | `GREP_ERROR rc=2` | scratch |
 | L5 | `bash $SPEC/check-gtd-body.sh $BIN` | 1 | `fails=45` (all 45 doc-side; every help-side check PASS) | 114737ea1 |
-| L6 | `bash $SPEC/check-gtd-body.sh $BIN good.md` (scratch control doc: all headings, stages section, 277 lines) | 0 | `fails=0` (108 PASS lines) | scratch |
+| L6 | `bash $SPEC/check-gtd-body.sh $BIN good.md` (scratch control doc: all headings, stages section, 277 lines) | 0 | `fails=0`, 113 PASS lines (108 before the iteration-2 amendments, plus 5 `002-flag-set-equal:*`) | scratch |
 | L7 | `bash $SPEC/check-gtd-body.sh $BIN mut.md` (control plus `--bogus` flag plus "the sixth stage") | 1 | `CHECK 002-no-invented-flag:--bogus FAIL` / `CHECK 002-answer-not-stage FAIL` | scratch |
+| L10 | `zsh $SPEC/check-gtd-body.sh x` and `zsh $SPEC/check-residual.sh` | 2 and 2 | `USAGE_ERROR: run with bash (...)` | 6cce5e69c plus amendments |
+| L11 | `bash $SPEC/check-gtd-body.sh $BIN mut3.md` (control whose answer line reads "`answer` is the 6th GTD stage after engage") | 1 | `CHECK 002-answer-not-stage FAIL six/sixth-stage mentions=1 want=0` | scratch |
+| L12 | `bash $SPEC/check-gtd-body.sh <wrapper> good.md` (wrapper = real binary plus one extra `--zz-extra` line on `gtd engage --help`) | 1 | `CHECK 002-flag-set-equal:engage FAIL frozen=[… --run-id] help=[… --run-id --zz-extra]` | scratch |
 | L8 | `grep -rn 'workflows/todo\.md' .claude internal cmd pkg .moai/docs Makefile` piped to `wc -l` | 0 | `21` | 114737ea1 |
 | L9 | `grep -n '### todo - Backlog Queue' .claude/skills/moai/SKILL.md` | 0 | `169:### todo - Backlog Queue` | 114737ea1 |
 
@@ -33,13 +36,14 @@ Given the migrated tree, When `bash $SPEC/check-gtd-body.sh $BIN` runs, Then eve
 
 Given the migrated tree and `$BIN`, When `bash $SPEC/check-gtd-body.sh $BIN` runs, Then every `CHECK 002-*` line reads PASS:
 - one usage-shape assertion per verb (`moai gtd capture <text>`, `clarify <gtd-id>`, `organize <gtd-id>`, `reflect`, `engage <gtd-id>`, `answer <t-id> <text>`), each also present in that verb's `--help`;
-- each of the 23 required flags (every non-`--json`, non-`--help` flag of capture/clarify/organize/reflect/engage) listed in help AND named in the section, with `002-required-count` = 23 and `002-doc-flag-count` ≥ 23;
+- per verb, `002-flag-set-equal:<verb>` — the frozen flag list equals the set parsed from `moai gtd <verb> --help` (minus `--json`/`--help`) in BOTH directions, so a flag added to or removed from help turns red (L12);
+- each of the 23 required flags listed in help AND named in the section, with `002-required-count` = 23 and `002-doc-flag-count` ≥ 23;
 - every flag token in the section present in the union of the six verbs' help;
 - both queue-boundary phrases present in the section and in `moai gtd --help`;
-- `gate-blocked` present, and zero "six/sixth stage" mentions.
+- `gate-blocked` present, and zero matches of `(six|sixth|6|6th) (gtd )?stage(s)` or `answer … (is|as) (a|an|the) … stage`. The body therefore describes `answer` with wording like "is not a stage", never "is a … stage".
 
-The script exits 0.
-- RED-now: L5. Mutant controls: L6 (green is reachable), L7 (an invented flag and a sixth-stage claim both go red). Green path: M1.
+The script runs under bash; any other shell is refused with exit 2 (L10). It exits 0 and prints **at least 113 `PASS` lines**, the count the L6 control produced. `fails=0` with fewer PASS lines means checks were skipped, and that is a FAIL.
+- RED-now: L5. Mutant controls: L6 (green is reachable), L7 (an invented flag and a sixth-stage claim both go red), L11 (6th-stage wording goes red), L12 (help-side flag drift goes red). Green path: M1.
 
 ### AC-GCB-003 — todo body deleted, no stub (REQ-GCB-004)
 
@@ -94,24 +98,28 @@ A PASS-line count below the stated number (an empty or partial sweep) is a FAIL.
 Given the migrated tree, Then all of the following hold:
 - `make build` exits 0 (agents-emit-check and commands-emit-check pass; `gen-catalog-hashes.go --all` runs).
 - `git status --porcelain internal/template/catalog.yaml internal/template/templates/.codex/agents/moai/manager-lead.toml` prints nothing after the final commit, and `git log --oneline f67d2193f..HEAD -- internal/template/catalog.yaml` lists at least one commit.
-- `go test -timeout 10m -count=1 -v -run '^(TestCatalogHashCoversSkillSubfiles|TestAllSkillsInCatalog|TestAllAgentsInCatalog)$' ./internal/template/` prints 3 `--- PASS:` lines and 0 `--- FAIL:`.
+- `go test -timeout 10m -count=1 -v -run '^(TestCatalogHashCoversSkillSubfiles|TestAllSkillsInCatalog|TestAllAgentsInCatalog|TestManifestHashFormat)$' ./internal/template/` prints 4 `--- PASS:` lines and 0 `--- FAIL:`. `TestManifestHashFormat` covers the `manager-lead` agent-file hash, which `TestCatalogHashCoversSkillSubfiles` skips.
 - Every `CHECK 009-cmp:*` line of `check-gtd-body.sh` reads PASS (six local/mirror pairs byte-identical: gtd.md, kanban-dispatch.md, kanban-dispatch-detail.md, moai-kanban-foreman/SKILL.md, project/doc-generation.md, todo-queue-storage.md).
 - Green path: M4.3 + M5.1.
 
 ### AC-GCB-010 — scoped tests: no NEW failure versus baseline (REQ-GCB-013)
 
-Procedure, identical at M0 (pre-edit HEAD) and M5 (migrated HEAD); each package runs in its own slot-held invocation:
+Procedure, identical at M0 (pre-edit HEAD) and M5 (migrated HEAD). `<phase>` ∈ {`m0`, `m5`}, `<pkg>` ∈ {`template`, `cli`}. Every evidence file lives under `.moai/reports/t867/` with the single naming scheme `<phase>-<pkg>.log`, `<phase>-<pkg>.exit`, `<phase>-<pkg>.fail-names`. Each package runs under its own lease:
 
-1. `moai slot acquire --resource go-test --max-duration 40m`
-2. `go test -timeout 30m -count=1 ./internal/template/... > .moai/reports/t867/<phase>-template.log 2>&1`, then record the exit code
-3. `go test -timeout 30m -count=1 ./internal/cli/... > .moai/reports/t867/<phase>-cli.log 2>&1`, then record the exit code
-4. `moai slot release --resource go-test`
-5. Per log: `grep -E '^\s*--- FAIL: ' <log> | awk '{print $3}' | sort -u > <log>.fail-names`
+1. `moai slot acquire --resource go-test --max-duration 45m --command "go test <pkg>"`. The lease covers the per-package `-timeout 30m` plus a 15m margin, so it is never taken over mid-run.
+   - exit 0: proceed.
+   - exit 3 (held by another live session) or exit 4 (busy): run `moai slot status --resource go-test`, wait, and retry acquire. Allow at most 6 attempts spaced by the holder's remaining declared duration or 5 minutes, whichever is shorter. If every attempt fails, stop and record that package as a **Gap** (reason `slot-unavailable`) in the verdict.
+   - Never run the package unleased, and never use `--force`.
+2. `go test -timeout 30m -count=1 ./internal/<pkg>/... > .moai/reports/t867/<phase>-<pkg>.log 2>&1`, then record the exit code into `<phase>-<pkg>.exit`.
+3. `moai slot release --resource go-test`, before acquiring for the next package.
+4. `grep -E '^\s*--- FAIL: ' <phase>-<pkg>.log | awk '{print $3}' | sort -u > <phase>-<pkg>.fail-names`
 
-Given the M0 and M5 name sets, Then:
-- `comm -13 <M0>.fail-names <M5>.fail-names` prints nothing for each package (no new failing test name).
-- Each M5 log contains at least one `ok ` or `FAIL\t` package line (non-empty sweep).
-- An M5 log containing `panic: test timed out` is a **Gap, not a PASS**; re-run that package once under the slot.
+Timeout handling applies to M0 and M5 alike. A log containing `panic: test timed out` is a **Gap**, not a result: re-run that package once under a fresh lease. If the re-run also times out, the package stays a Gap. A truncated M0 log is never authoritative as a baseline; any delta judged against it is reported as unmeasured.
+
+Given `m0-<pkg>.fail-names` and `m5-<pkg>.fail-names` for both packages (neither a Gap), Then:
+- `comm -13 m0-<pkg>.fail-names m5-<pkg>.fail-names` prints nothing for each package (no new failing test name).
+- Each m5 log contains at least one `ok ` or `FAIL\t` package line (non-empty sweep).
+- No m5 log contains a `[build failed]` or `[setup failed]` line, and no `FAIL\t<package>` line appears in m5 whose package line was absent at m0.
 - `go vet ./internal/cli/... ./internal/template/...` exits 0.
 - No `go test ./...` invocation appears in progress.md §E.2.
 
@@ -123,7 +131,7 @@ The M0 name set is expected to match spec.md §C.3; any difference is recorded i
 Given the change set, Then all of the following hold:
 - `git diff --name-only f67d2193f...HEAD -- CHANGELOG.md reports .moai/specs .moai/reports` lists only paths under `.moai/specs/SPEC-GTD-CANON-BODY-001/` or `.moai/reports/t867/`.
 - `git diff f67d2193f...HEAD -- internal/config .moai/config internal/template/templates/.moai/config` prints nothing.
-- `.moai/reports/t867/verdict.md` contains `workflow.todo.enabled`, lists the spec.md §C.3 pre-existing failures as a lead finding, and holds a citation inventory whose entry count equals the line count of `grep -rn 'workflows/todo\.md' CHANGELOG.md reports .moai/specs .moai/reports --exclude-dir=SPEC-GTD-CANON-BODY-001 --exclude-dir=t867`. The plan-time measurement was 13 + 132 = 145; the run phase re-measures.
+- `.moai/reports/t867/verdict.md` contains `workflow.todo.enabled`, lists the spec.md §C.3 pre-existing failures as a lead finding, and holds a citation inventory whose entry count equals the line count of `grep -rn 'workflows/todo\.md' CHANGELOG.md reports .moai/specs .moai/reports --exclude-dir=SPEC-GTD-CANON-BODY-001 --exclude-dir=t867 --exclude='SPEC-GTD-CANON-BODY-001-*'` (the last exclusion drops this SPEC's own gitignored plan-audit reviews). The plan-time measurement was 13 + 132 = 145 before that exclusion; the run phase re-measures with it.
 
 ## Edge Cases
 

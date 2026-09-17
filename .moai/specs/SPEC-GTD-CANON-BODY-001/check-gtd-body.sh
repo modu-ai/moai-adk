@@ -3,6 +3,8 @@
 # Usage (from repo root):  bash check-gtd-body.sh <moai-binary> [gtd.md path]
 # Prints one "CHECK <id> PASS|FAIL <detail>" line per assertion.
 # Exit: 0 all PASS, 1 any FAIL, 2 usage/tool error.
+# Must run under bash: zsh does not word-split the flag loops and passes vacuously.
+[ -n "${BASH_VERSION:-}" ] || { echo "USAGE_ERROR: run with bash (bash check-gtd-body.sh ...)"; exit 2; }
 set -u
 
 BIN="${1:-}"
@@ -50,6 +52,10 @@ engage:--approve,--dependencies-ready,--dispatch,--fresh,--lane,--pick,--resourc
 req_total=0
 while IFS=: read -r verb flags; do
   help=$("$BIN" gtd "$verb" --help 2>/dev/null)
+  # set equality, both directions: frozen list == flags parsed from help (minus --json/--help)
+  want=$(printf '%s' "$flags" | tr ',' '\n' | sort -u)
+  got=$(printf '%s\n' "$help" | grep -oE '^ +--[a-z][a-z-]*' | tr -d ' ' | grep -vxE -- '--json|--help' | sort -u)
+  [ -n "$got" ] && [ "$want" = "$got" ]; check "002-flag-set-equal:$verb" $? "frozen=[$(printf '%s' "$want" | tr '\n' ' ')] help=[$(printf '%s' "$got" | tr '\n' ' ')]"
   for f in $(printf '%s' "$flags" | tr ',' ' '); do
     req_total=$((req_total+1))
     printf '%s\n' "$help" | grep -qE -- "(^|[^a-z-])$f([^a-z-]|$)"; check "002-flag-in-help:$verb$f" $? "help lists $f"
@@ -77,7 +83,7 @@ done
 
 # answer is the gate-response verb, not a sixth stage
 printf '%s\n' "$SECTION" | grep -qF 'gate-blocked'; check "002-answer-gate" $? "section describes answer via 'gate-blocked'"
-n=$(printf '%s\n' "$SECTION" | grep -ciE 'six(th)? (gtd )?stages?|sixth stage')
+n=$(printf '%s\n' "$SECTION" | grep -ciE '(six|sixth|6|6th) (gtd )?stages?|answer[^.]*(is|as) (a|an|the) [^.]*stage([^a-z]|$)')
 [ "$n" -eq 0 ]; check "002-answer-not-stage" $? "six/sixth-stage mentions=$n want=0"
 
 # --- AC-GCB-009 parity: local/mirror pairs byte-identical at base stay identical -

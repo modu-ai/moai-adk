@@ -1,7 +1,7 @@
 ---
 id: SPEC-GTD-CANON-BODY-001
 title: "gtd canonical body migration — move the workflows/todo.md body into workflows/gtd.md and retire the todo body"
-version: "0.2.0"
+version: "0.2.1"
 status: draft
 created: 2026-09-18
 updated: 2026-09-18
@@ -24,6 +24,7 @@ related_specs: []
 |---|---|---|---|
 | 0.1.0 | 2026-09-18 | manager-spec | Initial plan-phase draft for kanban card t867 (Tier M, Class C). |
 | 0.2.0 | 2026-09-18 | manager-spec | Plan-audit iteration 1 (FAIL 0.71) revisions D1-D14: baseline-delta test gate, script-based residual and body checks with observed RED and mutant controls, mirror `${CLAUDE_SKILL_DIR}` rule, catalog hash regeneration, per-verb GTD stage checks, historical set widened to CHANGELOG.md and top-level reports/, measured file count, comment citations made required, REQ-GCB-011 split. |
+| 0.2.1 | 2026-09-18 | manager-spec | Plan-audit iteration 2 PASS 0.86; pre-run amendments N1 (bash-only guard + 113-line PASS floor), N2 (two-way flag set equality), N4 (per-package slot lease, exit 3/4 handling), N5 (M0 timeout is a Gap), N6 (6th/sixth-stage regex), N10 (single evidence file naming); cheap extras N3 (build-failed delta), N7 (exclude own review files), N8 (TestManifestHashFormat). |
 
 ## §A Context
 

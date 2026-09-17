@@ -5,6 +5,8 @@
 #   bash check-residual.sh FILE...      # check the given files instead (positive control)
 # Exit: 0 PASS, 1 FAIL (offending lines printed), 2 grep error (missing/unreadable file).
 # Allowed survivor: a matching line that contains the literal phrase "compat alias".
+# Must run under bash (arrays).
+[ -n "${BASH_VERSION:-}" ] || { echo "USAGE_ERROR: run with bash (bash check-residual.sh ...)"; exit 2; }
 set -u
 
 if [ "$#" -gt 0 ]; then

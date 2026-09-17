@@ -21,7 +21,22 @@
 - D9: exact test names used.
 - D11: runtime and codemaps wording declared Out of Scope.
 - D12: REQ-GCB-011 split into 011/012 (baseline became 013).
-- Status: draft — awaiting plan-audit iteration 2
+- Plan-audit iteration 2: PASS 0.86 (`.moai/reports/plan-audit/SPEC-GTD-CANON-BODY-001-review-2.md`)
+
+### Iteration 2 pre-run amendments (no re-audit required)
+
+- N1: both scripts refuse non-bash shells with exit 2 (ledger L10); AC-GCB-002 PASS-line floor = 113 (108 + 5 new set-equality checks, observed on control L6).
+- N2: `002-flag-set-equal:<verb>` asserts that the frozen flag list equals the flags parsed from help, in both directions (L12 mutant goes red).
+- N4: one slot lease per package, `--max-duration 45m` (30m timeout plus 15m margin). Exit 3 or 4 means wait and retry, at most 6 attempts, then record a Gap. Never run unleased, never `--force`.
+- N5: an M0 timeout is a Gap; re-run once; a truncated baseline is never authoritative.
+- N6: the sixth-stage regex covers six/sixth/6/6th and "answer … is a … stage" (L11 mutant goes red).
+- N10: single evidence naming `.moai/reports/t867/<m0|m5>-<pkg>.{log,exit,fail-names}` in plan.md and acceptance.md.
+- Extras taken: N3 (`[build failed]` / new package FAIL line counts as a new failure), N7 (inventory excludes this SPEC's own review files), N8 (`TestManifestHashFormat` added to AC-GCB-009).
+- Not taken: N9 (line-based survivor rule accepts an unrelated `compat alias` on the same line; accepted as inherent).
+
+plan_audit: iteration 2 PASS 0.86
+plan_complete_at: 2026-09-18T01:45:23+09:00
+plan_status: audit-ready
 
 ## §E.2 Run-phase Evidence
 
