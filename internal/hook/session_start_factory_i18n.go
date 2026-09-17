@@ -59,10 +59,11 @@ var factoryLocales = map[string]factoryMessages{
 		leadIdentity: "This session is named %s. It carries no run id: a second lead launched while this one is live takes the next free number instead, and peers address whichever name the session actually launched under. The session list shows that same name — the title is registered on your first prompt, and a later /rename still wins.",
 		leadManual: "This session dispatches cards to %d lanes over cross-session messages.\n" +
 			"The lanes below are launched by hand, one per new terminal, because a session cannot launch another session.\n" +
-			"Lanes are named lane-1..lane-%d; a number whose label is held by a live session is bumped to the next free number.",
+			"Lanes are named lane-1..lane-%d, and a lane that joins with `-f agent` is named agent-<n>; a number whose label is held by a live session is bumped to the next free number.",
 		entryGuide: "Entry points: `moai cc -f` starts a Claude factory lead and `moai glm -f` a GLM lead — " +
 			"the launcher picks the backend, `-f` the factory. `-f` with no count starts the one-lane default; " +
-			"add lanes using the same provider as this lead with `moai %[2]s -f lane-<n>`.",
+			"to add a lane using the same provider as this lead, run `moai %[2]s -f agent`, which takes the next free agent-<n>, " +
+			"or pin a number with `moai %[2]s -f lane-<n>`.",
 		agentFanout:  "Every lane can run up to 10 agents concurrently in parallel.",
 		leaderSocket: "Leader socket: %s",
 		leadClasses: "Card routing: every card is routed WHOLE to one lane, and that lane carries it through " +
@@ -87,10 +88,11 @@ var factoryLocales = map[string]factoryMessages{
 		leadIdentity: "이 세션의 이름은 %s 입니다. 이름에 run id 는 들어가지 않습니다 — 이 세션이 살아 있는 동안 리드를 하나 더 띄우면 그쪽이 다음 번호를 받고, 다른 세션은 실제로 띄워진 이름으로 이 세션을 부릅니다. 세션 목록에도 같은 이름이 뜹니다 — 제목은 첫 프롬프트에서 등록되고, 나중에 /rename 을 하면 그쪽이 우선합니다.",
 		leadManual: "이 세션이 세션 간 메시지로 카드를 레인 %d개에 배분합니다.\n" +
 			"아래 레인은 터미널을 하나씩 새로 열어 직접 실행하세요 — 세션은 다른 세션을 띄울 수 없습니다.\n" +
-			"레인 이름은 lane-1..lane-%d 이며, 생존 세션이 이미 쓰고 있는 번호는 다음 빈 번호로 늘어납니다.",
+			"레인 이름은 lane-1..lane-%d 이고, `-f agent` 로 합류한 레인은 agent-<n> 이라는 이름을 받습니다. 생존 세션이 이미 쓰고 있는 번호는 다음 빈 번호로 늘어납니다.",
 		entryGuide: "진입점: `moai cc -f`는 Claude, `moai glm -f`는 GLM을 사용하는 팩토리 리더를 시작합니다. " +
 			"런처가 백엔드를, `-f` 가 팩토리를 정합니다. `-f` 에 개수를 붙이지 않으면 레인 1개 기본으로 시작하고, " +
-			"현재 리더와 같은 공급자로 레인을 추가하려면 `moai %[2]s -f lane-<n>`을 사용하세요.",
+			"현재 리더와 같은 공급자로 레인을 추가할 때는 `moai %[2]s -f agent`를 쓰면 비어 있는 다음 agent-<n> 번호를 알아서 잡습니다. " +
+			"번호를 직접 정하려면 `moai %[2]s -f lane-<n>`을 쓰세요.",
 		agentFanout:  "각 레인은 최대 10개의 에이전트를 동시에 병렬로 실행할 수 있습니다.",
 		leaderSocket: "리더 소켓: %s",
 		leadClasses: "카드 라우팅: 모든 카드는 한 레인에 통째로 배정되고, 그 레인이 세션 안에서 직렬 3단계 경로" +
@@ -112,10 +114,11 @@ var factoryLocales = map[string]factoryMessages{
 		leadIdentity: "このセッションの名前は %s です。名前に run id は含まれません — このセッションが生きている間にもう一つリーダーを起動すると、そちらが次の番号を取り、他のセッションは実際に起動した名前でこのセッションを呼びます。セッション一覧にも同じ名前が表示されます — タイトルは最初のプロンプトで登録され、後から /rename すればそちらが優先されます。",
 		leadManual: "このセッションが、セッション間メッセージでカードをレーン %d 本に割り振ります。\n" +
 			"以下のレーンは、ターミナルを 1 つずつ新規に開いて手動で起動してください — セッションが別のセッションを起動することはできません。\n" +
-			"レーン名は lane-1..lane-%d で、生存セッションが保持する番号は次の空き番号へ繰り上がります。",
+			"レーン名は lane-1..lane-%d で、`-f agent` で参加したレーンは agent-<n> という名前になります。生存セッションが保持する番号は次の空き番号へ繰り上がります。",
 		entryGuide: "起動コマンド: `moai cc -f` は Claude、`moai glm -f` は GLM のファクトリーリーダーを起動します。" +
 			"ランチャーがバックエンドを、`-f` がファクトリーを決めます。`-f` に個数を付けなければレーン1本のデフォルトで開始し、 " +
-			"現在のリーダーと同じプロバイダーでレーンを追加するには、`moai %[2]s -f lane-<n>` を使ってください。",
+			"現在のリーダーと同じプロバイダーでレーンを追加するには `moai %[2]s -f agent` を使ってください。空いている次の agent-<n> が自動で割り当てられます。" +
+			"番号を指定したい場合は `moai %[2]s -f lane-<n>` を使います。",
 		agentFanout:  "各レーンは最大 10 個のエージェントを同時に並列実行できます。",
 		leaderSocket: "リーダーソケット: %s",
 		leadClasses: "カードルーティング: すべてのカードは1つのレーンへ丸ごと割り当てられ、そのレーンがセッション内で直列3段階パス" +
@@ -137,10 +140,11 @@ var factoryLocales = map[string]factoryMessages{
 		leadIdentity: "本会话的名称是 %s。名称中不含 run id —— 本会话存活期间再启动一个主导会话，后者会取下一个编号；其他会话按实际启动时的名称来称呼本会话。会话列表中也显示同一名称 —— 标题在首次提示时注册，之后 /rename 优先。",
 		leadManual: "本会话通过跨会话消息把卡片分发给 %d 条泳道。\n" +
 			"下面的泳道需要各自新开一个终端手动启动 —— 会话无法启动另一个会话。\n" +
-			"泳道命名为 lane-1..lane-%d；已被存活会话占用的编号会顺延到下一个空位。",
+			"泳道命名为 lane-1..lane-%d，通过 `-f agent` 加入的泳道命名为 agent-<n>；已被存活会话占用的编号会顺延到下一个空位。",
 		entryGuide: "启动命令：`moai cc -f` 使用 Claude，`moai glm -f` 使用 GLM，分别启动工厂主导会话。" +
 			"启动器决定后端，`-f` 决定工厂。`-f` 不带数量时以一条泳道的默认配置启动；" +
-			"如需使用与当前主导会话相同的提供商添加泳道，请运行 `moai %[2]s -f lane-<n>`。",
+			"如需使用与当前主导会话相同的提供商添加泳道，请运行 `moai %[2]s -f agent`，它会自动占用下一个空闲的 agent-<n>；" +
+			"如需指定编号，请运行 `moai %[2]s -f lane-<n>`。",
 		agentFanout:  "每条泳道最多可同时并行运行 10 个代理。",
 		leaderSocket: "主导会话套接字：%s",
 		leadClasses: "卡片路由：每张卡片整体分发给一条泳道，由该泳道在会话内走完串行三阶段路径" +
