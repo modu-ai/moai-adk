@@ -46,7 +46,6 @@ moai init [project-name]
 
 | フラグ | 説明 |
 |--------|------|
-| `--project-mode <personal\|team>` | プロジェクトモード (デフォルト: personal) |
 | `--enable-lsp` | LSP 統合を有効化 (デフォルト: true) |
 | `--enforce-quality` | 品質ゲートを強制 (デフォルト: true) |
 | `--enable-design` | デザインワークフローを有効化 (デフォルト: true) |

@@ -1,0 +1,2 @@
+/Users/goos/MoAI/moai-adk-go/.moai/logs/askuser-observations.jsonl
+EXIT=0

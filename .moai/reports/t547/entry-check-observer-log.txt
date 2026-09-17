@@ -1,0 +1,6 @@
+source: /Users/goos/MoAI/moai-adk-go/.moai/logs/askuser-observations.jsonl
+rows 46  first 2026-09-03T19:19:29Z  last 2026-09-10T09:10:37Z
+mode x label_present: {('push', True): 46}
+pull-mode rows: 0
+distinct session_id: 18
+rows on/after 2026-09-08: 13
