@@ -44,28 +44,30 @@ func TestSessionStart_DeferredScanDoesNotBlockReturn(t *testing.T) {
 	// TestSessionStartHandler_Handle). Non-parallel: mutates package seams.
 	t.Setenv("ANTHROPIC_BASE_URL", "")
 
-	origFn := driftCountFn
+	// SPEC-DRIFT-CACHE-FILL-001 REQ-DCF-011: the deferred step's drift work is
+	// now the HEAD-SHA cache RESOLVE (driftCachedCountFn), not the in-band
+	// compute (driftCountFn). The slow scan is injected at the seam the
+	// deferred step actually consults; injecting it at driftCountFn would leave
+	// this test green against any implementation, because nothing on the
+	// deferred path calls that seam any more.
+	origFn := driftCachedCountFn
 	origTimeout := sessionStartDriftTimeout
 	t.Cleanup(func() {
-		driftCountFn = origFn
+		driftCachedCountFn = origFn
 		sessionStartDriftTimeout = origTimeout
 	})
 
-	// A time-box generous enough that the synchronous code path would wait
-	// for the full block (proving the block, not the time-box, governs).
 	sessionStartDriftTimeout = 30 * time.Second
-	// driftAbort lets the test release the deferred drift fn after the
-	// synchronous assertions pass, so the deferred goroutine can exit and
-	// join via completedCh (goleak hygiene).
+	// driftAbort lets the test release the deferred scan after the synchronous
+	// assertions pass, so the deferred goroutine can exit and join via
+	// completedCh (goleak hygiene).
 	driftAbort := make(chan struct{})
-	driftCountFn = func(ctx context.Context, _ string) (int, error) {
+	driftCachedCountFn = func(string) (int, bool) {
 		select {
-		case <-ctx.Done():
-			return 0, ctx.Err()
 		case <-driftAbort:
-			return 7, nil // test released the scan; value irrelevant
+			return 7, true // test released the scan; value irrelevant
 		case <-time.After(2 * time.Second):
-			return 99, nil
+			return 99, true
 		}
 	}
 	completedCh := registerDeferredScanSeam(t)
@@ -160,11 +162,12 @@ func TestSessionStart_DeferredScanDoesNotBlockReturn(t *testing.T) {
 func TestSessionStart_HandleInputLagBudget(t *testing.T) {
 	t.Setenv("ANTHROPIC_BASE_URL", "")
 
-	origFn := driftCountFn
-	t.Cleanup(func() { driftCountFn = origFn })
-	// A drift fn representing the NORMAL case: the scan completes promptly, so
-	// the join returns immediately and elapsed is Handle's synchronous work.
-	driftCountFn = func(_ context.Context, _ string) (int, error) { return 0, nil }
+	origFn := driftCachedCountFn
+	t.Cleanup(func() { driftCachedCountFn = origFn })
+	// The NORMAL case at the seam the deferred step consults (REQ-DCF-011): a
+	// cache HIT, so the join returns immediately, no fill is started, and
+	// elapsed is Handle's synchronous work.
+	driftCachedCountFn = func(string) (int, bool) { return 0, true }
 	completedCh := registerDeferredScanSeam(t)
 
 	projectDir := t.TempDir()
@@ -204,18 +207,17 @@ func TestSessionStart_HandleInputLagBudget(t *testing.T) {
 func TestSessionStart_SynchronousSideEffectsPreserved(t *testing.T) {
 	t.Setenv("ANTHROPIC_BASE_URL", "")
 
-	origFn := driftCountFn
-	t.Cleanup(func() { driftCountFn = origFn })
-	// A drift fn that would block if it ran on the synchronous path.
+	origFn := driftCachedCountFn
+	t.Cleanup(func() { driftCachedCountFn = origFn })
+	// A deferred scan that would block if it ran on the synchronous path,
+	// injected at the seam the deferred step consults (REQ-DCF-011).
 	driftAbort := make(chan struct{})
-	driftCountFn = func(ctx context.Context, _ string) (int, error) {
+	driftCachedCountFn = func(string) (int, bool) {
 		select {
-		case <-ctx.Done():
-			return 0, ctx.Err()
 		case <-driftAbort:
-			return 7, nil
+			return 7, true
 		case <-time.After(5 * time.Second):
-			return 7, nil
+			return 7, true
 		}
 	}
 	completedCh := registerDeferredScanSeam(t)
@@ -278,22 +280,23 @@ func TestSessionStart_SynchronousSideEffectsPreserved(t *testing.T) {
 func TestSessionStart_DeferredScanJoinsWithinBound(t *testing.T) {
 	t.Setenv("ANTHROPIC_BASE_URL", "")
 
-	origFn := driftCountFn
-	t.Cleanup(func() { driftCountFn = origFn })
+	// Injected at driftCachedCountFn: the deferred step resolves drift from the
+	// HEAD-SHA cache now (REQ-DCF-011), so this is the seam whose speed decides
+	// whether the advisory lands inside the bound.
+	origFn := driftCachedCountFn
+	t.Cleanup(func() { driftCachedCountFn = origFn })
 
-	// Subcase A — fast scan completes within the bound: drift returns
-	// immediately with a count at the warning threshold, so its
+	// Subcase A — fast scan completes within the bound: the cache resolve
+	// returns immediately with a count at the warning threshold, so its
 	// status_drift_warning advisory MUST land in the synchronous Data return.
 	t.Run("fast scan lands advisory", func(t *testing.T) {
 		driftAbort := make(chan struct{})
-		driftCountFn = func(ctx context.Context, _ string) (int, error) {
+		driftCachedCountFn = func(string) (int, bool) {
 			select {
-			case <-ctx.Done():
-				return 0, ctx.Err()
 			case <-driftAbort:
-				return driftWarningThreshold, nil
+				return driftWarningThreshold, true
 			default:
-				return driftWarningThreshold, nil
+				return driftWarningThreshold, true
 			}
 		}
 		completedCh := registerDeferredScanSeam(t)
@@ -323,20 +326,18 @@ func TestSessionStart_DeferredScanJoinsWithinBound(t *testing.T) {
 		waitDeferred(t, completedCh, 3*time.Second)
 	})
 
-	// Subcase B — slow scan exceeds the bound: drift blocks longer than
-	// deferredScanJoinBound, so its advisory MUST be dropped from the
+	// Subcase B — slow scan exceeds the bound: the deferred step blocks longer
+	// than deferredScanJoinBound, so its advisory MUST be dropped from the
 	// synchronous Data return (non-blocking), and Handle MUST return within
 	// a small envelope above the bound.
 	t.Run("slow scan drops advisory", func(t *testing.T) {
 		driftAbort := make(chan struct{})
-		driftCountFn = func(ctx context.Context, _ string) (int, error) {
+		driftCachedCountFn = func(string) (int, bool) {
 			select {
-			case <-ctx.Done():
-				return 0, ctx.Err()
 			case <-driftAbort:
-				return driftWarningThreshold, nil
+				return driftWarningThreshold, true
 			case <-time.After(deferredScanJoinBound + 200*time.Millisecond):
-				return driftWarningThreshold, nil
+				return driftWarningThreshold, true
 			}
 		}
 		completedCh := registerDeferredScanSeam(t)
