@@ -62,11 +62,73 @@ and AC-SGV-008; the 계기 observer contract is encoded as the M1 positive contr
 
 ## §E.2 Run-phase Evidence
 
-(manager-develop — to be populated at run phase)
+Authored by manager-develop, 2026-09-18, card t783. Tree: worktree `.claude/worktrees/t783`,
+branch `WT-syncgate-hook`, run entry HEAD `4d277d1d9`, code-final HEAD `23e8cd61e`. Evidence
+files are untracked under `.moai/reports/t783/run/` (index: `evidence-index.md`).
+
+**Diff-range base (plan-audit F8).** `CARD_BASE=$(git merge-base develop HEAD)` →
+`ca2dae9a6428e62e380c3104d4b2cb208fccca73`, re-derived at pre-flight and again at M4. Non-vacuity
+control: `git diff --name-only $CARD_BASE..HEAD` → 6 paths (4 SPEC artifacts + 2 doc copies).
+`a404132e7` is used only for ancestry (`git merge-base --is-ancestor` exit 0) and as a diff-range
+positive control (7378-byte hook diff carrying t602's hunks).
+
+**Fixture recipe (frozen: `run/harness.sh`).** `mktemp -d /tmp/t783-fixture.XXXXXX` git repo,
+`go.mod` + `main.go`, HEAD subject `docs(SPEC-FIXTURE-001): sync-phase artifacts` with a `.go`
+delta, `main.go` calling an undefined symbol (vet and build both fail), stdin `{}`,
+`CLAUDE_PROJECT_DIR` = fixture, EXIT-trap cleanup. The harness unsets `MOAI_SYNC_GATE_BLOCKING`
+and `MOAI_AUTONOMY_TIER`: the calling session had `MOAI_AUTONOMY_TIER=fully-autonomous`, which
+would have forced advisory mode. A pass-through `go` shim records the outcome record at check
+start. B10: the same recipe drove the `2213871af` hook to its checks, so no adaptation was needed
+(recorded, not assumed: `m1-control/control-go-invocations.txt` shows vet and build ran).
+
+| AC | Status | Command | Actual output (verbatim key lines) | Evidence |
+|---|---|---|---|---|
+| AC-SGV-001 (control first) | PASS | `harness.sh control run/baseline-hook.sh` (baseline hook byte-identical to prior extract, `cmp` 0) | call1 `{"hookSpecificOutput":{"hookEventName":"Stop","decision":"block","reason":"go vet failed"},...}` bytes=237 exit=0; call2 bytes=0 exit=0 | `run/m1-control/` |
+| AC-SGV-001 (arm A) | PASS | `harness.sh arms .claude/hooks/moai/sync-phase-quality-gate.sh` | call1 bytes=237 exit=0; call2 bytes=237 exit=0; `cmp_exit=0`; gate log `mode=blocking decision=block-redelivered`; go invocations after arm A: one vet/build pair | `run/m2-arms/`, `run/m2-arms-r2/` |
+| AC-SGV-002 (arm B) | PASS | same harness, `main.go` repaired in work tree, HEAD `b16c3254…` before and after | call3 bytes=0 exit=0; new run line `decision=allow go vet=0 go build=0`; record `b16c3254… pass 453af84b…` (fail record carried `e3b0c442…`) | `run/m2-arms/arms-armB-*` |
+| AC-SGV-003 (arm C) | PASS | same harness, calls 4 and 5 on the unchanged tree | call4/call5 bytes=0 exit=0 in all three runs; record-at-check-start `<sha> running <wci>`; failing run payload `<sha> block 1 1` + block JSON | `run/m2-arms*/arms*-armC-*`, `*-record-at-check-start.txt` |
+| AC-SGV-004 | PASS (branch a) | `git diff $CARD_BASE..HEAD -- <both hook paths>` | 0 bytes | `run/m4-hook-diff-cardbase.txt` |
+| AC-SGV-005 | PASS | `phrases.sh` + hook diff | "vulnerability scan runs automatically" 0/0 (baseline doc 1); "not a vulnerability scan" 2/2, hook `679:# not a vulnerability scan.`; "deps_modified" 1/1; hook diff 0 bytes | `run/m4-analysis.txt` |
+| AC-SGV-006 | PASS | `phrases.sh` (template / local) | "Only CRITICAL findings block" 0/0; "HIGH findings are reported as warnings" 0/0; "Continue with warning" 0/0; "CRITICAL-only stop gate" 0/0; "reports only as a warning" 0/0; "Continue by approved exception" 1/1; template 147 / local 168 carry "finding ID, rationale, scope, approver, expiry, and review condition"; template "security-decision-contract" 0. Pre-M3 controls: stale clauses 1/1, trio 1 in template | `run/m4-analysis.txt` |
+| AC-SGV-007 | PASS | `cmp` hooks; `parity.sh`; `git diff -U0 $CARD_BASE..HEAD -- <doc>`; `git log $CARD_BASE..HEAD` | (a) `cmp_exit=0`; (b) `diff_exit=0` bytes=0 (pre-M3 control `diff_exit=1` bytes=1100; one excluded delta line, local only); (c) SPEC-ID/card/date/SHA/audit/rule-path hits 0 over 7 added lines (controls on progress.md 2/10/7/7/7); (d) every hunk inside the Step 0.55.1..Phase 9 region; (e) 0 added hook lines; template commit `ff0031e2d` precedes local `23e8cd61e` | `run/m3-parity*/`, `run/m4-*` |
+| AC-SGV-008 | PASS | `git ls-files .moai/reports/t783`; `git log --name-only $CARD_BASE..HEAD`; grep over evidence | tracked 0 bytes; `.gitignore:229:.moai/reports/*`; report paths in card commits 0 (control: spec paths 15); `make build` hits in evidence 0 (control spec.md 3) | `run/m4-reports-*`, `run/m4-makebuild-hits.txt` |
+| AC-SGV-009 | PASS | `phrases.sh` | "sync-auditor FAIL" 1/1; "additional lens" 1/1; stale clauses 0/0 | `run/m4-analysis.txt` |
+
+**Invariants.** Hook pair byte-identical (`cmp_exit=0`) and unchanged; no scanner added; the
+`deps_modified` block and the per-language `case` are untouched (empty hook diff).
+
+**Finding (not an AC failure).** In `m2-arms-r2`, `go build ./...` wrote an untracked binary into
+the fixture after the work-tree id was computed. As a result call4 re-ran the checks once, and
+call5 did not. With the binary ignored (`m2-arms-ignored`), call4 ran no checks. Stdout stayed
+empty and no stale block was re-delivered. A repair that recomputes the id after the checks would
+loosen the gate: an edit made during the check window could be recorded as passed, which
+REQ-SGV-005 forbids. No hook change was made; this is left for the lead to consider as a card.
+
+**Regression surface (blocker).** `go test -count=1 ./internal/template/` exit=1 with three
+failures. `TestManifestHashFormat` (`CATALOG_HASH_UNSTABLE: moai stored hash=0afffd09…, computed
+hash=a9f58803…`) and `TestCatalogHashCoversSkillSubfiles` (`CATALOG_HASH_SKINNY`) are caused by
+the M3 template doc edit: with the pre-M3 template doc swapped back, both PASS (worktree restored,
+`git status` clean). `TestGTDCanonicalSurfaceGolden` (`templates/.claude/commands/moai/todo.md is
+not a thin gtd compatibility path`) also FAILs on the pre-M3 doc, so it was already failing before
+this card. The repair (`internal/template/catalog.yaml` hash regen) is outside this card's
+4-file scope fence and is returned as a blocker.
 
 ## §E.3 Run-phase Audit-Ready Signal
 
-(manager-develop — to be populated at run phase)
+```yaml
+run_complete_at: 2026-09-18
+run_commit_sha: pending-backfill
+run_code_final_sha: 23e8cd61e0e6188bde65363e0765d840f998e993
+run_status: blocked-pending-catalog-hash-cascade
+ac_pass_count: 9
+ac_fail_count: 0
+card_base: ca2dae9a6428e62e380c3104d4b2cb208fccca73
+hook_repair_applied: false
+open_blocker: "internal/template/catalog.yaml moai skill hash stale after the M3 template doc edit (TestManifestHashFormat, TestCatalogHashCoversSkillSubfiles); regen is outside the 4-file scope fence"
+preexisting_failure_not_attributable: TestGTDCanonicalSurfaceGolden
+new_warnings_or_lints_introduced: none-measured (doc-only change; no Go lint run)
+pushed: false
+```
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
