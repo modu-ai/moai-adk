@@ -1,40 +1,61 @@
 #!/usr/bin/env bash
 # collect-pull-window.sh — t547 collection tool for the AC-JFM-018 pull window.
 #
-# Scans every tree that may hold an askuser-observations.jsonl (primary checkout,
-# card worktrees under .claude/worktrees/, L2 worktrees under ~/.moai/worktrees/),
-# exports every row with mode=="pull", and prints the numbers the judgment needs:
-# total rows, label_present violations, per-session split (input to the calls_issued
-# four-way contrast), and the collection interval.
-#
-# Denominator rule (design.md §6.3): every recorded row with mode=="pull".
-# No question_type filter. The pre-window push rows are excluded structurally —
-# the observer stamps each row with the asking session's mode at question time,
-# so no row recorded before the 2026-09-13 config flip can carry mode=="pull".
+# Admission rules (verdict.md §9.3 — all must hold):
+#   1. mode=="pull" and timestamp >= ANCHOR
+#   2. the row's log lives in a NON-primary tree (.claude/worktrees/*, ~/.moai/worktrees/**)
+#   3. that tree's .claude/rules/moai/core/askuser-protocol.md carries the pull branch
+#      (grep -c recommendation_mode >= 1)
+# Rows carry no tree identity, so the tree is inferred from the log file's location
+# (verdict.md §9.5). Denominator: every admitted row — no question_type filter.
 #
 # Usage:
-#   collect-pull-window.sh [EXPORT_PATH]     export + measure (default export:
-#                                            <primary>/.moai/reports/t401/pull-window.jsonl)
-#   collect-pull-window.sh --selftest        positive-control fixture check (no scans)
+#   collect-pull-window.sh                   measure only (never writes an export below n>=20)
+#   collect-pull-window.sh [EXPORT_PATH]     measure; write the export only when n >= MIN_ROWS
+#                                            (default <primary>/.moai/reports/t401/pull-window.jsonl)
+#   collect-pull-window.sh --selftest        positive/negative-control fixture check (no scans)
 set -euo pipefail
 
-MIN_ROWS=20   # AC-JFM-018 floor: n >= 20, below is a gap, never a pass
+MIN_ROWS=20                       # AC-JFM-018 floor: n >= 20, below is a gap, never a pass
+ANCHOR="2026-09-17T16:15:27Z"     # verdict.md §9.2 — operator disposition (a)
+RULES_REL=".claude/rules/moai/core/askuser-protocol.md"
+LOG_REL=".moai/logs/askuser-observations.jsonl"
+
+# admitted_rows <tree> <primary>: print the admitted rows of one tree's log.
+admitted_rows() {
+  local tree="${1%/}" primary="${2%/}"
+  [ "$tree" = "$primary" ] && return 0                                  # rule 2
+  [ -f "$tree/$LOG_REL" ] || return 0
+  [ "$(grep -c recommendation_mode "$tree/$RULES_REL" 2>/dev/null || true)" -ge 1 ] 2>/dev/null || return 0  # rule 3
+  jq -c --arg a "$ANCHOR" 'select(.mode=="pull" and .timestamp >= $a)' "$tree/$LOG_REL"  # rule 1
+}
 
 selftest() {
-  local dir
+  local dir rows viol rc
   dir="$(mktemp -d)"
-  printf '%s\n' \
-    '{"mode":"pull","label_present":false,"session_id":"s1","timestamp":"2026-09-13T23:30:00Z","question_count":1,"option_count":3,"payload_parsed":true}' \
-    '{"mode":"pull","label_present":true,"session_id":"s1","timestamp":"2026-09-13T23:31:00Z","question_count":1,"option_count":3,"payload_parsed":true}' \
-    '{"mode":"push","label_present":true,"session_id":"s2","timestamp":"2026-09-10T09:00:00Z","question_count":1,"option_count":3,"payload_parsed":true}' \
-    > "$dir/log.jsonl"
-  jq -c 'select(.mode=="pull")' "$dir/log.jsonl" > "$dir/export.jsonl"
-  local rows viol rc
+  mkrow() { printf '{"mode":"%s","label_present":%s,"session_id":"%s","timestamp":"%s","question_count":1,"option_count":3,"payload_parsed":true}\n' "$@"; }
+  mktree() { mkdir -p "$dir/$1/.moai/logs" "$dir/$1/$(dirname "$RULES_REL")"; }
+  # primary: pull-aware rules, post-anchor pull row -> excluded by rule 2
+  mktree primary; echo "recommendation_mode" > "$dir/primary/$RULES_REL"
+  mkrow pull true p1 2026-09-18T00:00:00Z > "$dir/primary/$LOG_REL"
+  # wt-ok: pull-aware worktree
+  mktree wt-ok; echo "recommendation_mode" > "$dir/wt-ok/$RULES_REL"
+  { mkrow pull false s1 2026-09-18T00:00:00Z   # admitted
+    mkrow pull true  s1 2026-09-18T00:01:00Z   # admitted, violation
+    mkrow pull true  s1 2026-09-17T16:15:26Z   # before anchor -> excluded (rule 1)
+    mkrow push true  s2 2026-09-18T00:02:00Z   # push -> excluded (rule 1)
+  } > "$dir/wt-ok/$LOG_REL"
+  # wt-old: rules without the pull branch -> excluded by rule 3
+  mktree wt-old; echo "no pull branch here" > "$dir/wt-old/$RULES_REL"
+  mkrow pull true o1 2026-09-18T00:00:00Z > "$dir/wt-old/$LOG_REL"
+
+  : > "$dir/export.jsonl"
+  for t in primary wt-ok wt-old; do admitted_rows "$dir/$t" "$dir/primary" >> "$dir/export.jsonl"; done
   rows="$(wc -l < "$dir/export.jsonl" | tr -d ' ')"
   viol="$(jq -s '[.[] | select(.label_present==true)] | length' "$dir/export.jsonl")"
   rm -rf "$dir"
   if [ "$rows" = "2" ] && [ "$viol" = "1" ]; then
-    echo "selftest PASS: fixture 3 rows (2 pull, 1 push) -> export rows=2 violations=1"
+    echo "selftest PASS: fixture 7 rows over 3 trees (primary / pull-aware wt / pull-unaware wt; pre-anchor + push decoys) -> admitted rows=2 violations=1"
     rc=0
   else
     echo "selftest FAIL: rows=$rows violations=$viol (expected 2 / 1) — filter is broken, do not trust its output"
@@ -53,46 +74,44 @@ primary="$(dirname "$common_git")"
 out="${1:-$primary/.moai/reports/t401/pull-window.jsonl}"
 
 list="$(mktemp)"
-export_tmp="$(mktemp)"
-trap 'rm -f "$list" "$export_tmp"' EXIT
+rows_tmp="$(mktemp)"
+trap 'rm -f "$list" "$rows_tmp"' EXIT
 
-# One entry per candidate log file; sort -u so a tree is never scanned twice.
-{
-  printf '%s\n' "$primary/.moai/logs/askuser-observations.jsonl"
-  find "$primary/.claude/worktrees" "$HOME/.moai/worktrees" \
-    -maxdepth 5 -name askuser-observations.jsonl 2>/dev/null
-} | sort -u > "$list"
+# One tree per candidate log; sort -u so a tree is never scanned twice. primary is not listed.
+# Globs, not find: a deep find over hundreds of trees does not finish in bounded time.
+for tree in "$primary"/.claude/worktrees/*/ "$HOME"/.moai/worktrees/*/ "$HOME"/.moai/worktrees/*/*/; do
+  if [ -f "$tree$LOG_REL" ]; then printf '%s\n' "${tree%/}"; fi
+done | sort -u > "$list"
 
-: > "$export_tmp"
-while IFS= read -r f; do
-  [ -f "$f" ] || continue
-  jq -c 'select(.mode=="pull")' "$f" >> "$export_tmp" 2>/dev/null || true
+: > "$rows_tmp"
+while IFS= read -r tree; do
+  admitted_rows "$tree" "$primary" >> "$rows_tmp" || true
 done < "$list"
 
-mkdir -p "$(dirname "$out")"
-cp "$export_tmp" "$out"
-
-rows="$(wc -l < "$out" | tr -d ' ')"
+rows="$(wc -l < "$rows_tmp" | tr -d ' ')"
+echo "anchor=$ANCHOR  scanned_trees=$(wc -l < "$list" | tr -d ' ')  admitted_rows=$rows"
 if [ "$rows" -eq 0 ]; then
-  echo "export=$out"
-  echo "scanned_logs=$(wc -l < "$list" | tr -d ' ')  pull_rows=0"
-  echo "READING: gap — the window has no rows yet (수집 대기). n=0 is unmeasured, never violations==0."
+  echo "READING: gap — the window has no admitted rows yet (수집 대기). n=0 is unmeasured, never violations==0."
   exit 0
 fi
 
-viol="$(jq -s '[.[] | select(.label_present==true)] | length' "$out")"
-first="$(head -1 "$out" | jq -r '.timestamp')"
-last="$(tail -1 "$out" | jq -r '.timestamp')"
-
-echo "export=$out"
-echo "scanned_logs=$(wc -l < "$list" | tr -d ' ')"
-echo "rows_recorded=$rows  violations=$viol  window=[$first .. $last]"
+viol="$(jq -s '[.[] | select(.label_present==true)] | length' "$rows_tmp")"
+first="$(jq -s -r 'sort_by(.timestamp) | .[0].timestamp' "$rows_tmp")"
+last="$(jq -s -r 'sort_by(.timestamp) | .[-1].timestamp' "$rows_tmp")"
+echo "violations=$viol  window=[$first .. $last]"
 echo "per-session split (rows; the input to the calls_issued four-way contrast):"
-jq -s -r 'group_by(.session_id)[] | "\(length)\t\(.[0].session_id)"' "$out"
+jq -s -r 'group_by(.session_id)[] | "\(length)\t\(.[0].session_id)"' "$rows_tmp"
+
 if [ "$rows" -lt "$MIN_ROWS" ]; then
-  echo "READING: gap — n=$rows < $MIN_ROWS floor. A run below the floor is a gap, never a pass."
-elif [ "$viol" -gt 0 ]; then
-  echo "READING: FAIL — $viol row(s) carry label_present:true under pull mode."
+  echo "READING: gap — n=$rows < $MIN_ROWS floor. No export written (export is forbidden below the floor)."
+  exit 0
+fi
+
+mkdir -p "$(dirname "$out")"
+cp "$rows_tmp" "$out"
+echo "export=$out"
+if [ "$viol" -gt 0 ]; then
+  echo "READING: FAIL — $viol admitted row(s) carry label_present:true under pull mode."
 else
   echo "READING: rows and violations cleared. Judgment still requires: provenance md with matching"
   echo "row count, calls_issued contrast == equal, and AC-JFM-023 green beforehand (acceptance.md)."
