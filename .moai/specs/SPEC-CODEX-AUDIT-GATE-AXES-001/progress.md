@@ -170,4 +170,22 @@ push_state: NOT PUSHED                  # 리드 일괄 push 대기
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase>_
+```yaml
+sync_complete_at: 2026-09-18
+sync_commit_sha: pending-backfill-sync   # 이 절을 담는 커밋 자신의 SHA는 커밋 전에 알 수 없다
+sync_status: audit-ready
+b12_self_test_a: pass   # grep -c 'CODEX-AUDIT-GATE-AXES-001' CHANGELOG.md == 0 before emission (checked pre-edit)
+b12_self_test_b: pass   # acceptance.md 고유 AC id 14개, CHANGELOG 본문 "14/14 acceptance criteria PASS"로 동일 수 인용
+b12_self_test_c: pass   # 인용 경로 spec.md·internal/auditreceipt 존재 확인(ls)
+changelog_entry_position: "### Fixed, [Unreleased] 절 최상단 항목"
+frontmatter_status_transitions:
+  spec_md: "in-progress -> implemented (status 필드만, updated 불변 2026-09-18)"
+  plan_md: "frontmatter 없음 — 대상 아님"
+  acceptance_md: "frontmatter 없음 — 대상 아님"
+  completed_transition: "이 sync 커밋 자체(SPEC 본문 미수정)에서 완료 처리하지 않음 — spec.md status는 implemented까지만; completed 전이는 리드의 단일 sync 커밋 방침에 따라 이 커밋에서 함께 적용됨(frontmatter status만, 본문 불변)"
+canary_compliance_check: n/a   # 이 SPEC은 미래를 향한 정책을 스스로 시험하지 않음
+docs_site_readme_check:
+  searched: "grep -rl 'codex_audit|audit.gates.codex|workflow.audit.gates' docs-site/content/en; README*.md"
+  found: "docs-site/content/en/advanced/config-sections.md (tool/model-effort pinning listing only), docs-site/content/en/guides/mcp-server.md (tool catalog + fail-open description), docs-site/content/en/advanced/multi-model-audit.md (audit_multi convergence semantics only — REQ-CAG-006 unchanged), README*.md (tool-name table row only)"
+  disposition: "no docs-site or README change made — none of the found pages describe single-codex_audit-path required-gate enforcement or the audit-receipt mechanism; all describe either the unchanged audit_multi convergence algorithm or a bare tool-name listing"
+```

@@ -2,7 +2,7 @@
 id: SPEC-CODEX-AUDIT-GATE-AXES-001
 title: "codex 감사 게이트 잔여 2축 — 단일 codex_audit 의 required 차단, 영수증 없는 감사 PASS 거부"
 version: "0.3.1"
-status: in-progress
+status: implemented
 created: 2026-09-18
 updated: 2026-09-18
 author: manager-spec
