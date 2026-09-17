@@ -643,9 +643,9 @@ func TestRejectFactoryOnCG(t *testing.T) {
 		{"-k", "4"},
 		{"-k", "--name", "lane-1"},
 		{"-f"},
-		{"-f", "4"},
+		{"-f", "agent"},
 		{"-f", "lane-2"},
-		{"--factory=3"},
+		{"--factory=lane-3"},
 	} {
 		if err := rejectFactoryOnCG(args); err == nil || !strings.Contains(err.Error(), factoryUnsupportedBackendSentinel) {
 			t.Errorf("factory form %v on cg must carry the sentinel, got %v", args, err)
@@ -660,7 +660,11 @@ func TestRejectFactoryOnCG(t *testing.T) {
 	if err := rejectFactoryOnCG([]string{"-f", "SPEC-X-001"}); err == nil || !strings.Contains(err.Error(), "lane label") {
 		t.Errorf("invalid -f value must surface the parse error, got %v", err)
 	}
-	if err := rejectFactoryOnCG([]string{"-f", "4", "-k"}); err == nil || !strings.Contains(err.Error(), "at most one") {
+	// The retired numeric count form surfaces the parse error on cg too.
+	if err := rejectFactoryOnCG([]string{"-f", "4"}); err == nil || !strings.Contains(err.Error(), "agent role token") {
+		t.Errorf("retired -f N on cg must surface the parse error, got %v", err)
+	}
+	if err := rejectFactoryOnCG([]string{"-f", "lane-2", "-k"}); err == nil || !strings.Contains(err.Error(), "at most one") {
 		t.Errorf("-f plus -k on cg must surface the conflict, got %v", err)
 	}
 	// The plain kanban forms belong to the kanban rejection, not this one.
