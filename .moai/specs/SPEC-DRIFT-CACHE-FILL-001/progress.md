@@ -293,7 +293,7 @@ pre_existing_failures_not_attributable:
 
 ```yaml
 sync_complete_at: 2026-09-18
-sync_commit_sha: pending-backfill-sync
+sync_commit_sha: 53e05a629
 sync_status: complete
 b12_self_test_a_pre_emission_grep: "grep -c 'SPEC-DRIFT-CACHE-FILL-001' CHANGELOG.md → 0 (no prior entry; emission proceeded)"
 b12_self_test_b_ac_count_match: "16 distinct AC ids in acceptance.md (AC-DCF-001..016), non-zero; CHANGELOG entry states 16 (14 release-blocking PASS + 2 regression-guard)"
