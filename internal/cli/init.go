@@ -87,8 +87,9 @@ func init() {
 	// The two wizard mode flags are retired (REQ-WIZ-018): the wizard presents
 	// the same three pages to every user, so there is no mode to select.
 
-	// Page-3 non-interactive override flags (REQ-IWE-008)
-	initCmd.Flags().String("project-mode", "", "Project mode: personal or team (default: personal)")
+	// Page-3 non-interactive override flags (REQ-IWE-008).
+	// (--project-mode was removed by SPEC-INIT-UPDATE-CONSISTENCY-001 REQ-ICU-001:
+	// project.mode had no Go reader.)
 	// Registered false but read with a true default (the LSPEnabled seed in
 	// runInit), so the effective default matches the wizard's lsp_enabled
 	// default; getBoolFlagWithDefault keys off Changed(), so --enable-lsp=false
@@ -279,8 +280,9 @@ func provisionMCPEntryUnlessDeclined(out, errOut io.Writer, projectRoot string, 
 // The page-3 questions removed by SPEC-INIT-QUIET-WIZARD-001 (project mode,
 // worktree auto-create, todo, feedback, continuation, audit, MCP) carry no
 // result field, so they are not mapped here: their keys resolve to shipped
-// defaults, and --project-mode / --worktree-auto-create still reach opts
-// through the flag path.
+// defaults. --worktree-auto-create still reaches opts through the flag path;
+// --project-mode was removed outright by SPEC-INIT-UPDATE-CONSISTENCY-001
+// REQ-ICU-001 (project.mode had no Go reader).
 //
 // Explicitness is probed with cmd.Flags().Changed(name), never by value:
 // getBoolFlag / getBoolFlagWithDefault cannot distinguish "flag absent" from
@@ -367,18 +369,6 @@ func validateInitFlags(cmd *cobra.Command, _ []string) error {
 	profileFlag := getStringFlag(cmd, "profile")
 	if profileFlag != "" && !config.IsValidProfile(profileFlag) {
 		return fmt.Errorf("invalid --profile value %q: must be one of: high, medium, low", profileFlag)
-	}
-
-	// SPEC-CLI-WIZARD-RESTRUCTURE-001 (S1): validate --project-mode enum.
-	// C32 made writeProjectModeYAML reachable from `moai init`, so this value
-	// now reaches patchYAMLKey and is written verbatim into project.yaml; an
-	// unvalidated newline-bearing value injects an arbitrary top-level key.
-	projectMode := getStringFlag(cmd, "project-mode")
-	if projectMode != "" {
-		validProjectModes := []string{"personal", "team"}
-		if !slices.Contains(validProjectModes, projectMode) {
-			return fmt.Errorf("invalid --project-mode value %q: must be one of: personal, team", projectMode)
-		}
 	}
 
 	// F3 git-provider identity validation (init-path parity with the
@@ -582,7 +572,6 @@ func runInit(cmd *cobra.Command, args []string) (err error) {
 		// Page-3 non-interactive overrides — defaults match wizard defaults (REQ-IWE-008).
 		// The InitOptions mode field is gone (C33): the Page-3 writes are
 		// unconditional now, so there is no mode to carry into the initializer.
-		ProjectMode:               getStringFlag(cmd, "project-mode"),
 		LSPEnabled:                getBoolFlagWithDefault(cmd, "enable-lsp", true),
 		EnforceQuality:            getBoolFlagWithDefault(cmd, "enforce-quality", true),
 		CoverageExemptionsEnabled: false, // no CLI flag; wizard/default only

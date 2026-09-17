@@ -174,11 +174,13 @@ func TestWritePhase1Configs_AllFiles(t *testing.T) {
 	t.Parallel()
 	root, sectionsDir := setupSectionsDir(t)
 
-	// Pre-create project.yaml (as generateConfigsFallback would)
+	// Pre-create project.yaml (as generateConfigsFallback would). The legacy
+	// mode key is gone from the shipped template (SPEC-INIT-UPDATE-CONSISTENCY-001
+	// REQ-ICU-001): an existing project's residual mode key dissolves on the
+	// next update's config redeploy — data-loss-free because no Go reader exists.
 	projectYAMLContent := `project:
   name: "test"
   description: ""
-  mode: personal
   created_at: "2026-05-30T00:00:00Z"
   initialized: true
   optimized: false
@@ -190,7 +192,6 @@ func TestWritePhase1Configs_AllFiles(t *testing.T) {
 
 	opts := InitOptions{
 		ProjectRoot:               root,
-		ProjectMode:               "team",
 		LSPEnabled:                true,
 		EnforceQuality:            true,
 		CoverageExemptionsEnabled: false,
@@ -225,10 +226,11 @@ func TestWritePhase1Configs_AllFiles(t *testing.T) {
 		t.Errorf("design.yaml missing claude_design block; got: %q", design)
 	}
 
-	// Verify project.yaml updated with mode=team
+	// REQ-ICU-001: WritePhase1Configs must not add a mode key to project.yaml —
+	// the file it was handed stays untouched.
 	project, _ := os.ReadFile(filepath.Join(sectionsDir, defs.ProjectYAML))
-	if !bytes.Contains(project, []byte("mode: team")) {
-		t.Errorf("project.yaml: mode not updated to team; got: %q", project)
+	if !bytes.Equal(project, []byte(projectYAMLContent)) {
+		t.Errorf("project.yaml was modified; expected byte-identical input, got:\n%s", project)
 	}
 }
 
@@ -350,19 +352,10 @@ func TestPatchYAMLKey(t *testing.T) {
 	}
 }
 
-// TestWriteProjectModeYAML_FreshFile verifies project.yaml is created when it doesn't exist.
-func TestWriteProjectModeYAML_FreshFile(t *testing.T) {
-	t.Parallel()
-	root, sectionsDir := setupSectionsDir(t)
-
-	opts := InitOptions{ProjectRoot: root, ProjectMode: "team"}
-	result := &InitResult{}
-	if err := writeProjectModeYAML(sectionsDir, opts, result); err != nil {
-		t.Fatalf("writeProjectModeYAML: %v", err)
-	}
-
-	got, _ := os.ReadFile(filepath.Join(sectionsDir, defs.ProjectYAML))
-	if !bytes.Contains(got, []byte("mode: team")) {
-		t.Errorf("fresh project.yaml missing mode: team; got: %q", got)
-	}
-}
+// TestWriteProjectModeYAML_FreshFile was DELETED by
+// SPEC-INIT-UPDATE-CONSISTENCY-001 REQ-ICU-001: its subject was
+// writeProjectModeYAML, which was removed because project.mode is a ghost key
+// with no Go reader. The ghost-free contract is pinned by
+// TestWritePhase1Configs_DoesNotPersistProjectMode and
+// TestProjectYAMLTemplateCarriesNoModeKey in
+// initializer_project_mode_ghost_test.go.
