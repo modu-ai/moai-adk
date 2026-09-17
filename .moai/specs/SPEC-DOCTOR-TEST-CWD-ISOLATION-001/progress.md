@@ -79,4 +79,21 @@ m1_to_mN_commit_strategy: "M1 = test isolation + status draft->in-progress; evid
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-- 상태: pending — plan 단계 미완료
+```yaml
+sync_complete_at: 2026-09-18
+sync_commit_sha: pending-backfill-sync
+sync_status: audit-ready
+spec_status_transition: "in-progress -> implemented -> completed"   # spec.md status 만 변경, updated 는 이미 2026-09-18
+b12_self_test_a: "grep -c 'SPEC-DOCTOR-TEST-CWD-ISOLATION-001' CHANGELOG.md -> 0 (emission 전)"
+b12_self_test_b: "grep -oE 'AC-([A-Z0-9]+-)*[0-9]+' spec.md | sort -u | wc -l -> 5 (AC-DTC-001..005; Tier S 는 AC 가 spec.md §3 인라인) == CHANGELOG 5"
+b12_self_test_c: "CHANGELOG 인용 경로 3개 test 파일 + spec.md 모두 존재 확인"
+changelog_entry_position: "[Unreleased] > ### Fixed 첫 항목"
+docs_sync: "README / docs-site 변경 없음 — test-only, 사용자 대면 동작 변화 없음"
+mx_validation: "프로덕션 코드 변경 0; 세 test 파일의 추가 9줄은 t.Chdir(t.TempDir()) 뿐이라 추가할 @MX 태그 없음"
+evidence_paths:
+  - .moai/reports/t675/run/red-e8-nine.txt
+  - .moai/reports/t675/run/green-nine-poisoned.txt
+  - .moai/reports/t675/run/green-nine-natural.txt
+  - .moai/reports/t675/run/ac-001-002-003-004-005-static.txt
+tests_rerun_in_sync: false   # run-phase 증거(§E.2)와 오케스트레이터의 229971c1c 재검증을 인용
+```
