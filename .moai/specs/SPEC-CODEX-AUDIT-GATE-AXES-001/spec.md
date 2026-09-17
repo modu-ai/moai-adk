@@ -144,6 +144,7 @@ The receipts, start markers, and rejection records shall be written only by the 
 - 스폰 거부는 `subagent_type` 의 정확한 값(`manager-develop` / `manager-docs` / `manager-git`)에만 걸린다. 구현을 `general-purpose` 나 다른 이름공간의 에이전트로 스폰하면 거부되지 않는다(`internal/hook/agent_model_guard.go:97` 의 스폰 추출 방식).
 - primary 체크아웃 세션이 워크트리 SPEC 을 `project_root` 로 감사하면(예: 칸반 리드가 레인 트리를 감사), 감사자 시작 표식의 `tree_root`(primary)와 영수증의 `tree_root`(워크트리)가 달라 항상 "다른 트리"로 거부된다. 감사자는 감사 대상 트리 안에서 실행해야 한다.
 - 페이로드 필드는 선언만 확인했다. M1 실측에서 없으면 S2+S3 로 되돌린다(plan.md §F M1).
+- 영수증 저장소는 감사 대상 트리 **안**에 있다(`internal/auditreceipt/store.go:36-41` — `.moai/state/audit-receipts`). 그래서 트리에 쓸 수 있는 에이전트(예: Bash 경유)는 영수증 파일을 손으로 써 넣을 수 있고, SubagentStop 검사는 그것을 받아들인다. sync 감사자의 프로브가 이를 시연했다 — 손으로 쓴 영수증 + 시작 표식만으로 실제 감사가 없는 PASS 가 `{}` exit 0 이 되었고, 대기 중이던 거부 기록까지 함께 해제됐다. sync-audit 수리 F2 는 감사자 본문의 주장을 "저장소에 없는 id 는 아무것도 증명하지 않는다"로 좁혔을 뿐 이 메커니즘을 닫지는 못했다. 실제로 닫으려면 저장소를 트리 밖에 두거나 쓰기 금지로 만들어야 하며, 그것은 이 SPEC 의 범위 밖이다.
 
 미검증(Gaps):
 - 이 저장소의 `.moai/config/sections/workflow.yaml` 은 `workflow.audit.gates` 를 설정하지 않는다. 따라서 축 (b)의 required 경로는 이 저장소의 실제 세션에서 발동하지 않으며, 테스트 픽스처(`t.TempDir()` 트리에 게이트를 쓴 설정)로만 검증된다.
