@@ -2,7 +2,7 @@
 id: SPEC-DOCTOR-TEST-CWD-ISOLATION-001
 title: "Isolate full doctor command tests from the repository working directory"
 version: "0.3.1"
-status: draft
+status: in-progress
 created: 2026-09-13
 updated: 2026-09-18
 author: manager-spec
