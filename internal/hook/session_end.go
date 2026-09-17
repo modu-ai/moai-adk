@@ -783,8 +783,11 @@ func clearTmuxSessionEnv(ctx context.Context) {
 // Cleanup logic mirrors removeGLMEnv() in internal/cli/cc.go:
 //   - If MOAI_BACKUP_AUTH_TOKEN exists, restore it as ANTHROPIC_AUTH_TOKEN.
 //   - Otherwise, delete ANTHROPIC_AUTH_TOKEN (it was a GLM key, not OAuth).
-//   - Always delete: MOAI_BACKUP_AUTH_TOKEN, ANTHROPIC_BASE_URL, and the three
-//     ANTHROPIC_DEFAULT_*_MODEL vars.
+//   - Always delete: MOAI_BACKUP_AUTH_TOKEN, ANTHROPIC_BASE_URL, the three
+//     ANTHROPIC_DEFAULT_*_MODEL vars, CLAUDE_CODE_DISABLE_EXPERIMENTAL_BETAS,
+//     and the context-window pair CLAUDE_CODE_AUTO_COMPACT_WINDOW /
+//     CLAUDE_CODE_MAX_CONTEXT_TOKENS (card t802) — together these are every key
+//     the live settings-axis writer, ensureGLMCredentials, can add.
 //
 // ANTHROPIC_BASE_URL is used as the GLM-active indicator: Claude Code's OAuth
 // flow never sets this variable, so its presence reliably signals GLM mode.
@@ -857,6 +860,15 @@ func cleanupGLMSettingsLocal(projectDir string) {
 	delete(env, config.EnvAnthropicDefaultHaikuModel)
 	delete(env, config.EnvAnthropicDefaultSonnetModel)
 	delete(env, config.EnvAnthropicDefaultOpusModel)
+	// Card t802: ensureGLMCredentials (the SessionStart half of this pair) also
+	// writes the Z.AI compatibility flag and the context-window pair, so this
+	// cleanup removes every key that live writer can add. Without the two window
+	// keys the residue is permanent: ANTHROPIC_BASE_URL deleted above is the
+	// GLM-active indicator this function gates on, so no later pass can see the
+	// file as GLM again.
+	delete(env, config.EnvClaudeCodeDisableExperimentalBetas)
+	delete(env, config.EnvClaudeCodeAutoCompactWindow)
+	delete(env, config.EnvClaudeCodeMaxContextTokens)
 
 	// Re-encode the cleaned env map back into the raw JSON document.
 	if len(env) == 0 {
