@@ -578,12 +578,15 @@ case "$GATE_LANG" in
         ;;
     java)
         C1_LABEL="javac compile check"
-        # Simple compile check: find .java files and attempt compilation
-        run_step javac c1 sh -c 'find . -name "*.java" -exec javac -cp "$(find . -name "*.jar" -printf "{}:")" {} + 2>&1 | head -20' || true
+        # Simple compile check: find .java files and attempt compilation.
+        # The compiler's status is captured BEFORE the output is truncated: in
+        # `javac … | head -20` the pipeline's status is head's, so a failed compile
+        # was recorded as c1=0. The same shape applies to kotlinc and scalac.
+        run_step javac c1 sh -c 'out=$(find . -name "*.java" -exec javac -cp "$(find . -name "*.jar" -printf "{}:")" {} + 2>&1); rc=$?; printf "%s\n" "$out" | head -20; exit $rc' || true
         ;;
     kotlin)
         C1_LABEL="kotlinc"
-        run_step kotlinc c1 sh -c 'find . -name "*.kt" -exec kotlinc -cp "$(find . -name "*.jar" -printf "{}:")" {} + 2>&1 | head -20' || true
+        run_step kotlinc c1 sh -c 'out=$(find . -name "*.kt" -exec kotlinc -cp "$(find . -name "*.jar" -printf "{}:")" {} + 2>&1); rc=$?; printf "%s\n" "$out" | head -20; exit $rc' || true
         ;;
     csharp)
         C1_LABEL="dotnet build"
@@ -591,11 +594,15 @@ case "$GATE_LANG" in
         ;;
     ruby)
         C1_LABEL="ruby syntax"
-        run_step ruby c1 sh -c 'find . -name "*.rb" -exec ruby -c {} \; 2>&1' || true
+        # `ruby -c` and `php -l` check one file per invocation, so each file is run
+        # separately and the failures are summed. `-exec … \;` cannot carry this:
+        # find exits 0 however many invocations failed. The `{} +` batch hands the
+        # files to a loop whose non-zero exit find does propagate.
+        run_step ruby c1 find . -name "*.rb" -exec sh -c 'rc=0; for f do ruby -c "$f" 2>&1 || rc=1; done; exit $rc' sh {} + || true
         ;;
     php)
         C1_LABEL="php syntax"
-        run_step php c1 sh -c 'find . -name "*.php" -exec php -l {} \; 2>&1' || true
+        run_step php c1 find . -name "*.php" -exec sh -c 'rc=0; for f do php -l "$f" 2>&1 || rc=1; done; exit $rc' sh {} + || true
         ;;
     elixir)
         C1_LABEL="mix compile"
@@ -640,11 +647,21 @@ case "$GATE_LANG" in
         ;;
     scala)
         C1_LABEL="scalac"
-        run_step scalac c1 sh -c 'find . -name "*.scala" -exec scalac -cp "$(find . -name "*.jar" -printf "{}:")" {} + 2>&1 | head -20' || true
+        run_step scalac c1 sh -c 'out=$(find . -name "*.scala" -exec scalac -cp "$(find . -name "*.jar" -printf "{}:")" {} + 2>&1); rc=$?; printf "%s\n" "$out" | head -20; exit $rc' || true
         ;;
     r)
         C1_LABEL="R syntax"
-        run_step R c1 sh -c 'find . -name "*.R" -o -name "*.r" | head -5 | while read f; do Rscript -e "parse(\"$f\")" 2>&1; done' || true
+        # A loop fed by a pipe reports only its LAST iteration, so a broken file
+        # followed by a valid one passed. The loop reads a here-document instead
+        # (no subshell), and every parse failure is summed into rc.
+        run_step R c1 sh -c 'files=$(find . -name "*.R" -o -name "*.r" | head -5); rc=0
+while IFS= read -r f; do
+    [ -n "$f" ] || continue
+    Rscript -e "parse(\"$f\")" 2>&1 || rc=1
+done <<EOF
+$files
+EOF
+exit $rc' || true
         ;;
     flutter)
         C1_LABEL="dart analyze"
