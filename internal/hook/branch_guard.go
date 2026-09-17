@@ -198,13 +198,85 @@ func substituteQuotedArguments(command string) string {
 	return quotedArgumentPattern.ReplaceAllString(command, quotedArgumentPlaceholder)
 }
 
+// insideAnySpan reports whether offset falls within one of the [start, end)
+// spans, which arrive sorted and non-overlapping from FindAllStringIndex.
+func insideAnySpan(offset int, spans [][]int) bool {
+	for _, s := range spans {
+		if offset >= s[0] && offset < s[1] {
+			return true
+		}
+	}
+	return false
+}
+
+// heredocOpenerPattern matches a heredoc redirection operator and captures its
+// delimiter word in whichever of the three spellings the shell accepts:
+// `<<EOF`, `<<'EOF'` and `<<"EOF"` (with `<<-` and surrounding spaces allowed).
+var heredocOpenerPattern = regexp.MustCompile(`<<-?\s*(?:'([^']*)'|"([^"]*)"|([A-Za-z_][A-Za-z0-9_]*))`)
+
+// substituteHeredocBodies replaces the BODY lines of every heredoc with the
+// same placeholder quoted spans collapse to, leaving the command line that
+// opens the heredoc — and every line after the terminator — intact.
+//
+// A heredoc body is data written to the command's stdin; it never executes.
+// Without this, the pattern scan read that data as if it were the command:
+// `moai handoff save --stdin … <<EOF … EOF` was denied with `git merge in
+// primary checkout` because the resume body it was saving named
+// `git merge --no-ff <sha>` (measured twice on 2026-09-10). The lane then
+// skipped the save, which closed the handoff-record path — the guard's false
+// positive cost a record, while the command it refused was never a git command
+// at all. substituteQuotedArguments does not cover this: a heredoc body carries
+// no quotes.
+//
+// The collapse is bounded to the body so the guard is not blinded: a real
+// branch-state command sharing the line with a heredoc, or following its
+// terminator, still matches.
+func substituteHeredocBodies(command string) string {
+	if !strings.Contains(command, "<<") {
+		return command
+	}
+	lines := strings.Split(command, "\n")
+	out := make([]string, 0, len(lines))
+	var pending []string // delimiters opened on the current line, in order
+	for _, line := range lines {
+		if len(pending) > 0 {
+			// Inside a body: the terminator is the delimiter alone on its line
+			// (leading whitespace allowed — `<<-` strips indentation).
+			if strings.TrimSpace(line) == pending[0] {
+				pending = pending[1:]
+				out = append(out, line)
+				continue
+			}
+			out = append(out, quotedArgumentPlaceholder)
+			continue
+		}
+		quoted := quotedArgumentPattern.FindAllStringIndex(line, -1)
+		for _, m := range heredocOpenerPattern.FindAllStringSubmatchIndex(line, -1) {
+			// A `<<EOF` inside a quoted argument is text the shell never reads
+			// as a redirection. Honouring it would let any command blind the
+			// guard for every following line simply by quoting the token.
+			if insideAnySpan(m[0], quoted) {
+				continue
+			}
+			for g := 1; g <= 3; g++ {
+				if m[2*g] >= 0 {
+					pending = append(pending, line[m[2*g]:m[2*g+1]])
+					break
+				}
+			}
+		}
+		out = append(out, line)
+	}
+	return strings.Join(out, "\n")
+}
+
 // matchBranchStateCommand returns the deny-reason suffix of the first
 // branch-state pattern matching command, and a bool indicating whether any
 // pattern matched. Quoted arguments collapse to a placeholder first
 // (substituteQuotedArguments) so a match reflects the command being invoked,
 // not its data. Used by checkBranchState (M2) and by M1 pattern-set tests.
 func matchBranchStateCommand(command string) (string, bool) {
-	scanned := substituteQuotedArguments(command)
+	scanned := substituteQuotedArguments(substituteHeredocBodies(command))
 	for _, p := range branchStatePatterns {
 		if p.match != nil {
 			if p.match(scanned) {

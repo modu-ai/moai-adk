@@ -120,7 +120,13 @@ flows. The hook applies the doctrine conditionally.
   invoked rather than text carried as data. `moai todo add "… git switch …"` is
   allowed because the command being run is `moai todo add`; `git switch main`
   and `git checkout -b "feat/x"` both still deny, the latter because the
-  placeholder preserves the operand after `-b`. A git invocation hidden inside a
+  placeholder preserves the operand after `-b`. Heredoc BODIES collapse the same
+  way, because a body is data written to the command's stdin and never executes:
+  `moai handoff save --stdin … <<EOF … git merge --no-ff <sha> … EOF` is allowed
+  (it was denied while the body was scanned, and the caller skipped the save
+  under the fail-open rule, closing the handoff-record path). The collapse is
+  bounded to the body — a branch-state command sharing the line with the
+  heredoc, or following its terminator, still denies. A git invocation hidden inside a
   shell wrapper (`bash -c "git switch main"`) is not matched — under-matching an
   obfuscated form is the correct direction to err for a fail-open guard.
 - **Fail-open norm**: the deny fires ONLY on positive evidence (primary

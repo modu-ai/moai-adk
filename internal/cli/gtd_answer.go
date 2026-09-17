@@ -81,7 +81,7 @@ func newGTDAnswerCmd() *cobra.Command {
 				return err
 			}
 			if jsonOutput {
-				_, err := fmt.Fprintln(cmd.OutOrStdout(), fmt.Sprintf(`{"card":%q,"answerFile":%q}`, args[0], path))
+				_, err := fmt.Fprintf(cmd.OutOrStdout(), `{"card":%q,"answerFile":%q}`+"\n", args[0], path)
 				return err
 			}
 			_, err = fmt.Fprintf(cmd.OutOrStdout(), "answer recorded for %s -> %s\n", args[0], path)
