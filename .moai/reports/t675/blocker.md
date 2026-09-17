@@ -28,6 +28,7 @@ model sent to API: gpt-5.6-sol
 ```
 
 The earlier fresh repair delegation `a3b5df6f0e52c1d82` ended with HTTP 400 conversation-history/reasoning-chain mismatch. The initial plan delegation `a5d71cfd88143aaa9` ended with the same HTTP 400 class after writing the initial artifacts. These are recorded here for resume diagnosis; the three measured 502 timestamps and family id remain the canonical gateway comparison points above.
+- Fourth 502: `2026-09-14 00:30:34+0900` (`2026-09-13T15:30:34.424Z`), session family `332fd0c3-895a-4e42-948a-5cc8edbe02d6`, agent `a4dc79d08ad972d06`, attempt `11/11`.
 
 ### Local debug-log search
 
