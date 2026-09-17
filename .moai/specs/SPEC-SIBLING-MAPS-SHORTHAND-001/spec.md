@@ -2,7 +2,7 @@
 id: SPEC-SIBLING-MAPS-SHORTHAND-001
 title: "Sibling acceptance.md maps-list numeric-tail shorthand expansion"
 version: "0.1.0"
-status: in-progress
+status: completed
 created: 2026-09-18
 updated: 2026-09-18
 author: lane

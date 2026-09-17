@@ -61,4 +61,19 @@ run_base: 881aa4bb8
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase>_
+```yaml
+sync_complete_at: 2026-09-18
+sync_commit_sha: pending-backfill-sync   # a commit cannot cite its own hash; backfilled in a following commit
+sync_status: complete
+b12_self_test_a: "grep -c 'SPEC-SIBLING-MAPS-SHORTHAND-001' CHANGELOG.md → 0 before append (no duplicate entry)"
+b12_self_test_b: "AC ids in acceptance.md: 15 distinct tokens, of which 13 are live criteria (AC-SMS-001..010 + AC-SMS-GATE-001..003); AC-FIXE-001 / AC-FIXF-001 are fixture CONTENT quoted inside AC-SMS-002 / AC-SMS-003, not criteria. CHANGELOG entry cites 13 — matches progress.md §E.3 (13 PASS / 0 FAIL / 0 SKIP)."
+b12_self_test_c: "every file path in the CHANGELOG entry verified present via ls internal/spec/lint_coverage_sibling*.go (lint_coverage_sibling_maps.go, lint_coverage_sibling_maps_test.go, lint_coverage_sibling.go, lint_coverage_sibling_table.go) and internal/spec/ears.go"
+changelog_entry_position: "CHANGELOG.md [Unreleased] → ### Fixed, first bullet"
+frontmatter_status_transitions:
+  spec.md: "in-progress → completed (status only; updated already read 2026-09-18, the sync date)"
+  plan.md: "no YAML frontmatter — nothing to transition"
+  acceptance.md: "no YAML frontmatter — nothing to transition"
+  progress.md: "no YAML frontmatter — nothing to transition"
+canary_compliance_check: "n/a — this SPEC defines no forward-looking policy that its own sync tests"
+docs_surface: "none — internal lint-behaviour repair with zero user-visible surface change (corpus delta 0); README*.md and docs-site/** deliberately untouched"
+```
