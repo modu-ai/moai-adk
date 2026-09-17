@@ -205,11 +205,11 @@ func TestClosedSetRejectsOutOfSetValue(t *testing.T) {
 // `security.sandbox.docker_image` (any image reference). Neither has a closed
 // domain, so converting them would be dishonest in the other direction.
 //
-// `workflow.audit.codex.model` (SPEC-V3R6-AUDIT-MODEL-PIN-001 M4) joins them:
-// the codex-servable family is an OPEN prefix set (gpt-*, o1/o3/o4-*, codex-*),
-// not an enumerable closed set — new codex model ids appear upstream and a pin
-// like gpt-5.6-sol cannot be pre-listed. The servability filter at the resolver
-// (codexServableModel) is the validation point, not the widget.
+// `workflow.audit.codex.model` (SPEC-V3R6-AUDIT-MODEL-PIN-001 M4) and
+// `workflow.audit.claude.model` join them: both accept evolving provider model
+// ids in addition to stable aliases, so neither domain can be exhaustively
+// enumerated in a shipped select. New ids appear upstream without a MoAI
+// release; the command adapter is the validation point, not the widget.
 // `git_strategy.worktree_base_branch` (SPEC-WORKTREE-BASEREF-001 REQ-WBR-014)
 // joins them for the same reason, and this entry is the operator ruling
 // recorded at that SPEC's plan.md §A D2.1 rather than an unexamined exemption:
@@ -228,6 +228,7 @@ var freeTextWhitelist = map[string]bool{
 	"observability.report_dir":          true,
 	"observability.trace_dir":           true,
 	"security.sandbox.docker_image":     true,
+	"workflow.audit.claude.model":       true,
 	"workflow.audit.codex.model":        true,
 }
 

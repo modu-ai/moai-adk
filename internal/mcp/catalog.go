@@ -22,7 +22,7 @@ type ToolDef struct {
 	// WriteCapable is true for the nine tools whose handler may mutate state
 	// (goal_arm, verify_snapshot, codex_task, codex_job_cancel, glm_task,
 	// glm_job_cancel, plus the session-messaging broker's three mutating
-	// tools at the catalog tail) and false for the nineteen read-only tools
+	// tools at the catalog tail) and false for the twenty-one read-only tools
 	// (including the three graph code-query additions, SPEC-V3R6-GRAPH-
 	// FRESHNESS-001 M5). The console renders this distinction (REQ-C-3 /
 	// AC-C-003); M1 carries it so the declaration is complete.
@@ -47,6 +47,7 @@ var moaiMCPTools = []ToolDef{
 	{Name: "spec_audit", WriteCapable: false},
 	{Name: "spec_drift", WriteCapable: false},
 	{Name: "audit_cache", WriteCapable: false},
+	{Name: "claude_audit", WriteCapable: false},
 	{Name: "codex_audit", WriteCapable: false},
 	{Name: "codex_setup", WriteCapable: false},
 	{Name: "codex_task", WriteCapable: true},

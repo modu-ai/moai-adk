@@ -1,3 +1,0 @@
-=== go test ./internal/cli/ -count=1 -timeout 900s ===
-ok  	github.com/modu-ai/moai-adk/internal/cli	423.611s
-exit=0

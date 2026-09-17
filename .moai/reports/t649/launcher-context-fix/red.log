@@ -1,6 +1,0 @@
-go test -p 1 ./internal/cli -run ^TestGatewayClaudeContextSuffixFromFactoryDefault$ -count=1 -timeout=90s
---- FAIL: TestGatewayClaudeContextSuffixFromFactoryDefault (0.00s)
-    gateway_context_suffix_test.go:21: model=opus[1m] explicit=false: gateway model not registered: claude-opus-5[1m]
-FAIL
-FAIL github.com/modu-ai/moai-adk/internal/cli 1.007s
-FAIL

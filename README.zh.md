@@ -77,16 +77,18 @@ moai cc -f lane-1             # 一条泳道，在自己的终端里
 moai glm -f lane-3            # ……GLM 后端上的一条泳道
 ```
 
-用 `moai cc -f lane-<n>` 一条一条地加泳道。这种写法已经指定了泳道名，再给 `--name`/`-n` 会报错。只有活着的会话占用的编号才会被跳过 —— 泳道死了，编号就释放，可以再用。泳道归属记录在 `~/.moai/db/<project-key>/factory/factory.db` 中；旧的 `.moai/state/factory/workers.json` 只导入一次，之后仅作为回滚凭据保留。一条泳道最多并发运行 10 个 `Agent()` 子智能体，其中承担写入的生成各自隔离在自己的工作树里。千万不要一次把所有泳道全开 —— 先起第一条，确认它真的开始产出，再激活其余。卡片绝不会被拆到多条泳道上。`-k` 依旧驱动三角色的看板链；一次启动只能带一个进入标记，所以 `-k` 与 `-f` 同时给出会报错，已停用的 `moai cg` 会显示迁移提示并退出。
+用 `moai cc -f lane-<n>` 一条一条地加泳道。这种写法已经指定了泳道名，再给 `--name`/`-n` 会报错。只有活着的会话占用的编号才会被跳过 —— 泳道死了，编号就释放，可以再用。泳道归属记录在 `~/.moai/db/<project-key>/factory/factory.db` 中 —— 启动目录是临时目录时（没有绝对 `MOAI_HOME` 覆盖）则记录在项目本地的 `<base>/.moai/db/<project-key>/factory/` 下，与 backlog 队列同一例外；旧的 `.moai/state/factory/workers.json` 只导入一次，之后仅作为回滚凭据保留。一条泳道最多并发运行 10 个 `Agent()` 子智能体，其中承担写入的生成各自隔离在自己的工作树里。千万不要一次把所有泳道全开 —— 先起第一条，确认它真的开始产出，再激活其余。卡片绝不会被拆到多条泳道上。`-k` 依旧驱动三角色的看板链；一次启动只能带一个进入标记，所以 `-k` 与 `-f` 同时给出会报错，已停用的 `moai cg` 会显示迁移提示并退出。
 
 > 详见：[看板模式 —— 工厂模式](https://adk.mo.ai.kr/zh/advanced/kanban-mode)
 
 看板是 `backlog → plan → run → sync → done` 五列。`backlog` 刻意不设归属会话 —— 工作只有人放进去，才会进入看板。
 
 ```text
-/moai todo "rename 提示过时了"   # 追加卡片
-/moai todo                      # 查看队列
+/moai gtd "rename 提示过时了"   # 追加卡片
+/moai gtd                      # 查看队列
 ```
+
+`/moai gtd` 是正式的任务管理入口。`/moai todo` 作为兼容名称继续保留，两者共用同一 SQLite 队列、卡片 ID、顺序以及归档和恢复行为。`moai gtd capture|clarify|organize|reflect|engage` 会把 Capture → Clarify → Organize → Reflect → Engage 保存为连续的 SQLite 状态，再让获准工作进入原有 `backlog → plan → run → sync → done` 开发流程。操作 receipt 与权威状态回读会防止中断恢复后重复发布、选择或调度。
 
 有两条规则让看板保持诚实。主控**只凭自己从卡片 `progress.md` 里读到的证据**推进卡片 —— 不凭伴随会话的回复，因为回复是主张而不是观测，而且跨会话投递并不保证送达。另外，一个阶段结束后，主控会请你手动 `/clear` 对应会话 —— `/clear` 是用户亲手敲的命令，无法当作指令发送。
 
@@ -287,6 +289,26 @@ cd my-project
 
 交互式向导自动检测语言、框架和方法论，选好模型策略后一直生成到 Claude Code 集成文件。
 
+#### 选择代理框架
+
+向导会询问要为项目部署并接入哪个代理框架；`--llm` 参数可在非交互模式下做出同样的选择：
+
+| 选择 | 项目根目录生成的内容 |
+|---|---|
+| `claude`（默认） | 完整的 `.claude/` 表面与 `AGENTS.md` — 沿用至今的默认行为 |
+| `gpt` | 仅 Codex 部署：只安装 `AGENTS.md` 与 Codex 表面（`.codex/`、`.agents/skills/`、`.moai/`）。不会生成 `.claude/` 目录、`CLAUDE.md` 和 `.mcp.json`。Claude 专属运行时功能（AskUserQuestion、子代理、output style、斜杠命令、Workflow 脚本）不可用 |
+| `both` | 在 `claude` 部署之上追加 `.codex/` 接入。`.mcp.json` 供应强制开启 |
+
+
+> **GPT 网关已撤回（2026-09-16）。** 通过内置翻译网关把 GPT 模型接入 Claude Code 的旧 `moai gpt`
+> 启动器已移除。GPT 模型请通过原生 harness 使用：`moai codex`（Codex CLI）。上方的 `--llm gpt`
+> init 值不受影响 —— 它选择的是 Codex 专用部署，而不是已撤回的启动器。
+```bash
+moai init my-project --llm gpt   # 仅 Codex 项目
+```
+
+在此选项存在之前初始化的项目没有 `llm.harness` 键，update 时仍保持 claude 行为 — 无需迁移。
+
 ### 第一个工作流
 
 ```bash
@@ -338,13 +360,17 @@ claude        # 或者 moai cc —— 在项目里运行 Claude Code
 
 所有后端都是 fail-open —— GLM（`~/.moai/.env.glm`）和 codex（`~/.codex/auth.json`）是可选的；不可用的后端返回 `inconclusive`，绝不是 hard error。
 
-在启用 Codex 的 harness（`moai init --llm codex|both`）下，Codex 的状态栏只支持内置标识符数组（`tui.status_line`），因此 goal、todo、SPEC 状态等 MoAI 专属条目无法显示 —— 这是在 openai/codex#17827 落地命令驱动的状态栏之前的已知限制。
+在启用 Codex 的 harness（`moai init --llm gpt|both`）下，Codex 的状态栏只支持内置标识符数组（`tui.status_line`），因此 goal、todo、SPEC 状态等 MoAI 专属条目无法显示 —— 这是在 openai/codex#17827 落地命令驱动的状态栏之前的已知限制。
 
 > 详见：[MCP 服务器指南](https://adk.mo.ai.kr/zh/guides/mcp-server) · [Claude Code MCP](https://adk.mo.ai.kr/zh/claude-code/extensibility/mcp)
 
 ### goal 引擎 —— 带真实边界的自主循环
 
 声明完成条件，会话就自主工作直到条件满足。轮次上限、停滞守卫、墙钟预算、事前审批门一起绑着，掉不进无限循环。机械条件（命令退出码）和模型条件（对话记录里的主张）都能用。`--max-turns 0` 还能武装 auto-compact 驱动的无限 goal —— 此时由 `--max-duration` 和停滞守卫提供边界。
+
+`moai goal --auto "<任务>"` 会另建一个 `mission_mode=auto` 草案，`approve` 一次封存范围、行为、证据与上限，之后由 `run`、`status`、`revoke` 和受策略限制的 `resume` 使用该持久合同。`super-advisor` 仅提供不具约束力的建议，只读 `mission-governor` 生成结构化决策，确定性 owner adapter 执行带 receipt 的队列与调度、显式路径提交以及带 lease 的 local develop `--no-ff` 合并。若真实供应方尚未证明持久运行能力，模式会降为 `active-session-only`；远程 push、PR 与合并完成仍未经证明。[GTD 与 auto 任务指南](https://adk.mo.ai.kr/zh/utility-commands/moai-gtd)
+
+最终执行边界更严格：`run --supervise` 有界执行 publish→pick→带 lease 的磁盘调度→commit→local develop `--no-ff`。受监督的 Git 效果必须分别提供 `--card-worktree` 与 `--develop-worktree`；仅使用旧 `--repo` 时效果数为 0。完成还需要 `0600` `--completion-receipt` 封存判定为 true 的 typed evidence 与合并 ancestry，不能仅因动作列表耗尽而完成；重放已完成任务的效果数同样为 0。`--recommend` 不授予权限，每项效果都必须同时持有仓库内 `0600` governor receipt 与独立审计 PASS receipt。未配置的远程与 release provider 返回 `provider_unsupported`，不会伪装成功。
 
 ### 并行 worktree
 
@@ -716,7 +742,7 @@ Claude 的每一档通过 `ANTHROPIC_DEFAULT_*_MODEL` 环境变量映射到 GLM 
 | [快速上手](https://adk.mo.ai.kr/zh/getting-started) | 简介 · 安装 · Windows 指南 · init 向导 · 快速入门 · CLI 概览 · FAQ |
 | [核心概念](https://adk.mo.ai.kr/zh/core-concepts) | 身份 · 宪章 · 框架工程 · 基于 SPEC 的开发 · DDD · TRUST 5 |
 | [工作流命令](https://adk.mo.ai.kr/zh/workflow-commands) | `plan` · `run` · `sync` —— SPEC 流水线主轴 |
-| [实用命令](https://adk.mo.ai.kr/zh/utility-commands) | `fix` · `loop` · `gate` · `review` · `clean` · `codemaps` · `e2e` · `feedback` · `goal` · `todo` |
+| [实用命令](https://adk.mo.ai.kr/zh/utility-commands) | `fix` · `loop` · `gate` · `review` · `clean` · `codemaps` · `e2e` · `feedback` · `goal` · `gtd`（`todo` 兼容） |
 | [CLI 参考](https://adk.mo.ai.kr/zh/cli-reference) | 终端 `moai` 二进制的全部命令（共 49 个） |
 | [Claude Code 指南](https://adk.mo.ai.kr/zh/claude-code) | Claude Code 集成 —— 基础 · 上下文/记忆 · 智能体 · 扩展性 |
 | [Multi-LLM](https://adk.mo.ai.kr/zh/multi-llm) | CG 迁移与模型策略 |

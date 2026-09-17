@@ -1,2 +1,0 @@
-.moai/reports/t622/run/base-manager-git.md:0
-.moai/reports/t622/run/base-manager-git-template.md:0

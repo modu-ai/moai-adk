@@ -142,12 +142,13 @@ func runModelProfile(cmd *cobra.Command, _ []string) error {
 
 	_, _ = fmt.Fprintf(out, "profile: %s   backend: %s\n", rpt.Profile, rpt.Backend)
 	tw := tabwriter.NewWriter(out, 0, 2, 2, ' ', 0)
-	if rpt.Backend == "glm" {
+	switch rpt.Backend {
+	case "glm":
 		_, _ = fmt.Fprintln(tw, "AGENT\tGROUP\tMODEL\tEFFORT\tGLM_MODEL\tGLM_REASONING")
 		for _, e := range rpt.Agents {
 			_, _ = fmt.Fprintf(tw, "%s\t%s\t%s\t%s\t%s\t%s\n", e.Agent, e.Group, e.Model, e.Effort, e.GLMModel, e.GLMReasoning)
 		}
-	} else {
+	default:
 		_, _ = fmt.Fprintln(tw, "AGENT\tGROUP\tMODEL\tEFFORT")
 		for _, e := range rpt.Agents {
 			_, _ = fmt.Fprintf(tw, "%s\t%s\t%s\t%s\n", e.Agent, e.Group, e.Model, e.Effort)

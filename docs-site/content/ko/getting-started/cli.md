@@ -68,7 +68,6 @@ moai init [project-name] [OPTIONS]
 | `--root <path>` | 프로젝트 루트 디렉터리 (기본값: 현재 디렉터리) |
 | `--git-mode <manual\|personal\|team>` | Git 워크플로우 모드 (기본값: manual) |
 | `--git-provider <github\|gitlab>` | Git 제공자 |
-| `--project-mode <personal\|team>` | 프로젝트 모드 (기본값: personal) |
 | `--enable-lsp` | LSP 연동 활성화 (기본값: true) |
 | `--enforce-quality` | 품질 게이트 강제 (기본값: true) |
 | `--enable-design` | 디자인 워크플로우 활성화 (기본값: true) |
@@ -87,7 +86,7 @@ cd my-existing-project
 moai init
 
 # 비대화형 (CI/CD)
-moai init --non-interactive --project-mode personal --model-policy medium
+moai init --non-interactive --model-policy medium
 ```
 
 자세한 마법사 단계는 [초기 설정](/ko/getting-started/init-wizard) 페이지를 참조하세요.

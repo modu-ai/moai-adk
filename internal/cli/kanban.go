@@ -503,6 +503,13 @@ func exportKanbanLaunchFacts(specID, backend string) func() {
 	}
 }
 
+// exportFactoryLaunchFacts preserves the established env carriers for the
+// Claude and GLM launchers (the GPT Factory provenance path was removed with
+// the gateway withdrawal, 2026-09-16).
+func exportFactoryLaunchFacts(specID, backend string) func() {
+	return exportKanbanLaunchFacts(specID, backend)
+}
+
 // The tokens claude uses to name a session. moai RECOGNIZES them; it never
 // consumes them — the value has to reach claude unchanged.
 const (

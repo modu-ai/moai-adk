@@ -1,5 +1,0 @@
-# github.com/modu-ai/moai-adk/internal/codextools [github.com/modu-ai/moai-adk/internal/codextools.test]
-internal/codextools/registry_test.go:231:18: r.BindThread undefined (type *Registry has no field or method BindThread)
-internal/codextools/registry_test.go:235:17: r.BindThread undefined (type *Registry has no field or method BindThread)
-FAIL	github.com/modu-ai/moai-adk/internal/codextools [build failed]
-FAIL

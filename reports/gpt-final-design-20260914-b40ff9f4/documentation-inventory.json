@@ -1,0 +1,1357 @@
+{
+  "date": "2026-09-14",
+  "sourceSession": "01a09c3b-3734-7c30-b65d-650e3c63d0aa",
+  "core": [
+    {
+      "name": "app-server",
+      "url": "https://learn.chatgpt.com/ko-KR/docs/app-server",
+      "status": "FULL",
+      "chars": 80211,
+      "lines": 2342,
+      "sections": [
+        {
+          "title": "CLI 터미널 UI 연결"
+        },
+        {
+          "title": "원격 Code Mode 호스트 연결"
+        },
+        {
+          "title": "프로토콜"
+        },
+        {
+          "title": "메시지 스키마"
+        },
+        {
+          "title": "시작하기"
+        },
+        {
+          "title": "핵심 구성 요소"
+        },
+        {
+          "title": "수명 주기 개요"
+        },
+        {
+          "title": "초기화"
+        },
+        {
+          "title": "실험적 API 사용 설정"
+        },
+        {
+          "title": "API 개요"
+        },
+        {
+          "title": "모델"
+        },
+        {
+          "title": "모델 목록 조회(`model/list`)"
+        },
+        {
+          "title": "실험적 기능 목록 조회(`experimentalFeature/list`)"
+        },
+        {
+          "title": "실행 환경 확인(실험적)"
+        },
+        {
+          "title": "스레드"
+        },
+        {
+          "title": "스레드 시작 또는 재개"
+        },
+        {
+          "title": "스레드 목표 관리"
+        },
+        {
+          "title": "저장된 스레드 읽기(재개 없이)"
+        },
+        {
+          "title": "스레드 턴 목록 조회"
+        },
+        {
+          "title": "스레드 목록 조회(페이지네이션 및 필터)"
+        },
+        {
+          "title": "저장된 스레드 메타데이터 업데이트"
+        },
+        {
+          "title": "스레드 상태 변경 추적"
+        },
+        {
+          "title": "로드된 스레드 목록 조회"
+        },
+        {
+          "title": "로드된 스레드 구독 해제"
+        },
+        {
+          "title": "스레드 보관"
+        },
+        {
+          "title": "스레드 삭제"
+        },
+        {
+          "title": "스레드 보관 해제"
+        },
+        {
+          "title": "스레드 컨텍스트 압축 실행"
+        },
+        {
+          "title": "스레드 셸 명령어 실행"
+        },
+        {
+          "title": "백그라운드 터미널 정리"
+        },
+        {
+          "title": "최근 턴 롤백"
+        },
+        {
+          "title": "턴"
+        },
+        {
+          "title": "샌드박스 읽기 권한(`ReadOnlyAccess`)"
+        },
+        {
+          "title": "턴 시작"
+        },
+        {
+          "title": "스레드에 항목 삽입"
+        },
+        {
+          "title": "활성 턴 조정"
+        },
+        {
+          "title": "턴 시작(스킬 호출)"
+        },
+        {
+          "title": "턴 중단"
+        },
+        {
+          "title": "검토"
+        },
+        {
+          "title": "프로세스 실행"
+        },
+        {
+          "title": "명령어 실행"
+        },
+        {
+          "title": "관리자 요구 사항 조회(`configRequirements/read`)"
+        },
+        {
+          "title": "Windows 샌드박스 설정(`windowsSandbox/setupStart`)"
+        },
+        {
+          "title": "파일 시스템"
+        },
+        {
+          "title": "이벤트"
+        },
+        {
+          "title": "알림 수신 거부"
+        },
+        {
+          "title": "퍼지 파일 검색 이벤트(실험적)"
+        },
+        {
+          "title": "경고 이벤트"
+        },
+        {
+          "title": "Windows 샌드박스 설정 이벤트"
+        },
+        {
+          "title": "턴 이벤트"
+        },
+        {
+          "title": "항목"
+        },
+        {
+          "title": "항목 델타"
+        },
+        {
+          "title": "오류"
+        },
+        {
+          "title": "승인"
+        },
+        {
+          "title": "명령어 실행 승인"
+        },
+        {
+          "title": "파일 변경 승인"
+        },
+        {
+          "title": "`tool/requestUserInput`"
+        },
+        {
+          "title": "권한 요청"
+        },
+        {
+          "title": "MCP 서버의 유도 요청"
+        },
+        {
+          "title": "동적 도구 호출(실험적)"
+        },
+        {
+          "title": "MCP 도구 호출 승인(앱)"
+        },
+        {
+          "title": "스킬"
+        },
+        {
+          "title": "앱(커넥터)"
+        },
+        {
+          "title": "앱 설정을 위한 구성 RPC 예제"
+        },
+        {
+          "title": "외부 에이전트 설정 감지 및 가져오기"
+        },
+        {
+          "title": "인증 엔드포인트"
+        },
+        {
+          "title": "인증 모드"
+        },
+        {
+          "title": "API 개요"
+        },
+        {
+          "title": "1) 인증 상태 확인"
+        },
+        {
+          "title": "2) API 키로 로그인"
+        },
+        {
+          "title": "3) ChatGPT로 로그인(브라우저 플로우)"
+        },
+        {
+          "title": "3b) ChatGPT로 로그인(기기 코드 플로우)"
+        },
+        {
+          "title": "3c) 외부에서 관리하는 ChatGPT 토큰으로 로그인(`chatgptAuthTokens`)"
+        },
+        {
+          "title": "4) ChatGPT 로그인 취소"
+        },
+        {
+          "title": "5) 로그아웃"
+        },
+        {
+          "title": "6) 요청 한도(ChatGPT)"
+        },
+        {
+          "title": "7) 토큰 사용량(ChatGPT)"
+        },
+        {
+          "title": "8) 획득한 요청 한도 재설정 기회(ChatGPT)"
+        },
+        {
+          "title": "9) 워크스페이스 소유자에게 한도 알림 보내기"
+        },
+        {
+          "title": "10) 워크스페이스 메시지(ChatGPT)"
+        }
+      ]
+    },
+    {
+      "name": "llm-gateway",
+      "url": "https://code.claude.com/docs/ko/llm-gateway",
+      "status": "FULL",
+      "chars": 4164,
+      "lines": 65,
+      "sections": [
+        {
+          "depth": 2,
+          "anchor": "what-a-gateway-provides",
+          "title": "gateway가 제공하는 것"
+        },
+        {
+          "depth": 2,
+          "anchor": "roll-out-a-gateway",
+          "title": "gateway 배포"
+        },
+        {
+          "depth": 2,
+          "anchor": "subscriptions-and-gateways",
+          "title": "구독 및 gateway"
+        },
+        {
+          "depth": 2,
+          "anchor": "related-pages",
+          "title": "관련 페이지"
+        }
+      ]
+    },
+    {
+      "name": "llm-gateway-connect",
+      "url": "https://code.claude.com/docs/ko/llm-gateway-connect",
+      "status": "FULL",
+      "chars": 42312,
+      "lines": 610,
+      "sections": [
+        {
+          "depth": 2,
+          "anchor": "check-for-an-existing-configuration",
+          "title": "기존 구성 확인"
+        },
+        {
+          "depth": 2,
+          "anchor": "configure-claude-code-yourself",
+          "title": "Claude Code 직접 구성"
+        },
+        {
+          "depth": 3,
+          "anchor": "set-the-credential-variable",
+          "title": "자격 증명 변수 설정"
+        },
+        {
+          "depth": 3,
+          "anchor": "set-the-base-url-and-credential",
+          "title": "기본 URL과 자격 증명 설정"
+        },
+        {
+          "depth": 4,
+          "anchor": "set-as-shell-environment-variables",
+          "title": "셸 환경 변수로 설정"
+        },
+        {
+          "depth": 4,
+          "anchor": "set-in-a-settings-file",
+          "title": "설정 파일에서 설정"
+        },
+        {
+          "depth": 3,
+          "anchor": "verify-the-connection",
+          "title": "연결 확인"
+        },
+        {
+          "depth": 4,
+          "anchor": "confirm-in-claude-code",
+          "title": "Claude Code에서 확인"
+        },
+        {
+          "depth": 3,
+          "anchor": "how-the-credential-variable-maps-to-a-header",
+          "title": "자격 증명 변수가 헤더에 매핑되는 방식"
+        },
+        {
+          "depth": 3,
+          "anchor": "conflicts-with-an-existing-login",
+          "title": "기존 로그인과의 충돌"
+        },
+        {
+          "depth": 2,
+          "anchor": "configure-each-surface",
+          "title": "각 표면 구성"
+        },
+        {
+          "depth": 3,
+          "anchor": "vs-code-extension",
+          "title": "VS Code 확장"
+        },
+        {
+          "depth": 3,
+          "anchor": "desktop-app",
+          "title": "데스크톱 앱"
+        },
+        {
+          "depth": 3,
+          "anchor": "github-actions",
+          "title": "GitHub Actions"
+        },
+        {
+          "depth": 3,
+          "anchor": "agent-sdk",
+          "title": "Agent SDK"
+        },
+        {
+          "depth": 3,
+          "anchor": "slack-web-and-remote-control",
+          "title": "Slack, 웹 및 Remote Control"
+        },
+        {
+          "depth": 2,
+          "anchor": "additional-configuration",
+          "title": "추가 구성"
+        },
+        {
+          "depth": 3,
+          "anchor": "send-additional-headers",
+          "title": "추가 헤더 전송"
+        },
+        {
+          "depth": 3,
+          "anchor": "add-gateway-models-to-the-model-picker",
+          "title": "게이트웨이 모델을 모델 선택기에 추가"
+        },
+        {
+          "depth": 3,
+          "anchor": "rotate-credentials-with-apikeyhelper",
+          "title": "apiKeyHelper로 자격 증명 회전"
+        },
+        {
+          "depth": 3,
+          "anchor": "turn-off-traffic-outside-the-gateway-path",
+          "title": "게이트웨이 경로 외부의 트래픽 끄기"
+        },
+        {
+          "depth": 3,
+          "anchor": "route-to-a-cloud-provider-through-a-gateway",
+          "title": "게이트웨이를 통해 클라우드 제공자로 라우팅"
+        },
+        {
+          "depth": 4,
+          "anchor": "amazon-bedrock",
+          "title": "Amazon Bedrock"
+        },
+        {
+          "depth": 4,
+          "anchor": "google-cloud’s-agent-platform",
+          "title": "Google Cloud의 Agent Platform"
+        },
+        {
+          "depth": 4,
+          "anchor": "microsoft-foundry",
+          "title": "Microsoft Foundry"
+        },
+        {
+          "depth": 4,
+          "anchor": "claude-platform-on-aws",
+          "title": "AWS의 Claude Platform"
+        },
+        {
+          "depth": 4,
+          "anchor": "confirm-the-provider-route",
+          "title": "제공자 경로 확인"
+        },
+        {
+          "depth": 2,
+          "anchor": "troubleshoot-gateway-errors",
+          "title": "게이트웨이 오류 문제 해결"
+        },
+        {
+          "depth": 2,
+          "anchor": "related-resources",
+          "title": "관련 리소스"
+        }
+      ]
+    },
+    {
+      "name": "llm-gateway-rollout",
+      "url": "https://code.claude.com/docs/ko/llm-gateway-rollout",
+      "status": "FULL",
+      "chars": 23426,
+      "lines": 301,
+      "sections": [
+        {
+          "depth": 2,
+          "anchor": "prerequisites",
+          "title": "필수 조건"
+        },
+        {
+          "depth": 3,
+          "anchor": "gateway-requirements",
+          "title": "게이트웨이 요구사항"
+        },
+        {
+          "depth": 2,
+          "anchor": "rollout-steps",
+          "title": "롤아웃 단계"
+        },
+        {
+          "depth": 3,
+          "anchor": "confirm-the-gateway-routes-your-models",
+          "title": "게이트웨이가 모델을 라우팅하는지 확인"
+        },
+        {
+          "depth": 3,
+          "anchor": "issue-developer-credentials",
+          "title": "개발자 자격증명 발급"
+        },
+        {
+          "depth": 3,
+          "anchor": "test-claude-code-against-the-gateway",
+          "title": "게이트웨이에 대해 Claude Code 테스트"
+        },
+        {
+          "depth": 3,
+          "anchor": "distribute-the-configuration",
+          "title": "구성 배포"
+        },
+        {
+          "depth": 4,
+          "anchor": "what-to-distribute",
+          "title": "배포할 항목"
+        },
+        {
+          "depth": 4,
+          "anchor": "distribute-through-managed-settings",
+          "title": "관리되는 설정을 통해 배포"
+        },
+        {
+          "depth": 4,
+          "anchor": "hand-developers-the-values-to-set-themselves",
+          "title": "개발자에게 값을 직접 설정하도록 합니다."
+        },
+        {
+          "depth": 3,
+          "anchor": "verify-the-rollout",
+          "title": "롤아웃 확인"
+        },
+        {
+          "depth": 2,
+          "anchor": "maintain-the-gateway",
+          "title": "게이트웨이 유지 관리"
+        },
+        {
+          "depth": 2,
+          "anchor": "related-resources",
+          "title": "관련 리소스"
+        }
+      ]
+    },
+    {
+      "name": "llm-gateway-protocol",
+      "url": "https://code.claude.com/docs/ko/llm-gateway-protocol",
+      "status": "FULL",
+      "chars": 24737,
+      "lines": 269,
+      "sections": [
+        {
+          "depth": 2,
+          "anchor": "api-formats",
+          "title": "API 형식"
+        },
+        {
+          "depth": 3,
+          "anchor": "foundry-and-claude-platform-on-aws",
+          "title": "Foundry 및 AWS의 Claude Platform"
+        },
+        {
+          "depth": 3,
+          "anchor": "optional-endpoints-and-startup-traffic",
+          "title": "선택 사항 엔드포인트 및 시작 트래픽"
+        },
+        {
+          "depth": 3,
+          "anchor": "streaming",
+          "title": "스트리밍"
+        },
+        {
+          "depth": 3,
+          "anchor": "format-mismatch-with-the-upstream",
+          "title": "업스트림과의 형식 불일치"
+        },
+        {
+          "depth": 2,
+          "anchor": "request-headers",
+          "title": "요청 헤더"
+        },
+        {
+          "depth": 3,
+          "anchor": "forward-as-open-lists",
+          "title": "개방형 목록으로 전달"
+        },
+        {
+          "depth": 2,
+          "anchor": "system-prompt-attribution-block",
+          "title": "시스템 프롬프트 속성 블록"
+        },
+        {
+          "depth": 2,
+          "anchor": "feature-pass-through",
+          "title": "기능 통과"
+        },
+        {
+          "depth": 3,
+          "anchor": "automatic-retry-and-error-forwarding",
+          "title": "자동 재시도 및 오류 전달"
+        },
+        {
+          "depth": 3,
+          "anchor": "disable-pre-release-capabilities",
+          "title": "사전 릴리스 기능 비활성화"
+        },
+        {
+          "depth": 2,
+          "anchor": "model-discovery",
+          "title": "모델 검색"
+        },
+        {
+          "depth": 3,
+          "anchor": "when-discovery-runs",
+          "title": "검색이 실행되는 경우"
+        },
+        {
+          "depth": 3,
+          "anchor": "request-and-response",
+          "title": "요청 및 응답"
+        },
+        {
+          "depth": 3,
+          "anchor": "picker-entries-and-caching",
+          "title": "선택기 항목 및 캐싱"
+        },
+        {
+          "depth": 2,
+          "anchor": "related-resources",
+          "title": "관련 리소스"
+        }
+      ]
+    }
+  ],
+  "counts": {
+    "NOT_READ": 71,
+    "FULL": 21,
+    "SECTION": 9,
+    "GAP": 1
+  },
+  "links": [
+    {
+      "url": "https://github.com/openai/codex/tree/main/codex-rs/app-server",
+      "from": [
+        "app-server"
+      ],
+      "status": "NOT_READ — 직접 교차 참조 목록화; 해당 문서 전체 미독"
+    },
+    {
+      "url": "https://learn.chatgpt.com/ko-KR/codex/open-source",
+      "from": [
+        "app-server"
+      ],
+      "status": "NOT_READ — 직접 교차 참조 목록화; 해당 문서 전체 미독"
+    },
+    {
+      "url": "https://learn.chatgpt.com/codex/codex-sdk",
+      "from": [
+        "app-server"
+      ],
+      "status": "FULL — SDK 전체"
+    },
+    {
+      "url": "https://modelcontextprotocol.io/",
+      "from": [
+        "app-server"
+      ],
+      "status": "NOT_READ — 직접 교차 참조 목록화; 해당 문서 전체 미독"
+    },
+    {
+      "url": "https://chatgpt.com/public/admin/api-reference#tag/Codex",
+      "from": [
+        "app-server"
+      ],
+      "status": "NOT_READ — 직접 교차 참조 목록화; 해당 문서 전체 미독"
+    },
+    {
+      "url": "https://learn.chatgpt.com/ko-KR/codex/config-file/config-reference#requirementstoml",
+      "from": [
+        "app-server"
+      ],
+      "status": "NOT_READ — 직접 교차 참조 목록화; 해당 문서 전체 미독"
+    },
+    {
+      "url": "https://code.claude.com/docs/ko/claude-apps-gateway",
+      "from": [
+        "llm-gateway",
+        "llm-gateway-protocol"
+      ],
+      "status": "NOT_READ — 직접 교차 참조 목록화; 해당 문서 전체 미독"
+    },
+    {
+      "url": "https://code.claude.com/docs/ko/gateways",
+      "from": [
+        "llm-gateway",
+        "llm-gateway-protocol"
+      ],
+      "status": "SECTION — gateway 종류·구독·별도 설정"
+    },
+    {
+      "url": "https://code.claude.com/docs/ko/llm-gateway-connect",
+      "from": [
+        "llm-gateway",
+        "llm-gateway-rollout",
+        "llm-gateway-protocol"
+      ],
+      "status": "FULL — 지정 문서 전체"
+    },
+    {
+      "url": "https://code.claude.com/docs/ko/llm-gateway-rollout",
+      "from": [
+        "llm-gateway",
+        "llm-gateway-connect",
+        "llm-gateway-protocol"
+      ],
+      "status": "FULL — 지정 문서 전체"
+    },
+    {
+      "url": "https://code.claude.com/docs/ko/llm-gateway-protocol",
+      "from": [
+        "llm-gateway",
+        "llm-gateway-connect",
+        "llm-gateway-rollout"
+      ],
+      "status": "FULL — 지정 문서 전체"
+    },
+    {
+      "url": "https://code.claude.com/docs/ko/llm-gateway-protocol#api-formats",
+      "from": [
+        "llm-gateway",
+        "llm-gateway-rollout"
+      ],
+      "status": "FULL — 지정 문서 전체"
+    },
+    {
+      "url": "https://code.claude.com/docs/ko/third-party-integrations",
+      "from": [
+        "llm-gateway"
+      ],
+      "status": "NOT_READ — 직접 교차 참조 목록화; 해당 문서 전체 미독"
+    },
+    {
+      "url": "https://code.claude.com/docs/ko/managed-settings#delivery-mechanisms",
+      "from": [
+        "llm-gateway",
+        "llm-gateway-rollout"
+      ],
+      "status": "NOT_READ — 직접 교차 참조 목록화; 해당 문서 전체 미독"
+    },
+    {
+      "url": "https://code.claude.com/docs/ko/llm-gateway-connect#check-for-an-existing-configuration",
+      "from": [
+        "llm-gateway"
+      ],
+      "status": "FULL — 지정 문서 전체"
+    },
+    {
+      "url": "https://code.claude.com/docs/ko/admin-setup",
+      "from": [
+        "llm-gateway",
+        "llm-gateway-rollout"
+      ],
+      "status": "NOT_READ — 직접 교차 참조 목록화; 해당 문서 전체 미독"
+    },
+    {
+      "url": "https://code.claude.com/docs/ko/llm-gateway-connect#set-the-credential-variable",
+      "from": [
+        "llm-gateway",
+        "llm-gateway-rollout",
+        "llm-gateway-protocol"
+      ],
+      "status": "FULL — 지정 문서 전체"
+    },
+    {
+      "url": "https://code.claude.com/docs/ko/llm-gateway-connect#set-the-base-url-and-credential",
+      "from": [
+        "llm-gateway"
+      ],
+      "status": "FULL — 지정 문서 전체"
+    },
+    {
+      "url": "https://code.claude.com/docs/ko/llm-gateway-protocol#request-headers",
+      "from": [
+        "llm-gateway",
+        "llm-gateway-rollout"
+      ],
+      "status": "FULL — 지정 문서 전체"
+    },
+    {
+      "url": "https://code.claude.com/docs/ko/llm-gateway",
+      "from": [
+        "llm-gateway-connect",
+        "llm-gateway-protocol"
+      ],
+      "status": "FULL — 지정 문서 전체"
+    },
+    {
+      "url": "https://code.claude.com/docs/ko/managed-settings",
+      "from": [
+        "llm-gateway-connect",
+        "llm-gateway-protocol"
+      ],
+      "status": "NOT_READ — 직접 교차 참조 목록화; 해당 문서 전체 미독"
+    },
+    {
+      "url": "https://code.claude.com/docs/ko/agent-view#how-background-sessions-are-hosted",
+      "from": [
+        "llm-gateway-connect"
+      ],
+      "status": "NOT_READ — 직접 교차 참조 목록화; 해당 문서 전체 미독"
+    },
+    {
+      "url": "https://code.claude.com/docs/ko/agent-view#llm-gateway",
+      "from": [
+        "llm-gateway-connect"
+      ],
+      "status": "SECTION — 해당 절 전체"
+    },
+    {
+      "url": "https://code.claude.com/docs/ko/settings",
+      "from": [
+        "llm-gateway-connect"
+      ],
+      "status": "NOT_READ — 직접 교차 참조 목록화; 해당 문서 전체 미독"
+    },
+    {
+      "url": "https://code.claude.com/docs/ko/vs-code",
+      "from": [
+        "llm-gateway-connect"
+      ],
+      "status": "NOT_READ — 직접 교차 참조 목록화; 해당 문서 전체 미독"
+    },
+    {
+      "url": "https://claude.com/docs/third-party/claude-desktop/gateway",
+      "from": [
+        "llm-gateway-connect",
+        "llm-gateway-rollout"
+      ],
+      "status": "NOT_READ — 직접 교차 참조 목록화; 해당 문서 전체 미독"
+    },
+    {
+      "url": "https://code.claude.com/docs/ko/llm-gateway-rollout#distribute-through-managed-settings",
+      "from": [
+        "llm-gateway-connect"
+      ],
+      "status": "FULL — 지정 문서 전체"
+    },
+    {
+      "url": "https://code.claude.com/docs/ko/remote-control",
+      "from": [
+        "llm-gateway-connect"
+      ],
+      "status": "NOT_READ — 직접 교차 참조 목록화; 해당 문서 전체 미독"
+    },
+    {
+      "url": "https://code.claude.com/docs/ko/github-actions",
+      "from": [
+        "llm-gateway-connect"
+      ],
+      "status": "NOT_READ — 직접 교차 참조 목록화; 해당 문서 전체 미독"
+    },
+    {
+      "url": "https://github.com/anthropics/claude-code-action#readme",
+      "from": [
+        "llm-gateway-connect"
+      ],
+      "status": "NOT_READ — 직접 교차 참조 목록화; 해당 문서 전체 미독"
+    },
+    {
+      "url": "https://code.claude.com/docs/ko/agent-sdk/overview",
+      "from": [
+        "llm-gateway-connect"
+      ],
+      "status": "NOT_READ — 직접 교차 참조 목록화; 해당 문서 전체 미독"
+    },
+    {
+      "url": "https://code.claude.com/docs/ko/slack",
+      "from": [
+        "llm-gateway-connect"
+      ],
+      "status": "NOT_READ — 직접 교차 참조 목록화; 해당 문서 전체 미독"
+    },
+    {
+      "url": "https://code.claude.com/docs/ko/claude-code-on-the-web",
+      "from": [
+        "llm-gateway-connect"
+      ],
+      "status": "NOT_READ — 직접 교차 참조 목록화; 해당 문서 전체 미독"
+    },
+    {
+      "url": "https://code.claude.com/docs/ko/voice-dictation",
+      "from": [
+        "llm-gateway-connect"
+      ],
+      "status": "NOT_READ — 직접 교차 참조 목록화; 해당 문서 전체 미독"
+    },
+    {
+      "url": "https://code.claude.com/docs/ko/env-vars",
+      "from": [
+        "llm-gateway-connect",
+        "llm-gateway-protocol"
+      ],
+      "status": "NOT_READ — 직접 교차 참조 목록화; 해당 문서 전체 미독"
+    },
+    {
+      "url": "https://code.claude.com/docs/ko/server-managed-settings#environment-variables-and-the-approval-dialog",
+      "from": [
+        "llm-gateway-connect"
+      ],
+      "status": "NOT_READ — 직접 교차 참조 목록화; 해당 문서 전체 미독"
+    },
+    {
+      "url": "https://code.claude.com/docs/ko/settings-reference#when-claude-code-applies-env-values",
+      "from": [
+        "llm-gateway-connect"
+      ],
+      "status": "NOT_READ — 직접 교차 참조 목록화; 해당 문서 전체 미독"
+    },
+    {
+      "url": "https://code.claude.com/docs/ko/settings-reference#modelpicker",
+      "from": [
+        "llm-gateway-connect",
+        "llm-gateway-protocol"
+      ],
+      "status": "SECTION — 영어 공식 modelPicker 절로 보완"
+    },
+    {
+      "url": "https://code.claude.com/docs/ko/llm-gateway-protocol#model-discovery",
+      "from": [
+        "llm-gateway-connect",
+        "llm-gateway-rollout"
+      ],
+      "status": "FULL — 지정 문서 전체"
+    },
+    {
+      "url": "https://code.claude.com/docs/ko/errors#your-apikeyhelper-script-is-failing",
+      "from": [
+        "llm-gateway-connect"
+      ],
+      "status": "NOT_READ — 직접 교차 참조 목록화; 해당 문서 전체 미독"
+    },
+    {
+      "url": "https://code.claude.com/docs/ko/settings-reference#apikeyhelper",
+      "from": [
+        "llm-gateway-connect"
+      ],
+      "status": "NOT_READ — 직접 교차 참조 목록화; 해당 문서 전체 미독"
+    },
+    {
+      "url": "https://code.claude.com/docs/ko/analytics#access-analytics-for-api-customers",
+      "from": [
+        "llm-gateway-connect"
+      ],
+      "status": "NOT_READ — 직접 교차 참조 목록화; 해당 문서 전체 미독"
+    },
+    {
+      "url": "https://code.claude.com/docs/ko/fast-mode",
+      "from": [
+        "llm-gateway-connect",
+        "llm-gateway-rollout",
+        "llm-gateway-protocol"
+      ],
+      "status": "NOT_READ — 직접 교차 참조 목록화; 해당 문서 전체 미독"
+    },
+    {
+      "url": "https://code.claude.com/docs/ko/data-usage#webfetch-domain-safety-check",
+      "from": [
+        "llm-gateway-connect",
+        "llm-gateway-protocol"
+      ],
+      "status": "NOT_READ — 직접 교차 참조 목록화; 해당 문서 전체 미독"
+    },
+    {
+      "url": "https://code.claude.com/docs/ko/data-usage#telemetry-services",
+      "from": [
+        "llm-gateway-connect"
+      ],
+      "status": "NOT_READ — 직접 교차 참조 목록화; 해당 문서 전체 미독"
+    },
+    {
+      "url": "https://code.claude.com/docs/ko/amazon-bedrock#2-configure-aws-credentials",
+      "from": [
+        "llm-gateway-connect"
+      ],
+      "status": "NOT_READ — 직접 교차 참조 목록화; 해당 문서 전체 미독"
+    },
+    {
+      "url": "https://code.claude.com/docs/ko/google-vertex-ai#4-configure-claude-code",
+      "from": [
+        "llm-gateway-connect"
+      ],
+      "status": "NOT_READ — 직접 교차 참조 목록화; 해당 문서 전체 미독"
+    },
+    {
+      "url": "https://code.claude.com/docs/ko/google-vertex-ai#5-pin-model-versions",
+      "from": [
+        "llm-gateway-connect"
+      ],
+      "status": "NOT_READ — 직접 교차 참조 목록화; 해당 문서 전체 미독"
+    },
+    {
+      "url": "https://code.claude.com/docs/ko/model-config#customize-pinned-model-display-and-capabilities",
+      "from": [
+        "llm-gateway-connect",
+        "llm-gateway-protocol"
+      ],
+      "status": "SECTION — 매핑·custom picker·gateway context·기능 변수 관련 절; 페이지 전체 미독"
+    },
+    {
+      "url": "https://code.claude.com/docs/ko/claude-platform-on-aws",
+      "from": [
+        "llm-gateway-connect",
+        "llm-gateway-protocol"
+      ],
+      "status": "NOT_READ — 직접 교차 참조 목록화; 해당 문서 전체 미독"
+    },
+    {
+      "url": "https://code.claude.com/docs/ko/errors#automatic-retries",
+      "from": [
+        "llm-gateway-connect",
+        "llm-gateway-rollout",
+        "llm-gateway-protocol"
+      ],
+      "status": "NOT_READ — 직접 교차 참조 목록화; 해당 문서 전체 미독"
+    },
+    {
+      "url": "https://code.claude.com/docs/ko/errors#unable-to-connect-to-api",
+      "from": [
+        "llm-gateway-connect"
+      ],
+      "status": "NOT_READ — 직접 교차 참조 목록화; 해당 문서 전체 미독"
+    },
+    {
+      "url": "https://code.claude.com/docs/ko/errors#api-returned-an-empty-or-malformed-response",
+      "from": [
+        "llm-gateway-connect"
+      ],
+      "status": "NOT_READ — 직접 교차 참조 목록화; 해당 문서 전체 미독"
+    },
+    {
+      "url": "https://code.claude.com/docs/ko/llm-gateway-protocol#feature-pass-through",
+      "from": [
+        "llm-gateway-connect",
+        "llm-gateway-rollout"
+      ],
+      "status": "FULL — 지정 문서 전체"
+    },
+    {
+      "url": "https://code.claude.com/docs/ko/model-config",
+      "from": [
+        "llm-gateway-connect",
+        "llm-gateway-rollout",
+        "llm-gateway-protocol"
+      ],
+      "status": "SECTION — 매핑·custom picker·gateway context·기능 변수 관련 절; 페이지 전체 미독"
+    },
+    {
+      "url": "https://code.claude.com/docs/ko/errors#prompt-is-too-long",
+      "from": [
+        "llm-gateway-connect"
+      ],
+      "status": "NOT_READ — 직접 교차 참조 목록화; 해당 문서 전체 미독"
+    },
+    {
+      "url": "https://code.claude.com/docs/ko/fast-mode#use-fast-mode-behind-proxies-and-llm-gateways",
+      "from": [
+        "llm-gateway-connect",
+        "llm-gateway-rollout",
+        "llm-gateway-protocol"
+      ],
+      "status": "SECTION — gateway 종류·구독·별도 설정"
+    },
+    {
+      "url": "https://code.claude.com/docs/ko/permissions#what-runs-before-you-trust-a-folder",
+      "from": [
+        "llm-gateway-connect"
+      ],
+      "status": "NOT_READ — 직접 교차 참조 목록화; 해당 문서 전체 미독"
+    },
+    {
+      "url": "https://code.claude.com/docs/ko/network-config#ca-certificate-store",
+      "from": [
+        "llm-gateway-connect"
+      ],
+      "status": "NOT_READ — 직접 교차 참조 목록화; 해당 문서 전체 미독"
+    },
+    {
+      "url": "https://code.claude.com/docs/ko/errors#authentication-errors",
+      "from": [
+        "llm-gateway-connect"
+      ],
+      "status": "NOT_READ — 직접 교차 참조 목록화; 해당 문서 전체 미독"
+    },
+    {
+      "url": "https://code.claude.com/docs/ko/authentication",
+      "from": [
+        "llm-gateway-connect"
+      ],
+      "status": "NOT_READ — 직접 교차 참조 목록화; 해당 문서 전체 미독"
+    },
+    {
+      "url": "https://platform.claude.com/settings/keys",
+      "from": [
+        "llm-gateway-rollout"
+      ],
+      "status": "NOT_READ — 직접 교차 참조 목록화; 해당 문서 전체 미독"
+    },
+    {
+      "url": "https://code.claude.com/docs/ko/amazon-bedrock#prerequisites",
+      "from": [
+        "llm-gateway-rollout"
+      ],
+      "status": "NOT_READ — 직접 교차 참조 목록화; 해당 문서 전체 미독"
+    },
+    {
+      "url": "https://code.claude.com/docs/ko/google-vertex-ai#prerequisites",
+      "from": [
+        "llm-gateway-rollout"
+      ],
+      "status": "NOT_READ — 직접 교차 참조 목록화; 해당 문서 전체 미독"
+    },
+    {
+      "url": "https://code.claude.com/docs/ko/microsoft-foundry#prerequisites",
+      "from": [
+        "llm-gateway-rollout"
+      ],
+      "status": "NOT_READ — 직접 교차 참조 목록화; 해당 문서 전체 미독"
+    },
+    {
+      "url": "https://code.claude.com/docs/ko/admin-setup#decide-how-settings-reach-devices",
+      "from": [
+        "llm-gateway-rollout"
+      ],
+      "status": "NOT_READ — 직접 교차 참조 목록화; 해당 문서 전체 미독"
+    },
+    {
+      "url": "https://code.claude.com/docs/ko/llm-gateway-protocol#streaming",
+      "from": [
+        "llm-gateway-rollout"
+      ],
+      "status": "FULL — 지정 문서 전체"
+    },
+    {
+      "url": "https://code.claude.com/docs/ko/claude-apps-gateway-config#upstream-error-messages",
+      "from": [
+        "llm-gateway-rollout",
+        "llm-gateway-protocol"
+      ],
+      "status": "GAP — 대상 원문에 앵커와 token 상세 목록 없음"
+    },
+    {
+      "url": "https://code.claude.com/docs/ko/llm-gateway-protocol#disable-pre-release-capabilities",
+      "from": [
+        "llm-gateway-rollout"
+      ],
+      "status": "FULL — 지정 문서 전체"
+    },
+    {
+      "url": "https://code.claude.com/docs/ko/costs#background-token-usage",
+      "from": [
+        "llm-gateway-rollout"
+      ],
+      "status": "NOT_READ — 직접 교차 참조 목록화; 해당 문서 전체 미독"
+    },
+    {
+      "url": "https://code.claude.com/docs/ko/llm-gateway-connect#route-to-a-cloud-provider-through-a-gateway",
+      "from": [
+        "llm-gateway-rollout"
+      ],
+      "status": "FULL — 지정 문서 전체"
+    },
+    {
+      "url": "https://code.claude.com/docs/ko/errors#administrator-policy-requires-a-cloud-gateway-sign-in",
+      "from": [
+        "llm-gateway-rollout"
+      ],
+      "status": "NOT_READ — 직접 교차 참조 목록화; 해당 문서 전체 미독"
+    },
+    {
+      "url": "https://code.claude.com/docs/ko/server-managed-settings#platform-availability",
+      "from": [
+        "llm-gateway-rollout"
+      ],
+      "status": "NOT_READ — 직접 교차 참조 목록화; 해당 문서 전체 미독"
+    },
+    {
+      "url": "https://code.claude.com/docs/ko/llm-gateway-connect#rotate-credentials-with-apikeyhelper",
+      "from": [
+        "llm-gateway-rollout",
+        "llm-gateway-protocol"
+      ],
+      "status": "FULL — 지정 문서 전체"
+    },
+    {
+      "url": "https://claude.com/docs/third-party/claude-desktop/configuration",
+      "from": [
+        "llm-gateway-rollout"
+      ],
+      "status": "NOT_READ — 직접 교차 참조 목록화; 해당 문서 전체 미독"
+    },
+    {
+      "url": "https://code.claude.com/docs/ko/llm-gateway-connect#configure-each-surface",
+      "from": [
+        "llm-gateway-rollout"
+      ],
+      "status": "FULL — 지정 문서 전체"
+    },
+    {
+      "url": "https://code.claude.com/docs/ko/settings-reference#wslinheritswindowssettings",
+      "from": [
+        "llm-gateway-rollout"
+      ],
+      "status": "NOT_READ — 직접 교차 참조 목록화; 해당 문서 전체 미독"
+    },
+    {
+      "url": "https://code.claude.com/docs/ko/llm-gateway-connect#configure-claude-code-yourself",
+      "from": [
+        "llm-gateway-rollout"
+      ],
+      "status": "FULL — 지정 문서 전체"
+    },
+    {
+      "url": "https://code.claude.com/docs/ko/llm-gateway-connect#troubleshoot-gateway-errors",
+      "from": [
+        "llm-gateway-rollout"
+      ],
+      "status": "FULL — 지정 문서 전체"
+    },
+    {
+      "url": "https://code.claude.com/docs/ko/settings#which-value-claude-code-uses",
+      "from": [
+        "llm-gateway-rollout"
+      ],
+      "status": "NOT_READ — 직접 교차 참조 목록화; 해당 문서 전체 미독"
+    },
+    {
+      "url": "https://code.claude.com/docs/ko/amazon-bedrock#streaming-errors-behind-a-gateway-or-proxy",
+      "from": [
+        "llm-gateway-protocol"
+      ],
+      "status": "NOT_READ — 직접 교차 참조 목록화; 해당 문서 전체 미독"
+    },
+    {
+      "url": "https://code.claude.com/docs/ko/sub-agents",
+      "from": [
+        "llm-gateway-protocol"
+      ],
+      "status": "NOT_READ — 직접 교차 참조 목록화; 해당 문서 전체 미독"
+    },
+    {
+      "url": "https://code.claude.com/docs/ko/agent-teams",
+      "from": [
+        "llm-gateway-protocol"
+      ],
+      "status": "NOT_READ — 직접 교차 참조 목록화; 해당 문서 전체 미독"
+    },
+    {
+      "url": "https://code.claude.com/docs/ko/permission-modes#eliminate-prompts-with-auto-mode",
+      "from": [
+        "llm-gateway-protocol"
+      ],
+      "status": "NOT_READ — 직접 교차 참조 목록화; 해당 문서 전체 미독"
+    },
+    {
+      "url": "https://code.claude.com/docs/ko/authentication#anthropic-profiles-and-federation-credentials",
+      "from": [
+        "llm-gateway-protocol"
+      ],
+      "status": "NOT_READ — 직접 교차 참조 목록화; 해당 문서 전체 미독"
+    },
+    {
+      "url": "https://code.claude.com/docs/ko/model-config#adjust-effort-level",
+      "from": [
+        "llm-gateway-protocol"
+      ],
+      "status": "SECTION — 매핑·custom picker·gateway context·기능 변수 관련 절; 페이지 전체 미독"
+    },
+    {
+      "url": "https://platform.claude.com/docs/en/build-with-claude/context-editing",
+      "from": [
+        "llm-gateway-protocol"
+      ],
+      "status": "NOT_READ — 직접 교차 참조 목록화; 해당 문서 전체 미독"
+    },
+    {
+      "url": "https://platform.claude.com/docs/en/build-with-claude/context-windows#context-window-sizes-by-model",
+      "from": [
+        "llm-gateway-protocol"
+      ],
+      "status": "NOT_READ — 직접 교차 참조 목록화; 해당 문서 전체 미독"
+    },
+    {
+      "url": "https://platform.claude.com/docs/en/build-with-claude/extended-thinking#interleaved-thinking",
+      "from": [
+        "llm-gateway-protocol"
+      ],
+      "status": "NOT_READ — 직접 교차 참조 목록화; 해당 문서 전체 미독"
+    },
+    {
+      "url": "https://platform.claude.com/docs/en/agents-and-tools/tool-use/overview",
+      "from": [
+        "llm-gateway-protocol"
+      ],
+      "status": "NOT_READ — 직접 교차 참조 목록화; 해당 문서 전체 미독"
+    },
+    {
+      "url": "https://platform.claude.com/docs/en/build-with-claude/effort",
+      "from": [
+        "llm-gateway-protocol"
+      ],
+      "status": "NOT_READ — 직접 교차 참조 목록화; 해당 문서 전체 미독"
+    },
+    {
+      "url": "https://platform.claude.com/docs/en/build-with-claude/structured-outputs",
+      "from": [
+        "llm-gateway-protocol"
+      ],
+      "status": "NOT_READ — 직접 교차 참조 목록화; 해당 문서 전체 미독"
+    },
+    {
+      "url": "https://code.claude.com/docs/ko/prompt-caching",
+      "from": [
+        "llm-gateway-protocol"
+      ],
+      "status": "SECTION — 이력·도구·모델·compact·resume 관련 절"
+    },
+    {
+      "url": "https://platform.claude.com/docs/en/build-with-claude/token-counting",
+      "from": [
+        "llm-gateway-protocol"
+      ],
+      "status": "NOT_READ — 직접 교차 참조 목록화; 해당 문서 전체 미독"
+    },
+    {
+      "url": "https://code.claude.com/docs/ko/amazon-bedrock#use-the-mantle-endpoint",
+      "from": [
+        "llm-gateway-protocol"
+      ],
+      "status": "NOT_READ — 직접 교차 참조 목록화; 해당 문서 전체 미독"
+    },
+    {
+      "url": "https://platform.claude.com/docs/en/build-with-claude/extended-thinking",
+      "from": [
+        "llm-gateway-protocol"
+      ],
+      "status": "NOT_READ — 직접 교차 참조 목록화; 해당 문서 전체 미독"
+    },
+    {
+      "url": "https://code.claude.com/docs/ko/mcp#scale-with-mcp-tool-search",
+      "from": [
+        "llm-gateway-protocol"
+      ],
+      "status": "NOT_READ — 직접 교차 참조 목록화; 해당 문서 전체 미독"
+    },
+    {
+      "url": "https://platform.claude.com/docs/en/api/beta-headers",
+      "from": [
+        "llm-gateway-protocol"
+      ],
+      "status": "NOT_READ — 직접 교차 참조 목록화; 해당 문서 전체 미독"
+    },
+    {
+      "url": "https://code.claude.com/docs/ko/llm-gateway-connect#turn-off-traffic-outside-the-gateway-path",
+      "from": [
+        "llm-gateway-protocol"
+      ],
+      "status": "FULL — 지정 문서 전체"
+    },
+    {
+      "url": "https://code.claude.com/docs/ko/settings-reference#availablemodels",
+      "from": [
+        "llm-gateway-protocol"
+      ],
+      "status": "NOT_READ — 직접 교차 참조 목록화; 해당 문서 전체 미독"
+    },
+    {
+      "url": "https://code.claude.com/docs/ko/model-config#work-with-fable",
+      "from": [
+        "llm-gateway-protocol"
+      ],
+      "status": "SECTION — 매핑·custom picker·gateway context·기능 변수 관련 절; 페이지 전체 미독"
+    },
+    {
+      "url": "https://platform.claude.com/docs/en/api/messages",
+      "from": [
+        "llm-gateway-protocol"
+      ],
+      "status": "NOT_READ — 직접 교차 참조 목록화; 해당 문서 전체 미독"
+    }
+  ]
+}

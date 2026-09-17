@@ -1,2 +1,0 @@
-BLOCKING: section "## 2. New file watcher" references syscall but carries no //go:build constraint or EXCL justification
-exit=0

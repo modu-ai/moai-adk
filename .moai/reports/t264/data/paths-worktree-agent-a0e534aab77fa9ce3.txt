@@ -1,5 +1,0 @@
-.claude/settings.json
-internal/template/agent_model_matcher_test.go
-internal/template/review_gate_registration_test.go
-internal/template/settings_test.go
-internal/template/templates/.claude/settings.json.tmpl

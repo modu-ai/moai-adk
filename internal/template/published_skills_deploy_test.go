@@ -38,8 +38,8 @@ func TestPublishedSkillsNamesMatchTree(t *testing.T) {
 			t.Errorf("publishedSkillNames carries %q with no committed directory under templates/.agents/skills/", name)
 		}
 	}
-	if len(seen) != 16 {
-		t.Errorf("committed published tree holds %d directories, want 16", len(seen))
+	if len(seen) != 17 {
+		t.Errorf("committed published tree holds %d directories, want 17", len(seen))
 	}
 }
 
@@ -88,9 +88,9 @@ func TestPublishedSkillInitDistribution(t *testing.T) {
 	}
 
 	commands := []string{"clean", "codemaps", "e2e", "feedback", "fix", "gate",
-		"goal", "harness", "loop", "mx", "plan", "project", "review", "run",
+		"goal", "gtd", "harness", "loop", "mx", "plan", "project", "review", "run",
 		"sync", "todo"}
-	if len(commands) != 16 {
+	if len(commands) != 17 {
 		t.Fatalf("fixture inventory drifted: %d commands", len(commands))
 	}
 	for _, cmd := range commands {

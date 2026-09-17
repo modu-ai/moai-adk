@@ -273,6 +273,15 @@ type LLMConfig struct {
 	// and unset select ordinary Claude policy. Historical "cg" remains readable
 	// as data, but launch requires explicit migration and never activates GLM.
 	TeamMode string `yaml:"team_mode"`
+	// Harness records the agent-harness selection resolved at init time
+	// (SPEC-INIT-HARNESS-001 REQ-IH-002): one of {claude, codex, both}. Init
+	// writes the resolved value explicitly on EVERY run — including the claude
+	// default — so doctor/update never have to infer a missing key as claude.
+	// A pre-SPEC project with no key reads as claude (the documented fallback);
+	// the key governs update re-deployment (REQ-IH-010) and doctor check
+	// scoping (REQ-IH-011). Note this is NOT llm.harness_agents — that map
+	// configures /moai:harness specialist generation and is unrelated.
+	Harness string `yaml:"harness"`
 	// Environment variable name for GLM API key
 	GLMEnvVar string `yaml:"glm_env_var"`
 	// ClaudeBin pins the Claude Code binary the launcher launches (issue

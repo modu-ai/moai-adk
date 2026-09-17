@@ -81,7 +81,7 @@ func TestUnifiedLaunch_FreshProfileNoticeEmittedExactlyOnce(t *testing.T) {
 		buf := fnCaptureStderr(t)
 		lpStubLaunch(t)
 
-		if err := unifiedLaunchWithGateway("fresh", "claude", nil, nil); err != nil {
+		if err := runUnifiedLaunch("fresh", "claude", nil); err != nil {
 			t.Fatalf("unifiedLaunch: %v", err)
 		}
 		if got := strings.Count(buf.String(), freshNoticeMarker); got != 1 {
@@ -96,7 +96,7 @@ func TestUnifiedLaunch_FreshProfileNoticeEmittedExactlyOnce(t *testing.T) {
 		buf := fnCaptureStderr(t)
 		_, gotProfile := lpStubLaunch(t)
 
-		if err := unifiedLaunchWithGateway("", "claude", nil, nil); err != nil {
+		if err := runUnifiedLaunch("", "claude", nil); err != nil {
 			t.Fatalf("unifiedLaunch: %v", err)
 		}
 		if *gotProfile != "fresh" {
@@ -116,7 +116,7 @@ func TestUnifiedLaunch_FreshProfileNoticeEmittedExactlyOnce(t *testing.T) {
 		buf := fnCaptureStderr(t)
 		lpStubLaunch(t)
 
-		if err := unifiedLaunchWithGateway("populated", "claude", nil, nil); err != nil {
+		if err := runUnifiedLaunch("populated", "claude", nil); err != nil {
 			t.Fatalf("unifiedLaunch: %v", err)
 		}
 		if got := strings.Count(buf.String(), freshNoticeMarker); got != 0 {
@@ -132,7 +132,7 @@ func TestUnifiedLaunch_FreshProfileNoticeEmittedExactlyOnce(t *testing.T) {
 		buf := fnCaptureStderr(t)
 		_, gotProfile := lpStubLaunch(t)
 
-		if err := unifiedLaunchWithGateway("", "claude", nil, nil); err != nil {
+		if err := runUnifiedLaunch("", "claude", nil); err != nil {
 			t.Fatalf("unifiedLaunch: %v", err)
 		}
 		if *gotProfile != "populated" {

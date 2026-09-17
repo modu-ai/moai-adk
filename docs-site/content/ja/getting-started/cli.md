@@ -66,7 +66,6 @@ moai init [project-name] [OPTIONS]
 | `--root <path>` | プロジェクトルートディレクトリ (デフォルト値: 現在のディレクトリ) |
 | `--git-mode <manual\|personal\|team>` | Git ワークフローモード (デフォルト値: manual) |
 | `--git-provider <github\|gitlab>` | Git プロバイダー |
-| `--project-mode <personal\|team>` | プロジェクトモード (デフォルト値: personal) |
 | `--enable-lsp` | LSP 連携の有効化 (デフォルト値: true) |
 | `--enforce-quality` | 品質ゲートの強制 (デフォルト値: true) |
 | `--enable-design` | デザインワークフローの有効化 (デフォルト値: true) |
@@ -85,7 +84,7 @@ cd my-existing-project
 moai init
 
 # 非対話型 (CI/CD)
-moai init --non-interactive --project-mode personal --model-policy medium
+moai init --non-interactive --model-policy medium
 ```
 
 詳しいウィザードステップは [初期設定](./init-wizard) ページを参照してください。

@@ -1,5 +1,0 @@
---- FAIL: TestProfileLeaseAndRelease (0.00s)
-    client_test.go:212: parallel profile accepted
-FAIL
-FAIL	github.com/modu-ai/moai-adk/internal/codexapp	0.393s
-FAIL

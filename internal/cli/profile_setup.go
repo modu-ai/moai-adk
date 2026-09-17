@@ -22,19 +22,37 @@ const (
 	defaultPermissionMode = "acceptEdits"
 )
 
-// acceptEditsConfirmationLine is the deterministic confirmation emitted by the
-// wizard when the user selects "acceptEdits" as permissionMode. REQ-CCI-006
-// requires the wizard to surface the empty-string normalization so the user
-// does not perceive the selection as a silent no-op. The anchor tokens
-// ("acceptEdits", "project default", "settings.local.json") are grep-stable
-// and asserted by TestEmitAcceptEditsConfirmationAnchor (AC-CCI-006).
+// acceptEditsConfirmationLine is the deterministic English confirmation emitted
+// by the wizard when the user selects "acceptEdits" as permissionMode.
+// REQ-CCI-006 requires the wizard to surface the empty-string normalization so
+// the user does not perceive the selection as a silent no-op. The anchor tokens
+// ("acceptEdits", "project default", "settings.local.json") are grep-stable and
+// asserted by TestEmitAcceptEditsConfirmationAnchor (AC-CCI-006).
 const acceptEditsConfirmationLine = "Note: \"acceptEdits\" is the project default, so no settings.local.json defaultMode override will be written."
 
-// emitAcceptEditsConfirmation writes the acceptEdits confirmation line to out.
-// Called from runProfileSetup immediately after the acceptEdits→"" normalization
-// so the user sees why nothing was persisted to settings.local.json.
-func emitAcceptEditsConfirmation(out io.Writer) {
-	_, _ = fmt.Fprintln(out, acceptEditsConfirmationLine)
+// acceptEditsConfirmationTexts localizes the acceptEdits confirmation line
+// (REQ-TRI-006, the M1 residual table's row 4 — the notice was English-fixed).
+// The grep anchor tokens "acceptEdits" and "settings.local.json" are preserved
+// VERBATIM in every locale so the REQ-CCI-006 anchor contract keeps passing on
+// the localized strings; "defaultMode" is a config key and stays untranslated
+// for the same reason.
+var acceptEditsConfirmationTexts = map[string]string{
+	"ko": "참고: \"acceptEdits\"는 프로젝트 기본값이므로 settings.local.json에 defaultMode 재정의를 기록하지 않습니다.",
+	"ja": "注意: \"acceptEdits\"はプロジェクトのデフォルトのため、settings.local.jsonにはdefaultModeの上書きを書き込みません。",
+	"zh": "注意: \"acceptEdits\"是项目默认值，因此不会向 settings.local.json 写入 defaultMode 覆盖。",
+}
+
+// emitAcceptEditsConfirmation writes the acceptEdits confirmation line to out
+// in the wizard's ending locale (unknown locales fall back to English).
+// Called from runProfileSetup immediately after the acceptEdits→""
+// normalization so the user sees why nothing was persisted to
+// settings.local.json.
+func emitAcceptEditsConfirmation(out io.Writer, locale string) {
+	txt, ok := acceptEditsConfirmationTexts[locale]
+	if !ok {
+		txt = acceptEditsConfirmationLine
+	}
+	_, _ = fmt.Fprintln(out, txt)
 }
 
 // normalizeModel maps a stored model id onto the alias form the picker
@@ -366,7 +384,7 @@ func runProfileSetup(cmd *cobra.Command, args []string) (err error) {
 	// selection is not perceived as a no-op (REQ-CCI-006).
 	if permissionMode == defaultPermissionMode {
 		permissionMode = ""
-		emitAcceptEditsConfirmation(cmd.OutOrStdout())
+		emitAcceptEditsConfirmation(cmd.OutOrStdout(), result.ConversationLang)
 	}
 
 	// Save preferences.

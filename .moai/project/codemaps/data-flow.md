@@ -5,6 +5,7 @@
 
 **측정 트리**: worktree `.claude/worktrees/t592`, 브랜치 `WT-home-state-rollout`, HEAD `e7bd89ee3`
 **측정**: 2026-09-10
+**부분 재측정**: worktree `.claude/worktrees/t688`, 브랜치 `WT-graph-stamp-freshness`, HEAD `c613b7c6b`, 2026-09-14 — § I codemaps freshness 게이트. 나머지 항목은 위 측정 트리의 값이며 이번에 다시 재지 않았습니다.
 
 ---
 
@@ -309,3 +310,43 @@ clean                                 live/indeterminate lease는 보존, provab
 
 SQLite 파일은 `0600`, 상위 HOME 디렉터리는 `0700` 경계를 유지합니다. 이 흐름은 코드상
 계약을 설명한 것이며, 실제 운영 backlog 이전이 실행됐다는 완료 표시는 아닙니다.
+
+---
+
+## I. codemaps freshness 게이트 — 비교 가능성을 먼저 판정한다
+
+`moai graph check`는 codemaps 층을 숫자로 판정하지만, 그 숫자는 **두 트리가 같은 이력 창에서
+비교 가능할 때만** 존재합니다. 판정은 값 계산 이전에 끝납니다.
+
+```
+.moai/project/codemaps/provenance.json   clean 스탬프 commit_sha (dirty면 content fingerprint)
+internal/graph/check.go                  checkCodemaps — 아래 순서를 위에서 아래로
+  1 verifyStampResolves                    git cat-file -e <sha>^{commit}
+      실패 → absent 운반체 + system error   "stamped commit not comparable"
+  2 codemapsBodyPresent                    git ls-files (추적 + --others) — provenance.json 제외
+      본문 없음 → absent + nil error        C1: 판정된 관측이지 실패한 측정이 아니다 (exit 1)
+  3 verifyStampAncestorOfHEAD              git merge-base --is-ancestor <sha> HEAD
+      비조상 → absent 운반체 + system error  "unreachable stamp … freshness unmeasured"
+  4 resolveContentAnchor                   본문이 마지막으로 실제 바뀐 지점
+  5 gitDiffNameList(anchor, described)     described-source-diff, 임계 40
+internal/cli/graph_check.go              0 전부 fresh · 1 stale/absent · 2 system error
+  writeUnreachableStampRecovery             3에서만 복구 안내를 붙인다
+.github/workflows/graph-freshness.yml    같은 조상성을 CI에서 이벤트별 대상으로 검사
+  push                 TARGET=HEAD
+  pull_request         TARGET=origin/<base_ref>
+  pull_request release/*  TARGET=HEAD (merge preview)
+```
+
+핵심은 **1과 3이 서로 다른 조건**이라는 점입니다. `git cat-file -e`는 커밋이 해석되는지만
+답하고, squash와 rebase는 내용을 보존하면서 원래 커밋을 HEAD 이력 밖으로 밀어냅니다. 객체
+존재를 조상성으로 대신 읽으면 그 간극을 가로지르는 diff가 숫자를 만들어내고, 성립한 적 없는
+창에 대한 값이 stale로 보고됩니다. 그래서 3에서 실패한 경로는 `Value`·`ContentAnchor`·
+`Contribution`·`DrivingPaths`를 하나도 채우지 않습니다.
+
+2가 3보다 앞에 있는 것도 의도된 순서입니다. 본문이 아예 없는 트리는 stale일 대상 자체가 없는
+**판정된 관측**이라 nil error/exit 1로 남고, 그 처분은 이 게이트가 바꾸지 않는 기존 계약입니다.
+반대로 1은 2보다 앞입니다 — 해석되지 않는 스탬프는 본문 상태와 무관하게 실패한 측정입니다.
+
+복구도 갈립니다. 1의 답은 이력(더 깊은 fetch)이고, 3의 답은 **본문 재생성 뒤 도달 가능한
+커밋으로 재스탬핑**입니다. 본문을 그대로 둔 맨손 재스탬프는 3을 통과시키지만 content anchor가
+움직이지 않아 값도 그대로입니다 — 그것이 anti-false-green 계약입니다.

@@ -1,3 +1,0 @@
-ok  	github.com/modu-ai/moai-adk/internal/cli	28.884s
-ok  	github.com/modu-ai/moai-adk/internal/cli/wizard	4.186s
-pty-exit=0

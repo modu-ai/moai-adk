@@ -1,3 +1,0 @@
-.claude/skills/moai/SKILL.md
-internal/template/catalog.yaml
-internal/template/templates/.claude/skills/moai/SKILL.md

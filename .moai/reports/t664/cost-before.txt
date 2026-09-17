@@ -1,4 +1,0 @@
-hook	.moai/reports/t664/baseline-hook.sh
-reps	3
-sec_per_detect_languages	0.319
-candidates	go,node,kotlin,cpp

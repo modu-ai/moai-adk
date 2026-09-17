@@ -1,3 +1,0 @@
-github.com/modu-ai/moai-adk/internal/cli/wizard/downgrade_confirm.go:30:	NewDowngradeConfirmForm		100.0%
-github.com/modu-ai/moai-adk/internal/cli/wizard/help_keymap.go:28:		localizedKeyMap			100.0%
-github.com/modu-ai/moai-adk/internal/cli/wizard/help_keymap.go:44:		keyMapBindings			100.0%

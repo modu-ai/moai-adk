@@ -26,6 +26,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/modu-ai/moai-adk/internal/config"
 	"github.com/modu-ai/moai-adk/internal/profile"
 	"github.com/modu-ai/moai-adk/internal/template"
 )
@@ -58,8 +59,9 @@ func writeLLMGLMYAML(t *testing.T, root, teamMode, prof, highModel string) {
 
 // renderAgentFMGLMBody renders GET /settings for the given root (same fake-seam
 // harness as renderAgentFMBody).
-func renderAgentFMGLMBody(t *testing.T, root string) string {
+func renderAgentFMGLMBody(t *testing.T, root, launchProvider string) string {
 	t.Helper()
+	t.Setenv(config.EnvMoaiLaunchProvider, launchProvider)
 	a := newApp(Config{ProjectRoot: root, ProfileName: "default"})
 	a.readPreferences = func(string) (profile.ProfilePreferences, error) {
 		return profile.ProfilePreferences{}, nil
@@ -90,7 +92,7 @@ func TestAgentFMGLMReasoningMapRendered(t *testing.T) {
 	seedAgentFMFile(t, root, "moai", "manager-spec", "opus", "high")
 	writeLLMGLMYAML(t, root, "glm", "medium", "glm-5.3")
 
-	body := renderAgentFMGLMBody(t, root)
+	body := renderAgentFMGLMBody(t, root, "")
 
 	// R1 — per-row reasoning states, with the canonical option-key tooltips.
 	// The chip carries data-glm-reasoning so the assertion discriminates the
@@ -137,7 +139,7 @@ func TestAgentFMGLMReasoningMapFlashPinsMax(t *testing.T) {
 	seedAgentFMFile(t, root, "moai", "manager-git", "sonnet", "low")
 	writeLLMGLMYAML(t, root, "glm", "medium", "")
 
-	body := renderAgentFMGLMBody(t, root)
+	body := renderAgentFMGLMBody(t, root, "")
 
 	if strings.Contains(body, `data-glm-reasoning="`+template.GLMStateLow+`"`) {
 		t.Error("flash session model still derives a low chip for a low-effort agent — the display disagrees with the max-only flash wire")
@@ -156,7 +158,7 @@ func TestAgentFMGLMReasoningMapHiddenUnderClaude(t *testing.T) {
 	seedAgentFMFile(t, root, "moai", "manager-git", "sonnet", "low")
 	writeLLMGLMYAML(t, root, "", "medium", "")
 
-	body := renderAgentFMGLMBody(t, root)
+	body := renderAgentFMGLMBody(t, root, "")
 
 	if strings.Contains(body, "data-i18n=\"agentfm.glmnote\"") {
 		t.Error("agentfm.glmnote rendered under a Claude backend — the note must be GLM-gated")

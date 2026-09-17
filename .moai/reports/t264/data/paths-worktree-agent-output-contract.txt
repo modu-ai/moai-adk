@@ -1,3 +1,0 @@
-.claude/agents/moai/manager-kanban.md
-internal/template/catalog.yaml
-internal/template/templates/.claude/agents/moai/manager-kanban.md

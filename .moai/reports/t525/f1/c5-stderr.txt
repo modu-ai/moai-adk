@@ -1,1 +1,0 @@
-cannot use --json and --sarif together

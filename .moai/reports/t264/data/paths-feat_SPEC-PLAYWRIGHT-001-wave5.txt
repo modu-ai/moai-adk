@@ -1,4 +1,0 @@
-internal/harness/webdetector.go
-internal/harness/webdetector_test.go
-internal/template/templates/.claude/agents/moai/evaluator-active.md
-internal/template/templates/.claude/skills/moai/workflows/run.md

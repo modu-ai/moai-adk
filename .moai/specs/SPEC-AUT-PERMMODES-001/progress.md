@@ -1,0 +1,170 @@
+# SPEC-AUT-PERMMODES-001 — Progress
+
+> Card t584. Evidence path for the dispatch: `.moai/specs/SPEC-AUT-PERMMODES-001/progress.md`.
+
+## §E.1 Plan-phase Audit-Ready Signal
+
+```yaml
+phase: plan
+spec: SPEC-AUT-PERMMODES-001
+card: t584
+tier: M
+artifacts: [spec.md, plan.md, acceptance.md]
+req_count: 10
+ac_count: 12
+id_regex_check: PASS
+owning_spec_of_amended_reqs: SPEC-AUTONOMY-TIERS-001 (REQ-006, REQ-007)
+defaultmode_verdict: "auto is a VALID CC defaultMode value (6-value enum, official docs fetched 2026-09-13); bundled IAM reference stale -> refreshed in-scope (REQ-007)"
+open_blockers: none
+```
+
+Plan-phase research notes (attributable):
+
+- SPEC ID regex check `SPEC-AUT-PERMMODES-001` → PASS (verbatim output in plan-phase session).
+- Official permission-modes table fetched 2026-09-13 from `https://code.claude.com/docs/en/permissions` (§ Permission modes): `default` (alias `manual`, CC v2.1.200+) / `acceptEdits` / `plan` / `auto` / `dontAsk` / `bypassPermissions`; kill switches `permissions.disableBypassPermissionsMode` + `permissions.disableAutoMode`.
+- Stale-reference evidence: `internal/template/templates/.claude/skills/moai-foundation-cc/reference/claude-code-iam-official.md:30-40` ("exactly four values", denies `auto`).
+- Downgrade path on this tree: `internal/config/autonomy_tiers.go` (`EffectiveTierWithGates`, `AppendDowngradeAdvisory`) + `internal/core/project/autonomy_bundle.go:75` (log sink `.moai/logs/autonomy-downgrade.log`).
+- Regression tests located: `internal/core/project/autonomy_bundle_test.go:89,115,138,158`; `internal/config/autonomy_tiers_toggle_test.go:57`; `internal/cli/init_autonomy_wiring_test.go:237`; `internal/cli/wizard/autonomy_test.go:49`.
+
+## §E.2 Run-phase Evidence
+
+### M1 — Token verification + version floor + scope finding (2026-09-13)
+
+**Scope finding (M1 EXIT GATE — verdict: NO blocker, proceed).** The moai autonomy bundle writes `defaultMode` to USER scope ONLY:
+
+- `internal/cli/init.go:863` calls `applyAutonomyTierBundleFn(opts.ProjectRoot, filepath.Join(homeDir, ".claude", "settings.json"), filepath.Join(opts.ProjectRoot, ".claude", "settings.json"), opts.AutonomyTier)` — `userSettingsPath` IS the USER-scope `~/.claude/settings.json`.
+- `internal/config/toolpolicy/tier_render.go:106` `WriteUserDefaultMode(userPath, defaultMode)` writes ONLY the USER file (fallback path).
+- `internal/config/toolpolicy/tier_render.go:55` `RenderTierPermissions` splits: defaultMode → USER scope; deny/ask → PROJECT scope with PROJECT defaultMode reset to "" (the AP-6 comment already records the PROJECT-scope silent-fail rule).
+
+Since the silent-ignore caveat below binds PROJECT scope (`.claude/settings.json` / `.claude/settings.local.json`) only, and `acceptEdits` applies from any scope, all three wizard values are effective at the scope moai actually writes. No blocker; M2 proceeds.
+
+**Official docs verification (fetched 2026-09-13, this run, `curl -sL https://code.claude.com/docs/en/permission-modes`, exit 0, 669472 bytes — quotes verbatim from the fetched page):**
+
+1. Scope caveat (load-bearing, verbatim): *"If you set `auto` in `.claude/settings.json` or `.claude/settings.local.json`, the value doesn't take effect, and Claude Code then uses the built-in default rather than a `defaultMode` from `~/.claude/settings.json`. If you set `bypassPermissions` in those two files, it doesn't take effect either, and the session starts in Manual mode. The other values apply from any settings file."*
+2. Version floors (verbatim): *"The built-in auto default requires Claude Code v2.1.228 or later on macOS, Linux, and WSL, and v2.1.233 or later on native Windows. On earlier versions, the built-in default is Manual."*
+3. `manual` alias (verbatim): *"The CLI accepts `manual` as an alias wherever you type the value ... The Manual label and the `manual` alias require Claude Code v2.1.200 or later."*
+4. Kill switch (verbatim): *"To remove auto mode so nobody can select it, set `permissions.disableAutoMode` to `\"disable\"` instead"* — settable in managed settings; recorded as Out-of-Scope context (no `EffectiveTierWithGates` wiring this card, per spec §D).
+5. Six-value enum confirmed on the page's own section list: default (Manual) / acceptEdits / plan / auto / dontAsk / bypassPermissions. Cloud-web note (context): *"Claude Code on the web does not honor `defaultMode: \"bypassPermissions\"` or `\"dontAsk\"` from your settings files ... ignored silently"* — terminal/CLI scope is unaffected; moai writes for terminal sessions.
+
+**Local CC build round-trip (M1 plan §F.1):** `claude --version` → `2.1.270 (Claude Code)` — ≥ both floors (v2.1.228/v2.1.200), so the local build reads `auto` from settings.
+
+**REQ-007 edit list (plan §F.M1.3) — `internal/template/templates/.claude/skills/moai-foundation-cc/reference/claude-code-iam-official.md` § Permission Modes:**
+
+- `:30` "accepts exactly four values" → six values (add `auto`, `dontAsk` rows).
+- `:40-41` "These are the only valid values. Earlier revisions listed `dontAsk` and `ignore` — those are not real Claude Code permission modes." → remove the `dontAsk` denial (now false), keep the note only for retired/illusory tokens.
+- Add kill-switch pair note (`disableBypassPermissionsMode` + `disableAutoMode`) + version floors (`manual` alias v2.1.200+; built-in auto default v2.1.228+/v2.1.233+ Windows) + the project-scope silent-ignore caveat.
+
+**Pre-flight baselines (this run, HEAD 162b6ef92):** `go build ./...` → BUILD_OK; `GOOS=windows GOARCH=amd64 go build ./...` → WIN_BUILD_OK; `golangci-lint run --timeout=2m ./internal/...` → 328 pre-existing issues (errcheck 296 / staticcheck 30 / unused 2), exit 0; affected-package tests (`./internal/cli/wizard/... ./internal/config/... ./internal/core/project/...`) all `ok`.
+
+### M2 — Question options + bundle mapping (2026-09-13, commit 1c30ff881)
+
+**RED evidence (E8, captured BEFORE the implementation fix, this run, tree @ e8deabc21):**
+
+`go test ./internal/config/ ./internal/core/project/ ./internal/cli/wizard/ -run 'TestTierDefaultMode|TestApplyAutonomyTierBundle_SemiAutoIsBoundedDelta|TestApplyAutonomyTierBundle_EmptyIsBoundedDelta|TestAutonomyTierQuestion_FullyAutonomousNotRecommended'` → exit 1, verbatim failures:
+
+```
+--- FAIL: TestTierDefaultMode_Mapping (0.00s)
+    autonomy_tiers_test.go:104: TierDefaultMode("semi-auto") = "default", want "acceptEdits"
+--- FAIL: TestApplyAutonomyTierBundle_SemiAutoIsBoundedDelta (0.00s)
+    autonomy_bundle_test.go:123: read .../home/.claude/settings.json: no such file or directory
+--- FAIL: TestApplyAutonomyTierBundle_EmptyIsBoundedDelta (0.00s)
+    autonomy_bundle_test.go:151: read .../home/.claude/settings.json: no such file or directory
+--- FAIL: TestAutonomyTierQuestion_FullyAutonomousNotRecommended (0.00s)
+    autonomy_test.go:66: option "semi-auto" label must carry the CC permission-mode vocabulary "Accept edits on" (REQ-001): "Semi-auto (Recommended)"
+    autonomy_test.go:66: option "automatic" label must carry the CC permission-mode vocabulary "Auto mode" (REQ-001): "Automatic"
+    autonomy_test.go:66: option "fully-autonomous" label must carry the CC permission-mode vocabulary "Bypass permissions" (REQ-001): "Fully-autonomous"
+```
+
+`go test ./internal/cli/ -run 'TestRunInit_SemiAutoAndEmptyAreBoundedDelta' -count=1` → exit 1, verbatim:
+
+```
+--- FAIL: TestRunInit_SemiAutoAndEmptyAreBoundedDelta (1.06s)
+    init_autonomy_wiring_test.go:214: empty selection must write USER settings.json (bounded delta requires the defaultMode record); got no file
+    init_autonomy_wiring_test.go:214: semi-auto selection must write USER settings.json (bounded delta requires the defaultMode record); got no file
+```
+
+Full verbatim outputs preserved at `.moai/state/verify/t584/t584-red-part1.txt` and `t584-red-part2.txt`. One extra RED surface surfaced during GREEN: `TestInitRegroup_SecondGroupGolden` (wizard golden) pinned the old labels — regenerated with `-update-golden` (diff shows exactly the intended re-render; 6 lines changed).
+
+**GREEN evidence (this run, tree @ 1c30ff881):**
+
+- `go test ./internal/cli/wizard/... ./internal/config/... ./internal/core/project/...` → exit 0 (all `ok`); evidence: `.moai/state/verify/t584/t584-green-part1b.txt`.
+- `go test ./internal/cli/ -run 'TestRunInit_|TestApplyAutonomy|TestInitFlag|AutonomyTier|Autonomy' -count=1 -timeout 10m` → exit 0, `ok github.com/modu-ai/moai-adk/internal/cli 20.989s`; evidence: `.moai/state/verify/t584/t584-green-cli-targeted.txt`.
+
+**E2 builds (post-change, tree @ 1c30ff881):** `go build ./...` → exit 0; `GOOS=windows GOARCH=amd64 go build ./...` → exit 0.
+
+**AC-011 real-binary evidence:** `./bin/moai init --help` (binary from `make build` @ this tree, Commit=e8deabc21 build-time stamp, source content = M2 tree) prints verbatim:
+
+```
+--autonomy-tier          Session permission mode: accept edits on (semi-auto, default), auto mode (automatic), or bypass permissions (fully-autonomous; requires sandbox proof). Writes user-scope defaultMode: acceptEdits for the default
+```
+
+**AC-012 real go doc evidence:** `go doc -all ./internal/config` shows `TierDefaultMode` godoc stating the new mapping (`semi-auto → "acceptEdits"` / `automatic → "auto"` / `fully-autonomous → "bypassPermissions"` + unknown→`"default"` MOST-restrictive fail-safe); `go doc -all ./internal/core/project` shows `ApplyAutonomyTierBundle` godoc stating the re-scoped REQ-004 bounded-delta invariant. (Both quoted in full above the commit; captured this run.)
+
+**REQ-007 / make build evidence:** `make build` → exit 0 (`catalog.yaml updated successfully (12899 bytes)`); binary embed check: `strings bin/moai | grep -c "accepts six values"` → 1; `grep -c "exactly four values"` → 0.
+
+**E5 lint (changed packages):** `golangci-lint run --timeout=2m ./internal/cli/... ./internal/config/... ./internal/core/project/...` → 38 issues (errcheck 36 / staticcheck 2), ALL pre-existing: zero findings name any file changed by this card (checked by grep against the changed-file list; evidence `.moai/state/verify/t584/t584-lint.txt`).
+
+**E4 subagent-boundary grep:** `git diff --name-only | grep '\.go$' | xargs grep -n 'AskUserQuestion\|mcp__askuser' | grep -v "_test.go" | grep -v "// "` → no output (0 matches in changed files). The package-wide grep hits are pre-existing guidance text in untouched files (`harness.go`, `pr_watch_cmd.go`, `agentlint/`, `harness/`).
+
+**E3 coverage:** `go test -cover ./internal/cli/wizard/ ./internal/config/ ./internal/core/project/` → wizard 93.6% / config 82.0% / core/project 88.8%. Touched-code coverage (`go tool cover -func`, config package): every `autonomy_tiers.go` function 100% except `AppendDowngradeAdvisory` 72.7% (pre-existing error-branch shape, untouched). Gap: the config PACKAGE figure 82.0% sits below the 85% target and was NOT measured at baseline in this run — the delta attribution (pre-existing vs new) is unmeasured; the card's config diff touches only `TierDefaultMode` (100% covered) and doc comments.
+
+**Downgrade advisory (plan §E5):** `TestRunInit_FlagFullyAutonomousWithoutProofDowngrades` green in the targeted run — the advisory still lands in `.moai/logs/autonomy-downgrade.log` naming the fully-autonomous→automatic downgrade.
+
+**M3 full-package verdict (internal/cli, this run):** `go test ./internal/cli/ -count=1 -timeout 35m` → `ok github.com/modu-ai/moai-adk/internal/cli 1262.131s`, wrapper exit 0; evidence exported to `.moai/state/verify/t584/t584-green-cli-full.txt`. Attribution caveat: the run launched at 18:36 against the tree as of commit 1c30ff881 and compiled its test binary before the subsequent comment-only edit to `internal/config/autonomy_tiers.go` landed (doc comment re-scope, zero behavior delta; that file's package re-verified green separately at `t584-config-postfix.txt`, exit 0, 2.830s).
+
+## §F Phase 4 Mode Selection
+
+- Input parameters: tier M · scope ~8-10 files (wizard questions/translations, config tiers, core/project bundle, cli init flag help, IAM reference doc) · domains 4 (Go cli, Go config, Go core, template docs) · language mix Go + markdown · concurrency benefit LOW (coding-heavy) · Agent Teams prereqs: not requested.
+- Mode evaluation: direct — not selected (multi-file, semantic change); fanout — not selected (coding-heavy, Anthropic caveat); sweep — not selected (not mechanical-uniform); agent-team — not requested.
+- Decision: **serial** (one manager-develop milestone spawn at a time).
+- Justification: coding-heavy work on interdependent surfaces (question options → bundle mapping → tests); sequential milestone spawns preserve ownership boundaries and keep verification evidence attributable per milestone. Kickoff approval: PASSED (operator approval 2026-09-13, relayed by lead). M1 (CC `auto` version-floor verification) is a hard predecessor of M2 per plan §F; a contradicting M1 finding returns as a blocker, not a workaround.
+
+## §E.3 Run-phase Audit-Ready Signal
+
+```yaml
+run_complete_at: 2026-09-14
+run_commit_sha: 1c30ff881  # M2 mapping+labels commit (M1 e8deabc21, M3 signal commit follows)
+run_status: complete
+ac_pass_count: 12
+ac_fail_count: 0
+preserve_list_post_run_count: 5  # REQ-006 downgrade regression set: FullyAutonomousDowngradedWithoutProof, FullyAutonomousWithProofDeploysBypass, FlagFullyAutonomousWithoutProofDowngrades, AppendDowngradeAdvisory, FullyAutonomousNotRecommended — all green, zero-delta trio re-scoped (not deleted)
+l44_pre_commit_fetch: not-run  # worktree card on WT-autonomy-perm-modes; lead ordered base refresh via local develop merge instead
+l44_post_push_fetch: not-run  # lanes never push (git-flow 2026-09-02)
+new_warnings_or_lints_introduced: 0  # E5: 38 findings in changed packages are all pre-existing; zero name changed files
+cross_platform_build:
+  darwin_arm64: pass  # go build ./... exit 0 (pre-flight + post-change)
+  windows_amd64: pass  # GOOS=windows GOARCH=amd64 go build ./... exit 0
+total_run_phase_files: 14  # 12 code/test/doc files + spec.md frontmatter + progress.md
+m1_to_mN_commit_strategy: per-milestone (M1 e8deabc21 evidence+status flip; M2 1c30ff881 mapping+labels+tests atomic with RED captured pre-fix; M3 signal+comment re-scope)
+m1_scope_finding: "NO blocker — bundle writes defaultMode to USER scope only (init.go:863 userSettingsPath=~/.claude/settings.json; tier_render.go); project-scope silent-ignore caveat does not apply"
+coverage_note: "wizard 93.6% / core/project 88.8% / config 82.0% (package figure below 85% target; touched functions 100% — TierDefaultMode; config package baseline not measured this run = Gap)"
+gaps:
+  - config package-level coverage baseline not measured (delta attribution pre-existing vs new unmeasured)
+  - full internal/cli run compiled before the M3 comment-only edit (doc comment; config package re-verified separately)
+  - AC-011 verified from bin/moai built via make build (real --help), not from ~/go/bin installed binary
+```
+
+## §E.4 Sync-phase Audit-Ready Signal
+
+```yaml
+sync_complete_at: 2026-09-14
+sync_commit_sha: 07eed817c  # resolved sync commit (backfilled per D3 placeholder exemption; full SHA 07eed817c…)
+sync_status: complete
+b12_self_test_a_duplicate_grep: 0  # grep -c 'SPEC-AUT-PERMMODES-001' CHANGELOG.md → 0 before emission
+b12_self_test_b_ac_count: 12  # acceptance.md distinct AC ids = 12; matches run-phase ac_pass 12
+b12_self_test_c_file_paths: pass  # CHANGELOG.md, README.md, README.ko.md, spec paths verified via ls/wc
+changelog_entry_position: CHANGELOG.md §[Unreleased] → ### Changed (first bullet)
+frontmatter_status_transitions:
+  in_progress_to_implemented: merged into sync commit
+  implemented_to_completed: merged into sync commit  # single sync-commit close per 3-phase close doctrine
+canary_compliance_check:
+  mx_tag_validation: not-applicable-code-change-none  # sync phase changed markdown/SPEC artifacts only; run-phase MX state carried from §E.3
+  docs_sync_decision: "CHANGELOG entry emitted (user-facing wizard labels + acceptEdits written default). README.md/README.ko.md: no edit needed — neither documents the init wizard autonomy-tier question (README.md:180 'Autonomy' refers to /moai goal, unrelated). docs-site getting-started/init-wizard pages: out of this dispatch's scope (separate docs-site tree); reported as a finding, not edited."
+evidence_paths:
+  - .moai/state/verify/t584/  # run-phase exported evidence (untouched this phase)
+  - .moai/reports/t584/plan-audit.md, plan-audit-iter2.md  # plan-phase artifacts (untouched)
+gaps:
+  - sync_commit_sha backfill NOT yet verified inside this commit (self-referential; resolved in the follow-up backfill commit)
+  - docs-site init-wizard page currency vs the new labels NOT read this phase (separate tree; finding only)
+  - full Go suites NOT re-run in sync phase per dispatch scope (run-phase evidence at §E.2/§E.3 stands)
+```

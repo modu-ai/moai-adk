@@ -1,2 +1,0 @@
-ac026-template-qgc-args.md:1
-ac026-template-qgc-flags.md:2

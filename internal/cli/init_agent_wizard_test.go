@@ -63,7 +63,7 @@ func assertCodexArtifacts(t *testing.T, projectDir string, want bool) {
 // selection reaching the switch, the default provisions and the announcement
 // appears.
 func TestRunInit_WizardCodexReachesBothConsumers(t *testing.T) {
-	wiz := &wizard.WizardResult{AgentWiring: "codex"}
+	wiz := &wizard.WizardResult{AgentWiring: "gpt"}
 	homeDir := t.TempDir()
 	t.Setenv("HOME", homeDir)
 	t.Setenv("MOAI_SANDBOX_PROOF", "")
@@ -85,7 +85,7 @@ func TestRunInit_WizardCodexReachesBothConsumers(t *testing.T) {
 // selection's favour (spec.md §4 D2), and the moai MCP server is still
 // registered for the user, through .codex/config.toml rather than .mcp.json.
 func TestRunInit_WizardCodexDeclinesMCPProvisioning(t *testing.T) {
-	wiz := &wizard.WizardResult{AgentWiring: "codex"}
+	wiz := &wizard.WizardResult{AgentWiring: "gpt"}
 	homeDir := t.TempDir()
 	t.Setenv("HOME", homeDir)
 	t.Setenv("MOAI_SANDBOX_PROOF", "")
@@ -115,7 +115,7 @@ func TestRunInit_WizardCodexDeclinesMCPProvisioning(t *testing.T) {
 // TestResolveAgentWiringWithWizard_PrecedenceTable. This row is the end-to-end
 // companion, not the binding evidence.
 func TestRunInit_FlagClaudeBeatsWizardCodex(t *testing.T) {
-	wiz := &wizard.WizardResult{AgentWiring: "codex"}
+	wiz := &wizard.WizardResult{AgentWiring: "gpt"}
 	homeDir := t.TempDir()
 	t.Setenv("HOME", homeDir)
 	t.Setenv("MOAI_SANDBOX_PROOF", "")
@@ -137,7 +137,7 @@ func TestRunInit_FlagClaudeBeatsWizardCodex(t *testing.T) {
 // question is gone, SPEC-INIT-QUIET-WIZARD-001); the row now observes that the
 // codex wizard answer does not win over the flag.
 func TestRunInit_FlagBothBeatsWizardCodexAndForcesProvisioning(t *testing.T) {
-	wiz := &wizard.WizardResult{AgentWiring: "codex"}
+	wiz := &wizard.WizardResult{AgentWiring: "gpt"}
 	homeDir := t.TempDir()
 	t.Setenv("HOME", homeDir)
 	t.Setenv("MOAI_SANDBOX_PROOF", "")

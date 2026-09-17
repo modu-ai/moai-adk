@@ -48,13 +48,21 @@ const factoryUnsupportedBackendSentinel = "FACTORY_MODE_UNSUPPORTED_BACKEND"
 const (
 	factoryFlagLong  = "--factory"
 	factoryFlagShort = "-f"
+
+	// factoryAgentRoleToken is the `-f agent` role value: join the running
+	// factory as an agent lane (operator goal 2026-09-16 decision — the
+	// symmetric form across cc/glm/codex launchers).
+	factoryAgentRoleToken = "agent"
 )
 
 // factoryFlagUsageError names every accepted -f shape. It is the error text
 // for an invalid SUPPLIED value and the reference the help texts paraphrase.
-const factoryFlagUsageError = "-f/--factory takes a lane count of 1 or more (e.g. -f 4), " +
-	"a lane label (e.g. -f lane-2) that launches exactly that one lane, " +
-	"or no argument for the one-lane factory default"
+// The numeric lane-count form was REMOVED (operator goal 2026-09-16: N is
+// unnecessary — lanes join via the role token) and `agent` was ADDED as the
+// role token for joining a running factory as an agent lane.
+const factoryFlagUsageError = "-f/--factory takes no argument (the factory lead), " +
+	"the agent role token (e.g. -f agent) that joins this session to a running factory as an agent lane, " +
+	"or a lane label (e.g. -f lane-2) that launches exactly that one lane"
 
 // factoryFlagParse is the -f/--factory entry parse (t118). ONE flag token,
 // three shapes:
@@ -71,8 +79,9 @@ const factoryFlagUsageError = "-f/--factory takes a lane count of 1 or more (e.g
 // silently fall into, and hiding the typo would be worse than naming it.
 type factoryFlagParse struct {
 	Enabled      bool     // -f present (any shape)
-	Workers      int      // the explicit count; 0 when omitted or lane-form
+	Workers      int      // always 0 post-N-removal; kept for the merge contract
 	WorkerNumber int      // n of `-f lane-<n>`; 0 unless the lane form
+	AgentRole    bool     // `-f agent`: join a running factory as an agent lane
 	Rest         []string // args with -f and its consumed value removed
 }
 
@@ -113,11 +122,8 @@ func parseFactoryFlag(args []string) (p factoryFlagParse, err error) {
 		if !hasValue {
 			continue
 		}
-		if n, perr := strconv.Atoi(value); perr == nil {
-			if n < 1 {
-				return p, fmt.Errorf("%s, got %q", factoryFlagUsageError, value)
-			}
-			p.Workers = n
+		if value == factoryAgentRoleToken {
+			p.AgentRole = true
 			continue
 		}
 		if n, ok := kanban.SplitFactoryLaneLabel(value); ok {
@@ -167,24 +173,28 @@ func parseLauncherEntry(args []string) (kanbanEntryParse, error) {
 
 	entry.FactoryEnabled = true
 	// The stripped args always become the launch args — for every -f shape,
-	// not only the lane form below. (The lane form appends its desugared
-	// --name on top of these.)
+	// not only the lane form below. (The lane and agent forms append their
+	// desugared --name on top of these.)
 	entry.Rest = fp.Rest
 	switch {
+	case fp.AgentRole:
+		if operatorSuppliedName(fp.Rest) {
+			return entry, fmt.Errorf("-f agent already names the role; drop the --name/-n flag (got args %v)", fp.Rest)
+		}
+		// Desugar into the next free agent label: the registry numbers agent
+		// lanes exactly as it numbers lane-<n>, so the bump/liveness rules
+		// and the lead's dispatch address stay one implementation.
+		next := kanban.NextFactoryAgentNumber(loadFactoryRegistry(factoryRegistryPath(launchProjectRoot())), factoryProcessAlive)
+		entry.Rest = append(entry.Rest, nameFlagLong, kanban.FactoryAgentLabel(next))
 	case fp.WorkerNumber > 0:
 		if operatorSuppliedName(fp.Rest) {
 			return entry, fmt.Errorf("-f lane-<n> already names the lane; drop the --name/-n flag (got args %v)", fp.Rest)
 		}
 		entry.Rest = append(entry.Rest, nameFlagLong, kanban.FactoryLaneLabel(fp.WorkerNumber))
-	case fp.Workers > 0:
-		entry.FactoryWorkers = fp.Workers
 	default:
-		// Bare -f with no lane-shape --name: the one-lane lead default.
-		// With a lane-shape --name and no count (the -k-style combo), the
-		// count is 0 (unknown) — same honesty as the -f lane-<n> form.
-		if _, isLane := parseFactoryLaneLabel(fp.Rest); !isLane {
-			entry.FactoryWorkers = config.DefaultFactoryLeadWorkers
-		}
+		// Bare -f: the factory lead. Lanes join via -f agent / -f lane-<n>;
+		// the numeric count form is retired (operator goal 2026-09-16).
+		entry.FactoryWorkers = config.DefaultFactoryLeadWorkers
 	}
 	return entry, nil
 }
@@ -218,15 +228,20 @@ func resolveFactoryBranch(factoryEnabled, isLane bool) factoryBranch {
 	}
 }
 
-// parseFactoryLaneLabel reports the `lane-<n>` label in args, if any.
-// It matches only the lane SHAPE (kanban.SplitFactoryLaneLabel), for the
-// same reason parseCompanionLabel matches only the companion shape: treating
-// every named session as a lane would silently change launch behavior for
-// unrelated work.
+// parseFactoryLaneLabel reports the `lane-<n>` OR `agent-<n>` label in
+// args, if any — both are worker shapes post-`-f agent` (the desugared name
+// flows through the same --name channel the incremental lane form uses).
+// It matches only the worker SHAPES (kanban.SplitFactoryLaneLabel /
+// kanban.SplitFactoryAgentLabel), for the same reason parseCompanionLabel
+// matches only the companion shape: treating every named session as a
+// worker would silently change launch behavior for unrelated work.
 func parseFactoryLaneLabel(args []string) (label string, ok bool) {
 	return parseNamedLabel(args, func(candidate string) bool {
-		_, isLane := kanban.SplitFactoryLaneLabel(candidate)
-		return isLane
+		if _, isLane := kanban.SplitFactoryLaneLabel(candidate); isLane {
+			return true
+		}
+		_, isAgent := kanban.SplitFactoryAgentLabel(candidate)
+		return isAgent
 	})
 }
 

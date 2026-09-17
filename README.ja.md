@@ -77,16 +77,18 @@ moai cc -f lane-1             # レーン 1 本、各自別ターミナルで
 moai glm -f lane-3            # …GLM バックエンドのレーンも同じ形
 ```
 
-レーンは `moai cc -f lane-<n>` で 1 本ずつ増やす。この形はレーン名を既に決めているので、`--name`/`-n` を併せて渡すとエラーになる。番号は生きているセッションが握っているものだけを飛ばす — 死んだレーンの番号は解放され、また使われる。レーンの所有権は `~/.moai/db/<project-key>/factory/factory.db` に記録される。従来の `.moai/state/factory/workers.json` は一度だけ取り込まれ、ロールバック用の証跡として残る。1 本のレーンは最大 10 個の `Agent()` サブエージェントを同時に走らせ、書き込みを担うスポーンはそれぞれの worktree に隔離される。レーンを一度に全部立ち上げてはいけない — まず最初の 1 本を上げ、実際に出力が出ているのを確かめてから残りを活性化する。カードがレーンをまたいで分割されることはない。`-k` は 3 役割のカンバンチェーンを回すトークンのままで、1 回の起動に進入トークンは 1 つだけだから `-k` と `-f` の併用はエラーになる。廃止された `moai cg` は移行案内を表示して終了する。
+レーンは `moai cc -f lane-<n>` で 1 本ずつ増やす。この形はレーン名を既に決めているので、`--name`/`-n` を併せて渡すとエラーになる。番号は生きているセッションが握っているものだけを飛ばす — 死んだレーンの番号は解放され、また使われる。レーンの所有権は `~/.moai/db/<project-key>/factory/factory.db` に記録される。起点ディレクトリが一時ディレクトリなら（絶対 `MOAI_HOME` オーバーライドなし）プロジェクトローカルの `<base>/.moai/db/<project-key>/factory/` の下に記録される — バックログキューと同じ例外だ。従来の `.moai/state/factory/workers.json` は一度だけ取り込まれ、ロールバック用の証跡として残る。1 本のレーンは最大 10 個の `Agent()` サブエージェントを同時に走らせ、書き込みを担うスポーンはそれぞれの worktree に隔離される。レーンを一度に全部立ち上げてはいけない — まず最初の 1 本を上げ、実際に出力が出ているのを確かめてから残りを活性化する。カードがレーンをまたいで分割されることはない。`-k` は 3 役割のカンバンチェーンを回すトークンのままで、1 回の起動に進入トークンは 1 つだけだから `-k` と `-f` の併用はエラーになる。廃止された `moai cg` は移行案内を表示して終了する。
 
 > 詳しくは: [カンバンモード — ファクトリーモード](https://adk.mo.ai.kr/ja/advanced/kanban-mode)
 
 ボードは `backlog → plan → run → sync → done` の 5 列である。`backlog` には意図的に担当セッションを置かない。だから仕事は人が入れたときだけボードに入る。
 
 ```text
-/moai todo "rename のヒントが古い"   # カード追加
-/moai todo                          # キュー確認
+/moai gtd "rename のヒントが古い"   # カード追加
+/moai gtd                          # キュー確認
 ```
+
+`/moai gtd` が正式なタスク管理入口です。`/moai todo` は同じ SQLite キュー、カード ID、並び順、アーカイブ・復元動作を使う互換名として残ります。`moai gtd capture|clarify|organize|reflect|engage` は、承認済みの仕事が従来の `backlog → plan → run → sync → done` 開発フローへ入る前に Capture → Clarify → Organize → Reflect → Engage を実際の SQLite 状態として引き継ぎます。操作 receipt と実状態の再確認が、中断後の発行・選択・配車の重複を防ぎます。
 
 ボードを正直に保つルールが 2 つある。リードはカードの `progress.md` を**自分で読んだ証拠だけで**カードを進める — コンパニオンの返信では進めない。返信は観測ではなく主張であり、セッション間の配信は保証されないからだ。そしてフェーズが終わると、リードは当該セッションの `/clear` を依頼する。`/clear` は人が直接打つコマンドなので、指示としては送れない。
 
@@ -287,6 +289,27 @@ cd my-project
 
 対話式ウィザードが言語・フレームワーク・方法論を自動検出し、モデル方針を選んだうえで Claude Code 統合ファイルまで生成する。
 
+#### エージェントハーネスの選択
+
+ウィザードは、プロジェクトにデプロイして接続するエージェントハーネスを尋ねます。`--llm` フラグで非対話的に同じ選択ができます:
+
+| 選択 | プロジェクトルートに生成されるもの |
+|---|---|
+| `claude` (デフォルト) | `.claude/` サーフェス全体と `AGENTS.md` — 従来のデフォルト動作 |
+| `gpt` | Codex のみのデプロイ: `AGENTS.md` と Codex サーフェス（`.codex/`、`.agents/skills/`、`.moai/`）のみ。`.claude/` ツリー、`CLAUDE.md`、`.mcp.json` は生成されません。Claude 専用ランタイム機能（AskUserQuestion、サブエージェント、output style、スラッシュコマンド、Workflow スクリプト）は利用できません |
+| `both` | `claude` デプロイに `.codex/` 接続を追加。`.mcp.json` のプロビジョニングは強制有効化されます |
+
+
+> **GPT ゲートウェイの撤回（2026-09-16）。** 内蔵トランスレーションゲートウェイで GPT モデルを
+> Claude Code に載せていた旧 `moai gpt` ランチャーは削除されました。GPT モデルはネイティブハーネスの
+> `moai codex`（Codex CLI）から利用してください。上記の `--llm gpt` init 値には影響しません —
+> 撤回されたランチャーではなく、Codex 専用デプロイを選ぶ値です。
+```bash
+moai init my-project --llm gpt   # Codex のみのプロジェクト
+```
+
+この選択が存在する前に初期化されたプロジェクトには `llm.harness` キーがなく、update でも claude の動作を保ちます — 移行作業は不要です。
+
 ### 最初のワークフロー
 
 ```bash
@@ -338,13 +361,17 @@ claude        # または moai cc — プロジェクト内で Claude Code を�
 
 すべてのバックエンドは fail-open だ — GLM（`~/.moai/.env.glm`）と codex（`~/.codex/auth.json`）はオプションであり、利用不能なバックエンドは `inconclusive` を返すだけで hard error ではない。
 
-Codex を有効にしたハーネス（`moai init --llm codex|both`）では、Codexのステータスラインは組み込み識別子配列（`tui.status_line`）のみをサポートするため、goal・todo・SPEC状態のような MoAI 固有の項目は表示できない — コマンドベースのステータスラインをサポートする openai/codex#17827 が解決されるまでの制限である。
+Codex を有効にしたハーネス（`moai init --llm gpt|both`）では、Codexのステータスラインは組み込み識別子配列（`tui.status_line`）のみをサポートするため、goal・todo・SPEC状態のような MoAI 固有の項目は表示できない — コマンドベースのステータスラインをサポートする openai/codex#17827 が解決されるまでの制限である。
 
 > 詳しくは: [MCP サーバー・ガイド](https://adk.mo.ai.kr/ja/guides/mcp-server) · [Claude Code MCP](https://adk.mo.ai.kr/ja/claude-code/extensibility/mcp)
 
 ### ゴール・エンジン — 本物の境界を持つ自律ループ
 
 完了条件を宣言すると、セッションは条件が満たされるまで自力で作業する。ターン上限、停滞ガード、実時間予算、事前承認ゲートが付いており、無限ループに陥らない。機械的条件（コマンドの終了コード）とモデル条件（対話記録の主張）を併用できる。`--max-turns 0` で auto-compact 駆動の無限ゴールを武装することもできる — その場合は `--max-duration` と停滞ガードが境界を作る。
+
+`moai goal --auto "<ミッション>"` は別の `mission_mode=auto` 草案を作り、`approve` が範囲・行為・根拠・上限を一度封印します。その後は `run`、`status`、`revoke`、ポリシー制約付き `resume` が保存契約を使います。`super-advisor` は非拘束の助言者で、読み取り専用 `mission-governor` が構造化判断を作り、決定論的 owner adapter が receipt 付きキュー・配車、明示パスのコミット、lease 付き local develop `--no-ff` マージを実行します。持続実行能力が実プロバイダーで確認されなければ `active-session-only` に下がり、リモート push・PR・マージ完了はまだ実証されていません。[GTD と auto ミッションの案内](https://adk.mo.ai.kr/ja/utility-commands/moai-gtd)
+
+最終実行境界はさらに厳格です。`run --supervise` は publish→pick→lease 付きディスク配車→commit→local develop `--no-ff` を有限実行します。監督下の Git 効果には分離した `--card-worktree` と `--develop-worktree` が必要で、従来の `--repo` だけでは効果は 0 件です。完了には true と判定された typed evidence とマージ ancestry を封印した `0600` `--completion-receipt` も必要で、行為リストの消化だけでは完了しません。完了状態の再実行も効果 0 件です。`--recommend` は権限を与えず、各効果にはリポジトリ内 `0600` governor receipt と独立監査 PASS receipt の両方が必要です。未構成の remote/release provider は成功を装わず `provider_unsupported` を返します。
 
 ### 並行 worktree
 
@@ -716,7 +743,7 @@ Claude の各ティアは `ANTHROPIC_DEFAULT_*_MODEL` 環境変数を通じて G
 | [はじめに](https://adk.mo.ai.kr/ja/getting-started) | 紹介 · インストール · Windows ガイド · init ウィザード · クイックスタート · CLI 概要 · FAQ |
 | [基本概念](https://adk.mo.ai.kr/ja/core-concepts) | アイデンティティ · 憲法 · ハーネス・エンジニアリング · SPEC ベース開発 · DDD · TRUST 5 |
 | [ワークフロー・コマンド](https://adk.mo.ai.kr/ja/workflow-commands) | `plan` · `run` · `sync` — SPEC パイプラインの主軸 |
-| [ユーティリティ・コマンド](https://adk.mo.ai.kr/ja/utility-commands) | `fix` · `loop` · `gate` · `review` · `clean` · `codemaps` · `e2e` · `feedback` · `goal` · `todo` |
+| [ユーティリティ・コマンド](https://adk.mo.ai.kr/ja/utility-commands) | `fix` · `loop` · `gate` · `review` · `clean` · `codemaps` · `e2e` · `feedback` · `goal` · `gtd` (`todo` 互換) |
 | [CLI リファレンス](https://adk.mo.ai.kr/ja/cli-reference) | ターミナル `moai` バイナリのすべてのコマンド (全 49 個) |
 | [Claude Code ガイド](https://adk.mo.ai.kr/ja/claude-code) | Claude Code 統合 — 基礎 · コンテキスト/メモリ · エージェンティック · 拡張性 |
 | [Multi-LLM](https://adk.mo.ai.kr/ja/multi-llm) | CG の移行とモデル方針 |

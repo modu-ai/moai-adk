@@ -142,8 +142,6 @@ moai init my-project
   Team - Multi-developer setup
 ```
 
-该设置保存到 `.moai/config/sections/project.yaml` 的 `project.mode` 字段。
-
 ### design workflow
 
 选择是否启用 MoAI 设计流水线与 Claude Design 联动。
@@ -160,7 +158,6 @@ moai init my-project
 ```bash
 moai init my-project \
   --non-interactive \
-  --project-mode personal \
   --profile medium \
   --enable-lsp=false \
   --enforce-quality

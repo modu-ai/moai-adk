@@ -1,0 +1,13 @@
+{
+  "sitemap_pages": 21,
+  "mapped_pages": 21,
+  "codex_base_models": 10,
+  "kimi_public_ids": 5,
+  "grok_models": 3,
+  "opencode_models": 36,
+  "opencode_protocols": {
+    "ChatCompletions": 23,
+    "Messages": 9,
+    "Responses": 4
+  }
+}
