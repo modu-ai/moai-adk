@@ -64,3 +64,21 @@ and AC-SGV-008; the 계기 observer contract is encoded as the M1 positive contr
 ## §E.4 Sync-phase Audit-Ready Signal
 
 (manager-docs — to be populated at sync close; `sync_commit_sha:` pending-backfill until then)
+
+## §F Phase 4 Mode Selection
+
+Logged by the lane orchestrator (lane-4) before the first run-phase Agent() spawn.
+
+Input parameters: tier M · scope 4 target files (+ 4 SPEC artifacts) · domains 3 (hook script pair, workflow doc pair, SPEC artifacts) · language mix shell + markdown · concurrency benefit LOW (milestone-ordered: M1 freezes the fixture M2 consumes; M2's verdict gates its own repair; M3/M4 verify surfaces M2 may touch) · Agent Teams prereqs not requested.
+
+| Mode | Selected | Rationale |
+|---|---|---|
+| direct | not selected | multi-file edit + execution evidence — not the trivial case |
+| serial | **selected** | coding/doc-edit work per Anthropic's coding-task parallelism caveat; sequential milestone dependencies; single-writer file surfaces |
+| fanout | not selected | concurrency benefit LOW; write surfaces overlap the verification milestones |
+| sweep | not selected | 4 files, non-uniform semantic edits — not the mechanical-uniform case |
+
+Decision: serial
+
+Justification: this is a verification-and-docs SPEC whose milestones are sequentially dependent (M1 fixture → M2 arms → conditional repair → M3 doc alignment → M4 close). One manager-develop spawn carrying M1→M4 in order is the simple mode that satisfies every dependency; no higher-concurrency mode meets its own entry criteria.
+
