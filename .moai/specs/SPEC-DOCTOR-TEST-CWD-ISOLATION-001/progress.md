@@ -4,16 +4,16 @@
 
 plan_status: audit-ready
 plan_complete_at: 2026-09-13
-baseline: `WT-doctor-red@74d872aafbd90235e67163a5bc233f7c8a934491`
+baseline: `WT-doctor-red@dd235a66b1145922565841d33acafef0d1ded6a8` (RED ledger re-measured 2026-09-18, spec v0.3.0; raw output `.moai/reports/t675/red/`; prior baseline `74d872aafbd90235e67163a5bc233f7c8a934491`)
 tier: S
 artifacts: `spec.md` + `plan.md` — canonical Tier S set; inline ACs in `spec.md §3`
-plan_artifact_hash:
-- `spec.md`: `016821319e578d9cf7105890caf1dd89b6d7e252e3adb59a74921cc9b3980b0e`
-- `plan.md`: `b97b55ccb1fcb0fcd5983fe751466e3c3f9991d908365b8b6e73f2521dcb23d6`
+plan_artifact_hash (sha256, spec/plan v0.3.0):
+- `spec.md`: `23fef05b32fb4a0dae34443c25cbf92261f6162cfd63f65c561b94f44769111b`
+- `plan.md`: `0fd2f2514a1383185e6e6548b08c62b8fb88f7d4a24820e6f67ee634bacb2cfa`
 scope_decision: Operator-directed Tier S CWD isolation supersedes the card-origin embedded-C1 hypothesis and Tier M Class B classification.
 red_baseline: With `MOAI_EMBED_CHECK_BIN=/usr/bin/false`, the exact nine-test doctor selection exits 1 with nine failures on the pinned baseline; the representative single test also exits 1.
 checks:
-- `moai spec lint SPEC-DOCTOR-TEST-CWD-ISOLATION-001 --strict --json` → exit 0, `[]`
+- `moai spec lint SPEC-DOCTOR-TEST-CWD-ISOLATION-001 --strict --json` → exit 0 (2026-09-18, v0.3.0), one `info` finding `OwnershipTransitionUnmeasured` (commit `49bf74a82` carries no Authored-By-Agent trailer; not clearable without history rewrite)
 - `moai spec audit --base-dir /Users/goos/MoAI/moai-adk-go/.claude/worktrees/t675 --filter-spec SPEC-DOCTOR-TEST-CWD-ISOLATION-001 --strict --json` → exit 0, `modern_era_clean: 1`, only `EraAutoDetected` INFO via H-5
 prior_gateway_blocker: Preserved at `.moai/reports/t675/gateway-502-20260913.md`; the previous manager-spec delegation ended in HTTP 502 three times before this recovery session.
 next_action: Hand off the unchanged Tier S plan artifacts to `plan-auditor`; no implementation has started.

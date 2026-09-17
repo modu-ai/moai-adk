@@ -1,10 +1,10 @@
 ---
 id: SPEC-DOCTOR-TEST-CWD-ISOLATION-001
 title: "Isolate full doctor command tests from the repository working directory"
-version: "0.2.0"
+version: "0.3.0"
 status: draft
 created: 2026-09-13
-updated: 2026-09-13
+updated: 2026-09-18
 author: manager-spec
 priority: P1
 phase: "v3.2.0 target"
@@ -21,6 +21,7 @@ tier: S
 | Version | Date | Author | Change |
 |---------|------|--------|--------|
 | 0.1.0 | 2026-09-13 | manager-spec | Initial Tier S plan-phase draft for card t675; operator-directed CWD-isolation scope supersedes the earlier embedded-C1 hypothesis and Tier M Class B classification. |
+| 0.3.0 | 2026-09-18 | manager-spec | Plan-audit FAIL 0.67 remediation (D1-D5 + MP-9 GAP). One `shall` per requirement (REQ-DTC-002/003 split, renumbered to six); cleanup rewritten as two observable outcomes with the framework mechanism moved to `plan.md §D C3`; RED ledger re-measured on `dd235a66b` with raw output persisted and quoted verbatim; ACs restated against the implementation descendant; assertion-deletion and bare-`os.Chdir` mutant criteria added; plan milestones bind ACs through `Exit:` lines. Scope unchanged. |
 
 ## §1 Problem Statement
 
@@ -28,15 +29,14 @@ Nine existing `internal/cli` tests invoke the complete doctor diagnostic set whi
 Go test process's repository working directory. `runGroupedChecksObserved` reads `os.Getwd()` and
 passes that directory to repository-sensitive checks. In particular, the Agent Emit Embed check
 walks upward from that directory, recognizes the moai-adk committed emission set, and judges the
-repository's current `bin/moai`.
+repository's `bin/moai` or the executable named by `MOAI_EMBED_CHECK_BIN`.
 
-This makes the nine tests depend on ambient repository state that their assertions do not own. The
-failure was observed on the card's baseline commit
-`74d872aafbd90235e67163a5bc233f7c8a934491`: with `MOAI_EMBED_CHECK_BIN=/usr/bin/false`,
-`TestDoctorCmd_Execution` exits 1 because the complete doctor run reports one failed check. The same
-input makes all nine scoped tests fail. Without that injected failing target, the same nine-test
-selection passed on the same commit, demonstrating that the test result changes with ambient doctor
-inputs rather than with the behavior each test intends to verify.
+The nine tests therefore depend on ambient repository state that their assertions do not own. On
+the RED baseline `dd235a66b` (§3.1), injecting `MOAI_EMBED_CHECK_BIN=/usr/bin/false` makes the
+representative test and all nine scoped tests fail with `doctor: 1 check(s) failed`. Without that
+injection the same nine tests pass on this tree only because no `bin/moai` exists, so the check
+skips (`progress.md §E.1a`). The test verdict changes with ambient doctor inputs rather than with
+the behavior each test intends to verify.
 
 The scope is limited to these nine tests across three existing test files:
 
@@ -50,99 +50,262 @@ The scope is limited to these nine tests across three existing test files:
 
 ### REQ-DTC-001 — Isolated execution context
 
-**When** any scoped test invokes an unfiltered complete doctor run, the test shall execute that run
-from its own fresh temporary working directory outside the repository tree.
+**When** a scoped test invokes an unfiltered complete doctor run, the test shall execute that run
+from a fresh temporary working directory outside the repository tree.
 
 ### REQ-DTC-002 — Independence from repository-only checks
 
-**While** a scoped test is executing, repository-only doctor checks discovered through the package
-source directory shall not determine the test result. A failing Agent Emit Embed judgment target in
-the repository environment shall therefore be inapplicable to the scoped test's isolated run.
+**While** a scoped test is executing, the test result shall be independent of any repository-only
+doctor check whose judgment target in the environment fails.
 
-### REQ-DTC-003 — Preserve test intent and production behavior
+Rationale (non-normative): the Agent Emit Embed check is applicable only when the working directory
+lies inside the moai-adk repository, so an isolated working directory makes it inapplicable.
 
-The change shall preserve each scoped test's existing flags, output assertions, export assertions,
-and error expectations. The change shall not modify non-test Go code or alter doctor check
-registration, diagnostic output, applicability rules, or exit-status behavior.
+### REQ-DTC-003 — Preserve test intent
 
-### REQ-DTC-004 — Automatic isolation cleanup
+The change to the scoped tests shall keep each scoped test's existing flags, output assertions,
+export assertions, and error expectations.
 
-**When** a scoped test completes or fails, its temporary directory and working-directory change
-shall be restored by the Go test framework so that no later test inherits its fixture state.
+### REQ-DTC-004 — Production behavior unchanged
+
+The change shall not modify any non-test Go file.
+
+### REQ-DTC-005 — Temporary directory removed
+
+**When** a scoped test finishes, whether it passed or failed, the temporary working directory
+created for that test shall no longer exist.
+
+### REQ-DTC-006 — Original working directory restored
+
+**When** a scoped test finishes, whether it passed or failed, the process working directory shall
+equal the working directory that was in effect when that test started.
 
 ## §3 Acceptance Criteria (inline, Tier S)
 
+All criteria are evaluated on the **implementation descendant**: a commit on `WT-doctor-red` that
+descends from the RED baseline `dd235a66b1145922565841d33acafef0d1ded6a8` and contains the isolation
+change. The RED baseline itself is recorded only in the §3.1 ledger and is expected to fail
+AC-DTC-001, AC-DTC-002, and AC-DTC-005. AC-DTC-003..005 read the range `develop...HEAD` (left end =
+merge-base with local `develop`) and are valid only while the card is unmerged.
+
 ### AC-DTC-001 — Representative complete doctor run ignores the poisoned repository target
 
-**Covers:** REQ-DTC-001, REQ-DTC-002, REQ-DTC-004
+**Covers:** REQ-DTC-001, REQ-DTC-002
 
-**Given** commit `74d872aafbd90235e67163a5bc233f7c8a934491`, the scoped
-`TestDoctorCmd_Execution` test, and `MOAI_EMBED_CHECK_BIN=/usr/bin/false`, **When** the test runs,
-**Then** it shall exit 0 and report the test as passed because its temporary working directory does
-not make the repository-only Agent Emit Embed check applicable.
+**Given** the implementation descendant and `MOAI_EMBED_CHECK_BIN=/usr/bin/false`, **When**
+`go test -count=1 -v -run '^TestDoctorCmd_Execution$' ./internal/cli/` runs, **Then** it exits 0,
+the output contains `--- PASS: TestDoctorCmd_Execution`, and the output contains no `--- FAIL` line.
 
-### AC-DTC-002 — All nine scoped tests remain non-empty, pass under the poisoned target, and stay test-only
+### AC-DTC-002 — All nine scoped tests pass under the poisoned target and the sweep is non-empty
 
-**Covers:** REQ-DTC-001, REQ-DTC-002, REQ-DTC-003, REQ-DTC-004
+**Covers:** REQ-DTC-001, REQ-DTC-002, REQ-DTC-003
 
-**Given** the exact nine-test selection listed in §1 and
-`MOAI_EMBED_CHECK_BIN=/usr/bin/false`, **When** the scoped selection runs after the isolation change,
-**Then** the command shall exit 0, the selection listing shall contain all nine named tests, no
-selected test shall fail, and the implementation diff under `internal/cli` shall contain only the
-three test files listed in §1.
+**Given** the implementation descendant and `MOAI_EMBED_CHECK_BIN=/usr/bin/false`, **When** the
+E-RED-002 command runs unchanged, **Then** it exits 0, the output contains exactly nine
+`--- PASS:` lines naming the nine tests of §1, and the output contains zero `--- FAIL` lines; and
+**When** `go test ./internal/cli -list '^(TestRunDoctor_(WithExport|WithFix|Verbose|AllFlags|VerboseAndDetail|ExportMode)|TestDoctorCmd_(Execution|ExportFlag|VerboseExecution))$'`
+runs, **Then** it exits 0 and lists all nine names.
 
-### §3.1 RED-now and green-path evidence
+### AC-DTC-003 — Test-only change boundary
 
-The acceptance criteria use the following baseline observations. Commands are single invocations;
-stdout and exit codes were observed in this worktree on the pinned baseline.
+**Covers:** REQ-DTC-004
 
-#### E-RED-001 — AC-DTC-001
+**Given** the implementation descendant, **When** `git diff --name-only develop...HEAD -- '*.go'`
+runs, **Then** it exits 0 and its output is exactly the three file paths of §1, one per line, with
+no other path.
 
-- **Tree SHA:** `74d872aafbd90235e67163a5bc233f7c8a934491`
-- **Command:** `MOAI_EMBED_CHECK_BIN=/usr/bin/false go test ./internal/cli -count=1 -run '^TestDoctorCmd_Execution$'`
-- **Exit code:** `1`
-- **Verbatim stdout:**
+### AC-DTC-004 — Existing assertions survive (rejects an assertion-deletion mutant)
+
+**Covers:** REQ-DTC-003
+
+**Given** the implementation descendant, **When**
+`git diff -U0 --no-color develop...HEAD -- internal/cli/coverage_improvement_test.go internal/cli/doctor_test.go internal/cli/integration_test.go`
+runs, **Then** it exits 0 and its output satisfies both conditions:
+
+- (1) zero removed content lines (lines beginning with `-` other than the `--- a/` file headers);
+- (2) exactly nine non-blank added content lines (lines beginning with `+` other than the `+++ b/`
+  file headers), each consisting of whitespace followed by the isolation statement
+  `t.Chdir(t.TempDir())` and nothing else.
+
+A mutant that deletes or edits any existing assertion produces a removed content line and fails
+condition (1); a mutant that inserts an early `return`, `t.Skip`, or any other statement fails
+condition (2). Probe: `.moai/reports/t675/red/mutant-probe.txt` (variant `mutA`).
+
+### AC-DTC-005 — Working-directory change is restored by construction (rejects a bare `os.Chdir` mutant)
+
+**Covers:** REQ-DTC-001, REQ-DTC-005, REQ-DTC-006
+
+**Given** the implementation descendant, **When** the AC-DTC-004 diff command runs, **Then** zero
+added content lines contain `os.Chdir(`, and the hunk headers (`@@ … @@ func …`) of the nine added
+`t.Chdir(t.TempDir())` statements name the nine tests of §1, each exactly once.
+
+A mutant that changes directory with bare `os.Chdir` (with or without a deferred restore) produces
+an added `os.Chdir(` line and fails. On the RED baseline the command yields no added line, so the
+nine-statement condition is unmet. Probe: `.moai/reports/t675/red/mutant-probe.txt` (variant `mutB`).
+
+### §3.1 RED ledger (baseline `dd235a66b1145922565841d33acafef0d1ded6a8`)
+
+Measured 2026-09-18 on a clean worktree at HEAD `dd235a66b1145922565841d33acafef0d1ded6a8`, branch
+`WT-doctor-red`, no `bin/moai` present. Each command is a single invocation; the session captured
+its combined stdout/stderr to the listed file and its exit status to the sibling `.exit` file. The
+blocks below are the file contents verbatim.
+
+#### E-RED-001 — for AC-DTC-001
+
+- **Command:** `MOAI_EMBED_CHECK_BIN=/usr/bin/false go test -count=1 -v -run '^TestDoctorCmd_Execution$' ./internal/cli/`
+- **Exit code:** `1` (`.moai/reports/t675/red/e-red-001.exit`)
+- **Raw output:** `.moai/reports/t675/red/e-red-001.txt` (sha256 `2ff331b759f1764a778f22559dbd43e15678e3ab3e923f18b0354f56807d3739`)
 
 ```text
---- FAIL: TestDoctorCmd_Execution (18.09s)
+=== RUN   TestDoctorCmd_Execution
     doctor_test.go:76: doctor command RunE error: doctor: 1 check(s) failed
+--- FAIL: TestDoctorCmd_Execution (12.47s)
 FAIL
-FAIL	github.com/modu-ai/moai-adk/internal/cli	19.040s
+FAIL	github.com/modu-ai/moai-adk/internal/cli	13.272s
 FAIL
 ```
 
-- **Why RED:** the test inherits the package/repository CWD, so the complete doctor run reaches the
-  repository-only Agent Emit Embed check and judges the injected failing executable.
-- **Green path:** Milestone M1 gives the test a framework-managed temporary CWD; rerunning the same
-  command exits 0.
-- **Mutant probe:** changing only the environment variable, suppressing the doctor error, or
-  weakening the assertion does not satisfy the criterion; the same poisoned command must pass with
-  the original assertion intact.
+- **Why RED:** the test inherits the package directory inside the repository, so the complete
+  doctor run reaches the repository-only Agent Emit Embed check and judges the injected failing
+  executable.
+- **Green path:** M1 adds the isolated working directory; the same command then exits 0.
 
-#### E-RED-002 — AC-DTC-002
+#### E-RED-002 — for AC-DTC-002
 
-- **Tree SHA:** `74d872aafbd90235e67163a5bc233f7c8a934491`
-- **Command:** `MOAI_EMBED_CHECK_BIN=/usr/bin/false go test ./internal/cli -count=1 -run '^(TestRunDoctor_(WithExport|WithFix|Verbose|AllFlags|VerboseAndDetail|ExportMode)|TestDoctorCmd_(Execution|ExportFlag|VerboseExecution))$'`
-- **Exit code:** `1`
-- **Observed terminal verdict:** all nine named tests emitted `--- FAIL`; the package ended with
-  `FAIL\nFAIL\tgithub.com/modu-ai/moai-adk/internal/cli\t169.247s\nFAIL`.
-- **Why RED:** every selected test inherits the repository CWD and reaches the same injected
-  repository-only failure.
-- **Green path:** Milestone M1 isolates all nine tests; Milestone M2 reruns the exact command and
-  separately lists the selector to prove the swept set contains all nine tests.
-- **Mutant probe:** isolating only the representative test leaves the other eight failures visible;
-  renaming or deleting tests is rejected by the exact nine-name listing; changing production doctor
-  logic is rejected by the three-test-file diff boundary.
+- **Command:** `MOAI_EMBED_CHECK_BIN=/usr/bin/false go test -count=1 -v -run '^(TestRunDoctor_(WithExport|WithFix|Verbose|AllFlags|VerboseAndDetail|ExportMode)|TestDoctorCmd_(Execution|ExportFlag|VerboseExecution))$' ./internal/cli/`
+- **Exit code:** `1` (`.moai/reports/t675/red/e-red-002.exit`)
+- **Raw output:** `.moai/reports/t675/red/e-red-002.txt` (94 lines, sha256 `7d1e24166573f4caec68a378ee7b4e9e8789e93f69c9ac92ece8ccb25a361b7c`)
+
+```text
+=== RUN   TestRunDoctor_WithExport
+    coverage_improvement_test.go:715: runDoctor error: doctor: 1 check(s) failed
+--- FAIL: TestRunDoctor_WithExport (9.24s)
+=== RUN   TestRunDoctor_WithFix
+    coverage_improvement_test.go:737: runDoctor error: doctor: 1 check(s) failed
+--- FAIL: TestRunDoctor_WithFix (14.20s)
+=== RUN   TestRunDoctor_Verbose
+    coverage_improvement_test.go:777: runDoctor error: doctor: 1 check(s) failed
+--- FAIL: TestRunDoctor_Verbose (28.56s)
+=== RUN   TestRunDoctor_AllFlags
+  ○ Go Runtime
+  ✓ Go Runtime
+  ○ Git
+  ✓ Git
+  ○ Claude Code
+  ✓ Claude Code
+  ○ GitHub CLI
+  ✓ GitHub CLI
+  ○ ast-grep CLI
+  ✓ ast-grep CLI
+  ○ Shared Flag Slot
+  ✓ Shared Flag Slot
+  ○ MoAI Config
+  ✓ MoAI Config
+  ○ Claude Config
+  ✓ Claude Config
+  ○ MoAI Version
+  ✓ MoAI Version
+  ○ Binary Freshness
+  ✓ Binary Freshness
+  ○ MCP Scope Duplicates
+  ✓ MCP Scope Duplicates
+  ○ MCP Server Version
+  ✓ MCP Server Version
+  ○ Agent Emit Embed
+  ✗ Error: could not extract embedded artifacts from /usr/bin/false: false init: exit status 1 ()
+  ○ Constitution Registry
+  ✓ Constitution Registry
+  ○ Harness 5-Layer
+  ✓ Harness 5-Layer
+  ○ Migration
+  ✓ Migration
+  ○ Plugin Deployment
+  ✓ Plugin Deployment
+  ○ Home Disk Usage
+  ✓ Home Disk Usage
+  ○ Hooks Config
+  ✓ Hooks Config
+  ○ Hook Wiring
+  ✓ Hook Wiring
+  ○ Hook Delivery
+  ✓ Hook Delivery
+  ○ Hook opt-in:
+  ✓ Hook opt-in:
+  ○ Slash Commands
+  ✓ Slash Commands
+  ○ Skills Allowlist
+  ✓ Skills Allowlist
+  ○ MX Tag Config
+  ✓ MX Tag Config
+  ○ Worktree State
+  ✓ Worktree State
+  ○ Worktree Base Branch
+  ✓ Worktree Base Branch
+  ○ Git Strategy Workflow
+  ✓ Git Strategy Workflow
+  ○ BODP Config
+  ✓ BODP Config
+  ○ Telemetry Config
+  ✓ Telemetry Config
+  ○ Glamour Cache
+  ✓ Glamour Cache
+  ○ Codex Wiring
+  ✓ Codex Wiring
+    coverage_improvement_test.go:4930: unexpected error: doctor: 1 check(s) failed
+--- FAIL: TestRunDoctor_AllFlags (20.15s)
+=== RUN   TestRunDoctor_VerboseAndDetail
+    coverage_improvement_test.go:5754: runDoctor error: doctor: 1 check(s) failed
+--- FAIL: TestRunDoctor_VerboseAndDetail (14.08s)
+=== RUN   TestRunDoctor_ExportMode
+    coverage_improvement_test.go:5804: runDoctor error: doctor: 1 check(s) failed
+--- FAIL: TestRunDoctor_ExportMode (13.49s)
+=== RUN   TestDoctorCmd_Execution
+    doctor_test.go:76: doctor command RunE error: doctor: 1 check(s) failed
+--- FAIL: TestDoctorCmd_Execution (16.10s)
+=== RUN   TestDoctorCmd_ExportFlag
+    integration_test.go:176: doctor --export error: doctor: 1 check(s) failed
+--- FAIL: TestDoctorCmd_ExportFlag (11.99s)
+=== RUN   TestDoctorCmd_VerboseExecution
+    integration_test.go:202: doctor --verbose error: doctor: 1 check(s) failed
+--- FAIL: TestDoctorCmd_VerboseExecution (12.50s)
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/cli	140.953s
+FAIL
+```
+
+- **Why RED:** every selected test inherits the repository working directory and reaches the same
+  injected repository-only failure; the nine `--- FAIL` lines name exactly the nine tests of §1.
+- **Green path:** M1 isolates all nine tests; the unchanged command then exits 0 with nine
+  `--- PASS` lines.
+
+#### E-RED-003 — for AC-DTC-003, AC-DTC-004, AC-DTC-005
+
+- **Measurement context:** local `develop` at `9aee76589935b6a5d255ff0dac6eae84f41868f4`; merge-base
+  with HEAD `f67d2193f22cbc80921e42539c3462a4100f31e9`.
+- **Command (AC-DTC-003):** `git diff --name-only develop...HEAD -- '*.go'` — **Exit code:** `0` —
+  **Verbatim stdout:** empty (zero bytes).
+- **Command (AC-DTC-004, AC-DTC-005):** `git diff -U0 --no-color develop...HEAD -- internal/cli/coverage_improvement_test.go internal/cli/doctor_test.go internal/cli/integration_test.go`
+  — **Exit code:** `0` — **Verbatim stdout:** empty (zero bytes).
+- **Why RED:** the card branch carries no Go change yet, so each criterion is unmet for the right
+  reason: AC-DTC-003 lists zero of the three required paths, and AC-DTC-004 condition (2) and
+  AC-DTC-005 find zero of the nine required isolation statements. Exit 0 with empty output is the
+  RED observation here, not a pass.
+- **Mutant evidence:** `.moai/reports/t675/red/mutant-probe.txt` shows the diff form each criterion
+  reads for a correct variant, an assertion-deletion mutant, and a bare `os.Chdir` mutant.
+- **Classification:** AC-DTC-003..005 are structural gates over the diff; their executed diff output
+  on the implementation descendant is captured during run (`progress.md §E.2`).
 
 ## §4 Constraints
 
-- The configured run methodology is TDD. The observed poisoned-target failure is the RED baseline;
-  the isolation-only test edits provide GREEN.
-- Scoped tests shall remain serial because process working directory and `doctorCmd` flags are
+- The configured run methodology is TDD. The §3.1 ledger is the RED baseline; the isolation-only
+  test edits provide GREEN.
+- Scoped tests remain serial because process working directory and `doctorCmd` flags are
   process/package-global state.
-- Local verification shall remain scoped to `internal/cli`; the full local repository suite is not
-  run. CI on the integrated `develop` head owns the full-suite verdict.
-- Temporary directories shall be framework-managed and shall not be created under the repository.
+- Local verification stays scoped to targeted `-run` selections in `./internal/cli/`; the full local
+  repository suite is not run. CI on the integrated `develop` head owns the full-suite verdict.
+- Temporary directories are not created under the repository.
+- The implementation approach (framework-managed temporary directory and working-directory change)
+  is fixed in `plan.md §D C3`.
 
 ## §5 Exclusions
 
@@ -153,7 +316,8 @@ FAIL
 
 ### Out of Scope — unrelated doctor tests
 
-- No doctor test outside the exact nine-test list in §1 is modified or reclassified.
+- No doctor test outside the exact nine-test list in §1 is modified or reclassified, including tests
+  that already change directory themselves (for example `TestRunDoctor_FixMode`).
 
 ### Out of Scope — embedded artifact repair
 
@@ -172,8 +336,10 @@ FAIL
 - Repository-sensitive applicability walk: `internal/cli/doctor_agentemit_embed.go`
 - Scoped tests: `internal/cli/coverage_improvement_test.go`, `internal/cli/doctor_test.go`,
   `internal/cli/integration_test.go`
+- RED raw evidence and mutant probe: `.moai/reports/t675/red/`
+- Prior audit: `.moai/reports/t675/plan-audit.md` (FAIL 0.67)
 - Prior observed failure set: `.moai/reports/t662/verdict.md` and
   `.moai/reports/t662/preattrib-develop-55b757ff2.log`
 - Superseded gateway failure record: `.moai/reports/t675/gateway-502-20260913.md`
-- Card: t675; worktree `.claude/worktrees/t675`; branch `WT-doctor-red`; baseline
-  `74d872aafbd90235e67163a5bc233f7c8a934491`
+- Card: t675; worktree `.claude/worktrees/t675`; branch `WT-doctor-red`; RED baseline
+  `dd235a66b1145922565841d33acafef0d1ded6a8`
