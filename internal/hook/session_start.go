@@ -144,7 +144,7 @@ func (h *sessionStartHandler) Handle(ctx context.Context, input *HookInput) (*Ho
 			return out, nil
 		}
 		defer func() { _ = admissionLock.Release() }()
-		if err := homestate.CheckRuntimeAdmission(admissionRoot); err != nil {
+		if err := admissionLock.CheckRuntimeAdmission(); err != nil {
 			out := &HookOutput{StopReason: err.Error()}
 			out.SetContinue(false)
 			return out, nil
