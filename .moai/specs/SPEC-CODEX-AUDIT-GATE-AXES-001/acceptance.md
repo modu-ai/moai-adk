@@ -1,6 +1,6 @@
 # SPEC-CODEX-AUDIT-GATE-AXES-001 — 인수 기준
 
-카드 **t686** · v0.3.0. 각 AC 는 명령과 관측 출력으로 판정한다. 축 (c)는 카드 t870 으로 분리되어 이 문서에 없다. 판정 줄 문법·저장 위치·스키마는 plan.md §B.5-§B.6 을 따른다.
+카드 **t686** · v0.3.1. 각 AC 는 명령과 관측 출력으로 판정한다. 축 (c)는 카드 t870 으로 분리되어 이 문서에 없다. 판정 줄 문법·저장 위치·스키마는 plan.md §B.5-§B.6 을 따른다.
 
 ## §D AC Matrix
 
@@ -59,9 +59,9 @@
 - **Then** 다섯 경우 모두 출력이 `decision: "block"` 이고 `reason` 이 각각 인용 없음 / 저장소에 없음 / 다른 트리 / 시작 이전 / 시작 표식 없음을 이름으로 밝히며, `rejections/plan-auditor--SPEC-X-001.json` 이 원인과 함께 존재한다. `agent_type: sync-auditor` 로 바꿔도 같다(파일명 `sync-auditor--SPEC-X-001.json`)
 
 #### AC-CAG-011 — 재진입 경고, 수용 시 해제, FAIL 무처리
-- **Given** AC-CAG-010 (i) 이후 거부 기록이 있는 상태
-- **When** (i) 같은 메시지로 `stop_hook_active: true` 인 SubagentStop 을 호출하고, (ii) 새 시작 표식 이후 `... receipts=<r1 과 같은 조건의 영수증>` 인 PASS 로 `stop_hook_active: false` SubagentStop 을 호출하고, (iii) 별도 트리에서 `AUDIT-VERDICT: FAIL spec=SPEC-Y-001 receipts=none` 으로 호출한다
-- **Then** (i) 은 `decision` 이 없고 `systemMessage` 에 PASS 미수용과 단계 진입 스폰 거부 유지가 명시되며 거부 기록이 남고 `reentry_warned: true` 다. (ii) 는 `decision` 이 없고 `rejections/plan-auditor--SPEC-X-001.json` 이 제거된다. (iii) 은 출력·기록 변화가 없다
+- **Given** AC-CAG-010 (i) 이후 `rejections/plan-auditor--SPEC-X-001.json` 이 있고, 같은 트리에 `rejections/plan-auditor--SPEC-Z-001.json`, `rejections/plan-auditor--unknown-spec.json`, `rejections/sync-auditor--SPEC-X-001.json` 도 있는 상태
+- **When** (i) AC-CAG-010 (i) 과 같은 메시지로 `stop_hook_active: true` 인 SubagentStop 을 호출하고, (ii) 새 시작 표식 이후 `AUDIT-VERDICT: PASS spec=SPEC-X-001 receipts=<r1 과 같은 조건의 영수증>` 으로 plan-auditor 의 `stop_hook_active: false` SubagentStop 을 호출하고, (iii) 별도 트리에서 `AUDIT-VERDICT: FAIL spec=SPEC-Y-001 receipts=none` 으로 호출하고, (iv) 별도 required 트리에서 거부 기록 파일을 사람이 삭제한 뒤 `manager-develop` PreToolUse 를 보낸다
+- **Then** (i) 은 `decision` 이 없고 `systemMessage` 에 PASS 미수용과 단계 진입 스폰 거부 유지가 명시되며 거부 기록이 남고 `reentry_warned: true` 다. (ii) 는 `decision` 이 없고 plan-auditor 역할의 세 기록(`SPEC-X-001`, `SPEC-Z-001`, `unknown-spec`)이 모두 제거되며 `sync-auditor--SPEC-X-001.json` 은 남는다. (iii) 은 출력·기록 변화가 없다. (iv) 는 이 가드로 deny 되지 않는다
 
 #### AC-CAG-012 — PreToolUse 소비자
 - **Given** 거부 기록 1건이 있는 required 트리 R, 거부 기록이 없는 required 트리 C, 거부 기록 파일을 수동으로 둔 `advisory` 트리 A
@@ -70,13 +70,13 @@
 
 #### AC-CAG-013 — 비-required 무영향과 시험 격리
 - **Given** `gates.codex` 가 `off` / `advisory` / 부재인 세 트리
-- **When** plan-auditor 에 대해 SubagentStart, 그리고 `receipts=none` PASS 로 SubagentStop 을 호출한다. 이어서 `go test ./internal/cli/... ./internal/hook/... -count=1` 후 `git status --porcelain -- internal/ | grep '\.moai/'` 를 실행한다
-- **Then** 세 트리 모두 시작 표식·거부 기록 파일이 없고 출력에 `decision`·`systemMessage` 가 없다. 마지막 grep 은 아무것도 출력하지 않는다(테스트가 저장소 트리에 `.moai/` 를 남기지 않음)
+- **When** plan-auditor 에 대해 SubagentStart, 그리고 `receipts=none` PASS 로 SubagentStop 을 호출한다. 이어서 누출 검사를 한다: (a) `find . -path ./.git -prune -o -type d -name .moai -print | sort` 결과를 전후로 비교하되, 그 사이에 이 SPEC 이 추가·변경한 테스트만 `-run` 선택자로 실행한다(`go test ./internal/cli/ -run '<신규 영수증·codex_audit 테스트 이름>' -count=1 -v` 와 `go test ./internal/hook/ -run '<신규 SubagentStart·SubagentStop·가드 테스트 이름>' -count=1 -v`), (b) 같은 비교를 `git status --porcelain --ignored` 전후 차이로도 한다
+- **Then** 세 트리 모두 시작 표식·거부 기록 파일이 없고 출력에 `decision`·`systemMessage` 가 없다. 두 `-v` 실행의 `=== RUN` 줄 수가 각각 1 이상이고(빈 스윕이 아님), (a)(b) 전후 차이가 모두 비어 있다(gitignore 된 `.moai/` 누출도 잡는다). 검사 자체가 유효하다는 증거로, 저장소 트리 안에 `.moai/state/audit-receipts/` 를 일부러 쓰는 임시 테스트를 한 번 실행해 (a)(b) 가 차이를 보고하는 것을 관측하고 그 출력을 progress.md §E.2 에 기록한 뒤 그 임시 테스트를 제거한다. `internal/cli`·`internal/hook` 전체 스위트는 로컬에서 실행하지 않는다(전체 판정은 리드 push 후 CI)
 
 #### AC-CAG-014 — 판독 불가
-- **Given** required 트리에서 (i) 인용 영수증 JSON 손상, (ii) `last_assistant_message` 공백, (iii) 판정 줄 형식 불일치, (iv) 거부 기록 JSON 손상, (v) `rejections/` 디렉터리 부재
-- **When** (i)-(iii) 은 plan-auditor SubagentStop(`stop_hook_active: false`)으로, (iv)-(v) 는 `manager-develop` PreToolUse 로 처리한다
-- **Then** (i)-(iii) 은 `decision: "block"` 이고 reason 이 각각 영수증 판독 불가 / 판정 줄 없음 / 판정 줄 없음을 이름으로 밝힌다. (iv) 는 deny 이고 손상 파일 경로를 이름으로 밝힌다. (v) 는 이 가드로 deny 되지 않는다
+- **Given** required 트리에서 (i) 인용 영수증 JSON 손상, (ii) `last_assistant_message` 공백, (iii) 판정 줄 형식 불일치, (iv) 거부 기록 JSON 손상, (v) `rejections/` 디렉터리 부재, (vi) 판정 줄 끝에 공백과 `\r` 이 붙은 유효 PASS(유효 영수증 인용)
+- **When** (i)-(iii)·(vi) 은 plan-auditor SubagentStop(`stop_hook_active: false`)으로 처리하고, (ii) 직후 같은 트리에서 `manager-develop` PreToolUse 를 보내며, (ii) 와 같은 입력을 `stop_hook_active: true` 로 다시 보낸 뒤 기록을 확인한다. (iv)-(v) 는 `manager-develop` PreToolUse 로 처리한다
+- **Then** (i)-(iii) 은 `decision: "block"` 이고 reason 이 각각 영수증 판독 불가 / 판정 줄 없음 / 판정 줄 없음을 이름으로 밝힌다. (ii)(iii) 은 `rejections/plan-auditor--unknown-spec.json` 을 남기고, (ii) 직후의 `manager-develop` 스폰은 `AUDIT_RECEIPT_VIOLATION` 으로 deny 되며 reason 에 `unknown-spec` 이 있다. `stop_hook_active: true` 재진입은 차단하지 않고 그 기록을 유지한다. (iv) 는 deny 이고 손상 파일 경로를 이름으로 밝힌다. (v) 는 이 가드로 deny 되지 않는다. (vi) 은 `decision` 이 없다(끝 공백·`\r` 을 판정 줄 누락으로 읽지 않음)
 
 ## §D.1 Edge Cases
 

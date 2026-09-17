@@ -1,7 +1,7 @@
 ---
 id: SPEC-CODEX-AUDIT-GATE-AXES-001
 title: "codex 감사 게이트 잔여 2축 — 단일 codex_audit 의 required 차단, 영수증 없는 감사 PASS 거부"
-version: "0.3.0"
+version: "0.3.1"
 status: draft
 created: 2026-09-18
 updated: 2026-09-18
@@ -27,6 +27,7 @@ tags: "codex, audit-gate, required-gate, fail-open, audit-receipt, subagent-stop
 | 0.1.0 | 2026-09-18 | manager-spec | 초안 — 3축 (a) 단일 codex_audit required 차단, (b) 도구 호출 증거 없는 판정, (c) auth_provider unknown 재현 우선 |
 | 0.2.0 | 2026-09-18 | manager-spec | 운영자 결정(B.1=B-1, B.2=C-1, B.3 유지) + plan-audit iter1 FAIL 0.74 의 D1-D12 수리 |
 | 0.3.0 | 2026-09-18 | manager-spec | 운영자 결정(축 (c) → t870 분리, K1 표면=S1 확정, N2 시작 표식+거부 기록+PreToolUse 소비자) + plan-audit iter2 FAIL 0.82 의 N1-N4, O1-O4 수리. 요구사항 17 → 16 |
+| 0.3.1 | 2026-09-18 | manager-spec | plan-audit iter3 최종 문구 수정(운영자 Kickoff 승인, 추가 감사 없음): R1 판정 줄 누락 시 `unknown-spec` 거부 기록, K4 같은 역할의 유효 PASS 가 그 역할의 모든 거부 기록 해제 + 수동 삭제 허용, R2 누출 검사 강화, O7 로컬 전체 스위트 제거, O5·O10·게이트 미설정 잔여 위험 추가, O6 인용 줄 번호, O8·O9 판정 줄 규칙 |
 
 ## §A Context
 
@@ -49,7 +50,7 @@ tags: "codex, audit-gate, required-gate, fail-open, audit-receipt, subagent-stop
 | F6 | 다중 리뷰 Stop-hook 게이트는 opt-in(기본 off), 상태 파일이 없으면 ALLOW | `internal/cli/multi_review_gate.go:44-79` |
 | F7 | 게이트 열거형 off / advisory / required | `internal/config/audit_models.go:32-47` |
 | F8 | 런타임 plan-audit 게이트 `GateConfig.Invoke` 에는 프로덕션 호출자가 없다 | `internal/runtime/audit_gate.go:199`, 유일 호출 :307 |
-| F9 | SubagentStop 은 배선돼 있고(timeout 5) 핸들러 출력은 최상위 `decision: "block"` 을 실을 수 있다. 입력 선언 필드: `cwd`, `agent_type`, `agent_id`, `agent_transcript_path`, `last_assistant_message`. 현재 핸들러는 차단하지 않는다 | `.claude/settings.json:201-207`, `internal/hook/subagent_stop.go:38`, `internal/hook/types.go:211,230,238-241,369-372` |
+| F9 | SubagentStop 은 배선돼 있고(timeout 5) 핸들러 출력은 최상위 `decision: "block"` 을 실을 수 있다. 입력 선언 필드: `cwd`, `agent_type`, `agent_id`, `agent_transcript_path`, `last_assistant_message`. 현재 핸들러는 차단하지 않는다 | `.claude/settings.json:201-207`, `internal/hook/subagent_stop.go:38`, `internal/hook/types.go:212,230,238-241,369-372` |
 | F10 | SubagentStart 핸들러는 로그와 additionalContext 만 내며 아무것도 저장하지 않는다 | `internal/hook/subagent_start.go:58-76` |
 | F11 | PreToolUse 는 `Agent|Task` 매처로 배선돼 있고, 핸들러가 Agent/Task 스폰에서 가드를 돌려 deny 를 반환할 수 있다(에이전트 모델 가드 선례) | `.claude/settings.json:69` PreToolUse `"matcher": "Agent|Task"`, `internal/hook/pre_tool.go:632-640`, `internal/hook/agent_model_guard.go:237` |
 | F12 | MCP 도구 `project_root` 는 `EvalSymlinks` 로 정규화되고, 생략 시 서버 폴백으로 해석된다 | `internal/cli/mcp_project_root.go:179`, :100-104 |
@@ -112,13 +113,13 @@ The moai MCP server shall record a receipt for every `codex_audit` call and ever
 **When** a SubagentStart event arrives whose `agent_type` is `plan-auditor` or `sync-auditor`, the SubagentStart hook shall write a start marker keyed by `agent_id` that records the agent type, session, start time, and the auditor's canonical tree root (plan.md §B.5).
 
 #### REQ-CAG-011
-**Where** the auditor's tree has the raw `workflow.audit.gates.codex` value `required`, **When** a plan-auditor or sync-auditor SubagentStop arrives with `stop_hook_active` false and its final message carries a PASS verdict line whose cited receipts fail the check of plan.md §B.6 (no receipt cited, receipt unknown to the store, receipt for a different canonical tree root, receipt created before the matching start marker, or start marker missing), the SubagentStop hook shall return `decision: "block"` with a reason naming the failed condition and shall persist a rejection record for that auditor role and SPEC.
+**Where** the auditor's tree has the raw `workflow.audit.gates.codex` value `required`, **When** a plan-auditor or sync-auditor SubagentStop arrives with `stop_hook_active` false and its final message either carries no parseable verdict line (plan.md §B.6) or carries a PASS verdict line whose cited receipts fail the check of plan.md §B.6 (start marker missing, no receipt cited, receipt unknown to the store, receipt for a different canonical tree root, or receipt created before the matching start marker), the SubagentStop hook shall return `decision: "block"` with a reason naming the failed condition and shall persist a rejection record for that auditor role — keyed by the cited SPEC, or by `unknown-spec` when no verdict line could be parsed.
 
 #### REQ-CAG-012
-**When** the same SubagentStop condition as REQ-CAG-011 arrives with `stop_hook_active` true, the SubagentStop hook shall not block, shall keep the rejection record persisted, and shall emit a `systemMessage` stating that the PASS is not accepted and that phase-entry spawns stay denied until a PASS with a valid receipt is recorded.
+**When** the same SubagentStop condition as REQ-CAG-011 (including the unparseable-verdict-line case) arrives with `stop_hook_active` true, the SubagentStop hook shall not block, shall keep the rejection record persisted (writing it if absent), and shall emit a `systemMessage` stating that the PASS is not accepted and that phase-entry spawns stay denied until a PASS with a valid receipt is recorded.
 
 #### REQ-CAG-013
-**When** a plan-auditor or sync-auditor PASS passes the check of plan.md §B.6 in a `required` tree, the SubagentStop hook shall remove the rejection record for that auditor role and SPEC, if one exists.
+**When** a plan-auditor or sync-auditor PASS passes the check of plan.md §B.6 in a `required` tree, the SubagentStop hook shall remove every rejection record for that auditor role, including records for other SPECs and `unknown-spec` records of that role; manual deletion of a rejection record by a person shall also clear it.
 
 #### REQ-CAG-014
 **Where** the spawning tree has the raw `workflow.audit.gates.codex` value `required`, **When** an `Agent` or `Task` spawn of `manager-develop`, `manager-docs`, or `manager-git` is attempted while any rejection record exists in that tree's receipt store, the PreToolUse hook shall deny the spawn with the `AUDIT_RECEIPT_VIOLATION` sentinel and name each outstanding rejection's auditor role, SPEC, and cause.
@@ -127,7 +128,7 @@ The moai MCP server shall record a receipt for every `codex_audit` call and ever
 The receipts, start markers, and rejection records shall be written only by the moai runtime (MCP server or hook), never inferred from text an agent writes; **Where** the raw `workflow.audit.gates.codex` value is not `required`, the SubagentStart, SubagentStop, and PreToolUse additions shall write no start marker or rejection record and shall emit no block, deny, or warning.
 
 #### REQ-CAG-016
-**When** the evidence for a check cannot be read in a `required` tree (receipt store record corrupt, final message empty or without a verdict line, rejection record unparseable), the hooks shall not accept the PASS or allow the spawn on that basis and shall name the unreadable item; an absent rejection directory shall count as no outstanding rejection.
+**When** the evidence for a check cannot be read in a `required` tree (receipt store record corrupt, final message empty or without a parseable verdict line, rejection record unparseable), the hooks shall not accept the PASS or allow the spawn on that basis and shall name the unreadable item — an empty or unparseable final message follows REQ-CAG-011 and REQ-CAG-012 with an `unknown-spec` rejection record; an absent rejection directory shall count as no outstanding rejection.
 
 ## §C Constraints and Residual Risk
 
@@ -138,9 +139,15 @@ The receipts, start markers, and rejection records shall be written only by the 
 잔여 위험(설계가 막지 못하는 것):
 - 훅이 꺼진 환경(`disableAllHooks`, `allowManagedHooksOnly`)에서는 S1 과 PreToolUse 소비자 모두 무력하다.
 - 오케스트레이터가 `manager-develop` / `manager-docs` / `manager-git` 을 스폰하지 않고 직접 구현·문서화·PR 을 하면 소비자를 우회한다.
-- 거부 기록은 트리 단위라서, 같은 트리의 다른 SPEC 작업 스폰도 막는다(카드당 워크트리 운영에서는 영향이 작다). 기록 파일을 사람이 지우면 해제된다 — 해제는 기록되지 않는다.
-- SPEC 을 해석할 수 없는 PASS 의 거부 기록(`unknown-spec`)은 유효 영수증 PASS 로 풀 수 없고 사람의 삭제로만 풀린다.
+- 거부 기록은 트리 단위라서, 같은 트리의 다른 SPEC 작업 스폰도 막는다(카드당 워크트리 운영에서는 영향이 작다).
+- 거부 기록은 같은 역할의 다음 유효 PASS 가 자동으로 모두 해제하며(`unknown-spec` 포함), 사람이 파일을 지워도 해제된다. 역할 단위 해제이므로, 한 SPEC 의 유효 PASS 가 같은 역할의 다른 SPEC 거부를 함께 지운다. 수동 삭제는 어디에도 기록되지 않는다.
+- 스폰 거부는 `subagent_type` 의 정확한 값(`manager-develop` / `manager-docs` / `manager-git`)에만 걸린다. 구현을 `general-purpose` 나 다른 이름공간의 에이전트로 스폰하면 거부되지 않는다(`internal/hook/agent_model_guard.go:97` 의 스폰 추출 방식).
+- primary 체크아웃 세션이 워크트리 SPEC 을 `project_root` 로 감사하면(예: 칸반 리드가 레인 트리를 감사), 감사자 시작 표식의 `tree_root`(primary)와 영수증의 `tree_root`(워크트리)가 달라 항상 "다른 트리"로 거부된다. 감사자는 감사 대상 트리 안에서 실행해야 한다.
 - 페이로드 필드는 선언만 확인했다. M1 실측에서 없으면 S2+S3 로 되돌린다(plan.md §F M1).
+
+미검증(Gaps):
+- 이 저장소의 `.moai/config/sections/workflow.yaml` 은 `workflow.audit.gates` 를 설정하지 않는다. 따라서 축 (b)의 required 경로는 이 저장소의 실제 세션에서 발동하지 않으며, 테스트 픽스처(`t.TempDir()` 트리에 게이트를 쓴 설정)로만 검증된다.
+- SubagentStart / SubagentStop 런타임 페이로드는 M1 실측 전까지 관측되지 않았다.
 
 ## §D Exclusions (What NOT to Build)
 

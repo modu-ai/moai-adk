@@ -1,6 +1,6 @@
 # SPEC-CODEX-AUDIT-GATE-AXES-001 — 구현 계획
 
-카드 **t686** · Tier **M** · 클래스 **C** · 기준 트리 develop @ `f67d2193f` · v0.3.0
+카드 **t686** · Tier **M** · 클래스 **C** · 기준 트리 develop @ `f67d2193f` · v0.3.1
 
 마일스톤은 뒤집힐 가능성이 큰 결정부터 적었다. 축 (c)는 카드 t870 으로 분리되어 이 계획에 없다.
 
@@ -44,9 +44,10 @@ required 게이트가 명시된 프로젝트에서는 감사 호출 증거가 �
 1. **SubagentStart**(plan-auditor / sync-auditor): 시작 표식 기록(§B.5).
 2. **MCP 서버**: `codex_audit` / `audit_multi`(codex 참여) 호출마다 영수증 기록.
 3. **SubagentStop**: 최종 메시지의 판정 줄(§B.6)을 읽고 영수증 검사.
-   - PASS 이고 검사 실패 + `stop_hook_active: false` → `decision: "block"` + 거부 기록 영속.
-   - 같은 조건 + `stop_hook_active: true` → 차단 없음, 거부 기록 유지, `systemMessage` 경고.
-   - PASS 이고 검사 통과 → 그 역할·SPEC 의 거부 기록 제거.
+   - PASS 이고 검사 실패 + `stop_hook_active: false` → `decision: "block"` + `rejections/<agent_type>--<spec_id>.json` 영속.
+   - 해석 가능한 판정 줄 없음(누락·형식 불일치) + `stop_hook_active: false` → `decision: "block"` + `rejections/<agent_type>--unknown-spec.json` 영속. 판정 줄을 빼는 것으로 검사를 우회할 수 없다.
+   - 위 두 조건 + `stop_hook_active: true` → 차단 없음, 거부 기록 유지, `systemMessage` 경고.
+   - PASS 이고 검사 통과 → **같은 역할(`agent_type`)의 모든 거부 기록 제거** — 다른 SPEC 의 기록과 `unknown-spec` 기록 포함(운영자 결정 K4). 사람이 기록 파일을 직접 지우는 것도 허용된다.
    - FAIL → 검사 없음, 기록 변경 없음.
 4. **PreToolUse `Agent|Task`**(기존 스폰 가드 경로, `pre_tool.go:632` 블록에 형제로 추가): 대상이 `manager-develop`(run 진입) / `manager-docs`(sync 진입) / `manager-git`(sync 후 PR) 이고 트리에 거부 기록이 하나라도 있으면 `AUDIT_RECEIPT_VIOLATION` 으로 deny.
 
@@ -58,7 +59,7 @@ required 게이트가 명시된 프로젝트에서는 감사 호출 증거가 �
 
 **트리 루트(canonical tree root)**
 - MCP 쪽: `project_root` 인자를 `EvalSymlinks` 로 정규화한 값(`mcp_project_root.go:179`). 인자가 없으면 서버 폴백 해석(`mcp_project_root.go:100-104`) 결과를 같은 방식으로 정규화하고, 영수증에 `root_source` 로 폴백 여부를 기록한다.
-- 훅 쪽: 훅 입력 `cwd`(`types.go:211`) 에서 `git -C <cwd> rev-parse --show-toplevel` 결과를 `EvalSymlinks` 로 정규화. git 실패 시 정규화한 `cwd`. `CLAUDE_PROJECT_DIR` 는 쓰지 않는다 — 워크트리 세션에서도 primary 체크아웃을 가리키기 때문이다.
+- 훅 쪽: 훅 입력 `cwd`(`types.go:212`) 에서 `git -C <cwd> rev-parse --show-toplevel` 결과를 `EvalSymlinks` 로 정규화. git 실패 시 정규화한 `cwd`. `CLAUDE_PROJECT_DIR` 는 쓰지 않는다 — 워크트리 세션에서도 primary 체크아웃을 가리키기 때문이다.
 - "다른 트리" 판정: 영수증의 `tree_root` 와 감사자 시작 표식의 `tree_root` 가 바이트 동일하지 않으면 다른 트리다. 따라서 `project_root` 없이 호출돼 primary 체크아웃으로 폴백한 영수증은 워크트리 감사자에게 "다른 트리"로 거부된다(의도된 동작).
 
 **저장 위치** — 모두 `<tree_root>/.moai/state/audit-receipts/` 아래:
@@ -67,7 +68,7 @@ required 게이트가 명시된 프로젝트에서는 감사 호출 증거가 �
 |--------|------|------|
 | 영수증 | `receipts/<receipt_id>.json` | `receipt_id`, `tool`(`codex_audit`\|`audit_multi`), `tree_root`, `root_source`(`argument`\|`fallback`), `created_at`(RFC 3339 UTC, 나노초), `codex_verdict`, `gate_unmet` |
 | 시작 표식 | `starts/<agent_id>.json` | `agent_id`, `agent_type`, `session_id`, `tree_root`, `started_at`(RFC 3339 UTC, 나노초) |
-| 거부 기록 | `rejections/<agent_type>--<spec_id>.json` | `agent_type`, `spec_id`(해석 불가 시 `unknown-spec`), `agent_id`, `cause`, `cited_receipts`, `rejected_at`, `reentry_warned`(bool) |
+| 거부 기록 | `rejections/<agent_type>--<spec_id>.json` | `agent_type`, `spec_id`(판정 줄 해석 불가 시 `unknown-spec`), `agent_id`, `cause`, `cited_receipts`, `rejected_at`, `reentry_warned`(bool) |
 
 `receipt_id` 는 서버가 생성하는 `rcpt-` 접두 불투명 토큰(`rcpt-[a-z0-9]{20,40}`)이다. 쓰기는 임시 파일 후 원자 rename.
 
@@ -85,16 +86,17 @@ required 게이트가 명시된 프로젝트에서는 감사 호출 증거가 �
 AUDIT-VERDICT: <PASS|PASS-WITH-DEBT|FAIL> spec=<SPEC-ID> receipts=<receipt_id>[,<receipt_id>...]
 ```
 
-- 정규식: `^AUDIT-VERDICT: (PASS|PASS-WITH-DEBT|FAIL) spec=(SPEC(-[A-Z][A-Z0-9]*)+-[0-9]{3}) receipts=(none|rcpt-[a-z0-9]{20,40}(,rcpt-[a-z0-9]{20,40})*)$`
+- 정규식: `^AUDIT-VERDICT: (PASS|PASS-WITH-DEBT|FAIL) spec=(SPEC(-[A-Z][A-Z0-9]*)+-[0-9]{3}) receipts=(none|rcpt-[a-z0-9]{20,40}(,rcpt-[a-z0-9]{20,40})*)[ \t\r]*$`
+- 후보 줄은 앞쪽 공백을 제거하고, 끝의 공백·탭·`\r` 은 정규식이 허용한다(CRLF 메시지에서도 유효한 줄이 누락으로 읽히지 않게).
 - `PASS` 와 `PASS-WITH-DEBT` 는 PASS 부류로 검사한다. `receipts=none` 은 "인용 없음"이다.
-- 검사 통과 조건(PASS 부류): 인용된 영수증 중 **하나 이상**이 (1) 저장소에 있고, (2) `tree_root` 가 시작 표식과 같고, (3) `created_at` 이 시작 표식 `started_at` 이후이며, (4) `tool` 이 `codex_audit` 이거나 codex 가 참여한 `audit_multi` 다. 모두 실패하면 원인은 첫 번째로 실패한 조건 순서(인용 없음 → 저장소에 없음 → 다른 트리 → 시작 이전)로 보고한다.
-- 판정 줄이 없거나 형식이 맞지 않으면 required 트리에서 REQ-CAG-016 의 "verdict line missing" 이다.
+- 검사 통과 조건(PASS 부류): 인용된 영수증 중 **하나 이상**이 (1) 저장소에 있고, (2) `tree_root` 가 시작 표식과 같고, (3) `created_at` 이 시작 표식 `started_at` 이후이며, (4) `tool` 이 `codex_audit` 이거나 codex 가 참여한 `audit_multi` 다. 모두 실패하면 원인은 다음 순서에서 처음 걸린 것으로 보고한다: 시작 표식 없음(조건 (2)(3)의 전제) → 인용 없음 → 저장소에 없음 → 다른 트리 → 시작 이전.
+- 판정 줄이 없거나 형식이 맞지 않으면 required 트리에서 "verdict line missing" 이며, REQ-CAG-011 에 따라 첫 종료를 막고 `unknown-spec` 거부 기록을 남긴다.
 
 ## §C Pre-flight
 
 - 워크트리 `.claude/worktrees/t686`, 브랜치 `WT-codex-audit-gate`. git 은 `git -C <worktree>`.
-- 변경 전 기준선: run-phase 첫 단계에서 `go test ./internal/cli/ -run 'CodexAudit_|CodexBlankReview_|Converge_|RunMultiAudit_|AuditMulti_|ReviewGate_|MultiReviewGate' -count=1` 과 `go test ./internal/hook/ -count=1` 초록을 기록(plan 세션은 테스트 미실행).
-- 전체 스위트는 로컬에서 돌리지 않는다.
+- 변경 전 기준선: run-phase 첫 단계에서 `go test ./internal/cli/ -run 'CodexAudit_|CodexBlankReview_|Converge_|RunMultiAudit_|AuditMulti_|ReviewGate_|MultiReviewGate' -count=1` 과 `go test ./internal/hook/ -run 'SubagentStart|SubagentStop|PreTool|AgentModel' -count=1` 초록을 기록(plan 세션은 테스트 미실행).
+- [HARD] 로컬 검증은 `-run` 선택자를 붙인 패키지 단위 실행만 한다. `internal/cli`·`internal/hook` 전체 스위트는 로컬에서 돌리지 않으며, 전체 스위트 판정은 리드 push 후 CI 다. 모든 `-run` 실행은 스윕 수가 0 이 아님을 `-v` 출력의 `=== RUN` 줄 수로 확인한다.
 
 ## §D Constraints
 
@@ -102,7 +104,7 @@ spec.md §C 참조. 템플릿 에이전트 본문을 고치면 `make agents-emit
 
 ## §E Self-Verification (run-phase 가 채울 항목)
 
-E1 AC 매트릭스, E2 `go vet ./internal/cli/... ./internal/hook/...`, E3 영향 패키지 테스트+커버리지, E4 `golangci-lint run ./internal/cli/... ./internal/hook/...`, E5 `make agents-emit-check`·템플릿 중립성, E6 미푸시 기록.
+E1 AC 매트릭스, E2 `go vet ./internal/cli/... ./internal/hook/...`, E3 영향 패키지의 `-run` 선택 테스트+커버리지(전체 스위트는 CI), E4 `golangci-lint run ./internal/cli/... ./internal/hook/...`, E5 `make agents-emit-check`·템플릿 중립성, E6 미푸시 기록.
 
 ## §F Milestones (우선순위 순)
 
