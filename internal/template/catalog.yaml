@@ -112,7 +112,7 @@ catalog:
             - name: sync-auditor
               tier: core
               path: templates/.claude/agents/moai/sync-auditor.md
-              hash: 57a54d31994a2923b950c7b9ecff663bc79bee7ecccfa1b5de1393aa155136a6
+              hash: f9dc15d6ec9f988ecc2c153e8909090fe43c2104e0a053e87beb07b18684ea17
               version: 1.0.0
             - name: manager-develop
               tier: core
@@ -142,7 +142,7 @@ catalog:
             - name: plan-auditor
               tier: core
               path: templates/.claude/agents/moai/plan-auditor.md
-              hash: d631883d1ce5c420996838364d31cb2a9701e35ef65415cd4cafe18af6bfdb16
+              hash: 10bcf539abae7f665d61a378530270f989b8e8559b889596fac8db15b73abb20
               version: 1.0.0
             - name: super-advisor
               tier: core
@@ -220,7 +220,7 @@ catalog:
                 - name: moai-ref-cross-model-audit
                   tier: optional-pack:devops
                   path: templates/.claude/skills/moai-ref-cross-model-audit/
-                  hash: 8a26affbb8f74ab46a58eb2c89826f1e22f334cb69c349c5051b733fb652016d
+                  hash: 62038aacd819f4af1d1c8177bb595cba1c8d07cd1ce8aae26f6147fa892297e8
                   version: 1.0.0
                 - name: moai-ref-supply-chain
                   tier: optional-pack:devops
