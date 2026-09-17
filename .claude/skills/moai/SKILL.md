@@ -103,7 +103,7 @@ Only if BOTH Priority 1 AND Priority 2 did not match: Classify the intent of the
 - Architecture-map language (architecture map, code maps, dependency graph, structure documentation) routes to **codemaps**
 - Feedback and bug report language (report, feedback, suggestion, issue) routes to **feedback**
 - MX tag language (mx tag, annotation, code context, legacy annotate) routes to **mx**
-- Backlog language (add to the backlog, note this for later, what should I work on next, remind me to) routes to **todo** — semantic exemplars; a request in any conversation_language expressing "queue this, do not start it now" routes identically
+- Backlog language (add to the backlog, note this for later, what should I work on next, remind me to) routes to **gtd** — semantic exemplars; a request in any conversation_language expressing "queue this, do not start it now" routes identically
 - Implementation language (implement, build, create, add, develop) with clear scope routes to **moai** (default autonomous)
 
 ### Priority 4: Default Behavior
@@ -166,14 +166,16 @@ Flags: `--auto` selects `mission_mode=auto`; it does not mean `progression_mode=
 Progression mode: autonomous (default) vs. semi-autonomous — chosen at Implementation Kickoff Approval; the gate stays mandatory in both modes.
 For detailed orchestration: Read ${CLAUDE_SKILL_DIR}/workflows/goal.md
 
-### todo - Backlog Queue
+### gtd - GTD Workflow and Backlog Queue
 
-Purpose: Hold what the operator wants to work on next. `backlog` has no owning session, so admission to the board is always an operator act — this is that surface.
-Verbs — slash surface: `/moai todo "<description>"` (append), bare `/moai todo` (list). CLI only: `moai todo next` (print queued cards; `moai todo next <n> [--spec <SPEC-ID>]` marks one picked — the pick itself is presented through AskUserQuestion), `moai todo done <n>` (remove).
+Purpose: Carry captured work through Capture, Clarify, Organize, Reflect, and Engage, and hold what the operator wants to work on next. `backlog` has no owning session, so admission to the board is always an operator act — this is that surface.
+Verbs — slash surface: `/moai gtd "<description>"` (append), bare `/moai gtd` (list). CLI only: `moai gtd next` (print queued cards; `moai gtd next <n> [--spec <SPEC-ID>]` marks one picked — the pick itself is presented through AskUserQuestion), `moai gtd done <n>` (remove).
+GTD stages: `capture`, `clarify`, `organize`, `reflect`, `engage`, plus `answer` for a gate-blocked card. Captured items stay separate from the established development queue until an explicitly approved Engage publishes one.
+Compatibility: `/moai todo` and `moai todo` are the compat alias of the canonical `/moai gtd` and `moai gtd` — same database, same card identities, same ordering, archive, and restore path.
 State: `~/.moai/db/<project-key>/todo/backlog.db` — home-scoped, project-keyed, not committed, a SQLite database every mutation takes a cross-process lock over. A `backlog.json` beside an existing database is an export or a legacy leftover; the read verbs report that distinction. Before migration, a legacy JSON-only queue remains readable.
 The pick is the operator's: never preselect, never reorder by inferred priority, never auto-populate from TODO comments or issues.
-Enablement: when `workflow.todo.enabled` is `false` in `.moai/config/sections/workflow.yaml`, do NOT route to this workflow by inference — a backlog-shaped phrase the operator did not name a subcommand for is answered directly instead of being queued. The gate binds AUTOMATIC routing only: an explicit `/moai todo` or `/moai todo "<description>"` still runs normally, exactly as it does when the key is absent or `true`. The flag suppresses guidance, not the feature — `moai todo` stays registered and every verb keeps working, so refusing or silently ignoring a named invocation is a defect, not the intended behavior.
-For detailed orchestration: Read ${CLAUDE_SKILL_DIR}/workflows/todo.md
+Enablement: when `workflow.todo.enabled` is `false` in `.moai/config/sections/workflow.yaml`, do NOT route to this workflow by inference — a backlog-shaped phrase the operator did not name a subcommand for is answered directly instead of being queued. The gate binds AUTOMATIC routing only: an explicit `/moai gtd` or `/moai gtd "<description>"` still runs normally, exactly as it does when the key is absent or `true`. The flag suppresses guidance, not the feature — the queue verbs stay registered and every one of them keeps working, so refusing or silently ignoring a named invocation is a defect, not the intended behavior.
+For detailed orchestration: Read ${CLAUDE_SKILL_DIR}/workflows/gtd.md
 
 ### fix - Auto-Fix Errors
 
