@@ -117,8 +117,8 @@ flows. The hook applies the doctrine conditionally.
 
 - **Scan scope**: the pattern set is matched against the command with quoted
   spans collapsed to a placeholder word, so a match reflects the command being
-  invoked rather than text carried as data. `moai todo add "… git switch …"` is
-  allowed because the command being run is `moai todo add`; `git switch main`
+  invoked rather than text carried as data. `moai gtd add "… git switch …"` is
+  allowed because the command being run is `moai gtd add`; `git switch main`
   and `git checkout -b "feat/x"` both still deny, the latter because the
   placeholder preserves the operand after `-b`. A git invocation hidden inside a
   shell wrapper (`bash -c "git switch main"`) is not matched — under-matching an
