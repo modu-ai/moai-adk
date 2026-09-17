@@ -39,8 +39,10 @@ func TestCodexAudit_RequiredGateUnmetRecordedOnInconclusive(t *testing.T) {
 		t.Fatalf("unexpected IsError — fail-open stays a structured result")
 	}
 	got := structuredMap(t, res)
-	if v, _ := got["verdict"].(string); v != VerdictInconclusive {
-		t.Errorf("verdict = %q, want %q (fail-open verdict is preserved, not rewritten)", v, VerdictInconclusive)
+	// An explicitly required gate is fail-closed: the unmet gate blocks with
+	// verdict fail, and gate_unmet distinguishes it from a reviewed failure.
+	if v, _ := got["verdict"].(string); v != "fail" {
+		t.Errorf("verdict = %q, want fail (explicit required gate left without a verdict blocks)", v)
 	}
 	if g, _ := got["gate_unmet"].(string); g == "" {
 		t.Error("gate_unmet is empty — a required gate that produced no verdict must be recorded as unmet")

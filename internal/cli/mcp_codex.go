@@ -1696,12 +1696,21 @@ func handleCodexAudit(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallTo
 	return codexReviewToolResult(out), nil
 }
 
-// applyGateUnmet annotates a fail-open inconclusive audit with the declared
-// codex gate when that gate is `required` (#1632 axis 3). The audit tree's own
-// workflow.yaml decides — the same project_root the review ran against — so a
-// named tree's gate follows the named tree, not the server's cwd. The verdict
-// itself is untouched: fail-open stays fail-open, and the annotation makes the
-// gap VISIBLE rather than relabeling an unknown as a pass or a fail.
+// applyGateUnmet blocks a fail-open inconclusive audit when the audited tree
+// EXPLICITLY declares workflow.audit.gates.codex: required (#1632 axis 3). The
+// audit tree's own workflow.yaml decides — the same project_root the review ran
+// against — so a named tree's gate follows the named tree, not the server's cwd.
+//
+// Operator decision (fail-closed for an explicit `required`, the same rule the
+// convergence engine applies in enforceRequiredGateUnmet): the verdict becomes
+// fail, gate_unmet says the failure is an unmet gate rather than a reviewed
+// failure, and the summary keeps the original no-verdict cause. The result
+// stays a structured result (isError false). The RAW configured value is read,
+// never the engine default, so a project that did not write `required` keeps
+// the fail-open inconclusive byte-for-byte.
+//
+// @MX:ANCHOR: [AUTO] single-backend required-gate enforcement; every codex_audit exit passes through here
+// @MX:REASON: flipping the verdict for a non-explicit gate would turn every existing project fail-closed
 func applyGateUnmet(out ReviewOutput, projectDir string) ReviewOutput {
 	if out.Verdict != VerdictInconclusive {
 		return out
@@ -1710,6 +1719,8 @@ func applyGateUnmet(out ReviewOutput, projectDir string) ReviewOutput {
 		return out
 	}
 	out.GateUnmet = "workflow.audit.gates.codex is `required`, but this audit returned no verdict (fail-open inconclusive)"
+	out.Verdict = "fail"
+	out.Summary = "required gate unmet (workflow.audit.gates.codex is `required`, no verdict): " + out.Summary
 	return out
 }
 
