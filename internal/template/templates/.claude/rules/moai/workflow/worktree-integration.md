@@ -531,9 +531,9 @@ specification; the boundary of the guard's analyzer is still unmeasured.
 
 ### The refusal's message shapes
 
-The refusal is not one sentence. Six distinct clauses have been seen, and the difference matters because a reader who greps for the wording they remember concludes the guard did not fire.
+The refusal is not one sentence. Seven distinct clauses have been seen — two of them first met while writing this section — and the difference matters because a reader who greps for the wording they remember concludes the guard did not fire.
 
-Four shapes are pinned in this repository as quoted fixtures (`internal/hook/worktree_guard_refusal_test.go`); two more have been observed since and are not pinned anywhere:
+Four shapes are pinned in this repository as quoted fixtures (`internal/hook/worktree_guard_refusal_test.go`); three more have been observed since and are not pinned anywhere:
 
 | Shape | The clause after `…but this command` | Provenance | Pinned |
 |---|---|---|---|
@@ -543,8 +543,13 @@ Four shapes are pinned in this repository as quoted fixtures (`internal/hook/wor
 | Working-directory resolution | `'s working directory resolved to the shared checkout (<path>)` | **Card-quoted, never measured.** The quote is truncated and the continuation is unobserved — the fixture reproduces that truncation deliberately | `sampleGuardRefusalCwdCardQuoted` |
 | Runtime-computed target | `points git at a directory computed at runtime (-C <path>)` | Second-hand — another lane, 2.1.275 (card t880); not reproduced here | — |
 | Unverifiable git form | `names git in a form too complex to verify` | First-hand at 2.1.251 (recorded in the trigger table above); second-hand at 2.1.275 (card t880) | — |
+| Unverifiable non-git command | `runs <command> with <argument> in a plain command, so what it runs cannot be shown not to be git` | First-hand at 2.1.275 (card t852) — see the reproduction note below | — |
 
-**The classifier does not key on any of these clauses.** `internal/hook/post_tool_failure.go` matches the anchor `isolated in the worktree` alone, which is why the two unpinned shapes still classify as `WorktreeGuardRefusal` rather than falling into the catch-all. The anchor is an observed dependency on upstream wording, not a contract — if the runtime rewrites that opening clause, detection goes silently to zero.
+**A seventh shape exists and resisted narrowing.** The row above was met while writing this very section: a compound command assigning a shell variable and then running `printf` with a long multi-line argument was refused, with the guard naming `printf` and quoting its whole argument. Four paired probes in the same session failed to reproduce it — `printf 'gitignore'` alone passed, an argument carrying backticks passed, the two combined passed, and the same `printf` redirected into a runtime-computed `"$VAR/path"` passed. So neither the `git` substring, nor backticks, nor a computed redirect target is the trigger on its own.
+
+This is worth more than the row itself: it is the clearest available demonstration that **the guard's analyzer refuses on a property none of the observations here has isolated**, and that a refusal can name a command that has nothing to do with git. Treat an unfamiliar refusal clause as a seventh, eighth, or ninth shape rather than as a misfire, and record its verbatim wording — the catalogue above grew twice while this section was being written.
+
+**The classifier does not key on any of these clauses.** `internal/hook/post_tool_failure.go` matches the anchor `isolated in the worktree` alone, which is why the three unpinned shapes still classify as `WorktreeGuardRefusal` rather than falling into the catch-all. The anchor is an observed dependency on upstream wording, not a contract — if the runtime rewrites that opening clause, detection goes silently to zero.
 
 ### The axis is git — with one measured exception
 
@@ -619,4 +624,4 @@ Worktree usage is user opt-in; the default flow runs all phases on a `feat/SPEC-
 
 ---
 
-Version: 4.5.0 (guard-refusal message-shape catalogue — four pinned fixtures plus two observed since; the git axis and its measured counter-example; the heredoc disagreement recorded unresolved across two session kinds; background subagents carry no anchor of their own; per-row version attribution)
+Version: 4.5.0 (guard-refusal message-shape catalogue — four pinned fixtures plus three observed since, one of them met while writing the section and unreproduced by four narrowing probes; the git axis and its measured counter-example; the heredoc disagreement recorded unresolved across two session kinds; background subagents carry no anchor of their own; per-row version attribution)
