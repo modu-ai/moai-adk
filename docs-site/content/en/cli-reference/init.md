@@ -46,7 +46,6 @@ Accepts at most 1 argument.
 
 | Flag | Description |
 |--------|------|
-| `--project-mode <personal\|team>` | Project mode (default: personal) |
 | `--enable-lsp` | Enable LSP integration (default: true) |
 | `--enforce-quality` | Enforce quality gates (default: true) |
 | `--enable-design` | Enable the design workflow (default: true) |

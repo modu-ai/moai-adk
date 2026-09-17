@@ -70,6 +70,51 @@ func TestAdmissionMarkerLifecycleAndInvalidMarker(t *testing.T) {
 	}
 }
 
+// The lock's own check must give the same verdict as the free function for
+// every marker state, because SessionStart now calls the lock's check instead.
+func TestAdmissionLockCheckMatchesFreeFunction(t *testing.T) {
+	root := t.TempDir()
+	t.Setenv("MOAI_HOME", t.TempDir())
+	lock, err := AcquireAdmissionLock(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = lock.Release() }()
+
+	errText := func(err error) string {
+		if err == nil {
+			return "<nil>"
+		}
+		return err.Error()
+	}
+	states := []struct {
+		name  string
+		setup func() error
+	}{
+		{"absent", func() error { return ClearMigrationMarker(root) }},
+		{"present", func() error {
+			_, err := InstallMigrationMarkerLocked(root, "lock-check")
+			return err
+		}},
+		{"invalid", func() error { return WriteMigrationMarker(root, []byte("{")) }},
+	}
+	for _, s := range states {
+		if err := ClearMigrationMarker(root); err != nil {
+			t.Fatal(err)
+		}
+		if err := s.setup(); err != nil {
+			t.Fatalf("%s setup: %v", s.name, err)
+		}
+		free, viaLock := CheckRuntimeAdmission(root), lock.CheckRuntimeAdmission()
+		if errText(free) != errText(viaLock) {
+			t.Errorf("%s: lock check %q, free function %q", s.name, errText(viaLock), errText(free))
+		}
+		if (s.name == "absent") != (viaLock == nil) {
+			t.Errorf("%s: lock check admitted=%v", s.name, viaLock == nil)
+		}
+	}
+}
+
 func TestAdmissionMarkerClearFailureIsObservable(t *testing.T) {
 	root := t.TempDir()
 	t.Setenv("MOAI_HOME", t.TempDir())

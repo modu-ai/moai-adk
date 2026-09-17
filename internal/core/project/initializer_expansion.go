@@ -30,9 +30,10 @@ const defaultRequireJustification = true
 func WritePhase1Configs(opts InitOptions, result *InitResult) error {
 	sectionsDir := filepath.Clean(filepath.Join(opts.ProjectRoot, defs.MoAIDir, defs.SectionsSubdir))
 
-	if err := writeProjectModeYAML(sectionsDir, opts, result); err != nil {
-		return err
-	}
+	// project.yaml is deliberately NOT written here (SPEC-INIT-UPDATE-CONSISTENCY-001
+	// REQ-ICU-001): project.mode was a ghost key with no Go reader, so the
+	// writer was removed. The file's remaining keys are carried by the
+	// template deploy / generateConfigsFallback path.
 	// harness.yaml is deliberately NOT written (C36 / REQ-WIZ-012): the
 	// harness-profile question is removed from the wizard and the deployed
 	// harness.yaml already ships default_profile: "default", so a write here
@@ -45,37 +46,6 @@ func WritePhase1Configs(opts InitOptions, result *InitResult) error {
 	}
 	if err := writeDesignYAML(sectionsDir, opts, result); err != nil {
 		return err
-	}
-	return nil
-}
-
-// writeProjectModeYAML writes project.mode to project.yaml (B1, REQ-IWE-001).
-// It reads the existing project.yaml and updates only the mode key.
-func writeProjectModeYAML(sectionsDir string, opts InitOptions, result *InitResult) error {
-	projectYAMLPath := filepath.Join(sectionsDir, defs.ProjectYAML)
-	mode := opts.ProjectMode
-	if mode == "" {
-		mode = "personal"
-	}
-
-	// Read existing file or create a fresh block
-	var content string
-	existing, readErr := os.ReadFile(projectYAMLPath) //nolint:govet
-	if readErr == nil {
-		// Replace or append mode key
-		content = patchYAMLKey(string(existing), "project", "mode", mode)
-	} else {
-		// Fresh project.yaml with mode key only (other keys written by generateConfigsFallback)
-		content = fmt.Sprintf("project:\n  mode: %s\n", mode)
-	}
-
-	if err := os.WriteFile(projectYAMLPath, []byte(content), defs.FilePerm); err != nil {
-		return fmt.Errorf("write project.yaml mode: %w", err)
-	}
-	if readErr != nil {
-		// Only append to CreatedFiles if newly created
-		result.CreatedFiles = append(result.CreatedFiles,
-			filepath.Join(defs.MoAIDir, defs.SectionsSubdir, defs.ProjectYAML))
 	}
 	return nil
 }

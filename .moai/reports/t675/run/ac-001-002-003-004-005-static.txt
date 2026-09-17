@@ -1,0 +1,86 @@
+# 2026-09-18, card t675, SPEC-DOCTOR-TEST-CWD-ISOLATION-001 v0.3.1
+
+## AC-DTC-001 (tree = M1 edit, committed unchanged as 85f1ba686)
+$ MOAI_EMBED_CHECK_BIN=/usr/bin/false go test -count=1 -v -run '^TestDoctorCmd_Execution$' ./internal/cli/
+exit 0
+=== RUN   TestDoctorCmd_Execution
+--- PASS: TestDoctorCmd_Execution (11.11s)
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/cli	11.723s
+
+## AC-DTC-002 sweep list (tree = M1 edit)
+$ go test ./internal/cli -list '^(TestRunDoctor_(WithExport|WithFix|Verbose|AllFlags|VerboseAndDetail|ExportMode)|TestDoctorCmd_(Execution|ExportFlag|VerboseExecution))$'
+exit 0
+TestRunDoctor_WithExport
+TestRunDoctor_WithFix
+TestRunDoctor_Verbose
+TestRunDoctor_AllFlags
+TestRunDoctor_VerboseAndDetail
+TestRunDoctor_ExportMode
+TestDoctorCmd_Execution
+TestDoctorCmd_ExportFlag
+TestDoctorCmd_VerboseExecution
+ok  	github.com/modu-ai/moai-adk/internal/cli	0.662s
+
+## Diff context
+$ git rev-parse develop            -> a851b205ccb525db537733111a3938ddd74ff801
+$ git merge-base develop HEAD      -> a851b205ccb525db537733111a3938ddd74ff801
+HEAD = 85f1ba686
+
+## AC-DTC-003
+$ git diff --name-only develop...HEAD -- '*.go'
+exit 0
+internal/cli/coverage_improvement_test.go
+internal/cli/doctor_test.go
+internal/cli/integration_test.go
+
+## AC-DTC-004 / AC-DTC-005
+$ git diff -U0 --no-color develop...HEAD -- internal/cli/coverage_improvement_test.go internal/cli/doctor_test.go internal/cli/integration_test.go
+exit 0
+diff --git a/internal/cli/coverage_improvement_test.go b/internal/cli/coverage_improvement_test.go
+index 422dde26b..8a211c9cd 100644
+--- a/internal/cli/coverage_improvement_test.go
++++ b/internal/cli/coverage_improvement_test.go
+@@ -699,0 +700 @@ func TestRunDoctor_WithExport(t *testing.T) {
++	t.Chdir(t.TempDir())
+@@ -724,0 +726 @@ func TestRunDoctor_WithFix(t *testing.T) {
++	t.Chdir(t.TempDir())
+@@ -764,0 +767 @@ func TestRunDoctor_Verbose(t *testing.T) {
++	t.Chdir(t.TempDir())
+@@ -4911,0 +4915 @@ func TestRunDoctor_AllFlags(t *testing.T) {
++	t.Chdir(t.TempDir())
+@@ -5740,0 +5745 @@ func TestRunDoctor_VerboseAndDetail(t *testing.T) {
++	t.Chdir(t.TempDir())
+@@ -5787,0 +5793 @@ func TestRunDoctor_ExportMode(t *testing.T) {
++	t.Chdir(t.TempDir())
+diff --git a/internal/cli/doctor_test.go b/internal/cli/doctor_test.go
+index 386a29c02..24010e72a 100644
+--- a/internal/cli/doctor_test.go
++++ b/internal/cli/doctor_test.go
+@@ -69,0 +70 @@ func TestDoctorCmd_Execution(t *testing.T) {
++	t.Chdir(t.TempDir())
+diff --git a/internal/cli/integration_test.go b/internal/cli/integration_test.go
+index 71bdb82a1..7380b3bc7 100644
+--- a/internal/cli/integration_test.go
++++ b/internal/cli/integration_test.go
+@@ -156,0 +157 @@ func TestDoctorCmd_ExportFlag(t *testing.T) {
++	t.Chdir(t.TempDir())
+@@ -185,0 +187 @@ func TestDoctorCmd_VerboseExecution(t *testing.T) {
++	t.Chdir(t.TempDir())
+
+## Static checks (tree = M1 edit)
+$ gofmt -l internal/cli/coverage_improvement_test.go internal/cli/doctor_test.go internal/cli/integration_test.go
+exit 0, no output
+$ go vet ./internal/cli/
+exit 0, no output
+$ golangci-lint run ./internal/cli/
+exit 1
+internal/cli/gtd_answer.go:84:15: S1038: should use fmt.Fprintf instead of fmt.Fprintln(fmt.Sprintf(...)) (but don't forget the newline) (staticcheck)
+				_, err := fmt.Fprintln(cmd.OutOrStdout(), fmt.Sprintf(`{"card":%q,"answerFile":%q}`, args[0], path))
+				          ^
+internal/cli/launcher.go:811:3: S1021: should merge variable declaration with assignment on next line (staticcheck)
+		var err error
+		^
+2 issues:
+* staticcheck: 2
+# Both findings are in files outside this card's diff (AC-DTC-003 lists only the three _test.go files) -> pre-existing, 0 NEW.
