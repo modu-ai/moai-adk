@@ -157,10 +157,12 @@ internal/cli/launcher.go:811:3: S1021 (staticcheck)
 
 ## Gaps (명시적 미검증)
 
-- **`internal/cli` 전량에 선재 실패 1건이 남아 있다** — `TestGTDAllTodoVerbsParity`. 이 카드의
-  변경이 원인이 아님은 A/B 로 확정했으나, 그 결함 자체는 이 카드에서 고치지 않았다(범위 규율).
-  따라서 이 카드가 주장하는 것은 「`internal/cli` 전량 초록」이 아니라 「이 카드가 새로 깨뜨린
-  것이 없음」이다. 두 주장은 다르고, 후자만 측정됐다.
+- **`internal/cli` 전량은 base 기준으로 1건 실패했다** — `TestGTDAllTodoVerbsParity`. 이 카드의
+  변경이 원인이 아님은 A/B 로 확정했고, t867 이 `develop` 에서 이미 해소했다(위 § 참조).
+  그러므로 이 카드가 측정한 것은 「`internal/cli` 전량 초록」이 아니라 「이 카드가 새로 깨뜨린
+  것이 없음」이다. 두 주장은 다르고, 후자만 측정됐다. 전자는 **develop 흡수 후** 성립하며,
+  흡수 시점에 그 테스트를 지목 재실행해 확인한다 — 흡수 전 이 판정서로 전량 초록을 주장하지
+  않는다.
 - **런타임 미재현.** 잔여 `CLAUDE_CODE_MAX_CONTEXT_TOKENS`가 후속 `moai cc` 세션에서 실제로
   잘못된 컨텍스트 창을 만드는지는 재현하지 않았다. 이 저장소에서 GLM 통합 테스트 실행이
   금지되어 있고(리드 가드), 실제 settings 파일을 건드리기 때문이다. 잔여의 **존재**는 기계적으로
@@ -341,10 +343,22 @@ FAIL	github.com/modu-ai/moai-adk/internal/cli	966.368s
 t863+t864)". `gtd answer` 동사를 추가했으나 `todo` 쪽 짝을 맞추지 않았고, base 의 기대 목록에
 `answer` 가 없다(`git show 881aa4bb8:internal/cli/gtd_compat_test.go | grep answer` → 0건).
 
-**이것은 테스트만의 문제가 아닐 수 있다.** 검사 이름이 `AllTodoVerbsParity` 이므로 의도는 「모든
-gtd 동사에 todo 별칭이 있다」로 읽힌다. 그렇다면 결손은 기대 목록이 아니라 **`moai todo answer`
-자체의 부재**다. 어느 쪽인지는 t863·t864 의 의도에 달렸으므로 이 카드에서 판단하지 않고 리드에
-보고한다(범위 규율). 여기서는 「이 카드의 변경이 원인이 아님」까지만 단정한다.
+**그리고 이 실패는 살아 있는 결함이 아니라 스테일한 측정이었다 — t867 이 이미 해소했다.**
+리드 실측(2026-09-18): `develop`(`ba09526be`)의 기대 목록에 `answer` 가 들어 있다.
+
+```
+$ git -C .claude/worktrees/develop show HEAD:internal/cli/gtd_compat_test.go | grep -n answer
+52:	gtdWant := append(slices.Clone(todoWant), "capture", "clarify", "organize", "reflect", "engage", "answer")
+```
+
+수리 주체는 **t867**(병합 `90b0a32bc`)이고 그 레인이 `TestGTDAllTodoVerbsParity --- PASS` 를
+관측했다. 이 판정서의 실패는 base `881aa4bb8` 에서 잰 것이라 **측정 시점이 수리 이전**이었을
+뿐이다. 내가 던진 「기대 목록이 문제냐 `moai todo answer` 부재가 문제냐」는 t867 이 전자로
+답했다(기대 목록에 `answer` 추가) — 별도 카드는 불필요하다.
+
+**남는 교훈은 귀속과 결론이 별개라는 것이다.** A/B 귀속("이 카드 변경 무관")은 옳았지만, 그것이
+"살아 있는 결함"을 뜻하지는 않았다. base 에서 잰 실패는 base 에 대한 참이고 현행 트리에 대한 참이
+아니다 — 창에서 `develop` 을 흡수한 뒤 그 테스트를 지목 재실행해 초록을 확인하고 병합한다.
 
 ---
 
