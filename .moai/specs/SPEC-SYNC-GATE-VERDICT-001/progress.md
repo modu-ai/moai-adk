@@ -104,14 +104,16 @@ empty and no stale block was re-delivered. A repair that recomputes the id after
 loosen the gate: an edit made during the check window could be recorded as passed, which
 REQ-SGV-005 forbids. No hook change was made; this is left for the lead to consider as a card.
 
-**Regression surface (blocker).** `go test -count=1 ./internal/template/` exit=1 with three
-failures. `TestManifestHashFormat` (`CATALOG_HASH_UNSTABLE: moai stored hash=0afffd09…, computed
+**Regression surface (catalog blocker — RESOLVED by commit `9fa9bc40b`, see §E.3).** First
+measurement: `go test -count=1 ./internal/template/` exit=1 with three failures. `TestManifestHashFormat` (`CATALOG_HASH_UNSTABLE: moai stored hash=0afffd09…, computed
 hash=a9f58803…`) and `TestCatalogHashCoversSkillSubfiles` (`CATALOG_HASH_SKINNY`) are caused by
 the M3 template doc edit: with the pre-M3 template doc swapped back, both PASS (worktree restored,
 `git status` clean). `TestGTDCanonicalSurfaceGolden` (`templates/.claude/commands/moai/todo.md is
 not a thin gtd compatibility path`) also FAILs on the pre-M3 doc, so it was already failing before
-this card. The repair (`internal/template/catalog.yaml` hash regen) is outside this card's
-4-file scope fence and is returned as a blocker.
+this card. The repair (`internal/template/catalog.yaml` hash regen) was outside this card's
+4-file scope fence and was returned as a blocker. The orchestrator resolved it as option (a),
+regeneration owned by this card, following the t628 precedent that a known red never rides into
+develop. The regeneration landed in `9fa9bc40b`.
 
 ## §E.3 Run-phase Audit-Ready Signal
 
@@ -119,16 +121,38 @@ this card. The repair (`internal/template/catalog.yaml` hash regen) is outside t
 run_complete_at: 2026-09-18
 run_commit_sha: pending-backfill
 run_code_final_sha: 23e8cd61e0e6188bde65363e0765d840f998e993
-run_status: blocked-pending-catalog-hash-cascade
+run_status: audit-ready
 ac_pass_count: 9
 ac_fail_count: 0
 card_base: ca2dae9a6428e62e380c3104d4b2cb208fccca73
 hook_repair_applied: false
-open_blocker: "internal/template/catalog.yaml moai skill hash stale after the M3 template doc edit (TestManifestHashFormat, TestCatalogHashCoversSkillSubfiles); regen is outside the 4-file scope fence"
+catalog_hash_commit_sha: 9fa9bc40ba95695ec943bd4558d594711d88a38c
+open_blocker: none
 preexisting_failure_not_attributable: TestGTDCanonicalSurfaceGolden
 new_warnings_or_lints_introduced: none-measured (doc-only change; no Go lint run)
 pushed: false
 ```
+
+**Catalog hash cascade (resolved).** Commands and outputs below were measured and reported by the
+orchestrator on this worktree. The generator was not re-run by manager-develop.
+
+- `go run ./internal/template/scripts/gen-catalog-hashes.go --entry moai --dry-run` →
+  `a9f58803381ade51be00472add9be95b9468affd406466066f5900c130d5533e`. This matches the failing
+  test's `computed hash=` byte for byte (all 64 characters).
+- The generator was then written without `--dry-run`. `git diff --numstat -- internal/template/catalog.yaml` → `1 1`. The diff
+  touches only the moai hash line, `0afffd09…` → `a9f58803…`; manager-develop re-observed this with
+  `git diff -U0` before committing `9fa9bc40b`.
+- `go test -count=1 -v -run 'TestManifestHashFormat|TestCatalogHashCoversSkillSubfiles' ./internal/template/`
+  → exit 0, with exactly two `--- PASS` lines (`TestManifestHashFormat`,
+  `TestCatalogHashCoversSkillSubfiles`).
+- `go test -count=1 ./internal/template/` → exit 1. The sole failure is `TestGTDCanonicalSurfaceGolden`
+  (`templates/.claude/commands/moai/todo.md is not a thin gtd compatibility path`).
+
+**Pre-existing, card-independent failure.** `TestGTDCanonicalSurfaceGolden` reads only 5 template
+files plus a skill count.
+- Scoped to those 5 files and the test file, `git diff --name-only ca2dae9a6..HEAD` → 0 bytes.
+- The same range without a pathspec → 6 paths, which is the non-vacuity control.
+- The test also failed with the pre-M3 template doc swapped back (`run/m4-three-tests-premis3-control.txt`).
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
