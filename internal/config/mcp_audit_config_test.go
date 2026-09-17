@@ -54,6 +54,12 @@ func TestAuditConfig_DefaultProfile(t *testing.T) {
 	if a.Gates.GLM != AuditGateAdvisory {
 		t.Errorf("default Gates.GLM = %q, want %q (advisory — user-enabled)", a.Gates.GLM, AuditGateAdvisory)
 	}
+	if a.Claude.Model != "sonnet" {
+		t.Errorf("default Claude.Model = %q, want sonnet", a.Claude.Model)
+	}
+	if a.Claude.Effort != "high" {
+		t.Errorf("default Claude.Effort = %q, want high", a.Claude.Effort)
+	}
 }
 
 func TestAuditConfig_YAMLRoundTrip(t *testing.T) {

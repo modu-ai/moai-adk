@@ -90,7 +90,7 @@ flowchart TD
 
 ## 레인 번호 소유 — factory.db
 
-어느 번호를 어느 레인이 쥐고 있는지는 `~/.moai/db/<project-key>/factory/factory.db`에 기록됩니다. 새 레인을 띄우면 번호는 **살아 있는 세션이 쥔 것만 건너뛰어** 다음 빈 번호로 붙습니다 — 죽은 레인의 번호는 풀려서 다시 쓰이고, 남은 claim도 데이터베이스에서 치워집니다. 기존 `.moai/state/factory/workers.json`은 한 번만 가져오고 롤백 증거로 남깁니다. 레인 이름은 `-f lane-<n>` 형태가 이미 이름을 정하므로 `--name`/`-n`과 함께 쓰면 에러입니다.
+어느 번호를 어느 레인이 쥐고 있는지는 `~/.moai/db/<project-key>/factory/factory.db`에 기록됩니다. 기점 디렉터리가 임시 디렉터리인 프로젝트(절대 `MOAI_HOME` 오버라이드 없음)는 이 데이터베이스를 프로젝트 로컬 `<base>/.moai/db/<project-key>/factory/factory.db`에 둡니다 — 백로그 큐와 같은 예외입니다. 새 레인을 띄우면 번호는 **살아 있는 세션이 쥔 것만 건너뛰어** 다음 빈 번호로 붙습니다 — 죽은 레인의 번호는 풀려서 다시 쓰이고, 남은 claim도 데이터베이스에서 치워집니다. 기존 `.moai/state/factory/workers.json`은 한 번만 가져오고 롤백 증거로 남깁니다. 레인 이름은 `-f lane-<n>` 형태가 이미 이름을 정하므로 `--name`/`-n`과 함께 쓰면 에러입니다.
 
 ## 달라지지 않는 것
 

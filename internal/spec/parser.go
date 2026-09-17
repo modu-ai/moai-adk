@@ -98,15 +98,25 @@ func markdownHeadingLevel(trimmed string) int {
 	return level
 }
 
-// isACSectionHeading reports whether a heading names the acceptance criteria
-// section.
-func isACSectionHeading(trimmed string) bool {
+// isNegativeSectionHeading reports whether a heading is about what the SPEC
+// does not cover; such a heading never anchors, by any criterion.
+func isNegativeSectionHeading(trimmed string) bool {
 	text := strings.ReplaceAll(strings.ToLower(trimmed), "acceptance.md", "")
 	for _, marker := range acNegativeSectionMarkers {
 		if strings.Contains(text, marker) {
-			return false
+			return true
 		}
 	}
+	return false
+}
+
+// isACSectionHeading reports whether a heading names the acceptance criteria
+// section.
+func isACSectionHeading(trimmed string) bool {
+	if isNegativeSectionHeading(trimmed) {
+		return false
+	}
+	text := strings.ReplaceAll(strings.ToLower(trimmed), "acceptance.md", "")
 	for _, phrase := range acSectionVocabulary {
 		if strings.Contains(text, phrase) {
 			return true
@@ -115,26 +125,80 @@ func isACSectionHeading(trimmed string) bool {
 	return false
 }
 
-// findACSectionStart finds the start index of Acceptance Criteria section in markdown:
-// the line after the first heading of level 2 or deeper that names the section and
-// whose section holds at least one criterion line. An empty summary section that
-// precedes the real one does not take the anchor; when every such section is
-// empty, the first one still anchors.
-func findACSectionStart(lines []string) int {
-	first := -1
-	for i, line := range lines {
-		trimmed := strings.TrimSpace(line)
-		if markdownHeadingLevel(trimmed) < 2 || !isACSectionHeading(trimmed) {
-			continue
+// acRegionDeclarationRe — the region qualifier (SPEC-AC-ANCHOR-SCOPE-001,
+// plan §C(i)(a)): the AC-shaped LIST form, a bullet plus an AC-…: colon. The
+// separator is REQUIRED — the same requirement acIDPattern carries — because
+// it is what keeps a prose bullet that merely mentions an AC id from naming a
+// region (REQ-ACAS-004, the mixed-document bound of
+// lint_coverage_sibling.go). The id grammar is the probe's loose discriminator
+// shape, deliberately wider than acIDPattern's: the region qualifier decides
+// WHERE a section is, while the line grammar alone decides WHAT parses.
+var acRegionDeclarationRe = regexp.MustCompile(`^\s*[-*+]\s+\*{0,2}AC-[A-Za-z0-9.-]*[A-Za-z0-9]\*{0,2}\s*(?:\([^()]*\)\s*)?\*{0,2}\s*[:—–]\s*`)
+
+// sectionHoldsACDeclaration reports whether the section starting at startIdx
+// (the line after its anchor heading) holds at least one AC-shaped declaration
+// line (acRegionDeclarationRe). The scan breaks at the next heading of the
+// anchor's own level or higher, mirroring extractACLines' region rule, so the
+// two region qualifiers read the same section.
+func sectionHoldsACDeclaration(lines []string, startIdx int) bool {
+	anchorLevel := markdownHeadingLevel(strings.TrimSpace(lines[startIdx-1]))
+	for i := startIdx; i < len(lines); i++ {
+		trimmed := strings.TrimSpace(lines[i])
+		if level := markdownHeadingLevel(trimmed); level > 0 && level <= anchorLevel {
+			break
 		}
-		if first < 0 {
-			first = i + 1
-		}
-		if len(extractACLines(lines, i+1, false)) > 0 {
-			return i + 1
+		if acRegionDeclarationRe.MatchString(lines[i]) {
+			return true
 		}
 	}
-	return first
+	return false
+}
+
+// findACSectionStart finds the start index of Acceptance Criteria section in markdown:
+// the line after the first heading of level 2 or deeper that names the section
+// and whose section holds at least one criterion line. An empty summary section
+// that precedes the real one does not take the anchor; when every vocabulary
+// section is empty, the terminal fallback is declaration-aware (loose axis,
+// SPEC-AC-ANCHOR-SCOPE-001): the first declaration-bearing region anchors, and
+// only a document with no such region falls back to its first vocabulary
+// section (a document with no vocabulary headings at all was previously left
+// unanchored entirely).
+//
+// SPEC-AC-ANCHOR-SCOPE-001 (narrow axis): a heading that does not name the
+// section may still carry its declarations — a heading whose section holds at
+// least one AC-shaped declaration line (acRegionDeclarationRe) is also an
+// anchor candidate, so a document whose AC list lives under a non-vocabulary
+// heading anchors that region instead of nothing. Negative-marker headings
+// never anchor, by either criterion.
+//
+// @MX:NOTE: [AUTO] fan-in anchor selector — the vocabulary early-return keeps
+// every pre-repair anchor; only vocabulary-less documents gain an anchor here
+// (SPEC-AC-ANCHOR-SCOPE-001).
+func findACSectionStart(lines []string) int {
+	firstVocabulary := -1
+	firstDeclaration := -1
+	for i, line := range lines {
+		trimmed := strings.TrimSpace(line)
+		level := markdownHeadingLevel(trimmed)
+		if level < 2 || isNegativeSectionHeading(trimmed) {
+			continue
+		}
+		if isACSectionHeading(trimmed) {
+			if firstVocabulary < 0 {
+				firstVocabulary = i + 1
+			}
+			if len(extractACLines(lines, i+1, false)) > 0 {
+				return i + 1
+			}
+		}
+		if firstDeclaration < 0 && sectionHoldsACDeclaration(lines, i+1) {
+			firstDeclaration = i + 1
+		}
+	}
+	if firstDeclaration >= 0 {
+		return firstDeclaration
+	}
+	return firstVocabulary
 }
 
 // extractACLines extracts parsed line list from AC section. The section ends at

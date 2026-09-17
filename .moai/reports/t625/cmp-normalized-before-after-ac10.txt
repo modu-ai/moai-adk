@@ -1,3 +1,0 @@
-cmp (hunk headers normalized to HUNK) before vs after-ac10 EXIT=0
-3
-3

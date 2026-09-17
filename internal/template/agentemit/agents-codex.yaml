@@ -25,7 +25,7 @@ layout:
 # Optional-field emission switches. A false switch means the field is omitted
 # from every emitted TOML (Codex default inheritance).
 fields:
-  # model: omitted on all 11 agents in v1 (R-011). P-03 MEASURED (codex-cli
+  # model: omitted on all 12 agents in v1 (R-011). P-03 MEASURED (codex-cli
   # 0.147.0): an omitted model key registers and delegates (inherits the
   # subagent default); an arbitrary bogus model string is silently accepted
   # at parse — emitting a Claude alias would be accepted-but-wrong, so
@@ -60,7 +60,7 @@ fields:
   # drop the whole agent file (visible "Ignoring malformed agent role
   # definition" error). workspace-write is a measured member and
   # delegation-confirmed; a read-only sandbox would break the go-test-style
-  # verification work the agent bodies mandate, so it ships for all 11.
+  # verification work the agent bodies mandate, so it ships for all 12.
   sandbox_mode:
     emit: true
     value: workspace-write
@@ -212,7 +212,7 @@ classes:
   - class: model
     disposition: omit
     rationale: >-
-      The model field is omitted for all 11 agents in v1 (R-011): a Claude
+      The model field is omitted for all 12 agents in v1 (R-011): a Claude
       alias is not a Codex model id, so emitting it would be a guess.
       codex-cli 0.153.4 strengthens the judgment: the agent-file model is
       precedence-winning over both the parent and [agents] defaults, valid
@@ -277,7 +277,7 @@ documented_drops:
   # CODEX_HOME per cell, zero model calls; wrong-typed controls went red by
   # design, so the schema check is alive):
   #   enabled: bool, default true — emitting true is a no-op; false would
-  #     un-register the 11 moai agents.
+  #     un-register the 12 moai agents.
   #   max_threads: usize — legacy alias of max_concurrent_threads_per_session
   #     (both parse); no moai codex resource policy exists, and limits
   #     written into a user-editable config.toml are invasive.
@@ -286,7 +286,7 @@ documented_drops:
   #   default_subagent_model: string — a SECOND precedence-winning model
   #     source (dual-source hazard, same shape as fields.model) and
   #     session-global.
-  #   default_subagent_reasoning_effort: string — no-op for moai: all 11
+  #   default_subagent_reasoning_effort: string — no-op for moai: all 12
   #     agents already carry per-agent model_reasoning_effort via the P-02
   #     identity map, which overrides the global default.
   #   interrupt_message: BOOL, default true — the docs' name implies a

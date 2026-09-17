@@ -17,6 +17,7 @@ import (
 // into subsequent sessions.
 // NOTE: does not call t.Parallel() because it modifies process-level env via setGLMEnv.
 func TestGLMCmd_AddsModelOverrides(t *testing.T) {
+	t.Setenv(config.EnvMoaiLaunchProvider, "")
 	// Set GLM_API_KEY env var
 	t.Setenv("GLM_API_KEY", "test-api-key-for-model-override-test")
 	// Baseline: clear the vars we will check so the test is deterministic.
@@ -50,7 +51,9 @@ func TestGLMCmd_AddsModelOverrides(t *testing.T) {
 	// Override launchClaude to skip actual exec
 	origLaunch := launchClaudeFunc
 	defer func() { launchClaudeFunc = origLaunch }()
+	var launchedProvider string
 	launchClaudeFunc = func(profile string, args []string) error {
+		launchedProvider = os.Getenv(config.EnvMoaiLaunchProvider)
 		return nil
 	}
 
@@ -62,6 +65,9 @@ func TestGLMCmd_AddsModelOverrides(t *testing.T) {
 	err := glmCmd.RunE(glmCmd, []string{})
 	if err != nil {
 		t.Fatalf("moai glm should not error, got: %v", err)
+	}
+	if launchedProvider != BackendGLM {
+		t.Errorf("moai glm launch provider = %q, want %q", launchedProvider, BackendGLM)
 	}
 
 	// GLM model overrides must be in the PROCESS ENV (inherited by syscall.Exec),

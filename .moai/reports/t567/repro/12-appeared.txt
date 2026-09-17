@@ -1,5 +1,0 @@
-/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t567-a
-/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t567-b
-/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t567-c
-/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t567-d
-/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t567-target

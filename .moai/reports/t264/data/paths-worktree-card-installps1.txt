@@ -1,2 +1,0 @@
-docs-site/static/install.ps1
-install.ps1

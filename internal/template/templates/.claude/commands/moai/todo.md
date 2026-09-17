@@ -1,7 +1,9 @@
 ---
-description: Backlog queue for Kanban Mode — add, list, or pick the next card
+description: Compatibility alias for the canonical GTD task-management entry point
 argument-hint: "[\"<description>\"|list|next|done <n>]"
 allowed-tools: Skill
 ---
 
-Use Skill("moai") with arguments: todo $ARGUMENTS
+Dispatch the moai workflow `gtd` with: $ARGUMENTS
+- Harness with the Skill tool (Claude Code): invoke `Skill("moai")` with arguments: `gtd` $ARGUMENTS
+- Harness without a skill loader (Codex CLI): read `.agents/skills/moai/SKILL.md` (the mirrored dispatcher body) and follow its routing for the `gtd` subcommand with the same arguments

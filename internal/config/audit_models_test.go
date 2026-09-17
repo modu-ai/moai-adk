@@ -20,10 +20,11 @@ import (
 // field fails compilation of the explicit field references below.
 func TestAuditConfigYAMLRoundTrip(t *testing.T) {
 	populated := AuditConfig{
-		Model: AuditModelCodex,
-		Gates: AuditGates{Claude: AuditGateRequired, Codex: AuditGateRequired, GLM: AuditGateAdvisory},
-		Codex: ModelEffort{Model: "gpt-5.6-sol", Effort: "high"},
-		GLM:   ModelEffort{Model: "glm-5.3", Effort: "max"},
+		Model:  AuditModelCodex,
+		Gates:  AuditGates{Claude: AuditGateRequired, Codex: AuditGateRequired, GLM: AuditGateAdvisory},
+		Claude: ModelEffort{Model: "sonnet", Effort: "high"},
+		Codex:  ModelEffort{Model: "gpt-5.6-sol", Effort: "high"},
+		GLM:    ModelEffort{Model: "glm-5.3", Effort: "max"},
 	}
 
 	data, err := yaml.Marshal(populated)
@@ -43,6 +44,9 @@ func TestAuditConfigYAMLRoundTrip(t *testing.T) {
 	}
 	if back.Gates != populated.Gates {
 		t.Errorf("Gates: got %+v, want %+v", back.Gates, populated.Gates)
+	}
+	if back.Claude != populated.Claude {
+		t.Errorf("Claude pin: got %+v, want %+v", back.Claude, populated.Claude)
 	}
 	if back.Codex != populated.Codex {
 		t.Errorf("Codex pin: got %+v, want %+v", back.Codex, populated.Codex)
@@ -95,6 +99,9 @@ func TestAuditConfigYAMLWorkflowWrapperLoad(t *testing.T) {
 	const fixture = "workflow:\n" +
 		"    audit:\n" +
 		"        model: multi\n" +
+		"        claude:\n" +
+		"            model: sonnet\n" +
+		"            effort: high\n" +
 		"        codex:\n" +
 		"            model: gpt-5.6-sol\n" +
 		"            effort: high\n" +
@@ -112,6 +119,9 @@ func TestAuditConfigYAMLWorkflowWrapperLoad(t *testing.T) {
 	got := wrapper.Workflow.Audit
 	if got.Model != AuditModelMulti {
 		t.Errorf("Model: got %q, want %q", got.Model, AuditModelMulti)
+	}
+	if got.Claude.Model != "sonnet" || got.Claude.Effort != "high" {
+		t.Errorf("Claude pin: got %+v, want {sonnet high}", got.Claude)
 	}
 	if got.Codex.Model != "gpt-5.6-sol" || got.Codex.Effort != "high" {
 		t.Errorf("Codex pin: got %+v, want {gpt-5.6-sol high}", got.Codex)

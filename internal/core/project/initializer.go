@@ -82,6 +82,13 @@ type InitOptions struct {
 	// downstream reader resolves empty → semi-auto.
 	AutonomyTier string // workflow.autonomy_tier
 
+	// Harness is the resolved agent-harness selection (SPEC-INIT-HARNESS-001
+	// REQ-IH-005): one of {claude, codex, both}, empty meaning claude. While
+	// "codex" the initializer deploys no claude surface at all — the .claude/
+	// directory scaffold (Step 2) and CLAUDE.md (Step 4) are skipped, so the
+	// project root carries zero .claude/** paths.
+	Harness string // llm.harness axis; "gpt" suppresses claude-surface writes
+
 	MCPProvision bool // moai MCP server provisioning (default-on per SPEC-MCP-DEFAULT-ON-001)
 }
 
@@ -180,12 +187,16 @@ func (i *projectInitializer) Init(ctx context.Context, opts InitOptions) (*InitR
 		return nil, fmt.Errorf("create .moai/ structure: %w", err)
 	}
 
-	// Step 2: Create .claude/ directory structure
+	// Step 2: Create .claude/ directory structure. Skipped entirely on the
+	// codex-only harness (SPEC-INIT-HARNESS-001 REQ-IH-005): the project root
+	// must carry zero .claude/** paths.
 	if err := ctx.Err(); err != nil {
 		return nil, err
 	}
-	if err := i.createClaudeDirs(opts.ProjectRoot, result); err != nil {
-		return nil, fmt.Errorf("create .claude/ structure: %w", err)
+	if opts.Harness != "gpt" {
+		if err := i.createClaudeDirs(opts.ProjectRoot, result); err != nil {
+			return nil, fmt.Errorf("create .claude/ structure: %w", err)
+		}
 	}
 
 	// Step 3: Deploy templates (if deployer is available)
@@ -262,12 +273,16 @@ func (i *projectInitializer) Init(ctx context.Context, opts InitOptions) (*InitR
 		i.logger.Warn("workflow toggles write failed", "error", err)
 	}
 
-	// Step 4: Create CLAUDE.md
+	// Step 4: Create CLAUDE.md. Skipped on the codex-only harness — the
+	// deployer already hid the CLAUDE.md template (REQ-IH-005), and without
+	// this guard the stub fallback below would write one anyway.
 	if err := ctx.Err(); err != nil {
 		return nil, err
 	}
-	if err := i.createClaudeMD(opts, result); err != nil {
-		return nil, fmt.Errorf("create CLAUDE.md: %w", err)
+	if opts.Harness != "gpt" {
+		if err := i.createClaudeMD(opts, result); err != nil {
+			return nil, fmt.Errorf("create CLAUDE.md: %w", err)
+		}
 	}
 
 	// Step 5: Initialize manifest

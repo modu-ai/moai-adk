@@ -10,12 +10,12 @@ import (
 // registration change in registerMoaiMCPTools — the registration/catalog
 // equality guard (internal/cli TestMoaiMCPServer_RegistrationMatchesCatalog)
 // catches drift in either direction.
-const wantCatalogSize = 29
+const wantCatalogSize = 30
 
-// TestMoaiMCPTools_Count29 asserts the catalog declares exactly
+// TestMoaiMCPTools_Count30 asserts the catalog declares exactly
 // wantCatalogSize tools, matching the registration count in
 // registerMoaiMCPTools.
-func TestMoaiMCPTools_Count29(t *testing.T) {
+func TestMoaiMCPTools_Count30(t *testing.T) {
 	tools := MoaiMCPTools()
 	if len(tools) != wantCatalogSize {
 		t.Fatalf("catalog declares %d tools, want %d", len(tools), wantCatalogSize)
@@ -23,7 +23,7 @@ func TestMoaiMCPTools_Count29(t *testing.T) {
 }
 
 // TestMoaiMCPTools_NineWriteCapable asserts exactly the nine write-capable
-// tools carry WriteCapable=true (REQ-C-3 / AC-C-003), and the other 16 are
+// tools carry WriteCapable=true (REQ-C-3 / AC-C-003), and the other 21 are
 // read-only. session_msg_list is read-only: it enumerates registered peers
 // without touching the store, unlike register/send/poll which write an agent
 // record, append a message, and claim an inbox respectively.

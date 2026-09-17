@@ -228,8 +228,9 @@ func TestRunMultiAudit_ExplicitRequiredClaudeAnchorUnmet_FailsOverall(t *testing
 
 	claude := ReviewOutput{Verdict: VerdictInconclusive, Summary: "claude: no verdict", Findings: []Finding{}, NextSteps: []string{}}
 	r := runMultiAudit(context.Background(), claude, "uncommittedChanges", "", MultiAuditConfig{
-		Gates:       auditGatesDefault(),
-		ProjectRoot: root,
+		Gates:          auditGatesDefault(),
+		ProjectRoot:    root,
+		OriginProvider: BackendClaude,
 	}, nil)
 
 	if r.OverallVerdict != overallVerdictFail {

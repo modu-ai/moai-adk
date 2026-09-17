@@ -1036,7 +1036,7 @@ func (w *t501ErrWriter) Write(p []byte) (int, error) {
 // report must never mask the refusal it accompanies (codex_init.go).
 func TestCodexGatePrintf(t *testing.T) {
 	w := &t501ErrWriter{}
-	codexGatePrintf(w, "codex wiring is %s — %s", "not wired", "run moai init --llm codex")
+	codexGatePrintf(w, "codex wiring is %s — %s", "not wired", "run moai init --llm gpt")
 	if w.calls != 1 {
 		t.Errorf("erroring writer was called %d times, want 1", w.calls)
 	}

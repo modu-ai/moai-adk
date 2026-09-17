@@ -364,37 +364,15 @@ Auto-merge trigger conditions:
 - `--auto-merge` flag set
 - OR `--merge` flag set (deprecated alias of `--auto-merge`, logged as warning)
 
-Mode conditions (same as `manager-git.md` § PR Auto-Merge):
-- In team mode, `--auto-merge` merges only after all approvals are obtained.
-- In personal and manual modes, `--auto-merge` merges without an approval condition (no teammates to approve).
-
-When auto-merge is triggered:
-1. Verify all CI/CD checks pass (gh pr checks)
-2. Verify zero merge conflicts (gh pr view --json mergeable)
-3. If all checks pass: Execute `gh pr merge --<merge_method> --delete-branch`
-4. If checks fail: Report error with recovery command, do NOT merge
+Mode conditions (per team/personal/manual mode), the execution recipe, and failure handling are owned by `manager-git.md` § PR Auto-Merge; this step does not restate them — it only frames when the behavior applies and what the flags do.
 
 `<merge_method>` is resolved from `git_strategy.<mode>.merge_method` for the active mode (`squash` | `merge` | `rebase`; default `squash`).
 
 ##### Flag Behavior
 
-- `--auto-merge`: Opt in to merging the PR after sync, under the mode conditions above.
+- `--auto-merge`: Opt in to merging the PR after sync, under the mode conditions in `manager-git.md` § PR Auto-Merge.
 - `--merge`: deprecated alias of `--auto-merge` (logs a warning).
 - `--no-merge`: Deprecated no-op kept for compatibility (logs a warning); not merging is already the default.
-
-##### Auto-Merge Execution
-
-1. Check CI/CD status via `gh pr checks --watch` (wait for completion)
-2. Check merge conflicts via `gh pr view --json mergeable`
-3. If passing and mergeable: Execute `gh pr merge --<merge_method> --delete-branch`
-4. Checkout target branch, fetch latest
-5. Verify local is synchronized with remote
-
-##### Auto-Merge Failures
-
-- If CI/CD fails: Report failure, display error details, do NOT merge
-- If merge conflicts: Report conflicts, provide manual resolution guidance, do NOT merge
-- If approvals missing (Team mode): Report pending approvals, do NOT merge
 
 ##### Post-Merge Automatic Cleanup
 

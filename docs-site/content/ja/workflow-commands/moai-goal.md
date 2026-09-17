@@ -8,6 +8,12 @@ added_in: "v3.1"
 
 {{< new-badge v3.1 >}}
 
+{{< callout type="warning" >}}
+`/moai goal --auto "<ミッション>"` は、以下の条件宣言型ループとは別の経路です。自然言語を `mission_mode=auto`、`state=draft` として保存するだけで、承認が必要です。実プロバイダーの持続実行能力が確認されていなければ `active-session-only` で動作します。[コマンドリファレンス](/ja/utility-commands/moai-goal#auto-ミッションモード)
+{{< /callout >}}
+
+Auto ミッションの承認後は、`goal run --supervise` が封印済み計画を有限ループで進めます。監督下の Git 効果には分離した `--card-worktree` と `--develop-worktree` が必要で、従来の `--repo` は効果 0 件のまま拒否されます。`--recommend` は権限を与えず、各効果には typed true evidence と結び付いた `0600` governor 判断 receipt と別の独立監査 PASS receipt の両方が必要です。完了には行為の消化ではなく、マージ ancestry を含む `0600` 完了 receipt も必要です。未構成の remote/release provider は `provider_unsupported` で停止します。
+
 終わる条件だけ宣言すれば、セッションがその条件が成立するまでターンを繋ぐ**条件宣言型の自律ループ**です。毎ターンの終わりに評価器が条件を検査し、条件が満たされればループが自ら止まります。ユーザーが毎段階で「続ける」を押す必要はありません。
 
 {{< callout type="info" >}}

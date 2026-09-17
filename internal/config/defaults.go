@@ -230,6 +230,11 @@ const (
 	// Default performance tier
 	DefaultPerformanceTier = "medium"
 
+	// DefaultHarness is the closed-set default of llm.harness (SPEC-INIT-HARNESS-001
+	// REQ-IH-001/002). Init seeds this value explicitly so an absent key never
+	// has to be inferred as claude; the closed set is {claude, codex, both}.
+	DefaultHarness = "claude"
+
 	DefaultCacheTTLSeconds = 5
 	DefaultTimeoutSeconds  = 3
 	DefaultMaxWarnings     = 10
@@ -825,6 +830,7 @@ func NewDefaultLLMConfig() LLMConfig {
 	return LLMConfig{
 		GLMEnvVar:       DefaultGLMEnvVar,
 		PerformanceTier: DefaultPerformanceTier,
+		Harness:         DefaultHarness,
 		ClaudeModels: ClaudeTierModels{
 			High:   "opus",
 			Medium: "sonnet",
@@ -1016,6 +1022,10 @@ func NewDefaultWorkflowConfig() WorkflowConfig {
 		// fallback when workflow.yaml omits the block.
 		Audit: AuditConfig{
 			Model: AuditModelClaude,
+			Claude: ModelEffort{
+				Model:  "sonnet",
+				Effort: "high",
+			},
 			Gates: AuditGates{
 				Claude: AuditGateRequired,
 				Codex:  AuditGateRequired,
@@ -1159,6 +1169,7 @@ func defaultContextConfig() ContextConfig {
 func defaultInterviewConfig() InterviewConfig {
 	return InterviewConfig{
 		ClarityThreshold: 4,
+		DecisionGate:     "off",
 		Enabled:          true,
 		Plan: InterviewMode{
 			MaxRounds:         5,

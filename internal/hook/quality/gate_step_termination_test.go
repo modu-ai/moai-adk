@@ -141,7 +141,7 @@ func TestRunStep_ReturnsWithinGraceWhenADescendantHoldsTheStream(t *testing.T) {
 
 	name, args := orphanCommand()
 	started := time.Now()
-	ok, msg := g.runStep(parent, "orphan", stepTimeout, name, args...)
+	ok, msg := g.runStep(parent, "orphan", "", stepTimeout, name, args...)
 	elapsed := time.Since(started)
 
 	if elapsed >= bound {
@@ -161,7 +161,7 @@ func TestRunStep_WithinDeadlineOutputAndCwdAreUnchanged(t *testing.T) {
 
 	g := NewQualityGate(DefaultGateConfig())
 	name, args := noisyCommand()
-	ok, msg := g.runStep(context.Background(), "noisy", time.Minute, name, args...)
+	ok, msg := g.runStep(context.Background(), "noisy", "", time.Minute, name, args...)
 
 	if ok {
 		t.Fatal("a step exiting non-zero inside its deadline must still fail")

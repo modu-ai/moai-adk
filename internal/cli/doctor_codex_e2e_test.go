@@ -28,7 +28,7 @@ import (
 // alongside the status (verification-completeness §1.1: the swept surface is
 // named, not just the exit verdict).
 var codexFindingPhrases = []string{
-	"moai init --llm codex", // the unwired-project action directive
+	"moai init --llm gpt", // the unwired-project action directive
 	"stale skill",           // the stale-home-skill sub-check finding
 	"/hooks to re-trust",    // the hooks-divergence finding
 	"mcp_servers.moai",      // the config-table-drift finding
@@ -51,7 +51,7 @@ func pinInitHome(t *testing.T) string {
 // Wiring" judgment passes clean. The sanity leg (assertCodexArtifacts) runs
 // FIRST so a silently-unwired init cannot vacuously pass the OK assertion.
 func TestRunInit_ThenDoctorCodexWiringHealthy(t *testing.T) {
-	wiz := &wizard.WizardResult{AgentWiring: "codex"}
+	wiz := &wizard.WizardResult{AgentWiring: "gpt"}
 	homeDir := pinInitHome(t)
 
 	projectDir, _ := runInitForAutonomyAtHomeCapturingOut(t, homeDir, wiz, nil)

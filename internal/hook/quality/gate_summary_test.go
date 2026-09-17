@@ -345,7 +345,7 @@ func TestSummaryDistinguishesAllFiveSkipPaths(t *testing.T) {
 			g.summary = newRunSummary()
 			g.summary.seed(step.name)
 
-			ok, _ := g.executeStep(context.Background(), step, 30*time.Second)
+			ok, _ := g.executeStep(context.Background(), step, "", 30*time.Second)
 			if !ok {
 				t.Fatalf("skip path %s failed the gate instead of skipping", f.path)
 			}

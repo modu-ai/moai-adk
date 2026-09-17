@@ -1,6 +1,0 @@
-=== RUN   TestAuditCanceledRPCDoesNotExhaustSharedTransport
-    audit_external_test.go:91: conversation c failed after earlier canceled calls: invalid Codex App Server protocol message; transport=invalid Codex App Server protocol message
---- FAIL: TestAuditCanceledRPCDoesNotExhaustSharedTransport (1.00s)
-FAIL
-FAIL	github.com/modu-ai/moai-adk/internal/codexbridge	1.532s
-FAIL

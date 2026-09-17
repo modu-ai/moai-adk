@@ -215,6 +215,7 @@ secret-*.*
 !.agents/skills/moai-fix/
 !.agents/skills/moai-gate/
 !.agents/skills/moai-goal/
+!.agents/skills/moai-gtd/
 !.agents/skills/moai-harness/
 !.agents/skills/moai-loop/
 !.agents/skills/moai-mx/

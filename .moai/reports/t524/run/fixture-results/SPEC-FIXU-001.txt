@@ -1,1 +1,0 @@
-GAP: new-spec.md is not readable — traceability was not observed

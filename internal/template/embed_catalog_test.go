@@ -61,8 +61,8 @@ func TestLoadEmbeddedCatalog_Success(t *testing.T) {
 	// moai-kanban-foreman added (kanban foreman loop-iteration skill driving the
 	// bare /loop backlog dispatch cycle, core.skills), net +1 = 44.
 	// moai-domain-design-dna added (reference-design deconstruction + generation
-	// domain skill, core.skills), net +1 = 45.
-	const wantTotal = 45
+	// domain skill, core.skills, and mission-governor), net +2 = 46.
+	const wantTotal = 46
 	all := cat.AllEntries()
 	if len(all) != wantTotal {
 		t.Errorf("LoadEmbeddedCatalog() AllEntries() = %d, want %d", len(all), wantTotal)

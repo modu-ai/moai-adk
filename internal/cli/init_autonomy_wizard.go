@@ -30,7 +30,8 @@ import (
 //     OR the kill-switch is engaged). semi-auto and automatic pass through
 //     unchanged (REQ-005 — the kill-switch never affects lower tiers).
 //  3. An empty wizard selection leaves opts.AutonomyTier empty so the downstream
-//     reader resolves semi-auto (AC-007 — unset ⇒ zero behavior delta).
+//     reader resolves semi-auto (AC-007 — unset ⇒ the bounded delta of
+//     SPEC-AUT-PERMMODES-001 REQ-004: the USER-scope acceptEdits record only).
 func applyAutonomyTierFromWizard(flagChanged bool, flagValue string, res *wizard.WizardResult, opts *project.InitOptions) {
 	if flagChanged && flagValue != "" {
 		opts.AutonomyTier = flagValue

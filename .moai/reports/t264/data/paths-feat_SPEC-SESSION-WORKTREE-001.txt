@@ -1,3 +1,0 @@
-.moai/specs/SPEC-SESSION-WORKTREE-001/progress.md
-.moai/specs/SPEC-SESSION-WORKTREE-001/spec.md
-CHANGELOG.md

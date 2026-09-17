@@ -414,6 +414,9 @@ func seamSectionFields() []FieldDef {
 		// cell (hence withEmptySubmits — clearing a pin must persist "").
 		// Unlike the llm tier effort map (stored-only, REQ-WCR-033), these
 		// efforts ARE runtime-applied — they ride the audit request builders.
+		withEmptySubmits(s(SectionWorkflow, "workflow", TypeText, "workflow", "audit", "claude", "model")),
+		withEmptySubmits(withSelect(s(SectionWorkflow, "workflow", TypeSelect, "workflow", "audit", "claude", "effort"),
+			"f.workflow.audit.claude.effort.opt.", v4EffortValues(), emptyLabelUnset, "opt.unset")),
 		s(SectionWorkflow, "workflow", TypeText, "workflow", "audit", "codex", "model"),
 		withEmptySubmits(withSelect(s(SectionWorkflow, "workflow", TypeSelect, "workflow", "audit", "codex", "effort"),
 			"f.workflow.audit.codex.effort.opt.", v4EffortValues(), emptyLabelUnset, "opt.unset")),

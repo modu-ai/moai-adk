@@ -273,6 +273,15 @@ type LLMConfig struct {
 	// and unset select ordinary Claude policy. Historical "cg" remains readable
 	// as data, but launch requires explicit migration and never activates GLM.
 	TeamMode string `yaml:"team_mode"`
+	// Harness records the agent-harness selection resolved at init time
+	// (SPEC-INIT-HARNESS-001 REQ-IH-002): one of {claude, codex, both}. Init
+	// writes the resolved value explicitly on EVERY run — including the claude
+	// default — so doctor/update never have to infer a missing key as claude.
+	// A pre-SPEC project with no key reads as claude (the documented fallback);
+	// the key governs update re-deployment (REQ-IH-010) and doctor check
+	// scoping (REQ-IH-011). Note this is NOT llm.harness_agents — that map
+	// configures /moai:harness specialist generation and is unrelated.
+	Harness string `yaml:"harness"`
 	// Environment variable name for GLM API key
 	GLMEnvVar string `yaml:"glm_env_var"`
 	// ClaudeBin pins the Claude Code binary the launcher launches (issue
@@ -1354,6 +1363,7 @@ type ContextTokenBudget struct {
 // plan.questions_per_round, and skip_conditions to control Socratic interview behavior.
 type InterviewConfig struct {
 	ClarityThreshold   int           `yaml:"clarity_threshold"`
+	DecisionGate       string        `yaml:"decision_gate"`
 	Enabled            bool          `yaml:"enabled"`
 	Plan               InterviewMode `yaml:"plan"`
 	Project            InterviewMode `yaml:"project"`
@@ -1371,6 +1381,20 @@ func (c InterviewConfig) ResolvedRecommendationMode() string {
 		return "pull"
 	}
 	return "push"
+}
+
+// ResolvedDecisionGate returns the resolved decision-gate axis: "on" only
+// when the key holds exactly "on"; "off" otherwise — including when the key
+// is absent, empty, or unrecognized (REQ-DA-002, REQ-DA-003). The raw value
+// stays on DecisionGate, so an unrecognized setting is recorded verbatim
+// rather than silently discarded. This resolver reads its own field only: the
+// decision-gate axis is orthogonal to the recommendation-mode axis above and
+// neither reads, writes, nor conditions on the other (REQ-DA-018).
+func (c InterviewConfig) ResolvedDecisionGate() string {
+	if c.DecisionGate == "on" {
+		return "on"
+	}
+	return "off"
 }
 
 // InterviewMode holds per-mode interview settings.

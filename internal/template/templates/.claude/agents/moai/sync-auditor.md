@@ -6,7 +6,7 @@ description: |
   Operates post-implementation only — once code exists and acceptance criteria are testable. Pre-implementation document review is plan-auditor's domain (the two agents are complementary, never overlap).
   Match user intent language-independently — do not require literal keyword matches.
   NOT for: SPEC plan-phase audit (that is plan-auditor's domain; sync-auditor is post-implementation only), code implementation, architecture design, documentation writing, git operations
-tools: Read, Grep, Glob, Bash, TaskCreate, TaskUpdate, TaskList, TaskGet, Skill, mcp__moai__audit_multi, mcp__moai__verify_trend, mcp__moai__audit_cache, mcp__moai__glm_audit, mcp__moai__codex_audit
+tools: Read, Grep, Glob, Bash, TaskCreate, TaskUpdate, TaskList, TaskGet, Skill, mcp__moai__audit_multi, mcp__moai__verify_trend, mcp__moai__audit_cache, mcp__moai__claude_audit, mcp__moai__glm_audit, mcp__moai__codex_audit
 model: inherit
 effort: high
 color: red
@@ -146,17 +146,18 @@ Evidence gathering for the 4 scoring dimensions runs sequentially within this ag
 
 This auditor carries single- and multi-backend audit MCP tools in its `tools:` list. Use them before scoring when the project config requests a cross-backend second opinion:
 
-- `mcp__moai__audit_multi` — multi-auditor convergence engine (claude anchor + optional codex/glm backends). Default path when `audit_model: multi`.
+- `mcp__moai__audit_multi` — source-aware convergence: a Claude main session contributes its in-session anchor; GPT/GLM main sessions trigger a fresh subscription-backed Claude audit. Default path when `audit_model: multi`.
+- `mcp__moai__claude_audit` — independent Claude subscription audit with read-only isolation and structured provenance.
 - `mcp__moai__codex_audit` — codex-backend single audit (`native` or `adversarial` mode).
 - `mcp__moai__glm_audit` — GLM (z.ai) backend single audit.
 
 Single-backend audit mode (per the project's `audit_model`):
-- `codex+glm` (default) — converge both backends via `mcp__moai__audit_multi`; most robust.
+- `multi` — converge Claude, Codex, and GLM via `mcp__moai__audit_multi`; most robust.
+- `claude` — Claude main uses its own review; GPT/GLM main calls `mcp__moai__claude_audit`.
 - `glm` — GLM only; call `mcp__moai__glm_audit` directly.
 - `codex` — codex only; call `mcp__moai__codex_audit` directly.
-- `none` — Claude-only audit (the classic sync-auditor role); no MCP backend call.
 
-All backends are fail-open: when a backend is unavailable, its tool returns `inconclusive` (never a Go error), so a missing codex/glm never blocks the audit.
+All backend tools fail open to `inconclusive` rather than a Go error. An explicitly required audit gate left inconclusive still fails the convergence result, because missing evidence is not a pass.
 
 ### [HARD] Name your own tree
 
@@ -171,7 +172,7 @@ Static `skills:` preload is kept to a minimum (token diet — progressive disclo
 - When assessing the security perspective (Security dimension scoring), invoke Skill("moai-ref-owasp-checklist") to load it on demand.
 - When assessing test-coverage adequacy or test-pyramid balance, invoke Skill("moai-ref-testing-pyramid") to load it on demand.
 - When SPEC workflow or TRUST 5 framework context is needed, invoke Skill("moai-foundation-core") to load it on demand.
-- When the project sets `audit_model: multi` and a cross-backend second opinion is needed before scoring, invoke Skill("moai-ref-cross-model-audit") to load it on demand — it documents the `mcp__moai__audit_multi` convergence tool and the independence rule that keeps the secondary verdicts uncorrelated.
+- When the project sets `audit_model: multi`, or a GPT/GLM main session needs an independent Claude subscription verdict, invoke Skill("moai-ref-cross-model-audit") to load the source-aware `mcp__moai__audit_multi` / `mcp__moai__claude_audit` contract and its independence rule.
 
 The Skill tool is for read-only reference loading only; auditor independence means never loading a skill that prescribes acceptance.
 

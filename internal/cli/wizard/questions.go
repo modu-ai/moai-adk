@@ -372,31 +372,39 @@ func Page3Questions(projectRoot string) []Question {
 		// carries NO Condition: it is asked unconditionally, and its answer
 		// decides the MCP surface (codex declines .mcp.json provisioning, both
 		// forces it on).
+		// SPEC-INIT-HARNESS-001 (REQ-IH-013, design.md D1): the option values
+		// stay FROZEN; the labels and descriptions now state the DEPLOYMENT
+		// consequences of each value — what lands at the project root — so the
+		// question keeps the promise the deployer keeps.
 		{
 			ID:          "agent_wiring",
 			Group:       "Agents & Autonomy",
 			Type:        QuestionTypeSelect,
-			Title:       "Select the agent harness to wire",
-			Description: "Which LLM harness MoAI wires for this project. 'claude' is the recommended default; the --llm flag overrides this answer.",
+			Title:       "Select the agent harness to deploy and wire",
+			Description: "Which LLM harness MoAI deploys and wires for this project. 'claude' is the recommended default; the --llm flag overrides this answer.",
 			Options: []Option{
-				{Label: "Claude (Recommended)", Value: "claude", Desc: "Wire the Claude side only (.mcp.json provisioning)"},
-				{Label: "Codex", Value: "codex", Desc: "Wire the .codex/ hook layer + MCP config; skips .mcp.json provisioning"},
-				{Label: "Both", Value: "both", Desc: "Wire both harnesses; forces .mcp.json provisioning on"},
+				{Label: "Claude only (Recommended)", Value: "claude", Desc: "Deploy the .claude/ surface plus AGENTS.md (today's default behavior)"},
+				{Label: "GPT (Codex) only", Value: "gpt", Desc: "AGENTS.md and Codex surfaces only — no .claude/ tree, no CLAUDE.md, no .mcp.json"},
+				{Label: "Claude + Codex", Value: "both", Desc: "Same .claude/ deployment plus .codex/ wiring; .mcp.json provisioning forced on"},
 			},
 			Default: "claude",
 		},
-		// SPEC-AUTONOMY-TIERS-001 M7 — interactive autonomy-tier selector.
-		// semi-auto pre-selected (REQ-006); fully-autonomous gated at apply time.
+		// SPEC-AUT-PERMMODES-001 REQ-001/REQ-002 — the autonomy question
+		// speaks Claude Code's real permission modes: "Accept edits on"
+		// (acceptEdits) is the pre-selected default; "Bypass permissions"
+		// (fully-autonomous) stays gated at apply time (sandbox proof +
+		// kill-switch, REQ-005). Persisted values are the unchanged tier
+		// tokens — only labels, descriptions, and the knob mapping moved.
 		{
 			ID:          "autonomy_tier",
 			Group:       "Agents & Autonomy",
 			Type:        QuestionTypeSelect,
-			Title:       "Select autonomy tier",
-			Description: "Controls how many turns the session runs without prompting. 'semi-auto' is the recommended default.",
+			Title:       "Select the session permission mode",
+			Description: "Chooses the Claude Code permission mode written to your user settings. 'Accept edits on' is the recommended default.",
 			Options: []Option{
-				{Label: "Semi-auto (Recommended)", Value: config.AutonomyTierSemiAuto, Desc: "Prompt before each non-trivial action"},
-				{Label: "Automatic", Value: config.AutonomyTierAutomatic, Desc: "Run milestones autonomously; prompt at gates"},
-				{Label: "Fully-autonomous", Value: config.AutonomyTierFullyAutonomous, Desc: "Requires sandbox proof (Docker/gVisor/etc.)"},
+				{Label: "Accept edits on (Recommended)", Value: config.AutonomyTierSemiAuto, Desc: "Auto-accept file edits; prompt for other tools"},
+				{Label: "Auto mode", Value: config.AutonomyTierAutomatic, Desc: "Auto-approve tool calls under classifier safety checks"},
+				{Label: "Bypass permissions", Value: config.AutonomyTierFullyAutonomous, Desc: "Skip all prompts; requires sandbox proof (Docker/gVisor/etc.)"},
 			},
 			Default:  config.AutonomyTierSemiAuto,
 			Required: true,

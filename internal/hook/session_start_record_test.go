@@ -41,6 +41,7 @@ func scrubKanbanEnv(t *testing.T) {
 // different one. The pre-change writer produced the slot's identifier by
 // construction, so this fixture is what separates the two.
 func TestRecordIsKeyedByTheRuntimeSessionIDNotTheSidecar(t *testing.T) {
+	t.Setenv(config.EnvMoaiLaunchProvider, "")
 	root := t.TempDir()
 	stateDir := filepath.Join(root, ".moai", "state")
 	if err := os.MkdirAll(stateDir, 0o755); err != nil {

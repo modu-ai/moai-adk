@@ -77,16 +77,18 @@ moai cc -f lane-1             # a lane, in its own terminal
 moai glm -f lane-3            # …and one lane on the GLM backend
 ```
 
-Grow a run one lane at a time with `moai cc -f lane-<n>`. That form already names the lane, so passing `--name`/`-n` alongside it is an error. A number is skipped only while a live session holds it — a dead lane's number is released and reused. Lane ownership is recorded in `~/.moai/db/<project-key>/factory/factory.db`; a legacy `.moai/state/factory/workers.json` is imported once and retained only as rollback evidence. A lane runs up to 10 concurrent `Agent()` subagents, and write-capable spawns are isolated in their own worktree. Never bring every lane up at once — start the first, confirm it is actually producing output, then activate the rest. Cards are never split across lanes. `-k` still drives the three-role kanban chain; one launch takes one entry token, so `-k` with `-f` is an error. CG is retired; use `moai migrate cg` to preview explicit migration choices.
+Grow a run one lane at a time with `moai cc -f lane-<n>`. That form already names the lane, so passing `--name`/`-n` alongside it is an error. A number is skipped only while a live session holds it — a dead lane's number is released and reused. Lane ownership is recorded in `~/.moai/db/<project-key>/factory/factory.db` — or, when the launch directory is a temporary one (no absolute `MOAI_HOME` override), project-local under `<base>/.moai/db/<project-key>/factory/`, the same exception the backlog queue follows; a legacy `.moai/state/factory/workers.json` is imported once and retained only as rollback evidence. A lane runs up to 10 concurrent `Agent()` subagents, and write-capable spawns are isolated in their own worktree. Never bring every lane up at once — start the first, confirm it is actually producing output, then activate the rest. Cards are never split across lanes. `-k` still drives the three-role kanban chain; one launch takes one entry token, so `-k` with `-f` is an error. CG is retired; use `moai migrate cg` to preview explicit migration choices.
 
 > Details: [Kanban mode — Factory Mode](https://adk.mo.ai.kr/en/advanced/kanban-mode)
 
 The board has five columns, `backlog → plan → run → sync → done`. `backlog` has no owning session by design, so work enters the board only when you put it there:
 
 ```text
-/moai todo "fix the stale rename hint"   # append a card
-/moai todo                               # list the queue
+/moai gtd "fix the stale rename hint"   # append a card
+/moai gtd                               # list the queue
 ```
+
+`/moai gtd` is the canonical task-management surface. `/moai todo` remains a compatibility name backed by the same SQLite queue, card IDs, order, and archive/restore behavior. `moai gtd capture|clarify|organize|reflect|engage` carries an item through Capture → Clarify → Organize → Reflect → Engage before approved work enters the unchanged `backlog → plan → run → sync → done` development flow. SQLite operation receipts and authoritative readback prevent a retry after a crash from silently duplicating publication, pick, or dispatch.
 
 Two rules keep the board honest. The lead advances a card **only on evidence it read** from the card's `progress.md` — never on a companion's reply, because a reply is a claim and inter-session delivery is not guaranteed. And when a phase ends, the lead asks for that session to be `/clear`-ed, since `/clear` is user-typed and cannot be sent as an instruction.
 
@@ -287,6 +289,27 @@ cd my-project
 
 The interactive wizard auto-detects language, framework, and methodology, walks you through model policy, and generates the Claude Code integration files.
 
+#### Choosing the agent harness
+
+The wizard asks which agent harness to deploy and wire; `--llm` gives the same choice non-interactively:
+
+| Selection | What lands at the project root |
+|---|---|
+| `claude` (default) | The full `.claude/` surface plus `AGENTS.md` — today's default behavior |
+| `gpt` | Codex only deployment: `AGENTS.md` and Codex surfaces (`.codex/`, `.agents/skills/`, `.moai/`) only. No `.claude/` tree, no `CLAUDE.md`, no `.mcp.json`. Claude-only runtime features (AskUserQuestion, sub-agent spawning, output styles, slash commands, Workflow scripts) are not available |
+| `both` | Same `claude` deployment plus `.codex/` wiring; `.mcp.json` provisioning forced on |
+
+```bash
+moai init my-project --llm gpt   # Codex-only project
+```
+
+A project initialized before this choice existed has no `llm.harness` key and keeps the `claude` behavior on update — nothing to migrate.
+
+> **GPT gateway withdrawn (2026-09-16).** The former `moai gpt` launcher — Claude Code driven by GPT
+> models through the built-in translation gateway — has been removed. GPT models are reached through
+> their native harness instead: `moai codex` (Codex CLI). The `--llm gpt` init value above is
+> unaffected; it selects the Codex-only deployment, not the withdrawn launcher.
+
 ### First workflow
 
 ```bash
@@ -338,13 +361,17 @@ Natural language and 16 subcommands feed the same pipeline. `/moai plan`, `/moai
 
 All backends are fail-open — GLM (`~/.moai/.env.glm`) and codex (`~/.codex/auth.json`) are optional; an unavailable backend returns `inconclusive`, never a hard error.
 
-In the Codex-enabled harness (`moai init --llm codex|both`), Codex supports only built-in identifier arrays for its status line (`tui.status_line`), so MoAI-specific items (goal, todo, SPEC state) cannot be displayed — a limitation until openai/codex#17827 lands command-backed status lines.
+In the Codex-enabled harness (`moai init --llm gpt|both`), Codex supports only built-in identifier arrays for its status line (`tui.status_line`), so MoAI-specific items (goal, todo, SPEC state) cannot be displayed — a limitation until openai/codex#17827 lands command-backed status lines.
 
 > Details: [MCP Server Guide](https://adk.mo.ai.kr/en/guides/mcp-server) · [Claude Code MCP](https://adk.mo.ai.kr/en/claude-code/extensibility/mcp)
 
 ### Goal engine — an autonomous loop with real boundaries
 
 Declare a completion condition and the session works on its own until it holds. A turn limit, a stagnation guard, a wall-clock budget, and pre-approval gates are attached, so it cannot fall into an infinite loop. Mechanical conditions (a command's exit code) and model conditions (a claim in the transcript) are both supported. `--max-turns 0` arms an auto-compact-driven infinite goal — in that case `--max-duration` and the stagnation guard provide the boundary.
+
+`moai goal --auto "<mission>"` creates a separate `mission_mode=auto` draft; `approve` seals scope, actions, evidence, and limits once, while `run`, `status`, `revoke`, and policy-bounded `resume` operate on that persisted contract. Mission text is data, never shell or a goal condition. `super-advisor` remains non-binding, the read-only `mission-governor` proposes a structured decision, and deterministic owner adapters perform receipt-backed queue/dispatch effects, explicit-path commits, and leased local develop `--no-ff` merges. Without a provider proven to support durable start, reconnect, replacement, credentials, and process identity, the workflow falls back to `active-session-only`; remote push, PR, and merge completion remain unproven. [GTD and auto-mission guide](https://adk.mo.ai.kr/en/utility-commands/moai-gtd)
+
+The final execution boundary is stricter: `run --supervise` follows the bounded publish→pick→leased disk dispatch→commit→local develop `--no-ff` plan. Supervised Git effects require separate `--card-worktree` and `--develop-worktree` paths; legacy `--repo` produces zero effects. Completion additionally requires a sealed `0600` `--completion-receipt` with true typed evidence and merged ancestry—exhausting the action list alone is not completion—and replay after completion has zero effects. `--recommend` grants no authority; every effect needs contained `0600` governor and independent-audit receipts. Unconfigured remote/release providers return `provider_unsupported` instead of simulating success.
 
 ### Parallel worktrees
 
@@ -716,7 +743,7 @@ The [adk.mo.ai.kr](https://adk.mo.ai.kr) online documentation is organized into 
 | [Getting Started](https://adk.mo.ai.kr/en/getting-started) | Introduction, installation, Windows guide, init wizard, quickstart, CLI overview, FAQ |
 | [Core Concepts](https://adk.mo.ai.kr/en/core-concepts) | moai-adk identity, constitution, harness engineering, SPEC-based development, DDD, TRUST 5 |
 | [Workflow Commands](https://adk.mo.ai.kr/en/workflow-commands) | `plan` · `run` · `sync` — SPEC pipeline backbone |
-| [Utility Commands](https://adk.mo.ai.kr/en/utility-commands) | `fix` · `loop` · `gate` · `review` · `clean` · `codemaps` · `e2e` · `feedback` · `goal` · `todo` |
+| [Utility Commands](https://adk.mo.ai.kr/en/utility-commands) | `fix` · `loop` · `gate` · `review` · `clean` · `codemaps` · `e2e` · `feedback` · `goal` · `gtd` (`todo` compatibility) |
 | [CLI Reference](https://adk.mo.ai.kr/en/cli-reference) | Every `moai` binary command (49 total) |
 | [Claude Code Guide](https://adk.mo.ai.kr/en/claude-code) | Claude Code integration — basics, context·memory, agentic, extensibility |
 | [Multi-LLM](https://adk.mo.ai.kr/en/multi-llm) | CG migration and model policy |

@@ -1,6 +1,6 @@
 # moai-mcp Tool Catalogue
 
-> Single source of truth for the 29 tools exposed by the self-hosted `moai` MCP
+> Single source of truth for the 30 tools exposed by the self-hosted `moai` MCP
 > server (`.mcp.json` → `{command: "moai", args: ["mcp-server"]}`). Each tool is
 > prefixed `mcp__moai__` at the call site. This rule tells agents and the
 > orchestrator WHEN to prefer an MCP tool over its CLI/slash equivalent.
@@ -19,9 +19,9 @@ the CLI form reads more naturally inline.
 
 ## The `project_root` input — name your own tree
 
-Twelve tools accept an optional `project_root` string: `spec_progress`,
+Thirteen tools accept an optional `project_root` string: `spec_progress`,
 `spec_audit`, `spec_drift`, `verify_snapshot`, `verify_trend`, `codex_audit`,
-`glm_audit`, `audit_multi`, `graph_file_api`, `graph_find_code`,
+`glm_audit`, `claude_audit`, `audit_multi`, `graph_file_api`, `graph_find_code`,
 `graph_shortest_path`, and `graph_trace_calls`. It names the tree the call
 should act on.
 
@@ -55,25 +55,27 @@ a later containment check cannot be walked through by pointing a link at a tree
 outside the boundary. A path that cannot be canonicalized is rejected on the same
 terms as any other unusable one.
 
-For `audit_multi` the root reaches BOTH backends of the fan-out: codex receives
-it as the working directory it reviews in, and the GLM path uses it to collect
-the diff it sends to z.ai. Passing it is what keeps the two secondary opinions
-about the same tree.
+For `audit_multi` the root reaches every backend in the fan-out: Claude and GLM
+use it to collect the diff sent to their isolated reviewer, while codex receives
+it as the working directory it reviews in. Passing it keeps all independent
+opinions about the same tree.
 
-## Tool families (24 of the 28 tools; the session-messaging family follows below)
+## Tool families (26 of the 30 tools; the session-messaging family follows below)
 
 | Family | Tools | Wired consumers |
 |---|---|---|
 | SPEC lifecycle | `spec_progress`, `spec_audit`, `spec_drift` | manager-spec, manager-docs, plan-auditor, super-advisor |
 | Verification snapshots | `verify_snapshot`, `verify_trend` | manager-develop, sync-auditor, super-advisor |
 | Goal + session | `goal_arm`, `goal_status`, `session_list` | orchestrator only / manager-develop, manager-lead |
-| Cross-model audit | `audit_multi`, `codex_audit`, `glm_audit`, `audit_cache` | plan-auditor, sync-auditor |
+| Cross-model audit | `audit_multi`, `claude_audit`, `codex_audit`, `glm_audit`, `audit_cache` | plan-auditor, sync-auditor |
 | Codex delegation | `codex_task`, `codex_setup`, `codex_job_{status,result,cancel}` | super-advisor |
 | GLM delegation | `glm_task`, `glm_job_{status,result,cancel}` | super-advisor |
 | Code queries | `graph_file_api`, `graph_find_code`, `graph_trace_calls`, `graph_shortest_path` | any agent (signature-level code navigation from the code-derived edge layer; every answer carries tree+commit provenance) |
 
-Per-tool purpose, consumer, and CLI equivalent: `moai-mcp-tools-catalogue.md`. Both codex and GLM
-are OPTIONAL and fail open — an unavailable backend returns `inconclusive`, never a hard error.
+Per-tool purpose, consumer, and CLI equivalent: `moai-mcp-tools-catalogue.md`. Claude, codex, and
+GLM audit transports fail open at the tool boundary: an unavailable backend returns
+`inconclusive`, never a hard Go error. An explicitly required gate can still turn that unmet
+evidence requirement into `overall_verdict: fail`.
 
 ### Session messaging broker (Claude ↔ Codex)
 

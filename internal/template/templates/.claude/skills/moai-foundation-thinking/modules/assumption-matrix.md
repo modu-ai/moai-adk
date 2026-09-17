@@ -68,7 +68,7 @@ Status: Unvalidated, Validated, or Invalidated
 
 ## Integration with AskUserQuestion
 
-When surfacing assumptions, use AskUserQuestion to:
+When surfacing assumptions, use the harness's `question-channel` capability to (where the harness lacks it, name the open question in the report instead of asking):
 - Confirm which assumptions are critical to validate
 - Gather evidence from user's domain knowledge
 - Prioritize assumption validation efforts

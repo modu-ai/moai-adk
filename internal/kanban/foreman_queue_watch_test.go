@@ -8,13 +8,15 @@
 // The watch is dead, and dead silently.
 //
 // These tests take the watch script VERBATIM from the skill file — the
-// local copy and the template mirror both — and run it. The only rebinding
-// is the process working directory: the script's paths are relative to a
-// project root, so pointing the process at a fixture root rebinds every
-// target the script resolves without touching a byte of its text. That
-// matters because AC-BJD-010 permits a repair whose watch covers more than
-// one path; a rebinding that named a single variable would go undefined the
-// moment that repair was chosen.
+// local copy and the template mirror both — and run it. The rebinding is the
+// process working directory PLUS the environment: since
+// SPEC-TODO-QUEUE-HOME-CANON-001 the script resolves the queue directory the
+// way StateDirForRoot does (a project-keyed directory under the moai home),
+// so the fixture pins MOAI_HOME to a fixture-local absolute path, builds the
+// store at the resolver's answer, and lets the script re-derive the same
+// directory from the same environment without sharing a byte of text with
+// it. A cwd-only rebinding would strand the script on a directory the
+// resolver no longer uses — the exact silent no-op this SPEC removed.
 //
 // TestForemanQueueWatch_ShippedJSONTargetIsSilent is the falsifiability
 // condition: it pins the pre-repair form and asserts it stays silent on the
@@ -120,22 +122,35 @@ func requirePOSIXWatchTools(t *testing.T) {
 	}
 }
 
-// watchFixture builds an isolated project root whose queue lives at the
-// canonical relative path the watch script resolves, and returns the root
-// and a store over that queue. The live primary-checkout queue is never
-// read, mutated, or measured by any of this.
-func watchFixture(t *testing.T) (string, *BacklogStore) {
+// watchFixture builds an isolated standard git-repository project whose
+// queue lives at the resolver's home-canonical directory — StateDirForRoot
+// under a fixture-local absolute MOAI_HOME, the same control pattern the
+// temporary-origin tests use — and returns the root, the queue directory,
+// and a store over that queue. The watch script re-derives the same
+// directory from the same environment (t.Setenv lands in the process env the
+// subprocess inherits), so a mutation through the store is observable by the
+// script without sharing a byte of text with it. The live primary-checkout
+// queue is never read, mutated, or measured by any of this.
+func watchFixture(t *testing.T) (string, string, *BacklogStore) {
 	t.Helper()
 	root := t.TempDir()
-	queueDir := filepath.Join(root, ".moai", "state", "todo")
-	if err := os.MkdirAll(queueDir, 0o755); err != nil {
+	if out, err := exec.Command("git", "init", root).CombinedOutput(); err != nil {
+		t.Fatalf("git init the fixture: %v (%s)", err, out)
+	}
+	moaiHome := t.TempDir()
+	t.Setenv("MOAI_HOME", moaiHome)
+	queueDir := StateDirForRoot(root)
+	if queueDir == projectStateDirForRoot(root) {
+		t.Fatalf("fixture queue resolved project-local %q — the MOAI_HOME override did not take", queueDir)
+	}
+	if err := os.MkdirAll(queueDir, 0o700); err != nil {
 		t.Fatalf("mkdir queue dir: %v", err)
 	}
 	store := NewBacklogStore(filepath.Join(queueDir, "backlog.json"))
 	if _, _, err := store.Add("fixture card one"); err != nil {
 		t.Fatalf("seed queue: %v", err)
 	}
-	return root, store
+	return root, queueDir, store
 }
 
 // armWatch writes script to a file, runs it with root as its working
@@ -181,8 +196,8 @@ func TestForemanQueueWatch_FiresOnMutation(t *testing.T) {
 	requirePOSIXWatchTools(t)
 	for _, name := range []string{"local", "template"} {
 		t.Run(name, func(t *testing.T) {
-			root, store := watchFixture(t)
-			if _, err := os.Stat(filepath.Join(root, ".moai", "state", "todo", "backlog.json")); err == nil {
+			root, queueDir, store := watchFixture(t)
+			if _, err := os.Stat(filepath.Join(queueDir, "backlog.json")); err == nil {
 				t.Fatal("fixture carries a backlog.json — this case is the migrated layout")
 			}
 			script := extractForemanWatchScript(t, foremanSkillPaths[name])
@@ -203,7 +218,12 @@ func TestForemanQueueWatch_FiresOnMutation(t *testing.T) {
 // silent on the same fixture, same window, same mutation.
 func TestForemanQueueWatch_ShippedJSONTargetIsSilent(t *testing.T) {
 	requirePOSIXWatchTools(t)
-	root, store := watchFixture(t)
+	// The pinned pre-repair script names the retired project-local prefix.
+	// Under the home-canonical contract that path is structurally absent in
+	// the fixture, which is exactly the SPEC's defect statement: the old
+	// watch is silent because it watches a directory the resolver no longer
+	// uses.
+	root, _, store := watchFixture(t)
 	fired := armWatch(t, root, legacyForemanWatchScript, func() {
 		if _, _, err := store.Add("fixture card two — queue mutation under watch"); err != nil {
 			t.Errorf("mutate queue: %v", err)
@@ -220,8 +240,8 @@ func TestForemanQueueWatch_ShippedJSONTargetIsSilent(t *testing.T) {
 // touched again, so a watch that still keys on it sees a frozen checksum.
 func TestForemanQueueWatch_FiresWithStaleJSONPresent(t *testing.T) {
 	requirePOSIXWatchTools(t)
-	root, store := watchFixture(t)
-	jsonPath := filepath.Join(root, ".moai", "state", "todo", "backlog.json")
+	root, queueDir, store := watchFixture(t)
+	jsonPath := filepath.Join(queueDir, "backlog.json")
 	if err := os.WriteFile(jsonPath, []byte(legacyBacklogJSON), 0o600); err != nil {
 		t.Fatalf("write stale backlog.json: %v", err)
 	}
