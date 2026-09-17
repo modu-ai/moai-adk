@@ -57,6 +57,64 @@ func TestCheckCitedReceipts_NonCodexToolRejected(t *testing.T) {
 	}
 }
 
+// A receipt recorded by an audit that never produced a verdict — a required
+// gate left unmet (codex binary missing), or an inconclusive codex verdict —
+// is not evidence that a codex audit ran, even though the receipt is genuine,
+// in the right tree, after the start marker, and carries an audit tool name.
+// The positive control in the same table keeps the refusal from being vacuous.
+func TestCheckCitedReceipts_GateUnmetReceiptDoesNotCorroborate(t *testing.T) {
+	root := requiredTree(t, "required")
+	start := StartMarker{AgentID: "a1", AgentType: AgentPlanAuditor, TreeRoot: root, StartedAt: Now()}
+
+	write := func(t *testing.T, r Receipt) string {
+		t.Helper()
+		r.TreeRoot = root
+		r.CreatedAt = start.StartedAt.Add(time.Second)
+		id, err := WriteReceipt(root, &r)
+		if err != nil {
+			t.Fatalf("WriteReceipt: %v", err)
+		}
+		return id
+	}
+
+	for name, tc := range map[string]struct {
+		receipt   Receipt
+		wantOK    bool
+		wantCause string
+	}{
+		"gate-unmet": {
+			Receipt{Tool: ToolCodexAudit, CodexVerdict: "fail", GateUnmet: "codex"},
+			false, CauseReceiptAuditNotRun,
+		},
+		"inconclusive-verdict": {
+			Receipt{Tool: ToolCodexAudit, CodexVerdict: codexVerdictInconclusive},
+			false, CauseReceiptAuditNotRun,
+		},
+		"multi-gate-unmet": {
+			Receipt{Tool: ToolAuditMulti, CodexVerdict: "inconclusive", GateUnmet: "codex,glm"},
+			false, CauseReceiptAuditNotRun,
+		},
+		// Positive controls: a completed audit still corroborates, and an
+		// unrecorded codex_verdict is not read as a failed one.
+		"completed-verdict": {
+			Receipt{Tool: ToolCodexAudit, CodexVerdict: "pass"},
+			true, "",
+		},
+		"verdict-field-absent": {
+			Receipt{Tool: ToolCodexAudit},
+			true, "",
+		},
+	} {
+		t.Run(name, func(t *testing.T) {
+			id := write(t, tc.receipt)
+			ok, cause := CheckCitedReceipts(root, &start, []string{id})
+			if ok != tc.wantOK || cause != tc.wantCause {
+				t.Errorf("(ok, cause) = (%v, %q), want (%v, %q)", ok, cause, tc.wantOK, tc.wantCause)
+			}
+		})
+	}
+}
+
 // A malformed receipt id is refused before it reaches the filesystem, so a
 // citation cannot be used to read an arbitrary path.
 func TestReadReceipt_MalformedIDRejected(t *testing.T) {

@@ -72,8 +72,15 @@ const (
 	CauseReceiptOtherTree      = "receipt recorded for a different tree"
 	CauseReceiptBeforeStart    = "receipt created before the auditor started"
 	CauseReceiptNotACodexAudit = "receipt is not a codex audit"
+	CauseReceiptAuditNotRun    = "receipt records an audit that never produced a verdict"
 	CauseVerdictLineMissing    = "verdict line missing"
 )
+
+// codexVerdictInconclusive is the verdict a codex audit records when it never
+// produced one (a missing binary, a broken RPC, a blank review). It is spelled
+// here rather than imported because the store is the leaf package: internal/cli
+// depends on it, not the other way round.
+const codexVerdictInconclusive = "inconclusive"
 
 // gateRequired is the ONLY value that opts a tree into the receipt checks. The
 // comparison is exact on the raw configured string: a trimmed or case-folded
@@ -355,6 +362,7 @@ func CheckCitedReceipts(treeRoot string, start *StartMarker, cited []string) (bo
 			CauseReceiptOtherTree,
 			CauseReceiptBeforeStart,
 			CauseReceiptNotACodexAudit,
+			CauseReceiptAuditNotRun,
 		} {
 			if c == cause {
 				return i
@@ -376,6 +384,16 @@ func CheckCitedReceipts(treeRoot string, start *StartMarker, cited []string) (bo
 			cause = CauseReceiptBeforeStart
 		case r.Tool != ToolCodexAudit && r.Tool != ToolAuditMulti:
 			cause = CauseReceiptNotACodexAudit
+		case strings.TrimSpace(r.GateUnmet) != "",
+			strings.TrimSpace(r.CodexVerdict) == codexVerdictInconclusive:
+			// The audit this receipt records was itself blocked: a required
+			// gate went unmet, or codex produced no verdict at all. Such a
+			// receipt proves an audit was ATTEMPTED, which is not what the
+			// citation claims — a receipt that says "the review never ran"
+			// cannot corroborate a PASS that says it did. An empty
+			// codex_verdict stays permissive: it means the field was not
+			// recorded, not that the audit failed.
+			cause = CauseReceiptAuditNotRun
 		}
 		if cause == "" {
 			return true, ""

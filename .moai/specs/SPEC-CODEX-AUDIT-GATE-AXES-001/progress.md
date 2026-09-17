@@ -189,3 +189,74 @@ docs_site_readme_check:
   found: "docs-site/content/en/advanced/config-sections.md (tool/model-effort pinning listing only), docs-site/content/en/guides/mcp-server.md (tool catalog + fail-open description), docs-site/content/en/advanced/multi-model-audit.md (audit_multi convergence semantics only — REQ-CAG-006 unchanged), README*.md (tool-name table row only)"
   disposition: "no docs-site or README change made — none of the found pages describe single-codex_audit-path required-gate enforcement or the audit-receipt mechanism; all describe either the unchanged audit_multi convergence algorithm or a bare tool-name listing"
 ```
+
+## §E.5 Sync-audit 지적 수리 (F3 / F2)
+
+sync-audit 이 남긴 지적 두 건을 운영자 승인 아래 수리했다. 범위는 이 두 건과 그 증거뿐이다(CHANGELOG 는 손대지 않았다 — F1 문구는 레인이 이미 고쳤다).
+
+### E.5.1 F3 — 게이트가 막은 감사의 영수증이 PASS 를 뒷받침하던 문제 (코드, AC 밖 동작 변경)
+
+**재현(수리 전 동작).** `CheckCitedReceipts` 는 Tool / TreeRoot / CreatedAt 세 축만 봤다. 그래서 축 (a) 가 스스로 막아버린 감사 — codex 바이너리 부재처럼 verdict 가 `fail` 이고 `gate_unmet` 이 채워진 감사 — 가 남긴 영수증도, 진짜 트리에서 시작 표식 이후에 `codex_audit` 이름으로 기록됐다는 이유만으로 감사자의 PASS 를 뒷받침했다. 즉 "리뷰는 한 번도 돌지 않았다"고 스스로 적어둔 영수증이 "리뷰가 돌았다"는 주장의 증거로 통과했다.
+
+수리 전 코드에 새 테스트를 그대로 물린 RED 관측(새 case 를 `case false, false:` 로 무력화한 동일 트리):
+
+```
+--- FAIL: TestCheckCitedReceipts_GateUnmetReceiptDoesNotCorroborate (0.00s)
+    --- FAIL: .../gate-unmet (0.00s)
+        store_edge_test.go:112: (ok, cause) = (true, ""), want (false, "receipt records an audit that never produced a verdict")
+    --- FAIL: .../inconclusive-verdict (0.00s)
+        store_edge_test.go:112: (ok, cause) = (true, ""), want (false, "receipt records an audit that never produced a verdict")
+    --- FAIL: .../multi-gate-unmet (0.00s)
+        store_edge_test.go:112: (ok, cause) = (true, ""), want (false, "receipt records an audit that never produced a verdict")
+FAIL	github.com/modu-ai/moai-adk/internal/auditreceipt	0.317s
+```
+
+**수리.** `CheckCitedReceipts` 의 switch 에 마지막 조건을 하나 더 뒀다. 새 사유 문자열:
+
+```
+CauseReceiptAuditNotRun = "receipt records an audit that never produced a verdict"
+```
+
+발동 조건은 둘 중 하나다 — 영수증의 `gate_unmet` 이 비어 있지 않거나, `codex_verdict` 가 `inconclusive` 이거나. **빈 `codex_verdict` 는 그대로 통과시킨다**: 값이 없다는 것은 필드를 기록하지 않았다는 뜻이지 감사가 실패했다는 뜻이 아니며, 그렇게 읽으면 기존 영수증이 전부 무효가 된다.
+
+**`rank()` 기본값 처분.** sync-audit 이 잠재 함정으로 지적한 `return len(cited)` 는 **그대로 뒀다.** 새 사유를 `rank()` 의 사유 목록에도 함께 등록했으므로 switch 가 배정하는 모든 사유가 목록 안에 있고, 기본 분기는 여전히 도달 불가다. 도달 가능해졌다면 고정 상수로 바꿨을 것이다 — 함정은 제거가 아니라 미도달 상태로 유지되며, 사유를 추가하면서 목록 등록을 빠뜨리는 다음 편집자가 이를 되살릴 수 있다는 점은 아래 잔여 위험에 남긴다.
+
+**테스트.** `TestCheckCitedReceipts_GateUnmetReceiptDoesNotCorroborate` (`internal/auditreceipt/store_edge_test.go`). 거부 3행(gate-unmet / inconclusive / audit_multi 의 gate-unmet)과 양성 대조 2행(완료된 `pass` verdict, `codex_verdict` 필드 부재)을 같은 표에 둬 공허 통과를 막았다. `t.TempDir()` 위에서만 돈다.
+
+### E.5.2 F2 — 감사자 본문의 과잉 주장 축소 (문구, 리드 승인)
+
+sync-audit 이 탐침으로 보인 사실: 에이전트가 트리 안 영수증 저장소에 파일을 **손으로 써넣으면** 그 인용은 통과한다. 저장소는 런타임이 쓴 기록과 손으로 쓴 기록을 구분하지 않는다. 따라서 "발급된 적 없는 id 는 아무것도 증명하지 못한다"는 문장은 실제보다 넓은 주장이었다 — 검사가 아는 것은 발급 여부가 아니라 저장소가 그 id 를 들고 있는지 여부뿐이다.
+
+네 본문(`plan-auditor` / `sync-auditor` 의 로컬 사본과 템플릿 미러 두 벌)에서 같은 문장의 두 대목을 좁혔다:
+
+- `no receipt cited, an id it never issued, …` → `no receipt cited, an id the store does not carry, …`
+- `so an id that was never issued proves nothing` → `so an id the store does not carry proves nothing`
+
+템플릿 편집 뒤 `make agents-emit` 으로 `.codex` toml 두 개를 재방출하고 `make build` 로 `catalog.yaml` 해시를 동반시켰다(손편집 없음). 템플릿 중립성 유지 — SPEC id·카드 id·날짜·이슈 번호 어느 것도 넣지 않았다.
+
+### E.5.3 검증 (머신 부하 정책 준수 — 전체 스위트 미실행)
+
+| 항목 | 명령 | 관측 |
+|---|---|---|
+| 신규 테스트 | `go test ./internal/auditreceipt/... -run 'TestCheckCitedReceipts_GateUnmetReceiptDoesNotCorroborate' -v` | `=== RUN` 6줄(부모 1 + 하위 5), `--- PASS` 전부, `ok … 0.483s` |
+| 기존 패키지 스위트 | `go test ./internal/auditreceipt/... -count=1 -v` | `=== RUN` 42줄, `ok github.com/modu-ai/moai-adk/internal/auditreceipt 0.350s` |
+| 커버리지 | `go test ./internal/auditreceipt/ -cover -count=1` | `coverage: 87.4% of statements` (수리 전 87.3%) |
+| 소비자 회귀 | `go test ./internal/hook/ -run 'TestSubagentStart_WritesAuditorStartMarker\|TestSubagentStop_BlocksUnprovenPassAndPersistsRejection\|TestSubagentStop_ReentryWarnsAcceptanceClearsRoleFailIsInert\|TestPreToolUse_DeniesPhaseEntrySpawnsWhileRejectionOutstanding\|TestAuditReceiptGuard_NonRequiredTreesAreInert\|TestAuditReceiptGuard_UnreadableEvidence' -count=1 -v` | `=== RUN` 18줄, `ok github.com/modu-ai/moai-adk/internal/hook 4.030s` |
+| vet | `go vet ./internal/auditreceipt/... ./internal/template/agentemit/...` | 출력 없음, exit 0 |
+| lint | `golangci-lint run ./internal/auditreceipt/...` | `0 issues.`, exit 0 |
+| gofmt | `gofmt -l internal/auditreceipt internal/template/agentemit` | 출력 없음 |
+| 미러 드리프트 | `make agents-emit-check` | `ok github.com/modu-ai/moai-adk/internal/template/agentemit 0.395s`, exit 0 |
+| 빌드 | `make build` | 성공(`catalog.yaml updated successfully`, `go build -ldflags … -o bin/moai`) |
+
+### E.5.4 Gaps (이번 수리에서 관측하지 않은 것)
+
+- 전체 스위트(`go test ./...`), `internal/cli` 전 패키지, `internal/hook` 전 패키지는 돌리지 않았다 — 머신 부하 정책. 전체 판정은 리드 push 이후 CI 몫이다.
+- 크로스플랫폼 빌드(`GOOS=windows`)는 측정하지 않았다.
+- 라이브 세션에서 gate-unmet 영수증을 인용한 PASS 가 실제로 차단되는 것은 관측하지 않았다 — 이 저장소는 `workflow.audit.gates` 를 설정하지 않아 required 경로가 발동하지 않는다(E.2.7 의 Gap 이 그대로 유효). 검증은 전부 픽스처 트리다.
+- codex 바이너리 실물로 `codex_audit` 를 돌려 gate-unmet 영수증을 만들어보지는 않았다. 영수증은 테스트가 직접 기록했다.
+
+### E.5.5 Residual-risk
+
+- **손으로 써넣은 영수증은 여전히 통과한다**(F2 탐침이 보인 사실). 이번 수리는 문구만 좁혔을 뿐 메커니즘을 바꾸지 않았다 — 저장소는 트리 안 파일이고, 트리에 쓸 수 있는 에이전트는 영수증도 쓸 수 있다. 진짜 봉쇄는 저장소를 트리 밖(또는 쓰기 불가 매체)으로 옮겨야 가능하며, 이번 범위 밖이다.
+- `codex_verdict` 가 비어 있는 영수증은 계속 통과한다. 그 필드를 기록하지 않는 경로가 새로 생기면 이 관대함이 구멍이 된다.
+- `rank()` 의 `return len(cited)` 기본값은 미도달 상태로 남아 있다. 사유를 추가하면서 `rank()` 목록 등록을 빠뜨리면 인용 개수에 따라 사유 우선순위가 뒤집힌다(판정 자체는 바뀌지 않고, 보고되는 사유 문자열만 틀려진다).

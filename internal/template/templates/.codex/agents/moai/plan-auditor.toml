@@ -218,7 +218,7 @@ Where the reviewed tree explicitly sets `workflow.audit.gates.codex` to `require
 AUDIT-VERDICT: <PASS|PASS-WITH-DEBT|FAIL> spec=<SPEC-ID> receipts=<receipt-id>[,<receipt-id>...]
 ```
 
-Use `receipts=none` when no receipt was issued. A PASS the receipt store cannot corroborate — no receipt cited, an id it never issued, a receipt from another tree, or one minted before this audit began — is refused when the subagent stops, and the run/sync/PR spawns stay denied until a PASS citing a valid receipt is recorded. Omitting the verdict line is not an escape: a final message without one is refused the same way. The check reads the runtime store, never this report's text, so an id that was never issued proves nothing.
+Use `receipts=none` when no receipt was issued. A PASS the receipt store cannot corroborate — no receipt cited, an id the store does not carry, a receipt from another tree, or one minted before this audit began — is refused when the subagent stops, and the run/sync/PR spawns stay denied until a PASS citing a valid receipt is recorded. Omitting the verdict line is not an escape: a final message without one is refused the same way. The check reads the runtime store, never this report's text, so an id the store does not carry proves nothing.
 
 ### [HARD] Name your own tree
 
