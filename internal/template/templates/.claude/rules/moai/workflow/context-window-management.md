@@ -20,7 +20,7 @@ reimplement them. Rationale and the layer vocabulary:
 |-------------|--------|-------------------|------------------|
 | Opus 5 (1M) | 1,000,000 tokens | **50%** | ~500,000 tokens |
 | Opus 4.8 (1M) | 1,000,000 tokens | **50%** | ~500,000 tokens |
-| GLM-5.3 via `moai glm` (1M) | 1,000,000 tokens | **50%** | ~500,000 tokens |
+| GLM-5.3 via `moai glm`/`moai cg` (1M) | 1,000,000 tokens | **50%** | ~500,000 tokens |
 | Fable (1M) | 1,000,000 tokens | **50%** | ~500,000 tokens |
 | Sonnet 5 (1M) | 1,000,000 tokens | **50%** | ~500,000 tokens |
 | Sonnet 4.x / earlier standard (200K) | 200,000 tokens | **90%** | ~180,000 tokens |
@@ -30,7 +30,7 @@ The model-specific threshold is the operational ceiling — beyond it, plan for 
 
 ### GLM-5.3 context window (Issue #653)
 
-GLM-5.3 (z.ai, served via `moai glm`) is a genuine 1M-context model; operate it at the **50% (~500K)** handoff threshold, the same class as Opus 5 / Opus 4.8 (1M). Do NOT treat a `moai glm` session as a 200K session.
+GLM-5.3 (z.ai, served via `moai glm` / `moai cg` GLM panes) is a genuine 1M-context model; operate it at the **50% (~500K)** handoff threshold, the same class as Opus 5 / Opus 4.8 (1M). Do NOT treat a `moai glm` session as a 200K session.
 
 Caveat (Issue #653): Claude Code reports `context_window_size` based on the Claude slot (Opus=1M, Sonnet/Haiku=200K) regardless of provider, so raw telemetry (`effectiveWindow`) may show ~180K under GLM. This is an upstream misreport. MoAI corrects it: the statusline gauge uses `MOAI_STATUSLINE_CONTEXT_SIZE` and Claude Code auto-compact uses `CLAUDE_CODE_AUTO_COMPACT_WINDOW`, both resolved from the `glmContextWindows` table in `internal/statusline/memory.go` (glm-5.3 → 1,000,000) or the `llm.glm.context_windows` override. Trust the MoAI statusline CW%, not raw `effectiveWindow`.
 
@@ -105,7 +105,7 @@ check is needed. When it is absent or unparseable, usage is estimated from cumul
 system-reminder volume, large tool results, and completed `Agent()` returns — under-estimating when
 uncertain, since a premature `/clear` costs one paste and a missed one costs a stalled stream.
 
-**Where the number comes from, and how far to trust it.** The snapshot does not measure the window itself: the statusline consumes the percentage Claude Code already computed and writes it through unchanged, so an upstream metering change reaches our CW% gauge and every snapshot on disk without passing through any recomputation of ours. That makes the snapshot a *relay*, and its confidence the runtime's confidence. Measured 2026-09-18 against 518 snapshots whose sessions still had transcripts: rebuilding each session's occupancy from its own transcript usage fields (`input_tokens + cache_read + cache_creation`) and dividing the snapshot's `tokens_used` by it gives a median of 0.99-1.00 on every capture date from 2026-08-26 onward, and no ratio anywhere above 1.04 — no double-counting signature, in either direction, at any date in that range. Low outliers are snapshots captured early in a session and compared against its later peak, plus stale zero-valued records; they are an artifact of the comparison, not of the metering. Treat the snapshot as trustworthy to roughly a percentage point, and re-derive rather than cite it when a verdict needs a number: a relayed figure carries the upstream's defects silently.
+**Where the number comes from, and how far to trust it.** The snapshot does not measure the window itself: the statusline consumes the percentage Claude Code already computed and writes it through unchanged, so an upstream metering change reaches our CW% gauge and every snapshot on disk without passing through any recomputation of ours. That makes the snapshot a *relay*, and its confidence the runtime's confidence. Measured across the 518 snapshots whose sessions still had transcripts: rebuilding each session's occupancy from its own transcript usage fields (`input_tokens + cache_read + cache_creation`) and dividing the snapshot's `tokens_used` by it gives a median of 0.99-1.00 on every capture date in the sampled range, and no ratio anywhere above 1.04 — no double-counting signature, in either direction, at any date in that range. Low outliers are snapshots captured early in a session and compared against its later peak, plus stale zero-valued records; they are an artifact of the comparison, not of the metering. Treat the snapshot as trustworthy to roughly a percentage point, and re-derive rather than cite it when a verdict needs a number: a relayed figure carries the upstream's defects silently. The dated baseline, the command, and the full distribution live with the measurement itself, in `.moai/reports/t875/verdict.md` — the norm belongs in this rule, the dated figures belong in the evidence file.
 
 The statusline's two-stage `/clear` marker is a signal, not a guarantee: the hard stage is
 frequently pre-empted by the runtime's auto-compact and rarely fires. Snapshot field list and the

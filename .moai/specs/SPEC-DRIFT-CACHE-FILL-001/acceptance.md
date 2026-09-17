@@ -319,14 +319,80 @@ confidently it is worded.
 - **RED-now**: EL-1. The existing `session_start_parallel_test.go` bound test
   documents today's behaviour (pay the bound, drop the advisory); the asserted
   behaviour has no implementation on this tree.
-- **Green path**: M4. With the drift seam at 10 × the bound, `Handle` on a
-  cache-miss tree returns with **elapsed < `deferredScanJoinBound` / 5** and its
-  `Data` carries no `status_drift_warning`. The threshold is a fixed ratio, not a
-  tester's judgment.
+- **Green path**: M4. With the OLD drift seam set to 10 ×
+  `deferredScanJoinBound`, `TestSessionStart_MissPathSpendsNoJoinBudgetOnDrift`
+  asserts **four clauses together**, plus the advisory's absence on both halves.
+  The budget in every timing clause is the literal ratio
+  `deferredScanJoinBound / 5` — a fixed threshold, never a tester's judgement.
+
+  1. **The deferred step, measured directly.** `computeDeferredAdvisory` on a
+     cache-miss tree returns in **< `deferredScanJoinBound` / 5**. This is the
+     step that used to carry the in-band compute, so it is the quantity the
+     ratio is actually about.
+  2. **`Handle`'s miss cost against `Handle`'s OWN measured hit baseline.** The
+     same test measures `Handle` on a cache-hit tree first and requires
+     `miss − hit < deferredScanJoinBound / 5`. The baseline is **measured in
+     this test**, never assumed and never carried over from another run.
+  3. **An absolute ceiling.** `Handle` on the miss path returns in **<
+     `deferredScanJoinBound`** — strictly below the full bound the pre-change
+     code paid on every cold session.
+  4. **The decisive structural clause — the in-band compute is never
+     consulted.** `driftCountFn` is replaced by a tripwire that records any call
+     and sleeps 10 × the bound; the test fails if the tripwire ever fired. This
+     clause is machine-independent: it witnesses the property the criterion is
+     about (the miss path spends no join budget on drift) by construction rather
+     than by timing, and it is what makes clauses 1-3 interpretable at all.
+
+  On both halves the rendered output is asserted too: neither the deferred step
+  nor `Handle` carries `status_drift_warning` on a miss.
+
+  **Why the literal "`Handle` elapsed < `deferredScanJoinBound` / 5" is not the
+  measurement subject.** `Handle`'s own synchronous work — config load, session
+  registry, migration, settings — measures 65-80 ms on the measuring machine,
+  already above the 50 ms the ratio names, and no change to the drift path can
+  move it. The sync audit reproduced this: the same test's cache-HIT `Handle`
+  baseline measured `81.531375ms`. Asserting the ratio against `Handle`'s total
+  would be red at arrival and red forever — the "impossible" direction §2 names
+  as disqualifying — so the ratio is applied to the drift contribution instead.
+
+  **Two qualifiers that bound how far the timing clauses can be trusted.**
+  (i) Clause 2's delta came out **negative** on the auditor's run (miss 67.9 ms
+  vs hit 81.5 ms), so under machine noise it can pass vacuously; it is therefore
+  **not** the sole carrier of the criterion — clause 4 is. (ii) Every figure is
+  measured with `driftCachedCountFn`, `driftFillHeadFn` and `driftFillStartFn`
+  seamed, so the `232.6 µs` deferred-step figure in the evidence is a
+  **seam-bounded measurement, NOT a production latency**.
 - **Continued firing**: paired with AC-DCF-002's positive control, so a mutant
-  that deletes the deferred block cannot pass both.
-- **Mutant probe**: dropping the whole deferred block satisfies the timing half
-  and fails AC-DCF-002.
+  that deletes the deferred block cannot pass both. Clause 4 additionally fails
+  the moment the in-band compute is re-consulted on the miss path, independently
+  of how fast the machine happens to be.
+- **Mutant probe**: dropping the whole deferred block satisfies clauses 1-3 and
+  fails AC-DCF-002. A mutant that keeps the deferred block but restores the
+  in-band compute passes nothing — clause 4 fires on the first consultation, and
+  clauses 1 and 3 fire on the injected 10 × bound sleep.
+
+#### Amendment note for the criterion above (AC-DCF-009)
+
+**v0.5.0, card t898** — text amended after close; **no behaviour, no
+implementation and no test changed.** The green path as written named a
+measurement subject (`Handle`'s total elapsed) that the implementation could not
+carry for a reason unrelated to this SPEC, and the run phase silently measured a
+different, stricter subject instead (recorded at the time in `progress.md`
+§E.2's AC-DCF-009 note and in the test's own header comment). The criterion now
+states the four clauses the test actually asserts, so the document and the check
+agree. Release-blocking status is **retained** — see the classification note
+below. Lifecycle untouched: `status: completed`, `sync_commit_sha` and
+`run_commit_sha` unchanged.
+
+**Release-blocking retained (§2.1).** Eligibility turns on the RED-now cell, and
+AC-DCF-009's is EL-1 — a single read-only invocation, verbatim empty stdout,
+exit 1, bound by the document-level pin `881aa4bb8…`. That cell is unchanged by
+this amendment and remains re-executable on its pinned tree. The §C
+regression-guard demotion applies where the **starting observation** is itself a
+machine-sensitive wall-clock measurement (AC-DCF-015/016); here the starting
+observation is a grep for an absent symbol, and the decisive green clause
+(clause 4) is structural rather than timed. The wall-clock clauses are carried
+as corroboration, qualified above, and are not the criterion's sole carrier.
 
 ### AC-DCF-010 — every fill failure path is fail-open, and the success path still spawns
 - **Requirement**: REQ-DCF-013

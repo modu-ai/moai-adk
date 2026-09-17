@@ -45,7 +45,7 @@ import (
 // local answer, and the guard fails open on the same uncertainty.
 func integrationLockRoot() string {
 	if dir := strings.TrimSpace(os.Getenv("CLAUDE_PROJECT_DIR")); dir != "" {
-		return dir
+		return canonicalTreeSpelling(dir)
 	}
 	out, err := exec.Command("git", "rev-parse", "--git-common-dir").Output()
 	if err == nil {
@@ -62,6 +62,51 @@ func integrationLockRoot() string {
 		}
 	}
 	return resolveProjectDir()
+}
+
+// canonicalTreeSpelling returns git's own spelling of dir's top level, and dir
+// verbatim whenever git cannot answer for it (card t766).
+//
+// The spelling matters because everything downstream JOINS onto this string —
+// the preserved copy's directory, and the `preserved_path` recorded beside it
+// — while the sibling fields `source_path` and `worktree` come from
+// `git rev-parse --show-toplevel`, which answers the on-disk spelling. One row
+// could therefore name a tree two different ways, and the real ledger does:
+// three rows from 2026-09-08 carry a `preserved_path` under `/Users/goos/moai/`
+// against a `source_path` under `/Users/goos/MoAI/`. On a case-insensitive
+// volume that is a record defect; on a case-sensitive one it is a second
+// directory tree, and a preserved copy filed where nobody will look for it.
+//
+// Two properties bound the repair, and neither is incidental:
+//
+//   - git is the source, not `filepath.EvalSymlinks`. EvalSymlinks does NOT
+//     correct case on macOS — it resolves links and returns whatever spelling
+//     it was handed — so it cannot see this defect at all.
+//
+//   - The answer is accepted only when it names the SAME DIRECTORY, compared
+//     by identity (os.SameFile) rather than by string. `--show-toplevel` walks
+//     UP: handed a plain subdirectory of some repository, it answers that
+//     repository's root, and relocating the lock root there would be a
+//     different and much larger change than fixing a spelling. A path that is
+//     not a repository, or is not its top level, keeps behaving exactly as it
+//     does today.
+func canonicalTreeSpelling(dir string) string {
+	cmd := exec.Command("git", "rev-parse", "--show-toplevel")
+	cmd.Dir = dir
+	out, err := cmd.Output()
+	if err != nil {
+		return dir
+	}
+	top := strings.TrimSpace(string(out))
+	if top == "" || top == dir {
+		return dir
+	}
+	given, givenErr := os.Stat(dir)
+	found, foundErr := os.Stat(top)
+	if givenErr != nil || foundErr != nil || !os.SameFile(given, found) {
+		return dir
+	}
+	return top
 }
 
 // integrationSessionID resolves the caller's own session id: the --session
