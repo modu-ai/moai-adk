@@ -110,6 +110,12 @@ and resolve the remote default branch instead of assuming `main`.
 with a bare `git worktree add`. Leave with `ExitWorktree`. Drive a worktree with `git -C <path>`,
 not `cd`.
 
+**From inside a worktree session, `<path>` must be that worktree's absolute path.** Measured on
+Claude Code 2.1.275: the guard refuses `-C .`, a relative path, a runtime-computed path, and any
+path outside this worktree; plain git, `git -C <own absolute path>` and `--git-dir=<own .git>` pass.
+`cd <own worktree> && git …` also passes the guard, which does NOT make it advisable — the reason
+above still holds. A refusal here is the guard reading the command, not a runtime defect.
+
 **`moai worktree done` closes L2 trees only.** A tree under `.claude/worktrees/` is L1, is absent
 from the registry, and is disposed by the session-end prompt or by `git worktree unlock` +
 `git worktree remove`.
