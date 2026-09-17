@@ -187,3 +187,14 @@ pull 규칙 하의 표본이 아니다.
 
 이 구멍들을 닫으려면 행에 트리/규칙 식별 필드가 필요하다. 추가 여부와 방식은 이 카드가 정하지
 않는다.
+
+### 9.6 수집 스크립트 수리 (commit `3ba2dc6ac`) — Gaps
+
+- 수리: primary 제외 · `timestamp >= 2026-09-17T16:15:27Z` · pull 분기 없는 트리 제외 · n<20 이면 export
+  미작성 · 깊은 `find` → 트리 glob.
+- selftest: `admitted rows=2 violations=1` PASS. 규칙 4종(rule2·rule3·rule1-anchor·rule1-mode)을 하나씩
+  제거한 변이는 모두 `selftest FAIL: rows=3 violations=2`.
+- **Gap**: 워크트리 로그 발견 경로(glob)는 양성 실측이 없다 — 수리 시점 대상 로그 0개
+  (`scanned_trees=0`). selftest 는 트리별 필터만 검증한다. 첫 워크트리 로그가 생기면 `scanned_trees ≥ 1`
+  로 발견 경로를 확인한 뒤에 READING 을 근거로 쓴다.
+- AC-JFM-018 은 n≥20 판독 전까지 gap 이며 카드는 열린 채로 둔다.
