@@ -47,7 +47,7 @@ func TestInitPersistsHarnessKey(t *testing.T) {
 	}{
 		{"flag absent records claude", "", "claude"},
 		{"claude records claude", "claude", "claude"},
-		{"codex records codex", "codex", "codex"},
+		{"gpt records gpt", "gpt", "gpt"},
 		{"both records both", "both", "both"},
 	}
 	for _, tc := range cases {
@@ -70,10 +70,10 @@ func TestInitPersistsHarnessKey(t *testing.T) {
 // consumer must read the RESOLVED value either way). Flag absent, wizard
 // answers codex.
 func TestInitPersistsHarnessKeyFromWizard(t *testing.T) {
-	wiz := &wizard.WizardResult{AgentWiring: "codex"}
+	wiz := &wizard.WizardResult{AgentWiring: "gpt"}
 	projectDir, _ := runInitForAutonomy(t, wiz, nil)
 
-	if got := readLLMHarness(t, projectDir); got != "codex" {
-		t.Errorf("llm.harness after wizard codex init = %q, want %q", got, "codex")
+	if got := readLLMHarness(t, projectDir); got != "gpt" {
+		t.Errorf("llm.harness after wizard gpt init = %q, want %q", got, "gpt")
 	}
 }

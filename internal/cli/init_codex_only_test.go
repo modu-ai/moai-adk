@@ -1,7 +1,7 @@
 package cli
 
 // SPEC-INIT-HARNESS-001 M2 — codex-only deployment (REQ-IH-005, AC-IH-002
-// / AC-IH-003): `--llm codex` deploys ONLY the universal + Codex surfaces.
+// / AC-IH-003): `--llm gpt` deploys ONLY the universal + Codex surfaces.
 // The claude-only surfaces (.claude/**, CLAUDE.md, .mcp.json, .claudeignore,
 // .moai/status_line.sh) must not appear at the project root at all.
 //
@@ -22,7 +22,7 @@ import (
 // (AC-IH-002): after a codex-only init, NONE of the claude-only surfaces
 // exists at the project root.
 func TestInitCodexOnlyDeploysNoClaudeSurface(t *testing.T) {
-	projectDir, _ := runInitForAutonomy(t, nil, map[string]string{"llm": "codex"})
+	projectDir, _ := runInitForAutonomy(t, nil, map[string]string{"llm": "gpt"})
 
 	for _, rel := range []string{
 		".claude",
@@ -43,7 +43,7 @@ func TestInitCodexOnlyDeploysNoClaudeSurface(t *testing.T) {
 // published skills, the remapped catalog skills, the config sections, and the
 // git infrastructure.
 func TestInitCodexOnlyRequiredSurfaces(t *testing.T) {
-	projectDir, _ := runInitForAutonomy(t, nil, map[string]string{"llm": "codex"})
+	projectDir, _ := runInitForAutonomy(t, nil, map[string]string{"llm": "gpt"})
 
 	// AGENTS.md — universal contract surface.
 	if _, err := os.Stat(filepath.Join(projectDir, "AGENTS.md")); err != nil {
@@ -57,13 +57,13 @@ func TestInitCodexOnlyRequiredSurfaces(t *testing.T) {
 		}
 	}
 
-	// .codex/agents/moai/*.toml — 11 template TOMLs.
+	// .codex/agents/moai/*.toml — 12 template TOMLs (mission-governor added).
 	tomls, err := filepath.Glob(filepath.Join(projectDir, ".codex", "agents", "moai", "*.toml"))
 	if err != nil {
 		t.Fatalf("glob codex agent tomls: %v", err)
 	}
-	if len(tomls) != 11 {
-		t.Errorf(".codex/agents/moai/*.toml count = %d, want 11", len(tomls))
+	if len(tomls) != 12 {
+		t.Errorf(".codex/agents/moai/*.toml count = %d, want 12", len(tomls))
 	}
 
 	// 16 published skills — real template files.

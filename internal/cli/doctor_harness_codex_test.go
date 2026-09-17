@@ -19,7 +19,7 @@ import (
 // check-result level: after a codex-only init, every claude-surface check
 // reports the informational downgrade instead of a warning/failure.
 func TestDoctorCodexOnlyDowngradesClaudeSurfaces(t *testing.T) {
-	projectDir, _ := runInitForAutonomy(t, nil, map[string]string{"llm": "codex"})
+	projectDir, _ := runInitForAutonomy(t, nil, map[string]string{"llm": "gpt"})
 
 	t.Chdir(projectDir)
 	groups := runGroupedChecks(false, "")
@@ -54,7 +54,7 @@ func TestDoctorCodexOnlyDowngradesClaudeSurfaces(t *testing.T) {
 // TestDoctorCodexOnlyOutputCarriesInfoLine asserts the downgrade produced an
 // INFO finding naming harness=codex (the AC-IH-010 green-path message).
 func TestDoctorCodexOnlyOutputCarriesInfoLine(t *testing.T) {
-	projectDir, _ := runInitForAutonomy(t, nil, map[string]string{"llm": "codex"})
+	projectDir, _ := runInitForAutonomy(t, nil, map[string]string{"llm": "gpt"})
 
 	t.Chdir(projectDir)
 	groups := runGroupedChecks(false, "")

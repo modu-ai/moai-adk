@@ -86,7 +86,7 @@ type InitOptions struct {
 	// "codex" the initializer deploys no claude surface at all — the .claude/
 	// directory scaffold (Step 2) and CLAUDE.md (Step 4) are skipped, so the
 	// project root carries zero .claude/** paths.
-	Harness string // llm.harness axis; "codex" suppresses claude-surface writes
+	Harness string // llm.harness axis; "gpt" suppresses claude-surface writes
 
 	MCPProvision bool // moai MCP server provisioning (default-on per SPEC-MCP-DEFAULT-ON-001)
 }
@@ -192,7 +192,7 @@ func (i *projectInitializer) Init(ctx context.Context, opts InitOptions) (*InitR
 	if err := ctx.Err(); err != nil {
 		return nil, err
 	}
-	if opts.Harness != "codex" {
+	if opts.Harness != "gpt" {
 		if err := i.createClaudeDirs(opts.ProjectRoot, result); err != nil {
 			return nil, fmt.Errorf("create .claude/ structure: %w", err)
 		}
@@ -278,7 +278,7 @@ func (i *projectInitializer) Init(ctx context.Context, opts InitOptions) (*InitR
 	if err := ctx.Err(); err != nil {
 		return nil, err
 	}
-	if opts.Harness != "codex" {
+	if opts.Harness != "gpt" {
 		if err := i.createClaudeMD(opts, result); err != nil {
 			return nil, fmt.Errorf("create CLAUDE.md: %w", err)
 		}

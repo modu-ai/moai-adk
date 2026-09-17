@@ -32,14 +32,14 @@ func writeHarnessFixture(t *testing.T, harnessLine string) string {
 // quoted template value is rewritten to the new unquoted value.
 func TestApplyHarness_ReplacesQuotedValue(t *testing.T) {
 	root := writeHarnessFixture(t, "  harness: \"claude\"\n")
-	if err := ApplyHarness(root, "codex"); err != nil {
+	if err := ApplyHarness(root, "gpt"); err != nil {
 		t.Fatalf("apply: %v", err)
 	}
 	data, err := os.ReadFile(filepath.Join(root, ".moai", "config", "sections", "llm.yaml"))
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !strings.Contains(string(data), "harness: codex") {
+	if !strings.Contains(string(data), "harness: gpt") {
 		t.Errorf("harness value not replaced:\n%s", data)
 	}
 	if strings.Contains(string(data), "harness: \"claude\"") {
@@ -98,7 +98,7 @@ func TestApplyHarness_RejectsOutOfSet(t *testing.T) {
 
 // TestApplyHarness_AbsentFileIsNoOp covers the graceful missing-file branch.
 func TestApplyHarness_AbsentFileIsNoOp(t *testing.T) {
-	if err := ApplyHarness(t.TempDir(), "codex"); err != nil {
+	if err := ApplyHarness(t.TempDir(), "gpt"); err != nil {
 		t.Errorf("absent llm.yaml must be a graceful no-op, got: %v", err)
 	}
 }

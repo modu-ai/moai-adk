@@ -66,12 +66,12 @@ func TestInitCodexNonInteractiveParity(t *testing.T) {
 	t.Setenv("HOME", homeInteractive)
 	t.Setenv("MOAI_SANDBOX_PROOF", "")
 	t.Setenv("MOAI_DISABLE_BYPASS_PERMISSIONS_MODE", "")
-	wiz := &wizard.WizardResult{AgentWiring: "codex"}
+	wiz := &wizard.WizardResult{AgentWiring: "gpt"}
 	interactiveDir := runInitForAutonomyAtHome(t, homeInteractive, wiz, nil)
 
 	homeNonInteractive := t.TempDir()
 	t.Setenv("HOME", homeNonInteractive)
-	nonInteractiveDir := runInitForAutonomyAtHome(t, homeNonInteractive, nil, map[string]string{"llm": "codex"})
+	nonInteractiveDir := runInitForAutonomyAtHome(t, homeNonInteractive, nil, map[string]string{"llm": "gpt"})
 
 	got := snapshotDeployedFileSet(t, interactiveDir)
 	want := snapshotDeployedFileSet(t, nonInteractiveDir)
