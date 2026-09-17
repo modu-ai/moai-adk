@@ -156,6 +156,11 @@ func TestSessionStart_DriftCacheProbe(t *testing.T) {
 		return time.Since(start)
 	}
 
+	// The swept set: one entry per hook run whose cache state the probe
+	// observed. It is what turns this measurement into an instrument that
+	// carries a verdict (REQ-DCF-016) rather than a printer.
+	var swept []string
+
 	var b strings.Builder
 	fmt.Fprintf(&b, "MEASUREMENT drift-cache probe n=%d bin=%s\n", n, bin)
 	for i := range n {
@@ -170,8 +175,31 @@ func TestSessionStart_DriftCacheProbe(t *testing.T) {
 			case "exit":
 				for k := 1; k <= 3; k++ {
 					d, timeline := runHook(dir, k)
+					state := cacheState(dir)
+					// The exit arm is the one under judgement: it reproduces
+					// what Claude Code actually does — a short-lived hook
+					// process that exits when Handle returns.
+					//
+					// Only the SECOND and later runs are swept, and only after
+					// a SETTLE. Both conditions come from what the design
+					// actually promises: the fill is out-of-band, so the run
+					// that starts it cannot also observe it, and the child
+					// takes about as long as a full drift compute (~1s here)
+					// while the hook returns in ~350ms. A back-to-back second
+					// run therefore measures the child's start-up, not the fix.
+					//
+					// The settle is a BOUNDED POLL, not a sleep: if the fill is
+					// broken the cache never appears, the bound expires, the
+					// state stays "absent" and the verdict is FAIL. Waiting
+					// longer cannot turn a broken fill into a pass.
+					if k == 1 {
+						settleForFill(dir)
+					}
+					if k > 1 {
+						swept = append(swept, state)
+					}
 					fmt.Fprintf(&b, "iter=%d arm=exit hook#%d elapsed=%v cache=%s git=[%s]\n",
-						i, k, d.Round(time.Millisecond), cacheState(dir), timeline)
+						i, k, d.Round(time.Millisecond), state, timeline)
 				}
 			case "control":
 				d := runDrift(dir)
@@ -183,8 +211,48 @@ func TestSessionStart_DriftCacheProbe(t *testing.T) {
 			}
 		}
 	}
+
+	// The verdict, and the swept count beside it. Printing the count is not
+	// decoration: a verification that selected nothing reports success
+	// identically to one where everything passed, so the count is what makes a
+	// green interpretable.
+	verdict, sweptCount := classifyDriftCacheProbeRuns(swept)
+	fmt.Fprintf(&b, "VERDICT %s swept=%d states=%v\n", verdict, sweptCount, swept)
 	t.Log("\n" + b.String())
+
+	// Asserting mode: act on the verdict rather than print it. Without this the
+	// probe is the report-not-verdict defect — findings on stdout, exit status
+	// of whatever ran last.
+	if os.Getenv("MOAI_DRIFT_CACHE_PROBE_ASSERT") != "" && verdict != driftProbePass {
+		t.Fatalf("drift-cache probe verdict %s (swept=%d states=%v): the cache was not present and HEAD-matching on every judged run",
+			verdict, sweptCount, swept)
+	}
 }
 
 // driftCacheFileForProbe mirrors internal/spec's unexported driftCacheFilename.
 const driftCacheFileForProbe = "drift-cache.json"
+
+// driftFillSettleBound caps the probe's wait for an out-of-band fill to land.
+// It is well above the observed compute (~1.1s on this repository at 875 SPEC
+// directories) and well below the child's own 30s deadline, so a fill that is
+// merely slow is still observed while a fill that never happens still expires
+// the bound and is reported absent.
+const driftFillSettleBound = 20 * time.Second
+
+// settleForFill waits, bounded, for a started fill to land its cache. It
+// returns as soon as the file appears; it never creates one, and it cannot turn
+// a broken fill into a pass — an absent cache after the bound is exactly the
+// state the verdict then judges.
+func settleForFill(dir string) {
+	deadline := time.Now().Add(driftFillSettleBound)
+	path := filepath.Join(dir, ".moai", "state", driftCacheFileForProbe)
+	for time.Now().Before(deadline) {
+		if _, err := os.Stat(path); err == nil {
+			// The file exists; give the atomic replace a moment to be the
+			// complete payload rather than racing the rename.
+			time.Sleep(50 * time.Millisecond)
+			return
+		}
+		time.Sleep(100 * time.Millisecond)
+	}
+}

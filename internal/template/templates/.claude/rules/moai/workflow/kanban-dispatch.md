@@ -24,23 +24,23 @@ Five columns, fixed and ordered: `backlog → plan → run → sync → done`. `
 
 `backlog` has no owning session, and a lead that admitted cards on its own initiative would be **generating** work rather than scheduling it. Every card's origin is therefore the operator's request.
 
-[HARD] **The lead is the queue's sole producer.** The operator asks; the lead turns the request into a card with `moai todo add "<description>"` (`moai todo` alone lists the queue). Production is the one queue mutation the lead performs on its own authority — translation, not invention: nothing enters the queue the operator did not ask for.
+[HARD] **The lead is the queue's sole producer.** The operator asks; the lead turns the request into a card with `moai gtd add "<description>"` (`moai gtd` alone lists the queue). Production is the one queue mutation the lead performs on its own authority — translation, not invention: nothing enters the queue the operator did not ask for.
 
-[HARD] **A standing source is the one other producer, and it produces on the operator's prior authorization.** `/moai project` issues exactly one card when it completes, its text derived from that run's own `.moai/project/harness-spec.yaml` and prefixed `[PROJECT] `. This is not the lead admitting a card on its own initiative: the operator authorized the source in advance, and the workflow derives the card from what they already said in the interview rather than inventing work. The full conditions — one per run, derived not invented, marked, id reported, starting still a separate pick — are the SSOT at `.claude/skills/moai/workflows/todo.md` § Standing sources. Nothing else produces; a report milestone, an audit finding, or an open issue still reaches the queue only as a card request the operator approves.
+[HARD] **A standing source is the one other producer, and it produces on the operator's prior authorization.** `/moai project` issues exactly one card when it completes, its text derived from that run's own `.moai/project/harness-spec.yaml` and prefixed `[PROJECT] `. This is not the lead admitting a card on its own initiative: the operator authorized the source in advance, and the workflow derives the card from what they already said in the interview rather than inventing work. The full conditions — one per run, derived not invented, marked, id reported, starting still a separate pick — are the SSOT at `.claude/skills/moai/workflows/gtd.md` § Standing sources. Nothing else produces; a report milestone, an audit finding, or an open issue still reaches the queue only as a card request the operator approves.
 
 [HARD] **Promotion is the operator's act, always.** After a `/clear`, the lead presents the queued cards through `AskUserQuestion` and the operator picks; only then does the lead dispatch according to the card class: Class A direct close, Class B `run`, Class C `plan`. The lead never picks for the operator, never reorders by inferred priority, and never silently promotes a backlog item. An empty queue is a state to report, not a prompt to invent work.
 
 A card the operator chose to start at the moment it was issued is not a silent promotion. Where a workflow's completion question offers starting the card as one branch and the operator takes it, that answer is the promotion — given explicitly, in the operator's own words, before anything moved. The lead receiving that choice follows the same class-based entry: Class A direct close, Class B `run`, Class C `plan`. What stays forbidden is unchanged: promoting because a card looks ready, because the queue holds only one, or because no answer came back.
 
-[HARD] **The lead may attach a finding; it may not act on one.** Analysis runs automatically and records a relation between two cards — a near-duplicate the machine measured on `add` or `analyze`, or a `contains` / `absorbs` / `replaces` / `conflicts` the lead judged and wrote with `moai todo relate`. The record is evidence the operator reads, never a mandate: the lead never folds the related card away, never reorders the queue around it, and never drops or edits it. Analysis changes exactly one thing on its own authority — it refuses the admission of a card whose normalized text is identical to one already queued or picked, which creates no card and leaves the queue file byte-identical. Everything a finding suggests beyond that refusal is the operator's act.
+[HARD] **The lead may attach a finding; it may not act on one.** Analysis runs automatically and records a relation between two cards — a near-duplicate the machine measured on `add` or `analyze`, or a `contains` / `absorbs` / `replaces` / `conflicts` the lead judged and wrote with `moai gtd relate`. The record is evidence the operator reads, never a mandate: the lead never folds the related card away, never reorders the queue around it, and never drops or edits it. Analysis changes exactly one thing on its own authority — it refuses the admission of a card whose normalized text is identical to one already queued or picked, which creates no card and leaves the queue file byte-identical. Everything a finding suggests beyond that refusal is the operator's act.
 
-[HARD] **The pre-dispatch PR cross-check.** Before dispatching a card out of `backlog`, the lead reads that card's pull-request and landed state and reports what it read in the same turn. `moai todo pr <id>` answers both; by hand it is `gh pr list` plus a `git log` against the integration branch. An unchecked card is a gap, not a clean card (§ Completion is read, never trusted).
+[HARD] **The pre-dispatch PR cross-check.** Before dispatching a card out of `backlog`, the lead reads that card's pull-request and landed state and reports what it read in the same turn. `moai gtd pr <id>` answers both; by hand it is `gh pr list` plus a `git log` against the integration branch. An unchecked card is a gap, not a clean card (§ Completion is read, never trusted).
 
 [HARD] **The cross-check reports; it never vetoes.** Where the card carries an open pull request or is already landed, the lead surfaces that and the operator **confirms or withdraws** it. The lead never withholds a picked card on its own authority — promotion is the operator's act, always. Why the wording is the only available control, and the incident it closes: `kanban-dispatch-detail.md` § The pre-dispatch cross-check.
 
 ## Report milestones ↔ queue cards
 
-[HARD] **A milestone-bearing report under `.moai/reports/` carries a `## Card Cross-Check` section** — one table row per milestone, a `card` column holding the delivering card id or an explicit new-card marker. A mapping claim is verified against the queue (`moai todo`), never remembered. Before the lead turns a report into card requests, the request message states the full comparison — `N milestones → N cards` — naming every milestone with no card in the live queue. Detail: `kanban-dispatch-detail.md` § Report milestones ↔ queue cards.
+[HARD] **A milestone-bearing report under `.moai/reports/` carries a `## Card Cross-Check` section** — one table row per milestone, a `card` column holding the delivering card id or an explicit new-card marker. A mapping claim is verified against the queue (`moai gtd`), never remembered. Before the lead turns a report into card requests, the request message states the full comparison — `N milestones → N cards` — naming every milestone with no card in the live queue. Detail: `kanban-dispatch-detail.md` § Report milestones ↔ queue cards.
 
 ## Card classes — not every card needs every column
 
@@ -91,7 +91,13 @@ lens: --security --deep
 - `wt` names the new card's worktree, never a previous card's tree; where the lane may still be anchored elsewhere, it carries the exit-first instruction (`ExitWorktree` → `EnterWorktree(<card-id>)` → `git branch -m WT-<slug>`). The tree keeps the card id; the branch takes a descriptive slug — see the naming rule below.
 - **No explanatory prose.** Procedure, background, and justification live in the card text and the SPEC artifacts the block points at; a dispatch that restates them makes the operator read the same thing twice. What does not fit a field belongs in the card, not around the block.
 - **Ceiling: the block is at most 10 lines.** A dispatch that does not fit is trying to be a handoff; move the payload into the card and send the block.
-- **[HARD] The send is read, not assumed.** A `routing` object on the result means an in-process mailbox took the block and it is lost; re-send to `name [ref]`. Conditional: `cross-session-messaging.md`.
+- **[HARD] The send is read, not assumed.** The result has three shapes and only one of them delivered:
+  a `routing` object means an in-process mailbox took the block and it is lost (re-send to `name [ref]`);
+  a following `[Cross-session delivery notice]` means the lane's permission policy is holding the block for
+  its operator or refused it (surface it — re-sending hits the same policy); anything else queued it.
+  None of the three establishes that the lane's Claude read it, and a Remote Control or cloud lane reports
+  nothing at all. The card still advances on evidence, never on a send result. Conditional:
+  `cross-session-messaging.md` § A send result has three shapes.
 
 ## Deputy dispatch surface
 
@@ -101,7 +107,7 @@ lens: --security --deep
 
 [HARD] **Round-report measurement and drafting are the deputy's; the asserted figures are the lead's** — every figure names its measurer, and an unattributed one is a defect. The report is per-round files plus an index, each round touching only its own file and the index.
 
-[HARD] **The deputy never holds a power of consequence.** Final PASS/FAIL verdicts, final merge approval (`LEAD-MERGE-APPROVED`), operator gates, card issuance and `done` (`moai todo` mutations), CodeRabbit slot-wait adjudication, and cross-session dispute coordination stay with the lead session. A deputy recommendation (`RECOMMEND:`-prefixed) is never a verdict; a delegation requesting a retained act is refused and returned as a blocker report.
+[HARD] **The deputy never holds a power of consequence.** Final PASS/FAIL verdicts, final merge approval (`LEAD-MERGE-APPROVED`), operator gates, card issuance and `done` (`moai gtd` mutations), CodeRabbit slot-wait adjudication, and cross-session dispute coordination stay with the lead session. A deputy recommendation (`RECOMMEND:`-prefixed) is never a verdict; a delegation requesting a retained act is refused and returned as a blocker report.
 
 [HARD] **Nothing structural moves with the delegation.** The queue stays the channel, completion stays evidence the lead read, and the verdict's home stays the lead. The deputy reads and reports; the lead decides.
 
@@ -263,7 +269,7 @@ The completion signal is the branch name, merge SHA, and evidence path.
 - `.claude/rules/moai/core/verification-claim-integrity.md` — why completion is read rather than trusted
 - `.claude/rules/moai/core/agent-common-protocol.md` § Blocker Report Format — what a companion returns when it cannot proceed
 - `.claude/rules/moai/workflow/worktree-integration.md` — the L1/L2 worktree tiers, their lifetimes, and the disposal contract
-- `.claude/skills/moai/workflows/todo.md` — the backlog queue surface
+- `.claude/skills/moai/workflows/gtd.md` — the backlog queue surface
 - `.claude/agents/moai/manager-lead.md` — the coordination agent the lead session works through
 
 ---
