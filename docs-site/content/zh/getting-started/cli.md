@@ -66,7 +66,6 @@ moai init [project-name] [OPTIONS]
 | `--root <path>` | 项目根目录(默认: 当前目录) |
 | `--git-mode <manual\|personal\|team>` | Git 工作流模式(默认: manual) |
 | `--git-provider <github\|gitlab>` | Git 提供者 |
-| `--project-mode <personal\|team>` | 项目模式(默认: personal) |
 | `--enable-lsp` | 启用 LSP 联动(默认: true) |
 | `--enforce-quality` | 强制质量门禁(默认: true) |
 | `--enable-design` | 启用 design 工作流(默认: true) |
@@ -85,7 +84,7 @@ cd my-existing-project
 moai init
 
 # 非交互(CI/CD)
-moai init --non-interactive --project-mode personal --model-policy medium
+moai init --non-interactive --model-policy medium
 ```
 
 详细的向导步骤请参阅[初始设置](./init-wizard)页面。
