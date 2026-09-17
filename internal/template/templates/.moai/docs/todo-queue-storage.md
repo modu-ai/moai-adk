@@ -1,6 +1,6 @@
 # Backlog queue storage and the downgrade route
 
-For most projects the backlog queue `moai todo` operates lives in one SQLite
+For most projects the backlog queue `moai gtd` operates lives in one SQLite
 database at `~/.moai/db/<project-key>/todo/backlog.db`. The exception: a
 non-git project whose launch directory is a temporary one (for example inside
 `/tmp`, with no absolute `MOAI_HOME` override) keeps its queue project-local at
@@ -26,7 +26,7 @@ directory is for.
 
 ## Moving an existing queue onto the database
 
-It happens by itself, once, the first time a `moai todo` command runs against a
+It happens by itself, once, the first time a `moai gtd` command runs against a
 project that still has a `backlog.json`. You do not run anything.
 
 The order matters and is worth knowing, because it is what makes the move safe
@@ -48,7 +48,7 @@ anything leaves the legacy queue in place and authoritative. Your queue keeps
 working on the old store and the command reports what went wrong.
 
 If the process is killed between steps 3 and 5, you are left with both stores.
-The next `moai todo` command repeats the logical copy and readback; it does not
+The next `moai gtd` command repeats the logical copy and readback; it does not
 delete the source. Nothing is lost either way.
 
 ## Downgrading to a release that predates the database
@@ -57,7 +57,7 @@ An older `moai` reads only `backlog.json` and ignores the database entirely, so
 the whole job is producing a current JSON file for it to read.
 
 ```sh
-moai todo export-json     # writes backlog.json beside the home-scoped live database
+moai gtd export-json     # writes backlog.json beside the home-scoped live database
 ```
 
 Then install the older release. It will pick the exported file up as its queue.
@@ -67,7 +67,7 @@ Three things worth knowing:
 - **Export last.** The file is a copy taken at the moment you run the command,
   not a live mirror. Cards added afterwards are in the database only, so export
   immediately before you swap binaries.
-- **The export is left alone.** Later `moai todo` commands do not rename or
+- **The export is left alone.** Later `moai gtd` commands do not rename or
   remove it, even though the database is still the queue they read and write.
 - **It does not undo the move.** The database stays authoritative for this
   release. `export-json` produces a file for a different binary to read; it
@@ -81,7 +81,7 @@ store is that there is only ever one answer to "where are my cards?".
 
 A factory run starts before it necessarily knows which SPEC a card will use.
 For that reason, the run manifest records run metadata only. The append-only
-`card.assigned` event written by `moai todo next <n> --spec <SPEC-ID>` is the
+`card.assigned` event written by `moai gtd next <n> --spec <SPEC-ID>` is the
 source of truth for the assigned SPEC snapshot: canonical `spec.md` path,
 SHA256, Git commit, and capture timestamp. Missing SPEC files and non-Git
 projects remain usable; the unavailable hash or commit is recorded as empty.
@@ -99,7 +99,7 @@ Your options, in order of preference:
 
 1. Stop every process using the queue and back up `backlog.db*` together.
 2. The retained project-local queue is your rollback source as of the import.
-   Move the home database backup aside, then let the next `moai todo` command
+   Move the home database backup aside, then let the next `moai gtd` command
    import that source again.
 3. `backlog.db` is a standard SQLite file, so standard SQLite integrity and
    recovery tools can inspect the backup without changing the live copy.
@@ -116,7 +116,7 @@ project root used to derive that key.
 
 Read-only surfaces (the web console and status line) never trigger migration.
 They read the home database when it exists and otherwise read the legacy
-project-local queue. The first adopting `moai todo` command performs the
+project-local queue. The first adopting `moai gtd` command performs the
 verified copy. The temporary-directory exception above skips all of this: for
 such a project the home database is never read, the verified copy never
 happens, and every surface, read-only or not, uses the project-local queue.
