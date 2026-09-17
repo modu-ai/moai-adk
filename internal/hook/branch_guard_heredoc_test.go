@@ -69,6 +69,15 @@ func TestBranchStatePatterns_HeredocDoesNotBlindTheGuard(t *testing.T) {
 			command: "git merge --no-ff WT-card",
 			want:    "git merge",
 		},
+		{
+			// Security arm: a `<<EOF` sitting INSIDE a quoted argument opens no
+			// heredoc — the shell reads it as text. Treating it as an opener
+			// would let any command blind the guard for every following line
+			// just by quoting the token.
+			name:    "quoted <<EOF is text, not an opener",
+			command: "moai todo add \"note about <<EOF\"\ngit switch main",
+			want:    "git switch",
+		},
 	}
 	for _, tc := range cases {
 		tc := tc

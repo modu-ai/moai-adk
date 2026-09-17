@@ -198,6 +198,17 @@ func substituteQuotedArguments(command string) string {
 	return quotedArgumentPattern.ReplaceAllString(command, quotedArgumentPlaceholder)
 }
 
+// insideAnySpan reports whether offset falls within one of the [start, end)
+// spans, which arrive sorted and non-overlapping from FindAllStringIndex.
+func insideAnySpan(offset int, spans [][]int) bool {
+	for _, s := range spans {
+		if offset >= s[0] && offset < s[1] {
+			return true
+		}
+	}
+	return false
+}
+
 // heredocOpenerPattern matches a heredoc redirection operator and captures its
 // delimiter word in whichever of the three spellings the shell accepts:
 // `<<EOF`, `<<'EOF'` and `<<"EOF"` (with `<<-` and surrounding spaces allowed).
@@ -239,10 +250,17 @@ func substituteHeredocBodies(command string) string {
 			out = append(out, quotedArgumentPlaceholder)
 			continue
 		}
-		for _, m := range heredocOpenerPattern.FindAllStringSubmatch(line, -1) {
-			for _, delim := range m[1:] {
-				if delim != "" {
-					pending = append(pending, delim)
+		quoted := quotedArgumentPattern.FindAllStringIndex(line, -1)
+		for _, m := range heredocOpenerPattern.FindAllStringSubmatchIndex(line, -1) {
+			// A `<<EOF` inside a quoted argument is text the shell never reads
+			// as a redirection. Honouring it would let any command blind the
+			// guard for every following line simply by quoting the token.
+			if insideAnySpan(m[0], quoted) {
+				continue
+			}
+			for g := 1; g <= 3; g++ {
+				if m[2*g] >= 0 {
+					pending = append(pending, line[m[2*g]:m[2*g+1]])
 					break
 				}
 			}
