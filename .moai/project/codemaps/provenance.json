@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
-  "tree_root": "/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t688",
-  "commit_sha": "99e02ac52ac2717c6c641ef09e5ca005934a24fd",
+  "tree_root": "/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t869",
+  "commit_sha": "5423f5d05f6e0d1a0cf22571384fffa5098b59c5",
   "dirty": false,
   "described_roots": [
     "internal",
@@ -9,5 +9,5 @@
     "pkg"
   ],
   "generated_by": "codemaps-gen",
-  "generated_at": "2026-09-13T16:15:36Z"
+  "generated_at": "2026-09-17T17:30:36Z"
 }

@@ -2,12 +2,11 @@
 
 > `/moai codemaps`로 생성됐습니다. 내부 엣지만 대상이며 stdlib·서드파티는 제거했습니다.
 
-**측정 트리**: worktree `.claude/worktrees/t592`, 브랜치 `WT-home-state-rollout`, HEAD `e7bd89ee3`
-**측정**: 2026-09-10
-**부분 재측정**: worktree `.claude/worktrees/t688`, 브랜치 `WT-graph-stamp-freshness`, HEAD `c613b7c6b`, 2026-09-14 — 외부 의존성 표 30항목 전체와 § 이례적인 것 1·3·5. 나머지 항목은 위 측정 트리의 값이며 이번에 다시 재지 않았습니다.
+**최초 측정 트리**: worktree `.claude/worktrees/t592`, 브랜치 `WT-home-state-rollout`, HEAD `e7bd89ee3`, 2026-09-10
+**재측정 트리**: worktree `.claude/worktrees/t869`, 브랜치 `WT-codemaps-refresh`, HEAD `a851b205c`, 2026-09-18 — 엣지 수, fan-in·fan-out 표 전체, 상호 참조 쌍, 새 leaf 표, `go.mod` 직접 require 항목 수와 버전, § 이례적인 것 7. § 이례적인 것 1~6의 서술은 이번에 버전·사용처 줄을 다시 대조했고 판단은 앞 판을 이어받았습니다.
 
-두 가지 해상도로 봅니다 — 패키지 단위 **351 엣지**, 이를 `internal/<X>` 최상위로 접고
-self-edge를 제거한 **214 엣지**. 아래 표는 후자 기준입니다.
+두 가지 해상도로 봅니다 — 패키지 단위 **365 엣지**, 이를 `internal/<X>` · `pkg/<X>` · `cmd/<X>`
+최상위로 접고 self-edge를 제거한 **222 엣지**. 아래 표는 후자 기준입니다.
 
 산출:
 
@@ -15,12 +14,12 @@ self-edge를 제거한 **214 엣지**. 아래 표는 후자 기준입니다.
 $ go list -f '{{.ImportPath}} {{join .Imports " "}}' ./... \
   | awk '{src=$1; for(i=2;i<=NF;i++) if ($i ~ /^github\.com\/modu-ai\/moai-adk\//) print src, $i}' \
   | wc -l
-351
+365
 ```
 
-> 직전 판(앵커 `25a3212a9`)은 이 자리에 1638을 적었습니다. 위 명령으로 재현되지 않고 직전 판의
-> 명령 인용이 생략형이라 무엇을 셌는지 복원할 수 없으므로, 이 판은 위 명령의 출력을 싣습니다.
-> 최상위 집계는 205 → 214로 움직였습니다(이쪽은 정합).
+> 앵커 `25a3212a9` 판은 이 자리에 1638을 적었습니다. 위 명령으로 재현되지 않고 그 판의
+> 명령 인용이 생략형이라 무엇을 셌는지 복원할 수 없으므로, 이후 판은 위 명령의 출력을 싣습니다.
+> 최상위 집계는 205 → 214 → 222로 움직였습니다.
 
 ---
 
@@ -28,39 +27,49 @@ $ go list -f '{{.ImportPath}} {{join .Imports " "}}' ./... \
 
 | # | 패키지 | 피import | 레이어 |
 |---|---|---|---|
-| 1 | `internal/config` | 21 | data |
+| 1 | `internal/config` | 22 | data |
 | 2 | `internal/defs` | 11 | cross-cutting |
-| 3 | `internal/paths` | 10 | cross-cutting |
-| 4 | `internal/atomicfile` | 9 | cross-cutting |
+| 2 | `internal/paths` | 11 | cross-cutting |
+| 4 | `internal/atomicfile` | 10 | cross-cutting |
 | 5 | `pkg/models` | 8 | cross-cutting |
-| 6 | `internal/execerr` | 7 | cross-cutting |
-| 6 | `internal/core` | 7 | domain |
+| 5 | `internal/core` | 8 | domain |
+| 7 | `internal/execerr` | 7 | cross-cutting |
 | 8 | `internal/template` | 6 | domain |
+| 8 | `internal/kanban` | 6 | domain |
 | 8 | `internal/hook` | 6 | **presentation** |
-| 10 | `internal/statusline` | 5 | **presentation** |
-| 10 | `internal/spec` | 5 | domain |
-| 10 | `internal/lsp` | 5 | infrastructure |
+| 11 | `pkg/version` | 5 | cross-cutting |
+| 11 | `internal/statusline` | 5 | **presentation** |
+| 11 | `internal/spec` | 5 | domain |
+| 11 | `internal/lsp` | 5 | infrastructure |
 
-상위 6개 중 5개가 cross-cutting leaf라는 것은 **건강한 신호**입니다 — 안정 의존성 원칙 그대로입니다.
+산출은 최상위 집계 엣지 목록의 목적지 열을 `sort | uniq -c | sort -rn` 한 것입니다.
 
-다만 8위 `internal/hook`(6)과 10위 `internal/statusline`(5)은 **presentation인데 피의존
+상위 7개 중 6개가 cross-cutting leaf라는 것은 **건강한 신호**입니다 — 안정 의존성 원칙 그대로입니다.
+
+다만 8위 `internal/hook`(6)과 11위 `internal/statusline`(5)은 **presentation인데 피의존
 대상**입니다. 방향이 뒤집혀 있고, 이것이 `overview.md`가 "레이어링이 국소적으로 무너진다"고
 적은 근거입니다.
 
-`internal/core`가 6 → 7로 오른 것은 새 seam 하나가 그 밑으로 내려갔기 때문입니다 —
-`internal/stateanchor`가 리포지터리 해석 단계에서 `core/git`을 재사용합니다.
+`internal/core`(8)의 소비자는 `cli` · `github` · `homestate` · `hook` · `kanban` · `stateanchor` ·
+`statusline` · `workflow`입니다. `internal/kanban`(6)의 소비자 중 `cmd/t657-merge`는 배포되지 않는
+일회성 도구이고, `internal/graph`는 이 판의 GTD 비공개 투영(`internal/graph/gtd_private.go`)이
+만든 엣지입니다.
 
-### 새로 그래프에 들어온 leaf
+### 작은 fan-in의 seam과 leaf
 
 | 패키지 | fan-in | 비고 |
 |---|---|---|
 | `internal/stateanchor` | 2 | 상태 앵커 seam. 소비자는 `internal/statusline`과 `internal/cli` |
-| `internal/chain` | 2 | 워크트리 세션 origin-trail 원장 |
+| `internal/chain` | 2 | 워크트리 세션 origin-trail 원장. 소비자는 `internal/cli`와 `internal/hook` |
+| `internal/gitenv` | 2 | 자식 프로세스의 git 환경 격리. 소비자는 `internal/cli`와 `internal/hook` |
+| `internal/mission` | 1 | **이 판에서 새로 들어왔다.** 소비자는 `internal/cli` 하나 — 실제로는 `internal/cli/goal.go` 한 파일이다 |
+| `internal/codextools` | 0 | 비테스트 소비자 없음(`modules.md` §네거티브 스페이스) |
 
-`internal/homestate`는 leaf가 아니라 fan-in **5**의 data/persistence seam입니다. 직접 소비자는
-`internal/cli`, `internal/hook`, `internal/hook/handoff`, `internal/kanban`, `internal/web`이며,
-이 다섯 표면이 프로젝트 키 경로·Factory 인계·프로필 lease·migration admission 계약을
-공유합니다.
+`internal/homestate`는 leaf가 아니라 최상위 fan-in **4**(`cli` · `hook` · `kanban` · `web`)의
+data/persistence seam입니다. 패키지 단위로 풀면 직접 소비자는 `internal/cli`,
+`internal/cli/ptycaptest`, `internal/hook`, `internal/hook/handoff`, `internal/kanban`,
+`internal/web` 여섯이며, 이 표면들이 프로젝트 키 경로·Factory 인계·프로필 lease·migration
+admission 계약을 공유합니다.
 
 두 방출기(`internal/template/agentemit`, `internal/template/commandemit`)는 이 표에 **나타나지
 않습니다** — 비테스트 fan-in이 0이기 때문입니다. 고아가 아니라 빌드타임 도구이며, 소비자가
@@ -72,24 +81,21 @@ $ go list -f '{{.ImportPath}} {{join .Imports " "}}' ./... \
 
 | # | 패키지 | import |
 |---|---|---|
-| 1 | `internal/cli` | **60** |
-| 2 | `internal/hook` | 30 |
-| 3 | `internal/web` | 14 |
-| 4 | `internal/core` | 13 |
+| 1 | `internal/cli` | **62** |
+| 2 | `internal/hook` | 32 |
+| 3 | `internal/web` | 15 |
+| 4 | `internal/core` | 12 |
 | 5 | `internal/statusline` | 8 |
 | 6 | `internal/settings` | 7 |
-| 7 | `internal/feedback` | 6 |
-| 8 | `internal/kanban` | 5 |
-| 9 | `internal/harness` | 4 |
-| 10 | `internal/update` · `template` · `spec` | 3 각 |
+| 7 | `internal/kanban` · `feedback` | 6 각 |
+| 9 | `internal/update` · `harness` | 4 각 |
+| 11 | `internal/template` · `spec` | 3 각 |
 
-`internal/cli`가 최상위 69개 중 **60개**를 import 합니다 — 사실상 전 트리에 닿습니다.
-합성 루트(`internal/cli/deps.go`)가 여기 있으므로 일부는 의도된 것이지만, 60 중 상당수는
-`deps.go`가 아니라 **개별 verb 파일에서 직접** 들어옵니다. 이것이 "명령 하나 = 파일 하나 =
-그 명령이 필요한 것 전부 import"라는 수직 슬라이스 성격을 만듭니다.
-
-`internal/statusline`이 7 → 8로 오른 것도 같은 seam 때문입니다 — 렌더의 상태 앵커가
-`internal/stateanchor`로 옮겨가면서 엣지가 하나 늘었습니다.
+`internal/cli`가 다른 최상위 패키지 **62개**를 import 합니다 — 사실상 전 트리에 닿습니다.
+합성 루트(`internal/cli/deps.go`)가 여기 있으므로 일부는 의도된 것이지만, 상당수는
+`deps.go`가 아니라 **개별 verb 파일에서 직접** 들어옵니다. 이 판에서 더해진
+`internal/mission`이 그 전형입니다 — `internal/cli/goal.go` 한 파일만이 그 패키지를 import 합니다.
+이것이 "명령 하나 = 파일 하나 = 그 명령이 필요한 것 전부 import"라는 수직 슬라이스 성격을 만듭니다.
 
 ---
 
@@ -113,9 +119,10 @@ $ go list -f '{{.ImportPath}} {{join .Imports " "}}' ./... \
 
 ## 외부 의존성
 
-`go.mod`에서 직접 사용하는 require 30개 항목입니다(첫 require 블록 29개와 별도 블록의
-`modernc.org/sqlite` 1개). 항목 수는 이전 판과 같지만 구성이 바뀌었습니다 —
-`github.com/charmbracelet/huh` v1이 빠지고 `github.com/google/uuid`가 들어왔습니다.
+`go.mod`에서 `// indirect` 표시가 없는 require 30개 항목입니다(첫 require 블록 28개와 둘째 블록의
+`github.com/google/uuid` · `modernc.org/sqlite` 2개). 항목 구성과 버전은 이번 재측정에서
+아래 표와 한 줄씩 대조해 바뀐 것이 없었습니다. 다만 표에 없는 직접 사용이 하나 있습니다 —
+§ 이례적인 것 7.
 
 | 모듈 | 용도 | 사용처 |
 |---|---|---|
@@ -177,6 +184,10 @@ $ go list -f '{{.ImportPath}} {{join .Imports " "}}' ./... \
    가리키는 `tool` 한 줄). `.templ` → `_templ.go` 생성이 빌드 전제이며
    생성물이 트리에 커밋돼 있습니다 — 트리 최대 비테스트 파일 두 개
    (`fieldsets_templ.go` 168KiB, `screens_templ.go` 124KiB)가 그 산물입니다.
+7. **`github.com/santhosh-tekuri/jsonschema/v6`는 `go.mod:83`에 `// indirect`로 적혀 있지만
+   직접 import 됩니다.** 비테스트 사용처는 `internal/codextools/registry.go` 하나입니다.
+   `go mod tidy`라면 직접 require로 옮겼을 모양이고, 그 유일한 사용처인 `internal/codextools`는
+   비테스트 fan-in이 0입니다(`modules.md` §네거티브 스페이스). 두 관찰이 같은 패키지에 모입니다.
 6. **`gopkg.in/yaml.v3`의 쓰임이 두 축입니다.** 대부분은 마샬/언마샬이지만
    `internal/settings/yamlpatch`는 같은 라이브러리의 **노드 트리**를 직접 수술해 주석과
    미모델링 키를 보존합니다. 이 두 번째 쓰임이 typed struct 재직렬화가 파괴하는 것을
