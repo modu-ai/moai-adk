@@ -1194,11 +1194,10 @@ func TestEscapeDotenvValue(t *testing.T) {
 // loadSegmentConfig tests removed (SPEC-WEB-CONSOLE-008 M5): the dead
 // loadSegmentConfig production function had zero callers and was deleted (SLR-7).
 
-// =============================================================================
-// injectGLMEnv — glm.go:602 (previously 86.4%)
-// =============================================================================
-
-// TestInjectGLMEnv_NoAPIKey removed - exists in glm_new_test.go
+// injectGLMEnv tests removed (card t802): the dead production function had zero
+// non-test callers and was deleted in the same commit that moved its only live
+// behaviour — deleting the stale CLAUDE_CODE_MAX_CONTEXT_TOKENS value — into the
+// settings-axis cleanup paths.
 
 // =============================================================================
 // runCG — cg.go
@@ -4149,54 +4148,6 @@ func TestPersistTeamMode_LoadError(t *testing.T) {
 	}
 }
 
-// --- injectGLMEnv: covers more branches ---
-
-func TestInjectGLMEnv_NewFile(t *testing.T) {
-	tmpDir := t.TempDir()
-	// Override HOME so loadGLMKey won't find a real key file
-	t.Setenv("HOME", tmpDir)
-	claudeDir := filepath.Join(tmpDir, ".claude")
-	if err := os.MkdirAll(claudeDir, 0o755); err != nil {
-		t.Fatal(err)
-	}
-
-	settingsPath := filepath.Join(claudeDir, "settings.local.json")
-	// Don't create the file - let injectGLMEnv create it
-
-	t.Setenv("MOAI_TEST_MODE", "1")
-	// Set the env var so getGLMAPIKey can find the API key
-	t.Setenv("TEST_GLM_API_KEY", "test-api-key-12345")
-
-	glmConfig := &GLMConfigFromYAML{
-		BaseURL: "https://api.test.com",
-		EnvVar:  "TEST_GLM_API_KEY",
-	}
-	glmConfig.Models.High = "high-model"
-	glmConfig.Models.Medium = "med-model"
-	glmConfig.Models.Low = "low-model"
-
-	err := injectGLMEnv(settingsPath, glmConfig)
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-
-	// Verify file was created with expected env vars
-	data, err := os.ReadFile(settingsPath)
-	if err != nil {
-		t.Fatalf("settings.local.json not created: %v", err)
-	}
-	content := string(data)
-	if !strings.Contains(content, "test-api-key-12345") {
-		t.Error("expected settings to contain API key")
-	}
-	if !strings.Contains(content, "ANTHROPIC_BASE_URL") {
-		t.Error("expected settings to contain ANTHROPIC_BASE_URL")
-	}
-	if !strings.Contains(content, "high-model") {
-		t.Error("expected settings to contain high model name")
-	}
-}
-
 // --- runCC with team mode and worktree messages ---
 
 func TestRunCC_WithTeamModeMessage(t *testing.T) {
@@ -5066,26 +5017,6 @@ func TestShouldSkipBinaryUpdate_DevBuild_Phase5_V2(t *testing.T) {
 	}
 }
 
-// --- injectGLMEnv: error when no API key ---
-
-func TestInjectGLMEnv_NoAPIKey_Phase5(t *testing.T) {
-	tmpDir := t.TempDir()
-	t.Setenv("HOME", tmpDir)
-
-	glmConfig := &GLMConfigFromYAML{
-		BaseURL: "https://api.test.com",
-		EnvVar:  "NONEXISTENT_ENV_VAR",
-	}
-
-	err := injectGLMEnv(filepath.Join(tmpDir, "settings.json"), glmConfig)
-	if err == nil {
-		t.Fatal("expected error when no API key available")
-	}
-	if !strings.Contains(err.Error(), "API key not found") {
-		t.Errorf("expected 'API key not found' error, got: %v", err)
-	}
-}
-
 // --- detectGoBinPathForUpdate: direct test ---
 
 func TestDetectGoBinPathForUpdate_WithHome(t *testing.T) {
@@ -5289,56 +5220,6 @@ func TestRunPrePush_EnforceDisabled(t *testing.T) {
 	if err != nil {
 		// May fail because of stdin reading from /dev/stdin - that's ok
 		t.Logf("runPrePush error (may be expected): %v", err)
-	}
-}
-
-// --- injectGLMEnv: with existing file ---
-
-func TestInjectGLMEnv_MergesWithExisting(t *testing.T) {
-	tmpDir := t.TempDir()
-	t.Setenv("HOME", tmpDir)
-	t.Setenv("TEST_MERGE_GLM_KEY", "merge-api-key")
-
-	claudeDir := filepath.Join(tmpDir, ".claude")
-	if err := os.MkdirAll(claudeDir, 0o755); err != nil {
-		t.Fatal(err)
-	}
-
-	settingsPath := filepath.Join(claudeDir, "settings.local.json")
-
-	// Write existing settings
-	existing := `{"env": {"CUSTOM_KEY": "custom_value"}}`
-	if err := os.WriteFile(settingsPath, []byte(existing), 0o644); err != nil {
-		t.Fatal(err)
-	}
-
-	glmConfig := &GLMConfigFromYAML{
-		BaseURL: "https://api.merge.com",
-		EnvVar:  "TEST_MERGE_GLM_KEY",
-	}
-	glmConfig.Models.High = "merge-high"
-	glmConfig.Models.Medium = "merge-med"
-	glmConfig.Models.Low = "merge-low"
-
-	err := injectGLMEnv(settingsPath, glmConfig)
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-
-	data, err := os.ReadFile(settingsPath)
-	if err != nil {
-		t.Fatal(err)
-	}
-	content := string(data)
-
-	if !strings.Contains(content, "custom_value") {
-		t.Error("expected existing env to be preserved")
-	}
-	if !strings.Contains(content, "merge-api-key") {
-		t.Error("expected API key to be injected")
-	}
-	if !strings.Contains(content, "merge-high") {
-		t.Error("expected high model to be injected")
 	}
 }
 

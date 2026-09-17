@@ -97,8 +97,8 @@ func TestTodoListJSONShapeMatchesDoc(t *testing.T) {
 
 	root := repoRootForTest(t)
 	for _, rel := range docSurfaces(t, root,
-		".claude/skills/moai/workflows/todo.md",
-		"internal/template/templates/.claude/skills/moai/workflows/todo.md") {
+		".claude/skills/moai/workflows/gtd.md",
+		"internal/template/templates/.claude/skills/moai/workflows/gtd.md") {
 		assertDocKeysCovered(t, rel, docJSONFenceKeys(t, root, rel), actual)
 	}
 }

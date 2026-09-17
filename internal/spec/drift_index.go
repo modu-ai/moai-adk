@@ -127,6 +127,27 @@ func gitHeadSHA() (string, error) {
 	return strings.TrimSpace(string(output)), nil
 }
 
+// gitHeadSHAAt resolves the HEAD commit SHA of a NAMED repository, rather than
+// of the process working directory.
+//
+// gitHeadSHA above is kept as-is: its callers run inside the project they are
+// scanning, and changing them is outside this card's scope. The explicit-dir
+// form exists for callers that hold a project path and cannot assume it is the
+// working directory — the SessionStart handler, whose ProjectDir is an input
+// rather than the cwd.
+func gitHeadSHAAt(dir string) (string, error) {
+	if dir == "" {
+		return gitHeadSHA()
+	}
+	cmd := exec.Command("git", "rev-parse", "HEAD")
+	cmd.Dir = dir
+	output, err := cmd.Output()
+	if err != nil {
+		return "", fmt.Errorf("git rev-parse HEAD failed: %s", execerr.StatusDetail(err))
+	}
+	return strings.TrimSpace(string(output)), nil
+}
+
 // inMemImpliedStatus is the in-memory equivalent of getGitImpliedStatus: it
 // infers a SPEC's lifecycle status from the shared commit index instead of from
 // a dedicated `git log --grep=<specID>` subprocess.
