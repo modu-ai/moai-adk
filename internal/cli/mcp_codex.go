@@ -38,6 +38,7 @@ import (
 	"github.com/mark3labs/mcp-go/mcp"
 	"gopkg.in/yaml.v3"
 
+	"github.com/modu-ai/moai-adk/internal/auditreceipt"
 	"github.com/modu-ai/moai-adk/internal/config"
 	"github.com/modu-ai/moai-adk/internal/template"
 )
@@ -295,6 +296,14 @@ type ReviewOutput struct {
 	// it. Additive + omitempty (the SynthesisNote precedent): no existing
 	// consumer's JSON changes, and the fail-open verdict itself is preserved.
 	GateUnmet string `json:"gate_unmet,omitempty"`
+
+	// AuditReceipt carries the id of the receipt the server recorded for THIS
+	// call, so an auditor can cite evidence that the audit ran rather than
+	// asserting it. Present only where the audited tree explicitly declared
+	// workflow.audit.gates.codex: required — the tree that asked to be checked
+	// is the only one that gains a field. Additive + omitempty, so every other
+	// project's result stays byte-identical.
+	AuditReceipt string `json:"audit_receipt,omitempty"`
 
 	// BuildCommit records the commit the SERVING binary was built from
 	// (SPEC-AUDIT-BUILD-IDENTITY-001), so a verdict can be re-attributed to
@@ -1652,9 +1661,17 @@ func handleCodexAudit(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallTo
 	// parameter exists to fix. The rejection is a tool error, not the fail-open
 	// inconclusive verdict: fail-open covers an absent or broken codex, not a
 	// caller input the caller can correct.
-	root, rootErr := resolveToolProjectRoot(req)
+	root, rootSource, rootErr := resolveToolProjectRootWithSource(req)
 	if rootErr != nil {
 		return toolErr("codex_audit", rootErr), nil
+	}
+	// rootArg is the tree the CALLER named, empty when it named none. The
+	// receipt store needs that distinction — an argument-rooted receipt and a
+	// fallback-rooted one mean different things to the SubagentStop check —
+	// while the review itself keeps using the resolved root exactly as before.
+	rootArg := ""
+	if rootSource == rootSourceParam {
+		rootArg = root
 	}
 
 	// Build identity is assembled ONCE here (REQ-ABI-007) and rides every
@@ -1670,6 +1687,7 @@ func handleCodexAudit(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallTo
 		// goes silently unmet (the review never ran at all).
 		out := applyGateUnmet(inconclusiveReview("codex binary not found in PATH"), root)
 		out.BuildCommit, out.BuildLag = buildCommit, buildLag
+		out.AuditReceipt = recordAuditReceipt(auditreceipt.ToolCodexAudit, rootArg, out.Verdict, out.GateUnmet)
 		return codexReviewToolResult(out), nil
 	}
 	notifyMCPProgress(ctx, token, 0.1, "codex 바이너리 확인 — 리뷰 요청 준비 중...")
@@ -1692,6 +1710,7 @@ func handleCodexAudit(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallTo
 	out, _ := codexReviewRPC(ctx, binaryPath, method, params) // fail-open inside
 	out = applyGateUnmet(out, root)
 	out.BuildCommit, out.BuildLag = buildCommit, buildLag
+	out.AuditReceipt = recordAuditReceipt(auditreceipt.ToolCodexAudit, rootArg, out.Verdict, out.GateUnmet)
 	notifyMCPProgress(ctx, token, 0.9, "codex 응답 수신 — 결과 조립 중...")
 	return codexReviewToolResult(out), nil
 }

@@ -347,6 +347,7 @@ func requireNotRealHome(t *testing.T, home string) {
 func TestMain(m *testing.M) {
 	restoreProfileBaseDir := sandboxProfileBaseDir()
 	restoreUserHomeDir := sandboxUserHomeDir()
+	restoreReceiptRoot := sandboxAuditReceiptFallbackRoot()
 
 	// Pin the watched path from the entry cwd (absolute) so a test that chdirs
 	// cannot move the locus out from under the post-run check.
@@ -375,9 +376,32 @@ func TestMain(m *testing.M) {
 		}
 	}
 
+	restoreReceiptRoot()
 	restoreUserHomeDir()
 	restoreProfileBaseDir()
 	os.Exit(code)
+}
+
+// sandboxAuditReceiptFallbackRoot points the audit-receipt store's fallback
+// root at a throwaway directory for the whole package run.
+//
+// Every codex_audit call records a receipt, and a call that names no
+// project_root records it against resolveProjectDir() — which, in a test
+// binary, is the package working directory inside this repository. The many
+// pre-existing tests that call the tool without a root would therefore write
+// receipts into the tree they are running in. Fixing the fallback here keeps
+// the residue guard above meaningful rather than permanently tripped.
+func sandboxAuditReceiptFallbackRoot() func() {
+	dir, err := os.MkdirTemp("", "moai-audit-receipts-*")
+	if err != nil {
+		return func() {}
+	}
+	prev := auditReceiptFallbackRoot
+	auditReceiptFallbackRoot = func() string { return dir }
+	return func() {
+		auditReceiptFallbackRoot = prev
+		_ = os.RemoveAll(dir)
+	}
 }
 
 // residueGuardDirExists reports whether path names an existing directory. It is
