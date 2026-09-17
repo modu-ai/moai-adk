@@ -181,10 +181,23 @@ commit.
 satisfied by the operator's 2026-09-18 Implementation Kickoff Approval, which explicitly
 authorized autonomous progression through run AND sync without intermediate stops (progress.md
 § Implementation Kickoff Approval, relayed by the kanban lead). The sync scope is narrow and
-doc/hook-verification-only (4 files: hook pair + doc pair, no user-facing command or flag
-changed) — no README/docs-site edit is warranted, consistent with the operator's approval scope.
-No AskUserQuestion round was run for this sync close; none was required given the recorded
+doc-verification-only: the doc pair (`quality-gates-quality.md`, template + local), the
+catalog-hash cascade (`internal/template/catalog.yaml`), the CHANGELOG entry, and the SPEC
+artifacts themselves changed; the hook pair was VERIFIED unchanged (0-byte diff on both hook
+paths since `CARD_BASE`, per AC-SGV-004/007). No user-facing command or flag changed — no
+README/docs-site edit is warranted, consistent with the operator's approval scope. No
+AskUserQuestion round was run for this sync close; none was required given the recorded
 approval.
+
+**sync-audit iteration 1 (F1) — noted for the close record.** The first sync-audit pass
+returned FAIL on finding F1 (evidence present only in the card worktree, not the primary
+checkout). Resolved: the orchestrator exported the evidence to the primary checkout's
+`.moai/reports/t783/` (untracked; `diff -rq` between the two run directories exit 0, 41 entries
+both sides), and manager-develop recorded the export in progress.md §E.2/§E.3 at commit
+`146096219`. This commit (`docs(SPEC-SYNC-GATE-VERDICT-001): correct evidence location and
+sync scope claims`) is the doc-side half of that same resolution round, correcting the
+CHANGELOG's evidence-location wording (F1) and per-row tree-SHA overclaim (F7), and this
+§E.4 scope statement (F9).
 
 **MX tag validation disposition: skipped.** `git diff --name-only "$CARD_BASE"..HEAD` (where
 `CARD_BASE=$(git merge-base develop HEAD)`) shows 0 changed Go/source files — this SPEC's diff
