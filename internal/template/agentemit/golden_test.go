@@ -46,7 +46,7 @@ var expectedEffort = map[string]string{
 	"builder-harness": "medium", "e2e-tester": "low", "manager-design": "high",
 	"manager-develop": "medium", "manager-docs": "low", "manager-git": "low",
 	"manager-lead": "high", "manager-spec": "medium", "plan-auditor": "high",
-	"super-advisor": "high", "sync-auditor": "high",
+	"super-advisor": "high", "sync-auditor": "high", "mission-governor": "high",
 }
 
 // emitRealSet runs the emitter over the committed template tree.
