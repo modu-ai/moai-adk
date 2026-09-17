@@ -6,4 +6,4 @@ description: "Implement SPEC requirements using DDD/TDD methodology"
 
 Dispatch the moai workflow `run` with: $ARGUMENTS
 - Harness with the Skill tool (Claude Code): invoke `Skill("moai")` with arguments: `run` $ARGUMENTS
-- Harness without a skill loader (Codex CLI): read `.claude/skills/moai/SKILL.md` (the dispatcher body) and follow its routing for the `run` subcommand with the same arguments
+- Harness without a skill loader (Codex CLI): read `.agents/skills/moai/SKILL.md` (the mirrored dispatcher body) and follow its routing for the `run` subcommand with the same arguments

@@ -6,4 +6,4 @@ description: "Collect feedback and create GitHub issue (bug report, feature requ
 
 Dispatch the moai workflow `feedback` with: $ARGUMENTS
 - Harness with the Skill tool (Claude Code): invoke `Skill("moai")` with arguments: `feedback` $ARGUMENTS
-- Harness without a skill loader (Codex CLI): read `.claude/skills/moai/SKILL.md` (the dispatcher body) and follow its routing for the `feedback` subcommand with the same arguments
+- Harness without a skill loader (Codex CLI): read `.agents/skills/moai/SKILL.md` (the mirrored dispatcher body) and follow its routing for the `feedback` subcommand with the same arguments
