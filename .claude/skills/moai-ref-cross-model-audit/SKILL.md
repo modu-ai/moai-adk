@@ -266,7 +266,7 @@ residual-risk section so a human reader sees which backend disagreed with which.
   no receipt was issued. A PASS the receipt store cannot corroborate is refused
   at subagent stop, and the phase-entry spawns stay denied until a PASS citing a
   valid receipt is recorded. The check reads the store, never the report text —
-  quoting an id that was never issued proves nothing.
+  quoting an id the store does not carry proves nothing.
 - `workflow.multi.review_gate.enabled` — opt-in toggle for the multi-review-gate
   Stop hook (the Path C fully-autonomous gate). Default OFF; opt in via local
   config.
