@@ -184,7 +184,8 @@ Maps to: REQ-V3R2-RT-007-021, REQ-V3R2-RT-007-014.
 - **Then** 에러 발생한 migration의 version은 file에 반영되지 않음 (e.g., version still 0 if m001 failed)
 - **And** log entry: `{version: 1, result: "failed", details: "MigrationReadOnly: ..."}`
 - **And** session은 차단되지 않음 (REQ-021)
-- **And** `HookOutput.SystemMessage` 가 `"migration failed: <error> (run 'moai doctor --check migration' for details)"` 패턴 포함 (RT-001 의 HookResponse 머지 후)
+- **And** `HookOutput.SystemMessage` 가 `"migration failed: <error> — the version file was not advanced; details in .moai/logs/migrations.log; run 'moai doctor --check Migration'"` 패턴 포함
+  - 카드 t796 정정: 종전 문구는 `--check migration` 을 소문자로 적었으나, `moai doctor --check` 는 체크 이름을 **대소문자 구분 정확 일치**로 필터하고(`internal/cli/doctor.go`) 등록된 이름은 `"Migration"` 이다. 소문자 형태는 **아무 체크도 실행하지 않으므로**, 그 문구를 그대로 구현하면 존재하지 않는 명령을 안내하게 된다. 번호 슬롯을 두지 않는 이유도 함께 정정: `runMigration` 은 오류만 들고 있고, apply 실패의 오류 문구가 이미 마이그레이션 번호를 품고 있으며(`internal/migration/runner.go`) version 선판독 실패에는 번호를 가질 마이그레이션 자체가 없다.
 - **And** RT-001 미머지 시 `slog.Warn("migration apply failed", ...)` 로 임시 fallback
 
 ### Edge case — 부분 성공 (m001 OK, m002 FAIL)

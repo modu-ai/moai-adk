@@ -432,6 +432,29 @@ type WorkflowConfig struct {
 	// directly: the pointer inside distinguishes "key absent" (= enabled)
 	// from "explicitly disabled", which a plain bool cannot express.
 	Todo WorkflowTodoConfig `yaml:"todo"`
+	// DriftCacheFill gates the out-of-band drift-cache fill started from the
+	// SessionStart deferred advisory step. Read through
+	// Config.DriftCacheFillEnabled.
+	//
+	// Default TRUE, and that is a deliberate departure from the workflow.*
+	// guard family (BranchGuard, AgentModelGuard, IntegrationLock, ...). Those
+	// default to false because they ship INERT — the default is grounded on
+	// NEUTRALITY, not on "adds a deny". This feature is not inert when
+	// enabled: on every cache miss it starts an unsolicited child process. The
+	// cost is accepted because the child is short-lived, self-bounded,
+	// single-flight, TTL-suppressed and silent, and because a default-off
+	// setting would leave the measured defect (the cache is never written on
+	// the hook path, so the drift advisory never returns after a HEAD change)
+	// in place for every user who never reads the config.
+	//
+	// A plain bool rather than the *bool WorkflowTodoConfig uses: the loader
+	// unmarshals onto the default-populated struct, so an absent key keeps the
+	// construction-time true and only a literal `enabled: false` turns it off.
+	// The plain bool also makes the defaults.go entry load-bearing — remove it
+	// and the zero value ships the feature permanently OFF, which a test can
+	// see.
+	DriftCacheFill WorkflowDriftCacheFillConfig `yaml:"drift_cache_fill"`
+
 	// Project carries the /moai project Phase 14 completion-continuation key
 	// (SPEC-PROJECT-CONTINUATION-KEY-001 REQ-PCK-001). Read through
 	// Config.ProjectContinuation, never directly: the resolver supplies the
@@ -659,6 +682,14 @@ type WorkflowWorktreeConfig struct {
 // registered and every verb keeps working regardless of this value (REQ-3).
 type WorkflowTodoConfig struct {
 	Enabled *bool `yaml:"enabled"`
+}
+
+// WorkflowDriftCacheFillConfig mirrors workflow.drift_cache_fill.* — the
+// opt-out for the out-of-band drift-cache fill child. Enabled defaults to true
+// (see the field comment on WorkflowConfig.DriftCacheFill for why this key
+// departs from the default-OFF guard family).
+type WorkflowDriftCacheFillConfig struct {
+	Enabled bool `yaml:"enabled"`
 }
 
 // WorkflowProjectConfig mirrors workflow.project.* — the /moai project Phase 14

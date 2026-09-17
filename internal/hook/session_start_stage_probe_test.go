@@ -78,14 +78,18 @@ func TestSessionStart_HandleStageProbe(t *testing.T) {
 	warm := os.Getenv("MOAI_HANDLE_STAGE_PROBE_WARM") != ""
 	t.Setenv("ANTHROPIC_BASE_URL", "")
 
-	origFn := driftCountFn
+	// SPEC-DRIFT-CACHE-FILL-001 REQ-DCF-011: the deferred step's drift work is
+	// the HEAD-SHA cache resolve, so the stub that keeps an unpopulated project
+	// from touching git belongs at driftCachedCountFn. A hit is stubbed rather
+	// than a miss, so the probe measures the resolve without starting a fill.
+	origFn := driftCachedCountFn
 	origObs := handleStageObserver
 	t.Cleanup(func() {
-		driftCountFn = origFn
+		driftCachedCountFn = origFn
 		handleStageObserver = origObs
 	})
 	if populateFrom == "" {
-		driftCountFn = func(_ context.Context, _ string) (int, error) { return 0, nil }
+		driftCachedCountFn = func(string) (int, bool) { return 0, true }
 	}
 
 	var mu sync.Mutex
