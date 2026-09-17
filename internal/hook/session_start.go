@@ -18,6 +18,7 @@ import (
 	"time"
 
 	"github.com/modu-ai/moai-adk/internal/config"
+	"github.com/modu-ai/moai-adk/internal/glmcred"
 	"github.com/modu-ai/moai-adk/internal/goal"
 	"github.com/modu-ai/moai-adk/internal/homestate"
 	"github.com/modu-ai/moai-adk/internal/hook/memo/taxonomy"
@@ -1452,6 +1453,13 @@ func loadGLMKeyFromEnvFile() string {
 		key := strings.TrimSpace(parts[0])
 		val := strings.TrimSpace(parts[1])
 		val = strings.Trim(val, `"'`)
+		// The writer escapes a backslash, a double quote and a dollar sign
+		// before quoting the value (glmcred.EscapeValue), so stripping the
+		// quotes leaves the escaped form. Reversing it here is what makes this
+		// reader agree with glmcred.Load, which the same file is written for.
+		// Card t804: without this, a key carrying any of those three characters
+		// reached settings.local.json as a token the provider never issued.
+		val = glmcred.UnescapeValue(val)
 
 		if key == "GLM_API_KEY" && val != "" {
 			return val
