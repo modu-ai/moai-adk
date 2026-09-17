@@ -91,7 +91,7 @@ start. B10: the same recipe drove the `2213871af` hook to its checks, so no adap
 | AC-SGV-005 | PASS | `phrases.sh` + hook diff | "vulnerability scan runs automatically" 0/0 (baseline doc 1); "not a vulnerability scan" 2/2, hook `679:# not a vulnerability scan.`; "deps_modified" 1/1; hook diff 0 bytes | `run/m4-analysis.txt` |
 | AC-SGV-006 | PASS | `phrases.sh` (template / local) | "Only CRITICAL findings block" 0/0; "HIGH findings are reported as warnings" 0/0; "Continue with warning" 0/0; "CRITICAL-only stop gate" 0/0; "reports only as a warning" 0/0; "Continue by approved exception" 1/1; template 147 / local 168 carry "finding ID, rationale, scope, approver, expiry, and review condition"; template "security-decision-contract" 0. Pre-M3 controls: stale clauses 1/1, trio 1 in template | `run/m4-analysis.txt` |
 | AC-SGV-007 | PASS | `cmp` hooks; `parity.sh`; `git diff -U0 $CARD_BASE..HEAD -- <doc>`; `git log $CARD_BASE..HEAD` | (a) `cmp_exit=0`; (b) `diff_exit=0` bytes=0 (pre-M3 control `diff_exit=1` bytes=1100; one excluded delta line, local only); (c) SPEC-ID/card/date/SHA/audit/rule-path hits 0 over 7 added lines (controls on progress.md 2/10/7/7/7); (d) every hunk inside the Step 0.55.1..Phase 9 region; (e) 0 added hook lines; template commit `ff0031e2d` precedes local `23e8cd61e` | `run/m3-parity*/`, `run/m4-*` |
-| AC-SGV-008 | PASS | `git ls-files .moai/reports/t783`; `git log --name-only $CARD_BASE..HEAD`; grep over evidence | tracked 0 bytes; `.gitignore:229:.moai/reports/*`; report paths in card commits 0 (control: spec paths 15); `make build` hits in evidence 0 (control spec.md 3) | `run/m4-reports-*`, `run/m4-makebuild-hits.txt` |
+| AC-SGV-008 | PASS (location corrected after sync-audit F1) | `git ls-files .moai/reports/t783`; `git log --name-only $CARD_BASE..HEAD`; grep over evidence; export check | Location: the evidence was first written only to the worktree's `.moai/reports/t783/run/`, and the first PASS did not measure the PRIMARY-checkout location. Sync-audit F1 caught this. The orchestrator then exported it without committing: `cp -Rn <worktree>/.moai/reports/t783/run /Users/goos/MoAI/moai-adk-go/.moai/reports/t783/`, with `diff -rq` → exit 0 and no output. Re-measured by manager-develop: `ls /Users/goos/MoAI/moai-adk-go/.moai/reports/t783/run \| wc -l` → `41` (worktree run dir also `41`); `diff -rq <worktree run> <primary run>` redirected to a file → `exit=0`, file bytes `0`. Other checks: tracked 0 bytes; `.gitignore:229:.moai/reports/*`; report paths in card commits 0 (control: spec paths 15); `make build` hits in evidence 0 (control spec.md 3) | `run/m4-reports-*`, `run/m4-makebuild-hits.txt` |
 | AC-SGV-009 | PASS | `phrases.sh` | "sync-auditor FAIL" 1/1; "additional lens" 1/1; stale clauses 0/0 | `run/m4-analysis.txt` |
 
 **Invariants.** Hook pair byte-identical (`cmp_exit=0`) and unchanged; no scanner added; the
@@ -119,7 +119,7 @@ develop. The regeneration landed in `9fa9bc40b`.
 
 ```yaml
 run_complete_at: 2026-09-18
-run_commit_sha: pending-backfill
+run_commit_sha: 23e8cd61e0e6188bde65363e0765d840f998e993  # run-phase code-final commit; catalog cascade recorded separately as catalog_hash_commit_sha
 run_code_final_sha: 23e8cd61e0e6188bde65363e0765d840f998e993
 run_status: audit-ready
 ac_pass_count: 9
