@@ -14,8 +14,6 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/charmbracelet/huh"
-	"github.com/mattn/go-isatty"
 	"github.com/modu-ai/moai-adk/internal/cli/update/backup"
 	"github.com/modu-ai/moai-adk/internal/cli/update/deploy"
 	"github.com/modu-ai/moai-adk/internal/cli/update/report"
@@ -170,27 +168,9 @@ func runUpdate(cmd *cobra.Command, _ []string) error {
 		return fmt.Errorf("--binary and --templates-only are mutually exclusive")
 	}
 
-	// Auto-prompt profile setup if no profile exists yet
-	nonInteractive := getBoolFlag(cmd, "yes")
-	if !nonInteractive && isatty.IsTerminal(os.Stdin.Fd()) {
-		profileName := profile.GetCurrentName()
-		if !profile.IsSetup(profileName) {
-			var wantSetup bool
-			confirm := huh.NewConfirm().
-				Title("No profile found. Set up profile preferences now?").
-				Description("Configure your name, language, and model preferences.").
-				Value(&wantSetup)
-			// Wrap the standalone confirm in a themed form: field.Run() cannot take
-			// a theme, so the MoAI-branded dark-readable theme is applied at the
-			// form level (parity with the wizard fix for the other huh surfaces).
-			confirmForm := huh.NewForm(huh.NewGroup(confirm)).WithTheme(moaiHuhTheme())
-			if err := confirmForm.Run(); err == nil && wantSetup {
-				if err := runProfileSetup(cmd, nil); err != nil {
-					_, _ = fmt.Fprintf(out, "Warning: profile setup failed: %v\n", err)
-				}
-			}
-		}
-	}
+	// REQ-ITI-001: `moai update` carries NO profile entry — no confirmation, no
+	// profile wizard, whatever stdin and the flags are. The profile wizard
+	// starts only from `moai profile setup` / `--setup`.
 
 	// Handle --config / -c mode (edit configuration only, no template updates)
 	// This takes priority over all other flags
@@ -702,13 +682,9 @@ func shouldSkipBinaryUpdate(cmd *cobra.Command) bool {
 		return true
 	}
 
-	// Dev build detection (reuse pattern from buildAutoUpdateFunc in deps.go)
-	v := version.GetVersion()
-	if strings.Contains(v, "dirty") || v == "dev" || strings.Contains(v, "none") {
-		return true
-	}
-
-	return false
+	// Dev build detection (shared discriminator in pkg/version — also rejects
+	// build codenames like "moai_cp/..." that a substring check let through, card t678)
+	return version.IsDevBuild(version.GetVersion())
 }
 
 // @MX:NOTE: [AUTO] runBinaryUpdateStep — M4-S4d-1 DDD migration. New-version notice uses

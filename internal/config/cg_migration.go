@@ -156,7 +156,8 @@ func cgPolicy(llm *yaml.Node) (GatewayTeammatePolicy, error) {
 	if err != nil {
 		return p, err
 	}
-	if mode != "claude" || !(p.Mode == "in-process" && p.Provider == "inherit" || p.Mode == "tmux" && p.Provider == "glm") {
+	knownTeammatePolicy := p.Mode == "in-process" && p.Provider == "inherit" || p.Mode == "tmux" && p.Provider == "glm"
+	if mode != "claude" || !knownTeammatePolicy {
 		return p, errors.New("saved gateway teammate policy is incomplete or conflicts with team_mode")
 	}
 	return p, nil

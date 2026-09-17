@@ -1,4 +1,0 @@
-final-local-skill.md:1
-final-local-sync.md:1
-final-local-qgc-flags.md:1
-final-local-dl.md:2

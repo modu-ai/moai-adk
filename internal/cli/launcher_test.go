@@ -354,7 +354,7 @@ func TestUnifiedLaunch_Claude(t *testing.T) {
 		return nil
 	}
 
-	err := unifiedLaunchWithGateway("myprofile", "claude", []string{"--bypass"}, nil)
+	err := runUnifiedLaunch("myprofile", "claude", []string{"--bypass"})
 	if err != nil {
 		t.Fatalf("unifiedLaunch error: %v", err)
 	}
@@ -389,7 +389,7 @@ func TestUnifiedLaunch_GLM(t *testing.T) {
 	defer func() { launchClaudeFunc = origLaunch }()
 	launchClaudeFunc = func(p string, args []string) error { return nil }
 
-	err := unifiedLaunchWithGateway("", "glm", nil, nil)
+	err := runUnifiedLaunch("", "glm", nil)
 	if err != nil {
 		t.Fatalf("unifiedLaunch(glm) error: %v", err)
 	}
@@ -723,7 +723,7 @@ func TestUnifiedLaunch_NotInProject(t *testing.T) {
 	defer func() { launchClaudeFunc = origLaunch }()
 	launchClaudeFunc = func(p string, args []string) error { return nil }
 
-	err := unifiedLaunchWithGateway("", "claude", nil, nil)
+	err := runUnifiedLaunch("", "claude", nil)
 	if err == nil {
 		t.Fatal("unifiedLaunch should error when not in a MoAI project")
 	}
@@ -888,7 +888,7 @@ func TestUnifiedLaunch_GlobalLedgerDoesNotBleed(t *testing.T) {
 		return nil
 	}
 
-	if err := unifiedLaunchWithGateway("", "claude", nil, nil); err != nil {
+	if err := runUnifiedLaunch("", "claude", nil); err != nil {
 		t.Fatalf("unifiedLaunch error: %v", err)
 	}
 

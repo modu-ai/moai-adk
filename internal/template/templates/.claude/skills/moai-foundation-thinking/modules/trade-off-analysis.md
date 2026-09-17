@@ -43,7 +43,7 @@ Strategic Criteria:
 Weight assignment process:
 
 1. List all criteria relevant to the decision
-2. Use AskUserQuestion to understand user priorities
+2. Use the harness's `question-channel` capability to understand user priorities (where the harness lacks it, name the open question in the report instead of asking)
 3. Distribute 100% across criteria based on priority
 4. Document rationale for weight assignments
 
@@ -133,10 +133,10 @@ Cost vs Capability:
 ## Integration with AskUserQuestion
 
 When analyzing trade-offs:
-- Use AskUserQuestion to confirm criterion weights match priorities
-- Use AskUserQuestion to present options with scores
-- Use AskUserQuestion to validate trade-off acceptability
-- Use AskUserQuestion to explore sensitivity to different weights
+- Use the question channel to confirm criterion weights match priorities
+- Use the question channel to present options with scores
+- Use the question channel to validate trade-off acceptability
+- Use the question channel to explore sensitivity to different weights
 
 Example AskUserQuestion for Trade-off Confirmation:
 

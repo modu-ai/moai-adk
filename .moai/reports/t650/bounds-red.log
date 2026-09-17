@@ -1,5 +1,0 @@
---- FAIL: TestRejectProfileConfigAndSymlink (0.01s)
-    client_test.go:203: foreign config accepted
-FAIL
-FAIL	github.com/modu-ai/moai-adk/internal/codexapp	0.444s
-FAIL

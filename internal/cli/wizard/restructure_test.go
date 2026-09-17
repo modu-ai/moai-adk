@@ -12,11 +12,11 @@ import (
 	"testing"
 )
 
-// Page group labels (plan.md §A.1 D1).
+// Page group labels (plan.md §A.1 D1; Agents & Autonomy per the Q5 regroup).
 const (
 	pageBasic          = "Basic"
 	pageModelReport    = "Model & Report"
-	pageQualityWorkflw = "Quality & Workflow"
+	pageAgentsAutonomy = "Agents & Autonomy"
 )
 
 // questionIDsInGroup returns the IDs of the questions carrying the given Group
@@ -77,8 +77,7 @@ func TestInitPages_Membership(t *testing.T) {
 	}{
 		{pageBasic, []string{"conversation_language", "user_name"}},
 		{pageModelReport, nil},
-		{pageQualityWorkflw, []string{"agent_wiring"}},
-		{"Autonomy", []string{"autonomy_tier"}},
+		{pageAgentsAutonomy, []string{"agent_wiring", "autonomy_tier"}},
 	}
 	for _, tc := range cases {
 		got := questionIDsInGroup(questions, tc.page)
@@ -106,7 +105,7 @@ func TestInitPages_MergeIntoOneGroupPerPage(t *testing.T) {
 	// same-label run — otherwise the page would split across huh groups. Only
 	// the pages the init set still carries are walked (Model & Report is
 	// reconfigure-only since SPEC-INIT-QUIET-WIZARD-001).
-	for _, page := range []string{pageBasic, pageQualityWorkflw, "Autonomy"} {
+	for _, page := range []string{pageBasic, pageAgentsAutonomy} {
 		runs, inRun := 0, false
 		for i := range questions {
 			q := &questions[i]

@@ -8,6 +8,10 @@ added_in: "v3.1"
 
 {{< new-badge v3.1 >}}
 
+{{< callout type="info" >}}
+`/moai todo`와 `moai todo`는 기존 자동화와 스크립트를 위한 **호환 표면**입니다. 정식 이름은 [`/moai gtd`](/ko/utility-commands/moai-gtd)와 `moai gtd`이며, 두 이름은 같은 SQLite 대기열과 카드 ID, 순서, 보관·복원 동작을 사용합니다.
+{{< /callout >}}
+
 다음에 할 일을 한 줄씩 쌓아 두는 **백로그 대기열**입니다. 칸반 보드의 `backlog` 컬럼에는 맡은 세션이 없어서 아무도 일을 밀어 넣지 못합니다. 그래서 카드를 보드에 들이는 일은 언제나 사람의 판단이고, `/moai todo`가 그 창구입니다.
 
 {{< callout type="info" >}}
@@ -56,7 +60,7 @@ flowchart TD
 
 ## 상태 파일
 
-대기열은 `~/.moai/db/<project-key>/todo/backlog.db` 하나의 SQLite 데이터베이스에 저장됩니다. 프로젝트 키가 연결된 워크트리를 홈의 큐 하나에 묶으며, 데이터베이스는 커밋되지 않습니다. 아래 형태는 `moai todo list --json`과 `moai todo export-json`이 내보내는 레코드 모양이며, 데이터베이스도 같은 필드를 담습니다. 이전과 다운그레이드 방법은 프로젝트 안의 `.moai/docs/todo-queue-storage.md`에 있습니다.
+일반적인 프로젝트 디렉터리라면 대기열은 `~/.moai/db/<project-key>/todo/backlog.db` 하나의 SQLite 데이터베이스에 저장됩니다. 다만 프로젝트가 임시 디렉터리(`os.TempDir()`, `/tmp`, `/var/folders` 아래)에서 시작된 것이라면 절대 경로의 `MOAI_HOME` 재정의가 없는 한 홈 대신 `<base>/.moai/state/todo/backlog.db`에 프로젝트 로컬로 저장됩니다. 프로젝트 키가 연결된 워크트리를 홈의 큐 하나에 묶으며, 데이터베이스는 커밋되지 않습니다. 아래 형태는 `moai todo list --json`과 `moai todo export-json`이 내보내는 레코드 모양이며, 데이터베이스도 같은 필드를 담습니다. 이전과 다운그레이드 방법은 프로젝트 안의 `.moai/docs/todo-queue-storage.md`에 있습니다.
 
 ```json
 {
@@ -189,6 +193,10 @@ $ moai todo done 4 --expect "인증 미들웨어"
 # 착지 여부를 물어보고, 아니라는 확답이 나올 때만 거부
 $ moai todo done 4 --require-landed
 
+# 착지한 카드를 일괄 마감 (리드 전용, 배치 push 확인 후) — 드라이런 먼저
+$ moai todo auto-done --fetch --dry-run
+$ moai todo auto-done --fetch
+
 # 대기 중인 항목을 오래된 것부터 출력 (읽기 전용)
 $ moai todo next
 
@@ -241,7 +249,7 @@ $ moai todo unrelate 2
 
 CLI는 프롬프트를 띄우지 않습니다. 인자와 플래그를 받고 한 줄을 출력하며, 오류는 stderr로 — 스크립트와 CI에서 안전하게 쓸 수 있는 형태입니다.
 
-연결된 워크트리 안에서 실행해도 대기열은 **프라이머리 체크아웃의 프로젝트 키 하나로 귀속**됩니다 — 저장소 하나에 큐 하나라는 계약입니다. 카드 워크트리에서 `moai todo add`를 하면 리드와 포어맨 루프가 읽는 같은 데이터베이스에 추가됩니다. git 메타데이터가 없는 프로젝트도 `~/.moai/db/<project-key>/todo/backlog.db` 구조를 사용합니다.
+연결된 워크트리 안에서 실행해도 대기열은 **프라이머리 체크아웃의 프로젝트 키 하나로 귀속**됩니다 — 저장소 하나에 큐 하나라는 계약입니다. 카드 워크트리에서 `moai todo add`를 하면 리드와 포어맨 루프가 읽는 같은 데이터베이스에 추가됩니다. git 메타데이터가 없는 프로젝트도 같은 홈 구조를 사용합니다 — 다만 임시 디렉터리에서 시작된 프로젝트는 `MOAI_HOME` 절대 경로 재정의가 없는 한 `<base>/.moai/state/todo/backlog.db`를 사용합니다.
 
 두 표면은 같은 저장 계층을 공유합니다. 변경은 데이터베이스 옆의 잠금 파일(backlog.lock)을 잡은 뒤 WAL 모드의 SQLite 트랜잭션 하나로 반영되며, 읽기는 잠금을 잡지 않습니다. 항목 id는 파일에 남은 최고 수위 표시(`last_seq`)에서 발급되는데, 이 값이 삽입과 같은 트랜잭션 안에서 올라가고 id에 UNIQUE 제약이 걸려 있어, 프로세스가 변경 도중에 죽어도 제거된 항목의 id가 다시 쓰이는 일은 없습니다.
 

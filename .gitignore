@@ -142,6 +142,7 @@ logs/*
 !.agents/skills/moai-fix/
 !.agents/skills/moai-gate/
 !.agents/skills/moai-goal/
+!.agents/skills/moai-gtd/
 !.agents/skills/moai-harness/
 !.agents/skills/moai-loop/
 !.agents/skills/moai-mx/
@@ -159,6 +160,7 @@ logs/*
 !.agents/skills/moai-fix/SKILL.md
 !.agents/skills/moai-gate/SKILL.md
 !.agents/skills/moai-goal/SKILL.md
+!.agents/skills/moai-gtd/SKILL.md
 !.agents/skills/moai-harness/SKILL.md
 !.agents/skills/moai-loop/SKILL.md
 !.agents/skills/moai-mx/SKILL.md
@@ -168,10 +170,6 @@ logs/*
 !.agents/skills/moai-run/SKILL.md
 !.agents/skills/moai-sync/SKILL.md
 !.agents/skills/moai-todo/SKILL.md
-# Template-distributed Codex command-skill publications ARE committed
-# (SPEC-CODEX-COMMAND-SKILLS-001); re-include the template subtree excluded
-# by the bare .agents/ rule above.
-!internal/template/templates/.agents/
 # AGENTS.md is NOT ignored: the root file is this repository's tracked contract
 # document, and the template mirror ships it to users.
 
@@ -224,6 +222,31 @@ secret-*.*
 # per-project auth dirs are never committed. The template already carries this
 # rule; this line brings the repository's own tree level with it.
 **/.mink/auth/
+
+# Card/audit reports are local-only artifacts (operator directive 2026-09-14):
+# evidence for lead verdicts stays on disk, never on the remote. Only the
+# plan-audit scaffold ships, mirroring the template's reports philosophy.
+.moai/reports/*
+!.moai/reports/plan-audit/
+.moai/reports/plan-audit/*
+!.moai/reports/plan-audit/.gitkeep
+
+# Narrow exceptions: test guard fixtures under reports stay tracked — CI reads
+# them (operator-approved 2026-09-14). Reports themselves remain local-only.
+!.moai/reports/t338/
+.moai/reports/t338/*
+!.moai/reports/t338/ac-count-baseline.txt
+!.moai/reports/t528/
+.moai/reports/t528/*
+!.moai/reports/t528/probe/
+.moai/reports/t528/probe/*
+!.moai/reports/t528/probe/nondecl-bullets.txt
+!.moai/reports/t530/
+.moai/reports/t530/*
+!.moai/reports/t530/count-literals.txt
+!.moai/reports/t229/
+.moai/reports/t229/*
+!.moai/reports/t229/live-probe-body.txt
 
 # ===========================================
 # Claude Code Configuration

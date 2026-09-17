@@ -53,19 +53,54 @@ var removedWidgetMarkers = []string{
 	"persistProjectNestedConfig", "readCurrentNestedConfig",
 }
 
+// removedV2QuestionMarkers are the v2 question-definition shapes of the same
+// removed questions (design.md §10 S7): a Question literal carrying one of
+// these IDs in the absorbed wizard's files means the removed question came
+// back in v2 form.
+var removedV2QuestionMarkers = []string{
+	`ID: "statusline_theme"`,
+	`ID: "statusline_segments"`,
+	`ID: "git_convention"`,
+	// the nested quality + git auto-detection field ids
+	`ID: "coverage_target"`,
+	`ID: "min_coverage"`,
+	`ID: "enforce_quality"`,
+	`ID: "auto_detection"`,
+	`ID: "confidence_threshold"`,
+	`ID: "sample_size"`,
+	`ID: "enforce_on_push"`,
+}
+
+// wizardSaveSourceFiles are the files the removed-question guards scan: the
+// profile save path and the absorbed wizard's files — the form builder plus
+// the question-set table, where a removed question would be re-introduced
+// (design.md §10 S7/S8 — all must stay clean).
+var wizardSaveSourceFiles = []string{
+	"profile_setup.go",
+	"wizard/profile_wizard.go",
+	"wizard/profile_questions.go",
+}
+
 // TestWizardOmitsRemovedQuestions asserts the wizard source contains no widget for
 // any removed setting. Comment lines are stripped so the explanatory prose in
 // profile_setup.go (which names these groups) does not false-positive.
 func TestWizardOmitsRemovedQuestions(t *testing.T) {
 	t.Parallel()
-	data, err := os.ReadFile("profile_setup.go")
-	if err != nil {
-		t.Fatalf("read profile_setup.go: %v", err)
-	}
-	code := nonCommentLines(string(data))
-	for _, marker := range removedWidgetMarkers {
-		if strings.Contains(code, marker) {
-			t.Errorf("profile_setup.go references %q — a removed wizard question appears to be back", marker)
+	for _, name := range wizardSaveSourceFiles {
+		data, err := os.ReadFile(name)
+		if err != nil {
+			t.Fatalf("read %s: %v", name, err)
+		}
+		code := nonCommentLines(string(data))
+		for _, marker := range removedWidgetMarkers {
+			if strings.Contains(code, marker) {
+				t.Errorf("%s references %q — a removed wizard question appears to be back", name, marker)
+			}
+		}
+		for _, marker := range removedV2QuestionMarkers {
+			if strings.Contains(code, marker) {
+				t.Errorf("%s references %q — a removed question re-introduced in v2 definition form", name, marker)
+			}
 		}
 	}
 }
@@ -84,23 +119,25 @@ func TestWizardOmitsRemovedQuestions(t *testing.T) {
 // future "just default it to X" edit cannot land silently.
 func TestWizardWritesNoStatuslineTheme(t *testing.T) {
 	t.Parallel()
-	data, err := os.ReadFile("profile_setup.go")
-	if err != nil {
-		t.Fatalf("read profile_setup.go: %v", err)
-	}
-	code := nonCommentLines(string(data))
+	for _, name := range wizardSaveSourceFiles {
+		data, err := os.ReadFile(name)
+		if err != nil {
+			t.Fatalf("read %s: %v", name, err)
+		}
+		code := nonCommentLines(string(data))
 
-	// No theme value may be assigned to the saved prefs. Leaving the field at its
-	// zero value is what makes `omitempty` drop statusline_theme from
-	// preferences.yaml and makes syncStatusline preserve statusline.yaml.
-	if strings.Contains(code, "StatuslineTheme:") {
-		t.Error("profile_setup.go assigns StatuslineTheme — the wizard must leave it " +
-			"at the zero value so the theme is neither stored nor synced")
-	}
-	for _, theme := range []string{"catppuccin-mocha", "catppuccin-latte"} {
-		if strings.Contains(code, theme) {
-			t.Errorf("profile_setup.go still names the theme %q — the wizard no longer "+
-				"manages the statusline theme in any form", theme)
+		// No theme value may be assigned to the saved prefs. Leaving the field at
+		// its zero value is what makes `omitempty` drop statusline_theme from
+		// preferences.yaml and makes syncStatusline preserve statusline.yaml.
+		if strings.Contains(code, "StatuslineTheme:") {
+			t.Errorf("%s assigns StatuslineTheme — the wizard must leave it at the "+
+				"zero value so the theme is neither stored nor synced", name)
+		}
+		for _, theme := range []string{"catppuccin-mocha", "catppuccin-latte"} {
+			if strings.Contains(code, theme) {
+				t.Errorf("%s still names the theme %q — the wizard no longer "+
+					"manages the statusline theme in any form", name, theme)
+			}
 		}
 	}
 }

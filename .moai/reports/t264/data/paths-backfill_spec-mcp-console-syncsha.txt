@@ -1,1 +1,0 @@
-.moai/specs/SPEC-MCP-CONSOLE-001/progress.md

@@ -1,4 +1,0 @@
-package beta
-
-// Beta has no test files at all.
-func Beta() int { return 1 }

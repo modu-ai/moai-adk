@@ -1,2 +1,0 @@
-.moai/reports/t622/sync/ac006-local-de.md:1
-.moai/reports/t622/sync/ac006-template-de.md:1

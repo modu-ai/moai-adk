@@ -10,10 +10,10 @@
 
  Class                     File                                                 
 ────────────────────────────────────────────────────────────────────────────────
+ conflict                  .moai/config/config.yaml                             
  add                       templates/new_file.yaml                              
  update                    .claude/settings.json                                
  preserved (user-owned)    .claude/skills/hns-my/SKILL.md                       
- conflict                  .moai/config/config.yaml                             
                                                                                 
                                                                                 
                                                                                 

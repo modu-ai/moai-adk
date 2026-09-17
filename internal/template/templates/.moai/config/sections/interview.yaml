@@ -1,6 +1,12 @@
 interview:
   enabled: true
   clarity_threshold: 4
+  # Decision-gate axis for the plan-phase decision index: "off" (default)
+  # keeps the plan phase exactly as before — no decision index is authored and
+  # the kickoff gate composes unchanged; "on" makes the SPEC authoring flow
+  # collect unresolved decisions into decision-index.md for review at the
+  # Implementation Kickoff Approval gate. Any other value resolves to "off".
+  decision_gate: off
   # Recommendation-mode axis for AskUserQuestion output: "push" (default) emits
   # the recommendation label as usual; "pull" withholds it until the user
   # explicitly asks. Any other value resolves to "push".

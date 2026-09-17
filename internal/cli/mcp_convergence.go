@@ -3,10 +3,11 @@
 // mcp_convergence.go implements the parallel cross-backend fan-out + the
 // disagreement-synthesis algorithm layered ON TOP of the single-backend
 // infrastructure shipped by SPEC-MOAI-MCP-SERVER-001. It activates the `multi`
-// audit_model token: when `audit_model: multi`, the engine runs codex + glm in
-// parallel (per their audit_gate), accepts the in-session claude verdict as the
-// always-available anchor, and converges the per-backend verdicts into a single
-// ConvergenceResult.
+// audit_model token: when `audit_model: multi`, the engine runs the active
+// Claude, codex, and GLM legs in parallel (per their audit_gate). A
+// Claude-origin session may reuse its in-session verdict; GPT, GLM, and unknown
+// origins execute the independent Claude subscription backend. It converges
+// those per-backend verdicts into a single ConvergenceResult.
 //
 // Design decisions locked at M0 (progress.md §D + design.md §1, §3, §5, §7):
 //   - ConvergenceResult carries per_backend_verdicts[], overall_verdict,
@@ -19,18 +20,18 @@
 //     to overall = fail via the per-backend required-gate contract (NOT a new
 //     disagreement-block category).
 //   - Super-review independence (REQ-AMM-003 / C4): claude_verdict is consumed
-//     ONLY by the converge(...) synthesis step. The codex/glm goroutines receive
-//     (target, focus) — NEVER the claude analysis. Enforced structurally by the
-//     backendCaller signature.
+//     ONLY as a Claude-origin anchor. Every external-backend goroutine receives
+//     (target, focus, projectRoot) — NEVER another model's analysis. Enforced
+//     structurally by the backendCaller signature.
 //   - Fail-open identity (C2): a missing/unauthenticated/optional backend
 //     returns VerdictInconclusive for that slot and convergence continues over
 //     the rest. Evidence of absence ≠ evidence of failure.
 //   - DQ-1: ConvergenceResult is written to .moai/state/audit-multi/<session>
 //     .json on every call so the M5 multi-review-gate Stop hook reads the most
 //     recent result rather than re-invoking convergence.
-//   - DQ-2: claude_verdict absent → the engine REFUSES (overall = fail + a
-//     residual_risk_note explaining the missing anchor). The refusal is a
-//     structured result, NEVER a hard error — fail-open direction preserved.
+//   - A missing Claude-origin anchor uses the same independent Claude backend
+//     as GPT/GLM origins. An unavailable backend remains a structured
+//     inconclusive result, NEVER a hard error.
 //
 // The engine NEVER invokes AskUserQuestion (subagent boundary, REQ-AMM-018 /
 // C5): a missing-input or inconclusive condition is returned as a structured
@@ -98,6 +99,12 @@ type PerBackendVerdict struct {
 	// this backend's own verdict signals disagreed. It is forwarded rather than
 	// re-derived because converge sees only verdicts, never review bodies.
 	SynthesisNote string `json:"synthesis_note,omitempty"`
+	// Source distinguishes a Claude verdict produced by the subscription-backed
+	// MCP subprocess from the backwards-compatible in-session anchor.
+	Source string `json:"source,omitempty"`
+	// Provenance is forwarded from a real backend call. In-session anchors do
+	// not invent transport or usage evidence.
+	Provenance *AuditProvenance `json:"provenance,omitempty"`
 }
 
 // ConvergenceResult is the synthesis output of converge(...) — the single
@@ -131,6 +138,7 @@ type ConvergenceResult struct {
 	ParticipantCount int      `json:"participant_count"`
 	ResidualRiskNote string   `json:"residual_risk_note"`
 	FailOpenBackends []string `json:"fail_open_backends"`
+	GateUnmet        string   `json:"gate_unmet,omitempty"`
 
 	// BuildCommit / BuildLag record the identity of the ONE binary that
 	// serviced all three backends (SPEC-AUDIT-BUILD-IDENTITY-001) —
@@ -197,9 +205,9 @@ func converge(verdicts []PerBackendVerdict) ConvergenceResult {
 		overall = overallVerdictPass
 	default:
 		// No required FAIL, but not all required PASS — i.e. some required are
-		// inconclusive (missing/erroring optionals). Fail-OPEN to claude
-		// (AC-AMM-021 / EC-1 / EC-4): the in-session claude verdict is the
-		// always-available anchor.
+		// inconclusive (missing/erroring optionals). Fail-OPEN to the Claude
+		// participant (AC-AMM-021 / EC-1 / EC-4): either the valid in-session
+		// anchor or the independently acquired Claude subscription verdict.
 		overall = claudeVerdictOrDefault(verdicts, overallVerdictPass)
 	}
 
@@ -453,21 +461,26 @@ type MultiAuditConfig struct {
 	Gates     config.AuditGates
 	SessionID string // for .moai/state/audit-multi/<session>.json (DQ-1)
 
-	// ProjectRoot names the tree the secondary backends should read
+	// ProjectRoot names the tree the external backends should read
 	// (SPEC-MCP-WORKTREE-ROOT-001). Empty ⇒ each backend keeps whatever it
 	// resolved before this parameter existed, so an unaware caller sees no
 	// change. Validated by the handler, never here.
 	ProjectRoot string
+
+	// OriginProvider is the launcher-owned initial provider. Only a Claude
+	// origin may reuse a caller-supplied in-session Claude anchor; GPT, GLM, and
+	// unknown origins must execute the actual Claude backend.
+	OriginProvider string
 }
 
-// backendCallFn is the injectable seam for the secondary-backend invocation.
-// Production wires defaultBackendCaller (which reuses the codex/glm handler
-// paths from mcp_codex.go / mcp_glm.go); tests swap it to record calls,
+// backendCallFn is the injectable seam for external-backend invocation.
+// Production wires defaultBackendCaller (which reuses the Claude/codex/GLM
+// handler paths); tests swap it to record calls,
 // simulate slow backends, or fail-open specific backends.
 //
 // INDEPENDENCE-INVARIANT (REQ-AMM-003 / C4 — load-bearing): the signature carries
-// NO verdict of any kind. claude_verdict is structurally forbidden from reaching a
-// secondary backend — it is consumed ONLY by converge, and a future edit that tried
+// NO verdict of any kind. claude_verdict is structurally forbidden from reaching an
+// external backend — it is consumed ONLY as an anchor, and a future edit that tried
 // to thread it in would not compile against this signature.
 //
 // The parameter list is (ctx, backend, target, focus, projectRoot). projectRoot was
@@ -489,6 +502,12 @@ var backendCall backendCallFn = defaultBackendCaller
 // GLM z.ai API call from mcp_glm.go (C1 — additive to MOAI-MCP-SERVER).
 func defaultBackendCaller(ctx context.Context, backend, target, focus, projectRoot string) ReviewOutput {
 	switch backend {
+	case BackendClaude:
+		return performClaudeAudit(ctx, claudeAuditRequest{
+			Target:      target,
+			Focus:       focus,
+			ProjectRoot: projectRoot,
+		})
 	case BackendCodex:
 		return performCodexAudit(ctx, target, focus, projectRoot)
 	case BackendGLM:
@@ -580,11 +599,12 @@ func performGLMAudit(ctx context.Context, target, focus, projectRoot string) Rev
 
 // runMultiAudit is the fan-out entry point invoked by the `audit_multi` MCP tool
 // (M3) and read by the multi-review-gate Stop hook (M5). It:
-//  1. DQ-2: refuses if claude_verdict is absent (the always-available anchor).
-//  2. Fans out across the active secondary backends (codex, glm) in parallel
+//  1. Resolves the Claude source: reuse a valid Claude-main anchor, otherwise
+//     schedule the independent Claude subscription backend.
+//  2. Fans out across the active external backends (Claude, codex, GLM) in parallel
 //     via errgroup — each goroutine receives (target, focus, cfg.ProjectRoot)
 //     and NEVER the claude verdict (super-review independence).
-//  3. Assembles per_backend_verdicts (claude anchor + secondary results).
+//  3. Assembles per_backend_verdicts (Claude anchor/backend + other results).
 //  4. converge()s them into a ConvergenceResult.
 //  5. Enforces the explicit-required gates (GH #1632 item 3): a gate the
 //     audited tree's workflow.yaml explicitly configures `required` fails the
@@ -597,8 +617,7 @@ func performGLMAudit(ctx context.Context, target, focus, projectRoot string) Rev
 // inconclusive condition through its own AskUserQuestion channel (C5).
 func runMultiAudit(ctx context.Context, claudeVerdict ReviewOutput, target, focus string, cfg MultiAuditConfig, token mcp.ProgressToken) ConvergenceResult {
 	// Build identity is assembled ONCE for the whole convergence (REQ-ABI-007)
-	// and rides every result below — including the DQ-2 refusal, which is a
-	// structured verdict like any other and must name its binary. The
+	// and rides every result below. The
 	// comparison uses cfg.ProjectRoot when the caller named a tree; an absent
 	// one falls back to the process cwd INSIDE auditBuildIdentity, for the
 	// comparison only — the backends still receive exactly what
@@ -606,34 +625,16 @@ func runMultiAudit(ctx context.Context, claudeVerdict ReviewOutput, target, focu
 	// project_root).
 	buildCommit, buildLag := auditBuildIdentity(ctx, cfg.ProjectRoot)
 
-	// ── DQ-2: claude_verdict anchor presence ──
-	if strings.TrimSpace(claudeVerdict.Verdict) == "" {
-		// REFUSE: claude_verdict is the always-available anchor per the fail-open
-		// identity; proceeding without it would invert the fail-open direction
-		// (synthesizing over secondary-only verdicts when the anchor that
-		// guarantees a claude fallback is missing). The refusal is a STRUCTURED
-		// result (overall = fail + a note), never a hard error.
-		return ConvergenceResult{
-			PerBackendVerdicts: []PerBackendVerdict{},
-			OverallVerdict:     overallVerdictFail,
-			// Zero participants: nobody was compared, so the flag is the
-			// zero-value nil (undetermined) rather than a `false` no
-			// comparison grounds, and participant_count rides as 0
-			// (SPEC-AUDIT-PARTICIPANT-COUNT-001, acceptance §B).
-			ResidualRiskNote: "claude_verdict anchor missing — refusing to synthesize (fail-open direction preserved; the in-session claude verdict is the always-available anchor)",
-			FailOpenBackends: []string{},
-			BuildCommit:      buildCommit,
-			BuildLag:         buildLag,
-		}
-	}
-
-	// ── assemble claude's per-backend entry ──
+	// ── resolve Claude source ──
 	claudeGate := cfg.Gates.Claude
 	if claudeGate == "" {
 		claudeGate = config.AuditGateRequired // distributed default
 	}
-	verdicts := []PerBackendVerdict{
-		{
+	useClaudeAnchor := strings.EqualFold(strings.TrimSpace(cfg.OriginProvider), BackendClaude) &&
+		validReviewVerdict(claudeVerdict.Verdict) && claudeGate != config.AuditGateOff
+	verdicts := make([]PerBackendVerdict, 0, 3)
+	if useClaudeAnchor {
+		verdicts = append(verdicts, PerBackendVerdict{
 			Backend:       BackendClaude,
 			Gate:          claudeGate,
 			Verdict:       claudeVerdict.Verdict,
@@ -641,18 +642,20 @@ func runMultiAudit(ctx context.Context, claudeVerdict ReviewOutput, target, focu
 			Findings:      claudeVerdict.Findings,
 			NextSteps:     claudeVerdict.NextSteps,
 			SynthesisNote: claudeVerdict.SynthesisNote,
-		},
+			Source:        "in_session_anchor",
+		})
 	}
 
-	// ── fan out across the active secondary backends ──
+	// ── fan out across the active external backends ──
 	type secondaryResult struct {
 		backend string
 		gate    string
 		out     ReviewOutput
 	}
-	var secondaries = []struct {
+	var backends = []struct {
 		name, gate string
 	}{
+		{BackendClaude, claudeGate},
 		{BackendCodex, gateOr(cfg.Gates.Codex, config.AuditGateRequired)},
 		{BackendGLM, gateOr(cfg.Gates.GLM, config.AuditGateAdvisory)},
 	}
@@ -662,13 +665,16 @@ func runMultiAudit(ctx context.Context, claudeVerdict ReviewOutput, target, focu
 		parts []secondaryResult
 	)
 	eg, gctx := errgroup.WithContext(ctx)
-	for _, s := range secondaries {
+	for _, s := range backends {
 		s := s
 		if s.gate == config.AuditGateOff {
 			continue // gate off ⇒ backend NOT invoked (AC-AMM-014)
 		}
+		if s.name == BackendClaude && useClaudeAnchor {
+			continue
+		}
 		eg.Go(func() error {
-			// The secondary backend receives (target, focus, projectRoot) — no
+			// The external backend receives (target, focus, projectRoot) — no
 			// verdict of any kind. claude_verdict stays structurally excluded by
 			// the backendCaller signature; projectRoot names a directory and
 			// carries no analysis, so the independence guarantee is unchanged.
@@ -685,11 +691,15 @@ func runMultiAudit(ctx context.Context, claudeVerdict ReviewOutput, target, focu
 	}
 	_ = eg.Wait() // errors are already fail-opened inside the callers; ignore the errgroup error
 
-	// Append secondary results in canonical order (codex before glm) so the
+	// Append backend results in canonical order (claude before codex before glm) so the
 	// per_backend_verdicts array reads deterministically.
-	for _, wantName := range []string{BackendCodex, BackendGLM} {
+	for _, wantName := range []string{BackendClaude, BackendCodex, BackendGLM} {
 		for _, p := range parts {
 			if p.backend == wantName {
+				source := ""
+				if p.backend == BackendClaude {
+					source = "mcp_claude_audit"
+				}
 				verdicts = append(verdicts, PerBackendVerdict{
 					Backend:       p.backend,
 					Gate:          p.gate,
@@ -698,6 +708,8 @@ func runMultiAudit(ctx context.Context, claudeVerdict ReviewOutput, target, focu
 					Findings:      p.out.Findings,
 					NextSteps:     p.out.NextSteps,
 					SynthesisNote: p.out.SynthesisNote,
+					Source:        source,
+					Provenance:    p.out.Provenance,
 				})
 			}
 		}
@@ -720,7 +732,14 @@ func runMultiAudit(ctx context.Context, claudeVerdict ReviewOutput, target, focu
 	// engine's distributed default (codex required) is not an opt-in. Runs
 	// BEFORE persist so the state file the multi-review-gate Stop hook reads
 	// carries the enforced verdict.
-	result = enforceRequiredGateUnmet(result, verdicts, workflowAuditGates(cfg.ProjectRoot))
+	enforcementGates := workflowAuditGates(cfg.ProjectRoot)
+	// The actual Claude backend is a default-required independent audit. Unlike
+	// the legacy optional backends, an unavailable required Claude review must
+	// not fall through to a caller-supplied or secondary-model verdict.
+	if claudeGate == config.AuditGateRequired {
+		enforcementGates.Claude = config.AuditGateRequired
+	}
+	result = enforceRequiredGateUnmet(result, verdicts, enforcementGates)
 
 	// ── DQ-1: persist to .moai/state/audit-multi/<session>.json ──
 	// Best-effort: a write failure is logged via the returned error but MUST NOT
@@ -739,6 +758,15 @@ func gateOr(g, dflt string) string {
 		return dflt
 	}
 	return g
+}
+
+func validReviewVerdict(verdict string) bool {
+	switch strings.TrimSpace(verdict) {
+	case "pass", "fail", VerdictInconclusive:
+		return true
+	default:
+		return false
+	}
 }
 
 // ─── explicit-required gate enforcement (GH #1632 item 3) ───
@@ -775,6 +803,7 @@ func enforceRequiredGateUnmet(r ConvergenceResult, verdicts []PerBackendVerdict,
 		return r
 	}
 	r.OverallVerdict = overallVerdictFail
+	r.GateUnmet = strings.Join(unmet, ",")
 	note := "required gate unmet (explicitly configured required, no verdict): " + strings.Join(unmet, ", ")
 	if r.ResidualRiskNote != "" {
 		note += " | " + r.ResidualRiskNote

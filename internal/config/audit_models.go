@@ -45,7 +45,8 @@ const (
 // enum token (off|advisory|required). The zero value (empty string) is treated
 // by the convergence engine as "unset — apply the distributed default".
 type AuditGates struct {
-	// Claude gates the always-available anchor verdict.
+	// Claude gates the source-aware Claude participant: the in-session anchor
+	// for Claude-origin sessions, or the independent subscription backend.
 	Claude string `yaml:"claude,omitempty" json:"claude,omitempty"`
 	// Codex gates the codex JSON-RPC reviewer.
 	Codex string `yaml:"codex,omitempty" json:"codex,omitempty"`
@@ -61,6 +62,9 @@ type AuditConfig struct {
 	Model string `yaml:"model,omitempty" json:"model,omitempty"`
 	// Gates carries the per-auditor gate tokens.
 	Gates AuditGates `yaml:"gates,omitempty" json:"gates,omitempty"`
+	// Claude pins the subscription-backed Claude audit backend. An empty model
+	// means no pin; the runtime uses its documented sonnet/high default.
+	Claude ModelEffort `yaml:"claude,omitempty" json:"claude,omitempty"`
 	// Codex pins the codex audit backend's {model, effort}
 	// (SPEC-V3R6-AUDIT-MODEL-PIN-001 REQ-AMP-001/002). Precedence at the
 	// audit entry points: this pin > SSOT sync-auditor cell > empty. An empty

@@ -1,9 +1,0 @@
-=== RUN   TestGatewayExactModelContextAndGPTToolExposure
-    gateway_provider_contract_test.go:158: claude permits implicit unregistered [1m] ID
-    gateway_provider_contract_test.go:158: gpt permits implicit unregistered [1m] ID
-    gateway_provider_contract_test.go:161: GPT permits unsupported tool_reference deferral
-    gateway_provider_contract_test.go:158: glm permits implicit unregistered [1m] ID
---- FAIL: TestGatewayExactModelContextAndGPTToolExposure (0.00s)
-FAIL
-FAIL	github.com/modu-ai/moai-adk/internal/cli	0.919s
-FAIL

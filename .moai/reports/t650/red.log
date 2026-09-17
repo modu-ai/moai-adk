@@ -1,7 +1,0 @@
-# github.com/modu-ai/moai-adk/internal/codexapp [github.com/modu-ai/moai-adk/internal/codexapp.test]
-internal/codexapp/client_test.go:17:24: undefined: Message
-internal/codexapp/client_test.go:31:27: undefined: Client
-internal/codexapp/client_test.go:31:114: undefined: startProcess
-internal/codexapp/client_test.go:31:148: undefined: Config
-FAIL	github.com/modu-ai/moai-adk/internal/codexapp [build failed]
-FAIL

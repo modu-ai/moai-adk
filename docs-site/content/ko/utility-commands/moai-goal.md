@@ -49,6 +49,31 @@ draft: false
 **`resume` 동사는 없습니다.** 한때 이야기되던 `resume` (해제한 goal을 아카이브에서 되살리는 동사) 은 지금 CLI에 들어 있지 않습니다. `moai goal --help`도 `arm` / `status` / `clear`만 보여 줍니다. `clear`가 상태 파일을 아카이브로 남기지 않고 아예 **삭제**하기 때문에, 되살릴 원본 자체가 없습니다.
 {{< /callout >}}
 
+## `--auto` 임무 모드
+
+```bash
+moai goal --auto --session <session-id> "승인된 범위에서 기능을 구현하고 검증"
+```
+
+`--auto`는 기존 조건식이나 `progression_mode=autonomous`의 다른 이름이 아닙니다. 입력 문장을 셸이나 조건식으로 실행하지 않고 `mission_mode=auto`, `state=draft`인 별도 임무 파일에 저장합니다. 생성 메시지에 `approval required`가 표시되는 대로, 이 단계는 **임무 초안 생성**이며 자율 실행의 승인이 아닙니다.
+
+```bash
+moai goal approve --scope <경로> --action publish --action commit --completion-evidence <근거> --max-operations 20
+moai goal run --action publish --target <gtd-id> --recommend
+moai goal run --supervise --card-worktree <WT-경로> --develop-worktree <develop-경로> --governor-receipt <결정.json> --audit-receipt <감사.json> --completion-receipt <완료.json>
+moai goal status
+moai goal revoke
+moai goal resume
+```
+
+`approve`가 목표·범위·허용 행위·완료 근거·자원 한도를 한 번 봉인합니다. 그 뒤 workflow loop는 봉인 범위 안에서 매 작업마다 최신 snapshot과 receipt를 다시 확인하되 사용자에게 같은 승인을 반복해서 묻지 않습니다. `status`는 저장 상태를 읽고, `revoke`는 새 효과를 막은 채 진행 중 효과를 조정 대상으로 남깁니다. `resume`은 저장된 **승인 완료·정책 차단** 임무만 같은 계약에서 재개하며, 새 범위를 승인하지 않습니다.
+
+`--recommend`는 이전 호출과의 호환 플래그일 뿐 권한을 부여하지 않습니다. 실제 작업에는 저장소 안의 `0600` mission-governor 결정 receipt와 별도의 독립 감사 PASS receipt가 모두 필요하며, 임무·계약·snapshot·행위·대상·만료·발행자·HEAD 및 참으로 판정된 typed evidence와 결속됩니다. `run --supervise`는 봉인된 계획을 `publish → pick → lease가 있는 디스크 배차 → commit → local develop --no-ff merge` 순서로 제한 반복합니다. 감독 Git 효과에는 분리된 `--card-worktree`와 `--develop-worktree`가 필요하고, 기존 `--repo`만 쓰면 효과 0건으로 거절됩니다. 완료에는 병합 ancestry를 담은 `0600` 완료 receipt가 필요하며, 행동 목록 소진만으로 완료되지 않습니다. 차단 또는 완료 시 멈추고, 완료 상태를 다시 실행하면 효과는 0건입니다.
+
+승인 뒤에도 봉인된 계약의 목표·완료 근거·범위·허용 행위·자원 한도·중단 조건을 일반 코드가 매 작업마다 검사해야 합니다. `mission-governor`는 읽기 전용 제안자이고, 범위 확대나 새로운 권한이 필요하면 질문으로 승인을 넓히지 않고 부작용을 멈춘 채 `blocked`로 기록합니다.
+
+`super-advisor`의 의견은 비구속 조언이고, 읽기 전용 `mission-governor`는 구조화된 결정을 만듭니다. 결정적 validator와 소유 역할 adapter만 효과를 수행합니다. 커밋에는 현재 HEAD의 테스트 receipt가, 로컬 병합에는 manager-git 역할·기준 SHA·lease가 필요합니다. 현재 공급자에서 지속 실행 능력이 확인되지 않으면 runtime은 `active-session-only`입니다. 원격 batch push·release branch·release PR·main merge 공급자는 현재 구성되지 않았으므로 해당 행위는 성공을 흉내 내지 않고 `provider_unsupported`로 차단됩니다. 자세한 GTD 경계는 [`/moai gtd`](/ko/utility-commands/moai-gtd)를 참고하세요.
+
 ## 진행 모드 (자율 / 반자율)
 
 오케스트레이터가 구현 착수 승인 (plan→run 경계의 `AskUserQuestion`) 을 물을 때, 승인이냐 거절이냐와는 **별개의 선택지**로 **자율이냐 반자율이냐** 하는 진행 모드를 함께 고르게 합니다. 고른 모드는 goal 상태의 `progression_mode` 필드에 저장됩니다 (따로 고르지 않으면 기본값은 `autonomous`입니다).

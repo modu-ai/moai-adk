@@ -78,8 +78,8 @@ workflow:
         run: 180000
         sync: 40000
     # audit: cross-model audit backend model+effort pinning. Applies ONLY at
-    # the audit entry points (codex_audit / glm_audit / audit_multi) — never
-    # to codex_task / glm_task delegation. Precedence: this pin > the llm.yaml
+    # the audit entry points (claude_audit / codex_audit / glm_audit /
+    # audit_multi) — never to task delegation. Precedence: this pin > the llm.yaml
     # sync-auditor SSOT cell > empty (legacy behavior). An EMPTY model is no
     # pin (effort alone pins nothing). On the codex side an unservable model
     # id falls back to the SSOT path; the GLM side sends a non-empty pin
@@ -87,8 +87,12 @@ workflow:
     # never a hard error). codex effort vocabulary: low|medium|high|xhigh|max.
     # glm effort vocabulary (z.ai reasoning states, verbatim): low|high|max —
     # any other non-empty value omits the reasoning directive while the model
-    # pin still applies. Values ship EMPTY; set them per project.
+    # pin still applies. Claude ships at sonnet/high; Codex and GLM pins ship
+    # EMPTY and may be set per project.
     audit:
+        claude:
+            model: sonnet
+            effort: high
         codex:
             model: ""
             effort: ""

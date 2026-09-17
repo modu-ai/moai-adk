@@ -1,3 +1,0 @@
-$ grep -oE '3667|3480|3072|1024|1\.02' internal/cli/mcp_glm.go | sort -u | wc -l
-       5
-exit=0

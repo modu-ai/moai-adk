@@ -113,6 +113,16 @@ func withCodexReviewStub(t *testing.T) {
 	t.Cleanup(func() { codexReviewRPC, codexLookPath = prevRPC, prevLook })
 }
 
+// withClaudeReviewStub replaces the subscription CLI seams with a structured
+// pass response while preserving the production handler path.
+func withClaudeReviewStub(t *testing.T) {
+	t.Helper()
+	prevRunner, prevLook := claudeRunner, claudeLookPath
+	claudeRunner = validClaudeRunner()
+	claudeLookPath = func(string) (string, error) { return "/fake/claude", nil }
+	t.Cleanup(func() { claudeRunner, claudeLookPath = prevRunner, prevLook })
+}
+
 // withBackendCallStub replaces the audit_multi backend seam with a canned pass.
 func withBackendCallStub(t *testing.T) {
 	t.Helper()
@@ -123,7 +133,7 @@ func withBackendCallStub(t *testing.T) {
 	t.Cleanup(func() { backendCall = prev })
 }
 
-// ─── the three entry points, driven uniformly ───
+// ─── the four entry points, driven uniformly ───
 
 type auditEntryPoint struct {
 	name string
@@ -135,10 +145,20 @@ type auditEntryPoint struct {
 
 func auditEntryPoints() []auditEntryPoint {
 	return []auditEntryPoint{
+		{"claude_audit", runClaudeAuditEntry},
 		{"codex_audit", runCodexAuditEntry},
 		{"glm_audit", runGLMAuditEntry},
 		{"audit_multi", runAuditMultiEntry},
 	}
+}
+
+func runClaudeAuditEntry(t *testing.T, root string) (*mcp.CallToolResult, error) {
+	t.Helper()
+	withClaudeReviewStub(t)
+	req := mcp.CallToolRequest{}
+	req.Params.Name = "claude_audit"
+	req.Params.Arguments = map[string]any{projectRootArg: root}
+	return handleClaudeAudit(context.Background(), req)
 }
 
 func runCodexAuditEntry(t *testing.T, root string) (*mcp.CallToolResult, error) {
@@ -291,7 +311,7 @@ func TestAuditVerdictCarriesBuildCommit(t *testing.T) {
 		commits[ep.name] = m[keyBuildCommit].(string)
 	}
 
-	// Clause 3 (cross-entry): the same commit value on all three.
+	// Clause 3 (cross-entry): the same commit value on all four.
 	for _, ep := range auditEntryPoints() {
 		if commits[ep.name] != fxCommitA {
 			t.Errorf("%s: build_commit %q differs across entry points (want %q everywhere)", ep.name, commits[ep.name], fxCommitA)
@@ -506,7 +526,7 @@ func TestAuditCompletesWithoutBuildIdentity(t *testing.T) {
 	})
 }
 
-// ─── AC-ABI-006 — the lag advisory names both commits, on all three entry points ───
+// ─── AC-ABI-006 — the lag advisory names both commits, on all four entry points ───
 
 func TestAuditLagAdvisoryNamesBothCommits(t *testing.T) {
 	withVersionIdentity(t, fxVersion, fxCommitA)
@@ -606,10 +626,17 @@ func TestAuditLagUsesBinlagSeam(t *testing.T) {
 	// binary identity with source freshness, so binlag.Evaluate is not the
 	// correct owner for either check.
 	//
+	// todo_autodone.go:340 is the auto-done scan's DECLARED addition
+	// (SPEC-TODO-LAND-AUTO-DONE-001): it re-asks the recorded delivering
+	// SHA's reachability from the landed ref at scan time — the same
+	// referential-integrity question about two operator-named revisions the
+	// todo_landed.go coordinate asks at record time, and equally not a
+	// binary-vs-source freshness comparison.
+	//
 	// The coordinate is line-keyed like its neighbours, so an edit above it
-	// in todo_landed.go moves it and this baseline needs re-measuring; that
-	// brittleness is the guard's existing design, not something introduced
-	// here.
+	// in todo_landed.go or todo_autodone.go moves it and this baseline needs
+	// re-measuring; that brittleness is the guard's existing design, not
+	// something introduced here.
 	want := map[string]bool{
 		"graph_stamp.go:68":          true,
 		"graph_stamp.go:131":         true,
@@ -617,6 +644,7 @@ func TestAuditLagUsesBinlagSeam(t *testing.T) {
 		"home_state_coverage.go:253": true,
 		"mcp_review_material.go:95":  true,
 		"todo_landed.go:217":         true,
+		"todo_autodone.go:340":       true,
 	}
 	got := map[string]bool{}
 	entries, err := os.ReadDir(".")

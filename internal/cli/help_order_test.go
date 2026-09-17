@@ -136,14 +136,14 @@ func TestHelpGolden_FangGroupHeaders(t *testing.T) {
 	if strings.Contains(out, "\x1b") {
 		t.Error("NO_COLOR fang help must carry zero ANSI escape sequences")
 	}
-	// Frequency order renders: init precedes doctor in PROJECT, glm precedes gpt
+	// Frequency order renders: init precedes doctor in PROJECT, cc precedes glm
 	// in LAUNCH, hook precedes mx in TOOLS (spot-check of the leading order).
 	idx := func(s string) int { return strings.Index(out, s) }
 	if a, b := idx("\n    init "), idx("\n    doctor "); a < 0 || b < 0 || a > b {
 		t.Errorf("PROJECT order: init(%d) must precede doctor(%d)\n%s", a, b, out)
 	}
-	if a, b := idx("\n    glm "), idx("\n    gpt "); a < 0 || b < 0 || a > b {
-		t.Errorf("LAUNCH order: glm(%d) must precede gpt(%d)\n%s", a, b, out)
+	if a, b := idx("\n    cc "), idx("\n    glm "); a < 0 || b < 0 || a > b {
+		t.Errorf("LAUNCH order: cc(%d) must precede glm(%d)\n%s", a, b, out)
 	}
 	if a, b := idx("\n    hook "), idx("\n    mx "); a < 0 || b < 0 || a > b {
 		t.Errorf("TOOLS order: hook(%d) must precede mx(%d)\n%s", a, b, out)

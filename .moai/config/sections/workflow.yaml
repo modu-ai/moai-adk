@@ -13,11 +13,15 @@ workflow:
         enabled: true
         token_threshold: 150000
     # audit pins (SPEC-V3R6-AUDIT-MODEL-PIN-001): project-committed model+effort
-    # for the cross-model audit backends — audit entry points only (codex_audit /
-    # glm_audit / audit_multi), never codex_task / glm_task. Precedence per
+    # for the cross-model audit backends — audit entry points only (claude_audit /
+    # codex_audit / glm_audit / audit_multi), never task delegation. Precedence per
     # backend: this pin > llm.yaml sync-auditor SSOT cell > empty. codex effort
-    # vocabulary low|medium|high|xhigh|max; glm effort = z.ai states low|high|max.
+    # Claude/Codex effort vocabulary low|medium|high|xhigh|max; GLM effort =
+    # z.ai states low|high|max. Claude defaults to sonnet/high.
     audit:
+        claude:
+            model: sonnet
+            effort: high
         codex:
             model: gpt-5.6-sol
             effort: high

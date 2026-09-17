@@ -132,6 +132,12 @@ var (
 	// --porcelain` and returns its stdout (M4 dirty guard, REQ-SW-010; shared
 	// with the M8 PR-merge path, REQ-SW-024).
 	sessionWorktreeGitStatusPorcelain = gitStatusPorcelainReal
+
+	// sessionWorktreeGitHasUnpushed reports whether HEAD in the worktree at
+	// <wtPath> carries commits the remotes do not have (card t673). Shared by
+	// the M4 session-exit path and the M8 PR-merge path, like the dirty guard
+	// above: one predicate, two call sites, one answer.
+	sessionWorktreeGitHasUnpushed = gitHasUnpushedReal
 )
 
 // SessionExitCleanupNoticePrefix is the literal prefix of the session-exit
@@ -654,6 +660,20 @@ func cleanupSessionWorktree(cfg *config.Config, wtPath string, cleanExit bool, o
 		_, _ = fmt.Fprintf(out, "moai: session-exit cleanup skipped (uncommitted changes): worktree %s preserved (dispose manually via 'moai worktree remove' or 'git worktree remove')\n", wtPath)
 		return
 	}
+	// Card t673: the dirty guard reads uncommitted state only, so a clean
+	// tree holding COMMITTED but UNPUSHED work read as removable — exactly
+	// the state the "an unpushed branch's worktree is the only copy"
+	// discipline protects. Fail-open on the check error, like the dirty
+	// guard above: an unreadable answer preserves.
+	unpushed, uerr := sessionWorktreeGitHasUnpushed(wtPath)
+	if uerr != nil {
+		_, _ = fmt.Fprintf(out, "moai: session-exit cleanup skipped (unpushed-check failed: %v): worktree %s preserved\n", uerr, wtPath)
+		return
+	}
+	if unpushed {
+		_, _ = fmt.Fprintf(out, "moai: session-exit cleanup skipped (unpushed commits): worktree %s preserved (dispose manually via 'moai worktree remove' after the branch is pushed)\n", wtPath)
+		return
+	}
 	// Clean worktree + clean exit -> remove. A removal failure is non-blocking
 	// (REQ-SW-004 fail-open spirit): the worktree is left on disk and a notice
 	// names the failure.
@@ -683,6 +703,47 @@ func worktreeIsDirty(wtPath string) (bool, error) {
 		return false, err
 	}
 	return strings.TrimSpace(porcelain) != "", nil
+}
+
+// gitHasUnpushedReal is the committed-work counterpart to worktreeIsDirty
+// (card t673): it reports whether HEAD in the worktree at wtPath carries
+// commits the remotes do not have. `git status --porcelain` cannot see
+// committed work, so a clean tree on an unpushed branch is exactly the state
+// the auto-cleanup paths must not treat as disposable.
+//
+// Resolution order:
+//   - Detached HEAD → true. The committed tip has NO branch name to survive
+//     removal; after `git worktree remove` it is reachable only through
+//     reflogs until GC. Fail closed.
+//   - Branch with an upstream → unpushed when ahead of it
+//     (`rev-list --count @{u}..HEAD` > 0).
+//   - Branch without an upstream → unpushed when any commit is unreachable
+//     from ANY remote (`rev-list --count HEAD --not --remotes` > 0). A repo
+//     with no remotes counts every commit — fail closed: auto-cleanup has no
+//     basis for judging local-only work disposable.
+//
+// An error reading any of this is returned so the caller can fail-open
+// (preserve), matching the dirty guard's contract.
+func gitHasUnpushedReal(wtPath string) (bool, error) {
+	branchOut, err := exec.Command("git", "-C", wtPath, "rev-parse", "--abbrev-ref", "HEAD").Output()
+	if err != nil {
+		return false, err
+	}
+	if branch := strings.TrimSpace(string(branchOut)); branch == "" || branch == "HEAD" {
+		return true, nil // detached HEAD: no branch survives removal
+	}
+	if err := exec.Command("git", "-C", wtPath, "rev-parse", "--verify", "--quiet", "@{u}").Run(); err == nil {
+		out, err := exec.Command("git", "-C", wtPath, "rev-list", "--count", "@{u}..HEAD").Output()
+		if err != nil {
+			return false, err
+		}
+		return strings.TrimSpace(string(out)) != "0", nil
+	}
+	out, err := exec.Command("git", "-C", wtPath, "rev-list", "--count", "HEAD", "--not", "--remotes").Output()
+	if err != nil {
+		return false, err
+	}
+	return strings.TrimSpace(string(out)) != "0", nil
 }
 
 // gitWorktreeRemoveReal runs `git worktree remove <wtPath>`.

@@ -1,4 +1,0 @@
-- $ARGUMENTS: Mode and optional path
-  - Mode: auto (default), force, status, project
-  - Path: Optional synchronization target path (e.g., src/auth/)
-  - Flag: --auto-merge

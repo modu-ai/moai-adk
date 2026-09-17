@@ -1,6 +1,7 @@
 package settings
 
 import (
+	"slices"
 	"sort"
 
 	"testing"
@@ -58,6 +59,16 @@ func containsString(list []string, s string) bool {
 // vocabulary; glm model offers the ValidGLMModels SSOT).
 func TestAuditPinFields_ExistWithTypeAndPanel(t *testing.T) {
 	t.Parallel()
+	claudeModel := auditPinField(t, "workflow.audit.claude.model")
+	if claudeModel.Type != TypeText || claudeModel.Section != SectionWorkflow {
+		t.Errorf("workflow.audit.claude.model = {type:%v section:%v}, want text/workflow", claudeModel.Type, claudeModel.Section)
+	}
+	claudeEffort := auditPinField(t, "workflow.audit.claude.effort")
+	wantClaudeEffort := append([]string{}, v4EffortValues()...)
+	sort.Strings(wantClaudeEffort)
+	if gotClaudeEffort := optionValues(t, claudeEffort); !slices.Equal(gotClaudeEffort, wantClaudeEffort) {
+		t.Errorf("workflow.audit.claude.effort options = %v, want %v", gotClaudeEffort, wantClaudeEffort)
+	}
 
 	codexModel := auditPinField(t, "workflow.audit.codex.model")
 	if codexModel.Type != TypeText {
@@ -105,7 +116,7 @@ func TestAuditPinFields_ExistWithTypeAndPanel(t *testing.T) {
 
 	// Effort fields are RUNTIME-applied (contrast with the stored-only tier
 	// efforts, REQ-WCR-033 labeling discipline): StoreOnly must be false.
-	for _, name := range []string{"workflow.audit.codex.effort", "workflow.audit.glm.effort"} {
+	for _, name := range []string{"workflow.audit.claude.effort", "workflow.audit.codex.effort", "workflow.audit.glm.effort"} {
 		if f := auditPinField(t, name); f.StoreOnly {
 			t.Errorf("%s: StoreOnly = true — audit pin efforts ARE runtime-applied (they ride the audit request builders); the stored-only marking belongs to the tier effort map, not this field", name)
 		}
@@ -122,6 +133,8 @@ func TestAuditPinFields_SeamRoundTrip(t *testing.T) {
 	seedSectionFixture(t, root, "workflow")
 
 	edits := []yamlpatch.KeyEdit{
+		{Path: []string{"workflow", "audit", "claude", "model"}, Value: "sonnet"},
+		{Path: []string{"workflow", "audit", "claude", "effort"}, Value: "high"},
 		{Path: []string{"workflow", "audit", "codex", "model"}, Value: "gpt-5.6-sol"},
 		{Path: []string{"workflow", "audit", "codex", "effort"}, Value: "high"},
 		{Path: []string{"workflow", "audit", "glm", "model"}, Value: "glm-5.3"},
@@ -143,6 +156,9 @@ func TestAuditPinFields_SeamRoundTrip(t *testing.T) {
 		t.Fatalf("unmarshal written workflow.yaml: %v\n%s", err, raw)
 	}
 	audit := wrapper.Workflow.Audit
+	if audit.Claude.Model != "sonnet" || audit.Claude.Effort != "high" {
+		t.Errorf("claude pin round-trip: got %+v, want {sonnet high}", audit.Claude)
+	}
 	if audit.Codex.Model != "gpt-5.6-sol" || audit.Codex.Effort != "high" {
 		t.Errorf("codex pin round-trip: got %+v, want {gpt-5.6-sol high}", audit.Codex)
 	}

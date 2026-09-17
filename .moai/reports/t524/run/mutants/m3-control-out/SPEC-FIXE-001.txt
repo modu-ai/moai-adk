@@ -1,3 +1,0 @@
-COLLECTED: 3 REQ definitions (acceptance input: read)
-UNCOVERED: REQ-FIXE-002
-UNCOVERED: REQ-FIXE-003

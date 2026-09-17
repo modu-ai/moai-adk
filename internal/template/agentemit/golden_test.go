@@ -1,6 +1,6 @@
 // golden_test.go — SPEC-CODEX-DUAL-AGENTS-001 MS3 golden guards.
 //
-// These tests run the emitter against the REAL 11 template .md sources and
+// These tests run the emitter against the REAL 12 template .md sources and
 // pin the committed artifacts under templates/.codex/agents/moai/. They are
 // the drift guard: a hand-edited .toml or a behavior change in the emitter
 // or manifest fails here until regenerated via:
@@ -61,8 +61,8 @@ func emitRealSet(t *testing.T) *agentemit.Publication {
 	if err != nil {
 		t.Fatalf("EmitAll over real template set: %v", err)
 	}
-	if len(pub.CodexTOML) != 11 {
-		t.Fatalf("emitted %d TOMLs, want 11", len(pub.CodexTOML))
+	if len(pub.CodexTOML) != 12 {
+		t.Fatalf("emitted %d TOMLs, want 12", len(pub.CodexTOML))
 	}
 	return pub
 }
@@ -159,14 +159,14 @@ func hashMDTree(t *testing.T) map[string]string {
 		}
 		out[e.Name()] = fmt.Sprintf("%x", sha256.Sum256(data))
 	}
-	if len(out) != 11 {
-		t.Fatalf("expected 11 .md sources, found %d", len(out))
+	if len(out) != 12 {
+		t.Fatalf("expected 12 .md sources, found %d", len(out))
 	}
 	return out
 }
 
 // TestRealSetCodexShape pins the AC-007/AC-008/AC-009 (+ sandbox) shape over
-// the real 11: exactly the 7 inventory carriers declare mcp_servers, every
+// the real 12: exactly the 7 inventory carriers declare mcp_servers, every
 // agent carries its manifest-mapped model_reasoning_effort, zero carry a
 // model key, and all carry the P-01-confirmed sandbox_mode.
 func TestRealSetCodexShape(t *testing.T) {
@@ -222,7 +222,7 @@ func TestRealSetCodexShape(t *testing.T) {
 
 // TestRealSetBodiesByteEqual verifies AC-003/R-005 against the REAL sources:
 // every emitted developer_instructions decodes byte-equal to the .md body of
-// its agent, and name equals the frontmatter name, 11 of 11.
+// its agent, and name equals the frontmatter name, 12 of 12.
 func TestRealSetBodiesByteEqual(t *testing.T) {
 	pub := emitRealSet(t)
 	for path, data := range pub.CodexTOML {
@@ -250,7 +250,7 @@ func TestRealSetBodiesByteEqual(t *testing.T) {
 }
 
 // TestEmbedFSPresenceAndByteEquality is AC-010's embed half: the embedded
-// template FS (all:templates — dot-dirs included) exposes all 11 .codex TOML
+// template FS (all:templates — dot-dirs included) exposes all 12 .codex TOML
 // paths byte-equal to the committed sources.
 func TestEmbedFSPresenceAndByteEquality(t *testing.T) {
 	embedded, err := template.EmbeddedTemplates()
@@ -281,8 +281,8 @@ func TestEmbedFSPresenceAndByteEquality(t *testing.T) {
 			t.Errorf("%s: embedded bytes differ from committed (run make build)", rel)
 		}
 	}
-	if count != 11 {
-		t.Errorf("committed .codex/agents/moai carries %d TOMLs, want 11", count)
+	if count != 12 {
+		t.Errorf("committed .codex/agents/moai carries %d TOMLs, want 12", count)
 	}
 }
 

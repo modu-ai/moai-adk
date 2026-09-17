@@ -19,10 +19,9 @@ package hook
 
 // factoryMessages is the operator-facing prose of one locale.
 //
-// Fields carrying %s / %d are format strings. leadManual and entryGuide each
-// carry TWO %d (the lane count twice — the sentence names it in two
-// places); the per-locale word order is why the count is a format argument
-// rather than pre-rendered text. workerJoin pins its argument order with
+// Fields carrying %s / %d are format strings. leadManual carries the lane
+// count twice; entryGuide uses %[1]d for the count and %[2]s for the fixed
+// launcher entry token. workerJoin pins its argument order with
 // explicit %[1]s / %[2]d indices because the locales' natural word orders
 // differ (en/ja/ko say the count first, zh the label first) — see
 // factoryWorkerNotice.
@@ -37,7 +36,7 @@ type factoryMessages struct {
 	leadHeader        string // run id
 	leadIdentity      string // lead label
 	leadManual        string // lane count ×2
-	entryGuide        string // cc/glm entry points, -f forms; lane count ×2
+	entryGuide        string // cc/glm/gpt entry points; count %[1]d, entry %[2]s
 	agentFanout       string // per-lane concurrent agent cap
 	leaderSocket      string // socket path
 	leadClasses       string // whole-card routing: one lane runs the serial 3-stage path in-session
@@ -61,9 +60,9 @@ var factoryLocales = map[string]factoryMessages{
 		leadManual: "This session dispatches cards to %d lanes over cross-session messages.\n" +
 			"The lanes below are launched by hand, one per new terminal, because a session cannot launch another session.\n" +
 			"Lanes are named lane-1..lane-%d; a number whose label is held by a live session is bumped to the next free number.",
-		entryGuide: "Entry points: `moai cc -f %d` is the Claude-backend factory lead, `moai glm -f %d` the GLM-backend one — " +
+		entryGuide: "Entry points: `moai cc -f` starts a Claude factory lead and `moai glm -f` a GLM lead — " +
 			"the launcher picks the backend, `-f` the factory. `-f` with no count starts the one-lane default; " +
-			"add one lane at a time as the queue demands with `moai cc -f lane-<n>` (or the glm form).",
+			"add lanes using the same provider as this lead with `moai %[2]s -f lane-<n>`.",
 		agentFanout:  "Every lane can run up to 10 agents concurrently in parallel.",
 		leaderSocket: "Leader socket: %s",
 		leadClasses: "Card routing: every card is routed WHOLE to one lane, and that lane carries it through " +
@@ -89,9 +88,9 @@ var factoryLocales = map[string]factoryMessages{
 		leadManual: "이 세션이 세션 간 메시지로 카드를 레인 %d개에 배분합니다.\n" +
 			"아래 레인은 터미널을 하나씩 새로 열어 직접 실행하세요 — 세션은 다른 세션을 띄울 수 없습니다.\n" +
 			"레인 이름은 lane-1..lane-%d 이며, 생존 세션이 이미 쓰고 있는 번호는 다음 빈 번호로 늘어납니다.",
-		entryGuide: "진입점: `moai cc -f %d` 는 Claude 백엔드 팩토리 리더, `moai glm -f %d` 는 GLM 백엔드 팩토리 리더 — " +
+		entryGuide: "진입점: `moai cc -f`는 Claude, `moai glm -f`는 GLM을 사용하는 팩토리 리더를 시작합니다. " +
 			"런처가 백엔드를, `-f` 가 팩토리를 정합니다. `-f` 에 개수를 붙이지 않으면 레인 1개 기본으로 시작하고, " +
-			"필요에 따라 `moai cc -f lane-<n>` (또는 glm 형태)로 레인을 한 개씩 추가하세요.",
+			"현재 리더와 같은 공급자로 레인을 추가하려면 `moai %[2]s -f lane-<n>`을 사용하세요.",
 		agentFanout:  "각 레인은 최대 10개의 에이전트를 동시에 병렬로 실행할 수 있습니다.",
 		leaderSocket: "리더 소켓: %s",
 		leadClasses: "카드 라우팅: 모든 카드는 한 레인에 통째로 배정되고, 그 레인이 세션 안에서 직렬 3단계 경로" +
@@ -114,9 +113,9 @@ var factoryLocales = map[string]factoryMessages{
 		leadManual: "このセッションが、セッション間メッセージでカードをレーン %d 本に割り振ります。\n" +
 			"以下のレーンは、ターミナルを 1 つずつ新規に開いて手動で起動してください — セッションが別のセッションを起動することはできません。\n" +
 			"レーン名は lane-1..lane-%d で、生存セッションが保持する番号は次の空き番号へ繰り上がります。",
-		entryGuide: "入口: `moai cc -f %d` は Claude バックエンドのファクトリーリーダー、`moai glm -f %d` は GLM バックエンドのファクトリーリーダー — " +
+		entryGuide: "起動コマンド: `moai cc -f` は Claude、`moai glm -f` は GLM のファクトリーリーダーを起動します。" +
 			"ランチャーがバックエンドを、`-f` がファクトリーを決めます。`-f` に個数を付けなければレーン1本のデフォルトで開始し、 " +
-			"必要に応じて `moai cc -f lane-<n>`（または glm 形式）でレーンを1本ずつ追加してください。",
+			"現在のリーダーと同じプロバイダーでレーンを追加するには、`moai %[2]s -f lane-<n>` を使ってください。",
 		agentFanout:  "各レーンは最大 10 個のエージェントを同時に並列実行できます。",
 		leaderSocket: "リーダーソケット: %s",
 		leadClasses: "カードルーティング: すべてのカードは1つのレーンへ丸ごと割り当てられ、そのレーンがセッション内で直列3段階パス" +
@@ -139,9 +138,9 @@ var factoryLocales = map[string]factoryMessages{
 		leadManual: "本会话通过跨会话消息把卡片分发给 %d 条泳道。\n" +
 			"下面的泳道需要各自新开一个终端手动启动 —— 会话无法启动另一个会话。\n" +
 			"泳道命名为 lane-1..lane-%d；已被存活会话占用的编号会顺延到下一个空位。",
-		entryGuide: "入口：`moai cc -f %d` 是 Claude 后端的工厂主导会话，`moai glm -f %d` 是 GLM 后端的工厂主导会话 — " +
+		entryGuide: "启动命令：`moai cc -f` 使用 Claude，`moai glm -f` 使用 GLM，分别启动工厂主导会话。" +
 			"启动器决定后端，`-f` 决定工厂。`-f` 不带数量时以一条泳道的默认配置启动；" +
-			"需要扩容时用 `moai cc -f lane-<n>`（或 glm 形式）逐条添加泳道。",
+			"如需使用与当前主导会话相同的提供商添加泳道，请运行 `moai %[2]s -f lane-<n>`。",
 		agentFanout:  "每条泳道最多可同时并行运行 10 个代理。",
 		leaderSocket: "主导会话套接字：%s",
 		leadClasses: "卡片路由：每张卡片整体分发给一条泳道，由该泳道在会话内走完串行三阶段路径" +

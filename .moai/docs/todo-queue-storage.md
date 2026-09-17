@@ -1,7 +1,10 @@
 # Backlog queue storage and the downgrade route
 
-The backlog queue `moai todo` operates lives in one SQLite database at
-`~/.moai/db/<project-key>/todo/backlog.db`. This page explains what each
+For most projects the backlog queue `moai todo` operates lives in one SQLite
+database at `~/.moai/db/<project-key>/todo/backlog.db`. The exception: a
+non-git project whose launch directory is a temporary one (for example inside
+`/tmp`, with no absolute `MOAI_HOME` override) keeps its queue project-local at
+`<base>/.moai/state/todo/backlog.db`. This page explains what each
 artifact in that home-scoped directory is, how an existing project is copied
 into the database, and how to get back to plain JSON if you need to run an
 older release.
@@ -103,12 +106,17 @@ Your options, in order of preference:
 
 ## The home directory
 
-Each project has one stable key below `~/.moai/db/`. Linked worktrees derive
-the key from the primary checkout, so every session reads and writes the same
-queue. `project.json` beside `todo/` records the canonical project root used to
-derive that key.
+Each project that uses home storage has one stable key below `~/.moai/db/`.
+The temporary-directory exception above applies here too: a non-git base
+launched from a temporary directory (no absolute `MOAI_HOME` override) keeps
+its queue project-local under `<base>/.moai/state/todo/` instead. Linked
+worktrees derive the key from the primary checkout, so every session reads and
+writes the same queue. `project.json` beside `todo/` records the canonical
+project root used to derive that key.
 
 Read-only surfaces (the web console and status line) never trigger migration.
 They read the home database when it exists and otherwise read the legacy
 project-local queue. The first adopting `moai todo` command performs the
-verified copy.
+verified copy. The temporary-directory exception above skips all of this: for
+such a project the home database is never read, the verified copy never
+happens, and every surface, read-only or not, uses the project-local queue.
