@@ -933,12 +933,17 @@ func ensureGLMCredentials(projectDir string) string {
 	// GLM models configured — check if AUTH_TOKEN exists
 	if token := settings.Env[config.EnvAnthropicAuthToken]; token != "" {
 		// Already has credentials — nothing to inject, but the context-window
-		// envs must still be ensured: settings written by an older binary (or
-		// by `moai glm setup`) carry neither window key, and without the
-		// CLAUDE_CODE_MAX_CONTEXT_TOKENS declaration Claude Code assumes a
-		// 200K window for the custom GLM model ID (Issue #653, PR #1574
-		// review). Persist only when a key was actually added so the steady
-		// state does not rewrite settings.local.json on every session start.
+		// envs must still be ensured: settings written by an older binary carry
+		// neither window key, and without the CLAUDE_CODE_MAX_CONTEXT_TOKENS
+		// declaration Claude Code assumes a 200K window for the custom GLM model
+		// ID (Issue #653, PR #1574 review). Persist only when a key was actually
+		// added so the steady state does not rewrite settings.local.json on
+		// every session start.
+		//
+		// `moai glm setup` is NOT a second source of such settings, though an
+		// earlier revision of this comment named it as one: runGLMSetup →
+		// saveGLMKey → glmcred.Save writes ~/.moai/.env.glm and nothing else, so
+		// it never produces a settings.local.json env block at all (card t803).
 		before := settings.Env[config.EnvClaudeCodeAutoCompactWindow] + "|" + settings.Env[config.EnvClaudeCodeMaxContextTokens]
 		maybeSet1MAutoCompactWindow(settings.Env)
 		maybeDeclareGLMContextWindow(settings.Env)
