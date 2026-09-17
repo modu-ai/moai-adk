@@ -125,6 +125,7 @@ func (h *sessionStartHandler) EventType() EventType {
 //
 // @MX:NOTE: [AUTO] input-lag budget — synchronous path is turn-visible-effects only
 func (h *sessionStartHandler) Handle(ctx context.Context, input *HookInput) (*HookOutput, error) {
+	clock := newStageClock()
 	slog.Info("session started",
 		"session_id", input.SessionID,
 		"cwd", input.CWD,
@@ -136,6 +137,7 @@ func (h *sessionStartHandler) Handle(ctx context.Context, input *HookInput) (*Ho
 	}
 	if admissionRoot != "" {
 		admissionLock, lockErr := homestate.AcquireAdmissionLock(admissionRoot)
+		clock.lap("admission.lock")
 		if lockErr != nil {
 			out := &HookOutput{StopReason: lockErr.Error()}
 			out.SetContinue(false)
@@ -148,7 +150,9 @@ func (h *sessionStartHandler) Handle(ctx context.Context, input *HookInput) (*Ho
 			return out, nil
 		}
 	}
+	clock.lap("admission.check")
 	registerProfileLease(ctx, input)
+	clock.lap("profile_lease")
 
 	// SPEC-GUARD-LIVENESS-001 REQ-GDL-002/003 (card t333 M1): initiate the
 	// guard firing-liveness refresh.
@@ -163,6 +167,7 @@ func (h *sessionStartHandler) Handle(ctx context.Context, input *HookInput) (*Ho
 		guardLivenessRoot = input.CWD
 	}
 	guardLivenessRefresh(ctx, guardLivenessRoot, h.asyncDeferredScans())
+	clock.lap("guard_liveness_refresh")
 
 	data := map[string]any{
 		"session_id": input.SessionID,
@@ -206,6 +211,7 @@ func (h *sessionStartHandler) Handle(ctx context.Context, input *HookInput) (*Ho
 			"session_id", input.SessionID,
 		)
 	}
+	clock.lap("config")
 
 	if input.ProjectDir != "" {
 		// (a) Parallelize the independent synchronous steps. Each step writes
@@ -221,6 +227,7 @@ func (h *sessionStartHandler) Handle(ctx context.Context, input *HookInput) (*Ho
 		// ensureGLMCredentials just wrote. See runSettingsChain.
 		var settingsData map[string]any
 		g.Go(func() error {
+			defer clock.span("task.settings")()
 			settingsData = h.runSettingsChain(input)
 			return nil
 		})
@@ -236,11 +243,16 @@ func (h *sessionStartHandler) Handle(ctx context.Context, input *HookInput) (*Ho
 		// @MX:NOTE: [AUTO] registry RMW + goal orphan prune sequenced per shared file
 		var registryData map[string]any
 		g.Go(func() error {
+			defer clock.span("task.registry")()
 			registryData = make(map[string]any)
 			if input.SessionID != "" {
+				endProtocol := clock.span("task.registry.protocol")
 				h.runMultiSessionProtocol(input, registryData)
+				endProtocol()
 			}
+			endPrune := clock.span("task.registry.goal_orphans")
 			pruneGoalOrphans(input.ProjectDir)
+			endPrune()
 			return nil
 		})
 
@@ -248,6 +260,7 @@ func (h *sessionStartHandler) Handle(ctx context.Context, input *HookInput) (*Ho
 		// registry; touches only .claude/skills/ and .moai/evolution/.
 		var skillData map[string]any
 		g.Go(func() error {
+			defer clock.span("task.skill_symlinks")()
 			skillData = runSkillSymlinks(input.ProjectDir)
 			return nil
 		})
@@ -262,6 +275,7 @@ func (h *sessionStartHandler) Handle(ctx context.Context, input *HookInput) (*Ho
 		// next session retries. Best-effort, fail-open.
 		var migrationData map[string]any
 		g.Go(func() error {
+			defer clock.span("task.migration")()
 			migrationData = runMigration(gctx, input.ProjectDir, cfg)
 			return nil
 		})
@@ -272,6 +286,7 @@ func (h *sessionStartHandler) Handle(ctx context.Context, input *HookInput) (*Ho
 		// reading anything. Fail-open like the rest of the group.
 		var worktreeBaseData map[string]any
 		g.Go(func() error {
+			defer clock.span("task.worktree_base")()
 			worktreeBaseData = RunWorktreeBaseAlignment(input.ProjectDir)
 			return nil
 		})
@@ -286,6 +301,7 @@ func (h *sessionStartHandler) Handle(ctx context.Context, input *HookInput) (*Ho
 		}
 
 		mergeData(data, settingsData, registryData, skillData, migrationData, worktreeBaseData)
+		clock.lap("sync_group")
 
 		// (b) Defer heavy advisory scanning off the synchronous critical path.
 		// These four steps (telemetry prune, stale-memory wrap, pending-proposal
@@ -362,6 +378,7 @@ func (h *sessionStartHandler) Handle(ctx context.Context, input *HookInput) (*Ho
 				maps.Copy(data, advisory)
 			}
 		}
+		clock.lap("deferred_join")
 	}
 
 	jsonData, err := json.Marshal(data)
@@ -415,7 +432,9 @@ func (h *sessionStartHandler) Handle(ctx context.Context, input *HookInput) (*Ho
 	// launches exists (see session_start_record.go). Non-kanban sessions get
 	// no record and nothing happens here; every failure is discarded, so the
 	// call returns nothing and the session start cannot gate on it.
+	clock.lap("marshal_attribution")
 	writeKanbanSessionRecord(input)
+	clock.lap("kanban_record")
 
 	// SPEC-STEERING-ALIGN-GUARDRAIL-HOOK-001: GLM 가드레일 리마인더 주입.
 	// GLM 백엔드 세션(PROCESS env ANTHROPIC_BASE_URL이 z.ai 포함)일 때만 z.ai MCP
@@ -446,6 +465,7 @@ func (h *sessionStartHandler) Handle(ctx context.Context, input *HookInput) (*Ho
 	// lane registry) under the project root on the same ProjectDir-then-CWD
 	// preference chain the kanban notice uses; an empty root degrades to
 	// fail-open summary lines inside the notice rather than failing here.
+	clock.lap("glm_reminder")
 	factoryRoot := input.ProjectDir
 	if factoryRoot == "" {
 		factoryRoot = input.CWD
@@ -497,6 +517,7 @@ func (h *sessionStartHandler) Handle(ctx context.Context, input *HookInput) (*Ho
 	// CWD as fallback — the same preference chainLineageBanner applies. An
 	// empty root degrades to a zero-count summary line inside the notice
 	// rather than failing here.
+	clock.lap("factory_notice")
 	kanbanRoot := input.ProjectDir
 	if kanbanRoot == "" {
 		kanbanRoot = input.CWD
@@ -525,6 +546,7 @@ func (h *sessionStartHandler) Handle(ctx context.Context, input *HookInput) (*Ho
 	// chain node (from env or ledger), backfills session_id (REQ-CHAIN-021),
 	// and emits a depth + parent-chain + resume system-reminder. Time-boxed
 	// and fail-open (empty string = no banner injected).
+	clock.lap("kanban_notice")
 	if banner := chainLineageBanner(input.ProjectDir, input.CWD, input.SessionID); banner != "" {
 		if out.HookSpecificOutput == nil {
 			out.HookSpecificOutput = &HookSpecificOutput{
@@ -552,11 +574,13 @@ func (h *sessionStartHandler) Handle(ctx context.Context, input *HookInput) (*Ho
 	// json:"-" (see the attribution comment above), so a verdict placed there
 	// would be computed correctly and rendered by no one — reproducing the
 	// exact dead end this closes.
+	clock.lap("chain_banner")
 	lagRoot := input.ProjectDir
 	if lagRoot == "" {
 		lagRoot = input.CWD
 	}
 	appendAdditionalContext(out, binaryLagAdvisory(ctx, lagRoot, h.asyncDeferredScans()))
+	clock.lap("binary_lag_advisory")
 
 	// SPEC-GUARD-LIVENESS-001 REQ-GDL-004/005/010/011 (card t333 M2): the guard
 	// firing-liveness verdict, emitted without anyone asking for it.
@@ -570,6 +594,7 @@ func (h *sessionStartHandler) Handle(ctx context.Context, input *HookInput) (*Ho
 	// The read is of a persisted verdict; the refresh that produces the next
 	// one was initiated at the top of Handle and is not waited on here.
 	appendAdditionalContext(out, guardLivenessAdvisory(guardLivenessRoot, h.asyncDeferredScans()))
+	clock.lap("guard_liveness_advisory")
 
 	return out, nil
 }
