@@ -14,7 +14,7 @@ import (
 // verbatim across translations, so they are the stable assertion surface.
 var deploymentKeywords = map[string][]string{
 	"claude": {".claude", "AGENTS.md"},
-	"codex":  {"AGENTS.md", ".claude"},
+	"gpt":    {"AGENTS.md", ".claude"},
 	"both":   {".claude", ".codex"},
 }
 
@@ -36,7 +36,7 @@ func TestAgentWiringOptions(t *testing.T) {
 	if len(q.Options) != 3 {
 		t.Fatalf("agent_wiring option count = %d, want 3 (frozen 3-option set)", len(q.Options))
 	}
-	wantValues := []string{"claude", "codex", "both"}
+	wantValues := []string{"claude", "gpt", "both"}
 	for i, want := range wantValues {
 		if q.Options[i].Value != want {
 			t.Errorf("option[%d].Value = %q, want %q (frozen order)", i, q.Options[i].Value, want)

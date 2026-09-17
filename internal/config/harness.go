@@ -17,6 +17,22 @@ var validAgentHarnesses = map[string]struct{}{
 	"both":   {},
 }
 
+// legacyHarnessAliases maps a harness value from before the codex→gpt rename
+// onto its closed-set name, so a project or flag that still says codex keeps
+// its Codex-only deployment instead of falling back to claude.
+var legacyHarnessAliases = map[string]string{
+	"codex": "gpt",
+}
+
+// CanonicalAgentHarness returns the closed-set name for value: a legacy alias
+// maps to its current name, anything else is returned unchanged.
+func CanonicalAgentHarness(value string) string {
+	if canonical, ok := legacyHarnessAliases[value]; ok {
+		return canonical
+	}
+	return value
+}
+
 // IsValidAgentHarness reports whether value is one of the closed-set harness
 // values (claude, gpt, both). The empty string is NOT a member: callers that
 // mean "no selection recorded" handle that case themselves (it resolves to
@@ -52,8 +68,8 @@ func ReadHarnessFrom(sectionsDir string) string {
 	if _, err := loadYAMLFile(sectionsDir, "llm.yaml", wrapper); err != nil {
 		return DefaultHarness
 	}
-	if IsValidAgentHarness(wrapper.LLM.Harness) {
-		return wrapper.LLM.Harness
+	if harness := CanonicalAgentHarness(wrapper.LLM.Harness); IsValidAgentHarness(harness) {
+		return harness
 	}
 	return DefaultHarness
 }

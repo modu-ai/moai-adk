@@ -254,10 +254,21 @@ func TestAutoMissionProductionLocalDevelopMergeOwner(t *testing.T) {
 	}
 }
 
+// testGitBinary resolves git from PATH so the fixtures run on every CI
+// platform instead of only where a host-specific install path exists.
+func testGitBinary(t *testing.T) string {
+	t.Helper()
+	path, err := exec.LookPath("git")
+	if err != nil {
+		t.Fatalf("git not found on PATH: %v", err)
+	}
+	return path
+}
+
 func gitFixtureCLI(t *testing.T, root string, args ...string) string {
 	t.Helper()
 	all := append([]string{"-C", root}, args...)
-	out, err := exec.Command("/Library/Developer/CommandLineTools/usr/bin/git", all...).CombinedOutput()
+	out, err := exec.Command(testGitBinary(t), all...).CombinedOutput()
 	if err != nil {
 		t.Fatalf("git %v: %v %s", args, err, out)
 	}
