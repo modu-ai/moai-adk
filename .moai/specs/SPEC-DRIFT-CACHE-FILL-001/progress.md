@@ -291,6 +291,34 @@ pre_existing_failures_not_attributable:
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase>_
+```yaml
+sync_complete_at: 2026-09-18
+sync_commit_sha: pending-backfill-sync
+sync_status: complete
+b12_self_test_a_pre_emission_grep: "grep -c 'SPEC-DRIFT-CACHE-FILL-001' CHANGELOG.md → 0 (no prior entry; emission proceeded)"
+b12_self_test_b_ac_count_match: "16 distinct AC ids in acceptance.md (AC-DCF-001..016), non-zero; CHANGELOG entry states 16 (14 release-blocking PASS + 2 regression-guard)"
+b12_self_test_c_file_path_verification: "ls internal/hook/session_start_drift_fill.go internal/spec/drift_fill_lock.go internal/spec/drift_cache.go internal/cli/spec_drift.go internal/config/drift_cache_fill.go → all present"
+changelog_entry_position: "[Unreleased] → ### Added → first bullet"
+frontmatter_status_transitions:
+  spec_md: "in-progress → completed (single sync commit; 3-phase close)"
+  plan_md: "no status field (artifact statelessness — no frontmatter block)"
+  acceptance_md: "no status field (artifact statelessness — no frontmatter block)"
+  updated_field: "already 2026-09-18 across artifacts; unchanged"
+docs_surfaces_updated:
+  - "CHANGELOG.md — [Unreleased] Added"
+  - "docs-site/content/{en,ko,ja,zh}/advanced/config-sections.md — new '## workflow.yaml — drift_cache_fill' section, 4-locale parity 11 h2 / 267 lines each, hugo build exit 0"
+docs_surfaces_deliberately_not_updated:
+  - "README.{md,ko.md,ja.md,zh.md} — the config table lists files, not keys; a per-key entry would be the only one of its kind"
+  - ".moai/docs/** — no operator runbook applies; the key is a single on/off with no procedure"
+template_first_verification: "only .moai/config/sections/workflow.yaml was added under .moai/ or .claude/; its mirror internal/template/templates/.moai/config/sections/workflow.yaml is present in the same diff. go test ./internal/template/ -run TestTemplateNoInternalContentLeak → ok, and again with MOAI_TEMPLATE_LEAK_STRICT=1 → ok"
+carried_deviations:
+  - "AC-DCF-009 measurement subject restated at run-phase (deferred step 232.6 µs + Handle delta 0.64 ms + seam assertion, instead of the literal Handle-total ratio). SPEC body NOT modified. Criterion-vs-implementation divergence, surfaced for the auditor to rule on."
+  - "Commit 9400c53d9 does not `go vet` in isolation (test file references a symbol landing in the next commit); production code compiles at every commit; history not rewritten."
+  - "Pre-existing failures not attributable to this card, reproduced at base bbd42508b in a separate clone: internal/cli TestGTDAllTodoVerbsParity; internal/hook TestFactoryLaneRecordsItsNumberAndLeadRecordsZero (same finding as card t868). Not fixed."
+  - "A1 residual — the fill lock's staleness reclaim keeps a test-and-remove window; narrowed, never eliminated; worst case exactly one extra child. Stated as a residual, not closed."
+  - "spec lint: 0 errors, 22 warnings. 12 are CoverageIncomplete ('REQ-DCF-NNN is not referenced by any AC'), which the rule measures inside spec.md alone. Coverage is real and lives in acceptance.md — `comm -23` over the REQ id sets of spec.md and acceptance.md prints nothing (16 REQs, all cited). Closing the warnings would mean citing AC ids in the spec.md body, which manager-docs may not edit; surfaced for manager-spec rather than repaired here."
+  - "spec lint INFO OwnershipTransitionUnmeasured: the draft → in-progress transition commit 8f2b92126 carries no Authored-By-Agent trailer, so it cannot be attributed. This sync commit carries `Authored-By-Agent: manager-docs`; the run-phase commit is history and was not rewritten."
+mx_tag_validation: "sync sub-step; no new exported high-fan-in surface introduced beyond the annotated entry points — existing @MX annotations reviewed, none added or removed"
+```
 
 🗿 MoAI
