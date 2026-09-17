@@ -305,6 +305,11 @@ moai init my-project --llm gpt   # Codex-only project
 
 A project initialized before this choice existed has no `llm.harness` key and keeps the `claude` behavior on update — nothing to migrate.
 
+> **GPT gateway withdrawn (2026-09-16).** The former `moai gpt` launcher — Claude Code driven by GPT
+> models through the built-in translation gateway — has been removed. GPT models are reached through
+> their native harness instead: `moai codex` (Codex CLI). The `--llm gpt` init value above is
+> unaffected; it selects the Codex-only deployment, not the withdrawn launcher.
+
 ### First workflow
 
 ```bash

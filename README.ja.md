@@ -299,6 +299,11 @@ cd my-project
 | `gpt` | Codex のみのデプロイ: `AGENTS.md` と Codex サーフェス（`.codex/`、`.agents/skills/`、`.moai/`）のみ。`.claude/` ツリー、`CLAUDE.md`、`.mcp.json` は生成されません。Claude 専用ランタイム機能（AskUserQuestion、サブエージェント、output style、スラッシュコマンド、Workflow スクリプト）は利用できません |
 | `both` | `claude` デプロイに `.codex/` 接続を追加。`.mcp.json` のプロビジョニングは強制有効化されます |
 
+
+> **GPT ゲートウェイの撤回（2026-09-16）。** 内蔵トランスレーションゲートウェイで GPT モデルを
+> Claude Code に載せていた旧 `moai gpt` ランチャーは削除されました。GPT モデルはネイティブハーネスの
+> `moai codex`（Codex CLI）から利用してください。上記の `--llm gpt` init 値には影響しません —
+> 撤回されたランチャーではなく、Codex 専用デプロイを選ぶ値です。
 ```bash
 moai init my-project --llm gpt   # Codex のみのプロジェクト
 ```

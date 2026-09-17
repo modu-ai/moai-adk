@@ -299,6 +299,10 @@ cd my-project
 | `gpt` | Codex 단독 배포: `AGENTS.md`와 Codex 표면(`.codex/`, `.agents/skills/`, `.moai/`)만 설치. `.claude/` 디렉터, `CLAUDE.md`, `.mcp.json`은 생기지 않는다. Claude 전용 런타임 기능(AskUserQuestion, 서브에이전트 소환, output style, 슬래시 명령, Workflow 스크립트)은 사용할 수 없다 |
 | `both` | `claude` 배포에 `.codex/` 연결을 더한다. `.mcp.json` 프로비저닝은 강제로 켜진다 |
 
+
+> **GPT 게이트웨이 철회(2026-09-16).** 내장 번역 게이트웨이로 GPT 모델을 Claude Code에 얹던 옛 `moai gpt`
+> 런처는 제거되었습니다. GPT 모델은 이제 원래 하네스인 `moai codex`(Codex CLI)로 사용합니다. 위의
+> `--llm gpt` init 값은 영향을 받지 않습니다 — 철회된 런처가 아니라 Codex 단독 배포를 선택하는 값입니다.
 ```bash
 moai init my-project --llm gpt   # Codex 단독 프로젝트
 ```
