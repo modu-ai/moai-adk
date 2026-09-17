@@ -162,7 +162,7 @@ branch `WT-syncgate-hook`, run-phase code-final HEAD `23e8cd61e`.
 ```yaml
 sync_status: audit-ready
 sync_complete_at: 2026-09-18
-sync_commit_sha: pending-backfill
+sync_commit_sha: e25e6440d8174ac69ec335ef267b06de6dfa71a5
 ```
 
 **CHANGELOG entry.** `CHANGELOG.md` `[Unreleased]` section, grouped with the sibling
