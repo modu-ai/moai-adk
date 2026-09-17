@@ -202,6 +202,8 @@ The obligation binds card-delivering pull requests only; a release, batch, or ma
 
 The lead dispatches this rather than assuming it: each instruction names the worktree and says to drive it with `git -C <path>` rather than `cd` — a `cd` inside a compound command lasts for that invocation only, so the next command silently reads the wrong tree. A companion reporting it worked in the shared checkout is a fault to report, not a detail to tidy up (rationale: `kanban-dispatch-detail.md` § Isolation rationale).
 
+[HARD] **Inside a worktree session that `<path>` is the worktree's own absolute path**, and the dispatch writes it that way. Measured on Claude Code 2.1.275: the guard refuses `-C .`, a relative path, a path computed at runtime, and a path outside this worktree — three distinct refusal messages, none of them a runtime defect. Plain git (pipes and `&&` chains included), `git -C <own absolute path>`, and `--git-dir=<own .git>` pass; so does `cd <own worktree> && git …`, which the rule above still advises against for the reason it gives. The refusal is git-scoped: a command carrying no git passes with substitution, loops, redirects, or a heredoc body naming a git command.
+
 ## Verification load is lane-local
 
 [HARD] **Lane-local verification is scoped to the card.** A lane runs the tests its own change can affect, then pushes and lets CI run the full suite — the better evidence: the full suite, in a clean environment, against the actual pull-request head. A full-suite run on a loaded developer machine measures the machine, not the code. (Incident record — load 413, orphaned spin loops, the contention↔flakiness loop: `kanban-dispatch-detail.md` § Verification load incident record.)
