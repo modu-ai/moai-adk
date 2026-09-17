@@ -1,7 +1,7 @@
 # Plan — SPEC-DOCTOR-TEST-CWD-ISOLATION-001
 
 Card t675 · worktree `.claude/worktrees/t675` · branch `WT-doctor-red` · RED baseline
-`dd235a66b` (full SHA recorded in `spec.md §3.1`) · Tier S · plan version 0.3.0 (2026-09-18)
+`dd235a66b` (full SHA recorded in `spec.md §3.1`) · Tier S · plan version 0.3.1 (2026-09-18)
 
 ## §A Context
 
@@ -35,7 +35,9 @@ embedded-C1 hypothesis and Tier M Class B classification.
   bodies; no adjacent coverage cleanup belongs in this card.
 - The diff-based criteria (AC-DTC-003..005) use `develop...HEAD`, whose left end is the merge-base
   with local `develop`. They are pre-merge evaluations only: once the card merges into `develop` the
-  range is empty and the checks would pass vacuously.
+  range is empty, so the "exactly three paths" (AC-DTC-003) and "exactly nine added lines/statements"
+  (AC-DTC-004 condition (2), AC-DTC-005) conditions are unmet and the checks report failure — not a
+  vacuous pass. Post-merge evidence is the merge tree's identity with the card branch tree instead.
 
 ## §C Pre-flight
 

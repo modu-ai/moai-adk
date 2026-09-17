@@ -1,7 +1,7 @@
 ---
 id: SPEC-DOCTOR-TEST-CWD-ISOLATION-001
 title: "Isolate full doctor command tests from the repository working directory"
-version: "0.3.0"
+version: "0.3.1"
 status: draft
 created: 2026-09-13
 updated: 2026-09-18
@@ -21,7 +21,9 @@ tier: S
 | Version | Date | Author | Change |
 |---------|------|--------|--------|
 | 0.1.0 | 2026-09-13 | manager-spec | Initial Tier S plan-phase draft for card t675; operator-directed CWD-isolation scope supersedes the earlier embedded-C1 hypothesis and Tier M Class B classification. |
+| 0.2.0 | 2026-09-13 | manager-spec | Committed draft audited by plan-audit iteration 1 (FAIL 0.67): four requirements, two inline ACs, RED evidence pinned to baseline `74d872aafbd90235e67163a5bc233f7c8a934491` (recovered from commit `49bf74a82`). |
 | 0.3.0 | 2026-09-18 | manager-spec | Plan-audit FAIL 0.67 remediation (D1-D5 + MP-9 GAP). One `shall` per requirement (REQ-DTC-002/003 split, renumbered to six); cleanup rewritten as two observable outcomes with the framework mechanism moved to `plan.md §D C3`; RED ledger re-measured on `dd235a66b` with raw output persisted and quoted verbatim; ACs restated against the implementation descendant; assertion-deletion and bare-`os.Chdir` mutant criteria added; plan milestones bind ACs through `Exit:` lines. Scope unchanged. |
+| 0.3.1 | 2026-09-18 | manager-spec | Wording-only corrections from plan-audit iteration 2 optional defects (O1-O3); no requirement or AC semantics change. O1: added the missing 0.2.0 row. O2: post-merge behavior of AC-DTC-003..005 restated as failure on the empty range, not a vacuous pass (`plan.md §B`, §3 preamble). O3: the no-injection pass citation in §1 re-measured with the exact anchored nine-test selector (previous selector `'TestRunDoctor_|TestDoctorCmd_'` matched 27 tests). |
 
 ## §1 Problem Statement
 
@@ -34,9 +36,15 @@ repository's `bin/moai` or the executable named by `MOAI_EMBED_CHECK_BIN`.
 The nine tests therefore depend on ambient repository state that their assertions do not own. On
 the RED baseline `dd235a66b` (§3.1), injecting `MOAI_EMBED_CHECK_BIN=/usr/bin/false` makes the
 representative test and all nine scoped tests fail with `doctor: 1 check(s) failed`. Without that
-injection the same nine tests pass on this tree only because no `bin/moai` exists, so the check
-skips (`progress.md §E.1a`). The test verdict changes with ambient doctor inputs rather than with
-the behavior each test intends to verify.
+injection the same nine tests pass only because no `bin/moai` exists, so the check skips
+(`progress.md §E.1a`): on HEAD `8831e42972d779bb8b2b0efee911e33d9943b3d0` (no Go change relative
+to `dd235a66b`), the exact anchored selection
+`go test -count=1 -v -run '^(TestRunDoctor_WithExport|TestRunDoctor_WithFix|TestRunDoctor_Verbose|TestRunDoctor_AllFlags|TestRunDoctor_VerboseAndDetail|TestRunDoctor_ExportMode|TestDoctorCmd_Execution|TestDoctorCmd_ExportFlag|TestDoctorCmd_VerboseExecution)$' ./internal/cli/`
+exited 0 with exactly nine `--- PASS:` lines naming the nine tests of §1, zero `--- FAIL` lines, and
+`ok  	github.com/modu-ai/moai-adk/internal/cli	106.622s` (raw output
+`.moai/reports/t675/red/natural-9-anchored.txt`, sha256
+`97c975d464b2780799f9bc3ee1b444508b8536b21f6b2f9fce9ed4cb1ed0a8c0`). The test verdict changes with
+ambient doctor inputs rather than with the behavior each test intends to verify.
 
 The scope is limited to these nine tests across three existing test files:
 
@@ -86,7 +94,8 @@ All criteria are evaluated on the **implementation descendant**: a commit on `WT
 descends from the RED baseline `dd235a66b1145922565841d33acafef0d1ded6a8` and contains the isolation
 change. The RED baseline itself is recorded only in the §3.1 ledger and is expected to fail
 AC-DTC-001, AC-DTC-002, and AC-DTC-005. AC-DTC-003..005 read the range `develop...HEAD` (left end =
-merge-base with local `develop`) and are valid only while the card is unmerged.
+merge-base with local `develop`) and are valid only while the card is unmerged; after merge the range
+is empty and their exact-count conditions report failure rather than a vacuous pass.
 
 ### AC-DTC-001 — Representative complete doctor run ignores the poisoned repository target
 
