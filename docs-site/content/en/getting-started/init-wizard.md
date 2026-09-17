@@ -142,8 +142,6 @@ Choose the project collaboration mode.
   Team - Multi-developer setup
 ```
 
-This setting is saved in the `project.mode` field of `.moai/config/sections/project.yaml`.
-
 ### design workflow
 
 Choose whether to enable the MoAI design pipeline and Claude Design integration.
@@ -160,7 +158,6 @@ By specifying all values with flags, you can initialize without the wizard:
 ```bash
 moai init my-project \
   --non-interactive \
-  --project-mode personal \
   --profile medium \
   --enable-lsp=false \
   --enforce-quality

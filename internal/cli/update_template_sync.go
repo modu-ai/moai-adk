@@ -75,6 +75,71 @@ func runTemplateSync(cmd *cobra.Command) error {
 	return runTemplateSyncWithReporter(cmd, nil, false)
 }
 
+// managedRedeployCount derives the outcome-summary accounting from the
+// template list the deployer reports: the rendered-target set (each entry
+// stripped of its .tmpl suffix — the deployed path) for the removal
+// accounting, and the count of MoAI-managed files the deploy writes.
+//
+// Each rendered deployment target counts ONCE: a `.sh`/`.sh.tmpl` deployment
+// pair (both list entries converging on the same stripped target — the 4
+// hook-wrapper pairs) is one deployed file, not two
+// (SPEC-INIT-UPDATE-CONSISTENCY-001 REQ-ICU-003). The ListTemplates
+// stripped-target contract itself is untouched — the dedupe lives in the
+// counting source only (plan §G).
+func managedRedeployCount(templateFiles []string) (managedRedeployed int, restoredSet map[string]bool) {
+	restoredSet = make(map[string]bool, len(templateFiles))
+	seenTargets := make(map[string]bool, len(templateFiles))
+	for _, tmpl := range templateFiles {
+		if before, ok := strings.CutSuffix(tmpl, ".tmpl"); ok {
+			tmpl = before
+		}
+		target := filepath.ToSlash(tmpl)
+		restoredSet[target] = true
+		if seenTargets[target] {
+			// A .tmpl entry whose stripped target was already counted via
+			// its rendered sibling is the same deployed file.
+			continue
+		}
+		seenTargets[target] = true
+		if plan.IsMoaiManaged(target) {
+			managedRedeployed++
+		}
+	}
+	return managedRedeployed, restoredSet
+}
+
+// presentArchiveDriftRoots lists the archive-drift backup roots that exist
+// under .moai/archive/skills (the v<ver>-drift-<stamp> directories
+// archiveLegacySkills creates under --force), as project-root-relative slash
+// paths. Read-only; used to diff which roots a run created
+// (SPEC-INIT-UPDATE-CONSISTENCY-001 REQ-ICU-004).
+func presentArchiveDriftRoots(projectRoot string) map[string]bool {
+	pattern := filepath.ToSlash(filepath.Join(projectRoot, ".moai", "archive", "skills")) +
+		"/" + archiveVersion + "-drift-*"
+	matches, _ := filepath.Glob(pattern)
+	set := make(map[string]bool, len(matches))
+	for _, m := range matches {
+		set[filepath.ToSlash(m)] = true
+	}
+	return set
+}
+
+// newArchiveDriftRoots returns the project-root-relative paths of the drift
+// roots present now that were absent from before — the roots this run created.
+func newArchiveDriftRoots(projectRoot string, before map[string]bool) []string {
+	var created []string
+	for path := range presentArchiveDriftRoots(projectRoot) {
+		if !before[path] {
+			display := path
+			if rel, relErr := filepath.Rel(filepath.ToSlash(projectRoot), path); relErr == nil {
+				display = rel
+			}
+			created = append(created, display)
+		}
+	}
+	return created
+}
+
 // @MX:NOTE: [AUTO] runTemplateSyncWithReporter — M4-S4d-2 DDD migration. Top-level header/section/
 // final-outcome lines are converted to tui.KV / tui.Section / tui.CheckLine / tui.Pill. Sub-step
 // micro messages (\r-prefixed sym* helpers) are preserved because they drive the progress display.
@@ -168,17 +233,7 @@ func runTemplateSyncWithReporter(cmd *cobra.Command, reporter project.ProgressRe
 	// the deploy writes anyway (and keep the rendered-target set for the
 	// removal accounting) so the outcome summary reports the real total.
 	templateFiles := deployer.ListTemplates()
-	managedRedeployed := 0
-	restoredSet := make(map[string]bool, len(templateFiles))
-	for _, tmpl := range templateFiles {
-		if before, ok := strings.CutSuffix(tmpl, ".tmpl"); ok {
-			tmpl = before
-		}
-		restoredSet[filepath.ToSlash(tmpl)] = true
-		if plan.IsMoaiManaged(tmpl) {
-			managedRedeployed++
-		}
-	}
+	managedRedeployed, restoredSet := managedRedeployCount(templateFiles)
 
 	// Analyze merge changes. The "Analyzing merge changes" header + the
 	// classification card are shown only when this function owns the
@@ -243,6 +298,13 @@ func runTemplateSyncWithReporter(cmd *cobra.Command, reporter project.ProgressRe
 	// guardFirstDestructiveStep, which writes the crash-window copies into this
 	// run-scoped directory before anything is removed.
 	var configBackupPath string
+
+	// SPEC-INIT-UPDATE-CONSISTENCY-001 REQ-ICU-004: the namespace backup root
+	// and the archive-drift roots created this run, so the outcome summary can
+	// name every backup root (record-only roots — no consolidation).
+	var nsBackupPath string
+	var nsBackupDisplay string
+	var archiveDriftRootsCreated []string
 
 	// t40 defect 2: read-only snapshot of the managed roots, taken inside the
 	// Clean step immediately before the removal, so the outcome summary can
@@ -322,6 +384,10 @@ func runTemplateSyncWithReporter(cmd *cobra.Command, reporter project.ProgressRe
 				// (SPEC-V3R6-UPDATE-ARCHIVE-CONTRACT-001 REQ-UAC-002). An archive
 				// failure warns and does not stop the update.
 				legacyBefore := presentLegacySkillIDs(projectRoot)
+				// REQ-ICU-004: snapshot the archive-drift roots before the
+				// archive step so only roots THIS run created reach the
+				// outcome summary.
+				driftBefore := presentArchiveDriftRoots(projectRoot)
 				archived, archiveErr := archiveLegacySkills(projectRoot, out, forceBackup)
 				if archiveErr != nil {
 					_, _ = fmt.Fprintln(out, tui.CheckLine("warn", "Legacy skill archive", "failed", archiveErr.Error(), &th))
@@ -329,6 +395,7 @@ func runTemplateSyncWithReporter(cmd *cobra.Command, reporter project.ProgressRe
 				// A skill present now but not archived is deleted by the removal
 				// below, so the shortfall is reported as a loss.
 				reportArchiveShortfall(legacyBefore, archived, out)
+				archiveDriftRootsCreated = newArchiveDriftRoots(projectRoot, driftBefore)
 
 				// t40 defect 2: snapshot what exists under the managed roots
 				// BEFORE the removal (read-only; the deletion below is
@@ -463,7 +530,8 @@ func runTemplateSyncWithReporter(cmd *cobra.Command, reporter project.ProgressRe
 			// (REQ-UNP-004). Sequential after .moai/config backup. Skips silently
 			// when no user-owned content exists (EC-UNP-001).
 			plNsBackup := tui.ProgressLine(out, "Backing up user-owned namespace...", nil)
-			nsBackupPath, nsBackupErr := backupUserOwnedNamespace(projectRoot)
+			var nsBackupErr error
+			nsBackupPath, nsBackupErr = backupUserOwnedNamespace(projectRoot)
 			if nsBackupErr != nil {
 				plNsBackup.Fail(fmt.Sprintf("Namespace backup failed: %v", nsBackupErr))
 				if reporter != nil {
@@ -477,6 +545,7 @@ func runTemplateSyncWithReporter(cmd *cobra.Command, reporter project.ProgressRe
 				if rel, relErr := filepath.Rel(projectRoot, nsBackupPath); relErr == nil {
 					displayNs = rel
 				}
+				nsBackupDisplay = displayNs
 				plNsBackup.Done(fmt.Sprintf("User-owned namespace backed up: %s", displayNs))
 			} else {
 				plNsBackup.Done("No user-owned namespace to back up")
@@ -605,7 +674,11 @@ func runTemplateSyncWithReporter(cmd *cobra.Command, reporter project.ProgressRe
 	// t40 defect 2: the pill total includes the managed re-deployments and
 	// the note carries the removal accounting (local-only losses named by
 	// count).
-	detail := updateOutcomeDetail{ManagedRedeployed: managedRedeployed}
+	detail := updateOutcomeDetail{
+		ManagedRedeployed:   managedRedeployed,
+		NamespaceBackupPath: nsBackupDisplay,
+		ArchiveDriftRoots:   archiveDriftRootsCreated,
+	}
 	for _, f := range preCleanFiles {
 		detail.RemovedManaged++
 		if !restoredSet[f] {

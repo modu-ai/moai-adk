@@ -142,8 +142,6 @@ TRUST 5 品質ゲートの強制有無を選択します。
   Team - Multi-developer setup
 ```
 
-この設定は `.moai/config/sections/project.yaml` の `project.mode` フィールドに保存されます。
-
 ### design workflow
 
 MoAI デザインパイプラインと Claude Design 連携を有効化するか選択します。
@@ -160,7 +158,6 @@ MoAI デザインパイプラインと Claude Design 連携を有効化するか
 ```bash
 moai init my-project \
   --non-interactive \
-  --project-mode personal \
   --profile medium \
   --enable-lsp=false \
   --enforce-quality
