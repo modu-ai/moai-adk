@@ -1,7 +1,7 @@
 ---
 id: SPEC-GTD-CANON-BODY-001
 title: "gtd canonical body migration — move the workflows/todo.md body into workflows/gtd.md and retire the todo body"
-version: "0.3.0"
+version: "0.3.1"
 status: draft
 created: 2026-09-18
 updated: 2026-09-18
@@ -26,6 +26,7 @@ related_specs: []
 | 0.2.0 | 2026-09-18 | manager-spec | Plan-audit iteration 1 (FAIL 0.71) revisions D1-D14: baseline-delta test gate, script-based residual and body checks with observed RED and mutant controls, mirror `${CLAUDE_SKILL_DIR}` rule, catalog hash regeneration, per-verb GTD stage checks, historical set widened to CHANGELOG.md and top-level reports/, measured file count, comment citations made required, REQ-GCB-011 split. |
 | 0.2.1 | 2026-09-18 | manager-spec | Plan-audit iteration 2 PASS 0.86; pre-run amendments N1 (bash-only guard + 113-line PASS floor), N2 (two-way flag set equality), N4 (per-package slot lease, exit 3/4 handling), N5 (M0 timeout is a Gap), N6 (6th/sixth-stage regex), N10 (single evidence file naming); cheap extras N3 (build-failed delta), N7 (exclude own review files), N8 (TestManifestHashFormat). |
 | 0.3.0 | 2026-09-18 | manager-spec | Scope change from the lead: `TestGTDCanonicalSurfaceGolden` and `TestGTDAllTodoVerbsParity` now owned by t867 (moved from t854). Added REQ-GCB-014 and AC-GCB-012; both tests removed from the baseline set; failure causes measured (§C.4); parity repair left as an operator decision (plan.md §B.1); develop absorption before M0 (plan.md §D). |
+| 0.3.1 | 2026-09-18 | manager-spec | Operator decision via the lead: parity repair option A (`answer` gtd-only, test expectation only, CLI unchanged). M3.8 unblocked. Added REQ-GCB-015 and AC-GCB-013 (isolated `moai todo answer t1 x` observation; a card-adding result is a finding, not fixed). The M3.7 commit message must cite `1dcaad954` (t860) and `61582178d` (t861). Local `.claude/commands/moai/todo.md` wording stays a finding only. Kickoff approved. |
 
 ## §A Context
 
@@ -98,7 +99,11 @@ While verifying this change locally, the implementer shall not run `go test ./..
 
 ### REQ-GCB-014 — GTD surface tests owned by this card pass
 
-When run-phase completes, `TestGTDCanonicalSurfaceGolden` (`./internal/template/`) and `TestGTDAllTodoVerbsParity` (`./internal/cli/`) shall each pass when run alone by exact name. The repair shall keep the `moai todo` and `/moai:todo` compat aliases working. It shall touch no Go code outside `internal/cli` and `internal/template`. It shall make no CLI behavior change beyond the one the operator selects for the parity decision in plan.md §B.1.
+When run-phase completes, `TestGTDCanonicalSurfaceGolden` (`./internal/template/`) and `TestGTDAllTodoVerbsParity` (`./internal/cli/`) shall each pass when run alone by exact name. The repair shall keep the `moai todo` and `/moai:todo` compat aliases working. It shall touch no Go code outside `internal/cli` and `internal/template`. It shall make no CLI behavior change. Per the operator decision (option A, plan.md §B.1), `answer` stays a gtd-only verb: the parity repair adds `"answer"` to `gtdWant` in `internal/cli/gtd_compat_test.go` only, and the `moai todo` verb set is unchanged.
+
+### REQ-GCB-015 — Isolated observation of `moai todo answer`
+
+When run-phase executes `moai todo answer t1 x`, it shall run against an isolated queue: `MOAI_HOME` set to an absolute temporary directory, and `CLAUDE_PROJECT_DIR` set to a temporary git repository that is also the working directory. It shall never touch the real `~/.moai` queue. The run shall record in `.moai/reports/t867/verdict.md` whether the invocation was refused or added a card. If it added a card, the behavior shall be reported as a finding and shall not be fixed by this SPEC.
 
 ## §C Scope
 
@@ -148,7 +153,8 @@ Ownership moved to t867 from card t854 because both tests overlap this card's GT
   - Cause: `moai gtd` gained the `answer` verb (commit `1b644372d`, cards t863/t864), but the test's `gtdWant` (lines 51-54) was not updated.
   - The `t.Fatalf` at line 61 stops the test, so the todo-surface check (line 63) and the per-verb help/flag parity loop were **not reached**.
   - `moai todo answer --help` (scratch binary built from this tree) exits 0 and prints the todo root Long help, so `answer` is not a todo subcommand.
-  - Repair class: **undecided**; see plan.md §B.1.
+  - Repair class: **option A (operator decision, 2026-09-18)**. The fix is test-expectation only (`"answer"` added to `gtdWant`); the CLI is unchanged. See plan.md §B.1.
+  - The alias template wording that `TestGTDCanonicalSurfaceGolden` must follow was introduced by commits `1dcaad954` (t860) and `61582178d` (t861), measured with `git log --oneline -- internal/template/templates/.claude/commands/moai/todo.md` on this tree.
 
 ### §C.5 Local command-body divergence (finding only)
 
@@ -166,6 +172,8 @@ The local `.claude/commands/moai/todo.md` line 7 still reads `Use Skill("moai") 
 
 - Fixing any of the five t854-owned tests in §C.3 (the two GTD-surface tests in §C.4 are in scope)
 - Changing the local `.claude/commands/moai/todo.md` dispatch line (§C.5)
+- Exposing `answer` on the `moai todo` alias (operator rejected option B)
+- Fixing `moai todo answer t1 x` behavior if the REQ-GCB-015 observation shows it adds a card (reported as a finding)
 
 ### Out of Scope — runtime wording and generated project docs
 

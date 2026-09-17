@@ -14,7 +14,9 @@ Tier M, Class C. Body migration from `workflows/todo.md` to `workflows/gtd.md`, 
 - **Plan-time finding:** `internal/cli/todo.go:211` names `workflows/todo.md` inside the Cobra Long help string. That is user-visible text, so fixing it is required.
 - **Measured (`e4cc628e9`):** `internal/template/gtd_canonical_surface_test.go:24` fails because the literal it requires (`arguments: gtd $ARGUMENTS`, line 23) predates the t860/t861 wording ``with arguments: `gtd` $ARGUMENTS``. The repair aligns the test literal to the landed wording (spec.md §C.4). It needs no command-body change and no operator decision.
 
-### §B.1 Operator decision — parity repair [NEEDS CLARIFICATION: TestGTDAllTodoVerbsParity repair direction]
+### §B.1 Operator decision — parity repair (RESOLVED: option A, 2026-09-18, via lead)
+
+**Decision:** option A. `answer` stays gtd-only; add `"answer"` to `gtdWant` in `internal/cli/gtd_compat_test.go` only; the CLI is unchanged. The options as they were presented are kept below for the record.
 
 `internal/cli/gtd_compat_test.go:61` fails because `moai gtd` has `answer` (commit `1b644372d`) and the test's `gtdWant` does not. `moai todo` has no `answer` subcommand. Both options stay inside `internal/cli` and keep `moai todo` / `/moai:todo` working. Choosing between them changes (or preserves) the CLI surface, so this SPEC does not decide.
 
@@ -23,7 +25,7 @@ Tier M, Class C. Body migration from `workflows/todo.md` to `workflows/gtd.md`, 
 | A — `answer` stays gtd-only | Add `"answer"` to `gtdWant` only (test file). No Go production change. | The CLI surface is unchanged. `answer` joins capture/clarify/organize/reflect/engage as a gtd-only verb, so the todo alias keeps exactly the historical todo verb set. `moai todo answer …` stays unavailable. How a multi-word `moai todo answer t1 text` is treated today (refused as a mistyped verb, or added as a card via the phrase fallthrough) was **not measured**; run-phase must observe it in an isolated `todoFixture` queue before landing, and the verdict records it. |
 | B — expose `answer` on the todo alias | Register `answer` on the `moai todo` command in `internal/cli`, and add `"answer"` to both `todoWant` and `gtdWant`. | A CLI behavior change: the compat alias gains a verb it never had. The parity loop then also asserts identical Use/Short/flags/help for `answer` on both roots. `workflows/gtd.md` must list `answer` among the verbs the alias shares, and the alias stops being "the historical todo verbs". |
 
-Run-phase applies whichever option the operator selects. Until then, AC-GCB-012 is satisfiable by either option and the M3.7 step is blocked.
+Run-phase applies option A (M3.8). The unmeasured `moai todo answer t1 x` behavior is observed against an isolated queue under AC-GCB-013. A card-adding result is a finding and is not fixed.
 - **Plan-time finding:** `make build` runs `gen-catalog-hashes.go --all` (Makefile:35). Changing the `moai` skill tree, `moai-kanban-foreman` and `manager-lead` therefore changes `internal/template/catalog.yaml` hashes, which `TestCatalogHashCoversSkillSubfiles` pins. The regenerated catalog must be committed.
 - **Plan-time finding:** the template mirror `SKILL.md` must not contain `${CLAUDE_SKILL_DIR}` (`TestSkillTreeHasNoClaudeSkillDirToken`). The mirror writes `.claude/skills/moai/workflows/<x>.md` (mirror SKILL.md lines 126/134/142/150).
 - **Plan-time finding:** `Makefile`, `internal/template/skill_mirror*.go` and `internal/template/commandemit/*` enumerate no `workflows/todo.md`. The `todo.md` that `commandemit` mentions is `commands/moai/todo.md`, which is retained.
@@ -72,8 +74,9 @@ Record the failing test-name sets at pre-edit HEAD for both packages (AC-GCB-010
 4. `backlog_json_disclosure_mirror_test.go`: file list (line 25) and comment (line 5) → `workflows/gtd.md`.
 5. `todo.go:211` Long help → `workflows/gtd.md`.
 6. Comments (required): `todo_drop.go:16`, `todo_edit_move.go:8`, `todo_edit_move.go:100`, `todo_test.go:665`.
-7. `internal/template/gtd_canonical_surface_test.go:23`: align the thin-path literal to the landed dispatch wording (``arguments: `gtd` $ARGUMENTS``). Then confirm by name that both todo paths and the `publishedSkillNames == 17` check are reached and pass. Those two checks were not reached at plan time.
-8. `internal/cli/gtd_compat_test.go`: apply the operator's §B.1 option (A: test expectation only; B: todo registration plus both expectations). **Blocked until selected.**
+7. `internal/template/gtd_canonical_surface_test.go:23`: align the thin-path literal to the landed dispatch wording (``arguments: `gtd` $ARGUMENTS``). Then confirm by name that both todo paths and the `publishedSkillNames == 17` check are reached and pass. Those two checks were not reached at plan time. The commit message for this step must cite the commits whose wording it follows: `1dcaad954` (t860) and `61582178d` (t861).
+8. `internal/cli/gtd_compat_test.go`: add `"answer"` to `gtdWant` only (option A). No production Go change, and `todoWant` unchanged.
+9. Observe `moai todo answer t1 x` against an isolated queue (AC-GCB-013) and record the refused-or-added result in the verdict.
 
 ### M4 — Delete todo body and clean residual references (Priority Medium)
 

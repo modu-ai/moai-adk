@@ -136,7 +136,26 @@ Given the migrated tree, When each of these runs, Then each prints exactly one `
 - `go test -timeout 5m -count=1 -v -run '^TestGTDAllTodoVerbsParity$' ./internal/cli/`
 
 Neither test file may lose an assertion. `git diff <base>...HEAD -- internal/template/gtd_canonical_surface_test.go internal/cli/gtd_compat_test.go` must show no removed `t.Fatalf` / `t.Errorf` line without a replacement assertion of the same check.
-- RED-now: L13 and L14. Green path: M3.7 (literal alignment) and M3.8 (the operator's §B.1 option). Under option B, `$BIN todo answer --help` must also print the `answer` usage (`moai todo answer <t-id> <text>`).
+- RED-now: L13 and L14. Green path: M3.7 (literal alignment) and M3.8 (option A: `"answer"` added to `gtdWant` only). Option A also requires `git diff f67d2193f...HEAD -- internal/cli` to show no change to any non-test `.go` file that registers todo or gtd subcommands, and `todoWant` in `gtd_compat_test.go` to stay byte-identical to base.
+- M3.7 commit trace: `git log --format=%B -1 <M3.7 commit>` contains both `1dcaad954` and `61582178d`.
+
+### AC-GCB-013 — isolated `moai todo answer t1 x` observation (REQ-GCB-015)
+
+Isolation mechanism, run in this order with bash from the worktree root. `$T` comes from `mktemp -d` under the session scratch directory and is an absolute path.
+
+1. `git init -q "$T/proj"`, then commit one empty commit there (`git -C "$T/proj" commit -q --allow-empty -m init`), so queue-root resolution sees a primary checkout.
+2. Real-queue sentinel before: `ls -l ~/.moai/db/*/todo/backlog.db > "$T/real-before.txt" 2>&1` (read-only listing of size and mtime).
+3. Positive control: `(cd "$T/proj" && MOAI_HOME="$T/moai-home" CLAUDE_PROJECT_DIR="$T/proj" $BIN todo add "control card")` must print `t1 1`. After it, `find "$T/moai-home" -name backlog.db` must print exactly one path, which proves the isolated store is the one written.
+4. Observation: `(cd "$T/proj" && MOAI_HOME="$T/moai-home" CLAUDE_PROJECT_DIR="$T/proj" $BIN todo answer t1 x)`. Record stdout, stderr and the exit code.
+5. Read-back: `(cd "$T/proj" && MOAI_HOME="$T/moai-home" CLAUDE_PROJECT_DIR="$T/proj" $BIN todo list --json)`, recording the `items` count.
+6. Real-queue sentinel after: `ls -l ~/.moai/db/*/todo/backlog.db > "$T/real-after.txt" 2>&1`, then `cmp "$T/real-before.txt" "$T/real-after.txt"` must exit 0.
+
+Given those steps, Then `.moai/reports/t867/verdict.md` records steps 3-6 verbatim and classifies the observation as exactly one of:
+- **refused**: non-zero exit, and the items count in step 5 is 1 (control only);
+- **added a card**: the items count in step 5 is 2. Recorded as a finding with the added card's text, and not fixed.
+
+An observation without step 3's single `backlog.db` under `$T/moai-home`, or with a non-zero `cmp` in step 6, is a Gap, not a classification. If the operator's own sessions write the real queue during the run, step 6 can differ for reasons unrelated to this test; that is recorded as a Gap, and step 3's isolation evidence still stands. The shell guard may reject the subshell form; in that case run each step as a separate invocation with the same env assignments and working directory, recorded verbatim.
+- RED-now: not applicable. This is an observation criterion; its failure direction is a missing or non-isolated observation.
 
 ### AC-GCB-011 — config key, historical records, citation inventory (REQ-GCB-010, REQ-GCB-011, REQ-GCB-012)
 
