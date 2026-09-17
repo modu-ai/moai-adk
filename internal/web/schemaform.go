@@ -441,7 +441,7 @@ func (a *app) applySchemaCurrent(view *pageView) error {
 	// pseudo-tier when any per-agent override is present. t840: fold the
 	// launcher-owned gateway signal so a console started inside a gpt session
 	// renders the inherit cell (llm.yaml carries no gpt signal of its own).
-	view.LLM = agentFMLiveLLM(cfg.LLM)
+	view.LLM = cfg.LLM
 	view.PerfTierCustom = len(cfg.LLM.AgentOverrides) > 0
 	return nil
 }

@@ -544,13 +544,6 @@ templ fieldsetAgentFrontmatter(view pageView) {
 		if agentFMIsGLMBackend(view.LLM) {
 			<p class="panel__help" data-i18n="agentfm.glmnote">Under a GLM backend every sub-agent inherits the session model (llm.glm.models), so effort is the only per-agent axis — each row shows the z.ai reasoning state its effort collapses to. The runtime delivers one session-wide reasoning value; these states record per-agent intent.</p>
 		}
-		// t840 web half: under a gateway (gpt) backend the launcher pins every
-		// alias slot to ONE gpt model id, so the per-agent model cell is a fixed
-		// inherit display and effort is the only editable axis — state that on
-		// the panel, gated on the gateway signal (disjoint from the GLM gate).
-		if agentFMIsGatewayBackend(view.LLM) {
-			<p class="panel__help" data-i18n="agentfm.gatewaynote">Under a gateway (gpt) backend every sub-agent inherits the session model — the launcher pins all Claude alias slots to one gpt model id — so the model cell is fixed to inherit and effort is the only per-agent setting.</p>
-		}
 		<p class="panel__help">
 			<span data-i18n="agentfm.taxonomy">workflow_agents purpose defaults follow the purpose taxonomy in</span>
 			<code class="key">.claude/rules/moai/workflow/dynamic-workflows.md</code>
@@ -629,32 +622,21 @@ templ agentFMRow(agent agentfm.AgentInfo, llm config.LLMConfig, errs map[string]
 					<span class="tr__desc" data-i18n={ "agentdesc." + agent.Name } data-i18n-baseline={ short }>{ short }</span>
 				}
 			</div>
-			// t840: under a gateway (gpt) backend the model axis is session-inherited
-			// (the launcher pins every alias slot to one gpt id), so the cell is a
-			// fixed inherit display, not a select. No model field submits;
-			// parseAgentFMForm backfills the unsubmitted model with the resolved value,
-			// so an effort-only save never corrupts the override.
-			if agentFMIsGatewayBackend(llm) {
-				<code class="key" data-model-inherit={ agent.Name } aria-label={ "Model for " + agent.Name } data-i18n-title="agentfm.gatewaynote">inherit</code>
-			} else {
-				<select class="sel" name={ "agentfm." + agent.Name + ".model" } id={ "agentfm." + agent.Name + ".model" } aria-label={ "Model for " + agent.Name }>
-					for _, m := range agentFMModelValues() {
-						if m == agentSelectedModel(llm, agent) {
-							<option value={ m } selected data-i18n-title={ "fieldDesc.agentfm.model." + m }>{ m }</option>
-						} else {
-							<option value={ m } data-i18n-title={ "fieldDesc.agentfm.model." + m }>{ m }</option>
-						}
+			<select class="sel" name={ "agentfm." + agent.Name + ".model" } id={ "agentfm." + agent.Name + ".model" } aria-label={ "Model for " + agent.Name }>
+				for _, m := range agentFMModelValues() {
+					if m == agentSelectedModel(llm, agent) {
+						<option value={ m } selected data-i18n-title={ "fieldDesc.agentfm.model." + m }>{ m }</option>
+					} else {
+						<option value={ m } data-i18n-title={ "fieldDesc.agentfm.model." + m }>{ m }</option>
 					}
-				</select>
-			}
+				}
+			</select>
 			<div>
 				// Haiku does not honor reasoning effort — disable the effort select
 				// (initial render, so the no-JS page is correct too). app.js re-toggles
 				// this live when the paired model select changes. A disabled select does
-				// not submit; parseAgentFMForm backfills the unsubmitted effort. Under a
-				// gateway backend the session model is a gpt id, never haiku, so the
-				// lock does not apply and effort stays the one editable axis.
-				<select class="sel" name={ "agentfm." + agent.Name + ".effort" } id={ "agentfm." + agent.Name + ".effort" } aria-label={ "Effort for " + agent.Name } disabled?={ !agentFMIsGatewayBackend(llm) && agentModelIsHaiku(llm, agent) }>
+				// not submit; parseAgentFMForm backfills the unsubmitted effort.
+				<select class="sel" name={ "agentfm." + agent.Name + ".effort" } id={ "agentfm." + agent.Name + ".effort" } aria-label={ "Effort for " + agent.Name } disabled?={ agentModelIsHaiku(llm, agent) }>
 					for _, e := range agentFMEffortValues() {
 						if e == agentSelectedEffort(llm, agent) {
 							<option value={ e } selected data-i18n-title={ "fieldDesc.agentfm.effort." + e }>{ e }</option>
@@ -665,7 +647,7 @@ templ agentFMRow(agent agentfm.AgentInfo, llm config.LLMConfig, errs map[string]
 				</select>
 				// Muted note explaining the disabled effort — present in the DOM always
 				// so app.js can toggle it client-side; hidden until the model is haiku.
-				<span class="field__help" data-haiku-hint data-i18n="hint.effort.haiku_na" hidden?={ agentFMIsGatewayBackend(llm) || !agentModelIsHaiku(llm, agent) }>Effort N/A for Haiku</span>
+				<span class="field__help" data-haiku-hint data-i18n="hint.effort.haiku_na" hidden?={ !agentModelIsHaiku(llm, agent) }>Effort N/A for Haiku</span>
 				// t66: the GLM reading of this row's effort — the z.ai reasoning
 				// state it collapses to, rendered only under a GLM backend. The
 				// tooltip reuses the canonical option keys the 3rd Party LLM

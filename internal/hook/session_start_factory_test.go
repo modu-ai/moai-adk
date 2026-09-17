@@ -25,6 +25,7 @@ func TestFactoryBootstrapNoticeSilentForOrdinarySession(t *testing.T) {
 // the `-f lane-<n>` form, the per-lane fan-out line, the leader socket
 // path, and the run id alongside the session name that must match it.
 func TestFactoryLeadNoticeCarriesLaneLinesSocketAndEntryGuide(t *testing.T) {
+	t.Setenv(config.EnvMoaiLaunchProvider, "")
 	clearKanbanEnv(t)
 
 	t.Setenv(config.EnvMoaiFactoryWorkers, "3")
@@ -67,6 +68,7 @@ var factoryLaunchLineRe = regexp.MustCompile(`moai cc -f lane-[0-9]+`)
 // TestFactoryLeadNoticeWorkerCountDrivesLineCount asserts N drives the line
 // count directly (the v1 no-upper-bound rule: any N >= 1 prints N lines).
 func TestFactoryLeadNoticeWorkerCountDrivesLineCount(t *testing.T) {
+	t.Setenv(config.EnvMoaiLaunchProvider, "")
 	clearKanbanEnv(t)
 
 	t.Setenv(config.EnvMoaiFactoryWorkers, "1")
