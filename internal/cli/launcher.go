@@ -813,8 +813,7 @@ func runLaunchClaude(profileName string, extraArgs []string) error {
 		if profileLeaseEnv != "" {
 			tryCmd.Env = append(os.Environ(), profileLeaseEnv)
 		}
-		var err error
-		err = tryCmd.Run()
+		err := tryCmd.Run()
 		if err == nil {
 			return nil
 		}

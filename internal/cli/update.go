@@ -21,7 +21,6 @@ import (
 	"github.com/modu-ai/moai-adk/internal/config/atomicfile"
 	"github.com/modu-ai/moai-adk/internal/defs"
 	"github.com/modu-ai/moai-adk/internal/execerr"
-	"github.com/modu-ai/moai-adk/internal/paths"
 	"github.com/modu-ai/moai-adk/internal/profile"
 	"github.com/modu-ai/moai-adk/internal/runtime/gobin"
 	"github.com/modu-ai/moai-adk/internal/shell"
@@ -852,7 +851,12 @@ func runShellEnvConfig(cmd *cobra.Command) error {
 //     flag never reached. Treating it as already-migrated lets Step 4
 //     clear the residue and the fingerprint converge.
 func runAgencyMigrationAdapter(projectRoot string, dryRun, force bool, out io.Writer) error {
-	homeDir, err := paths.Home()
+	// Resolve through the userHomeDirFn seam, not paths.Home() directly: the
+	// home lands in migrateAgencyRunner.homeDir, whose checkpointPath writes
+	// <home>/.moai/.migrate-tx-<id>.json on interrupt. paths.Home() is outside
+	// the package-wide test home sandbox (main_test.go, card t661), so a test
+	// driving `moai update` resolved the operator's real home here (card t813).
+	homeDir, err := userHomeDirFn()
 	if err != nil {
 		return fmt.Errorf("agency migration adapter: home dir: %w", err)
 	}

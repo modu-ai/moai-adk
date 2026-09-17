@@ -341,6 +341,40 @@ const (
 	// unboundedly — an advisory computation on the critical path must never block.
 	DefaultSessionStartDriftTimeout = 2 * time.Second
 
+	// Out-of-band drift-cache fill (SessionStart miss path). The three values
+	// below are ONE relationship, not three unrelated numbers, and they live
+	// here rather than inline so no threshold is hardcoded in business logic.
+
+	// DefaultDriftCacheFillTimeout is the deadline the fill child carries on
+	// its own invocation and exits at, computed or not. It is generous
+	// relative to a cold drift compute (sub-second on typical repositories,
+	// ~1s on a large one) because the child is detached, silent and
+	// single-flight — the deadline is a wedge guard, not a latency budget.
+	DefaultDriftCacheFillTimeout = 30 * time.Second
+
+	// DriftCacheFillTTLSlack is the headroom between the child deadline and the
+	// suppression TTL. It exists so the inequality below is a stated
+	// relationship a test can assert over resolved values.
+	DriftCacheFillTTLSlack = 30 * time.Second
+
+	// DefaultDriftCacheFillTTL bounds respawn to at most one attempt per TTL
+	// per HEAD, so a persistently broken child cannot produce a per-session
+	// spawn loop.
+	//
+	// INVARIANT: DefaultDriftCacheFillTTL >= DefaultDriftCacheFillTimeout +
+	// DriftCacheFillTTLSlack. A TTL shorter than the child's deadline lets a
+	// second session reclaim a record whose child is still legitimately
+	// computing, reintroducing the burst one TTL later.
+	DefaultDriftCacheFillTTL = 5 * time.Minute
+
+	// DriftCacheFillLockStaleness is the age at which the suppression lock —
+	// the companion `<record>.lock` the handler claims around its critical
+	// section — is considered abandoned by a handler that died inside it and
+	// may be reclaimed. Far longer than the section itself (a read, a judgement
+	// and one small write), so a lock older than this is certainly stale rather
+	// than merely contended.
+	DriftCacheFillLockStaleness = 2 * time.Minute
+
 	// DefaultDriftPerfFixtureSpecs is the synthetic SPEC-directory count the
 	// perf-regression fixture builds (REQ-SSP-014, N=500). It is the SSOT for the
 	// literal 500 so the fixture size is not an inline magic number.
@@ -932,6 +966,13 @@ func NewDefaultWorkflowConfig() WorkflowConfig {
 		// so this line is belt-and-braces: it makes the default readable from
 		// the struct rather than only from the resolver.
 		Project: WorkflowProjectConfig{Continuation: ProjectContinuationCard},
+		// The out-of-band drift-cache fill ships ENABLED. Unlike the guard
+		// family below it, this feature is not inert when on — it starts a
+		// child process on a cache miss — so the default is an accepted cost
+		// rather than a neutrality choice. See the WorkflowConfig.DriftCacheFill
+		// field comment. This entry is load-bearing: without it the zero value
+		// would ship the feature permanently off.
+		DriftCacheFill: WorkflowDriftCacheFillConfig{Enabled: true},
 		// SPEC-WORKTREE-BRANCH-GUARD-OPTIN-001 REQ-1/REQ-4: the guard ships
 		// default-OFF (opt-in). Distributed users get an inert guard; the
 		// maintainer of a shared multi-session checkout opts in via local

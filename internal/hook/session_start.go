@@ -324,17 +324,22 @@ func (h *sessionStartHandler) Handle(ctx context.Context, input *HookInput) (*Ho
 		// join would reintroduce the full serial input lag this refactor
 		// removed; the bound is the whole point.
 		//
-		// The drift seams (driftCountFn, sessionStartDriftTimeout) are
-		// snapshotted HERE (synchronously) so the background goroutine never
-		// concurrently reads the package-level vars while a test restores them
-		// in t.Cleanup — that would be a -race finding. The goroutine uses only
-		// the captured locals.
+		// SPEC-DRIFT-CACHE-FILL-001 REQ-DCF-011/REQ-DCF-012: drift is no longer
+		// COMPUTED here. It is resolved from the HEAD-SHA cache alone, and a
+		// miss is filled out of band by a detached child. The bounded join
+		// below therefore never carries a drift computation, which is the whole
+		// latency win: the compute (p50 967 ms cold) is strictly longer than
+		// the 250 ms bound in a process that exits when Handle returns, so
+		// every cold session used to pay the full bound and discard the result.
 		//
 		// @MX:WARN @MX:REASON bounded-background-goroutine join — if the scan
 		// exceeds deferredScanJoinBound it is abandoned for this session; safe
 		// because all work is idempotent and best-effort (next session re-derives).
-		driftFn := driftCountFn
-		driftTimeout := sessionStartDriftTimeout
+		//
+		// allowFill is snapshotted HERE (synchronously), like the seams before
+		// it, so the background goroutine never reads the package-level
+		// async-mode var while a test restores it in t.Cleanup.
+		allowFill := h.asyncDeferredScans()
 		projectDir := input.ProjectDir
 
 		if h.asyncDeferredScans() {
@@ -345,7 +350,7 @@ func (h *sessionStartHandler) Handle(ctx context.Context, input *HookInput) (*Ho
 			// this goroutine) so the deferred goroutine never reads the
 			// package-level var. nil in production.
 			completed := snapshotDeferredScanCompleted()
-			advisoryCh := h.spawnDeferredAdvisoryScans(projectDir, driftFn, driftTimeout, completed)
+			advisoryCh := h.spawnDeferredAdvisoryScans(projectDir, allowFill, completed)
 
 			// Timeout-bound join. On receive, merge the advisory keys into
 			// `data` before the final marshal so they ship in this session's
@@ -373,7 +378,7 @@ func (h *sessionStartHandler) Handle(ctx context.Context, input *HookInput) (*Ho
 			// leaks past the test boundary → no race against parallel tests
 			// that reassign os.Stderr / reset the slog handler. The advisory
 			// keys always land in `data` (there is no bound to exceed).
-			advisory := h.computeDeferredAdvisory(projectDir, driftFn, driftTimeout)
+			advisory := h.computeDeferredAdvisory(projectDir, allowFill)
 			if len(advisory) > 0 {
 				maps.Copy(data, advisory)
 			}
@@ -406,6 +411,22 @@ func (h *sessionStartHandler) Handle(ctx context.Context, input *HookInput) (*Ho
 	// Gated on input.SessionID != "" (research.md §D.0/D.1 P1-outcome
 	// implication): an empty UUID is never injected or written.
 	out := &HookOutput{Data: jsonData}
+
+	// REQ-V3R2-RT-007-021's third obligation (card t796): a failed migration is
+	// named to the user. The first two obligations live in the runner (version
+	// file not advanced, failure appended to .moai/logs/migrations.log); this is
+	// the only one on the hook surface, and it was missing — runMigration
+	// recorded the failure in Data, which carries json:"-" and never reaches
+	// Claude Code, and in slog, whose stderr the hook wrappers discard. The
+	// failure was recorded and invisible.
+	if notice := migrationFailureNotice(data); notice != "" {
+		if out.SystemMessage == "" {
+			out.SystemMessage = notice
+		} else {
+			out.SystemMessage += "\n\n" + notice
+		}
+	}
+
 	if input.SessionID != "" && input.ProjectDir != "" {
 		out.HookSpecificOutput = &HookSpecificOutput{
 			HookEventName: string(EventSessionStart),
@@ -689,6 +710,39 @@ func runSkillSymlinks(projectDir string) map[string]any {
 	return d
 }
 
+// migrationFailureNotice renders the user-facing notice for a failed
+// session-start migration, or "" when the data map records no failure.
+// Data["migration_error"] has exactly one writer (runMigration), so its
+// presence IS the failure signal.
+//
+// Three properties of the wording are deliberate:
+//
+//   - It carries no %d slot of its own. runMigration holds only the error, and
+//     the two failure shapes differ in what can be named: a failed apply
+//     already names its number inside the error text ("마이그레이션 %d 적용
+//     실패", migration/runner.go), while a pre-flight version-read failure has
+//     no migration to number. Wrapping the error names the migration wherever
+//     one exists, and invents nothing where none does.
+//   - The check name is capitalized. `moai doctor --check` filters on an exact,
+//     case-sensitive match (internal/cli/doctor.go), and the registered name is
+//     "Migration" — the lowercase spelling SPEC-V3R2-RT-007's AC-06 suggested
+//     matches no check and would run nothing, which is worse than naming no
+//     command at all.
+//   - The wrapped error may be Korean while this sentence is English. Rewriting
+//     the runner's error surface is a separate change; dressing up a root-cause
+//     error to read tidily is the worse trade.
+func migrationFailureNotice(data map[string]any) string {
+	failure, _ := data["migration_error"].(string)
+	if failure == "" {
+		return ""
+	}
+	return fmt.Sprintf(
+		"migration failed: %s — the version file was not advanced; "+
+			"details in .moai/logs/migrations.log; run 'moai doctor --check Migration'",
+		failure,
+	)
+}
+
 // runMigration applies pending migrations (REQ-020, REQ-021). Best-effort,
 // fail-open: a migration error is logged and surfaced via the returned data
 // map, but never propagated. cfg may be nil (handler is resilient to a nil
@@ -737,8 +791,7 @@ func runMigration(ctx context.Context, projectDir string, cfg *config.Config) ma
 // process that needs it.
 func (h *sessionStartHandler) spawnDeferredAdvisoryScans(
 	projectDir string,
-	driftFn func(context.Context, string) (int, error),
-	driftTimeout time.Duration,
+	allowFill bool,
 	completed chan struct{},
 ) <-chan map[string]any {
 	resultCh := make(chan map[string]any, 1)
@@ -746,7 +799,7 @@ func (h *sessionStartHandler) spawnDeferredAdvisoryScans(
 		if completed != nil {
 			defer close(completed)
 		}
-		advisory := h.computeDeferredAdvisory(projectDir, driftFn, driftTimeout)
+		advisory := h.computeDeferredAdvisory(projectDir, allowFill)
 		resultCh <- advisory
 	}()
 	return resultCh
@@ -761,8 +814,7 @@ func (h *sessionStartHandler) spawnDeferredAdvisoryScans(
 // @MX:NOTE: [AUTO] deferred advisory scans — best-effort, idempotent, non-blocking
 func (h *sessionStartHandler) computeDeferredAdvisory(
 	projectDir string,
-	driftFn func(context.Context, string) (int, error),
-	driftTimeout time.Duration,
+	allowFill bool,
 ) map[string]any {
 	res := make(map[string]any)
 
@@ -785,20 +837,24 @@ func (h *sessionStartHandler) computeDeferredAdvisory(
 		res["skill_proposals"] = summary
 	}
 
-	// SPEC-SESSIONSTART-PERF-001 REQ-SSP-015: heaviest step — time-boxed git
-	// scan over SPEC dirs. Uses the snapshotted seams; on deadline emits the
-	// advisory (preserving the "Run 'moai spec drift' for details." hint).
-	driftCtx, cancel := context.WithTimeout(context.Background(), driftTimeout)
-	count, err := driftFn(driftCtx, projectDir)
-	cancel()
-	if err != nil {
-		if errors.Is(err, context.DeadlineExceeded) {
-			res["status_drift_warning"] = driftTimeoutAdvisory
-			slog.Info("session start (deferred): status drift check timed out",
-				"project_dir", projectDir)
+	// SPEC-DRIFT-CACHE-FILL-001 REQ-DCF-011 / REQ-DCF-012: the drift advisory
+	// resolves from the HEAD-SHA cache ALONE — no in-band computation, on
+	// either path. What used to be the heaviest step is now a cache read.
+	//
+	// On a MISS the advisory is omitted for this session and the cache is
+	// filled OUT OF BAND, so the next session gets a hit. That one-session
+	// delay is strictly better than the behaviour it replaces: the compute
+	// never finished inside this short-lived process, so the cache had no
+	// writer at all and the advisory never arrived after a HEAD change.
+	//
+	// allowFill is false on the inline (test-binary) path: the fill is
+	// reachable only past the async seam, so a package's own test run starts no
+	// children.
+	count, ok := driftCachedCountFn(projectDir)
+	if !ok {
+		if allowFill {
+			maybeFillDriftCache(projectDir)
 		}
-		// Other errors (git absent, no specs dir) stay silent, matching the
-		// synchronous detectStatusDrift best-effort contract.
 		return res
 	}
 	if count >= driftWarningThreshold {
@@ -1571,6 +1627,12 @@ const deferredScanJoinBound = 250 * time.Millisecond
 var (
 	driftCountFn             = spec.DriftCountCtx
 	sessionStartDriftTimeout = config.DefaultSessionStartDriftTimeout
+
+	// driftCachedCountFn is the cache-ONLY resolve the deferred advisory step
+	// now uses (SPEC-DRIFT-CACHE-FILL-001 REQ-DCF-011). It performs no git-log
+	// work on either path: a hit answers from the cached report, a miss answers
+	// immediately, so the bounded join never carries a drift computation.
+	driftCachedCountFn = spec.CachedDriftCount
 )
 
 // Deferred-advisory-scan completion seam (test-only). The deferred goroutine
