@@ -981,62 +981,6 @@ func getGLMAPIKey(envVar string) string {
 	return os.Getenv(envVar)
 }
 
-// injectGLMEnv adds GLM environment variables to settings.local.json.
-//
-// API key preservation: if a non-GLM ANTHROPIC_AUTH_TOKEN already exists
-// in settings.local.json (e.g. a user's Anthropic API key), it is saved as
-// MOAI_BACKUP_AUTH_TOKEN before being overwritten. removeGLMEnv restores it.
-// Note: Claude OAuth tokens live in ~/.claude/, not here, so OAuth is unaffected.
-func injectGLMEnv(settingsPath string, glmConfig *GLMConfigFromYAML) error {
-	apiKey := getGLMAPIKey(glmConfig.EnvVar)
-	if apiKey == "" {
-		return fmt.Errorf("GLM API key not found. Run 'moai glm setup <api-key>' to save your key, or set %s environment variable", glmConfig.EnvVar)
-	}
-
-	// SPEC-CLIFIX-CRITICAL-001 REQ-CRIT-001-001: round-trip as map[string]any so
-	// unknown top-level keys survive the write.
-	// SPEC-CLIFIX-CONCURRENCY-001 REQ-CONC-001-001: route through the locked+atomic
-	// mutateSettingsLocal seam so concurrent sessions cannot lose updates.
-	return mutateSettingsLocal(settingsPath, func(m map[string]any) {
-		env := settingsEnvMap(m)
-
-		// Back up any existing ANTHROPIC_AUTH_TOKEN that is not the GLM key itself.
-		// This preserves a Claude OAuth token so that removeGLMEnv can restore it.
-		if existing, ok := env[config.EnvAnthropicAuthToken].(string); ok && existing != "" && existing != apiKey {
-			env["MOAI_BACKUP_AUTH_TOKEN"] = existing
-		}
-
-		// Inject GLM environment variables with actual API key value
-		env[config.EnvAnthropicAuthToken] = apiKey
-		env[config.EnvAnthropicBaseURL] = glmConfig.BaseURL
-		env[config.EnvAnthropicDefaultOpusModel] = glmConfig.Models.High
-		env[config.EnvAnthropicDefaultSonnetModel] = glmConfig.Models.Medium
-		env[config.EnvAnthropicDefaultHaikuModel] = glmConfig.Models.Low
-		env[config.EnvAnthropicDefaultFableModel] = glmConfig.Models.Fable
-		// Z.AI proxy compatibility: strip Anthropic beta headers
-		env[config.EnvClaudeCodeDisableExperimentalBetas] = "1"
-		env["API_TIMEOUT_MS"] = "3000000"
-		// 1M context activation: scale auto-compact window when the High slot model
-		// resolves to the 1M context tier; otherwise clean up any stale value.
-		if window, ok := glmAutoCompactWindow(glmConfig.Models.High); ok {
-			env[config.EnvClaudeCodeAutoCompactWindow] = window
-		} else {
-			delete(env, config.EnvClaudeCodeAutoCompactWindow)
-		}
-		// Issue #653: declare the model's real context window (Claude Code
-		// assumes 200K for unrecognized custom IDs and caps the auto-compact
-		// window at it); otherwise clean up any stale value.
-		if tokens, ok := glmMaxContextTokens(glmConfig.Models.High); ok {
-			env[config.EnvClaudeCodeMaxContextTokens] = tokens
-		} else {
-			delete(env, config.EnvClaudeCodeMaxContextTokens)
-		}
-		if len(env) == 0 {
-			delete(m, "env")
-		}
-	})
-}
-
 // isTestEnvironment detects if we're running in a test environment.
 func isTestEnvironment() bool {
 	if flag := os.Getenv(config.EnvTestMode); flag == "1" {
