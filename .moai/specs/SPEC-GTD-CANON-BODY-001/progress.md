@@ -150,4 +150,49 @@ evidence_root: .moai/reports/t867/
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase>_
+### Documentation sync — measured no-op
+
+`grep -rl "workflows/todo\.md\|todo\.md" docs-site/ README* CHANGELOG.md` (before the frontmatter close) found zero hits under `docs-site/` and `README*`. The only citations of `workflows/todo.md` in the working tree are the 141 historical occurrences across 55 files this SPEC's own run-phase evidence (§E.3 Findings for the lead, item 3) already enumerated — all under `.moai/specs/**` (132), `CHANGELOG.md` (6), and `reports/**` (3) — precisely the historical set REQ-GCB-011 forbids editing. No docs-site page or README documents the migrated skill-body path, so the sync-phase documentation task is a measured no-op, not a skipped one.
+
+### @MX annotation pass — measured no-op
+
+This SPEC's run-phase changes are markdown (skill-body migration) and Go test retargeting (literal-string updates, no new exported functions, no new goroutines, no new untested public functions). `git diff --name-only $(git merge-base develop HEAD) HEAD -- '*.go'` touches only existing test files (`internal/cli/todo_test.go`, `internal/template/gtd_canonical_surface_test.go`) with literal-string edits — no new symbols requiring `@MX:NOTE`/`@MX:ANCHOR`/`@MX:WARN`/`@MX:TODO`. Measured no-op.
+
+### Verification (sync-phase, this run)
+
+```
+$ bash .moai/specs/SPEC-GTD-CANON-BODY-001/check-residual.sh
+files=19
+grep_rc=0 offending=0 survivors=6
+PASS
+
+$ bash .moai/specs/SPEC-GTD-CANON-BODY-001/check-gtd-body.sh ./bin/moai
+fails=0
+(all CHECK lines PASS)
+
+$ make build
+... catalog.yaml updated successfully (13145 bytes)
+go build -ldflags "..." -o bin/moai ./cmd/moai
+exit 0
+```
+
+### 3-phase close
+
+`spec.md` frontmatter `status: in-progress → completed` (this commit). `plan.md` and `acceptance.md` carry no `status:` field (stateless per `spec-frontmatter-schema.md` § Artifact Statelessness) — no frontmatter transition applies to them.
+
+```yaml
+sync_complete_at: 2026-09-18T04:20:00+09:00
+sync_commit_sha: pending-backfill-sync
+sync_status: audit-ready
+docs_change: measured-no-op  # 0 docs-site/README hits for workflows/todo.md; see § Documentation sync above
+mx_annotation_pass: measured-no-op  # markdown + test-literal changes only, no new symbols
+b12_self_test_a: not-applicable  # no CHANGELOG.md entry authored — REQ-GCB-011 forbids editing CHANGELOG.md, and this SPEC's own scope excludes it
+b12_self_test_b: not-applicable  # no CHANGELOG entry to count ACs against
+b12_self_test_c: not-applicable  # no CHANGELOG file paths to verify
+changelog_entry_position: none  # this SPEC does not emit a CHANGELOG entry (doc-surface migration with no user-facing behavior change; REQ-GCB-011 keeps CHANGELOG.md in the untouched historical set)
+frontmatter_status_transitions:
+  spec_md: "in-progress -> completed"
+  plan_md: "stateless (no status field)"
+  acceptance_md: "stateless (no status field)"
+canary_compliance_check: not-applicable  # this SPEC defines no forward-looking policy that its own sync tests
+```

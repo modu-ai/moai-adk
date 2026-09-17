@@ -2,7 +2,7 @@
 id: SPEC-GTD-CANON-BODY-001
 title: "gtd canonical body migration — move the workflows/todo.md body into workflows/gtd.md and retire the todo body"
 version: "0.3.2"
-status: in-progress
+status: completed
 created: 2026-09-18
 updated: 2026-09-18
 author: manager-spec
