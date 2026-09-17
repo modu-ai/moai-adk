@@ -63,7 +63,7 @@ run_base: 881aa4bb8
 
 ```yaml
 sync_complete_at: 2026-09-18
-sync_commit_sha: pending-backfill-sync   # a commit cannot cite its own hash; backfilled in a following commit
+sync_commit_sha: 2c6b132ff   # backfilled; the sync commit itself wrote `pending-backfill-sync` (a commit cannot cite its own hash)
 sync_status: complete
 b12_self_test_a: "grep -c 'SPEC-SIBLING-MAPS-SHORTHAND-001' CHANGELOG.md → 0 before append (no duplicate entry)"
 b12_self_test_b: "AC ids in acceptance.md: 15 distinct tokens, of which 13 are live criteria (AC-SMS-001..010 + AC-SMS-GATE-001..003); AC-FIXE-001 / AC-FIXF-001 are fixture CONTENT quoted inside AC-SMS-002 / AC-SMS-003, not criteria. CHANGELOG entry cites 13 — matches progress.md §E.3 (13 PASS / 0 FAIL / 0 SKIP)."
