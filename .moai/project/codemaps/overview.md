@@ -6,7 +6,8 @@
 
 **모듈**: `github.com/modu-ai/moai-adk` · **Go**: 1.26.8
 **최초 측정 트리**: worktree `.claude/worktrees/t592`, 브랜치 `WT-home-state-rollout`, HEAD `e7bd89ee3`, 2026-09-10
-**재측정 트리**: worktree `.claude/worktrees/t869`, 브랜치 `WT-codemaps-refresh`, HEAD `a851b205c`, 2026-09-18 — § 규모 표 전체, § 구조 판정의 수치, 레이어 표의 대표 패키지, § 도식에 들어맞지 않는 패키지의 파일 수와 신규 항목(`internal/mission`·`internal/orchestration`·`internal/codextools`). 측정 명령은 각 표의 산출 명령 칸에 있습니다. 파일 크기(KB) 서술은 이번에 다시 쟀고, 그 밖의 서술형 판단은 앞 판을 이어받았습니다.
+**재측정 트리**: worktree `.claude/worktrees/t869`, 브랜치 `WT-codemaps-refresh`, HEAD `a851b205c`, 2026-09-18 — § 규모 표 전체, § 구조 판정의 수치, 레이어 표의 대표 패키지, § 도식에 들어맞지 않는 패키지의 파일 수와 신규 항목(`internal/mission`·`internal/codextools`). 측정 명령은 각 표의 산출 명령 칸에 있습니다. 파일 크기(KB) 서술은 이번에 다시 쟀고, 그 밖의 서술형 판단은 앞 판을 이어받았습니다.
+**정정 재측정**: worktree `.claude/worktrees/t872`, 브랜치 `WT-codemaps-citations`, HEAD `9a8cc4277`, 2026-09-18 — § 규모 표의 다섯 값(비테스트·테스트 파일 수, 패키지 총수, 최상위 디렉터리 수)과 테스트 전용 디렉터리 서술. 위 재측정 직후 한 패키지가 삭제돼 그만큼만 다시 쟀고, 나머지 값(엣지 365/222, 임베드 589)은 같은 명령으로 재확인해 변동이 없었습니다.
 
 ---
 
@@ -14,18 +15,17 @@
 
 | 값 | 수치 | 산출 명령 |
 |---|---|---|
-| 비테스트 Go 파일 | 1224 | `find internal cmd pkg -name '*.go' -not -name '*_test.go' \| wc -l` |
-| 테스트 Go 파일 | 2045 | `find internal cmd pkg -name '*_test.go' \| wc -l` |
-| Go 패키지 총수 | 146 | `go list ./... \| wc -l` (`scripts/` 하위 main 3개 포함) |
-| 최상위 디렉터리 | 74 | `internal` 70(`ls -d internal/*/`) + `cmd` 2(`moai`, `t657-merge`) + `pkg` 2 |
+| 비테스트 Go 파일 | 1225 | `find internal cmd pkg -name '*.go' -not -name '*_test.go' \| wc -l` |
+| 테스트 Go 파일 | 2047 | `find internal cmd pkg -name '*_test.go' \| wc -l` |
+| Go 패키지 총수 | 145 | `go list ./... \| wc -l` (`scripts/` 하위 main 3개 포함) |
+| 최상위 디렉터리 | 73 | `internal` 69(`ls -d internal/*/`) + `cmd` 2(`moai`, `t657-merge`) + `pkg` 2 |
 | 내부 import 엣지 (패키지 단위) | 365 | `go list -f '{{.ImportPath}} {{join .Imports " "}}' ./...` 후 모듈 경로 필터 |
 | 내부 import 엣지 (최상위 집계) | 222 | 위를 `internal/<X>` · `pkg/<X>` · `cmd/<X>` 수준으로 접고 self-edge 제거 |
 | 임베드 템플릿 파일 | 589 | `find internal/template/templates -type f \| wc -l` |
 
 테스트 대 비테스트 비율이 **1.67 : 1**입니다. 테스트 파일이 0인 패키지는 4개이고
-넷 다 main 패키지입니다(§ `modules.md` 참조). `internal` 70개 디렉터리 중
-`internal/orchestration`과 `internal/skills` 둘은 비테스트 Go 파일이 0개인 테스트 전용
-디렉터리입니다.
+넷 다 main 패키지입니다(§ `modules.md` 참조). `internal` 69개 디렉터리 중
+`internal/skills` 하나만 비테스트 Go 파일이 0개인 테스트 전용 디렉터리입니다.
 
 > **엣지 수 정정 이력.** 앵커 `25a3212a9` 판은 패키지 단위 엣지를 1638로 적었지만 당시
 > 명령 문자열이 생략형이라 재현할 수 없었습니다. 이후 `52f863f36` 판은 완전한 명령으로
@@ -77,7 +77,7 @@
   `SPEC-XXX-NNN` 형태로 시작합니다. `goal` / `loop` / `ralph`가 셋으로,
   `guardliveness` / `guardstate`가 둘로 쪼개진 것이 그 결과입니다. `internal/stateanchor`(1 파일) ·
   `internal/chain`(4 파일) · `internal/gitenv`(1 파일)도 같은 증식의 사례이고, 이 판에서는
-  `internal/mission`(15 파일)과 테스트 전용 `internal/orchestration`(비테스트 0)이 더해졌습니다.
+  `internal/mission`(15 파일)이 더해졌습니다.
 
 ---
 
