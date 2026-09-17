@@ -126,3 +126,64 @@ pull 행 5건(전부 창 앵커 `2026-09-13T14:07:40Z` 이후):
 - 창 재개시: pull 규칙이 있는 트리(develop 기반 워크트리)에서 도는 세션만 표본으로 인정하고, 그
   트리 로그를 수집 대상으로 삼는다. 앵커 시각은 그 결정 시점으로 다시 잡는다.
 - 또는 primary 에서 pull 구성을 되돌려 오염 행 생성을 멈춘다.
+
+## 9. 창 재개시 — 운영자 판정 (a) 적용 (2026-09-18T01:15 KST)
+
+운영자 판정(리드 전달): **develop 기반 트리의 세션만 표본으로 인정하고 앵커를 다시 잡아 창을
+재개시**한다. primary `interview.yaml` 은 건드리지 않는다. 이 절이 `judgment-criteria.md` §1 의
+앵커와 표본 범위를 대체한다 — 분모 규칙(`mode=="pull"`, `question_type` 필터 없음)·N=20 하한·
+export 금지 조건은 그대로다.
+
+### 9.1 기존 pull 5행 제외
+
+§8 의 pull 5행(`2026-09-13T17:17:35Z` ~ `2026-09-17T16:07:14Z`, primary 로그)은 **표본에서 제외**한다.
+근거: 이 행들이 기록된 primary 체크아웃은 `main` 이고, 그 트리의 `askuser-protocol.md` 에는 pull
+분기가 0건이다(§8 Evidence 4행). 구성은 pull 인데 로드된 질문 규칙은 push 였으므로 이 행들은
+pull 규칙 하의 표본이 아니다.
+
+### 9.2 새 앵커
+
+**`2026-09-17T16:15:27Z` (= `2026-09-18T01:15:27+0900`)** — 운영자 판정 적용 시각, `date -u` 실측.
+이 시각 이전 행은 어느 트리에서 나왔든 표본이 아니다.
+
+### 9.3 표본 인정 조건 (세 가지 모두)
+
+1. `mode == "pull"` 이고 `timestamp >= 2026-09-17T16:15:27Z`.
+2. 행이 **primary 체크아웃이 아닌** 트리의 로그(`.claude/worktrees/*/` 또는 `~/.moai/worktrees/**/`
+   아래 `.moai/logs/askuser-observations.jsonl`)에 있다. primary 로그는 primary 가 `main` 에 있는 한
+   통째로 제외한다.
+3. 그 트리의 `.claude/rules/moai/core/askuser-protocol.md` 에 pull 분기가 있다 — 판독식
+   `grep -c recommendation_mode <tree>/.claude/rules/moai/core/askuser-protocol.md` ≥ 1.
+
+트리 구분 방법: 행 자체가 아니라 **그 행이 담긴 로그 파일의 위치**로 가른다. 관측기는
+`<projectRoot>/.moai/logs/` 에 기록하고 `projectRoot` 는 `CLAUDE_PROJECT_DIR`(없으면 cwd)다
+(`develop:internal/hook/askuser_observer.go:136-151`, `path_resolve.go:66-71`).
+
+### 9.4 재개시 시점 실측
+
+| 확인 | 관측 |
+|---|---|
+| 워크트리 수(`askuser-protocol.md` 보유) | 294 |
+| 그중 pull 분기 보유 | 195 (99개는 조건 3 불충족) |
+| 워크트리 안 관측 로그 파일 | **0** — 재개시 시점 분모 0, 판정 대상 없음 |
+| 이 카드 워크트리 규칙 | `grep -c recommendation_mode` = 4 (조건 3 충족) |
+
+`collect-pull-window.sh` 는 아직 primary 를 스캔 대상에 포함하고 앵커 필터가 없다 — 조건 1·2 를
+반영하기 전에는 그 스크립트의 READING 줄을 판정 근거로 쓰지 않는다(수리는 n≥20 판독 전에 한다).
+
+### 9.5 발견 — 행에 트리 식별자가 없다 (구현은 별도 판정)
+
+관측 행 스키마(`develop:internal/hook/askuser_observer.go:49-60`)는 `timestamp`·`session_id`·`mode`·
+`label_present`·`option_count`·`question_count`·`payload_parsed`·`question_type` 뿐이며, **트리 경로·
+브랜치·HEAD·로드된 규칙 판을 담지 않는다.** 그래서 9.3 은 파일 위치를 대리 지표로 쓰고, 다음 구멍이
+남는다:
+
+- **로드 규칙과 기록 위치의 불일치**: 기록 위치는 `CLAUDE_PROJECT_DIR` 로 정해지지만 세션이 로드한
+  규칙은 세션 시작 시점 트리의 것이다. 세션 도중 워크트리를 옮기면 둘이 갈라질 수 있다(미실측).
+- **시점 불일치**: 조건 3 은 판독 시점의 트리 규칙을 본다. 행이 기록될 때 그 트리가 pull 분기를
+  이미 갖고 있었는지는 행에서 복원되지 않는다.
+- **mode 는 구성만 반영**: `mode` 는 `interview.yaml` 판독값이지 로드된 규칙 판이 아니다 — §8 오염이
+  바로 이 틈에서 생겼다.
+
+이 구멍들을 닫으려면 행에 트리/규칙 식별 필드가 필요하다. 추가 여부와 방식은 이 카드가 정하지
+않는다.
