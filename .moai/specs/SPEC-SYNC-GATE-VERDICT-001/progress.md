@@ -53,6 +53,13 @@ evidence convention `.moai/reports/t783/` (untracked, primary checkout) named in
 and AC-SGV-008; the 계기 observer contract is encoded as the M1 positive controls
 (AC-SGV-001 baseline-hook reproduction; AC-SGV-005 baseline-proven grep patterns).
 
+## Implementation Kickoff Approval
+
+- Approved by the operator on 2026-09-18, relayed by the kanban lead session (dispatch for card t783). Progression mode: autonomous — run (M1→M4 serial) then sync, without intermediate stops.
+- Scope of the approval: run-phase entry only. It is not authorization for a PR, a push (lead batch-pushes develop), `make build` (REQ-SGV-008), or any destructive operation.
+- Tree at approval: local develop `ca2dae9a6` absorbed (includes t602 `693cf3eb9`, which edited both hook copies in the java/kotlin/ruby/php/scala/R fast-check branches only). Re-check after absorption: hook pair `cmp` exit 0; `git log --since=2026-09-14` on both doc copies → 0 commits; spec/plan/acceptance unchanged since `2275e0241`.
+- Plan Audit Gate: prior report lacks machine hash metadata (cache miss) and the tree moved (t602), so Phase 1 re-executes as iteration 3 before M1.
+
 ## §E.2 Run-phase Evidence
 
 (manager-develop — to be populated at run phase)
