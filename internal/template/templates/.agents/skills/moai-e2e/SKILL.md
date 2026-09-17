@@ -4,4 +4,6 @@ name: moai-e2e
 description: "Create and run E2E tests across web, mobile, and desktop with auto-detection and CLI-first toolchains"
 ---
 
-Use Skill("moai") with arguments: e2e $ARGUMENTS
+Dispatch the moai workflow `e2e` with: $ARGUMENTS
+- Harness with the Skill tool (Claude Code): invoke `Skill("moai")` with arguments: `e2e` $ARGUMENTS
+- Harness without a skill loader (Codex CLI): read `.claude/skills/moai/SKILL.md` (the dispatcher body) and follow its routing for the `e2e` subcommand with the same arguments

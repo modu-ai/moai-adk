@@ -4,4 +4,6 @@ name: moai-fix
 description: "Auto-detect and fix LSP errors, linting issues, and type errors"
 ---
 
-Use Skill("moai") with arguments: fix $ARGUMENTS
+Dispatch the moai workflow `fix` with: $ARGUMENTS
+- Harness with the Skill tool (Claude Code): invoke `Skill("moai")` with arguments: `fix` $ARGUMENTS
+- Harness without a skill loader (Codex CLI): read `.claude/skills/moai/SKILL.md` (the dispatcher body) and follow its routing for the `fix` subcommand with the same arguments

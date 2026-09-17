@@ -4,4 +4,6 @@ name: moai-mx
 description: "Scan codebase and add @MX code-level annotations for AI context"
 ---
 
-Use Skill("moai") with arguments: mx $ARGUMENTS
+Dispatch the moai workflow `mx` with: $ARGUMENTS
+- Harness with the Skill tool (Claude Code): invoke `Skill("moai")` with arguments: `mx` $ARGUMENTS
+- Harness without a skill loader (Codex CLI): read `.claude/skills/moai/SKILL.md` (the dispatcher body) and follow its routing for the `mx` subcommand with the same arguments

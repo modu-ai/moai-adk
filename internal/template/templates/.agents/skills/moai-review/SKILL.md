@@ -4,4 +4,6 @@ name: moai-review
 description: "Code review with security and @MX tag compliance check"
 ---
 
-Use Skill("moai") with arguments: review $ARGUMENTS
+Dispatch the moai workflow `review` with: $ARGUMENTS
+- Harness with the Skill tool (Claude Code): invoke `Skill("moai")` with arguments: `review` $ARGUMENTS
+- Harness without a skill loader (Codex CLI): read `.claude/skills/moai/SKILL.md` (the dispatcher body) and follow its routing for the `review` subcommand with the same arguments
