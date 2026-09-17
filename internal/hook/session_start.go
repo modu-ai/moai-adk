@@ -411,6 +411,22 @@ func (h *sessionStartHandler) Handle(ctx context.Context, input *HookInput) (*Ho
 	// Gated on input.SessionID != "" (research.md §D.0/D.1 P1-outcome
 	// implication): an empty UUID is never injected or written.
 	out := &HookOutput{Data: jsonData}
+
+	// REQ-V3R2-RT-007-021's third obligation (card t796): a failed migration is
+	// named to the user. The first two obligations live in the runner (version
+	// file not advanced, failure appended to .moai/logs/migrations.log); this is
+	// the only one on the hook surface, and it was missing — runMigration
+	// recorded the failure in Data, which carries json:"-" and never reaches
+	// Claude Code, and in slog, whose stderr the hook wrappers discard. The
+	// failure was recorded and invisible.
+	if notice := migrationFailureNotice(data); notice != "" {
+		if out.SystemMessage == "" {
+			out.SystemMessage = notice
+		} else {
+			out.SystemMessage += "\n\n" + notice
+		}
+	}
+
 	if input.SessionID != "" && input.ProjectDir != "" {
 		out.HookSpecificOutput = &HookSpecificOutput{
 			HookEventName: string(EventSessionStart),
@@ -692,6 +708,39 @@ func runSkillSymlinks(projectDir string) map[string]any {
 		slog.Info("evolved skill symlinks created", "count", n)
 	}
 	return d
+}
+
+// migrationFailureNotice renders the user-facing notice for a failed
+// session-start migration, or "" when the data map records no failure.
+// Data["migration_error"] has exactly one writer (runMigration), so its
+// presence IS the failure signal.
+//
+// Three properties of the wording are deliberate:
+//
+//   - It carries no %d slot of its own. runMigration holds only the error, and
+//     the two failure shapes differ in what can be named: a failed apply
+//     already names its number inside the error text ("마이그레이션 %d 적용
+//     실패", migration/runner.go), while a pre-flight version-read failure has
+//     no migration to number. Wrapping the error names the migration wherever
+//     one exists, and invents nothing where none does.
+//   - The check name is capitalized. `moai doctor --check` filters on an exact,
+//     case-sensitive match (internal/cli/doctor.go), and the registered name is
+//     "Migration" — the lowercase spelling SPEC-V3R2-RT-007's AC-06 suggested
+//     matches no check and would run nothing, which is worse than naming no
+//     command at all.
+//   - The wrapped error may be Korean while this sentence is English. Rewriting
+//     the runner's error surface is a separate change; dressing up a root-cause
+//     error to read tidily is the worse trade.
+func migrationFailureNotice(data map[string]any) string {
+	failure, _ := data["migration_error"].(string)
+	if failure == "" {
+		return ""
+	}
+	return fmt.Sprintf(
+		"migration failed: %s — the version file was not advanced; "+
+			"details in .moai/logs/migrations.log; run 'moai doctor --check Migration'",
+		failure,
+	)
 }
 
 // runMigration applies pending migrations (REQ-020, REQ-021). Best-effort,
