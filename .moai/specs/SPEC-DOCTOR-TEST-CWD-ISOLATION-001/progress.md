@@ -81,7 +81,7 @@ m1_to_mN_commit_strategy: "M1 = test isolation + status draft->in-progress; evid
 
 ```yaml
 sync_complete_at: 2026-09-18
-sync_commit_sha: pending-backfill-sync
+sync_commit_sha: d38d8ea3a4fa5eee1957f1ff3b27975e64294c94
 sync_status: audit-ready
 spec_status_transition: "in-progress -> implemented -> completed"   # spec.md status 만 변경, updated 는 이미 2026-09-18
 b12_self_test_a: "grep -c 'SPEC-DOCTOR-TEST-CWD-ISOLATION-001' CHANGELOG.md -> 0 (emission 전)"
