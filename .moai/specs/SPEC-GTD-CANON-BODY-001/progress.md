@@ -123,7 +123,7 @@ Both t867-owned names turned green; no baseline name regressed. Evidence files: 
 
 ```yaml
 run_complete_at: 2026-09-18T04:05:00+09:00
-run_commit_sha: pending-backfill-run
+run_commit_sha: a5df16996
 run_status: audit-ready
 ac_pass_count: 13
 ac_fail_count: 0
