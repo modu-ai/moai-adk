@@ -49,7 +49,7 @@ Run tree: `.claude/worktrees/t588`, base `ea56ed9b5` → HEAD (M6). One commit p
 ## §E.3 Run-phase Audit-Ready Signal
 
 run_complete_at: 2026-09-14
-run_commit_sha: pending-backfill-run
+run_commit_sha: 6ad2f761804cfb05b747f380cc77ff4a6f6677c4
 run_status: complete
 ac_pass_count: 8
 ac_fail_count: 0
@@ -61,14 +61,14 @@ cross_platform_build.darwin: pass (`go build ./...` exit 0)
 cross_platform_build.windows: pass (`GOOS=windows go build ./...` exit 0)
 coverage_baseline_to_final: internal/config 82.0→82.0; atomicfile 81.8→81.8; toolpolicy 89.1→89.1; core/project 88.8→88.9; web 67.8→67.8; cli (targeted filter) 7.5→7.6 — no decrease (baseline tree: `git archive ea56ed9b5` to /tmp/t588-base, same commands)
 total_run_phase_files: 19 files changed, 642 insertions(+), 214 deletions(-)
-m1_to_mN_commit_strategy: one commit per milestone (M1 82290a61f, M2 b53c6c9d6, M3 a3ea5101e, M4 35141e3e9, M5 9c30edc89, M6 pending)
+m1_to_mN_commit_strategy: one commit per milestone (M1 82290a61f, M2 b53c6c9d6, M3 a3ea5101e, M4 35141e3e9, M5 9c30edc89, M6 946d9aba2)
 f16_gaps_absorption: no wizard web-console promise text found (grep over internal/web + internal/cli re-ask/promise surfaces: 0 relevant hits) — no absorption needed
 deviations: M3 extraction note (counting loop extracted verbatim into `managedRedeployCount` as a behavior-preserving prerequisite so the RED was observable against the original logic); M4 archive-drift attribution implemented as a before/after glob diff in the caller rather than a signature change to `archiveLegacySkills` (ANCHOR, fan_in ≥ 3 — untouched); F15 advisory row keyed on config backup presence, which is the exact pre-clean+restore condition at the sole production call site
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
 sync_complete_at: 2026-09-14
-sync_commit_sha: pending-backfill-sync
+sync_commit_sha: 299f44e5f01368d020a5c1dd810a3733936e1bcd
 sync_status: complete
 run_to_sync_transition: in-progress → implemented → completed (3-phase close, single sync commit)
 changelog_entry_emitted: yes (1 entry, `[Unreleased]`/`### Changed`, English-only; pre-emission grep count 0 — no duplicate)
