@@ -1,121 +1,145 @@
 # SPEC-CODEX-AUDIT-GATE-AXES-001 — 구현 계획
 
-카드 **t686** · Tier **M** · 클래스 **C** · 기준 트리 develop @ `f67d2193f` · v0.2.0
+카드 **t686** · Tier **M** · 클래스 **C** · 기준 트리 develop @ `f67d2193f` · v0.3.0
 
-마일스톤은 뒤집힐 가능성이 큰 결정부터 적었다.
+마일스톤은 뒤집힐 가능성이 큰 결정부터 적었다. 축 (c)는 카드 t870 으로 분리되어 이 계획에 없다.
 
 ## §A Context
 
-spec.md §A 참조. 세 축은 서로 독립이며, 축 (c)는 입력 대기라 (a)(b)만으로 run·sync 가 가능하다.
+spec.md §A 참조. 축 (a)와 (b)는 독립이다. M2·M3(골든 + 축 a)는 M1 결과와 무관하게 먼저 진행할 수 있다.
 
 ## §B 결정 기록
 
-### B.1 축 (b) 집행 방식 — 결정됨: B-1 서버 발급 영수증 (운영자, 2026-09-18)
+모든 결정이 확정되었다. 남은 것은 M1 의 실측 정지 규칙(§F M1)뿐이다.
 
-질문이었던 것: 감사 도구 호출 증거가 없는 판정은 PASS 가 될 수 없어야 하는가, 어디서 막는가.
+### B.1 축 (b) 집행 방식 — 결정: B-1 서버 발급 영수증 (운영자, 2026-09-18)
 
-**답: required 게이트가 명시된 프로젝트에서는 PASS 가 될 수 없다.** 제보자의 관측(건너뛴 3회 PASS 0.92 → 강제 호출 후 FAIL 0.79)이 이유다.
+required 게이트가 명시된 프로젝트에서는 감사 호출 증거가 없는 PASS 가 수용될 수 없다. 근거는 제보자 관측(건너뛴 3회 PASS 0.92 → 강제 호출 후 FAIL 0.79).
 
-**기존 opt-in Stop-hook(`multi_review_gate.go`)과의 관계.** 이 훅은 세션의 가장 최근 `audit_multi` 수렴 결과를 읽어 required FAIL 일 때만 막고, 상태 파일이 없으면 ALLOW 한다(`multi_review_gate.go:44-79`). 감사 도구를 부르지 않은 세션은 상태 파일이 없으므로 이 분기로 통과한다. 기본 off, 메인 세션 turn-end, `audit_multi` 전용이라 단일 `codex_audit` 는 보지 못한다. 즉 "부른 감사가 실패했는가"만 보고 "감사를 불렀는가"는 보지 않는다.
+기존 opt-in Stop-hook(`multi_review_gate.go:44-79`)과의 관계: 이 훅은 가장 최근 `audit_multi` 수렴 결과를 읽어 required FAIL 일 때만 막고 상태 파일이 없으면 ALLOW 한다. 감사를 부르지 않은 세션은 상태 파일이 없어 통과한다. 기본 off, 메인 세션 범위, `audit_multi` 전용이다. 이 SPEC 은 그 훅을 바꾸지 않고, "감사를 불렀는가"를 검사하는 별도 경로를 추가한다.
 
-검토했던 선택지(기록용):
+기록용 선택지: B-2 SubagentStop 단독 차단(→ S1 의 실행 장소로 흡수), B-3 다중 리뷰 Stop-hook 확장(기본 off·메인 세션 범위로 미채택), B-4 문서만(결함 잔존으로 미채택).
 
-| 옵션 | 요지 | 처분 |
-|------|------|------|
-| **B-1 서버 발급 영수증** | MCP 서버가 호출마다 영수증을 기록, 감사 보고가 인용, required 일 때 서버가 모르는 영수증의 PASS 거부 | **채택.** 증거는 런타임이 쓴다. 단, 검사가 실제로 돌 기계 표면이 필요하다 — §B.4 |
-| B-2 SubagentStop 훅이 호출 기록 부재 시 종료 차단 | 훅 입력에 `agent_id`·`agent_transcript_path`·`last_assistant_message` 가 선언돼 있다(`internal/hook/types.go:238-241`, 런타임 페이로드 미관측). 전사 파일은 에이전트 텍스트가 아닌 런타임 기록이라 호출-귀속 없이도 증거원이 된다 | 독립 옵션으로는 미채택. 다만 §B.4 의 권장 표면이 이 훅 지점을 B-1 의 검사 실행 장소로 쓴다 |
-| B-3 다중 리뷰 Stop-hook 확장 | 상태 없음 → required 일 때 BLOCK | 미채택: 기본 off, 메인 세션 범위, 단일 도구 미포괄 |
-| B-4 문서만 | 본문 강화 | 미채택: 제보된 결함을 남김 |
+### B.2 축 (c) — 카드 t870 으로 분리 (운영자, 2026-09-18)
 
-### B.2 축 (c) 입력 확보 — 결정됨: C-1 (운영자, 2026-09-18)
+제보자 auth 형태 회신 대기. 이 SPEC 의 요구사항·AC·마일스톤·파일 목록에서 제거했다.
 
-- 리드가 이슈에 제보자의 auth 형태(값 제외, 키 구조와 `codex login status` 한 줄)를 요청한다. 레인은 게시하지 않는다.
-- 축 (c)는 **입력 대기**. M4 는 연기되며 Kickoff 차단 요소가 아니다.
-- 회신이 없으면 SPEC 은 (a)+(b)로 sync 하고, (c)는 AC-CAG-013~014 를 기록된 gap 으로 닫는다.
-- 가설(관측 아님, 회신 후 확인 대상): H1 auth.json 부재 + `login status` 줄이 줄 끝 앵커 문법(`mcp_codex.go:2024`)에 걸리지 않는 문구, H2 `auth_mode` 가 알려진 두 값 외의 토큰, H3 `CODEX_HOME` 해석 불일치.
-
-### B.3 축 (a) 차단 표현 — 결정됨: `verdict: fail` + `gate_unmet` + `isError: false` (이의 없음)
+### B.3 축 (a) 차단 표현 — 결정: `verdict: fail` + `gate_unmet` + `isError: false`
 
 | 후보 | 평가 |
 |------|------|
-| **`verdict: fail` + `gate_unmet` 유지 + `isError: false` (채택)** | 감사자는 `verdict` 로 판정한다. 수렴 엔진의 overall=fail 선례(t580)와 같은 방향. `gate_unmet` 존재가 "리뷰 후 실패"와 "게이트 미충족"을 가른다 |
-| `isError: true` | 도구 에러 경로는 구조화 내용 없이 조기 반환한다. 감사자가 도구 고장으로 읽을 수 있고, "fail-open 은 구조화 결과" 계약과 충돌 |
-| inconclusive 유지 + 새 필드 | 제보된 결함 그 자체 — 새 필드를 읽지 않는 소비자에게 여전히 통과로 보인다 |
+| **`verdict: fail` + `gate_unmet` + `isError: false` (채택)** | 감사자는 `verdict` 로 판정. 수렴 엔진 overall=fail 선례(t580)와 같은 방향. `gate_unmet` 존재가 "리뷰 후 실패"와 "게이트 미충족"을 가른다 |
+| `isError: true` | 도구 에러 경로는 구조화 내용 없이 조기 반환 — 도구 고장으로 읽힐 수 있고 fail-open 구조화 결과 계약과 충돌 |
+| inconclusive + 새 필드 | 새 필드를 읽지 않는 소비자에게 여전히 통과로 보인다 |
 
-### B.4 영수증 거부 검사가 실제로 실행되는 기계 표면 — **Kickoff 에서 확정할 유일한 결정**
+### B.4 검사 표면 — 결정: S1 SubagentStop + PreToolUse 소비자 (운영자 K1·N2, 2026-09-18)
 
-운영자 문구는 "run·sync 게이트에서 거부"다. 그런데 트리를 재어 보면 그 게이트는 기계 지점이 아니다.
+실측(spec.md §A.2 F8-F11):
+- run-phase plan-audit 런타임 게이트는 호출자가 없다(`internal/runtime/audit_gate.go:199`, :307).
+- `sync-phase-quality-gate.sh` 는 vet/build 를 기본 차단하지만(:14-19) 메인 세션 Stop 훅이고 감사 판정을 보지 않는다.
+- SubagentStop 은 배선·차단 출력 가능(`.claude/settings.json:201-207`, `internal/hook/subagent_stop.go:38`, `internal/hook/types.go:369-372`).
+- PreToolUse 는 `Agent|Task` 매처로 배선되어 있고 핸들러가 스폰 시점에 deny 를 돌려줄 수 있다(`internal/hook/pre_tool.go:632-640`, 가드 선례 `internal/hook/agent_model_guard.go:237`).
 
-실측:
-- run-phase plan-audit 게이트: `internal/runtime/audit_gate.go:199` `GateConfig.Invoke` 의 유일한 호출은 같은 파일 :307 `TeamModeInvoke` 의 자기 위임이다. 프로덕션 호출자 없음. 게이트는 오케스트레이터 산문이다.
-- sync 게이트 `sync-phase-quality-gate.sh`: 헤더(:14-19)상 vet/build 실패는 **기본 차단**이고 `MOAI_SYNC_GATE_BLOCKING=0` 이 opt-out 이다(감사 보고서의 "=1 일 때만 차단"은 현재 트리와 다르다). 다만 메인 세션 Stop 훅이고, 검사 대상은 vet/build 이며 감사 판정이 아니다. plan 단계는 덮지 못한다.
-- SubagentStop 훅: settings.json 에 배선돼 있고(`.claude/settings.json:201-207`, timeout 5), 핸들러 `internal/hook/subagent_stop.go:38` 이 `HookOutput` 을 돌려주며 그 출력은 최상위 `decision: "block"` 을 실을 수 있다(`internal/hook/types.go:369-372`). 입력에 `agent_type`(:230), `agent_id`·`agent_transcript_path`·`last_assistant_message`(:238-241)가 선언돼 있다. `agent_type` 은 이미 라우팅 원장이 에이전트 식별에 쓴다(`internal/hook/routing_ledger.go:232`). 현재 핸들러는 차단하지 않는다.
-- PreToolUse 거부 틀: `DecisionDeny` 를 돌려주는 가드가 여럿 있다(`internal/hook/branch_guard.go:536`, `integration_lock_guard.go:102`, `agent_stop_guard.go:399`).
-- 감사자 도구: sync-auditor 는 Write 가 없다(`.claude/agents/moai/sync-auditor.md:9`), plan-auditor 는 있다(`plan-auditor.md:7`).
+흐름:
+1. **SubagentStart**(plan-auditor / sync-auditor): 시작 표식 기록(§B.5).
+2. **MCP 서버**: `codex_audit` / `audit_multi`(codex 참여) 호출마다 영수증 기록.
+3. **SubagentStop**: 최종 메시지의 판정 줄(§B.6)을 읽고 영수증 검사.
+   - PASS 이고 검사 실패 + `stop_hook_active: false` → `decision: "block"` + 거부 기록 영속.
+   - 같은 조건 + `stop_hook_active: true` → 차단 없음, 거부 기록 유지, `systemMessage` 경고.
+   - PASS 이고 검사 통과 → 그 역할·SPEC 의 거부 기록 제거.
+   - FAIL → 검사 없음, 기록 변경 없음.
+4. **PreToolUse `Agent|Task`**(기존 스폰 가드 경로, `pre_tool.go:632` 블록에 형제로 추가): 대상이 `manager-develop`(run 진입) / `manager-docs`(sync 진입) / `manager-git`(sync 후 PR) 이고 트리에 거부 기록이 하나라도 있으면 `AUDIT_RECEIPT_VIOLATION` 으로 deny.
 
-후보 표면:
+에이전트 모델 가드와 달리 이 deny 에는 별도 opt-in 플래그가 없다. 활성 조건은 raw `workflow.audit.gates.codex == required` 자체다 — 그 값을 쓴 것이 곧 opt-in 이다.
 
-| 표면 | 무엇을 하는가 | 장점 | 단점 |
-|------|--------------|------|------|
-| **S1 SubagentStop 검사 (권장)** | plan-auditor / sync-auditor 종료 시 `last_assistant_message` 에서 판정과 인용 영수증 id 를 읽고 영수증 저장소와 대조. 조건 미충족이면 `decision: block` + 이유로 감사자를 계속 돌게 한다. `stop_hook_active` 로 재진입하면 다시 막지 않고 거부 기록을 저장소에 남기며 `systemMessage` 로 "영수증 없는 PASS — 수용 불가"를 띄운다 | 두 감사자 모두 포괄(Write 유무 무관). 판정이 오케스트레이터에 닿기 **전에** 돈다. 기존 배선·출력 필드 재사용. 로컬 파일 대조라 5초 timeout 안 | 입력 필드는 선언만 있고 런타임 페이로드 미관측 — M1 첫 작업으로 실측해야 한다. 훅 비활성 환경에서는 무력. 재진입 후에는 차단이 아니라 기록+경고라서, 오케스트레이터가 경고를 무시하면 뚫린다 |
-| S2 PreToolUse 가드: plan-audit 보고서 Write 거부 | `.moai/reports/plan-audit/*.md` 에 PASS 보고서를 쓰려는데 영수증이 없으면 deny | 기존 deny 틀 재사용, 파일 경로로 대상이 분명 | sync-auditor 는 보고서를 쓰지 않으므로 sync 를 덮지 못한다. 보고서를 안 쓰고 판정만 돌려주면 우회 |
-| S3 `moai` CLI 검증 동사 + 게이트 스크립트 호출 | 예: 영수증 검증 CLI 를 sync-phase 품질 게이트 스크립트와 run 진입 절차가 호출 | 사람도 수동 실행 가능, 표면이 명시적 | sync 게이트는 메인 세션 turn-end 에 돌아 판정 시점과 어긋나고, run 게이트에는 호출할 기계 지점이 없다(F10) — 결국 오케스트레이터 자발성에 기댄다 |
+선택하지 않은 표면: S2 PreToolUse 보고서 Write 거부(sync-auditor 는 Write 가 없어 sync 미포괄), S3 CLI 검증 동사(run 진입에 호출할 기계 지점 없음).
 
-**권장: S1.** 운영자 문구의 "run·sync 게이트"는 plan-audit 판정(run 진입 전제)과 sync-audit 판정을 뜻하는 것으로 읽었고, S1 은 두 판정이 생성되는 순간에 검사한다. 이 해석이 운영자 문구에서 기계적으로 도출되지는 않으므로 **Kickoff 에서 확인받는다.** S1 이 M1 실측에서 성립하지 않으면(페이로드에 `agent_type` 또는 `last_assistant_message` 가 오지 않음) 레인은 구현하지 않고 S2+S3 조합안으로 되돌린다.
+### B.5 저장소, 스키마, 상관, 트리 판정
+
+**트리 루트(canonical tree root)**
+- MCP 쪽: `project_root` 인자를 `EvalSymlinks` 로 정규화한 값(`mcp_project_root.go:179`). 인자가 없으면 서버 폴백 해석(`mcp_project_root.go:100-104`) 결과를 같은 방식으로 정규화하고, 영수증에 `root_source` 로 폴백 여부를 기록한다.
+- 훅 쪽: 훅 입력 `cwd`(`types.go:211`) 에서 `git -C <cwd> rev-parse --show-toplevel` 결과를 `EvalSymlinks` 로 정규화. git 실패 시 정규화한 `cwd`. `CLAUDE_PROJECT_DIR` 는 쓰지 않는다 — 워크트리 세션에서도 primary 체크아웃을 가리키기 때문이다.
+- "다른 트리" 판정: 영수증의 `tree_root` 와 감사자 시작 표식의 `tree_root` 가 바이트 동일하지 않으면 다른 트리다. 따라서 `project_root` 없이 호출돼 primary 체크아웃으로 폴백한 영수증은 워크트리 감사자에게 "다른 트리"로 거부된다(의도된 동작).
+
+**저장 위치** — 모두 `<tree_root>/.moai/state/audit-receipts/` 아래:
+
+| 레코드 | 경로 | 필드 |
+|--------|------|------|
+| 영수증 | `receipts/<receipt_id>.json` | `receipt_id`, `tool`(`codex_audit`\|`audit_multi`), `tree_root`, `root_source`(`argument`\|`fallback`), `created_at`(RFC 3339 UTC, 나노초), `codex_verdict`, `gate_unmet` |
+| 시작 표식 | `starts/<agent_id>.json` | `agent_id`, `agent_type`, `session_id`, `tree_root`, `started_at`(RFC 3339 UTC, 나노초) |
+| 거부 기록 | `rejections/<agent_type>--<spec_id>.json` | `agent_type`, `spec_id`(해석 불가 시 `unknown-spec`), `agent_id`, `cause`, `cited_receipts`, `rejected_at`, `reentry_warned`(bool) |
+
+`receipt_id` 는 서버가 생성하는 `rcpt-` 접두 불투명 토큰(`rcpt-[a-z0-9]{20,40}`)이다. 쓰기는 임시 파일 후 원자 rename.
+
+**상관**: SubagentStart 와 SubagentStop 은 같은 `agent_id` 로 같은 감사자 인스턴스를 잇는다. Stop 은 `starts/<agent_id>.json` 을 읽는다. 표식이 없으면 검사 실패 원인 "start marker missing" 이다. Stop 처리 후 표식 파일은 제거한다.
+
+**시험 격리**: 저장소 루트는 패키지 수준 seam 으로 교체 가능해야 하며, 모든 신규 테스트는 `t.TempDir()` 트리를 `project_root`/`cwd` 로 넘기고 seam 을 `t.Cleanup` 으로 복원한다. `project_root` 없이 도구를 부르는 기존 테스트가 실제 저장소 트리에 쓰지 않도록, 폴백 루트 해석도 테스트에서 임시 디렉터리로 고정한다(AC-CAG-013 에서 누출 검사).
+
+**읽기 전용 주석과의 관계**: `codex_audit` 의 읽기 전용 힌트(`mcp_server.go:278`)와 `WriteCapable: false`(`internal/mcp/catalog.go:51`)는 유지한다. 영수증은 사용자 작업 트리 내용이 아니라 런타임 상태이며, `audit_multi` 가 같은 분류에서 이미 수렴 결과를 `.moai/state` 에 영속한다(`mcp_convergence.go:749`)는 선례를 따른다.
+
+### B.6 판정 줄 문법 (감사자 최종 메시지)
+
+감사자 본문은 최종 응답의 **마지막 비어 있지 않은 줄**을 다음 형식으로 낸다.
+
+```
+AUDIT-VERDICT: <PASS|PASS-WITH-DEBT|FAIL> spec=<SPEC-ID> receipts=<receipt_id>[,<receipt_id>...]
+```
+
+- 정규식: `^AUDIT-VERDICT: (PASS|PASS-WITH-DEBT|FAIL) spec=(SPEC(-[A-Z][A-Z0-9]*)+-[0-9]{3}) receipts=(none|rcpt-[a-z0-9]{20,40}(,rcpt-[a-z0-9]{20,40})*)$`
+- `PASS` 와 `PASS-WITH-DEBT` 는 PASS 부류로 검사한다. `receipts=none` 은 "인용 없음"이다.
+- 검사 통과 조건(PASS 부류): 인용된 영수증 중 **하나 이상**이 (1) 저장소에 있고, (2) `tree_root` 가 시작 표식과 같고, (3) `created_at` 이 시작 표식 `started_at` 이후이며, (4) `tool` 이 `codex_audit` 이거나 codex 가 참여한 `audit_multi` 다. 모두 실패하면 원인은 첫 번째로 실패한 조건 순서(인용 없음 → 저장소에 없음 → 다른 트리 → 시작 이전)로 보고한다.
+- 판정 줄이 없거나 형식이 맞지 않으면 required 트리에서 REQ-CAG-016 의 "verdict line missing" 이다.
 
 ## §C Pre-flight
 
 - 워크트리 `.claude/worktrees/t686`, 브랜치 `WT-codex-audit-gate`. git 은 `git -C <worktree>`.
-- 변경 전 기준선: run-phase 첫 단계에서 `go test ./internal/cli/ -run 'CodexAudit_|CodexBlankReview_|Converge_|RunMultiAudit_|AuditMulti_|ReviewGate_|MultiReviewGate' -count=1` 초록을 기록한다(plan 세션은 테스트 미실행).
+- 변경 전 기준선: run-phase 첫 단계에서 `go test ./internal/cli/ -run 'CodexAudit_|CodexBlankReview_|Converge_|RunMultiAudit_|AuditMulti_|ReviewGate_|MultiReviewGate' -count=1` 과 `go test ./internal/hook/ -count=1` 초록을 기록(plan 세션은 테스트 미실행).
 - 전체 스위트는 로컬에서 돌리지 않는다.
 
 ## §D Constraints
 
-spec.md §C 참조. 템플릿 에이전트 본문을 고치면 `make agents-emit` 후 `make build`. 방출본 손편집 금지.
+spec.md §C 참조. 템플릿 에이전트 본문을 고치면 `make agents-emit` 후 `make build`. 방출본 손편집 금지. 영수증 쓰기와 읽기 전용 주석의 관계는 §B.5.
 
 ## §E Self-Verification (run-phase 가 채울 항목)
 
-- E1 AC 매트릭스, E2 `go vet ./internal/cli/... ./internal/hook/...`, E3 영향 패키지 테스트+커버리지, E4 `golangci-lint run ./internal/cli/... ./internal/hook/...`, E5 `make agents-emit-check`·템플릿 중립성, E6 미푸시 기록.
+E1 AC 매트릭스, E2 `go vet ./internal/cli/... ./internal/hook/...`, E3 영향 패키지 테스트+커버리지, E4 `golangci-lint run ./internal/cli/... ./internal/hook/...`, E5 `make agents-emit-check`·템플릿 중립성, E6 미푸시 기록.
 
 ## §F Milestones (우선순위 순)
 
-### M1 — §B.4 표면 전제 실측 · Priority High
+### M1 — 훅 페이로드 실측과 정지 규칙 · Priority High
 
-- 실제 Claude Code 세션에서 plan-auditor 를 한 번 띄워 SubagentStop 페이로드의 `agent_type`·`agent_id`·`agent_transcript_path`·`last_assistant_message` 존재를 관측하고 progress.md §E.2 에 원문(비밀값 제외)을 남긴다.
-- 성립하지 않으면 멈추고 리드에게 되돌린다(S2+S3 조합안).
+- 실제 Claude Code 세션에서 plan-auditor 를 한 번 띄워 SubagentStart·SubagentStop 페이로드를 캡처하고(비밀값 제외) progress.md §E.2 에 필드 존재를 기록한다: `agent_type`, `agent_id`(양쪽), `cwd`, `last_assistant_message`(Stop), `stop_hook_active`(Stop).
+- **정지 규칙 [HARD]**: 관측된 SubagentStart 또는 SubagentStop 페이로드에 `agent_type`, `last_assistant_message`, 또는 두 이벤트를 잇는 `agent_id` 중 하나라도 없으면, 축 (b) 구현을 시작하지 않고 S2+S3 조합안으로 되돌린다는 보고를 리드에게 먼저 올린다. 축 (a)(M2·M3)는 계속할 수 있다.
 
 ### M2 — 골든 캡처 (구현 전 커밋) · Priority High
 
-- 변경 전 코드에서 비-required 5경우(off / advisory / 키 부재 / 설정 파일 부재 / YAML 손상) × 바이너리 부재 조건의 `codex_audit` 직렬화 결과를 캡처한다. `build_commit`·`build_lag`(`mcp_codex.go:1672`, :1694)는 고정 자리표시자로 정규화한다.
-- 골든 파일과 비교 테스트를 **축 (a) 구현 커밋보다 앞선 별도 커밋**으로 올린다.
+- 변경 전 코드에서 비-required 5경우(off / advisory / 키 부재 / 설정 파일 부재 / YAML 손상) × 바이너리 부재의 `codex_audit` 직렬화 결과를 캡처. `build_commit`·`build_lag`(`mcp_codex.go:1672`, :1694)는 고정 자리표시자로 정규화.
+- 골든 파일과 비교 테스트를 축 (a) 구현 커밋보다 앞선 별도 커밋으로 올린다.
 
 ### M3 — 축 (a) RED → GREEN · Priority High
 
 - RED: required + {바이너리 부재, RPC 실패, 빈 출력} → `verdict: fail`.
-- 뒤집히는 단언 목록(커밋 메시지에 명시): `codex_audit_gate_unmet_test.go:32` 계열(`TestCodexAudit_RequiredGateUnmetRecordedOnInconclusive`), `codex_blank_review_test.go:408-420`(`TestCodexBlankReview_AC007_RequiredGateAnnotatesBlankOutput`, :419-420 의 `verdict == inconclusive`). 후자는 SPEC-CODEX-BLANK-REVIEW-FAILCLOSED-001 REQ-CBR-009 의 AC 이며, 주석 단언은 유지하고 verdict 단언만 `fail` 로 바꾼다.
+- 뒤집히는 단언(커밋 메시지에 명시): `codex_audit_gate_unmet_test.go:32` `TestCodexAudit_RequiredGateUnmetRecordedOnInconclusive`, `codex_blank_review_test.go:408-420` `TestCodexBlankReview_AC007_RequiredGateAnnotatesBlankOutput`(주석 단언 유지, verdict 단언만 `fail`).
 - GREEN: 단일 핸들러가 required 일 때 verdict 를 fail 로 올리고 summary 에 원인 병기.
 
-### M4 — 축 (b) 영수증 + S1 검사 · Priority High (§B.4 확정 후)
+### M4 — 축 (b) 구현 · Priority High (M1 통과 후)
 
-- 서버 측 영수증 기록(항상), 결과의 영수증 id 필드(required 일 때만), 수렴 결과 동일.
-- SubagentStop 검사: required 트리 + 감사자 PASS 일 때만 동작, 네 가지 거부 조건과 판독 불가 gap.
-- 에이전트 본문(로컬+템플릿)에 "PASS 보고 시 영수증 id 인용" 의무 추가.
+- 영수증 저장소(쓰기·읽기·seam), MCP 서버 영수증 기록과 required 한정 필드.
+- SubagentStart 시작 표식, SubagentStop 검사·거부 영속·재진입 경고·수용 시 제거.
+- PreToolUse `Agent|Task` 가드: `manager-develop` / `manager-docs` / `manager-git` 스폰 deny.
+- 에이전트 본문(로컬+템플릿)에 §B.6 판정 줄 의무 추가.
 
-### M5 — 축 (c) · 연기 (입력 대기, Kickoff 비차단)
+### M5 — 문서·미러·빌드 · Priority Low
 
-- 회신 수령 시: 관측 형태로 RED characterization → 최소 수리 → unknown 유지 사례 재확인.
-- 회신 없음: AC-CAG-013~014 를 gap 으로 기록하고 종료.
-
-### M6 — 문서·미러·빌드 · Priority Low
-
-- `codex_audit` 도구 설명(`mcp_server.go:269`), 감사자 본문, cross-model-audit 스킬(`SKILL.md:243-251` — "handlers the convergence engine reuses" 문구 정정 포함), 미러, `make agents-emit`, `make build`.
+- `codex_audit` 도구 설명(`mcp_server.go:269`), 감사자 본문, cross-model-audit 스킬(`SKILL.md:243-251`, "handlers the convergence engine reuses" 문구 정정), 미러, `make agents-emit`, `make build`.
 
 ## §G Anti-Patterns
 
 - 배포 기본값(codex required)을 opt-in 으로 읽기.
-- 제보자 auth 형태를 관측하지 않은 채 가설로 분류기를 고치고 "재현했다"고 보고하기.
 - 에이전트가 쓴 텍스트만으로 영수증 존재를 판정하기(저장소 대조 필수).
-- 골든을 구현 후 캡처하기(동어반복).
+- 훅에서 `CLAUDE_PROJECT_DIR` 로 트리를 판정하기(워크트리에서 primary 를 가리킨다).
+- 골든을 구현 후 캡처하기.
+- M1 페이로드 실측 없이 축 (b)를 구현하기.
 - 수렴 판정이나 codex Stop-hook 을 "김에" 고치기.
 
 ## §H Cross-References
@@ -128,18 +152,16 @@ spec.md §C 참조. 템플릿 에이전트 본문을 고치면 `make agents-emit
 | `.claude/agents/moai/sync-auditor.md` | `internal/template/templates/.claude/agents/moai/sync-auditor.md` |
 | `.claude/skills/moai-ref-cross-model-audit/SKILL.md` | `internal/template/templates/.claude/skills/moai-ref-cross-model-audit/SKILL.md` |
 
-감사자 템플릿 본문 수정 시 `make agents-emit` 로 `internal/template/templates/.codex/agents/moai/{plan-auditor,sync-auditor}.toml` 재생성 → `make build`.
+감사자 템플릿 본문 수정 시 `make agents-emit` 로 `internal/template/templates/.codex/agents/moai/{plan-auditor,sync-auditor}.toml` 재생성 → `make build`. 훅 배선(settings.json)은 SubagentStart·SubagentStop·PreToolUse `Agent|Task` 가 이미 있으므로 바꾸지 않는다.
 
 ### run-phase 가 닿을 파일 (예상)
 
-- 축 (a): `internal/cli/mcp_codex.go`, `internal/cli/mcp_server.go`(도구 설명), `internal/cli/codex_audit_gate_unmet_test.go`, `internal/cli/codex_blank_review_test.go`, 신규 골든 파일+비교 테스트(`internal/cli/testdata/` 아래)
-- 축 (b): `internal/cli/mcp_codex.go`, `internal/cli/mcp_convergence.go`(영수증 필드만), 신규 영수증 저장소 파일+테스트(`internal/cli/`), `internal/hook/subagent_stop.go`+테스트, 필요 시 저장소 판독 공용 패키지; 에이전트 본문 미러 4파일 + 방출본 2파일
-- 축 (c, 연기): `internal/cli/mcp_codex.go`, `internal/cli/codex_auth_ladder_test.go`
+- 축 (a): `internal/cli/mcp_codex.go`, `internal/cli/mcp_server.go`(도구 설명), `internal/cli/codex_audit_gate_unmet_test.go`, `internal/cli/codex_blank_review_test.go`, 신규 골든+비교 테스트(`internal/cli/testdata/` 아래)
+- 축 (b): `internal/cli/mcp_codex.go`, `internal/cli/mcp_convergence.go`(영수증 필드만), 신규 영수증 저장소 패키지 파일+테스트(MCP 서버와 훅이 함께 쓰므로 `internal/` 아래 공용 위치), `internal/hook/subagent_start.go`, `internal/hook/subagent_stop.go`, `internal/hook/pre_tool.go`, 신규 가드 파일+테스트(`internal/hook/`), 에이전트 본문 미러 4파일 + 방출본 2파일
 - 문서: cross-model-audit 스킬 미러 2파일
 
 ### 선례와 덮어쓰는 계약
 
 - SPEC-CODEX-BLANK-REVIEW-FAILCLOSED-001 REQ-CBR-009 (spec.md:163-165), Out of Scope (:221-222) — spec.md §A.4
 - SPEC-CODEX-REVIEW-TARGET-001 spec.md:207 — spec.md §A.4
-- SPEC-AUDIT-GATE-INTEGRITY-001 — "게이트가 실제로 게이트하지 않는다" 병리
-- SPEC-WF-AUDIT-GATE-001 — INCONCLUSIVE 는 PASS 가 아니다
+- SPEC-AUDIT-GATE-INTEGRITY-001, SPEC-WF-AUDIT-GATE-001

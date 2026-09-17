@@ -4,12 +4,13 @@
 
 ## §E.1 Plan-phase Audit-Ready Signal
 
-- 산출: `spec.md` · `plan.md` · `acceptance.md` · `progress.md` (Tier M).
+- 산출: `spec.md` · `plan.md` · `acceptance.md` · `progress.md` (Tier M). 요구사항 16, AC 14.
 - 기준 트리: develop @ `f67d2193f`.
-- v0.2.0: 운영자 결정 B.1=B-1, B.2=C-1(축 (c) 입력 대기), B.3 유지를 plan.md §B 에 결정 기록으로 반영. plan-audit iter1 FAIL 0.74(`.moai/reports/plan-audit/SPEC-CODEX-AUDIT-GATE-AXES-001-review-1.md`)의 D1-D12 전부 반영.
-- 남은 결정 1건(Kickoff): plan.md §B.4 영수증 검사 표면 — 권장 S1 SubagentStop 검사.
-- 이 세션이 관측하지 않은 것: 테스트 미실행(변경 전 초록 기준선 미확인), SubagentStop 런타임 페이로드 미관측(필드는 `internal/hook/types.go:230,238-241` 선언만 확인), 제보자 auth 형태 미관측.
-- 감사 보고서 정정 1건: `sync-phase-quality-gate.sh` 는 현재 트리에서 vet/build 실패를 기본 차단한다(:14-19, `MOAI_SYNC_GATE_BLOCKING=0` 이 opt-out). 결론(감사 판정 검사 표면이 아님)은 동일.
+- 축 (c) `auth_provider: "unknown"` 은 v0.3.0 에서 카드 **t870** 으로 분리(제보자 입력 대기). 이 SPEC 에는 요구사항·AC·마일스톤·파일이 남아 있지 않다.
+- 확정 결정(운영자, 2026-09-18): B-1 영수증, B.3 `verdict: fail`+`gate_unmet`+`isError:false`, K1 표면 S1(SubagentStop), N2 시작 표식 + 거부 기록 영속 + PreToolUse `Agent|Task` 소비자(`internal/hook/pre_tool.go:632-640` 경로에 형제 가드, 배선 `.claude/settings.json:69` PreToolUse `"matcher": "Agent|Task"`).
+- plan-audit: iter1 FAIL 0.74(D1-D12 반영, v0.2.0), iter2 FAIL 0.82(N1-N4, O1-O4 반영, v0.3.0).
+- 남은 열린 결정: 없음. M1 정지 규칙(페이로드에 `agent_type`/`last_assistant_message`/`agent_id` 부재 시 S2+S3 로 되돌리고 리드 보고)이 유일한 조건부 분기.
+- 이 세션이 관측하지 않은 것: 테스트 미실행(변경 전 초록 기준선 미확인), SubagentStart/Stop 런타임 페이로드 미관측(필드는 `internal/hook/types.go:211,230,238-241` 선언만 확인).
 
 ## §E.2 Run-phase Evidence
 
