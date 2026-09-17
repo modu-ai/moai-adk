@@ -314,9 +314,19 @@ func writeDriftFillRecord(path string, rec driftFillRecord) bool {
 // remove. Judging staleness at the moment of removal NARROWS the window to the
 // interval between the stat and the remove; it does not eliminate it, because
 // no filesystem offers an atomic test-and-remove. A microsecond-wide race
-// therefore survives, and its worst case is exactly one extra child — the same
-// fail-open cost this path already accepts everywhere else, never data
-// corruption. This is the identical residual the in-tree precedent accepts with
+// therefore survives, and what it costs is bounded on one axis but not the
+// other:
+//
+//   - BOUNDED. The child's own flock (internal/spec.WithDriftFillLock, taken
+//     non-blocking) admits at most one COMPUTE: a child that loses it returns
+//     having computed and written nothing. So the residual can never produce a
+//     second compute, a torn cache, or data corruption.
+//   - NOT BOUNDED. The NUMBER of children. N handlers that each judge this lock
+//     stale can each remove it and each win the re-claim, so N children can
+//     start. Each extra one costs a process start, a failed flock and an exit —
+//     the same fail-open cost this path already accepts everywhere else.
+//
+// This is the identical residual the in-tree precedent accepts with
 // its own reasoning written down (internal/verify/claim_lock.go, the
 // "Fail-open policy" comment on acquireKeyLock).
 func acquireDriftFillClaimLock(lockPath string) bool {
