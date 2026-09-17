@@ -1,0 +1,141 @@
+<!doctype html><html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>MoAI Hybrid Factory — 역할·모델·이미지 재설계</title><link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700&family=Noto+Serif+KR:wght@500;700&display=swap"><style>
+:root{--ivory:#FAF9F5;--paper:#fff;--slate:#141413;--clay:#D97757;--clay-d:#9b4228;--oat:#E3DACC;--olive:#788C5D;--g100:#F0EEE6;--g300:#D1CFC5;--g500:#68675f;--g700:#3D3D3A;--sans:'Noto Sans KR',-apple-system,sans-serif;--serif:'Noto Serif KR',serif;--mono:ui-monospace,SFMono-Regular,monospace;--max-width:1180px;--radius-panel:16px;--radius-row:8px;--border:1px solid var(--g300)}
+*{box-sizing:border-box}html{scroll-behavior:smooth;scroll-padding-top:28px}body{margin:0;background:var(--ivory);color:var(--g700);font-family:var(--sans);font-size:15px;line-height:1.85}a{color:var(--clay-d);text-underline-offset:4px;overflow-wrap:anywhere}a:hover{color:#652a17}a:focus-visible,summary:focus-visible,.table-wrap:focus-visible{outline:3px solid var(--clay);outline-offset:4px}header{background:#19241e;color:#f9f7ef;padding:72px max(28px,calc((100vw - 1180px)/2)) 55px}.eyebrow{font-size:12px;letter-spacing:.1em;font-weight:700;color:#b66345}.hero-tag{color:#d5cabb;font-size:12px;letter-spacing:.12em}.hero-grid{display:grid;grid-template-columns:1fr 250px;gap:40px;align-items:end}h1{font-family:var(--serif);font-size:clamp(32px,4.2vw,52px);line-height:1.4;letter-spacing:-.035em;font-weight:700;max-width:830px;margin:20px 0}header p{max-width:750px;color:#dce0d8;margin:10px 0;font-size:17px}.hero-note{border-top:2px solid var(--clay);padding-top:18px;color:#ddd4c3;font-size:13px}.hero-note b{display:block;color:#fff;font-size:20px;margin-bottom:8px}.meta{display:flex;flex-wrap:wrap;gap:8px;margin-top:30px}.meta span{padding:4px 12px;border:1px solid #536053;border-radius:20px;font-size:12px;color:#e2e7dd}.shell{max-width:var(--max-width);margin:0 auto;padding:42px 24px 100px;display:grid;grid-template-columns:215px minmax(0,1fr);gap:38px}nav{position:sticky;top:24px;align-self:start;max-height:calc(100vh - 45px);overflow:auto;font-size:12px}nav strong{display:block;color:var(--slate);margin-bottom:16px;font-size:13px}nav a{display:block;text-decoration:none;color:#68675f;padding:7px 0;border-bottom:1px solid #e7e2d8;line-height:1.65}main{min-width:0}section{margin-bottom:48px;background:var(--paper);border:var(--border);padding:30px;border-radius:var(--radius-panel)}h2{font-family:var(--serif);color:var(--slate);font-size:24px;line-height:1.55;letter-spacing:-.02em;margin:0 0 22px;padding-bottom:15px;border-bottom:2px solid var(--oat)}h3{font-size:20px;line-height:1.55;color:var(--slate)}p{margin:15px 0;overflow-wrap:anywhere}strong{color:var(--slate)}li{margin:10px 0;padding-left:3px}ul,ol{padding-left:24px}code{font-family:var(--mono);font-size:.9em;overflow-wrap:anywhere}p code,li code,td code{background:var(--g100);padding:2px 5px;border-radius:4px}pre{white-space:pre-wrap;overflow-wrap:anywhere;background:#f2f1ea;padding:18px;border:1px solid #e0ddd3;border-radius:9px;line-height:1.7;font-size:12px}.table-wrap{overflow:auto;margin:24px 0;border:var(--border);border-radius:9px}table{border-collapse:collapse;width:100%;font-size:13px;min-width:620px}th,td{padding:14px 15px;text-align:left;vertical-align:top;border-bottom:1px solid #e8e4dc;line-height:1.8}th{background:#ecece3;color:#303c30;font-weight:700}tr:last-child td{border-bottom:0}td:first-child{font-weight:500;color:#27372b}tbody tr:nth-child(even){background:#fafaf6}.flow-panel{background:#f2f3ea;border:1px solid #d8ddcd;border-radius:12px;padding:24px;margin-bottom:32px}.flow-panel h3{margin:8px 0 22px}.flow-head{text-align:center;padding:14px;background:#fff;border:1px solid #b9c4b0;border-radius:10px;color:#203b2a;font-weight:700}.flow-head.lane{background:#e0e8d8}.flow-arrow{text-align:center;font-size:24px;color:#788C5D;line-height:1.5}small{display:block;font-size:11px;line-height:1.8;font-weight:400;margin-top:5px}.flow-branches{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:18px}.flow-branches>div{background:#fff;padding:14px 8px;border:1px solid #d4d9c8;border-top:3px solid var(--olive);border-radius:8px;text-align:center;font-size:13px;font-weight:700}.caption{font-size:12px;color:#66695c}details{margin-top:20px;border-top:1px solid #ced5c2;padding-top:15px}summary{cursor:pointer;font-size:13px;color:#425638}.mermaid{background:white}.mermaid svg{max-width:100%;height:auto}.example{border-left:4px solid var(--clay);padding:18px 22px;background:#fcf2ec;margin-bottom:25px}.example b{color:#9b4228}.example p{font-size:14px;margin-bottom:0}.topline{font-size:12px;color:var(--g500);margin:0 0 18px}.kpis{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin:0 0 30px}.kpis div{background:#eee9de;border-radius:12px;padding:20px 15px;line-height:1.6;font-size:12px}.kpis b{font-size:19px;display:block;color:#273b2b;margin-bottom:4px}footer{border-top:var(--border);padding:24px;text-align:center;font-size:12px;color:var(--g500)}.skip{position:absolute;left:20px;top:-100px;background:white;padding:10px;z-index:3}.skip:focus{top:12px}
+@media(max-width:960px){.shell{grid-template-columns:1fr;gap:20px}nav{position:static;max-height:none;display:flex;gap:12px;overflow:auto;padding-bottom:12px}nav a{min-width:130px;max-width:160px;flex-shrink:0}nav strong{display:none}.hero-grid{grid-template-columns:1fr}.hero-note{max-width:480px}.hero-grid{gap:15px}}
+@media(max-width:600px){header{padding:38px 20px}.shell{padding:24px 12px 50px}section{padding:21px 16px;margin-bottom:24px}h2{font-size:21px}.kpis{gap:6px}.kpis div{padding:14px 9px;font-size:11px}.kpis b{font-size:16px}.flow-panel{padding:15px}.flow-branches{grid-template-columns:1fr}.flow-branches>div{padding:10px}body{font-size:14px}header p{font-size:15px}.hero-note b{font-size:18px}}
+@media print{body{background:white;font-size:10pt}header{background:white;color:black;padding:0 0 20px}header p,.hero-tag,.hero-note,.hero-note b{color:black}.meta,nav,.skip{display:none}.shell{display:block;padding:0}section{padding:18px 0;border:0;border-radius:0;margin-bottom:15px}h1{font-size:26pt}h2{font-size:16pt;break-after:avoid}table{min-width:0;font-size:8pt}.table-wrap{overflow:visible}tr{break-inside:avoid}pre{font-size:8pt}a{color:#222}details{display:none}.flow-panel{break-inside:avoid}.hero-grid{display:block}.kpis{break-inside:avoid}footer{padding:12px}}
+</style></head><body><a class="skip" href="#main">본문으로 이동</a><header><div class="hero-tag">MoAI / HYBRID FACTORY REDESIGN</div><h1>역할은 유지하고,<br>모델은 작업에 맞게 고른다.</h1><p>기존 cc·glm·gpt와 Factory를 연결하는 공통 실행 정책.<br>3단계 sub-agent, MCP, Gateway, 이미지 생성을 함께 설계한다.</p><div class="meta"><span>2026-09-14</span><span>설계 제안 · 구현 없음</span><span>일반 모드 + Factory</span></div></header><div class="shell"><nav aria-label="목차"><a href="#s1">1. 결정 요약 — 역할은 유지하고 실행 모델을 선택한다</a><a href="#s2">2. 3단계 sub-agent는 가능한가</a><a href="#s3">3. 비교한 다섯 가지 구성</a><a href="#s4">4. 사용 경험 — 기존 진입점, 공통 프로필</a><a href="#s5">5. gpt-agent-plan / run을 어떻게 만들 것인가</a><a href="#s6">6. 공통 실행 계약 — 한 번 정하고 모든 모드에서 적용</a><a href="#s7">7. Factory — lead는 조율, lane은 작업 소유</a><a href="#s8">8. 경제성 — 가장 싼 모델이 아니라 성공한 작업의 총비용</a><a href="#s9">9. GPT 이미지 생성은 별도의 실행 능력으로 제공</a><a href="#s10">10. 인증·승인·실행 권한을 한 화면에서 숨기지 않는다</a><a href="#s11">11. 최소 도입 순서와 통과 기준</a><a href="#s12">12. Claim · Evidence · Baseline-attribution</a><a href="#s13">13. Gaps · Residual-risk · 결정할 사항</a></nav><main id="main"><div class="kpis"><div><b>얕게 시작</b>중첩은 필요한 작업만</div><div><b>한 정책</b>일반·lane·역할 공통</div><div><b>이미지 분리</b>파일·예산·채택 관리</div></div><p class="topline">plan / basic · MoAI-Easy 설정 기준 · <a href="report.md">Markdown 원문</a> · <a href="../factory-llm-subscriptions-20260914-01a09dfb/report.html">이전 조사 보고서</a></p><p>2026-09-14 · 브레인스토밍을 반영한 설계 제안 · 제품 구현·설정 변경 없음</p>
+<section id="s1"><h2>1. 결정 요약 — 역할은 유지하고 실행 모델을 선택한다</h2>
+<p>권고는 하나의 공통 실행 정책에 두 연결 방식을 지원하는 Hybrid Factory다. 사용자는 기존 moai cc, moai glm, moai gpt의 주 모델 선택을 유지하면서, 각 역할·lane의 작업 모델은 별도로 선택한다. Claude main + GPT·GLM 전문 작업을 기본 사용 경험으로 제공하되 Gateway 사용자를 강제로 전환하지 않는다.</p>
+<ul>
+<li>메인 모델: 사용자가 대화하는 Claude Code 세션의 모델. native Claude 또는 Gateway 모델.</li>
+<li>역할: plan, run, review, image처럼 수행할 일. 공급자 이름과 분리한다.</li>
+<li>실행 경로: Claude Code 자체 실행, MCP를 통한 외부 실행기 위임, 별도 Gateway lane 중 선택한다.</li>
+<li>실행 정책: provider, model, effort, 인증·과금, 쓰기 범위, 동시성, 재시도 상한을 함께 결정한다.</li>
+</ul>
+<p>이 보고서는 개인이 감독하는 로컬 개발을 기본 사용 시나리오로 제안한다. 무인 운영·다중 사용자 서비스는 별도의 허용 API·계약을 요구한다. 품질 향상·절감률은 아직 측정하지 않은 목표다.</p>
+</section>
+<section id="s2"><h2>2. 3단계 sub-agent는 가능한가</h2>
+<p>가능하다. 최신 Claude Code 공식 문서는 메인 아래 기본 3단계 중첩과 CLAUDE_CODE_MAX_SUBAGENT_SPAWN_DEPTH 설정을 설명한다. v2.1.219부터 기본 3단계이며, 로컬 claude --version 결과는 2.1.270이다. 다만 실제 3단계 생성은 이번에 실행하지 않았다. 검색 결과에 남은 예전의 중첩 불가 설명보다 현재 본문을 기준으로 판단했다. <a href="https://code.claude.com/docs/en/sub-agents#let-subagents-spawn-their-own-subagents">공식 중첩 설명</a>.</p>
+<p>중첩 가능성과 GPT 사용은 별개다. Claude subagent 이름을 gpt-agent-plan으로 정해도 실제 추론이 GPT로 바뀌지는 않는다. native Claude 세션에서는 해당 subagent가 Claude로 실행되어 MCP의 GPT 작업을 요청하는 중개 역할이 된다. Gateway 모델 매핑은 별도의 경로다.</p>
+<p>현재 MoAI에는 일반 retained agent의 Agent 도구 제한과 manager-lead의 leaf-worker 예외가 있다. 기존 규칙에는 전면 flat 설명도 남아 있어, 새 중첩 예외 도입 전 정합성 검토가 필요하다. 이 보고서는 규칙을 임의 변경하지 않는다. <a href="../../../../../.claude/agents/moai/manager-lead.md">manager-lead 정의</a>, <a href="../../../../../.claude/rules/moai/development/agent-authoring.md">에이전트 작성 규칙</a>.</p>
+<p>권고: 기본은 얕게, 필요할 때만 중첩한다. 메인 → 역할 담당 → 전문 실행은 논리적 3단계이며 마지막 MCP 작업은 Claude native subagent 깊이에 포함되는 Agent 호출이 아니다. 별도 전역 작업 수 제한이 필요하다. plan → run → review는 중첩 트리로 만들기보다 동일 소유자가 순서대로 실행하는 단계 흐름으로 만든다.</p>
+</section>
+<section id="s3"><h2>3. 비교한 다섯 가지 구성</h2>
+<div class="table-wrap" tabindex="0" role="region" aria-label="비교표"><table><thead><tr><th scope="col"> 구성 </th><th scope="col"> 장점 </th><th scope="col"> 비용·제약 </th><th scope="col"> 권고 </th></tr></thead><tbody><tr><td> 메인 모델이 모든 작업 수행 </td><td> 설정·문맥 전달이 단순 </td><td> 모든 작업에 같은 모델 비용 </td><td> 짧고 단순한 변경에 유지 </td></tr><tr><td> 메인에서 MCP 직접 호출 </td><td> Claude 중간 관리자 호출을 생략 </td><td> 메인이 외부 결과를 처리 </td><td> 짧은 질문·독립 리뷰·이미지 요청 기본 </td></tr><tr><td> Claude 역할 subagent → MCP </td><td> 문맥 격리, 역할별 권한·근거 검증 </td><td> Claude wrapper와 외부 실행 양쪽 비용 </td><td> 긴 설계·독립 구현의 기본 </td></tr><tr><td> 모든 역할을 3단계 중첩 </td><td> 복잡한 병렬 작업 분해 </td><td> 관리자 증가, 결과 중복, 동시성 팽창 </td><td> 기본값으로 채택하지 않음 </td></tr><tr><td> lane별 Gateway 주 모델 </td><td> lane의 전체 개발 루프를 해당 모델이 수행 </td><td> 프로토콜·인증·history 호환 검증 </td><td> 기존 모드 유지, 고급 사용자 선택 </td></tr></tbody></table></div>
+<p>최적안은 두 번째·세 번째를 작업 크기에 따라 쓰고 다섯 번째를 함께 지원하는 것이다. 단순 lint 실패 수정마다 plan/run/review 전문 에이전트를 모두 만들지 않는다. 반대로 결제·인증 변경은 비용 최적화 설정이어도 검증을 줄이지 않는다.</p>
+</section>
+<section id="s4"><div class="flow-panel"><h3>같은 개발 흐름, 선택 가능한 실행 경로</h3><div class="flow-head">Claude Code main / Factory lead<small>사용자 대화 · 선택·승인 · 결과 확인</small></div><div class="flow-arrow">↓</div><div class="flow-head lane">일반 작업 / lane별 역할<small>plan → run → review · 필요할 때만 중첩</small></div><div class="flow-arrow">↓</div><div class="flow-head">공통 실행 정책<small>모델 · effort · 권한 · 예산 · 작업 소유권</small></div><div class="flow-branches"><div>Claude native<small>기존 실행 유지</small></div><div>MCP 위임<small>Codex · GLM API · 이미지</small></div><div>Gateway lane<small>lane 주 모델 선택</small></div></div><details><summary>흐름도 펼치기</summary><pre class="mermaid">flowchart TD
+ U[사용자] --> M[Claude Code main 또는 Factory lead]
+ M --> R[역할별 작업 및 lane]
+ R --> P[공통 모델 권한 예산 정책]
+ P --> N[Claude native]
+ P --> C[MCP 외부 실행기]
+ P --> G[Gateway lane]
+ C --> I[이미지 artifact 또는 코드 결과]
+ N --> V[검증 근거]
+ G --> V
+ I --> V
+ V --> M
+</pre><noscript>사용자 → 메인·lead → 역할·lane → 공통 정책 → native/MCP/Gateway → 산출물 검증 순서로 진행한다.</noscript></details></div><h2>4. 사용 경험 — 기존 진입점, 공통 프로필</h2>
+<p>아래는 제안 UX다. 실제 존재하는 명령 옵션이라고 주장하지 않는다. 기존 명령의 기본 동작은 유지하고 사용자가 명시적으로 프로필을 선택했을 때만 역할별 분업을 켠다.</p>
+<div class="table-wrap" tabindex="0" role="region" aria-label="비교표"><table><thead><tr><th scope="col"> 진입 방식 </th><th scope="col"> 메인 기본값 유지 </th><th scope="col"> 추가 선택 가능한 작업 방식 </th></tr></thead><tbody><tr><td> moai cc </td><td> Claude </td><td> GPT 설계·구현 위임, GLM 텍스트 작업, GPT 이미지 </td></tr><tr><td> moai glm </td><td> 기존 GLM 연결 </td><td> 복잡한 단계만 GPT 위임, 이미지 작업 별도 </td></tr><tr><td> moai gpt </td><td> 기존 GPT Gateway 연결 </td><td> GLM에 저위험 작업, GPT 이미지 별도 </td></tr><tr><td> Factory -f </td><td> 선택한 lead, 각 lane 세션 </td><td> lane 기본 경로 + 역할별 예외 정책 </td></tr></tbody></table></div>
+<p>사용자 요청의 moai -f는 Factory 사용 경험으로 해석한다. 현재 문서에서 확인한 형태는 moai cc -f N이며, top-level moai -f 별칭 여부는 이번에 검증하지 않았다.</p>
+<p>초기 화면은 네 가지만 묻는다: 메인 모델, 작업 프로필, 추가 API 과금 허용 여부, 동시 작업 상한. 상세 model·effort는 펼쳐서 수정한다. 프로필은 프로젝트에 저장하고 세션·lane별 임시 덮어쓰기를 제공한다. 같은 터미널 전역 환경을 덮어쓰지 않는다.</p>
+<ul>
+<li>절약형: 짧은 작업은 직접 처리, 검증된 저비용 모델에 경계가 명확한 작업 위임, 실패 시 승격.</li>
+<li>균형형: 복잡한 설계에 상위 추론, 구현은 중간 단계, 위험한 변경만 독립 검토. 권장 초기값.</li>
+<li>품질형: 고위험 설계·구현을 상위 모델로, 독립 검증을 추가하되 무제한 토론은 금지.</li>
+<li>수동형: 공급자·모델·effort·실행 경로를 역할별 지정, 자동 변경 없음.</li>
+</ul>
+<p>실행 전 미리보기에는 요청 모델과 실제 모델, 인증 종류, 추가 과금 가능성, 쓰기 권한, 선택 이유를 표시한다. 구독 잔여량을 공식적으로 조회할 수 없으면 미확인으로 표기한다. 토큰 수를 구독 잔여량으로 환산해 꾸며내지 않는다.</p>
+</section>
+<section id="s5"><h2>5. gpt-agent-plan / run을 어떻게 만들 것인가</h2>
+<p>사용자에게는 gpt-agent-plan, gpt-agent-run, glm-agent-run 같은 친숙한 이름을 제공할 수 있다. 내부적으로는 역할 템플릿 하나와 실행 프로필을 합성해야 한다. 공급자 × 역할 × effort마다 독립 프롬프트 파일을 복제하지 않는다.</p>
+<div class="table-wrap" tabindex="0" role="region" aria-label="비교표"><table><thead><tr><th scope="col"> 사용자 이름 </th><th scope="col"> 내부 역할 </th><th scope="col"> 실제 추론 및 실행 </th><th scope="col"> 반환 계약 </th></tr></thead><tbody><tr><td> gpt-agent-plan </td><td> plan </td><td> 필요 시 Claude wrapper → Codex </td><td> 설계안, 전제, 위험, 검증 조건 </td></tr><tr><td> gpt-agent-run </td><td> run </td><td> Codex의 제한된 독립 작업 </td><td> 기준 commit, diff, 실행 명령·출력, 미완료 </td></tr><tr><td> glm-agent-run </td><td> bounded implementation </td><td> 지원 API 또는 GLM Gateway lane </td><td> 변경안 또는 검증된 diff; 실행 근거 구분 </td></tr><tr><td> cross-review </td><td> review </td><td> 작성자와 독립된 검토 실행 </td><td> 구체적 결함·재현·잔여 위험 </td></tr><tr><td> gpt-image </td><td> image </td><td> 검증된 Codex 이미지 경로 또는 Images API </td><td> 이미지 파일과 메타데이터 </td></tr></tbody></table></div>
+<p>기존 manager-spec·manager-develop·sync-auditor 등의 책임을 대체하는 병렬 조직을 만들지 않는다. 역할 소유자는 기존 에이전트이고 외부 모델은 그 역할이 선택한 실행기다. SPEC 작성 권한과 코드 작성 권한을 혼합하지 않는다. 새로운 agent 파일·frontmatter는 이 보고서에서 생성하지 않는다.</p>
+<p>Claude wrapper는 짧게 요청을 정리하고 결과의 형식·근거를 확인한다. GPT가 이미 읽은 전체 저장소를 wrapper가 다시 읽거나, 받은 구현을 똑같이 다시 작성하지 않는다. 간단한 위임은 wrapper 자체를 생략한다.</p>
+</section>
+<section id="s6"><h2>6. 공통 실행 계약 — 한 번 정하고 모든 모드에서 적용</h2>
+<p>새 제어 서비스를 별도로 만드는 대신 기존 MoAI의 모델 해석기·작업 레지스트리·MCP를 확장한다. 아래 필드는 제안이며 현재 schema가 아니다.</p>
+<pre><code>role: run
+route: mcp
+provider: openai
+model: user_selected_model
+effort: user_selected_supported_effort
+auth_ref: local_official_codex_login
+owner: {session_id: required, lane_id: optional, task_id: required}
+workspace: {worktree: explicit_path, base_commit: required}
+permissions: {write_scope: assigned_paths, network: policy}
+limits: {max_attempts: 2, concurrent_jobs: 1, api_spend_cap: explicit}
+fallback: ask_before_billing_or_provider_change</code></pre>
+<p>정책 우선순위는 강제 보안·과금 제약 → 사용자 명시 선택 → task → agent role → lane → session → project 기본값이다. 강제 제약과 충돌하면 조용히 다른 모델을 쓰지 않고 거부하거나 선택을 요청한다. 일반 편의 프로필 변경은 이미 실행 중인 작업에 소급 적용하지 않는다.</p>
+<p>모델과 effort를 따로 저장한다. 공급자마다 지원 수준이 다르므로 동일한 high 문자열이 동일 비용·추론량을 뜻한다고 가정하지 않는다. GPT는 공식 model/list의 supportedReasoningEfforts 같은 능력 정보를 활용하는 방향으로 설계한다. <a href="https://learn.chatgpt.com/docs/app-server">Codex App Server</a>.</p>
+<p>Claude main의 provider는 MCP worker에 자동 상속하지 않는다. 반대로 외부 worker의 키·endpoint가 main으로 새지 않도록 별도 실행 환경을 사용한다. 새 모델·공급자·권한·기준 commit으로 바뀌면 기존 대화 thread를 무조건 재사용하지 않고 산출물 요약에서 새로 시작한다.</p>
+<p>MCP 작업에는 session/lane/task/attempt ID, actual model·effort, status, artifacts, 검증 출력, 사용량과 과금 근거를 반환한다. provider 변경이나 재시도는 요청 ID와 연결한다. 작업 완료 문자열만으로 카드 완료를 승인하지 않는다.</p>
+</section>
+<section id="s7"><h2>7. Factory — lead는 조율, lane은 작업 소유</h2>
+<p>Factory lead는 카드 배정과 결과 확인을 담당한다. lane은 자신의 worktree·카드·실행 정책을 소유하고 plan → run → review → sync를 진행한다. 일반 모드도 같은 계약을 쓰되 lane_id만 생략한다.</p>
+<p>추천 출발점은 Claude lead + Claude lane의 MCP 분업이다. 저비용 모델의 도구 루프가 검증된 작업군은 GLM Gateway lane으로 선택할 수 있다. GPT 중심의 긴 구현은 GPT Gateway lane 또는 Codex 위임 중 실제 성공 작업당 비용이 낮은 경로를 고른다. 이미지 전용 lane은 요청량이 많을 때만 두고, 보통은 공용 image 작업 큐를 쓴다.</p>
+<p>모든 lane에 plan/run/review용 별도 상주 세션을 만들지 않는다. 병렬성은 독립된 카드·파일 경계가 있을 때만 사용한다. 같은 파일을 여러 모델이 동시에 수정하지 않으며, 작성 후 검토를 수행한다. 외부 writer와 Claude wrapper 중 한쪽만 해당 변경의 쓰기 소유자가 된다.</p>
+<p>동시성은 lane 수 × subagent 수 × 외부 작업 수로 증가할 수 있다. 예를 들어 4 lane이 각각 3 wrapper를 만들고 wrapper마다 외부 작업 2개를 요청하면 외부 작업은 최대 24개다. 이는 설계상 산술 예시이며 실측이 아니다. native Agent 제한만으로 MCP 외부 작업이 통제된다고 가정하지 않는다. provider/account 전역 semaphore와 실행 전 예산 예약으로 제한한다.</p>
+<p>기존 Factory의 glm_task model override 무시 정책은 현재의 단일 기준을 보호한다. 이를 삭제하는 대신 승인된 실행 정책 ID를 받아 실제 모델을 명시적으로 결정하도록 재설계한다. lead의 정책 권한을 개별 worker가 임의로 넓히지 못하게 한다.</p>
+</section>
+<section id="s8"><h2>8. 경제성 — 가장 싼 모델이 아니라 성공한 작업의 총비용</h2>
+<p>최적화 목표는 합격한 변경 1건의 총비용이다. 구독은 이미 지불한 금액, 한도 소모, API 추가 요금, 검증·재작업 비용을 구분한다. 구독이라는 이유로 모든 호출을 무료로 표시하지 않는다.</p>
+<pre><code>총비용 = 조율 + 문맥 전달 + 실행 + 검증 + 실패 재시도 + 이미지 비용
+성공 작업당 비용 = 해당 작업군의 전체 비용 / 승인된 결과 수</code></pre>
+<p>출발 모델 배정은 가설이다. 설계는 Claude/GPT 상위 추론, 명확한 구현은 검증된 중간 모델, 반복 변환·테스트 후보는 저비용 GLM 후보로 두고 실제 과제로 조정한다. 특정 회사가 항상 설계나 구현에 우월하다고 고정하지 않는다.</p>
+<ul>
+<li>문맥 절약: 전체 대화 대신 요구사항·관련 파일·기준 commit·제약·검증 명령의 작업 묶음을 전달한다. 비밀과 무관한 개인 자료는 제외한다.</li>
+<li>캐시: 동일 작업의 따뜻한 세션은 이어가되, 공급자 간 캐시 공유는 가정하지 않는다. 필요한 역할 설명만 로드한다.</li>
+<li>승격: 실패 원인이 모델 추론인지 도구 오류인지 구분한다. 인증·네트워크 실패를 상위 모델 호출로 해결하지 않는다.</li>
+<li>재시도: 같은 원인 반복은 중단하고 증거와 함께 상위 역할에 전달한다. 예시 상한 2회는 제안값이지 측정된 최적값이 아니다.</li>
+<li>검토: 일상 변경은 기계 검증부터, 고위험 변경은 독립 리뷰를 추가한다. 모든 작업을 여러 모델에게 중복 작성시키지 않는다.</li>
+</ul>
+<p>완료 조건은 기존 기준 대비 비용 감소만이 아니다. 누락된 요구사항·회귀·보안 결함이 늘지 않아야 한다. 토큰 절감률을 이번 보고서에서 약속하지 않는다.</p>
+</section>
+<section id="s9"><aside class="example"><b>적용 예: 이미지가 필요한 기능 개발</b><p>Claude main이 요구를 정리하고 GPT에 복잡한 설계를 맡겨. 명확한 구현은 선택한 모델이 담당하고, 이미지 요청은 별도 예산으로 실행해. 검증이 끝난 코드와 사용자가 채택한 이미지만 반영해. 짧은 수정이면 중간 역할을 만들지 않고 직접 처리해.</p></aside><h2>9. GPT 이미지 생성은 별도의 실행 능력으로 제공</h2>
+<p>이미지 생성은 코딩 모델 이름의 부수 기능으로 취급하지 않고 image.generate / image.edit 작업 유형으로 분리한다. 계획·구현 역할과 같은 권한·예산·작업 상태 체계를 쓰되 산출물은 파일이다. 메인 모델이 Claude든 GLM이든 동일한 요청 경험을 제공한다.</p>
+<p>공식 문서는 Codex 내장 이미지 생성이 gpt-image-2를 사용하며 일반 Codex 사용 한도에 포함된다고 설명한다. 비슷한 비이미지 turn보다 한도 소모가 평균 3–5배 빠르다는 안내도 있으나 이를 MoAI 원가 측정치로 사용하지 않는다. 프로그램 방식 생성은 Images API 경로를 안내한다. <a href="https://learn.chatgpt.com/docs/image-generation">공식 이미지 생성 문서</a>.</p>
+<div class="table-wrap" tabindex="0" role="region" aria-label="비교표"><table><thead><tr><th scope="col"> 경로 </th><th scope="col"> 용도 </th><th scope="col"> 도입 조건 </th></tr></thead><tbody><tr><td> 공식 Codex 내장 이미지 생성 </td><td> 개인 감독하의 소량 제작·수정 </td><td> 현재 설치 버전·계정의 지원과 MCP 산출물 회수를 실제 검증 </td></tr><tr><td> OpenAI Images API </td><td> 명시적 자동화·정형 요청·배치 </td><td> 별도 API 키·과금 동의, 현재 API 규격 확인 </td></tr></tbody></table></div>
+<p>구독 OAuth를 Images API용 키처럼 재사용하지 않는다. 현재 MoAI의 codex_task가 텍스트 작업을 수행한다는 사실만으로 이미지 반환도 동작한다고 주장하지 않는다. 같은 runtime을 재사용하더라도 이미지 전용 artifact 수집 계약이 필요하다.</p>
+<p>입력은 목적·프롬프트·참고 이미지·크기·품질·변경 금지 조건·출력 경로·예산이다. 결과에는 검증된 파일 경로, MIME, 크기, hash, 사용한 backend, 참조 이미지 provenance를 기록한다. 참고 파일 전송은 사용자가 허용한 범위만 사용한다. 파일 경로 탈출·symlink·임의 덮어쓰기를 막고 브라우저 실행 가능한 형식은 별도 취급한다.</p>
+<p>사용자는 초안 확인 → 수정 또는 채택 → 프로젝트 반영 순서로 진행한다. 생성한 모든 후보를 배포하지 않는다. 이미지 1개 요청 실패가 전체 개발 lane의 무제한 재시도로 이어지지 않게 별도 한도를 둔다. 이번 요청은 이미지 생성 기능 설계이며 실제 이미지 제작은 수행하지 않았다.</p>
+</section>
+<section id="s10"><h2>10. 인증·승인·실행 권한을 한 화면에서 숨기지 않는다</h2>
+<p>Claude Code의 MCP 호출 승인과 외부 Codex가 실행하는 모든 shell·patch의 승인은 동일하지 않다. 초기에는 읽기·제안 전용을 우선 검증하고, 독립 구현은 worktree와 파일 범위를 명시한 writer 모드로 분리한다. 모든 실행이 Claude hook을 통과해야 한다면 native 실행 또는 검증된 도구 중개가 필요하다.</p>
+<p>비-Claude Gateway는 Anthropic 공식 지원 대상이 아니다. 저장된 Claude 구독과 Gateway 인증이 혼합되지 않도록 실행 직전 유효 인증을 확인한다. <a href="https://code.claude.com/docs/en/llm-gateway">Gateway 공식 경계</a>.</p>
+<p>Claude 구독은 수정하지 않은 공식 도구와 본인 인증을 유지하며, MoAI가 사용자 토큰을 수집·중개하는 로그인 서비스로 변하지 않게 한다. 개인 구독 사용을 무인 상용 서비스 허가로 확대하지 않는다. <a href="https://code.claude.com/docs/en/legal-and-compliance">인증·이용 조건</a>.</p>
+<p>GLM Coding Plan은 지원 도구 조건이 있으므로 사용자 정의 MCP worker에서의 사용 허용을 별도 확인한다. 지원이 불명확한 구독을 범용 API인 것처럼 자동 등록하지 않는다. <a href="https://docs.z.ai/devpack/usage-policy">Z.AI 정책</a>.</p>
+<p>API 과금 전환, 새로운 공급자로 코드 전송, 쓰기 범위 확대, 이미지 추가 제작은 사전 설정한 승인 범위를 벗어나면 중단한다. 모델 오류를 이유로 사용자 동의 없이 유료 fallback을 실행하지 않는다.</p>
+</section>
+<section id="s11"><h2>11. 최소 도입 순서와 통과 기준</h2>
+<div class="table-wrap" tabindex="0" role="region" aria-label="비교표"><table><thead><tr><th scope="col"> 순서 </th><th scope="col"> 변경 목표 </th><th scope="col"> 완료 판단 </th></tr></thead><tbody><tr><td> P0 계약 정리 </td><td> main/role/lane 정책과 인증·예산 경계, 중첩 예외 승인 </td><td> 기존 cc/glm/gpt 기본 동작 보존, 실행 미리보기 일치 </td></tr><tr><td> P1 단일 위임 </td><td> 기존 codex_task의 모델·effort·소유권·결과 확장 </td><td> 실제 모델 확인, 읽기/쓰기 거부, 취소, 오류 전달 </td></tr><tr><td> P2 이미지 수직 검증 </td><td> 생성·수정→파일→미리보기→채택 </td><td> 실제 이미지 열기, 경로 검증, 과금 종류 확인 </td></tr><tr><td> P3 역할 프로필 </td><td> plan/run/review 역할과 외부 실행 매핑 </td><td> 동일 역할 지침, 중복 작성 없음, 사용자 override 보존 </td></tr><tr><td> P4 Factory 통합 </td><td> lane별 정책, 전역 동시성, 재개·작업 소유권 </td><td> 일반/Factory 동일 의미, restart 후 상태 정합성 </td></tr><tr><td> P5 최적화 </td><td> 절약/균형/품질 프로필 평가 </td><td> 수락률·회귀·성공 작업당 비용 비교 후 기본값 결정 </td></tr></tbody></table></div>
+<p>평가 과제는 간단한 수정, 다중 파일 기능, 까다로운 버그, 보안 민감 변경, 이미지 포함 UI로 나눈다. 같은 기준 commit·요구·검증 조건으로 단일 모델, 직접 MCP, wrapper MCP, Gateway lane을 비교한다. 반복 평가에서 모델 순서 효과와 캐시 상태를 기록한다. 모든 모델을 모든 작업에 호출하는 온라인 경연은 기본 제품 동작이 아니라 별도 평가다.</p>
+</section>
+<section id="s12"><h2>12. Claim · Evidence · Baseline-attribution</h2>
+<p>Claim: Claude Code의 현재 공식 문서가 3단계 중첩을 안내함을 확인했다. 로컬 버전과 기존 MoAI MCP·Factory 관련 소스를 읽었으며, 그 바탕으로 공통 실행 정책 설계를 제안했다. 새 기능이 구현되었다고 주장하지 않는다.</p>
+<p>이번 실행 명령 및 출력:</p>
+<pre><code>claude --version
+2.1.270 (Claude Code)
+
+git branch --show-current
+main
+
+git rev-parse HEAD
+2213871afb7d655f411c46a34fd38bb8153278fc
+
+git -C .claude/worktrees/develop rev-parse HEAD
+4056f69e1c20d942d4f9fc7363d3d79bffde899a</code></pre>
+<p>소스 조회: rg로 codex_task/glm_task 등록을 찾고 mcp_server.go:304–320, glm_task.go:138–177, codex_task.go:1–24를 읽었다. 등록, Factory override 무시, 프로세스 내부 background job 계약을 확인했다. 명령 결과에는 codex_task.go의 다음 주석이 포함됐다.</p>
+<pre><code>// job is lost when the server exits. No reattachment is attempted and none
+// is recorded.</code></pre>
+<p>재설계에서는 기존 background 작업을 durable 작업으로 가장하지 않는다. 중단 후 완료 여부가 불명확하면 unknown 상태로 두고 산출물·기준 commit을 대조한 후 재개 여부를 결정한다.</p>
+<p>Baseline-attribution: 규칙은 main 작업 트리, task 구현은 develop 작업 트리의 현재 파일을 읽었다. 두 트리를 같은 baseline이라고 부르지 않는다. 이전 보고서의 테스트 통과 수치를 이번 실행으로 재사용하지 않았다. 공식 웹 문서는 2026-09-14 조회 기준이다.</p>
+</section>
+<section id="s13"><h2>13. Gaps · Residual-risk · 결정할 사항</h2>
+<p>Gaps: 이번에는 모델 호출·native 3단계 생성·MCP live tools/list·이미지 생성·비용 측정·제품 테스트를 실행하지 않았다. 이미지 App Server 산출물 수집과 구독별 권한은 실제 수직 검증이 필요하다. HTML 스킬의 design-tokens.md는 경로에 없어서 본문 토큰·제공 템플릿을 사용한다.</p>
+<p>Residual-risk: 깊은 중첩과 외부 작업이 합쳐지면 비용·동시성이 증폭될 수 있다. 모델을 바꾸면 결과 형식과 오류 양상이 달라진다. 공식 지원 여부·구독 조건은 변경될 수 있다. 계정 한도가 불명확하면 안전한 중단과 사용자 선택이 필요하다.</p>
+<p>권고 결정: Hybrid Factory, 역할 중심 프로필, 균형형 초기값, 얕은 기본 계층, 외부 writer 명시 권한, 이미지 독립 작업, 과금 전환 사전 승인. 3단계 중첩을 전면 허용하는 정책 변경은 별도 승인 후 진행한다. 이 설계에 동의하더라도 바로 전면 구현하지 않고 단일 GPT 위임과 이미지 수직 검증부터 시작한다.</p>
+</section></main></div><footer>설계 권고와 구현 완료를 구분한다 · 실계정·비용·3단계 실행은 미검증</footer><script type="module">try{const {default:mermaid}=await import('https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs');mermaid.initialize({startOnLoad:false,theme:'base',themeVariables:{primaryColor:'#FAF9F5',primaryTextColor:'#141413',primaryBorderColor:'#D97757',lineColor:'#788C5D'}});document.querySelectorAll('details').forEach(d=>d.addEventListener('toggle',()=>{if(d.open)mermaid.run({nodes:d.querySelectorAll('.mermaid')}).catch(()=>{});}));}catch{}</script></body></html>

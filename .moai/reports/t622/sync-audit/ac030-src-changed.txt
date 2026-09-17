@@ -1,2 +1,0 @@
-.claude/commands/moai/sync.md
-internal/template/templates/.claude/commands/moai/sync.md.tmpl

@@ -1,5 +1,0 @@
---- FAIL: TestNativePolicyObservedMediumEffort (0.00s)
-    native_policy_test.go:170: unsupported effort
-FAIL
-FAIL	github.com/modu-ai/moai-adk/internal/gateway/translate	0.323s
-FAIL

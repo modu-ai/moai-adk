@@ -1,6 +1,0 @@
-=== RUN   TestReasoningBufferedStreamUsesNativeDeltas
-    reasoning_roundtrip_test.go:70: buffered stream lacks text delta
---- FAIL: TestReasoningBufferedStreamUsesNativeDeltas (0.00s)
-FAIL
-FAIL	github.com/modu-ai/moai-adk/internal/gateway/translate	0.327s
-FAIL

@@ -3,7 +3,7 @@ name: moai
 description: >
   MoAI unified orchestrator for autonomous development. Routes natural
   language or subcommands (plan, run, sync, project, fix, loop, mx,
-  feedback, review, clean, codemaps, gate, e2e, harness, goal, todo) to
+  feedback, review, clean, codemaps, gate, e2e, harness, goal, gtd, todo) to
   specialized agents.
 allowed-tools: Agent, AskUserQuestion, Skill, TaskCreate, TaskUpdate, TaskList, TaskGet, Bash, Read, Write, Edit, Glob, Grep
 argument-hint: "[subcommand] [args] | \"natural language task\""
@@ -77,8 +77,9 @@ The `--team` / `--solo` flags are forced overrides onto the catalog; the flag-fr
 - **gate** (aliases: check, pre-commit): Lightweight pre-commit quality gate (lint+format+type-check+test)
 - **e2e** (aliases: e2e-test, end-to-end): Multi-platform end-to-end testing (web/mobile/desktop) with project-type auto-detection and CLI-first toolchain selection
 - **harness** (aliases: hrn): harness lifecycle management — learning-lifecycle verbs (status / apply / rollback &lt;date&gt; / disable) + v4-lifecycle verbs (list / edit / remove / doctor), all dispatching through the unified `moai harness` Go-binary Cobra subcommand tree; the slash command is the documented user-facing entry point
-- **goal**: Condition-declared universal agentic loop — arm a completion condition (`/moai goal "<condition>"`), check status, clear, or resume; evaluated each turn-end by the `stop-goal` Stop hook
-- **todo** (aliases: backlog): Backlog queue — the slash surface covers two acts: add an item (`/moai todo "<description>"`) and list the queue (bare `/moai todo`). Picking the next card and removing one are CLI-only verbs, run as `moai todo next [<n>]` and `moai todo done <n>`; the operator's entry point into the kanban board
+- **goal**: Two compatible modes — a condition goal (`/moai goal "<condition>"`) or an approved auto mission (`/moai goal --auto "<mission>"`) with `approve`, `run`, `status`, `revoke`, and `resume` lifecycle verbs
+- **gtd**: Canonical GTD task-management workflow
+- **todo** (aliases: backlog): Compatibility alias — route to the canonical **gtd** workflow while preserving the supplied arguments
 
 ### Priority 2: SPEC-ID Detection
 
@@ -156,10 +157,12 @@ Skills: moai-foundation-quality, moai-ref-testing-pyramid (per delegation.yaml)
 Flags: --tool, --platform, --record, --url, --journey, --headless, --browser, --timeout, --retry
 For detailed orchestration: Read .claude/skills/moai/workflows/e2e.md
 
-### goal - Condition-Declared Agentic Loop
+### goal - Condition Goal and Approved Auto Mission
 
-Purpose: Arm a completion condition (mechanical commands + model claims); the `stop-goal` Stop-hook evaluator blocks each turn-end until the conditions hold or a turn ceiling (default 30) is reached.
-Verbs: `/moai goal "<condition>"` (register + arm), `status [--all]`, `clear`, `resume`.
+Purpose: Preserve condition-declared goal loops while exposing a distinct approved autonomous-mission lifecycle.
+Condition goal: `/moai goal "<condition>"` (register + arm), `status [--all]`, `clear`, `render`.
+Auto mission: `/moai goal --auto "<mission>"`, followed by `approve`, `run`, `status`, `revoke`, or `resume`.
+Flags: `--auto` selects `mission_mode=auto`; it does not mean `progression_mode=autonomous`. Shared metadata flags include `--session` and `--json`.
 Progression mode: autonomous (default) vs. semi-autonomous — chosen at Implementation Kickoff Approval; the gate stays mandatory in both modes.
 For detailed orchestration: Read .claude/skills/moai/workflows/goal.md
 

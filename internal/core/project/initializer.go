@@ -47,12 +47,13 @@ type InitOptions struct {
 	ReportFormat      string   // Report output format: "html+md" or "md" (empty → html+md default).
 
 	// Phase 1 wizard fields (REQ-IWE-001..005) — populated from wizard result or CLI flags.
-	ProjectMode               string // project.mode: personal, team (B1)
-	LSPEnabled                bool   // lsp.enabled (B3)
-	EnforceQuality            bool   // quality.enforce_quality (B5); default true
-	CoverageExemptionsEnabled bool   // quality.coverage_exemptions.enabled (B5); default false
-	DesignEnabled             bool   // design.enabled (B8); default true
-	ClaudeDesignEnabled       bool   // design.claude_design.enabled (B8); default true
+	// (The former project-mode field was removed by SPEC-INIT-UPDATE-CONSISTENCY-001
+	// REQ-ICU-001: project.mode had no Go reader.)
+	LSPEnabled                bool // lsp.enabled (B3)
+	EnforceQuality            bool // quality.enforce_quality (B5); default true
+	CoverageExemptionsEnabled bool // quality.coverage_exemptions.enabled (B5); default false
+	DesignEnabled             bool // design.enabled (B8); default true
+	ClaudeDesignEnabled       bool // design.claude_design.enabled (B8); default true
 
 	// Worktree advisory. Persisted to workflow.worktree.auto_create at init
 	// ONLY when the WorktreeAutoCreateSet tracker fired — an explicit
@@ -80,6 +81,13 @@ type InitOptions struct {
 	// selection. Reuses the config.AutonomyTier* enum. Empty when unset; the
 	// downstream reader resolves empty → semi-auto.
 	AutonomyTier string // workflow.autonomy_tier
+
+	// Harness is the resolved agent-harness selection (SPEC-INIT-HARNESS-001
+	// REQ-IH-005): one of {claude, codex, both}, empty meaning claude. While
+	// "codex" the initializer deploys no claude surface at all — the .claude/
+	// directory scaffold (Step 2) and CLAUDE.md (Step 4) are skipped, so the
+	// project root carries zero .claude/** paths.
+	Harness string // llm.harness axis; "gpt" suppresses claude-surface writes
 
 	MCPProvision bool // moai MCP server provisioning (default-on per SPEC-MCP-DEFAULT-ON-001)
 }
@@ -179,12 +187,16 @@ func (i *projectInitializer) Init(ctx context.Context, opts InitOptions) (*InitR
 		return nil, fmt.Errorf("create .moai/ structure: %w", err)
 	}
 
-	// Step 2: Create .claude/ directory structure
+	// Step 2: Create .claude/ directory structure. Skipped entirely on the
+	// codex-only harness (SPEC-INIT-HARNESS-001 REQ-IH-005): the project root
+	// must carry zero .claude/** paths.
 	if err := ctx.Err(); err != nil {
 		return nil, err
 	}
-	if err := i.createClaudeDirs(opts.ProjectRoot, result); err != nil {
-		return nil, fmt.Errorf("create .claude/ structure: %w", err)
+	if opts.Harness != "gpt" {
+		if err := i.createClaudeDirs(opts.ProjectRoot, result); err != nil {
+			return nil, fmt.Errorf("create .claude/ structure: %w", err)
+		}
 	}
 
 	// Step 3: Deploy templates (if deployer is available)
@@ -261,12 +273,16 @@ func (i *projectInitializer) Init(ctx context.Context, opts InitOptions) (*InitR
 		i.logger.Warn("workflow toggles write failed", "error", err)
 	}
 
-	// Step 4: Create CLAUDE.md
+	// Step 4: Create CLAUDE.md. Skipped on the codex-only harness — the
+	// deployer already hid the CLAUDE.md template (REQ-IH-005), and without
+	// this guard the stub fallback below would write one anyway.
 	if err := ctx.Err(); err != nil {
 		return nil, err
 	}
-	if err := i.createClaudeMD(opts, result); err != nil {
-		return nil, fmt.Errorf("create CLAUDE.md: %w", err)
+	if opts.Harness != "gpt" {
+		if err := i.createClaudeMD(opts, result); err != nil {
+			return nil, fmt.Errorf("create CLAUDE.md: %w", err)
+		}
 	}
 
 	// Step 5: Initialize manifest

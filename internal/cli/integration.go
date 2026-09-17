@@ -144,6 +144,16 @@ func integrationFallbackWarning(branch string) string {
 	return fmt.Sprintf("[moai:integration-lock] warning: git-flow project with no develop branch configured; the window was recorded against the caller's branch %q. Set git_strategy.manual.develop_branch, or pass --branch <integration-target>.", branch)
 }
 
+// integrationInvalidWorkflowWarning is the one-line standard-error warning
+// for a git_strategy workflow value outside the allowed set (card t656,
+// REQ-GWS-003): it names the offending value and the allowed set, and names
+// the same caller-fallback consequence as the t637 warning. Fail-open — the
+// window stands; diagnosis is the whole job of this warning.
+func integrationInvalidWorkflowWarning(value string) string {
+	return fmt.Sprintf("[moai:integration-lock] warning: git_strategy workflow %q is not one of the allowed flows (%s); the window was recorded against the caller's branch. Repair the value in .moai/config/sections/git-strategy.yaml.",
+		value, strings.Join(config.AllowedWorkflows(), ", "))
+}
+
 // worktreeForBranch returns the path of the worktree with branch checked out,
 // or the empty string when none does (a failed git call included).
 func worktreeForBranch(branch string) string {
@@ -317,6 +327,14 @@ func newIntegrationAcquireCmd() *cobra.Command {
 			// parseable object.
 			if source == kanban.BranchSourceCaller && gitFlow.IsGitFlow() {
 				_, _ = fmt.Fprintln(cmd.ErrOrStderr(), integrationFallbackWarning(branch))
+			}
+			// Warn-only (card t656, REQ-GWS-003): an invalid workflow value is
+			// diagnosed — the offending value and the allowed set named — but
+			// the fallback, the record, and the exit code are exactly the
+			// pre-change non-git-flow path. A valid non-git-flow choice is
+			// never warned about.
+			if gitFlow.Disposition == config.DispositionInvalid {
+				_, _ = fmt.Fprintln(cmd.ErrOrStderr(), integrationInvalidWorkflowWarning(gitFlow.Workflow))
 			}
 			if jsonOut {
 				return json.NewEncoder(cmd.OutOrStdout()).Encode(map[string]any{

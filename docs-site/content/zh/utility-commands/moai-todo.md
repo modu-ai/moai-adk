@@ -8,6 +8,10 @@ added_in: "v3.1"
 
 {{< new-badge v3.1 >}}
 
+{{< callout type="info" >}}
+`/moai todo` 与 `moai todo` 作为现有自动化和脚本的**兼容入口**继续保留。正式名称是 [`/moai gtd`](/zh/utility-commands/moai-gtd) 与 `moai gtd`；两种名称共用同一 SQLite 队列、卡片 ID、顺序以及归档和恢复行为。
+{{< /callout >}}
+
 把接下来要做的事一行一行堆起来的**待办队列**。看板的 `backlog` 列没有专属会话，所以没有人会自己把工作塞进去。因此，把卡片放上看板始终是人的判断，而 `/moai todo` 就是那个入口。
 
 {{< callout type="info" >}}

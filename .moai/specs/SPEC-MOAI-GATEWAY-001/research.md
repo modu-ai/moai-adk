@@ -4,12 +4,14 @@
 
 | 항목 | 값 |
 |---|---|
-| 트리 | `/Users/goos/MoAI/moai-adk-go/.claude/worktrees/moai-proxy-unified` (세션 고정 경로라 디렉터리 이름은 바뀌지 않았다) |
-| 브랜치 | `WT-unified-gateway` (0.1.0 작성 시점 이름은 `WT-moai-proxy-unified`) |
-| HEAD | `81c1d58f9` (0.7.0 재기준. 0.6.0은 `ed71054d3`, 0.1.0~0.5.0은 `d060e0d13`) |
-| divergence | `git rev-list --count --left-right origin/develop...HEAD` → `0 0` (0.7.0, 저자가 fetch 없이 측정, 로컬 `origin/develop` = `81c1d58f9`) | <!-- moving-ref-ok: origin/develop is the SUBJECT of this identity reading, not its anchor; the anchor is the pinned HEAD 81c1d58f9 in the row above, and the criterion is the measuring command with a dated 2026-09-11 reference taken by the author without fetch during the 0.7.0 revision -->
-| 작업 트리 | 0.1.0 작성 시점 `git status --short` → 빈 출력 |
-| 조사 방식 | read-only 렌즈 4개(launcher-surface / settings-env-auth / cg-gg-removal-scope / http-proxy-precedent) + 합성기 1개의 fan-out, 같은 트리·같은 HEAD에서 실행. 0.2.0, 0.3.0, 0.3.1, 0.3.2, 0.4.0에서 저자가 같은 트리·같은 HEAD로 추가 판독. 0.5.0에서 세션 프로브 두 건의 클라이언트 실측 요약을 §15에 더했다(정적 판독이 아니다). 0.6.0에서 HEAD `ed71054d3`로 재기준하고 프로브 조건의 한계(§15.6)와 teammate 표시 판독(§16)을 더했다. 0.7.0에서 HEAD `81c1d58f9`로 재기준하고 바뀐 두 파일의 행 인용을 옮겼다(아래 재기준 측정 0.7.0) |
+| 트리 | `/Users/goos/MoAI/moai-adk-go/.claude/worktrees/develop` |
+| 브랜치 | `develop` |
+| HEAD | `4056f69e1c20d942d4f9fc7363d3d79bffde899a` |
+| 현재 조사 방식 | M14-R0.2 contract source 6종, raw log/exit ledger, production seam을 같은 기준선에서 직접 판독. 현재 GPT transport는 공식 Codex App Server만 담당하며 직접 Responses/구독 API endpoint는 담당하지 않는다 |
+| 역사적 기준선 | 0.7.0=`81c1d58f9`, 0.6.0=`ed71054d3`, 0.1.0~0.5.0=`d060e0d13`; 아래 해당 절과 원문 명령은 `[HISTORICAL]` 관측으로만 보존하며 현재 제품 판정에 쓰지 않는다 |
+| 역사적 divergence | 0.7.0 당시 원격 develop과 HEAD의 left/right count는 `0 0`이었다. 과거 관측이며 현재 divergence 주장 아님 |
+| 역사적 작업 트리 | 0.1.0 작성 당시 `git status --short` → 빈 출력. 현재 clean 주장 아님 |
+| 역사적 조사 방식 | read-only 렌즈 4개와 합성기 1개, 0.5.0 세션 프로브, 0.6.0·0.7.0 재기준 측정은 아래 역사 절의 출처다 |
 | 재기준 측정 (0.6.0) | `git diff --stat d060e0d13 ed71054d3 -- internal/cli/launcher.go internal/cli/glm.go internal/cli/spawn.go internal/cli/launch_exec_posix.go internal/cli/settings.go internal/hook/session_start.go internal/hook/session_end.go internal/hook/glm_tmux.go internal/glmcred internal/paths internal/config/envkeys.go .github/workflows/ci.yml .github/workflows/release-pr-multi-os.yml` → 빈 출력. 같은 범위의 대조군 `git diff --shortstat d060e0d13 ed71054d3` → `1158 files changed, 101328 insertions(+), 1924 deletions(-)`. 따라서 위 경로의 행 인용은 두 커밋에서 같다. 위 목록 밖 경로의 행 인용은 이 측정이 덮지 않는다 |
 | 재기준 측정 (0.7.0) | `git diff --stat ed71054d3 81c1d58f9 -- <위 목록> internal/cli/glm_tools.go` → `.github/workflows/ci.yml \| 2 ++`, `internal/hook/session_end.go \| 5 +++++`, `2 files changed, 7 insertions(+)`. 대조군 `git diff --shortstat ed71054d3 81c1d58f9` → `261 files changed, 39406 insertions(+), 578 deletions(-)`. 두 파일의 행 인용은 저자가 `81c1d58f9`에서 열어 옮겼다 — `session_end.go`는 옛 16~261행이 +1, 262행 이후가 +5, `ci.yml`은 옛 68~90행이 +1, 91행 이후가 +2다. 측정 시점에 기록한 명령 출력(§1.5, §6.3의 코드 블록)은 고치지 않고 블록 뒤에 옮긴 행을 적었다 |
 
@@ -530,7 +532,7 @@ failure we MUST NOT fall back to argv (would re-leak the token)"라고 못 박�
 - 판독 결론 — gateway launch 정리가 백업 토큰을 복원한 파일에서는 `ensureTmuxGLMEnv`의 발동 조건이 모두 참이
   될 수 있다(`design.md` §5.4). 추론이며 실행하지 않았다.
 
-## 7. kanban backend 상수와 소비자
+## 7. [HISTORICAL/BASELINE-ONLY] 옛 실행 backend 상수와 소비자
 
 ### 7.1 kanban backend 상수
 
@@ -608,7 +610,7 @@ templ backendBadge(backend string) {
 `package homestate`로 빌드 태그가 없어 두 플랫폼에서 모두 컴파일된다. Windows launch 경로가 자식 신원
 확인에 이미 쓴다(§1.2). `design.md` §3.4의 PID 재사용 방어 근거다.
 
-## 8. gateway 선례 — loopback 서버는 있고, SSE 중계와 OpenAI 클라이언트는 없다
+## 8. [HISTORICAL/BASELINE-ONLY] gateway 선례 — 당시 loopback 서버는 있고, SSE 중계와 OpenAI 클라이언트는 없었다
 
 - **`internal/gateway`는 없다.** 0.1.0 렌즈 측정 `find . -type d -name "*proxy*"` → 결과 없음.
   `httputil.ReverseProxy` / `NewSingleHostReverseProxy` 비-테스트 사용 0.
@@ -944,7 +946,7 @@ back to the user-scope last-choice"라고 적는다. 결정 10은 초기 모델�
 프로브 2 mock(README가 가리키는 `.moai/state/gwprobe2/mock2.py`)은 열지 않았다. 그 README는 역할과 60자 미리보기를 기록한다고
 적는다. 인식 기준의 근거는 `plan.md` M1 진입 게이트의 원본 캡처로 옮겼다(`design.md` §4.1).
 
-## 16. teammate 표시 판독 (0.6.0 — 결정 12)
+## 16. [HISTORICAL/BASELINE-ONLY] teammate 표시 판독 (0.6.0 — 결정 12)
 
 ### 16.1 코드 (HEAD `ed71054d3`, 저자가 이 판에서 직접 연 행)
 
@@ -1110,3 +1112,267 @@ Messages 형식에는 옮기지 않는다. reasoning item의 opaque 왕복과 re
 실측은 stream 강제·필드 shape 호환과 실패 경계를 보강한 것이며, 실제 GPT
 생성 성공·추론량 동등·same-provider resume·tool_reference 후속 로딩을
 입증하지 않는다.
+
+## 20. AS-5 착수 시점 코드 상태 (0.13.0, t654)
+
+모든 측정은 worktree `.claude/worktrees/t654`, branch `WT-gateway-launchers`, base 커밋
+`d416f8162`(로컬 develop head, `git log --oneline -1` 실측)에서 2026-09-14에 잰 것이다.
+
+- `internal/cli/gpt.go` — launch 경로는 `services.Launch == nil`일 때
+  `"GPT gateway launch is awaiting transport verification; use moai gpt status to inspect login"`
+  대기 오류를 돌려주고, 그렇지 않으면
+  `runClaudeEntry(cmd, args, "gpt", "gpt", kanban.BackendGPT, launch)` 진입이 이미 존재한다.
+  `login`/`logout`/`status` 닫힌 동사 집합(`REQ-MG-003` 형태)도 구현돼 있다. 생산 transport 결합이
+  남은 부분이다.
+- `internal/gateway/receipt/compact.go:42-46` — `NewRebaseLedger(scope, appliedEpoch)`의 비-테스트
+  호출자는 0건이다(`grep -rn NewRebaseLedger internal/ --include='*.go' | grep -v _test` → 정의와
+  주석만, 이 판 측정). 재시작 복원의 생산 판독 위치가 미배선 — t653 잔여 위험이 그대로다.
+- `internal/gateway/receipt/core.go:174` `Manifest.ChainTo`, `receipt/store.go:193`
+  `Store.Rebase`, `receipt/compact.go:87` `Manifest.Rebase`, `conversation/family.go:289`
+  `Manager.ForkAt` — fork·원장 API는 착지돼 있고 gateway 계층의 자식 prefix 대조는 미배선이다.
+- `internal/cli/gateway_product_binding.go:88` 부근 — 전 provider 공통
+  `Capabilities{ContextTokens: 1000000, Images: true, Tools: true, Streaming: true}` 선언,
+  Anthropic 항목에 한해 `RouteID = id + "[1m]"` 변형을 추가. provider별 수용 재판정 전까지 소스
+  선언이다.
+- `.github/workflows/ci.yml` — Go test job(`runs-on: ubuntu-latest`, `:46`)은 ubuntu 전용이고
+  windows Go-test 레그는 release 시점으로 옮겨져 있다(`:190` 부근 주석).
+  `test-integration` job의 matrix(`:378`)는 windows-latest를 포함하지만 `integration` 빌드 태그
+  하네스 job으로, `REQ-MG-009` 판정 대상 시험과 다른 축이다.
+- `CHANGELOG.md` — `grep -c 'SPEC-MOAI-GATEWAY-001' CHANGELOG.md` → `0` (2026-09-14, 이 트리).
+  t653 판정의 보류 결정과 일치하며, t654에서 발행 검토의 입력이다.
+- 버전 — 카드 문구의 "rc.8"은 2026-09-12 발행 시점 표기다. 배포 게이트의 번호는
+  `.moai/docs/version-management.md` Local RC Numbering의 다음 미사용 번호를 따른다.
+
+## 21. 0.14.0 승인 설계 반영 시점의 현재 Gap
+
+기준선은 develop worktree의 HEAD `4056f69e1c20d942d4f9fc7363d3d79bffde899a`이며, 2026-09-14에 다음 읽기 전용 검색을 실행했다.
+
+```text
+rg -n "if in.Mode != \"glm\"|ANTHROPIC_DEFAULT_|BackendGPT|awaiting transport verification|NewAppServerAdapter|AppServerAdapter|dynamicTools|item/tool/call|kanbanEntryParse|--kanban|factory" internal/cli internal/gateway internal/codexbridge --glob '*.go'
+git rev-parse --short HEAD
+git branch --show-current
+```
+
+관측된 사실은 다음과 같다.
+
+- `internal/gateway/appserver.go`에 `AppServerAdapter`와 생성자가 있고 gateway 시험에서 사용된다.
+- `internal/codexbridge/engine.go`는 `thread/start`에 `dynamicTools`를 보내며 `item/tool/call`을 처리한다.
+  lifecycle·failure-boundary·gateway integration 시험에 서로 다른 RPC ID 픽스처가 있다.
+- 활성 CLI에는 `-k`/`--kanban` 성공을 요구하는 기존 시험과 도움말·parser·식별자가 다수 남아 있다.
+  반면 `internal/cli/factory.go`와 Todo 저장소 같은 Factory/Todo 표면도 이미 존재한다. 따라서 명칭 이관은
+  단일 문자열 치환이 아니라 parser·도움말·시험·migration 경계를 분류하는 구현 작업이다.
+- GLM 모델 슬롯 시험은 존재하지만 승인된 GPT 네 직접 슬롯을 고정하는 시험은 이 검색 출력에서 관측되지
+  않았다. 부재 확정이 아니라 해당 검색 범위의 Gap이며, 구현자는 test inventory를 별도로 전수 확인해야 한다.
+
+기존 `reports/gpt-final-design-20260914-b40ff9f4/evidence.md`는 같은 HEAD에서 설계 보고서의 직접 매핑
+4행·구 tier 열 부재·effort 분리 문구를 readback했다고 기록한다. 이는 설계 문서 검증일 뿐 제품 코드 구현
+또는 실계정 App Server 왕복 증거가 아니다.
+
+Anthropic의 일반 LLM gateway 문서는 Anthropic API 호환 gateway 운영을 설명하지만 Claude Code에서
+비-Claude 모델을 공식 지원한다고 하지 않는다. OpenAI App Server 문서는 공식 JSON-RPC 실행 표면을 제공한다.
+두 문서화된 표면을 MoAI가 연결할 수 있다는 설계 판단과, 결합 전체가 양사 지원·약관상 무위험이라는 판단은
+같지 않다. 후자는 이 SPEC에서 주장하지 않는다.
+
+## 22. 명칭 migration 전수 inventory와 기계 allowlist (0.14.0 iter1 보정)
+
+### 22.1 기준과 재현 명령
+
+기준은 develop HEAD `4056f69e1c20d942d4f9fc7363d3d79bffde899a`다. 파일 수는 문자열 hit 수가 아니라 tracked Go 파일 집합 수다.
+
+```text
+git ls-files 'internal/kanban/*.go' | awk '!/_test\.go$/' | wc -l
+=> 47
+git ls-files 'internal/kanban/*_test.go' | wc -l
+=> 85
+rg -l 'github.com/modu-ai/moai-adk/internal/kanban' --glob '*.go' --glob '!*_test.go' --glob '!internal/kanban/**'
+=> 37 (active production importer 36 + historical one-off utility 1)
+git grep -IlE 'Kanban|kanban|(^|[^[:alnum:]_])-k([^[:alnum:]_]|$)|--kanban|MOAI_KANBAN_' -- '*.go'
+=> 전체 299 (production 120 + test 179)
+```
+
+감사에서 제시된 47/85/36과 raw importer 37의 차이는 `cmd/t657-merge/main.go` 한 파일이다. 이 파일은
+사용자 CLI가 아닌 과거 카드 t657의 one-off utility지만 `go build ./...` 대상인 production Go 파일이다.
+따라서 역사 설명 문자열은 historical allowlist 후보지만 옛 package import는 allowlist가 아니며
+`internal/orchestration`으로 이관해야 한다.
+
+### 22.2 `internal/kanban` production 47개 — 전부 active migration 대상
+
+| 심볼·용도 묶음 | 파일 전수 | 분류·필요 결과 |
+|---|---|---|
+| Todo/backlog 저장·분석·migration | `autodone_scan.go`, `backlog_analysis.go`, `backlog_archive_vouch.go`, `backlog_migrate.go`, `backlog_sqlite.go`, `backlog_store.go`, `todo_identity.go`, `todo_merge_backup.go`, `todo_merge_procedure.go`, `todo_queue_merge.go`, `todo_root.go`, `todo_runtime.go` | active; package는 Orchestration으로 이동. 구 저장 read 함수만 legacy reader로 분리 |
+| Tasks/board/status | `board.go`, `board_lock.go`, `board_lock_clear_unix.go`, `board_lock_clear_windows.go`, `board_lock_unix.go`, `board_lock_windows.go`, `board_recover.go`, `board_store.go`, `column.go`, `status.go`, `status_read.go`, `state_dir.go` | active; 사용자·UI 이름은 Tasks, 내부 조정은 Orchestration |
+| Factory 실행 | `factory_alive_unix.go`, `factory_alive_windows.go`, `factory_runtime.go`, `factory_slots.go` | active Factory; 옛 명칭 의존 제거 |
+| Dispatch·역할·세션 기록 | `bootstrap.go`, `record.go`, `revision.go`, `role.go`, `settings_drift.go`, `temp_origin.go` | active Dispatch/Orchestration; 새 write는 새 이름만 사용 |
+| 통합·lease·lock·landing | `integration_lock.go`, `integration_lock_mutation.go`, `integration_lock_mutation_unix.go`, `integration_lock_mutation_windows.go`, `landing_evidence.go`, `lock_alive_windows.go`, `prlink.go`, `prlink_landed.go`, `prlink_landedref.go`, `reconcile.go`, `slot_lease.go`, `slot_lease_mutation_unix.go`, `slot_lease_mutation_windows.go` | active Orchestration |
+
+위 표의 파일 집합은 47개다. `package kanban` 선언이나 옛 import를 보존하도록 허용한 production 파일은
+0개다.
+
+### 22.3 package test 85개 — active 계약 또는 legacy fixture로 명시 분류
+
+현재 파일 전수:
+
+```text
+admission_test.go, autodone_scan_test.go, backlog_analysis_test.go,
+backlog_archive_test.go, backlog_archive_vouch_test.go, backlog_concurrency_test.go,
+backlog_counts_test.go, backlog_downgrade_test.go, backlog_dsn_windows_test.go,
+backlog_findings_test.go, backlog_integrity_audit_test.go, backlog_json_disclosure_test.go,
+backlog_landing_roundtrip_test.go, backlog_landing_test.go, backlog_migrate_test.go,
+backlog_pure_reader_test.go, backlog_relocation_fence_test.go, backlog_schema_freeze_test.go,
+backlog_sqlite_test.go, backlog_store_errors_test.go, backlog_store_test.go,
+board_coverage_test.go, board_lock_clear_windows_test.go, board_lock_cross_test.go,
+board_lock_errno_test.go, board_lock_join_test.go, board_lock_test.go, board_lock_wait_test.go,
+board_recover_test.go, board_store_test.go, board_test.go, bootstrap_test.go, column_test.go,
+f1_traversal_test.go, f2_unresolved_test.go, f3_f4_probe_test.go, factory_label_test.go,
+factory_runtime_test.go, factory_slots_test.go, fix2_probe_test.go, fix3_wedge_test.go,
+foreman_queue_statement_test.go, foreman_queue_watch_test.go, foreman_queue_watch_wal_test.go,
+home_root_rekey_repro_test.go, integration_lock_cross_test.go,
+integration_lock_mutation_windows_test.go, integration_lock_test.go,
+integration_lock_write_test.go, kanban_helper_test.go, landing_evidence_test.go,
+prlink_landed_attribution_test.go, prlink_landed_corpus_test.go, prlink_landed_forms_test.go,
+prlink_landed_test.go, prlink_landed_tripwire_test.go, prlink_landedref_chain_test.go,
+prlink_landedref_test.go, prlink_test.go, queue_path_seam_scan_test.go, reconcile_test.go,
+record_identity_test.go, record_test.go, revision_test.go, role_test.go,
+root_layer_repro_test.go, settings_drift_test.go, slot_lease_cross_test.go,
+slot_lease_test.go, state_dir_lock_test.go, state_dir_test.go, status_read_test.go,
+temp_origin_test.go, todo_identity_red_test.go, todo_merge_backup_test.go,
+todo_merge_procedure_test.go, todo_queue_merge_test.go, todo_root_contract_test.go,
+todo_root_convention_test.go, todo_root_nontemp_copy_test.go,
+todo_root_temp_git_refusal_test.go, todo_root_temp_guard_test.go, todo_root_test.go,
+todo_runtime_safety_test.go, todo_runtime_store_test.go
+```
+
+85개 모두 새 package/test 이름으로 이동한다. 구 저장·구 env 읽기용 fixture literal은 아래 allowlist의
+별도 `legacy_*_test.go`로 모으고, 일반 회귀 시험이 옛 사용자 출력이나 `-k` 성공을 기대하도록 두지 않는다.
+
+### 22.4 active production importer 36개와 historical utility 1개
+
+| 용도 | 파일 전수 | 분류 |
+|---|---|---|
+| CLI·Factory·Todo·integration | `internal/cli/cc.go`, `factory.go`, `gate_lock.go`, `gate_lock_windows.go`, `glm.go`, `gpt.go`, `graph.go`, `integration.go`, `integration_settings_drift.go`, `kanban.go`, `session_worktree_automerge.go`, `slot.go`, `todo.go`, `todo_analysis.go`, `todo_autodone.go`, `todo_disclosure.go`, `todo_drop.go`, `todo_edit_move.go`, `todo_export.go`, `todo_history.go`, `todo_landed.go`, `todo_pr.go`, `todo_relate.go`, `todo_undone.go` | active 24; import와 심볼을 Orchestration/Dispatch로 이관. `kanban.go` 파일명도 active라 허용하지 않음 |
+| hook | `internal/hook/evidence_writer.go`, `integration_lock_guard.go`, `session_start_factory.go`, `session_start_kanban.go`, `session_start_record.go`, `slot_lease_guard.go` | active 6; 새 output/env write는 Dispatch/Orchestration. `session_start_kanban.go` 이름은 허용하지 않음 |
+| statusline/web | `internal/statusline/backlog.go`, `internal/statusline/landed.go`, `internal/web/events.go`, `internal/web/factory_lanes.go`, `internal/web/todo_queue_read.go`, `internal/web/viewmodel_ops.go` | active 6; 사용자 이름은 Todo/Tasks/Dispatch |
+| t657 one-off utility | `cmd/t657-merge/main.go` | historical purpose 1; 주석의 카드 역사만 허용, 옛 package import는 이관 |
+
+### 22.5 기계 allowlist와 제거 조건
+
+구 이름 allowlist는 경로와 심볼이 모두 일치해야 한다. glob·디렉터리 전체 허용은 금지한다.
+
+| 분류 | 허용 경로 | 허용 심볼·문자열 | 목적 | 제거 조건 |
+|---|---|---|---|---|
+| legacy-migration | `internal/orchestration/legacy_env.go` | `ReadLegacyDispatchEnv`; `MOAI_KANBAN`, `MOAI_KANBAN_SPEC`, `MOAI_KANBAN_ID`, `MOAI_KANBAN_LABEL`, `MOAI_KANBAN_SETTINGS_INJECTED`, `MOAI_KANBAN_LEAD_ADDR`, `MOAI_KANBAN_BACKEND`, `MOAI_KANBAN_CARD`, `MOAI_KANBAN_LEAD_NAME` literal read only | 구 환경을 새 Dispatch 입력으로 한 번 해석 | 지원하는 마지막 구버전 upgrade 창 종료와 migration telemetry 0 확인 뒤 별도 SPEC |
+| legacy-migration test | `internal/orchestration/legacy_env_test.go`, `internal/orchestration/legacy_store_test.go` | 위 literal과 구 저장 fixture | 구 read 성공·새 write 금지의 양성/음성 시험 | production reader 제거와 같은 변경에서 제거 |
+| historical | `cmd/t657-merge/main.go` | 주석의 `t657`, 옛 API 이름 설명만 | one-off 카드 계보 | 파일 archive/removal 결정 시 |
+
+허용되지 않는 것: `internal/kanban/**`, `package kanban`, 옛 package import, 일반 runtime의
+`EnvMoaiKanban*`, `MOAI_KANBAN_*` write, `-k`/`--kanban` 성공 parser, 새 사용자 출력의 Kanban/kanban.
+새 env write 이름은 `MOAI_DISPATCH`, `MOAI_DISPATCH_SPEC`, `MOAI_DISPATCH_ID`,
+`MOAI_DISPATCH_LABEL`, `MOAI_DISPATCH_SETTINGS_INJECTED`, `MOAI_DISPATCH_LEAD_ADDR`,
+`MOAI_DISPATCH_BACKEND`, `MOAI_DISPATCH_CARD`, `MOAI_DISPATCH_LEAD_NAME`으로 1:1 대응한다.
+
+완료 검사기는 `git grep` 결과에서 위 세 allowlist 경로·심볼 쌍만 제거한 뒤 production hit 0을 요구한다.
+동시에 47+85+36+1 현재 파일 집합과 migration manifest의 source 목록을 equality 비교한다. 파일이 추가되면
+자동 허용하지 않고 plan audit 입력으로 되돌린다.
+
+### 22.6 추적 naming migration manifest 계약 (iter2 D12)
+
+미래 구현이 생성·갱신할 추적 파일의 정확한 경로는
+`.moai/specs/SPEC-MOAI-GATEWAY-001/naming-migration-manifest.json`이다. 이 문서 개정은 그 JSON
+파일을 생성하지 않았다. 생성·갱신 owner는 `plan.md` M14-R3의 manager-develop이며,
+새 이름으로 경로를 옮기거나 legacy reader를 바꾸는 같은 변경에서 manifest를 함께 갱신한다.
+
+JSON root는 추가 필드를 허용하지 않는 object이며 다음 필드를 정확히 갖는다.
+
+| 필드 | JSON 형식 | 계약 |
+|---|---|---|
+| `schema_version` | integer | 정확히 `1` |
+| `spec_id` | string | 정확히 `SPEC-MOAI-GATEWAY-001` |
+| `baseline_tree` | string | 정확히 `4056f69e1c20d942d4f9fc7363d3d79bffde899a`; migration 전 source provenance anchor |
+| `generated_by_milestone` | string | 정확히 `M14-R3` |
+| `source_inventory` | object | baseline provenance. `production_package` 47, `package_tests` 85, `active_importers` 36, `historical_utilities` 1의 **migration 전** 경로를 §22.2~22.4와 정확히 보존 |
+| `path_mappings` | array<object> | 각 source item의 `category`, `source`, `destination`을 중복 없이 정렬. `internal/kanban/` 132개는 같은 suffix의 `internal/orchestration/`으로, importer 36개와 historical utility 1개는 동일 경로로 매핑 |
+| `production_package` | array<string> | 중복 없이 정렬된 migration 후 canonical production 47개 경로; `internal/orchestration/` 아래이고 `internal/kanban/`은 0 |
+| `package_tests` | array<string> | 중복 없이 정렬된 migration 후 canonical test 85개 경로; `internal/orchestration/` 아래이고 `internal/kanban/`은 0 |
+| `active_importers` | array<string> | 중복 없이 정렬된 migration 후 active importer 36개 current 경로; package import·symbol은 새 이름만 사용 |
+| `historical_utilities` | array<object> | migration 후 current 원소 1개: `path="cmd/t657-merge/main.go"`, `allowed_symbols=["t657"]`, `access="comment-only"`; 옛 package import는 없음 |
+| `legacy_allowlist` | array<object> | 각 원소는 `classification`, `path`, 정렬 `symbols`, `access="read-only"`, `removal_condition`; 집합은 §22.5와 정확히 일치 |
+| `new_names` | object<string,string> | `execution=Factory`, `queue=Todo`, `ui_status=Tasks`, `dispatch=Dispatch`, `coordination=Orchestration` |
+
+baseline provenance set은 **47 production package + 85 package tests + 36 active importers + 1 historical
+utility**이고, migration 후 current set도 category별 cardinality를 보존한다. 다만 current 배열은
+옛 `internal/kanban/**`를 복사하지 않고 `path_mappings`의 destination인 canonical
+`internal/orchestration/**`와 새 import/symbol 상태를 기록한다. 각 경로는 repository root 기준 slash
+표기이고, 배열은 bytewise ascending, 중복은 오류다. source와 destination 어느 한쪽이 빠지거나 한
+destination에 여러 source가 합쳐지는 것도 `schema_error`다. `TestNamingMigrationManifestContract`는
+schema와 exact baseline anchor를 검증한 뒤 Git이 관리하는 effective worktree set(추적 파일에서
+삭제된 경로는 제외하고 같은 migration의 새 경로는 포함)과 current 네 배열의 합집을 비교한다.
+이 정의는 GREEN을 위해 선행 stage/commit을 요구하지 않으면서 최종 commit의 tracked set과 동일해야 한다.
+manifest에만 있는 경로는 `missing_from_tree`, tree에만 있는
+경로는 `extra_in_tree`, 필드·타입·개수·정렬·중복 문제는 `schema_error`로 분리하고 어느 하나라도
+비어 있지 않으면 non-zero로 끝나야 한다. 새 파일을 자동 allowlist하거나 baseline 개수를 조용히
+바꾸지 않는다.
+
+### 22.7 M14-R0.2 실제 증거와 D9~D15 보정
+
+tree `4056f69e1c20d942d4f9fc7363d3d79bffde899a`의 M14-R0.2 test-only 상태에서 제품 파일을 수정하지 않고 실행한 원문은
+`.moai/reports/SPEC-MOAI-GATEWAY-001/m14-r0/`에 있다. `SHA256SUMS`는 각 log/exit carrier를,
+`TEST-SHA256SUMS`는 여섯 test source를 byte 단위로 고정한다. 따라서 plan-audit D9의 raw stdout
+carrier와 MP-8 재실행 입력은 복합 shell 요약 없이 독립 파일로 존재한다.
+
+| 축 | selector | 관측과 해석 |
+|---|---|---|
+| alias env | `go test ./internal/cli -run '^TestGPTAliasEffortMatrix$' -count=1 -v` | 21=6 PASS/15 RED, exit 1; log `28f2d0aef1d104363db0106bcfb0d2917d3a145153c75fd8cbd434fbf88d6e10` |
+| effort RPC | `go test ./internal/cli -run '^TestGPTAliasEffortRPCMatrix$' -count=1 -v` | 실제 fake App Server `turn/start.model/effort` 21=1 PASS/20 RED, exit 1; log `97806a722b7921fe57bf108efc790837df7471601493d7eb423dd3989cbbf275` |
+| App Server component | `go test ./internal/gateway -run '^TestGPTProductionAppServerToolRoundTrip$' -count=1 -v` | 8=5 PASS/3 RED, exit 1; log `a9a68cb73b7cac772d0da398ced18faa07150e9afde2ccf823bab17d3dc3d6c3` |
+| production wiring | `go test ./internal/cli -run '^TestGPTProductionAppServerWiring$' -count=1 -v` | 6 RED, exit 1: 네 route, concrete adapter, absent/poisoned legacy auth store 0-use; log `c6a107951d539950363c3e150544bc7a80bb73951cf0f093582ee09bf10a1905`. `-count=20` 안정성 log `da1d39a798254c98f6a0f042ee05d9a11fad36c8d33e3dd5235b4cdc94f6f442` |
+| Factory | `go test ./internal/cli -run '^TestGPTFactoryAndRetiredKanbanContract$' -count=1 -v` | 7 RED, exit 1; 실행 전후 env, stdout/stderr, launch/Todo/Tasks/Dispatch/Factory 측정; log `6758afc04b04f1bcdd1a6e8215fbf76e2533a1f863723ed50ba48cbbd185b319` |
+| lifecycle/history | `go test ./internal/gateway ./internal/codexbridge -run '^TestGPTAppServerLifecycleAndHistoryAttribution$' -count=1 -v` | 11=6 PASS/5 RED, exit 1. 같은 Idempotency-Key 실제 두 요청과 완료 prefix+새 사용자 입력 PASS; 네 cause와 logger seam RED; log `51fd46a96c1a835fe2c389be01e3953e56dde47b1a3863b6b85e422b7162c0a6` |
+| naming | `go test ./internal/orchestration -run '^TestNamingMigrationManifestContract$' -count=1 -v` | 5=3 PASS/2 RED, exit 1; exact names/allowlist/historical/category/mapping mutation 판정; log `844a5d5e886635cc4576925764730f0ad039fc0425290eea246fd1e3b61e2c0a` |
+| portable process | `go test ./internal/cli -run '^TestGatewayProcessContractPortable$' -count=1 -v` | 6 PASS, exit 0; log `c8bed0206b2e036149fcc104047cbb13d8a12af112171f6d7324250deb848608` |
+
+기존 CLI focused regression, gateway/codexbridge regression, `git diff --check`도 각각 보존된 carrier에서
+exit 0이다. 원시 carrier SHA-256은 `acceptance.md` §D의 각 unique `CAR-*` 행이 직접 연결하며 source
+digest는 `TEST-SHA256SUMS`의 현재 값이다. 이 결과로 D10의 production adapter seam, two-call 역순,
+실제 Server envelope를 직접 잠갔고, D12의 schema/source/current 이중 집합과 D13의 단위/live 책임을
+분리했다. 남은 실제 RED는 M14-R1~R3 owner가 같은 selector로 GREEN까지 해결한다. 실계정 Codex App
+Server, Claude Code PTY 승인/hook, Factory 실제 Agent/tool/Tasks/Dispatch, Windows runner, t844 소비는
+이 관측에 포함되지 않으며 M14-R5/AS-001~022의 live gate다.
+
+### 22.8 M14-R0.2 test source와 관측 경계
+
+`TEST-SHA256SUMS`가 고정한 source digest는 alias
+`0198b4cc7df4f182484ff008775d4ecbdff607275b7a37b73f39e266c5ac7ec0`, CLI production/Factory
+`ce4b731f49cb83c08449bb7e5ab0e35b0c1eddd153f355c48418da19bfb87c19`, portable
+`8e65483efe8b1473cc5a3e153fa03b5db5abbcb97b90c798214d96942a963c73`, lifecycle/history
+`078cda9fc7a9a84cd906b5b598a459501ec40eb421ee3f5c8c444afff14c80ae`, App Server roundtrip
+`262728e94a663b30b1830bece09c00fd7c3497ba208339bb3a9e6bed4a5c82d1`, naming
+`538ba84c679056e15637836155d82d073191db0c59c0a6da49d8b95129ea3b0c`다.
+
+production wiring fixture는 네 catalog route 검사 뒤 `seedGatewayAuthStore`, private `MOAI_HOME`, PATH의
+protocol-speaking fake `codex`, 실제 `productionGatewayHandlerFactory`를 호출한다. 먼저 독립 self-probe가
+protocol을 말하는지 확인하고 production 관측 전에 protocol log를 초기화한다. clean close는 첫
+Start→Initialize→Account→Close 뒤 같은 private profile/lease에서 두 번째 Start→Initialize→Close가 성공하는
+것으로 판정하며 EOF/finally marker는 성공 근거가 아니다. reflection은 concrete adapter type을 읽고,
+absent/poisoned legacy store subcase는 open/read/refresh 0을 요구한다. 현재 6개 RED는 네 `AuthPKCE`,
+`*gateway.OpenAIAdapter`, legacy store 의존이다. App Server
+roundtrip fixture는 실제 stdio JSONL subprocess가 같은 turn에서 `rpc-a`와 `rpc-b`를 내보내며 Claude 결과를
+역순으로 돌려준다. history fixture는 test-local `http.Error`가 아니라 실제 `NewServer`와 rejecting adapter를
+통과하므로 production envelope가 502 `api_error`인 현재 결함을 관측한다.
+
+M14-R0.2의 `EV-R0-PRODUCTION-WIRING-RED` SHA-256은
+`c6a107951d539950363c3e150544bc7a80bb73951cf0f093582ee09bf10a1905`, exit carrier는
+`4355a46b19d348dc2f57c046f8ef63d4538ebb936000f3c9ee954a27460dd865`, test source는
+`ce4b731f49cb83c08449bb7e5ab0e35b0c1eddd153f355c48418da19bfb87c19`다. CLI focused baseline log는
+`bdb51cd75392f517af914f5d6b53f442784234ee2b3b134b479c475e4d669e84`, gateway/codexbridge baseline은
+`cf500f2fec76c447061d8b4724c26ad28a61e14a4095f610d4892fbc977d02bc`다.
+
+naming baseline은 exact commit `4056f69e1c20d942d4f9fc7363d3d79bffde899a`에 `git ls-tree`와
+`git grep`을 적용해 47/85/36/1을 스스로 검증한다. current는 `git ls-files --cached --others
+--exclude-standard` 뒤 실제 존재 파일만 취하고 같은 test 파일 자신을 제외하므로 아직 stage하지 않은 rename도
+검증할 수 있다. manifest root는 `schema_version`, `spec_id`, `baseline_tree`,
+`generated_by_milestone`, `source_inventory`, `path_mappings`, current `production_package`/
+`package_tests`/`active_importers`/`historical_utilities`, `legacy_allowlist`, `new_names`만 허용한다.
+`path_mappings`는 baseline의 모든 source와 current의 모든 destination을 각각 한 번만 포함하고
+`internal/kanban/` source는 같은 suffix의 `internal/orchestration/` destination이어야 한다. importer와
+historical utility는 경로가 유지되더라도 source/destination mapping 행이 필요하다. current equality는
+manifest-only를 `missing_from_tree`, tree-only를 `extra_in_tree`로 분리한다.

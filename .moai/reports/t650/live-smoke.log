@@ -1,5 +1,0 @@
-=== RUN   TestInstalledAppServerNoAuthSmoke
-    client_test.go:326: initialize_user_agent="moai_as1_probe/0.154.0 (Mac OS 26.6.2; arm64) unknown (moai_as1_probe; 0.1.0)" account=null requiresOpenaiAuth=true
---- PASS: TestInstalledAppServerNoAuthSmoke (0.06s)
-PASS
-ok  	github.com/modu-ai/moai-adk/internal/codexapp	0.458s

@@ -1,4 +1,0 @@
-internal/cli
-internal/kanban
-internal/mx
-internal/session

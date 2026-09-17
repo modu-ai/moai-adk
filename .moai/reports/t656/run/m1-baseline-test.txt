@@ -1,2 +1,0 @@
-ok  	github.com/modu-ai/moai-adk/internal/cli/update/merge	0.656s
-ok  	github.com/modu-ai/moai-adk/internal/cli/update/backup	1.323s

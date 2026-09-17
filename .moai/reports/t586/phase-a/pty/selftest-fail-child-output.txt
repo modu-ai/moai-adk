@@ -1,5 +1,0 @@
-=== RUN   TestPtyCaptureSelfTestChild
-    ptycap_selfcheck_test.go:419: ptycap session: moai-ptycap-TestPtyCaptureSelfTestChild-54e496bb
-    ptycap_selfcheck_test.go:423: forced failure after the session opened
---- FAIL: TestPtyCaptureSelfTestChild (0.12s)
-FAIL

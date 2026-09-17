@@ -1,0 +1,51 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="color-scheme" content="light">
+<title>moai gpt 재설계 v3 — Gateway × Codex App Server</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500&family=Noto+Sans+KR:wght@400;500;600;700&family=Noto+Serif+KR:wght@600;700&display=swap">
+<style>
+:root{--ivory:#FAF9F5;--slate:#141413;--clay:#D97757;--clay-d:#B85C3E;--oat:#E3DACC;--olive:#788C5D;--pale:#F0EEE6;--line:#D1CFC5;--muted:#626157}
+*{box-sizing:border-box}html{scroll-behavior:smooth;scroll-padding-top:24px}body{margin:0;background:var(--ivory);color:var(--slate);font:16px/1.85 'Noto Sans KR',sans-serif;word-break:keep-all;overflow-wrap:anywhere}a{color:var(--clay-d);text-decoration-thickness:1px;text-underline-offset:4px}a:hover{color:var(--slate)}a:focus-visible{outline:3px solid var(--clay);outline-offset:4px}.wrap{max-width:1240px;margin:auto;padding:44px 40px 70px}.eyebrow{font:500 12px/1.6 'JetBrains Mono',monospace;letter-spacing:.12em;color:var(--clay-d);text-transform:uppercase}.masthead{display:flex;justify-content:space-between;gap:20px;border-bottom:1px solid var(--line);padding-bottom:18px;font-size:12px;color:var(--muted)}.hero{padding:45px 0 34px}.hero h1{font:700 clamp(32px,4.5vw,54px)/1.35 'Noto Serif KR',serif;letter-spacing:-.045em;max-width:880px;margin:14px 0 24px}.hero .lead{font-size:20px;max-width:900px;line-height:1.8;margin:0}.chips{display:flex;flex-wrap:wrap;gap:8px;margin-top:24px}.chip{border:1px solid var(--line);border-radius:4px;padding:5px 11px;font-size:12px}.chip.good{background:#edf0e8;border-color:#b8c3a7}.chip.warn{background:#f6e9df;border-color:#dec2b1}.summary{display:grid;grid-template-columns:repeat(3,1fr);gap:18px;margin:0 0 30px}.card{border-top:3px solid var(--clay);padding:20px 22px;background:var(--pale);border-radius:0 0 6px 6px}.card .n{font:12px 'JetBrains Mono',monospace;color:var(--muted)}.card h2{font-size:19px;line-height:1.5;margin:9px 0}.card p{font-size:14px;line-height:1.8;margin:0}.architecture{padding:24px;background:#fff;border:1px solid var(--line);border-radius:8px;margin-bottom:42px}.architecture h2{font-size:20px;margin:0 0 6px}.architecture .caption{font-size:13px;color:var(--muted);margin:0 0 20px}.diagram-scroll{overflow-x:auto}.mermaid{min-width:680px;text-align:center;display:none}.flow-fallback{border-left:3px solid var(--olive);padding:10px 20px;background:var(--pale);font-size:14px}.layout{display:grid;grid-template-columns:205px minmax(0,1fr);gap:45px}.toc{position:sticky;top:24px;align-self:start;font-size:12px;line-height:1.65;border-left:1px solid var(--line);padding-left:18px}.toc strong{display:block;margin-bottom:12px;letter-spacing:.04em}.toc a{display:block;text-decoration:none;color:var(--muted);margin:0 0 11px}.toc a:hover{color:var(--clay-d)}article{min-width:0}article h2{font:700 27px/1.5 'Noto Serif KR',serif;letter-spacing:-.03em;margin:52px 0 22px;padding-top:24px;border-top:1px solid var(--line)}article h2:first-child{margin-top:0}article h3{font-size:19px;line-height:1.6;margin:32px 0 14px}article p{margin:14px 0}article li{margin:8px 0}article ul,article ol{padding-left:25px}article strong{font-weight:700}code{font:13px/1.7 'JetBrains Mono',monospace;background:var(--pale);padding:2px 4px;border-radius:3px;word-break:break-word}pre{background:#21211f;color:#f1eee6;border-radius:6px;padding:18px;overflow:auto;line-height:1.7;white-space:pre}pre code{background:none;padding:0;color:inherit;word-break:normal}.table-wrap{overflow-x:auto;max-width:100%;margin:22px 0;border:1px solid var(--line);border-radius:5px}table{border-collapse:collapse;font-size:13px;line-height:1.75;width:100%;min-width:620px;margin:0}th{text-align:left;background:var(--oat);font-weight:600}th,td{padding:12px 14px;border-bottom:1px solid var(--line);vertical-align:top}tr:last-child td{border-bottom:0}tbody tr:nth-child(even){background:#f4f2ec}td:first-child{min-width:120px}blockquote{border-left:3px solid var(--clay);margin:20px 0;padding:8px 20px;background:var(--pale)}.foot{margin-top:50px;padding-top:22px;border-top:1px solid var(--line);font-size:12px;color:var(--muted)}.foot a{margin-right:20px}
+@media(max-width:900px){.layout{grid-template-columns:minmax(0,1fr);gap:20px}.toc{position:static;display:flex;gap:8px 18px;flex-wrap:wrap}.toc strong{width:100%}.toc a{margin-bottom:4px}.wrap{padding:26px 24px 50px}.summary{gap:10px}.card{padding:16px}}
+@media(max-width:600px){body{font-size:15px}.wrap{padding:22px 18px 40px}.masthead{font-size:10px}.hero{padding:30px 0}.hero .lead{font-size:17px}.summary{grid-template-columns:1fr}.card{padding:16px 20px}.card h2{margin:6px 0}.architecture{padding:18px}article h2{font-size:24px;margin-top:36px}.toc{font-size:11px}pre{padding:14px}code{font-size:12px}.chip{font-size:11px}}
+@media(prefers-reduced-motion:reduce){html{scroll-behavior:auto}}
+@media print{.wrap{max-width:none;padding:0}.toc{display:none}.layout{display:block}.summary,.architecture{break-inside:avoid}article h2{break-after:avoid}a{color:inherit}.table-wrap{overflow:visible}table{min-width:0}pre{white-space:pre-wrap}body{font-size:10pt}.hero h1{font-size:28pt}}
+.summary{grid-template-columns:repeat(4,1fr)}pre.mermaid{background:white;color:#141413;padding:0;overflow:visible}@media(max-width:900px){.summary{grid-template-columns:repeat(2,1fr)}}@media(max-width:600px){.summary{grid-template-columns:1fr}}.example{padding:18px 22px;background:#F0EEE6;border-left:3px solid #788C5D;margin-bottom:30px;font-size:14px}</style>
+</head><body><div class="wrap">
+<header class="masthead"><span>MoAI · DESIGN REVIEW v3 · 모델 계약 확정</span><span>조사 15f3eacd7 · 문서 수정 develop 4056f69e1</span></header>
+<section class="hero"><div class="eyebrow">공식 문서 재조사 · 구현 승인 대기</div><h1 id="title">moai gpt, 실행부를 다시 설계하다.<br>Gateway 입구와 Codex 실행의 분리.</h1>
+<p class="lead">지정 문서 5개와 페이지 내 하위 목차 전체를 검토했다. <strong>일반 Messages Gateway → Codex App Server</strong>를 연결하고, Claude의 도구 승인과 Factory 실행 흐름을 유지하는 조건부 설계안이다.</p>
+<div class="chips"><span class="chip good">추적 파일 18,834개 조사</span><span class="chip good">적중 파일 1,733개 목록화</span><span class="chip warn">제품 코드 미변경</span><span class="chip warn">실계정 실행 미검증</span></div></section>
+<p><strong>확정된 모델 선택:</strong> 별도 티어 없이 <code>fable / opus / sonnet / haiku</code>를 아래 GPT 모델에 직접 매핑한다. <code>effort</code>는 독립 설정이며 모델 별칭으로 추론 강도를 강제하지 않는다.</p>
+<section class="summary" aria-label="사용자 확정 모델 매핑">
+<div class="card"><span class="n">FABLE</span><h2>Astra</h2><p><code>gpt-6-astra</code><br>Fable 슬롯</p></div>
+<div class="card"><span class="n">OPUS</span><h2>Sol</h2><p><code>gpt-5.6-sol</code><br>Opus 슬롯</p></div>
+<div class="card"><span class="n">SONNET</span><h2>Terra</h2><p><code>gpt-5.6-terra</code><br>Sonnet 슬롯</p></div>
+<div class="card"><span class="n">HAIKU</span><h2>Luna</h2><p><code>gpt-5.6-luna</code><br>Haiku 슬롯</p></div></section>
+<div class="example"><strong>동작 예시</strong> — <code>moai gpt -f 4 --model fable</code>로 시작하면 lead의 메인 모델은 Astra다. 이후 <code>model: sonnet</code>인 Agent는 Terra를 사용하고, <code>inherit</code>인 Agent는 부모의 실제 선택 모델을 이어받는다. 메인 모델 선택 때문에 네 슬롯 전체가 Astra로 바뀌면 안 된다. <strong>이것은 구현할 계약이지 현재 제품의 실측 결과가 아니다.</strong></div>
+<section class="architecture"><h2>역할을 나눈 하나의 실행 경로</h2><p class="caption">Factory는 실행 모드, Todo는 작업 목록, Orchestration은 배정·세션·소유권을 조정하는 내부 코드다. 그림은 제안 구조다.</p>
+<div class="diagram-scroll"><pre class="mermaid" id="architecture-mermaid">flowchart LR
+ T["Todo 작업 목록"] --> O["Orchestration<br/>Factory lead → lane"]
+ O --> C["Claude Code<br/>Agent · 승인 · hooks"]
+ C --> G["Messages gateway<br/>네 슬롯 모델 매핑"]
+ G --> A["Codex App Server<br/>thread · turn"]
+ A --> M["Astra / Sol<br/>Terra / Luna"]
+ A -->|tool call| G
+ G -->|tool_use| C
+ C -->|tool_result| G
+</pre></div>
+<div class="flow-fallback" id="flow-fallback">Todo 작업을 Factory lead가 lane에 배정한다. 각 Claude Code 세션은 Messages gateway를 통해 Codex App Server의 GPT를 호출한다. 실제 도구 실행과 승인은 Claude가 담당하고, 결과를 대기 중인 Codex 호출에 반환한다.</div>
+<noscript><p>흐름: Todo → Orchestration의 Factory lead·lane → Claude Code → 모델 매핑 gateway → Codex App Server → GPT. 도구 실행은 Claude로 되돌아온다.</p></noscript></section>
+<div class="layout"><nav class="toc" aria-label="목차"><strong>최종 설계와 근거</strong><div id="toc-items"></div><a href="inventory.md">전체 적중 파일·줄 번호 ↗</a><a href="inventory.json">기계 판독 목록 JSON ↗</a><a href="evidence.md">실행 근거 ↗</a></nav><article id="report-body">$body$</article></div>
+<footer class="foot"><p>Plan / basic · MoAI-Easy 기준. 명칭 전수 목록과 의미 검토, 설계 완료와 제품 완료를 구분한다. 승인 전에는 제품 구현·상태 이관·배포를 실행하지 않는다.</p><a href="report.md">설계 MD</a><a href="inventory.md">전수 목록</a><a href="evidence.md">검증 근거</a><a href="#title">맨 위로</a></footer></div>
+<script>
+document.querySelectorAll('article table').forEach(function(t){var w=document.createElement('div');w.className='table-wrap';w.tabIndex=0;w.setAttribute('role','region');w.setAttribute('aria-label','가로로 스크롤 가능한 비교 표');t.parentNode.insertBefore(w,t);w.appendChild(t)});
+document.querySelectorAll('article h2').forEach(function(h,i){if(!h.id)h.id='section-'+i;var a=document.createElement('a');a.href='#'+h.id;a.textContent=h.textContent;document.getElementById('toc-items').appendChild(a)});
+</script>
+<script type="module">
+try{const {default:mermaid}=await import('https://cdn.jsdelivr.net/npm/mermaid@11.4.1/dist/mermaid.esm.min.mjs');mermaid.initialize({startOnLoad:false,securityLevel:'strict',theme:'base',themeVariables:{fontFamily:'Noto Sans KR, sans-serif',primaryColor:'#F0EEE6',primaryTextColor:'#141413',primaryBorderColor:'#D1CFC5',lineColor:'#788C5D',secondaryColor:'#E3DACC',tertiaryColor:'#FAF9F5'}});const node=document.getElementById('architecture-mermaid');node.style.display='block';await mermaid.run({nodes:[node]});document.getElementById('flow-fallback').hidden=true;}catch(e){document.getElementById('architecture-mermaid').style.display='none';}
+</script>
+</body></html>

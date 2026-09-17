@@ -12,7 +12,7 @@ import (
 )
 
 func TestGatewayHooksPreserveRoutingSettings(t *testing.T) {
-	for _, provider := range []string{"claude", "gpt", "glm"} {
+	for _, provider := range []string{"claude", "glm"} {
 		t.Run(provider, func(t *testing.T) {
 			t.Setenv(config.EnvMoaiLaunchProvider, provider)
 			t.Setenv("TMUX", "/fixture/no-server,1,0")
@@ -61,20 +61,20 @@ func TestGatewayRecordUsesInitialProviderAndKeepsExistingRecord(t *testing.T) {
 	scrubKanbanEnv(t)
 	t.Setenv(config.EnvMoaiKanbanLabel, "run")
 	t.Setenv(config.EnvMoaiKanbanBackend, "claude")
-	t.Setenv(config.EnvMoaiLaunchProvider, "gpt")
+	t.Setenv(config.EnvMoaiLaunchProvider, "glm")
 	input := &HookInput{SessionID: "gateway-initial", ProjectDir: root, CWD: root, Source: "startup"}
 	writeKanbanSessionRecord(input)
 	rec, err := kanban.Read(root, input.SessionID)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if rec.Backend != kanban.BackendGPT {
+	if rec.Backend != kanban.BackendGLM {
 		t.Fatalf("backend %q", rec.Backend)
 	}
-	t.Setenv(config.EnvMoaiLaunchProvider, "glm")
+	t.Setenv(config.EnvMoaiLaunchProvider, "claude")
 	writeKanbanSessionRecord(input)
 	rec, err = kanban.Read(root, input.SessionID)
-	if err != nil || rec.Backend != kanban.BackendGPT {
+	if err != nil || rec.Backend != kanban.BackendGLM {
 		t.Fatalf("initial record changed: %+v %v", rec, err)
 	}
 }

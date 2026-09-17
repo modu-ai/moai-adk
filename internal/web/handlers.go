@@ -423,7 +423,7 @@ func (a *app) handleSave(w http.ResponseWriter, r *http.Request) {
 	// resolved model/effort 기반이므로 llm.yaml 을 먼저 로드해 넘긴다.
 	var llmCfg config.LLMConfig
 	if loaded, err := config.NewConfigManager().LoadRaw(a.cfg.ProjectRoot); err == nil {
-		llmCfg = agentFMLiveLLM(loaded.LLM) // t840: same gateway fold as the GET view
+		llmCfg = loaded.LLM
 	}
 	agents, _ := a.listAllAgentFMs(a.cfg.ProjectRoot, llmCfg)
 	agentPins, agentSubmitted, agentErrs := parseAgentFMForm(r, agents, llmCfg, perfTier)

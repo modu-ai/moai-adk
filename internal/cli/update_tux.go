@@ -159,6 +159,14 @@ type updateOutcomeDetail struct {
 	// RemovedLocalOnly counts removed files the embedded templates do not
 	// restore — the local-only losses the summary must not hide.
 	RemovedLocalOnly int
+	// NamespaceBackupPath is the user-owned namespace backup root the run
+	// created ("" when none) — REQ-ICU-004 full-root accounting. The three-root
+	// structure itself is a recorded deliberate decision
+	// (update_namespace_protect.go package doc — no consolidation).
+	NamespaceBackupPath string
+	// ArchiveDriftRoots lists the archive-drift backup roots the run created
+	// (empty when none) — REQ-ICU-004 full-root accounting.
+	ArchiveDriftRoots []string
 }
 
 func renderUpdateOutcome(w io.Writer, fileCount int, detail updateOutcomeDetail, backupPath string, th tui.Theme) {
@@ -185,6 +193,26 @@ func renderUpdateOutcome(w io.Writer, fileCount int, detail updateOutcomeDetail,
 	if backupPath != "" {
 		note := "Backup: " + backupPath + "\nRecover: moai update --restore " + backupPath
 		_, _ = fmt.Fprintln(w, paintToken(note, th.Dim, false))
+	}
+	// REQ-ICU-004: every backup root the run created is named with its
+	// recoverable path. Roots that were not created render no row (zero-root
+	// boundary, acceptance.md §E).
+	if detail.NamespaceBackupPath != "" {
+		note := "Namespace backup: " + detail.NamespaceBackupPath + " (user-owned — copy back manually)"
+		_, _ = fmt.Fprintln(w, paintToken(note, th.Dim, false))
+	}
+	for _, drift := range detail.ArchiveDriftRoots {
+		note := "Archive drift backup: " + drift + " (pre-drift customizations recoverable there)"
+		_, _ = fmt.Fprintln(w, paintToken(note, th.Dim, false))
+	}
+	// REQ-ICU-006 (F15, accept-manual-recovery): the restore step re-lays only
+	// sections/*.yaml, so customizations outside sections/ are not
+	// merge-restored; the summary names them and points at the backup. The
+	// merge-restore expansion was judged over-engineering (spec §REQ-ICU-006) —
+	// the backup itself is the recovery path.
+	if backupPath != "" {
+		advisory := "Config restore covers .moai/config/sections/*.yaml only — customizations under evaluator-profiles/ and astgrep-rules/ are not merge-restored; recover them from the backup"
+		_, _ = fmt.Fprintln(w, paintToken(advisory, th.Dim, false))
 	}
 }
 

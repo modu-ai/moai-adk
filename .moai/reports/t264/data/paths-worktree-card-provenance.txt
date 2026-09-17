@@ -1,2 +1,0 @@
-.github/workflows/release.yml
-internal/template/release_workflow_pipefail_test.go

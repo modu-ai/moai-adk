@@ -38,8 +38,8 @@ func TestResolveModelProfileReport_MaxClaude(t *testing.T) {
 	if e := got["manager-lead"]; e.Model != "opus" || e.Effort != "high" || e.Group != "lead" {
 		t.Errorf("manager-lead high: got %s/%s group=%s, want opus/high group=lead", e.Model, e.Effort, e.Group)
 	}
-	if len(rpt.Agents) != 12 {
-		t.Errorf("expected 12 agents, got %d", len(rpt.Agents))
+	if len(rpt.Agents) != 13 {
+		t.Errorf("expected 13 agents, got %d", len(rpt.Agents))
 	}
 }
 

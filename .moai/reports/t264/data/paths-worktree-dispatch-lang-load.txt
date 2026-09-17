@@ -1,6 +1,0 @@
-.claude/rules/moai/core/agent-common-protocol-reference.md
-.claude/rules/moai/core/agent-common-protocol.md
-.claude/rules/moai/workflow/kanban-dispatch.md
-internal/template/templates/.claude/rules/moai/core/agent-common-protocol-reference.md
-internal/template/templates/.claude/rules/moai/core/agent-common-protocol.md
-internal/template/templates/.claude/rules/moai/workflow/kanban-dispatch.md

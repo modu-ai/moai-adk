@@ -1,2 +1,0 @@
-ok  	github.com/modu-ai/moai-adk/internal/gateway/translate	0.478s	coverage: 91.4% of statements
-ok  	github.com/modu-ai/moai-adk/internal/gateway/auth	2.755s	coverage: 88.1% of statements

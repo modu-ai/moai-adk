@@ -1,3 +1,0 @@
-ok  	github.com/modu-ai/moai-adk/internal/template	1.245s
-ok  	github.com/modu-ai/moai-adk/internal/template/agentemit	0.548s [no tests to run]
-?   	github.com/modu-ai/moai-adk/internal/template/scripts	[no test files]

@@ -45,6 +45,31 @@ draft: false
 **不提供 `resume` 动词。** 以前讨论过的 `resume`(从归档恢复已解除的 goal)动词目前不在 CLI 中 —— `moai goal --help` 只列出 `arm` / `status` / `clear`。因为 `clear` 会 **删除** 状态文件(而非归档为 tombstone),所以不留下可恢复的原件。
 {{< /callout >}}
 
+## `--auto` 任务模式
+
+```bash
+moai goal --auto --session <session-id> "在已批准范围内实现并验证功能"
+```
+
+`--auto` 不是 goal 条件或 `progression_mode=autonomous` 的别名。任务文本不会作为 shell 执行，也不会交给条件解析器，而是以 `mission_mode=auto`、`state=draft` 单独保存。创建消息明确显示 `approval required`，所以这一步只是**创建任务草案**，并不批准自主执行。
+
+```bash
+moai goal approve --scope <路径> --action publish --action commit --completion-evidence <证据> --max-operations 20
+moai goal run --action publish --target <gtd-id> --recommend
+moai goal run --supervise --card-worktree <WT-路径> --develop-worktree <develop-路径> --governor-receipt <决策.json> --audit-receipt <审计.json> --completion-receipt <完成.json>
+moai goal status
+moai goal revoke
+moai goal resume
+```
+
+`approve` 会一次封存目标、范围、允许行为、完成证据和资源上限。之后的 workflow loop 会在每个范围内操作前重新检查当前 snapshot 与 receipt，但不会反复询问同一批准。`status` 读取持久状态；`revoke` 阻止新效果，同时保留进行中效果的协调状态；`resume` 只允许在同一合同下恢复已保存的**已批准、因策略而 blocked**任务，不会批准新范围。
+
+`--recommend` 只是兼容语法，不授予任何权限。真实操作必须同时持有仓库内权限为 `0600` 的 mission-governor 决策 receipt，以及独立审计 PASS receipt；两者绑定任务、合同、snapshot、行为、目标、有效期、签发者、HEAD 与判定为 true 的 typed evidence。`run --supervise` 按 `publish → pick → 带 lease 的磁盘调度 → commit → local develop --no-ff merge` 有界执行封存计划。受监督的 Git 效果必须分别提供 `--card-worktree` 与 `--develop-worktree`；只使用旧 `--repo` 时会以零效果拒绝。完成需要含有合并 ancestry 的 `0600` 完成 receipt，不能仅因动作列表耗尽而完成。遇到 blocked 或 completed 即停止；重放已完成任务的效果数为 0。
+
+批准后，确定性代码仍须在每次操作前检查封存的目标、完成证据、范围、允许行为、资源上限和停止条件。`mission-governor` 只读并提出建议。若继续推进需要扩大范围或增加权限，系统会停止副作用并记录 `blocked`，而不会暗中放宽批准。
+
+`super-advisor` 的意见不具约束力，只读的 `mission-governor` 生成结构化决策。只有确定性 validator 与归属角色 adapter 才能执行效果。提交需要当前 HEAD 的测试 receipt，本地合并需要 manager-git 角色、基准 SHA 与 lease。若持久 runtime 能力尚未证明，则采用 `active-session-only`。远程 batch push、release branch、release PR 与 main merge 的 provider 尚未配置，因此会以 `provider_unsupported` 停止，不会伪装成功。GTD 边界详见 [`/moai gtd`](/zh/utility-commands/moai-gtd)。
+
 ## 进行模式(自主 / 半自主)
 
 编排器执行实施启动批准(plan→run 边界的 `AskUserQuestion`)时,会让用户在与批准/拒绝决定 **相区分的独立轴** 上选择 **自主 vs 半自主** 进行模式。所选模式保存在 goal 状态的 `progression_mode` 字段中(用户不选则默认 `autonomous`)。

@@ -136,20 +136,22 @@ var validOverrideEfforts = map[string]bool{
 }
 
 // retainedAgentNames is the closed set of canonical retained-agent names an
-// llm.agent_overrides entry may key on (REQ-MPM-007). The 10 MoAI-custom
-// agents plus the Anthropic built-in Explore.
+// llm.agent_overrides entry may key on (REQ-MPM-007). Canonical MoAI agents
+// and the Anthropic built-in Explore are listed explicitly. Newly retained decision roles
+// must be registered here before an operator can target them with an override.
 var retainedAgentNames = map[string]bool{
-	"manager-spec":    true,
-	"plan-auditor":    true,
-	"sync-auditor":    true,
-	"manager-develop": true,
-	"super-advisor":   true,
-	"manager-design":  true,
-	"builder-harness": true,
-	"e2e-tester":      true,
-	"manager-docs":    true,
-	"manager-git":     true,
-	"Explore":         true,
+	"manager-spec":     true,
+	"plan-auditor":     true,
+	"sync-auditor":     true,
+	"manager-develop":  true,
+	"super-advisor":    true,
+	"mission-governor": true,
+	"manager-design":   true,
+	"builder-harness":  true,
+	"e2e-tester":       true,
+	"manager-docs":     true,
+	"manager-git":      true,
+	"Explore":          true,
 }
 
 // validateProfile checks the llm.profile value against the closed set

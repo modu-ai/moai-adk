@@ -8,6 +8,10 @@ added_in: "v3.1"
 
 {{< new-badge v3.1 >}}
 
+{{< callout type="info" >}}
+`/moai todo` と `moai todo` は、既存の自動化やスクリプト向けの **互換入口** として残ります。正式名称は [`/moai gtd`](/ja/utility-commands/moai-gtd) と `moai gtd` です。どちらも同じ SQLite キュー、カード ID、並び順、アーカイブ・復元動作を使います。
+{{< /callout >}}
+
 次にやることを一行ずつ積んでおく**バックログキュー**です。カンバンボードの `backlog` 列には担当セッションがおらず、誰も自分から仕事を流し込みません。したがって、カードをボードに入れることは常に人の判断であり、`/moai todo` がその窓口です。
 
 {{< callout type="info" >}}

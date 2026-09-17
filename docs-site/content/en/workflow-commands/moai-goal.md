@@ -8,6 +8,12 @@ added_in: "v3.1"
 
 {{< new-badge v3.1 >}}
 
+{{< callout type="warning" >}}
+`/moai goal --auto "<mission>"` is separate from the condition-declared loop below. It stores natural language as `mission_mode=auto`, `state=draft`, and still requires approval. Without demonstrated durable provider capabilities, it runs as `active-session-only`. [Command reference](/en/utility-commands/moai-goal#auto-mission-mode)
+{{< /callout >}}
+
+After an auto mission is approved, `goal run --supervise` advances its sealed plan within a bounded loop. Supervised Git effects require separate `--card-worktree` and `--develop-worktree` paths; legacy `--repo` has zero effects. `--recommend` grants no authority, and every effect requires both a `0600` governor decision receipt and a separate independent-audit PASS receipt with typed true evidence. Completion additionally requires a sealed `0600` completion receipt and merged ancestry, not action exhaustion. Unconfigured remote/release providers stop with `provider_unsupported`.
+
 A **condition-declared autonomous loop**: declare only the completion condition, and the session keeps taking turns until that condition holds. At the end of every turn the evaluator checks the condition, and once the condition is met the loop stops on its own. You no longer have to press "continue" at every step.
 
 {{< callout type="info" >}}

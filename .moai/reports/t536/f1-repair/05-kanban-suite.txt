@@ -1,3 +1,0 @@
-=== go test ./internal/kanban/ -count=1 ===
-ok  	github.com/modu-ai/moai-adk/internal/kanban	142.793s
-exit=0

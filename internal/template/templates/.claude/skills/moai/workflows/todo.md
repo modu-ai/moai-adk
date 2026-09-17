@@ -1,5 +1,9 @@
 # /moai todo — Backlog Queue
 
+> Compatibility surface: `/moai todo` is retained for existing callers and
+> dispatches through the canonical `/moai gtd` entry point. The queue contract
+> below remains the compatibility baseline and is not replaced by the rename.
+
 > The operator's entry point into the kanban board. `backlog` has no owning
 > session, so nothing dispatches work into it — admission is always an operator
 > act, and this is the surface for it.

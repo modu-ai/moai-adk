@@ -66,7 +66,6 @@ moai init [project-name] [OPTIONS]
 | `--root <path>` | Project root directory (default: current directory) |
 | `--git-mode <manual\|personal\|team>` | Git workflow mode (default: manual) |
 | `--git-provider <github\|gitlab>` | Git provider |
-| `--project-mode <personal\|team>` | Project mode (default: personal) |
 | `--enable-lsp` | Enable LSP integration (default: true) |
 | `--enforce-quality` | Enforce quality gates (default: true) |
 | `--enable-design` | Enable the design workflow (default: true) |
@@ -85,7 +84,7 @@ cd my-existing-project
 moai init
 
 # Non-interactive (CI/CD)
-moai init --non-interactive --project-mode personal --model-policy medium
+moai init --non-interactive --model-policy medium
 ```
 
 For detailed wizard steps, see the [Initial Setup](./init-wizard) page.
