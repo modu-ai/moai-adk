@@ -156,7 +156,58 @@ files plus a skill count.
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-(manager-docs — to be populated at sync close; `sync_commit_sha:` pending-backfill until then)
+Authored by manager-docs, 2026-09-18, card t783. Tree: worktree `.claude/worktrees/t783`,
+branch `WT-syncgate-hook`, run-phase code-final HEAD `23e8cd61e`.
+
+```yaml
+sync_status: audit-ready
+sync_complete_at: 2026-09-18
+sync_commit_sha: pending-backfill
+```
+
+**CHANGELOG entry.** `CHANGELOG.md` `[Unreleased]` section, grouped with the sibling
+sync-phase-quality-gate entries (card t602/t603/t664), inserted immediately before the t603
+entry. Pre-emission self-test: `grep -c 'SPEC-SYNC-GATE-VERDICT-001' CHANGELOG.md` → 0 before
+this commit (no duplicate risk from a parallel BATCH-SYNC session). AC count cross-check:
+9 distinct `AC-SGV-[0-9]{3}` identifiers in `acceptance.md` (AC-SGV-001..009), all live (none
+marked `[RETIRED]`/`[REF]`); the CHANGELOG entry's narrative covers all three findings (H01,
+H03, SX-R05) that those 9 ACs verify. Every file path cited in the entry
+(`.claude/hooks/moai/sync-phase-quality-gate.sh`,
+`.claude/skills/moai/workflows/sync/quality-gates-quality.md`, their template mirrors,
+`internal/template/catalog.yaml`, `.moai/reports/t783/run/`) verified to exist via `ls` before
+commit.
+
+**gate-sync-1 (pre-sync quality) / gate-sync-2 (doc scope) disposition.** Both HUMAN GATEs are
+satisfied by the operator's 2026-09-18 Implementation Kickoff Approval, which explicitly
+authorized autonomous progression through run AND sync without intermediate stops (progress.md
+§ Implementation Kickoff Approval, relayed by the kanban lead). The sync scope is narrow and
+doc/hook-verification-only (4 files: hook pair + doc pair, no user-facing command or flag
+changed) — no README/docs-site edit is warranted, consistent with the operator's approval scope.
+No AskUserQuestion round was run for this sync close; none was required given the recorded
+approval.
+
+**MX tag validation disposition: skipped.** `git diff --name-only "$CARD_BASE"..HEAD` (where
+`CARD_BASE=$(git merge-base develop HEAD)`) shows 0 changed Go/source files — this SPEC's diff
+touches only 4 SPEC artifacts, 2 doc-workflow markdown files, and (via the catalog-hash cascade)
+`internal/template/catalog.yaml`, a generated hash file. No `@MX:*` annotation surface exists in
+this diff to validate.
+
+**Residuals carried forward from run-phase (§E.2/§E.3), restated for the close record:**
+- `TestGTDCanonicalSurfaceGolden` in `internal/template` — pre-existing, card-independent
+  failure (0-byte diff on its 5 input files + test file since `CARD_BASE`; also failed with the
+  pre-M3 template doc swapped back).
+- Arm-C side finding (not an AC failure): on a fixture where `go build ./...` leaves an
+  untracked binary, the work-tree identity changes after a passing check and the next call
+  re-runs the checks once more instead of suppressing re-delivery; stdout stayed empty, no stale
+  block re-delivered. Left unrepaired — recomputing the identity after the checks would loosen
+  the gate. Candidate for a follow-up card.
+- No run against an installed `moai` binary (`make build` explicitly out of scope, REQ-SGV-008).
+- No remote CI result yet — this repository batch-pushes `develop` from the kanban lead
+  (`CLAUDE.local.md` §4.1); this sync commit stays local pending that push.
+
+**Status transition.** `spec.md` frontmatter `status: in-progress → completed` (passing through
+`implemented` in this same commit per the 3-phase close) and `updated: 2026-09-18`. No SPEC body
+content (spec.md/plan.md/acceptance.md §A-§H) was modified — frontmatter only.
 
 ## §F Phase 4 Mode Selection
 

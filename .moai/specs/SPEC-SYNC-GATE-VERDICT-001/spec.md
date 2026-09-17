@@ -2,7 +2,7 @@
 id: SPEC-SYNC-GATE-VERDICT-001
 title: "Sync quality gate: three-arm outcome-record execution proof on the current tree, severity-to-verdict unification in the template doc copy, and manifest-observation wording truth"
 version: "0.2.1"
-status: in-progress
+status: completed
 created: 2026-09-14
 updated: 2026-09-18
 author: manager-spec
