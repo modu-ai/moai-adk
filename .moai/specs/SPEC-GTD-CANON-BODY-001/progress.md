@@ -182,7 +182,7 @@ exit 0
 
 ```yaml
 sync_complete_at: 2026-09-18T04:20:00+09:00
-sync_commit_sha: pending-backfill-sync
+sync_commit_sha: 7d8b04c12
 sync_status: audit-ready
 docs_change: measured-no-op  # 0 docs-site/README hits for workflows/todo.md; see § Documentation sync above
 mx_annotation_pass: measured-no-op  # markdown + test-literal changes only, no new symbols
