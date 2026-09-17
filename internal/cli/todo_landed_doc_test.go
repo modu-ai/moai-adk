@@ -8,7 +8,7 @@
 // MEASURES by rendering a row and counting its fields. Both halves have a
 // reachable red that no amount of pasting text can satisfy:
 //
-//   - Edit the local todo.md and forget the template mirror — the drift this
+//   - Edit the local gtd.md and forget the template mirror — the drift this
 //     repository has already paid for once, in the `.sh` / `.sh.tmpl`
 //     hook-wrapper pair — and the row comparison fails.
 //   - Leave either row saying six after the render emits seven, and the count
@@ -32,8 +32,8 @@ import (
 // docRowPrefixes are the two verb-table rows that carry the contract: the verb
 // this milestone documents, and the row stating the column count.
 var docRowPrefixes = []string{
-	"| `moai todo landed ",
-	"| `moai todo pr ",
+	"| `moai gtd landed ",
+	"| `moai gtd pr ",
 }
 
 // statedColumnCount matches the count a `todo pr` row states in prose. The
@@ -53,9 +53,9 @@ func TestTodoDoctrine_MirrorParityAndStatedColumnCount(t *testing.T) {
 	if err != nil {
 		t.Fatalf("resolve repo root: %v", err)
 	}
-	live := filepath.Join(root, ".claude", "skills", "moai", "workflows", "todo.md")
+	live := filepath.Join(root, ".claude", "skills", "moai", "workflows", "gtd.md")
 	mirror := filepath.Join(root, "internal", "template", "templates",
-		".claude", "skills", "moai", "workflows", "todo.md")
+		".claude", "skills", "moai", "workflows", "gtd.md")
 
 	liveRows := extractDocRows(t, live)
 	mirrorRows := extractDocRows(t, mirror)
@@ -72,9 +72,9 @@ func TestTodoDoctrine_MirrorParityAndStatedColumnCount(t *testing.T) {
 	// Half 2 — the number the prose states equals the number the render emits.
 	rendered := renderedColumnCount(t)
 	for name, rows := range map[string]map[string]string{"live": liveRows, "template mirror": mirrorRows} {
-		stated := statedColumns(t, name, rows["| `moai todo pr "])
+		stated := statedColumns(t, name, rows["| `moai gtd pr "])
 		if stated != rendered {
-			t.Errorf("%s todo.md states %d columns; `moai todo pr` renders %d",
+			t.Errorf("%s gtd.md states %d columns; `moai gtd pr` renders %d",
 				name, stated, rendered)
 		}
 	}
@@ -110,11 +110,11 @@ func statedColumns(t *testing.T, surface, row string) int {
 	t.Helper()
 	m := statedColumnCount.FindStringSubmatch(row)
 	if m == nil {
-		t.Fatalf("%s todo.md: the `moai todo pr` row states no column count", surface)
+		t.Fatalf("%s gtd.md: the `moai gtd pr` row states no column count", surface)
 	}
 	n, ok := numberWords[m[1]]
 	if !ok {
-		t.Fatalf("%s todo.md: %q is not a column count this test can read", surface, m[1])
+		t.Fatalf("%s gtd.md: %q is not a column count this test can read", surface, m[1])
 	}
 	return n
 }

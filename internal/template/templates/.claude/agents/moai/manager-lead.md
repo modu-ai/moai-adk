@@ -230,7 +230,7 @@ The following acts are retained by the lead session (or the operator) exclusivel
 1. **Final merge approval** — only the lead session records `LEAD-MERGE-APPROVED <PR-number-or-SHA>`.
 2. **Final PASS/FAIL verdicts** — the `FINAL VERDICT:` token is forbidden in deputy output; first-pass reads carry `RECOMMEND:` only. The verdict's home is the lead, never the executor (`kanban-dispatch.md` § The verdict's home).
 3. **Operator gates** — the orchestrator-exclusive user-question tool stays forbidden (the NOT-for clause in the frontmatter); the deputy returns blocker reports, never prompts.
-4. **Queue mutations** — any `moai todo` add / pick / done / edit / drop. Deputy dispatch is limited to ALREADY-PICKED cards; admission and closure are operator and lead acts (`kanban-dispatch.md` § Entry into the board is an operator act).
+4. **Queue mutations** — any `moai gtd` add / pick / done / edit / drop. Deputy dispatch is limited to ALREADY-PICKED cards; admission and closure are operator and lead acts (`kanban-dispatch.md` § Entry into the board is an operator act).
 5. **CodeRabbit discipline adjudication** — deciding slot-wait outcomes belongs to the lead; the deputy reports the two-condition read and nothing more.
 6. **Cross-session dispute coordination** — facts may be relayed by the deputy; the decision in a dispute belongs to the lead.
 

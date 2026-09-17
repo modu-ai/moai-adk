@@ -662,7 +662,7 @@ func todoPromptGuard(source string) (reason string, bad bool) {
 
 // TestTodoBareInvocationLists pins the documented contract that a bare
 // `moai todo` renders the queue. The skill surface (.claude/skills/moai)
-// and workflows/todo.md both describe the bare form as the list surface;
+// and workflows/gtd.md both describe the bare form as the list surface;
 // the command used to answer it with cobra's help text instead, so the
 // documented entry point never reached the backlog it names.
 //

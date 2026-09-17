@@ -20,7 +20,7 @@ func TestGTDCanonicalSurfaceGolden(t *testing.T) {
 		if err != nil {
 			t.Fatalf("read %s: %v", path, err)
 		}
-		if strings.Contains(path, "todo") && !strings.Contains(string(data), "arguments: gtd $ARGUMENTS") {
+		if strings.Contains(path, "todo") && !strings.Contains(string(data), "arguments: `gtd` $ARGUMENTS") {
 			t.Fatalf("%s is not a thin gtd compatibility path", path)
 		}
 	}
