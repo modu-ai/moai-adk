@@ -6,7 +6,10 @@ import (
 	"path/filepath"
 )
 
-type AdmissionLock struct{ impl admissionLockImpl }
+type AdmissionLock struct {
+	impl    admissionLockImpl
+	barrier string
+}
 
 func AcquireAdmissionLock(projectRoot string) (*AdmissionLock, error) {
 	barrier, err := MigrationBarrierPath(projectRoot)
@@ -20,7 +23,15 @@ func AcquireAdmissionLock(projectRoot string) (*AdmissionLock, error) {
 	if err != nil {
 		return nil, fmt.Errorf("home-state admission lock: %w", err)
 	}
-	return &AdmissionLock{impl: impl}, nil
+	return &AdmissionLock{impl: impl, barrier: barrier}, nil
+}
+
+// CheckRuntimeAdmission is CheckRuntimeAdmission for the project this lock was
+// acquired for. It reuses the barrier path the lock already resolved, so the
+// project root is canonicalized once per admission instead of twice — each
+// canonicalization spawns git subprocesses.
+func (l *AdmissionLock) CheckRuntimeAdmission() error {
+	return checkRuntimeAdmissionAt(l.barrier)
 }
 func (l *AdmissionLock) Release() error {
 	if l == nil || l.impl == nil {

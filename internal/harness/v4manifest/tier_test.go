@@ -19,12 +19,13 @@ import (
 // (distribution 🔴×4 · 🟠×4 · 🔵×5 · 🩵×7 = 20). Every catalog agent file stem
 // under .claude/agents/{moai,harness}/ MUST appear here exactly once.
 var expectedAgentTiers = map[string]Tier{
-	// 🔴 — deep reasoning (×5)
-	"manager-spec":  TierRed,
-	"manager-lead":  TierRed,
-	"plan-auditor":  TierRed,
-	"super-advisor": TierRed,
-	"sync-auditor":  TierRed,
+	// 🔴 — deep reasoning (×6)
+	"manager-spec":     TierRed,
+	"manager-lead":     TierRed,
+	"plan-auditor":     TierRed,
+	"super-advisor":    TierRed,
+	"sync-auditor":     TierRed,
+	"mission-governor": TierRed,
 	// 🟠 — heavy reasoning (×4)
 	"manager-develop": TierOrange,
 	"manager-design":  TierOrange,
@@ -50,8 +51,8 @@ var expectedAgentTiers = map[string]Tier{
 // design.md §C tier for each of the 20 expected agent names
 // (AC-WC-005 + AC-WC-016 data-driven half).
 func TestAgentTier_All20ExpectedAgents(t *testing.T) {
-	if len(expectedAgentTiers) != 21 {
-		t.Fatalf("expectedAgentTiers fixture has %d entries, want 21 — fixture is wrong", len(expectedAgentTiers))
+	if len(expectedAgentTiers) != 22 {
+		t.Fatalf("expectedAgentTiers fixture has %d entries, want 22 — fixture is wrong", len(expectedAgentTiers))
 	}
 	for name, wantTier := range expectedAgentTiers {
 		gotTier, ok := AgentTier(name)
@@ -97,8 +98,8 @@ func TestAgentTier_CatalogFileCoverage(t *testing.T) {
 	}
 }
 
-// TestAgentTier_Distribution pins the 🔴×5 · 🟠×4 · 🔵×5 · 🩵×7 split
-// (design.md §C distribution footnote).
+// TestAgentTier_Distribution pins the 🔴×6 · 🟠×4 · 🔵×5 · 🩵×7 split
+// (design.md §C distribution footnote, plus mission-governor in 🔴).
 func TestAgentTier_Distribution(t *testing.T) {
 	table := AllAgentTiers()
 	counts := map[Tier]int{}
@@ -106,7 +107,7 @@ func TestAgentTier_Distribution(t *testing.T) {
 		counts[tier]++
 	}
 	want := map[Tier]int{
-		TierRed:       5,
+		TierRed:       6,
 		TierOrange:    4,
 		TierBlue:      5,
 		TierLightBlue: 7,
@@ -116,8 +117,8 @@ func TestAgentTier_Distribution(t *testing.T) {
 			t.Errorf("tier %q has %d agents, want %d", tier, got, wantN)
 		}
 	}
-	if total := len(table); total != 21 {
-		t.Errorf("table has %d entries, want 21", total)
+	if total := len(table); total != 22 {
+		t.Errorf("table has %d entries, want 22", total)
 	}
 }
 

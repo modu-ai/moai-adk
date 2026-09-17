@@ -90,7 +90,7 @@ func TestCGRetirementCompleteEntryShapesAndCounters(t *testing.T) {
 	tmuxSpawnFn = func(string, string) (string, error) { spawns++; return "%1", nil }
 	launcherWorktreeMaterialize = func(string, string, string, io.Writer) error { worktrees++; return nil }
 	userHomeDirFn = func() (string, error) { credentialHomes++; return root, nil }
-	shapes := [][]string{nil, {"--model", "opus"}, {"--continue"}, {"--resume", "prior-session"}, {"--spawn"}, {"-w", "owned-feature", "--branch", "existing"}, {"-p", "profile"}, {"-k", "2"}, {"-f", "2"}}
+	shapes := [][]string{nil, {"--model", "opus"}, {"--continue"}, {"--resume", "prior-session"}, {"--spawn"}, {"-w", "owned-feature", "--branch", "existing"}, {"-p", "profile"}, {"-k", "2"}, {"-f"}}
 	for _, name := range []string{"cc", "glm"} {
 		for _, args := range shapes {
 			cmd := &cobra.Command{}
