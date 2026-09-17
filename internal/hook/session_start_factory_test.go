@@ -9,6 +9,23 @@ import (
 	"github.com/modu-ai/moai-adk/internal/kanban"
 )
 
+// TestFactoryGuideNamesAgentJoinInEveryLocale pins t868: the CLI accepts
+// `-f agent` (join as the next free agent-<n>), so every locale's entry guide
+// must name that form alongside the numbered `-f lane-<n>` form, and the lane
+// naming sentence must cover agent-<n> lanes too.
+func TestFactoryGuideNamesAgentJoinInEveryLocale(t *testing.T) {
+	for lang, m := range factoryLocales {
+		for _, want := range []string{"`moai %[2]s -f agent`", "`moai %[2]s -f lane-<n>`", "agent-<n>"} {
+			if !strings.Contains(m.entryGuide, want) {
+				t.Errorf("%s entryGuide missing %q:\n%s", lang, want, m.entryGuide)
+			}
+		}
+		if !strings.Contains(m.leadManual, "agent-<n>") {
+			t.Errorf("%s leadManual does not name agent-<n> lanes:\n%s", lang, m.leadManual)
+		}
+	}
+}
+
 // TestFactoryBootstrapNoticeSilentForOrdinarySession is the blast-radius
 // case: a session that is not part of a factory run is completely unaffected.
 func TestFactoryBootstrapNoticeSilentForOrdinarySession(t *testing.T) {
