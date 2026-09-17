@@ -51,7 +51,16 @@
 - Added REQ-GCB-015 / AC-GCB-013: isolated `moai todo answer t1 x` observation (`MOAI_HOME` and `CLAUDE_PROJECT_DIR` set to temp dirs, real-queue sentinel check); a card-adding result is a finding and is not fixed.
 - The M3.7 commit must cite `1dcaad954` (t860) and `61582178d` (t861), measured with `git log --oneline -- internal/template/templates/.claude/commands/moai/todo.md`.
 
-plan_audit: iteration 2 PASS 0.86 (pre-0.3.0 artifacts)
+### 0.3.2 — plan-audit iteration 3 (FAIL 0.75) revisions
+
+- B1: `$BASE` anchor (`.moai/reports/t867/base.txt`, written at M0 after absorbing develop). Measured pre-absorption `git merge-base develop HEAD` = `f67d2193f`; develop tip = `a851b205c`.
+- B2: registration-line diff guard. Controls: Long-help-only diff → grep exit 1; `AddCommand` diff → exit 0.
+- B3: 1/1 numstat pins, the gtdWant line-equivalence check (good PASS; drop-engage and no-answer mutants FAIL), a literal check (verbatim PASS, loosened FAIL), and assertion counts on `4cc8ee74e`: canonical 3, compat 23. RED-now: numstat vs `f67d2193f` prints 0 lines.
+- O1: `last_seq` sentinel. Plan-time read: exit 0, `last_seq` 870, `items` 143.
+- O2: blocker contingency for failures of previously unreached assertions.
+- O3: exact safe `answer` sentence mandated (proven by L6).
+
+plan_audit: iteration 2 PASS 0.86 (pre-0.3.0 artifacts); iteration 3 FAIL 0.75 (0.3.1 artifacts) → revised in 0.3.2
 plan_complete_at: 2026-09-18T01:45:23+09:00
 plan_status: audit-ready
 

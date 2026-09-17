@@ -52,12 +52,12 @@ Run-phase applies option A (M3.8). The unmeasured `moai todo answer t1 x` behavi
 
 ### M0 — Baseline capture (Priority High)
 
-Record the failing test-name sets at pre-edit HEAD for both packages (AC-GCB-010 procedure) as `.moai/reports/t867/m0-{template,cli}.{log,exit,fail-names}`. An M0 timeout is a Gap: re-run the package once, and never treat a truncated baseline as authoritative. Record RED-now for both check scripts at `.moai/reports/t867/m0-check-{residual,body}.txt`.
+First, immediately after absorbing develop, write `git merge-base develop HEAD` to `.moai/reports/t867/base.txt`. This is the `$BASE` every change-set acceptance clause reads (acceptance.md § Scope anchor); a later re-absorption rewrites it and appends the old value to `base-history.txt`. If a previously unreached assertion of the two t867-owned tests fails on the absorbed tree and fixing it needs more than the two pinned single-line edits, stop and return a blocker report (acceptance.md AC-GCB-012 contingency). Then record the failing test-name sets at pre-edit HEAD for both packages (AC-GCB-010 procedure) as `.moai/reports/t867/m0-{template,cli}.{log,exit,fail-names}`. An M0 timeout is a Gap: re-run the package once, and never treat a truncated baseline as authoritative. Record RED-now for both check scripts at `.moai/reports/t867/m0-check-{residual,body}.txt`.
 
 ### M1 — gtd.md canonical body (Priority High)
 
 1. Rewrite `workflows/gtd.md` in both trees, byte-identical: carry every todo.md section and retarget command examples to `moai gtd` / `/moai gtd`.
-2. Add `## GTD stages`. It names the stage order capture → clarify → organize → reflect → engage. Per verb it gives the usage shape and every non-`--json` flag exactly as `check-gtd-body.sh` lists them (23 required flags). It describes `answer` as answering a gate-blocked card, never as a stage, and carries the two queue-boundary phrases verbatim.
+2. Add `## GTD stages`. It names the stage order capture → clarify → organize → reflect → engage. Per verb it gives the usage shape and every non-`--json` flag exactly as `check-gtd-body.sh` lists them (23 required flags). It describes `answer` with the exact sentence ``- `moai gtd answer <t-id> <text>` answers a gate-blocked card; it is not a stage.`` (the sixth-stage check is conservative; see acceptance.md AC-GCB-002), and carries the two queue-boundary phrases verbatim.
 3. Add one compat paragraph whose `moai todo` / `/moai todo` lines each carry `compat alias`.
 4. Keep what the retargeted tests read: `| \`moai gtd landed ` / `| \`moai gtd pr ` rows with "carries <word> tab-separated columns", a `moai gtd history` mention, and the JSON fence keys.
 

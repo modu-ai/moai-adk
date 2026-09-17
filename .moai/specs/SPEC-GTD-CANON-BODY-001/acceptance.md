@@ -2,6 +2,10 @@
 
 All commands run from the worktree root with bash. `$BIN` is a moai binary built from the tree under test (`go build -o <scratch>/moai ./cmd/moai`). `$SPEC` = `.moai/specs/SPEC-GTD-CANON-BODY-001`. Document-level tree pin for RED-now cells: working tree of `114737ea1` (the SPEC scripts added on top are untracked at measurement).
 
+## Scope anchor `$BASE`
+
+Every change-set clause (AC-GCB-009, AC-GCB-011, AC-GCB-012) measures against `BASE=$(cat .moai/reports/t867/base.txt)`, never a literal SHA. At M0, immediately after local `develop` is absorbed into `WT-gtd-canon`, run-phase writes `git merge-base develop HEAD` into that file. Any later re-absorption of develop rewrites the file and appends the previous value to `.moai/reports/t867/base-history.txt`. Before absorption `git merge-base develop HEAD` is `f67d2193f`. After absorption it is the absorbed develop tip, so clauses see only this card's own changes. A missing or empty `base.txt` makes every `$BASE` clause a FAIL, not a skip.
+
 ## Allowed-survivor rule
 
 A line in a scoped file that matches `moai todo|/moai:todo` (which also covers `/moai todo`) is an **allowed survivor** only when the same line contains the phrase `compat alias` preceded by start-of-line or a non-letter (regex `(^|[^A-Za-z])compat alias`). `compatible`, `incompatible` and `incompat alias` do not qualify. Any other match is a residual defect. The rule applies only to the 19 files listed in `$SPEC/check-residual.sh`.
@@ -42,7 +46,7 @@ Given the migrated tree and `$BIN`, When `bash $SPEC/check-gtd-body.sh $BIN` run
 - each of the 23 required flags listed in help AND named in the section, with `002-required-count` = 23 and `002-doc-flag-count` ≥ 23;
 - every flag token in the section present in the union of the six verbs' help;
 - both queue-boundary phrases present in the section and in `moai gtd --help`;
-- `gate-blocked` present, and zero matches of `(six|sixth|6|6th) (gtd )?stage(s)` or `answer … (is|as) (a|an|the) … stage`. The body therefore describes `answer` with wording like "is not a stage", never "is a … stage".
+- `gate-blocked` present, and zero matches of `(six|sixth|6|6th) (gtd )?stage(s)` or `answer … (is|as) (a|an|the) … stage`. The check is conservative and accepts false positives: for example "`answer` responds as a gate response, not a stage." matches, per plan-audit iteration 3 O3. So gtd.md MUST describe `answer` with this exact sentence, which the L6 control proved passes: ``- `moai gtd answer <t-id> <text>` answers a gate-blocked card; it is not a stage.``. Any other `answer` wording that mentions "stage" must be re-run through `check-gtd-body.sh` before commit.
 
 The script runs under bash; any other shell is refused with exit 2 (L10). It exits 0 and prints **at least 113 `PASS` lines**, the count the L6 control produced. `fails=0` with fewer PASS lines means checks were skipped, and that is a FAIL.
 - RED-now: L5. Mutant controls: L6 (green is reachable), L7 (an invented flag and a sixth-stage claim both go red), L11 (6th-stage wording goes red), L12 (help-side flag drift goes red). Green path: M1.
@@ -99,7 +103,9 @@ A PASS-line count below the stated number (an empty or partial sweep) is a FAIL.
 
 Given the migrated tree, Then all of the following hold:
 - `make build` exits 0 (agents-emit-check and commands-emit-check pass; `gen-catalog-hashes.go --all` runs).
-- `git status --porcelain internal/template/catalog.yaml internal/template/templates/.codex/agents/moai/manager-lead.toml` prints nothing after the final commit, and `git log --oneline f67d2193f..HEAD -- internal/template/catalog.yaml` lists at least one commit.
+- `git status --porcelain internal/template/catalog.yaml internal/template/templates/.codex/agents/moai/manager-lead.toml` prints nothing after the final commit.
+- This card itself regenerated the catalog. With `BASE=$(cat .moai/reports/t867/base.txt)`, `git diff --name-only "$BASE" HEAD -- internal/template/catalog.yaml` prints exactly `internal/template/catalog.yaml`, and `git log --no-merges --oneline "$BASE"..HEAD -- internal/template/catalog.yaml` lists at least one commit. RED-now on `4cc8ee74e` (BASE = `f67d2193f`, pre-absorption): the diff prints nothing (0 lines). An absorbed develop commit such as `9fa9bc40b` cannot satisfy this, because `$BASE` already contains it.
+- The committed hashes are current for this card's changes: `go run ./internal/template/scripts/gen-catalog-hashes.go --all` followed by `git diff --exit-code internal/template/catalog.yaml` exits 0. If regeneration rewrites the committed file, the card shipped stale hashes, which is a FAIL.
 - `go test -timeout 10m -count=1 -v -run '^(TestCatalogHashCoversSkillSubfiles|TestAllSkillsInCatalog|TestAllAgentsInCatalog|TestManifestHashFormat)$' ./internal/template/` prints 4 `--- PASS:` lines and 0 `--- FAIL:`. `TestManifestHashFormat` covers the `manager-lead` agent-file hash, which `TestCatalogHashCoversSkillSubfiles` skips.
 - Every `CHECK 009-cmp:*` line of `check-gtd-body.sh` reads PASS (six local/mirror pairs byte-identical: gtd.md, kanban-dispatch.md, kanban-dispatch-detail.md, moai-kanban-foreman/SKILL.md, project/doc-generation.md, todo-queue-storage.md).
 - Green path: M4.3 + M5.1.
@@ -135,8 +141,21 @@ Given the migrated tree, When each of these runs, Then each prints exactly one `
 - `go test -timeout 5m -count=1 -v -run '^TestGTDCanonicalSurfaceGolden$' ./internal/template/`
 - `go test -timeout 5m -count=1 -v -run '^TestGTDAllTodoVerbsParity$' ./internal/cli/`
 
-Neither test file may lose an assertion. `git diff <base>...HEAD -- internal/template/gtd_canonical_surface_test.go internal/cli/gtd_compat_test.go` must show no removed `t.Fatalf` / `t.Errorf` line without a replacement assertion of the same check.
-- RED-now: L13 and L14. Green path: M3.7 (literal alignment) and M3.8 (option A: `"answer"` added to `gtdWant` only). Option A also requires `git diff f67d2193f...HEAD -- internal/cli` to show no change to any non-test `.go` file that registers todo or gtd subcommands, and `todoWant` in `gtd_compat_test.go` to stay byte-identical to base.
+Both edits are pinned mechanically, with `BASE=$(cat .moai/reports/t867/base.txt)`:
+1. `git diff --numstat "$BASE" HEAD -- internal/template/gtd_canonical_surface_test.go` prints exactly `1	1	internal/template/gtd_canonical_surface_test.go`. The removed line is the base line 23 thin-path `if` (literal `"arguments: gtd $ARGUMENTS"`). The added line contains ``"arguments: `gtd` $ARGUMENTS"`` verbatim, the wording of template `commands/moai/todo.md` line 8.
+2. `git diff --numstat "$BASE" HEAD -- internal/cli/gtd_compat_test.go` prints exactly `1	1	internal/cli/gtd_compat_test.go`. The removed line is base line 52 (`gtdWant := append(slices.Clone(todoWant), "capture", "clarify", "organize", "reflect", "engage")`). The added line contains `"answer"` exactly once, and deleting that one token (`, "answer"` or `"answer", `) yields the removed line byte-for-byte. `todoWant` is therefore untouched.
+3. `grep -cE 't\.(Fatalf|Errorf|Fatal)\(' <file>` on HEAD is ≥ the same count on `$BASE` for both files. The plan-time counts on `4cc8ee74e` are 3 for `gtd_canonical_surface_test.go` and 23 for `gtd_compat_test.go`.
+
+Registration guard (option A, no CLI change): `git diff "$BASE" HEAD -- 'internal/cli/*.go' ':!internal/cli/*_test.go' | grep -E '^[-+][^-+].*(AddCommand|Use:|Args:|RunE|Aliases:|Flags\(\))'` prints nothing (grep exit 1; exit 2 is a FAIL). The `todo.go:211` Long-help edit and comment edits are allowed. Non-vacuity: `git diff --name-only "$BASE" HEAD -- internal/cli/todo.go` prints `internal/cli/todo.go`, proving the guard swept a real diff.
+
+Controls (scratch, 2026-09-18):
+- Registration grep on a diff whose only change is the Long-help line: exit 1.
+- Registration grep on a diff adding `+	cmd.AddCommand(newTodoAnswerCmd())`: exit 0, line printed.
+- gtdWant equivalence: the good line passes; a line that drops `"engage"` for `"answer"` fails (`answer_count=1`); a line without `"answer"` fails (`answer_count=0`).
+- Literal check: the verbatim backticked literal passes; a loosened `"arguments:"` fails.
+- RED-now for items 1-2 on `4cc8ee74e`: `git diff --numstat f67d2193f HEAD -- <both files>` prints 0 lines, not `1	1`.
+- RED-now: L13 and L14. Green path: M3.7 (literal alignment) and M3.8 (option A: `"answer"` added to `gtdWant` only).
+- **Post-absorption contingency (O2).** If, after absorbing develop, an assertion that was never reached at plan time fails (the second todo path, `publishedSkillNames == 17`, the todo verb-set check, or the per-verb help/flag parity loop), and fixing it needs anything beyond the two pinned single-line edits, run-phase stops and returns a blocker report. It does not change the CLI, weaken an assertion, or make further edits.
 - M3.7 commit trace: `git log --format=%B -1 <M3.7 commit>` contains both `1dcaad954` and `61582178d`.
 
 ### AC-GCB-013 — isolated `moai todo answer t1 x` observation (REQ-GCB-015)
@@ -144,24 +163,24 @@ Neither test file may lose an assertion. `git diff <base>...HEAD -- internal/tem
 Isolation mechanism, run in this order with bash from the worktree root. `$T` comes from `mktemp -d` under the session scratch directory and is an absolute path.
 
 1. `git init -q "$T/proj"`, then commit one empty commit there (`git -C "$T/proj" commit -q --allow-empty -m init`), so queue-root resolution sees a primary checkout.
-2. Real-queue sentinel before: `ls -l ~/.moai/db/*/todo/backlog.db > "$T/real-before.txt" 2>&1` (read-only listing of size and mtime).
+2. Real-queue sentinel before: run `$BIN todo list --json > "$T/real-before.json"` from the worktree root with no `MOAI_HOME` / `CLAUDE_PROJECT_DIR` override (it resolves the primary checkout's real queue, read-only and lock-free), then record `jq '.last_seq' "$T/real-before.json"`. Plan-time read on `4cc8ee74e`: exit 0, `last_seq` 870, `items` 143. This replaces the `backlog.db` listing, which cannot see WAL writes.
 3. Positive control: `(cd "$T/proj" && MOAI_HOME="$T/moai-home" CLAUDE_PROJECT_DIR="$T/proj" $BIN todo add "control card")` must print `t1 1`. After it, `find "$T/moai-home" -name backlog.db` must print exactly one path, which proves the isolated store is the one written.
 4. Observation: `(cd "$T/proj" && MOAI_HOME="$T/moai-home" CLAUDE_PROJECT_DIR="$T/proj" $BIN todo answer t1 x)`. Record stdout, stderr and the exit code.
 5. Read-back: `(cd "$T/proj" && MOAI_HOME="$T/moai-home" CLAUDE_PROJECT_DIR="$T/proj" $BIN todo list --json)`, recording the `items` count.
-6. Real-queue sentinel after: `ls -l ~/.moai/db/*/todo/backlog.db > "$T/real-after.txt" 2>&1`, then `cmp "$T/real-before.txt" "$T/real-after.txt"` must exit 0.
+6. Real-queue sentinel after: `$BIN todo list --json > "$T/real-after.json"` (same form as step 2). Then `jq '.last_seq' "$T/real-after.json"` must equal the step-2 value.
 
 Given those steps, Then `.moai/reports/t867/verdict.md` records steps 3-6 verbatim and classifies the observation as exactly one of:
 - **refused**: non-zero exit, and the items count in step 5 is 1 (control only);
 - **added a card**: the items count in step 5 is 2. Recorded as a finding with the added card's text, and not fixed.
 
-An observation without step 3's single `backlog.db` under `$T/moai-home`, or with a non-zero `cmp` in step 6, is a Gap, not a classification. If the operator's own sessions write the real queue during the run, step 6 can differ for reasons unrelated to this test; that is recorded as a Gap, and step 3's isolation evidence still stands. The shell guard may reject the subshell form; in that case run each step as a separate invocation with the same env assignments and working directory, recorded verbatim.
+An observation without step 3's single `backlog.db` under `$T/moai-home` is a Gap, not a classification. If step 6's `last_seq` differs from step 2's, that is also a Gap: another session may have admitted a card during the run. In that case the verdict records both values, and the delta alone does not establish a leak. A leak is established only if the real queue's new rows include the text `answer t1 x` or `control card`. The shell guard may reject the subshell form; in that case run each step as a separate invocation with the same env assignments and working directory, recorded verbatim.
 - RED-now: not applicable. This is an observation criterion; its failure direction is a missing or non-isolated observation.
 
 ### AC-GCB-011 — config key, historical records, citation inventory (REQ-GCB-010, REQ-GCB-011, REQ-GCB-012)
 
 Given the change set, Then all of the following hold:
-- `git diff --name-only f67d2193f...HEAD -- CHANGELOG.md reports .moai/specs .moai/reports` lists only paths under `.moai/specs/SPEC-GTD-CANON-BODY-001/` or `.moai/reports/t867/`.
-- `git diff f67d2193f...HEAD -- internal/config .moai/config internal/template/templates/.moai/config` prints nothing.
+- With `BASE=$(cat .moai/reports/t867/base.txt)`, `git diff --name-only "$BASE" HEAD -- CHANGELOG.md reports .moai/specs .moai/reports` lists only paths under `.moai/specs/SPEC-GTD-CANON-BODY-001/` or `.moai/reports/t867/`. Develop's own changes to these paths (for example `CHANGELOG.md` and `.moai/reports/t547`) are inside `$BASE` and cannot appear.
+- `git diff "$BASE" HEAD -- internal/config .moai/config internal/template/templates/.moai/config` prints nothing.
 - `.moai/reports/t867/verdict.md` contains `workflow.todo.enabled`, lists the spec.md §C.3 pre-existing failures as a lead finding, and holds a citation inventory whose entry count equals the line count of `grep -rn 'workflows/todo\.md' CHANGELOG.md reports .moai/specs .moai/reports --exclude-dir=SPEC-GTD-CANON-BODY-001 --exclude-dir=t867 --exclude='SPEC-GTD-CANON-BODY-001-*'` (the last exclusion drops this SPEC's own gitignored plan-audit reviews). The plan-time measurement was 13 + 132 = 145 before that exclusion; the run phase re-measures with it.
 
 ## Edge Cases

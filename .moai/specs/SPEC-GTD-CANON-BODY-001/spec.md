@@ -1,7 +1,7 @@
 ---
 id: SPEC-GTD-CANON-BODY-001
 title: "gtd canonical body migration — move the workflows/todo.md body into workflows/gtd.md and retire the todo body"
-version: "0.3.1"
+version: "0.3.2"
 status: draft
 created: 2026-09-18
 updated: 2026-09-18
@@ -27,6 +27,7 @@ related_specs: []
 | 0.2.1 | 2026-09-18 | manager-spec | Plan-audit iteration 2 PASS 0.86; pre-run amendments N1 (bash-only guard + 113-line PASS floor), N2 (two-way flag set equality), N4 (per-package slot lease, exit 3/4 handling), N5 (M0 timeout is a Gap), N6 (6th/sixth-stage regex), N10 (single evidence file naming); cheap extras N3 (build-failed delta), N7 (exclude own review files), N8 (TestManifestHashFormat). |
 | 0.3.0 | 2026-09-18 | manager-spec | Scope change from the lead: `TestGTDCanonicalSurfaceGolden` and `TestGTDAllTodoVerbsParity` now owned by t867 (moved from t854). Added REQ-GCB-014 and AC-GCB-012; both tests removed from the baseline set; failure causes measured (§C.4); parity repair left as an operator decision (plan.md §B.1); develop absorption before M0 (plan.md §D). |
 | 0.3.1 | 2026-09-18 | manager-spec | Operator decision via the lead: parity repair option A (`answer` gtd-only, test expectation only, CLI unchanged). M3.8 unblocked. Added REQ-GCB-015 and AC-GCB-013 (isolated `moai todo answer t1 x` observation; a card-adding result is a finding, not fixed). The M3.7 commit message must cite `1dcaad954` (t860) and `61582178d` (t861). Local `.claude/commands/moai/todo.md` wording stays a finding only. Kickoff approved. |
+| 0.3.2 | 2026-09-18 | manager-spec | Plan-audit iteration 3 (FAIL 0.75), acceptance wording only. B1: `$BASE` from `.moai/reports/t867/base.txt` (merge-base after develop absorption) replaces the literal base in AC-GCB-009/011/012; the catalog clause requires this card's own regeneration and current hashes. B2: mechanical registration-line diff guard. B3: both test edits pinned as 1/1 numstat, exact line equivalence, and a non-decreasing assertion count. O1: `last_seq` sentinel. O2: post-absorption blocker contingency. O3: exact safe `answer` sentence. |
 
 ## §A Context
 
