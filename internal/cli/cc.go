@@ -20,7 +20,7 @@ import (
 var findProjectRootFn = findProjectRoot
 
 var ccCmd = &cobra.Command{
-	Use:   "cc [-p profile] [-k [SPEC-ID] | -k --name <role> | -f [N] | -f lane-<n>] [-- claude-args...]",
+	Use:   "cc [-p profile] [-k [SPEC-ID] | -k --name <role> | -f | -f agent | -f lane-<n>] [-- claude-args...]",
 	Short: "Launch Claude Code with Claude backend",
 	Long: `Launch Claude Code with Claude backend.
 
@@ -62,14 +62,18 @@ Kanban Mode:
                                 free number (plan-1, plan-2, ...).
 
 Factory Mode (dedicated -f entry):
-  -f, --factory [N]            Enter as the LEAD of a factory run with N
-                                numbered lanes; N omitted = one lane
-                                (lane-1), grown afterwards with the
-                                incremental form below. The lead routes
-                                operator-picked cards to free lanes over
-                                cross-session messages — each card goes
-                                WHOLE to one lane, which carries it through
-                                plan -> run -> sync in-session.
+  -f, --factory                Enter as the LEAD of a factory run. The
+                                numeric count form was retired (2026-09-16):
+                                lanes join one at a time via the agent role
+                                token or the incremental lane form below. The
+                                lead routes operator-picked cards to free
+                                lanes over cross-session messages — each card
+                                goes WHOLE to one lane, which carries it
+                                through plan -> run -> sync in-session.
+  -f agent                     Join the running factory as an AGENT lane:
+                                the next free agent-<n> label is claimed for
+                                this session (same registry, bump and
+                                liveness rules as lane-<n>).
   -f lane-<n>                  Launch exactly one additional lane — lane
                                 n — and connect it to the lead socket of the
                                 running factory. A number whose label is held by a
@@ -109,7 +113,8 @@ Examples:
   moai cc -k SPEC-AUTH-001             # Kanban lead tied to SPEC-AUTH-001
   moai cc -k --name plan               # Kanban companion: joins as the plan lane
   moai cc -f                           # Factory lead: one lane (lane-1)
-  moai cc -f 4                         # Factory lead: announces lane-1..lane-4
+  moai cc -f                           # Factory lead
+  moai cc -f agent                     # Join the running factory as an agent lane
   moai cc -f lane-2                    # Add lane 2 to the running factory
   moai glm -f lane-3                   # Same lane on the GLM backend`,
 	GroupID:            "launch",

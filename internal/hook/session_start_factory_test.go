@@ -41,9 +41,9 @@ func TestFactoryLeadNoticeCarriesLaneLinesSocketAndEntryGuide(t *testing.T) {
 		"moai cc -f lane-1",
 		"moai cc -f lane-2",
 		"moai cc -f lane-3",
-		"moai glm -f 3",
+		"moai glm -f",
 		"moai cc -f lane-<n>",
-		"one-lane default",
+		"starts a Claude factory lead",
 		"Every lane can run up to 10 agents concurrently in parallel.",
 		"/tmp/moai-socket-factory/abc123",
 	} {
