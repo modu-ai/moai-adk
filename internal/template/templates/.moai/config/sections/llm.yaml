@@ -1,6 +1,16 @@
 llm:
   mode: ""
   team_mode: ""
+
+  # Agent harness selected at init time. One of claude | gpt | both,
+  # written explicitly on every init run — including the claude default — so
+  # doctor and update read the resolved value instead of inferring it.
+  # "gpt" means Codex-only deployment: AGENTS.md and Codex surfaces only
+  # (no .claude/ tree, no CLAUDE.md, no .mcp.json). A project initialized
+  # before this key existed reads as claude (unchanged behavior).
+  # Note: this is NOT harness_agents (the /moai:harness specialist map below).
+  harness: "claude"
+
   glm_env_var: "GLM_API_KEY"
 
   # Explicit Claude Code binary pin. When set to a path, moai launches THIS

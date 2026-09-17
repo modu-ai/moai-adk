@@ -289,6 +289,22 @@ cd my-project
 
 対話式ウィザードが言語・フレームワーク・方法論を自動検出し、モデル方針を選んだうえで Claude Code 統合ファイルまで生成する。
 
+#### エージェントハーネスの選択
+
+ウィザードは、プロジェクトにデプロイして接続するエージェントハーネスを尋ねます。`--llm` フラグで非対話的に同じ選択ができます:
+
+| 選択 | プロジェクトルートに生成されるもの |
+|---|---|
+| `claude` (デフォルト) | `.claude/` サーフェス全体と `AGENTS.md` — 従来のデフォルト動作 |
+| `gpt` | Codex のみのデプロイ: `AGENTS.md` と Codex サーフェス（`.codex/`、`.agents/skills/`、`.moai/`）のみ。`.claude/` ツリー、`CLAUDE.md`、`.mcp.json` は生成されません。Claude 専用ランタイム機能（AskUserQuestion、サブエージェント、output style、スラッシュコマンド、Workflow スクリプト）は利用できません |
+| `both` | `claude` デプロイに `.codex/` 接続を追加。`.mcp.json` のプロビジョニングは強制有効化されます |
+
+```bash
+moai init my-project --llm gpt   # Codex のみのプロジェクト
+```
+
+この選択が存在する前に初期化されたプロジェクトには `llm.harness` キーがなく、update でも claude の動作を保ちます — 移行作業は不要です。
+
 ### 最初のワークフロー
 
 ```bash
@@ -340,7 +356,7 @@ claude        # または moai cc — プロジェクト内で Claude Code を�
 
 すべてのバックエンドは fail-open だ — GLM（`~/.moai/.env.glm`）と codex（`~/.codex/auth.json`）はオプションであり、利用不能なバックエンドは `inconclusive` を返すだけで hard error ではない。
 
-Codex を有効にしたハーネス（`moai init --llm codex|both`）では、Codexのステータスラインは組み込み識別子配列（`tui.status_line`）のみをサポートするため、goal・todo・SPEC状態のような MoAI 固有の項目は表示できない — コマンドベースのステータスラインをサポートする openai/codex#17827 が解決されるまでの制限である。
+Codex を有効にしたハーネス（`moai init --llm gpt|both`）では、Codexのステータスラインは組み込み識別子配列（`tui.status_line`）のみをサポートするため、goal・todo・SPEC状態のような MoAI 固有の項目は表示できない — コマンドベースのステータスラインをサポートする openai/codex#17827 が解決されるまでの制限である。
 
 > 詳しくは: [MCP サーバー・ガイド](https://adk.mo.ai.kr/ja/guides/mcp-server) · [Claude Code MCP](https://adk.mo.ai.kr/ja/claude-code/extensibility/mcp)
 

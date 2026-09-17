@@ -23,6 +23,10 @@ harness driving this contract lacks the capability.
 | question-channel | `AskUserQuestion` | Return a blocker report naming the missing input instead of asking in prose |
 | task-list | `TaskCreate` / `TaskUpdate` / `TaskList` / `TaskGet` | Track the work and report progress in prose |
 | design-sync | `DesignSync` | Skip the design-sync surface; say so in the report |
+| agent-spawning | `Agent(...)` sub-agents | Do the bounded work inline |
+| output-style | Claude output styles | Follow this contract directly |
+| slash-commands | `/moai` slash commands | Use the underlying `moai` CLI verbs |
+| workflow-scripts | Workflow scripts (`ultracode`) | Run the steps sequentially |
 
 **`Skill("<name>")` instructions carry no row, and are read literally.** `skill-loader` is a
 capability every harness driving this contract has, so it earns no row above; what is Claude-only
@@ -31,6 +35,8 @@ calling a tool, the same file is already there: the deploy mirrors every skill t
 `.agents/skills/<name>/SKILL.md` alongside `.claude/skills/<name>/SKILL.md`, so
 `Skill("moai-workflow-tdd")` names `.agents/skills/moai-workflow-tdd/SKILL.md`. Agent bodies keep
 the tool-call wording for that reason — it is an address, not a Claude-only instruction.
+Codex-side loading is **deferred** — read the mirrored SKILL.md directly; no loader resolves
+`Skill("...")` calls.
 
 ---
 

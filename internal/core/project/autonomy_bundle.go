@@ -98,14 +98,21 @@ func ApplyAutonomyTierBundle(projectRoot, userSettingsPath, projectSettingsPath,
 
 	defaultMode := config.TierDefaultMode(gated)
 
-	// Full-bundle path: when the project ships a tool-policy.yaml (the
-	// maintainer surface), reuse RenderTierPermissions so deny/ask are
-	// regenerated from the doc across both scopes (AC-003/AC-004).
-	if doc, err := toolpolicy.LoadFromProjectDir(projectRoot); err == nil && doc != nil {
-		if _, rerr := toolpolicy.RenderTierPermissions(projectSettingsPath, userSettingsPath, defaultMode, doc); rerr != nil {
-			return fmt.Errorf("render tier permissions: %w", rerr)
+	// SPEC-INIT-HARNESS-001 (REQ-IH-005): projectSettingsPath == "" means the
+	// claude surface is not deployed (codex-only harness) — the bundle then
+	// writes USER scope only and never materializes a .claude/settings.json
+	// under the project root. The full-bundle path below is the only writer
+	// of that file, so it is gated on a non-empty path.
+	if projectSettingsPath != "" {
+		// Full-bundle path: when the project ships a tool-policy.yaml (the
+		// maintainer surface), reuse RenderTierPermissions so deny/ask are
+		// regenerated from the doc across both scopes (AC-003/AC-004).
+		if doc, err := toolpolicy.LoadFromProjectDir(projectRoot); err == nil && doc != nil {
+			if _, rerr := toolpolicy.RenderTierPermissions(projectSettingsPath, userSettingsPath, defaultMode, doc); rerr != nil {
+				return fmt.Errorf("render tier permissions: %w", rerr)
+			}
+			return nil
 		}
-		return nil
 	}
 
 	// Distributed default (no tool-policy.yaml): deny/ask already ship in the

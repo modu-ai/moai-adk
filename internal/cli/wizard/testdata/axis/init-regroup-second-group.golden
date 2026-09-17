@@ -1,10 +1,10 @@
   ● ● ● ○ 3 / 4                                                                 
-┃ Select the agent harness to wire                                              
-┃ Which LLM harness MoAI wires for this project. 'claude' is the recommended    
-┃ default; the --llm flag overrides this answer.                                
-┃ ▸ Claude (Recommended) - Wire the Claude side only (.mcp.json provisioning)   
-┃   Codex                - Wire the .codex/ hook layer + MCP config; skips .mcp.
-┃   json provisioning                                                           
+┃ Select the agent harness to deploy and wire                                   
+┃ Which LLM harness MoAI deploys and wires for this project. 'claude' is the    
+┃ recommended default; the --llm flag overrides this answer.                    
+┃ ▸ Claude only (Recommended) - Deploy the .claude/ surface plus AGENTS.md      
+┃   (today's default behavior)                                                  
+┃   Codex only                - AGENTS.md and Codex surfaces only — no .claude/ 
   Select the session permission mode                                            
   Chooses the Claude Code permission mode written to your user settings. 'Accept
   edits on' is the recommended default.                                         

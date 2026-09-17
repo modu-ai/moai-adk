@@ -129,7 +129,11 @@ func init() {
 	// set {claude, codex, both} validated fail-loud in validateInitFlags;
 	// help names all three values. Default claude = flag-absent behavior
 	// byte-identical to today (AC-CW-004).
-	initCmd.Flags().String("llm", "", "LLM harness to wire: claude, gpt, or both (default: claude; gpt deploys Codex-only surfaces and wires the .codex/ hook layer + MCP config)")
+	// SPEC-INIT-HARNESS-001 (D2): the gpt value means CODEX-ONLY deployment —
+	// AGENTS.md + Codex surfaces, no .claude/ tree, no CLAUDE.md, no .mcp.json
+	// (operator-accepted value redefinition, plan.md §I NC-1; value renamed
+	// codex->gpt per the model-family naming axis, card t858).
+	initCmd.Flags().String("llm", "", "LLM harness to deploy and wire: claude, gpt, or both (default: claude; gpt deploys AGENTS.md + Codex surfaces only — no .claude/ tree; both adds Codex wiring to the claude deployment)")
 }
 
 // agentWiring is the SPEC-CODEX-WIRING-001 harness selection. The D3
@@ -738,6 +742,11 @@ func runInit(cmd *cobra.Command, args []string) (err error) {
 		cmd.Flags().Changed("llm"), getStringFlag(cmd, "llm"), wizardResult,
 	)
 
+	// SPEC-INIT-HARNESS-001 (REQ-IH-005): the initializer suppresses every
+	// claude-surface write while the selection is codex — the .claude/ scaffold
+	// and CLAUDE.md never materialize under the project root.
+	opts.Harness = string(agentWiringSelection)
+
 	// Default git provider to "github" for backward compatibility
 	if opts.GitProvider == "" {
 		opts.GitProvider = "github"
@@ -775,7 +784,21 @@ func runInit(cmd *cobra.Command, args []string) (err error) {
 	renderer := template.NewRenderer(embeddedFS)
 
 	var deployer template.Deployer
-	if shouldDistributeAll(cmd) {
+	// SPEC-INIT-HARNESS-001 M2 (REQ-IH-005/006, design.md D3): a codex-only
+	// selection reroutes the WHOLE deployment through the harnessFS wrapper —
+	// claude-only surfaces hidden, the skill catalog re-homed to
+	// .agents/skills as real directories, skill mirror off. The harness
+	// contract outranks the distribute-all mode (REQ-IH-005 fixes the codex
+	// file set; the slim/full split lives entirely inside .claude/** which
+	// harnessFS hides). claude and both keep the deployers below untouched
+	// (REQ-IH-003/004).
+	if agentWiringSelection == agentWiringGPT {
+		var codexErr error
+		deployer, codexErr = template.NewCodexOnlyDeployerWithRenderer(cat, renderer)
+		if codexErr != nil {
+			return fmt.Errorf("codex-only deployer: %w", codexErr)
+		}
+	} else if shouldDistributeAll(cmd) {
 		deployer = template.NewDeployerWithRenderer(embeddedFS, renderer)
 	} else {
 		var slimErr error
@@ -861,10 +884,18 @@ func runInit(cmd *cobra.Command, args []string) (err error) {
 	// a failure warns without failing the init.
 	// @MX:SPEC: SPEC-INIT-WIZARD-REPAIR-001
 	if homeDir, homeErr := userHomeDirFn(); homeErr == nil {
+		// SPEC-INIT-HARNESS-001 (REQ-IH-005): a codex-only project carries no
+		// .claude/ surface, so the bundle gets an empty projectSettingsPath —
+		// its contract is USER-scope-only writes in that case, never a
+		// project-root .claude/settings.json.
+		projectSettingsPath := filepath.Join(opts.ProjectRoot, ".claude", "settings.json")
+		if agentWiringSelection == agentWiringGPT {
+			projectSettingsPath = ""
+		}
 		if tierErr := applyAutonomyTierBundleFn(
 			opts.ProjectRoot,
 			filepath.Join(homeDir, ".claude", "settings.json"),
-			filepath.Join(opts.ProjectRoot, ".claude", "settings.json"),
+			projectSettingsPath,
 			opts.AutonomyTier,
 		); tierErr != nil {
 			p.Warn("Failed to apply autonomy tier bundle: %v", tierErr)
@@ -929,6 +960,17 @@ func runInit(cmd *cobra.Command, args []string) (err error) {
 				p.Warn("Failed to apply profile: %v", err)
 			}
 		}
+	}
+
+	// SPEC-INIT-HARNESS-001 (REQ-IH-002): persist the RESOLVED harness value to
+	// llm.harness on every init run — all three closed-set values INCLUDING the
+	// claude default. agentWiringSelection is already the single resolution
+	// (SPEC-INIT-HARNESS-PROMPT-001 REQ-IHP-004: flag > wizard > claude), so the
+	// persisted value can never disagree with what the deployment below did.
+	// Explicit record over implicit absence: doctor (REQ-IH-011) and update
+	// re-deployment (REQ-IH-010) read the key instead of inferring claude.
+	if err := template.ApplyHarness(opts.ProjectRoot, string(agentWiringSelection)); err != nil {
+		p.Warn("Failed to apply harness: %v", err)
 	}
 
 	// Scaffold .moai/evolution/ directory structure (R2: Directory Scaffolding).

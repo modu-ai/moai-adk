@@ -289,6 +289,22 @@ cd my-project
 
 대화형 마법사가 언어·프레임워크·방법론을 자동으로 감지하고, 모델 정책을 고른 뒤 Claude Code 통합 파일까지 만든다.
 
+#### 에이전트 하니스 고르기
+
+마법사가 프로젝트에 배포하고 연결할 에이전트 하니스를 묻는다. `--llm` 플래그로 비대화형으로 같은 선택을 할 수 있다:
+
+| 선택 | 프로젝트 루트에 생기는 것 |
+|---|---|
+| `claude` (기본값) | `.claude/` 표면 전체와 `AGENTS.md` — 지금까지의 기본 동작 |
+| `gpt` | Codex 단독 배포: `AGENTS.md`와 Codex 표면(`.codex/`, `.agents/skills/`, `.moai/`)만 설치. `.claude/` 디렉터, `CLAUDE.md`, `.mcp.json`은 생기지 않는다. Claude 전용 런타임 기능(AskUserQuestion, 서브에이전트 소환, output style, 슬래시 명령, Workflow 스크립트)은 사용할 수 없다 |
+| `both` | `claude` 배포에 `.codex/` 연결을 더한다. `.mcp.json` 프로비저닝은 강제로 켜진다 |
+
+```bash
+moai init my-project --llm gpt   # Codex 단독 프로젝트
+```
+
+이 선택이 생기기 전에 초기화한 프로젝트에는 `llm.harness` 키가 없어 update에서도 claude 동작을 유지한다 — 마이그레이션할 것이 없다.
+
 ### 첫 워크플로우
 
 ```bash
@@ -340,7 +356,7 @@ claude        # 또는 moai cc — 프로젝트 안에서 Claude Code 실행
 
 모든 백엔드는 fail-open이다 — GLM(`~/.moai/.env.glm`)과 codex(`~/.codex/auth.json`)는 선택적이며, 사용 불가 백엔드는 `inconclusive`를 반환할 뿐 hard error가 아니다.
 
-Codex가 활성화된 하네스(`moai init --llm codex|both`)에서 Codex의 상태 표시줄은 기본 식별자 배열(`tui.status_line`)만 지원하므로, goal·todo·SPEC 상태 같은 MoAI 전용 항목은 표시할 수 없다 — 명령 기반 상태 표시줄을 지원하는 openai/codex#17827이 해소되기 전까지의 한계다.
+Codex가 활성화된 하네스(`moai init --llm gpt|both`)에서 Codex의 상태 표시줄은 기본 식별자 배열(`tui.status_line`)만 지원하므로, goal·todo·SPEC 상태 같은 MoAI 전용 항목은 표시할 수 없다 — 명령 기반 상태 표시줄을 지원하는 openai/codex#17827이 해소되기 전까지의 한계다.
 
 > 자세히: [MCP 서버 가이드](https://adk.mo.ai.kr/ko/guides/mcp-server) · [Claude Code MCP](https://adk.mo.ai.kr/ko/claude-code/extensibility/mcp)
 
