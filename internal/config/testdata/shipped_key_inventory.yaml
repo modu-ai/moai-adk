@@ -2613,6 +2613,9 @@
 - path: "workflow.default_mode"
   class: W
   evidence: reader
+- path: "workflow.drift_cache_fill.enabled"
+  class: W
+  evidence: reader
 - path: "workflow.execution_mode"
   class: W
   evidence: reader

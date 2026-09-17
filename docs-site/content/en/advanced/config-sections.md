@@ -175,6 +175,27 @@ workflow:
 
 Work that needs a different branch belongs in a worktree rather than behind a refusal. For the procedure see [moai worktree](/en/cli-reference/worktree/).
 
+## workflow.yaml — drift_cache_fill
+
+At session start MoAI shows an advisory about SPEC lifecycle drift. Computing it takes about a second — far longer than a session start can wait — so the result is cached against the current commit. Once the commit changes, the cached result no longer matches and the advisory has nothing to show.
+
+With this key enabled, the session-start handler starts one short-lived background process on that miss, computes the drift there, and returns immediately without waiting for it. The next session reads the stored result and shows the advisory again.
+
+```yaml
+workflow:
+    drift_cache_fill:
+        enabled: true   # distributed default
+```
+
+| Key | Value | Description |
+|-----|-------|-------------|
+| `enabled` | `true` (default) | On a cache miss the handler starts one background fill and returns without waiting. The advisory reappears on the following session |
+| `enabled` | `false` | No fill process is ever started. The advisory resolves from whatever the cache already holds, so after a commit it stays absent until something else fills the cache |
+
+**Why this one ships on.** The other guards on this page ship off because they are inert until a maintainer needs them. This key is not inert when on — it starts a child process — so its default is an accepted cost rather than a neutral one: without the fill, the drift advisory never returns after a commit. The child is short-lived, bounded by its own deadline, limited to one at a time by a lock, and silent.
+
+**Failure direction.** Every failure path leaves the session untouched. If the child cannot start, cannot finish, or writes nothing, the handler has already returned and the advisory simply stays as it was — a failed fill never delays or breaks a session start.
+
 ## workflow.yaml — audit
 
 Pins which model and effort the cross-model audit backends (`codex_audit`, `glm_audit`, `audit_multi`) actually run on. Each backend takes one `{model, effort}` pair, and the distributed defaults are empty.
