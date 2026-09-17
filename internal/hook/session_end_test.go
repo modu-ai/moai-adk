@@ -3,6 +3,7 @@ package hook
 import (
 	"context"
 	"encoding/json"
+	"github.com/modu-ai/moai-adk/internal/config"
 	"os"
 	"path/filepath"
 	"testing"
@@ -313,7 +314,7 @@ func TestMoaiTmuxSessionPrefix(t *testing.T) {
 // TestCleanupGLMSettingsLocal verifies that SessionEnd removes GLM env vars
 // from settings.local.json and restores the backed-up OAuth token.
 func TestCleanupGLMSettingsLocal(t *testing.T) {
-	t.Parallel()
+	t.Setenv(config.EnvMoaiLaunchProvider, "")
 
 	tests := []struct {
 		name             string
@@ -484,7 +485,7 @@ func TestCleanupGLMSettingsLocal_EmptyFile(t *testing.T) {
 // TestSessionEndHandler_Handle_CleansGLMFromSettingsLocal verifies that the
 // Handle method triggers settings.local.json cleanup when ProjectDir is set.
 func TestSessionEndHandler_Handle_CleansGLMFromSettingsLocal(t *testing.T) {
-	t.Parallel()
+	t.Setenv(config.EnvMoaiLaunchProvider, "")
 
 	projectDir := t.TempDir()
 	claudeDir := filepath.Join(projectDir, ".claude")
@@ -555,7 +556,7 @@ func TestSessionEndHandler_Handle_CleansGLMFromSettingsLocal(t *testing.T) {
 // TestSessionEndHandler_Handle_CWDFallbackToProjectDir verifies that Handle
 // uses CWD for GLM settings cleanup, falling back to ProjectDir for legacy.
 func TestSessionEndHandler_Handle_CWDFallbackToProjectDir(t *testing.T) {
-	t.Parallel()
+	t.Setenv(config.EnvMoaiLaunchProvider, "")
 
 	tests := []struct {
 		name       string

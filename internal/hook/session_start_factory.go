@@ -85,8 +85,6 @@ func factoryLaunchEntry() string {
 		provider = os.Getenv(config.EnvMoaiKanbanBackend)
 	}
 	switch provider {
-	case "gpt":
-		return "gpt"
 	case "glm":
 		return "glm"
 	default:

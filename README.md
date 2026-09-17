@@ -289,6 +289,27 @@ cd my-project
 
 The interactive wizard auto-detects language, framework, and methodology, walks you through model policy, and generates the Claude Code integration files.
 
+#### Choosing the agent harness
+
+The wizard asks which agent harness to deploy and wire; `--llm` gives the same choice non-interactively:
+
+| Selection | What lands at the project root |
+|---|---|
+| `claude` (default) | The full `.claude/` surface plus `AGENTS.md` — today's default behavior |
+| `gpt` | Codex only deployment: `AGENTS.md` and Codex surfaces (`.codex/`, `.agents/skills/`, `.moai/`) only. No `.claude/` tree, no `CLAUDE.md`, no `.mcp.json`. Claude-only runtime features (AskUserQuestion, sub-agent spawning, output styles, slash commands, Workflow scripts) are not available |
+| `both` | Same `claude` deployment plus `.codex/` wiring; `.mcp.json` provisioning forced on |
+
+```bash
+moai init my-project --llm gpt   # Codex-only project
+```
+
+A project initialized before this choice existed has no `llm.harness` key and keeps the `claude` behavior on update — nothing to migrate.
+
+> **GPT gateway withdrawn (2026-09-16).** The former `moai gpt` launcher — Claude Code driven by GPT
+> models through the built-in translation gateway — has been removed. GPT models are reached through
+> their native harness instead: `moai codex` (Codex CLI). The `--llm gpt` init value above is
+> unaffected; it selects the Codex-only deployment, not the withdrawn launcher.
+
 ### First workflow
 
 ```bash
@@ -340,7 +361,7 @@ Natural language and 16 subcommands feed the same pipeline. `/moai plan`, `/moai
 
 All backends are fail-open — GLM (`~/.moai/.env.glm`) and codex (`~/.codex/auth.json`) are optional; an unavailable backend returns `inconclusive`, never a hard error.
 
-In the Codex-enabled harness (`moai init --llm codex|both`), Codex supports only built-in identifier arrays for its status line (`tui.status_line`), so MoAI-specific items (goal, todo, SPEC state) cannot be displayed — a limitation until openai/codex#17827 lands command-backed status lines.
+In the Codex-enabled harness (`moai init --llm gpt|both`), Codex supports only built-in identifier arrays for its status line (`tui.status_line`), so MoAI-specific items (goal, todo, SPEC state) cannot be displayed — a limitation until openai/codex#17827 lands command-backed status lines.
 
 > Details: [MCP Server Guide](https://adk.mo.ai.kr/en/guides/mcp-server) · [Claude Code MCP](https://adk.mo.ai.kr/en/claude-code/extensibility/mcp)
 

@@ -45,8 +45,23 @@ import (
 // injected-double test stayed green, which is the one failure this seam could
 // introduce; TestSeamDefaultIsTheProductionDeployer and
 // TestSeamDefaultSatisfiesResultDeployer guard both halves.
+//
+// SPEC-INIT-HARNESS-001 (REQ-IH-010): the seam reads llm.harness from the
+// live config — a codex-only project re-deploys through the codex-only
+// deployer (force-update semantics preserved) instead of resurrecting the
+// claude surfaces. A claude/both project, an absent key, or any harness
+// resolution failure falls through to the unchanged claude deployer.
 var newTemplateSyncDeployer = func(embedded fs.FS) template.Deployer {
 	renderer := template.NewRenderer(embedded)
+	if config.ReadHarness(".") == "gpt" {
+		if cat, catErr := template.LoadEmbeddedCatalog(); catErr == nil {
+			if d, dErr := template.NewCodexOnlyDeployerWithRendererAndForceUpdate(cat, renderer); dErr == nil {
+				return d
+			}
+		}
+		// Catalog or construction failure falls through to the claude
+		// deployer — same fail-open shape as CATALOG_LOAD_FAILED's warn path.
+	}
 	return template.NewDeployerWithRendererAndForceUpdate(embedded, renderer, true)
 }
 
@@ -525,6 +540,18 @@ func runTemplateSyncWithReporter(cmd *cobra.Command, reporter project.ProgressRe
 				// under --verbose (the same verbose ledger recordMergeFallback
 				// reads), never interleaving with the progress redraw.
 				renderRetainedKeyAdvisory(out, retainedKeys, updateVerboseMode, th)
+				// SPEC-INIT-HARNESS-001 (REQ-IH-002/010): re-assert the harness
+				// value the PRE-UPDATE config carried. The deploy just rewrote
+				// llm.yaml with the template default (claude), and whatever the
+				// merge decided, the resolved selection must survive explicitly —
+				// doctor and the next update read this key, not an inference.
+				// Best-effort: a read failure degrades to claude the same way an
+				// absent key does.
+				if harness := config.ReadHarnessFrom(filepath.Join(configBackupPath, "sections")); harness != "" {
+					if err := template.ApplyHarness(projectRoot, harness); err != nil {
+						_, _ = fmt.Fprintf(out, "  %s llm.harness re-assert warning: %v\n", uikit.SymWarning(), err)
+					}
+				}
 				deletedCount := backup.CleanupOldBackups(projectRoot, 5)
 				if deletedCount > 0 {
 					_, _ = fmt.Fprintf(out, "  %s Cleaned up %d old backup(s)\n", uikit.SymSuccess(), deletedCount)

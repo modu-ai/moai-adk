@@ -25,7 +25,7 @@ func TestInitAgentFlag_RegisteredWithClosedSet(t *testing.T) {
 	if flag == nil {
 		t.Fatal("--llm flag not registered on initCmd")
 	}
-	for _, want := range []string{"claude", "codex", "both"} {
+	for _, want := range []string{"claude", "gpt", "both"} {
 		if !strings.Contains(flag.Usage, want) {
 			t.Errorf("--llm usage %q does not document %q (AC-CW-001)", flag.Usage, want)
 		}
@@ -36,7 +36,7 @@ func TestInitAgentFlag_RegisteredWithClosedSet(t *testing.T) {
 // (AC-CW-001 second clause): valid values and empty pass; an invalid value
 // exits with a diagnostic naming the valid values.
 func TestValidateInitFlags_AgentClosedSet(t *testing.T) {
-	validCases := []string{"", "claude", "codex", "both"}
+	validCases := []string{"", "claude", "gpt", "both"}
 	for _, val := range validCases {
 		cmd := newInitTestCmd()
 		if val != "" {
@@ -57,7 +57,7 @@ func TestValidateInitFlags_AgentClosedSet(t *testing.T) {
 	if err == nil {
 		t.Fatal("--llm gemini must fail validation (fail-loud closed set)")
 	}
-	for _, want := range []string{"claude", "codex", "both"} {
+	for _, want := range []string{"claude", "gpt", "both"} {
 		if !strings.Contains(err.Error(), want) {
 			t.Errorf("validation error %q does not list valid value %q", err.Error(), want)
 		}
@@ -68,11 +68,11 @@ func TestValidateInitFlags_AgentClosedSet(t *testing.T) {
 // semantics end to end through runInit: .codex wiring files exist, and the
 // MCP provisioning call site treats codex as declined (D3).
 func TestRunInit_AgentCodexWiresAndSkipsMCPProvisioning(t *testing.T) {
-	projectDir, _ := runInitForAutonomy(t, nil, map[string]string{"llm": "codex"})
+	projectDir, _ := runInitForAutonomy(t, nil, map[string]string{"llm": "gpt"})
 
 	for _, rel := range []string{".codex/hooks.json", ".codex/config.toml", ".moai/state/codex-wiring.json"} {
 		if _, err := os.Stat(filepath.Join(projectDir, rel)); err != nil {
-			t.Errorf("%s missing after --llm codex init: %v", rel, err)
+			t.Errorf("%s missing after --llm gpt init: %v", rel, err)
 		}
 	}
 }
@@ -124,11 +124,11 @@ func TestRunInit_AgentClaudeLeavesNoCodexFiles(t *testing.T) {
 // of the .mcp.json provisioning call is a one-line reversible delta.
 func TestRunInit_CodexProvisioningDeclineIsolated(t *testing.T) {
 	cmd := newInitTestCmd()
-	if err := cmd.Flags().Set("llm", "codex"); err != nil {
+	if err := cmd.Flags().Set("llm", "gpt"); err != nil {
 		t.Fatal(err)
 	}
-	if w := resolveAgentWiring(cmd); w != agentWiringCodex {
-		t.Errorf("resolveAgentWiring(codex) = %v, want %v", w, agentWiringCodex)
+	if w := resolveAgentWiring(cmd); w != agentWiringGPT {
+		t.Errorf("resolveAgentWiring(codex) = %v, want %v", w, agentWiringGPT)
 	}
 	if err := cmd.Flags().Set("llm", "both"); err != nil {
 		t.Fatal(err)
@@ -158,6 +158,6 @@ func TestRunInit_CallsCodexWiring(t *testing.T) {
 	}
 	body := string(src)
 	if !strings.Contains(body, "wireCodexUnlessClaude(") {
-		t.Error("runInit must call wireCodexUnlessClaude — without it the --llm codex|both selection is dropped")
+		t.Error("runInit must call wireCodexUnlessClaude — without it the --llm gpt|both selection is dropped")
 	}
 }

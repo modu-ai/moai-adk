@@ -330,7 +330,7 @@ var codexCmd = &cobra.Command{
 		"reports six rows and starts nothing - the codex binary, CODEX_HOME,\n" +
 		"the auth provider, the project wiring, the generated agent TOMLs, and\n" +
 		"the harness entry. An incomplete wiring row is informational, not an\n" +
-		"error: moai init --llm codex generates the .codex wiring files.\n" +
+		"error: moai init --llm gpt generates the .codex wiring files.\n" +
 		"If AGENTS.local.md exists at the project root, its content is injected\n" +
 		"as Codex-only developer instructions for the launched session.\n" +
 		"\n" +
@@ -386,6 +386,23 @@ func runCodex(cmd *cobra.Command, args []string) error {
 
 	args, spawn := stripSpawnFlag(args)
 	head, tail, hasTail := splitCodexDashDash(args)
+	// -f is consumed before the verb lookup (same precedence as -w): the
+	// factory token selects this session's factory role and is never a codex
+	// verb. The env is applied only on a launch path — a readout with -f is
+	// a usage error, exactly as -w with a readout is.
+	head, factoryLead, factoryAgent, factoryLane, ferr := stripCodexFactoryFlag(head)
+	if ferr != nil {
+		return ferr
+	}
+	var factoryRestore func()
+	if factoryLead || factoryAgent || factoryLane != "" {
+		var applyErr error
+		factoryRestore, applyErr = applyCodexFactoryEntry(cmd, factoryAgent, factoryLane)
+		if applyErr != nil {
+			return applyErr
+		}
+		defer factoryRestore()
+	}
 	// -w is consumed before the verb lookup so its tokens can never be
 	// mistaken for a verb, and so the verb position keeps its one-token shape.
 	head, worktree := stripCodexWorktreeFlag(head)
@@ -404,9 +421,9 @@ func runCodex(cmd *cobra.Command, args []string) error {
 	if kind.launches() {
 		return runCodexLaunch(cmd, kind, tail, spawn, worktree)
 	}
-	if worktree.present {
+	if worktree.present || factoryLead || factoryAgent || factoryLane != "" {
 		// A readout starts no process, so it has no working directory to
-		// point anywhere.
+		// point anywhere — and no factory role to enter either.
 		return codexUsageFailure(cmd)
 	}
 	if spawn {

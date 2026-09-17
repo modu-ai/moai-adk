@@ -111,7 +111,10 @@ func TestTodoAuditLandedHelpLazy(t *testing.T) {
 		t.Fatal("landed help materialized before rendering")
 	}
 	out := helpOutput(t, "landed")
-	if !strings.Contains(out, "Record what YOU assert") || !strings.Contains(out, "origin/main") {
+	// The subject is LAZINESS plus a materialized body, not which default ref
+	// the resolver picks: that default depends on ambient project state other
+	// parallel tests perturb, so assert the resolution-independent invariant.
+	if !strings.Contains(out, "Record what YOU assert") || !strings.Contains(out, "the same one") {
 		t.Fatalf("lost help: %s", out)
 	}
 }

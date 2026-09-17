@@ -12,8 +12,8 @@ func TestFactoryLeadProviderLaunchLines(t *testing.T) {
 		{"default", "", "", "cc"},
 		{"claude", "claude", "gpt", "cc"},
 		{"glm", "glm", "cc", "glm"},
-		{"gpt", "gpt", "glm", "gpt"},
-		{"legacy-gpt", "", "gpt", "gpt"},
+		{"gpt", "gpt", "glm", "cc"},
+		{"legacy-gpt", "", "gpt", "cc"},
 		{"legacy-glm", "", "glm", "glm"},
 		{"unknown", "other", "glm", "cc"},
 		{"injection", "gpt; touch marker", "gpt", "cc"},
@@ -34,9 +34,6 @@ func TestFactoryLeadProviderLaunchLines(t *testing.T) {
 				want := "moai " + tc.want + " -f lane-1\nmoai " + tc.want + " -f lane-2"
 				if strings.Join(launch, "\n") != want {
 					t.Errorf("launch lines = %q; want %q", strings.Join(launch, "\n"), want)
-				}
-				if !strings.Contains(notice, "moai gpt -f 2") {
-					t.Error("GPT entry guide missing")
 				}
 				if !strings.Contains(notice, "`moai "+tc.want+" -f lane-<n>`") {
 					t.Error("same-provider incremental entry missing")

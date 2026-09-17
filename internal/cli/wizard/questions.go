@@ -372,16 +372,20 @@ func Page3Questions(projectRoot string) []Question {
 		// carries NO Condition: it is asked unconditionally, and its answer
 		// decides the MCP surface (codex declines .mcp.json provisioning, both
 		// forces it on).
+		// SPEC-INIT-HARNESS-001 (REQ-IH-013, design.md D1): the option values
+		// stay FROZEN; the labels and descriptions now state the DEPLOYMENT
+		// consequences of each value — what lands at the project root — so the
+		// question keeps the promise the deployer keeps.
 		{
 			ID:          "agent_wiring",
 			Group:       "Agents & Autonomy",
 			Type:        QuestionTypeSelect,
-			Title:       "Select the agent harness to wire",
-			Description: "Which LLM harness MoAI wires for this project. 'claude' is the recommended default; the --llm flag overrides this answer.",
+			Title:       "Select the agent harness to deploy and wire",
+			Description: "Which LLM harness MoAI deploys and wires for this project. 'claude' is the recommended default; the --llm flag overrides this answer.",
 			Options: []Option{
-				{Label: "Claude (Recommended)", Value: "claude", Desc: "Wire the Claude side only (.mcp.json provisioning)"},
-				{Label: "Codex", Value: "codex", Desc: "Wire the .codex/ hook layer + MCP config; skips .mcp.json provisioning"},
-				{Label: "Both", Value: "both", Desc: "Wire both harnesses; forces .mcp.json provisioning on"},
+				{Label: "Claude only (Recommended)", Value: "claude", Desc: "Deploy the .claude/ surface plus AGENTS.md (today's default behavior)"},
+				{Label: "GPT (Codex) only", Value: "gpt", Desc: "AGENTS.md and Codex surfaces only — no .claude/ tree, no CLAUDE.md, no .mcp.json"},
+				{Label: "Claude + Codex", Value: "both", Desc: "Same .claude/ deployment plus .codex/ wiring; .mcp.json provisioning forced on"},
 			},
 			Default: "claude",
 		},

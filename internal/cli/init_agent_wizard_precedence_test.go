@@ -40,7 +40,7 @@ func TestResolveAgentWiringWithWizard_PrecedenceTable(t *testing.T) {
 		want        agentWiring
 	}{
 		// Flag absent: the wizard decides.
-		{"flag absent, wizard codex", false, "", "codex", agentWiringCodex},
+		{"flag absent, wizard codex", false, "", "codex", agentWiringGPT},
 		{"flag absent, wizard both", false, "", "both", agentWiringBoth},
 		{"flag absent, wizard claude", false, "", "claude", agentWiringClaude},
 		{"flag absent, wizard silent", false, "", "", agentWiringClaude},
@@ -49,12 +49,12 @@ func TestResolveAgentWiringWithWizard_PrecedenceTable(t *testing.T) {
 		// is the one whose OUTCOME is vacuous end-to-end; here the rule is
 		// visible because the wizard said something different.
 		{"flag claude beats wizard codex", true, "claude", "codex", agentWiringClaude},
-		{"flag codex beats wizard claude", true, "codex", "claude", agentWiringCodex},
+		{"flag codex beats wizard claude", true, "codex", "claude", agentWiringGPT},
 		{"flag both beats wizard codex", true, "both", "codex", agentWiringBoth},
 		{"flag claude beats wizard both", true, "claude", "both", agentWiringClaude},
 
 		// Explicitly set and empty: not a flag win — fall through to the wizard.
-		{"flag set empty, wizard codex", true, "", "codex", agentWiringCodex},
+		{"flag set empty, wizard codex", true, "", "codex", agentWiringGPT},
 		{"flag set empty, wizard silent", true, "", "", agentWiringClaude},
 
 		// An unrecognized value falls back to claude, exactly as the flag-only

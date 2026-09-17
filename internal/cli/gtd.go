@@ -60,7 +60,7 @@ Captured GTD items stay separate from the established development queue. Only
 an explicitly approved Engage operation may publish into the same backlog.db
 used by the todo compatibility command; the queue's existing states, IDs,
 ordering, archive, and restore behavior remain unchanged.`
-	cmd.AddCommand(newGTDCaptureCmd(), newGTDClarifyCmd(), newGTDOrganizeCmd(), newGTDReflectCmd(), newGTDEngageCmd())
+	cmd.AddCommand(newGTDCaptureCmd(), newGTDClarifyCmd(), newGTDOrganizeCmd(), newGTDReflectCmd(), newGTDEngageCmd(), newGTDAnswerCmd())
 	return cmd
 }
 

@@ -124,6 +124,11 @@ func ClaimFactoryWorkerName(root, requested string, pid int, alive func(int) boo
 		return requested, err
 	}
 	n, ok := SplitFactoryLaneLabel(requested)
+	isAgent := false
+	if !ok {
+		n, ok = SplitFactoryAgentLabel(requested)
+		isAgent = ok
+	}
 	if !ok {
 		return requested, fmt.Errorf("invalid factory lane label %q", requested)
 	}
@@ -180,7 +185,11 @@ func ClaimFactoryWorkerName(root, requested string, pid int, alive func(int) boo
 			return requested, err
 		}
 		n++
-		final = FactoryLaneLabel(n)
+		if isAgent {
+			final = FactoryAgentLabel(n)
+		} else {
+			final = FactoryLaneLabel(n)
+		}
 	}
 	at := time.Now().UTC().Format(time.RFC3339Nano)
 	if _, err := tx.Exec(`INSERT INTO workers(label,pid,registered_at,heartbeat_at) VALUES(?,?,?,?)`, final, pid, at, at); err != nil {

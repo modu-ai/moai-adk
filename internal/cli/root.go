@@ -25,7 +25,7 @@ that serves as the runtime backbone for the MoAI framework within Claude Code.
 It provides CLI tooling, configuration management, LSP integration,
 Git operations, quality gates, and autonomous development loop capabilities.
 
-Use 'moai cc', 'moai gpt', or 'moai glm' to launch Claude Code.`,
+Use 'moai cc' or 'moai glm' to launch Claude Code.`,
 	Version: version.GetVersion(),
 	Run: func(cmd *cobra.Command, args []string) {
 		uikit.PrintBanner(version.GetVersion())
@@ -55,9 +55,6 @@ var trivialCommands = map[string]bool{
 	"cc":                     true, // launcher: exec's claude, discards the graph
 	"cg":                     true, // retired token: never initialize launch dependencies
 	"glm":                    true, // launcher: exec's claude, discards the graph
-	"gpt":                    true, // gateway launcher and private auth store use no dependency graph
-	"internal-gateway":       true, // private child receives all handler configuration over stdin
-	"internal-gpt-appserver": true, // detached official transport owner uses no dependency graph
 }
 
 // @MX:ANCHOR: [AUTO] Execute is the main entry point for the moai CLI
@@ -151,20 +148,6 @@ func init() {
 		worktree.WorktreeProvider = deps.GitWorktree
 		return nil
 	}
-
-	// GPT authentication and generation share one official App Server profile;
-	// the CLI never copies subscription tokens into a MoAI-owned broker store.
-	gptServices := newGPTAppServerAuthServices(os.Stdout)
-	gptServices.Launch = func(profile, mode string, args []string) error {
-		binding, err := newGPTGatewayBinding()
-		if err != nil {
-			return err
-		}
-		return unifiedLaunchWithGateway(profile, mode, args, binding)
-	}
-	rootCmd.AddCommand(newGPTCommand(gptServices))
-	rootCmd.AddCommand(newGatewayChildCommand(productionGatewayHandlerFactory))
-	rootCmd.AddCommand(newGPTAppServerSharedCommand())
 
 	// Register worktree subcommand tree
 	rootCmd.AddCommand(worktree.WorktreeCmd)
