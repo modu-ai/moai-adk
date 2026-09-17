@@ -163,6 +163,15 @@ workflow:
     # the guard is active.
     branch_guard:
         enabled: true
+    # drift_cache_fill: the out-of-band drift-cache fill started from the
+    # SessionStart miss path. Unlike the guard family around it, this key ships
+    # ENABLED (internal/config/defaults.go is the SSOT) — the feature is not
+    # inert when on, and that cost is accepted because the alternative leaves
+    # the drift advisory permanently absent after a HEAD change. Set to false
+    # to stop the handler starting any fill child; the advisory then resolves
+    # from whatever the cache already holds.
+    drift_cache_fill:
+        enabled: true
     # agent_stop_guard: SendMessage deny layer against revival of stopped
     # teammates (TaskStop does not reclaim the name address; one message
     # resumes a stopped agent from its transcript). Recording + observation +
