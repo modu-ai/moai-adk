@@ -66,11 +66,87 @@ plan_status: audit-ready
 
 ## §E.2 Run-phase Evidence
 
-_<pending run-phase>_
+Run phase executed in worktree `.claude/worktrees/t867`, branch `WT-gtd-canon`, `cycle_type=ddd`.
+`$BASE` = `0236646653179d83c17c1919c7fb389d510f067b` (`.moai/reports/t867/base.txt`, written at M0 from `git merge-base develop HEAD`; local develop was already absorbed by `c20b4c035` before run start, so no re-absorption occurred and `base-history.txt` was never created).
+M0 pre-edit HEAD `c20b4c035`; verification HEAD `33f2d53e4`. `$BIN` = `./bin/moai`, built from the migrated tree by `make build`.
+Full evidence report with verbatim output: `.moai/reports/t867/verdict.md`.
+
+### AC matrix
+
+| AC | Status | Verification command | Actual output |
+|---|---|---|---|
+| AC-GCB-001 | PASS | `bash $SPEC/check-gtd-body.sh ./bin/moai` | `fails=0`, exit 0; every `CHECK 001-*` PASS; `001-floor lines=363 floor=267` |
+| AC-GCB-002 | PASS | same run | every `CHECK 002-*` PASS; 114 ` PASS ` lines (floor 113), 0 ` FAIL `; `002-required-count required=23 want=23`; `002-answer-not-stage six/sixth-stage mentions=0 want=0` |
+| AC-GCB-003 | PASS | `test ! -e` on both `workflows/todo.md` paths | `local_absent_exit=0`, `mirror_absent_exit=0` |
+| AC-GCB-004 | PASS | SKILL.md greps + `go test -run '^TestSkillTreeHasNoClaudeSkillDirToken$' ./internal/template/` | old-heading grep exit 1; local `CLAUDE_SKILL_DIR}/workflows/gtd.md`=1; mirror `.claude/skills/moai/workflows/gtd.md`=1; mirror `CLAUDE_SKILL_DIR`=0; test one `--- PASS:`, zero `--- FAIL:`; SKILL.md:106 routes Backlog language to `**gtd**`; SKILL.md:174 `compat alias` line names `/moai todo` and `moai todo` in both trees |
+| AC-GCB-005 | PASS | `grep -rn 'workflows/todo\.md' .claude internal cmd pkg .moai/docs Makefile` | no output, exit 1 (21 lines at plan time) |
+| AC-GCB-006 | PASS | `bash $SPEC/check-residual.sh` | `files=19` / `grep_rc=0 offending=0 survivors=6` / `PASS`, exit 0 (M0: `offending=69 survivors=0`, exit 1) |
+| AC-GCB-007 | PASS | `./bin/moai todo list --help`; `grep -cE 'gtd.*\$ARGUMENTS'` on the 3 alias files; `TestTodoBareInvocationLists` | exit 0; counts 1 / 2 / 2 (each >= 1); test one `--- PASS:`, zero `--- FAIL:` |
+| AC-GCB-008 | PASS | path grep + `go test -run '^(TestTodoSkillDocumentsHistoryVerb\|TestTodoDoctrine_MirrorParityAndStatedColumnCount\|TestTodoListJSONShapeMatchesDoc)$' ./internal/cli/` + `-run '^TestBacklogJSONDisclosure_' ./internal/template/` + `./bin/moai todo --help` | grep exit 1; cli run 3/3 `--- PASS:`; template run 2/2 `--- PASS:`; 0 `--- FAIL:` in both; `todo --help` contains `workflows/todo.md` 0 times |
+| AC-GCB-009 | PASS | `make build`; porcelain; `$BASE..HEAD` catalog diff + log; `gen-catalog-hashes.go --all` + `git diff --exit-code`; 4 catalog tests; `009-cmp:*` | `make build` exit 0, `catalog.yaml updated successfully (13145 bytes)`; porcelain prints nothing; diff prints exactly `internal/template/catalog.yaml`; log lists `33f2d53e4`; regen diff exit 0; 4 `--- PASS:` / 0 `--- FAIL:`; all six `009-cmp:*` PASS |
+| AC-GCB-010 | PASS | per-package leased runs at M0 and M5 (see below) | `comm -13` empty for both packages; 0 t867-owned names in either m5 fail set; both m5 logs carry package `ok `/`FAIL\t` lines; no `[build failed]` / `[setup failed]` / `panic: test timed out`; `go vet ./internal/cli/... ./internal/template/...` exit 0 |
+| AC-GCB-011 | PASS | `$BASE..HEAD` diffs + inventory grep | historical diff lists only `.moai/specs/SPEC-GTD-CANON-BODY-001/*`; config diff prints nothing; verdict.md holds 141 inventory entries, equal to the grep's 141 lines, and contains `workflow.todo.enabled` |
+| AC-GCB-012 | PASS | `go test -run '^TestGTDCanonicalSurfaceGolden$' ./internal/template/` and `-run '^TestGTDAllTodoVerbsParity$' ./internal/cli/`; 3 mechanical pins; registration guard | each exactly one `--- PASS:`, zero `--- FAIL:`, no `[no tests to run]`, exit 0; numstat `1	1` on both files; assertion counts HEAD 3/23 vs `$BASE` 3/23; registration grep exit 1 with `internal/cli/todo.go` in the swept diff (non-vacuous); M3.7 commit `4e511f512` body contains `1dcaad954` and `61582178d` |
+| AC-GCB-013 | PASS — classified **refused** | isolated `MOAI_HOME` + `CLAUDE_PROJECT_DIR` run (steps 1-6 verbatim in verdict.md §2.3) | control `todo add` → `t1 1`, exactly one `backlog.db` under `$T/moai-home`; `todo answer t1 x` → exit 1, `"answer" is not a todo verb …`; read-back `items=1` (control only); real-queue `last_seq` 871 before and after |
+
+Invariants:
+
+| Invariant | Status | Evidence |
+|---|---|---|
+| Compat aliases keep working (REQ-GCB-007) | PASS | `./bin/moai todo list --help` exit 0; `TestTodoBareInvocationLists` PASS; `TestGTDAllTodoVerbsParity` PASS with `todoWant` untouched |
+| No CLI behavior change (REQ-GCB-014) | PASS | registration-line diff guard over `internal/cli/*.go` excluding tests: grep exit 1 on a non-vacuous diff |
+| `workflow.todo.enabled` not renamed (REQ-GCB-010) | PASS | `git diff "$BASE" HEAD -- internal/config .moai/config internal/template/templates/.moai/config` prints nothing |
+| Historical records untouched (REQ-GCB-011) | PASS | `git diff --name-only "$BASE" HEAD -- CHANGELOG.md reports .moai/specs .moai/reports` lists only `.moai/specs/SPEC-GTD-CANON-BODY-001/*` |
+| Template-First mirror parity (REQ-GCB-009) | PASS | six `009-cmp:*` byte-identical pairs; `manager-lead.toml` via `make agents-emit`, `catalog.yaml` via `make build`, neither hand-edited, both committed in `33f2d53e4` |
+| No `go test ./...` (REQ-GCB-013) | PASS | not invoked in this run; only `./internal/cli/...` and `./internal/template/...` were executed |
+
+### AC-GCB-010 baseline delta
+
+Each package ran alone under its own `moai slot acquire --resource go-test --max-duration 45m` lease, released before the next. Every acquire returned exit 0 on the first attempt; no exit 3 / exit 4 retry was needed and `--force` was never used.
+
+| Package | M0 fail names | M5 fail names | New (`comm -13`) |
+|---|---|---|---|
+| `./internal/template/...` | `TestBoundaryFlagsRecorded`, `TestGTDCanonicalSurfaceGolden`, `TestRealSetCodexShape` | `TestBoundaryFlagsRecorded`, `TestRealSetCodexShape` | *(none)* |
+| `./internal/cli/...` | 10 names incl. `TestGTDAllTodoVerbsParity` | the same 10 minus `TestGTDAllTodoVerbsParity` | *(none)* |
+
+Both t867-owned names turned green; no baseline name regressed. Evidence files: `.moai/reports/t867/{m0,m5}-{template,cli}.{log,exit,fail-names}`, `m{0,5}-check-{residual,body}.txt`, `m5-named-{cli,template}.log`.
+
+### Findings for the lead
+
+1. **`workflow.todo.enabled` survives under its todo name** — by decision (REQ-GCB-010). Renaming is a follow-up candidate.
+2. **Pre-existing failures grew from five to ten.** spec.md §C.3 named five t854-owned failures at `114737ea1`; the M0 re-measurement on the absorbed tree found ten. The five new names (`TestRejectFactoryOnCG`, `TestResolveAgentWiringWithWizard_PrecedenceTable` + 3 subtests, `TestUpdateCodexOnlyNoClaudeResurrection`, `TestUpdatePreservesHarnessKey`) arrived with the absorbed develop commits and need an owning card. None is caused by this SPEC and none was fixed by it. The §C.3 "10-minute package timeout under load" did not reproduce (955.852s at M0, 933.214s at M5, both inside the 30m timeout).
+3. **141 historical citations of the deleted path** across 55 files (`.moai/specs` 132, `CHANGELOG.md` 6, `reports/` 3), none edited per REQ-GCB-011. Full `path:line` inventory in verdict.md.
+4. **Local `.claude/commands/moai/todo.md` still carries the old one-line dispatch wording** while the template mirror carries the harness-neutral two-branch form (spec.md §C.5). Finding only; a future `moai update` closes it.
+5. **`check-gtd-body.sh` emits 114 PASS lines, one above the 113 floor** — the migrated section names 24 distinct flag tokens (23 required + `--json`) and `002-no-invented-flag:<flag>` emits one PASS per distinct token. `fails=0` with 0 FAIL lines; the floor guards against a count below it.
 
 ## §E.3 Run-phase Audit-Ready Signal
 
-_<pending run-phase>_
+```yaml
+run_complete_at: 2026-09-18T04:05:00+09:00
+run_commit_sha: pending-backfill-run
+run_status: audit-ready
+ac_pass_count: 13
+ac_fail_count: 0
+ac_pass_with_debt_count: 0
+preserve_list_post_run_count: 0
+l44_pre_commit_fetch: not-applicable  # no push performed; lane does not push per the git-flow lane protocol
+l44_post_push_fetch: not-applicable   # no push performed
+new_warnings_or_lints_introduced: unmeasured  # go vet exit 0 observed; golangci-lint not run (no AC requires it) — recorded as a Gap in verdict.md §4
+cross_platform_build:
+  darwin: pass       # go build via `make build`, exit 0
+  windows: unmeasured  # GOOS=windows build not run — no new Go code paths; recorded as a Gap in verdict.md §4
+  linux: unmeasured
+total_run_phase_files: 32   # git-visible, excluding this SPEC's own artifacts; plus the untracked .moai/reports/t867/ evidence set. plan.md §A predicted 31 before the 0.3.0 scope change added the two t867-owned test files.
+m1_to_mN_commit_strategy: five commits on WT-gtd-canon, one per milestone group
+commits:
+  - 8f9b15919  # M1 + M2, carries draft -> in-progress
+  - c331cf0e3  # M3.1-M3.6
+  - 4e511f512  # M3.7 (cites 1dcaad954, 61582178d)
+  - 87fdca7f4  # M3.8
+  - 33f2d53e4  # M4 + M5.1
+push_state: not-pushed  # lane reports the local state; integration and push are the lead's acts
+evidence_root: .moai/reports/t867/
+```
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
