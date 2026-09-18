@@ -11,7 +11,7 @@ catalog:
             - name: moai-foundation-cc
               tier: core
               path: templates/.claude/skills/moai-foundation-cc/
-              hash: a36fde485719b5d2af3e9fb51ce73829f549adcb4ed0579417e146f1e3a5dbae
+              hash: fd89f94766ce41a1825d387b4523f5c2b146da100ff28bb7d5aec19c75b5d912
               version: 1.0.0
             - name: moai-foundation-core
               tier: core
@@ -112,7 +112,7 @@ catalog:
             - name: sync-auditor
               tier: core
               path: templates/.claude/agents/moai/sync-auditor.md
-              hash: e63cc51c068ba728e99de3c62cd74f920de7b5552d2db029db40e303a223893a
+              hash: d9933137a7e9dfbcd9b6d1c5ce878ade770fd61067819ca390564e5b00af5d97
               version: 1.0.0
             - name: manager-develop
               tier: core
@@ -132,7 +132,7 @@ catalog:
             - name: manager-lead
               tier: core
               path: templates/.claude/agents/moai/manager-lead.md
-              hash: ac61c1abc9a6d2cbfbe0d06549723587d32dd99fcbe21d35be8e1be4a346ea13
+              hash: 7de83728dea00983336d9ab7c5672da305e106d2384197969d170b448ea135c6
               version: 1.0.0
             - name: manager-spec
               tier: core
