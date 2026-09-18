@@ -55,6 +55,13 @@ func TestCodexOnlyDeployerWalkIntegrity(t *testing.T) {
 	}
 	for _, want := range []string{
 		".moai/config/sections/llm.yaml",
+		// DEPLOY-TARGET name, not the template-source name. `ListTemplates`
+		// strips the `.tmpl` suffix (deployer.go), so the mirror — which ships
+		// as `AGENTS.md.tmpl` to stay out of Codex's filename-keyed discovery
+		// inside this repo (card t925) — appears here as `AGENTS.md`.
+		// The two layers are easy to confuse: `harnessFS.Stat` in
+		// apply_harness_test.go sees template-SOURCE names and must be given
+		// `AGENTS.md.tmpl`, while this listing sees deploy targets.
 		"AGENTS.md",
 		".gitignore",
 		".agents/skills/moai-workflow-tdd/SKILL.md", // remapped catalog skill
@@ -154,11 +161,21 @@ func TestCodexOnlyForceUpdateVariant(t *testing.T) {
 	if _, err := mgr.Load(root); err != nil {
 		t.Fatalf("load manifest: %v", err)
 	}
-	if err := rd.Deploy(context.Background(), root, mgr, nil); err != nil {
+	// A template context is REQUIRED, not incidental: the deployer only strips
+	// the `.tmpl` suffix on the render branch, which it takes when a renderer
+	// AND a context are both present. Passing nil here would deploy the mirror
+	// verbatim as `AGENTS.md.tmpl` and the assertion below would report a
+	// regression that production does not have — both production deploy sites
+	// (initializer.go, mirror_notice.go) pass a context (card t925).
+	if err := rd.Deploy(context.Background(), root, mgr, NewTemplateContext()); err != nil {
 		t.Fatalf("deploy: %v", err)
 	}
 	if _, err := os.Stat(filepath.Join(root, "AGENTS.md")); err != nil {
 		t.Errorf("AGENTS.md missing from force-update codex deploy: %v", err)
+	}
+	// ...and the template-source name must NOT survive into the project.
+	if _, err := os.Stat(filepath.Join(root, "AGENTS.md.tmpl")); err == nil {
+		t.Error("AGENTS.md.tmpl leaked into the deployed project — the .tmpl suffix must be stripped")
 	}
 	if _, err := os.Stat(filepath.Join(root, ".claude")); err == nil {
 		t.Error(".claude/ deployed by the force-update codex deployer")
