@@ -234,7 +234,7 @@ Builder agents: Read, Write, Edit, Grep, Glob
 Dynamic teammates (general-purpose): Inherit all tools from parent session. The spawn-time `mode` parameter is deprecated and ignored since Claude Code v2.1.213 (changelog-sourced); teammates inherit the parent session's permission mode.
 
 Notes:
-- Read-only enforcement for dynamic teammates rests on tool restriction (`Explore`, or a `tools:` list omitting Write/Edit) — the deprecated spawn-time `mode` parameter is ignored (v2.1.213+), and a parent in `bypassPermissions`/`acceptEdits` takes precedence over any child permission setting
+- Read-only enforcement for dynamic teammates rests on tool restriction, and the criterion is that **no tool in the list can write** — omitting `Write`/`Edit` is necessary but NOT sufficient. Three other channels reach the working tree on their own: `Bash` (a shell redirect writes any path), a write-capable MCP tool (`mcp__moai__codex_task` declares `WithReadOnlyHintAnnotation(false)` and modifies the working tree under the `workflow.codex.task.allow_write` project opt-in), and `Agent` (spawns a write-capable subagent). The built-in `Explore` omits `Write`/`Edit` yet carries `Bash`, so a list is not read-only merely because `Write`/`Edit` are absent from it. The deprecated spawn-time `mode` parameter is ignored (v2.1.213+), so tool restriction remains the only channel that carries the guarantee — which is why the list is audited against all three write paths, not one. A parent in `bypassPermissions`/`acceptEdits` takes precedence over any child permission setting
 - Project-specific context is included in the spawn prompt, not preloaded skills
 - Teammates can self-load skills via Skill() tool when deeper documentation is needed
 
