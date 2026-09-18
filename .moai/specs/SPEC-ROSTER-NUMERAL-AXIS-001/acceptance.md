@@ -27,10 +27,15 @@ AC-RNA-007 control probe, AC-RNA-008 anti-vacuity).
 | AC-RNA-010 | REQ-RNA-011 | Must | Newly-reached stale sites carry `CountPattern` + `KnownStale` |
 | AC-RNA-011 | spec.md §C (ordering) | Must | Baseline commit precedes the implementation commit |
 | AC-RNA-012 | spec.md §C (PRESERVE) | Must | t922 tests pass unchanged |
+| AC-RNA-013 | spec.md §D D3, REQ-RNA-004 | Must | Every hit accounted for; residual arithmetic closes |
+| AC-RNA-014 | REQ-RNA-012 | Must | In-run re-derivation is the run baseline |
+| AC-RNA-015 | spec.md §E (historical citations) | Must | Historical citations: no finding, no repair, reason if exempted |
+| AC-RNA-016 | REQ-RNA-013 | Must | Layer scope = sweep exclusions + `.moai/research/` |
 
 ### AC-RNA-001 — An undeclared count claim fails the guard
 
-**Given** a file inside the swept tree carrying a numeral adjacent to a noun in the D1 class,
+**Given** a file inside the layer's scope (REQ-RNA-013) carrying a numeral adjacent to a noun in
+the D1 class,
 with no `Registry()` row and no numeral-exempt declaration for its path
 **When** the numeral layer runs
 **Then** the guard reports that path with a message naming the observed numeral, the matched
@@ -48,10 +53,14 @@ membership registration does not discharge a count claim.
 
 ### AC-RNA-003 — Nearest preceding numeral, not leftmost
 
-**Given** the literal input `CLAUDE.md 4 (13 retained agents)`
+**Given** two inputs — (a) the LIVE string `CLAUDE.md §4 (the 13 retained agents` from
+`internal/harness/delegationmap/types.go:73` (read in this tree; it is also the string
+`axis.go`'s `CountPattern` doc comment cites as the reason the pattern is a regexp rather than a
+line anchor), and (b) the synthetic variant `CLAUDE.md 4 (13 retained agents)`
 **When** the layer selects the numeral for the matched noun
-**Then** the reported numeral is `13`, not `4`; a leftmost-numeral implementation fails this
-case.
+**Then** both report `13`, not `4`. (a) is the load-bearing case because it is the shape that
+actually occurs — it differs from (b) in the section marker and the intervening word count, so
+it exercises a different adjacency; (b) is kept as an additional row.
 
 ### AC-RNA-004 — An empty exempt reason is a finding, never a suppression
 
@@ -60,23 +69,37 @@ case.
 **Then** the layer emits a finding reporting the declaration as incomplete, the hit is NOT
 suppressed, and the test fails.
 
-### AC-RNA-005 — The word axis is alive and its live population is 0
+### AC-RNA-005 — The word axis is alive, and its reported population is 0 for a named reason
 
-**Given** the word-axis regexp and a synthetic input of the form
-`thirteen retained agents` that is NOT in the tree
+**Given** the word-axis regexp, a synthetic input of the form `thirteen retained agents` that is
+NOT in the tree, and the neutralise → match → report → discharge order fixed by REQ-RNA-007
 **When** the word axis runs against (a) that synthetic input and (b) the live tree
-**Then** (a) produces at least one hit — proving the regexp fires — and (b) produces a live hit
-set of size 0 under the size-claim reading, with the 0 reported explicitly alongside (a) so a
-dead regexp and an empty population are distinguishable.
+**Then** (a) produces at least one hit — proving the regexp fires — and (b) the live *reported*
+word-axis hit set is empty **because** `.claude/agents/harness/workflow-specialist.md:52`
+(`All four are retained agents.`) is removed by the selector mechanism BEFORE counting, not
+because it was counted and then discharged by an exempt row. The run evidence names that file
+and the neutralisation that removed it, so the 0 is pinned to an observed cause rather than an
+expectation.
 
 ### AC-RNA-006 — Breadth is printed, one line per hit, at column 0
 
-**Given** the layer's hit set
+**Given** the layer's hit set and the INDEPENDENTLY derived population from AC-RNA-014 (the
+in-run re-derivation, which does not consult the layer's own counter)
 **When** the package test runs
-**Then** each hit is printed on its own line beginning at column 0 with a stable prefix
+**Then** both hold:
+
+(a) each hit is printed on its own line beginning at column 0 with a stable prefix
 (`digit-axis hit ` / `word-axis hit `), such that
-`go test -count=1 ./internal/harness/rosterguard/... -v | grep -c '^digit-axis hit '` returns
-the digit-axis hit count — a `t.Logf`-based implementation fails this grep.
+`go test -count=1 ./internal/harness/rosterguard/... -v | grep -c '^digit-axis hit '` is
+executable — a `t.Logf`-based implementation fails this grep because it indents and prefixes
+with `file:line`; and
+
+(b) the printed hit set EQUALS the union of (registered `ClaimCount` paths ∪ exempt paths ∪
+mechanism-neutralised paths) exactly — no more and no less — and its size equals the AC-RNA-014
+re-derived population. The equality is the assertion the reuse target already makes
+(`docsTabAllowlist` asserts the hit set equals the allowlist exactly); comparing the printed
+count to the implementation's own count is circular and a mutant printing only the first hit
+passes it.
 
 ### AC-RNA-007 — The control probe fires, and is observed firing
 
@@ -94,12 +117,16 @@ construction)
 **Then** the test FAILS with a message stating that zero hits means the walk, the noun class, or
 the exclusion list is broken — not that the tree is clean.
 
-### AC-RNA-009 — Selector phrasing produces no finding
+### AC-RNA-009 — Selector phrasing is neutralised before counting
 
-**Given** the live phrases `one of the 11 retained agents` and `four are retained agents`
-**When** the layer runs
-**Then** neither produces a finding, and the neutralisation is exercised by an explicit test
-case for each shape rather than being an accident of the window width.
+**Given** the live phrases `one of the 11 retained agents` and `All four are retained agents.`
+(the latter at `.claude/agents/harness/workflow-specialist.md:52`)
+**When** the layer runs under the REQ-RNA-007 order (neutralise → match → report → discharge)
+**Then** neither phrase reaches the match stage, so neither appears in the reported hit set of
+AC-RNA-006 and neither is discharged by an exempt row; the neutralisation is exercised by an
+explicit test case for each shape rather than being an accident of the window width. This
+criterion and AC-RNA-005(b) refer to the SAME string under the SAME ordering and therefore
+cannot hold opposite expectations of it.
 
 ### AC-RNA-010 — Newly-reached stale sites become enumerable, not exempt
 
@@ -113,11 +140,18 @@ lines).
 
 ### AC-RNA-011 — Baseline-first ordering is witnessed by the commit graph
 
-**Given** the run-phase baseline artifact
-**When** `git log --follow` is read over the branch
-**Then** the baseline artifact's commit is an ANCESTOR of the first implementation commit — not
-the same commit. A same-commit pair fails this criterion regardless of what the commit message
-asserts.
+**Given** the run-phase baseline artifact's commit `$BASE`, and the **first implementation
+commit** `$IMPL` — defined mechanically as the first commit on this branch that modifies a file
+under `internal/harness/rosterguard/`:
+
+```
+IMPL=$(git log --reverse --format=%H WT-numeral-roster-guard -- internal/harness/rosterguard | head -1)
+```
+
+**When** the ancestry is decided by a single invocation
+**Then** `git merge-base --is-ancestor "$BASE" "$IMPL"` exits **0** and `$BASE != $IMPL`. A
+same-commit pair fails this criterion regardless of what the commit message asserts — the commit
+graph is the only sequencing witness (`verification-claim-integrity.md` §2.3).
 
 ### AC-RNA-012 — The t922 surface is preserved
 
@@ -127,6 +161,46 @@ asserts.
 **Then** all pass without modification to their assertions, and `SweepUnreachable` semantics are
 unchanged.
 
+### AC-RNA-013 — Every hit is accounted for; the residual arithmetic closes
+
+**Given** the in-run population of AC-RNA-014
+**When** run-phase completes
+**Then** the run evidence states the four quantities — total hits, hits discharged by a
+pre-existing `ClaimCount` row, hits newly registered, hits neutralised by mechanism, and hits
+exempted — and their sum EQUALS the total; no hit is left implicit, and the count of authored
+rows a reviewer must read is reported alongside the derived-mirror count so the D3 saving is an
+observed figure rather than the projection §D calls it.
+
+### AC-RNA-014 — The run baseline is re-derived in-run
+
+**Given** REQ-RNA-012 and the tree being changed
+**When** run-phase begins
+**Then** the digit-axis and word-axis populations and the residual arithmetic are produced by a
+command run in THIS tree in THIS run, and the run evidence cites that command with its verbatim
+output. Citing the plan-phase figures of spec.md §A as the baseline fails this criterion even
+when the numbers happen to agree.
+
+### AC-RNA-015 — Historical citations: no finding, no repair, reason where exempted
+
+**Given** the live historical-citation sites — `the then-8-agent catalog` in
+`.claude/agents/moai/manager-docs.md`, `.claude/agents/moai/manager-spec.md` and their
+`internal/template/templates/` mirrors, and `17->8 agent catalog` in
+`internal/template/*_test.go`
+**When** the layer runs, by whichever route run-phase chooses (tense/selector mechanism, or a
+per-path exempt declaration)
+**Then** none produces a finding, none is repaired (`git diff` empty on those content lines),
+and every one handled by exemption rather than by mechanism carries a non-empty per-path reason
+a reviewer can disagree with. The mechanism choice stays deferred; this outcome does not.
+
+### AC-RNA-016 — The layer's scope is stated and matches the sweep's
+
+**Given** REQ-RNA-013
+**When** the layer runs
+**Then** its exclusion set is `sweepSkipPrefixes` ∪ `sweepSkipFiles` ∪ `{.moai/research/}`,
+stated in ONE place in code and cited rather than re-listed; and
+`.moai/research/anthropic-best-practices-2026-05-24.md` produces no hit — verified by asserting
+the file is out of scope, not by an exempt row.
+
 ## §D.1 Edge Cases
 
 - A path carrying BOTH a membership row and a separate count row — the count row discharges;
@@ -135,7 +209,10 @@ unchanged.
   to the noun.
 - The noun inside a longer word (`retained agents-reference`) — the word boundary must prevent
   a match the same way `tabNoun` prevents `tab` inside `selectable`.
-- A file that is both a template mirror and a local copy: two paths, two rows, no collapsing.
+- A template mirror whose local counterpart was deleted or renamed — `mirrorOf()` must fail
+  loudly rather than derive a row for a path that no longer has a source.
+- A mirror whose content has diverged from its local counterpart: derivation must not assert a
+  claim the mirror does not actually make.
 - rosterguard's own files describing the guard in prose — a measured false-positive class that
   must be handled by mechanism or by a reasoned exempt row, never silently.
 
@@ -148,17 +225,22 @@ unchanged.
 
 ## §D.3 Definition of Done
 
-- AC-RNA-001 … AC-RNA-012 all Must-severity PASS with cited in-run evidence (command + verbatim
+- AC-RNA-001 … AC-RNA-016 all Must-severity PASS with cited in-run evidence (command + verbatim
   output) recorded in `progress.md` §E.2
-- Plan-phase population figures re-derived in-run and cited as the run baseline
-- Registry expansion complete, every new row carrying its own `CountPattern` and `KnownStale`
+- Plan-phase population figures re-derived in-run and cited as the run baseline (AC-RNA-014)
+- Residual arithmetic closed with no implicit hit (AC-RNA-013), and the observed authored-row
+  count reported against the D3 projection
+- Registry expansion complete, every new row carrying its own `CountPattern` and `KnownStale`,
+  mirror rows derived via `mirrorOf()` rather than hand-copied
 - Template-First pairs edited on both sides where touched
 
 ## §D.4 Traceability
 
 REQ-RNA-001→AC-RNA-001 · REQ-RNA-002→AC-RNA-001 · REQ-RNA-003→AC-RNA-003 ·
 REQ-RNA-004→AC-RNA-002 · REQ-RNA-005→AC-RNA-004 · REQ-RNA-006→AC-RNA-005 ·
-REQ-RNA-007→AC-RNA-009 · REQ-RNA-008→AC-RNA-006 · REQ-RNA-009→AC-RNA-008 ·
-REQ-RNA-010→AC-RNA-007 · REQ-RNA-011→AC-RNA-010 · spec.md §C→AC-RNA-011, AC-RNA-012
+REQ-RNA-007→AC-RNA-009, AC-RNA-005 · REQ-RNA-008→AC-RNA-006 · REQ-RNA-009→AC-RNA-008 ·
+REQ-RNA-010→AC-RNA-007 · REQ-RNA-011→AC-RNA-010 · REQ-RNA-012→AC-RNA-014 ·
+REQ-RNA-013→AC-RNA-016 · spec.md §C→AC-RNA-011, AC-RNA-012 · spec.md §D D3→AC-RNA-013 ·
+spec.md §E (historical citations)→AC-RNA-015
 
 🗿 MoAI

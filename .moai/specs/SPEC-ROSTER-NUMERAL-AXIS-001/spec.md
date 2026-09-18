@@ -1,7 +1,7 @@
 ---
 id: SPEC-ROSTER-NUMERAL-AXIS-001
 title: "Numeral-axis layer for the roster guard — count-only claims the enumeration sweep cannot reach"
-version: "0.1.0"
+version: "0.2.0"
 status: draft
 created: 2026-09-18
 updated: 2026-09-18
@@ -21,6 +21,7 @@ tier: M
 | Version | Date | Author | Change |
 |---------|------|--------|--------|
 | 0.1.0 | 2026-09-18 | manager-spec | Initial plan-phase draft (card t930, branch `WT-numeral-roster-guard`) |
+| 0.2.0 | 2026-09-18 | manager-spec | Plan-audit revision: cost arithmetic corrected to the measured residual 46, decision D3 (mirror derivation) added, neutralise-before-count ordering fixed in REQ-RNA-007, REQ-RNA-012 (in-run re-derivation) and REQ-RNA-013 (layer scope) added, AC-RNA-013…016 added, AC-RNA-005/006/011 made verifiable |
 
 ## §A Problem Statement
 
@@ -80,8 +81,31 @@ NOUN with the NEAREST preceding numeral inside a 12-character window:
 | `{agent(s)}` unrestricted | 267 files / 613 hits | — |
 
 [HARD] These are plan-phase inputs, not a run-phase baseline. Run-phase re-derives every figure
-in-run against the tree it is changing (REQ-RNA-009); a carried-over number is not a baseline
+in-run against the tree it is changing (REQ-RNA-012); a carried-over number is not a baseline
 (`verification-claim-integrity.md` §2).
+
+### The accounting between the population and the deliverable
+
+The population above is not the deliverable's cost — the RESIDUAL is, and it was measured by the
+dispatching lead in this tree at HEAD `6abcc85fa` with its own `registry.go` parse:
+
+| Quantity | Value |
+|---|---|
+| Hit paths | 63 (62 digit-axis + one word-only, `workflow-specialist.md`) |
+| Registry paths carrying a `ClaimCount` row | 20 |
+| Hits already discharged by a `ClaimCount` row | 17 |
+| **Hits needing a NEW row or an exempt declaration** | **46** |
+| Extra paths the rejected any-row rule would free | 1 (`internal/web/agentfm.go`) |
+
+46, not the ~15 the first draft of this SPEC asserted. Decision D3 is the response to that
+number; the exact post-derivation figure is a run-phase re-derivation obligation
+(REQ-RNA-012), not a number asserted here.
+
+The word-axis expectation belongs here rather than in the requirement text: under the
+neutralise-then-count ordering REQ-RNA-007 fixes, the live reported word-axis population is
+expected to be **0**, because the single live candidate —
+`.claude/agents/harness/workflow-specialist.md:52`, `All four are retained agents.` (read in
+this tree) — is a subset predication removed before counting.
 
 Independently re-measured in this worktree while authoring this SPEC:
 `go test -count=1 ./internal/harness/rosterguard/...` → `ok … 1.096s`;
@@ -90,9 +114,9 @@ mention `ClaimCount`.
 
 ## §B Requirements (GEARS)
 
-- **REQ-RNA-001 (the layer)** — **Where** a file inside the swept tree carries a numeral
-  adjacent to a roster noun, the roster guard shall report that site as an undeclared
-  count claim unless the site is discharged under REQ-RNA-004.
+- **REQ-RNA-001 (the layer)** — **When** a file inside the numeral layer's scope (REQ-RNA-013)
+  carries a numeral adjacent to a roster noun, the roster guard shall report that site as an
+  undeclared count claim unless the site is discharged under REQ-RNA-004.
 
 - **REQ-RNA-002 (noun class)** — The numeral layer shall anchor on the noun class
   `{retained agent, retained agents, agent catalog, agent roster, retained catalog,
@@ -115,14 +139,20 @@ mention `ClaimCount`.
 
 - **REQ-RNA-006 (word axis)** — The layer shall implement a spelled-out numeral axis
   (`eleven` / `twelve` / `thirteen` and the locale forms the reuse target already lists)
-  alongside the digit axis. Its live population is expected to be **0** under the size-claim
-  reading; the axis is a structural hole that shall be correct when it turns on later, not a
-  claim that it catches something now.
+  alongside the digit axis, and shall carry a positive control proving the regexp fires on
+  synthetic input. The axis is a structural hole that shall be correct when it turns on later,
+  not a claim that it catches something now.
 
-- **REQ-RNA-007 (selector neutralisation)** — The layer shall not report a phrase that
-  predicates over a subset rather than stating a size: `one of the 11 retained agents`
-  (selector) and `four are retained agents` (subset predication) shall produce no finding, by
-  the same mechanism `ordinalPrefixRe` uses to neutralise `第三方`.
+- **REQ-RNA-007 (selector neutralisation, and the order it runs in)** — The layer shall not
+  report a phrase that predicates over a subset rather than stating a size: `one of the 11
+  retained agents` (selector) and `four are retained agents` (subset predication) shall produce
+  no finding, by the same mechanism `ordinalPrefixRe` uses to neutralise `第三方`.
+
+  The pipeline order shall be **neutralise → match → report → discharge**: neutralisation
+  removes selector and ordinal spans from the text BEFORE the axes match, so a neutralised
+  phrase is never counted and then discharged. The order is normative because it decides what
+  the reported population IS: under it the live word-axis population is 0 by construction, and
+  under the reverse order the same string would be counted as 1 and then discharged.
 
 - **REQ-RNA-008 (breadth is printed)** — The layer shall PRINT its hit set, one line per hit,
   anchored at column 0, so the set can be compared against the enumeration rather than merely
@@ -138,6 +168,19 @@ mention `ClaimCount`.
   disagrees with `template.ProfileMatrixAgents()`, the site shall be registered with a
   `CountPattern` and a `KnownStale` marker rather than exempted, so the disagreement is
   enumerable and self-expiring.
+
+- **REQ-RNA-012 (in-run re-derivation)** — **When** run-phase begins, it shall re-derive the
+  digit-axis and word-axis populations in-run against the tree being changed, and shall use
+  those observed values as its baseline. It shall not carry the plan-phase figures of §A
+  forward as a measurement (`verification-claim-integrity.md` §2).
+
+- **REQ-RNA-013 (layer scope)** — The numeral layer shall walk the same tree the enumeration
+  sweep walks, inheriting `sweepSkipPrefixes` and `sweepSkipFiles`
+  (`internal/harness/rosterguard/check.go`), and shall additionally exclude `.moai/research/`
+  — a dated-record tree the sweep does not exclude today and in which a live digit-axis
+  candidate exists (`.moai/research/anthropic-best-practices-2026-05-24.md:92`,
+  `CLAUDE.md §4 agent catalog name mismatch`, read in this tree). The exclusion set shall be
+  stated in one place in code and cited by the layer rather than re-listed.
 
 ## §C Constraints
 
@@ -160,11 +203,14 @@ mention `ClaimCount`.
 
 ## §D Decisions
 
-Two decisions in this card shape what the guard reports. They were put to the operator and went
-unanswered inside the window, so they are stated here as this SPEC's own decisions with the
-reasoning visible. The project runs `interview.recommendation_mode: pull`; the alternatives are
-recorded with their measured cost and no recommendation label. A reviewer who disagrees changes
-the decision here, not in the implementation.
+Three decisions in this card shape what the guard reports.
+
+[HARD] **All three are operator-unanswered decisions.** Each was put to the operator and no
+answer came inside the window, so each is the lead's / this SPEC's judgment rather than an
+operator ruling, and each stays reviewable at the Implementation Kickoff Approval gate. The
+project runs `interview.recommendation_mode: pull`; the alternatives are recorded with their
+measured cost and no recommendation label. A reviewer who disagrees changes the decision here,
+not in the implementation.
 
 ### D1 — Noun class
 
@@ -181,9 +227,33 @@ N-agent catalog}` — 62 files / 75 hits on the digit axis.
 **Adopted**: a hit discharges only on a `ClaimCount` row for its path, or an explicit
 numeral-exempt declaration carrying a mandatory non-empty reason.
 
-| Alternative | Why not adopted |
-|---|---|
-| Reuse the sweep's any-row-by-path rule | Smaller, and it matches the existing precedent — but a path registered only for a MEMBERSHIP claim would then silently discharge a stale COUNT claim inside it. That is precisely the failure class this card exists to close: a count and a membership are independent claims, and `ClaimKind` already models them as such |
+| Alternative | Measured cost | Why not adopted |
+|---|---|---|
+| Reuse the sweep's any-row-by-path rule | Frees exactly **1** additional path today — `internal/web/agentfm.go`, a row carrying `Claims: 0` (measured by the dispatching lead in this tree at HEAD `6abcc85fa`; the row is `web-agentfm-display-rank` in `registry.go`, read here) | A path registered only for a MEMBERSHIP claim would silently discharge a stale COUNT claim inside it — precisely the failure class this card exists to close; a count and a membership are independent claims, and `ClaimKind` already models them as such. The strict rule therefore buys that closure for one extra authored row, not for a large one |
+
+### D3 — Mirror derivation
+
+**Adopted**: the mirror rows are DERIVED, not authored. A `mirrorOf()` helper builds the
+`internal/template/templates/` row from its local `.claude/` or `.moai/` counterpart, so a
+mirror pair costs one row a reviewer must read instead of two.
+
+The precedent is in the same file: `readmeSite()` (`registry.go`) derives the four README locale
+rows from one helper, and its doc comment gives the reason — *"four hand-copied rows is the same
+forward-only-propagation shape this package guards, one level up"*. A hand-copied mirror row is
+that same shape.
+
+The measured need is **46** new rows or exempt declarations (§A). Roughly half the 46 paths are
+template mirrors of a local counterpart, so derivation cuts what a reviewer must read and judge
+to roughly 26 while leaving the noun class exactly as D1 adopted it — the guard's reach does not
+change, only how many rows carry it. [HARD] The exact post-derivation figure is a run-phase
+**re-derivation obligation** (REQ-RNA-012, AC-RNA-013): the mirror pairs have not been counted
+exhaustively, and "roughly 26" is a projection, not a measurement.
+
+| Alternative | Measured cost | Why not adopted |
+|---|---|---|
+| Accept 46 authored rows | 46 rows, of which roughly 30 become exemption prose a reviewer must read | Keeps the full benefit, but realises the hazard `plan.md` §F registers as *"Allowlist becomes the subject matter"* — at that size the exemption list, not the roster, is what review is actually about |
+| Narrow the noun class to `{retained agent(s)}` | 37 files / 54 hits (−25 files of reach) | Provably loses the five live `11-agent catalog` stale sites in `moai-foundation-core` and `moai-foundation-quality` — the exact drift wording this card exists to reach |
+| Split the catalog/roster family into a follow-up card | Residual today drops, but those same five sites stay unregistered until that card is picked | Defers the card's own subject matter; the hole stays open for an unbounded interval |
 
 Empty-reason handling follows the exemption-marker precedent in
 `verification-claim-integrity.md` §2.1: an empty or whitespace-only reason produces a finding
@@ -204,12 +274,16 @@ never becomes cheaper than "declare the reason".
 
 ### Out of Scope — historical citations
 
-- `the then-8-agent catalog` (in `manager-docs.md`, `manager-spec.md`, `agent-authoring.md`,
-  `NOTICE.md`, `git-workflow-doctrine.md`, `spec-frontmatter-schema.md`), `17->8 agent catalog`
-  in `internal/template/*_test.go`, and dated research records under `.moai/research/` describe
-  the roster AS IT WAS. They are not drift and are not repaired. Whether they are excluded by
-  the selector/tense mechanism or by a reasoned exempt declaration is a run-phase
-  implementation choice; either way they produce no repair.
+- `the then-8-agent catalog` (live in `.claude/agents/moai/manager-docs.md`,
+  `.claude/agents/moai/manager-spec.md` and their `internal/template/templates/` mirrors, read
+  in this tree) and `17->8 agent catalog` in `internal/template/*_test.go` describe the roster
+  AS IT WAS. They are not drift and are not repaired.
+- Whether they are excluded by a tense/selector mechanism or by a reasoned per-path exempt
+  declaration is a run-phase implementation choice. The OUTCOME is not deferred: AC-RNA-015
+  binds it either way — no finding, no repair, and any path handled by exemption carries a
+  reason a reviewer can disagree with.
+- Dated research records under `.moai/research/` are outside the layer's scope entirely
+  (REQ-RNA-013), not merely unrepaired.
 
 ### Out of Scope — lowering SweepThreshold
 
@@ -229,8 +303,10 @@ never becomes cheaper than "declare the reason".
 
 ## §F Success Criteria
 
-- A count-only roster claim added anywhere in the swept tree, with no registry row and no
+- A count-only roster claim added anywhere in the layer's scope, with no registry row and no
   exempt declaration, fails the guard (AC-RNA-001).
+- Every hit is accounted for — registered, exempted, or neutralised by mechanism — with none
+  left implicit (AC-RNA-013), and the run-phase population is re-derived in-run (AC-RNA-014).
 - Every hit is printed one line per hit at column 0, so breadth is comparable (AC-RNA-006).
 - The control probe is observed to fire (AC-RNA-007); a zero-hit run fails (AC-RNA-008).
 - `CLAUDE.md 4 (13 retained agents)` pins to 13, not 4 (AC-RNA-003).
