@@ -269,6 +269,116 @@ awareness to the collector family) and is carried into M2's reconciliation as a
 named cause for any projected-vs-actual difference on documents that illustrate
 REQ syntax in code blocks.
 
+### M2 — evidence (no source change)
+
+Tree measured: **`4ff316bd8`**, `git status --short` empty at entry and exit. M2
+changes no file under `internal/`; it writes `.moai/reports/t894/**` and this
+section. Full evidence report, 5-section format:
+`.moai/reports/t894/verdict.md`, **exported to the primary checkout** at
+`/Users/goos/MoAI/moai-adk-go/.moai/reports/t894/` before being cited here
+(`.moai/reports/*` is gitignored at `.gitignore:229`, so the in-worktree copy would
+not resolve at audit time).
+
+Instruments, each built FROM a named tree and invoked BY PATH (no PATH-resolved
+`moai` decides any criterion here): `moai-base` (`dcfad4805`), `moai-m1`
+(`4ff316bd8`, `go build` exit 0), `moai-mutant` (`4ff316bd8` + the one-line merge
+removal, `go build` exit 0).
+
+**M2-owned AC matrix.**
+
+| AC | Status | Deciding command | Observed |
+|---|---|---|---|
+| AC-HRC-001 | PASS | `moai-m1 spec lint <fix>/SPEC-FIXH-001`; same with `moai-base` | GREEN: `CoverageIncomplete` names `REQ-FIXH-001`, exit 0, 11 warnings. RED-now at `<base>`: no line names it, exit 0, 10 warnings. The 10 `FrontmatterInvalid` witness lines (an unrelated rule) are present in BOTH runs |
+| AC-HRC-005 | PASS | `moai-m1 spec lint <fix>/SPEC-FIXI-001` | `WARNING ModalityMalformed`, summary `0 error(s), 12 warning(s)`, **exit 0** — severity, error count and exit status all asserted. Control `SPEC-FIXICTL-001` (same statement, narrow list form, `Widened=false`) → `ERROR`, `1 error(s)`, **exit 1**, proving the demotion is the `Widened` axis and not `applyEraDemotion` |
+| AC-HRC-007 | PASS | build-tagged dump (`//go:build reqdump`, **scratch trees only** — this tree gained no file), both runs over the SAME corpus | BEFORE 4497 entries, AFTER 5541, **removed-or-mutated = 0**, added = 1044, all `Source=heading` and `Widened=true`. Records carry `file\|line\|ID\|Source\|Widened\|Text`, so a mutation of any field would surface as a removal |
+| AC-HRC-008 | PASS | `<build>/moai spec lint --json`, both sides, exit 0 | See the table below. Ratio **0.043** (< 0.50); total delta **+496** (> 0); **no negative delta** |
+| AC-HRC-009 | PASS | probe at `4ff316bd8` (exit 0, PASS) + a scratch-only `reqdiag` cross-tab | Every projected-vs-actual difference reconciled to a measured cause; the diagnostic reproduces all six actual deltas **exactly** |
+| AC-HRC-010 | PASS (RED as required) | `moai-mutant spec lint <fix>/SPEC-FIXH-001` | `CoverageIncomplete` naming `REQ-FIXH-001` **disappears**; all 10 witness lines **remain**. `diff -rq` shows exactly ONE differing file (`lint_req_widen.go`); the collector and its pattern are byte-unchanged. Mutant never committed |
+| AC-HRC-GATE-001 | PASS | `go test ./internal/spec/... -count=1`; `-v -run TestHeadingCollection`; probe under its tag | exit 0 `ok … 91.158s`; all 8 `TestHeadingCollection_*` named and PASS; probe builds and **exits 0** |
+| AC-HRC-GATE-002 | PASS | `go vet ./internal/spec/...` | exit 0, no output |
+| AC-HRC-GATE-003 | PASS | `golangci-lint run --timeout=5m ./internal/spec/...`, HEAD and `<base>` | `0 issues.` at both — baseline measured in THIS run, nothing new |
+
+**Whole-corpus BEFORE/AFTER (AC-HRC-008).** The CONTROL column is an addition beyond
+the criterion: BEFORE and AFTER differ in binary AND tree, so the `<base>` binary was
+also run against the HEAD tree to isolate the instrument.
+
+| Finding code | BEFORE `moai-base`@`dcfad4805` | CONTROL `moai-base`@`4ff316bd8` | AFTER `moai-m1`@`4ff316bd8` | Δ |
+|---|---:|---:|---:|---:|
+| `CoverageIncomplete` | 2033 | 2033 | 2470 | +437 |
+| `ModalityUnjudged` | 523 | 523 | 567 | +44 |
+| `ModalityMalformed` | 180 | 180 | 181 | +1 |
+| `LegacyEARSKeyword` | 48 | 48 | 48 | 0 |
+| `InvalidREQID` | 6 | 6 | 6 | 0 |
+| `DuplicateREQID` | 0 | 0 | 14 | +14 |
+| **six-code subtotal** | **2790** | **2790** | **3286** | **+496** |
+
+The CONTROL reproduces the `dcfad4805` counts **byte-for-byte on every code** (3381
+findings total on both). Corpus movement between the two trees therefore contributes
+**zero**, and the whole +496 is attributable to the collector change. BEFORE was
+re-derived from `corpus-before.json` by `jq`, reproducing the hand-carried figures.
+
+Ratio: 44 ÷ 1031 = **0.0427** (probe `fresh` denominator); 44 ÷ 1044 = 0.0421 (live,
+all `.md`); 44 ÷ 1007 = 0.0437 (live, linter scope). Every denominator lands near
+variant B's 0.14 and nowhere near variant A's 0.99.
+
+**Corpus census re-measured at `4ff316bd8`** (NOT quoted from `spec.md` §A.3):
+documents swept **1635**; files carrying a domain-qualified `### REQ-…` heading
+**218** (`grep -rlE '^### \*{0,2}REQ-[A-Z0-9]+(-[A-Z0-9]+)*-[0-9]+' .moai/specs
+--include='*.md' | wc -l` — the probe still emits no line producing this figure, so
+it is this run's own grep, named with its command); entries newly collected **1031**
+(probe `fresh`) / **1044** (live, all `.md`) / **1007** (live, linter scope); files
+gaining an entry **125**; `.md` under `.moai/specs` **3697**; documents the linter's
+REQ rules actually visit **874**.
+
+**Reconciliation (AC-HRC-009) — three measured causes.**
+
+| Code | Projected (probe B) | Actual Δ | Diff | Cause |
+|---|---:|---:|---:|---|
+| `CoverageIncomplete` | 473 | 437 | −36 | C1 scope (−37), C3 fresh-filter (+1) |
+| `ModalityUnjudged` | 145 | 44 | −101 | C2 extractor (−65), C1 (−37), C3 (+1) |
+| `ModalityMalformed` | 36 | 1 | −35 | C2 extractor |
+| `DuplicateREQID` | 1 | 14 | +13 | C3 fresh-filter |
+| `LegacyEARSKeyword` / `InvalidREQID` | 0 / 0 | 0 / 0 | 0 | — |
+| **TOTAL** | **655** | **496** | **−159** | the three causes |
+
+- **C1 — scope (dominant, and NOT anticipated in the M1 notes).** `discoverSPECs`
+  (`lint.go:396`) globs `SPEC-*/spec.md` — one file per SPEC directory, one level
+  deep — so the REQ-consuming rules visit **874** documents where the probe walks
+  **1635**, and see **1007** heading entries where the collector produces 1044. The
+  excess is `acceptance.md` / `plan.md` / nested / sample documents the rules never
+  visit.
+- **C2 — extractor.** Probe first-line vs shipped whole-paragraph-joined; the texts
+  differ on **306** of 1044 entries (275 in scope). This is the cause named in advance
+  in M1 — confirmed, **but the direction it predicted for `ModalityMalformed` was
+  wrong**: M1 expected actual "possibly above" projection, and it is far below
+  (36 → 1), because the full paragraph supplies the `SHALL` the truncated first line
+  cut off, so probe-malformed entries are judged conforming. The direction predicted
+  for `ModalityUnjudged` (below projection) was correct.
+- **C3 — fresh-filter.** The probe drops heading entries whose ID already exists in
+  list+table, so it can only count duplicates within its own fresh set. Measured:
+  exactly **13** added entries collide with a pre-existing `(file, ID)` — precisely
+  `1044 − 1031`, and precisely the `+13` `DuplicateREQID` discrepancy.
+- The **fence-blindness** cause named in M1a explains **none** of the discrepancy:
+  probe and collector are equally fence-blind, so it cancels on both sides. It remains
+  a standing, unrepaired property (Residual-risk).
+
+Applying the three causes, the scratch-only `reqdiag` cross-tab reproduces every
+actual delta exactly: `ModalityUnjudged` 44, `ModalityMalformed` 1,
+`CoverageIncomplete` 437, `DuplicateREQID` 13+1 = 14, `LegacyEARSKeyword` 0,
+`InvalidREQID` 0 — total **496 = +496**. Nothing in the difference is unattributed.
+
+**Gaps (M2).** `<scratch>` raw captures are machine-local and NOT exported — a known
+loss, named rather than cited. `moai-base`'s provenance is hand-carried, not
+re-verified by byte-identity. Two tool calls were refused by the worktree-isolation
+guard (a compound `git archive` loop; a heredoc writing a Go file) and were re-issued
+as plain commands / via the Write tool and **executed** — no fallback reading
+substitutes for a measurement. My first control fixture was mis-designed (bold +
+em-dash form, which `reqLinePattern` does not match, so it was not a control) and was
+corrected after reading the pattern; the corrected run is the one quoted.
+AC-HRC-002/003/004/006/011 were NOT re-measured in M2 — they are M1-owned and carried
+forward on M1's evidence. No cross-platform build, coverage, or full-suite run was
+re-observed in M2 (no source changed); `go test ./...` was deliberately not run.
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 _<pending run-phase>_
