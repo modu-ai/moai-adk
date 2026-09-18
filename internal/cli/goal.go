@@ -182,6 +182,9 @@ transcript becomes a model condition the orchestrator evaluates.`,
 				if verb, ok := misreadGoalVerb(c, word); ok {
 					return misreadGoalVerbError(word, verb)
 				}
+				if bareWordNeedsDeclaration(word) {
+					return bareWordDeclarationError(word)
+				}
 			}
 			return runGoalArm(c, args, sessionFlag, jsonOutput)
 		},
@@ -943,9 +946,14 @@ func runGoalAutoMission(cmd *cobra.Command, args []string, sessionFlag string, j
 
 // misreadGoalVerb reports the registered goal verb a single word was most
 // likely meant as, using each subcommand's SuggestFor list. The list is
-// explicit on purpose: conditions are free text, so a rule that refused
-// anything verb-shaped would throw away legitimate one-word conditions
-// such as `true` or `make`.
+// explicit on purpose: it names the word the refusal should SUGGEST, which a
+// verb-shape rule could not.
+//
+// It no longer carries the whole burden of the single-word form. Card t890
+// measured what the list alone lets through — `false`, `date`, `ls` — and
+// bareWordNeedsDeclaration now demands a declaration for every undeclared bare
+// word. A one-word condition such as `true` or `make` is not thrown away by
+// that: it is written `cmd: true`, and the refusal says so.
 func misreadGoalVerb(goalCmd *cobra.Command, word string) (string, bool) {
 	for _, sub := range goalCmd.Commands() {
 		for _, alias := range sub.SuggestFor {
@@ -966,6 +974,45 @@ func misreadGoalVerbError(word, verb string) error {
 			"Did you mean \"moai goal %s\"? If %q really is the condition, "+
 			"declare it: moai goal \"cmd: %s\"",
 		word, verb, word, word)
+}
+
+// bareWordNeedsDeclaration reports whether a single bare argument must carry a
+// `cmd:` / `model:` declaration before it can be armed as a condition.
+//
+// The two existing gates leave a gap between them (card t890). misreadGoalVerb
+// only knows the SuggestFor aliases, and unrunnableCommandToken only refuses a
+// first word that resolves to NOTHING — so a bare word that IS a real command
+// passes both and arms silently. `false` then blocks every turn-end to the
+// ceiling; `date` is satisfied at once and the goal ends without having meant
+// anything. Neither is what one typed word intends.
+//
+// The rule is a declaration requirement, not a ban: the word still arms as
+// `cmd: <word>`. That keeps it consistent with the adjacent refusal, which
+// already demands the same prefix rather than guessing.
+//
+// It reads the bare single-word form ONLY — `goal arm <word>` states the intent
+// explicitly, a prefixed word is already declared, and a multi-word condition
+// was never the ambiguous shape. An empty argument falls through to the
+// existing empty-condition refusal, which owns that case.
+func bareWordNeedsDeclaration(word string) bool {
+	if word == "" || len(strings.Fields(word)) != 1 {
+		return false
+	}
+	return !conditionDeclarationPrefix.MatchString(word)
+}
+
+// bareWordDeclarationError renders the refusal for an undeclared bare word. It
+// names both escapes because the word alone does not say which tier was meant:
+// a command belongs behind cmd:, a claim about the conversation behind model:.
+func bareWordDeclarationError(word string) error {
+	return fmt.Errorf(
+		"goal: %q is a single bare word, so it is ambiguous — it would be armed "+
+			"as a shell command whether or not that is what you meant, and a "+
+			"one-word command is as likely to be satisfied instantly as it is "+
+			"to never exit 0. Declare which you mean: moai goal \"cmd: %s\" to "+
+			"run it as a command, or moai goal \"model: %s\" for a claim about "+
+			"the conversation",
+		word, word, word)
 }
 
 // goalProjectRoot resolves the project root for goal state I/O (CLAUDE_PROJECT_DIR
