@@ -55,7 +55,7 @@ The module path follows Go conventions with the GitHub organization and reposito
 | System Calls | `golang.org/x/sys` | v0.47.0 | Low-level OS primitives (signal, syscall) |
 | Test Assertions | `github.com/stretchr/testify` | v1.11.1 | Replaces the earlier "stdlib-only" stance at v3.0 |
 | Goroutine Leak Detection | `go.uber.org/goleak` | v1.3.0 | Goroutine-leak assertions in tests |
-| Configuration | Custom YAML loader | -- | 14 `loader_*.go` files composing 32 YAML (Viper was not used) |
+| Configuration | Custom YAML loader | -- | 13 `loader_*.go` files composing 32 YAML (Viper was not used) |
 | Git Operations | System Git via `exec.Command` | -- | All Git operations use system Git binary (go-git was not used) |
 | Logging | `log/slog` (stdlib) | Go 1.26 | Structured, leveled logging with JSON and text handlers |
 | Testing | `testing` (stdlib) | Go 1.26 | Standard test framework with benchmarks and fuzzing |
@@ -142,7 +142,7 @@ The following dependencies were considered during planning but replaced with sim
 
 | Planned Package | Replacement | Rationale |
 |----------------|-------------|-----------|
-| `github.com/spf13/viper` | Custom YAML loader (14 `loader_*.go` files) | Simpler, type-safe configuration without Viper's complexity |
+| `github.com/spf13/viper` | Custom YAML loader (13 `loader_*.go` files) | Simpler, type-safe configuration without Viper's complexity |
 | `github.com/go-git/go-git/v5` | System Git via `exec.Command` | Full Git feature coverage including worktrees without library limitations |
 | `go.lsp.dev/protocol` | `github.com/charmbracelet/x/powernap` + in-tree types in `internal/lsp/` | Multi-language LSP client without `go.lsp.dev` coupling |
 | `go.lsp.dev/jsonrpc2` | `powernap` JSON-RPC codec in `internal/lsp/transport/` | Lightweight implementation tailored to MoAI's needs |
