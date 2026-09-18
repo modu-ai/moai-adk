@@ -21,6 +21,7 @@ tier: M
 | Date | Version | Change |
 |---|---|---|
 | 2026-09-18 | 0.1.0 | Plan-phase authoring. Card t894 — axis 1 of card t801, split out by the lead after the reporting-volume measurement. |
+| 2026-09-18 | 0.1.0 | In-card rationale correction (no version bump — prose only) (card t894, lead-directed). §A.3 and §D attributed the `8 → 36` / `28 fewer` `ModalityMalformed` figures to the probe's first-line extractor and stated the shipped extractor's measurement (180 → 181, +1, tree `4ff316bd8`). The "finds more real defects" half of the variant-B rationale is not reproduced by the shipped extractor and was removed; the projection figures are kept, not deleted. Requirements, AC, scope, and the variant decision are unchanged. |
 
 Lineage. Card t801 carried two independent collection gaps. The lead split them:
 
@@ -120,10 +121,38 @@ Read the two columns against each other. Under A, `ModalityUnjudged` fires on
 **1021 of 1029** collected entries — 99.2%. A signal that fires on essentially
 every member of its population is a constant, not a signal: it reports that the
 collector fed the judge a title, and nothing about the requirement. Under B the
-total falls **57%** AND `ModalityMalformed` rises **8 → 36**: B finds **more real
-defects while producing less noise**. That combination is what distinguishes B
-from suppression — suppression lowers both numbers, and B raises the one that
-matters.
+total falls **57%** and `ModalityMalformed` rises **8 → 36**.
+
+> **[HARD] Instrument attribution — corrected at run-phase close; do not restore the
+> deleted claim.** The `8 → 36` above (and §D's `28 fewer`) is the PROBE's
+> **first-line extractor**: it takes only the first non-empty line below the heading.
+> The extractor that SHIPPED takes the whole run of consecutive non-empty lines
+> (plan.md §B), and its measured linter delta is `ModalityMalformed` **180 → 181,
+> delta +1** — measured against the real linter at tree **`4ff316bd8`**, not projected.
+> The two differ because **35 of the probe's 36 are artifacts of the probe's own
+> truncation**: they are requirements whose `SHALL` sits on a later line, so cutting at
+> the first line hid the token and the judge read the fragment as malformed. Joining
+> the whole paragraph restores the `SHALL` and the requirement judges as conforming
+> (the M2 evidence phase measured all 35 as having a joined tail that supplies `SHALL`,
+> with zero non-prose tails).
+>
+> The consequence is stated plainly: the **"finds more real defects" half of the
+> original reading is NOT reproduced by the extractor that shipped.** The clause "B
+> finds more real defects while producing less noise" was false of the shipped
+> collector and has been removed rather than softened.
+>
+> This is **not suppression**. Those 35 are not defects the shipped collector declines
+> to report — they are defects the PROBE invented; not reporting them is the accurate
+> outcome. B's lower count comes from removing an instrument artifact, never from
+> withholding a finding the collector reaches.
+>
+> **Variant B still ships, and the shipped measurement supports it MORE strongly than
+> the projection did**, on the axis that actually decides — the noise ratio:
+> **0.99 under A against 0.043 under B** (`ModalityUnjudged` delta **+44** over **1031**
+> newly collected entries, same tree). A signal firing on 99% of its population is a
+> constant, not a signal. The `8 → 36` and `28 fewer` figures are KEPT, not deleted:
+> they were the actual inputs to the plan-phase decision and must stay recoverable
+> from this SPEC — they are simply labelled as the probe's projection.
 
 `CoverageIncomplete` is **471 under both** because it keys on the ID, never on the
 text. It is the part of the delta that is inherent to collecting at all.
@@ -204,7 +233,7 @@ The following are deliberately out of scope for this SPEC.
 ### Out of Scope — staged rollout and any other suppression device
 
 - A staged rollout, a per-code opt-in flag, a finding-count cap, a per-file allowlist, or a "new SPECs only" cutoff are all rejected (REQ-HRC-009). Staging is itself a suppression device: it converts an activated finding into a deferred one while reporting the work as done. Every affected code is ALREADY advisory — `ModalityUnjudged` and `CoverageIncomplete` set `Advisory: true` at their emission sites regardless of provenance, and the remaining four are demoted for these entries by `reqFindingSeverity` via `Widened` (REQ-HRC-007) — so **nothing gates**, and there is no gate-breakage that staging would be protecting against.
-- Variant A (heading title as `Text`) is rejected on the measurement, not on preference: it reports 1500 findings of which 1021 are a constant, and finds 28 fewer `ModalityMalformed` defects than variant B (§A.3).
+- Variant A (heading title as `Text`) is rejected on the measurement, not on preference: it reports 1500 findings of which 1021 are a constant. The accompanying "28 fewer `ModalityMalformed` defects than variant B" is the PROBE's first-line-extractor projection and is NOT reproduced by the extractor that shipped — whose measured delta is `ModalityMalformed` 180 → 181 (+1) at tree `4ff316bd8`, because 35 of the probe's 36 were artifacts of its own truncation (§A.3, instrument-attribution note). The figure is kept as the plan-phase input it was; the deciding axis is the noise ratio — 0.99 under A against 0.043 under B — on which variant A is rejected more strongly than the projection suggested.
 
 ### Out of Scope — corpus remediation
 
