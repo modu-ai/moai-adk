@@ -2,7 +2,7 @@
 id: SPEC-INIT-DEPLOY-EXIT-001
 title: "moai init 템플릿 배포 실패를 치명적 오류로 승격 — exit 0 오보고 제거"
 version: "0.1.0"
-status: in-progress
+status: completed
 created: 2026-09-18
 updated: 2026-09-18
 author: manager-spec

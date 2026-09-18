@@ -214,4 +214,94 @@ m1_to_mN_commit_strategy: 미커밋 — 리드가 통합 창에서 커밋
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase>_
+측정 기준: 워크트리 `/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t931`, 브랜치 `WT-init-render-exit`,
+run-phase 커밋 `5defba550` 착지 후 작업 트리. 아래는 manager-docs 가 이번 회차에 직접 실행하고 관측한 것만
+적는다. run 단계 측정치를 재사용한 항목은 그렇게 밝힌다.
+
+```yaml
+sync_complete_at: 2026-09-18
+sync_commit_sha: pending-backfill
+sync_status: complete
+b12_self_test_a: pass       # grep -c 'SPEC-INIT-DEPLOY-EXIT-001' CHANGELOG.md → 0 (추가 전)
+b12_self_test_b: pass       # acceptance.md AC 식별자 8개 == progress.md ac_total_count 8
+b12_self_test_c: pass       # CHANGELOG 가 인용한 9개 경로 전부 ls 로 실재 확인
+changelog_entry_position: "[Unreleased] → 첫 ### Fixed 최상단 (CHANGELOG.md:34)"
+frontmatter_status_transitions:
+  spec.md: "in-progress → completed (updated: 2026-09-18)"
+  plan.md: n/a              # frontmatter 없음 — head -5 로 확인
+  acceptance.md: n/a        # frontmatter 없음
+  progress.md: n/a          # frontmatter 없음
+canary_compliance_check:
+  applicable: false         # 이 SPEC 은 전향적 정책을 정의하지 않는다 (종료 코드 동작 수리)
+docs_site_locale_sync: not-needed   # 근거는 아래 문서 스윕
+ac_gap_count: 1             # AC-IDE-008 여전히 미해결 — sync 단계에서도 e2e 미실행
+```
+
+### 문서 스윕 — 측정한 결과
+
+`moai init` 의 실패 시 동작·종료 코드를 주장하는 사용자 문서가 있는지 확인했다. **없다.**
+
+```
+$ grep -rniE 'exit code|exit status|종료 코드|終了コード|退出码|退出状态' docs-site/content/ README*.md
+  → 40+ 행이 잡혔으나 전부 hooks / doctor / spec / worktree / update / goal 문맥.
+     moai init 의 종료 코드를 언급한 행은 0.
+
+$ grep -rniE 'fail|실패|失敗|失败|warn|경고|警告|rollback|불완전|incomplete' \
+    docs-site/content/*/cli-reference/init.md docs-site/content/*/getting-started/init-wizard.md
+docs-site/content/en/getting-started/init-wizard.md:131:- **Enforce quality gates** (default: Yes) — ...
+docs-site/content/ko/getting-started/init-wizard.md:131:- **Enforce quality gates** (기본값: Yes) — ...
+docs-site/content/ja/getting-started/init-wizard.md:131: (동일 행)
+docs-site/content/zh/getting-started/init-wizard.md:131: (동일 행)
+  → 유일한 적중은 품질 게이트 설정 항목이며, init 의 배포 실패 처리와 무관.
+```
+
+**무출력을 그대로 믿지 않기 위한 양성 대조**를 같은 회차에 붙였다. 첫 시도의 좁힌 grep 이 무출력이었는데,
+그것이 "주장이 없다" 인지 "내 명령이 파일을 못 봤다" 인지 구별되지 않기 때문이다.
+
+```
+$ ls -1 docs-site/content/*/cli-reference/init.md docs-site/content/*/getting-started/init-wizard.md
+  → 8개 파일 전부 존재
+$ grep -rc 'init' docs-site/content/*/cli-reference/init.md
+docs-site/content/en/cli-reference/init.md:15
+docs-site/content/ko/cli-reference/init.md:11
+docs-site/content/zh/cli-reference/init.md:11
+docs-site/content/ja/cli-reference/init.md:11
+```
+
+파일은 읽혔고 양성 토큰은 잡혔다. 따라서 위 무적중은 계측 실패가 아니라 **주장 부재**다.
+docs-site 4-locale 동기화 의무는 발동하지 않는다 — 고칠 문장이 없다.
+
+### 범위 규율 재확인 (manager-docs 직접 측정)
+
+```
+$ grep -c 'result.Warnings = append' internal/core/project/initializer.go
+7
+$ git show --stat 5defba550 -- internal/template/templates/
+(출력 없음 — 템플릿 트리 변경 0건)
+```
+
+나머지 일곱 경고 지점이 그대로 있고(줄 226·246·265·282·303·314·406), `internal/template/templates/` 는
+run 커밋이 건드리지 않았다. `spec.md` §C 의 범위 선언과 일치한다.
+
+### Gaps (sync 단계에서 관측하지 않은 것)
+
+- **AC-IDE-008 은 여전히 열려 있다.** `e2e/cli/tux3_journeys.sh` J1/J1b 는 sync 단계에서도 실행하지
+  않았다. §E.3 의 `ac_gap_count: 1` 은 닫히지 않았고, 이 절이 그것을 닫지도 않는다.
+- CHANGELOG 항목이 인용한 **77 / 596 / exit 0** 수치는 manager-docs 가 측정한 값이 아니다. §E.3 에
+  기록된 오케스트레이터(lane session) 측정의 전재이며, 이번 회차에 재측정하지 않았다.
+- `go test` / `go vet` / `golangci-lint` / `make build` 를 sync 단계에서 재실행하지 않았다. 이 커밋은
+  Go 소스를 건드리지 않으므로(변경 파일은 CHANGELOG.md · spec.md · progress.md) run 단계 게이트를
+  무효화할 편집이 없다는 판단이다. 재측정하지 않았다는 사실 자체는 여기 남긴다.
+- CHANGELOG 문안의 사실 주장 중 내가 직접 확인한 것은 범위 규율 두 건(경고 지점 7개 잔존, 템플릿 변경
+  0건)과 인용 경로 9개의 실재뿐이다. 나머지 동작 서술은 구현 diff 독해와 §E.2/§E.3 기록에 근거한다.
+
+### Residual-risk
+
+- `sync_commit_sha: pending-backfill` 은 커밋이 자기 해시를 인용할 수 없어서 남긴 자리다. 백필하지
+  않으면 이 SPEC 의 sync 증거는 커밋에 귀속되지 않은 채 남는다.
+- 문서 스윕은 `moai init` 의 **종료 코드·실패 동작** 주장만 겨눴다. init 을 언급하는 문서는 README 4본과
+  docs-site 108개 파일에 걸쳐 있으며, 그 전부를 다른 축(예: 배포 파일 수, 마법사 흐름)으로 재검사하지는
+  않았다. 다른 축의 스테일 서술이 있다면 이 스윕은 보지 못한다.
+- CHANGELOG 항목은 소비자 영향을 "`moai init` 이 이제 0 이 아닌 값으로 끝날 수 있다" 로 밝혔다. 저장소
+  밖 사용자 자동화가 `moai init` 의 종료 코드 0 을 전제하고 있다면 이 변경으로 붉어지며, 그 인구는
+  측정 대상이 아니었다.
