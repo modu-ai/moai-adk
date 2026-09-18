@@ -149,12 +149,23 @@ lines).
 ### AC-RNA-010 — Baseline-first ordering is witnessed by the commit graph
 
 **Given** the run-phase baseline artifact's commit `$BASE`, and the **first implementation
-commit** `$IMPL` — defined mechanically as the first commit on this branch that modifies a file
-under `internal/harness/rosterguard/`:
+commit** `$IMPL` — defined mechanically as the first commit that adds this card's own new layer
+file, `internal/harness/rosterguard/numeral.go`:
 
 ```
-IMPL=$(git log --reverse --format=%H WT-numeral-roster-guard -- internal/harness/rosterguard | head -1)
+IMPL=$(git log --reverse --format=%H HEAD -- internal/harness/rosterguard/numeral.go | head -1)
 ```
+
+The anchor is that one new path, NOT the `internal/harness/rosterguard/` directory. Measured on
+this branch after absorbing develop, a directory anchor resolves to `bdaafe6fe`, card t922's own
+commit creating the package, and the marker-expiry repair `9e5b9e3b7` follows it — neither is
+this card's implementation, and both PRECEDE any baseline this card can land, so a directory
+anchor makes this criterion unsatisfiable rather than strict. A card's own new file is the only
+anchor that stays this card's, because absorbing an integration branch brings other cards'
+commits into the same directory but cannot bring this path.
+
+This also fixes the layer's file name as part of the criterion: a layer landing anywhere else
+leaves `$IMPL` empty, and an empty `$IMPL` fails rather than passing vacuously.
 
 **When** the ancestry is decided by a single invocation
 **Then** `git merge-base --is-ancestor "$BASE" "$IMPL"` exits **0** and `$BASE != $IMPL`. A
