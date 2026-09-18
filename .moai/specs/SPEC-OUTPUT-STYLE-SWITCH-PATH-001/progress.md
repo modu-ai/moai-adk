@@ -120,7 +120,7 @@ m1_to_mN_commit_strategy: one content commit (`71a4d3b4e`) on `WT-output-style-s
 
 ```yaml
 sync_complete_at: 2026-09-18
-sync_commit_sha: pending-backfill-sync   # a commit cannot cite its own hash; backfilled in a following commit
+sync_commit_sha: 3dce45300   # backfilled in the following commit — a commit cannot cite its own hash
 sync_status: complete
 b12_self_test_a: "grep -c 'SPEC-OUTPUT-STYLE-SWITCH-PATH-001' CHANGELOG.md → 0 before append (no duplicate entry). Positive control on the same command: SPEC-SIBLING-MAPS-SHORTHAND-001 → 1, so the 0 is an absence and not a dead command."
 b12_self_test_b: "AC ids in acceptance.md: 14 distinct tokens (AC-OSP-001..011 + AC-OSP-GATE-001..003), each a live criterion. CHANGELOG entry cites 14 — matches §E.3 (ac_pass_count 14 / ac_fail_count 0)."
