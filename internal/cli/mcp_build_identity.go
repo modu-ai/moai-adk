@@ -23,8 +23,24 @@ import (
 // Fail-open by construction (REQ-ABI-005): an unusable build commit yields
 // ("", "") and the audit is untouched — a dev build reports no identity
 // rather than a fake one. The lag comparison is obtained exclusively through
-// binlag.Evaluate, the one ancestry comparison in the tree (REQ-ABI-006);
+// binlag.Evaluate, the one BINARY-LAG comparison in the tree (REQ-ABI-006);
 // nothing here re-implements it.
+//
+// "binary-lag" is the load-bearing qualifier, not decoration. REQ-ABI-006
+// forbids a second comparison of the running binary against its source; it
+// does not forbid ancestry comparison as such, and internal/cli holds several
+// that answer different questions — evidence-chain descent in
+// home_state_coverage.go, referential integrity between two operator-named
+// revisions in todo_landed.go and todo_autodone.go. The REQ-ABI-006 sweep in
+// mcp_build_identity_test.go lists each of them as a declared coordinate and
+// says per coordinate why binlag.Evaluate is not its owner.
+//
+// An earlier wording here called binlag.Evaluate "the one ancestry comparison
+// in the tree", which is measurably false — the sweep's own baseline names
+// seven ancestry coordinates outside binlag. Card t767 read that sentence
+// literally and raised a contract violation that did not exist; card t892
+// measured the tree, found the contract intact, and narrowed the claim to what
+// it was always meant to say.
 //
 // When no reviewed tree was named (audit_multi's documented normal call —
 // resolveOptionalToolProjectRoot returns "" deliberately), the COMPARISON
