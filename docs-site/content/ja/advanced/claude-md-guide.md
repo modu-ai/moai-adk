@@ -108,7 +108,7 @@ MoAI-ADK は **13 個の保存エージェント** (12 個 MoAI-custom + 1 個 A
 | Evaluator (2) | plan-auditor, sync-auditor | 計画/完了ステップの独立した品質評価 |
 | Builder (1) | builder-harness | 動的なプロジェクト別ハーネス生成 |
 | Advisor (1) | super-advisor | 高推論の助言 (E1-E4 エスカレーション) |
-| Specialist (2) | e2e-specialist, mission-governor | Web/モバイル/デスクトップの E2E テスト実行 (`/moai e2e`)、承認済み GTD 自動ミッションに対する読み取り専用の判定 |
+| Specialist (2) | e2e-tester, mission-governor | Web/モバイル/デスクトップの E2E テスト実行 (`/moai e2e`)、承認済み GTD 自動ミッションに対する読み取り専用の判定 |
 | Built-in (1) | Explore (Anthropic) | 読み取り専用のコードベース探索 |
 
 ### 5. SPEC ワークフロー
