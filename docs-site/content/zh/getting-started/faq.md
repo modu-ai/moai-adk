@@ -85,9 +85,9 @@ MoAI-ADK 会根据 Claude Code 订阅套餐为智能体分配最优 AI 模型。
 
 | 策略 | 特点 |
 |------|------|
-| **high** | 最高质量 — 对调用频率最低的两个智能体使用 `max` 推理深度 |
+| **high** | 最高质量 — `builder-harness` 与 `e2e-tester` 各比默认列上调一级。没有任何行取 `max` |
 | **medium**（默认） | 质量与成本的平衡 — 成本/评分曲线的拐点 |
-| **low** | 每任务成本最低 — agentic 智能体降到 Opus `low` effort |
+| **low** | 每任务成本最低 — 审计·协调行降到 `medium`，`builder-harness` 降到 Opus `low`，`e2e-tester` 降到 Sonnet。只有 `super-advisor` 与 `mission-governor` 保持 `high` |
 
 {{< callout type="warning" >}}
 **为什么重要？** 降低层级降低的是*推理深度*，而不是模型级别。在长时程 agentic 任务中，Opus 的 `low` effort 比任何 effort（包括 `max`）的 Sonnet 评分更高、每任务成本更低 — 账单由模型完成任务所花的步数决定，而不是按 token 的单价。因此 `low` 是在 Opus 内部节省，仅在不存在多步完成失败问题的单次调用行（`manager-git`、`Explore`）上才使用 Sonnet。
@@ -101,21 +101,21 @@ MoAI-ADK 会根据 Claude Code 订阅套餐为智能体分配最优 AI 模型。
 
 | 智能体 | high | medium | low |
 |---------|------|--------|-----|
-| manager-spec | opus / high | opus / medium | opus / low |
-| manager-develop | opus / max | opus / medium | opus / low |
-| manager-docs | opus / medium | opus / low | sonnet / low |
+| manager-spec | opus / medium | opus / medium | opus / medium |
+| manager-develop | opus / medium | opus / medium | opus / medium |
+| manager-docs | sonnet / low | sonnet / low | sonnet / low |
 | manager-git | sonnet / low | sonnet / low | sonnet / low |
-| manager-design | opus / high | opus / medium | opus / low |
+| manager-design | opus / high | opus / high | opus / medium |
 | manager-lead | opus / high | opus / high | opus / medium |
 
 #### Evaluator · Builder · Advisor · Specialist Agents（6 个）
 
 | 智能体 | high | medium | low |
 |---------|------|--------|-----|
-| plan-auditor | opus / high | opus / medium | opus / low |
-| sync-auditor | opus / high | opus / medium | opus / low |
+| plan-auditor | opus / high | opus / high | opus / medium |
+| sync-auditor | opus / high | opus / high | opus / medium |
 | builder-harness | opus / high | opus / medium | opus / low |
-| super-advisor | opus / max | opus / high | opus / medium |
+| super-advisor | opus / high | opus / high | opus / high |
 | e2e-tester | opus / medium | opus / low | sonnet / low |
 | mission-governor | opus / high | opus / high | opus / high |
 

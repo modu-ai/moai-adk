@@ -251,7 +251,7 @@ MoAI is the **strategic orchestrator**. It does not write code directly — it d
 | | manager-docs | 🔵 | Sync phase: documentation and PR creation |
 | | manager-git | 🩵 | Git workflow and tier-based PR routing |
 | | manager-design | 🟠 | Design phase: Claude Design collaboration |
-| | manager-lead | ⚪ | Tier L multi-milestone coordination (worktree-isolated leaf-worker fan-out · the catalog's only Agent-carrier) |
+| | manager-lead | 🔴 | Tier L multi-milestone coordination (worktree-isolated leaf-worker fan-out · the catalog's only Agent-carrier) |
 | **Evaluator** | plan-auditor | 🔴 | Independent audit of SPEC plans (bias prevention) |
 | | sync-auditor | 🔴 | 4-dimension quality assessment (Functionality 40 · Security 25 · Craft 20 · Consistency 15) |
 | **Builder** | builder-harness | 🟠 | Project-specific harness (agents/skills/commands) generation |
@@ -260,7 +260,7 @@ MoAI is the **strategic orchestrator**. It does not write code directly — it d
 | | mission-governor | 🔴 | Reads the sealed snapshot of an approved GTD auto mission and returns one decision (read-only; a deterministic executor performs any action) |
 | **Built-in** | Explore | ⚪ | Read-only codebase exploration |
 
-Cost colors follow the default `medium` profile's model×effort cells (inspect via `moai model profile`): 🔴 opus+high · 🟠 opus+medium · 🔵 opus+low · 🩵 sonnet+low · ⚪ session-model inherit (`manager-lead` `model: inherit`, user-added agents). Assignments shift when switching profiles (`high`/`low`).
+Cost colors follow the default `medium` profile's model×effort cells (inspect via `moai model profile`): 🔴 opus+high · 🟠 opus+medium · 🔵 opus+low · 🩵 sonnet+low · ⚪ session-model inherit (user-added agents). Assignments shift when switching profiles (`high`/`low`).
 
 ```mermaid
 flowchart TD
