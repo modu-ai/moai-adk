@@ -106,6 +106,18 @@ package spec
 //	maps path  (this file, the LOCATOR layer) → CLOSED. Cost measured 0.
 //	table path (cellREQIDs, the EXPANDER layer) → OPEN. Cost measured 12.
 //
+// THE CLOSING-TOKEN SET IS FIVE, NOT FOUR. A tail may be followed by end of
+// line, `)`, `:`, an em dash, or a markdown table-cell `|`. The candidate this
+// declaration recorded before the measurement named only the first four; `|` was
+// added when the corpus was counted, because 22 live `maps` sections sit inside a
+// table cell and are terminated by a pipe. None of those 22 ends in a bare tail
+// today, so the four-token list costs nothing right now — and would have
+// truncated a correct tail the first time a table-cell author wrote the
+// shorthand, with no signal that it had. The set here and the pattern in
+// siblingMapsTailBoundary are the same five deliberately: a declaration naming a
+// different set from the code is how the next reader loses track of which one was
+// intended.
+//
 // Why the same rule closes one and not the other — it is the LAYER, not the
 // path. The locator captures the id list and hands only that to cellREQIDs, so
 // the prose that justifies rejecting a tail is destroyed between the two layers:
@@ -176,13 +188,10 @@ var siblingMapsSectionPattern = regexp.MustCompile(`(?i)maps[ \t]+(REQ-[A-Z0-9-]
 // captured section whose LAST element is a bare numeric tail: end of line, `)`,
 // `:`, an em dash, or a markdown table-cell `|`.
 //
-// The first four are the set the prose declaration above recorded. `|` is added
-// on measurement: 22 `maps` sections in the live corpus sit inside a table cell
-// and are terminated by a pipe, so a list closed by `|` is an ordinary form
-// rather than an over-reach, and omitting it would truncate a correct tail the
-// first time a table-cell author wrote the shorthand. Nothing in the corpus
-// exercises that shape today, which is exactly why the omission would have been
-// silent.
+// These five are the set the RESIDUAL STATUS declaration above states, and the
+// two are kept in step on purpose — see there for why `|` belongs in it (22 live
+// `maps` sections sit in a table cell, terminated by a pipe).
+//
 // The `\n` / `\r` alternatives are load-bearing, not redundant with `$`: Go's
 // RE2 `$` matches at end of TEXT, never before a trailing newline the way Perl's
 // does, so a section that ends its line would be truncated without them.
