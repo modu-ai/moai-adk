@@ -149,7 +149,7 @@ $ git status --short
 
 ```yaml
 run_complete_at: 2026-09-18
-run_commit_sha: pending-backfill
+run_commit_sha: 5defba550   # run-phase 구현 커밋 — D3 백필 창에서 채움
 run_status: complete
 ac_total_count: 8
 ac_pass_count: 7          # AC-IDE-001~007
