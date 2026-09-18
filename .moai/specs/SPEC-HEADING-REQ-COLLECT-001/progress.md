@@ -379,6 +379,79 @@ AC-HRC-002/003/004/006/011 were NOT re-measured in M2 — they are M1-owned and 
 forward on M1's evidence. No cross-platform build, coverage, or full-suite run was
 re-observed in M2 (no source changed); `go test ./...` was deliberately not run.
 
+### M2 addenda (lead-directed, second round) — measured at `4ff316bd8`
+
+**A1 — AC-HRC-006's grep clause is a pre-existing wrong-reason red: Gap, not a pass.**
+`grep -n '[S]ource' internal/spec/lint.go | grep 'reqFindingSeverity'` returns **one
+row on both trees**, byte-identical, line 564 — and that line IS the prohibition
+comment:
+
+```
+564:	// [HARD] Source MUST NOT reach reqFindingSeverity, or any other severity
+```
+
+Same single row at `dcfad4805` (archive extraction). The clause was unsatisfiable
+before this card existed and M1 changed nothing about it — red at arrival, red after,
+caused by content the work never touches (`verification-completeness.md` §2,
+wrong-reason-red). The AC's own text calls the grep "a tripwire, not enforcement" and
+names the flip test as load-bearing; M1 discharged that half
+(`TestHeadingCollection_SourceDoesNotDecideSeverity`). **Load-bearing half PASS, grep
+clause a Gap.** Repair needs a pattern excluding comment lines = an `acceptance.md`
+amendment, NOT this card's to make → follow-up-card candidate.
+
+*Correction to M1's figure, precisely.* This section previously wrote "the prohibition
+comments at 564/566/589". That is **correct for the grep M1 ran** (`grep -n
+reqFindingSeverity internal/spec/lint.go` — 8 rows at base, 9 at HEAD, M1 having added
+589) and **wrong if read as the AC's grep**, which yields one row: 566 and 589 name
+`reqFindingSeverity` but carry no `Source` token on the same line, so the pipe excludes
+them.
+
+**A2 — GATE-003 baseline.** Already measured in round 1 and quoted in the M2 gate
+table: `0 issues.` at HEAD and `0 issues.` at `<base>`. Stated plainly as directed: the
+base reports **0**, so NEW cannot exceed 0 — the criterion is met by a **zero floor**,
+which is a different fact from "a change that could have introduced issues introduced
+none". Both hold here; only the first is what was measured.
+
+**A3 — guard refusal worth recording** (`verification-claim-integrity.md` §3.1). The
+worktree guard refuses `grep 'Source' …` because the literal pattern spells the shell
+builtin `source` — nothing to do with git. `[S]ource` passes and produced A1. Third and
+fourth refusal classes this run (others: compound `git archive` loop; heredocs feeding
+`python3`/`cat`); every one was re-issued in an accepted form and **executed**.
+
+**A4 — M1's residual risk 3 measured at corpus scale: contributes ZERO.** The risk was
+that joining a multi-line paragraph merges a bullet / table row / fence opener into the
+judged statement. `ModalityMalformed` runs *below* projection, which is precisely where
+a **false negative** would hide, so it was measured rather than dismissed:
+
+```
+--- SILENCED (probe malformed -> shipped not malformed): 35
+---   of which the joined TAIL supplies a SHALL: 35
+---   of which the joined TAIL is NON-PROSE (fence/table/bullet): 0
+```
+
+35 = exactly the 36 → 1 gap; **none** has a non-prose tail. Verified against the texts,
+not just my shape classifier — e.g. `REQ-CDPG-001`, probe first line `While
+configPathSeparator is pinned to '\\', when codexStaleSkillFinding judges a config`,
+joined tail `entry declaring an absolute slash-form path, the test suite shall observe
+…`. These are **one prose sentence wrapped across source lines** with the `shall` on
+the continuation line: the joining **recovers** the requirement, it does not
+contaminate it. (`REQEntry.Line` is 1-based into `doc.Body` with frontmatter stripped,
+so it is NOT the file line — a first spot-check that `sed`'d it as one landed on the
+wrong paragraph and was discarded.)
+
+**A4a — a consequence A4 exposes: one clause of the shipped rationale is unsupported.**
+`internal/spec/lint_req_heading.go`'s header justifies variant B partly by "raises
+ModalityMalformed 8 → 36 — it finds MORE real defects while producing LESS noise". The
+`8 → 36` are the PROBE's figures under its first-line extractor; the **shipped**
+whole-paragraph extractor yields a real-linter delta of **+1**, because 35 of that 36
+are truncation artifacts (A4). The "finds MORE real defects" half is therefore **not
+reproduced by the collector that shipped**. This does NOT change the variant decision —
+B is better supported than the comment claims (noise ratio 0.043 vs A's 0.99), and
+declining to report 35 truncation artifacts is accuracy, not suppression — but the
+comment's stated evidence is wrong at the shipped extractor, and a reader re-deriving
+the decision from that sentence would be misled. Repair edits a source file, which M2
+must not do → **flagged as an M3 / follow-up-card candidate** alongside A1.
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 _<pending run-phase>_
