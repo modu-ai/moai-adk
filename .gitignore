@@ -130,11 +130,27 @@ logs/*
 # Template-distributed Codex agent artifacts ARE committed (SPEC-CODEX-DUAL-AGENTS-001);
 # re-include the template subtree excluded by the bare .codex/ rule above.
 !internal/template/templates/.codex/
-.agents/*
-!.agents/skills/
-.agents/skills/*
-# Publish only the generated Codex command-skill entrypoints. Keep every other
-# local .agents artifact, unlisted skill, and per-skill sidecar ignored.
+# The skill catalog is deployed to .claude/skills/ and exposed a second time
+# under .agents/skills/ so agent runtimes that scan that path can see it. The
+# mirror is regenerated on every deploy, and on a checkout without symlink
+# support each entry materializes as a plain text file — neither belongs in
+# version control.
+#
+# Only the generated entries are ignored. The .agents/ root itself is NOT:
+# entries you create there, and source files placed there later, stay tracked.
+# One pattern covers the whole generated set because both writers into this
+# root (mirrorSkills and RepairSkillMirror) take their names from the template
+# FS and never from a .claude/skills listing (REQ-UMH-007), and every template
+# skill name is moai-prefixed. A name outside that set is hand-authored, and
+# hand-authored entries are what the preceding paragraph deliberately tracks.
+.agents/skills/moai*
+#
+# The published /moai command skills (committed template-managed content,
+# not deploy-time build products) share this root under moai-<command>
+# names. The publisher's collision guard keeps those names disjoint from
+# the canonical mirror names above, so each published entry is re-included
+# explicitly; a new command must extend this list alongside its source.
+# The set is publishedSkillNames in internal/template/published_skills.go.
 !.agents/skills/moai-clean/
 !.agents/skills/moai-codemaps/
 !.agents/skills/moai-e2e/
@@ -152,24 +168,6 @@ logs/*
 !.agents/skills/moai-run/
 !.agents/skills/moai-sync/
 !.agents/skills/moai-todo/
-.agents/skills/*/*
-!.agents/skills/moai-clean/SKILL.md
-!.agents/skills/moai-codemaps/SKILL.md
-!.agents/skills/moai-e2e/SKILL.md
-!.agents/skills/moai-feedback/SKILL.md
-!.agents/skills/moai-fix/SKILL.md
-!.agents/skills/moai-gate/SKILL.md
-!.agents/skills/moai-goal/SKILL.md
-!.agents/skills/moai-gtd/SKILL.md
-!.agents/skills/moai-harness/SKILL.md
-!.agents/skills/moai-loop/SKILL.md
-!.agents/skills/moai-mx/SKILL.md
-!.agents/skills/moai-plan/SKILL.md
-!.agents/skills/moai-project/SKILL.md
-!.agents/skills/moai-review/SKILL.md
-!.agents/skills/moai-run/SKILL.md
-!.agents/skills/moai-sync/SKILL.md
-!.agents/skills/moai-todo/SKILL.md
 # AGENTS.md is NOT ignored: the root file is this repository's tracked contract
 # document, and the template mirror ships it to users.
 

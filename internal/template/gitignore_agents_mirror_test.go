@@ -93,85 +93,31 @@ func TestGitignore_IgnoresSkillMirrorOnly(t *testing.T) {
 	}
 }
 
-// rootStaleness records a presently-known, narrowly-scoped non-conformance
-// of the repository root .gitignore against the narrow .agents invariant,
-// so the guard below can pass today without weakening the assertion it
-// makes and without silently widening what it tolerates. This follows the
-// KnownStale idiom in internal/harness/rosterguard (see
-// TestRegisteredSitesMatchTheirDeclaredAxis there): a marker is
-// self-expiring — once the observed lines no longer match the declared
-// gap, checkRootAgentsInvariant fails and asks the reader to re-measure and
-// delete the marker, rather than staying silently green forever.
-type rootStaleness struct {
-	// forbiddenLine is the exact whole-.agents-root pattern the marker
-	// declares is still present on the root file. Empty means the
-	// marker declares no such line.
-	forbiddenLine string
-	// mirrorMissing records whether the narrow mirror pattern
-	// (mirrorIgnorePattern) is declared as not-yet-present on the root
-	// file.
-	mirrorMissing bool
-	// owningCard names the card/branch that owns the repair, so a
-	// re-measure failure points the reader somewhere.
-	owningCard string
-}
-
-// rootAgentsKnownStale declares the presently-known gap between the
-// repository root .gitignore and the narrow .agents invariant enforced by
-// TestGitignore_IgnoresSkillMirrorOnly above. Root and template .gitignore
-// are NOT required to be byte-identical or to share identical .agents
-// blocks — they legitimately differ on hand-authored entries — but both
-// MUST satisfy the narrow invariant: no whole-.agents-root ignore pattern,
-// and the narrow mirror pattern present. Card t912 (branch
-// WT-agents-ignore-form) owns the repair: it replaces the root file's
-// .agents block with the template-shaped narrow form, in one commit that
-// resolves both declared gaps together.
-var rootAgentsKnownStale = rootStaleness{
-	forbiddenLine: ".agents/*",
-	mirrorMissing: true,
-	owningCard:    "card t912 (branch WT-agents-ignore-form)",
-}
-
 // checkRootAgentsInvariant applies the same two checks
 // TestGitignore_IgnoresSkillMirrorOnly runs against the template source and
 // embedded FS — no whole-.agents-root ignore pattern, and the narrow mirror
-// pattern present — to an arbitrary line set, honoring a declared
-// KnownStale marker. It is a pure function so both the real root file and a
-// synthetic post-repair line set can be checked without touching disk; see
-// TestRootAgentsKnownStaleMarkerExpiresOnRepair.
-func checkRootAgentsInvariant(lines []string, stale rootStaleness) []string {
+// pattern present — to an arbitrary line set. It is a pure function, so the
+// invariant is expressible without touching disk.
+//
+// While card t912's repair was outstanding this took a second argument: a
+// self-expiring KnownStale marker (the idiom in internal/harness/rosterguard)
+// declaring the then-known gap — the root file's `.agents/*` deny-all, and the
+// narrow mirror pattern absent from it. That repair and this deletion landed
+// in the same merge: the root file now satisfies the invariant outright, the
+// marker expired exactly as designed, and the exception branch went with it. A
+// forbidden form is now reported unconditionally, because a branch that
+// tolerates a declared one is a bypass available to anyone willing to declare.
+func checkRootAgentsInvariant(lines []string) []string {
 	var bad []string
 
-	// Collect every whole-.agents-root line, not just the first — a marker
-	// that only tolerates the first occurrence would let an additional,
-	// undeclared forbidden form hide behind the declared one.
-	var observedForbidden []string
+	// Report every whole-.agents-root line, not just the first — an
+	// additional forbidden form must not hide behind an earlier one.
 	for _, line := range lines {
 		if _, isBad := wholeAgentsRootPatterns[line]; isBad {
-			observedForbidden = append(observedForbidden, line)
+			bad = append(bad, fmt.Sprintf(
+				"root .gitignore ignores the whole .agents root via %q — narrow the pattern to %q",
+				line, mirrorIgnorePattern))
 		}
-	}
-	declaredForbidden := stale.forbiddenLine != ""
-
-	var undeclared []string
-	matchedDeclared := false
-	for _, line := range observedForbidden {
-		if declaredForbidden && line == stale.forbiddenLine {
-			matchedDeclared = true
-			continue
-		}
-		undeclared = append(undeclared, line)
-	}
-
-	for _, line := range undeclared {
-		bad = append(bad, fmt.Sprintf(
-			"root .gitignore ignores the whole .agents root via %q — narrow the pattern to %q, or declare a rootStaleness marker naming it",
-			line, mirrorIgnorePattern))
-	}
-	if declaredForbidden && !matchedDeclared {
-		bad = append(bad, fmt.Sprintf(
-			"rootAgentsKnownStale declares forbidden line %q but the root .gitignore no longer contains it — the observed gap no longer matches the declared one; re-measure and delete the marker (%s)",
-			stale.forbiddenLine, stale.owningCard))
 	}
 
 	hasMirror := false
@@ -181,16 +127,9 @@ func checkRootAgentsInvariant(lines []string, stale rootStaleness) []string {
 			break
 		}
 	}
-
-	switch {
-	case hasMirror && stale.mirrorMissing:
+	if !hasMirror {
 		bad = append(bad, fmt.Sprintf(
-			"rootAgentsKnownStale declares %q as missing but the root .gitignore now has it — the observed gap no longer matches the declared one; re-measure and delete the marker (%s)",
-			mirrorIgnorePattern, stale.owningCard))
-	case !hasMirror && !stale.mirrorMissing:
-		bad = append(bad, fmt.Sprintf(
-			"root .gitignore has no %q entry and no rootStaleness marker declares it missing",
-			mirrorIgnorePattern))
+			"root .gitignore has no %q entry", mirrorIgnorePattern))
 	}
 
 	return bad
@@ -210,30 +149,7 @@ func TestGitignore_RootFollowsNarrowAgentsInvariant(t *testing.T) {
 		t.Fatalf("read repository root .gitignore: %v", err)
 	}
 	lines := gitignoreLines(t, string(raw))
-	for _, msg := range checkRootAgentsInvariant(lines, rootAgentsKnownStale) {
+	for _, msg := range checkRootAgentsInvariant(lines) {
 		t.Error(msg)
-	}
-}
-
-// TestRootAgentsKnownStaleMarkerExpiresOnRepair proves rootAgentsKnownStale
-// is self-expiring rather than a permanent mute: once a line set matches
-// the template-shaped narrow form the repair (card t912) will land, the
-// still-declared marker fails and names both resolved gaps, asking for the
-// marker's removal. No real file is touched — checkRootAgentsInvariant is a
-// pure function, exercised here against a synthetic line set.
-func TestRootAgentsKnownStaleMarkerExpiresOnRepair(t *testing.T) {
-	repaired := []string{
-		"# unrelated comment",
-		mirrorIgnorePattern,
-		"!.agents/skills/moai-clean/",
-	}
-
-	got := checkRootAgentsInvariant(repaired, rootAgentsKnownStale)
-	if len(got) == 0 {
-		t.Fatal("expected the marker to fail once the declared gap no longer matches the repaired line set, got no violations")
-	}
-	joined := strings.Join(got, "\n")
-	if !strings.Contains(joined, "re-measure") || !strings.Contains(joined, "delete the marker") {
-		t.Errorf("expected a re-measure/delete-the-marker instruction, got: %s", joined)
 	}
 }
