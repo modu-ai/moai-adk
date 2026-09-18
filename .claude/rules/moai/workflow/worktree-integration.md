@@ -537,7 +537,7 @@ Four shapes are pinned in this repository as quoted fixtures (`internal/hook/wor
 
 | Shape | The clause after `…but this command` | Provenance | Pinned |
 |---|---|---|---|
-| Cross-tree redirect via `-C` | `redirects git to the shared checkout via -C` | First-hand, main session (card t529, 2026-09-12); re-measured first-hand at 2.1.275 (card t852) — byte-identical but for the path | `sampleGuardRefusalDashC` |
+| Cross-tree redirect via `-C` | `redirects git to the shared checkout via -C` | First-hand, main session (card t529); re-measured first-hand at 2.1.275 (card t852) — byte-identical but for the path | `sampleGuardRefusalDashC` |
 | Cross-tree redirect via `--git-dir` | `redirects git to the shared checkout via --git-dir` | First-hand, **background subagent** (card t529) | `sampleGuardRefusalGitDir` |
 | Unverifiable command | `is too complex to verify that it stays inside the worktree` | First-hand, main session (card t529); re-measured first-hand at 2.1.275 (card t852) | `sampleGuardRefusalComplex` |
 | Working-directory resolution | `'s working directory resolved to the shared checkout (<path>)` | **Card-quoted, never measured.** The quote is truncated and the continuation is unobserved — the fixture reproduces that truncation deliberately | `sampleGuardRefusalCwdCardQuoted` |
@@ -603,7 +603,7 @@ Ad-hoc detours happen to work — routing the content through an interpreter's o
 
 **Running a compound command → split it into separate plain commands.** Issue the steps one at a time rather than chaining them. Note that this trades away one property worth keeping in mind: an environment scrub written as `unset … && <command>` is load-bearing as a single invocation, because each command runs in a fresh process, so that particular pairing is not one to split apart.
 
-**Versions measured**: the trigger table and the delimiter asymmetry were measured at Claude Code **2.1.251**. The message-shape catalogue, the git-axis counter-example, and the heredoc disagreement were measured at **2.1.275** (card t852; `claude --version` read in the measuring session). The subagent-anchor observations were measured at the version current on 2026-09-14 (card t741), which was not recorded there.
+**Versions measured**: the trigger table and the delimiter asymmetry were measured at Claude Code **2.1.251**. The message-shape catalogue, the git-axis counter-example, and the heredoc disagreement were measured at **2.1.275** (card t852; `claude --version` read in the measuring session). The subagent-anchor observations were measured at the version current when card t741 was measured, which was not recorded there.
 
 Guard behaviour is version-dependent — one shape has already been observed to flip between these two versions — so **state the version whenever you add a row here, and read the version before citing one.** No behaviour above is known to hold at any version other than the one its row names.
 
