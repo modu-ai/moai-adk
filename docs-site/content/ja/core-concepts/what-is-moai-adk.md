@@ -252,7 +252,7 @@ MoAI は **戦略的オーケストレーター** です。直接コードを書
 | | manager-docs | 🔵 | Sync ステップ: ドキュメント化および PR 生成 |
 | | manager-git | 🩵 | Git ワークフローおよび Tier ベースの PR ルーティング |
 | | manager-design | 🟠 | Design ステップ: Claude Design 協業 |
-| | manager-lead | ⚪ | Tier L マルチマイルストーンの調整 (worktree で隔離したリーフワーカーのファンアウト · カタログ唯一の Agent-carrier) |
+| | manager-lead | 🔴 | Tier L マルチマイルストーンの調整 (worktree で隔離したリーフワーカーのファンアウト · カタログ唯一の Agent-carrier) |
 | **Evaluator** | plan-auditor | 🔴 | SPEC 計画の独立した監査 (バイアス防止) |
 | | sync-auditor | 🔴 | 4 次元品質評価 (機能 40 · セキュリティ 25 · 職人技 20 · 一貫性 15) |
 | **Builder** | builder-harness | 🟠 | プロジェクト専用ハーネス (エージェント/スキル/コマンド) の生成 |
@@ -261,7 +261,7 @@ MoAI は **戦略的オーケストレーター** です。直接コードを書
 | | mission-governor | 🔴 | 承認済み GTD 自動ミッションの封印されたスナップショットを読み、判定を 1 つだけ返します (読み取り専用。実行は決定論的な実行器が担当) |
 | **ビルトイン** | Explore | ⚪ | 読み取り専用のコードベース探索 |
 
-コスト色はデフォルト `medium` プロファイルの model×effort セル基準です (`moai model profile` で確認): 🔴 opus+high · 🟠 opus+medium · 🔵 opus+low · 🩵 sonnet+low · ⚪ セッションモデル継承 (`manager-lead` は `model: inherit`、ユーザー追加エージェント)。プロファイル (`high`/`low`) 切り替え時は割り当てが変わります。
+コスト色はデフォルト `medium` プロファイルの model×effort セル基準です (`moai model profile` で確認): 🔴 opus+high · 🟠 opus+medium · 🔵 opus+low · 🩵 sonnet+low · ⚪ セッションモデル継承 (ユーザー追加エージェント)。プロファイル (`high`/`low`) 切り替え時は割り当てが変わります。
 
 ```mermaid
 flowchart TD

@@ -252,7 +252,7 @@ MoAI 是 **战略编排器**。它不亲自写代码,而是把工作委派给 13
 | | manager-docs | 🔵 | Sync 阶段: 文档化与创建 PR |
 | | manager-git | 🩵 | Git 工作流与基于 Tier 的 PR 路由 |
 | | manager-design | 🟠 | Design 阶段: Claude Design 协作 |
-| | manager-lead | ⚪ | Tier L 多里程碑协调(worktree 隔离的叶子工作者扇出 · 目录中唯一的 Agent-carrier) |
+| | manager-lead | 🔴 | Tier L 多里程碑协调(worktree 隔离的叶子工作者扇出 · 目录中唯一的 Agent-carrier) |
 | **Evaluator** | plan-auditor | 🔴 | SPEC 计划的独立审计(防偏见) |
 | | sync-auditor | 🔴 | 4 维质量评估(功能 40 · 安全 25 · 匠心 20 · 一致性 15) |
 | **Builder** | builder-harness | 🟠 | 生成项目专用 harness(智能体/技能/命令) |
@@ -261,7 +261,7 @@ MoAI 是 **战略编排器**。它不亲自写代码,而是把工作委派给 13
 | | mission-governor | 🔴 | 读取已批准的 GTD 自动任务的封存快照，只返回一条判定(只读；实际动作由确定性执行器完成) |
 | **内置** | Explore | ⚪ | 只读代码库探索 |
 
-成本颜色以默认 `medium` 配置文件的 model×effort 单元为准（用 `moai model profile` 查看）：🔴 opus+high · 🟠 opus+medium · 🔵 opus+low · 🩵 sonnet+low · ⚪ 继承会话模型（`manager-lead` 的 `model: inherit`、用户自行添加的智能体）。切换配置文件（`high`/`low`）时分配会变化。
+成本颜色以默认 `medium` 配置文件的 model×effort 单元为准（用 `moai model profile` 查看）：🔴 opus+high · 🟠 opus+medium · 🔵 opus+low · 🩵 sonnet+low · ⚪ 继承会话模型（用户自行添加的智能体）。切换配置文件（`high`/`low`）时分配会变化。
 
 ```mermaid
 flowchart TD

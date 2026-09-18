@@ -242,9 +242,30 @@ secret-*.*
 .moai/cache/
 
 # ===========================================
-# Plan Audit Reports (local artifacts)
-# Plan-audit verdict reports are local artifacts; only .gitkeep is tracked.
+# Runtime Logs (per-machine, never tracked)
+# The root-anchored `logs/*` rule above cannot reach this directory — a pattern
+# with a mid-slash is relative to the .gitignore's own directory, so it matches
+# `<root>/logs/` only. `*.log` covers the log files but not the ledgers written
+# beside them (*.jsonl and friends), so the directory needs its own rule.
+# Only the .gitkeep scaffold is tracked.
 # ===========================================
+.moai/logs/*
+!.moai/logs/.gitkeep
+
+# ===========================================
+# Reports (local artifacts)
+# Everything under .moai/reports/ — plan-audit verdicts, per-card evidence
+# directories, generated analyses — is a local artifact produced by a run on
+# this machine, not source. Only the plan-audit/ scaffold is tracked, so the
+# directory ships with the project while its contents stay local.
+#
+# Rule order is load-bearing: `.moai/reports/*` excludes the plan-audit
+# DIRECTORY, and git cannot re-include a file whose parent directory is
+# excluded — so the directory must be re-included before the rule that narrows
+# what inside it is ignored.
+# ===========================================
+.moai/reports/*
+!.moai/reports/plan-audit/
 .moai/reports/plan-audit/*.md
 !.moai/reports/plan-audit/.gitkeep
 
