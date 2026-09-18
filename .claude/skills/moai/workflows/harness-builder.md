@@ -203,7 +203,7 @@ Each specialist in the manifest has a `primitive` field set to exactly one of 5 
 
 - Every specialist gets exactly one primitive — no free-text, no "auto".
 - The primitive must match the pattern it serves (e.g., a Producer-Reviewer specialist is `adversarial-fan-out`, not `sub-agent`).
-- `worktree` is assigned ONLY when the specialist's write-targets overlap with another specialist's — read-only or sequential specialists get `sub-agent` or `dynamic-workflow` with `isolation: none`.
+- `worktree` assignment is decided by `DecideIsolation` (Phase 3 above) and is not restated here. Two distinct paths reach `worktree` — a risky change on its own, and parallel specialists whose write-targets overlap — so overlap alone does not describe the rule. Read-only specialists always get `isolation: none`.
 
 ## Worktree Policy (conditional, sub-agent-granular)
 
