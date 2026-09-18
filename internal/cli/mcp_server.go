@@ -273,9 +273,16 @@ func registerMoaiMCPTools(s *server.MCPServer, projectDir string) {
 		mcp.WithString("model", mcp.Description("Optional model override (resolved via the model/effort SSOT in M3).")),
 		projectRootOption(),
 		mcp.WithOutputSchema[ReviewOutput](),
-		// SPEC-CODEX-WIRING-001 (REQ-CW-011 / spec §A.4): catalog-READ tool —
-		// see the audit_cache note.
-		mcp.WithReadOnlyHintAnnotation(true),
+		// Catalog-WRITE tool (card t904): every call files an audit receipt
+		// under the audited tree's .moai/state/audit-receipts/, on EVERY exit
+		// path including the binary-missing fail-open — so the review need not
+		// run for the write to happen. It read as a catalog-READ tool until the
+		// receipt store landed (SPEC-CODEX-AUDIT-GATE-AXES-001) and the
+		// annotation did not follow. Under codex's capability-based
+		// `default_tools_approval_mode = "writes"` a read-only declaration
+		// SKIPS the approval prompt, so the stale `true` suppressed the prompt
+		// for a tool that writes — a miss, with no signal.
+		mcp.WithReadOnlyHintAnnotation(false),
 	), handleCodexAudit)
 
 	// claude_audit → official Claude Code subscription CLI. The process receives
@@ -454,9 +461,12 @@ func registerMoaiMCPTools(s *server.MCPServer, projectDir string) {
 		// before the parameter existed, so an absent parameter must keep
 		// handing them none rather than substituting a default.
 		projectRootPassthroughOption(),
-		// SPEC-CODEX-WIRING-001 (REQ-CW-011 / spec §A.4): catalog-READ tool —
-		// see the audit_cache note.
-		mcp.WithReadOnlyHintAnnotation(true),
+		// Catalog-WRITE tool (card t904): the fan-out files an audit receipt
+		// like codex_audit does, and additionally persists its ConvergenceResult
+		// to .moai/state/audit-multi/<session_id>.json whenever session_id is
+		// supplied. Same stale-`true` history and same consequence as
+		// codex_audit — see the note there.
+		mcp.WithReadOnlyHintAnnotation(false),
 	), handleAuditMulti)
 
 	// --- Session messaging broker (SPEC-CODEX-SESSION-MSG-001 M2, design.md §6) ---
