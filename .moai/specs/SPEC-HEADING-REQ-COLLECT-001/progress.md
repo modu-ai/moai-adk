@@ -597,4 +597,61 @@ field other than those M1 already set. Run-phase changed no SPEC body content.
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase>_
+sync_status: complete
+sync_complete_at: 2026-09-18
+sync_commit_sha: pending-backfill
+changelog_entry_position: `### Fixed`, first entry, `.moai/specs/SPEC-HEADING-REQ-COLLECT-001/spec.md`-linked
+
+**Sync-phase is complete.** This SPEC's `status:` frontmatter transitioned
+`in-progress → completed` on the sync commit that also carries this section and
+the `CHANGELOG.md` `[Unreleased]` → `### Fixed` entry — the merged
+`implemented → completed` close per the Status Transition Ownership Matrix
+(`.claude/rules/moai/development/spec-frontmatter-schema.md`). `updated:` was
+already `2026-09-18` and needed no change.
+
+**CHANGELOG B12 self-test (all three, this run, this tree):**
+
+1. Pre-emission grep — `grep -c 'SPEC-HEADING-REQ-COLLECT-001' CHANGELOG.md` →
+   `0` before this commit's edit (re-verified after: `1`, the entry just added).
+2. AC count match — `grep -oE 'AC-([A-Z0-9]+-)*[0-9]+' acceptance.md | sort -u |
+   wc -l` → `14` (AC-HRC-001..011, AC-HRC-GATE-001..003). The CHANGELOG entry
+   states "14 acceptance criteria" and names the same set.
+3. File path verification — every path cited in the CHANGELOG entry
+   (`internal/spec/lint_req_heading.go`, `internal/spec/lint_req_widen.go`,
+   `internal/spec/lint.go`, `progress.md`) verified via `ls` before commit; all
+   present.
+
+**Sync-phase verification re-run (this session, this tree — build made FROM
+the tree, invoked BY PATH, not a PATH-resolved installed binary):**
+
+- `go build ./...` → exit 0.
+- `go test ./internal/spec/... -count=1` → `ok
+  github.com/modu-ai/moai-adk/internal/spec 80.973s`.
+- `go build -o <scratch>/moai-sync ./cmd/moai` (exit 0) then
+  `<scratch>/moai-sync spec lint .moai/specs/SPEC-HEADING-REQ-COLLECT-001` →
+  exit 0, `0 error(s), 4 warning(s)` — all four advisory (`ModalityUnjudged`
+  ×1, `DuplicateREQID` ×1, `CoverageIncomplete` ×2, all on this SPEC's own
+  `spec.md` line 56/74 illustrative REQ-ADV-001 code-fence example — the
+  pre-existing "fence blind spot" follow-up candidate named in §E.3, not a new
+  defect) plus one `OwnershipTransitionUnmeasured` INFO row (the M1 commit
+  carries no `Authored-By-Agent:` trailer — a measurement-state observation,
+  not a violation, per `spec-frontmatter-schema.md` § OwnershipTransitionRule
+  Cross-Reference).
+
+**Deliverables NOT produced, and why (no blocker):**
+
+- No PR opened, no push performed — this repository's lanes never push;
+  the lead batch-pushes `origin/develop` after the integration window
+  (`CLAUDE.local.md` §4.1, `.claude/rules/local/gitflow-lane-protocol.md`).
+- No `docs-site/` or `README*` edit — this is an internal linter behavior
+  change (advisory findings only, no CLI surface, no user-facing config key),
+  carrying no 4-locale documentation obligation.
+
+**Ownership boundary respected.** Only `spec.md` `status:` was changed in this
+commit; `plan.md` and `acceptance.md` body content, and every other `spec.md`
+frontmatter field, are untouched — no blocker report was needed.
+
+**Backfill obligation.** `sync_commit_sha` above is written as the canonical
+`pending-backfill` placeholder because this commit cannot cite its own hash;
+the real SHA is backfilled in a following commit per the D3 exemption
+(`spec-frontmatter-schema.md` § SHA placeholder backfill exemption).
