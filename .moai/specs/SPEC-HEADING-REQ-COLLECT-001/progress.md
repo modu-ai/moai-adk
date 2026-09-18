@@ -599,7 +599,7 @@ field other than those M1 already set. Run-phase changed no SPEC body content.
 
 sync_status: complete
 sync_complete_at: 2026-09-18
-sync_commit_sha: pending-backfill
+sync_commit_sha: 740ce56b3
 changelog_entry_position: `### Fixed`, first entry, `.moai/specs/SPEC-HEADING-REQ-COLLECT-001/spec.md`-linked
 
 **Sync-phase is complete.** This SPEC's `status:` frontmatter transitioned
