@@ -20,7 +20,7 @@ reimplement them. Rationale and the layer vocabulary:
 |-------------|--------|-------------------|------------------|
 | Opus 5 (1M) | 1,000,000 tokens | **50%** | ~500,000 tokens |
 | Opus 4.8 (1M) | 1,000,000 tokens | **50%** | ~500,000 tokens |
-| GLM-5.3 via `moai glm` (1M) | 1,000,000 tokens | **50%** | ~500,000 tokens |
+| GLM-5.3 via `moai glm`/`moai cg` (1M) | 1,000,000 tokens | **50%** | ~500,000 tokens |
 | Fable (1M) | 1,000,000 tokens | **50%** | ~500,000 tokens |
 | Sonnet 5 (1M) | 1,000,000 tokens | **50%** | ~500,000 tokens |
 | Sonnet 4.x / earlier standard (200K) | 200,000 tokens | **90%** | ~180,000 tokens |
@@ -30,7 +30,7 @@ The model-specific threshold is the operational ceiling — beyond it, plan for 
 
 ### GLM-5.3 context window (Issue #653)
 
-GLM-5.3 (z.ai, served via `moai glm`) is a genuine 1M-context model; operate it at the **50% (~500K)** handoff threshold, the same class as Opus 5 / Opus 4.8 (1M). Do NOT treat a `moai glm` session as a 200K session.
+GLM-5.3 (z.ai, served via `moai glm` / `moai cg` GLM panes) is a genuine 1M-context model; operate it at the **50% (~500K)** handoff threshold, the same class as Opus 5 / Opus 4.8 (1M). Do NOT treat a `moai glm` session as a 200K session.
 
 Caveat (Issue #653): Claude Code reports `context_window_size` based on the Claude slot (Opus=1M, Sonnet/Haiku=200K) regardless of provider, so raw telemetry (`effectiveWindow`) may show ~180K under GLM. This is an upstream misreport. MoAI corrects it: the statusline gauge uses `MOAI_STATUSLINE_CONTEXT_SIZE` and Claude Code auto-compact uses `CLAUDE_CODE_AUTO_COMPACT_WINDOW`, both resolved from the `glmContextWindows` table in `internal/statusline/memory.go` (glm-5.3 → 1,000,000) or the `llm.glm.context_windows` override. Trust the MoAI statusline CW%, not raw `effectiveWindow`.
 

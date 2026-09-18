@@ -1,6 +1,5 @@
 ---
 id: SPEC-GTD-AUTONOMY-001
-status: completed
 created: 2026-09-15
 updated: 2026-09-15
 ---

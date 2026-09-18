@@ -286,7 +286,10 @@ jobs:
         shell: bash
         run: |
           rc=0
-          go test -json -race -count=1 ./... > test-stream.json || rc=$?
+          # -timeout is per test binary, not per job: Go's 10m default kills
+          # internal/cli, whose -race runtime measures 546-1183s. 20m clears that
+          # ceiling while staying inside this job's timeout-minutes: 25 budget.
+          go test -json -race -count=1 -timeout 20m ./... > test-stream.json || rc=$?
           bash scripts/ci-census/test-census.sh test-stream.json
           exit $rc
 
