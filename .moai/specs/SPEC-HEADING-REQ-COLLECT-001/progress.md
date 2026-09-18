@@ -452,9 +452,110 @@ comment's stated evidence is wrong at the shipped extractor, and a reader re-der
 the decision from that sentence would be misled. Repair edits a source file, which M2
 must not do → **flagged as an M3 / follow-up-card candidate** alongside A1.
 
+### M2 addendum A5 — `DuplicateREQID` adjudicated (Residual-risk ④ closed)
+
+**The adjudication is the LEAD's** — the lead opened all 14 cases; I did not, and do
+not record that reading as mine. **Verdict: 14/14 are structural false positives;
+"two different requirements sharing one ID" occurs 0 times.** Three shapes:
+
+| Shape | n | Where |
+|---|---:|---|
+| heading is a SECTION TITLE for a list-defined REQ | 10 | `SPEC-GOAL-HTML-FLOW-001/spec.md` — `:57` `- **REQ-GHF-001** — <full statement>` (definition) vs `:93` `### REQ-GHF-001 — Dashboard renderer substrate` (its section heading) |
+| heading is the DEFINITION, the list row a DISPOSITION | 3 | `SPEC-INTERNAL-TEST-004/spec.md` — `:40` `### REQ-GOLD-001 — 6 golden tests PASS (Ubiquitous)` vs `:125` `- **REQ-GOLD-001** (…): **MET** — via ce2a509dc.` |
+| fenced-code illustration | 1 | this SPEC's `spec.md:69`/`:87`, the same `### REQ-ADV-001` line quoted twice |
+
+**Independently re-measured by me**: the file distribution reproduces exactly from my
+own `dump-added.txt` (10 + 3 collisions against pre-existing entries, plus 1
+within-added repeat = 14, matching `dupAgainstExisting=13 + dupWithinFresh=1`); every
+cited line reads as described and these are FILE lines that resolve correctly (checked
+deliberately — the body-vs-file axis already misled me once this run, A4); and the
+fence case is structural (fences at 68/70 and 86/90, the two heading lines at 69/87).
+
+**Stated without softening**: these are **structural false positives created by the
+collection method**, NOT pre-existing corpus state merely revealed. A definition list
+plus a per-requirement section is normal, correct document structure, and heading
+collection turns it into a duplicate. Describing the whole +496 as "existing corpus
+state made visible" would be an overclaim and is not claimed here.
+
+**Equally, not a failure of this card**: every affected code is advisory and nothing
+gates, AC-HRC-008's two discriminators hold unchanged, and `spec.md` §D puts corpus
+repair out of scope.
+
+**Diagnosis → follow-up card (bundled with the fence blind spot)**: the heading axis
+has **no section-title-vs-definition discriminator**. `SPEC-INTERNAL-TEST-004` is the
+sharper evidence — there the heading is the definition and the list row the
+disposition, so both directions occur in one corpus and a rule assuming either would
+be wrong half the time. **Card t518 met this on the table axis** ("definition vs
+disposition table") and resolved it with an L1 vocabulary discriminator; that is the
+precedent, and the heading axis has no equivalent.
+
+**Limit of the adjudication**: the lead examined the **14 `DuplicateREQID` cases
+only**. How much of the same cause is mixed into `CoverageIncomplete` **+437** or
+`ModalityUnjudged` **+44** was **not measured** by either of us. A 100% false-positive
+rate in 14 cases says nothing about the remaining 482.
+
 ## §E.3 Run-phase Audit-Ready Signal
 
-_<pending run-phase>_
+run_status: complete
+run_complete_at: 2026-09-18
+run_measurement_tree: 4ff316bd8
+run_commit_range: dcfad4805 (base) → c461577eb (M1) → 4ff316bd8 (M1a) → this section
+evidence_path: .moai/reports/t894/verdict.md
+evidence_exported_to: /Users/goos/MoAI/moai-adk-go/.moai/reports/t894/ (primary checkout; `.moai/reports/*` is gitignored at `.gitignore:229`, so the in-worktree copy would not resolve at audit time — `cmp` byte-identical)
+ac_pass_count: 13
+ac_fail_count: 0
+ac_gap_count: 1
+
+**Run-phase is complete.** All acceptance criteria are discharged; none FAILED.
+
+| AC | Owner | Status |
+|---|---|---|
+| AC-HRC-001 | M2 | PASS |
+| AC-HRC-002 / 003 / 004 | M1 | PASS |
+| AC-HRC-005 | M2 | PASS |
+| AC-HRC-006 | M1 (flip test) / M2 (grep clause) | **PASS on the load-bearing half; grep clause a GAP** — see below |
+| AC-HRC-007 / 008 / 009 / 010 | M2 | PASS |
+| AC-HRC-011 | M1 | PASS |
+| AC-HRC-GATE-001 / 002 / 003 | M2 | PASS |
+
+**AC-HRC-006 disposition (lead-approved).** Its grep clause is a **pre-existing
+wrong-reason red** (`verification-completeness.md` §2): `grep -n '[S]ource'
+internal/spec/lint.go | grep 'reqFindingSeverity'` returns **one row on both trees**,
+byte-identical, line 564 — and that line IS the prohibition comment. Red at arrival,
+red after, caused by content this work never touches. Recorded as a **Gap**, not a
+pass and not a failure of this card. The criterion's load-bearing half — the
+`Source`-rotation severity-distribution test, which the AC's own text names as
+load-bearing while calling the grep "a tripwire, not enforcement" — is **PASS**.
+
+**Headline measurements** (tree `4ff316bd8`, instruments built FROM named trees and
+invoked BY PATH): six-code corpus delta **+496** (2790 → 3286), no negative delta;
+variant discriminator **0.043** (< 0.50); no-regression **removed-or-mutated = 0**
+over 4497 → 5541 entries; mutant probe RED exactly where required, witness lines
+intact; suite / probe / vet / lint all clean, lint baseline `0 issues.` at both HEAD
+and `<base>`.
+
+**Follow-up card candidates (3) — none is this card's to make.**
+
+1. **Fence blind spot.** The collector family does not strip fenced code blocks, so a
+   document illustrating REQ syntax contributes real entries and real findings. This
+   SPEC's own `spec.md` is such a document. Pre-existing (`reqLineWidePattern` shares
+   the blindness) and explicitly out of scope here.
+2. **AC-HRC-006 grep-clause amendment.** Needs a pattern that excludes comment lines.
+   This is an `acceptance.md` edit — SPEC body content, outside run-phase ownership.
+3. **Heading-axis section-title-vs-definition discriminator (absent).** Root cause of
+   the 14 adjudicated `DuplicateREQID` false positives; both directions occur in the
+   corpus, so no one-sided assumption is safe. Precedent: card t518's L1 vocabulary
+   discriminator on the table axis.
+
+A fourth item is flagged in A4a and belongs to whoever takes it up: the header comment
+of `internal/spec/lint_req_heading.go` justifies variant B partly with `8 → 36`
+`ModalityMalformed` figures that the shipped whole-paragraph extractor does not
+reproduce (real delta +1; 35 of the 36 are probe truncation artifacts). The variant
+decision stands; its stated evidence does not. Repair edits a source file, which M2
+must not do.
+
+**Not touched** (sync-phase fields): `§E.4`, `sync_commit_sha`, and every frontmatter
+field other than those M1 already set. Run-phase changed no SPEC body content.
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
