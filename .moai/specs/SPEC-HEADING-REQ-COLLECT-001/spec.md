@@ -2,7 +2,7 @@
 id: SPEC-HEADING-REQ-COLLECT-001
 title: "Heading-form REQ definition collection, with body-paragraph text extraction"
 version: "0.1.0"
-status: draft
+status: in-progress
 created: 2026-09-18
 updated: 2026-09-18
 author: lane
