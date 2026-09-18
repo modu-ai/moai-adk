@@ -132,6 +132,6 @@ The 3-tier assignment is the foundation of the loop in which the harness improve
 
 ## Next steps
 
-- [Profile Matrix](/en/advanced/profile-matrix/) — the single 3-column per-agent profile matrix (11 agents × 3 profiles = 33 cells)
+- [Profile Matrix](/en/advanced/profile-matrix/) — the single 3-column per-agent profile matrix (13 agents × 3 profiles = 39 cells)
 - [Autonomy Tier](/en/advanced/autonomy-tier/) — the permission · control autonomy grade, orthogonal to model tiers
 - [Tokenomics Overview](/en/advanced/tokenomics-overview/) — the routing layer of the 4-layer tokenomics structure

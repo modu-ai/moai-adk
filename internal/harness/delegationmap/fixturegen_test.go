@@ -132,6 +132,18 @@ func buildFixtures() map[string][]byte {
 		return []string{"manager-develop"}
 	})...)
 
+	// mission_governor_undesignated — 10 qualifying `run` rows. mission-governor
+	// appears in 9 of 10 (clear of both thresholds) and is designated for no
+	// subcommand, so it is exactly the undesignated_agent case. run's own
+	// designated manager-develop appears in all 10, so no never-spawned finding
+	// competes with it and the assertion pins one finding rather than a set.
+	f["mission_governor_undesignated.jsonl"] = jsonl(repeat(0, 10, "run", routing.OutcomeSuccess, func(i int) []string {
+		if i < 9 {
+			return []string{"manager-develop", "mission-governor"}
+		}
+		return []string{"manager-develop"}
+	})...)
+
 	// unattributed_share — 10 qualifying `plan` rows carrying 4 unattributed
 	// delegation entries, plus one undesignated catalog agent that qualifies so
 	// a proposal is actually emitted for `plan`.

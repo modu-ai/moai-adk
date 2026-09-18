@@ -12,7 +12,7 @@ description: 讲解按任务性质与质量/成本目标为每个智能体分配
 这套规则是代币经济学（tokenomics，代币经济）的骨架。代币经济学指权衡质量与成本来分配代币的使用方式，而 MoAI-ADK 实现其中 **成本** 这一轴的手段，正是这套模型策略。
 
 {{< callout type="info" >}}
-**一句话**： 选定一个策略（high/medium/low），该列的值就一次性定下当天 11 个智能体各自的模型与推理深度。挑模型的负担从十一处收敛到一处（选择策略）。
+**一句话**： 选定一个策略（high/medium/low），该列的值就一次性定下当天 13 个智能体各自的模型与推理深度。挑模型的负担从十三处收敛到一处（选择策略）。
 {{< /callout >}}
 
 ## 为什么不该执着于"最强模型"
@@ -70,7 +70,7 @@ description: 讲解按任务性质与质量/成本目标为每个智能体分配
 
 ## 各智能体分配表
 
-下面 36 个格子就是配置矩阵（12 个智能体 × 3 个配置文件）。每个格子是解析器在调用时注入的 `{model, effort}` 对。编排器主会话不是被调用的智能体，因此不在表中。
+下面 39 个格子就是配置矩阵（13 个智能体 × 3 个配置文件）。每个格子是解析器在调用时注入的 `{model, effort}` 对。编排器主会话不是被调用的智能体，因此不在表中。
 
 ### Manager Agents（6 个）
 
@@ -83,7 +83,7 @@ description: 讲解按任务性质与质量/成本目标为每个智能体分配
 | manager-design | opus / high | opus / high | opus / medium |
 | manager-lead | opus / high | opus / high | opus / medium |
 
-### Evaluator · Advisor · Builder · Specialist Agents（5 个）
+### Evaluator · Advisor · Builder · Specialist Agents（6 个）
 
 | 智能体 | high | medium | low |
 |---------|------|--------|-----|
@@ -92,6 +92,7 @@ description: 讲解按任务性质与质量/成本目标为每个智能体分配
 | super-advisor | opus / high | opus / high | opus / high |
 | builder-harness | opus / high | opus / medium | opus / low |
 | e2e-tester | opus / medium | opus / low | sonnet / low |
+| mission-governor | opus / high | opus / high | opus / high |
 
 ### Built-in Agent（1 个）
 
@@ -105,7 +106,7 @@ description: 讲解按任务性质与质量/成本目标为每个智能体分配
 
 ## 分配原则
 
-- **开销流向做判断的行**： 这套策略是敲定的运营者判断，不是成本/得分推导。审计·顾问行（`plan-auditor`、`sync-auditor`、`super-advisor`）与协调行（`manager-design`、`manager-lead`）保持 `high`，而撰写·实现行（`manager-spec`、`manager-develop`）在三个配置文件中都停在 `medium`。
+- **开销流向做判断的行**： 这套策略是敲定的运营者判断，不是成本/得分推导。审计·顾问行（`plan-auditor`、`sync-auditor`、`super-advisor`）、协调行（`manager-design`、`manager-lead`）与判定行（`mission-governor`）保持 `high`，而撰写·实现行（`manager-spec`、`manager-develop`）在三个配置文件中都停在 `medium`。
 - **所有智能体行都用 Opus**： `manager-spec`、`manager-develop`、`plan-auditor`、`sync-auditor`、`manager-design`、`manager-lead`、`builder-harness`、`e2e-tester` 等多轮工作全部留在 Opus。因为 Opus 的 `low` 比任何 effort 的 Sonnet 得分高、每任务成本却更低。
 - **Sonnet 只用于单发·以输入为主的行**： `manager-docs` 的文档整理、`manager-git` 的机械性工作与 `Explore` 探索都是一次以输入为主的 pass 就结束，不存在多步完赛失败的问题，而在这些位置 Sonnet 更低的输入单价是决定性的。这三行在三个配置文件下都固定为 `sonnet / low`。
 - **没有任何行取 `max`**： `max` 仍作为 `high` 之上唯一的级别留在词汇表中，但当前没有格子使用它。
@@ -258,7 +259,7 @@ moai init my-project --model-policy low     # 每任务成本最低
 
 ## 下一步
 
-- [配置矩阵](/zh/advanced/profile-matrix/) —— 36 个格子的布置依据（判断加权策略）与解析器优先级细节
+- [配置矩阵](/zh/advanced/profile-matrix/) —— 39 个格子的布置依据（判断加权策略）与解析器优先级细节
 - [CG 停用与配置迁移](/zh/multi-llm/cg-mode/)
 - [自主级别](/zh/advanced/autonomy-tier/) —— `MOAI_AUTONOMY_TIER` 的成本 · 速度取舍
 - [CLI 参考](/zh/getting-started/cli) —— `moai init`、`moai update`、`moai model profile` 详解
