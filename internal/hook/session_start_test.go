@@ -69,8 +69,12 @@ func TestMaybeDeclareGLMContextWindow(t *testing.T) {
 // TestEnsureGLMCredentials_ExistingTokenDeclaresContextWindow is the PR #1574
 // review regression: with credentials already present (the steady state), the
 // hook must still ensure the context-window envs — settings written by an
-// older binary or `moai glm setup` carry neither window key, and without the
-// declaration Claude Code assumes a 200K window for the custom GLM model ID.
+// older binary carry neither window key, and without the declaration Claude
+// Code assumes a 200K window for the custom GLM model ID.
+//
+// `moai glm setup` is NOT such a source, though an earlier revision of this
+// comment named it alongside the older binary: it writes ~/.moai/.env.glm only
+// and never produces a settings.local.json env block (card t803).
 func TestEnsureGLMCredentials_ExistingTokenDeclaresContextWindow(t *testing.T) {
 	t.Setenv(config.EnvMoaiLaunchProvider, "")
 
