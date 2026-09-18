@@ -19,8 +19,14 @@ import (
 // It is load-bearing rather than tidy: these tests frequently RUN INSIDE a
 // kanban or factory session, whose own launch variables are inherited by
 // `go test`. Without the scrub a lane-8 session's MOAI_FACTORY_WORKER makes
-// every case here read as lane 8 — a failure that reproduces only on the
+// every case here read as lane 8, and its MOAI_LAUNCH_PROVIDER makes every
+// case read as that lane's backend — failures that reproduce only on the
 // machine running the lane and never in CI.
+//
+// The list below is not a sample: it MUST name EVERY launch-fact variable
+// writeKanbanSessionRecord reads. One missing entry leaves exactly one field
+// reading the ambient lane instead of the case, so keep the two in step
+// whenever the writer gains a variable.
 func scrubKanbanEnv(t *testing.T) {
 	t.Helper()
 	for _, key := range []string{
@@ -31,6 +37,7 @@ func scrubKanbanEnv(t *testing.T) {
 		config.EnvMoaiKanbanSpec,
 		config.EnvMoaiKanbanBackend,
 		config.EnvMoaiKanbanCard,
+		config.EnvMoaiLaunchProvider,
 	} {
 		t.Setenv(key, "")
 	}
