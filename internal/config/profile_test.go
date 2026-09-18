@@ -162,3 +162,38 @@ func TestValidateAgentOverrides(t *testing.T) {
 		t.Fatalf("out-of-enum effort should error on the effort field, got %v", errs)
 	}
 }
+
+// TestValidateAgentOverridesAcceptsManagerLead covers the retained-catalog gap
+// (t916): manager-lead is a retained agent — it has carried its own per-agent
+// cell in the profile matrix since t205 — yet retainedAgentNames omitted it, so
+// an llm.agent_overrides.manager-lead entry was rejected as out-of-catalog.
+//
+// Both control cases run against the same call so a pass here is not vacuous: a
+// name already in the catalog must still be accepted, and a name outside it must
+// still be rejected. Without them, a gate that stopped rejecting anything at all
+// would make the manager-lead assertion pass for the wrong reason.
+func TestValidateAgentOverridesAcceptsManagerLead(t *testing.T) {
+	lead := &Config{LLM: LLMConfig{AgentOverrides: map[string]ModelEffort{
+		"manager-lead": {Model: "opus", Effort: "high"},
+	}}}
+	if errs := validateAgentOverrides(lead); len(errs) != 0 {
+		t.Fatalf("manager-lead is a retained agent and must be accepted, got %v", errs)
+	}
+
+	// Control (accept side): a name already in the catalog still passes.
+	known := &Config{LLM: LLMConfig{AgentOverrides: map[string]ModelEffort{
+		"manager-git": {Model: "opus", Effort: "high"},
+	}}}
+	if errs := validateAgentOverrides(known); len(errs) != 0 {
+		t.Fatalf("control: manager-git must be accepted, got %v", errs)
+	}
+
+	// Control (reject side): the gate still rejects an out-of-catalog name.
+	absent := &Config{LLM: LLMConfig{AgentOverrides: map[string]ModelEffort{
+		"manager-lead-typo": {Model: "opus", Effort: "high"},
+	}}}
+	errs := validateAgentOverrides(absent)
+	if len(errs) != 1 || errs[0].Value != "manager-lead-typo" {
+		t.Fatalf("control: out-of-catalog name must still be rejected, got %v", errs)
+	}
+}
