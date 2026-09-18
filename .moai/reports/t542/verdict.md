@@ -155,3 +155,86 @@ recurrence specimen), `youtube-4ee46d07` (non-test-shaped specimen),
 verbatim outputs: `11-recurrence-20260914.txt`.
 
 🗿 MoAI
+
+---
+
+## Addendum — 2026-09-18: orphan-branch resume, and the premise conflict resolved
+
+The card was dispatched again because the branch was found unmerged four days
+after the card had been archived. The dispatch named a premise conflict as the
+first deliverable. This addendum resolves it.
+
+### The conflict, as it was handed over
+
+| Source | Claim |
+|---|---|
+| Lead's memory record (lane-3, card t588) | t542 was marked done |
+| `moai gtd history --limit 0` | `t542  archived  picked  landing=-` |
+| develop log, card-id grep | zero landing rows for `t542` |
+| Branch | four unmerged commits still live |
+
+### Resolution: both sides are right, because they describe different halves
+
+The card's deliverable has two halves, and they landed in different places.
+
+**The substance landed, and it still holds.** The sweep was a deletion in the
+home directory, outside any repository — so no merge could ever have carried
+it, and its absence from develop says nothing about whether it happened. Read
+directly: `~/.moai/todo` holds **4** directories and **96K**, against the
+**344 / 11M** this verdict opened with. The three survivors it named are
+intact; the fourth is `001-3d9b96cd`, the recurrence the 2026-09-14 addendum
+recorded. The sweep is done, and reproduction confirms it.
+
+**The record did not land.** All four commits are documents — 14 files, 1043
+lines, every one under `.moai/reports/t542/`, **zero files outside it**.
+develop carries no `.moai/reports/t542/` at all (`git ls-tree` → 0 entries),
+and `git cherry -v` marks all four `+`: not patch-equivalent, not absorbed
+under another name. The evidence for an irreversible home-directory deletion
+exists in exactly one place — this branch.
+
+**So the done marking is substantively correct and evidentially incomplete.**
+This is NOT the "closed-without-the-work" shape the batch has been finding. It
+is its mirror: the work was real, and the proof of it was left stranded. The
+failure is quiet in the same way — nothing downstream ever contradicts a
+missing record — and the cost is specific: dispose of this branch and the only
+attributable account of deleting 341 directories from the operator's home
+directory is gone, while the deletion stays done.
+
+**`landing=-` is not the evidence here, and was not used as such.** Measured in
+this run: **414 of 488** archived rows carry `landing=-`, 73 carry a sha, 1
+carries `ref-head`. (The dispatch handed over 413 of 484, measured earlier the
+same day; four more cards archived between the two readings, and the ratio is
+unchanged.) The `landed` verb postdates most of the
+archive, so its absence is the normal state. The non-landing finding rests on
+the develop tree read and `git cherry`, and the done-marking finding rests on
+the archive lifecycle column: the archive holds `archived/picked` (372) and
+`archived/queued` (116) and no `archived/dropped` row at all, so t542's
+`archived/picked` is a close, not a drop.
+
+### New measurement: inflow has been quiet for 4.4 days
+
+The 2026-09-14 addendum closed on "inflow is open" and could not say at what
+rate. Re-measured now, the four directories and their mtimes are **identical**
+to that reading, to the second — `001-3d9b96cd` at 2026-09-14T04:19:58+0900 is
+still the newest thing in the tree. **Zero new orphans in the 4.4 days since.**
+
+That bounds the rate; it does not close the path. One specimen in 4.4 days is
+exactly the rate at which 341 accumulated over weeks, and the producer is still
+unidentified (the Gap above stands). It is a rate observation, not a fix.
+
+### Disposition
+
+Merge recommended, on the same grounds t679 gave on 2026-09-13 (`c1baee210`:
+"문서 전용 무위험 · 100% 고유") and now with the substance verified holding.
+The branch is 882 commits behind develop, so an absorb is owed inside the
+window before the merge. Nothing here is code: zero files outside
+`.moai/reports/t542/`, so there is no code path to re-measure — the merge's
+only risk surface is the report directory itself.
+
+`001-3d9b96cd` stays where it is. It is outside the 2026-09-13 operator-
+approved enumeration, and the card's [HARD] clause requires re-approval
+immediately before any home-directory deletion. Preserved as t536 material.
+
+Commands and verbatim outputs: `12-resume-20260918.txt`.
+
+🗿 MoAI
