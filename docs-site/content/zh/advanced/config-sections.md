@@ -55,7 +55,7 @@ delegation:
 | 块 | 说明 |
 |------|------|
 | `learning` | 将路由使用管理为仅追加账本 (`.moai/state/routing-ledger.jsonl`, opt-in·fail-open)，harness学习子系统通过4-tier阶梯提出更新。`auto_apply: false` — Tier-4变更需要 `AskUserQuestion` 用户批准 |
-| `subcommands` | 每个子命令的 `agents` (要spawn的11个retained代理) + `skills` (spawn时注入的workflow技能)。0个分配也有效 (编排器直接执行) |
+| `subcommands` | 每个子命令的 `agents` (要spawn的13个retained代理) + `skills` (spawn时注入的workflow技能)。0个分配也有效 (编排器直接执行) |
 | `domain_skills` | 按任务域注入的技能 (每次spawn 0-3个)。与域信号匹配 |
 | `agents` | 每个代理的条件技能 (触发时on-demand加载) |
 
@@ -69,7 +69,7 @@ delegation:
 llm:
   profile: "medium"            # high | medium | low (活动矩阵列; max 读作 high)
   performance_tier: "medium"   # legacy 别名 (profile 缺失时读取; 同一套词汇)
-  profiles:                    # 配置文件列 → 11 个代理 → {model, effort}
+  profiles:                    # 配置文件列 → 13 个代理 → {model, effort}
     high: { ... }              # 详表: 配置矩阵页面
     medium: { ... }
     low: { ... }
@@ -87,7 +87,7 @@ llm:
 |----|------|
 | `profile` | 活动配置矩阵列 (`high`/`medium`/`low`; 旧的 `max` 被读作 `high` 的别名)。为空时解释为 `medium`。所有子代理 spawn 的 model+effort 来源 |
 | `performance_tier` | legacy 别名字段。仅当 `profile` 缺失时读取; 与 `profile` 共享同一套 `high`/`medium`/`low` 词汇，因此不需要归一化步骤 |
-| `profiles` | 每个配置文件列的 per-agent → `{model, effort}` 矩阵 (11 个代理 × 3 列 = 33 格)。Go 默认值(`template.DefaultProfileMatrix`)是缺失格的权威 fallback |
+| `profiles` | 每个配置文件列的 per-agent → `{model, effort}` 矩阵 (13 个代理 × 3 列 = 39 格)。Go 默认值(`template.DefaultProfileMatrix`)是缺失格的权威 fallback |
 | `agent_overrides` | 每个规范代理名称的 `{model, effort}` override。优先于活动配置文件的代理格 (目录+enum 校验) |
 | `glm.base_url` | Z.AI Anthropic兼容代理端点 |
 | `glm.models` | 每个插槽的 GLM 模型映射。GLM将Claude的5步effort折叠为3个推理状态 (thinking-off / reasoning-high / reasoning-max) |

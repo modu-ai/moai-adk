@@ -71,31 +71,54 @@ flowchart TD
 
 ```mermaid
 flowchart TD
-    START["任务进入智能体"] --> Q{"任务的性质是?"}
-    Q -- "一次结束<br/>输入左右成本" --> T1
-    Q -- "要跨多个回合<br/>才能结束的多轮行" --> T2
-    Q -- "一次决定大幅左右<br/>后续成本的位置" --> T3
+    START["任务进入智能体"] --> Q{"这一行做的是什么?"}
+    Q -- "机械处理<br/>或只读探索" --> T1
+    Q -- "生产出某种东西" --> T2
+    Q -- "判断别人产出的东西<br/>或协调多个行" --> T3
 
-    T1["Tier 1 — 单发 Single-shot<br/>Sonnet low<br/>git mechanics · read-only search"]
-    T2["Tier 2 — 智能体式 Agentic<br/>Opus low / medium / high<br/>spec · develop · audit · design · harness"]
-    T3["Tier 3 — 峰值 Peak<br/>Opus max<br/>develop · advisor (仅 high 配置)"]
+    T1["Tier 1 — 机械 · 探索<br/>Sonnet low<br/>manager-docs · manager-git · Explore"]
+    T2["Tier 2 — 生产<br/>Opus，逐行档位不同<br/>manager-spec · manager-develop<br/>builder-harness · e2e-tester"]
+    T3["Tier 3 — 判断 · 协调<br/>Opus，以 high 为主<br/>plan-auditor · sync-auditor · manager-design<br/>manager-lead · super-advisor · mission-governor"]
 
-    T1 --> NOTE["三个配置 (经济·默认·质量) 下全部固定"]
-    T2 --> NOTE2["配置选择 Opus effort 档位<br/>经济=low · 默认=medium · 质量=high"]
-    T3 --> NOTE3["仅限调用频率最低的两行<br/>xhigh 不进任何一格"]
+    T1 --> NOTE["三个配置下全部固定"]
+    T2 --> NOTE2["两行在三列都固定在 medium<br/>只有两行随配置下降"]
+    T3 --> NOTE3["super-advisor · mission-governor<br/>在经济列也保持 high"]
 ```
 
-### Tier 1 — 单发 (Single-shot)
+### Tier 1 — 机械 · 探索
 
-{{< icon database >}} 一次就能结束、成本由输入而非迭代左右的工作。让弱模型变贵的原因——多步完赛失败——在这里不出现，Sonnet 更低的输入单价成为实质变量。用 Sonnet `low` effort 把步数压到最少。负责的智能体是 `manager-git`、`Explore`，这两行在三个配置（经济 · 默认 · 质量）下全部固定。
+{{< icon database >}} 按既定步骤照做，或者只读取就结束的工作。成本由输入而非迭代左右，让弱模型变贵的原因——多步完赛失败——在这里不出现。于是 Sonnet 更低的输入单价成为实质变量，用 `low` effort 把步数压到最少。负责的智能体是 `manager-docs`（文档整理）、`manager-git`（提交与 PR 的机械作业）、`Explore`（只读探索）三个，三行在三个配置（经济 · 默认 · 质量）下都固定为 `sonnet / low` —— 提高配置也不会提高它们的模型级别。
 
-### Tier 2 — 智能体式 (Agentic)
+### Tier 2 — 生产
 
-{{< icon flash >}} 计划、实现、审计、设计、线束生成、文档化、E2E —— 多轮行的全部。Opus `low` 的得分已经高于任何 effort 的 Sonnet、每任务成本更低，所以这些行全部由 Opus 承担。配置决定每行落在 Opus effort 梯队的哪一级 —— 经济列 `low`、默认列 `medium`、质量列 `high`。负责的智能体： `manager-spec`、`manager-develop`、`plan-auditor`、`sync-auditor`、`manager-design`、`builder-harness`、`manager-docs`、`e2e-tester`。
+{{< icon flash >}} 写规格、实现代码、生成线束、跑 E2E 场景 —— **产出东西**的行。它们是多轮的，完赛效率决定账单；Opus `low` 的得分已经高于任何 effort 的 Sonnet、每任务成本更低，所以默认由 Opus 承担。
 
-### Tier 3 — 峰值 (Peak)
+配置**并不以同样方式**移动这四行。逐行不同。
 
-{{< icon sparkles >}} `max` effort 只用在 `high` 配置下调用频率最低的两行，即 `manager-develop` 与 `super-advisor`。因为越过 `medium` 之后每得 1 分的边际成本陡峭上升（`low` → `medium` 每分 $0.15，`medium` → `high` 每分 $0.70）。所以峰值 effort 只分配给一次决定会大幅左右后续成本的位置。`xhigh` 哪里都不用 —— 在 Opus 上得分与 `high` 相同，成本却多 49%。
+| 行 | 质量列 | 默认列 | 经济列 |
+|---|---|---|---|
+| `manager-spec` | `opus / medium` | `opus / medium` | `opus / medium` |
+| `manager-develop` | `opus / medium` | `opus / medium` | `opus / medium` |
+| `builder-harness` | `opus / high` | `opus / medium` | `opus / low` |
+| `e2e-tester` | `opus / medium` | `opus / low` | `sonnet / low` |
+
+撰写与实现的行 `manager-spec` 和 `manager-develop` **在三列都停在 `medium`** —— 不把开支进一步推向生产端，正是这张矩阵的决定。完整走完三级的只有 `builder-harness` 一行，而 `e2e-tester` 在经济列连模型都降到 Sonnet。
+
+### Tier 3 — 判断 · 协调
+
+{{< icon sparkles >}} **判断**别人产出的东西，或**协调**多个行的位置。这张矩阵的原理一句话就在这里 —— **开支给判断的行，而不是生产的行**，因为一次判断会大幅左右后续成本。
+
+| 行 | 质量列 | 默认列 | 经济列 |
+|---|---|---|---|
+| `plan-auditor` · `sync-auditor` | `opus / high` | `opus / high` | `opus / medium` |
+| `manager-design` · `manager-lead` | `opus / high` | `opus / high` | `opus / medium` |
+| `super-advisor` · `mission-governor` | `opus / high` | `opus / high` | `opus / high` |
+
+只有 `super-advisor`（升级通道）与 `mission-governor`（密封任务的判定）**在经济列也保持 `high`**。因为最值得在便宜的一列里保持稳健的，恰恰是这两个位置。
+
+`mission-governor` 说明了这条轴为什么好过"是不是多轮"。它读一次、返回一个决定，是**单发**的行，按多轮标准本该落在 Sonnet 一侧；实际上它三列都是 `opus / high`。**因为它是判断的行。**
+
+`max` **没有任何一行拿到**。它作为 `high` 之上唯一的档位留在词汇里，但当前持有它的格子是 0 个。`xhigh` 也哪里都不用 —— 在 Opus 上得分与 `high` 相同，成本却多 49%。
 
 ## 模型级别与自主级别是两回事
 
@@ -121,7 +144,7 @@ flowchart TD
 
 ## 这个基准测不到的东西
 
-{{< icon info >}} **局限声明**： 这个基准测量的是**编码**智能体。文档撰写、审计判断、SPEC（需求规格书）撰写质量未被直接测量，这些行的安排不是观测，而是建立在"与多轮智能体工作相似"的推断上。置信区间也要一起看 —— `medium`（69%±1）与 `high`（73%±2）不重叠，但 `max`（74%±4）与 `high` 重叠。这正是把 `max` 收在几乎不被调用的两格里的原因。所有默认值都可以用 `llm.agent_overrides` 按智能体逐个回退。
+{{< icon info >}} **局限声明**： 这个基准测量的是**编码**智能体。文档撰写、审计判断、SPEC（需求规格书）撰写质量未被直接测量，这些行的安排不是观测，而是建立在"与多轮智能体工作相似"的推断上。置信区间也要一起看 —— `medium`（69%±1）与 `high`（73%±2）不重叠，但 `max`（74%±4）与 `high` 重叠。这正是不把 `max` 分配给任何一格的原因 —— 那等于为重叠的区间多付钱。所有默认值都可以用 `llm.agent_overrides` 按智能体逐个回退。
 
 {{< icon info >}} **关于 Fable 5**： Fable 在编码工作上被全面压制。Fable `high`（69%，$9.18）与 Opus `medium`（69%，$3.29）得分相同，成本近 3 倍。所以没有放进任何矩阵格。它在模型 enum 中仍是合法值，GLM 后端的 Fable 槽位接线也原样保留 —— 变的只是默认值。
 
@@ -131,6 +154,6 @@ flowchart TD
 
 ## 下一步
 
-- [配置矩阵](/zh/advanced/profile-matrix/) —— 单一 3 列 per-agent 配置矩阵（11 个智能体 × 3 个配置 = 33 格）
+- [配置矩阵](/zh/advanced/profile-matrix/) —— 单一 3 列 per-agent 配置矩阵（13 个智能体 × 3 个配置 = 39 格）
 - [自主级别](/zh/advanced/autonomy-tier/) —— 与模型级别正交、以权限 · 控制为对象的自主等级
 - [代币经济学概述](/zh/advanced/tokenomics-overview/) —— 四层代币经济学结构的路由层

@@ -20,6 +20,7 @@ Claude Code and MoAI configuration management rules.
 - promptCacheTtl / subagentPromptCacheTtl (Claude Code v2.1.243; official docs floor v2.1.242): let API-key and cloud-provider sessions keep a 1-hour prompt cache on the main conversation while subagents stay at 5 minutes (env-var twins `CLAUDE_CODE_PROMPT_CACHE_TTL` / `CLAUDE_CODE_SUBAGENT_PROMPT_CACHE_TTL`). MoAI leaves both unset — cache spend is a cost trade-off that belongs to the user or organization, and the effect on third-party gateways is unmeasured (see `cache-aware-execution.md`).
 - modelPicker (Claude Code v2.1.243): curates the `/model` picker with an ordered, labeled model list (any id spelling, appended to or replacing the built-in lineup). MoAI leaves it unset — model curation is a per-user decision, and MoAI resolves per-spawn models through its own model pipeline (`.claude/rules/moai/development/model-policy.md`).
 - modelPricing (Claude Code v2.1.243; managed setting): applies an organization's contracted per-model rates and discount multiplier to `/cost`, the status line, and telemetry cost figures instead of list price. MoAI leaves it unset — managed-settings billing data is an organization decision, and pinning prices from a distributed template would misstate costs for every other deployment.
+- bashEditDiffEnabled (Claude Code v2.1.269): when the Bash tool handles a file edit, append a diff of the files the command changed to the Bash tool result. MoAI leaves it unset — the diff is a per-session readability preference whose cost is extra tool-result tokens on every file-touching Bash call, and MoAI's own edit path already goes through Edit/Write rather than Bash.
 - disableBundledSkills: Hide bundled skills/workflows (e.g. `/deep-research`) from discovery. Set `true` to suppress the Claude Code bundled skill catalog so only project + user skills remain visible. An equivalent environment variable form is also supported. MoAI-ADK does not emit this toggle — it is documented here as a Claude Code option that exists for projects that want to ship a curated, bundle-free skill surface.
 - `--safe-mode` CLI flag: Launch Claude Code with bundled skills and workflows disabled (equivalent runtime effect to `disableBundledSkills: true`, but applied at launch time rather than via settings). Useful for locked-down environments or when debugging whether a behavior originates from a bundled skill. MoAI-ADK does not pass this flag automatically; it is documented as an available launch option.
 
@@ -30,6 +31,35 @@ The genuine Claude Code `/config` slash command (distinct from MoAI's `.moai`-pr
 - Direct-set form: `/config key=value` writes a single setting without opening the selector (e.g. `/config theme=dark`). `/config <key>=<value>` is the general syntax.
 - Help listing: `/config --help` lists the available shorthand keys the command accepts.
 - Toggle-key behavior (within the `/config` settings selector): Enter AND Space both change the currently-selected setting, and Esc now saves-and-closes the selector (it no longer reverts unsaved changes).
+
+
+#### Claude Code environment variables (v2.1.268-2.1.274)
+
+Four environment variables landed in this window that a MoAI deployment may need to
+know about. MoAI sets none of them — each is a per-machine or per-organization
+operational choice, not something a distributed template should decide.
+
+| Variable | Version | What it does |
+|---|---|---|
+| `CLAUDE_CODE_MCP_STARTUP_WAIT_MS` | v2.1.274 | Bounds how long the first non-interactive turn waits for MCP servers that are still connecting. `0` means do not wait. Relevant to a headless run whose first turn would otherwise stall behind a slow MCP server. |
+| `CLAUDE_CODE_WEBFETCH_DEADLINE_MS` | v2.1.268 | Overrides the WebFetch deadline, which now defaults to 300 seconds so a server holding a response open no longer hangs the fetch forever. `0` turns the deadline off. |
+| `CLAUDE_CODE_BG_TASKS_REPORT_RUNNING` | v2.1.269 | Remote and headless sessions now report background agents as still running rather than announcing they are waiting for input. Set it to `0` to restore the previous behaviour. |
+| `CLAUDE_CODE_GATEWAY_HINT_HEADERS` | v2.1.273 | Opt-in (`=1`) for the LLM-gateway hint headers `x-claude-code-request-class`, `x-claude-code-agent-type`, `x-claude-code-prev-tool-durations`, `x-claude-code-compaction` and `x-claude-code-context-compacted`. Only useful in front of a gateway that reads them. |
+
+A fifth, `CLAUDE_CODE_WORKFLOW_MAX_CONCURRENT_AGENTS` (v2.1.269), raises the Workflow
+tool's per-run concurrent-agent limit and is documented with the rest of the workflow
+ceilings in `.claude/rules/moai/workflow/dynamic-workflows.md`.
+
+#### OpenTelemetry surface additions (v2.1.268-2.1.274)
+
+MoAI configures no Claude Code telemetry; these are recorded so a deployment that does
+run OTel knows what changed rather than rediscovering it.
+
+- `effort` attribute added to the `claude_code.llm_request` trace span, matching the `api_request` event (v2.1.274).
+- `claude_code.managed_settings_resolved` event carrying managed-settings sources and policy-helper state; redacted settings and digests are included with `OTEL_LOG_MANAGED_SETTINGS=1` (v2.1.274).
+- `OTEL_LOG_RAW_API_BODIES=file:<dir>` gained an `index.jsonl` plus `request_body_id` / `message.id` event attributes linking each response to its request file and transcript message (v2.1.274).
+- `OTEL_LOG_TOOL_DETAILS=1` now also includes real agent, skill, plugin and MCP-server names on cost and token metrics (v2.1.273).
+- `OTEL_METRICS_INCLUDE_REPOSITORY` tags metrics and events with `vcs.*` repository attributes; commit events gain `vcs.ref.head.*` when `OTEL_LOG_TOOL_DETAILS` is also set (v2.1.269).
 
 ### MCP Configuration
 
@@ -61,7 +91,7 @@ MCP tools (when a user configures their own `.mcp.json`) are deferred by default
 | `requiredMinimumVersion` | v2.1.163+ | Managed | Hard version-gate — Claude Code refuses to start when its version is below the floor. An org/admin decision, parallel to the `disableWorkflows` stance. Distinct from the older advisory `minimumVersion`. |
 | `requiredMaximumVersion` | v2.1.163+ | Managed | Hard version-ceiling — refuses to start above the cap. Likewise an org/admin decision. |
 | `effortLevel` | v2.1.110+ | User/Project/Local | Intentionally NOT shipped in `settings.json.tmpl`. The launcher passes the profile's effort as an `effortLevel` in the transient `--settings` file it injects — a launch DEFAULT an in-session `/effort` or `/model` change may replace. Do NOT pin the level through `CLAUDE_CODE_EFFORT_LEVEL`: that variable is an OVERRIDE, so while it is set Claude Code refuses every in-session effort change for the rest of the session. Pinning a fixed high effort level project-wide would also force elevated token cost on every user session. |
-| `workflowSizeGuideline` | v2.1.219+ | Any settings file | Sets the advisory Dynamic workflow size guideline (`small` / `medium` / `large` / `unrestricted`; default `medium` — aim for fewer than 15 agents); the `/config` row is hidden while one is set. MoAI does not pin a size — the choice is left to the user/org (see `.claude/rules/moai/workflow/dynamic-workflows.md`). |
+| `workflowSizeGuideline` | v2.1.219+ | Any settings file | Sets the advisory Dynamic workflow size guideline (`small` / `medium` / `large` / `unrestricted`; default `medium` — aim for fewer than 10 agents, lowered from 15 in v2.1.271; the default drops to `small` on Pro plans); the `/config` row is hidden while one is set. MoAI does not pin a size — the choice is left to the user/org (see `.claude/rules/moai/workflow/dynamic-workflows.md`). |
 
 Reference: https://code.claude.com/docs/en/settings.
 
@@ -276,7 +306,7 @@ Upstream sources disagree on whether `/output-style` still exists — a CHANGELO
 { "outputStyle": "MoAI-Learn" }
 ```
 
-Result: **MoAI-Learn** loads (project wins over user.
+Result: **MoAI-Learn** loads (project wins over user).
 
 **Example 2 — user setting applies when project is absent:**
 
@@ -287,7 +317,7 @@ Result: **MoAI-Learn** loads (project wins over user.
 // .claude/settings.json (project) — outputStyle key not present
 ```
 
-Result: **MoAI-Learn** loads (user setting applies.
+Result: **MoAI-Learn** loads (user setting applies).
 
 **Example 3 — third-party style at project level:**
 

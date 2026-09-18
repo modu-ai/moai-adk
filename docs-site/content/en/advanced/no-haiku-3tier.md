@@ -72,31 +72,54 @@ The remaining models (Opus, Sonnet) and effort are assigned across three tiers b
 
 ```mermaid
 flowchart TD
-    START["A task arrives at an agent"] --> Q{"What is the task's character?"}
-    Q -- "Finishes in one pass and\ninput drives the cost" --> T1
-    Q -- "A multi-turn row that must\ncross many turns to finish" --> T2
-    Q -- "A seat where one decision\nsteers much of the downstream cost" --> T3
+    START["A task arrives at an agent"] --> Q{"What does the row do?"}
+    Q -- "Mechanical processing or\nread-only search" --> T1
+    Q -- "It produces something" --> T2
+    Q -- "It judges what others produced,\nor coordinates several rows" --> T3
 
-    T1["Tier 1 — Single-shot<br/>Sonnet low<br/>git mechanics · read-only search"]
-    T2["Tier 2 — Agentic<br/>Opus low / medium / high<br/>spec · develop · audit · design · harness"]
-    T3["Tier 3 — Peak<br/>Opus max<br/>develop · advisor (high profile only)"]
+    T1["Tier 1 — Mechanical & search<br/>Sonnet low<br/>manager-docs · manager-git · Explore"]
+    T2["Tier 2 — Produce<br/>Opus, a different step per row<br/>manager-spec · manager-develop<br/>builder-harness · e2e-tester"]
+    T3["Tier 3 — Judge & coordinate<br/>Opus, mostly high<br/>plan-auditor · sync-auditor · manager-design<br/>manager-lead · super-advisor · mission-governor"]
 
-    T1 --> NOTE["Fixed across all three profiles<br/>(economical · default · quality)"]
-    T2 --> NOTE2["The profile picks the Opus effort step<br/>economical=low · default=medium · quality=high"]
-    T3 --> NOTE3["Only the two lowest-call-frequency rows<br/>xhigh in no cell at all"]
+    T1 --> NOTE["Fixed across all three profiles"]
+    T2 --> NOTE2["Two rows stay at medium in all three columns<br/>only two step down with the profile"]
+    T3 --> NOTE3["super-advisor · mission-governor hold high<br/>even in the economical column"]
 ```
 
-### Tier 1 — Single-shot
+### Tier 1 — Mechanical & search
 
-{{< icon database >}} Work that finishes in one pass, where input rather than repetition drives cost. The thing that makes weaker models expensive — multi-step completion failure — never appears here, so Sonnet's low input price becomes the operative factor. Sonnet at `low` effort keeps the step count minimal. Agents on duty: `manager-git`, `Explore` — and these two rows are fixed across all three profiles (economical · default · quality).
+{{< icon database >}} Work that follows a fixed procedure, or only reads and stops. Input rather than repetition drives the cost, and the thing that makes weaker models expensive — multi-step completion failure — never appears here. So Sonnet's low input price becomes the operative factor, and `low` effort keeps the step count minimal. Agents on duty: `manager-docs` (documentation assembly), `manager-git` (commit and PR mechanics), `Explore` (read-only search). All three are fixed at `sonnet / low` across the three profiles (economical · default · quality) — raising the profile does not raise their model class.
 
-### Tier 2 — Agentic
+### Tier 2 — Produce
 
-{{< icon flash >}} Planning, implementation, audit, design, harness generation, documentation, E2E — every multi-turn row. Opus at `low` already outscores Sonnet at any effort while costing less per task, so Opus carries this entire row set. The profile chooses where each row sits among the Opus effort steps — the economical column `low`, the default column `medium`, the quality column `high`. Agents on duty: `manager-spec`, `manager-develop`, `plan-auditor`, `sync-auditor`, `manager-design`, `builder-harness`, `manager-docs`, `e2e-tester`.
+{{< icon flash >}} Writing the spec, implementing the code, generating a harness, running E2E scenarios — the rows that **make** something. They are multi-turn, so completion efficiency decides the bill, and Opus at `low` already outscores Sonnet at any effort while costing less per task, so Opus carries them by default.
 
-### Tier 3 — Peak
+The profile does **not** move these four rows alike. It differs per row.
 
-{{< icon sparkles >}} `max` effort is used only on the two lowest-call-frequency rows of the `high` profile — `manager-develop` and `super-advisor`. Above `medium`, the marginal cost per point of score climbs steeply (`low` → `medium` is $0.15 per point, `medium` → `high` is $0.70). So peak effort is assigned only to seats where a single decision steers much of the downstream cost. `xhigh` is used nowhere — on Opus it scores the same as `high` at 49% more cost.
+| Row | Quality column | Default column | Economical column |
+|---|---|---|---|
+| `manager-spec` | `opus / medium` | `opus / medium` | `opus / medium` |
+| `manager-develop` | `opus / medium` | `opus / medium` | `opus / medium` |
+| `builder-harness` | `opus / high` | `opus / medium` | `opus / low` |
+| `e2e-tester` | `opus / medium` | `opus / low` | `sonnet / low` |
+
+The authoring and implementing rows — `manager-spec` and `manager-develop` — **stay at `medium` in all three columns**, because not pushing spend toward production is this matrix's decision. `builder-harness` is the only row that walks the full three steps, and `e2e-tester` drops its model to Sonnet in the economical column.
+
+### Tier 3 — Judge & coordinate
+
+{{< icon sparkles >}} Seats that **judge** what others produced, or **coordinate** several rows. The matrix's principle sits here in one line — **spend goes to the rows that judge, not the rows that produce** — because one judgment steers much of the downstream cost.
+
+| Row | Quality column | Default column | Economical column |
+|---|---|---|---|
+| `plan-auditor` · `sync-auditor` | `opus / high` | `opus / high` | `opus / medium` |
+| `manager-design` · `manager-lead` | `opus / high` | `opus / high` | `opus / medium` |
+| `super-advisor` · `mission-governor` | `opus / high` | `opus / high` | `opus / high` |
+
+Only `super-advisor` (the escalation path) and `mission-governor` (the sealed-mission verdict) **hold `high` even in the economical column** — those two are exactly what a cheap column most needs to keep sound.
+
+`mission-governor` is what shows why this axis beats "multi-turn or not". It reads once and returns a single decision, so by a multi-turn test it would belong on the Sonnet side; in fact it is `opus / high` in all three columns. **Because it is a row that judges.**
+
+`max` is assigned to **no row**. It survives in the vocabulary as the only step above `high`, but the count of cells holding it is zero. `xhigh` is used nowhere either — on Opus it scores the same as `high` at 49% more cost.
 
 ## Model tiers and autonomy tiers are different things
 
@@ -122,7 +145,7 @@ Readers, too, should keep design intent (the DeepSWE rationale on this page) sep
 
 ## What this benchmark does not measure
 
-{{< icon info >}} **Limitation note**: what this benchmark measures are **coding** agents. Documentation authoring, audit judgment, and SPEC (requirements document) authoring quality were not directly measured, so those row placements lean on the inference that they resemble multi-turn agentic work — they are not observations. Confidence intervals matter too: `medium` (69%±1) and `high` (73%±2) do not overlap, but `max` (74%±4) overlaps `high`. That is why `max` is bundled into two rarely-invoked cells. Every default is reversible per agent via `llm.agent_overrides`.
+{{< icon info >}} **Limitation note**: what this benchmark measures are **coding** agents. Documentation authoring, audit judgment, and SPEC (requirements document) authoring quality were not directly measured, so those row placements lean on the inference that they resemble multi-turn agentic work — they are not observations. Confidence intervals matter too: `medium` (69%±1) and `high` (73%±2) do not overlap, but `max` (74%±4) overlaps `high`. That is why `max` is assigned to no cell at all — it would be paying more for an overlapping interval. Every default is reversible per agent via `llm.agent_overrides`.
 
 {{< icon info >}} **On Fable 5**: Fable loses on coding work across every effort. Fable `high` (69%, $9.18) delivers the same score as Opus `medium` (69%, $3.29) for nearly triple the cost. So it was placed in no matrix cell. It remains a valid value in the model enum, and the Fable-slot wiring of the GLM backend stays alive — only the defaults changed.
 
@@ -132,6 +155,6 @@ The 3-tier assignment is the foundation of the loop in which the harness improve
 
 ## Next steps
 
-- [Profile Matrix](/en/advanced/profile-matrix/) — the single 3-column per-agent profile matrix (11 agents × 3 profiles = 33 cells)
+- [Profile Matrix](/en/advanced/profile-matrix/) — the single 3-column per-agent profile matrix (13 agents × 3 profiles = 39 cells)
 - [Autonomy Tier](/en/advanced/autonomy-tier/) — the permission · control autonomy grade, orthogonal to model tiers
 - [Tokenomics Overview](/en/advanced/tokenomics-overview/) — the routing layer of the 4-layer tokenomics structure
