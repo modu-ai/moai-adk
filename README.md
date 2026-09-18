@@ -496,7 +496,7 @@ flowchart TD
 | **TDD** (default) | RED → GREEN → REFACTOR | New projects and feature work |
 | **DDD** | ANALYZE → PRESERVE → IMPROVE | Existing code under 10% coverage |
 
-### The 12-agent catalog
+### The 13-agent catalog
 
 | Category | Agent | Cost | Role |
 |----------|-------|------|------|
@@ -511,11 +511,12 @@ flowchart TD
 | **Builder** | builder-harness | 🟠 | Project-specific agents, skills, commands, hooks scaffolding |
 | **Advisor** | super-advisor | 🔵 | On-demand high-reasoning consultation (E1-E4 escalation) |
 | **Specialist** | e2e-tester | 🟠 | Web/mobile/desktop E2E test execution (CLI-first) |
+| | mission-governor | 🔴 | Read-only decision for an approved GTD auto mission — returns one bounded decision, never applies it (dispatched by the GTD workflow, so it carries no selection-tree row) |
 | **Built-in** | Explore | ⚪ | Read-only codebase exploration |
 
 Cost colors follow the default `medium` profile's model×effort cells (inspect via `moai model profile`): 🔴 opus+high · 🟠 opus+medium · 🔵 opus+low · 🩵 sonnet+low · ⚪ session-model inherit (user-added agents). Assignments shift when switching profiles (`high`/`low`). Authoring and auditing are separated from the start, so the writing side never grades its own work.
 
-Eleven of the twelve are agents moai-adk built; `Explore` is a built-in that already ships with Claude Code. `Explore` carries no model of its own — it inherits the session model — so it has no profile cell. That is why the catalog counts 12 while the model profile section further down counts 11 × 3 = 33 cells: the two numbers are not in conflict, they count different things.
+Twelve of the thirteen are agents moai-adk built; `Explore` is a built-in that already ships with Claude Code. It carries a profile cell like every other row — `sonnet / low` in all three profiles — so the model profile section further down counts the same thirteen agents: 13 × 3 = 39 cells.
 
 ### trust-but-verify — binding evidence to completion claims
 
@@ -649,7 +650,7 @@ Environment variables override file values. For precedence details and the full 
 
 ### Model profiles — high / medium / low
 
-`moai model profile` resolves 11 agents × 3 profiles = 33 cells of `{model, effort}` pairs.
+`moai model profile` resolves 13 agents × 3 profiles = 39 cells of `{model, effort}` pairs.
 
 <p align="center">
   <img src="./assets/images/model-routing-infographic-en.png" alt="Agent model routing — each agent gets the right model and reasoning effort" width="85%">
