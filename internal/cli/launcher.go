@@ -777,22 +777,25 @@ func runLaunchClaude(profileName string, extraArgs []string) error {
 		launchEnv = buildEnvForGLMLaunch(glmModels, model,
 			resolveGLMMainSessionEffort(model, glmTierEffort, effectiveEffort), os.Environ())
 	} else {
-		// Plain Claude AND gateway backends: the effort travels in the injected
-		// --settings payload (launch_effort_settings.go), NEVER in
-		// CLAUDE_CODE_EFFORT_LEVEL. That variable is an override rather than a
-		// default — Claude Code refuses an in-session /effort or /model change
-		// while it is set, which froze the level for the whole session (card
-		// t595). An inherited value is left untouched: it is the user's own
-		// documented per-session override.
+		// Plain Claude launches: the effort travels in the injected --settings
+		// payload (launch_effort_settings.go), NEVER in CLAUDE_CODE_EFFORT_LEVEL.
+		// That variable is an override rather than a default — Claude Code
+		// refuses an in-session /effort or /model change while it is set, which
+		// froze the level for the whole session (card t595). An inherited value
+		// is left untouched: it is the user's own documented per-session
+		// override.
 		//
-		// A gateway launch is no exception (card t668). The hosted Claude Code
-		// is the only reader of that variable: no gateway component consumes it
-		// — the adapter takes effort off each request body, and the gateway child
-		// process is started from its own scrubbed environment, not this one.
-		// The injected payload survives the gateway settings merge
-		// (prepareGatewayOverlay) into the child settings file, so the launch
-		// default still arrives. TestGatewayEffortUsesClaudeSettingsDespiteStoredGLMMode
-		// and TestGatewayLaunchEnvPreservesInheritedEffort pin both halves.
+		// Both halves are pinned: TestLaunchEffortReachesGeneralInjection and
+		// TestLaunchEffortReachesKanbanInjection for the injected payload,
+		// TestClaudeLaunchEnvPreservesInheritedEffort for the inherited value.
+		//
+		// This block once carried a second paragraph extending the same
+		// invariant to a gateway launch (card t668), naming a settings-overlay
+		// helper and two gateway-effort tests. That path was withdrawn with the
+		// GPT gateway launcher (card t857, see the `mode == "gpt"` rejection
+		// above): the helper and both tests went with it, so the paragraph
+		// outlived everything it described. Do not restore it without a gateway
+		// launch path to bear it (card t938).
 		launchEnv = buildEnvForClaudeLaunch(os.Environ())
 	}
 	// SPEC-INFINITE-GOAL-001 REQ-2 (OQ-3): when an armed --max-turns 0 goal
@@ -1154,40 +1157,6 @@ func splitModelSuffix(model string) (base, suffix string) {
 		return model[:len(model)-len(marker)], marker
 	}
 	return model, ""
-}
-
-// buildEnvForLaunch returns an environment slice with CLAUDE_CODE_EFFORT_LEVEL
-// set to effortLevel when non-empty. Any existing CLAUDE_CODE_EFFORT_LEVEL entry
-// in base is replaced to avoid duplicates. When effortLevel is empty, base is
-// returned unchanged.
-//
-// Since card t668 no launch branch calls this: the plain Claude path (t595) and
-// the gateway path (t668) both carry the effort in the injected --settings
-// payload, because the variable this function sets is an override that refuses
-// an in-session /effort change. It is retained only because its removal was not
-// in t668's scope; do not wire it back into a launch path.
-//
-// @MX:NOTE: [AUTO] No production caller since t668 — reintroducing it on any launch branch restores the session-wide effort freeze. Model ROUTING (ModelPolicy→model) stays orthogonal to effort.
-func buildEnvForLaunch(effortLevel string, base []string) []string {
-	if effortLevel == "" {
-		return base
-	}
-	key := config.EnvClaudeCodeEffortLevel
-	entry := key + "=" + effortLevel
-	result := make([]string, 0, len(base)+1)
-	replaced := false
-	for _, e := range base {
-		if strings.HasPrefix(e, key+"=") {
-			result = append(result, entry)
-			replaced = true
-		} else {
-			result = append(result, e)
-		}
-	}
-	if !replaced {
-		result = append(result, entry)
-	}
-	return result
 }
 
 // resolveLaunchEffort resolves the launch's effort level from the two profile
