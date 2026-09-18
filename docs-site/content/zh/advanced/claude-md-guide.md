@@ -100,15 +100,15 @@ MoAI 是 Claude Code 的战略编排器。
 
 ### 4. 智能体目录
 
-MoAI-ADK 由 **11 个保留智能体**（10 个 MoAI-custom + 1 个 Anthropic built-in）组成。经过架构简化，manager-strategy、manager-quality、manager-brain、manager-project 等 12 个 archived 智能体被面向特定领域的 per-spawn `Agent(general-purpose)` 委派所取代。
+MoAI-ADK 由 **13 个保留智能体**（12 个 MoAI-custom + 1 个 Anthropic built-in）组成。经过架构简化，manager-strategy、manager-quality、manager-brain、manager-project 等 12 个 archived 智能体被面向特定领域的 per-spawn `Agent(general-purpose)` 委派所取代。
 
 | 分类 | 智能体 | 角色 |
 |------|----------|------|
-| Manager (5) | manager-spec, manager-develop, manager-docs, manager-git, manager-design | 核心生命周期各阶段专家 |
+| Manager (6) | manager-spec, manager-develop, manager-docs, manager-git, manager-design, manager-lead | 核心生命周期各阶段专家 |
 | Evaluator (2) | plan-auditor, sync-auditor | 计划/完成阶段独立质量评估 |
 | Builder (1) | builder-harness | 生成按项目的动态 Harness |
 | Advisor (1) | super-advisor | 高推理咨询（E1-E4 升级） |
-| Specialist (1) | e2e-tester | 网页/移动/桌面 E2E 测试执行 |
+| Specialist (2) | e2e-tester, mission-governor | 网页/移动/桌面 E2E 测试执行（`/moai e2e`）；已批准 GTD 自动任务的只读判定 |
 | Built-in (1) | Explore (Anthropic) | 只读代码库探索 |
 
 ### 5. SPEC 工作流

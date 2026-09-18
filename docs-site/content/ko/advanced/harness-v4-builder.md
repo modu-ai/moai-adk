@@ -264,7 +264,7 @@ Runner의 동작은 매니페스트 필드로 제어합니다. `isolation: "work
 ## 관련 문서
 
 - [빌더 에이전트 가이드](/ko/advanced/builder-agents) - Builder 4-phase 개요 (들어가는 문)
-- [에이전트 가이드](/ko/advanced/agent-guide) - 12개 핵심 에이전트 카탈로그와 정의 형식
+- [에이전트 가이드](/ko/advanced/agent-guide) - 13개 핵심 에이전트 카탈로그와 정의 형식
 - [SPEC 기반 개발](/ko/workflow-commands/moai-plan) - SPEC(요구사항 명세서) 작성과 하네스의 만남
 
 {{< callout type="info" >}}
