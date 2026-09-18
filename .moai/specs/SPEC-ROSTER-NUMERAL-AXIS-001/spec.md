@@ -111,8 +111,16 @@ this tree) — is a subset predication removed before counting.
 
 Independently re-measured in this worktree while authoring this SPEC:
 `go test -count=1 ./internal/harness/rosterguard/...` → `ok … 1.096s`;
-`profileMatrixAgentOrder` holds 13 names; `registry.go` carries 30 `Site` rows, 17 of which
-mention `ClaimCount`.
+`profileMatrixAgentOrder` holds 13 names; `registry.go` carries 30 `Site` rows, and 17 `Claims:`
+lines in it mention `ClaimCount`.
+
+Those 17 TEXT OCCURRENCES and the 20 PATHS in the table above are different counts of different
+things, and both are correct: one of the 17 is inside the `readmeSite()` helper body, which
+generates four rows rather than one, so 16 literal rows plus 4 generated paths gives 20. The
+distinction is stated because leaving the two numbers side by side unlabelled is exactly what
+produced the 16-vs-20 disagreement between two measurements of this tree — a parse keyed to
+literal `Path:` lines cannot see a path passed to a helper as a parameter. `AC-RNA-013` requires
+the run-phase re-derivation to read `Registry()` rather than parse the file text, for this reason.
 
 ## §B Requirements (GEARS)
 

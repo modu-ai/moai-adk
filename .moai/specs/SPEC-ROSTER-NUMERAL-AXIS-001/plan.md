@@ -35,7 +35,7 @@ SPEC: `.moai/specs/SPEC-ROSTER-NUMERAL-AXIS-001/spec.md` · card t930 · branch
 
 - [ ] Re-derive the digit-axis and word-axis populations IN-RUN against the tree being changed,
       and the residual arithmetic with them (hits, `ClaimCount`-discharged, residual); never
-      reuse the §A plan-phase figures as the run baseline (REQ-RNA-012, AC-RNA-014).
+      reuse the §A plan-phase figures as the run baseline (REQ-RNA-012, AC-RNA-013).
 - [ ] Confirm `go test -count=1 ./internal/harness/rosterguard/...` is green before any edit,
       and land that baseline record as its own commit BEFORE the implementation commit
       (`verification-claim-integrity.md` §2.3 — the commit graph is the only sequencing
