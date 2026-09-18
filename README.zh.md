@@ -623,7 +623,7 @@ moai migrate cg --target claude-only --apply --accept-role-change
 
 ### `.moai/config/sections/`
 
-项目配置拆成一组 YAML 切面文件。`moai init` 铺下的切面一共 33 个，其中经常动的是下面这六个。
+项目配置拆成一组 YAML 切面文件。`moai init` 铺下的切面文件一共 30 个，其中经常动的是下面这六个。
 
 | 切面 | 职责 |
 |---|---|
