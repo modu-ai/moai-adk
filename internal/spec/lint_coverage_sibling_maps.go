@@ -68,6 +68,39 @@ package spec
 // list spanning two physical lines is declined for the same reason and by the
 // same mechanism (property 3): admitting the line crossing is an unbounded
 // widening bought for a measured population of zero.
+//
+// DECLARED RESIDUAL — PROSE ABSORPTION AFTER A TAIL. One over-reach shape is
+// NOT declined, and is named here rather than left for the next reader to
+// discover: inside a `maps` section, a bare number following a full id and a
+// comma is absorbed as a tail EVEN WHEN the surrounding prose says that REQ is
+// not mapped. Observed directly (sync-audit of card t801, scratch fixture
+// outside the tree):
+//
+//	- AC-FIXH-001 (maps REQ-FIXH-001, 002 is explicitly NOT mapped by this AC): …
+//	  before this change → CoverageIncomplete … REQ REQ-FIXH-002 …
+//	  after  this change → 0 error(s), 1 warning(s)   (no CoverageIncomplete)
+//
+// So this change turns one CORRECT warning into silence — the same defect class
+// the header above rejects the line as a unit to avoid. Three facts bound it,
+// and none of them dissolves it:
+//
+//   - It is not a specification failure. REQ-SMS-004 defines the capture
+//     SYNTACTICALLY ("ends at the first element that is neither a full REQ id
+//     nor a bare numeric tail"), and `002` IS syntactically a bare numeric
+//     tail. The code does what the SPEC says.
+//   - It is not newly introduced. The table path (cellREQIDs, card t561) has
+//     carried the same shape since it shipped; this file inherits it by reusing
+//     that one rule, which is the property REQ-SMS-002 requires.
+//   - The live population is zero today — the whole-corpus delta measured
+//     exactly 0. That is a fact about today, not a guarantee about tomorrow:
+//     legalizing the shorthand makes authors write numbers in `maps` sections
+//     more often, which makes this shape more likely to be born, not less.
+//
+// Narrowing candidate for a follow-up card, recorded so the option is not
+// re-derived: require a section-closing token after a tail (`)`, `:`, an em
+// dash, or end of line) before the capture may continue. Not done here —
+// narrowing the locator is a behaviour change outside this card's SPEC, and
+// declaring the residual is what this card owes.
 
 import "regexp"
 
