@@ -4,7 +4,7 @@ weight: 30
 draft: false
 ---
 
-详细介绍 MoAI-ADK v3.0 的 12 个核心智能体目录。
+详细介绍 MoAI-ADK v3.0 的 13 个核心智能体目录。
 
 {{< callout type="info" >}}
 **一句话总结**：智能体是各领域的 **专家团队**。MoAI 作为团队负责人把任务分派给合适的专家 — 并且制定计划的智能体与审计它的智能体必须分离。
@@ -22,7 +22,7 @@ draft: false
 
 用公司组织来类比：MoAI 是 CEO，Manager 智能体是部门负责人，Evaluator 智能体是质量监察官，Builder 智能体是新团队组建负责人，Advisor 智能体则是外部顾问。
 
-智能体数量在 v3 期间经历了 22 → 17 → 8 → 10 → **11** 的精炼。智能体并非越多越好 — 每一次委派都有上下文成本，因此缩减目录本身就是代币经济学的一部分。
+智能体数量在 v3 期间经历了 22 → 17 → 8 → 10 → 12 → **13** 的精炼。智能体并非越多越好 — 每一次委派都有上下文成本，因此缩减目录本身就是代币经济学的一部分。
 
 ## MoAI 编排器
 
@@ -37,9 +37,9 @@ MoAI 是 MoAI-ADK 的 **最高层协调者**。它分析用户请求，并把任
 | 并行执行 | 独立的只读任务同时委派给多个智能体 |
 | 结果整合 | 汇总智能体执行结果并向用户汇报 |
 
-## 12 个核心智能体目录
+## 13 个核心智能体目录
 
-MoAI-ADK 使用 **12 个核心智能体**（11 个 MoAI 自定义 + 1 个 Anthropic 内置）。
+MoAI-ADK 使用 **13 个核心智能体**（12 个 MoAI 自定义 + 1 个 Anthropic 内置）。
 
 ### Manager 智能体（6 个）
 
@@ -73,11 +73,18 @@ MoAI-ADK 使用 **12 个核心智能体**（11 个 MoAI 自定义 + 1 个 Anthro
 |----------|------|---------------|------|
 | `super-advisor` | 高推理咨询 — 僵局、设计决策点、第二意见（E1-E4 升级） | inherit / high {{< icon flash warn >}} | 非约束性处方 — 最终决定权在编排器 |
 
-### Specialist 智能体（1 个）
+### Specialist 智能体（2 个）
 
 | 智能体 | 角色 | 模型 / effort | 特点 |
 |----------|------|---------------|------|
 | `e2e-tester` | 网页/移动/桌面 E2E 测试执行（旅程脚本、CLI 优先套件执行、产物管理） | inherit / low {{< icon flash muted >}} | `/moai e2e` 工作流的执行主体 — 选择问题由编排器负责 |
+| `mission-governor` | 读取已批准的 GTD 自动任务的封存快照，只返回一条结构化判定（只读） | inherit / high {{< icon flash warn >}} | 只判定、不执行 — 由确定性执行器校验判定并完成状态变更 |
+
+`mission-governor` **只下判定，不亲自执行**。它不写文件、不跑 shell 或 Git 命令、不碰队列、不向泳道派活，也不做提交、合并、批准或审计判定。检查返回的判定并真正改变状态的，是确定性执行器（只按既定规则行动的自动处理器）。它的工具清单只有 `Read`、`Grep`、`Glob`、`Skill` 四项；一旦请求超出封存范围，或判定所需的证据缺失、过期，它就返回 blocker 判定。
+
+{{< callout type="info" >}}
+`mission-governor` 在下面的[智能体选择决策树](#智能体选择决策树)中**有意没有位置**。它不是编排器挑选后调用的智能体，而是由 GTD 自动任务工作流直接调用的判定角色。它没出现在决策树里是设计使然，并非遗漏。
+{{< /callout >}}
 
 ### 内置智能体（1 个，Anthropic）
 
@@ -216,7 +223,7 @@ flowchart TD
 
 ## 智能体定义文件
 
-10 个 MoAI 自定义智能体以 Markdown 文件的形式定义在 `.claude/agents/moai/` 目录中。
+12 个 MoAI 自定义智能体以 Markdown 文件的形式定义在 `.claude/agents/moai/` 目录中。`Explore` 是 Anthropic 内置的，磁盘上没有对应文件。
 
 ### 文件结构
 
@@ -227,11 +234,13 @@ flowchart TD
 ├── manager-docs.md
 ├── manager-git.md
 ├── manager-design.md
+├── manager-lead.md
 ├── plan-auditor.md
 ├── sync-auditor.md
 ├── builder-harness.md
 ├── super-advisor.md
 ├── e2e-tester.md
+├── mission-governor.md
 └── (Explore: Anthropic 内置，无文件)
 ```
 

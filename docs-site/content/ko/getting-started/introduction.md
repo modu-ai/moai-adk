@@ -49,7 +49,7 @@ MoAI-ADK는 Claude Code를 **세 축**으로 감싸는 Agentic Development Kit�
 - **manager-lead** — SPEC 안의 Tier L 마일스톤 팬아웃은 물론, 칸반·팩토리 리드 세션 디스패치까지 아우르는 조율 에이전트입니다.
 - **multi-model audit** — 다중 모델 교차 검증으로 편향을 잡습니다.
 - **autonomy tier** — 자율성 단계를 조절해 안전하게 돌립니다.
-- **profile matrix** — 12 에이전트 × 3 프로필로 모델을 배정합니다.
+- **profile matrix** — 13 에이전트 × 3 프로필로 모델을 배정합니다.
 
 ## 핵심 개념
 
@@ -104,7 +104,7 @@ MoAI-ADK는 Python Edition을 Go로 완전히 재작성하여 성능과 효율�
 
 ### 핵심 수치 (v3.0 기준)
 
-- **11개** 에이전트 카탈로그 (10 MoAI 커스텀 + 1 Anthropic 빌트인 `Explore`)
+- **13개** 에이전트 카탈로그 (12 MoAI 커스텀 + 1 Anthropic 빌트인 `Explore`)
 - **31개** 스킬 (template-managed)
 - **36개** 터미널 CLI 명령 · **16종** `/moai` 슬래시 서브커맨드
 - **16개** 프로그래밍 언어 지원
@@ -124,17 +124,17 @@ MoAI-ADK는 Python Edition을 Go로 완전히 재작성하여 성능과 효율�
 
 ## 주요 기능
 
-### 에이전트 카탈로그 (11개)
+### 에이전트 카탈로그 (13개)
 
-MoAI 오케스트레이터는 직접 구현하지 않고 11개의 전문 에이전트에게 작업을 위임합니다. 계획과 감사는 분리되어 있습니다. 만든 사람이 검사하지 않습니다.
+MoAI 오케스트레이터는 직접 구현하지 않고 13개의 전문 에이전트에게 작업을 위임합니다. 계획과 감사는 분리되어 있습니다. 만든 사람이 검사하지 않습니다.
 
 | 카테고리 | 수량 | 주요 에이전트 |
 |----------|------|--------------|
-| **Manager** | 5개 | manager-spec, manager-develop, manager-docs, manager-git, manager-design |
+| **Manager** | 6개 | manager-spec, manager-develop, manager-docs, manager-git, manager-design, manager-lead |
 | **Evaluator** | 2개 | plan-auditor, sync-auditor |
 | **Builder** | 1개 | builder-harness |
 | **Advisor** | 1개 | super-advisor (고추론 자문) |
-| **Specialist** | 1개 | e2e-tester (웹/모바일/데스크탑 E2E 테스트 실행) |
+| **Specialist** | 2개 | e2e-tester (웹/모바일/데스크탑 E2E 테스트 실행), mission-governor (GTD 자동 미션 판정, 읽기 전용) |
 | **빌트인** | 1개 | Explore (Anthropic 내장, 읽기 전용 코드 분석) |
 
 ### 모델 정책 (토크노믹스)

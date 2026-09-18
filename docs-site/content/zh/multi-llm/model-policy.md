@@ -12,7 +12,7 @@ description: 讲解按任务性质与质量/成本目标为每个智能体分配
 这套规则是代币经济学（tokenomics，代币经济）的骨架。代币经济学指权衡质量与成本来分配代币的使用方式，而 MoAI-ADK 实现其中 **成本** 这一轴的手段，正是这套模型策略。
 
 {{< callout type="info" >}}
-**一句话**： 选定一个策略（high/medium/low），该列的值就一次性定下当天 11 个智能体各自的模型与推理深度。挑模型的负担从十一处收敛到一处（选择策略）。
+**一句话**： 选定一个策略（high/medium/low），该列的值就一次性定下当天 13 个智能体各自的模型与推理深度。挑模型的负担从十三处收敛到一处（选择策略）。
 {{< /callout >}}
 
 ## 为什么不该执着于"最强模型"
@@ -70,7 +70,7 @@ description: 讲解按任务性质与质量/成本目标为每个智能体分配
 
 ## 各智能体分配表
 
-下面 36 个格子就是配置矩阵（12 个智能体 × 3 个配置文件）。每个格子是解析器在调用时注入的 `{model, effort}` 对。编排器主会话不是被调用的智能体，因此不在表中。
+下面 39 个格子就是配置矩阵（13 个智能体 × 3 个配置文件）。每个格子是解析器在调用时注入的 `{model, effort}` 对。编排器主会话不是被调用的智能体，因此不在表中。
 
 ### Manager Agents（6 个）
 
@@ -83,7 +83,7 @@ description: 讲解按任务性质与质量/成本目标为每个智能体分配
 | manager-design | opus / high | opus / high | opus / medium |
 | manager-lead | opus / high | opus / high | opus / medium |
 
-### Evaluator · Advisor · Builder · Specialist Agents（5 个）
+### Evaluator · Advisor · Builder · Specialist Agents（6 个）
 
 | 智能体 | high | medium | low |
 |---------|------|--------|-----|
@@ -92,6 +92,7 @@ description: 讲解按任务性质与质量/成本目标为每个智能体分配
 | super-advisor | opus / high | opus / high | opus / high |
 | builder-harness | opus / high | opus / medium | opus / low |
 | e2e-tester | opus / medium | opus / low | sonnet / low |
+| mission-governor | opus / high | opus / high | opus / high |
 
 ### Built-in Agent（1 个）
 
@@ -258,7 +259,7 @@ moai init my-project --model-policy low     # 每任务成本最低
 
 ## 下一步
 
-- [配置矩阵](/zh/advanced/profile-matrix/) —— 36 个格子的布置依据（判断加权策略）与解析器优先级细节
+- [配置矩阵](/zh/advanced/profile-matrix/) —— 39 个格子的布置依据（判断加权策略）与解析器优先级细节
 - [CG 停用与配置迁移](/zh/multi-llm/cg-mode/)
 - [自主级别](/zh/advanced/autonomy-tier/) —— `MOAI_AUTONOMY_TIER` 的成本 · 速度取舍
 - [CLI 参考](/zh/getting-started/cli) —— `moai init`、`moai update`、`moai model profile` 详解

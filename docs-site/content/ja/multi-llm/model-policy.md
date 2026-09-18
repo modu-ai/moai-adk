@@ -12,7 +12,7 @@ description: 作業の性質と品質/コストの目標に合わせてエージ
 この規則はトークノミクス (tokenomics、トークン経済) の骨格です。トークノミクスとは品質あたりのコストを天秤にかけてトークンを配分するやり方を指し、MoAI-ADK がそのうち**コスト**の軸を実際に実装する手段が、まさにこのモデルポリシーです。
 
 {{< callout type="info" >}}
-**ひとことで:** プロファイル (high/medium/low) を 1 つ選ぶと、その列の値がその日の 11 エージェントそれぞれのモデルと推論深度を一度に決めます。モデルを直接選ぶ負担が 11 か所から 1 か所 (プロファイル選択) に減ります。
+**ひとことで:** プロファイル (high/medium/low) を 1 つ選ぶと、その列の値がその日の 13 エージェントそれぞれのモデルと推論深度を一度に決めます。モデルを直接選ぶ負担が 13 か所から 1 か所 (プロファイル選択) に減ります。
 {{< /callout >}}
 
 ## 「最強のモデル」にこだわってはいけない理由
@@ -70,7 +70,7 @@ description: 作業の性質と品質/コストの目標に合わせてエージ
 
 ## エージェント別割り当て表
 
-以下の 36 セルがプロファイルマトリクス (エージェント 12 個 × プロファイル 3 個) です。各セルには、リゾルバが spawn 時点で注入する `{model, effort}` ペアが入っています。オーケストレーターのメインセッションは呼び出される側のエージェントではないため、表から外しています。
+以下の 39 セルがプロファイルマトリクス (エージェント 13 個 × プロファイル 3 個) です。各セルには、リゾルバが spawn 時点で注入する `{model, effort}` ペアが入っています。オーケストレーターのメインセッションは呼び出される側のエージェントではないため、表から外しています。
 
 ### Manager Agents (6 個)
 
@@ -83,7 +83,7 @@ description: 作業の性質と品質/コストの目標に合わせてエージ
 | manager-design | opus / high | opus / high | opus / medium |
 | manager-lead | opus / high | opus / high | opus / medium |
 
-### Evaluator · Advisor · Builder · Specialist Agents (5 個)
+### Evaluator · Advisor · Builder · Specialist Agents (6 個)
 
 | エージェント | high | medium | low |
 |---------|------|--------|-----|
@@ -92,6 +92,7 @@ description: 作業の性質と品質/コストの目標に合わせてエージ
 | super-advisor | opus / high | opus / high | opus / high |
 | builder-harness | opus / high | opus / medium | opus / low |
 | e2e-tester | opus / medium | opus / low | sonnet / low |
+| mission-governor | opus / high | opus / high | opus / high |
 
 ### ビルトインエージェント (1 個)
 
@@ -258,7 +259,7 @@ moai init my-project --model-policy low     # 課題あたり最低コスト
 
 ## 次のステップ
 
-- [プロファイルマトリクス](/ja/advanced/profile-matrix/) — 36 セルの配置根拠 (判断加重ポリシー) とリゾルバの優先順位の詳細
+- [プロファイルマトリクス](/ja/advanced/profile-matrix/) — 39 セルの配置根拠 (判断加重ポリシー) とリゾルバの優先順位の詳細
 - [CG の廃止と設定の移行](/ja/multi-llm/cg-mode/)
 - [自律性ティア](/ja/advanced/autonomy-tier/) — `MOAI_AUTONOMY_TIER` のコスト · 速度トレードオフ
 - [CLI リファレンス](/ja/getting-started/cli) — `moai init`、`moai update`、`moai model profile` の詳細

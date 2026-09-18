@@ -18,8 +18,8 @@ description: 작업 성격과 품질/비용 목표에 맞춰 에이전트마다 
 구현하는 수단이 바로 이 모델 정책입니다.
 
 {{< callout type="info" >}}
-**한 줄로:** 정책 하나를 고르면(high/medium/low), 그 열의 값이 그날 11개 에이전트
-각각의 모델과 추론 깊이를 한 번에 정합니다. 모델을 직접 고르는 부담이 열한 곳에서
+**한 줄로:** 정책 하나를 고르면(high/medium/low), 그 열의 값이 그날 13개 에이전트
+각각의 모델과 추론 깊이를 한 번에 정합니다. 모델을 직접 고르는 부담이 열세 곳에서
 한 곳(프로필 선택)으로 줄어듭니다.
 {{< /callout >}}
 
@@ -100,7 +100,7 @@ description: 작업 성격과 품질/비용 목표에 맞춰 에이전트마다 
 
 ## 에이전트별 배정표
 
-아래 36개 셀이 프로필 매트릭스(에이전트 12개 × 프로필 3개)입니다. 각 셀에는 리졸버가
+아래 39개 셀이 프로필 매트릭스(에이전트 13개 × 프로필 3개)입니다. 각 셀에는 리졸버가
 부름 시점에 주입하는 `{model, effort}` 쌍이 들어 있습니다. 오케스트레이터 메인 세션은
 부름받는 에이전트가 아니라서 표에서 뺐습니다.
 
@@ -115,7 +115,7 @@ description: 작업 성격과 품질/비용 목표에 맞춰 에이전트마다 
 | manager-design | opus / high | opus / high | opus / medium |
 | manager-lead | opus / high | opus / high | opus / medium |
 
-### Evaluator · Advisor · Builder · Specialist Agents (5개)
+### Evaluator · Advisor · Builder · Specialist Agents (6개)
 
 | 에이전트 | high | medium | low |
 |---------|------|--------|-----|
@@ -124,6 +124,7 @@ description: 작업 성격과 품질/비용 목표에 맞춰 에이전트마다 
 | super-advisor | opus / high | opus / high | opus / high |
 | builder-harness | opus / high | opus / medium | opus / low |
 | e2e-tester | opus / medium | opus / low | sonnet / low |
+| mission-governor | opus / high | opus / high | opus / high |
 
 ### Built-in Agent (1개)
 
@@ -374,7 +375,7 @@ moai init my-project --model-policy low     # 과제당 최저 비용
 
 ## 다음 단계
 
-- [프로필 매트릭스](/ko/advanced/profile-matrix/) — 36개 셀의 배치 근거(판단 가중 정책)와 리졸버 우선순위 상세
+- [프로필 매트릭스](/ko/advanced/profile-matrix/) — 39개 셀의 배치 근거(판단 가중 정책)와 리졸버 우선순위 상세
 - [CG 폐기와 설정 이전](/ko/multi-llm/cg-mode/)
 - [자율성 티어](/ko/advanced/autonomy-tier/) — `MOAI_AUTONOMY_TIER` 비용·속도 트레이드오프
 - [CLI 레퍼런스](/ko/getting-started/cli) — `moai init`, `moai update`, `moai model profile` 상세

@@ -4,7 +4,7 @@ weight: 30
 draft: false
 ---
 
-A detailed guide to the catalog of 12 core agents in MoAI-ADK v3.0.
+A detailed guide to the catalog of 13 core agents in MoAI-ADK v3.0.
 
 {{< callout type="info" >}}
 **One-line summary**: Agents are a **team of specialists**, one for each field. MoAI, as team leader, distributes work to the right specialist — and the agent that authors a plan is always separated from the agent that audits it.
@@ -22,7 +22,7 @@ Built on Claude Code's **Sub-agent** system, each agent has an independent conte
 
 In a company analogy, MoAI is the CEO, Manager agents are department heads, Evaluator agents are quality inspectors, the Builder agent is the new-team creation officer, and the Advisor agent is an external consultant.
 
-The agent count was refined over the v3 period from 22 → 17 → 8 → 10 → **11**. More agents is not better — every delegation carries a context cost, so shrinking the catalog is itself part of tokenomics.
+The agent count was refined over the v3 period from 22 → 17 → 8 → 10 → 12 → **13**. More agents is not better — every delegation carries a context cost, so shrinking the catalog is itself part of tokenomics.
 
 ## The MoAI Orchestrator
 
@@ -37,9 +37,9 @@ MoAI is the **top-level coordinator** of MoAI-ADK. It analyzes user requests and
 | Parallel execution | Independent read-only tasks are delegated to multiple agents simultaneously |
 | Result consolidation | Agent execution results are aggregated and reported to the user |
 
-## The 12-Agent Core Catalog
+## The 13-Agent Core Catalog
 
-MoAI-ADK uses **12 core agents** (11 MoAI custom + 1 Anthropic built-in).
+MoAI-ADK uses **13 core agents** (12 MoAI custom + 1 Anthropic built-in).
 
 ### Manager Agents (6)
 
@@ -73,11 +73,18 @@ The key point is that planning and auditing are separated — the one who built 
 |----------|------|---------------|------|
 | `super-advisor` | High-reasoning consultation — deadlocks, design decision points, second opinions (E1-E4 escalation) | inherit / high {{< icon flash warn >}} | Non-binding prescriptions — the orchestrator makes the final call |
 
-### Specialist Agent (1)
+### Specialist Agents (2)
 
 | Agent | Role | Model / effort | Characteristics |
 |----------|------|---------------|------|
 | `e2e-tester` | E2E test execution across web/mobile/desktop (journey scripting, CLI-first suite runs, artifact management) | inherit / low {{< icon flash muted >}} | Execution owner of the `/moai e2e` workflow — selection questions stay with the orchestrator |
+| `mission-governor` | Reads the sealed snapshot of an approved GTD auto mission and returns exactly one structured decision (read-only) | inherit / high {{< icon flash warn >}} | Decides but never acts — a deterministic executor validates the decision and performs any state change |
+
+`mission-governor` **decides; it does not execute**. It writes no files, runs no shell or Git commands, touches no queue, dispatches no work to a lane, and neither commits, merges, approves, nor issues an audit verdict. The side that inspects the returned decision and actually changes state is a deterministic executor (an automated handler that moves only along fixed rules). Its tool list is just four — `Read`, `Grep`, `Glob`, `Skill` — and it returns a blocker decision whenever a request falls outside the sealed scope, or the evidence it needs to judge is missing or stale.
+
+{{< callout type="info" >}}
+`mission-governor` has **deliberately no place** in the [Agent Selection Decision Tree](#agent-selection-decision-tree) below. It is not an agent the orchestrator picks and calls; it is a decision role the GTD auto-mission workflow invokes directly. Its absence from the tree is by design, not an omission.
+{{< /callout >}}
 
 ### Built-in Agent (1, Anthropic)
 
@@ -216,7 +223,7 @@ flowchart TD
 
 ## Agent Definition Files
 
-The 10 MoAI custom agents are defined as markdown files in the `.claude/agents/moai/` directory.
+The 12 MoAI custom agents are defined as markdown files in the `.claude/agents/moai/` directory. `Explore` is an Anthropic built-in, so it has no file on disk.
 
 ### File Structure
 
@@ -227,11 +234,13 @@ The 10 MoAI custom agents are defined as markdown files in the `.claude/agents/m
 ├── manager-docs.md
 ├── manager-git.md
 ├── manager-design.md
+├── manager-lead.md
 ├── plan-auditor.md
 ├── sync-auditor.md
 ├── builder-harness.md
 ├── super-advisor.md
 ├── e2e-tester.md
+├── mission-governor.md
 └── (Explore: Anthropic built-in, no file)
 ```
 
