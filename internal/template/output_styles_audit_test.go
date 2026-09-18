@@ -2,6 +2,38 @@
 //
 // This file implements audit tests for the .claude/output-styles/moai/ directory.
 // Source: SPEC-V3R2-WF-006
+//
+// # Persona cross-references are not audited here, and that is a finding, not a gap
+//
+// These tests assert frontmatter schema, the exact style count, template/live
+// parity, and encoding. Nothing here asserts that a persona names its siblings or
+// documents how to switch away from itself — and the three personas do differ on
+// that axis: moai-easy.md and moai-learn.md each point the reader at MoAI, while
+// moai.md names neither sibling.
+//
+// That asymmetry was investigated and judged structural rather than defective:
+//
+//   - Nothing was lost. moai.md has never named a sibling in its whole history;
+//     `git log -S 'MoAI-Easy' --follow` over it returns no commit, while the same
+//     probe over moai-easy.md returns several. The absence is original, not a
+//     regression.
+//   - Each sibling's pointer is a consequence of its own declared limit. The
+//     moai-learn pointer sits inside that file's Cannot-Do section ("no code
+//     writing — switch to MoAI"), and moai-easy frames itself as the beginner
+//     on-ramp. Every entry in moai.md's own Cannot-Do section is internal
+//     discipline (delegate, refuse over-engineering); none of them names a
+//     capability a sibling would supply. The shape is a hub two spokes point at,
+//     not a hub missing an edge.
+//   - Discovery does not depend on the prose. The runtime's `/output-style`
+//     command lists every available style with its frontmatter description, and it
+//     lists styles kept in a subdirectory such as this one — measured with a flat
+//     and a nested probe style in an isolated directory. A reader in the MoAI
+//     persona reaches the siblings through the command regardless of what the file
+//     says.
+//
+// So a future assertion requiring persona cross-references would encode a
+// preference, not repair a defect. If one is ever added, it should say which of
+// the three properties above it believes has changed.
 package template
 
 import (
