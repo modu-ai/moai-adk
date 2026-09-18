@@ -534,7 +534,7 @@ over 4497 → 5541 entries; mutant probe RED exactly where required, witness lin
 intact; suite / probe / vet / lint all clean, lint baseline `0 issues.` at both HEAD
 and `<base>`.
 
-**Follow-up card candidates (3) — none is this card's to make.**
+**Follow-up card candidates (4) — none is this card's to make.**
 
 1. **Fence blind spot.** The collector family does not strip fenced code blocks, so a
    document illustrating REQ syntax contributes real entries and real findings. This
@@ -546,13 +546,51 @@ and `<base>`.
    the 14 adjudicated `DuplicateREQID` false positives; both directions occur in the
    corpus, so no one-sided assumption is safe. Precedent: card t518's L1 vocabulary
    discriminator on the table axis.
+4. **Probe scope over-reporting.** The probe walks all 1635 `.md` under `.moai/specs`
+   where the REQ-consuming rules visit only the 874 `SPEC-*/spec.md` that
+   `discoverSPECs` globs, so any decision taken from a raw probe projection is ~37
+   findings optimistic on this corpus unless it is scoped first. Measured as cause C1
+   of the AC-HRC-009 reconciliation. The probe is an instrument, and amending it is
+   outside run-phase ownership.
 
-A fourth item is flagged in A4a and belongs to whoever takes it up: the header comment
-of `internal/spec/lint_req_heading.go` justifies variant B partly with `8 → 36`
-`ModalityMalformed` figures that the shipped whole-paragraph extractor does not
-reproduce (real delta +1; 35 of the 36 are probe truncation artifacts). The variant
-decision stands; its stated evidence does not. Repair edits a source file, which M2
-must not do.
+**A4a is NOT a follow-up candidate — it was repaired inside this card.** Per lead
+adjudication ("correct it within this card, do not defer"), the `lint_req_heading.go`
+header comment was re-attributed by `manager-develop` (m1) in commit **`5f5cc103d`**
+("attribute the variant-B figures to their instruments", 1 file, +41/−17). The comment
+now separates the PLAN-PHASE PROJECTION (the probe's `8 → 36` first-line figures, kept
+as the actual decision inputs) from the SHIPPED EXTRACTOR measurement (delta +1, ratio
+0.043), explains that 35 of the probe's 36 are truncation artifacts, and carries a
+`[HARD] DO NOT RESTORE THE CLAIM THAT B "FINDS MORE REAL DEFECTS"` regression guard.
+The variant decision is unchanged and is now better supported than the retired text
+claimed.
+
+Verified independently by me on the landed commit: the diff carries **zero non-comment
+changed lines**, and the Go tree is byte-identical across the HEAD move that happened
+during m1's work (`git diff --name-only faf3dcfbc 6d1fbf5fc` → `progress.md` only).
+`go build` / `go vet` were re-measured by the lead; m1's own `go test
+./internal/spec/... -count=1` (`ok … 87.589s`) is attributed to m1 and was not re-run
+by the lead or by me.
+
+**Process record — a second writer briefly existed in this worktree during run-phase.**
+Recorded per `agent-common-protocol.md` § Background Agent Execution, which requires an
+unexpected write on an actively-worked tree to be reported and recorded rather than
+quietly absorbed. Facts only:
+
+- **Cause: lane-orchestrator dispatch ordering.** The lead re-delegated the A4a comment
+  repair to `manager-develop` (m1) while this agent (m2) was still executing the lead's
+  previous instruction, putting two write-capable agents in one worktree at once. The
+  cause was the dispatch order, **not** either agent writing out of turn.
+- **Detected and stopped, both ends.** m2 observed `internal/spec/lint_req_heading.go`
+  modified immediately after its own commit, did not revert it (work of unknown
+  provenance), did not sweep it into its own commit (explicit pathspec), stopped further
+  writes, and reported to the lead before recording anything. Independently, m1 noticed
+  that HEAD had moved off its dispatched base `faf3dcfbc` to `6d1fbf5fc` and, instead of
+  assuming, established with `git diff --name-only faf3dcfbc HEAD` that only
+  `progress.md` differed — so the Go tree was byte-identical across the move and its own
+  evidence remained attributable.
+- **No loss.** The two agents' files did not overlap and neither commit absorbed the
+  other's work; m1's edit landed as its own commit `5f5cc103d`. That the overlap was
+  harmless was a property of this particular pairing, not of the process.
 
 **Not touched** (sync-phase fields): `§E.4`, `sync_commit_sha`, and every frontmatter
 field other than those M1 already set. Run-phase changed no SPEC body content.
