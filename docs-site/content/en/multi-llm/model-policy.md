@@ -153,8 +153,9 @@ table.
 
 - **The spend goes to the rows that judge**: the policy is settled operator
   input, not a cost/score derivation. The auditing/advising rows
-  (`plan-auditor`, `sync-auditor`, `super-advisor`) and the coordinating rows
-  (`manager-design`, `manager-lead`) hold `high`, while the authoring and
+  (`plan-auditor`, `sync-auditor`, `super-advisor`), the coordinating rows
+  (`manager-design`, `manager-lead`), and the deciding row
+  (`mission-governor`) hold `high`, while the authoring and
   implementing rows (`manager-spec`, `manager-develop`) sit at `medium` in all
   three profiles.
 - **Every agentic row stays on Opus**: `manager-spec`, `manager-develop`,

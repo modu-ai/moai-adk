@@ -142,7 +142,8 @@ description: 작업 성격과 품질/비용 목표에 맞춰 에이전트마다 
 
 - **지출은 판단하는 행에**: 정책은 비용·점수 곡선의 도출이 아니라 확정된 운영자
   판단입니다. 감사·자문 행(`plan-auditor`, `sync-auditor`, `super-advisor`)과 조율
-  행(`manager-design`, `manager-lead`)이 `high`를 유지하는 동안, 저작·구현 행
+  행(`manager-design`, `manager-lead`), 판정 행(`mission-governor`)이 `high`를
+  유지하는 동안, 저작·구현 행
   (`manager-spec`, `manager-develop`)은 세 프로필 모두 `medium`에 머뭅니다.
 - **모든 에이전틱 행은 Opus**: `manager-spec`, `manager-develop`, `plan-auditor`,
   `sync-auditor`, `manager-design`, `manager-lead`, `builder-harness`, `e2e-tester`

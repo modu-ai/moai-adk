@@ -106,7 +106,7 @@ description: 讲解按任务性质与质量/成本目标为每个智能体分配
 
 ## 分配原则
 
-- **开销流向做判断的行**： 这套策略是敲定的运营者判断，不是成本/得分推导。审计·顾问行（`plan-auditor`、`sync-auditor`、`super-advisor`）与协调行（`manager-design`、`manager-lead`）保持 `high`，而撰写·实现行（`manager-spec`、`manager-develop`）在三个配置文件中都停在 `medium`。
+- **开销流向做判断的行**： 这套策略是敲定的运营者判断，不是成本/得分推导。审计·顾问行（`plan-auditor`、`sync-auditor`、`super-advisor`）、协调行（`manager-design`、`manager-lead`）与判定行（`mission-governor`）保持 `high`，而撰写·实现行（`manager-spec`、`manager-develop`）在三个配置文件中都停在 `medium`。
 - **所有智能体行都用 Opus**： `manager-spec`、`manager-develop`、`plan-auditor`、`sync-auditor`、`manager-design`、`manager-lead`、`builder-harness`、`e2e-tester` 等多轮工作全部留在 Opus。因为 Opus 的 `low` 比任何 effort 的 Sonnet 得分高、每任务成本却更低。
 - **Sonnet 只用于单发·以输入为主的行**： `manager-docs` 的文档整理、`manager-git` 的机械性工作与 `Explore` 探索都是一次以输入为主的 pass 就结束，不存在多步完赛失败的问题，而在这些位置 Sonnet 更低的输入单价是决定性的。这三行在三个配置文件下都固定为 `sonnet / low`。
 - **没有任何行取 `max`**： `max` 仍作为 `high` 之上唯一的级别留在词汇表中，但当前没有格子使用它。
