@@ -201,7 +201,7 @@ flowchart TD
 
 ### Peer Cross-Verification
 
-When a leaf worker marks an AC as PASS, `manager-lead` spawns a second read-only `Agent(general-purpose)` that **did not do that work**. Read-only is enforced by omitting Write/Edit/NotebookEdit from its `tools:`. That worker re-runs the Given-When-Then commands from `acceptance.md` §D verbatim and returns one of `PASS` / `PARTIAL` / `FAIL`.
+When a leaf worker marks an AC as PASS, `manager-lead` spawns a second read-only `Agent(general-purpose)` that **did not do that work**. Its `tools:` omits Write/Edit/NotebookEdit, which removes the direct editing path. That narrows the worker; it does not seal it — an agent still carrying `Bash` can write through it, so read-only is decided by the absence of write *capability*, not by the absence of those tool names. That worker re-runs the Given-When-Then commands from `acceptance.md` §D verbatim and returns one of `PASS` / `PARTIAL` / `FAIL`.
 
 The second worker has no stake in the author's claim. That is what exposes self-report failures such as miscounting a grep result, citing a stale baseline, or skipping one verification command.
 
@@ -213,7 +213,7 @@ The role differs from `sync-auditor` in the sync phase. `sync-auditor` is a fina
 flowchart TD
     AUTHOR["Leaf worker reports AC-X as PASS"] --> TIER{"Tier S?"}
     TIER -->|"Yes"| SKIP["Skip cross-verification"]
-    TIER -->|"No"| PEER["Spawn read-only second worker<br>no Write/Edit tools"]
+    TIER -->|"No"| PEER["Spawn second worker<br>no Write/Edit tools"]
     PEER --> RERUN["Re-run acceptance.md §D GWT commands"]
     RERUN --> VERDICT{"Verdict"}
     VERDICT -->|"PASS"| NEXT["Fold, then next milestone"]

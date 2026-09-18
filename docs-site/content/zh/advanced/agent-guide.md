@@ -201,7 +201,7 @@ flowchart TD
 
 ### peer 交叉验证
 
-当叶子工作者把某个 AC 标记为 PASS 时，`manager-lead` 会创建第二个只读的 `Agent(general-purpose)`，且这个工作者**没有做过那份工作**。只读通过在 `tools:` 中省略 Write/Edit/NotebookEdit 来强制。该工作者原样重跑 `acceptance.md` §D 中的 Given-When-Then 命令，并返回 `PASS` / `PARTIAL` / `FAIL` 三者之一。
+当叶子工作者把某个 AC 标记为 PASS 时，`manager-lead` 会创建第二个只读的 `Agent(general-purpose)`，且这个工作者**没有做过那份工作**。它的 `tools:` 省略了 Write/Edit/NotebookEdit，直接编辑文件的路径因此不存在。但这是收窄而不是封死 —— 只要还带着 `Bash`，就能从那条路写入，所以是不是只读要看有没有写入**能力**，而不是看有没有那几个工具名。该工作者原样重跑 `acceptance.md` §D 中的 Given-When-Then 命令，并返回 `PASS` / `PARTIAL` / `FAIL` 三者之一。
 
 第二个工作者对作者的说法没有任何利害关系。正因如此，诸如把 grep 结果数错、引用过时的 baseline、漏跑一条验证命令这类自我报告失效，才会暴露出来。
 
@@ -213,7 +213,7 @@ flowchart TD
 flowchart TD
     AUTHOR["叶子工作者报告 AC-X 为 PASS"] --> TIER{"是 Tier S 吗?"}
     TIER -->|"是"| SKIP["跳过交叉验证"]
-    TIER -->|"否"| PEER["创建只读的第二个工作者<br>无 Write/Edit 工具"]
+    TIER -->|"否"| PEER["创建第二个工作者<br>无 Write/Edit 工具"]
     PEER --> RERUN["重跑 acceptance.md §D GWT 命令"]
     RERUN --> VERDICT{"判定"}
     VERDICT -->|"PASS"| NEXT["折叠后进入下一个里程碑"]

@@ -202,7 +202,7 @@ flowchart TD
 
 ### peer 交差検証
 
-リーフワーカーがある AC を PASS と表記すると、`manager-lead` は **その作業を行っていない** 2 番目の `Agent(general-purpose)` を読み取り専用で生成します。読み取り専用は `tools:` から Write/Edit/NotebookEdit を除外することで強制します。このワーカーは `acceptance.md` §D の Given-When-Then コマンドをそのまま再実行し、`PASS` / `PARTIAL` / `FAIL` のいずれかを返します。
+リーフワーカーがある AC を PASS と表記すると、`manager-lead` は **その作業を行っていない** 2 番目の `Agent(general-purpose)` を読み取り専用で生成します。その `tools:` は Write/Edit/NotebookEdit を外してあり、ファイルを直接編集する経路がなくなります。ただしこれは絞り込みであって封印ではありません — `Bash` が残っていればそちら経由で書けるため、読み取り専用かどうかはツール名の不在ではなく書き込み**能力**の不在で判定します。このワーカーは `acceptance.md` §D の Given-When-Then コマンドをそのまま再実行し、`PASS` / `PARTIAL` / `FAIL` のいずれかを返します。
 
 2 番目のワーカーは著者の主張に何の利害も持ちません。だからこそ、grep の結果を数え違える、古い baseline を引用する、検証コマンドを 1 つ飛ばすといった自己報告の失敗がそのまま露呈します。
 
@@ -214,7 +214,7 @@ sync フェーズの `sync-auditor` とは役割が異なります。`sync-audit
 flowchart TD
     AUTHOR["リーフワーカーが AC-X を PASS と報告"] --> TIER{"Tier S か?"}
     TIER -->|"はい"| SKIP["交差検証を省略"]
-    TIER -->|"いいえ"| PEER["読み取り専用の 2 番目のワーカーを生成<br>Write/Edit ツールなし"]
+    TIER -->|"いいえ"| PEER["2 番目のワーカーを生成<br>Write/Edit ツールなし"]
     PEER --> RERUN["acceptance.md §D の GWT コマンドを再実行"]
     RERUN --> VERDICT{"判定"}
     VERDICT -->|"PASS"| NEXT["フォールド後、次のマイルストーンへ"]
