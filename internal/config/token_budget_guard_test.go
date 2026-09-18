@@ -4,6 +4,7 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 	"testing"
 )
@@ -157,7 +158,13 @@ func TestAlwaysLoadedTokenBudget_OverBudgetFails(t *testing.T) {
 			if err := os.WriteFile(filepath.Join(root, "AGENTS.md"), []byte(strings.Repeat("a", tt.agentsSize)), 0o644); err != nil {
 				t.Fatal(err)
 			}
-			if err := os.WriteFile(filepath.Join(mirrorDir, "AGENTS.md"), []byte(strings.Repeat("m", tt.mirrorSize)), 0o644); err != nil {
+			// The mirror ships as `AGENTS.md.tmpl` — the `.tmpl` suffix keeps it
+			// out of Codex's filename-keyed discovery in THIS repo while the
+			// deployer strips the suffix so a user project still receives
+			// `AGENTS.md` (card t925). The ceiling binds the deployed bytes, so
+			// the fixture must use the shipped name or this dimension silently
+			// measures nothing.
+			if err := os.WriteFile(filepath.Join(mirrorDir, "AGENTS.md.tmpl"), []byte(strings.Repeat("m", tt.mirrorSize)), 0o644); err != nil {
 				t.Fatal(err)
 			}
 			breaches, err := MeasureContractBytes(root)
@@ -200,10 +207,25 @@ func TestAlwaysLoadedTokenBudget_OverBudgetFails(t *testing.T) {
 	}
 }
 
-// TestCodexNestedTemplateDiscoveryBudget pins the one directory in this
-// repository where Codex can discover both the root contract and the embedded
-// deployment copy. The merged chain must fit Codex's default 32 KiB project
-// instruction budget; the per-file ceiling alone cannot detect this case.
+// TestCodexNestedTemplateDiscoveryBudget bounds every `AGENTS.md` Codex can
+// discover in this tree against its default 32 KiB project instruction budget.
+// Codex merges the root contract with any nested one it finds below the
+// invocation directory, consumed root-first, and drops the overflow from the
+// TAIL — silently, exit 0, stderr empty. The per-file ceiling cannot see this:
+// two files can each sit under 24,576 B and still truncate when merged.
+//
+// The paths are DISCOVERED, not declared. An earlier revision named the
+// template mirror literally, which made the guard die the moment card t925
+// renamed that file to `AGENTS.md.tmpl` to take it out of Codex's discovery —
+// and a guard repaired by pointing it at a path that no longer exists passes
+// vacuously forever. Walking for the filename Codex itself keys on means a
+// nested contract re-added anywhere is counted without anyone remembering to
+// update this list.
+//
+// Excluded: `.git`, and `.claude/worktrees` — each worktree is a full checkout
+// of this same repository, so counting them would multiply the root contract by
+// the number of live worktrees and measure the developer's checkout layout
+// rather than the shipped tree.
 func TestCodexNestedTemplateDiscoveryBudget(t *testing.T) {
 	cwd, err := os.Getwd()
 	if err != nil {
@@ -213,21 +235,46 @@ func TestCodexNestedTemplateDiscoveryBudget(t *testing.T) {
 	if !ok {
 		t.Fatal("repository root not found")
 	}
-	paths := []string{
-		filepath.Join(root, "AGENTS.md"),
-		filepath.Join(root, "internal", "template", "templates", "AGENTS.md"),
-	}
+
+	var found []string
 	total := 0
-	for _, path := range paths {
-		info, statErr := os.Stat(path)
-		if statErr != nil {
-			t.Fatalf("stat %s: %v", path, statErr)
+	walkErr := filepath.WalkDir(root, func(path string, d fs.DirEntry, err error) error {
+		if err != nil {
+			return err
 		}
+		if d.IsDir() {
+			if d.Name() == ".git" || path == filepath.Join(root, ".claude", "worktrees") {
+				return filepath.SkipDir
+			}
+			return nil
+		}
+		if d.Name() != "AGENTS.md" {
+			return nil
+		}
+		info, statErr := d.Info()
+		if statErr != nil {
+			return statErr
+		}
+		found = append(found, path)
 		total += int(info.Size())
+		return nil
+	})
+	if walkErr != nil {
+		t.Fatalf("walk %s: %v", root, walkErr)
 	}
+
+	// Non-vacuity: the root contract MUST be among the discovered files. Without
+	// this the walk finding nothing would pass the budget assertion trivially,
+	// and a guard that cannot fail is not a guard.
+	rootAgents := filepath.Join(root, "AGENTS.md")
+	if !slices.Contains(found, rootAgents) {
+		t.Fatalf("root contract %s was not discovered by the walk (found %v) — the guard would pass vacuously", rootAgents, found)
+	}
+
 	const codexDefaultProjectInstructionsMaxBytes = 32 * 1024
 	if total > codexDefaultProjectInstructionsMaxBytes {
-		t.Fatalf("nested Codex instruction chain = %d bytes, exceeds %d by %d", total, codexDefaultProjectInstructionsMaxBytes, total-codexDefaultProjectInstructionsMaxBytes)
+		t.Fatalf("discoverable Codex instruction chain = %d bytes across %v, exceeds %d by %d",
+			total, found, codexDefaultProjectInstructionsMaxBytes, total-codexDefaultProjectInstructionsMaxBytes)
 	}
 }
 

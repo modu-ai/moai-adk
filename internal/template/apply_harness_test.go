@@ -133,7 +133,11 @@ func TestHarnessFSStat(t *testing.T) {
 	if _, statErr := h.Stat(".claude/skills"); !errors.Is(statErr, fs.ErrNotExist) {
 		t.Errorf("hidden dir Stat = %v, want fs.ErrNotExist", statErr)
 	}
-	if _, statErr := h.Stat("AGENTS.md"); statErr != nil {
+	// The contract mirror ships under its template-source name `AGENTS.md.tmpl`
+	// (card t925 — the suffix keeps it out of Codex's filename-keyed discovery
+	// in this repo; the deployer strips it so a user project gets `AGENTS.md`).
+	// This wrapper sees template-source names, so that is the name to stat.
+	if _, statErr := h.Stat("AGENTS.md.tmpl"); statErr != nil {
 		t.Errorf("underlying path Stat failed: %v", statErr)
 	}
 }
