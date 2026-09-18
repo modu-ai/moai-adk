@@ -207,6 +207,68 @@ from the probe's projections in that direction — more text reaching the judge
 means some entries that the probe scored `ModalityUnjudged` will instead be
 judged. This is a named cause, recorded here before M2 measures it.
 
+### M1a — the instrument repair (lead ruling: option A, 2026-09-18)
+
+The blocker above is resolved by repairing the INSTRUMENT, not the criteria.
+`acceptance.md` is not opened: what broke is the probe, so the probe is where the
+repair belongs. Lead ruling, recorded verbatim in the commit message of this
+change.
+
+**The change.** `heading_req_volume_probe_test.go` built its `existing` baseline
+from `doc.REQs` — the live collector. Those two were the same set until the
+heading source landed in the live collector; afterwards a `doc.REQs` baseline
+makes `fresh` empty by construction and the probe measures its own subject. The
+baseline is now the two pre-heading sources named directly:
+
+```go
+base := mergeREQsByLine(parseREQsWide(doc.Body), parseREQsTable(doc.Body))
+```
+
+**Why this is not "editing the instrument until it passes" — the control.** At
+`dcfad4805` the live collector WAS exactly list+table, so the repaired probe must
+reproduce that tree's pre-flight measurement (§E.2 above) EXACTLY. It does. Run at
+`c461577eb` (the M1 build), `go test -tags heading_req_probe ./internal/spec/
+-run TestHeadingREQVolume -v -count=1`, exit 0, `--- PASS`:
+
+| Quantity | §E.2 pre-flight at `dcfad4805` | repaired probe at `c461577eb` |
+|---|---:|---:|
+| documents swept | 1635 | 1635 |
+| files gaining at least one entry | 125 | 125 |
+| newly collected entries | 1031 | 1031 |
+| A — TOTAL / `ModalityUnjudged` | 1505 / 1023 | 1505 / 1023 |
+| A — `CoverageIncomplete` / `ModalityMalformed` / `DuplicateREQID` | 473 / 8 / 1 | 473 / 8 / 1 |
+| B — TOTAL / `ModalityUnjudged` | 655 / 145 | 655 / 145 |
+| B — `CoverageIncomplete` / `ModalityMalformed` / `DuplicateREQID` | 473 / 36 / 1 | 473 / 36 / 1 |
+
+Every row matches. The lead's condition was explicit: any one of the four
+headline figures diverging means either the repair is wrong or the live collector
+changed something beyond list+table, and those need different responses — "close
+enough" would have destroyed the control this ruling rests on.
+
+**The third fixed point.** The corpus is not byte-identical between `dcfad4805`
+and `c461577eb` — this SPEC's own `spec.md` and `progress.md` changed in that
+range (`git diff --name-only dcfad4805..HEAD -- .moai/specs`, 2 files; control:
+7 files changed in the full range, so the range is non-empty). Their heading-form
+contribution is what matters, and it is unchanged on both sides:
+`grep -cE '^### \*{0,2}REQ-'` returns 2 for `spec.md` at `dcfad4805` and 2 at
+`c461577eb`, 0 for `progress.md`. A difference in the table above would therefore
+have been attributable to the probe edit alone.
+
+**Consequence for the two criteria.** Both are now satisfiable AS WRITTEN, with no
+amendment: AC-HRC-GATE-001's probe clause (`builds and exits 0`) passes at the M1
+SHA, and AC-HRC-009's variant-B projections exist at the same SHA as the M1 build.
+
+**Residual risk, named not fixed.** `spec.md`'s two heading-form matches are inside
+FENCED CODE BLOCKS (the §A.1 and §A.2 illustrations). The heading collector does
+not strip fences, so it collects them as definitions. This is a pre-existing
+property of the collector family — `reqLineWidePattern` has the same blindness for
+list-form definitions inside fences — and it is identical on both sides of this
+measurement, so it does not affect the control above. It is NOT repaired here
+(out of scope: this SPEC collects a heading shape, it does not add fence
+awareness to the collector family) and is carried into M2's reconciliation as a
+named cause for any projected-vs-actual difference on documents that illustrate
+REQ syntax in code blocks.
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 _<pending run-phase>_

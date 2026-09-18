@@ -144,9 +144,16 @@ func measureVolume(t *testing.T, useBodyText bool) {
 		}
 		v.files++
 
-		// Entries the live collector already has, keyed by ID.
-		existing := make(map[string]bool, len(doc.REQs))
-		for _, r := range doc.REQs {
+		// Entries the list and table sources already have, keyed by ID.
+		//
+		// This baseline is the list+table merge, NOT doc.REQs. The two were the
+		// same thing until the heading source landed in the live collector; once
+		// it did, a doc.REQs baseline makes `fresh` empty by construction and the
+		// probe measures its own subject. Naming the two pre-heading sources
+		// directly keeps the differential meaningful at any tree SHA.
+		base := mergeREQsByLine(parseREQsWide(doc.Body), parseREQsTable(doc.Body))
+		existing := make(map[string]bool, len(base))
+		for _, r := range base {
 			existing[r.ID] = true
 		}
 
