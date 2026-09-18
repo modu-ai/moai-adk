@@ -14,7 +14,7 @@ The last piece of the agentic harness is recursion — the harness builds the ha
 
 The Harness v4 Builder **dynamically generates a project-specific specialist team** via `/moai:harness <natural-language request>`.
 
-MoAI-ADK ships with a general-purpose agent catalog (11 agents) common to all projects, while the harness the Builder creates is a custom team that exists only in your project.
+MoAI-ADK ships with a general-purpose agent catalog (13 agents) common to all projects, while the harness the Builder creates is a custom team that exists only in your project.
 
 ### Differences from Previous Versions
 
@@ -183,7 +183,7 @@ Setting `"worktree_isolation": "none"` in the manifest skips L1 isolation.
 ## Related Documents
 
 - [Harness v4 Builder Advanced Guide](/en/advanced/harness-v4-builder) - Builder 4-phase details and the manifest schema
-- [Agent Guide](/en/advanced/agent-guide) - the 11-agent core catalog
+- [Agent Guide](/en/advanced/agent-guide) - the 13-agent core catalog
 - [Dynamic Workflows](/en/advanced/ultracode-workflows) - `/effort ultracode` parallel execution
 
 {{< callout type="info" >}}

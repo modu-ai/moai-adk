@@ -253,3 +253,82 @@ func TestJoinBacklogReleaseErr_SingleAndCleanPaths(t *testing.T) {
 		t.Errorf("release-only error does not name the failure: %v", got)
 	}
 }
+
+// TestMutateErrorsNameAnArtifactThatExists — card t910. Every error the
+// Mutate family raises named `s.path`, the legacy `backlog.json` document.
+// The engine's artifact is the sibling `backlog.db`, and in the engine's
+// steady state that json does not exist, so the message sent the reader to a
+// file that was not there. In card t899's investigation that path carried the
+// diagnosis into a wrong hypothesis ("the stores are separate") for half its
+// length, while the real cause was unrelated. A message naming a
+// non-existent file is worse than one naming none.
+//
+// The assertion is deliberately on EXISTENCE rather than on wording: the
+// point is not which sentence is printed but that the operator can act on
+// the path it hands them.
+func TestMutateErrorsNameAnArtifactThatExists(t *testing.T) {
+	t.Parallel()
+	dir := t.TempDir()
+	store := NewBacklogStore(filepath.Join(dir, "backlog.json"))
+	if _, _, err := store.Add("seed card"); err != nil {
+		t.Fatalf("seed: %v", err)
+	}
+
+	// Preconditions — the steady state this card is about. Asserting both
+	// directions keeps the test from passing vacuously on a layout where the
+	// legacy document happens to exist.
+	if _, err := os.Stat(store.EnginePath()); err != nil {
+		t.Fatalf("precondition: the engine artifact must exist: %v", err)
+	}
+	if _, err := os.Stat(store.Path()); !os.IsNotExist(err) {
+		t.Fatalf("precondition: the legacy document must be absent (stat err = %v)", err)
+	}
+
+	refused := errors.New("mutation refused by the callback")
+	err := store.Mutate(func(*BacklogRecord) error { return refused })
+	if err == nil {
+		t.Fatal("Mutate(refusing callback) err = nil, want the refusal wrapped")
+	}
+	if !errors.Is(err, refused) {
+		t.Fatalf("the callback's error was not wrapped: %v", err)
+	}
+
+	msg := err.Error()
+	if strings.Contains(msg, store.Path()) {
+		t.Errorf("the error names the ABSENT legacy document %s:\n%s", store.Path(), msg)
+	}
+	if !strings.Contains(msg, store.EnginePath()) {
+		t.Errorf("the error does not name the engine artifact %s:\n%s", store.EnginePath(), msg)
+	}
+}
+
+// TestMutateLockErrorsNameAnArtifactThatExists — the sibling sites. The
+// mutation-refused message is one of five in the Mutate family that shared
+// `s.path`; a fix that closes only the one the card named leaves the family
+// open. This drives the lock-contention branch, which reaches a different
+// error site (acquireLock) than the test above.
+func TestMutateLockErrorsNameAnArtifactThatExists(t *testing.T) {
+	t.Parallel()
+	// No seeding Add here: a lock artifact must not exist yet for the
+	// directory-at-lock-path technique to take, which is why this store is
+	// left untouched before the seed (the sibling test above seeds instead).
+	store := newTestBacklogStore(t)
+	if err := os.MkdirAll(store.LockPath(), 0o755); err != nil {
+		t.Fatalf("seed directory-at-lock-path: %v", err)
+	}
+
+	err := store.Mutate(func(*BacklogRecord) error { return nil })
+	if err == nil {
+		t.Fatal("Mutate(lock path is a directory) err = nil, want acquisition error")
+	}
+	if IsBoardLockHeld(err) {
+		t.Fatalf("err = %v, want a non-contention acquisition failure", err)
+	}
+	msg := err.Error()
+	if strings.Contains(msg, store.Path()) {
+		t.Errorf("the lock error names the legacy document %s, which the engine never writes:\n%s", store.Path(), msg)
+	}
+	if !strings.Contains(msg, store.EnginePath()) {
+		t.Errorf("the lock error does not name the engine artifact %s:\n%s", store.EnginePath(), msg)
+	}
+}

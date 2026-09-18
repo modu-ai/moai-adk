@@ -47,7 +47,7 @@ flowchart TD
 | [토크노믹스 개요](/ko/advanced/tokenomics-overview) | 단가가 98% 내려도 비용이 320% 오르는 역설과 그 해법 |
 | [토큰 예산](/ko/advanced/token-budget) | Token Circuit Breaker·verify-diet·컨텍스트 다이어트 |
 | [No-Haiku 3-티어](/ko/advanced/no-haiku-3tier) | DeepSWE 리더보드 근거와 3-티어 정책 |
-| [프로필 매트릭스](/ko/advanced/profile-matrix) | 11 에이전트 × `{model, effort}` 33셀 단일 프로필 축 |
+| [프로필 매트릭스](/ko/advanced/profile-matrix) | 13 에이전트 × `{model, effort}` 39셀 단일 프로필 축 |
 | [statusline](/ko/advanced/statusline) | 컨텍스트 사용률·캐시 적중률·rate limit 상시 계기판 |
 
 ### 자기 개선 — 에이전틱 루프 엔지니어링

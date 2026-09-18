@@ -11,7 +11,7 @@
 # proposal ladder. A Tier-4 change to this file requires user approval via
 # AskUserQuestion (auto_apply is false).
 #
-# Agent names are the 11 retained agents (CLAUDE.md section 4). Skill names are
+# Agent names are the 13 retained agents (CLAUDE.md section 4). Skill names are
 # template-distributed moai-* skills. Zero designations is valid — an entry may
 # route to orchestrator-direct execution with no agent and no skill.
 delegation:
