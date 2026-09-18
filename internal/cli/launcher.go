@@ -376,6 +376,11 @@ func removeGLMEnv(settingsPath string) error {
 			// SPEC-CLIFIX-CONCURRENCY-001 REQ-CONC-001-002: drop the 1M auto-compact
 			// window so it does not persist into subsequent moai cc sessions.
 			delete(env, config.EnvClaudeCodeAutoCompactWindow)
+			// Card t802: drop the declared GLM context window too. Leaving it behind
+			// is not a delayed cleanup but a permanent one: ANTHROPIC_BASE_URL above
+			// is the GLM-active indicator, so once it is gone the SessionEnd cleanup
+			// reads the file as non-GLM and returns without touching the residue.
+			delete(env, config.EnvClaudeCodeMaxContextTokens)
 
 			if len(env) == 0 {
 				delete(m, "env")
@@ -808,8 +813,7 @@ func runLaunchClaude(profileName string, extraArgs []string) error {
 		if profileLeaseEnv != "" {
 			tryCmd.Env = append(os.Environ(), profileLeaseEnv)
 		}
-		var err error
-		err = tryCmd.Run()
+		err := tryCmd.Run()
 		if err == nil {
 			return nil
 		}

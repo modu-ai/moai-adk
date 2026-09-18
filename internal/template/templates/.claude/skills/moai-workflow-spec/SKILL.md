@@ -176,7 +176,7 @@ See [requirement clarification detailed workflow](references/requirement-clarifi
 
 **Format**: 
 - `[NEEDS CLARIFICATION: <specific topic>]` — inline marker for open questions
-- Each marker MUST be addressable via orchestrator AskUserQuestion before run-phase entry
+- Each marker MUST be addressable via the orchestrator's `question-channel` capability before run-phase entry
 - plan-auditor detects unclarified markers and flags as "clarification gate" finding
 
 **3-Layer Distinction**:
@@ -187,7 +187,7 @@ See [requirement clarification detailed workflow](references/requirement-clarifi
 **Processing**:
 - plan-auditor scans for `[NEEDS CLARIFICATION]` markers during audit
 - If any remain, plan-auditor recommends resolution before Implementation Kickoff Approval
-- Orchestrator runs AskUserQuestion rounds to resolve each marked topic
+- Orchestrator runs `question-channel` rounds to resolve each marked topic (where the harness lacks it, carry the unresolved marker into the blocker report rather than letting the gate pass silently)
 - Implementation Kickoff Approval (mandatory human gate) proceeds only after all clarifications are resolved
 
 ### Plan-Run-Sync Workflow Integration

@@ -2,7 +2,7 @@
 // (card t395), AC-BJD-015 / AC-BJD-016: the distributed copy carries the
 // same repair, and the binary carries the distributed copy.
 //
-// THREE files carried FOUR historical claims: `workflows/todo.md` held both
+// THREE files carried FOUR historical claims: `workflows/gtd.md` held both
 // the primary-checkout assertion and the home-fallback one. The home-scoped
 // SQLite layout removes both old path shapes; two patterns remain necessary
 // because neither can detect the other by construction.
@@ -22,7 +22,7 @@ import (
 // touches, as deployment-relative paths.
 var backlogJSONDisclosureMirroredFiles = []string{
 	".claude/skills/moai/SKILL.md",
-	".claude/skills/moai/workflows/todo.md",
+	".claude/skills/moai/workflows/gtd.md",
 	".claude/skills/moai-kanban-foreman/SKILL.md",
 }
 
