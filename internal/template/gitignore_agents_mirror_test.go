@@ -1,6 +1,7 @@
 package template
 
 import (
+	"fmt"
 	"io/fs"
 	"os"
 	"path/filepath"
@@ -89,5 +90,66 @@ func TestGitignore_IgnoresSkillMirrorOnly(t *testing.T) {
 	}
 	if !embeddedFound {
 		t.Errorf("embedded .gitignore has no %q entry — the template source was edited without rebuilding the binary", mirrorIgnorePattern)
+	}
+}
+
+// checkRootAgentsInvariant applies the same two checks
+// TestGitignore_IgnoresSkillMirrorOnly runs against the template source and
+// embedded FS — no whole-.agents-root ignore pattern, and the narrow mirror
+// pattern present — to an arbitrary line set. It is a pure function, so the
+// invariant is expressible without touching disk.
+//
+// While card t912's repair was outstanding this took a second argument: a
+// self-expiring KnownStale marker (the idiom in internal/harness/rosterguard)
+// declaring the then-known gap — the root file's `.agents/*` deny-all, and the
+// narrow mirror pattern absent from it. That repair and this deletion landed
+// in the same merge: the root file now satisfies the invariant outright, the
+// marker expired exactly as designed, and the exception branch went with it. A
+// forbidden form is now reported unconditionally, because a branch that
+// tolerates a declared one is a bypass available to anyone willing to declare.
+func checkRootAgentsInvariant(lines []string) []string {
+	var bad []string
+
+	// Report every whole-.agents-root line, not just the first — an
+	// additional forbidden form must not hide behind an earlier one.
+	for _, line := range lines {
+		if _, isBad := wholeAgentsRootPatterns[line]; isBad {
+			bad = append(bad, fmt.Sprintf(
+				"root .gitignore ignores the whole .agents root via %q — narrow the pattern to %q",
+				line, mirrorIgnorePattern))
+		}
+	}
+
+	hasMirror := false
+	for _, line := range lines {
+		if line == mirrorIgnorePattern {
+			hasMirror = true
+			break
+		}
+	}
+	if !hasMirror {
+		bad = append(bad, fmt.Sprintf(
+			"root .gitignore has no %q entry", mirrorIgnorePattern))
+	}
+
+	return bad
+}
+
+// TestGitignore_RootFollowsNarrowAgentsInvariant is the root-file half of
+// AC-CSC-015: TestGitignore_IgnoresSkillMirrorOnly above reads only
+// templates/.gitignore and the embedded FS copy, so a forbidden
+// whole-.agents-root pattern on the repository root file — which is what
+// this project's own git status actually reads day to day — went
+// unchecked. Root and template are not required to be identical; only the
+// narrow invariant is required on both.
+func TestGitignore_RootFollowsNarrowAgentsInvariant(t *testing.T) {
+	rootPath := filepath.Join("..", "..", ".gitignore")
+	raw, err := os.ReadFile(rootPath)
+	if err != nil {
+		t.Fatalf("read repository root .gitignore: %v", err)
+	}
+	lines := gitignoreLines(t, string(raw))
+	for _, msg := range checkRootAgentsInvariant(lines) {
+		t.Error(msg)
 	}
 }
