@@ -231,7 +231,7 @@ The orchestrator composes the domain instructions inline at delegation time rath
 
 ### When to Author a Static Agent File Instead
 
-Reserve `.claude/agents/*.md` static files for agents meeting Anthropic's "keep spawning the same kind of worker with the same instructions" criterion. The 11 MoAI-custom retained agents (`manager-spec`, `manager-develop`, `manager-design`, `manager-docs`, `manager-git`, `plan-auditor`, `sync-auditor`, `super-advisor`, `builder-harness`, `e2e-tester`, `manager-lead`) all satisfy this criterion via recurring SPEC-phase invocations. Domain-specific work that does NOT recur with identical instructions across SPEC sessions belongs in per-spawn pattern, not in a static file.
+Reserve `.claude/agents/*.md` static files for agents meeting Anthropic's "keep spawning the same kind of worker with the same instructions" criterion. The 12 MoAI-custom retained agents (`manager-spec`, `manager-develop`, `manager-design`, `manager-docs`, `manager-git`, `plan-auditor`, `sync-auditor`, `super-advisor`, `builder-harness`, `e2e-tester`, `manager-lead`, `mission-governor`) all satisfy this criterion via recurring SPEC-phase invocations. Domain-specific work that does NOT recur with identical instructions across SPEC sessions belongs in per-spawn pattern, not in a static file.
 
 See `.claude/rules/moai/development/agent-authoring.md` § Static Agent File vs Per-Spawn Specialization Decision Tree for the authoring decision tree.
 
@@ -266,7 +266,7 @@ Agent(subagent_type: "Explore", prompt: "<investigation task description>")
 
 ## Orchestrator 4-Loop Mechanism → Catalog Mapping
 
-The MoAI orchestrator operates a 4-Loop mechanism (plan → decompose → direct → collect) that maps each loop step to specific 12-agent catalog roles. This mapping is the architectural rationale for the catalog composition (per SPEC-AGENT-ARCH-V2-001 SSOT §03/§06 M4).
+The MoAI orchestrator operates a 4-Loop mechanism (plan → decompose → direct → collect) that maps each loop step to specific 13-agent catalog roles. This mapping is the architectural rationale for the catalog composition (per SPEC-AGENT-ARCH-V2-001 SSOT §03/§06 M4). The table below names the roles each loop step invokes rather than enumerating the whole catalog: `mission-governor` carries no row because the GTD auto-mission flow dispatches it, not the 4-Loop mechanism.
 
 | Loop step | Korean | Catalog roles invoked | Example |
 |-----------|--------|----------------------|---------|
