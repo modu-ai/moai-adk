@@ -51,7 +51,7 @@ Anything else (an inferred value, a stale figure, a "should be" estimate) is una
 
 The corrective is **not** "pin every ref". Some claims are *about* the moving thing — what mainline currently carries, which tip a reader is to start from, a coordinate that is itself the subject of a correction — and pinning those destroys exactly the information they exist to record. Indiscriminate pinning is therefore the dominant failure mode of this clause, not its compliant outcome. The predicate decides, per claim, which case is at hand.
 
-[HARD] The predicate is applied, not recalled. Before remediating any moving-ref or moving-coordinate claim, read `verification-claim-integrity-detail.md` § Moving-ref predicate and run its four tests in order; they return one of two classes — **ANCHOR** (an address at which a measurement was taken) or **SUBJECT** (the claim is *about* the moving thing) — and that companion also carries the five adjudicated instances and the detection limits L1-L7 a mechanism enforcing this clause cannot see. Reaching a remedy below without having run the tests is indiscriminate pinning by another name.
+[HARD] The predicate is applied, not recalled. Before remediating any moving-ref or moving-coordinate claim, read `verification-claim-integrity-detail.md` § Moving-ref predicate and run its four tests in order; they return one of two classes — **ANCHOR** (an address at which a measurement was taken) or **SUBJECT** (the claim is *about* the moving thing) — and that companion also carries the four remediation branches themselves, the five adjudicated instances, and the detection limits L1-L7 a mechanism enforcing this clause cannot see. Reaching a remedy without having run the tests is indiscriminate pinning by another name.
 
 #### Classification and remedy are two separate steps
 
@@ -59,42 +59,7 @@ The corrective is **not** "pin every ref". Some claims are *about* the moving th
 
 #### The four remediation branches
 
-| | Branch | Class | When | Form |
-|---|---|---|---|---|
-| **R1** | Pin the literal SHA | ANCHOR | the anchor value is already known at authoring time | replace the ref with the resolved 40-hex SHA, recorded with the tree and date it was resolved in |
-| **R2** | Freeze at pre-flight *(the anchor-class default)* | ANCHOR | the value is not knowable when the criterion is written — the usual case for a run-phase PRESERVE criterion | `BASELINE_SHA=$(git rev-parse origin/main)` captured before the first run-phase commit; criteria decided against `$BASELINE_SHA`, resolved value recorded in the progress record |
-| **R3** | Keep the moving ref, declare the exemption | SUBJECT / S1 | narrative — nothing is measured at read time | leave the ref; add the inline marker with a stated reason |
-| **R4** | State the measuring command; demote the value to a dated reference | SUBJECT / S2 | the claim asserts the current state of a moving thing and a reader will act on it | lead with the command that must be run at read time; any value follows it, parenthesized, dated, and explicitly labelled a reference |
-
-R2 is preferred over R1 for run-phase criteria: it removes R1's authoring-time knowledge requirement while giving the same fixed-value guarantee.
-
-**R4's ordering is load-bearing, not stylistic.** A value written first reads as the criterion and demotes re-measurement to a confirmation step. Command first, value second and marked as a reference, so a reader who only skims still sees an instruction to measure rather than a number to trust.
-
-**Every remedy costs the author something, and the count is what does the work.** With one remedy on offer the author pins; with four, none of them free, choosing requires applying the predicate.
-
-| Remedy | What it costs the author |
-|---|---|
-| R1 | resolving the SHA and recording the tree and date it was resolved in |
-| R2 | capturing the baseline before the first run-phase commit, and recording the resolved value |
-| R3 | writing a non-empty reason a reviewer can disagree with |
-| R4 | naming the deciding command, which a later reader will run |
-
-R4's cost is its own definition made binding: the command it names must be the one that actually decides the claim. Left unpriced, R4 would be the cheapest available silencer — rephrasing into a shape is always cheaper than writing a justification — and that is bulk suppression reached by another road. A wrong or vague command is visible to the next reader who runs it, which is what makes the price real.
-
-#### The exemption marker
-
-The tests are judgments about meaning. No regex decides them, so the exemption is **author-declared**, written after applying the predicate:
-
-```
-<!-- moving-ref-ok: <reason> -->
-```
-
-- **Scope**: the flagged line, or the line immediately above it. Nothing wider — a per-claim judgment does not get document granularity.
-- **Form**: an HTML comment, invisible in the rendered artifact. The marker is an author-to-linter annotation, not content for a reader of the rendered document.
-- **The reason is mandatory and non-empty.** A bare marker would make "silence the warning" cheaper than "pin the SHA", inverting the incentive this clause sets. With a reason required, declaring and pinning cost about the same and the author picks on the merits.
-- **An empty or whitespace-only reason does not suppress.** It produces a finding reporting the marker as *incomplete* — the one outcome that keeps the reason from becoming a formality.
-
-A document-wide lint skip is not the exemption path: it silences a whole file, which is the wrong granularity for a per-claim judgment.
+The branch table, its cost table, and the exemption-marker syntax live in `verification-claim-integrity-detail.md` § The four remediation branches and § The exemption marker — the same section the [HARD] pointer above already obliges you to open before remediating. The shape, so the classification step reads without them: **R1** pin the literal SHA and **R2** freeze at pre-flight (the anchor-class default) resolve ANCHOR; **R3** keep the ref and declare an author-written exemption with a non-empty reason, and **R4** state the measuring command and demote any value to a dated reference, resolve SUBJECT. Every branch costs the author something, which is what stops the author reaching for the cheapest one.
 
 ### 2.2 Tool-provenance attribution — which build judged the tree
 
