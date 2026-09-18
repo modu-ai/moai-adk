@@ -220,7 +220,7 @@ run-phase 커밋 `5defba550` 착지 후 작업 트리. 아래는 manager-docs �
 
 ```yaml
 sync_complete_at: 2026-09-18
-sync_commit_sha: pending-backfill
+sync_commit_sha: 77f3da39d   # D3 백필 창 — 후속 커밋이 채움
 sync_status: complete
 b12_self_test_a: pass       # grep -c 'SPEC-INIT-DEPLOY-EXIT-001' CHANGELOG.md → 0 (추가 전)
 b12_self_test_b: pass       # acceptance.md AC 식별자 8개 == progress.md ac_total_count 8
@@ -297,8 +297,10 @@ run 커밋이 건드리지 않았다. `spec.md` §C 의 범위 선언과 일치�
 
 ### Residual-risk
 
-- `sync_commit_sha: pending-backfill` 은 커밋이 자기 해시를 인용할 수 없어서 남긴 자리다. 백필하지
-  않으면 이 SPEC 의 sync 증거는 커밋에 귀속되지 않은 채 남는다.
+- `sync_commit_sha` 는 **해소됐다.** 커밋이 자기 해시를 인용할 수 없어 sync 커밋 자신은
+  `pending-backfill` 을 썼고, 착지 후 후속 커밋이 실제 값 `77f3da39d` 로 백필했다(D3 백필 창). 값은
+  보고 전재가 아니라 `git rev-parse --short HEAD` 로 직접 읽은 관측값이다. 남는 것은 그 백필 커밋
+  자신이 어떤 필드에도 인용되지 않는다는 점인데, 이를 요구하는 필드가 없으므로 미해결 부채가 아니다.
 - 문서 스윕은 `moai init` 의 **종료 코드·실패 동작** 주장만 겨눴다. init 을 언급하는 문서는 README 4본과
   docs-site 108개 파일에 걸쳐 있으며, 그 전부를 다른 축(예: 배포 파일 수, 마법사 흐름)으로 재검사하지는
   않았다. 다른 축의 스테일 서술이 있다면 이 스윕은 보지 못한다.
