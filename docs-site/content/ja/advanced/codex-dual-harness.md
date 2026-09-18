@@ -18,9 +18,9 @@ MoAI-ADK の第 1 ハーネス(エージェントを実際に駆動する実行�
 個人用の `~/.codex/AGENTS.md` は同じマージチェーンでこのファイルの**前に**消費され、プロジェクト契約が運べる幅を狭めます。あふれは後ろから静かに捨てられるため、このファイルの条項は最も重要なものから前に並んでいます。
 {{< /callout >}}
 
-## エージェント二重公開 — 11 個の TOML
+## エージェント二重公開 — 12 個の TOML
 
-維持される 11 個のエージェントが 2 つの形で公開されます。Claude Code 用の `.claude/agents/moai/*.md`(原本)と、codex が読む `.codex/agents/moai/*.toml`(派生)です。TOML は手書きされません — `internal/template/agentemit` がマークダウン原本から**決定論的に**(同じ入力には常に同じ出力)生成し、生成ファイルの先頭には "regenerate, do not edit"(再生成せよ、直接編集するな)と釘が刺さっています。
+維持される 12 個の MoAI カスタムエージェントが 2 つの形で公開されます。Claude Code 用の `.claude/agents/moai/*.md`(原本)と、codex が読む `.codex/agents/moai/*.toml`(派生)です。TOML は手書きされません — `internal/template/agentemit` がマークダウン原本から**決定論的に**(同じ入力には常に同じ出力)生成し、生成ファイルの先頭には "regenerate, do not edit"(再生成せよ、直接編集するな)と釘が刺さっています。
 
 原本と派生がずれるのを 3 層のガードが防ぎます: ゴールデンファイル比較(期待出力との照合)、埋め込み検証(バイナリに組み込まれたテンプレートとの照合)、配備検証(ユーザーリポジトリに届く結果との照合)。マークダウンを直せば TOML が追従し、TOML だけを直せばガードが捕まえます。
 
@@ -65,4 +65,4 @@ codex-cli は Claude Code の `.claude/skills/` を読まないため、スキ�
 
 - [マルチモデル監査収束](/ja/advanced/multi-model-audit/) — codex バックエンドが今日すでに監査に参加している経路
 - [moai update](/ja/cli-reference/update/) — スキルミラーの symlink・コピー配備とその通知
-- [エージェントガイド](/ja/advanced/agent-guide/) — 二重公開される 11 個のエージェントの役割
+- [エージェントガイド](/ja/advanced/agent-guide/) — 二重公開される 12 個のエージェントの役割

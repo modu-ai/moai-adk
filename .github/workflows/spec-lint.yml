@@ -26,7 +26,12 @@ on:
 permissions:
   contents: read
 
-# Cancel in-progress runs for the same PR (lint is fast and idempotent).
+# One slot per ref, for pushes as well as pull requests: on a push to develop
+# `github.ref` is `refs/heads/develop`, so every develop push shares a slot and
+# a newer push cancels an older run. The comment previously said "for the same
+# PR", which is what the group meant before the push trigger existed — and a
+# reading of this file went looking for that PR when diagnosing cancellations
+# that were in fact job timeouts (t874).
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
@@ -34,7 +39,14 @@ concurrency:
 jobs:
   spec-lint:
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    # The lint step alone runs 527-571s (measured across runs 34775055880 and
+    # 35260236027), so a 10-minute cap raced the job: every cancelled run sat at
+    # 617-622s and every success at 502-601s, split exactly on the 600s line.
+    # A cancelled run is neither success nor failure, so the gate stopped
+    # producing a verdict at all — two real failures were read past that way.
+    # Raising the cap does not weaken the lint; it lets the lint finish and say
+    # what it found (t874).
+    timeout-minutes: 25
     steps:
       # Version alignment with ci.yml: actions/checkout@v7, actions/setup-go@v7.
       - uses: actions/checkout@v7

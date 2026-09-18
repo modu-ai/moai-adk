@@ -132,6 +132,20 @@ func runTodoLanded(cmd *cobra.Command, id, sha, ref string, clear bool) error {
 				return nil
 			}
 		}
+		// An archived card is REFUSED like any other non-live one — the verb
+		// writes to live rows only — but it is refused by its own name.
+		// "no backlog item" is true of an id that was never added and false
+		// of one `done` closed an hour ago, and the operator's next act
+		// differs: a wrong id is retyped, a closed card is restored. Reported
+		// on card t899, where the generic message sent the reader looking for
+		// a second store (the refusal also names a `backlog.json` the engine
+		// no longer writes) while three cards closed with no record.
+		if rec.ArchivedIndex(id) >= 0 {
+			return fmt.Errorf(
+				"backlog item %s is archived, not live: `done` moved it out of the queue and landing evidence is recorded on live rows only. "+
+					"Restore it with `undone %s`, record the evidence, then close it again — `done` reports the stored record",
+				id, id)
+		}
 		return fmt.Errorf("no backlog item %s", id)
 	}); err != nil {
 		_, _ = fmt.Fprintf(cmd.ErrOrStderr(), "Error: %v\n", err)

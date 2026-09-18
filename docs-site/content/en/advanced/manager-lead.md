@@ -100,7 +100,7 @@ In Role A, when the orchestrator calls `manager-lead`, `manager-lead` takes in t
 - **manager-lead** — calls leaf agents per milestone, folds context, and runs peer validation. It does not write code itself, and it does not edit the SPEC body. It does not call `AskUserQuestion` either — when something blocks, it returns a blocker report to the orchestrator.
 - **Leaf agents** — implement with `manager-develop`, do recon with a read-only `Agent(general-purpose)`, or rerun AC verification as a peer agent that is not the author.
 
-The most striking thing about this split is that only `manager-lead` carries the `Agent` tool. Among the twelve manager agents, `manager-lead` is the only one holding `Agent`; every other manager agent keeps the flat hierarchy with a tool list that omits `Agent`. In exchange for opening the flat hierarchy at exactly one place, the leaf agents below it are blocked from carrying `Agent` again, sealing the hierarchy so it never exceeds two levels. This is the "depth-2 seal," and a CI guard (`manager_lead_depth_test.go`) enforces it.
+The most striking thing about this split is that only `manager-lead` carries the `Agent` tool. Among the thirteen agents, `manager-lead` is the only one holding `Agent`; every other manager agent keeps the flat hierarchy with a tool list that omits `Agent`. In exchange for opening the flat hierarchy at exactly one place, the leaf agents below it are blocked from carrying `Agent` again, sealing the hierarchy so it never exceeds two levels. This is the "depth-2 seal," and a CI guard (`manager_lead_depth_test.go`) enforces it.
 
 ```text
 # Tool lists when manager-lead calls leaf agents (conceptual example)

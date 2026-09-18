@@ -177,8 +177,14 @@ func TestBoardLockRetryWaitIsNotLockstep(t *testing.T) {
 }
 
 // AC-BLB-003 / REQ-BLB-005: a stuck holder still surfaces a bounded error
-// naming both the queue file and the lock artifact. This is a regression
-// guard on a property that exists today, not a new behaviour.
+// naming both the queue's own artifact and the lock artifact. This is a
+// regression guard on a property that exists today, not a new behaviour.
+//
+// The first of those two was asserted against Path() until card t910. That
+// reading satisfied the AC's letter and defeated its purpose: Path() is the
+// legacy `backlog.json` document the engine never writes, so the error named
+// a file the operator could not act on — absent in the steady state. The
+// assertion now names EnginePath(), which is what REQ-BLB-005 was protecting.
 //
 // The holder is a value in this test's own scope, released by a
 // t.Cleanup-registered function. No background process is spawned.
@@ -209,8 +215,8 @@ func TestBacklogLockStuckHolderSurfacesBoundedNamedError(t *testing.T) {
 	if !IsBoardLockHeld(err) {
 		t.Errorf("error is not recognized by IsBoardLockHeld: %v", err)
 	}
-	if !strings.Contains(err.Error(), store.path) {
-		t.Errorf("error does not name the queue file %s: %v", store.path, err)
+	if !strings.Contains(err.Error(), store.EnginePath()) {
+		t.Errorf("error does not name the queue artifact %s: %v", store.EnginePath(), err)
 	}
 	if !strings.Contains(err.Error(), store.LockPath()) {
 		t.Errorf("error does not name the lock artifact %s: %v", store.LockPath(), err)

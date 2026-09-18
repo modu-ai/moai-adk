@@ -147,6 +147,7 @@ var retainedAgentNames = map[string]bool{
 	"super-advisor":    true,
 	"mission-governor": true,
 	"manager-design":   true,
+	"manager-lead":     true,
 	"builder-harness":  true,
 	"e2e-tester":       true,
 	"manager-docs":     true,

@@ -50,7 +50,7 @@ Each pillar is covered in detail in the [Core Concepts](/en/core-concepts/) sect
 - **manager-lead** — coordinates large-scale work: Tier L milestone fan-out inside a SPEC, plus kanban and factory lead-session dispatch.
 - **multi-model audit** — cross-validates with multiple models to catch bias.
 - **autonomy tier** — dials the autonomy level so things run safely.
-- **profile matrix** — assigns models across 12 agents × 3 profiles.
+- **profile matrix** — assigns models across 13 agents × 3 profiles.
 
 ## Core concepts
 
@@ -105,7 +105,7 @@ MoAI-ADK fully rewrote the Python Edition in Go to maximize performance and effi
 
 ### Key numbers (as of v3.0)
 
-- **11** agent catalog (10 MoAI-custom + 1 Anthropic built-in `Explore`)
+- **13** agent catalog (12 MoAI-custom + 1 Anthropic built-in `Explore`)
 - **31** skills (template-managed)
 - **36** terminal CLI commands · **16** `/moai` slash subcommands
 - **16** programming languages supported
@@ -125,17 +125,17 @@ MoAI-ADK fully rewrote the Python Edition in Go to maximize performance and effi
 
 ## Key features
 
-### Agent catalog (11)
+### Agent catalog (13)
 
-The MoAI orchestrator does not implement directly; it delegates work to 11 specialized agents. Planning and auditing are separated — the one who made it does not inspect it.
+The MoAI orchestrator does not implement directly; it delegates work to 13 specialized agents. Planning and auditing are separated — the one who made it does not inspect it.
 
 | Category | Count | Main agents |
 |----------|------|--------------|
-| **Manager** | 5 | manager-spec, manager-develop, manager-docs, manager-git, manager-design |
+| **Manager** | 6 | manager-spec, manager-develop, manager-docs, manager-git, manager-design, manager-lead |
 | **Evaluator** | 2 | plan-auditor, sync-auditor |
 | **Builder** | 1 | builder-harness |
 | **Advisor** | 1 | super-advisor (high-reasoning consultation) |
-| **Specialist** | 1 | e2e-tester (web/mobile/desktop E2E test execution) |
+| **Specialist** | 2 | e2e-tester (web/mobile/desktop E2E test execution), mission-governor (GTD auto-mission decision, read-only) |
 | **Built-in** | 1 | Explore (Anthropic built-in, read-only code analysis) |
 
 ### Model policy (tokenomics)

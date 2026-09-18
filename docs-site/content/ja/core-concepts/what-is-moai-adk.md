@@ -4,7 +4,7 @@ weight: 20
 draft: false
 ---
 
-MoAI-ADK は **コスト・自己改善・品質統制** の 3 つの核心要素で Claude Code を包む **Agentic Development Kit** です。同じ品質のコードをより少ないトークンで (コスト、トークノミクス)、セッションが回るたびに観察をルールとして積み重ねハーネスが良くなっていき (自己改善、エージェンティック・ループ・エンジニアリング)、SPEC 3-phase と TRUST 5 ゲートで手戻りを防ぎ「終わり」を証拠で判定します (品質統制、エージェンティック・ハーネス) — モデル選択・推論深度・コンテキスト使用量をシステムが外から強制します。11 個の専門 AI エージェントと 31 個のスキルが協力し、新規プロジェクトには TDD (デフォルト)、テストカバレッジが低い既存プロジェクトには DDD を自動的に適用します。
+MoAI-ADK は **コスト・自己改善・品質統制** の 3 つの核心要素で Claude Code を包む **Agentic Development Kit** です。同じ品質のコードをより少ないトークンで (コスト、トークノミクス)、セッションが回るたびに観察をルールとして積み重ねハーネスが良くなっていき (自己改善、エージェンティック・ループ・エンジニアリング)、SPEC 3-phase と TRUST 5 ゲートで手戻りを防ぎ「終わり」を証拠で判定します (品質統制、エージェンティック・ハーネス) — モデル選択・推論深度・コンテキスト使用量をシステムが外から強制します。13 個の専門 AI エージェントと 31 個のスキルが協力し、新規プロジェクトには TDD (デフォルト)、テストカバレッジが低い既存プロジェクトには DDD を自動的に適用します。
 
 Go で書かれた単一バイナリ -- 依存性なしですべてのプラットフォームで即座に実行されます。
 
@@ -22,7 +22,7 @@ MoAI-ADK は **Claude Code の中でエージェント同士が協力してエ�
 | AI 開発チーム | MoAI-ADK | 役割 |
 |----------|----------|------|
 | プロダクトオーナー | ユーザー (開発者) | 何を作るかを決めます |
-| チームリード / Tech Lead | MoAI オーケストレーター | 全体の作業を調整し 11 個のエージェントに委任します |
+| チームリード / Tech Lead | MoAI オーケストレーター | 全体の作業を調整し 13 個のエージェントに委任します |
 | 企画者 / Spec Writer | manager-spec | 要件を SPEC ドキュメントに整理します |
 | 開発者 / Engineers | manager-develop (ドメインコンテキスト注入) | 実際のコードを DDD/TDD で実装します |
 | QA / コードレビュアー | plan-auditor · sync-auditor | 計画と成果物を独立して監査します |
@@ -41,7 +41,7 @@ v3.0 の価値は 3 つの核心要素に要約されます。
 
 ### エージェンティックハーネス (Agentic Harness)
 
-コードを直接書く代わりに、エージェントがうまく働く環境を設計します。11 個のエージェントカタログ、SPEC ベースの 3-phase ワークフロー (plan → run → sync)、TRUST 5 品質ゲート、自然言語リクエストでプロジェクト専用ハーネスを生成する Harness v4 Builder がこの核心要素です。詳しい概念は [ハーネスエンジニアリング](/ja/core-concepts/harness-engineering) ドキュメントを参照してください。
+コードを直接書く代わりに、エージェントがうまく働く環境を設計します。13 個のエージェントカタログ、SPEC ベースの 3-phase ワークフロー (plan → run → sync)、TRUST 5 品質ゲート、自然言語リクエストでプロジェクト専用ハーネスを生成する Harness v4 Builder がこの核心要素です。詳しい概念は [ハーネスエンジニアリング](/ja/core-concepts/harness-engineering) ドキュメントを参照してください。
 
 ## なぜこの 3 つなのか
 
@@ -63,7 +63,7 @@ v3.0 の価値は 3 つの核心要素に要約されます。
 
 ### 品質統制 — エージェンティック・ハーネス
 
-コードを直接書く代わりに、エージェントが働く環境を設計します。11 個のエージェントカタログは計画と監査を設計段階から分離し、書いた側が自分の作業に点数をつけないようにし、SPEC 3 段階 (plan → run → sync) と TRUST 5 ゲート、worktree 隔離が「できたようだ」ではなく証拠で完了を判定します。
+コードを直接書く代わりに、エージェントが働く環境を設計します。13 個のエージェントカタログは計画と監査を設計段階から分離し、書いた側が自分の作業に点数をつけないようにし、SPEC 3 段階 (plan → run → sync) と TRUST 5 ゲート、worktree 隔離が「できたようだ」ではなく証拠で完了を判定します。
 
 ## なぜ MoAI-ADK か?
 
@@ -82,7 +82,7 @@ Python ベースの MoAI-ADK (~73,000 行) を Go で完全に書き直しまし
 
 ### 核心数値 (v3.0 基準)
 
-- **11 個** のエージェントカタログ (10 MoAI カスタム + 1 Anthropic ビルトイン `Explore`)
+- **13 個** のエージェントカタログ (12 MoAI カスタム + 1 Anthropic ビルトイン `Explore`)
 - **31 個** のスキル (template-managed)
 - **36 個** の CLI コマンド · **16 種** の `/moai` サブコマンド
 - **16 個** のプログラミング言語対応
@@ -241,9 +241,9 @@ MoAI-ADK は **ハーネスエンジニアリング** (Harness Engineering) パ�
 
 ## AI エージェントオーケストレーション
 
-MoAI は **戦略的オーケストレーター** です。直接コードを書かず、11 個の保存エージェント (10 MoAI カスタム + 1 Anthropic ビルトイン `Explore`) に作業を委任します。核心的な設計原則は **計画と監査の分離** — 作った人が検査しません。
+MoAI は **戦略的オーケストレーター** です。直接コードを書かず、13 個の保存エージェント (12 MoAI カスタム + 1 Anthropic ビルトイン `Explore`) に作業を委任します。核心的な設計原則は **計画と監査の分離** — 作った人が検査しません。
 
-### 11 個のエージェントカタログ
+### 13 個のエージェントカタログ
 
 | 分類 | エージェント | コスト | 役割 |
 |------|---------|------|------|
@@ -252,25 +252,28 @@ MoAI は **戦略的オーケストレーター** です。直接コードを書
 | | manager-docs | 🔵 | Sync ステップ: ドキュメント化および PR 生成 |
 | | manager-git | 🩵 | Git ワークフローおよび Tier ベースの PR ルーティング |
 | | manager-design | 🟠 | Design ステップ: Claude Design 協業 |
+| | manager-lead | ⚪ | Tier L マルチマイルストーンの調整 (worktree で隔離したリーフワーカーのファンアウト · カタログ唯一の Agent-carrier) |
 | **Evaluator** | plan-auditor | 🔴 | SPEC 計画の独立した監査 (バイアス防止) |
 | | sync-auditor | 🔴 | 4 次元品質評価 (機能 40 · セキュリティ 25 · 職人技 20 · 一貫性 15) |
 | **Builder** | builder-harness | 🟠 | プロジェクト専用ハーネス (エージェント/スキル/コマンド) の生成 |
 | **Advisor** | super-advisor | 🔵 | 高推論の助言 (E1-E4 エスカレーション) |
 | **Specialist** | e2e-tester | 🟠 | Web/モバイル/デスクトップの E2E テスト実行 |
+| | mission-governor | 🔴 | 承認済み GTD 自動ミッションの封印されたスナップショットを読み、判定を 1 つだけ返します (読み取り専用。実行は決定論的な実行器が担当) |
 | **ビルトイン** | Explore | ⚪ | 読み取り専用のコードベース探索 |
 
-コスト色はデフォルト `medium` プロファイルの model×effort セル基準です (`moai model profile` で確認): 🔴 opus+high · 🟠 opus+medium · 🔵 opus+low · 🩵 sonnet+low · ⚪ セッションモデル継承 (ユーザー追加エージェント)。プロファイル (`high`/`low`) 切り替え時は割り当てが変わります。
+コスト色はデフォルト `medium` プロファイルの model×effort セル基準です (`moai model profile` で確認): 🔴 opus+high · 🟠 opus+medium · 🔵 opus+low · 🩵 sonnet+low · ⚪ セッションモデル継承 (`manager-lead` は `model: inherit`、ユーザー追加エージェント)。プロファイル (`high`/`low`) 切り替え時は割り当てが変わります。
 
 ```mermaid
 flowchart TD
     MoAI["MoAI オーケストレーター\nユーザーリクエスト分析および委任"]
 
-    subgraph Managers["Manager エージェント (5 個)"]
+    subgraph Managers["Manager エージェント (6 個)"]
         M1["manager-spec\nPlan ステップ: SPEC 生成"]
         M2["manager-develop\nRun ステップ: DDD/TDD 実装"]
         M3["manager-docs\nSync ステップ: ドキュメント化"]
         M4["manager-git\nPR 生成、Git 作業"]
         M5["manager-design\nDesign 協業"]
+        M6["manager-lead\nTier L マルチマイルストーン調整"]
     end
 
     subgraph Evaluators["評価エージェント (2 個)"]
@@ -283,8 +286,9 @@ flowchart TD
         B2["super-advisor\n高推論の助言"]
     end
 
-    subgraph Specialist["Specialist (1 個)"]
+    subgraph Specialist["Specialist (2 個)"]
         S1["e2e-tester\nE2E テスト実行"]
+        S2["mission-governor\nGTD 自動ミッション判定"]
     end
 
     subgraph Explore["ビルトイン (1 個)"]
@@ -558,7 +562,7 @@ MoAI-ADK をインストールするとプロジェクトに次のような構�
 my-project/
 ├── CLAUDE.md                  # MoAI の実行指針書
 ├── .claude/
-│   ├── agents/moai/           # 10 個の MoAI カスタムエージェント定義 (+ Explore ビルトイン)
+│   ├── agents/moai/           # 12 個の MoAI カスタムエージェント定義 (+ Explore ビルトイン)
 │   ├── skills/moai-*/         # 31 個のスキルモジュール
 │   ├── hooks/moai/            # 自動化フックスクリプト
 │   └── rules/moai/            # コーディングルールおよび標準

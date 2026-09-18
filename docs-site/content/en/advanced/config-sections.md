@@ -55,7 +55,7 @@ delegation:
 | Block | Description |
 |-------|-------------|
 | `learning` | Manages routing usage as an append-only ledger (`.moai/state/routing-ledger.jsonl`, opt-in·fail-open), and the harness learning subsystem proposes updates via a 4-tier ladder. `auto_apply: false` — Tier-4 changes require `AskUserQuestion` user approval |
-| `subcommands` | Per-subcommand `agents` (11 retained agents to spawn) + `skills` (workflow skills to inject at spawn). 0 assignments is valid (orchestrator executes directly) |
+| `subcommands` | Per-subcommand `agents` (13 retained agents to spawn) + `skills` (workflow skills to inject at spawn). 0 assignments is valid (orchestrator executes directly) |
 | `domain_skills` | Skills to inject per mission domain (0-3 per spawn). Matched against domain signals |
 | `agents` | Per-agent conditional skills (loaded on-demand when trigger fires) |
 
@@ -69,7 +69,7 @@ Defines the profile, the profile matrix, per-agent overrides, and GLM model mapp
 llm:
   profile: "medium"            # high | medium | low (active matrix column; max read as high)
   performance_tier: "medium"   # legacy alias (read when profile absent; same vocabulary)
-  profiles:                    # profile column → 11 agents → {model, effort}
+  profiles:                    # profile column → 13 agents → {model, effort}
     high: { ... }              # detailed table: Profile Matrix page
     medium: { ... }
     low: { ... }
@@ -87,7 +87,7 @@ llm:
 |-----|-------------|
 | `profile` | Active profile matrix column (`high`/`medium`/`low`; the former `max` is read as an alias of `high`). An empty value is interpreted as `medium`. The model+effort source for every subagent spawn |
 | `performance_tier` | Legacy alias field. Read only when `profile` is absent; shares the same `high`/`medium`/`low` vocabulary, so no normalization step is needed |
-| `profiles` | The per-agent → `{model, effort}` matrix per profile column (11 agents × 3 columns = 33 cells). The Go default (`template.DefaultProfileMatrix`) is the authoritative fallback for missing cells |
+| `profiles` | The per-agent → `{model, effort}` matrix per profile column (13 agents × 3 columns = 39 cells). The Go default (`template.DefaultProfileMatrix`) is the authoritative fallback for missing cells |
 | `agent_overrides` | Per-canonical-agent-name `{model, effort}` override. Takes precedence over the active profile's agent cell (catalog+enum validated) |
 | `glm.base_url` | Z.AI Anthropic-compatible proxy endpoint |
 | `glm.models` | Per-slot GLM model mapping. GLM collapses Claude's 5-step effort into 3 reasoning states (thinking-off / reasoning-high / reasoning-max) |

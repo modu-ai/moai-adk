@@ -95,9 +95,9 @@ MoAI-ADK 会根据 Claude Code 订阅套餐为智能体分配最优 AI 模型。
 
 ### 各层级智能体模型分配
 
-**11 个智能体目录**（10 个 MoAI 自定义 + 1 个 Anthropic 内置 `Explore`）中，MoAI 自定义智能体按层级分配模型。过去的 12 个归档智能体 (archived agents) 已不可用。
+**13 个智能体目录**（12 个 MoAI 自定义 + 1 个 Anthropic 内置 `Explore`）中，MoAI 自定义智能体按层级分配模型。过去的 12 个归档智能体 (archived agents) 已不可用。
 
-#### Manager Agents（5 个）
+#### Manager Agents（6 个）
 
 | 智能体 | high | medium | low |
 |---------|------|--------|-----|
@@ -106,8 +106,9 @@ MoAI-ADK 会根据 Claude Code 订阅套餐为智能体分配最优 AI 模型。
 | manager-docs | opus / medium | opus / low | sonnet / low |
 | manager-git | sonnet / low | sonnet / low | sonnet / low |
 | manager-design | opus / high | opus / medium | opus / low |
+| manager-lead | opus / high | opus / high | opus / medium |
 
-#### Evaluator · Builder · Advisor · Specialist Agents（5 个）
+#### Evaluator · Builder · Advisor · Specialist Agents（6 个）
 
 | 智能体 | high | medium | low |
 |---------|------|--------|-----|
@@ -116,6 +117,7 @@ MoAI-ADK 会根据 Claude Code 订阅套餐为智能体分配最优 AI 模型。
 | builder-harness | opus / high | opus / medium | opus / low |
 | super-advisor | opus / max | opus / high | opus / medium |
 | e2e-tester | opus / medium | opus / low | sonnet / low |
+| mission-governor | opus / high | opus / high | opus / high |
 
 内置 `Explore` 在所有列都解析为 `sonnet / low` — 因为磁盘上没有可固定的智能体文件，这是调用时的默认值。
 

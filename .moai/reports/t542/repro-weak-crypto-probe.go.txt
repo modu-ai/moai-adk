@@ -1,0 +1,16 @@
+package main
+
+import (
+	"fmt"
+
+	"github.com/modu-ai/moai-adk/internal/hook/security"
+)
+
+func main() {
+	buf := "# verdict\n\n- Restore verified: the md5 of the restored file equals\n  the md5 of the committed copy; no security use here.\n- The ECB published the rate on Tuesday.\n"
+	found := security.ScanBuffer(buf)
+	fmt.Printf("findings: %d\n", len(found))
+	for _, f := range found {
+		fmt.Printf("%s (%s) line %d: %s | match=%q\n", f.Class, f.Severity, f.Line, f.Message, f.Match)
+	}
+}

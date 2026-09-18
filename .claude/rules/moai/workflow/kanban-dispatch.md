@@ -36,6 +36,8 @@ A card the operator chose to start at the moment it was issued is not a silent p
 
 [HARD] **The pre-dispatch PR cross-check.** Before dispatching a card out of `backlog`, the lead reads that card's pull-request and landed state and reports what it read in the same turn. `moai gtd pr <id>` answers both; by hand it is `gh pr list` plus a `git log` against the integration branch. An unchecked card is a gap, not a clean card (§ Completion is read, never trusted).
 
+[HARD] **The cross-check also asks whether a completed SPEC already covers the work.** A card id answers "did THIS card land"; it cannot answer "has someone else already done this", because the delivering commit carries the OTHER card's id — so an id-keyed read returns a correct `no-link` for work that is finished. Where the card names an issue or a subsystem, the lead also reads whether a SPEC covering it is already `completed` and reports that alongside the PR and landed state. Neither read is conclusive: the final discriminator stays reproduction (§ Completion is read, never trusted).
+
 [HARD] **The cross-check reports; it never vetoes.** Where the card carries an open pull request or is already landed, the lead surfaces that and the operator **confirms or withdraws** it. The lead never withholds a picked card on its own authority — promotion is the operator's act, always. Why the wording is the only available control, and the incident it closes: `kanban-dispatch-detail.md` § The pre-dispatch cross-check.
 
 ## Report milestones ↔ queue cards
@@ -201,6 +203,8 @@ A lane that reports a branch name without also reporting its card id has not rep
 The obligation binds card-delivering pull requests only; a release, batch, or maintenance pull request delivers no card and carries none. It binds pull requests opened after it lands — nothing is retitled. Rationale and the carrier measurements: `kanban-dispatch-detail.md` § The PR-title carrier.
 
 The lead dispatches this rather than assuming it: each instruction names the worktree and says to drive it with `git -C <path>` rather than `cd` — a `cd` inside a compound command lasts for that invocation only, so the next command silently reads the wrong tree. A companion reporting it worked in the shared checkout is a fault to report, not a detail to tidy up (rationale: `kanban-dispatch-detail.md` § Isolation rationale).
+
+[HARD] **Inside a worktree session that `<path>` is the worktree's own absolute path**, and the dispatch writes it that way. Measured on Claude Code 2.1.275: the guard refuses `-C .`, a relative path, a path computed at runtime, and a path outside this worktree — three distinct refusal messages, none of them a runtime defect. Plain git (pipes and `&&` chains included), `git -C <own absolute path>`, and `--git-dir=<own .git>` pass; so does `cd <own worktree> && git …`, which the rule above still advises against for the reason it gives. The refusal is git-scoped: a command carrying no git passes with substitution, loops, redirects, or a heredoc body naming a git command.
 
 ## Verification load is lane-local
 

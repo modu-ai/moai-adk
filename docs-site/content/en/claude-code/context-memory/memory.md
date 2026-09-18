@@ -140,6 +140,8 @@ The `autoMemoryDirectory` setting changes the storage location. The value must b
 
 `MEMORY.md` acts as the index of the memory directory. **Only the first 200 lines or 25KB, whichever comes first**, loads at the start of every conversation; anything beyond that is not loaded at startup. That is why Claude moves detailed notes into separate topic files, keeping `MEMORY.md` concise.
 
+Source: Claude Code CHANGELOG 2.1.83 — "Memory: MEMORY.md index now truncates at 25KB as well as 200 lines".
+
 ```mermaid
 flowchart TD
     A["Session start"] --> B["Load MEMORY.md index<br>First 200 lines or 25KB"]
