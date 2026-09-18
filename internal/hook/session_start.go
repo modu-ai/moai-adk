@@ -5,7 +5,6 @@ import (
 	"bufio"
 	"context"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"log/slog"
 	"maps"
@@ -18,6 +17,7 @@ import (
 	"time"
 
 	"github.com/modu-ai/moai-adk/internal/config"
+	"github.com/modu-ai/moai-adk/internal/glmcred"
 	"github.com/modu-ai/moai-adk/internal/goal"
 	"github.com/modu-ai/moai-adk/internal/homestate"
 	"github.com/modu-ai/moai-adk/internal/hook/memo/taxonomy"
@@ -1457,6 +1457,13 @@ func loadGLMKeyFromEnvFile() string {
 		key := strings.TrimSpace(parts[0])
 		val := strings.TrimSpace(parts[1])
 		val = strings.Trim(val, `"'`)
+		// The writer escapes a backslash, a double quote and a dollar sign
+		// before quoting the value (glmcred.EscapeValue), so stripping the
+		// quotes leaves the escaped form. Reversing it here is what makes this
+		// reader agree with glmcred.Load, which the same file is written for.
+		// Card t804: without this, a key carrying any of those three characters
+		// reached settings.local.json as a token the provider never issued.
+		val = glmcred.UnescapeValue(val)
 
 		if key == "GLM_API_KEY" && val != "" {
 			return val
@@ -1600,10 +1607,11 @@ func (h *sessionStartHandler) runMultiSessionProtocol(input *HookInput, data map
 // time-boxed rewrite carries no inline magic number).
 const driftWarningThreshold = 5
 
-// driftTimeoutAdvisory is surfaced when the drift check exceeds its time-box: it
-// preserves the "Run 'moai spec drift' for details." advisory so the user still
-// learns drift may exist, WITHOUT the check having blocked session start.
-const driftTimeoutAdvisory = "⚠ SPEC status drift check timed out. Run 'moai spec drift' for details."
+// driftTimeoutAdvisory went with detectStatusDrift (card t898). It was the
+// time-box advisory of the in-band check, and detectStatusDrift was its only
+// reader; the cache-only path emits nothing on a miss, by design. Go does not
+// report an unused const, so a dead one lingers silently — which is why it is
+// removed here rather than left "in case".
 
 // deferredScanJoinBound is the maximum time Handle waits for the deferred
 // advisory scan goroutine before returning. It is the drop-mitigation bound:
@@ -1692,32 +1700,16 @@ func snapshotDeferredScanCompleted() chan struct{} {
 	return deferredScanCompletedCh
 }
 
-// detectStatusDrift checks for SPEC status drift and returns a warning message
-// if >= driftWarningThreshold SPECs have drifted. Returns empty string otherwise.
+// detectStatusDrift was removed by card t898.
 //
-// The check is time-boxed (SPEC-SESSIONSTART-PERF-001 REQ-SSP-015): an advisory
-// computation on the session-start critical path must never block unboundedly.
-// On deadline exceed the handler skips the (abandoned) computation and emits the
-// advisory instead of blocking. All other errors (git absent, no specs
-// directory) are silently ignored, as before — the check is best-effort and
-// non-blocking.
-func detectStatusDrift(projectDir string) string {
-	ctx, cancel := context.WithTimeout(context.Background(), sessionStartDriftTimeout)
-	defer cancel()
-
-	count, err := driftCountFn(ctx, projectDir)
-	if err != nil {
-		if errors.Is(err, context.DeadlineExceeded) {
-			// Time-box exceeded — emit the advisory rather than block session start.
-			return driftTimeoutAdvisory
-		}
-		// git unavailable, no specs directory, etc. — stay silent (non-blocking).
-		return ""
-	}
-
-	if count >= driftWarningThreshold {
-		return fmt.Sprintf("⚠ %d SPECs have status drift. Run 'moai spec drift' for details.", count)
-	}
-
-	return ""
-}
+// It computed the drift advisory in-band, time-boxed, on the session-start
+// critical path (SPEC-SESSIONSTART-PERF-001 REQ-SSP-015). SPEC-DRIFT-CACHE-FILL-001
+// replaced that path: the deferred step now resolves the advisory from the
+// HEAD-keyed cache alone (see computeDeferredAdvisory above) and fills the cache
+// out of band, so nothing in production called this function any more. Its four
+// time-box guard tests went with it — a guard over unreachable code passes
+// whatever production does, which is the vacuous-green shape
+// .claude/rules/moai/development/verification-completeness.md §1.1 names.
+//
+// Reviving it would mean putting the compute back in band, which is the decision
+// SPEC-DRIFT-CACHE-FILL-001 reversed; this removal changes no behaviour.

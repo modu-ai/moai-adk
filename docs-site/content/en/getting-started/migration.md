@@ -113,9 +113,9 @@ go install github.com/modu-ai/moai-adk/cmd/moai@latest
 
 Moving to 3.0 redesigns the agent catalog, autonomous loops, and cost control. Here are the migration-facing changes you'll encounter most frequently.
 
-#### Agent catalog consolidated to 11
+#### Agent catalog consolidated to 13
 
-Archived agent names (`manager-strategy`, `expert-backend`, `researcher`, etc.) are **rejected at spawn**. Instead, either (a) use one of 11 retained agents, or (b) adopt the pattern of spawning `Agent(general-purpose)` with a domain whitelist wherever needed.
+Archived agent names (`manager-strategy`, `expert-backend`, `researcher`, etc.) are **rejected at spawn**. Instead, either (a) use one of 13 retained agents, or (b) adopt the pattern of spawning `Agent(general-purpose)` with a domain whitelist wherever needed.
 
 #### Agent Teams static orchestration layer retired
 

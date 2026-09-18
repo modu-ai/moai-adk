@@ -4,7 +4,7 @@ weight: 20
 draft: false
 ---
 
-MoAI-ADK 是用 **成本 · 自我改进 · 品质把控** 三大核心把 Claude Code 包起来的 **Agentic Development Kit**。同等质量的代码用更少的 token 产出（成本，代币经济学），每轮会话跑过都会把观察沉淀成规则，让 harness 越用越好（自我改进，智能体循环工程），并用 SPEC 3-phase 与 TRUST 5 门禁挡住返工，用证据判定「完成」（品质把控，智能体 Harness）—— 模型选择、推理深度、上下文用量都由系统从外部强制。11 个专业 AI 智能体与 31 个技能协作，对新项目自动应用 TDD（默认），对测试覆盖率低的既有项目自动应用 DDD。
+MoAI-ADK 是用 **成本 · 自我改进 · 品质把控** 三大核心把 Claude Code 包起来的 **Agentic Development Kit**。同等质量的代码用更少的 token 产出（成本，代币经济学），每轮会话跑过都会把观察沉淀成规则，让 harness 越用越好（自我改进，智能体循环工程），并用 SPEC 3-phase 与 TRUST 5 门禁挡住返工，用证据判定「完成」（品质把控，智能体 Harness）—— 模型选择、推理深度、上下文用量都由系统从外部强制。13 个专业 AI 智能体与 31 个技能协作，对新项目自动应用 TDD（默认），对测试覆盖率低的既有项目自动应用 DDD。
 
 用 Go 编写的单一二进制 —— 无依赖即可在所有平台上即时运行。
 
@@ -22,7 +22,7 @@ MoAI-ADK 是一个 **让智能体在 Claude Code 内相互协作进行智能体�
 | AI 开发团队 | MoAI-ADK | 角色 |
 |----------|----------|------|
 | 产品负责人 | 用户(开发者) | 决定要做什么 |
-| 团队领导 / Tech Lead | MoAI 编排器 | 协调整体工作并委派给 11 个智能体 |
+| 团队领导 / Tech Lead | MoAI 编排器 | 协调整体工作并委派给 13 个智能体 |
 | 策划 / Spec Writer | manager-spec | 把需求整理成 SPEC 文档 |
 | 开发者 / Engineers | manager-develop(注入领域上下文) | 用 DDD/TDD 实现实际代码 |
 | QA / 代码评审者 | plan-auditor · sync-auditor | 独立审计计划与产出物 |
@@ -41,7 +41,7 @@ v3.0 的价值可归纳为三大核心。
 
 ### 智能体 harness(Agentic Harness)
 
-不亲自写代码,而是设计智能体能好好工作的环境。11 个智能体目录、基于 SPEC 的 3-phase 工作流(plan → run → sync)、TRUST 5 质量门禁、用自然语言请求生成项目专用 harness 的 Harness v4 Builder 构成这一核心。详细概念请参阅[harness 工程](/zh/core-concepts/harness-engineering)文档。
+不亲自写代码,而是设计智能体能好好工作的环境。13 个智能体目录、基于 SPEC 的 3-phase 工作流(plan → run → sync)、TRUST 5 质量门禁、用自然语言请求生成项目专用 harness 的 Harness v4 Builder 构成这一核心。详细概念请参阅[harness 工程](/zh/core-concepts/harness-engineering)文档。
 
 ## 为何是这三个
 
@@ -63,7 +63,7 @@ token 单价持续下降,但智能体式开发的 token 用量增长得更快。
 
 ### 品质把控 —— 智能体 Harness
 
-不亲自写代码,而是设计智能体能好好工作的环境。11 个智能体目录从设计阶段起就把计划与审计分离,确保写的人不会给自己的工作打分;SPEC 3-phase（plan → run → sync）、TRUST 5 门禁与 worktree 隔离一起,用证据而非「好像完成了」来判定完成。
+不亲自写代码,而是设计智能体能好好工作的环境。13 个智能体目录从设计阶段起就把计划与审计分离,确保写的人不会给自己的工作打分;SPEC 3-phase（plan → run → sync）、TRUST 5 门禁与 worktree 隔离一起,用证据而非「好像完成了」来判定完成。
 
 ## 为何是 MoAI-ADK?
 
@@ -82,7 +82,7 @@ token 单价持续下降,但智能体式开发的 token 用量增长得更快。
 
 ### 核心数字(以 v3.0 为准)
 
-- **11 个** 智能体目录(10 个 MoAI 自定义 + 1 个 Anthropic 内置 `Explore`)
+- **13 个** 智能体目录(12 个 MoAI 自定义 + 1 个 Anthropic 内置 `Explore`)
 - **31 个** 技能(template-managed)
 - **36 个** CLI 命令 · **16 种** `/moai` 子命令
 - **16 种** 编程语言支持
@@ -241,9 +241,9 @@ MoAI-ADK 实现 **harness 工程** (Harness Engineering)范式 —— 不是亲�
 
 ## AI 智能体编排
 
-MoAI 是 **战略编排器**。它不亲自写代码,而是把工作委派给 11 个保留智能体(10 个 MoAI 自定义 + 1 个 Anthropic 内置 `Explore`)。核心设计原则是 **计划与审计的分离** —— 制作者不检查。
+MoAI 是 **战略编排器**。它不亲自写代码,而是把工作委派给 13 个保留智能体(12 个 MoAI 自定义 + 1 个 Anthropic 内置 `Explore`)。核心设计原则是 **计划与审计的分离** —— 制作者不检查。
 
-### 11 个智能体目录
+### 13 个智能体目录
 
 | 分类 | 智能体 | 成本 | 角色 |
 |------|---------|------|------|
@@ -252,25 +252,28 @@ MoAI 是 **战略编排器**。它不亲自写代码,而是把工作委派给 11
 | | manager-docs | 🔵 | Sync 阶段: 文档化与创建 PR |
 | | manager-git | 🩵 | Git 工作流与基于 Tier 的 PR 路由 |
 | | manager-design | 🟠 | Design 阶段: Claude Design 协作 |
+| | manager-lead | ⚪ | Tier L 多里程碑协调(worktree 隔离的叶子工作者扇出 · 目录中唯一的 Agent-carrier) |
 | **Evaluator** | plan-auditor | 🔴 | SPEC 计划的独立审计(防偏见) |
 | | sync-auditor | 🔴 | 4 维质量评估(功能 40 · 安全 25 · 匠心 20 · 一致性 15) |
 | **Builder** | builder-harness | 🟠 | 生成项目专用 harness(智能体/技能/命令) |
 | **Advisor** | super-advisor | 🔵 | 高推理咨询(E1-E4 升级) |
 | **Specialist** | e2e-tester | 🟠 | 执行 Web/移动/桌面 E2E 测试 |
+| | mission-governor | 🔴 | 读取已批准的 GTD 自动任务的封存快照，只返回一条判定(只读；实际动作由确定性执行器完成) |
 | **内置** | Explore | ⚪ | 只读代码库探索 |
 
-成本颜色以默认 `medium` 配置文件的 model×effort 单元为准（用 `moai model profile` 查看）：🔴 opus+high · 🟠 opus+medium · 🔵 opus+low · 🩵 sonnet+low · ⚪ 继承会话模型（用户自行添加的智能体）。切换配置文件（`high`/`low`）时分配会变化。
+成本颜色以默认 `medium` 配置文件的 model×effort 单元为准（用 `moai model profile` 查看）：🔴 opus+high · 🟠 opus+medium · 🔵 opus+low · 🩵 sonnet+low · ⚪ 继承会话模型（`manager-lead` 的 `model: inherit`、用户自行添加的智能体）。切换配置文件（`high`/`low`）时分配会变化。
 
 ```mermaid
 flowchart TD
     MoAI["MoAI 编排器\n分析用户请求并委派"]
 
-    subgraph Managers["Manager 智能体 (5 个)"]
+    subgraph Managers["Manager 智能体 (6 个)"]
         M1["manager-spec\nPlan 阶段: 生成 SPEC"]
         M2["manager-develop\nRun 阶段: DDD/TDD 实现"]
         M3["manager-docs\nSync 阶段: 文档化"]
         M4["manager-git\n创建 PR, Git 操作"]
         M5["manager-design\nDesign 协作"]
+        M6["manager-lead\nTier L 多里程碑协调"]
     end
 
     subgraph Evaluators["评估智能体 (2 个)"]
@@ -283,8 +286,9 @@ flowchart TD
         B2["super-advisor\n高推理咨询"]
     end
 
-    subgraph Specialist["Specialist (1 个)"]
+    subgraph Specialist["Specialist (2 个)"]
         S1["e2e-tester\n执行 E2E 测试"]
+        S2["mission-governor\nGTD 自动任务判定"]
     end
 
     subgraph Explore["内置 (1 个)"]
@@ -556,7 +560,7 @@ Task 工具完成时 PostToolUse 钩子记录指标。用这些数据分析智�
 my-project/
 ├── CLAUDE.md                  # MoAI 的执行指南
 ├── .claude/
-│   ├── agents/moai/           # 10 个 MoAI 自定义智能体定义 (+ Explore 内置)
+│   ├── agents/moai/           # 12 个 MoAI 自定义智能体定义 (+ Explore 内置)
 │   ├── skills/moai-*/         # 31 个技能模块
 │   ├── hooks/moai/            # 自动化钩子脚本
 │   └── rules/moai/            # 编码规则与标准
