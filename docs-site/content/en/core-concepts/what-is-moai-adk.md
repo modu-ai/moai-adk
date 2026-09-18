@@ -4,7 +4,7 @@ weight: 20
 draft: false
 ---
 
-MoAI-ADK is an **Agentic Development Kit** that wraps Claude Code around three core concerns — **cost, self-improvement, and quality control**. Same quality of code for fewer tokens (cost, Tokenomics); every turn the session runs, observations accumulate as rules so the harness gets better (self-improvement, Agentic Loop Engineering); and SPEC 3-phase + TRUST 5 gates keep rework out so 'done' is judged by evidence (quality control, Agentic Harness) — model selection, reasoning depth, and context usage are enforced from the outside by the system. 11 specialist AI agents and 31 skills work together, applying TDD (the default) to new projects and DDD to existing projects with low test coverage, automatically.
+MoAI-ADK is an **Agentic Development Kit** that wraps Claude Code around three core concerns — **cost, self-improvement, and quality control**. Same quality of code for fewer tokens (cost, Tokenomics); every turn the session runs, observations accumulate as rules so the harness gets better (self-improvement, Agentic Loop Engineering); and SPEC 3-phase + TRUST 5 gates keep rework out so 'done' is judged by evidence (quality control, Agentic Harness) — model selection, reasoning depth, and context usage are enforced from the outside by the system. 13 specialist AI agents and 31 skills work together, applying TDD (the default) to new projects and DDD to existing projects with low test coverage, automatically.
 
 A single binary written in Go -- runs immediately on every platform with zero dependencies.
 
@@ -22,7 +22,7 @@ MoAI-ADK is **a development kit that has agents collaborate on agentic coding in
 | AI development team | MoAI-ADK | Role |
 |----------|----------|------|
 | Product owner | The user (developer) | Decides what to build |
-| Team lead / Tech Lead | The MoAI orchestrator | Coordinates all work and delegates to the 11 agents |
+| Team lead / Tech Lead | The MoAI orchestrator | Coordinates all work and delegates to the 13 agents |
 | Planner / Spec Writer | manager-spec | Organizes requirements into SPEC documents |
 | Developers / Engineers | manager-develop (with domain context injected) | Implements the actual code with DDD/TDD |
 | QA / Code reviewers | plan-auditor · sync-auditor | Independently audit plans and deliverables |
@@ -41,7 +41,7 @@ The loop works on its own, and observations accumulate along the way. This core 
 
 ### Agentic Harness
 
-Instead of writing code yourself, you design an environment where agents work well. This core concern is the 11-agent catalog, the SPEC-based 3-phase workflow (plan → run → sync), the TRUST 5 quality gates, and the Harness v4 Builder that creates project-specific harnesses from natural-language requests. For the full concept, see the [Harness Engineering](/en/core-concepts/harness-engineering) document.
+Instead of writing code yourself, you design an environment where agents work well. This core concern is the 13-agent catalog, the SPEC-based 3-phase workflow (plan → run → sync), the TRUST 5 quality gates, and the Harness v4 Builder that creates project-specific harnesses from natural-language requests. For the full concept, see the [Harness Engineering](/en/core-concepts/harness-engineering) document.
 
 ## Why These Three
 
@@ -63,7 +63,7 @@ Declare a completion condition and the session works on its own until the condit
 
 ### Quality Control — Agentic Harness
 
-Instead of writing code yourself, you design an environment where agents work well. The 11-agent catalog separates planning from auditing at design time so the author never scores its own work, and the SPEC 3-phase (plan → run → sync) plus TRUST 5 gates and worktree isolation judge completion by evidence, not by "it seems done".
+Instead of writing code yourself, you design an environment where agents work well. The 13-agent catalog separates planning from auditing at design time so the author never scores its own work, and the SPEC 3-phase (plan → run → sync) plus TRUST 5 gates and worktree isolation judge completion by evidence, not by "it seems done".
 
 ## Why MoAI-ADK?
 
@@ -82,7 +82,7 @@ The Python-based MoAI-ADK (~73,000 lines) was completely rewritten in Go.
 
 ### Key Numbers (as of v3.0)
 
-- **11** agents in the catalog (10 MoAI custom + 1 Anthropic built-in `Explore`)
+- **13** agents in the catalog (12 MoAI custom + 1 Anthropic built-in `Explore`)
 - **31** skills (template-managed)
 - **36** CLI commands · **16** `/moai` subcommands
 - **16** programming languages supported
@@ -240,9 +240,9 @@ MoAI-ADK implements the **Harness Engineering** paradigm — designing the envir
 
 ## AI Agent Orchestration
 
-MoAI is the **strategic orchestrator**. It does not write code directly — it delegates work to the 11 retained agents (10 MoAI custom + 1 Anthropic built-in `Explore`). The core design principle is **separating planning from auditing** — the one who builds it does not inspect it.
+MoAI is the **strategic orchestrator**. It does not write code directly — it delegates work to the 13 retained agents (12 MoAI custom + 1 Anthropic built-in `Explore`). The core design principle is **separating planning from auditing** — the one who builds it does not inspect it.
 
-### The 11-Agent Catalog
+### The 13-Agent Catalog
 
 | Category | Agent | Cost | Role |
 |------|---------|------|------|
@@ -251,11 +251,13 @@ MoAI is the **strategic orchestrator**. It does not write code directly — it d
 | | manager-docs | 🔵 | Sync phase: documentation and PR creation |
 | | manager-git | 🩵 | Git workflow and tier-based PR routing |
 | | manager-design | 🟠 | Design phase: Claude Design collaboration |
+| | manager-lead | 🔴 | Tier L multi-milestone coordination (worktree-isolated leaf-worker fan-out · the catalog's only Agent-carrier) |
 | **Evaluator** | plan-auditor | 🔴 | Independent audit of SPEC plans (bias prevention) |
 | | sync-auditor | 🔴 | 4-dimension quality assessment (Functionality 40 · Security 25 · Craft 20 · Consistency 15) |
 | **Builder** | builder-harness | 🟠 | Project-specific harness (agents/skills/commands) generation |
 | **Advisor** | super-advisor | 🔵 | High-reasoning consultation (E1-E4 escalation) |
 | **Specialist** | e2e-tester | 🟠 | E2E test execution across web/mobile/desktop |
+| | mission-governor | 🔴 | Reads the sealed snapshot of an approved GTD auto mission and returns one decision (read-only; a deterministic executor performs any action) |
 | **Built-in** | Explore | ⚪ | Read-only codebase exploration |
 
 Cost colors follow the default `medium` profile's model×effort cells (inspect via `moai model profile`): 🔴 opus+high · 🟠 opus+medium · 🔵 opus+low · 🩵 sonnet+low · ⚪ session-model inherit (user-added agents). Assignments shift when switching profiles (`high`/`low`).
@@ -264,12 +266,13 @@ Cost colors follow the default `medium` profile's model×effort cells (inspect v
 flowchart TD
     MoAI["MoAI orchestrator\nAnalyzes user requests and delegates"]
 
-    subgraph Managers["Manager agents (5)"]
+    subgraph Managers["Manager agents (6)"]
         M1["manager-spec\nPlan phase: SPEC creation"]
         M2["manager-develop\nRun phase: DDD/TDD implementation"]
         M3["manager-docs\nSync phase: documentation"]
         M4["manager-git\nPR creation, Git operations"]
         M5["manager-design\nDesign collaboration"]
+        M6["manager-lead\nTier L multi-milestone coordination"]
     end
 
     subgraph Evaluators["Evaluator agents (2)"]
@@ -282,8 +285,9 @@ flowchart TD
         B2["super-advisor\nHigh-reasoning consultation"]
     end
 
-    subgraph Specialist["Specialist (1)"]
+    subgraph Specialist["Specialist (2)"]
         S1["e2e-tester\nE2E test execution"]
+        S2["mission-governor\nGTD auto-mission decision"]
     end
 
     subgraph Explore["Built-in (1)"]
@@ -555,7 +559,7 @@ Installing MoAI-ADK creates the following structure in your project.
 my-project/
 ├── CLAUDE.md                  # MoAI's execution directive
 ├── .claude/
-│   ├── agents/moai/           # 10 MoAI custom agent definitions (+ the Explore built-in)
+│   ├── agents/moai/           # 12 MoAI custom agent definitions (+ the Explore built-in)
 │   ├── skills/moai-*/         # 31 skill modules
 │   ├── hooks/moai/            # Automation hook scripts
 │   └── rules/moai/            # Coding rules and standards

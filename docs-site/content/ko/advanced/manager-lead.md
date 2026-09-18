@@ -100,7 +100,7 @@ grep -A 2 "Mode Selection" .moai/specs/SPEC-EXAMPLE-001/progress.md | grep -i "m
 - **manager-lead** — 마일스톤마다 잎말 에이전트를 부르고, 컨텍스트를 접고, 동료 검증을 돌립니다. 코드를 직접 짜지 않고 SPEC 본문도 고치지 않습니다. `AskUserQuestion`을 직접 부르지도 않습니다 — 막히는 것이 생기면 차단 보고서를 오케스트레이터에게 돌려 보냅니다.
 - **잎말 에이전트** — `manager-develop`로 구현을 하거나, 읽기 전용 `Agent(general-purpose)`로 정탐을 하거나, 작성자가 아닌 동료 에이전트로 AC 검증을 다시 돌립니다.
 
-이 분담에서 가장 눈에 띄는 점은 `manager-lead`만이 `Agent` 도구를 가진다는 것입니다. 열두 관리자 에이전트 가운데 `Agent` 도구를 든 것은 `manager-lead`뿐이며, 다른 관리자 에이전트들은 모두 `Agent`를 뺀 도구 목록으로 평면 계층을 유지합니다. 평면 계층을 단 한 곳에서 여는 대신, 그 아래 잎말 에이전트들은 다시 `Agent`를 가지지 못하게 막아 계층이 두 단계를 넘지 않도록 봉인합니다. 이것이 "깊이-2 봉인"이며 CI 가드(`manager_lead_depth_test.go`)가 지킵니다.
+이 분담에서 가장 눈에 띄는 점은 `manager-lead`만이 `Agent` 도구를 가진다는 것입니다. 열세 에이전트 가운데 `Agent` 도구를 든 것은 `manager-lead`뿐이며, 다른 관리자 에이전트들은 모두 `Agent`를 뺀 도구 목록으로 평면 계층을 유지합니다. 평면 계층을 단 한 곳에서 여는 대신, 그 아래 잎말 에이전트들은 다시 `Agent`를 가지지 못하게 막아 계층이 두 단계를 넘지 않도록 봉인합니다. 이것이 "깊이-2 봉인"이며 CI 가드(`manager_lead_depth_test.go`)가 지킵니다.
 
 ```text
 # manager-lead가 잎말 에이전트를 부를 때의 도구 목록 (개념 예시)

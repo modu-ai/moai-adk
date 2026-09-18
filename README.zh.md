@@ -495,7 +495,7 @@ flowchart TD
 | **TDD**（默认） | RED → GREEN → REFACTOR | 新项目、功能开发 |
 | **DDD** | ANALYZE → PRESERVE → IMPROVE | 覆盖率低于 10% 的存量代码 |
 
-### 12 智能体目录
+### 13 智能体目录
 
 | 分类 | 智能体 | 成本 | 职责 |
 |------|------|------|------|
@@ -510,11 +510,12 @@ flowchart TD
 | **构建者** | builder-harness | 🟠 | 项目专用智能体、技能、命令、钩子的脚手架 |
 | **顾问** | super-advisor | 🔵 | 按需高推理咨询（E1-E4 升级） |
 | **专员** | e2e-tester | 🟠 | Web/移动/桌面 E2E 测试执行（CLI 优先） |
+| | mission-governor | 🔴 | 对已批准的 GTD 自动任务做只读判定 —— 只返回一个判定，从不自己执行（由 GTD 工作流调用，因此不占选择决策树的行） |
 | **内置** | Explore | ⚪ | 只读代码库探查 |
 
 成本颜色跟随默认 `medium` 档位的模型×推理单元（用 `moai model profile` 查看）：🔴 opus+high · 🟠 opus+medium · 🔵 opus+low · 🩵 sonnet+low · ⚪ 继承会话模型（用户自加智能体）。切换档位（`high`/`low`）后指派随之变化。写作和审计从一开始就分给别人 —— 写的人永远不给自己的作业打分。
 
-十二个里有十一个是 moai-adk 自造的智能体，`Explore` 是 Claude Code 本来就有的内置智能体。`Explore` 不另外持有自己的模型，而是原样继承会话模型，所以没有档案单元。目录是 12 个，而后面模型档案一节里的单元数是 11 × 3 = 33 —— 两个数字并不矛盾，它们数的是不同的东西。
+十三个里有十二个是 moai-adk 自造的智能体，`Explore` 是 Claude Code 本来就有的内置智能体。`Explore` 和其他行一样有自己的档案单元 —— 三个档案里都是 `sonnet / low`。所以后面模型档案一节数的也是同样的十三个，13 × 3 = 39 个单元。
 
 ### trust-but-verify —— 给完成主张绑上证据
 
@@ -648,7 +649,7 @@ v3.1.1 又多了四个值得一动的切面。
 
 ### 模型档案 —— high / medium / low
 
-`moai model profile` 解析 11 个智能体 × 3 个档案 = 33 个单元的 `{model, effort}` 组合。
+`moai model profile` 解析 13 个智能体 × 3 个档案 = 39 个单元的 `{model, effort}` 组合。
 
 <p align="center">
   <img src="./assets/images/model-routing-infographic-zh.png" alt="智能体模型路由 —— 每个智能体各配到合适的模型与推理强度" width="85%">

@@ -55,7 +55,7 @@ delegation:
 | 블록 | 설명 |
 |------|------|
 | `learning` | 라우팅 사용 내역을 append-only 원장(`.moai/state/routing-ledger.jsonl`, opt-in·fail-open)에 남기고, 하네스 학습 서브시스템이 4-tier 제안 사다리로 갱신을 제안. `auto_apply: false` — Tier-4 변경은 `AskUserQuestion` 사용자 승인 필요 |
-| `subcommands` | 서브커맨드마다 `agents`(spawn할 11개 retained 에이전트) + `skills`(spawn 시 주입할 workflow 스킬). 하나도 배정하지 않아도 유효 (오케스트레이터가 직접 실행) |
+| `subcommands` | 서브커맨드마다 `agents`(spawn할 13개 retained 에이전트) + `skills`(spawn 시 주입할 workflow 스킬). 하나도 배정하지 않아도 유효 (오케스트레이터가 직접 실행) |
 | `domain_skills` | 미션 도메인에 맞춰 주입할 스킬 (spawn당 0-3개). 도메인 신호와 매칭 |
 | `agents` | 에이전트마다 두는 conditional 스킬 (트리거가 발생하면 on-demand 로드) |
 
@@ -69,7 +69,7 @@ delegation:
 llm:
   profile: "medium"            # high | medium | low (활성 매트릭스 열, max는 high로 읽힘)
   performance_tier: "medium"   # legacy 별칭 (profile 부재 시 읽힘, 동일 어휘)
-  profiles:                    # 프로필 열 → 11개 에이전트 → {model, effort}
+  profiles:                    # 프로필 열 → 13개 에이전트 → {model, effort}
     high: { ... }              # 상세 표: 프로필 매트릭스 페이지
     medium: { ... }
     low: { ... }
@@ -87,7 +87,7 @@ llm:
 |----|------|
 | `profile` | 활성 프로필 매트릭스 열 (`high`/`medium`/`low`, 과거 `max`는 `high`의 별칭으로 읽힘). 비어 있으면 `medium`으로 해석. 모든 서브에이전트 spawn의 model+effort 출처 |
 | `performance_tier` | legacy 별칭 필드. `profile`이 없을 때만 읽히며, `high`/`medium`/`low` 어휘를 그대로 쓰므로 별도 정규화가 필요 없음 |
-| `profiles` | 프로필 열마다 에이전트 → `{model, effort}`를 적은 매트릭스 (에이전트 11개 × 열 3개 = 33셀). 빠진 셀은 Go 기본값(`template.DefaultProfileMatrix`)이 최종 fallback |
+| `profiles` | 프로필 열마다 에이전트 → `{model, effort}`를 적은 매트릭스 (에이전트 13개 × 열 3개 = 39셀). 빠진 셀은 Go 기본값(`template.DefaultProfileMatrix`)이 최종 fallback |
 | `agent_overrides` | 정규 에이전트 이름을 키로 하는 `{model, effort}` override. 활성 프로필의 에이전트 셀보다 우선 (카탈로그+enum 검증) |
 | `glm.base_url` | Z.AI Anthropic 호환 프록시 엔드포인트 |
 | `glm.models` | 슬롯별 GLM 모델 매핑. GLM은 Claude의 5단계 effort를 3개 reasoning 상태(thinking-off / reasoning-high / reasoning-max)로 collapse |

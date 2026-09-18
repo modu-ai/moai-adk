@@ -100,7 +100,7 @@ grep -A 2 "Mode Selection" .moai/specs/SPEC-EXAMPLE-001/progress.md | grep -i "m
 - **manager-lead**——逐里程碑调用叶子智能体、折叠上下文、跑同事验证。它不亲自写代码，也不改 SPEC 正文。它同样不调用 `AskUserQuestion`——一旦卡住，就向编排器返回阻塞报告。
 - **叶子智能体**——用 `manager-develop` 做实现，用只读的 `Agent(general-purpose)` 做侦察，或者作为非作者的同事智能体重跑 AC 验证。
 
-这套分工最醒目的一点是：只有 `manager-lead` 带着 `Agent` 工具。十二个管理者智能体中，`manager-lead` 是唯一持有 `Agent` 的；其余管理者智能体的工具列表都省掉 `Agent`，以此守住扁平层级。作为在唯一一处打开扁平层级的代价，其下的叶子智能体被禁止再带 `Agent`，层级因此被封死在不超过两层。这就是"深度-2 封印"，由 CI 守卫（`manager_lead_depth_test.go`）强制执行。
+这套分工最醒目的一点是：只有 `manager-lead` 带着 `Agent` 工具。十三个智能体中，`manager-lead` 是唯一持有 `Agent` 的；其余管理者智能体的工具列表都省掉 `Agent`，以此守住扁平层级。作为在唯一一处打开扁平层级的代价，其下的叶子智能体被禁止再带 `Agent`，层级因此被封死在不超过两层。这就是"深度-2 封印"，由 CI 守卫（`manager_lead_depth_test.go`）强制执行。
 
 ```text
 # manager-lead 调用叶子智能体时的工具清单 (概念示例)

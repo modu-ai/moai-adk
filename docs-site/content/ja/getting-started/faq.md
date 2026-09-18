@@ -85,9 +85,9 @@ MoAI-ADK は Claude Code のサブスクリプション料金プランに合わ�
 
 | ティア | 特徴 |
 |------|------|
-| **high** | 最高品質 — 呼び出し頻度が最も低い2つのエージェントに `max` の推論深度 |
+| **high** | 最高品質 — `builder-harness` と `e2e-tester` がデフォルト列より 1 段ずつ上がります。`max` を受ける行はありません |
 | **medium** (デフォルト値) | 品質とコストのバランス — コスト/スコア曲線の膝 |
-| **low** | 作業あたり最低コスト — エージェンティックなエージェントは Opus `low` effort に下がる |
+| **low** | 作業あたり最低コスト — 監査・調整行は `medium` へ、`builder-harness` は Opus `low` へ、`e2e-tester` は Sonnet へ下がります。`high` を保つのは `super-advisor` と `mission-governor` だけです |
 
 {{< callout type="warning" >}}
 **なぜ重要ですか?** ティアを下げることはモデルクラスではなく *推論深度* を下げることです。長期にわたるエージェンティックな作業では、Opus の `low` effort が `max` を含むあらゆる effort の Sonnet よりもスコアが高く、作業あたりのコストも低くなります — 請求額を決めるのはトークン単価ではなく、モデルが完了までに費やしたステップ数です。したがって `low` は Opus の中で節約し、複数ステップを踏んでから失敗するおそれのない単発の行 (`manager-git`、`Explore`) でのみ Sonnet を使います。
@@ -95,27 +95,29 @@ MoAI-ADK は Claude Code のサブスクリプション料金プランに合わ�
 
 ### ティア別エージェントモデル割り当て
 
-**11 個のエージェントカタログ** (10 MoAI カスタム + 1 Anthropic ビルトイン `Explore`) のうち MoAI カスタムエージェントはティアに応じてモデルが割り当てられます。かつての 12 個の保管エージェント (archived agents) は利用できません。
+**13 個のエージェントカタログ** (12 MoAI カスタム + 1 Anthropic ビルトイン `Explore`) のうち MoAI カスタムエージェントはティアに応じてモデルが割り当てられます。かつての 12 個の保管エージェント (archived agents) は利用できません。
 
-#### Manager Agents (5 個)
+#### Manager Agents (6 個)
 
 | エージェント | high | medium | low |
 |---------|------|--------|-----|
-| manager-spec | opus / high | opus / medium | opus / low |
-| manager-develop | opus / max | opus / medium | opus / low |
-| manager-docs | opus / medium | opus / low | sonnet / low |
+| manager-spec | opus / medium | opus / medium | opus / medium |
+| manager-develop | opus / medium | opus / medium | opus / medium |
+| manager-docs | sonnet / low | sonnet / low | sonnet / low |
 | manager-git | sonnet / low | sonnet / low | sonnet / low |
-| manager-design | opus / high | opus / medium | opus / low |
+| manager-design | opus / high | opus / high | opus / medium |
+| manager-lead | opus / high | opus / high | opus / medium |
 
-#### Evaluator · Builder · Advisor · Specialist Agents (5 個)
+#### Evaluator · Builder · Advisor · Specialist Agents (6 個)
 
 | エージェント | high | medium | low |
 |---------|------|--------|-----|
-| plan-auditor | opus / high | opus / medium | opus / low |
-| sync-auditor | opus / high | opus / medium | opus / low |
+| plan-auditor | opus / high | opus / high | opus / medium |
+| sync-auditor | opus / high | opus / high | opus / medium |
 | builder-harness | opus / high | opus / medium | opus / low |
-| super-advisor | opus / max | opus / high | opus / medium |
+| super-advisor | opus / high | opus / high | opus / high |
 | e2e-tester | opus / medium | opus / low | sonnet / low |
+| mission-governor | opus / high | opus / high | opus / high |
 
 ビルトインの `Explore` はすべての列で `sonnet / low` に解決されます — ディスク上にピン留めするエージェントファイルがないため、呼び出し時のデフォルト値です。
 

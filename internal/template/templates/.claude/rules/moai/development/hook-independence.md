@@ -115,7 +115,7 @@ shared "dormant" label, which conflated reachable, retired, and undecided.
 | `handle-task-created.sh` | `dead-by-decision` | Retired obs-only event, on the same terms. |
 | `handle-worktree-create.sh` | `dead-by-decision` | Deregistered after a recorded regression: the runtime treats the create event as having an active creator and read the observer handler's empty-object reply as a path. |
 | `handle-worktree-remove.sh` | `dead-by-decision` | Deregistered alongside the create-side wrapper, for the same recorded regression. |
-| `handle-session-start-navigator.sh` | `open-question` | Registered in no settings surface, so it cannot fire. Whether it should, and on which event, is an open decision — not a deferred prerequisite. |
+| `handle-session-start-navigator.sh` | `reachable-via-settings` | Registered on `SessionStart` (matcher `startup\|resume\|clear\|compact\|fork`, timeout 5) in **both** the shipped settings template and this repository's own tracked settings. Firing is observed rather than inferred: a live session started in a tree carrying the entry receives the wrapper's `additionalContext`; the same tree with the entry removed receives nothing. The wrapper is fail-open, so a project without a `navigator.md` gets one stat per session start and no output — "emitted nothing" must not be read back as "did not fire". |
 | `team-ac-verify.sh` | `open-question` | Registered in no settings surface, so no configuration flag activates it. Whether team mode should fire it is an open decision — see the row (g) caveat above. |
 
 **Reading the table.** `reachable-*` means the wrapper does fire, through the
@@ -128,12 +128,15 @@ decided; the wrapper is inert until someone does, and no flag changes that.
 pinned by guard tests, and an upgrade migration strips their entries from user
 settings. Removal is a distributed act with effects outside this repository.
 
-**Two counting corrections.** (a) The live settings file registers **33 hook
-entries across 20 events**. A `grep -c '"type": "command"'` over it returns
-**34** — the extra occurrence is the `statusLine` block, which is not a hook.
-Anyone re-deriving the number from that grep will otherwise conclude this
-document is wrong. (b) `handle-agent-hook.sh` is registered through **agent
-frontmatter**, not settings; a settings-only count omits it by construction.
+**Two counting corrections.** (a) A `grep -c '"type": "command"'` over the live
+settings file returns **one more than the number of hook entries** — the extra
+occurrence is the `statusLine` block, which is not a hook. That offset is the
+load-bearing part; the absolute count moves whenever an entry is added, so read
+it from the file rather than from this sentence. A reader who re-derives the
+number from the grep and does not subtract the `statusLine` occurrence will
+conclude this document is wrong. (b) `handle-agent-hook.sh` is registered
+through **agent frontmatter**, not settings; a settings-only count omits it by
+construction.
 
 **Not a wrapper, same shape.** The `moai hook spec-status` CLI subcommand is
 also dormant — no wrapper, no registration — with activation deferred to the
