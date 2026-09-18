@@ -96,13 +96,61 @@ package spec
 //     legalizing the shorthand makes authors write numbers in `maps` sections
 //     more often, which makes this shape more likely to be born, not less.
 //
-// Narrowing candidate for a follow-up card, recorded so the option is not
-// re-derived: require a section-closing token after a tail (`)`, `:`, an em
-// dash, or end of line) before the capture may continue. Not done here —
-// narrowing the locator is a behaviour change outside this card's SPEC, and
-// declaring the residual is what this card owes.
+// RESIDUAL STATUS (card t913) — CLOSED ON THIS PATH, DECLARED OPEN ON THE TABLE
+// PATH. The narrowing this declaration recorded as a candidate is now landed
+// here: see siblingMapsREQIDs below, which truncates a trailing bare tail that
+// no closing token follows. The two halves of the residual have DIFFERENT
+// verdicts, and the reason is worth keeping, because a reader who assumes one
+// verdict covers both will reach for the wrong repair.
+//
+//	maps path  (this file, the LOCATOR layer) → CLOSED. Cost measured 0.
+//	table path (cellREQIDs, the EXPANDER layer) → OPEN. Cost measured 12.
+//
+// THE CLOSING-TOKEN SET IS FIVE, NOT FOUR. A tail may be followed by end of
+// line, `)`, `:`, an em dash, or a markdown table-cell `|`. The candidate this
+// declaration recorded before the measurement named only the first four; `|` was
+// added when the corpus was counted, because 22 live `maps` sections sit inside a
+// table cell and are terminated by a pipe. None of those 22 ends in a bare tail
+// today, so the four-token list costs nothing right now — and would have
+// truncated a correct tail the first time a table-cell author wrote the
+// shorthand, with no signal that it had. The set here and the pattern in
+// siblingMapsTailBoundary are the same five deliberately: a declaration naming a
+// different set from the code is how the next reader loses track of which one was
+// intended.
+//
+// Why the same rule closes one and not the other — it is the LAYER, not the
+// path. The locator captures the id list and hands only that to cellREQIDs, so
+// the prose that justifies rejecting a tail is destroyed between the two layers:
+// by the time the shared expander runs, the tail sits at end-of-string and looks
+// clean. The discriminating text still exists at the locator, which is where the
+// narrowing therefore lives. Inside the expander no syntactic rule can decide
+// it, because the information is no longer there.
+//
+// The two population figures are BOTH correct and were measured on different
+// surfaces with the domain's own capture functions rather than a regular
+// expression resembling them:
+//
+//   - maps path, live `acceptance.md`: 525 sections, 3 ending in a bare tail,
+//     all 3 closed by `)`, all 3 inside this SPEC's own acceptance.md. The
+//     narrowing changes 0 of them. That zero is weak evidence, not strong — a
+//     near-empty population cannot exonerate a rule.
+//   - table path, live table cells: 12 absorbed tails are followed by something
+//     other than a clean boundary, and all 12 are LEGITIMATE mappings — a list
+//     then a parenthetical, a semicolon, a range, explanatory prose. Narrowing
+//     there would break only correct text, so it is NOT done. Two of the 12 are
+//     shaped identically to the hazard (`016 sentinels + …` versus `002 is
+//     explicitly NOT mapped`), which is why no syntactic rule separates them
+//     inside the expander.
+//
+// This is the third instance in one batch of a single rule: a population figure
+// means nothing without the surface AND the layer it was measured on. Quoting
+// "the live population is zero" without naming which of the two paths it
+// describes is how the two verdicts get conflated.
 
-import "regexp"
+import (
+	"regexp"
+	"strings"
+)
 
 // siblingMapsSectionPattern is the sibling-local WIDENED `maps`-section
 // locator. It differs from ears.go's reqSectionPattern — which it deliberately
@@ -136,13 +184,70 @@ var siblingMapsSectionPattern = regexp.MustCompile(`(?i)maps[ \t]+(REQ-[A-Z0-9-]
 // Each capture is passed to cellREQIDs — the shared numeric-tail expander from
 // lint_coverage_sibling_table.go — and nothing else is. The capture is the
 // textual unit; the line that contains it is never read.
+// siblingMapsTailBoundary accepts the tokens that may legitimately follow a
+// captured section whose LAST element is a bare numeric tail: end of line, `)`,
+// `:`, an em dash, or a markdown table-cell `|`.
+//
+// These five are the set the RESIDUAL STATUS declaration above states, and the
+// two are kept in step on purpose — see there for why `|` belongs in it (22 live
+// `maps` sections sit in a table cell, terminated by a pipe).
+//
+// The `\n` / `\r` alternatives are load-bearing, not redundant with `$`: Go's
+// RE2 `$` matches at end of TEXT, never before a trailing newline the way Perl's
+// does, so a section that ends its line would be truncated without them.
+var siblingMapsTailBoundary = regexp.MustCompile(`^[ \t]*($|\n|\r|\)|:|—|\|)`)
+
+// mapsCaptureEndsInBareTail reports whether the capture's last comma-separated
+// element is a bare numeric tail rather than a full REQ id.
+func mapsCaptureEndsInBareTail(capture string) bool {
+	parts := strings.Split(capture, ",")
+	last := strings.TrimSpace(parts[len(parts)-1])
+	return last != "" && !strings.HasPrefix(strings.ToUpper(last), "REQ-")
+}
+
+// siblingMapsREQIDs returns the full REQ ids (with the `REQ-` prefix) mapped by
+// the `maps` sections in text, expanding bare numeric tails through the shared
+// rule the table path uses.
+//
+// Each capture is passed to cellREQIDs — the shared numeric-tail expander from
+// lint_coverage_sibling_table.go — and nothing else is. The capture is the
+// textual unit; the line that contains it is never read.
+//
+// PROSE-ABSORPTION BOUNDARY (card t913). A capture ending in a bare numeric tail
+// is TRUNCATED by one element when no closing token follows it, so prose that
+// disclaims the numeric can no longer be read as a mapping:
+//
+//	maps REQ-FIXH-001, 002 is explicitly NOT mapped by this AC
+//	  before → REQ-FIXH-001, REQ-FIXH-002   (the correct CoverageIncomplete went silent)
+//	  after  → REQ-FIXH-001                 (the disclaimed tail is dropped, the real id kept)
+//
+// Three properties bound this, and each was measured rather than assumed:
+//
+//   - It is applied HERE, at the locator layer, and NOT inside cellREQIDs. The
+//     locator hands cellREQIDs the id list alone, so by the time the shared
+//     expander runs, the prose that would justify rejecting the tail is already
+//     gone and the tail looks like a clean end-of-string. That is why the same
+//     narrowing is impossible in the shared rule — and why REQ-SMS-002's
+//     shared-expansion property survives untouched.
+//   - Only the TRAILING element is dropped. It is the one element adjacent to the
+//     prose; anything before it is separated from that prose by a further
+//     element, which leaves nothing to distinguish it from an ordinary list.
+//   - Cost on the live corpus is zero: 3 sections end in a bare tail, all three
+//     closed by `)`, all three inside the SPEC that documents the shorthand. A
+//     zero measured against a near-empty population is weak evidence, not
+//     strong — recorded as such rather than as "verified free".
 func siblingMapsREQIDs(text string) []string {
 	var ids []string
-	for _, section := range siblingMapsSectionPattern.FindAllStringSubmatch(text, -1) {
-		if len(section) < 2 {
+	for _, loc := range siblingMapsSectionPattern.FindAllStringSubmatchIndex(text, -1) {
+		if len(loc) < 4 || loc[2] < 0 {
 			continue
 		}
-		ids = append(ids, cellREQIDs(section[1])...)
+		capture := text[loc[2]:loc[3]]
+		if mapsCaptureEndsInBareTail(capture) && !siblingMapsTailBoundary.MatchString(text[loc[3]:]) {
+			parts := strings.Split(capture, ",")
+			capture = strings.Join(parts[:len(parts)-1], ",")
+		}
+		ids = append(ids, cellREQIDs(capture)...)
 	}
 	return ids
 }

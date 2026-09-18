@@ -144,6 +144,8 @@ CLAUDE.md는 매 세션 컨텍스트 윈도우에 로드되어 대화와 함께 
 
 `MEMORY.md`는 메모리 디렉터리의 인덱스 역할을 합니다. **앞 200줄 또는 25KB 중 먼저 닿는 지점까지만** 매 대화 시작에 로드되고, 그 이상은 시작 시점에 로드되지 않습니다. 그래서 Claude는 상세 노트를 별도 주제 파일로 옮겨 `MEMORY.md`를 간결하게 유지합니다.
 
+출처: Claude Code CHANGELOG 2.1.83 — "Memory: MEMORY.md index now truncates at 25KB as well as 200 lines".
+
 ```mermaid
 flowchart TD
     A["세션 시작"] --> B["MEMORY.md 인덱스 로드<br>앞 200줄 또는 25KB"]

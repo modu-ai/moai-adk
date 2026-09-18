@@ -4,15 +4,15 @@ weight: 4
 draft: false
 ---
 
-MoAI-ADK maps each of the 12 retained agents to its own `{model, effort}` pair through a single **profile matrix**. The active **profile** (`high` / `medium` / `low`) selects one column of the matrix, and that column's values apply to every subagent spawn. The matrix is **36 cells** keyed by agent name (12 agents × 3 profiles), replacing both the former group abstraction and the `plan_type × tier` axis.
+MoAI-ADK maps each of the 13 retained agents to its own `{model, effort}` pair through a single **profile matrix**. The active **profile** (`high` / `medium` / `low`) selects one column of the matrix, and that column's values apply to every subagent spawn. The matrix is **39 cells** keyed by agent name (13 agents × 3 profiles), replacing both the former group abstraction and the `plan_type × tier` axis.
 
 ## Profile axis
 
 The profile has three values:
 
-- `high` — quality-first column. The spend goes to the rows that judge rather than the rows that produce: the auditing/advising rows (`plan-auditor`, `sync-auditor`, `super-advisor`) and the coordinating rows (`manager-design`, `manager-lead`) hold `high`, while the authoring and implementing rows (`manager-spec`, `manager-develop`) sit at `medium` in all three columns. No row takes `max`. `xhigh` appears in no cell: on Opus 5 it scores the same as `high` while costing materially more.
+- `high` — quality-first column. The spend goes to the rows that judge rather than the rows that produce: the auditing/advising rows (`plan-auditor`, `sync-auditor`, `super-advisor`), the coordinating rows (`manager-design`, `manager-lead`), and the deciding row (`mission-governor`) hold `high`, while the authoring and implementing rows (`manager-spec`, `manager-develop`) sit at `medium` in all three columns. No row takes `max`. `xhigh` appears in no cell: on Opus 5 it scores the same as `high` while costing materially more.
 - `medium` (default) — the balanced column. It differs from `high` in exactly two rows: `builder-harness` steps down to `medium` and `e2e-tester` to `low`. An absent or empty value is interpreted as `medium`.
-- `low` — economical column. Opus 5 at `low` still scores higher **and** costs less per task than Sonnet 5 at any effort, so Opus is retained on every agentic row; most Opus rows land on `medium`, with `super-advisor` alone keeping `high` — the escalation path is what a cheap column most needs to keep sound. Sonnet appears only on single-shot, input-dominated rows.
+- `low` — economical column. Opus 5 at `low` still scores higher **and** costs less per task than Sonnet 5 at any effort, so Opus is retained on every agentic row; most Opus rows land on `medium`, while `super-advisor` and `mission-governor` keep `high` — the escalation path and the sealed-mission decision are what a cheap column most needs to keep sound. Sonnet appears only on single-shot, input-dominated rows.
 
 `max` is a **read-time alias** of `high`. An existing `profile: max` still resolves to `high`, and saves always write the canonical name `high`. No migration step is required.
 
@@ -29,7 +29,7 @@ The accepted values are `high` / `medium` / `low`; the legacy `max` is also acce
 
 ## Profile matrix
 
-The 12 retained agents receive their `{model, effort}` directly from the matrix below. Only user-added agents resolve to `inherit` (inherit the parent session model) and are excluded from model injection. Haiku appears nowhere in the matrix.
+The 13 retained agents receive their `{model, effort}` directly from the matrix below. Only user-added agents resolve to `inherit` (inherit the parent session model) and are excluded from model injection. Haiku appears nowhere in the matrix.
 
 | Agent | high | medium (default) | low |
 |---|---|---|---|
@@ -38,6 +38,7 @@ The 12 retained agents receive their `{model, effort}` directly from the matrix 
 | sync-auditor | opus / high | opus / high | opus / medium |
 | manager-develop | opus / medium | opus / medium | opus / medium |
 | super-advisor | opus / high | opus / high | opus / high |
+| mission-governor | opus / high | opus / high | opus / high |
 | manager-design | opus / high | opus / high | opus / medium |
 | manager-lead | opus / high | opus / high | opus / medium |
 | builder-harness | opus / high | opus / medium | opus / low |
@@ -46,7 +47,7 @@ The 12 retained agents receive their `{model, effort}` directly from the matrix 
 | manager-git | sonnet / low | sonnet / low | sonnet / low |
 | Explore | sonnet / low | sonnet / low | sonnet / low |
 
-Model distribution across the 36 cells is Opus 26 / Sonnet 10. Fable appears in no cell, and no cell uses `xhigh` or `max`.
+Model distribution across the 39 cells is Opus 29 / Sonnet 10. Fable appears in no cell, and no cell uses `xhigh` or `max`.
 
 The `manager-docs`, `manager-git`, and `Explore` rows are fixed at `sonnet / low` regardless of the profile — documentation synthesis, mechanical work, and read-only exploration do not raise their model class even when the profile rises.
 
@@ -54,7 +55,7 @@ Every row is monotone: `high` ≥ `medium` ≥ `low`. Lowering the profile never
 
 ### Why these cells
 
-The cells are not derived from a cost/score curve — they are **settled operator input**. The single principle: the spend goes to the rows that judge, not the rows that produce. The auditing/advising rows (`plan-auditor`, `sync-auditor`, `super-advisor`) and the coordinating rows (`manager-design`, `manager-lead`) hold `high`, while the authoring and implementing rows (`manager-spec`, `manager-develop`) sit at `medium` in all three columns, `manager-docs` drops to `sonnet / low`, and no row takes `max`. Re-deriving these cells from a curve would silently walk the producing rows back up — treat a value change as an operator-judgment update, not a recalculation.
+The cells are not derived from a cost/score curve — they are **settled operator input**. The single principle: the spend goes to the rows that judge, not the rows that produce. The auditing/advising rows (`plan-auditor`, `sync-auditor`, `super-advisor`), the coordinating rows (`manager-design`, `manager-lead`), and the deciding row (`mission-governor`) hold `high`, while the authoring and implementing rows (`manager-spec`, `manager-develop`) sit at `medium` in all three columns, `manager-docs` drops to `sonnet / low`, and no row takes `max`. Re-deriving these cells from a curve would silently walk the producing rows back up — treat a value change as an operator-judgment update, not a recalculation.
 
 The two rules governing model class are grounded in measurement:
 

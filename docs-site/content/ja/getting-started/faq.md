@@ -95,9 +95,9 @@ MoAI-ADK は Claude Code のサブスクリプション料金プランに合わ�
 
 ### ティア別エージェントモデル割り当て
 
-**11 個のエージェントカタログ** (10 MoAI カスタム + 1 Anthropic ビルトイン `Explore`) のうち MoAI カスタムエージェントはティアに応じてモデルが割り当てられます。かつての 12 個の保管エージェント (archived agents) は利用できません。
+**13 個のエージェントカタログ** (12 MoAI カスタム + 1 Anthropic ビルトイン `Explore`) のうち MoAI カスタムエージェントはティアに応じてモデルが割り当てられます。かつての 12 個の保管エージェント (archived agents) は利用できません。
 
-#### Manager Agents (5 個)
+#### Manager Agents (6 個)
 
 | エージェント | high | medium | low |
 |---------|------|--------|-----|
@@ -106,8 +106,9 @@ MoAI-ADK は Claude Code のサブスクリプション料金プランに合わ�
 | manager-docs | opus / medium | opus / low | sonnet / low |
 | manager-git | sonnet / low | sonnet / low | sonnet / low |
 | manager-design | opus / high | opus / medium | opus / low |
+| manager-lead | opus / high | opus / high | opus / medium |
 
-#### Evaluator · Builder · Advisor · Specialist Agents (5 個)
+#### Evaluator · Builder · Advisor · Specialist Agents (6 個)
 
 | エージェント | high | medium | low |
 |---------|------|--------|-----|
@@ -116,6 +117,7 @@ MoAI-ADK は Claude Code のサブスクリプション料金プランに合わ�
 | builder-harness | opus / high | opus / medium | opus / low |
 | super-advisor | opus / max | opus / high | opus / medium |
 | e2e-tester | opus / medium | opus / low | sonnet / low |
+| mission-governor | opus / high | opus / high | opus / high |
 
 ビルトインの `Explore` はすべての列で `sonnet / low` に解決されます — ディスク上にピン留めするエージェントファイルがないため、呼び出し時のデフォルト値です。
 

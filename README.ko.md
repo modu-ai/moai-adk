@@ -495,7 +495,7 @@ flowchart TD
 | **TDD** (기본) | RED → GREEN → REFACTOR | 신규 프로젝트·기능 작업 |
 | **DDD** | ANALYZE → PRESERVE → IMPROVE | 커버리지 10% 미만의 기존 코드 |
 
-### 12-에이전트 카탈로그
+### 13-에이전트 카탈로그
 
 | 분류 | 에이전트 | 비용 | 역할 |
 |------|------|------|------|
@@ -510,11 +510,12 @@ flowchart TD
 | **빌더** | builder-harness | 🟠 | 프로젝트 전용 에이전트·스킬·커맨드·훅 스캐폴딩 |
 | **자문** | super-advisor | 🔵 | 고추론 자문 (E1-E4 에스컬레이션) |
 | **스페셜리스트** | e2e-tester | 🟠 | 웹/모바일/데스크톱 E2E 테스트 실행 (CLI 우선) |
+| | mission-governor | 🔴 | 승인된 GTD 자동 임무에 대한 읽기 전용 판정 — 판정 하나만 돌려주고 직접 적용하지 않는다 (GTD 워크플로가 부르므로 선택 결정 트리에 행이 없다) |
 | **내장** | Explore | ⚪ | 읽기 전용 코드베이스 탐색 |
 
 비용 색은 기본 `medium` 프로파일의 모델×추론 셀을 따른다 (`moai model profile`으로 확인): 🔴 opus+high · 🟠 opus+medium · 🔵 opus+low · 🩵 sonnet+low · ⚪ 세션 모델 상속 (사용자 추가 에이전트). 프로파일(`high`/`low`)을 바꾸면 배정이 달라진다. 작성과 감사를 처음부터 나눠 맡기니 자기 일을 자기가 채점하는 일이 없다.
 
-열두 개 가운데 열한 개가 moai-adk가 만든 에이전트이고, `Explore`는 Claude Code에 이미 있는 내장 에이전트다. `Explore`는 자기 모델을 따로 갖지 않고 세션 모델을 그대로 물려받아 프로파일 셀이 없다. 그래서 카탈로그는 12개이고, 뒤에 나오는 모델 프로파일 절의 셀 수는 11 × 3 = 33이다 — 두 숫자는 서로 어긋난 것이 아니라 세는 대상이 다르다.
+열세 개 가운데 열두 개가 moai-adk가 만든 에이전트이고, `Explore`는 Claude Code에 이미 있는 내장 에이전트다. `Explore`도 다른 행과 똑같이 프로파일 셀을 가진다 — 세 프로파일 모두 `sonnet / low`다. 그래서 뒤에 나오는 모델 프로파일 절도 같은 열세 개를 세어 13 × 3 = 39셀이 된다.
 
 ### trust-but-verify — 완료 주장에 증거를 묶기
 
@@ -648,7 +649,7 @@ v3.1.1에서 손댈 만한 단면이 넷 늘었다.
 
 ### 모델 프로파일 — high / medium / low
 
-`moai model profile`이 11 에이전트 × 3개 프로파일 = 33셀의 `{model, effort}` 짝을 해석한다.
+`moai model profile`이 13 에이전트 × 3개 프로파일 = 39셀의 `{model, effort}` 짝을 해석한다.
 
 <p align="center">
   <img src="./assets/images/model-routing-infographic-ko.png" alt="에이전트 모델 라우팅 — 에이전트마다 알맞은 모델과 추론 강도가 배정된다" width="85%">

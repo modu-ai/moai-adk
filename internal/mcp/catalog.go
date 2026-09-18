@@ -19,13 +19,25 @@ type ToolDef struct {
 	// console's per-tool enablement key is derived from
 	// (mcp.tools.<name>.enabled).
 	Name string
-	// WriteCapable is true for the nine tools whose handler may mutate state
+	// WriteCapable is true for the eleven tools whose handler may mutate state
 	// (goal_arm, verify_snapshot, codex_task, codex_job_cancel, glm_task,
-	// glm_job_cancel, plus the session-messaging broker's three mutating
-	// tools at the catalog tail) and false for the twenty-one read-only tools
-	// (including the three graph code-query additions, SPEC-V3R6-GRAPH-
-	// FRESHNESS-001 M5). The console renders this distinction (REQ-C-3 /
-	// AC-C-003); M1 carries it so the declaration is complete.
+	// glm_job_cancel, codex_audit, audit_multi, plus the session-messaging
+	// broker's three mutating tools at the catalog tail) and false for the
+	// nineteen read-only tools (including the three graph code-query
+	// additions, SPEC-V3R6-GRAPH-FRESHNESS-001 M5). The console renders this
+	// distinction (REQ-C-3 / AC-C-003); M1 carries it so the declaration is
+	// complete.
+	//
+	// The line this field draws is a write to the audited tree, not a write to
+	// its source: verify_snapshot is write-capable because it records under
+	// .moai/state/verify/, and codex_audit / audit_multi are write-capable on
+	// the same terms — every call files an audit receipt under
+	// .moai/state/audit-receipts/, and audit_multi additionally persists its
+	// convergence result under .moai/state/audit-multi/ when a session_id is
+	// supplied. Both were catalog-READ until the receipt store landed
+	// (SPEC-CODEX-AUDIT-GATE-AXES-001); the writes arrived without the catalog
+	// following, and nothing compared the catalog against actual handler
+	// behavior, so the drift stayed silent (card t904).
 	WriteCapable bool
 }
 
@@ -48,7 +60,7 @@ var moaiMCPTools = []ToolDef{
 	{Name: "spec_drift", WriteCapable: false},
 	{Name: "audit_cache", WriteCapable: false},
 	{Name: "claude_audit", WriteCapable: false},
-	{Name: "codex_audit", WriteCapable: false},
+	{Name: "codex_audit", WriteCapable: true},
 	{Name: "codex_setup", WriteCapable: false},
 	{Name: "codex_task", WriteCapable: true},
 	{Name: "codex_job_status", WriteCapable: false},
@@ -59,7 +71,7 @@ var moaiMCPTools = []ToolDef{
 	{Name: "glm_job_result", WriteCapable: false},
 	{Name: "glm_job_cancel", WriteCapable: true},
 	{Name: "glm_audit", WriteCapable: false},
-	{Name: "audit_multi", WriteCapable: false},
+	{Name: "audit_multi", WriteCapable: true},
 	{Name: "session_msg_register", WriteCapable: true},
 	{Name: "session_msg_list", WriteCapable: false},
 	{Name: "session_msg_send", WriteCapable: true},

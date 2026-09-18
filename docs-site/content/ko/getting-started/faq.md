@@ -99,9 +99,9 @@ MoAI-ADK는 Claude Code 구독 요금제에 맞춰 에이전트에 최적의 AI 
 
 ### 티어별 에이전트 모델 배정
 
-**11개 에이전트 카탈로그** (10 MoAI 커스텀 + 1 Anthropic 빌트인 `Explore`) 가운데 MoAI 커스텀 에이전트는 티어에 따라 모델이 정해집니다. 과거의 12개 보관 에이전트 (archived agents) 는 쓸 수 없습니다.
+**13개 에이전트 카탈로그** (12 MoAI 커스텀 + 1 Anthropic 빌트인 `Explore`) 가운데 MoAI 커스텀 에이전트는 티어에 따라 모델이 정해집니다. 과거의 12개 보관 에이전트 (archived agents) 는 쓸 수 없습니다.
 
-#### Manager Agents (5개)
+#### Manager Agents (6개)
 
 | 에이전트 | high | medium | low |
 |---------|------|--------|-----|
@@ -110,8 +110,9 @@ MoAI-ADK는 Claude Code 구독 요금제에 맞춰 에이전트에 최적의 AI 
 | manager-docs | opus / medium | opus / low | sonnet / low |
 | manager-git | sonnet / low | sonnet / low | sonnet / low |
 | manager-design | opus / high | opus / medium | opus / low |
+| manager-lead | opus / high | opus / high | opus / medium |
 
-#### Evaluator · Builder · Advisor · Specialist Agents (5개)
+#### Evaluator · Builder · Advisor · Specialist Agents (6개)
 
 | 에이전트 | high | medium | low |
 |---------|------|--------|-----|
@@ -120,6 +121,7 @@ MoAI-ADK는 Claude Code 구독 요금제에 맞춰 에이전트에 최적의 AI 
 | builder-harness | opus / high | opus / medium | opus / low |
 | super-advisor | opus / max | opus / high | opus / medium |
 | e2e-tester | opus / medium | opus / low | sonnet / low |
+| mission-governor | opus / high | opus / high | opus / high |
 
 빌트인 `Explore`는 모든 열에서 `sonnet / low`로 해석됩니다. 디스크에 고정해 둘 에이전트 파일이 없어서, 호출하는 시점에 이 기본값이 적용됩니다.
 

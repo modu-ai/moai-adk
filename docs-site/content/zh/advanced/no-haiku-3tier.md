@@ -131,6 +131,6 @@ flowchart TD
 
 ## 下一步
 
-- [配置矩阵](/zh/advanced/profile-matrix/) —— 单一 3 列 per-agent 配置矩阵（11 个智能体 × 3 个配置 = 33 格）
+- [配置矩阵](/zh/advanced/profile-matrix/) —— 单一 3 列 per-agent 配置矩阵（13 个智能体 × 3 个配置 = 39 格）
 - [自主级别](/zh/advanced/autonomy-tier/) —— 与模型级别正交、以权限 · 控制为对象的自主等级
 - [代币经济学概述](/zh/advanced/tokenomics-overview/) —— 四层代币经济学结构的路由层

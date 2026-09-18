@@ -113,9 +113,9 @@ go install github.com/modu-ai/moai-adk/cmd/moai@latest
 
 3.0に上がることでエージェントカタログ・自律ループ・コスト統制が再構築されました。マイグレーションで最も頻繁に出くわす変更を整理します。
 
-#### エージェントカタログ11個に統合
+#### エージェントカタログ13個に統合
 
-archivedエージェント名（`manager-strategy`、`expert-backend`、`researcher`など）が**spawn時に拒否**されます。代わりに (a) 11個の維持エージェントの1つを使うか、(b) ドメイン許可リストを入れた`Agent(general-purpose)`を場所ごとにspawnするパターンに変わります。
+archivedエージェント名（`manager-strategy`、`expert-backend`、`researcher`など）が**spawn時に拒否**されます。代わりに (a) 13個の維持エージェントの1つを使うか、(b) ドメイン許可リストを入れた`Agent(general-purpose)`を場所ごとにspawnするパターンに変わります。
 
 #### Agent Teams静的編成レイヤー retired
 

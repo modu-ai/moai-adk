@@ -18,9 +18,9 @@ MoAI-ADK는 Claude Code를 1차 하네스(에이전트를 실제로 구동하는
 개인 `~/.codex/AGENTS.md`는 같은 병합 체인에서 이 파일 **앞에** 소비되어, 프로젝트 계약이 실을 수 있는 폭을 좁힙니다. 넘침은 뒤에서부터 조용히 버려지므로, 이 파일의 조항은 가장 중요한 것부터 앞에 배치돼 있습니다.
 {{< /callout >}}
 
-## 에이전트 이중 게시 — 11개의 TOML
+## 에이전트 이중 게시 — 12개의 TOML
 
-유지되는 11개 에이전트가 두 형태로 게시됩니다. Claude Code용 `.claude/agents/moai/*.md`(원본)와 codex가 읽는 `.codex/agents/moai/*.toml`(파생본)입니다. TOML은 손으로 쓰지 않습니다 — `internal/template/agentemit`이 마크다운 원본에서 **결정적으로(deterministically, 같은 입력에 언제나 같은 출력)** 생성하며, 생성된 파일 머리글은 "regenerate, do not edit"(다시 생성하라, 직접 고치지 마라)이라고 못 박혀 있습니다.
+유지되는 12개 MoAI 커스텀 에이전트가 두 형태로 게시됩니다. Claude Code용 `.claude/agents/moai/*.md`(원본)와 codex가 읽는 `.codex/agents/moai/*.toml`(파생본)입니다. TOML은 손으로 쓰지 않습니다 — `internal/template/agentemit`이 마크다운 원본에서 **결정적으로(deterministically, 같은 입력에 언제나 같은 출력)** 생성하며, 생성된 파일 머리글은 "regenerate, do not edit"(다시 생성하라, 직접 고치지 마라)이라고 못 박혀 있습니다.
 
 원본과 파생본이 어긋나는 일을 세 겹의 가드가 막습니다: 골든 파일 비교(golden, 기대 출력과의 대조), 임베드 검증(바이너리에 심긴 템플릿과의 대조), 배포 검증(사용자 저장소에 깔린 결과와의 대조). 마크다운을 고치면 TOML이 따라오고, TOML만 고치면 가드가 붙잡습니다.
 
@@ -65,4 +65,4 @@ codex-cli는 Claude Code의 `.claude/skills/`를 읽지 않으므로, 스킬을 
 
 - [다중 모델 감사 수렴](/ko/advanced/multi-model-audit/) — codex 백엔드가 감사에 참여하는 지금의 경로
 - [moai update](/ko/cli-reference/update/) — 스킬 미러의 symlink·복사 배포와 그 통지
-- [에이전트 가이드](/ko/advanced/agent-guide/) — 이중 게시되는 11개 에이전트의 역할
+- [에이전트 가이드](/ko/advanced/agent-guide/) — 이중 게시되는 12개 에이전트의 역할
