@@ -276,7 +276,7 @@ Upstream sources disagree on whether `/output-style` still exists — a CHANGELO
 { "outputStyle": "MoAI-Learn" }
 ```
 
-Result: **MoAI-Learn** loads (project wins over user.
+Result: **MoAI-Learn** loads (project wins over user).
 
 **Example 2 — user setting applies when project is absent:**
 
@@ -287,7 +287,7 @@ Result: **MoAI-Learn** loads (project wins over user.
 // .claude/settings.json (project) — outputStyle key not present
 ```
 
-Result: **MoAI-Learn** loads (user setting applies.
+Result: **MoAI-Learn** loads (user setting applies).
 
 **Example 3 — third-party style at project level:**
 
