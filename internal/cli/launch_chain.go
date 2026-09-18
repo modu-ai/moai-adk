@@ -102,7 +102,7 @@ func warnChainPopulationFailure(warn io.Writer, err error) {
 }
 
 // replaceEnvValue returns env with key=value set, replacing any existing entry
-// for key (the buildEnvForLaunch pattern).
+// for key, and appending it when absent.
 func replaceEnvValue(env []string, key, value string) []string {
 	entry := key + "=" + value
 	result := make([]string, 0, len(env)+1)
