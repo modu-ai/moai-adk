@@ -102,7 +102,9 @@ stat naming both files. The changed-file set is the four files named in
 ## §E.3 Run-phase Audit-Ready Signal
 
 run_complete_at: 2026-09-18
-run_commit_sha: `<M1-commit>` (single-commit card; SHA recorded in the completion report)
+run_commit_sha: `71a4d3b4e` — the M1 content commit. This line is recorded by a
+  small follow-up commit on the same branch, since a commit cannot name its own
+  SHA; the follow-up touches this file only.
 run_status: complete
 ac_pass_count: 14
 ac_fail_count: 0
@@ -112,7 +114,7 @@ l44_post_push_fetch: not applicable — no push performed by this run phase
 new_warnings_or_lints_introduced: none. `go test ./internal/template/...` exit 0 before and after; both isolated neutrality guards exit 0
 cross_platform_build: not performed, and not owed — no criterion of this SPEC is decided by a built binary (REQ-OSP-010); `make build` / `go build` / any `moai` invocation would have failed AC-OSP-GATE-002
 total_run_phase_files: 6 (4 in-scope content files + `spec.md` frontmatter status + this `progress.md`)
-m1_to_mN_commit_strategy: single commit on `WT-output-style-switch-path`; M2 evidence export outstanding (see §E.2.4)
+m1_to_mN_commit_strategy: one content commit (`71a4d3b4e`) on `WT-output-style-switch-path`, plus one follow-up commit recording that SHA in this file; M2 evidence export outstanding (see §E.2.4)
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
