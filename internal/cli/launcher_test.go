@@ -1,5 +1,8 @@
 package cli
 
+// Provider entry is covered by gateway_provider_contract_test.go. These tests
+// exercise shared profile/mode plumbing with its legacy execution test seam.
+
 import (
 	"encoding/json"
 	"os"
@@ -351,7 +354,7 @@ func TestUnifiedLaunch_Claude(t *testing.T) {
 		return nil
 	}
 
-	err := unifiedLaunch("myprofile", "claude", []string{"--bypass"})
+	err := runUnifiedLaunch("myprofile", "claude", []string{"--bypass"})
 	if err != nil {
 		t.Fatalf("unifiedLaunch error: %v", err)
 	}
@@ -386,7 +389,7 @@ func TestUnifiedLaunch_GLM(t *testing.T) {
 	defer func() { launchClaudeFunc = origLaunch }()
 	launchClaudeFunc = func(p string, args []string) error { return nil }
 
-	err := unifiedLaunch("", "glm", nil)
+	err := runUnifiedLaunch("", "glm", nil)
 	if err != nil {
 		t.Fatalf("unifiedLaunch(glm) error: %v", err)
 	}
@@ -416,8 +419,8 @@ func TestUnifiedLaunch_CG_NoTmux(t *testing.T) {
 	if err == nil {
 		t.Fatal("CG mode without tmux should error")
 	}
-	if !strings.Contains(err.Error(), "tmux session") {
-		t.Errorf("error should mention tmux, got: %v", err)
+	if !strings.Contains(err.Error(), "is retired") {
+		t.Errorf("error should mention retirement, got: %v", err)
 	}
 }
 
@@ -444,8 +447,8 @@ func TestUnifiedLaunch_CG_WithTestMode(t *testing.T) {
 	launchClaudeFunc = func(p string, args []string) error { return nil }
 
 	err := unifiedLaunch("", "claude_glm", nil)
-	if err != nil {
-		t.Fatalf("CG mode with MOAI_TEST_MODE=1 should not error, got: %v", err)
+	if err == nil || !strings.Contains(err.Error(), "is retired") {
+		t.Fatalf("test mode must not reactivate retired CG, got: %v", err)
 	}
 }
 
@@ -705,58 +708,6 @@ func TestExpandModelString(t *testing.T) {
 	}
 }
 
-// TestBuildEnvForLaunch verifies that CLAUDE_CODE_EFFORT_LEVEL is injected
-// when EffortLevel is set and absent when empty.
-func TestBuildEnvForLaunch(t *testing.T) {
-	const effortKey = "CLAUDE_CODE_EFFORT_LEVEL"
-
-	t.Run("effort xhigh injected", func(t *testing.T) {
-		env := buildEnvForLaunch("xhigh", os.Environ())
-		found := ""
-		for _, e := range env {
-			if strings.HasPrefix(e, effortKey+"=") {
-				found = strings.TrimPrefix(e, effortKey+"=")
-				break
-			}
-		}
-		if found != "xhigh" {
-			t.Errorf("buildEnvForLaunch: %s not set to xhigh (got %q)", effortKey, found)
-		}
-	})
-
-	t.Run("empty effort leaves env unchanged", func(t *testing.T) {
-		base := []string{"PATH=/usr/bin", "HOME=/root"}
-		env := buildEnvForLaunch("", base)
-		for _, e := range env {
-			if strings.HasPrefix(e, effortKey+"=") {
-				t.Errorf("buildEnvForLaunch with empty effort injected %s", e)
-			}
-		}
-		if len(env) != len(base) {
-			t.Errorf("buildEnvForLaunch with empty effort changed env length: %d -> %d", len(base), len(env))
-		}
-	})
-
-	t.Run("existing effort overridden", func(t *testing.T) {
-		base := []string{"PATH=/usr/bin", effortKey + "=low"}
-		env := buildEnvForLaunch("xhigh", base)
-		count := 0
-		val := ""
-		for _, e := range env {
-			if strings.HasPrefix(e, effortKey+"=") {
-				count++
-				val = strings.TrimPrefix(e, effortKey+"=")
-			}
-		}
-		if count != 1 {
-			t.Errorf("buildEnvForLaunch: expected 1 %s entry, got %d", effortKey, count)
-		}
-		if val != "xhigh" {
-			t.Errorf("buildEnvForLaunch: %s = %q, want xhigh", effortKey, val)
-		}
-	})
-}
-
 func TestUnifiedLaunch_NotInProject(t *testing.T) {
 	tmpDir := t.TempDir()
 	// No .moai directory
@@ -772,7 +723,7 @@ func TestUnifiedLaunch_NotInProject(t *testing.T) {
 	defer func() { launchClaudeFunc = origLaunch }()
 	launchClaudeFunc = func(p string, args []string) error { return nil }
 
-	err := unifiedLaunch("", "claude", nil)
+	err := runUnifiedLaunch("", "claude", nil)
 	if err == nil {
 		t.Fatal("unifiedLaunch should error when not in a MoAI project")
 	}
@@ -937,7 +888,7 @@ func TestUnifiedLaunch_GlobalLedgerDoesNotBleed(t *testing.T) {
 		return nil
 	}
 
-	if err := unifiedLaunch("", "claude", nil); err != nil {
+	if err := runUnifiedLaunch("", "claude", nil); err != nil {
 		t.Fatalf("unifiedLaunch error: %v", err)
 	}
 
@@ -1049,4 +1000,59 @@ func TestWarnNoModelResolved(t *testing.T) {
 			}
 		})
 	}
+}
+
+// --- buildEnvForLaunch (restored on the t595 merge; since t668 no launch branch
+// calls the function, and these tests cover it only while it is retained) ---
+
+// TestBuildEnvForLaunch verifies that CLAUDE_CODE_EFFORT_LEVEL is injected
+// when EffortLevel is set and absent when empty.
+func TestBuildEnvForLaunch(t *testing.T) {
+	const effortKey = "CLAUDE_CODE_EFFORT_LEVEL"
+
+	t.Run("effort xhigh injected", func(t *testing.T) {
+		env := buildEnvForLaunch("xhigh", os.Environ())
+		found := ""
+		for _, e := range env {
+			if strings.HasPrefix(e, effortKey+"=") {
+				found = strings.TrimPrefix(e, effortKey+"=")
+				break
+			}
+		}
+		if found != "xhigh" {
+			t.Errorf("buildEnvForLaunch: %s not set to xhigh (got %q)", effortKey, found)
+		}
+	})
+
+	t.Run("empty effort leaves env unchanged", func(t *testing.T) {
+		base := []string{"PATH=/usr/bin", "HOME=/root"}
+		env := buildEnvForLaunch("", base)
+		for _, e := range env {
+			if strings.HasPrefix(e, effortKey+"=") {
+				t.Errorf("buildEnvForLaunch with empty effort injected %s", e)
+			}
+		}
+		if len(env) != len(base) {
+			t.Errorf("buildEnvForLaunch with empty effort changed env length: %d -> %d", len(base), len(env))
+		}
+	})
+
+	t.Run("existing effort overridden", func(t *testing.T) {
+		base := []string{"PATH=/usr/bin", effortKey + "=low"}
+		env := buildEnvForLaunch("xhigh", base)
+		count := 0
+		val := ""
+		for _, e := range env {
+			if strings.HasPrefix(e, effortKey+"=") {
+				count++
+				val = strings.TrimPrefix(e, effortKey+"=")
+			}
+		}
+		if count != 1 {
+			t.Errorf("buildEnvForLaunch: expected 1 %s entry, got %d", effortKey, count)
+		}
+		if val != "xhigh" {
+			t.Errorf("buildEnvForLaunch: %s = %q, want xhigh", effortKey, val)
+		}
+	})
 }

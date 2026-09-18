@@ -636,6 +636,15 @@ func (h *preToolHandler) Handle(ctx context.Context, input *HookInput) (*HookOut
 		}
 		agentAdvisory = advisory
 
+		// Audit-receipt consumer (SPEC-CODEX-AUDIT-GATE-AXES-001 REQ-CAG-014).
+		// Sibling of the model guard: a phase-entry spawn is denied while an
+		// auditor PASS stands unproven in this tree. Activation is the raw
+		// workflow.audit.gates.codex == required value itself — writing that
+		// value IS the opt-in, so there is no separate flag.
+		if decision, reason := checkAuditReceiptSpawn(input); decision == DecisionDeny {
+			return NewDenyOutput(reason), nil
+		}
+
 		// Deliberate-revival escape hatch (stop-guard, REQ-TRG-005): a fresh
 		// spawn carrying a stopped teammate's name clears the registry entry
 		// BEFORE the spawn proceeds. Never denies; fail-open on removal error
@@ -1007,6 +1016,38 @@ func (h *preToolHandler) checkBashCommand(toolInput json.RawMessage) (string, st
 	return "", ""
 }
 
+// resolveThroughExistingParent resolves the symlinks of the nearest EXISTING
+// ancestor of absPath and rejoins the not-yet-existing remainder onto it.
+//
+// It exists for the new-file case that plain EvalSymlinks cannot serve: a Write
+// to a path whose leaf does not exist yet fails EvalSymlinks outright, which
+// hides a directory symlink in the path's parents. Resolving the deepest
+// ancestor that DOES exist makes such an escape visible without denying a
+// legitimate new file (the resolved ancestor of an in-project new file is still
+// in-project).
+//
+// absPath must already be absolute. The second return is false when no ancestor
+// could be resolved, in which case the caller keeps its unresolved fallback.
+func resolveThroughExistingParent(absPath string) (string, bool) {
+	remainder := ""
+	dir := absPath
+	for {
+		parent := filepath.Dir(dir)
+		if parent == dir {
+			// Reached the filesystem root without resolving anything.
+			return "", false
+		}
+		remainder = filepath.Join(filepath.Base(dir), remainder)
+		dir = parent
+
+		realDir, err := filepath.EvalSymlinks(dir)
+		if err != nil {
+			continue
+		}
+		return filepath.Join(realDir, remainder), true
+	}
+}
+
 // checkFileAccess checks file path and content against security patterns.
 // Returns (decision, reason) where decision is "deny", "ask", or "" for allow.
 func (h *preToolHandler) checkFileAccess(toolInput json.RawMessage, toolName string) (string, string) {
@@ -1040,8 +1081,21 @@ func (h *preToolHandler) checkFileAccess(toolInput json.RawMessage, toolName str
 	// still succeed. When EvalSymlinks returns an error (not-exist for a
 	// new-file Write, or otherwise unresolvable), fall back to the unresolved
 	// path and do NOT deny (NFR-SEC-003 behavior preservation, AC-SEC-007c).
+	//
+	// Falling back to the FULL unresolved path, however, loses the boundary
+	// check for a new file whose PARENT escapes: with `linked -> /outside`, the
+	// path `<project>/linked/new.txt` has no existing leaf to resolve, so the
+	// lexical check sees the in-project relative form `linked/new.txt` and
+	// allows a Write that lands outside the project (CWE-61 on the parent
+	// rather than on the leaf). resolveThroughExistingParent narrows the
+	// fallback: it resolves the nearest EXISTING ancestor and rejoins the
+	// not-yet-existing remainder, so the escape is visible while a plain new
+	// file still resolves to an in-project path.
 	resolvedSymlink := false
 	if realPath, evalErr := filepath.EvalSymlinks(resolvedPath); evalErr == nil {
+		resolvedPath = realPath
+		resolvedSymlink = true
+	} else if realPath, ok := resolveThroughExistingParent(resolvedPath); ok {
 		resolvedPath = realPath
 		resolvedSymlink = true
 	}
@@ -1197,13 +1251,25 @@ func (h *preToolHandler) isAllowedExternalPath(resolvedPath string) bool {
 		if err != nil {
 			continue
 		}
-		nfcAllowed := norm.NFC.String(absAllowed)
-		rel, err := filepath.Rel(nfcAllowed, resolvedPath)
-		if err != nil {
-			continue
+		// Compare against BOTH the lexical and the symlink-resolved form of the
+		// allowed directory: the caller's path may have arrived either way.
+		// An allowlist entry is routinely a symlink (macOS /tmp -> /private/tmp),
+		// so comparing only the lexical form rejects a resolved path that is in
+		// fact inside the allowed directory. Both sides of an identity
+		// comparison need the same normalization.
+		candidates := []string{absAllowed}
+		if realAllowed, evalErr := filepath.EvalSymlinks(absAllowed); evalErr == nil && realAllowed != absAllowed {
+			candidates = append(candidates, realAllowed)
 		}
-		if !strings.HasPrefix(rel, "..") {
-			return true
+		for _, candidate := range candidates {
+			nfcAllowed := norm.NFC.String(candidate)
+			rel, relErr := filepath.Rel(nfcAllowed, resolvedPath)
+			if relErr != nil {
+				continue
+			}
+			if !strings.HasPrefix(rel, "..") {
+				return true
+			}
 		}
 	}
 	return false

@@ -30,7 +30,7 @@ handoff:
 session:
   title: "moai session 会话注册表"
 launchers:
-  title: "moai cc / cg / glm 启动器"
+  title: "moai cc / glm 启动器"
 worktree:
   title: "moai worktree 工作树"
 "tool-policy":

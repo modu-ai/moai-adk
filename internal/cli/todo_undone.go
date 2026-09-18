@@ -69,6 +69,13 @@ splitting one id across two cards is worse than the mistake being undone.`,
 			}); err != nil {
 				return todoWriteLine(cmd.ErrOrStderr(), err, "Error: %v\n", err)
 			}
+			// REQ-AD-012 (SPEC-TODO-LAND-AUTO-DONE-001): when the restored
+			// card was closed by the auto-done scan, the execution log gains
+			// a reversal row naming the closure it inverts. A manually-closed
+			// card has no closure row and gains none — the log is the scan's
+			// audit trail. Fail-open: a reversal that cannot be logged never
+			// un-restores the card.
+			appendAutoDoneReversal(id)
 			return todoWriteLine(cmd.OutOrStdout(), nil, "undone %s %s\n", id, todoTextPrefix(restored))
 		},
 	}

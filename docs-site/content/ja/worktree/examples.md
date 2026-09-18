@@ -476,7 +476,7 @@ $ moai worktree done feature/SPEC-NOTIF-001 --delete-branch
 # - GLM の使用でコスト削減
 ```
 
-実装セッションを GLM で回したおかげで、コストは目に見えて下がりました。削減幅とその根拠は [CG モード](/ja/multi-llm/cg-mode) にまとめてあります。
+[CG の廃止と設定の移行](/ja/multi-llm/cg-mode/) — CG は廃止されました。`moai migrate cg` で移行先を確認してください。
 
 ---
 

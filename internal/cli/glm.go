@@ -102,13 +102,12 @@ Factory Mode (dedicated -f entry):
   factory entry — the kanban chain keeps -k, the factory gets -f.
 
 Note: Auto mode is not available with GLM (third-party provider).
-Use 'moai cc --permission-mode auto' or 'moai cg --permission-mode auto' instead.
+Use 'moai cc --permission-mode auto' instead.
 
 Note: Z.AI enforces low concurrency limits (paid tiers observe 1-3 in-flight
 requests). Multi-agent workflows that exceed this limit can surface as opaque
 errors (sometimes misreported by clients as "context window limit"). The GLM
-models themselves have ample context (glm-5.2 1M, glm-4.7 ~202K). For more
-stable parallel execution with MoAI Agent Teams, prefer 'moai cg' (hybrid mode).
+models themselves have ample context (glm-5.2 1M, glm-4.7 ~202K). Legacy mixed-role CG configurations require explicit migration; run 'moai migrate cg' to preview the available choices.
 
 Examples:
   moai glm setup sk-xxx    # Save API key (one-time)
@@ -120,7 +119,7 @@ Examples:
   moai glm -f 4            # Factory lead on GLM: announces lane-1..lane-4
   moai glm -f lane-2       # Add lane 2 to the running factory (GLM backend)
 
-For hybrid mode (Claude lead + GLM teammates), use 'moai cg' instead.
+Mixed Claude/GLM teammate roles require verified teammate routing support.
 Use 'moai cc' to switch back to Claude backend.`,
 	GroupID:            "launch",
 	DisableFlagParsing: true,
@@ -198,6 +197,10 @@ func runGLM(cmd *cobra.Command, args []string) error {
 		}
 	}
 
+	if err := guardCGLaunchMode("glm"); err != nil {
+		return err
+	}
+
 	// --spawn: open a GLM session in a new tmux window and keep this session.
 	// Placed after subcommand routing so `moai glm setup` is never intercepted.
 	// See cc.go for the ordering rationale.
@@ -230,7 +233,7 @@ func runGLM(cmd *cobra.Command, args []string) error {
 		var leadName string
 		filteredArgs, leadName = appendLeadName(filteredArgs, launchProjectRoot(), cmd.ErrOrStderr())
 		defer exportLeadSessionName(leadName)()
-		settingsFlag, settingsCleanup := prepareKanbanSettings(filteredArgs)
+		settingsFlag, settingsCleanup := prepareKanbanSettings(profileName, filteredArgs)
 		if len(settingsFlag) > 0 {
 			filteredArgs = append(filteredArgs, settingsFlag...)
 		}
@@ -245,7 +248,7 @@ func runGLM(cmd *cobra.Command, args []string) error {
 		filteredArgs = replaceNamedLabel(filteredArgs, factoryLabel, finalLabel)
 		defer enterFactoryWorkerMode(finalLabel, entry.FactoryWorkers)()
 		defer exportKanbanLaunchFacts(entry.Spec, kanban.BackendGLM)()
-		settingsFlag, settingsCleanup := prepareKanbanSettings(filteredArgs)
+		settingsFlag, settingsCleanup := prepareKanbanSettings(profileName, filteredArgs)
 		if len(settingsFlag) > 0 {
 			filteredArgs = append(filteredArgs, settingsFlag...)
 		}
@@ -262,7 +265,7 @@ func runGLM(cmd *cobra.Command, args []string) error {
 			var leadName string
 			filteredArgs, leadName = appendLeadName(filteredArgs, launchProjectRoot(), cmd.ErrOrStderr())
 			defer exportLeadSessionName(leadName)()
-			settingsFlag, settingsCleanup := prepareKanbanSettings(filteredArgs)
+			settingsFlag, settingsCleanup := prepareKanbanSettings(profileName, filteredArgs)
 			if len(settingsFlag) > 0 {
 				filteredArgs = append(filteredArgs, settingsFlag...)
 			}
@@ -274,7 +277,7 @@ func runGLM(cmd *cobra.Command, args []string) error {
 			filteredArgs = replaceNamedLabel(filteredArgs, label, finalLabel)
 			defer enterKanbanCompanionMode(finalLabel)()
 			defer exportKanbanLaunchFacts(entry.Spec, kanban.BackendGLM)()
-			settingsFlag, settingsCleanup := prepareKanbanSettings(filteredArgs)
+			settingsFlag, settingsCleanup := prepareKanbanSettings(profileName, filteredArgs)
 			if len(settingsFlag) > 0 {
 				filteredArgs = append(filteredArgs, settingsFlag...)
 			}
@@ -296,7 +299,7 @@ func runGLM(cmd *cobra.Command, args []string) error {
 	// Validate before launch to give a clear error instead of a cryptic Claude Code rejection.
 	if containsPermissionMode(filteredArgs, "auto") {
 		_, _ = fmt.Fprintln(cmd.ErrOrStderr(), "auto mode requires Claude Sonnet 4.6 or Opus 4.6 running on Anthropic's API")
-		_, _ = fmt.Fprintln(cmd.ErrOrStderr(), "use 'moai cc --permission-mode auto' or 'moai cg --permission-mode auto' instead")
+		_, _ = fmt.Fprintln(cmd.ErrOrStderr(), "use 'moai cc --permission-mode auto' instead")
 		return fmt.Errorf("auto mode is not available with GLM (third-party provider)")
 	}
 
@@ -306,7 +309,7 @@ func runGLM(cmd *cobra.Command, args []string) error {
 	_, _ = fmt.Fprintln(cmd.ErrOrStderr(), "WARNING: moai glm uses GLM models for the MAIN SESSION. Known limitations:")
 	_, _ = fmt.Fprintln(cmd.ErrOrStderr(), "  - Main session context window: 1M (glm-5.3, glm-5.3-flash)")
 	_, _ = fmt.Fprintln(cmd.ErrOrStderr(), "  - Z.AI concurrency is limited (1-3 in-flight requests per paid tier)")
-	_, _ = fmt.Fprintln(cmd.ErrOrStderr(), "If you want Claude as leader and GLM for teammates, use 'moai cg' instead.")
+	_, _ = fmt.Fprintln(cmd.ErrOrStderr(), "Mixed Claude/GLM teammate roles require verified teammate routing support.")
 
 	return unifiedLaunch(profileName, "glm", filteredArgs)
 }
@@ -976,62 +979,6 @@ func getGLMAPIKey(envVar string) string {
 		return key
 	}
 	return os.Getenv(envVar)
-}
-
-// injectGLMEnv adds GLM environment variables to settings.local.json.
-//
-// API key preservation: if a non-GLM ANTHROPIC_AUTH_TOKEN already exists
-// in settings.local.json (e.g. a user's Anthropic API key), it is saved as
-// MOAI_BACKUP_AUTH_TOKEN before being overwritten. removeGLMEnv restores it.
-// Note: Claude OAuth tokens live in ~/.claude/, not here, so OAuth is unaffected.
-func injectGLMEnv(settingsPath string, glmConfig *GLMConfigFromYAML) error {
-	apiKey := getGLMAPIKey(glmConfig.EnvVar)
-	if apiKey == "" {
-		return fmt.Errorf("GLM API key not found. Run 'moai glm setup <api-key>' to save your key, or set %s environment variable", glmConfig.EnvVar)
-	}
-
-	// SPEC-CLIFIX-CRITICAL-001 REQ-CRIT-001-001: round-trip as map[string]any so
-	// unknown top-level keys survive the write.
-	// SPEC-CLIFIX-CONCURRENCY-001 REQ-CONC-001-001: route through the locked+atomic
-	// mutateSettingsLocal seam so concurrent sessions cannot lose updates.
-	return mutateSettingsLocal(settingsPath, func(m map[string]any) {
-		env := settingsEnvMap(m)
-
-		// Back up any existing ANTHROPIC_AUTH_TOKEN that is not the GLM key itself.
-		// This preserves a Claude OAuth token so that removeGLMEnv can restore it.
-		if existing, ok := env[config.EnvAnthropicAuthToken].(string); ok && existing != "" && existing != apiKey {
-			env["MOAI_BACKUP_AUTH_TOKEN"] = existing
-		}
-
-		// Inject GLM environment variables with actual API key value
-		env[config.EnvAnthropicAuthToken] = apiKey
-		env[config.EnvAnthropicBaseURL] = glmConfig.BaseURL
-		env[config.EnvAnthropicDefaultOpusModel] = glmConfig.Models.High
-		env[config.EnvAnthropicDefaultSonnetModel] = glmConfig.Models.Medium
-		env[config.EnvAnthropicDefaultHaikuModel] = glmConfig.Models.Low
-		env[config.EnvAnthropicDefaultFableModel] = glmConfig.Models.Fable
-		// Z.AI proxy compatibility: strip Anthropic beta headers
-		env[config.EnvClaudeCodeDisableExperimentalBetas] = "1"
-		env["API_TIMEOUT_MS"] = "3000000"
-		// 1M context activation: scale auto-compact window when the High slot model
-		// resolves to the 1M context tier; otherwise clean up any stale value.
-		if window, ok := glmAutoCompactWindow(glmConfig.Models.High); ok {
-			env[config.EnvClaudeCodeAutoCompactWindow] = window
-		} else {
-			delete(env, config.EnvClaudeCodeAutoCompactWindow)
-		}
-		// Issue #653: declare the model's real context window (Claude Code
-		// assumes 200K for unrecognized custom IDs and caps the auto-compact
-		// window at it); otherwise clean up any stale value.
-		if tokens, ok := glmMaxContextTokens(glmConfig.Models.High); ok {
-			env[config.EnvClaudeCodeMaxContextTokens] = tokens
-		} else {
-			delete(env, config.EnvClaudeCodeMaxContextTokens)
-		}
-		if len(env) == 0 {
-			delete(m, "env")
-		}
-	})
 }
 
 // isTestEnvironment detects if we're running in a test environment.

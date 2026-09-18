@@ -185,7 +185,7 @@ func requireTmuxSpawnEnv(t *testing.T) {
 // renderer (help.go rootHelpGroups), whose launcher section is titled
 // "Launchers" — the cobra group Title itself never reaches the default usage
 // template here. The heading appears exactly once and its block contains all
-// four launcher names (cc, glm, cg, codex) in ONE block, plus the symbolic
+// three launcher names (cc, glm, codex) in ONE block, plus the symbolic
 // cobra-group comparison.
 func TestCodexCommand_RegisteredInLaunchGroup(t *testing.T) {
 	var help bytes.Buffer
@@ -231,7 +231,7 @@ func TestCodexCommand_RegisteredInLaunchGroup(t *testing.T) {
 	for _, tok := range block {
 		got[tok] = true
 	}
-	for _, want := range []string{"cc", "glm", "cg", "codex"} {
+	for _, want := range []string{"cc", "glm", "codex"} {
 		if !got[want] {
 			t.Errorf("launcher %q missing from the launchers section block (block commands: %v)", want, block)
 		}

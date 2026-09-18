@@ -21,7 +21,7 @@ moai --help
 
 | 그룹 | 명령어 | 설명 |
 |------|--------|------|
-| **Launch** | `moai cc` · `moai cg` · `moai glm` | Claude Code 세션 시작 (백엔드 선택) |
+| **Launch** | `moai cc` · `moai glm` | Claude Code 세션 시작 (백엔드 선택) |
 | **Project** | `moai init` · `moai update` · `moai doctor` · `moai status` | 프로젝트 초기화, 업데이트, 진단, 상태 조회 |
 | **Tools** | `moai profile` · `moai inventory` · `moai hook` · `moai worktree` · `moai spec` · `moai harness` · ... | 설정, 인벤토리, 훅, 워크트리 등 도구 |
 
@@ -68,7 +68,6 @@ moai init [project-name] [OPTIONS]
 | `--root <path>` | 프로젝트 루트 디렉터리 (기본값: 현재 디렉터리) |
 | `--git-mode <manual\|personal\|team>` | Git 워크플로우 모드 (기본값: manual) |
 | `--git-provider <github\|gitlab>` | Git 제공자 |
-| `--project-mode <personal\|team>` | 프로젝트 모드 (기본값: personal) |
 | `--enable-lsp` | LSP 연동 활성화 (기본값: true) |
 | `--enforce-quality` | 품질 게이트 강제 (기본값: true) |
 | `--enable-design` | 디자인 워크플로우 활성화 (기본값: true) |
@@ -87,7 +86,7 @@ cd my-existing-project
 moai init
 
 # 비대화형 (CI/CD)
-moai init --non-interactive --project-mode personal --model-policy medium
+moai init --non-interactive --model-policy medium
 ```
 
 자세한 마법사 단계는 [초기 설정](/ko/getting-started/init-wizard) 페이지를 참조하세요.
@@ -233,7 +232,6 @@ moai profile [COMMAND]
 ```bash
 moai cc -p work       # work 프로필로 Claude 실행
 moai glm -p cost-save # cost-save 프로필로 GLM 실행
-moai cg -p team       # team 프로필로 CG 모드 실행
 ```
 
 자세한 내용은 [프로필 관리](/ko/cli-reference/profile) 페이지를 참조하세요.
@@ -328,33 +326,16 @@ git worktree list               # 워크트리 목록
 
 ---
 
-## moai cc / moai cg / moai glm
+## moai cc / moai glm
 
-Claude Code를 시작하면서 백엔드를 선택하는 런치 명령어입니다. 세 명령어 모두 `-p <profile>` 플래그로 프로필을 지정할 수 있습니다. `--` 이후의 인자를 Claude Code에 그대로 전달하는 것은 `moai cc` 와 `moai glm` 만 지원합니다 (`moai cg` 는 미지원).
+`moai cc`와 `moai glm`은 선택한 백엔드로 Claude Code를 실행합니다. 기존 CG 설정은 실행 전에 이전해야 합니다.
 
 ```bash
 moai cc [-p profile] [-- claude-args...]
 moai glm [-p profile] [-- claude-args...]
-moai cg [-p profile]
 ```
 
-| 명령어 | 리더 | 워커 | tmux 필수 | 용도 |
-|--------|------|------|-----------|------|
-| `moai cc` | Claude | Claude | 아니오 | 최고 품질 (단일 백엔드) |
-| `moai glm` | GLM | GLM | 아니오 | 비용 최적화 (GLM 단독) |
-| `moai cg` | Claude | GLM | 필수 | 품질 + 비용 균형 (하이브리드) |
-
-`moai cg` 는 CG 모드 (Claude 리더 + GLM 팀원) 를 활성화합니다. 반드시 tmux 세션 안에서 실행해야 하며, GLM 환경변수를 tmux 세션에 주입하고 리더 창은 Claude API를 씁니다. 설정을 마치면 현재 창에서 곧바로 Claude Code가 뜨므로, `claude` 를 따로 실행할 필요가 없습니다.
-
-```bash
-# 1. GLM API 키 저장 (최초 1회)
-moai glm setup sk-your-glm-api-key
-
-# 2. CG 모드 활성화 (tmux 내에서 실행 — Claude Code가 현재 창에서 바로 시작됨)
-moai cg
-```
-
-자세한 CG 모드 안내는 [소개 — CG 모드로 토큰 절약](/ko/getting-started/introduction#cg-모드로-토큰-절약-5070) 을 참조하세요.
+`moai cg`는 폐기되었습니다. Claude나 GLM을 실행하지 않고 설정 이전 안내와 함께 종료합니다. `moai cc`의 별칭이 아닙니다. `llm.team_mode: cg`가 남은 프로젝트는 세션을 실행하기 전에 이전할 구성을 명시적으로 선택해야 합니다. [CG 폐기와 설정 이전](/ko/multi-llm/cg-mode/)
 
 ### 런치 플래그
 
@@ -374,7 +355,7 @@ moai cg
 | `-m, --model <model>` | 모델 선택 덮어쓰기 |
 | `--chrome` / `--no-chrome` | Chrome MCP 토글 |
 
-> `auto` 권한 모드는 GLM(제3자 제공자)에서는 사용할 수 없습니다 — `moai cc` 또는 `moai cg` 에서만 지원됩니다.
+> `auto` 권한 모드는 GLM(제3자 제공자)에서는 사용할 수 없습니다 — `moai cc` 에서만 지원됩니다.
 
 ### moai glm 하위 명령어
 

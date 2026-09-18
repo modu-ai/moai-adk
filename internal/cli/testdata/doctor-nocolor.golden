@@ -2,13 +2,14 @@
 │                                                                                                                                                      │
 │  System Diagnostics                                                                                                                                  │
 │  System ---                                                                                                                                          │
-│    STATUS  CHECK         MESSAGE                                                                                                                     │
-│    ok      Go Runtime    go 1.99.99 (testos/testarch)                                                                                                │
-│    ok      Git           git version 9.99.99                                                                                                         │
-│    ok      Claude Code   test-claude-99                                                                                                              │
-│    ok      GitHub CLI    gh version 9.99.99 (2099-12-31)                                                                                             │
-│    ok      ast-grep CLI  ast-grep 9.99.99                                                                                                            │
-│    5 ok, 0 warn, 0 fail                                                                                                                              │
+│    STATUS  CHECK             MESSAGE                                                                                                                 │
+│    ok      Go Runtime        go 1.99.99 (testos/testarch)                                                                                            │
+│    ok      Git               git version 9.99.99                                                                                                     │
+│    ok      Claude Code       test-claude-99                                                                                                          │
+│    ok      GitHub CLI        gh version 9.99.99 (2099-12-31)                                                                                         │
+│    ok      ast-grep CLI      ast-grep 9.99.99                                                                                                        │
+│    ok      Shared Flag Slot  first-party endpoint — this session writes the shared flag slot itself                                                  │
+│    6 ok, 0 warn, 0 fail                                                                                                                              │
 │                                                                                                                                                      │
 │  MoAI-ADK ---                                                                                                                                        │
 │    STATUS  CHECK                  MESSAGE                                                                                                            │
@@ -27,22 +28,23 @@
 │    9 ok, 3 warn, 0 fail                                                                                                                              │
 │                                                                                                                                                      │
 │  Workspace ---                                                                                                                                       │
-│    STATUS  CHECK                 MESSAGE                                                                                                             │
-│    warn    Hooks Config          .claude/hooks/ not found — hook handlers unavailable                                                                │
-│    warn    Hook Wiring           not checked: .claude/settings.json not found                                                                        │
-│    ok      Hook Delivery         skipped — no .claude/settings.json in this project                                                                  │
-│    ok      Hook opt-in:          disabled                                                                                                            │
-│    warn    Slash Commands        .claude/commands/ not found — slash commands unavailable                                                            │
-│    warn    Skills Allowlist      .claude/skills/ not found                                                                                           │
-│    warn    MX Tag Config         .moai/config/sections/mx.yaml not found — MX annotation thresholds use defaults                                     │
-│    warn    Worktree State        .moai/state/ not found — worktree checkpoint storage unavailable                                                    │
-│    ok      Worktree Base Branch  git_strategy.worktree_base_branch unset — card worktrees follow the repository default                              │
-│    warn    BODP Config           .moai/branches/ not found — BODP audit trail disabled                                                               │
-│    warn    Telemetry Config      .moai/config/sections/telemetry.yaml not found — telemetry uses defaults                                            │
-│    warn    Glamour Cache         glamour not integrated                                                                                              │
-│    ok      Codex Wiring          not wired (claude-only project) — skipped                                                                           │
-│    4 ok, 9 warn, 0 fail                                                                                                                              │
+│    STATUS  CHECK                  MESSAGE                                                                                                            │
+│    warn    Hooks Config           .claude/hooks/ not found — hook handlers unavailable                                                               │
+│    warn    Hook Wiring            not checked: .claude/settings.json not found                                                                       │
+│    ok      Hook Delivery          skipped — no .claude/settings.json in this project                                                                 │
+│    ok      Hook opt-in:           disabled                                                                                                           │
+│    warn    Slash Commands         .claude/commands/ not found — slash commands unavailable                                                           │
+│    warn    Skills Allowlist       .claude/skills/ not found                                                                                          │
+│    warn    MX Tag Config          .moai/config/sections/mx.yaml not found — MX annotation thresholds use defaults                                    │
+│    warn    Worktree State         .moai/state/ not found — worktree checkpoint storage unavailable                                                   │
+│    ok      Worktree Base Branch   git_strategy.worktree_base_branch unset — card worktrees follow the repository default                             │
+│    ok      Git Strategy Workflow  git_strategy workflow unreadable or no active profile — nothing to interpret                                       │
+│    warn    BODP Config            .moai/branches/ not found — BODP audit trail disabled                                                              │
+│    warn    Telemetry Config       .moai/config/sections/telemetry.yaml not found — telemetry uses defaults                                           │
+│    warn    Glamour Cache          glamour not integrated                                                                                             │
+│    ok      Codex Wiring           not wired (claude-only project) — skipped                                                                          │
+│    5 ok, 9 warn, 0 fail                                                                                                                              │
 │                                                                                                                                                      │
-│  [Pass 18]  [Warn 12]  [Fail 0]                                                                                                                      │
+│  [Pass 20]  [Warn 12]  [Fail 0]                                                                                                                      │
 │                                                                                                                                                      │
 ╰──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯

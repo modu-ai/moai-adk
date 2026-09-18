@@ -8,7 +8,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/charmbracelet/huh"
+	"github.com/modu-ai/moai-adk/internal/cli/wizard"
 	"github.com/modu-ai/moai-adk/internal/config"
 	"github.com/modu-ai/moai-adk/internal/profile"
 	"github.com/modu-ai/moai-adk/internal/settings"
@@ -22,23 +22,41 @@ const (
 	defaultPermissionMode = "acceptEdits"
 )
 
-// acceptEditsConfirmationLine is the deterministic confirmation emitted by the
-// wizard when the user selects "acceptEdits" as permissionMode. REQ-CCI-006
-// requires the wizard to surface the empty-string normalization so the user
-// does not perceive the selection as a silent no-op. The anchor tokens
-// ("acceptEdits", "project default", "settings.local.json") are grep-stable
-// and asserted by TestEmitAcceptEditsConfirmationAnchor (AC-CCI-006).
+// acceptEditsConfirmationLine is the deterministic English confirmation emitted
+// by the wizard when the user selects "acceptEdits" as permissionMode.
+// REQ-CCI-006 requires the wizard to surface the empty-string normalization so
+// the user does not perceive the selection as a silent no-op. The anchor tokens
+// ("acceptEdits", "project default", "settings.local.json") are grep-stable and
+// asserted by TestEmitAcceptEditsConfirmationAnchor (AC-CCI-006).
 const acceptEditsConfirmationLine = "Note: \"acceptEdits\" is the project default, so no settings.local.json defaultMode override will be written."
 
-// emitAcceptEditsConfirmation writes the acceptEdits confirmation line to out.
-// Called from runProfileSetup immediately after the acceptEdits→"" normalization
-// so the user sees why nothing was persisted to settings.local.json.
-func emitAcceptEditsConfirmation(out io.Writer) {
-	_, _ = fmt.Fprintln(out, acceptEditsConfirmationLine)
+// acceptEditsConfirmationTexts localizes the acceptEdits confirmation line
+// (REQ-TRI-006, the M1 residual table's row 4 — the notice was English-fixed).
+// The grep anchor tokens "acceptEdits" and "settings.local.json" are preserved
+// VERBATIM in every locale so the REQ-CCI-006 anchor contract keeps passing on
+// the localized strings; "defaultMode" is a config key and stays untranslated
+// for the same reason.
+var acceptEditsConfirmationTexts = map[string]string{
+	"ko": "참고: \"acceptEdits\"는 프로젝트 기본값이므로 settings.local.json에 defaultMode 재정의를 기록하지 않습니다.",
+	"ja": "注意: \"acceptEdits\"はプロジェクトのデフォルトのため、settings.local.jsonにはdefaultModeの上書きを書き込みません。",
+	"zh": "注意: \"acceptEdits\"是项目默认值，因此不会向 settings.local.json 写入 defaultMode 覆盖。",
 }
 
-// @MX:NOTE: [AUTO] Wizard v3 migration — normalizes deprecated Claude model IDs to canonical aliases.
-// @MX:REASON: Prevents silent loss of existing prefs values in huh.Select bindings after the "claude-opus-4-7" option was removed from the previous wizard.
+// emitAcceptEditsConfirmation writes the acceptEdits confirmation line to out
+// in the wizard's ending locale (unknown locales fall back to English).
+// Called from runProfileSetup immediately after the acceptEdits→""
+// normalization so the user sees why nothing was persisted to
+// settings.local.json.
+func emitAcceptEditsConfirmation(out io.Writer, locale string) {
+	txt, ok := acceptEditsConfirmationTexts[locale]
+	if !ok {
+		txt = acceptEditsConfirmationLine
+	}
+	_, _ = fmt.Fprintln(out, txt)
+}
+
+// normalizeModel maps a stored model id onto the alias form the picker
+// offers.
 //
 // The alias↔canonical-id mapping is owned by template.ModelAliasTable (single
 // SSOT). This function performs the reverse direction (full-id → short alias)
@@ -105,7 +123,7 @@ func normalizeModelLegacy1M(m string) string {
 	return alias + "[1m]"
 }
 
-// schemaSelectOptions builds a huh option list for a schema select field from
+// schemaSelectOptions builds the option list for a schema select field from
 // settings.FieldOptionDefs — the SHARED option-list SSOT that internal/web already
 // reads — so the TUI wizard and the web console cannot drift apart. Each option's
 // wire value is the schema's canonical value (for "model" that is the short alias
@@ -120,17 +138,20 @@ func normalizeModelLegacy1M(m string) string {
 // console but the wizard has never offered one (it defaults to acceptEdits and
 // normalizes that back to "" on save).
 //
+// The list is version neutral ({Label, Value}, design.md §3): the absorbed v2
+// profile wizard takes it as wizard.Option arguments.
+//
 // @MX:NOTE: [AUTO] Single derivation site for every wizard select backed by the shared schema.
-func schemaSelectOptions(t profileSetupText, field string, withEmpty bool) []huh.Option[string] {
+func schemaSelectOptions(t profileSetupText, field string, withEmpty bool) []wizard.Option {
 	defs := settings.FieldOptionDefs(field)
-	opts := make([]huh.Option[string], 0, len(defs)+1)
+	opts := make([]wizard.Option, 0, len(defs)+1)
 	if withEmpty {
 		if empty := settings.EmptyLabelFor(field); empty != "" {
-			opts = append(opts, huh.NewOption(empty, ""))
+			opts = append(opts, wizard.Option{Label: empty, Value: ""})
 		}
 	}
 	for _, d := range defs {
-		opts = append(opts, huh.NewOption(optionLabelFor(t, d), d.Value))
+		opts = append(opts, wizard.Option{Label: optionLabelFor(t, d), Value: d.Value})
 	}
 	return opts
 }
@@ -211,15 +232,64 @@ Examples:
   moai profile setup          # Configure default profile
   moai profile setup work     # Configure 'work' profile`,
 	Args: cobra.MaximumNArgs(1),
-	RunE: runProfileSetup,
+	// Routed through the runProfileSetupFn seam (profile.go) so the explicit
+	// entry is countable alongside `moai profile --setup` (REQ-ITI-001).
+	RunE: func(cmd *cobra.Command, args []string) error {
+		return runProfileSetupFn(cmd, args)
+	},
 }
 
 func init() {
 	profileCmd.AddCommand(profileSetupCmd)
 }
 
-// runProfileSetup runs the interactive profile configuration wizard.
-// The first question is language selection; all subsequent UI text is displayed in the chosen language.
+// initialProfileResult maps the stored preferences onto the absorbed wizard's
+// initial values — the binding point of the v2 profile wizard. Every select
+// pre-selects the stored value (REQ-ITI-005 (5)); the empty language slots
+// pre-select English; the empty permission mode pre-selects acceptEdits
+// (REQ-ITI-005 (9)); development_mode initializes from the CURRENT project
+// config, not from the profile store (SPEC-WEB-CONSOLE-003). Outside a MoAI
+// project (no .moai dir) it stays empty "(project default)" and the save is a
+// no-op.
+//
+// @MX:NOTE: [AUTO] Wizard v3 migration — normalizes deprecated Claude model IDs to canonical aliases before binding.
+// @MX:REASON: Prevents silent loss of existing prefs values in the wizard bindings after the "claude-opus-4-7" option was removed from the picker; the mapping stays owned by template.ModelAliasTable (single SSOT) via normalizeModel.
+func initialProfileResult(existingPrefs profile.ProfilePreferences) wizard.ProfileResult {
+	result := wizard.ProfileResult{
+		UserName:        existingPrefs.UserName,
+		Model:           normalizeModel(existingPrefs.Model),
+		ModelPolicy:     existingPrefs.ModelPolicy,
+		EffortLevel:     existingPrefs.EffortLevel,
+		PermissionMode:  existingPrefs.PermissionMode,
+		GitCommitLang:   existingPrefs.GitCommitLang,
+		CodeCommentLang: existingPrefs.CodeCommentLang,
+		DocLang:         existingPrefs.DocLang,
+	}
+	for _, field := range []*string{
+		&result.ConversationLang, &result.GitCommitLang,
+		&result.CodeCommentLang, &result.DocLang,
+	} {
+		if *field == "" {
+			*field = "en"
+		}
+	}
+	if result.PermissionMode == "" {
+		result.PermissionMode = defaultPermissionMode
+	}
+	if cwd, err := os.Getwd(); err == nil {
+		if info, statErr := os.Stat(filepath.Join(cwd, ".moai")); statErr == nil && info.IsDir() {
+			if dm, _, readErr := readCurrentProjectConfig(cwd); readErr == nil {
+				result.DevelopmentMode = dm
+			}
+		}
+	}
+	return result
+}
+
+// runProfileSetup runs the interactive profile configuration wizard through
+// the absorbed v2 wizard (design.md §2.2): the ten profile questions as one
+// multi-group form; the first question is language selection and all
+// subsequent groups re-render in the chosen language.
 //
 // SPEC-SESSION-WORKTREE-001 M6/M4: session-worktree auto-entry + exit disposal.
 // Auto-entry is wired HERE (not in runProfileCmd / list / current / delete) so
@@ -242,7 +312,7 @@ func runProfileSetup(cmd *cobra.Command, args []string) (err error) {
 	// any shared-state mutation (ReadPreferences / WritePreferences /
 	// persistProjectConfig). Mirrors the M2 init / M3 web wiring.
 	swCfg := loadSessionWorktreeConfig(cmd)
-	wtPath := enterSessionWorktree(swCfg, "profile", cmd.ErrOrStderr())
+	wtPath := enterSessionWorktreeFn(swCfg, "profile", cmd.ErrOrStderr())
 	if wtPath != "" {
 		// REQ-SW-017: honest scope notice — names BOTH paths and states the
 		// profile dir is NOT isolated.
@@ -257,7 +327,13 @@ func runProfileSetup(cmd *cobra.Command, args []string) (err error) {
 		}
 	}
 	defer func() {
-		cleanupSessionWorktree(swCfg, wtPath, err == nil, cmd.ErrOrStderr())
+		// SPEC-WORKTREE-KEY-WIRING-001 M2: auto-merge runs BEFORE disposal —
+		// merge-then-dispose is the only safe order, and independent of
+		// auto_cleanup (REQ-WKW-013).
+		sessionExitAutoMerge(swCfg, wtPath, err == nil, cmd.ErrOrStderr())
+		// cleanup goes through the test seam (t586 M5, AC-ITI-006/007
+		// preservation) which profile.go binds to cleanupSessionWorktree.
+		cleanupSessionWorktreeFn(swCfg, wtPath, err == nil, cmd.ErrOrStderr())
 	}()
 
 	profileName := "default"
@@ -265,189 +341,42 @@ func runProfileSetup(cmd *cobra.Command, args []string) (err error) {
 		profileName = args[0]
 	}
 
-	// Load existing preferences as defaults.
+	// Load existing preferences as the wizard's initial values.
 	existingPrefs, err := profile.ReadPreferences(profileName)
 	if err != nil {
 		return fmt.Errorf("read existing preferences: %w", err)
 	}
 
-	// Initialize form values from existing preferences.
-	userName := existingPrefs.UserName
+	initial := initialProfileResult(existingPrefs)
 
-	convLang := existingPrefs.ConversationLang
-	if convLang == "" {
-		convLang = "en"
-	}
-	gitCommitLang := existingPrefs.GitCommitLang
-	if gitCommitLang == "" {
-		gitCommitLang = "en"
-	}
-	codeCommentLang := existingPrefs.CodeCommentLang
-	if codeCommentLang == "" {
-		codeCommentLang = "en"
-	}
-	docLang := existingPrefs.DocLang
-	if docLang == "" {
-		docLang = "en"
-	}
-
-	// C-1: normalize deprecated model IDs to canonical aliases
-	model := normalizeModel(existingPrefs.Model)
-	effortLevel := existingPrefs.EffortLevel
-	// SPEC-WEB-CONSOLE-002 REQ-WC2-006: model_policy parity with the web console.
-	modelPolicy := existingPrefs.ModelPolicy
-	permissionMode := existingPrefs.PermissionMode
-	if permissionMode == "" {
-		permissionMode = defaultPermissionMode
-	}
-
-	// SPEC-WEB-CONSOLE-003: initialize the development_mode select from the CURRENT
-	// project config (quality.yaml) — NOT from existingPrefs, since development_mode
-	// is a project-config value, not a ProfilePreferences field. Outside a MoAI
-	// project (no .moai dir) the select defaults to empty "(project default)" and
-	// the save is a no-op. The sibling git_convention select was removed from the
-	// wizard, so its persisted value is read by nobody here and left untouched on save.
-	var developmentMode string
-	if cwd, err := os.Getwd(); err == nil {
-		if info, statErr := os.Stat(filepath.Join(cwd, ".moai")); statErr == nil && info.IsDir() {
-			if dm, _, readErr := readCurrentProjectConfig(cwd); readErr == nil {
-				developmentMode = dm
-			}
-		}
-	}
-
-	// ====== Step 1: Language selection ======
-	langOptions := []huh.Option[string]{
-		huh.NewOption("English", "en"),
-		huh.NewOption("Korean (한국어)", "ko"),
-		huh.NewOption("Japanese (日本語)", "ja"),
-		huh.NewOption("Chinese (中文)", "zh"),
-	}
-
-	langForm := huh.NewForm(
-		huh.NewGroup(
-			huh.NewSelect[string]().
-				Title("Select your language").
-				Description("Language for this wizard and Claude's responses.").
-				Options(langOptions...).
-				Value(&convLang),
-		).Title("Language"),
-	).WithTheme(moaiHuhTheme())
-
-	if err := langForm.Run(); err != nil {
-		if errors.Is(err, huh.ErrUserAborted) {
-			_, _ = fmt.Fprintln(cmd.OutOrStdout(), "Setup cancelled.")
-			return nil
-		}
-		return fmt.Errorf("wizard error: %w", err)
-	}
-
-	// ====== Step 2: Display remaining forms in the selected language ======
-	t := getProfileText(convLang)
-
+	// The announcement and the option labels resolve in the run's initial
+	// locale — the stored conversation language, falling back to English for
+	// a fresh profile (design.md §3).
+	t := getProfileText(initial.ConversationLang)
 	_, _ = fmt.Fprintf(cmd.OutOrStdout(), t.ConfiguringProfile+"\n\n", profileName)
 
-	// The statusline-theme migration banner was removed alongside the theme Select:
-	// with the theme fixed to fixedStatuslineTheme there is no stored value being
-	// normalized onto a widget, so there is nothing to notify the user about.
-
-	form := huh.NewForm(
-		// Section 1: User information
-		huh.NewGroup(
-			huh.NewInput().
-				Title(t.UserNameTitle).
-				Description(t.UserNameDesc).
-				Value(&userName),
-		).Title(t.IdentityTitle),
-
-		// Section 2: Languages (after conversation language)
-		huh.NewGroup(
-			huh.NewSelect[string]().
-				Title(t.GitCommitLangTitle).
-				Description(t.GitCommitLangDesc).
-				Options(langOptions...).
-				Value(&gitCommitLang),
-			huh.NewSelect[string]().
-				Title(t.CodeCommentLangTitle).
-				Description(t.CodeCommentLangDesc).
-				Options(langOptions...).
-				Value(&codeCommentLang),
-			huh.NewSelect[string]().
-				Title(t.DocLangTitle).
-				Description(t.DocLangDesc).
-				Options(langOptions...).
-				Value(&docLang),
-		).Title(t.LanguagesTitle),
-
-		// Section 3: Model settings (model override + policy + permission mode).
-		// The option LISTS (values + order) and the empty-option labels are both
-		// single-sourced from the settings schema via schemaSelectOptions, so the
-		// wizard and the web console render the same canonical value set. Before
-		// this, the wizard re-declared the model list inline and emitted canonical
-		// model ids (claude-opus-5), which the web validator rejects and which
-		// normalizeModel never produces — the two surfaces write the same
-		// preferences.yaml, so the value shape has to match. The verbose option
-		// labels stay localized (resolved through schemaOptionBridge).
-		huh.NewGroup(
-			huh.NewSelect[string]().
-				Title(t.ModelOverrideTitle).
-				Description(t.ModelOverrideDesc).
-				Options(schemaSelectOptions(t, "model", true)...).
-				Value(&model),
-			// model_policy stays a CLI-only field: the web console dropped it (it
-			// duplicates the agentfm performance tier), so it has no schema entry
-			// and its options are declared here against template.ValidModelPolicies().
-			// The empty-option label is still single-sourced from the schema.
-			huh.NewSelect[string]().
-				Title(t.ModelPolicyTitle).
-				Description(t.ModelPolicyDesc).
-				Options(
-					huh.NewOption(settings.EmptyLabelFor("model_policy"), ""),
-					huh.NewOption(t.ModelPolicyHigh, "high"),
-					huh.NewOption(t.ModelPolicyMedium, "medium"),
-					huh.NewOption(t.ModelPolicyLow, "low"),
-				).
-				Value(&modelPolicy),
-			huh.NewSelect[string]().
-				Title(t.EffortLevelTitle).
-				Description(t.EffortLevelDesc).
-				Options(schemaSelectOptions(t, "effort_level", true)...).
-				Value(&effortLevel),
-			// S-4: option order — acceptEdits, auto, default, plan, bypass, dontAsk.
-			// The schema's permissionModeOptions() mirrors that exact order, and the
-			// wizard offers no empty option here (acceptEdits is the default and is
-			// normalized back to "" on save).
-			huh.NewSelect[string]().
-				Title(t.PermissionModeTitle).
-				Description(t.PermissionModeDesc).
-				Options(schemaSelectOptions(t, "permission_mode", false)...).
-				Value(&permissionMode),
-		).Title(t.ModelSettingsTitle),
-
-		// Section 4: Project config — development_mode only. Persisted to the project
-		// config (quality.yaml) via the config manager, NOT the profile store. The
-		// empty-option label is single-sourced from the schema (REQ-WC10-013).
-		//
-		// Removed from the wizard (settings now use their stored/default value and are
-		// never written by a wizard run): the statusline theme Select (fixed to
-		// fixedStatuslineTheme), the 16-segment MultiSelect, the git_convention Select,
-		// the 3 nested quality fields, and the 4 nested git auto-detection fields.
-		huh.NewGroup(
-			huh.NewSelect[string]().
-				Title(t.DevelopmentModeTitle).
-				Description(t.DevelopmentModeDesc).
-				Options(schemaSelectOptions(t, "development_mode", true)...).
-				Value(&developmentMode),
-		).Title(t.DevelopmentModeTitle),
-	).WithTheme(moaiHuhTheme())
-
-	if err := form.Run(); err != nil {
-		if errors.Is(err, huh.ErrUserAborted) {
-			_, _ = fmt.Fprintln(cmd.OutOrStdout(), t.SetupCancelled)
+	// Run the absorbed v2 wizard (design.md §2.2) behind the
+	// profileWizardRunner seam: ten questions, five groups, one form.
+	result, err := profileWizardRunner(initial, buildProfileOptions(t), initial.ConversationLang)
+	if err != nil {
+		if errors.Is(err, wizard.ErrCancelled) {
+			// The cancellation message renders in the language the user had
+			// reached: the answered conversation language, else the stored
+			// value, else English (design.md §5).
+			cancelLocale := initial.ConversationLang
+			if result != nil && result.ConversationLang != "" {
+				cancelLocale = result.ConversationLang
+			}
+			_, _ = fmt.Fprintln(cmd.OutOrStdout(), getProfileText(cancelLocale).SetupCancelled)
 			return nil
 		}
-		return fmt.Errorf("wizard error: %w", err)
+		return err
 	}
+
+	// The saved/summary text renders in the language the wizard ended with.
+	t = getProfileText(result.ConversationLang)
+	permissionMode := result.PermissionMode
+	developmentMode := result.DevelopmentMode
 
 	// Normalize permission mode: "acceptEdits" is the project default, so store
 	// empty string to avoid an unnecessary override. The normalization is NOT
@@ -455,7 +384,7 @@ func runProfileSetup(cmd *cobra.Command, args []string) (err error) {
 	// selection is not perceived as a no-op (REQ-CCI-006).
 	if permissionMode == defaultPermissionMode {
 		permissionMode = ""
-		emitAcceptEditsConfirmation(cmd.OutOrStdout())
+		emitAcceptEditsConfirmation(cmd.OutOrStdout(), result.ConversationLang)
 	}
 
 	// Save preferences.
@@ -467,14 +396,14 @@ func runProfileSetup(cmd *cobra.Command, args []string) (err error) {
 	// value through is what makes "removed from the wizard" mean "left alone" rather
 	// than "blanked". A profile that never stored segments keeps its nil.
 	prefs := profile.ProfilePreferences{
-		UserName:           userName,
-		ConversationLang:   convLang,
-		GitCommitLang:      gitCommitLang,
-		CodeCommentLang:    codeCommentLang,
-		DocLang:            docLang,
-		Model:              model,
-		ModelPolicy:        modelPolicy,
-		EffortLevel:        effortLevel,
+		UserName:           result.UserName,
+		ConversationLang:   result.ConversationLang,
+		GitCommitLang:      result.GitCommitLang,
+		CodeCommentLang:    result.CodeCommentLang,
+		DocLang:            result.DocLang,
+		Model:              result.Model,
+		ModelPolicy:        result.ModelPolicy,
+		EffortLevel:        result.EffortLevel,
 		PermissionMode:     permissionMode,
 		StatuslineSegments: existingPrefs.StatuslineSegments,
 		// StatuslineTheme is deliberately left at its zero value. The wizard no

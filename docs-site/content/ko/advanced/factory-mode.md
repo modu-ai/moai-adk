@@ -48,7 +48,7 @@ $ moai glm -f lane-3
 
 `-f`에 개수를 붙이지 않으면 레인 1개(`lane-1`) 기본으로 시작합니다. 큐가 밀리기 시작하면 그때그때 `moai cc -f lane-<n>`(또는 `moai glm -f lane-<n>`)으로 레인을 한 개씩 추가하세요. 레인은 칸반의 동반 세션과 마찬가지로 **사람이 별도 터미널에서 직접** 띄웁니다 — 세션이 다른 세션을 대신 띄우는 경로는 없습니다.
 
-한 번의 실행에는 진입 토큰 하나만 붙을 수 있습니다 — `-k`와 `-f`를 함께 쓰면 에러입니다. v1.2.0의 통일 진입 형태인 `-k <N>`(리드)과 `-k <N> --name lane-<i>`(레인)은 그대로 유효한 호환 형태입니다(N 없이 `-k --name lane-<i>`만 쓰면 기본 8레인). 혼합 백엔드 런처인 `moai cg`는 칸반과 같은 이유로 팩토리를 거부합니다(`FACTORY_MODE_UNSUPPORTED_BACKEND`). 칸반 리드의 소켓이 `/tmp/moai-socket-kanban/<run-id>`에 열리듯, 팩토리 리드의 소켓은 `/tmp/moai-socket-factory/<run-id>`에 열리고 부트스트랩 안내가 실제 경로를 함께 알려 줍니다.
+한 번의 실행에는 진입 토큰 하나만 붙을 수 있습니다 — `-k`와 `-f`를 함께 쓰면 에러입니다. v1.2.0의 통일 진입 형태인 `-k <N>`(리드)과 `-k <N> --name lane-<i>`(레인)은 그대로 유효한 호환 형태입니다(N 없이 `-k --name lane-<i>`만 쓰면 기본 8레인). 칸반 리드의 소켓이 `/tmp/moai-socket-kanban/<run-id>`에 열리듯, 팩토리 리드의 소켓은 `/tmp/moai-socket-factory/<run-id>`에 열리고 부트스트랩 안내가 실제 경로를 함께 알려 줍니다. CG는 폐기되었습니다. `moai migrate cg`로 이전 선택지를 먼저 확인하세요.
 
 ## 리드의 라우팅 — 카드는 빈 레인에 통째로
 
@@ -90,7 +90,7 @@ flowchart TD
 
 ## 레인 번호 소유 — factory.db
 
-어느 번호를 어느 레인이 쥐고 있는지는 `~/.moai/db/<project-key>/factory/factory.db`에 기록됩니다. 새 레인을 띄우면 번호는 **살아 있는 세션이 쥔 것만 건너뛰어** 다음 빈 번호로 붙습니다 — 죽은 레인의 번호는 풀려서 다시 쓰이고, 남은 claim도 데이터베이스에서 치워집니다. 기존 `.moai/state/factory/workers.json`은 한 번만 가져오고 롤백 증거로 남깁니다. 레인 이름은 `-f lane-<n>` 형태가 이미 이름을 정하므로 `--name`/`-n`과 함께 쓰면 에러입니다.
+어느 번호를 어느 레인이 쥐고 있는지는 `~/.moai/db/<project-key>/factory/factory.db`에 기록됩니다. 기점 디렉터리가 임시 디렉터리인 프로젝트(절대 `MOAI_HOME` 오버라이드 없음)는 이 데이터베이스를 프로젝트 로컬 `<base>/.moai/db/<project-key>/factory/factory.db`에 둡니다 — 백로그 큐와 같은 예외입니다. 새 레인을 띄우면 번호는 **살아 있는 세션이 쥔 것만 건너뛰어** 다음 빈 번호로 붙습니다 — 죽은 레인의 번호는 풀려서 다시 쓰이고, 남은 claim도 데이터베이스에서 치워집니다. 기존 `.moai/state/factory/workers.json`은 한 번만 가져오고 롤백 증거로 남깁니다. 레인 이름은 `-f lane-<n>` 형태가 이미 이름을 정하므로 `--name`/`-n`과 함께 쓰면 에러입니다.
 
 ## 달라지지 않는 것
 

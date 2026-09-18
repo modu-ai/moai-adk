@@ -116,6 +116,32 @@ const (
 	// slow — the signal path returns in microseconds on a healthy filesystem.
 	DefaultTraceFlushTimeout = 2 * time.Second
 
+	// DefaultHookAsyncJoinTimeout bounds how long a hook process waits at
+	// teardown for a handler's own background side-effect goroutine to finish
+	// before abandoning the wait. It is the sibling of
+	// DefaultTraceFlushTimeout on the other async axis: that one drains the
+	// registry's trace writer, this one joins the handlers themselves.
+	//
+	// The budget exists because a `moai hook <event>` process is one-shot. A
+	// handler that hands its real work to a goroutine and returns immediately
+	// (REQ-HAE-002) has no one left to finish that work once Dispatch returns —
+	// the process exits and the goroutine is abandoned mid-flight, so the
+	// result it would have recorded is simply never produced. Measured on the
+	// ConfigChange path: the async validation was reached 0 times out of 5 CLI
+	// runs, while the in-process control that joins the handler's WaitGroup
+	// reached it every time.
+	//
+	// Like the flush budget this is a ceiling, not a cost: the join is
+	// signal-confirmed (it blocks on the handler's WaitGroup, not on the
+	// timer), so the normal path returns as soon as the goroutine finishes.
+	// The timer only fires on a genuinely slow or hung side effect, which must
+	// never stall the user's session. 2s mirrors the flush budget rather than
+	// inventing a second calibration: both bound the same thing — how long a
+	// one-shot hook process may linger at exit — and the bounded work here
+	// (a 20ms debounce, a file read, a YAML parse) sits orders of magnitude
+	// below it.
+	DefaultHookAsyncJoinTimeout = 2 * time.Second
+
 	DefaultBranchPrefix = "moai/"
 	DefaultCommitStyle  = "conventional"
 
@@ -203,6 +229,11 @@ const (
 	Default1MContextTokens = 1_000_000
 	// Default performance tier
 	DefaultPerformanceTier = "medium"
+
+	// DefaultHarness is the closed-set default of llm.harness (SPEC-INIT-HARNESS-001
+	// REQ-IH-001/002). Init seeds this value explicitly so an absent key never
+	// has to be inferred as claude; the closed set is {claude, codex, both}.
+	DefaultHarness = "claude"
 
 	DefaultCacheTTLSeconds = 5
 	DefaultTimeoutSeconds  = 3
@@ -309,6 +340,40 @@ const (
 	// computation and emits the advisory instead of blocking session start
 	// unboundedly — an advisory computation on the critical path must never block.
 	DefaultSessionStartDriftTimeout = 2 * time.Second
+
+	// Out-of-band drift-cache fill (SessionStart miss path). The three values
+	// below are ONE relationship, not three unrelated numbers, and they live
+	// here rather than inline so no threshold is hardcoded in business logic.
+
+	// DefaultDriftCacheFillTimeout is the deadline the fill child carries on
+	// its own invocation and exits at, computed or not. It is generous
+	// relative to a cold drift compute (sub-second on typical repositories,
+	// ~1s on a large one) because the child is detached, silent and
+	// single-flight — the deadline is a wedge guard, not a latency budget.
+	DefaultDriftCacheFillTimeout = 30 * time.Second
+
+	// DriftCacheFillTTLSlack is the headroom between the child deadline and the
+	// suppression TTL. It exists so the inequality below is a stated
+	// relationship a test can assert over resolved values.
+	DriftCacheFillTTLSlack = 30 * time.Second
+
+	// DefaultDriftCacheFillTTL bounds respawn to at most one attempt per TTL
+	// per HEAD, so a persistently broken child cannot produce a per-session
+	// spawn loop.
+	//
+	// INVARIANT: DefaultDriftCacheFillTTL >= DefaultDriftCacheFillTimeout +
+	// DriftCacheFillTTLSlack. A TTL shorter than the child's deadline lets a
+	// second session reclaim a record whose child is still legitimately
+	// computing, reintroducing the burst one TTL later.
+	DefaultDriftCacheFillTTL = 5 * time.Minute
+
+	// DriftCacheFillLockStaleness is the age at which the suppression lock —
+	// the companion `<record>.lock` the handler claims around its critical
+	// section — is considered abandoned by a handler that died inside it and
+	// may be reclaimed. Far longer than the section itself (a read, a judgement
+	// and one small write), so a lock older than this is certainly stale rather
+	// than merely contended.
+	DriftCacheFillLockStaleness = 2 * time.Minute
 
 	// DefaultDriftPerfFixtureSpecs is the synthetic SPEC-directory count the
 	// perf-regression fixture builds (REQ-SSP-014, N=500). It is the SSOT for the
@@ -799,6 +864,7 @@ func NewDefaultLLMConfig() LLMConfig {
 	return LLMConfig{
 		GLMEnvVar:       DefaultGLMEnvVar,
 		PerformanceTier: DefaultPerformanceTier,
+		Harness:         DefaultHarness,
 		ClaudeModels: ClaudeTierModels{
 			High:   "opus",
 			Medium: "sonnet",
@@ -852,8 +918,16 @@ func NewDefaultWorkflowConfig() WorkflowConfig {
 			AfterRun:       false,
 			TokenThreshold: 150000,
 		},
-		DefaultMode:   "",
-		ExecutionMode: "team",
+		DefaultMode: "",
+		// "auto" (not "team") aligns with the template SSOT
+		// workflow.yaml (execution_mode: auto) per SPEC-INIT-UPDATE-CONSISTENCY-001
+		// REQ-ICU-002: the loader's partial-override contract seeds this default
+		// when the file key is absent, so a split between the two sources would
+		// invert the template-declared meaning. "auto" is the aligned value —
+		// ExecutionModeAuto (closed_sets.go) defers the choice to harness
+		// auto-selection; "team" predates the auto value's introduction.
+		// TestExecutionModeDefaultMatchesTemplate pins the parity.
+		ExecutionMode: "auto",
 		AgenticLoop: AgenticLoopConfig{
 			MaxIterations: DefaultAgenticLoopMaxIterations,
 		},
@@ -871,6 +945,9 @@ func NewDefaultWorkflowConfig() WorkflowConfig {
 			// SPEC-WORKTREE-ENTRY-STRATEGY-001 M1: web auto-toggles default OFF.
 			// AutoCleanup and AutoMerge mutated true→false (sprawl mitigation,
 			// EnterWorktree-first policy). AutoCreate unchanged (already false).
+			// AutoMerge now has a reader (session-exit auto-merge,
+			// SPEC-WORKTREE-KEY-WIRING-001 REQ-WKW-001) but stays default-OFF:
+			// the local dev repo's auto_merge: true is the operator's opt-in.
 			AutoCleanup:        false,
 			AutoCreate:         false,
 			AutoMerge:          false,
@@ -889,6 +966,13 @@ func NewDefaultWorkflowConfig() WorkflowConfig {
 		// so this line is belt-and-braces: it makes the default readable from
 		// the struct rather than only from the resolver.
 		Project: WorkflowProjectConfig{Continuation: ProjectContinuationCard},
+		// The out-of-band drift-cache fill ships ENABLED. Unlike the guard
+		// family below it, this feature is not inert when on — it starts a
+		// child process on a cache miss — so the default is an accepted cost
+		// rather than a neutrality choice. See the WorkflowConfig.DriftCacheFill
+		// field comment. This entry is load-bearing: without it the zero value
+		// would ship the feature permanently off.
+		DriftCacheFill: WorkflowDriftCacheFillConfig{Enabled: true},
 		// SPEC-WORKTREE-BRANCH-GUARD-OPTIN-001 REQ-1/REQ-4: the guard ships
 		// default-OFF (opt-in). Distributed users get an inert guard; the
 		// maintainer of a shared multi-session checkout opts in via local
@@ -979,6 +1063,10 @@ func NewDefaultWorkflowConfig() WorkflowConfig {
 		// fallback when workflow.yaml omits the block.
 		Audit: AuditConfig{
 			Model: AuditModelClaude,
+			Claude: ModelEffort{
+				Model:  "sonnet",
+				Effort: "high",
+			},
 			Gates: AuditGates{
 				Claude: AuditGateRequired,
 				Codex:  AuditGateRequired,
@@ -1122,6 +1210,7 @@ func defaultContextConfig() ContextConfig {
 func defaultInterviewConfig() InterviewConfig {
 	return InterviewConfig{
 		ClarityThreshold: 4,
+		DecisionGate:     "off",
 		Enabled:          true,
 		Plan: InterviewMode{
 			MaxRounds:         5,

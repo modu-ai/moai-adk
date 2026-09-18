@@ -1,7 +1,6 @@
 package kanban
 
 import (
-	"context"
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
@@ -12,7 +11,6 @@ import (
 	"time"
 
 	"github.com/modu-ai/moai-adk/internal/cli/specid"
-	"github.com/modu-ai/moai-adk/internal/homestate"
 )
 
 // factoryProvenance is captured at card assignment/state-change time. A
@@ -33,12 +31,7 @@ func RecordFactoryRunStart(root, runID, backend, specID string) error {
 	if err != nil {
 		return err
 	}
-	db, err := homestate.OpenFactory(root)
-	if err != nil {
-		return err
-	}
-	defer func() { _ = db.Close() }()
-	return db.RecordRun(context.Background(), homestate.FactoryRun{RunID: runID, Backend: backend, ManifestJSON: string(raw)})
+	return NewBacklogStore(BacklogPathForRoot(root)).recordRuntime(TodoRuntimeRun{RunID: runID, Backend: backend, ManifestJSON: string(raw)}, nil)
 }
 
 func captureFactoryProvenance(root, specID string) factoryProvenance {
@@ -68,20 +61,11 @@ func RecordFactoryCardAssignment(root, runID, cardID, owner, specID string) erro
 
 func RecordFactoryCardState(root, runID, cardID, owner, specID, state, eventKind string) error {
 	provenance := captureFactoryProvenance(root, specID)
-	payload, err := json.Marshal(map[string]string{
-		"card_id": cardID, "owner": owner, "state": state,
-		"spec_id": provenance.SpecID, "spec_path": provenance.SpecPath,
-		"spec_sha256": provenance.SpecSHA256, "git_commit": provenance.GitCommit,
-		"captured_at": provenance.CapturedAt,
+	payload, err := json.Marshal(provenance)
+	if err != nil {
+		return err
+	}
+	return NewBacklogStore(BacklogPathForRoot(root)).recordRuntime(TodoRuntimeRun{RunID: runID, ManifestJSON: "{}"}, &TodoRuntimeAssignment{
+		RunID: runID, CardID: cardID, OwnerLabel: owner, ReportedState: state, EventKind: eventKind, ProvenanceJSON: string(payload),
 	})
-	if err != nil {
-		return err
-	}
-	db, err := homestate.OpenFactory(root)
-	if err != nil {
-		return err
-	}
-	defer func() { _ = db.Close() }()
-	return db.RecordCard(context.Background(), homestate.FactoryCard{RunID: runID, CardID: cardID, OwnerLabel: owner,
-		State: state, EventKind: eventKind, PayloadJSON: string(payload)})
 }

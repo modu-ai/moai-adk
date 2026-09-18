@@ -1,2 +1,0 @@
-go version go1.26.8 darwin/arm64
-EXIT=0

@@ -151,7 +151,7 @@ Then call the **revision-match predicate** with the results directory recorded f
 
 Agent: per-spawn `Agent(general-purpose)` security reviewer (security whitelist per `.claude/rules/moai/workflow/archived-agent-rejection.md` §C row 9).
 
-Delegate to a per-spawn `Agent(general-purpose)` security reviewer loading the retained `moai-ref-owasp-checklist` / `moai-ref-secops` skills (the documented security replacement path) in inline mode. Apply the single severity contract in `.claude/rules/moai/core/security-decision-contract.md`: Critical and High block; Medium and Low are advisory.
+Delegate to a per-spawn `Agent(general-purpose)` security reviewer loading the retained `moai-ref-owasp-checklist` / `moai-ref-secops` skills (the documented security replacement path) in inline mode. Apply a single severity contract: Critical and High findings block; Medium and Low findings are advisory and are recorded in the sync report.
 
 **Dependency manifest-change observation (hook-side, informational)** — a SEPARATE, automatic mechanism distinct from the agent-invoked security analysis above:
 
@@ -161,12 +161,11 @@ A dependency or supply-chain review is a separate, agent-invoked step, not a sta
 
 #### Step 0.55.2: Security Gate Decision
 
-**Relationship to the sync-auditor Security rule.** The sync-auditor rubric in Step 0.5.4 is canonical: any Critical or High security finding makes its result FAIL. Phase 8 is an additional lens, and its CRITICAL-only stop gate below never clears an earlier sync-auditor FAIL — a HIGH finding that Phase 8 reports only as a warning still leaves a sync-auditor FAIL standing.
+**Relationship to the sync-auditor Security rule.** The sync-auditor rubric in Step 0.5.4 is canonical: any Critical or High security finding makes its result FAIL. Phase 8 is an additional lens, and its stop gate below never clears an earlier sync-auditor FAIL — an outcome Phase 8 reaches, including an approved exception, leaves a sync-auditor FAIL standing.
 
-Security severity follows `.claude/rules/moai/core/security-decision-contract.md`:
-Critical and High findings block; Medium and Low findings are advisory. A
-user-approved exception must be recorded with an ID, rationale, scope,
-approver, expiry, and review condition before a blocking finding can proceed.
+Security severity follows `.claude/rules/moai/core/security-decision-contract.md`.
+
+Severity decision: Critical and High findings block; Medium and Low findings are advisory. A blocking finding may proceed only through a user-approved exception record carrying the finding ID, rationale, scope, approver, expiry, and review condition.
 
 If a Critical or High finding exists:
 - Present findings via AskUserQuestion:

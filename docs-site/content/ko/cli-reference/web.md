@@ -50,7 +50,7 @@ moai web --no-reuse      # 포트가 사용 중이면 회수 대신 실패
 | `/kanban` | GET | 체인 세션 보드 + SPEC 파이프라인 |
 | `/specs` | GET | SPEC 카탈로그. `?q=` 검색, `?status=` 필터, `?id=` 상세 |
 | `/monitor` | GET | 세션 · 목표 · 검증 · 에픽 |
-| `/settings` | GET | 설정 9개 탭. `?tab=` 으로 탭, `?profile=` 로 편집 대상 프로필 지정 |
+| `/settings` | GET | 설정 탭 화면. `?tab=` 으로 탭, `?profile=` 로 편집 대상 프로필 지정 |
 | `/todo` | GET | 백로그 큐 읽기 전용 — 세 상태(`queued` · `picked` · `dropped`)의 카드를 모두 나열 |
 | `/events` | GET | SSE 스트림 — 갱신 신호만 흘려보냄 |
 | `/save` | POST | 설정 저장 |

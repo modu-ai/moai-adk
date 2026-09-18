@@ -5,7 +5,6 @@ import (
 	"bufio"
 	"context"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"log/slog"
 	"maps"
@@ -18,6 +17,7 @@ import (
 	"time"
 
 	"github.com/modu-ai/moai-adk/internal/config"
+	"github.com/modu-ai/moai-adk/internal/glmcred"
 	"github.com/modu-ai/moai-adk/internal/goal"
 	"github.com/modu-ai/moai-adk/internal/homestate"
 	"github.com/modu-ai/moai-adk/internal/hook/memo/taxonomy"
@@ -125,6 +125,7 @@ func (h *sessionStartHandler) EventType() EventType {
 //
 // @MX:NOTE: [AUTO] input-lag budget — synchronous path is turn-visible-effects only
 func (h *sessionStartHandler) Handle(ctx context.Context, input *HookInput) (*HookOutput, error) {
+	clock := newStageClock()
 	slog.Info("session started",
 		"session_id", input.SessionID,
 		"cwd", input.CWD,
@@ -136,19 +137,22 @@ func (h *sessionStartHandler) Handle(ctx context.Context, input *HookInput) (*Ho
 	}
 	if admissionRoot != "" {
 		admissionLock, lockErr := homestate.AcquireAdmissionLock(admissionRoot)
+		clock.lap("admission.lock")
 		if lockErr != nil {
 			out := &HookOutput{StopReason: lockErr.Error()}
 			out.SetContinue(false)
 			return out, nil
 		}
 		defer func() { _ = admissionLock.Release() }()
-		if err := homestate.CheckRuntimeAdmission(admissionRoot); err != nil {
+		if err := admissionLock.CheckRuntimeAdmission(); err != nil {
 			out := &HookOutput{StopReason: err.Error()}
 			out.SetContinue(false)
 			return out, nil
 		}
 	}
+	clock.lap("admission.check")
 	registerProfileLease(ctx, input)
+	clock.lap("profile_lease")
 
 	// SPEC-GUARD-LIVENESS-001 REQ-GDL-002/003 (card t333 M1): initiate the
 	// guard firing-liveness refresh.
@@ -163,6 +167,7 @@ func (h *sessionStartHandler) Handle(ctx context.Context, input *HookInput) (*Ho
 		guardLivenessRoot = input.CWD
 	}
 	guardLivenessRefresh(ctx, guardLivenessRoot, h.asyncDeferredScans())
+	clock.lap("guard_liveness_refresh")
 
 	data := map[string]any{
 		"session_id": input.SessionID,
@@ -206,6 +211,7 @@ func (h *sessionStartHandler) Handle(ctx context.Context, input *HookInput) (*Ho
 			"session_id", input.SessionID,
 		)
 	}
+	clock.lap("config")
 
 	if input.ProjectDir != "" {
 		// (a) Parallelize the independent synchronous steps. Each step writes
@@ -221,6 +227,7 @@ func (h *sessionStartHandler) Handle(ctx context.Context, input *HookInput) (*Ho
 		// ensureGLMCredentials just wrote. See runSettingsChain.
 		var settingsData map[string]any
 		g.Go(func() error {
+			defer clock.span("task.settings")()
 			settingsData = h.runSettingsChain(input)
 			return nil
 		})
@@ -236,11 +243,16 @@ func (h *sessionStartHandler) Handle(ctx context.Context, input *HookInput) (*Ho
 		// @MX:NOTE: [AUTO] registry RMW + goal orphan prune sequenced per shared file
 		var registryData map[string]any
 		g.Go(func() error {
+			defer clock.span("task.registry")()
 			registryData = make(map[string]any)
 			if input.SessionID != "" {
+				endProtocol := clock.span("task.registry.protocol")
 				h.runMultiSessionProtocol(input, registryData)
+				endProtocol()
 			}
+			endPrune := clock.span("task.registry.goal_orphans")
 			pruneGoalOrphans(input.ProjectDir)
+			endPrune()
 			return nil
 		})
 
@@ -248,6 +260,7 @@ func (h *sessionStartHandler) Handle(ctx context.Context, input *HookInput) (*Ho
 		// registry; touches only .claude/skills/ and .moai/evolution/.
 		var skillData map[string]any
 		g.Go(func() error {
+			defer clock.span("task.skill_symlinks")()
 			skillData = runSkillSymlinks(input.ProjectDir)
 			return nil
 		})
@@ -262,6 +275,7 @@ func (h *sessionStartHandler) Handle(ctx context.Context, input *HookInput) (*Ho
 		// next session retries. Best-effort, fail-open.
 		var migrationData map[string]any
 		g.Go(func() error {
+			defer clock.span("task.migration")()
 			migrationData = runMigration(gctx, input.ProjectDir, cfg)
 			return nil
 		})
@@ -272,6 +286,7 @@ func (h *sessionStartHandler) Handle(ctx context.Context, input *HookInput) (*Ho
 		// reading anything. Fail-open like the rest of the group.
 		var worktreeBaseData map[string]any
 		g.Go(func() error {
+			defer clock.span("task.worktree_base")()
 			worktreeBaseData = RunWorktreeBaseAlignment(input.ProjectDir)
 			return nil
 		})
@@ -286,6 +301,7 @@ func (h *sessionStartHandler) Handle(ctx context.Context, input *HookInput) (*Ho
 		}
 
 		mergeData(data, settingsData, registryData, skillData, migrationData, worktreeBaseData)
+		clock.lap("sync_group")
 
 		// (b) Defer heavy advisory scanning off the synchronous critical path.
 		// These four steps (telemetry prune, stale-memory wrap, pending-proposal
@@ -308,17 +324,22 @@ func (h *sessionStartHandler) Handle(ctx context.Context, input *HookInput) (*Ho
 		// join would reintroduce the full serial input lag this refactor
 		// removed; the bound is the whole point.
 		//
-		// The drift seams (driftCountFn, sessionStartDriftTimeout) are
-		// snapshotted HERE (synchronously) so the background goroutine never
-		// concurrently reads the package-level vars while a test restores them
-		// in t.Cleanup — that would be a -race finding. The goroutine uses only
-		// the captured locals.
+		// SPEC-DRIFT-CACHE-FILL-001 REQ-DCF-011/REQ-DCF-012: drift is no longer
+		// COMPUTED here. It is resolved from the HEAD-SHA cache alone, and a
+		// miss is filled out of band by a detached child. The bounded join
+		// below therefore never carries a drift computation, which is the whole
+		// latency win: the compute (p50 967 ms cold) is strictly longer than
+		// the 250 ms bound in a process that exits when Handle returns, so
+		// every cold session used to pay the full bound and discard the result.
 		//
 		// @MX:WARN @MX:REASON bounded-background-goroutine join — if the scan
 		// exceeds deferredScanJoinBound it is abandoned for this session; safe
 		// because all work is idempotent and best-effort (next session re-derives).
-		driftFn := driftCountFn
-		driftTimeout := sessionStartDriftTimeout
+		//
+		// allowFill is snapshotted HERE (synchronously), like the seams before
+		// it, so the background goroutine never reads the package-level
+		// async-mode var while a test restores it in t.Cleanup.
+		allowFill := h.asyncDeferredScans()
 		projectDir := input.ProjectDir
 
 		if h.asyncDeferredScans() {
@@ -329,7 +350,7 @@ func (h *sessionStartHandler) Handle(ctx context.Context, input *HookInput) (*Ho
 			// this goroutine) so the deferred goroutine never reads the
 			// package-level var. nil in production.
 			completed := snapshotDeferredScanCompleted()
-			advisoryCh := h.spawnDeferredAdvisoryScans(projectDir, driftFn, driftTimeout, completed)
+			advisoryCh := h.spawnDeferredAdvisoryScans(projectDir, allowFill, completed)
 
 			// Timeout-bound join. On receive, merge the advisory keys into
 			// `data` before the final marshal so they ship in this session's
@@ -357,11 +378,12 @@ func (h *sessionStartHandler) Handle(ctx context.Context, input *HookInput) (*Ho
 			// leaks past the test boundary → no race against parallel tests
 			// that reassign os.Stderr / reset the slog handler. The advisory
 			// keys always land in `data` (there is no bound to exceed).
-			advisory := h.computeDeferredAdvisory(projectDir, driftFn, driftTimeout)
+			advisory := h.computeDeferredAdvisory(projectDir, allowFill)
 			if len(advisory) > 0 {
 				maps.Copy(data, advisory)
 			}
 		}
+		clock.lap("deferred_join")
 	}
 
 	jsonData, err := json.Marshal(data)
@@ -389,6 +411,22 @@ func (h *sessionStartHandler) Handle(ctx context.Context, input *HookInput) (*Ho
 	// Gated on input.SessionID != "" (research.md §D.0/D.1 P1-outcome
 	// implication): an empty UUID is never injected or written.
 	out := &HookOutput{Data: jsonData}
+
+	// REQ-V3R2-RT-007-021's third obligation (card t796): a failed migration is
+	// named to the user. The first two obligations live in the runner (version
+	// file not advanced, failure appended to .moai/logs/migrations.log); this is
+	// the only one on the hook surface, and it was missing — runMigration
+	// recorded the failure in Data, which carries json:"-" and never reaches
+	// Claude Code, and in slog, whose stderr the hook wrappers discard. The
+	// failure was recorded and invisible.
+	if notice := migrationFailureNotice(data); notice != "" {
+		if out.SystemMessage == "" {
+			out.SystemMessage = notice
+		} else {
+			out.SystemMessage += "\n\n" + notice
+		}
+	}
+
 	if input.SessionID != "" && input.ProjectDir != "" {
 		out.HookSpecificOutput = &HookSpecificOutput{
 			HookEventName: string(EventSessionStart),
@@ -415,7 +453,9 @@ func (h *sessionStartHandler) Handle(ctx context.Context, input *HookInput) (*Ho
 	// launches exists (see session_start_record.go). Non-kanban sessions get
 	// no record and nothing happens here; every failure is discarded, so the
 	// call returns nothing and the session start cannot gate on it.
+	clock.lap("marshal_attribution")
 	writeKanbanSessionRecord(input)
+	clock.lap("kanban_record")
 
 	// SPEC-STEERING-ALIGN-GUARDRAIL-HOOK-001: GLM 가드레일 리마인더 주입.
 	// GLM 백엔드 세션(PROCESS env ANTHROPIC_BASE_URL이 z.ai 포함)일 때만 z.ai MCP
@@ -446,6 +486,7 @@ func (h *sessionStartHandler) Handle(ctx context.Context, input *HookInput) (*Ho
 	// lane registry) under the project root on the same ProjectDir-then-CWD
 	// preference chain the kanban notice uses; an empty root degrades to
 	// fail-open summary lines inside the notice rather than failing here.
+	clock.lap("glm_reminder")
 	factoryRoot := input.ProjectDir
 	if factoryRoot == "" {
 		factoryRoot = input.CWD
@@ -497,6 +538,7 @@ func (h *sessionStartHandler) Handle(ctx context.Context, input *HookInput) (*Ho
 	// CWD as fallback — the same preference chainLineageBanner applies. An
 	// empty root degrades to a zero-count summary line inside the notice
 	// rather than failing here.
+	clock.lap("factory_notice")
 	kanbanRoot := input.ProjectDir
 	if kanbanRoot == "" {
 		kanbanRoot = input.CWD
@@ -525,6 +567,7 @@ func (h *sessionStartHandler) Handle(ctx context.Context, input *HookInput) (*Ho
 	// chain node (from env or ledger), backfills session_id (REQ-CHAIN-021),
 	// and emits a depth + parent-chain + resume system-reminder. Time-boxed
 	// and fail-open (empty string = no banner injected).
+	clock.lap("kanban_notice")
 	if banner := chainLineageBanner(input.ProjectDir, input.CWD, input.SessionID); banner != "" {
 		if out.HookSpecificOutput == nil {
 			out.HookSpecificOutput = &HookSpecificOutput{
@@ -552,11 +595,13 @@ func (h *sessionStartHandler) Handle(ctx context.Context, input *HookInput) (*Ho
 	// json:"-" (see the attribution comment above), so a verdict placed there
 	// would be computed correctly and rendered by no one — reproducing the
 	// exact dead end this closes.
+	clock.lap("chain_banner")
 	lagRoot := input.ProjectDir
 	if lagRoot == "" {
 		lagRoot = input.CWD
 	}
 	appendAdditionalContext(out, binaryLagAdvisory(ctx, lagRoot, h.asyncDeferredScans()))
+	clock.lap("binary_lag_advisory")
 
 	// SPEC-GUARD-LIVENESS-001 REQ-GDL-004/005/010/011 (card t333 M2): the guard
 	// firing-liveness verdict, emitted without anyone asking for it.
@@ -570,6 +615,7 @@ func (h *sessionStartHandler) Handle(ctx context.Context, input *HookInput) (*Ho
 	// The read is of a persisted verdict; the refresh that produces the next
 	// one was initiated at the top of Handle and is not waited on here.
 	appendAdditionalContext(out, guardLivenessAdvisory(guardLivenessRoot, h.asyncDeferredScans()))
+	clock.lap("guard_liveness_advisory")
 
 	return out, nil
 }
@@ -664,6 +710,39 @@ func runSkillSymlinks(projectDir string) map[string]any {
 	return d
 }
 
+// migrationFailureNotice renders the user-facing notice for a failed
+// session-start migration, or "" when the data map records no failure.
+// Data["migration_error"] has exactly one writer (runMigration), so its
+// presence IS the failure signal.
+//
+// Three properties of the wording are deliberate:
+//
+//   - It carries no %d slot of its own. runMigration holds only the error, and
+//     the two failure shapes differ in what can be named: a failed apply
+//     already names its number inside the error text ("마이그레이션 %d 적용
+//     실패", migration/runner.go), while a pre-flight version-read failure has
+//     no migration to number. Wrapping the error names the migration wherever
+//     one exists, and invents nothing where none does.
+//   - The check name is capitalized. `moai doctor --check` filters on an exact,
+//     case-sensitive match (internal/cli/doctor.go), and the registered name is
+//     "Migration" — the lowercase spelling SPEC-V3R2-RT-007's AC-06 suggested
+//     matches no check and would run nothing, which is worse than naming no
+//     command at all.
+//   - The wrapped error may be Korean while this sentence is English. Rewriting
+//     the runner's error surface is a separate change; dressing up a root-cause
+//     error to read tidily is the worse trade.
+func migrationFailureNotice(data map[string]any) string {
+	failure, _ := data["migration_error"].(string)
+	if failure == "" {
+		return ""
+	}
+	return fmt.Sprintf(
+		"migration failed: %s — the version file was not advanced; "+
+			"details in .moai/logs/migrations.log; run 'moai doctor --check Migration'",
+		failure,
+	)
+}
+
 // runMigration applies pending migrations (REQ-020, REQ-021). Best-effort,
 // fail-open: a migration error is logged and surfaced via the returned data
 // map, but never propagated. cfg may be nil (handler is resilient to a nil
@@ -712,8 +791,7 @@ func runMigration(ctx context.Context, projectDir string, cfg *config.Config) ma
 // process that needs it.
 func (h *sessionStartHandler) spawnDeferredAdvisoryScans(
 	projectDir string,
-	driftFn func(context.Context, string) (int, error),
-	driftTimeout time.Duration,
+	allowFill bool,
 	completed chan struct{},
 ) <-chan map[string]any {
 	resultCh := make(chan map[string]any, 1)
@@ -721,7 +799,7 @@ func (h *sessionStartHandler) spawnDeferredAdvisoryScans(
 		if completed != nil {
 			defer close(completed)
 		}
-		advisory := h.computeDeferredAdvisory(projectDir, driftFn, driftTimeout)
+		advisory := h.computeDeferredAdvisory(projectDir, allowFill)
 		resultCh <- advisory
 	}()
 	return resultCh
@@ -736,8 +814,7 @@ func (h *sessionStartHandler) spawnDeferredAdvisoryScans(
 // @MX:NOTE: [AUTO] deferred advisory scans — best-effort, idempotent, non-blocking
 func (h *sessionStartHandler) computeDeferredAdvisory(
 	projectDir string,
-	driftFn func(context.Context, string) (int, error),
-	driftTimeout time.Duration,
+	allowFill bool,
 ) map[string]any {
 	res := make(map[string]any)
 
@@ -760,20 +837,24 @@ func (h *sessionStartHandler) computeDeferredAdvisory(
 		res["skill_proposals"] = summary
 	}
 
-	// SPEC-SESSIONSTART-PERF-001 REQ-SSP-015: heaviest step — time-boxed git
-	// scan over SPEC dirs. Uses the snapshotted seams; on deadline emits the
-	// advisory (preserving the "Run 'moai spec drift' for details." hint).
-	driftCtx, cancel := context.WithTimeout(context.Background(), driftTimeout)
-	count, err := driftFn(driftCtx, projectDir)
-	cancel()
-	if err != nil {
-		if errors.Is(err, context.DeadlineExceeded) {
-			res["status_drift_warning"] = driftTimeoutAdvisory
-			slog.Info("session start (deferred): status drift check timed out",
-				"project_dir", projectDir)
+	// SPEC-DRIFT-CACHE-FILL-001 REQ-DCF-011 / REQ-DCF-012: the drift advisory
+	// resolves from the HEAD-SHA cache ALONE — no in-band computation, on
+	// either path. What used to be the heaviest step is now a cache read.
+	//
+	// On a MISS the advisory is omitted for this session and the cache is
+	// filled OUT OF BAND, so the next session gets a hit. That one-session
+	// delay is strictly better than the behaviour it replaces: the compute
+	// never finished inside this short-lived process, so the cache had no
+	// writer at all and the advisory never arrived after a HEAD change.
+	//
+	// allowFill is false on the inline (test-binary) path: the fill is
+	// reachable only past the async seam, so a package's own test run starts no
+	// children.
+	count, ok := driftCachedCountFn(projectDir)
+	if !ok {
+		if allowFill {
+			maybeFillDriftCache(projectDir)
 		}
-		// Other errors (git absent, no specs dir) stay silent, matching the
-		// synchronous detectStatusDrift best-effort contract.
 		return res
 	}
 	if count >= driftWarningThreshold {
@@ -807,6 +888,9 @@ type settingsLocalJSON struct {
 // ~/.moai/.env.glm and injects it along with ANTHROPIC_BASE_URL.
 // Returns a status message if credentials were injected, empty string otherwise.
 func ensureGLMCredentials(projectDir string) string {
+	if isGatewaySession() {
+		return ""
+	}
 	settingsPath := filepath.Join(projectDir, ".claude", "settings.local.json")
 
 	data, err := os.ReadFile(settingsPath)
@@ -823,10 +907,9 @@ func ensureGLMCredentials(projectDir string) string {
 		return ""
 	}
 
-	// Skip auto-injection in CG mode: CG mode intentionally removes AUTH_TOKEN
-	// from settings.local.json so the leader uses Claude OAuth. Teammates get
-	// GLM credentials via tmux session env instead.
-	if isCGMode(projectDir) {
+	// Unmigrated or ambiguous legacy configuration must never trigger automatic
+	// credential injection. This is a data guard, not a live CG provider mode.
+	if hasLegacyCGConfiguration(projectDir) {
 		return ""
 	}
 
@@ -971,16 +1054,17 @@ func maybeDeclareGLMContextWindow(env map[string]string) {
 	}
 }
 
-// isCGMode checks if the project is running in CG (Claude+GLM hybrid) mode
-// by reading team_mode from llm.yaml.
-func isCGMode(projectDir string) bool {
-	llmPath := filepath.Join(projectDir, ".moai", "config", "sections", "llm.yaml")
-	data, err := os.ReadFile(llmPath)
-	if err != nil {
+// hasLegacyCGConfiguration blocks automatic credential injection for legacy or
+// ambiguous raw configuration. It does not activate a provider or tmux mode.
+func hasLegacyCGConfiguration(projectDir string) bool {
+	data, err := os.ReadFile(filepath.Join(projectDir, ".moai", "config", "sections", "llm.yaml"))
+	if os.IsNotExist(err) {
 		return false
 	}
-	// Simple check: look for "team_mode: cg" in the file
-	return strings.Contains(string(data), "team_mode: cg")
+	if err != nil {
+		return true
+	}
+	return config.GuardLegacyCG(data) != nil
 }
 
 // ensureTeammateMode detects whether the session runs inside tmux and
@@ -1022,6 +1106,9 @@ func ensureTeammateMode(projectDir string) string {
 	if inTmux {
 		desired = "tmux"
 	}
+	if isGatewaySession() {
+		desired = "in-process"
+	}
 
 	if current == desired {
 		return desired // Already correct, skip write.
@@ -1031,7 +1118,7 @@ func ensureTeammateMode(projectDir string) string {
 	raw["teammateMode"] = modeJSON
 
 	// Clean up legacy env var if present.
-	if envRaw, ok := raw["env"]; ok {
+	if envRaw, ok := raw["env"]; ok && !isGatewaySession() {
 		var env map[string]string
 		if err := json.Unmarshal(envRaw, &env); err == nil {
 			if _, legacy := env["CLAUDE_CODE_TEAMMATE_DISPLAY"]; legacy {
@@ -1365,6 +1452,13 @@ func loadGLMKeyFromEnvFile() string {
 		key := strings.TrimSpace(parts[0])
 		val := strings.TrimSpace(parts[1])
 		val = strings.Trim(val, `"'`)
+		// The writer escapes a backslash, a double quote and a dollar sign
+		// before quoting the value (glmcred.EscapeValue), so stripping the
+		// quotes leaves the escaped form. Reversing it here is what makes this
+		// reader agree with glmcred.Load, which the same file is written for.
+		// Card t804: without this, a key carrying any of those three characters
+		// reached settings.local.json as a token the provider never issued.
+		val = glmcred.UnescapeValue(val)
 
 		if key == "GLM_API_KEY" && val != "" {
 			return val
@@ -1508,10 +1602,11 @@ func (h *sessionStartHandler) runMultiSessionProtocol(input *HookInput, data map
 // time-boxed rewrite carries no inline magic number).
 const driftWarningThreshold = 5
 
-// driftTimeoutAdvisory is surfaced when the drift check exceeds its time-box: it
-// preserves the "Run 'moai spec drift' for details." advisory so the user still
-// learns drift may exist, WITHOUT the check having blocked session start.
-const driftTimeoutAdvisory = "⚠ SPEC status drift check timed out. Run 'moai spec drift' for details."
+// driftTimeoutAdvisory went with detectStatusDrift (card t898). It was the
+// time-box advisory of the in-band check, and detectStatusDrift was its only
+// reader; the cache-only path emits nothing on a miss, by design. Go does not
+// report an unused const, so a dead one lingers silently — which is why it is
+// removed here rather than left "in case".
 
 // deferredScanJoinBound is the maximum time Handle waits for the deferred
 // advisory scan goroutine before returning. It is the drop-mitigation bound:
@@ -1540,6 +1635,12 @@ const deferredScanJoinBound = 250 * time.Millisecond
 var (
 	driftCountFn             = spec.DriftCountCtx
 	sessionStartDriftTimeout = config.DefaultSessionStartDriftTimeout
+
+	// driftCachedCountFn is the cache-ONLY resolve the deferred advisory step
+	// now uses (SPEC-DRIFT-CACHE-FILL-001 REQ-DCF-011). It performs no git-log
+	// work on either path: a hit answers from the cached report, a miss answers
+	// immediately, so the bounded join never carries a drift computation.
+	driftCachedCountFn = spec.CachedDriftCount
 )
 
 // Deferred-advisory-scan completion seam (test-only). The deferred goroutine
@@ -1594,32 +1695,16 @@ func snapshotDeferredScanCompleted() chan struct{} {
 	return deferredScanCompletedCh
 }
 
-// detectStatusDrift checks for SPEC status drift and returns a warning message
-// if >= driftWarningThreshold SPECs have drifted. Returns empty string otherwise.
+// detectStatusDrift was removed by card t898.
 //
-// The check is time-boxed (SPEC-SESSIONSTART-PERF-001 REQ-SSP-015): an advisory
-// computation on the session-start critical path must never block unboundedly.
-// On deadline exceed the handler skips the (abandoned) computation and emits the
-// advisory instead of blocking. All other errors (git absent, no specs
-// directory) are silently ignored, as before — the check is best-effort and
-// non-blocking.
-func detectStatusDrift(projectDir string) string {
-	ctx, cancel := context.WithTimeout(context.Background(), sessionStartDriftTimeout)
-	defer cancel()
-
-	count, err := driftCountFn(ctx, projectDir)
-	if err != nil {
-		if errors.Is(err, context.DeadlineExceeded) {
-			// Time-box exceeded — emit the advisory rather than block session start.
-			return driftTimeoutAdvisory
-		}
-		// git unavailable, no specs directory, etc. — stay silent (non-blocking).
-		return ""
-	}
-
-	if count >= driftWarningThreshold {
-		return fmt.Sprintf("⚠ %d SPECs have status drift. Run 'moai spec drift' for details.", count)
-	}
-
-	return ""
-}
+// It computed the drift advisory in-band, time-boxed, on the session-start
+// critical path (SPEC-SESSIONSTART-PERF-001 REQ-SSP-015). SPEC-DRIFT-CACHE-FILL-001
+// replaced that path: the deferred step now resolves the advisory from the
+// HEAD-keyed cache alone (see computeDeferredAdvisory above) and fills the cache
+// out of band, so nothing in production called this function any more. Its four
+// time-box guard tests went with it — a guard over unreachable code passes
+// whatever production does, which is the vacuous-green shape
+// .claude/rules/moai/development/verification-completeness.md §1.1 names.
+//
+// Reviving it would mean putting the compute back in band, which is the decision
+// SPEC-DRIFT-CACHE-FILL-001 reversed; this removal changes no behaviour.

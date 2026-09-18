@@ -5,7 +5,7 @@
 // a correction the operator decided on. Nothing here infers what a card
 // should say or where it belongs — no analysis, no absorption, no silent
 // promotion. Those would collide head-on with the [HARD] clauses in
-// workflows/todo.md and kanban-dispatch.md (the pick is the operator's; the
+// workflows/gtd.md and kanban-dispatch.md (the pick is the operator's; the
 // queue is never auto-populated or reordered by inferred priority), and a
 // doctrine change would have to come first.
 //
@@ -97,7 +97,7 @@ untouched.`,
 // reposition a card within the queue file's order under the lock.
 //
 // Order is the only thing the queue records about priority — there are no
-// priority fields (workflows/todo.md § Boundaries: not a task tracker) — so
+// priority fields (workflows/gtd.md § Boundaries: not a task tracker) — so
 // an operator who wants a card considered sooner previously had to hand-edit
 // the file, the one thing the doctrine tells them not to do.
 //

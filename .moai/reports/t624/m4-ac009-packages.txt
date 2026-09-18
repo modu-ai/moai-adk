@@ -1,3 +1,0 @@
-ok  	github.com/modu-ai/moai-adk/internal/hook	159.262s
-ok  	github.com/modu-ai/moai-adk/internal/template	51.493s
-pkg_exit=0

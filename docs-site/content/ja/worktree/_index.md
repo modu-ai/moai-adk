@@ -67,7 +67,7 @@ flowchart TD
     L2 --> Who2[MoAI がユーザーオプトインで生成]
 ```
 
-鍵は **共有と隔離の分離**です。リポジトリの履歴とリモート (remote) は 1 箇所で一緒に管理しつつ、作業ディレクトリとそこに紐づく LLM 設定だけをツリーごとに完全に切り離します。そのため、どの worktree でコミットしても他の worktree がただちにそのコミットを認識し、ブランチが絡まりません。MoAI-ADK はその上に「どの worktree に入るか」と「どの LLM モードで回すか」を一度に束ねるランチャー (`moai cc` · `moai glm` · `moai cg`) を載せたものです。
+鍵は **共有と隔離の分離**です。リポジトリの履歴とリモート (remote) は 1 箇所で一緒に管理しつつ、作業ディレクトリとそこに紐づく LLM 設定だけをツリーごとに完全に切り離します。そのため、どの worktree でコミットしても他の worktree がただちにそのコミットを認識し、ブランチが絡まりません。MoAI-ADK はその上に「どの worktree に入るか」と「どの LLM モードで回すか」を一度に束ねるランチャー (`moai cc` · `moai glm`) を載せたものです。
 
 ## 核心ワークフロー
 
@@ -117,8 +117,7 @@ flowchart TD
 #### ステップ 2: Implement (Terminals 2, 3, 4...)
 
 実装ステップは物量こそ多いものの、SPEC がすでに方向を定めているので、GLM のような安価な
-モデルでも十分に役割を果たします。ワークツリーへの進入はランチャー (`moai cc` · `moai glm` ·
-`moai cg`) の `-w` フラグが担います。指定した名前のワークツリーがなければ、その場で作って
+モデルでも十分に役割を果たします。ワークツリーへの進入はランチャー (`moai cc` · `moai glm`) の `-w` フラグが担います。指定した名前のワークツリーがなければ、その場で作って
 くれます:
 
 ```bash
@@ -140,7 +139,7 @@ $ moai glm -w SPEC-AUTH-002 --spawn
 **利点**:
 
 - 完全に隔離された作業環境
-- GLM のコスト効率 (削減幅は [CG モード](/ja/multi-llm/cg-mode) を参照)
+- バックエンドの明示的な選択：worktree ごとに `moai cc` または `moai glm` を選びます。
 - 衝突のない無制限の並列開発
 
 #### ステップ 3: Cleanup
@@ -158,7 +157,7 @@ moai worktree done feature/SPEC-AUTH-001 --delete-branch    # 整理 + ローカ
 | やりたいこと            | コマンド                        | 使用例                                 |
 | ----------------------- | ------------------------------- | -------------------------------------- |
 | Worktree を作って進入   | `moai cc -w <名前>`             | `moai glm -w SPEC-AUTH-001`            |
-| セッションを保ったまま新しいウィンドウで開く | `moai cc -w <名前> --spawn` | `moai cg -w SPEC-AUTH-002 --spawn`     |
+| セッションを保ったまま新しいウィンドウで開く | `moai cc -w <名前> --spawn` | `moai cc -w SPEC-AUTH-002 --spawn`     |
 | Worktree の一覧を確認   | `git worktree list`             | `git worktree list`                    |
 
 `moai worktree` は、作られたワークツリーを管理します:
@@ -209,38 +208,9 @@ graph TD
 - ブランチ間の衝突なしに作業
 - 完了した SPEC だけを main へマージ
 
-### 2. LLM 独立性 (LLM Independence)
+### 2. LLM の独立性
 
-Worktree ごとに LLM 実行モードを個別に決められます。下記のように 3 つのターミナルがそれぞれ
-`moai cc` (Claude 専用)、`moai glm` (GLM 専用)、`moai cg` (Claude リーダー + GLM ワーカーの
-ハイブリッド) で違う回り方をしても、互いに干渉しません:
-
-```mermaid
-sequenceDiagram
-    participant T1 as Terminal 1<br/>Worktree 1
-    participant T2 as Terminal 2<br/>Worktree 2
-    participant T3 as Terminal 3<br/>Worktree 3
-    participant Main as Main Repository
-
-    T1->>T1: moai cc (Claude)
-    Note over T1: 高推論モデルで<br/>計画を実行
-
-    T2->>T2: moai glm
-    Note over T2: 低コストモデルで<br/>実装を実行
-
-    T3->>T3: moai cg
-    Note over T3: ハイブリッドで<br/>品質・コストのバランス
-
-    par 並列作業
-        T1->>Main: Plan 作業
-        T2->>Main: Implement 作業
-        T3->>Main: Implement 作業
-    end
-
-    Main-->>T1: 完了した SPEC のみマージ
-    Main-->>T2: 完了した SPEC のみマージ
-    Main-->>T3: 完了した SPEC のみマージ
-```
+各 worktree で Claude セッションには `moai cc`、GLM セッションには `moai glm` を明示的に選びます。どちらも廃止された混合構成の役割を再現しません。
 
 ### 3. 無制限の並列開発 (Unlimited Parallel)
 

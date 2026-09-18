@@ -226,6 +226,37 @@ Fail-open: if the renderer is unavailable or the review file is absent, the
 emission step is skipped silently — the plan-phase pipeline is NOT blocked. The
 plan HTML report is enrichment, not a gate.
 
+#### Step 2.3.3b: Decision-Index Presentation (decision gate)
+
+**Where** the `interview.decision_gate` setting resolves `on` and the SPEC's
+`.moai/specs/{SPEC-ID}/decision-index.md` exists, the orchestrator surfaces the
+index rows as additive prose context in the SAME turn the Implementation
+Kickoff Approval `AskUserQuestion` fires — beside the plan HTML report path,
+never instead of it. The rows state what is unresolved and why; the index
+itself never carries a preferred answer, in either recommendation mode, and the
+gate question follows the landed `recommendation_mode` convention unchanged.
+
+Fail-open, like the plan HTML report: **where** the decision gate is `off` or
+the index is absent or unreadable, this presentation step is skipped silently —
+the gate is unchanged and the plan-phase pipeline is NOT blocked. No second
+human gate is introduced.
+
+After the gate, operator verdicts per row are written back into the row's
+`Operator verdict:` line using exactly the verdict-action vocabulary `DECIDE`,
+`NEED_ANALYSIS`, `NEED_EVIDENCE`, `DEFER`. When a recorded verdict is
+product-level (MVP or phase scope, tier behavior, UX flow, pricing, privacy or
+security promise), the kickoff flow surfaces the reconciliation of
+`.moai/project/product.md` as a named design decision: `.moai/project/**`
+scaffolding is owned by manager-docs, so the reconcile act is delegated to
+manager-docs or taken explicitly by the operator — never performed silently by
+manager-spec. A SPEC-level verdict (retry count, internal algorithm, query
+shape) touches the decision index and the SPEC only.
+
+Zero rows is not approval: a decision index with zero judgment points means
+only that this pass found no unresolved decisions — the Implementation
+Kickoff Approval gate remains a separate affirmative act that fires regardless
+of the row count.
+
 #### Step 2.3.4: FAIL Path — Retry Loop (max 3 iterations)
 
 If verdict is FAIL:
@@ -485,7 +516,7 @@ Purpose: After SPEC creation, detect execution environment and present optimal i
 Read `.moai/config/sections/llm.yaml` → `llm.team_mode` field:
 - `""` (empty) or `"cc"`: CC mode (Claude-only)
 - `"glm"`: GLM mode (GLM-only)
-- `"cg"`: CG mode (Claude Leader + GLM Workers)
+- `"cg"`: legacy configuration; stop execution-mode selection and show `moai migrate cg`. Do not activate or silently replace mixed roles.
 
 **Step 2: Detect tmux availability**
 Check `$TMUX` environment variable via Bash: `test -n "$TMUX" && echo "tmux" || echo "no-tmux"`
@@ -498,7 +529,6 @@ When tmux IS available: AskUserQuestion with 3 options (descriptions adapt to ac
 - Option 1 (Recommended): Worktree + {active_mode}
   - CC: "Create MoAI worktree with tmux session. All agents use Claude. Highest quality."
   - GLM: "Create MoAI worktree with tmux session. All agents use GLM. Cost optimized."
-  - CG: "Create MoAI worktree with tmux session. Leader=Claude, Workers=GLM. Balanced quality-cost."
 - Option 2: Sub-agent Mode (sequential): Use sequential sub-agents. Best for simple, single-domain tasks. (Agent Teams in-process mode retired.)
 
 When tmux is NOT available: AskUserQuestion with 1 option:
@@ -507,8 +537,8 @@ When tmux is NOT available: AskUserQuestion with 1 option:
 **Step 4: Execute selected mode**
 - **Sub-agent mode**: Proceed to `/moai run SPEC-{ID} --solo`
 - **Isolated-workspace mode**: tell the user to enter a workspace and run there —
-  `moai cc -w <name>` in place, or `moai cg -w <name> --spawn` for a teammate
-  window that leaves this session running. Plan does not create the workspace.
+  `moai cc -w <name>` in place, or `moai cc -w <name> --spawn` for a separate
+  Claude session window that leaves this session running. Neither command preserves legacy CG mixed roles. Plan does not create the workspace.
 
 **Step 5: Gate result passing**
 - Pass the selected execution mode to the run workflow

@@ -37,6 +37,13 @@ Three frictions are observed in practice and are worth expecting rather than red
 
 - **A bare name usually resolves; the short reference is the exception.** The runtime delivers on the name alone when exactly one live session answers to it, and reaches for a short reference only when several sessions share the name or it could not check everywhere your sessions run. So treat a refusal as that exception rather than as the norm: re-send with the reference the error supplies, rather than assuming the peer is unreachable. These appear only in the discovery tool's output, not the user-facing listing. A same-named in-process agent fails differently: with the team namespace on it takes the bare name silently, and a `routing` object on the result is the only sign it went there and was lost. Conditional — read the result rather than always reaching for the reference.
 - **A reply address is not guaranteed to route.** A recipient may be unable to answer the sender it was addressed by and fall back to guessing a peer. Consequently a message must carry enough identification for a human or a peer to route the answer manually: name the sending context and what the answer is for. Never assume a reply will land automatically, and never make the sender's identity implicit.
+- **A held message now reports back.** Where the receiving session's permission policy holds an inbound peer
+  message for its user's approval — or refuses it — a `[Cross-session delivery notice]` reaches the sender for
+  a peer on this machine. Before that notice existed the hold left no trace, so a sender read its own
+  successful send as delivery and waited on a reply that was never going to come. The notice is the only
+  signal: nothing in the send result predicts it, it arrives after the fact, and no notice is emitted at all
+  for a Remote Control, cloud, or Claude Desktop peer. Re-sending does not help — the same policy holds the
+  next copy — so the notice is surfaced to the operator instead.
 - **The sender's permission class is disclosed.** An arriving message states whether its sender bypasses permission prompts, and that disclosure is what the receiver's inbound default keys on. A message from a bypassing sender is more likely to be held for approval, so a session that expects to be answered promptly should not assume delivery.
 
 An arriving message carries **both** the sender's name and a reply address — not one to the exclusion of the other. Replying to the name as given is the normal path; the address is the fallback where that name does not resolve. What fails is re-deriving either from a listing instead of copying what the message supplied.
@@ -70,7 +77,7 @@ The channel's gate reads one machine-global boolean, `cachedGrowthBookFeatures.t
 
 **Diagnostic.** `python3 -c "import json,os;print(json.load(open(os.path.expanduser('~/.claude.json')))['cachedGrowthBookFeatures']['tengu_harbor_kite'])"` — `false` means the channel is off for every session on this machine that cannot write the slot.
 
-The consequence for MoAI is direct: `moai glm`, and the GLM panes of `moai cg`, read the slot and never write it, so their messaging tracks whatever a first-party session last left on this machine. Attributing an outage there to the GLM backend is the natural reading and the wrong one — the same session works or does not according to a value it has no part in setting.
+The consequence for MoAI is direct: `moai glm` sessions read the slot and never write it, so their messaging tracks whatever a first-party session last left on this machine. Attributing an outage there to the GLM backend is the natural reading and the wrong one — the same session works or does not according to a value it has no part in setting.
 
 **The measurement this rests on.** Holding model and environment fixed and flipping only the slot, a session with `ANTHROPIC_BASE_URL` pointed at a third-party endpoint was started four times: `true` produced an inbox socket twice, `false` produced none twice, with no exception. Separately, a first-party session was observed overwriting the slot from `false` to `true`, while a third-party session left the write timestamp unchanged across six reads in 36 seconds — it never wrote the slot once.
 

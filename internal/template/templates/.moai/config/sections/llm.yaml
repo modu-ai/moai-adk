@@ -1,6 +1,16 @@
 llm:
   mode: ""
   team_mode: ""
+
+  # Agent harness selected at init time. One of claude | gpt | both,
+  # written explicitly on every init run — including the claude default — so
+  # doctor and update read the resolved value instead of inferring it.
+  # "gpt" means Codex-only deployment: AGENTS.md and Codex surfaces only
+  # (no .claude/ tree, no CLAUDE.md, no .mcp.json). A project initialized
+  # before this key existed reads as claude (unchanged behavior).
+  # Note: this is NOT harness_agents (the /moai:harness specialist map below).
+  harness: "claude"
+
   glm_env_var: "GLM_API_KEY"
 
   # Explicit Claude Code binary pin. When set to a path, moai launches THIS
@@ -22,7 +32,7 @@ llm:
   # top-column name "max" is still READ as an alias for "high", but is never
   # written back.
   #
-  # Under a GLM backend (team_mode: glm/cg), z.ai exposes a 3-level
+  # Under a GLM backend (team_mode: glm), z.ai exposes a 3-level
   # reasoning_effort control (low/high/max; GLM-5.3 reasons ALWAYS — reasoning
   # cannot be disabled). The agent effort from the profile column above
   # collapses onto it:
@@ -48,7 +58,7 @@ llm:
   performance_tier: "medium"
 
   # Profile matrix (transparency + editability). Each profile column maps each
-  # retained agent NAME to a {model, effort} pair — 12 agents x 3 columns = 36
+  # retained agent NAME to a {model, effort} pair — 13 agents x 3 columns = 39
   # cells. The Go default (template.DefaultProfileMatrix) is the authoritative
   # fallback for any cell absent here. Agents not listed (any user-added agent)
   # stay model: inherit and are never injected.
@@ -105,6 +115,7 @@ llm:
       sync-auditor:    { model: opus,   effort: high }
       manager-develop: { model: opus,   effort: medium }
       super-advisor:   { model: opus,   effort: high }
+      mission-governor: { model: opus,  effort: high }
       manager-design:  { model: opus,   effort: high }
       manager-lead:    { model: opus,   effort: high }
       builder-harness: { model: opus,   effort: high }
@@ -118,6 +129,7 @@ llm:
       sync-auditor:    { model: opus,   effort: high }
       manager-develop: { model: opus,   effort: medium }
       super-advisor:   { model: opus,   effort: high }
+      mission-governor: { model: opus,  effort: high }
       manager-design:  { model: opus,   effort: high }
       manager-lead:    { model: opus,   effort: high }
       builder-harness: { model: opus,   effort: medium }
@@ -131,6 +143,7 @@ llm:
       sync-auditor:    { model: opus,   effort: medium }
       manager-develop: { model: opus,   effort: medium }
       super-advisor:   { model: opus,   effort: high }
+      mission-governor: { model: opus,  effort: high }
       manager-design:  { model: opus,   effort: medium }
       manager-lead:    { model: opus,   effort: medium }
       builder-harness: { model: opus,   effort: low }

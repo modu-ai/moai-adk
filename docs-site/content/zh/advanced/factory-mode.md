@@ -48,7 +48,7 @@ $ moai glm -f lane-3
 
 `-f` 后面不接数量时，默认以一条泳道（`lane-1`）起步。队列开始积压之后，再用 `moai cc -f lane-<n>`（或 `moai glm -f lane-<n>`）一条一条地加泳道。泳道与看板的伴随会话一样，由**人在各自的终端里亲自**启动 —— 会话替别的会话启动的路径不存在。
 
-一次运行只能带一个进入标记 —— `-k` 与 `-f` 同时给出会报错。v1.2.0 的统一进入形式 —— `-k <N>`（主控）和 `-k <N> --name lane-<i>`（泳道）—— 仍是有效的兼容形式（不带 N、只写 `-k --name lane-<i>` 时默认 8 条泳道）。混合后端启动器 `moai cg` 出于与看板相同的原因拒绝工厂（`FACTORY_MODE_UNSUPPORTED_BACKEND`）。看板主控的套接字开在 `/tmp/moai-socket-kanban/<run-id>`，工厂主控的套接字开在 `/tmp/moai-socket-factory/<run-id>`，引导信息会一并给出实际路径。
+一次运行只能带一个进入标记 —— `-k` 与 `-f` 同时给出会报错。 v1.2.0 的统一进入形式 —— `-k <N>`（主控）和 `-k <N> --name lane-<i>`（泳道）—— 仍是有效的兼容形式（不带 N、只写 `-k --name lane-<i>` 时默认 8 条泳道）。 看板主控的套接字开在 `/tmp/moai-socket-kanban/<run-id>`，工厂主控的套接字开在 `/tmp/moai-socket-factory/<run-id>`，引导信息会一并给出实际路径。 CG 已停用，请用 `moai migrate cg` 预览迁移选项。
 
 ## 主控的路由 —— 卡片整张进空闲泳道
 
@@ -90,7 +90,7 @@ flowchart TD
 
 ## 泳道编号的归属 —— factory.db
 
-哪个编号被哪条泳道握着，记录在 `~/.moai/db/<project-key>/factory/factory.db` 里。新泳道启动时，编号只跳过**仍被活着的会话握住的**那些，落到下一个空号 —— 已死泳道的编号会被释放并重新使用，残留的占用也从数据库中清掉。旧的 `.moai/state/factory/workers.json` 只导入一次，之后作为回滚凭据保留。`-f lane-<n>` 形式已经定下了名字，所以与 `--name`/`-n` 同时给出会报错。
+哪个编号被哪条泳道握着，记录在 `~/.moai/db/<project-key>/factory/factory.db` 里。启动目录是临时目录的项目（没有绝对 `MOAI_HOME` 覆盖）会把这一数据库放在项目本地的 `<base>/.moai/db/<project-key>/factory/factory.db` —— 与 backlog 队列同一例外。新泳道启动时，编号只跳过**仍被活着的会话握住的**那些，落到下一个空号 —— 已死泳道的编号会被释放并重新使用，残留的占用也从数据库中清掉。旧的 `.moai/state/factory/workers.json` 只导入一次，之后作为回滚凭据保留。`-f lane-<n>` 形式已经定下了名字，所以与 `--name`/`-n` 同时给出会报错。
 
 ## 不变的东西
 

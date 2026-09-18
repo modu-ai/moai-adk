@@ -1,2 +1,0 @@
-(pgrep exit 1 = no go test / cli.test / go vet / go build process)
-positive control pgrep -x zsh count:       42

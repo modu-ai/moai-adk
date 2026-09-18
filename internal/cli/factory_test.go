@@ -140,6 +140,7 @@ func TestParseFactoryFlag(t *testing.T) {
 		wantEnabled   bool
 		wantWorkers   int
 		wantWorkerNum int
+		wantAgent     bool
 		wantRest      []string
 		wantErr       bool
 		errMarker     string
@@ -147,16 +148,20 @@ func TestParseFactoryFlag(t *testing.T) {
 		{name: "absent", args: []string{"-p", "work"}, wantRest: []string{"-p", "work"}},
 		{name: "bare -f", args: []string{"-f"}, wantEnabled: true},
 		{name: "long form bare", args: []string{"--factory", "-b"}, wantEnabled: true, wantRest: []string{"-b"}},
-		{name: "-f N", args: []string{"-f", "4"}, wantEnabled: true, wantWorkers: 4},
-		{name: "-f=N", args: []string{"-f=3"}, wantEnabled: true, wantWorkers: 3},
-		{name: "--factory N", args: []string{"--factory", "12"}, wantEnabled: true, wantWorkers: 12},
-		{name: "--factory=N", args: []string{"--factory=1"}, wantEnabled: true, wantWorkers: 1},
+		// The numeric count forms are RETIRED (operator goal 2026-09-16):
+		// a supplied number now errors naming the accepted shapes.
+		{name: "-f N errors post-N-removal", args: []string{"-f", "4"}, wantErr: true, errMarker: "agent role token"},
+		{name: "-f=N errors post-N-removal", args: []string{"-f=3"}, wantErr: true, errMarker: "agent role token"},
+		{name: "--factory N errors post-N-removal", args: []string{"--factory", "12"}, wantErr: true, errMarker: "agent role token"},
+		{name: "--factory=N errors post-N-removal", args: []string{"--factory=1"}, wantErr: true, errMarker: "agent role token"},
+		{name: "-f agent", args: []string{"-f", "agent"}, wantEnabled: true, wantAgent: true},
+		{name: "-f=agent", args: []string{"-f=agent"}, wantEnabled: true, wantAgent: true},
 		{name: "-f lane-2", args: []string{"-f", "lane-2"}, wantEnabled: true, wantWorkerNum: 2},
 		{name: "-f=lane-3", args: []string{"-f=lane-3"}, wantEnabled: true, wantWorkerNum: 3},
 		{name: "--factory=lane-7", args: []string{"--factory=lane-7"}, wantEnabled: true, wantWorkerNum: 7},
 		{name: "positional flag is not a value", args: []string{"-f", "-b"}, wantEnabled: true, wantRest: []string{"-b"}},
-		{name: "zero count errors", args: []string{"-f", "0"}, wantErr: true, errMarker: "lane count of 1 or more"},
-		{name: "negative joined count errors", args: []string{"-f=-2"}, wantErr: true, errMarker: "lane count of 1 or more"},
+		{name: "zero count errors", args: []string{"-f", "0"}, wantErr: true, errMarker: "agent role token"},
+		{name: "negative joined count errors", args: []string{"-f=-2"}, wantErr: true, errMarker: "agent role token"},
 		{name: "non-numeric non-lane errors", args: []string{"-f", "SPEC-X-001"}, wantErr: true, errMarker: "lane label"},
 		{name: "unnumbered lane errors", args: []string{"-f", "worker"}, wantErr: true, errMarker: "lane label"},
 		{name: "worker zero errors", args: []string{"-f", "lane-0"}, wantErr: true, errMarker: "lane label"},
@@ -176,9 +181,9 @@ func TestParseFactoryFlag(t *testing.T) {
 			if err != nil {
 				t.Fatalf("parseFactoryFlag(%v) unexpected error: %v", c.args, err)
 			}
-			if p.Enabled != c.wantEnabled || p.Workers != c.wantWorkers || p.WorkerNumber != c.wantWorkerNum {
-				t.Errorf("parseFactoryFlag(%v) = (enabled %v, workers %d, workerNum %d), want (%v, %d, %d)",
-					c.args, p.Enabled, p.Workers, p.WorkerNumber, c.wantEnabled, c.wantWorkers, c.wantWorkerNum)
+			if p.Enabled != c.wantEnabled || p.Workers != c.wantWorkers || p.WorkerNumber != c.wantWorkerNum || p.AgentRole != c.wantAgent {
+				t.Errorf("parseFactoryFlag(%v) = (enabled %v, workers %d, workerNum %d, agent %v), want (%v, %d, %d, %v)",
+					c.args, p.Enabled, p.Workers, p.WorkerNumber, p.AgentRole, c.wantEnabled, c.wantWorkers, c.wantWorkerNum, c.wantAgent)
 			}
 			wantRest := c.wantRest
 			if wantRest == nil {
@@ -229,17 +234,24 @@ func TestParseLauncherEntryMerge(t *testing.T) {
 		}
 	})
 
-	t.Run("-f N carries the count", func(t *testing.T) {
+	t.Run("bare -f is the lead with the default count", func(t *testing.T) {
 		t.Parallel()
-		p, err := parseLauncherEntry([]string{"-f", "4"})
+		p, err := parseLauncherEntry([]string{"-f"})
 		if err != nil {
-			t.Fatalf("parseLauncherEntry(-f 4): %v", err)
+			t.Fatalf("parseLauncherEntry(-f): %v", err)
 		}
-		if !p.FactoryEnabled || p.FactoryWorkers != 4 {
-			t.Errorf("-f 4 = (factory %v, workers %d), want (true, 4)", p.FactoryEnabled, p.FactoryWorkers)
+		if !p.FactoryEnabled || p.FactoryWorkers != 1 {
+			t.Errorf("-f = (factory %v, workers %d), want (true, 1 default)", p.FactoryEnabled, p.FactoryWorkers)
 		}
 		if len(p.Rest) != 0 {
-			t.Errorf("-f 4 rest = %v, want empty (the token must not reach the launcher)", p.Rest)
+			t.Errorf("-f rest = %v, want empty (the token must not reach the launcher)", p.Rest)
+		}
+	})
+
+	t.Run("-f N is retired post-N-removal", func(t *testing.T) {
+		t.Parallel()
+		if _, err := parseLauncherEntry([]string{"-f", "4"}); err == nil || !strings.Contains(err.Error(), "agent role token") {
+			t.Errorf("parseLauncherEntry(-f 4) = %v, want the retired-count error", err)
 		}
 	})
 
@@ -261,14 +273,10 @@ func TestParseLauncherEntryMerge(t *testing.T) {
 		}
 	})
 
-	t.Run("-f N --name lane-i keeps N", func(t *testing.T) {
+	t.Run("-f N --name lane-i is retired with the count form", func(t *testing.T) {
 		t.Parallel()
-		p, err := parseLauncherEntry([]string{"-f", "5", "--name", "lane-2"})
-		if err != nil {
-			t.Fatalf("parseLauncherEntry(-f 5 --name lane-2): %v", err)
-		}
-		if !p.FactoryEnabled || p.FactoryWorkers != 5 {
-			t.Errorf("-f 5 --name lane-2 = (factory %v, workers %d), want (true, 5)", p.FactoryEnabled, p.FactoryWorkers)
+		if _, err := parseLauncherEntry([]string{"-f", "5", "--name", "lane-2"}); err == nil || !strings.Contains(err.Error(), "agent role token") {
+			t.Errorf("parseLauncherEntry(-f 5 --name lane-2) = %v, want the retired-count error", err)
 		}
 	})
 
@@ -286,7 +294,7 @@ func TestParseLauncherEntryMerge(t *testing.T) {
 	t.Run("-f with -k is a conflict", func(t *testing.T) {
 		t.Parallel()
 		for _, args := range [][]string{
-			{"-f", "4", "-k"},
+			{"-f", "agent", "-k"},
 			{"-f", "-k", "SPEC-X-001"},
 			{"--factory=lane-2", "-k", "3"},
 		} {
@@ -635,9 +643,9 @@ func TestRejectFactoryOnCG(t *testing.T) {
 		{"-k", "4"},
 		{"-k", "--name", "lane-1"},
 		{"-f"},
-		{"-f", "4"},
+		{"-f", "agent"},
 		{"-f", "lane-2"},
-		{"--factory=3"},
+		{"--factory=lane-3"},
 	} {
 		if err := rejectFactoryOnCG(args); err == nil || !strings.Contains(err.Error(), factoryUnsupportedBackendSentinel) {
 			t.Errorf("factory form %v on cg must carry the sentinel, got %v", args, err)
@@ -652,7 +660,11 @@ func TestRejectFactoryOnCG(t *testing.T) {
 	if err := rejectFactoryOnCG([]string{"-f", "SPEC-X-001"}); err == nil || !strings.Contains(err.Error(), "lane label") {
 		t.Errorf("invalid -f value must surface the parse error, got %v", err)
 	}
-	if err := rejectFactoryOnCG([]string{"-f", "4", "-k"}); err == nil || !strings.Contains(err.Error(), "at most one") {
+	// The retired numeric count form surfaces the parse error on cg too.
+	if err := rejectFactoryOnCG([]string{"-f", "4"}); err == nil || !strings.Contains(err.Error(), "agent role token") {
+		t.Errorf("retired -f N on cg must surface the parse error, got %v", err)
+	}
+	if err := rejectFactoryOnCG([]string{"-f", "lane-2", "-k"}); err == nil || !strings.Contains(err.Error(), "at most one") {
 		t.Errorf("-f plus -k on cg must surface the conflict, got %v", err)
 	}
 	// The plain kanban forms belong to the kanban rejection, not this one.
@@ -697,10 +709,10 @@ func TestFactoryGenealogyInHelp(t *testing.T) {
 	for _, cmd := range []string{ccCmd.Long, glmCmd.Long} {
 		for _, marker := range []string{
 			"--factory", "#1513", "7f61332ef", "RENAMED", "RETIRED",
-			"-f, --factory [N]", // the revived entry form is documented again
-			"-f lane-<n>",       // the incremental single-lane form
-			"-k <N>",            // the v1.2.0 unified shapes remain documented
-			"t118",              // the revival names its own card
+			"-f, --factory", // the lead entry (numeric count retired 2026-09-16)
+			"-f lane-<n>",   // the incremental single-lane form
+			"-k <N>",        // the v1.2.0 unified shapes remain documented
+			"t118",          // the revival names its own card
 		} {
 			if !strings.Contains(cmd, marker) {
 				t.Errorf("help text missing genealogy/entry marker %q", marker)
@@ -772,14 +784,19 @@ func TestCCFactoryEntryRecordsFailOpenRunMetadata(t *testing.T) {
 	if err := runCC(ccCmd, []string{"-f"}); err != nil {
 		t.Fatalf("runCC(-f): %v", err)
 	}
-	db, err := homestate.OpenFactory(root)
+	record, err := kanban.NewBacklogStore(kanban.BacklogPathForRoot(root)).LoadPure()
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer func() { _ = db.Close() }()
 	var manifestRaw string
-	if err := db.DB.QueryRow(`SELECT manifest_json FROM runs WHERE run_id=?`, c.runID).Scan(&manifestRaw); err != nil {
-		t.Fatalf("factory run row missing: %v", err)
+	for _, run := range record.Runtime.Runs {
+		if run.RunID == c.runID {
+			manifestRaw = run.ManifestJSON
+			break
+		}
+	}
+	if manifestRaw == "" {
+		t.Fatalf("factory runtime run missing from todo store: %q", c.runID)
 	}
 	var manifest map[string]string
 	if err := json.Unmarshal([]byte(manifestRaw), &manifest); err != nil {
@@ -829,21 +846,33 @@ func TestCC_FactoryEntryThroughRunCC(t *testing.T) {
 		}
 	})
 
-	t.Run("-f 4 carries the count to the lead", func(t *testing.T) {
+	t.Run("bare -f launches the lead with the default count", func(t *testing.T) {
 		clearFactoryTestEnv(t)
 		c := installFactoryLaunchSeam(t)
 
 		buf := new(bytes.Buffer)
 		ccCmd.SetOut(buf)
 		ccCmd.SetErr(buf)
-		if err := runCC(ccCmd, []string{"-f", "4"}); err != nil {
-			t.Fatalf("runCC(-f 4): %v", err)
+		if err := runCC(ccCmd, []string{"-f"}); err != nil {
+			t.Fatalf("runCC(-f): %v", err)
 		}
-		if c.workers != "4" {
-			t.Errorf("MOAI_FACTORY_WORKERS at launch = %q, want 4", c.workers)
+		if c.workers != "1" {
+			t.Errorf("MOAI_FACTORY_WORKERS at launch = %q, want 1 (default)", c.workers)
 		}
 		if c.worker != "" {
 			t.Errorf("MOAI_FACTORY_WORKER at launch = %q, want unset on a lead", c.worker)
+		}
+	})
+
+	t.Run("-f N is retired post-N-removal at the cc entry", func(t *testing.T) {
+		clearFactoryTestEnv(t)
+		installFactoryLaunchSeam(t)
+
+		buf := new(bytes.Buffer)
+		ccCmd.SetOut(buf)
+		ccCmd.SetErr(buf)
+		if err := runCC(ccCmd, []string{"-f", "4"}); err == nil || !strings.Contains(err.Error(), "agent role token") {
+			t.Errorf("runCC(-f 4) = %v, want the retired-count error", err)
 		}
 	})
 
@@ -878,8 +907,8 @@ func TestCC_FactoryEntryThroughRunCC(t *testing.T) {
 		buf := new(bytes.Buffer)
 		ccCmd.SetOut(buf)
 		ccCmd.SetErr(buf)
-		if err := runCC(ccCmd, []string{"-f", "4", "-k"}); err == nil || !strings.Contains(err.Error(), "at most one") {
-			t.Errorf("runCC(-f 4 -k) = %v, want the one-entry-token conflict", err)
+		if err := runCC(ccCmd, []string{"-f", "agent", "-k"}); err == nil || !strings.Contains(err.Error(), "at most one") {
+			t.Errorf("runCC(-f agent -k) = %v, want the one-entry-token conflict", err)
 		}
 	})
 }

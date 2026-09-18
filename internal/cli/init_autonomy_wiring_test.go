@@ -184,13 +184,13 @@ func TestRunInit_FlagAutonomyTierNonInteractive(t *testing.T) {
 	_ = projectDir
 }
 
-// TestRunInit_SemiAutoAndEmptyAreZeroDelta asserts AC-004: wizard answers of
-// "" and "semi-auto" (flag absent) produce zero file delta. One shared HOME
-// (so embedded paths match); the USER file is snapshotted between the two
-// runs — unrelated init steps (env provisioning) mutate it identically in both
-// runs, so any byte difference between the snapshots isolates the autonomy
-// selection. The two PROJECT settings.json must also be byte-equal.
-func TestRunInit_SemiAutoAndEmptyAreZeroDelta(t *testing.T) {
+// TestRunInit_SemiAutoAndEmptyAreBoundedDelta asserts REQ-004 of
+// SPEC-AUT-PERMMODES-001 (re-scoped from AC-004's zero delta): wizard answers
+// of "" and "semi-auto" (flag absent) produce the BOUNDED delta — the USER
+// settings.json carries permissions.defaultMode="acceptEdits", the two runs
+// stay byte-identical to each other, and the PROJECT settings.json are
+// byte-equal across runs.
+func TestRunInit_SemiAutoAndEmptyAreBoundedDelta(t *testing.T) {
 	homeDir := t.TempDir()
 	t.Setenv("HOME", homeDir)
 	t.Setenv("MOAI_SANDBOX_PROOF", "")
@@ -204,22 +204,27 @@ func TestRunInit_SemiAutoAndEmptyAreZeroDelta(t *testing.T) {
 	afterSemi := readSettingsFileOrNull(t, userPath)
 
 	if !bytes.Equal(afterEmpty, afterSemi) {
-		t.Errorf("USER settings.json differs between empty and semi-auto wizard answers (zero delta violated):\n--empty--\n%s\n--semi-auto--\n%s", afterEmpty, afterSemi)
+		t.Errorf("USER settings.json differs between empty and semi-auto wizard answers (bounded delta violated):\n--empty--\n%s\n--semi-auto--\n%s", afterEmpty, afterSemi)
 	}
-	// The bundle is the only USER-file writer of permissions.defaultMode; a
-	// semi-auto/empty selection must never add it.
+	// The bounded delta: both selections MUST write USER
+	// permissions.defaultMode="acceptEdits" — and that is the ONLY permission
+	// key either selection may add.
 	for name, got := range map[string][]byte{"empty": afterEmpty, "semi-auto": afterSemi} {
 		if got == nil {
+			t.Errorf("%s selection must write USER settings.json (bounded delta requires the defaultMode record); got no file", name)
 			continue
 		}
 		var doc map[string]any
 		if err := json.Unmarshal(got, &doc); err != nil {
 			t.Fatalf("parse USER settings.json (%s): %v", name, err)
 		}
-		if perms, ok := doc["permissions"].(map[string]any); ok {
-			if _, has := perms["defaultMode"]; has {
-				t.Errorf("%s selection must not write permissions.defaultMode; got:\n%s", name, got)
-			}
+		perms, ok := doc["permissions"].(map[string]any)
+		if !ok {
+			t.Errorf("%s selection must write a permissions block (bounded delta); got:\n%s", name, got)
+			continue
+		}
+		if mode, _ := perms["defaultMode"].(string); mode != "acceptEdits" {
+			t.Errorf("%s selection must write permissions.defaultMode=acceptEdits (bounded delta); got %q:\n%s", name, mode, got)
 		}
 	}
 

@@ -1,1 +1,0 @@
-.moai/specs/SPEC-DESIGN-DOCS-V31-001/progress.md

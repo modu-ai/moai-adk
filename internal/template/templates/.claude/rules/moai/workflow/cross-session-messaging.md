@@ -22,7 +22,7 @@ Three properties bound everything below:
 - **Providers** — Two axes. Same machine: available on every provider — Amazon Bedrock, Claude Platform on AWS, Agent Platform on Google Cloud, and Microsoft Foundry included — since v2.1.248; delivery rides a per-session socket on the machine and never leaves it. Beyond this machine: still unavailable with an API key and on Amazon Bedrock, Claude Platform on AWS, Agent Platform on Google Cloud, and Microsoft Foundry.
 - **Versions** — v2.1.224+ for the channel itself; v2.1.225+ to open a cross-machine conversation first; v2.1.232+ for @mentions and the /config rows; v2.1.236+ for the `notify_when_idle` request.
 - **Flag evaluation** — any one of `CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC`, `DISABLE_TELEMETRY`, `DO_NOT_TRACK`, `DISABLE_GROWTHBOOK` disables the feature-flag evaluation. Since v2.1.248, same-machine messaging works in sessions with feature-flag fetching off, on every provider (class-level statement — no per-flag claims for the four flags). Below v2.1.248 such sessions had no same-machine messaging; the capability is new in that release. Diagnostic: `/list-agents` (alias `/peers`) recognized → present; unrecognized → absent.
-- **The shared flag slot** — the gate reads one machine-global, last-writer-wins slot, `cachedGrowthBookFeatures.tengu_harbor_kite` in `~/.claude.json`, that only a first-party session ever writes; third-party-backend sessions (`moai glm`, the GLM panes of `moai cg`) inherit whatever a first-party session last left and can lose or regain the channel mid-session. Diagnostic, mechanism, and the manual escape hatch: `cross-session-messaging-detail.md` § The shared flag slot.
+- **The shared flag slot** — the gate reads one machine-global, last-writer-wins slot, `cachedGrowthBookFeatures.tengu_harbor_kite` in `~/.claude.json`, that only a first-party session ever writes; third-party-backend sessions (`moai glm`) inherit whatever a first-party session last left and can lose or regain the channel mid-session. Diagnostic, mechanism, and the manual escape hatch: `cross-session-messaging-detail.md` § The shared flag slot.
 
 Where a constraint bites, the failure is quiet — nothing errors, dispatch just has no channel. Surface the constraint to the operator instead of retrying or re-spawning.
 
@@ -87,6 +87,22 @@ The Pre-Spawn and Pre-Edit Sync Checks (`agent-common-protocol.md`) detect a for
 Worktree isolation remains the structural fix for a write conflict. Messaging shortens the diagnosis; it does not make two sessions safe to write the same path.
 
 Conversely, after landing a change that invalidates what a peer is building on — a schema change, a renamed symbol, a merged branch — notifying the affected peer is appropriate without being asked.
+
+## A send result has three shapes, and none of them says "read"
+
+[ZONE:Evolvable] [HARD] **A successful send means the message reached the session, not that its Claude read it.** The result answers where the text went; it never answers whether a model consumed it. Three shapes, and the result text is what tells them apart:
+
+| Result | What happened | What to do |
+|---|---|---|
+| Queued to the addressed session | The text is in that session's inbox and drains at its next tool round | Nothing — but completion still comes from the evidence, not from this |
+| A `routing` object | An in-process mailbox took it; the peer never sees it | Re-send to `name [ref]` |
+| A `[Cross-session delivery notice]` follows | The receiving session's permission policy is **holding** the message for its user's approval, or refused it outright | Treat it as undelivered: surface it to the operator rather than re-sending, because the same policy holds the next copy too |
+
+The third shape is the one that used to leave no trace. A session running in a different permission mode than the sender's holds inbound peer messages until its user approves them, and may let them expire; for a session on this machine the notice reports that, and the notice is the only signal — nothing in the original send result predicts it.
+
+**A notice never arrives for a Remote Control, cloud, or Claude Desktop peer.** Silence there is not agreement and not delivery; it is the absence of a channel to report either. Never read it as a reply.
+
+**The queue is what survives all three shapes.** Because a dispatch is delegated through the queue on disk and completion is read from evidence (`kanban-dispatch.md` § The delegation channel is the queue, § Completion is read, never trusted), a held or lost message costs the board nothing. That is exactly why reading the send result matters: it tells the sender whether a *nudge* landed, and nothing more. Advancing a card because a send reported success is an unobserved completion claim (`verification-claim-integrity.md` §1.1 surface 1).
 
 ## An idle notice is a scheduling hint
 

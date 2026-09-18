@@ -1,0 +1,23 @@
+{
+  "isError": false,
+  "structured": {
+    "build_commit": "\u003cbuild_commit\u003e",
+    "build_lag": "\u003cbuild_lag\u003e",
+    "findings": [],
+    "next_steps": [
+      "fall back to the active auditor (claude)"
+    ],
+    "summary": "codex unavailable: codex binary not found in PATH",
+    "verdict": "inconclusive"
+  },
+  "text": {
+    "build_commit": "\u003cbuild_commit\u003e",
+    "build_lag": "\u003cbuild_lag\u003e",
+    "findings": [],
+    "next_steps": [
+      "fall back to the active auditor (claude)"
+    ],
+    "summary": "codex unavailable: codex binary not found in PATH",
+    "verdict": "inconclusive"
+  }
+}

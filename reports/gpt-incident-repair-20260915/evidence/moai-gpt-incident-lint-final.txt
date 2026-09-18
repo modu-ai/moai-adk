@@ -1,0 +1,185 @@
+internal/cli/gateway_process_portable_contract_test.go:65:24: Error return value of `resp.Body.Close` is not checked (errcheck)
+		defer resp.Body.Close()
+		                     ^
+internal/cli/gpt_appserver_acceptance_live_test.go:52:20: Error return value of `client.Close` is not checked (errcheck)
+	defer client.Close()
+	                  ^
+internal/cli/gpt_appserver_claude_integration_test.go:61:14: Error return value of `ledger.Close` is not checked (errcheck)
+	ledger.Close()
+	            ^
+internal/cli/gpt_appserver_claude_integration_test.go:68:46: Error return value of `(io.Closer).Close` is not checked (errcheck)
+	t.Cleanup(func() { handler.(io.Closer).Close() })
+	                                            ^
+internal/cli/gpt_appserver_claude_integration_test.go:132:17: Error return value of `listener.Close` is not checked (errcheck)
+		listener.Close()
+		              ^
+internal/cli/gpt_appserver_claude_integration_test.go:142:26: Error return value of `ws.Close` is not checked (errcheck)
+		defer func() { ws.Close(); connectionsMu.Lock(); delete(connections, ws); connectionsMu.Unlock() }()
+		                       ^
+internal/cli/gpt_appserver_claude_integration_test.go:178:67: Error return value of `json.Unmarshal` is not checked (errcheck)
+			value := func(key string) string { var s string; json.Unmarshal(message.Params[key], &s); return s }
+			                                                               ^
+internal/cli/gpt_appserver_claude_integration_test.go:239:45: Error return value of `server.Serve` is not checked (errcheck)
+	go func() { defer close(done); server.Serve(listener) }()
+	                                           ^
+internal/cli/gpt_appserver_claude_integration_test.go:241:15: Error return value of `server.Close` is not checked (errcheck)
+		server.Close()
+		            ^
+internal/cli/gpt_appserver_claude_integration_test.go:244:12: Error return value of `ws.Close` is not checked (errcheck)
+			ws.Close()
+			        ^
+internal/cli/gpt_appserver_longwait_live_test.go:59:20: Error return value of `client.Close` is not checked (errcheck)
+	defer client.Close()
+	                  ^
+internal/cli/gpt_appserver_native_agent_live_test.go:70:20: Error return value of `client.Close` is not checked (errcheck)
+	defer client.Close()
+	                  ^
+internal/cli/gpt_appserver_rejections.go:65:18: Error return value of `root.Close` is not checked (errcheck)
+	defer root.Close()
+	                ^
+internal/cli/gpt_appserver_rejections.go:79:18: Error return value of `file.Close` is not checked (errcheck)
+	defer file.Close()
+	                ^
+internal/cli/gpt_appserver_runtime_test.go:61:20: Error return value of `client.Close` is not checked (errcheck)
+	defer client.Close()
+	                  ^
+internal/cli/gpt_appserver_runtime_test.go:97:27: Error return value of `response.Body.Close` is not checked (errcheck)
+	defer response.Body.Close()
+	                         ^
+internal/cli/gpt_appserver_runtime_test.go:147:28: Error return value of `continued.Body.Close` is not checked (errcheck)
+	defer continued.Body.Close()
+	                          ^
+internal/cli/gpt_appserver_runtime_test.go:226:26: Error return value of `secondClient.Close` is not checked (errcheck)
+	defer secondClient.Close()
+	                        ^
+internal/cli/gpt_appserver_runtime_test.go:236:25: Error return value of `second.Body.Close` is not checked (errcheck)
+	defer second.Body.Close()
+	                       ^
+internal/cli/gpt_appserver_shared_live_test.go:43:38: Error return value of `(*github.com/modu-ai/moai-adk/internal/codexapp.Client).Close` is not checked (errcheck)
+		t.Cleanup(func() { clients[i].Close() })
+		                                   ^
+internal/cli/gpt_appserver_shared_test.go:30:33: Error return value of `os.RemoveAll` is not checked (errcheck)
+	t.Cleanup(func() { os.RemoveAll(home) })
+	                               ^
+internal/cli/gpt_appserver_shared_test.go:49:17: Error return value of `listener.Close` is not checked (errcheck)
+		listener.Close()
+		              ^
+internal/cli/gpt_appserver_shared_test.go:58:26: Error return value of `ws.Close` is not checked (errcheck)
+		defer func() { ws.Close(); mu.Lock(); delete(connections, ws); mu.Unlock() }()
+		                       ^
+internal/cli/gpt_appserver_shared_test.go:69:11: Error return value of `f.Close` is not checked (errcheck)
+			f.Close()
+			       ^
+internal/cli/gpt_appserver_shared_test.go:98:15: Error return value of `server.Close` is not checked (errcheck)
+		server.Close()
+		            ^
+internal/cli/gpt_appserver_shared_test.go:101:12: Error return value of `ws.Close` is not checked (errcheck)
+			ws.Close()
+			        ^
+internal/cli/gpt_appserver_shared_test.go:126:33: Error return value of `os.RemoveAll` is not checked (errcheck)
+	t.Cleanup(func() { os.RemoveAll(home) })
+	                               ^
+internal/cli/gpt_appserver_shared_test.go:139:19: Error return value of `cmd.Process.Kill` is not checked (errcheck)
+		cmd.Process.Kill()
+		                ^
+internal/cli/gpt_appserver_shared_test.go:159:32: Error return value of `first.Close` is not checked (errcheck)
+	t.Cleanup(func() { first.Close() })
+	                              ^
+internal/cli/gpt_appserver_shared_test.go:167:33: Error return value of `second.Close` is not checked (errcheck)
+	t.Cleanup(func() { second.Close() })
+	                               ^
+internal/cli/gpt_appserver_summary_live_test.go:42:20: Error return value of `client.Close` is not checked (errcheck)
+	defer client.Close()
+	                  ^
+internal/codexapp/instructions_live_test.go:39:20: Error return value of `client.Close` is not checked (errcheck)
+	defer client.Close()
+	                  ^
+internal/codexapp/shared.go:32:19: Error return value of `lease.Close` is not checked (errcheck)
+	defer lease.Close()
+	                 ^
+internal/codexapp/shared.go:42:15: Error return value of `probe.Close` is not checked (errcheck)
+			probe.Close()
+			           ^
+internal/codexapp/shared.go:106:12: Error return value of `raw.Close` is not checked (errcheck)
+		raw.Close()
+		         ^
+internal/codexapp/shared.go:111:12: Error return value of `raw.Close` is not checked (errcheck)
+		raw.Close()
+		         ^
+internal/codexapp/shared_test.go:30:14: Error return value of `other.Close` is not checked (errcheck)
+		other.Close()
+		           ^
+internal/codexapp/shared_test.go:43:33: Error return value of `os.RemoveAll` is not checked (errcheck)
+	t.Cleanup(func() { os.RemoveAll(home) })
+	                               ^
+internal/codexapp/shared_test.go:50:35: Error return value of `listener.Close` is not checked (errcheck)
+	t.Cleanup(func() { listener.Close() })
+	                                 ^
+internal/codexapp/shared_test.go:79:33: Error return value of `os.RemoveAll` is not checked (errcheck)
+	t.Cleanup(func() { os.RemoveAll(shortHome) })
+	                               ^
+internal/codexapp/shared_test.go:113:32: Error return value of `first.Close` is not checked (errcheck)
+	t.Cleanup(func() { first.Close() })
+	                              ^
+internal/codexapp/shared_test.go:118:33: Error return value of `second.Close` is not checked (errcheck)
+	t.Cleanup(func() { second.Close() })
+	                               ^
+internal/codexapp/shared_test.go:147:33: Error return value of `os.RemoveAll` is not checked (errcheck)
+	t.Cleanup(func() { os.RemoveAll(home) })
+	                               ^
+internal/codexapp/shared_test.go:154:32: Error return value of `lease.Close` is not checked (errcheck)
+	t.Cleanup(func() { lease.Close() })
+	                              ^
+internal/codexapp/shared_test.go:163:37: Error return value of `cmd.Process.Kill` is not checked (errcheck)
+	t.Cleanup(func() { cmd.Process.Kill(); cmd.Wait() })
+	                                   ^
+internal/codexapp/shared_test.go:178:14: Error return value of `other.Close` is not checked (errcheck)
+		other.Close()
+		           ^
+internal/gateway/appserver.go:94:21: Error return value of `writer.Close` is not checked (errcheck)
+		defer writer.Close()
+		                  ^
+internal/gateway/appserver_stream_test.go:33:27: Error return value of `response.Body.Close` is not checked (errcheck)
+	defer response.Body.Close()
+	                         ^
+internal/gateway/appserver_stream_test.go:67:27: Error return value of `response.Body.Close` is not checked (errcheck)
+	defer response.Body.Close()
+	                         ^
+internal/gateway/appserver_stream_test.go:141:22: Error return value of `response.Body.Close` is not checked (errcheck)
+		response.Body.Close()
+		                   ^
+internal/gateway/appserver_stream_test.go:156:21: Error return value of `response.Body.Close` is not checked (errcheck)
+	response.Body.Close()
+	                   ^
+internal/gateway/gpt_production_appserver_roundtrip_contract_test.go:78:20: Error return value of `client.Close` is not checked (errcheck)
+	defer client.Close()
+	                  ^
+internal/gateway/gpt_production_appserver_roundtrip_contract_test.go:214:15: Error return value of `f.Close` is not checked (errcheck)
+	defer f.Close()
+	             ^
+internal/cli/gateway_product_binding.go:203:2: ineffectual assignment to models (ineffassign)
+	models := gatewayGPTModels()
+	^
+internal/cli/gpt_appserver_acceptance_live_test.go:200:2: SA4006: this value of client is never used (staticcheck)
+	client, engine = connect()
+	^
+internal/cli/gpt_appserver_auth.go:32:11: ST1005: error strings should not be capitalized (staticcheck)
+			return errors.New("Codex CLI path is unavailable")
+			       ^
+internal/cli/gpt_appserver_auth.go:114:12: ST1005: error strings should not be capitalized (staticcheck)
+				return errors.New("Codex CLI path is unavailable")
+				       ^
+internal/cli/gpt_appserver_runtime.go:502:6: QF1001: could apply De Morgan's law (staticcheck)
+		if !(c >= 'a' && c <= 'z' || c >= 'A' && c <= 'Z' || c >= '0' && c <= '9' || c == '-' || c == '_') {
+		   ^
+internal/gateway/translate/image_test.go:25:20: QF1001: could apply De Morgan's law (staticcheck)
+		if toolResult && !(strings.Index(string(out), "before") < strings.Index(string(out), "data:image/png") && strings.Index(string(out), "data:image/png") < strings.Index(string(out), "after")) {
+		                 ^
+internal/cli/gateway_product_binding.go:241:6: func installedGPTBrokerForGateway is unused (unused)
+func installedGPTBrokerForGateway() (auth.Broker, error) {
+     ^
+60 issues:
+* errcheck: 53
+* ineffassign: 1
+* staticcheck: 5
+* unused: 1

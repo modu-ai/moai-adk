@@ -99,6 +99,7 @@ func TestCrossSessionSettingsPayloadFiltersInvalidValues(t *testing.T) {
 // payload — carries isolatePeerMachines. The documented default posture (no
 // approval for cross-machine messages) must hold unless the user turns it on.
 func TestLauncherNeverInjectsIsolatePeerMachinesByDefault(t *testing.T) {
+	withNoLaunchEffort(t)
 	neutralConfigs := []struct {
 		name string
 		body string
@@ -116,7 +117,7 @@ func TestLauncherNeverInjectsIsolatePeerMachinesByDefault(t *testing.T) {
 			}
 			// The kanban payload too: forced accept + user extras, but the
 			// isolation key appears only on explicit opt-in.
-			flag, cleanup := prepareKanbanSettings([]string{"-p", "dev"})
+			flag, cleanup := prepareKanbanSettings("", []string{"-p", "dev"})
 			t.Cleanup(cleanup)
 			if len(flag) != 2 {
 				t.Fatalf("kanban settings flag = %v, want [--settings <path>]", flag)
@@ -181,6 +182,7 @@ func TestTemplateNeverShipsIsolatePeerMachines(t *testing.T) {
 // kanban-required crossSessionInbound=accept wins (dispatch would stall
 // otherwise), while the user's dialog_expiry / isolate opt-in ride along.
 func TestPrepareKanbanSettingsMergesUserConfig(t *testing.T) {
+	withNoLaunchEffort(t)
 	withCrossSessionConfig(t, "crosssession:\n  inbound: refuse\n  isolate_machines: true\n  dialog_expiry: never\n")
 
 	for _, key := range []string{config.EnvMoaiKanbanSettingsInjected} {
@@ -188,7 +190,7 @@ func TestPrepareKanbanSettingsMergesUserConfig(t *testing.T) {
 		_ = os.Unsetenv(key)
 	}
 
-	flag, cleanup := prepareKanbanSettings([]string{"-p", "dev"})
+	flag, cleanup := prepareKanbanSettings("", []string{"-p", "dev"})
 	t.Cleanup(cleanup)
 	if len(flag) != 2 || flag[0] != "--settings" {
 		t.Fatalf("flag = %v, want [--settings <path>]", flag)
@@ -214,26 +216,29 @@ func TestPrepareKanbanSettingsMergesUserConfig(t *testing.T) {
 
 // TestAppendCrossSessionSettingsGeneralLaunch verifies the general-launch
 // injection consumed by unifiedLaunchDefault: injects only when the operator
-// did not supply --settings themselves AND the config carries at least one
-// non-neutral value.
+// did not supply --settings themselves AND the payload carries at least one
+// value. The profile effort is pinned empty here so these cases judge the
+// crosssession translation alone; the effort's own contribution to the same
+// payload is TestLaunchEffortReachesGeneralInjection's subject.
 func TestAppendCrossSessionSettingsGeneralLaunch(t *testing.T) {
+	withNoLaunchEffort(t)
 	t.Run("no config → unchanged args", func(t *testing.T) {
 		root := withCrossSessionConfig(t, "")
-		got := appendCrossSessionSettings(root, []string{"-p", "dev"})
+		got := appendCrossSessionSettings(root, "", []string{"-p", "dev"})
 		if len(got) != 2 || got[0] != "-p" || got[1] != "dev" {
 			t.Errorf("args = %v, want [-p dev] unchanged (neutral config injects nothing)", got)
 		}
 	})
 	t.Run("operator --settings → no injection", func(t *testing.T) {
 		root := withCrossSessionConfig(t, "crosssession:\n  inbound: accept\n")
-		got := appendCrossSessionSettings(root, []string{"--settings", "/tmp/operator.json"})
+		got := appendCrossSessionSettings(root, "", []string{"--settings", "/tmp/operator.json"})
 		if len(got) != 2 {
 			t.Errorf("args = %v, want unchanged (operator-supplied --settings wins)", got)
 		}
 	})
 	t.Run("config → --settings appended with payload", func(t *testing.T) {
 		root := withCrossSessionConfig(t, "crosssession:\n  inbound: refuse\n  dialog_expiry: 60s\n")
-		got := appendCrossSessionSettings(root, []string{"-p", "dev"})
+		got := appendCrossSessionSettings(root, "", []string{"-p", "dev"})
 		if len(got) != 4 || got[2] != "--settings" {
 			t.Fatalf("args = %v, want [-p dev --settings <path>]", got)
 		}

@@ -13,7 +13,7 @@
 // card is still worth keeping — no staleness heuristic, no duplicate
 // detection, no absorption of one card into another. An agent that drops
 // cards on its own initiative collides head-on with the [HARD] clauses in
-// workflows/todo.md and kanban-dispatch.md, and a doctrine change would have
+// workflows/gtd.md and kanban-dispatch.md, and a doctrine change would have
 // to come first.
 //
 // EXACT REVERSAL is the property that makes a wrong drop survivable, and it
@@ -129,7 +129,7 @@ leaving the file untouched.`,
 				return err
 			}
 			_, _ = fmt.Fprintf(cmd.OutOrStdout(), "dropped %s %s (reason: %s)\n",
-				id, todoTextPrefix(original), reason)
+				id, todoTextPrefix(original), todoPRCell(reason))
 			return nil
 		},
 	}

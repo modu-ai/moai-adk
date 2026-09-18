@@ -74,7 +74,7 @@ Specify a profile with the `-p` (or `--profile`) flag.
 ```bash
 moai cc -p work          # Run Claude with the work profile
 moai glm -p cost-save    # Run GLM with the cost-save profile
-moai cg -p team          # Run CG mode with the team profile
+moai cc -p team          # Claude session with the team profile
 ```
 
 {{< callout type="info" >}}
@@ -147,7 +147,6 @@ Select it in the "Model Settings" step of the setup wizard, or edit the profile 
 |------|------|
 | `moai cc` → `moai glm` | GLM environment variables injected automatically |
 | `moai glm` → `moai cc` | GLM environment variables removed automatically |
-| `moai cc` → `moai cg` | GLM env injected into the tmux session only; the Leader stays on Claude |
 
 ## Related Documents
 

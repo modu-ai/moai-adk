@@ -227,15 +227,18 @@ func quietWizardObserveDefaults(projectDir, wantName string) []quietWizardMismat
 	var projectDoc struct {
 		Project struct {
 			Name string `yaml:"name"`
-			Mode string `yaml:"mode"`
 		} `yaml:"project"`
 	}
 	if err := quietWizardReadYAML(filepath.Join(sections, defs.ProjectYAML), &projectDoc); err != nil {
 		fail("project.yaml", err)
 	} else {
 		check("project.yaml project.name", wantName, projectDoc.Project.Name)
-		check("project.yaml project.mode", "personal", projectDoc.Project.Mode)
 	}
+	// (The former project.mode default check was removed by
+	// SPEC-INIT-UPDATE-CONSISTENCY-001 REQ-ICU-001: the generated project.yaml
+	// no longer carries a mode key at all — pinned by
+	// TestWritePhase1Configs_DoesNotPersistProjectMode and the ghost-template
+	// test in internal/core/project.)
 
 	var reportDoc struct {
 		Report struct {
@@ -370,9 +373,11 @@ func TestRunInit_QuietWizardUnsetResolvesToDefaults(t *testing.T) {
 
 // TestRunInit_QuietWizardObserverDetectsNonDefault asserts AC-IQW-007a, the
 // in-test negative control: on a copy of a generated project whose
-// project.mode and worktree.auto_create are flipped to non-default values, the
-// same observer reports exactly those two keys, while the untouched original
-// reports none.
+// worktree.auto_create is flipped to a non-default value, the same observer
+// reports exactly that key, while the untouched original reports none. (The
+// former project.mode flip left with REQ-ICU-001 of
+// SPEC-INIT-UPDATE-CONSISTENCY-001 — the ghost key is gone from the generated
+// file, so there is no line left to flip.)
 func TestRunInit_QuietWizardObserverDetectsNonDefault(t *testing.T) {
 	projectDir, _ := quietWizardRunInit(t, t.TempDir(), quietWizardKeptAnswers("claude"), nil)
 
@@ -394,7 +399,9 @@ func TestRunInit_QuietWizardObserverDetectsNonDefault(t *testing.T) {
 	}
 
 	copySections := filepath.Join(copyDir, defs.MoAIDir, defs.SectionsSubdir)
-	quietWizardReplaceLine(t, filepath.Join(copySections, defs.ProjectYAML), `(?m)^([ \t]*)mode: personal$`, "${1}mode: team")
+	// (The former project.yaml mode flip was removed by
+	// SPEC-INIT-UPDATE-CONSISTENCY-001 REQ-ICU-001: the generated project.yaml
+	// carries no mode line to flip.)
 	quietWizardReplaceLine(t, filepath.Join(copySections, defs.WorkflowYAML), `(?m)^([ \t]*)auto_create: false$`, "${1}auto_create: true")
 
 	found := quietWizardObserveDefaults(copyDir, quietWizardProjectDirName)
@@ -403,7 +410,7 @@ func TestRunInit_QuietWizardObserverDetectsNonDefault(t *testing.T) {
 		keys = append(keys, m.key)
 	}
 	slices.Sort(keys)
-	want := []string{"project.yaml project.mode", "workflow.worktree.auto_create"}
+	want := []string{"workflow.worktree.auto_create"}
 	if !slices.Equal(keys, want) {
 		t.Errorf("observer findings on the mutated copy = %q, want exactly %q\n%s", keys, want, quietWizardFormatMismatches(found))
 	}
@@ -478,7 +485,7 @@ func TestRunInit_QuietWizardProvisionsMCPByDefault(t *testing.T) {
 		wantAnnouncement bool
 	}{
 		{wiring: "claude", wantAnnouncement: true},
-		{wiring: "codex", wantAnnouncement: false},
+		{wiring: "gpt", wantAnnouncement: false},
 		{wiring: "both", wantAnnouncement: true},
 	}
 	for _, tc := range cases {
@@ -488,7 +495,7 @@ func TestRunInit_QuietWizardProvisionsMCPByDefault(t *testing.T) {
 			if got := strings.Contains(stdout, mcpProvisionAnnouncement); got != tc.wantAnnouncement {
 				t.Errorf("harness %s: provisioning announcement present = %t, want %t\nstdout:\n%s", tc.wiring, got, tc.wantAnnouncement, stdout)
 			}
-			if tc.wiring == "codex" {
+			if tc.wiring == "gpt" {
 				// Reachability: the codex selection reached the wiring consumer,
 				// so the absent announcement is the harness rule, not a lost answer.
 				assertCodexArtifacts(t, projectDir, true)
@@ -513,25 +520,25 @@ func TestRunInit_QuietWizardProvisionsMCPByDefault(t *testing.T) {
 }
 
 // TestRunInit_QuietWizardFlagsStillPersist asserts AC-IQW-011: on the
-// interactive path, --project-mode team and --worktree-auto-create=true are
-// still written.
+// interactive path, --worktree-auto-create=true is still written. The
+// --project-mode half of the original assertion was removed by
+// SPEC-INIT-UPDATE-CONSISTENCY-001 REQ-ICU-001 (project.mode had no Go
+// reader); the flag no longer exists, so the test instead pins that no mode
+// key reaches project.yaml on this path.
 func TestRunInit_QuietWizardFlagsStillPersist(t *testing.T) {
 	projectDir, _ := quietWizardRunInit(t, t.TempDir(), quietWizardKeptAnswers("claude"), map[string]string{
-		"project-mode":         "team",
 		"worktree-auto-create": "true",
 	})
 	sections := filepath.Join(projectDir, defs.MoAIDir, defs.SectionsSubdir)
 
-	var projectDoc struct {
-		Project struct {
-			Mode string `yaml:"mode"`
-		} `yaml:"project"`
+	projectData, readErr := os.ReadFile(filepath.Join(sections, defs.ProjectYAML))
+	if readErr != nil {
+		t.Fatalf("read project.yaml: %v", readErr)
 	}
-	if err := quietWizardReadYAML(filepath.Join(sections, defs.ProjectYAML), &projectDoc); err != nil {
-		t.Fatalf("parse project.yaml: %v", err)
-	}
-	if projectDoc.Project.Mode != "team" {
-		t.Errorf("project.yaml project.mode = %q, want %q (--project-mode team)", projectDoc.Project.Mode, "team")
+	for _, line := range strings.Split(string(projectData), "\n") {
+		if strings.HasPrefix(strings.TrimSpace(line), "mode:") {
+			t.Errorf("project.yaml still carries a mode key (SPEC-INIT-UPDATE-CONSISTENCY-001 REQ-ICU-001): %q", line)
+		}
 	}
 
 	var workflowDoc struct {

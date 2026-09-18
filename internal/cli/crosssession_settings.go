@@ -69,17 +69,23 @@ func crossSessionSettingsPayload(root string) map[string]any {
 // appendCrossSessionSettings is the general-launch injection consumed by
 // unifiedLaunchDefault (covers moai cc / glm / cg). It no-ops when the
 // operator supplied --settings themselves (their intent wins, and this also
-// covers args that already carry the kanban-injected flag) or when the config
-// is neutral. The transient file is session-private under os.TempDir();
+// covers args that already carry the kanban-injected flag) or when the payload
+// is empty. The transient file is session-private under os.TempDir();
 // on POSIX the launch execs away before any cleanup could run, leaving the
 // file to the OS, exactly like the kanban injection.
 //
+// The payload is the crosssession.yaml translation overlaid with the profile's
+// launch effort (launch_effort_settings.go) — ONE injection point, so the
+// precedence between the two never splits across call sites. An effort-only
+// payload is a valid injection: a neutral crosssession.yaml no longer means
+// "inject nothing" when the profile resolves an effort.
+//
 // @MX:NOTE: [AUTO] guards TestTemplateNeverShipsIsolatePeerMachines + TestLauncherNeverInjectsIsolatePeerMachinesByDefault
-func appendCrossSessionSettings(root string, args []string) []string {
+func appendCrossSessionSettings(root, profileName string, args []string) []string {
 	if operatorSuppliedSettings(args) {
 		return args
 	}
-	payload := crossSessionSettingsPayload(root)
+	payload := applyLaunchEffort(crossSessionSettingsPayload(root), profileName)
 	if len(payload) == 0 {
 		return args
 	}

@@ -222,7 +222,7 @@ Claude can move the session into a worktree mid-session via the `EnterWorktree` 
 `EnterWorktree` is complementary to, not replaced by, the launcher flag `moai cc -w <name-or-abs-path>`:
 
 - **`EnterWorktree(<path>)`** — current-session re-entry (no `/clear`, same session continuing). Use this when the orchestrator is mid-turn and needs to move the active session into an existing worktree.
-- **`moai cc -w <name>` (or `moai glm -w` / `moai cg -w`)** — new-session launch (post-`/clear` or new terminal). Use this as the Block 0 new-terminal launcher of the paste-ready resume. The `-w` flag accepts BOTH short names (resolved against `.claude/worktrees/<name>/`) AND absolute paths under `~/.moai/worktrees/<project>/...` (L2 persistent worktrees — see the `claude --worktree` (`-w`) Flag section above for the L2 absolute-path extension).
+- **`moai cc -w <name>` (or `moai glm -w`)** — new-session launch (post-`/clear` or new terminal). Use this as the Block 0 new-terminal launcher of the paste-ready resume. The `-w` flag accepts BOTH short names (resolved against `.claude/worktrees/<name>/`) AND absolute paths under `~/.moai/worktrees/<project>/...` (L2 persistent worktrees — see the `claude --worktree` (`-w`) Flag section above for the L2 absolute-path extension).
 
 The shell-`cd` form (`cd <path> && <launcher>`), the `git -C <path>` form, and the subshell-`cd` form (`(cd <path> && ...)`) are DEPRECATED for orchestrator-emitted current-session worktree entry guidance. They break `Agent(isolation: "worktree")` CWD isolation (the agent's CWD is the worktree root; a `cd /absolute/path` bypasses it) and were the root cause of prior incidents where a sub-agent used `git -C` instead of `EnterWorktree` and was corrected mid-run.
 
@@ -419,9 +419,9 @@ Both share the same project structure. `src/auth/handler.go` resolves correctly 
 
 ## Teammate Session Launch (`--spawn`)
 
-`moai cc -w <name> --spawn` (likewise `moai glm` / `moai cg`) opens a session in the named worktree in a NEW tmux window and returns, so the caller keeps its own session. Without `--spawn` the same command enters the worktree in place by replacing the current process. See `.claude/skills/moai-workflow-worktree/SKILL.md` § `--spawn` for requirements, error messages, and example invocations.
+`moai cc -w <name> --spawn` (likewise `moai glm`) opens a session in the named worktree in a NEW tmux window and returns, so the caller keeps its own session. Without `--spawn` the same command enters the worktree in place by replacing the current process. See `.claude/skills/moai-workflow-worktree/SKILL.md` § `--spawn` for requirements, error messages, and example invocations.
 
-> **Two distinct `teammateMode` fields — do not conflate.** MoAI's own `.claude/settings.local.json` launcher-selection field (values `"tmux"` / `"glm"` / `"claude"`) is set by `moai cg` / `moai glm` / `moai cc` and selects which launcher a session runs. This is SEPARATE from the Claude Code runtime `teammateMode` setting, whose default changed from `auto` to `in-process` as of Claude Code v2.1.179 — with the in-process default, split panes no longer auto-open. Additionally, as of Claude Code v2.1.181, an idle teammate's agent-panel row hides after 30 seconds and reappears on the next turn. These two CC-runtime behaviors govern how teammates are displayed. Both fields happen to share the name `teammateMode`.
+> **Keep policy and display fields separate.** `llm.team_mode` and `llm.gateway.teammate_mode` / `teammate_provider` in `llm.yaml` describe launcher and teammate-role policy. Claude Code `teammateMode` controls display. Legacy `team_mode: cg` cannot select a launcher; run `moai migrate cg` for explicit migration. A tmux display setting alone does not verify mixed-provider teammate routing.
 
 ### HARD Rules
 
@@ -496,7 +496,7 @@ The full refusal reads:
 |---|---|---|
 | A quoted-delimiter heredoc (`<<'EOF'`) whose **body contains braces wrapping quoted key/value pairs** — a JSON line, for example | **First-hand** — measured by paired probes in a worktree-isolated session | Body size, pipes, backticks, and command substitution are **not** the trigger: a body of roughly 6.7 KB of prose was accepted, a ten-character JSON line in the same position was refused, and a command substitution in the body was folded correctly and passed |
 | **Several mutation steps bundled into one compound command** | **Second-hand** — reported by another working lane, not measured here | Recorded because it carried the same refusal sentence; it has not been reproduced by the session that wrote this section |
-| A heredoc whose **body names a git subcommand** — prose such as `run git merge --no-ff <sha>` or `git checkout -b <branch>` fed to a non-git command | **First-hand** — measured by paired probes in a worktree-isolated session | Refused with the variant sentence `… this command names git in a form too complex to verify …`. The same heredoc without git text passed, and the same git text passed when carried as a double-quoted argument or read from a file (`--stdin < <file>`) |
+| A heredoc whose **body names a git subcommand** — prose such as `run git merge --no-ff <sha>` or `git checkout -b <branch>` fed to a non-git command | **First-hand** — measured by paired probes in a worktree-isolated session at 2.1.251 | Refused with the variant sentence `… this command names git in a form too complex to verify …`. The same heredoc without git text passed, and the same git text passed when carried as a double-quoted argument or read from a file (`--stdin < <file>`). **This row was contradicted at 2.1.275** — see § Two observations disagree on the heredoc-carrying-git-text shape below; do not cite it as current behaviour |
 
 **Gap**: the boundary between an accepted and a refused command is unmeasured in every row. Anything outside these observations is unknown, not permitted.
 
@@ -529,6 +529,70 @@ shape with a command substitution in the body — executed and passed with the
 body preserved as a literal. This remains a record of observations, not a
 specification; the boundary of the guard's analyzer is still unmeasured.
 
+### The refusal's message shapes
+
+The refusal is not one sentence. Seven distinct clauses have been seen — two of them first met while writing this section — and the difference matters because a reader who greps for the wording they remember concludes the guard did not fire.
+
+Four shapes are pinned in this repository as quoted fixtures (`internal/hook/worktree_guard_refusal_test.go`); three more have been observed since and are not pinned anywhere:
+
+| Shape | The clause after `…but this command` | Provenance | Pinned |
+|---|---|---|---|
+| Cross-tree redirect via `-C` | `redirects git to the shared checkout via -C` | First-hand, main session (card t529); re-measured first-hand at 2.1.275 (card t852) — byte-identical but for the path | `sampleGuardRefusalDashC` |
+| Cross-tree redirect via `--git-dir` | `redirects git to the shared checkout via --git-dir` | First-hand, **background subagent** (card t529) | `sampleGuardRefusalGitDir` |
+| Unverifiable command | `is too complex to verify that it stays inside the worktree` | First-hand, main session (card t529); re-measured first-hand at 2.1.275 (card t852) | `sampleGuardRefusalComplex` |
+| Working-directory resolution | `'s working directory resolved to the shared checkout (<path>)` | **Card-quoted, never measured.** The quote is truncated and the continuation is unobserved — the fixture reproduces that truncation deliberately | `sampleGuardRefusalCwdCardQuoted` |
+| Runtime-computed target | `points git at a directory computed at runtime (-C <path>)` | Second-hand — another lane, 2.1.275 (card t880); not reproduced here | — |
+| Unverifiable git form | `names git in a form too complex to verify` | First-hand at 2.1.251 (recorded in the trigger table above); second-hand at 2.1.275 (card t880) | — |
+| Unverifiable non-git command | `runs <command> with <argument> in a plain command, so what it runs cannot be shown not to be git` | First-hand at 2.1.275 (card t852) — see the reproduction note below | — |
+
+**A seventh shape exists and resisted narrowing.** The row above was met while writing this very section: a compound command assigning a shell variable and then running `printf` with a long multi-line argument was refused, with the guard naming `printf` and quoting its whole argument. Four paired probes in the same session failed to reproduce it — `printf 'gitignore'` alone passed, an argument carrying backticks passed, the two combined passed, and the same `printf` redirected into a runtime-computed `"$VAR/path"` passed. So neither the `git` substring, nor backticks, nor a computed redirect target is the trigger on its own.
+
+This is worth more than the row itself: it is the clearest available demonstration that **the guard's analyzer refuses on a property none of the observations here has isolated**, and that a refusal can name a command that has nothing to do with git. Treat an unfamiliar refusal clause as a seventh, eighth, or ninth shape rather than as a misfire, and record its verbatim wording — the catalogue above grew twice while this section was being written.
+
+**The classifier does not key on any of these clauses.** `internal/hook/post_tool_failure.go` matches the anchor `isolated in the worktree` alone, which is why the three unpinned shapes still classify as `WorktreeGuardRefusal` rather than falling into the catch-all. The anchor is an observed dependency on upstream wording, not a contract — if the runtime rewrites that opening clause, detection goes silently to zero.
+
+### The axis is git — with one measured exception
+
+Card t741 established that a cross-tree **non-git** argument is not refused: `ls -la <another worktree>/go.mod` passed from a session anchored elsewhere, while `git -C <another worktree> log` in the same session was refused and `git -C <own worktree> log` passed. The discriminating axis there is git, not the crossing of trees.
+
+Card t880 measured the same axis from the other side at 2.1.275 and reported the refusal target as **a git call that cannot be statically bound to the worktree** — not nested shell expansion as such. Backticks, `$( )`, `for` loops, and heredocs were all reported to pass when no git call was involved.
+
+**That generalization does not hold universally, and the counter-example was measured here.** At 2.1.275, in a worktree-isolated session with the guard demonstrably live (a `git -C` control refused in the same session), a quoted-delimiter heredoc whose body was the ten characters of a JSON object — no git anywhere in the command — was refused with the `too complex to verify` clause. So "git-free commands pass" is false as stated; what survives is the narrower claim that a statically unbindable git call is *sufficient* for refusal, not that it is *necessary*.
+
+**Gap**: no measurement here narrows what else is sufficient. The brace observation in the trigger table above and this one are the same shape, and its boundary is still unmeasured.
+
+### Two observations disagree on the heredoc-carrying-git-text shape
+
+The trigger table above records, first-hand at **2.1.251**, that a quoted-delimiter heredoc whose body names a git subcommand was refused. Two later observations disagree with it and with each other:
+
+| Session kind | Version | Result |
+|---|---|---|
+| Worktree-isolated | 2.1.251 | **Refused** — `names git in a form too complex to verify` (trigger table above) |
+| Worktree-isolated | 2.1.275 | **Passed** — measured first-hand for card t852, with a `git -C` control refused in the same session, so the pass is a pass and not a dead guard |
+| Primary checkout | 2.1.275 | **Refused** — reported by another lane (card t852 dispatch) |
+
+Two explanations fit, and **neither is established**:
+
+- **A version change.** The behaviour flipped between 2.1.251 and 2.1.275 for this shape. The same session that saw the flip also re-measured the JSON-brace shape as still refused at 2.1.275, so any such change was selective rather than a general relaxation.
+- **A layer difference.** The worktree-isolated session meets the Claude Code runtime guard, while the primary checkout meets this repository's own branch guard (`internal/hook/branch_guard.go`) — two different refusers with overlapping-sounding wording, per the discriminator table at the top of this section.
+
+**To settle it**, run the identical heredoc in both session kinds at one pinned version and compare the refusal wording as well as the outcome; the wording is what separates the two guards. Until that is done, do not cite either observation as the behaviour.
+
+### A background subagent carries no anchor of its own
+
+A background subagent is **not** pinned to the tree it was spawned in. Its working directory is re-resolved against the session's current anchor at each call, including while the session is moving between trees.
+
+Card t741 measured this directly: twelve path-free calls from one background subagent, no `cd` anywhere in them, and the working directory changed twice across the run as the parent session moved — twelve passes, zero refusals.
+
+Two consequences, and the second is the dangerous one:
+
+- **A refused subagent command is not silent.** The `--git-dir` fixture above was captured from a background subagent, so a refusal reaches `PostToolUseFailure` from a subagent exactly as it does from a main session.
+- **A re-anchored subagent is entirely silent.** A path-free command keeps succeeding while the tree underneath it changes. Nothing refuses, nothing is logged, and the subagent cannot tell that its later work landed in a different tree from its earlier work. This is the audit-degradation path that refusal records do not catch.
+
+Operationally: do not move a session's worktree while a background auditor is live. Where that is unavoidable, the resulting verdict's Gaps section must carry the refusal record — `verification-claim-integrity.md` §3.1 (a refusal is a Gap, never a silent substitution) governs, and a lead reading the verdict is the only thing enforcing it.
+
+**Not recommended**: per-agent anchor registration. It would require changing the Claude Code binary rather than this repository, and it inverts the guard's purpose — a subagent pinned to its spawn tree keeps writing to a tree the operator believes was disposed of.
+
 ### Workarounds — two situations, not two competing options
 
 Which one applies is decided by what you were trying to do, so identify the situation before reaching for a form.
@@ -539,7 +603,9 @@ Ad-hoc detours happen to work — routing the content through an interpreter's o
 
 **Running a compound command → split it into separate plain commands.** Issue the steps one at a time rather than chaining them. Note that this trades away one property worth keeping in mind: an environment scrub written as `unset … && <command>` is load-bearing as a single invocation, because each command runs in a fresh process, so that particular pairing is not one to split apart.
 
-**Version measured**: Claude Code 2.1.251. No other version was measured, so none of the behaviour above is known to hold before or after it.
+**Versions measured**: the trigger table and the delimiter asymmetry were measured at Claude Code **2.1.251**. The message-shape catalogue, the git-axis counter-example, and the heredoc disagreement were measured at **2.1.275** (card t852; `claude --version` read in the measuring session). The subagent-anchor observations were measured at the version current when card t741 was measured, which was not recorded there.
+
+Guard behaviour is version-dependent — one shape has already been observed to flip between these two versions — so **state the version whenever you add a row here, and read the version before citing one.** No behaviour above is known to hold at any version other than the one its row names.
 
 ## SPEC-to-Worktree Mapping
 
@@ -558,4 +624,4 @@ Worktree usage is user opt-in; the default flow runs all phases on a `feat/SPEC-
 
 ---
 
-Version: 4.4.0 (descriptive card-branch slugs — card id leaves the branch name, stays on the tree path; WT- naming + disposal-path reconciliation; release self-integration pointer)
+Version: 4.5.0 (guard-refusal message-shape catalogue — four pinned fixtures plus three observed since, one of them met while writing the section and unreproduced by four narrowing probes; the git axis and its measured counter-example; the heredoc disagreement recorded unresolved across two session kinds; background subagents carry no anchor of their own; per-row version attribution)

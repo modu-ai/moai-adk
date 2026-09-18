@@ -60,7 +60,7 @@ MCP tools (when a user configures their own `.mcp.json`) are deferred by default
 | `agent` | v2.1.157+ | User/Project/Local (not Managed) | The top-level `agent` key (example `"code-reviewer"`) runs the main thread as a named subagent and sets the default agent for sessions dispatched from `claude agents`, applying that subagent's system prompt, tool restrictions, and model. MoAI invokes its retained agent catalog via explicit delegation, not a session-wide default agent (orchestrator-is-main-thread model). |
 | `requiredMinimumVersion` | v2.1.163+ | Managed | Hard version-gate — Claude Code refuses to start when its version is below the floor. An org/admin decision, parallel to the `disableWorkflows` stance. Distinct from the older advisory `minimumVersion`. |
 | `requiredMaximumVersion` | v2.1.163+ | Managed | Hard version-ceiling — refuses to start above the cap. Likewise an org/admin decision. |
-| `effortLevel` | v2.1.110+ | User/Project/Local | Intentionally NOT shipped in `settings.json.tmpl`. Per-session effort is controlled by the `ultrathink` keyword or the `CLAUDE_CODE_EFFORT_LEVEL` environment variable; pinning a fixed high effort level project-wide would force elevated token cost on every user session. |
+| `effortLevel` | v2.1.110+ | User/Project/Local | Intentionally NOT shipped in `settings.json.tmpl`. The launcher passes the profile's effort as an `effortLevel` in the transient `--settings` file it injects — a launch DEFAULT an in-session `/effort` or `/model` change may replace. Do NOT pin the level through `CLAUDE_CODE_EFFORT_LEVEL`: that variable is an OVERRIDE, so while it is set Claude Code refuses every in-session effort change for the rest of the session. Pinning a fixed high effort level project-wide would also force elevated token cost on every user session. |
 | `workflowSizeGuideline` | v2.1.219+ | Any settings file | Sets the advisory Dynamic workflow size guideline (`small` / `medium` / `large` / `unrestricted`; default `medium` — aim for fewer than 15 agents); the `/config` row is hidden while one is set. MoAI does not pin a size — the choice is left to the user/org (see `.claude/rules/moai/workflow/dynamic-workflows.md`). |
 
 Reference: https://code.claude.com/docs/en/settings.
@@ -254,6 +254,18 @@ When `outputStyle` is set in multiple places, the first match wins:
 | 4 (lowest) | Hardcoded default | — | `"MoAI"` |
 
 The **local** scope (`.claude/settings.local.json`) is the highest-priority resolver source and is where the Claude Code `/config` → Output style menu writes a user's selection (official docs: code.claude.com/docs/en/output-styles — "Your selection is saved to `.claude/settings.local.json`"). This is why the project template (scope 2) pinning `outputStyle: MoAI-Easy` as the PRODUCT DEFAULT never traps a user: any `/config` choice lands in scope 1, which outranks the project pin. The setting is read once at session start — a change takes effect after `/clear` or a new session.
+
+### In-session switching — `/config` and `/output-style`
+
+Two surfaces select a style in-session, and both persist the choice to `.claude/settings.local.json`:
+
+| Form | Behavior |
+|---|---|
+| `/config` → Output style | menu pick |
+| `/output-style` | lists available styles, marking the current one; changes nothing |
+| `/output-style <style>` | switches, custom MoAI styles included |
+
+Upstream sources disagree on whether `/output-style` still exists — a CHANGELOG entry deprecates it in favour of `/config`, a later one re-adds it. Resolve that by measurement, never by the documents: on Claude Code **2.1.275** (darwin/arm64) a bare call printed `Available styles:` with `(current)`, and `/output-style <name>` printed `Output style set to <name>` and wrote `{"outputStyle": "<name>"}`. Whether a mid-session switch takes effect before `/clear` was NOT measured. `/config` stays the surface to document for users, because it is present on every version.
 
 **Example 1 — project overrides user:**
 

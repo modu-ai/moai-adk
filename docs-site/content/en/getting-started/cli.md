@@ -19,7 +19,7 @@ The `moai` CLI is divided into three groups.
 
 | Group | Commands | Description |
 |------|--------|------|
-| **Launch** | `moai cc` · `moai cg` · `moai glm` | Start a Claude Code session (choose the backend) |
+| **Launch** | `moai cc` · `moai glm` | Start a Claude Code session (choose the backend) |
 | **Project** | `moai init` · `moai update` · `moai doctor` · `moai status` | Project initialization, update, diagnostics, status |
 | **Tools** | `moai profile` · `moai inventory` · `moai hook` · `moai worktree` · `moai spec` · `moai harness` · ... | Configuration, inventory, hooks, worktrees, and other tools |
 
@@ -66,7 +66,6 @@ moai init [project-name] [OPTIONS]
 | `--root <path>` | Project root directory (default: current directory) |
 | `--git-mode <manual\|personal\|team>` | Git workflow mode (default: manual) |
 | `--git-provider <github\|gitlab>` | Git provider |
-| `--project-mode <personal\|team>` | Project mode (default: personal) |
 | `--enable-lsp` | Enable LSP integration (default: true) |
 | `--enforce-quality` | Enforce quality gates (default: true) |
 | `--enable-design` | Enable the design workflow (default: true) |
@@ -85,7 +84,7 @@ cd my-existing-project
 moai init
 
 # Non-interactive (CI/CD)
-moai init --non-interactive --project-mode personal --model-policy medium
+moai init --non-interactive --model-policy medium
 ```
 
 For detailed wizard steps, see the [Initial Setup](./init-wizard) page.
@@ -231,7 +230,6 @@ Specify a profile at launch with the `-p` flag:
 ```bash
 moai cc -p work       # Run Claude with the work profile
 moai glm -p cost-save # Run GLM with the cost-save profile
-moai cg -p team       # Run CG mode with the team profile
 ```
 
 For more details, see the [Profile Management](./profile) page.
@@ -326,37 +324,20 @@ git worktree list               # list worktrees
 
 ---
 
-## moai cc / moai cg / moai glm
+## moai cc / moai glm
 
-Launch commands that start Claude Code while choosing the backend. All three support the `-p <profile>` flag to specify a profile. Passing arguments after `--` straight through to Claude Code is supported only by `moai cc` and `moai glm` (`moai cg` does not support it).
+`moai cc` and `moai glm` launch Claude Code with an explicitly selected backend. Legacy CG configurations require migration before launch.
 
 ```bash
 moai cc [-p profile] [-- claude-args...]
 moai glm [-p profile] [-- claude-args...]
-moai cg [-p profile]
 ```
 
-| Command | Leader | Workers | tmux required | Use case |
-|--------|------|------|-----------|------|
-| `moai cc` | Claude | Claude | No | Highest quality (single backend) |
-| `moai glm` | GLM | GLM | No | Cost optimization (GLM only) |
-| `moai cg` | Claude | GLM | Required | Quality + cost balance (hybrid) |
-
-`moai cg` activates CG mode (a Claude leader + GLM teammates). It must be run inside a tmux session, and it injects the GLM environment variables into the tmux session while the leader pane uses the Claude API. `moai cg` starts Claude Code directly in the current pane after setup, so there is no separate `claude` launch step.
-
-```bash
-# 1. Save your GLM API key (once)
-moai glm setup sk-your-glm-api-key
-
-# 2. Activate CG mode (run inside tmux — Claude Code starts directly in the current pane)
-moai cg
-```
-
-For detailed CG mode guidance, see [Introduction — Save tokens with GLM](./introduction#save-tokens-with-glm-5070).
+`moai cg` has been retired. It exits with a migration diagnostic without starting Claude or GLM. It is not an alias for `moai cc`. Projects with `llm.team_mode: cg` must make an explicit migration choice before launching a session. [CG retirement and migration](/en/multi-llm/cg-mode/)
 
 ### Launch flags
 
-Flags common to all three launch commands.
+Flags common to both launch commands.
 
 | Flag | Description |
 |--------|------|
@@ -372,7 +353,7 @@ Flags common to all three launch commands.
 | `-m, --model <model>` | Override the model selection |
 | `--chrome` / `--no-chrome` | Toggle the Chrome MCP |
 
-> The `auto` permission mode is not available on GLM (a third-party provider) — it is supported only in `moai cc` or `moai cg`.
+> The `auto` permission mode is not available on GLM (a third-party provider) — it is supported only in `moai cc`.
 
 ### moai glm subcommands
 

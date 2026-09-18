@@ -182,22 +182,10 @@ func TestGetProfileText_PermAutoRuntimeWarning(t *testing.T) {
 	}
 }
 
-// TestGetProfileText_MigrationNoticeFields W-4: verifies that the theme
-// MigrationNotice field is populated in all 4 languages and contains the %q
-// format verb. The mode migration notice was removed by
-// SPEC-V3R6-STATUSLINE-PRESET-RETIRE-001.
-func TestGetProfileText_MigrationNoticeFields(t *testing.T) {
-	for _, lang := range []string{"en", "ko", "ja", "zh"} {
-		txt := getProfileText(lang)
-		if txt.MigrationNoticeStatuslineTheme == "" {
-			t.Errorf("lang=%q: MigrationNoticeStatuslineTheme is empty", lang)
-		}
-		// Must contain 2 %q format verbs (old value, new value)
-		if !containsStr(txt.MigrationNoticeStatuslineTheme, "%q") {
-			t.Errorf("lang=%q: MigrationNoticeStatuslineTheme %q should contain %%q format verb", lang, txt.MigrationNoticeStatuslineTheme)
-		}
-	}
-}
+// TestGetProfileText_MigrationNoticeFields was removed with the
+// MigrationNoticeStatuslineTheme key in the M8 key cleanup (REQ-ITI-013):
+// the migration notice itself was retired by
+// SPEC-V3R6-STATUSLINE-PRESET-RETIRE-001 and the key stopped being read.
 
 // TestGetProfileText_SummarySyncSkippedNeutral W-5: verifies that SummarySyncSkipped uses
 // neutral wording (no project-level sync).
@@ -266,8 +254,8 @@ func TestProfileSetupTranslations_PresetSegments(t *testing.T) {
 		value func(profileSetupText) string
 	}
 	cells := []cell{
-		{"StatuslineSegmentsTitle", func(p profileSetupText) string { return p.StatuslineSegmentsTitle }},
-		{"StatuslineSegmentsDesc", func(p profileSetupText) string { return p.StatuslineSegmentsDesc }},
+		// StatuslineSegmentsTitle/Desc were removed with the segment
+		// MultiSelect (REQ-ITI-013 M8 key cleanup).
 		{"SegmentCacheHit", func(p profileSetupText) string { return p.SegmentCacheHit }},
 		{"SegmentClaudeVersion", func(p profileSetupText) string { return p.SegmentClaudeVersion }},
 		{"SegmentContext", func(p profileSetupText) string { return p.SegmentContext }},

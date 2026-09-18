@@ -87,20 +87,38 @@ func (h *worktreeCreateHandler) Handle(ctx context.Context, input *HookInput) (*
 		cwd = wd
 	}
 
+	if err := validateWorktreeName(input.WorktreeName); err != nil {
+		return nil, err
+	}
+
 	repoRoot, err := resolveWorktreeRepoRoot(cwd)
 	if err != nil {
 		return nil, err
 	}
 
-	path := filepath.Join(repoRoot, agentWorktreeParentDir, input.WorktreeName)
+	parent := filepath.Join(repoRoot, agentWorktreeParentDir)
+	path := filepath.Join(parent, input.WorktreeName)
+	if err := ensureWithinWorktreeParent(parent, path); err != nil {
+		return nil, err
+	}
 	branch := agentWorktreeBranchPrefix + sanitizeWorktreeBranchSuffix(input.WorktreeName)
 
-	// Idempotent reuse: an existing directory at the target path satisfies
-	// the contract without a second git invocation (Claude Code validates
-	// that the echoed path is a directory before handing it to the agent).
-	if info, statErr := os.Stat(path); statErr == nil {
+	// Idempotent reuse: an existing REGISTERED worktree at the target path
+	// satisfies the contract without a second git invocation (Claude Code
+	// validates that the echoed path is a directory before handing it to the
+	// agent). Lstat rather than Stat, and a registry lookup rather than a
+	// bare IsDir: a plain directory or a symlink that merely happens to sit
+	// at the target path is NOT an isolated worktree, and handing one back
+	// silently de-isolates the agent that asked for isolation.
+	if info, statErr := os.Lstat(path); statErr == nil {
+		if info.Mode()&os.ModeSymlink != 0 {
+			return nil, fmt.Errorf("worktree create: %s is a symlink, not a worktree directory", path)
+		}
 		if !info.IsDir() {
 			return nil, fmt.Errorf("worktree create: %s exists and is not a directory", path)
+		}
+		if err := ensureRegisteredWorktree(repoRoot, parent, path); err != nil {
+			return nil, err
 		}
 		slog.Info("reusing existing worktree for isolated agent",
 			"worktree_path", path,
@@ -178,6 +196,98 @@ func resolveWorktreeRepoRoot(dir string) (string, error) {
 		return "", fmt.Errorf("worktree create: repository root %q under %s is not an absolute path", root, dir)
 	}
 	return root, nil
+}
+
+// validateWorktreeName rejects a suggested slug that cannot name a directory
+// strictly under .claude/worktrees/.
+//
+// Claude Code's own name validation admits '/'-separated segments of letters,
+// digits, dots, underscores and dashes, so the separator itself stays legal —
+// rejecting it outright would refuse an input the contract declares valid and
+// leave sanitizeWorktreeBranchSuffix (which exists to support it) unreachable.
+// What is rejected is every segment that cannot be a directory name: empty
+// (a leading, trailing, or doubled separator), "." and ".." (which fold the
+// joined path back out of the parent), and any character outside the contract's
+// alphabet — '\' among them, so a Windows separator cannot slip through the
+// '/'-only split.
+func validateWorktreeName(name string) error {
+	for _, segment := range strings.Split(name, "/") {
+		switch segment {
+		case "":
+			return fmt.Errorf("worktree create: name %q has an empty path segment", name)
+		case ".", "..":
+			return fmt.Errorf("worktree create: name %q has a relative path segment %q", name, segment)
+		}
+		for _, r := range segment {
+			if !isWorktreeNameRune(r) {
+				return fmt.Errorf("worktree create: name %q contains disallowed character %q", name, r)
+			}
+		}
+	}
+	return nil
+}
+
+// isWorktreeNameRune reports whether r is admitted by Claude Code's worktree
+// name alphabet (letters, digits, dots, underscores, dashes).
+func isWorktreeNameRune(r rune) bool {
+	switch {
+	case r >= 'a' && r <= 'z', r >= 'A' && r <= 'Z', r >= '0' && r <= '9':
+		return true
+	case r == '.', r == '_', r == '-':
+		return true
+	}
+	return false
+}
+
+// ensureWithinWorktreeParent confirms the joined path is strictly inside the
+// worktree parent directory. It is the containment backstop behind
+// validateWorktreeName: the name check decides what may be joined, this one
+// measures what the join actually produced, so a future change to either
+// cannot silently reopen the escape.
+func ensureWithinWorktreeParent(parent, path string) error {
+	rel, err := filepath.Rel(parent, path)
+	if err != nil {
+		return fmt.Errorf("worktree create: resolve %s against %s: %w", path, parent, err)
+	}
+	if rel == "." || rel == ".." || strings.HasPrefix(rel, ".."+string(filepath.Separator)) {
+		return fmt.Errorf("worktree create: path %s escapes the worktree directory %s", path, parent)
+	}
+	return nil
+}
+
+// ensureRegisteredWorktree confirms the directory already present at path is a
+// worktree git knows about for this repository — not the primary checkout, not
+// a plain directory, and not a link to a tree outside the parent.
+//
+// Reuse keyed on "a directory exists here" was the actual damage path: the
+// name "../.." folded the joined path back onto the repository root, which is
+// always a directory, so the hook handed the primary checkout to an agent that
+// had asked for an isolated worktree.
+func ensureRegisteredWorktree(repoRoot, parent, path string) error {
+	resolvedPath, err := filepath.EvalSymlinks(path)
+	if err != nil {
+		return fmt.Errorf("worktree create: resolve %s: %w", path, err)
+	}
+	if resolvedParent, err := filepath.EvalSymlinks(parent); err == nil {
+		if err := ensureWithinWorktreeParent(resolvedParent, resolvedPath); err != nil {
+			return err
+		}
+	}
+
+	entries, err := gitcore.NewWorktreeManager(repoRoot).List()
+	if err != nil {
+		return fmt.Errorf("worktree create: %w", err)
+	}
+	for _, entry := range entries {
+		registered := entry.Path
+		if resolved, resolveErr := filepath.EvalSymlinks(registered); resolveErr == nil {
+			registered = resolved
+		}
+		if registered == resolvedPath {
+			return nil
+		}
+	}
+	return fmt.Errorf("worktree create: %s is not a registered worktree of %s", path, repoRoot)
 }
 
 // sanitizeWorktreeBranchSuffix converts a worktree slug (letters, digits,

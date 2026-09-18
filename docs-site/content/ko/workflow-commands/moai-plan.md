@@ -351,7 +351,7 @@ Plan이 끝나고 Run이 시작되기 전에, 실행 환경을 살펴본 뒤 어
 
 **감지 항목:**
 1. tmux 가용성 (`$TMUX` 환경 변수)
-2. 현재 LLM 모드 (`llm.yaml`의 `team_mode`: cc/glm/cg)
+2. 현재 LLM 모드 (`llm.yaml`의 `team_mode`: cc/glm)
 
 **tmux 사용 가능 시:**
 - Worktree + 현재 모드 (권장)
@@ -361,7 +361,7 @@ Plan이 끝나고 Run이 시작되기 전에, 실행 환경을 살펴본 뒤 어
 - Sub-agent Mode (권장)
 
 {{< callout type="info" >}}
-Agent Teams 정적 오케스트레이션 계층(Module 3)은 걷어냈습니다. `--team` 플래그와 Team Mode 옵션은 더 이상 제공하지 않고, 억지로 지정하면 `MODE_TEAM_UNAVAILABLE` 폴백이 걸려 Sub-agent Mode로 넘어갑니다. CG 모드(Claude+GLM)는 `moai cg` 명령으로 들어갑니다.
+Agent Teams 정적 오케스트레이션 계층(Module 3)은 걷어냈습니다. `--team` 플래그와 Team Mode 옵션은 더 이상 제공하지 않고, 억지로 지정하면 `MODE_TEAM_UNAVAILABLE` 폴백이 걸려 Sub-agent Mode로 넘어갑니다. CG는 폐기되었습니다. `moai migrate cg`로 이전 선택지를 먼저 확인하세요.
 {{< /callout >}}
 
 ## 실전 예시

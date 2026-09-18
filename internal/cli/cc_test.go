@@ -47,6 +47,7 @@ func TestCCCmd_IsSubcommandOfRoot(t *testing.T) {
 }
 
 func TestCCCmd_Execution_NoDeps(t *testing.T) {
+	t.Setenv(config.EnvMoaiLaunchProvider, "")
 	// Use a temporary project root to prevent any mutation of real project files.
 	// The project root finder is overridden via findProjectRootFn.
 	tmpDir := t.TempDir()
@@ -66,9 +67,10 @@ func TestCCCmd_Execution_NoDeps(t *testing.T) {
 	origLaunch := launchClaudeFunc
 	defer func() { launchClaudeFunc = origLaunch }()
 
-	var launchedProfile string
+	var launchedProfile, launchedProvider string
 	launchClaudeFunc = func(profile string, args []string) error {
 		launchedProfile = profile
+		launchedProvider = os.Getenv(config.EnvMoaiLaunchProvider)
 		return nil
 	}
 
@@ -83,6 +85,9 @@ func TestCCCmd_Execution_NoDeps(t *testing.T) {
 
 	if launchedProfile != "" {
 		t.Errorf("default profile should be empty, got %q", launchedProfile)
+	}
+	if launchedProvider != BackendClaude {
+		t.Errorf("moai cc launch provider = %q, want %q", launchedProvider, BackendClaude)
 	}
 }
 

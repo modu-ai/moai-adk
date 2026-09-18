@@ -33,7 +33,7 @@ v3.0 的价值可归纳为三大核心。
 
 ### 代币经济学(Token Economics)
 
-最大化性价比的智能资源分配。按作业阶段与 SPEC 大小声明式地分配模型与推理深度的 **3 层模型策略**,组合 Claude 领导与 GLM Worker 将实现成本降低 60-70% 的 **CG 模式**,在超预算前正常停止的 **Token Circuit Breaker**,以及缩减常驻加载上下文的 **上下文瘦身** —— 这些构成了这一核心。
+最大化性价比的智能资源分配。按作业阶段与 SPEC 大小声明式地分配模型与推理深度的 **3 层模型策略**,在超预算前正常停止的 **Token Circuit Breaker**,以及缩减常驻加载上下文的 **上下文瘦身** —— 这些构成了这一核心。
 
 ### 智能体循环工程(Agentic Loop Engineering)
 
@@ -363,7 +363,7 @@ Plan 阶段产出物由 **plan-auditor** 独立审计,进入 Run 阶段前会经
 
 #### 执行模式选择门禁
 
-从 Plan 阶段转到 Run 阶段时,MoAI 会自动检测当前执行环境(cc/glm/cg)并显示用户可确认或更改的选择 UI。
+从 Plan 阶段转到 Run 阶段时,MoAI 会自动检测当前执行环境(cc/glm)并显示用户可确认或更改的选择 UI。
 
 ```mermaid
 flowchart TD
@@ -371,7 +371,6 @@ flowchart TD
     B --> C{"模式选择 UI"}
     C -->|"CC"| D["Claude 专用执行"]
     C -->|"GLM"| E["GLM 专用执行"]
-    C -->|"CG"| F["Claude Leader + GLM Workers"]
 ```
 
 该门禁保证无论环境状态如何都使用正确的执行模式,防止实现过程中的模式不一致。
@@ -430,47 +429,15 @@ MoAI 编排器分析作业复杂度来选择执行形态。
 | **并行子智能体** | 3-5 个只读智能体同时扇出 | 调查·评审·审计等并行分析 |
 | **动态工作流** | 脚本编排多个智能体 | 大规模扫描、交叉验证研究 |
 
-{{< callout type="info" >}}
-**v3.0 变更**:过去的 Agent Teams 静态编排层已退役。即使强制 `--team` 也会回退到子智能体模式。不过 Claude Code 的原生 teammate 运行时 —— `moai cg` 的 tmux 分割窗口 —— 原样保留。团队模式质量钩子(TeammateIdle 的 LSP 门禁验证、TaskCompleted 的 SPEC 参照确认)也与 native teammate 运行时一同保留。
-{{< /callout >}}
+{{< callout type="info" >}} **v3.0 变更**:过去的 Agent Teams 静态编排层已退役。 即使强制 `--team` 也会回退到子智能体模式。 团队模式质量钩子(TeammateIdle 的 LSP 门禁验证、TaskCompleted 的 SPEC 参照确认)也与 native teammate 运行时一同保留。 {{< /callout >}} CG 已停用，请用 `moai migrate cg` 预览迁移选项。
 
-### CG 模式(Claude + GLM 混合)
+### CG 停用与配置迁移
 
-代币经济学核心的实战工具。Leader 使用 **Claude API**、Workers 使用 **GLM API** 的混合模式,通过 tmux 会话级环境变量隔离实现。策略·计划·审计由 Claude 承担,大量实现由 GLM 承担,在实现为主的作业中节省 60-70% 成本。
+`moai cg` 已停用。它会显示迁移提示并退出，不会启动 Claude 或 GLM，也不是 `moai cc` 的别名。项目中若仍有 `llm.team_mode: cg`，必须先明确选择迁移方案，才能启动会话。
 
-```
-┌─────────────────────────────────────────────────────────────┐
-│  LEADER (当前 tmux pane, Claude API)                         │
-│  - moai cg 激活后用 /moai 命令编排                            │
-│  - 处理 plan, quality, sync 阶段                             │
-│  - 无 GLM 环境 → 使用 Claude API                            │
-└──────────────────────┬──────────────────────────────────────┘
-                       │ Agent Teams (新 tmux pane)
-                       ▼
-┌─────────────────────────────────────────────────────────────┐
-│  TEAMMATES (新 tmux pane, GLM API)                           │
-│  - 继承 tmux 会话环境 → 使用 GLM API                        │
-│  - 在 run 阶段执行实现作业                                    │
-│  - 用 SendMessage 与领导通信                                  │
-└─────────────────────────────────────────────────────────────┘
-```
+迁移会写入 `llm.team_mode: claude`、`llm.gateway.teammate_mode: in-process` 和 `llm.gateway.teammate_provider: inherit`。这会取消原有混合角色分配，并不会保留 Claude 领队与 GLM 队友窗格的分工。
 
-```bash
-# 1. 保存 GLM API 密钥(仅一次)
-moai glm setup sk-your-glm-api-key
-
-# 2. 激活 CG 模式(在 tmux 会话内运行 —— Claude Code 自动启动)
-moai cg
-
-# 3. 运行工作流
-/moai "作业说明"
-```
-
-| 命令 | Leader | Workers | 需要 tmux | 成本节省 | 使用场景 |
-|--------|--------|---------|----------|----------|----------|
-| `moai cc` | Claude | Claude | 否 | - | 复杂作业、最高质量 |
-| `moai glm` | GLM | GLM | 推荐 | ~70% | 成本优化 |
-| `moai cg` | Claude | GLM | **必需** | **~60%** | 质量 + 成本平衡 |
+`claude-glm` 表示 Claude 领队搭配 tmux 中的 GLM 队友。目前 TEAMMATE 集成验证尚未通过，因此不能应用或启动该方案，只能预览。安装 tmux 或设置 `verified: true` 都不能解除限制。
 
 ### 自主开发循环(Ralph Engine)
 

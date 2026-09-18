@@ -60,6 +60,14 @@ gh issue list --state open --limit 30 --json number,title,labels,body,assignees
 
 Classify by title/labels/body → branch prefix: bug=`fix/issue-{n}`, feature=`feat/issue-{n}`, enhancement=`improve/issue-{n}`, docs=`docs/issue-{n}`.
 
+[HARD] Before proposing work on an issue, read whether a SPEC covering it is already
+`completed` (`moai spec audit`, or the issue number against `.moai/specs/*/spec.md`
+frontmatter) and report what that read returned. An issue's own `OPEN` state is not
+evidence that the work is outstanding: the delivering SPEC closes under its own id, so
+nothing about the fix updates the issue. Report the read; it never vetoes — and it is
+not conclusive either, because a fix can land under another card or SPEC entirely. The
+final discriminator is reproduction.
+
 ### Phase 2: Analysis and Implementation
 
 [HARD] Delegate implementation. Route bugs to manager-develop (cycle_type=tdd) or a

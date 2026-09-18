@@ -6,10 +6,8 @@
 package kanban
 
 import (
-	"context"
 	"os"
 	"path/filepath"
-	"reflect"
 
 	"github.com/modu-ai/moai-adk/internal/homestate"
 	"github.com/modu-ai/moai-adk/internal/paths"
@@ -190,7 +188,9 @@ func relocateQueueArtifacts(from, to string) (err error) {
 	// waited on the legacy lock. The first verified home database wins; a late
 	// migrator must not overwrite cards already added there.
 	if queueExists(to) {
-		return nil
+		// The canonical queue also wins when another migrator published it
+		// while we waited. Fence writers that resolved the old source first.
+		return os.WriteFile(filepath.Join(from, backlogRetiredFileName), []byte(targetQueue), 0o600)
 	}
 	sourceLayout := inspectBacklogLayout(sourceQueue)
 	if !sourceLayout.dbExists && !sourceLayout.jsonExists {
@@ -200,34 +200,15 @@ func relocateQueueArtifacts(from, to string) (err error) {
 	if err != nil {
 		return err
 	}
-	targetEngine, err := openBacklogEngine(backlogSQLitePath(targetQueue))
-	if err != nil {
+	// A writer already waiting on the source lock must refuse after cutover.
+	marker := filepath.Join(from, backlogRetiredFileName)
+	if err := os.WriteFile(marker, []byte(targetQueue), 0o600); err != nil {
 		return err
 	}
-	migrationComplete := false
-	defer func() {
-		if !migrationComplete {
-			removeBacklogDBArtifacts(backlogSQLitePath(targetQueue))
-		}
-	}()
-	if err := targetEngine.writeRecord(context.Background(), record); err != nil {
-		_ = targetEngine.close()
+	if err := publishBacklogRecord(targetQueue, record, false); err != nil {
+		_ = os.Remove(marker)
 		return err
 	}
-	readback, err := targetEngine.readRecord(context.Background())
-	closeErr := targetEngine.close()
-	if err != nil {
-		return err
-	}
-	if closeErr != nil {
-		return closeErr
-	}
-	if !reflect.DeepEqual(record, readback) {
-		return os.ErrInvalid
-	}
-	migrationComplete = true
-	// The source remains as a rollback snapshot. Once the explicit migration
-	// command archives it, the canonical directory already wins every read.
 	return nil
 }
 

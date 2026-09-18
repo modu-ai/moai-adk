@@ -13,11 +13,15 @@ workflow:
         enabled: true
         token_threshold: 150000
     # audit pins (SPEC-V3R6-AUDIT-MODEL-PIN-001): project-committed model+effort
-    # for the cross-model audit backends — audit entry points only (codex_audit /
-    # glm_audit / audit_multi), never codex_task / glm_task. Precedence per
+    # for the cross-model audit backends — audit entry points only (claude_audit /
+    # codex_audit / glm_audit / audit_multi), never task delegation. Precedence per
     # backend: this pin > llm.yaml sync-auditor SSOT cell > empty. codex effort
-    # vocabulary low|medium|high|xhigh|max; glm effort = z.ai states low|high|max.
+    # Claude/Codex effort vocabulary low|medium|high|xhigh|max; GLM effort =
+    # z.ai states low|high|max. Claude defaults to sonnet/high.
     audit:
+        claude:
+            model: sonnet
+            effort: high
         codex:
             model: gpt-5.6-sol
             effort: high
@@ -158,6 +162,15 @@ workflow:
     # exempt via agent identity, allowing it to create worktrees even when
     # the guard is active.
     branch_guard:
+        enabled: true
+    # drift_cache_fill: the out-of-band drift-cache fill started from the
+    # SessionStart miss path. Unlike the guard family around it, this key ships
+    # ENABLED (internal/config/defaults.go is the SSOT) — the feature is not
+    # inert when on, and that cost is accepted because the alternative leaves
+    # the drift advisory permanently absent after a HEAD change. Set to false
+    # to stop the handler starting any fill child; the advisory then resolves
+    # from whatever the cache already holds.
+    drift_cache_fill:
         enabled: true
     # agent_stop_guard: SendMessage deny layer against revival of stopped
     # teammates (TaskStop does not reclaim the name address; one message

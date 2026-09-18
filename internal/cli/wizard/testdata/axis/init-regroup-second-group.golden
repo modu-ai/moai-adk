@@ -1,0 +1,17 @@
+  ● ● ● ○ 3 / 4                                                                 
+┃ Select the agent harness to deploy and wire                                   
+┃ Which LLM harness MoAI deploys and wires for this project. 'claude' is the    
+┃ recommended default; the --llm flag overrides this answer.                    
+┃ ▸ Claude only (Recommended) - Deploy the .claude/ surface plus AGENTS.md      
+┃   (today's default behavior)                                                  
+┃   GPT (Codex) only          - AGENTS.md and Codex surfaces only — no .claude/ 
+  Select the session permission mode                                            
+  Chooses the Claude Code permission mode written to your user settings. 'Accept
+  edits on' is the recommended default.                                         
+  ▸ Accept edits on (Recommended) - Auto-accept file edits; prompt for other    
+    tools                                                                       
+    Auto mode                     - Auto-approve tool calls under classifier    
+                                                                                
+                                                                                
+
+↑ up • ↓ down • / filter • shift+tab back • enter select

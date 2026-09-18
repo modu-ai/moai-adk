@@ -60,6 +60,11 @@ func seedHistoryFates(t *testing.T) {
 
 // AC-TAQ-001 — a live card reports `live` and its own state, one line,
 // exit 0. The three live states are proven distinct rather than collapsed.
+//
+// The `landing=-` column (card t665) sits before the text, the extension
+// point this line shape was designed around; `-` is the no-record case these
+// fixtures hold. The round trip that gives the column a value lives in
+// todo_landing_roundtrip_test.go.
 func TestTodoHistoryReportsLiveCard(t *testing.T) {
 	seedHistoryFates(t)
 
@@ -67,9 +72,9 @@ func TestTodoHistoryReportsLiveCard(t *testing.T) {
 		id   string
 		want string
 	}{
-		{"t1", "t1\tlive\tqueued\twrite the parser for the config file\n"},
-		{"t2", "t2\tlive\tpicked\tpolish the docs landing page\n"},
-		{"t3", "t3\tlive\tdropped\t[DROPPED — superseded by the parser rewrite] drop the legacy cache layer\n"},
+		{"t1", "t1\tlive\tqueued\tlanding=-\twrite the parser for the config file\n"},
+		{"t2", "t2\tlive\tpicked\tlanding=-\tpolish the docs landing page\n"},
+		{"t3", "t3\tlive\tdropped\tlanding=-\t[DROPPED — superseded by the parser rewrite] drop the legacy cache layer\n"},
 	}
 	for _, tc := range cases {
 		out, _, err := runTodo(t, "history", tc.id)
@@ -91,7 +96,7 @@ func TestTodoHistoryReportsArchivedCard(t *testing.T) {
 	if err != nil {
 		t.Fatalf("history t4: %v", err)
 	}
-	want := "t4\tarchived\tqueued\twire the banner into the shell\n"
+	want := "t4\tarchived\tqueued\tlanding=-\twire the banner into the shell\n"
 	if out != want {
 		t.Errorf("history t4 stdout = %q, want %q", out, want)
 	}
@@ -254,7 +259,10 @@ func TestTodoHistoryDisclosesPreArchiveQueue(t *testing.T) {
 	}
 
 	// A never-issued id is not dressed up as a destroyed one: t9999 sits
-	// above the mark, so stdout reports absent and stderr stays silent.
+	// above the mark, so stdout reports absent and stderr carries no
+	// destruction note. The temporary-origin advisory (t705) legitimately
+	// shares stderr in a temp-git fixture, so it is filtered before the
+	// emptiness assertion rather than expected absent.
 	out, errOut, err = runTodo(t, "history", "t9999")
 	if err != nil {
 		t.Fatalf("history t9999: %v", err)
@@ -262,10 +270,25 @@ func TestTodoHistoryDisclosesPreArchiveQueue(t *testing.T) {
 	if out != "t9999\tabsent\n" {
 		t.Errorf("history t9999 stdout = %q, want exactly the single absent line", out)
 	}
-	if errOut != "" {
-		t.Errorf("history t9999 stderr = %q, want empty — an id above the mark gets no destruction note", errOut)
+	if withoutTempOriginAdvisory(errOut) != "" {
+		t.Errorf("history t9999 stderr = %q, want empty beyond the temp-origin advisory — an id above the mark gets no destruction note", errOut)
 	}
 	_ = store
+}
+
+// withoutTempOriginAdvisory strips the temporary-origin advisory lines the
+// command path writes to stderr (t705) so tests can assert on the remaining
+// stderr content of a temp-git fixture.
+func withoutTempOriginAdvisory(errOut string) string {
+	const marker = "moai todo: the launch directory is inside the temporary root"
+	var kept []string
+	for _, line := range strings.Split(errOut, "\n") {
+		if strings.HasPrefix(line, marker) {
+			continue
+		}
+		kept = append(kept, line)
+	}
+	return strings.Join(kept, "\n")
 }
 
 // todoHistoryDegradedStoreNote is what REQ-TAQ-013 requires a store that
@@ -283,10 +306,8 @@ func TestTodoHistoryDegradesWithoutArchiveTables(t *testing.T) {
 		if _, _, err := runTodo(t, "add", "alpha work"); err != nil {
 			t.Fatalf("add: %v", err)
 		}
-		// Each scenario drops the tables FRESH: the first history read's
-		// engine open runs the DDL and recreates them (the store's universal
-		// open behavior — list would do the same), consuming the degraded
-		// shape for every later invocation. One surgery per invocation.
+		// Pure reads preserve this degraded shape. Drop once and verify both
+		// the lookup and listing disclose it without recreating schema.
 		dropArchiveTables := func() {
 			t.Helper()
 			db, err := sql.Open("sqlite", store.EnginePath())
@@ -308,20 +329,28 @@ func TestTodoHistoryDegradesWithoutArchiveTables(t *testing.T) {
 		if err != nil {
 			t.Fatalf("history t1: %v (stderr %q)", err, errOut)
 		}
-		if out != "t1\tlive\tqueued\talpha work\n" {
+		if out != "t1\tlive\tqueued\tlanding=-\talpha work\n" {
 			t.Errorf("history t1 stdout = %q, want the live line — the degraded lookup must still answer", out)
 		}
 		if !strings.Contains(errOut, todoHistoryDegradedStoreNote) {
 			t.Errorf("history t1 stderr = %q, want the store disclosure", errOut)
 		}
 
-		dropArchiveTables()
 		_, errOut, err = runTodo(t, "history")
 		if err != nil {
 			t.Fatalf("history (listing): %v (stderr %q)", err, errOut)
 		}
 		if !strings.Contains(errOut, todoHistoryDegradedStoreNote) {
 			t.Errorf("history (listing) stderr = %q, want the store disclosure", errOut)
+		}
+		db, err := sql.Open("sqlite", store.EnginePath())
+		if err != nil {
+			t.Fatal(err)
+		}
+		defer func() { _ = db.Close() }()
+		var tables int
+		if err := db.QueryRow(`SELECT count(*) FROM sqlite_master WHERE name IN ('archived_items','archived_findings')`).Scan(&tables); err != nil || tables != 0 {
+			t.Fatalf("pure history recreated archive tables: count=%d err=%v", tables, err)
 		}
 	})
 
@@ -446,10 +475,12 @@ func TestTodoHistoryStatesWithheldCount(t *testing.T) {
 // way a wall-clock field is reproducible across processes); every golden
 // comparison applies the identical rule.
 var goldenRFC3339 = regexp.MustCompile(`\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z`)
+var goldenUUIDv7 = regexp.MustCompile(`[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}`)
 
 // normalizeGoldenTimestamps applies the capture-time normalization.
 func normalizeGoldenTimestamps(s string) string {
-	return goldenRFC3339.ReplaceAllString(s, "<RFC3339>")
+	s = goldenRFC3339.ReplaceAllString(s, "<RFC3339>")
+	return goldenUUIDv7.ReplaceAllString(s, "<UUIDv7>")
 }
 
 // goldenDir is the live-reader golden directory (AC-TAQ-011 clause 1 pins

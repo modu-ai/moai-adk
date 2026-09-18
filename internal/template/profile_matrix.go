@@ -117,6 +117,63 @@ func ApplyProfile(projectRoot, profile string) error {
 // a legacy config that has no profile: key.
 var llmRootRegex = regexp.MustCompile(`(?m)^llm:[ \t]*$`)
 
+// harnessLineRegex matches the harness: line in llm.yaml for a value-replacing
+// write. Group 1 carries the leading indentation, group 2 the raw value (with
+// optional surrounding quotes so an already-correct line is recognized and
+// left byte-identical — a first deploy must ship the template verbatim, and
+// rewriting `harness: "claude"` into `harness: claude` would violate that).
+var harnessLineRegex = regexp.MustCompile(`(?m)^(\s*)harness:\s*["']?([\w-]*)["']?`)
+
+// ApplyHarness patches the harness field in llm.yaml under the given project
+// root (SPEC-INIT-HARNESS-001 REQ-IH-002), mirroring ApplyProfile. It reads
+// .moai/config/sections/llm.yaml, replaces the harness: line with the new
+// value (preserving indentation), and writes the file back. Returns nil when
+// the file is absent (graceful no-op). The value MUST be one of the closed-set
+// harness names (config.IsValidAgentHarness); an out-of-set value is an error,
+// never a silent write — llm.harness governs update re-deployment and doctor
+// check scoping, so a wrong value here would misdirect both.
+//
+// @MX:NOTE: [AUTO] llm.harness persistence entry point (SPEC-INIT-HARNESS-001
+// REQ-IH-002); init writes the resolved value on every run, claude included.
+func ApplyHarness(projectRoot, harness string) error {
+	if !config.IsValidAgentHarness(harness) {
+		return fmt.Errorf("invalid harness value %q: must be one of claude, codex, both", harness)
+	}
+	llmPath := filepath.Join(projectRoot, ".moai", "config", "sections", "llm.yaml")
+	content, err := os.ReadFile(llmPath)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return nil
+		}
+		return fmt.Errorf("read llm.yaml: %w", err)
+	}
+
+	var newContent []byte
+	if m := harnessLineRegex.FindSubmatch(content); m != nil {
+		// Already carries the target value (any quoting style): no-op. A
+		// first deploy ships the template llm.yaml verbatim — rewriting
+		// `harness: "claude"` into `harness: claude` there would break the
+		// byte-identity contract the update tests pin.
+		if strings.TrimSpace(string(m[2])) == harness {
+			return nil
+		}
+		newContent = harnessLineRegex.ReplaceAll(content, []byte("${1}harness: "+harness))
+	} else {
+		// A llm.yaml predating this SPEC has no harness key: insert one right
+		// under the llm: root so the resolved selection is still recorded
+		// (explicit record over implicit absence — REQ-IH-002).
+		newContent = llmRootRegex.ReplaceAll(content, []byte("${0}\n  harness: "+harness))
+	}
+	if string(newContent) == string(content) {
+		return nil
+	}
+
+	if err := os.WriteFile(llmPath, newContent, 0o644); err != nil {
+		return fmt.Errorf("write llm.yaml: %w", err)
+	}
+	return nil
+}
+
 // Profile agent-group keys (REQ-MPM-011). The seven groups partition the
 // retained agents by model+effort class. git, docs, and explore rows are
 // profile-invariant.
@@ -125,7 +182,7 @@ const (
 	GroupSpecAuditors = "spec_auditors"
 	// GroupDevelop covers manager-develop.
 	GroupDevelop = "develop"
-	// GroupAdvisor covers super-advisor.
+	// GroupAdvisor covers the non-writing super-advisor and mission-governor.
 	GroupAdvisor = "advisor"
 	// GroupDesignHarnessE2E covers manager-design, builder-harness, e2e-tester.
 	GroupDesignHarnessE2E = "design_harness_e2e"
@@ -150,21 +207,22 @@ const (
 // built-in Explore now has an explicit group, so only user-added agents
 // inherit).
 var agentGroupMembership = map[string]string{
-	"manager-spec":    GroupSpecAuditors,
-	"plan-auditor":    GroupSpecAuditors,
-	"sync-auditor":    GroupSpecAuditors,
-	"manager-develop": GroupDevelop,
-	"super-advisor":   GroupAdvisor,
-	"manager-design":  GroupDesignHarnessE2E,
-	"manager-lead":    GroupLead,
-	"builder-harness": GroupDesignHarnessE2E,
-	"e2e-tester":      GroupDesignHarnessE2E,
-	"manager-docs":    GroupDocs,
-	"manager-git":     GroupGit,
-	"Explore":         GroupExplore,
+	"manager-spec":     GroupSpecAuditors,
+	"plan-auditor":     GroupSpecAuditors,
+	"sync-auditor":     GroupSpecAuditors,
+	"manager-develop":  GroupDevelop,
+	"super-advisor":    GroupAdvisor,
+	"mission-governor": GroupAdvisor,
+	"manager-design":   GroupDesignHarnessE2E,
+	"manager-lead":     GroupLead,
+	"builder-harness":  GroupDesignHarnessE2E,
+	"e2e-tester":       GroupDesignHarnessE2E,
+	"manager-docs":     GroupDocs,
+	"manager-git":      GroupGit,
+	"Explore":          GroupExplore,
 }
 
-// profileMatrixAgentOrder is the canonical display/derivation order of the 12
+// profileMatrixAgentOrder is the canonical display/derivation order of the 13
 // retained agents for the model-profile preview surfaces (REQ-MPM-020). Explore
 // is included in the display and now resolves to its own explore group cell
 // (sonnet/low, profile-invariant), no longer the inherit sentinel.
@@ -179,6 +237,7 @@ var profileMatrixAgentOrder = []string{
 	"sync-auditor",
 	"manager-develop",
 	"super-advisor",
+	"mission-governor",
 	"manager-design",
 	"manager-lead",
 	"builder-harness",
@@ -197,8 +256,8 @@ func ProfileMatrixAgents() []string {
 	return out
 }
 
-// defaultProfileMatrix is the per-AGENT model+effort Go-code SSOT: 12 mapped
-// agents x 3 profiles = 36 cells. Outer key: profile {high, medium, low}. Inner
+// defaultProfileMatrix is the per-AGENT model+effort Go-code SSOT: 13 mapped
+// agents x 3 profiles = 39 cells. Outer key: profile {high, medium, low}. Inner
 // key: retained agent NAME (not a group — the group layer is display-only now,
 // because per-agent cells split two of the former groups). Value: {model,
 // effort}. This is the authoritative fallback for any cell absent from config
@@ -256,50 +315,53 @@ func ProfileMatrixAgents() []string {
 // `inherit` never appears inside the matrix — it survives only as the
 // unmapped-agent fallback.
 //
-// @MX:ANCHOR: [AUTO] defaultProfileMatrix — per-agent model+effort SSOT (33 cells)
+// @MX:ANCHOR: [AUTO] defaultProfileMatrix — per-agent model+effort SSOT (39 cells)
 // @MX:REASON: [AUTO] fan_in >= 3 (ResolveAgentModelEffort resolver + moai model profile CLI + web preview + harness class derivation); cells are settled design input, re-derivation forbidden
 var defaultProfileMatrix = map[string]map[string]config.ModelEffort{
 	PerformanceTierHigh: {
-		"manager-spec":    {Model: "opus", Effort: EffortLevelMedium},
-		"plan-auditor":    {Model: "opus", Effort: EffortLevelHigh},
-		"sync-auditor":    {Model: "opus", Effort: EffortLevelHigh},
-		"manager-develop": {Model: "opus", Effort: EffortLevelMedium},
-		"super-advisor":   {Model: "opus", Effort: EffortLevelHigh},
-		"manager-design":  {Model: "opus", Effort: EffortLevelHigh},
-		"manager-lead":    {Model: "opus", Effort: EffortLevelHigh},
-		"builder-harness": {Model: "opus", Effort: EffortLevelHigh},
-		"e2e-tester":      {Model: "opus", Effort: EffortLevelMedium},
-		"manager-docs":    {Model: "sonnet", Effort: EffortLevelLow},
-		"manager-git":     {Model: "sonnet", Effort: EffortLevelLow},
-		"Explore":         {Model: "sonnet", Effort: EffortLevelLow},
+		"manager-spec":     {Model: "opus", Effort: EffortLevelMedium},
+		"plan-auditor":     {Model: "opus", Effort: EffortLevelHigh},
+		"sync-auditor":     {Model: "opus", Effort: EffortLevelHigh},
+		"manager-develop":  {Model: "opus", Effort: EffortLevelMedium},
+		"super-advisor":    {Model: "opus", Effort: EffortLevelHigh},
+		"mission-governor": {Model: "opus", Effort: EffortLevelHigh},
+		"manager-design":   {Model: "opus", Effort: EffortLevelHigh},
+		"manager-lead":     {Model: "opus", Effort: EffortLevelHigh},
+		"builder-harness":  {Model: "opus", Effort: EffortLevelHigh},
+		"e2e-tester":       {Model: "opus", Effort: EffortLevelMedium},
+		"manager-docs":     {Model: "sonnet", Effort: EffortLevelLow},
+		"manager-git":      {Model: "sonnet", Effort: EffortLevelLow},
+		"Explore":          {Model: "sonnet", Effort: EffortLevelLow},
 	},
 	PerformanceTierMedium: {
-		"manager-spec":    {Model: "opus", Effort: EffortLevelMedium},
-		"plan-auditor":    {Model: "opus", Effort: EffortLevelHigh},
-		"sync-auditor":    {Model: "opus", Effort: EffortLevelHigh},
-		"manager-develop": {Model: "opus", Effort: EffortLevelMedium},
-		"super-advisor":   {Model: "opus", Effort: EffortLevelHigh},
-		"manager-design":  {Model: "opus", Effort: EffortLevelHigh},
-		"manager-lead":    {Model: "opus", Effort: EffortLevelHigh},
-		"builder-harness": {Model: "opus", Effort: EffortLevelMedium},
-		"e2e-tester":      {Model: "opus", Effort: EffortLevelLow},
-		"manager-docs":    {Model: "sonnet", Effort: EffortLevelLow},
-		"manager-git":     {Model: "sonnet", Effort: EffortLevelLow},
-		"Explore":         {Model: "sonnet", Effort: EffortLevelLow},
+		"manager-spec":     {Model: "opus", Effort: EffortLevelMedium},
+		"plan-auditor":     {Model: "opus", Effort: EffortLevelHigh},
+		"sync-auditor":     {Model: "opus", Effort: EffortLevelHigh},
+		"manager-develop":  {Model: "opus", Effort: EffortLevelMedium},
+		"super-advisor":    {Model: "opus", Effort: EffortLevelHigh},
+		"mission-governor": {Model: "opus", Effort: EffortLevelHigh},
+		"manager-design":   {Model: "opus", Effort: EffortLevelHigh},
+		"manager-lead":     {Model: "opus", Effort: EffortLevelHigh},
+		"builder-harness":  {Model: "opus", Effort: EffortLevelMedium},
+		"e2e-tester":       {Model: "opus", Effort: EffortLevelLow},
+		"manager-docs":     {Model: "sonnet", Effort: EffortLevelLow},
+		"manager-git":      {Model: "sonnet", Effort: EffortLevelLow},
+		"Explore":          {Model: "sonnet", Effort: EffortLevelLow},
 	},
 	PerformanceTierLow: {
-		"manager-spec":    {Model: "opus", Effort: EffortLevelMedium},
-		"plan-auditor":    {Model: "opus", Effort: EffortLevelMedium},
-		"sync-auditor":    {Model: "opus", Effort: EffortLevelMedium},
-		"manager-develop": {Model: "opus", Effort: EffortLevelMedium},
-		"super-advisor":   {Model: "opus", Effort: EffortLevelHigh},
-		"manager-design":  {Model: "opus", Effort: EffortLevelMedium},
-		"manager-lead":    {Model: "opus", Effort: EffortLevelMedium},
-		"builder-harness": {Model: "opus", Effort: EffortLevelLow},
-		"e2e-tester":      {Model: "sonnet", Effort: EffortLevelLow},
-		"manager-docs":    {Model: "sonnet", Effort: EffortLevelLow},
-		"manager-git":     {Model: "sonnet", Effort: EffortLevelLow},
-		"Explore":         {Model: "sonnet", Effort: EffortLevelLow},
+		"manager-spec":     {Model: "opus", Effort: EffortLevelMedium},
+		"plan-auditor":     {Model: "opus", Effort: EffortLevelMedium},
+		"sync-auditor":     {Model: "opus", Effort: EffortLevelMedium},
+		"manager-develop":  {Model: "opus", Effort: EffortLevelMedium},
+		"super-advisor":    {Model: "opus", Effort: EffortLevelHigh},
+		"mission-governor": {Model: "opus", Effort: EffortLevelHigh},
+		"manager-design":   {Model: "opus", Effort: EffortLevelMedium},
+		"manager-lead":     {Model: "opus", Effort: EffortLevelMedium},
+		"builder-harness":  {Model: "opus", Effort: EffortLevelLow},
+		"e2e-tester":       {Model: "sonnet", Effort: EffortLevelLow},
+		"manager-docs":     {Model: "sonnet", Effort: EffortLevelLow},
+		"manager-git":      {Model: "sonnet", Effort: EffortLevelLow},
+		"Explore":          {Model: "sonnet", Effort: EffortLevelLow},
 	},
 }
 

@@ -23,6 +23,10 @@ harness driving this contract lacks the capability.
 | question-channel | `AskUserQuestion` | Return a blocker report naming the missing input instead of asking in prose |
 | task-list | `TaskCreate` / `TaskUpdate` / `TaskList` / `TaskGet` | Track the work and report progress in prose |
 | design-sync | `DesignSync` | Skip the design-sync surface; say so in the report |
+| agent-spawning | `Agent(...)` sub-agents | Do the bounded work inline |
+| output-style | Claude output styles | Follow this contract directly |
+| slash-commands | `/moai` slash commands | Use the underlying `moai` CLI verbs |
+| workflow-scripts | Workflow scripts (`ultracode`) | Run the steps sequentially |
 
 **`Skill("<name>")` instructions carry no row, and are read literally.** `skill-loader` is a
 capability every harness driving this contract has, so it earns no row above; what is Claude-only
@@ -31,6 +35,8 @@ calling a tool, the same file is already there: the deploy mirrors every skill t
 `.agents/skills/<name>/SKILL.md` alongside `.claude/skills/<name>/SKILL.md`, so
 `Skill("moai-workflow-tdd")` names `.agents/skills/moai-workflow-tdd/SKILL.md`. Agent bodies keep
 the tool-call wording for that reason — it is an address, not a Claude-only instruction.
+Codex-side loading is **deferred** — read the mirrored SKILL.md directly; no loader resolves
+`Skill("...")` calls.
 
 ---
 
@@ -109,6 +115,12 @@ and resolve the remote default branch instead of assuming `main`.
 `moai cc -w <name> --spawn` for a new window, `EnterWorktree(<path>)` to re-enter); never create one
 with a bare `git worktree add`. Leave with `ExitWorktree`. Drive a worktree with `git -C <path>`,
 not `cd`.
+
+**From inside a worktree session, `<path>` must be that worktree's absolute path.** Measured on
+Claude Code 2.1.275: the guard refuses `-C .`, a relative path, a runtime-computed path, and any
+path outside this worktree; plain git, `git -C <own absolute path>` and `--git-dir=<own .git>` pass.
+`cd <own worktree> && git …` also passes the guard, which does NOT make it advisable — the reason
+above still holds. A refusal here is the guard reading the command, not a runtime defect.
 
 **`moai worktree done` closes L2 trees only.** A tree under `.claude/worktrees/` is L1, is absent
 from the registry, and is disposed by the session-end prompt or by `git worktree unlock` +
@@ -286,7 +298,8 @@ duplicate those values inline.
 | `moai hook <event>` | Hook dispatcher entry point (drives hooks.json / settings.json) |
 | `moai doctor` | Diagnose installation and wiring health |
 | `moai worktree` | Worktree lifecycle (sync / remove / clean / recover / done / snapshot / verify / restore) |
-| `moai cc` / `moai glm` / `moai cg` | Session launchers (Claude, GLM, coordinated pairing) |
+| `moai cc` / `moai glm` / `moai gpt` | Explicit Claude, GLM, or GPT session launchers |
+| `moai migrate cg` | Preview legacy CG migration; role changes require explicit acceptance |
 | `moai version` | Print build version and provenance |
 
 Run `moai --help` for the generated, current command surface.

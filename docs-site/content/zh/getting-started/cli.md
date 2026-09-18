@@ -19,7 +19,7 @@ moai --help
 
 | 组 | 命令 | 说明 |
 |------|--------|------|
-| **Launch** | `moai cc` · `moai cg` · `moai glm` | 启动 Claude Code 会话(选择后端) |
+| **Launch** | `moai cc` · `moai glm` | 启动 Claude Code 会话(选择后端) |
 | **Project** | `moai init` · `moai update` · `moai doctor` · `moai status` | 项目初始化、更新、诊断、状态查询 |
 | **Tools** | `moai profile` · `moai inventory` · `moai hook` · `moai worktree` · `moai spec` · `moai harness` · ... | 配置、清单、钩子、工作树等工具 |
 
@@ -66,7 +66,6 @@ moai init [project-name] [OPTIONS]
 | `--root <path>` | 项目根目录(默认: 当前目录) |
 | `--git-mode <manual\|personal\|team>` | Git 工作流模式(默认: manual) |
 | `--git-provider <github\|gitlab>` | Git 提供者 |
-| `--project-mode <personal\|team>` | 项目模式(默认: personal) |
 | `--enable-lsp` | 启用 LSP 联动(默认: true) |
 | `--enforce-quality` | 强制质量门禁(默认: true) |
 | `--enable-design` | 启用 design 工作流(默认: true) |
@@ -85,7 +84,7 @@ cd my-existing-project
 moai init
 
 # 非交互(CI/CD)
-moai init --non-interactive --project-mode personal --model-policy medium
+moai init --non-interactive --model-policy medium
 ```
 
 详细的向导步骤请参阅[初始设置](./init-wizard)页面。
@@ -231,7 +230,6 @@ moai profile [COMMAND]
 ```bash
 moai cc -p work       # 用 work 配置文件运行 Claude
 moai glm -p cost-save # 用 cost-save 配置文件运行 GLM
-moai cg -p team       # 用 team 配置文件运行 CG 模式
 ```
 
 详情请参阅[配置文件管理](./profile)页面。
@@ -326,33 +324,16 @@ git worktree list               # 工作树列表
 
 ---
 
-## moai cc / moai cg / moai glm
+## moai cc / moai glm
 
-在启动 Claude Code 时选择后端的启动命令。三条命令都能用 `-p <profile>` 标志指定配置文件。把 `--` 之后的参数原样传给 Claude Code,只有 `moai cc` 与 `moai glm` 支持(`moai cg` 不支持)。
+`moai cc` 和 `moai glm` 使用明确选择的后端启动 Claude Code。旧 CG 配置必须先迁移才能启动。
 
 ```bash
 moai cc [-p profile] [-- claude-args...]
 moai glm [-p profile] [-- claude-args...]
-moai cg [-p profile]
 ```
 
-| 命令 | 领导 | Worker | 需要 tmux | 用途 |
-|--------|------|------|-----------|------|
-| `moai cc` | Claude | Claude | 否 | 最高质量(单一后端) |
-| `moai glm` | GLM | GLM | 否 | 成本优化(GLM 单独) |
-| `moai cg` | Claude | GLM | 必需 | 质量 + 成本平衡(混合) |
-
-`moai cg` 激活 CG 模式(Claude 领导 + GLM 队友)。必须在 tmux 会话内运行,它会把 GLM 环境变量注入 tmux 会话,而领导窗口使用 Claude API。`moai cg` 在设置后会直接在当前窗口启动 Claude Code,因此不需要另外的 `claude` 启动步骤。
-
-```bash
-# 1. 保存 GLM API 密钥(首次一次)
-moai glm setup sk-your-glm-api-key
-
-# 2. 激活 CG 模式(在 tmux 内运行 —— Claude Code 会在当前窗口直接启动)
-moai cg
-```
-
-详细的 CG 模式指南请参阅[简介 — 用 GLM 节省 token](./introduction#用-glm-节省-token5070)。
+`moai cg` 已停用。它会显示迁移提示并退出，不会启动 Claude 或 GLM，也不是 `moai cc` 的别名。项目中若仍有 `llm.team_mode: cg`，必须先明确选择迁移方案，才能启动会话。 [CG 停用与配置迁移](/zh/multi-llm/cg-mode/)
 
 ### 启动标志
 
@@ -372,7 +353,7 @@ moai cg
 | `-m, --model <model>` | 覆盖模型选择 |
 | `--chrome` / `--no-chrome` | 切换 Chrome MCP |
 
-> `auto` 权限模式在 GLM(第三方提供者)中不可用 —— 仅在 `moai cc` 或 `moai cg` 中支持。
+> `auto` 权限模式在 GLM(第三方提供者)中不可用 —— 仅在 `moai cc` 中支持。
 
 ### moai glm 子命令
 

@@ -32,6 +32,10 @@ func CheckRuntimeAdmission(projectRoot string) error {
 	if err != nil {
 		return fmt.Errorf("home-state admission unavailable: %w", err)
 	}
+	return checkRuntimeAdmissionAt(path)
+}
+
+func checkRuntimeAdmissionAt(path string) error {
 	raw, err := os.ReadFile(path)
 	if os.IsNotExist(err) {
 		return nil

@@ -108,6 +108,10 @@ func runWeb(cmd *cobra.Command, _ []string) (err error) {
 		}
 	}
 	defer func() {
+		// SPEC-WORKTREE-KEY-WIRING-001 M2: auto-merge runs BEFORE disposal —
+		// merge-then-dispose is the only safe order, and independent of
+		// auto_cleanup (REQ-WKW-013).
+		sessionExitAutoMerge(swCfg, wtPath, err == nil, cmd.ErrOrStderr())
 		cleanupSessionWorktree(swCfg, wtPath, err == nil, cmd.ErrOrStderr())
 	}()
 

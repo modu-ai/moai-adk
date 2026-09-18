@@ -48,7 +48,7 @@ $ moai glm -f lane-3
 
 Attach no count to `-f` and the run starts with one lane (`lane-1`) by default. As the queue piles up, add one lane at a time with `moai cc -f lane-<n>` (or `moai glm -f lane-<n>`). Like kanban's companions, lanes are launched **by hand, each in its own terminal** — there is no path by which a session launches another session.
 
-One launch takes one entry token — passing `-k` and `-f` together is an error. The v1.2.0 unified entry forms — `-k <N>` (lead) and `-k <N> --name lane-<i>` (lane) — remain valid compatibility forms (a bare `-k --name lane-<i>` with no N defaults to 8 lanes). The mixed-backend launcher `moai cg` refuses the factory for the same reason as kanban (`FACTORY_MODE_UNSUPPORTED_BACKEND`). As the kanban lead's socket opens at `/tmp/moai-socket-kanban/<run-id>`, the factory lead's socket opens at `/tmp/moai-socket-factory/<run-id>`, and the bootstrap notice carries the actual path.
+One launch takes one entry token — passing `-k` and `-f` together is an error. The v1.2.0 unified entry forms — `-k <N>` (lead) and `-k <N> --name lane-<i>` (lane) — remain valid compatibility forms (a bare `-k --name lane-<i>` with no N defaults to 8 lanes). As the kanban lead's socket opens at `/tmp/moai-socket-kanban/<run-id>`, the factory lead's socket opens at `/tmp/moai-socket-factory/<run-id>`, and the bootstrap notice carries the actual path. CG is retired; use `moai migrate cg` to preview explicit migration choices.
 
 ## The lead's routing — whole cards to free lanes
 
@@ -90,7 +90,7 @@ Never activate every lane at once. Activate the first lane, wait for evidence th
 
 ## Lane-number ownership — factory.db
 
-Which lane holds which number is recorded in `~/.moai/db/<project-key>/factory/factory.db`. When a new lane opens, its number skips **only those held by live sessions** and attaches to the next free number — a dead lane's number is released and reused, and its leftover claims are cleared from the database too. A legacy `.moai/state/factory/workers.json` is imported once and retained as rollback evidence. The `-f lane-<n>` form already names the lane, so passing `--name`/`-n` alongside it is an error.
+Which lane holds which number is recorded in `~/.moai/db/<project-key>/factory/factory.db`. A project whose launch directory is a temporary one (no absolute `MOAI_HOME` override) keeps this database project-local at `<base>/.moai/db/<project-key>/factory/factory.db`, the same exception the backlog queue follows. When a new lane opens, its number skips **only those held by live sessions** and attaches to the next free number — a dead lane's number is released and reused, and its leftover claims are cleared from the database too. A legacy `.moai/state/factory/workers.json` is imported once and retained as rollback evidence. The `-f lane-<n>` form already names the lane, so passing `--name`/`-n` alongside it is an error.
 
 ## What does not change
 

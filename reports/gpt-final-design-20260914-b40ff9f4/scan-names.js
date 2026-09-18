@@ -1,0 +1,5 @@
+const fs=require('fs'),cp=require('child_process');
+const files=cp.execFileSync('git',['ls-files','-z'],{encoding:'utf8'}).split('\0').filter(Boolean);
+const entries=[];let missing=[],binary=[],symlinks=[],textFiles=0;
+for(const path of files){let st;try{st=fs.lstatSync(path)}catch{missing.push(path);continue}if(st.isSymbolicLink()){symlinks.push(path);continue}if(!st.isFile())continue;const b=fs.readFileSync(path);if(b.includes(0)){binary.push(path);continue}textFiles++;const lines=b.toString('utf8').split(/\r?\n/);const hits=[];for(let i=0;i<lines.length;i++)if(/kanban|칸반/i.test(lines[i]))hits.push(i+1);if(hits.length||/kanban|칸반/i.test(path))entries.push({path,pathMatch:/kanban|칸반/i.test(path),lines:hits});}
+console.log(JSON.stringify({method:"tracked working-tree text line scan /kanban|칸반/i",tracked:files.length,textFiles,missing,binary,symlinks,filesWithHits:entries.filter(x=>x.lines.length).length,pathMatches:entries.filter(x=>x.pathMatch).length,matchedLines:entries.reduce((s,x)=>s+x.lines.length,0),entries}));

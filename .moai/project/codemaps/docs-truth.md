@@ -14,9 +14,11 @@
 > 통과하는 동안 이 파일만 조용히 낡을 수 있다. **재생성 때마다 이 파일을 손으로
 > 함께 갱신하고, 그 사실을 재생성 증거와 분리해 기록한다.**
 >
-> **마지막 손 갱신**: 2026-09-10, 워크트리 `.claude/worktrees/t592`, HEAD `e7bd89ee3`.
-> 이번 변경 범위인 §4 CLI 표면과 HOME 상태 진입점을 현재 소스와 `go run ./cmd/moai --help`에
-> 대해 재검증했다. 나머지 절의 과거 검증일은 각 Source 문구를 따른다.
+> **마지막 손 갱신**: 2026-09-18, 워크트리 `.claude/worktrees/t869`, 브랜치 `WT-codemaps-refresh`, HEAD `a851b205c`.
+> §1 에이전트 파일 목록, §2 상태 enum 개수, §3 필수 필드 12개와 줄 위치, §4.1 `moai --help` 렌더
+> 그룹과 등록 수치, §4.2 명령 파일 목록, §5 GLM 상수 줄 번호를 이 트리에서 다시 검증했다.
+> §4.1의 `codex` 런처 서술(verb 라우팅·init-offer 게이트)은 이번에 다시 읽지 않았고, 그 Source 문구의
+> 과거 검증일을 따른다.
 
 ---
 
@@ -45,7 +47,13 @@ Class breakdown: Manager ×6 (`manager-spec`, `manager-develop`, `manager-docs`,
 
 **Source:** `ls -1 .claude/agents/moai/*.md` (= 11 MoAI-custom files) + CLAUDE.md §4 Retained Agents table + `.claude/rules/moai/workflow/archived-agent-rejection.md` (archived-agent migration table).
 
-**Verified 2026-09-08 (HEAD `52f863f36`) — exhaustive, no sampling.** `find .claude/agents/moai -maxdepth 1 -name '*.md' | wc -l` → **11**. The tree listing and the §1 table rows 1-11 are compared name-by-name below; row 12 (`Explore`) is an Anthropic built-in with no file, so it is expected to be absent from the tree.
+**Re-verified 2026-09-18 (HEAD `a851b205c`) — exhaustive, no sampling.** `find .claude/agents/moai -maxdepth 1 -name '*.md' | wc -l` → **12**. The count moved from 11 because `mission-governor.md` now exists in the tree. The tree listing and the §1 table rows 1-11 are compared name-by-name below; row 12 (`Explore`) is an Anthropic built-in with no file, so it is expected to be absent from the tree.
+
+> **[미결 드리프트 — 이 파일이 판정하지 않는다]** `mission-governor.md`는 트리에 있지만 §1 표와
+> 이 트리의 `CLAUDE.md` §4 retained 목록 어디에도 없다(`grep -n mission-governor CLAUDE.md` → 0행).
+> 파일 머리의 설명은 "승인된 GTD auto 미션의 읽기 전용 결정 에이전트"이고 `tools: Read, Grep, Glob, Skill`이다.
+> 이것을 retained catalog의 13번째 원소로 셀지, 카탈로그 밖의 미션 전용 에이전트로 둘지는 카탈로그
+> 소유 문서의 결정이다. 그 결정 전까지 §1의 "12 retained"는 `CLAUDE.md`를 따라 그대로 둔다.
 
 | Tree file (`.claude/agents/moai/`) | §1 table row |
 |---|---|
@@ -57,11 +65,12 @@ Class breakdown: Manager ×6 (`manager-spec`, `manager-develop`, `manager-docs`,
 | `manager-git.md` | 4 `manager-git` |
 | `manager-lead.md` | 11 `manager-lead` |
 | `manager-spec.md` | 1 `manager-spec` |
+| `mission-governor.md` | **— (표에 없음, 위 미결 드리프트)** |
 | `plan-auditor.md` | 5 `plan-auditor` |
 | `super-advisor.md` | 8 `super-advisor` |
 | `sync-auditor.md` | 6 `sync-auditor` |
 
-**대조 결과: 11/11 일치, 양방향으로 잉여 없음.** 트리에만 있고 표에 없는 파일 0, 표에만 있고 트리에 없는 행 0(built-in `Explore` 제외). 같은 스캔에서 `.claude/agents/harness/` 아래 10개 파일도 관측되나 이것들은 user-owned harness specialist 이며 retained catalog 의 원소가 아니다 — §1 의 수 11 에 들어가지 않는 것이 정상이다.
+**대조 결과: 표의 11행은 모두 트리 파일과 일치하지만, 트리 쪽에 표에 없는 파일이 1개(`mission-governor.md`) 있다.** 표에만 있고 트리에 없는 행은 0(built-in `Explore` 제외). 같은 스캔에서 `.claude/agents/harness/` 아래 13개 파일도 관측되나 이것들은 user-owned harness specialist 이며 retained catalog 의 원소가 아니다 — §1 의 수에 들어가지 않는 것이 정상이다.
 
 ---
 
@@ -78,7 +87,7 @@ draft → planned → in-progress → implemented → completed
                                superseded | archived | rejected
 ```
 
-**Source:** `internal/spec/status.go` `ValidStatuses` slice. Verified 2026-09-08 (HEAD `52f863f36`): `grep -cE '"draft"|"planned"|"in-progress"|"implemented"|"completed"|"superseded"|"archived"|"rejected"' internal/spec/status.go` → 8. Schema SSOT: `.claude/rules/moai/development/spec-frontmatter-schema.md` § Status Enum.
+**Source:** `internal/spec/status.go` `ValidStatuses` slice. Re-verified 2026-09-18 (HEAD `a851b205c`) with the same command, same result: `grep -cE '"draft"|"planned"|"in-progress"|"implemented"|"completed"|"superseded"|"archived"|"rejected"' internal/spec/status.go` → 8. Schema SSOT: `.claude/rules/moai/development/spec-frontmatter-schema.md` § Status Enum.
 
 ---
 
@@ -90,7 +99,7 @@ Every `spec.md` MUST contain exactly these 12 fields in YAML frontmatter:
 
 Rejected snake_case aliases (silently dropped by the YAML decoder): `created_at:` → use `created:`; `updated_at:` → use `updated:`; `labels:` → use `tags:`; `spec_id:` → use `id:`.
 
-**Source:** `internal/spec/lint.go` `FrontmatterSchemaRule.Check()` required slice (12 entries of the form `{"<field>", fm.<Field>}`). Verified 2026-09-08 (HEAD `52f863f36`): the slice is at `internal/spec/lint.go:982-998` and carries exactly 12 entries, in the order listed above. Schema SSOT: `.claude/rules/moai/development/spec-frontmatter-schema.md` § Canonical 12 Required Fields. Lint rule code: `FrontmatterInvalid` (Warning severity).
+**Source:** `internal/spec/lint.go` `FrontmatterSchemaRule.Check()` required slice (12 entries of the form `{"<field>", fm.<Field>}`). Re-verified 2026-09-18 (HEAD `a851b205c`): the slice now starts at `internal/spec/lint.go:1176` (`required := []struct {`) and carries exactly 12 `fm.<Field>` entries, in the order listed above. Schema SSOT: `.claude/rules/moai/development/spec-frontmatter-schema.md` § Canonical 12 Required Fields. Lint rule code: `FrontmatterInvalid` (Warning severity).
 
 ---
 
@@ -98,24 +107,28 @@ Rejected snake_case aliases (silently dropped by the YAML decoder): `created_at:
 
 ### §4.1 `moai` terminal verbs (human-facing)
 
-Top-level verbs rendered by `moai --help`, in the render's own grouping (2026-09-10 actual render, `go run ./cmd/moai --help`):
+Top-level verbs rendered by `moai --help`, in the render's own grouping (2026-09-18 actual render of a binary built from HEAD `a851b205c` with `go build ./cmd/moai`):
 
 | Render group | Verbs |
 |------------------|-------|
-| COMMANDS | `factory`, `gate`, `goal`, `integration`, `config`, `ast-grep`, `ast-edit`, `migration`, `harness`, `mcp-server`, `mcp`, `plan`, `feedback`, `help`, `completion` |
-| LAUNCH COMMANDS | `cc`, `glm`, `cg`, `codex` |
+| COMMANDS | `factory`, `gate`, `goal`, `integration`, `config`, `ast-grep`, `ast-edit`, `migration`, `harness`, `mcp-server`, `mcp`, `plan`, `feedback`, `slot`, `help`, `completion` |
+| LAUNCH COMMANDS | `cc`, `glm`, `codex` |
 | PROJECT COMMANDS | `init`, `status`, `doctor`, `update`, `migrate`, `pr` |
-| TOOLS | `hook`, `spec`, `session`, `mx`, `loop`, `handoff`, `model`, `constitution`, `state`, `epic`, `github`, `graph`, `lsp`, `memory`, `profile`, `research`, `worktree`, `agent`, `workflow`, `telemetry`, `tokens`, `clean`, `skills`, `chain`, `tool-policy`, `tool`, `inventory`, `preference`, `inbox`, `todo`, `verify`, `version`, `web` |
+| TOOLS | `hook`, `spec`, `session`, `mx`, `loop`, `handoff`, `model`, `constitution`, `state`, `epic`, `github`, `graph`, `gtd`, `lsp`, `memory`, `profile`, `research`, `worktree`, `agent`, `workflow`, `telemetry`, `tokens`, `clean`, `skills`, `chain`, `tool-policy`, `tool`, `inventory`, `preference`, `inbox`, `todo`, `verify`, `version`, `web` |
+
+> **2026-09-18 변화.** 앞 판(2026-09-10 렌더) 대비 `slot`(COMMANDS)과 `gtd`(TOOLS)가 더해졌고,
+> `cg`가 LAUNCH COMMANDS에서 사라졌다. `cg`는 `internal/cli/root.go`의 `trivialCommands`에 은퇴
+> 토큰으로만 남아 있다. `gtd`는 `todo` 명령 트리를 감싼 두 번째 이름으로, 같은 큐를 본다.
 
 > **정정(2026-09-08).** 직전 판은 이 자리에 렌더의 그룹이 아니라 손으로 묶은 5분류
 > (Project / Launchers / Autonomous-Dev / Governance / Tools-Infra)를 실었고, 그 분류는
 > `moai --help` 출력에 존재하지 않습니다. 그리고 그 표는 `skills`를 빠뜨렸습니다 —
 > `skills`는 `root.go:177`의 `newSkillsCmd()`로 등록된 라이브 루트 명령입니다.
-> 이 판은 렌더가 실제로 내는 4개 그룹을 그대로 옮깁니다.
+> 이후 판은 렌더가 실제로 내는 4개 그룹을 그대로 옮깁니다.
 
 Additional note: `statusline` is a root-registered command but `Hidden: true` in `moai --help`; `help` and `completion` are cobra-generated. The `run` verb exists ONLY as a `moai migration` subcommand (`internal/cli/migration.go`) — there is NO standalone `moai run` or `moai sync` root command; the plan/run/sync workflow lives in the `/moai` Claude Code skill set (§4.2).
 
-**Source:** `go run ./cmd/moai --help` rendered output (2026-09-10, HEAD `e7bd89ee3`) + `rg -n '\.AddCommand\(' internal/cli -g '*.go' -g '!**/*_test.go' | wc -l` (**215** non-test calls) + `rg -n 'rootCmd\.AddCommand\(' internal/cli -g '*.go' -g '!**/*_test.go' | wc -l` (**64** root registrations across the package; **30**의 `rootCmd.AddCommand`가 `internal/cli/root.go`의 `init()` 안에 있다) + `find internal/cli -name '*.go' ! -name '*_test.go' | wc -l` (**286**).
+**Source:** `moai --help` rendered output of a binary built from HEAD `a851b205c` (2026-09-18) + `grep -rn 'AddCommand(' internal/cli --include='*.go' | grep -v _test | wc -l` (**219** non-test calls) + `grep -rn 'rootCmd.AddCommand(' internal/cli --include='*.go' | grep -v _test | wc -l` (**65** root registrations across the package; **30**의 `rootCmd.AddCommand`가 `internal/cli/root.go`의 `init()` 안에 있다) + `find internal/cli -name '*.go' ! -name '*_test.go' | wc -l` (**315**).
 
 HOME 상태의 사용자 진입점은 `moai migrate home-state`입니다. 기본 실행은 dry-run이고,
 실제 쓰기는 `--apply --verified-live`를 함께 요구합니다. 복구 표면은 하위 명령 `recover`와
@@ -127,17 +140,17 @@ The `codex` launcher: closed-set verb routing `{bare, cli, app}` (launch, `--spa
 
 **Source (gate):** `internal/cli/codex_launcher.go` (verb routing, single gate call site in `runCodexLaunch`), `internal/cli/codex_init.go` (gate + seams), `internal/cli/codex_contract.go` (link contract). Verified 2026-08-28 by direct read; the routing and argv-translation sentences re-verified 2026-09-01 by direct read of `codexVerbRouting` / `codexChildSubcommand` on the tree that reversed the default.
 
-### §4.2 `/moai` Claude Code skill set (16 commands)
+### §4.2 `/moai` Claude Code skill set (17 commands)
 
 The complete `/moai` slash-command set in `.claude/commands/moai/`:
 
-`clean` · `codemaps` · `e2e` · `feedback` · `fix` · `gate` · `goal` · `harness` · `loop` · `mx` · `plan` · `project` · `review` · `run` · `sync` · `todo`
+`clean` · `codemaps` · `e2e` · `feedback` · `fix` · `gate` · `goal` · `gtd` · `harness` · `loop` · `mx` · `plan` · `project` · `review` · `run` · `sync` · `todo`
 
-(16 files total)
+(17 files total)
 
-**Source:** `find .claude/commands/moai -maxdepth 1 -name '*.md' | wc -l` → 16. Verified 2026-09-08 (HEAD `52f863f36`): the listing returns exactly the 16 names above and nothing else (`brain`/`coverage`/`design` are NOT present as standalone command files).
+**Source:** `find .claude/commands/moai -maxdepth 1 -name '*.md' | wc -l` → 17. Re-verified 2026-09-18 (HEAD `a851b205c`): the listing returns exactly the 17 names above and nothing else (`brain`/`coverage`/`design` are NOT present as standalone command files). `gtd.md` is the one file added since the 2026-09-08 verification.
 
-이 16개 소스는 codex 쪽으로도 발행됩니다 — `internal/template/commandemit`이 각각을
+이 명령 소스들은 codex 쪽으로도 발행됩니다 — `internal/template/commandemit`이 각각을
 `.agents/skills/moai-<command>/SKILL.md`로 내보내며 본문은 바이트 동일 verbatim 입니다.
 
 ---
@@ -161,7 +174,7 @@ The GLM→Claude-tier model mapping reflects the glm-5.3-flash default activatio
 
 Additional GLM models available but not default-mapped: `glm-4.5`, `glm-4.6`, `glm-4.7`, `glm-4.5-air`, `glm-5.1`, `glm-5.2`, `glm-5-turbo`.
 
-**Source:** `internal/config/defaults.go` — `DefaultGLMBaseURL` line 124, the `DefaultGLM53Flash`/`DefaultGLM53` values lines 157-158, the tier mapping lines 159-162 and 181-183 (DefaultGLM* constants block). Verified 2026-09-08 (HEAD `52f863f36`): `grep -nE 'DefaultGLM(High|Medium|Low|Fable|Opus|Sonnet|Haiku|BaseURL) ' internal/config/defaults.go` → `DefaultGLMHigh`(159) · `Medium`(160) · `Low`(161) · `Haiku`(181) · `Sonnet`(182) · `Opus`(183) 여섯이 `DefaultGLM53Flash`로, `DefaultGLMFable`(162)만 `DefaultGLM53`으로 해석된다. Base URL SSOT: `DefaultGLMBaseURL = "https://api.z.ai/api/anthropic"` (line 124). Launcher suffix expansion: `expandModelString` (launcher.go:1112) / `splitModelSuffix`.
+**Source:** `internal/config/defaults.go` — `DefaultGLMBaseURL` line 166, the `DefaultGLM53Flash`/`DefaultGLM53` values lines 199-200, the tier mapping lines 201-204 and 223-225 (DefaultGLM* constants block). Re-verified 2026-09-18 (HEAD `a851b205c`): `grep -nE 'DefaultGLM(High|Medium|Low|Fable|Opus|Sonnet|Haiku|BaseURL|53Flash|53) ' internal/config/defaults.go` → `DefaultGLMHigh`(201) · `Medium`(202) · `Low`(203) · `Haiku`(223) · `Sonnet`(224) · `Opus`(225) 여섯이 `DefaultGLM53Flash`로, `DefaultGLMFable`(204)만 `DefaultGLM53`으로 해석된다. 값은 앞 판과 같고 줄 번호만 42줄 내려갔다. Base URL SSOT: `DefaultGLMBaseURL = "https://api.z.ai/api/anthropic"` (line 166). Launcher suffix expansion: `expandModelString` (launcher.go:1129) / `splitModelSuffix`.
 
 ---
 

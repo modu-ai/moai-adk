@@ -194,6 +194,12 @@ func stripGLMCredsAndSetTeammateMode(m map[string]any) {
 		delete(env, config.EnvClaudeCodeDisableNonessentialTraffic)
 		delete(env, config.EnvClaudeCodeTeammateDisplay)
 		delete(env, config.EnvStatuslineContextSize)
+		// Card t802: the context-window pair is written by the SessionStart hook
+		// (ensureGLMCredentials), so the CG leader carried it too. Both keys leave
+		// with the credentials — see removeGLMEnv for why the residue would
+		// otherwise be permanent rather than merely delayed.
+		delete(env, config.EnvClaudeCodeAutoCompactWindow)
+		delete(env, config.EnvClaudeCodeMaxContextTokens)
 
 		if len(env) == 0 {
 			delete(m, "env")

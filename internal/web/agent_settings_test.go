@@ -17,6 +17,8 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"github.com/modu-ai/moai-adk/internal/config"
 )
 
 // 테스트용 agent 파일 2종: effort 보유 + effort 부재 (manager-docs 선례, EC-7).
@@ -42,6 +44,9 @@ docs-b body sentinel.
 // newAgentTestApp은 섹션 fixture + agent 파일이 시드된 앱을 만든다.
 func newAgentTestApp(t *testing.T) (*app, string) {
 	t.Helper()
+	// 런처 환경 고정: MOAI_LAUNCH_PROVIDER 가 세션에 남아 있으면 렌더가
+	// 게이트웨이 백엔드로 접혀 모델 셀렉트 단언이 무너진다 (t840).
+	t.Setenv(config.EnvMoaiLaunchProvider, "")
 	a, root := newSchemaTestApp(t)
 	agentsDir := filepath.Join(root, ".claude", "agents", "moai")
 	if err := os.MkdirAll(agentsDir, 0o755); err != nil {

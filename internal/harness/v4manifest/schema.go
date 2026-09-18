@@ -265,20 +265,23 @@ var tierSuggestions = map[Tier]struct {
 // of the .md under .claude/agents/{moai,harness}/, matching agentfm.
 // AgentInfo.Name's contract) → Tier. The agentfm badge color is now model-derived
 // (ModelColor / modelColors); this table remains the reasoning-role classification
-// that powers tier click-to-suggest (tierSuggestions). Distribution: 🔴×5 · 🟠×4 · 🔵×5 · 🩵×7 = 21.
+// that powers tier click-to-suggest (tierSuggestions). Distribution: 🔴×6 · 🟠×4 · 🔵×5 · 🩵×7 = 22.
 //
 // @MX:ANCHOR: [AUTO] sub-agent tier SSOT — name-keyed lookup table (Option A)
 // @MX:REASON: display-only tier invariant; 3+ consumers (AgentTier accessor, moai-web agentfm render, tests). Mutating this map changes badge colors project-wide.
 // @MX:SPEC: SPEC-WEBCONF-SIMPLIFY-001 M1.2 / design.md §C
 var agentTiers = map[string]Tier{
-	// 🔴 — deep reasoning (×5): plan-phase authoring, independent audit,
+	// 🔴 — deep reasoning (×6): plan-phase authoring, independent audit,
 	// high-reasoning consultation, skeptical 4-dimension scoring, hierarchical-team
-	// coordination (manager-lead carries the depth-1 Agent fan-out seam).
-	"manager-spec":  TierRed,
-	"manager-lead":  TierRed,
-	"plan-auditor":  TierRed,
-	"super-advisor": TierRed,
-	"sync-auditor":  TierRed,
+	// coordination (manager-lead carries the depth-1 Agent fan-out seam), and
+	// mission-governor's read-only structured decisions for an approved GTD
+	// auto mission (the same judgement-only role class as super-advisor).
+	"manager-spec":     TierRed,
+	"manager-lead":     TierRed,
+	"plan-auditor":     TierRed,
+	"super-advisor":    TierRed,
+	"sync-auditor":     TierRed,
+	"mission-governor": TierRed,
 
 	// 🟠 — heavy reasoning bounded by the SPEC (×4): run-phase DDD/TDD,
 	// design pipeline, harness/specialist generation, cross-platform E2E.

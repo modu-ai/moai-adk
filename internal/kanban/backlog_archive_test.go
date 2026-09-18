@@ -50,8 +50,11 @@ func TestBacklogArchive_StateEnumUnchanged(t *testing.T) {
 //   - Landing — SPEC-TODO-LANDING-EVIDENCE-001 REQ-TLE-005/006 (design.md §5):
 //     an optional pointer carrying the operator's landing evidence, `omitempty`
 //     so a card without one marshals byte-identically to before.
+//   - CardUUID — SPEC-TODO-IDENTITY-001 REQ-TID-001/002: a non-omitempty
+//     pointer so legacy cards expose literal null and issued cards expose UUIDv7.
 var permittedItemFieldAdditions = map[string]string{
-	"Landing": "*kanban.LandingEvidence",
+	"Landing":  "*kanban.LandingEvidence",
+	"CardUUID": "*string",
 }
 
 // frozenItemFields is the pre-addition per-item contract: ordered

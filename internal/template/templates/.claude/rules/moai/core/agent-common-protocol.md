@@ -144,7 +144,7 @@ The reviewer mode operates as a fresh-judgment auditor:
 WebSearch for targeted queries, WebFetch to verify each URL and read the official documentation,
 then continue — architecture and analysis quality must not depend on MCP availability.
 
-GLM-backend routing: under `moai glm` or the GLM teammate panes of `moai cg`, web search, web
+GLM-backend routing: under `moai glm`, web search, web
 fetch, and image read route to the z.ai MCP tools instead of the built-ins. HARD routing table:
 `.claude/rules/moai/core/glm-web-tooling.md`.
 
@@ -160,7 +160,7 @@ Agents follow MoAI's core execution directives defined in CLAUDE.md (auto-loaded
 
 [ZONE:Evolvable] [HARD] When spawning a subagent, pass the model the active profile resolves for that agent as an explicit `model` argument on the spawn. (Why omitting is not neutral, and the full profile matrix: `agent-common-protocol-reference.md` § Per-Spawn Model Injection rationale; policy SSOT `.claude/rules/moai/development/model-policy.md`.)
 
-- Resolve the value with `moai model profile --json` (reports the `{model, effort}` cell per retained agent under the active profile)
+- Resolve the value with `moai model profile --json` (a single JSON OBJECT whose `agents` array carries the `{model, effort}` cell per retained agent under the active profile — filter with `jq '.agents[]'`, never a top-level array; shape + filters: `model-policy.md` § Per-Agent Profile Resolver)
 - Pass `model` per spawn. `effort` has no spawn-time parameter — it travels only through the agent file's frontmatter
 - A spawn whose declared model differs from the resolved one is drift, not an override — change the profile instead
 - Agents outside the retained catalog resolve to the inherit sentinel and take no injection

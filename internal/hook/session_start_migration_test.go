@@ -9,15 +9,23 @@ package hook_test
 // error, which runMigration records as Data["migration_error"] — that key has no
 // other writer, so its presence proves the runner was invoked.
 //
-// Known gaps (reported, not asserted — asserting them would pin the defect):
-//   - REQ-V3R2-RT-007-021 requires the failure to surface via SystemMessage. The
-//     implementation records it only in HookOutput.Data (json:"-") and slog, so
-//     the user never sees it. No test here asserts on SystemMessage.
-//   - REQ-V3R2-RT-007-032 names system.yaml as the source of migrations.disabled,
-//     but the config loader binds only the hook block of system.yaml, so the key
-//     never reaches cfg.System.Migrations. The disabled/enabled tests below drive
-//     the flag through ConfigProvider, which is the path the handler reads.
-// Evidence: .moai/reports/t617/verdict.md
+// Both gaps this header used to report are now closed; they are kept here as
+// the record of what each card fixed, because the tests below are shaped around
+// them:
+//   - REQ-V3R2-RT-007-021 requires the failure to surface via SystemMessage.
+//     Until card t796 the implementation recorded it only in HookOutput.Data
+//     (json:"-") and slog, so the user never saw it. The assertion now lives in
+//     session_start_migration_message_test.go; no test in THIS file asserts on
+//     SystemMessage.
+//   - REQ-V3R2-RT-007-032 names system.yaml as the source of
+//     migrations.disabled. Until card t795 the config loader bound only the
+//     hook block, so the key never reached cfg.System.Migrations; the loader
+//     now binds it (internal/config/loader_system.go, guarded by
+//     internal/config/migrations_disabled_binding_test.go). The disabled and
+//     enabled tests below still drive the flag through ConfigProvider, which is
+//     the path the handler reads and is unaffected by that binding.
+// Evidence: .moai/reports/t617/verdict.md, .moai/reports/t795/verdict.md,
+// .moai/reports/t796/verdict.md
 
 import (
 	"context"

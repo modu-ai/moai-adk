@@ -217,7 +217,7 @@ jobs:
           name: test-stream-release-verify-${{ matrix.os }}
           path: test-stream.json.gz
           retention-days: 7
-          if-no-files-found: warn
+          if-no-files-found: ${{ runner.os == 'Windows' && 'error' || 'warn' }}
 
       # --- t169 diagnostic (windows only, temporary) ------------------------
       # always(): the failing run is the one worth reading, so this must not be

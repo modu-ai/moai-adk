@@ -473,7 +473,7 @@ $ moai worktree done feature/SPEC-NOTIF-001 --delete-branch
 # - 使用 GLM 节省成本
 ```
 
-把实现阶段的会话交给 GLM 后，成本明显下降。节省幅度及其依据整理在 [CG 模式](/zh/multi-llm/cg-mode)中。
+[CG 停用与配置迁移](/zh/multi-llm/cg-mode/) — CG 已停用，请用 `moai migrate cg` 预览迁移选项。
 
 ---
 

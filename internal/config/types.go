@@ -269,13 +269,19 @@ type LLMConfig struct {
 	// predicate (template.IsGLMBackend, REQ-MTP-026) keeps mode=="glm" only as a
 	// defensive OR for this dormant field.
 	Mode string `yaml:"mode"`
-	// TeamMode selection: "" (`moai cc` / unset), "cg" (`moai cg` — Claude leader +
-	// GLM teammates), or "glm" (`moai glm` — all-GLM). These are the values
-	// persistTeamMode (internal/cli/glm.go) actually writes; "claude"/"hybrid" are
-	// legacy non-GLM values retained for backward-compat parsing. The GLM
-	// backend-detection predicate (template.IsGLMBackend) treats team_mode ∈
-	// {cg, glm} as a GLM backend.
+	// TeamMode stores explicit session intent. "glm" selects GLM; "claude"
+	// and unset select ordinary Claude policy. Historical "cg" remains readable
+	// as data, but launch requires explicit migration and never activates GLM.
 	TeamMode string `yaml:"team_mode"`
+	// Harness records the agent-harness selection resolved at init time
+	// (SPEC-INIT-HARNESS-001 REQ-IH-002): one of {claude, codex, both}. Init
+	// writes the resolved value explicitly on EVERY run — including the claude
+	// default — so doctor/update never have to infer a missing key as claude.
+	// A pre-SPEC project with no key reads as claude (the documented fallback);
+	// the key governs update re-deployment (REQ-IH-010) and doctor check
+	// scoping (REQ-IH-011). Note this is NOT llm.harness_agents — that map
+	// configures /moai:harness specialist generation and is unrelated.
+	Harness string `yaml:"harness"`
 	// Environment variable name for GLM API key
 	GLMEnvVar string `yaml:"glm_env_var"`
 	// ClaudeBin pins the Claude Code binary the launcher launches (issue
@@ -426,6 +432,29 @@ type WorkflowConfig struct {
 	// directly: the pointer inside distinguishes "key absent" (= enabled)
 	// from "explicitly disabled", which a plain bool cannot express.
 	Todo WorkflowTodoConfig `yaml:"todo"`
+	// DriftCacheFill gates the out-of-band drift-cache fill started from the
+	// SessionStart deferred advisory step. Read through
+	// Config.DriftCacheFillEnabled.
+	//
+	// Default TRUE, and that is a deliberate departure from the workflow.*
+	// guard family (BranchGuard, AgentModelGuard, IntegrationLock, ...). Those
+	// default to false because they ship INERT — the default is grounded on
+	// NEUTRALITY, not on "adds a deny". This feature is not inert when
+	// enabled: on every cache miss it starts an unsolicited child process. The
+	// cost is accepted because the child is short-lived, self-bounded,
+	// single-flight, TTL-suppressed and silent, and because a default-off
+	// setting would leave the measured defect (the cache is never written on
+	// the hook path, so the drift advisory never returns after a HEAD change)
+	// in place for every user who never reads the config.
+	//
+	// A plain bool rather than the *bool WorkflowTodoConfig uses: the loader
+	// unmarshals onto the default-populated struct, so an absent key keeps the
+	// construction-time true and only a literal `enabled: false` turns it off.
+	// The plain bool also makes the defaults.go entry load-bearing — remove it
+	// and the zero value ships the feature permanently OFF, which a test can
+	// see.
+	DriftCacheFill WorkflowDriftCacheFillConfig `yaml:"drift_cache_fill"`
+
 	// Project carries the /moai project Phase 14 completion-continuation key
 	// (SPEC-PROJECT-CONTINUATION-KEY-001 REQ-PCK-001). Read through
 	// Config.ProjectContinuation, never directly: the resolver supplies the
@@ -621,12 +650,18 @@ type TokenBudgetConfig struct {
 // Distinct from GitStrategyConfig.WorktreeRoot (different key domain, no conflict).
 //
 // Reader status (SPEC-CONFIG-KEY-HONESTY-001 M5, updated by
-// SPEC-INIT-WIZARD-REPAIR-001 REQ-009): AutoCreate is read once by
-// internal/cli/worktree_advisory.go only to select advisory wording — it does
-// not gate worktree creation. AutoCleanup is read by the two auto-cleanup
-// paths (internal/cli/session_worktree.go cleanupSessionWorktree and
+// SPEC-INIT-WIZARD-REPAIR-001 REQ-009 and
+// SPEC-WORKTREE-KEY-WIRING-001 REQ-WKW-012): AutoCreate is read once by
+// internal/cli/worktree_advisory.go only to select advisory wording — its
+// declared scope is the wording; it does not gate worktree creation.
+// AutoCleanup is read by the two auto-cleanup paths
+// (internal/cli/session_worktree.go cleanupSessionWorktree and
 // session_worktree_prmerge.go prMergeCleanup), gating worktree removal.
-// AutoMerge has no production reader (declared but not read).
+// AutoMerge is read by the session-exit auto-merge path
+// (internal/cli/session_worktree_automerge.go sessionExitAutoMerge): when
+// true, a clean session exit merges the session worktree's branch into the
+// configured git-flow develop branch — a local merge inside the
+// release-integration window, never a push.
 // SessionNamePattern has no production reader (no code builds a session name
 // from it).
 type WorkflowWorktreeConfig struct {
@@ -647,6 +682,14 @@ type WorkflowWorktreeConfig struct {
 // registered and every verb keeps working regardless of this value (REQ-3).
 type WorkflowTodoConfig struct {
 	Enabled *bool `yaml:"enabled"`
+}
+
+// WorkflowDriftCacheFillConfig mirrors workflow.drift_cache_fill.* — the
+// opt-out for the out-of-band drift-cache fill child. Enabled defaults to true
+// (see the field comment on WorkflowConfig.DriftCacheFill for why this key
+// departs from the default-OFF guard family).
+type WorkflowDriftCacheFillConfig struct {
+	Enabled bool `yaml:"enabled"`
 }
 
 // WorkflowProjectConfig mirrors workflow.project.* — the /moai project Phase 14
@@ -1351,6 +1394,7 @@ type ContextTokenBudget struct {
 // plan.questions_per_round, and skip_conditions to control Socratic interview behavior.
 type InterviewConfig struct {
 	ClarityThreshold   int           `yaml:"clarity_threshold"`
+	DecisionGate       string        `yaml:"decision_gate"`
 	Enabled            bool          `yaml:"enabled"`
 	Plan               InterviewMode `yaml:"plan"`
 	Project            InterviewMode `yaml:"project"`
@@ -1368,6 +1412,20 @@ func (c InterviewConfig) ResolvedRecommendationMode() string {
 		return "pull"
 	}
 	return "push"
+}
+
+// ResolvedDecisionGate returns the resolved decision-gate axis: "on" only
+// when the key holds exactly "on"; "off" otherwise — including when the key
+// is absent, empty, or unrecognized (REQ-DA-002, REQ-DA-003). The raw value
+// stays on DecisionGate, so an unrecognized setting is recorded verbatim
+// rather than silently discarded. This resolver reads its own field only: the
+// decision-gate axis is orthogonal to the recommendation-mode axis above and
+// neither reads, writes, nor conditions on the other (REQ-DA-018).
+func (c InterviewConfig) ResolvedDecisionGate() string {
+	if c.DecisionGate == "on" {
+		return "on"
+	}
+	return "off"
 }
 
 // InterviewMode holds per-mode interview settings.
@@ -1623,14 +1681,28 @@ type gateFileWrapper struct {
 // systemFileWrapper handles the system.yaml section file.
 //
 // system.yaml ships four top-level blocks (moai / github / hook /
-// document_management), but only `hook` maps to a SystemConfig sub-struct.
-// The wrapper therefore binds only the Hook field; the other three blocks have
-// no SystemConfig field and are intentionally ignored by the loader (they are
-// classified R in the M1 inventory and read, where read at all, by ad-hoc
-// inline structs elsewhere). Seeding Hook with cfg.System.Hook preserves the
-// partial-override contract parallel to loadGateSection / loadHandoffSection.
+// document_management), and of those only `hook` maps to a SystemConfig
+// sub-struct. The other three have no SystemConfig field and are intentionally
+// ignored by the loader (they are classified R in the M1 inventory and read,
+// where read at all, by ad-hoc inline structs elsewhere).
+//
+// `migrations` is bound too, though the template ships no such block (card
+// t795). It is the fifth key a user can write here, and it is NOT in the
+// intentionally-ignored set above: SystemConfig.Migrations carries a yaml tag
+// AND has a real consumer — internal/hook/session_start.go runMigration reads
+// cfg.System.Migrations.Disabled and logs "migrations disabled via config" on
+// the false branch. Unbound, that branch was unreachable from configuration:
+// a user who wrote `migrations: {disabled: true}` had the edit ignored with no
+// signal (yaml.v3 runs non-strict, so an unbound key is silently dropped), and
+// the migrations ran anyway. The same criterion M4 used to bind `hook` — a
+// genuine SystemConfig consumer — selects this block; it was overlooked rather
+// than excluded.
+//
+// Seeding both fields from cfg preserves the partial-override contract
+// parallel to loadGateSection / loadHandoffSection.
 type systemFileWrapper struct {
-	Hook SystemHookConfig `yaml:"hook"`
+	Hook       SystemHookConfig `yaml:"hook"`
+	Migrations MigrationsConfig `yaml:"migrations"`
 }
 
 // ralphFileWrapper handles the ralph.yaml section file.

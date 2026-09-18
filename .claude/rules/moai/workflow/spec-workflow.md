@@ -47,19 +47,17 @@ The route governs the trigger vocabulary in § Phase Transitions below (commit/p
 \* Route B PR strategy is the configured `merge_method` (`git_strategy.<mode>.merge_method`; one of `squash` | `merge` | `rebase`), **default `squash`**. Squash remains the documented recommendation — one squash commit per phase yields clean, revertable SPEC history — and is the value applied when `merge_method` is absent or unset. The method is configurable (per the per-mode `merge_method` field) so that workflows such as gitflow `release/*` may opt into a merge commit; the FROZEN default and its rationale are unchanged. Route A has no PR and therefore no `merge_method` — it pushes directly to `main`. Step 4 (worktree cleanup) applies to Route B only when an L2 worktree was created.
 
 [ZONE:Frozen] [HARD] Step ordering rules:
-- Step 1 (plan) MUST execute in main checkout on BOTH routes. NO L2/L3 worktree at this step. Plan artifacts are markdown only — no code conflict — and main-authored plans enable cross-SPEC reference for plan-auditor and parallel SPEC scoping. On **Route A** the plan-phase artifacts are committed + pushed directly to `main` (no branch). On **Route B**, the **Late-branch precondition (the Late-Branch closure contract)** applies: when `team.branch_creation.auto_enabled == false` in `git-strategy.yaml`, Step 1 entry requires `git rev-parse --abbrev-ref HEAD == main` (or the user's chosen `main_branch` if it differs). No `plan/SPEC-XXX` branch is created at Step 1; plan-phase commits land directly on `main` and are pushed only after Phase C `git switch -c plan/SPEC-XXX` at PR creation time.
+- Step 1 (plan) MUST execute in main checkout on BOTH routes. NO L2/L3 worktree at this step. Plan artifacts are markdown only — no code conflict — and main-authored plans enable cross-SPEC reference for plan-auditor and parallel SPEC scoping. On **Route A** the plan-phase artifacts are committed + pushed directly to `main` (no branch). On **Route B**, the **Late-branch precondition (the Late-Branch closure contract)** applies: when `team.branch_creation.auto_enabled == false` in `git-strategy.yaml`, Step 1 entry happens inside a launcher-entered worktree (`moai cc -w <name>` or `EnterWorktree(<path>)`) — the primary checkout observes no branch-state mutation. No `plan/SPEC-XXX` branch is created at Step 1; plan-phase commits land on the worktree's own branch and are pushed only at promotion time (Phase C — PR creation in PR-integrating workflows, or the integration-window merge in git-flow workflows).
 - Step 2 (run) — **Route A** commits + pushes directly to `main` (no branch, no worktree). **Route B** SHOULD create a fresh L2 SPEC worktree from the plan-merged main HEAD (`--base origin/main`) if the user opted into L2/L3; otherwise continue on the `feat/SPEC-XXX` branch in main checkout. When L2 is used, worktree base alignment is a precondition for `Agent(isolation: "worktree")` correctness.
 - Step 3 (sync) — **Route A** emits the single sync commit directly on `main` (carrying the `implemented → completed` transition; see § Phase Transitions). **Route B** SHOULD reuse the SAME L2 worktree as Step 2 if L2 was used; otherwise continue on the same feature branch in main checkout. Sync rotates codemap / MX / docs in the run-modified tree; spawning a fresh L2 worktree at sync would lose run-state context.
-- Step 4 (cleanup) applies to **Route B only**. It MUST happen ONLY after BOTH run AND sync PRs are merged, and ONLY when an L2 worktree was created. Premature `moai worktree done` between run-merge and sync-merge breaks Step 3. **Late-branch closure (the Late-Branch closure contract):** when `auto_enabled == false`, after squash merge of run-PR and sync-PR, the user (or `manager-git` automation) MUST execute the canonical Late-branch closure step:
+- Step 4 (cleanup) applies to **Route B only**. It MUST happen ONLY after BOTH run AND sync PRs are merged (PR-integrating workflows) or the integration branch carries both merges (git-flow workflows), and ONLY when a worktree was created. Premature `moai worktree done` between run-merge and sync-merge breaks Step 3. **Late-branch closure (the Late-Branch closure contract):** when `auto_enabled == false`, closure is the worktree branch's promotion, not a local-`main` reset — the plan/run/sync commits never landed on `main`, so there is no un-squashed history to reconcile and no `reset`/`pull` alignment step exists. Closure is met when the worktree branch is integrated:
 
   ```bash
-  git checkout main
   git fetch origin
-  git reset --hard origin/main
-  git pull origin main   # verify
+  git rev-list --count --left-right origin/<base>...<worktree-branch>
   ```
 
-  Post-condition: `git status --porcelain` returns empty AND `git rev-parse main` == `git rev-parse origin/main`. Failure mode: skipping this step leaves local main with un-squashed history that conflicts with the next `git pull`. For the complete 4-phase Late-branch invocation pattern (A→D), see `.claude/agents/moai/manager-git.md` § Late-Branch Invocation Pattern.
+  Post-condition: the worktree branch is integrated — PR state `MERGED` in PR-integrating workflows (merged with the resolved `merge_method`), or the branch merged into the develop integration worktree under the integration-window discipline in git-flow workflows; `git status --porcelain` in the worktree returns empty; and `main` received no Late-branch commits at any point of the flow. Failure mode: disposing the worktree before the branch is integrated destroys the only copy of the work — an unpushed worktree branch is the work's only instance. For the complete worktree-branch Late-branch invocation pattern, see `.claude/agents/moai/manager-git.md` § Late-Branch Invocation Pattern.
 
 [SHOULD] Anti-patterns (advisory):
 - Creating an L2/L3 worktree for plan (Step 1). Plan-in-worktree forces a base rebase after plan PR merge and prevents parallel SPEC plan visibility.
@@ -238,7 +236,7 @@ After each methodology cycle, compare planned files against actual modifications
 
 ### Methodology delegation (team mode experimental)
 
-The run-phase methodology (DDD/TDD) is applied by a single `manager-develop` sub-agent (serial), with multi-domain research fanned out via fanout (parallel read-only `Agent()`) where warranted; the Agent Teams layer is an explicit-request experimental alternative (see § Agent Teams Variant). The native `moai cg` teammate runtime is unaffected.
+The run-phase methodology (DDD/TDD) is applied by a single `manager-develop` sub-agent (serial), with multi-domain research fanned out via fanout (parallel read-only `Agent()`) where warranted; the Agent Teams layer is an explicit-request experimental alternative (see § Agent Teams Variant). Native Agent Teams remain experimental; retired CG routing does not establish mixed-provider teammate capability.
 
 ### MX Tag Integration
 
@@ -451,7 +449,4 @@ The default multi-agent surface remains:
 - Coding-heavy implementation → serial (sequential sub-agent) per Anthropic's coding-task parallelism caveat.
 - High-volume mechanical transformation → sweep (dynamic-workflow fan-out).
 
-The native Claude Code teammate runtime is UNAFFECTED and sanctioned: `moai cg` GLM teammate
-panes, `moai cc -w <name> --spawn` teammate windows, the `~/.claude/teams/` registry, and
-`teammateMode` launcher handling remain supported (see
-`.claude/rules/moai/core/glm-web-tooling.md` § CG Mode).
+Native Claude Code Agent Teams remain experimental under the enabled flag and the constraints above. The `~/.claude/teams/` registry is runtime-owned. Retired CG routing is not an active teammate mode; mixed-provider roles require the verified capability described in `.claude/rules/moai/core/glm-web-tooling.md` § CG Retirement and Migration.

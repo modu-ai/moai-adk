@@ -18,7 +18,9 @@
 package kanban
 
 import (
+	"bytes"
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"os"
@@ -32,11 +34,15 @@ import (
 // backlogLockFileName names the lock artifact sibling to the backlog file.
 const backlogLockFileName = "backlog.lock"
 
+const backlogRetiredFileName = "backlog.relocated"
+
+var ErrBacklogRelocated = errors.New("backlog relocated; resolve the project queue again")
+
 // legacyBacklogLockFileName is the lock artifact name an earlier revision of
 // this store used. No code reads it anymore, but an install that lived
 // through the rename keeps a stale zero-byte artifact beside the live lock
 // (measured on the primary checkout: 0 B, three days older than backlog.lock).
-// NewBacklogStore sweeps it best-effort so the directory settles on one lock
+// The adopting open sweeps it best-effort so the directory settles on one lock
 // name instead of carrying two.
 const legacyBacklogLockFileName = "backlog.json.lock"
 
@@ -78,7 +84,8 @@ type BacklogItem struct {
 	// was recorded. Written ONLY through LandingEvidenceValue, so the
 	// encoder's refusals (a SHA without provenance, a provenance that is not
 	// `operator`) hold on every write rather than at each call site.
-	Landing *LandingEvidence `json:"landing,omitempty"`
+	Landing  *LandingEvidence `json:"landing,omitempty"`
+	CardUUID *string          `json:"card_uuid"`
 }
 
 // Relation values a finding may carry. The first two are MECHANICAL — the
@@ -196,11 +203,13 @@ type BacklogArchiveEntry struct {
 // enum, no listing filter, and no analysis input had to change for it
 // (spec.md §B.1).
 type BacklogRecord struct {
-	Version  int                   `json:"version"`
-	LastSeq  int                   `json:"last_seq"`
-	Items    []BacklogItem         `json:"items"`
-	Findings []BacklogFinding      `json:"findings"`
-	Archived []BacklogArchiveEntry `json:"archived"`
+	ProjectUUID *string               `json:"project_uuid"`
+	Version     int                   `json:"version"`
+	LastSeq     int                   `json:"last_seq"`
+	Items       []BacklogItem         `json:"items"`
+	Findings    []BacklogFinding      `json:"findings"`
+	Archived    []BacklogArchiveEntry `json:"archived"`
+	Runtime     TodoRuntime           `json:"runtime"`
 }
 
 // ArchivedIndex returns the index of id in the archive, or -1.
@@ -284,6 +293,23 @@ func (r *BacklogRecord) RestoreCard(id string) error {
 	sorted := append([]BacklogArchivedFinding(nil), entry.Findings...)
 	sort.SliceStable(sorted, func(i, j int) bool { return sorted[i].Position < sorted[j].Position })
 	for _, af := range sorted {
+		deferred := false
+		if r.itemIndex(af.Finding.SubjectID) < 0 || r.itemIndex(af.Finding.RelatedID) < 0 {
+			// Keep a suspended relation with its still-archived endpoint; it
+			// becomes live only after both cards are restored.
+			for i := range r.Archived {
+				if i != at && af.Finding.Names(r.Archived[i].Item.ID) {
+					r.Archived[i].Findings = append(r.Archived[i].Findings, af)
+					deferred = true
+					break
+				}
+			}
+		}
+		if deferred {
+			continue
+		}
+		// Legacy records may already name a deleted endpoint. Preserve their
+		// evidence rather than silently deleting it during restoration.
 		r.Findings = insertBacklogFinding(r.Findings, af.Finding, af.Position)
 	}
 	r.Archived = append(r.Archived[:at:at], r.Archived[at+1:]...)
@@ -396,13 +422,9 @@ type BacklogStore struct {
 	path string
 }
 
-// NewBacklogStore returns a store over the backlog file at path. As a
-// best-effort side effect it removes a superseded legacy lock artifact
-// sitting beside the file (see legacyBacklogLockFileName); a failed removal
-// — permissions, a race with another process — is ignored, because the live
-// lock name and the store's correctness do not depend on it.
+// NewBacklogStore constructs a handle without touching operator files.
+// Legacy lock cleanup belongs to the adopting path, never a pure read.
 func NewBacklogStore(path string) *BacklogStore {
-	_ = os.Remove(filepath.Join(filepath.Dir(path), legacyBacklogLockFileName))
 	return &BacklogStore{path: path}
 }
 
@@ -421,7 +443,7 @@ func (s *BacklogStore) QueuedCount() int {
 	// which is where the queue lock is already in play.
 	layout := inspectBacklogLayout(s.path)
 	if layout.dbExists {
-		eng, err := openBacklogEngine(backlogSQLitePath(s.path))
+		eng, err := openBacklogReader(backlogSQLitePath(s.path))
 		if err != nil {
 			return 0
 		}
@@ -478,7 +500,7 @@ func BacklogCountsForRoot(root string) BacklogStateCounts {
 	path := BacklogPathForRoot(root)
 	layout := inspectBacklogLayout(path)
 	if layout.dbExists {
-		eng, err := openBacklogEngine(backlogSQLitePath(path))
+		eng, err := openBacklogReader(backlogSQLitePath(path))
 		if err != nil {
 			return BacklogStateCounts{}
 		}
@@ -560,6 +582,7 @@ func (s *BacklogStore) Load() (*BacklogRecord, error) {
 // Load, by contrast, adopts: the `moai todo` verbs are where the one-time
 // cutover belongs, because that is where the queue lock is already in play.
 func (s *BacklogStore) LoadPure() (*BacklogRecord, error) {
+	// @MX:NOTE: [TID:PURE] A pure read projects nullable identities but never issues, stamps, or backfills them.
 	layout := inspectBacklogLayout(s.path)
 	if !layout.dbExists {
 		if !layout.jsonExists {
@@ -571,7 +594,7 @@ func (s *BacklogStore) LoadPure() (*BacklogRecord, error) {
 		}
 		return loadLegacyBacklogJSON(s.path)
 	}
-	eng, err := openBacklogEngine(backlogSQLitePath(s.path))
+	eng, err := openBacklogReader(backlogSQLitePath(s.path))
 	if err != nil {
 		return nil, err
 	}
@@ -601,6 +624,7 @@ func (s *BacklogStore) load() (*BacklogRecord, error) {
 // for the migration's duration so concurrent factory lanes serialize on the
 // same artifact they always have (REQ-TOSQ-008).
 func (s *BacklogStore) openEngine(lockHeld bool) (*backlogEngine, error) {
+	_ = os.Remove(filepath.Join(filepath.Dir(s.path), legacyBacklogLockFileName))
 	switch layout := inspectBacklogLayout(s.path); {
 	case layout.dbExists && layout.jsonExists:
 		// State D — a database beside a backlog.json. The database is
@@ -647,6 +671,8 @@ func (s *BacklogStore) migrateUnderLock(lockHeld bool) error {
 // than discarded: on Windows release removes the artifact, so a silent
 // release failure would block every later writer.
 func (s *BacklogStore) Mutate(mutate func(*BacklogRecord) error) (err error) {
+	// @MX:WARN: [TID:TX] Identity schema, UUID backfill, and the card record must commit in one writer transaction.
+	// @MX:REASON: [TID:TX] MaxOpenConns(1) forbids e.db re-entry while that transaction is active; every identity query uses its *sql.Tx.
 	lock, err := s.acquireLock()
 	if err != nil {
 		return err
@@ -654,6 +680,11 @@ func (s *BacklogStore) Mutate(mutate func(*BacklogRecord) error) (err error) {
 	defer func() {
 		err = joinBacklogReleaseErr(err, lock.Release(), s.path)
 	}()
+	if target, readErr := os.ReadFile(filepath.Join(filepath.Dir(s.path), backlogRetiredFileName)); readErr == nil {
+		return fmt.Errorf("%w: %s", ErrBacklogRelocated, target)
+	} else if !os.IsNotExist(readErr) {
+		return readErr
+	}
 
 	eng, err := s.openEngine(true)
 	if err != nil {
@@ -666,13 +697,21 @@ func (s *BacklogStore) Mutate(mutate func(*BacklogRecord) error) (err error) {
 	if err != nil {
 		return err
 	}
+	archiveBefore, err := json.Marshal(rec.Archived)
+	if err != nil {
+		return err
+	}
 	if err := mutate(rec); err != nil {
 		return fmt.Errorf("mutate backlog %s: mutation refused: %w", s.path, err)
 	}
 	// Re-normalize post-mutate: a callback may append or rewrite items, and
 	// the written high-water mark must clear every present id.
 	normalizeBacklogRecord(rec)
-	return eng.writeRecord(ctx, rec)
+	archiveAfter, err := json.Marshal(rec.Archived)
+	if err != nil {
+		return err
+	}
+	return eng.writeRecordArchive(ctx, rec, !bytes.Equal(archiveBefore, archiveAfter))
 }
 
 // joinBacklogReleaseErr folds a lock-release failure into the mutation's own
@@ -700,15 +739,25 @@ func joinBacklogReleaseErr(mutErr, relErr error, path string) error {
 // high-water mark inside the locked mutation, so a removed card's id is
 // never reused (REQ-TODO-008).
 func (s *BacklogStore) Add(text string) (*BacklogItem, int, error) {
+	return s.addWithCardUUID(text, nil)
+}
+
+// addWithCardUUID is the identity-aware form used by GTD publication. A
+// caller-supplied UUID makes a queue commit discoverable after a crash that
+// occurs before the GTD link is recorded. Ordinary todo callers retain the
+// existing identity issuer by passing nil through Add.
+func (s *BacklogStore) addWithCardUUID(text string, cardUUID *string) (*BacklogItem, int, error) {
+	// @MX:NOTE: [TID:RETURN] Add reads back the committed row so its card_uuid is exactly the persisted identity.
 	var item BacklogItem
 	var pos int
 	err := s.Mutate(func(rec *BacklogRecord) error {
 		rec.LastSeq++
 		item = BacklogItem{
-			ID:      fmt.Sprintf("t%d", rec.LastSeq),
-			Text:    text,
-			AddedAt: time.Now().UTC().Format(time.RFC3339),
-			State:   BacklogStateQueued,
+			ID:       fmt.Sprintf("t%d", rec.LastSeq),
+			Text:     text,
+			AddedAt:  time.Now().UTC().Format(time.RFC3339),
+			State:    BacklogStateQueued,
+			CardUUID: cloneIdentity(cardUUID),
 		}
 		rec.Items = append(rec.Items, item)
 		pos = 0
@@ -722,7 +771,17 @@ func (s *BacklogStore) Add(text string) (*BacklogItem, int, error) {
 	if err != nil {
 		return nil, 0, err
 	}
-	return &item, pos, nil
+	record, err := s.LoadPure()
+	if err != nil {
+		return nil, 0, err
+	}
+	for i := range record.Items {
+		if record.Items[i].ID == item.ID {
+			persisted := record.Items[i]
+			return &persisted, pos, nil
+		}
+	}
+	return nil, 0, fmt.Errorf("added backlog item %s missing from committed record", item.ID)
 }
 
 // acquireBacklogLockSerialized acquires the backlog's sibling lock, retrying

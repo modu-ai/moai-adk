@@ -38,6 +38,7 @@ import (
 	"github.com/mark3labs/mcp-go/mcp"
 	"gopkg.in/yaml.v3"
 
+	"github.com/modu-ai/moai-adk/internal/auditreceipt"
 	"github.com/modu-ai/moai-adk/internal/config"
 	"github.com/modu-ai/moai-adk/internal/template"
 )
@@ -266,6 +267,11 @@ type ReviewOutput struct {
 	Findings  []Finding `json:"findings"`
 	NextSteps []string  `json:"next_steps"`
 
+	// Provenance identifies the backend transport that actually produced the
+	// review. It is optional so the existing Codex/GLM output remains byte-for-
+	// byte compatible until those backends opt into the common metadata.
+	Provenance *AuditProvenance `json:"provenance,omitempty"`
+
 	// SynthesisNote records that the verdict signals inside ONE backend's review
 	// body disagreed, and which way they were resolved. Empty whenever they
 	// agreed — a note present on every review would mark nothing.
@@ -291,6 +297,14 @@ type ReviewOutput struct {
 	// consumer's JSON changes, and the fail-open verdict itself is preserved.
 	GateUnmet string `json:"gate_unmet,omitempty"`
 
+	// AuditReceipt carries the id of the receipt the server recorded for THIS
+	// call, so an auditor can cite evidence that the audit ran rather than
+	// asserting it. Present only where the audited tree explicitly declared
+	// workflow.audit.gates.codex: required — the tree that asked to be checked
+	// is the only one that gains a field. Additive + omitempty, so every other
+	// project's result stays byte-identical.
+	AuditReceipt string `json:"audit_receipt,omitempty"`
+
 	// BuildCommit records the commit the SERVING binary was built from
 	// (SPEC-AUDIT-BUILD-IDENTITY-001), so a verdict can be re-attributed to
 	// the binary that produced it after the fact. Deliberately NOT a version
@@ -306,6 +320,26 @@ type ReviewOutput struct {
 	// commits. Empty on every other verdict, so the advisory speaks only when
 	// the binary really is running code the tree has moved past (REQ-ABI-006).
 	BuildLag string `json:"build_lag,omitempty"`
+}
+
+// AuditProvenance is backend-supplied evidence about how a review was made.
+// Token fields are pointers so an unavailable provider metric is serialized as
+// JSON null instead of being misreported as a measured zero.
+type AuditProvenance struct {
+	Backend           string `json:"backend"`
+	Transport         string `json:"transport"`
+	AuthMode          string `json:"auth_mode"`
+	Source            string `json:"source,omitempty"`
+	RequestedModel    string `json:"requested_model"`
+	ResolvedModel     string `json:"resolved_model"`
+	RequestedEffort   string `json:"requested_effort"`
+	ToolSurface       string `json:"tool_surface"`
+	SessionPersisted  bool   `json:"session_persisted"`
+	UsageSource       string `json:"usage_source"`
+	InputTokens       *int64 `json:"input_tokens"`
+	CachedInputTokens *int64 `json:"cached_input_tokens"`
+	OutputTokens      *int64 `json:"output_tokens"`
+	ErrorCode         string `json:"error_code"`
 }
 
 // Finding is a single review finding (§G.4).
@@ -1627,9 +1661,17 @@ func handleCodexAudit(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallTo
 	// parameter exists to fix. The rejection is a tool error, not the fail-open
 	// inconclusive verdict: fail-open covers an absent or broken codex, not a
 	// caller input the caller can correct.
-	root, rootErr := resolveToolProjectRoot(req)
+	root, rootSource, rootErr := resolveToolProjectRootWithSource(req)
 	if rootErr != nil {
 		return toolErr("codex_audit", rootErr), nil
+	}
+	// rootArg is the tree the CALLER named, empty when it named none. The
+	// receipt store needs that distinction — an argument-rooted receipt and a
+	// fallback-rooted one mean different things to the SubagentStop check —
+	// while the review itself keeps using the resolved root exactly as before.
+	rootArg := ""
+	if rootSource == rootSourceParam {
+		rootArg = root
 	}
 
 	// Build identity is assembled ONCE here (REQ-ABI-007) and rides every
@@ -1645,6 +1687,7 @@ func handleCodexAudit(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallTo
 		// goes silently unmet (the review never ran at all).
 		out := applyGateUnmet(inconclusiveReview("codex binary not found in PATH"), root)
 		out.BuildCommit, out.BuildLag = buildCommit, buildLag
+		out.AuditReceipt = recordAuditReceipt(auditreceipt.ToolCodexAudit, rootArg, out.Verdict, out.GateUnmet)
 		return codexReviewToolResult(out), nil
 	}
 	notifyMCPProgress(ctx, token, 0.1, "codex 바이너리 확인 — 리뷰 요청 준비 중...")
@@ -1667,16 +1710,26 @@ func handleCodexAudit(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallTo
 	out, _ := codexReviewRPC(ctx, binaryPath, method, params) // fail-open inside
 	out = applyGateUnmet(out, root)
 	out.BuildCommit, out.BuildLag = buildCommit, buildLag
+	out.AuditReceipt = recordAuditReceipt(auditreceipt.ToolCodexAudit, rootArg, out.Verdict, out.GateUnmet)
 	notifyMCPProgress(ctx, token, 0.9, "codex 응답 수신 — 결과 조립 중...")
 	return codexReviewToolResult(out), nil
 }
 
-// applyGateUnmet annotates a fail-open inconclusive audit with the declared
-// codex gate when that gate is `required` (#1632 axis 3). The audit tree's own
-// workflow.yaml decides — the same project_root the review ran against — so a
-// named tree's gate follows the named tree, not the server's cwd. The verdict
-// itself is untouched: fail-open stays fail-open, and the annotation makes the
-// gap VISIBLE rather than relabeling an unknown as a pass or a fail.
+// applyGateUnmet blocks a fail-open inconclusive audit when the audited tree
+// EXPLICITLY declares workflow.audit.gates.codex: required (#1632 axis 3). The
+// audit tree's own workflow.yaml decides — the same project_root the review ran
+// against — so a named tree's gate follows the named tree, not the server's cwd.
+//
+// Operator decision (fail-closed for an explicit `required`, the same rule the
+// convergence engine applies in enforceRequiredGateUnmet): the verdict becomes
+// fail, gate_unmet says the failure is an unmet gate rather than a reviewed
+// failure, and the summary keeps the original no-verdict cause. The result
+// stays a structured result (isError false). The RAW configured value is read,
+// never the engine default, so a project that did not write `required` keeps
+// the fail-open inconclusive byte-for-byte.
+//
+// @MX:ANCHOR: [AUTO] single-backend required-gate enforcement; every codex_audit exit passes through here
+// @MX:REASON: flipping the verdict for a non-explicit gate would turn every existing project fail-closed
 func applyGateUnmet(out ReviewOutput, projectDir string) ReviewOutput {
 	if out.Verdict != VerdictInconclusive {
 		return out
@@ -1685,6 +1738,8 @@ func applyGateUnmet(out ReviewOutput, projectDir string) ReviewOutput {
 		return out
 	}
 	out.GateUnmet = "workflow.audit.gates.codex is `required`, but this audit returned no verdict (fail-open inconclusive)"
+	out.Verdict = "fail"
+	out.Summary = "required gate unmet (workflow.audit.gates.codex is `required`, no verdict): " + out.Summary
 	return out
 }
 

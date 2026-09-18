@@ -1,2 +1,0 @@
-ok  	github.com/modu-ai/moai-adk/internal/spec	83.004s
-EXIT=0

@@ -1,7 +1,7 @@
 ---
-description: Backlog queue for Kanban Mode — add, list, or pick the next card
+description: Compatibility alias for the canonical GTD task-management entry point
 argument-hint: "[\"<description>\"|list|next|done <n>]"
 allowed-tools: Skill
 ---
 
-Use Skill("moai") with arguments: todo $ARGUMENTS
+Use Skill("moai") with arguments: gtd $ARGUMENTS

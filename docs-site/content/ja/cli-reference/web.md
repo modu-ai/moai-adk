@@ -50,7 +50,7 @@ moai web --no-reuse      # ポートが使用中なら回収せずに失敗す�
 | `/kanban` | GET | チェーンセッションボード + SPEC パイプライン |
 | `/specs` | GET | SPEC カタログ。`?q=` で検索、`?status=` でフィルタ、`?id=` で詳細 |
 | `/monitor` | GET | セッション・ゴール・検証・エピック |
-| `/settings` | GET | 設定 9 タブ。`?tab=` でタブ、`?profile=` で編集対象プロファイルを指定 |
+| `/settings` | GET | 設定タブ画面。`?tab=` でタブ、`?profile=` で編集対象プロファイルを指定 |
 | `/todo` | GET | バックログキューの読み取り専用ビュー — 3 状態（`queued`・`picked`・`dropped`）のカードをすべて一覧 |
 | `/events` | GET | SSE ストリーム — 更新信号のみを流す |
 | `/save` | POST | 設定の保存 |

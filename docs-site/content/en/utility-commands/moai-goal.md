@@ -45,6 +45,31 @@ Releases the active session's goal (deletes the state file). The Stop hook sees 
 **There is no `resume` verb.** The once-discussed `resume` verb (restoring a released goal from an archive) does not exist in the current CLI — `moai goal --help` lists only `arm` / `status` / `clear`. Because `clear` **deletes** the state file (it does not tombstone to an archive), there is no original left to restore.
 {{< /callout >}}
 
+## `--auto` mission mode
+
+```bash
+moai goal --auto --session <session-id> "implement and verify the feature within the approved scope"
+```
+
+`--auto` is not another spelling for a goal condition or `progression_mode=autonomous`. The mission text is never executed as shell or parsed as a condition. It is stored separately with `mission_mode=auto` and `state=draft`. As the creation message says `approval required`, this command creates a **mission draft**; it does not approve autonomous execution.
+
+```bash
+moai goal approve --scope <path> --action publish --action commit --completion-evidence <evidence> --max-operations 20
+moai goal run --action publish --target <gtd-id> --recommend
+moai goal run --supervise --card-worktree <WT-path> --develop-worktree <develop-path> --governor-receipt <decision.json> --audit-receipt <audit.json> --completion-receipt <completion.json>
+moai goal status
+moai goal revoke
+moai goal resume
+```
+
+`approve` seals the goal, scope, allowed actions, completion evidence, and resource limit once. The workflow loop then rechecks the current snapshot and receipt before each in-scope operation without asking for the same approval again. `status` reads persisted state. `revoke` prevents new effects while retaining in-flight reconciliation state. `resume` accepts only a persisted **approved, policy-blocked** mission under the same contract; it never approves new scope.
+
+`--recommend` is compatibility syntax only and grants no authority. Every real operation requires both a repository-contained `0600` mission-governor decision receipt and a separate independent-audit PASS receipt, bound to the mission, contract, snapshot, action, targets, expiry, issuer, HEAD, and typed true evidence. `run --supervise` executes the sealed plan as a bounded `publish → pick → leased disk dispatch → commit → local develop --no-ff merge` sequence. Supervised Git effects require separate `--card-worktree` and `--develop-worktree` paths; legacy `--repo` is rejected with zero effects. Completion requires a sealed `0600` completion receipt with merged ancestry, not merely an exhausted action list. It stops on blocked or completed state; replaying a completed mission produces zero effects.
+
+After approval, deterministic code must check the sealed goal, completion evidence, scope, allowed actions, resource limits, and stop conditions before each operation. `mission-governor` is a read-only proposer. If progress needs broader scope or new authority, effects stop and the mission records `blocked` instead of silently expanding approval.
+
+`super-advisor` advice is non-binding, and the read-only `mission-governor` produces a structured decision. Only the deterministic validator and owning-role adapters perform effects. Commits require a current-HEAD test receipt; local merges require the manager-git role, base SHA, and lease. When durable provider capabilities have not been demonstrated, the runtime is `active-session-only`. Providers for remote batch push, release branch, release PR, and main merge are not configured, so those actions stop with `provider_unsupported` instead of simulating success. See [`/moai gtd`](/en/utility-commands/moai-gtd) for the GTD boundary.
+
 ## Progression modes (autonomous / semi-autonomous)
 
 When the orchestrator runs Implementation Kickoff Approval (the `AskUserQuestion` at the plan→run boundary), it lets you choose the **autonomous vs. semi-autonomous** progression mode as a **separate axis distinct** from the approve/reject decision. The chosen mode is stored in the goal state's `progression_mode` field (default `autonomous` if the user does not choose).

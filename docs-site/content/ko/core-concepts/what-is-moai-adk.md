@@ -33,7 +33,7 @@ v3.0의 가치는 세 가지 핵심으로 요약됩니다.
 
 ### 토크노믹스 (Token Economics)
 
-쓴 비용만큼의 품질을 최대로 뽑아내도록 자원을 똑똑하게 나눠 쓰는 방식입니다. 작업 단계와 SPEC 크기에 따라 모델과 추론 깊이를 선언적으로 배정하는 **3-계층 모델 정책**, Claude 리더와 GLM 워커를 조합해 구현 비용을 60-70% 줄이는 **CG 모드**, 예산 초과 전에 안전하게 멈추는 **Token Circuit Breaker**, 그리고 항시 로드 컨텍스트를 줄이는 **컨텍스트 다이어트**가 이 핵심을 이룹니다.
+쓴 비용만큼의 품질을 최대로 뽑아내도록 자원을 똑똑하게 나눠 쓰는 방식입니다. 작업 단계와 SPEC 크기에 따라 모델과 추론 깊이를 선언적으로 배정하는 **3-계층 모델 정책**, 예산 초과 전에 안전하게 멈추는 **Token Circuit Breaker**, 그리고 항시 로드 컨텍스트를 줄이는 **컨텍스트 다이어트**가 이 핵심을 이룹니다.
 
 ### 에이전틱 루프 엔지니어링 (Agentic Loop Engineering)
 
@@ -365,7 +365,7 @@ Plan 단계 산출물은 **plan-auditor**가 독립 감사하고, Run 단계 진
 
 #### 실행 모드 선택 게이트
 
-Plan 단계에서 Run 단계로 전환할 때, MoAI는 자동으로 현재 실행 환경 (cc/glm/cg) 을 감지하고 사용자가 확인하거나 변경할 수 있는 선택 UI를 표시합니다.
+Plan 단계에서 Run 단계로 전환할 때, MoAI는 자동으로 현재 실행 환경 (cc/glm) 을 감지하고 사용자가 확인하거나 변경할 수 있는 선택 UI를 표시합니다.
 
 ```mermaid
 flowchart TD
@@ -373,7 +373,6 @@ flowchart TD
     B --> C{"모드 선택 UI"}
     C -->|"CC"| D["Claude 전용 실행"]
     C -->|"GLM"| E["GLM 전용 실행"]
-    C -->|"CG"| F["Claude Leader + GLM Workers"]
 ```
 
 이 게이트 덕분에 환경 상태와 관계없이 언제나 올바른 실행 모드로 시작하게 되고, 구현 도중 모드가 어긋나는 일도 막을 수 있습니다.
@@ -433,47 +432,15 @@ MoAI 오케스트레이터는 작업 복잡도를 분석해 실행 형태를 선
 | **병렬 서브에이전트** | 3-5개 읽기 전용 에이전트 동시 팬아웃 | 조사·리뷰·감사 등 병렬 분석 |
 | **동적 워크플로우** | 스크립트가 다수 에이전트를 오케스트레이션 | 대규모 스윕, 교차 검증 리서치 |
 
-{{< callout type="info" >}}
-**v3.0 변경**: 과거의 Agent Teams 정적 오케스트레이션 계층은 폐지됐습니다. `--team`을 강제해도 서브에이전트 모드로 폴백합니다. 다만 Claude Code의 네이티브 teammate 런타임(`moai cg`의 tmux 분할 창)은 그대로 유지됩니다. 팀 모드 품질 훅 (TeammateIdle의 LSP 게이트 검증, TaskCompleted의 SPEC 참조 확인) 도 native teammate 런타임과 함께 보존됩니다.
-{{< /callout >}}
+{{< callout type="info" >}} **v3.0 변경**: 과거의 Agent Teams 정적 오케스트레이션 계층은 폐지됐습니다. `--team`을 강제해도 서브에이전트 모드로 폴백합니다. 팀 모드 품질 훅 (TeammateIdle의 LSP 게이트 검증, TaskCompleted의 SPEC 참조 확인) 도 native teammate 런타임과 함께 보존됩니다. {{< /callout >}} CG는 폐기되었습니다. `moai migrate cg`로 이전 선택지를 먼저 확인하세요.
 
-### CG 모드 (Claude + GLM 하이브리드)
+### CG 폐기와 설정 이전
 
-토크노믹스(비용) 핵심의 실전 도구입니다. Leader가 **Claude API**를, Workers가 **GLM API**를 사용하는 하이브리드 모드로, tmux 세션 수준 환경 변수 격리로 구현됩니다. 전략·계획·감사는 Claude가, 대량 구현은 GLM이 맡아 구현 중심 작업에서 60-70% 비용을 절감합니다.
+`moai cg`는 폐기되었습니다. Claude나 GLM을 실행하지 않고 설정 이전 안내와 함께 종료합니다. `moai cc`의 별칭이 아닙니다. `llm.team_mode: cg`가 남은 프로젝트는 세션을 실행하기 전에 이전할 구성을 명시적으로 선택해야 합니다.
 
-```
-┌─────────────────────────────────────────────────────────────┐
-│  LEADER (현재 tmux 패인, Claude API)                         │
-│  - moai cg 활성화 후 /moai 명령으로 오케스트레이션            │
-│  - plan, quality, sync 단계 처리                             │
-│  - GLM 환경 없음 → Claude API 사용                           │
-└──────────────────────┬──────────────────────────────────────┘
-                       │ Agent Teams (새 tmux 패인)
-                       ▼
-┌─────────────────────────────────────────────────────────────┐
-│  TEAMMATES (새 tmux 패인, GLM API)                           │
-│  - tmux 세션 환경 상속 → GLM API 사용                        │
-│  - run 단계에서 구현 작업 실행                                │
-│  - SendMessage로 리더와 통신                                  │
-└─────────────────────────────────────────────────────────────┘
-```
+`llm.team_mode: claude`, `llm.gateway.teammate_mode: in-process`, `llm.gateway.teammate_provider: inherit`을 저장합니다. 기존 혼합 역할 배정을 없애는 변경이며, Claude 리더와 GLM 팀원 창의 분업을 보존하는 이전이 아닙니다.
 
-```bash
-# 1. GLM API 키 저장 (한 번만)
-moai glm setup sk-your-glm-api-key
-
-# 2. CG 모드 활성화 (tmux 세션 안에서 실행 — Claude Code가 자동 시작)
-moai cg
-
-# 3. 워크플로우 실행
-/moai "작업 설명"
-```
-
-| 명령어 | Leader | Workers | tmux 필요 | 비용 절감 | 사용 사례 |
-|--------|--------|---------|----------|----------|----------|
-| `moai cc` | Claude | Claude | 아니요 | - | 복잡한 작업, 최고 품질 |
-| `moai glm` | GLM | GLM | 권장 | ~70% | 비용 최적화 |
-| `moai cg` | Claude | GLM | **필수** | **~60%** | 품질 + 비용 균형 |
+`claude-glm` 대상은 Claude 리더와 tmux의 GLM 팀원 구성을 뜻합니다. 현재 TEAMMATE 통합 검증을 통과하지 않아 적용과 실행은 사용할 수 없으며 미리보기만 가능합니다. tmux를 설치하거나 `verified: true`를 적어도 이 제한은 해제되지 않습니다.
 
 ### 자율 개발 루프 (Ralph Engine)
 

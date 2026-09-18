@@ -142,8 +142,6 @@ TRUST 5 품질 게이트 강제 여부를 선택합니다.
   Team - Multi-developer setup
 ```
 
-이 설정은 `.moai/config/sections/project.yaml` 의 `project.mode` 필드에 저장됩니다.
-
 ### design workflow
 
 MoAI 디자인 파이프라인과 Claude Design 연동을 활성화할지 선택합니다.
@@ -160,7 +158,6 @@ MoAI 디자인 파이프라인과 Claude Design 연동을 활성화할지 선택
 ```bash
 moai init my-project \
   --non-interactive \
-  --project-mode personal \
   --profile medium \
   --enable-lsp=false \
   --enforce-quality

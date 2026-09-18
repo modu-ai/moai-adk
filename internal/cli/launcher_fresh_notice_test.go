@@ -1,5 +1,8 @@
 package cli
 
+// Provider entry is covered by gateway_provider_contract_test.go. These tests
+// exercise shared profile/mode plumbing with its legacy execution test seam.
+
 import (
 	"bytes"
 	"os"
@@ -78,7 +81,7 @@ func TestUnifiedLaunch_FreshProfileNoticeEmittedExactlyOnce(t *testing.T) {
 		buf := fnCaptureStderr(t)
 		lpStubLaunch(t)
 
-		if err := unifiedLaunch("fresh", "claude", nil); err != nil {
+		if err := runUnifiedLaunch("fresh", "claude", nil); err != nil {
 			t.Fatalf("unifiedLaunch: %v", err)
 		}
 		if got := strings.Count(buf.String(), freshNoticeMarker); got != 1 {
@@ -93,7 +96,7 @@ func TestUnifiedLaunch_FreshProfileNoticeEmittedExactlyOnce(t *testing.T) {
 		buf := fnCaptureStderr(t)
 		_, gotProfile := lpStubLaunch(t)
 
-		if err := unifiedLaunch("", "claude", nil); err != nil {
+		if err := runUnifiedLaunch("", "claude", nil); err != nil {
 			t.Fatalf("unifiedLaunch: %v", err)
 		}
 		if *gotProfile != "fresh" {
@@ -113,7 +116,7 @@ func TestUnifiedLaunch_FreshProfileNoticeEmittedExactlyOnce(t *testing.T) {
 		buf := fnCaptureStderr(t)
 		lpStubLaunch(t)
 
-		if err := unifiedLaunch("populated", "claude", nil); err != nil {
+		if err := runUnifiedLaunch("populated", "claude", nil); err != nil {
 			t.Fatalf("unifiedLaunch: %v", err)
 		}
 		if got := strings.Count(buf.String(), freshNoticeMarker); got != 0 {
@@ -129,7 +132,7 @@ func TestUnifiedLaunch_FreshProfileNoticeEmittedExactlyOnce(t *testing.T) {
 		buf := fnCaptureStderr(t)
 		_, gotProfile := lpStubLaunch(t)
 
-		if err := unifiedLaunch("", "claude", nil); err != nil {
+		if err := runUnifiedLaunch("", "claude", nil); err != nil {
 			t.Fatalf("unifiedLaunch: %v", err)
 		}
 		if *gotProfile != "populated" {

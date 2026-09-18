@@ -261,6 +261,49 @@ func FactoryLaneLabel(n int) string {
 	return factoryLaneRole + "-" + strconv.Itoa(n)
 }
 
+// factoryAgentRole is the label prefix of a factory run's agent lanes — the
+// `-f agent` role token's desugared name (operator goal 2026-09-16). Agent
+// lanes share the lane registry and the liveness/bump rules; only the prefix
+// differs, so a lead's dispatch surface treats lane-<n> and agent-<n> as one
+// numbered namespace family.
+const factoryAgentRole = "agent"
+
+// FactoryAgentLabel renders the agent-lane label for slot n.
+func FactoryAgentLabel(n int) string {
+	return factoryAgentRole + "-" + strconv.Itoa(n)
+}
+
+// SplitFactoryAgentLabel splits an `agent-<n>` label into its number and
+// reports whether the value has the agent shape at all — the mirror of
+// SplitFactoryLaneLabel for the agent prefix.
+func SplitFactoryAgentLabel(label string) (n int, ok bool) {
+	role, suffix, found := strings.Cut(label, "-")
+	if !found || role != factoryAgentRole {
+		return 0, false
+	}
+	n, err := strconv.Atoi(suffix)
+	if err != nil || n < 1 {
+		return 0, false
+	}
+	return n, true
+}
+
+// NextFactoryAgentNumber returns the lowest free agent slot in the pruned
+// registry: 1 when no agent label is claimed, else one past the highest
+// live claim. Dead claims are pruned first so a crashed lane frees its
+// number for reuse (the same rule resolveFactoryWorkerName applies to
+// lane-<n>).
+func NextFactoryAgentNumber(reg map[string]FactoryWorkerEntry, alive func(int) bool) int {
+	reg = PruneFactoryDeadClaims(reg, alive)
+	highest := 0
+	for label := range reg {
+		if n, ok := SplitFactoryAgentLabel(label); ok && n > highest {
+			highest = n
+		}
+	}
+	return highest + 1
+}
+
 // SplitFactoryLaneLabel splits a `lane-<n>` label into its number and
 // reports whether the value has the lane shape at all. The shape is the
 // discriminator for factory lane recognition, exactly as

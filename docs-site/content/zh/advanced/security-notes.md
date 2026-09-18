@@ -15,7 +15,7 @@ tags: ["security", "cwe", "audit"]
 三个缺陷都与 GLM 集成 + 自动更新路径相关。
 
 - **CWE-732 / CWE-552** — `.claude/settings.local.json` 文件 mode 强制 `0o600`（仅所有者可读写）
-- **CWE-214** — `moai cg` 的 tmux 环境变量注入改经 source-file 而非 argv（GLM token 在 argv 中不可见）
+- **CWE-214** — GLM/tmux 环境变量注入改经 source-file 而非 argv（GLM token 在 argv 中不可见）
 - **CWE-345** — `moai update` 的 checksum 校验为强制（下载失败时拒绝更新）
 
 每一项都由回归测试锁定，阻断未来回归。
@@ -67,9 +67,9 @@ chmod 0600 .claude/settings.local.json
 
 ### 变更内容
 
-`moai cg`（CG 模式）向 tmux 会话环境变量注入 GLM token (`ANTHROPIC_AUTH_TOKEN`) 时，使用 **source-file 通道**（`tmux source-file <tmp>`）取代 **argv 通道**（`tmux set-environment <KEY> <VALUE>`）。token 不再以明文暴露于 `ps auxe`、`/proc/<pid>/cmdline`、auditd 日志、sysmon 追踪与崩溃转储。
+GLM/tmux 凭据辅助程序向 tmux 会话环境变量注入 GLM token (`ANTHROPIC_AUTH_TOKEN`) 时，使用 **source-file 通道**（`tmux source-file <tmp>`）取代 **argv 通道**（`tmux set-environment <KEY> <VALUE>`）。token 不再以明文暴露于 `ps auxe`、`/proc/<pid>/cmdline`、auditd 日志、sysmon 追踪与崩溃转储。
 
-CG 模式是代币经济学的核心节省手段（Claude 领队 + GLM 工作者，节省 60-70%），因此其凭据路径的安全尤为重要。
+CG 已停用，请用 `moai migrate cg` 预览迁移选项。
 
 ### 实现流程
 
@@ -103,10 +103,10 @@ argv 中只暴露临时文件路径，token 本身不暴露。
 
 ### 自检
 
-确认 CG 模式运行中 token 是否暴露在 argv 中。
+确认 GLM/tmux 凭据注入期间 token 是否暴露在 argv 中。
 
 ```bash
-# 运行 moai cg 后在新 tmux 会话内
+# GLM/tmux 凭据注入期间在新 tmux 会话内
 ps auxe | grep -i 'tmux set-environment.*ANTHROPIC_AUTH_TOKEN'
 # 期望值: 0 matches (token 不在 argv 中)
 ```
@@ -129,7 +129,7 @@ stat -c '%a' ~/.moai/.env.glm    # Linux: 600
 stat -f '%A' ~/.moai/.env.glm    # macOS: 600
 ```
 
-详情：[CG 模式](/zh/multi-llm/cg-mode/)
+详情：[CG 停用与配置迁移](/zh/multi-llm/cg-mode/)
 
 ## CWE-345 — 更新流程的强制 checksum 校验 {#cwe-345}
 
@@ -210,7 +210,7 @@ stat -c '%a' .claude/settings.local.json 2>/dev/null \
   || stat -f '%A' .claude/settings.local.json 2>/dev/null
 # 期望值: 600
 
-# 2. CWE-214 — CG 模式运行中 token argv 暴露 (cg 模式激活状态下)
+# 2. CWE-214 — GLM/tmux 凭据注入期间 token argv 暴露
 ps auxe 2>/dev/null | grep -i 'tmux set-environment.*ANTHROPIC_AUTH_TOKEN'
 # 期望值: 0 matches
 
@@ -259,4 +259,4 @@ stat -c '%a' ~/.moai/.env.glm 2>/dev/null \
 
 - [settings.json 指南](/zh/advanced/settings-json/) — `settings.local.json` 权限章节
 - [更新](/zh/cli-reference/update/) — checksum 校验章节
-- [CG 模式](/zh/multi-llm/cg-mode/) — tmux 环境变量注入安全模型
+- [CG 停用与配置迁移](/zh/multi-llm/cg-mode/)

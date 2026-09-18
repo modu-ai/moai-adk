@@ -8,7 +8,6 @@ draft: false
 {{< /callout >}}
 <!-- @value: tokenomics -->
 
-![CGモード構造](/images/sections/multi-llm-ja.png)
 
 MoAI-ADK は Claude API に加えて **z.ai GLM** を代替 AI バックエンドとしてサポートします。これは
 便利機能ではなく、v3.0 の 3 つの核心のうちコストにあたる **トークノミクス** (Token Economics) を
@@ -40,36 +39,30 @@ GLM (Generative Language Model) は z.ai が提供する AI モデルサービ�
 
 > 無料モデルも提供されています: GLM-4.7-Flash、GLM-4.5-Flash。価格の詳細は [z.ai Pricing](https://docs.z.ai/guides/overview/pricing) を参照してください。
 
-## 3 つの実行モード
+## 実行モード
 
-MoAI-ADK は 3 つの LLM 実行モードを提供します。「何を最適化するか」に応じて
+MoAI-ADK は Claude と GLM のランチャーを提供します。「何を最適化するか」に応じて
 選択します:
 
 | コマンド | リーダー | ワーカー | tmux 必要 | コスト削減 | 用途 |
 |--------|------|------|----------|----------|------|
 | `moai cc` | Claude | Claude | いいえ | - | 最高品質、複雑なタスク |
 | `moai glm` | GLM | GLM | 推奨 | ~70% | コスト最適化 |
-| `moai cg` | Claude | GLM | **必須** | **~60%** | 品質とコストのバランス |
 
 ```mermaid
 graph TD
     A["MoAI オーケストレーター"] --> B{"実行モード選択"}
     B -->|"moai cc"| C["Claude Only<br/>最高品質"]
     B -->|"moai glm"| D["GLM Only<br/>コスト削減"]
-    B -->|"moai cg"| E["CG ハイブリッド<br/>バランス"]
 
     C --> F["リーダー: Claude<br/>ワーカー: Claude"]
     D --> G["リーダー: GLM<br/>ワーカー: GLM"]
-    E --> H["リーダー: Claude<br/>ワーカー: GLM"]
 
     style C fill:#7C3AED,color:#fff
     style D fill:#059669,color:#fff
-    style E fill:#D97706,color:#fff
 ```
 
-CG モードはトークノミクスの代表例です。戦略・計画・監査のように推論品質が
-重要な仕事は Claude リーダーが、大量実装のように物量が重要な仕事は GLM ワーカーが
-担当します。実装中心のタスクで約 60-70% のコストが削減されます。
+`moai cg` は廃止されました。Claude や GLM を起動せず、移行案内を表示して終了します。`moai cc` の別名ではありません。`llm.team_mode: cg` が残るプロジェクトでは、セッションを起動する前に移行先を明示的に選ぶ必要があります。 [CG の廃止と設定の移行](/ja/multi-llm/cg-mode/)
 
 ### クイックスタート
 
@@ -80,10 +73,9 @@ moai glm sk-your-glm-api-key
 # 2. モード選択
 moai cc            # Claude 専用
 moai glm           # GLM 専用
-moai cg            # CG ハイブリッド (tmux 必要)
 ```
 
 ## 次のステップ
 
-- [CG モード (Claude + GLM)](/ja/multi-llm/cg-mode) — tmux 分離アーキテクチャの詳細
+- [CG の廃止と設定の移行](/ja/multi-llm/cg-mode/)
 - [モデルポリシー](/ja/multi-llm/model-policy) — エージェント別モデル割り当て表

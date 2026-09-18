@@ -9,6 +9,23 @@ import (
 	"github.com/modu-ai/moai-adk/internal/kanban"
 )
 
+// TestFactoryGuideNamesAgentJoinInEveryLocale pins t868: the CLI accepts
+// `-f agent` (join as the next free agent-<n>), so every locale's entry guide
+// must name that form alongside the numbered `-f lane-<n>` form, and the lane
+// naming sentence must cover agent-<n> lanes too.
+func TestFactoryGuideNamesAgentJoinInEveryLocale(t *testing.T) {
+	for lang, m := range factoryLocales {
+		for _, want := range []string{"`moai %[2]s -f agent`", "`moai %[2]s -f lane-<n>`", "agent-<n>"} {
+			if !strings.Contains(m.entryGuide, want) {
+				t.Errorf("%s entryGuide missing %q:\n%s", lang, want, m.entryGuide)
+			}
+		}
+		if !strings.Contains(m.leadManual, "agent-<n>") {
+			t.Errorf("%s leadManual does not name agent-<n> lanes:\n%s", lang, m.leadManual)
+		}
+	}
+}
+
 // TestFactoryBootstrapNoticeSilentForOrdinarySession is the blast-radius
 // case: a session that is not part of a factory run is completely unaffected.
 func TestFactoryBootstrapNoticeSilentForOrdinarySession(t *testing.T) {
@@ -25,6 +42,7 @@ func TestFactoryBootstrapNoticeSilentForOrdinarySession(t *testing.T) {
 // the `-f lane-<n>` form, the per-lane fan-out line, the leader socket
 // path, and the run id alongside the session name that must match it.
 func TestFactoryLeadNoticeCarriesLaneLinesSocketAndEntryGuide(t *testing.T) {
+	t.Setenv(config.EnvMoaiLaunchProvider, "")
 	clearKanbanEnv(t)
 
 	t.Setenv(config.EnvMoaiFactoryWorkers, "3")
@@ -40,9 +58,9 @@ func TestFactoryLeadNoticeCarriesLaneLinesSocketAndEntryGuide(t *testing.T) {
 		"moai cc -f lane-1",
 		"moai cc -f lane-2",
 		"moai cc -f lane-3",
-		"moai glm -f 3",
+		"moai glm -f",
 		"moai cc -f lane-<n>",
-		"one-lane default",
+		"starts a Claude factory lead",
 		"Every lane can run up to 10 agents concurrently in parallel.",
 		"/tmp/moai-socket-factory/abc123",
 	} {
@@ -67,6 +85,7 @@ var factoryLaunchLineRe = regexp.MustCompile(`moai cc -f lane-[0-9]+`)
 // TestFactoryLeadNoticeWorkerCountDrivesLineCount asserts N drives the line
 // count directly (the v1 no-upper-bound rule: any N >= 1 prints N lines).
 func TestFactoryLeadNoticeWorkerCountDrivesLineCount(t *testing.T) {
+	t.Setenv(config.EnvMoaiLaunchProvider, "")
 	clearKanbanEnv(t)
 
 	t.Setenv(config.EnvMoaiFactoryWorkers, "1")

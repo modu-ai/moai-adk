@@ -44,12 +44,25 @@ const (
 	MirrorModeFailed MirrorMode = "failed"
 )
 
-// canonicalSkillsPrefix is the deploy-relative directory holding the canonical
-// skill catalog. Paths from fs.WalkDir are always slash-separated.
-const canonicalSkillsPrefix = ".claude/skills/"
+// CanonicalSkillsRelDir is the deploy-relative directory holding the canonical
+// skill catalog. It is the single source for the layout's reader side too:
+// doctor's mirror check imports it instead of restating the path, so a
+// producer-side rename cannot silently strand a reader on a stale literal.
+const CanonicalSkillsRelDir = ".claude/skills"
 
-// mirrorSkillsRelDir is the deploy-relative directory holding the mirror.
-var mirrorSkillsRelDir = filepath.Join(".agents", "skills")
+// canonicalSkillsPrefix is CanonicalSkillsRelDir in the slash-terminated form
+// fs.WalkDir paths arrive in.
+const canonicalSkillsPrefix = CanonicalSkillsRelDir + "/"
+
+// MirrorSkillsRelDir is the deploy-relative directory holding the skill
+// mirror. Var, not const: the doctor-side drift-following regression
+// temporarily repoints it to prove the reader follows the producer.
+//
+// @MX:WARN: [AUTO] package-global mutable path — assigning it redirects every
+// deploy, repair, and doctor read in-process
+// @MX:REASON: [AUTO] deliberate test seam for the t521 drift-following
+// guard; mutators must restore the prior value before returning
+var MirrorSkillsRelDir = filepath.Join(".agents", "skills")
 
 // SkillMirrorEntry is the per-skill outcome of mirror creation.
 type SkillMirrorEntry struct {
@@ -153,11 +166,13 @@ func skillNameFromDeployPath(deployRelPath string) (string, bool) {
 	return name, true
 }
 
-// mirrorLinkTarget is the relative symlink body for a skill mirror. Relative
+// MirrorLinkTarget is the relative symlink body for a skill mirror. Relative
 // (never absolute) so the project directory can be moved or copied wholesale
-// without breaking the link.
-func mirrorLinkTarget(skill string) string {
-	return path.Join("..", "..", ".claude", "skills", skill)
+// without breaking the link. Exported for the same reason MirrorSkillsRelDir
+// is: doctor-side findings and test fixtures must derive the body from the
+// producer, not restate it.
+func MirrorLinkTarget(skill string) string {
+	return path.Join("..", "..", CanonicalSkillsRelDir, skill)
 }
 
 // symlink invokes the configured symlink function (os.Symlink by default).
@@ -187,7 +202,7 @@ func (d *deployer) mirrorSkills(projectRoot string, skills []string) []SkillMirr
 	if len(skills) == 0 {
 		return nil
 	}
-	mirrorDir := filepath.Join(projectRoot, mirrorSkillsRelDir)
+	mirrorDir := filepath.Join(projectRoot, MirrorSkillsRelDir)
 	entries := make([]SkillMirrorEntry, 0, len(skills))
 	for _, skill := range skills {
 		entries = append(entries, d.mirrorOneSkill(projectRoot, mirrorDir, skill))
@@ -198,7 +213,7 @@ func (d *deployer) mirrorSkills(projectRoot string, skills []string) []SkillMirr
 func (d *deployer) mirrorOneSkill(projectRoot, mirrorDir, skill string) SkillMirrorEntry {
 	mirrorPath := filepath.Join(mirrorDir, skill)
 	srcDir := filepath.Join(projectRoot, ".claude", "skills", skill)
-	want := mirrorLinkTarget(skill)
+	want := MirrorLinkTarget(skill)
 
 	// Lstat, not Stat: Stat follows the link and cannot tell a link from a real
 	// directory, which is exactly the distinction that decides whether the path
@@ -210,7 +225,7 @@ func (d *deployer) mirrorOneSkill(projectRoot, mirrorDir, skill string) SkillMir
 			return SkillMirrorEntry{
 				Skill:   skill,
 				Mode:    MirrorModeSkipped,
-				Warning: fmt.Sprintf("skill mirror %s: a non-symlink entry already exists at %s — left untouched", skill, filepath.Join(mirrorSkillsRelDir, skill)),
+				Warning: fmt.Sprintf("skill mirror %s: a non-symlink entry already exists at %s — left untouched", skill, filepath.Join(MirrorSkillsRelDir, skill)),
 			}
 		}
 		if current, readErr := os.Readlink(mirrorPath); readErr == nil && current == want {
@@ -231,7 +246,7 @@ func (d *deployer) mirrorOneSkill(projectRoot, mirrorDir, skill string) SkillMir
 		return SkillMirrorEntry{
 			Skill:   skill,
 			Mode:    MirrorModeFailed,
-			Warning: fmt.Sprintf("skill mirror %s: cannot create %s: %v", skill, mirrorSkillsRelDir, err),
+			Warning: fmt.Sprintf("skill mirror %s: cannot create %s: %v", skill, MirrorSkillsRelDir, err),
 		}
 	}
 

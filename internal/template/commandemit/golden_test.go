@@ -29,7 +29,7 @@ const templatesDir = "../templates"
 
 // expectedCommandCount is the published-set size: one per command source
 // (AC-001).
-const expectedCommandCount = 16
+const expectedCommandCount = 17
 
 // emitRealSet runs the emitter over the committed template tree.
 func emitRealSet(t *testing.T) *commandemit.Publication {
@@ -247,8 +247,10 @@ func bodyAfterFrontmatter(t *testing.T, label string, data []byte) []byte {
 }
 
 // TestBoundaryFlagsRecorded is AC-007's emitter half: every report entry
-// records the boundary flag, and every published body still carries the
-// verbatim Claude-only dispatcher line (proving no repair happened).
+// records the boundary flag, and every published body still carries both
+// dispatch branches of the command source verbatim — the Claude Code
+// Skill("moai") branch and the Codex mirror-path branch — proving the
+// emitter publishes the source body without rewriting it.
 func TestBoundaryFlagsRecorded(t *testing.T) {
 	pub := emitRealSet(t)
 	if len(pub.Report) != expectedCommandCount {
@@ -262,8 +264,10 @@ func TestBoundaryFlagsRecorded(t *testing.T) {
 		if !ok {
 			t.Fatalf("report path %s not in publication", rep.Path)
 		}
-		if !strings.Contains(string(data), `Use Skill("moai")`) {
-			t.Errorf("%s: published body lost the verbatim Claude-only dispatcher line", rep.Path)
+		for _, branch := range []string{"invoke `Skill(\"moai\")` with arguments", "read `.agents/skills/moai/SKILL.md`"} {
+			if !strings.Contains(string(data), branch) {
+				t.Errorf("%s: published body lost the dispatch branch %q", rep.Path, branch)
+			}
 		}
 	}
 }

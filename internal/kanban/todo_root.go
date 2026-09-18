@@ -151,13 +151,15 @@ func tempOriginSubstituteRoot(base string) (root, matchedRoot string, refused bo
 // resolvers themselves acquiring an output channel: the pure resolver stays
 // silent on every branch, which is what keeps a console page render free of
 // side effects and messages (REQ-THG-007, AC-THG-005). Read-only, like the
-// resolution it mirrors — it consults the same git branch first, so a git
-// repository living under a temp root is reported NOT refused, exactly as the
-// resolvers treat it.
+// resolution it mirrors.
+//
+// The refusal decision must mirror StateDirForRoot exactly, and that resolver
+// consults NO git context: its temporary branch fires on the path-based
+// TempOriginReason alone (t705 — a git repository physically under a temp root
+// resolves project-local, so the guidance must report the refusal, not claim
+// the home queue). The explicit MOAI_HOME override exemption matches the
+// resolver's override branch in the same way.
 func TempOriginRefusal(base string) (substitute, matchedRoot string, refused bool) {
-	if _, ok := primaryCheckoutRoot(base); ok {
-		return "", "", false
-	}
 	if explicitMoaiHome() {
 		return "", "", false
 	}
@@ -173,7 +175,7 @@ func explicitMoaiHome() bool {
 // reporting false when git cannot answer. Read-only.
 func primaryCheckoutRoot(base string) (string, bool) {
 	if dirs, err := gitcore.ResolveGitDirs(base); err == nil && dirs.CommonDir != "" {
-		return filepath.Dir(dirs.CommonDir), true
+		return homestate.CanonicalProjectRoot(base), true
 	}
 	return "", false
 }
