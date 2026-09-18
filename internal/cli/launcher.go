@@ -1159,40 +1159,6 @@ func splitModelSuffix(model string) (base, suffix string) {
 	return model, ""
 }
 
-// buildEnvForLaunch returns an environment slice with CLAUDE_CODE_EFFORT_LEVEL
-// set to effortLevel when non-empty. Any existing CLAUDE_CODE_EFFORT_LEVEL entry
-// in base is replaced to avoid duplicates. When effortLevel is empty, base is
-// returned unchanged.
-//
-// Since card t668 no launch branch calls this: the plain Claude path (t595) and
-// the gateway path (t668) both carry the effort in the injected --settings
-// payload, because the variable this function sets is an override that refuses
-// an in-session /effort change. It is retained only because its removal was not
-// in t668's scope; do not wire it back into a launch path.
-//
-// @MX:NOTE: [AUTO] No production caller since t668 — reintroducing it on any launch branch restores the session-wide effort freeze. Model ROUTING (ModelPolicy→model) stays orthogonal to effort.
-func buildEnvForLaunch(effortLevel string, base []string) []string {
-	if effortLevel == "" {
-		return base
-	}
-	key := config.EnvClaudeCodeEffortLevel
-	entry := key + "=" + effortLevel
-	result := make([]string, 0, len(base)+1)
-	replaced := false
-	for _, e := range base {
-		if strings.HasPrefix(e, key+"=") {
-			result = append(result, entry)
-			replaced = true
-		} else {
-			result = append(result, e)
-		}
-	}
-	if !replaced {
-		result = append(result, entry)
-	}
-	return result
-}
-
 // resolveLaunchEffort resolves the launch's effort level from the two profile
 // levers: explicit prefs.EffortLevel always wins; otherwise
 // the model_policy-derived effort (template.MapModelPolicyToEffort) is used as a
