@@ -52,7 +52,7 @@ Single entry point for all MoAI development workflows. Subcommands: plan, run, s
 
 ## 4. Agent Catalog
 
-The MoAI agent catalog consists of exactly **12 retained agents** (11 MoAI-custom + 1 Anthropic built-in `Explore`), aligned with Anthropic's best practices (sub-agents, agent-teams, best-practices docs).
+The MoAI agent catalog consists of exactly **13 retained agents** (12 MoAI-custom + 1 Anthropic built-in `Explore`), aligned with Anthropic's best practices (sub-agents, agent-teams, best-practices docs).
 
 > **Nesting (Claude Code 2.1.219+)**: subagent nesting is enabled by default at depth 3 (`CLAUDE_CODE_MAX_SUBAGENT_SPAWN_DEPTH=1` disables). MoAI's flat hierarchy holds by configuration — every retained agent except `manager-lead` omits the `Agent` tool. `manager-lead` is the sole Agent-carrier, opened one layer deep and depth-2 sealed (leaf workers omit `Agent`, enforced by `manager_lead_depth_test.go`). The spawn-time `mode` parameter is deprecated and ignored. Full note: `.claude/rules/moai/development/agent-authoring.md` + `agent-patterns.md`.
 
@@ -66,7 +66,7 @@ The MoAI agent catalog consists of exactly **12 retained agents** (11 MoAI-custo
 6. Design collaboration → `manager-design`; E2E tests → `e2e-tester`
 7. Multi-milestone Tier L (≥3 milestones AND ≥10 files) → `manager-lead` (sole Agent-carrier, depth-2 sealed; the same role covers the -k kanban / -f factory lead session)
 
-**Retained agents (12)**: `manager-spec`, `manager-develop`, `manager-docs`, `manager-git`, `plan-auditor`, `sync-auditor`, `builder-harness`, `super-advisor`, `manager-design`, `e2e-tester`, `manager-lead` (11 MoAI-custom) + Anthropic built-in `Explore`. Class / phase scope / reference per agent: `.claude/agents/moai/*.md` + `.moai/config/sections/delegation.yaml`. Archived names (`manager-strategy`, `manager-quality`, `expert-*`, etc.) MUST NOT be spawned — reject and consult `.claude/rules/moai/workflow/archived-agent-rejection.md` §C (the built-in `claude-code-guide` is distinct, NOT rejected). Agent Teams usage is re-allowed as experimental (operator decision; the flag `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1` ships enabled in settings + template) — see §15. `MODE_TEAM_UNAVAILABLE` survives only as the historical fallback sentinel documented in `run.md`. Agent authoring: `.claude/rules/moai/development/agent-authoring.md`.
+**Retained agents (13)**: `manager-spec`, `manager-develop`, `manager-docs`, `manager-git`, `plan-auditor`, `sync-auditor`, `builder-harness`, `super-advisor`, `manager-design`, `e2e-tester`, `manager-lead`, `mission-governor` (12 MoAI-custom) + Anthropic built-in `Explore`. `mission-governor` carries no Selection Decision Tree row by design — it is the GTD auto-mission decision role, dispatched by that workflow rather than selected by the orchestrator. Class / phase scope / reference per agent: `.claude/agents/moai/*.md` + `.moai/config/sections/delegation.yaml`. Archived names (`manager-strategy`, `manager-quality`, `expert-*`, etc.) MUST NOT be spawned — reject and consult `.claude/rules/moai/workflow/archived-agent-rejection.md` §C (the built-in `claude-code-guide` is distinct, NOT rejected). Agent Teams usage is re-allowed as experimental (operator decision; the flag `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1` ships enabled in settings + template) — see §15. `MODE_TEAM_UNAVAILABLE` survives only as the historical fallback sentinel documented in `run.md`. Agent authoring: `.claude/rules/moai/development/agent-authoring.md`.
 
 ---
 
