@@ -71,31 +71,54 @@ Sonnet ですら、長い息の課題では Opus より課題あたりコスト�
 
 ```mermaid
 flowchart TD
-    START["エージェントに作業が入る"] --> Q{"作業の性格は?"}
-    Q -- "1 回で終わり\n入力がコストを左右" --> T1
-    Q -- "複数ターンをまたがないと\n終わらないマルチターン行" --> T2
-    Q -- "1 回の決定がその後のコストを\n大きく左右する場所" --> T3
+    START["エージェントに作業が入る"] --> Q{"その行がするのは?"}
+    Q -- "機械的な処理か\n読み取り専用の探索" --> T1
+    Q -- "何かを作り出す" --> T2
+    Q -- "他が作ったものを判断する、\nあるいは複数の行を調整する" --> T3
 
-    T1["Tier 1 — 単発 Single-shot<br/>Sonnet low<br/>git mechanics · read-only search"]
-    T2["Tier 2 — エージェンティック Agentic<br/>Opus low / medium / high<br/>spec · develop · audit · design · harness"]
-    T3["Tier 3 — ピーク Peak<br/>Opus max<br/>develop · advisor (high プロファイルのみ)"]
+    T1["Tier 1 — 機械 · 探索<br/>Sonnet low<br/>manager-docs · manager-git · Explore"]
+    T2["Tier 2 — 生産<br/>Opus、行ごとに違う段階<br/>manager-spec · manager-develop<br/>builder-harness · e2e-tester"]
+    T3["Tier 3 — 判断 · 調整<br/>Opus、主に high<br/>plan-auditor · sync-auditor · manager-design<br/>manager-lead · super-advisor · mission-governor"]
 
-    T1 --> NOTE["3 つのプロファイル (経済 · 標準 · 品質) すべてで固定"]
-    T2 --> NOTE2["プロファイルが Opus effort の段階を選ぶ<br/>経済=low · 標準=medium · 品質=high"]
-    T3 --> NOTE3["呼び出し頻度が最も低い 2 行のみ<br/>xhigh はどの升にも使わない"]
+    T1 --> NOTE["3 つのプロファイルすべてで固定"]
+    T2 --> NOTE2["2 行は 3 列とも medium で固定<br/>プロファイルに従って下がるのは 2 行だけ"]
+    T3 --> NOTE3["super-advisor · mission-governor は<br/>経済列でも high を保つ"]
 ```
 
-### Tier 1 — 単発 (Single-shot)
+### Tier 1 — 機械 · 探索
 
-{{< icon database >}} 1 回で終わり、反復より入力がコストを左右する作業です。弱いモデルを高くする原因、すなわちマルチステップの完走失敗がここでは現れないため、Sonnet の低い入力単価が実質的な変数になります。Sonnet の `low` effort でステップ数を最小に抑えます。担当エージェントは `manager-git`、`Explore` で、この 2 行は 3 つのプロファイル (経済 · 標準 · 品質) すべてで固定です。
+{{< icon database >}} 決まった手順をそのまま踏むか、読むだけで終わる仕事です。反復より入力がコストを左右し、弱いモデルを高くする原因であるマルチステップの完走失敗がここでは現れません。そのため Sonnet の低い入力単価が実質的な変数になり、`low` effort でステップ数を最小に抑えます。担当エージェントは `manager-docs` (ドキュメント整理)、`manager-git` (コミット · PR の機械作業)、`Explore` (読み取り専用の探索) の 3 つで、いずれも 3 つのプロファイル (経済 · 標準 · 品質) で `sonnet / low` に固定です — プロファイルを上げてもモデルクラスは上がりません。
 
-### Tier 2 — エージェンティック (Agentic)
+### Tier 2 — 生産
 
-{{< icon flash >}} 計画、実装、監査、設計、ハーネス生成、ドキュメント化、E2E — マルチターン行の全部です。Opus の `low` がすでにどの effort の Sonnet よりもスコアが高く、課題あたりコストは低いので、この行のすべてを Opus が担います。プロファイルは各行を Opus effort の段階のどこに座らせるかを選びます — 経済列は `low`、標準列は `medium`、品質列は `high` です。担当エージェント: `manager-spec`、`manager-develop`、`plan-auditor`、`sync-auditor`、`manager-design`、`builder-harness`、`manager-docs`、`e2e-tester`。
+{{< icon flash >}} 仕様を書き、コードを実装し、ハーネスを生成し、E2E シナリオを回す — 何かを**作り出す**行です。マルチターンなので完走効率がコストを分け、Opus の `low` がすでにどの effort の Sonnet よりもスコアが高く課題あたりコストは低いため、基本的に Opus が担います。
 
-### Tier 3 — ピーク (Peak)
+プロファイルはこの 4 行を**同じようには動かしません**。行ごとに違います。
 
-{{< icon sparkles >}} `max` effort は、`high` プロファイルで呼び出し頻度が最も低い 2 行、すなわち `manager-develop` と `super-advisor` にのみ使います。`medium` の上ではスコア 1 点あたりの限界コストが急勾配で上がるためです (`low` → `medium` は 1 点あたり $0.15、`medium` → `high` は 1 点あたり $0.70)。だから、1 回の決定がその後のコストを大きく左右する場所にだけピーク effort を割り当てます。`xhigh` はどこにも使いません — Opus で `high` とスコアが同じながら、コストだけ 49% 余分にかかります。
+| 行 | 品質列 | 標準列 | 経済列 |
+|---|---|---|---|
+| `manager-spec` | `opus / medium` | `opus / medium` | `opus / medium` |
+| `manager-develop` | `opus / medium` | `opus / medium` | `opus / medium` |
+| `builder-harness` | `opus / high` | `opus / medium` | `opus / low` |
+| `e2e-tester` | `opus / medium` | `opus / low` | `sonnet / low` |
+
+作成 · 実装の行である `manager-spec` と `manager-develop` は **3 列とも `medium` にとどまります** — 支出を生産側へさらに寄せない、というのがこのマトリクスの決定だからです。3 段階を丸ごと上下する行は `builder-harness` だけで、`e2e-tester` は経済列でモデルまで Sonnet に下がります。
+
+### Tier 3 — 判断 · 調整
+
+{{< icon sparkles >}} 他が作ったものを**判断する**、あるいは複数の行を**調整する**場所です。このマトリクスの原理が一行でここにあります — **支出は生産する行ではなく判断する行へ寄せる**。1 回の判断がその後のコストを大きく左右するからです。
+
+| 行 | 品質列 | 標準列 | 経済列 |
+|---|---|---|---|
+| `plan-auditor` · `sync-auditor` | `opus / high` | `opus / high` | `opus / medium` |
+| `manager-design` · `manager-lead` | `opus / high` | `opus / high` | `opus / medium` |
+| `super-advisor` · `mission-governor` | `opus / high` | `opus / high` | `opus / high` |
+
+`super-advisor` (エスカレーション経路) と `mission-governor` (封印されたミッションの判定) だけが、**経済列でも `high` を保ちます**。安い列でこそ健全に保つ価値がある場所が、まさにその 2 つだからです。
+
+`mission-governor` は、この軸が「マルチターンかどうか」より優れている理由を示します。1 回読んで決定を 1 つ返す**単発**の行なので、マルチターン基準なら Sonnet 側にあるはずですが、実際には 3 列とも `opus / high` です。**判断する行だから**です。
+
+`max` は**どの行も受け取りません**。`high` の上にある唯一の段階として語彙には残っていますが、現在それを持つセルは 0 です。`xhigh` もどこにも使いません — Opus で `high` とスコアが同じながら、コストだけ 49% 余分にかかります。
 
 ## モデルティアと自律性ティアは別物です
 
@@ -121,7 +144,7 @@ flowchart TD
 
 ## このベンチマークが測れないもの
 
-{{< icon info >}} **限界の明記**: このベンチマークが測定の対象とするのは**コーディング**エージェントです。ドキュメントの作成、監査の判断、SPEC (要件仕様書) の作成品質は直接測っていないため、該当する行の配置は観測ではなく、マルチターンのエージェンティック作業と似ているだろうという推論に依っています。信頼区間も併せて見る必要があります — `medium` (69%±1) と `high` (73%±2) は重なりませんが、`max` (74%±4) は `high` と重なります。これが `max` を、ほとんど呼ばれない 2 セルに束ねてある理由です。すべてのデフォルト値は `llm.agent_overrides` でエージェントごとに元に戻せます。
+{{< icon info >}} **限界の明記**: このベンチマークが測定の対象とするのは**コーディング**エージェントです。ドキュメントの作成、監査の判断、SPEC (要件仕様書) の作成品質は直接測っていないため、該当する行の配置は観測ではなく、マルチターンのエージェンティック作業と似ているだろうという推論に依っています。信頼区間も併せて見る必要があります — `medium` (69%±1) と `high` (73%±2) は重なりませんが、`max` (74%±4) は `high` と重なります。これが `max` をどのセルにも割り当てていない理由です — 重なる区間のために余分に払うことになるからです。すべてのデフォルト値は `llm.agent_overrides` でエージェントごとに元に戻せます。
 
 {{< icon info >}} **Fable 5 について**: Fable はコーディング作業ですべての effort で劣ります。Fable `high` (69%、$9.18) は、Opus `medium` (69%、$3.29) と同じスコアをほぼ 3 倍のコストで出します。だからどのマトリクスの升にも入れていません。モデル enum では今も有効な値で、GLM バックエンドの Fable スロットの配線もそのまま生きています — 変わったのはデフォルトだけです。
 
