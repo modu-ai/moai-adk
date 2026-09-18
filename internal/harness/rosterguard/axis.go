@@ -142,6 +142,21 @@ type Site struct {
 	// Staleness). Repair is out of scope for the card that created this
 	// package; the marker keeps the staleness enumerable instead of silent.
 	KnownStale *Staleness
+	// SweepUnreachable declares, with a reason, that the sweep is EXPECTED not
+	// to reach this path — the row is registered by hand and the converse
+	// "registered but unswept" check must not read it as a dead row.
+	//
+	// The only legitimate case measured so far is a count-only claim: a file
+	// that states a roster SIZE while enumerating fewer than SweepThreshold
+	// names (.moai/project/tech.md names zero). Lowering the threshold does not
+	// reach those — the axis they enumerate on and the axis they claim on are
+	// different, so no enumeration threshold can.
+	//
+	// The reason is mandatory and the field is a declaration, not an inference,
+	// for the same reason KnownStale is: deriving the exemption from "this file
+	// happens to have few names" would silently absorb a membership site whose
+	// listing shrank, which is exactly the drift this package reports.
+	SweepUnreachable string
 	// Note carries any context a reader needs to judge the row.
 	Note string
 }

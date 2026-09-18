@@ -73,15 +73,18 @@ func Registry() []Site {
 			BlockEnd: "// IsRetainedAgent reports whether name",
 			// The §4 on this line is a section number, not a count — hence a
 			// capture group rather than a first-integer-on-the-line rule.
-			CountPattern: `CLAUDE\.md §4 \(the (\d+) retained agents\)`,
-			KnownStale: &Staleness{
-				Reason: "mission-governor is absent. This roster and the agent-definition file " +
-					"count were BOTH 12 when this guard was written, and their intersection is " +
-					"11 — the exact shape that makes a count-based guard pass vacuously.",
-				FollowUp:      "card t917 (actively changing this roster)",
-				MissingNames:  []string{"mission-governor"},
-				DeclaredCount: 12,
-			},
+			//
+			// No closing paren in the pattern: card t917 widened the citation to
+			// "(the 13 retained agents — 12 MoAI-custom plus the / Anthropic
+			// built-in Explore)", which wraps, so the ")" is no longer on this
+			// line. Anchoring on it made the pattern match 0 times — a stale
+			// anchor, not a stale count, and the guard reported exactly that.
+			CountPattern: `CLAUDE\.md §4 \(the (\d+) retained agents`,
+			// KnownStale deleted: card t917 landed mission-governor here
+			// (origin/develop 8665f9eac), so this roster now equals the
+			// canonical 13 and there is no gap left to declare. Keeping the
+			// marker would have been the silent exemption this package exists
+			// to prevent.
 		},
 		{
 			ID:     "profile-matrix-test-expectations",
@@ -210,6 +213,48 @@ func Registry() []Site {
 			Note:   "The shipped per-agent profile cells.",
 		},
 
+		// ── Count-only sites: a roster SIZE claim with no roster ───────────
+		//
+		// These two are the reason the sweep alone is not enough. The sweep is
+		// name-enumeration-driven (>= SweepThreshold distinct names), and
+		// tech.md states a retained-roster size while naming ZERO agents —
+		// product.md names one. Lowering the threshold does not reach them:
+		// the axis they ENUMERATE on and the axis they CLAIM on are different,
+		// so no enumeration threshold can. They are registered by hand here,
+		// and closing the general hole is card t930 (a numeral-adjacency layer,
+		// the shape internal/web/docs_tab_contract_test.go already implements
+		// for a different subject).
+		{
+			ID:               "product-md-profile-matrix-size",
+			SweepUnreachable: "count-only claim; the sentence names one agent in passing, far below SweepThreshold",
+			Path:             ".moai/project/product.md",
+			Axis:             AxisRetainedRoster,
+			Claims:           ClaimCount,
+			CountPattern:     `(\d+) retained agents x 3 model tiers`,
+			Note: "Count only: the sentence sizes the profile matrix and names one agent in " +
+				"passing, so there is no membership to assert. Invisible to the sweep.",
+			KnownStale: &Staleness{
+				Reason:        "Cites 11 where the retained roster carries 13; the 33-cell figure is sized off that stale count.",
+				FollowUp:      "card t930 (numeral-adjacency layer); the prose repair itself is unassigned",
+				DeclaredCount: 11,
+			},
+		},
+		{
+			ID:               "tech-md-profile-matrix-size",
+			SweepUnreachable: "count-only claim; this file names ZERO agents while sizing the roster",
+			Path:             ".moai/project/tech.md",
+			Axis:             AxisRetainedRoster,
+			Claims:           ClaimCount,
+			CountPattern:     `(\d+) retained agents x 3 model tiers`,
+			Note: "Count only, and the starker case: this file names ZERO agents while " +
+				"claiming a roster size. No enumeration threshold reaches it.",
+			KnownStale: &Staleness{
+				Reason:        "Cites 11 where the retained roster carries 13, identically to product.md.",
+				FollowUp:      "card t930 (numeral-adjacency layer); the prose repair itself is unassigned",
+				DeclaredCount: 11,
+			},
+		},
+
 		// ── Retained-roster sites with a measured stale claim ──────────────
 		{
 			ID:           "docs-truth-catalog",
@@ -301,12 +346,9 @@ func Registry() []Site {
 				"partial, and manager-design, manager-lead, super-advisor and " +
 				"mission-governor are all legitimately absent from every designation. Only " +
 				"the header's citation of the retained-roster SIZE is asserted, and that " +
-				"citation is stale.",
-			KnownStale: &Staleness{
-				Reason:        "The header cites 11 where the retained roster now carries 13. The file's own content is correct; only its declaration is stale.",
-				FollowUp:      "repair scoped OUT of card t922 by the lead; unassigned",
-				DeclaredCount: 11,
-			},
+				"citation is now correct.",
+			// KnownStale deleted: the header moved 11 -> 13 while this card
+			// waited for its window. The content was never the stale part.
 		},
 		{
 			ID:           "delegation-map-count-citation-mirror",
@@ -314,11 +356,8 @@ func Registry() []Site {
 			Axis:         AxisSubsetByDesign,
 			Claims:       ClaimCount,
 			CountPattern: `the (\d+) retained agents \(CLAUDE\.md section 4\)`,
-			KnownStale: &Staleness{
-				Reason:        "Template mirror of the row above, stale identically.",
-				FollowUp:      "repair scoped OUT of card t922 by the lead; unassigned",
-				DeclaredCount: 11,
-			},
+			// KnownStale deleted with the row above: both copies were repaired
+			// together, which is what registering the mirror separately was for.
 		},
 		{
 			ID:     "web-agentfm-display-rank",
@@ -360,11 +399,10 @@ func readmeSite(id, path, countPattern string) Site {
 		Note: "Block-scoped to the table rather than the whole file: the README mentions " +
 			"mission-governor in unrelated prose, so a whole-file assertion would pass " +
 			"while the table omits it — the exact false pass this scoping exists to prevent.",
-		KnownStale: &Staleness{
-			Reason:        "The table carries 12 rows and the heading declares 12; mission-governor has no row.",
-			FollowUp:      "unassigned — reported by card t922, README repair not in its scope",
-			MissingNames:  []string{"mission-governor"},
-			DeclaredCount: 12,
-		},
+		// KnownStale deleted: the four README tables gained their
+		// mission-governor row and their headings moved 12 -> 13 while this card
+		// waited for its merge window. The guard reported both halves per
+		// locale — the membership gap AND the count — which is why the repair
+		// needed no announcement to be seen.
 	}
 }

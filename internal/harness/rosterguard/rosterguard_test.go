@@ -158,10 +158,30 @@ func TestSweepFindsNoUndeclaredRosterListing(t *testing.T) {
 	for _, p := range found {
 		foundSet[p] = true
 	}
-	for p := range registered {
-		if !foundSet[p] {
-			t.Errorf("registered site %s is no longer reached by the sweep — the listing shrank below %d names, the file moved, or an exclusion now covers it; re-measure the row", p, SweepThreshold)
+	// A row may declare itself expected-unreachable (Site.SweepUnreachable) —
+	// a count-only claim on a file that enumerates too few names to sweep. The
+	// exemption is per path and must carry a reason, so it stays a declaration
+	// a reviewer can disagree with rather than an inference.
+	exempt := map[string]string{}
+	for _, s := range Registry() {
+		if s.SweepUnreachable != "" {
+			exempt[s.Path] = s.SweepUnreachable
 		}
+	}
+	for p := range registered {
+		if foundSet[p] {
+			// The converse of the exemption: a path that declared itself
+			// unreachable but IS reached has changed shape, and its row was
+			// written against a file that no longer exists in that form.
+			if why, ok := exempt[p]; ok {
+				t.Errorf("registered site %s declares SweepUnreachable (%s) but the sweep DID reach it — the file now enumerates %d or more names; drop the declaration and assert membership", p, why, SweepThreshold)
+			}
+			continue
+		}
+		if _, ok := exempt[p]; ok {
+			continue
+		}
+		t.Errorf("registered site %s is no longer reached by the sweep — the listing shrank below %d names, the file moved, or an exclusion now covers it; re-measure the row, or declare SweepUnreachable with a reason if the claim is count-only", p, SweepThreshold)
 	}
 }
 
