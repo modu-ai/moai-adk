@@ -89,9 +89,9 @@ MoAI-ADK는 Claude Code 구독 요금제에 맞춰 에이전트에 최적의 AI 
 
 | 티어 | 특징 |
 |------|------|
-| **high** | 최고 품질 — 호출 빈도가 가장 낮은 두 에이전트에 `max` 추론 깊이 |
+| **high** | 최고 품질 — `builder-harness`와 `e2e-tester`가 기본 열보다 한 단계씩 올라갑니다. 어느 행도 `max`를 받지 않습니다 |
 | **medium** (기본값) | 품질과 비용의 균형 — 비용/점수 곡선의 무릎 |
-| **low** | 작업당 최저 비용 — 에이전틱 에이전트가 Opus `low` effort로 내려감 |
+| **low** | 작업당 최저 비용 — 감사·조율 행이 `medium`으로, `builder-harness`는 Opus `low`로, `e2e-tester`는 Sonnet으로 내려갑니다. `super-advisor`와 `mission-governor`만 `high`를 지킵니다 |
 
 {{< callout type="warning" >}}
 **왜 중요한가요?** 티어를 낮춘다는 것은 모델 클래스가 아니라 *추론 깊이*를 낮춘다는 뜻입니다. 오래 이어지는 에이전틱 작업에서는 Opus의 `low` effort가 어떤 effort의 Sonnet보다도 점수가 높고 작업당 비용도 낮습니다. 청구액을 좌우하는 것은 토큰당 단가가 아니라, 모델이 작업을 끝낼 때까지 밟은 스텝 수이기 때문입니다. 그래서 `low`는 Opus 안에서 아끼고, 여러 스텝을 밟다 실패할 일이 없는 단발성 행 (`manager-git`, `Explore`) 에서만 Sonnet을 씁니다.
@@ -105,21 +105,21 @@ MoAI-ADK는 Claude Code 구독 요금제에 맞춰 에이전트에 최적의 AI 
 
 | 에이전트 | high | medium | low |
 |---------|------|--------|-----|
-| manager-spec | opus / high | opus / medium | opus / low |
-| manager-develop | opus / max | opus / medium | opus / low |
-| manager-docs | opus / medium | opus / low | sonnet / low |
+| manager-spec | opus / medium | opus / medium | opus / medium |
+| manager-develop | opus / medium | opus / medium | opus / medium |
+| manager-docs | sonnet / low | sonnet / low | sonnet / low |
 | manager-git | sonnet / low | sonnet / low | sonnet / low |
-| manager-design | opus / high | opus / medium | opus / low |
+| manager-design | opus / high | opus / high | opus / medium |
 | manager-lead | opus / high | opus / high | opus / medium |
 
 #### Evaluator · Builder · Advisor · Specialist Agents (6개)
 
 | 에이전트 | high | medium | low |
 |---------|------|--------|-----|
-| plan-auditor | opus / high | opus / medium | opus / low |
-| sync-auditor | opus / high | opus / medium | opus / low |
+| plan-auditor | opus / high | opus / high | opus / medium |
+| sync-auditor | opus / high | opus / high | opus / medium |
 | builder-harness | opus / high | opus / medium | opus / low |
-| super-advisor | opus / max | opus / high | opus / medium |
+| super-advisor | opus / high | opus / high | opus / high |
 | e2e-tester | opus / medium | opus / low | sonnet / low |
 | mission-governor | opus / high | opus / high | opus / high |
 
