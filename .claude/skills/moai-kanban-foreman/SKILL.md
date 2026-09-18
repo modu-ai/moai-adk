@@ -87,7 +87,7 @@ not something this loop can do for itself.
 ## The iteration
 
 1. **Queue watch.** If no backlog monitor is live (first iteration, or after
-   a resume), arm one persistent Monitor on the queue file:
+   a resume), arm one Monitor on the queue file, re-arming it at each expiry:
 
    - `command`:
 
@@ -116,8 +116,19 @@ not something this loop can do for itself.
      done
      ```
 
-   - `persistent: true`
+   - `timeout_ms: 1800000`
    - `description: backlog queue watch`
+
+   The `persistent` option no longer exists — every Monitor now carries a
+   deadline, `timeout_ms` is a required input, and the watch above is an
+   unbounded loop that never ends on its own. `1800000` is the longest
+   deadline the tool documents accepting; a larger value is capped rather
+   than honoured. At expiry the loop is killed and one notice arrives with
+   the event count, so an iteration that still needs the watch re-arms it.
+   A non-interactive (`-p`) session is reported to cap the deadline lower
+   than an interactive one; that lower cap is not observable from the tool
+   input schema, so treat a shorter-than-requested expiry there as expected
+   rather than as a fault.
 
    The watch resolves the queue directory the way `kanban.StateDirForRoot`
    does for a standard git-repository project — a project-keyed directory

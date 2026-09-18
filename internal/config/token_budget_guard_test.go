@@ -208,11 +208,25 @@ func TestAlwaysLoadedTokenBudget_OverBudgetFails(t *testing.T) {
 }
 
 // TestCodexNestedTemplateDiscoveryBudget bounds every `AGENTS.md` Codex can
-// discover in this tree against its default 32 KiB project instruction budget.
+// discover in this tree against `CodexContractByteCeiling` — the SAME ceiling
+// the per-file guard applies, not the raw 32,768 B budget.
 // Codex merges the root contract with any nested one it finds below the
 // invocation directory, consumed root-first, and drops the overflow from the
 // TAIL — silently, exit 0, stderr empty. The per-file ceiling cannot see this:
 // two files can each sit under 24,576 B and still truncate when merged.
+//
+// Why the chain sum takes the ceiling rather than the budget: the 8,192 B the
+// ceiling holds back is not root-specific headroom. It absorbs the personal
+// `~/.codex/AGENTS.md` layer, which joins the same merged chain and is consumed
+// BEFORE anything in this repository (`spec.md` §D.1 table, §D.3). Spending the
+// whole 32,768 B on project-side files leaves that layer zero and truncates the
+// contract's tail on exactly the users who invested in a personal one.
+// `REQ-AMC-006` states the rule directly: a nested `AGENTS.md` requires "the
+// root's 24,576 B ceiling lowered by at least the nested document's size, since
+// the budget is shared" — which is this assertion. `design.md` §5 names this
+// guard `codex chain guard` at 24,576 and says the threshold is "not a literal
+// at the call site"; an earlier revision carried one anyway, and that literal is
+// how the two thresholds diverged (card t927).
 //
 // The paths are DISCOVERED, not declared. An earlier revision named the
 // template mirror literally, which made the guard die the moment card t925
@@ -271,10 +285,9 @@ func TestCodexNestedTemplateDiscoveryBudget(t *testing.T) {
 		t.Fatalf("root contract %s was not discovered by the walk (found %v) — the guard would pass vacuously", rootAgents, found)
 	}
 
-	const codexDefaultProjectInstructionsMaxBytes = 32 * 1024
-	if total > codexDefaultProjectInstructionsMaxBytes {
+	if total > CodexContractByteCeiling {
 		t.Fatalf("discoverable Codex instruction chain = %d bytes across %v, exceeds %d by %d",
-			total, found, codexDefaultProjectInstructionsMaxBytes, total-codexDefaultProjectInstructionsMaxBytes)
+			total, found, CodexContractByteCeiling, total-CodexContractByteCeiling)
 	}
 }
 
