@@ -4,15 +4,15 @@ weight: 4
 draft: false
 ---
 
-MoAI-ADK は、維持されるエージェント 12 個を 1 つの **プロファイルマトリクス** を通じてそれぞれの `{model, effort}` ペアにマッピングします。アクティブな **プロファイル**（`high` / `medium` / `low`）がマトリクスの 1 列（column）を選択し、その列の値がすべてのサブエージェント spawn に適用されます。マトリクスはエージェント名単位の **36 セル**（エージェント 12 個 × プロファイル 3 個）であり、以前のグループ抽象化と `plan_type × tier` 軸の両方を置き換えます。
+MoAI-ADK は、維持されるエージェント 13 個を 1 つの **プロファイルマトリクス** を通じてそれぞれの `{model, effort}` ペアにマッピングします。アクティブな **プロファイル**（`high` / `medium` / `low`）がマトリクスの 1 列（column）を選択し、その列の値がすべてのサブエージェント spawn に適用されます。マトリクスはエージェント名単位の **39 セル**（エージェント 13 個 × プロファイル 3 個）であり、以前のグループ抽象化と `plan_type × tier` 軸の両方を置き換えます。
 
 ## プロファイル軸
 
 プロファイルは 3 つの値を持ちます:
 
-- `high` — 品質優先の列。支出は「生産する行」ではなく「判断する行」に集中します: 監査・助言行（`plan-auditor`、`sync-auditor`、`super-advisor`）と調整行（`manager-design`、`manager-lead`）が `high` を維持し、著作・実装行（`manager-spec`、`manager-develop`）は 3 列すべて `medium` にとどまります。`max` を受ける行はありません。`xhigh` はどのセルにも現れません — Opus 5 では `high` と同じスコアでコストだけが明確に高くなるためです。
+- `high` — 品質優先の列。支出は「生産する行」ではなく「判断する行」に集中します: 監査・助言行（`plan-auditor`、`sync-auditor`、`super-advisor`）と調整行（`manager-design`、`manager-lead`）、判定行（`mission-governor`）が `high` を維持し、著作・実装行（`manager-spec`、`manager-develop`）は 3 列すべて `medium` にとどまります。`max` を受ける行はありません。`xhigh` はどのセルにも現れません — Opus 5 では `high` と同じスコアでコストだけが明確に高くなるためです。
 - `medium`（デフォルト） — バランス列。`high` 列とちょうど 2 行（`builder-harness` が `medium` へ、`e2e-tester` が `low` へ）でのみ異なります。値が無いか空の場合は `medium` として解釈されます。
-- `low` — 経済列。Opus 5 の `low` は、どの effort の Sonnet 5 よりもスコアが高く **かつ** 課題あたりコストが安いため、エージェンティック行はすべて Opus のまま維持されます。ほとんどの Opus 行は `medium` に下がりますが、`super-advisor` だけは `high` を保ちます — エスカレーション経路こそ、安い列で最も健全に保つ価値がある場所だからです。Sonnet は単発・入力支配の行にのみ現れます。
+- `low` — 経済列。Opus 5 の `low` は、どの effort の Sonnet 5 よりもスコアが高く **かつ** 課題あたりコストが安いため、エージェンティック行はすべて Opus のまま維持されます。ほとんどの Opus 行は `medium` に下がりますが、`super-advisor` と `mission-governor` は `high` を保ちます — エスカレーション経路と封印されたミッションの判定こそ、安い列で最も健全に保つ価値がある場所だからです。Sonnet は単発・入力支配の行にのみ現れます。
 
 `max` は `high` の **読み取り専用エイリアス** です。既存設定の `profile: max` はそのまま `high` として解釈され、保存時には常に正規名 `high` で記録されます。マイグレーション作業は不要です。
 
@@ -29,7 +29,7 @@ moai update --profile low              # 事後の切り替え
 
 ## プロファイルマトリクス
 
-維持されるエージェント 12 個が、以下のマトリクスからそれぞれの `{model, effort}` を直接受け取ります。ユーザーが追加したエージェントのみが `inherit`（親セッションモデルの継承）として解釈され、model 注入の対象から外れます。マトリクスのどこにも Haiku はありません。
+維持されるエージェント 13 個が、以下のマトリクスからそれぞれの `{model, effort}` を直接受け取ります。ユーザーが追加したエージェントのみが `inherit`（親セッションモデルの継承）として解釈され、model 注入の対象から外れます。マトリクスのどこにも Haiku はありません。
 
 | エージェント | high | medium（デフォルト） | low |
 |---|---|---|---|
@@ -38,6 +38,7 @@ moai update --profile low              # 事後の切り替え
 | sync-auditor | opus / high | opus / high | opus / medium |
 | manager-develop | opus / medium | opus / medium | opus / medium |
 | super-advisor | opus / high | opus / high | opus / high |
+| mission-governor | opus / high | opus / high | opus / high |
 | manager-design | opus / high | opus / high | opus / medium |
 | manager-lead | opus / high | opus / high | opus / medium |
 | builder-harness | opus / high | opus / medium | opus / low |
@@ -46,7 +47,7 @@ moai update --profile low              # 事後の切り替え
 | manager-git | sonnet / low | sonnet / low | sonnet / low |
 | Explore | sonnet / low | sonnet / low | sonnet / low |
 
-36 セル全体のモデル分布は Opus 26 / Sonnet 10 です。Fable はどのセルにも現れず、`xhigh` を使うセルも `max` を使うセルもありません。
+39 セル全体のモデル分布は Opus 29 / Sonnet 10 です。Fable はどのセルにも現れず、`xhigh` を使うセルも `max` を使うセルもありません。
 
 `manager-docs`・`manager-git`・`Explore` の行はプロファイルと無関係に `sonnet / low` で固定されます — ドキュメント整理、機械的作業、読み取り専用の探索は、プロファイルが上がってもモデルクラスを上げません。
 
@@ -54,7 +55,7 @@ moai update --profile low              # 事後の切り替え
 
 ### セルの根拠
 
-セルはコスト/スコア曲線からの導出ではなく、**確定されたオペレーター判断 (settled operator input)** です。配置の原理は 1 つ: 支出は「生産する行」ではなく「判断する行」に集中させる。監査・助言行（`plan-auditor`、`sync-auditor`、`super-advisor`）と調整行（`manager-design`、`manager-lead`）が `high` を維持する一方、著作・実装行（`manager-spec`、`manager-develop`）は 3 列すべて `medium` にとどまり、`manager-docs` は `sonnet / low` に下がり、`max` を受ける行はありません。これらのセルをコスト曲線から再導きしようとする試みはマトリクスの意図を巻き戻すものなので、値を変える必要が生じたら曲線の再計算ではなくオペレーター判断の更新として扱います。
+セルはコスト/スコア曲線からの導出ではなく、**確定されたオペレーター判断 (settled operator input)** です。配置の原理は 1 つ: 支出は「生産する行」ではなく「判断する行」に集中させる。監査・助言行（`plan-auditor`、`sync-auditor`、`super-advisor`）と調整行（`manager-design`、`manager-lead`）、判定行（`mission-governor`）が `high` を維持する一方、著作・実装行（`manager-spec`、`manager-develop`）は 3 列すべて `medium` にとどまり、`manager-docs` は `sonnet / low` に下がり、`max` を受ける行はありません。これらのセルをコスト曲線から再導きしようとする試みはマトリクスの意図を巻き戻すものなので、値を変える必要が生じたら曲線の再計算ではなくオペレーター判断の更新として扱います。
 
 モデルクラスを決める 2 つの規則は実測に根ざします:
 

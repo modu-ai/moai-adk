@@ -49,7 +49,7 @@ MoAI-ADK は Claude Code を **3 つの柱**で包む Agentic Development Kit �
 - **manager-lead** — SPEC 内の Tier L マイルストーンファンアウトに加え、カンバン・ファクトリーのリードセッションディスパッチも担う調整役です。
 - **multi-model audit** — 複数モデルの交差検証でバイアスを捉えます。
 - **autonomy tier** — 自律の段階を調整して、安全に回します。
-- **profile matrix** — 12 エージェント × 3 プロファイルでモデルを割り当てます。
+- **profile matrix** — 13 エージェント × 3 プロファイルでモデルを割り当てます。
 
 ## 核心概念
 
@@ -104,7 +104,7 @@ MoAI-ADK は Python Edition を Go で完全に書き直し、性能と効率を
 
 ### 核心数値 (v3.0 基準)
 
-- **11 個**のエージェントカタログ (MoAI カスタム 10 + Anthropic ビルトイン `Explore` 1)
+- **13 個**のエージェントカタログ (MoAI カスタム 12 + Anthropic ビルトイン `Explore` 1)
 - **31 個**のスキル (template-managed)
 - **36 個**のターミナル CLI コマンド · **16 種**の `/moai` スラッシュサブコマンド
 - **16 個**のプログラミング言語対応
@@ -124,17 +124,17 @@ MoAI-ADK は Python Edition を Go で完全に書き直し、性能と効率を
 
 ## 主要機能
 
-### エージェントカタログ (11 個)
+### エージェントカタログ (13 個)
 
-MoAI オーケストレーターは自ら実装せず、11 個の専門エージェントに作業を委任します。計画と監査は分離されています。作った側が検査しません。
+MoAI オーケストレーターは自ら実装せず、13 個の専門エージェントに作業を委任します。計画と監査は分離されています。作った側が検査しません。
 
 | カテゴリ | 数 | 主要エージェント |
 |----------|------|--------------|
-| **Manager** | 5 個 | manager-spec, manager-develop, manager-docs, manager-git, manager-design |
+| **Manager** | 6 個 | manager-spec, manager-develop, manager-docs, manager-git, manager-design, manager-lead |
 | **Evaluator** | 2 個 | plan-auditor, sync-auditor |
 | **Builder** | 1 個 | builder-harness |
 | **Advisor** | 1 個 | super-advisor (高推論の助言) |
-| **Specialist** | 1 個 | e2e-tester (Web/モバイル/デスクトップの E2E テスト実行) |
+| **Specialist** | 2 個 | e2e-tester (Web/モバイル/デスクトップの E2E テスト実行), mission-governor (GTD 自動ミッション判定、読み取り専用) |
 | **ビルトイン** | 1 個 | Explore (Anthropic 内蔵、読み取り専用のコード分析) |
 
 ### モデルポリシー (トークノミクス)

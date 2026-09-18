@@ -100,15 +100,15 @@ MoAI は Claude Code の戦略的オーケストレーターです。
 
 ### 4. エージェントカタログ
 
-MoAI-ADK は **11 個の保存エージェント** (10 個 MoAI-custom + 1 個 Anthropic built-in) で構成されます。アーキテクチャの単純化により manager-strategy, manager-quality, manager-brain, manager-project など 12 個の archived エージェントは特定ドメインに対する per-spawn `Agent(general-purpose)` delegation に置き換えられました。
+MoAI-ADK は **13 個の保存エージェント** (12 個 MoAI-custom + 1 個 Anthropic built-in) で構成されます。アーキテクチャの単純化により manager-strategy, manager-quality, manager-brain, manager-project など 12 個の archived エージェントは特定ドメインに対する per-spawn `Agent(general-purpose)` delegation に置き換えられました。
 
 | 分類 | エージェント | 役割 |
 |------|----------|------|
-| Manager (5) | manager-spec, manager-develop, manager-docs, manager-git, manager-design | 核心ライフサイクルのステップ別専門家 |
+| Manager (6) | manager-spec, manager-develop, manager-docs, manager-git, manager-design, manager-lead | 核心ライフサイクルのステップ別専門家 |
 | Evaluator (2) | plan-auditor, sync-auditor | 計画/完了ステップの独立した品質評価 |
 | Builder (1) | builder-harness | 動的なプロジェクト別ハーネス生成 |
 | Advisor (1) | super-advisor | 高推論の助言 (E1-E4 エスカレーション) |
-| Specialist (1) | e2e-specialist | Web/モバイル/デスクトップの E2E テスト実行 (`/moai e2e`) |
+| Specialist (2) | e2e-tester, mission-governor | Web/モバイル/デスクトップの E2E テスト実行 (`/moai e2e`)、承認済み GTD 自動ミッションに対する読み取り専用の判定 |
 | Built-in (1) | Explore (Anthropic) | 読み取り専用のコードベース探索 |
 
 ### 5. SPEC ワークフロー

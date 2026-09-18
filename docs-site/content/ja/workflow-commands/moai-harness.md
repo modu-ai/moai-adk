@@ -337,7 +337,7 @@ Builder が自動的に:
 ## 関連ドキュメント
 
 - [Harness v4 Builder ガイド](/ja/advanced/builder-agents) - Builder 4-phase の詳細
-- [エージェントガイド](/ja/advanced/agent-guide) - 11 個のエージェントカタログの理解
+- [エージェントガイド](/ja/advanced/agent-guide) - 13 個のエージェントカタログの理解
 - [SPEC ベース開発](/ja/workflow-commands/moai-plan) - SPEC ワークフローの概要
 
 {{< callout type="info" >}}

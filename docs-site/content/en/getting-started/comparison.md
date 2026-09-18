@@ -17,7 +17,7 @@ There are three broad ways to use Claude Code for agent-tic development. (1) Use
 | **Quality gates** | User checks manually each time | Varies per tool | SPEC 3-phase + TRUST 5, auto-verification |
 | **Learning loop** | Fresh start each session | Usually none | Self-evolution accumulating observations into rules |
 | **Session continuity** | Breaks at every `/clear` | Varies per tool | Paste-ready history + auto-injection |
-| **Agent roster** | Single session | Single session | 12-agent catalog + 3-phase workflow |
+| **Agent roster** | Single session | Single session | 13-agent catalog + 3-phase workflow |
 
 Claude Code alone is not bad. Rather, MoAI-ADK does NOT replace Claude Code — it **wraps** it and adds structure on top. Model routing, quality gates, cost control, learning loops, session continuity — the parts Claude Code left to users, the harness takes as system responsibility.
 
@@ -61,7 +61,7 @@ Rework is the largest token waste. A bug that returns once costs more than all r
 
 {{< icon package >}} **Generic wrapper** — Quality standards vary per tool or don't exist at all.
 
-{{< icon package primary >}} **MoAI-ADK** — Changes "done" to *verified done*. SPEC 3-phase (plan → run → sync) and TRUST 5 gates (tested·readable·unified·secured·trackable) apply to every change. Gates judge verification, not agents. The 12-agent catalog separates planning and auditing from the start, so the planning side can't mark its own homework. The [Verification-Claim Integrity](/en/core-concepts/verification-claim-integrity/) rule prevents unobserved "passes" from slipping through as gaps.
+{{< icon package primary >}} **MoAI-ADK** — Changes "done" to *verified done*. SPEC 3-phase (plan → run → sync) and TRUST 5 gates (tested·readable·unified·secured·trackable) apply to every change. Gates judge verification, not agents. The 13-agent catalog separates planning and auditing from the start, so the planning side can't mark its own homework. The [Verification-Claim Integrity](/en/core-concepts/verification-claim-integrity/) rule prevents unobserved "passes" from slipping through as gaps.
 
 Covered in detail in [Harness engineering](/en/core-concepts/harness-engineering/), [TRUST 5 Quality](/en/core-concepts/trust-5/), [SPEC-based development](/en/core-concepts/spec-based-dev/).
 
