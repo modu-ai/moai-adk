@@ -85,9 +85,9 @@ MoAI-ADK assigns the optimal AI model to each agent according to your Claude Cod
 
 | Tier | Characteristics |
 |------|------|
-| **high** | Highest quality — `max` reasoning depth on the two rarest-invocation agents |
+| **high** | Highest quality — `builder-harness` and `e2e-tester` each step up one level from the default column. No row takes `max` |
 | **medium** (default) | Balance of quality and cost — the knee of the cost/score curve |
-| **low** | Lowest cost per task — agentic agents drop to Opus `low` effort |
+| **low** | Lowest cost per task — the auditing and coordinating rows drop to `medium`, `builder-harness` to Opus `low`, and `e2e-tester` to Sonnet. Only `super-advisor` and `mission-governor` hold `high` |
 
 {{< callout type="warning" >}}
 **Why does this matter?** Lowering the tier lowers *reasoning depth*, not model class. On a long-horizon agentic task, Opus at `low` effort scores higher and costs less per task than Sonnet at any effort — the bill is set by how many steps a model spends finishing, not by the per-token rate. So `low` economizes within Opus and reaches for Sonnet only on single-shot rows (`manager-git`, `Explore`) where multi-step completion failure does not apply.
@@ -101,21 +101,21 @@ Of the **13-agent catalog** (12 MoAI custom + 1 Anthropic built-in `Explore`), t
 
 | Agent | high | medium | low |
 |---------|------|--------|-----|
-| manager-spec | opus / high | opus / medium | opus / low |
-| manager-develop | opus / max | opus / medium | opus / low |
-| manager-docs | opus / medium | opus / low | sonnet / low |
+| manager-spec | opus / medium | opus / medium | opus / medium |
+| manager-develop | opus / medium | opus / medium | opus / medium |
+| manager-docs | sonnet / low | sonnet / low | sonnet / low |
 | manager-git | sonnet / low | sonnet / low | sonnet / low |
-| manager-design | opus / high | opus / medium | opus / low |
+| manager-design | opus / high | opus / high | opus / medium |
 | manager-lead | opus / high | opus / high | opus / medium |
 
 #### Evaluator · Builder · Advisor · Specialist Agents (6)
 
 | Agent | high | medium | low |
 |---------|------|--------|-----|
-| plan-auditor | opus / high | opus / medium | opus / low |
-| sync-auditor | opus / high | opus / medium | opus / low |
+| plan-auditor | opus / high | opus / high | opus / medium |
+| sync-auditor | opus / high | opus / high | opus / medium |
 | builder-harness | opus / high | opus / medium | opus / low |
-| super-advisor | opus / max | opus / high | opus / medium |
+| super-advisor | opus / high | opus / high | opus / high |
 | e2e-tester | opus / medium | opus / low | sonnet / low |
 | mission-governor | opus / high | opus / high | opus / high |
 
