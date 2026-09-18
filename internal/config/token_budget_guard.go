@@ -105,6 +105,18 @@ type ContractByteBreach struct {
 // (alwaysLoadedSurface)가 내놓는 루트 AGENTS.md 와 그 템플릿 미러. 두 번째 측정 경로를
 // 만들지 않기 위해 규칙 트리를 다시 글로브하지 않고 열거 헬퍼를 재사용한다 —
 // 미러가 상한을 넘으면 사용자 머신에서 잘리므로 라이브 파일 크기와 무관하게 함께 묶인다.
+//
+// 미러의 파일명이 `AGENTS.md.tmpl` 인 것은 배포 편의가 아니라 발견 차단이다(card t925):
+// 이 저장소에서 codex 를 `internal/template/templates/` 안에서 돌리면 루트 계약과 미러가
+// 하나의 체인으로 병합돼 32,768 B 예산을 함께 쓰고, 초과분이 꼬리에서 조용히 잘린다.
+// 실측(codex-cli 0.154.0, `codex debug prompt-input`): 개명 전에는 미러의 마지막 절이
+// 사라지고 그 앞 절의 표가 행 중간에서 끊겼으며, 개명 후에는 루트 계약이 온전히 끝났다.
+// codex 는 파일명으로 발견하므로(`project_doc_max_bytes` / `project_doc_fallback_filenames`
+// 외에 제외 키가 없다) 이름을 바꾸는 것이 유일한 구조적 차단이고, `.tmpl` 은 deployer 가
+// 접미를 떼고 배포하므로 사용자 프로젝트에는 그대로 `AGENTS.md` 로 놓인다.
+//
+// [HARD] 이 경로를 되돌리거나 상한 측정에서 빼지 마라. 개명이 문제를 가드 밖으로 옮기는
+// 것으로 끝나면 배포본이 무가드가 된다 — 미러는 이름이 무엇이든 24,576 B 상한 아래여야 한다.
 func contractDocuments(repoRoot string) ([]string, error) {
 	surface, err := alwaysLoadedSurface(repoRoot)
 	if err != nil {
@@ -120,7 +132,7 @@ func contractDocuments(repoRoot string) ([]string, error) {
 	if len(docs) == 0 {
 		return nil, nil // 열거에 AGENTS.md 가 없다 — AC-AMC-017 이 잡는 조건이다
 	}
-	docs = append(docs, filepath.Join(repoRoot, "internal", "template", "templates", "AGENTS.md"))
+	docs = append(docs, filepath.Join(repoRoot, "internal", "template", "templates", "AGENTS.md.tmpl"))
 	return docs, nil
 }
 

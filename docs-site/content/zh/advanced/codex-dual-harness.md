@@ -18,9 +18,9 @@ MoAI-ADK 的第一 harness(实际驱动代理的运行环境)是 Claude Code,但
 个人的 `~/.codex/AGENTS.md` 会加入同一条合并链,并在本文件**之前**被消费,压缩项目契约能承载的宽度。溢出从尾部开始静默丢弃 —— 这正是本文件的条款按最重要在前排序的原因。
 {{< /callout >}}
 
-## 代理双重发布 —— 十一份 TOML
+## 代理双重发布 —— 十二份 TOML
 
-保留的 11 个代理以两种形式发布: Claude Code 用的 `.claude/agents/moai/*.md`(原件),和 codex 读的 `.codex/agents/moai/*.toml`(派生)。TOML 不是手写的 —— `internal/template/agentemit` 从 markdown 原件**确定性地**(同样输入永远同样输出)生成,生成文件的开头钉着一句 "regenerate, do not edit"(重新生成,别直接改)。
+保留的 12 个 MoAI 自定义代理以两种形式发布: Claude Code 用的 `.claude/agents/moai/*.md`(原件),和 codex 读的 `.codex/agents/moai/*.toml`(派生)。TOML 不是手写的 —— `internal/template/agentemit` 从 markdown 原件**确定性地**(同样输入永远同样输出)生成,生成文件的开头钉着一句 "regenerate, do not edit"(重新生成,别直接改)。
 
 原件与派生之间的漂移由三层护栏挡住: golden 文件比对(与期望输出对照)、嵌入校验(与编进二进制的模板对照)、部署校验(与落到用户仓库的结果对照)。改 markdown,TOML 跟着来;只改 TOML,护栏会抓住。
 
@@ -65,4 +65,4 @@ codex-cli 不读 Claude Code 的 `.claude/skills/`,所以技能以**镜像**(复
 
 - [多模型审计收敛](/zh/advanced/multi-model-audit/) —— codex 后端如今已经参与审计的路径
 - [moai update](/zh/cli-reference/update/) —— 技能镜像的 symlink·复制部署及其通知
-- [代理指南](/zh/advanced/agent-guide/) —— 被双重发布的 11 个代理的角色
+- [代理指南](/zh/advanced/agent-guide/) —— 被双重发布的 12 个代理的角色

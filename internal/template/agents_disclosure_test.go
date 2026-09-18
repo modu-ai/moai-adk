@@ -43,7 +43,12 @@ var disclosureMatrix = []struct {
 // disclosed in the shipped AGENTS.md (AC-IH-007). Failures report exactly
 // which disclosures are missing.
 func TestAgentsDisclosureCompleteness(t *testing.T) {
-	data, err := os.ReadFile(filepath.Join(templateSourceRootAGENTS, "AGENTS.md"))
+	// The template source ships as `AGENTS.md.tmpl`; the deployer strips the
+	// suffix so a user project still receives `AGENTS.md`. The suffix keeps the
+	// mirror out of Codex's filename-keyed discovery inside THIS repo, where it
+	// would otherwise merge with the root contract and truncate the tail
+	// silently (card t925).
+	data, err := os.ReadFile(filepath.Join(templateSourceRootAGENTS, "AGENTS.md.tmpl"))
 	if err != nil {
 		t.Fatalf("read template AGENTS.md: %v", err)
 	}

@@ -70,27 +70,62 @@ func ValidKind(k Kind) bool {
 // retainedCatalog is the membership test for REQ-HLA-004: only a value that
 // exactly matches one of these names is comparable against the delegation map.
 //
-// Source: CLAUDE.md §4 (the 12 retained agents). It is a declared constant
-// rather than a derivation from the map's own agent lists, because
-// deriving membership from the map would make the discrimination circular — an
+// Source: CLAUDE.md §4 (the 13 retained agents — 12 MoAI-custom plus the
+// Anthropic built-in Explore). It is a declared constant rather than a
+// derivation from the map's own agent lists, because deriving
+// membership from the map would make the discrimination circular — an
 // agent absent from every designation could never be found undesignated, which
 // is precisely the finding this analyzer exists to produce (plan.md §E D2).
 //
 // The cost is a snapshot that can go stale against a catalog change; this
-// comment is where that change lands.
+// comment is where that change lands. It went stale once already:
+// mission-governor joined the catalog after this map was written, and while it
+// was absent the analyzer both recorded it under non_catalog_agents — a false
+// statement about a real catalog agent — and silently withheld every
+// undesignated_agent finding it qualified for. Neither symptom surfaces as an
+// error or an odd count, so TestAnalyze_MissionGovernorIsCatalogMember pins the
+// membership at the analyzer boundary where the next omission would show.
+//
+// Membership is NOT the set of designated agents, and must not be narrowed to
+// it: plan.md §E D2 weighed that source and rejected it, and §G AP-7 names it
+// ("circular membership"), because an agent absent from every designation could
+// then never be found undesignated — the finding this analyzer exists to
+// produce. manager-design, manager-lead, and super-advisor are designated for
+// no subcommand either and are members on the same footing.
+//
+// When mission-governor DOES first appear, it will produce an
+// undesignated_agent finding. That is intended, not noise: the map's own
+// contract is "the retained agents the workflow spawns", so a workflow that
+// spawns it while the map stays silent is a gap the map should close — by
+// designating it, or by adding the subcommand key the ledger records it under.
+// The finding is a proposal to the Tier-4 human gate, never an auto-apply, so
+// no declared exclusion set is warranted before a real firing is observed;
+// adding one first would be the allowlist hazard plan.md §G AP-6 names.
+//
+// Firing condition, should a reader meet it: that subcommand needs
+// MinQualifyingRows success/fail rows of which MinSupportRatio carry
+// mission-governor. Re-measure against DefaultLedgerPath with
+//
+//	jq -r 'select(.matched_subcommand != "") |
+//	  "\(.matched_subcommand)\t\(.outcome)"' "$LEDGER" | sort | uniq -c
+//
+// (dated reference, 2026-09-18: 4519 rows; mission-governor in 0; the largest
+// qualifying count of any subcommand was 4, one short of the threshold — so no
+// finding of either kind can be emitted at that volume.)
 var retainedCatalog = map[string]struct{}{
-	"manager-spec":    {},
-	"manager-develop": {},
-	"manager-docs":    {},
-	"manager-git":     {},
-	"manager-design":  {},
-	"manager-lead":    {},
-	"plan-auditor":    {},
-	"sync-auditor":    {},
-	"builder-harness": {},
-	"super-advisor":   {},
-	"e2e-tester":      {},
-	"Explore":         {},
+	"manager-spec":     {},
+	"manager-develop":  {},
+	"manager-docs":     {},
+	"manager-git":      {},
+	"manager-design":   {},
+	"manager-lead":     {},
+	"mission-governor": {},
+	"plan-auditor":     {},
+	"sync-auditor":     {},
+	"builder-harness":  {},
+	"super-advisor":    {},
+	"e2e-tester":       {},
+	"Explore":          {},
 }
 
 // IsRetainedAgent reports whether name exactly matches a retained-catalog agent.

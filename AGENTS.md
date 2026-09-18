@@ -157,7 +157,7 @@ shared-state mutation.
 
 **A CodeRabbit row in `gh pr checks` is not evidence that a review ran** — the status reads
 `success` and prints `pass` identically whether or not one did. Count the row only when BOTH hold:
-(1) `gh api "repos/$REPO/commits/$HEAD_SHA/status"` reports the `CodeRabbit` context with
+(1) `gh api "repos/$repo/commits/$head_sha/status"` reports the `CodeRabbit` context with
 `state == "success"` and description `Review completed`; (2) a `Merge Risk:` line exists whose
 commit prefix matches the current `headRefOid`. Anything else is a gap, not a pass; `Review rate
 limited` means the review never started.

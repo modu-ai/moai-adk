@@ -131,6 +131,6 @@ flowchart TD
 
 ## 次のステップ
 
-- [プロファイルマトリクス](/ja/advanced/profile-matrix/) — 単一の 3 列 per-agent プロファイルマトリクス (11 エージェント × 3 プロファイル = 33 セル)
+- [プロファイルマトリクス](/ja/advanced/profile-matrix/) — 単一の 3 列 per-agent プロファイルマトリクス (13 エージェント × 3 プロファイル = 39 セル)
 - [自律性ティア](/ja/advanced/autonomy-tier/) — モデルティアと直交する、権限 · 統制が対象の自律性等級
 - [トークノミクス概要](/ja/advanced/tokenomics-overview/) — 4 層トークノミクス構造のルーティング層

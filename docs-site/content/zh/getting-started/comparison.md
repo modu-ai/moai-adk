@@ -17,7 +17,7 @@ draft: false
 | **质量关卡** | 用户每次确认 | 各工具各自不同 | SPEC 3-阶段 + TRUST 5,自动验证 |
 | **学习循环** | 每个会话重新开始 | 通常没有 | 将观察累积成规则的自我进化 |
 | **会话连续性** | 每次 `/clear` 就断开 | 各工具各自不同 | paste-ready 历史 + 自动注入 |
-| **代理编组** | 单个会话 | 单个会话 | 12-代理目录 + 3-阶段工作流 |
+| **代理编组** | 单个会话 | 单个会话 | 13-代理目录 + 3-阶段工作流 |
 
 Claude Code 单独并不坏。相反,MoAI-ADK 不替代 Claude Code,而是**包裹(wrap)**它并在上面添加结构。模型路由和质量关卡、成本控制、学习循环、会话连续性 — 这些 Claude Code 留给用户的部分,由 harness 系统负责。
 
@@ -61,7 +61,7 @@ Claude Code 单独并不坏。相反,MoAI-ADK 不替代 Claude Code,而是**包�
 
 {{< icon package >}} **通用包装器** — 每个工具的质量标准各自不同,或者根本没有。
 
-{{< icon package primary >}} **MoAI-ADK** — 将"完成"变成*验证过的完成*。SPEC 3-阶段(plan → run → sync)和 TRUST 5 关卡(已测试·可读·统一·安全·可追踪)适用于每次变更。关卡审判的是验证,不是代理。12-代理目录从一开始就分离计划和审计,让编写的人不能为自己的工作打分。[验证主张完整性](/zh/core-concepts/verification-claim-integrity/)规则防止未经观察的"通过"作为空白通过。
+{{< icon package primary >}} **MoAI-ADK** — 将"完成"变成*验证过的完成*。SPEC 3-阶段(plan → run → sync)和 TRUST 5 关卡(已测试·可读·统一·安全·可追踪)适用于每次变更。关卡审判的是验证,不是代理。13-代理目录从一开始就分离计划和审计,让编写的人不能为自己的工作打分。[验证主张完整性](/zh/core-concepts/verification-claim-integrity/)规则防止未经观察的"通过"作为空白通过。
 
 [Harness 工程](/zh/core-concepts/harness-engineering/)、[TRUST 5 质量](/zh/core-concepts/trust-5/)、[基于 SPEC 的开发](/zh/core-concepts/spec-based-dev/) 中详细讨论。
 

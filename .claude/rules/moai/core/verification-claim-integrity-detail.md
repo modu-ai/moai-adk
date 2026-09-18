@@ -107,11 +107,13 @@ retirement SPEC. An objection whose premise was never verified is an unobserved 
 
 ## Moving-ref predicate — the four tests, the grounded instances, and the detection limits
 
-> Relocated from the stub's §2.1 by card t492 (always-loaded surface diet). The stub retains the
-> [HARD] clause itself, the classification-is-not-remedy rule, the four remediation branches
-> (R1-R4) with their cost table, and the exemption-marker syntax. What lives here is the procedure
-> for reaching a class, the adjudicated instances it was derived from, and what a mechanism
-> enforcing it cannot see. Read this section before applying the predicate for the first time.
+> Relocated from the stub's §2.1 by card t492 (always-loaded surface diet), extended by card t908
+> with the remediation layer t492 left out of its approved scope. The stub retains the [HARD]
+> clauses only: the invariant, the read-this-companion pointer, and the classification-is-not-remedy
+> rule. What lives here is the procedure for reaching a class, the four remediation branches with
+> their cost table, the exemption-marker syntax, the adjudicated instances the predicate was derived
+> from, and what a mechanism enforcing it cannot see. Read this section before applying the
+> predicate for the first time, and again before choosing a remedy.
 
 ### The four tests
 
@@ -136,6 +138,47 @@ Applied in order. Every test is answerable by reading the sentence the ref appea
 - **No — the claim is narrative.** It describes what mainline carries, quotes a command as text, or records a coordinate as the subject of a correction. Nothing is measured at read time. → **S1**.
 - **Yes — the claim asserts the current state of a moving thing and a reader will act on it.** → **S2**.
 
+
+### The four remediation branches
+
+Relocated from the stub by card t908 — the "aggressive layer" card t492 identified and left out of its approved scope. The stub retains the [HARD] invariant, the [HARD] read-this-companion pointer, and the [HARD] classification-is-not-remedy rule; what lives here is the branch table, its cost table, and the exemption-marker syntax. Reaching a remedy without having run the four tests above is indiscriminate pinning by another name.
+
+| | Branch | Class | When | Form |
+|---|---|---|---|---|
+| **R1** | Pin the literal SHA | ANCHOR | the anchor value is already known at authoring time | replace the ref with the resolved 40-hex SHA, recorded with the tree and date it was resolved in |
+| **R2** | Freeze at pre-flight *(the anchor-class default)* | ANCHOR | the value is not knowable when the criterion is written — the usual case for a run-phase PRESERVE criterion | `BASELINE_SHA=$(git rev-parse origin/main)` captured before the first run-phase commit; criteria decided against `$BASELINE_SHA`, resolved value recorded in the progress record |
+| **R3** | Keep the moving ref, declare the exemption | SUBJECT / S1 | narrative — nothing is measured at read time | leave the ref; add the inline marker with a stated reason |
+| **R4** | State the measuring command; demote the value to a dated reference | SUBJECT / S2 | the claim asserts the current state of a moving thing and a reader will act on it | lead with the command that must be run at read time; any value follows it, parenthesized, dated, and explicitly labelled a reference |
+
+R2 is preferred over R1 for run-phase criteria: it removes R1's authoring-time knowledge requirement while giving the same fixed-value guarantee.
+
+**R4's ordering is load-bearing, not stylistic.** A value written first reads as the criterion and demotes re-measurement to a confirmation step. Command first, value second and marked as a reference, so a reader who only skims still sees an instruction to measure rather than a number to trust.
+
+**Every remedy costs the author something, and the count is what does the work.** With one remedy on offer the author pins; with four, none of them free, choosing requires applying the predicate.
+
+| Remedy | What it costs the author |
+|---|---|
+| R1 | resolving the SHA and recording the tree and date it was resolved in |
+| R2 | capturing the baseline before the first run-phase commit, and recording the resolved value |
+| R3 | writing a non-empty reason a reviewer can disagree with |
+| R4 | naming the deciding command, which a later reader will run |
+
+R4's cost is its own definition made binding: the command it names must be the one that actually decides the claim. Left unpriced, R4 would be the cheapest available silencer — rephrasing into a shape is always cheaper than writing a justification — and that is bulk suppression reached by another road. A wrong or vague command is visible to the next reader who runs it, which is what makes the price real.
+
+### The exemption marker
+
+The tests are judgments about meaning. No regex decides them, so the exemption is **author-declared**, written after applying the predicate:
+
+```
+<!-- moving-ref-ok: <reason> -->
+```
+
+- **Scope**: the flagged line, or the line immediately above it. Nothing wider — a per-claim judgment does not get document granularity.
+- **Form**: an HTML comment, invisible in the rendered artifact. The marker is an author-to-linter annotation, not content for a reader of the rendered document.
+- **The reason is mandatory and non-empty.** A bare marker would make "silence the warning" cheaper than "pin the SHA", inverting the incentive this clause sets. With a reason required, declaring and pinning cost about the same and the author picks on the merits.
+- **An empty or whitespace-only reason does not suppress.** It produces a finding reporting the marker as *incomplete* — the one outcome that keeps the reason from becoming a formality.
+
+A document-wide lint skip is not the exemption path: it silences a whole file, which is the wrong granularity for a per-claim judgment.
 
 ### The five grounded instances
 

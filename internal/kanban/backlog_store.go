@@ -646,6 +646,13 @@ func (s *BacklogStore) openEngine(lockHeld bool) (*backlogEngine, error) {
 
 // migrateUnderLock runs the migration with the queue lock held, acquiring it
 // first when the caller does not already hold it.
+//
+// This is the one place in the family whose errors name Path() rather than
+// EnginePath(), and it is deliberate: migration reaches here only in State B
+// (`!dbExists && jsonExists`), where the legacy document is the file being
+// read and is present. Rewriting this to EnginePath() for consistency with
+// the Mutate family would make the message wrong in the other direction —
+// naming a database that does not exist yet (card t910).
 func (s *BacklogStore) migrateUnderLock(lockHeld bool) error {
 	if lockHeld {
 		return migrateLegacyBacklog(s.path)
@@ -670,6 +677,12 @@ func (s *BacklogStore) migrateUnderLock(lockHeld bool) error {
 // resolve before issuance. Release errors are JOINED into the result rather
 // than discarded: on Windows release removes the artifact, so a silent
 // release failure would block every later writer.
+//
+// Every error this family raises names EnginePath(), not Path(). Path() is
+// the legacy `backlog.json` document the downgrade route regenerates, and the
+// engine never writes it — in the steady state it is simply absent, so naming
+// it hands the operator a file that is not there. Card t899 lost half an
+// investigation to that path before the real cause was found (card t910).
 func (s *BacklogStore) Mutate(mutate func(*BacklogRecord) error) (err error) {
 	// @MX:WARN: [TID:TX] Identity schema, UUID backfill, and the card record must commit in one writer transaction.
 	// @MX:REASON: [TID:TX] MaxOpenConns(1) forbids e.db re-entry while that transaction is active; every identity query uses its *sql.Tx.
@@ -678,7 +691,7 @@ func (s *BacklogStore) Mutate(mutate func(*BacklogRecord) error) (err error) {
 		return err
 	}
 	defer func() {
-		err = joinBacklogReleaseErr(err, lock.Release(), s.path)
+		err = joinBacklogReleaseErr(err, lock.Release(), s.EnginePath())
 	}()
 	if target, readErr := os.ReadFile(filepath.Join(filepath.Dir(s.path), backlogRetiredFileName)); readErr == nil {
 		return fmt.Errorf("%w: %s", ErrBacklogRelocated, target)
@@ -702,7 +715,7 @@ func (s *BacklogStore) Mutate(mutate func(*BacklogRecord) error) (err error) {
 		return err
 	}
 	if err := mutate(rec); err != nil {
-		return fmt.Errorf("mutate backlog %s: mutation refused: %w", s.path, err)
+		return fmt.Errorf("mutate backlog %s: mutation refused: %w", s.EnginePath(), err)
 	}
 	// Re-normalize post-mutate: a callback may append or rewrite items, and
 	// the written high-water mark must clear every present id.
@@ -794,7 +807,7 @@ func (s *BacklogStore) addWithCardUUID(text string, cardUUID *string) (*BacklogI
 // error names the lock artifact so the operator can act on the right file.
 func (s *BacklogStore) acquireLock() (*BoardLock, error) {
 	if err := os.MkdirAll(filepath.Dir(s.path), 0o755); err != nil {
-		return nil, fmt.Errorf("mutate backlog %s: creating dir: %w", s.path, err)
+		return nil, fmt.Errorf("mutate backlog %s: creating dir: %w", s.EnginePath(), err)
 	}
 	var lastErr error
 	deadline := time.Now().Add(boardLockWaitBudget)
@@ -804,11 +817,11 @@ func (s *BacklogStore) acquireLock() (*BoardLock, error) {
 			return &BoardLock{path: s.LockPath(), impl: impl}, nil
 		}
 		if !IsBoardLockHeld(err) {
-			return nil, fmt.Errorf("mutate backlog %s: lock %s: %w", s.path, s.LockPath(), err)
+			return nil, fmt.Errorf("mutate backlog %s: lock %s: %w", s.EnginePath(), s.LockPath(), err)
 		}
 		lastErr = err
 		if !time.Now().Before(deadline) {
-			return nil, fmt.Errorf("mutate backlog %s: lock %s: %w", s.path, s.LockPath(), lastErr)
+			return nil, fmt.Errorf("mutate backlog %s: lock %s: %w", s.EnginePath(), s.LockPath(), lastErr)
 		}
 		time.Sleep(boardLockRetryWait(attempt))
 	}

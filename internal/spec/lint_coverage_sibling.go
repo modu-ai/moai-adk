@@ -119,5 +119,25 @@ func siblingAcceptanceCoveredREQIDs(specPath string) map[string]bool {
 	for _, id := range siblingTableREQIDs(string(data)) {
 		covered[id] = true
 	}
+	// `maps`-list numeric-tail shorthand (card t801): `maps REQ-X-001, 002`.
+	// ExtractRequirementMappings above drops the bare tail silently, so this
+	// third extractor re-reads the same sections through a widened locator and
+	// expands the tail with the SAME rule the table path uses. The three sets
+	// union; a section carrying only full ids contributes exactly what the
+	// first extractor already contributed.
+	//
+	// THE INLINE RESIDUAL IS NAMED, NOT SILENT. The inline spec.md AC path
+	// (parseSingleACLine → ExtractRequirementMappings) stays unexpanded, because
+	// that function is immutable per card t561's decision (REQ-SMS-003) and
+	// widening it would reach every caller. The residual has no live instance:
+	// measured in the working tree of 881aa4bb8 as of 2026-09-18, `maps REQ-…(,
+	// NNN)+` occurs 0 times across spec.md and acceptance.md in .moai/specs
+	// (excluding the SPEC that records this measurement, whose own prose carries
+	// the shorthand it describes). The repair is landed because fixture A proves
+	// the false-warning mechanism is live and fires the moment an author writes
+	// the shorthand — not because it is currently firing.
+	for _, id := range siblingMapsREQIDs(string(data)) {
+		covered[id] = true
+	}
 	return covered
 }

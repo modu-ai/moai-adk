@@ -4,15 +4,15 @@ weight: 4
 draft: false
 ---
 
-MoAI-ADK 通过单一的 **配置矩阵**将保留的 12 个代理各自映射到 `{model, effort}` 对。活动的 **配置文件** (`high` / `medium` / `low`)选择矩阵的一列(column)，该列的值应用于所有子代理 spawn。矩阵以代理名为单位共 **36 格** (12 个代理 × 3 个配置文件)，同时取代了此前的分组抽象与 `plan_type × tier` 轴。
+MoAI-ADK 通过单一的 **配置矩阵**将保留的 13 个代理各自映射到 `{model, effort}` 对。活动的 **配置文件** (`high` / `medium` / `low`)选择矩阵的一列(column)，该列的值应用于所有子代理 spawn。矩阵以代理名为单位共 **39 格** (13 个代理 × 3 个配置文件)，同时取代了此前的分组抽象与 `plan_type × tier` 轴。
 
 ## 配置文件轴
 
 配置文件有三个取值:
 
-- `high` — 质量优先列。开销流向"做判断的行"而非"做产出的行": 审计·顾问行(`plan-auditor`、`sync-auditor`、`super-advisor`)与协调行(`manager-design`、`manager-lead`)保持 `high`，而撰写·实现行(`manager-spec`、`manager-develop`)在三列中都停在 `medium`。没有任何行取 `max`。`xhigh` 不出现在任何格子中: 在 Opus 5 上它与 `high` 得分相同，成本却明显更高。
+- `high` — 质量优先列。开销流向"做判断的行"而非"做产出的行": 审计·顾问行(`plan-auditor`、`sync-auditor`、`super-advisor`)、协调行(`manager-design`、`manager-lead`)与判定行(`mission-governor`)保持 `high`，而撰写·实现行(`manager-spec`、`manager-develop`)在三列中都停在 `medium`。没有任何行取 `max`。`xhigh` 不出现在任何格子中: 在 Opus 5 上它与 `high` 得分相同，成本却明显更高。
 - `medium`(默认) — 平衡列。与 `high` 列恰好只在两行上不同: `builder-harness` 降到 `medium`、`e2e-tester` 降到 `low`。取值缺失或为空时按 `medium` 解释。
-- `low` — 经济列。Opus 5 在 `low` 下比任何 effort 的 Sonnet 5 得分更高**且**每任务成本更低，因此所有代理式行都保留 Opus；大多数 Opus 行落在 `medium`，唯独 `super-advisor` 保持 `high` —— 升级路径正是便宜列里最值得保持健全的位置。Sonnet 只出现在单次完成、以输入为主的行上。
+- `low` — 经济列。Opus 5 在 `low` 下比任何 effort 的 Sonnet 5 得分更高**且**每任务成本更低，因此所有代理式行都保留 Opus；大多数 Opus 行落在 `medium`，只有 `super-advisor` 与 `mission-governor` 保持 `high` —— 升级路径与封存任务的判定，正是便宜列里最值得保持健全的位置。Sonnet 只出现在单次完成、以输入为主的行上。
 
 `max` 是 `high` 的**只读别名**。既有配置中的 `profile: max` 仍解析为 `high`，保存时始终写入规范名 `high`。无需任何迁移操作。
 
@@ -29,7 +29,7 @@ moai update --profile low              # 事后切换
 
 ## 配置矩阵
 
-保留的 12 个代理直接从下表矩阵中获得各自的 `{model, effort}`。只有用户自行添加的代理才解析为 `inherit`(继承父会话模型)并被排除在 model 注入之外。矩阵中任何位置都没有 Haiku。
+保留的 13 个代理直接从下表矩阵中获得各自的 `{model, effort}`。只有用户自行添加的代理才解析为 `inherit`(继承父会话模型)并被排除在 model 注入之外。矩阵中任何位置都没有 Haiku。
 
 | 代理 | high | medium(默认) | low |
 |---|---|---|---|
@@ -38,6 +38,7 @@ moai update --profile low              # 事后切换
 | sync-auditor | opus / high | opus / high | opus / medium |
 | manager-develop | opus / medium | opus / medium | opus / medium |
 | super-advisor | opus / high | opus / high | opus / high |
+| mission-governor | opus / high | opus / high | opus / high |
 | manager-design | opus / high | opus / high | opus / medium |
 | manager-lead | opus / high | opus / high | opus / medium |
 | builder-harness | opus / high | opus / medium | opus / low |
@@ -46,7 +47,7 @@ moai update --profile low              # 事后切换
 | manager-git | sonnet / low | sonnet / low | sonnet / low |
 | Explore | sonnet / low | sonnet / low | sonnet / low |
 
-36 个格子的模型分布为 Opus 26 / Sonnet 10。Fable 不出现在任何格子中，也没有任何格子使用 `xhigh` 或 `max`。
+39 个格子的模型分布为 Opus 29 / Sonnet 10。Fable 不出现在任何格子中，也没有任何格子使用 `xhigh` 或 `max`。
 
 `manager-docs`、`manager-git` 与 `Explore` 行与配置文件无关，固定为 `sonnet / low` — 文档整理、机械性工作与只读探索不会因配置文件上升而提升模型等级。
 
@@ -54,7 +55,7 @@ moai update --profile low              # 事后切换
 
 ### 这些格子的依据
 
-这些格子不是从成本/得分曲线推导出来的，而是**敲定的运营者判断**(settled operator input)。布局原理只有一条: 开销流向"做判断的行"，不流向"做产出的行"。审计·顾问行(`plan-auditor`、`sync-auditor`、`super-advisor`)与协调行(`manager-design`、`manager-lead`)保持 `high`，撰写·实现行(`manager-spec`、`manager-develop`)在三列中都停在 `medium`，`manager-docs` 降到 `sonnet / low`，没有任何行取 `max`。试图从成本曲线重新推导这些格子会悄悄把产出行的开销推回去 —— 需要改值时，按运营者判断的更新处理，而不是按重新计算处理。
+这些格子不是从成本/得分曲线推导出来的，而是**敲定的运营者判断**(settled operator input)。布局原理只有一条: 开销流向"做判断的行"，不流向"做产出的行"。审计·顾问行(`plan-auditor`、`sync-auditor`、`super-advisor`)、协调行(`manager-design`、`manager-lead`)与判定行(`mission-governor`)保持 `high`，撰写·实现行(`manager-spec`、`manager-develop`)在三列中都停在 `medium`，`manager-docs` 降到 `sonnet / low`，没有任何行取 `max`。试图从成本曲线重新推导这些格子会悄悄把产出行的开销推回去 —— 需要改值时，按运营者判断的更新处理，而不是按重新计算处理。
 
 决定模型等级的两条规则以实测为根:
 

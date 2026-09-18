@@ -26,7 +26,7 @@ Auto memory (level 6 above) is a native Claude Code feature (requires v2.1.59 or
 | Default | ON. Disable via the `/memory` toggle, `autoMemoryEnabled: false` in settings.json (any scope), or env `CLAUDE_CODE_DISABLE_AUTO_MEMORY=1` |
 | Storage | `~/.claude/projects/<project>/memory/`. The `<project>` path is derived from the **git repository root**, so all worktrees and subdirectories of the same repo share ONE memory directory. Outside a git repo, the project root is used |
 | Override | `autoMemoryDirectory` in settings.json (absolute or `~/` path; honored only after the workspace trust dialog) |
-| Index loading | `MEMORY.md` is loaded at the start of every session. A large index is truncated at some point, but **the cut's shape is not settled** — re-measure rather than quoting a figure. See § MEMORY.md Index Budget |
+| Index loading | `MEMORY.md` is loaded at the start of every session, and the index truncates at **200 lines or 25KB, whichever comes first** — upstream-enforced, announced in the Claude Code CHANGELOG under **2.1.83**. The cut is **not silent**: an over-limit write is an explicit error (2.1.210) and the truncation warning names how many lines were cut (2.1.268). See § MEMORY.md Index Budget |
 | Topic files | `debugging.md`, `api-conventions.md`, etc. are NOT loaded at startup; Claude reads them on demand. They are plain markdown with **no mandated frontmatter schema** |
 | Subagents | Subagents can maintain their own auto memory (see the Claude Code sub-agents documentation) |
 | Inspect | `/memory` lists the loaded CLAUDE.md and rules files, toggles auto memory, and links to the auto-memory folder |
@@ -127,10 +127,23 @@ Files of type `user` and `reference` do not require this structure.
 
 ### MEMORY.md Index Budget
 
-`MEMORY.md` (the auto-memory index) is loaded at the start of every session, and a sufficiently
-large index is truncated. **The cut's shape is not asserted here.** The loader is not part of this
-repository, so its behaviour cannot be read from source, and a figure written into doctrine cannot
-be re-measured by the reader who later relies on it. Measure your own store instead:
+`MEMORY.md` (the auto-memory index) is loaded at the start of every session, and the index
+truncates at **200 lines or 25KB, whichever comes first**. The figure is **upstream-enforced, not a
+MoAI hygiene limit**: the Claude Code CHANGELOG announces it under **2.1.83** — *"Memory:
+`MEMORY.md` index now truncates at 25KB as well as 200 lines"*. The loader is not part of this
+repository, so its behaviour cannot be read from source; the changelog entry is the citation, and
+nothing in this tree enforces the cut.
+
+The cut is **not silent**, and doctrine must not describe it as such. Three later entries changed
+what a session sees: a write that would leave the index over its read limit produces an explicit
+error instead of silent truncation (**2.1.210**); the over-limit warning measures only loaded
+content, excluding frontmatter and HTML comments (**2.1.211**); and the truncation warning states
+how many lines were cut and where the cut starts (**2.1.268**).
+
+**Residual gap.** Because 2.1.211 measures loaded content rather than raw bytes, an index larger
+than 25KB on disk is *not* by itself evidence that the cut fired at a different size — that
+reconciliation is plausible but unverified here. Measure your own store rather than reasoning from
+the file size:
 
 ```bash
 # `moai memory doctor` reports every candidate store it resolved, and whether each exists.
