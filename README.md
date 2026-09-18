@@ -624,7 +624,7 @@ Sweeps LSP diagnostics, AST-grep, and linters in parallel, buckets issues by lev
 
 ### `.moai/config/sections/`
 
-Project configuration splits into YAML section files. `moai init` lays down 33 sections in all; the six below are the ones you end up editing.
+Project configuration splits into YAML section files. `moai init` lays down 30 section files in all; the six below are the ones you end up editing.
 
 | Section | Role |
 |---|---|

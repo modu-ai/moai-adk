@@ -248,7 +248,7 @@ The v3.0 Go codebase is approximately **148k non-test LOC** across **~730 non-te
 | Feature | Status | Notes |
 |---------|--------|-------|
 | CLI Tool | Complete | ~40 root verbs / 152 non-test `.AddCommand()` calls across 109 non-test files in `internal/cli/` |
-| Configuration Management | Complete | 14 `loader_*.go` files composing 32 YAML files; env > yaml > defaults |
+| Configuration Management | Complete | 13 `loader_*.go` files composing 32 YAML files; env > yaml > defaults |
 | LSP Integration | Complete | 8 sub-packages under `internal/lsp/` powernap-based, 16-language auto-detection |
 | Git Operations | Complete | System Git via exec; BODP branch-origin decision; main-checkout branch-state guard |
 | Quality Gates (TRUST 5) | Complete | All five principles validated |
@@ -295,7 +295,7 @@ The v3.0 Go codebase is approximately **148k non-test LOC** across **~730 non-te
 Several planned dependencies were replaced with simpler, purpose-built solutions:
 
 - **No go-git**: Git operations use `exec.Command("git", ...)` for reliability and full feature coverage
-- **No Viper**: Custom YAML loader with 14 `loader_*.go` files provides simpler, type-safe configuration
+- **No Viper**: Custom YAML loader with 13 `loader_*.go` files provides simpler, type-safe configuration
 - **No go.lsp.dev packages**: Multi-language LSP client built on `github.com/charmbracelet/x/powernap` in `internal/lsp/` (8 sub-packages)
 - **Go 1.26.8**: Final Go toolchain version; Green Tea GC for 10-40% GC overhead reduction, range-over-int iterators, enhanced `log/slog`
 
