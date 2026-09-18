@@ -20,7 +20,14 @@ concurrency:
   cancel-in-progress: false
 
 # Least-privilege: this workflow runs the Go test matrix and does not exercise
-# any GITHUB_TOKEN write surface (no artifact upload, no PR mutation).
+# any GITHUB_TOKEN write surface — no PR mutation, no `gh` call.
+#
+# It DOES upload a test-stream artifact (the "Upload test event stream" step
+# below); an earlier revision of this comment said otherwise. That step needs no
+# GITHUB_TOKEN permission, because actions/upload-artifact authenticates with the
+# Actions runtime token rather than GITHUB_TOKEN. `contents: read` is therefore
+# still the correct least privilege and MUST NOT be widened on its account
+# (card t803).
 permissions:
   contents: read
 

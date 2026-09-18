@@ -47,7 +47,7 @@ If `CLAUDE.md` is the project's constitution, settings.json is the permission bo
 | [Tokenomics Overview](/en/advanced/tokenomics-overview) | The paradox of unit prices falling 98% while costs rise 320%, and the answer |
 | [Token Budget](/en/advanced/token-budget) | Token Circuit Breaker · verify-diet · context diet |
 | [No-Haiku 3-Tier](/en/advanced/no-haiku-3tier) | The DeepSWE-leaderboard rationale and the 3-tier policy |
-| [Profile Matrix](/en/advanced/profile-matrix) | The single profile axis of 11 agents × `{model, effort}` across 33 cells |
+| [Profile Matrix](/en/advanced/profile-matrix) | The single profile axis of 13 agents × `{model, effort}` across 39 cells |
 | [statusline](/en/advanced/statusline) | An always-on dashboard for context usage, cache hit rate, and rate limits |
 
 ### Self-improvement — Agentic Loop Engineering

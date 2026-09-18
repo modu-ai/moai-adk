@@ -285,6 +285,18 @@ When `outputStyle` is set in multiple places, the first match wins:
 
 The **local** scope (`.claude/settings.local.json`) is the highest-priority resolver source and is where the Claude Code `/config` → Output style menu writes a user's selection (official docs: code.claude.com/docs/en/output-styles — "Your selection is saved to `.claude/settings.local.json`"). This is why the project template (scope 2) pinning `outputStyle: MoAI-Easy` as the PRODUCT DEFAULT never traps a user: any `/config` choice lands in scope 1, which outranks the project pin. The setting is read once at session start — a change takes effect after `/clear` or a new session.
 
+### In-session switching — `/config` and `/output-style`
+
+Two surfaces select a style in-session, and both persist the choice to `.claude/settings.local.json`:
+
+| Form | Behavior |
+|---|---|
+| `/config` → Output style | menu pick |
+| `/output-style` | lists available styles, marking the current one; changes nothing |
+| `/output-style <style>` | switches, custom MoAI styles included |
+
+Upstream sources disagree on whether `/output-style` still exists — a CHANGELOG entry deprecates it in favour of `/config`, a later one re-adds it. Resolve that by measurement, never by the documents: on Claude Code **2.1.275** (darwin/arm64) a bare call printed `Available styles:` with `(current)`, and `/output-style <name>` printed `Output style set to <name>` and wrote `{"outputStyle": "<name>"}`. Whether a mid-session switch takes effect before `/clear` was NOT measured. `/config` stays the surface to document for users, because it is present on every version.
+
 **Example 1 — project overrides user:**
 
 ```json

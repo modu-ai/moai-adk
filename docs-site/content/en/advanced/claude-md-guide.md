@@ -100,15 +100,15 @@ Every request goes through a single ordered pipeline, regardless of input langua
 
 ### 4. Agent Catalog
 
-MoAI-ADK consists of **11 retained agents** (10 MoAI-custom + 1 Anthropic built-in). Through architecture simplification, 12 archived agents such as manager-strategy, manager-quality, manager-brain, and manager-project were replaced by per-spawn `Agent(general-purpose)` delegation for specific domains.
+MoAI-ADK consists of **13 retained agents** (12 MoAI-custom + 1 Anthropic built-in). Through architecture simplification, 12 archived agents such as manager-strategy, manager-quality, manager-brain, and manager-project were replaced by per-spawn `Agent(general-purpose)` delegation for specific domains.
 
 | Category | Agents | Role |
 |------|----------|------|
-| Manager (5) | manager-spec, manager-develop, manager-docs, manager-git, manager-design | Specialists per core lifecycle phase |
+| Manager (6) | manager-spec, manager-develop, manager-docs, manager-git, manager-design, manager-lead | Specialists per core lifecycle phase |
 | Evaluator (2) | plan-auditor, sync-auditor | Independent quality assessment at plan/completion stages |
 | Builder (1) | builder-harness | Dynamic per-project harness generation |
 | Advisor (1) | super-advisor | High-reasoning consultation (E1-E4 escalation) |
-| Specialist (1) | e2e-tester | E2E test execution across web/mobile/desktop (`/moai e2e`) |
+| Specialist (2) | e2e-tester, mission-governor | E2E test execution across web/mobile/desktop (`/moai e2e`); read-only decision for approved GTD auto missions |
 | Built-in (1) | Explore (Anthropic) | Read-only codebase exploration |
 
 ### 5. SPEC Workflow

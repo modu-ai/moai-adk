@@ -140,6 +140,8 @@ CLAUDE.md 在每次会话都加载进上下文窗口，与对话一起消耗令�
 
 `MEMORY.md` 扮演记忆目录的索引。它**仅前 200 行或 25KB**（先到者为准）在每次对话开始时加载，超出部分在启动时不加载。因此 Claude 会把详细笔记移到单独的主题文件，保持 `MEMORY.md` 简洁。
 
+来源：Claude Code CHANGELOG 2.1.83 — "Memory: MEMORY.md index now truncates at 25KB as well as 200 lines".
+
 ```mermaid
 flowchart TD
     A["会话开始"] --> B["加载 MEMORY.md 索引<br>前 200 行或 25KB"]

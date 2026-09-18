@@ -37,6 +37,8 @@ description: "Claude Code 컨텍스트 윈도우의 토큰 개념, 모델별 크
 | Claude가 읽은 파일 | 한 줄 요약만 | 파일 본문은 Claude만 봄 |
 | Claude의 분석·수정·응답 | 보임 | 터미널에 그대로 출력 |
 
+출처 (`MEMORY.md` 로드 한도): Claude Code CHANGELOG 2.1.83 — "Memory: MEMORY.md index now truncates at 25KB as well as 200 lines".
+
 토큰 (token)은 이 정보를 세는 단위입니다. 대략 영어 단어 하나가 1~2 토큰, 한국어는 글자당 더 많은 토큰을 차지합니다. 다소 의외인 점은, **세션을 시작하기도 전에 이미 상당한 양이 채워진다**는 것입니다. CLAUDE.md, 메모리, 스킬 목록, MCP 도구 이름이 첫 프롬프트보다 먼저 로드되기 때문입니다.
 
 ### 파일 읽기가 컨텍스트를 가장 많이 먹습니다

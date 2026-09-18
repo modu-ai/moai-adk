@@ -17,6 +17,7 @@ import (
 	"time"
 
 	"github.com/modu-ai/moai-adk/internal/config"
+	"github.com/modu-ai/moai-adk/internal/glmcred"
 	"github.com/modu-ai/moai-adk/internal/goal"
 	"github.com/modu-ai/moai-adk/internal/homestate"
 	"github.com/modu-ai/moai-adk/internal/hook/memo/taxonomy"
@@ -932,12 +933,17 @@ func ensureGLMCredentials(projectDir string) string {
 	// GLM models configured — check if AUTH_TOKEN exists
 	if token := settings.Env[config.EnvAnthropicAuthToken]; token != "" {
 		// Already has credentials — nothing to inject, but the context-window
-		// envs must still be ensured: settings written by an older binary (or
-		// by `moai glm setup`) carry neither window key, and without the
-		// CLAUDE_CODE_MAX_CONTEXT_TOKENS declaration Claude Code assumes a
-		// 200K window for the custom GLM model ID (Issue #653, PR #1574
-		// review). Persist only when a key was actually added so the steady
-		// state does not rewrite settings.local.json on every session start.
+		// envs must still be ensured: settings written by an older binary carry
+		// neither window key, and without the CLAUDE_CODE_MAX_CONTEXT_TOKENS
+		// declaration Claude Code assumes a 200K window for the custom GLM model
+		// ID (Issue #653, PR #1574 review). Persist only when a key was actually
+		// added so the steady state does not rewrite settings.local.json on
+		// every session start.
+		//
+		// `moai glm setup` is NOT a second source of such settings, though an
+		// earlier revision of this comment named it as one: runGLMSetup →
+		// saveGLMKey → glmcred.Save writes ~/.moai/.env.glm and nothing else, so
+		// it never produces a settings.local.json env block at all (card t803).
 		before := settings.Env[config.EnvClaudeCodeAutoCompactWindow] + "|" + settings.Env[config.EnvClaudeCodeMaxContextTokens]
 		maybeSet1MAutoCompactWindow(settings.Env)
 		maybeDeclareGLMContextWindow(settings.Env)
@@ -1451,6 +1457,13 @@ func loadGLMKeyFromEnvFile() string {
 		key := strings.TrimSpace(parts[0])
 		val := strings.TrimSpace(parts[1])
 		val = strings.Trim(val, `"'`)
+		// The writer escapes a backslash, a double quote and a dollar sign
+		// before quoting the value (glmcred.EscapeValue), so stripping the
+		// quotes leaves the escaped form. Reversing it here is what makes this
+		// reader agree with glmcred.Load, which the same file is written for.
+		// Card t804: without this, a key carrying any of those three characters
+		// reached settings.local.json as a token the provider never issued.
+		val = glmcred.UnescapeValue(val)
 
 		if key == "GLM_API_KEY" && val != "" {
 			return val

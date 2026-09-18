@@ -159,7 +159,7 @@ model: sonnet
 
 ## 深掘りは MoAI エージェントガイドへ
 
-ここまでが Claude Code 次元のサブエージェント概念です。MoAI-ADK はこのメカニズムの上に **11 個のエージェントカタログ** を運用します — Manager 系列 (manager-spec / manager-develop / manager-docs / manager-git / manager-design) が plan→run→sync ライフサイクルを、Evaluator 系列 (plan-auditor / sync-auditor) が独立監査を、builder-harness がハーネススキャフォールド生成を、super-advisor が高推論の助言を、e2e-tester が Web/モバイル/デスクトップの E2E テスト実行を、そして Anthropic 内蔵 `Explore` が読み取り専用の探索を担当します。計画と監査が分離されているという点 — 作ったエージェントが自分で検査しないこと — がこのカタログの核心的な設計です。各エージェントに作業の性質に合ったモデルと推論深度 (effort) を宣言的に割り当てることがトークノミクスの「計画は深く、実装は安く、検証は独立して」原則です。詳しい内容は下記の応用ガイドで扱います。
+ここまでが Claude Code 次元のサブエージェント概念です。MoAI-ADK はこのメカニズムの上に **13 個のエージェントカタログ** を運用します — Manager 系列 (manager-spec / manager-develop / manager-docs / manager-git / manager-design / manager-lead) が plan→run→sync ライフサイクルと Tier L の調整を、Evaluator 系列 (plan-auditor / sync-auditor) が独立監査を、builder-harness がハーネススキャフォールド生成を、super-advisor が高推論の助言を、e2e-tester が Web/モバイル/デスクトップの E2E テスト実行を、mission-governor が GTD 自動ミッションの判定を、そして Anthropic 内蔵 `Explore` が読み取り専用の探索を担当します。計画と監査が分離されているという点 — 作ったエージェントが自分で検査しないこと — がこのカタログの核心的な設計です。各エージェントに作業の性質に合ったモデルと推論深度 (effort) を宣言的に割り当てることがトークノミクスの「計画は深く、実装は安く、検証は独立して」原則です。詳しい内容は下記の応用ガイドで扱います。
 
 ## 関連ドキュメント
 

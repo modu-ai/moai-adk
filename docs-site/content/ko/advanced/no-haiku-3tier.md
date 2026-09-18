@@ -131,6 +131,6 @@ flowchart TD
 
 ## 다음 단계
 
-- [프로필 매트릭스](/ko/advanced/profile-matrix/) — 단일 3-열 per-agent 프로필 매트릭스 (11 에이전트 × 3 프로필 = 33 셀)
+- [프로필 매트릭스](/ko/advanced/profile-matrix/) — 단일 3-열 per-agent 프로필 매트릭스 (13 에이전트 × 3 프로필 = 39 셀)
 - [자율성 티어](/ko/advanced/autonomy-tier/) — 모델 티어와 직교하는, 권한·통제 대상의 자율성 등급
 - [토크노믹스 개요](/ko/advanced/tokenomics-overview/) — 4-층 토크노믹스 구조의 라우팅 층

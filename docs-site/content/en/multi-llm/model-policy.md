@@ -20,8 +20,8 @@ the means by which MoAI-ADK actually implements its **cost** axis.
 
 {{< callout type="info" >}}
 **In one line:** pick one policy (high/medium/low) and that column's values fix
-the model and reasoning depth of all 11 agents for the day, in one move. The
-burden of choosing models moves from eleven places to one (the profile
+the model and reasoning depth of all 13 agents for the day, in one move. The
+burden of choosing models moves from thirteen places to one (the profile
 selection).
 {{< /callout >}}
 
@@ -109,7 +109,7 @@ nothing to migrate. `performance_tier` is read only when `profile` is absent.
 
 ## Per-agent assignment table
 
-The 36 cells below are the profile matrix (12 agents × 3 profiles). Each cell
+The 39 cells below are the profile matrix (13 agents × 3 profiles). Each cell
 holds the `{model, effort}` pair the resolver injects at spawn time. The
 orchestrator main session is not a spawned agent, so it is left out of the
 table.
@@ -125,7 +125,7 @@ table.
 | manager-design | opus / high | opus / high | opus / medium |
 | manager-lead | opus / high | opus / high | opus / medium |
 
-### Evaluator · Advisor · Builder · Specialist Agents (5)
+### Evaluator · Advisor · Builder · Specialist Agents (6)
 
 | Agent | high | medium | low |
 |---------|------|--------|-----|
@@ -134,6 +134,7 @@ table.
 | super-advisor | opus / high | opus / high | opus / high |
 | builder-harness | opus / high | opus / medium | opus / low |
 | e2e-tester | opus / medium | opus / low | sonnet / low |
+| mission-governor | opus / high | opus / high | opus / high |
 
 ### Built-in Agent (1)
 
@@ -152,8 +153,9 @@ table.
 
 - **The spend goes to the rows that judge**: the policy is settled operator
   input, not a cost/score derivation. The auditing/advising rows
-  (`plan-auditor`, `sync-auditor`, `super-advisor`) and the coordinating rows
-  (`manager-design`, `manager-lead`) hold `high`, while the authoring and
+  (`plan-auditor`, `sync-auditor`, `super-advisor`), the coordinating rows
+  (`manager-design`, `manager-lead`), and the deciding row
+  (`mission-governor`) hold `high`, while the authoring and
   implementing rows (`manager-spec`, `manager-develop`) sit at `medium` in all
   three profiles.
 - **Every agentic row stays on Opus**: `manager-spec`, `manager-develop`,
@@ -404,7 +406,7 @@ agent catalog, so unknown names are rejected.
 
 ## Next steps
 
-- [Profile Matrix](/en/advanced/profile-matrix/) — the placement basis for the 36 cells (judgment-weighted policy) and resolver precedence in detail
+- [Profile Matrix](/en/advanced/profile-matrix/) — the placement basis for the 39 cells (judgment-weighted policy) and resolver precedence in detail
 - [CG retirement and migration](/en/multi-llm/cg-mode/)
 - [Autonomy Tier](/en/advanced/autonomy-tier/) — the `MOAI_AUTONOMY_TIER` cost/speed trade-off
 - [CLI Reference](/en/getting-started/cli) — moai init, moai update, moai model profile in detail

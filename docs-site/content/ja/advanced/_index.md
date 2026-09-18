@@ -47,7 +47,7 @@ flowchart TD
 | [トークノミクス概要](/ja/advanced/tokenomics-overview) | 単価が 98% 下がってもコストが 320% 上がる逆説とその解法 |
 | [トークン予算](/ja/advanced/token-budget) | Token Circuit Breaker · verify ダイエット · コンテキストダイエット |
 | [No-Haiku 3 ティア](/ja/advanced/no-haiku-3tier) | DeepSWE リーダーボードの根拠と 3 ティアポリシー |
-| [プロファイルマトリクス](/ja/advanced/profile-matrix) | 11 エージェント × `{model, effort}` 33 セルの単一プロファイル軸 |
+| [プロファイルマトリクス](/ja/advanced/profile-matrix) | 13 エージェント × `{model, effort}` 39 セルの単一プロファイル軸 |
 | [statusline](/ja/advanced/statusline) | コンテキスト使用率・キャッシュヒット率・レート_limit の常時ダッシュボード |
 
 ### 自己改善 — エージェンティック・ループ・エンジニアリング

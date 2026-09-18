@@ -18,9 +18,9 @@ Making room took eleven always-loaded documents down to stubs (short summaries) 
 A personal `~/.codex/AGENTS.md` joins the same merged chain and is consumed **before** this file, narrowing what the project's contract can carry. Overflow is dropped from the tail silently — which is why the clauses in this file are ordered most-critical-first.
 {{< /callout >}}
 
-## Dual agent publication — eleven TOMLs
+## Dual agent publication — twelve TOMLs
 
-The 11 retained agents are published in two forms: `.claude/agents/moai/*.md` for Claude Code (the source) and `.codex/agents/moai/*.toml` for codex (the derivation). The TOML is not hand-written — `internal/template/agentemit` generates it **deterministically** (same input, same output, every time) from the markdown source, and the generated file's header says "regenerate, do not edit".
+The 12 retained MoAI-custom agents are published in two forms: `.claude/agents/moai/*.md` for Claude Code (the source) and `.codex/agents/moai/*.toml` for codex (the derivation). The TOML is not hand-written — `internal/template/agentemit` generates it **deterministically** (same input, same output, every time) from the markdown source, and the generated file's header says "regenerate, do not edit".
 
 Three guards keep source and derivation from drifting apart: a golden-file comparison (against expected output), an embed check (against the templates compiled into the binary), and a deploy check (against what lands in user repositories). Edit the markdown and the TOML follows; edit only the TOML and the guards catch it.
 
@@ -65,4 +65,4 @@ Unadapted events are not silently ignored — they are **refused**. An unknown e
 
 - [Multi-model Audit Convergence](/en/advanced/multi-model-audit/) — the path where the codex backend already participates in audits today
 - [moai update](/en/cli-reference/update/) — the skill mirror's symlink/copy deployment and its notice
-- [Agent Guide](/en/advanced/agent-guide/) — the roles of the eleven agents being dual-published
+- [Agent Guide](/en/advanced/agent-guide/) — the roles of the twelve agents being dual-published

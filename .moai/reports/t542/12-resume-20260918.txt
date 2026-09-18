@@ -1,0 +1,55 @@
+# Orphan-branch resume — 2026-09-18 (agent-14, card t542)
+
+Measured against the live ~/.moai/todo and the local develop tip. Verbatim outputs.
+
+$ git rev-parse --short develop
+d9951c50e
+
+$ git rev-parse --short origin/develop
+d9951c50e
+
+$ git rev-list --count --left-right develop...WT-orphan-queue-sweep
+882	4
+
+$ git diff --stat 1d150a27d..WT-orphan-queue-sweep | tail -1
+ 14 files changed, 1043 insertions(+)
+
+$ git diff --name-only 1d150a27d..WT-orphan-queue-sweep | grep -vc "^.moai/reports/t542/"
+0
+
+$ git ls-tree -r --name-only develop -- .moai/reports/t542/ | wc -l
+       0
+
+$ git cherry -v develop WT-orphan-queue-sweep
++ 973c2d353d9f57dfb19b8503ea16d3941676f901 docs(t542): full orphan-queue inventory before any deletion — 344 dirs, three storage layouts, zero operator cards (t542)
++ e95cbdd3f28d104735c6b2d4eafb154c8414cc15 docs(t542): sweep 341 test-origin orphan queues; record that inflow is still open (t542)
++ 711b2937797de6e7390bd1085965968a93efdaf2 docs(t542): file the weak-crypto prose false positive as issue #1708 with an independent repro (t542)
++ 0a44b70976df64885d505ffc88af1da0efb5892d docs(t542): record first post-sweep recurrence — 001-3d9b96cd born 2026-09-14, preserved pending operator call (t542)
+
+$ find ~/.moai/todo -mindepth 1 -maxdepth 1 -type d | wc -l
+       4
+
+$ find ~/.moai/todo -mindepth 1 -maxdepth 1 -type d -exec stat -f '%Sm %N' -t '%Y-%m-%dT%H:%M:%S%z' {} \; | sort -r
+2026-09-14T04:19:58+0900 /Users/goos/.moai/todo/001-3d9b96cd
+2026-09-09T03:31:05+0900 /Users/goos/.moai/todo/youtube-4ee46d07
+2026-08-24T01:20:49+0900 /Users/goos/.moai/todo/t203-probe-d7a16ea2
+2026-08-23T20:23:23+0900 /Users/goos/.moai/todo/proj-325ca0b6
+
+$ du -sh ~/.moai/todo
+ 96K	/Users/goos/.moai/todo
+
+$ find ~/.moai/todo -mindepth 1 -maxdepth 1 -type d -name '001-*' | wc -l
+       1
+
+$ moai gtd history t542
+t542	archived	picked	landing=-	[리드 발행 2026-09-07 · 운영자 승인 · t536 파생] ~/.moai/todo 의 orphan 큐 디렉터리 343개(11MB) 정리 — 유입은 이미
+
+$ gh issue view 1708 --json number,state,title,createdAt,author
+#1708 [CLOSED] Security Guardian weak-crypto fires on the word md5 in prose — verdicts recording file-identity checks are reported as findings — GoosLab @ 2026-09-12T23:56:42Z
+
+$ moai gtd history --limit 0 | awk -F'\t' '{print $2"/"$3}' | sort | uniq -c
+ 372 archived/picked
+ 116 archived/queued
+
+$ moai gtd history --limit 0 | wc -l ; grep -c "landing=-" ; grep -cE "landing=[0-9a-f]{7,}" ; grep -c "landing=ref-head"
+488 rows total / 414 landing=- / 73 landing=<sha> / 1 landing=ref-head
