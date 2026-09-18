@@ -1,5 +1,0 @@
---- FAIL: TestSnapshotRevocationAndDuplicateDiscovery (0.00s)
-    registry_test.go:158: revoked snapshot consumed
-FAIL
-FAIL	github.com/modu-ai/moai-adk/internal/codextools	0.347s
-FAIL

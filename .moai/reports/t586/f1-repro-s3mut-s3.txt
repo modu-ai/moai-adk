@@ -1,4 +1,0 @@
-=== RUN   TestPermissionModeNormalizeAcceptEdits
-    profile_setup_nested_test.go:86: profile_setup.go must normalize acceptEdits permission mode to empty (REQ-WC10-014)
---- FAIL: TestPermissionModeNormalizeAcceptEdits (0.00s)
-FAIL

@@ -8,6 +8,12 @@ added_in: "v3.1"
 
 {{< new-badge v3.1 >}}
 
+{{< callout type="warning" >}}
+`/moai goal --auto "<任务>"` 与下文的条件声明循环是两条独立路径。它只把自然语言保存为 `mission_mode=auto`、`state=draft`，仍需批准。若真实供应方的持久运行能力尚未得到证明，则采用 `active-session-only`。[命令参考](/zh/utility-commands/moai-goal#auto-任务模式)
+{{< /callout >}}
+
+Auto 任务获批后，`goal run --supervise` 会在有界循环内推进封存计划。受监督的 Git 效果必须分别提供 `--card-worktree` 与 `--develop-worktree`；旧 `--repo` 会以零效果拒绝。`--recommend` 不授予权限，每项效果都必须同时持有与 typed true evidence 绑定的 `0600` governor 决策 receipt 与独立审计 PASS receipt。完成还需要包含合并 ancestry 的 `0600` 完成 receipt，不能仅以动作耗尽为准。未配置的远程与 release provider 会以 `provider_unsupported` 停止。
+
 这是 **条件声明式自治循环**：你只声明结束条件，会话就会在该条件成立之前持续把回合接力下去。每个回合结束时，评估器都会检查条件；条件一旦满足，循环自行停止。你不必在每一步按下"继续"。
 
 {{< callout type="info" >}}

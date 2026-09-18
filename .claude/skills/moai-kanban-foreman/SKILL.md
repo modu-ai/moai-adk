@@ -14,7 +14,7 @@ when_to_use: >
 
 license: Apache-2.0
 compatibility: Designed for Claude Code
-allowed-tools: Read, Grep, Glob, Bash(moai todo:*), Bash(git status:*), Bash(git log:*), Bash(git rev-parse:*), Bash(git diff:*), Bash(git show:*)
+allowed-tools: Read, Grep, Glob, Bash(moai gtd:*), Bash(git status:*), Bash(git log:*), Bash(git rev-parse:*), Bash(git diff:*), Bash(git show:*)
 disallowed-tools: AskUserQuestion
 user-invocable: false
 metadata:
@@ -32,7 +32,7 @@ progressive_disclosure:
 
 One unattended pass of the kanban foreman: watch the backlog queue, dispatch
 the next operator-picked card to an isolated worker, collect completion
-evidence, report. The queue surface is `moai todo`; the dispatch protocol and
+evidence, report. The queue surface is `moai gtd`; the dispatch protocol and
 card classes live in the kanban dispatch rule (`.claude/rules/moai/workflow/kanban-dispatch.md`).
 
 ## Running unattended
@@ -59,8 +59,8 @@ not something this loop can do for itself.
 ## Boundaries (hard)
 
 1. **The operator admits and picks work.** Only backlog items whose state is
-   already `picked` are dispatchable. Never run `moai todo add`; never run
-   `moai todo next <n>` — that mutation is the operator's pick. Never invent,
+   already `picked` are dispatchable. Never run `moai gtd add`; never run
+   `moai gtd next <n>` — that mutation is the operator's pick. Never invent,
    reword, or reorder cards. An empty queue is a legitimate state: say so and
    idle.
 2. **No approval gate is answered on the operator's behalf.** When a card's
@@ -136,7 +136,7 @@ not something this loop can do for itself.
    line, like each scheduled wakeup, is a prompt to run this same idempotent
    iteration — an iteration that finds nothing to do ends quickly.
 
-2. **Read the queue.** `moai todo list --json` (lock-free). A missing queue
+2. **Read the queue.** `moai gtd list --json` (lock-free). A missing queue
    file is an empty queue, never an error. Records carry `id`, `text`,
    `spec_id`, and `state` (`queued` | `picked` | `dropped`).
 
@@ -168,7 +168,7 @@ not something this loop can do for itself.
    residual risk; commit by explicit pathspec; never push.
 
 6. **Collect on evidence.** When the worker returns, read the evidence file
-   it names. Advance the card — `moai todo done <t-id>` — only when the
+   it names. Advance the card — `moai gtd done <t-id>` — only when the
    evidence shows the work complete: verbatim passing output present, gaps
    named. A missing, unreadable, or stale evidence file is a gap: the card
    stays `picked`, the report says why, and the card is not re-dispatched

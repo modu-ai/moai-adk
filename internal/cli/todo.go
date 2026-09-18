@@ -208,7 +208,7 @@ act (add), and picking the next card is the operator's act too (next <n>).
 Mutations serialize on a sibling cross-process lock; reads are lock-free.
 
 A bare invocation renders the queue, which is the form the skill surface and
-workflows/todo.md both document; ` + "`moai todo list`" + ` remains valid and prints the
+workflows/gtd.md both document; ` + "`moai todo list`" + ` remains valid and prints the
 same thing. A single unknown token stays an error (a mistyped verb must not
 become a card), while a phrase of two or more words falls through to add:
 ` + "`moai todo fix the flaky gate`" + ` adds that card. A one-word card therefore

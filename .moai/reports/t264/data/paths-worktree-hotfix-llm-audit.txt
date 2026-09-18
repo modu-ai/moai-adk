@@ -1,2 +1,0 @@
-internal/config/audit_registry.go
-internal/config/audit_test.go

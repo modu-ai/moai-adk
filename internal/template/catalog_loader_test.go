@@ -70,8 +70,8 @@ func TestLoadCatalog(t *testing.T) {
 	// moai-kanban-foreman added (kanban foreman loop-iteration skill driving the
 	// bare /loop backlog dispatch cycle, core.skills), net +1 = 44.
 	// moai-domain-design-dna added (reference-design deconstruction + generation
-	// domain skill, core.skills), net +1 = 45.
-	const expectedTotal = 45
+	// domain skill, core.skills, and mission-governor), net +2 = 46.
+	const expectedTotal = 46
 	if len(all) != expectedTotal {
 		t.Errorf("AllEntries() returned %d entries, want %d", len(all), expectedTotal)
 	}

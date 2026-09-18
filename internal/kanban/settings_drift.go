@@ -219,20 +219,52 @@ func SettingsDriftDir(root string) string {
 	return filepath.Join(root, ".moai", "state", SettingsDriftDirName)
 }
 
+// SettingsDriftRowStatus names what a ledger row RECORDS. Card t765: the
+// ledger held detections and nothing else, so every hit read as still open
+// however long ago it was dealt with — the reader could not tell a live
+// anomaly from one a lane cleaned up minutes later.
+type SettingsDriftRowStatus string
+
+const (
+	// SettingsDriftRowDetected — drift was found and preserved.
+	SettingsDriftRowDetected SettingsDriftRowStatus = "detected"
+	// SettingsDriftRowResolved — a later measurement of the SAME worktree
+	// found it clean, closing the detection the row names.
+	SettingsDriftRowResolved SettingsDriftRowStatus = "resolved"
+)
+
 // settingsDriftLedgerRow is one ledger line. Contents of the drifted file are
 // never recorded — only its path, hash and size — because it can hold secrets.
+//
+// `sha256` and `size_bytes` are omitempty because a resolution row measures
+// nothing about the file: it neither reads nor hashes it, and a zero-valued
+// digest printed there would read as a digest of the restored content. A
+// detection row always carries both (it cannot reach the append without having
+// hashed the bytes), so the tag changes no detection output.
+//
+// Rows written before t765 carry no `status` at all. That absence is the
+// legacy encoding of `detected`, and it is read as such — see
+// lastSettingsDriftRowForWorktree.
 type settingsDriftLedgerRow struct {
-	MeasuredAt    string `json:"measured_at"`
-	Card          string `json:"card"`
-	Branch        string `json:"branch"`
-	Worktree      string `json:"worktree"`
-	SourcePath    string `json:"source_path"`
-	PreservedPath string `json:"preserved_path"`
-	SHA256        string `json:"sha256"`
-	SizeBytes     int64  `json:"size_bytes"`
-	MatchCount    int    `json:"match_count"`
-	Bypassed      bool   `json:"bypassed"`
-	PreserveError string `json:"preserve_error,omitempty"`
+	MeasuredAt    string                 `json:"measured_at"`
+	Card          string                 `json:"card"`
+	Branch        string                 `json:"branch"`
+	Worktree      string                 `json:"worktree"`
+	SourcePath    string                 `json:"source_path"`
+	PreservedPath string                 `json:"preserved_path,omitempty"`
+	SHA256        string                 `json:"sha256,omitempty"`
+	SizeBytes     int64                  `json:"size_bytes,omitempty"`
+	MatchCount    int                    `json:"match_count"`
+	Bypassed      bool                   `json:"bypassed"`
+	PreserveError string                 `json:"preserve_error,omitempty"`
+	Status        SettingsDriftRowStatus `json:"status,omitempty"`
+
+	// ResolvesSHA256 and ResolvesMeasuredAt are the join. They are present on
+	// a resolution row only, and they name the detection it closes by the two
+	// values that identify one in this file. Without them a reader with two
+	// detections and one resolution cannot say which was closed.
+	ResolvesSHA256     string `json:"resolves_sha256,omitempty"`
+	ResolvesMeasuredAt string `json:"resolves_measured_at,omitempty"`
 }
 
 // AssessSettingsDrift resolves the target tree, runs the predicate, and on a
@@ -279,6 +311,13 @@ func AssessSettingsDrift(p SettingsDriftParams) SettingsDriftResult {
 		result.Status = SettingsDriftDetected
 	} else {
 		result.Status = SettingsDriftClean
+		// A clean measurement is the only evidence a detection is over, and
+		// until t765 it was thrown away. Recording it is an APPEND like every
+		// other row: the detection it closes is left exactly as written, and
+		// nothing about the file on disk is touched, read or restored.
+		if err := recordSettingsDriftResolution(p, worktree); err != nil {
+			result.PreserveErr = err
+		}
 		return result
 	}
 
@@ -326,6 +365,7 @@ func AssessSettingsDrift(p SettingsDriftParams) SettingsDriftResult {
 		MatchCount:    count,
 		Bypassed:      p.Bypassed,
 		PreserveError: errText(preserveErr),
+		Status:        SettingsDriftRowDetected,
 	}); ledgerErr != nil && result.PreserveErr == nil {
 		result.PreserveErr = ledgerErr
 	}
@@ -450,6 +490,89 @@ func preserveSettingsDriftCopy(root, card, branch string, data []byte, sum strin
 		return path, nil
 	}
 	return "", fmt.Errorf("settings-drift: could not find a free name for %s in %s", base, dir)
+}
+
+// recordSettingsDriftResolution appends ONE resolution row when — and only
+// when — the most recent row naming this worktree is an unresolved detection.
+//
+// Both halves of that condition are load-bearing:
+//
+//   - Only when there is something to resolve. Every `acquire` runs this gate,
+//     and almost every tree is clean, so a row written on each clean pass
+//     would bury the detections it sits among under its own volume.
+//
+//   - Only the most recent row, so a resolution is not written again on every
+//     later pass. The resolution itself is the stop condition.
+//
+// The ledger is READ here to make that decision, and only appended to — no row
+// is edited, none is removed, and a detection's preserved copy is untouched.
+// A missing ledger means there has never been a detection: nothing to resolve,
+// and nothing is created, so a project that has never drifted keeps an empty
+// state directory.
+//
+// A read failure is returned rather than swallowed, but it reaches the caller
+// as PreserveErr, which by construction cannot change the verdict — the
+// verdict is the match count, and it is already `clean`.
+func recordSettingsDriftResolution(p SettingsDriftParams, worktree string) error {
+	open, found, err := lastSettingsDriftRowForWorktree(p.Root, worktree)
+	if err != nil || !found {
+		return err
+	}
+	if open.Status == SettingsDriftRowResolved {
+		return nil
+	}
+	return appendSettingsDriftLedger(p.Root, settingsDriftLedgerRow{
+		MeasuredAt: time.Now().UTC().Format(time.RFC3339Nano),
+		Card:       p.Card,
+		Branch:     p.Branch,
+		Worktree:   worktree,
+		SourcePath: filepath.Join(worktree, filepath.FromSlash(SettingsDriftWatchedPath)),
+		// The measured count, which is what made this a resolution. Not a
+		// default: a `clean` verdict IS a count of zero.
+		MatchCount:         0,
+		Status:             SettingsDriftRowResolved,
+		ResolvesSHA256:     open.SHA256,
+		ResolvesMeasuredAt: open.MeasuredAt,
+	})
+}
+
+// lastSettingsDriftRowForWorktree returns the final row naming worktree.
+//
+// An absent `status` is read as `detected`. Every row written before t765 has
+// no such field — all five in this repository's own ledger — and reading the
+// absence as anything else would leave them permanently unresolvable.
+//
+// A line that does not parse is skipped rather than fatal: this file is
+// appended to by concurrent lanes, and one torn or hand-edited line must not
+// stop the rest of the record from being read.
+func lastSettingsDriftRowForWorktree(root, worktree string) (settingsDriftLedgerRow, bool, error) {
+	path := filepath.Join(SettingsDriftDir(root), SettingsDriftLedgerName)
+	data, err := os.ReadFile(path) // #nosec G304 -- path is <root>/.moai/state/settings-drift/ledger.jsonl
+	if err != nil {
+		if errors.Is(err, os.ErrNotExist) {
+			return settingsDriftLedgerRow{}, false, nil
+		}
+		return settingsDriftLedgerRow{}, false, fmt.Errorf("settings-drift: read %s: %w", path, err)
+	}
+	var last settingsDriftLedgerRow
+	found := false
+	for _, line := range strings.Split(string(data), "\n") {
+		if strings.TrimSpace(line) == "" {
+			continue
+		}
+		var row settingsDriftLedgerRow
+		if json.Unmarshal([]byte(line), &row) != nil {
+			continue
+		}
+		if row.Worktree != worktree {
+			continue
+		}
+		if row.Status == "" {
+			row.Status = SettingsDriftRowDetected
+		}
+		last, found = row, true
+	}
+	return last, found, nil
 }
 
 // appendSettingsDriftLedger appends one JSON line. Append mode, never a

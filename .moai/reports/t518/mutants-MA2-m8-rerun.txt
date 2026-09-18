@@ -1,3 +1,0 @@
-M8 rerun after guard: exit=1 verdict=CAUGHT
-   RED: TestModality_EveryEnglishPrefixIsStillJudged
-restore check: exit=0

@@ -61,7 +61,7 @@ Below this threshold the orchestrator drives serial directly (single sequential 
 
 - **Worktree-isolated writer fan-out** — each leaf worker is spawned into its own worktree-isolated branch so write surfaces do not race (`MoAI does not run two write-capable agents concurrently` still binds; leaf workers are sequenced per milestone).
 - **Per-milestone Context-Folding** — REUSE existing primitives only: `/compact` + file-redirect to machine-local scratch + export of the deciding lines to the tracked `.moai/reports/<card-id>/` + `progress.md` §E.2 fold-row append. No new Go mechanism, hook, or CLI. See § Context-Folding Procedure below.
-- **Peer cross-validation orchestration** — when a leaf worker marks an AC PASS at Tier M/L, manager-lead spawns a second read-only `Agent(general-purpose)` (NOT the author, with `tools:` omitting Write/Edit/NotebookEdit) to re-run the acceptance.md §D Given-When-Then commands and return PASS / PARTIAL / FAIL. Tier S ACs skip peer cross-validation.
+- **Peer cross-validation orchestration** — when a leaf worker marks an AC PASS at Tier M/L, manager-lead spawns a second read-only `Agent(general-purpose)` (NOT the author, with `tools:` omitting Write/Edit/NotebookEdit — which bars authoring, NOT writing as such, since the `Bash` this worker needs for the §D commands reaches the tree) to re-run the acceptance.md §D Given-When-Then commands and return PASS / PARTIAL / FAIL. Tier S ACs skip peer cross-validation.
 - **Schema-driven fan-out reduce** — when ≥3 explorer agents are warranted (e.g. multi-domain research ahead of M1), consume the existing `plan-research-fanout` skill's fixed-heading markdown schema verbatim (do NOT re-derive or author a parallel schema). Cross-explorer contradictions are annotated as a named section in the merged result, never silently discarded.
 - **Background parallel dispatch (lead posture)** — inside a -k/-f lead session, parallelizable work (read-only verification batches, report cross-checks, per-card SPEC authoring the lead itself holds) is dispatched as background `Agent()` spawns (≤10 concurrent, UNNAMED — GLM hazard above) so the user dialogue never waits on it.
 - **Blocker-report returns** — manager-lead NEVER invokes the orchestrator-exclusive user-question tool. On unresolved input, on peer FAIL/PARTIAL that the author contests, on `/compact` unavailable in subagent context, or when **the delegated work satisfies neither role's entry conditions** (below), return a structured blocker report per `.claude/rules/moai/core/agent-common-protocol.md` § Blocker Report Format; the orchestrator runs the AskUser round and re-delegates.
@@ -178,7 +178,7 @@ Post-fold invariant: post-fold token usage < pre-fold usage AND < the model-spec
 
 At Tier M/L milestones, every AC the author leaf worker marks PASS is re-run by a second read-only `Agent(general-purpose)`:
 
-- Spawned with `tools:` omitting Write/Edit/NotebookEdit (read-only enforcement; the deprecated spawn-time `mode` parameter is ignored).
+- Spawned with `tools:` omitting Write/Edit/NotebookEdit (the deprecated spawn-time `mode` parameter is ignored, so the tool list is the only channel). Omitting those three is necessary but NOT sufficient for read-only: `Bash`, a write-capable MCP tool, and `Agent` each still reach the working tree — criterion and per-path detail in `.claude/rules/moai/development/agent-authoring.md` § Tool Permissions.
 - NOT the author of the work — a fresh-context second worker.
 - Re-runs the acceptance.md §D Given-When-Then commands for that AC verbatim; returns PASS / PARTIAL / FAIL.
 
@@ -228,7 +228,7 @@ The following acts are retained by the lead session (or the operator) exclusivel
 1. **Final merge approval** — only the lead session records `LEAD-MERGE-APPROVED <PR-number-or-SHA>`.
 2. **Final PASS/FAIL verdicts** — the `FINAL VERDICT:` token is forbidden in deputy output; first-pass reads carry `RECOMMEND:` only. The verdict's home is the lead, never the executor (`kanban-dispatch.md` § The verdict's home).
 3. **Operator gates** — the orchestrator-exclusive user-question tool stays forbidden (the NOT-for clause in the frontmatter); the deputy returns blocker reports, never prompts.
-4. **Queue mutations** — any `moai todo` add / pick / done / edit / drop. Deputy dispatch is limited to ALREADY-PICKED cards; admission and closure are operator and lead acts (`kanban-dispatch.md` § Entry into the board is an operator act).
+4. **Queue mutations** — any `moai gtd` add / pick / done / edit / drop. Deputy dispatch is limited to ALREADY-PICKED cards; admission and closure are operator and lead acts (`kanban-dispatch.md` § Entry into the board is an operator act).
 5. **CodeRabbit discipline adjudication** — deciding slot-wait outcomes belongs to the lead; the deputy reports the two-condition read and nothing more.
 6. **Cross-session dispute coordination** — facts may be relayed by the deputy; the decision in a dispute belongs to the lead.
 

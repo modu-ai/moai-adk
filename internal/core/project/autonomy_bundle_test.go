@@ -9,7 +9,9 @@ package project
 // wires opts.AutonomyTier into the deployed settings at init time, reusing the
 // existing core (EffectiveTierWithGates + TierDefaultMode + RenderTierPermissions).
 //
-// REQ-007 invariant: semi-auto / unset → ZERO behavior delta (no file written).
+// REQ-004 invariant (SPEC-AUT-PERMMODES-001, re-scoped from SPEC-AUTONOMY-TIERS-001
+// REQ-007): semi-auto / unset writes ONLY the USER-scope defaultMode="acceptEdits"
+// record — the PROJECT file and every other deployed file stay byte-identical.
 // REQ-006 invariant: init MUST NOT default to fully-autonomous.
 
 import (
@@ -22,8 +24,8 @@ import (
 )
 
 // seedTemplateProjectSettings writes a PROJECT-scope settings.json shaped like
-// the deployed template: an allow/ask/deny block with NO defaultMode (semi-auto
-// baseline). The zero-delta assertions compare against this seed verbatim.
+// the deployed template: an allow/ask/deny block with NO defaultMode. The
+// bounded-delta assertions compare against this seed verbatim.
 func seedTemplateProjectSettings(t *testing.T, path string) {
 	t.Helper()
 	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
@@ -83,10 +85,29 @@ func TestApplyAutonomyTierBundle_AutomaticWritesUserDefaultModeAuto(t *testing.T
 	}
 }
 
-// TestApplyAutonomyTierBundle_SemiAutoIsZeroDelta: REQ-007 — semi-auto MUST pay
-// zero behavior delta. No USER-scope file is created, and the PROJECT file is
-// byte-identical to the template seed.
-func TestApplyAutonomyTierBundle_SemiAutoIsZeroDelta(t *testing.T) {
+// readPermissionsBlock parses the permissions object at path into its raw
+// JSON keys so the bounded-delta tests can assert EXACTLY which keys the
+// bundle wrote (REQ-004: the sanctioned delta is one key in one file).
+func readPermissionsBlock(t *testing.T, path string) map[string]json.RawMessage {
+	t.Helper()
+	body, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatalf("read %s: %v", path, err)
+	}
+	var wrap struct {
+		Permissions map[string]json.RawMessage `json:"permissions"`
+	}
+	if err := json.Unmarshal(body, &wrap); err != nil {
+		t.Fatalf("unmarshal %s: %v\nbody: %s", path, err, body)
+	}
+	return wrap.Permissions
+}
+
+// TestApplyAutonomyTierBundle_SemiAutoIsBoundedDelta: REQ-004 of
+// SPEC-AUT-PERMMODES-001 (re-scoped) — semi-auto writes ONLY the USER-scope
+// defaultMode="acceptEdits" record: the USER permissions block carries exactly
+// that one key, and the PROJECT file is byte-identical to the template seed.
+func TestApplyAutonomyTierBundle_SemiAutoIsBoundedDelta(t *testing.T) {
 	dir := t.TempDir()
 	userPath := filepath.Join(dir, "home", ".claude", "settings.json")
 	projectPath := filepath.Join(dir, "proj", ".claude", "settings.json")
@@ -97,22 +118,27 @@ func TestApplyAutonomyTierBundle_SemiAutoIsZeroDelta(t *testing.T) {
 		t.Fatalf("ApplyAutonomyTierBundle: %v", err)
 	}
 
-	// USER file MUST NOT be created (zero delta — no defaultMode write).
-	if _, err := os.Stat(userPath); !os.IsNotExist(err) {
-		t.Errorf("semi-auto MUST NOT create USER settings.json (zero delta): stat err=%v", err)
+	// USER permissions block carries EXACTLY the acceptEdits defaultMode —
+	// no allow/ask/deny keys may leak into USER scope (bounded delta).
+	perms := readPermissionsBlock(t, userPath)
+	if len(perms) != 1 {
+		t.Errorf("semi-auto USER permissions must carry EXACTLY one key (bounded delta), got %d: %v", len(perms), perms)
+	}
+	if got := readPermissionsDefaultMode(t, userPath); got != "acceptEdits" {
+		t.Errorf("semi-auto USER defaultMode = %q, want %q (SPEC-AUT-PERMMODES-001 REQ-004)", got, "acceptEdits")
 	}
 	// PROJECT file MUST be byte-identical to the seed.
 	projectAfter, _ := os.ReadFile(projectPath)
 	if string(projectBefore) != string(projectAfter) {
-		t.Errorf("semi-auto MUST NOT modify PROJECT settings (zero delta):\nbefore: %s\nafter:  %s",
+		t.Errorf("semi-auto MUST NOT modify PROJECT settings (bounded delta):\nbefore: %s\nafter:  %s",
 			projectBefore, projectAfter)
 	}
 }
 
-// TestApplyAutonomyTierBundle_EmptyIsZeroDelta: unset tier (the init default)
-// resolves to semi-auto and MUST pay zero delta — byte-identical to an explicit
-// semi-auto selection.
-func TestApplyAutonomyTierBundle_EmptyIsZeroDelta(t *testing.T) {
+// TestApplyAutonomyTierBundle_EmptyIsBoundedDelta: unset tier (the init
+// default) resolves to semi-auto and MUST pay the SAME bounded delta —
+// USER defaultMode=acceptEdits only, PROJECT byte-identical.
+func TestApplyAutonomyTierBundle_EmptyIsBoundedDelta(t *testing.T) {
 	dir := t.TempDir()
 	userPath := filepath.Join(dir, "home", ".claude", "settings.json")
 	projectPath := filepath.Join(dir, "proj", ".claude", "settings.json")
@@ -122,12 +148,16 @@ func TestApplyAutonomyTierBundle_EmptyIsZeroDelta(t *testing.T) {
 	if err := ApplyAutonomyTierBundle(dir, userPath, projectPath, ""); err != nil {
 		t.Fatalf("ApplyAutonomyTierBundle: %v", err)
 	}
-	if _, err := os.Stat(userPath); !os.IsNotExist(err) {
-		t.Errorf("empty tier MUST NOT create USER settings.json (zero delta): stat err=%v", err)
+	perms := readPermissionsBlock(t, userPath)
+	if len(perms) != 1 {
+		t.Errorf("empty tier USER permissions must carry EXACTLY one key (bounded delta), got %d: %v", len(perms), perms)
+	}
+	if got := readPermissionsDefaultMode(t, userPath); got != "acceptEdits" {
+		t.Errorf("empty tier USER defaultMode = %q, want %q (SPEC-AUT-PERMMODES-001 REQ-004)", got, "acceptEdits")
 	}
 	projectAfter, _ := os.ReadFile(projectPath)
 	if string(projectBefore) != string(projectAfter) {
-		t.Errorf("empty tier MUST NOT modify PROJECT settings (zero delta):\nbefore: %s\nafter:  %s",
+		t.Errorf("empty tier MUST NOT modify PROJECT settings (bounded delta):\nbefore: %s\nafter:  %s",
 			projectBefore, projectAfter)
 	}
 }

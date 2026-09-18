@@ -19,24 +19,24 @@ func TestTodoSkillDocumentsHistoryVerb(t *testing.T) {
 	if err != nil {
 		t.Fatalf("resolve repo root: %v", err)
 	}
-	live := filepath.Join(root, ".claude", "skills", "moai", "workflows", "todo.md")
-	mirror := filepath.Join(root, "internal", "template", "templates", ".claude", "skills", "moai", "workflows", "todo.md")
+	live := filepath.Join(root, ".claude", "skills", "moai", "workflows", "gtd.md")
+	mirror := filepath.Join(root, "internal", "template", "templates", ".claude", "skills", "moai", "workflows", "gtd.md")
 
 	liveDoc, err := os.ReadFile(live)
 	if err != nil {
-		t.Fatalf("read live todo.md: %v", err)
+		t.Fatalf("read live gtd.md: %v", err)
 	}
 	mirrorDoc, err := os.ReadFile(mirror)
 	if err != nil {
-		t.Fatalf("read template mirror todo.md: %v", err)
+		t.Fatalf("read template mirror gtd.md: %v", err)
 	}
 
 	for _, tc := range []struct {
 		name string
 		doc  []byte
 	}{{"live", liveDoc}, {"template mirror", mirrorDoc}} {
-		if n := strings.Count(string(tc.doc), "moai todo history"); n < 1 {
-			t.Errorf("%s todo.md mentions `moai todo history` %d times, want >= 1", tc.name, n)
+		if n := strings.Count(string(tc.doc), "moai gtd history"); n < 1 {
+			t.Errorf("%s gtd.md mentions `moai gtd history` %d times, want >= 1", tc.name, n)
 		}
 	}
 
@@ -45,7 +45,7 @@ func TestTodoSkillDocumentsHistoryVerb(t *testing.T) {
 	neutral := regexp.MustCompile(`SPEC-[A-Z0-9-]+-[0-9]{3}|REQ-[A-Z]+-[0-9]{3}|20[0-9]{2}-[0-9]{2}-[0-9]{2}|\b[0-9a-f]{9,40}\b`)
 	for i, line := range strings.Split(string(mirrorDoc), "\n") {
 		if hit := neutral.FindString(line); hit != "" {
-			t.Errorf("template mirror todo.md:%d carries internal content %q", i+1, hit)
+			t.Errorf("template mirror gtd.md:%d carries internal content %q", i+1, hit)
 		}
 	}
 }

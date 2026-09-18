@@ -1,3 +1,0 @@
-internal/kanban/board_lock_join_test.go
-internal/kanban/board_recover.go
-internal/kanban/board_store.go

@@ -45,7 +45,7 @@ func TestAgentWiringQuestion_InInitSetWithClosedOptionSet(t *testing.T) {
 	for _, opt := range q.Options {
 		values = append(values, opt.Value)
 	}
-	if want := []string{"claude", "codex", "both"}; !slices.Equal(values, want) {
+	if want := []string{"claude", "gpt", "both"}; !slices.Equal(values, want) {
 		t.Errorf("agent_wiring option values = %v, want %v (the --llm closed set, REQ-IHP-011)", values, want)
 	}
 	if q.Default != "claude" {
@@ -126,7 +126,7 @@ func TestAgentWiringQuestion_EnglishSourceTextPresent(t *testing.T) {
 // after the wizard returns.
 func TestSaveAnswer_CapturesAgentWiring(t *testing.T) {
 	t.Parallel()
-	for _, value := range []string{"claude", "codex", "both"} {
+	for _, value := range []string{"claude", "gpt", "both"} {
 		result := &WizardResult{}
 		locale := "en"
 		saveAnswer("agent_wiring", value, result, &locale)

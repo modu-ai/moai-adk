@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"errors"
 	"github.com/modu-ai/moai-adk/internal/config"
+	"github.com/spf13/cobra"
 	"os"
 	"path/filepath"
 	"strings"
@@ -153,10 +154,10 @@ func TestCGEntryGuardRunsBeforeLaunchAndSpawn(t *testing.T) {
 	inTmuxFn = func() bool { return true }
 	spawnLookPath = func(string) (string, error) { return "/mock/moai", nil }
 	tmuxSpawnFn = func(string, string) (string, error) { spawns++; return "%1", nil }
-	for _, name := range []string{"cc", "glm", "gpt"} {
+	for _, name := range []string{"cc", "glm"} {
 		for _, args := range [][]string{{"--model", "opus"}, {"--continue"}, {"--resume", "session"}, {"--spawn"}, {"-w"}, {"-k", "-p"}, {"-f", "-p"}} {
 			var err error
-			cmd := newGPTCommand(gptCommandServices{Launch: launch})
+			cmd := &cobra.Command{}
 			cmd.SetOut(&bytes.Buffer{})
 			cmd.SetErr(&bytes.Buffer{})
 			switch name {
@@ -164,8 +165,6 @@ func TestCGEntryGuardRunsBeforeLaunchAndSpawn(t *testing.T) {
 				err = runCC(cmd, args)
 			case "glm":
 				err = runGLM(cmd, args)
-			case "gpt":
-				err = cmd.RunE(cmd, args)
 			}
 			if !errors.Is(err, config.ErrLegacyCG) {
 				t.Fatalf("%s %v: expected legacy guard, got %v (launch=%d spawn=%d)", name, args, err, launches, spawns)
@@ -180,7 +179,7 @@ func TestCGEntryGuardRunsBeforeLaunchAndSpawn(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(root, ".moai/config/sections/llm.yaml"), []byte("llm: {team_mode: claude}\n"), 0600); err != nil {
 		t.Fatal(err)
 	}
-	cmd := newGPTCommand(gptCommandServices{Launch: launch})
+	cmd := &cobra.Command{}
 	cmd.SetOut(&bytes.Buffer{})
 	cmd.SetErr(&bytes.Buffer{})
 	if err := runCC(cmd, []string{"--model", "opus"}); err != nil {

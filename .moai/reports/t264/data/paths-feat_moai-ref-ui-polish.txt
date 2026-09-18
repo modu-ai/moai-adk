@@ -1,3 +1,0 @@
-.claude/skills/moai-ref-ui-polish/SKILL.md
-internal/template/catalog.yaml
-internal/template/templates/.claude/skills/moai-ref-ui-polish/SKILL.md

@@ -1,6 +1,0 @@
-=== RUN   TestReasoningWithoutPublicCompletionFailsClosed
-    reasoning_roundtrip_test.go:150: reasoning-only output reported success
---- FAIL: TestReasoningWithoutPublicCompletionFailsClosed (0.00s)
-FAIL
-FAIL	github.com/modu-ai/moai-adk/internal/gateway/translate	0.331s
-FAIL

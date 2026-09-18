@@ -142,12 +142,17 @@ func RunWorktreeBaseAlignment(projectRoot string) map[string]any {
 // to false, so an unreadable repository is treated as "not the primary
 // checkout" and the step no-ops.
 func worktreeBaseBranchInPrimaryCheckoutReal() bool {
-	gitDir, err1 := exec.Command("git", "rev-parse", "--git-dir").Output()
-	commonDir, err2 := exec.Command("git", "rev-parse", "--git-common-dir").Output()
-	if err1 != nil || err2 != nil {
+	// One subprocess answers both: rev-parse prints each requested path on its
+	// own line, in argument order.
+	out, err := exec.Command("git", "rev-parse", "--git-dir", "--git-common-dir").Output()
+	if err != nil {
 		return false
 	}
-	return strings.TrimSpace(string(gitDir)) == strings.TrimSpace(string(commonDir))
+	gitDir, commonDir, ok := strings.Cut(strings.TrimSpace(string(out)), "\n")
+	if !ok {
+		return false
+	}
+	return strings.TrimSpace(gitDir) == strings.TrimSpace(commonDir)
 }
 
 // worktreeBaseBranchReadConfigReal reads the configured value from the

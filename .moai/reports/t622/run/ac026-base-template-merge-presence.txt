@@ -1,4 +1,0 @@
-ac026-base-template-skill.md:1
-ac026-base-template-sync.md:1
-ac026-base-template-qgc-flags.md:1
-ac026-base-template-dl.md:2

@@ -1,1 +1,0 @@
-internal/template/templates/.codex/agents/moai/manager-git.toml

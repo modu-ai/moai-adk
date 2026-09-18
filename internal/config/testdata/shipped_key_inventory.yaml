@@ -499,7 +499,7 @@
   evidence: reader
 - path: "git_strategy.manual.workflow"
   class: W
-  evidence: reader
+  evidence: config.LoadGitFlowIntegrationConfig + config.ClassifyWorkflowDisposition (validated 4-flow reader, SPEC-GITSTRAT-WORKFLOW-READER-001)
 - path: "git_strategy.mode"
   class: W
   evidence: reader
@@ -556,7 +556,7 @@
   evidence: reader
 - path: "git_strategy.personal.workflow"
   class: W
-  evidence: reader
+  evidence: config.LoadGitFlowIntegrationConfig + config.ClassifyWorkflowDisposition (validated 4-flow reader, SPEC-GITSTRAT-WORKFLOW-READER-001)
 - path: "git_strategy.provider"
   class: W
   evidence: reader
@@ -622,7 +622,7 @@
   evidence: reader
 - path: "git_strategy.team.workflow"
   class: W
-  evidence: reader
+  evidence: config.LoadGitFlowIntegrationConfig + config.ClassifyWorkflowDisposition (validated 4-flow reader, SPEC-GITSTRAT-WORKFLOW-READER-001)
 - path: "git_strategy.worktree_base_branch"
   class: W
   evidence: reader
@@ -891,6 +891,9 @@
 - path: "llm.claude_bin"
   class: W
   evidence: reader
+- path: "llm.harness"
+  class: W
+  evidence: reader
 - path: "llm.glm.base_url"
   class: W
   evidence: reader
@@ -1011,6 +1014,12 @@
 - path: "llm.profiles.high.manager-lead.model"
   class: W
   evidence: reader
+- path: "llm.profiles.high.mission-governor.effort"
+  class: W
+  evidence: reader
+- path: "llm.profiles.high.mission-governor.model"
+  class: W
+  evidence: reader
 - path: "llm.profiles.high.manager-develop.effort"
   class: W
   evidence: reader
@@ -1083,6 +1092,12 @@
 - path: "llm.profiles.low.manager-lead.model"
   class: W
   evidence: reader
+- path: "llm.profiles.low.mission-governor.effort"
+  class: W
+  evidence: reader
+- path: "llm.profiles.low.mission-governor.model"
+  class: W
+  evidence: reader
 - path: "llm.profiles.low.manager-develop.effort"
   class: W
   evidence: reader
@@ -1153,6 +1168,12 @@
   class: W
   evidence: reader
 - path: "llm.profiles.medium.manager-lead.model"
+  class: W
+  evidence: reader
+- path: "llm.profiles.medium.mission-governor.effort"
+  class: W
+  evidence: reader
+- path: "llm.profiles.medium.mission-governor.model"
   class: W
   evidence: reader
 - path: "llm.profiles.medium.manager-develop.effort"
@@ -2568,6 +2589,12 @@
 - path: "workflow.auto_clear.token_threshold"
   class: W
   evidence: reader
+- path: "workflow.audit.claude.effort"
+  class: W
+  evidence: reader
+- path: "workflow.audit.claude.model"
+  class: W
+  evidence: reader
 - path: "workflow.audit.codex.effort"
   class: W
   evidence: reader
@@ -2584,6 +2611,9 @@
   class: W
   evidence: reader
 - path: "workflow.default_mode"
+  class: W
+  evidence: reader
+- path: "workflow.drift_cache_fill.enabled"
   class: W
   evidence: reader
 - path: "workflow.execution_mode"

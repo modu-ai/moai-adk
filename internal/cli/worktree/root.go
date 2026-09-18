@@ -21,7 +21,7 @@ var WorktreeCmd = &cobra.Command{
 	Aliases: []string{"wt"},
 	Short:   "Git worktree management",
 	GroupID: "tools",
-	Long: `Manage Git worktrees for parallel SPEC development. Supports creating, syncing, removing, and cleaning worktrees.
+	Long: `Manage Git worktrees for parallel SPEC development: sync, remove, clean, recover and done, plus the guard verbs snapshot, verify and restore.
 
 Entering a worktree is the launchers' job, not this command's:
   moai cc -w <name>            work inside the worktree

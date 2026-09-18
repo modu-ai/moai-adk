@@ -7,6 +7,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"regexp"
 	"strings"
 	"sync"
@@ -25,6 +26,10 @@ const (
 )
 
 var ErrInvalid = errors.New("invalid or unauthorized hybrid tool operation")
+
+// ErrArguments is recoverable model input, but remains an ErrInvalid operation.
+// It is returned only after owner, tool and current schema authority checks.
+var ErrArguments = fmt.Errorf("tool arguments do not match the declared schema: %w", ErrInvalid)
 var safeName = regexp.MustCompile(`^[A-Za-z0-9_-]{1,64}$`)
 
 type Binding struct {
@@ -182,7 +187,9 @@ func New(owner Binding, initial []Definition) (*Registry, error) {
 			continue
 		}
 		alias := def.Name
-		if !safeName.MatchString(alias) {
+		// App Server reserves its MCP namespace even for syntactically valid
+		// names. Alias only the native declaration; Claude keeps its public ID.
+		if !safeName.MatchString(alias) || alias == "mcp" || strings.HasPrefix(alias, "mcp__") {
 			sum := sha256.Sum256([]byte(alias))
 			alias = "moai_native_" + hex.EncodeToString(sum[:16])
 		}
@@ -324,7 +331,7 @@ func (r *Registry) Begin(owner Binding, call Call, current []Definition) (Invoca
 		return Invocation{}, ErrInvalid
 	}
 	if e.schema.Validate(args) != nil {
-		return Invocation{}, ErrInvalid
+		return Invocation{}, ErrArguments
 	}
 	canonical, _ := json.Marshal(args)
 	r.calls[call.CallID] = pending{turn: call.TurnID, name: e.definition.Name, digest: e.digest}

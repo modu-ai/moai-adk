@@ -1,6 +1,6 @@
 package cli
 
-// Codex tool-enable redirect guidance. When init runs --llm codex|both against an
+// Codex tool-enable redirect guidance. When init runs --llm gpt|both against an
 // already-initialized project (the --force reinit path), init prints guidance
 // naming `moai tool enable codex` as the additive path BEFORE
 // proceeding. The reinit itself is not blocked — the codex-add *purpose* is
@@ -35,9 +35,9 @@ func TestEmitAddCodexReinitGuidanceConditions(t *testing.T) {
 		alreadyInitialized bool
 		wantGuidance       bool
 	}{
-		{"codex+initialized", agentWiringCodex, true, true},
+		{"codex+initialized", agentWiringGPT, true, true},
 		{"both+initialized", agentWiringBoth, true, true},
-		{"codex+fresh", agentWiringCodex, false, false},
+		{"codex+fresh", agentWiringGPT, false, false},
 		{"claude+initialized", agentWiringClaude, true, false},
 		{"claude+fresh", agentWiringClaude, false, false},
 	}

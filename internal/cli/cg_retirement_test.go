@@ -7,6 +7,7 @@ import (
 	"github.com/modu-ai/moai-adk/internal/config"
 	"github.com/modu-ai/moai-adk/internal/kanban"
 	"github.com/modu-ai/moai-adk/internal/template"
+	"github.com/spf13/cobra"
 	"io"
 	"os"
 	"os/exec"
@@ -37,7 +38,7 @@ func TestCGRetiredEntryAndModeHaveZeroEffects(t *testing.T) {
 		}
 	}
 	for _, mode := range []string{"cg", "claude_glm"} {
-		if err := unifiedLaunchWithGateway("", mode, nil, nil); !errors.Is(err, errCGRetired) {
+		if err := runUnifiedLaunch("", mode, nil); !errors.Is(err, errCGRetired) {
 			t.Fatalf("mode %s: %v", mode, err)
 		}
 	}
@@ -89,10 +90,10 @@ func TestCGRetirementCompleteEntryShapesAndCounters(t *testing.T) {
 	tmuxSpawnFn = func(string, string) (string, error) { spawns++; return "%1", nil }
 	launcherWorktreeMaterialize = func(string, string, string, io.Writer) error { worktrees++; return nil }
 	userHomeDirFn = func() (string, error) { credentialHomes++; return root, nil }
-	shapes := [][]string{nil, {"--model", "opus"}, {"--continue"}, {"--resume", "prior-session"}, {"--spawn"}, {"-w", "owned-feature", "--branch", "existing"}, {"-p", "profile"}, {"-k", "2"}, {"-f", "2"}}
-	for _, name := range []string{"cc", "glm", "gpt"} {
+	shapes := [][]string{nil, {"--model", "opus"}, {"--continue"}, {"--resume", "prior-session"}, {"--spawn"}, {"-w", "owned-feature", "--branch", "existing"}, {"-p", "profile"}, {"-k", "2"}, {"-f"}}
+	for _, name := range []string{"cc", "glm"} {
 		for _, args := range shapes {
-			cmd := newGPTCommand(gptCommandServices{Launch: launch})
+			cmd := &cobra.Command{}
 			cmd.SetOut(&bytes.Buffer{})
 			cmd.SetErr(&bytes.Buffer{})
 			var err error
@@ -102,7 +103,6 @@ func TestCGRetirementCompleteEntryShapesAndCounters(t *testing.T) {
 			case "glm":
 				err = runGLM(cmd, args)
 			default:
-				err = cmd.RunE(cmd, args)
 			}
 			if !errors.Is(err, config.ErrLegacyCG) {
 				t.Fatalf("%s %v: %v", name, args, err)
@@ -125,10 +125,10 @@ func TestCGRetirementCompleteEntryShapesAndCounters(t *testing.T) {
 		t.Fatal(err)
 	}
 	// Valid, explicitly migrated controls traverse the same full entry shapes.
-	for _, name := range []string{"cc", "glm", "gpt"} {
+	for _, name := range []string{"cc", "glm"} {
 		for _, args := range shapes {
 			beforeLaunch, beforeSpawn := launches, spawns
-			cmd := newGPTCommand(gptCommandServices{Launch: launch})
+			cmd := &cobra.Command{}
 			cmd.SetOut(&bytes.Buffer{})
 			cmd.SetErr(&bytes.Buffer{})
 			var err error
@@ -138,7 +138,6 @@ func TestCGRetirementCompleteEntryShapesAndCounters(t *testing.T) {
 			case "glm":
 				err = runGLM(cmd, args)
 			default:
-				err = cmd.RunE(cmd, args)
 			}
 			if err != nil {
 				t.Fatalf("control %s %v: %v", name, args, err)
@@ -148,7 +147,7 @@ func TestCGRetirementCompleteEntryShapesAndCounters(t *testing.T) {
 			}
 		}
 	}
-	if worktrees != 3 {
+	if worktrees != 2 {
 		t.Fatalf("worktree counter not live: %d", worktrees)
 	}
 }

@@ -109,7 +109,7 @@ func warnFreshProfile(w io.Writer, profileName string) {
 			"  persists for this profile.\n", profileName)
 }
 
-// unifiedLaunchDefault centralizes launch logic for supported modes (claude, glm, gpt).
+// unifiedLaunchDefault centralizes launch logic for supported modes (claude, glm).
 //
 // @MX:ANCHOR: [AUTO] step order is load-bearing: root → resolve → mode → EnsureDir → record → exec
 // @MX:REASON: [AUTO] fan_in=3 (runCC/runCG/runGLM via unifiedLaunch). Two orderings are contracts, not
@@ -120,26 +120,19 @@ func warnFreshProfile(w io.Writer, profileName string) {
 // originalProfile; they diverge only when originalProfile is "", where no record happens, so the recorded
 // name always matches the created directory.
 func unifiedLaunchDefault(profileName, modeOverride string, extraArgs []string) error {
-	return unifiedLaunchDefaultWithFactory(profileName, modeOverride, extraArgs, newNativeGatewayBinding)
+	return runUnifiedLaunch(profileName, modeOverride, extraArgs)
 }
 
-func unifiedLaunchDefaultWithFactory(profileName, modeOverride string, extraArgs []string, _ func(string) (*gatewayLaunchBinding, error)) error {
-	// Only moai gpt opts into the gateway through its explicit launch binding.
-	// Claude and GLM retain their existing profile, authentication and MCP state.
-	return unifiedLaunchWithGateway(profileName, modeOverride, extraArgs, nil)
-}
-
-func unifiedLaunchWithGateway(profileName, modeOverride string, extraArgs []string, binding *gatewayLaunchBinding) error {
+func runUnifiedLaunch(profileName, modeOverride string, extraArgs []string) error {
 	// 1. Determine effective LLM mode (command decides mode, not profile)
 	mode := resolveMode(modeOverride)
 	if mode == "cg" || mode == "claude_glm" {
 		return errCGRetired
 	}
-	if binding != nil && binding.Mode != mode {
-		return errors.New("gateway launcher mode mismatch")
-	}
-	if mode == "gpt" && binding == nil {
-		return errors.New("GPT gateway launch is awaiting transport verification; use moai gpt status to inspect login")
+	if mode == "gpt" {
+		// The GPT gateway launcher was withdrawn (2026-09-16). GPT models are
+		// reached through their native harness instead: `moai codex`.
+		return errors.New("moai gpt is removed — run GPT models through their native harness: moai codex")
 	}
 
 	// 2. Find project root. This precedes resolution because the fallback is
@@ -169,23 +162,16 @@ func unifiedLaunchWithGateway(profileName, modeOverride string, extraArgs []stri
 		profileName = resolved
 	}
 
-	// 4. Gateway launch owns its child environment and never mutates tmux.
-	if binding != nil {
-		if err := cleanupGatewaySettings(filepath.Join(root, defs.ClaudeDir, defs.SettingsLocalJSON)); err != nil {
+	// 4. Apply the mode's project settings.
+	switch mode {
+	case "glm":
+		if err := applyGLMMode(root, profileName); err != nil {
 			return err
 		}
-	} else {
-		switch mode {
-		case "glm":
-			if err := applyGLMMode(root, profileName); err != nil {
-				return err
-			}
-		default: // "claude" and any unknown mode
-			if err := applyCCMode(root); err != nil {
-				return err
-			}
+	default: // "claude" and any unknown mode
+		if err := applyCCMode(root); err != nil {
+			return err
 		}
-
 	}
 
 	// 4.5. Materialize the profile directory the launch will actually use, and
@@ -233,9 +219,31 @@ func unifiedLaunchWithGateway(profileName, modeOverride string, extraArgs []stri
 	extraArgs = appendCrossSessionSettings(root, profileName, extraArgs)
 
 	// 6. Launch claude
-	if binding != nil {
-		return launchClaudeWithGateway(profileName, extraArgs, binding)
+	return launchClaudeForProvider(profileName, extraArgs, mode)
+}
+
+// launchClaudeForProvider carries the launcher-selected initial provider into
+// the Claude Code child. The audit MCP uses this trusted launch fact to decide
+// whether a supplied Claude verdict is the current in-session anchor or must be
+// replaced by an independent subscription audit. The process environment is
+// restored when the launch seam returns (tests and Windows); on POSIX a real
+// launch replaces the process, so the child simply inherits the marker.
+func launchClaudeForProvider(profileName string, extraArgs []string, provider string) (err error) {
+	previous, existed := os.LookupEnv(config.EnvMoaiLaunchProvider)
+	if err := os.Setenv(config.EnvMoaiLaunchProvider, provider); err != nil {
+		return fmt.Errorf("set launch provider: %w", err)
 	}
+	defer func() {
+		var restoreErr error
+		if existed {
+			restoreErr = os.Setenv(config.EnvMoaiLaunchProvider, previous)
+		} else {
+			restoreErr = os.Unsetenv(config.EnvMoaiLaunchProvider)
+		}
+		if err == nil && restoreErr != nil {
+			err = fmt.Errorf("restore launch provider: %w", restoreErr)
+		}
+	}()
 	return launchClaude(profileName, extraArgs)
 }
 
@@ -368,6 +376,11 @@ func removeGLMEnv(settingsPath string) error {
 			// SPEC-CLIFIX-CONCURRENCY-001 REQ-CONC-001-002: drop the 1M auto-compact
 			// window so it does not persist into subsequent moai cc sessions.
 			delete(env, config.EnvClaudeCodeAutoCompactWindow)
+			// Card t802: drop the declared GLM context window too. Leaving it behind
+			// is not a delayed cleanup but a permanent one: ANTHROPIC_BASE_URL above
+			// is the GLM-active indicator, so once it is gone the SessionEnd cleanup
+			// reads the file as non-GLM and returns without touching the residue.
+			delete(env, config.EnvClaudeCodeMaxContextTokens)
 
 			if len(env) == 0 {
 				delete(m, "env")
@@ -574,10 +587,10 @@ func launchClaude(profileName string, extraArgs []string) error {
 // syscall.Exec. profileName may be empty for the default profile. extraArgs
 // are additional CLI args to pass through to claude.
 func launchClaudeDefault(profileName string, extraArgs []string) error {
-	return launchClaudeWithGateway(profileName, extraArgs, nil)
+	return runLaunchClaude(profileName, extraArgs)
 }
 
-func launchClaudeWithGateway(profileName string, extraArgs []string, binding *gatewayLaunchBinding) error {
+func runLaunchClaude(profileName string, extraArgs []string) error {
 	// 1. Profile setup
 	if profileName != "" && profileName != "default" {
 		if err := profile.EnsureDir(profileName); err != nil {
@@ -630,12 +643,13 @@ func launchClaudeWithGateway(profileName string, extraArgs []string, binding *ga
 	model := settings["DO_CLAUDE_MODEL"]
 
 	// 5. Parse extra args (overrides)
-	explicitModel := ""
 	var passThrough []string
 	for i := 0; i < len(extraArgs); i++ {
 		arg := extraArgs[i]
 		if arg == "--" {
-			passThrough = append(passThrough, extraArgs[i:]...)
+			// Consume MoAI's separator, not Claude's flags. A second separator
+			// in the tail belongs to Claude and must remain byte-for-byte intact.
+			passThrough = append(passThrough, extraArgs[i+1:]...)
 			break
 		}
 		switch arg {
@@ -655,14 +669,12 @@ func launchClaudeWithGateway(profileName string, extraArgs []string, binding *ga
 		case "--model", "-m":
 			if i+1 < len(extraArgs) {
 				model = extraArgs[i+1]
-				explicitModel = model
 				i++
 			}
 		default:
 			// Handle --permission-mode=value form
 			if strings.HasPrefix(arg, "--model=") {
 				model = strings.TrimPrefix(arg, "--model=")
-				explicitModel = model
 			} else if strings.HasPrefix(arg, "--permission-mode=") {
 				permMode = strings.TrimPrefix(arg, "--permission-mode=")
 			} else {
@@ -693,9 +705,7 @@ func launchClaudeWithGateway(profileName string, extraArgs []string, binding *ga
 	if root, err := findProjectRoot(); err == nil {
 		glmBackend, glmModels, glmTierEffort = resolveGLMBackendForLaunch(root)
 	}
-	if binding == nil {
-		model = resolveMainSessionModel(model, glmBackend)
-	}
+	model = resolveMainSessionModel(model, glmBackend)
 
 	// 6b. An empty model is only worth surfacing when the user explicitly
 	// targeted a named profile (via -p or a project-scoped binding) that then
@@ -752,8 +762,8 @@ func launchClaudeWithGateway(profileName string, extraArgs []string, binding *ga
 	// — REQ-CGH-001). Ensure all cleanup and setup is complete before calling.
 	effectiveEffort := resolveLaunchEffort(prefs.EffortLevel, prefs.ModelPolicy)
 	var launchEnv []string
-	// Every gateway launcher hosts Claude Code; request adapters own provider effort policy.
-	if glmBackend && binding == nil {
+	// Every launcher hosts Claude Code; request adapters own provider effort policy.
+	if glmBackend {
 		// GLM backend: z.ai honors reasoning_effort, NOT Claude's 5-step effort.
 		// Derive ANTHROPIC_REASONING_EFFORT from the effective effort and strip the
 		// inert CLAUDE_CODE_EFFORT_LEVEL so a web-set effort reaches z.ai.
@@ -793,42 +803,6 @@ func launchClaudeWithGateway(profileName string, extraArgs []string, binding *ga
 	if profileLeaseEnv != "" {
 		launchEnv = append(launchEnv, profileLeaseEnv)
 	}
-	if binding != nil {
-		if binding.Prepare == nil {
-			return errors.New("gateway launch preparation unavailable")
-		}
-		prepared, stop, err := binding.Prepare(gatewayLaunchRequest{
-			Mode: binding.Mode, ExplicitModel: explicitModel, ClaudeDefault: settings["DO_CLAUDE_MODEL"],
-			Inherited: launchEnv, Args: passThrough, ProfileName: profileName,
-			CWD: currentLaunchCWD(), Project: launchProjectRoot(),
-			SecureStorage:     os.Getenv("CLAUDE_SECURE_STORAGE_CONFIG_DIR"),
-			OriginalConfig:    os.Getenv("CLAUDE_CONFIG_DIR"),
-			SecureStorageSet:  envKeyPresent("CLAUDE_SECURE_STORAGE_CONFIG_DIR"),
-			OriginalConfigSet: envKeyPresent("CLAUDE_CONFIG_DIR"), Continue: cont,
-		})
-		if stop != nil {
-			defer stop()
-		}
-		if err != nil {
-			return err
-		}
-		model, launchEnv = prepared.InitialModel, prepared.ChildEnv
-		if prepared.Args != nil {
-			passThrough = prepared.Args
-			for _, arg := range prepared.Args {
-				if arg == "--resume" {
-					cont = false
-					break
-				}
-			}
-		}
-		if prepared.ChildSettings != "" {
-			passThrough, err = replaceGatewaySettingsArgs(passThrough, prepared.ChildSettings)
-			if err != nil {
-				return err
-			}
-		}
-	}
 
 	// 7. Execute with --continue fallback
 	if cont {
@@ -839,15 +813,7 @@ func launchClaudeWithGateway(profileName string, extraArgs []string, binding *ga
 		if profileLeaseEnv != "" {
 			tryCmd.Env = append(os.Environ(), profileLeaseEnv)
 		}
-		var err error
-		if binding != nil {
-			tryCmd.Env = launchEnv
-		}
-		if binding != nil && binding.Continue != nil {
-			err = binding.Continue(claudeBin, buildArgs(true), launchEnv)
-		} else {
-			err = tryCmd.Run()
-		}
+		err := tryCmd.Run()
 		if err == nil {
 			return nil
 		}

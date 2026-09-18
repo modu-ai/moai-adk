@@ -36,6 +36,39 @@ func (h *subagentStopHandler) EventType() EventType {
 // the teammate's tmux pane ID, kills the pane, and updates the config.
 // W3 (REQ-HRA-001): also dispatches to harness-learner capture pipeline.
 func (h *subagentStopHandler) Handle(ctx context.Context, input *HookInput) (*HookOutput, error) {
+	// Audit-receipt guard (SPEC-CODEX-AUDIT-GATE-AXES-001 REQ-CAG-011..013,016).
+	// Evaluated first so the decision is taken from the auditor's own final
+	// message before any teardown runs, and merged into whatever the teardown
+	// path returns below. nil means the guard has no opinion, which is every
+	// case outside an auditor in a tree that declared the codex gate required.
+	guard := checkAuditorStop(input)
+	out, err := h.handleTeardown(ctx, input)
+	return mergeAuditorStopGuard(out, guard), err
+}
+
+// mergeAuditorStopGuard lays the guard's decision over the teardown output.
+// The teardown never returns a decision of its own, so there is nothing to
+// displace — the merge exists so a later teardown decision would have to be
+// reconciled deliberately rather than silently dropped.
+func mergeAuditorStopGuard(out, guard *HookOutput) *HookOutput {
+	if guard == nil {
+		return out
+	}
+	if out == nil {
+		return guard
+	}
+	if guard.Decision != "" {
+		out.Decision, out.Reason = guard.Decision, guard.Reason
+	}
+	if guard.SystemMessage != "" {
+		out.SystemMessage = guard.SystemMessage
+	}
+	return out
+}
+
+// handleTeardown is the pre-existing SubagentStop body: capture dispatch,
+// routing ledger, and tmux pane cleanup.
+func (h *subagentStopHandler) handleTeardown(ctx context.Context, input *HookInput) (*HookOutput, error) {
 	slog.Info("subagent stopped",
 		"session_id", input.SessionID,
 		"agent_id", input.AgentID,

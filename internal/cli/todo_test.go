@@ -482,6 +482,7 @@ func TestTodoConcurrentAdd_8Processes(t *testing.T) {
 	var wg sync.WaitGroup
 	errs := make([]error, n)
 	outputs := make([]string, n)
+	stderrs := make([]string, n)
 	for i := 0; i < n; i++ {
 		wg.Add(1)
 		go func(i int) {
@@ -492,9 +493,15 @@ func TestTodoConcurrentAdd_8Processes(t *testing.T) {
 				"CLAUDE_PROJECT_DIR="+root,
 				"MOAI_TODO_HELPER_TEXT=card "+string(rune('A'+i)),
 			)
-			out, err := cmd.CombinedOutput()
+			// Parse stdout only: the temporary-origin advisory (t705) goes to
+			// stderr, and its prose words would otherwise be counted as ids.
+			var stdout, stderr bytes.Buffer
+			cmd.Stdout = &stdout
+			cmd.Stderr = &stderr
+			err := cmd.Run()
 			errs[i] = err
-			outputs[i] = string(out)
+			outputs[i] = stdout.String()
+			stderrs[i] = stderr.String()
 		}(i)
 	}
 	wg.Wait()
@@ -502,7 +509,7 @@ func TestTodoConcurrentAdd_8Processes(t *testing.T) {
 	seen := make(map[string]bool)
 	for i := 0; i < n; i++ {
 		if errs[i] != nil {
-			t.Fatalf("concurrent add %d failed: %v: %s", i, errs[i], outputs[i])
+			t.Fatalf("concurrent add %d failed: %v: stdout %s stderr %s", i, errs[i], outputs[i], stderrs[i])
 		}
 	}
 	for i := 0; i < n; i++ {
@@ -655,7 +662,7 @@ func todoPromptGuard(source string) (reason string, bad bool) {
 
 // TestTodoBareInvocationLists pins the documented contract that a bare
 // `moai todo` renders the queue. The skill surface (.claude/skills/moai)
-// and workflows/todo.md both describe the bare form as the list surface;
+// and workflows/gtd.md both describe the bare form as the list surface;
 // the command used to answer it with cobra's help text instead, so the
 // documented entry point never reached the backlog it names.
 //
@@ -914,6 +921,7 @@ func TestTodoAddPick_ConcurrentProcesses(t *testing.T) {
 	var wg sync.WaitGroup
 	errs := make([]error, n)
 	outputs := make([]string, n)
+	stderrs := make([]string, n)
 	for i := 0; i < n; i++ {
 		wg.Add(1)
 		go func(i int) {
@@ -924,9 +932,15 @@ func TestTodoAddPick_ConcurrentProcesses(t *testing.T) {
 				"CLAUDE_PROJECT_DIR="+root,
 				"MOAI_TODO_HELPER_TEXT=card "+string(rune('A'+i)),
 			)
-			out, err := cmd.CombinedOutput()
+			// Parse stdout only: the temporary-origin advisory (t705) goes to
+			// stderr, and its prose words would otherwise be counted as ids.
+			var stdout, stderr bytes.Buffer
+			cmd.Stdout = &stdout
+			cmd.Stderr = &stderr
+			err := cmd.Run()
 			errs[i] = err
-			outputs[i] = string(out)
+			outputs[i] = stdout.String()
+			stderrs[i] = stderr.String()
 		}(i)
 	}
 	wg.Wait()
@@ -934,7 +948,7 @@ func TestTodoAddPick_ConcurrentProcesses(t *testing.T) {
 	seen := make(map[string]bool)
 	for i := 0; i < n; i++ {
 		if errs[i] != nil {
-			t.Fatalf("concurrent add --pick %d failed: %v: %s", i, errs[i], outputs[i])
+			t.Fatalf("concurrent add --pick %d failed: %v: stdout %s stderr %s", i, errs[i], outputs[i], stderrs[i])
 		}
 		for _, field := range strings.Fields(outputs[i]) {
 			if strings.HasPrefix(field, "t") && !seen[field] {

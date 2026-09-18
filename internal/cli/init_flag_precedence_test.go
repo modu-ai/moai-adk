@@ -29,11 +29,11 @@ import (
 	"github.com/modu-ai/moai-adk/internal/core/project"
 )
 
-// seedOptsFromFlags mirrors the four Page-3 `opts` seeds in runInit, using the
+// seedOptsFromFlags mirrors the Page-3 `opts` seeds in runInit, using the
 // SAME flag getters, so the table below resolves against a faithful baseline.
+// (--project-mode was removed by SPEC-INIT-UPDATE-CONSISTENCY-001 REQ-ICU-001.)
 func seedOptsFromFlags(cmd *cobra.Command) project.InitOptions {
 	return project.InitOptions{
-		ProjectMode:    getStringFlag(cmd, "project-mode"),
 		LSPEnabled:     getBoolFlagWithDefault(cmd, "enable-lsp", true),
 		EnforceQuality: getBoolFlagWithDefault(cmd, "enforce-quality", true),
 		DesignEnabled:  getBoolFlagWithDefault(cmd, "enable-design", true),
@@ -46,9 +46,9 @@ func seedOptsFromFlags(cmd *cobra.Command) project.InitOptions {
 // seeded default (RunWithDefaults seeds EnforceQuality/DesignEnabled true),
 // which is exactly the fixture error this signature prevents.
 //
-// The project-mode wizard answer is gone (SPEC-INIT-QUIET-WIZARD-001): the
-// quiet wizard no longer asks it, so --project-mode has nothing to compete
-// with and its precedence rows were removed.
+// The project-mode wizard answer is gone (SPEC-INIT-QUIET-WIZARD-001), and the
+// --project-mode flag itself was removed by
+// SPEC-INIT-UPDATE-CONSISTENCY-001 REQ-ICU-001.
 func wizardAnswers(lsp, quality, design bool) *wizard.WizardResult {
 	return &wizard.WizardResult{
 		LSPEnabled:     lsp,
@@ -186,9 +186,6 @@ func TestFlagBeatsWizard_Page3Settings(t *testing.T) {
 			opts := seedOptsFromFlags(cmd)
 			applyWizardPage3ToOpts(cmd, tc.result, &opts)
 
-			if opts.ProjectMode != tc.want.ProjectMode {
-				t.Errorf("ProjectMode = %q, want %q", opts.ProjectMode, tc.want.ProjectMode)
-			}
 			if opts.LSPEnabled != tc.want.LSPEnabled {
 				t.Errorf("LSPEnabled = %v, want %v", opts.LSPEnabled, tc.want.LSPEnabled)
 			}
@@ -205,14 +202,13 @@ func TestFlagBeatsWizard_Page3Settings(t *testing.T) {
 // TestFlagBeatsWizard_MatchesProfilePrecedence pins the AC-WIZ-016 consistency
 // clause: the Page-3 settings resolve in the SAME direction as the documented
 // `--profile` rule — an explicitly-supplied flag is never overwritten by the
-// wizard result. Asserted as one invariant across all four flags so a future
-// per-field regression cannot pass by covering only some of them; project-mode
-// stays in the set because applyWizardPage3ToOpts must leave it alone now that
-// the wizard carries no project-mode answer (SPEC-INIT-QUIET-WIZARD-001).
+// wizard result. Asserted as one invariant across all three flags so a future
+// per-field regression cannot pass by covering only some of them.
+// (--project-mode left the set when the flag was removed by
+// SPEC-INIT-UPDATE-CONSISTENCY-001 REQ-ICU-001.)
 func TestFlagBeatsWizard_MatchesProfilePrecedence(t *testing.T) {
 	cmd := newInitTestCmd()
 	for name, val := range map[string]string{
-		"project-mode":    "team",
 		"enable-lsp":      "false",
 		"enforce-quality": "false",
 		"enable-design":   "false",
@@ -235,8 +231,7 @@ func TestFlagBeatsWizard_MatchesProfilePrecedence(t *testing.T) {
 		DesignEnabled:  true,
 	}, &opts)
 
-	if opts.ProjectMode != before.ProjectMode ||
-		opts.LSPEnabled != before.LSPEnabled ||
+	if opts.LSPEnabled != before.LSPEnabled ||
 		opts.EnforceQuality != before.EnforceQuality ||
 		opts.DesignEnabled != before.DesignEnabled {
 		t.Errorf("explicitly-supplied flags must survive the wizard result (the --profile rule):\n before: %+v\n after:  %+v", before, opts)

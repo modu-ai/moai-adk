@@ -739,16 +739,25 @@ func joinBacklogReleaseErr(mutErr, relErr error, path string) error {
 // high-water mark inside the locked mutation, so a removed card's id is
 // never reused (REQ-TODO-008).
 func (s *BacklogStore) Add(text string) (*BacklogItem, int, error) {
+	return s.addWithCardUUID(text, nil)
+}
+
+// addWithCardUUID is the identity-aware form used by GTD publication. A
+// caller-supplied UUID makes a queue commit discoverable after a crash that
+// occurs before the GTD link is recorded. Ordinary todo callers retain the
+// existing identity issuer by passing nil through Add.
+func (s *BacklogStore) addWithCardUUID(text string, cardUUID *string) (*BacklogItem, int, error) {
 	// @MX:NOTE: [TID:RETURN] Add reads back the committed row so its card_uuid is exactly the persisted identity.
 	var item BacklogItem
 	var pos int
 	err := s.Mutate(func(rec *BacklogRecord) error {
 		rec.LastSeq++
 		item = BacklogItem{
-			ID:      fmt.Sprintf("t%d", rec.LastSeq),
-			Text:    text,
-			AddedAt: time.Now().UTC().Format(time.RFC3339),
-			State:   BacklogStateQueued,
+			ID:       fmt.Sprintf("t%d", rec.LastSeq),
+			Text:     text,
+			AddedAt:  time.Now().UTC().Format(time.RFC3339),
+			State:    BacklogStateQueued,
+			CardUUID: cloneIdentity(cardUUID),
 		}
 		rec.Items = append(rec.Items, item)
 		pos = 0

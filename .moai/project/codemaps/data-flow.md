@@ -3,8 +3,8 @@
 > `/moai codemaps`로 생성됐습니다. 시스템 동작의 대부분을 실어 나르는 경로를
 > 끝에서 끝까지 따라갑니다.
 
-**측정 트리**: worktree `.claude/worktrees/t592`, 브랜치 `WT-home-state-rollout`, HEAD `e7bd89ee3`
-**측정**: 2026-09-10
+**최초 측정 트리**: worktree `.claude/worktrees/t592`, 브랜치 `WT-home-state-rollout`, HEAD `e7bd89ee3`, 2026-09-10
+**재측정 트리**: worktree `.claude/worktrees/t869`, 브랜치 `WT-codemaps-refresh`, HEAD `a851b205c`, 2026-09-18 — § A의 함수 위치(6개 심볼 정의 파일 대조), § C의 임베드 파일 수, § D의 도구 수와 표, 새 § J(자율 미션과 GTD 큐). § B·E~I의 경로는 이번 변경과 무관해 앞 판을 이어받았습니다.
 
 ---
 
@@ -26,7 +26,8 @@ internal/cli/todo.go                    newTodoStore() → kanban.NewBacklogStor
 internal/cli/todo_analysis.go           appendAnalyzedCard(rec, text, BacklogStateQueued, force)
 internal/kanban/backlog_store.go        NewBacklogStore / Mutate(func(*BacklogRecord) error)
 internal/kanban/board_lock.go           크로스 프로세스 backlog.lock (+ _unix / _windows)
-internal/kanban/backlog_sqlite.go       openEngine → WAL + busy_timeout ≥ 5000 + BEGIN IMMEDIATE
+internal/kanban/backlog_store.go        openEngine (정의 위치) → backlog_sqlite.go 엔진
+internal/kanban/backlog_sqlite.go       WAL + busy_timeout ≥ 5000 + BEGIN IMMEDIATE
                                           ↳ <queue-dir>/backlog.db
 ```
 
@@ -77,7 +78,7 @@ JSON deny는 `hookSpecificOutput` 안에 살고 exit 0으로 나갑니다 — ex
 ### 빌드 타임
 
 ```
-internal/template/embed.go                            //go:embed all:templates   (581개 파일)
+internal/template/embed.go                            //go:embed all:templates   (589개 파일)
 internal/template/embed.go                            //go:embed catalog.yaml
 internal/template/scripts/gen-catalog-hashes.go       별도 main — 카탈로그 해시 사전 생성
 internal/template/agentemit                           make agents-emit
@@ -149,8 +150,8 @@ cmd/moai/main.go → cli.Execute()
 internal/cli/root.go                    rootCmd.AddCommand(newMCPServerCmd())
 internal/cli/mcp_server.go              newMCPServerCmd — stdio JSON-RPC 루프
 internal/cli/mcp_server.go              .moai/config/sections/mcp.yaml 로드 (파일 없으면 전 도구 등록)
-internal/cli/mcp_server.go              add(name, mcp.NewTool(...), handler) × 29
-internal/mcp/catalog.go                 MoaiMCPTools — 이름·WriteCapable 단일 선언 (29개)
+internal/cli/mcp_server.go              add(name, mcp.NewTool(...), handler) × 30
+internal/mcp/catalog.go                 MoaiMCPTools — 이름·WriteCapable 단일 선언 (30개)
                                           (가드 테스트가 일치를 강제)
 
 핸들러 → 내부 코어 (CLI와 같은 코어를 공유한다)
@@ -161,6 +162,8 @@ internal/mcp/catalog.go                 MoaiMCPTools — 이름·WriteCapable �
   verify_snapshot   internal/verify       Load() · RecordCheck()
   graph_*           internal/graph        query · codequery · shortestpath
   codex_* / glm_*   internal/cli          mcp_codex.go · mcp_glm.go → 외부 에이전트 프로세스
+  claude_audit      internal/cli          mcp_claude*.go → claude CLI 서브프로세스 (읽기 전용 리뷰)
+  audit_multi       internal/cli          mcp_convergence.go — Claude 백엔드는 claude_audit 수행 함수 재사용
   session_msg_*     internal/sessionmsg   —
 ```
 
@@ -309,3 +312,80 @@ clean                                 live/indeterminate lease는 보존, provab
 
 SQLite 파일은 `0600`, 상위 HOME 디렉터리는 `0700` 경계를 유지합니다. 이 흐름은 코드상
 계약을 설명한 것이며, 실제 운영 backlog 이전이 실행됐다는 완료 표시는 아닙니다.
+
+---
+
+## I. codemaps freshness 게이트 — 비교 가능성을 먼저 판정한다
+
+`moai graph check`는 codemaps 층을 숫자로 판정하지만, 그 숫자는 **두 트리가 같은 이력 창에서
+비교 가능할 때만** 존재합니다. 판정은 값 계산 이전에 끝납니다.
+
+```
+.moai/project/codemaps/provenance.json   clean 스탬프 commit_sha (dirty면 content fingerprint)
+internal/graph/check.go                  checkCodemaps — 아래 순서를 위에서 아래로
+  1 verifyStampResolves                    git cat-file -e <sha>^{commit}
+      실패 → absent 운반체 + system error   "stamped commit not comparable"
+  2 codemapsBodyPresent                    git ls-files (추적 + --others) — provenance.json 제외
+      본문 없음 → absent + nil error        C1: 판정된 관측이지 실패한 측정이 아니다 (exit 1)
+  3 verifyStampAncestorOfHEAD              git merge-base --is-ancestor <sha> HEAD
+      비조상 → absent 운반체 + system error  "unreachable stamp … freshness unmeasured"
+  4 resolveContentAnchor                   본문이 마지막으로 실제 바뀐 지점
+  5 gitDiffNameList(anchor, described)     described-source-diff, 임계 40
+internal/cli/graph_check.go              0 전부 fresh · 1 stale/absent · 2 system error
+  writeUnreachableStampRecovery             3에서만 복구 안내를 붙인다
+.github/workflows/graph-freshness.yml    같은 조상성을 CI에서 이벤트별 대상으로 검사
+  push                 TARGET=HEAD
+  pull_request         TARGET=origin/<base_ref>
+  pull_request release/*  TARGET=HEAD (merge preview)
+```
+
+핵심은 **1과 3이 서로 다른 조건**이라는 점입니다. `git cat-file -e`는 커밋이 해석되는지만
+답하고, squash와 rebase는 내용을 보존하면서 원래 커밋을 HEAD 이력 밖으로 밀어냅니다. 객체
+존재를 조상성으로 대신 읽으면 그 간극을 가로지르는 diff가 숫자를 만들어내고, 성립한 적 없는
+창에 대한 값이 stale로 보고됩니다. 그래서 3에서 실패한 경로는 `Value`·`ContentAnchor`·
+`Contribution`·`DrivingPaths`를 하나도 채우지 않습니다.
+
+2가 3보다 앞에 있는 것도 의도된 순서입니다. 본문이 아예 없는 트리는 stale일 대상 자체가 없는
+**판정된 관측**이라 nil error/exit 1로 남고, 그 처분은 이 게이트가 바꾸지 않는 기존 계약입니다.
+반대로 1은 2보다 앞입니다 — 해석되지 않는 스탬프는 본문 상태와 무관하게 실패한 측정입니다.
+
+복구도 갈립니다. 1의 답은 이력(더 깊은 fetch)이고, 3의 답은 **본문 재생성 뒤 도달 가능한
+커밋으로 재스탬핑**입니다. 본문을 그대로 둔 맨손 재스탬프는 3을 통과시키지만 content anchor가
+움직이지 않아 값도 그대로입니다 — 그것이 anti-false-green 계약입니다.
+
+---
+
+## J. 자율 미션 — `moai goal --auto`에서 GTD 큐 operation까지
+
+**이 판에서 새로 생긴 경로입니다.** 자연어 미션을 곧바로 실행하지 않고, 봉인된 계약과 정책
+대조를 거친 operation만 큐에 적용합니다.
+
+```
+internal/cli/goal.go                    goal --auto "<mission>" → 승인 대기 draft
+                                          하위 verb: approve · run · status · revoke · resume
+  approve
+    internal/mission/contract.go        SealMissionContract — 범위·행동·증거·한도를 한 번 봉인
+    internal/mission/auto_state.go      SaveAutoMission → 미션 상태 파일 (internal/atomicfile 경유)
+  run (한 operation씩)
+    internal/mission/policy.go          ValidateMissionDecision(sealed, snapshot, decision, now)
+    internal/kanban/gtd_engage.go       EngageGTDItem — 권한·증거 신선도·의존성·레인 조건 판정
+    internal/kanban/gtd_operation.go    ExecuteGTDOperation — 준비된 operation 실행 후 readback
+                                          ↳ ~/.moai/db/<project-key>/todo/backlog.db (GTD 확장 테이블)
+  supervise
+    internal/mission/supervisor.go      SuperviseAutoMission — 증거 적재 → 정책 검증 → 실행 → readback
+    internal/mission/git_owner.go       커밋과 git merge --no-ff 효과를 소유하고 상태 재판독으로 확인
+    internal/mission/delivery_owner.go  원격 전달 provider 부재 → ErrDeliveryUnsupported ("provider_unsupported")
+    internal/mission/completion_receipt.go  LoadCompletionReceipt — 완료 판정이 읽는 receipt
+```
+
+**`internal/mission`의 비테스트 소비자는 `internal/cli/goal.go` 하나**이며, 같은 파일이
+`internal/kanban`의 GTD 함수도 직접 부릅니다. 미션 텍스트는 셸 명령이나 goal 조건으로 해석되지
+않습니다(`--auto` 플래그 도움말: "without condition or shell parsing"). 거버넌스 receipt의
+발행자는 `mission-governor`이고 상태는 권고(`GovernanceRecommended`)이며, 효과는 위 소유자
+어댑터가 적용합니다. 원격 push·PR·보호 브랜치 병합은 설정된 provider가 없으면 일어나지
+않습니다 — 이 절의 존재는 원격 전달이 동작한다는 뜻이 아닙니다.
+
+GTD의 사람 쪽 표면은 `moai gtd`입니다(`internal/cli/gtd.go`). `moai todo` 명령 트리를 감싼
+두 번째 이름이라 같은 큐·같은 카드 id를 보며, `capture` · `clarify` · `organize` · `reflect` ·
+`engage`가 다섯 단계를 따로 기록합니다. `internal/graph/gtd_private.go`는 같은 저장소에서 비공개
+관계 투영을 만들고 권한을 검사합니다.

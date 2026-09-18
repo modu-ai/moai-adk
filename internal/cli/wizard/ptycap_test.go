@@ -13,11 +13,29 @@ import (
 	"strings"
 	"testing"
 
+	"charm.land/huh/v2"
+
 	"github.com/modu-ai/moai-adk/internal/cli/ptycaptest"
 )
 
-// ptycapCaseInitFirstPage runs the init wizard form (en) on the TTY.
-const ptycapCaseInitFirstPage = "init-first-page"
+// The pty capture cases (SPEC-CLI-TUX-RENDER-I18N-001 acceptance.md §B):
+// S1 init first page, S2 a confirm-question fixture through the real
+// buildUnifiedForm, S3 the downgrade confirm, S4 the profile wizard groups —
+// each at en and ko, 80 columns.
+const (
+	ptycapCaseInitFirstPage = "init-first-page"
+
+	ptycapCaseInitFirstPageKo = "init-first-page-ko"
+
+	ptycapCaseConfirmFixtureEn = "confirm-fixture-en"
+	ptycapCaseConfirmFixtureKo = "confirm-fixture-ko"
+
+	ptycapCaseDowngradeConfirmEn = "downgrade-confirm-en"
+	ptycapCaseDowngradeConfirmKo = "downgrade-confirm-ko"
+
+	ptycapCaseProfileGroupsEn = "profile-groups-en"
+	ptycapCaseProfileGroupsKo = "profile-groups-ko"
+)
 
 // TestPtyCaptureChild is the program a pty session runs. It records its
 // effective environment first, then runs the named case on the real TTY.
@@ -31,13 +49,56 @@ func TestPtyCaptureChild(t *testing.T) {
 	}
 	switch name {
 	case ptycapCaseInitFirstPage:
-		cwd, _ := os.Getwd()
-		form := buildUnifiedForm(InitQuestions(cwd), &WizardResult{}, "en")
-		err := form.Run()
-		t.Logf("form returned: %v", err)
+		runChildForm(t, buildUnifiedForm(InitQuestions(mustCwd()), &WizardResult{}, "en"))
+	case ptycapCaseInitFirstPageKo:
+		runChildForm(t, buildUnifiedForm(InitQuestions(mustCwd()), &WizardResult{}, "ko"))
+	case ptycapCaseConfirmFixtureEn:
+		runChildForm(t, buildUnifiedForm(confirmFixtureQuestions(), &WizardResult{}, "en"))
+	case ptycapCaseConfirmFixtureKo:
+		runChildForm(t, buildUnifiedForm(confirmFixtureQuestions(), &WizardResult{}, "ko"))
+	case ptycapCaseDowngradeConfirmEn:
+		runChildForm(t, NewDowngradeConfirmForm("en", "v9.9.9", "v1.0.0", new(bool)))
+	case ptycapCaseDowngradeConfirmKo:
+		runChildForm(t, NewDowngradeConfirmForm("ko", "v9.9.9", "v1.0.0", new(bool)))
+	case ptycapCaseProfileGroupsEn:
+		runChildForm(t, NewProfileForm(profileStepperOptions(), profileInitial("en"), "en"))
+	case ptycapCaseProfileGroupsKo:
+		runChildForm(t, NewProfileForm(profileStepperOptions(), profileInitial("ko"), "ko"))
 	default:
 		t.Fatalf("unknown child case %q", name)
 	}
+}
+
+// mustCwd returns the working directory, failing the child when it cannot be
+// read (the init questions embed it in a prompt).
+func mustCwd() string {
+	cwd, err := os.Getwd()
+	if err != nil {
+		return "/tmp"
+	}
+	return cwd
+}
+
+// runChildForm runs one form on the child TTY and logs the outcome.
+func runChildForm(t *testing.T, form *huh.Form) {
+	t.Helper()
+	err := form.Run()
+	t.Logf("form returned: %v", err)
+}
+
+// confirmFixtureQuestions is the S2 surface: one confirm question rendered
+// through the real buildUnifiedForm path (the current init/profile sets carry
+// no confirm question, so the fixture is the canonical confirm surface).
+func confirmFixtureQuestions() []Question {
+	return []Question{{
+		ID: "fixture_confirm", Group: "Basic", Type: QuestionTypeConfirm,
+		Title: "Fixture confirm title", Description: "Fixture confirm description text", Default: "false",
+	}}
+}
+
+// profileInitial seeds the profile form with the locale pre-selection.
+func profileInitial(locale string) ProfileResult {
+	return ProfileResult{ConversationLang: locale, GitCommitLang: "en", CodeCommentLang: "en", DocLang: "en"}
 }
 
 // TestPtyCapture_NormalRun — AC-ITI-020 (1) on the product screen, plus the
@@ -74,16 +135,253 @@ func TestPtyCapture_NormalRun(t *testing.T) {
 	checkHome()
 }
 
-// TestPtyCapture_SkipWithoutGate — AC-ITI-019 (a) over this package's four
-// capture tests.
-func TestPtyCapture_SkipWithoutGate(t *testing.T) {
-	ptycaptest.Gate(t)
-	ptycaptest.AssertSkipWithoutGate(t, ptycaptest.BuildChild(t, "."), "^TestPtyCapture", 4)
+// confirmProbe names the header line and the affirmative button label a
+// confirm surface's frame must show; the blank rows between them are the
+// confirm-internal gap AC-TRI-003 measures.
+type confirmProbe struct {
+	header      string
+	affirmative string
 }
 
-// TestPtyCapture_FailWithoutTmux — AC-ITI-019 (b) over this package's three
-// TestPtyCapture_* tests.
+// baselineSurfaces is the REQ-TRI-001 capture set: S1-S4 at en and ko, each
+// with its reachability anchor(s) and, where the surface carries a confirm
+// field, the blank-row probe.
+var baselineSurfaces = []struct {
+	name      string
+	childCase string
+	anchor    string
+	extra     []string
+	confirm   *confirmProbe
+}{
+	{
+		name: "init-first-page-en", childCase: ptycapCaseInitFirstPage,
+		anchor: "Select conversation language",
+		extra:  []string{"English", "Korean (한국어)", "Japanese (日本語)", "Chinese (中文)"},
+	},
+	{
+		name: "init-first-page-ko", childCase: ptycapCaseInitFirstPageKo,
+		anchor: "대화 언어 선택",
+		extra:  []string{"English", "Korean (한국어)"},
+	},
+	{
+		name: "confirm-fixture-en", childCase: ptycapCaseConfirmFixtureEn,
+		anchor:  "Fixture confirm description text",
+		extra:   []string{"Fixture confirm title"},
+		confirm: &confirmProbe{header: "Fixture confirm description text", affirmative: "Yes"},
+	},
+	{
+		name: "confirm-fixture-ko", childCase: ptycapCaseConfirmFixtureKo,
+		anchor:  "Fixture confirm description text",
+		extra:   []string{"Fixture confirm title", "예"},
+		confirm: &confirmProbe{header: "Fixture confirm description text", affirmative: "예"},
+	},
+	{
+		name: "downgrade-confirm-en", childCase: ptycapCaseDowngradeConfirmEn,
+		anchor:  "Downgrade v9.9.9",
+		extra:   []string{"The requested tag is older"},
+		confirm: &confirmProbe{header: "The requested tag is older", affirmative: "Yes"},
+	},
+	{
+		name: "downgrade-confirm-ko", childCase: ptycapCaseDowngradeConfirmKo,
+		anchor:  "다운그레이드할까요?",
+		extra:   []string{"요청한 태그가", "예"},
+		confirm: &confirmProbe{header: "요청한 태그가", affirmative: "예"},
+	},
+	{
+		name: "profile-groups-en", childCase: ptycapCaseProfileGroupsEn,
+		anchor: "Select your language",
+		extra:  []string{"Chinese (中文)"},
+	},
+	{
+		name: "profile-groups-ko", childCase: ptycapCaseProfileGroupsKo,
+		anchor: "언어를 선택하세요",
+	},
+}
+
+// TestPtyCapture_BaselineSurfaces is REQ-TRI-001: captures every interactive
+// surface at en/ko x 80 columns before any repair edit, asserts each frame's
+// anchor reachability (the AC-TRI-001 premise), MEASURES the confirm-internal
+// blank rows (the AC-TRI-003 repair-before observation), and exports the
+// frames. Frames land in MOAI_PTY_CAPTURE_OUT when set.
+func TestPtyCapture_BaselineSurfaces(t *testing.T) {
+	ptycaptest.Gate(t)
+	bin := ptycaptest.BuildChild(t, ".")
+
+	for _, tc := range baselineSurfaces {
+		t.Run(tc.name, func(t *testing.T) {
+			c := ptycaptest.NewCase(t, "")
+			s := ptycaptest.Start(t, c, bin, tc.childCase)
+			frame := s.WaitFor(tc.anchor, ptycaptest.AnchorTimeout)
+
+			wants := append([]string{tc.anchor}, tc.extra...)
+			for _, w := range wants {
+				if !strings.Contains(frame, w) {
+					t.Errorf("frame lacks anchor %q (reachability premise, AC-TRI-001)", w)
+				}
+			}
+
+			if tc.confirm != nil {
+				n := confirmBlankRows(t, frame, tc.confirm.header, tc.confirm.affirmative)
+				t.Logf("CONFIRM-INTERNAL-BLANK-ROWS %s = %d", tc.name, n)
+			}
+
+			path := ptycaptest.Export(t, "baseline-"+tc.name, frame)
+			if b, err := os.ReadFile(path); err != nil || !strings.Contains(string(b), tc.anchor) {
+				t.Errorf("capture file %s does not carry the anchor %q (err %v)", path, tc.anchor, err)
+			}
+
+			s.SendKeys("C-c")
+			s.Close()
+		})
+	}
+}
+
+// confirmBlankRows counts the blank rows (border glyph + spaces, per the
+// AC-ITI-016 empty-card-row shape) between the confirm header's last line and
+// the button row in a captured frame. ANSI is stripped first; display
+// judgement runs on plain text.
+func confirmBlankRows(t *testing.T, frame, header, affirmative string) int {
+	t.Helper()
+	lines := strings.Split(ptycaptest.StripANSI(frame), "\n")
+	headerIdx := -1
+	for i, line := range lines {
+		if strings.Contains(line, header) {
+			headerIdx = i
+		}
+	}
+	if headerIdx < 0 {
+		t.Fatalf("frame lacks confirm header %q\n%s", header, frame)
+	}
+	buttonsIdx := -1
+	for i := headerIdx + 1; i < len(lines); i++ {
+		if strings.Contains(lines[i], affirmative) {
+			buttonsIdx = i
+			break
+		}
+	}
+	if buttonsIdx < 0 {
+		t.Fatalf("frame lacks button row %q after header %q\n%s", affirmative, header, frame)
+	}
+	n := 0
+	for i := headerIdx + 1; i < buttonsIdx; i++ {
+		if emptyCardRow(lines[i]) || strings.TrimSpace(lines[i]) == "" {
+			n++
+		}
+	}
+	return n
+}
+
+// TestPtyCapture_ConfirmGapBudget is REQ-TRI-003 frozen at the M1 measured
+// value: the blank rows between a confirm field's header and its button row
+// must stay <= 1 on the captured frames. M1 measured 1 on every confirm
+// surface (huh v2.0.3 field_confirm.go:261-263 writes a fixed "\n\n", which
+// renders as exactly one blank row under moaiWizardTheme) — the budget is
+// already met, so per REQ-TRI-008 the confirm composition is NOT repaired and
+// this guard freezes the compliant state instead.
+func TestPtyCapture_ConfirmGapBudget(t *testing.T) {
+	ptycaptest.Gate(t)
+	bin := ptycaptest.BuildChild(t, ".")
+
+	for _, tc := range []struct {
+		name        string
+		childCase   string
+		header      string
+		affirmative string
+	}{
+		{"confirm-fixture-en", ptycapCaseConfirmFixtureEn, "Fixture confirm description text", "Yes"},
+		{"confirm-fixture-ko", ptycapCaseConfirmFixtureKo, "Fixture confirm description text", "예"},
+		{"downgrade-confirm-en", ptycapCaseDowngradeConfirmEn, "The requested tag is older", "Yes"},
+		{"downgrade-confirm-ko", ptycapCaseDowngradeConfirmKo, "요청한 태그가", "예"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			c := ptycaptest.NewCase(t, "")
+			s := ptycaptest.Start(t, c, bin, tc.childCase)
+			frame := s.WaitFor(tc.header, ptycaptest.AnchorTimeout)
+			n := confirmBlankRows(t, frame, tc.header, tc.affirmative)
+			if n > 1 {
+				t.Errorf("confirm-internal blank rows = %d, want <= 1 (REQ-TRI-003)", n)
+			}
+			s.SendKeys("C-c")
+			s.Close()
+		})
+	}
+}
+
+// TestPtyCapture_I18nKoSweep is AC-TRI-006: on the ko-forced frames of the
+// captured surfaces, no string that HAS a ko entry in the translation tables
+// may still show its English original. Each entry pairs an English original
+// with its ko translation; the ko frame must contain the translation and must
+// NOT contain the original. Option labels for the language selects are
+// intentionally native-form ("Options intentionally omitted" per the
+// translations table) and are therefore not swept.
+func TestPtyCapture_I18nKoSweep(t *testing.T) {
+	ptycaptest.Gate(t)
+	bin := ptycaptest.BuildChild(t, ".")
+
+	for _, tc := range []struct {
+		name      string
+		childCase string
+		pairs     [][2]string // {english original, ko translation}
+	}{
+		{
+			name: "init-first-page-ko", childCase: ptycapCaseInitFirstPageKo,
+			pairs: [][2]string{
+				{"Select conversation language", "대화 언어 선택"},
+				{"Enter your name", "이름 입력"},
+			},
+		},
+		{
+			name: "profile-groups-ko", childCase: ptycapCaseProfileGroupsKo,
+			pairs: [][2]string{
+				{"Select your language", "언어를 선택하세요"},
+			},
+		},
+		{
+			name: "downgrade-confirm-ko", childCase: ptycapCaseDowngradeConfirmKo,
+			pairs: [][2]string{
+				{"Downgrade v9.9.9", "다운그레이드할까요?"},
+				{"The requested tag is older", "요청한 태그가"},
+				{"Yes", "예"},
+				{"No", "아니오"},
+			},
+		},
+		{
+			name: "confirm-fixture-ko", childCase: ptycapCaseConfirmFixtureKo,
+			pairs: [][2]string{
+				{"Yes", "예"},
+				{"No", "아니오"},
+			},
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			c := ptycaptest.NewCase(t, "")
+			s := ptycaptest.Start(t, c, bin, tc.childCase)
+			frame := ptycaptest.StripANSI(s.WaitFor(tc.pairs[0][1], ptycaptest.AnchorTimeout))
+			for _, pair := range tc.pairs {
+				en, ko := pair[0], pair[1]
+				if !strings.Contains(frame, ko) {
+					t.Errorf("ko frame lacks the ko translation %q (REQ-TRI-006)", ko)
+				}
+				if strings.Contains(frame, en) {
+					t.Errorf("ko frame still shows the English original %q (REQ-TRI-006 residue)", en)
+				}
+			}
+			s.SendKeys("C-c")
+			s.Close()
+		})
+	}
+}
+
+// TestPtyCapture_SkipWithoutGate — AC-ITI-019 (a) over this package's capture
+// tests.
+func TestPtyCapture_SkipWithoutGate(t *testing.T) {
+	ptycaptest.Gate(t)
+	ptycaptest.AssertSkipWithoutGate(t, ptycaptest.BuildChild(t, "."), "^TestPtyCapture", 7)
+}
+
+// TestPtyCapture_FailWithoutTmux — AC-ITI-019 (b) over this package's
+// TestPtyCapture_ tests (the Child test is excluded by the underscore).
 func TestPtyCapture_FailWithoutTmux(t *testing.T) {
 	ptycaptest.Gate(t)
-	ptycaptest.AssertFailWithoutTmux(t, ptycaptest.BuildChild(t, "."), "^TestPtyCapture_", 3)
+	ptycaptest.AssertFailWithoutTmux(t, ptycaptest.BuildChild(t, "."), "^TestPtyCapture_", 6)
 }

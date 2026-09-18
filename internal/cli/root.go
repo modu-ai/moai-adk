@@ -25,7 +25,7 @@ that serves as the runtime backbone for the MoAI framework within Claude Code.
 It provides CLI tooling, configuration management, LSP integration,
 Git operations, quality gates, and autonomous development loop capabilities.
 
-Use 'moai cc', 'moai gpt', or 'moai glm' to launch Claude Code.`,
+Use 'moai cc' or 'moai glm' to launch Claude Code.`,
 	Version: version.GetVersion(),
 	Run: func(cmd *cobra.Command, args []string) {
 		uikit.PrintBanner(version.GetVersion())
@@ -45,18 +45,16 @@ Use 'moai cc', 'moai gpt', or 'moai glm' to launch Claude Code.`,
 // on that path is loadGLMConfig's nil-safe branch (glm.go), which falls back to
 // reading llm.yaml from disk — its documented live runtime path.
 var trivialCommands = map[string]bool{
-	"--version":        true,
-	"version":          true,
-	"-v":               true,
-	"help":             true,
-	"--help":           true,
-	"-h":               true,
-	"completion":       true, // cobra built-in
-	"cc":               true, // launcher: exec's claude, discards the graph
-	"cg":               true, // retired token: never initialize launch dependencies
-	"glm":              true, // launcher: exec's claude, discards the graph
-	"gpt":              true, // gateway launcher and private auth store use no dependency graph
-	"internal-gateway": true, // private child receives all handler configuration over stdin
+	"--version":  true,
+	"version":    true,
+	"-v":         true,
+	"help":       true,
+	"--help":     true,
+	"-h":         true,
+	"completion": true, // cobra built-in
+	"cc":         true, // launcher: exec's claude, discards the graph
+	"cg":         true, // retired token: never initialize launch dependencies
+	"glm":        true, // launcher: exec's claude, discards the graph
 }
 
 // @MX:ANCHOR: [AUTO] Execute is the main entry point for the moai CLI
@@ -150,18 +148,6 @@ func init() {
 		worktree.WorktreeProvider = deps.GitWorktree
 		return nil
 	}
-
-	// Gateway commands remain closed for launch until verified transport binding.
-	gptServices := newGPTAuthServices(os.Stdout, installedGPTBroker{Out: os.Stdout})
-	gptServices.Launch = func(profile, mode string, args []string) error {
-		binding, err := newGPTGatewayBinding()
-		if err != nil {
-			return err
-		}
-		return unifiedLaunchWithGateway(profile, mode, args, binding)
-	}
-	rootCmd.AddCommand(newGPTCommand(gptServices))
-	rootCmd.AddCommand(newGatewayChildCommand(productionGatewayHandlerFactory))
 
 	// Register worktree subcommand tree
 	rootCmd.AddCommand(worktree.WorktreeCmd)

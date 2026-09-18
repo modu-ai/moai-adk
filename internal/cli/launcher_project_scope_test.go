@@ -121,7 +121,7 @@ func TestUnifiedLaunch_UsesProjectScopedResolution(t *testing.T) {
 
 	_, gotProfile := lpStubLaunch(t)
 
-	if err := unifiedLaunchWithGateway("", "claude", nil, nil); err != nil {
+	if err := runUnifiedLaunch("", "claude", nil); err != nil {
 		t.Fatalf("unifiedLaunch: %v", err)
 	}
 
@@ -168,7 +168,7 @@ func TestUnifiedLaunch_FirstTimeNewProfileIsRecorded(t *testing.T) {
 		return nil
 	}
 
-	if err := unifiedLaunchWithGateway("brand-new", "claude", nil, nil); err != nil {
+	if err := runUnifiedLaunch("brand-new", "claude", nil); err != nil {
 		t.Fatalf("unifiedLaunch: %v", err)
 	}
 	if launched != 1 {
@@ -216,7 +216,7 @@ func TestUnifiedLaunch_RecordFailureDoesNotBlockLaunch(t *testing.T) {
 
 	calls, _ := lpStubLaunch(t)
 
-	if err := unifiedLaunchWithGateway("work", "claude", nil, nil); err != nil {
+	if err := runUnifiedLaunch("work", "claude", nil); err != nil {
 		t.Errorf("(a) unifiedLaunch returned %v, want nil — a ledger write failure must not block the launch", err)
 	}
 	if *calls != 1 {

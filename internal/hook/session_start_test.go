@@ -72,7 +72,7 @@ func TestMaybeDeclareGLMContextWindow(t *testing.T) {
 // older binary or `moai glm setup` carry neither window key, and without the
 // declaration Claude Code assumes a 200K window for the custom GLM model ID.
 func TestEnsureGLMCredentials_ExistingTokenDeclaresContextWindow(t *testing.T) {
-	t.Parallel()
+	t.Setenv(config.EnvMoaiLaunchProvider, "")
 
 	dir := t.TempDir()
 	claudeDir := filepath.Join(dir, ".claude")
@@ -264,6 +264,7 @@ func TestSessionStartHandler_Handle(t *testing.T) {
 }
 
 func TestEnsureGLMCredentials(t *testing.T) {
+	t.Setenv(config.EnvMoaiLaunchProvider, "")
 	// Not parallel: subtests use t.Setenv which requires non-parallel parent
 
 	t.Run("no settings file", func(t *testing.T) {

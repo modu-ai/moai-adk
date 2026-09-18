@@ -73,13 +73,31 @@ workflow:
         #     - "src/"
         #     - "tests/"
         #     - "config/"
+    # drift_cache_fill: the out-of-band fill of the SPEC status-drift cache.
+    # When the session-start advisory finds no cached result for the current
+    # commit, it starts one short-lived background process to compute and store
+    # it, and returns without waiting. The next session reads the stored result.
+    #
+    # This key ships ENABLED, unlike the opt-in guards elsewhere in this file.
+    # Those ship inert; this one is not inert when on — it starts a child
+    # process on a cache miss — and the default is an accepted cost rather than
+    # a neutral one, because without the fill the drift advisory never appears
+    # after the commit changes. The child is short-lived, bounded by its own
+    # deadline, limited to one at a time, and silent.
+    #
+    # Set to false to stop the handler starting any fill; the advisory then
+    # resolves from whatever the cache already holds.
+    # The compiled default in internal/config/defaults.go is the source of
+    # truth; this block documents it.
+    drift_cache_fill:
+        enabled: true
     token_budget:
         plan: 30000
         run: 180000
         sync: 40000
     # audit: cross-model audit backend model+effort pinning. Applies ONLY at
-    # the audit entry points (codex_audit / glm_audit / audit_multi) — never
-    # to codex_task / glm_task delegation. Precedence: this pin > the llm.yaml
+    # the audit entry points (claude_audit / codex_audit / glm_audit /
+    # audit_multi) — never to task delegation. Precedence: this pin > the llm.yaml
     # sync-auditor SSOT cell > empty (legacy behavior). An EMPTY model is no
     # pin (effort alone pins nothing). On the codex side an unservable model
     # id falls back to the SSOT path; the GLM side sends a non-empty pin
@@ -87,8 +105,12 @@ workflow:
     # never a hard error). codex effort vocabulary: low|medium|high|xhigh|max.
     # glm effort vocabulary (z.ai reasoning states, verbatim): low|high|max —
     # any other non-empty value omits the reasoning directive while the model
-    # pin still applies. Values ship EMPTY; set them per project.
+    # pin still applies. Claude ships at sonnet/high; Codex and GLM pins ship
+    # EMPTY and may be set per project.
     audit:
+        claude:
+            model: sonnet
+            effort: high
         codex:
             model: ""
             effort: ""

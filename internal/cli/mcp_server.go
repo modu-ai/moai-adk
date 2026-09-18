@@ -266,7 +266,7 @@ func registerMoaiMCPTools(s *server.MCPServer, projectDir string) {
 	// OPTIONAL + experimental (R1).
 	add("codex_audit", mcp.NewTool(
 		"codex_audit",
-		mcp.WithDescription("Run a codex code review. mode=native → codex review/start; mode=adversarial → codex turn/start + an adversarial-review prompt. Returns a review-output schema (verdict/summary/findings/next_steps). codex is OPTIONAL; a missing or unavailable codex yields verdict 'inconclusive' (fail-open)."),
+		mcp.WithDescription("Run a codex code review. mode=native → codex review/start; mode=adversarial → codex turn/start + an adversarial-review prompt. Returns a review-output schema (verdict/summary/findings/next_steps). codex is OPTIONAL; a missing or unavailable codex yields verdict 'inconclusive' (fail-open) — EXCEPT where the reviewed tree explicitly sets workflow.audit.gates.codex to 'required', in which case a review that produced no verdict returns verdict 'fail' with a non-empty 'gate_unmet' and isError false, the same fail-closed rule the convergence result applies. A 'required' tree also gets an 'audit_receipt' id on the result: cite it in the auditor verdict line, because a PASS the receipt store cannot corroborate is refused."),
 		mcp.WithString("mode", mcp.Enum(codexModeNative, codexModeAdversarial), mcp.Description("Audit mode: 'native' (codex review/start) or 'adversarial' (codex turn/start + red-team prompt). Defaults to native.")),
 		mcp.WithString("target", mcp.Enum(codexTargetUncommitted, codexTargetBaseBranch), mcp.Description("What codex reviews: 'uncommittedChanges' or 'baseBranch'. For 'baseBranch' the branch name is resolved SERVER-SIDE and cannot be supplied here — it is read from the reviewed tree, the remote default head first and then 'main', the same chain the GLM backend uses so both review the same change. A tree where neither resolves returns 'inconclusive' naming that cause rather than reviewing something else.")),
 		mcp.WithString("focus", mcp.Description("Adversarial-only focus area (e.g. 'concurrency', 'auth').")),
@@ -277,6 +277,22 @@ func registerMoaiMCPTools(s *server.MCPServer, projectDir string) {
 		// see the audit_cache note.
 		mcp.WithReadOnlyHintAnnotation(true),
 	), handleCodexAudit)
+
+	// claude_audit → official Claude Code subscription CLI. The process receives
+	// only a bounded diff on stdin, with built-in tools, plugins, hooks, MCP, and
+	// session persistence disabled. Gateway routing credentials are scrubbed so
+	// a GPT/GLM main session reaches first-party Claude instead of recursing.
+	add(claudeAuditToolName, mcp.NewTool(
+		claudeAuditToolName,
+		mcp.WithDescription("Run an independent read-only Claude Code subscription audit over a bounded Git diff. Gateway routing is removed; missing subscription/auth/model capacity returns a structured inconclusive verdict."),
+		mcp.WithString("target", mcp.Enum(codexTargetUncommitted, codexTargetBaseBranch), mcp.Description("Review target: uncommittedChanges or baseBranch.")),
+		mcp.WithString("focus", mcp.Description("Optional independent-review focus area.")),
+		mcp.WithString("model", mcp.Description("Optional Claude Code model alias or model id; overrides workflow.audit.claude.model.")),
+		mcp.WithString("effort", mcp.Enum("low", "medium", "high", "xhigh", "max"), mcp.Description("Optional Claude Code effort; overrides workflow.audit.claude.effort.")),
+		projectRootOption(),
+		mcp.WithOutputSchema[ReviewOutput](),
+		mcp.WithReadOnlyHintAnnotation(true),
+	), handleClaudeAudit)
 
 	// codex_setup → Go probe (REQ-MCP-007 / AC-MCP-008): exec.LookPath("codex")
 	// + codex --version + auth-provider classification + the enable_review_gate
@@ -422,13 +438,14 @@ func registerMoaiMCPTools(s *server.MCPServer, projectDir string) {
 	// audit_multi → SPEC-AUDIT-MULTI-MODEL-001 multi-auditor convergence
 	// (REQ-AMM-009 / REQ-AMM-010 / AC-AMM-012 / AC-AMM-013). Thin wrapper over
 	// runMultiAudit (mcp_convergence.go) — does NOT re-implement the
-	// codex/glm backends (C1). The claude_verdict argument is the always-available
-	// anchor; gates is an optional per-auditor override (defaults: claude+codex
-	// required, glm advisory).
+	// Claude/codex/GLM backends (C1). A Claude-origin session may supply its
+	// in-session claude_verdict anchor; GPT/GLM/unknown origins ignore it and run
+	// an independent subscription-backed Claude audit. Gates are optional
+	// per-auditor overrides (defaults: claude+codex required, glm advisory).
 	add(auditMultiToolName, mcp.NewTool(
 		auditMultiToolName,
-		mcp.WithDescription("Run the multi-auditor convergence engine over a claude_verdict anchor + optional codex/glm backend verdicts. Returns a ConvergenceResult (overall verdict + per-auditor verdicts + residual_risk_note). Backend fan-out reuses the existing codex/glm handlers — no re-implementation."),
-		mcp.WithObject("claude_verdict", mcp.Description("The always-available claude anchor verdict (review-output schema: verdict/summary/findings/next_steps).")),
+		mcp.WithDescription("Run source-aware Claude/Codex/GLM audit convergence. Claude-origin sessions may reuse an in-session claude_verdict; GPT/GLM/unknown origins ignore caller Claude output and run a fresh subscription-backed Claude audit. Returns a ConvergenceResult with per-backend source and provenance."),
+		mcp.WithObject("claude_verdict", mcp.Description("Conditional Claude-main anchor (review-output schema). Ignored for GPT/GLM/unknown launch providers, which run an independent Claude subscription audit.")),
 		mcp.WithString("target", mcp.Description("Optional review target (file path, diff ref, or scope label).")),
 		mcp.WithString("focus", mcp.Description("Optional focus area (e.g. 'concurrency', 'auth', 'secret handling').")),
 		mcp.WithObject("gates", mcp.Description("Optional per-auditor gate override (keys: claude/codex/glm; values: off|advisory|required). Defaults: claude+codex required, glm advisory.")),

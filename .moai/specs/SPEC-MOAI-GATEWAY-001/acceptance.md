@@ -20,6 +20,9 @@ PASS가 아니라 **Gap**이다. AC가 존재한다는 사실은 그 AC의 Gap �
 않을 때, When 사용자 `--model` 없이 기동한 각 세션의 최초 turn 요청이 gateway에 도달하면, Then 요청 본문 `model`이
 `moai cc`는 설정된 Claude 기본 모델, `moai gpt`는 `gpt-5.6-sol`, `moai glm`은 설정된 GLM 기본 모델과 일치한다. 같은
 픽스처에서 사용자가 `--model <X>`를 주면 최초 turn 요청의 `model`은 `<X>`다(`REQ-MG-002`).
+`moai gpt`의 기본 `gpt-5.6-sol`은 `--model`이 없을 때만 적용된다. 같은 launch env의 네 별칭 슬롯은
+`FABLE=gpt-6-astra`, `OPUS=gpt-5.6-sol`, `SONNET=gpt-5.6-terra`, `HAIKU=gpt-5.6-luna`로
+서로 다른 직접 매핑을 유지한다.
 
 "최초 turn 요청"은 제목 생성 요청과 구분한다. 프로브에서 제목 생성 요청은 turn 요청보다 먼저 도착했고 그 시점에 선택된
 모델을 실었다(`research.md` §15 F8). 두 판정(launcher 초기 모델, 사용자 `--model`)은 서로 독립적으로 PASS 또는 Gap을
@@ -77,6 +80,11 @@ Then HTTP 404 `not_found_error`이며 모든 upstream 요청 계수는 0이다. 
 - (d) Given picker `s`로 credential을 얻을 수 없는 모델로 전환한 세션일 때, When 그 모델로 첫 turn 요청
   (`stream: true`)이 도착하면, Then gateway는 명시 오류를 클라이언트에 드러내고, 모든 upstream mock의 요청 계수는
   `0`이며, 다른 provider로 넘기지 않는다.
+- (e) Given 네 GPT 별칭 각각과 effort `max`·`high`·`medium`·`low`·`ultra` 및 effort 누락의
+  직교 조합일 때, When launcher가 모델과 effort를 조립하고 App Server turn을 시작하면, Then alias는 항상
+  지정된 GPT ID로만 해석되고 effort는 명시값 또는 누락 상태를 보존한다. 모델 선택에 따라 effort가 바뀌거나
+  effort에 따라 모델이 바뀌는 조합은 0건이다. 설치 App Server가 특정 effort를 지원하지 않으면 다른 값으로
+  대체하지 않고 해당 조합을 명시 오류로 거절한다.
 
 검증 가능성: 부분.
 
@@ -100,6 +108,10 @@ Then HTTP 404 `not_found_error`이며 모든 upstream 요청 계수는 0이다. 
 When Read, 승인된 임시 Write, Bash 도구 호출이 발생하면, Then tool_use 블록이 대상
 provider 형식으로 변환되어 나가고 tool_result가 원래 도구 이름과 ID로 역매핑되어
 대화에 재입력된다.
+GPT 변형에서는 App Server가 서로 다른 RPC ID·thread·turn·call ID를 가진 두 dynamic tool call을 보낼 때
+각 호출이 Claude Code 승인·hook·실행을 정확히 한 번 거쳐 동일 RPC ID 응답으로 돌아가야 한다. 결과 순서를
+뒤집어도 올바른 호출에 상관되어야 하며, 중복·미지 RPC ID·다른 대화 결과는 App Server 전달 0건으로 명시
+거절된다. Codex native shell·file·MCP·agent·hook 실행 계수는 0이다.
 검증 가능성: 부분 — 변환·역매핑 로직은 golden 시험으로 검증 가능. 실 provider 왕복은
 **Gap**.
 
@@ -154,6 +166,28 @@ in-process teammate가 lead의 gateway 주소를 물려받는지, lead 프로세
 When 답변·Claude 도구 왕복·새 프로세스 resume·model 변경·fork·compaction을 수행하면, Then 공개 맥락과
 도구 결과가 정확히 한 번 반영되며 reasoning은 Codex의 이력으로 보존된다. MoAI가 raw opaque를 추출하거나
 재구성하여 성공시키지 않는다. 다른 provider 요청·다른 대화의 결과·불명확한 pending 호출은 실행 전에 거절한다.
+
+**400/history replay 이진 행렬.** Given 요청 history, receipt/manifest, App Server RPC, 외부 생성,
+HTTP 응답과 구조화 로그를 각각 기록하는 격리 fixture가 있고, prompt·tool_result·reasoning·credential에 서로
+다른 canary 비밀을 넣었을 때, When 다음 변형을 각각 독립 실행하면, Then 아래 결과와 정확히 일치해야 한다.
+
+| 변형 | 외부 생성 횟수 | App Server `turn/start` | HTTP | 필수 로그 원인 |
+|---|---:|---:|---|---|
+| 동일 완료 prefix와 동일 `Idempotency-Key: history-contract-idempotency`의 transport 재시도 두 번 | 전체 시도 합계 2 | 전체 시도 합계 2 | 200 / 200 | 정상 귀속, upstream HTTP 합계 2 |
+| 완료 prefix 뒤 새 사용자 입력 1건 | 1 | 1 | 성공 | 정상 귀속 |
+| 이전 공개 message를 변경·삽입·삭제한 history | 0 | 0 | 400 `invalid_request_error` | `history_changed` |
+| receipt에 귀속되지 않은 `agent_summary` 삽입 | 0 | 0 | 400 `invalid_request_error` | `agent_summary_untrusted` |
+| request prefix와 receipt/manifest chain 불일치 | 0 | 0 | 400 `invalid_request_error` | `receipt_manifest_mismatch` |
+| resume 직후 이미 반영된 사용자 입력 재제출 | 0 | 0 | 400 `invalid_request_error` | `resume_duplicate_input` |
+
+`agent_summary` 변형은 구조적으로
+`{"type":"agent_summary","summary":"CANARY-SUMMARY-92","source":"untrusted"}`를 포함해야 한다.
+`ServerConfig.RejectionLogger`에 주입되는 recorder는 `RecordGatewayRejection(fields map[string]string)`를
+구현하며 정확히 `cause`, `route`, 길이 64의 `digest` 세 필드만 받아야 한다. prompt·summary·tool·reasoning·
+token·credential·canary key/value는 0건이어야 한다. 다섯 canary의 원문과 부분 문자열이 HTTP 오류·stdout·
+stderr·구조화 로그 어디에도 0건이어야 한다. 양성 두 행이 실제 외부 생성/RPC 계수를
+증가시키지 않으면 음성 행의 0회 판정은 유효하지 않다. 과거 t672·t851 보고나 receipt fixture의 존재는 이
+현재 트리 행렬의 PASS를 대신하지 않는다.
 검증 가능성: 아래 0.11.0의 카드별 시나리오 전체로 판정한다. 과거 direct carrier 프로브는 현재 경로의 PASS가 아니다.
 
 **AC-MG-010** (T16, REQ-MG-011, REQ-MG-023) — Given 현재 대화의 토큰 길이가 대상 모델의
@@ -181,23 +215,42 @@ OAuth token·요청 본문이 남지 않으며, listener는 loopback 외 주소�
 ## B. 구조 계약 (요구사항 직접 유래)
 
 **AC-MG-014** (REQ-MG-001, REQ-MG-002, REQ-MG-026) — Given 이 트리에서 빌드한 `moai`
-바이너리가 있을 때, When 다음 네 가지를 각각 실행하면, Then 네 판정이 모두 성립한다.
+바이너리가 있을 때, When 다음 판정을 각각 실행하면, Then 모두 성립한다.
 
 - (a) `moai --help` → Launchers 그룹에 `moai cc`·`moai gpt`·`moai glm` 세 행이 보인다.
 - (b) `moai gpt --help` → exit 0으로 사용법을 출력한다.
 - (c) `moai gpt --spawn …`의 재발행 명령 조립 → 조립된 명령이 `moai gpt`로 시작한다
   (`cc`나 `glm` 리터럴로 새지 않는다).
-- (d) `moai gpt`의 **네 진입 분기 각각** — factory lead, factory worker, kanban lead, kanban
-  companion — 에서 `exportKanbanLaunchFacts`가 `MOAI_KANBAN_BACKEND`에 `gpt`를 남긴다. factory
-  lead 분기에서는 추가로 `RecordFactoryRunStart`가 kanban 기록에 `gpt`를 남긴다. 이는 `moai cc`가
-  같은 네 분기에서 `kanban.BackendClaude`를 넘기는 구조와 같다.
+- (d) `moai gpt -f`의 Factory lead와 Factory worker 분기에서 Dispatch 기록의 초기 provider가
+  `gpt`이고, 같은 Factory 실행의 모델 별칭·effort가 REQ-MG-019 계약대로 유지된다.
+- (e) `moai gpt -k`와 `moai gpt --kanban`은 각각 비성공으로 끝나고 `-f` 안내를 출력하며, Factory
+  실행·Todo 변경·Tasks 생성·Dispatch 기록은 모두 0건이다.
+- (f) 활성 CLI 도움말·새 사용자 출력·일반 런타임 식별자와 import 경로는 Factory/Todo/Tasks/Dispatch/
+  Orchestration 명칭을 사용한다. 옛 명칭은 과거 SPEC·commit·report ID 또는 이름을 표시한
+  migration/legacy 경계에서만 발견된다. `orchestration.BackendGPT`의 저장 값은 `"gpt"`다.
+  판정은 `research.md` §22의 기계 allowlist와 inventory 명령을 그대로 사용한다.
+  - allowlist를 제외한 production Go 파일의 `Kanban|kanban|-k|--kanban|MOAI_KANBAN_*` hit는 0이다.
+    `internal/kanban` 디렉터리·`package kanban`·옛 import도 0이다.
+  - legacy fixture의 구 저장 레코드와 `MOAI_KANBAN_*` 입력은 새 reader가 의미·ID·backend를 보존해
+    읽는다. 같은 실행의 새 저장 write, env write, 사용자 출력에는 `Kanban`·`kanban`·`MOAI_KANBAN_*`
+    hit가 0이고 Dispatch/Orchestration 이름만 있다.
+  - `moai gpt -k`와 `moai gpt --kanban` 각각에서 종료 코드는 비성공이고 stderr에 `-f` 안내가 있으며,
+    전후 Todo DB bytes/hash·Tasks snapshot·Dispatch event count·Factory process count·관련 env 투영이
+    같다. 각 부작용 대조군은 `moai gpt -f`가 해당 계수나 상태를 실제로 바꾸는 양성 fixture다.
+  - 현재 inventory의 47 production package 파일, 85 package test 파일, 36 active production importer와
+    별도 historical utility 1개가 전부 새 경계로 분류됐는지 파일 집합 equality로 판정한다. 누락·추가
+    파일이 있으면 allowlist를 조용히 넓히지 않고 inventory를 재감사한다.
+  - 추적 manifest는 `.moai/specs/SPEC-MOAI-GATEWAY-001/naming-migration-manifest.json`이며 schema와
+    현재 source set은 `research.md` §22.6이 고정한다. 미래 단일 checker 명령은
+    `go test ./internal/orchestration -run '^TestNamingMigrationManifestContract$' -count=1 -v`이다.
+    equality 성공은 test 1개·case 5개 PASS·exit 0을 출력해야 한다. manifest에만 있는 파일은
+    `missing_from_tree=<sorted paths>`, tree에만 있는 파일은 `extra_in_tree=<sorted paths>`, schema
+    불일치는 `schema_error=<field>:<reason>`을 해당 subtest의 실패 출력에 남기고 전체 exit를
+    non-zero로 만들어야 한다. 누락·추가·schema 오류를 빈 목록 성공으로 처리하면 실패다.
 
-같은 판정 안에서 세 가지를 함께 확인한다. kanban backend 상수 집합은 `claude`·`glm`·`gpt`
-셋이고, 감사 backend 상수 집합(`claude`·`codex`·`glm`)은 바뀌지 않았으며, 웹 콘솔의 backend
-배지가 `gpt`에 대해 과금 방식을 단정해 표시하지 않는다(`REQ-MG-026`).
-검증 가능성: 부분 — (a)~(c)와 두 상수 집합·배지 단언은 단위 시험으로 판정된다. (d)는
-네 분기의 기록 단계를 시험 seam으로 판정하며, 실제 kanban/factory 세션 전 구간 실행은
-대화형이므로 **Gap**.
+같은 판정에서 UI의 `gpt` 표시가 과금 방식을 단정하지 않는지 확인한다(`REQ-MG-026`).
+검증 가능성: 부분 — (a)~(f)의 구조·부작용 0건은 단위·통합 시험으로 판정한다. 실제 Factory 세션의
+Claude Code Agent 실행 전 구간은 대화형 실증이 필요하므로 그 실증 전에는 **Gap**이다.
 
 **AC-MG-015** (REQ-MG-004) — Given 이 트리에서 빌드한 `moai` 바이너리가 있을 때, When
 (a) `moai --help` 출력을 캡처하고 (b) cobra 루트 명령의 하위 명령 트리를 전수 열거하면,
@@ -265,7 +318,10 @@ Windows에서 쓰이는 `CLAUDE_ENV_FILE`)도 판정에서 뺀다.
   `llm.glm.models` 픽스처는 `high`·`medium`·`low`·`fable`에 서로 다르고 어느 상속 표지와도 다른 GLM 모델 ID를 둔다. When `moai cc`, `moai gpt`,
   `moai glm` 각각이 exec 직전에 이르러 exec에 넘길 env를 확정하면, Then 그 env에 대해 다음이 성립한다.
   - `moai cc`·`moai gpt` — 상속 표지 값이 어느 항목의 값에도 나타나지 않고, `MOAI_BACKUP_AUTH_TOKEN`과 `Z_AI_API_KEY` 키가
-    없다.
+    없다. `moai gpt`에는 네 모델 슬롯이 모두 있고 값은 정확히
+    `FABLE=gpt-6-astra`, `OPUS=gpt-5.6-sol`, `SONNET=gpt-5.6-terra`,
+    `HAIKU=gpt-5.6-luna`다. 네 값을 현재 기본 모델 하나로 채우거나 GLM의 high·medium·low·fable
+    설정을 재사용한 구현은 적색이다.
   - `moai glm` — `Z_AI_API_KEY`의 상속 표지를 뺀 상속 표지 값이 어느 항목의 값에도 나타나지 않고, `MOAI_BACKUP_AUTH_TOKEN`
     키가 없으며, `Z_AI_API_KEY`는 있고 그 값은 credential 저장소 픽스처 값과 같으며 상속 표지와 다르다. 네 모델 슬롯 키
     `ANTHROPIC_DEFAULT_{OPUS,SONNET,HAIKU,FABLE}_MODEL`이 모두 있고, 각 값은 tier 픽스처의 `high`·`medium`·`low`·`fable`
@@ -444,12 +500,154 @@ ID)로 `moai glm` gateway 세션을 열고 Z.AI mock upstream이 수신 요청�
 검증 가능성: 부분 — 헤더·인증 해석·매핑·하위 명령은 mock과 시험 seam(`MOAI_TEST_GLM_KEY`)으로
 판정된다. 실제 Z.AI inference 왕복은 계정 권한이 필요하므로 **Gap**.
 
+**AC-MG-026** (REQ-MG-027, REQ-MG-019) — launcher 생산 통합과 로컬 배포 게이트(0.13.0, t654).
+네 하위 판정은 서로 독립적으로 PASS 또는 Gap을 받는다.
+
+- (a) **launcher 생산 통합.** Given AS-014~AS-022의 검증 게이트가 통과한 트리일 때, When 이 트리에서
+  빌드한 `moai gpt`를 launch 인수와 함께 실행하면, Then launch가 "GPT gateway launch is awaiting
+  transport verification" 대기 오류로 끝나지 않고 실제 launch 경로로 진행하며, 세 launcher 모두
+  provider 전용 catalog·인증 방식 표시·App Server transport를 같은 launch 조립에서 넘긴다. 검증
+  게이트 통과 전 트리에서는 같은 실행이 대기 오류로 끝나는 대조군이 된다. 기계 판정: 게이트 통과
+  트리에서 비-테스트 `internal/cli`에 그 대기 오류 리터럴이 0건 —
+  `grep -rn 'awaiting transport verification' internal/cli --include='*.go' | grep -v _test` → 0,
+  launch 조립 시험 `go test ./internal/cli/ -run 'TestGatewayLaunch'` PASS(RED→GREEN 로그 보존).
+- (b) **compaction epoch 생산 복원.** Given 세션 영구 상태에 마지막 적용 epoch가 기록된 대화 scope가
+  있을 때, When 프로세스를 다시 띄워 compaction 원장을 복원하면, Then 주입된 applied epoch가 기록값과
+  같고 뒤이은 첫 rebase가 그 값 기준으로 판정된다. 영구 상태가 없으면 0으로 시작하고, 판독 불가·훼손
+  상태는 명시 오류다. 기계 판정: `go test ./internal/gateway/... -run 'TestRebaseLedgerRestoration'`
+  RED→GREEN — 고정값·호출자 추측 주입(현행, 비-테스트 호출자 0) 구현은 복원 시험에서 적색이다.
+- (c) **fork inherited prefix 원장 대조.** Given 원본 family의 완료 원장과 `--fork-session` 자식의
+  inherited prefix가 있을 때, When gateway가 자식 배리어를 수용하면, Then prefix가 `Manifest.ChainTo`
+  경계와 일치할 때만 수용되고, 변조·불일치·미지 원본은 자식 상태 생성 전에 명시 거절된다. engine의
+  caller-asserted 값을 대조 없이 수용하는 구현은 변조 변형에서 적색이다. 기계 판정:
+  `go test ./internal/gateway/... -run 'TestForkPrefixCrossCheck'` RED→GREEN.
+- (d) **rc 로컬 배포 게이트(종결).** Given (a)·(b)·(c)가 PASS이고 AS-017·AS-019·AS-021이 PASS이며
+  AS-014·AS-018·AS-020·AS-022가 PASS 또는 근거를 갖춘 Gap일 때 — 즉 강제 전제 집합은
+  {(a), (b), (c), AS-017, AS-019, AS-021}의 전수 PASS다(이 여섯에 Gap은 허용되지 않는다) — When
+  배포 절차를 실행하면, Then 다음 세 증거가 각각의 실제
+  명령과 출력과 함께 `.moai/reports/t654/as5-deploy-verdict.md`에 남는다.
+  1. `make build VERSION=v<다음 미사용 rc>` → exit 0. 버전 번호는 `.moai/docs/version-management.md`
+     Local RC Numbering의 다음 미사용 번호다 — 카드 문구의 rc.8은 2026-09-12 발행 시점 표기이며,
+     발행 시점에 이미 소비됐으면 다음 번호를 쓰고 그 사실을 보고서에 명시한다.
+  2. `rm -f ~/go/bin/moai && cp bin/moai ~/go/bin/moai` → clean 재설치(inode 갱신; 맨 cp 덮어쓰기는
+     exit 137 전례가 있어 clean 재설치가 계약이다).
+  3. `sh scripts/verify-local-install.sh` → `bin/moai`와 `~/go/bin/moai`가 byte 단위로 같고 설치본의
+     `version` 명령이 exit 0이며 측정 시점 HEAD의 short SHA를 출력한다. macOS `strings`나 Xcode
+     라이선스 상태에 의존하는 판정은 허용하지 않는다.
+  macOS의 기본 `make`·`git`이 Xcode 라이선스 exit 69를 내는 호스트는
+  `.claude/rules/local/gitflow-lane-protocol.md` §9의 Command Line Tools PATH 전처리를 배포 명령 묶음
+  전에 적용하며, 자동 라이선스 동의나 `|| true`로 대체하지 않는다.
+  보고서는 CHANGELOG 발행 검토 결과(사용자 가시 표면 기준, 사전-발행 grep
+  `grep -c 'SPEC-MOAI-GATEWAY-001' CHANGELOG.md` 포함)를 함께 담는다.
+  push·PR·병합·워크트리 제거는 없으며, 배포 절차 후 `git status --short`가 증거 파일 외 로컬 변경
+  없음을 보이는 것까지 판정에 포함한다.
+검증 가능성: (a)~(c)는 기계 시험으로, (d)는 명령 출력과 보고서로 판정된다. (d)의 전제인 실제 계정
+실증(AS-017·AS-019·AS-021)이 세션 환경에서 불가하면 (d)는 창 대기 상태로 남고 PASS로 세지 않는다.
+
 ## D. Definition of Done
 
-- `AC-MG-001` ~ `AC-MG-025` 가운데 폐기 묘비 `AC-MG-002`를 뺀 24개 각각이 PASS 또는 근거를 갖춘 Gap으로 판정되었다.
-- Gap으로 남은 항목(미리 선언한 Gap 포함)이 완료 보고의 Gaps 구획에 이유와 함께 열거되었다.
-- `AC-MG-006`의 Windows 절반이 카드 종료 시점에 Gap(판정 대기)으로 기록되었고, release PR 판정의 기록 위치
-  (`.moai/reports/SPEC-MOAI-GATEWAY-001/windows-release-verdict.md`)가 완료 보고에 적혔다.
+- `AC-MG-001` ~ `AC-MG-026` 가운데 폐기 묘비 `AC-MG-002`를 뺀 25개 각각이 판정되어야 한다.
+  아래 RED-now 행은 현재 제품 결함을 재현하는 selector이며 모두 GREEN이어야 한다. 이미 GREEN인 회귀
+  가드와 아직 실행하지 않은 live/Windows 사건은 RED 자격을 주장하지 않지만 별도 완료 의존성으로 남는다.
+- M14-R0.2는 제품을 바꾸지 않은 기준선
+  `4056f69e1c20d942d4f9fc7363d3d79bffde899a`에서 실행됐다. 다음 fenced ledger가 각 실제 RED selector의
+  명령·원문 stdout 실패 일부·exit·raw path/digest를 결합하는 canonical MP-8 carrier다.
+
+`EV-R0-ALIAS-ENV-RED`
+```text
+command: go test ./internal/cli -run '^TestGPTAliasEffortMatrix$' -count=1 -v
+baseline: 4056f69e1c20d942d4f9fc7363d3d79bffde899a
+verbatim:     gpt_alias_effort_contract_test.go:48: alias fable: got gpt-5.6-sol, want gpt-6-astra (effort max)
+exit: 1
+log: .moai/reports/SPEC-MOAI-GATEWAY-001/m14-r0/01-alias-effort.log sha256=28f2d0aef1d104363db0106bcfb0d2917d3a145153c75fd8cbd434fbf88d6e10
+exit-carrier: .moai/reports/SPEC-MOAI-GATEWAY-001/m14-r0/01-alias-effort.exit sha256=4355a46b19d348dc2f57c046f8ef63d4538ebb936000f3c9ee954a27460dd865
+```
+
+`EV-R0-EFFORT-RPC-RED`
+```text
+command: go test ./internal/cli -run '^TestGPTAliasEffortRPCMatrix$' -count=1 -v
+baseline: 4056f69e1c20d942d4f9fc7363d3d79bffde899a
+verbatim:     gpt_alias_effort_contract_test.go:124: turn/start.effort="" want="max" alias=fable model=gpt-6-astra
+exit: 1
+log: .moai/reports/SPEC-MOAI-GATEWAY-001/m14-r0/01-effort-rpc.log sha256=97806a722b7921fe57bf108efc790837df7471601493d7eb423dd3989cbbf275
+exit-carrier: .moai/reports/SPEC-MOAI-GATEWAY-001/m14-r0/01-effort-rpc.exit sha256=4355a46b19d348dc2f57c046f8ef63d4538ebb936000f3c9ee954a27460dd865
+```
+
+`EV-R0-APP-SERVER-RPC-RED`
+```text
+command: go test ./internal/gateway -run '^TestGPTProductionAppServerToolRoundTrip$' -count=1 -v
+baseline: 4056f69e1c20d942d4f9fc7363d3d79bffde899a
+verbatim:     gpt_production_appserver_roundtrip_contract_test.go:202: App Server claude-tool-result-continuation got=502 want=200
+exit: 1
+log: .moai/reports/SPEC-MOAI-GATEWAY-001/m14-r0/02-appserver-roundtrip.log sha256=a9a68cb73b7cac772d0da398ced18faa07150e9afde2ccf823bab17d3dc3d6c3
+exit-carrier: .moai/reports/SPEC-MOAI-GATEWAY-001/m14-r0/02-appserver-roundtrip.exit sha256=4355a46b19d348dc2f57c046f8ef63d4538ebb936000f3c9ee954a27460dd865
+```
+
+`EV-R0-PRODUCTION-WIRING-RED`
+```text
+command: go test ./internal/cli -run '^TestGPTProductionAppServerWiring$' -count=1 -v
+baseline: 4056f69e1c20d942d4f9fc7363d3d79bffde899a
+verbatim:     gpt_appserver_factory_contract_test.go:111: managed App Server assembly touched absent/poisoned legacy auth store: handler=<nil> err=gateway private configuration or verified dependencies unavailable, want success with zero legacy open/read/refresh
+exit: 1
+log: .moai/reports/SPEC-MOAI-GATEWAY-001/m14-r0/02-production-wiring.log sha256=c6a107951d539950363c3e150544bc7a80bb73951cf0f093582ee09bf10a1905
+exit-carrier: .moai/reports/SPEC-MOAI-GATEWAY-001/m14-r0/02-production-wiring.exit sha256=4355a46b19d348dc2f57c046f8ef63d4538ebb936000f3c9ee954a27460dd865
+```
+
+`EV-R0-FACTORY-RED`
+```text
+command: go test ./internal/cli -run '^TestGPTFactoryAndRetiredKanbanContract$' -count=1 -v
+baseline: 4056f69e1c20d942d4f9fc7363d3d79bffde899a
+verbatim:     gpt_appserver_factory_contract_test.go:277: gpt Factory backend env dispatch="" legacy-kanban="gpt", want gpt/empty
+exit: 1
+log: .moai/reports/SPEC-MOAI-GATEWAY-001/m14-r0/03-factory-retired.log sha256=6758afc04b04f1bcdd1a6e8215fbf76e2533a1f863723ed50ba48cbbd185b319
+exit-carrier: .moai/reports/SPEC-MOAI-GATEWAY-001/m14-r0/03-factory-retired.exit sha256=4355a46b19d348dc2f57c046f8ef63d4538ebb936000f3c9ee954a27460dd865
+```
+
+`EV-R0-HISTORY-RED`
+```text
+command: go test ./internal/gateway ./internal/codexbridge -run '^TestGPTAppServerLifecycleAndHistoryAttribution$' -count=1 -v
+baseline: 4056f69e1c20d942d4f9fc7363d3d79bffde899a
+verbatim:     gpt_lifecycle_history_contract_test.go:196: production ServerConfig RejectionLogger seam available=false settable=false type=<nil>, want injectable structured rejection recorder
+exit: 1
+log: .moai/reports/SPEC-MOAI-GATEWAY-001/m14-r0/04-lifecycle-history.log sha256=51fd46a96c1a835fe2c389be01e3953e56dde47b1a3863b6b85e422b7162c0a6
+exit-carrier: .moai/reports/SPEC-MOAI-GATEWAY-001/m14-r0/04-lifecycle-history.exit sha256=4355a46b19d348dc2f57c046f8ef63d4538ebb936000f3c9ee954a27460dd865
+```
+
+`EV-R0-NAMING-RED`
+```text
+command: go test ./internal/orchestration -run '^TestNamingMigrationManifestContract$' -count=1 -v
+baseline: 4056f69e1c20d942d4f9fc7363d3d79bffde899a
+verbatim:     naming_manifest_contract_test.go:71: schema_error=manifest: open naming-migration-manifest.json: open /Users/goos/MoAI/moai-adk-go/.claude/worktrees/develop/.moai/specs/SPEC-MOAI-GATEWAY-001/naming-migration-manifest.json: no such file or directory
+exit: 1
+log: .moai/reports/SPEC-MOAI-GATEWAY-001/m14-r0/05-naming-manifest.log sha256=844a5d5e886635cc4576925764730f0ad039fc0425290eea246fd1e3b61e2c0a
+exit-carrier: .moai/reports/SPEC-MOAI-GATEWAY-001/m14-r0/05-naming-manifest.exit sha256=4355a46b19d348dc2f57c046f8ef63d4538ebb936000f3c9ee954a27460dd865
+```
+
+| RED-now ID | 추적 / owner | fenced ledger | 현재 결과와 GREEN 종결 조건 |
+|---|---|---|---|
+| RB-GPT-ALIAS-ENV | AC-MG-001·003·011·018 / M14-R1 | `EV-R0-ALIAS-ENV-RED` | 21=6 PASS/15 RED. 21/21 PASS와 live AS-018이 필요하다. |
+| RB-GPT-EFFORT-RPC | AC-MG-003·018 / M14-R1 | `EV-R0-EFFORT-RPC-RED` | 21=1 PASS/20 RED. 실제 `turn/start.model`과 `turn/start.effort` 21/21 PASS가 필요하다. |
+| RB-APP-SERVER-RPC | AC-MG-004·007·009 / M14-R2 | `EV-R0-APP-SERVER-RPC-RED` | 8=5 PASS/3 RED. 한 batch 두 call, 역순 continuation 뒤 JSON-RPC `rpc-a`·`rpc-b` 각각 정확히 1회 응답해야 한다. |
+| RB-APP-SERVER-WIRING | AC-MG-004·007·009 / M14-R2 | `EV-R0-PRODUCTION-WIRING-RED` | 6 RED. 네 managed route, concrete AppServerAdapter, absent/poisoned legacy auth store open/read/refresh 0, 두 번의 deterministic close가 모두 PASS해야 한다. |
+| RB-GPT-FACTORY | AC-MG-014·AS-017·018 / M14-R3 | `EV-R0-FACTORY-RED` | 7 RED. stdout/stderr, 실행 전후 env, launch/Todo/Tasks/Dispatch/Factory 불변과 active prompt/env 전달을 전부 PASS한다. |
+| RB-HISTORY-400-LOGGER | AC-MG-009·AS-010·012 / M14-R2 | `EV-R0-HISTORY-RED` | 11=6 PASS/5 RED. 네 400 CauseCode와 주입 가능한 structured rejection recorder를 모두 PASS한다. |
+| RB-NAMING-MANIFEST | AC-MG-014(f) / M14-R3 | `EV-R0-NAMING-RED` | 5=3 PASS/2 RED. exact schema/current equality와 모든 mutation guard를 5/5 PASS한다. |
+
+| 이미 GREEN인 회귀 가드 | 현재 증거 | 보존 조건 |
+|---|---|---|
+| App Server 정상/격리 5건 | [`02-appserver-roundtrip.log`](../../reports/SPEC-MOAI-GATEWAY-001/m14-r0/02-appserver-roundtrip.log) `a9a68cb73b7cac772d0da398ced18faa07150e9afde2ccf823bab17d3dc3d6c3` | initialize/thread/turn 및 duplicate/foreign/cross-thread 거절 5 PASS를 유지한다. |
+| lifecycle/history 양성 6건 | [`04-lifecycle-history.log`](../../reports/SPEC-MOAI-GATEWAY-001/m14-r0/04-lifecycle-history.log) `51fd46a96c1a835fe2c389be01e3953e56dde47b1a3863b6b85e422b7162c0a6` | resume/model/compact/fork, 같은 Idempotency-Key 두 요청, 완료 prefix+새 사용자 입력 6 PASS를 유지한다. |
+| portable process 6건 | [`06-portable-process.log`](../../reports/SPEC-MOAI-GATEWAY-001/m14-r0/06-portable-process.log) `c8bed0206b2e036149fcc104047cbb13d8a12af112171f6d7324250deb848608` | readiness/HTTP/overlay/0600/cancel/wait/exit 23의 6 PASS를 유지한다. |
+| wiring 반복 안정성 | [`02-production-wiring-count20.log`](../../reports/SPEC-MOAI-GATEWAY-001/m14-r0/02-production-wiring-count20.log) `da1d39a798254c98f6a0f042ee05d9a11fad36c8d33e3dd5235b4cdc94f6f442` | 같은 제품 RED만 20회 재현하며 fixture race가 없어야 한다. GREEN 뒤 동일 반복은 exit 0이어야 한다. |
+
+| 완료 의존성 — 현재 RED 주장 아님 | owner / 증거 경로 | 완료 조건 |
+|---|---|---|
+| 실제 Factory Agent/tool/approval/hooks/Tasks/Dispatch | M14-R5 / AS-017·018 | 실제 `moai gpt -f` lead·worker에서 전수 양성 증거와 digest를 남긴다. |
+| GPT 실계정·PTY·history | M14-R5 / AS-001~015·019~021, t844 AS-010~012 | 각 AS owner가 원문·digest를 제출하고 t844의 live 양성을 소비한다. local contract PASS로 대체하지 않는다. |
+| `CD-WINDOWS-BUILD` / `CD-WINDOWS-RUNTIME` | M14-R4·R5 / AS-016·022 | `windows-latest` build와 실제 종료·재개·flush·권한 사건을 각각 PASS한다. portable 6 PASS로 대체하지 않는다. |
+| rc 종결 | M14-R5 / AS-022 | 필수 live gate 뒤 clean local rc 설치·version·binary SHA·상태 readback을 PASS한다. |
+
+- Gap으로 남을 수 있는 비-release-blocking 항목은 완료 보고의 Gaps 구획에 이유와 함께 열거한다.
 - 변경 패키지의 `go vet`, `golangci-lint run`, `go test`가 통과했다.
 - 새 코드 경로 커버리지 85% 이상.
 - 어떤 AC도 실행하지 않은 명령의 출력을 근거로 인용하지 않았다.
@@ -466,6 +664,8 @@ ID)로 `moai glm` gateway 세션을 열고 Z.AI mock upstream이 수신 요청�
 | T09 Claude 구독 OAuth × 로컬 gateway 인증 공존 | (REQ-MG-016 → AC-MG-021) | **이관하지 않음.** 선행 측정으로 수행하고(`plan.md` M0) `REQ-MG-016`을 게이트한다 |
 | T10 외부 auth 보존 | (REQ-MG-025 → AC-MG-020) | `SPEC-MOAI-GPT-AUTH-001` (제안)으로 이관. Codex 쪽 불변식만 이 SPEC에 보존 |
 | T20 `cg`/`gg` 제거와 기존 회귀 | (REQ-MG-004 → AC-MG-015) | `SPEC-MOAI-CG-RETIRE-001` (제안)으로 이관. `gg` 부재만 이 SPEC에 보존 |
+| T21 AS-010·011·012 실세션 양성 실증 | (REQ-MG-015, REQ-MG-017 → AC-MG-009/AS-010, AC-MG-003/AS-011, AC-MG-009/AS-012) | 실세션 양성 실증(실세션 회상·실제 turn model 일치·실제 Claude 압축 수집)은 카드 t844가 실행 owner다. 자동 거절 변형군과 기계적 검증은 카드 t653 run 커밋 `14dba89c5`·`e45f50a8d`에서 착지했지만, M14-R5가 t844 원문 evidence와 digest를 이 SPEC에 소비하기 전까지 전체 기능 통과는 보류다. AS-013은 t844 이관 대상이 아니며 M14-R5가 설치본 native fork를 실제 실행한다. 0.13.0의 NOT-RUN 기록은 역사적 상태이고 0.16.0 완료 기준으로 사용할 수 없다 |
+| T22 AS-019와 T21의 경계 정합 (0.13.0, t654) | (REQ-MG-019, REQ-MG-015 → AC-MG-001/AS-019) | 카드 t654 문구의 "실제 Claude PTY … 재개·모델전환"은 launcher 측(Claude/GLM 재개·전환과 provider 경계)으로 판정한다. AS-010·011·012의 GPT thread 실세션 양성은 T21대로 t844에 유지되며 AS-019가 흡수·대체하지 않는다 — 두 표면이 같은 "재개·모델전환" 어휘를 쓰지만 판정 대상이 다르다. t844 이관 내용이 바뀌지 않는 한 T21 행은 이 판에서 수정하지 않는다 |
 | tmux pane teammate 표면 (옛 `AC-MG-006` teammate 수명 판정, 옛 `AC-MG-018` (a) tmux 주입 판정) | — | 0.6.0에서 `SPEC-MOAI-GATEWAY-TEAMMATE-001` (제안)으로 이관. tmux 세션 env 무기록과 in-process 표시 판정만 이 SPEC에 남음 |
 
 ## 0.9.0 기존 AC의 형식·인증 대조군 보강
@@ -629,10 +829,84 @@ Given 설치본의 native Agent(fork)/subtask 가용성을 확인한 실제 Clau
 Windows process 종료·재개·파일 flush/원자교체·권한 시험을 실행하면, Then 기존 review 의미와 승인된 Windows API 계약이 유지된다.
 Windows cross compile만으로 runtime AC를 통과시키지 않는다.
 
+**AC-MG-004 / AS-017 (REQ-MG-015, REQ-MG-017)** Given 실제 launcher PTY 세션과 초기 완전 정의 도구, ToolSearch 뒤 처음 발견하는
+도구가 있을 때, When 실제 turn에서 초기 도구와 후발 도구를 각각 실행하면, Then 초기 도구는 native schema로, 후발 도구는 dispatcher로
+정확히 한 번 실행되고 등록 때문에 추가된 thread/start·fork·resume 호출은 0이다. t651의 fake 기반 AS-004를 대체하지 않고 제품 판정을
+더한다. 증거: `.moai/reports/t654/as5-pty-toolsearch.log` + gateway 요청 기록. 검증 가능성: 실제 계정 권한 필요 — 불가하면 Gap.
+
+**AC-MG-011 / AS-018 (REQ-MG-019, REQ-MG-015)** Given 세 launcher PTY 세션과 서브에이전트의 네 슬롯 별칭 요청을 유도하는 작업이 있을
+때, When 서브에이전트가 별칭·모델로 요청을 보내면, Then 요청은 해당 제공자 세션 catalog 안에서 해석되고 타 upstream 요청 계수는 0이며,
+미등록 ID는 자동 확장 없이 거절된다. GPT 세션에서는 `fable`·`opus`·`sonnet`·`haiku`가 각각
+`gpt-6-astra`·`gpt-5.6-sol`·`gpt-5.6-terra`·`gpt-5.6-luna` 요청으로 관측되고, 각 요청의
+effort는 별칭과 독립적으로 지정값 또는 누락을 보존한다. 증거: `.moai/reports/t654/as5-pty-subagent.log`.
+검증 가능성: 실제 PTY 필요.
+
+**AC-MG-001 / AS-019 (REQ-MG-019, REQ-MG-015)** Given 같은 제공자의 세션 기록이 있을 때, When launcher 재개 플로우와 `/model` 전환을
+실제 PTY에서 수행하면, Then 재개는 같은 제공자·대화 소유권이 확인된 기록에 한해 수용되고, 전환 뒤 실제 turn 요청의 `model`이 선택 ID와
+일치하며 타 provider 요청 계수는 0이다. **t844 경계**: AS-010(GPT thread 실세션 회상)·AS-011(GPT 실제 turn model 일치)·AS-012(실제
+Claude 압축 수집)의 실세션 양성은 T21대로 t844 소관이며, 이 AS는 그것을 흡수·대체하지 않는다 — 이 AS는 launcher 측(Claude/GLM 재개·
+전환과 provider 경계)과 GPT 측 picker·인증 표시(AS-014)까지만 판정한다. 증거: `.moai/reports/t654/as5-pty-resume-model.log`. 검증
+가능성: 실제 PTY 필요.
+
+**AC-MG-010 / AS-020 (REQ-MG-011, REQ-MG-014)** Given 설치 App Server model metadata와 provider별 capability 선언이 있을 때, When
+GLM 세션에서 이미지 입력과 Claude 세션에서 이미지 입력을 각각 시도하면, Then GLM은 text-only로 명시 거절하고 Claude는 선언 capability대로
+수용하며, 표시는 모델 명목 창·현재 경로 유효 한도·누적 사용량을 구분한다. `gateway_product_binding.go`의 공통
+`Capabilities{ContextTokens: 1000000, Images: true}`는 provider별 양성·음성 시험으로 재판정한다 — 그 선언 자체는 수용 보장이 아니다.
+증거: `.moai/reports/t654/as5-context-paths.md`. 검증 가능성: 부분 — capability 음성·양성은 mock/합성 입력으로 결정적, 실제 대형 입력
+수용은 실계정 권한이 필요하므로 Gap 가능.
+
+**AC-MG-020 / AS-021 (REQ-MG-017, REQ-MG-025)** Given 구독 managed 계정과 API 키 전용 프로필이 있을 때, When 두 모드를 실제 PTY에서
+각각 선택·실행하면, Then 표시된 인증 방식이 실제 선택과 일치하고, MoAI의 구독 토큰 파일 접근은 0이며, 구독 실패·만료 유도 시 API 과금
+경로의 요청 계수는 0이다(자동전환 금지). 두 모드 모두 공식 App Server 출력 정책을 사용함을 표시하고 Claude 생성 토큰 상한과 같다고
+표시하지 않는다. 증거: `.moai/reports/t654/as5-auth-modes.md`. 검증 가능성: 실제 계정 권한 필요.
+
+**AC-MG-006 / AS-022 (REQ-MG-009, REQ-MG-015)** Given supervisor·launcher의 이름을 정한 Windows 시험과 `release-pr-multi-os.yml`의
+`workflow_dispatch` 트리거가 있을 때, When GitHub CI windows-latest 레그를 실행하면, Then `test-stream-release-verify-windows-latest`
+아티팩트에서 이름을 정한 시험 각각의 종료 이벤트가 `"Action":"pass"`임을 확인하고 결과를
+`.moai/reports/t654/as5-windows-ci-verdict.md`에 기록한다. 시험 부재·skip·아티팩트 부재는 PASS가 아니다. Windows cross compile exit 0만으로
+이 AS를 PASS로 세지 않는다. 검증 가능성: GitHub CI 실행 필요(로컬 darwin에서 불가 — 원격 실행 또는 창 대기).
+
+### AS-001~AS-022 실행·증거 책임표 (0.16.0)
+
+아래 표는 기존 Given-When-Then을 바꾸지 않고 누가 어떤 실행으로 닫는지를 고정한다. 모든 경로는 실행 명령,
+원문 출력, 기준 HEAD, exit 또는 event, artifact SHA-256을 함께 기록한다. `future` 경로는 M14-R5에서 실제
+파일이 생겨야 하며, 파일명만 예약된 상태는 PASS가 아니다.
+
+| AS | 구현/기계 gate | live 실행과 evidence | 의존·종결 규칙 |
+|---|---|---|---|
+| AS-001 | M14-R2 `TestGPTProductionAppServerWiring` 6/6 GREEN의 managed adapter·initialize·legacy store 0-use·두 번 close | 설치본 schema/initialize/thread-start 원문 → `.moai/reports/t654/as5-appserver-capability.log` | unsupported 음성 포함; direct fallback 0 |
+| AS-002 | M14-R2 authority/profile 단위·통합 시험과 `TestGPTProductionAppServerWiring` | managed 구독/API-key login·status·generation·logout → `.moai/reports/t654/as5-auth-modes.md` | profile별 계수; token read/refresh/direct/API fallback 0 |
+| AS-003 | M14-R2 App Server 시작 config의 native 도구 차단 회귀 | shell/file/MCP/agent 유도와 Claude tool 양성 recorder → `.moai/reports/t654/as5-native-tool-negative.log` | native 실행 0과 Claude 실행 >0을 함께 요구 |
+| AS-004 | 기존 t651 hybrid selector 전수 + M14-R2 multi-call 회귀 | 실제 PTY 초기 native schema/후발 dispatcher → `.moai/reports/t654/as5-pty-toolsearch.log` | 여섯 음성군 각각 양성 대조군 필요 |
+| AS-005 | `TestGPTProductionAppServerToolRoundTrip` 8/8 GREEN | approval/hook 뒤 text·image·실패 tool_result와 final 화면 → `as5-pty-tool-roundtrip.log` | 첫 batch 두 call·역순·exact `rpc-a/rpc-b` 포함 |
+| AS-006 | 기존 t651 ToolSearch schema/epoch selector | 실제 tool_reference 발견·재발견 → `as5-pty-toolsearch.log` | 400 0, 실행 exact-once, 추가 thread RPC 0 |
+| AS-007 | M14-R2 pending batch/duplicate/foreign/cross-thread 통합 시험 | HTTP 사이 process 생존과 동시 A/B → `as5-pending-lifetime.log` | `TestGPTProductionAppServerToolRoundTrip` GREEN 선행 |
+| AS-008 | 기존 t652 crash barrier/receipt 복구 selector | 실행 전·후·저장 후 강제종료 → `as5-crash-recovery.log` | 불명확 자동 재실행 0, 옛 RPC 주입 0 |
+| AS-009 | cancel/EOF/RPC/output-limit 통합 시험 + portable cancel guard | 실제 PTY cancel/disconnect → `as5-cancel-isolation.log` | 다른 turn 진행 0, 성공 terminal 0 |
+| AS-010 | `TestGPTAppServerLifecycleAndHistoryAttribution` 11/11의 resume·두 retry·새 입력·네 400/logger GREEN | **t844** 실세션 회상 evidence를 `.moai/reports/t844/`에서 읽어 `.moai/reports/t654/as5-t844-consumption.md`에 digest/index | t844 실제 회상 PASS 없이는 완료 차단 |
+| AS-011 | 같은 selector의 `model` + alias env/RPC 각 21/21 GREEN | **t844** 실제 turn model 및 PTY picker → `as5-t844-consumption.md`, `as5-pty-subagent.log` | 선택 ID와 App Server turn model exact equality |
+| AS-012 | 같은 selector의 `compact`(추가 compact RPC 0) + rebase 음성 | **t844** 수동/대화형/자동/자식 압축·회상 → `as5-t844-consumption.md` | t844 실제 summary/PostCompact digest 없이는 완료 차단 |
+| AS-013 | 같은 selector의 durable `fork` 및 ownership 음성 | 설치본 native Agent(fork)/subtask 병렬·중첩·resume → `.moai/reports/t654/as5-native-fork.log` | 일반 child/`--fork-session`으로 대체 금지; NOT-RUN은 완료 차단 |
+| AS-014 | provider catalog/env/settings 회귀 + alias matrix | 세 launcher 실제 `/model` 전수 → `.moai/reports/t654/as5-pty-model-picker.log` | 공유 설정 hash 전후 동일, provider 격리 |
+| AS-015 | model metadata/limit/error 통합 시험 | 한도 안팎 실제 입력 → `.moai/reports/t654/as5-context-limits.md` | 명목 metadata와 실제 수용을 분리 |
+| AS-016 | portable 6/6 회귀 + review RPC 회귀 | Windows named runtime tests → `.moai/reports/t654/as5-windows-ci-verdict.md` | build-only 금지; runtime pass events 필요 |
+| AS-017 | M14-R2 RPC 8/8 + M14-R3 Factory prompt/env GREEN | 실제 Factory Agent가 초기/후발 tool을 실행하고 approval/hook/Dispatch recorder 일치 → `as5-factory-agent-tool.log` | 단위 prompt-forwarding으로 대체 금지; Tasks/Dispatch 양성 필요 |
+| AS-018 | `TestGPTAliasEffortMatrix`와 `TestGPTAliasEffortRPCMatrix` 각각 21/21 + Factory `alias-effort` GREEN | 실제 서브에이전트 네 별칭×effort/누락 → `as5-pty-subagent.log` | provider/model/`turn/start.effort` exact equality |
+| AS-019 | lifecycle model/resume regression | 세 launcher PTY resume/model → `as5-pty-resume-model.log` | launcher 경계만 소유; GPT 실세션 양성은 AS-010·011/t844를 별도 소비 |
+| AS-020 | provider capability mock 양성·음성 | Claude image 양성/GLM text-only 거절/표시 → `as5-context-paths.md` | 공통 1M 선언만으로 PASS 금지 |
+| AS-021 | managed authority/profile/fallback 음성 | 구독/API-key 실제 PTY → `as5-auth-modes.md` | direct token read/refresh/backend/API 자동전환 모두 0 |
+| AS-022 | portable 6/6과 Windows compile 사전 gate | GitHub `windows-latest` named build+runtime artifact → `as5-windows-ci-verdict.md` | skip/부재/compile-only는 실패 |
+
+`t844`는 별도 카드라는 이유로 이 SPEC의 완료 판정에서 빠지지 않는다. M14-R5는 t844의 AS-010·011·012
+원문 carrier를 실제로 읽고 SHA-256과 해당 PASS assertion을 `as5-t844-consumption.md`에 색인해야 한다.
+증거가 없거나 현재 구현과 기준 SHA가 호환되지 않으면 그 AS를 다시 실행하며, `Gap`으로 완료하지 않는다.
+
 
 완료 판정: t650→t651→t652→t653→t654 의존 순서로 실제 증거를 기록하고 독립 감사를 통과한다.
 단일 App Server moai_echo 프로브, account/read 또는 compile 성공으로 실제 Claude PTY·tool·resume·fork·compact
-전체를 완료하지 않는다. Windows는 GitHub CI의 실행 증거를 요구한다.
+전체를 완료하지 않는다. Windows는 GitHub CI의 실행 증거를 요구한다. t654의 종결 판정은 AS-014~AS-022와
+`AC-MG-026` (d)의 rc 로컬 배포 게이트다 — 배포 게이트는 검증 전수 PASS를 전제로 하며, push·PR·병합·
+워크트리 제거는 포함하지 않는다.
 
 ### AS-002·AS-007의 관리 세션 권한 대조군 (REQ-MG-023)
 

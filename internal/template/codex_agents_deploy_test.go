@@ -1,7 +1,7 @@
 // codex_agents_deploy_test.go — SPEC-CODEX-DUAL-AGENTS-001 MS3 AC-010 deploy
 // fixture: the .codex/ root rides the existing template deployment untouched
 // — Deploy(embedded FS) into a t.TempDir() project must land
-// .codex/agents/moai/ with the 11 agent TOMLs byte-equal to the committed
+// .codex/agents/moai/ with the 12 agent TOMLs byte-equal to the committed
 // sources. This verifies the deploy premise mechanically instead of assuming
 // it (the deployer walks every embedded file; the test proves the dot-dir
 // root survives the whole path).
@@ -57,8 +57,8 @@ func TestCodexAgentsDeployFixture(t *testing.T) {
 			srcSet[e.Name()] = true
 		}
 	}
-	if len(srcSet) != 11 {
-		t.Fatalf("committed sources: %d TOMLs, want 11", len(srcSet))
+	if len(srcSet) != 12 {
+		t.Fatalf("committed sources: %d TOMLs, want 12", len(srcSet))
 	}
 
 	deployed := 0
@@ -83,7 +83,7 @@ func TestCodexAgentsDeployFixture(t *testing.T) {
 			t.Errorf("%s: deployed bytes differ from committed source", e.Name())
 		}
 	}
-	if deployed != 11 {
-		t.Errorf("deployed %d TOMLs into .codex/agents/moai, want 11", deployed)
+	if deployed != 12 {
+		t.Errorf("deployed %d TOMLs into .codex/agents/moai, want 12", deployed)
 	}
 }
