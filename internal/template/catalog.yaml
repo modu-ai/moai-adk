@@ -11,7 +11,7 @@ catalog:
             - name: moai-foundation-cc
               tier: core
               path: templates/.claude/skills/moai-foundation-cc/
-              hash: 9da5fe2560b5dcb995bde95aa58207630c7e225c0a70fea5e481a8d43b26d06c
+              hash: fd89f94766ce41a1825d387b4523f5c2b146da100ff28bb7d5aec19c75b5d912
               version: 1.0.0
             - name: moai-foundation-core
               tier: core
@@ -76,7 +76,7 @@ catalog:
             - name: moai-workflow-spec
               tier: core
               path: templates/.claude/skills/moai-workflow-spec/
-              hash: d3a6732c0c2476a251592b3c6d6c8866d8a0e78d16ccb4f8f3706f72ed03ab6e
+              hash: 5a9de9eab4d00c647a3188d6c8215e44252e3a6e0f1142ef0fc3c946b0cb1fdc
               version: 1.0.0
             - name: moai-workflow-tdd
               tier: core
