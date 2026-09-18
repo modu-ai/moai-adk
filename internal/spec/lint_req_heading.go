@@ -21,26 +21,50 @@ import (
 //
 // THE DECISION COLLECTION FORCES — WHAT BECOMES REQEntry.Text. Modality judgment
 // is defined over a requirement STATEMENT, and a heading line carries a section
-// TITLE. Two variants were measured with the build-tagged probe
-// (heading_req_volume_probe_test.go) against tree dcfad4805:
+// TITLE. Read the two sets of numbers below as coming from TWO DIFFERENT
+// INSTRUMENTS, because they do, and the difference is the whole point.
 //
-//	A — the heading's own trailing text:  ModalityUnjudged fires on 1023 of 1031
-//	    newly collected entries (ratio 0.992), ModalityMalformed 8.
-//	B — the first body paragraph below:   ModalityUnjudged 145 of 1031 (ratio
+// PLAN-PHASE PROJECTION — the build-tagged probe (heading_req_volume_probe_test.go)
+// against tree dcfad4805. Its extractor takes only the FIRST non-empty line
+// below the heading:
+//
+//	A — the heading's own trailing text:  ModalityUnjudged 1023 of 1031 newly
+//	    collected entries (ratio 0.992), ModalityMalformed 8.
+//	B — the first body line below:        ModalityUnjudged 145 of 1031 (ratio
 //	    0.141), ModalityMalformed 36.
 //
-// VARIANT B SHIPS, on that measurement rather than on preference. A signal that
-// fires on 99.2% of its population is a constant, not a signal: under A the code
-// reports that the collector fed the judge a title, and nothing about the
-// requirement. B lowers the noise AND raises ModalityMalformed 8 → 36 — it finds
-// MORE real defects while producing LESS noise, which is precisely what
-// distinguishes it from suppression (suppression lowers both numbers).
+// These were the actual inputs to the plan-phase decision and are kept for that
+// reason. They are PROJECTIONS from the probe, not measurements of what shipped.
 //
-// Note for the M2 reconciliation: the probe's extractor takes only the FIRST
-// non-empty line, while this collector takes the whole run of consecutive
-// non-empty lines per plan.md §B. The two therefore differ on multi-line
-// paragraphs, and the per-code deltas are expected to diverge slightly from the
-// figures above. That divergence is a named cause, not an unexplained one.
+// SHIPPED EXTRACTOR — measured by the M2 evidence phase against the real linter
+// at tree 4ff316bd8 (Go tree identical at faf3dcfbc). This collector takes the
+// whole run of consecutive non-empty lines (plan.md §B), not the first line:
+//
+//	ModalityUnjudged  delta +44 over 1031 newly collected entries (ratio 0.043)
+//	ModalityMalformed 180 → 181, delta +1
+//
+// WHY ModalityMalformed IS +1 AND NOT +28. The probe's 36 is largely an artifact
+// of its own truncation: 35 of those 36 are requirements whose SHALL sits on a
+// LATER line, so cutting at the first line hid the token and the judge read the
+// fragment as malformed. Joining the whole paragraph restores the SHALL and the
+// requirement judges as conforming (M2 measured all 35 as having a joined tail
+// that supplies SHALL, with zero non-prose tails). Those 35 are not defects this
+// collector declines to report — they are defects the PROBE invented, and not
+// reporting them is the accurate outcome.
+//
+// VARIANT B STILL SHIPS, and the shipped measurement supports it MORE strongly
+// than the projection did, on the axis that actually decides: the noise ratio is
+// 0.99 under A against 0.043 under B. A signal that fires on 99% of its
+// population is a constant, not a signal — under A the code reports that the
+// collector fed the judge a title, and nothing about the requirement.
+//
+// [HARD] DO NOT RESTORE THE CLAIM THAT B "FINDS MORE REAL DEFECTS". An earlier
+// revision of this comment read "B lowers the noise AND raises ModalityMalformed
+// 8 → 36 — it finds MORE real defects while producing LESS noise". The second
+// half was false of the extractor that shipped: its measured ModalityMalformed
+// delta is +1. The decision never rested on that half, and the honest
+// suppression test is the one above — B's lower count comes from removing an
+// instrument artifact, not from withholding a finding the collector reaches.
 //
 // WHY THE SEARCH IS BOUNDED BY THE NEXT HEADING OF ANY LEVEL. An unbounded (or
 // h3-only) search walks past an intervening `##` and attributes a NEIGHBOURING
