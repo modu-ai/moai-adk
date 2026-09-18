@@ -95,9 +95,9 @@ MoAI-ADK assigns the optimal AI model to each agent according to your Claude Cod
 
 ### Agent Model Assignment per Tier
 
-Of the **11-agent catalog** (10 MoAI custom + 1 Anthropic built-in `Explore`), the MoAI custom agents are assigned models according to the tier. The 12 archived agents from earlier versions are not available.
+Of the **13-agent catalog** (12 MoAI custom + 1 Anthropic built-in `Explore`), the MoAI custom agents are assigned models according to the tier. The 12 archived agents from earlier versions are not available.
 
-#### Manager Agents (5)
+#### Manager Agents (6)
 
 | Agent | high | medium | low |
 |---------|------|--------|-----|
@@ -106,8 +106,9 @@ Of the **11-agent catalog** (10 MoAI custom + 1 Anthropic built-in `Explore`), t
 | manager-docs | opus / medium | opus / low | sonnet / low |
 | manager-git | sonnet / low | sonnet / low | sonnet / low |
 | manager-design | opus / high | opus / medium | opus / low |
+| manager-lead | opus / high | opus / high | opus / medium |
 
-#### Evaluator · Builder · Advisor · Specialist Agents (5)
+#### Evaluator · Builder · Advisor · Specialist Agents (6)
 
 | Agent | high | medium | low |
 |---------|------|--------|-----|
@@ -116,6 +117,7 @@ Of the **11-agent catalog** (10 MoAI custom + 1 Anthropic built-in `Explore`), t
 | builder-harness | opus / high | opus / medium | opus / low |
 | super-advisor | opus / max | opus / high | opus / medium |
 | e2e-tester | opus / medium | opus / low | sonnet / low |
+| mission-governor | opus / high | opus / high | opus / high |
 
 The built-in `Explore` resolves to `sonnet / low` in every column — a call-time default, since it has no agent file on disk to pin.
 

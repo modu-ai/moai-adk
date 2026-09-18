@@ -49,7 +49,7 @@ MoAI-ADK 是用**三根轴**包住 Claude Code 的 Agentic Development Kit —�
 - **manager-lead** —— 协调大规模工作：SPEC 内的 Tier L 里程碑扇出，加上看板与工厂领导会话调度。
 - **multi-model audit** —— 用多模型交叉验证抓偏差。
 - **autonomy tier** —— 调节自主档位，安全地跑。
-- **profile matrix** —— 以 12 个智能体 × 3 个配置文件分配模型。
+- **profile matrix** —— 以 13 个智能体 × 3 个配置文件分配模型。
 
 ## 核心概念
 
@@ -104,7 +104,7 @@ MoAI-ADK 把 Python Edition 用 Go 完全重写，把性能与效率拉到最高
 
 ### 核心数字（以 v3.0 为准）
 
-- **11 个**智能体目录（10 个 MoAI 自定义 + 1 个 Anthropic 内置 `Explore`）
+- **13 个**智能体目录（12 个 MoAI 自定义 + 1 个 Anthropic 内置 `Explore`）
 - **31 个**技能 (template-managed)
 - **36 个**终端 CLI 命令 · **16 种** `/moai` 斜杠子命令
 - **16 种**编程语言支持
@@ -124,17 +124,17 @@ MoAI-ADK 把 Python Edition 用 Go 完全重写，把性能与效率拉到最高
 
 ## 主要功能
 
-### 智能体目录（11 个）
+### 智能体目录（13 个）
 
-MoAI 编排器不亲自实现，而是把工作委派给 11 个专业智能体。计划与审计是分开的，制作的人不自己检查。
+MoAI 编排器不亲自实现，而是把工作委派给 13 个专业智能体。计划与审计是分开的，制作的人不自己检查。
 
 | 类别 | 数量 | 主要智能体 |
 |----------|------|--------------|
-| **Manager** | 5 个 | manager-spec, manager-develop, manager-docs, manager-git, manager-design |
+| **Manager** | 6 个 | manager-spec, manager-develop, manager-docs, manager-git, manager-design, manager-lead |
 | **Evaluator** | 2 个 | plan-auditor, sync-auditor |
 | **Builder** | 1 个 | builder-harness |
 | **Advisor** | 1 个 | super-advisor（高推理咨询） |
-| **Specialist** | 1 个 | e2e-tester（执行 Web/移动/桌面 E2E 测试） |
+| **Specialist** | 2 个 | e2e-tester（执行 Web/移动/桌面 E2E 测试）、mission-governor（GTD 自动任务判定，只读） |
 | **内置** | 1 个 | Explore（Anthropic 内置，只读代码分析） |
 
 ### 模型策略（代币经济学）

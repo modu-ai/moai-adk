@@ -47,7 +47,7 @@ flowchart TD
 | [代币经济学概览](/zh/advanced/tokenomics-overview) | 单价下降 98% 而成本上升 320% 的悖论及其解法 |
 | [Token 预算](/zh/advanced/token-budget) | Token Circuit Breaker · verify-diet · 上下文瘦身 |
 | [No-Haiku 三层](/zh/advanced/no-haiku-3tier) | DeepSWE 排行榜依据与三层策略 |
-| [Profile 矩阵](/zh/advanced/profile-matrix) | 11 个智能体 × `{model, effort}` 33 格单一 profile 轴 |
+| [Profile 矩阵](/zh/advanced/profile-matrix) | 13 个智能体 × `{model, effort}` 39 格单一 profile 轴 |
 | [statusline](/zh/advanced/statusline) | 上下文使用率·缓存命中率·rate limit 常驻仪表盘 |
 
 ### 自我改进 —— 智能体循环工程

@@ -55,7 +55,7 @@ delegation:
 | ブロック | 説明 |
 |----------|------|
 | `learning` | ルーティング使用をappend-only元帳 (`.moai/state/routing-ledger.jsonl`, opt-in·fail-open) で管理し、ハーネス学習サブシステムが4-tier提案ラダーで更新提案。`auto_apply: false` — Tier-4変更は `AskUserQuestion` ユーザー承認が必要 |
-| `subcommands` | サブコマンド別 `agents` (spawnする11個retainedエージェント) + `skills` (spawn時注入するworkflowスキル)。0個割り当ても有効 (オーケストレータが直接実行) |
+| `subcommands` | サブコマンド別 `agents` (spawnする13個retainedエージェント) + `skills` (spawn時注入するworkflowスキル)。0個割り当ても有効 (オーケストレータが直接実行) |
 | `domain_skills` | ミッションドメイン別注入スキル (spawn当たり0-3個)。ドメイン信号とマッチング |
 | `agents` | エージェント別conditionalスキル (トリガー発生時on-demandロード) |
 
@@ -69,7 +69,7 @@ delegation:
 llm:
   profile: "medium"            # high | medium | low (アクティブマトリクス列、max は high として読み込み)
   performance_tier: "medium"   # legacy エイリアス (profile 不在時に読み込み、同じ語彙)
-  profiles:                    # プロファイル列 → 11 エージェント → {model, effort}
+  profiles:                    # プロファイル列 → 13 エージェント → {model, effort}
     high: { ... }              # 詳細表: プロファイルマトリクスページ
     medium: { ... }
     low: { ... }
@@ -87,7 +87,7 @@ llm:
 |------|------|
 | `profile` | アクティブなプロファイルマトリクス列 (`high`/`medium`/`low`。旧 `max` は `high` のエイリアスとして読み込まれる)。空なら `medium` として解釈。全サブエージェント spawn の model+effort のソース |
 | `performance_tier` | legacy エイリアスフィールド。`profile` がない場合のみ読み込まれ、`high`/`medium`/`low` の同じ語彙を共有するため正規化ステップは不要 |
-| `profiles` | プロファイル列別のエージェント単位 → `{model, effort}` マトリクス (11 エージェント × 3 列 = 33 セル)。Go デフォルト値 (`template.DefaultProfileMatrix`) が欠落セルの権威ある fallback |
+| `profiles` | プロファイル列別のエージェント単位 → `{model, effort}` マトリクス (13 エージェント × 3 列 = 39 セル)。Go デフォルト値 (`template.DefaultProfileMatrix`) が欠落セルの権威ある fallback |
 | `agent_overrides` | 正規エージェント名別 `{model, effort}` override。アクティブプロファイルのエージェントセルより優先 (カタログ+enum 検証) |
 | `glm.base_url` | Z.AI Anthropic互換プロキシエンドポイント |
 | `glm.models` | スロット別GLMモデルマッピング。GLMはClaudeの5段階effortを3個reasoning状態 (thinking-off / reasoning-high / reasoning-max) にcollapse |
