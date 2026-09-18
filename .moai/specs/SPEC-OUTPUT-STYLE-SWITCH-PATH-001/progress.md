@@ -118,4 +118,21 @@ m1_to_mN_commit_strategy: one content commit (`71a4d3b4e`) on `WT-output-style-s
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase>_
+```yaml
+sync_complete_at: 2026-09-18
+sync_commit_sha: pending-backfill-sync   # a commit cannot cite its own hash; backfilled in a following commit
+sync_status: complete
+b12_self_test_a: "grep -c 'SPEC-OUTPUT-STYLE-SWITCH-PATH-001' CHANGELOG.md → 0 before append (no duplicate entry). Positive control on the same command: SPEC-SIBLING-MAPS-SHORTHAND-001 → 1, so the 0 is an absence and not a dead command."
+b12_self_test_b: "AC ids in acceptance.md: 14 distinct tokens (AC-OSP-001..011 + AC-OSP-GATE-001..003), each a live criterion. CHANGELOG entry cites 14 — matches §E.3 (ac_pass_count 14 / ac_fail_count 0)."
+b12_self_test_c: "every file path in the CHANGELOG entry verified present via ls .claude/output-styles/moai/{moai-easy,moai-learn}.md internal/template/templates/.claude/output-styles/moai/{moai-easy,moai-learn}.md — all four listed; .moai/config/sections/language.yaml is cited only as a count subject, unchanged by this SPEC"
+changelog_entry_position: "CHANGELOG.md [Unreleased] → ### Changed, first bullet"
+frontmatter_status_transitions:
+  spec.md: "in-progress → completed (status only; updated already read 2026-09-18, the sync date)"
+  plan.md: "no YAML frontmatter — nothing to transition (and a status field there would trip the ArtifactStatusFieldForbidden spec-lint rule)"
+  acceptance.md: "no YAML frontmatter — nothing to transition (same rule)"
+  progress.md: "no YAML frontmatter — nothing to transition (same rule)"
+canary_compliance_check: "n/a — this SPEC defines no forward-looking policy that its own sync tests"
+docs_surface: "CHANGELOG.md only. README{,.ko,.ja,.zh}.md deliberately untouched: grep -cE '/output-style|Output style|output_style' over all four returns 0 each (positive control: grep -c 'MoAI' README.md → 6), so no README teaches an output-style switch path and there is no incomplete guidance there to complete. docs-site likewise out of scope by the lead's measurement, recorded as a proposed follow-up card in spec.md §D — not opened by this sync."
+i18n_lens: "the four edited files are English-authored personas rendered into conversation_language at runtime. Added lines carry no Hangul/Kana/CJK: git show 71a4d3b4e -- <the four files> | grep '^+' | grep -P '[\\x{AC00}-\\x{D7A3}\\x{3040}-\\x{30FF}\\x{4E00}-\\x{9FFF}]' → no match (exit 1); positive control grep -cP '[\\x{AC00}-\\x{D7A3}]' CLAUDE.local.md → 173. The only non-ASCII in the added lines is the → arrow (30 occurrences), already a Keep-verbatim character in both files' Language Rules. The added command literals (/output-style, /config) and persona names are Keep-verbatim identifiers under moai-easy §8 and moai-learn §9, so they render unchanged under a non-English locale. Each addition sits inside its file's existing register section (moai-easy §1 / §12 / §14, moai-learn §2), not inside a Language Rules section, and contradicts none of those rules."
+template_neutrality_lens: "added lines in the two template mirrors carry no SPEC ID, REQ token, internal date, commit SHA, absolute /Users/ path, or CLAUDE.local reference: git show 71a4d3b4e -- internal/template/templates/.claude/output-styles/moai/ | grep '^+' | grep -nE 'SPEC-[A-Z0-9-]+|REQ-[A-Z0-9-]+|20[0-9]{2}-[0-9]{2}-[0-9]{2}|[0-9a-f]{9,40}|/Users/|CLAUDE\\.local' → no match (exit 1); the same regex against the same commit's .moai/specs/ additions returns 69 hits, so the empty result is an absence and not a dead pattern."
+```

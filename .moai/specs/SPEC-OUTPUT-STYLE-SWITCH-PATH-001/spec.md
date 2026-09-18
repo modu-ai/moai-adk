@@ -2,7 +2,7 @@
 id: SPEC-OUTPUT-STYLE-SWITCH-PATH-001
 title: "Output-style switch guidance names the /output-style slash command alongside /config"
 version: "0.1.1"
-status: in-progress
+status: completed
 created: 2026-09-18
 updated: 2026-09-18
 author: lane
