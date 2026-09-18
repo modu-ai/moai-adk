@@ -1,7 +1,7 @@
 ---
 id: SPEC-ROSTER-NUMERAL-AXIS-001
 title: "Numeral-axis layer for the roster guard — count-only claims the enumeration sweep cannot reach"
-version: "0.2.0"
+version: "0.3.0"
 status: draft
 created: 2026-09-18
 updated: 2026-09-18
@@ -22,6 +22,7 @@ tier: M
 |---------|------|--------|--------|
 | 0.1.0 | 2026-09-18 | manager-spec | Initial plan-phase draft (card t930, branch `WT-numeral-roster-guard`) |
 | 0.2.0 | 2026-09-18 | manager-spec | Plan-audit revision: cost arithmetic corrected to the measured residual 46, decision D3 (mirror derivation) added, neutralise-before-count ordering fixed in REQ-RNA-007, REQ-RNA-012 (in-run re-derivation) and REQ-RNA-013 (layer scope) added, AC-RNA-013…016 added, AC-RNA-005/006/011 made verifiable |
+| 0.3.0 | 2026-09-18 | manager-spec | Operator decision: D3 WITHDRAWN and recorded as a rejected alternative with its four measured findings; M5 returns to 46 authored rows. Re-audit fixes: breadth set / finding set named apart (REQ-RNA-008), AC-RNA-006(b) neutralised term removed, AC-RNA-005 merged with the former AC-RNA-009 (16 → 15 criteria), AC-RNA-013 carries the independence requirement, live regression string propagated to §F and plan.md M2 |
 
 ## §A Problem Statement
 
@@ -97,13 +98,14 @@ dispatching lead in this tree at HEAD `6abcc85fa` with its own `registry.go` par
 | **Hits needing a NEW row or an exempt declaration** | **46** |
 | Extra paths the rejected any-row rule would free | 1 (`internal/web/agentfm.go`) |
 
-46, not the ~15 the first draft of this SPEC asserted. Decision D3 is the response to that
-number; the exact post-derivation figure is a run-phase re-derivation obligation
-(REQ-RNA-012), not a number asserted here.
+46, not the ~15 the first draft of this SPEC asserted. That is the deliverable's cost, and it is
+paid as 46 authored rows: decision D3 (mirror derivation) was proposed as a way to reduce it and
+was WITHDRAWN by operator decision — see §D. The figure is re-derived in-run rather than carried
+from here (REQ-RNA-012).
 
 The word-axis expectation belongs here rather than in the requirement text: under the
-neutralise-then-count ordering REQ-RNA-007 fixes, the live reported word-axis population is
-expected to be **0**, because the single live candidate —
+neutralise-before-match ordering REQ-RNA-007 fixes, the live word-axis **breadth set**
+(REQ-RNA-008) is expected to be empty, because the single live candidate —
 `.claude/agents/harness/workflow-specialist.md:52`, `All four are retained agents.` (read in
 this tree) — is a subset predication removed before counting.
 
@@ -115,8 +117,9 @@ mention `ClaimCount`.
 ## §B Requirements (GEARS)
 
 - **REQ-RNA-001 (the layer)** — **When** a file inside the numeral layer's scope (REQ-RNA-013)
-  carries a numeral adjacent to a roster noun, the roster guard shall report that site as an
-  undeclared count claim unless the site is discharged under REQ-RNA-004.
+  carries a numeral adjacent to a roster noun, the roster guard shall place that site in the
+  **finding set** (REQ-RNA-008) and fail, reporting it as an undeclared count claim — unless the
+  site is discharged under REQ-RNA-004, in which case it stays in the breadth set only.
 
 - **REQ-RNA-002 (noun class)** — The numeral layer shall anchor on the noun class
   `{retained agent, retained agents, agent catalog, agent roster, retained catalog,
@@ -125,8 +128,9 @@ mention `ClaimCount`.
 
 - **REQ-RNA-003 (numeral selection)** — **When** more than one numeral precedes a matched noun
   within the adjacency window, the layer shall select the NEAREST preceding numeral. It shall
-  not select the leftmost: the leftmost rule mis-reads `CLAUDE.md 4 (13 retained agents)` and
-  reports 4.
+  not select the leftmost: the leftmost rule mis-reads the live string
+  `CLAUDE.md §4 (the 13 retained agents` (`internal/harness/delegationmap/types.go:73`, read in
+  this tree) and reports 4.
 
 - **REQ-RNA-004 (discharge rule)** — A numeral hit shall be discharged **only** when its path
   carries a `Registry()` row whose `Claims` has `ClaimCount`, or an explicit numeral-exempt
@@ -148,18 +152,30 @@ mention `ClaimCount`.
   retained agents` (selector) and `four are retained agents` (subset predication) shall produce
   no finding, by the same mechanism `ordinalPrefixRe` uses to neutralise `第三方`.
 
-  The pipeline order shall be **neutralise → match → report → discharge**: neutralisation
-  removes selector and ordinal spans from the text BEFORE the axes match, so a neutralised
-  phrase is never counted and then discharged. The order is normative because it decides what
-  the reported population IS: under it the live word-axis population is 0 by construction, and
-  under the reverse order the same string would be counted as 1 and then discharged.
+  The pipeline order shall be **neutralise → match (breadth set) → discharge (finding set) →
+  report**: neutralisation removes selector and ordinal spans from the text BEFORE the axes
+  match, so a neutralised phrase enters neither set (REQ-RNA-008). The order is normative
+  because it decides what the populations ARE: under it the live word-axis breadth set is empty
+  by construction, and under the reverse order the same string would be matched and then
+  discharged.
 
-- **REQ-RNA-008 (breadth is printed)** — The layer shall PRINT its hit set, one line per hit,
-  anchored at column 0, so the set can be compared against the enumeration rather than merely
-  counted.
+- **REQ-RNA-008 (two sets, named apart; the breadth set is printed)** — The layer shall
+  distinguish two sets by name, and every other requirement and criterion shall say which one it
+  means:
 
-- **REQ-RNA-009 (anti-vacuity)** — **When** the layer's hit set is empty, the guard shall treat
-  that as a measurement failure and fail, not as a clean tree.
+  - the **breadth set** — every post-neutralisation match, whether or not it is later discharged;
+  - the **finding set** — the undischarged subset of the breadth set, i.e. what REQ-RNA-001
+    reports as a failure.
+
+  The layer shall PRINT the **breadth set**, one line per hit, anchored at column 0, so the set
+  can be compared against the enumeration rather than merely counted. Printing only the finding
+  set would make a green tree print nothing, which is the shape REQ-RNA-009 exists to reject.
+
+  Neutralised phrases (REQ-RNA-007) are in NEITHER set: neutralisation runs before matching, so
+  they never become a match at all.
+
+- **REQ-RNA-009 (anti-vacuity)** — **When** the layer's breadth set is empty, the guard shall
+  treat that as a measurement failure and fail, not as a clean tree.
 
 - **REQ-RNA-010 (control probe)** — The layer shall carry a control probe that feeds it input
   which MUST produce a violation, and the probe shall be observed to fire.
@@ -231,29 +247,47 @@ numeral-exempt declaration carrying a mandatory non-empty reason.
 |---|---|---|
 | Reuse the sweep's any-row-by-path rule | Frees exactly **1** additional path today — `internal/web/agentfm.go`, a row carrying `Claims: 0` (measured by the dispatching lead in this tree at HEAD `6abcc85fa`; the row is `web-agentfm-display-rank` in `registry.go`, read here) | A path registered only for a MEMBERSHIP claim would silently discharge a stale COUNT claim inside it — precisely the failure class this card exists to close; a count and a membership are independent claims, and `ClaimKind` already models them as such. The strict rule therefore buys that closure for one extra authored row, not for a large one |
 
-### D3 — Mirror derivation
+### D3 (WITHDRAWN) — Mirror derivation
 
-**Adopted**: the mirror rows are DERIVED, not authored. A `mirrorOf()` helper builds the
-`internal/template/templates/` row from its local `.claude/` or `.moai/` counterpart, so a
-mirror pair costs one row a reviewer must read instead of two.
+**Proposed and then withdrawn by operator decision.** The proposal was: derive each
+`internal/template/templates/` registry row from its local `.claude/` / `.moai/` counterpart via
+a `mirrorOf()` helper, so a mirror pair costs one row a reviewer reads instead of two. It is
+recorded here rather than deleted, because it will be proposed again — the four findings below
+are what the next proposer needs.
 
-The precedent is in the same file: `readmeSite()` (`registry.go`) derives the four README locale
-rows from one helper, and its doc comment gives the reason — *"four hand-copied rows is the same
-forward-only-propagation shape this package guards, one level up"*. A hand-copied mirror row is
-that same shape.
+**1. The premise was wrong, and wrong in the direction that favoured the decision.** The proposal
+asserted "roughly half of the 46 are template mirrors", unattributed, in a section where every
+other figure carries a measurement. Measured by the dispatching lead in this tree at HEAD
+`d8f140b25`:
 
-The measured need is **46** new rows or exempt declarations (§A). Roughly half the 46 paths are
-template mirrors of a local counterpart, so derivation cuts what a reviewer must read and judge
-to roughly 26 while leaving the noun class exactly as D1 adopted it — the guard's reach does not
-change, only how many rows carry it. [HARD] The exact post-derivation figure is a run-phase
-**re-derivation obligation** (REQ-RNA-012, AC-RNA-013): the mirror pairs have not been counted
-exhaustively, and "roughly 26" is a projection, not a measurement.
+| Quantity | Value |
+|---|---|
+| Residual needing a new row or exempt declaration | 46 |
+| …under `internal/template/templates/` | 17 |
+| …whose local twin exists on disk | 14 |
+| …whose local twin is ALSO in the residual (the only foldable shape) | 13 |
+| Rows a reviewer reads if every foldable pair collapses | **33** |
 
-| Alternative | Measured cost | Why not adopted |
-|---|---|---|
-| Accept 46 authored rows | 46 rows, of which roughly 30 become exemption prose a reviewer must read | Keeps the full benefit, but realises the hazard `plan.md` §F registers as *"Allowlist becomes the subject matter"* — at that size the exemption list, not the roster, is what review is actually about |
-| Narrow the noun class to `{retained agent(s)}` | 37 files / 54 hits (−25 files of reach) | Provably loses the five live `11-agent catalog` stale sites in `moai-foundation-core` and `moai-foundation-quality` — the exact drift wording this card exists to reach |
-| Split the catalog/roster family into a follow-up card | Residual today drops, but those same five sites stay unregistered until that card is picked | Defers the card's own subject matter; the hole stays open for an unbounded interval |
+The saving is 13 rows to 33 — not the 20 rows to 26 the proposal projected.
+
+**2. Derivation blinds the guard to sibling divergence.** A separately registered mirror row
+asserts about the MIRROR file; a derived row asserts whatever its local twin asserts. When a
+repair lands on only one copy, a derived row cannot see it. This is not hypothetical:
+`registry.go` records the case firing — *"KnownStale deleted with the row above: both copies were
+repaired together, which is what registering the mirror separately was for."* Separate
+registration is what caught it.
+
+**3. The `readmeSite()` precedent was overstated.** `readmeSite(id, path, countPattern)` is a
+constructor that builds four LOCALE rows of one document from per-call arguments, each row
+receiving its own `CountPattern`. It derives nothing from another row. `mirrorOf()` would derive
+row B's claim from row A's — a different mechanism with the failure mode in (2).
+
+**4. Withdrawal shrinks this SPEC rather than growing it.** The proposal needed a requirement of
+its own, a criterion binding derivation to fail on a divergent mirror, and a cost row for the
+text-level invisibility of derived rows. Withdrawing removes all three at once.
+
+**Consequence carried through**: `plan.md` M5 stands at 46 authored rows with no folding, and
+each mirror keeps its own row — which is the behaviour finding (2) says is worth paying for.
 
 Empty-reason handling follows the exemption-marker precedent in
 `verification-claim-integrity.md` §2.1: an empty or whitespace-only reason produces a finding
@@ -279,7 +313,7 @@ never becomes cheaper than "declare the reason".
   in this tree) and `17->8 agent catalog` in `internal/template/*_test.go` describe the roster
   AS IT WAS. They are not drift and are not repaired.
 - Whether they are excluded by a tense/selector mechanism or by a reasoned per-path exempt
-  declaration is a run-phase implementation choice. The OUTCOME is not deferred: AC-RNA-015
+  declaration is a run-phase implementation choice. The OUTCOME is not deferred: AC-RNA-014
   binds it either way — no finding, no repair, and any path handled by exemption carries a
   reason a reviewer can disagree with.
 - Dated research records under `.moai/research/` are outside the layer's scope entirely
@@ -306,11 +340,13 @@ never becomes cheaper than "declare the reason".
 - A count-only roster claim added anywhere in the layer's scope, with no registry row and no
   exempt declaration, fails the guard (AC-RNA-001).
 - Every hit is accounted for — registered, exempted, or neutralised by mechanism — with none
-  left implicit (AC-RNA-013), and the run-phase population is re-derived in-run (AC-RNA-014).
-- Every hit is printed one line per hit at column 0, so breadth is comparable (AC-RNA-006).
-- The control probe is observed to fire (AC-RNA-007); a zero-hit run fails (AC-RNA-008).
-- `CLAUDE.md 4 (13 retained agents)` pins to 13, not 4 (AC-RNA-003).
-- The word axis fires on synthetic input while its live population reads 0 (AC-RNA-005).
+  left implicit (AC-RNA-012), and the run-phase population is re-derived in-run (AC-RNA-013).
+- The breadth set is printed one line per hit at column 0 (AC-RNA-006).
+- The control probe is observed to fire (AC-RNA-007); an empty breadth set fails (AC-RNA-008).
+- The live string `CLAUDE.md §4 (the 13 retained agents` — `internal/harness/delegationmap/types.go:73`
+  — pins to 13, not 4; the synthetic `CLAUDE.md 4 (13 retained agents)` is the secondary row
+  (AC-RNA-003).
+- The word axis fires on synthetic input while its live breadth set reads empty (AC-RNA-005).
 - Every numeral-exempt row carries a non-empty reason; an empty reason produces a finding
   (AC-RNA-004).
 - `go test -count=1 ./internal/harness/rosterguard/...` green in the tree being changed.

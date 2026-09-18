@@ -77,10 +77,13 @@ The D1 decision, plus the two selection rules that decide what a hit MEANS.
 - Noun class per D1 with ASCII word boundaries (`tabNoun` precedent).
 - Adjacency window adopted from the reuse target (12 characters) — re-measured in-run rather
   than assumed, and recorded with the measurement in the code comment.
-- Nearest-preceding-numeral selection with a regression case pinning
-  `CLAUDE.md 4 (13 retained agents)` to 13 (REQ-RNA-003).
+- Nearest-preceding-numeral selection with the LIVE regression case pinning
+  `CLAUDE.md §4 (the 13 retained agents` (`internal/harness/delegationmap/types.go:73`) to 13,
+  and the synthetic `CLAUDE.md 4 (13 retained agents)` as the secondary row
+  (REQ-RNA-003, AC-RNA-003).
 - Selector neutralisation for `one of the N …` and `N are retained agents` (REQ-RNA-007), by
-  the `ordinalPrefixRe` mechanism.
+  the `ordinalPrefixRe` mechanism, running BEFORE the axes match so a neutralised phrase enters
+  neither the breadth set nor the finding set (REQ-RNA-008).
 
 ### M3 — Word axis (structural, population 0)
 
@@ -115,14 +118,15 @@ The D1 decision, plus the two selection rules that decide what a hit MEANS.
   | Hits already discharged by such a row | 17 |
   | **Residual needing a new row or an exempt declaration** | **46** |
 
-  46, not the "roughly 15" this plan asserted in its first draft. That figure is the
-  deliverable's real cost, and it is what decision D3 (mirror derivation, spec.md §D) responds
-  to: deriving each `internal/template/templates/` row from its local counterpart via a
-  `mirrorOf()` helper — the `readmeSite()` precedent in the same file — cuts what a reviewer
-  must read to roughly 26 without changing the noun class or the guard's reach.
-- [HARD] "Roughly 26" is a projection, not a measurement: the mirror pairs have not been counted
-  exhaustively. Run-phase re-derives the exact post-derivation row count in-run (REQ-RNA-012)
-  and records it as the observed cost.
+  46, not the "roughly 15" this plan asserted in its first draft. **That figure is paid in full:
+  46 authored rows, with no folding.** Decision D3 (mirror derivation) was proposed as a way to
+  reduce it and was WITHDRAWN by operator decision — spec.md §D records the four findings,
+  including the measured saving (13 rows to 33, not 20 to 26) and the reason separate mirror
+  registration is worth its cost: a derived row cannot see a repair that landed on only one copy
+  of a mirror pair, and `registry.go` records that case firing.
+- Each mirror therefore keeps its own row, authored by hand alongside its local counterpart.
+- [HARD] 46 is a plan-phase figure, not a run baseline. Run-phase re-derives the residual in-run
+  (REQ-RNA-012, AC-RNA-013) and reports the observed authored-row count against it (AC-RNA-012).
 - Historical citations and measured false positives are handled per §E of spec.md: excluded by
   mechanism where the mechanism covers them, otherwise carried as an exempt declaration with a
   reason a reviewer can disagree with.
@@ -130,9 +134,9 @@ The D1 decision, plus the two selection rules that decide what a hit MEANS.
 
 ### M6 — Doc comments
 
-- Package doc comment gains a short section naming the second axis and why it exists, in the
-  register `check.go`'s head comment already uses, plus the `mirrorOf()` helper's own doc
-  comment stating the derivation reason the way `readmeSite()` does.
+- Package doc comment gains a short section naming the second axis, why it exists, and the
+  breadth-set / finding-set distinction (REQ-RNA-008), in the register `check.go`'s head comment
+  already uses.
 - Template-First is **conditional here and is expected not to fire**: M5 edits `registry.go`
   only, and prose repair is out of scope (spec.md §E), so no `.claude/` ↔
   `internal/template/templates/.claude/` pair is touched by construction. The clause is
@@ -143,7 +147,7 @@ The D1 decision, plus the two selection rules that decide what a hit MEANS.
 
 | Risk | Shape | Mitigation |
 |---|---|---|
-| Allowlist becomes the subject matter | Each exempt row is prose a reviewer must read; too many and the guard reports its own exemptions | The measured residual is 46, not a small number — this risk is REAL at the adopted noun class. D3 (mirror derivation) is the mitigation: it cuts reviewer-read rows to roughly 26 without narrowing reach. An exempt row still needs a reason, which prices it |
+| Allowlist becomes the subject matter | Each exempt row is prose a reviewer must read; too many and the guard reports its own exemptions | The measured residual is 46 — this risk is REAL at the adopted noun class, and it is ACCEPTED rather than mitigated: D3 (mirror derivation), the proposed mitigation, was withdrawn because its measured saving was 13 rows and its cost was blindness to a one-sided mirror repair (spec.md §D). What still prices each entry is REQ-RNA-005: an exempt row needs a non-empty reason. AC-RNA-012 keeps the count observable rather than implicit |
 | Adjacency window tuned to make the tree green | A window chosen to silence hits is a guard fitted to today's prose | The window is adopted from a measured precedent and re-measured in-run; any change from 12 is recorded with the measurement that motivated it |
 | Word axis reads as dead code | Population 0 invites deletion by a later reader | Positive control + a comment stating the axis is a structural hole, not a current catch |
 | Historical citations mass-exempted | Blanket exemption of the "then-N" shape would also absorb a future stale claim written in that tense | Prefer a mechanism (tense/selector neutralisation) over an exempt list; where a list is used, it is per path with a reason |
@@ -157,7 +161,9 @@ The D1 decision, plus the two selection rules that decide what a hit MEANS.
 - Lowering `SweepThreshold` as a cheaper substitute — it cannot reach a zero-name file.
 - Repairing the prose in this card and calling the hole closed; the hole is the missing layer,
   not the two stale numbers.
-- Treating a green run with an empty hit set as success.
+- Treating a run with an empty breadth set as success (REQ-RNA-009).
+- Printing only the finding set: on a green tree it prints nothing, and nothing constrains
+  breadth (REQ-RNA-008).
 
 ## §H Cross-References
 
