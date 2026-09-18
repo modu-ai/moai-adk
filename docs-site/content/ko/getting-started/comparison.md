@@ -27,7 +27,7 @@ flowchart TD
 | **품질 게이트** | 사용자가 매번 확인 | 도구마다 제각각 | SPEC 3-단계 + TRUST 5, 자동 검증 |
 | **학습 루프** | 세션마다 새 출발 | 보통 없음 | 관찰을 규칙으로 축적하는 자가 진화 |
 | **세션 연속성** | `/clear` 마다 끊김 | 도구마다 제각각 | paste-ready 이력 + 자동 주입 |
-| **에이전트 편성** | 단일 세션 | 단일 세션 | 12-에이전트 카탈로그 + 3-단계 워크플로우 |
+| **에이전트 편성** | 단일 세션 | 단일 세션 | 13-에이전트 카탈로그 + 3-단계 워크플로우 |
 
 Claude Code 단독이 나쁘다는 뜻이 아닙니다. 오히려 MoAI-ADK는 Claude Code 를 대체하지 않고, **감싸서 (wrap)** 그 위에 구조를 더합니다. 모델 라우팅과 품질 게이트, 비용 통제, 학습 루프, 세션 연속성 — Claude Code 가 사용자에게 맡겨 둔 부분을 하네스가 시스템으로 책임집니다.
 
@@ -83,7 +83,7 @@ flowchart TD
 
 {{< icon package >}} **범용 래퍼** — 도구마다 품질 기준이 제각각이거나 아예 없습니다.
 
-{{< icon package primary >}} **MoAI-ADK** — "완료" 를 *검증된 완료* 로 바꿉니다. SPEC 3-단계 (plan → run → sync) 와 TRUST 5 게이트(테스트됨·읽기 쉬움·통일됨·안전함·추적 가능) 가 매 변경에 적용됩니다. 게이트는 에이전트가 아니라 검증을 심판합니다. 12-에이전트 카탈로그는 계획과 감사를 처음부터 분리해, 짜는 쪽이 자기 일을 매기지 못하게 합니다. [검증 주장 무결성](/ko/core-concepts/verification-claim-integrity/) 규칙이 관찰하지 않은 "통과" 가 빈칸으로 지나가는 것을 막습니다.
+{{< icon package primary >}} **MoAI-ADK** — "완료" 를 *검증된 완료* 로 바꿉니다. SPEC 3-단계 (plan → run → sync) 와 TRUST 5 게이트(테스트됨·읽기 쉬움·통일됨·안전함·추적 가능) 가 매 변경에 적용됩니다. 게이트는 에이전트가 아니라 검증을 심판합니다. 13-에이전트 카탈로그는 계획과 감사를 처음부터 분리해, 짜는 쪽이 자기 일을 매기지 못하게 합니다. [검증 주장 무결성](/ko/core-concepts/verification-claim-integrity/) 규칙이 관찰하지 않은 "통과" 가 빈칸으로 지나가는 것을 막습니다.
 
 [하네스 엔지니어링](/ko/core-concepts/harness-engineering/), [TRUST 5 품질](/ko/core-concepts/trust-5/), [SPEC 기반 개발](/ko/core-concepts/spec-based-dev/) 에서 자세히 다룹니다.
 

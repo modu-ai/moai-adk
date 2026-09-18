@@ -37,6 +37,8 @@ The context window is the total amount of information Claude can "see" at once i
 | Files Claude read | One-line summary only | Only Claude sees the file body |
 | Claude's analysis, edits, responses | Visible | Printed to the terminal as-is |
 
+Source (the `MEMORY.md` load cap): Claude Code CHANGELOG 2.1.83 — "Memory: MEMORY.md index now truncates at 25KB as well as 200 lines".
+
 A token is the unit for counting this information. Roughly, one English word is 1-2 tokens, and Korean takes more tokens per character. One counterintuitive fact: **a substantial amount is already filled before the session even starts**, because CLAUDE.md, memory, the skill list, and MCP tool names load before your first prompt.
 
 ### File Reads Eat the Most Context
