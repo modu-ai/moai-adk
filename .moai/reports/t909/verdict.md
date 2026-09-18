@@ -236,16 +236,68 @@ $ git status --short
   `delegationmap`)만 돌렸다. 전 패키지 판정은 CI 몫이고 미관측이다.
 - **원격 착지·CI 판정 미관측** — push 는 리드 일괄.
 
-## Residual-risk
+## 범위 확장 2 — 이 카드의 수리가 깨뜨린 파일 (리드 판정으로 포함)
 
-- **내 편집이 새 불일치를 만들었다 — 리드 판정 필요.** `.claude/rules/moai/development/
-  agent-authoring.md`(+템플릿 쌍둥이)의 § Agent Categories 가 *"exactly **12 retained agents**
-  (11 MoAI-custom + 1 …), **aligned with CLAUDE.md §4**"* 라고 적고 있고, 그 아래
-  `### Retained MoAI-custom Agents (11)` 목록은 실제로 **10개만** 나열한다(manager-lead 와
-  mission-governor 둘 다 없음). `agent-patterns.md`(+쌍둥이)도 11개 이름을 나열하며
-  mission-governor 가 없다. §4 를 13/12 로 고친 지금 이 두 파일은 **스스로 주장하는 정렬을
-  깨뜨린 상태**다. 리드가 지목한 4개 항목 밖이라 손대지 않았고, 같은 성격의 문서 수리이므로
-  이 카드에 포함할지 별 카드로 낼지 판정을 요청한다.
+[HARD 명시] **카드는 이 두 파일을 지목하지 않았다. 이 카드의 수리가 깨뜨렸기 때문에 함께
+고쳤다.** 조용한 확장이 아니라 선언된 확장이다.
+
+**깨뜨린 기전.** `.claude/rules/moai/development/agent-authoring.md`(+템플릿 쌍둥이) § Agent
+Categories 는 스스로 *"…, **aligned with CLAUDE.md §4**"* 라고 선언한다. §4 를 13/12 로 고친
+순간 그 선언이 거짓이 된다 — 안 고치고 병합하면 알면서 깨진 상태를 올리는 것이고, 다음 사람은
+어느 쪽이 정본인지 또 못 가른다(이 카드가 해결한 바로 그 상황의 재생산).
+
+**같은 줄의 선존재 오류도 함께 고쳤다.** `### Retained MoAI-custom Agents (11)` 제목 아래 목록이
+실제로는 **10개만** 나열했다(manager-lead·mission-governor 둘 다 없음) — 제목과 목록이 이미
+어긋나 있었다. 어차피 같은 줄을 건드리므로 분리하지 않았다.
+
+| 파일 | 고친 것 |
+|---|---|
+| `agent-authoring.md`(+쌍둥이) :128 | `12 retained (11 MoAI-custom)` → `13 (12)`; `manager-lead … added later per the hierarchical-team SPEC` → `manager-lead … and mission-governor … were added later` |
+| `agent-authoring.md`(+쌍둥이) :130 | 제목 `(11)` → `(12)` |
+| `agent-authoring.md`(+쌍둥이) :144-145 | 목록에 `manager-lead` · `mission-governor` 두 항목 추가 (10 → 12) |
+| `agent-patterns.md`(+쌍둥이) :234 | `The 11 MoAI-custom retained agents (… manager-lead)` → `The 12 …, mission-governor)` |
+| `agent-patterns.md`(+쌍둥이) :269 | `12-agent catalog roles` → `13-agent`; 4-Loop 표가 전 카탈로그를 열거하지 않으며 mission-governor 가 그 표에 없는 이유를 한 절로 명시 |
+
+**쌍둥이 비대칭 보존.** 두 사본은 의도적으로 갈라져 있다 — 로컬 `agent-authoring.md:128` 은
+`(SPEC-AGENT-ARCH-V2-001)` 을 담고 템플릿 사본은 담지 않으며(템플릿 중립성), `agent-patterns.md
+:269` 도 로컬만 SSOT 절 번호를 인용한다. 각 사본을 **자기 문안 그대로** 고쳐 그 비대칭을 유지
+했다. 내가 편집한 구간에 SPEC 토큰이 새로 들어가지 않았음을 확인했다:
+
+```
+$ sed -n '126,150p' internal/template/templates/.claude/rules/moai/development/agent-authoring.md | grep -c "SPEC-"
+0
+```
+
+**검증 (확장분).**
+
+```
+$ make agents-emit-check
+ok  	github.com/modu-ai/moai-adk/internal/template/agentemit	0.367s
+```
+
+에이전트 `.md` 층을 건드리지 않았으므로 codex 방출·catalog 해시는 이번엔 동반되지 않았다 —
+②에서와 달리 재생성이 필요 없다는 것이 이 검사의 판정이다.
+
+```
+$ unset <6변수> && go test ./internal/template/...
+ok  	github.com/modu-ai/moai-adk/internal/template	56.731s
+ok  	github.com/modu-ai/moai-adk/internal/template/agentemit	0.310s
+```
+
+**[HARD] 그러나 이 초록은 두 파일을 보고 얻은 것이 아니다.** 어떤 가드도 이 두 파일을 덮지
+않는다 — 실측:
+
+```
+$ grep -n "agent-authoring\|agent-patterns" internal/template/catalog.yaml
+(무출력 — catalog 해시는 rules 파일을 덮지 않는다)
+$ grep -rn "agent-authoring\|agent-patterns" internal/template/rule_template_mirror_test.go
+(무출력 — 바이트 패리티 목록에도 없다; 그 목록에는 model-policy.md 등만 있다)
+```
+
+즉 이 두 파일이 §4 와 갈라진 것은 **가드가 없어서**이고, 이번 수리도 그 재발을 막지 않는다
+(§ Gaps 의 가드 부재 항목과 같은 사안 — 표면이 하나 더 있다는 뜻).
+
+## Residual-risk
 - **결정 트리 행 부재가 다음 사람에게 결함으로 읽힐 수 있다.** 붙여 둔 한 절이 그것을 막는
   장치인데, 그 절 자체를 지키는 가드도 없다.
 - **`13`이라는 숫자는 mission-governor 를 포함한 현재 상태의 스냅샷이다.** 상한을 다루는 다른
@@ -345,10 +397,11 @@ $ git status --short
 | 항목 | 상태 |
 |---|---|
 | D1 (CLAUDE.md 쌍둥이) | **수리 완료** — 13/12, mission-governor 명단 추가 |
-| 범위 확장 (manager-design 쌍둥이) | **수리 완료** — 개수 + 트리 행 위치 둘 다 |
+| 범위 확장 1 (manager-design 쌍둥이) | **수리 완료** — 개수 + 트리 행 위치 둘 다 |
+| 범위 확장 2 (agent-authoring · agent-patterns 쌍둥이) | **수리 완료** — 이 카드의 수리가 깨뜨린 파일, 리드 판정으로 포함 (§ 범위 확장 2) |
 | 기계 재생성 2건 | 완료 (`make agents-emit`, `gen-catalog-hashes --all`) · 드리프트 양방향 확인 |
 | 영향 패키지 테스트 | ok (template / agentemit / commandemit / agentlint / delegationmap) · vet 0 |
-| **리드 판정 대기** | `agent-authoring.md` + `agent-patterns.md` 쌍둥이가 내 편집으로 비정렬 상태 — 이 카드 포함 여부 |
+| 별 카드 요청 | 가드 부재 — CLAUDE.md 프로즈 카운트와 `agent-authoring`·`agent-patterns` 로스터를 파일 실체와 대조하는 검사가 없다 (리드가 판정 목록에 올림) |
 | 별 카드 초안 | D2 · D3 · docs-site 스윕 3건 (위) |
 | 이 브랜치 | `WT-agent-roster-count` — 병합 창 요청 |
 | 워크트리 | `t909` · `t278-t267` · `t278` · `t267` · `t880` 전부 보존 |
