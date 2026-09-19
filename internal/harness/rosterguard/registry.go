@@ -331,10 +331,10 @@ func Registry() []Site {
 				DeclaredCount: 11,
 			},
 		},
-		readmeSite("readme-en", "README.md", `### The (\d+)-agent catalog`),
-		readmeSite("readme-ko", "README.ko.md", `### (\d+)-에이전트 카탈로그`),
-		readmeSite("readme-ja", "README.ja.md", `### (\d+) エージェント・カタログ`),
-		readmeSite("readme-zh", "README.zh.md", `### (\d+) 智能体目录`),
+		readmeSite("readme-en", "README.md", `### The (\d+)-agent catalog`, ""),
+		readmeSite("readme-ko", "README.ko.md", `### (\d+)-에이전트 카탈로그`, localizedHeadingUnreachable),
+		readmeSite("readme-ja", "README.ja.md", `### (\d+) エージェント・カタログ`, localizedHeadingUnreachable),
+		readmeSite("readme-zh", "README.zh.md", `### (\d+) 智能体目录`, localizedHeadingUnreachable),
 
 		// ── Subsets by design ──────────────────────────────────────────────
 		{
@@ -380,6 +380,272 @@ func Registry() []Site {
 			Claims: 0,
 			Note:   "The expectation table for the subset above; same boundary, same reason.",
 		},
+
+		// ── Count-only sites reached by the NUMERAL layer (card t930) ──────
+		//
+		// Every row below states a roster SIZE while enumerating far fewer than
+		// SweepThreshold names, so the enumeration sweep cannot reach any of
+		// them — which is exactly why the numeral layer (numeral.go) exists.
+		// Each carries SweepUnreachable for that reason, and a CountPattern for
+		// its own claim.
+		//
+		// Repair is NOT done here, in the stance this file already takes: a
+		// KnownStale marker keeps the staleness enumerable and self-expiring,
+		// and the prose repair belongs to whoever owns the document.
+		//
+		// A template mirror gets its OWN row rather than deriving from its local
+		// twin. Deriving would cost a reviewer one row instead of two and would
+		// blind the guard to a repair landing on only one copy of a pair — the
+		// case recorded a few rows above, firing.
+		{
+			ID:               "model-policy-profile-matrix-size",
+			SweepUnreachable: "count-only claim: the sentence sizes the profile matrix and names no agents",
+			Path:             ".claude/rules/moai/development/model-policy.md",
+			Axis:             AxisRetainedRoster,
+			Claims:           ClaimCount,
+			CountPattern:     `\((\d+) retained agents × 3 columns`,
+			KnownStale: &Staleness{
+				Reason:        "Cites 11 where the retained roster carries 13; the 33-cell figure is sized off that stale count, identically to product.md and tech.md.",
+				FollowUp:      "unassigned — reported by card t930, prose repair out of its scope",
+				DeclaredCount: 11,
+			},
+		},
+		{
+			ID:               "model-policy-profile-matrix-size-mirror",
+			SweepUnreachable: "count-only claim; template mirror of the row above",
+			Path:             "internal/template/templates/.claude/rules/moai/development/model-policy.md",
+			Axis:             AxisRetainedRoster,
+			Claims:           ClaimCount,
+			CountPattern:     `\((\d+) retained agents × 3 columns`,
+			KnownStale: &Staleness{
+				Reason:        "Template mirror of the row above, stale identically.",
+				FollowUp:      "unassigned — reported by card t930, prose repair out of its scope",
+				DeclaredCount: 11,
+			},
+		},
+		{
+			ID:               "foundation-core-skill-catalog-size",
+			SweepUnreachable: "count-only claim: a module-index sentence citing the catalog size",
+			Path:             ".claude/skills/moai-foundation-core/SKILL.md",
+			Axis:             AxisRetainedRoster,
+			Claims:           ClaimCount,
+			CountPattern:     `(\d+)-agent retained catalog`,
+			KnownStale: &Staleness{
+				Reason:        "Cites an 11-agent retained catalog (10 MoAI-custom + Explore) where the roster carries 13.",
+				FollowUp:      "unassigned — reported by card t930, prose repair out of its scope",
+				DeclaredCount: 11,
+			},
+		},
+		{
+			ID:               "foundation-core-skill-catalog-size-mirror",
+			SweepUnreachable: "count-only claim; template mirror of the row above",
+			Path:             "internal/template/templates/.claude/skills/moai-foundation-core/SKILL.md",
+			Axis:             AxisRetainedRoster,
+			Claims:           ClaimCount,
+			CountPattern:     `(\d+)-agent retained catalog`,
+			KnownStale: &Staleness{
+				Reason:        "Template mirror of the row above, stale identically.",
+				FollowUp:      "unassigned — reported by card t930, prose repair out of its scope",
+				DeclaredCount: 11,
+			},
+		},
+
+		// INDEX.md states the same size THREE times, in three different
+		// sentences. Three rows rather than one: a CountPattern must match its
+		// body exactly once, and a pattern loose enough to cover all three
+		// would be ambiguous about which claim it asserts.
+		{
+			ID:               "foundation-core-index-catalog-size-headline",
+			SweepUnreachable: "count-only claim: a module-index line",
+			Path:             ".claude/skills/moai-foundation-core/modules/INDEX.md",
+			Axis:             AxisRetainedRoster,
+			Claims:           ClaimCount,
+			CountPattern:     `MoAI-ADK's (\d+) retained agents`,
+			KnownStale:       indexCatalogStale("Cites 11 where the retained roster carries 13."),
+		},
+		{
+			ID:               "foundation-core-index-catalog-size-bullet",
+			SweepUnreachable: "count-only claim: a module-index line",
+			Path:             ".claude/skills/moai-foundation-core/modules/INDEX.md",
+			Axis:             AxisRetainedRoster,
+			Claims:           ClaimCount,
+			CountPattern:     `- (\d+) retained agents \(10 MoAI-custom`,
+			KnownStale:       indexCatalogStale("Cites 11 where the retained roster carries 13; the same file's third claim."),
+		},
+		{
+			ID:               "foundation-core-index-catalog-size-table",
+			SweepUnreachable: "count-only claim: a module-index table cell",
+			Path:             ".claude/skills/moai-foundation-core/modules/INDEX.md",
+			Axis:             AxisRetainedRoster,
+			Claims:           ClaimCount,
+			CountPattern:     `\| (\d+) retained agents, flat catalog`,
+			KnownStale:       indexCatalogStale("Cites 11 where the retained roster carries 13, in the module table."),
+		},
+		{
+			ID:               "foundation-core-index-catalog-size-headline-mirror",
+			SweepUnreachable: "count-only claim; template mirror",
+			Path:             "internal/template/templates/.claude/skills/moai-foundation-core/modules/INDEX.md",
+			Axis:             AxisRetainedRoster,
+			Claims:           ClaimCount,
+			CountPattern:     `MoAI-ADK's (\d+) retained agents`,
+			KnownStale:       indexCatalogStale("Template mirror, stale identically."),
+		},
+		{
+			ID:               "foundation-core-index-catalog-size-bullet-mirror",
+			SweepUnreachable: "count-only claim; template mirror",
+			Path:             "internal/template/templates/.claude/skills/moai-foundation-core/modules/INDEX.md",
+			Axis:             AxisRetainedRoster,
+			Claims:           ClaimCount,
+			CountPattern:     `- (\d+) retained agents \(10 MoAI-custom`,
+			KnownStale:       indexCatalogStale("Template mirror, stale identically."),
+		},
+		{
+			ID:               "foundation-core-index-catalog-size-table-mirror",
+			SweepUnreachable: "count-only claim; template mirror",
+			Path:             "internal/template/templates/.claude/skills/moai-foundation-core/modules/INDEX.md",
+			Axis:             AxisRetainedRoster,
+			Claims:           ClaimCount,
+			CountPattern:     `\| (\d+) retained agents, flat catalog`,
+			KnownStale:       indexCatalogStale("Template mirror, stale identically."),
+		},
+
+		// The three foundation-core modules whose header banner cites the
+		// catalog size in one identical sentence.
+		agentCatalogSizeSite("foundation-core-delegation-advanced-catalog-size", ".claude/skills/moai-foundation-core/modules/delegation-advanced.md"),
+		agentCatalogSizeSite("foundation-core-delegation-advanced-catalog-size-mirror", "internal/template/templates/.claude/skills/moai-foundation-core/modules/delegation-advanced.md"),
+		agentCatalogSizeSite("foundation-core-delegation-implementation-catalog-size", ".claude/skills/moai-foundation-core/modules/delegation-implementation.md"),
+		agentCatalogSizeSite("foundation-core-delegation-implementation-catalog-size-mirror", "internal/template/templates/.claude/skills/moai-foundation-core/modules/delegation-implementation.md"),
+		agentCatalogSizeSite("foundation-core-token-optimization-catalog-size", ".claude/skills/moai-foundation-core/modules/token-optimization.md"),
+		agentCatalogSizeSite("foundation-core-token-optimization-catalog-size-mirror", "internal/template/templates/.claude/skills/moai-foundation-core/modules/token-optimization.md"),
+
+		{
+			ID:               "foundation-quality-skill-catalog-size",
+			SweepUnreachable: "count-only claim: a cross-reference sentence citing the catalog size",
+			Path:             ".claude/skills/moai-foundation-quality/SKILL.md",
+			Axis:             AxisRetainedRoster,
+			Claims:           ClaimCount,
+			CountPattern:     `for the (\d+)-agent catalog`,
+			KnownStale: &Staleness{
+				Reason:        "Cites an 11-agent catalog where the roster carries 13.",
+				FollowUp:      "unassigned — reported by card t930, prose repair out of its scope",
+				DeclaredCount: 11,
+			},
+		},
+		{
+			ID:               "foundation-quality-skill-catalog-size-mirror",
+			SweepUnreachable: "count-only claim; template mirror of the row above",
+			Path:             "internal/template/templates/.claude/skills/moai-foundation-quality/SKILL.md",
+			Axis:             AxisRetainedRoster,
+			Claims:           ClaimCount,
+			CountPattern:     `for the (\d+)-agent catalog`,
+			KnownStale: &Staleness{
+				Reason:        "Template mirror of the row above, stale identically.",
+				FollowUp:      "unassigned — reported by card t930, prose repair out of its scope",
+				DeclaredCount: 11,
+			},
+		},
+
+		// manager-design cites the roster size and is CURRENTLY CORRECT. It is
+		// registered for exactly that reason: an already-correct count is what a
+		// guard protects, and leaving it undeclared would mean the next drift in
+		// it goes unreported. Three copies — the local definition, the deployed
+		// mirror, and the machine-emitted codex form — each take a row.
+		{
+			ID:               "manager-design-catalog-citation",
+			SweepUnreachable: "count-only claim: a Context field citing the roster size, naming one agent",
+			Path:             ".claude/agents/moai/manager-design.md",
+			Axis:             AxisRetainedRoster,
+			Claims:           ClaimCount,
+			CountPattern:     `§ 4 \((\d+) retained agents`,
+		},
+		{
+			ID:               "manager-design-catalog-citation-mirror",
+			SweepUnreachable: "count-only claim; template mirror of the row above",
+			Path:             "internal/template/templates/.claude/agents/moai/manager-design.md",
+			Axis:             AxisRetainedRoster,
+			Claims:           ClaimCount,
+			CountPattern:     `§ 4 \((\d+) retained agents`,
+		},
+		{
+			ID:               "manager-design-catalog-citation-codex",
+			SweepUnreachable: "count-only claim; the machine-emitted codex form of the row above",
+			Path:             "internal/template/templates/.codex/agents/moai/manager-design.toml",
+			Axis:             AxisRetainedRoster,
+			Claims:           ClaimCount,
+			CountPattern:     `§ 4 \((\d+) retained agents`,
+			Note: "Emitted from the .claude mirror by internal/template/agentemit and never hand-edited. " +
+				"Registered anyway: registering is a read, not an edit, and a stale emission is still a stale claim on disk.",
+		},
+
+		// NOTICE.md carries BOTH a historical citation and a live one in the
+		// same sentence: "8 retained agents at consolidation time; now 10 per
+		// CLAUDE.md §4". The LIVE half is registered here; the historical half
+		// needs no repair and gets none. Registering the live claim rather than
+		// exempting the whole path is what keeps the stale 10 enumerable.
+		{
+			ID:               "notice-current-catalog-size",
+			SweepUnreachable: "count-only claim: an attribution paragraph citing the current roster size",
+			Path:             ".claude/rules/moai/NOTICE.md",
+			Axis:             AxisRetainedRoster,
+			Claims:           ClaimCount,
+			CountPattern:     `now (\d+) per CLAUDE\.md §4`,
+			KnownStale: &Staleness{
+				Reason: "The live half of the sentence says the catalog is now 10; the roster carries 13. " +
+					"The historical half (8 at consolidation time) is correct and is not this row's subject.",
+				FollowUp:      "unassigned — reported by card t930, prose repair out of its scope",
+				DeclaredCount: 10,
+			},
+		},
+		{
+			ID:               "notice-current-catalog-size-mirror",
+			SweepUnreachable: "count-only claim; template mirror of the row above",
+			Path:             "internal/template/templates/.claude/rules/moai/NOTICE.md",
+			Axis:             AxisRetainedRoster,
+			Claims:           ClaimCount,
+			CountPattern:     `now (\d+) per CLAUDE\.md §4`,
+			KnownStale: &Staleness{
+				Reason:        "Template mirror of the row above, stale identically.",
+				FollowUp:      "unassigned — reported by card t930, prose repair out of its scope",
+				DeclaredCount: 10,
+			},
+		},
+
+		// ── Registered count rows the NUMERAL layer cannot reach ───────────
+		//
+		// The three localized README headings state the roster size in their own
+		// language, and the adopted noun class is English-only by decision, so
+		// the layer is expected not to see them. Declaring that — rather than
+		// widening the noun class or quietly dropping the equality — is what
+		// keeps AC-RNA-006(b) strict instead of unsatisfiable.
+	}
+}
+
+// indexCatalogStale builds the staleness marker shared by the INDEX.md rows,
+// which differ only in which sentence they anchor on.
+func indexCatalogStale(reason string) *Staleness {
+	return &Staleness{
+		Reason:        reason,
+		FollowUp:      "unassigned — reported by card t930, prose repair out of its scope",
+		DeclaredCount: 11,
+	}
+}
+
+// agentCatalogSizeSite builds a row for the foundation-core module banner,
+// which cites the catalog size in one identical sentence across three modules
+// and their three mirrors.
+func agentCatalogSizeSite(id, path string) Site {
+	return Site{
+		ID:               id,
+		SweepUnreachable: "count-only claim: a module header banner citing the catalog size",
+		Path:             path,
+		Axis:             AxisRetainedRoster,
+		Claims:           ClaimCount,
+		CountPattern:     `(\d+)-agent catalog in \[agents-reference\.md\]`,
+		KnownStale: &Staleness{
+			Reason:        "The module banner cites an 11-agent catalog where the roster carries 13.",
+			FollowUp:      "unassigned — reported by card t930, prose repair out of its scope",
+			DeclaredCount: 11,
+		},
 	}
 }
 
@@ -388,15 +654,24 @@ func Registry() []Site {
 //
 // Derived rather than written out four times: four hand-copied rows is the same
 // forward-only-propagation shape this package guards, one level up.
-func readmeSite(id, path, countPattern string) Site {
+// localizedHeadingUnreachable is the reason the three non-English READMEs
+// carry NumeralUnreachable: their count claim is written with a LOCALIZED
+// roster noun (에이전트 카탈로그 / エージェント・カタログ / 智能体目录), and the
+// numeral layer's adopted noun class is English-only by decision, so the layer
+// is expected not to reach them. The English README is reached and carries no
+// declaration.
+const localizedHeadingUnreachable = "the count claim is a localized heading; the numeral layer's noun class is English-only by decision (D1)"
+
+func readmeSite(id, path, countPattern, numeralUnreachable string) Site {
 	return Site{
-		ID:           id,
-		Path:         path,
-		Axis:         AxisRetainedRoster,
-		Claims:       ClaimMembership | ClaimCount,
-		BlockStart:   "| manager-spec |",
-		BlockEnd:     "| Explore |",
-		CountPattern: countPattern,
+		ID:                 id,
+		Path:               path,
+		Axis:               AxisRetainedRoster,
+		Claims:             ClaimMembership | ClaimCount,
+		BlockStart:         "| manager-spec |",
+		BlockEnd:           "| Explore |",
+		CountPattern:       countPattern,
+		NumeralUnreachable: numeralUnreachable,
 		Note: "Block-scoped to the table rather than the whole file: the README mentions " +
 			"mission-governor in unrelated prose, so a whole-file assertion would pass " +
 			"while the table omits it — the exact false pass this scoping exists to prevent.",
@@ -405,5 +680,147 @@ func readmeSite(id, path, countPattern string) Site {
 		// waited for its merge window. The guard reported both halves per
 		// locale — the membership gap AND the count — which is why the repair
 		// needed no announcement to be seen.
+	}
+}
+
+// NumeralExemptions is the declared set of paths the numeral layer reaches and
+// must NOT report (card t930).
+//
+// Three classes live here, and each row says which one it is:
+//
+//   - HISTORICAL CITATION — prose describing the roster AS IT WAS ("the
+//     then-8-agent catalog", "17→8 agent catalog"). Not drift, not repaired.
+//   - MEASURED FALSE POSITIVE — a numeral that is not a roster count at all: a
+//     section marker (§4), a best-practice number (#7), a release version
+//     (2.1.172), a date fragment (2026-05-25), a SPEC-ID tail (…-001).
+//   - SELF-DESCRIPTION — this package's own files, which quote roster count
+//     claims because quoting them is their subject matter.
+//
+// Every row carries a non-empty reason by construction (an empty one produces a
+// finding reporting the declaration as incomplete, never a suppression), and
+// the exemption is per PATH rather than per pattern — a reviewer who disagrees
+// with one disagrees with a named row, not with an inference.
+//
+// The cost this list imposes is real and was accepted rather than mitigated: an
+// exemption list large enough becomes what a reader reviews instead of the
+// roster. What prices each entry is the mandatory reason.
+func NumeralExemptions() []NumeralExempt {
+	const historicalConsolidation = "HISTORICAL CITATION: describes the 17→8 catalog consolidation as it was at the time. " +
+		"Not drift and not repaired (the card's scope excludes prose repair). " +
+		"OBSERVED, not adjudicated: the same sentence's live tail (\"since grown to 11\") is itself stale, " +
+		"and the adopted noun class does not reach it — no noun follows that numeral."
+
+	return []NumeralExempt{
+		// ── Historical citations ───────────────────────────────────────────
+		{ID: "manager-docs-then-8", Path: ".claude/agents/moai/manager-docs.md", Reason: historicalConsolidation},
+		{ID: "manager-spec-then-8", Path: ".claude/agents/moai/manager-spec.md", Reason: historicalConsolidation},
+		{ID: "manager-docs-then-8-mirror", Path: "internal/template/templates/.claude/agents/moai/manager-docs.md", Reason: historicalConsolidation + " Template mirror."},
+		{ID: "manager-spec-then-8-mirror", Path: "internal/template/templates/.claude/agents/moai/manager-spec.md", Reason: historicalConsolidation + " Template mirror."},
+		{ID: "manager-docs-then-8-codex", Path: "internal/template/templates/.codex/agents/moai/manager-docs.toml", Reason: historicalConsolidation + " Machine-emitted codex form; never hand-edited."},
+		{ID: "manager-spec-then-8-codex", Path: "internal/template/templates/.codex/agents/moai/manager-spec.toml", Reason: historicalConsolidation + " Machine-emitted codex form; never hand-edited."},
+		{
+			ID:   "git-workflow-doctrine-retain-matrix",
+			Path: ".moai/docs/git-workflow-doctrine.md",
+			Reason: "HISTORICAL CITATION: cites the retain-vs-archive matrix as it stood at consolidation " +
+				"(\"8 retained agents 중 하나로 유지된 이유\") to explain why manager-git was kept. A record of a past decision.",
+		},
+		{
+			ID:   "catalog-loader-test-consolidation-comment",
+			Path: "internal/template/catalog_loader_test.go",
+			Reason: "HISTORICAL CITATION: a test comment recording the 17→8 consolidation the fixture was " +
+				"written against. The assertion itself is on the catalog file, not on a count.",
+		},
+		{
+			ID:   "catalog-tier-audit-consolidation-comment",
+			Path: "internal/template/catalog_tier_audit_test.go",
+			Reason: "HISTORICAL CITATION: two comments — the 17→8 consolidation, and \"all 7 retained agents live " +
+				"directly in moai/\" describing the folder layout after a superseded split.",
+		},
+		{
+			ID:     "embed-catalog-test-consolidation-comment",
+			Path:   "internal/template/embed_catalog_test.go",
+			Reason: "HISTORICAL CITATION: the same 17→8 consolidation comment above an embed assertion.",
+		},
+		{
+			ID:   "embed-test-flat-subfolder-floor",
+			Path: "internal/template/embed_test.go",
+			Reason: "MEASURED FALSE POSITIVE: \"at least 7 retained agent .md files\" is a LOWER BOUND on the " +
+				"embedded file count, deliberately not a roster size — it stays true as the roster grows, " +
+				"which is the property the assertion wants.",
+		},
+		{
+			ID:     "contract-schema-spec-id-tail",
+			Path:   "internal/template/contract_schema_test.go",
+			Reason: "MEASURED FALSE POSITIVE: the numeral is a SPEC-ID tail (\"…-001): agent catalog\"), not a count.",
+		},
+
+		// ── Measured false positives ───────────────────────────────────────
+		{
+			ID:   "spec-frontmatter-schema-best-practice-number",
+			Path: ".claude/rules/moai/development/spec-frontmatter-schema.md",
+			Reason: "Two hits in one sentence, neither a live roster count: \"Best Practice #7\" is a " +
+				"numbered practice, and \"(8 retained agents)\" names the consolidation policy as it was.",
+		},
+		{
+			ID:     "spec-frontmatter-schema-best-practice-number-mirror",
+			Path:   "internal/template/templates/.claude/rules/moai/development/spec-frontmatter-schema.md",
+			Reason: "Template mirror of the row above; same two hits, same reason.",
+		},
+		{
+			ID:     "skill-routing-section-marker",
+			Path:   ".claude/rules/moai/workflow/skill-routing.md",
+			Reason: "MEASURED FALSE POSITIVE: the numeral is the section marker in \"`CLAUDE.md` §4 — the retained agent catalog\".",
+		},
+		{
+			ID:     "skill-routing-section-marker-mirror",
+			Path:   "internal/template/templates/.claude/rules/moai/workflow/skill-routing.md",
+			Reason: "Template mirror of the row above; same section marker.",
+		},
+		{
+			ID:     "foundation-cc-release-version",
+			Path:   ".claude/skills/moai-foundation-cc/SKILL.md",
+			Reason: "MEASURED FALSE POSITIVE: the numeral is a Claude Code release version (\"CC 2.1.172); MoAI retained agents…\").",
+		},
+		{
+			ID:     "foundation-quality-reference-section-marker",
+			Path:   ".claude/skills/moai-foundation-quality/references/reference.md",
+			Reason: "MEASURED FALSE POSITIVE: the numeral is the section marker in \"CLAUDE.md §4 retained-agent catalog\".",
+		},
+		{
+			ID:     "foundation-quality-reference-section-marker-mirror",
+			Path:   "internal/template/templates/.claude/skills/moai-foundation-quality/references/reference.md",
+			Reason: "Template mirror of the row above; same section marker.",
+		},
+		{
+			ID:   "template-isolation-doctrine-forbidden-example",
+			Path: ".moai/docs/template-internal-isolation-doctrine.md",
+			Reason: "MEASURED FALSE POSITIVE: the hit is inside a table cell that QUOTES a forbidden-content " +
+				"example (\"Per SPEC-… (2026-05-25), the agent catalog …\"); the numeral is a date fragment.",
+		},
+		{
+			ID:     "agentlint-section-marker",
+			Path:   "internal/cli/agentlint/agent_lint.go",
+			Reason: "MEASURED FALSE POSITIVE: the numeral is the section marker in a comment citing \"CLAUDE.md §4 retained-agent catalog\".",
+		},
+		{
+			ID:   "web-agentfm-subset-count",
+			Path: "internal/web/agentfm.go",
+			Reason: "\"The 9 named retained agents\" counts the SUBSET agentGroupRank names, not the retained " +
+				"roster — the subset-by-design boundary the web-agentfm-display-rank row already records. " +
+				"Registering it as a roster count would report a correct file as broken; this is also the " +
+				"one path the rejected any-row discharge rule would have freed (decision D2).",
+		},
+
+		// ── This package describing itself ─────────────────────────────────
+		//
+		// A guard whose subject matter is roster count claims necessarily
+		// quotes them. Each file is named individually rather than excluding
+		// the directory: an exclusion would also hide a real claim written
+		// here later, and these four rows make the self-reference visible.
+		{ID: "rosterguard-axis-self", Path: "internal/harness/rosterguard/axis.go", Reason: "SELF-DESCRIPTION: the CountPattern doc comment quotes the delegationmap citation it exists to explain."},
+		{ID: "rosterguard-numeral-self", Path: "internal/harness/rosterguard/numeral.go", Reason: "SELF-DESCRIPTION: this layer's own doc comments quote the claims it reaches."},
+		{ID: "rosterguard-numeral-test-self", Path: "internal/harness/rosterguard/numeral_test.go", Reason: "SELF-DESCRIPTION: the layer's fixtures ARE roster count claims, synthetic and live-quoted."},
+		{ID: "rosterguard-registry-self", Path: "internal/harness/rosterguard/registry.go", Reason: "SELF-DESCRIPTION: the registry's own comments quote the claims its rows assert."},
+		{ID: "rosterguard-test-self", Path: "internal/harness/rosterguard/rosterguard_test.go", Reason: "SELF-DESCRIPTION: the control probe's deliberately-wrong input includes roster count claims."},
 	}
 }
