@@ -81,7 +81,7 @@ func TestGoalVerbControls(t *testing.T) {
 // red whatever the behaviour became. Every cell it named is now pinned by an
 // asserting test — stat/list/show and reset/done/cancel by
 // TestGoalVerbMisreadWordsRefused, help by TestGoalVerbHelpWordShowsHelp, and
-// ls/rm as unlisted commands by TestGoalVerbMisreadCheckStaysNarrow.
+// ls/rm as bare single words by TestGoalBareWordRequiresDeclaration.
 
 // TestGoalVerbMisreadWordsRefused pins the fix for card t605: a single word a
 // user would plausibly type as a goal verb is refused with the verb it meant,
@@ -126,7 +126,12 @@ func TestGoalVerbHelpWordShowsHelp(t *testing.T) {
 
 // TestGoalVerbMisreadCheckStaysNarrow is the over-refusal guard: the check
 // matches a single whole argument only, so an explicit arm verb, a declared
-// cmd: condition, a multi-word condition, and an unlisted command still arm.
+// cmd: condition, and a multi-word condition still arm.
+//
+// The "unlisted command" cell (a bare `ls`) moved out of this guard with card
+// t890: a bare single word now requires a declaration prefix whether or not the
+// shell resolves it, so `ls` belongs with the refused shapes below rather than
+// with the armed ones. Nothing else about this guard changed.
 func TestGoalVerbMisreadCheckStaysNarrow(t *testing.T) {
 	for _, tc := range []struct {
 		name string
@@ -135,11 +140,65 @@ func TestGoalVerbMisreadCheckStaysNarrow(t *testing.T) {
 		{"explicit arm verb", []string{"arm", "reset"}},
 		{"cmd prefix", []string{"cmd: reset"}},
 		{"multi-word condition", []string{"reset && true"}},
-		{"unlisted command", []string{"ls"}},
-		{"unlisted command rm", []string{"rm"}},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			armed, out, err := goalVerbOutcome(t, "VNARROW", tc.args...)
+			if err != nil || !armed {
+				t.Fatalf("%v was not armed (armed=%v err=%v out=%q)", tc.args, armed, err, out)
+			}
+		})
+	}
+}
+
+// TestGoalBareWordRequiresDeclaration pins card t890. A single bare word that
+// is neither a goal verb nor one of the SuggestFor aliases passed BOTH existing
+// gates when the shell could resolve it: the misread-verb check only knows the
+// SuggestFor lists, and the runnability probe only refuses a first word that
+// resolves to NOTHING. So `moai goal false` armed a condition that can never
+// exit 0 (it burns turns to the ceiling) and `moai goal date` armed one that is
+// satisfied instantly (the goal ends without ever having meant anything).
+//
+// Neither outcome is what someone typing one word intends, and the engine
+// already demands a declaration in the adjacent case — an unresolvable first
+// word is refused with exactly this remedy. The demand is now uniform for the
+// bare single-word form.
+func TestGoalBareWordRequiresDeclaration(t *testing.T) {
+	// false: resolves, always non-zero. date: resolves, always zero. ls and
+	// true are the shapes the previous narrowness guard asserted must arm. rm
+	// arrives from card t946, where it was the one cell the removed scoping
+	// instrument named that no asserting test had picked up.
+	for _, word := range []string{"false", "date", "ls", "true", "rm"} {
+		t.Run(word, func(t *testing.T) {
+			armed, out, err := goalVerbOutcome(t, "VBARE", word)
+			if err == nil || armed {
+				t.Fatalf("%q was armed (armed=%v err=%v out=%q)", word, armed, err, out)
+			}
+			for _, want := range []string{"cmd:", "model:"} {
+				if !strings.Contains(err.Error(), want) {
+					t.Errorf("refusal for %q does not name the %s escape: %v", word, want, err)
+				}
+			}
+		})
+	}
+}
+
+// TestGoalBareWordCheckStaysNarrow is the over-refusal guard for the t890
+// check. A declaration prefix (spaced or not), an explicit arm verb, and any
+// multi-word condition are untouched — the check reads the bare single-word
+// form only.
+func TestGoalBareWordCheckStaysNarrow(t *testing.T) {
+	for _, tc := range []struct {
+		name string
+		args []string
+	}{
+		{"explicit arm verb", []string{"arm", "false"}},
+		{"cmd prefix spaced", []string{"cmd: false"}},
+		{"cmd prefix unspaced", []string{"cmd:false"}},
+		{"model prefix", []string{"model: the transcript shows the migration finished"}},
+		{"multi-word condition", []string{"go test ./... exits 0"}},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			armed, out, err := goalVerbOutcome(t, "VBARENARROW", tc.args...)
 			if err != nil || !armed {
 				t.Fatalf("%v was not armed (armed=%v err=%v out=%q)", tc.args, armed, err, out)
 			}
