@@ -263,7 +263,8 @@ mentions an id later in the sentence still falls through, and
 		newTodoUnpickCmd(), newTodoEditCmd(), newTodoMoveCmd(),
 		newTodoDropCmd(), newTodoUndropCmd(),
 		newTodoAnalyzeCmd(), newTodoRelateCmd(), newTodoUnrelateCmd(), newTodoWhyCmd(),
-		newTodoPRCmd(), newTodoLandedCmd(), newTodoAutoDoneCmd(), newTodoExportJSONCmd(), newTodoHistoryCmd())
+		newTodoPRCmd(), newTodoLandedCmd(), newTodoAutoDoneCmd(), newTodoExportJSONCmd(), newTodoHistoryCmd(),
+		newTodoTriageCmd())
 	return cmd
 }
 

@@ -453,7 +453,15 @@ func newIntegrationReleaseCmd() *cobra.Command {
 			if sessionID == "" && !force {
 				return fmt.Errorf("cannot resolve this session's id; pass --session <id> or --force")
 			}
-			released, err := kanban.ReleaseIntegrationLock(integrationLockRoot(), sessionID, force)
+			// The second ownership key (card t951): the pid of the session that
+			// OWNS this process, resolved exactly as acquire resolved the pid it
+			// recorded. A `/clear` between acquire and release issues a new
+			// session id to the same owning process, and without this the lane's
+			// own release was refused as foreign — observed on card t791, where
+			// the refusal named the refused process's own pid. An unresolvable
+			// owner yields 0, which matches nothing and leaves the id key alone.
+			callerOwnerPID, _ := session.ResolveOwnerPID()
+			released, err := kanban.ReleaseIntegrationLock(integrationLockRoot(), sessionID, callerOwnerPID, force)
 			if err != nil {
 				return err
 			}
