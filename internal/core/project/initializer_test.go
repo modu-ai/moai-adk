@@ -611,25 +611,18 @@ func TestInit_WithDeployerError(t *testing.T) {
 		DevelopmentMode: "ddd",
 	}
 
-	result, err := init.Init(context.Background(), opts)
-	if err != nil {
-		t.Fatalf("Init() error = %v (should be non-fatal warning)", err)
+	// SPEC-INIT-DEPLOY-EXIT-001 (REQ-IDE-001/007): template deployment is FATAL.
+	// The prior contract recorded the failure as a warning and returned nil,
+	// which let `moai init` exit 0 over a project tree missing most of its files.
+	_, err := init.Init(context.Background(), opts)
+	if err == nil {
+		t.Fatal("Init() returned nil on a template deployment failure; deployment failure must be fatal")
 	}
-
-	// Deploy error should be recorded as warning, not a fatal error
-	if len(result.Warnings) == 0 {
-		t.Error("expected at least one warning for deploy failure")
+	if !strings.Contains(err.Error(), "template deployment") {
+		t.Errorf("Init() error does not name template deployment: %v", err)
 	}
-
-	foundWarning := false
-	for _, w := range result.Warnings {
-		if strings.Contains(w, "template deployment") {
-			foundWarning = true
-			break
-		}
-	}
-	if !foundWarning {
-		t.Errorf("expected template deployment warning, got %v", result.Warnings)
+	if !strings.Contains(err.Error(), "deploy failed") {
+		t.Errorf("Init() error does not wrap the deployer error: %v", err)
 	}
 }
 
@@ -650,14 +643,15 @@ func TestInit_WithDeployerNoManifest(t *testing.T) {
 		DevelopmentMode: "ddd",
 	}
 
-	result, err := init.Init(context.Background(), opts)
-	if err != nil {
-		t.Fatalf("Init() error = %v", err)
+	// SPEC-INIT-DEPLOY-EXIT-001 (REQ-IDE-001): a deployer without a manifest
+	// manager cannot deploy at all, which is the same deployment-failure class
+	// as a render error — fatal, not a warning.
+	_, err := init.Init(context.Background(), opts)
+	if err == nil {
+		t.Fatal("Init() returned nil when the deployer had no manifest manager; deployment failure must be fatal")
 	}
-
-	// Deploy should still attempt and fail (needs manifest), recorded as warning
-	if len(result.Warnings) == 0 {
-		t.Error("expected warning when deployer has no manifest manager")
+	if !strings.Contains(err.Error(), "template deployment") {
+		t.Errorf("Init() error does not name template deployment: %v", err)
 	}
 }
 
