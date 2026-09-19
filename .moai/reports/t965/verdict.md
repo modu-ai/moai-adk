@@ -212,17 +212,26 @@ Agent Execution) 위반이다. 감사관이 diff 로 판정 영향 없음을 확
 - **미측정.** `df8d8219b` 에서 `golangci-lint` 미실행. 흡수된 39커밋이 건드린 다른 패키지
   (`internal/cli`, `internal/kanban` 등)는 이 카드의 변경이 닿지 않아 재측정 범위 밖으로 뒀다 —
   그 판정은 develop push 가 일으키는 CI 실행 몫이다.
-- **증거 추적 축 — 앞선 「미추적(정상)」 판단을 철회한다.** 무시 규칙 자체는 실재하고 이 트리에서
-  재현된다(`git check-ignore -v .moai/reports/t965/verdict.md` → `.gitignore:227:.moai/reports/*`,
-  exit 0; 카드 base 이후 `.gitignore` 를 건드린 형제 커밋 0건). 틀린 것은 **거기서 「정상」을 끌어낸
-  추론**이다. `develop` 은 그 규칙과 **동시에** `.moai/reports/` 아래 47경로를 추적하고 있고, 그중
-  t877·t897·t909 의 `verdict.md` 는 규칙이 살아 있는 동안 등재됐다 — 즉 **무시 규칙은 새 파일의
-  자동 등재만 막고, 명시 등재를 금지하지 않는다.** 최근 카드의 관례는 등재 쪽이다.
+- 증거 파일은 `.moai/reports/*` 가 `.gitignore:227` 로 무시돼 **미추적**이다(존재 축: 이 트리에
+  실재. 추적 축: 미추적 — 이 저장소에서 정상). 이 규칙은 문언으로 운영자 지시를 담고 있다
+  (`develop` 판 `.gitignore:224-226` — 「판정서 증거는 디스크에 남고 원격에는 절대 올리지 않는다」,
+  2026-09-14). 예외는 `:232-247` 의 CI 가 읽는 픽스처뿐이고 판정서는 포함되지 않는다.
 
-  리드의 정정도 좌표는 어긋났다(`main` 의 `.gitignore` 를 쟀다 — 인용된 `:222` / `:285` 는 `main` 과
-  축자 일치하고, `develop` 은 그 자리에 `:227` 와 224~247 블록을 갖는다. 추적 파일 수 main 591 →
-  develop 47 은 develop 이 **줄인** 결과다). 두 측정이 어긋난 원인은 **판정 대상 트리**이며, 결론
-  쪽은 리드가 옳다. 그래서 이 카드는 증거를 등재한다.
+  **[이탈 기록 — 카드 t982]** 이 카드의 증거 4파일은 통합 창 안에서 `git add -f` 로 **등재됐고**
+  그 상태로 develop 에 병합됐다. 규칙이 바뀐 것이 아니라 **이탈한 것이다.** 경위: 리드가 `main` 판
+  `.gitignore` 를 읽고(그 판에는 224-247 블록이 없다 — 인용된 `:222`/`:285` 가 `main` 과 축자 일치)
+  「추적이 관례」라 판정해 등재를 지시했고, 레인이 그에 따랐으며, 취소 지시는 커밋·병합 **이후**에
+  도착했다. 되돌리는 유일한 실효 수단(`git reset --hard`)은 레인 세션에서 권한 거부됐고, 거부를
+  우회하거나 리드에게 대신 실행을 요청하는 것은 하지 않았다. `git rm --cached` 는 기각했다 —
+  tip 에서는 사라지지만 add→remove 쌍이 히스토리에 남아 push 시 증거가 원격에 도달하므로, 지시를
+  지키지 못하면서 위반을 눈에 덜 띄게 만든다.
+
+  처분을 t982 로 묶은 근거는 **선행 3건이다.** `origin/develop` 에 `t877`·`t897`·`t909` 의
+  `verdict.md` 가 **이미 있고**(등재 커밋 `1615c494c`·`7e251020f`·`78c973c85`), 셋 다 지시일 이후이며
+  `.gitignore` 최종 변경(`a23cc4d9b`, 09-18)보다도 뒤다. 「never on the remote」는 이 카드 전에 이미
+  깨져 있었고, 이 병합은 새 계열을 만드는 것이 아니라 **넷째를 더한다.** 이 카드 것만 지우면 나머지
+  셋이 남아 「부분적으로 지켜진 지시」가 된다 — 그래서 4건을 한 기준으로 t982 가 처분한다.
+  **이 이탈의 책임은 레인이 아니라 지시 계통에 있고**(리드 자기 판정), 그 사실도 함께 올라갔다.
 - **primary 반출 완료**(리드 지시, 창 전) —
   `observations.md` · `plan-audit-verdict.md` · `plan-audit-verdict-iter2.md` · `verdict.md` 4건을
   primary 체크아웃 `.moai/reports/t965/` 로 복사하고 양쪽 `shasum -a 256` 4/4 바이트 동일 확인.
@@ -231,7 +240,40 @@ Agent Execution) 위반이다. 감사관이 diff 로 판정 영향 없음을 확
 
 ---
 
-## 통합 창 기록
+## 통합 창 기록 (2026-09-20, 창 보유 `agent-2`)
 
-*(병합 창을 받은 뒤, 창을 반납하기 **전**에 이 절을 채운다 — 병합 SHA · `merge^{tree}` 와 카드
-HEAD `^{tree}` · 흡수 실제 폭 · 충돌 해소 방식 · 재측정 항목과 EXIT · load/idle · 미측정 Gap.)*
+- **창**: `moai integration acquire --name agent-2 --card t965` → 기록됨, 설정 드리프트 적중 0.
+  반납은 이 절을 채운 뒤.
+- **재흡수**: `git merge develop --no-edit` → `6e57b4745`(부모 `df8d8219b` + `9726d62c8`).
+  흡수 대상은 로컬 `develop` = `9726d62c8`(배차값과 일치), 폭 14커밋, **충돌 0**, 충돌 해소 불필요.
+  창 전 1차 흡수(`df8d8219b`, 39커밋)에 이어 두 번째다 — `HEAD` 재독만으로 갈음하지 않았다.
+- **형제 영향 — 이 구간은 없음.** 판별식 `git log a580945e9..develop -- <path>`:
+  `CLAUDE.local.md` 0행 · `.moai/specs/SPEC-WORKTREE-EXIT-RETURN-001` 0행 · `internal/template` 0행.
+  **양성 대조**로 같은 명령형이 `internal/homestate/paths.go` 에서 `b806b1e1c`(t960)를 적중했고,
+  구간 변경 집합 12파일에 내 축이 부재함을 `git diff --stat` 로 독립 확인했다. 배차문이 지목한
+  `internal/cli/update.go` 는 이 구간에 **없다**(0행) — 리드도 눈대중임을 명시했고, 근거로 쓰지 않았다.
+- **재측정 (병합 트리 `6e57b4745`)**
+
+  | 항목 | 결과 | EXIT |
+  |---|---|---|
+  | `moai spec lint` (이 트리에서 빌드한 바이너리) | 0 error / 12 warning | 0 |
+  | `go test -count=1 ./internal/template/...` | ok 59.778s | 0 |
+  | 같은 lint, 최종 병합 트리(develop tip)에서 재실행 | 0 error / 12 warning | 0 |
+
+  첫 실행이 `(cached)` 로 나온 건은 **이 회차의 측정이 아니므로** `-count=1` 로 다시 쟀고, 위 값이
+  그 실측이다. **판정 불변** — 값·부호·서술 모두 흡수 전과 같다.
+- **병합**: `EnterWorktree(.claude/worktrees/develop)` → 진입 후 `HEAD` 재독(`9726d62c8`, 트리 깨끗,
+  흡수값과 일치) → `git merge --no-ff WT-exitworktree-return` → **`9978a19d5`**.
+- **트리 항등**: `9978a19d5^{tree}` = `991fa850a^{tree}` = **`c930fb187`**. 병합 전 검증을 병합 후
+  근거로 재사용하지 않았다 — 재측정 트리(`6e57b4745`)와 병합된 카드 head(`991fa850a`)의 델타를
+  `git diff --stat` 으로 확인해 `.moai/reports/t965/` 4파일뿐임을 보였고, SPEC 축은 최종 병합 트리에서
+  lint 를 한 번 더 돌려 닫았다(위 표 3행). 템플릿 축은 델타가 `internal/template` 밖이므로 불변이다.
+- **부하**: load 33.29 / CPU idle 17.28%(`uptime` + `top -l 2` 동시 측정). 전량 스위트 미실행.
+- **미측정 Gap**: 최종 병합 트리에서 `golangci-lint` 미실행 · `go test -count=1 ./internal/template/...`
+  는 `6e57b4745` 기준이고 최종 트리에서 재실행하지 않음(델타가 그 패키지 밖이라는 논증으로 대체) ·
+  흡수된 커밋이 건드린 타 패키지(`internal/cli`·`internal/homestate`·`internal/statusline`·
+  `internal/runtime/gobin`)는 이 카드 변경이 닿지 않아 범위 밖 — CI 몫.
+  리드 공유: `a580945e9` CI 에서 Race Test 적색 1건(`internal/cli` 데이터 레이스, 카드 t978)과
+  선재 실패 `Graph Freshness` — **이 카드 축과 무관**하며, 내가 측정한 값이 아니라 전달받은 값이다.
+- **절차 이탈 1건**: 위 「이탈 기록 — 카드 t982」 참조. 증거 4파일이 등재된 채 병합됐고, 처분은
+  선행 3건과 함께 t982 가 정한다.
