@@ -268,3 +268,75 @@ func TestCleanupGLMSettingsLocalIndicatorSet(t *testing.T) {
 		})
 	}
 }
+
+// cleanupViewDirtyEnv seeds a settings env carrying every key of the canonical
+// cleanup view plus one user-owned key that must survive.
+//
+// MOAI_BACKUP_AUTH_TOKEN is deliberately left out: its presence tells the
+// cleanup paths to RESTORE that value as ANTHROPIC_AUTH_TOKEN, which is the
+// documented OAuth-preservation behaviour, not residue — and since
+// ANTHROPIC_AUTH_TOKEN is itself a member of the view, seeding the backup key
+// would make the whole-view "every key is absent" traversal below false against
+// a CORRECT implementation. The restore path has its own named cases
+// (TestCleanupGLMSettingsLocalRestoresBackedUpAuthToken and
+// TestCleanupGLMSettingsLocalAdmitsBackupOnlyFileAndRestoresToken).
+func cleanupViewDirtyEnv() map[string]string {
+	env := map[string]string{"CUSTOM_VAR": "keep_me"}
+	for _, key := range config.SettingsAxisCleanupKeys() {
+		if key == config.EnvMoaiBackupAuthToken {
+			continue
+		}
+		env[key] = "seeded"
+	}
+	// The GLM-active indicator and the model override need realistic values so
+	// the cleanup takes its GLM branch rather than an early return. With the
+	// backup key absent by design, ANTHROPIC_BASE_URL is what admits the file.
+	env[config.EnvAnthropicBaseURL] = "https://api.z.ai/api/anthropic"
+	env[config.EnvAnthropicDefaultOpusModel] = "glm-5.3"
+	return env
+}
+
+// assertFixtureIsDirty is the emptiness guard: without it a fixture that stopped
+// seeding the keys would make every assertion below pass vacuously.
+func assertFixtureIsDirty(t *testing.T, env map[string]string) {
+	t.Helper()
+	for _, key := range config.SettingsAxisCleanupKeys() {
+		if key == config.EnvMoaiBackupAuthToken {
+			continue // absent by design — see cleanupViewDirtyEnv
+		}
+		if _, ok := env[key]; !ok {
+			t.Fatalf("fixture is not dirty: %s absent before cleanup", key)
+		}
+	}
+}
+
+// TestCleanupGLMSettingsLocalCleanupViewEquivalence is AC-002 for consumer C:
+// the runtime proof that cleanupGLMSettingsLocal deletes exactly the canonical
+// cleanup view. It is the primary instrument for the five-lists-to-one collapse,
+// because a textual scan cannot distinguish a consumer that kept its entire
+// hand-written list from one that routed onto the declaration — both spell their
+// keys as Go identifiers.
+//
+// The assertion iterates config.SettingsAxisCleanupKeys() rather than a list
+// written here, so a key added to the canonical declaration widens this test
+// without a second edit.
+func TestCleanupGLMSettingsLocalCleanupViewEquivalence(t *testing.T) {
+	scrubGatewayEnv(t)
+
+	dirty := cleanupViewDirtyEnv()
+	assertFixtureIsDirty(t, dirty)
+
+	root, settingsPath := writeCleanupFixture(t, dirty)
+
+	cleanupGLMSettingsLocal(root)
+
+	env := readCleanupEnv(t, settingsPath)
+	for _, key := range config.SettingsAxisCleanupKeys() {
+		if v, ok := env[key]; ok {
+			t.Errorf("cleanupGLMSettingsLocal left cleanup-view key %s=%q", key, v)
+		}
+	}
+	if env["CUSTOM_VAR"] != "keep_me" {
+		t.Errorf("user key must survive cleanup, got env: %v", env)
+	}
+}
