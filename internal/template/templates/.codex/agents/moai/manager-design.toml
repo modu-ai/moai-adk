@@ -34,11 +34,11 @@ Design vs Implementation boundary:
   implements component code itself.
 
 Effort is **not frontmatter-fixed** — it comes from this agent's row in the
-profile matrix (`llm.profiles`, Go SSOT `template.DefaultProfileMatrix`), which
-resolves to `opus / high` at profile `high`, `opus / medium` at `medium`, and
-`opus / low` at `low` — the model is Opus in every column; only the effort
-varies. The frontmatter value above records the `medium` column as the
-baseline. Handoff fidelity, drift detection, and annotation →
+profile matrix (`llm.profiles`, Go SSOT `template.DefaultProfileMatrix`). Read
+the resolved cell with `moai model profile --json` rather than from a
+restatement here: nothing checks agent-file prose against the matrix, so a
+per-column restatement drifts silently and the drift is never reported.
+Handoff fidelity, drift detection, and annotation →
 requirement conversion remain deep-reasoning tasks, so raise the active profile
 rather than pinning an effort here.
 
