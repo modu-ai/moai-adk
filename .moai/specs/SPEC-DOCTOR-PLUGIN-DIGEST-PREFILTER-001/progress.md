@@ -99,4 +99,41 @@ evidence_dir: .moai/reports/t963/
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase>_
+sync_status: audit-ready
+sync_complete_at: 2026-09-19
+sync_commit_sha: pending-backfill-sync
+spec_status: in-progress -> completed (3-phase close rides this sync commit)
+changelog: CHANGELOG.md [Unreleased] / ### Changed — one entry
+
+### Documentation scope — decided, not skipped
+
+- **CHANGELOG**: entry added. A user with a large `~/.moai` observes `moai doctor`
+  finishing sooner, so the change is user-visible even though no output changes.
+- **docs-site (4 locales)**: pages DO exist and were read — `cli-reference/doctor.md`,
+  `advanced/home-hygiene.md`, `utility-commands/moai-clean.md` in each of en/ja/ko/zh
+  name the Home Disk Usage check. They were measured out of scope on what they say,
+  not on their absence: each describes the check's **reported content** (total size,
+  per-profile breakdown, release count) and its advisory status, and none describes
+  the scan strategy, the duplicate-cluster hashing mechanism, or any duration. This
+  change is output-preserving, so no statement on those pages becomes stale. The only
+  `.sha256` mentions in them concern the release-binary sidecar files under
+  `releases/`, which this change does not touch.
+  (An earlier draft of this section asserted no page mentioned the check at all. That
+  was an unverified claim; the grep above refuted it and the premise is corrected
+  here. The conclusion — no docs sync needed — survived the correction on different
+  grounds.)
+- **README (4 locales)**: same disposition, same verification. All four mention the
+  check, each as a one-line pointer saying `moai doctor` reports how full `~/.moai`
+  has grown — reported content again, not mechanism or duration.
+- **Templates (`internal/template/templates/`)**: untouched. The change is confined
+  to `internal/cli`, so the Template-First rule and the embed refresh do not apply.
+
+### Gaps carried from §E.3
+
+Unchanged and still open: no full `internal/cli` package verdict (CI on the pushed
+head is the judge), no `GOOS=windows` build, no runtime `moai doctor` invocation,
+and the zero-candidate outcome on this machine is a data state rather than
+correctness evidence.
+
+`sync_commit_sha` is the `pending-backfill-sync` placeholder because a commit
+cannot cite its own hash; the resolved value is backfilled in a following commit.

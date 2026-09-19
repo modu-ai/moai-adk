@@ -2,7 +2,7 @@
 id: SPEC-DOCTOR-PLUGIN-DIGEST-PREFILTER-001
 title: "doctor Home Disk Usage — plugins 트리 sha256 앞에 (Size, Files) 사전필터를 둔다"
 version: "0.1.0"
-status: in-progress
+status: completed
 created: 2026-09-19
 updated: 2026-09-19
 author: manager-spec
