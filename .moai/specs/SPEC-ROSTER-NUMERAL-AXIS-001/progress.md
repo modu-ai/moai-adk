@@ -259,6 +259,46 @@ m1_to_mN_commit_strategy: >
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase>_
+### Adjacent repair on this branch, after the run-phase evidence above
+
+Absorbing `develop` (merge `ca4084a98`) rewrote the false-positive sentence the
+`foundation-cc-release-version` exemption was declared against
+(`.claude/skills/moai-foundation-cc/SKILL.md` — the CC release version moved from
+`2.1.172` to `2.1.197` and the roster noun fell outside the adjacency window), so the
+layer stopped reaching that path and the exemption excepted nothing. The layer reported
+this itself — `TestNumeralBreadthSetEqualsTheDeclaredUnion` failed naming the path and
+prescribing the repair — and commit `7c4d09118` (`fix(rosterguard): drop the numeral
+exemption develop made stale (card t930)`) deletes the stale row. Re-verified in this
+session: `go build`, `go vet`, `go test -count=1`, `go test -cover`, and
+`golangci-lint run --timeout=2m` all green on `./internal/harness/rosterguard/...`
+(coverage 93.8%, `0 issues.`) at HEAD `7c4d09118`.
+
+### CHANGELOG B12 self-tests (run before emission)
+
+- **(a) pre-emission grep** — `grep -c 'SPEC-ROSTER-NUMERAL-AXIS-001' CHANGELOG.md` → `0`.
+  No duplicate entry; emission proceeds.
+- **(b) AC count match** — `grep -oE 'AC-([A-Z0-9]+-)*[0-9]+' acceptance.md | sort -u | wc -l`
+  → `15`. `acceptance.md` §D AC Matrix states "15 criteria, under the Tier M ceiling of
+  16" — counts agree.
+- **(c) file path verification** — every path named in the CHANGELOG entry was checked
+  with `ls`: `internal/harness/rosterguard/{numeral.go,numeral_test.go,
+  numeral_rederivation_test.go,axis.go,registry.go}` all exist.
+
+```yaml
+sync_complete_at: 2026-09-20
+sync_commit_sha: pending-backfill-sync
+sync_status: complete
+b12_self_test_a: pass (grep count 0)
+b12_self_test_b: pass (15 == 15)
+b12_self_test_c: pass (5/5 paths verified via ls)
+changelog_entry_position: "top of [Unreleased] > Added"
+frontmatter_status_transitions:
+  spec_md: "in-progress -> completed"
+canary_compliance_check: not-applicable — this SPEC does not define a forward-looking policy
+```
+
+No SPEC body content (`spec.md` / `plan.md` / `acceptance.md`) was modified in this
+sync commit — only `spec.md` frontmatter `status:` + `updated:`, this `progress.md`
+§E.4 section, and `CHANGELOG.md`.
 
 🗿 MoAI
