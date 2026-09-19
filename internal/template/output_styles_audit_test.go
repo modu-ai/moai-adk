@@ -34,6 +34,27 @@
 // So a future assertion requiring persona cross-references would encode a
 // preference, not repair a defect. If one is ever added, it should say which of
 // the three properties above it believes has changed.
+//
+// # Integration record
+//
+// The finding above lives here rather than in a report because this card's
+// verdict path is gitignored. The same applies to its integration, recorded so
+// the merge is not an unattributed claim:
+//
+//   - Absorbed local develop 66fd83c4a (origin/develop...develop counted 0 on the
+//     left, so the absorbed branch was not behind the remote). Absorb commit
+//     f2f15a036, which brought in 61 files across internal/{cli,spec,core/project,
+//     harness,merge,hook,template}.
+//   - Remeasured in the merged tree, not before it, and scoped by what the
+//     absorption brought in rather than by this card's own one-file diff: the
+//     seven package roots above all passed with -count=1 under a scrubbed
+//     environment. internal/cli ran with -timeout 30m.
+//   - Both emit axes and the catalog-hash axis were checked because the
+//     absorption carried .claude/agents/ and .claude/skills/ edits from other
+//     cards: agents-emit-check and commands-emit-check exited 0, and
+//     gen-catalog-hashes --all left git status empty.
+//   - This card's own diff touches one file — this one. The agent and skill
+//     edits in the merged tree belong to the absorbed cards, not to it.
 package template
 
 import (
