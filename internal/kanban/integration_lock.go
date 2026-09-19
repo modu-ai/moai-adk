@@ -281,11 +281,48 @@ func AcquireIntegrationLock(projectRoot string, want IntegrationLock, force bool
 	return replaced, nil
 }
 
-// ReleaseIntegrationLock removes the record when sessionID is its holder.
+// releasableBy reports whether the caller is the holder of this record.
+//
+// Two keys, and the second exists because the first one rotates. A session id
+// is the address a human and a peer use, but it is NOT stable across the
+// holder's lifetime: `/clear` issues a new id to the SAME long-lived process,
+// and the record keeps the old one. Deciding ownership on the id alone
+// therefore refused a lane's own release after a clear — observed on card t791,
+// where the refusal named pid 48258 as "a different session" while 48258 was
+// the refused process itself (card t951).
+//
+// The pid key is admitted only where the record SAYS its pid names the owning
+// session (PIDSourceSessionOwner). A record without that marker predates the
+// anchor and its pid means whatever its writer meant; promoting it to an
+// ownership key would re-interpret records already on disk. A pid of 0 on
+// either side is "owner unresolvable", and two unknowns are not the same owner
+// — matching them would let any session release any unresolvable-owner window,
+// a wider hole than the one being closed.
+//
+// This is deliberately NOT what --force means. force takes a window from a
+// DIFFERENT holder and is recorded as such; routing a self-release through it
+// would stamp the ledger with a seizure that never happened.
+func (l *IntegrationLock) releasableBy(sessionID string, callerOwnerPID int) bool {
+	if l == nil {
+		return false
+	}
+	if l.SessionID == sessionID {
+		return true
+	}
+	return l.PIDSource == PIDSourceSessionOwner && l.PID > 0 && l.PID == callerOwnerPID
+}
+
+// ReleaseIntegrationLock removes the record when the caller is its holder.
+//
+// callerOwnerPID is the caller's OWN owning-session pid (session.ResolveOwnerPID),
+// or 0 when it could not be resolved. Resolving it is the caller's job for the
+// same reason acquire records it rather than inventing one: this package cannot
+// see the caller's process ancestry, and a pid guessed here would be this
+// process's, which is dead the moment the record is read.
 //
 // force releases a foreign window, for the same wedged-holder reason acquire
 // carries it.
-func ReleaseIntegrationLock(projectRoot, sessionID string, force bool) (released *IntegrationLock, err error) {
+func ReleaseIntegrationLock(projectRoot, sessionID string, callerOwnerPID int, force bool) (released *IntegrationLock, err error) {
 	// Same critical section as acquire, for the same reason: read → holder
 	// check → remove is a read-modify-write too. Every sentinel and every
 	// message below is byte-identical to what it was before the section
@@ -299,7 +336,7 @@ func ReleaseIntegrationLock(projectRoot, sessionID string, force bool) (released
 		if current == nil || !current.Held() {
 			return ErrIntegrationLockNotHeld
 		}
-		if current.SessionID != sessionID && !force {
+		if !current.releasableBy(sessionID, callerOwnerPID) && !force {
 			return fmt.Errorf("%w: %s (pid %d) holds it", ErrIntegrationLockForeign, current.holderLabel(), current.PID)
 		}
 		if remErr := os.Remove(integrationLockPath(projectRoot)); remErr != nil && !errors.Is(remErr, os.ErrNotExist) {
