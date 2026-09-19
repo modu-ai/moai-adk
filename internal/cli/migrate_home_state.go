@@ -529,12 +529,50 @@ func homeStateFileSHA256(path string) (string, error) {
 	return hex.EncodeToString(sum[:]), nil
 }
 
+// refuseApplyFromNonCanonicalTree stops an apply whose caller is not the tree
+// the migration would actually read.
+//
+// The source is assembled from CanonicalProjectRoot, which resolves a linked
+// worktree back to the primary checkout on purpose — one repository keeps one
+// queue, and the todo queue depends on that. MOAI_HOME redirects only the
+// TARGET. So an apply issued from a worktree with an isolated home moves the
+// PRIMARY checkout's live state while the caller believes both ends are
+// isolated, and nothing in the output contradicts that belief.
+//
+// Refusing is the whole repair: the operator who wants the primary migration
+// runs it from the primary checkout, and that one change of directory is what
+// makes the intent explicit. Dry-run is deliberately exempt — it is how this
+// situation is discovered, and it mutates nothing.
+func refuseApplyFromNonCanonicalTree(apply bool, callerRoot, canonicalRoot string) error {
+	if !apply {
+		return nil
+	}
+	caller, err := filepath.Abs(callerRoot)
+	if err != nil {
+		return nil // Unresolvable caller path: leave the later gates to judge.
+	}
+	if resolved, err := filepath.EvalSymlinks(caller); err == nil {
+		caller = resolved
+	}
+	if filepath.Clean(caller) == filepath.Clean(canonicalRoot) {
+		return nil
+	}
+	return fmt.Errorf(
+		"apply refused: this worktree (%s) is not the canonical root the migration reads (%s). "+
+			"MOAI_HOME isolates the target only, so applying here would move the canonical root's live state. "+
+			"Run the apply from the canonical root, or use the dry-run to inspect from here",
+		caller, canonicalRoot)
+}
+
 func (r *homeStateRunner) Run(ctx context.Context) error {
 	_ = ctx
 	if r.stdout == nil {
 		r.stdout = os.Stdout
 	}
 	root := homestate.CanonicalProjectRoot(r.projectRoot)
+	if err := refuseApplyFromNonCanonicalTree(r.apply, r.projectRoot, root); err != nil {
+		return err
+	}
 	source := filepath.Join(root, ".moai", "state", "todo", "backlog.db")
 	target, err := homestate.BacklogDBPath(root)
 	if err != nil {

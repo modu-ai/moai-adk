@@ -620,8 +620,8 @@ func TestAuditLagUsesBinlagSeam(t *testing.T) {
 	// binlag.Evaluate owns. Routing it through the binlag seam would make it
 	// answer that other question.
 	//
-	// The home-state coordinates instead protect evidence-chain integrity: 245
-	// checks each coverage marker descends from its predecessor, and 253 checks
+	// The home-state coordinates instead protect evidence-chain integrity: 264
+	// checks each coverage marker descends from its predecessor, and 272 checks
 	// the final marker is in HEAD's ancestry. Neither compares the running
 	// binary identity with source freshness, so binlag.Evaluate is not the
 	// correct owner for either check.
@@ -638,10 +638,14 @@ func TestAuditLagUsesBinlagSeam(t *testing.T) {
 	// re-measuring; that brittleness is the guard's existing design, not
 	// something introduced here.
 	want := map[string]bool{
-		"graph_stamp.go:68":          true,
-		"graph_stamp.go:131":         true,
-		"home_state_coverage.go:245": true,
-		"home_state_coverage.go:253": true,
+		"graph_stamp.go:68":  true,
+		"graph_stamp.go:131": true,
+		// Re-measured at card t948: the coverage-budget constant and its
+		// deadline attribution were added above these two comparisons, moving
+		// them from 245/253. Same two comparisons, same count — only the
+		// coordinates moved.
+		"home_state_coverage.go:264": true,
+		"home_state_coverage.go:272": true,
 		"mcp_review_material.go:95":  true,
 		"todo_landed.go:231":         true,
 		"todo_autodone.go:340":       true,
