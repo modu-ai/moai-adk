@@ -75,8 +75,8 @@ moai goal "cmd: <your test command> exits 0"
 
 The prefix wins over the substring test in both directions, and a `cmd:`
 condition still accepts the trailing `exits <N>` clause. Arming is refused on
-either of two pieces of positive evidence that a mechanical condition can only
-ever fail:
+any of three pieces of positive evidence that a bare condition does not mean
+what one typed:
 
 - **Its first word resolves to no command.** The message names the word and
   points back at the `model:` prefix. Assignments (`FOO=bar cmd`), path forms,
@@ -87,6 +87,15 @@ ever fail:
   (`make sure every AC row is marked PASS` resolves `make` perfectly well). The
   message names both remedies, since at that point which tier you meant is
   genuinely unknown.
+- **It is a single bare word.** One word carries no evidence of which tier was
+  meant, and the two checks above are both blind to it when the shell resolves
+  it: `false` arms a condition that can never exit 0 and burns turns to the
+  ceiling, `date` arms one satisfied instantly, so the goal ends without having
+  meant anything. The message names both remedies. This reads the bare
+  single-word form ONLY — `moai goal arm <word>` states the intent explicitly, a
+  prefixed word is already declared, and a multi-word condition was never the
+  ambiguous shape. A one-word condition is therefore not lost, only declared:
+  write `cmd: true`.
 
 Short invocations and anything carrying a meaningful amount of shell syntax —
 flags, paths, pipes, globs — are never flagged as prose.

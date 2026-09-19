@@ -6,12 +6,12 @@ catalog:
             - name: moai
               tier: core
               path: templates/.claude/skills/moai/
-              hash: 180b249bce2ea66c6e0cbeb0158e41a1975a561b2e808d626b3a89319cc04b7d
+              hash: 20aa6488b2ea816d52694c165d90d766dc0b42fa9fa3f3eecb4e6f704ce0945f
               version: 1.0.0
             - name: moai-foundation-cc
               tier: core
               path: templates/.claude/skills/moai-foundation-cc/
-              hash: fd89f94766ce41a1825d387b4523f5c2b146da100ff28bb7d5aec19c75b5d912
+              hash: 3a7b6be6ce66c60e9dbfb8db58f06696563bd91fc1a2eecfa0015d337560202a
               version: 1.0.0
             - name: moai-foundation-core
               tier: core
@@ -21,7 +21,7 @@ catalog:
             - name: moai-foundation-quality
               tier: core
               path: templates/.claude/skills/moai-foundation-quality/
-              hash: e74e7e3c857797c939de0a4cc584f5642f32f62a4c782fee2cec40e1d1b7a63d
+              hash: 0917dca49b2a19b22c752845c6004b59ea9141d4b725ff62ccf23f9967de5a37
               version: 1.0.0
             - name: moai-foundation-thinking
               tier: core
@@ -31,7 +31,7 @@ catalog:
             - name: moai-harness-learner
               tier: core
               path: templates/.claude/skills/moai-harness-learner/
-              hash: 442542e576f1e0deccaf85680d6d60307a7ec1c768282d9a4b338b8b750d487e
+              hash: 5eb87524f6abb6d5a2d2a89c7faca407becc15fee19dd2c384931b41b5b4df96
               version: 1.0.0
             - name: moai-kanban-foreman
               tier: core
@@ -210,7 +210,7 @@ catalog:
                 - name: moai-ref-owasp-checklist
                   tier: optional-pack:devops
                   path: templates/.claude/skills/moai-ref-owasp-checklist/
-                  hash: f9e3a971ae3966c6a7753ec06f0e3535d2b85a81b40d06c0497238e7437823cd
+                  hash: 813cf69d9a6c25bd99fceb1fd35482fca1cba80b78a81bdc183f29abef60336f
                   version: 1.0.0
                 - name: moai-ref-llm-security
                   tier: optional-pack:devops
