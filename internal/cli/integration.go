@@ -199,6 +199,20 @@ func integrationInvalidWorkflowWarning(value string) string {
 		value, strings.Join(config.AllowedWorkflows(), ", "))
 }
 
+// integrationUnwiredTargetWarning is the one-line standard-error warning for
+// a project whose git_strategy names an integration target that acquire does
+// not read (card t886). acquire resolves through DevelopBranch alone, which
+// is git-flow-gated by contract, so a github-flow / gitlab-flow / release-flow
+// project falls back to the caller's branch even though the D2 interpretation
+// table (config.WorkflowIntegrationTarget, REQ-GWS-004) already answered the
+// question. REQ-GWS-008 left that seam unwired and named the follow-up; until
+// it is wired, the disagreement is at least named. Fail-open, exactly like the
+// t637 and t656 warnings: the record and the exit code do not move.
+func integrationUnwiredTargetWarning(workflow, target, branch string) string {
+	return fmt.Sprintf("[moai:integration-lock] warning: the %s integration target is %q, but the window was recorded against the caller's branch %q (acquire does not read that target yet). Pass --branch %s if the window is for the integration branch.",
+		workflow, target, branch, target)
+}
+
 // worktreeForBranch returns the path of the worktree with branch checked out,
 // or the empty string when none does (a failed git call included).
 func worktreeForBranch(branch string) string {
@@ -380,6 +394,15 @@ func newIntegrationAcquireCmd() *cobra.Command {
 			// never warned about.
 			if gitFlow.Disposition == config.DispositionInvalid {
 				_, _ = fmt.Fprintln(cmd.ErrOrStderr(), integrationInvalidWorkflowWarning(gitFlow.Workflow))
+			}
+			// Warn-only (card t886): the config DID name an integration target
+			// and acquire still fell back to the caller, because it reads the
+			// git-flow-gated DevelopBranch rather than the flow-scoped target.
+			// Silent only when there is nothing to say: the git-flow cell
+			// resolves an empty target (the t637 warning owns it), and a caller
+			// already standing in the named target is not a disagreement.
+			if source == kanban.BranchSourceCaller && gitFlow.IntegrationTarget != "" && gitFlow.IntegrationTarget != branch {
+				_, _ = fmt.Fprintln(cmd.ErrOrStderr(), integrationUnwiredTargetWarning(gitFlow.Workflow, gitFlow.IntegrationTarget, branch))
 			}
 			if jsonOut {
 				return json.NewEncoder(cmd.OutOrStdout()).Encode(map[string]any{

@@ -57,7 +57,7 @@ Below this threshold the orchestrator drives serial directly (single sequential 
 - **Worktree-isolated writer fan-out** — each leaf worker is spawned into its own worktree-isolated branch so write surfaces do not race (`MoAI does not run two write-capable agents concurrently` still binds; leaf workers are sequenced per milestone).
 - **Per-milestone Context-Folding** — REUSE existing primitives only: `/compact` + file-redirect to machine-local scratch + export of the deciding lines to the tracked `.moai/reports/<card-id>/` + `progress.md` §E.2 fold-row append. No new Go mechanism, hook, or CLI. See § Context-Folding Procedure below.
 - **Peer cross-validation orchestration** — when a leaf worker marks an AC PASS at Tier M/L, manager-lead obtains a second read-only worker through `subagent-spawn` (Claude harness: `Agent(general-purpose)`, NOT the author, with `tools:` omitting Write/Edit/NotebookEdit — which bars authoring, NOT writing as such, since the `Bash` this worker needs for the §D commands reaches the tree) to re-run the acceptance.md §D Given-When-Then commands and return PASS / PARTIAL / FAIL. Tier S ACs skip peer cross-validation.
-- **Schema-driven fan-out reduce** — when ≥3 explorer agents are warranted (e.g. multi-domain research ahead of M1), consume the existing `plan-research-fanout` skill's fixed-heading markdown schema verbatim (do NOT re-derive or author a parallel schema). Cross-explorer contradictions are annotated as a named section in the merged result, never silently discarded.
+- **Schema-driven fan-out reduce** — when ≥3 explorer agents are warranted (e.g. multi-domain research ahead of M1), consume the fixed-heading markdown schema the `plan-research-fanout` dynamic workflow returns, verbatim (do NOT re-derive or author a parallel schema). It is a workflow script, not a skill: there is no `SKILL.md` to load, and the orchestrator launches it only where the script is present on disk and the runtime supports dynamic workflows — absent either condition, research falls back to the single-`Explore` path with no error and no change to the artifact set (contract: `.claude/skills/moai/workflows/plan.md` § FO-PLAN-1). Cross-explorer contradictions are annotated as a named section in the merged result, never silently discarded.
 - **Background parallel dispatch (lead posture)** — inside a -k/-f lead session, parallelizable work (read-only verification batches, report cross-checks, per-card SPEC authoring the lead itself holds) is dispatched as background `subagent-spawn` calls (Claude harness: `Agent()`; ≤10 concurrent, UNNAMED — GLM hazard above) so the user dialogue never waits on it.
 - **Blocker-report returns** — manager-lead NEVER invokes the orchestrator-exclusive user-question tool. On unresolved input, on peer FAIL/PARTIAL that the author contests, on `/compact` unavailable in subagent context, or when **the delegated work satisfies neither role's entry conditions** (below), return a structured blocker report per `.claude/rules/moai/core/agent-common-protocol.md` § Blocker Report Format; the orchestrator runs the AskUser round and re-delegates.
 
@@ -185,7 +185,7 @@ Tier S ACs skip peer cross-validation (overhead exceeds value).
 
 When ≥3 explorer agents are warranted (multi-domain research, codemap scans, etc.):
 
-- Each explorer's return MUST conform to the `plan-research-fanout` skill's fixed-heading markdown schema (consume the existing skill — do NOT author a parallel schema).
+- Each explorer's return MUST conform to the fixed-heading markdown schema of the `plan-research-fanout` dynamic workflow (consume the existing schema — do NOT author a parallel one). Where that workflow is unavailable, the same schema still governs the returns of the fallback single-`Explore` path.
 - manager-lead's reduce step is a mechanical merge — no per-spawn re-derivation, no re-interpretation of explorer output.
 - Cross-explorer contradictions are annotated as a named `## Contradictions` section in the merged result. Contradictions are NEVER silently discarded.
 - Fan-out concurrency ceiling: ≤5 concurrent leaf-worker spawns (Role A). The runtime cap `CLAUDE_CODE_MAX_CONCURRENT_SUBAGENTS` (default 20) is unchanged; the ≤10 lane concurrency of Role B is a separate dispatch-protocol surface, not this Role A machinery.
@@ -274,7 +274,6 @@ This agent carries session + goal MCP tools in its `tools:` list (prefer MCP ove
 
 Static `skills:` preload stays minimal (token diet); load on demand with `Skill`:
 
-- `Skill("plan-research-fanout")` — when the fan-out reduce step needs the schema context.
 - `Skill("moai-foundation-core")` — when the fold procedure's evidence-persistence context is needed (already in `skills:` preload).
 - `Skill("moai-workflow-project")` — when milestone scoping needs project documentation context (already in `skills:` preload).
 

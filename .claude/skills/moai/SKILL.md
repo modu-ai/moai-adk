@@ -368,7 +368,7 @@ Socratic-first ordering: while intent clarity is below 100%, run the Socratic in
 A derived completion condition NEVER authorizes autonomous run-phase entry — Implementation Kickoff Approval remains mandatory at the plan→run boundary.
 
 Step 3 - Load Workflow Details:
-Read `workflows/<name>.md` for the target subcommand. (The Agent Teams static layer is retired; a `--team` flag falls back to sub-agent mode per `.claude/rules/moai/workflow/orchestration-mode-selection.md` — there is no separate `team/<name>.md` workflow file.)
+Read `workflows/<name>.md` for the target subcommand. (Agent Teams is experimental and re-allowed: a `--team` flag selects the Agent Teams layer, subject to the constraints in `.claude/rules/moai/workflow/orchestration-mode-selection.md` §C.1. Only the static layer stays retired, so there is no separate `team/<name>.md` workflow file — the same `workflows/<name>.md` is read either way. Historical: the retired era emitted `MODE_TEAM_UNAVAILABLE` and fell back to sub-agent mode; the sentinel is retained as documented history.)
 
 Step 4 - Read Configuration:
 Load relevant configuration from the .moai/config/sections/*.yaml section files as needed.
