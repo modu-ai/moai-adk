@@ -254,7 +254,7 @@ Mode Selection Rules:
 | Multi-domain feature | SPEC scope ≥ 10 files OR ≥ 3 domains | **Full Pipeline** (serial full envelope) | manager-spec → manager-develop (per-spawn `Agent(general-purpose)` domain specialists) → sync-auditor → manager-docs |
 | Large cross-cutting change | complexity score at/above the auto-select threshold (`orchestration-mode-selection.md` §B.1) | **Parallel research → Sub-agent implement** (fanout + serial) | 3-5 concurrent read-only `Agent()` for research; sequential manager-develop for implementation. (`agent-team` retired.) |
 
-Large-change note: agent-team is retired with the Agent Teams static layer. Multi-domain research fans out via fanout (3-5 concurrent read-only `Agent()` in one turn); coding-heavy implementation stays serial (sequential sub-agent) per the Anthropic coding-task parallelism caveat.
+Large-change note: agent-team is experimental and explicit-request-only (`--team` / `--mode team`, per `orchestration-mode-selection.md` §C.1) — it is never auto-selected here. Multi-domain research fans out via fanout (3-5 concurrent read-only `Agent()` in one turn); coding-heavy implementation stays serial (sequential sub-agent) per the Anthropic coding-task parallelism caveat.
 
 Detection Steps:
 1. Count files referenced in SPEC requirements and plan

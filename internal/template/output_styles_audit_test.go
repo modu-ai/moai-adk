@@ -2,6 +2,59 @@
 //
 // This file implements audit tests for the .claude/output-styles/moai/ directory.
 // Source: SPEC-V3R2-WF-006
+//
+// # Persona cross-references are not audited here, and that is a finding, not a gap
+//
+// These tests assert frontmatter schema, the exact style count, template/live
+// parity, and encoding. Nothing here asserts that a persona names its siblings or
+// documents how to switch away from itself — and the three personas do differ on
+// that axis: moai-easy.md and moai-learn.md each point the reader at MoAI, while
+// moai.md names neither sibling.
+//
+// That asymmetry was investigated and judged structural rather than defective:
+//
+//   - Nothing was lost. moai.md has never named a sibling in its whole history;
+//     `git log -S 'MoAI-Easy' --follow` over it returns no commit, while the same
+//     probe over moai-easy.md returns several. The absence is original, not a
+//     regression.
+//   - Each sibling's pointer is a consequence of its own declared limit. The
+//     moai-learn pointer sits inside that file's Cannot-Do section ("no code
+//     writing — switch to MoAI"), and moai-easy frames itself as the beginner
+//     on-ramp. Every entry in moai.md's own Cannot-Do section is internal
+//     discipline (delegate, refuse over-engineering); none of them names a
+//     capability a sibling would supply. The shape is a hub two spokes point at,
+//     not a hub missing an edge.
+//   - Discovery does not depend on the prose. The runtime's `/output-style`
+//     command lists every available style with its frontmatter description, and it
+//     lists styles kept in a subdirectory such as this one — measured with a flat
+//     and a nested probe style in an isolated directory. A reader in the MoAI
+//     persona reaches the siblings through the command regardless of what the file
+//     says.
+//
+// So a future assertion requiring persona cross-references would encode a
+// preference, not repair a defect. If one is ever added, it should say which of
+// the three properties above it believes has changed.
+//
+// # Integration record
+//
+// The finding above lives here rather than in a report because this card's
+// verdict path is gitignored. The same applies to its integration, recorded so
+// the merge is not an unattributed claim:
+//
+//   - Absorbed local develop 66fd83c4a (origin/develop...develop counted 0 on the
+//     left, so the absorbed branch was not behind the remote). Absorb commit
+//     f2f15a036, which brought in 61 files across internal/{cli,spec,core/project,
+//     harness,merge,hook,template}.
+//   - Remeasured in the merged tree, not before it, and scoped by what the
+//     absorption brought in rather than by this card's own one-file diff: the
+//     seven package roots above all passed with -count=1 under a scrubbed
+//     environment. internal/cli ran with -timeout 30m.
+//   - Both emit axes and the catalog-hash axis were checked because the
+//     absorption carried .claude/agents/ and .claude/skills/ edits from other
+//     cards: agents-emit-check and commands-emit-check exited 0, and
+//     gen-catalog-hashes --all left git status empty.
+//   - This card's own diff touches one file — this one. The agent and skill
+//     edits in the merged tree belong to the absorbed cards, not to it.
 package template
 
 import (
@@ -11,6 +64,7 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
+	"slices"
 	"strings"
 	"testing"
 	"unicode/utf8"
@@ -140,7 +194,7 @@ func findProjectRoot() (string, bool) {
 		return "", false
 	}
 	dir := filepath.Dir(thisFile)
-	for i := 0; i < 8; i++ {
+	for range 8 {
 		if _, err := os.Stat(filepath.Join(dir, ".moai")); err == nil {
 			return dir, true
 		}
@@ -180,7 +234,6 @@ func TestOutputStylesFrontmatterSchema(t *testing.T) {
 	}
 
 	for _, tc := range realCases {
-		tc := tc
 		t.Run(tc.fileName, func(t *testing.T) {
 			t.Parallel()
 
@@ -237,7 +290,6 @@ func TestOutputStylesFrontmatterSchema(t *testing.T) {
 			{"integer", "1"},
 		}
 		for _, sc := range cases {
-			sc := sc
 			t.Run(sc.label, func(t *testing.T) {
 				t.Parallel()
 				content := fmt.Sprintf("---\nname: TestStyle\ndescription: Test\nkeep-coding-instructions: %s\n---\n", sc.value)
@@ -333,13 +385,7 @@ func TestOutputStylesExactlyThree(t *testing.T) {
 		}
 	}
 	for expected := range expectedNames {
-		found := false
-		for _, name := range mdFiles {
-			if name == expected {
-				found = true
-				break
-			}
-		}
+		found := slices.Contains(mdFiles, expected)
 		if !found {
 			t.Errorf("%s: required style file %q not found in embedded templates",
 				errPrefixUnverified, expected)
@@ -463,7 +509,6 @@ func TestOutputStylesEncoding(t *testing.T) {
 
 	styleFiles := []string{styleFileMoAI, styleFileMoAILearn, styleFileMoAIEasy}
 	for _, name := range styleFiles {
-		name := name
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
 
