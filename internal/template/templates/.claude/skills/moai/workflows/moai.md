@@ -44,7 +44,7 @@ For phase overview, token budgets, and phase transitions, see: .claude/rules/moa
 - --sequential: Run Phase 1 exploration agents sequentially instead of in parallel
 - --issue: Opt-in GitHub Issue creation after SPEC generation (plan phase); absence skips Issue creation per the late-branch opt-in policy
 
-**Default Behavior (no flag)**: The orchestrator auto-selects the execution mode from the Phase 4 4-mode catalog (`.claude/rules/moai/workflow/orchestration-mode-selection.md` §A — trivial / background / agent-team / parallel / sub-agent / workflow). The complexity auto-select thresholds are stated once in that rule's §B.1 (machine source: `workflow.yaml` `auto_selection`) — not restated here.
+**Default Behavior (no flag)**: The orchestrator auto-selects the execution mode from the Phase 4 4-mode catalog (`.claude/rules/moai/workflow/orchestration-mode-selection.md` §A — direct / serial / fanout / sweep). The complexity auto-select thresholds are stated once in that rule's §B.1 (machine source: `workflow.yaml` `auto_selection`) — not restated here.
 
 ## Configuration Files
 

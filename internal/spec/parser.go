@@ -413,9 +413,12 @@ var acIDPattern = regexp.MustCompile(`^(AC-(?:[A-Za-z0-9]+-)*[0-9]+(?:\.[a-z](?:
 var (
 	// acReqRemoverPattern strips the `(maps REQ-...)` section once its IDs are extracted.
 	acReqRemoverPattern = regexp.MustCompile(`\(?\s*(?:maps|MAPS)\s+REQ-[A-Z0-9-]+\s*\)?`)
-	// The three EARS clause patterns.
-	acGivenPattern = regexp.MustCompile(`(?i)^Given\s+(.+?)(?:,\s*(?:When|then)|$)`)
-	acWhenPattern  = regexp.MustCompile(`(?i)^When\s+(.+?)(?:,\s*(?:Then|then)|$)`)
+	// The three EARS clause patterns. Given and When capture the keyword that
+	// ends their clause in group 2, because the match spans it: consuming the
+	// whole match would eat the next clause's keyword and leave the remainder
+	// unmatchable, dropping every clause after the first (card t808).
+	acGivenPattern = regexp.MustCompile(`(?i)^Given\s+(.+?)(?:,\s*(When|Then)|$)`)
+	acWhenPattern  = regexp.MustCompile(`(?i)^When\s+(.+?)(?:,\s*(Then)|$)`)
 	acThenPattern  = regexp.MustCompile(`(?i)^Then\s+(.+)`)
 )
 
@@ -452,13 +455,13 @@ func parseSingleACLine(line string) *struct {
 	// Extract Given
 	if match := acGivenPattern.FindStringSubmatch(cleanContent); len(match) > 1 {
 		given = "Given " + strings.TrimSpace(match[1])
-		cleanContent = strings.TrimSpace(cleanContent[len(match[0]):])
+		cleanContent = strings.TrimSpace(cleanContent[len(match[0])-len(match[2]):])
 	}
 
 	// Extract When
 	if match := acWhenPattern.FindStringSubmatch(cleanContent); len(match) > 1 {
 		when = "When " + strings.TrimSpace(match[1])
-		cleanContent = strings.TrimSpace(cleanContent[len(match[0]):])
+		cleanContent = strings.TrimSpace(cleanContent[len(match[0])-len(match[2]):])
 	}
 
 	// Extract Then
