@@ -289,13 +289,13 @@ func TestReleaseIntegrationLock_HolderAndForeign(t *testing.T) {
 	root := t.TempDir()
 	mustAcquire(t, root, "lane-8")
 
-	if _, err := ReleaseIntegrationLock(root, "lane-5", false); err == nil {
+	if _, err := ReleaseIntegrationLock(root, "lane-5", 0, false); err == nil {
 		t.Error("a different session released the window")
 	} else if !IsIntegrationLockForeign(err) {
 		t.Errorf("error is not the foreign sentinel: %v", err)
 	}
 
-	released, err := ReleaseIntegrationLock(root, "lane-8", false)
+	released, err := ReleaseIntegrationLock(root, "lane-8", 0, false)
 	if err != nil {
 		t.Fatalf("holder could not release its own window: %v", err)
 	}
@@ -311,7 +311,7 @@ func TestReleaseIntegrationLock_HolderAndForeign(t *testing.T) {
 // with a broken model of the board must not have it confirmed.
 func TestReleaseIntegrationLock_EmptyIsReported(t *testing.T) {
 	root := t.TempDir()
-	if _, err := ReleaseIntegrationLock(root, "lane-8", false); !IsIntegrationLockNotHeld(err) {
+	if _, err := ReleaseIntegrationLock(root, "lane-8", 0, false); !IsIntegrationLockNotHeld(err) {
 		t.Errorf("releasing an unheld window: err = %v, want the not-held sentinel", err)
 	}
 }

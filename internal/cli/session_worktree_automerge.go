@@ -103,8 +103,15 @@ var (
 	// autoMergeReleaseLock releases THIS session's own hold. force is pinned
 	// to literal false for the same reason: a non-forced release can only
 	// remove a record the auto path's own session holds.
+	//
+	// The owner-pid key (card t951) is declined here — literal 0 — because this
+	// path acquires and releases inside ONE invocation, so the session id it
+	// wrote cannot have rotated before it releases. Declining keeps REQ-WKW-004
+	// literally true (the record removed is the one this session's id holds),
+	// rather than widening it to "any record this process holds" on a path that
+	// never needed the second key.
 	autoMergeReleaseLock = func(root, sessionID string) (*kanban.IntegrationLock, error) {
-		return kanban.ReleaseIntegrationLock(root, sessionID, false)
+		return kanban.ReleaseIntegrationLock(root, sessionID, 0, false)
 	}
 
 	// autoMergeGitMerge runs the one permitted branch-mutating invocation:
