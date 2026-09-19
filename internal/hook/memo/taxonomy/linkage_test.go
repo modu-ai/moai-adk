@@ -39,6 +39,21 @@ func writeMemoryFixture(t *testing.T, linked, present []string) string {
 	return dir
 }
 
+// writeIndexFile overwrites name with an index body: one link line per target.
+// Archiving folds an entry out of MEMORY.md into a secondary index that sits
+// beside the topic files, so a fixture needs to produce that shape directly.
+func writeIndexFile(t *testing.T, dir, name string, targets []string) {
+	t.Helper()
+	var b strings.Builder
+	b.WriteString("# " + name + "\n\n")
+	for _, target := range targets {
+		b.WriteString("- [Title](" + target + ") — hook\n")
+	}
+	if err := os.WriteFile(filepath.Join(dir, name), []byte(b.String()), 0o644); err != nil {
+		t.Fatalf("write index %s: %v", name, err)
+	}
+}
+
 func codesOf(findings []AuditFinding) map[AuditCode]int {
 	out := map[AuditCode]int{}
 	for _, f := range findings {
@@ -123,6 +138,135 @@ func TestAuditLinkageIgnoresArchive(t *testing.T) {
 	}
 	if len(findings) != 0 {
 		t.Errorf("archived file produced findings: %+v", findings)
+	}
+}
+
+// TestAuditLinkageSecondaryIndexPreventsOrphan pins the reachability rule that
+// actually governs this store: archiving folds an entry out of MEMORY.md into a
+// secondary index file sitting beside the topic files, so a file reachable only
+// through that secondary index is still reachable. Reading MEMORY.md alone made
+// every folded entry look orphaned.
+func TestAuditLinkageSecondaryIndexPreventsOrphan(t *testing.T) {
+	t.Parallel()
+	dir := writeMemoryFixture(t,
+		[]string{"archive_index.md"},
+		[]string{"archive_index.md", "feedback_folded_a.md", "feedback_folded_b.md"})
+	writeIndexFile(t, dir, "archive_index.md", []string{"feedback_folded_a.md", "feedback_folded_b.md"})
+
+	findings, err := AuditLinkage(dir)
+	if err != nil {
+		t.Fatalf("AuditLinkage: %v", err)
+	}
+	if got := codesOf(findings)[WarnOrphanNotIndexed]; got != 0 {
+		t.Errorf("orphan findings = %d, want 0 (both files are reachable via archive_index.md): %+v", got, findings)
+	}
+}
+
+// TestAuditLinkageOrphanSurvivesSecondaryIndex keeps the orphan check honest in
+// the other direction: a secondary index makes the files it links reachable and
+// nothing else.
+func TestAuditLinkageOrphanSurvivesSecondaryIndex(t *testing.T) {
+	t.Parallel()
+	dir := writeMemoryFixture(t,
+		[]string{"archive_index.md"},
+		[]string{"archive_index.md", "feedback_folded_a.md", "feedback_lonely.md"})
+	writeIndexFile(t, dir, "archive_index.md", []string{"feedback_folded_a.md", "feedback_folded_b.md"})
+
+	findings, err := AuditLinkage(dir)
+	if err != nil {
+		t.Fatalf("AuditLinkage: %v", err)
+	}
+	if got := codesOf(findings)[WarnOrphanNotIndexed]; got != 1 {
+		t.Errorf("orphan findings = %d, want 1 (feedback_lonely.md): %+v", got, findings)
+	}
+	for _, f := range findings {
+		if f.Code == WarnOrphanNotIndexed && !strings.Contains(f.Path, "feedback_lonely.md") {
+			t.Errorf("unexpected orphan: %+v", f)
+		}
+	}
+}
+
+// TestAuditLinkageReportsDoubleIndexedFile pins the malfunction that is silent
+// today: reviving a folded entry by restoring its MEMORY.md line without
+// removing the archive line leaves it in two indexes. Reachability is satisfied
+// twice over, so neither the orphan nor the dangling direction says anything.
+func TestAuditLinkageReportsDoubleIndexedFile(t *testing.T) {
+	t.Parallel()
+	dir := writeMemoryFixture(t,
+		[]string{"archive_index.md", "feedback_revived.md"},
+		[]string{"archive_index.md", "feedback_revived.md", "feedback_folded.md"})
+	writeIndexFile(t, dir, "archive_index.md", []string{"feedback_revived.md", "feedback_folded.md"})
+
+	findings, err := AuditLinkage(dir)
+	if err != nil {
+		t.Fatalf("AuditLinkage: %v", err)
+	}
+	if got := codesOf(findings)[WarnIndexDuplicateEntry]; got != 1 {
+		t.Fatalf("duplicate-entry findings = %d, want 1: %+v", got, findings)
+	}
+	for _, f := range findings {
+		if f.Code != WarnIndexDuplicateEntry {
+			continue
+		}
+		if !strings.Contains(f.Detail, "feedback_revived.md") {
+			t.Errorf("detail should name the double-indexed file: %q", f.Detail)
+		}
+		if !strings.Contains(f.Detail, "archive_index.md") {
+			t.Errorf("detail should name the secondary index: %q", f.Detail)
+		}
+	}
+}
+
+// TestAuditLinkageSingleIndexIsNotDuplicate keeps the new check quiet for the
+// ordinary case: one index line, one memory.
+func TestAuditLinkageSingleIndexIsNotDuplicate(t *testing.T) {
+	t.Parallel()
+	dir := writeMemoryFixture(t,
+		[]string{"archive_index.md", "feedback_live.md"},
+		[]string{"archive_index.md", "feedback_live.md", "feedback_folded_a.md", "feedback_folded_b.md"})
+	writeIndexFile(t, dir, "archive_index.md", []string{"feedback_folded_a.md", "feedback_folded_b.md"})
+
+	findings, err := AuditLinkage(dir)
+	if err != nil {
+		t.Fatalf("AuditLinkage: %v", err)
+	}
+	if got := codesOf(findings)[WarnIndexDuplicateEntry]; got != 0 {
+		t.Errorf("duplicate-entry findings = %d, want 0: %+v", got, findings)
+	}
+}
+
+// TestAuditLinkageIndexDiscriminatorBoundary pins the measured separation
+// between a real index and a topic file that happens to cite a sibling: an
+// index carries several link lines, an ordinary memory cites at most one.
+func TestAuditLinkageIndexDiscriminatorBoundary(t *testing.T) {
+	t.Parallel()
+
+	// One link: a citation, not an index — its target stays unreachable.
+	below := writeMemoryFixture(t,
+		[]string{"feedback_citing.md"},
+		[]string{"feedback_citing.md", "feedback_cited.md"})
+	writeIndexFile(t, below, "feedback_citing.md", []string{"feedback_cited.md"})
+
+	findings, err := AuditLinkage(below)
+	if err != nil {
+		t.Fatalf("AuditLinkage(below): %v", err)
+	}
+	if got := codesOf(findings)[WarnOrphanNotIndexed]; got != 1 {
+		t.Errorf("one-link file treated as an index: orphan findings = %d, want 1: %+v", got, findings)
+	}
+
+	// Two links: an index — both targets become reachable.
+	at := writeMemoryFixture(t,
+		[]string{"feedback_citing.md"},
+		[]string{"feedback_citing.md", "feedback_cited.md", "feedback_other.md"})
+	writeIndexFile(t, at, "feedback_citing.md", []string{"feedback_cited.md", "feedback_other.md"})
+
+	findings, err = AuditLinkage(at)
+	if err != nil {
+		t.Fatalf("AuditLinkage(at): %v", err)
+	}
+	if got := codesOf(findings)[WarnOrphanNotIndexed]; got != 0 {
+		t.Errorf("two-link file not treated as an index: orphan findings = %d, want 0: %+v", got, findings)
 	}
 }
 
