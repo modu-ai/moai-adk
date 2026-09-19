@@ -94,6 +94,16 @@ func insideTempRoots(path string) bool {
 }
 
 // ProjectDir returns ~/.moai/db/<project-key>.
+//
+// The two branches spell the key argument differently — the temp branch passes
+// the already-canonical root, the home branch the caller's raw projectRoot —
+// and the spellings are equivalent because ProjectKey canonicalizes its own
+// argument before hashing it. Reading the asymmetry as a defect that splits one
+// project across two keys has already been filed once and measured false
+// (TestProjectKeyArgumentEquivalence pins the equivalence across the six root
+// shapes callers actually pass, with a positive control). The guard is what
+// would break if CanonicalProjectRoot ever stopped being idempotent; until it
+// does, neither spelling is wrong.
 func ProjectDir(projectRoot string) (string, error) {
 	canonical := CanonicalProjectRoot(projectRoot)
 	if !explicitMoaiHome() && insideTempRoots(canonical) {
