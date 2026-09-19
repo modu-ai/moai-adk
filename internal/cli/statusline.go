@@ -91,8 +91,17 @@ func runStatusline(cmd *cobra.Command, _ []string) error {
 	// Get project root for git and version detection (error ignored: empty root is valid)
 	projectRoot, _ := findProjectRootFn() //nolint:errcheck // empty root is acceptable fallback
 
+	// Read stdin BEFORE the config, because the config root is derived from it.
+	// The render's own state (the context-usage snapshot, the board caches, the
+	// goal read) is already anchored by statusline.ResolveConfigRoot's chain, and
+	// `statusline.forge` is read on that same anchored board root — so resolving
+	// segments and theme from a cwd walk-up instead let one render read the two
+	// keys of one file out of two different trees (card t957). The seam replays
+	// the payload for Build, which needs the same bytes.
+	configRoot, stdinData := statusline.ResolveConfigRoot(readStdinWithTimeout(), projectRoot)
+
 	// Load full statusline config from statusline.yaml
-	statuslineCfg := loadStatuslineFileConfig(projectRoot)
+	statuslineCfg := loadStatuslineFileConfig(configRoot)
 
 	var segmentConfig map[string]bool
 	var themeName string
@@ -113,7 +122,10 @@ func runStatusline(cmd *cobra.Command, _ []string) error {
 	// REQ-2). Either switch off means the segment is off; neither overrides
 	// the other. TodoEnabledForRoot fails open, so an unreadable config keeps
 	// the segment rather than hiding it for an invisible reason.
-	todoEnabled := config.TodoEnabledForRoot(projectRoot)
+	// configRoot, not projectRoot: this switch gates the backlog segment whose
+	// DATA the board root (the anchor) supplies, so reading the switch from a
+	// different tree is the same divergence in a second config file.
+	todoEnabled := config.TodoEnabledForRoot(configRoot)
 
 	opts := statusline.Options{
 		Mode:          statusline.ModeDefault,
@@ -126,9 +138,6 @@ func runStatusline(cmd *cobra.Command, _ []string) error {
 
 	// Create builder and render
 	builder := statusline.New(opts)
-
-	// Try to read stdin with TTY detection
-	stdinData := readStdinWithTimeout()
 
 	result, err := builder.Build(ctx, stdinData)
 	if err != nil {
