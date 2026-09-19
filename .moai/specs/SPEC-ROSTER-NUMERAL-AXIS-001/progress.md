@@ -286,7 +286,7 @@ session: `go build`, `go vet`, `go test -count=1`, `go test -cover`, and
 
 ```yaml
 sync_complete_at: 2026-09-20
-sync_commit_sha: pending-backfill-sync
+sync_commit_sha: 86b1d886fc29fdd9bcaa3b0dc97182124b3f9a3d
 sync_status: complete
 b12_self_test_a: pass (grep count 0)
 b12_self_test_b: pass (15 == 15)
