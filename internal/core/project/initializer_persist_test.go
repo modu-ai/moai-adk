@@ -100,8 +100,10 @@ func yamlLookup(t *testing.T, path, dotted string) any {
 }
 
 // runDeployerInit runs a full deployer-path Init and fails loudly if template
-// deployment was skipped — Init records deployment failures as non-fatal
-// warnings, which would otherwise turn this test vacuous.
+// deployment was skipped. A deployment failure is fatal since
+// SPEC-INIT-DEPLOY-EXIT-001, so the error check below catches it; the warning
+// scan still guards the other degradation sites, which stay non-fatal and would
+// otherwise turn this test vacuous.
 func runDeployerInit(t *testing.T, opts InitOptions, distributeAll bool) *InitResult {
 	t.Helper()
 
