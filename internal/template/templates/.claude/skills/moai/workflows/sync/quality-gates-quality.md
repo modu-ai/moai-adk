@@ -158,7 +158,11 @@ If no blocking finding exists: Proceed to Phase 9. Include all advisory findings
 
 Purpose: Ensure code has appropriate @MX annotations for AI agent context. Supports all 16 MoAI-ADK languages.
 
-**[HARD] P1/P2 violations BLOCK sync.** If any P1 (missing @MX:ANCHOR on fan_in >= 3 function) or P2 (missing @MX:WARN on goroutine pattern) violations are found, sync is halted and the user must resolve them before proceeding.
+**Concurrent scheduling with the Phase 7-10 audit.** The Phase 9 MX Tag scan (existing `FO-SYNC-2` sharded structure, Step 0.6.2 below) launches CONCURRENTLY with the Phase 7 audit fan-out — in the SAME turn Phase 7 is entered, NOT serially after Phase 8 (Security) completes. Running Phase 7 → Phase 8 → Phase 9 → Phase 10 strictly in sequence would serialize the MX scan behind the full quality + security pipeline. The orchestrator instead spawns the `FO-SYNC-2` MX shard fan-out in the same single-turn multi-`Agent()` batch that enters Phase 7, so the MX findings are ready by the time the audit returns. The MX scan is input-independent: it reads git diff + source, NOT the concurrent audit's output; a shard that read "the audit's functionality score" to gate itself would create a hidden serial dependency that defeats the concurrency.
+
+**[HARD] P1/P2 violations BLOCK sync, and halt BEFORE Phase 10 coverage.** If any P1 (missing @MX:ANCHOR on fan_in >= 3 function) or P2 (missing @MX:WARN on goroutine pattern) violations are found, sync is halted and the user must resolve them before proceeding. The P1/P2 gate fires BEFORE Phase 10 (Coverage Analysis) executes — eliminating the "long coverage run, then one missing tag aborts all" worst case, because the coverage command never runs when P1/P2 violations are present. Ordering the cheap MX scan ahead of the expensive coverage run is what buys that.
+
+**No-false-abort guard.** When the concurrent MX scan detects ZERO P1/P2 violations (only P3/P4 advisory findings, or no findings), Phase 10 (Coverage Analysis) executes exactly as it does on the serial path — the concurrent scheduling introduces NO false aborts. The P3 (long exported function missing `@MX:NOTE`) and P4 (untested public function missing `@MX:TODO`) findings remain advisory and do NOT trigger the pre-coverage halt; Phase 10 coverage proceeds unchanged.
 
 - P1 (Blocking): exported function with fan_in >= 3 missing @MX:ANCHOR
 - P2 (Blocking): goroutine/async pattern missing @MX:WARN
