@@ -178,3 +178,93 @@ func TestCleanupGLMSettingsLocalLeavesNonGLMFileAlone(t *testing.T) {
 		t.Errorf("non-GLM file must be left untouched, got env: %v", env)
 	}
 }
+
+// TestCleanupGLMSettingsLocalAdmitsBackupOnlyFileAndRestoresToken is the net
+// benefit of the REQ-5 indicator widening, stated as an observation rather than
+// an argument. A settings file carrying MOAI_BACKUP_AUTH_TOKEN and a GLM key in
+// ANTHROPIC_AUTH_TOKEN but NO ANTHROPIC_BASE_URL was declined by the old
+// single-key gate, so the user's backed-up OAuth token stayed stranded and the
+// GLM key survived as their credential. Under the two-key indicator the file is
+// admitted and the token is put back.
+func TestCleanupGLMSettingsLocalAdmitsBackupOnlyFileAndRestoresToken(t *testing.T) {
+	scrubGatewayEnv(t)
+	root, settingsPath := writeCleanupFixture(t, map[string]string{
+		config.EnvMoaiBackupAuthToken: "user-oauth-token",
+		config.EnvAnthropicAuthToken:  "glm-key",
+	})
+
+	cleanupGLMSettingsLocal(root)
+
+	env := readCleanupEnv(t, settingsPath)
+	if env[config.EnvAnthropicAuthToken] != "user-oauth-token" {
+		t.Errorf("backup-only file must be admitted and its token restored, got %s=%q",
+			config.EnvAnthropicAuthToken, env[config.EnvAnthropicAuthToken])
+	}
+	if v, ok := env[config.EnvMoaiBackupAuthToken]; ok {
+		t.Errorf("backup key must be consumed, got %s=%q", config.EnvMoaiBackupAuthToken, v)
+	}
+}
+
+// TestCleanupGLMSettingsLocalIndicatorSet pins the indicator set at exactly two
+// keys, in both directions. The exclusion half is the half that protects a
+// non-GLM user: MOAI_STATUSLINE_CONTEXT_SIZE and the context-window pair are
+// documented user-settable overrides, and admitting one of them would send a
+// file carrying the user's own ANTHROPIC_AUTH_TOKEN into the restore branch's
+// `else`, deleting that key. A test asserting only the admitted direction would
+// not catch that.
+func TestCleanupGLMSettingsLocalIndicatorSet(t *testing.T) {
+	scrubGatewayEnv(t)
+
+	const userToken = "user-own-token"
+
+	cases := []struct {
+		name      string
+		indicator string
+		admitted  bool
+	}{
+		{name: "base URL admits", indicator: config.EnvAnthropicBaseURL, admitted: true},
+		{name: "backup token admits", indicator: config.EnvMoaiBackupAuthToken, admitted: true},
+		{name: "statusline context size excluded", indicator: config.EnvStatuslineContextSize},
+		{name: "auto compact window excluded", indicator: config.EnvClaudeCodeAutoCompactWindow},
+		{name: "max context tokens excluded", indicator: config.EnvClaudeCodeMaxContextTokens},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			scrubGatewayEnv(t)
+			// The candidate is the only axis key in the file besides the token,
+			// so the verdict below is attributable to it and nothing else. The
+			// user's own token rides along as what is at stake.
+			root, settingsPath := writeCleanupFixture(t, map[string]string{
+				tc.indicator:                 "seeded",
+				config.EnvAnthropicAuthToken: userToken,
+				"CUSTOM_VAR":                 "keep_me",
+			})
+
+			cleanupGLMSettingsLocal(root)
+
+			env := readCleanupEnv(t, settingsPath)
+			if tc.admitted {
+				if v, ok := env[tc.indicator]; ok && tc.indicator != config.EnvMoaiBackupAuthToken {
+					t.Errorf("admitted file must be cleaned, but %s=%q survived", tc.indicator, v)
+				}
+				if v, ok := env[config.EnvMoaiBackupAuthToken]; ok {
+					t.Errorf("admitted file must consume the backup key, got %q", v)
+				}
+			} else {
+				// Excluded: the file is left untouched, the user's own token
+				// included. This assertion fails if the key is ever promoted
+				// into the indicator set.
+				if v := env[tc.indicator]; v != "seeded" {
+					t.Errorf("excluded indicator must not admit the file, but %s is now %q", tc.indicator, v)
+				}
+				if v := env[config.EnvAnthropicAuthToken]; v != userToken {
+					t.Errorf("excluded indicator must leave the user's own token alone, got %q", v)
+				}
+			}
+			if env["CUSTOM_VAR"] != "keep_me" {
+				t.Errorf("user key must survive either way, got env: %v", env)
+			}
+		})
+	}
+}
