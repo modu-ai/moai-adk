@@ -2,6 +2,7 @@ package cli
 
 import (
 	"context"
+	"fmt"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -9,6 +10,7 @@ import (
 	"strconv"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/modu-ai/moai-adk/internal/config"
 )
@@ -748,5 +750,29 @@ func TestCommittedCoverageChangeSetNamesEveryFileMissingFromDiffDeterministicall
 	want := "changed production file missing from diff: internal/x/b.go, internal/x/c.go"
 	if seen := resolveRepeatedly(t, root, 20); len(seen) != 1 || seen[want] != 20 {
 		t.Fatalf("messages across 20 runs = %v, want only %q", seen, want)
+	}
+}
+
+// TestChangedSurfaceCoverageDeadlineNamesItsBudget pins the diagnosability of
+// the coverage budget. The raw child failure at the ceiling is "signal:
+// killed", which reads as a crash: attributing it to the budget previously
+// required reading the source. The wrapped error must name the budget and keep
+// the underlying failure.
+func TestChangedSurfaceCoverageDeadlineNamesItsBudget(t *testing.T) {
+	expired, cancel := context.WithDeadline(t.Context(), time.Now().Add(-time.Second))
+	defer cancel()
+	blocked := func(ctx context.Context, _, _ string) error {
+		<-ctx.Done()
+		return fmt.Errorf("coverage hook tests: signal: killed")
+	}
+	_, err := measureChangedSurfaceCoverageWith(expired, t.TempDir(), blocked)
+	if err == nil {
+		t.Fatal("expired coverage budget accepted")
+	}
+	if !strings.Contains(err.Error(), changedSurfaceCoverageBudget.String()) {
+		t.Fatalf("deadline error does not name the budget %s: %v", changedSurfaceCoverageBudget, err)
+	}
+	if !strings.Contains(err.Error(), "signal: killed") {
+		t.Fatalf("deadline error dropped the underlying failure: %v", err)
 	}
 }

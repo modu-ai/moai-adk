@@ -3,6 +3,7 @@ package cli
 import (
 	"bufio"
 	"context"
+	"errors"
 	"fmt"
 	"os"
 	"os/exec"
@@ -19,6 +20,17 @@ type changedCoverageResult struct {
 	Covered, Total int
 	Percent        float64
 }
+
+// changedSurfaceCoverageBudget bounds the focused coverage suite. It exists to
+// catch a genuine hang, NOT to race normal completion: the five child `go test`
+// invocations were measured at 214s and ~240s on a developer machine under
+// ordinary parallel-lane load, so the previous 4-minute value left no headroom
+// and failed outright once at exactly 240.00s. Because
+// measureChangedSurfaceCoverage also backs the `moai migrate home-state --apply
+// --verified-live` pre-check, a bound sitting at the work's own duration turns
+// machine load into a production-gate failure. Sized at roughly 3.5x the
+// measured worst case (card t948; evidence .moai/reports/t948/verdict.md).
+const changedSurfaceCoverageBudget = 15 * time.Minute
 
 const (
 	homeStateCoverageCommitSubject            = "feat(state): add guarded home-state rollout (t592)"
@@ -83,7 +95,7 @@ func measureChangedSurfaceCoverageWith(ctx context.Context, root string, run fun
 }
 
 func measureChangedSurfaceCoverageResultWith(ctx context.Context, root string, run func(context.Context, string, string) error) (changedCoverageResult, error) {
-	ctx, cancel := context.WithTimeout(ctx, 4*time.Minute)
+	ctx, cancel := context.WithTimeout(ctx, changedSurfaceCoverageBudget)
 	defer cancel()
 	profile, err := os.CreateTemp("", "moai-home-state-coverage-*.out")
 	if err != nil {
@@ -95,6 +107,13 @@ func measureChangedSurfaceCoverageResultWith(ctx context.Context, root string, r
 	}
 	defer func() { _ = os.Remove(path) }()
 	if err := run(ctx, root, path); err != nil {
+		// A child killed at the deadline reports only "signal: killed", which
+		// reads as a crash. Name the budget so the failure is attributable
+		// without reading this file.
+		if errors.Is(ctx.Err(), context.DeadlineExceeded) {
+			return changedCoverageResult{}, fmt.Errorf(
+				"changed-surface coverage suite exceeded its %s budget: %w", changedSurfaceCoverageBudget, err)
+		}
 		return changedCoverageResult{}, err
 	}
 	changeSet, err := resolveHomeStateCoverageChangeSet(root)
