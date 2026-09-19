@@ -135,9 +135,14 @@ if [ -n "$STAGED_GO" ]; then
                 done | sort -u
             )"
             [ -n "$PKGS" ] || continue
+            # vet's diagnostics reach the terminal (stdout folded onto stderr,
+            # which is where vet already writes): a gate that blocks without
+            # saying why leaves the user one move -- turn the gate off. go vet
+            # prints nothing when it finds nothing, so a passing commit stays
+            # silent.
             # shellcheck disable=SC2086
-            if ! ( cd "$_mr" && go vet $BT_TAGS $PKGS >/dev/null 2>&1 ); then
-                printf '\n[pre-commit] FAILED: go vet reported issues in the packages holding your staged files (module root: %s; vetted in the working tree, not the index).\n' "$_mr" >&2
+            if ! ( cd "$_mr" && go vet $BT_TAGS $PKGS >&2 ); then
+                printf '\n[pre-commit] FAILED: go vet reported the issues above in the packages holding your staged files (module root: %s; vetted in the working tree, not the index).\n' "$_mr" >&2
                 printf '[pre-commit] Hint: cd %s && go vet %s\n' "$_mr" "$(printf '%s' "$PKGS" | tr '\n' ' ')" >&2
                 printf '[pre-commit] Override: SKIP_MOAI_PRECOMMIT=1 git commit\n' >&2
                 exit 1
