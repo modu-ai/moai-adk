@@ -777,11 +777,6 @@ func NumeralExemptions() []NumeralExempt {
 			Reason: "Template mirror of the row above; same section marker.",
 		},
 		{
-			ID:     "foundation-cc-release-version",
-			Path:   ".claude/skills/moai-foundation-cc/SKILL.md",
-			Reason: "MEASURED FALSE POSITIVE: the numeral is a Claude Code release version (\"CC 2.1.172); MoAI retained agents…\").",
-		},
-		{
 			ID:     "foundation-quality-reference-section-marker",
 			Path:   ".claude/skills/moai-foundation-quality/references/reference.md",
 			Reason: "MEASURED FALSE POSITIVE: the numeral is the section marker in \"CLAUDE.md §4 retained-agent catalog\".",
