@@ -582,13 +582,29 @@ const (
 	REQSourceList REQSource = iota
 	// REQSourceTable is a table-row definition (`| REQ-X-001 | … |`).
 	REQSourceTable
+	// REQSourceHeading is a level-3 heading definition (`### REQ-X-001 — …`).
+	// SPEC-HEADING-REQ-COLLECT-001 REQ-HRC-008.
+	//
+	// [HARD] Like REQSourceTable, this value is ATTRIBUTION ONLY and MUST NOT
+	// reach reqFindingSeverity or any other severity decision. Heading entries
+	// are demoted through the EXISTING single axis (Widened), exactly as table
+	// entries are; adding a third Source value creates no second axis, and the
+	// prohibition documented on REQEntry.Source binds it unchanged.
+	// TestHeadingCollection_SourceDoesNotDecideSeverity measures it by rotating
+	// every entry through all three Source values and requiring the severity
+	// distribution to be unchanged each time.
+	REQSourceHeading
 )
 
 func (s REQSource) String() string {
-	if s == REQSourceTable {
+	switch s {
+	case REQSourceTable:
 		return "table"
+	case REQSourceHeading:
+		return "heading"
+	default:
+		return "list"
 	}
-	return "list"
 }
 
 // SPECDoc represents a parsed SPEC document.

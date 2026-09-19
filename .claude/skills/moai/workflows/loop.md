@@ -274,10 +274,12 @@ When the loop exits unsuccessfully (ceiling reached with conditions unmet), prop
 
 Iteration-ceiling precedence: CLI `--max` flag > ralph.yaml `loop.max_iterations` > workflow.yaml `loop_prevention.max_iterations`. The memory-safe 50-iteration checkpoint (Step 2) is an orthogonal memory-pressure safeguard, not a fourth ceiling.
 
-Pre-exit clean sweep (when exiting with success):
-- Before final report, run clean workflow (workflows/clean.md) scan on all modified files
-- Remove dead code exposed by fixes (unused imports, orphaned functions)
-- Skip if no dead code detected or if --errors flag was set
+Pre-exit dead-code check (when exiting with success):
+- Before the final report, run the clean workflow (workflows/clean.md) scan over the files this sweep modified.
+- **Report only — this stage deletes nothing.** A finding here was never a scanned queue item, and the no-invented-improvements boundary above admits no work outside that queue.
+- When `--lens clean` was selected, a finding is enqueued as an ordinary queue item and the loop re-runs the verification cycle over it before exiting — the removal then happens on the approved path, not at exit.
+- When `--lens clean` was NOT selected, the finding is named in the final report and nothing is removed.
+- Skip the scan when `--errors` was set or no file was modified.
 
 ## MX Tag Integration
 
