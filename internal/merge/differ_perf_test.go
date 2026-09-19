@@ -10,6 +10,7 @@ import (
 // Works for diffLinesGreedy output (contiguous delete/insert ranges).
 func reconstructFromGreedyEdits(a []string, edits []Edit) []string {
 	var delStart, delEnd = -1, -1
+	var insAt = -1
 	var insTexts []string
 	for _, e := range edits {
 		switch e.Op {
@@ -19,6 +20,9 @@ func reconstructFromGreedyEdits(a []string, edits []Edit) []string {
 			}
 			delEnd = e.OldLine + 1
 		case OpInsert:
+			if insAt == -1 {
+				insAt = e.NewLine
+			}
 			insTexts = append(insTexts, e.NewText)
 		}
 	}
@@ -26,8 +30,12 @@ func reconstructFromGreedyEdits(a []string, edits []Edit) []string {
 		return a // no edits
 	}
 	if delStart == -1 {
-		delStart = 0
-		delEnd = 0
+		// Insert-only script: nothing is deleted, so the splice point comes
+		// from the first insert's NewLine, not from index 0. diffLinesGreedy
+		// trims a common prefix, and with no deletes that prefix length is the
+		// same in a and b — so NewLine indexes straight into a.
+		delStart = insAt
+		delEnd = insAt
 	}
 	result := make([]string, 0, len(a)-delEnd+delStart+len(insTexts))
 	result = append(result, a[:delStart]...)
@@ -134,4 +142,37 @@ func makeGreedyMid2(n int) []string {
 		}
 	}
 	return lines
+}
+
+// TestReconstructFromGreedyEdits exercises the test helper itself across every
+// edit-script shape diffLinesGreedy can emit. The helper is a verdict tool: a
+// defect in it either reddens a correct DiffLines or greens an incorrect one,
+// so it carries its own control cells.
+//
+// Insert-only scripts carry the insertion point in NewLine. "At start" is the
+// one shape where ignoring NewLine happens to be right, which is why that cell
+// alone cannot guard the helper — the middle and end cells are what bite.
+func TestReconstructFromGreedyEdits(t *testing.T) {
+	t.Parallel()
+	cases := []struct {
+		name string
+		a, b []string
+	}{
+		{"insert_only_at_start", []string{"x", "y"}, []string{"new", "x", "y"}},
+		{"insert_only_in_middle", []string{"x", "y"}, []string{"x", "new", "y"}},
+		{"insert_only_at_end", []string{"x", "y"}, []string{"x", "y", "new"}},
+		{"delete_only", []string{"x", "old", "y"}, []string{"x", "y"}},
+		{"delete_and_insert", []string{"x", "old", "y"}, []string{"x", "new", "y"}},
+		{"no_edits", []string{"x", "y"}, []string{"x", "y"}},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+			edits := diffLinesGreedy(tc.a, tc.b)
+			result := reconstructFromGreedyEdits(tc.a, edits)
+			if !slices.Equal(result, tc.b) {
+				t.Errorf("reconstruct mismatch\n  got  %q\n  want %q", result, tc.b)
+			}
+		})
+	}
 }
