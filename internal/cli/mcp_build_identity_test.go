@@ -638,8 +638,8 @@ func TestAuditLagUsesBinlagSeam(t *testing.T) {
 	// re-measuring; that brittleness is the guard's existing design, not
 	// something introduced here.
 	want := map[string]bool{
-		"graph_stamp.go:68":          true,
-		"graph_stamp.go:131":         true,
+		"graph_stamp.go:68":  true,
+		"graph_stamp.go:131": true,
 		// Re-measured at card t948: the coverage-budget constant and its
 		// deadline attribution were added above these two comparisons, moving
 		// them from 245/253. Same two comparisons, same count — only the
