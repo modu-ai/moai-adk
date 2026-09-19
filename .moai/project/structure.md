@@ -74,7 +74,7 @@ moai-adk-go/
 │   ├── bodp/                         # Branch Origin Decision Protocol (3-signal / 8-row matrix)
 │   ├── ciwatch/                      # CI check classification (gh pr checks consumer)
 │   ├── cli/                          # Cobra command tree, composition root (109 non-test files, 152 non-test AddCommand calls)
-│   ├── config/                       # Layered YAML config SSOT (35 non-test files, 13 loader_*.go, 32 YAML files)
+│   ├── config/                       # Layered YAML config SSOT (57 non-test `.go` files incl. sub-packages, 13 loader_*.go, 32 YAML files)
 │   ├── constitution/                 # Frozen/Evolvable zone model, 5-stage merge safety (13 non-test files)
 │   ├── core/                         # Core domain packages
 │   │   ├── git/                      #   System Git via exec (Repository / BranchManager / WorktreeManager)
