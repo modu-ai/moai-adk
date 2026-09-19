@@ -266,3 +266,28 @@ func TestStripGLMCredsCleanupViewEquivalence(t *testing.T) {
 		t.Errorf("CG leader teammateMode must stay tmux, got %q", got.TeammateMode)
 	}
 }
+
+// TestRemoveGLMEnvCleanupViewEquivalence is AC-002 for consumer A: the runtime
+// proof that removeGLMEnv deletes exactly the canonical cleanup view. Same
+// instrument and same fixture convention as the consumer-B case above.
+func TestRemoveGLMEnvCleanupViewEquivalence(t *testing.T) {
+	dirty := cleanupViewDirtyEnv()
+	assertCleanupViewFixtureIsDirty(t, dirty)
+	_, settingsPath := cgTestProject(t, dirty)
+
+	if err := removeGLMEnv(settingsPath); err != nil {
+		t.Fatalf("removeGLMEnv: %v", err)
+	}
+
+	got := readSettingsForTest(t, settingsPath)
+	assertCleanupViewCleared(t, "removeGLMEnv", got.Env)
+	if got.Env["CUSTOM_VAR"] != "keep_me" {
+		t.Errorf("user key must survive cleanup, got env: %v", got.Env)
+	}
+	// removeGLMEnv also clears the teammateMode override so the settings.json
+	// default applies again; that side effect is not part of the key axis and
+	// must not be lost when the delete list is rerouted.
+	if got.TeammateMode != "" {
+		t.Errorf("removeGLMEnv must clear teammateMode, got %q", got.TeammateMode)
+	}
+}

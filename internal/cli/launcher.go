@@ -353,34 +353,37 @@ func removeGLMEnv(settingsPath string) error {
 
 		if env, ok := m["env"].(map[string]any); ok {
 			// Restore backed-up OAuth token before removing GLM vars
-			if backup, bok := env["MOAI_BACKUP_AUTH_TOKEN"].(string); bok && backup != "" {
+			if backup, bok := env[config.EnvMoaiBackupAuthToken].(string); bok && backup != "" {
 				env[config.EnvAnthropicAuthToken] = backup
-				delete(env, "MOAI_BACKUP_AUTH_TOKEN")
+				delete(env, config.EnvMoaiBackupAuthToken)
 			} else {
 				delete(env, config.EnvAnthropicAuthToken)
 			}
-			delete(env, config.EnvAnthropicBaseURL)
-			delete(env, config.EnvAnthropicDefaultHaikuModel)
-			delete(env, config.EnvAnthropicDefaultSonnetModel)
-			delete(env, config.EnvAnthropicDefaultOpusModel)
-			delete(env, config.EnvAnthropicDefaultFableModel)
-			// Remove Z.AI proxy compatibility flags (set by moai glm/cg)
-			delete(env, config.EnvClaudeCodeDisableExperimentalBetas)
-			delete(env, "API_TIMEOUT_MS")
-			delete(env, config.EnvClaudeCodeDisableNonessentialTraffic)
-			// Remove teammate display env var override (CG/GLM set this)
-			delete(env, config.EnvClaudeCodeTeammateDisplay)
-			// Issue #742: drop GLM context-size hint when leaving GLM mode so the
-			// statusline reverts to the Claude slot's nominal size.
-			delete(env, "MOAI_STATUSLINE_CONTEXT_SIZE")
-			// SPEC-CLIFIX-CONCURRENCY-001 REQ-CONC-001-002: drop the 1M auto-compact
-			// window so it does not persist into subsequent moai cc sessions.
-			delete(env, config.EnvClaudeCodeAutoCompactWindow)
-			// Card t802: drop the declared GLM context window too. Leaving it behind
-			// is not a delayed cleanup but a permanent one: ANTHROPIC_BASE_URL above
-			// is the GLM-active indicator, so once it is gone the SessionEnd cleanup
-			// reads the file as non-GLM and returns without touching the residue.
-			delete(env, config.EnvClaudeCodeMaxContextTokens)
+
+			// Everything else on the settings axis is residue and goes
+			// unconditionally: the Z.AI proxy compatibility flags, the teammate
+			// display override, the GLM context-size hint (issue #742, so the
+			// statusline reverts to the Claude slot's nominal size), and the
+			// context-window pair (SPEC-CLIFIX-CONCURRENCY-001 REQ-CONC-001-002
+			// and card t802 — leaving the latter behind is not a delayed cleanup
+			// but a permanent one, since ANTHROPIC_BASE_URL is the GLM-active
+			// indicator the SessionEnd cleanup gates on and its removal makes the
+			// file read as non-GLM forever after).
+			//
+			// Card t888 routes this list onto config's canonical declaration so a
+			// key added there reaches every cleanup path at once; three functions
+			// each spelling their own list had already drifted apart.
+			//
+			// The two token keys are skipped because the restore branch above
+			// already decided their disposition: ANTHROPIC_AUTH_TOKEN is a
+			// restore TARGET rather than residue, and iterating it here would
+			// delete the value the restore just wrote.
+			for _, key := range config.SettingsAxisCleanupKeys() {
+				if key == config.EnvAnthropicAuthToken || key == config.EnvMoaiBackupAuthToken {
+					continue
+				}
+				delete(env, key)
+			}
 
 			if len(env) == 0 {
 				delete(m, "env")
