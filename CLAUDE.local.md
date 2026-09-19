@@ -518,7 +518,7 @@ MoAI-ADK를 사용하다 버그나 개선이 필요한 부분을 발견하는 �
 - [ ] Template 수정 후 `make build` 실행
 - [ ] Local copy (`.claude/`)도 동기화
 
-탐지 스크립트: 전역 프로젝트 메모리(`~/.claude/projects/-Users-goos-MoAI-moai-adk-go/memory/`)의 `audit_sweep_patterns.md` Pattern A 참조.
+탐지 스크립트: 전역 프로젝트 메모리(`~/.claude/projects/-Users-goos-MoAI-moai-adk-go/memory/` (**휴면 저장소** — 세션이 실제로 로드하는 것은 `CLAUDE_CONFIG_DIR` profile 저장소이고 이 파일은 거기 없다. 읽으려면 이 경로를 직접 연다. 두 저장소 확인은 `moai memory doctor`))의 `audit_sweep_patterns.md` Pattern A 참조.
 
 ---
 
@@ -594,7 +594,7 @@ Dart/Flutter 캐논 이름: **"flutter"** (not "dart").
 - [ ] project_markers 기반 자동 감지 로직이 포함되어 있는가?
 - [ ] 로컬 config와 템플릿이 달라도 정상 (같으면 오히려 의심)
 
-상세 교훈: 전역 프로젝트 메모리(`~/.claude/projects/-Users-goos-MoAI-moai-adk-go/memory/`)의 `lessons.md` #5 참조.
+상세 교훈: 전역 프로젝트 메모리(`~/.claude/projects/-Users-goos-MoAI-moai-adk-go/memory/` (**휴면 저장소** — 세션이 실제로 로드하는 것은 `CLAUDE_CONFIG_DIR` profile 저장소이고 이 파일은 거기 없다. 읽으려면 이 경로를 직접 연다. 두 저장소 확인은 `moai memory doctor`))의 `lessons.md` #5 참조.
 
 ---
 
@@ -623,7 +623,7 @@ Typo/포맷 수정, 설정 1개 편집, 사용자 명시 요청, 위임 대상 �
 
 Rule 5(WHAT) → §16(WHO) → Rule 1(HOW) → 실행
 
-상세 교훈 및 5 Whys: 전역 프로젝트 메모리(`~/.claude/projects/-Users-goos-MoAI-moai-adk-go/memory/`)의 `lessons.md` #4 참조.
+상세 교훈 및 5 Whys: 전역 프로젝트 메모리(`~/.claude/projects/-Users-goos-MoAI-moai-adk-go/memory/` (**휴면 저장소** — 세션이 실제로 로드하는 것은 `CLAUDE_CONFIG_DIR` profile 저장소이고 이 파일은 거기 없다. 읽으려면 이 경로를 직접 연다. 두 저장소 확인은 `moai memory doctor`))의 `lessons.md` #4 참조.
 
 ---
 
