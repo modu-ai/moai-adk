@@ -263,3 +263,64 @@ func TestCheckHomeDisk_RegisteredInMoaiADKGroup(t *testing.T) {
 		t.Error("Home Disk Usage check is not registered in the MoAI-ADK group of runGroupedChecks")
 	}
 }
+
+// SPEC-DOCTOR-PLUGIN-DIGEST-PREFILTER-001 AC-DPP-001 — negative control. A
+// profile alone in its (Size, Files) group can never be a member of a
+// byte-identical cluster, so nothing here is a hashing candidate.
+func TestPluginDigestCandidatesAllDistinctYieldsNone(t *testing.T) {
+	stats := map[string]map[string]profileCategoryStat{
+		"alpha":   {"plugins": {Size: 10, Files: 1}},
+		"beta":    {"plugins": {Size: 20, Files: 1}},
+		"gamma":   {"plugins": {Size: 10, Files: 2}},
+		"delta":   {"plugins": {Size: 0, Files: 0}},
+		"epsilon": {"projects": {Size: 10, Files: 1}},
+	}
+	if got := pluginDigestCandidates(stats); len(got) != 0 {
+		t.Fatalf("no profile shares a (Size, Files) pair, so none may be a candidate: %+v", got)
+	}
+}
+
+// SPEC-DOCTOR-PLUGIN-DIGEST-PREFILTER-001 AC-DPP-002 — positive control. Two
+// profiles sharing one pair both survive the prefilter, so the hashing and
+// cluster-confirmation path still runs for them.
+func TestPluginDigestCandidatesSharedPairSurvives(t *testing.T) {
+	stats := map[string]map[string]profileCategoryStat{
+		"alpha": {"plugins": {Size: 4, Files: 1}},
+		"beta":  {"plugins": {Size: 4, Files: 1}},
+	}
+	got := pluginDigestCandidates(stats)
+	want := []string{"alpha", "beta"}
+	if len(got) != len(want) {
+		t.Fatalf("both sharing profiles must be candidates, got %+v want %+v", got, want)
+	}
+	for i := range want {
+		if got[i] != want[i] {
+			t.Fatalf("candidates mismatch at %d: got %+v want %+v", i, got, want)
+		}
+	}
+}
+
+// SPEC-DOCTOR-PLUGIN-DIGEST-PREFILTER-001 AC-DPP-003 — mixed input plus
+// determinism: exactly the sharing pair, sorted, and stable across repeated
+// calls on the same input (map iteration order must not reach the result).
+func TestPluginDigestCandidatesMixedIsSortedAndDeterministic(t *testing.T) {
+	stats := map[string]map[string]profileCategoryStat{
+		"zulu":    {"plugins": {Size: 7, Files: 3}},
+		"mike":    {"plugins": {Size: 7, Files: 3}},
+		"alpha":   {"plugins": {Size: 9, Files: 3}},
+		"bravo":   {"plugins": {Size: 7, Files: 4}},
+		"charlie": {"plugins": {Size: 0, Files: 0}},
+	}
+	want := []string{"mike", "zulu"}
+	for call := 0; call < 3; call++ {
+		got := pluginDigestCandidates(stats)
+		if len(got) != len(want) {
+			t.Fatalf("call %d: got %+v want %+v", call, got, want)
+		}
+		for i := range want {
+			if got[i] != want[i] {
+				t.Fatalf("call %d: candidates mismatch at %d: got %+v want %+v", call, i, got, want)
+			}
+		}
+	}
+}
