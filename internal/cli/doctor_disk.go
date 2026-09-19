@@ -292,17 +292,42 @@ func newestModTime(root string) time.Time {
 	return newest
 }
 
+// pluginDigestCandidates returns, sorted, the profiles whose plugins tree still
+// needs a content digest. Two byte-identical trees necessarily share a
+// (Size, Files) pair — walkHomeSize sums and counts exactly the regular files
+// treeDigest hashes — so a profile alone in its group can never be a cluster
+// member, and hashing it cannot change the output. The converse does not hold,
+// so survivors are still hashed and confirmed; the prefilter therefore removes
+// work without removing or inventing a cluster. Profiles with no plugins
+// category, or an empty one, are excluded as before.
+func pluginDigestCandidates(perProfile map[string]map[string]profileCategoryStat) []string {
+	byStat := map[profileCategoryStat][]string{}
+	for profile, cats := range perProfile {
+		stat, ok := cats["plugins"]
+		if !ok || stat.Files == 0 {
+			continue
+		}
+		byStat[stat] = append(byStat[stat], profile)
+	}
+	var out []string
+	for _, profiles := range byStat {
+		if len(profiles) < 2 {
+			continue
+		}
+		out = append(out, profiles...)
+	}
+	sort.Strings(out)
+	return out
+}
+
 // findPluginHashClusters reports byte-identical plugin trees. The digest is
 // over sorted relative paths, file modes and contents, so equal aggregate
 // sizes alone never produce a duplicate claim.
 func findPluginHashClusters(profilesDir string, perProfile map[string]map[string]profileCategoryStat) []homeDuplicateCluster {
 	byDigest := map[string][]string{}
 	stats := map[string]profileCategoryStat{}
-	for profile, cats := range perProfile {
-		stat, ok := cats["plugins"]
-		if !ok || stat.Files == 0 {
-			continue
-		}
+	for _, profile := range pluginDigestCandidates(perProfile) {
+		stat := perProfile[profile]["plugins"]
 		digest, err := treeDigest(filepath.Join(profilesDir, profile, "plugins"))
 		if err != nil {
 			continue
