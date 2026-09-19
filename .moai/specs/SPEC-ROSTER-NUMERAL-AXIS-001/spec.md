@@ -2,9 +2,9 @@
 id: SPEC-ROSTER-NUMERAL-AXIS-001
 title: "Numeral-axis layer for the roster guard — count-only claims the enumeration sweep cannot reach"
 version: "0.3.0"
-status: draft
+status: in-progress
 created: 2026-09-18
-updated: 2026-09-18
+updated: 2026-09-19
 author: manager-spec
 priority: P1
 phase: "v3.2.0 target"
