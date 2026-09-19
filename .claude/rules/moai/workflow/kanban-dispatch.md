@@ -228,7 +228,13 @@ The bound is the holder's own declaration: past it another lane may take the res
 unset MOAI_KANBAN MOAI_KANBAN_ID MOAI_KANBAN_LABEL MOAI_KANBAN_LEAD_ADDR MOAI_KANBAN_SETTINGS_INJECTED && go test ./...
 ```
 
-The `env -u VAR <command>` form is rejected — the Claude Code guard rejects shell structures it cannot statically track, `env` among them; `unset … && <command>` stays visible to static analysis. Two load-bearing properties, easy to "simplify" away: **one invocation** (each Bash call is a fresh process — an `unset` issued as its own call does not carry into the next command; the scrub and the command travel together or the scrub does nothing) and **no subshell** (`( unset …; <command> )` is rejected the same way).
+The load-bearing property is **one invocation**: each Bash call is a fresh process, so an `unset` issued as its own call does not carry into the next command — the scrub and the command travel together, or the scrub does nothing. This is a property of the shell, not of any guard, and it is what a "simplification" into two calls silently destroys.
+
+`env -u VAR <command>` scrubs identically and is **not** refused; it is excluded to keep one recipe across lanes, which is a convention rather than a runtime constraint. Do not rewrite the standard form into it, and do not cite a guard as the reason — the reason is uniformity.
+
+**The subshell is the form that actually breaks, and only sometimes.** `( unset …; <command> )` runs when the command carries no git, and is refused when it does, because the worktree guard cannot statically verify a git call inside one. Since a verification recipe may acquire a git step later, the compound form above is the one that keeps working either way.
+
+Measured on Claude Code 2.1.276, inside a worktree session: `env -u FOO echo ok` and `env -u FOO git rev-parse --short HEAD` both ran; `( unset FOO; echo ok )` ran; `( unset FOO; git rev-parse --short HEAD )` and `git -C . rev-parse --short HEAD` were both refused. The last one is the control — it shows the guard was live while `env` was passing.
 
 Moving the command into a script file is not a workaround — the guard cannot read inside a script, so every check is bypassed for that payload. Where a verification cannot be expressed as one compound invocation, reduce the verification rather than route it around the guard.
 
