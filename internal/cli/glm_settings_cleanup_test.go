@@ -184,3 +184,85 @@ func TestTmuxClearVarsCoversEveryLiveKeyItOwns(t *testing.T) {
 		}
 	}
 }
+
+// cleanupViewDirtyEnv seeds a settings env carrying every key of the canonical
+// cleanup view plus one user-owned key that must survive. It is the cleanup-view
+// sibling of glmLiveDirtyEnv above, which stays on the LIVE view because the
+// tmux-parity guard reads that one.
+//
+// MOAI_BACKUP_AUTH_TOKEN is deliberately left out, for the same reason it is
+// left out of glmLiveDirtyEnv: its presence tells the cleanup paths to RESTORE
+// that value as ANTHROPIC_AUTH_TOKEN, which is documented OAuth-preservation
+// behaviour rather than residue — and since ANTHROPIC_AUTH_TOKEN is itself a
+// member of the view, seeding the backup key would make the whole-view "every
+// key is absent" traversal below false against a CORRECT implementation. The
+// restore path keeps its own case, TestGLMCleanupRestoresBackedUpAuthToken.
+func cleanupViewDirtyEnv() map[string]string {
+	env := map[string]string{"CUSTOM_VAR": "keep_me"}
+	for _, key := range config.SettingsAxisCleanupKeys() {
+		if key == config.EnvMoaiBackupAuthToken {
+			continue
+		}
+		env[key] = "seeded"
+	}
+	// The GLM-active indicator and the model override need realistic values so
+	// the cleanup paths take their GLM branch rather than an early return.
+	env[config.EnvAnthropicBaseURL] = "https://api.z.ai/api/anthropic"
+	env[config.EnvAnthropicDefaultOpusModel] = "glm-5.3"
+	return env
+}
+
+// assertCleanupViewFixtureIsDirty is the emptiness guard for the cleanup-view
+// fixture: without it a fixture that stopped seeding the keys would make every
+// assertion below pass vacuously. Mirrors assertFixtureIsDirty, which guards the
+// live-view fixture.
+func assertCleanupViewFixtureIsDirty(t *testing.T, env map[string]string) {
+	t.Helper()
+	for _, key := range config.SettingsAxisCleanupKeys() {
+		if key == config.EnvMoaiBackupAuthToken {
+			continue // absent by design — see cleanupViewDirtyEnv
+		}
+		if _, ok := env[key]; !ok {
+			t.Fatalf("fixture is not dirty: %s absent before cleanup", key)
+		}
+	}
+}
+
+// assertCleanupViewCleared traverses the canonical view itself rather than a
+// list written here, so a key added to the declaration widens every caller
+// without a second edit.
+func assertCleanupViewCleared(t *testing.T, who string, env map[string]string) {
+	t.Helper()
+	for _, key := range config.SettingsAxisCleanupKeys() {
+		if v, ok := env[key]; ok {
+			t.Errorf("%s left cleanup-view key %s=%q", who, key, v)
+		}
+	}
+}
+
+// TestStripGLMCredsCleanupViewEquivalence is AC-002 for consumer B: the runtime
+// proof that stripGLMCredsAndSetTeammateMode deletes exactly the canonical
+// cleanup view. It is the primary instrument for the five-lists-to-one collapse,
+// because a textual scan cannot separate a consumer that kept its whole
+// hand-written list from one that routed onto the declaration — both spell their
+// keys as Go identifiers.
+func TestStripGLMCredsCleanupViewEquivalence(t *testing.T) {
+	dirty := cleanupViewDirtyEnv()
+	assertCleanupViewFixtureIsDirty(t, dirty)
+	_, settingsPath := cgTestProject(t, dirty)
+
+	if err := mutateSettingsLocal(settingsPath, stripGLMCredsAndSetTeammateMode); err != nil {
+		t.Fatalf("mutateSettingsLocal: %v", err)
+	}
+
+	got := readSettingsForTest(t, settingsPath)
+	assertCleanupViewCleared(t, "stripGLMCredsAndSetTeammateMode", got.Env)
+	if got.Env["CUSTOM_VAR"] != "keep_me" {
+		t.Errorf("user key must survive cleanup, got env: %v", got.Env)
+	}
+	// The teammate-mode side effect is not part of the key axis and must not be
+	// lost when the delete list is rerouted.
+	if got.TeammateMode != "tmux" {
+		t.Errorf("CG leader teammateMode must stay tmux, got %q", got.TeammateMode)
+	}
+}
