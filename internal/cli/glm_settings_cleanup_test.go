@@ -18,18 +18,17 @@ import (
 
 // liveSettingsAxisKeys is every env key ensureGLMCredentials can write into
 // .claude/settings.local.json, plus the OAuth-backup key the cleanup paths own.
+//
+// It DERIVES from config.SettingsAxisLiveKeys() — the live view of the canonical
+// settings-axis declaration — rather than re-spelling the list. The live view is
+// the right one here and not the cleanup view: this list is read by
+// TestTmuxClearVarsCoversEveryLiveKeyItOwns, which asserts that the tmux axis
+// covers every key a LIVE producer can write. Widening it to the cleanup view
+// would drag in the legacy keys no live producer writes — CLAUDE_CODE_TEAMMATE_DISPLAY
+// among them, which buildTmuxClearVars does not clear — and break that
+// out-of-scope guard.
 func liveSettingsAxisKeys() []string {
-	return []string{
-		config.EnvAnthropicAuthToken,
-		"MOAI_BACKUP_AUTH_TOKEN",
-		config.EnvAnthropicBaseURL,
-		config.EnvAnthropicDefaultOpusModel,
-		config.EnvAnthropicDefaultSonnetModel,
-		config.EnvAnthropicDefaultHaikuModel,
-		config.EnvClaudeCodeDisableExperimentalBetas,
-		config.EnvClaudeCodeAutoCompactWindow,
-		config.EnvClaudeCodeMaxContextTokens,
-	}
+	return config.SettingsAxisLiveKeys()
 }
 
 // glmLiveDirtyEnv seeds a settings env carrying every live key plus one

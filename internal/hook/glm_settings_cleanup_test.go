@@ -16,18 +16,17 @@ import (
 
 // liveHookWrittenKeys is every env key ensureGLMCredentials can write, plus the
 // OAuth-backup key this cleanup owns.
+//
+// It DERIVES from config.SettingsAxisLiveKeys() — the live view of the canonical
+// settings-axis declaration — rather than re-spelling the list. The live view is
+// the right one here and not the cleanup view, because this list states what the
+// live PRODUCER can write: it is the other half of the t802 contract that
+// whatever ensureGLMCredentials adds on session start, the cleanup removes on
+// session end. What the cleanup deletes beyond that — the legacy tail an older
+// binary could leave — is the cleanup view's business and is asserted separately
+// by TestCleanupGLMSettingsLocalCleanupViewEquivalence.
 func liveHookWrittenKeys() []string {
-	return []string{
-		config.EnvAnthropicAuthToken,
-		"MOAI_BACKUP_AUTH_TOKEN",
-		config.EnvAnthropicBaseURL,
-		config.EnvAnthropicDefaultOpusModel,
-		config.EnvAnthropicDefaultSonnetModel,
-		config.EnvAnthropicDefaultHaikuModel,
-		config.EnvClaudeCodeDisableExperimentalBetas,
-		config.EnvClaudeCodeAutoCompactWindow,
-		config.EnvClaudeCodeMaxContextTokens,
-	}
+	return config.SettingsAxisLiveKeys()
 }
 
 // scrubGatewayEnv neutralises MOAI_LAUNCH_PROVIDER for the duration of the test.
