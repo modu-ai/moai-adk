@@ -51,15 +51,16 @@ func Registry() []Site {
 			Claims:     ClaimMembership,
 			BlockStart: "var retainedAgentNames = map[string]bool{",
 			BlockEnd:   "}",
-			KnownStale: &Staleness{
-				Reason: "manager-lead is absent, so an llm.agent_overrides.manager-lead entry is " +
-					"rejected as non-retained. This is the measured forward-only-propagation " +
-					"instance: mission-governor was registered here by its own creation commit " +
-					"5ec516165, while manager-lead (which arrived via the rename 310d75dd2) " +
-					"never was.",
-				FollowUp:     "card t916 (commit 1814bf3e9), which is NOT an ancestor of this base",
-				MissingNames: []string{"manager-lead"},
-			},
+			// KnownStale deleted: the marker declared manager-lead absent and named
+			// card t916 (commit 1814bf3e9) as the repair, noting that commit was not
+			// yet an ancestor. It is now, and manager-lead is present in the map, so
+			// the declared gap no longer exists. The marker expired the way Staleness
+			// is designed to — it failed the guard with "delete the marker" rather
+			// than going quietly stale, which is what makes it a record and not a
+			// mute. The forward-only-propagation instance it recorded (mission-governor
+			// registered here by its own creation commit 5ec516165 while manager-lead,
+			// which arrived via the rename 310d75dd2, never was) is preserved in this
+			// package's doc comment, where it is the motivating measurement.
 		},
 		{
 			ID:         "delegationmap-retained-catalog",

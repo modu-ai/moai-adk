@@ -206,9 +206,19 @@ func (i *projectInitializer) Init(ctx context.Context, opts InitOptions) (*InitR
 	}
 	if i.deployer != nil {
 		if err := i.deployTemplates(ctx, opts, result); err != nil {
-			// Template deployment is non-fatal; record warning
-			result.Warnings = append(result.Warnings, fmt.Sprintf("template deployment: %s", err))
-			i.logger.Warn("template deployment failed", "error", err)
+			// SPEC-INIT-DEPLOY-EXIT-001 (REQ-IDE-001): template deployment is
+			// FATAL. The deployer aborts its walk at the first render error, so
+			// a failure early in the walk leaves the project tree missing most
+			// of its files — a measured probe wrote 77 of them before aborting.
+			// Recording that as a warning and returning nil told the caller the
+			// project was ready while its contract files were absent.
+			//
+			// The result is returned ALONGSIDE the error (unlike the other
+			// fatal returns in this function): deployTemplates records the
+			// skill-mirror notice into result.Warnings BEFORE it can fail, and
+			// dropping the result here would lose that notice.
+			i.logger.Error("template deployment failed", "error", err)
+			return result, fmt.Errorf("template deployment: %w", err)
 		}
 	} else {
 		// Fallback: generate config files directly when no deployer is available
