@@ -75,20 +75,6 @@ func TestGoalVerbControls(t *testing.T) {
 	})
 }
 
-// TestGoalVerbResolvingTokens measures the shape the controls leave open: a
-// single verb-like word that the shell DOES resolve passes the runnability
-// probe and is too short for the prose-shape check. Measurement only — it
-// logs each outcome and asserts nothing, so the fix scope is decided on
-// observed behaviour rather than on the static reading.
-func TestGoalVerbResolvingTokens(t *testing.T) {
-	for _, tok := range []string{"stat", "ls", "reset", "done", "cancel", "rm", "help", "list", "show"} {
-		t.Run(tok, func(t *testing.T) {
-			armed, _, err := goalVerbOutcome(t, "VTOK", tok)
-			t.Logf("token=%q armed=%v err=%v", tok, armed, err)
-		})
-	}
-}
-
 // TestGoalVerbMisreadWordsRefused pins the fix for card t605: a single word a
 // user would plausibly type as a goal verb is refused with the verb it meant,
 // instead of being armed as a condition. Several of these words resolve as
@@ -142,6 +128,7 @@ func TestGoalVerbMisreadCheckStaysNarrow(t *testing.T) {
 		{"cmd prefix", []string{"cmd: reset"}},
 		{"multi-word condition", []string{"reset && true"}},
 		{"unlisted command", []string{"ls"}},
+		{"unlisted destructive command", []string{"rm"}},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			armed, out, err := goalVerbOutcome(t, "VNARROW", tc.args...)
