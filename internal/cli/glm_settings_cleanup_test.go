@@ -269,6 +269,28 @@ func TestStripGLMCredsCleanupViewEquivalence(t *testing.T) {
 // TestRemoveGLMEnvCleanupViewEquivalence is AC-002 for consumer A: the runtime
 // proof that removeGLMEnv deletes exactly the canonical cleanup view. Same
 // instrument and same fixture convention as the consumer-B case above.
+//
+// This test is NOT vacuous, and that was demonstrated rather than asserted
+// (AC-008, card t888, measured at HEAD 3615674ee). Excluding one key —
+// ANTHROPIC_DEFAULT_FABLE_MODEL — from removeGLMEnv's canonical-view loop turned
+// exactly this test red:
+//
+//	glm_settings_cleanup_test.go:282: removeGLMEnv left cleanup-view key ANTHROPIC_DEFAULT_FABLE_MODEL="seeded"
+//	--- FAIL: TestRemoveGLMEnvCleanupViewEquivalence
+//
+// and it was the ONLY red in the default suite. Four sibling guards stayed green
+// under that same divergence — TestRemoveGLMEnvClearsEveryLiveKey and
+// TestStripGLMCredsClearsEveryLiveKey traverse the LIVE view, which does not
+// contain that legacy key; TestGLMCleanupRestoresBackedUpAuthToken asserts only
+// the carve-out token pair; TestTmuxClearVarsCoversEveryLiveKeyItOwns reads a
+// different axis. Without this test the divergence would have shown up only in
+// TestProbeSettingsAxisListsAgree, which is build-tagged out of the default
+// suite AND only compares the two consumers to each other — so two consumers
+// drifting together stay green there. That is what this test is for.
+//
+// Full record, including the reverted-and-green-again step:
+// .moai/state/verify/t888/m7-mutation-demonstration.md (evidence tree is
+// gitignored, hence this summary lives in the source).
 func TestRemoveGLMEnvCleanupViewEquivalence(t *testing.T) {
 	dirty := cleanupViewDirtyEnv()
 	assertCleanupViewFixtureIsDirty(t, dirty)
