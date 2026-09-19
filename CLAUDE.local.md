@@ -184,6 +184,8 @@ Never add files directly to the local project directories without also adding th
 .claude/agents/harness/hns-{release-update,github,release}-specialist.md  # Dev-only: split harness specialists (§21, user-owned per §24)
 scripts/ci-watch/              # Dev-only: CI watch loop scripts (5) — not distributed
 scripts/ci-autofix/            # Dev-only: CI auto-fix scripts (4) — not distributed
+scripts/jev/                   # Dev-only: TypeSafe(Jev) 로컬 전용 도구 (§29) — 템플릿 미러 없음, 사용자 프로젝트로 배포되지 않음
+~/.moai/.env.typesafe          # Dev-only: TypeSafe API 키 (저장소 밖, chmod 600). settings/config/템플릿에 넣지 않는다 (§29)
 .claude/skills/hns-workflow-ci-loop/                       # Dev-only: CI watch+autofix skill (removed from template; mirror kept). §2.3에 따라 moai-workflow-ci-loop → hns-* 로 이동(2026-08-15): `.claude/skills/moai*` 글롭이 매 update마다 삭제했음
 .claude/rules/local/ci-watch-protocol.md                     # Dev-only: governs scripts/ci-watch (removed from template; mirror kept)
 .claude/rules/local/ci-autofix-protocol.md                 # Dev-only 원본: scripts/ci-autofix 를 지배. 배포판(.claude/rules/moai/workflow/ 의 같은 이름, script-free)과 **의도적 쌍둥이** — SPEC-CI-LOOP-DEVONLY-001 의 결정이며 미해결 상태가 아니다. 둘은 `paths:` 범위가 서로 겹치지 않아 함께 로드되지 않는다(로컬판=데브 스킬 SKILL.md, 배포판=manager-develop + .github/workflows/**). #1557(ed04e40e6)이 이 파일을 관리 대상 뿌리 밖으로 옮겨 §2.3 경로 충돌도 해소됐다. 다만 배포판이 update 때마다 `.claude/rules/moai/workflow/` 에 미추적으로 재생성돼 git status 노이즈로 남는다
@@ -678,6 +680,68 @@ Sections §18-27 were consolidated into external `.moai/docs/` files to reduce l
 
 ---
 
+## 29. Jev (TypeSafe System One) — 로컬 전용
+
+> 도입 2026-09-19. 실측·설계 근거: `.moai/reports/jev-lead-integration-20260919.md` (HTML 쌍둥이 동반). 카드 **t943** 이 CLI 편입을 다룬다.
+
+### [HARD] 지금은 **로컬 전용**이다 — 제품에 배선돼 있지 않다
+
+`scripts/jev/` 는 **`internal/template/templates/` 에 미러가 없다.** 따라서 `moai init` / `moai update` 가 사용자 프로젝트에 배포하지 않으며, `moai` 바이너리의 어떤 경로도 Jev 를 호출하지 않는다. 이 저장소에서 사람이 손으로 돌리는 도구이고, 그 이상은 아직 아니다. 제품 편입은 t943 의 일이다.
+
+### [HARD] 리드는 손으로 돌리지 말고 **자율 운용**한다
+
+`-k` / `-f` 리드 세션은 아래 두 계기에서 **묻지 않고 먼저 돌린다.** 사람이 생각한 뒤 호출하는 도구가 아니라, 판단이 필요한 순간에 자동으로 끼는 계측기다.
+
+| 계기 | 즉시 실행 | 무엇을 얻나 |
+|---|---|---|
+| 며칠 지난 카드를 배차하기 **전** | `scripts/jev/triage.sh <id>` | 전제가 살아 있는가 + confidence |
+| 레인이 질문을 보내 **멈췄을 때** | `scripts/jev/route.sh < 질문` | 누가 결정하는 일인가 · 측정이 먼저인가 · 되돌리기 싼가 |
+
+두 도구 모두 읽기 전용이다. 실행이 곧 결정이 아니며, 결정은 아래 3등급으로 갈린다.
+
+### [HARD] 자율 등급 — 무엇을 모델 답만 보고 처리하는가
+
+**1등급 — 즉시 처리(운영자에게 묻지 않는다).** `route.sh` 가 `LEAD-ANSWER-NOW` 를 내고 owner confidence ≥ 0.50 일 때. 리드가 이미 권한을 가진 되돌리기 싼 결정이다: 리뷰 렌즈 선택, `WT-` 슬러그, 재측정 범위, 배차 순서, 문안 선택, 레인 질문 중 독트린으로 답이 나오는 것. **답하고 진행하며, 사후에 한 줄로 보고한다.**
+
+**2등급 — 모델이 초안, 리드가 확정.** `triage.sh` 의 `[auto]` 판정, 근접 중복 의심, PR 귀속 모호. 리드가 **증거를 직접 읽고** 확정한 뒤 진행한다. 모델 답은 어디를 먼저 볼지 정하는 데만 쓴다.
+
+**3등급 — 절대 위임하지 않는다.** 완료 판정(`FINAL VERDICT`), 병합 승인(`LEAD-MERGE-APPROVED`), 큐 변경(`moai todo` add/next/done/drop/edit), 운영자 게이트, 사용자 표면 동작 변경, CodeRabbit 슬롯 대기 판정. `route.sh` 가 `ASK-OPERATOR` 를 내거나 owner confidence < 0.50 이면 **그 자체로 3등급**이다.
+
+### [HARD] 되돌릴 수 없는 판정은 모델 답을 입력으로도 쓰지 않는다
+
+3등급 항목에서는 Jev 를 호출하지 않는다. 호출해서 참고만 하는 것도 금지다 — 판정서에 「모델이 그렇게 답했다」가 근거로 새어 들어가면 `verification-claim-integrity.md` 의 관측 없는 주장이 된다. 완료 판정의 근거는 언제나 **리드가 읽은 증거 파일**이다.
+
+### 어떻게 쓰나
+
+```bash
+scripts/jev/triage.sh t784 t787          # 카드 전제 판정 (읽기 전용)
+JEV_VERBOSE=1 scripts/jev/triage.sh t784 # 기계 측정 관측문까지 출력
+scripts/jev/route.sh < question.txt      # 레인 질문 → 결정 등급
+echo "<state>" | scripts/jev/ask.sh noul "<질문>"   # 임의 텍스트 1문항 프로브
+```
+
+`triage.sh` 출력의 `[auto]` 는 confidence ≥ 0.50, `[ask human]` 은 그 미만이다. **`[ask human]` 을 「살아있음」으로 읽지 마라** — 「측정되지 않음」이다.
+
+`route.sh` 는 다섯 값 중 하나를 낸다: `LEAD-ANSWER-NOW`(1등급) · `LEAD-DECIDE-CAREFULLY`(되돌리기 비쌈 → 2등급으로 내려 증거부터) · `MEASURE-FIRST`(레인에게 측정을 먼저 시킨다) · `RETURN-TO-LANE`(레인이 스스로 답할 수 있다) · `ASK-OPERATOR`(3등급).
+
+### 실패해도 배치가 멈추지 않는다
+
+키·네트워크가 없으면 두 도구 모두 「독트린을 읽고 판단하라」는 한 줄을 내고 **exit 0** 한다. 자율 운용은 **가속 장치이지 의존 대상이 아니다** — 도구가 없을 때의 정답은 오늘까지 하던 방식 그대로다.
+
+### [HARD] 키와 경계
+
+- 키는 `~/.moai/.env.typesafe` **한 곳**(chmod 600). `.claude/settings*.json`·`.moai/config/`·템플릿·커밋에 넣지 않는다.
+- 키·네트워크가 없으면 기계 측정만 출력하고 **exit 0** — 실패가 아니라 기능 저하(`glm_audit` 의 fail-open 과 같은 자세).
+- 큐를 변경하지 않는다. 카드를 닫지 않는다. 판정만 출력한다.
+- 카드 본문이 외부로 나간다. 비밀·고객 데이터가 섞이지 않는지 전송 전에 확인한다.
+
+### 신뢰도 게이트는 잠정값이다
+
+0.50 은 **16장 표본**에서 얻은 값이고, 그 표본은 한국어 카드를 **영어로 옮겨** 잰 것이다. TypeSafe 모델 카드가 비영어·CJK 정확도 저하를 명시하므로, **한국어 원문 기준으로 재측정하기 전에는 이 수치를 근거로 인용하지 않는다.** 재측정은 t943 의 첫 일이다.
+
+### 요금
+
+입력 토큰만 과금(모델 카드 표기 `$42 / Btok`, `$0.042 / Mtok`), **출력 토큰 무료**. 카드 1장 triage 가 약 2,000 입력 토큰이므로 배치 하나가 1센트 미만이다. 결제 수단·무료 한도는 **공식 문서에 없다** — 콘솔에서 확인할 사항이다.
 ## 30. 배차 전 전제 판정 (며칠 지난 카드)
 
 > 신설 2026-09-19 (card t950, 운영자 판정). 이 절은 **리드 운용 지침**이며, 며칠 묵은 카드를 레인에
