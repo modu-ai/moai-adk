@@ -18,6 +18,26 @@ import (
 // Issue #742: MOAI_STATUSLINE_CONTEXT_SIZE is included so the Claude Code
 // statusline reflects the real GLM model context window (128K/200K/etc.)
 // instead of the Claude slot's nominal size (1M for the Opus slot).
+//
+// Card t889: this list is NOT the counterpart of internal/cli's
+// buildTmuxClearVars, so comparing the two lengths measures nothing. They have
+// different producers — buildTmuxClearVars clears what `moai glm` injected
+// directly (buildTmuxInjectVars), while this list mirrors the
+// settings.local.json env block into the tmux session for GLM+team panes. The
+// actual inject<->clear parity axis is buildTmuxInjectVars <->
+// buildTmuxClearVars, already pinned by TestTmuxEnv_InjectClearParity
+// (AC-CGH-009 Scenario 9b): every injected key is cleared except
+// ANTHROPIC_AUTH_TOKEN, retained by documented intent. No key this list injects
+// survives a mode switch as residue.
+//
+// Measured and deliberately left open: ANTHROPIC_DEFAULT_FABLE_MODEL,
+// CLAUDE_CODE_AUTO_COMPACT_WINDOW and CLAUDE_CODE_MAX_CONTEXT_TOKENS can all be
+// present in the settings env this function reads — the latter two are written
+// by ensureGLMCredentials earlier in the same SessionStart chain — yet are not
+// mirrored here. Whether that costs a teammate pane anything is unestablished:
+// settings.local.json is a parallel delivery channel to the same panes, and
+// separating the two channels needs a live tmux GLM teammate session. Do not
+// widen this list on the strength of the asymmetry alone.
 var glmTmuxKeys = []string{
 	config.EnvAnthropicAuthToken,
 	config.EnvAnthropicBaseURL,

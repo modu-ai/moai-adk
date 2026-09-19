@@ -2,9 +2,9 @@
 id: SPEC-MOAI-GATEWAY-001
 title: "moai 공통 loopback gateway — cc·gpt·glm 세 launcher의 단일 ingress와 제공자별 모델 선택 경계"
 version: "0.16.1"
-status: in-progress
+status: rejected
 created: 2026-09-10
-updated: 2026-09-15
+updated: 2026-09-19
 author: manager-spec
 priority: P1
 phase: "v3.3.0 target"
@@ -15,6 +15,8 @@ tier: L
 ---
 
 # SPEC-MOAI-GATEWAY-001 — 공통 loopback gateway 코어
+
+> **철회됨 (2026-09-16).** 이 SPEC이 서술하는 기능은 운영자 결정으로 철회됐고, 아래 요구사항은 그 시점의 기록일 뿐 현재 유효한 의무가 아니다 — 경위와 종결 상태의 근거는 이 문서 맨 끝 `## I. 처분 기록 — 철회 (2026-09-16)`에 있다.
 
 ## HISTORY
 
@@ -1111,3 +1113,46 @@ Where 이 카드의 검증 수용 기준 전수가 PASS한 경우, the launcher 
 - t653 run 증거: `.moai/reports/t653/` (m1~m6 로그, `run-verdict.md`, `sync-audit.md`)
 - t654 AS-5 증거(착지 시 축적, `as5-` 접두사): `.moai/reports/t654/`
 - 형제 SPEC(제안): `SPEC-MOAI-GPT-AUTH-001`, `SPEC-MOAI-CG-RETIRE-001`, `SPEC-MOAI-GATEWAY-PICKER-001`(0.6.0), `SPEC-MOAI-GATEWAY-TEAMMATE-001`(0.6.0)
+
+## I. 처분 기록 — 철회 (2026-09-16)
+
+### I.1 무슨 일이 있었는가
+
+이 SPEC이 규정한 기능은 2026-09-16 운영자 결정으로 철회됐다. 철회는 카드 t857의
+커밋 `2d25a88eb` — `feat(cli)!: withdraw the moai gpt gateway and GPT-in-Claude-Code path (card t857)` —
+이며, 314개 파일 / -46,832줄을 제거하면서 `internal/gateway/**`(147개 `.go` 파일)를
+이 SPEC 계열의 구현으로 명시했다.
+
+### I.2 구현은 있었다 — 그 뒤에 제거됐다
+
+이 SPEC은 철회 전에 `implemented` 상태에 도달했다. `moai spec lint`가 현재 이 SPEC에 대해
+`WARNING StatusTransitionInvalid — status transition "implemented" → "in-progress" is not a canonical
+lifecycle edge (commit 15a3a21f5)`를 보고하는데, 그 경고가 `implemented` 도달 사실을 남긴 흔적이다.
+
+구현은 존재했고, 위 커밋이 그것을 제거했다. 이 문단을 남기는 이유는 명확하다 — frontmatter의
+`status: rejected`만 본 독자는 "작업이 아예 이뤄지지 않았다"고 결론지을 텐데, 그것은 사실이 아니다.
+
+현재 트리의 측정 결과(HEAD `df59ad18c`):
+
+- `internal/gateway` 부재 — `ls`가 실패한다(양성 대조: `internal/` 아래 70개 패키지는 정상 조회).
+- `internal/orchestration` 부재 — 카드 t854가 그 안의 유일한 파일을 제거하면서 디렉터리 자체가 사라졌다.
+- `naming-migration-manifest.json` 부재 — 어느 커밋에도 존재한 적이 없고 트리에도 없다(`find` 무출력).
+- `.moai/` 및 `reports/` 밖의 살아 있는 참조 0건
+  (양성 대조: 같은 형식의 grep이 `SPEC-INIT-DEPLOY-EXIT-001`을 CHANGELOG.md와 Go 테스트 2개에서 찾아낸다).
+
+### I.3 종결 상태를 `rejected`로 두는 이유
+
+`superseded`가 아닌 이유: 이 SPEC을 승계한다고 선언한 SPEC이 없다
+(양성 대조: "supersede" 토큰이 481개 파일에서 검색되므로 검색 자체는 작동한다).
+요구사항이 다른 SPEC으로 옮겨 간 것이 아니라 철회된 것이다.
+
+`archived`가 아닌 이유: 소유권 행렬은 `archived`를 행정적 정리로 정의한다. 그 값을 쓰면
+운영자 결정이 있었다는 사실이 기록에서 지워진다.
+
+세 값 모두 기계적으로는 종결 상태이므로(`internal/spec/drift.go:496`), 이 선택은 의미의 문제다.
+
+### I.4 이 절이 주장하지 않는 것
+
+이 절은 **처분을 덧붙일 뿐, 요구사항이나 수용 기준을 철회·수정·무효화하지 않는다.**
+이 문서의 REQ-* 와 AC-* 는 그대로 남으며, 그것들은 "당시 무엇이 규정됐는가"의 기록이다.
+이 절은 그 기록을 고치지 않고, 그 기록이 가리키던 대상이 어떻게 됐는지만 덧붙인다.
