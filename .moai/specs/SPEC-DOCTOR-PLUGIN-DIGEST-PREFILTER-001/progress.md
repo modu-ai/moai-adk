@@ -101,7 +101,7 @@ evidence_dir: .moai/reports/t963/
 
 sync_status: audit-ready
 sync_complete_at: 2026-09-19
-sync_commit_sha: pending-backfill-sync
+sync_commit_sha: bc11644d1f1ec19816c779788cfe93f5bc4eff28
 spec_status: in-progress -> completed (3-phase close rides this sync commit)
 changelog: CHANGELOG.md [Unreleased] / ### Changed — one entry
 
@@ -135,5 +135,6 @@ head is the judge), no `GOOS=windows` build, no runtime `moai doctor` invocation
 and the zero-candidate outcome on this machine is a data state rather than
 correctness evidence.
 
-`sync_commit_sha` is the `pending-backfill-sync` placeholder because a commit
-cannot cite its own hash; the resolved value is backfilled in a following commit.
+`sync_commit_sha` was written as the `pending-backfill-sync` placeholder in the
+sync commit itself — a commit cannot cite its own hash — and resolved here in the
+following commit.
