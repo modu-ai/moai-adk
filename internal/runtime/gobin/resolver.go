@@ -1,6 +1,7 @@
 package gobin
 
 import (
+	"os"
 	"os/exec"
 	"path/filepath"
 	"strings"
@@ -41,6 +42,7 @@ func Detect(homeDir string) string {
 func goEnvGOBIN() string {
 	// Run go env GOBIN
 	cmd := exec.Command("go", "env", "GOBIN")
+	cmd.Env = append(os.Environ(), "GOTOOLCHAIN=local")
 	output, err := cmd.Output()
 	if err != nil {
 		return ""
@@ -52,6 +54,7 @@ func goEnvGOBIN() string {
 func goEnvGOPATHBin() string {
 	// Run go env GOPATH
 	cmd := exec.Command("go", "env", "GOPATH")
+	cmd.Env = append(os.Environ(), "GOTOOLCHAIN=local")
 	output, err := cmd.Output()
 	if err != nil {
 		return ""
