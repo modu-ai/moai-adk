@@ -123,7 +123,11 @@ func (pe *PhaseExecutor) Execute(ctx context.Context, opts InitOptions) (*InitRe
 	result, err := pe.initializer.Init(ctx, opts)
 	if err != nil {
 		pe.reporter.StepError(err)
-		return nil, fmt.Errorf("initialization: %w", err)
+		// SPEC-INIT-DEPLOY-EXIT-001: the result is propagated alongside the
+		// error so warnings the initializer recorded before failing (the
+		// skill-mirror notice) still reach the CLI's warning summary. It is
+		// nil for the fatal paths that return no result.
+		return result, fmt.Errorf("initialization: %w", err)
 	}
 	pe.reporter.StepComplete(fmt.Sprintf("Created %d files", len(result.CreatedFiles)))
 

@@ -1001,4 +1001,3 @@ func TestWarnNoModelResolved(t *testing.T) {
 		})
 	}
 }
-

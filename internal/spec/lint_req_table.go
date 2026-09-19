@@ -9,9 +9,14 @@ import (
 //
 // THE DEFECT. reqLineWidePattern is anchored to a markdown list bullet
 // (`^\s*[-*]\s+`), so a SPEC that states its requirements as a TABLE produced an
-// empty doc.REQs. The four rules that consume doc.REQs — ModalityMalformed,
-// InvalidREQID, DuplicateREQID, CoverageIncomplete — then never visited that
-// document at all, and their silence was indistinguishable from a pass. Measured
+// empty doc.REQs. The six finding codes that consume doc.REQs —
+// ModalityMalformed, ModalityUnjudged, LegacyEARSKeyword, InvalidREQID,
+// DuplicateREQID, CoverageIncomplete, emitted by three rules (EARSModalityRule,
+// REQIDUniquenessRule, CoverageRule) — then never visited that document at all,
+// and their silence was indistinguishable from a pass. (This comment said "the
+// four rules" until SPEC-HEADING-REQ-COLLECT-001 REQ-HRC-011 corrected it: it
+// predates the axis that added ModalityUnjudged and LegacyEARSKeyword, and it
+// also conflated rules with codes.) Measured
 // on this tree: 53 spec.md files match the list collector zero times while
 // carrying at least one ID-leading table row, contributing 600 such rows.
 //

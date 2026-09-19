@@ -30,6 +30,7 @@ import (
 
 	"github.com/modu-ai/moai-adk/internal/config"
 	"github.com/modu-ai/moai-adk/internal/kanban"
+	"github.com/spf13/cobra"
 )
 
 // runTodo executes the todo cobra command against args and returns
@@ -827,6 +828,69 @@ func TestTodoNaturalLanguageCardsSurviveVerbGuard(t *testing.T) {
 			}
 			if len(rec.Items) != 1 || rec.Items[0].Text != tc.want {
 				t.Errorf("card = %+v; want one card %q", rec.Items, tc.want)
+			}
+		})
+	}
+}
+
+// TestMistypedVerbGuardSpeaksInTheInvokedSurfacesName — t939: the refusal is
+// produced at one site shared by both surfaces, and it used to name the
+// compatibility spelling whichever way it was called: `moai gtd show t855`
+// answered "todo: ... moai todo add ...". REQ-GTD-003 makes gtd the canonical
+// surface and todo the thin compatibility one, so an operator working the
+// canonical surface was handed the compatibility name — and the recovery line
+// told them to run a command on a surface they had not called.
+//
+// Both directions are asserted together, because a fix that merely swaps the
+// literal would break the compatibility surface in the mirror image. The
+// verb-name list is already derived from the command tree
+// (TestTodoVerbNamesDerivedFromCommandTree); this asserts the surface name is
+// derived the same way rather than hard-coded.
+func TestMistypedVerbGuardSpeaksInTheInvokedSurfacesName(t *testing.T) {
+	for _, tc := range []struct {
+		surface string
+		build   func() *cobra.Command
+		foreign string
+	}{
+		{surface: "gtd", build: NewGTDCommand, foreign: "todo"},
+		{surface: "todo", build: newTodoCmd, foreign: "gtd"},
+	} {
+		t.Run(tc.surface, func(t *testing.T) {
+			_, store := todoFixture(t)
+
+			cmd := tc.build()
+			var out, errBuf bytes.Buffer
+			cmd.SetOut(&out)
+			cmd.SetErr(&errBuf)
+			cmd.SetArgs([]string{"show", "t855"})
+			err := cmd.Execute()
+			if err == nil {
+				t.Fatalf("%s: `show t855` was accepted, want a refusal", tc.surface)
+			}
+			combined := err.Error() + errBuf.String()
+
+			// The diagnostic names the surface actually invoked …
+			if !strings.Contains(combined, tc.surface+": ") {
+				t.Errorf("refusal should be prefixed %q; got %q", tc.surface+": ", combined)
+			}
+			if !strings.Contains(combined, "is not a "+tc.surface+" verb") {
+				t.Errorf("refusal should say %q; got %q", "is not a "+tc.surface+" verb", combined)
+			}
+			// … and the recovery line stays on that same surface, so the
+			// operator can paste it without switching commands.
+			if !strings.Contains(combined, "moai "+tc.surface+" add") {
+				t.Errorf("recovery hint should read %q; got %q", "moai "+tc.surface+" add", combined)
+			}
+			if strings.Contains(combined, "moai "+tc.foreign+" add") {
+				t.Errorf("recovery hint leaked the %s surface: %q", tc.foreign, combined)
+			}
+
+			rec, loadErr := store.Load()
+			if loadErr != nil {
+				t.Fatalf("load: %v", loadErr)
+			}
+			if len(rec.Items) != 0 {
+				t.Errorf("refused invocation still mutated the queue: %+v", rec.Items)
 			}
 		})
 	}

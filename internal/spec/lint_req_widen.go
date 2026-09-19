@@ -82,10 +82,15 @@ func parseREQsWide(body string) []REQEntry {
 // would also have collected it at the same line.
 //
 // The provenance is what lets the widening land without reddening the corpus.
-// doc.REQs feeds four error-severity findings — ModalityMalformed,
-// InvalidREQID, DuplicateREQID, CoverageIncomplete — and none of those codes is
+// doc.REQs feeds SIX findings today — ModalityMalformed, ModalityUnjudged,
+// LegacyEARSKeyword, InvalidREQID, DuplicateREQID, CoverageIncomplete — emitted
+// by three loops (EARSModalityRule, REQIDUniquenessRule, CoverageRule). Four of
+// them are error-severity (ModalityMalformed, InvalidREQID, DuplicateREQID, and
+// CoverageIncomplete at its rule's base severity) and none of those codes is
 // in eraDemotableCodes, so widening the collector turns them on across a corpus
-// that was never linted against them. Measured live before the wiring: 25
+// that was never linted against them. (This comment said "four findings" until
+// SPEC-HEADING-REQ-COLLECT-001 REQ-HRC-011 corrected it: it predates the axis
+// that added ModalityUnjudged and LegacyEARSKeyword.) Measured live before the wiring: 25
 // ModalityMalformed and 6 InvalidREQID errors appear that CoverageRule's own
 // severity treatment does not touch. Marking the newly-reachable entries lets
 // each emission site report the finding while declining to gate on it, and
@@ -97,6 +102,14 @@ func parseREQsWide(body string) []REQEntry {
 // that addition — every entry it produces keeps its ID, Text, Line, Widened
 // value and its (zero-value) list Source, which is what AC-SLB-001a and
 // AC-SLB-003 assert.
+//
+// SPEC-HEADING-REQ-COLLECT-001 (card t894) added a THIRD source: heading-form
+// definitions (lint_req_heading.go). mergeREQsByLine is two-way, so the third
+// input is folded in by COMPOSITION rather than by rewriting the helper — sound
+// because each input is line-sorted and the helper's output is line-sorted too.
+// The same no-perturbation guarantee holds for the list and table branches:
+// AC-HRC-007 asserts that every pre-existing entry keeps its ID, Text, Line,
+// Widened and Source, and the result differs only by ADDED heading entries.
 func parseREQsWithProvenance(body string) []REQEntry {
 	narrow := parseREQs(body)
 	narrowAt := make(map[int]string, len(narrow))
@@ -108,5 +121,5 @@ func parseREQsWithProvenance(body string) []REQEntry {
 	for i := range wide {
 		wide[i].Widened = narrowAt[wide[i].Line] != wide[i].ID
 	}
-	return mergeREQsByLine(wide, parseREQsTable(body))
+	return mergeREQsByLine(mergeREQsByLine(wide, parseREQsTable(body)), parseREQsHeadingForm(body))
 }

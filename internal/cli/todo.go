@@ -326,10 +326,32 @@ func todoMistypedVerbGuard(cmd *cobra.Command, args []string) error {
 		return nil
 	}
 	phrase := strings.Join(args, " ")
+	surface := todoSurfaceName(cmd)
 	return fmt.Errorf(
-		"todo: %q is not a todo verb and %q is %s — refusing to create a card named %q.\n"+
-			"Known verbs: %s\nTo add this text as a card anyway: moai todo add %q",
-		args[0], args[1], kind, phrase, strings.Join(todoVerbNames(cmd), ", "), phrase)
+		"%s: %q is not a %s verb and %q is %s — refusing to create a card named %q.\n"+
+			"Known verbs: %s\nTo add this text as a card anyway: moai %s add %q",
+		surface, args[0], surface, args[1], kind, phrase,
+		strings.Join(todoVerbNames(cmd), ", "), surface, phrase)
+}
+
+// todoSurfaceName reports the command name the operator actually invoked, so
+// the refusal above speaks in that surface's own voice.
+//
+// The verb tree is built once by newTodoCmd and mounted under two names:
+// `gtd`, the canonical surface, and `todo`, the thin compatibility spelling
+// (REQ-GTD-003). One guard therefore serves both, and a hard-coded "todo"
+// answered an operator on the canonical surface with the compatibility name —
+// and pointed the recovery line at a command they had not called.
+//
+// No per-surface branch is needed, because the invoked command already carries
+// its own name: this derives the surface exactly as todoVerbNames derives the
+// verb list, and for the same reason — a derived name cannot drift from the
+// tree, and a third mounting would be named correctly without another edit.
+func todoSurfaceName(cmd *cobra.Command) string {
+	if cmd == nil || cmd.Name() == "" {
+		return "todo"
+	}
+	return cmd.Name()
 }
 
 // todoCardAddressKind reports how args[1] addresses a card, or "" when it does
