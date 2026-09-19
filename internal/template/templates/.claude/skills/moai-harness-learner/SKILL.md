@@ -84,12 +84,18 @@ The skill emits this payload as its tool output. The orchestrator reads the payl
 
 ### Step 4: On Approve
 
-The skill applies the change by invoking the safety pipeline directly. Since the CLI `apply` only surfaces the payload (not executes), the actual write happens via the harness package's `Apply()` function, gated by the 5-Layer Safety Pipeline.
+Without `--execute`, `moai harness apply` only surfaces the payload. The write happens on the opt-in execute path (`Applier.Apply()`), gated by the 5-Layer Safety Pipeline, and `--execute` requires `--id` — the proposal it applies is named explicitly, never inferred from "the next pending one".
 
 For the coordinator skill, the simplest flow is:
 1. User selects "approve"
 2. Write `approved: true` to `.moai/harness/proposals/<id>.decision`
-3. Run `moai harness apply --execute --id <proposal-id>`.
+3. Run the execute path, naming the approved proposal id and the project root the write targets:
+
+```bash
+moai harness apply --execute --id <proposal-id> --project-root <project_root>
+```
+
+`--project-root` defaults to the current directory. Pass it explicitly when the session is working inside a worktree — its value is that worktree's own `git rev-parse --show-toplevel`, so the write lands in the tree the proposal was raised against rather than in the primary checkout.
 
 ### Step 5: On Reject
 

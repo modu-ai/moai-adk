@@ -306,6 +306,12 @@ main:
           ja: /moai todo
           zh: /moai todo
         ref: /utility-commands/moai-todo
+      - name:
+          ko: /moai gtd
+          en: /moai gtd
+          ja: /moai gtd
+          zh: /moai gtd
+        ref: /utility-commands/moai-gtd
 
   - name:
       ko: CLI 레퍼런스

@@ -62,7 +62,10 @@ whichever is configured in the project. Detection is by project markers
 
 ## Agent Roles in Quality
 
-From the CLAUDE.md §4 retained-agent catalog (10 agents):
+The quality-bearing roles from the CLAUDE.md §4 retained-agent catalog. That
+section is the roster's single source of truth — read the count and the full
+membership there rather than from this table, which lists only the agents with
+a quality responsibility:
 
 | Agent | Quality responsibility |
 |-------|----------------------|
@@ -141,8 +144,11 @@ agent-common-protocol §MCP Fallback Strategy).
 
 | Scope | Threshold |
 |-------|-----------|
-| Package-level (default) | 85% |
-| Critical packages (cli, template, hook) | 90%+ |
+| Module-level (default) | 85% — `test_coverage_target` in `.moai/config/sections/quality.yaml` |
+| Critical modules | 90%+ — the project names which modules those are |
+
+"Module" is whatever unit the project's language groups code into (package,
+module, crate, assembly); the threshold is unit-agnostic.
 
 A coverage figure is only valid when the coverage command was actually run
 and its output observed in the current run — not carried over from a prior

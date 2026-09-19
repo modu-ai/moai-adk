@@ -800,7 +800,7 @@ func runInit(cmd *cobra.Command, args []string) (err error) {
 	}
 
 	initializer := project.NewInitializer(deployer, mgr, nil)
-	executor := project.NewPhaseExecutor(detector, methDetector, validator, initializer, nil)
+	executor := newInitPhaseExecutorFn(detector, methDetector, validator, initializer)
 
 	ctx := cmd.Context()
 	if ctx == nil {
@@ -845,11 +845,31 @@ func runInit(cmd *cobra.Command, args []string) (err error) {
 
 	result, err := executor.Execute(ctx, opts)
 	if err != nil {
+		// SPEC-INIT-DEPLOY-EXIT-001 (REQ-IDE-004): warnings the executor
+		// recorded before failing (the skill-mirror notice) still belong in the
+		// exit summary panel — the failure path is not a reason to drop them.
+		// The executor returns a result alongside the error where it has one.
+		if result != nil {
+			for _, w := range result.Warnings {
+				p.Collect(w)
+			}
+		}
 		// REQ-TUX2-015: re-running init on an initialized project without
 		// --force is usually a template-refresh intent — redirect to
 		// `moai update` alongside the existing --force guidance.
 		if !getBoolFlag(cmd, "force") && strings.Contains(err.Error(), "already initialized") {
 			return fmt.Errorf("initialization failed: %w\n  Hint: this directory already contains a MoAI project — did you mean 'moai update' (refresh templates in place)? Re-run with --force only to reinitialize from scratch", err)
+		}
+		// SPEC-INIT-DEPLOY-EXIT-001 (REQ-IDE-003): a deployment failure aborts
+		// the template walk partway, so files after the failing one were never
+		// written. The surface states that fact and does NOT quantify it: the
+		// only number available here is how many files were written before the
+		// abort, while the expected total exists nowhere in the code — a bare
+		// count would read as progress rather than as damage, and a denominator
+		// would have to be invented. The failing template path is already
+		// carried by the wrapped error, so it is preserved rather than restated.
+		if strings.Contains(err.Error(), "template deployment") {
+			return fmt.Errorf("initialization failed: %w\n  The project tree is INCOMPLETE — template deployment stopped at the failing template, so the files after it were never written. Do not use this directory as-is: fix the template error, then re-run 'moai init --force' to reinitialize from scratch", err)
 		}
 		return fmt.Errorf("initialization failed: %w", err)
 	}
