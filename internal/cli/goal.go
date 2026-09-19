@@ -954,6 +954,15 @@ func runGoalAutoMission(cmd *cobra.Command, args []string, sessionFlag string, j
 // bareWordNeedsDeclaration now demands a declaration for every undeclared bare
 // word. A one-word condition such as `true` or `make` is not thrown away by
 // that: it is written `cmd: true`, and the refusal says so.
+//
+// What that leaves on the `goal arm <word>` path, measured on this merged tree
+// (card t948): `arm` skips the bare-form gates above by design, so a word that
+// resolves as a command still arms there — `stat` and `reset` measured, as
+// well as `false` and `date`, which the bare form now refuses. armTimeCondition
+// Gate still covers the genuinely broken case on that path (`goal arm show` is
+// refused, its first word resolving to nothing). The remaining asymmetry is
+// therefore intended rather than a gap: `goal arm <word>` states the arming
+// intent explicitly, which is the ambiguity the bare form lacks.
 func misreadGoalVerb(goalCmd *cobra.Command, word string) (string, bool) {
 	for _, sub := range goalCmd.Commands() {
 		for _, alias := range sub.SuggestFor {

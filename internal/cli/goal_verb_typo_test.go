@@ -75,19 +75,13 @@ func TestGoalVerbControls(t *testing.T) {
 	})
 }
 
-// TestGoalVerbResolvingTokens measures the shape the controls leave open: a
-// single verb-like word that the shell DOES resolve passes the runnability
-// probe and is too short for the prose-shape check. Measurement only — it
-// logs each outcome and asserts nothing, so the fix scope is decided on
-// observed behaviour rather than on the static reading.
-func TestGoalVerbResolvingTokens(t *testing.T) {
-	for _, tok := range []string{"stat", "ls", "reset", "done", "cancel", "rm", "help", "list", "show"} {
-		t.Run(tok, func(t *testing.T) {
-			armed, _, err := goalVerbOutcome(t, "VTOK", tok)
-			t.Logf("token=%q armed=%v err=%v", tok, armed, err)
-		})
-	}
-}
+// The scoping instrument that enumerated shell-resolvable verb-like tokens
+// (stat, ls, reset, done, cancel, rm, help, list, show) was removed once the
+// t605 fix landed: it logged outcomes and asserted nothing, so it could not go
+// red whatever the behaviour became. Every cell it named is now pinned by an
+// asserting test — stat/list/show and reset/done/cancel by
+// TestGoalVerbMisreadWordsRefused, help by TestGoalVerbHelpWordShowsHelp, and
+// ls/rm as bare single words by TestGoalBareWordRequiresDeclaration.
 
 // TestGoalVerbMisreadWordsRefused pins the fix for card t605: a single word a
 // user would plausibly type as a goal verb is refused with the verb it meant,
@@ -170,8 +164,10 @@ func TestGoalVerbMisreadCheckStaysNarrow(t *testing.T) {
 // bare single-word form.
 func TestGoalBareWordRequiresDeclaration(t *testing.T) {
 	// false: resolves, always non-zero. date: resolves, always zero. ls and
-	// true are the shapes the previous narrowness guard asserted must arm.
-	for _, word := range []string{"false", "date", "ls", "true"} {
+	// true are the shapes the previous narrowness guard asserted must arm. rm
+	// arrives from card t946, where it was the one cell the removed scoping
+	// instrument named that no asserting test had picked up.
+	for _, word := range []string{"false", "date", "ls", "true", "rm"} {
 		t.Run(word, func(t *testing.T) {
 			armed, out, err := goalVerbOutcome(t, "VBARE", word)
 			if err == nil || armed {
