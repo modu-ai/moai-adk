@@ -79,7 +79,12 @@ var frozenTodoSurface = map[string][]string{
 //     Together with `done` it is one of EXACTLY TWO verbs reaching the
 //     archive transition (REQ-AD-002) — the scope test in
 //     todo_autodone_test.go pins that allowlist.
-var permittedVerbAdditions = []string{"export-json", "undone", "history", "landed", "auto-done"}
+//   - triage      — card t943 (the pre-dispatch premise read; flags: --json).
+//     Read-only through LoadPure: it mutates no card, field, finding or
+//     schema and takes no queue mutation lock, which
+//     TestTodoTriage_QueueUnchanged asserts rather than assumes. It renders
+//     mechanical observations of the tree and reaches no verdict.
+var permittedVerbAdditions = []string{"export-json", "undone", "history", "landed", "auto-done", "triage"}
 
 // permittedFlagAdditions records flags added to an ALREADY-FROZEN verb, which
 // is a re-flagging and therefore needs its own declaration rather than an edit

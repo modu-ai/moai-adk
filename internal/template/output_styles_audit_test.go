@@ -64,6 +64,7 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
+	"slices"
 	"strings"
 	"testing"
 	"unicode/utf8"
@@ -193,7 +194,7 @@ func findProjectRoot() (string, bool) {
 		return "", false
 	}
 	dir := filepath.Dir(thisFile)
-	for i := 0; i < 8; i++ {
+	for range 8 {
 		if _, err := os.Stat(filepath.Join(dir, ".moai")); err == nil {
 			return dir, true
 		}
@@ -233,7 +234,6 @@ func TestOutputStylesFrontmatterSchema(t *testing.T) {
 	}
 
 	for _, tc := range realCases {
-		tc := tc
 		t.Run(tc.fileName, func(t *testing.T) {
 			t.Parallel()
 
@@ -290,7 +290,6 @@ func TestOutputStylesFrontmatterSchema(t *testing.T) {
 			{"integer", "1"},
 		}
 		for _, sc := range cases {
-			sc := sc
 			t.Run(sc.label, func(t *testing.T) {
 				t.Parallel()
 				content := fmt.Sprintf("---\nname: TestStyle\ndescription: Test\nkeep-coding-instructions: %s\n---\n", sc.value)
@@ -386,13 +385,7 @@ func TestOutputStylesExactlyThree(t *testing.T) {
 		}
 	}
 	for expected := range expectedNames {
-		found := false
-		for _, name := range mdFiles {
-			if name == expected {
-				found = true
-				break
-			}
-		}
+		found := slices.Contains(mdFiles, expected)
 		if !found {
 			t.Errorf("%s: required style file %q not found in embedded templates",
 				errPrefixUnverified, expected)
@@ -516,7 +509,6 @@ func TestOutputStylesEncoding(t *testing.T) {
 
 	styleFiles := []string{styleFileMoAI, styleFileMoAILearn, styleFileMoAIEasy}
 	for _, name := range styleFiles {
-		name := name
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
 
