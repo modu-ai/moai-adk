@@ -946,6 +946,17 @@ func runGoalAutoMission(cmd *cobra.Command, args []string, sessionFlag string, j
 // explicit on purpose: conditions are free text, so a rule that refused
 // anything verb-shaped would throw away legitimate one-word conditions
 // such as `true` or `make`.
+//
+// What this list does NOT cover, measured rather than assumed (card t948):
+// `false` and `date` are refused by NEITHER form, because they are neither on
+// this list nor unresolvable — they are real commands, so `goal arm false` is
+// a legitimate (if useless) mechanical condition and `--max-turns` is its
+// bound. The arm path is not unguarded either: armTimeConditionGate refuses a
+// mechanical condition whose first word resolves to no command, so
+// `goal arm show` IS refused, by that gate rather than by this list. The
+// residual bare-vs-arm asymmetry is therefore narrow — it covers only the
+// listed words that also resolve as commands (`stat`, `reset` measured) — and
+// is intended: `goal arm <word>` states the arming intent explicitly.
 func misreadGoalVerb(goalCmd *cobra.Command, word string) (string, bool) {
 	for _, sub := range goalCmd.Commands() {
 		for _, alias := range sub.SuggestFor {
