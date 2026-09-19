@@ -2,7 +2,7 @@
 id: SPEC-GOBIN-GOTOOLCHAIN-001
 title: "Pin GOTOOLCHAIN=local on the gobin resolver's go env subprocesses"
 version: "0.1.0"
-status: draft
+status: in-progress
 created: 2026-09-20
 updated: 2026-09-20
 author: manager-spec
