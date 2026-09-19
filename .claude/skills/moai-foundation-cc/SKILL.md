@@ -63,7 +63,7 @@ Advanced Features:
 
 Skills: Model-invoked extensions in ~/.claude/skills/ (personal) or .claude/skills/ (project). Three-level progressive disclosure. Max 500 lines.
 
-Sub-agents: Specialized assistants via Agent(subagent_type="..."). Context window follows the session model (Sonnet 5 = 1M native on the Anthropic API; Haiku / gateway / older models = 200K — CC 2.1.197). Nesting: a subagent can spawn nested subagents only when its `tools` list includes `Agent` (CC 2.1.172); MoAI retained agents omit `Agent`, so they do not nest. To create or manage subagents, ask Claude or edit `.claude/agents/` directly — the `/agents` wizard was removed in CC 2.1.198 (the official sub-agents doc still documented a `/agents` tabbed interface as of 2026-07-03; doc lag — verify in a live 2.1.198 session).
+Sub-agents: Specialized assistants via Agent(subagent_type="..."). Context window follows the session model (Sonnet 5 = 1M native on the Anthropic API; Haiku / gateway / older models = 200K — CC 2.1.197). Nesting: by default a subagent CAN spawn subagents of its own, up to three layers below the main conversation; `CLAUDE_CODE_MAX_SUBAGENT_SPAWN_DEPTH` changes the limit and `1` turns nesting off (CC 2.1.217+). At the depth limit Claude Code withholds the `Agent` tool. To stop one specific subagent from spawning, omit `Agent` from its `tools` list or add it to `disallowedTools` — MoAI retained agents omit `Agent`, so they do not nest regardless of the depth setting. To create or manage subagents, ask Claude or edit `.claude/agents/` directly — the `/agents` wizard was removed in CC 2.1.198 (the official sub-agents doc still documented a `/agents` tabbed interface as of 2026-07-03; doc lag — verify in a live 2.1.198 session).
 
 Plugins: Reusable bundles in .claude-plugin/plugin.json. Include commands, agents, skills, hooks, MCP servers.
 
@@ -115,7 +115,7 @@ Create a markdown file with YAML frontmatter containing name, description explai
 
 ### Critical Rules
 
-- Cannot spawn other sub-agents by default (CC 2.1.172: a subagent CAN spawn nested subagents when its `tools` list includes `Agent`; MoAI retained agents omit `Agent`, so they do not nest)
+- Nesting is allowed by default (three layers below the main conversation); MoAI retained agents omit `Agent` from `tools`, so they do not spawn subagents of their own
 - Cannot use AskUserQuestion effectively
 - All user interaction before delegation
 - Context window follows the session model (Sonnet 5 = 1M native on the Anthropic API; Haiku / gateway / older models = 200K — CC 2.1.197)
