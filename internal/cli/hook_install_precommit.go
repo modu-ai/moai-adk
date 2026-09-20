@@ -161,7 +161,26 @@ if [ -n "$STAGED_GO" ]; then
             done | sort -u
         )"
 
+        # MODROOTS is newline-separated, so the loop must split on newlines
+        # only: a module root whose path contains a space would otherwise be
+        # torn into two words, and each fragment names no directory -- the
+        # cd below then fails and the hook reports a go vet failure for a
+        # vet that never ran. IFS is restored as the body's first statement
+        # because the for list is expanded once, before the first iteration;
+        # restoring it there leaves the body's own splitting untouched.
+        #
+        # A "printf ... | while read" loop would split correctly too, but it
+        # runs in a subshell, and the "exit 1" below would then leave the hook
+        # alive -- a fix that silently disarms the gate.
+        #
+        # No backticks anywhere in this file: preCommitHookContent in
+        # internal/cli/hook_install_precommit.go holds this text as a Go raw
+        # string literal, which cannot contain one.
+        _moai_oldifs="$IFS"
+        IFS='
+'
         for _mr in $MODROOTS; do
+            IFS="$_moai_oldifs"
             PKGS="$(
                 printf '%s\n' "$STAGED_GO" | while IFS= read -r f; do
                     [ -n "$f" ] || continue
@@ -191,6 +210,7 @@ if [ -n "$STAGED_GO" ]; then
                 exit 1
             fi
         done
+        IFS="$_moai_oldifs"
     fi
 fi
 
