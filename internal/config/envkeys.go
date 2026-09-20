@@ -342,6 +342,121 @@ func GLMEnvVarSet() []string {
 	}
 }
 
+// Settings-axis env-var names that had no constant of their own before the
+// canonical declaration below needed them. Both were previously spelled only as
+// string literals at their delete sites.
+const (
+	// EnvMoaiBackupAuthToken is where the GLM injection path parks a
+	// pre-existing OAuth token so the cleanup paths can restore it as
+	// EnvAnthropicAuthToken on the way out. No non-MoAI flow writes it and no
+	// user sets it by hand, which is why a settings file carrying it is by
+	// definition a MoAI-written file.
+	EnvMoaiBackupAuthToken = "MOAI_BACKUP_AUTH_TOKEN"
+
+	// EnvAPITimeoutMs raises the Anthropic client request timeout (milliseconds)
+	// for the slower Z.AI-proxied endpoint. A legacy settings-axis member: the
+	// live route that wrote it into settings.local.json is closed, so it is
+	// cleaned as residue from a file an older binary wrote.
+	EnvAPITimeoutMs = "API_TIMEOUT_MS"
+)
+
+// settingsAxisEntry is one key of the canonical settings-axis declaration,
+// carrying the live-or-legacy classification the two views below filter on.
+type settingsAxisEntry struct {
+	name string
+	// legacy marks a key no live producer can write today. It still reaches
+	// settings.local.json from a file an older binary wrote, so it is cleaned;
+	// it is simply not part of what a current producer can put there.
+	legacy bool
+}
+
+// settingsAxis is the canonical, ordered declaration of the SETTINGS AXIS — the
+// keys deleted from the `env` object of .claude/settings.local.json.
+//
+// It is DISTINCT FROM THE TMUX AXIS (buildTmuxInjectVars / buildTmuxClearVars in
+// internal/cli/glm.go), which injects into and clears from a tmux pane's process
+// environment. The two axes have different members and different lifetimes;
+// comparing one's length against the other's measures nothing.
+//
+// FIVE FORMER HAND-MAINTAINED LISTS DERIVE FROM IT: the delete blocks of
+// removeGLMEnv (internal/cli/launcher.go), stripGLMCredsAndSetTeammateMode
+// (internal/cli/settings.go) and cleanupGLMSettingsLocal
+// (internal/hook/session_end.go), plus the two test key lists
+// liveSettingsAxisKeys (internal/cli) and liveHookWrittenKeys (internal/hook).
+// Nothing tied those five together and they had already drifted apart; this
+// declaration is the single place a settings-axis key is now named.
+//
+// This is a SIBLING of GLMEnvVarSet, not a widening of it: GLMEnvVarSet answers
+// a different question — the 3-key inject↔clear parity anchor of
+// SPEC-CLIFIX-HYGIENE-001 REQ-HYG-001-003.
+//
+// The order is stable and load-bearing for readability: a future addition shows
+// up as a one-line diff rather than a reshuffle.
+//
+// Membership is NOT a deletion instruction for every key. Two members —
+// EnvAnthropicAuthToken and EnvMoaiBackupAuthToken — are the OAuth restore's
+// target and source; their disposition belongs to the restore branch of each
+// cleanup function, which runs before, and instead of, the deletion loop. A
+// consumer that simply iterates the cleanup view over those two destroys the
+// user's own OAuth token.
+//
+// @MX:ANCHOR: [AUTO] settings-axis key SSOT — the single declaration five former lists derive from
+// @MX:REASON: five hand-written lists spelling one axis had already drifted; a key added here reaches every cleanup path at once, and a key added to only one path again re-opens the drift
+var settingsAxis = []settingsAxisEntry{
+	{name: EnvMoaiBackupAuthToken},
+	{name: EnvAnthropicAuthToken},
+	{name: EnvAnthropicBaseURL},
+	{name: EnvAnthropicDefaultHaikuModel},
+	{name: EnvAnthropicDefaultSonnetModel},
+	{name: EnvAnthropicDefaultOpusModel},
+	{name: EnvAnthropicDefaultFableModel, legacy: true},
+	{name: EnvClaudeCodeDisableExperimentalBetas},
+	{name: EnvAPITimeoutMs, legacy: true},
+	{name: EnvClaudeCodeDisableNonessentialTraffic, legacy: true},
+	{name: EnvClaudeCodeTeammateDisplay, legacy: true},
+	{name: EnvStatuslineContextSize, legacy: true},
+	{name: EnvClaudeCodeAutoCompactWindow},
+	{name: EnvClaudeCodeMaxContextTokens},
+}
+
+// SettingsAxisCleanupKeys returns the full settings-axis cleanup view in
+// declaration order: every key a cleanup path removes from
+// settings.local.json's `env`, live and legacy alike.
+//
+// Consumed by the three production cleanup functions. See the settingsAxis doc
+// comment for the token-pair carve-out — two members are owned by the OAuth
+// restore branch, not by the deletion loop.
+//
+// A fresh slice is returned on every call, so a caller mutating it cannot
+// corrupt the declaration for the next one.
+func SettingsAxisCleanupKeys() []string {
+	keys := make([]string, 0, len(settingsAxis))
+	for _, e := range settingsAxis {
+		keys = append(keys, e.name)
+	}
+	return keys
+}
+
+// SettingsAxisLiveKeys returns the live view: the settings-axis keys a live
+// producer can put into settings.local.json's `env` today, in declaration order.
+// It is the cleanup view minus the legacy tail, derived by filtering the one
+// declaration rather than by re-listing the keys.
+//
+// Consumed by the live-key guards and by the cross-axis tmux-parity guard, which
+// means this view — not the cleanup view — is what those guards iterate.
+//
+// A fresh slice is returned on every call, so a caller mutating it cannot
+// corrupt the declaration for the next one.
+func SettingsAxisLiveKeys() []string {
+	keys := make([]string, 0, len(settingsAxis))
+	for _, e := range settingsAxis {
+		if !e.legacy {
+			keys = append(keys, e.name)
+		}
+	}
+	return keys
+}
+
 // MoAI test-only environment variables.
 const (
 	// EnvTestMode enables test mode behavior when set to "1".

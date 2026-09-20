@@ -137,7 +137,7 @@ func TestInitNoNetworkBeforeWizard(t *testing.T) {
 	t.Cleanup(func() { deferredUpdateEnabled = origEnabled })
 
 	origCheck := deferredUpdateCheck
-	deferredUpdateCheck = func(*cobra.Command) *deferredUpdateResult {
+	deferredUpdateCheck = func(*cobra.Command, *Dependencies) *deferredUpdateResult {
 		rec.record("update-check")
 		return &deferredUpdateResult{Available: true, LatestVersion: "v9.9.9", CurrentVersion: "v0.0.1"}
 	}
@@ -183,7 +183,7 @@ func TestDeferredUpdateNotice_StderrHintOnly(t *testing.T) {
 	t.Cleanup(func() { deferredUpdateEnabled = origEnabled })
 
 	origCheck := deferredUpdateCheck
-	deferredUpdateCheck = func(*cobra.Command) *deferredUpdateResult {
+	deferredUpdateCheck = func(*cobra.Command, *Dependencies) *deferredUpdateResult {
 		return &deferredUpdateResult{Available: true, LatestVersion: "v9.9.9", CurrentVersion: "v1.0.0"}
 	}
 	t.Cleanup(func() { deferredUpdateCheck = origCheck })
@@ -238,7 +238,7 @@ func TestDeferredUpdateNotice_NotAvailableSilent(t *testing.T) {
 	} {
 		t.Run(name, func(t *testing.T) {
 			origCheck := deferredUpdateCheck
-			deferredUpdateCheck = func(*cobra.Command) *deferredUpdateResult { return res }
+			deferredUpdateCheck = func(*cobra.Command, *Dependencies) *deferredUpdateResult { return res }
 			t.Cleanup(func() { deferredUpdateCheck = origCheck })
 
 			cmd := newInitTestCmd()
@@ -299,7 +299,7 @@ func TestSkipBinaryUpdate_DeferredCheckSkipped(t *testing.T) {
 			var calls int32
 			var mu sync.Mutex
 			origCheck := deferredUpdateCheck
-			deferredUpdateCheck = func(*cobra.Command) *deferredUpdateResult {
+			deferredUpdateCheck = func(*cobra.Command, *Dependencies) *deferredUpdateResult {
 				mu.Lock()
 				calls++
 				mu.Unlock()
@@ -340,7 +340,7 @@ func TestNonTTYUpdateCheckNonBlocking(t *testing.T) {
 
 	release := make(chan struct{})
 	origCheck := deferredUpdateCheck
-	deferredUpdateCheck = func(*cobra.Command) *deferredUpdateResult {
+	deferredUpdateCheck = func(*cobra.Command, *Dependencies) *deferredUpdateResult {
 		<-release // simulate a hung network check
 		return &deferredUpdateResult{Available: true, LatestVersion: "v9.9.9"}
 	}
@@ -383,7 +383,7 @@ func TestInitNonInteractiveDeferredUpdateNotice(t *testing.T) {
 	t.Cleanup(func() { deferredUpdateEnabled = origEnabled })
 
 	origCheck := deferredUpdateCheck
-	deferredUpdateCheck = func(*cobra.Command) *deferredUpdateResult {
+	deferredUpdateCheck = func(*cobra.Command, *Dependencies) *deferredUpdateResult {
 		return &deferredUpdateResult{Available: true, LatestVersion: "v9.9.9", CurrentVersion: "v0.0.1"}
 	}
 	t.Cleanup(func() { deferredUpdateCheck = origCheck })
@@ -434,7 +434,7 @@ func TestDeferredUpdateNotice_DefaultCheckPaths(t *testing.T) {
 
 	t.Run("nil-deps", func(t *testing.T) {
 		deps = nil
-		res := defaultDeferredUpdateCheck(cmd)
+		res := defaultDeferredUpdateCheck(cmd, deps)
 		if res == nil || res.Available || res.Err != nil {
 			t.Errorf("nil deps must return an empty non-available result, got %+v", res)
 		}
@@ -445,7 +445,7 @@ func TestDeferredUpdateNotice_DefaultCheckPaths(t *testing.T) {
 			available: true,
 			info:      &update.VersionInfo{Version: "v9.9.9"},
 		}}
-		res := defaultDeferredUpdateCheck(cmd)
+		res := defaultDeferredUpdateCheck(cmd, deps)
 		if res.Err != nil || !res.Available || res.LatestVersion != "v9.9.9" {
 			t.Errorf("expected available v9.9.9, got %+v", res)
 		}
@@ -456,7 +456,7 @@ func TestDeferredUpdateNotice_DefaultCheckPaths(t *testing.T) {
 
 	t.Run("up-to-date", func(t *testing.T) {
 		deps = &Dependencies{UpdateChecker: &fakeUpdateChecker{available: false}}
-		res := defaultDeferredUpdateCheck(cmd)
+		res := defaultDeferredUpdateCheck(cmd, deps)
 		if res.Err != nil || res.Available {
 			t.Errorf("expected non-available result, got %+v", res)
 		}
@@ -464,7 +464,7 @@ func TestDeferredUpdateNotice_DefaultCheckPaths(t *testing.T) {
 
 	t.Run("check-error", func(t *testing.T) {
 		deps = &Dependencies{UpdateChecker: &fakeUpdateChecker{err: os.ErrDeadlineExceeded}}
-		res := defaultDeferredUpdateCheck(cmd)
+		res := defaultDeferredUpdateCheck(cmd, deps)
 		if res.Err == nil {
 			t.Errorf("expected error result, got %+v", res)
 		}
