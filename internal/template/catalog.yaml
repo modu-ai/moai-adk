@@ -36,7 +36,7 @@ catalog:
             - name: moai-kanban-foreman
               tier: core
               path: templates/.claude/skills/moai-kanban-foreman/
-              hash: 7506c5b560a660db9ce8f89a754f227d3c5000072e6840ab44a4b3be90953fd3
+              hash: 12f710cda8f082b2b0996633ff7e8a958f8e3fa9dbb0a6e3c72819e553089548
               version: 1.0.0
             - name: moai-meta-harness
               tier: core
@@ -132,7 +132,7 @@ catalog:
             - name: manager-lead
               tier: core
               path: templates/.claude/agents/moai/manager-lead.md
-              hash: 2e3f0956566a6efc7a2f2bc5113c3a55ed33fdd9b812dde6cdd4054fc83d3adf
+              hash: 304b15d93b30a29514e21eb5545c9650a89705e3252c2ef64743c4728691a6cb
               version: 1.0.0
             - name: manager-spec
               tier: core
@@ -269,5 +269,5 @@ catalog:
             - name: builder-harness
               tier: harness-generated
               path: templates/.claude/agents/moai/builder-harness.md
-              hash: 37ff28085c45bb19b86946ca32a2416bf0af7a040f062cfa744fa98ed9a92b24
+              hash: bd80c32649728a97bcf5a0bef83f0f971cca7a7757e729a6a1062df3528123ba
               version: 1.0.0
