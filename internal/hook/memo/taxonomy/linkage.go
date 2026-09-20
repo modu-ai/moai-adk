@@ -39,11 +39,21 @@ const archiveDirName = "_archive"
 // cite a sibling. Archiving in practice folds an entry out of MEMORY.md into a
 // secondary index that sits beside the topic files rather than moving the file
 // into a subdirectory, so reachability has to be read from those files too —
-// and a topic file citing one relative is not one of them. Measured over the
-// live store, the separation is clean rather than marginal: the real index
-// files carry 3 links at the low end, while the ordinary topic files that
-// carry any sibling link at all carry exactly 1.
-const secondaryIndexLinkThreshold = 2
+// and a topic file citing a couple of relatives is not one of them.
+//
+// The threshold counts LINK MATCHES, not lines carrying a link, and the two
+// give different answers: a card record citing two siblings on one line reads
+// as 1 by line and 2 by match. Measured over the live store by match, the real
+// index files carry 42 links at the low end while the ordinary topic files
+// that cite anything at all carry 1 or 2 — so 3 sits in a gap fourteen times
+// wider than the boundary case it has to exclude.
+//
+// Counting by line put the threshold at 2, which admitted exactly one card
+// record and hid the two siblings it cited: both were reachable from nothing
+// else, so the orphan finding went silent on two real losses. A false negative
+// here is worse than a false positive — an unreported loss is the failure this
+// audit exists to catch — which is why the margin is spent on that side.
+const secondaryIndexLinkThreshold = 3
 
 // markdownLinkTarget captures the target of a markdown link. The index format
 // is one `- [Title](file.md) — hook` line per memory, so the targets are the

@@ -150,15 +150,16 @@ func TestAuditLinkageSecondaryIndexPreventsOrphan(t *testing.T) {
 	t.Parallel()
 	dir := writeMemoryFixture(t,
 		[]string{"archive_index.md"},
-		[]string{"archive_index.md", "feedback_folded_a.md", "feedback_folded_b.md"})
-	writeIndexFile(t, dir, "archive_index.md", []string{"feedback_folded_a.md", "feedback_folded_b.md"})
+		[]string{"archive_index.md", "feedback_folded_a.md", "feedback_folded_b.md", "feedback_folded_c.md"})
+	writeIndexFile(t, dir, "archive_index.md",
+		[]string{"feedback_folded_a.md", "feedback_folded_b.md", "feedback_folded_c.md"})
 
 	findings, err := AuditLinkage(dir)
 	if err != nil {
 		t.Fatalf("AuditLinkage: %v", err)
 	}
 	if got := codesOf(findings)[WarnOrphanNotIndexed]; got != 0 {
-		t.Errorf("orphan findings = %d, want 0 (both files are reachable via archive_index.md): %+v", got, findings)
+		t.Errorf("orphan findings = %d, want 0 (all three files are reachable via archive_index.md): %+v", got, findings)
 	}
 }
 
@@ -169,8 +170,9 @@ func TestAuditLinkageOrphanSurvivesSecondaryIndex(t *testing.T) {
 	t.Parallel()
 	dir := writeMemoryFixture(t,
 		[]string{"archive_index.md"},
-		[]string{"archive_index.md", "feedback_folded_a.md", "feedback_lonely.md"})
-	writeIndexFile(t, dir, "archive_index.md", []string{"feedback_folded_a.md", "feedback_folded_b.md"})
+		[]string{"archive_index.md", "feedback_folded_a.md", "feedback_folded_c.md", "feedback_lonely.md"})
+	writeIndexFile(t, dir, "archive_index.md",
+		[]string{"feedback_folded_a.md", "feedback_folded_b.md", "feedback_folded_c.md"})
 
 	findings, err := AuditLinkage(dir)
 	if err != nil {
@@ -194,8 +196,9 @@ func TestAuditLinkageReportsDoubleIndexedFile(t *testing.T) {
 	t.Parallel()
 	dir := writeMemoryFixture(t,
 		[]string{"archive_index.md", "feedback_revived.md"},
-		[]string{"archive_index.md", "feedback_revived.md", "feedback_folded.md"})
-	writeIndexFile(t, dir, "archive_index.md", []string{"feedback_revived.md", "feedback_folded.md"})
+		[]string{"archive_index.md", "feedback_revived.md", "feedback_folded.md", "feedback_folded_b.md"})
+	writeIndexFile(t, dir, "archive_index.md",
+		[]string{"feedback_revived.md", "feedback_folded.md", "feedback_folded_b.md"})
 
 	findings, err := AuditLinkage(dir)
 	if err != nil {
@@ -223,8 +226,9 @@ func TestAuditLinkageSingleIndexIsNotDuplicate(t *testing.T) {
 	t.Parallel()
 	dir := writeMemoryFixture(t,
 		[]string{"archive_index.md", "feedback_live.md"},
-		[]string{"archive_index.md", "feedback_live.md", "feedback_folded_a.md", "feedback_folded_b.md"})
-	writeIndexFile(t, dir, "archive_index.md", []string{"feedback_folded_a.md", "feedback_folded_b.md"})
+		[]string{"archive_index.md", "feedback_live.md", "feedback_folded_a.md", "feedback_folded_b.md", "feedback_folded_c.md"})
+	writeIndexFile(t, dir, "archive_index.md",
+		[]string{"feedback_folded_a.md", "feedback_folded_b.md", "feedback_folded_c.md"})
 
 	findings, err := AuditLinkage(dir)
 	if err != nil {
@@ -241,32 +245,36 @@ func TestAuditLinkageSingleIndexIsNotDuplicate(t *testing.T) {
 func TestAuditLinkageIndexDiscriminatorBoundary(t *testing.T) {
 	t.Parallel()
 
-	// One link: a citation, not an index — its target stays unreachable.
+	// Two links: still a citation, not an index — this is the case measured on
+	// the live store, where a card record citing two siblings on one line was
+	// read as an index and hid both of them from the orphan finding.
 	below := writeMemoryFixture(t,
 		[]string{"feedback_citing.md"},
-		[]string{"feedback_citing.md", "feedback_cited.md"})
-	writeIndexFile(t, below, "feedback_citing.md", []string{"feedback_cited.md"})
+		[]string{"feedback_citing.md", "feedback_cited.md", "feedback_other.md"})
+	writeIndexFile(t, below, "feedback_citing.md",
+		[]string{"feedback_cited.md", "feedback_other.md"})
 
 	findings, err := AuditLinkage(below)
 	if err != nil {
 		t.Fatalf("AuditLinkage(below): %v", err)
 	}
-	if got := codesOf(findings)[WarnOrphanNotIndexed]; got != 1 {
-		t.Errorf("one-link file treated as an index: orphan findings = %d, want 1: %+v", got, findings)
+	if got := codesOf(findings)[WarnOrphanNotIndexed]; got != 2 {
+		t.Errorf("two-link file treated as an index: orphan findings = %d, want 2: %+v", got, findings)
 	}
 
-	// Two links: an index — both targets become reachable.
+	// Three links: an index — every target becomes reachable.
 	at := writeMemoryFixture(t,
 		[]string{"feedback_citing.md"},
-		[]string{"feedback_citing.md", "feedback_cited.md", "feedback_other.md"})
-	writeIndexFile(t, at, "feedback_citing.md", []string{"feedback_cited.md", "feedback_other.md"})
+		[]string{"feedback_citing.md", "feedback_cited.md", "feedback_other.md", "feedback_third.md"})
+	writeIndexFile(t, at, "feedback_citing.md",
+		[]string{"feedback_cited.md", "feedback_other.md", "feedback_third.md"})
 
 	findings, err = AuditLinkage(at)
 	if err != nil {
 		t.Fatalf("AuditLinkage(at): %v", err)
 	}
 	if got := codesOf(findings)[WarnOrphanNotIndexed]; got != 0 {
-		t.Errorf("two-link file not treated as an index: orphan findings = %d, want 0: %+v", got, findings)
+		t.Errorf("three-link file not treated as an index: orphan findings = %d, want 0: %+v", got, findings)
 	}
 }
 
