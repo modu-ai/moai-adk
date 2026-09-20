@@ -466,12 +466,21 @@ func newIntegrationReleaseCmd() *cobra.Command {
 				return err
 			}
 			if jsonOut {
+				// The standing source writes its line to stderr on the JSON
+				// path, so a `--json` consumer's stdout stays one document.
+				issueCodemapsDebtCard(cmd.ErrOrStderr(), cmd.ErrOrStderr(), resolveProjectDir())
 				return json.NewEncoder(cmd.OutOrStdout()).Encode(map[string]any{
 					"released": true,
 					"lock":     released,
 				})
 			}
 			_, _ = fmt.Fprintf(cmd.OutOrStdout(), "release-integration window released (was %s on %s)\n", released.SessionID, released.Branch)
+			// The codemaps-debt standing source (card t1018) runs AFTER the
+			// release has succeeded and cannot fail it — see
+			// integration_codemaps_card.go for why this verb is where the
+			// operator placed it, and why the trigger reads the codemaps
+			// layer rather than the process exit code.
+			issueCodemapsDebtCard(cmd.OutOrStdout(), cmd.ErrOrStderr(), resolveProjectDir())
 			return nil
 		},
 	}

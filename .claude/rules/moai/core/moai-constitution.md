@@ -159,6 +159,14 @@ Capture and reuse learnings from user corrections and agent failures across sess
   the index must shrink, make entries shorter, never fewer — see
   `.claude/rules/moai/workflow/moai-memory.md` § MEMORY.md Index Budget, which states no loading
   limit and tells you to measure with `moai memory doctor` instead of estimating.
+- [ZONE:Evolvable] [HARD] **Which index holds the line is decided when it is written, not by
+  folding later.** `MEMORY.md` is the only always-loaded index, so it admits **open work and
+  general discipline** and nothing else; a record whose card is closed takes its line in the card
+  archive, and a lesson bound to one card in the lesson index — from the start. This narrows
+  *where* a line lives and never *whether* one exists, so the clause above is unchanged: exactly
+  one index line per topic file, removal still prohibited, and every secondary index itself
+  reachable from `MEMORY.md`. Criterion and rationale:
+  `.claude/rules/moai/workflow/moai-memory.md` § Admission.
 - Each entry records category, the incorrect pattern, the correct approach, and the date. Review
   the relevant ones before starting work in the same domain.
 - Lessons are additive: never overwrite one — append corrections as updates, and supersede by

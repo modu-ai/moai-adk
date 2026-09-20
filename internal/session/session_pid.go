@@ -66,10 +66,20 @@ var (
 // ResolveOwnerPID reports the PID of the long-lived session that owns this
 // process, and whether it could be resolved at all. Resolution order:
 //
-//  1. MOAI_SESSION_PID, when it names a live process — the caller knew the
-//     session PID outright and said so.
+//  1. MOAI_SESSION_PID, when it names a live process AND that process
+//     plausibly names THIS process's own session — see stampNamesOwnSession.
 //  2. The nearest ancestor that is not a wrapper shell, when the platform can
 //     report ancestry and that ancestor is live.
+//
+// The qualifier on step 1 is card t958. An environment variable is INHERITED:
+// two independent sessions launched from the same shell both carry the value
+// the first one stamped, so an unconditional override collapsed their distinct
+// ancestries onto one pid, and every pid-keyed ownership check downstream read
+// them as one owner. (Attribution: recording the owning-session pid predates
+// this, from commit 3f3465369 (card t298); commit ea939d9a7 (card t951) added
+// the integration lock's releasableBy, making pid a second key on the release
+// holder judgment and thereby WIDENING the exposure surface of that
+// pre-existing acquire-era property — it is not a t951 regression.)
 //
 // There is deliberately no os.Getpid() third step. This is the seam for
 // callers whose record outlives the process that writes it, and for them
@@ -80,13 +90,65 @@ var (
 // resolveSessionPID below for the registry's answer, and
 // internal/kanban.IntegrationLock for the integration window's.
 func ResolveOwnerPID() (pid int, resolved bool) {
-	if pid, ok := sessionPIDFromEnv(os.Getenv(config.EnvMoaiSessionPID)); ok {
+	if pid, ok := sessionPIDFromEnv(os.Getenv(config.EnvMoaiSessionPID)); ok && stampNamesOwnSession(pid) {
 		return pid, true
 	}
 	if pid := ancestorSessionPID(os.Getpid()); pid > 0 {
 		return pid, true
 	}
 	return 0, false
+}
+
+// stampNamesOwnSession reports whether pid plausibly names the session THIS
+// process belongs to: it is this process itself, or it appears in this
+// process's ancestry chain. A stamp that names neither is one this process
+// inherited from an unrelated session, and honoring it is what let two
+// independent sessions resolve to the same owner (card t958).
+//
+// Two properties are deliberate and neither is hidden:
+//
+// Fail-open where ancestry is UNMEASURABLE. When the procInfo seam reports
+// nothing at all for this process — a platform that cannot read the process
+// table — the stamp is accepted unchanged. That preserves today's behavior on
+// those platforms rather than breaking them: the alternative is refusing every
+// stamp exactly where the walk cannot answer either, which would resolve no
+// owner at all. The fail-open applies only to "cannot measure", never to a
+// chain that WAS measured and did not contain the stamp.
+//
+// KNOWN RESIDUAL: a second session that is a strict DESCENDANT of the stamping
+// session still passes, because a descendant genuinely has the stamper in its
+// chain and a pid alone cannot separate "I am the stamper's session" from "I
+// am a different session running underneath it". The check closes the SIBLING
+// case — two lanes launched from sibling shells, which is the realistic one —
+// and does not close the descendant case.
+func stampNamesOwnSession(pid int) bool {
+	self := os.Getpid()
+	if pid == self {
+		return true
+	}
+	// Unmeasurable ancestry: accept, per the fail-open above. Measured but
+	// empty is a different thing and is not this branch — procInfo reporting
+	// ok=false for self is the only shape that reaches it.
+	if _, _, ok := procInfo(self); !ok {
+		return true
+	}
+	// Walk the same chain ancestorSessionPID walks, under the same depth
+	// bound, and look for the stamp anywhere in it. Every ancestor counts,
+	// wrapper-named or not — that is deliberately at least as permissive as
+	// the resolver's own walk, so this check can only ever ignore a stamp the
+	// resolver would have had no reason to trust.
+	cur := self
+	for depth := 0; depth < maxAncestryDepth; depth++ {
+		ppid, _, ok := procInfo(cur)
+		if !ok || ppid <= 1 {
+			return false
+		}
+		if ppid == pid {
+			return true
+		}
+		cur = ppid
+	}
+	return false
 }
 
 // resolveSessionPID reports the PID to record for a session registered from
