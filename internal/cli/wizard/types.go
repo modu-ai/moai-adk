@@ -60,6 +60,13 @@ type WizardResult struct {
 	// reach the question), which resolveAgentWiringWithWizard resolves to the
 	// claude fallback — the same fallback the flag path has always used.
 	AgentWiring string // agent harness: claude, codex, both
+
+	// JevEnabled (SPEC-JEV-OPTIN-MEASURE-001 REQ-JEVO-001/005): the init-only
+	// Jev opt-in. False is both the zero value and the declined answer, which
+	// is the fail-safe direction: a wizard that did not run, or did not reach
+	// the question, leaves the capability off — the same state the shipped
+	// config default carries.
+	JevEnabled bool // workflow.jev.enabled
 }
 
 // QuestionType represents the type of wizard question.
