@@ -8,6 +8,7 @@
 **최초 측정 트리**: worktree `.claude/worktrees/t592`, 브랜치 `WT-home-state-rollout`, HEAD `e7bd89ee3`, 2026-09-10
 **재측정 트리**: worktree `.claude/worktrees/t869`, 브랜치 `WT-codemaps-refresh`, HEAD `a851b205c`, 2026-09-18 — 모든 표의 비테스트 파일 수, `internal/cli` 클러스터 표, fan-in 칸, 신규·누락 패키지 행(`internal/mission` · `internal/codextools` · `internal/gitenv` · `cmd/t657-merge`), § 네거티브 스페이스의 목록과 파일 크기. 책임 칸의 서술형 판단 중 이번 변경과 무관한 것은 앞 판을 이어받았습니다.
 **정정 재측정**: worktree `.claude/worktrees/t872`, 브랜치 `WT-codemaps-citations`, HEAD `9a8cc4277`, 2026-09-18 — cross-cutting 표에서 삭제된 패키지 행 하나를 빼고, § 프로덕션 코드 없이 테스트만 있는 자리를 다시 셌습니다. 다른 표의 파일 수는 같은 명령으로 재확인해 변동이 없었습니다.
+**정기 재측정**: worktree `.claude/worktrees/t999`, 브랜치 `WT-codemaps-remediation`, HEAD `56c64891a`, 2026-09-20 — 파일 수가 움직인 여섯 행(`internal/cli` 315→318, `internal/hook` 137→140, `internal/harness` 82→87, `internal/config` 56→57, `internal/spec` 36→41, `internal/statusline` 21→22)과 `internal/cli` 클러스터 표의 루트 파일 수(241→244), 그리고 신규 패키지 3개의 행 — `internal/auditreceipt`는 data/persistence 표에, `internal/harness/rosterguard` · `internal/harness/cellguard`는 § 네거티브 스페이스에 들어갔습니다. 변동이 없어 손대지 않은 행도 같은 명령으로 확인했습니다(`internal/kanban` 57 · `internal/navigator` 53 · `internal/web` 31 · `internal/session` 22 · `internal/homestate` 14 · `internal/mission` 15 · `internal/mcp` 1). 책임 칸의 서술형 판단은 이번에 건드린 행을 빼고 앞 판을 이어받았습니다.
 
 파일 수는 전부 `find <dir> -name '*.go' -not -name '*_test.go' | wc -l`로 센 **비테스트 파일**이며
 하위 패키지를 포함합니다.
@@ -20,16 +21,16 @@
 |---|---|---|---|
 | `cmd/moai` | 1 | 배포 바이너리 유일 진입점. `cli.Execute()` 호출 후 `cli.ResolveExitCode`로 종료 코드만 매핑 | — |
 | `cmd/t657-merge` | 1 | **배포되지 않는 일회성 큐 병합 도구**(카드 t657). 파일 머리 주석이 사용자 verb가 아님을 밝히고, `internal/kanban` 저장소 API를 재사용하며 실제 저장소를 명시적 절대 경로 플래그로만 받는다 | — |
-| `internal/cli` | 315 | 아래 클러스터 표 참조 | `update`(+`plan`/`deploy`/`merge`/`backup`/`report`), `harness`, `worktree`, `agentlint`, `preference`, `wizard`, `uikit`, `printer`, `specid`, `taskledger`, `pr`, `ptycaptest` |
-| `internal/hook` | 137 | Claude Code 26종 훅 이벤트의 핸들러 레지스트리와 개별 핸들러. `registry.Dispatch`가 이벤트별 체인을 돌려 `HookOutput`을 만든다 | `quality`, `security`, `mx`(+`complexity`), `memo`(+`taxonomy`), `handoff`, `perf`, `trace`, `testutil` |
+| `internal/cli` | 318 | 아래 클러스터 표 참조 | `update`(+`plan`/`deploy`/`merge`/`backup`/`report`), `harness`, `worktree`, `agentlint`, `preference`, `wizard`, `uikit`, `printer`, `specid`, `taskledger`, `pr`, `ptycaptest` |
+| `internal/hook` | 140 | Claude Code 26종 훅 이벤트의 핸들러 레지스트리와 개별 핸들러. `registry.Dispatch`가 이벤트별 체인을 돌려 `HookOutput`을 만든다 | `quality`, `security`, `mx`(+`complexity`), `memo`(+`taxonomy`), `handoff`, `perf`, `trace`, `testutil` |
 | `internal/web` | 31 | 루프백 전용 브라우저 콘솔. `a-h/templ` 컴파일 뷰(`*_templ.go`) + htmx + SSE(fsnotify)로 프로파일·설정·todo 큐를 편집하고, **codex 탭 하나는 편집이 아니라 읽기 전용 미러**다(§ codex 미러 탭) | `assets` |
-| `internal/statusline` | 21 | Claude Code statusLine 렌더러. git·github·model·backlog·goal·usage 세그먼트 조립. 렌더가 읽고 쓰는 상태의 **앵커는 세션의 현재 디렉터리가 아니라** `internal/stateanchor` seam이 정한 프로젝트 루트이며, 그 어댑터가 `internal/statusline/state_anchor.go`다 | — |
+| `internal/statusline` | 22 | Claude Code statusLine 렌더러. git·github·model·backlog·goal·usage 세그먼트 조립. 렌더가 읽고 쓰는 상태의 **앵커는 세션의 현재 디렉터리가 아니라** `internal/stateanchor` seam이 정한 프로젝트 루트이며, 그 어댑터가 `internal/statusline/state_anchor.go`다 | — |
 | `internal/tui` | 19 | 터미널 UI 디자인 시스템 — 박스·필·테이블·테마(Catppuccin)·i18n 메시지(`//go:embed messages/*.yaml`) | `golden`, `internal` |
 | `internal/mcp` | 1 | self-hosted MCP 도구 카탈로그(도구명 + write 여부) 단일 선언 — 이 판에서 30개 | — |
 
 ### `internal/cli` 기능 클러스터
 
-루트 241개 비테스트 파일(`find internal/cli -maxdepth 1 -name '*.go' -not -name '*_test.go'`)을
+루트 244개 비테스트 파일(`find internal/cli -maxdepth 1 -name '*.go' -not -name '*_test.go'`)을
 파일명 접두어로 묶은 것입니다. 파일 수는 같은 명령에 `-name '<접두어>*.go'`를 붙여 셌습니다.
 
 | 클러스터 | 파일 | 담당 |
@@ -61,10 +62,10 @@
 
 | 패키지 | 비테스트 | 책임 | 주요 하위 패키지 |
 |---|---|---|---|
-| `internal/harness` | 82 | GAN 루프 harness — Socratic 인터뷰 버퍼, 계층적 수락 스코어링, 패턴 학습·티어 분류, FROZEN 가드, lineage 매니페스트, 회귀 게이트 | `curator`, `cluster`, `proposalgen`, `router`, `routing`, `safety`, `seeds`, `throttle`, `tier`, `capture`, `delegationmap`, `v4manifest`, `harnessrun` |
+| `internal/harness` | 87 | GAN 루프 harness — Socratic 인터뷰 버퍼, 계층적 수락 스코어링, 패턴 학습·티어 분류, FROZEN 가드, lineage 매니페스트, 회귀 게이트. **이 판에서 문서 드리프트 가드 두 개(`rosterguard` · `cellguard`)가 더해졌는데, 둘은 런타임 경로가 없어 이 줄의 책임 서술에 들어가지 않는다** — 아래 § 네거티브 스페이스가 소유한다 | `curator`, `cluster`, `proposalgen`, `router`, `routing`, `safety`, `seeds`, `throttle`, `tier`, `capture`, `delegationmap`, `v4manifest`, `harnessrun`, `rosterguard`, `cellguard` |
 | `internal/navigator` | 53 | BAS(Blueprint-Anchored Synchronization) 파이프라인. 루트에 Go 파일이 없고 전부 단계별 하위 패키지 | `astx`(tree-sitter 16개 언어), `detect`, `sync`, `tiers`, `route`, `fix` |
 | `internal/kanban` | 57 | 백로그 큐의 상태 레코드·컬럼·역할 모델, SQLite 저장 엔진, 보드 락, PR 링크, 정합성 조정. **이 판에서 GTD 계층 10개 파일이 같은 `backlog.db` 위에 올라왔다** — `gtd_capture/clarify/organize/reflect/engage.go`가 다섯 단계를, `gtd_relation.go`가 항목 관계를, `gtd_operation.go`가 준비 후 실행하는 operation을, `gtd_persistence.go`가 export/import/backup/restore를, `backlog_gtd_schema.go`가 스키마 마이그레이션을 맡는다. 비테스트 소비자는 `internal/cli/gtd.go`, `internal/cli/goal.go`, `internal/graph/gtd_private.go`다. 저장소 해석은 `internal/homestate`의 프로젝트 키 경로를 사용하고 Factory 런타임 진입은 migration admission gate를 통과한다. **여기에 워킹 트리 검사 하나가 더 있다** — `settings_drift.go`가 병합 전 tracked `.claude/settings.json`의 워킹 사본 드리프트를 단정하고 사본을 보존하며 원장에 남긴다(`--no-optional-locks` 강제 — 평범한 status가 인덱스 쓰기 락을 잡아 병합 직전 경합을 스스로 만들기 때문) | — |
-| `internal/spec` | 36 | SPEC 문서 파싱/린트/감사, era 분류, per-SPEC 파일 락, atomic close 오케스트레이터 | — |
+| `internal/spec` | 41 | SPEC 문서 파싱/린트/감사, era 분류, per-SPEC 파일 락, atomic close 오케스트레이터 | — |
 | `internal/mission` | 15 | **이 판에서 새로 생긴 패키지.** 자율 미션의 권한 계층 — 봉인된 계약(`contract.go`)과 미션 상태(`auto_state.go`)를 저장하고, 거버넌스·완료 receipt를 읽어(`governance_receipt.go` · `completion_receipt.go`) 결정을 정책(`policy.go`)에 대조한 뒤, 증거 적재→정책 검증→실행→readback의 감독 루프(`supervisor.go`)를 돈다. git·전달 소유자(`git_owner.go` · `delivery_owner.go`)는 결과를 상태 재판독으로 확인한다. 비테스트 import는 `internal/atomicfile`·`internal/goal`이고, 비테스트 소비자는 `internal/cli/goal.go` 하나다 | — |
 | `internal/template` | 31 | `//go:embed all:templates` + `catalog.yaml`. 배포기, 렌더러, settings 생성, 스킬 미러, 카탈로그 트리 해시, 모델 정책·프로파일 매트릭스. **배포 뒤편에 두 개의 기계 방출기와 두 개의 미러 보호·복구 seam이 붙어 있다**(§ 템플릿 방출·미러 계열) | `agentemit`, `commandemit`, `scripts` |
 | `internal/core` | 23 | 응집 없는 우산 패키지 (§ `overview.md` 참조) | `git`, `project`, `quality` |
@@ -124,7 +125,7 @@
 
 | 패키지 | 비테스트 | 책임 | 주요 하위 패키지 |
 |---|---|---|---|
-| `internal/config` | 56 | 프로젝트 설정의 SSOT. 섹션별 YAML 로딩·캐시·검증(`go-playground/validator`), `envkeys.go`의 환경변수 상수 카탈로그, 기본값. **트리 최대 fan-in (22)** 이며 `types.go`(78KB)·`defaults.go`(56KB)가 트리에서 가장 큰 손 저작 파일 축에 든다. 이 판에서 두 판정 파일이 더해졌다 — `harness.go`(`llm.harness` 허용 값의 닫힌 집합, 기본 claude)와 `loader_workflow_disposition.go`(git-strategy workflow 허용 4값, 3방향 disposition, flow별 통합 대상 표) | `atomicfile`, `toolpolicy` |
+| `internal/config` | 57 | 프로젝트 설정의 SSOT. 섹션별 YAML 로딩·캐시·검증(`go-playground/validator`), `envkeys.go`의 환경변수 상수 카탈로그, 기본값. **트리 최대 fan-in (22)** 이며 `types.go`(78KB)·`defaults.go`(56KB)가 트리에서 가장 큰 손 저작 파일 축에 든다. 이 판에서 두 판정 파일이 더해졌다 — `harness.go`(`llm.harness` 허용 값의 닫힌 집합, 기본 claude)와 `loader_workflow_disposition.go`(git-strategy workflow 허용 4값, 3방향 disposition, flow별 통합 대상 표) | `atomicfile`, `toolpolicy` |
 | `internal/session` | 22 | 세션 레지스트리·체크포인트·페이즈·앵커·태스크 원장. PID 조회를 OS별 파일로 분기 | — |
 | `internal/settings` | 10 | `moai web` 콘솔과 `moai profile setup` TUI 두 표면이 공유하는 설정 스키마 | `agentfm`, `yamlpatch` |
 | `internal/sessionmsg` | 7 | 단일 머신 세션 간 메시징 브로커 (envelope 스키마) | — |
@@ -133,6 +134,7 @@
 | `internal/guardstate` | 4 | 가드 생존성의 상태 모델·매니페스트 | — |
 | `internal/manifest` | 3 | 파일 provenance 추적과 변경 감지 | — |
 | `internal/tokenusage` | 3 | Claude Code 트랜스크립트 JSONL을 파싱해 토큰 사용량을 귀속·기록. **호출자 0 — 아래 §네거티브 스페이스** | — |
+| **`internal/auditreceipt`** | **2** | **이 판에서 새로 생겼다.** `.moai/state/audit-receipts/` 아래 세 종류의 런타임 기록을 소유한다 — 감사 도구 호출 1건당 영수증, 감사자 서브에이전트 1건당 시작 마커, 거부된 PASS 1건당 거부 기록. 존재 이유를 패키지 주석이 직접 적는다: **PASS 판정은 에이전트가 쓴 텍스트이고, 텍스트는 도구가 실제로 불렸음을 보일 수 없다** — 그것을 기록할 수 있는 것은 런타임뿐이다. 쓰기는 임시 파일 + rename 원자 교체이고, 기록 1건이 파일 1개다(JSONL 아님). 트리 루트 판정은 `git rev-parse --show-toplevel`(2초 타임아웃) + 심볼릭 링크 해석이며 `CLAUDE_PROJECT_DIR`를 **의도적으로 무시**한다 — 워크트리 세션에서 그 변수는 primary 체크아웃을 가리키기 때문이다 | — |
 
 ### `internal/homestate` — 프로젝트 로컬 파일과 HOME DB 사이의 안전 경계
 
@@ -262,8 +264,13 @@ statusline의 `extractProjectDirectory`에 남아 있습니다. statusline 쪽 �
 
 ### 비테스트 코드에서 아무도 import 하지 않는 패키지
 
-`.Imports`(테스트 import 제외) 기준입니다. **셋으로 갈립니다** — 빌드타임 도구, 의도된
-고아, 그리고 새로 생긴 것.
+`.Imports`(테스트 import 제외) 기준입니다. **넷으로 갈립니다** — 빌드타임 도구, 테스트 시점
+가드, 의도된 고아, 그리고 새로 생긴 것.
+
+네 갈래를 나누는 것은 fan-in 0이라는 수치가 아니라 **그 0이 정상인 이유**입니다. 빌드타임
+도구는 `make` 타깃이 부르고, 테스트 시점 가드는 `go test`가 부르며, 고아는 아무도 부르지
+않습니다. 세 경우 모두 `.Imports` 집계에서는 구별되지 않으므로, 이 표의 「상태」 칸이
+판별식입니다.
 
 | 패키지 | 상태 |
 |---|---|
@@ -272,6 +279,7 @@ statusline의 `extractProjectDirectory`에 남아 있습니다. statusline 쪽 �
 | **`internal/tokenusage`** | 완전 고아. 유일한 언급이 `internal/spec/audit.go`의 주석인데, 상수를 공유할 수 있지만 파서를 self-contained로 두려고 로컬 상수를 쓴다는 내용이다 — **공유 의도가 있었으나 거부된 뒤 아무도 쓰지 않게 된** 패키지다. `moai tokens` 서브커맨드조차 이것을 쓰지 않는다 |
 | `internal/github/workflow` | GitHub Actions 워크플로 검증기. import 하는 코드가 없다 |
 | `internal/harness/harnessrun` · `seeds` · `throttle` | harness 하위인데 형제 패키지 어느 것도 참조하지 않는다 |
+| **`internal/harness/rosterguard`(4 파일) · `internal/harness/cellguard`(1 파일)** | **이 판에서 새로 잡혔고, 위 고아들과 종류가 다르다.** 둘 다 **런타임 경로가 아예 없는 테스트 시점 가드**다 — CLI·훅·MCP 어디에도 배선돼 있지 않고, 자기 테스트가 살아 있는 저장소 트리를 직접 읽어 드리프트를 찾으면 `go test`를 빨갛게 만드는 것이 유일한 발화 경로다. `rosterguard`는 에이전트 로스터 목록이 사이트마다 어긋나는 것을, `cellguard`는 docs-site의 profile-matrix 셀 표가 `internal/template/profile_matrix.go`와 어긋나는 것을 본다. **fan-in 0이 결함이 아니라 설계**이며, 그 점에서 `agentemit`·`commandemit`과 같은 부류이고 `tokenusage`와는 반대다 |
 | `internal/migration/migrations` | `internal/cli/migration_m3_test.go`가 명시한다 — `internal/cli`가 이 패키지를 import 하지 않으므로 m001/m002는 `Register()`를 호출하지 않는다. blank import로 등록되는 패턴인데 그 blank import가 어디에도 없다. 테스트가 이 사실을 *기술*할 뿐 *거부*하지 않는 것이 문제다 |
 | **`internal/codextools`** | **이 판에서 새로 잡혔다.** 도구 레지스트리를 대화에 묶는 2 파일 패키지인데 비테스트 소비자가 0이다. 트리에서 `jsonschema/v6`를 쓰는 유일한 자리이기도 해서, `go.mod`는 그 모듈을 `// indirect`로 적고 있다(§ `dependencies.md` 이례적인 것 7). 이전 측정 트리 이후 삭제된 gateway 계열 패키지들과 같은 시기의 산물로 보이지만, 그 인과는 이 문서가 확인하지 않았다 |
 | `internal/cli/taskledger` · `internal/cli/ptycaptest` · `internal/lsp/aggregator` · `internal/hook/testutil` · `internal/timing` · `internal/tui/golden` | 테스트 전용 소비자만 갖는 leaf. `ptycaptest`는 PTY 렌더 캡처 테스트 드라이버다. `timing`은 이름이 그 의도를 말한다 |
