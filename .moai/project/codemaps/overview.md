@@ -8,6 +8,7 @@
 **최초 측정 트리**: worktree `.claude/worktrees/t592`, 브랜치 `WT-home-state-rollout`, HEAD `e7bd89ee3`, 2026-09-10
 **재측정 트리**: worktree `.claude/worktrees/t869`, 브랜치 `WT-codemaps-refresh`, HEAD `a851b205c`, 2026-09-18 — § 규모 표 전체, § 구조 판정의 수치, 레이어 표의 대표 패키지, § 도식에 들어맞지 않는 패키지의 파일 수와 신규 항목(`internal/mission`·`internal/codextools`). 측정 명령은 각 표의 산출 명령 칸에 있습니다. 파일 크기(KB) 서술은 이번에 다시 쟀고, 그 밖의 서술형 판단은 앞 판을 이어받았습니다.
 **정정 재측정**: worktree `.claude/worktrees/t872`, 브랜치 `WT-codemaps-citations`, HEAD `9a8cc4277`, 2026-09-18 — § 규모 표의 다섯 값(비테스트·테스트 파일 수, 패키지 총수, 최상위 디렉터리 수)과 테스트 전용 디렉터리 서술. 위 재측정 직후 한 패키지가 삭제돼 그만큼만 다시 쟀고, 나머지 값(엣지 365/222, 임베드 589)은 같은 명령으로 재확인해 변동이 없었습니다.
+**정기 재측정**: worktree `.claude/worktrees/t999`, 브랜치 `WT-codemaps-remediation`, HEAD `56c64891a`, 2026-09-20 — § 규모 표 **일곱 값 전부**와 `internal/cli` fan-out, § `modules.md`의 패키지별 파일 수, 그리고 신규 패키지 3개(`internal/auditreceipt` · `internal/harness/rosterguard` · `internal/harness/cellguard`)의 서술. 각 값의 산출 명령은 표 안에 있고, 전부 이 트리에서 직접 실행했습니다. 서술형 판단 중 이번에 다시 확인한 것은 테스트 0 패키지 4개와 테스트 전용 디렉터리 1개뿐이며, 나머지 구조 판정은 앞 판을 이어받았습니다.
 
 ---
 
@@ -15,22 +16,25 @@
 
 | 값 | 수치 | 산출 명령 |
 |---|---|---|
-| 비테스트 Go 파일 | 1225 | `find internal cmd pkg -name '*.go' -not -name '*_test.go' \| wc -l` |
-| 테스트 Go 파일 | 2047 | `find internal cmd pkg -name '*_test.go' \| wc -l` |
-| Go 패키지 총수 | 145 | `go list ./... \| wc -l` (`scripts/` 하위 main 3개 포함) |
-| 최상위 디렉터리 | 73 | `internal` 69(`ls -d internal/*/`) + `cmd` 2(`moai`, `t657-merge`) + `pkg` 2 |
-| 내부 import 엣지 (패키지 단위) | 365 | `go list -f '{{.ImportPath}} {{join .Imports " "}}' ./...` 후 모듈 경로 필터 |
-| 내부 import 엣지 (최상위 집계) | 222 | 위를 `internal/<X>` · `pkg/<X>` · `cmd/<X>` 수준으로 접고 self-edge 제거 |
-| 임베드 템플릿 파일 | 589 | `find internal/template/templates -type f \| wc -l` |
+| 비테스트 Go 파일 | 1244 | `find internal cmd pkg -name '*.go' -not -name '*_test.go' \| wc -l` |
+| 테스트 Go 파일 | 2108 | `find internal cmd pkg -name '*_test.go' \| wc -l` |
+| Go 패키지 총수 | 148 | `go list ./... \| wc -l` (`scripts/` 하위 main 3개 포함) |
+| 최상위 디렉터리 | 74 | `internal` 70(`ls -d internal/*/`) + `cmd` 2(`moai`, `t657-merge`) + `pkg` 2 |
+| 내부 import 엣지 (패키지 단위) | 371 | `go list -f '{{.ImportPath}} {{join .Imports " "}}' ./...` 후 모듈 경로 필터 |
+| 내부 import 엣지 (최상위 집계) | 227 | 위를 `internal/<X>` · `pkg/<X>` · `cmd/<X>` 수준으로 접고 self-edge 제거 |
+| 임베드 템플릿 파일 | 588 | `find internal/template/templates -type f \| wc -l` |
 
-테스트 대 비테스트 비율이 **1.67 : 1**입니다. 테스트 파일이 0인 패키지는 4개이고
-넷 다 main 패키지입니다(§ `modules.md` 참조). `internal` 69개 디렉터리 중
-`internal/skills` 하나만 비테스트 Go 파일이 0개인 테스트 전용 디렉터리입니다.
+테스트 대 비테스트 비율이 **1.69 : 1**입니다. 테스트 파일이 0인 패키지는 4개이고
+넷 다 main 패키지입니다(§ `modules.md` 참조). `internal` 70개 디렉터리 중
+`internal/skills` 하나만 비테스트 Go 파일이 0개인 테스트 전용 디렉터리입니다. 이 두 서술은
+이번 판에서 `go list -f '{{.ImportPath}} {{len .TestGoFiles}} {{len .XTestGoFiles}}'`와
+`{{len .GoFiles}}`로 각각 다시 확인했습니다.
 
 > **엣지 수 정정 이력.** 앵커 `25a3212a9` 판은 패키지 단위 엣지를 1638로 적었지만 당시
 > 명령 문자열이 생략형이라 재현할 수 없었습니다. 이후 `52f863f36` 판은 완전한 명령으로
-> 345 / 208을, `e7bd89ee3` 판은 351 / 214를 측정했고, 이번 판은 같은 명령으로 365 / 222를
-> 측정했습니다.
+> 345 / 208을, `e7bd89ee3` 판은 351 / 214를, `9a8cc4277` 판은 365 / 222를 측정했고, 이번 판은
+> 같은 명령으로 371 / 227을 측정했습니다. 판마다 늘기만 한 것은 추세가 아니라 이 기간에
+> 패키지가 삭제되지 않았다는 사실의 반영입니다.
 >
 > **이전 판 이후 트리에서 사라진 것.** `internal/gateway`(하위 `auth`·`conversation`·`opaque`·
 > `receipt`·`translate` 포함), `internal/codexapp`, `internal/codexbridge`와 CLI 쪽
@@ -60,7 +64,7 @@
 
 ### 부합하지 않는 근거 — 이쪽이 더 결정적입니다
 
-- **`internal/cli`가 다른 최상위 패키지 62개를 import 합니다**(최상위 집계 엣지 기준).
+- **`internal/cli`가 다른 최상위 패키지 63개를 import 합니다**(최상위 집계 엣지 기준).
   헥사고날이라면 어댑터 하나가 전 도메인에 닿을 이유가 없습니다. 실제 모양은 "명령 하나 =
   파일 하나 = 그 명령이 필요한 것 전부 import"에 가깝습니다.
 - **도메인 로직이 어댑터 안에 삽니다.** `internal/hook/quality/gate.go`가 67KB,
@@ -89,7 +93,7 @@
 |---|---|---|
 | presentation | 프로세스 경계 바깥의 표면(터미널·HTTP·훅 프로토콜)과 직접 말한다 | `cmd/moai`, `internal/cli`, `internal/hook`, `internal/tui`, `internal/web`, `internal/statusline`, `internal/mcp` |
 | business/domain | MoAI 고유 규칙·정책만 담고 자체 I/O 프리미티브를 소유하지 않는다 | `internal/spec`, `internal/harness`, `internal/navigator`, `internal/kanban`, `internal/graph`, `internal/mx`, `internal/mission` … |
-| data/persistence | 디스크상 named artifact 하나의 스키마와 읽기·쓰기 계약을 소유한다 | `internal/config`, `internal/session`, `internal/settings`, `internal/manifest`, `internal/chain`, `internal/homestate` … |
+| data/persistence | 디스크상 named artifact 하나의 스키마와 읽기·쓰기 계약을 소유한다 | `internal/config`, `internal/session`, `internal/settings`, `internal/manifest`, `internal/chain`, `internal/homestate`, `internal/auditreceipt` … |
 | infrastructure/platform | 외부 프로세스·OS·네트워크 설비를 감싼다 | `internal/lsp`, `internal/git`, `internal/github`, `internal/astgrep`, `internal/tmux` … |
 | cross-cutting | 정책이 없고 무관한 다수 패키지가 쓰는 leaf (fan-in ≥ 5, 도메인 지식 없음) | `internal/defs`, `internal/paths`, `internal/atomicfile`, `pkg/models`, `internal/stateanchor` … |
 
@@ -125,6 +129,14 @@
 - **`internal/stateanchor` (1 파일)** — 정책이 없는 leaf처럼 보이지만 담는 것은 **결정 규칙**
   입니다(어느 프로젝트 루트가 상태의 앵커인가). cross-cutting에 두되, 우선순위 사슬 자체가
   요건으로 고정돼 있다는 점에서 순수 leaf와 다릅니다.
+- **`internal/harness` (87 파일)** — **레이어가 아니라 네임스페이스입니다.** 이 판에서
+  하위에 `rosterguard`(4 파일)와 `cellguard`(1 파일)가 더해졌는데, 둘은 런타임 경로가 없는
+  **테스트 시점 문서 드리프트 가드**입니다 — `go test`가 유일한 발화 경로이고 CLI·훅·MCP
+  어디에도 배선돼 있지 않습니다. 같은 디렉터리의 `delegationmap`은 반대로 라우팅 원장을 읽어
+  제안을 내는 프로덕션 분석기입니다. 공유하는 인터페이스도, 도달 경로도, 데이터 흐름도
+  없습니다. `internal/harness/` 전체를 묶는 계약을 선언한 패키지 주석은 트리에서 찾지
+  못했으므로, 이것은 인용이 아니라 **증거로부터의 추론**으로 적습니다 — 「에이전트·하네스
+  메타데이터에 관한 것들」이라는 주제어가 디렉터리를 만들었을 뿐 층을 만들지는 않았습니다.
 - **`internal/homestate` (14 파일)** — `~/.moai` 아래 프로젝트별 SQLite 경로와 스키마를
   소유하는 data/persistence 패키지이면서, Unix `flock`·Windows `LockFileEx`, PID 지문,
   런타임 진입 차단까지 함께 다룹니다. 저장 계약과 플랫폼 동시성 경계가 한 패키지에 만나는
