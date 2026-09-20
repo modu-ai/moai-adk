@@ -214,8 +214,25 @@ func ReadIntegrationLock(projectRoot string) (*IntegrationLock, error) {
 // integration window.
 //
 // Re-acquiring a window the caller already holds succeeds and refreshes the
-// record, so a lane that re-enters after a `/clear` is not locked out of its
-// own window.
+// record — matched on the SESSION ID ALONE. A lane whose id rotated is
+// therefore refused: `/clear` issues a new id to the same process, the record
+// keeps the old one, and the refusal names the caller's own pid as the blocking
+// holder. Such a lane releases first and then re-acquires; the release side
+// admits it directly, via releasableBy.
+//
+// The two sides are deliberately asymmetric, and the asymmetry is the point
+// rather than an oversight awaiting symmetry. They ask different questions:
+// release asks "is this caller the holder ITSELF?", acquire asks "may this
+// caller TAKE the window?". A pid shared by two sessions answers the first —
+// it is evidence enough to let a caller free its OWN window — and does not
+// answer the second, because one owning process can carry several sessions.
+// Card t959 measured what happens when acquire borrows releasableBy anyway:
+// TestIntegrationLockAcquire_SerializedAcrossProcesses records two lanes
+// holding the window at once (successes=2, refusals=0), because both name the
+// same owner pid. The cost of admitting a caller wrongly is not symmetric
+// either — on release it frees a window that was the caller's, on acquire it is
+// the concurrent merge this lock exists to prevent. Stale() states the same
+// asymmetry on its own axis just above.
 //
 // A STALE record (recorded holder's process gone) is taken over, and the
 // takeover is returned in `replaced` so the caller can report what it cleared
