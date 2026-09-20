@@ -308,32 +308,65 @@ source changes is *when* they give it, not *who* gives it. A card issued this
 way is the workflow carrying out an instruction already on the record — never a
 tool deciding on its own that work exists.
 
-`/moai project` is the only standing source. Five properties are what separate
-it from invention, and all five bind:
+A workflow is a standing source when — and only when — all five properties
+below hold. The properties are the whole of the test, so the set of standing
+sources is **conditional rather than closed**: a workflow joins it by meeting
+them, never by resembling one that already has. Two meet them today:
 
-- **One card per run.** Not one per document, per feature, or per finding.
-- **Derived, never invented.** The text comes from that run's own
+| Standing source | Issues on | Marked |
+|---|---|---|
+| `/moai project` | the run completing | `[PROJECT] ` |
+| the codemaps-debt trigger in `moai integration release` | the codemaps freshness layer reaching its threshold | `[GRAPH] ` |
+
+- **One card per occasion.** Not one per document, per feature, per finding, or
+  per measured file. `/moai project` issues once per run; the codemaps trigger
+  issues once per debt period, which is what stops several landings inside one
+  period from each producing a card.
+- **Derived, never invented.** The text restates what the source already
+  measured or was already told. `/moai project` takes it from that run's own
   `.moai/project/harness-spec.yaml` — its `goal`, bounded by its `scope` — so
-  the card restates what the operator said in the interview. A run with
-  nothing to derive from issues nothing; an empty result is reported, not
-  filled in.
-- **Marked at the front.** The text carries the `[PROJECT] ` prefix, so the
-  queue shows at a glance which cards a workflow issued and which a person
-  typed. The prefix is the card's provenance — the record carries no other.
-- **The issued id is reported.** The completion report names it (`t<n>`), so
-  the card is visible in the same breath as its creation.
+  the card restates what the operator said in the interview; the codemaps
+  trigger takes it from the freshness report's own metric, threshold, and
+  content anchor. A source with nothing to derive from issues nothing; an
+  empty result is reported, not filled in.
+- **Marked at the front.** The text carries the source's prefix, so the queue
+  shows at a glance which cards a workflow issued and which a person typed.
+  The prefix is the card's provenance — the record carries no other.
+- **The issued id is reported.** The source names it (`t<n>`) as it issues, so
+  the card is visible in the same breath as its creation. Without this the
+  queue can grow unobserved, which is the failure mode automatic issuing
+  introduces and this property is the only defence against.
 - **Starting it is a separate pick.** The card is queued, not started. Whether
-  work begins is asked in the same completion question, and that answer is the
-  pick (§ Picking the next card).
+  work begins is a separate operator choice (§ Picking the next card) — what a
+  standing source creates is a queue entry, never started work.
 
-Re-running the workflow does not stack duplicates: before adding, read the
-queue (`moai gtd list --json`) and skip the add when a queued card already
-carries the same `[PROJECT] ` text, reporting the existing id instead of
-issuing a second one.
+### Not stacking duplicates
 
-Nothing else is a standing source. TODO comments, open issues, audit findings,
-and report milestones stay outside: they are surfaced to the operator, who asks
-for a card when they want one.
+The queue itself refuses a card whose normalized text equals that of a card
+already **live** in it, naming the holder and leaving the queue file
+byte-identical. A standing source relies on that refusal, and a source that
+also reads the queue first (`moai gtd list --json`) reports the existing id
+rather than provoking it.
+
+[HARD] **The refusal is EXACT, so a standing source's text must be constant
+for as long as its card should be.** A text carrying a measured value, a
+running count, or a timestamp is a different text on every issue and is never
+suppressed — several sources firing in one period would each be admitted, and
+the queue would fill with restatements of one condition. Key the text on
+something stable for the whole period the card describes (the codemaps trigger
+uses the content anchor, which moves only when the artifact is regenerated),
+and put the volatile figures on the reporting line, where they inform without
+becoming part of the key.
+
+Two consequences follow from "live", and both are intended. A **dropped** card
+is not a comparison subject, so dropping one does not lock its text out of the
+queue forever. A **done** card leaves the live set too, so a condition that is
+closed and then recurs can be raised again rather than being silenced by its
+own history.
+
+Nothing becomes a standing source by precedent. TODO comments, open issues,
+audit findings, and report milestones stay outside: they are surfaced to the
+operator, who asks for a card when they want one.
 
 ## Outside Kanban Mode
 
