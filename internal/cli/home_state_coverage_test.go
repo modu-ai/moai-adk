@@ -18,6 +18,12 @@ import (
 func gitForCoverageTest(t *testing.T, root string, args ...string) {
 	t.Helper()
 	cmd := exec.Command("git", append([]string{"-C", root}, args...)...)
+	cmd.Env = append(os.Environ(),
+		"GIT_AUTHOR_NAME=Test",
+		"GIT_AUTHOR_EMAIL=test@example.com",
+		"GIT_COMMITTER_NAME=Test",
+		"GIT_COMMITTER_EMAIL=test@example.com",
+	)
 	if out, err := cmd.CombinedOutput(); err != nil {
 		t.Fatalf("git %v: %v: %s", args, err, out)
 	}
@@ -27,8 +33,6 @@ func committedCoverageRepo(t *testing.T) string {
 	t.Helper()
 	root := t.TempDir()
 	gitForCoverageTest(t, root, "init", "-q")
-	gitForCoverageTest(t, root, "config", "user.email", "test@example.com")
-	gitForCoverageTest(t, root, "config", "user.name", "Test")
 	if err := os.MkdirAll(filepath.Join(root, "internal", "x"), 0o700); err != nil {
 		t.Fatal(err)
 	}
@@ -325,8 +329,6 @@ func TestCommittedCoverageChangeSetRejectsInvalidGitAndMalformedEvidence(t *test
 	t.Run("marker has no base parent", func(t *testing.T) {
 		root := t.TempDir()
 		gitForCoverageTest(t, root, "init", "-q")
-		gitForCoverageTest(t, root, "config", "user.email", "test@example.com")
-		gitForCoverageTest(t, root, "config", "user.name", "Test")
 		if err := os.WriteFile(filepath.Join(root, "README.md"), []byte("root marker\n"), 0o600); err != nil {
 			t.Fatal(err)
 		}
@@ -621,8 +623,6 @@ func TestParseChangedLineCoverageCountsOnlyChangedExecutableLines(t *testing.T) 
 func TestChangedProductionLineRangesTracksModifiedRenamedAndUntracked(t *testing.T) {
 	root := t.TempDir()
 	gitForCoverageTest(t, root, "init", "-q")
-	gitForCoverageTest(t, root, "config", "user.email", "test@example.com")
-	gitForCoverageTest(t, root, "config", "user.name", "Test")
 	if err := os.MkdirAll(filepath.Join(root, "internal", "x"), 0o700); err != nil {
 		t.Fatal(err)
 	}
@@ -667,8 +667,6 @@ func TestChangedProductionLineRangesTracksModifiedRenamedAndUntracked(t *testing
 func TestChangedProductionFilesRejectsDeletion(t *testing.T) {
 	root := t.TempDir()
 	gitForCoverageTest(t, root, "init", "-q")
-	gitForCoverageTest(t, root, "config", "user.email", "test@example.com")
-	gitForCoverageTest(t, root, "config", "user.name", "Test")
 	if err := os.MkdirAll(filepath.Join(root, "internal", "x"), 0o700); err != nil {
 		t.Fatal(err)
 	}
