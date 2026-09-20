@@ -328,6 +328,16 @@ func MergeUserFilesWithOutcome(projectRoot string, backups []FileBackup, out io.
 		} else {
 			_, _ = fmt.Fprintf(out, "  %s %s user customizations preserved\n", uikit.SymSuccess(), fb.Path)
 		}
+		// A key the merge kept because the new template no longer carries it is
+		// indistinguishable, in the merged file, from one the user added. Name
+		// it here — wording shared with the sibling YAML restore path — so the
+		// retirement is visible rather than silent. Scoped to .mcp.json: the
+		// other merged paths' output stays as it was.
+		if key == mcpJSONPath {
+			for _, retained := range result.RetainedKeys {
+				_, _ = fmt.Fprintf(out, "  advisory: retained key %q absent from new template (preserved from user config)\n", retained)
+			}
+		}
 		mergedCount++
 	}
 
