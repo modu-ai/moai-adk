@@ -277,9 +277,19 @@ func resolveHomeStateCoverageChangeSet(root string) (homeStateCoverageChangeSet,
 	committedFiles := map[string]bool{}
 	expectedBlobs := map[string]string{}
 	for _, commit := range auditedCommits {
-		parent, err := gitCoverageOutput(root, "rev-parse", commit+"^1")
-		if err != nil {
-			return result, fmt.Errorf("resolve coverage marker parent: %w", err)
+		// The required marker's parent was already resolved above as
+		// result.Base, from the byte-identical argument. Asking again spawns a
+		// second process for an answer we hold (card t979; measured 61 of the
+		// suite's 939 queries). No test asserts the invocation count, so
+		// restoring the second call would be silent: both forms produce the
+		// same output, and only a counter would tell them apart.
+		parent := result.Base
+		if commit != originalTip {
+			var err error
+			parent, err = gitCoverageOutput(root, "rev-parse", commit+"^1")
+			if err != nil {
+				return result, fmt.Errorf("resolve coverage marker parent: %w", err)
+			}
 		}
 		status, err := gitCoverageOutput(root, "diff", "--name-status", "-M", parent, commit, "--", ":(glob)**/*.go")
 		if err != nil {
