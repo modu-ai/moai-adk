@@ -97,6 +97,11 @@ func (h *userPromptSubmitHandler) Handle(ctx context.Context, input *HookInput) 
 	// output below.
 	RoutingSeamUserPromptSubmit(input)
 
+	// Heartbeat seam (GH #1711 defect 1). The registry's last_heartbeat froze
+	// at registration because nothing in production ever called Heartbeat; this
+	// is the per-turn driver. Fail-open and never affects the output below.
+	HeartbeatSeamUserPromptSubmit(input)
+
 	// Build session title (errors are silently ignored, falls back to empty title)
 	title := h.buildSessionTitle(ctx, input.CWD, input.TranscriptPath)
 
