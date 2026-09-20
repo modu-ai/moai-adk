@@ -163,7 +163,7 @@ func TestDeepMergeMap_BothAddedSameKey(t *testing.T) {
 	current := map[string]any{"new_key": "val_a"}
 	updated := map[string]any{"new_key": "val_b"}
 
-	_, conflicts := deepMergeMap(base, current, updated, "")
+	_, conflicts, _ := deepMergeMap(base, current, updated, "")
 	if len(conflicts) == 0 {
 		t.Error("expected conflict when both add same key with different values")
 	}
@@ -176,7 +176,7 @@ func TestDeepMergeMap_UserDeletedKey(t *testing.T) {
 	current := map[string]any{"a": 1}
 	updated := map[string]any{"a": 1, "b": 3}
 
-	result, conflicts := deepMergeMap(base, current, updated, "")
+	result, conflicts, _ := deepMergeMap(base, current, updated, "")
 	_ = conflicts
 	if _, exists := result["b"]; exists {
 		t.Error("expected user-deleted key 'b' to not be in result")
