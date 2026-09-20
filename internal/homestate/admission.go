@@ -53,6 +53,13 @@ func checkRuntimeAdmissionAt(path string) error {
 // AcquireMigrationAdmission installs the marker before any data mutation.
 // The returned closure removes it only when clear is true.
 func AcquireMigrationAdmission(projectRoot, migrationID string) (func(bool) error, error) {
+	// Refused ahead of the lock, not only inside installMigrationMarker:
+	// acquiring the lock already creates the canonical project's run directory
+	// and lock file, and touching the tree we are refusing to mutate is the
+	// thing this gate exists to prevent.
+	if err := RefuseMutationFromNonCanonicalTree(projectRoot); err != nil {
+		return nil, err
+	}
 	lock, err := AcquireAdmissionLock(projectRoot)
 	if err != nil {
 		return nil, err
@@ -62,6 +69,13 @@ func AcquireMigrationAdmission(projectRoot, migrationID string) (func(bool) erro
 }
 
 func installMigrationMarker(projectRoot, migrationID string) (func(bool) error, error) {
+	// The marker is this package's own statement that a mutation is about to
+	// happen, so it is where the non-canonical-tree gate belongs: every caller
+	// of the migration family passes through here, including one that never
+	// goes through the CLI runner t952 guarded.
+	if err := RefuseMutationFromNonCanonicalTree(projectRoot); err != nil {
+		return nil, err
+	}
 	path, err := MigrationBarrierPath(projectRoot)
 	if err != nil {
 		return nil, err
