@@ -606,6 +606,15 @@ func checkBinaryFreshness(verbose bool) DiagnosticCheck {
 	case binlag.StatusFresh:
 		check.Status = uikit.CheckOK
 		check.Message = fmt.Sprintf("binary matches source HEAD (%s)", v.BinaryCommit)
+	case binlag.StatusAhead:
+		// Warn, not OK: the check ran and answered nothing. Reporting that as
+		// OK is what let a binary 643 commits behind its own branch read as
+		// healthy from the primary checkout (card t1022).
+		check.Status = uikit.CheckWarn
+		check.Message = fmt.Sprintf("binary is newer than this tree — freshness undetermined (binary: %s, HEAD: %s)",
+			v.BinaryCommit, binlag.Short(v.SourceHead))
+		check.Detail = "This tree's HEAD is an ancestor of the binary commit, so the comparison says nothing " +
+			"about whether the binary is current. Re-run from the branch the binary was built from."
 	case binlag.StatusDivergent:
 		check.Status = uikit.CheckOK
 		check.Message = fmt.Sprintf("binary from a different branch (binary: %s, HEAD: %s)",

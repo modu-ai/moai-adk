@@ -176,8 +176,11 @@ in the main session. MoAI aligns with the default and does not set the `backgrou
 field.
 
 The retained safeguard is **concurrency, not backgrounding**, because the actual hazard is a
-file-write race: never run two write-capable agents at once, and keep orchestrator work concurrent
-with a write-capable agent read-only. Read-only tasks are safe in the background while the
+file-write race — and a write race is scoped to a **working tree**, not to the session. **One
+writer per tree**: two write-capable agents may run at once only when each writes a different tree
+(worktree-isolated), and orchestrator work concurrent with a write-capable agent in the **same**
+tree stays read-only. Writes to a shared path, and integration into a shared branch, are serialized
+through the integration window. Read-only tasks are safe in the background while the
 orchestrator continues other read-only work; for write tasks, let the runtime choose the mode rather
 than forcing it. Pre-approved write paths in settings.json `permissions.allow` reduce prompts.
 Runtime-history rationale: `agent-common-protocol-reference.md` § Background Agent Execution
