@@ -842,6 +842,8 @@ func runInit(cmd *cobra.Command, args []string) (err error) {
 	// @MX:REASON: after the deploy the live file is the new render, so an abort with no revert
 	// would be discarded instead of promoted (plan.md B8)
 	backup.JudgeLeftoverSettingsSnapshot(opts.ProjectRoot, cmd.ErrOrStderr())
+	// Card t1029: same judgement for the .mcp.json staging copy.
+	backup.JudgeLeftoverMCPSnapshot(opts.ProjectRoot, cmd.ErrOrStderr())
 
 	result, err := executor.Execute(ctx, opts)
 	if err != nil {
@@ -878,6 +880,11 @@ func runInit(cmd *cobra.Command, args []string) (err error) {
 	// the manifest proves it wrote it (a skipped existing file records nothing)
 	// — before the autonomy tier bundle below can rewrite the file.
 	backup.StageDeployedSettingsSnapshot(opts.ProjectRoot, mgr, cmd.ErrOrStderr())
+	// Card t1029: the same staging for .mcp.json, before any later provisioning
+	// write (moai mcp add, the mcp-server opt-in) can rewrite the file — a
+	// post-deploy addition belongs to the user and must read as theirs on the
+	// next update, not as template content.
+	backup.StageDeployedMCPSnapshot(opts.ProjectRoot, mgr, cmd.ErrOrStderr())
 
 	if err := homestate.EnsureProjectLayout(opts.ProjectRoot); err != nil {
 		return fmt.Errorf("initialize private MoAI home layout: %w", err)
@@ -917,6 +924,7 @@ func runInit(cmd *cobra.Command, args []string) (err error) {
 	// so it never takes a preserve path — the staged render (if any) becomes the
 	// canonical base the first update merges against.
 	backup.SettleSettingsSnapshot(opts.ProjectRoot, false, cmd.ErrOrStderr())
+	backup.SettleMCPSnapshot(opts.ProjectRoot, false, cmd.ErrOrStderr())
 
 	// Route executor result warnings into the collector (they surface once,
 	// in the exit summary panel — REQ-TUX2-013) and display the completion

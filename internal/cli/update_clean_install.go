@@ -465,6 +465,15 @@ func runCleanReinstall(ctx context.Context, projectRoot string, opts CleanReinst
 	// settings.json render this deploy wrote, before the Step 5.5 merge and the
 	// deny-rule strip rewrite the file. Best-effort: it only warns.
 	backup.StageDeployedSettingsSnapshot(projectRoot, mgr, errOut)
+	// Card t1029: the same staging for .mcp.json — but for a different reason
+	// than settings.json, because this flow does NOT merge .mcp.json (see the
+	// mergeable set above). The force deploy just overwrote the file, so the
+	// live copy IS the render byte-for-byte and recording it records a TRUE
+	// base. Staging nothing here would leave the canonical copy holding an
+	// older render while the live file holds a newer one, and the next update
+	// would read the difference between the two renders as a user edit —
+	// re-applying a stale value the user never chose.
+	backup.StageDeployedMCPSnapshot(projectRoot, mgr, errOut)
 	_, _ = fmt.Fprintln(out, "[clean-reinstall] Embedded templates reinstalled")
 
 	// ---------------------------------------------------------------

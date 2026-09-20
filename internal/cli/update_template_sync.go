@@ -451,6 +451,13 @@ func runTemplateSyncWithReporter(cmd *cobra.Command, reporter project.ProgressRe
 				// settings.json render this deploy wrote, before the Restore
 				// Settings merge rewrites the file. Best-effort: it only warns.
 				backup.StageDeployedSettingsSnapshot(projectRoot, mgr, errOut)
+				// Card t1029: the same staging for .mcp.json, which this flow
+				// merges (see collectMergeableFiles below). Without it the merge
+				// derives its base from the new render, and a template value
+				// change to a server the user never touched stays invisible
+				// while a newly added server still arrives — an update that
+				// looks successful and is half-applied.
+				backup.StageDeployedMCPSnapshot(projectRoot, mgr, errOut)
 				pl.Done("Templates deployed")
 				return nil
 			},
