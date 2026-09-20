@@ -370,7 +370,10 @@ func renderValidateText(w io.Writer, result constitution.ValidationResult) {
 	}
 
 	if result.Status == constitution.ValidateStatusOK {
-		_, _ = fmt.Fprintf(w, "constitution validate: OK — no drift or violations detected (%d entries checked)\n", 0)
+		// Both counts come from the result: the checked number alone cannot be
+		// reconciled against `constitution list`, which counts retired entries too.
+		_, _ = fmt.Fprintf(w, "constitution validate: OK — no drift or violations detected (%d of %d entries checked)\n",
+			result.CheckedCount, result.TotalCount)
 		renderRetiredNote(w, result)
 		return
 	}
