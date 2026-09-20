@@ -10,7 +10,7 @@ This SPEC carries the first seam of the `SPEC-MODEL-PROFILE-MATRIX-002` split: t
 
 Scope surfaces: `internal/template/profile_matrix.go` and its tests, `internal/cli/model.go` (`resolveModelProfileReport`), the `llm.yaml` and `workflow.yaml` mirror pair, ten agent frontmatter files across both mirrors, and `progress.md` as the S0 record's home.
 
-**Inherited state**: M1 landed in squash `31da99a7b` (PR #1163); S0 did not. Two M1 plan steps below (steps 2 and 3) were never executed despite the landing record — card t1037 owns that disposition, and the steps stay listed here so the remainder is not lost.
+**Inherited state**: M1 landed in squash `31da99a7b` (PR #1163); S0 did not. Two M1 plan steps below (steps 2 and 3) were never executed — card t1037 has **ruled** that disposition: the non-execution was a deliberate landing-time decision, not an omission, so those steps are RETIRED rather than pending (`.moai/reports/t1037/verdict.md`; the deciding rationale was authored into `internal/template/profile_matrix.go:481-483` by the same squash). Step 5 is PARTIAL and is **not** covered by that ruling. The retired steps stay listed below so the decision's subject is not lost.
 
 ---
 
@@ -42,7 +42,8 @@ S0 blocks documentation that has already shipped. The record is therefore not a 
 | K-2 | `DefaultProfileMatrix()`'s Go type is unchanged while its inner-key semantics change from group key to agent name — a semantic change with no compiler signal. | M1 |
 | K-3 | `README.md`'s benchmark columns `$/solved` and `Tokens/solved` are derived metrics, not raw leaderboard columns. S0 must pin column semantics, not only values. | S0 → DOCS |
 | K-4 | `profileMatrixAgentOrder` carries 11 entries while `agentGroupMembership` carries 10 — the asymmetry that made `Explore` an accidental `inherit`. | M1 |
-| K-5 | M1 plan steps 2 and 3 are recorded as landed but are observably unexecuted in this tree (`profile_matrix.go:209`, `profile_matrix.go:464`, consumer at `internal/web/agentfm.go:491`). | M1 — disposition owned by card t1037 |
+| K-5 | M1 plan steps 2 and 3 are recorded as landed but are unexecuted in this tree (`profile_matrix.go:209`, `profile_matrix.go:464`, consumer at `internal/web/agentfm.go:491`). **RULED (t1037)**: deliberate retention, not an omission — the steps are retired (§F M1), the code stays. No longer an open issue; retained here because the symbols are still present and a reader will ask why. | M1 — disposition ruled; see `.moai/reports/t1037/verdict.md` |
+| K-6 | M1 step 5 is PARTIAL: the resolver's second return value is `mapped` at its declaration (`profile_matrix.go:487`) while call sites still read `hasGroup` — 8 occurrences repo-wide (`internal/cli/model.go:99`, `:110`; `internal/template/profile_matrix_test.go:285`, `:286`, `:302`, `:303`; plus comment text at `profile_matrix_test.go:278`, `:297`). **NOT ruled by t1037** — no authored decision exists for it, so it may be unfinished execution rather than a stale plan. | M1 — disposition open and unowned |
 
 ---
 
@@ -80,15 +81,24 @@ Do **not** copy figures from `research.md` §A.2 — that table is a summarised 
 
 Covers REQ-MPMC-001 … 004.
 
-### M1 — 33-cell matrix redesign (LANDED, with an unexecuted remainder)
+### M1 — 33-cell matrix redesign (LANDED; steps 2-3 RETIRED, step 5 PARTIAL)
 
 **Priority: High. Blocks `SPEC-MODEL-MATRIX-CONFIG-001` and `SPEC-MODEL-MATRIX-DOCS-001`.**
 
 1. Replace `defaultProfileMatrix` with the direct `profile → agent → {model, effort}` map, transcribing all 33 cells verbatim from `spec.md` §A.3. — *landed*
-2. Delete the six group constants and `agentGroupMembership`. — **NOT executed** (t1037)
-3. Delete `AgentGroup`; update `internal/cli/model.go` `resolveModelProfileReport` accordingly (per the §B.2 decision). — **NOT executed** (t1037); the consumer at `internal/web/agentfm.go:491` is live
+2. Delete the six group constants and `agentGroupMembership`. — **RETIRED (t1037)**
+3. Delete `AgentGroup`; update `internal/cli/model.go` `resolveModelProfileReport` accordingly (per the §B.2 decision). — **RETIRED (t1037)**; the consumer at `internal/web/agentfm.go:491` is live
+
+   > **Retirement note for steps 2-3.** These steps are not pending work. Card t1037 ruled that their non-execution was a **deliberate deviation taken at landing time**, not an omission: the same squash (`31da99a7b`) that landed step 1 also authored the deciding rationale into the code, at `internal/template/profile_matrix.go:481-483` — *"the group layer no longer carries routing information and survives only as a display classification (see AgentGroup)."* The plan said "detach from routing → therefore delete"; the implementer chose "detach from routing → but keep as a display classification" and wrote that reason down. The plan was never updated to match, which is why these steps read as a remainder. Evidence: `.moai/reports/t1037/verdict.md`. The step text is kept verbatim so the next reader can see what the decision replaced, and does not re-ask "why wasn't this deleted?".
+   >
+   > Retirement retires the *plan step*, not the *requirement*. REQ-MPMC-006/007/008 still assert these symbols' absence and are untouched by this card — see the note beside them in `spec.md` §B.2.
+
 4. Add the explicit `Explore` row; keep the unmapped-agent `inherit` fallback.
-5. Rename the resolver's second return value from `hasGroup` to a name describing what it now means (`injectable` / `mapped`) and update every call site.
+5. Rename the resolver's second return value from `hasGroup` to a name describing what it now means (`injectable` / `mapped`) and update every call site. — **PARTIAL**; disposition **NOT ruled by t1037**
+
+   > **Partial note for step 5.** The declaration was renamed (`mapped`, `profile_matrix.go:487`); the call sites were not. Eight `hasGroup` occurrences survive repo-wide: six in code (`internal/cli/model.go:99`, `:110`; `internal/template/profile_matrix_test.go:285`, `:286`, `:302`, `:303`) and two in comment text (`profile_matrix_test.go:278`, `:297`).
+   >
+   > Unlike steps 2-3, **no authored decision exists for this step** — nothing in the squash explains keeping the old name at the call sites, and the rename's own rationale (the flag means membership, not routing) applies to the call sites exactly as it applies to the declaration. So this is plausibly unfinished execution rather than a stale plan, and t1037 explicitly declined to decide between the two. Closing it, or deciding not to, remains open and unowned.
 6. Update `DefaultProfileMatrix()`'s doc comment to state the inner key is an agent name (K-2), and update the `@MX:ANCHOR` reason lines on the matrix and resolver.
 7. Re-set the **template** agent frontmatter `effort:` values to the new Medium column (K-1), then `make build`.
 8. Amend tests: rewrite the fidelity and low-column expectations; retarget the override-precedence test's second assertion; **split** the inherit test into an `Explore` case and an unmapped-agent case.
@@ -104,8 +114,8 @@ Covers REQ-MPMC-005 … 018.
 |---|---|---|
 | AP-1 | Diffing the new matrix against the old 18 cells to "verify" the transcription | The new values are not a reshape; a diff review mistakes intentional inversions for errors (§B.1) |
 | AP-2 | Copying benchmark numbers from `research.md` §A.2 | That table is a summarised probe result explicitly marked insufficient for documentation |
-| AP-3 | Treating M1 as discharged because the landing record says so | Steps 2 and 3 are observably unexecuted and the landed distribution does not match §A.3 (§B.3, K-5) |
-| AP-4 | Removing `agentGroupMembership` / `AgentGroup` on this SPEC's own authority | Card t1037 owns the disposition; a live consumer exists |
+| AP-3 | Treating M1 as discharged because the landing record says so | Two things still stand between M1 and discharge, and t1037 settled neither: step 5 is PARTIAL with no ruling (K-6), and the landed distribution does not match §A.3 (§B.3). Steps 2-3 ARE settled (retired, K-5) — do not read that ruling as discharging M1 as a whole |
+| AP-4 | Removing `agentGroupMembership` / `AgentGroup` because they look like leftover work | They are not leftover work. t1037 ruled the retention **deliberate** (K-5), so removing them now is a **new product decision** — reversing a landing-time choice — not the completion of M1. It needs its own justification and its own owner, and it must reckon with the live consumer at `internal/web/agentfm.go:491`, whose need is a membership bool, not the display name the retention rationale describes |
 | AP-5 | Closing S0 against `progress.md` while the shipped pages still carry unverified figures | S0 is remediation here, not prevention (§B.4) |
 | AP-6 | `git add -A` on this shared checkout | A parallel session may have staged unrelated work; use explicit pathspecs |
 
