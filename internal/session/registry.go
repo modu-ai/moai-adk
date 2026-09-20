@@ -30,6 +30,7 @@ import (
 	"time"
 
 	"github.com/modu-ai/moai-adk/internal/atomicfile"
+	"github.com/modu-ai/moai-adk/internal/stateanchor"
 )
 
 // DefaultRegistryPath is the canonical project-relative path for the
@@ -37,6 +38,36 @@ import (
 // blanket rule. Tests pass an explicit path via NewRegistry; package-level
 // helpers default to this constant.
 const DefaultRegistryPath = ".moai/state/active-sessions.json"
+
+// RegistryPathFor resolves the registry file for a directory, anchored to the
+// repository's PRIMARY checkout so every linked worktree reads and writes ONE
+// registry.
+//
+// DefaultRegistryPath is project-RELATIVE, so joining it to whatever root a
+// caller happened to hold gave each linked worktree a registry of its own: a
+// lane registering from .claude/worktrees/<card> wrote there, while a reader
+// anchored to the primary checkout never saw that entry. Measured on this
+// repository (2026-09-20, GH #1711): 65 registry files across 498 worktrees,
+// with 6 live sessions stranded outside the primary checkout's file.
+//
+// The anchor is the git common directory's parent — one root for every
+// checkout and worktree of a repository — resolved through the same seam the
+// other .moai/state/ surfaces use (stateanchor, SPEC-STATE-ANCHOR-001) rather
+// than a second private copy of that walk.
+//
+// Fallback is deliberate and total: when dir names no git repository, or git
+// cannot answer, the result is dir joined to DefaultRegistryPath — identical
+// to the pre-anchoring behavior, so a non-repository project is untouched. An
+// empty dir yields the bare relative constant, as before.
+func RegistryPathFor(dir string) string {
+	if root := stateanchor.FromDirectory(dir); root != "" {
+		return filepath.Join(root, DefaultRegistryPath)
+	}
+	if dir == "" {
+		return DefaultRegistryPath
+	}
+	return filepath.Join(dir, DefaultRegistryPath)
+}
 
 // CurrentSideChannelFile is the project-relative path of the side-channel
 // file the SessionStart hook writes (SPEC-V3R6-SESSION-ID-ATTRIBUTION-REPAIR-001
@@ -152,7 +183,12 @@ func (r *Registry) WithLockTimeout(d time.Duration) *Registry {
 // defaultRegistry returns a Registry bound to DefaultRegistryPath with the
 // real clock. Used by package-level RegisterSession/Heartbeat/etc. helpers.
 func defaultRegistry() *Registry {
-	return NewRegistry(DefaultRegistryPath, realClock{})
+	// The working directory only SEEDS the resolution; RegistryPathFor turns it
+	// into the repository's primary checkout, so a package helper called from
+	// inside a worktree reaches the same registry as one called from the
+	// primary checkout.
+	wd, _ := os.Getwd()
+	return NewRegistry(RegistryPathFor(wd), realClock{})
 }
 
 // RegisterSession atomically appends a new entry with started_at and

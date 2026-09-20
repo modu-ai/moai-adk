@@ -46,7 +46,11 @@
   # expect: no matches
   go build ./...
   ```
-  **Current state — FAILING**: this grep returns matches in this tree (`internal/template/profile_matrix.go:209`, `:464`, consumer at `internal/web/agentfm.go:491`). The disposition is owned by card t1037; the criterion is recorded as unmet rather than relaxed.
+  **Current state — FAILING, carried as an explicitly-owned debt** (closure gate 5, second branch). This grep returns matches in this tree (`internal/template/profile_matrix.go:209`, `:464`, consumer at `internal/web/agentfm.go:491`).
+
+  **Owner reason.** The criterion asserts an **absence that a deliberate landing-time decision chose not to create**. Card t1037 measured the landing squash `31da99a7b` and ruled that M1 plan steps 2-3 were not omitted but abandoned on purpose, with the rationale authored into the code in the same squash (`internal/template/profile_matrix.go:481-483`). So this criterion is not failing because work was left undone; it is failing because the plan it was written against was superseded and the requirement layer was never re-examined. Evidence: `.moai/reports/t1037/verdict.md`.
+
+  **The grep is unchanged and stays unchanged.** Relaxing it to match the tree would erase the evidence that requirement and implementation disagree (§G). What this debt records is that REQ-MPMC-006/007/008 now rest on an abandoned premise — and that deciding whether to retire those requirements or to remove the group layer after all is a **product decision outside this card**, currently unowned (see the note in `spec.md` §B.2).
 
 **AC-MPMC-006** (REQ-MPMC-009)
 - **Given** the profile is `max`, `medium`, or `low`
@@ -143,7 +147,9 @@ This SPEC may close when:
 2. The `Group`-field clarification in `research.md` §F is resolved and the resolution recorded.
 3. The §B.3 divergence in `plan.md` — the landed matrix distribution against `spec.md` §A.3 — is reconciled and the reconciliation recorded.
 4. The S0 delta table exists, and every benchmark figure in the repository traces to it.
-5. Card t1037's disposition of the unexecuted M1 remainder is recorded, and AC-MPMC-005 is either passing or carried as an explicitly-owned debt.
+5. Card t1037's disposition of the unexecuted M1 remainder is recorded, and AC-MPMC-005 is either passing or carried as an explicitly-owned debt. — **PARTIALLY DISCHARGED (2026-09-20)**.
+   - *Discharged*: the disposition of **steps 2 and 3** is recorded — deliberate retention, ruled by t1037, written into `plan.md` §F M1 and §C K-5; and AC-MPMC-005 is carried as an explicitly-owned debt with its owner reason stated at §D.1 above (the second branch of this gate, not the first).
+   - *Remaining*: **step 5's** disposition. t1037 ruled only steps 2-3; step 5 is PARTIAL (`plan.md` §C K-6 — 8 surviving `hasGroup` occurrences) with no authored decision behind it, so whether it is a stale plan or unfinished execution is undecided and unowned. This gate does not close until step 5's disposition is recorded too.
 6. `go vet ./internal/template/... && go test ./internal/template/...` are green.
 
 ---
