@@ -166,9 +166,24 @@ func writeUserMarkerBlock(gitignorePath, templateContent string, block []string,
 	return os.WriteFile(gitignorePath, []byte(result), defs.FilePerm)
 }
 
-// settingsJSONPath is the one mergeable file whose base may come from the
-// canonical snapshot rather than being derived (REQ-USB-015).
-const settingsJSONPath = ".claude/settings.json"
+// The mergeable files whose base may come from a canonical snapshot rather
+// than being derived (REQ-USB-015, extended to .mcp.json by card t1029).
+const (
+	settingsJSONPath = ".claude/settings.json"
+	mcpJSONPath      = ".mcp.json"
+)
+
+// snapshotBases maps a mergeable path to the loader of its canonical base. A
+// path absent from the map keeps the derived base, and a loader reporting
+// false does the same, so the fallback is byte-for-byte the pre-snapshot
+// behaviour on every path (REQ-USB-009).
+//
+// The map is the discriminator: it is keyed by the exact slash-form path, so
+// one file's snapshot can never stand in as another's base.
+var snapshotBases = map[string]func(string) ([]byte, bool){
+	settingsJSONPath: backup.LoadSettingsSnapshot,
+	mcpJSONPath:      backup.LoadMCPSnapshot,
+}
 
 // FileResolution names how the post-deploy merge resolved one backed-up file.
 type FileResolution int
@@ -211,14 +226,14 @@ func MergeUserFiles(projectRoot string, backups []FileBackup, out io.Writer) err
 // was resolved, so a caller can tell a merge that wrote a result from one that
 // fell back to preserving the user's file.
 //
-// The base is derived per file by deriveTemplateBase, except for
-// .claude/settings.json when a valid canonical snapshot of the previously
-// deployed render exists: that snapshot is the genuine base, so a template
-// value change to a key the user never touched is delivered (REQ-USB-004/006).
-// An absent or unusable snapshot keeps the derived base, byte-for-byte the
-// pre-snapshot behaviour (REQ-USB-009).
+// The base is derived per file by deriveTemplateBase, except for the paths in
+// snapshotBases when a valid canonical snapshot of the previously deployed
+// render exists: that snapshot is the genuine base, so a template value change
+// to a key the user never touched is delivered (REQ-USB-004/006). An absent or
+// unusable snapshot keeps the derived base, byte-for-byte the pre-snapshot
+// behaviour (REQ-USB-009).
 //
-// @MX:NOTE: [AUTO] base selection boundary — canonical snapshot for settings.json only, derived base otherwise
+// @MX:NOTE: [AUTO] base selection boundary — canonical snapshot for snapshotBases paths, derived base otherwise
 // @MX:NOTE: [AUTO] preserve paths (ResolutionPreserved): deployed file unreadable, no base derivable, merge error
 // @MX:SPEC: SPEC-UPDATE-SETTINGS-BASE-SNAPSHOT-001
 func MergeUserFilesWithOutcome(projectRoot string, backups []FileBackup, out io.Writer) (MergeOutcome, error) {
@@ -282,8 +297,8 @@ func MergeUserFilesWithOutcome(projectRoot string, backups []FileBackup, out io.
 		}
 		// Both sides parsed, so a canonical snapshot of the render the user's
 		// file was last merged against can stand in for the derived base.
-		if key == settingsJSONPath {
-			if snapshot, ok := backup.LoadSettingsSnapshot(projectRoot); ok {
+		if load, hasSnapshot := snapshotBases[key]; hasSnapshot {
+			if snapshot, ok := load(projectRoot); ok {
 				baseContent = snapshot
 			}
 		}

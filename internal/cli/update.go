@@ -361,6 +361,11 @@ func runUpdate(cmd *cobra.Command, _ []string) error {
 			return fmt.Errorf("get working directory for settings snapshot: %w", err)
 		}
 		backup.JudgeLeftoverSettingsSnapshot(cwd, cmd.ErrOrStderr())
+		// Card t1029: same judgement for the .mcp.json staging copy. Unlike
+		// settings.json nothing between here and the deploy rewrites .mcp.json,
+		// but the judgement is placed alongside its sibling so one point covers
+		// every flow rather than two points drifting apart.
+		backup.JudgeLeftoverMCPSnapshot(cwd, cmd.ErrOrStderr())
 	}
 
 	// Retired-deny-rule migration on the v3 path (issue #1101 follow-up). The
