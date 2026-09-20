@@ -228,7 +228,73 @@ belongs to M7); it is the narrower claim that M1's own test is not vacuous.
 `internal/config`, and the status transition plus artifact commit sit outside that scope. It stopped
 and asked rather than widening its own mandate. The orchestrator resolved it as recorded above.
 
-_<milestone evidence follows>_
+### M2-M9 — run-phase milestones
+
+| M | Commit | What landed |
+|---|---|---|
+| M2 | `bf5f23460` + `7a6e6c486` | `cleanupGLMSettingsLocal` onto the cleanup view (REQ-7 carve-out preserved); indicator widened to two keys; AC-007 table (both directions) + AC-014 net-benefit test + AC-002 hook-side equivalence |
+| M3 | `a723e1c17` | `CLAUDE_CODE_TEAMMATE_DISPLAY` stand-in fixture repaired — `CUSTOM_VAR` carries the survival assertion; the GLM-owned key gains a *second* assertion on the opposite obligation, so coverage grew rather than traded |
+| M4 | `9f820303b` | `stripGLMCredsAndSetTeammateMode` onto the cleanup view; function retained despite zero production callers (REQ-11) |
+| M5 | `2e8b9ee09` | `removeGLMEnv` onto the cleanup view |
+| M6 | `3615674ee` | Both test key lists derive from `config.SettingsAxisLiveKeys()`; the out-of-scope tmux-parity guard stayed green and unmodified, with set-equality measured rather than assumed |
+| M7 | `f379abf3f` | AC-008 consumer-divergence demonstration (record; the mutation itself was reverted and never committed) |
+| M8 | `0969785f6` | The deliberately-red probe carries its rationale: option (가') by the lead 2026-09-19, why the stranded case is not closed, and that the only route in is a file an older binary wrote |
+
+### M9 — full verification sweep
+
+Conditions at measurement: `load 286.61 / 163.29 / 77.08`, **CPU 72.78% idle** (I/O-bound, not CPU
+saturation), **0 concurrent full-package runs** — the lead-revised discriminant is the concurrent
+full-run count, never an absolute load figure.
+
+| Check | Result |
+|---|---|
+| `internal/config` full | 3/3 `ok` |
+| `internal/hook` full | 11 packages; one RED, attributed below |
+| `internal/cli` 17 subpackages | 17/17 `ok`, `EXIT:0` |
+| `internal/cli` delta-targeted (GLM / Tmux / OAuth) | 3/3 `ok`, all `EXIT:0` |
+| `go vet` (three packages) | no output, `EXIT:0` |
+| `gofmt -l` | **empty output** (judged by emptiness, never by exit code) |
+
+`residue_probe` final state — the designed end state: `TestProbeCleanupLeavesLegacyAndOtherAxisKeys`
+PASS, `TestProbeStripGLMCredsLeavesLegacyKeys` PASS, `TestProbeSettingsAxisListsAgree` PASS, and
+`TestProbeStrandedResidueSurvivesIndicatorLoss` **still FAIL** — the accepted non-closure, annotated
+by M8.
+
+**The one RED was discriminated by observation, not by reasoning.**
+`TestSessionStart_MissPathSpendsNoJoinBudgetOnDrift` failed in the sweep and passed in isolation:
+
+```
+in the sweep   (load 286, 72% idle) : Handle miss 297.828958ms → FAIL   (budget 50ms)
+isolated re-run (load 118)          : Handle miss 118.342125ms → PASS
+```
+
+Same tree, same commit, same assertion; only the number moved, and it moved with the load. Two
+supports: the assertion is a **wall-clock budget**, not a behavioural one; and this card's 13
+changed files contain **no `session_start` file** at all. `internal/hook` also took 1043.011s against
+a 206.938s baseline — a 5× stretch that names the contention. Verdict: contention-induced false RED.
+Contention produces false RED, never false GREEN, so the sweep's greens stand.
+
+## §E.3 Run-phase Audit-Ready Signal
+
+- `run_status`: audit-ready
+- `run_complete_at`: 2026-09-20
+- **Card commits**: 10, `10f00a125` … `0969785f6`, unpushed, `develop` not yet absorbed
+  (`origin/develop...HEAD` → `68  2` at the last measurement).
+- **Verdict**: `.moai/reports/t888/verdict.md` — written, and gitignored by
+  `.gitignore:227:.moai/reports/*`, which is this repository's convention for evidence: the durable
+  committed carriers are the code comments and this file.
+- **Absorption deliberately NOT performed.** `git merge develop` belongs inside the integration
+  window (§4.1 lane obligation), and doing it during work would blur attribution — every green from
+  M2 onward would come from a tree mixing this card's change with 68 other commits.
+- **`moai integration acquire` NOT called.** The window is the lead's to assign; `free` is a state,
+  not an approval.
+
+**Four instrument defects were repaired during this card**, each of the shape "the criterion rejects
+a correct implementation, or cannot see the defect": AC-002's fixture (forced an implementation that
+destroys the user's restored OAuth token — proven by running both directions), the §C positive
+control (necessarily zero at dispatch), AC-001's case-sensitive doc grep, and AC-012's observation
+method for the `internal/cli` root. The lane's own checks were twice looser than the agent's and
+both were corrected; that record is in the verdict §9.
 
 ## §E.3 Run-phase Audit-Ready Signal
 
