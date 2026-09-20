@@ -12,7 +12,7 @@ Given-When-Then is the verification layer's format; the GEARS requirement wordin
 
 **AC-JEVO-004** — Given either entrance, When its Jev text is read in each of `ko`, `en`, `ja`, and `zh`, Then it states that enabling sends card or request text to a third-party server. One sub-case per locale.
 
-**AC-JEVO-005** — Given the `translations` map, When it is enumerated, Then an entry for the Jev question id exists under each of the four locale keys.
+**AC-JEVO-005** — Given the locale resolver `GetLocalizedQuestion`, When the Jev question is resolved through it in each of `ko`, `en`, `ja`, and `zh`, Then every locale yields a non-empty title and description, and each non-English result is not byte-identical to the English base. The `translations` map carries locale keys `ko`, `ja`, and `zh` only — English is the source language, held on the `Question` itself, and the resolver returns before the map is consulted — so the four locales are verified at the render surface rather than by four keys in the map. Method: one assertion per locale through the resolver.
 
 **AC-JEVO-006** — Given the console's route table, When it is enumerated, Then no init route is present — the count and membership match the pre-SPEC set.
 

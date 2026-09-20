@@ -43,7 +43,7 @@ Run-phase baseline: the tree at `2ce0294dd` (`WT-jev-init-optin`), measured in t
 | AC-JEVO-002 | PASS | `go test ./internal/settings/ -run TestSetJevEnabled_AndConsoleEditAgree` → ok. The wizard wrapper and the console edit map produce byte-identical files; both call `ApplySchemaEdits` |
 | AC-JEVO-003 | PASS | `go test ./internal/settings/ -run TestSetJevEnabled_SiblingFieldsByteIdentical` → ok. Exactly one line changed; the sibling comment and scalar survive (both asserted by positive control) |
 | AC-JEVO-004 | PASS | `go test ./internal/cli/wizard/ -run TestJevQuestion_PrivacyAndPointerInEveryLocale` (4 sub-cases) + `go test ./internal/web/ -run TestJevI18nKeys_PresentInFourLocales` → ok |
-| AC-JEVO-005 | PASS-WITH-DEBT | `go test ./internal/cli/wizard/ -run TestJevQuestion_TranslatedInFourLocales` → ok. All four locales covered, but through THREE map keys — see the blocker row below |
+| AC-JEVO-005 | PASS (AC amended 2026-09-20; supersedes the PASS-WITH-DEBT below) | `go test -count=1 -v ./internal/cli/wizard/ -run TestJevQuestion_TranslatedInFourLocales` → `--- PASS: TestJevQuestion_TranslatedInFourLocales (0.00s)` + `ok  github.com/modu-ai/moai-adk/internal/cli/wizard  0.154s`, exit 0 — the `=== RUN` line proves the selector swept a test (an empty sweep prints `[no tests to run]`, measured as the control). All four locales verified at the render surface (`GetLocalizedQuestion`), which is what the amended AC now requires. **Run-phase record, not deleted:** this row read `PASS-WITH-DEBT | … All four locales covered, but through THREE map keys — see the blocker row below`, measured against the pre-amendment wording. The debt was in the AC's wording, not in the tree; the wording was amended on operator authority — see §E.4 Gap 2 |
 | AC-JEVO-006 | PASS | `go test ./internal/web/ -run TestConsoleRoutes_NoInitRoute` → ok; `git status --porcelain` shows `internal/web/app.go` unmodified. Positive control: the scan finds `"/settings"` |
 | AC-JEVO-007 | PASS | `go test ./internal/cli/wizard/ -run TestInitQuestions_CarriesExactlyOneJevQuestion` → ok. Five questions, exactly one Jev id, `QuestionTypeConfirm` |
 | AC-JEVO-008 | PASS | `go test ./internal/cli/wizard/ -run TestJevQuestion_AbsentFromDefaultAndReconfigure` → ok. Neither set carries the id; the reconfigure membership is pinned as an explicit 12-id sequence |
@@ -203,11 +203,63 @@ So the page's divergence is pre-existing and not caused by `jev_enabled`. Repair
 ### Gaps (explicitly NOT observed)
 
 1. **The measurement was NOT run, and this sync phase produced no accuracy figure, confidence value, threshold result, or sample count.** The live-measurement path requires a call to the vendor; there is no TypeSafe credential in this tree and nothing in this sync phase contacted `api.typesafe.ai`. No number appearing in the CHANGELOG entry, in this section, or anywhere in this commit is a measurement of model accuracy. What would close this: a run of the `internal/jevmeasure` harness against a labelled set with a real credential, under the pinned model id, whose `Report.Source` is `SourceLive` and whose rendered artifact is committed as evidence.
-2. **AC-JEVO-005 remains unresolved, and its claimed resolution has no on-disk record.** Recorded as required:
+2. **[CLOSED 2026-09-20 — AC amended; superseded in place, original text preserved below]** — *what this gap recorded when the sync phase closed:* **AC-JEVO-005 remains unresolved, and its claimed resolution has no on-disk record.** Recorded as required:
    - **The AC**: `AC-JEVO-005` — "Given the `translations` map, When it is enumerated, Then an entry for the Jev question id exists under each of the four locale keys."
    - **The claimed operator judgement**: that during the run phase the operator judged this AC to be carried over to the sync phase for disposition.
    - **The fact**: **no on-disk record of that judgement exists.** Searching this SPEC's artifact set finds only the run phase's own blocker report (§E.2 "Blocker report — a requirement the tree contradicts"), which states the opposite posture — "Decision owner: Not mine … routed here rather than resolved unilaterally". A judgement asserted in conversation and absent from disk is indistinguishable from an unanswered blocker, and this sync phase treats it as unanswered. **It is NOT resolved here.**
    - **What would make it verifiable**: the operator's decision written into the SPEC artifact set — either (a) an amendment to the AC's wording in `acceptance.md` accepting coverage via `GetLocalizedQuestion` rather than via a literal four-key map (a plan-phase edit owned by `manager-spec`, not by sync), or (b) an explicit recorded acceptance of the debt with its reason. Either lands as a commit; the commit is the record.
+
+   **How it was closed.** Branch (a) was taken. Authority: **operator decision, this session** — the operator authorized a
+   plan-phase correction to this already-closed SPEC and delegated the edit to `manager-spec`; the correction lands as its own
+   commit, which is the on-disk record the gap asked for. The finding it rests on was re-verified against the tree before the
+   edit: `internal/cli/wizard/translations.go` line 29 opens `translations` with locale keys at lines 30 (`ko`), 121 (`ja`),
+   211 (`zh`) and the map closes at line 301; `sed -n '29,302p' internal/cli/wizard/translations.go | grep '"en"'` returns no
+   rows (exit 1), with the positive control `grep '"zh"'` over the identical range returning one row — so the zero is
+   absence, not a dead search. `GetLocalizedQuestion` (`translations.go:329-333`) returns `*q` for `"en"` and `""` before
+   the map is read.
+
+   **What the AC said before the amendment** (`acceptance.md`, verbatim):
+
+   > **AC-JEVO-005** — Given the `translations` map, When it is enumerated, Then an entry for the Jev question id exists
+   > under each of the four locale keys.
+
+   **What it says now** (`acceptance.md`, verbatim):
+
+   > **AC-JEVO-005** — Given the locale resolver `GetLocalizedQuestion`, When the Jev question is resolved through it in
+   > each of `ko`, `en`, `ja`, and `zh`, Then every locale yields a non-empty title and description, and each non-English
+   > result is not byte-identical to the English base. The `translations` map carries locale keys `ko`, `ja`, and `zh` only —
+   > English is the source language, held on the `Question` itself, and the resolver returns before the map is consulted — so
+   > the four locales are verified at the render surface rather than by four keys in the map. Method: one assertion per locale
+   > through the resolver.
+
+   **The command whose output shows the amended criterion passes** — no production code or test was changed to reach it;
+   the run-phase test already asserted at the render surface, which is why the debt was in the wording:
+
+   ```
+   $ go test -count=1 -v ./internal/cli/wizard/ -run TestJevQuestion_TranslatedInFourLocales
+   === RUN   TestJevQuestion_TranslatedInFourLocales
+   --- PASS: TestJevQuestion_TranslatedInFourLocales (0.00s)
+   ok  	github.com/modu-ai/moai-adk/internal/cli/wizard	0.154s
+   (exit 0)
+   ```
+
+   Empty-sweep control, run in the same turn, because a `-run` selector matching zero tests also exits 0 and also
+   prints `ok`:
+
+   ```
+   $ go test -count=1 ./internal/cli/wizard/ -run TestZZZ_NoSuchTest_PositiveControl
+   ok  	github.com/modu-ai/moai-adk/internal/cli/wizard	0.160s [no tests to run]
+   (exit 0)
+   ```
+
+   The real run carries `=== RUN` and no `[no tests to run]`; the control carries the reverse. The pass is therefore a
+   pass over a non-empty swept set, not a green over nothing. `go build ./...` was also run after the edit: no output,
+   exit 0.
+
+   **Scope of the closure.** `spec.md` `status:` is untouched — the SPEC stays `completed`; the audit ruled the close
+   legitimate and this is a correction, not a reopening. The `§E.3` run-phase YAML block above still reads
+   `ac_pass_with_debt_count: 1` and is deliberately NOT edited: it is a dated observation of the tree at `132324cbb`, and it was
+   true then. The amendment is recorded here, at the point in the record where it happened.
 3. **The full test suite was not run.** Per `CLAUDE.local.md` §6 this machine does not run the whole-module test command locally; the four affected package trees were run uncached and are green. Cross-platform (windows, linux) is unmeasured here. Both verdicts belong to CI on the pushed head, and nothing has been pushed (Gap 5).
 4. **The docs-site `init-wizard.md` page was inspected only on the single axis above.** The Page-3 row was measured against the pre-SPEC tree; the Page-1 and Page-2 rows, the per-step prose, the non-interactive-flag block, and the ja/en/zh translations of the same page were NOT checked against the tree. The follow-up recommendation must not be read as a claim that the rest of that page is correct, or that the Page-3 row is its only defect.
 5. **Nothing was pushed, no PR was opened, and no merge was performed.** The branch `WT-jev-init-optin` is local; CI has rendered no verdict on this tree.
