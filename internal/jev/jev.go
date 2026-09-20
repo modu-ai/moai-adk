@@ -56,7 +56,15 @@ import (
 // unattributable, because the model that answered could differ between two
 // readings of the same record. REQ-JEVC-003 forbids the alias appearing in any
 // request this package constructs.
-const ModelID = "jev-1.13"
+//
+// The literal is the vendor's VERSIONED id — the family name plus three
+// dot-separated numbers. `jev-1.13` names the release family in the vendor's
+// prose but is NOT an id the endpoint accepts, and no test in this package can
+// catch that substitution on its own: every transport test answers a fake
+// server that echoes whatever id it is handed, so a malformed pin travels the
+// whole suite green and fails only in production. The shape is therefore
+// asserted mechanically by TestModelID_MatchesVendorVersionedShape.
+const ModelID = "jev-1.13.0"
 
 // EndpointURL is the System One endpoint. Compiled, for the same reason the
 // model id is: no configuration path may aim a request somewhere else.

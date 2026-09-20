@@ -7,6 +7,7 @@ import (
 	"net"
 	"net/http"
 	"net/http/httptest"
+	"regexp"
 	"strings"
 	"testing"
 )
@@ -43,7 +44,7 @@ func jsonResponse(status int, body string) *http.Response {
 	}
 }
 
-const okBody = `{"model":"jev-1.13","usage":{"input_tokens":123},"answers":[` +
+const okBody = `{"model":"jev-1.13.0","usage":{"input_tokens":123},"answers":[` +
 	`{"question_id":"q1","kind":"noul","noul":true,"probability":0.62}]}`
 
 // testClient builds an enabled client with a stored credential and the supplied
@@ -72,6 +73,27 @@ func TestModelID_IsPinnedNotAnAlias(t *testing.T) {
 	}
 	if strings.Contains(ModelID, "latest") {
 		t.Fatalf("ModelID = %q — a moving alias makes every measurement unattributable (REQ-JEVC-003)", ModelID)
+	}
+}
+
+// TestModelID_MatchesVendorVersionedShape guards the shape of the pin, not just
+// its non-aliasness. The two are different defects: an alias moves under you,
+// while an id of the wrong shape is simply not a model the endpoint knows, and
+// the endpoint is the only party that can say so. Every test here answers a
+// fake server that echoes whatever id it is handed, so a malformed pin travels
+// through the whole suite green and fails only in production. The vendor
+// publishes versioned ids as the family name plus three dot-separated numbers
+// (`jev-1.13.0`); the bare family name (`jev-1.13`) names a release in prose
+// and is not an accepted id.
+func TestModelID_MatchesVendorVersionedShape(t *testing.T) {
+	shape := regexp.MustCompile(`^jev-\d+\.\d+\.\d+$`)
+	if !shape.MatchString(ModelID) {
+		t.Fatalf("ModelID = %q does not match the vendor's versioned-id shape %s — the endpoint rejects an id it does not publish, and no test here can detect that because every transport test answers a fake server", ModelID, shape)
+	}
+	// Negative control: the guard must reject the bare family name, or it is
+	// asserting nothing that the previous test did not already cover.
+	if shape.MatchString("jev-1.13") {
+		t.Fatal("negative control failed: the shape pattern accepts the bare family name, so it would not have caught the defect it exists to catch")
 	}
 }
 
@@ -326,7 +348,7 @@ func TestEmptyQuestions_IsRefusedNotSent(t *testing.T) {
 // ---------------------------------------------------------------------------
 
 func TestBatching_SeveralQuestionsOverOneStateSendOneRequest(t *testing.T) {
-	body := `{"model":"jev-1.13","usage":{"input_tokens":200},"answers":[` +
+	body := `{"model":"jev-1.13.0","usage":{"input_tokens":200},"answers":[` +
 		`{"question_id":"a","kind":"noul","noul":true,"probability":0.7},` +
 		`{"question_id":"b","kind":"noul","noul":false,"probability":0.3},` +
 		`{"question_id":"c","kind":"score","score":0.5,"probability":0.5}]}`
