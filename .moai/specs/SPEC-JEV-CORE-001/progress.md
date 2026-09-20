@@ -165,4 +165,179 @@ m1_to_mN_commit_strategy: single-commit   # M1a-M1e landed together; no intermed
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase>_
+Sync-phase baseline: the tree at `833fd8058` (`WT-jev-init-optin`), working tree clean at
+measurement start, inside the worktree `/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t1020`.
+Every claim below names the command that produced it and what that command printed. No figure is
+carried over from the run phase; where a run-phase figure is referenced, the row says so.
+
+### What this sync commit changes
+
+| File | Change |
+|---|---|
+| `CHANGELOG.md` | One new entry at the head of `[Unreleased] → Added`, covering the single call path, the pinned model id, the display-only boundary, fail-open, the config gate, the credential, and the `Jev` doctor check — including the explicit statement that no live measurement was taken and that no figure in this release measures anything |
+| `.moai/specs/SPEC-JEV-CORE-001/spec.md` | Frontmatter only: `status: in-progress → completed`. `updated:` already read `2026-09-20`, which is the sync date, so it is byte-unchanged |
+| `.moai/specs/SPEC-JEV-CORE-001/progress.md` | This section, replacing the `_<pending sync-phase>_` placeholder |
+
+No production code, no test, and no template file is touched by this sync commit. `plan.md`,
+`acceptance.md`, `design.md`, and `research.md` are untouched.
+
+### Status transition
+
+`in-progress → implemented → completed`, landing on this single sync commit (3-phase close). MX Tag
+validation ran as a sync sub-step, not as a separate phase; there is no Mx commit.
+
+The transition lands on `spec.md` alone. That is the schema rule, not a deviation:
+`.claude/rules/moai/development/spec-frontmatter-schema.md` § Artifact Statelessness declares the
+four sibling artifacts stateless on the status axis and forbids a `status:` field in them, and
+`progress.md` records phase progress in body sections rather than in frontmatter. Verified:
+`head -1` across `plan.md`, `acceptance.md`, `design.md`, `research.md`, and `progress.md` returns
+an H1 in every case (no frontmatter block at all), and
+`grep -rn '^status:' .moai/specs/SPEC-JEV-CORE-001/` returns exactly one row —
+`spec.md:5:status: completed` — which is both the post-edit assertion and the positive control that
+the pattern fires.
+
+### Evidence
+
+| Claim | Command | Observed output |
+|---|---|---|
+| Build green after the sync edits | `go build ./...` | no output; `build_exit=0` |
+| Affected packages green, uncached | `go test -count=1 -timeout 30m ./internal/jev/... ./internal/jevcred/... ./internal/config/...` | `test_exit=0`; five `ok` lines — `internal/jev 0.293s`, `internal/jevcred 0.677s`, `internal/config 3.613s`, `internal/config/atomicfile 0.735s`, `internal/config/toolpolicy 0.674s` (`grep -c '^ok'` → `5`) |
+| That green is over a non-empty swept set | `go test -count=1 ./internal/jev/ -run TestZZZ_NoSuchTest_PositiveControl` | `ok  github.com/modu-ai/moai-adk/internal/jev  0.108s [no tests to run]`, exit 0 — the control proves a zero-sweep ALSO exits 0 and ALSO prints `ok`. The real run above carries no `[no tests to run]` marker on any of its five lines, so its green is a green over tests that actually ran |
+| B12(a) — no duplicate CHANGELOG **entry** existed | `grep -c 'SPEC-JEV-CORE-001' CHANGELOG.md` → `1`; then `grep -nE '^- \*\*\[SPEC-JEV-CORE-001\]' CHANGELOG.md \| wc -l` | `1` then `0`. See the deviation note below — the single pre-existing hit is a prose cross-reference inside the successor's entry, not an entry of this SPEC's own |
+| B12(a) positive control — the entry-head pattern fires | `grep -cE '^- \*\*\[SPEC-' CHANGELOG.md` | `296` — the anchored pattern matches 296 entry heads in this file, so the `0` above is absence, not a dead search |
+| B12(b) — AC count match | `grep -oE 'AC-([A-Z0-9]+-)*[0-9]+' .moai/specs/SPEC-JEV-CORE-001/acceptance.md \| sort -u \| wc -l` | `16` — non-zero (a `0` would be a RED flag, not a pass), and equal to the 16 rows of the §E.2 AC matrix and to the 16 criteria the CHANGELOG entry claims. Ids enumerated: `AC-JEVC-001` … `AC-JEVC-016`, contiguous |
+| B12(c) — every path named in the CHANGELOG entry resolves | `ls -d internal/jev/jev.go internal/jevcred/jevcred.go internal/cli/doctor_jev.go internal/config/defaults.go internal/config/types.go internal/config/cache.go internal/config/envkeys.go internal/defs/dirs.go internal/template/templates/.moai/config/sections/workflow.yaml .moai/specs/SPEC-JEV-CORE-001/spec.md` | all ten listed, `ls_exit=0`, no `No such file` |
+| The pinned model id the entry cites is the tree's value | `grep -n 'ModelID' internal/jev/jev.go` | `67:const ModelID = "jev-1.13.0"` — the entry cites `jev-1.13.0`, read from the tree, NOT from §E.2 (which is stale on this point; Gap 4) |
+| The compiled default ships off | `grep -n 'jev:' -A2 internal/template/templates/.moai/config/sections/workflow.yaml` | `180:    jev:` / `181:        enabled: false` |
+| The cache schema bump the entry cites is real | `grep -n 'configCacheSchemaVersion' internal/config/cache.go` | `27:const configCacheSchemaVersion = 5` |
+| The credential filename constant exists where claimed | `grep -n 'TypeSafeEnvFileName' internal/defs/dirs.go` | `404:	TypeSafeEnvFileName = ".env.typesafe"` |
+| The doctor check name the entry cites | `grep -n 'jevCheckName' internal/cli/doctor_jev.go` | `18:const jevCheckName = "Jev"` |
+| The `Availability` values the entry enumerates are the tree's | `grep -n 'Availability' internal/jev/jev.go` | nine constants at lines 106-125: `available`, `disabled`, `no-credential`, `unauthorized`, `rate-limited`, `overloaded`, `unreachable`, `oversize`, `secret-detected`, `malformed` — the entry lists the nine unavailable ones |
+| The signal label the entry cites | `grep -n 'SignalLabel\|func (a Answer) Label' internal/jev/jev.go` | `96:const SignalLabel = "model signal"`; `181:func (a Answer) Label() string` |
+
+#### Deviation from B12(a), stated rather than worked around
+
+B12's pre-emission rule is `grep -c '<SPEC-ID>' CHANGELOG.md` → halt when the count is ≥ 1. The
+count here is `1`, and emission proceeded anyway. The reason, measured rather than asserted: the
+single hit is at `CHANGELOG.md:12` (pre-edit) **inside the body prose of the successor's entry** —
+the phrase "the Jev typed-judgment capability shipped by `SPEC-JEV-CORE-001`" — and not an entry of
+this SPEC's own. The anchored entry-head probe above returns `0` against a 296-head positive
+control, so no duplicate entry existed. The rule's purpose is duplicate-entry avoidance under
+parallel BATCH-SYNC sessions; a cross-reference from a sibling SPEC is the false-positive shape the
+bare substring count cannot distinguish. Recording the deviation, its probe, and its control here is
+the discipline the rule exists for — a silent override would not be.
+
+### README and docs-site: the decision NOT to edit, and its evidence
+
+**Neither README (×4) nor docs-site (×4 locales) is touched.** Decided from measurement on this
+tree, not inherited from the successor's decision. CORE-001 ships three surfaces the successor did
+not — a config gate key, a credential path, and a `moai doctor` check — so each was probed
+separately.
+
+**The positive control is a Latin-script token, deliberately.** `grep -rnil 'GLM' README.md
+README.ko.md README.ja.md README.zh.md docs-site/content | wc -l` → `178` files. `GLM` is a product
+name that is NOT translated, so it appears verbatim in ko/ja/zh as well as en; a control word that
+IS translated (for example "wizard") returns zero in the non-English locales and would prove nothing
+about whether the search apparatus reaches those files. The `178` establishes that the corpus, the
+recursion, and the case-insensitive match all work across all eight surfaces.
+
+| Probe | Command | Result | Disposition |
+|---|---|---|---|
+| Does the corpus say anything about Jev today? | `grep -rniE '\bjev\b\|typesafe\|env\.typesafe' README.md README.ko.md README.ja.md README.zh.md docs-site/content \| wc -l` | `0` | Nothing in the corpus about Jev that this SPEC could have made false. Zero is attributable because of the `178` control on the identical corpus |
+| Does any surface enumerate `workflow.*` opt-in config keys, such that a new key makes the list incomplete? | `grep -rn 'workflow\.\(codex\|slot_lease\|integration_lock\|branch_guard\)' README.md README.ko.md README.ja.md README.zh.md docs-site/content` | `3` rows — `docs-site/content/{en,ja,zh}/advanced/autonomous-loops.md:113`, each naming `workflow.multi_review_gate.enabled` with `workflow.codex.review_gate` as a sibling pattern | Not an enumeration of the workflow key set; a two-key comparison inside a paragraph about the multi-review gate. `workflow.jev.enabled` makes no sentence there wrong. (The ko locale is absent from those three rows — a pre-existing i18n divergence on that page, not something this SPEC caused, and not something this SPEC investigated further) |
+| Does any surface enumerate the `moai doctor` check list, such that a new check makes it incomplete? | `grep -rn 'Agent Emit Embed\|Binary Lag\|GLM Credential' README.md README.ko.md README.ja.md README.zh.md docs-site/content \| wc -l` | `0` | No documentation surface names ANY individual doctor check, so no check list exists to be made incomplete by the added `Jev` row. (`moai doctor` itself is mentioned 226 times across the corpus — as a command to run, never with its check inventory) |
+| Does any surface enumerate credential files, such that `~/.moai/.env.typesafe` makes the list incomplete? | `grep -rn '\.env\.glm\|\.moai/\.env' README.md README.ko.md README.ja.md README.zh.md docs-site/content` | `33` rows | Read, not merely counted. Every row is **GLM-scoped by its own sentence**: README ×4 line 362 names `~/.moai/.env.glm` and `~/.codex/auth.json` as the credentials of the two audit backends (a statement about those backends, not about all credentials); `docs-site/content/*/advanced/security-notes.md` scopes its whole page to `SPEC-V3R5-SECURITY-CRIT-001`'s three protections, and its five-point self-check names point (5) as GLM source-file permission specifically; `guides/mcp-server.md` and `cli-reference/launchers.md` describe where `moai glm` reads its own credential. None claims to enumerate every credential MoAI stores, so a new credential path leaves each of them true within its stated scope |
+
+**Conclusion.** No shipped surface of this SPEC makes any README or docs-site statement wrong or
+incomplete. The honest cost of that conclusion is recorded as Gap 3: correct-but-silent is the
+outcome, and a reader of the published documentation learns nothing about Jev from it.
+
+### Gaps (explicitly NOT observed)
+
+1. **No live measurement was taken, and this sync phase produced no accuracy, confidence,
+   threshold, latency, or sample-count figure.** There is no TypeSafe credential in this tree and
+   nothing in this sync phase contacted `api.typesafe.ai`. The run phase already recorded that no
+   test reaches the real endpoint; this sync phase adds no measurement of its own and re-measured
+   nothing about the vendor. **Nothing here establishes that the request shape `internal/jev`
+   constructs is accepted by the live API** — only that it is constructed, screened, bounded, and
+   decoded as the SPEC specifies. What would close this: one call under the pinned model id with a
+   real credential, whose request, response, and observed status are committed as evidence.
+2. **The full test suite was not run** (`CLAUDE.local.md` §6 — parallel lanes running
+   `go test ./...` drove machine load to 413). Three package trees were run uncached and are green;
+   every other package in the module is unmeasured here, and the full-suite verdict belongs to CI on
+   a pushed head. **Cross-platform is entirely unmeasured in this sync phase**: `go build ./...` ran
+   on darwin/arm64 only. The run phase reported windows and linux cross-compile passes at
+   `c032cd15a`; that is a run-phase figure, cited as such, and NOT re-measured here.
+3. **The README and docs-site probes above are absence probes with a specific reach, and their
+   reach is not "the documentation is correct".** Each answers one question — does the corpus
+   mention Jev, does it enumerate workflow keys, does it enumerate doctor checks, does it enumerate
+   credential files. Nothing here checked whether the rest of `security-notes.md`,
+   `autonomous-loops.md`, or any other page is accurate about anything else, nor whether the four
+   locales of any page agree with each other. The ko-locale absence noted in the workflow-key row is
+   an observation made in passing, not a diagnosis.
+4. **`§E.2` is stale on the pinned model id, and this sync phase did NOT repair it.** The Q2
+   resolution row at `progress.md:32` states `jev.ModelID = "jev-1.13"`; the tree at this baseline
+   reads `const ModelID = "jev-1.13.0"` (`internal/jev/jev.go:67`), pinned by commit `2ce0294dd`
+   ("pinned the vendor's versioned model id rather than the family name") which landed after the
+   §E.2 text was written. §E.2 is run-phase evidence owned by `manager-develop` and the sync phase
+   does not edit it — so it is reported here rather than corrected. The CHANGELOG entry cites the
+   tree's value, read directly from source. **A reader of §E.2 alone will carry the wrong model id.**
+5. **MX Tag validation was performed as a sync sub-step on the sync-phase diff only**, which
+   contains no production code. No `@MX:` annotation was added, changed, or removed by this commit,
+   and no scan of the run phase's 23 implementation files was performed here.
+6. **Nothing was pushed, no PR was opened, and no merge was performed.** The branch
+   `WT-jev-init-optin` is local; CI has rendered no verdict on this tree.
+7. **Two open questions in `spec.md` §E remain marked OPEN in the SPEC body** (Q2 model-id pin, Q4
+   credential-reveal route), even though §E.2 records both as resolved. Closing that table is a body
+   edit the sync phase does not own; observed and reported rather than silently edited.
+8. **One tool call was REFUSED rather than executed during this sync phase**, recorded per the
+   refused-tool-degradation rule. A single Bash invocation combining a heredoc file-write with an
+   inline `python3` edit script was refused by the worktree-isolation guard, which could not
+   statically verify the compound command stayed inside this worktree. It was re-issued as separate
+   plain steps and completed. **No measurement was replaced by inference as a result** — the refused
+   call was an authoring step (writing this section to disk), not a verification, and every Evidence
+   row above is the output of a command that executed.
+
+### Residual risk
+
+- The `Jev` doctor row is the one user-visible output change, and no documentation surface mentions
+  it. An operator learns the capability exists only by running `moai doctor` and noticing a row they
+  do not recognize — the CHANGELOG entry is the sole published account, and a CHANGELOG is read by
+  people looking for changes, not by people looking for features.
+- The CHANGELOG entry asserts the display-only boundary and the zero-consumer property. Both are
+  true of this tree and are guarded by tests (per §E.2), but the guard is an exact-one-element
+  consumer set — the moment a later SPEC adds a legitimate consumer, that test must be amended, and
+  an amendment made carelessly is how a boundary quietly widens.
+- Closing this SPEC `completed` while Gap 4 stands means the SPEC's own record carries a model id
+  that does not match its code. The CHANGELOG is right and `§E.2` is wrong, and nothing in the
+  artifact set flags the disagreement except this section.
+- `sync_commit_sha` below is the canonical placeholder at commit time — a commit cannot cite its own
+  hash — and is backfilled in a following `chore:` commit. Between those two commits the field reads
+  `pending-backfill-sync`, which is the sanctioned transient state, not a missing value.
+
+```yaml
+sync_complete_at: 2026-09-20
+sync_commit_sha: pending-backfill-sync
+sync_status: complete-with-gaps
+changelog_entry_position: "[Unreleased] -> Added, first bullet (inserted above the SPEC-JEV-OPTIN-MEASURE-001 entry, which is unmodified)"
+b12_self_test_a_pre_emission_grep: "grep -c 'SPEC-JEV-CORE-001' CHANGELOG.md -> 1; anchored entry-head probe -> 0 against a 296-head positive control. The single hit is a prose cross-reference inside the successor's entry, not a duplicate entry. Deviation recorded in E.4"
+b12_self_test_b_ac_count_match: "16 distinct AC ids in acceptance.md (AC-JEVC-001..016, contiguous); E.2 AC matrix carries 16 rows; CHANGELOG claims 16"
+b12_self_test_c_path_verification: "ten paths named in the entry resolved via ls -d; ls_exit=0, zero misses"
+frontmatter_status_transitions:
+  spec_md: "in-progress -> completed (updated: already 2026-09-20, byte-unchanged)"
+  plan_md: "n/a - stateless per spec-frontmatter-schema.md Artifact Statelessness"
+  acceptance_md: "n/a - stateless per spec-frontmatter-schema.md Artifact Statelessness"
+  design_md: "n/a - stateless per spec-frontmatter-schema.md Artifact Statelessness"
+  research_md: "n/a - stateless per spec-frontmatter-schema.md Artifact Statelessness"
+  progress_md: "n/a - phase progress recorded in body sections, not frontmatter"
+readme_touched: false
+docs_site_touched: false
+readme_docs_positive_control: "grep -rnil 'GLM' over README x4 + docs-site/content -> 178 files (Latin-script, untranslated product name)"
+measurement_executed: false
+mx_tag_validation: "sync sub-step; sync diff carries no production code, zero annotations changed"
+build_verified: "go build ./... -> exit 0 (darwin/arm64 only)"
+tests_verified: "go test -count=1 -timeout 30m ./internal/jev/... ./internal/jevcred/... ./internal/config/... -> exit 0, 5 ok lines, empty-sweep control run"
+refused_tool_calls: 1
+pushed: false
+pr_opened: false
+```
