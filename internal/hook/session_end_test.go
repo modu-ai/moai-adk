@@ -325,7 +325,18 @@ func TestCleanupGLMSettingsLocal(t *testing.T) {
 		wantSonnet       bool
 		wantOpus         bool
 		wantBackupToken  bool // true means MOAI_BACKUP_AUTH_TOKEN should still be present
-		wantOtherPresent bool // true means non-GLM key should still be present
+		wantOtherPresent bool // true means the user's own key (CUSTOM_VAR) should still be present
+		// wantTeammateDisplay is true when CLAUDE_CODE_TEAMMATE_DISPLAY should
+		// still be present. It used to double as the user-owned-key stand-in
+		// above, which was the wrong choice of key: envkeys.go declares it as
+		// "the legacy GLM activation indicator env var … still cleared to
+		// deactivate legacy GLM mode", removeGLMEnv deletes it, and the
+		// canonical cleanup view now makes SessionEnd delete it too. It stays
+		// seeded here as a GLM-owned key with its own expectation — deleted
+		// where the gate admits the file, surviving where the gate declines —
+		// while CUSTOM_VAR, which is in no cleanup list, carries the
+		// user-owned-key assertion it was standing in for.
+		wantTeammateDisplay bool
 	}{
 		{
 			name: "GLM active with backup OAuth token: restore OAuth token and remove GLM vars",
@@ -337,14 +348,16 @@ func TestCleanupGLMSettingsLocal(t *testing.T) {
 				"ANTHROPIC_DEFAULT_OPUS_MODEL":   "glm-5.1",
 				"MOAI_BACKUP_AUTH_TOKEN":         "oauth-token-from-claude",
 				"CLAUDE_CODE_TEAMMATE_DISPLAY":   "compact",
+				"CUSTOM_VAR":                     "keep_me",
 			},
-			wantAuthToken:    "oauth-token-from-claude",
-			wantBaseURL:      false,
-			wantHaiku:        false,
-			wantSonnet:       false,
-			wantOpus:         false,
-			wantBackupToken:  false,
-			wantOtherPresent: true,
+			wantAuthToken:       "oauth-token-from-claude",
+			wantBaseURL:         false,
+			wantHaiku:           false,
+			wantSonnet:          false,
+			wantOpus:            false,
+			wantBackupToken:     false,
+			wantOtherPresent:    true,
+			wantTeammateDisplay: false, // GLM-owned: the gate admitted this file
 		},
 		{
 			name: "GLM active without backup OAuth token: remove GLM vars, delete auth token",
@@ -355,26 +368,32 @@ func TestCleanupGLMSettingsLocal(t *testing.T) {
 				"ANTHROPIC_DEFAULT_SONNET_MODEL": "glm-4.7",
 				"ANTHROPIC_DEFAULT_OPUS_MODEL":   "glm-5.1",
 			},
-			wantAuthToken:    "",
-			wantBaseURL:      false,
-			wantHaiku:        false,
-			wantSonnet:       false,
-			wantOpus:         false,
-			wantBackupToken:  false,
-			wantOtherPresent: false,
+			// This case never seeded a stand-in key, so its wantOtherPresent
+			// false means "never seeded", NOT "deleted" — CUSTOM_VAR is
+			// deliberately not seeded here, and the expectation is unchanged.
+			wantAuthToken:       "",
+			wantBaseURL:         false,
+			wantHaiku:           false,
+			wantSonnet:          false,
+			wantOpus:            false,
+			wantBackupToken:     false,
+			wantOtherPresent:    false,
+			wantTeammateDisplay: false, // never seeded in this case either
 		},
 		{
 			name: "no GLM vars present: file unchanged",
 			initialEnv: map[string]string{
 				"CLAUDE_CODE_TEAMMATE_DISPLAY": "compact",
+				"CUSTOM_VAR":                   "keep_me",
 			},
-			wantAuthToken:    "",
-			wantBaseURL:      false,
-			wantHaiku:        false,
-			wantSonnet:       false,
-			wantOpus:         false,
-			wantBackupToken:  false,
-			wantOtherPresent: true,
+			wantAuthToken:       "",
+			wantBaseURL:         false,
+			wantHaiku:           false,
+			wantSonnet:          false,
+			wantOpus:            false,
+			wantBackupToken:     false,
+			wantOtherPresent:    true,
+			wantTeammateDisplay: true, // no indicator: the gate declines, file untouched
 		},
 	}
 
@@ -446,9 +465,18 @@ func TestCleanupGLMSettingsLocal(t *testing.T) {
 				t.Errorf("MOAI_BACKUP_AUTH_TOKEN present=%v, want present=%v", ok, tt.wantBackupToken)
 			}
 
-			// Check non-GLM var preservation
-			if _, ok := env["CLAUDE_CODE_TEAMMATE_DISPLAY"]; ok != tt.wantOtherPresent {
-				t.Errorf("CLAUDE_CODE_TEAMMATE_DISPLAY present=%v, want present=%v", ok, tt.wantOtherPresent)
+			// Check non-GLM var preservation. CUSTOM_VAR is in no cleanup list,
+			// so it is a genuine user-owned key and must survive wherever it
+			// was seeded.
+			if _, ok := env["CUSTOM_VAR"]; ok != tt.wantOtherPresent {
+				t.Errorf("CUSTOM_VAR present=%v, want present=%v", ok, tt.wantOtherPresent)
+			}
+
+			// Check the legacy GLM activation indicator. It is GLM-owned, so it
+			// is cleaned where the gate admits the file and left alone where the
+			// gate declines — the opposite obligation from CUSTOM_VAR above.
+			if _, ok := env["CLAUDE_CODE_TEAMMATE_DISPLAY"]; ok != tt.wantTeammateDisplay {
+				t.Errorf("CLAUDE_CODE_TEAMMATE_DISPLAY present=%v, want present=%v", ok, tt.wantTeammateDisplay)
 			}
 		})
 	}

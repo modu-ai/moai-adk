@@ -26,6 +26,46 @@ import (
 //     for why the gate is not simply removable.
 //
 // All writes stay inside t.TempDir(); no real settings file is touched.
+//
+// # Card t888 outcome — one probe closed, one deliberately left red
+//
+// TestProbeCleanupLeavesLegacyAndOtherAxisKeys is CLOSED: SessionEnd now deletes
+// the whole canonical cleanup view, legacy tail included.
+//
+// TestProbeStrandedResidueSurvivesIndicatorLoss is STILL RED, and that is the
+// accepted outcome rather than unfinished work. Three things are recorded here
+// so a later reader does not reopen a settled decision as a defect:
+//
+// 1. The indicator was widened CONSERVATIVELY — option (가'). The admitted set
+//    is exactly two keys, ANTHROPIC_BASE_URL and MOAI_BACKUP_AUTH_TOKEN. The
+//    decision is the lead's, 2026-09-19; it REVISES that same lead's earlier
+//    same-day option (가), which admitted three keys, the third being
+//    MOAI_STATUSLINE_CONTEXT_SIZE. The revision to two keys is the settled
+//    position and is not re-opened by this card.
+//
+// 2. The stranded case is NOT closed on purpose. Closing it means admitting a
+//    file on CLAUDE_CODE_MAX_CONTEXT_TOKENS / CLAUDE_CODE_AUTO_COMPACT_WINDOW —
+//    or on MOAI_STATUSLINE_CONTEXT_SIZE, which internal/statusline/memory.go
+//    lists as resolution priority #1, "explicit user override", and which
+//    internal/config/envkeys.go declares as a general context-size override with
+//    GLM as only an example. A user who has never touched GLM can legitimately
+//    set any of the three. Admitting one opens the gate on that user's file, and
+//    cleanupGLMSettingsLocal's restore branch then takes its `else` and DELETES
+//    that user's own ANTHROPIC_AUTH_TOKEN. Worse, the regression is SILENT: the
+//    landed negative control TestCleanupGLMSettingsLocalLeavesNonGLMFileAlone
+//    seeds no indicator at all, so it keeps passing while the harm happens
+//    through an ADMITTED key. Leaving a permanent-but-inert residue is the
+//    cheaper failure than deleting a credential the user owns.
+//
+// 3. The only route into the stranded state is a file an OLDER BINARY wrote.
+//    The live route was closed by card t802 (commit 03d1904a7): removeGLMEnv
+//    clears the context-window pair together with the indicator, so no current
+//    producer can leave a file in this shape. The residue is a historical
+//    artifact with no ongoing source.
+//
+// If this probe ever PASSES, that is not progress — it means the indicator has
+// been widened to admit something it must not, and the credential-deletion path
+// in item 2 is now reachable. Investigate rather than celebrate.
 
 // TestProbeCleanupLeavesLegacyAndOtherAxisKeys — keys the SessionEnd cleanup
 // still does not clear. MOAI_STATUSLINE_CONTEXT_SIZE belongs to the tmux axis
