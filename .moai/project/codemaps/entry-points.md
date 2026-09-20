@@ -142,6 +142,21 @@ args: ["-c", "[ -f \"$0\" ] && exec bash \"$0\"; ...missing 로그 후 exit 0",
 부가로 `runAlwaysRunTail`, `defaultOutputForEvent`, 비동기 trace writer 플러시 배리어 `Shutdown`이
 있습니다.
 
+### 감사 영수증 가드 — 세 이벤트에 걸친 하나의 판정
+
+이 판에서 더해진 `internal/hook/audit_receipt_guard.go`는 훅 표면 중 드물게 **세 이벤트를 하나의
+판정으로 엮습니다**. 읽고 쓰는 기록은 전부 `internal/auditreceipt`가 소유합니다.
+
+| 이벤트 | 하는 일 |
+|---|---|
+| `SubagentStart` | 감사자 서브에이전트(`plan-auditor` · `sync-auditor`) 1건당 시작 마커를 쓴다 |
+| `SubagentStop` | 판정 줄을 파싱하고 `CheckCitedReceipts`로 인용된 영수증이 실재하는지 보며, 실패하면 거부 기록을 쓴다 |
+| `PreToolUse` | 거부가 미해소인 동안 페이즈 진입 에이전트(`manager-develop` · `manager-docs` · `manager-git`)의 spawn을 거절한다 |
+
+세 이벤트를 나눠 읽으면 각각 멀쩡해 보이므로 함께 적습니다 — 첫째가 없으면 둘째가 비교할
+기준이 없고, 셋째가 없으면 거부가 아무것도 막지 않습니다. 게이트 자체는 opt-in이며
+`.moai/config/sections/workflow.yaml`이 **문자열 `required`일 때만** 켜집니다(`CodexGateRequired`).
+
 ---
 
 ## MCP 서버 표면
@@ -164,6 +179,11 @@ args: ["-c", "[ -f \"$0\" ] && exec bash \"$0\"; ...missing 로그 후 exit 0",
 - **`claude_audit`은 이 판에서 더해진 도구**입니다(`internal/cli/mcp_claude.go`). 읽기 전용 코드
   리뷰를 `claude` CLI 서브프로세스로 수행하고, 자식 환경에서 `CLAUDE_CODE_*`·`CLAUDECODE`를
   지운 뒤 출력 크기에 상한을 둡니다. `audit_multi` 수렴도 같은 수행 함수를 Claude 백엔드로 씁니다.
+- **`codex_audit`과 `audit_multi`는 호출될 때마다 영수증을 남깁니다**(이 판에서 더해진
+  `internal/cli/mcp_audit_receipt.go`). 도구 호출 1건이 `.moai/state/audit-receipts/receipts/`
+  아래 JSON 파일 1개이며, 같은 기록을 훅 쪽 가드가 읽습니다(§ 훅 → 감사 영수증 가드). 이
+  배선이 MCP 표면을 **훅의 판정 근거를 생산하는 자리**로 만듭니다 — 도구 목록만 읽어서는
+  보이지 않는 결합입니다.
 - **엔트리 관리와 서버 실행은 별개 서브트리**입니다 — `newMCPCmd()`(`mcp.go`)가 `.mcp.json`의
   add/remove/list를, `mcp-server`가 실행을 담당합니다.
 

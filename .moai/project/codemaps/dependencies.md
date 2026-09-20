@@ -4,9 +4,10 @@
 
 **최초 측정 트리**: worktree `.claude/worktrees/t592`, 브랜치 `WT-home-state-rollout`, HEAD `e7bd89ee3`, 2026-09-10
 **재측정 트리**: worktree `.claude/worktrees/t869`, 브랜치 `WT-codemaps-refresh`, HEAD `a851b205c`, 2026-09-18 — 엣지 수, fan-in·fan-out 표 전체, 상호 참조 쌍, 새 leaf 표, `go.mod` 직접 require 항목 수와 버전, § 이례적인 것 7. § 이례적인 것 1~6의 서술은 이번에 버전·사용처 줄을 다시 대조했고 판단은 앞 판을 이어받았습니다.
+**정기 재측정**: worktree `.claude/worktrees/t999`, 브랜치 `WT-codemaps-remediation`, HEAD `56c64891a`, 2026-09-20 — 엣지 수(365→371 · 222→227), fan-in 표에서 움직인 한 행(`internal/atomicfile` 10→11), fan-out 표에서 움직인 두 행(`internal/cli` 62→63 · `internal/hook` 32→35), 그리고 작은 fan-in 표의 신규 세 항목. 나머지 행은 같은 명령으로 재확인해 변동이 없었고, § 외부 의존성과 § 순환은 이번에 다시 재지 않았습니다(앞 판 인계).
 
-두 가지 해상도로 봅니다 — 패키지 단위 **365 엣지**, 이를 `internal/<X>` · `pkg/<X>` · `cmd/<X>`
-최상위로 접고 self-edge를 제거한 **222 엣지**. 아래 표는 후자 기준입니다.
+두 가지 해상도로 봅니다 — 패키지 단위 **371 엣지**, 이를 `internal/<X>` · `pkg/<X>` · `cmd/<X>`
+최상위로 접고 self-edge를 제거한 **227 엣지**. 아래 표는 후자 기준입니다.
 
 산출:
 
@@ -14,12 +15,12 @@
 $ go list -f '{{.ImportPath}} {{join .Imports " "}}' ./... \
   | awk '{src=$1; for(i=2;i<=NF;i++) if ($i ~ /^github\.com\/modu-ai\/moai-adk\//) print src, $i}' \
   | wc -l
-365
+371
 ```
 
 > 앵커 `25a3212a9` 판은 이 자리에 1638을 적었습니다. 위 명령으로 재현되지 않고 그 판의
 > 명령 인용이 생략형이라 무엇을 셌는지 복원할 수 없으므로, 이후 판은 위 명령의 출력을 싣습니다.
-> 최상위 집계는 205 → 214 → 222로 움직였습니다.
+> 최상위 집계는 205 → 214 → 222 → 227로 움직였습니다.
 
 ---
 
@@ -30,7 +31,7 @@ $ go list -f '{{.ImportPath}} {{join .Imports " "}}' ./... \
 | 1 | `internal/config` | 22 | data |
 | 2 | `internal/defs` | 11 | cross-cutting |
 | 2 | `internal/paths` | 11 | cross-cutting |
-| 4 | `internal/atomicfile` | 10 | cross-cutting |
+| 2 | `internal/atomicfile` | 11 | cross-cutting |
 | 5 | `pkg/models` | 8 | cross-cutting |
 | 5 | `internal/core` | 8 | domain |
 | 7 | `internal/execerr` | 7 | cross-cutting |
@@ -44,7 +45,13 @@ $ go list -f '{{.ImportPath}} {{join .Imports " "}}' ./... \
 
 산출은 최상위 집계 엣지 목록의 목적지 열을 `sort | uniq -c | sort -rn` 한 것입니다.
 
-상위 7개 중 6개가 cross-cutting leaf라는 것은 **건강한 신호**입니다 — 안정 의존성 원칙 그대로입니다.
+상위 7행 중 **5개**가 cross-cutting leaf입니다(`defs` · `paths` · `atomicfile` · `pkg/models` ·
+`execerr`). 나머지 둘은 `internal/config`(data)와 `internal/core`(domain)이고, 이 배치는 안정
+의존성 원칙에 부합하는 **건강한 신호**입니다.
+
+> **정정.** 앞 판은 이 자리를 「상위 7개 중 6개」로 적었지만, 같은 표의 레이어 칸을 그대로 세면
+> 5입니다. 이번 판에서 `internal/atomicfile`이 10→11로 올라 3위 동률에 합류했는데도 비율이
+> 바뀌지 않았다는 점이 그 오기를 드러냈습니다 — 집합이 아니라 수를 옮겨 적은 자리였습니다.
 
 다만 8위 `internal/hook`(6)과 11위 `internal/statusline`(5)은 **presentation인데 피의존
 대상**입니다. 방향이 뒤집혀 있고, 이것이 `overview.md`가 "레이어링이 국소적으로 무너진다"고
@@ -62,8 +69,10 @@ $ go list -f '{{.ImportPath}} {{join .Imports " "}}' ./... \
 | `internal/stateanchor` | 2 | 상태 앵커 seam. 소비자는 `internal/statusline`과 `internal/cli` |
 | `internal/chain` | 2 | 워크트리 세션 origin-trail 원장. 소비자는 `internal/cli`와 `internal/hook` |
 | `internal/gitenv` | 2 | 자식 프로세스의 git 환경 격리. 소비자는 `internal/cli`와 `internal/hook` |
-| `internal/mission` | 1 | **이 판에서 새로 들어왔다.** 소비자는 `internal/cli` 하나 — 실제로는 `internal/cli/goal.go` 한 파일이다 |
+| `internal/auditreceipt` | 2 | **이 판에서 새로 들어왔다.** 소비자는 `internal/cli`와 `internal/hook` — 생산 쪽(MCP 도구 호출)과 소비 쪽(훅 가드)이 각각 하나씩이며, 그 비대칭이 아니라 대칭이 이 패키지의 설계다 |
+| `internal/mission` | 1 | 소비자는 `internal/cli` 하나 — 실제로는 `internal/cli/goal.go` 한 파일이다 |
 | `internal/codextools` | 0 | 비테스트 소비자 없음(`modules.md` §네거티브 스페이스) |
+| `internal/harness/rosterguard` · `internal/harness/cellguard` | 0 | **이 판에서 새로 들어왔고, 0이 정상이다.** 테스트 시점 가드라 비테스트 소비자가 원리상 없다 — `internal/template/agentemit` · `commandemit`과 같은 이유이고 `codextools`와는 다른 이유다(`modules.md` §네거티브 스페이스) |
 
 `internal/homestate`는 leaf가 아니라 최상위 fan-in **4**(`cli` · `hook` · `kanban` · `web`)의
 data/persistence seam입니다. 패키지 단위로 풀면 직접 소비자는 `internal/cli`,
@@ -81,8 +90,8 @@ admission 계약을 공유합니다.
 
 | # | 패키지 | import |
 |---|---|---|
-| 1 | `internal/cli` | **62** |
-| 2 | `internal/hook` | 32 |
+| 1 | `internal/cli` | **63** |
+| 2 | `internal/hook` | 35 |
 | 3 | `internal/web` | 15 |
 | 4 | `internal/core` | 12 |
 | 5 | `internal/statusline` | 8 |
@@ -91,7 +100,7 @@ admission 계약을 공유합니다.
 | 9 | `internal/update` · `harness` | 4 각 |
 | 11 | `internal/template` · `spec` | 3 각 |
 
-`internal/cli`가 다른 최상위 패키지 **62개**를 import 합니다 — 사실상 전 트리에 닿습니다.
+`internal/cli`가 다른 최상위 패키지 **63개**를 import 합니다 — 사실상 전 트리에 닿습니다.
 합성 루트(`internal/cli/deps.go`)가 여기 있으므로 일부는 의도된 것이지만, 상당수는
 `deps.go`가 아니라 **개별 verb 파일에서 직접** 들어옵니다. 이 판에서 더해진
 `internal/mission`이 그 전형입니다 — `internal/cli/goal.go` 한 파일만이 그 패키지를 import 합니다.
