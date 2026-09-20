@@ -101,29 +101,52 @@ func indexTargets(indexPath string) (map[string]bool, error) {
 	return targets, nil
 }
 
+// secondaryIndex is one promoted index: the sibling files it actually reaches,
+// and the links it carries that no file answers.
+type secondaryIndex struct {
+	reaches map[string]bool
+	missing []string
+}
+
 // secondaryIndexTargets returns, for each topic file that qualifies as a
-// secondary index, the set of sibling files it links. A file that cannot be
-// read is treated as an ordinary memory rather than as an error: a store the
-// audit cannot fully read should report what it can, not refuse to report.
-func secondaryIndexTargets(dir string, names []string) map[string]map[string]bool {
-	out := map[string]map[string]bool{}
+// secondary index, what it reaches and what it only promises. A file that
+// cannot be read is treated as an ordinary memory rather than as an error: a
+// store the audit cannot fully read should report what it can, not refuse to
+// report.
+//
+// Only links with a file behind them count toward the threshold. Counting raw
+// matches let a file citing absent siblings buy index status, and the purchase
+// was self-concealing: the links that bought it were also the links no check
+// read, so a real memory the same file linked went silent behind an index that
+// reached nothing. Applying the existing threshold to resolved links closes
+// that without a second number to justify — a promotion is a claim to carry
+// reachability, and a link to a file that does not exist carries none.
+func secondaryIndexTargets(dir string, names []string, present map[string]bool) map[string]secondaryIndex {
+	out := map[string]secondaryIndex{}
 	for _, name := range names {
 		data, err := os.ReadFile(filepath.Join(dir, name))
 		if err != nil {
 			continue
 		}
-		targets := map[string]bool{}
+		seen := map[string]bool{}
+		idx := secondaryIndex{reaches: map[string]bool{}}
 		for _, m := range markdownLinkTarget.FindAllStringSubmatch(string(data), -1) {
 			base := filepath.Base(m[1])
 			// A file linking itself reaches nothing, and the index a session
 			// already loads is not a secondary one.
-			if base == name || base == indexFileName {
+			if base == name || base == indexFileName || seen[base] {
 				continue
 			}
-			targets[base] = true
+			seen[base] = true
+			if present[base] {
+				idx.reaches[base] = true
+			} else {
+				idx.missing = append(idx.missing, base)
+			}
 		}
-		if len(targets) >= secondaryIndexLinkThreshold {
-			out[name] = targets
+		if len(idx.reaches) >= secondaryIndexLinkThreshold {
+			sort.Strings(idx.missing)
+			out[name] = idx
 		}
 	}
 	return out
@@ -158,15 +181,15 @@ func AuditLinkage(dir string) ([]AuditFinding, error) {
 		present[n] = true
 	}
 
-	secondary := secondaryIndexTargets(dir, names)
+	secondary := secondaryIndexTargets(dir, names, present)
 
 	var findings []AuditFinding
 	for _, n := range names {
 		// Deterministic order: a finding naming an arbitrary one of several
 		// secondary indexes would change between runs on the same store.
 		var carriers []string
-		for idx, reach := range secondary {
-			if idx != n && reach[n] {
+		for idx, sec := range secondary {
+			if idx != n && sec.reaches[n] {
 				carriers = append(carriers, idx)
 			}
 		}
@@ -192,6 +215,25 @@ func AuditLinkage(dir string) ([]AuditFinding, error) {
 			findings = append(findings, AuditFinding{
 				Code:   WarnDanglingIndexLink,
 				Path:   indexPath,
+				Detail: fmt.Sprintf("index links %s but no such file exists", target),
+			})
+		}
+	}
+
+	// The same direction, one carrier over: a secondary index promises files
+	// too, and reading only MEMORY.md left those promises unchecked. Reported
+	// under the same code because it is the same defect — an index line with
+	// no file behind it — differing only in which index carries it.
+	var carriers []string
+	for idx := range secondary {
+		carriers = append(carriers, idx)
+	}
+	sort.Strings(carriers)
+	for _, idx := range carriers {
+		for _, target := range secondary[idx].missing {
+			findings = append(findings, AuditFinding{
+				Code:   WarnDanglingIndexLink,
+				Path:   filepath.Join(dir, idx),
 				Detail: fmt.Sprintf("index links %s but no such file exists", target),
 			})
 		}
