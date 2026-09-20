@@ -338,15 +338,30 @@ func TestCommittedCoverageChangeSetRejectsInvalidGitAndMalformedEvidence(t *test
 			t.Fatalf("parentless evidence accepted: %v", err)
 		}
 	})
-	if _, err := productionFilesFromNameStatus("malformed"); err == nil {
-		t.Fatal("malformed name-status accepted")
+	if _, _, err := productionFilesFromRawDiff(":bad\tinternal/x/a.go"); err == nil {
+		t.Fatal("malformed raw row accepted")
 	}
-	if _, err := productionFilesFromNameStatus("D\tinternal/x/gone.go"); err == nil {
+	if _, _, err := productionFilesFromRawDiff(
+		":100644 000000 1111111111111111111111111111111111111111 0000000000000000000000000000000000000000 D\tinternal/x/gone.go",
+	); err == nil {
 		t.Fatal("production deletion accepted")
 	}
-	files, err := productionFilesFromNameStatus("D\tREADME.md\nM\tinternal/x/live.go\nM\tinternal/x/live_test.go")
+	// The trailing patch lines belong to the same combined output and must be
+	// skipped by the raw parser rather than read as rows.
+	files, blobs, err := productionFilesFromRawDiff(
+		":100644 000000 2222222222222222222222222222222222222222 0000000000000000000000000000000000000000 D\tREADME.md\n" +
+			":100644 100644 3333333333333333333333333333333333333333 4444444444444444444444444444444444444444 M\tinternal/x/live.go\n" +
+			":100644 100644 5555555555555555555555555555555555555555 6666666666666666666666666666666666666666 M\tinternal/x/live_test.go\n" +
+			"diff --git a/internal/x/live.go b/internal/x/live.go\n@@ -1 +1 @@\n")
 	if err != nil || len(files) != 1 || !files["internal/x/live.go"] {
 		t.Fatalf("files=%v err=%v", files, err)
+	}
+	// Pin the full-length post-image id. An abbreviated id still parses and
+	// still compares — it just never matches the forty-character rev-parse
+	// output, so dropping --no-abbrev from the diff invocation would degrade
+	// this comparison rather than break it visibly here.
+	if got := blobs["internal/x/live.go"]; len(got) != 40 {
+		t.Fatalf("post-image id %q is %d chars, want 40 (--no-abbrev must stay on the diff invocation)", got, len(got))
 	}
 	root := committedCoverageRepo(t)
 	ranges, err := changedProductionLineRanges(root, nil)
