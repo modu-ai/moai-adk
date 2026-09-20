@@ -1,6 +1,6 @@
 ---
 description: "git-flow lane protocol (repo-local) — card worktrees branch from develop, lanes merge into a single develop integration worktree, origin/develop is the CI verdict surface, rc builds are cut from develop, release/vX.Y.Z is the only path to main"
-paths: ".moai/specs/**,.claude/skills/moai/workflows/run.md,.claude/skills/moai/workflows/sync.md,.claude/rules/local/repo-local-pr-policy.md"
+paths: ".moai/specs/**,.claude/skills/moai/workflows/run.md,.claude/skills/moai/workflows/sync.md,.claude/rules/local/repo-local-pr-policy.md,CLAUDE.local.md,internal/cli/**,internal/hook/**"
 ---
 
 # git-flow Lane Protocol (moai-adk-go, local-only)
@@ -105,6 +105,11 @@ git branch --show-current
   - 이유: 흡수하는 순간 리터럴 핀 범위에 다른 카드의 커밋이 들어온다. 로컬 develop 이 원격보다 앞서 있으면 `origin/develop` 기준 merge-base 도 흡수 전 분기점에 머물러 같은 오탐을 낸다. 실측(2026-09-10, `.moai/reports/t543/verdict.md`): 로컬 develop 을 흡수한 뒤 리터럴 핀과 `origin/develop` 기준은 모두 Go 51개를 냈고, `develop` 기준만 카드 자기 기여(파일 4, Go 0)를 냈다. 이 재현이 이 규율의 대조군이다.
   - 원칙은 "흡수한 바로 그 ref"다. 이 저장소 절차의 흡수 대상은 로컬 `develop`(§11, `CLAUDE.local.md` §4.1)이라 기본값이 `develop` 이다. 원격 develop 을 흡수하는 절차라면 ref 는 `origin/develop` 이 된다. develop 이 흡수 뒤 더 앞서가도 merge-base 는 마지막으로 흡수한 develop 커밋에 머물러 계속 옳다.
   - 한계 — **병합 뒤에는 쓸 수 없다.** 카드가 develop 에 병합되면 merge-base 가 카드 tip 자신이 되어 범위가 비고, 판정식은 공허하게 통과한다(실측: 이미 병합된 카드 브랜치에서 빈 출력, `.moai/reports/t543/repro/limit-a-post-merge-all.txt`). 범위 판정식은 병합 전 평가 전용이다. 병합 뒤 근거는 병합 트리와 카드 브랜치 트리의 동일성으로 대신한다.
+- **[HARD] 「이건 누구 것인가」는 커밋 열거로만 답한다 — 트리 비교로 답하지 않는다.** 정본형은 하나다: `git log <내 HEAD>..<상대 ref> -- <경로>`. 그리고 **두 번째 피연산자는 양성 대조 경로**다 — 같은 형태를 **남의 커밋이 확실히 있는 경로**에 한 번 더 걸어 발화를 본다. 그 두 번째 실행이 비면 첫 번째의 0행은 부재가 아니라 **미측정**이다. 대조를 따로 기억해야 할 규율로 두지 않는 이유는, 그렇게 둬 봤더니 물지 않았기 때문이다(2026-09-20 같은 날 세 카드가 전부 대조를 언급하고도 전부 틀렸다 — `t950` 은 9회 언급).
+  - `git diff` 는 **어떤 철자든 트리 비교**라 이 질문을 답하지 않는다. 실측: 같은 피연산자 쌍에서 `git diff A..B` 와 `git diff A B` 는 **출력이 바이트 동일**하고, 같은 `A..B` 가 `git log` 에서는 반대 답을 낸다(log 0행 / diff 1행). 세 점 `git diff A...B` 만 `log A..B` 와 일치한다.
+  - 왼쪽 끝은 **`HEAD`** 다 — 「내가 이미 가진 전부」라는 뜻이다. merge-base 나 핀한 SHA 를 놓으면 **내 앞 카드의 커밋이 상대 쪽 접촉으로 돌아온다**(실측 2건, 둘 다 `git merge-base --is-ancestor <커밋> <내 tip>` exit 0 = 내 것).
+  - 바로 위 규율과 **묻는 질문이 다르다**: 저쪽은 「이 카드가 무엇을 바꿨는가」(자기 기여), 이쪽은 「이건 누구 것인가」(귀속). 병합 전 평가 전용이라는 경계는 같다.
+  - 측정 출처: `.moai/reports/t1014/verdict.md` (재현 13건 동반).
 
 ## 9. rc 빌드 — 운영자 요청 시, 통합 워크트리에서
 
