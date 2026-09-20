@@ -49,7 +49,7 @@ func (s destructiveSite) key() string { return s.File + " " + s.Function }
 // The exempt rows rest on three materially different grounds — same-call rewind
 // (BackupMoaiConfig, backupUserOwnedNamespace), retention pruning of
 // moai-authored backup directories (CleanupOldBackups), and cache-base
-// replacement (promoteSettingsSnapshot) — and must not be collapsed into one
+// replacement (fileSnapshot.promote) — and must not be collapsed into one
 // reason: the pruning row destroys restore points from PREVIOUS runs, so it is
 // exempt from the user-data protection set without being harmless to the
 // recovery contract, while the cache-base row replaces only moai's own record
@@ -111,13 +111,16 @@ var destructiveTargetRegistry = []destructiveSite{
 			"out by a later run.",
 	},
 	{
-		File: "internal/cli/update/backup/settings_snapshot.go", Function: "promoteSettingsSnapshot", Sites: 1,
+		File: "internal/cli/update/backup/file_snapshot.go", Function: "promote", Sites: 1,
 		Exemption: "Cache-base replacement — neither operand of the rename is user data. The source is " +
-			"the staging copy (.moai/cache/template-snapshot/claude/settings.json.pending) this same " +
+			"the staging copy (.moai/cache/template-snapshot/<namespace>.pending) this same " +
 			"flow's deploy wrote, and its content survives the move rather than being destroyed. The " +
 			"destination it overwrites is the canonical merge base left by a PREVIOUS flow: moai's own " +
-			"record of a template render under .moai/cache/, never the user's .claude/settings.json — " +
-			"which this call does not touch. Losing that record costs the next update its stored base " +
+			"record of a template render under .moai/cache/, never the live file the namespace records " +
+			"(.claude/settings.json, .mcp.json) — which this call does not touch. Card t1029 made this " +
+			"one call serve both namespaces; the ground for the exemption is unchanged, because it " +
+			"rests on WHERE the bytes live rather than on which file they record. Losing that record " +
+			"costs the next update its stored base " +
 			"and nothing else; SPEC-UPDATE-SETTINGS-BASE-SNAPSHOT-001 REQ-USB-009 has the merge fall " +
 			"back to the derived base when it is absent, without failing the update. Exempt on the " +
 			"ground that the bytes replaced are moai-authored cache, which is materially distinct from " +

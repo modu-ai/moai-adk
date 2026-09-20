@@ -8,8 +8,13 @@ import (
 
 // MergeUserFilesAndSettleSnapshot is the restore half of an update flow: it
 // merges the backed-up user files into the freshly deployed tree and then
-// settles the .claude/settings.json snapshot the flow staged
-// (SPEC-UPDATE-SETTINGS-BASE-SNAPSHOT-001 REQ-USB-005, plan.md D4 ③).
+// settles the base snapshots the flow staged
+// (SPEC-UPDATE-SETTINGS-BASE-SNAPSHOT-001 REQ-USB-005, plan.md D4 ③; extended
+// to .mcp.json by card t1029).
+//
+// The two files settle INDEPENDENTLY, each on its own merge outcome: one file
+// taking a preserve path says nothing about the other, so a shared verdict
+// would discard a staging copy whose render did land.
 //
 // The settle runs whether or not there was anything to merge — a flow whose
 // project had no settings.json still deployed a render that must become the
@@ -32,5 +37,6 @@ func MergeUserFilesAndSettleSnapshot(projectRoot string, backups []FileBackup, o
 		outcome, err = MergeUserFilesWithOutcome(projectRoot, backups, out)
 	}
 	backup.SettleSettingsSnapshot(projectRoot, outcome.Preserved(settingsJSONPath), warn)
+	backup.SettleMCPSnapshot(projectRoot, outcome.Preserved(mcpJSONPath), warn)
 	return err
 }
