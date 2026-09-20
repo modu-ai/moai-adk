@@ -112,7 +112,7 @@ Four mutants were introduced and reverted. The first one SURVIVED and exposed a 
 
 ```yaml
 run_complete_at: 2026-09-20
-run_commit_sha: <backfill — the M1 commit of this milestone>
+run_commit_sha: 132324cbb
 run_status: complete-with-gaps
 ac_pass_count: 19
 ac_fail_count: 0
