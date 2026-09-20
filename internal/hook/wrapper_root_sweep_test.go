@@ -21,6 +21,14 @@ import (
 // internal/template/agentemit/golden_test.go uses when it sweeps emitted
 // artifacts and requires each committed one to be present.
 //
+// hookWrapperContracts() STAYS, and not because anyone forgot to remove it:
+// it also compares the template .sh copy against the root .sh, an axis this
+// sweep never reads — every pair here starts at a .sh.tmpl and asserts only the
+// root counterpart. The two overlap on the root axis alone, so deleting the
+// list as "now redundant" silently drops the template-.sh axis with no test
+// reporting the loss. Folding that axis in is a separate change: it needs the
+// 13 template .sh files swept first.
+//
 // Two predicates, because one cannot cover the set. Byte-identity is the
 // default and holds for 34 of the 35 pairs. It CANNOT hold for
 // handle-pre-tool.sh: the root copy carries a SPEC-ID token in a comment and
