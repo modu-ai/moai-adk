@@ -155,4 +155,88 @@ m1_to_mN_commit_strategy: single commit covering M2a/M2b/M2c/M3a/M3b/M3c
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase>_
+Sync-phase baseline: the tree at `904c97ed5` (`WT-jev-init-optin`), measured in this run, inside the worktree `/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t1020`. Every row below names the command that produced it and what that command printed. No figure is carried over from the run phase except where the row says so explicitly.
+
+### What this sync commit changes
+
+| File | Change |
+|---|---|
+| `CHANGELOG.md` | One entry at the head of `[Unreleased] → Added`, covering the two opt-in entrances, the shared writer, the credential handling, and the measurement gate — including the explicit statement that no live measurement was taken and that no accuracy figure in this release measures anything |
+| `.moai/specs/SPEC-JEV-OPTIN-MEASURE-001/spec.md` | Frontmatter only: `status: in-progress → completed`, `updated: 2026-09-20` (already the sync date) |
+| `.moai/specs/SPEC-JEV-OPTIN-MEASURE-001/progress.md` | This section |
+
+No production code, no test, and no template file is touched by the sync commit.
+
+### Status transition
+
+`in-progress → implemented → completed`, landing on this single sync commit (3-phase close).
+
+**Deviation, stated rather than worked around:** this SPEC's artifact set carries a frontmatter block on `spec.md` ONLY. `plan.md`, `acceptance.md`, and `progress.md` open with an H1 and have no frontmatter — verified by `head -5` on each, and the predecessor `SPEC-JEV-CORE-001` has the identical shape (`head -1` across its six artifacts: five H1s, one `---`). The transition therefore lands on the one artifact that has a frontmatter block. Adding a block to `plan.md` or `acceptance.md` would be a body edit, which the sync phase does not own; adding one to `progress.md` alone would make the set inconsistent with itself and with the predecessor.
+
+### Evidence
+
+| Claim | Command | Observed output |
+|---|---|---|
+| Build green after the sync edits | `go build ./...` | no output; `build_exit=0` |
+| Affected packages green, uncached | `go test -count=1 -timeout 30m ./internal/cli/wizard/... ./internal/web/... ./internal/settings/... ./internal/jevmeasure/...` | `exit=0`; six `ok` lines — `internal/cli/wizard 4.077s`, `internal/web 22.573s`, `internal/settings 0.561s`, `internal/settings/agentfm 0.352s`, `internal/settings/yamlpatch 0.353s`, `internal/jevmeasure 0.461s` |
+| No duplicate CHANGELOG entry existed (B12 pre-emission grep) | `grep -c 'SPEC-JEV-OPTIN-MEASURE-001' CHANGELOG.md` | `0` — emission proceeded |
+| AC count (B12 AC-count match) | `grep -oE 'AC-([A-Z0-9]+-)*[0-9]+' acceptance.md \| sort -u \| wc -l` | `20` — non-zero, and equal to the AC matrix's 20 rows in §E.2 |
+| Every path named in the CHANGELOG entry resolves (B12 path verification) | `ls -d internal/cli/wizard/questions.go internal/jevmeasure internal/settings/jev.go .moai/specs/SPEC-JEV-OPTIN-MEASURE-001/spec.md` | all four listed, no `No such file` |
+| Symbols named in the entry exist | `grep -rlo 'func SetJevEnabled\|JevEnabledField' internal/settings/*.go`; `grep -rl 'TestDocsTabContract' internal/web/*_test.go`; `grep -rl 'func ApplySchemaEdits' internal/settings/*.go` | `internal/settings/jev.go` (+ its test); `internal/web/docs_tab_contract_test.go`; `internal/settings/sectionapply.go` |
+
+### README and docs-site: the decision NOT to edit, and its evidence
+
+**README (4 locales) — unchanged.** Two measurements.
+
+1. `grep -rniE '\bjev\b|typesafe' README.md README.ko.md README.ja.md README.zh.md docs-site/content | wc -l` → `0`. Positive control on the same corpus: `grep -rl "moai web" README.ko.md docs-site/content | wc -l` → `41`, so the search apparatus fires on these files. Nothing in the README corpus says anything about Jev that this SPEC could have made false.
+2. The one README claim this SPEC could plausibly have invalidated is the settings-tab enumeration at `README.ko.md:445` (`Identity·Language·LLM·GLM Settings·Workflow·Git & Worktree·Audit·Codex·Agents·Report·MCP·Cross-Session·Feedback·Quality Gate`). The Jev surface was implemented as a **sub-section inside the Workflow panel**, not a tab (§E.2 decision 1), so the tab list is still exactly right. Had a tab been added, `TestDocsTabContract` would have required all eight documentation surfaces in the same change.
+
+The README also does not enumerate the wizard's question count or question list — `grep -n "마법사\|질문" README.ko.md` returns generic prose at line 290 and an FAQ heading, nothing that counts questions. So the init set moving from four to five makes no README sentence wrong.
+
+**docs-site (4 locales) — unchanged.** The same zero-hit grep above covers `docs-site/content` entirely. One page does enumerate wizard questions — `docs-site/content/<locale>/getting-started/init-wizard.md` — and it IS wrong; the measurement is that it was **already** wrong before this SPEC, for a different cause:
+
+- The page's structure table (`docs-site/content/ko/getting-started/init-wizard.md:44`) states `Page 3 — 품질 및 워크플로우 | LSP 통합, 품질 게이트 강제, 프로젝트 모드, 디자인 워크플로우, Claude Design 연동`.
+- Reading `internal/cli/wizard/questions.go` at `c79afb760` — the commit BEFORE this SPEC's first implementation commit — and enumerating its `ID:` fields lists exactly: `conversation_language`, `user_name`, `project_name`, `model_policy`, `report_format`, `git_mode`, `git_provider`, `gitlab_instance_url`, `github_username`, `github_token`, `gitlab_username`, `gitlab_token`, `agent_wiring`, `autonomy_tier`. **None of the five questions the page's Page-3 row names exists in that tree.** They were retired by `SPEC-INIT-QUIET-WIZARD-001` REQ-IQW-002, as the `Page3Questions` doc comment in `questions.go` records.
+
+So the page's divergence is pre-existing and not caused by `jev_enabled`. Repairing it means re-deriving the whole page from the tree across four locales — a different SPEC's scope, and one whose correctness depends on facts this SPEC did not measure. Editing only a Jev line into an already-false table would make the page read as maintained while staying wrong. **Recommended follow-up card: re-derive `getting-started/init-wizard.md` (ko canonical → en/ja/zh) from the live `InitQuestions` set.** This is a recommendation, not a claim that anything else on that page was checked — see Gaps 4.
+
+### Gaps (explicitly NOT observed)
+
+1. **The measurement was NOT run, and this sync phase produced no accuracy figure, confidence value, threshold result, or sample count.** The live-measurement path requires a call to the vendor; there is no TypeSafe credential in this tree and nothing in this sync phase contacted `api.typesafe.ai`. No number appearing in the CHANGELOG entry, in this section, or anywhere in this commit is a measurement of model accuracy. What would close this: a run of the `internal/jevmeasure` harness against a labelled set with a real credential, under the pinned model id, whose `Report.Source` is `SourceLive` and whose rendered artifact is committed as evidence.
+2. **AC-JEVO-005 remains unresolved, and its claimed resolution has no on-disk record.** Recorded as required:
+   - **The AC**: `AC-JEVO-005` — "Given the `translations` map, When it is enumerated, Then an entry for the Jev question id exists under each of the four locale keys."
+   - **The claimed operator judgement**: that during the run phase the operator judged this AC to be carried over to the sync phase for disposition.
+   - **The fact**: **no on-disk record of that judgement exists.** Searching this SPEC's artifact set finds only the run phase's own blocker report (§E.2 "Blocker report — a requirement the tree contradicts"), which states the opposite posture — "Decision owner: Not mine … routed here rather than resolved unilaterally". A judgement asserted in conversation and absent from disk is indistinguishable from an unanswered blocker, and this sync phase treats it as unanswered. **It is NOT resolved here.**
+   - **What would make it verifiable**: the operator's decision written into the SPEC artifact set — either (a) an amendment to the AC's wording in `acceptance.md` accepting coverage via `GetLocalizedQuestion` rather than via a literal four-key map (a plan-phase edit owned by `manager-spec`, not by sync), or (b) an explicit recorded acceptance of the debt with its reason. Either lands as a commit; the commit is the record.
+3. **The full test suite was not run.** Per `CLAUDE.local.md` §6 this machine does not run the whole-module test command locally; the four affected package trees were run uncached and are green. Cross-platform (windows, linux) is unmeasured here. Both verdicts belong to CI on the pushed head, and nothing has been pushed (Gap 5).
+4. **The docs-site `init-wizard.md` page was inspected only on the single axis above.** The Page-3 row was measured against the pre-SPEC tree; the Page-1 and Page-2 rows, the per-step prose, the non-interactive-flag block, and the ja/en/zh translations of the same page were NOT checked against the tree. The follow-up recommendation must not be read as a claim that the rest of that page is correct, or that the Page-3 row is its only defect.
+5. **Nothing was pushed, no PR was opened, and no merge was performed.** The branch `WT-jev-init-optin` is local; CI has rendered no verdict on this tree.
+6. **`SPEC-JEV-CORE-001`, the predecessor that landed on this same branch, is still `status: in-progress`** (reading `^status:` from its `spec.md`, line 5). Its sync phase is outside this card's scope and was not performed here; observed and reported rather than silently closed.
+7. **One tool call was REFUSED rather than executed** during this sync phase: a compound command combining a heredoc body and an inline script was refused by the worktree-isolation guard, which could not statically verify it stayed inside this worktree. It was re-issued as separate plain steps and ran to completion; no measurement was replaced by inference as a result. Recorded per the refused-tool-degradation rule.
+
+### Residual risk
+
+- The CHANGELOG entry states that the settings-tab list is unchanged. That is true of the tab list, but the Workflow panel's *content* is now larger by a sub-section, and no documentation surface describes that panel's contents at this granularity — so a reader looking for the Jev switch finds it only by opening the console. The init question names `moai web`; nothing in the published documentation does.
+- Leaving `init-wizard.md` untouched keeps a page that is wrong about the wizard, and this sync phase has now recorded that it is wrong. The record makes the defect findable; it does not make the page correct, and a reader who never reaches this file still meets the stale page.
+- The `sync_commit_sha` below is a placeholder at commit time — a commit cannot cite its own hash — and is backfilled in a following `chore:` commit. Between those two commits the field reads `pending-backfill-sync`, which is the intended transient state, not a missing value.
+
+```yaml
+sync_complete_at: 2026-09-20
+sync_commit_sha: pending-backfill-sync
+sync_status: complete-with-gaps
+changelog_entry_position: "[Unreleased] -> Added, first bullet"
+b12_self_test_a_pre_emission_grep: "grep -c 'SPEC-JEV-OPTIN-MEASURE-001' CHANGELOG.md -> 0 (no duplicate; emission proceeded)"
+b12_self_test_b_ac_count_match: "20 distinct AC ids in acceptance.md; E.2 AC matrix carries 20 rows"
+b12_self_test_c_path_verification: "every path named in the entry resolved via ls -d; zero misses"
+frontmatter_status_transitions:
+  spec_md: "in-progress -> completed"
+  plan_md: "n/a - no frontmatter block in this artifact set"
+  acceptance_md: "n/a - no frontmatter block in this artifact set"
+  progress_md: "n/a - no frontmatter block in this artifact set"
+readme_touched: false
+docs_site_touched: false
+measurement_executed: false
+ac_jevo_005_resolved: false
+pushed: false
+pr_opened: false
+```
