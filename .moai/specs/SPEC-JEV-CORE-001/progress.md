@@ -97,7 +97,7 @@ Every row's command was run in this tree. `go test ./internal/jev/... ./internal
 
 ```yaml
 run_complete_at: 2026-09-20
-run_commit_sha: pending-backfill
+run_commit_sha: c032cd15a
 run_status: audit-ready
 ac_pass_count: 15
 ac_fail_count: 0
