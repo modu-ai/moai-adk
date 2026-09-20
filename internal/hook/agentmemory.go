@@ -30,6 +30,7 @@ import (
 
 	"github.com/modu-ai/moai-adk/internal/gitenv"
 	"github.com/modu-ai/moai-adk/internal/hook/memo/taxonomy"
+	"github.com/modu-ai/moai-adk/internal/lockfile"
 )
 
 // agentMemorySegment is the literal repo-local agent-memory path segment, in
@@ -420,9 +421,41 @@ func indexLineFor(srcAgentDir, srcFile, destName string) string {
 // index is created with a header — the store is rebuildable from its index,
 // so a drained topic must never land unindexed. apply=false computes
 // whether a line would be added without writing.
+// ensureIndexLine appends one index line for destName unless the index
+// already links it. The returned bool means the line is ON DISK — not that a
+// write was attempted — so a caller may sum it as a landed count.
+//
+// Two separate properties make that return value true, and neither implies
+// the other:
+//
+//   - The read-modify-write runs under an advisory lock, so a concurrent
+//     appender cannot read the pre-append content and write it back over a
+//     line this call just added. Without the lock, lanes silently lose lines
+//     that were nonetheless reported as added.
+//   - The write is read back and re-checked before reporting success. The
+//     lock removes the concurrent overwrite; it does not make a write that
+//     landed short (a full disk truncating the rewrite) report the truth.
+//     os.WriteFile truncates before writing, so a failure there can leave the
+//     index shorter than it started.
 func ensureIndexLine(primaryRoot, agent, line, destName string, apply bool) (bool, error) {
 	agentDir := filepath.Join(primaryRoot, ".claude", "agent-memory", agent)
 	indexPath := filepath.Join(agentDir, agentMemoryIndexName)
+
+	// Lock a sibling .lock file rather than the index itself, so the index
+	// stays free for the read and the rewrite below. Same pattern as
+	// internal/cli/settings.go and internal/cli/taskledger.
+	if apply {
+		lockPath := indexPath + ".lock"
+		lockF, err := os.OpenFile(lockPath, os.O_CREATE|os.O_RDWR, 0o600)
+		if err != nil {
+			return false, fmt.Errorf("agent memory: open index lock %s: %w", lockPath, err)
+		}
+		defer func() { _ = lockF.Close() }()
+		if err := lockfile.Lock(lockF); err != nil {
+			return false, fmt.Errorf("agent memory: acquire index lock %s: %w", lockPath, err)
+		}
+		defer func() { _ = lockfile.Unlock(lockF) }()
+	}
 
 	content := "# Memory Index\n"
 	if data, err := os.ReadFile(indexPath); err == nil {
@@ -442,6 +475,19 @@ func ensureIndexLine(primaryRoot, agent, line, destName string, apply bool) (boo
 	content += line + "\n"
 	if err := os.WriteFile(indexPath, []byte(content), 0o644); err != nil {
 		return false, fmt.Errorf("agent memory: write %s: %w", indexPath, err)
+	}
+
+	// Report what landed, not what was attempted. A caller that sums these
+	// bools is counting index lines that exist; a write reported as added but
+	// absent from disk would make that sum silently larger than the truth,
+	// and the caller has no reason to re-measure something it was told
+	// succeeded.
+	landed, err := os.ReadFile(indexPath)
+	if err != nil {
+		return false, fmt.Errorf("agent memory: verify %s: %w", indexPath, err)
+	}
+	if !indexLinksTarget(string(landed), destName) {
+		return false, fmt.Errorf("agent memory: index line for %s did not land in %s", destName, indexPath)
 	}
 	return true, nil
 }
