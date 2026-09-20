@@ -356,7 +356,10 @@ func checkV3R6Drift(specDir, specID string, signals EraSignals) *DriftFinding {
 	specStatus := strings.TrimSpace(statusMatch[1])
 
 	hasRunEvidence := hasProgressMarker(signals.ProgressMDContent, "§E.2")
-	hasSyncMarker := hasProgressMarker(signals.ProgressMDContent, "§E.4")
+	// The §E.4 leg asks whether the sync phase HAPPENED, so it reads the
+	// section's body rather than the presence of its heading: the plan-phase
+	// scaffold emits the heading up front with a placeholder body (card t996).
+	hasSyncMarker := hasPopulatedProgressSection(signals.ProgressMDContent, "§E.4")
 	syncSHA := extractProgressField(signals.ProgressMDContent, "sync_commit_sha")
 
 	// If status is already completed, no drift.
