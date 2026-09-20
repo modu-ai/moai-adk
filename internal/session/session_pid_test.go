@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"os"
 	"path/filepath"
+	"strconv"
 	"testing"
 
 	"github.com/modu-ai/moai-adk/internal/config"
@@ -145,10 +146,21 @@ func TestSessionPIDFromEnv_RejectsUnusableValues(t *testing.T) {
 }
 
 // TestResolveSessionPID_PrefersEnvOverride pins the resolution order.
+//
+// The fixture makes the override an ACTUAL ancestor of this process (card
+// t958): self -> 9999 (claude) -> 8250. The walk stops at 9999, the first
+// non-wrapper ancestor, so the two answers still differ and the assertion
+// still measures "an override for THIS session wins over the walk" — which is
+// what it was written to measure. Before t958 the override here named a pid
+// nowhere in the chain, i.e. the defect scenario itself.
 func TestResolveSessionPID_PrefersEnvOverride(t *testing.T) {
 	const override = 8250
 	withFakeAncestry(t,
-		map[int]fakeProcess{os.Getpid(): {ppid: 9999, comm: "moai"}, 9999: {ppid: 1, comm: "claude"}},
+		map[int]fakeProcess{
+			os.Getpid(): {ppid: 9999, comm: "moai"},
+			9999:        {ppid: override, comm: "claude"},
+			override:    {ppid: 1, comm: "login"},
+		},
 		map[int]bool{override: true, 9999: true},
 	)
 	t.Setenv(config.EnvMoaiSessionPID, "8250")
@@ -165,17 +177,76 @@ func TestResolveSessionPID_PrefersEnvOverride(t *testing.T) {
 // outlives its own process needs to know it did not find an owner, because
 // recording this process's pid there is the integration-lock defect.
 func TestResolveOwnerPID_Precedence(t *testing.T) {
-	t.Run("env stamp wins", func(t *testing.T) {
+	// Card t958 split what was one "env stamp wins" row into two, because the
+	// original fixture's override (8250) named a pid that was NOT in this
+	// process's ancestry — the defect scenario. Fixing the fixture rather
+	// than the assertion keeps the row measuring what it was written to
+	// measure; the second row pins the case the first one used to cover by
+	// accident, so the precedence table states BOTH outcomes explicitly
+	// instead of leaving the new one to a distant test.
+	t.Run("env stamp wins when it names an ancestor", func(t *testing.T) {
 		const override = 8250
+		const near = 9999
 		withFakeAncestry(t,
-			map[int]fakeProcess{os.Getpid(): {ppid: 9999, comm: "moai"}, 9999: {ppid: 1, comm: "claude"}},
-			map[int]bool{override: true, 9999: true},
+			map[int]fakeProcess{
+				os.Getpid(): {ppid: near, comm: "moai"},
+				near:        {ppid: override, comm: "claude"},
+				override:    {ppid: 1, comm: "login"},
+			},
+			map[int]bool{override: true, near: true},
 		)
 		t.Setenv(config.EnvMoaiSessionPID, "8250")
 
 		pid, ok := ResolveOwnerPID()
 		if !ok || pid != override {
 			t.Errorf("ResolveOwnerPID = (%d, %v), want (%d, true)", pid, ok, override)
+		}
+		// The walk's own answer differs, so the row is not vacuous.
+		if got := ancestorSessionPID(os.Getpid()); got == override {
+			t.Fatalf("fixture is vacuous: the walk alone already answers %d", got)
+		}
+	})
+
+	t.Run("a stamp naming no ancestor is ignored", func(t *testing.T) {
+		const foreign = 8250
+		const owner = 9999
+		withFakeAncestry(t,
+			map[int]fakeProcess{
+				os.Getpid(): {ppid: owner, comm: "moai"},
+				owner:       {ppid: 1, comm: "claude"},
+			},
+			map[int]bool{foreign: true, owner: true},
+		)
+		t.Setenv(config.EnvMoaiSessionPID, "8250")
+
+		pid, ok := ResolveOwnerPID()
+		if !ok || pid != owner {
+			t.Errorf("ResolveOwnerPID = (%d, %v), want the walk's answer (%d, true): a live stamp naming neither this process nor any ancestor is one this process inherited from an unrelated session", pid, ok, owner)
+		}
+	})
+
+	t.Run("a stamp naming this process itself wins", func(t *testing.T) {
+		self := os.Getpid()
+		withFakeAncestry(t,
+			map[int]fakeProcess{self: {ppid: 9999, comm: "moai"}, 9999: {ppid: 1, comm: "claude"}},
+			map[int]bool{self: true, 9999: true},
+		)
+		t.Setenv(config.EnvMoaiSessionPID, strconv.Itoa(self))
+
+		pid, ok := ResolveOwnerPID()
+		if !ok || pid != self {
+			t.Errorf("ResolveOwnerPID = (%d, %v), want (%d, true)", pid, ok, self)
+		}
+	})
+
+	t.Run("a stamp is accepted where ancestry is unmeasurable", func(t *testing.T) {
+		const foreign = 8250
+		withFakeAncestry(t, map[int]fakeProcess{}, map[int]bool{foreign: true})
+		t.Setenv(config.EnvMoaiSessionPID, "8250")
+
+		pid, ok := ResolveOwnerPID()
+		if !ok || pid != foreign {
+			t.Errorf("ResolveOwnerPID = (%d, %v), want (%d, true): where the platform reports no ancestry at all, the stamp is the only signal there is and the fail-open keeps today's behavior", pid, ok, foreign)
 		}
 	})
 
@@ -257,4 +328,109 @@ func TestRegister_RecordsLivePID(t *testing.T) {
 	if !pidIsAlive(entries[0].PID) {
 		t.Errorf("recorded PID %d is not alive immediately after registration", entries[0].PID)
 	}
+}
+
+// TestResolveOwnerPID_InheritedStampCollapsesDistinctSessions is the
+// reproduction for card t958: two independent sessions that INHERIT the same
+// MOAI_SESSION_PID value resolve to the SAME owner pid, because the override
+// is honored unconditionally — it is never checked against the resolving
+// process's own ancestry.
+//
+// Attribution: PIDSourceSessionOwner (acquire recording the owning-session
+// pid) predates this, from commit 3f3465369 (card t298). Commit ea939d9a7
+// (card t951) added releasableBy, making pid a SECOND key on the release
+// holder judgment, which WIDENED the exposure surface of this pre-existing
+// acquire-era property. It is not a t951 regression.
+//
+// Each sub-test stands for one session's resolution: the two arms install
+// DIFFERENT synthetic ancestries, so any collapse of the two answers is the
+// override erasing them.
+func TestResolveOwnerPID_InheritedStampCollapsesDistinctSessions(t *testing.T) {
+	const (
+		ownerA    = 9001
+		ownerB    = 9002
+		inherited = 7000
+	)
+
+	// treeFor builds the ancestry of a session whose own non-wrapper ancestor
+	// is owner: this process -> (moai) -> owner (claude).
+	treeFor := func(owner int) map[int]fakeProcess {
+		return map[int]fakeProcess{
+			os.Getpid(): {ppid: owner, comm: "moai"},
+			owner:       {ppid: 1, comm: "claude"},
+		}
+	}
+
+	// Positive control — WITHOUT the inherited stamp the two sessions resolve
+	// differently. Without this arm "inheritance is the cause" is not
+	// established: the experimental arm alone cannot tell an override-induced
+	// collapse from two ancestries that were never distinguishable.
+	t.Run("control: no inherited stamp, distinct ancestries stay distinct", func(t *testing.T) {
+		if ownerA == ownerB {
+			t.Fatal("control is vacuous: the two arms name the same owner pid")
+		}
+		t.Setenv(config.EnvMoaiSessionPID, "")
+
+		// Merely OMITTING to set the variable does not remove one inherited
+		// from the environment. An unasserted control silently becomes a copy
+		// of the experimental arm and produces a plausible-looking pass, so
+		// assert the override is genuinely not in effect.
+		if pid, ok := sessionPIDFromEnv(os.Getenv(config.EnvMoaiSessionPID)); ok {
+			t.Fatalf("control arm is contaminated: an override IS in effect (pid %d)", pid)
+		}
+
+		var gotA, gotB int
+		t.Run("session A", func(t *testing.T) {
+			withFakeAncestry(t, treeFor(ownerA), map[int]bool{ownerA: true, inherited: true})
+			pid, ok := ResolveOwnerPID()
+			if !ok || pid != ownerA {
+				t.Fatalf("ResolveOwnerPID = (%d, %v), want (%d, true)", pid, ok, ownerA)
+			}
+			gotA = pid
+		})
+		t.Run("session B", func(t *testing.T) {
+			withFakeAncestry(t, treeFor(ownerB), map[int]bool{ownerB: true, inherited: true})
+			pid, ok := ResolveOwnerPID()
+			if !ok || pid != ownerB {
+				t.Fatalf("ResolveOwnerPID = (%d, %v), want (%d, true)", pid, ok, ownerB)
+			}
+			gotB = pid
+		})
+		if gotA == gotB {
+			t.Fatalf("two distinct sessions both resolved %d; the control cannot separate them", gotA)
+		}
+	})
+
+	// Experimental — WITH the same inherited stamp the two distinct
+	// ancestries are erased and both sessions resolve to the same pid.
+	t.Run("inherited stamp erases both ancestries", func(t *testing.T) {
+		t.Setenv(config.EnvMoaiSessionPID, strconv.Itoa(inherited))
+
+		var gotA, gotB int
+		t.Run("session A", func(t *testing.T) {
+			withFakeAncestry(t, treeFor(ownerA), map[int]bool{ownerA: true, inherited: true})
+			pid, ok := ResolveOwnerPID()
+			if !ok {
+				t.Fatalf("ResolveOwnerPID = (%d, false), want a resolved owner", pid)
+			}
+			gotA = pid
+			if pid != ownerA {
+				t.Errorf("session A resolved %d, want its OWN ancestor %d — an inherited stamp naming neither this process nor any of its ancestors must not win", pid, ownerA)
+			}
+		})
+		t.Run("session B", func(t *testing.T) {
+			withFakeAncestry(t, treeFor(ownerB), map[int]bool{ownerB: true, inherited: true})
+			pid, ok := ResolveOwnerPID()
+			if !ok {
+				t.Fatalf("ResolveOwnerPID = (%d, false), want a resolved owner", pid)
+			}
+			gotB = pid
+			if pid != ownerB {
+				t.Errorf("session B resolved %d, want its OWN ancestor %d", pid, ownerB)
+			}
+		})
+		if gotA == gotB {
+			t.Errorf("both sessions resolved the same owner pid %d: two independent sessions that inherited MOAI_SESSION_PID are indistinguishable to every pid-keyed ownership check", gotA)
+		}
+	})
 }
