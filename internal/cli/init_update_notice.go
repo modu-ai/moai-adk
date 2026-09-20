@@ -51,6 +51,13 @@ var deferredUpdateEnabled = func(cmd *cobra.Command) bool {
 
 // deferredUpdateCheck performs the network version check. Injectable seam
 // (REQ-TUX2-001 network-order contract; tests assert call ordering).
+//
+// It takes the dependency container as an ARGUMENT rather than reading the
+// package-level `deps`. The check runs on a goroutine the caller may abandon
+// (deferredNoticeGrace), so an abandoned check outlives the call that started
+// it — and anything it reads from a package var is then read concurrently
+// with whatever reassigns that var next. Passing it in makes the goroutine
+// read a value captured before it was spawned, which no later write can reach.
 var deferredUpdateCheck = defaultDeferredUpdateCheck
 
 // deferredNoticeGrace bounds how long init exit waits for an in-flight
@@ -79,11 +86,15 @@ func startDeferredUpdateNotice(cmd *cobra.Command) func(p printer.Printer) {
 		return func(printer.Printer) {}
 	}
 
-	// Capture the seam value before spawning so the goroutine never reads
-	// the package var concurrently with a reassignment (race-safe).
+	// Capture EVERY package var the goroutine needs before spawning, so it
+	// never reads one concurrently with a reassignment (race-safe). The seam
+	// alone is not enough: the default check also consults the dependency
+	// container, so that is captured here and passed in rather than read from
+	// inside the goroutine (card t978 — the CI race this repairs).
 	check := deferredUpdateCheck
+	checkDeps := deps
 	ch := make(chan *deferredUpdateResult, 1)
-	go func() { ch <- check(cmd) }()
+	go func() { ch <- check(cmd, checkDeps) }()
 
 	return func(p printer.Printer) {
 		select {
@@ -105,18 +116,18 @@ func startDeferredUpdateNotice(cmd *cobra.Command) func(p printer.Printer) {
 
 // defaultDeferredUpdateCheck mirrors runBinaryUpdateStep's checker wiring but
 // is strictly CHECK-ONLY: no download, no install, no re-exec (REQ-TUX2-002).
-func defaultDeferredUpdateCheck(_ *cobra.Command) *deferredUpdateResult {
-	if deps != nil {
-		if err := deps.EnsureUpdate(); err != nil {
+func defaultDeferredUpdateCheck(_ *cobra.Command, d *Dependencies) *deferredUpdateResult {
+	if d != nil {
+		if err := d.EnsureUpdate(); err != nil {
 			return &deferredUpdateResult{Err: err}
 		}
 	}
-	if deps == nil || deps.UpdateChecker == nil {
+	if d == nil || d.UpdateChecker == nil {
 		return &deferredUpdateResult{}
 	}
 
 	current := version.GetVersion()
-	available, info, err := deps.UpdateChecker.IsUpdateAvailable(current)
+	available, info, err := d.UpdateChecker.IsUpdateAvailable(current)
 	if err != nil {
 		return &deferredUpdateResult{Err: err}
 	}

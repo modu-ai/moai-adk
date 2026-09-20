@@ -179,27 +179,31 @@ func renameWithRetry(tmpName, path string) error {
 func stripGLMCredsAndSetTeammateMode(m map[string]any) {
 	if env, ok := m["env"].(map[string]any); ok {
 		// Restore backed-up OAuth token before removing GLM vars.
-		if backup, bok := env["MOAI_BACKUP_AUTH_TOKEN"].(string); bok && backup != "" {
+		if backup, bok := env[config.EnvMoaiBackupAuthToken].(string); bok && backup != "" {
 			env[config.EnvAnthropicAuthToken] = backup
-			delete(env, "MOAI_BACKUP_AUTH_TOKEN")
+			delete(env, config.EnvMoaiBackupAuthToken)
 		} else {
 			delete(env, config.EnvAnthropicAuthToken)
 		}
-		delete(env, config.EnvAnthropicBaseURL)
-		delete(env, config.EnvAnthropicDefaultHaikuModel)
-		delete(env, config.EnvAnthropicDefaultSonnetModel)
-		delete(env, config.EnvAnthropicDefaultOpusModel)
-		delete(env, config.EnvClaudeCodeDisableExperimentalBetas)
-		delete(env, "API_TIMEOUT_MS")
-		delete(env, config.EnvClaudeCodeDisableNonessentialTraffic)
-		delete(env, config.EnvClaudeCodeTeammateDisplay)
-		delete(env, config.EnvStatuslineContextSize)
-		// Card t802: the context-window pair is written by the SessionStart hook
-		// (ensureGLMCredentials), so the CG leader carried it too. Both keys leave
-		// with the credentials — see removeGLMEnv for why the residue would
-		// otherwise be permanent rather than merely delayed.
-		delete(env, config.EnvClaudeCodeAutoCompactWindow)
-		delete(env, config.EnvClaudeCodeMaxContextTokens)
+
+		// Everything else on the settings axis is residue and goes
+		// unconditionally. Card t802 established the context-window pair belongs
+		// here too (the SessionStart hook writes it, so the CG leader carried
+		// it); card t888 routes this list onto config's canonical declaration so
+		// a key added there reaches this path without a second edit — the three
+		// cleanup functions had already drifted apart while each spelled its own
+		// list.
+		//
+		// The two token keys are skipped because the restore branch above
+		// already decided their disposition: ANTHROPIC_AUTH_TOKEN is a restore
+		// TARGET rather than residue, and iterating it here would delete the
+		// value the restore just wrote.
+		for _, key := range config.SettingsAxisCleanupKeys() {
+			if key == config.EnvAnthropicAuthToken || key == config.EnvMoaiBackupAuthToken {
+				continue
+			}
+			delete(env, key)
+		}
 
 		if len(env) == 0 {
 			delete(m, "env")

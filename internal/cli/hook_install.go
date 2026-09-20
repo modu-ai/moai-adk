@@ -43,6 +43,10 @@ const prePushHookContent = `#!/bin/sh
 # MoAI-ADK pre-push hook — runs make ci-local; logs invocation outcome
 # Bypass via: SKIP_MOAI_PREPUSH=1 git push   (logged on next invocation)
 # To disable permanently: remove this file or pass --no-hooks to moai update
+#
+# No backticks anywhere in this file: prePushHookContent in
+# internal/cli/hook_install.go holds this text as a Go raw string
+# literal, which cannot contain one.
 set -eu
 
 if [ "${SKIP_MOAI_PREPUSH:-0}" = "1" ]; then

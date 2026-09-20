@@ -211,6 +211,81 @@ func hasProgressMarker(content, marker string) bool {
 	return strings.Contains(content, marker)
 }
 
+// hasPopulatedProgressSection reports whether the named §E.N section exists AND
+// carries evidence, as opposed to existing as a plan-phase placeholder.
+//
+// hasProgressMarker answers "does this heading exist"; that is the right
+// question for era classification, where the heading set IS the schema
+// fingerprint. It is the wrong question wherever the caller means "did this
+// phase actually happen", because the plan-phase scaffold emits every §E.N
+// heading up front with a one-line placeholder body.
+//
+// THE PLACEHOLDER IS RECOGNIZED BY STRUCTURE, NOT BY SPELLING, and that choice
+// is load-bearing. needsSHABackfill (closer.go) carries the record of what the
+// other approach costs: it used to enumerate the four spellings a placeholder
+// might take, so whether a SPEC got repaired depended on how its placeholder
+// happened to be written, and the sanctioned `pending-backfill-*` family fell
+// straight through the gap. An enumeration of placeholder wordings provably
+// needs maintenance -- this one would also have to cover the Korean-annotated
+// variants the corpus already contains. A body that is a single
+// emphasis-wrapped line carries no evidence whatever it says inside, in any
+// language, so the structural test needs none.
+//
+// The converse is what keeps the predicate honest: everything else counts as
+// populated, including the bold markdown list form
+// (`- **sync_commit_sha**: ...`) that 18 corpus SPECs use. A tempting "body
+// contains a key: value line" rule would read those as pending and bury their
+// real drift -- the failure direction that matters more, because a suppressed
+// finding produces no signal at all.
+func hasPopulatedProgressSection(content, marker string) bool {
+	if !hasProgressMarker(content, marker) {
+		return false
+	}
+	body := progressSectionBody(content, marker)
+	if len(body) == 0 {
+		return false
+	}
+	if len(body) == 1 && isEmphasisWrappedLine(body[0]) {
+		return false
+	}
+	return true
+}
+
+// progressSectionBody returns the non-blank body lines of the named §E.N
+// section: the lines after its heading, up to the next top-level (`## `)
+// heading or EOF. The span contract mirrors parseTokensSpentFromSectionI so the
+// two section readers agree on where a section ends.
+func progressSectionBody(content, marker string) []string {
+	var body []string
+	inside := false
+	for _, line := range strings.Split(content, "\n") {
+		trimmed := strings.TrimSpace(line)
+		if strings.HasPrefix(trimmed, "## ") {
+			if inside {
+				break
+			}
+			inside = strings.Contains(trimmed, marker)
+			continue
+		}
+		if inside && trimmed != "" {
+			body = append(body, trimmed)
+		}
+	}
+	return body
+}
+
+// isEmphasisWrappedLine reports whether a line is wholly wrapped in markdown
+// emphasis (`_..._` or `*...*`), the shape the plan-phase scaffold uses for
+// every pending-section note. The check is on the delimiters only; what the
+// note says between them is deliberately not inspected.
+func isEmphasisWrappedLine(line string) bool {
+	if len(line) < 2 {
+		return false
+	}
+	first, last := line[0], line[len(line)-1]
+	return (first == '_' && last == '_') || (first == '*' && last == '*')
+}
+
 // hasAnyProgressMarker reports whether any §E.{2,3,4,5} section header appears.
 func hasAnyProgressMarker(content string) bool {
 	return hasProgressMarker(content, "§E.2") ||

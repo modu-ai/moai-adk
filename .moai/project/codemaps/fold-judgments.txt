@@ -22,3 +22,20 @@ omission internal/cli/update_mirror_heal.go
 omission internal/kanban/settings_drift.go
 omission internal/statusline/state_anchor.go
 omission internal/web/codexmirror.go
+
+# --- 2026-09-20 refresh (worktree t999, HEAD 56c64891a) ---
+# 위 항목들은 이 refresh 에서도 문서 본문과 대조해 그대로 성립함을 확인했으므로 남겨 둡니다.
+# 아래는 이번 refresh 가 새로 내린 판정입니다.
+
+fold internal/cli/init_executor_seam.go
+fold internal/cli/todo_triage.go
+fold internal/config/drift_cache_fill.go
+fold internal/hook/session_start_drift_fill.go
+fold internal/spec/drift_fill_lock.go
+fold internal/spec/lint_coverage_sibling_maps.go
+fold internal/spec/lint_req_heading.go
+fold internal/statusline/config_root.go
+
+omission internal/auditreceipt
+omission internal/harness/rosterguard
+omission internal/harness/cellguard

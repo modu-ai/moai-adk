@@ -59,7 +59,7 @@ func (ptycapNoNetwork) RoundTrip(*http.Request) (*http.Response, error) {
 // reach: the deferred update notice (init) and the --version install client.
 func ptycapBlockNetwork(t *testing.T) {
 	deferredUpdateEnabled = func(*cobra.Command) bool { return false }
-	deferredUpdateCheck = func(*cobra.Command) *deferredUpdateResult { return nil }
+	deferredUpdateCheck = func(*cobra.Command, *Dependencies) *deferredUpdateResult { return nil }
 	versionInstallHTTPClient = &http.Client{Transport: ptycapNoNetwork{}}
 	t.Setenv(config.EnvUpdateURL, "")
 }

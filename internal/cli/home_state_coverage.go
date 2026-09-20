@@ -277,33 +277,42 @@ func resolveHomeStateCoverageChangeSet(root string) (homeStateCoverageChangeSet,
 	committedFiles := map[string]bool{}
 	expectedBlobs := map[string]string{}
 	for _, commit := range auditedCommits {
-		parent, err := gitCoverageOutput(root, "rev-parse", commit+"^1")
-		if err != nil {
-			return result, fmt.Errorf("resolve coverage marker parent: %w", err)
+		// The required marker's parent was already resolved above as
+		// result.Base, from the byte-identical argument. Asking again spawns a
+		// second process for an answer we hold (card t979; measured 61 of the
+		// suite's 939 queries). No test asserts the invocation count, so
+		// restoring the second call would be silent: both forms produce the
+		// same output, and only a counter would tell them apart.
+		parent := result.Base
+		if commit != originalTip {
+			var err error
+			parent, err = gitCoverageOutput(root, "rev-parse", commit+"^1")
+			if err != nil {
+				return result, fmt.Errorf("resolve coverage marker parent: %w", err)
+			}
 		}
-		status, err := gitCoverageOutput(root, "diff", "--name-status", "-M", parent, commit, "--", ":(glob)**/*.go")
+		// One invocation carries the raw rows, their post-image blob ids, and
+		// the unified diff, replacing a name-status call, a patch call, and a
+		// rev-parse per file (card t1001).
+		//
+		// --no-abbrev is load-bearing, not tidiness: without it the ids arrive
+		// abbreviated and never equal the forty-character rev-parse output they
+		// are compared against below.
+		combined, err := gitCoverageOutput(root, "diff", "--raw", "--no-abbrev", "--patch", "--unified=0", "--no-color", "-M", parent, commit, "--", ":(glob)**/*.go")
 		if err != nil {
 			return result, err
 		}
-		files, err := productionFilesFromNameStatus(status)
+		files, blobs, err := productionFilesFromRawDiff(combined)
 		if err != nil {
 			return result, err
 		}
-		diff, err := gitCoverageOutput(root, "diff", "--unified=0", "--no-color", parent, commit, "--", ":(glob)**/*.go")
-		if err != nil {
-			return result, err
-		}
-		ranges, err := parseUnifiedZeroDiff(diff)
+		ranges, err := parseUnifiedZeroDiff(combined)
 		if err != nil {
 			return result, err
 		}
 		for file := range files {
 			committedFiles[file] = true
-			blob, err := gitCoverageOutput(root, "rev-parse", commit+":"+file)
-			if err != nil {
-				return result, fmt.Errorf("read audited production blob %s: %w", file, err)
-			}
-			expectedBlobs[file] = blob
+			expectedBlobs[file] = blobs[file]
 		}
 		for file, changed := range ranges {
 			if isProductionCoverageFile(file) {
@@ -325,19 +334,18 @@ func resolveHomeStateCoverageChangeSet(root string) (homeStateCoverageChangeSet,
 		return result, fmt.Errorf("audited production file changed after coverage tip: %s", strings.Join(changed, ", "))
 	}
 
-	dirtyStatus, err := gitCoverageOutput(root, "diff", "--name-status", "-M", "HEAD", "--", ":(glob)**/*.go")
+	// Same single-invocation shape as the marker loop. A working-tree
+	// comparison reports an all-zero post-image id, so the ids are dropped
+	// here — nothing downstream compares a dirty file's blob.
+	dirtyCombined, err := gitCoverageOutput(root, "diff", "--raw", "--no-abbrev", "--patch", "--unified=0", "--no-color", "-M", "HEAD", "--", ":(glob)**/*.go")
 	if err != nil {
 		return result, err
 	}
-	dirtyFiles, err := productionFilesFromNameStatus(dirtyStatus)
+	dirtyFiles, _, err := productionFilesFromRawDiff(dirtyCombined)
 	if err != nil {
 		return result, err
 	}
-	dirtyDiff, err := gitCoverageOutput(root, "diff", "--unified=0", "--no-color", "HEAD", "--", ":(glob)**/*.go")
-	if err != nil {
-		return result, err
-	}
-	dirtyRanges, err := parseUnifiedZeroDiff(dirtyDiff)
+	dirtyRanges, err := parseUnifiedZeroDiff(dirtyCombined)
 	if err != nil {
 		return result, err
 	}
@@ -406,28 +414,43 @@ func gitCoverageRun(root string, args ...string) error {
 	return err
 }
 
-func productionFilesFromNameStatus(status string) (map[string]bool, error) {
+// productionFilesFromRawDiff reads the raw rows of a combined raw+patch diff
+// and ignores the patch section that follows them. Each row carries the
+// post-image blob id beside the status, which is what lets the caller skip a
+// rev-parse per file (card t1001).
+//
+// The ids are meaningful only for a commit-to-commit comparison: a working-tree
+// comparison reports an all-zero post-image id, and that caller discards them.
+func productionFilesFromRawDiff(out string) (map[string]bool, map[string]string, error) {
 	files := map[string]bool{}
-	for _, line := range strings.Split(strings.TrimSpace(status), "\n") {
-		if line == "" {
+	blobs := map[string]string{}
+	for _, line := range strings.Split(strings.TrimSpace(out), "\n") {
+		if !strings.HasPrefix(line, ":") {
 			continue
 		}
-		fields := strings.Fields(line)
-		if len(fields) < 2 {
-			return nil, fmt.Errorf("malformed git name-status row: %q", line)
+		meta, paths, ok := strings.Cut(strings.TrimPrefix(line, ":"), "\t")
+		if !ok {
+			return nil, nil, fmt.Errorf("malformed git raw diff row: %q", line)
 		}
-		if fields[0] == "D" {
-			if isProductionCoverageFile(fields[1]) {
-				return nil, fmt.Errorf("deleted production coverage target: %s", fields[1])
+		fields := strings.Fields(meta)
+		if len(fields) != 5 {
+			return nil, nil, fmt.Errorf("malformed git raw diff row: %q", line)
+		}
+		blob, status := fields[3], fields[4]
+		names := strings.Split(paths, "\t")
+		if status == "D" {
+			if isProductionCoverageFile(names[0]) {
+				return nil, nil, fmt.Errorf("deleted production coverage target: %s", names[0])
 			}
 			continue
 		}
-		file := fields[len(fields)-1]
+		file := filepath.ToSlash(names[len(names)-1])
 		if isProductionCoverageFile(file) {
-			files[filepath.ToSlash(file)] = true
+			files[file] = true
+			blobs[file] = blob
 		}
 	}
-	return files, nil
+	return files, blobs, nil
 }
 
 func isProductionCoverageFile(file string) bool {

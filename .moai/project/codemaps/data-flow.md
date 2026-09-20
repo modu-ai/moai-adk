@@ -5,6 +5,7 @@
 
 **최초 측정 트리**: worktree `.claude/worktrees/t592`, 브랜치 `WT-home-state-rollout`, HEAD `e7bd89ee3`, 2026-09-10
 **재측정 트리**: worktree `.claude/worktrees/t869`, 브랜치 `WT-codemaps-refresh`, HEAD `a851b205c`, 2026-09-18 — § A의 함수 위치(6개 심볼 정의 파일 대조), § C의 임베드 파일 수, § D의 도구 수와 표, 새 § J(자율 미션과 GTD 큐). § B·E~I의 경로는 이번 변경과 무관해 앞 판을 이어받았습니다.
+**정기 재측정**: worktree `.claude/worktrees/t999`, 브랜치 `WT-codemaps-remediation`, HEAD `56c64891a`, 2026-09-20 — 새 § K(감사 영수증)만 더했습니다. § A~J의 경로는 이번 변경분과 겹치지 않아 다시 재지 않았고 앞 판을 이어받았습니다.
 
 ---
 
@@ -389,3 +390,50 @@ GTD의 사람 쪽 표면은 `moai gtd`입니다(`internal/cli/gtd.go`). `moai to
 두 번째 이름이라 같은 큐·같은 카드 id를 보며, `capture` · `clarify` · `organize` · `reflect` ·
 `engage`가 다섯 단계를 따로 기록합니다. `internal/graph/gtd_private.go`는 같은 저장소에서 비공개
 관계 투영을 만들고 권한을 검사합니다.
+
+---
+
+## K. 감사 영수증 — 도구 호출이 실제로 있었는가
+
+**이 판에서 새로 생긴 경로입니다.** 앞의 모든 절이 「무엇이 어디로 흐르는가」를 따라간다면,
+이 절은 **「흐름이 실제로 일어났는가」를 나중에 확인할 수 있게 만드는 기록**을 따라갑니다.
+
+존재 이유를 `internal/auditreceipt/store.go`의 패키지 주석이 직접 적습니다 — **PASS 판정은
+에이전트가 쓴 텍스트이고, 텍스트는 도구가 불렸음을 보일 수 없습니다.** 그것을 기록할 수
+있는 것은 런타임뿐입니다.
+
+```
+생산 쪽 — MCP 도구 호출
+  internal/cli/mcp_codex.go            codex_audit 실행
+  internal/cli/mcp_convergence.go      audit_multi 수렴 실행
+    internal/cli/mcp_audit_receipt.go  WriteReceipt — 호출 1건당 영수증 1건
+      internal/auditreceipt/treeroot.go  TreeRootFromCWD — git rev-parse --show-toplevel (2초)
+                                          ↳ CLAUDE_PROJECT_DIR는 의도적으로 무시
+      ↳ <treeRoot>/.moai/state/audit-receipts/receipts/<id>.json  (임시 파일 + rename)
+
+소비 쪽 — 훅 가드
+  internal/hook/audit_receipt_guard.go
+    SubagentStart  WriteStartMarker      ↳ .../starts/<id>.json
+    SubagentStop   ParseVerdictLine      판정 줄에서 PASS 여부와 인용을 읽고
+                   CheckCitedReceipts    인용된 영수증이 실재하는지 대조
+                   WriteRejection        불일치면 ↳ .../rejections/<id>.json
+    PreToolUse     ListRejections        거부가 미해소면 manager-develop ·
+                                          manager-docs · manager-git spawn을 거절
+
+게이트 스위치
+  .moai/config/sections/workflow.yaml → CodexGateRequired
+    문자열이 정확히 "required"일 때만 켜진다 (그 밖의 값·부재는 전부 off)
+```
+
+**세 이벤트가 하나의 판정을 이룹니다.** `SubagentStart`가 없으면 `SubagentStop`이 대조할
+기준이 없고, `PreToolUse`가 없으면 거부가 아무것도 막지 않습니다. 이벤트별로 나눠 읽으면
+각각은 멀쩡해 보이므로 한 자리에 적습니다.
+
+**트리 루트 판정이 이 경로의 조용한 실패 지점입니다.** 워크트리 세션에서 `CLAUDE_PROJECT_DIR`는
+primary 체크아웃을 가리키므로, 그 값을 썼다면 영수증은 카드 브랜치가 아닌 다른 트리에 쌓이고
+가드는 빈 디렉터리를 보며 「영수증 없음」이라 판정했을 것입니다. `treeroot.go`가 그 변수를
+쓰지 않고 `git rev-parse`로 직접 묻는 것은 이 실패를 피하기 위한 선택입니다.
+
+`internal/auditreceipt`는 다른 `internal/...` 패키지를 하나도 import 하지 않습니다(표준
+라이브러리와 `gopkg.in/yaml.v3`뿐). 기록 형식은 JSONL이 아니라 **기록 1건 = 파일 1개**이며,
+파일명은 런타임이 준 id를 sanitize해 만듭니다.

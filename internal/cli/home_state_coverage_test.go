@@ -18,6 +18,12 @@ import (
 func gitForCoverageTest(t *testing.T, root string, args ...string) {
 	t.Helper()
 	cmd := exec.Command("git", append([]string{"-C", root}, args...)...)
+	cmd.Env = append(os.Environ(),
+		"GIT_AUTHOR_NAME=Test",
+		"GIT_AUTHOR_EMAIL=test@example.com",
+		"GIT_COMMITTER_NAME=Test",
+		"GIT_COMMITTER_EMAIL=test@example.com",
+	)
 	if out, err := cmd.CombinedOutput(); err != nil {
 		t.Fatalf("git %v: %v: %s", args, err, out)
 	}
@@ -27,8 +33,6 @@ func committedCoverageRepo(t *testing.T) string {
 	t.Helper()
 	root := t.TempDir()
 	gitForCoverageTest(t, root, "init", "-q")
-	gitForCoverageTest(t, root, "config", "user.email", "test@example.com")
-	gitForCoverageTest(t, root, "config", "user.name", "Test")
 	if err := os.MkdirAll(filepath.Join(root, "internal", "x"), 0o700); err != nil {
 		t.Fatal(err)
 	}
@@ -325,8 +329,6 @@ func TestCommittedCoverageChangeSetRejectsInvalidGitAndMalformedEvidence(t *test
 	t.Run("marker has no base parent", func(t *testing.T) {
 		root := t.TempDir()
 		gitForCoverageTest(t, root, "init", "-q")
-		gitForCoverageTest(t, root, "config", "user.email", "test@example.com")
-		gitForCoverageTest(t, root, "config", "user.name", "Test")
 		if err := os.WriteFile(filepath.Join(root, "README.md"), []byte("root marker\n"), 0o600); err != nil {
 			t.Fatal(err)
 		}
@@ -336,15 +338,30 @@ func TestCommittedCoverageChangeSetRejectsInvalidGitAndMalformedEvidence(t *test
 			t.Fatalf("parentless evidence accepted: %v", err)
 		}
 	})
-	if _, err := productionFilesFromNameStatus("malformed"); err == nil {
-		t.Fatal("malformed name-status accepted")
+	if _, _, err := productionFilesFromRawDiff(":bad\tinternal/x/a.go"); err == nil {
+		t.Fatal("malformed raw row accepted")
 	}
-	if _, err := productionFilesFromNameStatus("D\tinternal/x/gone.go"); err == nil {
+	if _, _, err := productionFilesFromRawDiff(
+		":100644 000000 1111111111111111111111111111111111111111 0000000000000000000000000000000000000000 D\tinternal/x/gone.go",
+	); err == nil {
 		t.Fatal("production deletion accepted")
 	}
-	files, err := productionFilesFromNameStatus("D\tREADME.md\nM\tinternal/x/live.go\nM\tinternal/x/live_test.go")
+	// The trailing patch lines belong to the same combined output and must be
+	// skipped by the raw parser rather than read as rows.
+	files, blobs, err := productionFilesFromRawDiff(
+		":100644 000000 2222222222222222222222222222222222222222 0000000000000000000000000000000000000000 D\tREADME.md\n" +
+			":100644 100644 3333333333333333333333333333333333333333 4444444444444444444444444444444444444444 M\tinternal/x/live.go\n" +
+			":100644 100644 5555555555555555555555555555555555555555 6666666666666666666666666666666666666666 M\tinternal/x/live_test.go\n" +
+			"diff --git a/internal/x/live.go b/internal/x/live.go\n@@ -1 +1 @@\n")
 	if err != nil || len(files) != 1 || !files["internal/x/live.go"] {
 		t.Fatalf("files=%v err=%v", files, err)
+	}
+	// Pin the full-length post-image id. An abbreviated id still parses and
+	// still compares — it just never matches the forty-character rev-parse
+	// output, so dropping --no-abbrev from the diff invocation would degrade
+	// this comparison rather than break it visibly here.
+	if got := blobs["internal/x/live.go"]; len(got) != 40 {
+		t.Fatalf("post-image id %q is %d chars, want 40 (--no-abbrev must stay on the diff invocation)", got, len(got))
 	}
 	root := committedCoverageRepo(t)
 	ranges, err := changedProductionLineRanges(root, nil)
@@ -621,8 +638,6 @@ func TestParseChangedLineCoverageCountsOnlyChangedExecutableLines(t *testing.T) 
 func TestChangedProductionLineRangesTracksModifiedRenamedAndUntracked(t *testing.T) {
 	root := t.TempDir()
 	gitForCoverageTest(t, root, "init", "-q")
-	gitForCoverageTest(t, root, "config", "user.email", "test@example.com")
-	gitForCoverageTest(t, root, "config", "user.name", "Test")
 	if err := os.MkdirAll(filepath.Join(root, "internal", "x"), 0o700); err != nil {
 		t.Fatal(err)
 	}
@@ -667,8 +682,6 @@ func TestChangedProductionLineRangesTracksModifiedRenamedAndUntracked(t *testing
 func TestChangedProductionFilesRejectsDeletion(t *testing.T) {
 	root := t.TempDir()
 	gitForCoverageTest(t, root, "init", "-q")
-	gitForCoverageTest(t, root, "config", "user.email", "test@example.com")
-	gitForCoverageTest(t, root, "config", "user.name", "Test")
 	if err := os.MkdirAll(filepath.Join(root, "internal", "x"), 0o700); err != nil {
 		t.Fatal(err)
 	}
@@ -729,6 +742,27 @@ func TestCommittedCoverageChangeSetNamesEveryPostTipChangeDeterministically(t *t
 	gitForCoverageTest(t, root, "add", "internal")
 	gitForCoverageTest(t, root, "commit", "-qm", "fix: mutate two audited paths")
 	want := "audited production file changed after coverage tip: internal/x/a.go, internal/y/b.go"
+	if seen := resolveRepeatedly(t, root, 20); len(seen) != 1 || seen[want] != 20 {
+		t.Fatalf("messages across 20 runs = %v, want only %q", seen, want)
+	}
+}
+
+// TestCommittedCoverageChangeSetDetectsAuditedFileDeletedAfterTip pins the
+// deletion case of the HEAD-blob comparison: an audited production file that no
+// longer resolves at HEAD must still count as changed rather than pass
+// silently. No test covered it (card t1000).
+//
+// The comparison's `err != nil` disjunct is redundant rather than load-bearing,
+// measured by deleting it: the suite AND this test both stay green, because a
+// failed read returns the empty string, which already differs from the
+// forty-character blob it is compared against. So the deletion path is carried
+// by the string comparison alone, and this test is what would catch a rework
+// that stops detecting a vanished file.
+func TestCommittedCoverageChangeSetDetectsAuditedFileDeletedAfterTip(t *testing.T) {
+	root := committedCoverageRepo(t)
+	gitForCoverageTest(t, root, "rm", "-q", "internal/x/a.go")
+	gitForCoverageTest(t, root, "commit", "-qm", "chore: drop the audited production file")
+	want := "audited production file changed after coverage tip: internal/x/a.go"
 	if seen := resolveRepeatedly(t, root, 20); len(seen) != 1 || seen[want] != 20 {
 		t.Fatalf("messages across 20 runs = %v, want only %q", seen, want)
 	}
