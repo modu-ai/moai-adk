@@ -37,8 +37,20 @@ const (
 	// StatusFresh means the binary was built from this tree's HEAD.
 	StatusFresh Status = "fresh"
 	// StatusDivergent means the binary's commit stands in no ancestor relation
-	// to HEAD — a release or sibling-branch build, not a stale one.
+	// to HEAD in EITHER direction — a release or sibling-branch build, not a
+	// stale one. A tree that has never heard of the binary's commit lands here,
+	// which is every downstream installation, and the verdict stays silent.
 	StatusDivergent Status = "divergent"
+	// StatusAhead means the binary's commit is a strict DESCENDANT of HEAD: the
+	// tree being compared against is the older of the two.
+	//
+	// This is not a divergence and must not be reported as one. The two commits
+	// are in an ancestor relation, so "release or sibling-branch build" states
+	// the wrong fact; what is actually true is that the comparison ref is behind
+	// the binary, and therefore the lag verdict says nothing about whether the
+	// binary is current. That is worth reporting precisely because it is the
+	// case where the check answers a question nobody asked.
+	StatusAhead Status = "ahead"
 	// StatusBehind means the binary's commit is a strict ancestor of HEAD:
 	// commits landed after the binary was built, so it is running old code.
 	StatusBehind Status = "behind"
@@ -132,11 +144,30 @@ func gitCompare(ctx context.Context, req Request) Verdict {
 		return Verdict{Status: StatusBehind, BinaryCommit: binCommit, SourceHead: sourceHead}
 	}
 
+	// The same probe in the other direction. Without it, "binary is newer than
+	// the ref we compared against" is indistinguishable from "binary belongs to
+	// an unrelated line", and the two want opposite treatment: the first says
+	// the comparison was meaningless, the second says there was nothing to
+	// compare.
+	//
+	// It costs one git call on a path that previously made two, and only on the
+	// non-ancestor branch — the downstream-common case reaches it, fails it
+	// (the commit is not in that repository at all), and lands on the same
+	// divergent verdict it always did.
+	if err := exec.CommandContext(ctx, "git", "-C", dir, "merge-base", "--is-ancestor", sourceHead, binCommit).Run(); err == nil {
+		return Verdict{
+			Status:       StatusAhead,
+			BinaryCommit: binCommit,
+			SourceHead:   sourceHead,
+			Reason:       "source HEAD is an ancestor of the binary commit (comparison ref is behind the binary)",
+		}
+	}
+
 	return Verdict{
 		Status:       StatusDivergent,
 		BinaryCommit: binCommit,
 		SourceHead:   sourceHead,
-		Reason:       "binary commit is not an ancestor of source HEAD (release or branch build)",
+		Reason:       "binary commit is in no ancestor relation to source HEAD (release or branch build)",
 	}
 }
 
@@ -151,9 +182,26 @@ const RemedyCommand = "make build && make install"
 // nothing — so the advisory speaks only when the binary really is running code
 // the tree has moved past.
 //
-// @MX:NOTE: empty string is the answer for every verdict except StatusBehind
+// StatusAhead speaks too, and says something different. There the binary is
+// not stale; the ref it was compared against is, so the verdict carries no
+// information about the binary's currency. Rebuilding is not the remedy — it
+// would change today's number and leave the next silence exactly as invisible
+// — so the notice names the condition and points at the comparison instead.
+//
+// @MX:NOTE: empty string for every verdict except StatusBehind and StatusAhead
 // @MX:SPEC: SPEC-BINARY-LAG-VISIBILITY-001
 func Advisory(v Verdict) string {
+	if v.Status == StatusAhead {
+		return fmt.Sprintf(
+			"moai binary lag check inconclusive: the installed binary was built from commit %s, "+
+				"a DESCENDANT of this tree's HEAD %s.\n"+
+				"The binary is newer than the ref it was compared against, so this check cannot tell you "+
+				"whether the binary is current — it may still be behind the branch it was built from.\n"+
+				"Compare against that branch before trusting any moai CLI result "+
+				"(git merge-base --is-ancestor %s <branch>).",
+			Short(v.BinaryCommit), Short(v.SourceHead), Short(v.BinaryCommit),
+		)
+	}
 	if v.Status != StatusBehind {
 		return ""
 	}
