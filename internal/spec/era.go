@@ -211,6 +211,17 @@ func hasProgressMarker(content, marker string) bool {
 	return strings.Contains(content, marker)
 }
 
+// hasPopulatedProgressSection reports whether the named §E.N section exists AND
+// carries evidence, as opposed to existing as a plan-phase placeholder.
+//
+// CHARACTERIZATION FORM (card t996, milestone 1): this body is today's
+// behaviour spelled through the new name, so the paired test in
+// progress_section_populated_test.go fails on the placeholder case for the
+// reason the card names. Milestone 2 replaces it.
+func hasPopulatedProgressSection(content, marker string) bool {
+	return hasProgressMarker(content, marker)
+}
+
 // hasAnyProgressMarker reports whether any §E.{2,3,4,5} section header appears.
 func hasAnyProgressMarker(content string) bool {
 	return hasProgressMarker(content, "§E.2") ||
