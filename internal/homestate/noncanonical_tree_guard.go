@@ -24,8 +24,12 @@ import (
 //
 // The gate is deliberately narrow. It binds mutation entry points only; reads,
 // dry-runs, and recovery paths are how this situation is discovered and
-// escaped, and they mutate nothing that the caller has not already been told
-// about. Outside a repository — an ordinary temp directory, say —
+// escaped. Reads and dry-runs mutate nothing. Recovery paths DO mutate — the
+// recover path quarantines the live backlog DB by renaming it, restores it from
+// a backup, and clears the migration marker, none of which its "recover a
+// dead-owner migration marker" surface announces. Their exemption therefore
+// rests on the escape-hatch argument alone, never on a no-mutation claim.
+// Outside a repository — an ordinary temp directory, say —
 // CanonicalProjectRoot returns the caller's own path, so the gate is inert.
 func RefuseMutationFromNonCanonicalTree(callerRoot string) error {
 	caller, err := filepath.Abs(callerRoot)
