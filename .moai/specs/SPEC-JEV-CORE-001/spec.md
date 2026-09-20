@@ -2,7 +2,7 @@
 id: SPEC-JEV-CORE-001
 title: "Jev core capability — package, config gate, credential, fail-open"
 version: "0.1.0"
-status: draft
+status: in-progress
 created: 2026-09-20
 updated: 2026-09-20
 author: manager-spec

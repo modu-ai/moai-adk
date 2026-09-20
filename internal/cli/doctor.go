@@ -249,6 +249,11 @@ func runGroupedChecksObserved(verbose bool, filterCheck string, obs checkObserve
 		// SPEC-CODEX-WIRING-001 REQ-CW-010: advisory Codex-wiring check —
 		// informational skip in claude-only projects, never gates doctor.
 		{"Codex Wiring", func(v bool) DiagnosticCheck { return checkCodexWiring(cwd, v) }},
+		// REQ-JEVC-022: Jev readiness — enabled state, credential presence,
+		// endpoint reachability. Reports only; never gates doctor, and sends no
+		// judgment request. While the capability is disabled it makes no
+		// network call at all.
+		{jevCheckName, func(v bool) DiagnosticCheck { return checkJev(cwd, v) }},
 	}
 
 	run := func(title string, items []checkFunc) []DiagnosticCheck {
