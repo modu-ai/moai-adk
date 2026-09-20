@@ -42,7 +42,11 @@ Nothing precedes this SPEC. `SPEC-MODEL-MATRIX-CONFIG-001` depends on it because
 
 [HARD] **S0 has NOT been discharged**, and this is the SPEC's central inherited contradiction. S0 blocks `SPEC-MODEL-MATRIX-DOCS-001` (M6), which also already landed in the same squash. M1 and M6 proceeded on the user-supplied per-effort measurements instead; S0's own verification was never performed. The blocking precondition is therefore **undischarged on already-shipped documentation**, and closing it is remediation rather than prevention. This SPEC owns S0; DOCS records the same contradiction from the consuming side.
 
-[HARD] **Two M1 plan steps were never executed** even though M1 is recorded as landed: `plan.md` step 2 (delete the six group constants and `agentGroupMembership`) and step 3 (delete `AgentGroup`). Measured in this tree: `internal/template/profile_matrix.go` declares `agentGroupMembership` at line 209 and defines `AgentGroup` at line 464, and `internal/web/agentfm.go:491` calls `template.AgentGroup` as a live gate. The disposition — whether the landing record is wrong or the plan is stale — is owned by card **t1037** and is NOT decided here. This SPEC records the unexecuted remainder as its own and does not remove the code.
+[HARD] **Two M1 plan steps were never executed** even though M1 is recorded as landed: `plan.md` step 2 (delete the six group constants and `agentGroupMembership`) and step 3 (delete `AgentGroup`). Measured in this tree: `internal/template/profile_matrix.go` declares `agentGroupMembership` at line 209 and defines `AgentGroup` at line 464, and `internal/web/agentfm.go:491` calls `template.AgentGroup` as a live gate.
+
+[HARD] **The disposition is DECIDED: the plan is stale; the landing record is not wrong** (card **t1037**, 2026-09-20 — `.moai/reports/t1037/verdict.md`). The non-execution of steps 2-3 was a **deliberate decision taken at landing time**, and the deciding rationale was authored into the code by the same squash `31da99a7b`, at `internal/template/profile_matrix.go:481-483`: the group layer no longer carries routing information and survives only as a display classification. Steps 2-3 are therefore retired in `plan.md` §F M1, and the code stays in place. Removing it now would be a new product decision, not the completion of M1.
+
+[HARD] **Two things the ruling does NOT cover.** (a) **M1 step 5 is PARTIAL** — the resolver's return value is `mapped` at its declaration (`profile_matrix.go:487`) while 8 `hasGroup` occurrences survive at the call sites (`plan.md` §C K-6). No authored decision exists for it, so it may be unfinished execution rather than a stale plan; t1037 declined to decide, and it stays open and unowned. (b) **REQ-MPMC-006/007/008 are untouched** — see the note in §B.2.
 
 **Zero of the inherited acceptance criteria are formally verified.** `internal/` carries no `REQ-MPM2` or `AC-MPM2` markers, so requirement-to-code traceability is unestablished for the landed work.
 
@@ -125,6 +129,14 @@ Today `Explore` is unmapped: `ResolveAgentModelEffort` returns `{inherit, ""}, h
 - **REQ-MPMC-017** (Event-driven) **When** the matrix is amended, the existing resolver tests pinning the retired group vocabulary shall be amended in the same change so that no test references a removed group constant.
 - **REQ-MPMC-018** (Ubiquitous) The `Explore`-and-unmapped-agent inherit test shall be split so that `Explore` asserts the explicit `sonnet / medium` mapping while an arbitrary user-agent name asserts the `inherit` fallback.
 
+> **[HARD] Note on REQ-MPMC-006 / 007 / 008 — premise abandoned at landing, disposition open and unowned.**
+>
+> These three requirements assert that the group constants, the `agentGroupMembership` map, and the `AgentGroup` accessor do not exist after M1. Card t1037 established that the landing deliberately chose the opposite — the group layer was kept on purpose as a display classification, with the reason authored into `internal/template/profile_matrix.go:481-483` by the same squash (`.moai/reports/t1037/verdict.md`). **The premise these three requirements rest on was abandoned at landing time.**
+>
+> They are recorded here, not resolved. Whether to retire them (accepting the retention) or to honour them (removing the group layer after all) is a **product decision outside card t1037's scope**, and it is currently **unowned**. Nothing about this note changes their text, their numbering, or AC-MPMC-005's grep — see `acceptance.md` §D.1, where that criterion is carried as an explicitly-owned debt for exactly this reason.
+>
+> Whoever takes that decision must also reckon with what t1037 found alongside it: the retention rationale says the layer survives "only as a display classification", but one of its two consumers is not a display. `internal/web/agentfm.go:491` uses only the boolean (`_, ok :=`) as a gate refusing override submissions for agents outside the matrix, while `internal/cli/model.go:101` uses the group string for a report column. Removing the layer on the strength of the comment alone would silently break the gate.
+
 ---
 
 ## §C Exclusions
@@ -147,9 +159,12 @@ Today `Explore` is unmapped: `ResolveAgentModelEffort` returns `{inherit, ""}, h
 
 - Renaming `max` / `medium` / `low` to names matching the inverted ordering; adding a fourth column; reintroducing the retired `plan_type` axis. §A.1 requires disclosure, not renaming.
 
-### Out of Scope — t1037's question
+### Out of Scope — t1037's question (answered) and what it left open
 
-- Deciding whether the landed-M1 record is wrong or the M1 plan is stale, and removing `agentGroupMembership` / `AgentGroup` on that basis. Card t1037 owns the disposition; this SPEC records the remainder and leaves the code in place.
+- Deciding whether the landed-M1 record is wrong or the M1 plan is stale. **Answered by card t1037 (2026-09-20): the plan is stale** — steps 2-3 were deliberately abandoned at landing and are now retired in `plan.md` §F M1 (`.moai/reports/t1037/verdict.md`).
+- Removing `agentGroupMembership` / `AgentGroup`. Still out of scope, and now for a stronger reason: the retention is a ruled deliberate decision, so removal is a **new product decision** rather than the completion of M1. Unowned; this SPEC leaves the code in place.
+- Deciding the fate of **M1 step 5's** surviving `hasGroup` call sites (`plan.md` §C K-6). t1037 ruled only steps 2-3; step 5 is undecided and unowned, and this SPEC does not decide it either.
+- Retiring or honouring **REQ-MPMC-006/007/008**, whose premise the landing abandoned. See the note at the end of §B.2.
 
 ### Out of Scope — agent catalog
 
@@ -187,7 +202,8 @@ Today `Explore` is unmapped: `ResolveAgentModelEffort` returns `{inherit, ""}, h
 | R-1 | S0 confirmation contradicts the §A.1 readings, invalidating the framing. | Medium | REQ-MPMC-004 — use the confirmed value, record the delta; the structural work does not depend on the numbers. |
 | R-2 | S0 is being discharged *after* the documentation it blocks already shipped, so a contradiction is a correction rather than a prevention. | High | The remediation obligation is recorded in `SPEC-MODEL-MATRIX-DOCS-001`; a delta must reach the shipped pages, not only `progress.md`. |
 | R-3 | `DefaultProfileMatrix()`'s Go type is unchanged while its inner-key semantics change from group key to agent name — a semantic change with no compiler signal. | Medium | Doc-comment statement plus the display-order/matrix-key agreement assertion. |
-| R-4 | The unexecuted M1 remainder (`agentGroupMembership`, `AgentGroup`) leaves a live consumer at `internal/web/agentfm.go:491` against a SPEC that records M1 as landed. | Medium | Recorded here as this SPEC's own remainder; disposition owned by card t1037. |
+| R-4 | `agentGroupMembership` / `AgentGroup` survive against requirements (REQ-MPMC-006/007/008) that assert their absence. **Ruled deliberate** by card t1037 — so the risk is no longer "unfinished work" but a **standing requirement-vs-code contradiction** whose resolution is unowned, plus the live consumer at `internal/web/agentfm.go:491` that the retention rationale mis-describes as a display use. | Medium | Disposition ruled (`.moai/reports/t1037/verdict.md`); steps retired in `plan.md` §F M1; the contradiction is carried explicitly as an owned debt on AC-MPMC-005 and flagged in the §B.2 note rather than silently reconciled. |
+| R-5 | M1 step 5 left the resolver half-renamed: `mapped` at the declaration, 8 `hasGroup` occurrences at the call sites. A reader meeting `hasGroup` infers the flag still means group membership for routing, which is the exact misreading the rename existed to prevent. | Low | Recorded as `plan.md` §C K-6 and as the open half of closure gate 5; explicitly NOT ruled by t1037, so it is not mistaken for settled. |
 
 ---
 
