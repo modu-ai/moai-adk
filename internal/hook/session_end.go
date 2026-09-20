@@ -783,14 +783,31 @@ func clearTmuxSessionEnv(ctx context.Context) {
 // Cleanup logic mirrors removeGLMEnv() in internal/cli/cc.go:
 //   - If MOAI_BACKUP_AUTH_TOKEN exists, restore it as ANTHROPIC_AUTH_TOKEN.
 //   - Otherwise, delete ANTHROPIC_AUTH_TOKEN (it was a GLM key, not OAuth).
-//   - Always delete: MOAI_BACKUP_AUTH_TOKEN, ANTHROPIC_BASE_URL, the three
-//     ANTHROPIC_DEFAULT_*_MODEL vars, CLAUDE_CODE_DISABLE_EXPERIMENTAL_BETAS,
-//     and the context-window pair CLAUDE_CODE_AUTO_COMPACT_WINDOW /
-//     CLAUDE_CODE_MAX_CONTEXT_TOKENS (card t802) — together these are every key
-//     the live settings-axis writer, ensureGLMCredentials, can add.
+//   - Delete every other member of config.SettingsAxisCleanupKeys(), the
+//     canonical settings-axis declaration. The token pair above is carved OUT
+//     of that loop: ANTHROPIC_AUTH_TOKEN is a restore TARGET rather than
+//     residue, so a loop over the whole view would delete the value the restore
+//     just wrote, and MOAI_BACKUP_AUTH_TOKEN is consumed by the restore branch
+//     so the pair stays handled in one place.
 //
-// ANTHROPIC_BASE_URL is used as the GLM-active indicator: Claude Code's OAuth
-// flow never sets this variable, so its presence reliably signals GLM mode.
+// The GLM-active indicator is exactly two keys — ANTHROPIC_BASE_URL and
+// MOAI_BACKUP_AUTH_TOKEN — and the set is deliberately no wider:
+//
+//   - ANTHROPIC_BASE_URL: Claude Code's own OAuth flow never sets it.
+//   - MOAI_BACKUP_AUTH_TOKEN: the only code path that writes it is the GLM
+//     injection path, which parks a pre-existing OAuth token there so this
+//     cleanup can put it back. No non-MoAI flow produces it and no user sets it
+//     by hand, so a file carrying it is by definition a MoAI-written file.
+//
+// MOAI_STATUSLINE_CONTEXT_SIZE is NOT an indicator, and neither are
+// CLAUDE_CODE_AUTO_COMPACT_WINDOW / CLAUDE_CODE_MAX_CONTEXT_TOKENS: all three
+// are documented user-settable overrides (see internal/statusline/memory.go,
+// where the statusline key is resolution priority #1, "explicit user override",
+// and internal/config/envkeys.go, which declares it as a general context-size
+// override with GLM only as an example). Admitting one of them would open the
+// gate on a non-GLM user's file, and the `else` branch below would then delete
+// that user's own ANTHROPIC_AUTH_TOKEN. They are cleaned once the gate is open,
+// never used to open it.
 //
 // All operations are best-effort. Errors are logged with slog.Warn and never
 // returned, following the SessionEnd convention of non-fatal cleanup.
@@ -841,34 +858,39 @@ func cleanupGLMSettingsLocal(projectDir string) {
 		return
 	}
 
-	// ANTHROPIC_BASE_URL is the GLM-active indicator.
-	// Claude Code's own OAuth flow never sets this variable.
-	if _, glmActive := env[config.EnvAnthropicBaseURL]; !glmActive {
-		// Not in GLM mode — nothing to clean.
+	// The GLM-active indicator: either key admits the file. See the doc comment
+	// above for why the set is exactly these two and no wider.
+	_, hasBaseURL := env[config.EnvAnthropicBaseURL]
+	_, hasBackupToken := env[config.EnvMoaiBackupAuthToken]
+	if !hasBaseURL && !hasBackupToken {
+		// Not a MoAI-written file — nothing to clean.
 		return
 	}
 
 	// Restore backed-up OAuth token if present; otherwise remove the GLM key.
-	if backup, ok := env["MOAI_BACKUP_AUTH_TOKEN"]; ok && backup != "" {
+	// This branch runs BEFORE the deletion loop and owns the token pair
+	// outright: the loop below reads neither key.
+	if backup, ok := env[config.EnvMoaiBackupAuthToken]; ok && backup != "" {
 		env[config.EnvAnthropicAuthToken] = backup
 	} else {
 		delete(env, config.EnvAnthropicAuthToken)
 	}
+	delete(env, config.EnvMoaiBackupAuthToken)
 
-	delete(env, "MOAI_BACKUP_AUTH_TOKEN")
-	delete(env, config.EnvAnthropicBaseURL)
-	delete(env, config.EnvAnthropicDefaultHaikuModel)
-	delete(env, config.EnvAnthropicDefaultSonnetModel)
-	delete(env, config.EnvAnthropicDefaultOpusModel)
-	// Card t802: ensureGLMCredentials (the SessionStart half of this pair) also
-	// writes the Z.AI compatibility flag and the context-window pair, so this
-	// cleanup removes every key that live writer can add. Without the two window
-	// keys the residue is permanent: ANTHROPIC_BASE_URL deleted above is the
-	// GLM-active indicator this function gates on, so no later pass can see the
-	// file as GLM again.
-	delete(env, config.EnvClaudeCodeDisableExperimentalBetas)
-	delete(env, config.EnvClaudeCodeAutoCompactWindow)
-	delete(env, config.EnvClaudeCodeMaxContextTokens)
+	// Everything else on the settings axis is residue and goes unconditionally.
+	// Card t802 established that the SessionStart half of this pair,
+	// ensureGLMCredentials, also writes the Z.AI compatibility flag and the
+	// context-window pair; card t888 routes this list onto the canonical
+	// declaration so a key added there reaches this cleanup without a second
+	// edit. The two token keys are skipped because the branch above already
+	// decided their disposition — iterating them here would delete the value the
+	// restore just wrote.
+	for _, key := range config.SettingsAxisCleanupKeys() {
+		if key == config.EnvAnthropicAuthToken || key == config.EnvMoaiBackupAuthToken {
+			continue
+		}
+		delete(env, key)
+	}
 
 	// Re-encode the cleaned env map back into the raw JSON document.
 	if len(env) == 0 {
