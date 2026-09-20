@@ -75,7 +75,7 @@ The tool returns a `ConvergenceResult`:
 {
   "per_backend_verdicts": [
     {"backend": "claude", "source": "mcp_claude_audit", "gate": "required", "verdict": "pass", "summary": "...", "findings": [], "next_steps": [], "provenance": {"transport": "claude-code-cli", "auth_mode": "subscription", "requested_model": "sonnet", "resolved_model": "claude-sonnet-...", "requested_effort": "high", "session_persisted": false}},
-    {"backend": "codex",  "gate": "required", "verdict": "fail", "summary": "...", "findings": [...], "next_steps": [...]},
+    {"backend": "codex",  "gate": "required", "verdict": "fail", "summary": "...", "findings": [...], "next_steps": []},
     {"backend": "glm",    "gate": "advisory", "verdict": "pass", "summary": "...", "findings": [], "next_steps": []}
   ],
   "overall_verdict": "fail",
@@ -88,6 +88,12 @@ The tool returns a `ConvergenceResult`:
 
 - `overall_verdict` ∈ `{pass, fail}` — the existing review-output values. No
   new enum (disagreement is a flag, not a verdict value).
+- `next_steps` is populated ONLY where the backend itself produced it. A
+  backend that returns a structured review carries its model's own list;
+  a backend that answers in prose carries none, so its entry shows `[]` even
+  on a `fail` with findings. An empty `next_steps` beside a non-empty
+  `findings` is therefore the expected shape, not a truncated result — do not
+  read the finding text as steps.
 - `participant_count` is how many backends contributed a comparable verdict:
   every entry whose gate is not `off` and whose verdict is `pass` or `fail`.
   `inconclusive` entries (missing, unauthenticated, erroring) are
