@@ -317,7 +317,7 @@ outcome, and a reader of the published documentation learns nothing about Jev fr
 
 ```yaml
 sync_complete_at: 2026-09-20
-sync_commit_sha: pending-backfill-sync
+sync_commit_sha: c8731f965
 sync_status: complete-with-gaps
 changelog_entry_position: "[Unreleased] -> Added, first bullet (inserted above the SPEC-JEV-OPTIN-MEASURE-001 entry, which is unmodified)"
 b12_self_test_a_pre_emission_grep: "grep -c 'SPEC-JEV-CORE-001' CHANGELOG.md -> 1; anchored entry-head probe -> 0 against a 296-head positive control. The single hit is a prose cross-reference inside the successor's entry, not a duplicate entry. Deviation recorded in E.4"
