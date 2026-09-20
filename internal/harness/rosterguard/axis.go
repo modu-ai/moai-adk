@@ -30,6 +30,28 @@
 // roster; a guard that conflated the two would break a correct site. Each
 // registered site therefore declares WHICH axis it speaks about, and the guard
 // asserts only what that axis supports.
+//
+// # Why there is more than one DISCOVERY axis
+//
+// The two words "axis" above and here are different things, and the difference
+// is worth stating once. Axis (the type below) names WHAT a registered site
+// claims about. A DISCOVERY axis is how an unregistered site is FOUND at all,
+// and there are two of them:
+//
+//   - Sweep() finds a site by ENUMERATION — a file carrying at least
+//     SweepThreshold distinct agent names.
+//   - The numeral layer (numeral.go) finds a site by a numeral ADJACENT TO A
+//     ROSTER NOUN.
+//
+// The second exists because a site that states only a SIZE, while naming few
+// agents or none, is structurally invisible to the first: .moai/project/tech.md
+// sizes the retained roster and names ZERO agents, so no enumeration threshold
+// reaches it. Lowering SweepThreshold is not a substitute, and this is why.
+//
+// The numeral layer distinguishes a BREADTH set (every post-neutralisation
+// match, discharged or not — the set it prints) from a FINDING set (the
+// undischarged subset that fails the guard). A phrase removed by neutralisation
+// is in neither.
 package rosterguard
 
 // Axis names one measurable roster population. A site declares the axis it
@@ -157,6 +179,18 @@ type Site struct {
 	// happens to have few names" would silently absorb a membership site whose
 	// listing shrank, which is exactly the drift this package reports.
 	SweepUnreachable string
+	// NumeralUnreachable declares, with a reason, that the NUMERAL layer
+	// (numeral.go) is EXPECTED not to reach this row's count claim — the
+	// converse declaration to SweepUnreachable, for the second axis.
+	//
+	// The only legitimate case measured so far is a count claim written with a
+	// LOCALIZED roster noun: the ko/ja/zh README headings state the roster size
+	// in their own language, and the adopted noun class is English-only by
+	// decision, so the layer cannot see them. Declaring it keeps the
+	// breadth-set equality (AC-RNA-006(b)) strict instead of unsatisfiable: the
+	// row is subtracted by a DECLARATION a reviewer can disagree with, never by
+	// an inference the layer makes about itself.
+	NumeralUnreachable string
 	// Note carries any context a reader needs to judge the row.
 	Note string
 }
