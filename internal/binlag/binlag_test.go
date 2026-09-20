@@ -158,6 +158,65 @@ func TestEvaluate_VersionStringDoesNotDecideTheVerdict(t *testing.T) {
 	}
 }
 
+// checkoutDetached moves a throwaway repository's HEAD to ref.
+func checkoutDetached(t *testing.T, dir, ref string) {
+	t.Helper()
+	if out, err := exec.Command("git", "-C", dir, "checkout", "-q", "--detach", ref).CombinedOutput(); err != nil {
+		t.Fatalf("checkout %s: %v\n%s", ref, err, out)
+	}
+}
+
+// The binary's commit being a strict DESCENDANT of the compared HEAD is its own
+// case, and it is the one that used to fall into StatusDivergent.
+//
+// The relation here is not a divergence: the two commits ARE in an ancestor
+// relation, the tree's HEAD is simply the older of the two. Calling that "a
+// release or branch build" — as the divergent verdict does — describes the
+// wrong situation, and the advisory's silence then hides the only fact worth
+// reporting: the ref this check compared against is behind the binary, so the
+// verdict says nothing about whether the binary is current.
+//
+// Measured on card t1022 in this repository: the installed binary was built
+// from a commit 3991 commits ahead of the tree the session-start advisory
+// compares against, and 643 commits behind the branch it was actually built
+// from. Both surfaces reported no problem.
+func TestEvaluate_DescendantBinaryIsAheadNotDivergent(t *testing.T) {
+	dir, ancestor, descendant := twoCommitRepo(t)
+	checkoutDetached(t, dir, ancestor)
+
+	v := Evaluate(context.Background(), Request{Dir: dir, BinaryCommit: descendant})
+	if v.Status != StatusAhead {
+		t.Fatalf("status = %q, want %q", v.Status, StatusAhead)
+	}
+	adv := Advisory(v)
+	if adv == "" {
+		t.Fatal("Advisory on an ahead verdict is empty — this is the silence the card closes")
+	}
+	for _, want := range []string{descendant[:9], ancestor[:9]} {
+		if !strings.Contains(adv, want) {
+			t.Errorf("advisory does not name %q:\n%s", want, adv)
+		}
+	}
+}
+
+// The downstream-quiet acceptance criterion, pinned.
+//
+// A deployed installation compares a moai commit against a repository that has
+// never heard of it, so BOTH ancestor probes fail and the verdict must stay
+// divergent — silent. This is what stops the ahead split above from turning
+// every downstream session into a notice, and it is asserted as an exact
+// status rather than "not behind" so a later widening cannot pass it.
+func TestEvaluate_UnknownCommitStaysDivergentAndSilent(t *testing.T) {
+	dir, _, _ := twoCommitRepo(t)
+	v := Evaluate(context.Background(), Request{Dir: dir, BinaryCommit: "0123456789abcdef0123456789abcdef01234567"})
+	if v.Status != StatusDivergent {
+		t.Fatalf("status = %q, want %q — an unknown commit is a genuine divergence", v.Status, StatusDivergent)
+	}
+	if adv := Advisory(v); adv != "" {
+		t.Errorf("Advisory on a divergent verdict = %q, want empty", adv)
+	}
+}
+
 // AC-BLV-005 (the seam half that lives here): Evaluate dispatches through the
 // single substitutable Comparer, so a stub replaces the real comparison.
 func TestEvaluate_DispatchesThroughTheComparerSeam(t *testing.T) {
