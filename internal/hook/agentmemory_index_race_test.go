@@ -9,24 +9,27 @@ import (
 	"testing"
 )
 
-// THIS FILE GOING RED IS A NORMAL OUTCOME, NOT A REGRESSION.
+// THIS FILE GOING RED IS NOW A REGRESSION. It was not always.
 //
-// It is card t971's reproduction of a defect that is still present. A red run
-// here means the reproduction still reproduces; a green run means this run did
-// not hit the window (see the timing note below), NOT that the defect is gone.
-// Do not "fix" the test. The branch carrying it (WT-index-write-race) is
-// deliberately unmerged for exactly this reason.
+// Card t971 wrote it as a reproduction and it failed by design: ensureIndexLine
+// had no lock, and 16 lanes reported 16 added lines while 1-5 reached disk.
+// Card t985 took this branch as its base, serialized the read-modify-write with
+// internal/lockfile, and turned this test green. The history matters because a
+// reader who finds a red run here should now treat it as the race returning,
+// not as the reproduction working.
 //
-// THE REPAIR, so the next reader does not have to find it again:
-// serialize the read-modify-write in ensureIndexLine (agentmemory.go:423)
-// with internal/lockfile, which already exists and is already used by
-// internal/kanban/board_lock.go, internal/cli/settings.go and
-// internal/cli/taskledger. No new dependency is needed. A repair card takes
-// this branch as its base and turns this test green.
+// TestEnsureIndexLineConcurrentAppendsLoseLines is therefore a GUARD now. It
+// was a reproduction; the repair promoted it.
 //
-// TestEnsureIndexLineConcurrentAppendsLoseLines is a REPRODUCTION, not a
-// guard: it is expected to FAIL against the current implementation, and its
-// failure is the measurement card t971 was opened to take.
+// WHAT THIS GUARD DOES NOT COVER — measured, not assumed:
+// t985 applied two repairs, and this test only holds one of them down.
+// Disabling the lock makes this test fail on every repetition; removing the
+// read-back verification in ensureIndexLine leaves it green across 20
+// repetitions. The reason is structural: once the lock removes the concurrent
+// overwrite, this test never produces a write that succeeds without landing,
+// because it injects no filesystem failure. So the read-back block stands with
+// no guard. Deleting it breaks nothing here and re-opens the defect where a
+// write that did not land is reported as success.
 //
 // ensureIndexLine reads the whole index, appends one line, and writes the
 // whole file back (agentmemory.go:428-443) with nothing serializing the three

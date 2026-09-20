@@ -421,12 +421,10 @@ func indexLineFor(srcAgentDir, srcFile, destName string) string {
 // index is created with a header — the store is rebuildable from its index,
 // so a drained topic must never land unindexed. apply=false computes
 // whether a line would be added without writing.
-// ensureIndexLine appends one index line for destName unless the index
-// already links it. The returned bool means the line is ON DISK — not that a
-// write was attempted — so a caller may sum it as a landed count.
 //
-// Two separate properties make that return value true, and neither implies
-// the other:
+// The returned bool means the line is ON DISK — not that a write was
+// attempted — so a caller may sum it as a landed count. Two separate
+// properties make that return value true, and neither implies the other:
 //
 //   - The read-modify-write runs under an advisory lock, so a concurrent
 //     appender cannot read the pre-append content and write it back over a
@@ -437,6 +435,17 @@ func indexLineFor(srcAgentDir, srcFile, destName string) string {
 //     landed short (a full disk truncating the rewrite) report the truth.
 //     os.WriteFile truncates before writing, so a failure there can leave the
 //     index shorter than it started.
+//
+// THE READ-BACK BLOCK BELOW HAS NO REGRESSION GUARD — measured, not assumed.
+// Deleting it leaves the whole suite green: the concurrency reproduction in
+// agentmemory_index_race_test.go injects no filesystem failure, so once the
+// lock removes the concurrent overwrite, no write that succeeds without
+// landing is ever produced. Removing the lock fails that test on every
+// repetition; removing the read-back fails nothing. A guard would need a
+// test-only seam that makes os.WriteFile report success without landing,
+// which card t985 judged out of its scope rather than absent by oversight.
+// Until such a seam exists this comment is the only thing standing between
+// the block and a reader who finds it untested and deletes it.
 func ensureIndexLine(primaryRoot, agent, line, destName string, apply bool) (bool, error) {
 	agentDir := filepath.Join(primaryRoot, ".claude", "agent-memory", agent)
 	indexPath := filepath.Join(agentDir, agentMemoryIndexName)
