@@ -723,7 +723,11 @@ func validatePreconditions(state *closeState, opts CloseOptions) []string {
 	// 3-phase SPEC honors the schema by omitting §E.5 and must still close.
 	// The legacy §E.5 path stays accepted for grandfather-era SPECs (OR, not
 	// a replacement). Modeled on transitions.go closeInfixMatch dual-acceptance.
-	threePhaseReady := hasProgressMarker(state.ProgressMDContent, "§E.4") &&
+	// The §E.4 leg reads the section's BODY, not its heading: here the predicate
+	// authorizes a close rather than merely reporting drift, so a plan-phase
+	// placeholder satisfying it would let a SPEC whose sync never ran through
+	// precondition 2 (card t996).
+	threePhaseReady := hasPopulatedProgressSection(state.ProgressMDContent, "§E.4") &&
 		state.SyncCommitSHA != ""
 	if !state.HasMxSection && !threePhaseReady {
 		failed = append(failed,
