@@ -69,7 +69,11 @@ not something this loop can do for itself.
    do not proceed. Leave the card `picked`, name it blocked-for-operator in
    the report together with the decision it waits on, and move on.
 3. **One write-capable worker at a time.** While a worker is in flight the
-   iteration only reads. Never run two write-capable agents concurrently.
+   iteration only reads. This is the foreman's own serialization, stricter than
+   the doctrine it sits under — `one writer per tree`, owned by
+   `.claude/rules/moai/core/agent-common-protocol.md` § Background Agent
+   Execution. The foreman keeps one worker in flight so a failed iteration has
+   exactly one author to read.
 4. **Every worker runs in its own worktree** (`isolation: "worktree"` on the
    spawn; relative paths in the prompt — the worker's CWD is its worktree
    root). Nothing writes to the shared checkout.
