@@ -91,7 +91,7 @@ that down. `plan.md` was never updated to match.
 | 2 — delete group constants + `agentGroupMembership` | **retired** | deliberate deviation, above; symbol still at `:209` |
 | 3 — delete `AgentGroup` | **retired** | same; symbol still at `:464`, live consumers below |
 | 4 — explicit `Explore` row | landed | `:334`, `:349`, `:364` — all three profiles |
-| 5 — rename `hasGroup`, update every call site | **PARTIAL — disposition NOT ruled** | declaration renamed to `mapped` at `:487`; `hasGroup` survives at 8 occurrences (`internal/cli/model.go:99`, `:110`; `internal/template/profile_matrix_test.go:278`, `:285`, `:286`, `:297`, `:302`, `:303`) |
+| 5 — rename `hasGroup`, update every call site | **PARTIAL — disposition NOT ruled** | declaration renamed to `mapped` at `:487`; `hasGroup` survives at 8 occurrences repo-wide — **6 call sites** (`internal/cli/model.go:99`, `:110`; `internal/template/profile_matrix_test.go:285`, `:286`, `:302`, `:303`) plus **2 comment lines** (`profile_matrix_test.go:278`, `:297`). The step's subject is call sites, so 6 is the number that measures it; 8 is what the grep returns |
 | 6 — doc comment states agent-name key | landed | `:259`, `:318` |
 
 [HARD] Step 5 is **not** covered by the ruling above. Steps 2 and 3 have an authored decision on
