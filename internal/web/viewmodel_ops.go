@@ -217,8 +217,19 @@ type MonitorVM struct {
 // sessionState 는 하트비트와 PID 생존으로만 판정한다.
 // 레지스트리에 항목이 있다는 사실만으로 활성이라고 쓰지 않는다 — 레지스트리에는
 // 종료된 프로세스의 항목이 남는다.
+//
+// 두 신호는 OR 로 묶는다. session.LiveAnchoredSessions(anchor.go) 가 같은 판단을
+// 이미 OR 로 하고 있고, 두 신호가 서로를 보강하는 관계이지 둘 다 있어야 하는
+// 관계가 아니기 때문이다. 살아있는 PID 는 그 자체로 세션이 살아있다는 직접
+// 증거이고, 신선한 하트비트는 PID 프로브가 죽음을 증명하지 못하는 플랫폼을 위한
+// 보수적 대비책이다. AND 로 묶으면 살아있는 PID 가 늙은 하트비트에 덮인다 —
+// 이 저장소 실측(2026-09-20, GH #1711): 살아있는 항목 147건 중 144건이 그 이유로
+// STALE 로 렌더됐다.
+//
+// 반대 방향은 그대로다. 죽은 PID 에 늙은 하트비트면 여전히 STALE 이다.
 func sessionState(lastHeartbeat time.Time, pid int, now time.Time) string {
-	if pid > 0 && processAlive(pid) && now.Sub(lastHeartbeat) <= staleAfter {
+	alive := pid > 0 && processAlive(pid)
+	if alive || now.Sub(lastHeartbeat) <= staleAfter {
 		return StateLive
 	}
 	return StateStale
@@ -472,7 +483,9 @@ func loadSpecRows(root string) ([]SpecRowVM, map[string][]FindingVM, error) {
 
 // loadSessions 는 활성 세션 레지스트리를 프로젝트 루트 아래에서 직접 읽는다.
 func loadSessions(root string, now time.Time) ([]SessionVM, map[string]SessionVM) {
-	path := filepath.Join(root, ".moai", "state", "active-sessions.json")
+	// 경로는 primary 체크아웃에 앵커링해서 푼다 — 레인이 워크트리에서 등록해도
+	// 같은 레지스트리를 읽는다(GH #1711).
+	path := session.RegistryPathFor(root)
 	data, err := os.ReadFile(path) // #nosec G304 — 프로젝트 루트 하위 고정 경로
 	if err != nil {
 		return nil, map[string]SessionVM{}
