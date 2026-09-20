@@ -222,7 +222,7 @@ So the page's divergence is pre-existing and not caused by `jev_enabled`. Repair
 
 ```yaml
 sync_complete_at: 2026-09-20
-sync_commit_sha: pending-backfill-sync
+sync_commit_sha: 52c460d30
 sync_status: complete-with-gaps
 changelog_entry_position: "[Unreleased] -> Added, first bullet"
 b12_self_test_a_pre_emission_grep: "grep -c 'SPEC-JEV-OPTIN-MEASURE-001' CHANGELOG.md -> 0 (no duplicate; emission proceeded)"
