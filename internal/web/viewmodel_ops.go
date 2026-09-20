@@ -472,7 +472,9 @@ func loadSpecRows(root string) ([]SpecRowVM, map[string][]FindingVM, error) {
 
 // loadSessions 는 활성 세션 레지스트리를 프로젝트 루트 아래에서 직접 읽는다.
 func loadSessions(root string, now time.Time) ([]SessionVM, map[string]SessionVM) {
-	path := filepath.Join(root, ".moai", "state", "active-sessions.json")
+	// 경로는 primary 체크아웃에 앵커링해서 푼다 — 레인이 워크트리에서 등록해도
+	// 같은 레지스트리를 읽는다(GH #1711).
+	path := session.RegistryPathFor(root)
 	data, err := os.ReadFile(path) // #nosec G304 — 프로젝트 루트 하위 고정 경로
 	if err != nil {
 		return nil, map[string]SessionVM{}
