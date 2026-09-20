@@ -732,6 +732,27 @@ func TestCommittedCoverageChangeSetNamesEveryPostTipChangeDeterministically(t *t
 	}
 }
 
+// TestCommittedCoverageChangeSetDetectsAuditedFileDeletedAfterTip pins the
+// deletion case of the HEAD-blob comparison: an audited production file that no
+// longer resolves at HEAD must still count as changed rather than pass
+// silently. No test covered it (card t1000).
+//
+// The comparison's `err != nil` disjunct is redundant rather than load-bearing,
+// measured by deleting it: the suite AND this test both stay green, because a
+// failed read returns the empty string, which already differs from the
+// forty-character blob it is compared against. So the deletion path is carried
+// by the string comparison alone, and this test is what would catch a rework
+// that stops detecting a vanished file.
+func TestCommittedCoverageChangeSetDetectsAuditedFileDeletedAfterTip(t *testing.T) {
+	root := committedCoverageRepo(t)
+	gitForCoverageTest(t, root, "rm", "-q", "internal/x/a.go")
+	gitForCoverageTest(t, root, "commit", "-qm", "chore: drop the audited production file")
+	want := "audited production file changed after coverage tip: internal/x/a.go"
+	if seen := resolveRepeatedly(t, root, 20); len(seen) != 1 || seen[want] != 20 {
+		t.Fatalf("messages across 20 runs = %v, want only %q", seen, want)
+	}
+}
+
 func TestCommittedCoverageChangeSetNamesEveryFileMissingFromDiffDeterministically(t *testing.T) {
 	root := committedCoverageRepo(t)
 	for _, name := range []string{"b.go", "c.go"} {
