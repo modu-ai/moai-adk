@@ -238,8 +238,18 @@ a compensating pair of errors.
   `acceptance.md` says the changed-file list should print the one Go file "plus the
   `.moai/specs/` artifacts of this SPEC". At the time of measurement the SPEC
   artifacts were **untracked**, so `git diff --name-only d8304b49a` printed the Go
-  file alone. After the M1 commit (which stages the artifacts per the lead's
-  instruction) the same command prints all five paths. Both readings satisfy the
+  file alone. After the M1 commit (`15c70391d`) the same command prints all five
+  paths — observed, not predicted:
+  ```
+  $ git diff --name-only d8304b49a          # post-commit
+  .moai/specs/SPEC-MATRIX-GROUP-COMMENT-001/acceptance.md
+  .moai/specs/SPEC-MATRIX-GROUP-COMMENT-001/plan.md
+  .moai/specs/SPEC-MATRIX-GROUP-COMMENT-001/progress.md
+  .moai/specs/SPEC-MATRIX-GROUP-COMMENT-001/spec.md
+  internal/template/profile_matrix.go
+  ```
+  AC-MGC-004(a) was re-run against the committed tree and is unchanged
+  (`residual_count=0` against `29` total changed lines). Both readings satisfy the
   criterion as written; the AC does not say which side of the commit it is
   evaluated on. Recorded, not fixed.
 - **F2 — SPEC-quality: AC-MGC-002/003 test a string, not the claim.** Both absence
@@ -296,7 +306,7 @@ a compensating pair of errors.
 
 ```yaml
 run_complete_at: 2026-09-21
-run_commit_sha: pending-backfill
+run_commit_sha: 15c70391d          # M1 commit; backfilled in the following commit (a commit cannot cite its own hash)
 run_status: audit-ready
 ac_pass_count: 6
 ac_fail_count: 0
