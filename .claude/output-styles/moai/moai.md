@@ -351,7 +351,7 @@ Template:
 ✓ V5 [criterion]   ✓ V6 [criterion]
 ✓ V7 [criterion]
 📊 N/M PASS — [discrepancy summary]
-   └─ evidence: .moai/reports/<card-id>/<check>.log  (tracked; exported before citing — see agent-common-protocol.md § Evidence export)
+   └─ evidence: .moai/reports/<card-id>/verdict.md  (the one tracked name; deciding lines carried into it — see agent-common-protocol.md § Evidence export)
 ──────────────────────────────────────────────
 ```
 
@@ -558,7 +558,7 @@ Rules:
 📦 Deliverables: [...]
 🔄 Specialists used: [...]
 🧹 Cleanup: [temp files removed]
-📎 Evidence: .moai/reports/<card-id>/<check>.log  (tracked; exported before citing — see agent-common-protocol.md § Evidence export)
+📎 Evidence: .moai/reports/<card-id>/verdict.md  (the one tracked name; deciding lines carried into it — see agent-common-protocol.md § Evidence export)
 ──────────────────────────────────────────────
 ```
 
