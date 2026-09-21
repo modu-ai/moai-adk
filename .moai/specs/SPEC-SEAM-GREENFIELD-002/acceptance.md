@@ -3,7 +3,7 @@ id: SPEC-SEAM-GREENFIELD-002
 title: "acceptance — greenfield 씨앗의 flow 스타일 고착 (t1050)"
 version: "0.1.0"
 created: 2026-09-20
-updated: 2026-09-20
+updated: 2026-09-22
 author: GOOS
 module: "internal/settings/yamlpatch"
 tier: S

@@ -3,7 +3,7 @@ id: SPEC-SEAM-GREENFIELD-002
 title: "progress — greenfield 씨앗의 flow 스타일 고착 (t1050)"
 version: "0.1.0"
 created: 2026-09-20
-updated: 2026-09-20
+updated: 2026-09-22
 author: GOOS
 module: "internal/settings/yamlpatch"
 tier: S
@@ -25,7 +25,82 @@ tier: S
 
 ## §E.2 Run-phase Evidence
 
-_<pending run-phase>_
+### M1 — 수리 형태의 경계 확정 (트리 `0a23f6a5d`, 2026-09-22)
+
+**결정: `spec.md` §4의 대안 A — greenfield 경로를 취했음을 지역 플래그로 기록하고, 파싱 후 루트 노드의 flow 스타일만 해제한다.** 대안 B(씨앗 리터럴 자체를 block 형태로 교체)는 **측정으로 기각됐다**.
+
+레인 세션이 「읽어서 얻은 소견」으로 전달한 대안 B 차단 가설을 그대로 채택하지 않고 프로브로 재측정했다. 프로브(`internal/settings/yamlpatch/zz_probe_m1_test.go`)는 측정 후 삭제했다.
+
+**M1(c) — 대안 B는 구조적으로 막혀 있다 (측정 확인).** YAML은 빈 매핑을 `{}` 로만 철자하므로, block 형태의 빈 문서 씨앗은 `PatchFile` 자신의 가드에 걸린다:
+
+```
+M1c seed="{}\n"     unmarshalErr=<nil> kind=1(doc=1) contentLen=1
+M1c seed=""         unmarshalErr=<nil> kind=0(doc=1) contentLen=0
+M1c seed="\n"       unmarshalErr=<nil> kind=0(doc=1) contentLen=0
+M1c seed="---\n"    unmarshalErr=<nil> kind=1(doc=1) contentLen=1
+M1c PatchFile on pre-written seed ""     => err=yamlpatch: …/x.yaml: empty or non-document YAML
+M1c PatchFile on pre-written seed "\n"   => err=yamlpatch: …/x.yaml: empty or non-document YAML
+M1c PatchFile on pre-written seed "---\n" => err=yamlpatch: …/x.yaml: top-level node is not a mapping
+```
+
+`""` · `"\n"` 은 `Kind=0`(DocumentNode 아님) + `Content` 비어 있음 → `empty or non-document YAML`. `"---\n"` 은 DocumentNode 이지만 루트가 null 스칼라 → `top-level node is not a mapping`. 세 후보 모두 씨앗으로 쓸 수 없다. 레인의 읽기 기반 소견은 **측정으로 확인됐다**(가설 → 관측).
+
+**M1(a) — greenfield 문서는 항상 재직렬화 폴백으로 간다 (측정, 가정 아님).** 경로 길이 3종에서 `lineSplice` 가 모두 `ok=false` 를 냈다:
+
+```
+M1a single-segment => ok=false err=<nil> out=""
+M1a two-segment    => ok=false err=<nil> out=""
+M1a four-segment   => ok=false err=<nil> out=""
+M1a POSCTRL        => ok=true err=<nil> out="mcp:\n    enabled: false\n"
+```
+
+양성 대조(`POSCTRL`)가 `ok=true` 를 내므로 위 세 개의 `ok=false` 는 계측기 고장이 아니다. 기제: greenfield 문서는 키가 0개이므로 `findKey` 가 **첫 세그먼트에서** `-1` 을 반환하고 `lineSplice` 는 `idx < 0` 에서 upsert 로 판정해 폴백을 지시한다(`yamlpatch.go:147`). 경로 모양과 무관하게 도달 불가능하다.
+
+**M1(c-배치) — 조건은 폴백 한쪽에만 걸면 충분하고, 빠른 경로에는 걸 것이 없다.** 이것은 「한쪽을 빠뜨렸다」가 아니라 구조적 사실이다: `lineSplice` 는 **재직렬화를 하지 않는다** — 원본 바이트의 대상 라인만 다시 쓰고 나머지는 그대로 둔다(`yamlpatch.go:173-182`). 그 경로에서 스타일은 결정되는 것이 아니라 바이트로 보존되므로, 걸 조건 자체가 존재하지 않는다. 게다가 M1(a)가 보였듯 greenfield 는 그 경로에 도달하지도 않는다. 두 이유는 독립이며 어느 하나만으로도 충분하다.
+
+**M1(b) — `detectIndent([]byte("{}\n"))` = 4. 측정만 하고 고치지 않는다(범위 규율).**
+
+```
+M1b detectIndent("{}\n") = 4
+M1b detectIndent("mcp:\n  a: 1\n") = 2
+M1b detectIndent("mcp:\n    a: 1\n") = 4
+M1b detectIndent("") = 4
+```
+
+`{}\n` 에는 들여쓰기 라인이 없어 `indentRe` 가 매치하지 않고 함수의 기본값 4로 떨어진다(`yamlpatch.go:332-341`). 형제 관례와 **어긋나지 않는다** — 관례가 단일하지 않기 때문이다: `spec.md` §1.1 의 plan-audit D6 실측이 seam 6종에서 2-space 4건 / 4-space 2건, 로컬 30개 전체에서 15 대 15 로 갈려 있음을 기록한다. 4는 그 두 값 중 하나이며 이상치가 아니다. 본 SPEC 의 AC 는 들여쓰기 폭을 단정하지 않으므로 이 값은 **기록 대상이지 수정 대상이 아니다**(`acceptance.md` §D). 들여쓰기 폭 축을 정하려면 별도 카드가 필요하다.
+
+### M2 — RED 가드 채득 (트리 `0a23f6a5d`, 수리 이전)
+
+신설 파일 `internal/settings/yamlpatch/greenfield_style_test.go` — 가드 4종. 커맨드:
+
+```
+$ go test ./internal/settings/yamlpatch/ -run 'TestPatchFileGreenfield|TestPatchFileExistingBlockByteInvariant|TestPatchFileDeliberateFlow' -v -count=1
+EXIT=1
+```
+
+전체 verbatim: `.moai/reports/t1050/m2-red-capture.log`. 발췌 — **실패 출력에 실제 flow 형상이 보인다**(틀린 이유로 떨어지는 RED 가 아니다):
+
+```
+--- FAIL: TestPatchFileGreenfieldOutputIsBlockStyle (0.00s)
+    --- FAIL: TestPatchFileGreenfieldOutputIsBlockStyle/mcp (0.00s)
+    --- FAIL: TestPatchFileGreenfieldOutputIsBlockStyle/cacheStrategy (0.00s)
+    --- FAIL: TestPatchFileGreenfieldOutputIsBlockStyle/report (0.00s)
+    --- FAIL: TestPatchFileGreenfieldOutputIsBlockStyle/gate (0.00s)
+    --- FAIL: TestPatchFileGreenfieldOutputIsBlockStyle/crosssession (0.00s)
+--- FAIL: TestPatchFileGreenfieldSecondSaveStaysBlock (0.00s)
+
+greenfield_style_test.go:70: root line = "{mcp: {tools: {session_list: {enabled: false}}}}", want "mcp:" (block mapping opener) — got:
+    {mcp: {tools: {session_list: {enabled: false}}}}
+greenfield_style_test.go:70: flow-mapping brace present in a block-style document — got:
+    {mcp: {tools: {session_list: {enabled: false}}}}
+greenfield_style_test.go:104: root line = "{mcp: {tools: {session_list: {enabled: false}, spec_audit: {enabled: false}}}}", want "mcp:" (block mapping opener) — got:
+    {mcp: {tools: {session_list: {enabled: false}, spec_audit: {enabled: false}}}}
+```
+
+- **AC-SGF2-001**: 다섯 셀(`mcp`/`report`/`crosssession`/`gate`/`cacheStrategy`) **전부 FAIL**. 각 셀의 출력이 그 섹션의 실제 flow 한 줄을 그대로 보인다.
+- **AC-SGF2-002**: FAIL. before/after 둘 다 flow이며, 두 키가 한 줄에 들어간 형상이 출력에 남았다.
+- **AC-SGF2-003** / **AC-SGF2-003b**: 수리 전 **PASS**. 이것은 「정상」이 아니라 **수리가 아직 없어 재포맷할 주체가 없기 때문**이다(`plan.md` M2-3). 두 셀의 역할은 RED 채득이 아니라 M4 뮤턴트 아래에서 FAIL 하는 것이며, 003b 의 판별력은 M4 (b) 채득으로만 증명된다.
+- **판별 셀 형태 확인**: `TestPatchFileDeliberateFlowPreservedOnUpsert` 의 edit 은 **upsert**(`mcp.tools.b.enabled` — 원본에 없는 키)이고 단정은 **전체 리터럴 `want` 바이트 비교**다(`acceptance.md` AC-SGF2-003b 의 허용 형태 2). 수리 전 PASS 가 그 리터럴(`{mcp: {tools: {a: {enabled: true}, b: {enabled: false}}}}\n`)이 코디네이터 프로브 측정과 일치함을 동시에 확인해 준다.
 
 ## §E.3 Run-phase Audit-Ready Signal
 
