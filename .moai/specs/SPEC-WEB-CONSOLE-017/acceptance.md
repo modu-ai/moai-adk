@@ -21,8 +21,8 @@
 ### 축 2 — REQ-B (유지보수자 표면: stderr 층 로그)
 
 **AC-WC17-003** — (release-blocking, RED) stderr 존재·접두어 일원화·성공 침묵.
-- **Given** 설정 저장이 진행되고, **When** 저장이 어느 seam 에서든 실패하면, **Then** (a) stderr 에 저장-실패 행이 **1행 이상** 기록되고 — 0행은 통과가 아니다 — (b) 그 **모든** 행이 `^moai web: ` 접두어로 시작하며 실패한 층을 식별하고, (c) **When** 저장이 성공하면 **Then** 저장-실패 stderr 행이 **정확히 0행**이다. (a)+(b)를 한 AC 로 묶는다 — 0-카운트 단독 검사는 `0+0=0` 동어반복이라 통과를 주장할 수 없다.
-- **RED 근거**: 현재 `internal/web` 의 `os.Stderr` 기록은 2곳 전부 비-저장 경로(`server.go:252` 파일 감시, `:290` 브라우저 열기) — 저장 실패 시 stderr 행이 0이므로 (a)가 오늘 거짓이다.
+- **Given** 설정 저장이 진행되고, **When** 저장이 어느 seam 에서든 실패하면, **Then** (a) stderr 에 저장-실패 행이 **정확히 1행** 기록되고 — 0행뿐 아니라 2행 이상도 실패다(REQ-WC-017-003의 exactly one; 하한만 단정하면 두 줄 변이가 REQ 를 어기고 통과한다) — (b) 그 유일한 행이 `^moai web: ` 접두어로 시작하며 실패한 층을 식별하고, (c) **When** 저장이 성공하면 **Then** 저장-실패 stderr 행이 **정확히 0행**이다. (a)+(b)를 한 AC 로 묶는다 — 0-카운트 단독 검사는 `0+0=0` 동어반복이라 통과를 주장할 수 없다.
+- **RED 근거**: 현재 `internal/web` 의 `os.Stderr` 기록은 2곳 전부 비-저장 경로(`server.go:252` 파일 감시, `:290` 브라우저 열기) — 저장 실패 시 stderr 행이 0이므로 (a)가 오늘 거짓이다. 이 근거는 코드 판독(정적 추론)이며, 관측된 RED 출력 제출은 run-phase E8 의 몫이다.
 - **반증 명령 형태**: `go test -run TestSaveFailureStderrLog ./internal/web/...` (stderr 캡처 하니스)
 
 **AC-WC17-004** — (regression-guard) 자격증명 비-유출 (sentinel).
