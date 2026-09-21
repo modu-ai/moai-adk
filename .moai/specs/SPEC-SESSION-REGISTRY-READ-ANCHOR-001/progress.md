@@ -56,7 +56,7 @@ into `relocateRegistryCandidates`. Fail-open branches are unchanged.
 | AC-RAR-005 | **NOT ATTEMPTED** | — | S2-gated; no S2 change was prepared, so no operator decision was owed or taken in this run |
 | AC-RAR-006 | **NOT ATTEMPTED** | — | S2-gated; no landing-time population re-measurement was performed |
 | AC-RAR-007 | **NOT ATTEMPTED** | — | S2-gated; this run makes no liveness claim about any registry entry |
-| AC-RAR-008 | **NOT ATTEMPTED** | — | Directed by the lead to be recorded as not attempted, not as passed. S1 does not touch `internal/session/anchor.go`, so the disposal guard's behaviour is **unchanged by construction** — that is a property of the diff, NOT a verification: the per-coordinate refusal fixtures and the converse free-worktree control the criterion requires were not built and not run |
+| AC-RAR-008 | **FIXTURES ESTABLISHED — measured unchanged at S1 landing; behaviour under S2 UNVERIFIED.** Deliberately NOT recorded as PASS | `go test ./internal/cli/worktree/ ./internal/session/ -run TestACRAR008 -count=1 -v` | `ok …/internal/cli/worktree 0.381s`, `ok …/internal/session 0.326s`; 8/8 sub-cases PASS across the 4 consumer coordinates, both directions — § AC-RAR-008 fixtures below |
 | AC-RAR-009 | PASS | `find … -path '*/.moai/state/active-sessions.json'` then `shasum -a 256`, before and after | 69 files before, 69 after; sorted content-hash comparison: **68 of 69 byte-identical**. The one difference is the repository's own LIVE primary registry (`/Users/goos/MoAI/moai-adk-go/.moai/state/active-sessions.json`, `8f6c2b59…` → `25edf7d2…`) — see the qualifier below |
 | AC-RAR-010 | PASS | `git diff --name-only` | `internal/session/registry_path_anchor_test.go` absent from the changed-file list; `go test ./internal/session/ -count=1` → `ok … 22.229s` |
 | AC-RAR-011 | PASS | this document | Windows behaviour of the anchor resolution and R2's reproduction against the real orphan population are both recorded as unmeasured below, at the grade spec.md §A.7 carries |
@@ -70,6 +70,15 @@ fixture session id from this run's tests** (`sess-t1058-*`, `sess-other`,
 **Which writer produced the change is UNMEASURED** — only the endpoint hashes
 were captured, not a writer trace, so "another live session wrote it" is the
 attribution, not an observation.
+
+The comparison was re-taken around the second commit (the AC-RAR-008 fixtures),
+at execution time rather than against any stored list: 69 files before, 69
+after, and this time **all 69 byte-identical** (`diff exit=0` over the sorted
+`shasum -a 256` output). That does NOT retroactively revise the first commit's
+result above — the live primary registry genuinely did change during the first,
+longer window, and the two measurements are of two different windows. The second
+window was short enough that no other session wrote in it; that is a fact about
+the window, not evidence that the first change did not happen.
 
 ### Mutation controls
 
@@ -97,6 +106,72 @@ with the not-found guard still standing, a failed read yields no entries and the
 walk continues. The comment now states the mutation that is actually observable
 (control 3).
 
+Controls 4 and 5 belong to the AC-RAR-008 fixtures and were run in the second
+commit; they are listed with that section below and are part of the same table.
+
+### AC-RAR-008 fixtures (second commit)
+
+**[HARD] This is NOT recorded as PASS.** The accurate statement: *fixtures
+established, and the live-anchored-worktree judgement measured as unchanged at
+S1 landing; behaviour under S2 is unverified.* The first pass recorded
+"unchanged by construction" — a property of the diff. These fixtures convert
+that into a MEASURED invariance and pre-place the regression guard that will
+catch S2 (anchoring `LiveAnchoredSessions`) breaking the disposal path, which
+is where the guard needs to be, since S2 is the change that loses live sessions
+from view. They do not reach past that: S2 is not in this run.
+
+Two new test files, no production file touched:
+
+- `internal/cli/worktree/anchor_disposal_guard_ac_rar_008_test.go` — the three
+  CLI coordinates (`remove.go:51`, `done.go:77` auto-mode, `done.go:176`
+  interactive).
+- `internal/session/anchor_disposal_guard_ac_rar_008_test.go` — the fourth
+  coordinate, `anchor_lock.go:111` (`AnchorDecision`'s registry branch), which
+  is not reachable from the CLI package's surface. The lock source is held
+  silent (`LockInfo{}` carries NO opinion) so the verdict is attributable to
+  the registry branch alone.
+
+Each coordinate carries BOTH directions. The converse control is the
+load-bearing half: a fixture measuring only "refuses disposal" is satisfied by
+an implementation that refuses everything — the empty-green shape this SPEC
+exists to prevent. The converse uses a **present-but-dead** registry row (PID 0,
+rejected at `LiveAnchoredSessions`' `e.PID > 0` guard without an OS probe;
+heartbeat two hours old, past `DefaultStaleMinutes`) rather than an absent
+registry, so it shows the guard evaluates LIVENESS and not mere presence. Every
+case pins `CLAUDE_PROJECT_DIR` at an empty directory, so the caller-registry
+root cannot contribute a real entry from the host and a green result stays
+attributable to the fixture.
+
+| Coordinate | Direction | Result |
+|---|---|---|
+| `remove.go:51` | live anchored → refused | PASS (`ANCHORED_SESSIONS_PRESENT`, `Remove()` not called) |
+| `remove.go:51` | converse: no live session → free | PASS (`Remove()` called, no error) |
+| `done.go:77` (auto) | live anchored → skips removal | PASS (not-done reported, no error, `Remove()` not called) |
+| `done.go:77` (auto) | converse: no live session → free | PASS (done reported, `Remove()` called) |
+| `done.go:176` (interactive) | live anchored → refused | PASS (`ANCHORED_SESSIONS_PRESENT`, `Remove()` not called) |
+| `done.go:176` (interactive) | converse: no live session → free | PASS (`Remove()` called, no error) |
+| `anchor_lock.go:111` | live anchored → `Anchored=true`, source registry | PASS |
+| `anchor_lock.go:111` | converse: dead entry → `Anchored=false`, source none | PASS |
+
+Verbatim: `ok github.com/modu-ai/moai-adk/internal/cli/worktree 0.381s` and
+`ok github.com/modu-ai/moai-adk/internal/session 0.326s`, all 8 sub-cases
+`--- PASS`.
+
+**Sensitivity — the fixtures were seen red in both directions.** A green fixture
+never observed failing proves nothing, so `internal/session/anchor.go` was
+mutated in the working tree, run, and restored (restoration verified by content
+hash `8ce8f8b0d2767b554d9df5404f7a0f561e72dfb870ce7a20e4ae8ef56a5d7c35`, and
+`git status` confirms the file is absent from both commits).
+
+| # | Mutation | Expected | Observed |
+|---|---|---|---|
+| 4 | `LiveAnchoredSessions` returns `nil` — the S2 failure shape, live sessions leaving the guard's view | all 4 refusal halves fail, all 4 converses still pass | `--- FAIL` on `TestACRAR008_RemoveCoordinate/live_anchored_session_refuses_disposal`, `…_DoneAutoCoordinate/live_anchored_session_skips_removal`, `…_DoneInteractiveCoordinate/live_anchored_session_refuses_disposal`, `…_AnchorDecisionRegistryCoordinate/live_anchored_session_anchors_the_tree`; no converse sub-case failed |
+| 5 | `alive := true` — refuse-everything, liveness never evaluated | all 4 converses fail, all 4 refusal halves still pass | `--- FAIL` on all four `converse_control:` sub-cases (`…_RemoveCoordinate`, `…_DoneAutoCoordinate`, `…_DoneInteractiveCoordinate`, `…_AnchorDecisionRegistryCoordinate/converse_control:_a_dead_entry_leaves_the_tree_free`); no refusal sub-case failed |
+
+Controls 4 and 5 are exact complements: each half of every coordinate fails
+under exactly one of them and passes under the other. That is what establishes
+both directions are load-bearing rather than decorative.
+
 ### Quality gates
 
 | Check | Command | Output |
@@ -106,6 +181,15 @@ walk continues. The comment now states the mutation that is actually observable
 | Lint | `golangci-lint run --timeout=5m ./internal/hook/... ./internal/session/...` | `0 issues.` `exit=0` |
 | Coverage | `go test -cover ./internal/hook/ ./internal/session/ -count=1` | `internal/hook … coverage: 85.6% of statements`; `internal/session … coverage: 87.9% of statements` — both above the 85% target |
 | Format | `gofmt -l internal/hook/` | (no output) |
+
+Second commit (the AC-RAR-008 fixtures), re-run against its own packages:
+
+| Check | Command | Output |
+|---|---|---|
+| Tests | `go test ./internal/cli/worktree/... ./internal/session/... -count=1` | `ok …/internal/cli/worktree 4.074s`; `ok …/internal/session 6.173s` |
+| Vet | `go vet ./internal/cli/worktree/... ./internal/session/...` | `vet exit=0` |
+| Lint | `golangci-lint run --timeout=5m ./internal/cli/worktree/... ./internal/session/...` (run inside the worktree; `pwd` confirmed in the same invocation) | `0 issues.` `lint exit=0` |
+| Format | `gofmt -l internal/cli/worktree/ internal/session/` | (no output) |
 
 Exported evidence: `.moai/reports/t1058/{orphan-hashes-pre.txt,
 orphan-hashes-post.txt,lint-wt.txt,cover.txt}`. **That directory is gitignored in
@@ -120,8 +204,12 @@ carried in this tracked section rather than only by citation.
   were run.
 - **Cross-platform build was not measured.** No `GOOS=windows` build was run in
   this run.
-- **AC-RAR-008 was not verified** (see the matrix row). Unchanged-by-construction
-  is a diff property, not a guard measurement.
+- **AC-RAR-008's behaviour under S2 is UNVERIFIED.** The fixtures measure the
+  current state and pre-place the regression guard; S2 is not in this run, so
+  nothing here establishes how the guard behaves once `LiveAnchoredSessions`
+  is anchored. This is a narrower gap than the first pass recorded — the diff
+  property ("unchanged by construction") has been converted into a measured
+  one — but it is not closed.
 - **Windows behaviour of the anchor resolution is UNMEASURED, not absent.**
   `session.RegistryPathFor` → `stateanchor.FromDirectory` carries no
   `runtime.GOOS` branching; that is a code reading, carried verbatim from
@@ -162,7 +250,8 @@ run_status: audit-ready
 run_scope: S1-only
 ac_pass_count: 8          # AC-RAR-001,002,003,004,009,010,011,012
 ac_fail_count: 0
-ac_not_attempted_count: 4 # AC-RAR-005,006,007,008 (005/006/007 S2-gated; 008 per lead direction)
+ac_not_attempted_count: 3 # AC-RAR-005,006,007 — all three S2-gated
+ac_fixtures_established_count: 1 # AC-RAR-008 — measured unchanged at S1 landing; S2 behaviour unverified. NOT counted as a pass
 preserve_list_post_run_count: 68  # of 69 orphan registry files byte-identical; the 69th is the live primary registry (§E.2 qualifier)
 l44_pre_commit_fetch: not-performed   # lane does not push; integration is the lead's
 l44_post_push_fetch: not-performed
@@ -171,8 +260,8 @@ cross_platform_build:
   linux: not-measured
   darwin: measured-implicitly-by-test-run
   windows: not-measured
-total_run_phase_files: 2
-m1_to_mN_commit_strategy: single-commit (S1 is one atomic repair; plan.md M3 only)
+total_run_phase_files: 4
+m1_to_mN_commit_strategy: two commits on WT-read-anchor — (1) the R2 repair, (2) the AC-RAR-008 disposal-guard fixtures added on a lead scope addition; no amend, both reported
 ```
 
 ## §E.4 Sync-phase Audit-Ready Signal
