@@ -225,6 +225,31 @@ secret-*.*
 # evidence for lead verdicts stays on disk, never on the remote. Only the
 # plan-audit scaffold ships, mirroring the template's reports philosophy.
 .moai/reports/*
+
+# Narrow exception (card t1039): a verdict file is the one artifact class the
+# doctrine obliges an actor to export before citing it, so it has to be tracked
+# for that obligation to be true. Everything else under a card directory —
+# report.md, evidence.md, pr-body.md, logs, binaries — stays local-only, which
+# is what the blanket above exists to guarantee.
+#
+# Three-stage idiom, the same skeleton the per-fixture exceptions below use:
+# reopen the card directories, re-exclude their contents, re-include verdict.md.
+#
+# Depth is deliberately ONE level. `*` does not cross `/`, so this reaches
+# .moai/reports/<card-id>/verdict.md and NOT .moai/reports/<card-id>/<sub>/verdict.md.
+# The live shape it therefore misses is .moai/reports/lead/<batch>/verdict.md —
+# a lead batch verdict. That is a known, accepted exclusion, not an oversight:
+# opening a second level would also re-include the .moai/reports/t264/rescued/
+# archive, which is 18 of the 19 depth-2+ verdicts and would break "verdicts only".
+#
+# Order is load-bearing. This block must stay ABOVE the plan-audit carve-out
+# that follows: those lines re-exclude .moai/reports/plan-audit/* (keeping that
+# FORBIDDEN verdict destination ignored) and re-include its .gitkeep scaffold.
+# Moving this block below them re-opens plan-audit/verdict.md.
+!.moai/reports/*/
+.moai/reports/*/*
+!.moai/reports/*/verdict.md
+
 !.moai/reports/plan-audit/
 .moai/reports/plan-audit/*
 !.moai/reports/plan-audit/.gitkeep

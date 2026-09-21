@@ -2,7 +2,7 @@
 
 - **SPEC**: SPEC-EVIDENCE-PATH-EXCEPTION-001
 - **카드**: t1039
-- **상태**: `draft` (plan 단계, iteration 2)
+- **상태**: `in-progress` (run 단계 M1 착수, 2026-09-21)
 - **Tier**: **L** (iteration 2에서 M → L 재분류, `spec.md` §0의 판별식)
 - **트리**: `/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t1039`, 브랜치 `WT-evidence-path`,
   HEAD `116820f40`

@@ -2,9 +2,9 @@
 id: SPEC-EVIDENCE-PATH-EXCEPTION-001
 title: "증거 인용 경로 좁히기 — 판정서에 한정한 gitignore 예외와 죽은 negation 정리"
 version: "0.3.0"
-status: draft
+status: in-progress
 created: 2026-09-20
-updated: 2026-09-20
+updated: 2026-09-21
 author: manager-spec
 priority: P2
 phase: "v3.2.0 target"
