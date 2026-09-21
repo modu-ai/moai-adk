@@ -60,12 +60,33 @@ $ grep -rc '#' internal/hook/ --include='*.go' | grep -v ':0' | wc -l   # the pa
 The `#` character does not occur anywhere in the file; the two controls fire, so the zero is a
 measured absence rather than a broken grep.
 
-All three figures were **re-measured in this tree at HEAD `5bc42a304`** during plan repair, and the
-outputs above are that run's verbatim stdout. An earlier draft of this block cited the third figure
-as "3 files", which does not reproduce: the correct count is 112 (of 282 `.go` files at
-`internal/hook/*.go`). The block's conclusion is unchanged — the pattern reaches non-zero files in
-this very directory, so the `0` above is absence rather than instrument failure — but the third
-figure was unattributed and is now the observed one.
+All three figures were **re-measured in this tree** — the first two at HEAD `5bc42a304`, all three
+again at HEAD `9d822d826` with the same outputs — and the blocks above are that run's verbatim
+stdout.
+
+The third figure has been corrected twice, and both corrections are recorded because the second one
+was made inside the sentence repairing the first. An early draft cited it as "3 files", which does
+not reproduce. The repair that replaced it wrote **"112 (of 282 `.go` files at
+`internal/hook/*.go`)"** — a numerator and a denominator drawn from **different populations**: 112
+comes from a *recursive* scan of `internal/hook/`, whose population is 412; 282 is the file count
+of the *non-recursive* glob `internal/hook/*.go`, whose numerator is 72. Each command and its
+observed output, measured at HEAD `9d822d826`, this run:
+
+```
+$ grep -rc '#' internal/hook/ --include='*.go' | grep -v ':0' | wc -l   # recursive numerator
+     112
+$ grep -rc '#' internal/hook/ --include='*.go' | wc -l                  # recursive population
+     412
+$ grep -c '#' internal/hook/*.go | grep -v ':0' | wc -l                 # non-recursive numerator
+      72
+$ ls internal/hook/*.go | wc -l                                         # non-recursive population
+     282
+```
+
+The attributable pair is therefore **112 of 412 (recursive)**, equivalently 72 of 282 for the
+top-level directory alone. The block's conclusion is unchanged in every reading — the pattern
+reaches non-zero files in this very directory, so the `0` above is a measured absence rather than
+an instrument failure.
 
 ### The discriminant — a refusal without the sentinel was not produced by this guard
 
@@ -127,8 +148,15 @@ SECOND-CMD-RAN
 ```
 
 (`B` is absent: the comment opened. Without this control the four literal-hash rows above would be
-consistent with a probe that never opens a comment at all.) The falsification for this constraint
-is AC-GCS-004, which carries non-alphanumeric-preceded rows for exactly this reason.
+consistent with a probe that never opens a comment at all.)
+
+The falsification for this constraint is AC-GCS-004, which carries **one row per character listed
+above** — `/`, `.`, `=`, `-` — each written so a real branch-state command sits on the far side of
+the `#`. One row per character is what the constraint needs: the widenings are independent, so an
+implementation that adds a single one of these four to its word-start set is caught by that
+character's row and by no other. A row that merely *contains* the character, without a command
+after the `#` that the elision would remove, excludes nothing — see the row-discrimination rule in
+`acceptance.md` AC-GCS-004, which records the measured instance of that mistake in this very SPEC.
 
 **B.2 — collapse is PER LINE.** The comment runs to the end of its own line and no further. A
 comment line followed by a real command on the next line must leave that command fully scannable —
@@ -274,15 +302,27 @@ is narrowing, and is merely noisy.
   this SPEC's In Scope. Rationale, both rejected repairs, and the follow-up coordinate: `plan.md`
   §A.
 - **Backslash-newline continuation — direction: BLINDING. Decided: ACCEPT (scope).** A
-  backslash-newline is removed during line-joining before tokenization, so a `#` opening the next
-  physical line is mid-word and literal to the shell; the rule in §B.2 / REQ-GCS-003 treats that
-  physical line as a line-start comment and elides it, dropping any real command riding on it.
-  **Not re-measured in this repair run**: every probe form for this construct
-  (`bash -c $'…\\\n…'`, a `printf … | bash` pipe, and a plain-character control) was **refused** by
-  the Claude Code runtime worktree-isolation guard — a refusal carrying no `BRANCH_GUARD_VIOLATION:`
-  sentinel, i.e. not this guard (§A discriminant). The direction stated here rests on the POSIX
-  line-joining rule plus the plan-audit verdict's own bash measurement (`.moai/reports/t1056/verdict.md`
-  E1), and is carried as a cited-not-re-measured figure rather than as an observation of this run.
+  backslash-newline is removed during line-joining before tokenization — **and only where no
+  whitespace precedes the backslash** does joining leave the next physical line's `#` mid-word and
+  literal to the shell. That condition is load-bearing and it belongs to the cited source, which
+  measured the two variants separately. Where whitespace *does* precede the backslash, joining
+  leaves the `#` at word start and bash opens a comment there as well — the rule in §B.2 and the
+  shell then agree, and no residual exists. The residual is the no-whitespace case only: there the
+  rule in §B.2 / REQ-GCS-003 treats that physical line as a line-start comment and elides it,
+  dropping any real command riding on it. An earlier edition of this entry stated the consequence
+  without the condition, which asserted a wider residual than the source established; the condition
+  is restored here, and restoring it narrows the claim rather than widening it.
+  **Not re-measured in either repair run, and not by the second auditor either**: every probe form
+  for this construct (`bash -c $'…\\\n…'`, a `printf … | bash` pipe, and a plain-character control)
+  was **refused** by the Claude Code runtime worktree-isolation guard — a refusal carrying no
+  `BRANCH_GUARD_VIOLATION:` sentinel, i.e. not this guard (§A discriminant). Routing around the
+  guard by moving the probe into a script file was available and was **not** taken. The second
+  plan-audit verdict records the same refusal against the same construct
+  (`.moai/reports/t1056/verdict-iter2.md` Gap 1). The direction stated here — and the whitespace
+  condition restored above — therefore rest on the POSIX line-joining rule plus the **first**
+  verdict's bash measurement (`.moai/reports/t1056/verdict.md` E1), and are carried as
+  cited-not-re-measured figures rather than as observations of any repair run. The correction is a
+  correction of the citation, not a new measurement, and is not to be read as one.
   Handling continuations would *narrow* the elision (the safe direction) and is omitted on scope
   grounds only — see `plan.md` §C.
 - **`)` and `}` absent from the word-start set — direction: OVER-MATCH. Decided: ACCEPT (record
@@ -302,8 +342,12 @@ Two measurement points exist, and each figure states which one it belongs to.
   merge"` in §A, and the AC-GCS-001 / AC-GCS-002 RED-now and preservation observations in
   `acceptance.md`). They come from a temporary probe test invoking `matchBranchStateCommand`
   directly; the probe was removed afterwards and the tree left clean.
-- **HEAD `5bc42a304` (plan repair, this run)** — the three grep figures in §A, and the bash
+- **HEAD `5bc42a304` (first plan repair)** — the first two grep figures in §A, and the bash
   observations in §B.1 and §F.
+- **HEAD `9d822d826` (second plan repair, this run)** — the four-command population block in §A
+  (the N3 correction), the bash observations backing the rows added to `acceptance.md` AC-GCS-001
+  rows 4-5 and AC-GCS-004 rows 3-6, and a re-run of the §A `0` / `6` / `112` figures, which
+  reproduced unchanged.
 
 The two points are interchangeable **for this SPEC's subject**, and that is measured rather than
 assumed: `git rev-parse 3dfae918a:internal/hook/branch_guard.go` and
