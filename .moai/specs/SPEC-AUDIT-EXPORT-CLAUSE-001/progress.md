@@ -162,7 +162,7 @@ instrument is live.
 
 ```yaml
 run_complete_at: 2026-09-22
-run_commit_sha: pending-backfill-run
+run_commit_sha: a8df32281
 run_status: complete
 ac_pass_count: 15
 ac_fail_count: 0
