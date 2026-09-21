@@ -1,7 +1,7 @@
 ---
 id: SPEC-BRANCHGUARD-EXEMPT-REACH-001
 title: "BranchGuard 면제 축의 서브에이전트 도달성 판정 — agent_type 배선 철자와 deny 억제의 실행 기반 확립"
-version: "0.4.0"
+version: "0.5.0"
 status: draft
 created: 2026-09-21
 updated: 2026-09-21
@@ -22,6 +22,7 @@ tags: "branch-guard, hook, exemption, reachability, doctrine, t1064"
 - 2026-09-21 v0.2.0 — plan-audit iter-1 FAIL(0.8125) 수정. `tier: M` 선언(§A.5), 프로브 집합에 `agent_id` 축 추가(§A.3), 동반이동 집합 8 → **최소 10**(§A.2), 계측기 실행 경로의 실행 가능성 근거 기록(§A.4), REQ-BGX-002 주어 삽입, REQ-BGX-010 신설(판별자 부재 시 CODE 분기 선택 불가).
 - 2026-09-21 v0.3.0 — plan-audit D8 수정. 결정적 판정(REQ-BGX-001)의 측정 방법을 grep 에서 **키 집합 동등 비교**로 고정. 근거: camel 축 과다매칭원이 셋이고 둘이 대문자로 시작해(실측) 「앵커를 달아라」식 수정이 말없이 뚫린다. D8 과 D2 가 이 한 조항으로 함께 닫힌다.
 - 2026-09-21 v0.4.0 — plan-audit iter-2(PASS-WITH-DEBT 0.9375) 잔여 결함 D9·D10 수정. §A.2 의 개수를 **R4 형태**(명령을 먼저, 값은 날짜·ref 를 단 참조)로 고쳐 쓰고, 수치를 넓은 뿌리 **20** / 이 SPEC 아티팩트 **3** 으로 정정하며 **두 방향의 움직임**(판정서 미추적 +1, `plan.md` 리터럴 삭제 −1)을 모두 서술. AC-BGX-009 에 「plan 시점 숫자를 run 시점 측정과 한 측정처럼 대조하지 않는다」 추가. 감사창 중 HEAD 이동은 `progress.md` §E.1 iter-4 에 절차 결함으로 귀속 기록.
+- 2026-09-21 v0.5.0 — plan-audit D11 수정. AC-BGX-009 (1)을 개수를 움직이는 **네 좌표**(뿌리·패턴·시점 SHA·추적 범위) 보고 의무로 재구성. 추적 범위를 뿌리와 대칭으로 올리고(두 수 모두 보고), 어떤 plan 시점 상수도 합격 비교 대상이 되지 않도록 배제. 근거: 같은 뿌리·패턴·SHA 에서 `git grep -l` 19 대 `grep -rln` 20(실측, 델타는 미추적 `verdict.md`).
 
 ## §A 배경 — 무엇이 주장돼 있고 무엇이 측정되지 않았는가
 
