@@ -104,9 +104,17 @@ ehthumbs.db
 # Logs & Temporary Files
 # ===========================================
 *.log
-# Card evidence under .moai/reports/** is durable audit evidence, not operational
-# noise — cited evidence paths must resolve post-merge (sync-audit MAJOR-2, card t196).
-!.moai/reports/**/*.log
+# A negation for .moai/reports/**/*.log used to sit here (card t196, 2026-09-01).
+# It was removed because it could never fire: git does not re-include a file
+# inside a directory that a later rule excludes, and .moai/reports/* excludes
+# the parent. The rule was dead from the day it was written; only its comment
+# read as though something had been repaired.
+#
+# Logs under .moai/reports/ are ignored deliberately, and that is the intended
+# state — not a gap left behind by the removal. The tracked citation target is
+# the verdict file, re-included further down; a log is not exported and is
+# therefore not cited. Do not re-add a negation for it: making logs tracked is
+# exactly what the reports blanket exists to prevent.
 logs/*
 !logs/.gitkeep
 *.tmp
