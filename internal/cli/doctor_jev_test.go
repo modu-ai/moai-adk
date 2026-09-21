@@ -221,8 +221,9 @@ func jevImporters(t *testing.T, dir string) []string {
 func TestJevCallPath_HasExactlyTheDeclaredConsumers(t *testing.T) {
 	const control = "doctor_jev.go"
 	allowed := map[string]string{
-		control:               "SPEC-JEV-CORE-001 — the doctor check",
-		"todo_jev_finding.go": "SPEC-JEV-CONSUMERS-001 M4 — Consumer C, near-duplicate marking",
+		control:                 "SPEC-JEV-CORE-001 — the doctor check",
+		"todo_jev_finding.go":   "SPEC-JEV-CONSUMERS-001 M4 — Consumer C, near-duplicate marking",
+		"jev_skill_suggest.go":  "SPEC-JEV-CONSUMERS-001 M6 — Consumer B, skill suggestion (gate-unrun)",
 	}
 
 	hits := jevImporters(t, ".")

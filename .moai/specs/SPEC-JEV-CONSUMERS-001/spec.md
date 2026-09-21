@@ -2,9 +2,9 @@
 id: SPEC-JEV-CONSUMERS-001
 title: "Jev consumers — near-duplicate marking, lane-question routing, skill suggestion"
 version: "0.3.0"
-status: draft
+status: in-progress
 created: 2026-09-20
-updated: 2026-09-21
+updated: 2026-09-22
 author: manager-spec
 priority: P2
 phase: "v3.1.0 target"
