@@ -194,6 +194,89 @@ ok  	github.com/modu-ai/moai-adk/internal/settings/yamlpatch	0.131s
 
 6건 전부 PASS 이고 기대값 전환은 없었다(무수정 확인이 그 증거다). 충돌이 하나도 없었다는 것은 수리 형태가 기존 계약과 어긋나지 않는다는 신호다.
 
+### M4 — 뮤턴트 2방향 채득 (AC-SGF2-005, 트리 `5fbc3baee`)
+
+두 뮤턴트 모두 커밋 트리 `5fbc3baee` 위의 오버레이로 적용했고, 채득 후 복원했다. 오버레이는 git 을 거치지 않고 `sed` 정·역 치환으로 넣고 뺐다 — 복원 증명은 `git diff --stat` 무출력이다.
+
+#### (a) 스타일 해제 제거 — 결함 복귀를 잡는가
+
+오버레이: `root.Style = 0` → `_ = root.Style // MUTANT-A: style-clearing removed`. (해제문만 없애고 `greenfield` 는 조건에 남겨 컴파일을 유지한다.)
+
+```
+$ go test ./internal/settings/yamlpatch/ -run 'TestPatchFileGreenfieldOutputIsBlockStyle|TestPatchFileGreenfieldSecondSaveStaysBlock|TestPatchFileExistingBlockByteInvariant|TestPatchFileDeliberateFlowPreservedOnUpsert' -v -count=1
+EXIT=1
+
+--- PASS: TestPatchFileExistingBlockByteInvariant (0.00s)
+--- PASS: TestPatchFileDeliberateFlowPreservedOnUpsert (0.00s)
+--- FAIL: TestPatchFileGreenfieldOutputIsBlockStyle (0.00s)
+    --- FAIL: TestPatchFileGreenfieldOutputIsBlockStyle/gate (0.00s)
+    --- FAIL: TestPatchFileGreenfieldOutputIsBlockStyle/cacheStrategy (0.00s)
+    --- FAIL: TestPatchFileGreenfieldOutputIsBlockStyle/crosssession (0.00s)
+    --- FAIL: TestPatchFileGreenfieldOutputIsBlockStyle/mcp (0.00s)
+    --- FAIL: TestPatchFileGreenfieldOutputIsBlockStyle/report (0.00s)
+--- FAIL: TestPatchFileGreenfieldSecondSaveStaysBlock (0.00s)
+FAIL	github.com/modu-ai/moai-adk/internal/settings/yamlpatch	0.293s
+```
+
+**잡았다** — AC-SGF2-001 다섯 셀 전부 + AC-SGF2-002 가 FAIL. 보존 셀 둘은 영향 없이 PASS 이며, 이 뮤턴트가 보존 축이 아니라 생성 축의 변이임을 그 대비가 보인다. 전량: `.moai/reports/t1050/m4-mutant-a.log`.
+
+#### (b) 조건 없이 무조건 해제 — 과잉 수리를 잡는가
+
+**[HARD] 돌리기 전에 검출기 셀의 형태를 다시 읽고 확인했다**: `TestPatchFileDeliberateFlowPreservedOnUpsert` 의 edit 은 `mcp.tools.b.enabled` 이고 `b` 는 `before` (`{mcp: {tools: {a: {enabled: true}}}}\n`) 에 없다 → **upsert** 다. 단정은 전체 리터럴 `want` 와의 `got != want` → **바이트 비교**다. 두 성질 모두 살아 있으므로 이 실행은 「검출기가 없었다」가 아니라 실제 검출이다.
+
+오버레이: `if greenfield {` → `if greenfield || true { // MUTANT-B: …`.
+
+```
+$ (같은 커맨드)
+EXIT=1
+
+--- PASS: TestPatchFileExistingBlockByteInvariant (0.00s)
+--- FAIL: TestPatchFileDeliberateFlowPreservedOnUpsert (0.00s)
+--- PASS: TestPatchFileGreenfieldOutputIsBlockStyle (0.00s)
+    --- PASS: … /mcp /report /cacheStrategy /crosssession /gate (5 cells)
+--- PASS: TestPatchFileGreenfieldSecondSaveStaysBlock (0.00s)
+FAIL	github.com/modu-ai/moai-adk/internal/settings/yamlpatch	0.305s
+
+greenfield_style_test.go:189: deliberate flow style not preserved across an upsert.
+    --- got  ---
+    mcp: {tools: {a: {enabled: true}, b: {enabled: false}}}
+    --- want ---
+    {mcp: {tools: {a: {enabled: true}, b: {enabled: false}}}}
+```
+
+**잡았다 — 그리고 AC-SGF2-003b **하나만**이 잡았다.** 생성 축 여섯 셀은 전부 PASS 로 남는다. `spec.md` §4 의 「인코딩 직전 무조건 해제」 구현이 기각되는 근거가 이 한 줄이며, 그 셀을 무력화하면 기각 근거가 함께 사라진다.
+
+`got` 은 `spec.md` E13 의 코디네이터 측정과 **바이트 동일**하다 — 루트만 de-flow 되고 중첩 컬렉션은 flow 로 남는다(`mcp: {tools: {a: …}}`). 그리고 이 출력이 휴리스틱 단정이 왜 실패하는지도 함께 보인다: 뮤턴트 출력은 여전히 **한 줄**이고 **들여쓰기가 없다**. 「개행이 안 생겼는가 / 들여쓰기가 없는가」로 flow 보존을 단정했다면 뮤턴트 아래에서도 그 두 조건이 참이라 **PASS 하고 놓쳤을** 것이다. 바이트 비교만이 이 차이를 본다. 전량: `.moai/reports/t1050/m4-mutant-b.log`.
+
+#### 복원 완전성
+
+두 오버레이 각각의 채득 직후 역치환으로 복원했고, 최종 상태:
+
+```
+$ /usr/bin/grep -n 'MUTANT' internal/settings/yamlpatch/yamlpatch.go
+grep-exit=1                             ← 무출력, 오버레이 잔재 0
+
+$ git diff --stat
+(무출력)
+
+$ git status --short
+(무출력)
+
+$ git rev-parse --short HEAD
+5fbc3baee
+
+$ go test ./internal/settings/... -count=1
+EXIT=0
+```
+
+#### 잡지 못한 뮤턴트 (REQ-SGF2-008)
+
+**돌린 두 방향은 모두 잡혔다** — 기록할 미검출 실행은 없다. 이것은 「경계가 없다」는 뜻이 아니므로, 돌리지 않았고 따라서 **측정되지 않은** 가드 경계를 아래에 적는다. 셋 다 추론이며 관측으로 표시하지 않는다:
+
+- **사용자가 디스크에 리터럴 `{}` 를 적어 둔 파일.** 그 문서는 `greenfield=false` 로 읽히므로 수리가 스타일을 건드리지 않고 flow 로 남는다. 어느 가드도 이 경우를 덮지 않는다 — 본 SPEC 이 고치는 것은 **씨앗에서 태어난 파일**의 형상이고, 사용자가 적은 `{}` 는 `spec.md` §5 의 「소급 재포맷 금지」 쪽에 속한다. 의도된 경계이지 구멍이 아니다.
+- **중첩 노드 스타일까지 함께 해제하는 변이.** greenfield 문서의 중첩 노드는 `applyEdit` 이 만든 무스타일 노드라 해제가 no-op 이다. 가드는 이 변이를 구별하지 못하며, 구별할 필요도 없다(출력이 동일하다).
+- **들여쓰기 폭 변이.** `detectIndent` 가 4 대신 2를 내도 모든 가드가 PASS 한다 — AC 가 폭을 단정하지 않기 때문이다(M1(b), `acceptance.md` §D). 그 축은 본 SPEC 의 가드 밖이며 별도 카드 소관이다.
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 _<pending run-phase>_
