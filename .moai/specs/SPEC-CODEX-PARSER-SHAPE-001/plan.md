@@ -32,14 +32,22 @@ codex account usage limit (verdict.md §E1, §6).
    resolve the measured V8 instance (`fail`/0 → `fail`/1, verdict.md §A5). The
    durable difference is that (a) resolves V8 only for the shapes its widening
    covers — a later shape outside that set recreates V8 exactly — while (c) keys
-   on `verdict == fail && len(findings) == 0` and so catches it regardless of
-   shape. (c) exists because of V8 (verdict.md §A2).
+   on `verdict == fail && len(findings) == 0 && GateUnmet == ""` and so catches
+   it regardless of shape. (c) exists because of V8 (verdict.md §A2).
 5. **The exact-count tests are the measured defence against partial drift**
    (verdict.md §4, §A3) and look like a tidy-up target. See §G anti-pattern 1.
 
 ## §C Pre-flight — the gate that sits ahead of everything
 
 [HARD] **M0 must close before Implementation Kickoff Approval is asked.**
+
+**M0 is CLOSED (2026-09-21): result SAME-SHAPE.** Record:
+`.moai/reports/t1053/live-convention-20260921.md` (tree `a5c3f5dc6`, codex-cli
+0.155.1). The convention has not drifted, so the risk is **prospective, not
+currently active** — which sets urgency, not treatment (verdict.md §A1), and
+leaves the §C candidate space unchanged. Two tolerated sub-shape differences
+(line range with the end discarded; absolute path) are recorded in spec.md §A.4.
+The requirement below is retained because it governs any re-measurement.
 
 `AC-CPS-001` requires a live codex call after the usage-limit reset
 (2026-09-21 04:21), its body recorded verbatim, and an explicit
@@ -83,7 +91,7 @@ Before the plan is presented as complete:
 Ordered by decision-reversibility: the decisions most likely to change come
 first, the mechanical work last.
 
-### M0 — live-convention comparison (pre-run gate; highest change likelihood)
+### M0 — live-convention comparison (pre-run gate; highest change likelihood) — CLOSED 2026-09-21, same-shape
 
 Performed after 2026-09-21 04:21. One live codex review call through the moai MCP
 path; the returned body recorded verbatim alongside the invocation, the tree, and
@@ -121,8 +129,9 @@ criterion*:
 - Removing (a)'s inferred half does not move (a): its measured half (V2 + V8)
   strictly contains (c)'s measured coverage (V8).
 - (c)'s shape-independence (§C trade-offs — it catches the contradiction
-  regardless of shape, because it keys on `verdict == fail && len(findings) == 0`
-  rather than on any recognizer) does not move (c) up either, because the stated
+  regardless of shape, because it keys on
+  `verdict == fail && len(findings) == 0 && GateUnmet == ""` rather than on any
+  recognizer) does not move (c) up either, because the stated
   criterion is **measured failure-shape coverage** and shape-independence is not
   a coverage count. It is a property of a different kind.
 

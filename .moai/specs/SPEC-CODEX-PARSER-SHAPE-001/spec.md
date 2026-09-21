@@ -93,12 +93,37 @@ establish four facts that this SPEC rests on.
 
 ### A.4 What is unmeasured
 
-- **The live output convention is unmeasured** (verdict.md §6). Every codex call
-  on the measurement day was blocked by an account usage limit (reset
-  2026-09-21 04:21), verified twice — once through the moai MCP path and once by
-  a direct `codex exec` call that bypasses moai entirely. This SPEC does not
-  claim that the current convention equals the fixture, and it does not claim
-  that it differs. §D carries the acceptance criterion that closes this.
+- **The live output convention WAS unmeasured on the measurement day**
+  (verdict.md §6) — every codex call was blocked by an account usage limit,
+  verified twice, once through the moai MCP path and once by a direct
+  `codex exec` call that bypasses moai entirely.
+
+  **It is now measured: SAME-SHAPE.** After the limit reset the live call ran
+  (record: `.moai/reports/t1053/live-convention-20260921.md`; tree `a5c3f5dc6`,
+  codex-cli 0.155.1 — the same version as the blocked day, so the CLI version is
+  not a variable across the two observations). The live body carries
+  `- [P1] <message> — <path>:<line>` bullets and the parser structured three of
+  them with severities P1/P2/P2, read off that same call's `findings` array
+  rather than inferred.
+
+  **What this changes and what it does not.** The convention has NOT drifted, so
+  the risk this SPEC addresses is **prospective, not currently active** — that is
+  a statement about urgency, not about treatment (verdict.md §A1). The candidate
+  space in §C is unchanged, because it was narrowed by the offline measurements
+  and not by this one. It also does not retroactively close verdict.md §6's first
+  Gap: that Gap records that the convention was unmeasured on the measurement
+  day, which remains permanently true.
+
+- **Two sub-shape differences from the fixture, both tolerated** — observed in
+  the same live call, recorded because they are real and small, not because they
+  block anything:
+  - The live line reference is a **range** (`acceptance.md:150-153`) where the
+    fixture carries a single line. `codexPathLineRef`
+    (`internal/cli/mcp_codex.go`) captures only the start line, so the parsed
+    finding's `line` is `150` and `-153` is discarded. It parses; the range
+    information is lost.
+  - The live path is **absolute** where the fixture is repo-relative. It matches,
+    and the absolute path lands in `File` as-is.
 - **The nine variants were chosen by the measurer**, not derived from what codex
   actually emits (verdict.md §6). A shape outside that enumeration may behave
   differently.
@@ -164,9 +189,15 @@ block on from a body carrying no recognized signal because its shape was not
 recognized, before any body is downgraded from `pass`.
 
 **REQ-CPS-006** — Where candidate (c) is selected, when a synthesized review
-output carries a blocking verdict together with an empty findings list, the
-adapter shall report that state as self-contradictory rather than emitting it as
-a clean review.
+output carries a blocking verdict together with an empty findings list **and no
+`GateUnmet` annotation**, the adapter shall report that state as
+self-contradictory rather than emitting it as a clean review.
+
+**REQ-CPS-006a** — Where candidate (c) is selected, when a review output carries
+a blocking verdict together with an empty findings list **and a non-empty
+`GateUnmet` annotation**, the adapter shall not report that state as
+self-contradictory; an unmet required gate is a legitimate producer of that
+shape, not a parser defect.
 
 **REQ-CPS-007** — Where candidate (a) is selected, when a review body carries a
 finding in a shape the widened recognizers accept, the adapter shall parse that
@@ -221,8 +252,20 @@ Trade-offs:
   byte-indistinguishable to the parser, so a disambiguation mechanism must come
   first (verdict.md §E4, §A4). The dispatch estimate that (b) is cheaper did not
   separate the two modes; that estimate was corrected (verdict.md §A4).
-- **(c)** keys on `verdict == fail && len(findings) == 0` — a state that is
-  self-contradictory whatever the body looks like. It therefore catches V8
+- **(c)** keys on `verdict == fail && len(findings) == 0 && GateUnmet == ""` — a
+  state that is self-contradictory whatever the body looks like.
+
+  [HARD] The `GateUnmet == ""` conjunct is load-bearing and was added after the
+  bare two-term predicate was found to match a legitimate state. `applyGateUnmet`
+  (`internal/cli/mcp_codex.go`) converts an `inconclusive` into
+  `Verdict = "fail"` with a non-empty `GateUnmet` when
+  `workflow.audit.gates.codex` is `required`, and the inconclusive paths carry an
+  empty findings list — so `fail` + `findings=0` is exactly what a correctly
+  functioning unmet required gate produces. Without the conjunct, (c) would flag
+  that gate as a parser contradiction. AC-CPS-005 fixes this as an explicit
+  control case so an implementation cannot regress into it.
+
+  Scoped that way, (c) catches V8
   **regardless of shape**, including shapes nobody has enumerated, because it
   reads the parser's output rather than any recognizer. That is a difference in
   kind from (a), not in coverage count: (a)'s V8 coverage is bounded by the
@@ -235,7 +278,12 @@ Trade-offs:
 ## §D Acceptance criteria
 
 Full criteria live in `acceptance.md`. One is load-bearing enough to restate
-here:
+here.
+
+**Status: AC-CPS-001 and AC-CPS-002 are SATISFIED** by the 2026-09-21 live call
+recorded at `.moai/reports/t1053/live-convention-20260921.md` (result:
+same-shape — see §A.4). The clause below is the criterion that record had to
+meet; it is retained verbatim because it governs any re-measurement.
 
 [HARD] **AC-CPS-001 (live-convention comparison) sits ahead of the Implementation
 Kickoff Approval gate.** It is satisfied only by an observation of live codex
