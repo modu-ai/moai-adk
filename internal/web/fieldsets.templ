@@ -179,6 +179,14 @@ templ fieldsetSchemaSection(view pageView, meta schemaSectionMeta) {
 		if glmKeyFieldBelongsToLLMSection(meta.ID) {
 			@fieldsetGLMKey(view)
 		}
+		// SPEC-JEV-OPTIN-MEASURE-001: the Jev sub-section — enable toggle,
+		// privacy statement, credential — rendered inside the workflow panel.
+		// Keyed on PanelID rather than section ID because SectionWorkflow
+		// fronts several panels, and keying on the section would render the
+		// sub-section on every one of them.
+		if meta.PanelID == "workflow" {
+			@fieldsetJevSection(view)
+		}
 		for _, rb := range settings.RawViewBlocks() {
 			if meta.Extras && rb.Section == meta.ID {
 				@schemaRawBlock(rb.Name, view.RawBlocks[rb.Name], rb.NoteKey)
@@ -240,6 +248,70 @@ templ fieldsetGLMKey(view pageView) {
 			}
 		</div>
 		@fieldErr(view.FieldErrors, glmAPIKeyFormField)
+	</div>
+}
+
+// fieldsetJevSection renders the Jev opt-in section (SPEC-JEV-OPTIN-MEASURE-001
+// REQ-JEVO-001/003): the privacy statement, the enable toggle, and the
+// credential control, together.
+//
+// The three belong together. The statement is what makes the toggle an
+// informed choice, and the credential is useless without the toggle — a reader
+// who sees any one of them in isolation is missing what they need to decide.
+templ fieldsetJevSection(view pageView) {
+	<div class="subsection" data-section={ jevSectionMarker }>
+		<div class="field__head">
+			<span class="field__label" data-i18n="tab.jev.title">Jev</span>
+		</div>
+		<p class="panel__help" data-i18n={ jevPrivacyNoteKey }>{ jevPrivacyNoteBaseline }</p>
+		for _, f := range jevSectionFields() {
+			@schemaFieldWidget(view, f)
+		}
+		@fieldsetJevKey(view)
+	</div>
+}
+
+// fieldsetJevKey renders the Jev credential control (SPEC-JEV-OPTIN-MEASURE-001
+// REQ-JEVO-001). Same secret-class shape as fieldsetGLMKey: type="password"
+// masks typed characters, autocomplete="off" opts out of browser autofill, and
+// the value attribute is UNCONDITIONALLY empty so a stored credential is never
+// echoed back into the form.
+//
+// It carries NO reveal control. The GLM precedent has one because that key has
+// to be readable back out; here the disclosure requirement is met by the
+// configured indicator plus the trailing four characters, so the one path that
+// would cross the never-echo contract is simply not built.
+templ fieldsetJevKey(view pageView) {
+	<div class="field">
+		<div class="field__head">
+			<span class="field__label" data-i18n="f.jev_api_key.title">Jev credential</span>
+			<code class="key">~/.moai/.env.typesafe</code>
+		</div>
+		<p class="field__help" data-i18n="f.jev_api_key.desc">Credential for the Jev backend. Stored at mode 0600 outside the project tree; never echoed back, and there is no route that reveals it.</p>
+		<div class="field__ctl">
+			<input
+				class="in"
+				type="password"
+				id={ jevAPIKeyFormField }
+				name={ jevAPIKeyFormField }
+				autocomplete="off"
+				value=""
+				if hasFieldError(view.FieldErrors, jevAPIKeyFormField) {
+					aria-invalid="true"
+					aria-describedby={ "err_" + jevAPIKeyFormField }
+				}
+			/>
+			if view.JevKeyConfigured {
+				<p class="field__help">
+					@iconAt("check", 13)
+					<span data-i18n="f.jev_api_key.configured">Configured</span>
+					if view.JevKeyHint != "" {
+						<code class="key">…{ view.JevKeyHint }</code>
+					}
+				</p>
+			}
+		</div>
+		@fieldErr(view.FieldErrors, jevAPIKeyFormField)
 	</div>
 }
 

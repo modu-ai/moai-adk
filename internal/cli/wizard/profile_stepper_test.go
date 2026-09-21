@@ -100,7 +100,9 @@ func TestProfileWizardStepper_SameFormatAsInit(t *testing.T) {
 	// Init control (the same rule with init's own visible N): InitQuestions —
 	// what `moai init` runs — renders two pages after the Q5 regroup, Basic
 	// (conversation_language + user_name, first at 1) and Agents & Autonomy
-	// (agent_wiring + autonomy_tier, first at 3); N = 4.
+	// (agent_wiring + autonomy_tier, first at 3) and Judgment Capability
+	// (jev_enabled, first at 5); N = 5 since SPEC-JEV-OPTIN-MEASURE-001
+	// REQ-JEVO-005 added the Jev opt-in on its own page.
 	result := &WizardResult{}
 	initForm := buildUnifiedForm(InitQuestions("/tmp/stepper-control"), result, "")
 	id := ptycaptest.NewFormDriver(t, initForm)
@@ -110,9 +112,10 @@ func TestProfileWizardStepper_SameFormatAsInit(t *testing.T) {
 	}{
 		{questions: 2, first: 1},
 		{questions: 2, first: 3},
+		{questions: 1, first: 5},
 	}
 	for _, g := range initGroups {
-		assertStepperLine(t, firstStepperLine(t, ptycaptest.StripANSI(id.View())), g.first, 4)
+		assertStepperLine(t, firstStepperLine(t, ptycaptest.StripANSI(id.View())), g.first, 5)
 		for range g.questions {
 			id.Enter()
 		}
