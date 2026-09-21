@@ -175,6 +175,37 @@ Two consequences worth stating because both have been observed:
   count unique link targets file-wide as well as anchored entry lines, and treat a decrease in
   **either** as a failure rather than a saving.
 
+#### Admission — which index a line goes in, decided when it is written
+
+[HARD] The clause above governs **whether** a line exists. This one governs **which index** holds
+it, and the two never trade against each other: every topic file still carries exactly one index
+line somewhere, and removing one is still prohibited.
+
+`MEMORY.md` is the only always-loaded index, so every line in it is re-paid on every turn of every
+session. It admits two classes and no others:
+
+- **Open work** — a card still running, a gate still waiting, a decision still owed.
+- **General discipline** — a lesson that binds whatever card is in flight.
+
+Everything else takes its line in the matching secondary index **at the moment it is written**,
+never by a later fold: a record whose card is closed goes to the card archive, a lesson bound to
+one card goes to the lesson index. Both are reachable, because `MEMORY.md` carries one line
+pointing at each — so nothing becomes unindexed by being admitted there instead. The classes are a
+current-state test rather than a one-way door: a line moves back into `MEMORY.md` when its card
+reopens.
+
+**Why at write time rather than by folding.** Folding is a repair, and a repair that must be
+re-run is a loop — the index refills at its own rate between folds, so each fold's saving is spent
+before the next one is due. Deciding the destination when the line is authored removes the refill
+instead of absorbing it. On a store measured while this clause was written, **86% of entry lines
+were card-scoped** — fold-eligible from the day they were written — against a small remainder that
+genuinely had to stay.
+
+**The acceptance criterion for any change to this section is reachability, never size.** Count the
+files reachable from `MEMORY.md` through one hop of its secondary indexes, before and after; a
+decrease fails the change however much the index shrank. Size is the motive; reachability is the
+gate.
+
 #### Two stores, and only one of them is loaded
 
 [HARD] More than one memory store can exist for the same project, and a session loads exactly one

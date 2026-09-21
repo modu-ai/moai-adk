@@ -1354,7 +1354,7 @@ func pruneGoalOrphans(projectDir string) {
 // read error it returns nil so PruneOrphans falls back to TTL-only pruning
 // (fail-open — an unreadable registry never blocks pruning or session start).
 func activeGoalSessionIDs(projectDir string) []string {
-	registryPath := filepath.Join(projectDir, session.DefaultRegistryPath)
+	registryPath := session.RegistryPathFor(projectDir)
 	reg := session.NewRegistry(registryPath, nil)
 	entries, err := reg.Query("")
 	if err != nil {
@@ -1557,7 +1557,7 @@ func claudeEnvFileGuard(goos string) bool {
 // PurgeStale, QueryActiveWork) and the verification grep matches against
 // the function names regardless of receiver.
 func (h *sessionStartHandler) runMultiSessionProtocol(input *HookInput, data map[string]any) {
-	registryPath := filepath.Join(input.ProjectDir, session.DefaultRegistryPath)
+	registryPath := session.RegistryPathFor(input.ProjectDir)
 	reg := session.NewRegistry(registryPath, nil)
 
 	// Step 1: RegisterSession with no SPEC scope yet.

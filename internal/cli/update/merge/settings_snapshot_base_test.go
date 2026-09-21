@@ -210,10 +210,14 @@ func TestMergeUserFiles_SnapshotBaseAddsNewTemplateKey(t *testing.T) {
 	}
 }
 
-// AC-USB-011 — the canonical snapshot is the base for .claude/settings.json
-// only; .mcp.json keeps the derived base even when a look-alike snapshot sits
-// in the same cache root.
-func TestMergeUserFiles_SnapshotBaseScopedToSettingsJSON(t *testing.T) {
+// AC-USB-011 — a snapshot is read only from its own canonical path: a
+// look-alike copy elsewhere in the same cache root is ignored.
+//
+// Card t1029 gave .mcp.json a canonical snapshot of its own, so this test no
+// longer says "settings.json is the only file with one". The two look-alike
+// paths it plants (claude/mcp.json, .mcp.json) are still neither file's
+// canonical path, which is exactly what it pins.
+func TestMergeUserFiles_SnapshotBaseLookAlikePathsIgnored(t *testing.T) {
 	mergeMCP := func(t *testing.T, plant bool) []byte {
 		root := newSnapshotProject(t)
 		if plant {

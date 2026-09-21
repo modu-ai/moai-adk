@@ -3,10 +3,12 @@ package hook
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"log/slog"
 	"os"
 	"path/filepath"
+	"time"
 	"unicode/utf8"
 )
 
@@ -37,7 +39,23 @@ func (h *instructionsLoadedHandler) Handle(ctx context.Context, input *HookInput
 	slog.Info("instructions loaded",
 		"session_id", input.SessionID,
 		"file_path", instructionPath,
+		"load_reason", input.LoadReason,
+		"globs", input.Globs,
+		"trigger_file_path", input.TriggerFilePath,
 	)
+
+	// The slog record above never reaches a reader: resolveLoggingDecision in
+	// internal/cli/logging.go routes every `moai hook` invocation to io.Discard,
+	// unconditionally, so stdout/stderr stay clean for the hook JSON contract.
+	// The persistent record is therefore an audit row, written here — without it
+	// the three host-supplied fields are observable nowhere.
+	appendRuleLoadAudit(input.CWD, RuleLoadAuditRecord{
+		SessionID:       input.SessionID,
+		FilePath:        instructionPath,
+		LoadReason:      input.LoadReason,
+		Globs:           input.Globs,
+		TriggerFilePath: input.TriggerFilePath,
+	})
 
 	// Check character budget for the loaded instruction file
 	if instructionPath != "" {
@@ -82,4 +100,48 @@ func (h *instructionsLoadedHandler) checkCharacterBudget(filePath string) error 
 	}
 
 	return nil
+}
+
+// ruleLoadAuditFileName is the InstructionsLoaded observation log under
+// <projectRoot>/.moai/logs/ — one JSONL row per rule/instruction load,
+// shaped like agent-stop-audit.jsonl.
+const ruleLoadAuditFileName = "rule-load-audit.jsonl"
+
+// RuleLoadAuditRecord is one observed instruction-load event. LoadReason,
+// Globs, and TriggerFilePath are the host-supplied fields (HookInput, v2.1.69+)
+// that the handler previously dropped, which left `paths:` glob matching
+// unobservable at runtime.
+type RuleLoadAuditRecord struct {
+	Timestamp       string   `json:"timestamp"`
+	SessionID       string   `json:"session_id"`
+	FilePath        string   `json:"file_path"`
+	LoadReason      string   `json:"load_reason,omitempty"`
+	Globs           []string `json:"globs,omitempty"`
+	TriggerFilePath string   `json:"trigger_file_path,omitempty"`
+}
+
+// appendRuleLoadAudit appends one record to <projectRoot>/.moai/logs/.
+// Every failure path is silent-and-continue, matching the agent-stop-audit
+// precedent: an audit failure may never fail the observed hook event.
+func appendRuleLoadAudit(projectRoot string, rec RuleLoadAuditRecord) {
+	if projectRoot == "" {
+		return
+	}
+	if rec.Timestamp == "" {
+		rec.Timestamp = time.Now().UTC().Format(time.RFC3339)
+	}
+	line, err := json.Marshal(rec)
+	if err != nil {
+		return
+	}
+	logsDir := filepath.Join(projectRoot, ".moai", "logs")
+	if err := os.MkdirAll(logsDir, 0o750); err != nil {
+		return
+	}
+	f, err := os.OpenFile(filepath.Join(logsDir, ruleLoadAuditFileName), os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0o600)
+	if err != nil {
+		return
+	}
+	defer func() { _ = f.Close() }()
+	_, _ = f.Write(append(line, '\n'))
 }

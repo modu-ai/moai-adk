@@ -166,11 +166,16 @@ func TestAuditLinkageSecondaryIndexPreventsOrphan(t *testing.T) {
 // TestAuditLinkageOrphanSurvivesSecondaryIndex keeps the orphan check honest in
 // the other direction: a secondary index makes the files it links reachable and
 // nothing else.
+//
+// The fixture originally omitted feedback_folded_b.md, leaving the index with a
+// link nothing answered — an unnoticed instance of the very defect the dangling
+// check now reports. It is written out here so the test exercises what its
+// comment claims rather than a half-resolved index.
 func TestAuditLinkageOrphanSurvivesSecondaryIndex(t *testing.T) {
 	t.Parallel()
 	dir := writeMemoryFixture(t,
 		[]string{"archive_index.md"},
-		[]string{"archive_index.md", "feedback_folded_a.md", "feedback_folded_c.md", "feedback_lonely.md"})
+		[]string{"archive_index.md", "feedback_folded_a.md", "feedback_folded_b.md", "feedback_folded_c.md", "feedback_lonely.md"})
 	writeIndexFile(t, dir, "archive_index.md",
 		[]string{"feedback_folded_a.md", "feedback_folded_b.md", "feedback_folded_c.md"})
 
@@ -316,5 +321,102 @@ func TestAuditMissingDirIsNotAnError(t *testing.T) {
 	}
 	if f, err := AuditTopicCount(missing, 50); err != nil || len(f) != 0 {
 		t.Errorf("AuditTopicCount(missing) = %+v, %v; want nil, nil", f, err)
+	}
+}
+
+// writeCitingFile overwrites name with an ordinary topic file whose body cites
+// targets. Same bytes as an index — which is the point: what separates the two
+// is what the links resolve to, not how they are written.
+func writeCitingFile(t *testing.T, dir, name string, targets []string) {
+	t.Helper()
+	writeIndexFile(t, dir, name, targets)
+}
+
+// TestAuditLinkagePromotionIgnoresMissingTargets pins F1: links pointing at
+// nothing must not buy index status. A file citing three absent siblings met
+// the link threshold, became a secondary index, and every real memory it also
+// linked went silent — reachable, on the audit's account, through an index
+// that reaches nothing.
+func TestAuditLinkagePromotionIgnoresMissingTargets(t *testing.T) {
+	t.Parallel()
+	dir := writeMemoryFixture(t,
+		[]string{"feedback_citing.md"},
+		[]string{"feedback_citing.md", "feedback_real_orphan.md"})
+	writeCitingFile(t, dir, "feedback_citing.md",
+		[]string{"ghost_a.md", "ghost_b.md", "ghost_c.md", "feedback_real_orphan.md"})
+
+	findings, err := AuditLinkage(dir)
+	if err != nil {
+		t.Fatalf("AuditLinkage: %v", err)
+	}
+	if got := codesOf(findings)[WarnOrphanNotIndexed]; got != 1 {
+		t.Errorf("orphan findings = %d, want 1 (feedback_real_orphan.md is hidden behind a file promoted by three absent targets): %+v", got, findings)
+	}
+}
+
+// TestAuditLinkageSecondaryIndexDanglingIsReported pins F2, and with it the
+// self-concealment the two defects compose into. The link set is byte-identical
+// in both halves; only its carrier moves. In MEMORY.md the three absent targets
+// are reported; inside a promoted secondary index the same three are silent —
+// so the links that bought the promotion are exactly the links nothing checks.
+func TestAuditLinkageSecondaryIndexDanglingIsReported(t *testing.T) {
+	t.Parallel()
+	ghosts := []string{"ghost_a.md", "ghost_b.md", "ghost_c.md"}
+
+	// Control: the same three links carried by the index a session loads.
+	inMemory := writeMemoryFixture(t,
+		append([]string{"feedback_carrier.md"}, ghosts...),
+		[]string{"feedback_carrier.md", "feedback_r1.md", "feedback_r2.md", "feedback_r3.md"})
+	writeIndexFile(t, inMemory, "feedback_carrier.md",
+		[]string{"feedback_r1.md", "feedback_r2.md", "feedback_r3.md"})
+
+	control, err := AuditLinkage(inMemory)
+	if err != nil {
+		t.Fatalf("AuditLinkage(control): %v", err)
+	}
+	if got := codesOf(control)[WarnDanglingIndexLink]; got != 3 {
+		t.Fatalf("control: dangling findings = %d, want 3 — the fixture does not reproduce the reported direction: %+v", got, control)
+	}
+
+	// Subject: the same three links moved into the secondary index.
+	inSecondary := writeMemoryFixture(t,
+		[]string{"feedback_carrier.md"},
+		[]string{"feedback_carrier.md", "feedback_r1.md", "feedback_r2.md", "feedback_r3.md"})
+	writeIndexFile(t, inSecondary, "feedback_carrier.md",
+		append([]string{"feedback_r1.md", "feedback_r2.md", "feedback_r3.md"}, ghosts...))
+
+	subject, err := AuditLinkage(inSecondary)
+	if err != nil {
+		t.Fatalf("AuditLinkage(subject): %v", err)
+	}
+	if got := codesOf(subject)[WarnDanglingIndexLink]; got != 3 {
+		t.Errorf("subject: dangling findings = %d, want 3 — a secondary index's broken links are reported nowhere: %+v", got, subject)
+	}
+	for _, f := range subject {
+		if f.Code == WarnDanglingIndexLink && !strings.Contains(f.Path, "feedback_carrier.md") {
+			t.Errorf("dangling finding should name the carrying index, not %s: %+v", f.Path, f)
+		}
+	}
+}
+
+// TestAuditLinkageResolvedIndexStillPromotes is the other direction of the same
+// change: a file whose links all resolve keeps its index status at the existing
+// threshold. Without this, "count only resolved links" is indistinguishable
+// from demoting every index — which would pass the two tests above while
+// reporting every folded memory as an orphan.
+func TestAuditLinkageResolvedIndexStillPromotes(t *testing.T) {
+	t.Parallel()
+	dir := writeMemoryFixture(t,
+		[]string{"archive_index.md"},
+		[]string{"archive_index.md", "feedback_a.md", "feedback_b.md", "feedback_c.md"})
+	writeIndexFile(t, dir, "archive_index.md",
+		[]string{"feedback_a.md", "feedback_b.md", "feedback_c.md"})
+
+	findings, err := AuditLinkage(dir)
+	if err != nil {
+		t.Fatalf("AuditLinkage: %v", err)
+	}
+	if len(findings) != 0 {
+		t.Errorf("a fully-resolved three-link index produced findings: %+v", findings)
 	}
 }

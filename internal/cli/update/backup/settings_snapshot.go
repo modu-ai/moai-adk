@@ -19,27 +19,19 @@ package backup
 // A staging copy becomes canonical only by promotion, and never before the
 // flow's merge has run. Every step is best-effort: a failure prints one
 // prefixed warning line and the enclosing init/update carries on.
+//
+// The lifecycle itself lives in file_snapshot.go — .mcp.json is a sibling
+// namespace on the same machinery (card t1029). This file declares only the
+// settings.json namespace and the exported surface its callers use.
 
 import (
-	"bytes"
-	"encoding/json"
 	"fmt"
 	"io"
-	"os"
-	"path/filepath"
 
-	"github.com/modu-ai/moai-adk/internal/defs"
 	"github.com/modu-ai/moai-adk/internal/manifest"
 )
 
 const (
-	// settingsSnapshotSubdir mirrors the last segment of .claude/ without the
-	// leading dot, so the cache never holds a directory Claude Code might
-	// discover as a project .claude/ tree.
-	settingsSnapshotSubdir = "claude"
-	settingsSnapshotName   = "settings.json"
-	settingsPendingSuffix  = ".pending"
-
 	// liveSettingsRel is the project-relative path of the file the snapshot
 	// records, in the slash form the manifest keys use.
 	liveSettingsRel = ".claude/settings.json"
@@ -53,125 +45,67 @@ const (
 	SettingsSnapshotPromoteFailedPrefix = "settings-snapshot-promote-failed:"
 )
 
+// settingsSnapshot is the .claude/settings.json namespace. Its subdir mirrors
+// the last segment of .claude/ without the leading dot, so the cache never
+// holds a directory Claude Code might discover as a project .claude/ tree.
+var settingsSnapshot = fileSnapshot{
+	subdir:              "claude",
+	name:                "settings.json",
+	liveRel:             liveSettingsRel,
+	writeFailedPrefix:   SettingsSnapshotWriteFailedPrefix,
+	promoteFailedPrefix: SettingsSnapshotPromoteFailedPrefix,
+}
+
 // SettingsSnapshotPath returns the canonical base the next update merges
 // .claude/settings.json against:
 // <projectRoot>/.moai/cache/template-snapshot/claude/settings.json.
 func SettingsSnapshotPath(projectRoot string) string {
-	return filepath.Join(SnapshotDir(projectRoot), settingsSnapshotSubdir, settingsSnapshotName)
+	return settingsSnapshot.path(projectRoot)
 }
 
 // SettingsSnapshotPendingPath returns the staging copy of the render a flow
 // deployed: the canonical path plus ".pending".
 func SettingsSnapshotPendingPath(projectRoot string) string {
-	return SettingsSnapshotPath(projectRoot) + settingsPendingSuffix
+	return settingsSnapshot.pendingPath(projectRoot)
 }
 
 // LoadSettingsSnapshot returns the canonical base when it exists, reads, and
 // decodes as a JSON object (REQ-USB-004). Anything else reports false and the
 // merge keeps the derived base (REQ-USB-009).
 func LoadSettingsSnapshot(projectRoot string) ([]byte, bool) {
-	data, err := os.ReadFile(SettingsSnapshotPath(projectRoot))
-	if err != nil {
-		return nil, false
-	}
-	var doc map[string]any
-	if json.Unmarshal(data, &doc) != nil || doc == nil {
-		return nil, false
-	}
-	return data, true
+	return settingsSnapshot.load(projectRoot)
 }
 
 // StageDeployedSettingsSnapshot records the render the deploy just wrote to
-// .claude/settings.json as the staging copy (REQ-USB-001).
-//
-// Whether the deploy wrote the file is decided from the deployer's own
-// manifest record, never from the file alone (REQ-USB-016, plan.md D7): the
-// entry must be template-managed and its template hash — the hash of the bytes
-// the deployer wrote — must match the file. A deploy that skipped an existing
-// user file records it as user-created or leaves the user's provenance in
-// place, so the skip records nothing. The hash match also means the staged
-// bytes are exactly the deployer's render, not a later rewrite (REQ-USB-003).
+// .claude/settings.json as the staging copy (REQ-USB-001, REQ-USB-016).
 //
 // @MX:ANCHOR: [AUTO] settings.json staging entry — fan_in 3 (init, template sync, clean reinstall)
 // @MX:REASON: the recording moment is the contract; calling this after any later rewrite of
 // settings.json (autonomy bundle, merge, deny-rule strip) turns that rewrite into template content
 func StageDeployedSettingsSnapshot(projectRoot string, m manifest.Manager, warn io.Writer) {
-	if m == nil {
-		return
-	}
-	entry, ok := m.GetEntry(liveSettingsRel)
-	if !ok || entry.Provenance != manifest.TemplateManaged {
-		return
-	}
-	render, err := os.ReadFile(filepath.Join(projectRoot, filepath.FromSlash(liveSettingsRel)))
-	if err != nil || manifest.HashBytes(render) != entry.TemplateHash {
-		return
-	}
-	pending := SettingsSnapshotPendingPath(projectRoot)
-	if err := os.MkdirAll(filepath.Dir(pending), defs.DirPerm); err != nil {
-		warnLine(warn, SettingsSnapshotWriteFailedPrefix, err)
-		return
-	}
-	if err := os.WriteFile(pending, render, defs.FilePerm); err != nil {
-		warnLine(warn, SettingsSnapshotWriteFailedPrefix, err)
-	}
+	settingsSnapshot.stageDeployed(projectRoot, m, warn)
 }
 
 // JudgeLeftoverSettingsSnapshot settles a staging copy an earlier flow left
 // behind because it stopped before its promotion decision (REQ-USB-005).
 //
-// The live file still equal to the leftover means nothing reverted the render
-// after the stop, so it is promoted; any difference — a hand revert, or any
-// other intervening write — discards it and keeps the prior base (spec.md §E
-// N-08, fail-safe).
-//
 // @MX:WARN: [AUTO] must run before the flow's first removal or rewrite of .claude/settings.json
 // @MX:REASON: judged after the deploy or the deny-rule strip, the live file is already the new
 // render, so "aborted with no revert → promote" silently becomes a discard (plan.md B8, M-D5g)
 func JudgeLeftoverSettingsSnapshot(projectRoot string, warn io.Writer) {
-	leftover, err := os.ReadFile(SettingsSnapshotPendingPath(projectRoot))
-	if err != nil {
-		return
-	}
-	live, err := os.ReadFile(filepath.Join(projectRoot, filepath.FromSlash(liveSettingsRel)))
-	if err == nil && bytes.Equal(live, leftover) {
-		promoteSettingsSnapshot(projectRoot, warn)
-		return
-	}
-	discardSettingsSnapshot(projectRoot)
+	settingsSnapshot.judgeLeftover(projectRoot, warn)
 }
 
 // SettleSettingsSnapshot ends a flow's snapshot lifecycle at the flow's end,
 // after its settings.json merge (REQ-USB-005). preserved reports whether that
 // merge took a preserve path — wrote the pre-flow user file back wholesale —
-// in which case the live file does not reflect the render and the staging copy
-// is discarded; otherwise it is promoted. A flow without a staging copy is a
-// no-op.
+// in which case the staging copy is discarded; otherwise it is promoted.
 //
 // @MX:WARN: [AUTO] promotion decision — call only after the flow's settings.json merge
 // @MX:REASON: promoting before the merge makes base == updated (new keys read as user deletions);
 // promoting a preserved flow's render makes its new keys read as user deletions next update
 func SettleSettingsSnapshot(projectRoot string, preserved bool, warn io.Writer) {
-	if _, err := os.Stat(SettingsSnapshotPendingPath(projectRoot)); err != nil {
-		return
-	}
-	if preserved {
-		discardSettingsSnapshot(projectRoot)
-		return
-	}
-	promoteSettingsSnapshot(projectRoot, warn)
-}
-
-// promoteSettingsSnapshot moves the staging copy onto the canonical path with a
-// same-directory rename, which replaces an existing file on every platform.
-func promoteSettingsSnapshot(projectRoot string, warn io.Writer) {
-	if err := os.Rename(SettingsSnapshotPendingPath(projectRoot), SettingsSnapshotPath(projectRoot)); err != nil {
-		warnLine(warn, SettingsSnapshotPromoteFailedPrefix, err)
-	}
-}
-
-func discardSettingsSnapshot(projectRoot string) {
-	_ = os.Remove(SettingsSnapshotPendingPath(projectRoot))
+	settingsSnapshot.settle(projectRoot, preserved, warn)
 }
 
 func warnLine(warn io.Writer, prefix string, err error) {
