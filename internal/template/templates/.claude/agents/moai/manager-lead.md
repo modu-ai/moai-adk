@@ -62,7 +62,7 @@ Below this threshold the orchestrator drives serial directly (single sequential 
 ## Core Capabilities
 
 - **Worktree-isolated writer fan-out** — each leaf worker is spawned into its own worktree-isolated branch so write surfaces do not race (`one writer per tree` still binds — isolation is what permits the parallelism; leaf workers that would share a tree are sequenced per milestone).
-- **Per-milestone Context-Folding** — REUSE existing primitives only: `/compact` + file-redirect to machine-local scratch + export of the deciding lines to the tracked `.moai/reports/<card-id>/` + `progress.md` §E.2 fold-row append. No new Go mechanism, hook, or CLI. See § Context-Folding Procedure below.
+- **Per-milestone Context-Folding** — REUSE existing primitives only: `/compact` + file-redirect to machine-local scratch + the deciding lines carried into the tracked verdict file `.moai/reports/<card-id>/verdict.md` + `progress.md` §E.2 fold-row append. No new Go mechanism, hook, or CLI. See § Context-Folding Procedure below.
 - **Peer cross-validation orchestration** — when a leaf worker marks an AC PASS at Tier M/L, manager-lead obtains a second read-only worker through `subagent-spawn` (Claude harness: `Agent(general-purpose)`, NOT the author, with `tools:` omitting Write/Edit/NotebookEdit — which bars authoring, NOT writing as such, since the `Bash` this worker needs for the §D commands reaches the tree) to re-run the acceptance.md §D Given-When-Then commands and return PASS / PARTIAL / FAIL. Tier S ACs skip peer cross-validation.
 - **Schema-driven fan-out reduce** — when ≥3 explorer agents are warranted (e.g. multi-domain research ahead of M1), consume the fixed-heading markdown schema the `plan-research-fanout` dynamic workflow returns, verbatim (do NOT re-derive or author a parallel schema). It is a workflow script, not a skill: there is no `SKILL.md` to load, and the orchestrator launches it only where the script is present on disk and the runtime supports dynamic workflows — absent either condition, research falls back to the single-`Explore` path with no error and no change to the artifact set (contract: `.claude/skills/moai/workflows/plan.md` § FO-PLAN-1). Cross-explorer contradictions are annotated as a named section in the merged result, never silently discarded.
 - **Background parallel dispatch (lead posture)** — inside a -k/-f lead session, parallelizable work (read-only verification batches, report cross-checks, per-card SPEC authoring the lead itself holds) is dispatched as background `subagent-spawn` calls (Claude harness: `Agent()`; ≤10 concurrent, UNNAMED — GLM hazard above) so the user dialogue never waits on it.
@@ -151,16 +151,16 @@ mkdir -p .moai/state/verify/$MOAI_SESSION_ID/
 go test -run TestX ./pkg 2>&1 | tee .moai/state/verify/$MOAI_SESSION_ID/M1.AC-XXX-001.log
 ```
 
-That directory is scratch and nothing more: it is gitignored, so it reaches no clone, no CI runner, and no other machine. **Then export.** Before an AC row cites its evidence, write the lines that decided the verdict — the exit code, the failure summary, the figure the row quotes — to the tracked path `.moai/reports/<card-id>/M<n>.<AC-id>.log`, and let the AC row name **that** file. Export the named file only, never the scratch directory wholesale; what stays behind, and its loss risk, is recorded under Residual-risk.
+That directory is scratch and nothing more: it is gitignored, so it reaches no clone, no CI runner, and no other machine. **Then carry the deciding evidence into the verdict.** Before an AC row cites its evidence, write the lines that decided the verdict — the exit code, the failure summary, the figure the row quotes — into the tracked verdict file `.moai/reports/<card-id>/verdict.md`, and let the AC row name **that** file. The verdict file is the only tracked name under a card directory; a sibling artifact written beside it stays ignored, so citing one produces a path that resolves nowhere off this machine. What stays in scratch, and its loss risk, is recorded under Residual-risk.
 
-The cited path MUST resolve at audit time (per `.claude/rules/moai/core/verification-claim-integrity.md` §2 — a cited path that no longer resolves is an unattributed claim), and only the tracked path does. Any AC whose evidence could not be populated is marked `GAP` in Step 2 — never `PASS`.
+The cited path MUST resolve at audit time (per `.claude/rules/moai/core/verification-claim-integrity.md` §2 — a cited path that no longer resolves is an unattributed claim), and only the verdict file does. Any AC whose evidence could not be populated is marked `GAP` in Step 2 — never `PASS`.
 
 ### Step 2 — Append fold row
 
 Append a row to `progress.md` §E.2 in the existing fold-row format:
 
 ```
-M<n>: <AC-id-1>=PASS, <AC-id-2>=PASS, ... | evidence: .moai/reports/<card-id>/M<n>-report.md | fold-at: <ISO-8601>
+M<n>: <AC-id-1>=PASS, <AC-id-2>=PASS, ... | evidence: .moai/reports/<card-id>/verdict.md | fold-at: <ISO-8601>
 ```
 
 The `M<n>:` prefix does NOT collide with `internal/spec/era.go`'s `§E.*` matchers (`§E.2`-`§E.5` heading tokens, `sync_commit_sha` / `mx_commit_sha` field names) — the row format coexists with them without any matcher change.

@@ -10,9 +10,9 @@ import (
 //
 //   - DefaultQuestions      — the five Basic / Model & Report questions shared
 //     with the reconfigure path (NO Git questions)
-//   - Page3Questions        — the init-only questions: agent_wiring and
-//     autonomy_tier
-//   - InitQuestions         — the four-question `moai init` set, picked by ID
+//   - Page3Questions        — the init-only questions: agent_wiring,
+//     autonomy_tier, and jev_enabled
+//   - InitQuestions         — the five-question `moai init` set, picked by ID
 //     from DefaultQuestions and followed by Page3Questions
 //   - GitQuestions          — the 7 Git questions, on their own
 //   - ReconfigureQuestions  — DefaultQuestions with GitQuestions spliced back
@@ -20,11 +20,13 @@ import (
 //     NOT include the page-3 questions, so the reconfigure set keeps its
 //     pre-restructure membership.
 //
-// The `moai init` wizard asks four questions (SPEC-INIT-QUIET-WIZARD-001
-// REQ-IQW-001), each keeping its group label:
+// The `moai init` wizard asks five questions (SPEC-INIT-QUIET-WIZARD-001
+// REQ-IQW-001 set four; SPEC-JEV-OPTIN-MEASURE-001 REQ-JEVO-005 added the
+// fifth), each keeping its group label:
 //
-//	"Basic"              — conversation_language, user_name
-//	"Agents & Autonomy"  — agent_wiring, autonomy_tier
+//	"Basic"                — conversation_language, user_name
+//	"Agents & Autonomy"    — agent_wiring, autonomy_tier
+//	"Judgment Capability"  — jev_enabled
 //
 // A page is a run of consecutive UNCONDITIONAL questions sharing one Group
 // label: buildFormGroups (wizard.go) merges each such run into a single huh
@@ -292,16 +294,24 @@ func ReconfigureQuestions(projectRoot string) []Question {
 // DefaultQuestions for the reconfigure path only.
 var initSharedQuestionIDs = []string{"conversation_language", "user_name"}
 
+// JevQuestionID is the id of the init-only Jev opt-in question. It is exported
+// because three surfaces name it — the question value, the confirm-answer
+// capture, and the translation table — and a fourth (the init persistence step)
+// reads the answer it produces.
+const JevQuestionID = "jev_enabled"
+
 // InitQuestions returns the `moai init` question set: conversation_language
 // and user_name picked by ID from DefaultQuestions, followed by Page3Questions
-// (agent_wiring, autonomy_tier). It is the single assembly point consumed by
-// the wizard entry point, so the init set cannot drift from what the tests
-// exercise.
+// (agent_wiring, autonomy_tier, jev_enabled). It is the single assembly point
+// consumed by the wizard entry point, so the init set cannot drift from what
+// the tests exercise.
 //
 // ReconfigureQuestions deliberately does NOT build on this: the page-3
 // questions must not leak into `moai update --reconfigure` (AC-WIZ-012a).
+// SPEC-JEV-OPTIN-MEASURE-001 REQ-JEVO-006 depends on that exclusion rather
+// than working around it.
 //
-// @MX:NOTE: [AUTO] The init set is four questions assembled by ID; the
+// @MX:NOTE: [AUTO] The init set is five questions assembled by ID; the
 // reconfigure path keeps using DefaultQuestions unchanged (D1). Removed keys
 // resolve to their shipped defaults.
 // @MX:SPEC: SPEC-INIT-QUIET-WIZARD-001
@@ -352,7 +362,8 @@ func QuestionByID(questions []Question, id string) *Question {
 }
 
 // Page3Questions returns the init-only questions, in order: agent_wiring and
-// autonomy_tier ("Agents & Autonomy").
+// autonomy_tier ("Agents & Autonomy"), then jev_enabled, which carries its own
+// group label ("Judgment Capability") and therefore its own page.
 //
 // The other eleven page-3 questions — project mode, worktree auto-creation,
 // backlog queue, feedback auto-submit, project continuation, audit model, the
@@ -408,6 +419,38 @@ func Page3Questions(projectRoot string) []Question {
 			},
 			Default:  config.AutonomyTierSemiAuto,
 			Required: true,
+		},
+		// SPEC-JEV-OPTIN-MEASURE-001 REQ-JEVO-001/003/005/007 — the Jev opt-in.
+		//
+		// Placement: this constructor, and therefore InitQuestions only. It is
+		// NOT in DefaultQuestions and so never reaches ReconfigureQuestions,
+		// which deliberately excludes this page to preserve its pre-restructure
+		// membership. The setting is consequently UNREACHABLE from
+		// `moai update --reconfigure` (REQ-JEVO-006) — not merely inconvenient.
+		//
+		// That cost is paid by the Description, not by a second placement: it
+		// states the privacy consequence at the point of choice (REQ-JEVO-003)
+		// and names `moai web` as the only post-init path to the switch
+		// (REQ-JEVO-007), so a user who initializes from the terminal, declines,
+		// and never opens the console can still find it.
+		//
+		// Not Required, and not pre-selected: a capability that sends text to a
+		// third party defaults to declined.
+		//
+		// It carries its OWN Group label, so buildFormGroups gives it its own
+		// page. That is not cosmetic: appending it to "Agents & Autonomy" made
+		// that page taller than the viewport, and huh then scrolled the step
+		// indicator off the top — measured, not predicted. A privacy statement
+		// the user must read before answering is exactly the text that must not
+		// depend on the page fitting.
+		{
+			ID:          JevQuestionID,
+			Group:       "Judgment Capability",
+			Type:        QuestionTypeConfirm,
+			Title:       "Enable Jev typed judgments? (optional, off by default)",
+			Description: "Jev answers a typed question about supplied state and returns a probability; it decides nothing. Enabling it sends card text or request text to a third-party server. This question is asked only at init — change it later in `moai web` settings.",
+			Default:     "false",
+			Required:    false,
 		},
 	}
 }

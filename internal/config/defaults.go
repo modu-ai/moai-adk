@@ -1005,6 +1005,15 @@ func NewDefaultWorkflowConfig() WorkflowConfig {
 			Enabled:            false,
 			DefaultMaxDuration: DefaultSlotLeaseMaxDuration,
 		},
+		// The TypeSafe System One judgment capability ships inert
+		// (REQ-JEVC-016). While off, internal/jev constructs no request and
+		// makes no network call, so a project that never opts in pays nothing
+		// and reaches no third-party endpoint. This code default is the source
+		// of truth; the template block documents it. Template neutrality: no
+		// `enabled: true` under internal/template/templates/.
+		Jev: WorkflowJevConfig{
+			Enabled: false,
+		},
 		// The agent-model guard ships with its BLOCKING layer off. Observation
 		// and advisory always run; a maintainer opts into denial via local
 		// config. Template neutrality: no `enabled: true` anywhere under
