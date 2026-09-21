@@ -1,249 +1,313 @@
 # SPEC-AUDIT-EXPORT-CLAUSE-001 — implementation plan
 
-> Ordered by decision-reversibility. §A carries the one genuine design decision;
-> §B the two-state constraint that binds it; §C-§F the mechanical application.
+> Ordered by decision-reversibility. §A carries the one irreversible act — the
+> `.gitignore` withdrawal — and the decision that scoped it. §B the constraint
+> that binds every specified sentence. §C-§G the mechanical application.
 > Review effort belongs at the top of this file.
 
 ---
 
-## §A The design decision — what the clause should say instead
+## §A The irreversible act — withdrawing the negation
 
-### §A.0 The mechanism this argument rests on
+### §A.0 What changed since v0.2.0, and why it is not another iteration
 
-v0.1.0 argued its shape from a premise that was measured false: that a plain
-`git add` skips an ignore-matched path silently. It refuses loudly — exit 1,
-naming `-f` (SPEC §A.4b). The corrected mechanism is a **deadlock**: the compliant
-actor receives a correct refusal and a remedy that no sanctioned instruction
-permits (`grep -rn 'add -f'` across the rule, agent, skill, and doc trees returns
-zero, with a firing positive control — SPEC §A.4b).
+v0.2.0 specified a `git add -f` permission clause: a verb that would place a card
+verdict on the remote, declared permitted by the mandate. **The operator ruled
+that the 2026-09-14 directive is canonical** — lead-verdict evidence stays on disk
+and does not reach the remote — so that clause is withdrawn rather than repaired.
+This is a change of basis, not a defect fix, and the consequences run one way
+through everything below: §A.4b's deadlock framing dissolves (under the ruling the
+plain `git add` refusal is the policy working), §D's Out of Scope entry inverts
+(the `.gitignore` is edited, in the narrowing direction), and the paraphrase
+surfaces excluded in v0.2.0 are absorbed (§C).
 
-This changes what the replacement must carry, and the change is not cosmetic.
-Under the false premise the clause had to **raise an alarm git was not raising**.
-Under the measured one git already raises it, and the clause's job is narrower
-and different: **grant the permission** the reader lacks, and remove the
-prohibition that contradicts it. Every sentence below is re-derived against that.
+### §A.1 The decision: specification and execution stay in this card
 
-### §A.1 What the four specified sentences buy
+The lead ruled it explicitly and the reasoning is measurable. If the
+`.gitignore` edit were deferred, the documents this card repairs would say the
+artifact is local while the ignore rules still admitted it — two artifacts saying
+different things, which is the state this card exists to remove. The same
+reasoning is why §C absorbs the paraphrase surfaces rather than deferring them:
+`agent-common-protocol.md` is always-loaded and, since the `develop` absorb, its
+wording *describes the negation mechanism directly* (SPEC §A.6). Deferring it
+would leave an always-loaded rule asserting a fact this card's own edit falsifies.
 
-| # | Sentence | Bound by | Why it survives the corrected mechanism |
-|---|---|---|---|
-| 1 | the check | REQ-AEC-002 | The only form true in both ignore-policy states (§B), and the only way the reader knows *when* the permission applies |
-| 2 | consequence + `git add -f` + the permission clause | REQ-AEC-001, REQ-AEC-003 | Carries the whole repair. The permission clause is what resolves the deadlock; without it `-f` reads as defiance of the surrounding sentence |
-| 3 | the `--no-index` parenthetical | REQ-AEC-002 | The flag inverts the check's answer on a tracked file — measured: without it exit 1, with it exit 0 and the rule printed (SPEC §A.5). A reader free to read it as noise drops it and the instrument lies |
-| 4 | the preserved FORBIDDEN prohibition | REQ-AEC-005 | True existing content; dropping it would let the new check be read as licensing that directory |
+### §A.2 Exactly what is withdrawn
 
-**Two v0.1.0 sentences are gone.** The separate two-obligation generalization
-(*"Writing the file and reaching the branch are separate obligations…"*) restated
-what sentence 2's own consequence clause says, and REQ-AEC-003 is rewritten to
-require the consequence **inside** that sentence rather than a sentence of its
-own. The `--no-index` parenthetical is cut from roughly thirty words to its
-operative clause.
+Two adjacent regions of the repository `.gitignore`, measured at HEAD `64c7edbf3`
+(line numbers re-derived at read time — they moved with the `develop` absorb and
+will move again):
 
-### §A.2 Re-argued against a fair minimal alternative
-
-The v0.1.0 rejection compared against a draft that both asserted an ignore state
-and carried no instrument — an unfair comparison, since a minimal variant doing
-neither is constructible. Stated fairly, it is:
-
-> *"Run `git check-ignore -v --no-index <path>`; on exit 0 a plain `git add`
-> refuses the path, so stage it with `git add -f <path>`."*
-
-**This variant is sound, and the specified wording is it plus exactly two things.**
-Neither is a preference:
-
-- **The FORBIDDEN prohibition (sentence 4).** Not an addition at all — it is the
-  one true clause already in the sentence being replaced. Dropping it would
-  silently delete a live prohibition under cover of a wording repair, which
-  REQ-AEC-005 forbids.
-- **The `--no-index` justification (sentence 3), ~13 words.** The flag's omission
-  inverts the answer on exactly the paths where a verdict already exists, and that
-  is measured, not asserted.
-
-The honest verdict on length is therefore narrower than v0.1.0 claimed: the
-argument does **not** establish that four sentences are required over the minimal
-variant's one. It establishes that the minimal variant plus one preserved clause
-plus one short parenthetical is the floor, and that the specified wording is at
-that floor. The creep the review identified — one restating sentence and an
-over-long parenthetical — is removed rather than defended.
-
-**Rejected: rewriting the whole clause.** The mandate's first three sentences
-(the destination list, the incomplete-audit declaration, the minimum-content
-list) are true, load-bearing, and already carry the convention cross-reference.
-Only the final sentence is false. The edit is scoped to that sentence.
-
----
-
-## §B The two-state constraint — why no sentence may assert the ignore state
-
-A pending sibling card narrows the ignore exception so that one filename under
-the card evidence directory becomes un-ignored while the audit-artifact family
-stays matched. This SPEC must not assume it has landed.
-
-| State | `.moai/reports/<card>/plan-audit.md` | `.moai/reports/<card>/verdict.md` |
+| Region | Content | Disposition |
 |---|---|---|
-| Today | ignore-matched (measured, SPEC §A.2) | ignore-matched (measured, SPEC §A.2) |
-| After the sibling card | ignore-matched | not matched — **unverified** |
+| the explanatory block above the negation | the `# Narrow exception (card t1039)` comment and its depth/order rationale | withdrawn — a comment justifying an absent rule is the next reader's trap |
+| the three-stage negation idiom | `!.moai/reports/*/` · `.moai/reports/*/*` · `!.moai/reports/*/verdict.md` | withdrawn |
 
-[UNVERIFIED] The right-hand column's specific claim — *which* filename the
-sibling card un-ignores — is derived from the dispatch that opened this card, not
-from an artifact readable in this tree: the sibling is named only in prose, with
-no SPEC ID or card id to resolve. It is labelled rather than removed because the
-conclusion drawn from the table does not depend on it: check-shaped wording is
-correct in **both** columns and in a user project whose `.gitignore` this
-repository does not author, so REQ-AEC-004 survives whatever the sibling turns
-out to do. Only the row's specific design claim is unverified.
+**Not touched:** the directive comment block and its `.moai/reports/*` blanket
+(they are the rule being restored to effect), the `plan-audit` carve-out that
+follows, and every per-fixture exception below it. The `.gitignore` comment at
+that blanket notes the order between the negation block and the plan-audit
+carve-out is load-bearing; removing the upper block only relaxes an ordering
+constraint, but the carve-out's own behaviour is re-measured after the edit
+(AC-AEC-002) rather than assumed.
 
-Wording that says "the destination is gitignored" is false in the right-hand
-column. Wording that says "the destination is tracked" is false in the left.
-**Wording that says "run the check" is true in both**, and is additionally true
-in a user project whose `.gitignore` this repository does not author. This is the
-whole reason the replacement is check-shaped rather than fact-shaped, and it is
-also why REQ-AEC-004 is stated as a prohibition rather than as a style note.
+**`internal/template/templates/.gitignore` is not touched.** It carries no verdict
+negation (`grep -c 'verdict.md'` → 0, SPEC §A.1), so it already agrees with the
+directive.
+
+### §A.3 What the withdrawal does NOT do, and the guard against reading it as more
+
+Gitignore does not untrack a tracked file. 12 `verdict.md` files stay in the
+index; 10 are already on `origin/develop`, 2 are not. **Their disposition is an
+open operator question and this card does not touch them** (REQ-AEC-003). The risk
+is not that someone removes them by accident — it is that a reader sees the
+negation gone and concludes the state is clean. That is why the mechanism is
+required in the SPEC body (REQ-AEC-002) and why AC-AEC-003 measures the population
+rather than merely asserting it was left alone.
 
 ---
 
-## §C Scope surfaces — six files, four of them mirrors
+## §B The two-state constraint — why no specified sentence asserts the ignore state
+
+A sentence saying "the destination is gitignored" is false in a user project whose
+`.gitignore` this repository does not author, and would become false here again
+under any future policy move. A sentence saying "the destination is tracked" is
+what this card exists to remove. **A sentence stating an obligation or a design
+intent is true in both**, which is why §C's replacements are obligation-shaped
+rather than fact-shaped, and why REQ-AEC-012 is a prohibition rather than a style
+note.
+
+**The prohibition binds verb form, not vocabulary.** The v0.2.0 criterion
+enumerated only the copula (`is`/`are`) and therefore missed `remain tracked` —
+the assertion that was live in its own specified wording. The criterion here
+(AC-AEC-014) covers the stative forms that carry the same claim, and its control
+is required to fire before any zero is read.
+
+---
+
+## §C Scope surfaces — thirteen hand-edited files
 
 | # | File | Change | Copy class |
 |---|---|---|---|
-| 1 | `.claude/agents/moai/plan-auditor.md` | §C.1 tail, plan-auditor FORBIDDEN variant | C1 |
-| 2 | `.claude/agents/moai/sync-auditor.md` | §C.1 tail, sync-auditor FORBIDDEN variant | C1 |
-| 3 | `internal/template/templates/.claude/agents/moai/plan-auditor.md` | as #1 | C2 |
-| 4 | `internal/template/templates/.claude/agents/moai/sync-auditor.md` | as #2 | C2 |
-| 5 | `.moai/docs/audit-artifact-convention.md` | §C.2, §C.3, §C.4 | local |
-| 6 | `internal/template/templates/.moai/docs/audit-artifact-convention.md` | byte-identical to #5 | template mirror |
+| 1 | `.gitignore` | §A.2 withdrawal | repo-only |
+| 2 | `.claude/agents/moai/plan-auditor.md` | SPEC §C.1 tail, plan-auditor FORBIDDEN variant | C1 |
+| 3 | `.claude/agents/moai/sync-auditor.md` | SPEC §C.1 tail, sync-auditor FORBIDDEN variant | C1 |
+| 4 | `internal/template/templates/.claude/agents/moai/plan-auditor.md` | as #2 | C2 |
+| 5 | `internal/template/templates/.claude/agents/moai/sync-auditor.md` | as #3 | C2 |
+| 6 | `.moai/docs/audit-artifact-convention.md` | SPEC §C.2, §C.3, §C.4 | local |
+| 7 | `internal/template/templates/.moai/docs/audit-artifact-convention.md` | byte-identical to #6 | template mirror |
+| 8 | `.claude/rules/moai/core/agent-common-protocol.md` | SPEC §C.5 shape, applied to its own § Evidence export bullet | C1 (always-loaded) |
+| 9 | `.claude/rules/moai/core/agent-common-protocol-reference.md` | SPEC §C.5 shape | C1 |
+| 10 | `internal/template/templates/.claude/rules/moai/core/agent-common-protocol.md` | as #8 | C2 |
+| 11 | `internal/template/templates/.claude/rules/moai/core/agent-common-protocol-reference.md` | as #9 | C2 |
+| 12 | `.claude/agents/moai/manager-lead.md` | SPEC §C.5 shape, two lines | C1 |
+| 13 | `internal/template/templates/.claude/agents/moai/manager-lead.md` | as #12 | C2 |
 
 Two copy relations behave differently and MUST NOT be conflated:
 
-- **C1 ↔ C2 is hand-maintained and intentionally divergent.** The sync-auditor
-  clause sits at line 108 in C1 and line 92 in C2. Each copy is opened and
-  edited on its own; no byte-comparison is asserted between them, and none is
-  verified.
-- **#5 ↔ #6 is byte-identical today and must remain so.** `cmp` is the check.
+- **C1 ↔ C2 is hand-maintained and intentionally divergent.** Measured: `cmp -s`
+  reports DIVERGENT for all three agent pairs (`plan-auditor`, `sync-auditor`,
+  `manager-lead`) and for both rules pairs. Each copy is opened and edited on its
+  own; no byte-comparison is asserted between them, and none is verified.
+- **#6 ↔ #7 is byte-identical today and must remain so.** Measured `cmp` →
+  BYTE-IDENTICAL, 6872 bytes each. `cmp` is the check (AC-AEC-011).
 
 **C3 is never hand-edited.** `internal/template/templates/.codex/agents/moai/*.toml`
-is machine-emitted from C2. Touching it by hand is silently overwritten at the
-next emission.
-
-**Six further files were measured and excluded.** A markup-insensitive sweep for
-the paraphrase form (`tracked** path`) returns 8 lines across 6 files that assert
-the same falsehood in different words. They are enumerated, measured, and
-excluded with a named closure in SPEC § Out of Scope — the paraphrase-class
-"tracked path" surfaces. The scope table above is six files **by decision**, not
-by oversight; the sweep is recorded there so the exclusion is auditable and the
-successor card derivable.
+is machine-emitted from C2. Three of them carry the affected text — `plan-auditor.toml`
+and `sync-auditor.toml` each carry the removed sentence once, and `manager-lead.toml`
+carries the tracked-verdict phrase twice — and all three are corrected by
+regeneration, never by hand (M4).
 
 ---
 
 ## §D Milestones
 
-### M1 — Repair the four agent copies (Priority: High)
+### M1 — Withdraw the negation (Priority: High)
 
-Apply the §C.1 replacement tail to files #1-#4, one file at a time, preserving
-each copy's existing FORBIDDEN clause verbatim. The tail is identical across all
-four; only the FORBIDDEN variant differs, and it differs by auditor role, not by
-copy class.
+Apply §A.2 to file #1. Re-derive the line numbers at read time; do not act on the
+numbers recorded in SPEC §A.2, which were measured at `64c7edbf3`.
 
-Exit condition: all four copies carry the new tail; no copy carries the string
-`Never write the verdict to a gitignored location`.
+Exit condition: no negation re-including a card-report artifact remains in
+`.gitignore`; a new path under a card directory is ignore-matched again
+(AC-AEC-001, AC-AEC-002); the tracked population is unchanged (AC-AEC-003).
 
-### M2 — Repair the convention document and its mirror (Priority: High)
+**This milestone is ordered first deliberately.** It is the only irreversible act
+in the card, and every wording change below is true only once it has landed.
+Running it last would mean the documents spend the card's whole middle asserting
+something the tree contradicts.
 
-Apply §C.2 (§ Committing), §C.3 (§ Where FORBIDDEN justification), and §C.4
-(§ What makes the convention stick) to file #5, then apply the identical change
-to file #6.
+### M2 — Repair the four auditor copies (Priority: High)
 
-Exit condition: `cmp` reports the two files byte-identical; the § Committing
-sentence "They reach the integration branch with the card's evidence commit" is
-preceded by the forced-stage instruction rather than standing alone as the whole
-procedure.
+Apply the SPEC §C.1 replacement tail to files #2-#5, one file at a time,
+preserving each copy's existing FORBIDDEN clause verbatim. The tail is identical
+across all four; only the FORBIDDEN variant differs, and it differs by auditor
+role, not by copy class.
 
-**Applied to the mirror as a re-application, not a copy.** Writing #6 by copying
-#5 wholesale is acceptable only because they are byte-identical *today*
-(verified in SPEC §A.3). If that verification fails at implementation time, the
-mirror is edited section-by-section instead, and the divergence is reported as a
+Exit condition: no copy carries the string `Never write the verdict to a
+gitignored location`; every copy carries the local-by-design statement; no copy
+names `git add -f` (AC-AEC-005, AC-AEC-006, AC-AEC-007).
+
+### M3 — Repair the convention document and its mirror (Priority: High)
+
+Apply SPEC §C.2, §C.3, and §C.4 to file #6, then apply the identical change to
+file #7.
+
+Exit condition: `cmp` reports the two files byte-identical; § Committing no longer
+claims the artifact is tracked or reaches the integration branch; the § Where
+bullet's distinguishing property no longer rests on the ignore rules and retains
+its `.gitignore` pointer; the mechanical check names presence on disk.
+
+**Applied to the mirror as a re-application, not a copy.** Writing #7 by copying
+#6 wholesale is acceptable only because they are byte-identical *today* (verified,
+SPEC §A.4 / §C table above). If that verification fails at implementation time,
+the mirror is edited section-by-section and the divergence is reported as a
 blocker rather than flattened.
 
-### M3 — Regenerate the emitted codex layer (Priority: High)
+### M4 — Repair the paraphrase surfaces (Priority: High)
 
-Run `make agents-emit`. This is mandatory because M1 touched C2; skipping it
-leaves the emitted TOMLs carrying the false sentence, and a binary built from
-that tree embeds the stale definitions.
+Apply the SPEC §C.5 replacement shape to files #8-#13, each judged against its own
+surrounding text. `agent-common-protocol.md` is always-loaded; its bullet is the
+highest-reach sentence in the card and is edited first within this milestone so a
+failure there surfaces before the lower-reach copies are touched.
 
-Exit condition: `make agents-emit-check` exits 0.
+Exit condition: no surface in the scope table designates a card-report artifact as
+tracked, as reaching the integration branch, or as reaching the remote
+(AC-AEC-004); the export obligation each surface carries is still present.
 
-### M4 — Verification sweep (Priority: Medium)
+### M5 — Regenerate the emitted codex layer (Priority: High)
+
+Run `make agents-emit`. Mandatory because M2 and M4 touched C2 copies of three
+emitted agents; skipping it leaves the TOMLs carrying the withdrawn sentences, and
+a binary built from that tree embeds the stale definitions.
+
+Exit condition: `make agents-emit-check` exits 0, and the emitted layer no longer
+carries the removed sentence or the tracked-verdict phrase (AC-AEC-012).
+
+### M6 — Verification sweep (Priority: Medium)
 
 Execute the acceptance criteria as a single-turn parallel read-only batch, with
-the positive control preceding every absence claim. Export the verdict per the
-repaired § Committing procedure — this SPEC's own evidence commit is the first
-exercise of the wording it specifies, and a failure to force-stage it is a
-self-refuting close.
+each positive control preceding the absence claim it gates. Write the verdict to
+`.moai/reports/t1059/verdict.md` and **leave it there** — under this card's own
+direction that file is local evidence the lead reads on disk, and forcing it into
+the tree would be the card refuting itself on its first exercise.
 
 ---
 
 ## §E Verification approach
 
-### The grep hazard, stated before the commands
+### The instruments, and what is wrong with the obvious ones
 
-The clause being searched for carries `**bold**` runs
-(`[HARD] **Export mandate — an audit is complete only when its verdict is
-exported.**`). A literal grep spanning that markup is markup-sensitive and can
-return a clean zero for a file that carries the clause. Two protections:
+Three instrument hazards were measured in this tree. Each shaped a criterion, and
+each is recorded so the next author does not re-introduce the convenient form.
 
-1. **Search only patterns that cross no emphasis marker.** `Export mandate`
-   (inside the bold span, but containing no `*`) and `Never write the verdict to
-   a gitignored location` (outside it) are both safe anchors. What is unsafe is
-   a pattern spanning a `**` boundary — position relative to the bold run is not
-   the criterion; crossing its delimiter is.
-2. **Never read a zero without a positive control.** Every absence claim in the
-   verification is paired with a grep for a string known to be present in the
-   same files. A control that returns zero means the instrument is broken, not
-   that the target is absent.
+**1. `git check-ignore -v` returns exit 0 on a negation match.** The property,
+its measurement, and the reason an ordinary probe cannot see it are stated once
+in **SPEC §A.2a** — that section is the SSOT and is not restated here. It was
+promoted out of this plan into the SPEC body at v0.3.1 precisely because it binds
+more than this card's instruments: it also governs any check-form wording the
+SPEC specifies for a target document (REQ-AEC-014, AC-AEC-015).
+
+The operational consequences for this plan:
+
+- **AC-AEC-002 uses the plain form** and probes both a negated and a non-negated
+  name. A criterion keyed on `-v` exit 0 meaning "ignore-matched" is a wrong
+  instrument, and it is wrong *silently* — the two forms agree on every
+  non-negated path, so a probe against `plan-audit.md` alone certifies it.
+- **Nothing in §C may specify the verbose form to a reader.** §C.4 is the only
+  specified check command and it names no ignore query at all.
+
+**2. A substring match on `verdict.md` over-counts.** It also matches
+`plan-audit-verdict.md`, inflating the remote set from 10 to 11 (SPEC §A.3). Both
+sides of the comparison use the anchored criterion, and the criterion reports the
+**two-way set difference** rather than the counts — the counts differed by 1 and
+the true shape was 2 and 0.
+
+**3. A literal grep for a phrase that has moved returns a clean zero.** The
+v0.2.0 exclusion rested on `tracked** path`, which the `develop` absorb rewrote out
+of existence; the phrase now returns 0 across every tree (SPEC §A.6). Every
+absence claim in this card is paired with a control that fired **in the same run**,
+and a control returning zero voids every zero beside it.
+
+### Two further shape constraints on the criteria
+
+- **Revision-pinned, not working-tree-scoped.** Criteria that sweep the lines this
+  card adds use `git diff develop...HEAD -- <files>`. The working-tree form
+  (`git diff -- <files>`, no revision) returns empty the moment the change is
+  staged, so both the probe and its control go to zero and the criterion cannot be
+  closed under its own zero-result rule. The three-dot form re-derives the merge
+  base at read time, so it survives staging, commit, and a later absorb of
+  `develop`. `develop` is kept as a moving ref here deliberately (`verification-claim-integrity.md`
+  §2.1, SUBJECT class): the claim is *what this card changed relative to its branch
+  point*, and pinning a literal SHA would falsify it the first time the card
+  absorbs `develop`.
+- **One compound invocation, no command substitution, no tree writes.** The
+  worktree guard refuses a git command it cannot statically verify, which is what
+  made the v0.2.0 AC-AEC-013 unrunnable in the environment where cards are worked.
+  `$(git merge-base …)` is refused for that reason; the three-dot form is the
+  substitution-free equivalent and was confirmed to run here. The ignore probe was
+  additionally reduced so it **writes nothing**: `git check-ignore --no-index`
+  answers for a path that does not exist, so the criterion needs no `mkdir`, no
+  file, and no cleanup — which removes the `rm -rf` on a shell-computed path
+  entirely rather than making it safer.
 
 ### Verification surfaces
 
 | Surface | Instrument |
 |---|---|
-| Four agent copies repaired | anchored grep for the old sentence (expect 0 across the `.md` layer) + positive control |
-| Emitted codex layer regenerated | `make agents-emit-check` exit status |
+| Negation withdrawn | anchored grep over `.gitignore` + control |
+| The rule is in effect again | plain `git check-ignore --no-index` on a negated and a non-negated name + an out-of-tree control |
+| Tracked population untouched | anchored `git ls-files` set + two-way `comm` against `origin/develop` + `git status --porcelain` on those paths |
+| Four auditor copies repaired | anchored grep for the removed sentence (expect 0) + control; grep for the local-by-design statement |
+| No remote-placing verb introduced | `git add -f` sweep over every changed file + control |
+| Paraphrase surfaces repaired | the SPEC §A.6 markup-insensitive pattern (expect 0) + control |
 | Convention mirror parity | `cmp` |
-| Template neutrality | grep sweep for the forbidden content classes over the C2 and mirror diffs |
-| Wording truth | the replacement's own check run against a throwaway path, **followed by the plain `git add` whose behaviour the clause predicts** — the check's exit code alone cannot falsify a wrong consequence clause (AC-AEC-013) |
-| No specified sentence asserts tree state | declarative-form sweep over the added lines of the diff across all six scope files, with a hedged-form control (AC-AEC-016) |
+| Emitted codex layer regenerated | `make agents-emit-check` exit status + anchored grep on the three TOMLs |
+| Template neutrality | forbidden-content-class sweep over the added lines of the three-dot diff + control |
+| No specified sentence asserts tree state | stative-inclusive declarative sweep over the added lines of the three-dot diff + control |
+| No repaired document decides ignore status with `-v` | verbose-form sweep over the twelve target documents + reachability control. **Regression-guard, vacuous against the current tree** — its red was observed against the v0.2.0 draft, not against this one (AC-AEC-015) |
 
 ---
 
 ## §F Anti-patterns for this card
 
-- **Editing `.gitignore`.** Out of scope, and the direction the operator
-  rejected. If the repaired wording seems to require an ignore change, the
-  wording is wrong, not the policy.
+- **Widening `.gitignore`.** This card narrows. If a repaired sentence seems to
+  require an ignore exception, the sentence is wrong, not the policy.
+- **Untracking the existing files.** `git rm --cached` on any of the 12 tracked
+  verdicts is out of scope and is an open operator question (SPEC §D). Withdrawing
+  the negation and untracking are two acts; only one is authorized here.
+- **Reading the withdrawal as having cleaned the state.** It binds files created
+  afterwards. The mechanism is stated in SPEC §A.3 precisely because this is the
+  silent misreading.
+- **Deferring the always-loaded surface.** `agent-common-protocol.md` reaches
+  every session and now describes the negation mechanism directly; leaving it for
+  a successor card means an always-loaded rule asserts a fact this card's own edit
+  falsified.
 - **Hand-editing a `.codex/*.toml`.** Overwritten at the next emission, and the
   edit's existence is erased with it.
-- **Asserting byte-parity between C1 and C2.** The line-number divergence
-  measured in SPEC §A.1 is the standing counter-example.
-- **Reading a grep zero as absence.** The clause's markup makes this the likely
-  failure mode; the positive control is not optional.
-- **Committing this SPEC's own evidence with a plain `git add`.** The card's
-  verdict lands under an ignore-matched path; the plain stage **refuses** (exit 1,
-  nothing staged — SPEC §A.4b), so the commit that follows carries no verdict and
-  the card closes with no recoverable basis. Read the exit code: the refusal is
-  loud but easy to walk past in a batch.
-- **Reaching for `git add -A` when the plain stage is refused.** The sweep would
-  "work" and is prohibited by `AGENTS.md` § Git, branches, and the shared
-  checkout. The sanctioned remedy is `git add -f <the explicit path>`.
+- **Asserting byte-parity between C1 and C2.** Measured DIVERGENT for all five
+  pairs in the scope table; the divergence is intentional by doctrine.
+- **Reading a grep zero as absence.** SPEC §A.6 is the standing counter-example in
+  this very card — a phrase that had simply moved.
+- **Force-staging this card's own verdict.** The card's direction says the verdict
+  is local. Exporting it to the remote as the card's first exercise of its own
+  wording would refute it.
 
 ---
 
 ## §G Cross-references
 
-- `.moai/docs/audit-artifact-convention.md` — the document repaired by M2
+- `.gitignore` — the directive comment block (the decision this card implements)
+  and the negation withdrawn by M1
+- `.moai/docs/audit-artifact-convention.md` — the document repaired by M3
 - `.claude/agents/moai/plan-auditor.md`, `.claude/agents/moai/sync-auditor.md` —
-  the definitions repaired by M1
-- `.claude/rules/moai/core/verification-claim-integrity.md` — the
-  unattributed-claim invariant the export mandate operationalizes, and the
-  reason a verdict that never reaches the branch is a defect rather than an
-  untidiness
+  the definitions repaired by M2
+- `.claude/rules/moai/core/agent-common-protocol.md` — the always-loaded surface
+  repaired by M4, and the § Evidence export obligation whose *reason* changes
+  while the obligation itself does not
+- `.claude/rules/moai/core/verification-claim-integrity.md` — §1 (no unobserved
+  claim), §2.1 (the moving-ref ANCHOR/SUBJECT predicate applied in §E)
+- `.claude/rules/moai/development/verification-completeness.md` — §1.1 (an empty
+  swept set asserts nothing), §2 (the mutant probe)
 - `.claude/rules/moai/workflow/kanban-dispatch.md` § Completion is read, never
-  trusted — the lead-side reader whose read this repair protects
+  trusted — the lead-side reader this repair serves, and the reason a local
+  verdict is sufficient for the obligation it carries
