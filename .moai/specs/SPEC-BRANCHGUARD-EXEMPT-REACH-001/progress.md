@@ -26,6 +26,8 @@ $ grep -rln --exclude-dir=.git "tool-spawned subagent" . | grep -i "reports\|ver
 
 **감사의 20 도 지금의 21 도 틀리지 않았다** — 같은 뿌리를 서로 다른 시점에 잰 것이다. 숫자만 옮기면 모순으로 읽히므로 §A.2 는 뿌리와 시점을 함께 적는다.
 
+> **[iter-4 정정]** 위 측정값 21 자체는 옳다(그 시점 워킹 트리). 틀린 것은 **그 다음 문장의 해석**이다 — ~~차이를 판정서 착지(+1) 하나로 설명했다~~. 같은 구간에 반대 방향 움직임이 하나 더 있었다: **이 카드의 iter-2 커밋 `3d636c991` 자신이 `plan.md` M6 에서 세는 대상 리터럴을 지웠다(−1).** 그리고 +1 의 성격도 「나중에 착지」가 아니라 **미추적**이다(§E.1 iter-4 (17)). iter-2 의 원문은 관측 기록이므로 고치지 않고 이 표식만 단다.
+
 **(9) 반대 주장 보유자 쌍 — 리터럴 0회, 양성 대조 발화**
 
 ```
@@ -70,6 +72,79 @@ payload=$(head -c 1048576)
 **(13) Tier 판정 근거 — 예산과 아티팩트 집합**
 
 `spec-workflow.md` § SPEC Complexity Tier 실측: Tier S 는 파일 <5 · REQ/AC 천장 8/8 · 2아티팩트, Tier M 은 파일 5-15 · 천장 16/16 · 3아티팩트, Tier L 은 파일 >15 또는 constitutional · 천장 25/25 · 5아티팩트. 이 SPEC 은 동반이동 집합 10파일 · REQ 10 / AC 12(실측: `grep -cE '^### AC-BGX-' acceptance.md` = 12) · 3아티팩트로 **세 기준 모두 M**이며, LOC 만 S 를 가리킨다(§A.5 에 그 반대 지표도 함께 기록).
+
+### iter-4 개정 (D9·D10, HEAD `8852cb921` 기준 측정)
+
+**(17) D10 — 수치 정정: 넓은 뿌리 21 → 20, 이 SPEC 아티팩트 4 → 3**
+
+```
+$ git rev-parse --short HEAD
+8852cb921
+$ grep -rln --exclude-dir=.git "tool-spawned subagent" . | wc -l
+20
+$ grep -rln "tool-spawned subagent" .moai/specs/SPEC-BRANCHGUARD-EXEMPT-REACH-001/ | sort
+.moai/specs/SPEC-BRANCHGUARD-EXEMPT-REACH-001/acceptance.md
+.moai/specs/SPEC-BRANCHGUARD-EXEMPT-REACH-001/progress.md
+.moai/specs/SPEC-BRANCHGUARD-EXEMPT-REACH-001/spec.md
+```
+
+양성 대조 — `plan.md` 의 0 이 부재이지 프로브 고장이 아님(네 아티팩트 모두 판독 가능):
+
+```
+$ grep -c "tool-spawned subagent" .../plan.md
+0
+$ wc -l .../{acceptance,plan,progress,spec}.md
+     223 acceptance.md / 154 plan.md / 227 progress.md / 195 spec.md
+```
+
+**원인 — 반대 방향의 두 움직임.** iter-2 커밋 자신이 리터럴을 지웠다:
+
+```
+$ git show 3d636c991 -- .../plan.md | grep -n 'tool-spawned subagent'
+135:-1. `tool-spawned subagent` 리터럴로 재열거(plan 시점 하한 8파일).
+```
+
+커밋별 개수(직접 측정):
+
+```
+$ git grep -l "tool-spawned subagent" 039af6915 | wc -l   → 20
+$ git grep -l "tool-spawned subagent" 3d636c991 | wc -l   → 19
+$ git grep -l "tool-spawned subagent" 8852cb921 | wc -l   → 19
+```
+
+**리드 정정에 대한 재정정 1건.** 「21 은 어느 커밋에도 대응하지 않는 편집 중간 상태」는 정확하지 않다. `verdict.md` 는 **무시 대상이 아니라 미추적**이다:
+
+```
+$ git check-ignore -v .moai/reports/t1064/verdict.md
+.gitignore:259:!.moai/reports/*/verdict.md	.moai/reports/t1064/verdict.md
+$ git ls-files --error-unmatch .moai/reports/t1064/verdict.md
+error: pathspec '…' did not match any file(s) known to git
+```
+
+네거션(`!`)이 걸려 있으므로 ignore 가 아니라 **아직 커밋되지 않은 상태**다. 따라서 21 = `039af6915` 의 **워킹 트리**(커밋 트리 20 + 미추적 1)를 정확히 센 값이고, 편집 중간 상태가 아니다. 커밋 트리에 21 이 없는 이유는 그 +1 이 계속 미추적 쪽에 있기 때문이다. **재현 조건은 커밋 경계가 아니라 「(b) 워킹 트리와 (c) 커밋 트리 중 무엇을 셌는가」이며**, §A.2 는 그렇게 고쳐 썼다.
+
+**(18) D9 — 감사창 중 HEAD 이동: 절차 결함과 그 귀속**
+
+사실관계(직접 측정):
+
+```
+$ git show 3d636c991:.../spec.md | grep -c '키 집합 동등 비교'
+0
+$ grep -c '키 집합 동등 비교' .../spec.md      # HEAD 8852cb921
+2
+```
+
+감사는 `3d636c991` 을 baseline 으로 브리핑받았는데, 감사가 읽은 워킹 트리에는 **그 커밋에 없던 텍스트**(키 집합 동등 비교 조항)가 들어 있었다. 그 텍스트는 직후 `8852cb921` 로 착지해 결과적으로 무해했으나, **반대로 갈 수도 있었다** — 그랬다면 PASS 가 이력에 없는 텍스트 위에 서게 된다.
+
+**귀속(실제 있었던 대로):**
+
+- **주 원인 — 리드의 배차 오류.** 같은 트리에서 개정과 감사를 **직렬화하지 않고** 동시에 돌렸고, 감사에게 넘긴 `git status` 판독이 시작 시점에 이미 낡아 있었다. 리드가 스스로 이렇게 기록하도록 지시했다.
+- **내 몫 — 가진 신호를 추론하지 않았다.** 커밋 직전 `git status --short` 에서 `?? .moai/reports/t1064/` 를 **읽었고**, 그것이 감사 산출물이라는 것도 알고 있었다(그 판정서를 읽고 작업했으므로). 「판정서가 있다」에서 「감사 세션이 지금 살아 있을 수 있다」로 넘어가는 추론을 하지 않았고, 리드에게 창 상태를 묻지 않았다.
+- **레인이 구조적으로 볼 수 없었던 것** — 감사 세션의 생존 여부 자체. 레인 위치에서 조회할 수단이 없다.
+
+**재발 방지(이 카드 범위에서 기록만)**: 워크트리에 감사 산출물 경로(`.moai/reports/<card-id>/`)가 미추적으로 보이면, 커밋 전에 리드에게 창 상태를 묻는다. 이 카드는 그 규율을 코드나 룰로 만들지 않는다 — 범위 밖이다.
+
+---
 
 ### iter-3 개정 (D8 — 측정 방법 고정, HEAD `3d636c991` 기준 측정)
 
@@ -200,7 +275,7 @@ PASS
 
 - **`agent_id` 가 PreToolUse 에 실제로 도착하는지 미측정.** 선언 필드의 존재(`types.go:239`)는 도착의 증거가 아니다 — §A.3 의 「판별자 후보」는 **후보**이지 확인된 판별자가 아니며, 그것이 AC-BGX-011 이 존재하는 이유다.
 - **계측기를 실제로 넣어 보지 않았다.** §A.4 의 실행 가능성은 **구성요소의 실재**(래퍼가 원문 보유 · 훅이 서브에이전트 컨텍스트에서 발화)로 확립한 것이고 **끝까지 실행한 결과가 아니다.** 등급은 **measured-feasible** 이며 도달성 판정 자체는 여전히 **미측정**이다.
-- **동반이동 집합 10 도 하한이다.** 두 뿌리와 두 패턴 축으로 쟀을 뿐, 20/21 파일 각각의 **문장 단위**가 같은 주장을 싣는지는 파일 단위 적중까지만 확인했다.
+- **동반이동 집합 10 도 하한이다.** 두 뿌리와 두 패턴 축으로 쟀을 뿐, ~~20/21 파일~~ (iter-4 정정: ref `8852cb921` 기준 넓은 뿌리 **20**) 각각의 **문장 단위**가 같은 주장을 싣는지는 파일 단위 적중까지만 확인했다.
 - ~~**`agent_type` 실제 적중 28 은 파생값이다.**~~ — **iter-3 에서 닫힘**: 앵커로 직접 재어 28 을 얻었다(§E.1 iter-3 (15)). 다만 그 측정은 `*.go`/`*.json` 한정 범위이므로 iter-2 의 48/20(전체 파일)과 **하나의 측정으로 합쳐 인용하지 않는다**.
 - **camel 축 29 의 범위도 `*.go`/`*.json` 한정이다.** 그 밖의 파일 형식에 `agentType` 이 있는지는 재지 않았다 — 열거가 닫힌 것은 **잰 범위 안에서**다.
 - **키 집합 동등 비교는 아직 한 번도 수행되지 않았다.** 비교의 입력(캡처된 키 집합)이 존재하지 않기 때문이며, 이 방법이 실제로 판정을 낸다는 것 자체는 **미측정**이다 — 방법을 고정했을 뿐이다.
