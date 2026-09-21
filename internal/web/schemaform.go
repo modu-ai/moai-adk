@@ -189,10 +189,13 @@ func isCodexToggleFieldName(name string) bool {
 		name == "workflow.codex.task.allow_write"
 }
 
-// partitionWorkflowFields는 workflow 섹션 필드를 3개 탭으로 가른다: 워크플로우
-// 잔여 / Git·워크트리 / 감사. codex 토글 필드는 MCP 탭에서 렌더되므로 어느
+// partitionWorkflowFields는 workflow 섹션 필드를 4개 탭으로 가른다: 워크플로우
+// 잔여 / Git·워크트리 / 감사 / Jev. codex 토글 필드는 MCP 탭에서 렌더되므로 어느
 // workflow 탭에도 배치하지 않는다. 섹션 필드 순서를 보존한다.
-func partitionWorkflowFields() (rest, worktree, audit []settings.FieldDef) {
+//
+// SPEC-JEV-OPTIN-MEASURE-001 REQ-JEVO-001: jev 는 render placement 분기일 뿐
+// 섹션 재분류가 아니다 — 영속화 경로는 audit 탭과 동일하게 SectionWorkflow seam 이다.
+func partitionWorkflowFields() (rest, worktree, audit, jev []settings.FieldDef) {
 	for _, f := range settings.SectionFields(settings.SectionWorkflow) {
 		if isCodexToggleFieldName(f.Name) {
 			continue // MCP 탭의 codexAuthBlock 에서 렌더 — workflow 탭 제외
@@ -202,16 +205,18 @@ func partitionWorkflowFields() (rest, worktree, audit []settings.FieldDef) {
 			worktree = append(worktree, f)
 		case isAuditFieldName(f.Name):
 			audit = append(audit, f)
+		case jevFieldBelongsToPanel(f.Name):
+			jev = append(jev, f)
 		default:
 			rest = append(rest, f)
 		}
 	}
-	return rest, worktree, audit
+	return rest, worktree, audit, jev
 }
 
 // schemaSectionMetas는 제네릭 렌더 대상 패널의 표시 메타를 렌더 순서대로 반환한다.
 func schemaSectionMetas() []schemaSectionMeta {
-	workflowRest, worktreeFields, auditFields := partitionWorkflowFields()
+	workflowRest, worktreeFields, auditFields, _ := partitionWorkflowFields()
 	return []schemaSectionMeta{
 		{
 			ID: settings.SectionLLM, PanelID: "llm", Icon: "rocket",

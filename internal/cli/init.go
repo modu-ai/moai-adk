@@ -640,6 +640,10 @@ func runInit(cmd *cobra.Command, args []string) (err error) {
 	// call: the flag branch for non-interactive runs and the wizard branch for
 	// interactive ones (it stays empty when the wizard did not run).
 	wizardResult := &wizard.WizardResult{}
+	// wizardRan distinguishes "the user declined" from "nobody was asked".
+	// Both leave the boolean answers at their zero value, and one of them must
+	// not be written over a persisted choice (see applyJevFromWizard).
+	wizardRan := false
 
 	if !nonInteractive && isInteractiveStdin() {
 		// Print banner and welcome message
@@ -660,6 +664,7 @@ func runInit(cmd *cobra.Command, args []string) (err error) {
 			return fmt.Errorf("wizard failed: %w", wizErr)
 		}
 		wizardResult = result
+		wizardRan = true
 
 		// Conversation language + user name: the wizard answer wins over the
 		// profile value. Update both opts (drives template deployment of
@@ -944,6 +949,18 @@ func runInit(cmd *cobra.Command, args []string) (err error) {
 	// Sync profile preferences to project config (after template deployment)
 	if err := profile.SyncToProjectConfig(opts.ProjectRoot, prefs); err != nil {
 		p.Warn("Failed to sync profile to project config: %v", err)
+	}
+
+	// SPEC-JEV-OPTIN-MEASURE-001 (REQ-JEVO-002): route the wizard's Jev answer
+	// into the SAME internal/settings seam the `moai web` settings screen
+	// drives. Placed after template deployment because the seam patches
+	// .moai/config/sections/workflow.yaml — the file the deploy has just
+	// written. Best-effort, like its autonomy-tier and performance-tier
+	// neighbours: a failure warns rather than failing the init, because the
+	// capability is off by default and a project that could not record an
+	// opt-in is a project with the capability off.
+	if err := applyJevFromWizard(wizardRan, wizardResult, opts.ProjectRoot); err != nil {
+		p.Warn("Failed to persist the Jev opt-in: %v", err)
 	}
 
 	// SPEC-AGENT-ARCH-V2-001 M3c (REQ-AA2-010): persist the resolved
