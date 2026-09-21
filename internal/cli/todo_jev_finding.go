@@ -97,6 +97,10 @@ type jevNearDuplicateJudgment struct {
 // asserts.
 var jevNearDuplicateProbe = liveJevNearDuplicateProbe
 
+// @MX:NOTE: gate-unrun Consumer C hook (SPEC-JEV-CONSUMERS-001 REQ-JEVN-016) —
+// admission-only, unreachable at the shipped default (workflow.jev.enabled is
+// false), and owed its measurement gate (fitted threshold, SPEC-JEV-OPTIN-
+// MEASURE-001) before any consumer may ship. Not an error path.
 // appendJevNearDuplicateFinding records the Jev judgment for the newly
 // admitted item, reporting whether a finding was appended.
 //

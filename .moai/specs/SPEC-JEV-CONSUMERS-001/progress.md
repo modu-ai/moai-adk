@@ -100,7 +100,29 @@ m1_to_mN_commit_strategy: "per-milestone feature commits; M6 = 1 feat commit (im
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase>_
+```yaml
+sync_complete_at: 2026-09-22
+sync_commit_sha: "pending-backfill-sync"   # a commit cannot cite its own SHA; the real SHA is backfilled in the follow-up commit (schema doctrine D3)
+sync_status: "closed per the SPEC's own Definition of Done — no consumer ships; M4/M6 recorded gate-unrun (REQ-JEVN-016), M5 block recorded"
+b12_self_test_a: "PASS — grep -c 'SPEC-JEV-CONSUMERS-001' CHANGELOG.md → 0 (no duplicate-emission risk)"
+b12_self_test_b: "PASS-WITH-NOTE — grep -oE 'AC-([A-Z0-9]+-)*[0-9]+' acceptance.md | sort -u | wc -l → 20 = AC-JEVN-001..016 (16 live criteria of this SPEC) + 4 cross-referenced sibling tokens (AC-JEVC-003, AC-JEVO-010/013/014); no emission was made against this count"
+b12_self_test_c: "N/A — no CHANGELOG entry emitted, so no file path was claimed in one"
+changelog_entry_position: "none — withheld deliberately; see below"
+frontmatter_status_transitions:
+  in_progress_to_implemented: "merged into the sync commit (3-phase close — no separate implemented chore)"
+  implemented_to_completed: "same single sync commit"
+  updated_field: "2026-09-22 (already read the sync date; no edit needed)"
+canary_compliance_check:
+  ac_jevn_016_4_absence: "PASS — grep -c 'jev-suggest' CHANGELOG.md README.md README.ko.md → 0 0 0; positive control grep -c 'doctor' CHANGELOG.md → ≥1 (greps fire)"
+  consumer_lines_added: 0
+  readme_docs_site_touched: false
+```
+
+**Sync-phase records (three decisions, each with its reason):**
+
+1. **CHANGELOG conflict recorded — no entry emitted.** The repo's sync template emits one `[Unreleased]` entry per sync close, but `REQ-JEVN-016` condition (iv) and `AC-JEVN-016.4` forbid presenting `jev-suggest` or any consumer as available, and the tree's own tests (`TestJevGateUnrun_NotPresentedAsAvailable`) assert the absence with a `moai doctor` positive control. Per the delegation instruction the conflict is recorded here and **no entry was added**: the expected CHANGELOG diff for this sync is zero consumer lines. An entry describing the close without naming `jev-suggest` was also declined — the delegation names a zero-line diff as the expected state, and a close entry whose subject cannot be named would advertise a state the SPEC explicitly refuses to advertise. The close is instead recorded here, in the frontmatter transition, and in the sync commit message.
+2. **MX tags added (sync sub-step, per the 3-phase close).** Two `@MX:NOTE` tags were added over the run-modified Go files: `internal/cli/todo_jev_finding.go` (`appendJevNearDuplicateFinding` — Consumer C admission hook) and `internal/cli/jev_skill_suggest.go` (`jevSkillSuggestionFlow` — the Consumer B mechanical anchor), each naming the `REQ-JEVN-016` gate-unrun state and the owed measurement gate (Q3, `SPEC-JEV-OPTIN-MEASURE-001`). No `@MX:ANCHOR` was owed: both functions have exactly 1 non-test caller (measured, `grep -rn` over `internal/` excluding tests). Neither file exports any identifier, so no exported-function rule fired. The Hidden CLI (`newJevSuggestCmd`) received no user-facing docs by design — code annotation only.
+3. **Codemaps partial refresh (minimal, moved rows only).** `.moai/project/codemaps/modules.md` covers `internal/cli`; the run phase added 2 root files there, so the moved rows were re-measured with the table's own commands and updated (`internal/cli` total 318 → 325, root 244 → 249, plus the `doctor*`/`todo*`/`init*`/`mcp*`/`integration*` rows and a new `jev*` row). Of the +5 root files, 2 are this card's (`todo_jev_finding.go`, `jev_skill_suggest.go`); the other 3 (`doctor_jev.go`, `init_jev_wizard.go` — t1020's CORE-001 sync; `integration_codemaps_card.go` — t1018) landed via absorbed develop commits whose own syncs did not refresh the codemap, and are reconciled here as measured drift. `provenance.json` is intentionally untouched: it stamps a `codemaps-gen` regeneration, and this is a hand-applied row refresh — the next full regeneration re-stamps it.
 
 ## §F Phase 4 Mode Selection
 

@@ -187,6 +187,10 @@ func inspectJevRankSignal(presented map[string]any) error {
 	return nil
 }
 
+// @MX:NOTE: gate-unrun Consumer B anchor (SPEC-JEV-CONSUMERS-001 REQ-JEVN-016) —
+// present in the tree, unreachable at the shipped default (workflow.jev.enabled
+// is false), and owed its measurement gate (fitted threshold Q3, owned by
+// SPEC-JEV-OPTIN-MEASURE-001) before any consumer may ship. Not an error path.
 // jevSkillSuggestionFlow is the mechanical anchor the protocol block names:
 // the two-request flow through the existing CORE client. Request 1 is the
 // wide rank over every candidate batched with the needs-a-skill Noul (one
