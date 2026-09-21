@@ -345,7 +345,7 @@ discipline (spec.md §A.7 / `verification-claim-integrity.md`).
 
 ```yaml
 sync_complete_at: 2026-09-21
-sync_commit_sha: pending-backfill-sync
+sync_commit_sha: d23949fd0f94301803acb54865a372a0cc08fe52
 sync_status: audit-ready
 b12_self_test_a: pass
 b12_self_test_b: pass
