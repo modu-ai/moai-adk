@@ -437,4 +437,57 @@ uncaught_mutants: 0
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase>_
+### B12 CHANGELOG 방출 자가검증 3건
+
+| # | 검사 | 커맨드 | 관측 |
+|---|------|--------|------|
+| a | 중복 방출 차단 | `/usr/bin/grep -c 'SPEC-SEAM-GREENFIELD-002' CHANGELOG.md` | 방출 **전** `0` (exit 1) — 기존 항목 없음, 방출 진행. 방출 **후** `1` |
+| b | AC 개수 일치 | `/usr/bin/grep -oE 'AC-([A-Z0-9]+-)*[0-9]+b?' .moai/specs/SPEC-SEAM-GREENFIELD-002/acceptance.md \| sort -u` | 7행 — `AC-SGF2-001·002·003·003b·004·005·006`. **논리 AC 6 / 라벨 셀 7**(`003b`는 003의 하위 셀). CHANGELOG 문안이 같은 수를 적는다. 0행이 아니므로 공허 비교가 아니다 |
+| c | 파일 경로 실재 | `ls internal/settings/yamlpatch/yamlpatch.go internal/settings/yamlpatch/greenfield_style_test.go internal/settings/sectionwrite.go internal/cli/init_workflow_flags.go .moai/specs/SPEC-SEAM-GREENFIELD-002/spec.md` | 5개 전부 존재. CHANGELOG 항목이 이름을 대는 경로는 이 다섯뿐이다 |
+
+테스트 이름도 같은 방식으로 실측했다 — `/usr/bin/grep -n '^func Test' internal/settings/yamlpatch/greenfield_style_test.go` → 4행(`…GreenfieldOutputIsBlockStyle` · `…GreenfieldSecondSaveStaysBlock` · `…ExistingBlockByteInvariant` · `…DeliberateFlowPreservedOnUpsert`). CHANGELOG 가 인용하는 이름은 그중 넷째다.
+
+### 문서 판정 — README · docs-site 변경 없음 (근거 있는 결정, 생략이 아니다)
+
+**결정: 변경하지 않는다.** 근거 셋:
+
+1. **사용자 표면이 없다.** 본 카드는 쓰기 seam 내부 결함 수리이고 CLI 커맨드·플래그·출력 형식을 하나도 바꾸지 않는다. `yamlpatch` 는 README 4개 로케일과 docs-site 어디에도 등장하지 않는다 — `/usr/bin/grep -rn 'yamlpatch' README.md docs-site/content` 무출력, 양성 대조로 같은 README 의 `moai` 는 130건이다.
+2. **문서가 이미 옳은 형상을 적고 있었다.** `docs-site/content/en/advanced/config-sections.md` 의 섹션 파일 예시는 전부 block YAML 이다. 즉 이 결함은 문서가 틀렸던 것이 아니라 **런타임이 문서와 어긋나 있던** 것이고, 수리는 런타임을 문서 쪽으로 되돌린다. 문서를 고치면 오히려 어긋난다.
+3. **소급 재포맷을 약속하지 않는다.** 이미 flow 로 태어난 사용자 파일의 마이그레이션은 `spec.md` §5 가 명시적으로 범위 밖에 둔 축이다 — 문서에 적으면 하지 않는 일을 약속하게 된다.
+
+CHANGELOG `[Unreleased] > Fixed` 항목 하나가 본 카드의 유일한 문서 산출물이다.
+
+### 상태 전이
+
+단일 sync 커밋이 `spec.md` frontmatter 의 `in-progress → implemented → completed` 를 실어 3-phase close 를 닫는다(별도 Mx 커밋 없음). 같은 커밋에서 `updated:` 를 sync 커밋 날짜로 갱신한다. **`status:` 와 `updated:` 두 필드 외에는 어떤 frontmatter 필드도, 어떤 본문 섹션도 건드리지 않았다** — `spec.md` · `plan.md` · `acceptance.md` 본문은 sync 단계 금지 표면이다.
+
+### Audit-Ready Signal
+
+```yaml
+sync_complete_at: 2026-09-22
+sync_commit_sha: pending-backfill   # 커밋은 자기 해시를 인용할 수 없다 — 후속 커밋에서 backfill
+sync_status: audit-ready
+b12_self_test_a: pass               # 중복 grep: 방출 전 0 (exit 1)
+b12_self_test_b: pass               # AC 7 라벨 셀 / 논리 6 — acceptance.md 가 SSOT, 0행 아님
+b12_self_test_c: pass               # 인용 경로 5개 전부 ls 확인
+changelog_entry_position: "[Unreleased] > Fixed, 최상단 (CHANGELOG.md:38)"
+changelog_entry_count: 1
+frontmatter_status_transitions:
+  spec_md: in-progress -> implemented -> completed   # 단일 sync 커밋
+  updated_refreshed: true
+  other_fields_touched: 0
+  body_sections_touched: 0
+docs_decision:
+  readme: no-change                 # 근거: 위 「문서 판정」 3항
+  docs_site: no-change
+  changelog: 1-entry
+canary_compliance_check: not-applicable   # 본 SPEC은 자기 sync가 시험할 전방위 정책을 정의하지 않는다
+```
+
+### Gaps — sync 단계가 관측하지 않은 것
+
+- **`run_commit_sha: pending-backfill-run` 이 §E.3 에 그대로 남아 있다.** 그 슬롯은 manager-develop 소관(§E.3)이라 본 세션이 채우지 않았다 — 백필 의무는 run 단계에 남아 있으며, 본 sync 커밋이 그것을 해소하지 않는다.
+- **`./internal/cli/...` 를 본 세션이 재실행하지 않았다.** 리드가 sync 배차문에서 재실행을 금지했고(같은 트리를 20분 걸려 다시 재는 일), 판정의 근거는 run 단계가 남긴 §E.2/§E.3 의 실측이다. 즉 이 수치는 **본 세션의 1차 관측이 아니라 인용**이다.
+- **저장소 전역 lint·전체 스위트 미측정** — 각각 패키지 한정 실행과 레인 부하 규율에 따른 의도적 미측정이며, 판정은 `origin/develop` CI 몫이다.
+- **docs-site 빌드를 돌리지 않았다** — 변경이 0건이므로 빌드가 판정할 대상이 없다. 「빌드 통과」를 주장하지 않는다.
+- **push·PR 없음** — 통합은 레인의 후속 행위이고 push 는 리드의 일괄 행위다.

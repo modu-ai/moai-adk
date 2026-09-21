@@ -2,7 +2,7 @@
 id: SPEC-SEAM-GREENFIELD-002
 title: "greenfield 씨앗의 flow 스타일 고착 — `{}\\n` 한 줄 문서가 seam 섹션 파일 형상을 결정한다 (t1050)"
 version: "0.1.0"
-status: in-progress
+status: completed
 created: 2026-09-20
 updated: 2026-09-22
 author: GOOS
