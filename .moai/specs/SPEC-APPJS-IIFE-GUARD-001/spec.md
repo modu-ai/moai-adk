@@ -2,7 +2,7 @@
 id: SPEC-APPJS-IIFE-GUARD-001
 title: "app.js IIFE 경계 넘는 핸들러 참조 회귀 가드 — 로드 시점 ReferenceError 가 무관한 리스너를 함께 죽이는 계열을 막는다"
 version: "0.1.0"
-status: in-progress
+status: completed
 created: 2026-09-20
 updated: 2026-09-21
 author: manager-spec

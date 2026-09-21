@@ -293,7 +293,8 @@ HEAD `a86d8e12c` 에서 2026-09-21 이 실행 중에 측정. app.js 는 796줄�
 
 ```yaml
 run_complete_at: 2026-09-21
-run_commit_sha: pending-backfill-run
+run_commit_sha: 4db730b72            # 구현(테스트 파일) 커밋
+run_followup_commit_sha: b0a738434    # 거짓 주장 정정 커밋 (verdict.md §6)
 run_status: audit-ready
 ac_pass_count: 7
 ac_fail_count: 0
@@ -312,4 +313,123 @@ m1_to_mN_commit_strategy: single-commit  # plan.md §E 단일 마일스톤
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase>_
+```yaml
+sync_complete_at: 2026-09-21
+sync_commit_sha: pending-backfill-sync   # 커밋은 자기 해시를 인용할 수 없다 — 다음 커밋에서 backfill
+sync_status: audit-ready
+audit_verdict: PASS-WITH-DEBT
+audit_blocking_defects: 0
+audit_dimensions:
+  functionality: 95    # 가중 40% — PASS (must-pass 충족)
+  security: 94         # 가중 25% — PASS (must-pass 충족)
+  craft: 70            # 가중 20% — 임계(85) 미달. 원인은 패키지 선재 커버리지 부채
+  consistency: 92      # 가중 15% — PASS
+audit_weighted_harmonic_mean: 88.0     # 단순 조화평균(4차원 동등)은 86.4
+evidence_path: .moai/reports/t1048/verdict.md
+evidence_path_tracked: false           # gitignore 대상 — 아래 § 증거 경로 주의 참조
+b12_self_test_a: pass                  # grep -c 'SPEC-APPJS-IIFE-GUARD-001' CHANGELOG.md → 0 (중복 없음)
+b12_self_test_b: pass                  # acceptance.md 고유 AC 식별자 7건 = CHANGELOG 엔트리가 인용하는 7건
+b12_self_test_c: pass                  # 엔트리가 인용하는 경로 전부 ls 로 존재 확인
+changelog_entry_position: "[Unreleased] → Added (섹션 선두)"
+frontmatter_status_transitions:
+  spec_md: in-progress → completed     # updated: 2026-09-21
+  plan_md: no-status-field             # frontmatter 자체가 없다
+  acceptance_md: no-status-field       # frontmatter 자체가 없다
+  progress_md: no-status-field         # frontmatter 자체가 없다
+canary_compliance_check: not-applicable  # 이 SPEC 은 장래 정책을 정의하지 않는다
+readme_docs_site_entry: none            # 아래 § CHANGELOG / README / docs-site 판단 참조
+```
+
+### 감사가 이 실행에서 **닫은** Gap 2건
+
+둘 다 run-phase 가 아니라 **sync 실행 중 감사자가 직접 측정한 값**이다(`verdict.md` §9-3,
+§9-4). run-phase 의 인계값이 아니므로 §E.3 의 `not-measured` 표기를 덮어쓰지 않고 여기에
+따로 적는다.
+
+- `golangci-lint run ./internal/web/...` → `EXIT=0`, 출력 `0 issues.` (golangci-lint 2.10.1).
+  §E.2 Gaps 의 "`golangci-lint` 를 돌리지 않았다" 가 닫혔다.
+- `GOOS=windows GOARCH=amd64 go vet ./internal/web/` → `EXIT=0`, 출력 없음.
+  §E.2 Gaps 의 "크로스 플랫폼 빌드를 재지 않았다" 가 닫혔다.
+
+### 여전히 **열려 있는** Gap (§E.2 에서 인계)
+
+1. **런타임 동작은 검증되지 않았다.** 이 가드는 소스 문자열만 본다 — 브라우저를 띄우지
+   않았고 리스너가 실제로 붙는지 재지 않았다. **런타임 발화 축은 card t1060 소관으로
+   넘긴다.** 같은 문장이 테스트 소스 헤더 주석 4번 항목
+   (`internal/web/appjs_iife_scope_test.go:34`)에도 기재돼 있다.
+2. **spec.md §F 의 세 한계에 대한 음성 결과는 측정되지 않았다.** 감사자도 이 셋에 대한
+   음성 돌연변이는 돌리지 않았다 — 선언돼 있을 뿐이다. 다만 선언 목록에 **없던** 네 번째
+   방향은 감사자가 실측했다(아래 F1).
+3. **다른 정적 자산(`i18n.js` 등)에 같은 계열이 있는지 재지 않았다.** 이 카드의
+   Out of Scope 이고 감사자도 재지 않았다.
+4. **`$`-포함 식별자 축은 부분적으로만 닫혔다.** 감사자가 합성 입력으로 규칙이 `$`-포함
+   식별자를 옳게 본다는 것(검사 대수 4 유지)은 실측했다. 남는 것은 **그 올바름을 지키는
+   가드가 트리에 없다**는 점이며 아래 F4 로 기록한다.
+5. **커버리지 "변화 없음" 중 한쪽은 감사자의 측정이 아니다** (`verdict.md` §9-7).
+   감사자는 신규 파일이 **있는** 상태의 `67.8%` 를 쟀고, **없는** 상태의 값은 run-phase
+   인계값이다. Go 커버리지가 `_test.go` 를 계측하지 않는다는 기계적 근거는 있으나
+   **그것은 추론이지 측정이 아니다.**
+
+### 비차단 결함 — 부채로 이월 (수리하지 않음)
+
+테스트 파일은 run-phase 소유이고, sync 단계에서 고치면 이 카드의 범위를 넓힌다. 따라서
+**기록만 하고 수리하지 않는다.** 감사자 판정상 넷 다 `optional`, 차단 0건이다.
+
+- **F1** [Low] — **네 번째 거짓 음성 방향: 어느 IIFE 에도 속하지 않는 최상위 등록은 조용히
+  건너뛴다.** 브라우저에서 그런 등록이 IIFE 안 식별자를 참조하면 실제로 ReferenceError
+  이므로 진짜 거짓 음성이다. 감사자가 실측했다 — 합성 입력에 파일 최상위 등록 1건을
+  덧붙이자 `total addEventListener calls` 는 **20→21** 로 올랐는데 `checked` 는 **4 에 그대로
+  머물렀다.** 인라인 주석(`appjs_iife_scope_test.go:119`, `:145`)에는 "판정 대상 밖" 으로
+  적혀 있으나 **AC-AIG-007 이 지배하는 헤더 한계 목록(`:16-38`)에는 없다.** 선택적 수리는
+  헤더 목록에 5번 항목 한 줄 추가.
+- **F3** [Medium] — 검사 대수 축소 퇴행(4→3)을 닫는 장치가 없다. **결함이 아니라 명시적으로
+  선언·정정된 감수**다(커밋 `b0a738434` 가 이 선언을 정정했다). 커밋 간 비교가 필요하므로
+  단위 테스트로 닫히지 않는다 — 골든 카운트나 CI 축 장치가 필요하고 그것은 Out of Scope.
+- **F4** [Low] — **`$`-포함 식별자 처리의 올바름을 지키는 테스트가 없다.** 감사자가 명시
+  문자류를 Go 의 `\w` 로 치환하자 `$`-포함 핸들러에서 표면이 **4→3 으로 조용히 줄고 두
+  테스트가 모두 초록으로 남는 것**을 실측했다. `bareHandlerPattern`(`:74-75`)과
+  `declPattern`(`:85-88`)의 주석은 이유를 적고 있으나 주석은 회귀를 막지 못한다. 선택적
+  수리는 합성 소스를 먹이는 순수 단위 테스트 1개.
+- **F2** [Info] — 파일 주석이 한국어다(`91/103` 행). 설정은 `code_comments: en` 이나
+  **이 카드가 만든 것이 아니라 이 패키지의 지배 관행**이다(`viewmodel_ops.go` 76/108 등).
+  감사자는 Consistency 감점을 하지 않았고, 패키지 차원의 별도 판단 사항으로 남긴다.
+
+### Craft 70 < 85 — 이 카드에 귀속되지 않는다
+
+도구 축은 전부 깨끗하다: `gofmt -l internal` 0행 · `go vet` `EXIT=0` ·
+`golangci-lint run ./internal/web/...` `0 issues.` 임계 미달의 **유일한** 원인은 패키지
+커버리지 **67.8% < 85%** 이며, 이 수치는 **이 카드 이전부터 존재하던 패키지 선재 부채**다.
+테스트 전용 변경은 계측 대상 문장을 **0개** 추가하므로(Go 커버리지는 `_test.go` 를 계측하지
+않는다) 이 카드는 그 값을 **움직일 수 없다.** 이 미달을 카드에 귀속시키면 오귀속이다.
+
+must-pass 방화벽(Functionality + Security)이 둘 다 성립하므로 Craft 임계 미달은 전체 FAIL
+을 강제하지 않는다 — 판정은 **PASS-WITH-DEBT**, 차단 결함 0건.
+
+### 증거 경로 주의 — 판정서는 병합과 함께 이동하지 않는다
+
+`.moai/reports/t1048/verdict.md` 는 **gitignore 대상**이다:
+
+```
+$ git check-ignore -v .moai/reports/t1048/verdict.md
+.gitignore:227:.moai/reports/*	.moai/reports/t1048/verdict.md
+```
+
+따라서 이 판정서(591행)는 **워크트리 유일본**이며 이 sync 커밋에 스테이징되지 않고
+develop 병합과 함께 이동하지 않는다. **반출 여부는 리드 판단 사항**이다 — 워크트리를
+폐기하면 이 절이 인용하는 모든 축자 근거가 함께 사라진다.
+
+### CHANGELOG / README / docs-site 판단
+
+- **CHANGELOG.md — 엔트리를 썼다.** 이 저장소의 `[Unreleased]` 는 "사용자 표면 변경"
+  기준이 아니라 **SPEC sync-close 기준**으로 적힌다. 측정: `[Unreleased]` 안 SPEC 엔트리
+  187건 중, 프로덕션 코드 0줄의 **테스트 전용 close 가 엔트리를 받은 선례 6건**
+  (SPEC-DOCTOR-TEST-CWD-ISOLATION-001 · SPEC-CODEX-DOCTOR-PATH-GUARD-001 ·
+  SPEC-CODEX-E2E-GUARD-001 · SPEC-BINLAG-KEYGUARD-001 · SPEC-QUEUE-UPGRADE-PROOF-001 ·
+  SPEC-CLI-TEST-CWD-ISOLATION-001). 그 엔트리들은 "Test-only change: zero production code,
+  no user-facing behavior change" 를 **엔트리 안에 명시하는** 형태를 취한다. 이 카드도
+  같은 형태를 따랐다.
+- **README (4 로케일) — 쓰지 않았다.** README 는 SPEC 별 변경 목록을 싣지 않고,
+  `internal/web` 을 언급하지 않는다(`grep -c 'internal/web' README.md README.ko.md` → 0 / 0).
+  이 카드가 바꿀 문장이 없다.
+- **docs-site — 쓰지 않았다.** `docs-site/content` 전역에 `IIFE` / `appjs_iife` 적중
+  **0건**. 사용자 문서에 이 가드가 나타나는 표면이 없다.
