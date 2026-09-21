@@ -98,13 +98,277 @@ optional 2건(D13·D14)이 전부 닫혔다. 결함별 내역은 §G의 iteratio
 
 ## §E.2 Run-phase Evidence
 
-_<pending run-phase>_
+> 귀속: 모든 측정은 이 워크트리
+> `/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t1039`, 브랜치 `WT-evidence-path`,
+> 2026-09-21 이번 실행. 착수 HEAD `116820f40`, 종료 HEAD `733cd5a02`.
+> 도구 귀속(§2.2): `moai spec lint` 는 이 트리에서 빌드한 `./bin/moai`
+> (`moai_cp/20260910_130400-2148-g429a7b3d4`, `-dirty` 접미 없음)로 실행했다 —
+> 판정 빌드의 커밋이 측정 대상 트리의 조상도 후손도 아닌 **같은 커밋**이다.
+
+### §E.2.0 폭 경계 확정 — `REQ-EPE-006`의 [UNRESOLVED] 해소
+
+**운영자 판정: 독법 (B).** 되살리는 것은 `verdict.md` **한 파일**, 깊이는 **카드 디렉터리 한
+단계**(`.moai/reports/<card-id>/verdict.md`). 감사 판정서 계열(독법 A)은 **채택되지 않았다.**
+`t264/rescued` 아카이브도 들어오지 않는다.
+
+출처: 이 run 단계 배차문의 「Operator decision — the width axis is now CLOSED」 절, 2026-09-21.
+`AC-EPE-019`가 요구하는 것은 (a) 「운영자가 명시했고 그 출처가 기록돼 있다」이며, 이 항목이 그
+기록이다. `spec.md` §3.3의 **권고는 (A)였고 운영자는 (B)를 골랐다** — 권고가 결정이 아니라는
+것이 이 자리에서 실제로 성립했다.
+
+[HARD] **이 선택은 결함을 남기기로 하는 결정이며 실수가 아니다.** 귀결은 §E.3 Gaps에 적는다.
+
+### §E.2.1 AC PASS/FAIL 행렬 (23건 전량)
+
+| AC | 처분 | 판정 | 검증 명령 | 관측 출력 |
+|---|---|---|---|---|
+| 001 | release-blocking | **PASS** | `git check-ignore --no-index -q .moai/reports/tZZZ/verdict.md` | `rc=1` (착수 전 `rc=0`). 양성 대조 `report.md` → `rc=0` |
+| 002 | width-parameterized → (B) 확정으로 **평가 가능** | **PASS** | 같은 P1을 (B) 확정 집합 `{verdict.md}` 에 적용 | `rc=1`. 양성 대조 `evidence.md` → `rc=0` |
+| 003 | regression-guard | **PASS** | `git check-ignore --no-index` 에 `report.md` `evidence.md` `pr-body.md` `probe.log` 동시 투입 | 네 경로 **전원** 무시 목록에 출력됨. 양성 대조 `verdict.md` → 목록에 **없음**(`rc=1`) |
+| 004 | regression-guard | **PASS** | `git check-ignore -v --no-index .moai/reports/plan-audit/verdict.md` | `.gitignore:319:.moai/reports/plan-audit/*.md` → `rc=0`. 음성 대조 `.gitkeep` → `rc=1` |
+| 005 | regression-guard | **PASS** | `git check-ignore --no-index -q .moai/reports/tZZZ/sub/verdict.md` | `rc=0`. 양성 대조 `tZZZ/verdict.md` → `rc=1` |
+| 006 | post-change-only | **PASS** | `wc -l .gitignore` + `git check-ignore -v --no-index .../tZZZ/verdict.md` | `450`; `.gitignore:259:!.moai/reports/*/verdict.md` — 이 카드가 삽입한 줄. 양성 대조 `report.md` → `.gitignore:258:.moai/reports/*/*` |
+| 007 | regression-guard | **PASS** | `git ls-files .moai/reports \| wc -l` + `git status --porcelain .moai/reports` | `54` (착수와 동일), status **0행** — ` D` 행 없음 |
+| 008 | release-blocking | **PASS** | `grep -n '!\.moai/reports/\*\*/\*\.log' .gitignore` | 0행, `rc=1` (착수 전 `1`). 양성 대조 `!\.moai/reports/t338/` → `2` |
+| 009 | regression-guard | **PASS** | `git check-ignore --no-index -q .moai/reports/tZZZ/probe.log` | `rc=0` — 철회 전과 동일. 양성 대조 `verdict.md` → `rc=1` |
+| 010 | release-blocking | **PASS** | `grep -c 'must resolve post-merge' .gitignore` | `0` (착수 전 `1`). 양성 대조 `grep -c 'moai/reports'` → `31` |
+| 011 | post-change-only | **PASS** | `grep -rlnE 'citation target is a (\*\*)?tracked(\*\*)? path' --include='*.md' --include='*.toml' .` | 6파일 → **2파일**. 남은 둘은 완료 SPEC의 진행 기록과 이 SPEC 자신의 `spec.md`(자기-적중) — 둘 다 수정 표면이 아니다. 양성 대조(존재하지 않는 토큰) → `0` |
+| 012 | release-blocking | **PASS** | P-a/P-b/P-c/P-d 네 프로브 | `1→0`, `1→0`, `2→0`, `1→0`. 양성 대조 `grep -c 'moai/reports' manager-lead.md` → `5`, 음성 대조 `ZZZNOPE` → `0` |
+| 013 | width-parameterized (귀결 기록형) | **PASS** | 감사 계열 6개 파일명을 P1에 동시 투입 | `plan-audit.md` `plan-audit-iter1.md` `plan-audit-iter4.md` `sync-audit.md` `sync-audit-verdict.md` `review-verdict.md` **전원** 무시 목록에 출력. `verdict.md`는 목록에 없음. (B) 귀결표와 일치 — 두 [HARD] 문장은 **거짓인 채로 남는다**. 잔존 결함은 §E.3 Gaps에 기록 |
+| 014 | post-change-only | **PASS** | 미러 4종에 좁혀진 문언 grep + 네 프로브 재측정 | 규칙 미러 2종에 좁혀진 문장 각 `1`; 미러 네 프로브 `0/0/0/0`. 양성 대조 `5`, 음성 대조 `0` |
+| 015 | post-change-only | **PASS** | `make agents-emit-check` | `ok github.com/modu-ai/moai-adk/internal/template/agentemit`, **exit 0** |
+| 016 | post-change-only | **PASS** | `git diff -U0 -- internal/template/templates/` hunk에 금지 클래스 grep | `SPEC-` `REQ-EPE` `AC-EPE` 날짜 SHA `CLAUDE.local` `/Users/` `t1039` → **전원 0**. 양성 대조 같은 hunk `grep -c 'evidence'` → `18` |
+| 017 | post-change-only | **PASS** | 선행 SPEC frontmatter + HISTORY 판독 | `related_specs:` `:15`, `partially_superseded_by:` `:16`, HISTORY 2026-09-21 행 `1` |
+| 018 | regression-guard | **PASS** | `git diff -U0 429a7b3d4~1 -- <선행 spec.md> \| grep '^-' \| grep -c 'REQ-ECC'` | `0`. 삭제 행 자체가 **0**(순수 추가). 양성 대조 추가 행 → `30` |
+| 019 | process-record | **PASS** | §E.2.0 판독 | 운영자가 (B)를 명시했고 출처가 기록됨 — (a) 갈래로 닫힘 |
+| 020 | process-record | **PASS** | 폭 무관 AC 실제 평가 | 001·003~012·014~018·021~023 어느 것도 (B)/(A) 값을 입력으로 요구하지 않았다. `REQ-EPE-010`의 **참조 의존** 분류도 확인됨 — 아래 §E.2.3 |
+| 021 | release-blocking | **PASS** | `grep -n 'reports/lead' .gitignore` | `248:# The live shape it therefore misses is .moai/reports/lead/<batch>/verdict.md —` (착수 전 `0`). 양성 대조 `31` |
+| 022 | release-blocking | **PASS** | 로케일 내성 인벤토리 + 판정식 원장 `L-S1`/`L-S2`/`L-R1`/`L-R2` | `S1 8→0`, `S2 12→0`, `L-R1 0→0`, `L-R2 0→0`. 인벤토리 `20→16`이고 **16행 전원이 판정서를 이름 붙인다**(`L-VD 0→16`). 양성 대조 41파일, 음성 대조 `0` |
+| 023 | post-change-only | **PASS** | 로케일 패리티 + `hugo --gc --minify` | 페이지 stem 3종 전부 count **4**; 빌드 exit 0, WARN/ERROR **0행**(로그 18행), KO 188 / EN 186 / JA 186 / ZH 186 |
+
+**23/23 PASS. FAIL 0, 평가 불가 0.**
+
+### §E.2.2 `AC-EPE-012`가 요구하는 대체 문언 인용
+
+네 프로브를 0으로 만든 것은 삭제가 아니라 **대체**다. 지우기만 하면 「무엇이 참인가」가 사라지므로
+인용 없는 0은 미완이라고 `acceptance.md`가 못 박았다. 대체 문언은 다음과 같다.
+
+- **P-a·P-b 자리**(`manager-lead.md` Step 1) — "the lines that decided the verdict … are written
+  into the tracked verdict file `.moai/reports/<card-id>/verdict.md`, and let the AC row name
+  **that** file. The verdict file is the only tracked name under a card directory; a sibling
+  artifact written beside it stays ignored, so citing one produces a path that resolves nowhere
+  off this machine." / 그리고 "… and only the verdict file does."
+- **P-c 자리**(`moai.md` 배너 2곳) —
+  "`📎 Evidence: .moai/reports/<card-id>/verdict.md  (the one tracked name; deciding lines carried
+  into it — see agent-common-protocol.md § Evidence export)`"
+- **P-d 자리**(`manager-lead.md` Context-Folding 능력 줄) — "the deciding lines carried into the
+  tracked verdict file `.moai/reports/<card-id>/verdict.md`"
+- **독트린 본문**(`agent-common-protocol.md` § Evidence export) — "The one tracked citation target
+  is the **verdict file** … The directory around it is not tracked: the ignore rules re-include
+  that single filename and nothing else, so no other artifact under a card directory may be
+  described as tracked."
+
+의무의 이름이 **export before citing → carry the deciding evidence into the verdict** 로 바뀌었다.
+후반부(반출하지 않기로 한 것은 인용하지 않는다)는 힘이 그대로이며, 문언만 「스크래치에 남겨 둔
+것을 인용하지 않는다」로 좁혀졌다.
+
+### §E.2.3 제자리 측정이 plan 단계 가설을 어떻게 갈랐는가 (`REQ-EPE-008`)
+
+[HARD] 아래 결론은 전부 **이 트리의 실제 450줄 `.gitignore`에서 이번 실행에** 관측한 것이다.
+`spec.md` §5의 4줄 픽스처 표는 어느 행의 baseline으로도 인용되지 않았다.
+
+1. **삽입 위치는 `design.md` 기본 후보(무리 B 직후)가 아니라 `:227`과 `:228` 사이다.** 그 자리에
+   넣으면 블랭킷 바로 아래에 오고, **무리 B 자신의 `plan-audit/*` 재-제외가 누수를 닫는다.**
+   `design.md` §2가 (ㄱ)의 근거로 지목한 것은 아래쪽 무리 D(`:294` → 이동 후 `:319`)였는데,
+   실측은 **두 겹이 모두 닫는다**는 것이었다.
+2. **(ㄱ)의 전제가 직접 측정됐다.** `design.md` §2.2는 「무리 D는 `plan-audit/*.md`만 겨누므로
+   `.md` 아닌 파일이 집합에 들어오면 (ㄱ)이 깨진다」를 **미측정 전제**로 적었다. 이번에 비-`.md`
+   경로로 그 전제를 갈랐다:
+   ```
+   $ git check-ignore -v --no-index .moai/reports/plan-audit/verdict.txt
+   .gitignore:254:.moai/reports/plan-audit/*	.moai/reports/plan-audit/verdict.txt
+   ```
+   결정한 것은 무리 D가 아니라 **무리 B(`:254`)** 다. 즉 무리 D를 정리하는 별도 카드가 나중에
+   `:319`를 지워도 `plan-audit/` 봉쇄는 유지된다. **`REQ-EPE-007`은 새 줄 없이 충족됐다.**
+3. **블랭킷이 살아 있음을 따로 보였다.** `AC-EPE-006`의 양성 대조는 `report.md`에 블랭킷
+   (`.moai/reports/*`)이 나오기를 기대했으나, 실제로 그 경로를 결정하는 것은 이 카드가 넣은
+   `:258:.moai/reports/*/*` 였다. 블랭킷만이 결정하는 깊이-1 경로로 다시 쟀다:
+   ```
+   $ git check-ignore -v --no-index .moai/reports/stray.txt
+   .gitignore:227:.moai/reports/*	.moai/reports/stray.txt
+   ```
+   **대조의 의도(블랭킷 생존 확인)는 충족되고 대조의 문언(어느 경로로 재는가)은 빗나갔다.**
+   문언을 만족시키려 결과를 고쳐 쓰지 않고, 빗나간 사실과 대체 프로브를 함께 적는다.
+4. **무리 E(`:376` → 이동 후 `:401`)는 여전히 깊이 1 전용**이며 `<card>/verdict.md`에 닿지 않는다
+   (`.moai/reports/top.md` → `:401`이 결정). `plan.md` M1-3이 「적지 않으면 다음 사람이 다시 잰다」
+   고 한 항목이다.
+5. **P2 지상 진실로 폭 전체를 한 번에 확인했다.** 실파일 4개를 만들어 재고 즉시 지웠다:
+   ```
+   $ git status --porcelain --untracked-files=all .moai/reports/tZZZPROBE
+   ?? .moai/reports/tZZZPROBE/verdict.md
+   ```
+   `report.md` · `probe.log` · `sub/verdict.md` 는 나타나지 않았다 — 되살아나는 것은 깊이 2의
+   `verdict.md` 하나뿐이라는 것이 P1(규칙 귀속)과 P2(add 대상) 두 경로에서 같은 답을 냈다.
+   프로브는 측정 직후 제거했고(`ls` → No such file), `.moai/reports` status 는 다시 0행이다.
+
+### §E.2.4 `AC-EPE-023`이 요구하는 로케일 확인 (grep으로 재지 않는 항목)
+
+[HARD] 기록되지 않으면 PASS가 아닌 항목이므로 여기 적는다. 네 로케일의 수정 문장을 각각 읽고
+확인했다:
+
+- **en** — 원문. "carry it into the verdict" / "the only tracked name under a card directory".
+- **ko** — 영어 구문을 그대로 옮기지 않고 한국어 문어로 다시 썼다. 「판정서 안에 적고」,
+  「카드 디렉터리에서 추적되는 이름은 판정서 하나뿐이라」, 「스크래치에 남겨 둔 것을 인용해서는
+  안 됩니다」. 소제목도 「증거 저장과 반출」 → 「증거 저장과 판정문 기록」으로 바꿔 본문과 맞췄다.
+- **ja** — 「判定書に書き込み」, 「カード ディレクトリで追跡される名前は判定書ひとつだけで」,
+  「スクラッチに残したものを根拠として差し出してはいけません」. 소제목 「証拠の保存とエクスポート」
+  → 「証拠の保存と判定書への書き込み」.
+- **zh** — 「写进受版本跟踪的判定书」, 「卡片目录里受跟踪的名字只有这份判定书」,
+  「留在暂存区的材料，绝不拿来当判定依据」. 소제목 「先采集，再导出」 → 「先采集，再写进判定书」.
+
+**영어 문장이 비-영어 페이지에 그대로 들어간 곳은 없다.** 경로·파일명·코드 토큰
+(`.moai/reports/<card-id>/verdict.md`, `progress.md`, `/compact`)은 주소이므로 네 로케일 모두
+축자 유지했다.
+
+### §E.2.5 인벤토리 20 → 16은 축소가 아니라 주장 병합이다
+
+`AC-EPE-022`는 정확 행 수를 단언하지 않지만, 행 수가 줄어든 이유를 적지 않으면 다음 사람이
+「계측기가 도달을 잃었나」를 다시 재야 한다. 줄어든 4행은 로케일당 1행씩이며, `manager-lead.md`
+의 두 주장(1번 항목의 반출 문장 + 2번 항목의 「추적 경로뿐」 문장)이 **판정서 하나를 가리키는 한
+주장으로 합쳐지면서** 「tracked」 토큰을 담은 행이 2→1이 된 결과다. 계측기 도달은 불변이다 —
+양성 대조 41파일이 착수 전과 같다.
+
+### §E.2.6 마일스톤 순서 일탈 1건
+
+`plan.md` §F는 M2 → M3 순이지만, 실행은 **M1 → M3 → M2 → M4 → M5 → M6** 이었다. M1과 M3가 같은
+파일(`.gitignore`)을 만지므로 연속 처리해 두 번의 읽기 사이에 파일이 바뀔 창을 없앴다 — 이
+워크트리의 `.gitignore`가 선행 시도에서 파괴됐고 그것을 적발한 신호가 「같은 파일을 두 번 읽었는데
+규칙 줄번호가 움직였다」였기 때문이다. **범위 일탈이 아니라 순서 일탈**이며, M3 종료 시점에
+`AC-EPE-009`(철회 후 동작 무변화)를 재측정해 M1의 예외가 깨지지 않았음을 확인했다.
 
 ---
 
 ## §E.3 Run-phase Audit-Ready Signal
 
-_<pending run-phase>_
+```yaml
+run_complete_at: 2026-09-21
+run_commit_sha: 733cd5a02
+run_base_sha: 116820f40
+run_status: complete
+ac_pass_count: 23
+ac_fail_count: 0
+ac_unevaluable_count: 0
+preserve_list_post_run_count: 2   # plan-auditor.md / sync-auditor.md — 미수정 확인(git diff --stat 공백)
+l44_pre_commit_fetch: not-performed   # 레인은 push하지 않는다(리드 일괄) — 아래 Gaps 참조
+l44_post_push_fetch: not-performed
+new_warnings_or_lints_introduced: 0   # 1건 도입 후 같은 run 안에서 닫음 — 아래 Gaps 참조
+cross_platform_build:
+  darwin: exit-0
+  windows_amd64: exit-0
+total_run_phase_files: 24
+m1_to_mN_commit_strategy: per-milestone-commit   # 8 commits, no amend, no force-push
+gitignore_lines: 417 -> 450   # +36 / -3, 이 워크트리 기준
+```
+
+### Gaps — 이번 실행에서 닫지 못했거나 의도적으로 열어 둔 것
+
+1. **[HARD] 폭 독법 (B)의 귀결 — 두 [HARD] Export mandate가 거짓인 채로 남는다.**
+   `plan-auditor.md:601`과 `sync-auditor.md:108`은 "an audit is complete only when its verdict is
+   exported"를 [HARD]로 규정하고 반출 목적지를 각각
+   `.moai/reports/<card-id>/plan-audit.md`(및 `plan-audit-iter<N>.md`)와
+   `.moai/reports/<card-id>/sync-audit.md`(및 `sync-audit-verdict*.md`)로 못 박는다. (B)는 그
+   파일명들을 되살리지 않으므로 **이 카드가 착지한 뒤에도 두 문장은 거짓이다.** 측정:
+   여섯 파일명 전원이 P1 무시 목록에 출력되고 `verdict.md`만 목록에 없다.
+
+   **구체적 귀결 — 이 카드 자신의 증거가 여전히 반출되지 않는다.** 이 SPEC을 네 번 심사한
+   plan-audit 판정서 4건과 레인 측정 기록 1건은 전부 무시된 채로 남는다:
+   ```
+   $ git status --porcelain --untracked-files=all --ignored .moai/reports/t1039
+   !! .moai/reports/t1039/lane-measurements.md
+   !! .moai/reports/t1039/plan-audit-iter2.md
+   !! .moai/reports/t1039/plan-audit-iter3.md
+   !! .moai/reports/t1039/plan-audit-iter4.md
+   !! .moai/reports/t1039/plan-audit.md
+   ```
+   **이 워크트리를 폐기하면 다섯 파일의 유일본이 사라진다.**
+
+   [HARD] **운영자는 이 대가를 알고 (B)를 골랐다**(§E.2.0). 따라서 이것은 미처리 결함이 아니라
+   **기록된 선택**이며, 이 카드는 그것을 메우려고 예외를 넓히지 않았다 — 결정된 교환을 조용히
+   수선하는 것이 이 카드가 막으려는 실패 형태 그 자체다. 독트린 문언 쪽(두 문장이 거짓을
+   주장하지 않도록 고치는 일)은 **별도 카드 t1059**가 맡는다. 다만 이 기록은 **t1059가 착지하기
+   전의 사실**이다 — 위 다섯 파일은 이 글을 쓰는 시점에 무시된 상태다.
+
+2. **SPEC 본문이 이 결정을 아직 반영하지 못했다 — 소유권 경계 때문이며, blocker 보고로 넘긴다.**
+   `spec.md` §2.2 `REQ-EPE-006`은 여전히 `[UNRESOLVED — 운영자 소관]`으로 읽히고, iter4 감사가
+   지목한 D20·D21·D22 세 건도 닫히지 않았다. 이 편집들은 `spec.md` / `acceptance.md` /
+   `design.md`의 **본문**이며, 이 에이전트의 소유권 경계가 명시적으로 금지하는 표면이다
+   (`spec-frontmatter-schema.md` § Forbidden ownership crossings — frontmatter `status:` 와
+   `updated:` 만 허용). 제안 문안을 담은 blocker 보고를 완료 보고에 포함했다.
+   **런타임 동작에는 영향이 없다** — 예외·문언·미러·docs-site는 전부 (B)로 구현돼 있고,
+   남은 것은 산문이 그 사실을 서술하는 방식이다.
+
+3. **`internal/spec` 패키지 테스트가 FAIL한다 — develop에서 상속된 것이며 이 카드가 만들지 않았다.**
+   실패 단언은 `ac_count_clause_test.go:479`
+   `SPEC-MODEL-PROFILE-MATRIX-002/acceptance.md: present in the snapshot but no longer matched by
+   the corpus glob` 하나다. 그 파일은 카드 t1036의 분할(병합 `8f87f2359`, 이 브랜치 분기점
+   `116820f40`의 **조상**)이 지웠고, 디렉터리에는 `spec.md`만 남아 있다. 귀속 측정:
+   `git log 116820f40~1..HEAD -- .moai/specs/SPEC-MODEL-PROFILE-MATRIX-002` → **0 커밋**,
+   양성 대조로 같은 범위를 이 SPEC 디렉터리에 걸면 **2 커밋**. 이 카드의 `acceptance.md`는
+   같은 출력의 「reported, not failed」 목록(66건)에만 나타난다.
+   **이 실패를 고치는 것은 범위 밖이고, 고치지 않은 채 남겨 둔다는 사실을 여기 적는다.**
+
+4. **Go AC 카운터와 이 SPEC의 자기 점검이 1건 어긋난다.** 위 테스트 출력은 이 카드의
+   `acceptance.md`를 `COUNT 24`로 읽는데, `acceptance.md` §B.10의 자기 점검과 이번 재측정은
+   **23**이다(`grep -cE '^\*\*AC-EPE-[0-9]+\*\*'` → 23; 고유 식별자 `AC-EPE-001`~`023` → 23).
+   어느 인수조건의 PASS 조건도 아니고 이 카드가 만든 차이도 아니다. **두 계수기가 서로 다른
+   것을 세고 있다는 관측만 남기고, 어느 쪽이 옳은지는 재지 않았다.**
+
+5. **도입했다가 같은 run 안에서 닫은 경고 1건.** M6 첫 판의 HISTORY 항목이 요구사항 ID를 굵은
+   글머리로 세워 lint 가 그것을 두 번째 정의로 읽었다 — `DuplicateREQID` 2건 + `ModalityUnjudged`
+   2건, 총 `0 error(s), 4 warning(s)`. 형태를 고쳐 `733cd5a02`에서 `No findings`로 닫았다.
+   그 0이 곧 선행 SPEC의 baseline이 0이었다는 측정이기도 하다. **순 증가는 0이지만 「한 번도
+   경고를 내지 않았다」는 주장은 거짓이므로 이렇게 적는다.**
+
+6. **이 SPEC 자신의 lint 경고 31건은 착수 전 상태 그대로다.** `./bin/moai spec lint
+   SPEC-EVIDENCE-PATH-EXCEPTION-001` → `0 error(s), 31 warning(s)`, exit 0. 전량이
+   `ModalityMalformed` / `ModalityUnjudged` / `CoverageIncomplete` / `REQTableRowsRejected` 이며
+   `spec.md` 327~490행의 요구사항 산문(한국어라 영어 EARS 키워드에 걸리지 않는다)과 AC 교차참조가
+   `acceptance.md`에 사는 구조에서 나온다. run 단계가 `spec.md`에서 만진 것은 frontmatter의
+   `status:` 와 `updated:` 두 줄뿐이고 어느 경고도 그 두 줄을 가리키지 않는다.
+   **plan 단계 기준선이며 이 카드가 고칠 범위가 아니다.**
+
+7. **`main` 트리 커밋본 `.gitignore`(319줄)를 git으로 읽지 못하는 상태가 그대로다.** 워크트리
+   가드가 `git show main:.gitignore`를 거부한다(`research.md` §8의 plan-phase Gap). 이번 실행도
+   같은 제약 아래 있었고, 모든 줄수·줄번호는 **이 워크트리 기준**으로만 적었다.
+
+8. **docs-site 경고 계수기를 실제 경고로 발화시키지 못했다.** `hugo` 빌드는 WARN/ERROR 0행을
+   냈고, 계수 정규식이 발화할 수 있음은 **합성 문자열**로만 확인했다(`printf 'WARN …' | grep -icE
+   '^(WARN|ERROR)'` → `1`). 이 트리에 실제 경고를 주입해 재지는 않았다 — 그것은 docs-site를
+   의도적으로 깨는 일이라 이 카드의 범위 밖이다. **따라서 「빌드가 warning-free다」는 관측이고,
+   「계수기가 이 빌드의 경고를 잡을 수 있다」는 합성 대조에 기댄 추론이다.**
+
+9. **push·CI 판정이 없다.** 이 레인은 `git push`를 수행하지 않았다(리포 규율: develop push는
+   리드 일괄). 따라서 **깨끗한 환경의 전체 스위트 판정도, darwin/windows 매트릭스 CI 판정도
+   이 기록에는 없다.** 여기 있는 것은 전부 로컬 조기 신호다.
+
+### Residual-risk — 관측했는데도 여전히 틀릴 수 있는 것
+
+- **예외가 규칙 **순서**에 의존한다.** `:258`/`:259`가 무리 B의 `plan-audit` 카브아웃보다 **위**에
+  있어야 누수가 닫힌다. 나중에 누가 이 블록을 아래로 옮기면 `plan-audit/verdict.md`가 다시
+  열리고, 그 사실은 어떤 테스트도 내지 않는다. 주석에 「must stay ABOVE」를 적었지만 **주석은
+  기계가 아니다** — 기계 가드는 이 카드의 범위 밖이다(`spec.md` §7).
+- **깊이 1 제한이 살아 있는 판정서 1건을 놓친다.** `.moai/reports/lead/<batch>/verdict.md`.
+  의도된 배제이고 주석이 이름 붙였지만, 리드 배치 판정서는 **지금도 반출되지 않는다.**
+- **폭 수치는 primary 체크아웃에서만 의미가 있고 드리프트한다.** 리드가 2026-09-21에 재측정한
+  값은 깊이-2 `verdict.md` **319**(배차문의 304는 전날 값 — 차이는 명령 형태가 아니라 트리
+  성장으로 확인됨). 이 워크트리에서 같은 find 는 다른 답을 낸다. **어떤 인수조건도 이 수치에
+  정확-일치를 단언하지 않으며, 이 문단도 수치를 트리와 날짜와 함께만 적는다.**
+- **문언 좁히기는 산문이므로 회귀 가드가 없다.** `AC-EPE-011`·`AC-EPE-012`는 이번 실행의
+  일회성 측정이며, 다음에 누가 넓은 주장을 다시 쓰는 것을 막는 기계는 없다.
+- **`.gitignore`는 이 카드가 고치려는 바로 그 파일이고, 선행 시도에서 파괴된 전례가 있다.**
+  이번 실행은 제자리 실험을 하지 않고 최종 형태를 한 번에 적용한 뒤 매 편집마다
+  `wc -l` + `git diff --stat`으로 증분을 확인했다(417 → 442 → 450, +25 / +11-3). 그럼에도
+  **파괴를 막은 것은 규율이지 장치가 아니다.**
 
 ---
 
