@@ -88,3 +88,53 @@ SPEC §1.1/§5의 모든 file:line을 본 감사가 본 트리에서 직접 재�
 - **Baseline-attribution**: 트리 `WT-save-observability` @ `80c2832df` (plan 커밋) 기준, 본 감사 실행(2026-09-22)에서 측정. 코드 앵커는 같은 트리 working file에서 직접 재측정.
 - **Gaps**: CDP 콘솔 에러 수·본문 크기(카드 전제로만 선언 — 브라우저 재측정 안 함), htmx 버전별 비-2xx 처리 세부(SPEC §6-2가 run-phase 설계 결정으로 위임), `go test ./internal/web/...` 기준선(plan.md §C가 run-phase 재측정 의무로 배치 — 본 감사 미실행), 016 문구 개정 착수 여부.
 - **Residual-risk**: D1 미수리 상태 run 진입 시 "exactly one" 불변식이 AC에 고정되지 않은 채 구현 착지 가능. §5.1 안정부 문구에 묶인 가드 리터럴이 016 개정과 동반 갱신되지 않으면(§6-3 위반) 가드가 오탈 방향으로 굳는다.
+
+---
+---
+
+# Iteration 2 — Delta Re-audit (D1 종결 확인)
+
+- **Iteration**: 2/2 (Tier M 천장 — delta 스코프, 전면 재심 아님)
+- **수리 커밋**: `a09821c98` — `fix(t1051): plan-audit D1 — AC-WC17-003(a) upper bound`
+- **Verdict**: **PASS (clean)**
+- **Overall Score**: **1.00** (Clarity 1.00 / Completeness 1.00 / Testability 1.00 / **Traceability 0.75 → 1.00**) — Tier M 임계 0.80 통과
+
+## 1. D1 종결 — RESOLVED (직접 측정)
+
+`git diff 9a3dd7de3..a09821c98` 실측 — acceptance.md 단일 파일, 공개된 2줄 변경만:
+
+- **(a)** 「1행 이상」 → 「**정확히 1행** 기록되고 — 0행뿐 아니라 **2행 이상도 실패다**(REQ-WC-017-003의 exactly one; 하한만 단정하면 두 줄 변이가 REQ 를 어기고 통과한다)」. iter-1 D1이 지목한 2행 변이가 이제 AC 문언상 **직접 실패**한다 — (a)의 상한 단정이 변이를 소진. REQ-WC-017-003의 "exactly one"이 AC에 고정됨 → Traceability 1.00으로 갱신.
+- **(b)** 「그 **모든** 행」 → 「그 **유일한 행**」 — exactly-one 의미와의 붕괴 일관. 접두어 검사는 존재하는 그 한 행에 그대로 적용되어 의미 손실 없음.
+- 0+0=0 동어반복 근거 문장(하한 존재 이유)은 원문 그대로 보존 — 하한 단정의 근거가 상한 추가로 지워지지 않았다.
+
+**변이 재판정**: 2행 변이(헬퍼가 본문+요약 2행 기록) → (a) 위반(2행 이상 실패) → AC-WC17-003 FAIL. 전 AC 통과 변이 소멸. **D1 CLOSED.**
+
+## 2. 부수 스캔 — COLLATERAL 0건
+
+delta는 acceptance.md:24(AC-WC17-003 Given/Then 행)·:25(RED 근거 행)의 2줄만 건드린다(-2/+2). REQ 정의(spec.md)·다른 AC(HARD-1..7, AC-001/002/004/005)·추적성 표(§D.3)·DoD 의미 변동 없음.
+
+## 3. Regression Check (prior-iteration defects)
+
+- **D1** (acceptance.md:24 — AC 강도 결손): **RESOLVED** — §1 실측대로 상한 고정.
+- **D2** (RED 근거의 관측/추론 미구분): **RESOLVED** — :25에 「이 근거는 코드 판독(정적 추론)이며, 관측된 RED 출력 제출은 run-phase E8 의 몫이다」 추가 확인(diff 실측). run-phase E8이 귀속 몫이라는 구분이 이제 문언에 있다.
+- **D3** (SPEC-WEB-CONSOLE-016 draft — 문구 상류 변동 가능성): **accepted-as-optional, recorded** — 본 SPEC 문서 외부 상태로 수리 대상이 아니며 §6-3 연동 규정이 지배. delta가 이 축을 건드리지 않았다(회귀 없음).
+
+## 4. 기계 재측정 (본 실행 귀속)
+
+- `moai spec lint .moai/specs/SPEC-WEB-CONSOLE-017` → `✓ No findings` (2026-09-22 본 감사 실행, 트리 `WT-save-observability` @ `a09821c98`).
+- iter-1 판정서 본문 무손상(본 파일 iter-1 절 보존 — 감사 추적).
+- 워킹 트리 clean, HEAD `a09821c98` 확인 후 커밋.
+
+## 5. iter-2 증거-수반 보고 (VCI 5-섹션)
+
+- **Claim**: D1 종결 — AC-WC17-003(a)이 REQ-WC-017-003의 exactly one을 고정하고 2행 변이가 문언상 실패한다. 부수 변동 0건. D2도 소진됨. 최종 판정 PASS 1.00.
+- **Evidence**: `git diff 9a3dd7de3..a09821c98` 전문(§1 인용) — acceptance.md 2줄; `moai spec lint` ✓ No findings(본 실행).
+- **Baseline-attribution**: 트리 `WT-save-observability` @ `a09821c98`, 2026-09-22 iter-2 감사 실행에서 측정.
+- **Gaps**: run-phase E8의 관측 RED 출력(테스트 미존재로 plan-phase 불가 — D2 문언이 위임을 명시); CDP 전제값(브라우저 재측정 안 함 — iter-1과 동일).
+- **Residual-risk**: §6-3(016 문구 개정 시 가드 리터럴 동반 갱신)이 지켜지지 않으면 가드 리터럴이 상류와 갈린다 — SPEC 문언에 규정돼 있어 run/sync 단계의 규율 사항.
+
+## 6. 최종 처분
+
+- **Verdict: PASS** — skip 계약상 유효(verdict PASS + 1.00 ≥ 0.80 + artifact-hash 기준점 = `a09821c98`; 이후 산출물 무변경이면 run-gate가 skip 판정).
+- D3는 기록된 optional 항목으로 본 판정에 영향 없음(M6 — optional 결함은 판정을 만들지 않는다).
+- 다음 관문: Implementation Kickoff Approval (M1 운영자 판정 대상 — progress.md §E.1과 일치).
