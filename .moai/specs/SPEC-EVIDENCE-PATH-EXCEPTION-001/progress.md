@@ -374,7 +374,126 @@ gitignore_lines: 417 -> 450   # +36 / -3, 이 워크트리 기준
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase>_
+> 귀속: 모든 측정은 이 워크트리 `/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t1039`,
+> 브랜치 `WT-evidence-path`, 착수 HEAD `4cfd112fa`, 2026-09-21 이번 실행.
+> 도구 귀속(§2.2): `moai spec lint` 는 `./bin/moai`(빌드 커밋 `429a7b3d4`)로 실행했다.
+> 그 커밋과 HEAD 사이에 **Go 파일이 0개**이므로(양성 대조: 같은 범위 전체 파일 5개, 전부 마크다운)
+> 판정 빌드의 lint 코드는 측정 대상 트리의 lint 코드와 같다.
+
+```yaml
+sync_complete_at: 2026-09-21
+sync_commit_sha: pending-backfill-sync
+sync_base_sha: 4cfd112fa
+sync_status: complete
+b12_self_test_a: pass        # grep -c 'SPEC-EVIDENCE-PATH-EXCEPTION-001' CHANGELOG.md → 0 (중복 없음)
+b12_self_test_b: pass-with-observation   # 계수기 24, 실제 인수조건 23 — 아래 §E.4.2가 차이를 설명
+b12_self_test_c: pass        # CHANGELOG가 주장한 경로 전량 ls 확인
+changelog_entry_position: "[Unreleased] → ### Changed (선두)"
+frontmatter_status_transitions:
+  spec_md: "in-progress → completed"
+  plan_md: n/a               # Artifact Statelessness — status: 필드를 담지 않음
+  acceptance_md: n/a
+  design_md: n/a
+  research_md: n/a
+  updated_field: unchanged   # 이미 2026-09-21
+mx_tag_validation: not-applicable   # 이 카드의 소스 파일 변경 0건
+docs_surfaces_updated: [CHANGELOG.md]
+docs_surfaces_deliberately_skipped: [README(4로케일), docs-site(M5에서 완료)]
+canary_compliance_check:
+  subject: "이 SPEC이 정한 정책이 이 SPEC 자신의 sync 시점에 성립하는가"
+  verdict_md_unignored: true
+  siblings_still_ignored: true
+  own_evidence_files_still_ignored: true   # 의도된 대가 — 아래 Gaps 1번
+```
+
+### §E.4.1 착지 동작 재측정 (이번 실행)
+
+**Claim** — run 단계가 기록한 ignore 동작이 sync 시점에도 같다.
+
+**Evidence** — `git check-ignore --no-index -q <경로>` (rc 0 = 무시됨):
+
+```
+.moai/reports/t272/verdict.md       rc=1   # README가 인용하는 실제 판정서 — 되살아났다
+.moai/reports/tZZZ/verdict.md       rc=1   # 예외 발화
+.moai/reports/tZZZ/report.md        rc=0   # 형제는 그대로 무시
+.moai/reports/plan-audit/verdict.md rc=0   # 누수 없음
+.moai/reports/tZZZ/sub/verdict.md   rc=0   # 깊이 1 한정
+```
+
+**Baseline-attribution** — 이 워크트리, HEAD `4cfd112fa`, 이번 실행. 레인의 run 단계 측정
+(HEAD `7939e38b9`)과 리드의 독립 재현이 같은 다섯 값을 냈고, 이번이 세 번째 관측이다.
+
+**Gaps** — 첫 행(`t272`)은 배차문에 없던 추가 측정이며, README 범위 판정의 근거로만 쓴다.
+
+### §E.4.2 AC 계수 불일치 — §E.3 Gaps 4번 / §J.3이 열어 둔 Gap을 닫는다
+
+**Claim** — 계수기가 24를 읽는 이유는 `acceptance.md:413`의 픽스처 문자열 안에 있는 `AC-001`이다.
+
+**Evidence**:
+
+```
+$ grep -oE 'AC-([A-Z0-9]+-)*[0-9]+' acceptance.md | sort -u | wc -l
+24
+$ grep -oE 'AC-([A-Z0-9]+-)*[0-9]+' acceptance.md | sort -u
+AC-001 AC-EPE-001 … AC-EPE-023          # 24번째 토큰이 AC-001
+$ grep -n 'AC-001' acceptance.md
+413:$ printf '...`.moai/reports/<card-id>/M<n>.AC-001.log`'    | (L-R1)
+$ grep -cE 'AC-ZZZZ-[0-9]+' acceptance.md   # 양성 대조
+0
+```
+
+**판정**: 실제 인수조건은 **23**(`AC-EPE-001`~`023`, 결번 없음). 24번째는 회귀 가드의 `printf`
+프로브 안에 축자로 들어 있는 리터럴이지 인수조건이 아니다.
+
+[HARD] **주장의 범위를 좁혀 적는다.** 여기서 돌린 것은 **정규식 계수기**이고 Go 계수기가 아니다.
+Go 계수기의 내부를 읽지 않았으므로, 같은 원인이라는 것은 **모순되지 않는다**까지이지
+**확립됐다**가 아니다. §J.3의 금지 방향은 그대로 지켜졌다 — 어느 쪽 계수에 맞추려고도
+문서를 고치지 않았다.
+
+### §E.4.3 품질 게이트
+
+```
+$ ./bin/moai spec lint SPEC-EVIDENCE-PATH-EXCEPTION-001
+0 error(s), 31 warning(s)      exit 0
+```
+
+run 단계 기준선 31과 같다. sync 단계가 `spec.md`에서 만진 것은 frontmatter `status:` 한 줄뿐이고
+어느 경고도 그 줄을 가리키지 않는다.
+
+### Gaps — 이번 sync가 닫지 못했거나 의도적으로 열어 둔 것
+
+1. **[HARD] 두 [HARD] Export mandate는 여전히 거짓이다.** `plan-auditor.md:601`,
+   `sync-auditor.md:108`. 독법 (B)의 기록된 대가이며(§E.2.0, §E.3 Gaps 1), 이 sync는
+   **그것을 메우려고 예외를 넓히지 않았다.** 독트린 문언 수리는 **t1059**이고 **아직 착지하지
+   않았다**. 이 카드 자신의 증거 5건은 이 글을 쓰는 시점에도 무시 상태다 —
+   **워크트리를 폐기하면 유일본이 사라진다.**
+2. **push·CI 판정이 없다.** 레인은 push하지 않는다(리드 일괄). 여기 있는 것은 전부 로컬
+   조기 신호이고, 깨끗한 환경의 전체 스위트 판정도 darwin/windows 매트릭스 판정도 없다.
+3. **`internal/spec` 테스트 실패가 그대로다.** develop에서 상속된 것이며(§E.3 Gaps 3) 이 카드의
+   범위 밖이다. sync 단계도 고치지 않았다.
+4. **형제 SPEC의 `updated:`가 갱신되지 않았다.** `SPEC-EVIDENCE-CITATION-CANON-001`은 본문에
+   2026-09-21 HISTORY 항목을 얻었는데 frontmatter `updated:`는 `2026-08-31`이다. `status:`는
+   `completed` 그대로이므로 전이가 아니라 **비전이 frontmatter 정정**이고, 그 소유자는
+   manager-spec이다(`spec-frontmatter-schema.md` § Non-transition frontmatter corrections).
+   **고치지 않고 기록만 남긴다.**
+5. **docs-site 빌드를 이 sync에서 다시 돌리지 않았다.** M5의 `hugo` exit 0 / 경고 0을 재사용했고,
+   이번 실행이 docs-site 파일을 하나도 건드리지 않았다는 사실이 그 재사용의 근거다. 새로 재지
+   않았다는 것을 여기 적는다.
+6. **워크트리 가드 거부 1건.** 네 산출물의 frontmatter를 `for f in …; do sed …` 한 줄로 읽으려던
+   호출이 거부됐다(런타임 계산 값이 옵션 자리에 설 수 있는 형태). 평범한 개별 명령으로 나눠
+   같은 것을 읽었고, 우회로를 만들지 않았다.
+
+### Residual-risk — 관측했는데도 여전히 틀릴 수 있는 것
+
+- **예외가 규칙 순서에 의존한다.** 누가 이 블록을 무리 B의 `plan-audit` 카브아웃 아래로 옮기면
+  `plan-audit/verdict.md`가 다시 열리고, **어떤 테스트도 그 사실을 내지 않는다.** 주석에
+  「must stay ABOVE」가 있지만 주석은 기계가 아니다.
+- **문언 좁히기는 산문이라 회귀 가드가 없다.** 다음에 누가 넓은 주장을 다시 쓰는 것을 막는 기계는
+  없다.
+- **깊이 1 제한이 `.moai/reports/lead/<batch>/verdict.md`를 놓친다.** 의도된 배제이지만 리드 배치
+  판정서는 지금도 반출되지 않는다.
+- **CHANGELOG 항목은 이 sync가 읽은 것만 담는다.** 위 Gaps 2번 때문에 CI가 무엇을 말할지는
+  이 항목에 없다.
 
 ---
 
