@@ -31,14 +31,19 @@ var removedQuietInit = []string{
 // wizard no longer asks but the reconfigure path still does (spec.md §2.3 D1).
 var sharedInitRemovedIDs = []string{"project_name", "model_policy", "report_format"}
 
-// TestInitQuestions_QuietSet pins AC-IQW-001: the init set is exactly the four
-// kept questions, in order, each keeping its current group label.
+// TestInitQuestions_QuietSet pins AC-IQW-001: the init set is exactly the kept
+// questions, in order, each keeping its current group label.
+//
+// SPEC-JEV-OPTIN-MEASURE-001 REQ-JEVO-005 took the set from four to five by
+// adding the init-only Jev opt-in at the end of the Agents & Autonomy page.
+// The three DefaultQuestions entries the quiet wizard dropped stay dropped —
+// that half of the AC is untouched (TestRemovedQuestionsAbsentFromInitSet).
 func TestInitQuestions_QuietSet(t *testing.T) {
 	t.Parallel()
 	questions := InitQuestions(t.TempDir())
 
-	wantIDs := []string{"conversation_language", "user_name", "agent_wiring", "autonomy_tier"}
-	wantGroups := []string{"Basic", "Basic", "Agents & Autonomy", "Agents & Autonomy"}
+	wantIDs := []string{"conversation_language", "user_name", "agent_wiring", "autonomy_tier", "jev_enabled"}
+	wantGroups := []string{"Basic", "Basic", "Agents & Autonomy", "Agents & Autonomy", "Judgment Capability"}
 
 	if len(questions) != len(wantIDs) {
 		got := make([]string, 0, len(questions))

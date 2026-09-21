@@ -12,6 +12,8 @@ module: ".claude/rules, .claude/agents, .claude/output-styles, .gitignore"
 lifecycle: spec-anchored
 tags: "evidence, citation, gitignore, verification-claim-integrity, doctrine"
 tier: M
+related_specs: [SPEC-EVIDENCE-PATH-EXCEPTION-001]
+partially_superseded_by: [SPEC-EVIDENCE-PATH-EXCEPTION-001]
 ---
 
 # SPEC-EVIDENCE-CITATION-CANON-001 — 증거 인용 경로 정본화
@@ -45,6 +47,33 @@ Tier M 임계 0.80을 상회하고 재감사 상한에 도달해 종결 판정�
 ---
 
 ## 1. 배경 — 무엇이 사실인가
+
+### 2026-09-21 — REQ-ECC-001 / REQ-ECC-003 부분 승계 (카드 t1039, 추가만 하는 행)
+
+`SPEC-EVIDENCE-PATH-EXCEPTION-001`이 이 SPEC의 요구사항 둘을 **부분 승계**했다. 이 행은 그 사실을
+발견 가능하게 만들기 위한 것이며, **아래 요구사항 본문은 한 글자도 고치지 않았다** — 2026-08-31에
+무엇이 결정됐는지의 기록이 사라지면 09-14 블랭킷 지시와의 충돌 자체가 보이지 않게 되기 때문이다.
+
+- 첫째 요구사항(아래 §2의 `REQ-ECC-001`, 인용 증거 경로는 추적돼야 하며 정본 위치는
+  `.moai/reports/<card-id>/`)의 좁혀진 대체 문언: 추적되는 인용 대상은 **판정서 파일**
+  `.moai/reports/<card-id>/verdict.md` 하나이며, 그 디렉터리의 다른 산출물에 대해서는 추적성이
+  주장되지 않는다.
+- 셋째 요구사항(아래 §2의 `REQ-ECC-003`, 인용 전 추적 경로로 반출)의 좁혀진 대체 문언: 판정을
+  결정한 줄은 판정서 안에 적고 그 파일을 인용한다. 판정서가 아닌 산출물은 스크래치에 남고
+  **인용하지 않는다** — 이는 그 요구사항 후반부(반출하지 않기로 한 것은 인용하지 않는다)와
+  같은 방향이다.
+- **승계되지 않는 것**: 나머지 아홉 요구사항(`REQ-ECC-002`, `004`~`011`)은 그대로다.
+
+> 위 세 항목은 아래 §2의 요구사항 정의를 **가리킬 뿐 다시 정의하지 않는다.** 그래서 ID를 줄
+> 앞머리에 굵게 세우지 않는다 — 그 형태로 쓰면 lint 가 이 HISTORY 항목을 두 번째 정의로 읽고
+> `DuplicateREQID` 를 낸다(실측: 그렇게 쓴 첫 판에서 경고 2건).
+
+승계의 이유는 이 SPEC의 오류가 아니라 그 뒤에 온 운영자 지시다. 2026-09-14 블랭킷
+(`.gitignore`의 `.moai/reports/*`)이 이 SPEC이 정본으로 고정한 디렉터리를 무시 대상으로 만들었고,
+그 결과 요구사항 둘이 거짓 전제 위에 서게 됐다. t1039는 블랭킷을 철회하지 않고 판정서 한 파일만
+되살리는 좁은 예외를 뚫었으므로, 좁혀진 문언이 참이 되는 폭도 그만큼이다.
+
+---
 
 ### 1.1 측정된 규모
 

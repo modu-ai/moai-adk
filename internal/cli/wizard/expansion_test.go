@@ -26,6 +26,10 @@ func TestPage3QuestionsStructure(t *testing.T) {
 		// ungated.
 		{"agent_wiring", QuestionTypeSelect, true, false},
 		{"autonomy_tier", QuestionTypeSelect, true, false},
+		// SPEC-JEV-OPTIN-MEASURE-001 REQ-JEVO-005: the init-only Jev opt-in
+		// joins this page. It is a confirm, so it carries no Options, and it is
+		// ungated like its neighbours.
+		{"jev_enabled", QuestionTypeConfirm, false, false},
 	}
 
 	if len(questions) != len(want) {
@@ -217,19 +221,27 @@ func TestTotalVisibleQuestions_Page3AlwaysCounted(t *testing.T) {
 	res := &WizardResult{DesignEnabled: true}
 	got := TotalVisibleQuestions(all, res)
 	// SPEC-INIT-QUIET-WIZARD-001: Basic (2) + Agents & Autonomy (2) = 4
-	// (Q5 regroup).
-	if got != 4 {
-		t.Errorf("TotalVisibleQuestions = %d, want 4 (2 Basic + 2 Agents & Autonomy)", got)
+	// (Q5 regroup). SPEC-JEV-OPTIN-MEASURE-001 REQ-JEVO-005 adds the Jev
+	// opt-in on its own page, taking the set to 5.
+	if got != 5 {
+		t.Errorf("TotalVisibleQuestions = %d, want 5 (2 Basic + 2 Agents & Autonomy + 1 Judgment Capability)", got)
 	}
 	// Agents & Autonomy page membership: the agent_wiring harness selector and
-	// the autonomy-tier selector.
+	// the autonomy-tier selector. The Jev opt-in sits on its own page.
 	n := 0
+	jev := 0
 	for _, q := range FilteredQuestions(all, res) {
-		if q.Group == "Agents & Autonomy" {
+		switch q.Group {
+		case "Agents & Autonomy":
 			n++
+		case "Judgment Capability":
+			jev++
 		}
 	}
 	if n != 2 {
 		t.Errorf("visible Agents & Autonomy questions = %d, want 2", n)
+	}
+	if jev != 1 {
+		t.Errorf("visible Judgment Capability questions = %d, want 1", jev)
 	}
 }

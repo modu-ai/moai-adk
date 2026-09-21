@@ -12,6 +12,7 @@ import (
 
 	"github.com/modu-ai/moai-adk/internal/config"
 	"github.com/modu-ai/moai-adk/internal/glmcred"
+	"github.com/modu-ai/moai-adk/internal/jevcred"
 	"github.com/modu-ai/moai-adk/internal/profile"
 	"github.com/modu-ai/moai-adk/internal/settings"
 	"github.com/modu-ai/moai-adk/internal/settings/agentfm"
@@ -114,6 +115,14 @@ type pageView struct {
 	GLMKeyConfigured bool
 	GLMKeyHint       string
 
+	// JevKeyConfigured / JevKeyHint are the same bounded disclosure for the
+	// Jev credential stored in ~/.moai/.env.typesafe
+	// (SPEC-JEV-OPTIN-MEASURE-001). The full value NEVER reaches the view
+	// model — computeJevKeyHint truncates before this struct is built — and
+	// unlike its GLM sibling there is no reveal route that can cross back.
+	JevKeyConfigured bool
+	JevKeyHint       string
+
 	// ActiveTab is the settings tab the request asked for (`?tab=<id>`). It
 	// selects which panel renders visible; every panel stays in the DOM so the
 	// atomic Save contract holds. An empty or unknown value falls back to the
@@ -159,7 +168,20 @@ func (a *app) newPageView(prefs profile.ProfilePreferences, selected string) pag
 	// outside the struct literal so the full key never becomes a view-model
 	// field — only the bounded trailing-four disclosure crosses in.
 	view.GLMKeyConfigured, view.GLMKeyHint = populateGLMKeyHint()
+	// SPEC-JEV-OPTIN-MEASURE-001: same treatment for the Jev credential —
+	// computed outside the struct literal so the secret never becomes a
+	// view-model field, only the bounded disclosure.
+	view.JevKeyConfigured, view.JevKeyHint = populateJevKeyHint()
 	return view
+}
+
+// populateJevKeyHint reads the stored Jev credential and returns the bounded
+// disclosure pair for the view model. Thin wrapper, for the same reason as its
+// GLM sibling: the secret never has to be passed through the pageView struct
+// literal.
+func populateJevKeyHint() (bool, string) {
+	h := computeJevKeyHint()
+	return h.Configured, h.Hint
 }
 
 // populateGLMKeyHint reads the stored credential and returns the bounded
@@ -410,6 +432,12 @@ func (a *app) handleSave(w http.ResponseWriter, r *http.Request) {
 	glmKeySubmitted := parseGLMKeyForm(r)
 	glmKeyErrs := validateGLMKey(glmKeySubmitted)
 
+	// SPEC-JEV-OPTIN-MEASURE-001: the Jev credential follows the same order
+	// for the same reason — parsed before the validator merge so a malformed
+	// value joins the atomic-reject set, persisted only after that gate passes.
+	jevKeySubmitted := parseJevKeyForm(r)
+	jevKeyErrs := validateJevKey(jevKeySubmitted)
+
 	// goal-to-test (non-SPEC): parse the performance_tier selector hosted at the
 	// top of the agentfm panel. Parsed BEFORE the agentfm edits because it is the
 	// target tier the per-agent default comparison resolves under (G3-2/G3-4). A
@@ -448,6 +476,9 @@ func (a *app) handleSave(w http.ResponseWriter, r *http.Request) {
 		fieldErrs[k] = v
 	}
 	for k, v := range glmKeyErrs {
+		fieldErrs[k] = v
+	}
+	for k, v := range jevKeyErrs {
 		fieldErrs[k] = v
 	}
 	if len(fieldErrs) > 0 {
@@ -546,6 +577,19 @@ func (a *app) handleSave(w http.ResponseWriter, r *http.Request) {
 		if err := glmcred.Save(normalized); err != nil {
 			a.renderErrorPage(w, prefs, selected, devMode, convention,
 				"settings saved, but GLM credential write failed: "+err.Error())
+			return
+		}
+	}
+
+	// SPEC-JEV-OPTIN-MEASURE-001: persist the Jev credential through the
+	// reader the core capability already uses (jevcred.Save) — there is no
+	// second writer. An empty/whitespace-only submission means preserve, so no
+	// write happens and the existing file is left untouched. A failure is
+	// surfaced as a failure, and the message carries no credential material.
+	if normalized := normalizeJevKey(jevKeySubmitted); normalized != "" {
+		if err := jevcred.Save(normalized); err != nil {
+			a.renderErrorPage(w, prefs, selected, devMode, convention,
+				"settings saved, but Jev credential write failed: "+err.Error())
 			return
 		}
 	}
