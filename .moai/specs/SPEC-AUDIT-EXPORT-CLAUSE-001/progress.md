@@ -69,7 +69,7 @@ they were not silently re-marked.
 | AC-AEC-011 | PASS | `cmp` on the two convention copies | `BYTE-IDENTICAL`, `cmp_exit=0` |
 | AC-AEC-012 | PASS | `make agents-emit-check` + anchored greps on the three TOMLs | `exit=0`; plan-auditor `:0`, sync-auditor `:0`, manager-lead `:0`. Controls `:1`, `:1`, `4` |
 | AC-AEC-013 | PASS | forbidden-content-class sweep over `develop...HEAD` added lines under the template tree — re-executed at the post-amendment HEAD (the amendment added no template lines) | no output, `exit=1`; control `local by design` → `5` |
-| AC-AEC-014 | PASS | amended 13-file stative/adverbial sweep over `develop...HEAD` + two-direction set equality against the 9-entry exception table | exactly 9 matches, `exit=0`; per-file attribution = E1–E9 with no extra line (`.gitignore` 2 = E1/E2; C1 protocol + C1 lead 1+1 = E3/E5; C2 mirrors 3 = E4/E6/E7 incl. emitted toml; convention + mirror 2 = E8/E9). Control `18`; mutant probe `3` / control-mutant `1` (instrument live). See §E.2c |
+| AC-AEC-014 | PASS | amended 13-file stative/adverbial sweep over `develop...HEAD` + two-direction set equality against the 9-entry exception table | exactly 9 matches, `exit=0`; per-file attribution = E1–E9 with no extra line (`.gitignore` 2 = E1/E2; C1 protocol + C1 lead 1+1 = E3/E5; C2 mirrors 3 = E4/E6/E7 incl. emitted toml; convention + mirror 2 = E8/E9). Control `18` (13-pathspec variant; the 5-pathspec criterion command measures 15); mutant probe `3` / control-mutant `1` (instrument live). See §E.2c |
 | AC-AEC-015 | PASS (regression-guard) | `grep -rnE 'check-ignore[^`]*-v'` over the twelve target documents | no output, `exit=1`; reachability control `:1` ×2. RED cell on pinned `622e25d22` → `3`; green path over spec.md §C → `0` |
 
 ### §E.2a AC-AEC-003 — resolved by operator disposition; re-measured PASS
@@ -154,7 +154,7 @@ returns exactly 9 matches (`exit=0`), and the equality check holds in **both**
 directions — every match is a table member (per-file attribution: `.gitignore`
 2 = E1/E2; C1 `agent-common-protocol.md` + C1 `manager-lead.md` = E3/E5; C2
 mirrors of both + the emitted `manager-lead.toml` = E4/E6/E7; convention +
-mirror = E8/E9) and every table entry is matched. Paired control `18`;
+mirror = E8/E9) and every table entry is matched. Paired control `18` (13-pathspec variant; the 5-pathspec criterion command measures 15);
 close-time mutant probe re-run: mutants `3`, control-mutant `1` — the
 instrument is live.
 
