@@ -1,7 +1,7 @@
 ---
 id: SPEC-BRANCHGUARD-EXEMPT-REACH-001
 title: "BranchGuard 면제 축의 서브에이전트 도달성 판정 — agent_type 배선 철자와 deny 억제의 실행 기반 확립"
-version: "0.1.0"
+version: "0.2.0"
 status: draft
 created: 2026-09-21
 updated: 2026-09-21
@@ -10,6 +10,7 @@ priority: P1
 phase: "v3.1.4 target"
 module: "internal/hook"
 lifecycle: spec-anchored
+tier: M
 tags: "branch-guard, hook, exemption, reachability, doctrine, t1064"
 ---
 
@@ -18,6 +19,7 @@ tags: "branch-guard, hook, exemption, reachability, doctrine, t1064"
 ## HISTORY
 
 - 2026-09-21 v0.1.0 — plan 단계 최초 저작 (card t1064). 리드가 「PLAUSIBLE, 확정 아님」 등급으로 넘긴 독트린 주장을 **실행으로** 판정하도록 설계.
+- 2026-09-21 v0.2.0 — plan-audit iter-1 FAIL(0.8125) 수정. `tier: M` 선언(§A.5), 프로브 집합에 `agent_id` 축 추가(§A.3), 동반이동 집합 8 → **최소 10**(§A.2), 계측기 실행 경로의 실행 가능성 근거 기록(§A.4), REQ-BGX-002 주어 삽입, REQ-BGX-010 신설(판별자 부재 시 CODE 분기 선택 불가).
 
 ## §A 배경 — 무엇이 주장돼 있고 무엇이 측정되지 않았는가
 
@@ -49,9 +51,9 @@ tags: "branch-guard, hook, exemption, reachability, doctrine, t1064"
 
 > 배선 철자가 camel 이라면 `HookInput` 의 snake 태그는 값을 **말없이 버린다** — 도달 가능한 값이 도달 불가로 관측되는 제3의 상태이며, 「도달 불가」와 출력이 구별되지 않는다. 이것이 이 축을 별도 요구사항으로 세운 이유다.
 
-### §A.2 주장 보유 지점 (실측 8파일)
+### §A.2 동반이동 집합 — 최소 10파일, 그리고 변주 축은 패턴이 아니라 탐색 뿌리다
 
-`tool-spawned subagent` 리터럴 기준, 이 트리에서 8파일이 같은 주장을 싣고 있다(양성 대조: `branchGuardExemptEnv` 토큰이 8파일 적중 — 계측기 정상 발화):
+**도달-불가 주장을 싣는 8파일** (`tool-spawned subagent` 리터럴, 뿌리 `.claude`+`internal`):
 
 ```
 .claude/rules/moai/workflow/main-checkout-branch-guard.md
@@ -64,19 +66,81 @@ internal/hook/branch_guard_flagclass_test.go
 internal/hook/branch_guard_quoted_test.go
 ```
 
-**이 리터럴 개수는 하한이다** — 굵게 표기·줄바꿈·다른 표현으로 같은 주장을 싣는 지점은 이 패턴에 안 잡힌다. 처방 단계에서 패턴을 흔들어 재열거해야 한다(AC-BGX-009).
+**반대 주장을 싣는 2파일 — 이 리터럴에는 0회 적중한다:**
+
+```
+.claude/rules/moai/core/hooks-system.md                                    (:114)
+internal/template/templates/.claude/rules/moai/core/hooks-system.md        (:114)
+```
+
+두 파일은 `tool-spawned subagent` 를 **한 번도 싣지 않는다**(실측 0/0, 양성 대조로 문제의 문장이 두 파일 모두에 1회씩 실재함을 확인). 그러나 **판정이 어느 방향으로 나든 모순하는 두 문장 중 하나는 반드시 바뀐다** — 도달 가능이면 도달-불가 주장 8지점이, 도달 불가이면 `hooks-system.md:114` 의 총칙 문장이 (적어도 PreToolUse 범위에 대해) 정정돼야 한다. 따라서 두 파일은 **적중 여부와 무관하게 구성상 집합의 일부**이며, 동반이동 집합은 **최소 10**이다.
+
+#### 변주 축 — 실측으로 확정됨
+
+plan iter-1 은 「패턴을 흔들어 재열거하라」고 지시했는데, **그 축은 틀렸다.** 감사가 마크업·대소문자·하이픈·공백을 흔들어 재측정한 결과 숫자는 **0만큼 움직였다**. 숫자를 움직인 것은 **탐색 뿌리**다:
+
+| 뿌리 | 적중 |
+|---|---|
+| `.claude` + `internal` | 8 |
+| 저장소 전체 (`.git` 제외) | 21 |
+
+차이 13 은 이 SPEC 자신의 아티팩트 4 + `SPEC-RC-TESTBED-001` 4 + `SPEC-WORKTREE-BRANCH-GUARD-FLAGCLASS-001` 3 + `CHANGELOG.md` 1 + **이 카드의 판정서 1**(`.moai/reports/t1064/verdict.md`)이다. 감사는 같은 측정에서 20 을 얻었고 지금 21 인 이유는 그 판정서가 감사 이후에 착지했기 때문이다 — **숫자가 아니라 뿌리와 시점을 함께 적어야 하는 이유의 실례**다.
+
+[HARD] 넓힌 뿌리가 데려오는 것 중 **정정 대상이 아닌 것**: 닫힌 SPEC 아티팩트(`SPEC-RC-TESTBED-001`, `SPEC-WORKTREE-BRANCH-GUARD-FLAGCLASS-001`), `CHANGELOG.md`, 그리고 판정서 — 전부 **그 시점의 관측 기록**이며 나중 사실에 맞춰 고치지 않는다.
+
+#### [HARD] grep 경계 앵커 의무 — `agent_type` 은 `subagent_type` 의 부분문자열이다
+
+이 SPEC 이 처방하는 모든 grep 레시피는 **경계 앵커를 달아야 한다.** 앵커 없는 `agent_type` 은 `subagent_type` 을 함께 센다 — `internal/hook` 실측: 앵커 없는 적중 **48** 중 **20** 이 `subagent_type`, 실제 `agent_type` 은 **28**. 앵커 없이 센 48 을 인용하면 71% 과다계상이며, **재측정해도 같은 48 이 나와 검산으로 잡히지 않는다.**
+
+### §A.3 `agent_id` — 넷째 프로브이자 유일한 판별자 후보
+
+다투는 문장(`hooks-system.md:114`)은 `agent_id` 와 `agent_type` 을 **나란히** 이름을 댄다. 그리고 `agent_id` 는 이미 선언된 `HookInput` 필드다 — `internal/hook/types.go:239`: `AgentID string \`json:"agent_id,omitempty"\``.
+
+이 필드가 프로브 집합에서 빠지면 **정체성이 `agent_id` 로만 도착하는 세계를 구조적으로 못 본다.** 그것은 §A.1 의 camel 철자 누락과 **정확히 같은 실패 형태**이며, 필드 이름 하나가 다를 뿐이다. 따라서 프로브 집합은 네 철자다: `agent_type` · `agentType` · `agent_id` · `agentId`.
+
+`agent_id` 는 두 번째 역할도 갖는다 — **사칭 입력의 유일한 판별자 후보**다. 「서브에이전트이면서 `manager-git` 을 자칭하는 입력」은 서브에이전트임을 말해 주는 필드가 있어야만 구성된다. 그 후보가 이것뿐이므로, **`agent_id` 가 도착하지 않으면 CODE 분기(면제 범위 축소)는 unit 층에서 구성 불가능**하다(REQ-BGX-010).
+
+### §A.4 실행 가능성 근거 — 계측기는 moai 재빌드 없이 들어간다
+
+PreToolUse 훅은 Go 바이너리로 직행하지 않고 **이 워크트리 자신의 셸 래퍼**를 통과한다. 그 래퍼는 stdin 원문을 셸 변수에 통째로 담아 둔 뒤 moai 에 넘긴다 — `.claude/hooks/moai/handle-pre-tool.sh:37`:
+
+```
+payload=$(head -c 1048576)
+```
+
+따라서 원문 덤프·키 집합 기록 계측기(M1 후보 C1/C2)는 **moai 재빌드도 설치본 치환도 없이** 이 한 지점에서 성립하며, 「설치본이 트리를 판정한다」는 위험(VCI §2.2)은 **이 경로에서는 구조적으로 발생하지 않는다.**
+
+[HARD] 단, 계측기를 `TraceEntry` 확장(후보 C3)으로 택하면 **그 위험은 되살아난다** — 그쪽은 Go 코드이므로 트리 빌드가 실제로 실행되는지 보여야 한다. 위험의 부재는 **경로에 붙는 성질이지 카드에 붙는 성질이 아니다.**
+
+반대급부: 그 래퍼는 `moai update` 관리 대상 뿌리(`.claude/hooks/moai/`)에 있고 템플릿에서 배포된다. 계측기를 **되돌리지 않으면** 수정 상태가 남는다(AC-BGX-010).
+
+### §A.5 Tier 판정 — M, 그리고 그 근거
+
+**Tier M 으로 선언한다.** 근거는 셋이고, 반대 방향을 가리키는 지표 하나도 함께 적는다.
+
+| 기준 | 관측 | 가리키는 Tier |
+|---|---|---|
+| 영향 파일 수 | 동반이동 집합 최소 10 (5-15 밴드) | **M** |
+| REQ / AC 예산 | REQ 10 · AC 12 — Tier S 천장(8/8) **초과**, M 천장(16/16) 내 | **M** |
+| 아티팩트 집합 | spec + plan + acceptance (+progress) — M 의 3파일 집합과 일치 | **M** |
+| 코드 LOC | CODE 분기라도 `isExemptAgent` 주변 + 테스트로 300 LOC 미만 | S |
+
+LOC 만 S 를 가리킨다. 그러나 **천장 초과는 tier 를 낮출 근거가 아니라 올릴 신호**이며(`spec-workflow.md` § SPEC Complexity Tier), 파일 수와 아티팩트 집합이 독립적으로 M 을 가리킨다. Tier L 은 성립하지 않는다 — 1000 LOC 도 15파일 초과도 아니고, `design.md`·`research.md` 를 요구할 설계 결정이 이 카드에 없다(이 카드는 **측정 카드**이지 설계 카드가 아니다).
+
+[HARD] **이 선언은 임계를 낮추려고 한 것이 아니다.** 선언의 부수 효과로 감사 임계가 0.85 에서 0.80 으로 내려가는 것은 사실이며 여기 명시해 둔다 — 그러나 iter-1 의 차단 결함(D2/D3/D4)은 **임계와 무관하게 각자의 근거로** 수정했다. 임계를 근거로 tier 를 고른 것이라면 그것은 측정이 아니라 거래다.
 
 ## §B 요구사항 (GEARS)
 
-- **REQ-BGX-001** (배선 철자) — 서브에이전트 컨텍스트에서 발화한 PreToolUse 훅 페이로드가 관측될 때, 시스템은 에이전트 정체성이 `agent_type`·`agentType`·**어느 쪽도 아님** 중 무엇으로 도착하는지를 관측된 원문과 함께 기록해야 한다(shall).
-- **REQ-BGX-002** (도달성 판정) — 도구로 spawn 된 서브에이전트가 `isExemptAgent` 를 true 로 만들고 `internal/hook/branch_guard.go:584` 이후의 deny 를 억제할 수 있는지를, 코드 판독이 아니라 **경로 실행**으로 판정해야 한다(shall).
-- **REQ-BGX-003** (계측기 양성 대조) — 캡처 계측기가 사용될 때, 시스템은 그 계측기가 **실재하는 필드를 실제로 기록한다**는 양성 대조를 같은 실행에서 함께 남겨야 한다(shall). 대조 없는 필드 부재는 「도달 불가」가 아니라 **「미측정」**으로 기록해야 하며, 부재만으로 결론을 내서는 안 된다(shall not).
+- **REQ-BGX-001** (배선 철자) — 서브에이전트 컨텍스트에서 발화한 PreToolUse 훅 페이로드가 관측될 때, 시스템은 에이전트 정체성이 네 철자(`agent_type`·`agentType`·`agent_id`·`agentId`) 중 무엇으로 도착하는지, 또는 **넷 다 아님**인지를 관측된 원문과 함께 기록해야 한다(shall).
+- **REQ-BGX-002** (도달성 판정) — 도구로 spawn 된 서브에이전트가 `isExemptAgent` 를 true 로 만들고 `internal/hook/branch_guard.go:584` 이후의 deny 를 억제할 수 있는지를, 시스템은 코드 판독이 아니라 **경로 실행**으로 판정해야 한다(shall).
+- **REQ-BGX-003** (계측기 양성 대조와 키 집합) — 캡처 계측기가 사용될 때, 시스템은 페이로드의 **최상위 키 집합 전량**을 기록해야 하며(shall), 그 기록 자체가 계측기의 양성 대조 역할을 한다. 네 철자의 부재만 기록하고 키 집합을 남기지 않아서는 안 된다(shall not) — 그러면 「런타임이 정체성을 안 보낸다」와 「프로브하지 않은 제3의 키로 보낸다」가 구별되지 않는다. 키 집합 없는 필드 부재는 「도달 불가」가 아니라 **「미측정」**으로 기록해야 한다(shall).
 - **REQ-BGX-004** (부정 분기의 기제 검증) — 도달 불가로 판정될 때, 시스템은 그 도달 불가의 **기제가 독트린이 서술하는 기제와 동일한지**를 별도로 검증해야 한다(shall). 결론이 같고 서술된 이유가 다르면 그것은 독트린의 결함이며, 통과로 기록해서는 안 된다(shall not).
 - **REQ-BGX-005** (처방 분기점) — 도달 가능으로 판정될 때, 시스템은 어떤 수정도 하기 전에 **CODE(면제 범위 축소) / DOC(독트린 정정)** 중 무엇을 처방으로 할지 명시적 결정을 기록해야 한다(shall). 어느 한쪽을 미리 선택해서는 안 된다(shall not).
 - **REQ-BGX-006** (변이 두 방향) — 처방이 면제 범위를 축소하는 코드 변경일 때, 시스템은 (a) **무변이 성공** — 정당한 `manager-git` 경로가 여전히 통과, (b) **변이 검출** — 그 정체성을 사칭한 서브에이전트가 실제로 거부됨, 두 방향을 모두 보여야 한다(shall). 한 방향만으로 「가드가 동작한다」를 주장해서는 안 된다(shall not).
-- **REQ-BGX-007** (주장 보유 지점 동반 이동) — 판정 결과가 §A.2 지점들의 문안을 바꿀 때, 시스템은 로컬 `.claude/` 사본과 `internal/template/templates/` 미러를 **함께** 갱신해야 한다(shall).
+- **REQ-BGX-007** (주장 보유 지점 동반 이동) — 판정 결과가 §A.2 집합의 문안을 바꿀 때, 시스템은 로컬 `.claude/` 사본과 `internal/template/templates/` 미러를 **함께** 갱신해야 하며(shall), 그 집합에는 반대 주장을 싣는 `hooks-system.md` 쌍과 deny reason 문자열을 고정하는 Go 테스트가 포함돼야 한다(shall). 리터럴 적중 여부를 집합 판별식으로 삼아서는 안 된다(shall not).
 - **REQ-BGX-008** (순서 귀속) — 분기점 결정 기록은 어떤 수정 커밋보다 **앞선 자기 커밋**에 착지해야 한다(shall). 같은 커밋에 묶인 쌍은 순서를 증언하지 못한다.
 - **REQ-BGX-009** (등급 보존) — 판정서가 선행 카드의 결론이나 이 SPEC 의 PLAUSIBLE 항목을 인용할 때, 시스템은 원문이 붙인 등급을 **문장 안에** 함께 옮겨야 한다(shall). 등급을 각주·별도 열로 분리해서는 안 된다(shall not).
+- **REQ-BGX-010** (판별자 부재 시 CODE 분기 폐쇄) — 서브에이전트를 식별할 판별 필드가 페이로드에 도착하지 않는 것으로 측정될 때, 시스템은 **CODE 분기(면제 범위 축소)를 선택 불가로 선언**하고 그 사실과 근거를 판정서에 기록해야 한다(shall). 판별자 없이 구성한 「사칭 형태」 입력으로 변이 검출을 주장해서는 안 된다(shall not) — 그 입력은 이미 존재하는 테스트가 고정하는 형태와 같아져 공허 통과가 된다.
 
 ## §C 완료의 형태
 
@@ -86,7 +150,8 @@ internal/hook/branch_guard_quoted_test.go
 
 | 판정 | 처방 | 남는 것 |
 |---|---|---|
-| 도달 가능 | CODE 또는 DOC (분기점 결정, AC-BGX-006) | 판정서 + 결정 + 처방 + 변이 두 방향(CODE 인 경우) |
+| 도달 가능 · 판별자 도착 | CODE 또는 DOC (분기점 결정, AC-BGX-006) | 판정서 + 결정 + 처방 + 변이 두 방향(CODE 인 경우) |
+| 도달 가능 · 판별자 부재 | **DOC 만** — CODE 분기는 선택 불가(REQ-BGX-010) | 판정서 + 선택 불가 선언과 그 근거 + DOC 처방 |
 | 도달 불가 · 기제 일치 | 없음 | 판정서 + CONTESTED 표식 갱신 |
 | 도달 불가 · 기제 불일치 | DOC (서술된 이유 정정) | 판정서 + 독트린 8지점 정정 |
 | 측정 불가 | 없음 | 판정서에 **무엇이 막았는지**와 「미측정」 등급 |
