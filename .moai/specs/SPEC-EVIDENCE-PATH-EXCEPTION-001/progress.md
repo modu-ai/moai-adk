@@ -382,7 +382,7 @@ gitignore_lines: 417 -> 450   # +36 / -3, 이 워크트리 기준
 
 ```yaml
 sync_complete_at: 2026-09-21
-sync_commit_sha: pending-backfill-sync
+sync_commit_sha: 619774c89
 sync_base_sha: 4cfd112fa
 sync_status: complete
 b12_self_test_a: pass        # grep -c 'SPEC-EVIDENCE-PATH-EXCEPTION-001' CHANGELOG.md → 0 (중복 없음)
