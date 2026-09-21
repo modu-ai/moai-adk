@@ -1,7 +1,7 @@
 ---
 id: SPEC-AUDIT-EXPORT-CLAUSE-001
 title: "documents that promise a remote destination the directive forbids"
-version: "0.3.2"
+version: "0.3.3"
 status: draft
 created: 2026-09-21
 updated: 2026-09-22
@@ -17,6 +17,29 @@ tags: "audit-export, gitignore, local-only-evidence, agent-definition, template-
 # SPEC-AUDIT-EXPORT-CLAUSE-001 — documents that promise a remote destination the directive forbids
 
 ## HISTORY
+
+- 2026-09-22 · v0.3.3 · manager-spec · **Disclosure repair after the plan-audit
+  PASS at 0.8125 (reset iteration 2, Tier M ceiling), on the operator ruling
+  that the three blocking findings close before run-phase entry.** No
+  requirement and no direction changed; all three repairs are in the layer that
+  records what this SPEC did rather than in what it specifies. **The
+  load-bearing one: v0.3.2 relaxed REQ-AEC-012 after the tree had already
+  exercised the relaxation, and said so nowhere.** §A.3b now records that — the
+  measured timeline, the sentence the relaxation legalizes, and the reason the
+  narrowing is principled on REQ-AEC-012's own rationale rather than
+  accommodating. Alongside it: AC-AEC-014's Then-clause is restated as set
+  equality, matching its own Expected line and §D.1 item 7, which had stated
+  the same closing condition at two incompatible strengths; and
+  `acceptance.md`'s preamble no longer asserts a conformance
+  (`verification-completeness.md` §2.1's single-invocation form) that ten of the
+  fifteen criteria do not meet, with the deviation and its forced cause now
+  named in the artifact instead of only outside it. Two optional findings are
+  also closed: AC-AEC-003 cites the moving-ref predicate it applied, and
+  AC-AEC-014's successor-card sentence is disambiguated. The v0.3.2 entry below
+  is left **verbatim and unamended** — it is an incomplete record, not a false
+  one, and retrofitting it to match what was later discovered is the move §A.3
+  and the preserved §A.3 measurement table exist to refuse. Requirements stay
+  14, criteria stay 15 — no budget was drawn.
 
 - 2026-09-22 · v0.3.2 · manager-spec · **Plan-audit reset-iteration-1 repair
   (FAIL 0.75), and the operator ruling that made REQ-AEC-003 stale.** Two
@@ -365,6 +388,48 @@ the index and two different files arriving on the remote would also read `10` an
 `10`, which is why the closing evidence is the two-way difference and not the
 pair of counts.
 
+### §A.3b [HARD] REQ-AEC-012 was relaxed after the tree had already exercised the relaxation
+
+§A.3a records an index act ruled by the operator and then folded back into this
+SPEC. This section records the **second** instance of the same shape, and it is
+the one that went unrecorded until the reset-iteration-2 audit measured it. It is
+written here because a SPEC whose §0 condemns silent recording failures in other
+documents cannot carry one of its own.
+
+**What moved, measured.** Three commits, in this order:
+
+| Commit | Time | What it carried |
+|---|---|---|
+| `cf45febae` | 03:51:19 | v0.3.1 REQ-AEC-012: *"…shall assert a fact about this repository's tree state, **in any verb form**. Each introduced sentence shall be a statement of obligation, of design intent, or of general git behaviour."* — three permitted classes, no tense qualifier |
+| `113e487c2` | 03:52:50 | the `.gitignore` withdrawal, whose added comment carries *"…so the entries already in the index **stayed there and had to be removed deliberately**."* |
+| `309900337` | 04:24:03 | v0.3.2 REQ-AEC-012: adds *"in the present tense"*, narrows the object to this repository's **current** tree state, and adds a **fourth** permitted class — *past-tense narration of a completed act* |
+
+**The consequence, stated plainly.** Under the v0.3.1 wording the
+`stayed there and had to be removed deliberately` clause was a **violation**: it
+asserts a fact about this repository's tree state, it is a verb form, and it is
+none of the three classes then permitted. The clause that makes it compliant was
+authored 31 minutes after the line landed, by the same agent, in the same card.
+**This is a requirement moving to match landed execution, not execution moving to
+match a requirement.**
+
+**Why the relaxation nevertheless stands.** REQ-AEC-012's own stated rationale is
+that *a present-tense claim about this tree goes false under a policy move or in a
+user project whose `.gitignore` this repository does not author*. A past-tense
+record of a completed act does not go false under either hazard — the act
+happened, and it stays having happened whatever the policy does next. The v0.3.1
+wording was therefore **wider than its own purpose**, and narrowing it to the
+purpose is a repair of a criterion wider than its intent rather than an
+accommodation of a convenient line. The requirement is correct as it now stands
+and is not changed by this revision.
+
+**What a later reader may do with this.** Disagree with it. The record exists so
+that the relaxation can be re-opened on its merits: if a successor decides that
+past-tense narration of this tree's state is also a hazard, the sentence to
+re-examine is REQ-AEC-012's fourth permitted class, and the line that would then
+become non-compliant again is the `.gitignore` comment quoted above. Nothing here
+is load-bearing for the direction; only for the record of how the requirement
+reached its current wording.
+
 ### §A.4 What the documents currently say
 
 Four agent copies carry a `[HARD]` export mandate whose final sentence is
@@ -591,7 +656,10 @@ authoring standard.
     already tracked"*) nor a past-tense record of what was done (*"the entries
     already in the index stayed there and had to be removed deliberately"*).
     Both are permitted, and AC-AEC-014 carries them as a declared, enumerated
-    exception set rather than as silent regex misses.
+    exception set rather than as silent regex misses. **The tense clause and the
+    past-tense permission were added in v0.3.2, after a line exercising them had
+    already landed; §A.3b records that timeline and the reason the narrowing
+    stands.**
 
 - **REQ-AEC-013** (Ubiquitous) — The convention's § What makes the convention stick mechanical check shall name a check whose obligation still holds once the artifact is local.
   Presence on disk is that check; branch reachability shall not be named, because

@@ -1,10 +1,38 @@
 # SPEC-AUDIT-EXPORT-CLAUSE-001 — acceptance criteria
 
 > Every AC names a command and the output that closes it. Commands run from the
-> repository root of the tree under test, as a single invocation each — no
-> command substitution, no shell-variable exit capture, no writes to the tree
+> repository root of the tree under test, as **one compound invocation each**,
+> with no command substitution and no writes to the tree outside `/tmp`
 > (plan §E). A zero-count result is admissible only when the AC's paired positive
 > control returned non-zero **in the same run** (§D.3).
+>
+> **[HARD] Named deviation — this is looser than `verification-completeness.md`
+> §2.1's single-invocation form, and the difference is stated rather than
+> glossed.** §2.1 places *"pipes, redirection, `&&`, `;` chaining, and
+> subshells"* outside that form. Measured over the fifteen criteria below, **ten
+> fall outside it**: pipes in AC-AEC-003, -004, -007, -008, -013, -014;
+> `/tmp` redirection in AC-AEC-003 and -008; `&&` / `||` chaining in AC-AEC-002
+> and -011; and `; echo "exit=$?"` in AC-AEC-001, -002, -003 and -012. AC-AEC-015
+> additionally reads `$?` in a following invocation. Five criteria — AC-AEC-005,
+> -006, -009, -010, -015 — are single invocations throughout.
+>
+> **The shape is forced, not chosen.** The conforming form would put the
+> substitution inside the command (`$(git merge-base …)`, `<(git ls-tree …)`),
+> and the worktree-session guard refuses both: it cannot statically verify a git
+> command inside a substitution, so every such form is denied in this tree. The
+> deviation is documented at acceptance §AC-AEC-003's closing note and
+> plan §E.
+>
+> **These criteria keep release-blocking status, and the reason is §2.1's own
+> trigger.** §2.1's consequence for a non-conforming citation is the
+> *undecidable disposition*, whose stated trigger is a cited RED that **cannot be
+> re-executed on the current tree** — a historical event, an already-merged
+> state, or an externally observed CI result. That trigger is not met here: every
+> RED cell below was re-executed verbatim on this tree and produced a decidable
+> result with a firing control. A criterion that is decidable, reproducible, and
+> paired is not what the undecidable disposition was written to demote. Where a
+> future tree makes any RED below unreproducible, that criterion takes the
+> disposition then — regression-guard, not a pass.
 
 ---
 
@@ -193,6 +221,17 @@ Expected: both `comm` outputs **empty**; the `git status` output empty with
 > `^\.moai/reports/[^/]+/verdict\.md$` is used on **both** sides; a criterion
 > anchored on one side only would compare a 10-element set against an
 > 11-element one and read the surplus as a real difference.
+>
+> **`origin/develop` is left unpinned deliberately** — the four tests of
+> `verification-claim-integrity-detail.md` § Moving-ref predicate were applied
+> (`verification-claim-integrity.md` §2.1) and land **SUBJECT / S2 → remedy R4**:
+> the claim is about what the remote **currently** carries, so pinning the ref to
+> a SHA would narrow it into a statement about one past commit and let the
+> criterion keep passing after new verdict files reach the remote. R4's form is
+> satisfied here — the measuring command leads, the criterion carries no count at
+> all, and the 10/10 figures appear only as a dated reference pinned to
+> `113e487c2`. A non-empty `comm -13` is therefore a true signal about the
+> subject, not upstream drift.
 >
 > Both `comm` invocations read files written by the two preceding commands rather
 > than by process substitution: the worktree guard refuses a git command it
@@ -577,8 +616,17 @@ Maps REQ-AEC-010
 **When** the lines this card adds across **all thirteen** scope files are swept
 for declarative tree-state forms, in every verb form that carries the claim and
 across an interposed adverbial,
-**Then** every match is a member of the declared exception set below, and the set
-difference is empty.
+**Then** the match set and the declared exception set below are **equal** —
+every match is a member of the table, and every entry of the table is matched;
+neither difference direction is non-empty.
+
+> **Equality, not subset — and the empty-match case is why.** A subset test is
+> satisfied vacuously by an empty match set, which is not hypothetical here: it
+> is exactly the state of the declared pre-commit window (§D.1 item 6), and it
+> recurs once this card merges and `develop...HEAD` empties. Equality refuses
+> that close instead of passing it, and matches what the Expected line and
+> §D.1 item 7 already required — the three now state one strength rather than
+> two.
 
 ```bash
 git diff -U0 develop...HEAD -- \
@@ -620,7 +668,9 @@ SPEC edit with its own justification, not a close-time judgement call.
 > takes no participle from the object list. That line is permitted by
 > REQ-AEC-012's past-tense clause, so the miss costs nothing here; what it
 > establishes is that this regex is a screen and not a decision procedure. A
-> successor card widening REQ-AEC-012 to past-tense narration must replace the
+> successor card that **narrows REQ-AEC-012's past-tense permission** — i.e.
+> widens the prohibition to reach past-tense narration, which v0.3.2 currently
+> permits (SPEC §A.3b) — must replace the
 > instrument, not extend the alternation — the alternation has now been extended
 > twice (verb set, then adverbial) and been defeated a third time.
 
@@ -832,7 +882,13 @@ Maps REQ-AEC-014
    same run by its positive control. AC-AEC-015 is a regression-guard and is not
    release-blocking: it is vacuous against the current tree by construction, and
    its verdict is read as "the repair introduced nothing", never as evidence the
-   repair worked.
+   repair worked. The ten criteria that fall outside
+   `verification-completeness.md` §2.1's single-invocation form **retain**
+   release-blocking status and are recorded as passes: §2.1's undecidable
+   disposition triggers on an unreproducible RED, and every RED here
+   re-executes on this tree with a firing control. The deviation, its forced
+   cause, and the criteria it covers are named in the preamble above rather than
+   left to a reader who knows §2.1 to discover the mismatch.
 2. `make agents-emit-check` exits 0.
 3. The two convention copies are byte-identical.
 4. The tracked `.moai/reports/` verdict set and the `origin/develop` verdict set
