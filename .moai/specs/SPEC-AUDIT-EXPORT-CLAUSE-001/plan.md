@@ -45,7 +45,17 @@ will move again):
 
 **Not touched:** the directive comment block and its `.moai/reports/*` blanket
 (they are the rule being restored to effect), the `plan-audit` carve-out that
-follows, and every per-fixture exception below it. The `.gitignore` comment at
+follows, and every per-fixture exception below it — four file-level negations
+(`t338/ac-count-baseline.txt`, `t528/probe/nondecl-bullets.txt`,
+`t530/count-literals.txt`, `t229/live-probe-body.txt`) plus the directory-level
+negations that enable them, measured surviving at HEAD `113e487c2`. That
+preservation is why REQ-AEC-001 is stated as *verdict artifact* rather than
+*artifact*: the broader wording would have been violated by the tree this plan
+deliberately leaves alone, while AC-AEC-001's former glob-anchored probe was
+structurally unable to see the violation. Requirement and criterion are narrowed
+and widened respectively so their reach now matches.
+
+The `.gitignore` comment at
 that blanket notes the order between the negation block and the plan-audit
 carve-out is load-bearing; removing the upper block only relaxes an ordering
 constraint, but the carve-out's own behaviour is re-measured after the edit
@@ -57,13 +67,28 @@ directive.
 
 ### §A.3 What the withdrawal does NOT do, and the guard against reading it as more
 
-Gitignore does not untrack a tracked file. 12 `verdict.md` files stay in the
-index; 10 are already on `origin/develop`, 2 are not. **Their disposition is an
-open operator question and this card does not touch them** (REQ-AEC-003). The risk
-is not that someone removes them by accident — it is that a reader sees the
-negation gone and concludes the state is clean. That is why the mechanism is
-required in the SPEC body (REQ-AEC-002) and why AC-AEC-003 measures the population
-rather than merely asserting it was left alone.
+Gitignore does not untrack a tracked file. At the pre-act measurement 12
+`verdict.md` files were in the index; 10 were already on `origin/develop`, 2 were
+not. The risk is not that someone removes them by accident — it is that a reader
+sees the negation gone and concludes the state is clean. That is why the
+mechanism is required in the SPEC body (REQ-AEC-002) and why AC-AEC-003 measures
+the population rather than merely asserting it was left alone.
+
+**The disposition was subsequently ruled, and the ruling is recorded in SPEC
+§A.3a — it is not this plan's to re-decide.** The operator ruled that the 2 files
+not yet on `origin/develop` leave the index (files kept on disk, no history
+rewrite) and that the 10 already published stay as history. That act is
+independent of M1: the withdrawal untracked nothing, and the index removal
+withdrew no rule. The discriminating property is **reachability**, not the file
+class — a tracked card-report artifact that has not reached `origin/develop` may
+be removed because the removal changes only what will be published; one that has
+reached it may not, because the removal would not undo the publication.
+
+**No milestone in this plan performs a further index change.** §A.3a's post-act
+measurement records the tracked-but-not-remote set as empty, so the predicate
+selects nothing; AC-AEC-003 therefore closes on the two sets being **equal**, and
+a non-empty difference in either direction is a finding to report rather than an
+act to perform (§B edge cases).
 
 ---
 
@@ -77,11 +102,23 @@ intent is true in both**, which is why §C's replacements are obligation-shaped
 rather than fact-shaped, and why REQ-AEC-012 is a prohibition rather than a style
 note.
 
-**The prohibition binds verb form, not vocabulary.** The v0.2.0 criterion
-enumerated only the copula (`is`/`are`) and therefore missed `remain tracked` —
-the assertion that was live in its own specified wording. The criterion here
-(AC-AEC-014) covers the stative forms that carry the same claim, and its control
-is required to fire before any zero is read.
+**The prohibition binds the claim, not a surface form — and the criterion has now
+been defeated twice for treating them as the same thing.** The v0.2.0 form
+enumerated only the copula (`is`/`are`) and missed `remain tracked`, the
+assertion live in its own specified wording; the v0.3.1 form added the stative
+verbs and was defeated by one interposed adverb (`is **already** tracked`).
+AC-AEC-014 now covers both, and — because a regex over surface forms cannot
+express REQ-AEC-012's actual discriminator, which is tense and subject — it
+closes on its match set equalling a **declared 2-entry exception set** rather
+than on a bare zero, and declares the class it still misses. Its control is
+required to fire before any result is read.
+
+**REQ-AEC-012's discriminator is stated in the requirement, not left to the
+regex.** A generic statement of git behaviour (*"git does not untrack a file that
+is already tracked"*) and a past-tense record of a completed act (*"the entries
+already in the index stayed there"*) are both permitted: neither goes false under
+a policy move, and neither is false in a user project. A present-tense claim
+about *this* tree is what the prohibition is for.
 
 ---
 
@@ -89,7 +126,7 @@ is required to fire before any zero is read.
 
 | # | File | Change | Copy class |
 |---|---|---|---|
-| 1 | `.gitignore` | §A.2 withdrawal | repo-only |
+| 1 | `.gitignore` | §A.2 withdrawal | repo-only — never ships, and **in AC-AEC-014's sweep** |
 | 2 | `.claude/agents/moai/plan-auditor.md` | SPEC §C.1 tail, plan-auditor FORBIDDEN variant | C1 |
 | 3 | `.claude/agents/moai/sync-auditor.md` | SPEC §C.1 tail, sync-auditor FORBIDDEN variant | C1 |
 | 4 | `internal/template/templates/.claude/agents/moai/plan-auditor.md` | as #2 | C2 |
@@ -127,9 +164,11 @@ regeneration, never by hand (M4).
 Apply §A.2 to file #1. Re-derive the line numbers at read time; do not act on the
 numbers recorded in SPEC §A.2, which were measured at `64c7edbf3`.
 
-Exit condition: no negation re-including a card-report artifact remains in
-`.gitignore`; a new path under a card directory is ignore-matched again
-(AC-AEC-001, AC-AEC-002); the tracked population is unchanged (AC-AEC-003).
+Exit condition: no negation re-including a **verdict** artifact remains in
+`.gitignore` (the four CI-fixture negations survive by design, §A.2); a new path
+under a card directory is ignore-matched again (AC-AEC-001, AC-AEC-002); the
+tracked verdict set equals the `origin/develop` verdict set, both differences
+empty (AC-AEC-003).
 
 **This milestone is ordered first deliberately.** It is the only irreversible act
 in the card, and every wording change below is true only once it has landed.
@@ -186,7 +225,16 @@ carries the removed sentence or the tracked-verdict phrase (AC-AEC-012).
 ### M6 — Verification sweep (Priority: Medium)
 
 Execute the acceptance criteria as a single-turn parallel read-only batch, with
-each positive control preceding the absence claim it gates. Write the verdict to
+each positive control preceding the absence claim it gates.
+
+**Exit-condition ordering [HARD].** AC-AEC-013 and AC-AEC-014 are evaluated only
+after the commits of M1-M5 have landed. Their three-dot diff reads commits, not
+the working tree, so running them mid-edit returns empty for probe **and**
+control and the zero-result rule refuses the close — an empty result there is
+"not yet measurable", never "no violation found". Every other criterion in this
+batch reads the tree directly and is order-independent.
+
+Write the verdict to
 `.moai/reports/t1059/verdict.md` and **leave it there** — under this card's own
 direction that file is local evidence the lead reads on disk, and forcing it into
 the tree would be the card refuting itself on its first exercise.
@@ -240,6 +288,20 @@ and a control returning zero voids every zero beside it.
   §2.1, SUBJECT class): the claim is *what this card changed relative to its branch
   point*, and pinning a literal SHA would falsify it the first time the card
   absorbs `develop`.
+
+  **[HARD] It is nevertheless empty before the change is committed, and that
+  window is named here rather than left to be rediscovered.** `develop...HEAD`
+  compares the merge base to the **commit** `HEAD`, so an uncommitted
+  working-tree edit is invisible to it whether staged or not. During M2-M4, before
+  the milestone's commit lands, AC-AEC-013 and AC-AEC-014 return empty for both
+  probe and control, and §D.3's zero-result rule correctly refuses the close.
+  Measured at HEAD `113e487c2` with only M1 committed: the AC-AEC-014 pathspec
+  yields `0` added lines without `.gitignore` and `39` with it. **These two
+  criteria close only after their milestone's commit lands** — see M6's exit
+  condition. The earlier statement that the form *"survives staging, commit, and a
+  later absorb of `develop`"* is true and incomplete: it names what the form
+  survives and not what precedes it, and the consequence is a blocked close rather
+  than a false pass, which is why the ordering is stated rather than mechanised.
 - **One compound invocation, no command substitution, no tree writes.** The
   worktree guard refuses a git command it cannot statically verify, which is what
   made the v0.2.0 AC-AEC-013 unrunnable in the environment where cards are worked.
@@ -254,16 +316,16 @@ and a control returning zero voids every zero beside it.
 
 | Surface | Instrument |
 |---|---|
-| Negation withdrawn | anchored grep over `.gitignore` + control |
-| The rule is in effect again | plain `git check-ignore --no-index` on a negated and a non-negated name + an out-of-tree control |
-| Tracked population untouched | anchored `git ls-files` set + two-way `comm` against `origin/develop` + `git status --porcelain` on those paths |
+| Verdict negation withdrawn | verdict-name-anchored grep over `.gitignore` (`^!\.moai/reports/[^/]*/.*verdict`) + control; red pinned at `269fb89c1` |
+| The rule is in effect again | plain `git check-ignore --no-index` on a negated and a non-negated name + an out-of-tree control + a two-form instrument self-check on a surviving fixture negation |
+| Tracked set equals remote set | anchored `git ls-files` set + two-way `comm` against `origin/develop`, **both differences empty** + `git status --porcelain` on those paths |
 | Four auditor copies repaired | anchored grep for the removed sentence (expect 0) + control; grep for the local-by-design statement |
 | No remote-placing verb introduced | `git add -f` sweep over every changed file + control |
 | Paraphrase surfaces repaired | the SPEC §A.6 markup-insensitive pattern (expect 0) + control |
 | Convention mirror parity | `cmp` |
 | Emitted codex layer regenerated | `make agents-emit-check` exit status + anchored grep on the three TOMLs |
 | Template neutrality | forbidden-content-class sweep over the added lines of the three-dot diff + control |
-| No specified sentence asserts tree state | stative-inclusive declarative sweep over the added lines of the three-dot diff + control |
+| No specified sentence asserts tree state | stative- and adverbial-inclusive declarative sweep over the added lines of the three-dot diff across **all thirteen** files (`.gitignore` included) + control, closing on the match set equalling the AC's declared 2-entry exception set; own mutant probe re-run at close |
 | No repaired document decides ignore status with `-v` | verbose-form sweep over the twelve target documents + reachability control. **Regression-guard, vacuous against the current tree** — its red was observed against the v0.2.0 draft, not against this one (AC-AEC-015) |
 
 ---
@@ -272,9 +334,19 @@ and a control returning zero voids every zero beside it.
 
 - **Widening `.gitignore`.** This card narrows. If a repaired sentence seems to
   require an ignore exception, the sentence is wrong, not the policy.
-- **Untracking the existing files.** `git rm --cached` on any of the 12 tracked
-  verdicts is out of scope and is an open operator question (SPEC §D). Withdrawing
-  the negation and untracking are two acts; only one is authorized here.
+- **Untracking a verdict file that is already on `origin/develop`.** Forbidden by
+  REQ-AEC-003 in every case: an index removal does not undo a publication, so it
+  buys nothing and loses the record. The operator ruled that published history is
+  preserved rather than rewritten (SPEC §A.3a).
+- **Reading §A.3a as a general licence to untrack.** It authorized exactly the
+  tracked-but-not-remote set, which its own post-act measurement records as now
+  empty. Withdrawing the negation and removing from the index remain two
+  independent acts; neither implies the other, and neither is a reason to perform
+  the other.
+- **Rewriting history on any `.moai/reports/` path**, including the two files
+  §A.3a authorized removing from the index. The ruling permitted an index change
+  and nothing else; the files stay on disk and the commits that carried them stay
+  in the graph.
 - **Reading the withdrawal as having cleaned the state.** It binds files created
   afterwards. The mechanism is stated in SPEC §A.3 precisely because this is the
   silent misreading.

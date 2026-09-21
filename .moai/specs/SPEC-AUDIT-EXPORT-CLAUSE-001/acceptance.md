@@ -13,16 +13,27 @@
 ### AC-AEC-001 — the negation and its explanatory block are gone
 
 **Given** the `.gitignore` withdrawal specified in plan §A.2,
-**When** the file is searched for any negation re-including a card-report
-artifact, and for the comment block that introduced it,
+**When** the file is searched for any negation re-including a **verdict**
+artifact under a card report directory, and for the comment block that
+introduced it,
 **Then** neither is found.
 
 ```bash
-grep -nE '^!\.moai/reports/\*/' .gitignore ; echo "negation_exit=$?"
+grep -nE '^!\.moai/reports/[^/]*/.*verdict' .gitignore ; echo "negation_exit=$?"
 grep -nc 'Narrow exception (card t1039)' .gitignore ; echo "block_exit=$?"
 ```
 
-Expected: no output from either, `negation_exit=1`, `block_exit=1`.
+Expected, **stated per command** because the two behave differently:
+
+| Command | Expected stdout | Expected exit |
+|---|---|---|
+| the `-nE` negation probe | no output | `negation_exit=1` |
+| the `-nc` block probe | the single line `0` | `block_exit=1` |
+
+`grep -c` **always** prints a count — it prints `0` and exits 1 on no match — so
+"no output from either" could never be met by the command as written. A reader
+closing this AC literally against the former wording had to mark it FAIL; the
+table above is what the commands actually do.
 
 Paired control — the directive block and its blanket, which this card does **not**
 touch, MUST still match, proving the greps reach the file:
@@ -33,6 +44,40 @@ grep -cE '^\.moai/reports/\*$' .gitignore
 ```
 
 Expected: both `1`.
+
+> **The probe is anchored on the verdict name, not on the glob form, and that is
+> the repair.** The former probe `^!\.moai/reports/\*/` could only match a
+> literal `*` path component, so it was structurally incapable of seeing a
+> negation written with a literal card id — it returned `negation_exit=1`
+> whatever the file contained below that line. Four such negations do survive at
+> HEAD by design (REQ-AEC-001 carve-out); the requirement was therefore narrowed
+> to *verdict artifact* and the probe widened to `[^/]*` in the same pass, so
+> criterion and requirement now have the same reach. Measured: the widened probe
+> matches the withdrawn line `!.moai/reports/*/verdict.md` at `269fb89c1` and
+> matches none of the four surviving fixture negations at `113e487c2`.
+>
+> **RED-now / green path**, both single invocations:
+>
+> ```
+> $ git show 269fb89c1:.gitignore > /tmp/pre.txt
+> $ grep -nE '^!\.moai/reports/[^/]*/.*verdict' /tmp/pre.txt
+> 259:!.moai/reports/*/verdict.md
+> exit 0
+> $ grep -nE '^!\.moai/reports/[^/]*/.*verdict' .gitignore
+> exit 1
+> ```
+>
+> `269fb89c1` is the pinned pre-withdrawal commit (the merge base of this branch
+> with `develop`), not a branch name — the ref is the address at which the red
+> was measured, so it takes the ANCHOR remedy.
+>
+> **Marker-string collision — a trap for the next editor.** The withdrawn block's
+> marker was `Narrow exception (card t1039)`, singular. The surviving fixture
+> block at `.gitignore:255` is headed `# Narrow exceptions: test guard fixtures…`
+> — near-identical prose, plural, different rule. The second probe distinguishes
+> them correctly today because it matches the singular form with its
+> parenthetical, but an editor who relaxes it to `Narrow exception` will silently
+> start matching the block this card preserves.
 
 Maps REQ-AEC-001
 
@@ -61,50 +106,98 @@ git check-ignore --no-index README.md && echo IGNORED || echo NOT-IGNORED
 
 Expected: `NOT-IGNORED`.
 
-**The plain form is load-bearing; `-v` is a wrong instrument here.** Measured
-before the withdrawal, with the negation live: `git check-ignore -v --no-index`
-on `verdict.md` exited **0** while the plain form exited **1** — the verbose form
-reports that a pattern matched and exits 0 even when the matching pattern is a
-negation, i.e. when the path is not ignored. Writing this criterion with `-v`
-would pass on a tree where the negation survived. No probe file is created: the
-`--no-index` form answers for a path that does not exist, so this AC writes
-nothing and has no cleanup step.
+**Instrument self-check — the two forms must be shown to disagree somewhere in
+this tree.**
+
+```bash
+git check-ignore -v --no-index .moai/reports/t338/ac-count-baseline.txt ; echo "verbose_exit=$?"
+git check-ignore    --no-index .moai/reports/t338/ac-count-baseline.txt ; echo "plain_exit=$?"
+```
+
+Expected: the verbose form prints the matched rule line and `verbose_exit=0`; the
+plain form prints nothing and `plain_exit=1`.
+
+> **The plain form is load-bearing; `-v` answers a different question.** The
+> verbose form reports that *a pattern matched* and exits 0 even when the
+> matching pattern is a **negation** — i.e. when the path is **not** ignored. A
+> criterion keyed on its exit code reads "matched" as "ignored" and passes on a
+> tree where a negation survived.
+>
+> **Scoping "here" — the divergence is measured on a surviving fixture, not on
+> `verdict.md`.** The original statement of this note attributed the divergence
+> to `verdict.md` **measured before the withdrawal, with the negation live**, and
+> that attribution was correct for the pre-withdrawal tree it named. It is no
+> longer true of the current one: `113e487c2` withdrew the only negation covering
+> `verdict.md`, so the two forms now **agree** on that path and the note would
+> read as a claim about this tree that this tree refutes. The probe above uses
+> `.moai/reports/t338/ac-count-baseline.txt` instead — one of the four
+> CI-fixture negations REQ-AEC-001 deliberately preserves — where the two forms
+> still disagree at HEAD `113e487c2` (measured: verbose `0`, plain `1`). The
+> criterion therefore carries a name on which the wrong instrument is still
+> observably wrong, rather than resting on a historical attribution.
+>
+> **AC-AEC-002's own target is unchanged by this.** Its job is detecting an
+> *incomplete* withdrawal: had the negation survived, `verdict.md` would report
+> `NOT-IGNORED` under the plain form and the first probe would fail, while a
+> `-v`-instrumented version would exit 0 and pass falsely. No probe file is
+> created — the `--no-index` form answers for a path that does not exist, so this
+> AC writes nothing and has no cleanup step.
 
 Maps REQ-AEC-001, REQ-AEC-002
 
-### AC-AEC-003 — the already-tracked population is untouched
+### AC-AEC-003 — the tracked population matches the remote exactly
 
-**Given** that withdrawal binds only files created afterwards (SPEC §A.3),
-**When** the tracked set and the remote-present set are measured with the
-anchored criterion on both sides,
-**Then** the tracked set is unchanged from the pre-implementation measurement and
-nothing under `.moai/reports/` appears as an index change.
+**Given** the withdrawal (which untracks nothing, SPEC §A.3) and the ruled index
+act (which removed exactly the tracked-but-not-remote set, SPEC §A.3a),
+**When** the tracked set and the remote-present set are each enumerated with the
+anchored criterion,
+**Then** the two sets are **equal** — neither difference direction is non-empty —
+and nothing under `.moai/reports/` remains as an uncommitted index change.
 
 ```bash
-git ls-files '.moai/reports/*/verdict.md' | wc -l
-git ls-tree -r --name-only origin/develop -- .moai/reports | grep -cE '^\.moai/reports/[^/]+/verdict\.md$'
+git ls-files '.moai/reports/*/verdict.md' | sort > /tmp/aec003-tracked.txt
+git ls-tree -r --name-only origin/develop -- .moai/reports | grep -E '^\.moai/reports/[^/]+/verdict\.md$' | sort > /tmp/aec003-remote.txt
+comm -23 /tmp/aec003-tracked.txt /tmp/aec003-remote.txt
+comm -13 /tmp/aec003-tracked.txt /tmp/aec003-remote.txt
 git status --porcelain -- .moai/reports ; echo "status_exit=$?"
 ```
 
-Expected: `12`; `10`; no `D`, `R`, or staged-deletion line in the third output.
+Expected: both `comm` outputs **empty**; the `git status` output empty with
+`status_exit=0`.
 
-**The two-way difference is the closing evidence, not the counts.** Report both
-directions explicitly; a difference of 1 in the counts would have concealed the
-true shape, which is 2 tracked-not-remote and 0 remote-only:
-
-```bash
-git ls-files '.moai/reports/*/verdict.md' | sort
-git ls-tree -r --name-only origin/develop -- .moai/reports | grep -E '^\.moai/reports/[^/]+/verdict\.md$' | sort
-```
-
-Expected: the first list contains `.moai/reports/t1039/verdict.md` and
-`.moai/reports/t1048/verdict.md`, which the second does not; every other entry of
-the first appears in the second; the second contains nothing absent from the
-first.
-
-**A substring criterion is a FAIL, not a near-pass.** `grep 'verdict.md'` on the
-remote side also matches `.moai/reports/t965/plan-audit-verdict.md` and returns
-11. Both sides use the anchored form.
+> **The Then-clause is set equality, not a count — and that is the repair, not a
+> renumbering.** The former clause read *"the tracked set is unchanged from the
+> pre-implementation measurement"* and expected `12` / `10` / a two-way
+> difference of `2` and `0`. The ruled index act of SPEC §A.3a falsified the
+> clause itself, not merely its numbers: the tracked set **did** change, by
+> authorization. Replacing `12` with `10` would have preserved a sentence that is
+> now false.
+>
+> **A count pair cannot distinguish the outcome from its failure modes.** At HEAD
+> `113e487c2` both sides measure `10`, and they would also both measure `10` if
+> two files had left the index while two *different* files arrived on the remote.
+> The two `comm` directions separate those cases; the counts do not, which is why
+> the closing evidence is the pair of empty differences and the counts are not
+> the criterion at all.
+>
+> **Directional reading.** A non-empty `comm -23` means a tracked verdict file
+> has not reached the remote — under §A.3a's predicate that is the state whose
+> removal is authorized, so it is a finding to route to the operator rather than
+> to act on silently. A non-empty `comm -13` means a verdict file is on the
+> remote and not in this index — that is the case REQ-AEC-003 forbids creating,
+> and it fails this criterion outright.
+>
+> **A substring criterion is a FAIL, not a near-pass.** `grep 'verdict.md'` on
+> the remote side also matches `.moai/reports/t965/plan-audit-verdict.md` and
+> returns **11** rather than 10 (measured at `113e487c2`). The anchored form
+> `^\.moai/reports/[^/]+/verdict\.md$` is used on **both** sides; a criterion
+> anchored on one side only would compare a 10-element set against an
+> 11-element one and read the surplus as a real difference.
+>
+> Both `comm` invocations read files written by the two preceding commands rather
+> than by process substitution: the worktree guard refuses a git command it
+> cannot statically verify, and `<(git …)` is such a form. The two temp files are
+> the substitution-free equivalent and write nothing into the tree.
 
 Maps REQ-AEC-002, REQ-AEC-003
 
@@ -263,13 +356,60 @@ grep -c 'FORBIDDEN' .claude/agents/moai/plan-auditor.md \
   internal/template/templates/.claude/agents/moai/plan-auditor.md
 grep -c 'plan-audit/` is FORBIDDEN' .claude/agents/moai/sync-auditor.md \
   internal/template/templates/.claude/agents/moai/sync-auditor.md
-awk '/^## Where/,/^## When/' .moai/docs/audit-artifact-convention.md | \
-  grep -nE 'deliberately.{0,3}\n?.{0,20}gitignored|`.gitignore` comment|never read as a card'
+awk '/^## Where/,/^## When/' .moai/docs/audit-artifact-convention.md | tr '\n' ' ' | grep -cE 'deliberately[^.]{0,30}gitignored'
+awk '/^## Where/,/^## When/' .moai/docs/audit-artifact-convention.md | grep -cE '`\.gitignore` comment|never read as a card'
 ```
 
-Expected: every count non-zero; the third output contains the `.gitignore` comment
-pointer and the read-based distinguishing property, and does **not** contain
-`deliberately` adjacent to `gitignored`.
+Expected: the two `FORBIDDEN` counts non-zero; the third command `0` (the
+withdrawn justification); the fourth command non-zero (the retained `.gitignore`
+pointer and the read-based distinguishing property).
+
+Paired control for the **negative** branch — the same normalised pipeline, run
+over the pre-repair blob, MUST return non-zero. Without it a `0` on the third
+command is indistinguishable from a pattern that cannot fire:
+
+```bash
+git show 269fb89c1:.moai/docs/audit-artifact-convention.md > /tmp/aec008-pre.md
+awk '/^## Where/,/^## When/' /tmp/aec008-pre.md | tr '\n' ' ' | grep -cE 'deliberately[^.]{0,30}gitignored'
+```
+
+Expected: `1`.
+
+The control reads a **pinned blob** (`269fb89c1`), so it returns `1` whatever the
+repair does — which is what makes it a firing control for the negative branch
+rather than a second copy of the probe. Measured at HEAD `113e487c2`, before M3
+runs, the probe **also** returns `1`: that is this criterion's RED-now cell, and
+its green path is the same probe returning `0` once §C.3 is applied to the
+convention document.
+
+> **The `\n?` is removed, and that removal is the repair.** The former pattern
+> was `deliberately.{0,3}\n?.{0,20}gitignored`, and grep is line-oriented: no
+> POSIX grep can match across a line break, so the alternative containing `\n?`
+> could only fire on a grep that spans lines. In the convention document
+> `deliberately` ends one line and `gitignored` begins the next — exactly the
+> layout the branch exists to catch. Measured on the **unmodified** document at
+> HEAD `113e487c2`, the two greps on this machine disagree:
+>
+> ```
+> $ awk '/^## Where/,/^## When/' .moai/docs/audit-artifact-convention.md \
+>     | grep -cE 'deliberately.{0,3}\n?.{0,20}gitignored'
+> 1                              # PATH grep == ugrep 7.8.4, which spans lines
+> $ awk '/^## Where/,/^## When/' .moai/docs/audit-artifact-convention.md \
+>     | /usr/bin/grep -cE 'deliberately.{0,3}\n?.{0,20}gitignored'
+> 0                              # BSD grep — cannot span lines
+> ```
+>
+> Opposite verdicts on one unmodified file, and CI runs the flavour that returns
+> `0` — so the negative assertion passed **vacuously against the unrepaired
+> document**. The normalised form above (`tr '\n' ' '` before the match) has one
+> reading on every flavour; measured on the same unmodified document it returns
+> `1` under **both** greps, which is the RED this criterion needs.
+>
+> **The two branches are split into separate commands deliberately.** The former
+> single alternation mixed a presence assertion and an absence assertion into one
+> count, so a non-zero result could not say which branch produced it. Separated,
+> each has its own expected value and the absence branch has its own firing
+> control.
 
 Maps REQ-AEC-007
 
@@ -401,7 +541,21 @@ Expected: non-zero.
 > no revision compares against the index, so both the probe and its control return
 > empty the moment the change is staged — and under §D.3 the criterion then cannot
 > be closed at all. The three-dot form re-derives the merge base at read time, so
-> it survives staging, commit, and a later absorb of `develop`. The moving ref is
+> it survives staging, commit, and a later absorb of `develop`.
+>
+> **[HARD] It is empty before the change is committed, so this criterion closes
+> only after the milestone's commit lands.** `develop...HEAD` compares the merge
+> base to the **commit** `HEAD`; uncommitted working-tree edits are invisible to
+> it whether staged or not. During M2-M4, before anything is committed, both the
+> probe and its control return empty and §D.3's zero-result rule correctly refuses
+> the close — the risk is a blocked close, not a false pass, which is why the
+> ordering is stated rather than mechanised. Measured at HEAD `113e487c2` with
+> only M1 committed: the AC-AEC-014 pathspec yields `0` added lines, while the
+> same pathspec with `.gitignore` included yields `39`. The three-dot form is what
+> makes the criterion *runnable* once committed; it does not make it runnable
+> *before*. See plan §E and M6's exit condition.
+>
+> The moving ref is
 > kept rather than pinned because the claim is *what this card added relative to
 > its branch point*; a literal SHA would falsify it at the first absorb
 > (`verification-claim-integrity.md` §2.1, SUBJECT class). `$(git merge-base …)` is
@@ -421,11 +575,14 @@ Maps REQ-AEC-010
 
 **Given** REQ-AEC-012,
 **When** the lines this card adds across **all thirteen** scope files are swept
-for declarative tree-state forms, in every verb form that carries the claim,
-**Then** none is found.
+for declarative tree-state forms, in every verb form that carries the claim and
+across an interposed adverbial,
+**Then** every match is a member of the declared exception set below, and the set
+difference is empty.
 
 ```bash
 git diff -U0 develop...HEAD -- \
+  .gitignore \
   .claude/agents/moai/plan-auditor.md \
   .claude/agents/moai/sync-auditor.md \
   .claude/agents/moai/manager-lead.md \
@@ -434,39 +591,107 @@ git diff -U0 develop...HEAD -- \
   .moai/docs/audit-artifact-convention.md \
   internal/template/templates \
   | grep '^+' | grep -vE '^\+\+\+' \
-  | grep -nEi '\b(is|are|was|were|is not|are not|remains?|stays?|becomes?|has been|have been)( not)? (ignore-matched|gitignored|tracked|untracked|on the remote)\b'
+  | grep -nEi '\b(is|are|was|were|remains?|stays?|stayed|becomes?|became|has been|have been)( not)?( [a-z]+ly| already| still| now)? (ignore-matched|gitignored|tracked|untracked|on the remote)\b'
 echo "exit=$?"
 ```
 
-Expected: no output, `exit=1`.
+Expected: exactly the two lines of the declared exception set below, and no
+others.
+
+**Declared exception set — 2 entries, both permitted by REQ-AEC-012.** The regex
+is a screen over surface forms; REQ-AEC-012's permission is about tense and
+subject, which no such screen can express. Rather than narrow the regex until it
+stops matching permitted lines — the move that produced this criterion's previous
+two defects — the permitted matches are enumerated here and the criterion closes
+on the **set difference** being empty:
+
+| # | File | Matched line (verbatim) | Why permitted |
+|---|---|---|---|
+| E1 | `.gitignore` | `# untrack a file that is already tracked, so the entries already in the index` | General git behaviour. The subject is *a file*, indefinite — a statement of how git behaves, not a claim about this tree. REQ-AEC-012 permits it explicitly. |
+| E2 | `.gitignore` | `# its own leaves whatever is already tracked exactly where it was.` | General git behaviour. Subject *whatever is already tracked*, a generic quantifier; the sentence is the same mechanism statement continued. |
+
+A match outside this table fails the criterion. Adding an entry to the table is a
+SPEC edit with its own justification, not a close-time judgement call.
+
+> **[HARD] The declared false-negative class, stated rather than hidden.** One
+> added line in `.gitignore` carries a past-tense record of this repository's
+> index — *"the entries already in the index stayed there and had to be removed
+> deliberately"* — and **no regex above matches it**, because `stayed there`
+> takes no participle from the object list. That line is permitted by
+> REQ-AEC-012's past-tense clause, so the miss costs nothing here; what it
+> establishes is that this regex is a screen and not a decision procedure. A
+> successor card widening REQ-AEC-012 to past-tense narration must replace the
+> instrument, not extend the alternation — the alternation has now been extended
+> twice (verb set, then adverbial) and been defeated a third time.
 
 Paired control — a hedged or obligation form the repair introduces MUST match,
 proving the diff pipeline and the regex both reach the added lines:
 
 ```bash
 git diff -U0 develop...HEAD -- \
+  .gitignore \
   .claude/agents/moai/plan-auditor.md \
   .claude/rules/moai/core/agent-common-protocol.md \
   .moai/docs/audit-artifact-convention.md \
   internal/template/templates \
-  | grep '^+' | grep -vE '^\+\+\+' | grep -cEi 'local by design|is a local file|local\*{0,2} record'
+  | grep '^+' | grep -vE '^\+\+\+' | grep -cEi 'local by design|is a local file|local\*{0,2} record|exported so a later reader'
 ```
 
 Expected: non-zero.
 
-> **The verb set is the repair, and it has an observed red.** The v0.2.0 form
+> **Scope arithmetic — the sweep now covers thirteen files, and the thirteenth is
+> where the interesting lines are.** The prose claimed *"all thirteen"* while the
+> pathspec listed six explicit paths plus `internal/template/templates` (covering
+> plan §C rows #4, #5, #7, #10, #11, #13) — **twelve**. The omitted file was row
+> #1, `.gitignore`, which is the one file in the scope table that had already been
+> edited: `113e487c2` added 11 comment lines to it, three of which the regex
+> alternation touches. The criterion written to enforce REQ-AEC-012 was not
+> looking at the only file where REQ-AEC-012-adjacent sentences had actually
+> landed. `.gitignore` is included rather than exempted: exempting it would have
+> closed the arithmetic gap while leaving the requirement unenforced exactly
+> where it was being exercised.
+>
+> **The adverbial group is the second repair, and it has an observed red.** The
+> former pattern required the verb and the participle to be **adjacent**, so one
+> intervening adverb defeated it. Three mutants that violate REQ-AEC-012, with a
+> control that does not (measured on ugrep 7.8.4 and `/usr/bin/grep` alike):
+>
+> ```
+> $ printf '+The destination is already gitignored in this repository.\n+The verdict file remains currently untracked here.\n+The two entries stayed tracked until removed.\n' > /tmp/aec014-mutants.txt
+> $ grep -cEi '<former pattern>' /tmp/aec014-mutants.txt
+> 0                              # all three mutants pass the old criterion
+> $ grep -cEi '<pattern above>'  /tmp/aec014-mutants.txt
+> 3                              # all three now fire
+> $ printf '+The destination is gitignored.\n' > /tmp/aec014-control.txt
+> $ grep -cEi '<pattern above>'  /tmp/aec014-control.txt
+> 1                              # the plain form still fires
+> ```
+>
+> The mutant file above is this criterion's own mutant probe under
+> `verification-completeness.md` §2 and is re-run at close time. Note also that
+> `stayed` was added to the verb list: the former set carried `stays?` but not
+> the past participle.
+>
+> **The first repair — the verb set — retains its earlier red.** The v0.2.0 form
 > enumerated only the copula, and the assertion actually present in that draft's
-> own specified wording was `remain tracked` — so the criterion written to catch
+> own specified wording was `remain tracked`, so the criterion written to catch
 > the defect returned 0 against the defect while its control returned 1. The
 > pattern above returns `1` against that v0.2.0 string (*"artifacts exported
 > before this was written remain tracked with no exception recorded for them"*)
-> and `0` against the §C.2 wording specified here, which is this criterion's
-> RED-now observation and its green path.
+> and `0` against the §C.2 wording specified here.
+>
+> **`[a-z]+ly` rather than `\w+ly`.** `\w` is a GNU extension; the bracket form
+> reads identically on BSD grep, which is what CI runs. Measured: the pattern
+> returns `3` on the mutant file and `1` on the control under both flavours.
 >
 > **Scope is the added lines, not the files.** Every one of the thirteen files
 > legitimately contains declarative tree-state sentences this card did not write;
 > REQ-AEC-012 binds sentences *this SPEC introduces*, so the diff is the correct
 > subject and a whole-file form would be false by construction.
+>
+> **This criterion is empty before the milestone's commit lands**, for the reason
+> AC-AEC-013 states at length: `develop...HEAD` reads commits, not the working
+> tree. It closes after the commit, never during the edit.
 
 Maps REQ-AEC-012
 
@@ -517,23 +742,41 @@ Expected: two lines, each ending `:1` or higher.
 > because the predecessor draft specified exactly this form for four of these
 > twelve files (SPEC §A.2a).
 >
-> **The instrument has an observed red, taken against that draft.** The same
-> pattern run over the v0.2.0 specified wording fires, and over the v0.3.1
-> wording it does not:
+> **The instrument has an observed red, taken against that draft at a pinned
+> commit.** The same pattern run over the v0.2.0 specified wording fires, and over
+> the wording specified here it does not:
 >
 > ```
-> $ git show HEAD:.moai/specs/SPEC-AUDIT-EXPORT-CLAUSE-001/acceptance.md \
->     | grep -cE 'check-ignore[^`]*-v'
+> $ git show 622e25d22:.moai/specs/SPEC-AUDIT-EXPORT-CLAUSE-001/acceptance.md > /tmp/aec015-red.md
+> exit 0
+> $ grep -cE 'check-ignore[^`]*-v' /tmp/aec015-red.md
 > 3
+> exit 0
 > $ sed -n '/^## §C Specified wording/,/^## §D Exclusions/p' \
 >     .moai/specs/SPEC-AUDIT-EXPORT-CLAUSE-001/spec.md \
 >     | grep -cE 'check-ignore[^`]*-v'
 > 0
+> exit 1
 > ```
 >
 > That pair is this criterion's RED-now cell and its green path: `3` against text
 > carrying the defect, `0` against the text specified here. Without it the
 > criterion would be indistinguishable from a pattern that matches nothing.
+> Re-measured at HEAD `113e487c2`.
+>
+> **[HARD] The RED cell is pinned to `622e25d22`, and the former `HEAD:` form was
+> the defect.** `622e25d22` is the commit carrying the v0.2.0 draft (`version:
+> "0.2.0"`, verified in that blob). The cell previously cited
+> `git show HEAD:…` and recorded `3`; re-executed verbatim on this tree the same
+> command returns **`1`**, because `HEAD` was `cf45febae`'s parent when the cell
+> was authored and is `113e487c2` now. The surviving single match is AC-AEC-002's
+> own explanatory note — so the "red" had degraded into the criterion quoting
+> itself. This is the ANCHOR case of `verification-claim-integrity.md` §2.1: the
+> ref is the address at which a measurement was taken, not the subject of the
+> claim, so R1 (pin the literal SHA) applies. `verification-completeness.md` §2.1
+> independently requires the fourth element of a RED cell to be a commit SHA and
+> never a branch name. The same pin is applied to spec.md §A.2a, which cited
+> `git show HEAD:` for the same purpose.
 >
 > **Scope is the target documents, never this SPEC's own artifacts.** `spec.md`
 > §A.2a and `plan.md` §E both quote the verbose form deliberately — that is the
@@ -552,7 +795,10 @@ Maps REQ-AEC-014
 | A copy's FORBIDDEN wording differs from both variants in SPEC §C.1 | Blocker report, not an improvised third variant — the divergence is a finding about the copy |
 | `cmp` reports the convention copies already divergent before the edit | Blocker report; the mirror is then edited section-by-section and the pre-existing divergence recorded, never flattened by copying |
 | `make agents-emit-check` fails after `make agents-emit` | Emission is non-deterministic or the source layer is malformed; blocker, never resolved by editing a `.toml` |
-| Withdrawing the negation appears to change `git status` under `.moai/reports/` | Stop. Tracked files must not move; re-read the status output and report before proceeding (REQ-AEC-003) |
+| Withdrawing the negation appears to change `git status` under `.moai/reports/` | Stop. The withdrawal untracks nothing (SPEC §A.3), so a status change from it alone is a misreading of the tool or a second act that was not the withdrawal; re-read the output and report before proceeding (REQ-AEC-003) |
+| AC-AEC-003's `comm -23` is non-empty — a tracked verdict file is not on the remote | Not a failure of this criterion's requirement, but a finding: §A.3a's predicate would authorize its removal and the predicate is the operator's to apply, not the implementer's. Report it; do not remove it |
+| AC-AEC-003's `comm -13` is non-empty — a verdict file is on the remote and not in this index | FAIL. REQ-AEC-003 forbids creating this state, and an index removal cannot undo a publication. Report as a blocker |
+| AC-AEC-014 matches a line that is not in its declared exception set | FAIL, whatever the line's apparent justification. Adding an entry is a SPEC edit with its own reasoning, never a close-time judgement |
 | The plan-audit carve-out's behaviour changes after the withdrawal | Blocker. The `.gitignore` notes the ordering was load-bearing; AC-AEC-002's third probe is what detects it |
 | A grep positive control returns zero | Every absence claim in the same run is void. Re-derive the instrument; do not report the zeros |
 | A phrase this card searches for has been rewritten upstream | The zero is not absence. SPEC §A.6 is the standing instance; re-locate the claim by meaning and re-measure before reporting |
@@ -565,8 +811,12 @@ Maps REQ-AEC-014
   carries no verdict negation and needs none.
 - No file under `internal/template/templates/.codex/` appears in the change set as
   a hand edit; its presence is acceptable only as `make agents-emit` output.
-- No `git rm --cached`, and no staged index change, on any path under
-  `.moai/reports/`.
+- No index change on any path under `.moai/reports/` that has already reached
+  `origin/develop`, and no history rewrite on any such path in any case. The two
+  index removals the operator ruled on (SPEC §A.3a) are the whole of what is
+  authorized here, they left both files on disk, and §A.3a's post-act measurement
+  records the tracked-but-not-remote set as empty — so the predicate that
+  permitted them now selects nothing and no further removal is in scope.
 - The card's verdict is written to `.moai/reports/t1059/verdict.md` and **left
   local**. Force-staging it would be the card refuting its own direction; the lead
   reads it on disk, and the worktree is not disposed of until that read has
@@ -585,10 +835,20 @@ Maps REQ-AEC-014
    repair worked.
 2. `make agents-emit-check` exits 0.
 3. The two convention copies are byte-identical.
-4. The tracked `.moai/reports/` population is measurably unchanged, reported as
-   the two-way set difference rather than as counts.
+4. The tracked `.moai/reports/` verdict set and the `origin/develop` verdict set
+   are measurably **equal**, reported as the two empty set differences rather
+   than as counts (AC-AEC-003). A non-empty difference in either direction is a
+   finding, and the two directions mean different things — see AC-AEC-003's
+   directional reading.
 5. The card's verdict artifact exists on disk at `.moai/reports/t1059/verdict.md`
    and has been read by the lead before the worktree is disposed of.
+6. AC-AEC-013 and AC-AEC-014 are closed **after** their milestone's commit lands,
+   not during the edit: their three-dot diff reads commits and is empty on an
+   uncommitted working tree, so a close attempted earlier is refused by §D.3
+   rather than passed.
+7. AC-AEC-014's match set equals its declared exception set exactly. A match
+   outside that table fails the criterion; the table is extended only by a SPEC
+   edit carrying its own justification, never at close time.
 
 ### §D.2 Evidence format
 

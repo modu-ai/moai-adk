@@ -1,7 +1,7 @@
 ---
 id: SPEC-AUDIT-EXPORT-CLAUSE-001
 title: "documents that promise a remote destination the directive forbids"
-version: "0.3.1"
+version: "0.3.2"
 status: draft
 created: 2026-09-21
 updated: 2026-09-22
@@ -17,6 +17,30 @@ tags: "audit-export, gitignore, local-only-evidence, agent-definition, template-
 # SPEC-AUDIT-EXPORT-CLAUSE-001 — documents that promise a remote destination the directive forbids
 
 ## HISTORY
+
+- 2026-09-22 · v0.3.2 · manager-spec · **Plan-audit reset-iteration-1 repair
+  (FAIL 0.75), and the operator ruling that made REQ-AEC-003 stale.** Two
+  critical defects drove the FAIL and both trace to one event: after v0.3.1 was
+  committed, the operator ruled on the disposition §D had recorded as
+  *escalated and unanswered* — `.moai/reports/t1039/verdict.md` and
+  `.moai/reports/t1048/verdict.md`, neither of which had reached
+  `origin/develop`, were to leave the index while the 10 already on the remote
+  were left as history. That ruling was executed without being folded back into
+  this SPEC, so v0.3.1 forbade in four places what the tree already contained
+  (D1) and AC-AEC-003's expected figures were falsified by it (D2).
+  REQ-AEC-003 is rewritten to authorize exactly what was ruled, on the
+  reachability predicate rather than on a file list; §D records the resolved
+  disposition; AC-AEC-003 closes on set equality against `origin/develop`
+  instead of on counts. Six criterion-mechanics defects are repaired alongside:
+  REQ-AEC-001 narrowed to the verdict negation it always meant with the
+  surviving CI-fixture negations stated as a carve-out (D3), AC-AEC-008 made
+  grep-flavour-independent (D4), AC-AEC-015's and §A.2a's RED cells pinned to
+  `622e25d22` (D5), AC-AEC-014's sweep corrected to the full thirteen files and
+  its regex widened past the adverb gap (D6, D7), AC-AEC-001's stated
+  expectation matched to `grep -c`'s actual behaviour (D8), and the pre-commit
+  window of the three-dot diff named in both artifacts (D9). REQ-AEC-012 gains
+  the tense discriminator the widened regex needs to be principled rather than
+  ad hoc. Requirements stay 14, criteria stay 15 — no budget was drawn.
 
 - 2026-09-22 · v0.3.1 · manager-spec · **Lead review of v0.3.0 — two bounded
   additions, no reopening.** The lead reviewed the draft, independently
@@ -216,14 +240,23 @@ That hazard is not hypothetical, and the evidence is this SPEC's own predecessor
 The v0.2.0 draft specified `git check-ignore -v --no-index` as the check-form
 wording for all four auditor copies and made the unflagged form a FAIL:
 
+The citation is pinned to the literal commit that carries the v0.2.0 draft,
+`622e25d22`, not to `HEAD`. `HEAD` is an address that moves: this same command
+written against it returned `4` matching lines when it was authored and returns
+`1` now, because the v0.3.x rewrites landed in between. Pinning is the ANCHOR
+remedy of `verification-claim-integrity.md` §2.1 — the ref here is the address
+at which a measurement was taken, not the subject of the claim.
+
 ```
-$ git show HEAD:.moai/specs/SPEC-AUDIT-EXPORT-CLAUSE-001/acceptance.md \
+$ git show 622e25d22:.moai/specs/SPEC-AUDIT-EXPORT-CLAUSE-001/acceptance.md \
     | grep -n 'check-ignore' | cut -c1-96
 90:grep -rc 'check-ignore -v --no-index' \
 99:A match of `check-ignore` **without** `--no-index` in these files is a FAIL, not
 177:Expected output contains, in this order: `git check-ignore -v --no-index`,
 312:git check-ignore -v --no-index "$P"; CHECK=$?; echo "check_exit=$CHECK"
 ```
+
+exit code 0; four lines, re-measured at HEAD `113e487c2` against the pinned blob.
 
 Line 312 is that draft's own probe keying on the verbose exit code — and the
 path it probed was `.moai/reports/ZZAC013/plan-audit.md`, the agreement case, so
@@ -241,14 +274,20 @@ untouched. This SPEC states the mechanism because a reader who withdraws the
 negation and stops has repaired half of the state and has no signal telling them
 so.
 
-Measured in this tree, with an anchored criterion applied to **both** sides:
+That the population was *later* changed by a separate, separately-ruled act
+(§A.3a) does not weaken this: the two acts are independent, and confusing them
+is the misreading this section exists to prevent. The withdrawal untracked
+nothing; an index removal untracked two files; neither implies the other.
+
+Measured **before the index act of §A.3a**, in this tree at `64c7edbf3`, with an
+anchored criterion applied to **both** sides:
 
 | Measurement | Command | Result |
 |---|---|---|
 | tracked `verdict.md` | `git ls-files '.moai/reports/*/verdict.md' \| wc -l` | **12** |
 | present on `origin/develop`, same criterion | `git ls-tree -r --name-only origin/develop -- .moai/reports \| grep -E '^\.moai/reports/[^/]+/verdict\.md$' \| wc -l` | **10** |
 | tracked but not on the remote | `comm -23` of the two sorted sets | **2** — `.moai/reports/t1039/verdict.md`, `.moai/reports/t1048/verdict.md` |
-| remote-only | `comm -13` of the two sorted sets | **0** (the local set is a proper superset) |
+| remote-only | `comm -13` of the two sorted sets | **0** (the local set was a proper superset) |
 
 Per-file confirmation, with a firing positive control:
 
@@ -276,12 +315,55 @@ $ git ls-tree -r --name-only origin/develop -- .moai/reports | grep 'verdict.md'
 ```
 
 A count difference of 1 would then have looked like a near-match. It is not: the
-two-way set difference is **2 and 0**, and it is the two-way form — not the
+two-way set difference was **2 and 0**, and it is the two-way form — not the
 counts — that exposed the real shape. Any criterion comparing these sets uses the
 anchored pattern on both sides and reports the two differences, never the counts
 alone.
 
-**The disposition of those two files is not decided here** (§D).
+### §A.3a [HARD] The ruled index act — what was authorized, and the predicate that bounds it
+
+The v0.3.0 and v0.3.1 drafts recorded the disposition of the 12 tracked files as
+**escalated to the operator and unanswered**, and forbade resolving it. The
+operator has since ruled, and the ruling was executed. This section records what
+was ruled so that the SPEC describes the tree rather than contradicting it.
+
+**What was authorized and performed.** Exactly two paths left the index —
+`.moai/reports/t1039/verdict.md` and `.moai/reports/t1048/verdict.md` — by
+`git rm --cached`. Both files remain on disk; neither was deleted, and no history
+was rewritten.
+
+**The discriminating property is reachability, not the file class.** Those two
+were the entire tracked-but-not-on-`origin/develop` set of the §A.3 measurement:
+the window to keep a file off the remote was still open for them and closed for
+every other. A future reader applying this SPEC to a file it never saw applies
+that predicate, not the two names:
+
+> A tracked card-report artifact that has **not** reached `origin/develop` may be
+> removed from the index, because doing so changes only what will be published.
+> One that **has** reached it may not, because the index removal would not undo
+> the publication and the operator ruled that history is preserved rather than
+> rewritten.
+
+**What stays forbidden.** The 10 verdict files already present on
+`origin/develop` are untouched — the operator chose to preserve that history —
+and history rewriting of any kind remains out of scope in every case, including
+for the two above (REQ-AEC-003, §D).
+
+**Post-act measurement**, at HEAD `113e487c2`, same anchored criterion on both
+sides:
+
+| Measurement | Result |
+|---|---|
+| tracked `verdict.md` | **10** |
+| present on `origin/develop`, same criterion | **10** |
+| tracked but not on the remote (`comm -23`) | **0** — empty |
+| remote-only (`comm -13`) | **0** — empty |
+
+The two sets are now **equal**, which is the state the ruling aimed at and the
+shape AC-AEC-003 closes on. The counts alone would not say so: two files leaving
+the index and two different files arriving on the remote would also read `10` and
+`10`, which is why the closing evidence is the two-way difference and not the
+pair of counts.
 
 ### §A.4 What the documents currently say
 
@@ -424,9 +506,22 @@ authoring standard.
 
 ### §B.1 The enacting act
 
-- **REQ-AEC-001** (Unwanted) — The repository `.gitignore` shall not carry any negation re-including an artifact under a card report directory.
+- **REQ-AEC-001** (Unwanted) — The repository `.gitignore` shall not carry any negation re-including a **verdict artifact** under a card report directory.
   The explanatory block introducing that negation shall be withdrawn with it, so
   no comment survives justifying a rule the file no longer contains.
+  **Carve-out — the CI-fixture negations survive, and are not in scope.** Four
+  negations re-include a named test-guard fixture under a card report directory
+  (`.moai/reports/t338/ac-count-baseline.txt`,
+  `.moai/reports/t528/probe/nondecl-bullets.txt`,
+  `.moai/reports/t530/count-literals.txt`,
+  `.moai/reports/t229/live-probe-body.txt`), together with the directory-level
+  negations that enable them. They are operator-approved and CI reads them, as
+  `.gitignore` already records at the head of that block (*"test guard fixtures
+  under reports stay tracked — CI reads them"*). This requirement is stated as
+  *verdict artifact* rather than *artifact* precisely so that it and AC-AEC-001
+  have the same reach: a requirement forbidding every negation would be violated
+  by a tree this card deliberately preserves, and a criterion blind to that
+  violation would report green over it.
 
 - **REQ-AEC-002** (Ubiquitous) — This SPEC shall state that withdrawing the negation binds only files created afterwards.
   It shall state that ignore-matching does not untrack an already-tracked file,
@@ -434,9 +529,14 @@ authoring standard.
   difference between them, each measured with a criterion anchored to the exact
   path shape rather than to a substring (§A.3).
 
-- **REQ-AEC-003** (Unwanted) — The implementation shall not untrack, stage, or otherwise alter the index state of any file already tracked under `.moai/reports/`.
-  The disposition of the already-tracked population is an open operator question
-  (§D); this SPEC describes it and does not resolve it.
+- **REQ-AEC-003** (Unwanted) — The implementation shall not alter the index state of any file under `.moai/reports/` that has already reached `origin/develop`, and shall not rewrite history for any such file in any case.
+  **Where** a tracked card-report artifact has not reached `origin/develop`, its
+  removal from the index is permitted by the operator ruling of §A.3a, the files
+  shall remain on disk, and no history rewrite accompanies it. Under that ruling
+  exactly two paths were removed — `.moai/reports/t1039/verdict.md` and
+  `.moai/reports/t1048/verdict.md` — and the set is now closed: §A.3a's
+  post-act measurement records the tracked-but-not-remote set as empty, so no
+  further removal is authorized by this SPEC without a new ruling.
 
 ### §B.2 The wording repair — one act across every surface
 
@@ -473,11 +573,25 @@ authoring standard.
 
 ### §B.4 Constraints on the wording itself
 
-- **REQ-AEC-012** (Unwanted) — No sentence this SPEC introduces shall assert a fact about this repository's tree state, in any verb form.
+- **REQ-AEC-012** (Unwanted) — No sentence this SPEC introduces shall assert, in the present tense, a fact about **this repository's current** tree state, in any verb form.
   Each introduced sentence shall be a statement of obligation, of design intent,
-  or of general git behaviour. The verb-form clause is load-bearing: a stative
-  form such as *remain*, *stay*, or *become* carries the same claim a copula
-  does, and a criterion enumerating only the copula misses it.
+  of general git behaviour, or of past-tense narration of a completed act.
+  Three clauses are load-bearing and each was added because a criterion missed
+  the class it names:
+  - **Verb form.** A stative form such as *remain*, *stay*, or *become* carries
+    the same claim a copula does, and a criterion enumerating only the copula
+    misses it.
+  - **Adverbial interposition.** *is already tracked* carries the same claim as
+    *is tracked*; a criterion requiring the verb and the participle to be
+    adjacent is defeated by one word.
+  - **Tense and subject.** The prohibition exists because a present-tense claim
+    about this tree goes false under a policy move or in a user project whose
+    `.gitignore` this repository does not author. Neither hazard reaches a
+    generic statement of how git behaves (*"git does not untrack a file that is
+    already tracked"*) nor a past-tense record of what was done (*"the entries
+    already in the index stayed there and had to be removed deliberately"*).
+    Both are permitted, and AC-AEC-014 carries them as a declared, enumerated
+    exception set rather than as silent regex misses.
 
 - **REQ-AEC-013** (Ubiquitous) — The convention's § What makes the convention stick mechanical check shall name a check whose obligation still holds once the artifact is local.
   Presence on disk is that check; branch reachability shall not be named, because
@@ -598,14 +712,20 @@ a branch, or a remote.
 
 ## §D Exclusions
 
-### Out of Scope — the disposition of the already-tracked verdict files
+### Out of Scope — the already-remote verdict files and every history rewrite
 
-- Whether the 12 tracked `verdict.md` files, or the 2 of them not yet on
-  `origin/develop`, should be untracked, left in place, or removed from history.
-  That question is escalated to the operator and is unanswered; §A.3 describes it
-  and REQ-AEC-003 forbids resolving it here.
-- Any `git rm --cached`, any staging change touching those paths, and any history
-  rewrite.
+- The 10 `verdict.md` files present on `origin/develop`. Their disposition was
+  ruled: they stay as they are, because an index removal would not undo the
+  publication and the operator chose to preserve that history rather than rewrite
+  it (§A.3a). Re-opening it is a new operator question, not this card's.
+- Any history rewrite, on any path under `.moai/reports/`, including the two
+  files whose index removal §A.3a authorized. The ruling permitted an index
+  change and nothing else; the files stay on disk and the commits that carried
+  them stay in the graph.
+- Any further index change under `.moai/reports/`. §A.3a's post-act measurement
+  records the tracked-but-not-remote set as empty, so the predicate that
+  authorized the two removals now selects nothing; a further removal needs a new
+  ruling and is not covered here (REQ-AEC-003).
 
 ### Out of Scope — the ignore policy beyond the negation
 
@@ -640,9 +760,11 @@ a branch, or a remote.
 
 | Risk | Consequence | Mitigation |
 |---|---|---|
-| The negation is withdrawn and the existing tracked files are read as also withdrawn | A reader believes the state is clean while 12 files still reach the remote | §A.3 states the mechanism, REQ-AEC-002 requires it in the SPEC, and AC-AEC-003 measures the population before and after |
-| A future ignore-policy change makes the wording stale again | The same defect recurs | REQ-AEC-012 forbids asserting the ignore state, so no policy change can falsify the specified sentences |
+| The negation is withdrawn and the existing tracked files are read as also withdrawn | A reader believes the state is clean while tracked files still reach the remote | §A.3 states the mechanism, REQ-AEC-002 requires it in the SPEC, and AC-AEC-003 measures the population before and after |
+| The §A.3a ruling is read as a general licence to untrack card-report artifacts | A later card removes a file already published on the remote, which the ruling forbids and which an index removal cannot undo | §A.3a states the predicate (reachability), not a file list; REQ-AEC-003 forbids the already-remote case and every history rewrite; AC-AEC-003 closes on set equality, so a removal on the wrong side of the predicate breaks it immediately |
+| A future ignore-policy change makes the wording stale again | The same defect recurs | REQ-AEC-012 forbids asserting the current ignore state, so no policy change can falsify the specified sentences |
+| A criterion enumerating surface forms is read as complete | A sentence carrying the forbidden claim in an unenumerated form passes | REQ-AEC-012 names the three classes that have already defeated a criterion here (verb form, adverbial interposition, tense/subject) and AC-AEC-014 carries a declared exception set, so a permitted match is recorded rather than silently tolerated |
 | C1 and C2 drift during the edit | Template ships different wording than the repository dogfoods | Divergence is intentional by doctrine and measured (§A.4); §C specifies the replacement shape, applied per copy against its own surrounding text |
 | The paraphrase repair is deferred to a successor card | An always-loaded rule asserts a fact this card makes false | Absorbed rather than excluded — §A.6 measures the coupling; §A.7 shows the budget accommodates it |
 | A literal grep for a moved phrase returns a false zero | A surface is silently left unrepaired | §A.6 is the standing counter-example: every absence claim is paired with a control that fired in the same run |
-| A reviewer counts 16 files and reads the card as Tier L | The Tier call flips at the band edge and the artifact set is re-derived mid-card | **The basis for 13 is that only hand-edited files are counted.** The three `.codex/*.toml` files are machine-emitted from C2 by `make agents-emit` and are never hand-edited (REQ-AEC-011), so they are an **output** of the change rather than a **surface** of it — no wording is authored in them and no judgement is applied to them. Counting them would count the same authoring act twice. 13 sits inside Tier M's 5-15 band; 16 would not, so the basis is stated here rather than left to the reader to reconstruct |
+| A reviewer counts 16 files and reads the card as Tier L | The Tier call flips at the band edge and the artifact set is re-derived mid-card | **The basis for 13 is that only hand-edited files are counted.** The three `.codex/*.toml` files are machine-emitted from C2 by `make agents-emit` and are never hand-edited — the property REQ-AEC-011 requires and AC-AEC-012 measures — so they are an **output** of the change rather than a **surface** of it — no wording is authored in them and no judgement is applied to them. Counting them would count the same authoring act twice. 13 sits inside Tier M's 5-15 band; 16 would not, so the basis is stated here rather than left to the reader to reconstruct |
