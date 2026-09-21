@@ -183,4 +183,27 @@ blockers:
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase>_
+```yaml
+sync_complete_at: 2026-09-22
+sync_commit_sha: pending-backfill-sync
+sync_status: complete
+changelog_entry_position: [Unreleased] > Changed (first entry, anti-duplicate grep 0 prior hits)
+frontmatter_status_transitions:
+  in-progress: 2026-09-21
+  implemented: 2026-09-22
+  completed: 2026-09-22
+changelog_entry_added: yes  # grep -c 'SPEC-AUDIT-EXPORT-CLAUSE-001' CHANGELOG.md -> 0 before emission; 1 entry added under [Unreleased]
+ac_count_check: acceptance.md distinct AC ids = 15 (grep -oE 'AC-([A-Z0-9]+-)*[0-9]+' | sort -u | wc -l); matches ac_pass_count 15 in §E.3
+total_sync_phase_files: 3  # CHANGELOG.md, spec.md (frontmatter only), progress.md (§E.4 only)
+canary_compliance_check:
+  status: not-applicable
+  reason: documentation-only SPEC — no forward-looking policy with its own sync tests
+b12_self_test_a_pre_emission_grep: 0 hits (pass — no duplicate entry)
+b12_self_test_b_ac_count_match: 15 == 15 (pass)
+b12_self_test_c_file_path_verification: CHANGELOG entry names .moai/specs/SPEC-AUDIT-EXPORT-CLAUSE-001/spec.md — exists (ls verified)
+mx_validation:
+  status: no-op
+  reason: documentation-only change — zero source files touched (no .go, no scripts), so the @MX annotation pass has no eligible surface; no tags added or removed
+sync_phase_scope_note: writable set honored exactly — CHANGELOG.md, spec.md frontmatter (status + updated), progress.md §E.4; §E.1–§E.3, spec/plan/acceptance bodies, .gitignore, templates, and .moai/reports/** untouched
+```
+

@@ -2,7 +2,7 @@
 id: SPEC-AUDIT-EXPORT-CLAUSE-001
 title: "documents that promise a remote destination the directive forbids"
 version: "0.3.4"
-status: in-progress
+status: completed
 created: 2026-09-21
 updated: 2026-09-22
 author: manager-spec
