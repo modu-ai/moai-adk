@@ -185,7 +185,7 @@ blockers:
 
 ```yaml
 sync_complete_at: 2026-09-22
-sync_commit_sha: pending-backfill-sync
+sync_commit_sha: e197dfdd5
 sync_status: complete
 changelog_entry_position: [Unreleased] > Changed (first entry, anti-duplicate grep 0 prior hits)
 frontmatter_status_transitions:
