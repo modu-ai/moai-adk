@@ -173,14 +173,16 @@ plain form prints nothing and `plain_exit=1`.
 
 Maps REQ-AEC-001, REQ-AEC-002
 
-### AC-AEC-003 — the tracked population matches the remote exactly
+### AC-AEC-003 — the tracked population differs from the remote by exactly the two ruled removals
 
 **Given** the withdrawal (which untracks nothing, SPEC §A.3) and the ruled index
-act (which removed exactly the tracked-but-not-remote set, SPEC §A.3a),
+act (which removed exactly two tracked verdict files, SPEC §A.3a),
 **When** the tracked set and the remote-present set are each enumerated with the
 anchored criterion,
-**Then** the two sets are **equal** — neither difference direction is non-empty —
-and nothing under `.moai/reports/` remains as an uncommitted index change.
+**Then** every tracked verdict file is on the remote (`comm -23` **empty**), the
+remote-only remainder is **exactly** the two ruled names —
+`.moai/reports/t1039/verdict.md` and `.moai/reports/t1048/verdict.md` — and
+nothing under `.moai/reports/` remains as an uncommitted index change.
 
 ```bash
 git ls-files '.moai/reports/*/verdict.md' | sort > /tmp/aec003-tracked.txt
@@ -190,30 +192,36 @@ comm -13 /tmp/aec003-tracked.txt /tmp/aec003-remote.txt
 git status --porcelain -- .moai/reports ; echo "status_exit=$?"
 ```
 
-Expected: both `comm` outputs **empty**; the `git status` output empty with
-`status_exit=0`.
+Expected: the `comm -23` output **empty**; the `comm -13` output **exactly the
+two lines** `.moai/reports/t1039/verdict.md` and `.moai/reports/t1048/verdict.md`
+and no others; the `git status` output empty with `status_exit=0`.
 
-> **The Then-clause is set equality, not a count — and that is the repair, not a
-> renumbering.** The former clause read *"the tracked set is unchanged from the
-> pre-implementation measurement"* and expected `12` / `10` / a two-way
-> difference of `2` and `0`. The ruled index act of SPEC §A.3a falsified the
-> clause itself, not merely its numbers: the tracked set **did** change, by
-> authorization. Replacing `12` with `10` would have preserved a sentence that is
-> now false.
+> **The Then-clause was re-baselined by the operator's disposition of
+> 2026-09-22, and the RED that forced it was observed on this tree.** The
+> pre-amendment Then-clause read *"neither difference direction is non-empty"*.
+> Measured at HEAD `ce6de9407` (2026-09-22, this run): `comm -23` empty,
+> `comm -13` returning exactly `.moai/reports/t1039/verdict.md` and
+> `.moai/reports/t1048/verdict.md`, `status_exit=0` — a **FAIL** against the old
+> text and the **PASS** state against the ruled one, because the disposition
+> ruled that state final (SPEC §A.3a): the two files stay on `origin/develop` and
+> stay intentionally absent from this branch's index. The command is unchanged;
+> only the expected state moved, and any third name in either direction still
+> fails.
 >
 > **A count pair cannot distinguish the outcome from its failure modes.** At HEAD
-> `113e487c2` both sides measure `10`, and they would also both measure `10` if
-> two files had left the index while two *different* files arrived on the remote.
-> The two `comm` directions separate those cases; the counts do not, which is why
-> the closing evidence is the pair of empty differences and the counts are not
-> the criterion at all.
+> `ce6de9407` the sides measure `10` and `12`, and a `10` / `12` pair would also
+> read the same if two *different* files had left the index while two other files
+> arrived on the remote. The two `comm` directions separate those cases; the
+> counts do not, which is why the closing evidence is the exact two-way
+> difference and the counts are not the criterion at all.
 >
 > **Directional reading.** A non-empty `comm -23` means a tracked verdict file
 > has not reached the remote — under §A.3a's predicate that is the state whose
 > removal is authorized, so it is a finding to route to the operator rather than
-> to act on silently. A non-empty `comm -13` means a verdict file is on the
-> remote and not in this index — that is the case REQ-AEC-003 forbids creating,
-> and it fails this criterion outright.
+> to act on silently. A `comm -13` whose set is exactly the two ruled names is
+> the operator-ruled intentional state, recorded as such at the 2026-09-22
+> disposition (SPEC §A.3a); a `comm -13` carrying **any other name** is the state
+> REQ-AEC-003 forbids creating, and it fails this criterion outright.
 >
 > **A substring criterion is a FAIL, not a near-pass.** `grep 'verdict.md'` on
 > the remote side also matches `.moai/reports/t965/plan-audit-verdict.md` and
@@ -242,15 +250,24 @@ Maps REQ-AEC-002, REQ-AEC-003
 
 ### AC-AEC-004 — no surface designates a card-report artifact as tracked
 
-**Given** the scope table in plan §C,
-**When** all thirteen surfaces are swept with the markup-insensitive pattern that
-located them,
+**Given** the twelve wording surfaces enumerated in plan §C (scope rows #2–#13),
+**When** they are swept with the markup-insensitive pattern that located them,
 **Then** no match remains.
 
 ```bash
 grep -rnE 'tracked\*{0,2} (citation target|verdict file|path)' \
-  .claude/rules .claude/agents .claude/skills .moai/docs \
-  internal/template/templates/.claude internal/template/templates/.moai
+  .claude/agents/moai/plan-auditor.md \
+  .claude/agents/moai/sync-auditor.md \
+  .claude/agents/moai/manager-lead.md \
+  .claude/rules/moai/core/agent-common-protocol.md \
+  .claude/rules/moai/core/agent-common-protocol-reference.md \
+  .moai/docs/audit-artifact-convention.md \
+  internal/template/templates/.claude/agents/moai/plan-auditor.md \
+  internal/template/templates/.claude/agents/moai/sync-auditor.md \
+  internal/template/templates/.claude/agents/moai/manager-lead.md \
+  internal/template/templates/.claude/rules/moai/core/agent-common-protocol.md \
+  internal/template/templates/.claude/rules/moai/core/agent-common-protocol-reference.md \
+  internal/template/templates/.moai/docs/audit-artifact-convention.md
 echo "exit=$?"
 ```
 
@@ -271,6 +288,58 @@ grep -rlE 'local\*{0,2} record' \
 
 Expected: `6`.
 
+> **Why an enumerated file list rather than tree roots.** REQ-AEC-004's subject is
+> the plan §C surface set, so the sweep's reach must be exactly that set — and an
+> enumerated list is the form a reader can compare against the table row by row.
+> The former six-tree-root form swept whole trees and reached files outside the
+> table: measured at HEAD `ce6de9407`, it returned one match,
+> `internal/template/templates/.moai/README.md:77` (*"regenerable artifacts out
+> of tracked paths"*), a sentence pre-existing since `d97980654` (2026-07-07) and
+> not in the scope table. All 8 in-scope lines were repaired; the criterion's
+> trees were wider than its requirement's scope. Narrowed by the operator
+> disposition of 2026-09-22.
+>
+> **Why `.gitignore` (scope row #1) is not in the list either.** Its act in this
+> card is the withdrawal (REQ-AEC-001), measured by AC-AEC-001 and AC-AEC-002 —
+> not the wording repair. Sweeping it with this pattern would re-catch a
+> pre-existing sentence this card did not author (the `t196` block added by
+> `d791fd29d`, *"The tracked citation target is the verdict file…"*), the same
+> out-of-scope shape the narrowing removes, one file over. Its added lines are
+> swept where they belong, in AC-AEC-014.
+>
+> **RED-now cell — re-derived against the pinned pre-repair tree, not carried
+> forward.** The eight pre-repair lines live in six files, each read from its
+> blob at `269fb89c1` (the merge base of this branch with `origin/develop`;
+> measured 2026-09-22):
+>
+> ```
+> $ git show 269fb89c1:.claude/rules/moai/core/agent-common-protocol-reference.md \
+>     | grep -cE 'tracked\*{0,2} (citation target|verdict file|path)'
+> 1                                  # line 62
+> $ git show 269fb89c1:.claude/rules/moai/core/agent-common-protocol.md \
+>     | grep -cE 'tracked\*{0,2} (citation target|verdict file|path)'
+> 1                                  # line 274
+> $ git show 269fb89c1:.claude/agents/moai/manager-lead.md \
+>     | grep -cE 'tracked\*{0,2} (citation target|verdict file|path)'
+> 2                                  # lines 63, 152
+> $ git show 269fb89c1:internal/template/templates/.claude/rules/moai/core/agent-common-protocol-reference.md \
+>     | grep -cE 'tracked\*{0,2} (citation target|verdict file|path)'
+> 1                                  # line 62
+> $ git show 269fb89c1:internal/template/templates/.claude/rules/moai/core/agent-common-protocol.md \
+>     | grep -cE 'tracked\*{0,2} (citation target|verdict file|path)'
+> 1                                  # line 274
+> $ git show 269fb89c1:internal/template/templates/.claude/agents/moai/manager-lead.md \
+>     | grep -cE 'tracked\*{0,2} (citation target|verdict file|path)'
+> 2                                  # lines 65, 154
+> ```
+>
+> Total: **8** matching lines, all exit 0 — the red the amended criterion starts
+> from. Its firing positive control on the same tree:
+> `git show 269fb89c1:.claude/rules/moai/core/agent-common-protocol.md | grep -c 'citation target'`
+> → `1`, exit 0, proving the instrument reads the pinned blobs. **Green path:**
+> M4's rewrite (SPEC §C.5); the same sweep at HEAD `ce6de9407` returns no output,
+> `exit=1`.
+>
 > **The pattern carries `path` as a third alternative deliberately.** The v0.2.0
 > draft measured these surfaces as `tracked** path` and excluded them; the
 > `develop` absorb rewrote that phrase out of existence, so a sweep for it now
@@ -643,23 +712,35 @@ git diff -U0 develop...HEAD -- \
 echo "exit=$?"
 ```
 
-Expected: exactly the two lines of the declared exception set below, and no
+Expected: exactly the nine lines of the declared exception set below, and no
 others.
 
-**Declared exception set — 2 entries, both permitted by REQ-AEC-012.** The regex
-is a screen over surface forms; REQ-AEC-012's permission is about tense and
-subject, which no such screen can express. Rather than narrow the regex until it
-stops matching permitted lines — the move that produced this criterion's previous
-two defects — the permitted matches are enumerated here and the criterion closes
-on the **set difference** being empty:
+**Declared exception set — 9 entries, every one in a class REQ-AEC-012 permits.**
+The regex is a screen over surface forms; REQ-AEC-012's permission is about tense
+and subject, which no such screen can express. Rather than narrow the regex until
+it stops matching permitted lines — the move that produced this criterion's
+previous two defects — the permitted matches are enumerated here and the
+criterion closes on the **set difference** being empty:
 
 | # | File | Matched line (verbatim) | Why permitted |
 |---|---|---|---|
 | E1 | `.gitignore` | `# untrack a file that is already tracked, so the entries already in the index` | General git behaviour. The subject is *a file*, indefinite — a statement of how git behaves, not a claim about this tree. REQ-AEC-012 permits it explicitly. |
 | E2 | `.gitignore` | `# its own leaves whatever is already tracked exactly where it was.` | General git behaviour. Subject *whatever is already tracked*, a generic quantifier; the sentence is the same mechanism statement continued. |
+| E3 | `.claude/rules/moai/core/agent-common-protocol.md` | `it is gitignored, so it reaches no clone, no CI runner` | Pre-existing prose this card did not author: the line is re-added whole only because a line-granularity diff re-adds a line whose other half changed (the § Evidence export bullet, M4). The subject is the machine-local scratch directory `.moai/state/verify/<session>/`, not a card-report artifact, and the sentence states that directory's design intent — outside REQ-AEC-012's bind, which covers sentences *this SPEC introduces*. |
+| E4 | `internal/template/templates/.claude/rules/moai/core/agent-common-protocol.md` | `it is gitignored, so it reaches no clone, no CI runner` | As E3 — C2 mirror of the same pre-existing sentence. |
+| E5 | `.claude/agents/moai/manager-lead.md` | `That directory is scratch and nothing more: it is gitignored, so it reaches no clone, no CI runner` | As E3 — pre-existing prose, subject the machine-local scratch directory, design intent; surfaced only by the line-granularity re-add. |
+| E6 | `internal/template/templates/.claude/agents/moai/manager-lead.md` | `That directory is scratch and nothing more: it is gitignored, so it reaches no clone, no CI runner` | As E5 — C2 mirror. |
+| E7 | `internal/template/templates/.codex/agents/moai/manager-lead.toml` | `That directory is scratch and nothing more: it is gitignored, so it reaches no clone, no CI runner` | As E5 — the machine-emitted copy of E6's source (REQ-AEC-011). It appears in this table only as a recorded matched line and is never edited. |
+| E8 | `.moai/docs/audit-artifact-convention.md` | `Ignore-matching does not untrack a file that is already tracked, so a project` | SPEC §C.2's own specified closing paragraph: general git behaviour plus a conditional about *a* project (indefinite), not an assertion about this one — identical in kind to E1/E2 and the class REQ-AEC-012 explicitly permits. |
+| E9 | `internal/template/templates/.moai/docs/audit-artifact-convention.md` | `Ignore-matching does not untrack a file that is already tracked, so a project` | As E8 — byte-identical mirror (REQ-AEC-009). |
 
 A match outside this table fails the criterion. Adding an entry to the table is a
-SPEC edit with its own justification, not a close-time judgement call.
+SPEC edit with its own justification, not a close-time judgement call. The
+extension from 2 to 9 entries is such an edit: the seven additions were
+re-measured at HEAD `ce6de9407` on 2026-09-22 — the aggregate sweep above
+returned exactly these nine lines (`exit=0`), all in REQ-AEC-012-permitted
+classes, and the extension was ruled by the operator disposition of the same date
+rather than decided at close time.
 
 > **[HARD] The declared false-negative class, stated rather than hidden.** One
 > added line in `.gitignore` carries a past-tense record of this repository's
@@ -847,7 +928,8 @@ Maps REQ-AEC-014
 | `make agents-emit-check` fails after `make agents-emit` | Emission is non-deterministic or the source layer is malformed; blocker, never resolved by editing a `.toml` |
 | Withdrawing the negation appears to change `git status` under `.moai/reports/` | Stop. The withdrawal untracks nothing (SPEC §A.3), so a status change from it alone is a misreading of the tool or a second act that was not the withdrawal; re-read the output and report before proceeding (REQ-AEC-003) |
 | AC-AEC-003's `comm -23` is non-empty — a tracked verdict file is not on the remote | Not a failure of this criterion's requirement, but a finding: §A.3a's predicate would authorize its removal and the predicate is the operator's to apply, not the implementer's. Report it; do not remove it |
-| AC-AEC-003's `comm -13` is non-empty — a verdict file is on the remote and not in this index | FAIL. REQ-AEC-003 forbids creating this state, and an index removal cannot undo a publication. Report as a blocker |
+| AC-AEC-003's `comm -13` contains exactly the two ruled names (`t1039/verdict.md`, `t1048/verdict.md`) | **PASS.** This is the operator-ruled intentional state (2026-09-22 disposition, SPEC §A.3a) — the two files stay on `origin/develop` and intentionally absent from this branch's index |
+| AC-AEC-003's `comm -13` contains any name other than the two ruled names | FAIL. That is the state REQ-AEC-003 forbids creating — an index removal cannot undo a publication. Report as a blocker |
 | AC-AEC-014 matches a line that is not in its declared exception set | FAIL, whatever the line's apparent justification. Adding an entry is a SPEC edit with its own reasoning, never a close-time judgement |
 | The plan-audit carve-out's behaviour changes after the withdrawal | Blocker. The `.gitignore` notes the ordering was load-bearing; AC-AEC-002's third probe is what detects it |
 | A grep positive control returns zero | Every absence claim in the same run is void. Re-derive the instrument; do not report the zeros |
@@ -863,10 +945,14 @@ Maps REQ-AEC-014
   a hand edit; its presence is acceptable only as `make agents-emit` output.
 - No index change on any path under `.moai/reports/` that has already reached
   `origin/develop`, and no history rewrite on any such path in any case. The two
-  index removals the operator ruled on (SPEC §A.3a) are the whole of what is
-  authorized here, they left both files on disk, and §A.3a's post-act measurement
-  records the tracked-but-not-remote set as empty — so the predicate that
-  permitted them now selects nothing and no further removal is in scope.
+  index removals of SPEC §A.3a were performed on already-published paths (their
+  removal premise was measured against a stale remote-tracking ref, §A.3a), and
+  the operator's 2026-09-22 disposition rules the resulting state **final**:
+  `.moai/reports/t1039/verdict.md` and `.moai/reports/t1048/verdict.md` stay on
+  `origin/develop` and stay intentionally absent from this branch's index.
+  Restoration and re-staging of either file is forbidden — REQ-AEC-003's first
+  clause (no index alteration on an already-published path) prohibits it in both
+  directions — and no further index change under `.moai/reports/` is in scope.
 - The card's verdict is written to `.moai/reports/t1059/verdict.md` and **left
   local**. Force-staging it would be the card refuting its own direction; the lead
   reads it on disk, and the worktree is not disposed of until that read has
@@ -891,11 +977,13 @@ Maps REQ-AEC-014
    left to a reader who knows §2.1 to discover the mismatch.
 2. `make agents-emit-check` exits 0.
 3. The two convention copies are byte-identical.
-4. The tracked `.moai/reports/` verdict set and the `origin/develop` verdict set
-   are measurably **equal**, reported as the two empty set differences rather
-   than as counts (AC-AEC-003). A non-empty difference in either direction is a
-   finding, and the two directions mean different things — see AC-AEC-003's
-   directional reading.
+4. The tracked `.moai/reports/` verdict set is a subset of the `origin/develop`
+   verdict set (`comm -23` empty) and the remote-only remainder is **exactly**
+   the two ruled removals, `.moai/reports/t1039/verdict.md` and
+   `.moai/reports/t1048/verdict.md` — reported as the two set differences rather
+   than as counts (AC-AEC-003). Any third name in either direction is a finding,
+   and the two directions mean different things — see AC-AEC-003's directional
+   reading.
 5. The card's verdict artifact exists on disk at `.moai/reports/t1059/verdict.md`
    and has been read by the lead before the worktree is disposed of.
 6. AC-AEC-013 and AC-AEC-014 are closed **after** their milestone's commit lands,

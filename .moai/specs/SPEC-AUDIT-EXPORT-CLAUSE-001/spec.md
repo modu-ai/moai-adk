@@ -1,7 +1,7 @@
 ---
 id: SPEC-AUDIT-EXPORT-CLAUSE-001
 title: "documents that promise a remote destination the directive forbids"
-version: "0.3.3"
+version: "0.3.4"
 status: in-progress
 created: 2026-09-21
 updated: 2026-09-22
@@ -325,6 +325,13 @@ $ git cat-file -e origin/develop:.moai/reports/t965/plan-audit-verdict.md ; echo
 exit=0
 ```
 
+**[Corrected 2026-09-22 — see §A.3a.]** The two `exit=128` readings above were
+measured against the remote-tracking ref as it stood at `64c7edbf3`, before an
+explicit fetch. Re-probed after `git fetch origin develop`, both paths return
+exit 0: the files had already landed on `origin/develop` when the index act was
+performed. The table and the block above are dated pre-act measurements and are
+left as taken; the corrected reachability record lives in §A.3a.
+
 **[HARD] Instrument warning, carried into the criteria.** The anchor is not
 decoration. A substring `grep 'verdict.md'` on the remote side matches
 `plan-audit-verdict.md` too and returns **11** rather than 10:
@@ -355,10 +362,26 @@ was ruled so that the SPEC describes the tree rather than contradicting it.
 `git rm --cached`. Both files remain on disk; neither was deleted, and no history
 was rewritten.
 
-**The discriminating property is reachability, not the file class.** Those two
-were the entire tracked-but-not-on-`origin/develop` set of the §A.3 measurement:
-the window to keep a file off the remote was still open for them and closed for
-every other. A future reader applying this SPEC to a file it never saw applies
+**The premise under which they were removed, and its correction.** The ruling was
+executed on the understanding that the two files had not yet reached
+`origin/develop` — the §A.3 measurement recorded `exit=128` for both. That
+premise was measured against a stale remote-tracking ref. Re-probed after an
+explicit `git fetch origin develop`, both paths are present on `origin/develop`:
+`.moai/reports/t1039/verdict.md` landed via `b765153ae` (2026-09-21 17:24) and
+`.moai/reports/t1048/verdict.md` via `d72df7454` (2026-09-21 22:03). The
+removals therefore acted on paths that were already published.
+
+**The operator's disposition of 2026-09-22 rules the resulting state final.**
+The index stands as the removals left it: the two files stay on `origin/develop`,
+where their publication is preserved history, and stay **intentionally absent
+from this branch's index**. Restoration and re-staging of either file is
+forbidden — REQ-AEC-003's first clause (no index alteration on any
+already-published path) prohibits it in both directions, so the frozen state is
+what the requirement itself enforces. No further index change under
+`.moai/reports/` is in scope.
+
+**The discriminating property is reachability, not the file class** — for a file
+this SPEC never saw. A future reader applying this SPEC to a new file applies
 that predicate, not the two names:
 
 > A tracked card-report artifact that has **not** reached `origin/develop` may be
@@ -367,26 +390,30 @@ that predicate, not the two names:
 > the publication and the operator ruled that history is preserved rather than
 > rewritten.
 
-**What stays forbidden.** The 10 verdict files already present on
-`origin/develop` are untouched — the operator chose to preserve that history —
-and history rewriting of any kind remains out of scope in every case, including
-for the two above (REQ-AEC-003, §D).
+For the two named files the disposition above governs instead: their state was
+ruled final on the actual facts after the premise error was discovered, and
+re-opening it is a new operator question, not an application of the predicate.
 
-**Post-act measurement**, at HEAD `113e487c2`, same anchored criterion on both
-sides:
+**What stays forbidden.** The verdict files present on `origin/develop` are
+untouched — the operator chose to preserve that history — and history rewriting
+of any kind remains out of scope in every case, including for the two above
+(REQ-AEC-003, §D).
+
+**Post-act measurement**, re-taken at HEAD `ce6de9407` (2026-09-22, this run),
+same anchored criterion on both sides:
 
 | Measurement | Result |
 |---|---|
 | tracked `verdict.md` | **10** |
-| present on `origin/develop`, same criterion | **10** |
+| present on `origin/develop`, same criterion | **12** |
 | tracked but not on the remote (`comm -23`) | **0** — empty |
-| remote-only (`comm -13`) | **0** — empty |
+| remote-only (`comm -13`) | **2** — exactly `.moai/reports/t1039/verdict.md`, `.moai/reports/t1048/verdict.md` |
 
-The two sets are now **equal**, which is the state the ruling aimed at and the
-shape AC-AEC-003 closes on. The counts alone would not say so: two files leaving
-the index and two different files arriving on the remote would also read `10` and
-`10`, which is why the closing evidence is the two-way difference and not the
-pair of counts.
+The two sets differ by exactly the two ruled removals, which is the state the
+disposition rules final and the shape AC-AEC-003 closes on. The counts alone
+would not say so: two files leaving the index and two different files arriving on
+the remote would also read `10` and `12`, which is why the closing evidence is
+the exact two-way difference and not the pair of counts.
 
 ### §A.3b [HARD] REQ-AEC-012 was relaxed after the tree had already exercised the relaxation
 
@@ -597,18 +624,24 @@ authoring standard.
 - **REQ-AEC-003** (Unwanted) — The implementation shall not alter the index state of any file under `.moai/reports/` that has already reached `origin/develop`, and shall not rewrite history for any such file in any case.
   **Where** a tracked card-report artifact has not reached `origin/develop`, its
   removal from the index is permitted by the operator ruling of §A.3a, the files
-  shall remain on disk, and no history rewrite accompanies it. Under that ruling
-  exactly two paths were removed — `.moai/reports/t1039/verdict.md` and
-  `.moai/reports/t1048/verdict.md` — and the set is now closed: §A.3a's
-  post-act measurement records the tracked-but-not-remote set as empty, so no
-  further removal is authorized by this SPEC without a new ruling.
+  shall remain on disk, and no history rewrite accompanies it. Exactly two
+  paths were removed under that ruling — `.moai/reports/t1039/verdict.md` and
+  `.moai/reports/t1048/verdict.md` — and the operator's disposition of
+  2026-09-22 rules the resulting state final: both paths are present on
+  `origin/develop` and intentionally absent from this branch's index, and the
+  first clause above forbids restoring or re-staging either one. No further
+  index change under `.moai/reports/` is authorized by this SPEC without a new
+  ruling.
 
 ### §B.2 The wording repair — one act across every surface
 
-- **REQ-AEC-004** (Ubiquitous) — Every sentence in the surfaces enumerated in the implementation plan's scope table that designates a card-report artifact as tracked, or as reaching the integration branch or the remote, shall be withdrawn.
+- **REQ-AEC-004** (Ubiquitous) — Every sentence in the wording surfaces enumerated in the implementation plan's scope table (rows #2–#13) that designates a card-report artifact as tracked, or as reaching the integration branch or the remote, shall be withdrawn.
   The prohibition binds the claim, not a phrase: a sentence carrying the claim in
   any verb form is in scope, and the surfaces are the plan's table rather than the
-  four export-mandate copies alone.
+  four export-mandate copies alone. The repository `.gitignore` (scope row #1) is
+  outside this requirement's reach: its act is the withdrawal (REQ-AEC-001),
+  measured by AC-AEC-001 and AC-AEC-002, so pre-existing prose in it is not swept
+  here — its added lines are screened by AC-AEC-014 instead.
 
 - **REQ-AEC-005** (Ubiquitous) — The export-mandate tail in each auditor definition shall state that the mandated destination is local by design and that the verdict is read on disk rather than exported to the remote.
   The tail shall state that obligation without asserting the destination's current
@@ -782,18 +815,25 @@ a branch, or a remote.
 
 ### Out of Scope — the already-remote verdict files and every history rewrite
 
-- The 10 `verdict.md` files present on `origin/develop`. Their disposition was
-  ruled: they stay as they are, because an index removal would not undo the
-  publication and the operator chose to preserve that history rather than rewrite
-  it (§A.3a). Re-opening it is a new operator question, not this card's.
+- The `verdict.md` files present on `origin/develop` (12 at the 2026-09-22
+  re-measurement). Their disposition was ruled and then re-ruled final at the
+  2026-09-22 operator disposition: they stay as they are, because an index
+  removal would not undo the publication and the operator chose to preserve that
+  history rather than rewrite it (§A.3a). Re-opening it is a new operator
+  question, not this card's.
 - Any history rewrite, on any path under `.moai/reports/`, including the two
-  files whose index removal §A.3a authorized. The ruling permitted an index
+  files whose index removal §A.3a records. The ruling permitted an index
   change and nothing else; the files stay on disk and the commits that carried
   them stay in the graph.
+- Restoration or re-staging of `.moai/reports/t1039/verdict.md` or
+  `.moai/reports/t1048/verdict.md`. The 2026-09-22 disposition rules the
+  post-removal state final: both are on `origin/develop` and intentionally
+  absent from this branch's index, and REQ-AEC-003's first clause forbids any
+  index alteration on an already-published path in both directions.
 - Any further index change under `.moai/reports/`. §A.3a's post-act measurement
-  records the tracked-but-not-remote set as empty, so the predicate that
-  authorized the two removals now selects nothing; a further removal needs a new
-  ruling and is not covered here (REQ-AEC-003).
+  records the tracked-but-not-remote set (`comm -23`) as empty, so the predicate
+  that permitted the two removals now selects nothing; a further change needs a
+  new ruling and is not covered here (REQ-AEC-003).
 
 ### Out of Scope — the ignore policy beyond the negation
 
@@ -829,7 +869,7 @@ a branch, or a remote.
 | Risk | Consequence | Mitigation |
 |---|---|---|
 | The negation is withdrawn and the existing tracked files are read as also withdrawn | A reader believes the state is clean while tracked files still reach the remote | §A.3 states the mechanism, REQ-AEC-002 requires it in the SPEC, and AC-AEC-003 measures the population before and after |
-| The §A.3a ruling is read as a general licence to untrack card-report artifacts | A later card removes a file already published on the remote, which the ruling forbids and which an index removal cannot undo | §A.3a states the predicate (reachability), not a file list; REQ-AEC-003 forbids the already-remote case and every history rewrite; AC-AEC-003 closes on set equality, so a removal on the wrong side of the predicate breaks it immediately |
+| The §A.3a ruling is read as a general licence to untrack card-report artifacts | A later card removes a file already published on the remote, which the ruling forbids and which an index removal cannot undo | §A.3a states the predicate (reachability), not a file list; REQ-AEC-003 forbids the already-remote case and every history rewrite; AC-AEC-003 closes on the ruled difference (`comm -23` empty, `comm -13` exactly the two ruled names), so a change on either side breaks it immediately |
 | A future ignore-policy change makes the wording stale again | The same defect recurs | REQ-AEC-012 forbids asserting the current ignore state, so no policy change can falsify the specified sentences |
 | A criterion enumerating surface forms is read as complete | A sentence carrying the forbidden claim in an unenumerated form passes | REQ-AEC-012 names the three classes that have already defeated a criterion here (verb form, adverbial interposition, tense/subject) and AC-AEC-014 carries a declared exception set, so a permitted match is recorded rather than silently tolerated |
 | C1 and C2 drift during the edit | Template ships different wording than the repository dogfoods | Divergence is intentional by doctrine and measured (§A.4); §C specifies the replacement shape, applied per copy against its own surrounding text |

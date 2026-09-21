@@ -85,10 +85,14 @@ be removed because the removal changes only what will be published; one that has
 reached it may not, because the removal would not undo the publication.
 
 **No milestone in this plan performs a further index change.** §A.3a's post-act
-measurement records the tracked-but-not-remote set as empty, so the predicate
-selects nothing; AC-AEC-003 therefore closes on the two sets being **equal**, and
-a non-empty difference in either direction is a finding to report rather than an
-act to perform (§B edge cases).
+measurement records the tracked-but-not-remote set (`comm -23`) as empty, so the
+predicate selects nothing; and the operator's 2026-09-22 disposition rules the
+post-removal state final — the two removed files stay on `origin/develop` and
+stay intentionally absent from this branch's index, with restoration and
+re-staging forbidden. AC-AEC-003 therefore closes on the ruled difference —
+every tracked verdict file on the remote, and the remote-only remainder **exactly
+the two ruled names** — and any third name in either direction is a finding to
+report rather than an act to perform (§B edge cases).
 
 ---
 
@@ -154,6 +158,14 @@ is machine-emitted from C2. Three of them carry the affected text — `plan-audi
 and `sync-auditor.toml` each carry the removed sentence once, and `manager-lead.toml`
 carries the tracked-verdict phrase twice — and all three are corrected by
 regeneration, never by hand (M4).
+
+**AC-AEC-004's sweep covers rows #2–#13 only, enumerated per file** (operator
+disposition 2026-09-22). Row #1, `.gitignore`, is outside that criterion's scope:
+its act is the withdrawal (§A.2), measured by AC-AEC-001 and AC-AEC-002, and its
+added lines are screened by AC-AEC-014 instead. The criterion does not sweep tree
+roots — a whole-tree form reaches files outside this table (measured:
+`internal/template/templates/.moai/README.md:77`, pre-existing since
+`d97980654`, 2026-07-07).
 
 ---
 
@@ -318,10 +330,10 @@ and a control returning zero voids every zero beside it.
 |---|---|
 | Verdict negation withdrawn | verdict-name-anchored grep over `.gitignore` (`^!\.moai/reports/[^/]*/.*verdict`) + control; red pinned at `269fb89c1` |
 | The rule is in effect again | plain `git check-ignore --no-index` on a negated and a non-negated name + an out-of-tree control + a two-form instrument self-check on a surviving fixture negation |
-| Tracked set equals remote set | anchored `git ls-files` set + two-way `comm` against `origin/develop`, **both differences empty** + `git status --porcelain` on those paths |
+| Tracked set vs remote set | anchored `git ls-files` set + two-way `comm` against `origin/develop`, `comm -23` **empty** and `comm -13` **exactly the two ruled removals** + `git status --porcelain` on those paths |
 | Four auditor copies repaired | anchored grep for the removed sentence (expect 0) + control; grep for the local-by-design statement |
 | No remote-placing verb introduced | `git add -f` sweep over every changed file + control |
-| Paraphrase surfaces repaired | the SPEC §A.6 markup-insensitive pattern (expect 0) + control |
+| Paraphrase surfaces repaired | the SPEC §A.6 markup-insensitive pattern (expect 0) + control, swept over the **twelve wording surfaces** (scope rows #2–#13, enumerated per file); RED re-derived against the pinned pre-repair blobs at `269fb89c1` |
 | Convention mirror parity | `cmp` |
 | Emitted codex layer regenerated | `make agents-emit-check` exit status + anchored grep on the three TOMLs |
 | Template neutrality | forbidden-content-class sweep over the added lines of the three-dot diff + control |

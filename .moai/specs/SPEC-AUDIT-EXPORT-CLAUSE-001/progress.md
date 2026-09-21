@@ -11,8 +11,12 @@ plan_status: audit-ready
 plan_complete_at: 2026-09-22
 tier: M
 artifacts: spec.md, plan.md, acceptance.md
-spec_version: 0.3.1
+spec_version: 0.3.4
 ```
+
+2026-09-22 · v0.3.4 · operator-disposition amendment (mid-run, run open) —
+AC-AEC-003 re-baselined to the ruled final state, AC-AEC-004 sweep narrowed to
+the twelve wording surfaces, AC-AEC-014 exception table extended 2 → 9.
 
 v0.3.1 lands two bounded lead-review additions and reopens nothing else: the
 `check-ignore` discriminant is promoted from a plan instrument note to SPEC §A.2a
