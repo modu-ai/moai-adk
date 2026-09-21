@@ -34,18 +34,53 @@ by re-implementing quote and heredoc tracking inside the comment step:
 So the comment step never sees a `#` that it should have ignored, and needs no knowledge of quoting
 at all.
 
-**The counter-order is measurably wrong**, which is what makes this decidable rather than a matter
+**The counter-order is demonstrably wrong**, which is what makes this decidable rather than a matter
 of taste. With comment elision first, `echo "text # more" ; git switch main` truncates at the quoted
 `#`, and `git switch main` vanishes from the scan — a real branch-state command un-guarded by a
 quoted hash. That case is pinned as AC-GCS-006 so the ordering is asserted by consequence rather
 than by reading call order.
 
-**Accepted residual, recorded rather than discovered later.** The quoted-span placeholder is
-`" X "`, which introduces a space. A construct like `foo"bar"#baz` becomes `foo X #baz`, where the
-`#` now *looks* word-initial and is elided though the original was mid-word. The direction is
-under-match (less text scanned → allow), consistent with the guard's documented fail-open posture
-and with the residual `substituteQuotedArguments` already accepts for `bash -c "git switch main"`.
-No branch-state command has this shape. Recorded as accepted, not fixed.
+**Accepted residual — the manufactured `#`. Decided: ACCEPT, with the direction stated as
+blinding rather than fail-open.** The quoted-span placeholder is `" X "`, which introduces a space.
+A construct like `foo"bar"#baz` becomes `foo X #baz`, where the `#` now *looks* word-initial and
+opens a comment though the original was mid-word.
+
+**Its reach is the rest of the line, not the one token.** Comment elision runs from the `#` to
+end-of-line, so a branch-state command does **not** need to carry the `foo"bar"#baz` shape itself —
+it only needs to sit **after** a manufactured `#` on the same line. `echo "q"#b ; git switch main`
+is the minimal case: bash runs both commands (measured below), and a SPEC-conformant implementation
+elides from the manufactured `#` onward, so `git switch main` never reaches the scan.
+
+```
+$ bash -c 'echo "q"#b ; echo SECOND-CMD-RAN'
+q#b
+SECOND-CMD-RAN
+```
+
+(Measured in this tree at HEAD `5bc42a304`, this run. `SECOND-CMD-RAN` standing in for a
+branch-state command, so the probe mutates no branch state; the shell's parse of the first
+statement is identical either way. `q#b` on stdout is the control: the `#` was literal to bash.)
+
+**The direction is therefore deny-blinding — a real command disappears from the scan — NOT the
+under-match/fail-open posture the earlier draft of this paragraph claimed.** It is the same
+direction §A above calls the only one whose wrong answer *blinds the guard*, so it is recorded here
+and in `spec.md` §F as a known blinding residual rather than filed under fail-open.
+
+**Why accepted rather than repaired.** Two candidate repairs, both rejected:
+
+1. *Stop the elision at the next `;` / `&&` / `||`.* This reintroduces the over-match this card
+   exists to remove: comment prose routinely contains `;`, and every such comment would put its
+   trailing text back into the scan. Trading a rare blinding shape for a common over-match shape is
+   a net loss on the axis this card is about.
+2. *Stop the placeholder manufacturing a word boundary.* Sound, but it lives in
+   `substituteQuotedArguments` — a different preprocessing step, outside this SPEC's In Scope (one
+   new step plus its wiring). It also cannot be recovered inside the comment step: by the time that
+   step runs, a placeholder-introduced space is indistinguishable from a space the author typed, and
+   a placeholder legitimately *does* precede real comments (`moai todo add "foo" # note`).
+
+**Coordinate for whoever closes it later**: the fix belongs in `substituteQuotedArguments`
+(`branch_guard.go:197`) — emit a placeholder that does not introduce a trailing word boundary — and
+is a separate card, not a milestone here.
 
 ---
 
@@ -80,8 +115,21 @@ outside the set fails **open** (no comment opened → more text scanned → the 
 which is the safe direction for this decision specifically — the inverse of §A, and the reason §C
 sits below §A in this ordering.
 
-Deliberately **not** included: backtick, `{`, and newline-escaped continuations. Each would widen the
-elision surface (the unsafe direction) for constructs that do not appear in branch-state commands.
+Deliberately **not** included, in two groups whose directions are **opposite** — they were
+previously justified by one sentence, which stated the direction backwards for the second group:
+
+- **Backtick and `{`.** Adding either to the word-start set would make more `#` characters open
+  comments, **widening** the elision surface (the unsafe direction) for constructs that do not
+  appear in branch-state commands. Omitting them is the conservative choice.
+- **Newline-escaped continuations.** This one runs the other way, and the earlier draft's
+  "each would widen the elision surface" was wrong about it. A backslash-newline is removed during
+  line-joining *before* tokenization, so the `#` opening the next physical line is not at line start
+  at all — it is mid-word, hence literal. The rule as decided treats that second physical line as a
+  line-start comment and elides it, which **narrows** what is scanned and can drop a real command
+  riding on that line: the blinding direction, not the widening one. Handling continuations
+  (joining before deciding) would be the *safer* choice here, and it is omitted only on scope
+  grounds — it requires a join pass this one-step SPEC does not add. Recorded as a residual in
+  `spec.md` §F with its measurement status, not silently excluded.
 
 ---
 

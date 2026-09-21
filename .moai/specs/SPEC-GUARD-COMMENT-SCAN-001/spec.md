@@ -49,13 +49,23 @@ The pipeline has no comment handling at all. Measured, with positive controls so
 an instrument failure:
 
 ```
-$ grep -c '#'  internal/hook/branch_guard.go                    → 0
-$ grep -c '<<' internal/hook/branch_guard.go   # same file, same form, control → 6
-$ grep -rc '#' internal/hook/ --include='*.go' | grep -v ':0'   # the pattern CAN hit → 3 files
+$ grep -c '#'  internal/hook/branch_guard.go
+0
+$ grep -c '<<' internal/hook/branch_guard.go     # same file, same form, control
+6
+$ grep -rc '#' internal/hook/ --include='*.go' | grep -v ':0' | wc -l   # the pattern CAN hit
+     112
 ```
 
 The `#` character does not occur anywhere in the file; the two controls fire, so the zero is a
 measured absence rather than a broken grep.
+
+All three figures were **re-measured in this tree at HEAD `5bc42a304`** during plan repair, and the
+outputs above are that run's verbatim stdout. An earlier draft of this block cited the third figure
+as "3 files", which does not reproduce: the correct count is 112 (of 282 `.go` files at
+`internal/hook/*.go`). The block's conclusion is unchanged — the pattern reaches non-zero files in
+this very directory, so the `0` above is absence rather than instrument failure — but the third
+figure was unattributed and is now the observed one.
 
 ### The discriminant — a refusal without the sentinel was not produced by this guard
 
@@ -85,6 +95,41 @@ character of a word — at line start, or preceded by whitespace or a command se
 hash. A rule that stripped from any `#` to end-of-line would blind the guard on real commands whose
 operands contain one.
 
+**"Word start" is not "preceded by an alphanumeric character", and the difference is measurable.**
+A character can be non-alphanumeric and still leave the `#` mid-word — `/`, `=`, `.`, `-` all do.
+An implementation reading the rule as "preceding character is non-alphanumeric ⇒ comment" satisfies
+a word-boundary criterion built only from alphanumeric examples, and then blinds the guard on
+operands carrying a path or an assignment. Measured in this tree at HEAD `5bc42a304`, this run
+(`SECOND-CMD-RAN` stands in for a branch-state command, so no branch state is mutated):
+
+```
+$ bash -c 'echo bar/#x ; echo SECOND-CMD-RAN'
+bar/#x
+SECOND-CMD-RAN
+$ bash -c 'echo a=#b ; echo SECOND-CMD-RAN'
+a=#b
+SECOND-CMD-RAN
+$ bash -c 'echo a.#b ; echo SECOND-CMD-RAN'
+a.#b
+SECOND-CMD-RAN
+$ bash -c 'echo a-#b ; echo SECOND-CMD-RAN'
+a-#b
+SECOND-CMD-RAN
+```
+
+Positive control for the same instrument — a `#` that genuinely **does** open a comment suppresses
+the following word, so the probe is not simply printing everything:
+
+```
+$ bash -c $'echo a ; # echo B\necho SECOND-CMD-RAN'
+a
+SECOND-CMD-RAN
+```
+
+(`B` is absent: the comment opened. Without this control the four literal-hash rows above would be
+consistent with a probe that never opens a comment at all.) The falsification for this constraint
+is AC-GCS-004, which carries non-alphanumeric-preceded rows for exactly this reason.
+
 **B.2 — collapse is PER LINE.** The comment runs to the end of its own line and no further. A
 comment line followed by a real command on the next line must leave that command fully scannable —
 the same bound `substituteHeredocBodies` already keeps for heredoc bodies.
@@ -110,7 +155,7 @@ scanned := substituteShellComments(substituteQuotedArguments(substituteHeredocBo
 
 Running it last is not a stylistic preference; it is what makes B.1's quoted-`#` case correct for
 free, because by then a quoted `#` has already become part of `" X "` and a heredoc-body `#` has
-already become `" X "`. The opposite order is measurably wrong and blinds the guard:
+already become `" X "`. The opposite order is demonstrably wrong and blinds the guard:
 `echo "text # more" ; git switch main` — with comment collapse first, the line is truncated at the
 quoted `#` and `git switch main` disappears from the scan. That case is AC-GCS-006.
 
@@ -124,20 +169,25 @@ Modality is `SHALL`, matching this repository's measured convention.
 - **REQ-GCS-002** — The preprocessing step SHALL treat a `#` as opening a comment only where it
   appears at word start (line start, or preceded by whitespace or one of `;`, `&`, `|`, `(`), and
   SHALL NOT treat a `#` appearing inside a word as opening one.
-- **REQ-GCS-003** — The elision SHALL be bounded to the line the comment opens on. **When** a
-  comment line is followed by a further line, the preprocessing step SHALL leave that following line
-  intact and scannable.
-- **REQ-GCS-004** — The comment run SHALL be elided rather than replaced by the operand placeholder
-  `quotedArgumentPlaceholder`, because a comment is removed by the shell rather than passed to the
-  command as an argument (§B.3).
+- **REQ-GCS-003** — The elision SHALL be bounded to the **physical** line the comment opens on.
+  **When** a comment line is followed by a further line, the preprocessing step SHALL leave that
+  following line intact and scannable. (Physical, not logical: a backslash-newline continuation is
+  a known residual recorded in §F, not a second bound this requirement asserts.)
+- **REQ-GCS-004** — The **comment run** — the span beginning at the `#` that opened the comment and
+  ending at the end of that physical line, inclusive of the `#` and exclusive of the newline —
+  SHALL be elided rather than replaced by a non-flag operand token, because a comment is removed by
+  the shell rather than passed to the command as an argument (§B.3). The preprocessing step SHALL
+  leave the text **preceding** that `#` on the same line intact and scannable, so that a
+  branch-state command carrying a trailing comment still matches.
 - **REQ-GCS-005** — Comment-borne git prose SHALL NOT match any branch-state pattern (the
   mutation-detected arm).
 - **REQ-GCS-006** — The guard SHALL continue to match real branch-state commands after the change
   (the no-mutant-success arm). This requirement exists because REQ-GCS-005 alone is satisfied by a
   guard that has been disabled.
-- **REQ-GCS-007** — Comment elision SHALL run last in the pipeline, after quoted-argument and
-  heredoc collapse, so that a `#` inside a quoted span or a heredoc body does not open a comment
-  (§B.4).
+- **REQ-GCS-007** — A `#` appearing inside a quoted span or inside a heredoc body SHALL NOT open a
+  comment, so a branch-state command sharing a line with such a `#` remains scannable. (§B.4
+  records the pipeline ordering that obtains this outcome; the requirement states the outcome, and
+  AC-GCS-006 observes it.)
 - **REQ-GCS-008** — The two-armed test SHALL live in `internal/hook/branch_guard_comment_test.go`,
   mirroring the per-axis file convention `branch_guard_heredoc_test.go` and
   `branch_guard_quoted_test.go` already establish.
@@ -204,12 +254,68 @@ Carried forward rather than papered over.
   from a stale binary*, not that *that event was this*. Stated as cause-established,
   attribution-unestablished.
 
+### Accepted residuals — cases the stated rule gets wrong, and the direction of each
+
+These are not gaps in measurement; they are places where the rule in §B / §C is knowingly not the
+shell's answer. Each names its direction, because the two directions have very different costs:
+**blinding** (the guard scans less than the shell runs — a real command escapes the guard) is the
+unsafe one; **over-match** (the guard scans text the shell discards) is the defect class this card
+is narrowing, and is merely noisy.
+
+- **Manufactured `#` after a quoted span — direction: BLINDING. Decided: ACCEPT.** The
+  quoted-argument placeholder `" X "` introduces a space, so `foo"bar"#baz` reaches the comment
+  step as `foo X #baz` and its `#` reads as word-initial. Because elision runs to end-of-line, the
+  blinding is **not** limited to that token: any branch-state command later on the same line
+  disappears from the scan. Measured in this tree at HEAD `5bc42a304`, this run — `bash -c 'echo
+  "q"#b ; echo SECOND-CMD-RAN'` printed `q#b` then `SECOND-CMD-RAN`, so bash runs both statements
+  while a conforming implementation would scan neither past the manufactured `#`. Accepted rather
+  than repaired: stopping the elision at a command separator would re-admit the over-match this
+  card removes, and the sound fix belongs to `substituteQuotedArguments`, a different step outside
+  this SPEC's In Scope. Rationale, both rejected repairs, and the follow-up coordinate: `plan.md`
+  §A.
+- **Backslash-newline continuation — direction: BLINDING. Decided: ACCEPT (scope).** A
+  backslash-newline is removed during line-joining before tokenization, so a `#` opening the next
+  physical line is mid-word and literal to the shell; the rule in §B.2 / REQ-GCS-003 treats that
+  physical line as a line-start comment and elides it, dropping any real command riding on it.
+  **Not re-measured in this repair run**: every probe form for this construct
+  (`bash -c $'…\\\n…'`, a `printf … | bash` pipe, and a plain-character control) was **refused** by
+  the Claude Code runtime worktree-isolation guard — a refusal carrying no `BRANCH_GUARD_VIOLATION:`
+  sentinel, i.e. not this guard (§A discriminant). The direction stated here rests on the POSIX
+  line-joining rule plus the plan-audit verdict's own bash measurement (`.moai/reports/t1056/verdict.md`
+  E1), and is carried as a cited-not-re-measured figure rather than as an observation of this run.
+  Handling continuations would *narrow* the elision (the safe direction) and is omitted on scope
+  grounds only — see `plan.md` §C.
+- **`)` and `}` absent from the word-start set — direction: OVER-MATCH. Decided: ACCEPT (record
+  only).** The plan-audit verdict (`.moai/reports/t1056/verdict.md` E1) measured `(echo a)#echo B`
+  and `{ echo a;}#b` as opening comments in bash, which the §C set does not admit; the guard would
+  therefore scan text the shell discards. **Not re-measured in this repair run** — the probe form
+  was refused by the same runtime guard described above — so this entry is cited, not observed
+  here. Recorded so the next reader does not re-derive it; it does not blind the guard, which is
+  why it is not repaired in this card.
+
 ## §G Baseline Attribution
 
-All figures in §A were measured in the worktree `.claude/worktrees/t1056`, branch `WT-guard-prose`,
-at HEAD `3dfae918a`, in this session. The matcher figures come from a temporary probe test invoking
-`matchBranchStateCommand` directly; the probe was removed afterwards and the tree left clean. The
-grep figures in §A were re-measured during plan-phase authoring, on the same tree.
+All figures were measured in the worktree `.claude/worktrees/t1056`, branch `WT-guard-prose`.
+Two measurement points exist, and each figure states which one it belongs to.
+
+- **HEAD `3dfae918a` (plan-phase authoring)** — the matcher figures (`matched=true suffix="git
+  merge"` in §A, and the AC-GCS-001 / AC-GCS-002 RED-now and preservation observations in
+  `acceptance.md`). They come from a temporary probe test invoking `matchBranchStateCommand`
+  directly; the probe was removed afterwards and the tree left clean.
+- **HEAD `5bc42a304` (plan repair, this run)** — the three grep figures in §A, and the bash
+  observations in §B.1 and §F.
+
+The two points are interchangeable **for this SPEC's subject**, and that is measured rather than
+assumed: `git rev-parse 3dfae918a:internal/hook/branch_guard.go` and
+`git rev-parse HEAD:internal/hook/branch_guard.go` both return `70d6da28da9449c9d4accee9c654c597112a92a1`
+— the file under change is byte-identical across the two, so a matcher figure taken at the earlier
+point describes the same code the later figures were taken against.
+
+Two residuals in §F carry figures that were **not** re-measured in this run: the continuation-line
+direction and the `)` / `}` over-match. Both probe forms were refused by the Claude Code runtime
+worktree-isolation guard, so both are cited to the plan-audit verdict
+(`.moai/reports/t1056/verdict.md` E1) with that status stated inline, per the refused-tool
+degradation rule (`verification-claim-integrity.md` §3.1).
 
 Evidence file: `.moai/reports/t1056/reproduction.md`. That path is gitignored
 (`.gitignore:227`), so the file is untracked and this worktree holds the only copy — see `plan.md`

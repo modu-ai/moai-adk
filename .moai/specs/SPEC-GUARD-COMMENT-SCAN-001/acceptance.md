@@ -50,20 +50,37 @@ Table (each row an independent sub-case):
 
 ---
 
-## AC-GCS-002 — Arm B: real branch-state commands still match (control)
+## AC-GCS-002 — Arm B: real branch-state commands still match, comment or no comment
 
-**Given** an ordinary branch-state command carrying no comment at all,
+**Given** a real branch-state command — carrying no comment at all (rows 1-2), or carrying a
+trailing comment on the **same line** (rows 3-4),
 **When** `matchBranchStateCommand` is called with it,
 **Then** it returns `(<expected suffix>, true)`.
 
-| Command string | Expected suffix |
-|---|---|
-| `git merge --ff-only develop` | `git merge` |
-| `git switch main` | `git switch` |
+| # | Command string | Expected suffix |
+|---|---|---|
+| 1 | `git merge --ff-only develop` | `git merge` |
+| 2 | `git switch main` | `git switch` |
+| 3 | `git merge --ff-only develop  # per lead instruction` | `git merge` |
+| 4 | `git switch main  # move to main` | `git switch` |
 
-Both rows are measured as matching in this tree today (HEAD `3dfae918a`), so this criterion is a
-**preservation check**: it holds now and must keep holding. A run in which it flips to no-match is
-the signature of a blunted guard, which is the failure Arm A cannot see.
+**Rows 1-2 are the preservation check.** Both are measured as matching in this tree (HEAD
+`3dfae918a`; `branch_guard.go` is byte-identical at HEAD `5bc42a304` — spec.md §G). A run in which
+they flip to no-match is the signature of a blunted guard, which is the failure Arm A cannot see.
+
+**Rows 3-4 fix the DIRECTION of the elision, which rows 1-2 cannot.** A comment and a command that
+must survive sit on the *same line* here, so the criterion distinguishes "elide from the `#` to
+end-of-line, preserving what precedes it" (REQ-GCS-004) from "discard the whole line containing a
+`#`". The latter satisfies every criterion built only from comment-only lines and separate-line
+pairs — AC-GCS-001's rows carry no surviving command, AC-GCS-003 puts the command on a *different*
+line, AC-GCS-004's `#` opens no comment, and AC-GCS-006's `#` is gone before the comment step runs.
+Without rows 3-4, nothing in the whole set observes text on the left of a real `#` surviving. The
+verdict this SPEC is repairing constructed exactly that implementation and it passed all eleven
+pre-repair rows while going blind on row 4 (`.moai/reports/t1056/verdict.md` E2, candidate A).
+
+Rows 3-4 carry no pre-implementation observation: they are deliberately **not** written in the
+manufactured-`#` shape (`echo "q"#b ; git switch main`), which a SPEC-conformant implementation
+would fail by design — that case is an accepted blinding residual, spec.md §F.
 
 ---
 
@@ -88,15 +105,31 @@ satisfy AC-GCS-001 vacuously while un-guarding every command that followed a com
 
 **Given** a real branch-state command whose operand contains a `#` that is **not** at word start,
 **When** `matchBranchStateCommand` is called with it,
-**Then** it returns `("git switch", true)` — no comment was opened, so nothing was elided.
+**Then** it returns `(<expected suffix>, true)` — no comment was opened, so nothing was elided.
 
-| Command string | Expected suffix |
-|---|---|
-| `git switch feat#123` | `git switch` |
-| `git merge topic#7` | `git merge` |
+| # | Command string | Expected suffix | Character preceding the `#` |
+|---|---|---|---|
+| 1 | `git switch feat#123` | `git switch` | `t` — alphanumeric |
+| 2 | `git merge topic#7` | `git merge` | `c` — alphanumeric |
+| 3 | `v=bar/#x ; git switch main` | `git switch` | `/` — **non**-alphanumeric |
+| 4 | `git merge --ff-only rel-1.0#rc2` | `git merge` | `.` — **non**-alphanumeric |
 
 This is the falsification for REQ-GCS-002. An implementation stripping from any `#` to end-of-line
 would blind the guard on every branch-state command whose branch name carries a hash.
+
+**Rows 3-4 close the second way this criterion can be passed while still being wrong.** Rows 1-2
+exercise only alphanumeric preceding characters, so an implementation reading the word-start rule
+as "the preceding character is non-alphanumeric ⇒ comment" passes them and is still blind on a
+path, an assignment, or a dotted version in an operand. The verdict this SPEC is repairing built
+that implementation and it passed all eleven pre-repair rows while missing row 3
+(`.moai/reports/t1056/verdict.md` E2, candidate B).
+
+**Row 3 additionally puts a real branch-state command later on the same line**, which is what makes
+it catch the blinding rather than merely disagreeing about a token: if a comment is wrongly opened
+at `/#`, elision runs to end-of-line and `git switch main` leaves the scan entirely. That the shell
+genuinely runs both statements is measured in spec.md §B.1 (`bash -c 'echo bar/#x ; echo
+SECOND-CMD-RAN'` → `bar/#x` then `SECOND-CMD-RAN`, HEAD `5bc42a304`, this run), alongside the
+positive control showing the same probe does suppress a word when a comment really opens.
 
 ---
 
@@ -140,18 +173,37 @@ command after the terminator still matches.
 
 ## Requirement ↔ criterion map
 
-Stated explicitly so no requirement rests on an implicit reading.
+Stated explicitly so no requirement rests on an implicit reading. **Re-derived from the criteria as
+they now read**, after the rows added to AC-GCS-002 and AC-GCS-004 — not edited in place. Asserting
+a coverage the criteria do not actually deliver is worse than asserting none, because it stops the
+next reader from checking.
 
-| Requirement | Asserted by |
-|---|---|
-| REQ-GCS-001 (comments elided before matching) | AC-GCS-001 |
-| REQ-GCS-002 (`#` at word start only) | AC-GCS-004 |
-| REQ-GCS-003 (per-line bound) | AC-GCS-003 |
-| REQ-GCS-004 (elide, not placeholder) | AC-GCS-005 |
-| REQ-GCS-005 (Arm A — mutation detected) | AC-GCS-001 |
-| REQ-GCS-006 (Arm B — guard not blunted) | AC-GCS-002, AC-GCS-003, AC-GCS-004, AC-GCS-006 |
-| REQ-GCS-007 (elision runs last) | AC-GCS-006 |
-| REQ-GCS-008 (test file name pinned) | every criterion AC-GCS-001 … AC-GCS-006, via the shared verification command — an anchored selector that fails loudly if the test names move |
+| Requirement | Asserted by | Which rows carry it |
+|---|---|---|
+| REQ-GCS-001 (comments elided before matching) | AC-GCS-001 | all three rows |
+| REQ-GCS-002 (`#` opens a comment at word start **only**) | AC-GCS-001 (positive half), AC-GCS-004 (negative half) | AC-GCS-001 rows 1-3 show line-start, whitespace-preceded and `;`-preceded `#` **do** open one; AC-GCS-004 rows 1-4 show alphanumeric- and non-alphanumeric-preceded mid-word `#` do **not** |
+| REQ-GCS-003 (bounded to the physical line) | AC-GCS-003 | the two-line case |
+| REQ-GCS-004 (comment run = `#` → end of line; preceding text survives; elided, not an operand token) | AC-GCS-005 (elide vs operand token), AC-GCS-002 (run starts at the `#`) | AC-GCS-005's single case; AC-GCS-002 rows 3-4 |
+| REQ-GCS-005 (Arm A — mutation detected) | AC-GCS-001 | all three rows |
+| REQ-GCS-006 (Arm B — guard not blunted) | AC-GCS-002, AC-GCS-003, AC-GCS-004, AC-GCS-006 | every row of those four expects a non-empty suffix and `true` |
+| REQ-GCS-007 (a `#` inside a quoted span or heredoc body opens no comment) | AC-GCS-006 | the quoted case + the heredoc companion row |
+| REQ-GCS-008 (test file name pinned) | every criterion AC-GCS-001 … AC-GCS-006, via the shared verification command — an anchored selector that fails loudly if the test names move | n/a |
+
+### What this set now excludes (the map's discriminating power, stated so it is checkable)
+
+The map above claims coverage; this sub-section says what that coverage actually rules out, so a
+reader can falsify the claim rather than take it. Two implementations that passed every criterion
+in the pre-repair set — both constructed and measured in `.moai/reports/t1056/verdict.md` E2 — are
+now excluded:
+
+| Candidate | What it does | Now fails on |
+|---|---|---|
+| A — line discard | discards the whole line containing a `#` | AC-GCS-002 rows 3-4 (`git switch main  # move to main` → no match) |
+| B — non-alphanumeric rule | treats any `#` whose preceding character is non-alphanumeric as opening a comment | AC-GCS-004 row 3 (`v=bar/#x ; git switch main` → no match) |
+
+This is an exclusion claim, not a completeness claim: it establishes that these two
+pass-but-wrong implementations no longer pass. It does **not** establish that no third exists — the
+verdict makes the same reservation, and it is carried forward here rather than quietly dropped.
 
 ## Definition of Done
 
