@@ -29,11 +29,21 @@ A Jev answer is neither. It is not a measurement of text similarity, and it is n
 
 A third constant, `jev`. Three consequences, each a design choice rather than a mechanical follow-on:
 
-**Precedence — OPEN.** The proposal: a Jev finding is appended only when no finding of any source already names that unordered pair with the same relation; a later mechanical or agent finding is appended alongside rather than replacing it. The asymmetry is deliberate — a model signal must never suppress a measurement or a judgement, and must never be silently suppressed by one, because both suppressions make the queue quieter than the evidence warrants. **This remains a proposal** (open question N1) and is not settled by this document.
+**Precedence — DECIDED 2026-09-20 (operator decision, confirmed exactly as proposed).** A Jev finding is appended only when no finding of any source already names that unordered pair with the same relation; a later mechanical or agent finding is appended alongside rather than replacing it. The asymmetry is deliberate — a model signal must never suppress a measurement or a judgement, and must never be silently suppressed by one, because both suppressions make the queue quieter than the evidence warrants. This is a settled decision, stated as `REQ-JEVN-006` halves (a) and (b) and asserted by `AC-JEVN-003` across all four source combinations. Open question N1 is closed.
+
+**What the decision costs, which the rule's symmetry hides.** The two halves read as one rule and are two pieces of work of opposite size.
+
+Half (b) — a later mechanical or agent finding lands alongside — is **already true and needs no code**. `AppendFindingOnce` (`internal/kanban/backlog_store.go:369`) delegates to `HasFindingTuple` (`:357`), whose key is `{SubjectID, RelatedID, Relation, Source}`. Because `Source` is part of that key, a mechanical finding never matches an existing Jev tuple and is always appended. The requirement exists so that a future change to the dedup key is recognised as breaking this behaviour rather than as an unrelated refactor.
+
+Half (a) — suppressing an arriving Jev finding on a pair any source already names — **cannot be expressed by either existing path**, and the reason is the same property that makes (b) free. The source-inclusive key means a Jev finding is *never* suppressed by a mechanical or agent one, so `AppendFindingOnce` gives the opposite of the rule; and `AppendFindingOnce` never calls `SamePairAs` (`:159`), whose only non-test caller in this repository is `HasAgentFindingForPair` (`:409`) — so the unordered comparison is not on the append path at all. Half (a) therefore requires a **new source-agnostic unordered predicate**, provisionally `HasFindingForPairAnySource`, keyed on the unordered pair plus the relation and deliberately not on `Source`.
+
+The failure mode if this is missed is quiet: an implementation that "reuses the existing dedup" ships a rule that suppresses nothing, and an un-suppressed append is indistinguishable from a correct one at every surface a reader looks at.
 
 **Render.** The existing rule prints a score only for `mechanical`, on the reasoning stated in the source: an agent judgement carries no measurement, and `0.00` would read as measured dissimilarity. A Jev probability is a third thing again — a calibrated model confidence — so it renders with its own label. The default behaviour of a new source is to inherit one of the two existing branches, and both are wrong here, which is why the render is a requirement rather than an implementation detail.
 
-**Mark semantics.** The `machine-only` mark's meaning is unchanged. It continues to mean "no agent-sourced record for this pair", and a Jev finding does not satisfy it. AC-JEVN-001 pins this with a positive control, because an assertion that a predicate returns false is satisfied equally well by a predicate that always returns false.
+**Mark semantics.** The `machine-only` mark's meaning is unchanged. It continues to mean "no agent-sourced record for this pair", and a Jev finding does not satisfy it. `AC-JEVN-001` pins this with a positive control, because an assertion that a predicate returns false is satisfied equally well by a predicate that always returns false.
+
+That control proves the **predicate** behaves; it does not prove the **write path** obeys the prohibition, and the two are different claims. `REQ-JEVN-003` forbids a Jev finding ever being *written* as `agent` — a prohibition on producers, which a predicate test over a hand-built fixture cannot reach, since the fixture's `Source` is whatever the test itself set. `AC-JEVN-012` closes that gap on the chain's own precedent (`SPEC-JEV-CORE-001` `AC-JEVC-003`): a search over the producing packages for `BacklogSourceAgent`, carrying a positive control on `internal/cli/todo_relate.go:76`, which does set it. An absence measured without a control is a gap rather than a finding — the search that matches nothing and the search that never ran produce the same output.
 
 ### The alternative, and why it was rejected
 
@@ -47,6 +57,8 @@ Consumer C inherits that property for free. The design obligation is only to not
 
 ## §4. Routing — the classification, not the decision
 
+> **Host unresolved — this section designs the question set, not the call site.** Which code path invokes routing is open question N2, unanswered by the 2026-09-20 operator decisions, and M5 is declared blocked on it (`plan.md` §F). Nothing below names a host, deliberately: the lane-question surface is prose-level today, and naming a call site that was never measured would put an unverified premise exactly where a reader is least likely to check it.
+
 Consumer A asks three questions over one state: a Choice naming the decision owner, and two Nouls (needs-a-measurement-first, cheap-to-reverse). Batched into one request, both for cost — input tokens are charged, output tokens are not, so N requests over one state pay the state N times — and for consistency, since separate requests over identical input could return mutually inconsistent judgments.
 
 Two design points carry the safety:
@@ -56,6 +68,8 @@ Two design points carry the safety:
 **The no-match option.** Every Choice carries one. A forced choice over an option set that excludes the true answer produces a confident wrong answer, and this repository has recorded that failure from its own dispatch practice independently of any model: a question offering two branches got a confident answer when the true answer was a third thing.
 
 ## §5. Skill suggestion — two requests, and the one that matters
+
+> **Host unresolved, and additionally outside the quality gate's reach.** Consumer B's host is the `/moai` intent router, a prose-level skill surface that `acceptance.md` §E's `go test ./internal/kanban/... ./internal/cli/...` does not cover. M6 is therefore blocked on N2 alongside M5 (`plan.md` §F), and the verification surface for its criteria is part of answering N2 rather than an assumption this design may make.
 
 Consumer B issues a wide rank over all skills batched with a Noul asking whether the turn needs a skill at all, then reranks the top three under fuller text.
 
@@ -70,3 +84,11 @@ The intent router's authority is untouched. AC-JEVN-011 verifies this by compari
 The three could plausibly share one gate. They do not, for the reason the whole chain exists: the rejected premise-death task demonstrated that this model's usefulness is per-task, not global. It scored 58.9% where a constant answer scored 75.0% — on one task. That says nothing about near-duplicate marking, and near-duplicate marking's result will say nothing about routing.
 
 A shared gate would also create a failure mode with no good resolution: two consumers pass, one fails, and the shipped set is now a judgement call made under pressure. Independent gates make the answer mechanical — the failing consumer does not ship, the other two do, and the absence is recorded as a decision.
+
+### The third state: a gate that cannot be run
+
+"Passed" and "failed" are not the only outcomes, and treating them as such leaves run-phase with nothing to produce in the state it is most likely to be in. `Report.Verdict()` (`internal/jevmeasure/measure.go:193`) first-checks the measurement's source and returns `VerdictWithhold` for anything other than `SourceLive`, so where no live measurement is permitted, **no consumer can reach ship** — and the gate has not failed, it has not run.
+
+The distinction is not pedantic, because the two states call for different records. A failed gate is evidence: the record cites the measurement and the baseline it did not beat, and a later reader can disagree with the verdict by reading the numbers. An un-runnable gate has no measurement to cite, so a record written in the failed-gate shape has to invent one — which is precisely the unobserved-verification claim this chain exists to avoid. `REQ-JEVN-015` gives the second state its own output: a recorded decision naming why the gate could not be run and citing the withholding mechanism, with no measurement artifact required. `AC-JEVN-015` asserts that the two records stay distinguishable.
+
+This is separate again from a milestone **blocked** on an unanswered design question (M5 and M6 on N2, `plan.md` §F). Blocked work was never started; an un-runnable gate belongs to work that was in scope and could not be judged. A milestone can be in both states at once, and each is recorded on its own terms.
