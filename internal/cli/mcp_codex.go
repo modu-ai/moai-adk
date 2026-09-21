@@ -1545,9 +1545,20 @@ func synthesizeReviewOutput(reviewText, method string) ReviewOutput {
 		verdict = codexUnrecognizedVerdict(method)
 	}
 	return ReviewOutput{
-		Verdict:       verdict,
-		Summary:       strings.TrimSpace(reviewText),
-		Findings:      codexFindingsOf(reviewText),
+		Verdict:  verdict,
+		Summary:  strings.TrimSpace(reviewText),
+		Findings: codexFindingsOf(reviewText),
+		// NextSteps stays empty here, and that is the value rather than a gap.
+		// claude and glm carry next_steps from the model's OWN structured output
+		// (mcp_claude_protocol.go, mcp_glm.go); codex answers in prose, so this
+		// path has no model-produced list to carry. The only next_steps this
+		// package writes itself are tool-known routing instructions on a failure
+		// path (inconclusiveReviewWithSummary; codex_task's timeout branch), and
+		// a synthesis that produced a verdict has none of those to state.
+		// Deriving steps from the review bullets is NOT the alternative: those
+		// bullets are findings, and codexFindingsOf declares that this parser
+		// invents no structure from prose. #1632 item 1 observed this field empty
+		// and asked only for findings[] — filling it was never in that scope.
 		NextSteps:     []string{},
 		SynthesisNote: describeSignalDivergence(signals, verdict),
 	}

@@ -47,7 +47,7 @@ The graceful-abort mechanism implemented by SPEC-TOKEN-BUDGET-STOP-001 works as 
 2. **Persist state** — in-flight work state is persisted to `progress.md`
 3. **Emit handoff** — a paste-ready resume message is generated (6-block structure)
 4. **Recommend turn end** — the user is advised to `/clear` (HARD: auto-`/clear` is NEVER performed)
-5. **Export evidence** — verification evidence that will be cited is exported to the tracked path `.moai/reports/<card-id>/`
+5. **Carry the evidence into the verdict** — the lines of verification evidence that will be cited are written into the tracked verdict file `.moai/reports/<card-id>/verdict.md`
 
 `/clear` is never executed automatically. The system only recommends that the user run `/clear`; the user decides.
 
@@ -99,7 +99,7 @@ Evidence written by the file-redirect contract to `/tmp` is periodically cleared
 
 Verification output is therefore captured under `.moai/state/verify/<session>/` first. That directory is **machine-local scratch**: it outlives `/tmp` clearance, but it is gitignored — the same runtime-state family as `context-usage/` and `active-sessions.json` — so it reaches no clone, no CI runner, and no other machine. Surviving `/tmp` and being reachable at audit time are not the same thing.
 
-What the contract states is therefore the **export-before-citing** obligation: an artifact is moved to the tracked path `.moai/reports/<card-id>/` before it is cited as the basis of a verdict, and the citation names a single **file**, never a directory. Only the lines that decided the verdict move — the exit code, the failure summary, the figure being quoted — because exporting the scratch directory wholesale merely relocates the bulk trimmed from the context into the repository. Whatever stays behind is named under Residual-risk as a known loss, and material deliberately not exported is never offered as a verdict basis.
+What the contract states is therefore the **carry-the-deciding-evidence-into-the-verdict** obligation: the lines that decided a claim are written into the tracked verdict file `.moai/reports/<card-id>/verdict.md` before the claim is made, and the citation names that single **file**, never a directory. That file is the only tracked name under a card directory, so a sibling artifact written beside it stays ignored and a citation naming it resolves nowhere off this machine. Only the lines that decided the verdict move — the exit code, the failure summary, the figure being quoted — because relocating the scratch directory wholesale merely moves the bulk trimmed from the context into the repository. Whatever stays behind is named under Residual-risk as a known loss, and material left in scratch is never offered as a verdict basis.
 
 ## Next Steps
 

@@ -392,10 +392,10 @@ REQ-WPR-001/002).`,
 		Args: cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			projectDir := resolveProjectDir()
-			registryPath := session.DefaultRegistryPath
-			if projectDir != "" {
-				registryPath = projectDir + string(os.PathSeparator) + registryPath
-			}
+			// The doctor reports the path the registry helpers actually use, so
+			// a run from inside a worktree names the primary checkout's file
+			// rather than a tree-local one that was never written (GH #1711).
+			registryPath := session.RegistryPathFor(projectDir)
 			_, statErr := os.Stat(registryPath)
 			registryExists := statErr == nil
 
@@ -411,7 +411,7 @@ REQ-WPR-001/002).`,
 
 			payload := map[string]any{
 				"action":                "doctor",
-				"registry_path":         session.DefaultRegistryPath,
+				"registry_path":         registryPath,
 				"registry_exists":       registryExists,
 				"entry_count":           entryCount,
 				"root_cause_candidates": candidates,
@@ -429,7 +429,7 @@ REQ-WPR-001/002).`,
 
 			// Human-readable.
 			out := cmd.OutOrStdout()
-			_, _ = fmt.Fprintf(out, "registry: %s\n", session.DefaultRegistryPath)
+			_, _ = fmt.Fprintf(out, "registry: %s\n", registryPath)
 			if registryExists {
 				_, _ = fmt.Fprintf(out, "  exists: yes (%d entries)\n", entryCount)
 			} else {

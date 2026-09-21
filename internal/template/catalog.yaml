@@ -132,7 +132,7 @@ catalog:
             - name: manager-lead
               tier: core
               path: templates/.claude/agents/moai/manager-lead.md
-              hash: 304b15d93b30a29514e21eb5545c9650a89705e3252c2ef64743c4728691a6cb
+              hash: 80a2e3e1c7db4e0fdcf5677c83a8daf1c481ef653a7c194e661b795b4cc60db7
               version: 1.0.0
             - name: manager-spec
               tier: core
@@ -220,7 +220,7 @@ catalog:
                 - name: moai-ref-cross-model-audit
                   tier: optional-pack:devops
                   path: templates/.claude/skills/moai-ref-cross-model-audit/
-                  hash: 16817edf34ff31ba28c4d0d136a6fb3fe71290da6638d8cfe5e444d6b3b62d73
+                  hash: dcee93a250f8d83606dc91b1756346ddab76ec0331def80a304f0e767bfe3cf8
                   version: 1.0.0
                 - name: moai-ref-supply-chain
                   tier: optional-pack:devops
