@@ -4,7 +4,7 @@ title: "refuse a subagent's Write that drastically shrinks an existing tracked f
 version: "0.1.0"
 status: draft
 created: 2026-09-21
-updated: 2026-09-21
+updated: 2026-09-22
 author: manager-spec
 priority: P1
 phase: "v3.1.4 target"
@@ -301,22 +301,22 @@ whole file from whatever the caller believes is there.
 
 ## §C Requirements (GEARS)
 
-**REQ-SWG-001** (ubiquitous) — The subagent destructive-write guard shall decide solely from
+- **REQ-SWG-001** (ubiquitous) — The subagent destructive-write guard shall decide solely from
 the parsed PreToolUse payload fields `agent_id`, `tool_name`, `tool_input.file_path`, and
 `tool_input.content`, and shall not match any pattern against command text. `agent_type` MAY be
 read for the audit row (REQ-SWG-008); it shall not be a discriminant input (§A.5).
 
-**REQ-SWG-002** (event-driven) — When a PreToolUse payload arrives with `tool_name` equal to
+- **REQ-SWG-002** (event-driven) — When a PreToolUse payload arrives with `tool_name` equal to
 `Write` and a **non-empty `agent_id`**, the guard shall evaluate the write against the
 destructive-overwrite predicate defined in REQ-SWG-004.
 
-**REQ-SWG-003** (unwanted) — The guard shall not evaluate a payload whose **`agent_id` is
+- **REQ-SWG-003** (unwanted) — The guard shall not evaluate a payload whose **`agent_id` is
 empty**, whatever `agent_type` holds. That set is exactly the two main-session forms measured in
 §A.5 — plain, and `claude --agent <name>` — and a main-session write is outside this SPEC's
 subject: the main session is the party the user is talking to, and its writes are already visible
 to the user in the turn that makes them.
 
-**REQ-SWG-004** (ubiquitous) — All sizes in this SPEC are **bytes**. The existing file's size is
+- **REQ-SWG-004** (ubiquitous) — All sizes in this SPEC are **bytes**. The existing file's size is
 its byte length on disk; the incoming size is the byte length of `tool_input.content`. Lines are
 never the unit: `content` arrives as bytes, so a line count would require a second pass whose
 result depends on line length, and two implementers choosing differently would change the set of
@@ -342,12 +342,12 @@ check first, which is why the order is stated rather than left to the implemente
 No performance claim is made here beyond the ordering; a measurement against the hook budget is
 M3's deliverable.
 
-**REQ-SWG-005** (event-driven) — When the destructive-overwrite predicate holds, the guard
+- **REQ-SWG-005** (event-driven) — When the destructive-overwrite predicate holds, the guard
 shall emit a PreToolUse deny whose reason begins with the sentinel
 `SUBAGENT_DESTRUCTIVE_WRITE_VIOLATION:` and names the target path, the existing size, and the
 incoming size.
 
-**REQ-SWG-006** (state-driven) — While `workflow.subagent_write_guard.enabled` is false, the
+- **REQ-SWG-006** (state-driven) — While `workflow.subagent_write_guard.enabled` is false, the
 guard shall emit no deny, **and shall continue to run its detection and audit-log append**. Only
 the refusal is gated. This is the established contract in this codebase, stated three times in
 `internal/config/defaults.go` — `settings_drift_gate` (`:995-997`), `agent_model_guard`
@@ -356,24 +356,24 @@ unconditionally, and the deny layer alone is opt-in. The distributed default is 
 template neutrality binds — no `enabled: true` for this key anywhere under
 `internal/template/templates/`.
 
-**REQ-SWG-006a** (ubiquitous) — An absent key is the normal state and shall not be read as a
+- **REQ-SWG-006a** (ubiquitous) — An absent key is the normal state and shall not be read as a
 defect. This repository's `.moai/config/sections/workflow.yaml` carries only three guard keys
 today — `branch_guard: true` (`:164-165`), `drift_cache_fill: true` (`:173-174`),
 `agent_stop_guard: true` (`:181-182`). The new key is absent from that file until someone opts
 in, and takes the `defaults.go` value (`false`) meanwhile.
 
-**REQ-SWG-007** (ubiquitous) — On any uncertainty the guard shall fail OPEN: not a git
+- **REQ-SWG-007** (ubiquitous) — On any uncertainty the guard shall fail OPEN: not a git
 repository, git unavailable or exiting non-zero, an unreadable existing file, an unparseable
 payload, a path that cannot be resolved, or an absent `content` field shall each allow the
 write. A deny requires positive evidence on every one of REQ-SWG-004's four conditions.
 
-**REQ-SWG-008** (event-driven) — When the guard reaches a decision — deny or fail-open allow,
+- **REQ-SWG-008** (event-driven) — When the guard reaches a decision — deny or fail-open allow,
 and **whether or not the deny layer is enabled** (REQ-SWG-006) — it shall append one structured
 row to `.moai/logs/subagent-write-guard.log` naming the decision, the agent id, the agent type,
 the target path, the two byte sizes, the derived card id where one resolves (REQ-SWG-013), and
 the fail-open reason where one applies.
 
-**REQ-SWG-008a** (ubiquitous) — Each audit row shall carry a `decision` field valued from a
+- **REQ-SWG-008a** (ubiquitous) — Each audit row shall carry a `decision` field valued from a
 closed set, and the four values shall be mutually distinguishable by a reader of the log alone:
 
 | `decision` | Meaning |
@@ -401,27 +401,27 @@ stopped running — not that nothing destructive happened. A guard whose non-exe
 indistinguishable from its success has no liveness answer; this is that answer, and it is named
 here rather than left implicit.
 
-**REQ-SWG-009** (state-driven) — While the guard is enabled and evaluating, it shall not
+- **REQ-SWG-009** (state-driven) — While the guard is enabled and evaluating, it shall not
 perform any write, network call, or repository mutation of its own; its only side effect is the
 audit-log append of REQ-SWG-008.
 
-**REQ-SWG-010** (unwanted) — The guard shall not deny a write to a path that is untracked at
+- **REQ-SWG-010** (unwanted) — The guard shall not deny a write to a path that is untracked at
 HEAD, including a file the calling subagent created earlier in the same run. An untracked file
 has no committed content to destroy, and refusing it would block the common legitimate case of
 a SPEC-authoring subagent iterating on artifacts it authored.
 
-**REQ-SWG-011** (ubiquitous) — The guard's deny reason shall name a route that actually works
+- **REQ-SWG-011** (ubiquitous) — The guard's deny reason shall name a route that actually works
 for the denied caller: the write proceeds through `Edit` (which requires the caller to hold the
 existing text), or through the main session. It shall not direct the caller to an exemption the
 caller cannot reach — the failure mode already recorded for the branch guard's `manager-git`
 exemption remediation text.
 
-**REQ-SWG-012** (ubiquitous) — The threshold pair (`SWG-T1`, `SWG-T2`) shall be defined in one
+- **REQ-SWG-012** (ubiquitous) — The threshold pair (`SWG-T1`, `SWG-T2`) shall be defined in one
 place in the Go source, in **bytes** (REQ-SWG-004), alongside a comment recording the unit, that
 the values are calibrated against a single measured incident, and the named result of the M1
 false-positive survey.
 
-**REQ-SWG-013** (ubiquitous) — The guard shall resolve the card id via `cardIDFromPath` (§B.1)
+- **REQ-SWG-013** (ubiquitous) — The guard shall resolve the card id via `cardIDFromPath` (§B.1)
 for **audit-log context only**, and shall gate no decision on it. A card id that does not resolve
 shall be recorded as empty and shall change no outcome — the derivation does not verify that the
 card exists, so treating it as an authorization input would build a decision on an unverified
@@ -457,7 +457,7 @@ Both constants are in **bytes** (REQ-SWG-004).
 | `SWG-T1` — size floor | existing file ≥ **2000 bytes** | Below this, a full rewrite is a normal authoring act and the content is cheap to reconstruct. A floor is what keeps the guard away from small config files, stubs, and fixtures where whole-file replacement is routine. The value is the byte order-of-magnitude of a ~50-line source file; it is a proposal on the same footing as the ratio, NOT a conversion of a line count (no fixed conversion exists). |
 | `SWG-T2` — shrink ratio | incoming ≤ **25%** of existing | The incident sits at ~1.4% by line (6 of 417), an order of magnitude inside this. The margin is deliberate: a value tight against the incident would catch that incident and nothing shaped slightly differently. |
 
-### D.3 [OPEN] OD-1 — the false-positive side is unmeasured
+### D.3 [RESOLVED 2026-09-22 — OD-1a] OD-1 — the false-positive side is unmeasured
 
 **This is an open decision for the operator, deliberately not resolved here.**
 
@@ -500,8 +500,15 @@ measurement of the false-positive rate on live behaviour rather than a proxy dra
 That is why `withheld` must be distinguishable from `allow` in the log: if it is not, this
 instrument does not exist.
 
-Until OD-1 is answered, the values in §D.2 are a **proposal**, and no run-phase artifact may
+With OD-1 answered as OD-1a (2026-09-22), the values in §D.2 ship as the guard's starting
+values; they remain a **proposal** rather than a measurement, and no run-phase artifact may
 cite them as measured.
+
+Operator decision round 4 (2026-09-22, AskUserQuestion, pull mode) selected **OD-1a**: the
+§D.2 proposed pair ships as the guard's starting values; the stub-refactor false positive is
+accepted, with escape via REQ-SWG-011 (`Edit`, or the main session); the pair stays unmeasured
+on the false-positive side, and the post-landing `withheld`-log instrument (REQ-SWG-008a rows)
+remains available to a later calibration card.
 
 ### D.4 What the guard does not catch, deliberately
 

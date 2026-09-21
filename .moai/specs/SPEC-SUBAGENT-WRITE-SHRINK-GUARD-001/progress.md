@@ -241,6 +241,44 @@ sessions. The three remain: OD-1 (§D.3), the REQ line shape (spec-lint collects
 Per the card's standing rule, non-response is not read as approval; run-phase entry stays
 gated on all three. No artifact was changed by this round — the only edit is this record.
 
+### Revision v0.1.0-r7 — REQ list markers + OD-1 resolution record (2026-09-22)
+
+Operator decision round 4 (2026-09-22, AskUserQuestion, pull mode) answered the three gating
+decisions; this revision folds in the line-shape fix and the OD-1 resolution:
+
+- **The REQ line-shape gap is fixed by adding list markers.** Each line matching `^\*\*REQ-SWG-`
+  now carries a leading `- `. Measured on the real file after the edit:
+
+```
+grep -c '^- \*\*REQ-SWG-' spec.md   → 15
+grep -c '^\*\*REQ-SWG-' spec.md     → 0
+```
+
+  No rewording, renumbering, or reordering accompanies the markers.
+
+- **§D.3 now carries the OD-1a resolution.** The heading reads `[RESOLVED 2026-09-22 — OD-1a]`;
+  the closing proposal paragraph states the §D.2 pair ships as the guard's starting values while
+  remaining a proposal rather than a measurement; and a new paragraph records the round-4
+  decision (stub-refactor false positive accepted, escape via REQ-SWG-011 — `Edit`, or the main
+  session; the pair stays unmeasured on the false-positive side; the post-landing
+  `withheld`-log instrument (REQ-SWG-008a rows) remains available to a later calibration card).
+  No §D.2 value or threshold changed.
+
+- **The operator's other two decisions are handled by the orchestrator outside this revision.**
+  The plan-phase verdict record (PASS after repairs, per plan-audit §6 option 1) and the
+  round-4 decision record itself are written by the orchestrator in a separate later commit;
+  neither is recorded here.
+
+Spec lint after the edit, tree build (`go run ./cmd/moai spec lint
+SPEC-SUBAGENT-WRITE-SHRINK-GUARD-001`): exit 0, `0 error(s), 18 warning(s)` — verbatim output
+at `.moai/reports/t1057/r7-spec-lint.md`. The copy experiment recorded in the plan-phase
+artifacts predicted 18 lint warnings once collection fires; the measured count is **18** —
+the prediction matched. REQ collection now fires: 13 CoverageIncomplete findings
+(REQ-SWG-001…013) plus 5 modality findings (ModalityMalformed on 002/005/006/008,
+ModalityUnjudged on 004). REQ-SWG-006a and REQ-SWG-008a produce no finding — 008a is
+AC-referenced (`acceptance.md:181,288`); 006a produces none despite no AC reference found in
+`acceptance.md`, and the mechanism for that difference is not established in this revision.
+
 ## §E.2 Run-phase Evidence
 
 _<pending run-phase>_
