@@ -431,6 +431,16 @@ func seamSectionFields() []FieldDef {
 		// readCodexTaskAllowWrite read — one source of truth, no parallel key.
 		s(SectionWorkflow, "workflow", TypeBool, "workflow", "codex", "review_gate", "enabled"),
 		s(SectionWorkflow, "workflow", TypeBool, "workflow", "codex", "task", "allow_write"),
+		// The Jev opt-in toggle. Same seam, same file, same nested-patch write
+		// as its neighbours above; what is different is WHERE it renders — the
+		// console gives it its own panel (isJevFieldName routes it there) so
+		// the privacy statement and the credential control sit beside the
+		// switch they describe, rather than being one bool among thirty.
+		//
+		// The distributed template DOES ship this key (`jev: {enabled: false}`),
+		// so no absent-default declaration is needed: the console reads a real
+		// false rather than inferring one from absence.
+		s(SectionWorkflow, "workflow", TypeBool, "workflow", "jev", "enabled"),
 
 		// harness (파일: harness.yaml, 최상위 키 harness + learning).
 		selectSeam(SectionHarness, "harness", "f.harness.default_profile.opt.",

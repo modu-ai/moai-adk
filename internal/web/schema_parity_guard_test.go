@@ -38,6 +38,14 @@ func schemaRenderedFieldNames() map[string]bool {
 			rendered[f.Name] = true
 		}
 	}
+	// SPEC-JEV-OPTIN-MEASURE-001: fieldsetJevSection is a dedicated component
+	// in the same sense as codexAuthBlock — it owns its field enumeration
+	// (jevSectionFields) and renders inside the workflow panel, so the generic
+	// schemaSectionMetas() walk above does not see its fields. This is a render
+	// home, NOT an exemption: the field IS rendered and IS editable.
+	for _, f := range jevSectionFields() {
+		rendered[f.Name] = true
+	}
 	return rendered
 }
 

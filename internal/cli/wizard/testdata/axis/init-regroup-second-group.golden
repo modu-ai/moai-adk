@@ -1,4 +1,4 @@
-  ● ● ● ○ 3 / 4                                                                 
+  ● ● ● ○ ○ 3 / 5                                                               
 ┃ Select the agent harness to deploy and wire                                   
 ┃ Which LLM harness MoAI deploys and wires for this project. 'claude' is the    
 ┃ recommended default; the --llm flag overrides this answer.                    

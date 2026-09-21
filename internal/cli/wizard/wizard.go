@@ -525,7 +525,14 @@ func saveAnswer(id, value string, result *WizardResult, locale *string) {
 // nothing (M3 invariant), so this is a no-op; it stays wired through
 // buildConfirmField for any future confirm question and is exercised by the
 // removal tests.
-func saveBoolAnswer(id string, value bool, result *WizardResult) {}
+//
+// SPEC-JEV-OPTIN-MEASURE-001 (REQ-JEVO-001) reopens it: the Jev opt-in is a
+// confirm, and it is the only one.
+func saveBoolAnswer(id string, value bool, result *WizardResult) {
+	if id == JevQuestionID {
+		result.JevEnabled = value
+	}
+}
 
 // buildConfirmField creates a huh.Confirm field for a boolean question.
 func buildConfirmField(q *Question, result *WizardResult, locale *string) *huh.Confirm {

@@ -465,6 +465,12 @@ const (
 	// EnvTestGLMKey provides a test GLM API key for integration tests.
 	EnvTestGLMKey = "MOAI_TEST_GLM_KEY"
 
+	// EnvTestTypeSafeKey provides a test TypeSafe API credential, honoured by
+	// jevcred.Load as a short-circuit ahead of the on-disk read. Sibling of
+	// EnvTestGLMKey; internal/jevcred mirrors the literal as a local alias to
+	// stay standard-library-only.
+	EnvTestTypeSafeKey = "MOAI_TEST_TYPESAFE_KEY"
+
 	// EnvTestHomeStateLiveCoverage opts in to the internal/cli test that
 	// measures home-state changed-surface coverage against the live repository
 	// when set to "1". It resolves the audited evidence chain at HEAD, so it
