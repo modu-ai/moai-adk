@@ -266,4 +266,95 @@ m1_to_mN_commit_strategy: two commits on WT-read-anchor — (1) the R2 repair, (
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase>_
+**Scope closed: S1 only.** S2 (anchoring `LiveAnchoredSessions`) was not
+approved at Implementation Kickoff Approval and did not land in this SPEC;
+nothing in this sync phase changes that. Sync-phase evidence was read from
+the lane-independent re-measurement files
+(`.moai/reports/t1058/lane-independent-{lint,run-verify,ac008-verify}.txt`),
+not solely from manager-develop's own report, per the SPEC's grading
+discipline (spec.md §A.7 / `verification-claim-integrity.md`).
+
+### Deliverables
+
+- `CHANGELOG.md` — one entry under `[Unreleased] / ### Fixed`, sized to an
+  internal behaviour fix with no user-facing API change: the R2 relocation
+  repair, the deliberately-not-landed R1/S2 scope with its rationale, the
+  8/12 PASS + 3 NOT ATTEMPTED + 1 fixtures-established AC breakdown, and the
+  unattributed live-primary-registry write named as a known gap rather than
+  rounded away.
+- `README.md` / docs-site — **NOT touched.** Grepped for the changed symbols
+  (`findRegistryUpward`, `relocateSessionCwd`, `cwd_changed_relocate`,
+  `session registry`, `active-sessions.json`) across `README*.md` and
+  `docs-site/`; the only hit is an unrelated alt-text string on a web-console
+  screenshot (`README.md:138`). Nothing documented there describes this
+  internal relocation behaviour, so no edit was made — changing nothing is
+  the correct outcome when nothing is stale, not an omission.
+- `spec.md` frontmatter — `status: in-progress → completed` on this commit.
+  `updated:` was already `2026-09-21` (same day as `created:`) in all three
+  of `spec.md` / `plan.md` / `acceptance.md`, so no date edit was needed to
+  bring it current. No body content in `spec.md` / `plan.md` / `acceptance.md`
+  was modified.
+- This §E.4 section.
+
+### B12 self-test (mandatory, before CHANGELOG emission)
+
+1. **Pre-emission grep**: `grep -c 'SESSION-REGISTRY-READ-ANCHOR' CHANGELOG.md`
+   → `0` before emission, `1` after — no duplicate entry.
+2. **AC count match**:
+   `grep -oE 'AC-([A-Z0-9]+-)*[0-9]+' acceptance.md | sort -u | wc -l` → `12`,
+   matching the 12 distinct `AC-RAR-NNN` identifiers the CHANGELOG entry's
+   breakdown (8 PASS + 3 NOT ATTEMPTED + 1 fixtures-established) sums to.
+3. **File path verification**: `ls` confirmed all four files the entry names
+   exist — `internal/hook/cwd_changed_relocate.go`,
+   `internal/hook/cwd_changed_relocate_anchor_test.go`,
+   `internal/cli/worktree/anchor_disposal_guard_ac_rar_008_test.go`,
+   `internal/session/anchor_disposal_guard_ac_rar_008_test.go`.
+
+### Process notes (recurrence record)
+
+- **A lead instruction named AC-RAR-005 where AC-RAR-006 was meant** (intent
+  — "re-measure at landing time" — carried correctly; the AC number did not).
+  The run-phase lane caught it against `acceptance.md`'s own text and the
+  lead accepted the correction; both AC entries in this section and in
+  `progress.md` §E.2 name the criterion the text actually describes.
+- **The AC-RAR-008 fixture scope was added mid-run, by lead decision, after
+  the first run-phase pass had already reported it NOT ATTEMPTED** (correctly
+  — it stated the true state at that pass rather than a placeholder). The
+  fixtures then landed as a second, separate commit rather than an amend of
+  the first, so the already-reported first-commit SHA never moved.
+
+### Gaps — explicitly NOT observed in the sync phase
+
+- **AC-RAR-008's behaviour under S2 is unverified** (carried unchanged from
+  §E.2 — S2 is not in this SPEC's landed scope).
+- **Windows behaviour of the anchor resolution remains unmeasured**, per
+  spec.md §A.7 and `internal/stateanchor/stateanchor.go`'s absence of
+  `runtime.GOOS` branching — a code reading, not an execution measurement,
+  and not upgraded in sync phase.
+- **R2's upward-walk stall remains unreproduced against the real orphan
+  population** (spec.md Gaps G3) — synthetic-fixture-plus-code-reading grade,
+  carried verbatim.
+- **The disposition of the sibling orphan-file-deletion card (A6) is not
+  decided here** (REQ-RAR-012, AC-RAR-012) — no `moai gtd` mutation was
+  issued by this sync phase; any statement above about that card is a
+  finding for the operator, not a queue action.
+- **The CHANGELOG entry's characterization of the S2 rationale is drawn from
+  spec.md §A.3, not independently re-measured in sync phase** — this sync
+  phase performed no new measurement of the orphan population; it read and
+  summarized the run-phase evidence.
+
+```yaml
+sync_complete_at: 2026-09-21
+sync_commit_sha: pending-backfill-sync
+sync_status: audit-ready
+b12_self_test_a: pass
+b12_self_test_b: pass
+b12_self_test_c: pass
+changelog_entry_position: "[Unreleased] / ### Fixed, first entry"
+frontmatter_status_transitions:
+  spec_md: "in-progress -> completed"
+  plan_md: "n/a (stateless on status axis)"
+  acceptance_md: "n/a (stateless on status axis)"
+canary_compliance_check: "n/a — this SPEC defines no forward-looking policy tested by its own sync"
+```
+

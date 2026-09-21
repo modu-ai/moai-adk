@@ -2,7 +2,7 @@
 id: SPEC-SESSION-REGISTRY-READ-ANCHOR-001
 title: "session registry READ paths — the two are not one change, and one of them loses live sessions"
 version: "0.1.0"
-status: in-progress
+status: completed
 created: 2026-09-21
 updated: 2026-09-21
 author: manager-spec
