@@ -102,6 +102,98 @@ greenfield_style_test.go:104: root line = "{mcp: {tools: {session_list: {enabled
 - **AC-SGF2-003** / **AC-SGF2-003b**: 수리 전 **PASS**. 이것은 「정상」이 아니라 **수리가 아직 없어 재포맷할 주체가 없기 때문**이다(`plan.md` M2-3). 두 셀의 역할은 RED 채득이 아니라 M4 뮤턴트 아래에서 FAIL 하는 것이며, 003b 의 판별력은 M4 (b) 채득으로만 증명된다.
 - **판별 셀 형태 확인**: `TestPatchFileDeliberateFlowPreservedOnUpsert` 의 edit 은 **upsert**(`mcp.tools.b.enabled` — 원본에 없는 키)이고 단정은 **전체 리터럴 `want` 바이트 비교**다(`acceptance.md` AC-SGF2-003b 의 허용 형태 2). 수리 전 PASS 가 그 리터럴(`{mcp: {tools: {a: {enabled: true}, b: {enabled: false}}}}\n`)이 코디네이터 프로브 측정과 일치함을 동시에 확인해 준다.
 
+### M3 — 수리 + 스테일 주석 정정 (수리 커밋, RED 커밋 `d289130f1`의 뒤)
+
+**수리 형태**: `PatchFile` 에 지역 플래그 `greenfield` 를 두고 absent 분기에서 `true` 로 세운 뒤, 루트 매핑 가드 직후 `if greenfield { root.Style = 0 }` 한 줄. 조건은 **재직렬화 폴백 쪽에만** 걸린다 — M1(c-배치)가 보인 대로 `lineSplice` 는 재직렬화를 하지 않으므로 그 경로에는 걸 조건이 존재하지 않는다.
+
+**M2 가드 4종이 PASS 로 뒤집혔다**:
+
+```
+$ go test ./internal/settings/yamlpatch/ -run 'TestPatchFileGreenfieldOutputIsBlockStyle|TestPatchFileGreenfieldSecondSaveStaysBlock|TestPatchFileExistingBlockByteInvariant|TestPatchFileDeliberateFlowPreservedOnUpsert' -v -count=1
+EXIT=0
+
+--- PASS: TestPatchFileExistingBlockByteInvariant (0.00s)
+--- PASS: TestPatchFileGreenfieldOutputIsBlockStyle (0.00s)
+    --- PASS: TestPatchFileGreenfieldOutputIsBlockStyle/report (0.00s)
+    --- PASS: TestPatchFileGreenfieldOutputIsBlockStyle/mcp (0.00s)
+    --- PASS: TestPatchFileGreenfieldOutputIsBlockStyle/cacheStrategy (0.00s)
+    --- PASS: TestPatchFileGreenfieldOutputIsBlockStyle/gate (0.00s)
+    --- PASS: TestPatchFileGreenfieldOutputIsBlockStyle/crosssession (0.00s)
+--- PASS: TestPatchFileDeliberateFlowPreservedOnUpsert (0.00s)
+--- PASS: TestPatchFileGreenfieldSecondSaveStaysBlock (0.00s)
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/settings/yamlpatch	0.131s
+```
+
+**빈 스윕 대조**: `grep -c -- '--- PASS'` = **9** (최상위 4 + 서브테스트 5). 0 이 아니므로 이 초록은 「아무것도 고르지 않은」 초록이 아니다 — `-run` 필터가 없는 이름을 골랐다면 exit 0 + `ok` 를 그대로 내면서 0을 셌을 것이다.
+
+**AC-SGF2-001 의 단정 형태**: 「루트만 block」이 아니라 **파일 어디에도 `{`/`}` 가 없다**를 함께 건다. 이 두 번째 조건이 루트만 de-flow 되고 중첩은 flow 로 남는 형상(`mcp: {tools: …}`)을 기각한다 — M4 (b) 뮤턴트가 정확히 그 형상이다.
+
+**범위 패키지 전량**:
+
+```
+$ go test ./internal/settings/... -count=1
+EXIT=0
+ok  	github.com/modu-ai/moai-adk/internal/settings	0.621s
+ok  	github.com/modu-ai/moai-adk/internal/settings/agentfm	0.401s
+ok  	github.com/modu-ai/moai-adk/internal/settings/yamlpatch	0.408s
+```
+
+**AC-SGF2-006 — `@MX:ANCHOR` 주석 정정 (이 세션이 이 트리에서 직접 잰 값)**. 본 SPEC E5/E11 의 수치를 옮겨 적지 않았다. 재측정 커맨드와 출력(트리 `d289130f1`):
+
+```
+$ /usr/bin/grep -rn 'yamlpatch\.PatchFile(' --include='*.go' internal/ cmd/ pkg/
+internal/settings/write_safety_test.go:35:	err := yamlpatch.PatchFile(path, []yamlpatch.KeyEdit{
+internal/settings/write_safety_test.go:58:	err := yamlpatch.PatchFile(path, []yamlpatch.KeyEdit{
+internal/settings/write_safety_test.go:326:	err := yamlpatch.PatchFile(path, []yamlpatch.KeyEdit{
+internal/settings/write_safety_test.go:354:	err := yamlpatch.PatchFile(path, []yamlpatch.KeyEdit{
+internal/settings/sectionwrite.go:18:// yamlpatch.PatchFile(노드 수술)만 사용한다. 라우팅 판정은 RouteForSection이
+internal/settings/sectionwrite.go:76:	return yamlpatch.PatchFile(path, edits)
+internal/cli/init_workflow_flags_test.go:234:	if err := yamlpatch.PatchFile(path, edits); err != nil {
+internal/cli/init_workflow_flags.go:97:	if err := yamlpatch.PatchFile(workflowPath, edits); err != nil {
+
+$ /usr/bin/grep -rn 'yamlpatch' internal/core/project/
+exit=1                                  ← 무출력
+
+$ /usr/bin/grep -c 'func' internal/core/project/initializer_expansion.go
+13                                      ← 양성 대조: 계측기가 그 경로에 도달한다
+```
+
+적중 8행 중 **`sectionwrite.go:18` 은 호출이 아니라 주석 안의 언급**이다(적중 줄이 곧 선언 줄이 아니다 — 그 줄은 `// yamlpatch.PatchFile(노드 수술)만 사용한다` 로 시작한다). 그 한 줄을 제외한 판정:
+
+- 프로덕션 호출점 = **2파일 2호출점** — `internal/settings/sectionwrite.go:76`, `internal/cli/init_workflow_flags.go:97`
+- 테스트 호출점 = **2파일 5호출점** — `write_safety_test.go` ×4, `init_workflow_flags_test.go` ×1
+- `internal/core/project` 의 `yamlpatch` 참조 = **0건**(exit 1 무출력, 양성 대조 13행이 나란히 있으므로 미측정이 아니라 부재다)
+
+종전 주석의 「호출 파일 3개 5호출점 … initializer_expansion ×3」 은 세 축 모두 틀렸고, 정정본은 위 세 줄을 그대로 적는다.
+
+**AC-SGF2-004 — 통제군 6건 무수정 GREEN**. 먼저 무수정임을 기계로 확인했다:
+
+```
+$ git diff --stat HEAD -- internal/settings/write_safety_test.go internal/settings/yamlpatch/yamlpatch_test.go
+(무출력 — 두 파일 모두 미변경)
+```
+
+행 앵커도 content-token 으로 재검증했고 `spec.md` E10 의 기록값과 일치한다(29 / 52 / 320 / 341 / 395 / 426). 실행:
+
+```
+$ go test ./internal/settings/ -run 'TestPatchFileValueInvariantPreservesBytes|TestPatchFileScalarChangePreservesPresentation|TestPatchFileSpliceFallsBackForUpsert|TestPatchFileSpliceQuotedScalarChange' -v -count=1
+EXIT=0
+--- PASS: TestPatchFileScalarChangePreservesPresentation (0.00s)
+--- PASS: TestPatchFileValueInvariantPreservesBytes (0.00s)
+--- PASS: TestPatchFileSpliceQuotedScalarChange (0.00s)
+--- PASS: TestPatchFileSpliceFallsBackForUpsert (0.00s)
+ok  	github.com/modu-ai/moai-adk/internal/settings	0.184s
+
+$ go test ./internal/settings/yamlpatch/ -run 'TestPatchFileGreenfieldCreation|TestAtomicWriteStatErrorNotWidened' -v -count=1
+EXIT=0
+--- PASS: TestAtomicWriteStatErrorNotWidened (0.00s)
+--- PASS: TestPatchFileGreenfieldCreation (0.00s)
+ok  	github.com/modu-ai/moai-adk/internal/settings/yamlpatch	0.131s
+```
+
+6건 전부 PASS 이고 기대값 전환은 없었다(무수정 확인이 그 증거다). 충돌이 하나도 없었다는 것은 수리 형태가 기존 계약과 어긋나지 않는다는 신호다.
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 _<pending run-phase>_
