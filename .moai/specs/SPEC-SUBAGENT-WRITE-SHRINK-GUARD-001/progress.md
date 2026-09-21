@@ -231,6 +231,16 @@ disposition, OD-1a vs OD-1b) and the plan-phase verdict itself (repair-then-PASS
 PASS-WITH-DEBT vs a ceiling-extending fourth audit). Neither is resolved here; this revision
 deliberately changes no threshold value and asserts no verdict.
 
+### Operator decision round 3 — expired unanswered (2026-09-22 04:13 KST)
+
+A resumed session re-presented the three gating decisions in one AskUserQuestion round
+(pull mode per `interview.yaml recommendation_mode`, source-document option order, no
+recommendation labels); it expired unanswered after 60s — the third expiration across two
+sessions. The three remain: OD-1 (§D.3), the REQ line shape (spec-lint collects the 15
+`**REQ-SWG-**` rows as zero without leading list markers), and the plan-phase verdict.
+Per the card's standing rule, non-response is not read as approval; run-phase entry stays
+gated on all three. No artifact was changed by this round — the only edit is this record.
+
 ## §E.2 Run-phase Evidence
 
 _<pending run-phase>_
