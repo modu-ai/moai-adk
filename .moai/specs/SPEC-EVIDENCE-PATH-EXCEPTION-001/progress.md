@@ -378,6 +378,50 @@ _<pending sync-phase>_
 
 ---
 
+## §J SPEC 본문 blocker 해소 (manager-spec, 2026-09-21)
+
+> §E.3 Gaps 2번이 blocker로 넘긴 SPEC **본문** 편집을 이 항목이 닫는다. 소유권 경계상
+> `spec.md` / `acceptance.md` / `design.md` 본문은 manager-spec의 표면이므로, 오케스트레이터
+> 재위임으로 이 에이전트가 수행했다. 섹션 문자 `J`는 `spec-frontmatter-schema.md`
+> § progress.md Section Map의 할당 규칙에 따라 새로 집은 것이다 — `§E.*` 네임스페이스는
+> era.go가 파싱하므로 재사용하지 않는다.
+>
+> **귀속**: 이 워크트리 `.claude/worktrees/t1039`, 브랜치 `WT-evidence-path`,
+> 착수 HEAD `7939e38b9`. **런타임 변경 0** — 고친 것은 산문뿐이다.
+
+### §J.1 무엇을 고쳤나 (5건)
+
+| # | 자리 | 처분 |
+|---|---|---|
+| 1 | `spec.md` §2.2 `REQ-EPE-006` | `[UNRESOLVED — 운영자 소관]` → **해소, 독법 (B)**. 출처(2026-09-21 run 단계 배차문)와 귀결(두 [HARD] Export mandate 잔존, t1059 소관)을 함께 명기 |
+| 2 | `spec.md` §3.2 / `acceptance.md` `AC-EPE-002` [HARD] 블록 / `design.md` §1.3 D19 | **「(B) 아래에서는 해당 없음」으로 표시.** 삭제하지 않았다 — (A)가 검토된 뒤 채택되지 않았다는 사실이 읽혀야 한다 |
+| 3 | `acceptance.md` §B.9 D15 [HARD] | **범위 한정.** §B.9 원장 규약이며 §B.5 P-프로브 셀에 소급되지 않음을 명시하고, 어떤 판정식이 표 셀에 올 수 있는지의 조건을 적었다 |
+| 4 | `acceptance.md` §B.10 regression-guard 행 | **빠진 절을 채웠다.** 하위 점검의 차단력은 그것을 실은 AC의 처분에서 나온다 — `L-R1`·`L-R2`는 단독으로 릴리스를 막는다 |
+| 5 | `acceptance.md` §B.1 / `AC-EPE-001` / `AC-EPE-003` | `REQ-EPE-005`를 이름 붙였다. 커버리지는 이미 실질적이었고 없던 것은 교차참조뿐 |
+
+부수 정합: `spec.md` §3 머리말 · §3.4 · §7 범위 밖 2항목 · §8 잔여 위험 2항목, `design.md` §6.
+전부 **(B) 확정의 귀결을 서술**하는 것이고, 결정 이전 문언은 보존했다.
+
+### §J.2 [HARD] 넓히지 않았다
+
+두 [HARD] Export mandate(`plan-auditor.md:601`, `sync-auditor.md:108`)는 **거짓인 채로 남는다.**
+이 카드 자신의 plan-audit 판정서 4건과 `lane-measurements.md`도 무시된 채다. §E.3 Gaps 1번이
+그 측정 기록이며, 이 개정은 **그 기록을 그대로 두었다** — 예외를 넓혀 문장을 참으로 만드는 것은
+결정된 교환을 조용히 수선하는 것이고, 그것이 이 카드가 막으려는 실패 형태 그 자체다.
+독트린 문언 수리는 **t1059**가 맡으며 **아직 착지하지 않았다**.
+
+### §J.3 AC 계수 불일치 — 23으로 판정, 계수기 동작은 미설명
+
+`acceptance.md`의 인수조건 수는 **23**이다. 고유 `AC-EPE-*` 토큰 23개
+(`AC-EPE-001`~`AC-EPE-023`, **결번 없이 연속**)이며, §B.10 처분표의 합(6+6+7+2+2)과 일치한다.
+Tier L 상한은 25이므로 **예산은 어느 쪽으로 읽어도 초과하지 않는다.**
+
+[HARD] **Go 계수기가 24를 읽는 이유는 이 개정이 확립하지 않았다.** 그것은 판정이 아니라
+**Gap**이며, 별도 카드가 맡는다. 이 판정을 만족시키려고 AC를 더하거나 빼거나 문서를 고치지
+않았다 — **이해하지 못한 계수기에 문서를 맞추는 것**이 금지된 방향이다.
+
+---
+
 ## §G Plan-phase Iteration Log
 
 > 섹션 문자 `G`는 `spec-frontmatter-schema.md` § progress.md Section Map의 할당 규칙에 따라
