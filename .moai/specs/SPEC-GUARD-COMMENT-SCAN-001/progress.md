@@ -300,7 +300,67 @@ m1_to_mN_commit_strategy: M2-first RED commit (6c7de0d0a) then M1 GREEN (e1b90a3
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase>_
+### README / docs-site assessment (no doc change needed)
+
+Checked whether any shipped user-facing doc describes the guard's command-text
+pattern-matching behavior. Surfaces checked: `README.md`, `README.ko.md`, `README.ja.md`,
+`README.zh.md`, and `docs-site/content/{en,ja,ko,zh}/advanced/{config-sections,autonomous-loops}.md`.
+Result: every mention is either a capability-table row naming the guard's existence
+(`README.md:197`, `README.ko.md:197`), the `workflow.yaml — branch_guard` config section
+documenting the `enabled` key, scope (primary checkout vs worktree), exemptions, and fail-open
+direction (`advanced/config-sections.md`, all 4 locales), or a cross-reference to the BranchGuard
+pattern family from the multi-review-gate page (`advanced/autonomous-loops.md`, en/ja/zh — the ko
+page carries no such mention). No shipped doc states which patterns match or how the scanned
+command text is preprocessed, so the comment-elision change makes nothing stale. `BRANCH_GUARD_VIOLATION`
+appears in none of these files. Per minimal-change discipline, **no README or docs-site edit was
+made** — inventing documentation the guard never had was not done.
+
+### CHANGELOG B12 self-tests (run before emission)
+
+- **(a) pre-emission grep** — `grep -c 'SPEC-GUARD-COMMENT-SCAN-001' CHANGELOG.md` → `0`
+  (exit 1, no matches). No duplicate entry; emission proceeds.
+- **(b) AC count match** — `grep -oE 'AC-([A-Z0-9]+-)*[0-9]+' acceptance.md | sort -u` → 6 ids
+  (AC-GCS-001..006). The CHANGELOG entry states "6 acceptance criteria (AC-GCS-001..006), all
+  PASS per `progress.md` §E.2" — counts agree, and the dispatch ground truth also reads 6/6.
+- **(c) file path verification** — every path named in the CHANGELOG entry checked with `ls`:
+  `internal/hook/branch_guard.go`, `internal/hook/branch_guard_comment_test.go`,
+  `.moai/specs/SPEC-GUARD-COMMENT-SCAN-001/spec.md` — all exist.
+
+### Frontmatter transition note — plan.md / acceptance.md carry no status field
+
+The dispatch named `spec.md`, `plan.md`, and `acceptance.md` for the status transition, but
+`plan.md` and `acceptance.md` carry no YAML frontmatter at all, and the schema SSOT
+(`.claude/rules/moai/development/spec-frontmatter-schema.md` § Artifact Statelessness) states the
+sibling artifacts are stateless on the status axis — they MUST NOT carry a `status:` field; the
+SPEC's lifecycle state lives in exactly one place, `spec.md`. House practice agrees: every
+neighboring sync close in `CHANGELOG.md` records only the `spec.md` frontmatter transition. The
+transition was therefore applied to `spec.md` only; adding a status field to the two stateless
+artifacts would have been a modification outside the allowed frontmatter scope, so it was not
+done and is recorded here instead.
+
+```yaml
+sync_complete_at: 2026-09-22
+sync_commit_sha: pending-backfill-sync   # a commit cannot cite its own hash; backfilled in a following commit (D3 placeholder convention)
+sync_status: complete
+b12_self_test_a: pass (grep count 0)
+b12_self_test_b: pass (6 == 6)
+b12_self_test_c: pass (3/3 paths verified via ls)
+changelog_entry_position: "top of [Unreleased] > Added"
+frontmatter_status_transitions:
+  spec_md: "in-progress -> completed"
+  plan_md: "n/a — stateless on the status axis (spec-frontmatter-schema.md § Artifact Statelessness); carries no status field"
+  acceptance_md: "n/a — stateless on the status axis (spec-frontmatter-schema.md § Artifact Statelessness); carries no status field"
+canary_compliance_check: not-applicable — this SPEC does not define a forward-looking policy
+```
+
+No SPEC body content (`spec.md` / `plan.md` / `acceptance.md`) was modified in this sync commit —
+only `spec.md` frontmatter `status:` (`updated` already read the sync date `2026-09-22`), this
+`progress.md` §E.4 section, and `CHANGELOG.md`. Verification cited from run-phase §E.2 (code
+unchanged during sync; whole-package suite not re-run per dispatch): two-function matrix 19/19
+subtests PASS, whole-package scrubbed run `ok … 208.888s`, coverage 85.7%, gofmt/vet/golangci-lint
+clean, darwin+windows builds exit 0.
+
+🗿 MoAI
 
 ## §F Phase 4 Mode Selection
 
