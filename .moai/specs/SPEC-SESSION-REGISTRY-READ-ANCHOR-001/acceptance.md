@@ -221,7 +221,17 @@ Maps REQ-RAR-012.
   before; there is no orphan file to stop at. Covered by AC-RAR-004.
 - **A directory outside any repository.** The existing home-directory boundary must
   continue to stop the walk — a session working outside a checkout must not have its
-  entry relocated into global state. Covered by AC-RAR-003's absent-registry case.
+  entry relocated into global state. Covered by
+  `TestRelocateCandidatesStopAtHomeInPassTwo` in
+  `internal/hook/cwd_changed_relocate_anchor_test.go`, which calls
+  `relocateRegistryCandidatesFrom(dirs, homeDir)` directly and asserts both that the
+  home directory contributes no primary registry and — as a narrowness control — that
+  a directory below home still contributes its own.
+  **Correction:** this bullet previously attributed the coverage to AC-RAR-003's
+  absent-registry case. That attribution was false and was caught by the sync-audit:
+  that case runs inside `t.TempDir()`, so it never crosses the home boundary at all
+  and could not have covered it. The claim is recorded here rather than erased,
+  because an unobserved coverage claim is exactly the defect this SPEC is about.
 - **An orphan file that is a copy of primary rather than disjoint.** Measurement
   found the two populations disjoint, but that is a property of one host at one
   hour, not an invariant. A criterion that assumes disjointness would rest on a
