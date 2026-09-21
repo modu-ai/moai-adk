@@ -173,12 +173,12 @@ Modality is `SHALL`, matching this repository's measured convention.
   **When** a comment line is followed by a further line, the preprocessing step SHALL leave that
   following line intact and scannable. (Physical, not logical: a backslash-newline continuation is
   a known residual recorded in §F, not a second bound this requirement asserts.)
-- **REQ-GCS-004** — The **comment run** — the span beginning at the `#` that opened the comment and
-  ending at the end of that physical line, inclusive of the `#` and exclusive of the newline —
-  SHALL be elided rather than replaced by a non-flag operand token, because a comment is removed by
-  the shell rather than passed to the command as an argument (§B.3). The preprocessing step SHALL
-  leave the text **preceding** that `#` on the same line intact and scannable, so that a
-  branch-state command carrying a trailing comment still matches.
+- **REQ-GCS-004** — The comment run SHALL be elided rather than replaced by a non-flag operand
+  token, because a comment is removed by the shell rather than passed to the command as an argument
+  (§B.3). The **comment run** is the span beginning at the `#` that opened the comment and ending
+  at the end of that physical line, inclusive of the `#` and exclusive of the newline; the
+  preprocessing step SHALL leave the text **preceding** that `#` on the same line intact and
+  scannable, so a branch-state command carrying a trailing comment still matches.
 - **REQ-GCS-005** — Comment-borne git prose SHALL NOT match any branch-state pattern (the
   mutation-detected arm).
 - **REQ-GCS-006** — The guard SHALL continue to match real branch-state commands after the change
