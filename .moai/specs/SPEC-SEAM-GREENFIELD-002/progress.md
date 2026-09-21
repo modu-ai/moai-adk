@@ -407,8 +407,11 @@ $ git status --porcelain
 
 ```yaml
 run_complete_at: 2026-09-22
-run_commit_sha: pending-backfill-run   # 이 §E.3 커밋 자신의 해시는 커밋 시점에 알 수 없다
-run_landed_commits: [d289130f1, 5fbc3baee, 3386b8ae1]
+run_commit_sha: f47a88d02              # 본 §E.3 신호를 실은 커밋. 그 커밋 자신은 자기 해시를 인용할 수 없어 placeholder 로 두었고, D3 backfill 창에서 이 값으로 채웠다
+run_landed_commits: [d289130f1, 5fbc3baee, 3386b8ae1, f47a88d02, 0f8b395b0]
+# 앞의 3건이 코드·증거를 실은 run 커밋이고, f47a88d02 가 §E.3 을 신설했다.
+# 0f8b395b0 은 그 뒤 §E.3 산문 한 곳(뮤턴트 (b) 철자 주의)을 좁힌 정정이며,
+# 이 backfill 커밋 자신도 같은 절을 건드린다 — §E.3 의 최종 내용은 세 커밋에 걸쳐 있다.
 run_status: audit-ready
 ac_pass_count: 6          # 논리 AC (라벨 셀 7 — 003b는 003의 하위 셀)
 ac_fail_count: 0
@@ -465,7 +468,7 @@ CHANGELOG `[Unreleased] > Fixed` 항목 하나가 본 카드의 유일한 문서
 
 ```yaml
 sync_complete_at: 2026-09-22
-sync_commit_sha: pending-backfill   # 커밋은 자기 해시를 인용할 수 없다 — 후속 커밋에서 backfill
+sync_commit_sha: 5eb3e493f          # 후속 커밋에서 backfill (그 커밋은 자기 해시를 인용할 수 없다)
 sync_status: audit-ready
 b12_self_test_a: pass               # 중복 grep: 방출 전 0 (exit 1)
 b12_self_test_b: pass               # AC 7 라벨 셀 / 논리 6 — acceptance.md 가 SSOT, 0행 아님
