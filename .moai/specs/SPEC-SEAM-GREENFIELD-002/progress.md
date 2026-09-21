@@ -279,7 +279,159 @@ EXIT=0
 
 ## §E.3 Run-phase Audit-Ready Signal
 
-_<pending run-phase>_
+> **측정 귀속 규율**: 아래 각 항목은 **누가 쟀는지**를 행마다 밝힌다. `[구현 세션]` 은 본 run-phase 구현 세션의 관측이고, `[레인]` 은 레인 세션이 직접 재서 전달한 관측이다. 구현 세션이 재지 않은 것을 자기 관측으로 적지 않는다 — 전달받은 수치를 무표기로 옮기면 2차 주장이 1차 관측으로 승격된다.
+
+### E1 — AC PASS/FAIL 매트릭스
+
+기준 트리: **`3386b8ae1`** (clean, `git status --porcelain` 무출력). 커맨드·verbatim 출력은 §E.2 의 해당 절에 있으며 여기서 중복하지 않는다.
+
+| AC | 결과 | 커맨드 | 관측 요지 | 귀속 |
+|----|------|--------|-----------|------|
+| AC-SGF2-001 | **PASS** | `go test ./internal/settings/yamlpatch/ -run 'TestPatchFileGreenfieldOutputIsBlockStyle\|…' -v -count=1` | exit 0. 다섯 루트 키(`mcp`/`report`/`crosssession`/`gate`/`cacheStrategy`) 전부 PASS. 빈 스윕 대조 `grep -c -- '--- PASS'` = **9**(최상위 4 + 서브 5) | [구현 세션] |
+| AC-SGF2-002 | **PASS** | 같음 | exit 0. 두 번째 저장 후에도 block 유지 + 첫 키 잔존 | [구현 세션] |
+| AC-SGF2-003 | **PASS** | 같음 | exit 0. 기존 block 파일 스칼라 편집이 전체 리터럴 `want` 와 바이트 일치 | [구현 세션] |
+| AC-SGF2-003b | **PASS** | 같음 | exit 0. upsert edit + 전체 리터럴 바이트 비교로 deliberate-flow 보존 | [구현 세션] |
+| AC-SGF2-004 | **PASS** | `go test ./internal/settings/ -run '…4건' -v` + `go test ./internal/settings/yamlpatch/ -run '…2건' -v` | 양쪽 exit 0, 4 + 2 = 6 PASS. **무수정 증명**: `git diff d289130f1 -- write_safety_test.go yamlpatch_test.go` 무출력, 같은 형태가 `yamlpatch.go` 에는 29 insertions 를 내므로 공허한 무출력이 아니다 | [구현 세션] |
+| AC-SGF2-005 | **PASS** | §E.2 M4 | 뮤턴트 2방향 채득 + 복원 완전성 증명. 아래 E9 | [구현 세션] + [레인] 독립 재현 |
+| AC-SGF2-006 | **PASS** | `/usr/bin/grep -rn 'yamlpatch\.PatchFile(' …` 외 2건 | 주석 수치가 run 시점 재측정값이다. 양성 대조 동반 | [구현 세션] |
+
+**`ac_pass_count` = 6 (논리 AC) / 라벨 셀 7. `ac_fail_count` = 0.**
+
+### E2 — 크로스플랫폼 빌드 [레인]
+
+```
+$ GOOS=windows GOARCH=amd64 go build ./...
+exit 0 (무출력)
+```
+
+트리 `3386b8ae1`. **이 항목은 레인 세션이 실행한 관측이며 구현 세션은 재지 않았다.**
+
+### E3 — 범위 패키지 커버리지 [구현 세션]
+
+```
+$ go test -cover ./internal/settings/... -count=1
+EXIT=0
+ok  	github.com/modu-ai/moai-adk/internal/settings	0.613s	coverage: 90.6% of statements
+ok  	github.com/modu-ai/moai-adk/internal/settings/agentfm	0.412s	coverage: 85.4% of statements
+ok  	github.com/modu-ai/moai-adk/internal/settings/yamlpatch	0.782s	coverage: 82.9% of statements
+```
+
+**[HARD] `yamlpatch` 82.9% 는 quality.yaml 의 패키지 목표 85% 에 2.1%p 미달이다 — 숨기지 않고 적는다.** 다만 **NEW 가 아니라 기존 baseline 이다**, 그리고 그 판정은 추측이 아니라 프로파일로 잰 것이다:
+
+```
+$ go tool cover -func=/tmp/t1050-cover.out
+… PatchFile 90.0% · lineSplice 86.9% · replaceScalarInLine 71.4% · renderScalar 75.0%
+   applyEdit 96.0% · findKey 100.0% · setScalar 25.0% · detectIndent 85.7%
+   encode 88.9% · atomicWrite 72.0%
+total: 82.9%
+```
+
+미달분은 `setScalar`(25.0%) · `atomicWrite`(72.0%) · `replaceScalarInLine`(71.4%) · `renderScalar`(75.0%) 네 함수에 몰려 있고 **넷 다 본 카드가 건드리지 않은 함수다**. 본 카드가 수정한 `PatchFile` 은 90.0% 이며, 프로파일의 count=0 블록 목록에 **내가 추가한 세 문장(`greenfield := false` · `greenfield = true` · `root.Style = 0`)은 들어 있지 않다** — 전부 새 가드가 실행한다. `PatchFile` 의 미커버 3블록(`70.26,72.4` · `95.59,97.3` · `132.16,134.3`)은 각각 non-absent read 오류 / lineSplice 오류 / encode 오류 분기이며 전부 기존 것이다.
+
+산술 역산(같은 프로파일에서 추가 3문장을 빼면): **82.6% → 82.9%, 본 카드가 0.3%p 올렸다.** 이 값은 측정이 아니라 현재 프로파일로부터의 역산이며, 변경 전 트리에서 직접 재지 않았다 — 그 사실은 아래 Gap 에 적는다.
+
+### E5 — Lint [레인]
+
+```
+$ golangci-lint run ./internal/settings/yamlpatch/...
+exit 0
+0 issues.
+```
+
+트리 `3386b8ae1`. **이 항목은 레인 세션이 실행한 관측이며 구현 세션은 재지 않았다.**
+
+**[HARD] 이것은 패키지 한정 실행이지 저장소 전체 실행이 아니다.** 따라서 저장소 전역 lint baseline 은 **미측정**으로 남고, 그 판정은 CI 몫이다. 이 0 을 「저장소에 지적이 없다」로 읽으면 재지 않은 범위를 잰 것으로 승격시키는 오독이다. 구현 세션이 부수적으로 돌린 `go vet ./internal/settings/...`(exit 0)과 `gofmt -l`(무출력) 역시 범위 한정이며 lint 를 대체하지 않는다.
+
+### E6 — 브랜치 / HEAD / 미푸시
+
+```
+$ git branch --show-current
+WT-greenfield-style
+$ git rev-parse --short HEAD
+3386b8ae1
+$ git rev-list --count develop..HEAD
+4
+$ git status --porcelain
+(무출력)
+```
+
+**푸시하지 않았다** — 레인 규율대로 로컬 병합 SHA 보고까지가 소관이고 `origin/develop` push 는 리드의 일괄 행위다. 착지한 run-phase 커밋 3건(순서대로):
+
+| SHA | 성격 |
+|---|---|
+| `d289130f1` | **RED** — 가드 4종, 수리 없음 |
+| `5fbc3baee` | **수리** + `@MX:ANCHOR` 정정 |
+| `3386b8ae1` | M4 뮤턴트 기록 |
+
+**순서는 커밋 그래프가 증언한다** — RED 산출물이 수리 커밋보다 앞선 별도 커밋에 있으므로, 같은 커밋에 담았을 때 영구히 검증 불가가 되는 순서 주장이 여기서는 재확인 가능하다(`verification-claim-integrity.md` §2.3).
+
+**변경 파일 전량 (vs plan 커밋 `0a23f6a5d`)**: 6개 — SPEC 산출물 4 + `greenfield_style_test.go`(신설) + `yamlpatch.go`. **PRESERVE 목록 잔존 확인**: `git diff --stat 0a23f6a5d..HEAD -- internal/settings/sectionapply.go internal/settings/sectionroute.go internal/settings/sectionwrite.go internal/web/ .moai/specs/SPEC-SEAM-GREENFIELD-001/` → **무출력**. `sectionwrite.go` 의 「8개 섹션」 스테일 독스트링 4곳과 등록부 12 vs 라우팅 6 불일치는 **관측만 하고 손대지 않았다**(`plan.md` §D 금지 사항).
+
+### E8 — RED verbatim 채득
+
+전량은 `.moai/reports/t1050/m2-red-capture.log`, 인용은 §E.2 M2 절에 있다 — 여기서 중복하지 않는다. 요지: exit 1, AC-SGF2-001 다섯 셀 + AC-SGF2-002 FAIL, **실패 출력이 실제 flow 형상(`{mcp: {tools: …}}`)을 그대로 보인다**. 틀린 이유로 떨어진 RED 가 아니다.
+
+**[HARD] 귀속 정밀화**: 이 RED 는 HEAD `0a23f6a5d` + **가드 파일 미커밋 상태**에서 채득했다(그 내용이 곧 `d289130f1` 이 됐다). 커밋된 SHA 위에서 재실행한 값이 아니다 — 그러려면 체크아웃이 필요했고 하지 않았다. 순서 주장은 커밋 그래프가 받치지만, RED **출력**의 귀속 대상은 커밋이 아니라 워킹 트리다.
+
+### E9 — 뮤턴트 2방향 + 미검출 뮤턴트
+
+상세와 verbatim 은 §E.2 M4. 요지:
+
+| 방향 | 오버레이 | 결과 | 귀속 |
+|---|---|---|---|
+| (a) 해제 제거 | `root.Style = 0` → `_ = root.Style` | exit 1 — AC-SGF2-001 다섯 셀 + AC-SGF2-002 FAIL, 보존 셀 2개 무영향 | [구현 세션] |
+| (b) 무조건 해제 | `if greenfield {` → `if greenfield \|\| true {` | exit 1 — **AC-SGF2-003b 단독 FAIL**, greenfield 6셀 전부 PASS | [구현 세션] |
+| (b) 재현 | `if greenfield {` 래퍼 삭제 + `_ = greenfield` | exit 1 — 같은 판정, 같은 `got` | **[레인] 독립 재현** |
+
+**[레인] 재현이 드러낸 경계 — (b) 뮤턴트는 아무렇게나 적을 수 없다.** 가장 자연스러운 표현인 「`if greenfield {` 래퍼를 통째로 삭제」는 **컴파일되지 않는다**: `greenfield` 가 미사용 변수가 되어 Go 가 빌드를 거부하고, 실행은 `[build failed]` 로 끝나 **아무것도 측정하지 않는다**. 컴파일되는 (b) 를 쓰려면 변수를 살려 둬야 한다 — 레인은 `_ = greenfield` 로, 구현 세션은 `if greenfield || true` 로 각각 그 조건을 충족했다. 두 철자가 같은 판정에 도달했다는 점이 이 결과를 한 세션의 우연한 표현에 의존하지 않게 만든다.
+
+**이 세부를 기록하는 이유**: `[build failed]` 는 exit 0 이 아니라 non-zero 로 끝나므로 「뮤턴트가 잡혔다」로 **오독되기 쉽다** — 가드가 FAIL 한 것이 아니라 가드가 **돌지 않은** 것이고, 그것은 검출이 아니라 미측정이다. 다음 사람이 이 지점을 그대로 밟으므로 경계로 남긴다.
+
+**복원 완전성**: 구현 세션은 역 `sed` 치환(`grep -n 'MUTANT'` 무출력 + `git diff --stat` 무출력), 레인은 파일 복사(`git diff --stat` + `git status --porcelain` 양쪽 무출력). 두 세션 모두 git 을 거치지 않고 오버레이를 넣고 뺐다.
+
+**미검출 뮤턴트 (REQ-SGF2-008): 없다** — 돌린 세 실행(구현 2 + 레인 1)이 모두 잡혔다. 「경계가 없다」는 뜻이 아니므로, **돌리지 않아 측정되지 않은** 가드 경계 3건을 §E.2 M4 절에 추론으로 명시해 뒀다(사용자가 적은 리터럴 `{}` 파일 / 중첩 스타일 동시 해제 / 들여쓰기 폭 변이). 셋 다 관측으로 표시하지 않았다.
+
+### 선행 SPEC 패치 (`plan.md` §F M5-2)
+
+**plan 단계에서 이미 적용돼 있어 재적용하지 않았다** — 「현재 상태부터 읽는다」는 M5-2 의 지시대로 읽기 전용으로 확인만 했다:
+
+- `related_specs` 에 `SPEC-SEAM-GREENFIELD-002` 존재(`spec.md:15`)
+- HISTORY 에 소유권 이관 행 존재(`spec.md:23`)
+- `status: completed` 유지, `updated: 2026-09-08` **동결** — 그 행 자신이 「정확히 두 가지」 경계를 깨지 않기 위한 의도적 선택이라고 기록하고 있다
+
+본 세션은 `SPEC-SEAM-GREENFIELD-001/` 을 **한 바이트도 수정하지 않았다**(E6 의 PRESERVE 무출력이 그 증거다).
+
+### Audit-Ready Signal
+
+```yaml
+run_complete_at: 2026-09-22
+run_commit_sha: pending-backfill-run   # 이 §E.3 커밋 자신의 해시는 커밋 시점에 알 수 없다
+run_landed_commits: [d289130f1, 5fbc3baee, 3386b8ae1]
+run_status: audit-ready
+ac_pass_count: 6          # 논리 AC (라벨 셀 7 — 003b는 003의 하위 셀)
+ac_fail_count: 0
+preserve_list_post_run_count: 6        # plan.md §D PRESERVE 6항목 전부 잔존 (측정: E6 무출력)
+new_warnings_or_lints_introduced: 0    # 단, 패키지 한정 측정 — 전역은 CI 몫 (E5)
+cross_platform_build:
+  windows_amd64: pass                  # [레인] 측정
+  measured_by: lane
+total_run_phase_files: 6               # SPEC 산출물 4 + 신설 테스트 1 + 수리 1
+m1_to_mN_commit_strategy: three-commits-red-first
+coverage_scope_packages:
+  settings: 90.6
+  settings_agentfm: 85.4
+  settings_yamlpatch: 82.9             # 85% 목표 미달 — 기존 baseline, 본 카드가 +0.3%p
+uncaught_mutants: 0
+```
+
+### Gaps — run 단계가 관측하지 않은 것
+
+- **`./internal/cli/...` 미실행.** 구현 세션은 지시에 따라 돌리지 않았고, 레인이 백그라운드로 전량 실행 중이다. `internal/cli/init_workflow_flags.go:97` 이 수정된 함수의 **살아 있는 프로덕션 호출점**이므로 이 패키지는 실제로 영향권이며, 이 보고 시점에 미검증이다.
+- **저장소 전역 lint 미측정** — E5 는 `./internal/settings/yamlpatch/...` 한정이다.
+- **변경 전 커버리지를 직접 재지 않았다** — 82.6% 는 현재 프로파일로부터의 역산이지 이전 트리의 측정이 아니다.
+- **RED 출력의 귀속 대상이 커밋이 아니라 워킹 트리다**(E8).
+- **증거 로그가 gitignore 대상이다** — `.gitignore:227` 의 `.moai/reports/*` 가 `.moai/reports/t1050/*.log` 를 덮는다(`git check-ignore -v` 로 확인). 어떤 클론·CI 에도 닿지 않으므로 verbatim 을 추적 파일인 본 `progress.md` 에 인라인해 뒀고, `.log` 사본은 편의용이다.
+- **`go test ./...` 미실행** — 레인 부하 규율에 따라 의도적이며, 전 패키지 판정은 CI 몫이다.
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
