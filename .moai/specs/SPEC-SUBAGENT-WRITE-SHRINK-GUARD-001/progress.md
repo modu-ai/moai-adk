@@ -279,6 +279,65 @@ ModalityUnjudged on 004). REQ-SWG-006a and REQ-SWG-008a produce no finding — 0
 AC-referenced (`acceptance.md:181,288`); 006a produces none despite no AC reference found in
 `acceptance.md`, and the mechanism for that difference is not established in this revision.
 
+### Operator decision round 4 — partial: ①② executed, ③ verdict conflicted and pending (2026-09-22)
+
+Authored by the orchestrator (lane session). Supersedes the r7 entry's closing expectation that
+the plan verdict would be recorded as "PASS after repairs" in a separate later commit — that
+recording is BLOCKED pending conflict resolution (item 3).
+
+1. **① OD-1 → OD-1a.** Direct operator answer in this session (AskUserQuestion, pull mode; 4th
+   presentation of the three gating decisions — the first three rounds expired unanswered).
+   Executed by r7 (§D.3 `[RESOLVED]`, commit `d0a4ad020`). The lead-relayed requirement to
+   record that the false-positive side remains unmeasured is already carried by the §D.3
+   resolution paragraph.
+
+2. **② REQ line shape → list markers via r7.** Done and re-verified by the orchestrator on the
+   post-commit tree: `grep -c '^- \*\*REQ-SWG-'` → 15, `grep -c '^\*\*REQ-SWG-'` → 0; lint
+   re-run after the commit (tree build) reproduces `0 error(s), 18 warning(s)`, closing r7's
+   Gap 2 (lint had run pre-commit only). The 18 warnings are pre-existing prose-shape findings
+   newly visible once collection fires: 13 CoverageIncomplete (REQ-SWG-001…013) + 4
+   ModalityMalformed (002/005/006/008) + 1 ModalityUnjudged (004). Their disposition is a
+   separate decision; they are warnings, not errors. Evidence:
+   `.moai/reports/t1057/r7-spec-lint.md` (untracked by design).
+
+3. **③ plan verdict — CONFLICTED, unresolved.** Two channels carry different operator verdicts:
+
+   - This session's DIRECT AskUserQuestion answer (received before any relay arrived):
+     "repairs-then-PASS" (plan-audit §6 option 1 — delta re-check, no full re-audit).
+   - A cross-session relay from the lead session (agent-18, pid 44341; live kanban-side claude
+     process, identity corroborated; socket `/tmp/cc-socks/55591.sock`): "4th audit with
+     explicit Tier M ceiling extension", citing the t1059 precedent.
+
+   The relay's initial citation of that precedent was an unmeasured memory-index figure. After
+   the lead corrected with a file location, this session re-measured it directly:
+   `.claude/worktrees/t1059/.moai/reports/t1059/plan-audit-reset-iter2.md` — "reset iteration 2
+   (Tier M ceiling) | PASS | 0.8125", 5 hits of `0.8125`, sampled lines 19/28/459 confirm. The
+   file lives only in the t1059 worktree (the pre-export-verdict class), which is why neither
+   the primary reports root (1,940 entries, positive control passed) nor this worktree's shows
+   a t1059 entry. The precedent is therefore REAL; its initial citation was not measured.
+
+   Two conflict AskUserQuestion rounds expired unanswered (operator AFK). Per the standing
+   rule, non-response is not approval: neither path is taken, the 4th audit is NOT started
+   (the lead has been asked to hold), and run-phase entry stays gated on ③ plus the
+   Implementation Kickoff Approval gate.
+
+4. **Delta re-verification of the r6 repair sites** (required under both paths; executed this
+   round by the orchestrator on the post-r7 tree — all present):
+
+| Site | Location | Verified form |
+|---|---|---|
+| D22 benign set | `acceptance.md:198-207` | benign set names an untracked-path write and a path outside the repository; "must go red" at :207 |
+| D23 quoted include | `acceptance.md:39` + `:45-46` | `--include='*.go'` quoted; zsh rationale recorded |
+| D24 §A.5 repoint | `spec.md:179-180`, `:185-191` | row 3 → `evidence-probe-hook-payloads.jsonl` record 2; row 4 re-measured as `evidence-probe-manager-git-subagent.jsonl` record 2; `a380879cdd91883f9` recorded as an unattributed citation |
+| D25 §B.2 fields | `spec.md:282` | `agent_id`/`tool_name`/`file_path`/`content` parsed; `agent_type` audit-row-only |
+| D26 four logs | `plan.md:65` | "the four payload logs beside it" |
+| D27 eighth over-match | `spec.md:289-290` | cites `evidence-annex.md`, Side observation (a line-wrap split hid it from single-line grep) |
+| byte-identity, 3 layers | `spec.md:76,:622`; `progress.md:27,:121,:217`; `plan.md:67-68` | divergence stated with operand order; plan.md in its own wording ("adds the 11-line `[SUPERSEDED …]` marker and alters nothing else") |
+
+   First-pass greps missed D24 (§A.5 lives in spec.md, not acceptance.md), D27 (line-wrap
+   split), and the plan.md wording — each re-verified by opening the region before recording
+   "present".
+
 ## §E.2 Run-phase Evidence
 
 _<pending run-phase>_
