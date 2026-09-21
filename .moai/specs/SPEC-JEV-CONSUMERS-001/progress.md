@@ -102,7 +102,7 @@ m1_to_mN_commit_strategy: "per-milestone feature commits; M6 = 1 feat commit (im
 
 ```yaml
 sync_complete_at: 2026-09-22
-sync_commit_sha: "pending-backfill-sync"   # a commit cannot cite its own SHA; the real SHA is backfilled in the follow-up commit (schema doctrine D3)
+sync_commit_sha: "0e2a61c81"   # backfilled after the sync commit landed (schema doctrine D3); placeholder in the sync commit itself
 sync_status: "closed per the SPEC's own Definition of Done — no consumer ships; M4/M6 recorded gate-unrun (REQ-JEVN-016), M5 block recorded"
 b12_self_test_a: "PASS — grep -c 'SPEC-JEV-CONSUMERS-001' CHANGELOG.md → 0 (no duplicate-emission risk)"
 b12_self_test_b: "PASS-WITH-NOTE — grep -oE 'AC-([A-Z0-9]+-)*[0-9]+' acceptance.md | sort -u | wc -l → 20 = AC-JEVN-001..016 (16 live criteria of this SPEC) + 4 cross-referenced sibling tokens (AC-JEVC-003, AC-JEVO-010/013/014); no emission was made against this count"
