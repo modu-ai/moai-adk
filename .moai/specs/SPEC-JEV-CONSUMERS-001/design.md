@@ -55,6 +55,8 @@ The `BacklogFinding` doc comment records that a finding is a record and nothing 
 
 Consumer C inherits that property for free. The design obligation is only to not be the thing that breaks it — which is why REQ-JEVN-007 states it explicitly and AC-JEVN-005 verifies it against the queue file's hash rather than against a code review.
 
+**That inertness is now load-bearing at the SPEC layer, not merely reassuring.** `SPEC-JEV-CORE-001` v0.2.0 (card t1066) makes it condition (i) of the REQ-JEVC-011 inert-sibling-record carve-out — the clause under which Consumer C's append is authorised at all. Before that amendment the defence lived only here, in a design document, while a plain reading of REQ-JEVC-011 and REQ-JEVC-012 forbade the append outright; the wording, not the design, was the defect. Condition (iii) of that carve-out — nothing selects on the record — is the one a future change can quietly remove, and removing it lapses the carve-out rather than extending it.
+
 ## §4. Routing — the classification, not the decision
 
 > **Host unresolved — this section designs the question set, not the call site.** Which code path invokes routing is open question N2, unanswered by the 2026-09-20 operator decisions, and M5 is declared blocked on it (`plan.md` §F). Nothing below names a host, deliberately: the lane-question surface is prose-level today, and naming a call site that was never measured would put an unverified premise exactly where a reader is least likely to check it.
@@ -85,10 +87,16 @@ The three could plausibly share one gate. They do not, for the reason the whole 
 
 A shared gate would also create a failure mode with no good resolution: two consumers pass, one fails, and the shipped set is now a judgement call made under pressure. Independent gates make the answer mechanical — the failing consumer does not ship, the other two do, and the absence is recorded as a decision.
 
-### The third state: a gate that cannot be run
+### The third and fourth states: a gate that cannot be run, and one that has not been run
 
 "Passed" and "failed" are not the only outcomes, and treating them as such leaves run-phase with nothing to produce in the state it is most likely to be in. `Report.Verdict()` (`internal/jevmeasure/measure.go:193`) first-checks the measurement's source and returns `VerdictWithhold` for anything other than `SourceLive`, so where no live measurement is permitted, **no consumer can reach ship** — and the gate has not failed, it has not run.
 
 The distinction is not pedantic, because the two states call for different records. A failed gate is evidence: the record cites the measurement and the baseline it did not beat, and a later reader can disagree with the verdict by reading the numbers. An un-runnable gate has no measurement to cite, so a record written in the failed-gate shape has to invent one — which is precisely the unobserved-verification claim this chain exists to avoid. `REQ-JEVN-015` gives the second state its own output: a recorded decision naming why the gate could not be run and citing the withholding mechanism, with no measurement artifact required. `AC-JEVN-015` asserts that the two records stay distinguishable.
 
 This is separate again from a milestone **blocked** on an unanswered design question (M5 and M6 on N2, `plan.md` §F). Blocked work was never started; an un-runnable gate belongs to work that was in scope and could not be judged. A milestone can be in both states at once, and each is recorded on its own terms.
+
+**A fourth state exists, and M4 is in it.** `Report.Verdict()` withholds where no *live* measurement is permitted; it says nothing about the case where a live measurement is permitted and simply has not been taken. That case is real and common: the credential exists, the endpoint is reachable, and what is missing is the labelled set — whose size is open question Q3, owned by the predecessor. The gate has not failed and it is not un-runnable; it is **unrun**, and the work that would run it is owed rather than closed.
+
+The distinction matters for the same reason the third state does, and in the same direction: the record shapes differ. A gate-not-runnable record cites a withholding mechanism and closes; a gate-unrun record names what is still missing and who owns it, so the owed work survives the milestone. Writing the second in the first's shape retires work nobody decided to retire.
+
+It matters a second way that the third state does not: a gate that cannot be run has nothing to guard, so `REQ-JEVN-015` can require the call path to be **absent** and lose nothing. An unrun gate will be run, so requiring absence would mean deleting and re-landing the implementation between the decision and the measurement — cost with no safety return, since `REQ-JEVC-017` already guarantees a default-off consumer constructs nothing and `REQ-JEVC-014` already guarantees its output is unchanged. `REQ-JEVN-016` therefore permits presence and buys back the safety with four conditions that are each mechanically checkable (`AC-JEVN-016`), rather than with a deletion that is not.
