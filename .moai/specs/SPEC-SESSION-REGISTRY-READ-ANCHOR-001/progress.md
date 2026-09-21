@@ -225,6 +225,20 @@ carried in this tracked section rather than only by citation.
   compound `cat > … <<EOF … EOF && go test …` heredoc whose body named git
   commands. The test file was then written with the Write tool and the test run
   issued as a separate command; no measurement was substituted or inferred.
+- **Pass 2's home boundary was UNGUARDED until this commit, and `acceptance.md`
+  §E mis-attributed its coverage.** The sync audit neutralised the
+  `resolveSymlinks(root) == resolveSymlinks(homeDir)` comparison in
+  `primaryRegistryFor` with `go test -overlay` and the entire `internal/hook`
+  package still passed (`ok … 206.965s`, exit 0) — a surviving mutant. Pass 1's
+  same boundary is guarded by `TestFindRegistryUpwardStopsAtHome` in four
+  directions; pass 2's was guarded by nothing, and `acceptance.md` §E recorded
+  it as "Covered by AC-RAR-003's absent-registry case", which is not true —
+  that case runs entirely inside `t.TempDir()` and never crosses a home
+  boundary. The gap is closed by `TestRelocateCandidatesStopAtHomeInPassTwo`
+  (this commit), verified in both directions: it passes on the unmutated tree
+  and fails under the same overlay mutation, while its positive-control subtest
+  stays green under that mutation. The `acceptance.md` §E wording correction is
+  NOT in this commit — that artifact is manager-spec's.
 
 ### Residual risk
 
@@ -252,7 +266,7 @@ ac_pass_count: 8          # AC-RAR-001,002,003,004,009,010,011,012
 ac_fail_count: 0
 ac_not_attempted_count: 3 # AC-RAR-005,006,007 — all three S2-gated
 ac_fixtures_established_count: 1 # AC-RAR-008 — measured unchanged at S1 landing; S2 behaviour unverified. NOT counted as a pass
-preserve_list_post_run_count: 68  # of 69 orphan registry files byte-identical; the 69th is the live primary registry (§E.2 qualifier)
+preserve_list_post_run_count: 68  # of 69 registry files (68 orphan + 1 primary) byte-identical; the one that changed is the live primary registry, not an orphan (§E.2 qualifier)
 l44_pre_commit_fetch: not-performed   # lane does not push; integration is the lead's
 l44_post_push_fetch: not-performed
 new_warnings_or_lints_introduced: 0

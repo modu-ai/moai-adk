@@ -245,3 +245,45 @@ func TestRelocateFailOpen(t *testing.T) {
 		}
 	})
 }
+
+// --- pass 2's home boundary ------------------------------------------------
+
+// TestRelocateCandidatesStopAtHomeInPassTwo pins the home boundary the S1
+// repair introduced in primaryRegistryFor. Pass 1's boundary is covered by
+// TestFindRegistryUpwardStopsAtHome; pass 2 has its own, and what it prevents
+// is an entry belonging to a session outside any checkout being relocated
+// into ~/.moai/state/active-sessions.json — a write to global shared state.
+//
+// The layout is home-shaped on purpose: every path lives inside a directory
+// the test owns, so nothing reads the machine's real $HOME.
+//
+// Mutation control (recorded in the run-phase evidence): neutralising the
+// resolveSymlinks(root) == resolveSymlinks(homeDir) comparison in
+// primaryRegistryFor makes the first subtest fail while the second — the
+// positive control showing pass 2 still yields a path below home — keeps
+// passing.
+func TestRelocateCandidatesStopAtHomeInPassTwo(t *testing.T) {
+	t.Run("the home directory contributes no primary registry", func(t *testing.T) {
+		home := canonicalHook(t, t.TempDir())
+
+		got := relocateRegistryCandidatesFrom([]string{home}, home)
+
+		if len(got) != 0 {
+			t.Fatalf("candidates = %v, want none: pass 2 offered the global registry for the home directory itself", got)
+		}
+	})
+
+	t.Run("a directory below home still contributes its primary registry", func(t *testing.T) {
+		home := canonicalHook(t, t.TempDir())
+		checkout := mustMkdirAllHook(t, filepath.Join(home, "projects", "app"))
+
+		// No registry file exists anywhere, so pass 1 yields nothing and pass 2
+		// is the only source of the result below.
+		got := relocateRegistryCandidatesFrom([]string{checkout}, home)
+
+		want := filepath.Join(checkout, session.DefaultRegistryPath)
+		if len(got) != 1 || got[0] != want {
+			t.Fatalf("candidates = %v, want exactly [%s]: the boundary must not block descendants of home", got, want)
+		}
+	})
+}
