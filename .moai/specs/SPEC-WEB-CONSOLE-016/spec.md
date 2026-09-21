@@ -119,7 +119,13 @@ related_specs: [SPEC-WEB-CONSOLE-007, SPEC-WEB-CONSOLE-011, SPEC-GLM-KEY-INPUT-0
 이 세 항목은 plan-phase 에서 **재지 못했다.** 어느 것도 "그런 위험이 없다"는 뜻이 아니다.
 
 1. **7·9단계의 실패 거동.** `applyPerfTierEdits`, `glmcred.Save` 는 패키지 함수라 주입 seam 이 없어 재현하지 못했다. 파일시스템 수준 탐침(대상 경로를 쓰기 불가로 만들기)이 필요하며, run-phase 의 일이다(REQ-WC16-009).
-2. **각 층의 자체 원자성.** 한 층(profile store / config manager / yamlpatch) 안에서 부분 쓰기가 일어나는지는 재지 않았다. 이 값은 **트랜잭션 축의 비용 산정에 필요한 선행 입력**이며, 그 카드의 첫 작업이다(§F.1).
+2. **각 층의 자체 원자성 — [측정됨 2026-09-21, gap 해소].** 이 항목은 더 이상 미측정이 아니다. 결론: **`ConfigManager.Save()` 는 호출 단위로 원자적이지 않다.** `llm.yaml` 만 쓰기 불가로 만들고 실행하면 `user.yaml` · `language.yaml` · `quality.yaml` 셋이 이미 바뀐 채 실패한다(agent-6 실행 관측, 워크트리 `probe-layer-atomicity`, 증거 `.moai/reports/probe-layer-atomicity/`). `ApplySchemaEdits` 의 seam 루프도 같다. **본 레인은 이 실행 관측을 재현하지 않았다** — 코드 판독과 수렴 지점만 이 트리에서 확인했다(아래 §6-2a).
+
+   **§6-2a 본 레인이 이 트리(`WT-partial-apply`)에서 직접 확인한 것:**
+   - 9단계 중 **다섯이 같은 `config.NewConfigManager()` → `Save()` 로 수렴한다** — `internal/profile/sync.go:65`(3단계) · `internal/web/projectconfig.go:250`(4단계) · `internal/settings/nested.go:159`(5단계) · `internal/settings/sectionapply.go:199`(6단계) · `internal/web/agentfm.go:557`(8단계). 다섯 곳 모두 같은 생성자를 쓴다.
+   - **그러나 6단계는 두 기구로 쓴다.** `sectionapply.go` 는 seam 섹션을 `yamlpatch.PatchFile` 로(:98 "파일별 단일 PatchFile"), typed 섹션을 `Save()` 로 기록한다. 따라서 **`Save()` 하나에 트랜잭션 경계를 그어도 6단계의 seam 쓰기는 덮이지 않는다.** `manager.go` 의 `@MX:DEBT` 가 같은 사실을 반대편에서 진술한다 — `Save` 는 여섯 섹션만 영속화하고 나머지는 yamlpatch seam 또는 전용 writer 를 지난다.
+   - 되돌리기 기구는 저장 경로에 **없다**: 해당 6파일에 `backup|rollback|snapshot` 적중 **0파일**, 양성 대조로 같은 grep 이 `internal/cli/update/` 에서 **52파일**을 찾는다. 즉 되돌리기 방향 처방은 전부 신규 기구를 요구하고, **보여 주기 방향(본 SPEC)은 기존 구조 위에서 가능하다.**
+   - `manager.go:181` 의 `@MX:ANCHOR` 는 `Save` 를 "atomic multi-section write" 라 부른다. 바로 아래 `@MX:REASON` 이 "atomic write via temp+rename" 이라 **파일 단위 원자성**을 뜻하지만, 호출 단위 원자성으로 읽힐 여지가 있고 위 실행 관측이 그 독해를 반증한다.
 3. **계측 대리값.** 계측기는 디스크 바이트가 아니라 seam 호출을 관측한다. 실제 구현이 물려 있을 때 호출 = 쓰기 시도이므로 충실한 대리값이지만, **동일하지는 않다.**
 4. **실패 경로의 nested 렌더 결과.** `renderErrorPage → projectView` 는 `applyNestedCurrent`(성공 경로)도 `applyNestedForm`(거부 경로)도 호출하지 않는다는 것까지는 코드에서 확인했으나, **그 결과 화면에 무엇이 보이는지는 재지 않았다.** 빈 값인지 기본값인지, 그것이 사용자에게 어떻게 읽히는지는 run-phase 측정 대상이다.
 5. **실제 브라우저 표시.** t1049 의 관측은 렌더된 HTML 바이트 수준이며, 브라우저에서 무엇이 보이는지는 재지 않았다.
@@ -135,7 +141,16 @@ related_specs: [SPEC-WEB-CONSOLE-007, SPEC-WEB-CONSOLE-011, SPEC-GLM-KEY-INPUT-0
 - 일곱 개 영속화 단계를 원자적으로 만드는 일, 그리고 세 영속화 층(profile store / config manager / yamlpatch)을 가로지르는 롤백은 본 SPEC 밖이다.
 - **왜 별건인가**: 두 축은 서로 독립이다. (4)는 **트랜잭션 없이 고칠 수 있고**, 반대로 트랜잭션을 도입해도 (4)가 자동으로 고쳐지지 않는다 — 제출값을 되비추는 것은 렌더 경로의 성질이지 쓰기 경로의 성질이 아니다. 두 축을 합치면 처방이 커지고, 큰 쪽이 작고 확실한 쪽을 인질로 잡는다.
 - SPEC-WEB-CONSOLE t1043 이 이미 그 크기를 자기 스코프 밖으로 판정했다. 리드가 **별도 카드로 발행해 운영자 판단에 올린다**; 본 SPEC 은 그것을 선취하지 않는다.
-- 그 카드의 **첫 작업은 §6-2(층별 자체 원자성 측정)**다 — 측정 없이 비용을 말할 수 없다.
+- **그 카드의 첫 작업은 더 이상 §6-2 측정이 아니다 — 측정이 끝났기 때문이다.** 대신 아래 측정된 모양에서 시작한다(§6-2 · §6-2a):
+  - 트랜잭션 경계 후보는 **`ConfigManager.Save()` 한 함수 + 네 갈래**(1 preferences · 7 perf tier · 9 자격증명 · 3단계의 statusline.yaml 별도 쓰기)다. t1043 이 「세 영속화 층에 걸친 롤백」이라 부른 것보다 작다.
+  - **다만 「한 함수」가 다섯 단계를 전부 덮지는 않는다.** 6단계는 `yamlpatch.PatchFile` 로도 쓰므로, `Save()` 에만 경계를 그으면 그 seam 쓰기가 밖에 남는다(§6-2a). 이 한 줄을 빠뜨리면 그 카드가 범위를 과소 산정한다.
+  - 되돌리기 기구가 저장 경로에 0파일이므로(§6-2a), 롤백 방향은 **전부 신규 기구**다.
+
+### Out of Scope — 1·9단계의 제자리 덮어쓰기(별개 수리 축)
+
+- **1단계 `preferences.go:181` 과 9단계 `glmcred.go:81` 만 `os.WriteFile` 로 제자리 덮어쓴다**; 나머지는 temp+rename 을 지난다(`manager.go` `@MX:REASON` 이 그 기구를 명시). 본 레인이 이 트리에서 확인했다.
+- 트랜잭션 축과 **독립**이고 헬퍼가 이미 있어 비용이 낮다. 다만 **9단계가 자격증명 파일**이라 우선순위 판단이 다를 수 있다.
+- 본 SPEC 의 범위가 아니다. 이름을 남기는 이유는 **같은 함수를 만지는 다음 사람이 알아야 하기 때문**이다.
 
 ### Out of Scope — 영속화 순서·구성의 변경
 
