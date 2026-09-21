@@ -2,9 +2,9 @@
 id: SPEC-GUARD-COMMENT-SCAN-001
 title: "BranchGuard scan preprocessing: a shell comment is text the shell never executes, and must not be scanned as the command being run (card t1056)"
 version: "0.1.0"
-status: draft
+status: in-progress
 created: 2026-09-21
-updated: 2026-09-21
+updated: 2026-09-22
 author: manager-spec
 priority: P2
 phase: "v3.1.4 target"
