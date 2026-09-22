@@ -2,19 +2,28 @@ package hook
 
 import (
 	"context"
+	"database/sql"
+	"errors"
 	"fmt"
 	"os"
-	"strconv"
 	"strings"
 	"time"
 
 	"github.com/modu-ai/moai-adk/internal/config"
 	"github.com/modu-ai/moai-adk/internal/factorymsg"
 	"github.com/modu-ai/moai-adk/internal/homestate"
+	"github.com/modu-ai/moai-adk/internal/session"
 )
 
 const factoryHookContextLimit = 2048
 const factoryHookInspectionDeadline = 200 * time.Millisecond
+
+type factoryPeerBindMode uint8
+
+const (
+	factoryPeerBindSessionStart factoryPeerBindMode = iota
+	factoryPeerBindUserPrompt
+)
 
 func factoryHookRoot(input *HookInput) string {
 	if input.ProjectDir != "" {
@@ -22,7 +31,15 @@ func factoryHookRoot(input *HookInput) string {
 	}
 	return input.CWD
 }
-func registerFactoryHookPeer(ctx context.Context, input *HookInput) string {
+func registerFactorySessionStartPeer(ctx context.Context, input *HookInput) string {
+	return registerFactoryHookPeer(ctx, input, factoryPeerBindSessionStart)
+}
+
+func registerFactoryUserPromptPeer(ctx context.Context, input *HookInput) string {
+	return registerFactoryHookPeer(ctx, input, factoryPeerBindUserPrompt)
+}
+
+func registerFactoryHookPeer(ctx context.Context, input *HookInput, mode factoryPeerBindMode) string {
 	runID := strings.TrimSpace(os.Getenv(config.EnvMoaiKanbanID))
 	root := factoryHookRoot(input)
 	if runID == "" || root == "" || input.SessionID == "" {
@@ -39,11 +56,9 @@ func registerFactoryHookPeer(ctx context.Context, input *HookInput) string {
 	if backend == "" {
 		backend = "unknown"
 	}
-	ownerPID := os.Getppid()
-	if raw := strings.TrimSpace(os.Getenv(config.EnvMoaiSessionPID)); raw != "" {
-		if parsed, err := strconv.Atoi(raw); err == nil && parsed > 0 {
-			ownerPID = parsed
-		}
+	ownerPID, resolved := session.ResolveOwnerPID()
+	if !resolved {
+		return "factory messaging degraded: session owner identity unavailable"
 	}
 	start, state := homestate.ProbeProcessIdentity(ownerPID)
 	if state != homestate.ProcessIdentityLive || start == "" {
@@ -57,7 +72,25 @@ func registerFactoryHookPeer(ctx context.Context, input *HookInput) string {
 		return "factory messaging degraded: " + err.Error()
 	}
 	defer s.Close()
-	p, err := s.RegisterPeer(ctx, factorymsg.Peer{ProjectKey: homestate.ProjectKey(root), RunID: runID, Backend: backend, Role: role, Slot: slot, SessionUUID: input.SessionID, Generation: 1, PID: ownerPID, ProcessStart: start})
+	want := factorymsg.Peer{ProjectKey: homestate.ProjectKey(root), RunID: runID, Backend: backend, Role: role, Slot: slot, SessionUUID: input.SessionID, Generation: 1, PID: ownerPID, ProcessStart: start}
+	if current, peerErr := s.Peer(ctx, input.SessionID); peerErr == nil {
+		if current.ProjectKey == want.ProjectKey && current.RunID == want.RunID && current.Backend == want.Backend && current.Role == want.Role && current.Slot == want.Slot && current.PID == want.PID && current.ProcessStart == want.ProcessStart {
+			return ""
+		}
+	} else if !errors.Is(peerErr, sql.ErrNoRows) {
+		return "factory messaging degraded: " + peerErr.Error()
+	}
+	if mode == factoryPeerBindSessionStart {
+		p, bound, bindErr := s.BindLaunchPending(ctx, want)
+		if bindErr != nil {
+			return "factory messaging degraded: " + bindErr.Error()
+		}
+		if !bound {
+			return ""
+		}
+		return fmt.Sprintf("factory messaging bound: run=%s slot=%s generation=%d; messages arrive at turn boundaries, not idle wake", runID, p.Slot, p.Generation)
+	}
+	p, err := s.RegisterPeer(ctx, want)
 	if err != nil {
 		return "factory messaging degraded: " + err.Error()
 	}

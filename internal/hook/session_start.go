@@ -455,7 +455,7 @@ func (h *sessionStartHandler) Handle(ctx context.Context, input *HookInput) (*Ho
 	// call returns nothing and the session start cannot gate on it.
 	clock.lap("marshal_attribution")
 	writeKanbanSessionRecord(input)
-	if factoryNotice := registerFactoryHookPeer(ctx, input); factoryNotice != "" {
+	if factoryNotice := registerFactorySessionStartPeer(ctx, input); factoryNotice != "" {
 		if out.HookSpecificOutput == nil {
 			out.HookSpecificOutput = &HookSpecificOutput{HookEventName: string(EventSessionStart)}
 		}

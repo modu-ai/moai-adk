@@ -11,8 +11,8 @@ import (
 // equality guard (internal/cli TestMoaiMCPServer_RegistrationMatchesCatalog)
 // catches drift in either direction. The jev_ask addition rides
 // SPEC-JEV-GOAL-DIST-001 M8a: registration is unconditional, the capability
-// itself stays gated (workflow.jev.enabled ships false). The five factory_msg
-// tools are the t1074 dependency absorbed by t1082.
+// itself stays gated (workflow.jev.enabled ships false).
+// The factory message family contributes five further registered tools.
 const wantCatalogSize = 36
 
 // TestMoaiMCPTools_CatalogSize asserts the catalog declares exactly

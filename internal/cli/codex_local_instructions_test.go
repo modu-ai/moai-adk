@@ -142,9 +142,16 @@ func TestCodexLocalInstructions_SymlinkIsRefused(t *testing.T) {
 }
 
 func TestCodexLocalInstructions_DocumentedInLauncherHelp(t *testing.T) {
-	for _, want := range []string{"CLAUDE.local.md", "shared with Claude", "AGENTS.local.md", "developer instructions", "Codex-only", "non-empty"} {
+	for _, want := range []string{"Common local guidance", "shared with Claude", "Codex-specific local", "developer instructions", "non-empty"} {
 		if !strings.Contains(codexCmd.Long, want) {
 			t.Errorf("launcher help does not mention %q", want)
+		}
+	}
+	// The help is a shipped user-facing surface: describe the inputs without
+	// enumerating local filenames, as the distributed template does.
+	for _, name := range []string{codexClaudeLocalName, codexLocalInstructionName} {
+		if strings.Contains(codexCmd.Long, name) {
+			t.Errorf("launcher help enumerates local filename %q", name)
 		}
 	}
 }

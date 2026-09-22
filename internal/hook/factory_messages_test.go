@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"reflect"
 	"sort"
 	"strings"
 	"testing"
@@ -202,6 +203,238 @@ func recordActiveFactoryRun(t *testing.T, root, run string) {
 	defer db.Close()
 	if err := db.RecordRun(context.Background(), homestate.FactoryRun{RunID: run, LeadSessionID: "lead", Backend: "test", ManifestJSON: "{}"}); err != nil {
 		t.Fatal(err)
+	}
+}
+
+func TestFactorySessionStartRebindsLaunchPendingPeer(t *testing.T) {
+	t.Setenv("MOAI_HOME", t.TempDir())
+	root := t.TempDir()
+	run := "run-session-start-rebind"
+	recordActiveFactoryRun(t, root, run)
+	t.Setenv(config.EnvMoaiKanbanID, run)
+	t.Setenv(config.EnvMoaiFactoryWorkers, "1")
+	t.Setenv(config.EnvMoaiFactoryWorker, "")
+	t.Setenv(config.EnvMoaiKanbanBackend, "codex")
+	t.Setenv(config.EnvMoaiSessionPID, fmt.Sprint(os.Getpid()))
+	start, state := homestate.ProbeProcessIdentity(os.Getpid())
+	if state != homestate.ProcessIdentityLive || start == "" {
+		t.Fatal("test process identity unavailable")
+	}
+	s, err := factorymsg.Open(root, run)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer s.Close()
+	pending, err := s.RegisterLaunchPending(context.Background(), factorymsg.Peer{
+		ProjectKey: homestate.ProjectKey(root), RunID: run, Backend: "codex",
+		Role: "lead", Slot: "lead", PID: os.Getpid(), ProcessStart: start,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	actualSession := "actual-session-uuid"
+	notice := registerFactorySessionStartPeer(context.Background(), &HookInput{SessionID: actualSession, ProjectDir: root})
+	if !strings.Contains(notice, "factory messaging bound") {
+		t.Fatalf("SessionStart did not bind pending endpoint: %q", notice)
+	}
+	bound, err := s.ResolveLane(context.Background(), "lead")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if bound.SessionUUID != actualSession || bound.Generation <= pending.Generation || bound.PID != pending.PID || bound.ProcessStart != pending.ProcessStart {
+		t.Fatalf("bound=%+v pending=%+v", bound, pending)
+	}
+	status, err := s.Status(context.Background())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(status.Lanes) != 1 || status.Lanes[0].BindingState != factorymsg.BindingBound || status.Lanes[0].SessionUUID != actualSession {
+		t.Fatalf("bound roster=%+v", status.Lanes)
+	}
+}
+
+func TestFactorySessionStartCannotRotateAuthoritativeUserPromptBinding(t *testing.T) {
+	_, _, s, pending, input := factoryPromptPendingFixture(t)
+	alias := *input
+	alias.SessionID = "session-start-alias"
+	if notice := registerFactorySessionStartPeer(context.Background(), &alias); !strings.Contains(notice, "factory messaging bound") {
+		t.Fatalf("initial SessionStart did not bind pending peer: %q", notice)
+	}
+	afterAlias := factoryPeerSnapshot(t, s, "lead")
+	if afterAlias.SessionUUID != alias.SessionID || afterAlias.Generation != pending.Generation+1 {
+		t.Fatalf("SessionStart alias bind=%+v pending=%+v", afterAlias, pending)
+	}
+	if notice := registerFactorySessionStartPeer(context.Background(), &alias); notice != "" {
+		t.Fatalf("idempotent SessionStart returned notice: %q", notice)
+	}
+	if after := factoryPeerSnapshot(t, s, "lead"); !reflect.DeepEqual(after, afterAlias) {
+		t.Fatalf("idempotent SessionStart rewrote peer: before=%+v after=%+v", afterAlias, after)
+	}
+
+	input.Prompt = "Bind the actual user prompt session."
+	if notice := registerFactoryUserPromptPeer(context.Background(), input); !strings.Contains(notice, "factory messaging bound") {
+		t.Fatalf("UserPromptSubmit did not rotate alias to actual session: %q", notice)
+	}
+	authoritative := factoryPeerSnapshot(t, s, "lead")
+	if authoritative.SessionUUID != input.SessionID || authoritative.Generation != afterAlias.Generation+1 {
+		t.Fatalf("authoritative bind=%+v alias=%+v", authoritative, afterAlias)
+	}
+
+	if notice := registerFactorySessionStartPeer(context.Background(), &alias); notice != "" {
+		t.Fatalf("delayed SessionStart returned notice after authoritative bind: %q", notice)
+	}
+	if after := factoryPeerSnapshot(t, s, "lead"); !reflect.DeepEqual(after, authoritative) {
+		t.Fatalf("delayed SessionStart rewrote authoritative peer: before=%+v after=%+v", authoritative, after)
+	}
+
+	if notice := registerFactoryUserPromptPeer(context.Background(), input); notice != "" {
+		t.Fatalf("idempotent UserPromptSubmit returned notice: %q", notice)
+	}
+	if after := factoryPeerSnapshot(t, s, "lead"); !reflect.DeepEqual(after, authoritative) {
+		t.Fatalf("idempotent UserPromptSubmit rewrote peer: before=%+v after=%+v", authoritative, after)
+	}
+}
+
+func factoryPromptPendingFixture(t *testing.T) (string, string, *factorymsg.Store, factorymsg.Peer, *HookInput) {
+	t.Helper()
+	t.Setenv("MOAI_HOME", t.TempDir())
+	root := t.TempDir()
+	run := "run-user-prompt-rebind"
+	recordActiveFactoryRun(t, root, run)
+	t.Setenv(config.EnvMoaiKanbanID, run)
+	t.Setenv(config.EnvMoaiFactoryWorkers, "1")
+	t.Setenv(config.EnvMoaiFactoryWorker, "")
+	t.Setenv(config.EnvMoaiKanbanBackend, "codex")
+	t.Setenv(config.EnvMoaiSessionPID, fmt.Sprint(os.Getpid()))
+	start, state := homestate.ProbeProcessIdentity(os.Getpid())
+	if state != homestate.ProcessIdentityLive || start == "" {
+		t.Fatal("test process identity unavailable")
+	}
+	s, err := factorymsg.Open(root, run)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = s.Close() })
+	pending, err := s.RegisterLaunchPending(context.Background(), factorymsg.Peer{
+		ProjectKey: homestate.ProjectKey(root), RunID: run, Backend: "codex",
+		Role: "lead", Slot: "lead", PID: os.Getpid(), ProcessStart: start,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	input := &HookInput{SessionID: "actual-user-prompt-session", ProjectDir: root, CWD: root}
+	return root, run, s, pending, input
+}
+
+func factoryPeerSnapshot(t *testing.T, s *factorymsg.Store, slot string) factorymsg.LaneStatus {
+	t.Helper()
+	status, err := s.Status(context.Background())
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, lane := range status.Lanes {
+		if lane.Slot == slot {
+			lane.ObservedAt = time.Time{}
+			return lane
+		}
+	}
+	t.Fatalf("slot %s absent: %+v", slot, status.Lanes)
+	return factorymsg.LaneStatus{}
+}
+
+func TestFactoryUserPromptSubmitRebindsLaunchPendingPeer(t *testing.T) {
+	_, _, s, pending, input := factoryPromptPendingFixture(t)
+	before := factoryPeerSnapshot(t, s, "lead")
+	for _, prompt := range []string{"", " \t\n "} {
+		in := *input
+		in.Prompt = prompt
+		if _, err := NewUserPromptSubmitHandler(nil).Handle(context.Background(), &in); err != nil {
+			t.Fatal(err)
+		}
+		if after := factoryPeerSnapshot(t, s, "lead"); !reflect.DeepEqual(after, before) {
+			t.Fatalf("empty prompt rewrote pending peer: before=%+v after=%+v", before, after)
+		}
+	}
+	// Test-only anticipated envelope: its recipient tuple is the endpoint that
+	// the first non-empty prompt must bind. If batch runs before bind, current
+	// peer lookup is unbound and this ID cannot reach AdditionalContext.
+	path, err := factorymsg.BrokerPath(input.ProjectDir, os.Getenv(config.EnvMoaiKanbanID))
+	if err != nil {
+		t.Fatal(err)
+	}
+	db, err := sql.Open("sqlite", "file:"+path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = db.Close() })
+	now := time.Now().UTC()
+	messageID := "first-bind-inbox"
+	if _, err := db.Exec(`INSERT INTO messages(id,schema_version,project_key,run_id,sender_session,sender_generation,recipient_session,recipient_generation,kind,idem_key,task_ref,correlation_id,created_at,expires_at,payload,state) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,'pending')`,
+		messageID, factorymsg.SchemaVersion, pending.ProjectKey, pending.RunID, "fixture-sender", 1,
+		input.SessionID, pending.Generation+1, factorymsg.KindStatusRequest, "first-bind-idem", "t1074", "first-bind-correlation",
+		now.Format(time.RFC3339Nano), now.Add(time.Hour).Format(time.RFC3339Nano), []byte("test-only anticipated endpoint")); err != nil {
+		t.Fatal(err)
+	}
+	input.Prompt = "Inspect the assigned factory work."
+	out, err := NewUserPromptSubmitHandler(nil).Handle(context.Background(), input)
+	if err != nil {
+		t.Fatal(err)
+	}
+	bound, err := s.ResolveLane(context.Background(), "lead")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if bound.SessionUUID != input.SessionID || bound.Generation <= pending.Generation || bound.PID != pending.PID || bound.ProcessStart != pending.ProcessStart {
+		t.Fatalf("bound=%+v pending=%+v", bound, pending)
+	}
+	if out.HookSpecificOutput == nil || !strings.Contains(out.HookSpecificOutput.AdditionalContext, "factory messaging bound") || !strings.Contains(out.HookSpecificOutput.AdditionalContext, messageID) {
+		t.Fatalf("missing bind notice: %+v", out)
+	}
+}
+
+func TestFactoryBoundUserPromptSubmitDoesNotRewritePeer(t *testing.T) {
+	root, run, s, _, input := factoryPromptPendingFixture(t)
+	input.Prompt = "Bind this real user turn."
+	if _, err := NewUserPromptSubmitHandler(nil).Handle(context.Background(), input); err != nil {
+		t.Fatal(err)
+	}
+	bound, err := s.ResolveLane(context.Background(), "lead")
+	if err != nil {
+		t.Fatal(err)
+	}
+	sender := bound
+	sender.Role, sender.Slot, sender.SessionUUID = "worker", "agent-1", "sender-session"
+	if sender, err = s.RegisterPeer(context.Background(), sender); err != nil {
+		t.Fatal(err)
+	}
+	msg, err := s.Send(context.Background(), factorymsg.SendRequest{
+		From: sender, To: bound, Kind: factorymsg.KindStatusRequest,
+		IdempotencyKey: "bound-no-rewrite", TaskRef: "t1074", CorrelationID: "bound-prompt",
+		TTL: time.Hour, Payload: []byte("status"),
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	before, err := s.Peer(context.Background(), input.SessionID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	beforeUpdated := factoryPeerSnapshot(t, s, "lead").UpdatedAt
+	input.Prompt = "Check the existing factory inbox."
+	out, err := NewUserPromptSubmitHandler(nil).Handle(context.Background(), input)
+	if err != nil {
+		t.Fatal(err)
+	}
+	after, err := s.Peer(context.Background(), input.SessionID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	afterUpdated := factoryPeerSnapshot(t, s, "lead").UpdatedAt
+	if before != after || beforeUpdated != afterUpdated {
+		t.Fatalf("bound prompt rewrote peer: before=%+v/%s after=%+v/%s", before, beforeUpdated, after, afterUpdated)
+	}
+	if out.HookSpecificOutput == nil || !strings.Contains(out.HookSpecificOutput.AdditionalContext, msg.ID) {
+		t.Fatalf("inbox lookup did not run after no-op bind: root=%s run=%s output=%+v", root, run, out)
 	}
 }
 

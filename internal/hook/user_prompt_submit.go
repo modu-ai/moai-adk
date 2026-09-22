@@ -107,6 +107,17 @@ func (h *userPromptSubmitHandler) Handle(ctx context.Context, input *HookInput) 
 
 	// Detect workflow context
 	additionalCtx := detectWorkflowContext(prompt)
+	if strings.TrimSpace(prompt) != "" {
+		bindCtx, cancel := context.WithTimeout(ctx, factoryHookInspectionDeadline)
+		bindNotice := registerFactoryUserPromptPeer(bindCtx, input)
+		cancel()
+		if bindNotice != "" {
+			if additionalCtx != "" {
+				additionalCtx += "\n\n"
+			}
+			additionalCtx += bindNotice
+		}
+	}
 	if factoryCtx, _, _ := factoryHookBatch(ctx, input, EventUserPromptSubmit); factoryCtx != "" {
 		if additionalCtx != "" {
 			additionalCtx += "\n\n"

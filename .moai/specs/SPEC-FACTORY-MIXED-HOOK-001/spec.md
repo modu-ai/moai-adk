@@ -1,10 +1,10 @@
 ---
 id: SPEC-FACTORY-MIXED-HOOK-001
 title: "Mixed Claude/Codex factory hook-boundary messaging"
-version: "0.1.2"
-status: in-progress
+version: "0.1.4"
+status: completed
 created: 2026-09-22
-updated: 2026-09-22
+updated: 2026-09-23
 author: manager-spec
 priority: P1
 phase: "v3.0.0"
@@ -20,6 +20,8 @@ tags: "factory,codex,claude,hooks,messaging,receipt"
 
 | Version | Date | Change |
 |---|---|---|
+| 0.1.4 | 2026-09-22 | Correct binding lifecycle to required first non-empty UserPromptSubmit fallback with best-effort SessionStart and no-write steady state. |
+| 0.1.3 | 2026-09-22 | Replace the disproved pre-turn SessionStart premise with a capability-truth `launch-pending → bound` contract. |
 | 0.1.2 | 2026-09-22 | Add the user-requested operational lane roster/status scope through the normative OPS addendum. |
 | 0.1.1 | 2026-09-22 | Clarify the stable logical lane versus replaceable Codex session endpoint seam and defer worktree handoff to t1082. |
 | 0.1.0 | 2026-09-22 | Card t1074 plan baseline for mixed Claude/Codex hook-boundary messaging. |
@@ -45,14 +47,14 @@ Implementation proceeds through identity/namespace, broker/receipt, hook integra
 - 카드: `t1074`, Tier L.
 - 기준선: `WT-factory-mixed-hook@758314007`, 작성 시 로컬 `develop`과 동일.
 - 필수 조합: Codex lead↔Codex worker, Codex lead↔Claude worker, Claude lead↔Codex worker. Claude↔Claude는 회귀 대상이다.
-- 이 카드는 hook-boundary 전달만 지원한다. Worktree 생성, interactive `/cd`, headless `cwd` handoff, 그에 따른 endpoint rebind는 `t1082`가 소유한다. idle wake는 rebind가 `BOUND`가 된 뒤 `t1075`가 담당하며, `CLAUDE.local.md` Codex 로딩은 `t1078` 범위다.
+- 이 카드는 초기 launcher 단계의 `launch-pending` endpoint와 첫 정상·빈 값이 아닌 `UserPromptSubmit`에서의 `bound` 전환, hook-boundary 전달을 소유한다. Worktree 생성, interactive `/cd`, headless `cwd` handoff, 그 이후 endpoint rebind는 `t1082`가 소유한다. idle wake는 rebind가 `BOUND`가 된 뒤 `t1075`가 담당하며, `CLAUDE.local.md` Codex 로딩은 `t1078` 범위다.
 - 기존 legacy `.moai/state/session-msg` 저장소는 자동 이동·삭제·의미 변경하지 않는다.
 
 ## Requirements (GEARS)
 
 ### REQ-FMH-001 — Canonical factory identity
 
-The factory launcher SHALL bind every lead/worker to canonical project key, run ID, stable logical lane ID, runtime backend, session UUID, generation, PID, and process-start identity. The logical lane ID SHALL remain the broker address while the session UUID/generation is a replaceable physical endpoint, and all delivery operations SHALL resolve the currently bound endpoint. When no active run exists, the launcher SHALL fail with `NO_ACTIVE_FACTORY`; when multiple active runs exist, it SHALL fail with `AMBIGUOUS_FACTORY`; when `--factory-run <id>` is supplied before `--`, it SHALL select one run and SHALL NOT forward that option to the child.
+The factory launcher SHALL bind every lead/worker to canonical project key, run ID, stable logical lane ID, runtime backend, generation, PID, and process-start identity. Before an actual hook session UUID is observed, the lane SHALL be visible as a `launch-pending` provisional endpoint backed by the real child process identity. When startup `SessionStart` runs after provisional registration, it MAY perform the same idempotent early bind, but correctness SHALL NOT depend on that ordering. When the first legitimate non-empty `UserPromptSubmit` is observed, the registry SHALL atomically rebind any remaining provisional lane to the actual session UUID and resolved owner PID/process-start as `bound` before that hook processes the inbox. Empty or whitespace-only prompts SHALL NOT bind. Once the same actual endpoint is already bound, later prompts SHALL leave peer generation and persisted fields, including `updated_at`, unchanged while still checking the inbox. The logical lane ID SHALL remain the broker address while the session UUID/generation is a replaceable physical endpoint, and delivery operations requiring a hook-bound session SHALL reject `launch-pending`. When no active run exists, the launcher SHALL fail with `NO_ACTIVE_FACTORY`; when multiple active runs exist, it SHALL fail with `AMBIGUOUS_FACTORY`; when `--factory-run <id>` is supplied before `--`, it SHALL select one run and SHALL NOT forward that option to the child.
 
 ### REQ-FMH-002 — Atomic membership
 
@@ -88,7 +90,7 @@ The MCP send/list/body-read/receipt tools and synchronous hook receive logic SHA
 
 ### REQ-FMH-010 — Capability truth
 
-Where hook wiring is disabled, untrusted, or incompatible, the integration SHALL produce an explicit capability error. The hook-boundary delivery status SHALL report messages arriving after idle as pending until the next turn and SHALL NOT describe that state as idle-wake or fully autonomous factory.
+Where hook wiring is disabled, untrusted, or incompatible, the integration SHALL produce an explicit capability error. While a lane is `launch-pending`, the status surface SHALL report that no actual hook session UUID has yet been observed and SHALL NOT describe the provisional process identity as hook-bound. The hook-boundary delivery status SHALL report messages arriving after idle as pending until the next turn and SHALL NOT describe that state as idle-wake or fully autonomous factory.
 
 ### REQ-FMH-011 — Compatibility
 
@@ -105,12 +107,12 @@ The user-requested operational lane roster/status contract in [`operational-lane
 | Requirement | Canonical obligation |
 |---|---|
 | REQ-FMH-OPS-001 | The status surface SHALL return only real lanes from the selected canonical project/run. |
-| REQ-FMH-OPS-002 | Each lane row SHALL expose stable slot plus current backend/session/generation/PID identity. |
+| REQ-FMH-OPS-002 | Each lane row SHALL expose stable slot, endpoint phase, and the currently observed backend/session/generation/PID identity without inventing a pre-turn session UUID. |
 | REQ-FMH-OPS-003 | Endpoint state SHALL distinguish fingerprint-backed `live`, `dead`, `stale`, and `unknown`. |
 | REQ-FMH-OPS-004 | Task state SHALL be `unknown` unless explicit evidence supports `busy` or `idle`. |
 | REQ-FMH-OPS-005 | `factory_msg_status` SHALL read the roster without claiming inbox messages or mutating state. |
 | REQ-FMH-OPS-006 | Launcher guidance SHALL name the real registered read-only status surface. |
-| REQ-FMH-OPS-007 | Production proof SHALL launch one built-tree `moai codex -f` lead and two `moai codex -f agent` workers, bind each real Codex owner through `SessionStart` before any prompt, and expose the same endpoints through the lead's MCP status call without direct-Codex or manual-registration bypasses. |
+| REQ-FMH-OPS-007 | Production proof SHALL expose one built-tree `moai codex -f` lead and two `moai codex -f agent` workers as process-backed `launch-pending` lanes before any prompt, then atomically rebind each remaining provisional lane through its first legitimate non-empty `UserPromptSubmit` using the actual session UUID and resolved owner identity before inbox processing; startup `SessionStart` MAY bind early but ordering is not required, and repeated prompts on the same bound endpoint SHALL NOT rewrite peer state. Empty/fake turns and registration bypasses are prohibited. |
 | REQ-FMH-OPS-008 | Query/probe uncertainty SHALL remain explicit and output SHALL contain one deterministic current generation per slot. |
 
 These requirements are implementation and verification `PENDING`; no earlier AC or run evidence satisfies them implicitly.

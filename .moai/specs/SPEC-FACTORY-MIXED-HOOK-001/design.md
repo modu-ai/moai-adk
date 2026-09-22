@@ -14,8 +14,10 @@ module: "internal/factorymsg"
 
 ```text
 launcher ──select/join──> canonical factory run registry
-   │                     logical lane ID ──> current endpoint(UUID/gen)
-SessionStart ──bind/rebind UUID/gen─────────┘
+   │                     logical lane ID ──> launch-pending(PID/start/gen)
+   │                                               │
+startup SessionStart after pending ──optional early bind─┐
+first non-empty UserPromptSubmit ──required atomic bind──┴─> bound(UUID/PID/start/gen)
    │
 MCP send/body/receipt ──> factory broker <── hook claim metadata
                               │
@@ -27,11 +29,11 @@ The broker path is derived from `homestate.ProjectDir(CanonicalProjectRoot(cwd))
 
 ## Identity
 
-`FactoryPeer = {project_key, run_id, backend, role, slot, session_uuid, generation, pid, process_start}`. The role/slot pair forms the stable logical lane address; `session_uuid` and `generation` identify its replaceable physical endpoint. Launcher creates/joins; SessionStart binds the real hook session UUID. Every resolve/claim/read/receipt verifies the current full recipient tuple. Restart increments generation, and a stale endpoint cannot receive or acknowledge traffic.
+`FactoryPeer = {project_key, run_id, backend, role, slot, endpoint_phase, session_uuid?, generation, pid, process_start}`. The role/slot pair forms the stable logical lane address. The launcher creates a `launch-pending` endpoint from the real child PID/process-start and leaves `session_uuid` absent. Startup `SessionStart` may atomically bind that lane only if provisional registration already exists; because official lifecycle ordering does not guarantee that sequence, the first legitimate non-empty `UserPromptSubmit` is the required fallback. It binds the observed hook session UUID and resolved owner PID/process-start before the same hook checks the inbox. Empty or whitespace-only prompts cannot bind. After the identical endpoint is bound, later prompts skip the registry write entirely, preserving generation and `updated_at`, but still check the inbox. Every resolve/claim/read/receipt verifies the current full recipient tuple, and operations requiring a hook session reject `launch-pending`. Restart increments generation, and a stale endpoint cannot receive or acknowledge traffic.
 
 ## Worktree handoff seam
 
-This SPEC does not create or enter worktrees. `t1082` owns the state machine `reserve → create → SWITCH_PENDING → /cd or headless cwd fork → SessionStart rebind → BOUND`. t1074 supplies only the atomic current-endpoint binding and stale-generation rejection required by that state machine. `t1075` must address the stable lane and wake only the endpoint that is current after `BOUND`.
+This SPEC does not create or enter worktrees. It establishes the initial-launch `launch-pending → bound` capability-truth contract. `t1082` owns the later state machine `reserve → create → SWITCH_PENDING → /cd or headless cwd fork → endpoint rebind → BOUND` and reuses the same atomic binding/stale-generation seam. `t1075` must address the stable lane and wake only the endpoint that is current after `BOUND`.
 
 ## Envelope and states
 
@@ -39,8 +41,9 @@ This SPEC does not create or enter worktrees. `t1082` owns the state machine `re
 
 ## Hook merge rules
 
-- SessionStart: capability and bound identity only.
-- UserPromptSubmit: append metadata-only retrieval instructions to existing additionalContext.
+- Launcher: register process-backed `launch-pending` identity without a session UUID.
+- SessionStart: handle only the documented startup/resume/clear/compact lifecycle and attempt an idempotent best-effort early bind when a matching provisional row already exists. Correctness never depends on it running after launcher registration.
+- UserPromptSubmit: reject binding for empty/whitespace input; otherwise perform the required provisional-to-actual bind before inbox batch processing, then append metadata-only retrieval instructions to existing additionalContext. If the identical endpoint is already bound, skip the bind write but still run inbox processing.
 - Stop: if existing logic denies/stops, preserve it. Otherwise claim a new actionable batch only when chain ledger has budget; return one continuation. `stop_hook_active` and ledger prevent a second continuation.
 - No hook performs ACK. No receipt-only batch wakes a model.
 
@@ -51,6 +54,10 @@ This SPEC does not create or enter worktrees. `t1082` owns the state machine `re
 - Stale generation/token operations fail closed.
 - Crash after claim relies on lease expiry and idempotency/revision guards.
 - Active-run ambiguity fails before child launch.
+- No empty/fake model turn, direct DB seed, manual registration, or hook-trust bypass may manufacture a `bound` endpoint.
+- A repeated prompt on an already-bound identical endpoint is a no-write idempotent no-op for peer state; it cannot refresh `updated_at` merely because a turn occurred.
+
+The lifecycle distinction above follows the official Codex hooks contract: `SessionStart` is emitted for startup, resume, clear, and compact sources, whereas `UserPromptSubmit` runs before a submitted user prompt is sent. Source: https://developers.openai.com/codex/hooks.
 
 ## Observability
 

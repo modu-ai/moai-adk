@@ -19,6 +19,7 @@ module: "internal/factorymsg"
 - `internal/sessionmsg.Store.Poll`: legacy `ack_ids` deletion lacks recipient generation and claim-token comparison. It is not safe as the factory receipt contract.
 - `.claude/settings.json` and its template currently mark Stop async; blocking continuation requires synchronous Stop wiring.
 - Codex hook wiring already routes UserPromptSubmit and Stop through `moai hook --harness codex`; adapter behavior must be verified against the installed version before claiming parity.
+- Current `RegisterPeer` behavior preserves generation when session/PID identity is unchanged but still executes an upsert and advances `updated_at`; therefore calling it on every prompt is not a no-write idempotent steady state.
 
 ## Codex worktree and cwd findings
 
@@ -31,12 +32,14 @@ module: "internal/factorymsg"
 
 ## Official contract boundaries
 
-- Codex hooks: UserPromptSubmit additional context is elevated developer context; async hook completion does not wake an idle turn.
+- Codex hooks: project hooks load only after project trust; trust is recorded against the hook configuration hash. The official contract defines `SessionStart` for the startup, resume, clear, and compact lifecycle sources; it is not a per-normal-user-turn event. The same contract defines `UserPromptSubmit` as running during a turn before the submitted prompt is sent and provides the common actual `session_id`. Therefore startup `SessionStart` may be an early-bind opportunity, but the first non-empty `UserPromptSubmit` is the deterministic fallback available at the required normal-turn boundary. UserPromptSubmit additional context is elevated developer context; async hook completion does not wake an idle turn.
+- Codex App Server: `thread/start` creates a thread without starting a model turn, while `turn/start` supplies user input and starts generation. Thread creation alone therefore cannot be specified as proof that SessionStart has already produced a hook-bound owner identity.
 - Claude hooks: Stop can request continuation and supplies loop-prevention state; continuation must be bounded.
 
 Sources:
 
-- https://learn.chatgpt.com/docs/hooks
+- https://developers.openai.com/codex/hooks
+- https://developers.openai.com/codex/app-server/
 - https://github.com/openai/codex/blob/main/codex-rs/app-server-protocol/schema/typescript/v2/TurnStartParams.ts
 - https://github.com/openai/codex/blob/main/sdk/python/docs/api-reference.md
 - https://github.com/openai/codex/blob/main/codex-rs/tui/src/slash_command.rs
@@ -58,7 +61,10 @@ The broader hook/package attempts without an isolated MoAI home touched the real
 
 ## Open research gaps
 
-- Installed Claude/Codex hook trust and exact emitted JSON require live measurement.
+- Installed Claude hook trust and exact emitted JSON require live measurement.
+- Codex `0.155.1` measurements in the isolated fixtures observed: (a) a trusted TUI left idle for 30 seconds created no factory DB and registered zero peers; (b) App Server `initialize` plus `thread/start`, without `turn/start`, returned a thread ID but after 5 seconds produced no SessionStart sidecar or factory DB. These measurements disprove this SPEC's former pre-turn requirement for those fixtures/version; they do not establish a universal rule for every future Codex version.
+- Two production-chain attempts against Codex `0.155.1` observed the same failure after launcher registration: all three real process-backed `launch-pending` rows existed, a normal prompt produced a real Codex session, but terminal 0 did not rebind because the startup `SessionStart` had already raced before provisional registration and did not re-fire for the prompt. The first attempt also exposed an owner-PID resolver defect; after that resolver was corrected, the second attempt still failed at the same lifecycle boundary. These are measured failures for this implementation/version, not a universal claim about every future Codex release.
+- The capability-truth replacement is therefore: launcher-owned process evidence creates `launch-pending`; startup `SessionStart` may bind only when it happens after that row exists; the first legitimate non-empty `UserPromptSubmit` must atomically bind any remaining provisional row before inbox processing. Empty/whitespace input cannot bind. Once the same actual endpoint is bound, later UserPromptSubmit events still inspect the inbox but must bypass `RegisterPeer` so peer generation and `updated_at` do not change. Live verification remains required for all three lanes and for the no-write steady state.
 - Real model-context delivery, continuation, fault injection, and performance are NOT_RUN at plan time.
 - Same-UID local processes are not a strong security boundary; identity binding prevents mistakes and stale ownership, not a hostile local-user sandbox.
 - Official interfaces do not expose a hook/MCP operation that executes a TUI slash command. Interactive handoff still requires an idle `/cd`; unattended handoff must use an official headless thread/fork/start `cwd` path and register the resulting endpoint.

@@ -182,11 +182,11 @@ func TestFieldsetSchemaSectionLLMGlmKey(t *testing.T) {
 func TestFieldsetSchemaSectionWorkflowJev(t *testing.T) {
 	html := renderTempl(t, fieldsetSchemaSection(pageView{JevKeyConfigured: true, JevKeyHint: "wxyz"}, schemaPanelMeta("workflow")))
 	for _, want := range []string{
-		`data-section="jev"`,          // the sub-section marker
-		`data-i18n="sec.jev.note"`,    // the privacy statement
-		`name="jev_api_key"`,          // the credential input
-		`f.jev_api_key.configured`,    // the configured indicator
-		`…wxyz`,                       // the bounded trailing-four hint
+		`data-section="jev"`,       // the sub-section marker
+		`data-i18n="sec.jev.note"`, // the privacy statement
+		`name="jev_api_key"`,       // the credential input
+		`f.jev_api_key.configured`, // the configured indicator
+		`…wxyz`,                    // the bounded trailing-four hint
 	} {
 		if !strings.Contains(html, want) {
 			t.Errorf("workflow panel Jev section missing %q:\n%s", want, html)

@@ -36,6 +36,7 @@ import (
 
 	"github.com/modu-ai/moai-adk/internal/config"
 	"github.com/modu-ai/moai-adk/internal/factorymsg"
+	"github.com/modu-ai/moai-adk/internal/homestate"
 	"github.com/modu-ai/moai-adk/internal/kanban"
 )
 
@@ -229,6 +230,20 @@ func enterSelectedFactoryRun(root, explicit string, requireActive bool) (func(),
 	restore := captureEnvState(config.EnvMoaiKanbanID)
 	_ = os.Setenv(config.EnvMoaiKanbanID, runID)
 	return restore, nil
+}
+
+func recordFactoryRunStart(root, runID, backend, specID string) error {
+	if err := kanban.RecordFactoryRunStart(root, runID, backend, specID); err != nil {
+		return err
+	}
+	db, err := homestate.OpenFactory(root)
+	if err != nil {
+		return err
+	}
+	defer db.Close()
+	return db.RecordRun(context.Background(), homestate.FactoryRun{
+		RunID: runID, Backend: backend, ManifestJSON: "{}",
+	})
 }
 
 func stripFactoryRunFlag(head []string) ([]string, string, error) {

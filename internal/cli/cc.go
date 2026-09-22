@@ -6,6 +6,7 @@ package cli
 // @MX:NOTE: [AUTO] M6-S1 DDD: cc is a thin delegate-only entry point; print sites live in launcher.go::launchClaudeDefault
 
 import (
+	"fmt"
 	"os"
 
 	"github.com/spf13/cobra"
@@ -187,7 +188,9 @@ func runClaudeEntry(cmd *cobra.Command, args []string, commandName, mode, backen
 			return runErr
 		}
 		defer restoreRun()
-		_ = kanban.RecordFactoryRunStart(launchProjectRoot(), os.Getenv(config.EnvMoaiKanbanID), backend, entry.Spec)
+		if err := recordFactoryRunStart(launchProjectRoot(), os.Getenv(config.EnvMoaiKanbanID), backend, entry.Spec); err != nil {
+			return fmt.Errorf("record factory run: %w", err)
+		}
 		defer exportFactoryLaunchFacts(entry.Spec, backend)()
 		var leadName string
 		filteredArgs, leadName = appendLeadName(filteredArgs, launchProjectRoot(), cmd.ErrOrStderr())

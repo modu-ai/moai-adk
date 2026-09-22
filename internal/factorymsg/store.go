@@ -37,9 +37,14 @@ const (
 	MaxPending           = 1000
 	MaxTTL               = 7 * 24 * time.Hour
 	MaxDeadLetters       = 256
+	BindingLaunchPending = "launch_pending"
+	BindingBound         = "bound"
 )
 
 var safeID = regexp.MustCompile(`^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$`)
+var ErrEndpointLaunchPending = errors.New("factory endpoint is launch-pending")
+
+const launchPendingSessionPrefix = "launch-pending:"
 
 type Peer struct {
 	ProjectKey, RunID, Backend, Role, Slot, SessionUUID string
@@ -83,6 +88,7 @@ type LaneStatus struct {
 	UpdatedAt     time.Time `json:"updated_at"`
 	ObservedAt    time.Time `json:"observed_at"`
 	EndpointState string    `json:"endpoint_state"`
+	BindingState  string    `json:"binding_state"`
 	TaskState     string    `json:"task_state"`
 }
 type DeadLetter struct{ MessageID, Reason, CreatedAt string }
@@ -369,7 +375,115 @@ func (s *Store) RegisterPeer(ctx context.Context, p Peer) (Peer, error) {
 	return p, nil
 }
 
+// RegisterLaunchPending records a launcher-observed process identity before a
+// hook session UUID exists. The private collision-safe token is an internal
+// row key only: status redacts it, and all delivery-facing lookups reject it.
+func (s *Store) RegisterLaunchPending(ctx context.Context, p Peer) (Peer, error) {
+	if p.SessionUUID != "" {
+		return Peer{}, errors.New("launch-pending session UUID must be empty")
+	}
+	p.SessionUUID = launchPendingSessionPrefix + newID()
+	return s.RegisterPeer(ctx, p)
+}
+
+// BindLaunchPending atomically replaces the exact launcher-owned provisional
+// row. A bound row is never rotated here; authoritative turn hooks use
+// RegisterPeer for that separate policy.
+func (s *Store) BindLaunchPending(ctx context.Context, p Peer) (Peer, bool, error) {
+	if p.ProjectKey == "project" {
+		p.ProjectKey = s.projectKey
+	}
+	if isLaunchPendingSession(p.SessionUUID) {
+		return Peer{}, false, errors.New("invalid bound session UUID")
+	}
+	if err := p.validate(s.projectKey, s.runID); err != nil {
+		return Peer{}, false, err
+	}
+	tx, err := s.db.BeginTx(ctx, nil)
+	if err != nil {
+		return Peer{}, false, err
+	}
+	defer func() { _ = tx.Rollback() }()
+
+	var current Peer
+	err = tx.QueryRowContext(ctx, `SELECT project_key,run_id,backend,role,slot,session_uuid,generation,pid,process_start FROM peers WHERE slot=?`, p.Slot).Scan(
+		&current.ProjectKey, &current.RunID, &current.Backend, &current.Role, &current.Slot,
+		&current.SessionUUID, &current.Generation, &current.PID, &current.ProcessStart,
+	)
+	if errors.Is(err, sql.ErrNoRows) {
+		return Peer{}, false, nil
+	}
+	if err != nil {
+		return Peer{}, false, err
+	}
+	if !isLaunchPendingSession(current.SessionUUID) {
+		return current, false, nil
+	}
+	if current.ProjectKey != s.projectKey || current.RunID != s.runID || current.Slot != p.Slot || current.PID != p.PID || current.ProcessStart != p.ProcessStart {
+		return Peer{}, false, errors.New("launch-pending owner identity mismatch")
+	}
+
+	bound := current
+	bound.SessionUUID = p.SessionUUID
+	bound.Generation = current.Generation + 1
+	result, err := tx.ExecContext(ctx, `UPDATE peers SET session_uuid=?,generation=?,updated_at=?
+		WHERE slot=? AND project_key=? AND run_id=? AND session_uuid=?
+		AND generation=? AND pid=? AND process_start=?`,
+		bound.SessionUUID, bound.Generation, s.now().UTC().Format(time.RFC3339Nano),
+		current.Slot, s.projectKey, s.runID, current.SessionUUID,
+		current.Generation, current.PID, current.ProcessStart,
+	)
+	if err != nil {
+		return Peer{}, false, err
+	}
+	rows, err := result.RowsAffected()
+	if err != nil {
+		return Peer{}, false, err
+	}
+	if rows != 1 {
+		return Peer{}, false, errors.New("launch-pending endpoint changed during bind")
+	}
+	if err := tx.Commit(); err != nil {
+		return Peer{}, false, err
+	}
+	return bound, true, nil
+}
+
+// RollbackLaunchPending removes only the exact provisional endpoint returned
+// by RegisterLaunchPending. A hook rebind or any newer launcher generation no
+// longer matches this identity and is therefore preserved.
+func (s *Store) RollbackLaunchPending(ctx context.Context, p Peer) (bool, error) {
+	if p.ProjectKey == "project" {
+		p.ProjectKey = s.projectKey
+	}
+	if p.ProjectKey != s.projectKey || p.RunID != s.runID ||
+		!safeID.MatchString(p.Slot) || !isLaunchPendingSession(p.SessionUUID) ||
+		p.Generation < 1 || p.PID < 1 || strings.TrimSpace(p.ProcessStart) == "" {
+		return false, errors.New("invalid launch-pending rollback identity")
+	}
+	result, err := s.db.ExecContext(ctx, `DELETE FROM peers
+		WHERE slot=? AND project_key=? AND run_id=? AND session_uuid=?
+		AND generation=? AND pid=? AND process_start=?`,
+		p.Slot, s.projectKey, s.runID, p.SessionUUID,
+		p.Generation, p.PID, p.ProcessStart)
+	if err != nil {
+		return false, err
+	}
+	rows, err := result.RowsAffected()
+	if err != nil {
+		return false, err
+	}
+	return rows == 1, nil
+}
+
+func isLaunchPendingSession(sessionUUID string) bool {
+	return strings.HasPrefix(sessionUUID, launchPendingSessionPrefix)
+}
+
 func (s *Store) Peer(ctx context.Context, sessionUUID string) (Peer, error) {
+	if isLaunchPendingSession(sessionUUID) {
+		return Peer{}, ErrEndpointLaunchPending
+	}
 	var p Peer
 	err := s.db.QueryRowContext(ctx, `SELECT project_key,run_id,backend,role,slot,session_uuid,generation,pid,process_start FROM peers WHERE session_uuid=?`, sessionUUID).Scan(&p.ProjectKey, &p.RunID, &p.Backend, &p.Role, &p.Slot, &p.SessionUUID, &p.Generation, &p.PID, &p.ProcessStart)
 	if err != nil {
@@ -388,6 +502,9 @@ func (s *Store) ResolveLane(ctx context.Context, slot string) (Peer, error) {
 	if err != nil {
 		return Peer{}, err
 	}
+	if isLaunchPendingSession(p.SessionUUID) {
+		return Peer{}, ErrEndpointLaunchPending
+	}
 	return p, nil
 }
 
@@ -399,6 +516,9 @@ func (s *Store) PeerByOwner(ctx context.Context, pid int, processStart string) (
 	err := s.db.QueryRowContext(ctx, `SELECT project_key,run_id,backend,role,slot,session_uuid,generation,pid,process_start FROM peers WHERE pid=? AND process_start=?`, pid, processStart).Scan(&p.ProjectKey, &p.RunID, &p.Backend, &p.Role, &p.Slot, &p.SessionUUID, &p.Generation, &p.PID, &p.ProcessStart)
 	if err != nil {
 		return Peer{}, err
+	}
+	if isLaunchPendingSession(p.SessionUUID) {
+		return Peer{}, ErrEndpointLaunchPending
 	}
 	return p, nil
 }
@@ -439,6 +559,9 @@ func (s *Store) verifyPeer(ctx context.Context, p Peer) error {
 	}
 	if err := p.validate(s.projectKey, s.runID); err != nil {
 		return err
+	}
+	if isLaunchPendingSession(p.SessionUUID) {
+		return ErrEndpointLaunchPending
 	}
 	var n int
 	err := s.db.QueryRowContext(ctx, `SELECT count(*) FROM peers WHERE slot=? AND session_uuid=? AND generation=? AND pid=? AND process_start=?`, p.Slot, p.SessionUUID, p.Generation, p.PID, p.ProcessStart).Scan(&n)
@@ -719,6 +842,11 @@ func (s *Store) laneRoster(ctx context.Context) ([]LaneStatus, error) {
 		}
 		fingerprint, state := probe(lane.PID)
 		lane.ObservedAt = s.now().UTC()
+		lane.BindingState = BindingBound
+		if isLaunchPendingSession(lane.SessionUUID) {
+			lane.BindingState = BindingLaunchPending
+			lane.SessionUUID = ""
+		}
 		lane.EndpointState = "unknown"
 		lane.TaskState = "unknown"
 		switch state {

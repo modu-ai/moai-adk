@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/rand"
 	"encoding/hex"
+	"encoding/json"
 	"fmt"
 	"os"
 	"os/exec"
@@ -84,9 +85,14 @@ type factoryLiveFixture struct {
 	lead, worker             factorymsg.Peer
 }
 
+var factoryLiveOperatorHomeFn = os.UserHomeDir
+
 func newFactoryLiveFixture(t *testing.T, leadBackend, workerBackend string) *factoryLiveFixture {
 	t.Helper()
 	root := t.TempDir()
+	if err := os.MkdirAll(filepath.Join(root, ".moai"), 0o700); err != nil {
+		t.Fatal(err)
+	}
 	repoRoot, err := filepath.Abs("../..")
 	if err != nil {
 		t.Fatal(err)
@@ -169,18 +175,14 @@ func factoryLiveID() string {
 	return hex.EncodeToString(b[:])
 }
 
-func (f *factoryLiveFixture) runModel(t *testing.T, p factorymsg.Peer, prompt string) {
-	t.Helper()
-	ctx, cancel := context.WithTimeout(context.Background(), 150*time.Second)
-	defer cancel()
-	var cmd *exec.Cmd
+func (f *factoryLiveFixture) modelCommand(ctx context.Context, p factorymsg.Peer, prompt string) (*exec.Cmd, error) {
 	switch p.Backend {
 	case "codex":
 		bin, err := exec.LookPath("codex")
 		if err != nil {
-			t.Fatal(err)
+			return nil, err
 		}
-		cmd = exec.CommandContext(ctx, bin,
+		return exec.CommandContext(ctx, bin,
 			"exec",
 			"--ignore-user-config",
 			"--skip-git-repo-check",
@@ -190,32 +192,125 @@ func (f *factoryLiveFixture) runModel(t *testing.T, p factorymsg.Peer, prompt st
 			"-c", `mcp_servers.moai.env_vars=["MOAI_HOME","MOAI_KANBAN_ID","MOAI_SESSION_PID","MOAI_KANBAN_BACKEND","MOAI_FACTORY_WORKER","MOAI_FACTORY_WORKERS","CLAUDE_PROJECT_DIR","CLAUDE_CODE_SESSION_ID"]`,
 			"--json",
 			prompt,
-		)
+		), nil
 	case "claude":
-		bin, err := exec.LookPath("claude")
-		if err != nil {
-			t.Fatal(err)
-		}
-		cmd = exec.CommandContext(ctx, bin, "-p", "--output-format", "json", "--mcp-config", filepath.Join(f.root, ".mcp.json"), "--strict-mcp-config", "--permission-mode", "bypassPermissions", prompt)
+		return exec.CommandContext(ctx, f.moai,
+			"glm", "--",
+			"-p", "--output-format", "json",
+			"--mcp-config", filepath.Join(f.root, ".mcp.json"),
+			"--strict-mcp-config", "--permission-mode", "bypassPermissions",
+			prompt,
+		), nil
 	default:
-		t.Fatalf("unknown backend %q", p.Backend)
+		return nil, fmt.Errorf("unknown backend %q", p.Backend)
 	}
-	cmd.Dir = f.root
-	env := append(os.Environ(),
-		config.EnvMoaiKanbanID+"="+f.runID,
-		config.EnvMoaiSessionPID+"="+fmt.Sprint(p.PID),
-		config.EnvMoaiKanbanBackend+"="+p.Backend,
-		config.EnvClaudeProjectDir+"="+f.root,
-	)
-	if p.Backend == "claude" {
-		env = append(env, config.EnvClaudeCodeSessionID+"="+p.SessionUUID)
-	} else {
-		env = append(env, config.EnvClaudeCodeSessionID+"=")
+}
+
+func (f *factoryLiveFixture) writePeerMCPConfig(p factorymsg.Peer) error {
+	roleEnv := map[string]string{
+		config.EnvHome:                os.Getenv(config.EnvHome),
+		config.EnvMoaiKanbanID:        f.runID,
+		config.EnvMoaiSessionPID:      fmt.Sprint(p.PID),
+		config.EnvMoaiKanbanBackend:   p.Backend,
+		config.EnvClaudeProjectDir:    f.root,
+		config.EnvClaudeCodeSessionID: p.SessionUUID,
+		config.EnvMoaiFactoryWorker:   "",
+		config.EnvMoaiFactoryWorkers:  "1",
 	}
 	if p.Role == "worker" {
-		env = append(env, config.EnvMoaiFactoryWorker+"="+p.Slot, config.EnvMoaiFactoryWorkers+"=")
+		roleEnv[config.EnvMoaiFactoryWorker] = p.Slot
+		roleEnv[config.EnvMoaiFactoryWorkers] = ""
+	}
+	doc := map[string]any{"mcpServers": map[string]any{"moai": map[string]any{
+		"command": f.moai,
+		"args":    []string{"mcp-server"},
+		"env":     roleEnv,
+	}}}
+	body, err := json.Marshal(doc)
+	if err != nil {
+		return err
+	}
+	return os.WriteFile(filepath.Join(f.root, ".mcp.json"), body, 0o600)
+}
+
+func factoryLiveWithoutAttribution(env []string) []string {
+	drop := map[string]bool{
+		config.EnvMoaiKanbanID: true, config.EnvMoaiSessionPID: true,
+		config.EnvMoaiKanbanBackend: true, config.EnvMoaiFactoryWorker: true,
+		config.EnvMoaiFactoryWorkers: true, config.EnvClaudeCodeSessionID: true,
+	}
+	out := make([]string, 0, len(env))
+	for _, item := range env {
+		key, _, _ := strings.Cut(item, "=")
+		if !drop[key] {
+			out = append(out, item)
+		}
+	}
+	return out
+}
+
+// factoryLiveOperatorGLMKey bridges the operator credential into the isolated
+// live child without copying it to the fixture MOAI_HOME. The raw OS home
+// resolver bypasses TestMain's package-level home seam; only this bounded read
+// temporarily points the existing credential loader at the operator home.
+func factoryLiveOperatorGLMKey() string {
+	if key := os.Getenv(config.EnvTestGLMKey); key != "" {
+		return key
+	}
+	realHome, err := factoryLiveOperatorHomeFn()
+	if err != nil || strings.TrimSpace(realHome) == "" {
+		return ""
+	}
+	previous, present := os.LookupEnv(config.EnvHome)
+	if err := os.Setenv(config.EnvHome, filepath.Join(realHome, ".moai")); err != nil {
+		return ""
+	}
+	defer func() {
+		if present {
+			_ = os.Setenv(config.EnvHome, previous)
+		} else {
+			_ = os.Unsetenv(config.EnvHome)
+		}
+	}()
+	return loadGLMKey()
+}
+
+func (f *factoryLiveFixture) runModel(t *testing.T, p factorymsg.Peer, prompt string) {
+	t.Helper()
+	ctx, cancel := context.WithTimeout(context.Background(), 150*time.Second)
+	defer cancel()
+	if p.Backend == "claude" {
+		if err := f.writePeerMCPConfig(p); err != nil {
+			t.Fatal(err)
+		}
+	}
+	cmd, err := f.modelCommand(ctx, p, prompt)
+	if err != nil {
+		t.Fatal(err)
+	}
+	cmd.Dir = f.root
+	env := os.Environ()
+	if p.Backend == "claude" {
+		env = factoryLiveWithoutAttribution(env)
+		key := factoryLiveOperatorGLMKey()
+		if key == "" {
+			t.Fatal("operator GLM credential unavailable")
+		}
+		env = replaceEnvValue(env, config.EnvTestGLMKey, key)
+		env = replaceEnvValue(env, config.EnvClaudeProjectDir, f.root)
 	} else {
-		env = append(env, config.EnvMoaiFactoryWorker+"=", config.EnvMoaiFactoryWorkers+"=1")
+		env = replaceEnvValue(env, config.EnvMoaiKanbanID, f.runID)
+		env = replaceEnvValue(env, config.EnvMoaiSessionPID, fmt.Sprint(p.PID))
+		env = replaceEnvValue(env, config.EnvMoaiKanbanBackend, p.Backend)
+		env = replaceEnvValue(env, config.EnvClaudeProjectDir, f.root)
+		env = replaceEnvValue(env, config.EnvClaudeCodeSessionID, "")
+		if p.Role == "worker" {
+			env = replaceEnvValue(env, config.EnvMoaiFactoryWorker, p.Slot)
+			env = replaceEnvValue(env, config.EnvMoaiFactoryWorkers, "")
+		} else {
+			env = replaceEnvValue(env, config.EnvMoaiFactoryWorker, "")
+			env = replaceEnvValue(env, config.EnvMoaiFactoryWorkers, "1")
+		}
 	}
 	cmd.Env = env
 	out, err := cmd.CombinedOutput()
