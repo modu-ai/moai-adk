@@ -8,11 +8,40 @@ _<pending plan-audit>_ — plan-phase 산출물 4종(spec.md / plan.md / accepta
 
 ## §E.2 Run-phase Evidence
 
-_<pending run-phase>_
+### AC PASS/FAIL matrix (detail: `.moai/reports/t1081/verdict.md`, confidence class `browser-observed`)
+
+| AC | Status | Actual output (verbatim basis, this run, tree 06bd697c6) |
+|----|--------|----------------------------------------------------------|
+| AC-BO-001 | PASS | Failed-submit slot reached as visible text: `save__msg save__msg--error` `role="alert"`, display flex / visibility visible / 686.56×16.67px, text `could not save profile preferences: write preferences: open /tmp/t1081-home/.moai/claude-profiles/preferences.yaml: permission denied` (stable seam-1 phrase present; generic fallback absent) — live CDP session, no string probing |
+| AC-BO-002 | PASS | Tri-class = **htmx-swap**: `signal_a_real_nav_count: 0` (only `Page.navigatedWithinDocument(record-only)` pushState events), signal (b) slot childList mutation captured by the injected MutationObserver; href axis recorded (`/settings` → `/save?profile=default`), never judged |
+| AC-BO-003 | PASS | Measured (vs t1051 premises fail 2 / success 0 / ~110KB — kept separate): failed-submit console errors **0**, success-submit console errors **0** (Runtime/Log channels empty), failed-response body **112,972 bytes** (`Network.getResponseBody`, status 200) |
+| AC-BO-004 | PASS | Incidental: validation-reject submit → status **400**, body 113,168 B discarded, `htmx:responseError` fired, no swap, no nav (classification `swap-failed-no-nav`); lead-routing note: consistent with t1051's discard premise, contradicts nothing |
+| AC-BO-005 | PASS | `git diff --name-only $(git merge-base develop HEAD)..HEAD` → 0 `internal/` paths; verdict cites no t1080/t1051 verdict as basis; REQ-BO-007 not triggered (observation matches REQ-A) |
+| AC-BO-006 | PASS | Orphan probes empty (ports 3477/9478: 0 LISTEN; 0 own processes; temp chrome dir gone); evidence resident under `.moai/reports/t1081/` (gitignored) |
+
+### Session record
+
+- Binary `moai-bin` built in this run from tree 80ed77d28 (docs-only delta from base cd99336bf — `git diff --name-only cd99336bf..80ed77d28 -- internal/ | wc -l` → 0).
+- Environment per plan §C.1/§D: Chrome standard-path discovery, `--headless=new`, dedicated ports 3477 (web) / 9478 (CDP), liveness-checked, `timeout 600` wrappers, `mktemp` user-data-dir, HOME isolated to `/tmp/t1081-home`, project root `/tmp/t1081-project` (temp scaffold).
+- Failure induction (plan M1.2): seam 1 `writePreferences`, `os.chmod(preferences.yaml, 0o444)` in the isolated HOME store; expected stable phrase per t1051 §5.1 row 1 — observed phrase matched.
+- Instrument integrity (`verification-completeness.md` §1.1): deliberate wrong-input check observed FAIL in every run (`integrity-negative-control`), framework-saw-failure PASS.
+- Regression guard (plan §E5): `unset MOAI_KANBAN … && go test ./internal/web/...` → `ok github.com/modu-ai/moai-adk/internal/web 25.779s`.
+- Console-error attribution: probe-origin vs page-origin separated per acceptance §C.4; page-load window carried one unrelated 404 console error (context only).
 
 ## §E.3 Run-phase Audit-Ready Signal
 
-_<pending run-phase>_
+```yaml
+run_complete_at: 2026-09-22
+run_commit_sha: pending-backfill-run   # backfilled after the M2-M4 record commit lands
+run_status: complete
+ac_pass_count: 6
+ac_fail_count: 0
+preserve_list_post_run_count: 4
+new_warnings_or_lints_introduced: 0   # zero production code changed; golangci-lint baseline untouched
+cross_platform_build: not-applicable  # measurement-only SPEC; no code built for release
+total_run_phase_files: 0              # zero tracked source files; evidence is gitignored local artifacts
+m1_to_mn_commit_strategy: per-milestone commits on WT-cdp-observation (M1 06bd697c6; M2-M4 record commit)
+```
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
