@@ -123,7 +123,7 @@ Verifying command for all rows: `go test ./internal/cli/worktree/... -run 'TestD
 run_complete_at: 2026-09-22
 run_commit_sha: "7795226c2"
 run_status: complete
-ac_pass_count: 10
+ac_pass_count: 9
 ac_fail_count: 0
 ac_pass_with_debt_count: 1   # AC-008 — whole-file mirror parity debt, inherited at develop base
 preserve_list_post_run_count: 0
@@ -141,7 +141,7 @@ m1_to_mN_commit_strategy: per-milestone commits on WT-done-tier-claim (M1 2cde18
 
 ```yaml
 sync_close_at: 2026-09-22
-sync_commit_sha: "pending-backfill-sync"   # canonical placeholder — a commit cannot cite its own SHA; backfilled in a follow-up commit
+sync_commit_sha: "b33c5788f"   # backfilled (D3 window) — the sync commit that carried the 3-phase close
 sync_status: complete
 tier: M
 ac_pass_count: 9
