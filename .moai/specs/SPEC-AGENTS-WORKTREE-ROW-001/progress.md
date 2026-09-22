@@ -102,11 +102,138 @@ Rework applied this session, all in the SPEC's own four artifacts (no contract f
 
 ## §E.2 Run-phase Evidence
 
-_<pending run-phase>_
+Run-phase executed 2026-09-22, worktree t1071, branch `WT-cross-harness-row`, serial mode per
+§F. Pre-run absorb: HEAD at dispatch was `8fe51ace9` — a merge commit absorbing local develop
+`00e761af8` (t1085/t1081 advance). **Scope-claim base resolution** (gitflow-lane-protocol §8,
+t543 precedent — the card's own contribution is measured from the absorbed ref's merge-base,
+never a literal plan-time pin): `git merge-base develop HEAD` → `00e761af894975602a76abf1d856c186ee546751`.
+All AC-AWR-004 measurements below use this resolved base. Every item below carries
+command + verbatim output + tree SHA + baseline-attribution (this run, this tree).
+
+### M1+M2 commit (B4 status flip carried)
+
+- **Commit 1**: `0cf533f2a` — subject `fix(SPEC-AGENTS-WORKTREE-ROW-001): M1+M2 register
+  worktree-entry rows and codex verb row (card t1071)`; trailers contiguous in order:
+  `Authored-By-Agent: manager-develop` / `Card: t1071` / `🗿 MoAI`.
+- Files: `AGENTS.md` (+1 row), `internal/template/templates/AGENTS.md.tmpl` (+2 rows),
+  `.moai/specs/SPEC-AGENTS-WORKTREE-ROW-001/spec.md` (frontmatter `status: draft` →
+  `status: in-progress` — the only transition this phase owns; `updated:` already
+  2026-09-22, unchanged).
+- Diff shape at commit time: `3 files changed, 4 insertions(+), 1 deletion(-)` — one added
+  row per capability table, one added verb row, zero pre-existing rows reworded (plan.md §G).
+
+### E1 — AC matrix (acceptance.md §D, tree `0cf533f2a`, this run)
+
+| AC | Status | Verification command | Actual output (verbatim) |
+|----|--------|----------------------|--------------------------|
+| AC-AWR-001 | PASS | `grep -c '^| worktree-entry \|' AGENTS.md` | `1` (exit 0); row line contains `moai codex -w` and `never creates one`, Codex form inside column 2 (diff-verified); pre-existing rows `question-channel`=`1`, `task-list`=`1`, `design-sync`=`1` |
+| AC-AWR-002 | PASS | `grep -c '^| worktree-entry \|' internal/template/templates/AGENTS.md.tmpl` | `1`; row appended after the table's last row (`workflow-scripts`) |
+| AC-AWR-003 | PASS | `grep -c '^| \\\`moai codex\\\`' internal/template/templates/AGENTS.md.tmpl` | `1`; row names `cli` + `status`, carries `never creates`, states `-w <worktree>`; nine pre-existing verb rows present (`moai init`=`1`); post-edit verb-table total `grep -c '^\| \\\`moai '` = `10` |
+| AC-AWR-004 | PASS | scope diff at resolved base (red-then-green below) | weakened filter `2` (red observed once), strict filter `0`; 4 fence paths `0` commits in range; `codex_launcher.go` `0` diffs |
+| AC-AWR-005 | PASS (process-gate discharge) | `make build` | exit `0`; ldflags line carries `Commit=0cf533f2a` (recompile against the committed template tree). Regression-guard classification per acceptance.md — no proof-pass claimed |
+
+### E2 — guard triple + positive controls (tree `0cf533f2a` content, this run)
+
+```
+G1 '^| worktree-entry |' AGENTS.md                                   → 1
+G2 '^| worktree-entry |' internal/template/templates/AGENTS.md.tmpl  → 1
+G3 '^| `moai codex`' internal/template/templates/AGENTS.md.tmpl      → 1
+G4 '^| question-channel |' AGENTS.md (positive control)              → 1
+G5 '^| `moai init' internal/template/templates/AGENTS.md.tmpl        → 1
+```
+
+Pre-edit baseline (this run, tree `8fe51ace9`): G1–G3 = `0`/`0`/`0`, G4–G5 = `1`/`1` — a real
+0→1 flip on all three guards, not a pattern matching nothing.
+
+### AC-AWR-004 — reserved red observation (base `00e761af8`, HEAD `0cf533f2a`)
+
+Weakened filter (red this instrument must show once):
+
+```
+$ git diff --name-only 00e761af8..HEAD | grep -v '^\.moai/specs/SPEC-AGENTS-WORKTREE-ROW-001/' | wc -l
+       2
+$ git diff --name-only 00e761af8..HEAD | grep -v '^\.moai/specs/SPEC-AGENTS-WORKTREE-ROW-001/'
+AGENTS.md
+internal/template/templates/AGENTS.md.tmpl
+```
+
+Strict form (green):
+
+```
+$ git diff --name-only 00e761af8..HEAD | grep -v '^\.moai/specs/SPEC-AGENTS-WORKTREE-ROW-001/' | grep -v '^AGENTS\.md$' | grep -v '^internal/template/templates/AGENTS\.md\.tmpl$' | wc -l
+       0
+```
+
+Fence files (t1072) — both copies, `git log --oneline 00e761af8..HEAD -- <path> | wc -l`:
+
+```
+.claude/rules/moai/workflow/worktree-integration.md                        → 0
+.claude/rules/moai/workflow/session-handoff-examples.md                    → 0
+internal/template/templates/.claude/rules/moai/workflow/worktree-integration.md   → 0
+internal/template/templates/.claude/rules/moai/workflow/session-handoff-examples.md → 0
+```
+
+Launcher frozen: `git diff --name-only 00e761af8..HEAD -- internal/cli/codex_launcher.go | wc -l` → `0`.
+
+### E3 — `make build` (exit code + tail; full log `/tmp/t1071-make-build.log`, machine-local)
+
+```
+make-build-exit=0
+... tail:
+catalog.yaml updated successfully (13408 bytes)
+go build -ldflags "-s -w -X github.com/modu-ai/moai-adk/pkg/version.Version=moai_cp/20260910_130400 -X github.com/modu-ai/moai-adk/pkg/version.Commit=0cf533f2a -X github.com/modu-ai/moai-adk/pkg/version.Date=2026-09-22T13:09:17Z -X github.com/modu-ai/moai-adk/pkg/version.BuildID=moai_cp/20260910_130400-2413-g0cf533f2a" -o bin/moai ./cmd/moai
+```
+
+Post-build residue check: `git status --porcelain` → empty (the `gen-catalog-hashes` step
+rewrote `catalog.yaml` byte-identically). REQ-AWR-005 discharged by the recompile itself;
+`agents-emit-check`/`commands-emit-check` ran read-only inside the chain without aborting.
+
+### E4 — `go run ./cmd/moai spec lint SPEC-AGENTS-WORKTREE-ROW-001` (verbatim, exit `0`)
+
+```
+SEVERITY  CODE               FILE  LINE  MESSAGE
+WARNING   ModalityMalformed  .../spec.md  120  REQ REQ-AWR-001: EARS modality violation — SHALL missing or format mismatch: "The root `AGENTS.md` capability-binding table (`AGENTS.md:21-25`)"
+WARNING   ModalityMalformed  .../spec.md  126  REQ REQ-AWR-002: EARS modality violation — SHALL missing or format mismatch: "The template mirror's capability-binding table"
+WARNING   ModalityMalformed  .../spec.md  133  REQ REQ-AWR-003: EARS modality violation — SHALL missing or format mismatch: "The template mirror's `## 11. moai CLI Verbs` table"
+WARNING   ModalityMalformed  .../spec.md  144  REQ REQ-AWR-005: EARS modality violation — SHALL missing or format mismatch: "When any file under `internal/template/templates/` is edited,"
+
+0 error(s), 4 warning(s)
+lint-exit=0
+```
+
+(Full path column elided to `.../spec.md` here only for width; the run printed the absolute
+worktree path on every row.) REQ collection FIRED — exactly the 4 known `ModalityMalformed`
+warnings on REQ-AWR-001/002/003/005 (D9 adjudicated debt, t1057-class parser narrowness), zero
+errors, zero new findings. No requirement prose was reworded to chase them.
+
+### E5/E6 — measured at tree `0cf533f2a`
+
+- E5 `git status --porcelain` → empty (clean; only gitignored residue possible).
+- E6 `git diff --stat 00e761af8..HEAD` → `AGENTS.md | 1 +`,
+  `internal/template/templates/AGENTS.md.tmpl | 2 ++`,
+  `.moai/specs/SPEC-AGENTS-WORKTREE-ROW-001/spec.md | 2 +-` — `3 files changed, 4 insertions(+), 1 deletion(-)`.
+  Note: commit 2 (this section's carrier) adds only
+  `.moai/specs/SPEC-AGENTS-WORKTREE-ROW-001/progress.md`, a path the E6 strict filter excludes
+  by construction, so both results hold at the branch tip.
 
 ## §E.3 Run-phase Audit-Ready Signal
 
-_<pending run-phase>_
+```yaml
+run_complete_at: 2026-09-22
+run_commit_sha: pending-backfill-run   # D3 placeholder — commit 2 cannot cite its own SHA
+run_status: complete
+ac_pass_count: 5
+ac_fail_count: 0
+preserve_list_post_run_count: 0   # violations; 4 fence paths + launcher verified untouched (§E.2)
+l44_pre_commit_fetch: not-run (worktree-local lane run; base re-resolved via merge-base at dispatch and HEAD re-read immediately before each commit)
+l44_post_push_fetch: not-applicable (lane does not push; lead batch-pushes develop per gitflow-lane-protocol §4)
+new_warnings_or_lints_introduced: 0   # the 4 ModalityMalformed warnings are pre-existing plan-phase debt (D9), unchanged
+cross_platform_build:
+  darwin_make_build: "exit 0 (Commit=0cf533f2a)"
+  windows_matrix: not-run-locally (docs-only change, zero Go source touched; remote CI on origin/develop owns the matrix)
+total_run_phase_files: 4   # commit 1: AGENTS.md + AGENTS.md.tmpl + spec.md; commit 2: progress.md
+m1_to_mN_commit_strategy: 2 commits — commit 1 carries M1+M2 contract rows + B4 status flip; commit 2 carries M3+M4 evidence (this section)
+```
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
