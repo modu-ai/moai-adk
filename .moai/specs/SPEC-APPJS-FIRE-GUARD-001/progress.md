@@ -295,7 +295,7 @@ job 설계 비고: `test-browser` 는 EOF 에 덧붙는 유일한 판정면이�
 ## §E.3 Run-phase Audit-Ready Signal
 
 run_complete_at: 2026-09-22
-run_commit_sha: pending-backfill-M5
+run_commit_sha: eb624ae89
 run_base_sha: 3e35fbacf
 ac_pass_count: 6/6 blocking (AC-AFG-001·002·003·004·007·009 전부 관측 출력으로 PASS) + regression-class 3건(AC-AFG-005·006·008) 전부 기록 완료 — §D 분류 선언대로 기록 산출물이며 차단 요건 아님
 preserve_list: `internal/web/assets/app.js` base `3e35fbacf` 대비 byte 동일 (`git diff --stat 3e35fbacf -- <경로>` 출력 없음; M3 사이클 복원 구간에서 `cmp` exit 0 + `RESTORED_BYTE_IDENTICAL` 관측) · `go.mod`/`go.sum` 무변경 (websockets 는 Python 의존 — Go 모듈 추가 없음) · 기존 Go 코드 수정 0건(신규는 드라이버 테스트 파일 1개 + testdata 2개) · `appjs_iife_scope_test.go`/`appjs_reinit_test.go` 무손상 · 기존 CI job 8개 무변경(ci.yml numstat 157/0)
