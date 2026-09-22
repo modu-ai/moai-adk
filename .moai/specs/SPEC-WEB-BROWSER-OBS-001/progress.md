@@ -4,7 +4,14 @@
 
 ## §E.1 Plan-phase Audit-Ready Signal
 
-_<pending plan-audit>_ — plan-phase 산출물 4종(spec.md / plan.md / acceptance.md / progress.md) 작성 완료. plan-auditor 실행 시 `plan_status: audit-ready` + `plan_complete_at` 기록 예정.
+```yaml
+plan_status: audit-ready
+plan_complete_at: 2026-09-22
+plan_audit_verdict: PASS
+plan_audit_score: 0.96            # iter-2 (Tier M threshold 0.80); iter-1 FAIL 0.79 — D1 (REQ-BO-002 href axis) repaired in iter-2
+plan_audit_artifact: .moai/reports/t1081/plan-audit.md   # iter-2 section: "Verdict: PASS / Overall Score: 0.96" (lines 105-106)
+plan_phase_commit: 80ed77d28      # plan-phase artifacts commit (card t1081)
+```
 
 ## §E.2 Run-phase Evidence
 
@@ -45,23 +52,42 @@ m1_to_mn_commit_strategy: per-milestone commits on WT-cdp-observation (M1 06bd69
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-> DRAFT (sync stage-1, manager-docs, 2026-09-22) — the sync-audit has NOT run yet; the
-> status transition and close commits ride stage 2 (post sync-auditor PASS).
+> FINAL (sync stage-2 close, manager-docs, 2026-09-22). Status transition on spec.md rides the
+> stage-2 close commit; `sync_commit_sha` backfilled in a follow-up commit (D3 window).
 
 ```yaml
-sync_complete_at: pending   # stage-2 close commit date
-sync_commit_sha: pending-backfill-sync   # written by the stage-2 close commit; backfilled after it lands (D3 backfill window)
-sync_status: pending-sync-audit          # pending: `.moai/reports/t1081/sync-audit.md` does NOT exist yet (drafted path only)
-sync_audit_path: .moai/reports/t1081/sync-audit.md   # PLANNED path — not claimed to exist
+sync_complete_at: 2026-09-22
+sync_commit_sha: pending-backfill-sync   # replaced with the close commit's own SHA in the backfill commit (D3 backfill window)
+sync_status: pass-with-debt
+sync_audit_path: .moai/reports/t1081/sync-audit.md   # exists — PASS-WITH-DEBT 89.5/100 (harmonic mean, 4 dimensions), AC 6/6, zero blocking
 b12_self_test_a: pass   # `grep -c 'SPEC-WEB-BROWSER-OBS-001' CHANGELOG.md` → 0 (no duplicate-entry blocker; measured this run, tree 2708f0699)
 b12_self_test_b: pass   # `grep -oE 'AC-([A-Z0-9]+-)*[0-9]+' acceptance.md | sort -u | wc -l` → 6, matching the run-phase 6/6 AC matrix (non-zero verified, not vacuous)
 b12_self_test_c: pass   # claimed evidence paths verified: `.moai/reports/t1081/{verdict.md,capture-t1081.json,server.log,run-session.sh,browser-probe-t1081.py}` exist (ls, this run); `git diff --name-only cd99336bf..HEAD -- internal/ | wc -l` → 0
 changelog_entry_position: none   # measurement-only SPEC — decision recorded below
 canary_compliance_check: not-applicable   # SPEC defines no forward-looking policy its own sync tests would exercise
 frontmatter_status_transitions:
-  in_progress_to_completed: stage-2   # NOT yet applied — rides the stage-2 sync commit (manager-docs owns it)
-updated_refresh: stage-2             # all 4 SPEC artifacts' `updated:` refresh rides the stage-2 close commit
+  in_progress_to_completed: applied   # spec.md only — plan/acceptance/progress are stateless on the status axis per spec-frontmatter-schema.md § Artifact Statelessness
+updated_refresh: applied             # spec.md `updated: 2026-09-22` (plan/acceptance carry no `updated:` field; nothing to refresh)
 ```
+
+### Sync-audit findings disposition (audit: `.moai/reports/t1081/sync-audit.md`)
+
+- **F1** (verdict run-2 narrative) — FIXED by run-phase owner: verdict §2.1/§4 corrected to the
+  matcher-only defect narrative (response-URL matcher, observer live; discriminating values
+  byte-consistent) — grep-verified lines 14, 193 in the corrected verdict.md.
+- **F2** (stale §E.1 pending marker) — FIXED in this close commit: §E.1 refreshed with the
+  committed plan-audit iter-2 PASS 0.96 record (artifact + plan-phase commit 80ed77d28).
+- **F3** (run-session.sh Chrome discovery) — FIXED by run-phase owner: `run-session.sh:15-16`
+  now `CHROME_PATH`-first with standard-path fallback.
+- **F4/F5/F6** (INFO) — noted, no action required per audit (F4 tautology mitigated by
+  composition; F5 code-unit/byte delta explanation stands on primary basis; F6 probe stdout not
+  retained, substance verified via `checks[]`).
+- **Debt status: discharged.** Auditor Gaps upheld, not restated here: dead-observer capture
+  absent from corpus (property verified structurally); probe stdout / raw p2 response body not
+  retained; **cross-model second opinion (`audit_multi`/`glm_audit`/`codex_audit`) not run —
+  `audit_model` unconfigured and the tool family absent from this invocation's toolset,
+  disclosed in the report's Gaps**; binary accepted via diff predicate; verdict residuals
+  upheld.
 
 ### CHANGELOG emission decision — NO entry (judged and recorded)
 

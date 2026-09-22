@@ -2,7 +2,7 @@
 id: SPEC-WEB-BROWSER-OBS-001
 title: "moai web console — REQ-A real-browser (CDP) observation: save__msg--error swap discriminator and premise re-measurement"
 version: "0.1.1"
-status: in-progress
+status: completed
 created: 2026-09-22
 updated: 2026-09-22
 author: manager-spec
