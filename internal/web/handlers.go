@@ -658,6 +658,9 @@ func (a *app) projectView(prefs profile.ProfilePreferences, selected, devMode, c
 // settings_shell.go); the defect was the transport. A 2xx re-render is the
 // same shape the success path already uses, so the boosted swap handles
 // failure and success identically without any client-side handler.
+//
+// @MX:ANCHOR: [AUTO] the save-failure render seam — all 9 persistence seams of handleSave funnel their failure through this one re-render
+// @MX:REASON: fan_in 9 (every seam's error path); since SPEC-WEB-CONSOLE-017 it answers 2xx, not 500, so the boosted htmx swap delivers the reason to the inline slot
 func (a *app) renderErrorPage(w http.ResponseWriter, prefs profile.ProfilePreferences, selected, devMode, convention, msg string) {
 	view := a.projectView(prefs, selected, devMode, convention)
 	view.Banner = msg
@@ -672,6 +675,9 @@ func (a *app) renderErrorPage(w http.ResponseWriter, prefs profile.ProfilePrefer
 // names the failed seam and the stable failure phrase ONLY — it never
 // carries the raw error value (err.Error()), which may embed credential
 // fragments (HARD-3); the user-facing banner carries the full reason instead.
+//
+// @MX:ANCHOR: [AUTO] the single save-failure stderr emitter — all 9 persistence seams funnel through this one line; grep surface is the `moai web: ` prefix
+// @MX:REASON: fan_in 9 (one call per seam in handleSave); the one-prefix rule (REQ-WC-017-004) lives here, and raw error values must never reach this line (REQ-WC-017-005)
 func logSaveFailure(seam, phrase string) {
 	fmt.Fprintf(os.Stderr, "moai web: save failed at %s: %s\n", seam, phrase)
 }

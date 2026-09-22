@@ -95,7 +95,53 @@ Spec-lint REQ collection check (DoD 6): `reqLinePattern` (`internal/spec/lint.go
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase>_
+### B12 CHANGELOG 방출 자가검증 3건
+
+| # | 검사 | 커맨드 | 관측 |
+|---|------|--------|------|
+| a | 중복 방출 차단 | `grep -c 'SPEC-WEB-CONSOLE-017' CHANGELOG.md` | 방출 **전** `0` (exit 1) — 기존 항목 없음, 방출 진행. 방출 **후** `1` |
+| b | AC 개수 일치 | `grep -oE 'AC-([A-Z0-9]+-)*[0-9]+b?' acceptance.md \| sort -u` | **5행** — `AC-WC17-001..005` (release-blocking 3 + regression-guard 2). 예약 토큰(`[RETIRED]`/`[REF]`) 0건. CHANGELOG 문안이 같은 수(5)를 적는다 — 0행이 아니므로 공허 비교가 아니다 |
+| c | 파일 경로 실재 | `ls internal/web/handlers.go internal/web/app.go internal/web/save_observability_test.go internal/web/shell.templ .moai/specs/SPEC-WEB-CONSOLE-017/spec.md` | 5개 전부 존재. CHANGELOG 항목이 이름을 대는 경로는 이 다섯뿐이다 |
+
+### 문서 판정 — README · docs-site 변경 없음 (근거 있는 결정, 생략이 아니다)
+
+**결정: 변경하지 않는다.** 근거 셋:
+
+1. **사용자 절차가 변하지 않았다.** 본 카드는 `moai web` 콘솔 저장-실패의 관측 표면(인라인 사유 도달 + stderr 로그)만 만진다 — CLI 커맨드·플래그·출력 형식 변경 없음, 콘솔 사용 절차 동일.
+2. **문서 대상 신규 기능이 아니다.** 실패 시 화면에 사유가 보이게 된 것은 기존 실패 슬롯의 수송 수리다. stderr 행은 유지보수자 진단 표면이며 README/docs-site 독자 대상이 아니다.
+3. **소급 약속 금지.** 실패 문구의 i18n 화는 spec.md §F 가 명시적 범위 밖(HARD-7) — 문서에 새 문구를 적으면 하지 않는 일을 약속하게 된다.
+
+CHANGELOG `[Unreleased] > Fixed` 항목 하나가 본 카드의 유일한 문서 산출물이다.
+
+### MX 태그 (sync 서브스텝)
+
+- `@MX:ANCHOR` 신설 2건 (각 `@MX:REASON` 하위 행 동반):
+  - `logSaveFailure` — `internal/web/handlers.go:675`, fan-in 9 (handleSave 의 9개 persistence seam 이 전부 이 한 줄로 수렴).
+  - `renderErrorPage` — `internal/web/handlers.go:661`, fan-in 9 (9개 seam 의 오류 경로 전부). 본 SPEC 이 그 계약(500 → 2xx)과 doc comment 를 다시 썼으므로 sync MX 점검에서 같은 MUST 클래스로 보정.
+- `handlers.go` 기존 ANCHOR 0건이므로 per-file 상한 3 이내. 그 외 신규 표면(`app.go` 주입 seam 필드 3개 — struct 필드, `save_observability_test.go` — 테스트 전용)은 프로토콜 의무 클래스 해당 없음, 태그 미부여.
+
+### 상태 전이
+
+단일 sync 커밋이 `spec.md` frontmatter 의 `in-progress → implemented → completed` 를 실어 3-phase close 를 닫는다(별도 Mx 커밋 없음). `updated:` 는 이미 sync 커밋 날짜(2026-09-22)와 동일해 값 변경 없음. **`status:` 외에는 어떤 frontmatter 필드도, 어떤 본문 섹션도 건드리지 않았다** — `spec.md` · `plan.md` · `acceptance.md` 본문은 sync 단계 금지 표면이다.
+
+### Audit-Ready Signal
+
+```yaml
+sync_complete_at: 2026-09-22
+sync_commit_sha: "pending-backfill"   # 후속 커밋에서 backfill (커밋은 자기 해시를 인용할 수 없다)
+sync_status: audit-ready
+b12_self_test_a: pass                 # 중복 grep: 방출 전 0 (exit 1) / 방출 후 1
+b12_self_test_b: pass                 # AC 5건 (acceptance.md §D.1 이 SSOT; 예약 토큰 0건)
+b12_self_test_c: pass                 # 인용 경로 5개 전부 ls 확인
+changelog_entry_position: "[Unreleased] > Fixed, 최상단"
+changelog_entry_count: 1
+mx_tags_added:
+  - "@MX:ANCHOR logSaveFailure (internal/web/handlers.go:675)"
+  - "@MX:ANCHOR renderErrorPage (internal/web/handlers.go:661)"
+frontmatter_status_transitions:
+  spec_md: in-progress -> implemented -> completed   # 단일 sync 커밋
+  updated_refreshed: false             # 이미 2026-09-22 — 값 동일
+```
 
 ## §F Phase 4 Mode Selection
 
