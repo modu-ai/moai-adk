@@ -114,7 +114,7 @@ Phase-1 gate skip deviation (recorded per delegation Section A): skip conditions
 
 ```yaml
 run_complete_at: "2026-09-22"
-run_commit_sha: pending-backfill-run   # D3 backfill window — populated by the follow-up backfill commit (self-referential hazard)
+run_commit_sha: 427ec4455   # backfilled per the D3 window (spec-frontmatter-schema.md § SHA placeholder backfill exemption); placeholder was pending-backfill-run in the run commit itself
 run_status: complete
 ac_pass_count: 9
 ac_fail_count: 0
