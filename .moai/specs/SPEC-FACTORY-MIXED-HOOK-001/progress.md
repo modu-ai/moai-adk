@@ -877,7 +877,7 @@ idle pending truth and next-turn receipt verified: message=c26d88099996c5d86ab3c
 
 ```yaml
 sync_complete_at: 2026-09-23
-sync_commit_sha: pending-backfill-sync
+sync_commit_sha: 875efc28b
 sync_status: complete
 audit_verdict: PASS
 audit_score: 85
