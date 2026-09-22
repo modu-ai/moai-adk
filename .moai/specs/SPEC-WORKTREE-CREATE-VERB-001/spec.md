@@ -1,8 +1,8 @@
 ---
 id: SPEC-WORKTREE-CREATE-VERB-001
 title: "Harness-neutral worktree creation verb — promote the existing materializeSessionWorktree creation capability into a moai CLI verb surface"
-version: "0.2.1"
-status: in-progress
+version: "0.2.2"
+status: completed
 created: 2026-09-22
 updated: 2026-09-22
 author: manager-spec (card t1070)
@@ -25,6 +25,7 @@ amendment_of: SPEC-WORKTREE-CREATE-VERB-001
 
 | Date | Version | Change |
 |------|---------|--------|
+| 2026-09-22 | 0.2.2 | Re-closed the lifecycle-evidence amendment with the canonical `in-progress → completed` edge; runtime and acceptance remain unchanged. |
 | 2026-09-22 | 0.2.0 | Implemented option 가 (`moai worktree new <name>`), closed independent-audit finding F1, and completed sync evidence (card t1070). |
 | 2026-09-22 | 0.1.0 | Initial draft authored by manager-spec (card t1070, plan phase). |
 
