@@ -287,9 +287,9 @@ EL-8  command : /usr/bin/grep -cwiE '<TOOL_TOKENS>' internal/template/templates/
   - `go test ./internal/hook/ -run 'IntegrationLock' -count=1 -v`
   - (c) 읽는 시점에 기준을 다시 구한다(값을 핀하지 않는다):
     ```bash
-    CARD_BASE=$(git merge-base develop HEAD)
-    git diff --name-only "$CARD_BASE"..HEAD | wc -l                                   # 대조군: 1 이상
-    git diff --name-only "$CARD_BASE"..HEAD -- internal/cli/integration.go internal/hook/integration_lock_guard.go   # 프로브: 출력 없음
+    git merge-base develop HEAD                                                        # 읽는 시점에 재구해 값을 증거로 기록
+    git diff --name-only develop...HEAD | wc -l                                        # 대조군: 1 이상
+    git diff --name-only develop...HEAD -- internal/cli/integration.go internal/hook/integration_lock_guard.go   # 프로브: 출력 없음
     ```
 - 기대 출력: 첫째 명령 `--- PASS`, 둘째·셋째 명령은 `--- FAIL` 없이 `ok`이며 스윕 수가 0이 아니고, (c)의 대조군은 1 이상, 프로브는 출력이 없다. **대조군이 0이면 "변경 없음"이 아니라 "측정 불가"로 보고한다.** 흡수 기준 ref는 이 저장소 절차의 흡수 대상인 로컬 `develop`이다 — develop을 흡수한 뒤에도 merge-base가 마지막으로 흡수한 develop 커밋에 머물러, 다른 카드가 그 파일들을 고친 커밋은 범위에 들어오지 않는다. 기반 함수를 매개변수화해야 해서 `internal/kanban/integration_lock_mutation.go`가 바뀌는 경우, 그 파일은 프로브 범위에 넣지 않되 둘째 명령의 전체 통과로 동작 불변을 보인다.
 - **유효 시점:** (c)는 **병합 전에만** 유효하다. 병합 뒤에는 merge-base가 카드 tip 자신이 되어 범위가 비고 판정이 공허하게 통과한다. 병합 뒤의 근거는 병합 트리와 카드 브랜치 트리의 동일성이다(`git rev-parse <merge>^{tree}` = 병합 전 재측정에 쓴 카드 tip의 `git rev-parse <card-tip>^{tree}`).
@@ -332,9 +332,9 @@ go test|go build|pytest|unittest|tox|npm|npx|yarn|pnpm|jest|vitest|mocha|tsc|car
 **Then**
 - **게이트 닫힘(종료 코드 ≠ 0):** 이 카드의 커밋이 세 문서를 바꾸지 않았다. 판정은 `.claude/rules/local/gitflow-lane-protocol.md` §8 형태로, 읽는 시점에 기준을 다시 구한다:
   ```bash
-  CARD_BASE=$(git merge-base develop HEAD)
-  git diff --name-only "$CARD_BASE"..HEAD | wc -l        # 대조군: 1 이상, 0이면 "측정 불가"
-  git diff --name-only "$CARD_BASE"..HEAD -- .claude/rules/moai/workflow/kanban-dispatch.md internal/template/templates/.claude/rules/moai/workflow/kanban-dispatch.md .claude/rules/local/gitflow-lane-protocol.md   # 프로브: 출력 없음
+  git merge-base develop HEAD                            # 읽는 시점에 재구해 값을 증거로 기록
+  git diff --name-only develop...HEAD | wc -l            # 대조군: 1 이상, 0이면 "측정 불가"
+  git diff --name-only develop...HEAD -- .claude/rules/moai/workflow/kanban-dispatch.md internal/template/templates/.claude/rules/moai/workflow/kanban-dispatch.md .claude/rules/local/gitflow-lane-protocol.md   # 프로브: 출력 없음
   ```
   progress.md에 후속 카드로 넘긴다는 기록이 있다.
 - **게이트 열림(종료 코드 0):** 세 파일 각각에서 `/usr/bin/grep -c 'moai slot' <file>` → 1 이상. 템플릿판 `kanban-dispatch.md`에 대해 AC-RSL-014(g)(h)의 유출 테스트가 통과한다.

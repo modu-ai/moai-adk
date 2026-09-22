@@ -16,6 +16,11 @@ const (
 	DefaultDocumentation            = "en"
 	DefaultErrorMessages            = "en"
 
+	// DefaultCodexInstructionArgBytes bounds the final direct token and,
+	// independently, the final shell-quoted spawn command. Linux's 131072-byte
+	// per-argument limit minus 4096 bytes leaves headroom for execution framing.
+	DefaultCodexInstructionArgBytes = 126976
+
 	// Graph-freshness gate thresholds (graph layer drift): reasoned defaults,
 	// recalibratable via gate.yaml. The codemaps line reflects how many
 	// described-source files must drift before the curated docs are judged
@@ -1026,6 +1031,14 @@ func NewDefaultWorkflowConfig() WorkflowConfig {
 		// opts into denial via local config. Template neutrality: no
 		// `enabled: true` anywhere under internal/template/templates/.
 		AgentStopGuard: AgentStopGuardConfig{
+			Enabled: false,
+		},
+		// The subagent destructive-write guard ships OFF the same way
+		// (SPEC-SUBAGENT-WRITE-SHRINK-GUARD-001): detection and the audit-log
+		// append always run; only the refusal of a destructively-shaped
+		// subagent Write is opt-in via local config. Template neutrality: no
+		// `enabled: true` anywhere under internal/template/templates/.
+		SubagentWriteGuard: SubagentWriteGuardConfig{
 			Enabled: false,
 		},
 		// SPEC-MOAI-MCP-SERVER-001 M2 (REQ-MCP-008 / C6): the codex review gate

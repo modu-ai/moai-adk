@@ -14,15 +14,19 @@
 > `internal/cli` runs need `-timeout 30m`. Every run uses `-count=1` — a cached result is not a
 > measurement of this tree.
 >
-> **`$CARD_BASE` is re-resolved at every use, never kept.** Each range check below runs
-> `CARD_BASE=$(git merge-base develop HEAD)` in the SAME compound invocation as the command it
-> feeds. The governing rule is `.claude/rules/local/gitflow-lane-protocol.md` §8 [HARD]: the left
+> **The range edge is re-derived at every check, never kept.** Each range check below runs
+> `git merge-base develop HEAD` as its own plain line immediately before the range command and
+> records the printed value in the evidence; the range itself uses the three-dot form
+> `git diff … develop...HEAD`, which is by definition the merge-base..HEAD range. The governing
+> rule is `.claude/rules/local/gitflow-lane-protocol.md` §8 [HARD]: the left
 > edge of a range predicate is re-derived **at the moment of reading**, and the value is **not
 > pinned**. Holding one resolved value in a shell variable is pinning exactly as much as writing a
 > literal SHA — the hazard is the retention, not the spelling. This repository's lane procedure
 > *requires* absorbing `develop` mid-card (`CLAUDE.local.md` §4.1), which moves the merge-base
 > forward; an edge resolved before that absorption stays at the old fork point and silently pulls
-> **another card's** commits into every range below it.
+> **another card's** commits into every range below it. (The earlier compound-assignment form
+> `CARD_BASE=$(git merge-base …)` is refused outright by the worktree-isolation guard and has
+> been restated throughout this file.)
 
 ## §D.0 Instrument discipline (binds every criterion below)
 
@@ -35,14 +39,15 @@ Three rules, each closing a defect the iteration-1 audit found in this file:
 2. **A control must discriminate.** A control that already produces its expected signal on the
    unchanged tree separates nothing. Where a control is textual, its required behaviour is stated
    as a transition (hits → no hits, or absent → present), not as a standing fact.
-3. **Range checks use `"$CARD_BASE"..HEAD` with `CARD_BASE` re-resolved in the same invocation,
-   never a bare `git diff <path>` and never a pinned edge.** A bare `git diff` measures the working
-   tree against `HEAD`, so under per-milestone commit discipline it returns empty unconditionally —
-   which makes an absence assertion vacuously true the moment the change is committed. Existence
-   assertions are made by reading file content, not by reading a diff.
+3. **Range checks use the three-dot form `develop...HEAD` with the merge-base recorded on its own
+   line in the same block, never a bare `git diff <path>` and never a pinned edge.** A bare `git
+   diff` measures the working tree against `HEAD`, so under per-milestone commit discipline it
+   returns empty unconditionally — which makes an absence assertion vacuously true the moment the
+   change is committed. Existence assertions are made by reading file content, not by reading a
+   diff.
 
-   The left edge is re-derived at the moment of the check —
-   `CARD_BASE=$(git merge-base develop HEAD) && git diff …` as one invocation — per
+   The left edge is re-derived at the moment of the check — `git merge-base develop HEAD` on its
+   own line (value recorded in the evidence), then the three-dot range — per
    `.claude/rules/local/gitflow-lane-protocol.md` §8 [HARD] ("읽는 시점에 … 다시 구하고, 값을 핀하지
    않는다"). A `CARD_BASE` resolved once at run-phase entry and carried in the shell is a pinned
    edge; after the procedurally-required `develop` absorption it contaminates every range with other
@@ -142,7 +147,7 @@ grep -ci 'five former hand-maintained lists' internal/config/envkeys.go
 **Expected**: each ≥ 1.
 **Control**: the same three patterns against `internal/config/envkeys.go` at the card base, with the
 base re-resolved in the same invocation —
-`CARD_BASE=$(git merge-base develop HEAD) && git show "$CARD_BASE":internal/config/envkeys.go | grep -ci 'settings axis'`
+`git merge-base develop HEAD` (record as CARD_BASE) then `git show <CARD_BASE>:internal/config/envkeys.go | grep -ci 'settings axis'`
 etc. — MUST return
 `0` for each. That absent → present transition is what distinguishes "the comment was added" from
 "the pattern was always matching something".
@@ -230,7 +235,7 @@ sed -n '/func removeGLMEnv/,/^}/p' internal/cli/launcher.go | grep -cE 'config\.
 the cleanup view other than those two restore keys.
 **Control (discriminating)**: the same three extractions at the card base, base re-resolved in the
 same invocation
-(`CARD_BASE=$(git merge-base develop HEAD) && git show "$CARD_BASE":internal/cli/launcher.go | sed -n … | grep -c …`)
+(`git merge-base develop HEAD` recorded as CARD_BASE, then `git show <CARD_BASE>:internal/cli/launcher.go | sed -n … | grep -c …`)
 MUST return a
 substantially higher count — today each function names 8-12 keys itself. The required signal is the
 **transition** from many to few; a standing count proves nothing.
@@ -435,12 +440,13 @@ $SCRUB go test -count=1 -run TestCleanupGLMSettingsLocalLeavesNonGLMFileAlone ./
 `git diff -- <path>` returns empty the moment the milestone is committed, so it would pass even if
 the control had been gutted and committed:
 ```
-CARD_BASE=$(git merge-base develop HEAD) && git diff "$CARD_BASE"..HEAD -- internal/hook/glm_settings_cleanup_test.go
+git merge-base develop HEAD
+git diff develop...HEAD -- internal/hook/glm_settings_cleanup_test.go
 ```
 **Expected**: no hunk touching `TestCleanupGLMSettingsLocalLeavesNonGLMFileAlone`. Hunks elsewhere
 in the file are expected (M6 routes `liveHookWrittenKeys()` and AC-002 adds a test there) and are
 quoted in the evidence with their milestone named.
-**Control**: `CARD_BASE=$(git merge-base develop HEAD) && git diff --name-only "$CARD_BASE"..HEAD | wc -l`
+**Control**: `git merge-base develop HEAD` recorded, then `git diff --name-only develop...HEAD | wc -l`
 MUST be ≥ 1. A control of `0` means the range is empty and the check measured nothing — report it as
 a gap, not a pass. (At run-phase *entry* this control is necessarily `0`, which is why it lives here
 at the use site and not in `plan.md` §C pre-flight.)
@@ -484,14 +490,16 @@ THEN ensureGLMCredentials (and maybeSet1MAutoCompactWindow / maybeDeclareGLMCont
 
 **Commands**
 ```
-CARD_BASE=$(git merge-base develop HEAD) && git diff --stat "$CARD_BASE"..HEAD -- internal/hook/session_start.go
+git merge-base develop HEAD
+git diff --stat develop...HEAD -- internal/hook/session_start.go
 grep -n 'func stripGLMCredsAndSetTeammateMode' internal/cli/settings.go
 ```
 **Expected**: the first prints nothing; the second prints one match.
 
 **Control for the first (an absence observation).**
 ```
-CARD_BASE=$(git merge-base develop HEAD) && git diff --name-only "$CARD_BASE"..HEAD | wc -l
+git merge-base develop HEAD
+git diff --name-only develop...HEAD | wc -l
 ```
 **Expected**: ≥ 1, and the listed paths MUST include the files this card does change
 (`internal/config/envkeys.go`, `internal/cli/launcher.go`, `internal/cli/settings.go`,
@@ -581,7 +589,8 @@ THEN each returns config.SettingsAxisLiveKeys(), directly or via one explicitly 
 **Commands**
 ```
 $SCRUB go test -count=1 -run TestTmuxClearVarsCoversEveryLiveKeyItOwns ./internal/cli/ -v -timeout 30m
-CARD_BASE=$(git merge-base develop HEAD) && git diff "$CARD_BASE"..HEAD -- internal/cli/glm.go
+git merge-base develop HEAD
+git diff develop...HEAD -- internal/cli/glm.go
 sed -n '/func liveSettingsAxisKeys/,/^}/p' internal/cli/glm_settings_cleanup_test.go
 sed -n '/func liveHookWrittenKeys/,/^}/p' internal/hook/glm_settings_cleanup_test.go
 ```
@@ -649,7 +658,8 @@ either view (asserted there, not assumed here).
 **Intent-preservation control — stated as NO WEAKENING, which is what REQ-12 requires.** The range
 diff MUST show the assertion still present and no case's expectation weakened:
 ```
-CARD_BASE=$(git merge-base develop HEAD) && git diff "$CARD_BASE"..HEAD -- internal/hook/session_end_test.go | grep -E '^[+-].*wantOtherPresent'
+git merge-base develop HEAD
+git diff develop...HEAD -- internal/hook/session_end_test.go | grep -E '^[+-].*wantOtherPresent'
 ```
 **Expected**, all three conditions:
 

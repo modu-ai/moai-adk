@@ -71,7 +71,9 @@ func TestLoadCatalog(t *testing.T) {
 	// bare /loop backlog dispatch cycle, core.skills), net +1 = 44.
 	// moai-domain-design-dna added (reference-design deconstruction + generation
 	// domain skill, core.skills, and mission-governor), net +2 = 46.
-	const expectedTotal = 46
+	// moai-ref-jev-question-design added (question-design rules reference for
+	// the gated judgment capability, core.skills), net +1 = 47.
+	const expectedTotal = 47
 	if len(all) != expectedTotal {
 		t.Errorf("AllEntries() returned %d entries, want %d", len(all), expectedTotal)
 	}
