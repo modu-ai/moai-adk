@@ -30,7 +30,7 @@ codex-cli は Claude Code の `.claude/skills/` を読まないため、スキ�
 
 ## ハーネス別の個人指示
 
-`AGENTS.local.md` は Codex 専用です。ローカルの `moai codex` ランチャーがプロジェクトルートから読み取り、内容をそのまま Codex セッションの `developer_instructions` 上書きとして渡します。共有ファイルから `@` で取り込むことはありません。`CLAUDE.local.md`、`.claude/settings.local.json`、Claude の自動 `MEMORY.md` は Claude 専用のままです。Codex Web セッションはローカルランチャーを通らないため、この注入を受けません。
+`CLAUDE.local.md` は Claude のワークフローと共有する共通ローカル入力で、`AGENTS.local.md` は Codex 専用入力です。ローカルの `moai codex` は、引数なし、`cli`、`app`、`--spawn`、`-w`、`-f` の lead/agents のどの起動経路でも、プロジェクトルートにある空でない通常ファイルをこの順に読み込みます。各本文の前に `<!-- source: <filename> -->` という出典ヘッダーを置き、結合した内容を 1 つの `developer_instructions` 上書きとして渡します。`-w` でも Codex の実行場所がワークツリーに移るだけで、入力元は元のプロジェクトルートのままです。共有の `AGENTS.md` と `CLAUDE.md` は、これらのローカルファイルを取り込んだりリンクしたりしません。ランチャーはリンクや通常ファイルでない入力を拒否し、検査した同じファイルディスクリプターから読み込みます。また、オペレーターが `developer_instructions` を重ねて指定した場合や direct/spawn 引数が大きすぎる場合は、起動前に失敗します。ほかのハーネス固有設定とメモリは、それぞれのハーネスだけに残ります。Codex Web はローカルランチャーを通らないため、この注入を受けません。
 
 ## `internal/codexadapter` — フックアダプターライブラリ
 
