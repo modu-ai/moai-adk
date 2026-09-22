@@ -66,7 +66,7 @@ func TestTelemetryCellsAbsence(t *testing.T) {
 	if model != "" || effort != "" || pct != -1 {
 		t.Errorf("nil record → (%q, %q, %d), want empty/-1", model, effort, pct)
 	}
-	model, effort, pct = telemetryCells(&statusline.SessionTelemetryRecord{})
+	_, _, pct = telemetryCells(&statusline.SessionTelemetryRecord{})
 	if pct != -1 {
 		t.Errorf("record without a context window → pct %d, want -1", pct)
 	}
