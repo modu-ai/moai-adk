@@ -31,6 +31,12 @@ module: "internal/factorymsg"
 | design.md | authored |
 | progress.md | authored |
 
+## §B.1 User-requested operational lane status plan change
+
+- The user explicitly added operational lead visibility into real worker lane status. `operational-lane-status-addendum.md` is now normative through minimal cross-references in `spec.md`, `plan.md`, and `acceptance.md`; REQ-FMH-OPS-001..008 and AC-FMH-OPS-001..006 are implementation/verification `PENDING`.
+- The earlier independent plan-audit `PASS` predates this scope addition and does not cover the OPS requirements or criteria. An independent plan re-audit is required before the OPS implementation is treated as audit-ready; prior run-phase evidence below remains unchanged and cannot be credited to the new criteria.
+- OPS delta plan audit iteration 1 returned `FAIL` at `0.81` with D1–D3: production launcher-chain proof, six criterion-level RED-now cells, and a fresh existing-15-AC regression gate were missing. The plan documents now address those three findings; independent re-audit remains required and no OPS PASS is claimed.
+
 ## §C Plan audit
 
 ### Iteration 1

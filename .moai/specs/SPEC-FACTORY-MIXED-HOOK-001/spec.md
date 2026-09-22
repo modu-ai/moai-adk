@@ -1,7 +1,7 @@
 ---
 id: SPEC-FACTORY-MIXED-HOOK-001
 title: "Mixed Claude/Codex factory hook-boundary messaging"
-version: "0.1.1"
+version: "0.1.2"
 status: in-progress
 created: 2026-09-22
 updated: 2026-09-22
@@ -20,6 +20,7 @@ tags: "factory,codex,claude,hooks,messaging,receipt"
 
 | Version | Date | Change |
 |---|---|---|
+| 0.1.2 | 2026-09-22 | Add the user-requested operational lane roster/status scope through the normative OPS addendum. |
 | 0.1.1 | 2026-09-22 | Clarify the stable logical lane versus replaceable Codex session endpoint seam and defer worktree handoff to t1082. |
 | 0.1.0 | 2026-09-22 | Card t1074 plan baseline for mixed Claude/Codex hook-boundary messaging. |
 
@@ -29,7 +30,7 @@ The existing worker registration and legacy session message store do not bind a 
 
 ## WHAT
 
-This SPEC defines run membership, a factory-only canonical broker, generation/token-bound explicit receipts, metadata-only hook delivery, bounded Stop continuation, MCP surfaces, compatibility, live cross-harness verification, and performance evidence.
+This SPEC defines run membership, a factory-only canonical broker, generation/token-bound explicit receipts, metadata-only hook delivery, bounded Stop continuation, MCP surfaces, an operational real-session lane roster/status query, compatibility, live cross-harness verification, and performance evidence.
 
 ## HOW
 
@@ -96,6 +97,23 @@ The launcher SHALL keep bare `-f` as lead mode and `-f agent`, `agent-N`, and `l
 ### REQ-FMH-012 — Evidence and performance
 
 The live verification SHALL make all three mixed combinations and the Claude↔Claude regression exchange unique nonces in both directions across real separate CLI/model contexts and record explicit receipts. The benchmark SHALL test the acceptance targets of empty-inbox added p95≤50 ms and factory inspection hard deadline≤200 ms without treating them as pre-existing facts. The verdict SHALL NOT pass a live criterion whose state is `NOT_RUN`.
+
+### Operational lane status — normative extension
+
+The user-requested operational lane roster/status contract in [`operational-lane-status-addendum.md`](./operational-lane-status-addendum.md) is part of this SPEC's implementation scope. Its complete wording is normative; the index below is intentionally non-duplicative.
+
+| Requirement | Canonical obligation |
+|---|---|
+| REQ-FMH-OPS-001 | The status surface SHALL return only real lanes from the selected canonical project/run. |
+| REQ-FMH-OPS-002 | Each lane row SHALL expose stable slot plus current backend/session/generation/PID identity. |
+| REQ-FMH-OPS-003 | Endpoint state SHALL distinguish fingerprint-backed `live`, `dead`, `stale`, and `unknown`. |
+| REQ-FMH-OPS-004 | Task state SHALL be `unknown` unless explicit evidence supports `busy` or `idle`. |
+| REQ-FMH-OPS-005 | `factory_msg_status` SHALL read the roster without claiming inbox messages or mutating state. |
+| REQ-FMH-OPS-006 | Launcher guidance SHALL name the real registered read-only status surface. |
+| REQ-FMH-OPS-007 | Production proof SHALL launch one built-tree `moai codex -f` lead and two `moai codex -f agent` workers, bind each real Codex owner through `SessionStart` before any prompt, and expose the same endpoints through the lead's MCP status call without direct-Codex or manual-registration bypasses. |
+| REQ-FMH-OPS-008 | Query/probe uncertainty SHALL remain explicit and output SHALL contain one deterministic current generation per slot. |
+
+These requirements are implementation and verification `PENDING`; no earlier AC or run evidence satisfies them implicitly.
 
 ### Out of Scope — Deferred and unrelated work
 

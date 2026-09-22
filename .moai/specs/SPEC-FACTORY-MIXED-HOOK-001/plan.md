@@ -52,6 +52,14 @@ module: "internal/factorymsg"
 - Benchmark empty/16/1000 pending, 1/10 sessions, warm/cold, and lock contention. Record p50/p95, wall time, file reads/writes, process count, and injected bytes.
 - Write `.moai/reports/t1074/verdict.md`; `NOT_RUN` or simulated model context is FAIL for live ACs.
 
+### M5 — Operational lane roster/status extension (pending)
+
+- Implement REQ-FMH-OPS-001 through REQ-FMH-OPS-008 according to the normative [`operational-lane-status-addendum.md`](./operational-lane-status-addendum.md), reusing the existing run-scoped `peers` registry and read-only `factory_msg_status` surface rather than introducing a second roster.
+- Execute the addendum's M1–M4 sequence: store read model and endpoint truth table, non-mutating MCP response, `SessionStart`/launcher guidance linkage, then installed-binary/MCP-restart live proof in a separate fixture project.
+- Treat AC-FMH-OPS-001 through AC-FMH-OPS-006 as new pending criteria. Existing AC-FMH-001 through AC-FMH-015 results remain historically attributed and do not satisfy the OPS criteria.
+- Run the exact non-empty unit and production-launcher live gates in addendum §6. The live chain must use one built-tree `moai codex -f` lead plus two built-tree `moai codex -f agent` processes and prove their actual SessionStart owner identities through the lead session's MCP; direct `codex exec`, manually injected `MOAI_SESSION_PID`, direct `RegisterPeer`, pre-seeding, mock, skip, `NOT_RUN`, or in-process-only evidence cannot close its real-session criteria.
+- At M5 Definition of Done, execute the current-baseline regression gates in `acceptance.md` for all existing AC-FMH-001 through AC-FMH-015 against the post-M5 tree. Historical logs cannot substitute; a live row that cannot run remains FAIL/GAP and blocks inherited PASS.
+
 ## Verification commands
 
 ```bash

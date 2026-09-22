@@ -29,20 +29,43 @@ All criteria are MUST-PASS. A fixture proves only its named unit contract; the f
 | AC-FMH-013 | REQ-FMH-009, REQ-FMH-012 | Real Claude↔Claude regression passes the same nonce/receipt contract; report-only traffic cannot mark a card complete without independent evidence. |
 | AC-FMH-014 | REQ-FMH-010, REQ-FMH-012 | Message arriving after both sides become idle is reported pending-until-next-turn, not idle-wake; no private socket/tmux key injection or empty polling model turn occurs. |
 | AC-FMH-015 | REQ-FMH-012 | Measured benchmark covers empty/16/1000, 1/10 sessions, warm/cold, contention; empty p95≤50 ms and inspection deadline≤200 ms or verdict is FAIL with unchanged target. |
+| AC-FMH-OPS-001 | REQ-FMH-OPS-001, REQ-FMH-OPS-002, REQ-FMH-OPS-007 | One built-tree `moai codex -f` lead plus two `moai codex -f agent` workers register their real SessionStart owner identities before any prompt, and the lead's MCP returns those same three endpoints. |
+| AC-FMH-OPS-002 | REQ-FMH-OPS-003, REQ-FMH-OPS-004, REQ-FMH-OPS-008 | Endpoint states distinguish live/dead/stale/unknown and task state remains unknown without explicit activity evidence. |
+| AC-FMH-OPS-003 | REQ-FMH-OPS-001, REQ-FMH-OPS-008 | A same-named run/slot in another canonical project contributes no identifier, state, or count. |
+| AC-FMH-OPS-004 | REQ-FMH-OPS-005 | Repeated status queries leave message claims/receipts and peer rows/generations/timestamps unchanged. |
+| AC-FMH-OPS-005 | REQ-FMH-OPS-005, REQ-FMH-OPS-006 | Launcher guidance invokes the registered read-only status handler and never substitutes `factory_msg_list`. |
+| AC-FMH-OPS-006 | REQ-FMH-OPS-001, REQ-FMH-OPS-002, REQ-FMH-OPS-003, REQ-FMH-OPS-007 | A newly installed binary and restarted lead MCP prove the exact three production launcher argv, real Codex owner identities, isolated roster, and child cleanup without direct-Codex/manual-registration bypasses. |
+
+## Operational lane status extension — pending verification
+
+AC-FMH-OPS-001 through AC-FMH-OPS-006 are defined in full by [`operational-lane-status-addendum.md`](./operational-lane-status-addendum.md) §5 and use its exact non-empty unit/live gates in §6. All six are `PENDING`: no prior AC-FMH-001..015 PASS, fixture, or run evidence is inherited as their proof. A mock, skip, `NOT_RUN`, direct `codex`/`codex exec`, manual `MOAI_SESSION_PID`, direct `RegisterPeer`, pre-seeded roster, separate owner process, or in-process-only result cannot pass the real-session criteria.
+
+### OPS plan-delta RED-now ledger
+
+The following read-only selectors were executed at current subject HEAD `99d77dd25d3f2b1f6bae68d5fbccb5f8f4cf3bca`. Each command emitted no stdout and exited 1 because the exact OPS test is absent. These are criterion-level RED cells; mere future test presence is not GREEN, which requires the exact addendum §6 behavior gate.
+
+| AC | RED-now command | Verbatim stdout | Exit | Subject tree SHA | GREEN gate |
+|---|---|---|---:|---|---|
+| AC-FMH-OPS-001 | `rg -n -F 'func TestFactoryLiveOperationalRosterBeforePrompt(' internal` | `<empty>` | 1 | `99d77dd25d3f2b1f6bae68d5fbccb5f8f4cf3bca` | Addendum §6.2 `TestFactoryLiveOperationalRosterBeforePrompt` |
+| AC-FMH-OPS-002 | `rg -n -F 'func TestFactoryLaneRosterStateTruth(' internal` | `<empty>` | 1 | `99d77dd25d3f2b1f6bae68d5fbccb5f8f4cf3bca` | Addendum §6.1 `TestFactoryLaneRosterStateTruth` |
+| AC-FMH-OPS-003 | `rg -n -F 'func TestFactoryLaneRosterProjectIsolation(' internal` | `<empty>` | 1 | `99d77dd25d3f2b1f6bae68d5fbccb5f8f4cf3bca` | Addendum §6.1 `TestFactoryLaneRosterProjectIsolation` |
+| AC-FMH-OPS-004 | `rg -n -F 'func TestFactoryMsgStatusReadOnlyRoster(' internal` | `<empty>` | 1 | `99d77dd25d3f2b1f6bae68d5fbccb5f8f4cf3bca` | Addendum §6.1 `TestFactoryMsgStatusReadOnlyRoster` |
+| AC-FMH-OPS-005 | `rg -n -F 'func TestFactoryLeadNoticeUsesOperationalStatus(' internal` | `<empty>` | 1 | `99d77dd25d3f2b1f6bae68d5fbccb5f8f4cf3bca` | Addendum §6.1 `TestFactoryLeadNoticeUsesOperationalStatus` |
+| AC-FMH-OPS-006 | `rg -n -F 'func TestFactoryLiveOperationalLauncherChain(' internal` | `<empty>` | 1 | `99d77dd25d3f2b1f6bae68d5fbccb5f8f4cf3bca` | Addendum §6.2 `TestFactoryLiveOperationalLauncherChain` |
 
 ## Required evidence shape
 
 `.moai/reports/t1074/verdict.md` SHALL include Claim, command plus verbatim-output path, baseline commit/version attribution, explicit NOT_RUN gaps, residual risk, per-AC PASS/FAIL, process cleanup evidence, and nonce/receipt identifiers with payload bodies redacted where appropriate.
 
-Worktree handoff itself is not an AC in this SPEC. The t1074 evidence proves only the logical-lane/current-endpoint binding seam; `t1082` must separately prove worktree creation, `/cd` or headless `cwd` handoff, atomic rebind, `BOUND`, and stale pre-handoff rejection.
+Worktree handoff itself is not an AC in this SPEC. The existing t1074 evidence proves only the logical-lane/current-endpoint binding seam; the newly added OPS criteria separately require operational roster evidence, while `t1082` must prove worktree creation, `/cd` or headless `cwd` handoff, atomic rebind, `BOUND`, and stale pre-handoff rejection.
 
 ## Non-empty-pass execution protocol
 
 Each command below writes Go's JSON event stream and then requires one exact `Action=pass` event for the named test. A missing test, a skipped live test, a package setup failure, or an ordinary `go test -run` empty match therefore fails the AC. Every invocation SHALL scrub provider credentials in the same compound shell, use a card-scoped `MOAI_HOME`/`GOCACHE`, and preserve the JSON log under `.moai/reports/t1074/`.
 
-### Plan-phase RED-now ledger
+### Original plan-phase RED ledger — historical baseline only
 
-The commands below were executed read-only at tree `758314007d8c696ff1af377dc8cdc46d76368314`. Each exact named test is absent, so `rg` returned no stdout and exit 1. This is the expected plan-phase RED reason: no AC can empty-pass because the green gate additionally requires an exact Go JSON `Action=pass` event. The run phase SHALL first add the named test, observe a behavioral RED, then implement and execute the corresponding green command below; mere test presence does not satisfy an AC.
+The commands below were executed read-only at the original plan tree `758314007d8c696ff1af377dc8cdc46d76368314`; their stdout/exit cells remain historical evidence only. All fifteen selectors exist on the current tree, so these rows SHALL NOT be described or reused as current RED. M5 must instead execute the current-baseline regression gates following this table against the post-M5 tree; historical PASS logs cannot substitute.
 
 | AC | Milestone | RED-now command | Verbatim stdout | Exit | Tree SHA | Green path |
 |---|---|---|---|---:|---|---|
@@ -61,6 +84,36 @@ The commands below were executed read-only at tree `758314007d8c696ff1af377dc8cd
 | AC-FMH-013 | M4 | `rg -n -F 'func TestFactoryLiveClaudeClaudeCompletionSeparation(' internal` | `<empty>` | 1 | `758314007d8c696ff1af377dc8cdc46d76368314` | Exact live Go/JQ gate in AC-FMH-013 → `true` |
 | AC-FMH-014 | M4 | `rg -n -F 'func TestFactoryLiveHookBoundaryIdleTruth(' internal` | `<empty>` | 1 | `758314007d8c696ff1af377dc8cdc46d76368314` | Exact live Go/JQ gate in AC-FMH-014 → `true` |
 | AC-FMH-015 | M4 | `rg -n -F 'func TestFactoryHookBenchmarkBudget(' internal` | `<empty>` | 1 | `758314007d8c696ff1af377dc8cdc46d76368314` | Exact benchmark Go/JQ gate in AC-FMH-015 → `true` |
+
+### M5 current-baseline regression gates for existing AC-FMH-001..015
+
+The post-M5 HEAD and built code are the baseline for these gates. The first command requires fresh non-empty PASS events for the ten existing scoped unit/benchmark criteria. The second command reruns all five existing real-session criteria with their required live cases. Logs from the original implementation baseline are not inputs. If a provider-backed live row cannot execute, it remains FAIL/GAP and M5 Definition of Done is unmet.
+
+```bash
+unset ANTHROPIC_BASE_URL ANTHROPIC_API_KEY ANTHROPIC_AUTH_TOKEN Z_AI_API_KEY && mkdir -p .moai/reports/t1074 && MOAI_FACTORY_BENCH=1 MOAI_HOME=/tmp/t1074-m5-reg-unit-home GOCACHE=/tmp/t1074-m5-reg-unit-cache go test -json ./internal/factorymsg ./internal/cli ./internal/hook -run '^(TestFactoryCanonicalNamespaceAndIsolation|TestFactoryRunSelectionAtomicSlotsAndArgv|TestFactorySessionGenerationOwnership|TestFactoryEnvelopeIdempotencyAndStaleAck|TestFactoryCrashRecoveryExplicitReceipt|TestFactoryDeadLetterAndLegacyIsolation|TestFactoryHookContextAndContinuationSafety|TestFactoryHookZeroTurnAndCapabilityTruth|TestFactoryBrokerTrustBoundaries|TestFactoryHookBenchmarkBudget)$' -count=1 -timeout=240s > .moai/reports/t1074/m5-reg-unit.jsonl && jq -se '. as $events | ([ $events[] | select(.Action=="pass" and ((.Test // "") | test("^(TestFactoryCanonicalNamespaceAndIsolation|TestFactoryRunSelectionAtomicSlotsAndArgv|TestFactorySessionGenerationOwnership|TestFactoryEnvelopeIdempotencyAndStaleAck|TestFactoryCrashRecoveryExplicitReceipt|TestFactoryDeadLetterAndLegacyIsolation|TestFactoryHookContextAndContinuationSafety|TestFactoryHookZeroTurnAndCapabilityTruth|TestFactoryBrokerTrustBoundaries|TestFactoryHookBenchmarkBudget)$"))) | .Test ] | unique | length)==10 and (any($events[]; .Action=="skip" and ((.Test // "") | test("^(TestFactoryCanonicalNamespaceAndIsolation|TestFactoryRunSelectionAtomicSlotsAndArgv|TestFactorySessionGenerationOwnership|TestFactoryEnvelopeIdempotencyAndStaleAck|TestFactoryCrashRecoveryExplicitReceipt|TestFactoryDeadLetterAndLegacyIsolation|TestFactoryHookContextAndContinuationSafety|TestFactoryHookZeroTurnAndCapabilityTruth|TestFactoryBrokerTrustBoundaries|TestFactoryHookBenchmarkBudget)$"))) | not) and (any($events[]; ((.Output // "") | contains("NOT_RUN"))) | not)' .moai/reports/t1074/m5-reg-unit.jsonl
+```
+
+Expected final output: `true`. Missing, skipped, duplicated-only, package-failed, or `NOT_RUN` evidence cannot satisfy the ten criteria.
+
+```bash
+unset ANTHROPIC_BASE_URL ANTHROPIC_API_KEY ANTHROPIC_AUTH_TOKEN Z_AI_API_KEY && set -e
+mkdir -p .moai/reports/t1074
+git rev-parse HEAD
+for row in \
+  'codex-codex|TestFactoryLiveCodexCodex|ac10' \
+  'codex-claude|TestFactoryLiveCodexClaude|ac11' \
+  'claude-codex|TestFactoryLiveClaudeCodex|ac12' \
+  'claude-claude|TestFactoryLiveClaudeClaudeCompletionSeparation|ac13' \
+  'idle-boundary|TestFactoryLiveHookBoundaryIdleTruth|ac14'
+do
+  IFS='|' read -r case_name test_name ac_id <<< "$row"
+  log=".moai/reports/t1074/m5-reg-${ac_id}.jsonl"
+  MOAI_FACTORY_LIVE=1 MOAI_FACTORY_LIVE_CASE="$case_name" MOAI_HOME="/tmp/t1074-m5-reg-${ac_id}-home" GOCACHE="/tmp/t1074-m5-reg-${ac_id}-cache" go test -json ./internal/cli -run "^${test_name}$" -count=1 -timeout=180s > "$log"
+  jq -se --arg test "$test_name" 'any(.[]; .Action=="pass" and .Test==$test) and (any(.[]; .Action=="skip" and .Test==$test) | not) and (any(.[]; ((.Output // "") | contains("NOT_RUN"))) | not)' "$log"
+done
+```
+
+Expected output: the post-M5 HEAD followed by five `true` values and exit 0. The verdict must attribute every fresh log to that printed HEAD; any missing/failed live row blocks regression closure rather than inheriting its historical status.
 
 ### AC-FMH-001 — Canonical namespace and isolation
 
