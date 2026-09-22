@@ -394,7 +394,64 @@ partial entry above).
 
 ## §E.2 Run-phase Evidence
 
-_<pending run-phase>_
+Run phase entered on `WT-subagent-scope` at plan-phase HEAD `6d8262840` (this tree). Each
+entry names the command run and the observed output; every RED is captured verbatim per the
+TDD RED-evidence invariant.
+
+### M1 — false-positive survey (MEASUREMENT-FOR-RECORD)
+
+- **OD-1 disposition**: answered **OD-1a** by the operator 2026-09-22 (spec.md §D.3
+  [RESOLVED — OD-1a]) BEFORE any threshold was written into Go source (AC-SWG-011's ordering
+  clause). The M1 survey ran as measurement-for-record only; the §D.2 pair stands as an
+  operator-adopted PROPOSAL, never described as measured.
+- **Survey**: the four executable steps of plan.md M1, run in this tree. Full procedure,
+  verbatim outputs, positive control, and per-hit classification:
+  `.moai/reports/t1057/m1-survey.md` (card evidence path; gitignored — machine-local by
+  design). Mechanical record: `od1-survey.md` in this SPEC directory (`od1_answer: OD-1a`,
+  tracked).
+- **Headline counts** (verbatim, shared with the REQ-SWG-012 calibration comment):
+  `22 survivors, 0 destructive accidents, 22 deliberate, 0 in-place SPEC amendments`.
+  6173 numstat candidates → 288 byte-level-checked rows → 22 survivors; 5883 rows were
+  git-level file deletions (post-image absent — outside the Write-shaped population).
+- **Positive control**: `ce79ef7caf` / `internal/cli/cg.go` (numstat 7/103; pre 4438 →
+  post 499, ratio 11%) observed surviving steps 1-3 before any count was read. Two earlier
+  control candidates were measured and rejected (58% / 62% — not survivors); the rejections
+  are recorded in the survey file.
+
+### M2 — the predicate and its bidirectional tests (RED → GREEN → mutant)
+
+- **RED** (pre-implementation, guard symbol absent — the correct reason):
+  ```
+  $ go test ./internal/hook/ -run 'SubagentWriteGuard' -v
+  internal/hook/subagent_write_guard_test.go:64:8: undefined: evaluateSubagentWrite
+  ... (8 references, build failed)
+  FAIL	github.com/modu-ai/moai-adk/internal/hook [build failed]
+  ```
+- **GREEN**: `go test ./internal/hook/ -run 'SubagentWriteGuard' -v` → 5 tests / 7 subtests
+  PASS (deny, allow, size floor, main-session ×2, fail-open ×3). Swept set non-empty.
+- **Mutant (ratio inversion `<=` → `>`)**: TestSubagentWriteGuardDestructiveWriteDenied →
+  FAIL (AC-SWG-001a red under the inverted ratio, as the acceptance requires);
+  NormalWriteAllowed + TargetOutsideGitRepository also flipped red as expected side effects.
+  Restored → green.
+
+### M3 — path resolution and evaluation order
+
+- **RED (three isolated mutations, each restored after capture)**:
+  - symlink normalization removed → `TestSubagentWriteGuardSymlinkedAbsolutePathMatches`
+    FAIL: `decision = "allow", want deny for a symlinked absolute path`.
+  - untracked branch removed (run in isolation — jointly with the symlink mutation it had
+    passed through the wrong condition, a mutation-interaction caught and corrected) →
+    `TestSubagentWriteGuardUntrackedTargetPasses` FAIL: `decision = "deny", want allow for
+    an untracked target`.
+  - git queries moved before the size conditions →
+    `TestSubagentWriteGuardNoGitInvocationWhenRatioFails` FAIL:
+    `git invoked 2 time(s) for a payload failing the ratio condition; want 0 (REQ-SWG-004 order)`.
+- **GREEN**: `go test ./internal/hook/ -run 'SubagentWriteGuard' -v` → 8 tests / 13 test
+  rows PASS (adds untracked, symlinked-absolute, ordering + counting positive control).
+- **Latency measurement (deny path, both git subprocesses included)**:
+  `go test ./internal/hook/ -bench 'BenchmarkSubagentWriteGuardDenyPath' -benchtime=20x
+  -run '^$'` → `110268 µs/op` (Apple M4 Max, this machine, this run). Against the 5s hook
+  budget that is ~2.2%; the benchmark asserts nothing about the absolute value.
 
 ## §E.3 Run-phase Audit-Ready Signal
 
