@@ -16,6 +16,11 @@ const (
 	DefaultDocumentation            = "en"
 	DefaultErrorMessages            = "en"
 
+	// DefaultCodexInstructionArgBytes bounds the final direct token and,
+	// independently, the final shell-quoted spawn command. Linux's 131072-byte
+	// per-argument limit minus 4096 bytes leaves headroom for execution framing.
+	DefaultCodexInstructionArgBytes = 126976
+
 	// Graph-freshness gate thresholds (graph layer drift): reasoned defaults,
 	// recalibratable via gate.yaml. The codemaps line reflects how many
 	// described-source files must drift before the curated docs are judged
