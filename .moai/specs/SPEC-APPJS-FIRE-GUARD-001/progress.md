@@ -306,7 +306,26 @@ evidence_paths: M1/M2/M3 세션 원문은 `/tmp/t1060-run/` (probe-*.json, m2-ru
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-(비워 둔다 — manager-docs 소유. sync 커밋이 `sync_commit_sha` 를 채운다.)
+```yaml
+sync_complete_at: 2026-09-22
+sync_commit_sha: pending-backfill-sync   # 커밋은 자기 해시를 인용할 수 없다 — 다음 커밋에서 backfill
+sync_status: complete
+frontmatter_status_transitions:
+  in-progress: 2026-09-22    # M1 커밋 70f37a688 (draft → in-progress, manager-develop)
+  implemented: 2026-09-22    # 본 sync 커밋 (merged transition — 별도 Mx chore 커밋 없음)
+  completed: 2026-09-22      # 본 sync 커밋 (merged transition)
+changelog_entry_added: no    # 카드 sync 커밋 CHANGELOG 미작성 규율(verified-batch 선례) — grep -c 'SPEC-APPJS-FIRE-GUARD-001' CHANGELOG.md → 0 적중 전후 동일
+ac_count_check: acceptance.md 고유 AC 식별자 9건(AC-AFG-001..009, grep -oE 'AC-AFG-[0-9]+' | sort -u | wc -l) = §E.3 ac_pass_count 6 blocking + 3 regression-class 합 9건
+total_sync_phase_files: 2    # progress.md(§E.4) + spec.md(frontmatter status+updated) — CHANGELOG.md 미작성
+canary_compliance_check: not-applicable  # 이 SPEC 은 장래 정책을 정의하지 않는다 — 브라우저 발화 가드 인프라(탐침·드라이버·돌연변이기·CI job) 납품이 전부
+b12_self_test_a_pre_emission_grep: 0 hits (no-emission 경로 — 중복 방지 grep 통과, 엔트리 미작성으로 유지)
+b12_self_test_b_ac_count_match: 9 == 9 (pass)
+b12_self_test_c_file_path_verification: not-applicable (CHANGELOG 엔트리가 없어 경로 인용 대상도 없다)
+mx_validation:
+  status: no-op
+  reason: run-phase 신규 파일은 Go 테스트 파일 1개 + Python testdata 스크립트 2개 + ci.yml EOF 덧붙임 — 신규 exported 함수·고 fan_in·위험 패턴 해당 0건 (@MX 스캔 3개 신규 파일 0적중; 제품 소스·assets 무변경은 §E.3 preserve_list)
+sync_phase_scope_note: writable set honored exactly — progress.md §E.4 + spec.md frontmatter(status+updated)만 수정; §E.1–§E.3, spec/plan/acceptance 본문, CHANGELOG.md, internal/web/** 소스 전부 미수정
+```
 
 ## §F Phase 4 Mode Selection
 
