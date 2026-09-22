@@ -173,6 +173,7 @@ func factoryLeadNotice(runID string, workers int, root, lang string) string {
 		slotLine = strings.Join(labels, ", ")
 	}
 	var context []string
+	context = append(context, fmt.Sprintf(m.operationalStatus, runID))
 	context = append(context, fmt.Sprintf(m.leadFreeSlots, slotLine))
 	if os.Getenv(config.EnvMoaiKanbanSettingsInjected) == "1" {
 		context = append(context, m.settingsAuto)

@@ -1,0 +1,13 @@
+{"Time":"2026-09-22T15:54:08.90353+09:00","Action":"start","Package":"github.com/modu-ai/moai-adk/internal/factorymsg"}
+{"Time":"2026-09-22T15:54:09.0118+09:00","Action":"run","Package":"github.com/modu-ai/moai-adk/internal/factorymsg","Test":"TestFactoryBrokerTrustBoundaries"}
+{"Time":"2026-09-22T15:54:09.011842+09:00","Action":"output","Package":"github.com/modu-ai/moai-adk/internal/factorymsg","Test":"TestFactoryBrokerTrustBoundaries","Output":"=== RUN   TestFactoryBrokerTrustBoundaries\n"}
+{"Time":"2026-09-22T15:54:09.597612+09:00","Action":"output","Package":"github.com/modu-ai/moai-adk/internal/factorymsg","Test":"TestFactoryBrokerTrustBoundaries","Output":"--- PASS: TestFactoryBrokerTrustBoundaries (0.59s)\n"}
+{"Time":"2026-09-22T15:54:09.597731+09:00","Action":"pass","Package":"github.com/modu-ai/moai-adk/internal/factorymsg","Test":"TestFactoryBrokerTrustBoundaries","Elapsed":0.59}
+{"Time":"2026-09-22T15:54:09.597774+09:00","Action":"output","Package":"github.com/modu-ai/moai-adk/internal/factorymsg","Output":"PASS\n"}
+{"Time":"2026-09-22T15:54:09.598287+09:00","Action":"output","Package":"github.com/modu-ai/moai-adk/internal/factorymsg","Output":"ok  \tgithub.com/modu-ai/moai-adk/internal/factorymsg\t0.693s\n"}
+{"Time":"2026-09-22T15:54:09.598324+09:00","Action":"pass","Package":"github.com/modu-ai/moai-adk/internal/factorymsg","Elapsed":0.695}
+{"Time":"2026-09-22T15:54:15.764717+09:00","Action":"start","Package":"github.com/modu-ai/moai-adk/internal/cli"}
+{"Time":"2026-09-22T15:54:16.490458+09:00","Action":"output","Package":"github.com/modu-ai/moai-adk/internal/cli","Output":"testing: warning: no tests to run\n"}
+{"Time":"2026-09-22T15:54:16.490541+09:00","Action":"output","Package":"github.com/modu-ai/moai-adk/internal/cli","Output":"PASS\n"}
+{"Time":"2026-09-22T15:54:16.492067+09:00","Action":"output","Package":"github.com/modu-ai/moai-adk/internal/cli","Output":"ok  \tgithub.com/modu-ai/moai-adk/internal/cli\t0.727s [no tests to run]\n"}
+{"Time":"2026-09-22T15:54:16.492103+09:00","Action":"pass","Package":"github.com/modu-ai/moai-adk/internal/cli","Elapsed":0.727}
