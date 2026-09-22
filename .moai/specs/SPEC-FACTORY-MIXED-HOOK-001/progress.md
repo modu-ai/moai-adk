@@ -1,7 +1,7 @@
 ---
 id: SPEC-FACTORY-MIXED-HOOK-001
 document: progress
-status: draft
+status: in-progress
 created: 2026-09-22
 updated: 2026-09-22
 author: manager-spec
@@ -13,7 +13,7 @@ module: "internal/factorymsg"
 
 ## §A Status
 
-- Current status: `draft`.
+- Current status: `in-progress`.
 - Card: `t1074` (`picked`).
 - Worktree: `WT-factory-mixed-hook`.
 - Plan baseline: `758314007` (local develop matched when authoring began).

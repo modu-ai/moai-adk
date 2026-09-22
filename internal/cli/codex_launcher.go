@@ -386,6 +386,12 @@ func runCodex(cmd *cobra.Command, args []string) error {
 
 	args, spawn := stripSpawnFlag(args)
 	head, tail, hasTail := splitCodexDashDash(args)
+	var factoryRun string
+	var runErr error
+	head, factoryRun, runErr = stripFactoryRunFlag(head)
+	if runErr != nil {
+		return runErr
+	}
 	// -f is consumed before the verb lookup (same precedence as -w): the
 	// factory token selects this session's factory role and is never a codex
 	// verb. The env is applied only on a launch path — a readout with -f is
@@ -402,6 +408,13 @@ func runCodex(cmd *cobra.Command, args []string) error {
 			return applyErr
 		}
 		defer factoryRestore()
+		restoreRun, selectErr := enterSelectedFactoryRun(launchProjectRoot(), factoryRun, factoryAgent || factoryLane != "")
+		if selectErr != nil {
+			return selectErr
+		}
+		defer restoreRun()
+	} else if factoryRun != "" {
+		return fmt.Errorf("--factory-run requires -f/--factory")
 	}
 	// -w is consumed before the verb lookup so its tokens can never be
 	// mistaken for a verb, and so the verb position keeps its one-token shape.

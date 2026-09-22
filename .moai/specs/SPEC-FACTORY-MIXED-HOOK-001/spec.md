@@ -2,7 +2,7 @@
 id: SPEC-FACTORY-MIXED-HOOK-001
 title: "Mixed Claude/Codex factory hook-boundary messaging"
 version: "0.1.0"
-status: draft
+status: in-progress
 created: 2026-09-22
 updated: 2026-09-22
 author: manager-spec
