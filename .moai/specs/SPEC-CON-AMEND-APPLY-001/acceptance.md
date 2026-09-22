@@ -254,7 +254,7 @@ This AC is the whole CLI-level coverage; the non-dry-run CLI path is the approve
 ### AC-CAA-017 — real files untouched by the package runs, even with a session environment
 
 - **Given** sha256 of `.claude/rules/moai/core/zone-registry.md` and `.moai/research/evolution-log.md` recorded before the runs,
-- **When** `go test ./internal/constitution/ -count=1` runs twice — once as `unset MOAI_CONSTITUTION_REGISTRY CLAUDE_PROJECT_DIR && go test ./internal/constitution/ -count=1`, and once with `CLAUDE_PROJECT_DIR` exported as the repository root (`CLAUDE_PROJECT_DIR="$(git rev-parse --show-toplevel)" go test ./internal/constitution/ -count=1`) — and the AC-CAA-015 command completes,
+- **When** `go test ./internal/constitution/ -count=1` runs twice — once as `unset MOAI_CONSTITUTION_REGISTRY CLAUDE_PROJECT_DIR && go test ./internal/constitution/ -count=1`, and once with `CLAUDE_PROJECT_DIR` exported as the repository root (first run `test -f go.mod` to assert the repo root, then `CLAUDE_PROJECT_DIR="$(pwd)" go test ./internal/constitution/ -count=1`) — and the AC-CAA-015 command completes,
 - **Then** both sha256 values are unchanged after every run, `git status --porcelain -- .claude/rules .moai/research` shows nothing attributable to the runs, and neither `internal/constitution/.moai` nor `internal/cli/.moai` exists,
 - **And** both package runs report the same PASS/FAIL result, which shows the tests set the variables themselves rather than relying on the shell.
 

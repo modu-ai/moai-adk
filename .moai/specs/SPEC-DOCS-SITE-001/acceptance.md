@@ -74,7 +74,7 @@ Exclusions 섹션 항목 수 ≥ 10.
 **자동 검증**:
 ```bash
 test -d docs-site
-test "$(git log --oneline -- docs-site/ | wc -l)" -eq 1
+git log --oneline -- docs-site/ | wc -l   # 기대: 1
 ```
 
 ### AC-G1.5-02 — hugo.yaml 필수 필드 존재

@@ -603,6 +603,66 @@ Ad-hoc detours happen to work — routing the content through an interpreter's o
 
 **Running a compound command → split it into separate plain commands.** Issue the steps one at a time rather than chaining them. Note that this trades away one property worth keeping in mind: an environment scrub written as `unset … && <command>` is load-bearing as a single invocation, because each command runs in a fresh process, so that particular pairing is not one to split apart.
 
+### Acceptance-criteria commands — the measured boundary and the authoring rule
+
+A corpus-wide, block-level census of acceptance-criteria verification commands (111 files
+carrying complex git forms across `**/acceptance.md`) probed each file with a read-only replica
+of its block composition in a worktree-isolated session at Claude Code **2.1.278** (every
+disposition traces to a recorded probe). Like every table in this section it is a record of
+observations, not a specification of the parser.
+
+Refused — the `names git in a form too complex to verify` refusal fires and nothing executes:
+
+| Refused form | Notes |
+|---|---|
+| git inside `$()` whose result a later statement expands — `BASE=$(git merge-base A B)` then `git diff "$BASE"..HEAD` | refuses for `;`, newline, and `&&` separation alike; refuses with `head`, `tail`, and `sort` pipeline terminators too |
+| git nested inside another git command's arguments — `git diff "$(git merge-base A B)"..HEAD` | quoted or unquoted |
+| a tree-write bundle: variable assignment (`mktemp`, `mkdir`) + git + an `rm -rf` tail in one invocation | refuses even when every git verb in it is read-only — the bundle is what refuses, not the mutation |
+| git piped into `while`/`for`, or `for f in $(git …)` | refuses with or without git inside the loop body |
+| a `( … )` subshell compound containing git | |
+| `test "$(<git $()>)"` | refuses even with a `wc -l` pipeline terminator |
+| a non-git command (`printf`, `rg`) whose argument carries a git `$()`; an env-prefixed `VAR="$(git …)" go test …` | `echo` is the measured exception, below |
+
+Measured executable: plain separately-invocable git verbs; `;` / `&&` / `||` compounds of them;
+`$?`-capture lines; a `$()` assignment with no later expansion; `$()` embedded in the same
+statement's `echo "…$(…)…"` (bare, `|wc`, `|head`, `|awk` terminators all pass); a `$()`
+assignment expanded later when the `$()` pipeline terminates in a counter stage (`wc -l`,
+`grep -c`, `awk '{print $1}'`); redirect-to-file capture (`git … > /tmp/f`); git text inside a
+quoted grep pattern or inside a comment.
+
+**Gap**: the counter-terminator exception and the echo-embedding exception are observed
+boundaries, not a mechanism — the territory between the rows is unmeasured, and per the section
+gap note above, unknown is not permitted.
+
+**Authoring rule for AC verification commands** (normative — this is the repo-side fix; the
+guard itself is the binary's):
+
+1. One plain git verb per line, run from the worktree root.
+2. Capture exit codes in separate lines — `git diff --quiet …; echo "exit=$?"` — so the exit
+   code is the verification's own field (`verification-completeness.md` §2.1), never a
+   `$()`-captured variable.
+3. Never git inside `$()`. Derive ranges with the three-dot form (`git diff --name-only
+   develop...HEAD`) and record the merge-base on its own line (`git merge-base develop HEAD`)
+   when the base value itself is evidence.
+4. No write/cleanup composition tail in a verification command. Scratch writes live under
+   `/tmp`; cleanup is a separate plain step, never an `rm -rf` bundled into the same invocation.
+5. Never relocate a refused command into a script file — the guard cannot read inside a script,
+   so the relocation hides the risk instead of removing it. Reduce the verification instead.
+6. Pin the tree SHA the measurement was taken on (`verification-completeness.md` §4).
+
+Working example — a refused form and its executable restatement:
+
+```bash
+# REFUSED (assignment + later expansion of a git-bearing substitution):
+B=$(git merge-base develop HEAD)
+git diff --name-only "$B"..HEAD -- internal/pkg/ | wc -l
+
+# EXECUTABLE (plain verbs; base recorded on its own line; three-dot range):
+git merge-base develop HEAD                          # record the base value as evidence
+git diff --name-only develop...HEAD -- internal/pkg/ | wc -l
+git diff --quiet develop...HEAD -- internal/pkg/; echo "diff_exit=$?"
+```
+
 **Versions measured**: the trigger table and the delimiter asymmetry were measured at Claude Code **2.1.251**. The message-shape catalogue, the git-axis counter-example, and the heredoc disagreement were measured at **2.1.275** (card t852; `claude --version` read in the measuring session). The subagent-anchor observations were measured at the version current when card t741 was measured, which was not recorded there.
 
 Guard behaviour is version-dependent — one shape has already been observed to flip between these two versions — so **state the version whenever you add a row here, and read the version before citing one.** No behaviour above is known to hold at any version other than the one its row names.

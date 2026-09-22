@@ -342,6 +342,7 @@ Integration Status: Complete - Plan-Run-Sync workflow with SDD 2025 features
 - [ ] SPEC file exists at `.moai/specs/SPEC-XXX/spec.md` with unique ID
 - [ ] Every requirement uses EARS keywords (WHEN, WHILE, WHERE, IF, SHALL)
 - [ ] Every acceptance criterion is observable (test output, file existence, metric threshold)
+- [ ] AC verification commands follow the plain-command form — see `worktree-integration.md` § Refused Commands in a Worktree-Isolated Session (measured guard boundary + authoring rule)
 - [ ] research.md exists when the SPEC touches existing code
 - [ ] Annotation cycle completed with explicit user approval marker
 - [ ] SPEC references existing SPEC-IDs it depends on or supersedes

@@ -153,8 +153,8 @@ REQ-CDPG-006 (no `t.Parallel()` in a test overriding `configPathSeparator` / `os
 ### AC-CDPG-007 — Test-only scope held (maps REQ-CDPG-007)
 
 **Given** the card complete, **When**
-`git diff $(git merge-base origin/develop HEAD) -- internal/cli/doctor_codex.go` runs, **Then** it
-prints nothing, **and** `git diff --stat $(git merge-base origin/develop HEAD)` shows changed paths
+`git merge-base origin/develop HEAD` is recorded and `git diff <recorded-base> -- internal/cli/doctor_codex.go` runs, **Then** it
+prints nothing, **and** `git diff --stat origin/develop...HEAD` shows changed paths
 confined to `internal/cli/*_test.go` and `.moai/`.
 
 - **Why both halves**: the first pins the specific file the mutants temporarily modify (an
@@ -185,8 +185,8 @@ confined to `internal/cli/*_test.go` and `.moai/`.
 - [ ] `go test ./internal/cli/... -timeout 1200s` passes; rc and bounded tail recorded under `.moai/reports/t570/`.
 - [ ] AC-CDPG-004's mutants M-1, M-2 and M-3 executed; FAIL and PASS outputs both recorded verbatim;
       any missed mutant recorded.
-- [ ] AC-CDPG-007: `git diff $(git merge-base origin/develop HEAD) -- internal/cli/doctor_codex.go`
-      prints empty, and `git diff --stat` against the same base shows only `internal/cli/*_test.go`
+- [ ] AC-CDPG-007: `git merge-base origin/develop HEAD` recorded, then `git diff <recorded-base> -- internal/cli/doctor_codex.go`
+      prints empty, and `git diff --stat origin/develop...HEAD` shows only `internal/cli/*_test.go`
       and `.moai/`.
 - [ ] AC-CDPG-005: `/usr/bin/grep -rn 'type statRecorder' internal/cli/ | wc -l` prints `1`
       (unchanged from the `a4855f0b2` baseline).

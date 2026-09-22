@@ -158,8 +158,7 @@ echo "AC-OC-008 PASS"
 ```bash
 # No lineage_id introduced; lineage.go untouched
 grep -q 'lineage_id\|LineageID' internal/harness/lineage.go internal/harness/types.go && { echo "FAIL: lineage_id introduced (C11 violation)"; exit 1; } || echo "OK: no lineage_id"
-DIFF=$(git diff --stat internal/harness/lineage.go)
-[ -z "$DIFF" ] || { echo "FAIL: lineage.go modified: $DIFF"; exit 1; }
+git diff --stat internal/harness/lineage.go   # expect: empty output
 # Correlation key reuse proven in a test
 OUT=$(go test -run 'TestApply_Outcome_ProposalIDMatchesLineage$' -v ./internal/harness/ 2>&1)
 echo "$OUT" | grep -q -- '--- PASS' || { echo "FAIL: no PASS"; exit 1; }
@@ -197,8 +196,7 @@ OUT2=$(go test -run 'TestIsFrozen' -v ./internal/harness/safety/ 2>&1)
 echo "$OUT2" | grep -q -- '--- PASS' || { echo "FAIL: safety frozen no PASS"; exit 1; }
 echo "$OUT2" | grep -q 'no tests to run' && { echo "FAIL: safety frozen vacuous"; exit 1; }
 go test ./internal/harness/tier/ 2>&1 | grep -q '^ok\|^PASS' || { echo "FAIL: tier tests"; exit 1; }
-DIFF=$(git diff --stat internal/harness/frozen_guard.go internal/harness/safety/frozen_guard.go internal/harness/tier/tier.go internal/harness/scorer.go .moai/config/sections/harness.yaml)
-[ -z "$DIFF" ] || { echo "FAIL: FROZEN file modified: $DIFF"; exit 1; }
+git diff --stat internal/harness/frozen_guard.go internal/harness/safety/frozen_guard.go internal/harness/tier/tier.go internal/harness/scorer.go .moai/config/sections/harness.yaml   # expect: empty output; non-empty → "FAIL: FROZEN file modified", exit 1
 grep -q 'auto_apply: false' .moai/config/sections/harness.yaml || { echo "FAIL: auto_apply changed"; exit 1; }
 echo "AC-OC-011 PASS"
 ```
