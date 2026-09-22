@@ -1,7 +1,6 @@
 ---
 id: SPEC-FACTORY-MIXED-HOOK-001
 document: acceptance
-status: in-progress
 created: 2026-09-22
 updated: 2026-09-22
 author: manager-spec

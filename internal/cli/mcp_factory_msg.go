@@ -34,7 +34,11 @@ func factoryStore(req mcp.CallToolRequest) (*factorymsg.Store, error) {
 	if run == "" {
 		return nil, errors.New("run_id is required")
 	}
-	return factorymsg.Open(resolveProjectDir(), run)
+	root := resolveProjectDir()
+	if err := factorymsg.ValidateActiveRun(context.Background(), root, run); err != nil {
+		return nil, err
+	}
+	return factorymsg.Open(root, run)
 }
 func handleFactoryMsgSend(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 	s, e := factoryStore(req)

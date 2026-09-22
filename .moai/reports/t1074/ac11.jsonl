@@ -1,0 +1,9 @@
+{"Time":"2026-09-22T14:07:27.199918+09:00","Action":"start","Package":"github.com/modu-ai/moai-adk/internal/cli"}
+{"Time":"2026-09-22T14:07:27.765435+09:00","Action":"run","Package":"github.com/modu-ai/moai-adk/internal/cli","Test":"TestFactoryLiveCodexClaude"}
+{"Time":"2026-09-22T14:07:27.765513+09:00","Action":"output","Package":"github.com/modu-ai/moai-adk/internal/cli","Test":"TestFactoryLiveCodexClaude","Output":"=== RUN   TestFactoryLiveCodexClaude\n"}
+{"Time":"2026-09-22T14:07:44.388077+09:00","Action":"output","Package":"github.com/modu-ai/moai-adk/internal/cli","Test":"TestFactoryLiveCodexClaude","Output":"    factory_live_test.go:56: Codex owner fingerprint unavailable: state=indeterminate\n"}
+{"Time":"2026-09-22T14:07:44.635902+09:00","Action":"output","Package":"github.com/modu-ai/moai-adk/internal/cli","Test":"TestFactoryLiveCodexClaude","Output":"--- FAIL: TestFactoryLiveCodexClaude (16.87s)\n"}
+{"Time":"2026-09-22T14:07:44.635939+09:00","Action":"fail","Package":"github.com/modu-ai/moai-adk/internal/cli","Test":"TestFactoryLiveCodexClaude","Elapsed":16.87}
+{"Time":"2026-09-22T14:07:44.636052+09:00","Action":"output","Package":"github.com/modu-ai/moai-adk/internal/cli","Output":"FAIL\n"}
+{"Time":"2026-09-22T14:07:44.637311+09:00","Action":"output","Package":"github.com/modu-ai/moai-adk/internal/cli","Output":"FAIL\tgithub.com/modu-ai/moai-adk/internal/cli\t17.437s\n"}
+{"Time":"2026-09-22T14:07:44.63734+09:00","Action":"fail","Package":"github.com/modu-ai/moai-adk/internal/cli","Elapsed":17.437}

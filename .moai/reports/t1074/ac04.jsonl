@@ -1,0 +1,8 @@
+{"Time":"2026-09-22T14:15:46.113959+09:00","Action":"start","Package":"github.com/modu-ai/moai-adk/internal/factorymsg"}
+{"Time":"2026-09-22T14:15:46.223274+09:00","Action":"run","Package":"github.com/modu-ai/moai-adk/internal/factorymsg","Test":"TestFactoryEnvelopeIdempotencyAndStaleAck"}
+{"Time":"2026-09-22T14:15:46.223336+09:00","Action":"output","Package":"github.com/modu-ai/moai-adk/internal/factorymsg","Test":"TestFactoryEnvelopeIdempotencyAndStaleAck","Output":"=== RUN   TestFactoryEnvelopeIdempotencyAndStaleAck\n"}
+{"Time":"2026-09-22T14:15:46.311308+09:00","Action":"output","Package":"github.com/modu-ai/moai-adk/internal/factorymsg","Test":"TestFactoryEnvelopeIdempotencyAndStaleAck","Output":"--- PASS: TestFactoryEnvelopeIdempotencyAndStaleAck (0.09s)\n"}
+{"Time":"2026-09-22T14:15:46.311332+09:00","Action":"pass","Package":"github.com/modu-ai/moai-adk/internal/factorymsg","Test":"TestFactoryEnvelopeIdempotencyAndStaleAck","Elapsed":0.09}
+{"Time":"2026-09-22T14:15:46.31135+09:00","Action":"output","Package":"github.com/modu-ai/moai-adk/internal/factorymsg","Output":"PASS\n"}
+{"Time":"2026-09-22T14:15:46.311873+09:00","Action":"output","Package":"github.com/modu-ai/moai-adk/internal/factorymsg","Output":"ok  \tgithub.com/modu-ai/moai-adk/internal/factorymsg\t0.198s\n"}
+{"Time":"2026-09-22T14:15:46.311901+09:00","Action":"pass","Package":"github.com/modu-ai/moai-adk/internal/factorymsg","Elapsed":0.198}

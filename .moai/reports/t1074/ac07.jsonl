@@ -1,0 +1,16 @@
+{"Time":"2026-09-22T14:15:48.562674+09:00","Action":"start","Package":"github.com/modu-ai/moai-adk/internal/hook"}
+{"Time":"2026-09-22T14:15:48.562786+09:00","Action":"start","Package":"github.com/modu-ai/moai-adk/internal/codexadapter"}
+{"Time":"2026-09-22T14:15:48.938015+09:00","Action":"run","Package":"github.com/modu-ai/moai-adk/internal/hook","Test":"TestFactoryHookContextAndContinuationSafety"}
+{"Time":"2026-09-22T14:15:48.938084+09:00","Action":"output","Package":"github.com/modu-ai/moai-adk/internal/hook","Test":"TestFactoryHookContextAndContinuationSafety","Output":"=== RUN   TestFactoryHookContextAndContinuationSafety\n"}
+{"Time":"2026-09-22T14:15:49.012162+09:00","Action":"output","Package":"github.com/modu-ai/moai-adk/internal/codexadapter","Output":"testing: warning: no tests to run\n"}
+{"Time":"2026-09-22T14:15:49.012205+09:00","Action":"output","Package":"github.com/modu-ai/moai-adk/internal/codexadapter","Output":"PASS\n"}
+{"Time":"2026-09-22T14:15:49.012948+09:00","Action":"output","Package":"github.com/modu-ai/moai-adk/internal/codexadapter","Output":"ok  \tgithub.com/modu-ai/moai-adk/internal/codexadapter\t0.450s [no tests to run]\n"}
+{"Time":"2026-09-22T14:15:49.01297+09:00","Action":"pass","Package":"github.com/modu-ai/moai-adk/internal/codexadapter","Elapsed":0.45}
+{"Time":"2026-09-22T14:15:49.458216+09:00","Action":"output","Package":"github.com/modu-ai/moai-adk/internal/hook","Test":"TestFactoryHookContextAndContinuationSafety","Output":"2026/09/22 14:15:49 INFO stop requested session_id=receiver stop_hook_active=true\n"}
+{"Time":"2026-09-22T14:15:49.458401+09:00","Action":"output","Package":"github.com/modu-ai/moai-adk/internal/hook","Test":"TestFactoryHookContextAndContinuationSafety","Output":"2026/09/22 14:15:49 INFO stop requested session_id=receiver stop_hook_active=false\n"}
+{"Time":"2026-09-22T14:15:49.617703+09:00","Action":"output","Package":"github.com/modu-ai/moai-adk/internal/hook","Test":"TestFactoryHookContextAndContinuationSafety","Output":"2026/09/22 14:15:49 INFO stop requested session_id=receiver stop_hook_active=true\n"}
+{"Time":"2026-09-22T14:15:49.618769+09:00","Action":"output","Package":"github.com/modu-ai/moai-adk/internal/hook","Test":"TestFactoryHookContextAndContinuationSafety","Output":"--- PASS: TestFactoryHookContextAndContinuationSafety (0.68s)\n"}
+{"Time":"2026-09-22T14:15:49.618786+09:00","Action":"pass","Package":"github.com/modu-ai/moai-adk/internal/hook","Test":"TestFactoryHookContextAndContinuationSafety","Elapsed":0.68}
+{"Time":"2026-09-22T14:15:49.618864+09:00","Action":"output","Package":"github.com/modu-ai/moai-adk/internal/hook","Output":"PASS\n"}
+{"Time":"2026-09-22T14:15:49.620422+09:00","Action":"output","Package":"github.com/modu-ai/moai-adk/internal/hook","Output":"ok  \tgithub.com/modu-ai/moai-adk/internal/hook\t1.058s\n"}
+{"Time":"2026-09-22T14:15:49.620437+09:00","Action":"pass","Package":"github.com/modu-ai/moai-adk/internal/hook","Elapsed":1.058}

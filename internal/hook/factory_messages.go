@@ -49,6 +49,9 @@ func registerFactoryHookPeer(ctx context.Context, input *HookInput) string {
 	if state != homestate.ProcessIdentityLive || start == "" {
 		return "factory messaging degraded: process-start identity unavailable"
 	}
+	if err := factorymsg.ValidateActiveRun(ctx, root, runID); err != nil {
+		return "factory messaging degraded: " + err.Error()
+	}
 	s, err := factorymsg.Open(root, runID)
 	if err != nil {
 		return "factory messaging degraded: " + err.Error()
@@ -72,7 +75,7 @@ func factoryHookBatch(ctx context.Context, input *HookInput, event EventType) (s
 	if input.IsInterrupt || os.Getenv("MOAI_PERMISSION_WAITING") == "1" {
 		return "", false, "permission-or-interrupt"
 	}
-	s, err := factorymsg.OpenWithDeadline(root, runID, factoryHookInspectionDeadline)
+	s, err := factorymsg.OpenExistingWithDeadline(root, runID, factoryHookInspectionDeadline)
 	if err != nil {
 		return "", false, "degraded: " + err.Error()
 	}
@@ -80,6 +83,9 @@ func factoryHookBatch(ctx context.Context, input *HookInput, event EventType) (s
 	p, err := s.Peer(ctx, input.SessionID)
 	if err != nil {
 		return "", false, "unbound-session"
+	}
+	if err := s.CheckWritable(ctx); err != nil {
+		return "", false, "degraded: " + err.Error()
 	}
 	if _, err = s.SettleReceiptControls(ctx, p); err != nil {
 		return "", false, "degraded: " + err.Error()

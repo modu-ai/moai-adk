@@ -5,6 +5,8 @@ import (
 	"database/sql"
 	"fmt"
 	"os"
+	"path/filepath"
+	"sort"
 	"strings"
 	"testing"
 	"time"
@@ -18,6 +20,7 @@ func factoryHookFixture(t *testing.T) (string, *factorymsg.Store, factorymsg.Pee
 	t.Helper()
 	root := t.TempDir()
 	run := "run-hook"
+	recordActiveFactoryRun(t, root, run)
 	t.Setenv(config.EnvMoaiKanbanID, run)
 	t.Setenv(config.EnvMoaiFactoryWorker, "agent-1")
 	t.Setenv(config.EnvMoaiKanbanBackend, "claude")
@@ -41,6 +44,165 @@ func factoryHookFixture(t *testing.T) (string, *factorymsg.Store, factorymsg.Pee
 	}
 	in := &HookInput{SessionID: p.SessionUUID, ProjectDir: root, PermissionMode: PermissionModeAcceptEdits}
 	return root, s, from, p, in
+}
+
+func TestFactoryHookBenchmarkBudget(t *testing.T) {
+	if os.Getenv("MOAI_FACTORY_BENCH") != "1" {
+		t.Fatal("MOAI_FACTORY_BENCH=1 is required; an unmeasured benchmark criterion is a failure")
+	}
+	var emptySamples []time.Duration
+	var budgetFailures []string
+	repoRoot, err := filepath.Abs("../..")
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, sessions := range []int{1, 10} {
+		for _, queued := range []int{0, 16, 1000} {
+			root := repoRoot
+			run := fmt.Sprintf("bench-%d-%d", sessions, queued)
+			recordActiveFactoryRun(t, root, run)
+			t.Setenv(config.EnvMoaiKanbanID, run)
+			s, err := factorymsg.Open(root, run)
+			if err != nil {
+				t.Fatal(err)
+			}
+			sender := factorymsg.Peer{ProjectKey: homestate.ProjectKey(root), RunID: run, Backend: "codex", Role: "lead", Slot: "lead", SessionUUID: "sender", Generation: 1, PID: os.Getpid(), ProcessStart: "bench"}
+			if sender, err = s.RegisterPeer(context.Background(), sender); err != nil {
+				t.Fatal(err)
+			}
+			receivers := make([]factorymsg.Peer, sessions)
+			for i := range receivers {
+				receivers[i] = sender
+				receivers[i].Role, receivers[i].Slot, receivers[i].SessionUUID = "worker", fmt.Sprintf("agent-%d", i+1), fmt.Sprintf("receiver-%d", i+1)
+				if receivers[i], err = s.RegisterPeer(context.Background(), receivers[i]); err != nil {
+					t.Fatal(err)
+				}
+			}
+			writeStart := time.Now()
+			for i := 0; i < queued; i++ {
+				if _, err := s.Send(context.Background(), factorymsg.SendRequest{From: sender, To: receivers[i%sessions], Kind: factorymsg.KindStatusRequest, IdempotencyKey: fmt.Sprintf("m-%d", i), TaskRef: "t1074", CorrelationID: fmt.Sprintf("c-%d", i), TTL: time.Minute, Payload: []byte("x")}); err != nil {
+					t.Fatal(err)
+				}
+			}
+			writeElapsed := time.Since(writeStart)
+			in := &HookInput{SessionID: receivers[0].SessionUUID, ProjectDir: root, PermissionMode: PermissionModeAcceptEdits}
+			coldStart := time.Now()
+			coldCtx, _, coldState := factoryHookBatch(context.Background(), in, EventUserPromptSubmit)
+			cold := time.Since(coldStart)
+			warmStart := time.Now()
+			warmCtx, _, warmState := factoryHookBatch(context.Background(), in, EventUserPromptSubmit)
+			warm := time.Since(warmStart)
+			if cold > factoryHookInspectionDeadline || warm > factoryHookInspectionDeadline {
+				budgetFailures = append(budgetFailures, fmt.Sprintf("inspection deadline exceeded sessions=%d queue=%d cold=%s warm=%s", sessions, queued, cold, warm))
+			}
+			if len(coldCtx) > factoryHookContextLimit || len(warmCtx) > factoryHookContextLimit {
+				t.Fatal("injected byte cap exceeded")
+			}
+			t.Logf("matrix sessions=%d queue=%d write=%s cold_read_process=%s warm_read_process=%s injected_bytes=%d/%d states=%s/%s", sessions, queued, writeElapsed, cold, warm, len(coldCtx), len(warmCtx), coldState, warmState)
+			if queued == 0 && sessions == 1 {
+				emptySamples = append(emptySamples, cold, warm)
+				for i := 0; i < 23; i++ {
+					started := time.Now()
+					factoryHookBatch(context.Background(), in, EventUserPromptSubmit)
+					emptySamples = append(emptySamples, time.Since(started))
+				}
+			}
+			_ = s.Close()
+		}
+	}
+	probeRoot := repoRoot
+	probeRun := "bench-phase"
+	recordActiveFactoryRun(t, probeRoot, probeRun)
+	probeStore, err := factorymsg.Open(probeRoot, probeRun)
+	if err != nil {
+		t.Fatal(err)
+	}
+	probePeer := factorymsg.Peer{ProjectKey: homestate.ProjectKey(probeRoot), RunID: probeRun, Backend: "claude", Role: "worker", Slot: "agent-1", SessionUUID: "probe", Generation: 1, PID: os.Getpid(), ProcessStart: "bench"}
+	if probePeer, err = probeStore.RegisterPeer(context.Background(), probePeer); err != nil {
+		t.Fatal(err)
+	}
+	_ = probeStore.Close()
+	phase := time.Now()
+	opened, err := factorymsg.OpenExistingWithDeadline(probeRoot, probeRun, factoryHookInspectionDeadline)
+	openElapsed := time.Since(phase)
+	if err != nil {
+		t.Fatal(err)
+	}
+	phase = time.Now()
+	got, err := opened.Peer(context.Background(), probePeer.SessionUUID)
+	peerElapsed := time.Since(phase)
+	if err != nil {
+		t.Fatal(err)
+	}
+	phase = time.Now()
+	_, err = opened.SettleReceiptControls(context.Background(), got)
+	settleElapsed := time.Since(phase)
+	if err != nil {
+		t.Fatal(err)
+	}
+	phase = time.Now()
+	_, err = opened.Claim(context.Background(), got, factorymsg.MaxBatch, 30*time.Second)
+	claimElapsed := time.Since(phase)
+	if err != nil {
+		t.Fatal(err)
+	}
+	phase = time.Now()
+	_ = opened.Close()
+	closeElapsed := time.Since(phase)
+	t.Logf("phase open=%s peer=%s settle=%s claim=%s close=%s", openElapsed, peerElapsed, settleElapsed, claimElapsed, closeElapsed)
+	sort.Slice(emptySamples, func(i, j int) bool { return emptySamples[i] < emptySamples[j] })
+	p50 := emptySamples[len(emptySamples)/2]
+	p95 := emptySamples[(len(emptySamples)*95-1)/100]
+	t.Logf("empty full-hook p50=%s p95=%s samples=%d", p50, p95, len(emptySamples))
+	if p95 > 50*time.Millisecond {
+		budgetFailures = append(budgetFailures, "empty p95 budget exceeded: "+p95.String())
+	}
+	root := repoRoot
+	run := "bench-contention"
+	recordActiveFactoryRun(t, root, run)
+	t.Setenv(config.EnvMoaiKanbanID, run)
+	s, err := factorymsg.Open(root, run)
+	if err != nil {
+		t.Fatal(err)
+	}
+	p := factorymsg.Peer{ProjectKey: homestate.ProjectKey(root), RunID: run, Backend: "claude", Role: "worker", Slot: "agent-1", SessionUUID: "receiver", Generation: 1, PID: os.Getpid(), ProcessStart: "bench"}
+	if p, err = s.RegisterPeer(context.Background(), p); err != nil {
+		t.Fatal(err)
+	}
+	defer s.Close()
+	path, _ := factorymsg.BrokerPath(root, run)
+	locker, err := sql.Open("sqlite", "file:"+path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer locker.Close()
+	_, _ = locker.Exec(`PRAGMA busy_timeout=1`)
+	if _, err = locker.Exec(`BEGIN IMMEDIATE`); err != nil {
+		t.Fatal(err)
+	}
+	started := time.Now()
+	_, cont, state := factoryHookBatch(context.Background(), &HookInput{SessionID: p.SessionUUID, ProjectDir: root}, EventStop)
+	elapsed := time.Since(started)
+	_, _ = locker.Exec(`ROLLBACK`)
+	t.Logf("contention full-hook elapsed=%s state=%s", elapsed, state)
+	if cont || !strings.HasPrefix(state, "degraded:") || elapsed > factoryHookInspectionDeadline {
+		budgetFailures = append(budgetFailures, fmt.Sprintf("contention deadline/capability mismatch: continue=%v state=%s elapsed=%s", cont, state, elapsed))
+	}
+	if len(budgetFailures) > 0 {
+		t.Fatalf("benchmark budget failures: %s", strings.Join(budgetFailures, "; "))
+	}
+}
+
+func recordActiveFactoryRun(t *testing.T, root, run string) {
+	t.Helper()
+	db, err := homestate.OpenFactory(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer db.Close()
+	if err := db.RecordRun(context.Background(), homestate.FactoryRun{RunID: run, LeadSessionID: "lead", Backend: "test", ManifestJSON: "{}"}); err != nil {
+		t.Fatal(err)
+	}
 }
 
 func TestFactoryHookContextAndContinuationSafety(t *testing.T) {

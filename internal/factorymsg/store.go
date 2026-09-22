@@ -3,6 +3,7 @@
 package factorymsg
 
 import (
+	"bytes"
 	"context"
 	"crypto/rand"
 	"database/sql"
@@ -89,8 +90,78 @@ func BrokerPath(projectRoot, runID string) (string, error) {
 	return filepath.Join(dir, "messages", runID, "broker.db"), nil
 }
 
+func projectKeyFromBrokerPath(path string) string {
+	return filepath.Base(filepath.Dir(filepath.Dir(filepath.Dir(filepath.Dir(path)))))
+}
+
 func Open(projectRoot, runID string) (*Store, error) {
 	return OpenWithDeadline(projectRoot, runID, 5*time.Second)
+}
+
+// ValidateActiveRun rejects stale or invented run identifiers without
+// initializing registry state.
+func ValidateActiveRun(ctx context.Context, projectRoot, runID string) error {
+	if !safeID.MatchString(runID) {
+		return errors.New("invalid factory run id")
+	}
+	path, err := homestate.FactoryDBPath(projectRoot)
+	if err != nil {
+		return err
+	}
+	if _, err := os.Stat(path); err != nil {
+		return errors.New("NO_ACTIVE_FACTORY")
+	}
+	db, err := sql.Open("sqlite", "file:"+filepath.ToSlash(path)+"?_pragma=busy_timeout(100)")
+	if err != nil {
+		return err
+	}
+	defer db.Close()
+	var status string
+	if err := db.QueryRowContext(ctx, `SELECT status FROM runs WHERE run_id=?`, runID).Scan(&status); err != nil || status != "active" {
+		return errors.New("NO_ACTIVE_FACTORY")
+	}
+	return nil
+}
+
+// OpenExistingWithDeadline opens an already-initialized broker on the hook
+// hot path without repeating WAL/schema setup on every turn boundary.
+func OpenExistingWithDeadline(projectRoot, runID string, deadline time.Duration) (*Store, error) {
+	path, err := BrokerPath(projectRoot, runID)
+	if err != nil {
+		return nil, err
+	}
+	if _, err := os.Stat(path); err != nil {
+		return nil, err
+	}
+	if deadline <= 0 {
+		return nil, errors.New("factory broker deadline must be positive")
+	}
+	busyMillis := deadline.Milliseconds() / 10
+	if busyMillis < 1 {
+		busyMillis = 1
+	}
+	v := url.Values{}
+	v.Add("_pragma", fmt.Sprintf("busy_timeout(%d)", busyMillis))
+	v.Add("_txlock", "immediate")
+	db, err := sql.Open("sqlite", (&url.URL{Scheme: "file", Path: filepath.ToSlash(path), RawQuery: v.Encode()}).String())
+	if err != nil {
+		return nil, err
+	}
+	db.SetMaxOpenConns(1)
+	s := &Store{db: db, root: projectRoot, runID: runID, projectKey: projectKeyFromBrokerPath(path), now: time.Now, maxPending: MaxPending, maxDead: MaxDeadLetters}
+	s.ownerCurrent = func(pid int, start string) bool {
+		fp, state := homestate.ProbeProcessIdentity(pid)
+		return state == homestate.ProcessIdentityLive && fp == start
+	}
+	s.recordReject = s.recordDead
+	ctx, cancel := context.WithTimeout(context.Background(), deadline)
+	defer cancel()
+	var count int
+	if err := db.QueryRowContext(ctx, `SELECT count(*) FROM peers`).Scan(&count); err != nil {
+		_ = db.Close()
+		return nil, err
+	}
+	return s, nil
 }
 
 // OpenWithDeadline bounds SQLite initialization and lock wait for hook paths.
@@ -122,7 +193,7 @@ func OpenWithDeadline(projectRoot, runID string, deadline time.Duration) (*Store
 		return nil, err
 	}
 	db.SetMaxOpenConns(1)
-	s := &Store{db: db, root: projectRoot, runID: runID, projectKey: homestate.ProjectKey(projectRoot), now: time.Now, maxPending: MaxPending, maxDead: MaxDeadLetters}
+	s := &Store{db: db, root: projectRoot, runID: runID, projectKey: projectKeyFromBrokerPath(path), now: time.Now, maxPending: MaxPending, maxDead: MaxDeadLetters}
 	s.ownerCurrent = func(pid int, start string) bool {
 		fp, state := homestate.ProbeProcessIdentity(pid)
 		return state == homestate.ProcessIdentityLive && fp == start
@@ -245,7 +316,16 @@ func (s *Store) RegisterPeer(ctx context.Context, p Peer) (Peer, error) {
 	err = tx.QueryRowContext(ctx, `SELECT session_uuid,generation,pid,process_start FROM peers WHERE slot=?`, p.Slot).Scan(&oldSession, &oldGen, &oldPID, &oldStart)
 	if err == nil {
 		if oldSession == p.SessionUUID {
-			p.Generation = oldGen
+			if oldPID != p.PID || oldStart != p.ProcessStart {
+				if s.ownerCurrent(oldPID, oldStart) {
+					return Peer{}, errors.New("factory session UUID has a live owner")
+				}
+				if p.Generation <= oldGen {
+					p.Generation = oldGen + 1
+				}
+			} else {
+				p.Generation = oldGen
+			}
 		} else {
 			if (oldPID != p.PID || oldStart != p.ProcessStart) && s.ownerCurrent(oldPID, oldStart) {
 				return Peer{}, errors.New("factory logical lane has a live owner")
@@ -303,6 +383,21 @@ func (s *Store) PeerByOwner(ctx context.Context, pid int, processStart string) (
 		return Peer{}, err
 	}
 	return p, nil
+}
+
+// CheckWritable performs a rollback-only reservation so hook inspection can
+// report lock contention truthfully without mutating queue state.
+func (s *Store) CheckWritable(ctx context.Context) error {
+	conn, err := s.db.Conn(ctx)
+	if err != nil {
+		return err
+	}
+	defer conn.Close()
+	if _, err := conn.ExecContext(ctx, `BEGIN IMMEDIATE`); err != nil {
+		return err
+	}
+	_, err = conn.ExecContext(ctx, `ROLLBACK`)
+	return err
 }
 
 func validKind(k string) bool {
@@ -384,7 +479,11 @@ func (s *Store) Send(ctx context.Context, r SendRequest) (Envelope, error) {
 	_, err := s.db.ExecContext(ctx, `INSERT INTO messages(id,schema_version,project_key,run_id,sender_session,sender_generation,recipient_session,recipient_generation,kind,idem_key,task_ref,correlation_id,created_at,expires_at,payload,state) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,'pending')`, env.ID, SchemaVersion, s.projectKey, s.runID, env.SenderSession, env.SenderGeneration, env.RecipientSession, env.RecipientGeneration, env.Kind, r.IdempotencyKey, env.TaskRef, env.CorrelationID, env.CreatedAt.Format(time.RFC3339Nano), env.ExpiresAt.Format(time.RFC3339Nano), r.Payload)
 	if err != nil && strings.Contains(err.Error(), "UNIQUE") {
 		var created, expires string
-		err = s.db.QueryRowContext(ctx, `SELECT id,schema_version,project_key,run_id,kind,sender_generation,recipient_session,recipient_generation,task_ref,correlation_id,created_at,expires_at FROM messages WHERE sender_session=? AND idem_key=?`, env.SenderSession, r.IdempotencyKey).Scan(&env.ID, &env.SchemaVersion, &env.ProjectKey, &env.RunID, &env.Kind, &env.SenderGeneration, &env.RecipientSession, &env.RecipientGeneration, &env.TaskRef, &env.CorrelationID, &created, &expires)
+		var payload []byte
+		err = s.db.QueryRowContext(ctx, `SELECT id,schema_version,project_key,run_id,kind,sender_generation,recipient_session,recipient_generation,task_ref,correlation_id,created_at,expires_at,payload FROM messages WHERE sender_session=? AND idem_key=?`, env.SenderSession, r.IdempotencyKey).Scan(&env.ID, &env.SchemaVersion, &env.ProjectKey, &env.RunID, &env.Kind, &env.SenderGeneration, &env.RecipientSession, &env.RecipientGeneration, &env.TaskRef, &env.CorrelationID, &created, &expires, &payload)
+		if err == nil && (env.Kind != r.Kind || env.RecipientSession != r.To.SessionUUID || env.RecipientGeneration != r.To.Generation || env.TaskRef != r.TaskRef || env.CorrelationID != r.CorrelationID || !bytes.Equal(payload, r.Payload)) {
+			return Envelope{}, errors.New("idempotency key collision with different request")
+		}
 		env.CreatedAt, _ = time.Parse(time.RFC3339Nano, created)
 		env.ExpiresAt, _ = time.Parse(time.RFC3339Nano, expires)
 		return env, err
@@ -428,6 +527,13 @@ func (s *Store) Claim(ctx context.Context, p Peer, limit int, lease time.Duratio
 		limit = MaxBatch
 	}
 	now := s.now().UTC()
+	var eligible int
+	if err := s.db.QueryRowContext(ctx, `SELECT count(*) FROM messages WHERE recipient_session=? AND recipient_generation=? AND (state='pending' OR (state='claimed' AND (claim_expires_at<=? OR expires_at<=?)))`, p.SessionUUID, p.Generation, now.Format(time.RFC3339Nano), now.Format(time.RFC3339Nano)).Scan(&eligible); err != nil {
+		return nil, err
+	}
+	if eligible == 0 {
+		return nil, nil
+	}
 	tx, err := s.db.BeginTx(ctx, nil)
 	if err != nil {
 		return nil, err
@@ -520,6 +626,13 @@ func (s *Store) Receipt(ctx context.Context, p Peer, id, token string) error {
 func (s *Store) SettleReceiptControls(ctx context.Context, p Peer) (int, error) {
 	if err := s.verifyPeer(ctx, p); err != nil {
 		return 0, err
+	}
+	var pending int
+	if err := s.db.QueryRowContext(ctx, `SELECT count(*) FROM messages WHERE recipient_session=? AND recipient_generation=? AND kind=? AND state='pending'`, p.SessionUUID, p.Generation, KindReceipt).Scan(&pending); err != nil {
+		return 0, err
+	}
+	if pending == 0 {
+		return 0, nil
 	}
 	now := s.now().UTC().Format(time.RFC3339Nano)
 	r, err := s.db.ExecContext(ctx, `UPDATE messages SET state='acknowledged',disposition='accepted',acknowledged_at=? WHERE recipient_session=? AND recipient_generation=? AND kind=? AND state='pending'`, now, p.SessionUUID, p.Generation, KindReceipt)

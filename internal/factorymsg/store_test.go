@@ -170,6 +170,12 @@ func TestFactorySessionGenerationOwnership(t *testing.T) {
 	if _, err := store.RegisterPeer(context.Background(), takeover); err == nil {
 		t.Fatal("live logical lane owner was displaced")
 	}
+	sameUUIDHijack := current
+	sameUUIDHijack.PID++
+	sameUUIDHijack.ProcessStart = "foreign-start"
+	if _, err := store.RegisterPeer(context.Background(), sameUUIDHijack); err == nil {
+		t.Fatal("live session UUID was rebound by another process")
+	}
 	if _, err := store.Claim(context.Background(), p, 1, time.Second); err == nil {
 		t.Fatal("stale pre-rebind endpoint claimed")
 	}
@@ -202,6 +208,20 @@ func TestFactoryEnvelopeIdempotencyAndStaleAck(t *testing.T) {
 	}
 	if a.ID != b.ID {
 		t.Fatal("retry was not deduplicated")
+	}
+	collision := req
+	collision.Payload = []byte("different")
+	if _, err := store.Send(context.Background(), collision); err == nil {
+		t.Fatal("idempotency collision with different payload accepted")
+	}
+	collision = req
+	collision.To = from
+	if _, err := store.Send(context.Background(), collision); err == nil {
+		t.Fatal("idempotency collision with different recipient accepted")
+	}
+	statusAfterCollision, _ := store.Status(context.Background())
+	if statusAfterCollision.Pending != 1 {
+		t.Fatalf("idempotency collision mutated queue: %+v", statusAfterCollision)
 	}
 	if a.SchemaVersion != SchemaVersion || a.ProjectKey != store.projectKey || a.RunID != store.runID || a.TaskRef == "" || a.CorrelationID == "" || b.ProjectKey != a.ProjectKey || b.RunID != a.RunID || b.RecipientSession != a.RecipientSession {
 		t.Fatalf("closed envelope provenance missing: first=%+v retry=%+v", a, b)
@@ -388,6 +408,20 @@ func TestFactoryBrokerTrustBoundaries(t *testing.T) {
 	before, _ := store.Status(context.Background())
 	if _, err := BrokerPath(store.root, "../escape"); err == nil {
 		t.Fatal("path traversal accepted")
+	}
+	registry, err := homestate.OpenFactory(store.root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := registry.RecordRun(context.Background(), homestate.FactoryRun{RunID: store.runID, LeadSessionID: "lead", Backend: "test", ManifestJSON: "{}"}); err != nil {
+		t.Fatal(err)
+	}
+	_ = registry.Close()
+	if err := ValidateActiveRun(context.Background(), store.root, store.runID); err != nil {
+		t.Fatalf("active run rejected: %v", err)
+	}
+	if err := ValidateActiveRun(context.Background(), store.root, "invented"); err == nil {
+		t.Fatal("invented safe run accepted")
 	}
 	bad := from
 	bad.RunID = "other"

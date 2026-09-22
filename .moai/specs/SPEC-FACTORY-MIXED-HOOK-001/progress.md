@@ -54,8 +54,10 @@ module: "internal/factorymsg"
 
 - M1 committed as `cb099897a` (`feat(t1074): M1 bind canonical factory runs and peers`).
 - Observed scoped tests at that commit: `internal/cli` → `ok ... 4.491s`; `internal/factorymsg` → `ok ... 1.310s`.
-- M2/M3 changes are in progress and uncommitted; their earlier scoped package passes are provisional and must be rerun after the design-boundary edit.
-- Live criteria and benchmark remain `NOT_RUN`.
+- M2/M3 committed as `6bde8412c` (`feat(t1074): deliver durable mixed factory messaging`).
+- AC-FMH-001 through AC-FMH-009 exact JSON/JQ gates passed; logs are `../../reports/t1074/ac01.jsonl` through `ac09.jsonl`.
+- M4 live harnesses executed. AC-FMH-010 through AC-FMH-012 failed because the local process-start probe was `indeterminate`; AC-FMH-013 and AC-FMH-014 failed because the Claude subscription OAuth token was revoked. These rows remain FAIL, not skipped or passed.
+- AC-FMH-015 executed the full hook matrix. On the final real-worktree run the fixed empty-inbox p95 target failed (`370.799917ms`), and every matrix cell exceeded the 200ms inspection target. The threshold was not raised.
 
 ## §D.1 Codex cwd redesign decision
 
@@ -67,4 +69,38 @@ module: "internal/factorymsg"
 ## §E Audit-ready signals
 
 - Plan-phase: audit-ready; independent `PASS` at score `0.94`.
-- Run-phase: M1 complete; M2/M3/M4 pending, followed by independent sync audit.
+- Run-phase: M1/M2/M3 implementation complete; M4 harness implemented and executed with FAIL evidence. Independent sync audit remains pending.
+
+## §E.2 Run-phase evidence
+
+| Criterion / invariant | Actual output | Status |
+|---|---|---|
+| AC-FMH-001..009 | Exact named Go JSON gates each produced final `true`; `ac01.jsonl`..`ac09.jsonl`. | PASS |
+| AC-FMH-010 | `Codex owner fingerprint unavailable: state=indeterminate`. | FAIL |
+| AC-FMH-011 | `Codex owner fingerprint unavailable: state=indeterminate`. | FAIL |
+| AC-FMH-012 | `Codex owner fingerprint unavailable: state=indeterminate`. | FAIL |
+| AC-FMH-013 | Claude CLI reached subscription transport, then returned HTTP 401 revoked OAuth. | FAIL |
+| AC-FMH-014 | Pending-until-next-turn state was created; live Claude boundary turn returned HTTP 401 revoked OAuth before receipt. | FAIL |
+| AC-FMH-015 | Matrix executed for 0/16/1000 queues and 1/10 sessions; empty p95 `370.799917ms` exceeded 50ms and every real-worktree cell exceeded 200ms. | FAIL |
+| Canonical/legacy isolation | Actual linked-worktree fixture converged; foreign run/project list/claim/read/receipt failed; legacy sentinel bytes unchanged. | PASS |
+| Template parity | Project and embedded Stop hook entries are synchronous and parity test passed. | PASS |
+| Repository-wide verdict | Not run; integration-branch CI owns this verdict. A broad local package attempt hit pre-existing live/environment-sensitive failures and `internal/hook` timeout. | PENDING |
+
+## §E.3 Run-phase Audit-Ready Signal
+
+```yaml
+run_complete_at: null
+run_commit_sha: pending-m4-evidence-commit
+run_status: fail
+ac_pass_count: 9
+ac_fail_count: 6
+preserve_list_post_run_count: 1
+l44_pre_commit_fetch: not-run
+l44_post_push_fetch: not-applicable-no-push
+new_warnings_or_lints_introduced: 0
+cross_platform_build:
+  status: not-run
+  reason: "M4 live blockers and benchmark regression leave the run incomplete"
+total_run_phase_files: 25
+m1_to_mN_commit_strategy: "M1 cb099897a; M2/M3 6bde8412c; M4 harness/evidence pending"
+```
