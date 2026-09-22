@@ -92,7 +92,7 @@ module: "internal/factorymsg"
 
 ```yaml
 run_complete_at: null
-run_commit_sha: pending-m4-repair-commit
+run_commit_sha: afcee4757
 run_status: fail
 ac_pass_count: 11
 ac_fail_count: 4
@@ -104,5 +104,5 @@ cross_platform_build:
   status: not-run
   reason: "M4 live blockers and benchmark regression leave the run incomplete"
 total_run_phase_files: 28
-m1_to_mN_commit_strategy: "M1 cb099897a; M2/M3 6bde8412c; M4 harness 45285bf1b; M4 repair/evidence pending"
+m1_to_mN_commit_strategy: "M1 cb099897a; M2/M3 6bde8412c; M4 harness 45285bf1b; M4 repair/evidence afcee4757"
 ```
