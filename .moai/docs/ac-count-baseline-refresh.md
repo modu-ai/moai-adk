@@ -50,7 +50,7 @@ MOAI_AC_BASELINE_REGENERATE=1 go test ./internal/spec -run TestACCounterBaseline
 
 ## 5. 사고 기록 — 이 절차가 없어서 반복된 실패 클래스
 
-- **t348** (`23df21c9e`): 게이트와 최초 스냅샷 생성. 재생성 경로가 스크래치 스크립트(`run-scratch/gen-baseline.sh`)였다 — 추적되지 않는 경로.
+- **t348** (`23df21c9e`): 게이트와 최초 스냅샷 생성. 재생성 경로가 git 추적 밖의 임시 스크래치 스크립트였다 — 저장소에 커밋되지 않은 경로.
 - **t573** (`d9b472409` → 수리 `5f546af2c`): corpus 기준을 재작성하고 cascade 를 빠뜨렸다. **develop tip 자체에서 게이트가 빨개졌고**, 수리는 손수 재생성으로 했는데 그때 쓴 스크래치 스크립트는 유실됐다.
 - **t1068 의 발단** (`20cdeb6bd`): superseded-split 이 `acceptance.md` 를 지우고 cascade 를 빠뜨렸다 — 같은 클래스 두 번째. 방치 비용의 실측: 부재 행은 68(primary@main, 09-21) → 75(t1058 병합 트리, 09-21) → 83(cd99336bf, 09-22) → 84(동일 트리, 본 SPEC plan 산출물이 집단에 편입된 직후) → 91(본 SPEC 실행 트리, 09-22)로 단조 증가했고, 줄일 수 있는 유일한 행위는 재생성뿐이다. 게이트가 benign 한 이유로 빨간 상태인 동안, 게이트가 잡으려는 실제 회귀(count/halt/vanish)는 구별 불가능한 빨간불로 묻힌다.
 
