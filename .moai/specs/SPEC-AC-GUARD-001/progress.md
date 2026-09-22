@@ -61,4 +61,19 @@ ac_fail_count: 0
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase>_
+sync_status: complete
+sync_complete_at: 2026-09-22
+sync_commit_sha: pending-backfill-sync
+sync_commits: (single sync commit — 3-phase close: §E.4 signal + spec.md frontmatter `in-progress → completed` + CHANGELOG [Unreleased] entry)
+changelog_entry_position: CHANGELOG.md [Unreleased] → Added, first entry
+mx_tag_check: not-applicable — changed files are markdown/docs + SPEC corpus; no Go source, no exported functions, no code annotations required
+frontmatter_status_transitions:
+  spec_md: "in-progress → completed"
+  updated_field: "2026-09-22 (already current — refreshed in place)"
+  plan_acceptance_progress_frontmatter: "none present / status-axis stateless per spec-frontmatter-schema.md § Artifact Statelessness"
+docs_surface_changes:
+  changelog: "one [Unreleased] Added entry (user-visible surface: worktree-integration.md t287 section convention + boundary map + 52-file acceptance.md corpus rewrite)"
+  readme: skipped — no user-surface-visible change (internal doctrine + SPEC corpus only)
+  docs_site: skipped — same reason as README
+canary_compliance_check:
+  remote_bound_paths_cited: "none — `.moai/reports/t1067/` census paths are local-only (operator directive 2026-09-14) and are NOT cited in CHANGELOG or any remote-bound file; the t287 section's census cite lives in the C1 local copy only, not the C2 mirror"
