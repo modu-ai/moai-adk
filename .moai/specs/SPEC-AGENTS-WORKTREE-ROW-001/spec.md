@@ -2,7 +2,7 @@
 id: SPEC-AGENTS-WORKTREE-ROW-001
 title: "register the worktree entry capability in the cross-harness contract"
 version: "0.1.0"
-status: draft
+status: in-progress
 created: 2026-09-22
 updated: 2026-09-22
 author: manager-spec
