@@ -209,11 +209,14 @@ func TestCompletionPredicateInputsCarryNoJevSymbol(t *testing.T) {
 		}
 	}
 
-	control, err := os.ReadFile("../../internal/cli/jev_skill_suggest.go")
+	// SPEC-JEV-GUARD-001 (t1083) withdrew jev_skill_suggest.go, the former
+	// positive control; mcp_jev.go is the live MCP wrapper that still imports
+	// internal/jev, so the control keeps proving the scan fires.
+	control, err := os.ReadFile("../../internal/cli/mcp_jev.go")
 	if err != nil {
 		t.Fatalf("read positive control: %v", err)
 	}
 	if !strings.Contains(string(control), "internal/jev") {
-		t.Fatal("positive control failed: jev_skill_suggest.go no longer imports internal/jev, so the zero-result above establishes nothing")
+		t.Fatal("positive control failed: mcp_jev.go no longer imports internal/jev, so the zero-result above establishes nothing")
 	}
 }
