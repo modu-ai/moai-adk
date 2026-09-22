@@ -32,7 +32,7 @@ _<pending plan-audit>_ — plan-phase 산출물 4종(spec.md / plan.md / accepta
 
 ```yaml
 run_complete_at: 2026-09-22
-run_commit_sha: pending-backfill-run   # backfilled after the M2-M4 record commit lands
+run_commit_sha: be3d4131d   # backfilled after the M2-M4 record commit landed (D3 backfill window)
 run_status: complete
 ac_pass_count: 6
 ac_fail_count: 0
