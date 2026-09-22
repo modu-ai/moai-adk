@@ -34,6 +34,9 @@ const (
 // records what was displayed, and a display-only signal never becomes a
 // completion-predicate element or a piece of the landed-ancestry or
 // authoritative-readback evidence the binding fields carry.
+//
+// @MX:NOTE: [AUTO] deliberately absent from validateGovernanceBinding — the binding fields decide, the auxiliary item only records; the integrity digest still covers it so a receipt cannot gain or lose a recorded signal silently.
+// @MX:SPEC: SPEC-JEV-GOAL-DIST-001
 type AuxiliarySignal struct {
 	QuestionID  string  `json:"question_id"`
 	Kind        string  `json:"kind"`

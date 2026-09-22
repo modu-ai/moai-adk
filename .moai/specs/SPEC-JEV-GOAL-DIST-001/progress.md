@@ -28,9 +28,80 @@ No open question is owned by this SPEC. The chain questions this SPEC records ca
 
 ### Milestone evidence
 
+Every row below was measured in this worktree against the re-pinned baseline `c07aa8daa` (or the commit named in the row); commands and verbatim outputs are abbreviated to their deciding lines, with the full runs in the cited test names.
+
+**M7a — seat (i) disposition + regression proof (commit `1470c5fec`).**
+
+- AC-JEVG-001 persisted shape: `go test ./internal/cli/ -run TestMissionBlockedQuestionPersistedShapeUnchanged` → `PASS` (state=blocked, last_blocker, contract lineage intact, mode 0600, and no `question`/`rout`/`classif`/`answer` key at any JSON depth). Diff method: `git diff c07aa8daa -- internal/mission/supervisor.go internal/mission/auto_state.go internal/cli/goal.go internal/cli/state.go | wc -l` → `0`.
+- AC-JEVG-002: `go test ./internal/cli/ -run TestGoalLoopCarriesNoUserQuestionSurface` → `PASS` (loop files carry zero `AskUserQuestion` references outside comments; positive control `internal/mission/supervisor.go` fires).
+- Observed failure (guard verification, `verification-completeness.md` §1.1): mutant `StateBlocked` → `StateRunning` in `persistMissionBlock` flipped the shape test red — `--- FAIL: TestMissionBlockedQuestionPersistedShapeUnchanged ... persisted state = running, want "blocked"` — then reverted to green.
+- Seat-(i) not built: the only Go path holding lane questions still reads `blocker-*.json` (`internal/cli/state.go` `runShowBlocker`); no host path appeared in the tree (no re-plan trigger). N2 remains OPEN and unowned; CONSUMERS' recorded state not amended.
+
+**M7b — Jev Noul as a separate receipt item (commit `6870aa11d`).**
+
+- RED (verbatim, pre-GREEN): `internal/mission/governance_receipt_jev_test.go:73:32: undefined: AuxiliarySignal` (+9 more compile errors) — `FAIL github.com/modu-ai/moai-adk/internal/mission [build failed]`.
+- GREEN: `AuxiliarySignal{QuestionID, Kind, Noul, Probability}` on `GovernanceReceipt.AuxiliarySignals` (`omitempty`); deliberately absent from `validateGovernanceBinding`; `canonicalGovernanceReceipt` deep-copies it so the integrity digest covers what the governor was shown.
+- AC-JEVG-003: `go test ./internal/mission/ -run TestGovernanceReceiptRecordsJevNoul` → `PASS` (separate item round-trips, binding fields unchanged, file mode 0600). Backward compatibility: `TestGovernanceReceiptWithoutAuxiliaryItemKeepsPreSpecShape` → `PASS` (no `auxiliary_signals` key when none supplied, so pre-SPEC digests still validate).
+- AC-JEVG-004: `git diff c07aa8daa --stat` over `.claude/agents/moai/mission-governor.md` and its template mirror → `0` lines on both, and the two copies byte-identical (`cmp` clean). Governor output shape untouched.
+- AC-JEVG-005: `TestCompletionPredicateInputsCarryNoJevSymbol` → `PASS` (enumerated binding-field sweep asserted non-vacuous; `internal/jev` absent from the contract/receipt writers; positive control `jev_skill_suggest.go` fires).
+
+**M8a — gate-inert MCP wrapper (commit `65461f10d`).**
+
+- RED (verbatim, pre-GREEN, three cycles): (1) `undefined: newJevAskClient` / `undefined: handleJevAsk` — build failure; (2) `TestJevCallPath_HasExactlyTheDeclaredConsumers`: `internal/cli files outside the declared consumer set import internal/jev: [mcp_jev.go]`; (3) `moai-mcp-tools.md says "30" tools exposed; the registered set holds 31`.
+- GREEN: `internal/cli/mcp_jev.go` — `jev_ask` wraps `jev.Client.Ask` only; no transport code in the wrapper (REQ-JEVG-006); the gate read is FIRST and short-circuits: gate off → zero client constructions (counted via the `newJevAskClient` seam), no network call, structured `gated_unavailable` result.
+- AC-JEVG-013: `TestJevAskGateOffReportsGatedUnavailableAndConstructsNothing` → `PASS` (`constructed == 0`, `status == gated_unavailable`, not an error). Gate-on happy path (`TestJevAskGateOnDelegatesToJevClientAndMapsAnswers`, local httptest endpoint) and the no-credential typed absence both `PASS`.
+- Guard reconciliation (B2 disposition): `TestJevCallPath_HasExactlyTheDeclaredConsumers` allowlist **EXTENDED** with `mcp_jev.go` cited to this SPEC's M8a — the extension its own comment declares as the sanctioned arrival path.
+- AC-JEVG-007: `TestMCPToolCatalogueDocsStayMirrorIdentical` + `TestMCPToolCatalogueFiguresMatchRegistry` → `PASS` — both copies of `moai-mcp-tools.md` byte-identical (and the catalogue companion likewise), all four stub figures (31 total; 27 of the 31) and every companion count figure equal to `len(MoaiMCPToolNames())` = 31, family arithmetic derived from the registry (31 − 4 session-messaging = 27). Catalog size pin updated 30 → 31 per that test's own instruction. Project-root doc test unaffected: `jev_ask` declares no `project_root` input.
+- Web console: `internal/web/assets/i18n.js` carries the gated `jev_ask` enablement label in all four locales; `go test ./internal/web/` → `ok` (i18n parity tests green).
+- **Mirror-test enrollment decision (AC-JEVG-007 honesty note): DECLINE** enrolling `moai-mcp-tools.md` in `internal/template/rule_template_mirror_test.go` — equivalent-or-stronger dedicated enforcement already exists in `TestMCPToolCatalogueDocsStayMirrorIdentical` (byte-compare of BOTH catalogue files), and the dedicated test additionally asserts the figures against the registered set, which the generic mirror test cannot. Record made per plan §C2.
+- **Gate-unrun disposition record (REQ-JEVG-007):** the wrapper ships present-but-unpresented. What the fitness gate still needs: the binding labelled-set measurement defined by `SPEC-JEV-OPTIN-MEASURE-001` REQ-JEVO-009 — each consumer's typed answers compared against its constant-answer baseline on a labelled set of the size OPTIN's Kickoff gate must fix (chain question Q3). Who owns it: `SPEC-JEV-OPTIN-MEASURE-001` owns the gate; consumer fit records sit under `SPEC-JEV-CONSUMERS-001` REQ-JEVN-016 condition (iii), which this record follows without amending. Until that gate runs, no shipped or template surface presents `jev_ask` as available. This record cites **no measurement figure** for the gate, by requirement.
+
+**M8b — reference skill (commit `64b320632`).**
+
+- AC-JEVG-008: `TestJevQuestionDesignSkillCarriesNoCallPath` → `PASS` — the forbidden token set (`internal/jev`, `mcp__moai__jev`, `jev_ask`, `moai jev`) absent from both copies of `.claude/skills/moai-ref-jev-question-design/SKILL.md`; positive controls (`jev_skill_suggest.go` for the import path, the catalogue doc for the registered name) both fire. `TestJevQuestionDesignSkillCopiesStayIdentical` → `PASS` (byte-identical).
+- Skill content: question-design rules only — compute the question in code, always admit a no-match answer, keep the state small, phrase and record both noul polarities, typed absences are no signal.
+- Template-first + catalog: entry added under `catalog.yaml` `core.skills` (hash filled by `gen-catalog-hashes.go --entry`); count pins moved per each test's own provenance convention (skills 34 → 35, total entries 46 → 47). `go test ./internal/template/` → `ok`.
+
+**M8c — records (commit `3deef0992`).**
+
+- AC-JEVG-012: `docs/jev-negative-results.md` §1 carries the measured figures (dead-call precision 29.2% against a 25% base rate; 2-class 58.9% against the 75.0% constant; English control 67.5% on 40 cards; gate sweep flat 0.30–0.80), cites the gitignored local evidence (`.moai/reports/t943/verdict.md`, primary checkout) and the maintainer guide (§30) as origins, and re-measures nothing. Figure-presence grep: 3 table lines cover all five figure patterns.
+- AC-JEVG-014: §2 states the `scripts/jev/` disposition — uncommitted working copy, not committed, not distributed (no template mirror), not maintained — with `internal/jev` as the canonical implementation and nothing deleted from anyone's tree.
+- REQ-JEVG-014 triage guard: `TestTodoTriageStaysModelFree` → `PASS` (zero `jev` references in `todo_triage.go`; positive control fires). Observed firing captured on a mutant (a temporary `jev` token in `todo_triage.go` flipped it red; removed, `git diff` clean, re-verified green).
+
+### Post-run verification batch
+
+- E2 build: `go build ./...` → `DARWIN_BUILD_OK`; `GOOS=windows GOARCH=amd64 go build ./...` → `WINDOWS_BUILD_OK`.
+- E3 coverage: `internal/mission` 88.1%, `internal/mcp` 100.0% (both ≥ 85% target). `internal/template` 81.7% whole-package (the SPEC's changes there are YAML + test pins; the figure is the package baseline, not a regression — pre-SPEC figure not re-measured). `internal/cli` whole-package coverage runs ~10 min and hit the default test timeout on this machine with zero test failures (known shape); its verdict is deferred to CI per the CI 3-tier policy (B5).
+- E4 subagent boundary: the dispatch's literal grep (`internal/cli` + `internal/jev`, non-test, minus `// `-prefixed lines) yields **32 hits, none a question surface**: multi-line comment-block continuation lines the single-line filter cannot strip, help-text string literals stating the prohibition ("does not call AskUserQuestion"), the `agentlint` enforcement instrument itself (`checkLiteralAskUserQuestion`), and a lint testdata fixture. The sealed loop's own files (`goal.go`, `goal_runnable.go`, `hook_stop_goal.go`) carry zero, pinned by `TestGoalLoopCarriesNoUserQuestionSurface`; invocation-shaped search `AskUserQuestion(` yields only the lint instrument + its fixture. Positive control (`internal/mission/supervisor.go` identifier) fires.
+- E5 lint: `golangci-lint run --timeout=2m` → `0 issues.` both pre-flight (baseline `c07aa8daa`) and post-run — no NEW issues. `go vet` on `internal/cli`, `internal/mission`, `internal/mcp`, `internal/template` → clean.
+- E6 commits: `1470c5fec` (M7a + draft→in-progress + re-pin) · `6870aa11d` (M7b) · `65461f10d` (M8a) · `64b320632` (M8b) · `3deef0992` (M8c) · this records commit. Push state: **not pushed (lane discipline — the lead batch-pushes develop after the integration window)**.
+- E8 RED outputs: captured verbatim pre-GREEN per TDD cycle — M7b compile failure (`undefined: AuxiliarySignal`), M8a build failure + guard firing + figure drift, plus mutant-probe observed failures for the two characterization guards (M7a shape, M8c triage). Full verbatim text in the commit bodies and this section.
+
+### Chain-status note
+
+This SPEC's completion does **not** make the chain release-ready: the fitness gate (OPTIN REQ-JEVO-009) stands unrun, the consumers remain in their recorded gate-unrun state, and N2 is still open and unowned — seat (i) stays withdrawn, carried by spec.md §C.1 and plan.md §B1.
+
 ## §E.3 Run-phase Audit-Ready Signal
 
-_<pending run-phase>_
+```yaml
+run_complete_at: 2026-09-22
+run_commit_sha: pending-backfill-run
+run_status: complete
+ac_pass_count: 14
+ac_fail_count: 0
+preserve_list_post_run_count: 9
+l44_pre_commit_fetch: "not performed — lane-local branch (WT-goal-dist), no remote ref consulted; HEAD + branch re-read immediately before every commit (plain git forms) per the worktree guard"
+l44_post_push_fetch: "n/a — the lane never pushes; remote develop landing is the lead's batch-push (git-flow lane protocol 2026-09-02)"
+new_warnings_or_lints_introduced: 0
+cross_platform_build.darwin: pass
+cross_platform_build.windows: pass
+total_run_phase_files: 26
+m1_to_mN_commit_strategy: "per-milestone commits on WT-goal-dist — M7a 1470c5fec, M7b 6870aa11d, M8a 65461f10d, M8b 64b320632, M8c 3deef0992, records commit (this one); no push, no PR, no tags"
+```
+
+`preserve_list_post_run_count: 9` — measured unchanged against the re-pinned baseline `c07aa8daa`: `internal/jev` (untouched; `git diff` empty), `.claude/agents/moai/mission-governor.md` + template mirror (AC-JEVG-004 diffs both, 0 lines), `internal/mission/supervisor.go`, `internal/mission/auto_state.go`, `internal/cli/goal.go`, `internal/cli/state.go` (AC-JEVG-001 diff set, 0 lines), `internal/cli/todo_triage.go` (restored byte-clean after the mutant probe), `.claude/settings.local.json` (untouched). `scripts/jev/` lives in the primary checkout, outside this worktree — not committed here by design (REQ-JEVG-012).
+
+`run_commit_sha` is a placeholder by the D3 backfill pattern: a commit cannot cite its own SHA; the records commit's real SHA is backfilled in the follow-up commit.
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
