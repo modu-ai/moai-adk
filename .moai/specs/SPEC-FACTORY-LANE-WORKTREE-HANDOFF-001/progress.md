@@ -133,3 +133,9 @@ implementation_kickoff_approval: not-granted
 - Tier: L.
 - Mode selection: not-run; run phase is not authorized.
 - This document does not select or start implementation agents.
+
+## §G t1074 landing absorb + premise recheck (2026-09-23)
+
+- Absorbed local develop `08113ff0f` (t1074 landed as `861510fb6`) at merge `a2d8afe84`; one comment-only conflict in `internal/mcp/catalog_test.go` resolved to develop wording.
+- Premise recheck: `.moai/reports/t1082/premise-recheck-20260923.md` — 10 premises match; M1 (ResolveLane returns ErrEndpointLaunchPending, no REQ/AC for handoff during launch-pending), M2 (two rebind paths: BindLaunchPending vs RESERVED→BOUND), M3 (run resolver location wording).
+- Run phase NOT started; awaiting operator Kickoff gate and a decision on M1/M2.
