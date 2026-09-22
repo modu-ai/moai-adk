@@ -283,7 +283,7 @@ NOT measured (plan.md §D decision). Coordinate for whoever closes it:
 
 ```yaml
 run_complete_at: 2026-09-22
-run_commit_sha: pending-backfill-run   # M3 evidence commit lands after this file; backfill per the D3 placeholder convention
+run_commit_sha: e72fd90d9   # backfilled per the D3 placeholder convention — the M3 evidence commit landed after this file wrote
 run_status: complete
 ac_pass_count: 6
 ac_fail_count: 0
@@ -340,7 +340,7 @@ done and is recorded here instead.
 
 ```yaml
 sync_complete_at: 2026-09-22
-sync_commit_sha: pending-backfill-sync   # a commit cannot cite its own hash; backfilled in a following commit (D3 placeholder convention)
+sync_commit_sha: 11d197b30   # backfilled per the D3 placeholder convention — the sync commit cannot cite its own hash
 sync_status: complete
 b12_self_test_a: pass (grep count 0)
 b12_self_test_b: pass (6 == 6)
