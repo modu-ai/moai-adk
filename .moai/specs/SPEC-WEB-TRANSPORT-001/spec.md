@@ -2,7 +2,7 @@
 id: SPEC-WEB-TRANSPORT-001
 title: "moai web console — validation-400 boosted-response transport: htmx 4xx body-swap discriminator measurement and defect judgment"
 version: "0.1.0"
-status: in-progress
+status: completed
 created: 2026-09-22
 updated: 2026-09-22
 author: manager-spec

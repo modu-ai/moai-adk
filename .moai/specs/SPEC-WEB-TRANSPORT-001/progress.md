@@ -38,7 +38,7 @@ t1081 축(분할 경계 유지 확인 — M4). 운용 코드 변경 0, t1051 판
 
 ```yaml
 run_complete_at: 2026-09-22
-run_commit_sha: pending-backfill-run   # 레인 커밋 후 백필 (D3 자기참조 예외)
+run_commit_sha: f3a2988e1              # 백필 2026-09-22 (manager-docs, D3 자기참조 예외 경유)
 run_status: complete
 ac_pass_count: 5
 ac_fail_count: 0
@@ -52,4 +52,29 @@ m1_to_mN_commit_strategy: lane-single-commit  # 레인이 커밋 — 본 레인�
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase — manager-docs 소관>_
+```yaml
+sync_complete_at: 2026-09-22
+sync_commit_sha: pending-backfill-sync   # D3 자기참조 예외 — 실제 SHA 는 직후 커밋에서 백필
+sync_status: complete
+frontmatter_status_transitions:
+  spec_md: in-progress → completed       # 단일 sync 커밋 병합 체결 (implemented 스킵 아님 — 3-phase close 병합)
+  updated: 2026-09-22
+changelog_entry_position: none           # 측정 전용 SPEC — 운용 코드 0, 사용자 표면 변화 0 (근거: 본 절 산문)
+canary_compliance_check:
+  b12_pre_emission_grep: PASS            # grep -c 'SPEC-WEB-TRANSPORT-001' CHANGELOG.md → 0 (중복 없음)
+  b12_ac_count_match: n/a                # emission 스킵 결정 — acceptance.md AC 5건 대조 불요
+  b12_file_path_verification: PASS       # transport400_characterization_test.go / transport400_htmx_contract_test.go 존재 확인
+  b12_ac_live_identifiers: 5             # AC-TR400-001..005 — sort -u 기준
+```
+
+**CHANGELOG / docs-site 결정 — 미기입 (no entry).** 근거: 본 SPEC 은 측정 전용(measurement-only)으로
+운용 코드 변경 0(preserve_list_post_run_count: 0, 신규 `*_test.go` 2개 + 판정서뿐)이고, 사용자 대면
+동작 변화가 없다. CHANGELOG 는 사용자 표면 변화를 기술하는 표면이므로 기입 대상이 아니다. docs-site 도
+동일 — 내부 측정 하네스는 사용자 문서화 대상이 아니다. 판정 내용(defect-present, contract-level)은
+`.moai/reports/t1080/verdict.md` 와 progress.md §E.2 에 이미 기록돼 있으며, 후속 수리는 t1081 축
+(브라우저 실측, M4 분할 경계)의 소관이다.
+
+**전이 근거**: spec.md frontmatter `status:` 는 본 단일 sync 커밋에서 `in-progress → completed` 로
+체결된다(spec-frontmatter-schema.md § Status Transition Ownership Matrix — `implemented` 중간 전이는
+sync 커밋에 병합되는 3-phase close 규약). plan.md / acceptance.md 는 status 축 무상태(stateless)라
+전이 대상이 아니다.
