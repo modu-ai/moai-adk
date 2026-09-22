@@ -328,4 +328,25 @@ observation remains unresolved and is carried forward unchanged for the operator
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase>_
+```yaml
+sync_complete_at: 2026-09-22
+sync_commit_sha: pending-backfill-sync   # the sync commit cannot cite its own SHA; backfilled in the following commit
+sync_status: complete
+changelog_entry_added: no                # card sync commits emit no CHANGELOG entry — the release harness composes CHANGELOG at release time (verified precedent: grep -c 'SPEC-AUDIT-EXPORT-CLAUSE-001' CHANGELOG.md -> 0, measured 2026-09-22 in this tree)
+frontmatter_status_transitions:
+  in-progress: 2026-09-21
+  implemented: 2026-09-22
+  completed: 2026-09-22                  # the merged in-progress -> implemented -> completed transition rides this single sync commit
+ac_count_check: acceptance.md distinct AC ids = 6 (grep -oE 'AC-([A-Z0-9]+-)*[0-9]+' | sort -u | wc -l); matches ac_pass_count 6 in §E.3
+total_sync_phase_files: 2                # progress.md (§E.4 only), spec.md (frontmatter status + updated only)
+canary_compliance_check:
+  status: not-applicable
+  reason: documentation-only SPEC — no forward-looking policy with its own sync tests
+b12_self_test_a_pre_emission_grep: 0 hits (grep -c 'SPEC-MATRIX-GROUP-COMMENT-001' CHANGELOG.md -> 0; no entry emitted, no duplicate possible)
+b12_self_test_b_ac_count_match: 6 == 6 (pass)
+b12_self_test_c_file_path_verification: not-applicable — no CHANGELOG entry emitted, so there is no entry-named path to verify
+mx_validation:
+  status: no-op
+  reason: documentation-only change — the sync commit touches zero source files (no .go, no scripts), so the @MX annotation pass has no eligible surface; no tags added or removed
+sync_phase_scope_note: writable set honored exactly — spec.md frontmatter (status + updated) and progress.md §E.4; §E.1–§E.3, spec/plan/acceptance bodies, CHANGELOG.md, internal/template/profile_matrix.go, and everything outside the SPEC directory untouched
+```

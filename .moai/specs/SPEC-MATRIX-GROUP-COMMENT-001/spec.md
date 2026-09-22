@@ -2,9 +2,9 @@
 id: SPEC-MATRIX-GROUP-COMMENT-001
 title: "Correct the profile-matrix group-layer comment — AgentGroup has a validation-gate consumer, not only a display one"
 version: "0.1.0"
-status: in-progress
+status: completed
 created: 2026-09-20
-updated: 2026-09-21
+updated: 2026-09-22
 author: manager-spec
 priority: P2
 phase: "v3.1.0 target"
