@@ -124,7 +124,31 @@ MEMORY.md 편집 금지 (REQ-MIF-002 후반부): 본 카드 전 기간 `MEMORY.m
 
 ### M2 — 유실 3건 수복 (REQ-MIF-003)
 
-_<pending — M2 실행 후 기입>_
+**유실 집합 재도출** (`evidence/run/m2/derive_lost_set.py` → `.out`): before-image 링크 타깃 105건 vs 현재 MEMORY.md 타깃 120건 → 차집합 **LOST_COUNT=3** — 기대 3건과 정확히 일치, 중복·불일치 0:
+
+```
+LOST=feedback_a_falsifying_row_needs_the_survivor_on_the_far_side.md
+LOST=feedback_a_requirement_map_no_instrument_reads.md
+LOST=project_lead_batch_20260921.md
+```
+
+(ADDED_SINCE_BEFORE=18건은 리드 세션의 낮 동안 신규 항목 추가 — 유실과 무관, 변경 없음.)
+
+**verbatim 추출** (`evidence/run/m2/extract_dropped.py` → `.out`): `evidence/t1065_diff.txt` § DROPPED ENTRIES에서 `[U] ` 주석 접두를 벗겨 3라인 추출 — `EXTRACTED_OK fb_lines=2 ar_lines=1`, LINE_BYTES 374 (lead_batch) / 342 (requirement_map) / 363 (falsifying_row). 스크립트가 기대 집합 불일치 시 FATAL로 중단하는 가드 포함.
+
+**쓰기 창 (22:16:12 → 22:16:51 KST)**:
+
+| 파일 | pre sha256 (22:16:12) | post sha256 (22:16:51) | 변화 |
+|---|---|---|---|
+| `MEMORY.md` | `7b26aa1e a9615f` (전체 `7b26aa1ea5ae042e…31a9615f`) | `7b26aa1e a9615f` (동일) | **변화 없음** — 쓰기 창 내 무편집 (AC-002) |
+| `feedback_index_lessons_202609.md` | `8ca72546 b54454a0d9` | `c7606e4e 685fe8005` | +2라인 추가 블록 |
+| `project_card_archive_2026_09.md` | `a3ad58c9 810ec8bc` | `127edaa1 a00e31b5d` | +1라인 추가 블록 |
+
+(위 표의 축약 표기는 요약용이며 전체 해시는 `evidence/run/pre/sha256_before.txt` · `evidence/run/post/sha256_after.txt`가 정본이다.)
+
+**추가 내용**: Edit 툴로 각 2차 색인 EOF에 빈 줄 분리 블록 순수 추가 — `feedback_a_requirement_map_no_instrument_reads.md` + `feedback_a_falsifying_row_needs_the_survivor_on_the_far_side.md` 2라인 → `feedback_index_lessons_202609.md`, `project_lead_batch_20260921.md` 1라인 → `project_card_archive_2026_09.md`. 기존 라인 수정·삭제 0 (additive doctrine). 전문 사본: `evidence/run/pre/` · `evidence/run/post/` (3파일씩 full copy).
+
+M3 무손상 기계 검증 결과는 §E.2 M3에 기재.
 
 ### M3 — 무손상 검증 + 판정서 (REQ-MIF-004, REQ-MIF-005)
 
