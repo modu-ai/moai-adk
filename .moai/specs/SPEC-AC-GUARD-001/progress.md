@@ -63,7 +63,7 @@ ac_fail_count: 0
 
 sync_status: complete
 sync_complete_at: 2026-09-22
-sync_commit_sha: pending-backfill-sync
+sync_commit_sha: a2787ce3fa1834417ce22a893f8e36c101c0380a (backfilled in the following commit — a commit cannot cite its own hash)
 sync_commits: (single sync commit — 3-phase close: §E.4 signal + spec.md frontmatter `in-progress → completed` + CHANGELOG [Unreleased] entry)
 changelog_entry_position: CHANGELOG.md [Unreleased] → Added, first entry
 mx_tag_check: not-applicable — changed files are markdown/docs + SPEC corpus; no Go source, no exported functions, no code annotations required
