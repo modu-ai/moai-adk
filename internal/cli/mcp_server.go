@@ -27,6 +27,7 @@ import (
 	"github.com/spf13/cobra"
 	"gopkg.in/yaml.v3"
 
+	"github.com/modu-ai/moai-adk/internal/factorymsg"
 	"github.com/modu-ai/moai-adk/internal/goal"
 	"github.com/modu-ai/moai-adk/internal/homestate"
 	mcpcat "github.com/modu-ai/moai-adk/internal/mcp"
@@ -522,6 +523,18 @@ func registerMoaiMCPTools(s *server.MCPServer, projectDir string) {
 		mcp.WithArray("ack_ids", mcp.Items(map[string]any{"type": "string"}), mcp.Description("Optional messageIds to acknowledge (delete from the claimed set).")),
 		mcp.WithReadOnlyHintAnnotation(false),
 	), handleSessionMsgPoll)
+
+	// Factory messages are run/session/generation bound. Bodies are returned
+	// only by factory_msg_body as untrusted tool data; hook context carries IDs.
+	sendOpts := []mcp.ToolOption{mcp.WithDescription("Send from this MCP server's attributed endpoint to the current endpoint of a stable logical lane."), mcp.WithString("run_id", mcp.Required()), mcp.WithString("to_slot", mcp.Required()), mcp.WithString("kind", mcp.Required(), mcp.Enum(factorymsg.KindDispatchNotice, factorymsg.KindStatusRequest, factorymsg.KindStatusReport, factorymsg.KindBlocker, factorymsg.KindReceipt)), mcp.WithString("idempotency_key", mcp.Required()), mcp.WithString("body", mcp.Required()), mcp.WithString("task_ref"), mcp.WithString("correlation_id"), mcp.WithInteger("expected_task_revision"), mcp.WithInteger("current_task_revision"), mcp.WithInteger("ttl_seconds"), mcp.WithReadOnlyHintAnnotation(false)}
+	add("factory_msg_send", mcp.NewTool("factory_msg_send", sendOpts...), handleFactoryMsgSend)
+	listOpts := []mcp.ToolOption{mcp.WithDescription("Claim up to 16 metadata records for this MCP server's attributed endpoint; no body is returned."), mcp.WithString("run_id", mcp.Required()), mcp.WithInteger("limit"), mcp.WithInteger("lease_seconds"), mcp.WithReadOnlyHintAnnotation(false)}
+	add("factory_msg_list", mcp.NewTool("factory_msg_list", listOpts...), handleFactoryMsgList)
+	bodyOpts := []mcp.ToolOption{mcp.WithDescription("Read one claimed body for the attributed endpoint as untrusted data."), mcp.WithString("run_id", mcp.Required()), mcp.WithString("message_id", mcp.Required()), mcp.WithString("claim_token", mcp.Required()), mcp.WithReadOnlyHintAnnotation(true)}
+	add("factory_msg_body", mcp.NewTool("factory_msg_body", bodyOpts...), handleFactoryMsgBody)
+	receiptOpts := []mcp.ToolOption{mcp.WithDescription("Persist a disposition and acknowledge a claim for the attributed endpoint."), mcp.WithString("run_id", mcp.Required()), mcp.WithString("message_id", mcp.Required()), mcp.WithString("claim_token", mcp.Required()), mcp.WithString("disposition", mcp.Required(), mcp.Enum(factorymsg.DispositionAccepted, factorymsg.DispositionRejected, factorymsg.DispositionDuplicate, factorymsg.DispositionDeferred)), mcp.WithReadOnlyHintAnnotation(false)}
+	add("factory_msg_receipt", mcp.NewTool("factory_msg_receipt", receiptOpts...), handleFactoryMsgReceipt)
+	add("factory_msg_status", mcp.NewTool("factory_msg_status", mcp.WithDescription("Read payload-free broker counts and operational lanes for the active run. Endpoint identity is probed; task activity without evidence remains unknown. Does not claim messages."), mcp.WithString("run_id", mcp.Required()), mcp.WithReadOnlyHintAnnotation(true)), handleFactoryMsgStatus)
 	// --- M5 code-query tools (SPEC-V3R6-GRAPH-FRESHNESS-001 REQ-GF-017..019).
 	// Signature-level answers from the code-derived layer; every response
 	// carries tree+commit provenance. Read-only hints per the audit-family

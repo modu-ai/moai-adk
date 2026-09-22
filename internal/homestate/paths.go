@@ -16,7 +16,10 @@ import (
 // ProjectKey returns a stable, readable key for a project. Linked worktrees
 // converge on the primary checkout through the repository common directory.
 func ProjectKey(projectRoot string) string {
-	root := CanonicalProjectRoot(projectRoot)
+	return projectKeyFromCanonicalRoot(CanonicalProjectRoot(projectRoot))
+}
+
+func projectKeyFromCanonicalRoot(root string) string {
 	sum := sha256.Sum256([]byte(root))
 	base := filepath.Base(root)
 	if base == "." || base == string(filepath.Separator) || base == "" {
@@ -48,6 +51,8 @@ func CanonicalProjectRoot(projectRoot string) string {
 			if out, err := gitcore.ExecCommand("git", "-C", projectRoot, "rev-parse", "--show-toplevel").Output(); err == nil {
 				projectRoot = strings.TrimSpace(string(out))
 			}
+		} else if root, ok := primaryCheckoutRootFromCommonDir(dirs.CommonDir); ok {
+			projectRoot = root
 		} else if out, err := gitcore.ExecCommand("git", "-C", projectRoot, "worktree", "list", "--porcelain").Output(); err == nil {
 			// Git lists the primary checkout first, even with external metadata.
 			first, _, _ := strings.Cut(string(out), "\n")
@@ -60,6 +65,17 @@ func CanonicalProjectRoot(projectRoot string) string {
 		projectRoot = resolved
 	}
 	return filepath.Clean(projectRoot)
+}
+
+// primaryCheckoutRootFromCommonDir handles Git's ordinary linked-worktree
+// layout without enumerating every registered worktree. Repositories with a
+// separate or bare common directory fall back to `git worktree list` above.
+func primaryCheckoutRootFromCommonDir(commonDir string) (string, bool) {
+	commonDir = filepath.Clean(commonDir)
+	if filepath.Base(commonDir) != ".git" {
+		return "", false
+	}
+	return filepath.Dir(commonDir), true
 }
 
 // tempRoots mirrors the production anchor set of kanban's TempOriginReason
@@ -106,14 +122,15 @@ func insideTempRoots(path string) bool {
 // does, neither spelling is wrong.
 func ProjectDir(projectRoot string) (string, error) {
 	canonical := CanonicalProjectRoot(projectRoot)
+	key := projectKeyFromCanonicalRoot(canonical)
 	if !explicitMoaiHome() && insideTempRoots(canonical) {
-		return filepath.Join(canonical, ".moai", "db", ProjectKey(canonical)), nil
+		return filepath.Join(canonical, ".moai", "db", key), nil
 	}
 	home, err := paths.MoaiHome()
 	if err != nil {
 		return "", err
 	}
-	return filepath.Join(home, "db", ProjectKey(projectRoot)), nil
+	return filepath.Join(home, "db", key), nil
 }
 
 func explicitMoaiHome() bool {

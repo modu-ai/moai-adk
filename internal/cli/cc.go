@@ -6,6 +6,7 @@ package cli
 // @MX:NOTE: [AUTO] M6-S1 DDD: cc is a thin delegate-only entry point; print sites live in launcher.go::launchClaudeDefault
 
 import (
+	"fmt"
 	"os"
 
 	"github.com/spf13/cobra"
@@ -182,7 +183,14 @@ func runClaudeEntry(cmd *cobra.Command, args []string, commandName, mode, backen
 		leadLabel, _ := parseLeadLabel(filteredArgs)
 		restoreFactory := enterFactoryLeadMode(entry.FactoryWorkers, leadLabel)
 		defer restoreFactory()
-		_ = kanban.RecordFactoryRunStart(launchProjectRoot(), os.Getenv(config.EnvMoaiKanbanID), backend, entry.Spec)
+		restoreRun, runErr := enterSelectedFactoryRun(launchProjectRoot(), entry.FactoryRun, false)
+		if runErr != nil {
+			return runErr
+		}
+		defer restoreRun()
+		if err := recordFactoryRunStart(launchProjectRoot(), os.Getenv(config.EnvMoaiKanbanID), backend, entry.Spec); err != nil {
+			return fmt.Errorf("record factory run: %w", err)
+		}
 		defer exportFactoryLaunchFacts(entry.Spec, backend)()
 		var leadName string
 		filteredArgs, leadName = appendLeadName(filteredArgs, launchProjectRoot(), cmd.ErrOrStderr())
@@ -193,6 +201,11 @@ func runClaudeEntry(cmd *cobra.Command, args []string, commandName, mode, backen
 		}
 		defer settingsCleanup()
 	case factoryBranchWorker:
+		restoreRun, runErr := enterSelectedFactoryRun(launchProjectRoot(), entry.FactoryRun, true)
+		if runErr != nil {
+			return runErr
+		}
+		defer restoreRun()
 		// A number held by a live session is bumped to the next free one, and
 		// the bumped value must reach the backend argv — the session name is
 		// the address the lead dispatches to.

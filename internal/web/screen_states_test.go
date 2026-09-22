@@ -43,14 +43,14 @@ func TestKanbanChainRoleStates(t *testing.T) {
 	html := renderTempl(t, Kanban(tg2ShellVM("kanban"), k))
 
 	for _, want := range []string{
-		`t1079`,                                  // the chain card id
-		`chain.stopped`,                          // the idle-role warning branch fired
-		`role--idle`,                             // idle role marked on the card
-		`state--live`, `state--idle`,             // both state marks present
-		`stage--active`, `stage--blocked`,        // both stages drawn
-		`mark.estimated`,                         // estimated stages carry the estimate tag
-		`sess-lead`, `opus`, `42`,                // telemetry flows into the row
-		`No session`,                             // ...and the missing-session branch is absent here
+		`t1079`,                      // the chain card id
+		`chain.stopped`,              // the idle-role warning branch fired
+		`role--idle`,                 // idle role marked on the card
+		`state--live`, `state--idle`, // both state marks present
+		`stage--active`, `stage--blocked`, // both stages drawn
+		`mark.estimated`,          // estimated stages carry the estimate tag
+		`sess-lead`, `opus`, `42`, // telemetry flows into the row
+		`No session`, // ...and the missing-session branch is absent here
 	} {
 		if !strings.Contains(html, want) {
 			t.Errorf("kanban chain board missing %q:\n%s", want, html)
@@ -123,9 +123,9 @@ func TestKanbanPipelineColumns(t *testing.T) {
 	for _, want := range []string{
 		`4 status columns · 3`,
 		`SPEC-A-001`, `SPEC-B-002`, `SPEC-C-003`,
-		`/specs?id=SPEC-A-001`,                   // kcard keeps its route target
-		`badge--outline`,                         // tier badge branch
-		`badge--danger`,                          // MUST-FIX drift badge branch
+		`/specs?id=SPEC-A-001`, // kcard keeps its route target
+		`badge--outline`,       // tier badge branch
+		`badge--danger`,        // MUST-FIX drift badge branch
 	} {
 		if !strings.Contains(html, want) {
 			t.Errorf("pipeline board missing %q:\n%s", want, html)
@@ -196,14 +196,14 @@ func TestSpecsRowsPanelsAndDetail(t *testing.T) {
 	html := renderTempl(t, Specs(tg2ShellVM("specs"), l))
 
 	for _, want := range []string{
-		`tr--sel`,                                      // the selected row is marked
-		`badge--danger`,                                // MUST-FIX drift badge on the row
-		`/specs?id=SPEC-A-001`,                         // row link target preserved
-		`class="slide"`,                                // the detail slide markup present
-		`SPEC-B-002`, `V3R6`, `spec.md`,                // detail fields carried
-		`drift 1`,                                      // the findings count header
+		`tr--sel`,                       // the selected row is marked
+		`badge--danger`,                 // MUST-FIX drift badge on the row
+		`/specs?id=SPEC-A-001`,          // row link target preserved
+		`class="slide"`,                 // the detail slide markup present
+		`SPEC-B-002`, `V3R6`, `spec.md`, // detail fields carried
+		`drift 1`, // the findings count header
 		`data-copy="moai spec audit --fix SPEC-B-002"`, // remediation is copy-only
-		`board.copy`,                                   // the copy button rendered
+		`board.copy`, // the copy button rendered
 	} {
 		if !strings.Contains(html, want) {
 			t.Errorf("specs screen missing %q:\n%s", want, html)

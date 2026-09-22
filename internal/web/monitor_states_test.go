@@ -38,17 +38,17 @@ func TestMonitorSessionRowsRenderPerState(t *testing.T) {
 	html := renderTempl(t, Monitor(tg1ShellVM(), vm))
 
 	for _, want := range []string{
-		`data-live="session"`,                 // the htmx refresh marker survives
-		`sess-aaa1`, `SPEC-A-001`,             // populated row content per session
-		`sess-bbb2`, `sess-ccc3`,              // every entry renders a row
-		`backend--metered`, `metered`,         // glm branch
-		`flat rate`,                           // claude branch
-		`class="missing"`,                     // unrecorded backend draws "—"
-		`state--live`, `state--stale`,         // state mark follows the viewmodel
-		`2m`, `31m`,                           // heartbeat text carried through
-		`registry 3`,                          // panel meta counts the entries
-		`cwd /tmp/proj`,                       // the cwd provenance line
-		`data-i18n="monitor.session"`,         // header i18n wiring intact
+		`data-live="session"`,     // the htmx refresh marker survives
+		`sess-aaa1`, `SPEC-A-001`, // populated row content per session
+		`sess-bbb2`, `sess-ccc3`, // every entry renders a row
+		`backend--metered`, `metered`, // glm branch
+		`flat rate`,                   // claude branch
+		`class="missing"`,             // unrecorded backend draws "—"
+		`state--live`, `state--stale`, // state mark follows the viewmodel
+		`2m`, `31m`, // heartbeat text carried through
+		`registry 3`,                  // panel meta counts the entries
+		`cwd /tmp/proj`,               // the cwd provenance line
+		`data-i18n="monitor.session"`, // header i18n wiring intact
 	} {
 		if !strings.Contains(html, want) {
 			t.Errorf("monitor session table missing %q:\n%s", want, html)
@@ -87,10 +87,10 @@ func TestMonitorGoalRowsPinStalledAndProgress(t *testing.T) {
 
 	for _, want := range []string{
 		`sess-goa1`, `coverage converges`, `sess-gob2`, `spec lands`,
-		`data-live="goal"`,                       // live wiring on the panel
-		`width:16%`, `width:100%`,                // bar width = turn percentage
-		`badge--outline`, `>stalled<`,            // the stalled badge marks exhaustion
-		`Turns`, `5`, `30`,                       // turn counts rendered
+		`data-live="goal"`,        // live wiring on the panel
+		`width:16%`, `width:100%`, // bar width = turn percentage
+		`badge--outline`, `>stalled<`, // the stalled badge marks exhaustion
+		`Turns`, `5`, `30`, // turn counts rendered
 	} {
 		if !strings.Contains(html, want) {
 			t.Errorf("goals panel missing %q:\n%s", want, html)
@@ -114,11 +114,11 @@ func TestMonitorVerifyRowsPassFailAndSpark(t *testing.T) {
 
 	for _, want := range []string{
 		`HEAD:aaaa1111`, `HEAD:bbbb2222`, `data-live="verify"`,
-		`data-i18n="monitor.pass"`,          // clean snapshot renders Pass
-		`data-i18n="monitor.fail"`,          // failed snapshot renders Fail (not Pass)
-		`class="spark"`,                     // the spark strip rendered at all
-		`spark__b--on`,                      // on-cells for passing checks
-		`2 keys`,                            // panel meta carries the total key count
+		`data-i18n="monitor.pass"`, // clean snapshot renders Pass
+		`data-i18n="monitor.fail"`, // failed snapshot renders Fail (not Pass)
+		`class="spark"`,            // the spark strip rendered at all
+		`spark__b--on`,             // on-cells for passing checks
+		`2 keys`,                   // panel meta carries the total key count
 	} {
 		if !strings.Contains(html, want) {
 			t.Errorf("verify panel missing %q:\n%s", want, html)
