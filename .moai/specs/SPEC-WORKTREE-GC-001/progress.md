@@ -79,7 +79,7 @@ resume_or_followup: operator disclosure of the unledgered disposal (lead relays)
 ## §E.4 Sync-phase Audit-Ready Signal
 
 ```yaml
-sync_commit_sha: "pending-backfill-sync"   # D3 backfill window — real SHA backfilled in a follow-up commit
+sync_commit_sha: "79de5ad56"   # D3 backfill — the WITHDRAWN first close (superseded by the re-close after sync-audit FAIL; kept as historical record)
 sync_close_at: 2026-09-23
 sync_status: complete
 tier: M
@@ -104,7 +104,7 @@ landed (309340207, 943b3c907, a9e25f1d9); delta-scoped re-audit PASS (remediatio
 ```yaml
 reclose_at: 2026-09-23
 reclose_basis: delta-scoped re-audit PASS (remediation fidelity 6/6) — sync-audit.md appended section; lead approved re-close on delta-PASS
-reclose_sync_commit_sha: "pending-backfill-reclose"   # D3 window
+reclose_sync_commit_sha: "f7b0ac0f6"   # D3 backfill — the re-close commit (delta-audit PASS basis)
 final_ac_disposition: >-
   Honest close WITH recorded debt: AC-010 PASS; AC-001/002/003/004/009/011/012/013 recorded FAIL (procedural/record failures of the dead executor, unfixable retroactively — the trees are not revivable); the ~423-tree attribution-unknown disposal segment is DISCLOSED residual risk (§E.2 CORRECTION + operator disclosure via lead), not a no-loss proof. The no-loss claim stays at "no loss observed on every sampled branch", never higher.
 ```
