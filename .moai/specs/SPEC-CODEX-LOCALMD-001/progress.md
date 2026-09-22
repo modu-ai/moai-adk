@@ -256,3 +256,9 @@ diff_check_exit=0
 - 한 번의 production LIVE 성공은 이후 Codex 버전이나 operator config 변화까지 보장하지 않는다.
 - Windows 실제 runtime/reparse-point 권한 동작은 여전히 실행 증거가 없고 cross-build 근거만 있다.
 - `CHANGELOG.md`의 과거 `6c647bbe2` 항목은 당시 기록으로 보존했으며, 새 SPEC 항목이 그 항목의 `CLAUDE.local.md` Claude-only 문언을 명시적으로 정정한다.
+
+### Sync-close record (3-phase close — 2026-09-22, 레인 agent-23)
+
+- sync-audit: `.moai/reports/t1078/sync-audit.md` — Overall Verdict: **PASS**, Score **100/100**, 코드 findings 0, evidence gaps 0(non-blocking cache miss 1). AC-LMD-001~012 전부 PASS — 본 레인이 판정서를 직독해 확인(트리 `WT-codex-local-md@318b6d27` 기준).
+- Frontmatter: spec.md `status: "draft" → "completed"` 전이 — 이 close 커밋에서 실시(3-phase close 관례: completed 전이는 close 커밋에 탄다).
+- `sync_commit_sha`: pending-backfill-close — close 커밋 착지 직후 chore 커밋에서 실측 SHA 로 백필한다(D3 창).
