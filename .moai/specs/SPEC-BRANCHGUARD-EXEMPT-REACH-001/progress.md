@@ -359,7 +359,26 @@ PASS
 
 ## §E.2 Run-phase Evidence
 
-_<pending run-phase>_
+### M2 선행 측정 — 계측기 발화 여부 (2026-09-23, 새 레인, 리드 배차)
+
+**결과: 미발화. plan.md M2 1-5 는 진행하지 않았다(배차문 분기 규칙).**
+
+- 절차: 세션을 primary 체크아웃에서 시작 → `EnterWorktree(.claude/worktrees/t1064)` → Bash 1회(`echo probe-1`, 08:18:47 로컬) → 이어 Bash 2회로 판독.
+- 판독 (세 번째 Bash 호출 시점, 이 트리):
+  - `ls -la ~/.moai/logs/t1064-instrument.log` → `No such file or directory`
+  - `ls -la ~/.moai/logs/t1064-dump` → `No such file or directory`
+  - 계측기 존재: 워크트리 사본 `.claude/hooks/moai/handle-pre-tool.sh` 의 `t1064` 적중 **5**, primary 사본 `/Users/goos/MoAI/moai-adk-go/.claude/hooks/moai/handle-pre-tool.sh` 적중 **0**.
+  - 훅 명령 형태(양쪽 `settings.json`): `"${CLAUDE_PROJECT_DIR}/.claude/hooks/moai/handle-pre-tool.sh"` — 경로가 `CLAUDE_PROJECT_DIR` 로 해석된다.
+  - `hook-missing.log`: 워크트리 쪽 파일 없음, primary 쪽 최근 2행은 `handle-config-change.sh` 뿐(pre-tool 누락 기록 없음).
+  - HEAD `6ed2cb1f2` · 브랜치 `WT-branchguard-exempt` · `git status --porcelain` = ` M .claude/hooks/moai/handle-pre-tool.sh` 1행(전임자 계측기, 무변경).
+- **cpd 값**: 계측기가 발화하지 않아 **훅 프로세스의 `CLAUDE_PROJECT_DIR` 은 캡처되지 않았다.** Bash 도구 프로세스 환경에서 읽은 값은 빈 문자열(`CLAUDE_PROJECT_DIR=`)이었으나, 이것은 훅 환경이 아니므로 cpd 근거로 쓰지 않는다.
+
+**Gaps**
+- 「primary 훅이 실행된다」는 가설과 **일관**될 뿐 확인은 아니다. 관측된 것은 워크트리 사본이 실행되지 않았다는 것까지이며, primary 사본이 실행됐는지 / PreToolUse 훅이 아예 돌지 않았는지는 이 측정으로 가르지 못한다(primary 사본에 발화 표식이 없음).
+- 서브에이전트 Bash, 키 집합 비교, deny 억제는 수행하지 않았다(분기 규칙상 정지).
+
+**Residual-risk**
+- 세션 중간 `EnterWorktree` 는 훅 경로의 `CLAUDE_PROJECT_DIR` 을 바꾸지 않는 것으로 보인다 — 그렇다면 워크트리 사본 계측기는 이 방식으로는 원리상 발화할 수 없고, 워크트리에서 **세션을 시작**하는 경로(`moai cc -w t1064`)가 필요하다. 이 판단은 추론이며 우회책으로 실행하지 않았다.
 
 ## §E.3 Run-phase Audit-Ready Signal
 
