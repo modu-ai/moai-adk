@@ -65,6 +65,7 @@ type kanbanEntryParse struct {
 	KanbanEnabled  bool     // -k present (any shape)
 	FactoryEnabled bool     // -k selected the factory (numeric count or lane-shape name)
 	FactoryWorkers int      // the factory count (explicit or the default)
+	FactoryRun     string   // explicit --factory-run selector for mixed factory joins
 	Rest           []string // args with -k and its consumed value removed
 }
 

@@ -228,6 +228,11 @@ func runGLM(cmd *cobra.Command, args []string) error {
 		leadLabel, _ := parseLeadLabel(filteredArgs)
 		restoreFactory := enterFactoryLeadMode(entry.FactoryWorkers, leadLabel)
 		defer restoreFactory()
+		restoreRun, runErr := enterSelectedFactoryRun(launchProjectRoot(), entry.FactoryRun, false)
+		if runErr != nil {
+			return runErr
+		}
+		defer restoreRun()
 		_ = kanban.RecordFactoryRunStart(launchProjectRoot(), os.Getenv(config.EnvMoaiKanbanID), kanban.BackendGLM, entry.Spec)
 		defer exportKanbanLaunchFacts(entry.Spec, kanban.BackendGLM)()
 		var leadName string
@@ -239,6 +244,11 @@ func runGLM(cmd *cobra.Command, args []string) error {
 		}
 		defer settingsCleanup()
 	case factoryBranchWorker:
+		restoreRun, runErr := enterSelectedFactoryRun(launchProjectRoot(), entry.FactoryRun, true)
+		if runErr != nil {
+			return runErr
+		}
+		defer restoreRun()
 		// See cc.go: a live-held lane number is bumped, and the bumped value
 		// must reach the backend argv.
 		finalLabel, claimErr := resolveFactoryWorkerName(launchProjectRoot(), factoryLabel, cmd.ErrOrStderr())

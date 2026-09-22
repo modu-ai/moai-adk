@@ -15,6 +15,10 @@ const (
 	mcpServerCommandValue = "moai"
 	// mcpServerArgValue is the single fixed server arg.
 	mcpServerArgValue = "mcp-server"
+	// mcpServerEnvVarsValue is the fixed allowlist of launcher/session facts
+	// inherited by the MoAI MCP subprocess. Codex otherwise starts the server
+	// without the factory attribution needed to resolve the active broker.
+	mcpServerEnvVarsValue = `["MOAI_HOME", "MOAI_KANBAN_ID", "MOAI_SESSION_PID", "MOAI_KANBAN_BACKEND", "MOAI_FACTORY_WORKER", "MOAI_FACTORY_WORKERS", "CLAUDE_PROJECT_DIR", "CLAUDE_CODE_SESSION_ID"]`
 	// mcpApprovalMode is the capability-based approval mode: `writes` prompts
 	// for tools NOT marked read-only (MCP ReadOnlyHint annotation) — the
 	// approval set therefore rides on server annotations, never on tool-name
@@ -91,6 +95,7 @@ func EnsureMCPTable(content []byte) []byte {
 	table := mcpServerTableHeader + "\n" +
 		"command = \"" + mcpServerCommandValue + "\"\n" +
 		"args = [\"" + mcpServerArgValue + "\"]\n" +
+		"env_vars = " + mcpServerEnvVarsValue + "\n" +
 		"default_tools_approval_mode = \"" + mcpApprovalMode + "\"\n"
 	return []byte(appendSection(body, table))
 }
@@ -161,10 +166,11 @@ type MCPTableStatus struct {
 	Canonical bool
 }
 
-// canonicalMCPAssignments are the three assignments EnsureMCPTable writes.
+// canonicalMCPAssignments are the four assignments EnsureMCPTable writes.
 var canonicalMCPAssignments = []string{
 	"command = \"" + mcpServerCommandValue + "\"",
 	"args = [\"" + mcpServerArgValue + "\"]",
+	"env_vars = " + mcpServerEnvVarsValue,
 	"default_tools_approval_mode = \"" + mcpApprovalMode + "\"",
 }
 

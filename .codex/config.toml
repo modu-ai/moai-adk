@@ -1,6 +1,7 @@
 [mcp_servers.moai]
 command = "moai"
 args = ["mcp-server"]
+env_vars = ["MOAI_HOME", "MOAI_KANBAN_ID", "MOAI_SESSION_PID", "MOAI_KANBAN_BACKEND", "MOAI_FACTORY_WORKER", "MOAI_FACTORY_WORKERS", "CLAUDE_PROJECT_DIR", "CLAUDE_CODE_SESSION_ID"]
 default_tools_approval_mode = "writes"
 
 [tui]

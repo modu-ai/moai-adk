@@ -185,9 +185,9 @@ func TestCompletionPredicateInputsCarryNoJevSymbol(t *testing.T) {
 		"CompletionEvidence", "RecoveryConditions",
 	}
 	governedSources := map[string]string{
-		"governance_receipt.go":   "../../internal/mission/governance_receipt.go",
-		"contract.go":             "../../internal/mission/contract.go",
-		"completion_receipt.go":   "../../internal/mission/completion_receipt.go",
+		"governance_receipt.go":     "../../internal/mission/governance_receipt.go",
+		"contract.go":               "../../internal/mission/contract.go",
+		"completion_receipt.go":     "../../internal/mission/completion_receipt.go",
 		"goal.go (contract writer)": "../../internal/cli/goal.go",
 	}
 	for name, path := range governedSources {
