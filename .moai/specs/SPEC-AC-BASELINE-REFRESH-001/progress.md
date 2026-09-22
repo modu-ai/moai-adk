@@ -109,3 +109,22 @@ coverage_note: "go test -cover ./internal/spec -count=1 → 90.3% of statements 
 consumer_note: "go test ./internal/cli -run TestTodoTriage -count=1 → ok (fixture path unchanged)"
 boundary_grep: "grep -rn 'AskUserQuestion|mcp__askuser' internal/spec/ | grep -v _test.go | grep -v '// ' → no matches"
 ```
+
+## §E.4 Sync-phase Audit-Ready Signal
+
+```yaml
+sync_complete_at: 2026-09-23
+sync_commit_sha: pending-backfill-sync
+sync_status: complete
+b12_self_test_a: "grep -c 'SPEC-AC-BASELINE-REFRESH-001' CHANGELOG.md → 0 (pre-emission clear; post-emission 1, entry appended under [Unreleased] ### Fixed)"
+b12_self_test_b: "grep -oE 'AC-([A-Z0-9]+-)*[0-9]+' .moai/specs/SPEC-AC-BASELINE-REFRESH-001/acceptance.md | sort -u → 8 live AC identifiers (AC-ABR-001..008; the 2 extra pattern hits AC-BASELINE-REFRESH-001 / AC-COUNT-DISCRIMINATOR-001 are SPEC-ID cross-references, not AC identifiers); CHANGELOG entry states 8"
+b12_self_test_c: "ls internal/spec/ac_count_clause_test.go .moai/docs/ac-count-baseline-refresh.md .moai/reports/t338/ac-count-baseline.txt internal/spec/CLAUDE.md → all 4 exist (36669 / 6699 / 76296 bytes + CLAUDE.md)"
+changelog_entry_position: "[Unreleased] ### Fixed, first row (newest-first convention)"
+frontmatter_status_transitions:
+  - in-progress → completed (spec.md, status: + updated: 2026-09-23 only, zero body edits)
+canary_compliance_check:
+  mx_tag_cross_cut: "manager-develop reported 0 tag changes; verified grep -c '@MX' on all 4 touched files → 0 matches on each (no dangling tags possible with zero tags present)"
+  codemap_staleness: "zero-touch — grep -rn 'TestACCounterFullCorpusMatchesBaseline|ac_count_clause|ac-count-baseline' .moai/project/codemaps/ → 0 hits (no stale claim exists; card changed a test file + tracked data + one doc, no non-test Go surface)"
+  history_row: "spec.md body is outside manager-docs ownership — HISTORY row NOT written (same disposition as card t1083 sync; orchestrator accepts)"
+backfill_note: "real sync_commit_sha backfilled in a following commit per the D3 SHA-placeholder exemption"
+```
