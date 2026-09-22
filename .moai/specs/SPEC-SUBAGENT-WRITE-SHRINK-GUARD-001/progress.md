@@ -338,6 +338,44 @@ recording is BLOCKED pending conflict resolution (item 3).
    split), and the plan.md wording — each re-verified by opening the region before recording
    "present".
 
+### Operator decision round 4 — ③ resolved: repairs-then-PASS; plan phase closes (2026-09-22)
+
+The ③ conflict recorded above is closed. The lead session retracted its 4th-audit relay and
+reported an operator re-confirmation through its channel: "네 건 정정 후 PASS — 네 터미널에서
+받은 답이 승계됨; 리드가 전달했던 4회차·상한 연장은 철회". The OPERATIVE basis of this record
+is this session's own direct AskUserQuestion answer (first-hand, received before any relay);
+the retraction removes the conflicting claim and the two channels now agree. The Tier M
+ceiling extension is NOT taken; the t1059 precedent stays recorded above as verified history.
+
+**Plan-phase verdict: PASS** — recorded on plan-audit §6 option 1's own terms:
+
+1. **Audit recommendation** — §6 option 1 "네 건 정정 후 PASS": a full re-audit is not
+   required; a delta re-check of the corrected sites suffices (`plan-audit.md:300`).
+2. **Repairs verified on this tree** — blocking D22~D25 repaired in r6; D26/D27 and three
+   cross-layer byte-identity statements repaired; all seven families delta-verified on the
+   post-r7 tree (table above, commit `1a4b3dba6`).
+3. **Must-Pass** — 7/7 on every audit iteration; score trend `0.74 → 0.70 → 0.80`, no STOP;
+   the Tier M iteration ceiling was already exceeded and a 4th audit was explicitly not taken.
+4. **Post-r7 lint** — `0 error(s), 18 warning(s)` (13 CoverageIncomplete + 5 modality);
+   advisory findings carried into run-phase as known state, not blockers.
+5. **OD-1 interaction with M1 / AC-SWG-011** — AC-SWG-011's ordering clause ("OD-1 answered
+   before thresholds are fixed") is already satisfied: the operator answered OD-1a before any
+   Go source exists. M1 therefore runs as **measurement-for-record** — the survey (four steps
+   + positive control) still executes and its counts are reported, but it no longer decides
+   the pair; the adopted values remain a proposal with the post-landing `withheld`-log
+   calibration instrument available (spec.md §D.3 `[RESOLVED]`).
+6. **Operator decision channel/time** — direct answer in this session, 2026-09-22
+   (AskUserQuestion, pull mode, 4th presentation); conflicting relay retracted by its sender
+   the same day; operator re-confirmation reported via the lead channel (corroboration).
+   Relayed for context, verbatim: the lead cites an operator global directive of the same
+   date — "각 레인 체크해서 남은 카드 모두 배차해서 완료하고 완료된 카드는 상태 체크 후 로컬
+   develop 병합 완료" — recorded as relayed context only; the Implementation Kickoff Approval
+   gate is executed in THIS session with the operator directly (a peer message is not the
+   user's approval).
+
+Plan phase closes here. Run-phase entry proceeds only through the Implementation Kickoff
+Approval gate, next.
+
 ## §E.2 Run-phase Evidence
 
 _<pending run-phase>_
