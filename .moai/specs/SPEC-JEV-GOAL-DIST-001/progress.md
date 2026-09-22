@@ -85,7 +85,7 @@ This SPEC's completion does **not** make the chain release-ready: the fitness ga
 
 ```yaml
 run_complete_at: 2026-09-22
-run_commit_sha: pending-backfill-run
+run_commit_sha: d911719aa
 run_status: complete
 ac_pass_count: 14
 ac_fail_count: 0
