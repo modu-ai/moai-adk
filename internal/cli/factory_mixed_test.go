@@ -2,15 +2,68 @@ package cli
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"os"
 	"strings"
 	"sync"
 	"testing"
 
+	"github.com/modu-ai/moai-adk/internal/config"
 	"github.com/modu-ai/moai-adk/internal/factorymsg"
 	"github.com/modu-ai/moai-adk/internal/homestate"
 )
+
+func TestFactoryLauncherRegistersLaunchPendingPeers(t *testing.T) {
+	t.Setenv("MOAI_HOME", t.TempDir())
+	root := t.TempDir()
+	run := "run-launch-pending"
+	db, err := homestate.OpenFactory(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := db.RecordRun(context.Background(), homestate.FactoryRun{RunID: run, Backend: "codex", ManifestJSON: "{}"}); err != nil {
+		t.Fatal(err)
+	}
+	if err := db.Close(); err != nil {
+		t.Fatal(err)
+	}
+	start, state := homestate.ProbeProcessIdentity(os.Getpid())
+	if state != homestate.ProcessIdentityLive || start == "" {
+		t.Fatal("test process identity unavailable")
+	}
+	env := []string{
+		config.EnvMoaiKanbanID + "=" + run,
+		config.EnvMoaiKanbanBackend + "=codex",
+		config.EnvMoaiFactoryWorkers + "=1",
+	}
+	peer, err := registerFactoryLaunchPending(context.Background(), root, env, os.Getpid(), start)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if peer.Slot != "lead" || peer.PID != os.Getpid() || peer.ProcessStart != start {
+		t.Fatalf("pending peer=%+v", peer)
+	}
+	s, err := factorymsg.Open(root, run)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer s.Close()
+	status, err := s.Status(context.Background())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(status.Lanes) != 1 || status.Lanes[0].BindingState != factorymsg.BindingLaunchPending || status.Lanes[0].SessionUUID != "" {
+		t.Fatalf("pending roster leaked a session identity: %+v", status.Lanes)
+	}
+	if _, err := s.ResolveLane(context.Background(), "lead"); !errors.Is(err, factorymsg.ErrEndpointLaunchPending) {
+		t.Fatalf("pending lane resolved for delivery: %v", err)
+	}
+
+	if peer, err := registerFactoryLaunchPending(context.Background(), root, os.Environ(), os.Getpid(), start); err != nil || peer != (factorymsg.Peer{}) {
+		t.Fatalf("non-factory launch mutated broker: peer=%+v err=%v", peer, err)
+	}
+}
 
 func TestFactoryRunSelectionAtomicSlotsAndArgv(t *testing.T) {
 	root := t.TempDir()

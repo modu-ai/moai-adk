@@ -22,10 +22,11 @@ package cli
 // command surface never re-words a row), and the binary/auth values come from
 // the shared probe, so no second classification path forks here (REQ-CL-007).
 // The launcher never writes: no directory is created, no file mutated
-// (REQ-CL-013). Launch is a child process whose exit code propagates — no
-// process replacement, no OS build tags (AC-CL-014).
+// (REQ-CL-013). POSIX direct launch replaces moai with Codex so the factory
+// owner PID is preserved; Windows retains the child Start/wait path.
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -33,9 +34,11 @@ import (
 	"os/exec"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"github.com/modu-ai/moai-adk/internal/config"
 	"github.com/modu-ai/moai-adk/internal/execerr"
+	"github.com/modu-ai/moai-adk/internal/homestate"
 	"github.com/spf13/cobra"
 )
 
@@ -79,9 +82,8 @@ const (
 // rejection — no default branch exists.
 //
 // The bare token launches. The risk that argued for the opposite default —
-// an accidental invocation carrying the session away — does not apply to this
-// launcher: the launch is an os/exec CHILD whose exit code propagates, so the
-// shell is still there when codex exits.
+// an accidental invocation carrying the session away — does not apply here:
+// the calling shell is still there when the launched Codex process exits.
 var codexVerbRouting = map[string]codexVerb{
 	"":       codexVerbLaunchCli,
 	"cli":    codexVerbLaunchCli,
@@ -159,7 +161,7 @@ type codexLaunchRequest struct {
 // assembled *exec.Cmd (Stdin/Stdout/Stderr already assigned to the parent's
 // own values — AC-CL-002's stdio identity) and runs it. The capture harness
 // records the cmd's seven fields here.
-var codexDirectLaunchFn = func(cmd *exec.Cmd) error { return cmd.Run() }
+var codexDirectLaunchFn = defaultCodexDirectLaunch
 
 // codexSpawnLaunchFn is the spawn seam: it receives the NEW-WINDOW TARGET —
 // (dir, program, args) of the codex child itself, NOT a tmux invocation
@@ -168,6 +170,9 @@ var codexDirectLaunchFn = func(cmd *exec.Cmd) error { return cmd.Run() }
 // (spawn.go owns the only exec.Command("tmux") primitive — AC-CL-016's
 // closed set of executables this SPEC's files launch).
 var codexSpawnLaunchFn = defaultCodexSpawnLaunch
+
+var codexSpawnPaneIdentityFn = defaultCodexSpawnPaneIdentity
+var codexSpawnCleanupPaneFn = tmuxKillPane
 
 // defaultCodexSpawnLaunch opens a detached tmux window running codex
 // directly. The command string is shell-quoted token-by-token so a tail
@@ -178,9 +183,36 @@ func defaultCodexSpawnLaunch(dir, program string, args []string) error {
 	if err != nil {
 		return fmt.Errorf("spawn tmux window: %w", err)
 	}
+	if env := os.Environ(); factoryLaunchEnabled(env) {
+		pid, start, identityErr := codexSpawnPaneIdentityFn(paneID)
+		if identityErr == nil {
+			_, identityErr = registerFactoryLaunchPending(context.Background(), dir, env, pid, start)
+		}
+		if identityErr != nil {
+			cleanupErr := codexSpawnCleanupPaneFn(paneID)
+			return fmt.Errorf("register spawned factory launch-pending endpoint: %w", errors.Join(identityErr, cleanupErr))
+		}
+	}
 	_, _ = fmt.Fprintf(os.Stdout, "Spawned pane %s running `%s` in %s\n", paneID, command, dir)
 	_, _ = fmt.Fprintln(os.Stdout, "Switch to it with: tmux select-window -t "+paneID)
 	return nil
+}
+
+func defaultCodexSpawnPaneIdentity(paneID string) (int, string, error) {
+	deadline := time.Now().Add(2 * time.Second)
+	for {
+		pid, err := tmuxPanePID(paneID)
+		if err == nil {
+			start, state := homestate.ProbeProcessIdentity(pid)
+			if state == homestate.ProcessIdentityLive && start != "" {
+				return pid, start, nil
+			}
+		}
+		if !time.Now().Before(deadline) {
+			return 0, "", errors.New("spawned Codex pane process identity unavailable")
+		}
+		time.Sleep(25 * time.Millisecond)
+	}
 }
 
 // buildCodexSpawnCommand renders the shell command string for the new tmux
@@ -213,7 +245,7 @@ func buildCodexSpawnCommand(program string, args []string) string {
 			parts = append(parts, key+"="+shellQuote(value))
 		}
 	}
-	parts = append(parts, shellQuote(program))
+	parts = append(parts, "exec", shellQuote(program))
 	for _, a := range args {
 		parts = append(parts, shellQuote(a))
 	}
@@ -437,6 +469,11 @@ func runCodex(cmd *cobra.Command, args []string) error {
 			return selectErr
 		}
 		defer restoreRun()
+		if factoryLead {
+			if err := recordFactoryRunStart(launchProjectRoot(), os.Getenv(config.EnvMoaiKanbanID), codexFactoryBackend, ""); err != nil {
+				return fmt.Errorf("record Codex factory run: %w", err)
+			}
+		}
 	} else if factoryRun != "" {
 		return fmt.Errorf("--factory-run requires -f/--factory")
 	}
@@ -509,7 +546,7 @@ func runCodexLaunch(cmd *cobra.Command, kind codexVerb, tail []string, spawn boo
 		projectRoot = cwd
 	}
 
-	// -w moves the CHILD's working directory only. The gate below keeps
+	// -w moves the launched session's working directory only. The gate below keeps
 	// reading the project root: the wiring it classifies is a property of the
 	// project, and a linked worktree need not carry a copy of it.
 	dir := projectRoot

@@ -204,6 +204,21 @@ func TestFactoryLeadNoticeUsesOperationalStatus(t *testing.T) {
 	t.Setenv(config.EnvMoaiFactoryWorker, "")
 	t.Setenv(config.EnvMoaiKanbanBackend, "codex")
 	t.Setenv(config.EnvMoaiSessionPID, strconv.Itoa(os.Getpid()))
+	start, state := homestate.ProbeProcessIdentity(os.Getpid())
+	if state != homestate.ProcessIdentityLive || start == "" {
+		t.Fatal("test process identity unavailable")
+	}
+	s, err := factorymsg.Open(root, run)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = s.Close() })
+	if _, err := s.RegisterLaunchPending(context.Background(), factorymsg.Peer{
+		ProjectKey: homestate.ProjectKey(root), RunID: run, Backend: "codex",
+		Role: "lead", Slot: "lead", PID: os.Getpid(), ProcessStart: start,
+	}); err != nil {
+		t.Fatal(err)
+	}
 	output, err := hook.NewSessionStartHandler(nil, hook.WithSynchronousDeferredScans()).Handle(context.Background(), &hook.HookInput{SessionID: "notice-lead", ProjectDir: root, CWD: root, Source: "startup"})
 	if err != nil || output.HookSpecificOutput == nil {
 		t.Fatalf("SessionStart: %v", err)
