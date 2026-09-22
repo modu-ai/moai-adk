@@ -4,6 +4,7 @@
 
 **최초 측정 트리**: worktree `.claude/worktrees/t592`, 브랜치 `WT-home-state-rollout`, HEAD `e7bd89ee3`, 2026-09-10
 **재측정 트리**: worktree `.claude/worktrees/t869`, 브랜치 `WT-codemaps-refresh`, HEAD `a851b205c`, 2026-09-18 — § `main()`, § Cobra 명령 트리의 모든 수치와 등록 목록, § 훅의 개수 네 가지(설정 엔트리 38, 셸 래퍼 48, 이벤트 서브커맨드 26, `Register` 30), § MCP 서버 표면 전체. 훅 절의 부가 `RunE` 목록은 다시 대조하지 않았습니다. § HOME 상태·웹 콘솔·CI 종료 코드 절은 이번 변경과 무관해 앞 판을 이어받았습니다.
+**정기 재측정**: worktree `.claude/worktrees/t1069`, 브랜치 `WT-graph-restamp`, HEAD `0314801c2`, 2026-09-22 — § Cobra 명령 트리의 등록 수치 세 개(자기 파일 등록 파일 70 불변, `AddCommand` 219→220, `rootCmd.AddCommand` 65→66, `root.go init()` 30→31)와 새 숨은 명령 `jev-suggest`, init 위자드 질문 4→5, § 훅과 § 웹 콘솔의 신규 seam 단락. 훅의 개수 네 가지(38·48·26·30)와 § MCP 서버 표면(도구 30), § HOME 상태 절, § CI 종료 코드 절은 같은 명령으로 재확인해 변동이 없었습니다.
 
 ---
 
@@ -56,23 +57,32 @@ root.go Execute()
 
 **등록 사이트가 두 갈래**입니다.
 
-1. **`root.go`의 `init()`** — 명시적 `rootCmd.AddCommand(...)` **30회**.
+1. **`root.go`의 `init()`** — 명시적 `rootCmd.AddCommand(...)` **31회**.
    worktree, agentlint(agent/workflow 2종), statusline, ast-grep, ast-edit, telemetry,
    constitution, state, tokens, clean, **skills**, navigator 5종(enrich/sync/tiers/route/fix),
-   migration, **chain**, harness-router, tool-policy, tool, mcp-server, mcp, inventory, preference,
+   migration, **chain**, **jev-suggest**, harness-router, tool-policy, tool, mcp-server, mcp, inventory, preference,
    model, plan, feedback, inbox.
    - `skills`(`newSkillsCmd()`, `root.go:187`) — `moai skills disable <name> --codex` 형태로
      **계층을 플래그로 명명**하는 스킬 노출 제어 트리. `--codex`가 필수인 것이 opt-in의
      기계적 형태이며, 어떤 프로젝트 설정 키도 이 verb를 구동하지 않습니다(사용자 HOME에
      쓰는 일을 프로젝트 설정이 요청하게 두지 않는다).
-   - `chain`(`newChainCmd()`, `root.go:214`) — 워크트리 세션 origin-trail 원장 조회·정리.
+   - `chain`(`newChainCmd()`, `root.go:220`) — 워크트리 세션 origin-trail 원장 조회·정리.
+   - `jev-suggest`(`newJevSuggestCmd()`, `root.go:217`) — **이 판에서 더해진 숨은 명령**입니다.
+     `Hidden: true`라 `moai --help` 어디에도 렌더되지 않고, 게이트 미실행 상태에서는 게이트를
+     먼저 확인한 뒤 안내 한 줄만 내고 클라이언트를 조립하지 않습니다(§ `modules.md` Jev 계열).
 2. **자기 파일의 `init()`에서 스스로 등록** — `AddCommand`를 호출하는 파일이 **70개**입니다
    (`grep -rl "AddCommand" internal/cli --include='*.go' | grep -v _test`).
    `hook.go`, `todo.go`, `kanban.go`, `glm.go`, `cc.go`, `update.go`, `doctor.go`, `spec.go`,
-   `gate.go`, `graph.go`, `goal.go`, `integration.go` 등이 이 방식이고, 이 판에서
+   `gate.go`, `graph.go`, `goal.go`, `integration.go` 등이 이 방식이고, 앞선 판 사이에
    `gtd.go`(`NewGTDCommand()` — todo 명령 트리를 감싸 `Use`만 `gtd`로 바꾼 두 번째 이름)와
-   `slot.go`(`moai slot` — 무거운 실행용 세션 간 자원 임대)가 더해졌습니다.
-   비테스트 `AddCommand(` 호출은 모두 **219회**, 그중 `rootCmd.AddCommand(`는 **65회**입니다.
+   `slot.go`(`moai slot` — 무거운 실행용 세션 간 자원 임대)가 더해진 바 있습니다.
+   비테스트 `AddCommand(` 호출은 모두 **220회**, 그중 `rootCmd.AddCommand(`는 **66회**입니다.
+
+**`moai init` 위자드는 다섯 질문이 됐습니다.** 앞 판의 네 질문 세트에 다섯 번째 `jev_enabled`
+("Judgment Capability" 그룹, 자기 페이지를 가진다)가 더해졌습니다. 이 질문은 `InitQuestions`에만
+있고 `DefaultQuestions`에는 없어서 `moai update --reconfigure`에는 **도달하지 않습니다** —
+초기화 뒤의 유일한 이후 경로는 `moai web` 설정 화면입니다. 답은 `internal/settings`의 같은
+`ApplySchemaEdits` seam으로 영속화됩니다(§ `data-flow.md` L).
 
 **합성 루트**: `internal/cli/deps.go` — `type Dependencies` + `InitDependencies()`.
 Config · Git(Repository/Branch/Worktree) · HookRegistry · HookProtocol · UpdateChecker/Orchestrator ·
@@ -157,6 +167,20 @@ args: ["-c", "[ -f \"$0\" ] && exec bash \"$0\"; ...missing 로그 후 exit 0",
 기준이 없고, 셋째가 없으면 거부가 아무것도 막지 않습니다. 게이트 자체는 opt-in이며
 `.moai/config/sections/workflow.yaml`이 **문자열 `required`일 때만** 켜집니다(`CodexGateRequired`).
 
+### 이 판에서 더해진 표면 밖의 두 seam
+
+**하트비트 갱신 seam** — `session_heartbeat.go`가 UserPromptSubmit마다 세션 레지스트리의
+`last_heartbeat`를 갱신합니다. `session.Heartbeat`에는 원래 프로덕션 발화자가 없어서 타임스탬프가
+등록 시점에 얼어 있었고(실측: 살아 있는 147항목 중 144가 그 이유로 stale 렌더), 사용자 턴 빈도가
+「이 세션이 굴러가고 있다」의 가장 싼 증거라 이 이벤트에 배선됐습니다. 존재 검사가 앞서므로
+레지스트리가 없는 프로젝트에서 빈 파일을 만들지 않고, 모든 실패 경로는 침묵합니다.
+
+**룰 적재 감사 행** — `internal/hook/instructions_loaded.go`가 이벤트 1건당 `.moai/logs/rule-load-audit.jsonl`에
+JSONL 한 줄을 씁니다. 호스트가 주는 `LoadReason`·`Globs`·`TriggerFilePath` 필드는 전에는 버려져서
+`paths:` 글롭 매칭이 런타임에 관측 불가능했고, slog 기록은 `moai hook` 호출이 로깅을 io.Discard로
+보내기 때문에 독자에게 도달하지 않습니다 — 그래서 영구 행이 유일한 관측면입니다. 실패는
+agent-stop-audit 선례대록대로 침묵하고 계속합니다.
+
 ---
 
 ## MCP 서버 표면
@@ -196,6 +220,15 @@ codex 탭(행 모델은 `internal/web/codexmirror.go`, 렌더는 그 짝 `.templ
 패널)은 Audit·MCP 탭에 사는 codex 설정의 읽기 전용 미러입니다. 이 패널은 `name` 속성을 가진 폼 요소를 하나도 내지 않으며, 그 금지는 숨은 bool
 동반자 `<name>__present`까지 덮습니다 — 모든 패널이 한 폼 안에 살고 탭 전환은 표시 전환일
 뿐이라 **비활성 패널도 함께 제출되기** 때문입니다.
+
+이 판에서 두 가지가 더해졌습니다. **Jev 패널** — 워크플로 설정의 opt-in 스위치가 자기 패널과
+자격증명 필드(`jevkey.go`)를 얻었는데, 자격증명은 `internal/jevcred`를 통해서만 읽히고 쓰이며
+스키마 `AllFields()` 밖이라 어떤 스키마 순회도 못 만집니다(공개는 설정 여부와 끝 네 글자까지).
+**저장 실패 관측성** — 설정 저장이 실패하면 9개 persistence seam의 실패가 하나의 재렌더로
+나옵니다. 이전에는 500이었는데, 설정 폼은 hx-boosted라 htmx가 2xx가 아닌 응답 본문을 버려서
+인라인 슬롯에 렌더한 실패 이유가 브라우저에 도달하지 않았습니다. 2xx 재렌더와 별도로
+실패한 seam마다 stderr에 `moai web: ` 접두어의 한 줄이 남고, 그 줄은 실패 구문만 실으며
+원시 에러 값은 자격증명 조각을 품을 수 있어 절대 실리지 않습니다(§ `data-flow.md` G).
 
 ---
 

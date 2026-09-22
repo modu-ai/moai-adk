@@ -82,8 +82,8 @@ The tracked `.moai/project/codemaps/provenance.json` is a MUTABLE file; this cri
 **Then** it exits 0 printing the reachability pass line — regardless of which sha the tracked file currently names.
 
 ```bash
-ANC=$(git merge-base HEAD origin/main)   # read at verification time — no stored literal
-printf '{"schema_version":1,"commit_sha":"%s","dirty":false}\n' "$ANC" > /tmp/pv-anc.json
+git merge-base HEAD origin/main   # read at verification time — record the value as ANC
+printf '{"schema_version":1,"commit_sha":"%s","dirty":false}\n' <ANC> > /tmp/pv-anc.json
 REPO="$PWD" PROV=/tmp/pv-anc.json GITHUB_BASE_REF=main bash <reference-script> ; echo "rc=$?"
 # expect rc=0, guard: stamp <ANC> reachable from origin/main
 ```
@@ -107,8 +107,9 @@ Recorded delta-round (2026-08-27, post-merge 016dc0b8c): tracked sha `a995e58fa6
 **Given** a history-free context lacking the named object, built by fetching ONLY main from a LOCAL source path (no bare-remote fetch):
 
 ```bash
-mkdir -p /tmp/stamp-guard-t && git init -q /tmp/stamp-guard-t \
-  && git -C /tmp/stamp-guard-t fetch -q "$PWD" main && cd /tmp/stamp-guard-t
+mkdir -p /tmp/stamp-guard-t
+git init -q /tmp/stamp-guard-t
+git -C /tmp/stamp-guard-t fetch -q "$PWD" main
 # FIRST assert the orphan truly absent there — measure, never assume:
 git cat-file -e '0d15864ae90b^{commit}' ; echo "absence-premise rc=$?"   # expect rc=128
 ```
@@ -136,7 +137,7 @@ Observed (iteration-2): rc=0 with `guard: provenance carries no commit anchor �
 ### AC-SP-005 — Explicit-commit stamps the named sha verbatim
 
 **Given** a clean described-source tree and resolvable revision (merge-base form)
-**When** `moai graph stamp codemaps --root "$TREE" --commit "$(git merge-base HEAD origin/main)"` executes against a `t.TempDir()` fixture repo
+**When** `git merge-base HEAD origin/main`으로 기준 커밋을 기록한 뒤 `moai graph stamp codemaps --root "$TREE" --commit <기록한 값>` executes against a `t.TempDir()` fixture repo
 **Then** written provenance has `dirty:false` and `commit_sha` equal-bytes to the resolved full sha (`jq -r '.commit_sha' pv == git rev-parse <rev>`), schema_version 1, described_roots `[internal cmd pkg]`.
 RED-now at v0.1.0: flag did not exist (flags list cited in baseline-attribution). Run-phase flips this cell.
 

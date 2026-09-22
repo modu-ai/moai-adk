@@ -609,10 +609,10 @@ on who owns the `internal/config/CLAUDE.md` env-var fix.
 The range lines run on this SPEC's branch, before it merges into `develop`:
 
 ```bash
-CARD_BASE=$(git merge-base develop HEAD)
-git diff --name-only "$CARD_BASE"..HEAD | wc -l
-git diff --stat "$CARD_BASE"..HEAD -- internal/template/templates/
-git log --oneline "$CARD_BASE"..HEAD -- internal/template/templates/ | wc -l
+git merge-base develop HEAD          # read at measurement time — record the value as CARD_BASE in the evidence
+git diff --name-only develop...HEAD | wc -l
+git diff --stat develop...HEAD -- internal/template/templates/
+git log --oneline develop...HEAD -- internal/template/templates/ | wc -l
 git diff --stat -- internal/template/templates/
 ```
 
@@ -671,10 +671,10 @@ run while passing alone. It is not diagnosed here.
 Run on this SPEC's branch, before it merges into `develop`:
 
 ```bash
-CARD_BASE=$(git merge-base develop HEAD)
-git diff --name-only "$CARD_BASE"..HEAD | wc -l
-git diff --name-only "$CARD_BASE"..HEAD | grep -c '\.go$'
-git diff --name-only "$CARD_BASE"..HEAD | grep -vc '^\.moai/specs/\|^CLAUDE\.local\.md$\|^internal/config/CLAUDE\.md$\|^\.moai/docs/'
+git merge-base develop HEAD          # read at measurement time — record the value as CARD_BASE in the evidence
+git diff --name-only develop...HEAD | wc -l
+git diff --name-only develop...HEAD | grep -c '\.go$'
+git diff --name-only develop...HEAD | grep -vc '^\.moai/specs/\|^CLAUDE\.local\.md$\|^internal/config/CLAUDE\.md$\|^\.moai/docs/'
 ```
 
 Expected: the unfiltered control (first count) `>= 1`, then `0` and `0`. No Go file differs from

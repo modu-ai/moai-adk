@@ -139,12 +139,12 @@ git branch -D feat/SPEC-TEST
 git reset --hard refs/remotes/origin/main
 git pull . main 2>/dev/null || true   # fetch is no-op for self-remote
 
-# Verify
-PORCELAIN=$(git status --porcelain)
-LOCAL_HEAD=$(git rev-parse main)
-ORIGIN_HEAD=$(git rev-parse refs/remotes/origin/main)
-test -z "$PORCELAIN" && test "$LOCAL_HEAD" = "$ORIGIN_HEAD" && \
-  echo "AC-LB-006 PASS" || echo "AC-LB-006 FAIL"
+# Verify (each line a separate invocation — no `$()` capture, per the worktree-guard convention)
+git status --porcelain > /tmp/lb-porcelain.txt
+git rev-parse main > /tmp/lb-local.txt
+git rev-parse refs/remotes/origin/main > /tmp/lb-origin.txt
+diff /tmp/lb-local.txt /tmp/lb-origin.txt > /dev/null && [ ! -s /tmp/lb-porcelain.txt ] \
+  && echo "AC-LB-006 PASS" || echo "AC-LB-006 FAIL"
 cd / && rm -rf "$TESTDIR"
 ```
 

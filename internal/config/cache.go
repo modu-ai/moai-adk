@@ -23,8 +23,14 @@ import (
 // Workflow gained AgentStopGuard: an old-binary cache served enabled=false
 // over an enabled:true workflow.yaml). Bumped to 3 when Workflow gained
 // SettingsDriftGate, to 4 when Workflow gained SlotLease, and to 5 when
-// Workflow gained Jev, for exactly that reason.
-const configCacheSchemaVersion = 5
+// Workflow gained Jev — for exactly that reason. SPEC-SUBAGENT-WRITE-SHRINK-GUARD-001
+// M4 independently bumped its own parent to 5 when WorkflowConfig gained
+// SubagentWriteGuard, the same hazard the family records each time.
+// Bumped to 6 by the t1057 develop-absorption merge: both parents carried
+// schema 5 over DIFFERENT struct shapes (the Jev field vs the
+// SubagentWriteGuard field), so a cache written under either parent's struct
+// must not be served as valid for the merged struct.
+const configCacheSchemaVersion = 6
 
 // cacheFileName is the fixed cache file name under the state directory.
 // Fixed name ensures predictable gitignore and cleanup (REQ-PERF-009).
