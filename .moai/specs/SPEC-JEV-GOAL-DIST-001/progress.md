@@ -107,7 +107,7 @@ m1_to_mN_commit_strategy: "per-milestone commits on WT-goal-dist — M7a 1470c5f
 
 sync_status: complete
 sync_complete_at: 2026-09-22
-sync_commit_sha: pending-backfill-sync
+sync_commit_sha: 6bbc1abd4
 
 **Sync-phase is complete.** This SPEC's `status:` frontmatter transitions
 `in-progress → completed` on the sync commit that also carries this section and
