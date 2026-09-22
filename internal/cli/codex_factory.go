@@ -29,6 +29,8 @@ import (
 	"github.com/modu-ai/moai-adk/internal/kanban"
 )
 
+const codexFactoryBackend = "codex"
+
 // stripCodexFactoryFlag removes the -f/--factory tokens from the head and
 // reports the requested factory role. It scans only the head (pre---)
 // because tokens after -- belong to the codex child.
@@ -102,6 +104,7 @@ func codexHeadTokenIsVerb(v string) bool {
 // bump and liveness rules are one implementation across doors.
 func applyCodexFactoryEntry(cmd *cobra.Command, agent bool, lane string) (func(), error) {
 	noop := func() {}
+	restoreFacts := exportFactoryLaunchFacts("", codexFactoryBackend)
 	if agent {
 		next := kanban.NextFactoryAgentNumber(loadFactoryRegistry(factoryRegistryPath(launchProjectRoot())), factoryProcessAlive)
 		lane = kanban.FactoryAgentLabel(next)
@@ -109,10 +112,18 @@ func applyCodexFactoryEntry(cmd *cobra.Command, agent bool, lane string) (func()
 	if lane != "" {
 		final, claimErr := resolveFactoryWorkerName(launchProjectRoot(), lane, cmd.ErrOrStderr())
 		if claimErr != nil {
+			restoreFacts()
 			return noop, claimErr
 		}
-		restore := enterFactoryWorkerMode(final, 0)
-		return restore, nil
+		restoreMode := enterFactoryWorkerMode(final, 0)
+		return func() {
+			restoreMode()
+			restoreFacts()
+		}, nil
 	}
-	return enterFactoryLeadMode(config.DefaultFactoryLeadWorkers, ""), nil
+	restoreMode := enterFactoryLeadMode(config.DefaultFactoryLeadWorkers, "")
+	return func() {
+		restoreMode()
+		restoreFacts()
+	}, nil
 }

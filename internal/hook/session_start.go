@@ -455,6 +455,15 @@ func (h *sessionStartHandler) Handle(ctx context.Context, input *HookInput) (*Ho
 	// call returns nothing and the session start cannot gate on it.
 	clock.lap("marshal_attribution")
 	writeKanbanSessionRecord(input)
+	if factoryNotice := registerFactoryHookPeer(ctx, input); factoryNotice != "" {
+		if out.HookSpecificOutput == nil {
+			out.HookSpecificOutput = &HookSpecificOutput{HookEventName: string(EventSessionStart)}
+		}
+		if out.HookSpecificOutput.AdditionalContext != "" {
+			out.HookSpecificOutput.AdditionalContext += "\n\n"
+		}
+		out.HookSpecificOutput.AdditionalContext += factoryNotice
+	}
 	clock.lap("kanban_record")
 
 	// SPEC-STEERING-ALIGN-GUARDRAIL-HOOK-001: GLM 가드레일 리마인더 주입.

@@ -107,6 +107,12 @@ func (h *userPromptSubmitHandler) Handle(ctx context.Context, input *HookInput) 
 
 	// Detect workflow context
 	additionalCtx := detectWorkflowContext(prompt)
+	if factoryCtx, _, _ := factoryHookBatch(ctx, input, EventUserPromptSubmit); factoryCtx != "" {
+		if additionalCtx != "" {
+			additionalCtx += "\n\n"
+		}
+		additionalCtx += factoryCtx
+	}
 
 	// Return empty output if no context to report
 	if title == "" && additionalCtx == "" {

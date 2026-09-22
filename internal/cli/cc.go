@@ -182,6 +182,11 @@ func runClaudeEntry(cmd *cobra.Command, args []string, commandName, mode, backen
 		leadLabel, _ := parseLeadLabel(filteredArgs)
 		restoreFactory := enterFactoryLeadMode(entry.FactoryWorkers, leadLabel)
 		defer restoreFactory()
+		restoreRun, runErr := enterSelectedFactoryRun(launchProjectRoot(), entry.FactoryRun, false)
+		if runErr != nil {
+			return runErr
+		}
+		defer restoreRun()
 		_ = kanban.RecordFactoryRunStart(launchProjectRoot(), os.Getenv(config.EnvMoaiKanbanID), backend, entry.Spec)
 		defer exportFactoryLaunchFacts(entry.Spec, backend)()
 		var leadName string
@@ -193,6 +198,11 @@ func runClaudeEntry(cmd *cobra.Command, args []string, commandName, mode, backen
 		}
 		defer settingsCleanup()
 	case factoryBranchWorker:
+		restoreRun, runErr := enterSelectedFactoryRun(launchProjectRoot(), entry.FactoryRun, true)
+		if runErr != nil {
+			return runErr
+		}
+		defer restoreRun()
 		// A number held by a live session is bumped to the next free one, and
 		// the bumped value must reach the backend argv — the session name is
 		// the address the lead dispatches to.
