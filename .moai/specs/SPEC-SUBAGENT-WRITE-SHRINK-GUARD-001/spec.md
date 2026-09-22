@@ -2,7 +2,7 @@
 id: SPEC-SUBAGENT-WRITE-SHRINK-GUARD-001
 title: "refuse a subagent's Write that drastically shrinks an existing tracked file"
 version: "0.1.0"
-status: in-progress
+status: completed
 created: 2026-09-21
 updated: 2026-09-22
 author: manager-spec

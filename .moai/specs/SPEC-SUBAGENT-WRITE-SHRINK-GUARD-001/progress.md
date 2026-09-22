@@ -3,7 +3,7 @@ id: SPEC-SUBAGENT-WRITE-SHRINK-GUARD-001
 title: "progress — subagent destructive-write guard"
 version: "0.1.0"
 created: 2026-09-21
-updated: 2026-09-21
+updated: 2026-09-22
 author: manager-spec
 priority: P1
 phase: "v3.1.4 target"
@@ -534,7 +534,21 @@ total_run_phase_files: 9   # 2 new hook files + pre_tool.go + 3 config files + w
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase>_
+```yaml
+sync_status: audit-ready
+sync_complete_at: 2026-09-22
+sync_commit_sha: pending-backfill-sync   # backfilled in the follow-up chore commit (self-referential hazard — D3 exemption)
+changelog_entry_position: "CHANGELOG.md [Unreleased] — Added 1 (top of section)"
+docs_locales_synced: n/a   # internal opt-in hook; no user-facing docs surface touched (sync dispatch: minimal scope)
+frontmatter_status_transitions:
+  spec.md: in-progress -> completed   # 3-phase close: the terminal transition rides the single sync commit
+  plan.md: n/a (statusless artifact — no status field by schema; updated: refreshed)
+  acceptance.md: n/a (statusless artifact — no status field by schema; updated: refreshed)
+  progress.md: n/a (statusless artifact — no status field by schema; updated: refreshed)
+b12_self_test_a: "grep -c 'SPEC-SUBAGENT-WRITE-SHRINK-GUARD-001' CHANGELOG.md -> 0 (pre-emission; no duplicate entry)"
+b12_self_test_b: "grep -oE 'AC-([A-Z0-9]+-)*[0-9]+' acceptance.md | sort -u | wc -l -> 14 (15 matrix rows; AC-SWG-001 splits into 001a/001b — one logical criterion); no [RETIRED]/[REF] tokens, no ambiguous ids"
+b12_self_test_c: "ls of every path named in the CHANGELOG entry -> all present (subagent_write_guard.go, pre_tool.go, defaults.go, cache.go, workflow.yaml, spec.md)"
+```
 
 ## §F Phase 4 Mode Selection
 

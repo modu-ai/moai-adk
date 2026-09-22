@@ -3,7 +3,7 @@ id: SPEC-SUBAGENT-WRITE-SHRINK-GUARD-001
 title: "acceptance criteria — subagent destructive-write guard"
 version: "0.1.0"
 created: 2026-09-21
-updated: 2026-09-21
+updated: 2026-09-22
 author: manager-spec
 priority: P1
 phase: "v3.1.4 target"
