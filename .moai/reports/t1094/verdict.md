@@ -1,0 +1,70 @@
+# t1094 판정서 — Opus 5.5 docs-site 4-locale + README 반영
+
+- card: t1094 · Tier S · branch `WT-opus55-docs` · base 로컬 develop `08113ff0f`
+- 정본: t1089 `SPEC-MODEL-OPUS55-001` (spec.md §A.2·§C, plan.md §C.2·§C.3·§C.6·§C.8) — 읽기만 함
+- 상태: **초안·커밋 완료, 병합 창 요청 안 함** (t1089 develop 착지 전)
+
+## 1. 공식 근거 (이 실행에서 재조회)
+
+| 사실 | 출처 |
+|---|---|
+| `claude-opus-5-5`, 1M 컨텍스트, 128K 출력, $4/$20, 기본 effort `medium`, 최소 캐시 프롬프트 512 토큰 | platform.claude.com/docs/en/models/opus-5-5/overview |
+| `opus` 별칭 → Opus 5.5, Claude Code v2.1.280 이상 필요 | code.claude.com/docs/en/model-config |
+| xhigh/max 지원: Opus 5.5 · Opus 5 · Sonnet 5 · Opus 4.8 · Opus 4.7 (+Fable 5.1/5) | 같은 페이지 |
+| 기본 effort: Opus 5.5 `medium`, Opus 4.7 `xhigh`, 나머지 effort 지원 모델 `high` | 같은 페이지 |
+
+## 2. 전수 측정 (편집 전)
+
+명령: `grep -rnE 'Opus 5([^.0-9]|$)|opus-5([^-]|$)'` (opus-5-5 제외)
+
+| 범위 | 파일 | 줄 |
+|---|---|---|
+| docs-site ko | 18 | 30 |
+| docs-site en | 12 | 25 |
+| docs-site ja | 10 | 22 |
+| docs-site zh | 9 | 21 |
+| README 4종 | 4 | 32 (각 8) |
+
+ko 에만 있는 적중 파일 6개(claude-code/_index, context-window, features-overview, how-claude-code-works, multi-llm/_index, moai-run)는 **기존 로케일 드리프트**이며 이 카드에서 새로 만든 것이 아니다.
+
+## 3. 분류와 처분
+
+### 치환 (현재 동작 서술)
+- 컨텍스트 임계 표·다이어그램 `Opus 5 (1M)` / `(Opus 5, GLM-5.3)` → Opus 5.5 — token-budget, tokenomics-overview, statusline, moai-run
+- 모델 표: commands, how-claude-code-works, context-window(`Opus 5.5 / Opus 5 / Opus 4.8`), multi-llm/_index(`5.5 / 5 / 4.8`), model-policy 라인업 `opus` 행 → `Claude Opus 5.5`
+- xhigh/max 지원 목록에 Opus 5.5 추가 (Opus 5 유지 — 여전히 선택 가능)
+- init-wizard 화면 예시 3줄 `Opus 5 (` → `Opus 5.5 (`
+- prompt-caching 표에 `Claude Opus 5.5 | 1M | 512` 행 추가 (Opus 5 행 유지)
+- model-policy 라인업 제목 날짜 `(2026-08)` → `(2026-09)` + 「기본 effort」 단락 신설: Opus 5.5 기본 `medium`, 다른 모델 대부분 `high`, 위저드·웹 콘솔이 `medium` 권장, `opus`→5.5 는 CC v2.1.280+
+
+### 보존 + 귀속 명시 (측정 사실)
+- no-haiku-3tier 벤치마크 표(Opus 5 × 5 effort)·단가줄·해설 — 원문 유지, 표 아래에 「Opus 5 에서 측정, Opus 5.5 미재측정」 한 문장 추가 (4 로케일)
+- README 벤치마크 표·해설 — 원문 유지, 해설 뒤에 귀속 + 현재 `opus`=Opus 5.5 · v2.1.280+ · 기본 effort `medium` 한 문장 추가 (4종)
+
+### 보존 (손대지 않음)
+- profile-matrix, comparison 의 벤치마크 인용 문장 — 측정 사실
+- `_index.md` / README 52행 스크린샷 캡션(「Plan을 Opus 5 high로」) — 그 화면의 사실 기록
+- 날짜가 박힌 라인업 서술 — claude-code/_index(2026년 8월 기준), features-overview(2026-08 기준), tools-reference(2026년 8월 현재) — 날짜 스냅샷으로 참
+- agentic/_index 「Opus 4.7+/4.8/5 는 서브에이전트를 자동 spawn 하지 않음」 — Opus 5.5 에 대한 확인 근거 없음, 옮기지 않음
+- CHANGELOG·릴리스 노트 — 대상 아님
+
+## 4. 검증
+
+| 항목 | 명령 | 결과 |
+|---|---|---|
+| 잔여 현재-동작 적중 | 위 grep 에서 보존 목록 제외 | 0 건 (exit 1) |
+| diff 규모 | `git diff --stat` | 37 files, +76 / −44 |
+| hugo 빌드 | `hugo --minify --quiet` | exit 0, warn/error 0 줄 |
+| 금지 URL·Mermaid LR | 추가 줄 grep | 0 |
+| 본문 이모지 | 추가 줄 U+1F300–1FAFF·2600–27BF | 0 |
+| 변경 경로 | `git diff --name-only` | docs-site/content/{ko,en,ja,zh} + README 4종 뿐 |
+
+## 5. 미관측 (Gaps)
+- Vercel 프리뷰 렌더 미확인 (push 금지)
+- `scripts/docs-i18n-check.sh` 는 이 트리에 없음 — 로케일 패리티 기계 검사 불가
+- t1089 의 실제 위저드·웹 라벨 문구는 아직 미착지 — 문서의 「위저드·웹 콘솔이 medium 권장」은 t1089 REQ-OP55-005 결정을 근거로 한 선반영
+
+## 6. 잔여 위험 · 리드 판단 요청
+1. **범위 밖 드리프트 발견**: model-policy 라인업 표의 Fable 행(`Fable 5`, 256K)과 Sonnet 5 컨텍스트(200K)는 공식 문서(Fable 5.1 1M, Sonnet 5 1M)와 다르다. prompt-caching 표도 같은 두 행이 낡았다. 이 카드는 Opus 5.5 만 다뤄 손대지 않았다 — 별도 카드 후보.
+2. init-wizard 화면 예시는 이미 코드와 어긋나 있었다(코드: Max/Medium/Low 와 effort 범위가 다름). 모델명만 바꿨다 — 화면 재동기는 별도 카드 후보.
+3. 날짜 스냅샷 라인업(8월 기준)은 참이지만 독자가 「최신」으로 읽을 수 있다. 갱신 여부는 Fable 5.1 반영과 함께 결정하는 편이 맞다.

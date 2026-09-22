@@ -91,9 +91,9 @@ moai init my-project
 
 ```bash
 ? 选择性能层级:
-▸ Medium - Opus 5 (high~low) + Sonnet (low, single-shot rows only)
-  High - Opus 5 (max~medium) + Sonnet (low, single-shot rows only)
-  Low - Opus 5 (medium~low) + Sonnet (low, docs/e2e/single-shot rows)
+▸ Medium - Opus 5.5 (high~low) + Sonnet (low, single-shot rows only)
+  High - Opus 5.5 (max~medium) + Sonnet (low, single-shot rows only)
+  Low - Opus 5.5 (medium~low) + Sonnet (low, docs/e2e/single-shot rows)
 ```
 
 | 层级 | 特点 |

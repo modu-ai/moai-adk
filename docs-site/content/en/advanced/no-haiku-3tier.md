@@ -51,6 +51,8 @@ The source that confirmed the intuition above is the **"All effort levels"** vie
 
 List price per MTok (in/out): Opus 5 $5/$25 · Sonnet 5 $2/$10 (introductory, through 2026-08-31, then $3/$15) · Fable 5 $10/$50.
 
+Every figure in this table was measured on Opus 5. Opus 5.5, which the `opus` alias now resolves to, has not been re-measured yet.
+
 {{< icon warning warn >}} **Price inversion**: Sonnet's per-token price is *lower* than Opus's, yet at every comparable point its per-task cost is higher — Opus 5 at `low` gets 58% for $1.66, while Sonnet 5 at `max` gets 54% for $26.40. The conventional wisdom "running a cheap model saves quota" does not hold on long-horizon agentic work, because what sets the bill is completion efficiency, not unit price.
 
 Four conclusions read from the data:

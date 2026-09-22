@@ -89,9 +89,9 @@ Git 자동화 모드·프로바이더는 마법사에서 묻지 않습니다. `m
 
 ```bash
 ? 성능 티어 선택:
-▸ Medium - Opus 5 (high~low) + Sonnet (low, single-shot rows only)
-  High - Opus 5 (max~medium) + Sonnet (low, single-shot rows only)
-  Low - Opus 5 (medium~low) + Sonnet (low, docs/e2e/single-shot rows)
+▸ Medium - Opus 5.5 (high~low) + Sonnet (low, single-shot rows only)
+  High - Opus 5.5 (max~medium) + Sonnet (low, single-shot rows only)
+  Low - Opus 5.5 (medium~low) + Sonnet (low, docs/e2e/single-shot rows)
 ```
 
 | 티어 | 특징 |

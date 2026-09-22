@@ -243,6 +243,8 @@ The DeepSWE leaderboard (113 tasks, per-effort view) demonstrates this. Within t
 
 Opus 5 at its **lowest** effort scores higher than Sonnet 5 at its **highest** (58% vs 54%) while costing one-sixteenth as much per task ($1.66 vs $26.40) — even though Sonnet's per-token price is lower. The cause is 268 steps against 36: retry loops, not token rates, write the invoice. Cost is determined by **assigning the right model and reasoning depth to each task**, not by unit price.
 
+The table above was measured on Opus 5. MoAI's `opus` alias now points to Opus 5.5 (requires Claude Code v2.1.280 or later; default effort `medium`), which has not been re-measured yet.
+
 <p align="center">
   <img src="./assets/images/why-tokenomics-infographic-en.png" alt="The Tokenomics Paradox — price down 98%, spend up 320%. The response: measure → route → diet → stop" width="80%">
 </p>
