@@ -17,7 +17,7 @@ All criteria are MUST-PASS. A fixture proves only its named unit contract; the f
 |---|---|---|
 | AC-FMH-001 | REQ-FMH-001, REQ-FMH-002, REQ-FMH-003 | Same repository from two linked worktrees resolves one canonical broker; another run/project cannot list, claim, read, or receipt it. |
 | AC-FMH-002 | REQ-FMH-001, REQ-FMH-002, REQ-FMH-011 | Zero run returns `NO_ACTIVE_FACTORY`; many return `AMBIGUOUS_FACTORY`; explicit run works; concurrent worker claims have no duplicate slot; `--` tail is unchanged. |
-| AC-FMH-003 | REQ-FMH-001, REQ-FMH-002 | Session UUID/generation/process-start mismatch, PID reuse, stale launcher env, and subagent inheritance cannot consume or acknowledge the registered mailbox. |
+| AC-FMH-003 | REQ-FMH-001, REQ-FMH-002 | A stable logical lane resolves only its current session endpoint; session UUID/generation/process-start mismatch, PID reuse, stale launcher env, and subagent inheritance cannot consume or acknowledge the registered mailbox. |
 | AC-FMH-004 | REQ-FMH-004, REQ-FMH-005, REQ-FMH-006 | Closed kinds and all required envelope fields validate; retry deduplicates; stale generation/token ACK fails; lease expiry redelivers; expected revision prevents duplicate side effects. |
 | AC-FMH-005 | REQ-FMH-005, REQ-FMH-006 | Crash before hook output, after output, before disposition, and before receipt preserves a recoverable pending/claim; only explicit receipt after persisted disposition acknowledges. |
 | AC-FMH-006 | REQ-FMH-005, REQ-FMH-009 | TTL, poison, and overflow create bounded dead-letter/backpressure records with reason; legacy sessionmsg data and tests remain unchanged. |
@@ -34,6 +34,8 @@ All criteria are MUST-PASS. A fixture proves only its named unit contract; the f
 ## Required evidence shape
 
 `.moai/reports/t1074/verdict.md` SHALL include Claim, command plus verbatim-output path, baseline commit/version attribution, explicit NOT_RUN gaps, residual risk, per-AC PASS/FAIL, process cleanup evidence, and nonce/receipt identifiers with payload bodies redacted where appropriate.
+
+Worktree handoff itself is not an AC in this SPEC. The t1074 evidence proves only the logical-lane/current-endpoint binding seam; `t1082` must separately prove worktree creation, `/cd` or headless `cwd` handoff, atomic rebind, `BOUND`, and stale pre-handoff rejection.
 
 ## Non-empty-pass execution protocol
 
@@ -83,7 +85,7 @@ Expected final output: `true`.
 
 ### AC-FMH-003 — Session and generation ownership
 
-**Given** current, stale, PID-reused, and inherited-subagent identities, **when** each tries to claim/read/receipt, **then** only the exact session UUID/generation/process-start tuple succeeds.
+**Given** one stable logical lane plus current, stale, PID-reused, and inherited-subagent identities, **when** each tries to resolve/claim/read/receipt, **then** the lane resolves only the current endpoint and only the exact session UUID/generation/process-start tuple succeeds.
 
 ```bash
 unset ANTHROPIC_BASE_URL ANTHROPIC_API_KEY ANTHROPIC_AUTH_TOKEN Z_AI_API_KEY && MOAI_HOME=/tmp/t1074-ac03-home GOCACHE=/tmp/t1074-ac03-cache go test -json ./internal/factorymsg ./internal/hook -run '^TestFactorySessionGenerationOwnership$' -count=1 >.moai/reports/t1074/ac03.jsonl && jq -se 'any(.[]; .Action=="pass" and .Test=="TestFactorySessionGenerationOwnership")' .moai/reports/t1074/ac03.jsonl

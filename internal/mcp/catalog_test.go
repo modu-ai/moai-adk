@@ -10,20 +10,20 @@ import (
 // registration change in registerMoaiMCPTools — the registration/catalog
 // equality guard (internal/cli TestMoaiMCPServer_RegistrationMatchesCatalog)
 // catches drift in either direction.
-const wantCatalogSize = 30
+const wantCatalogSize = 35
 
-// TestMoaiMCPTools_Count30 asserts the catalog declares exactly
+// TestMoaiMCPTools_Count35 asserts the catalog declares exactly
 // wantCatalogSize tools, matching the registration count in
 // registerMoaiMCPTools.
-func TestMoaiMCPTools_Count30(t *testing.T) {
+func TestMoaiMCPTools_Count35(t *testing.T) {
 	tools := MoaiMCPTools()
 	if len(tools) != wantCatalogSize {
 		t.Fatalf("catalog declares %d tools, want %d", len(tools), wantCatalogSize)
 	}
 }
 
-// TestMoaiMCPTools_ElevenWriteCapable asserts exactly the eleven write-capable
-// tools carry WriteCapable=true (REQ-C-3 / AC-C-003), and the other 19 are
+// TestMoaiMCPTools_FourteenWriteCapable asserts exactly the fourteen write-capable
+// tools carry WriteCapable=true (REQ-C-3 / AC-C-003), and the other 21 are
 // read-only. session_msg_list is read-only: it enumerates registered peers
 // without touching the store, unlike register/send/poll which write an agent
 // record, append a message, and claim an inbox respectively.
@@ -34,7 +34,7 @@ func TestMoaiMCPTools_Count30(t *testing.T) {
 // behavioral evidence for that claim is pinned in internal/cli
 // (TestMCPAuditTools_DeclaredWriteCapableActuallyWrite) — this test pins the
 // declaration, that one pins the behavior it must match.
-func TestMoaiMCPTools_ElevenWriteCapable(t *testing.T) {
+func TestMoaiMCPTools_FourteenWriteCapable(t *testing.T) {
 	want := map[string]bool{
 		"goal_arm":             true,
 		"verify_snapshot":      true,
@@ -47,6 +47,9 @@ func TestMoaiMCPTools_ElevenWriteCapable(t *testing.T) {
 		"session_msg_register": true,
 		"session_msg_send":     true,
 		"session_msg_poll":     true,
+		"factory_msg_send":     true,
+		"factory_msg_list":     true,
+		"factory_msg_receipt":  true,
 	}
 	var got []string
 	for _, tool := range MoaiMCPTools() {

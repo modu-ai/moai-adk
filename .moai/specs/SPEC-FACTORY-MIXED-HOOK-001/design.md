@@ -14,8 +14,8 @@ module: "internal/factorymsg"
 
 ```text
 launcher ──select/join──> canonical factory run registry
-   │                               │
-SessionStart ──bind UUID/gen───────┘
+   │                     logical lane ID ──> current endpoint(UUID/gen)
+SessionStart ──bind/rebind UUID/gen─────────┘
    │
 MCP send/body/receipt ──> factory broker <── hook claim metadata
                               │
@@ -27,7 +27,11 @@ The broker path is derived from `homestate.ProjectDir(CanonicalProjectRoot(cwd))
 
 ## Identity
 
-`FactoryPeer = {project_key, run_id, backend, role, slot, session_uuid, generation, pid, process_start}`. Launcher creates/joins; SessionStart binds the real hook session UUID. Every claim/read/receipt verifies the full recipient tuple. Restart increments generation.
+`FactoryPeer = {project_key, run_id, backend, role, slot, session_uuid, generation, pid, process_start}`. The role/slot pair forms the stable logical lane address; `session_uuid` and `generation` identify its replaceable physical endpoint. Launcher creates/joins; SessionStart binds the real hook session UUID. Every resolve/claim/read/receipt verifies the current full recipient tuple. Restart increments generation, and a stale endpoint cannot receive or acknowledge traffic.
+
+## Worktree handoff seam
+
+This SPEC does not create or enter worktrees. `t1082` owns the state machine `reserve → create → SWITCH_PENDING → /cd or headless cwd fork → SessionStart rebind → BOUND`. t1074 supplies only the atomic current-endpoint binding and stale-generation rejection required by that state machine. `t1075` must address the stable lane and wake only the endpoint that is current after `BOUND`.
 
 ## Envelope and states
 

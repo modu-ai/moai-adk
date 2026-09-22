@@ -18,6 +18,7 @@ module: "internal/factorymsg"
 - No raw peer text in elevated hook context.
 - No queue completion, shell execution, or authority escalation from messages.
 - Template-managed hook/config changes follow template-first parity.
+- Keep the broker address keyed by stable logical lane ID. `t1082` alone owns worktree creation and endpoint transition/rebind; this card only exposes the generation-safe binding seam it consumes.
 
 ## Milestones
 
@@ -27,6 +28,7 @@ module: "internal/factorymsg"
 - Add active-run resolver for 0/1/many plus `--factory-run` parsing in `internal/cli/factory.go`, `codex_factory.go`, and Claude launch path.
 - Make worker slot claim run-scoped and persist backend/session/run/process identity.
 - Bind actual hook `session_id` at SessionStart; accept `agent-N` as well as `lane-N`.
+- Preserve the logical lane ID across session generations and reject delivery or receipt through a stale physical endpoint.
 - Tests: worktree convergence, project/run isolation, concurrent join, ambiguous/no run, restart generation, PID reuse.
 
 ### M2 — Factory broker and explicit receipt
@@ -60,3 +62,9 @@ git diff --check
 ```
 
 Live and benchmark commands SHALL be authored by the implementation with fixed timeouts, isolated state roots, cleanup-guaranteed child processes, and verbatim logs under `.moai/reports/t1074/` or `/tmp/t1074-*` cited by the verdict.
+
+## Follow-up dependency boundary
+
+- `t1082` consumes the M1 logical-lane/current-endpoint seam to implement `reserve → worktree create → SWITCH_PENDING → /cd or headless cwd fork → SessionStart rebind → BOUND`.
+- `t1075` may wake only the endpoint that `t1082` has marked current and `BOUND`; it must reject the pre-handoff generation.
+- Neither follow-up expands t1074 into a worktree launcher or an idle-session controller.

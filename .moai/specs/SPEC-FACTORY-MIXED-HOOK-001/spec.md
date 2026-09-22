@@ -1,7 +1,7 @@
 ---
 id: SPEC-FACTORY-MIXED-HOOK-001
 title: "Mixed Claude/Codex factory hook-boundary messaging"
-version: "0.1.0"
+version: "0.1.1"
 status: in-progress
 created: 2026-09-22
 updated: 2026-09-22
@@ -20,6 +20,7 @@ tags: "factory,codex,claude,hooks,messaging,receipt"
 
 | Version | Date | Change |
 |---|---|---|
+| 0.1.1 | 2026-09-22 | Clarify the stable logical lane versus replaceable Codex session endpoint seam and defer worktree handoff to t1082. |
 | 0.1.0 | 2026-09-22 | Card t1074 plan baseline for mixed Claude/Codex hook-boundary messaging. |
 
 ## WHY
@@ -43,14 +44,14 @@ Implementation proceeds through identity/namespace, broker/receipt, hook integra
 - 카드: `t1074`, Tier L.
 - 기준선: `WT-factory-mixed-hook@758314007`, 작성 시 로컬 `develop`과 동일.
 - 필수 조합: Codex lead↔Codex worker, Codex lead↔Claude worker, Claude lead↔Codex worker. Claude↔Claude는 회귀 대상이다.
-- 이 카드는 hook-boundary 전달만 지원한다. idle wake는 `t1075`, `CLAUDE.local.md` Codex 로딩은 `t1078` 범위다.
+- 이 카드는 hook-boundary 전달만 지원한다. Worktree 생성, interactive `/cd`, headless `cwd` handoff, 그에 따른 endpoint rebind는 `t1082`가 소유한다. idle wake는 rebind가 `BOUND`가 된 뒤 `t1075`가 담당하며, `CLAUDE.local.md` Codex 로딩은 `t1078` 범위다.
 - 기존 legacy `.moai/state/session-msg` 저장소는 자동 이동·삭제·의미 변경하지 않는다.
 
 ## Requirements (GEARS)
 
 ### REQ-FMH-001 — Canonical factory identity
 
-The factory launcher SHALL bind every lead/worker to canonical project key, run ID, runtime backend, session UUID, generation, PID, and process-start identity. When no active run exists, the launcher SHALL fail with `NO_ACTIVE_FACTORY`; when multiple active runs exist, it SHALL fail with `AMBIGUOUS_FACTORY`; when `--factory-run <id>` is supplied before `--`, it SHALL select one run and SHALL NOT forward that option to the child.
+The factory launcher SHALL bind every lead/worker to canonical project key, run ID, stable logical lane ID, runtime backend, session UUID, generation, PID, and process-start identity. The logical lane ID SHALL remain the broker address while the session UUID/generation is a replaceable physical endpoint, and all delivery operations SHALL resolve the currently bound endpoint. When no active run exists, the launcher SHALL fail with `NO_ACTIVE_FACTORY`; when multiple active runs exist, it SHALL fail with `AMBIGUOUS_FACTORY`; when `--factory-run <id>` is supplied before `--`, it SHALL select one run and SHALL NOT forward that option to the child.
 
 ### REQ-FMH-002 — Atomic membership
 
@@ -99,6 +100,7 @@ The live verification SHALL make all three mixed combinations and the Claude↔C
 ### Out of Scope — Deferred and unrelated work
 
 - Idle-session wake or private TUI control (`t1075`).
+- Worktree creation, interactive `/cd`, App Server/SDK `cwd` handoff, endpoint transition state, and atomic old→new session rebind (`t1082`).
 - `CLAUDE.local.md` instruction loading (`t1078`).
-- A general remote message bus, daemon rewrite, or worktree creator.
+- A general remote message bus or daemon rewrite.
 - Treating transport receipt as card/SPEC completion evidence.

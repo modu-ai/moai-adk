@@ -34,6 +34,8 @@ const (
 	MaxBatch             = 16
 	MaxPayloadBytes      = 64 << 10
 	MaxPending           = 1000
+	MaxTTL               = 7 * 24 * time.Hour
+	MaxDeadLetters       = 256
 )
 
 var safeID = regexp.MustCompile(`^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$`)
@@ -52,9 +54,10 @@ type SendRequest struct {
 	Payload                                      []byte
 }
 type Envelope struct {
-	ID, Kind, SenderSession, RecipientSession, TaskRef, CorrelationID string
-	SenderGeneration, RecipientGeneration                             int64
-	CreatedAt, ExpiresAt                                              time.Time
+	ID, ProjectKey, RunID, Kind, SenderSession, RecipientSession, TaskRef, CorrelationID string
+	SchemaVersion                                                                        int
+	SenderGeneration, RecipientGeneration                                                int64
+	CreatedAt, ExpiresAt                                                                 time.Time
 }
 type Claim struct {
 	Envelope
@@ -64,11 +67,15 @@ type Status struct {
 	Pending, Claimed, Acknowledged, DeadLetter int
 	Capability, NextDelivery                   string
 }
+type DeadLetter struct{ MessageID, Reason, CreatedAt string }
 
 type Store struct {
 	db                      *sql.DB
 	root, runID, projectKey string
 	now                     func() time.Time
+	maxPending, maxDead     int
+	ownerCurrent            func(int, string) bool
+	recordReject            func(context.Context, string, string) error
 }
 
 func BrokerPath(projectRoot, runID string) (string, error) {
@@ -83,6 +90,11 @@ func BrokerPath(projectRoot, runID string) (string, error) {
 }
 
 func Open(projectRoot, runID string) (*Store, error) {
+	return OpenWithDeadline(projectRoot, runID, 5*time.Second)
+}
+
+// OpenWithDeadline bounds SQLite initialization and lock wait for hook paths.
+func OpenWithDeadline(projectRoot, runID string, deadline time.Duration) (*Store, error) {
 	path, err := BrokerPath(projectRoot, runID)
 	if err != nil {
 		return nil, err
@@ -91,7 +103,18 @@ func Open(projectRoot, runID string) (*Store, error) {
 		return nil, err
 	}
 	v := url.Values{}
-	v.Add("_pragma", "busy_timeout(5000)")
+	if deadline <= 0 {
+		return nil, errors.New("factory broker deadline must be positive")
+	}
+	// Leave half of the caller's budget for path setup, schema execution, and
+	// cleanup. Some SQLite drivers do not interrupt a busy wait immediately
+	// when the Go context expires, so using the full deadline here would make
+	// the hook's end-to-end deadline untruthful.
+	busyMillis := deadline.Milliseconds() / 2
+	if busyMillis < 1 {
+		busyMillis = 1
+	}
+	v.Add("_pragma", fmt.Sprintf("busy_timeout(%d)", busyMillis))
 	v.Add("_pragma", "journal_mode(WAL)")
 	v.Add("_txlock", "immediate")
 	db, err := sql.Open("sqlite", (&url.URL{Scheme: "file", Path: filepath.ToSlash(path), RawQuery: v.Encode()}).String())
@@ -99,8 +122,15 @@ func Open(projectRoot, runID string) (*Store, error) {
 		return nil, err
 	}
 	db.SetMaxOpenConns(1)
-	s := &Store{db: db, root: projectRoot, runID: runID, projectKey: homestate.ProjectKey(projectRoot), now: time.Now}
-	if _, err = db.Exec(schema); err != nil {
+	s := &Store{db: db, root: projectRoot, runID: runID, projectKey: homestate.ProjectKey(projectRoot), now: time.Now, maxPending: MaxPending, maxDead: MaxDeadLetters}
+	s.ownerCurrent = func(pid int, start string) bool {
+		fp, state := homestate.ProbeProcessIdentity(pid)
+		return state == homestate.ProcessIdentityLive && fp == start
+	}
+	s.recordReject = s.recordDead
+	ctx, cancel := context.WithTimeout(context.Background(), deadline)
+	defer cancel()
+	if _, err = db.ExecContext(ctx, schema); err != nil {
 		_ = db.Close()
 		return nil, fmt.Errorf("initialize factory message broker: %w", err)
 	}
@@ -209,14 +239,20 @@ func (s *Store) RegisterPeer(ctx context.Context, p Peer) (Peer, error) {
 	if !safeID.MatchString(p.Slot) {
 		return Peer{}, errors.New("invalid slot")
 	}
-	var oldSession string
+	var oldSession, oldStart string
 	var oldGen int64
-	err = tx.QueryRowContext(ctx, `SELECT session_uuid,generation FROM peers WHERE slot=?`, p.Slot).Scan(&oldSession, &oldGen)
+	var oldPID int
+	err = tx.QueryRowContext(ctx, `SELECT session_uuid,generation,pid,process_start FROM peers WHERE slot=?`, p.Slot).Scan(&oldSession, &oldGen, &oldPID, &oldStart)
 	if err == nil {
 		if oldSession == p.SessionUUID {
 			p.Generation = oldGen
-		} else if p.Generation <= oldGen {
-			p.Generation = oldGen + 1
+		} else {
+			if (oldPID != p.PID || oldStart != p.ProcessStart) && s.ownerCurrent(oldPID, oldStart) {
+				return Peer{}, errors.New("factory logical lane has a live owner")
+			}
+			if p.Generation <= oldGen {
+				p.Generation = oldGen + 1
+			}
 		}
 	} else if !errors.Is(err, sql.ErrNoRows) {
 		return Peer{}, err
@@ -232,6 +268,40 @@ func (s *Store) RegisterPeer(ctx context.Context, p Peer) (Peer, error) {
 		return Peer{}, err
 	}
 	p.ProjectKey = s.projectKey
+	return p, nil
+}
+
+func (s *Store) Peer(ctx context.Context, sessionUUID string) (Peer, error) {
+	var p Peer
+	err := s.db.QueryRowContext(ctx, `SELECT project_key,run_id,backend,role,slot,session_uuid,generation,pid,process_start FROM peers WHERE session_uuid=?`, sessionUUID).Scan(&p.ProjectKey, &p.RunID, &p.Backend, &p.Role, &p.Slot, &p.SessionUUID, &p.Generation, &p.PID, &p.ProcessStart)
+	if err != nil {
+		return Peer{}, err
+	}
+	return p, nil
+}
+
+// ResolveLane returns the sole current physical endpoint for a stable slot.
+func (s *Store) ResolveLane(ctx context.Context, slot string) (Peer, error) {
+	if !safeID.MatchString(slot) {
+		return Peer{}, errors.New("invalid logical lane")
+	}
+	var p Peer
+	err := s.db.QueryRowContext(ctx, `SELECT project_key,run_id,backend,role,slot,session_uuid,generation,pid,process_start FROM peers WHERE slot=?`, slot).Scan(&p.ProjectKey, &p.RunID, &p.Backend, &p.Role, &p.Slot, &p.SessionUUID, &p.Generation, &p.PID, &p.ProcessStart)
+	if err != nil {
+		return Peer{}, err
+	}
+	return p, nil
+}
+
+func (s *Store) PeerByOwner(ctx context.Context, pid int, processStart string) (Peer, error) {
+	if pid < 1 || strings.TrimSpace(processStart) == "" {
+		return Peer{}, errors.New("invalid endpoint owner")
+	}
+	var p Peer
+	err := s.db.QueryRowContext(ctx, `SELECT project_key,run_id,backend,role,slot,session_uuid,generation,pid,process_start FROM peers WHERE pid=? AND process_start=?`, pid, processStart).Scan(&p.ProjectKey, &p.RunID, &p.Backend, &p.Role, &p.Slot, &p.SessionUUID, &p.Generation, &p.PID, &p.ProcessStart)
+	if err != nil {
+		return Peer{}, err
+	}
 	return p, nil
 }
 
@@ -269,6 +339,12 @@ func (s *Store) verifyPeer(ctx context.Context, p Peer) error {
 }
 
 func (s *Store) Send(ctx context.Context, r SendRequest) (Envelope, error) {
+	reject := func(reason string, cause error) (Envelope, error) {
+		if err := s.recordReject(ctx, "", reason); err != nil {
+			return Envelope{}, fmt.Errorf("%w; record factory diagnostic: %v", cause, err)
+		}
+		return Envelope{}, cause
+	}
 	if err := s.verifyPeer(ctx, r.From); err != nil {
 		return Envelope{}, err
 	}
@@ -276,38 +352,72 @@ func (s *Store) Send(ctx context.Context, r SendRequest) (Envelope, error) {
 		return Envelope{}, err
 	}
 	if !validKind(r.Kind) {
-		return Envelope{}, errors.New("unknown factory message kind")
+		return reject("poison:unknown-kind", errors.New("unknown factory message kind"))
 	}
 	if !safeID.MatchString(r.IdempotencyKey) {
-		return Envelope{}, errors.New("invalid idempotency key")
+		return reject("poison:invalid-idempotency", errors.New("invalid idempotency key"))
 	}
-	if r.TaskRef != "" && !safeID.MatchString(r.TaskRef) {
-		return Envelope{}, errors.New("invalid task reference")
+	if !safeID.MatchString(r.TaskRef) {
+		return reject("poison:invalid-task-ref", errors.New("invalid task reference"))
+	}
+	if !safeID.MatchString(r.CorrelationID) {
+		return reject("poison:invalid-correlation", errors.New("invalid correlation id"))
+	}
+	if r.TTL <= 0 || r.TTL > MaxTTL {
+		return reject("ttl:outside-policy", errors.New("ttl outside policy"))
 	}
 	if r.ExpectedTaskRevision != r.CurrentTaskRevision {
 		return Envelope{}, errors.New("task revision mismatch")
 	}
 	if len(r.Payload) == 0 || len(r.Payload) > MaxPayloadBytes {
-		return Envelope{}, errors.New("payload outside bounds")
+		return reject("poison:payload-bounds", errors.New("payload outside bounds"))
 	}
 	var pending int
 	if err := s.db.QueryRowContext(ctx, `SELECT count(*) FROM messages WHERE state IN ('pending','claimed')`).Scan(&pending); err != nil {
 		return Envelope{}, err
 	}
-	if pending >= MaxPending {
-		return Envelope{}, errors.New("factory broker backpressure")
+	if pending >= s.maxPending {
+		return reject("overflow:backpressure", errors.New("factory broker backpressure"))
 	}
 	now := s.now().UTC()
-	env := Envelope{ID: newID(), Kind: r.Kind, SenderSession: r.From.SessionUUID, RecipientSession: r.To.SessionUUID, SenderGeneration: r.From.Generation, RecipientGeneration: r.To.Generation, TaskRef: r.TaskRef, CorrelationID: r.CorrelationID, CreatedAt: now, ExpiresAt: now.Add(r.TTL)}
+	env := Envelope{ID: newID(), SchemaVersion: SchemaVersion, ProjectKey: s.projectKey, RunID: s.runID, Kind: r.Kind, SenderSession: r.From.SessionUUID, RecipientSession: r.To.SessionUUID, SenderGeneration: r.From.Generation, RecipientGeneration: r.To.Generation, TaskRef: r.TaskRef, CorrelationID: r.CorrelationID, CreatedAt: now, ExpiresAt: now.Add(r.TTL)}
 	_, err := s.db.ExecContext(ctx, `INSERT INTO messages(id,schema_version,project_key,run_id,sender_session,sender_generation,recipient_session,recipient_generation,kind,idem_key,task_ref,correlation_id,created_at,expires_at,payload,state) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,'pending')`, env.ID, SchemaVersion, s.projectKey, s.runID, env.SenderSession, env.SenderGeneration, env.RecipientSession, env.RecipientGeneration, env.Kind, r.IdempotencyKey, env.TaskRef, env.CorrelationID, env.CreatedAt.Format(time.RFC3339Nano), env.ExpiresAt.Format(time.RFC3339Nano), r.Payload)
 	if err != nil && strings.Contains(err.Error(), "UNIQUE") {
 		var created, expires string
-		err = s.db.QueryRowContext(ctx, `SELECT id,kind,sender_generation,recipient_generation,task_ref,correlation_id,created_at,expires_at FROM messages WHERE sender_session=? AND idem_key=?`, env.SenderSession, r.IdempotencyKey).Scan(&env.ID, &env.Kind, &env.SenderGeneration, &env.RecipientGeneration, &env.TaskRef, &env.CorrelationID, &created, &expires)
+		err = s.db.QueryRowContext(ctx, `SELECT id,schema_version,project_key,run_id,kind,sender_generation,recipient_session,recipient_generation,task_ref,correlation_id,created_at,expires_at FROM messages WHERE sender_session=? AND idem_key=?`, env.SenderSession, r.IdempotencyKey).Scan(&env.ID, &env.SchemaVersion, &env.ProjectKey, &env.RunID, &env.Kind, &env.SenderGeneration, &env.RecipientSession, &env.RecipientGeneration, &env.TaskRef, &env.CorrelationID, &created, &expires)
 		env.CreatedAt, _ = time.Parse(time.RFC3339Nano, created)
 		env.ExpiresAt, _ = time.Parse(time.RFC3339Nano, expires)
 		return env, err
 	}
 	return env, err
+}
+
+func (s *Store) recordDead(ctx context.Context, messageID, reason string) error {
+	if messageID == "" {
+		messageID = newID()
+	}
+	now := s.now().UTC().Format(time.RFC3339Nano)
+	if _, err := s.db.ExecContext(ctx, `INSERT INTO dead_letters(message_id,reason,created_at) VALUES(?,?,?)`, messageID, reason, now); err != nil {
+		return err
+	}
+	_, err := s.db.ExecContext(ctx, `DELETE FROM dead_letters WHERE id NOT IN (SELECT id FROM dead_letters ORDER BY id DESC LIMIT ?)`, s.maxDead)
+	return err
+}
+func (s *Store) DeadLetters(ctx context.Context) ([]DeadLetter, error) {
+	rows, err := s.db.QueryContext(ctx, `SELECT message_id,reason,created_at FROM dead_letters ORDER BY id`)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var out []DeadLetter
+	for rows.Next() {
+		var d DeadLetter
+		if err := rows.Scan(&d.MessageID, &d.Reason, &d.CreatedAt); err != nil {
+			return nil, err
+		}
+		out = append(out, d)
+	}
+	return out, rows.Err()
 }
 
 func (s *Store) Claim(ctx context.Context, p Peer, limit int, lease time.Duration) ([]Claim, error) {
@@ -323,9 +433,16 @@ func (s *Store) Claim(ctx context.Context, p Peer, limit int, lease time.Duratio
 		return nil, err
 	}
 	defer func() { _ = tx.Rollback() }()
-	_, _ = tx.ExecContext(ctx, `INSERT INTO dead_letters(message_id,reason,created_at) SELECT id,'expired',? FROM messages WHERE recipient_session=? AND recipient_generation=? AND state IN ('pending','claimed') AND expires_at<=?`, now.Format(time.RFC3339Nano), p.SessionUUID, p.Generation, now.Format(time.RFC3339Nano))
-	_, _ = tx.ExecContext(ctx, `UPDATE messages SET state='dead' WHERE recipient_session=? AND recipient_generation=? AND state IN ('pending','claimed') AND expires_at<=?`, p.SessionUUID, p.Generation, now.Format(time.RFC3339Nano))
-	rows, err := tx.QueryContext(ctx, `SELECT id,kind,sender_session,sender_generation,recipient_session,recipient_generation,task_ref,correlation_id,created_at,expires_at FROM messages WHERE recipient_session=? AND recipient_generation=? AND (state='pending' OR (state='claimed' AND claim_expires_at<=?)) ORDER BY created_at LIMIT ?`, p.SessionUUID, p.Generation, now.Format(time.RFC3339Nano), limit)
+	if _, err := tx.ExecContext(ctx, `INSERT INTO dead_letters(message_id,reason,created_at) SELECT id,'ttl:expired',? FROM messages WHERE recipient_session=? AND recipient_generation=? AND state IN ('pending','claimed') AND expires_at<=?`, now.Format(time.RFC3339Nano), p.SessionUUID, p.Generation, now.Format(time.RFC3339Nano)); err != nil {
+		return nil, err
+	}
+	if _, err := tx.ExecContext(ctx, `DELETE FROM dead_letters WHERE id NOT IN (SELECT id FROM dead_letters ORDER BY id DESC LIMIT ?)`, s.maxDead); err != nil {
+		return nil, err
+	}
+	if _, err := tx.ExecContext(ctx, `UPDATE messages SET state='dead' WHERE recipient_session=? AND recipient_generation=? AND state IN ('pending','claimed') AND expires_at<=?`, p.SessionUUID, p.Generation, now.Format(time.RFC3339Nano)); err != nil {
+		return nil, err
+	}
+	rows, err := tx.QueryContext(ctx, `SELECT id,schema_version,project_key,run_id,kind,sender_session,sender_generation,recipient_session,recipient_generation,task_ref,correlation_id,created_at,expires_at FROM messages WHERE recipient_session=? AND recipient_generation=? AND (state='pending' OR (state='claimed' AND claim_expires_at<=?)) ORDER BY created_at LIMIT ?`, p.SessionUUID, p.Generation, now.Format(time.RFC3339Nano), limit)
 	if err != nil {
 		return nil, err
 	}
@@ -334,7 +451,7 @@ func (s *Store) Claim(ctx context.Context, p Peer, limit int, lease time.Duratio
 	for rows.Next() {
 		var c Claim
 		var created, expires string
-		if err := rows.Scan(&c.ID, &c.Kind, &c.SenderSession, &c.SenderGeneration, &c.RecipientSession, &c.RecipientGeneration, &c.TaskRef, &c.CorrelationID, &created, &expires); err != nil {
+		if err := rows.Scan(&c.ID, &c.SchemaVersion, &c.ProjectKey, &c.RunID, &c.Kind, &c.SenderSession, &c.SenderGeneration, &c.RecipientSession, &c.RecipientGeneration, &c.TaskRef, &c.CorrelationID, &created, &expires); err != nil {
 			return nil, err
 		}
 		c.CreatedAt, _ = time.Parse(time.RFC3339Nano, created)
@@ -395,6 +512,22 @@ func (s *Store) Receipt(ctx context.Context, p Peer, id, token string) error {
 		return errors.New("receipt requires matching claim and persisted disposition")
 	}
 	return nil
+}
+
+// SettleReceiptControls consumes receipt control envelopes without a model
+// turn. Receipts are terminal transport facts; requiring a receipt for a
+// receipt would create an infinite acknowledgement chain.
+func (s *Store) SettleReceiptControls(ctx context.Context, p Peer) (int, error) {
+	if err := s.verifyPeer(ctx, p); err != nil {
+		return 0, err
+	}
+	now := s.now().UTC().Format(time.RFC3339Nano)
+	r, err := s.db.ExecContext(ctx, `UPDATE messages SET state='acknowledged',disposition='accepted',acknowledged_at=? WHERE recipient_session=? AND recipient_generation=? AND kind=? AND state='pending'`, now, p.SessionUUID, p.Generation, KindReceipt)
+	if err != nil {
+		return 0, err
+	}
+	n, _ := r.RowsAffected()
+	return int(n), nil
 }
 func (s *Store) Status(ctx context.Context) (Status, error) {
 	st := Status{Capability: "hook-boundary", NextDelivery: "pending-until-next-turn"}
