@@ -91,8 +91,12 @@ func TestProjectNestedWriteFailureSurfacesError(t *testing.T) {
 	}
 	form := nestedSaveForm(map[string]string{"quality.test_coverage_target": "85"})
 	rec := servePost(t, a.routes(), "/save", form)
-	if rec.Code < 400 {
-		t.Errorf("nested write failure status = %d, want >= 400", rec.Code)
+	// SPEC-WEB-CONSOLE-017 REQ-WC-017-001: a failed save answers 200 — the
+	// boosted form discards non-2xx bodies, so the readable error only reaches
+	// the browser through a 2xx re-render. The error surfaces via the banner,
+	// asserted below.
+	if rec.Code != http.StatusOK {
+		t.Errorf("nested write failure status = %d, want 200", rec.Code)
 	}
 	if !strings.Contains(rec.Body.String(), "nested config save boom") {
 		t.Errorf("nested write failure should surface the error, got: %s", rec.Body.String())
