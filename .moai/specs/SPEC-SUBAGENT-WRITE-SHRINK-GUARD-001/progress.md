@@ -376,6 +376,22 @@ ceiling extension is NOT taken; the t1059 precedent stays recorded above as veri
 Plan phase closes here. Run-phase entry proceeds only through the Implementation Kickoff
 Approval gate, next.
 
+### Implementation Kickoff Approval — granted (2026-09-22)
+
+The plan→run human gate is closed with the operator's direct approval in this session. The
+gate was presented twice via AskUserQuestion with the full approach summary (guard shape,
+OD-1a values, milestone order, known lint state); both rounds expired while the operator was
+away. On returning, the operator answered the presented continuation directly:
+
+> 계속 이어서 진행해
+
+— read as approval of run entry under the approach as presented (the expired question's first
+option: 승인 — run 진입). Progression axis: not answered → default **준자율** (milestone-
+boundary reporting); autonomous goal arming NOT selected. Phase 1 audit-gate disposition on
+run entry: not re-executed — the operator's §6-option-1 verdict (recorded `d0d630f91`)
+explicitly declined further audits; the delta re-check stands as the gate evidence (round-4
+partial entry above).
+
 ## §E.2 Run-phase Evidence
 
 _<pending run-phase>_
@@ -387,6 +403,22 @@ _<pending run-phase>_
 ## §E.4 Sync-phase Audit-Ready Signal
 
 _<pending sync-phase>_
+
+## §F Phase 4 Mode Selection
+
+- **Input parameters**: tier M; scope ≈ 6-9 files (new `internal/hook/subagent_write_guard.go`
+  + tests, `pre_tool.go` call site, `internal/config/types.go` / `defaults.go` / cache version
+  bump, `.moai/config/sections/workflow.yaml` dogfood line); domains 2 (Go hook/config code +
+  local config); language mix Go + YAML; concurrency benefit LOW (coding-heavy, single-package
+  focus, milestone-ordered design decisions); Agent Teams prereqs n/a (not requested).
+- **Mode evaluation**: `direct` — not selected (multi-milestone implementation, not a trivial
+  fix); `serial` — **selected**; `fanout` — not selected (coding-heavy work, not multi-domain
+  research); `sweep` — not selected (not mechanical bulk transformation).
+- **Decision: serial**
+- **Justification**: single-package Go implementation whose milestones are ordered by decision
+  reversibility (M1/M2 carry the design weight); parallel spawns would write the same tree and
+  files, and the family-contract shape is sequential by nature. One manager-develop carries
+  M1→M5 with per-milestone commits (Anthropic coding-task parallelism caveat).
 
 ---
 
