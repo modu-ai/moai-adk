@@ -152,9 +152,53 @@ M3 무손상 기계 검증 결과는 §E.2 M3에 기재.
 
 ### M3 — 무손상 검증 + 판정서 (REQ-MIF-004, REQ-MIF-005)
 
-_<pending — M3 실행 후 기입>_
+단일 턴 병렬 read-only 배치 (2026-09-22 22:1x KST, HEAD `bff24dc6b`). verbatim 원문: `.moai/reports/t1065/evidence/run/m3/` · 판정서: `.moai/reports/t1065/verdict.md`.
+
+**(a) containment ×3** (`m3/containment_check.py` → `containment.out`, exit 0):
+
+```
+CONTAINMENT target=project_lead_batch_20260921.md result=True
+CONTAINMENT target=feedback_a_requirement_map_no_instrument_reads.md result=True
+CONTAINMENT target=feedback_a_falsifying_row_needs_the_survivor_on_the_far_side.md result=True
+CHECKED=3
+VERDICT=ALL_CONTAINED
+```
+
+python3 containment — 백틱 포함 라인이라 셸 인용 템플릿 배제 (D3). CHECKED=3 상수로 빈 스윕 통과 차단.
+
+**(b) MEMORY.md sha 창** (AC-002): `diff pre/MEMORY.md post/MEMORY.md` → **empty, exit 0** (`m3/diff_memory.txt`). sha256 `7b26aa1ea5ae042e…31a9615f` 전/후 항등 (`m3/sha_compare.txt` — MEMORY.md 라인은 diff 부재로 항등 입증). 레인 자기 쓰기 창 내 무편집. 전체-실행-창 항등은 청구하지 않음(AC-002 재베이스라인 의미론).
+
+**(c) 링크 타깃 존재**: `test -f` ×3 → `ALL_3_LINK_TARGETS_EXIST`.
+
+**(d) 인덱스 diff** (`m3/diff_feedback.txt` · `m3/diff_archive.txt`):
+
+- feedback: `301a302,305` — 추가 4행(빈 줄 + 2라인 + 빈 줄) = 추가 블록 그 자체.
+- archive: `343a344,345` — 추가 2행(빈 줄 + 1라인) = 추가 블록 그 자체.
+- **관측 1건씩 (숨기지 않고 기재)**: 각 파일 `8c8` 헝크 — frontmatter `modified:` 타임스탬프 변경 (`13:16:31.033Z`/`13:16:38.280Z` UTC = 22:16:31/38 KST = 레인 쓰기 창 초 단위 내부, 간격 7초 = 두 Edit 호출 간격). 귀속: 런타임 메모리 서브시스템의 write-time 스탬핑 — 레인의 Edit 페이로드는 EOF 블록만 포함(§M2 추출본이 정본). **내용 라인(인덱스 항목) 수정·삭제 0** — additive doctrine 축은 영향 없음. AC-004 문언("exactly the appended block and nothing else")에 대한 관측 편차로 판정서 §4 Gaps #2 에 기록.
+
+**(e) 판정서**: `.moai/reports/t1065/verdict.md` — 5섹션 완비 + 전제-변천 부록 A + 고아 20건 report-only 부록 B (t223~t444 19건 7~8월 시대, t1019 1건 9월 시대 — 결함 축=도달성, 링크 부재).
+
+**범위 외 관측 (처분 기록)**: `.moai/reports/*` 는 gitignore(2026-09-14 운영자 지시, `.gitignore:235`) → M3 커밋은 progress.md 델타만 stage; 판정서·증거는 로컬 아티팩트(경로 상시 해석 가능). `-f` 강제 추가 미실시(운영자 지시 정면 위반 방지).
 
 ## §E.3 Run-phase Audit-Ready Signal
+
+```
+run_complete_at: 2026-09-22T22:21:18+09:00
+run_commit_sha: pending-backfill-m3   # D3 backfill exemption — 후속 backfill 커밋이 실제 M3 SHA로 대체
+run_status: complete
+ac_pass_count: 4                      # AC-001, AC-002, AC-003, AC-005
+ac_pass_with_observation: 1           # AC-004 — runtime `modified:` metadata line (§E.2 M3 (d) + verdict §4 Gaps #2)
+ac_fail_count: 0
+preserve_list_post_run_count: MEMORY.md 전체(129행, 카드 전 기간 편집 0) + 기존 인덱스 라인 전체(feedback 301행, archive 343행) 무손상
+l44_pre_commit_fetch: N/A — 레인 push 없음(git-flow: develop push는 리드 일괄, 2026-09-02)
+l44_post_push_fetch: N/A — 동상 (push 주체 아님)
+new_warnings_or_lints_introduced: 0   # 코드 변경 0 — lint 대상 자체가 없음 (미실행을 0으로 오인 아님: N/A)
+cross_platform_build: N/A             # 저장소 코드 변경 0
+total_run_phase_files: SPEC 디렉터리 5파일(M1 커밋) + progress.md 델타(M2/M3) + 기억 디렉터리 2파일 추가 수정 + 로컬 증거 ~25파일(.moai/reports/t1065/, gitignored)
+m1_to_mN_commit_strategy: 마일스톤별 커밋 — M1 d83e07033 · M2 bff24dc6b · M3 (backfill 커밋 참조)
+```
+
+메모리 저장소 doctor 결과 요약: 로드 스토어 = CLAUDE_CONFIG_DIR primary checkout (SPEC 대상 일치, index lines 129); 워크트리 접미 스토어 2개 not present. Phase 1 Plan Audit Gate: SKIPPED (3 조건 충족 — §E.2 헤더 참조).
 
 _<pending run-phase>_
 
