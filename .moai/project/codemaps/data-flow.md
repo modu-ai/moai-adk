@@ -6,6 +6,7 @@
 **최초 측정 트리**: worktree `.claude/worktrees/t592`, 브랜치 `WT-home-state-rollout`, HEAD `e7bd89ee3`, 2026-09-10
 **재측정 트리**: worktree `.claude/worktrees/t869`, 브랜치 `WT-codemaps-refresh`, HEAD `a851b205c`, 2026-09-18 — § A의 함수 위치(6개 심볼 정의 파일 대조), § C의 임베드 파일 수, § D의 도구 수와 표, 새 § J(자율 미션과 GTD 큐). § B·E~I의 경로는 이번 변경과 무관해 앞 판을 이어받았습니다.
 **정기 재측정**: worktree `.claude/worktrees/t999`, 브랜치 `WT-codemaps-remediation`, HEAD `56c64891a`, 2026-09-20 — 새 § K(감사 영수증)만 더했습니다. § A~J의 경로는 이번 변경분과 겹치지 않아 다시 재지 않았고 앞 판을 이어받았습니다.
+**정기 재측정**: worktree `.claude/worktrees/t1069`, 브랜치 `WT-graph-restamp`, HEAD `0314801c2`, 2026-09-22 — 새 § L(Jev 호출 경로)을 더하고, § C에 `.mcp.json` 스냅샷 갈래를, § G에 저장 실패 관측성 단락을 더했습니다. § A·B·D~F·H~J의 경로는 이번 변경분과 겹치지 않아 다시 재지 않았고 앞 판을 이어받았습니다. § C의 임베드 파일 수(588)도 이 트리에서 다시 셌습니다.
 
 ---
 
@@ -79,7 +80,7 @@ JSON deny는 `hookSpecificOutput` 안에 살고 exit 0으로 나갑니다 — ex
 ### 빌드 타임
 
 ```
-internal/template/embed.go                            //go:embed all:templates   (589개 파일)
+internal/template/embed.go                            //go:embed all:templates   (588개 파일)
 internal/template/embed.go                            //go:embed catalog.yaml
 internal/template/scripts/gen-catalog-hashes.go       별도 main — 카탈로그 해시 사전 생성
 internal/template/agentemit                           make agents-emit
@@ -122,7 +123,11 @@ internal/config/atomicfile/write.go     원자적 쓰기
 internal/cli/update_template_sync.go    NewDeployerWithRendererAndForceUpdate(embedded, renderer, true)
 internal/cli/update/plan/plan.go        분석·분류·네임스페이스 보호
 internal/cli/update/backup/backup.go    백업 + 로테이션
+internal/cli/update/backup/file_snapshot.go   파일별 base 스냅샷 기계 (settings.json과 .mcp.json이 공유)
+internal/cli/update/backup/mcp_snapshot.go    .mcp.json 전용 — 배포가 실제로 쓴 렌더를 base로 기억
 internal/merge/*                        3-way 머지 (사용자 편집 보존)
+                                          이 판에서 머지 결과가 RetainedKeys를 함께 돌려준다 —
+                                          새 템플릿이 더 이상 안 들고 온 키의 dotted 경로
 internal/cli/update/deploy/deploy.go    배포 + 레거시 마이그레이션
 internal/cli/update/report/report.go    사용자 대상 advisory 출력
 internal/manifest/*                     provenance 기록
@@ -134,6 +139,15 @@ internal/cli/update_mirror_heal.go      그 조기 반환 자리 옆에서 실�
                                         (패키지 수준 함수 — DeployerOption 이었다면 배포 경로에서도
                                          살아나 수리 기능의 부작용으로 배포 동작이 바뀐다)
 ```
+
+**`.mcp.json` 스냅샷이 settings.json의 형제가 된 갈래.** 배포가 자기가 쓴 렌더를
+staging→promote로 기억해 두면, 다음 update의 3-way 머지 base가 이전 템플릿 값을 가진다 —
+그래서 템플릿이 키 값을 바꿨을 때 사용자가 못 건 키에서 그 변화가 보입니다. 이전의 유래 base에서는
+템플릿이 **추가**하는 키는 도착하지만 **변경**하는 값은 묻히는, 전달 종류로 갈라지는 결함이었습니다.
+`moai init`과 `moai update` 양쪽이 같은 staging/settle을 부르고, 남는 staging 사본은
+advisory 한 줄로 보고됩니다. 이 갈래가 **배달하지 않는 것**도 파일 주석이 적어 둡니다 — 템플릿이
+키를 **철회**해도 사용자 파일에 남는 셀은 이미 배포된 settings.json 경로와 똑같이 실패하며, 별도로
+추적되는 기존 결함입니다.
 
 **이 갈래가 존재하는 이유**: `.agents/skills`의 두 생산자가 **모두 Deploy 안에** 삽니다.
 버전 일치 update는 Deploy 앞에서 반환하므로, 그것만으로는 지워진 미러가 그 프로젝트에서
@@ -237,6 +251,21 @@ internal/settings/*                     두 표면(moai web 콘솔 / moai profil
                                           byte-stability 는 보증이 아니라 검증 대상 —
                                           섹션별 골든 round-trip 테스트가 그 범위를 고정한다
 ```
+
+그리고 **저장이 실패할 때**, 콘솔의 아홉 persistence seam은 하나의 모양으로 실패합니다.
+
+```
+moai web 설정 저장                        handleSave — 9개 persistence seam
+  ├ 각 seam의 실패                        logSaveFailure(seam, phrase)
+  │                                        ↳ stderr 한 줄 — `moai web: ` 접두어 + seam 이름 + 실패 구문만
+  │                                          (원시 에러 값은 자격증명 조각을 품을 수 있어 절대 실리지 않는다)
+  └ 응답은 500이 아니라 2xx 재렌더        설정 폼은 hx-boosted라 htmx가 2xx가 아닌 본문을 버린다 —
+                                           500이면 인라인 슬롯에 렌더한 실패 이유가 브라우저에 도달하지 않았다
+                                           ↳ 페이지 본문의 banner가 이유를 실어 같은 모양으로 성공·실패를 처리
+```
+
+성공과 실패가 같은 전송 모양을 쓰는 것은 클라이언트 핸들러가 없어도 된다는 뜻이고, stderr
+한 줄이 유일한 기계 관측면입니다(접두어가 grep 표면이다).
 
 그리고 **병합 직전**, 워킹 트리의 tracked `.claude/settings.json` 이 손대진 채로 창에
 들어가는 것을 막는 단정이 따로 돕니다.
@@ -437,3 +466,56 @@ primary 체크아웃을 가리키므로, 그 값을 썼다면 영수증은 카�
 `internal/auditreceipt`는 다른 `internal/...` 패키지를 하나도 import 하지 않습니다(표준
 라이브러리와 `gopkg.in/yaml.v3`뿐). 기록 형식은 JSONL이 아니라 **기록 1건 = 파일 1개**이며,
 파일명은 런타임이 준 id를 sanitize해 만듭니다.
+
+---
+
+## L. Jev — 게이트에서 표시까지
+
+**이 판에서 새로 생긴 경로입니다.** TypeSafe System One 판단 능력이 설정 게이트에서 모델 답,
+그리고 그 답이 사람에게 닿는 자리까지 어떻게 흐르는지입니다. 이 경로의 모든 소비자는 현재
+**게이트 미실행 상태**입니다 — 측정 게이트(`jevmeasure`)가 아직 실행되지 않았으므로 코드는
+있되 배송 기본값에서 도달할 수 없고, 그래야 게이트가 판정을 내리기 전까지 「있음」과 「쓸 수
+있음」이 같아지지 않습니다.
+
+```
+게이트 — workflow.jev.enabled (기본 false)
+  internal/config/defaults.go            코드 기본값의 원천 (템플릿은 false를 문서화할 뿐)
+  internal/cli/wizard/questions.go       다섯 번째 init 질문 jev_enabled — init 전용,
+                                           --reconfigure에는 도달하지 않는다
+  internal/settings/jev.go               SetJevEnabled — 위자드의 진입. 같은 ApplySchemaEdits
+                                           seam의 네이밍 진입이지 두 번째 쓰기 경로가 아니다
+  internal/web (jev 패널)                같은 키를 콘솔이 렌더·수정
+
+자격증명 — ~/.moai/.env.typesafe
+  internal/jevcred                       쓰기·읽기 단일 구현 (glmcred의 형제)
+                                           스키마 AllFields() 밖 — 어떤 스키마 순회도 못 읽는다
+  internal/defs + internal/paths         파일명 상수와 HOME 경로 (stdlib-only를 지키는 전부)
+
+호출 — internal/jev (표준 라이브러리만)
+  게이트 확인                             비활성이면 요청을 조립하지 않는다 (호출자 아래의 내부 게이트)
+  ScreenPayload                          payload가 자격증명 형태 토큰을 실으면 보내기 전에 중단
+  Authorization Bearer                    자격증명은 시도마다 다시 읽는다 — 교체가 반영된다
+  응답                                    불가능은 에러가 아니라 Availability 값
+                                           (no-credential · disabled · secret-detected …)
+                                           「답 없음」은 「아니오」가 아니라 신호 자체가 아니다
+
+소비자 — 전부 게이트 미실행, 표시 전용
+  moai doctor (Jev check)                활성·credential·도달성을 읽기 전용 확인 — 도달성은
+                                           TCP 접속·종료뿐, 판정 요청을 보내지 않는다
+  moai todo analyze (admission 경로만)   근접 중복 카드에 세 번째 finding 출처(jev)로 기록
+                                           재분석 재스윕은 이 seam을 부르지 않는다
+  moai jev-suggest (Hidden)              게이트가 꺼진 채로는 안내 한 줄 — 스킬 제안 순위 신호
+  moai web Jev 패널                      스위치와 자격증명 필드 (§ `entry-points.md` 웹 콘솔)
+
+측정 장치 — internal/jevmeasure (소비자 0)
+  두 언어 팔 (한국어 원문 · 영역 번역)    라벨 붙은 표본을 돌리고
+  ConstantBaseline                       상수 응답의 정확도가 기준선이다 — 날정확도가 아니다
+  Run → Report → Verdict                 이 보고서가 소비자의 존재 허가를 판정한다
+                                           접점 연락은 없다 — Answerer 주입, 살아있는 구현은 jev.Client
+```
+
+이 경로를 지배하는 세 성질이 설계의 이유를 말합니다. **불가능한 답은 값이다** — 에러 반환은
+전파되고 전파는 어딘가의 비종료가 되므로, 저하가 기본 경로다. **게이트는 패키지 안쪽에 있다** —
+호출점 N곳의 게이트는 N곳이 잊힐 수 있지만, 비활성 상태에서 요청 자체가 조립되지 않는 성질은
+한 곳에서 검증된다. **표시 전용이다** — 이 패키지들이 파일을 쓰거나 큐를 바꾸거나 git을 만지는
+경로가 없어서, 표시가 판정으로 오독되더라도 그 오독이 상태를 바꿀 수 없습니다.
