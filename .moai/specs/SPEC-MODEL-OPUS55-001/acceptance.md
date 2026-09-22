@@ -15,7 +15,7 @@ Document-level pin: every RED-now cell below was measured on tree `6e75b74db` (b
 | REQ-OP55-007 (effort empty option wording matches launch) | AC-OP55-007 |
 | REQ-OP55-008 (label-drift guard, both halves) | AC-OP55-009 |
 | REQ-OP55-009 (canonical fact line + consistency) | AC-OP55-004, AC-OP55-006, AC-OP55-010 |
-| REQ-OP55-010 (every high-default statement rewritten) | AC-OP55-004, AC-OP55-006 |
+| REQ-OP55-010 (every high-default statement rewritten) | AC-OP55-004, AC-OP55-006, AC-OP55-006e |
 | REQ-OP55-011 (heading + anchors) | AC-OP55-005 |
 | REQ-OP55-012 (measured-on-Opus-5 attribution) | AC-OP55-004 |
 | REQ-OP55-013 (no template effort key) | AC-OP55-011 |
@@ -73,6 +73,9 @@ Document-level pin: every RED-now cell below was measured on tree `6e75b74db` (b
 - (a) Canonical fact line, probe P7 (single invocation): `awk '/^- opus = Opus 5\.5/ && /claude-opus-5-5/ && /2\.1\.280/ && /1M/ && /128K/ && /\$4/ && /\$20/ && /medium/ && /always on/ {n++} END {print n+0}' .claude/rules/moai/development/model-policy.md internal/template/templates/.claude/rules/moai/development/model-policy.md` — RED-now `0`, exit 0; Green `2` (one line per copy).
 - (b) Positive medium statement on every rewritten surface: `grep -cE 'Opus 5\.5[^|]*medium|medium[^|]*Opus 5\.5' .claude/rules/moai/core/moai-constitution.md internal/template/templates/.claude/rules/moai/core/moai-constitution.md .claude/rules/moai/development/agent-authoring.md internal/template/templates/.claude/rules/moai/development/agent-authoring.md .claude/rules/moai/development/model-policy.md internal/template/templates/.claude/rules/moai/development/model-policy.md .claude/rules/moai/workflow/dynamic-workflows.md internal/template/templates/.claude/rules/moai/workflow/dynamic-workflows.md .moai/project/tech.md` — RED-now `:0` for all nine files; Green ≥ 1 for each of the nine.
 - (c) No high-default claim, probe P6: `grep -rnoE '`high` \(default\)|high: the default|defaults? to `effort: high`|default effort: high' .claude/rules .claude/skills internal/template/templates/.claude internal/template/templates/CLAUDE.md CLAUDE.md .moai/project` — RED-now 11 lines, exit 0 (plan.md §B.7); Green: stdout empty, exit 1.
+- **AC-OP55-006e — effort-calibration sentence no longer reserves `medium` for speed-critical/simple work (plan.md §C.6 row 9b, plan-audit iter-2 N1).** RED-now measured at HEAD `084722b91`.
+  - Negative: `grep -cE '^- \*\*Effort calibration\*\*:.*only for speed-critical or simple tasks' .claude/rules/moai/development/prompting-best-practices.md internal/template/templates/.claude/rules/moai/development/prompting-best-practices.md` — RED-now stdout `.claude/rules/moai/development/prompting-best-practices.md:1` / `internal/template/templates/.claude/rules/moai/development/prompting-best-practices.md:1`, exit 0; Green `:0` / `:0`, exit 1.
+  - Positive: `grep -cE '^- \*\*Effort calibration\*\*:.*(Opus 5\.5[^.]*medium|medium[^.]*Opus 5\.5)' .claude/rules/moai/development/prompting-best-practices.md internal/template/templates/.claude/rules/moai/development/prompting-best-practices.md` — RED-now `:0` / `:0`, exit 1; Green `:1` / `:1`, exit 0. Mutant: deleting the "only for …" clause without naming the Opus 5.5 default passes the negative half and fails this one.
 - (d) No wrong-direction rewrite, probe P5: `grep -rnE 'Opus 5\.5[^.|]*default[^.|]*high' .claude/rules .claude/skills internal/template/templates/.claude internal/template/templates/CLAUDE.md CLAUDE.md .moai/project` — now: no output, exit 1 (regression-guard); mutant "Opus 5.5 defaults to `effort: high`" prints one line, exit 0.
 
 ### AC-OP55-007 — web labels, recommendation, and honest empty-option wording (REQ-OP55-004, -005, -006, -007) — release-blocking
