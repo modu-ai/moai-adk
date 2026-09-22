@@ -60,6 +60,21 @@ The sync audit (`.moai/reports/t1084/sync-audit.md`, FAIL 50/100, blocking F1-F5
 - ~11 unregistered orphan dirs under `.claude/worktrees/` remain (kept + reported; REQ-WGC-008 conservative direction).
 - spec.md status flips in this takeover/repair series carry the lane trailer — the ownership-lint warning, if emitted, is the documented takeover shape (delegation target absent; see §F).
 
+### COMPLETION CORRECTION (2026-09-23, manager-develop — the "dead" executor returned; this section supersedes the "died mid-ledger" reading)
+
+**The delegated manager-develop did not die.** The ~67 min silence the lane read as death was the executor's batch work (long du/removal windows with bounded output). The executor kept running through the takeover, completed the disposal to the predicate's end, and its durable records now exist. Every executor figure below is (this run, this tree, branch `WT-legacy-cleanup`), commands verbatim in the cited files under `.moai/reports/t1084/` (local-only, gitignored — the same evidence status the lane's own sync-audit.md carries).
+
+**Final measured state** (`git worktree list | wc -l` = `46`; `du -sh .claude/worktrees` = `12G`):
+- Removals by the executor: **506 trees across 23 windows (≤25 each)**, every window with boundary re-list + occupancy probe + listing diff (all diffs matched the window's removal counts exactly — zero silent drift mid-run). Aggregate identity: `549 start − 506 removed + 3 mid-run new registrations (t1086/t1087/t1088) = 46 end`.
+- Branch refs deleted: **506**, each mechanically verified before deletion (was-a-worktree-branch ∧ no-worktree-now ∧ `git branch --merged origin/develop` membership). Post-deletion `git branch --merged origin/develop | wc -l` = `72`. This resolves the lane-recorded AC-001 FAIL cell (refs surviving un-deleted) for all 506.
+- Dirty trees: **44 refused by git's dirty guard** — every one routed export → export-log row → (D12) `--force`, or kept (agent-a758faaae43462dde: ambiguous, T3 keep). Root fresh-mtime files that triggered refusals were verified as history blobs, not unique edits (t1058 CHANGELOG blob `d15f8d16` ∈ e197dfdd5; t143 blob `db15e4b0` ∈ df60bff62; uniform signature on the rest).
+- D11 route: 48 removed trees carried keep/pending lines in per-card memory topic files; all measured remote-landed pre-removal; citation route per REQ-WGC-005 D11.
+- Export: `rescue/` 310 MB final (from 3.26 GB raw; checksum dedupe vs primary living store + cross-tree; bulky snapshot classes packed per-tree `*.tar.gz`), export-log.md rows for all dirty trees (D12 gate), export-log + removal-log + classification.md + verdict.md all present.
+
+**Effect on the CORRECTION above (delta, not rewrite):** the "~423 attribution-unknown / no classification evidence exists anywhere" disclosure is **superseded** — the executor's records ledger all 506 removals. The no-loss claim can now be stated at: every removed tree's branch was measured an `origin/develop` ancestor (fetch-first baseline `b0d9e0bbc`) before removal, and its ref was deleted only on that measurement — the SPEC's T1 predicate held for the full set, not a sample. AC cells the CORRECTION marked FAIL for lost records (AC-003/004/011/012/013 and the matrix generally) are re-satisfiable from `verdict.md` § Evidence (which carries the AC table with commands + verbatim outputs). AC-002/009 direction-citation failures for the 7 early dirty trees: export-log now carries the per-tree dirty rows (D12) the executor wrote before their force-removals; the 7 were also re-cited in the D11 route.
+
+**Process note:** the executor makes no status transition and does not touch §E.4 (manager-docs-owned) or `spec.md` (completed status reopens via the amendment path, manager-spec/orchestrator). This correction is committed by manager-develop with its own trailer; the lead decides whether the delta warrants a re-audit or stands as a disclosed post-close completion. Residual: the 36 dirty trees beyond the two blob-verified ones carry the uniform-scope inference, not per-tree blob checks (verdict.md Gaps #3); the 6 unregistered non-worktree dirs and the stale goal-dist session entry remain operator items.
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 ```yaml
