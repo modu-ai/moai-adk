@@ -139,8 +139,11 @@ func TestPartialApplyOrderOnInjectedFailure(t *testing.T) {
 
 			rec := servePost(t, a.routes(), "/save", reproForm())
 
-			if rec.Code != http.StatusInternalServerError {
-				t.Errorf("status = %d, want 500", rec.Code)
+			// SPEC-WEB-CONSOLE-017 REQ-WC-017-001: a failed save answers 200 —
+			// the boosted form discards non-2xx bodies, so the failure reason in
+			// the inline slot only reaches the browser through a 2xx re-render.
+			if rec.Code != http.StatusOK {
+				t.Errorf("status = %d, want 200", rec.Code)
 			}
 			// The failing step must be the last one reached: every later step
 			// is skipped by the early return, every earlier step already ran.

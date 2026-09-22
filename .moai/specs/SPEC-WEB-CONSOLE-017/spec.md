@@ -2,7 +2,7 @@
 id: SPEC-WEB-CONSOLE-017
 title: "moai web console — save-failure observability: inline failure reason and stderr seam logging"
 version: "0.1.0"
-status: draft
+status: in-progress
 created: 2026-09-22
 updated: 2026-09-22
 author: manager-spec

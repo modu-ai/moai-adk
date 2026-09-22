@@ -199,8 +199,12 @@ func TestSaveProjectWriteFailureSurfacesError(t *testing.T) {
 		return errors.New("config save boom")
 	}
 	rec := servePost(t, a.routes(), "/save", projectSaveForm("ddd", "angular"))
-	if rec.Code < 400 {
-		t.Errorf("write failure status = %d, want >= 400", rec.Code)
+	// SPEC-WEB-CONSOLE-017 REQ-WC-017-001: a failed save answers 200 — the
+	// boosted form discards non-2xx bodies, so the readable error only reaches
+	// the browser through a 2xx re-render. The error surfaces via the banner,
+	// asserted below.
+	if rec.Code != http.StatusOK {
+		t.Errorf("write failure status = %d, want 200", rec.Code)
 	}
 	if !strings.Contains(rec.Body.String(), "config save boom") {
 		t.Errorf("write failure should surface the error, got: %s", rec.Body.String())

@@ -641,11 +641,20 @@ func (a *app) projectView(prefs profile.ProfilePreferences, selected, devMode, c
 // renderErrorPage re-renders the form with a persistence-error banner while
 // keeping the submitted values visible (REQ-WC-010 — readable inline error,
 // never blank), including the two project-config selections.
+//
+// SPEC-WEB-CONSOLE-017 REQ-WC-017-001: the response is a 2xx re-render, not
+// a 500. The settings form is hx-boosted (root.templ), and htmx discards the
+// body of a non-2xx boosted response — a 500 here meant the failure reason
+// rendered into the inline save__msg--error slot never reached the browser.
+// The page body was already correct (the slot carries view.Banner via
+// settings_shell.go); the defect was the transport. A 2xx re-render is the
+// same shape the success path already uses, so the boosted swap handles
+// failure and success identically without any client-side handler.
 func (a *app) renderErrorPage(w http.ResponseWriter, prefs profile.ProfilePreferences, selected, devMode, convention, msg string) {
 	view := a.projectView(prefs, selected, devMode, convention)
 	view.Banner = msg
 	view.BannerKind = "error"
-	a.render(w, http.StatusInternalServerError, view)
+	a.render(w, http.StatusOK, view)
 }
 
 // bindForm maps submitted form values onto a ProfilePreferences.
