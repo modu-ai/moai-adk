@@ -373,9 +373,9 @@ var codexCmd = &cobra.Command{
 		"the auth provider, the project wiring, the generated agent TOMLs, and\n" +
 		"the harness entry. An incomplete wiring row is informational, not an\n" +
 		"error: moai init --llm gpt generates the .codex wiring files.\n" +
-		codexClaudeLocalName + " is common local guidance shared with Claude;\n" +
-		codexLocalInstructionName + " is Codex-only local guidance. Both non-empty\n" +
-		"project-root files are injected as developer instructions, in that order.\n" +
+		"Common local guidance shared with Claude, then Codex-specific local\n" +
+		"guidance: both non-empty project-root files are injected as\n" +
+		"developer instructions, in that order.\n" +
 		"\n" +
 		"  moai codex            launch the Codex CLI at the project root\n" +
 		"  moai codex cli        the same launch, named explicitly\n" +
