@@ -108,7 +108,82 @@ plan_complete_at: 2026-09-22
 
 ## §E.2 Run-phase Evidence
 
-(비워 둔다 — manager-develop 소유. run 이 시작될 때 채워진다.)
+run-phase 측정 전체는 worktree `/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t1060`, branch `WT-appjs-handler-guard` 위에서 2026-09-22 이번 run 실행 중 수행됐다(각 측정 시점 HEAD는 항목별로 병기). 바이너리는 이 트리에서 빌드해 경로로 호출했다(`go build -o /tmp/t1060-run/moai ./cmd/moai` — §2.2 도구 출처).
+
+### M1 — 탐침 저작 + 매니페스트 + 3값 exit 계약 (HEAD `3e35fbacf` + M1 커밋)
+
+| # | 측정 | 명령 | 관측 결과 | exit |
+|---|---|---|---|---|
+| M1-1 | 매니페스트 자기검증 (AC-AFG-009 green) | `python3 internal/web/testdata/appjs_fire_probe.py --lint-manifest` | `LINT OK: 8 entries + 7 exclusions cover 13 inventory groups; all effects within ['clipboard', 'label', 'swap', 'tab', 'visibility']; post-swap entry present` | 0 |
+| M1-2 | 정방향 baseline 재측정 — 실바이너리 표면 (spec §B.1 확장: 신규 지표 popover×3·tabs·post-swap 포함, 전부 발화) | `python3 internal/web/testdata/appjs_fire_probe.py --cdp-port <cdp> 18511 t1060-m1-healthy` | 아래 JSON 전문 — 전 지표 true, `failures: []`, `missing_selectors: []` | 0 |
+| M1-3 | 셀렉터 미달 RED — **계약 이전 계측기**(t1041 예시 탐침, report-only; `[data-copy]`→`[data-copy-nonexistent]` 변조, CDP 포트만 /tmp 사본에서 재지정) | `python3 /tmp/t1060-run/exemplar-tampered-final.py 18512 t1060-m1-tampered-exemplar` | `p3_has_copy_btn: false`, `p4_copy_handler_fired: false` — 지표 붕괴에도 **exit 0** (acceptance §B2 E5 와 같은 모양의, 올바른-이유 적색 — exit 계약이 없어서 통과 코드를 낸다) | 0 (적색) |
+| M1-4 | 셀렉터 미달 GREEN — 커밋된 탐침, 동일 변조 | `python3 /tmp/t1060-run/committed-tampered.py --cd-port <cdp> 18512 t1060-m1-tampered-committed` | 아래 실패 블록 — `copy_button` / `[data-copy-nonexistent]` 를 **이름으로** 지목 | 1 |
+
+M1-2 정방향 baseline 전문 (실바이너리 `moai web --port 18511 --no-open --no-reuse`, 로컬 Chrome headless, CDP `--remote-debugging-port=0` → `DevToolsActivePort` 자동 탐색):
+
+```json
+{
+  "label": "t1060-m1-healthy",
+  "port": "18511",
+  "base_url": "http://127.0.0.1:18511",
+  "cdp_port": 65110,
+  "p1_load_referenceerrors": [],
+  "p1_has_glm_btn": true,
+  "p2_revealed_hidden_before": true,
+  "p2_revealed_hidden_after": false,
+  "p2_glm_handler_fired": true,
+  "p3_panel_hidden_before": true,
+  "p3_panel_hidden_after_open": false,
+  "p3_popover_open_fired": true,
+  "p3_has_close_btn": true,
+  "p3_panel_hidden_after_close": true,
+  "p3_popover_close_btn_fired": true,
+  "p3_panel_hidden_after_outside": true,
+  "p3_popover_outside_close_fired": true,
+  "p4_tab_count": 14,
+  "p4_tab_selected_before": 0,
+  "p4_tab_clicked": 1,
+  "p4_tab_selected_after": 1,
+  "p4_settings_tabs_fired": true,
+  "p5_swap_clicked": true,
+  "p5_url_after_swap": "/todo",
+  "p5_swap_referenceerrors": [],
+  "p6_panel_hidden_before": true,
+  "p6_panel_hidden_after": false,
+  "p6_popover_after_swap_fired": true,
+  "p7_load_referenceerrors": [],
+  "p7_has_copy_btn": true,
+  "p7_label_before_click": "Copy",
+  "p7_label_after_click": "✓",
+  "p7_copy_handler_fired": true,
+  "failures": [],
+  "missing_selectors": [],
+  "exit": 0
+}
+```
+
+M1-4 실패 블록 (판정점 부분 — 전문은 셀렉터 미달 시 나머지 지표가 모두 정상 발화함도 함께 보여준다):
+
+```json
+  "failures": [
+    {
+      "entry": "copy_button",
+      "reason": "selector matched nothing",
+      "selector": "[data-copy-nonexistent]"
+    }
+  ],
+  "missing_selectors": [
+    {
+      "entry": "copy_button",
+      "selector": "[data-copy-nonexistent]"
+    }
+  ],
+  "exit": 1
+```
+
+**run 중 발견·수리한 결함 (M1):** 탐침 초판의 judge 가 미달 셀렉터를 `missing_selectors` 에 기록만 하고 실패로 합산하지 않아, 변조 실행에서 exit 0 을 냈다(M1-3 세션 1차 실행 — 관측 원문: `missing_selectors` 채워지고 `exit: 0`). REQ-AFG-004(스테일 셀렉터=red) 위반이며, 수리는 judge 가 미달 셀렉터를 `failures` 에 합산하도록 1개 블록 추가. 수리 뒤 동일 변조가 exit 1 로 뒤집힘(M1-4). — 계약의 red 가 실제로 관측된 후 green 이 뒤집은 순서로 기록한다.
+
+**서면 등가 측정 일정 주석 (plan §E M1.4):** in-process 서면(`NewServer`+`Handler()`)에 대한 같은 탐침 측정은 M2 의 드라이버가 수행한다 — 드라이버 자체가 in-process 하네스라서 M1 시점에는 운반체가 없다. M1 에서는 실바이너리 표면을 재측정했고, 등가 판정은 M2 녹색 출력에서 같은 지표 집합의 발화로 확정한다(plan §F 위험 표의 「측정으로 확정」 요구는 이 순서로 충족된다).
 
 ## §E.3 Run-phase Audit-Ready Signal
 
@@ -117,3 +192,10 @@ plan_complete_at: 2026-09-22
 ## §E.4 Sync-phase Audit-Ready Signal
 
 (비워 둔다 — manager-docs 소유. sync 커밋이 `sync_commit_sha` 를 채운다.)
+
+## §F Phase 4 Mode Selection
+
+- Input: tier M · scope ≈6 files (probe py, driver test.go, mutation py, ci.yml job, SPEC artifacts) · domains 4 (Go test, Python, CI YAML, SPEC artifacts) · concurrency benefit LOW (coding-heavy) · agent-team prereqs: not requested
+- Evaluation: direct=not selected (multi-file, semantic) · fanout=not selected (coding-heavy per Anthropic caveat) · sweep=not selected (not mechanical-uniform, no Workflow scale) · **serial=selected**
+- Decision: `serial`
+- Justification: coding-heavy implementation with inter-file dependencies (probe ↔ driver ↔ CI job) — sequential single-agent milestones are the safe default; the lane reports to the lead at phase boundaries, so a goal-armed autonomous loop adds coordination cost without removing waits. Kickoff approved by the operator 2026-09-22 (세션 내 직렬 선택); this log precedes the first run-phase Agent() spawn per orchestration-mode-selection.md §D.
