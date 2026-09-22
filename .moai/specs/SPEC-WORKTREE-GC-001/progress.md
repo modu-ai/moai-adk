@@ -139,3 +139,12 @@ Logged 2026-09-22 by the lane orchestrator (agent-30, re-dispatch; original lane
 **Decision: serial**
 
 **Justification**: per-tree disposal decisions with export-before-removal ordering and keep-direction overrides are sequential by nature; a single executor keeps the 3-tier predicate and the evidence ledger coherent. Kickoff Approval: PASSED (operator "전부 승인" 2026-09-22, relayed by lead). Plan-audit iter-2 PASS-WITH-DEBT 0.9375; the D10-D12 post-verdict repair (ce415cb01) is the audit-prescribed fix — recorded as the run-gate skip deviation, not a silent hash claim.
+
+### SUPERSEDED-NOTE (2026-09-23, lane — executor RETURNED; death diagnosis withdrawn)
+
+The "delegation ledger closure + lane takeover" entry above is **superseded in fact**: the delegated manager-develop was alive the whole time — the ~67-min silence was batch-window work (long du + removal chains), not death. It completed M1-M4 with a COMPLETE ledger and returned (08:1x) with commit `c32c44e20` (its own §E.2 surface):
+
+- **Full accounting exists** — classification.md / removal-log.md / export-log.md: 549 start → **506 T1 removed** (23 windows, per-window diff = own removal count, every branch tip an origin/develop ancestor at fetch baseline b0d9e0bbc) + **44 dirty** (43 exported+removed under D12 rows, 1 ambiguous→kept) + **48 D11 keep-record removals** (record path + resolved-premise cited) + 16 excluded + 3 keep-records + 24 T3 kept + primary/develop. Arithmetic: 549 − 506 + 3 new (t1086/87/88) = 46 ✓; 140G → 12G.
+- **The "~423 attribution-unknown" finding and the OPERATOR DISCLOSURE REQUIRED marker in the CORRECTION above are WITHDRAWN** — the classification evidence exists. The 09-23 operator disclosure relayed via lead was made on the lane's false-positive death diagnosis; the lead must relay this supersession to the operator with equal urgency.
+- **My census figures (86 registered / 26G) were MID-RUN snapshots**, not end-state — the executor's own before/after pair (549/140G → 46/12G, both observed by it) is the final measurement.
+- Lead judgment pending: re-audit the c32c44e20 delta vs accept as post-completion disclosure. Lane takes no further record action until the lead rules.
