@@ -303,6 +303,26 @@ func TestDoneL1TierGuard_RefusalMessageBothModes(t *testing.T) {
 	}
 }
 
+// TestDoneL1TierGuard_PredicateDirections pins the two mutant directions at
+// the predicate level (plan M2e, memory lesson t1028): the predicate FIRES
+// on an L1-shaped path (positive control) and does NOT fire on an L2-shaped
+// path outside .claude/worktrees/ (no-mutation control). Real git, DEFAULT
+// resolver — no seam override.
+func TestDoneL1TierGuard_PredicateDirections(t *testing.T) {
+	f := newTierRepo(t)
+	l1 := filepath.Join(f.repo, ".claude", "worktrees", "tier-pred")
+	addTierWorktree(t, f, l1, "feature/SPEC-TIER-PRED")
+	l2 := filepath.Join(f.base, "l2trees", "tier-pred-l2")
+	addTierWorktree(t, f, l2, "feature/SPEC-TIER-PRED-L2")
+
+	if !isL1WorktreePath(l1) {
+		t.Error("predicate must fire on an L1 path under <mainRoot>/.claude/worktrees/ (positive control)")
+	}
+	if isL1WorktreePath(l2) {
+		t.Error("predicate must not fire on an L2 path outside .claude/worktrees/ (no-mutation control)")
+	}
+}
+
 // TestDoneL1TierGuard_CWDIndependent pins AC-010 (plan-audit D1/D6): with
 // the PROCESS CWD inside a SECOND linked worktree, done must STILL refuse
 // the L1 target. The resolver is the DEFAULT target-derived mechanism — no
