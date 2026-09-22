@@ -63,7 +63,7 @@ pending: sync-phase (manager-docs — codemaps ×4 regeneration + CHANGELOG + 3-
 ```yaml
 sync_status: complete
 sync_complete_at: 2026-09-22
-sync_commit_sha: pending-backfill-sync
+sync_commit_sha: f147d8683
 b12_self_test_a: PASS (grep -c 'SPEC-JEV-GUARD-001' CHANGELOG.md → 0 before append)
 b12_self_test_b: PASS (acceptance.md distinct AC count = 8: AC-JEVG-001..008; AC-JEVO-012 is a cross-SPEC guard reference, not this SPEC's AC)
 b12_self_test_c: PASS (no file paths claimed in the CHANGELOG entry; remaining-consumer paths verified present — internal/cli/{mcp_jev,todo_jev_finding,doctor_jev}.go)

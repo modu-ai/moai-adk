@@ -5,7 +5,7 @@
 **최초 측정 트리**: worktree `.claude/worktrees/t592`, 브랜치 `WT-home-state-rollout`, HEAD `e7bd89ee3`, 2026-09-10
 **재측정 트리**: worktree `.claude/worktrees/t869`, 브랜치 `WT-codemaps-refresh`, HEAD `a851b205c`, 2026-09-18 — § `main()`, § Cobra 명령 트리의 모든 수치와 등록 목록, § 훅의 개수 네 가지(설정 엔트리 38, 셸 래퍼 48, 이벤트 서브커맨드 26, `Register` 30), § MCP 서버 표면 전체. 훅 절의 부가 `RunE` 목록은 다시 대조하지 않았습니다. § HOME 상태·웹 콘솔·CI 종료 코드 절은 이번 변경과 무관해 앞 판을 이어받았습니다.
 **정기 재측정**: worktree `.claude/worktrees/t1069`, 브랜치 `WT-graph-restamp`, HEAD `0314801c2`, 2026-09-22 — § Cobra 명령 트리의 등록 수치 세 개(자기 파일 등록 파일 70 불변, `AddCommand` 219→220, `rootCmd.AddCommand` 65→66, `root.go init()` 30→31)와 그 판에서 새로 더해진 숨은 명령 1개(스킬 제안 앵커 — 이후 card t1083이 철수), init 위자드 질문 4→5, § 훅과 § 웹 콘솔의 신규 seam 단락. 훅의 개수 네 가지(38·48·26·30)와 § MCP 서버 표면(도구 30), § HOME 상태 절, § CI 종료 코드 절은 같은 명령으로 재확인해 변동이 없었습니다.
-**부분 재측정**: worktree `.claude/worktrees/t1083`, 브랜치 `WT-jev-guard-green`, sync-phase HEAD `dd19e6b90`, 2026-09-22 — card t1083(SPEC-JEV-GUARD-001)이 Consumer B의 숨은 스킬 제안 명령을 철수하며 § Cobra 명령 트리의 세 수치를 다시 봤습니다(`root.go init()` `rootCmd.AddCommand` 31→30, 비테스트 `AddCommand(` 220→238, 자기 파일 등록 파일 70 불변). § MCP 서버 표면(도구 수)과 § 훅·§ 웹 콘솔 절은 이 카드 변경과 무관해 손대지 않았습니다.
+**부분 재측정**: worktree `.claude/worktrees/t1083`, 브랜치 `WT-jev-guard-green`, sync-phase HEAD `dd19e6b90`, 2026-09-22 — card t1083(SPEC-JEV-GUARD-001)이 Consumer B의 숨은 스킬 제안 명령을 철수하며 § Cobra 명령 트리의 세 수치를 다시 봤습니다(`root.go init()` `rootCmd.AddCommand` 31→30, 비테스트 `AddCommand(` 220→219, `rootCmd.AddCommand(` 66→65, 자기 파일 등록 파일 70 불변 — 수치는 비테스트 파일만 대상으로 센 값: `find internal/cli -name '*.go' -not -name '*_test.go' -print0 | xargs -0 grep -h 'AddCommand(' | wc -l` = 219, 같은 형태에 `rootCmd\.AddCommand(` = 65). § MCP 서버 표면(도구 수)과 § 훅·§ 웹 콘솔 절은 이 카드 변경과 무관해 손대지 않았습니다.
 
 ---
 
@@ -76,8 +76,10 @@ root.go Execute()
    `gate.go`, `graph.go`, `goal.go`, `integration.go` 등이 이 방식이고, 앞선 판 사이에
    `gtd.go`(`NewGTDCommand()` — todo 명령 트리를 감싸 `Use`만 `gtd`로 바꾼 두 번째 이름)와
    `slot.go`(`moai slot` — 무거운 실행용 세션 간 자원 임대)가 더해진 바 있습니다.
-   비테스트 `AddCommand(` 호출은 모두 **238회**, 그중 `rootCmd.AddCommand(`는 **66회**입니다
-   (card t1083 재측정 2026-09-22 — Consumer B 등록 철수 -1과 흡수 커밋의 +분이 겹친 값).
+   비테스트 `AddCommand(` 호출은 모두 **219회**, 그중 `rootCmd.AddCommand(`는 **65회**입니다
+   (card t1083 재측정 2026-09-22 — Consumer B 등록 철수 -1. 카운팅 명령:
+   `find internal/cli -name '*.go' -not -name '*_test.go' -print0 | xargs -0 grep -h 'AddCommand(' | wc -l`;
+   같은 파이프에 `rootCmd\.AddCommand(` 패턴 = 65. 이 판 앞의 238회는 테스트 파일까지 선 값으로 정정).
 
 **`moai init` 위자드는 다섯 질문이 됐습니다.** 앞 판의 네 질문 세트에 다섯 번째 `jev_enabled`
 ("Judgment Capability" 그룹, 자기 페이지를 가진다)가 더해졌습니다. 이 질문은 `InitQuestions`에만
