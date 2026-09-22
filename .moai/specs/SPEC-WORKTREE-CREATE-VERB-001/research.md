@@ -34,14 +34,14 @@ Files in `internal/cli/worktree/`: `clean.go`, `done.go`, `guard.go`, `recover.g
 
 The retired `moai worktree new` was removed together with the bodp library and its `--base`/`--from-current` flags. Reviving a verb under that name (option 가) means a NEW command wired to the CURRENT plumbing (`materializeSessionWorktree`), not a restoration of the retired implementation. The retired flags' semantics must not be silently reintroduced.
 
-## C. Decision axis — [NEEDS CLARIFICATION: worktree-verb direction (가) vs (나)]
+## C. Decision axis — RESOLVED: option 가 (`moai worktree new`)
 
-The card's [HARD] clause requires the direction to remain OPEN, decided on measurement, not pre-decided in the SPEC body:
+The card's [HARD] clause required measurement before choosing between:
 
 - **(가)** Revive `moai worktree new` as a first-class verb under the existing `internal/cli/worktree/` namespace.
 - **(나)** Narrow the surface to `moai codex -w --create` (extend the codex launcher's resolve path with creation).
 
-**Resolution precondition (measurement gap)**: the t1050 worktree-neutrality investigation recorded a **live-Codex-session runtime observation count of 0** — its direction call would sit on unmeasured ground. A live Codex session observation MUST be measured before the (가)/(나) decision is taken (does a Codex lane actually attempt `moai codex -w <new>`? Does it need bare-verb provisioning from scripts?). Both options MUST reuse the existing creation plumbing (Fact 2); neither may author a second `git worktree add` invocation path.
+**Resolution evidence:** the 2026-09-22 operator relay records a live Codex lane entering the already-existing t1070 tree through `moai codex -w`; the resolve-existing half is therefore present. The factory lane design (t1082) and script provisioning need a harness-neutral creator before either Claude or Codex enters. Option 나 would expose creation only through the Codex launcher and leave that consumer asymmetry intact. Option 가 is selected, but only as a new thin adapter to Fact 2; none of the retired implementation, BODP layer, or retired flags returns.
 
 ## D. Constraints carried into the SPEC
 
@@ -53,5 +53,5 @@ The card's [HARD] clause requires the direction to remain OPEN, decided on measu
 
 ## E. Gaps
 
-- Live Codex session observation: **0 measured** (inherited from t1050; this SPEC's decision gate closes it before run-phase entry).
+- Live Codex session observation: closed by the operator relay recorded in `progress.md` §E.2; the launcher was observed resolving the existing t1070 tree. A missing-tree launch was not re-run in this lane because the committed resolve-only regression test already preserves that negative contract.
 - Exact coverage of `session_worktree.go` tests under the new wiring: not measured at plan-phase (run-phase scope).

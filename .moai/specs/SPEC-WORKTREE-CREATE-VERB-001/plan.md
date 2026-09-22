@@ -8,19 +8,19 @@ moai's harness-neutral creation capability already exists (`materializeSessionWo
 
 ## §B Known Issues
 
-- Direction undecided by design: `[NEEDS CLARIFICATION: worktree-verb direction (가) vs (나)]`.
-- The t1050 investigation that first framed this gap recorded **0 live Codex session runtime observations** — deciding (가)/(나) without a measurement would repeat the unmeasured-ground failure mode.
+- The original plan deliberately left the direction undecided; M1 has now resolved it to option 가 after the operator-relayed live Codex observation.
+- The t1050 investigation initially recorded **0 live Codex session runtime observations**. That historical gap is closed by the M1 evidence in `progress.md` §E.2.
 
-## §C Pre-flight (decision gate — MUST complete before M2)
+## §C Pre-flight (decision gate — RESOLVED before M2)
 
-**[NEEDS CLARIFICATION: worktree-verb direction (가) vs (나)]**
+**Decision: option 가 — revive `moai worktree new` as the harness-neutral creation verb.**
 
 - **(가)** Revive `moai worktree new` as a first-class verb in `internal/cli/worktree/` (new verb file + `root.go` wiring).
 - **(나)** Narrow the surface to `moai codex -w --create` (extend `resolveCodexWorktreeDir`'s resolve path with creation, retiring the resolve-only error for the create flag form).
 
-**Resolution precondition (measured first, not assumed):** a live Codex session observation must be recorded before the orchestrator's AskUserQuestion round — minimum observations: (1) does a live Codex lane attempt `moai codex -w <new-name>` on a missing tree, and what does it do with the existing resolve-only error; (2) do scripts/provisioning flows reach for a bare verb or for the codex flag form. The t1050 observation count was 0; its direction call would sit on unmeasured ground.
+**Measured basis:** the operator relayed a live Codex-lane observation that `moai codex -w t1070` resolves and enters the existing tree while the missing-tree form remains resolve-only. The remaining capability is therefore provisioning before entry. A Codex-only `--create` flag would not serve scripts, factory leads, or the t1082 lane-worktree handoff, while `worktree new` gives all harnesses one MoAI-owned surface.
 
-**Shared constraint regardless of outcome:** both options MUST reuse the existing creation plumbing (`materializeSessionWorktree` + `resolveWorktreeL2Path` + `LoadWorktreeBaseBranch`). Neither may author a second `git worktree add` invocation path. The retired `moai worktree new` flags (`--base`/`--from-current`) are NOT revived.
+**Implementation constraint:** the new verb MUST reuse the existing creation plumbing (`materializeSessionWorktree` + `LoadWorktreeBaseBranch`) through an injected adapter. It must validate a single L1 leaf name before that adapter is called. It must not author a second `git worktree add` invocation path. The retired `moai worktree new` implementation and its `--base`/`--from-current` flags are NOT revived.
 
 **Phase 4 Mode Selection note:** serial mode expected — single-package scope (`internal/cli`), one verb surface, no independent lanes.
 
@@ -48,7 +48,7 @@ Plan-phase self-checks (executed and cited in `progress.md` §E.1):
 
 ## §F Milestones (priority-ordered by decision reversibility)
 
-- **M1 (High — decision gate, before any code):** Run the live Codex session observation (precondition above). Resolve the `[NEEDS CLARIFICATION]` marker via the orchestrator's AskUserQuestion round → surface fixed to (가) or (나). Output: recorded observation + decided surface in progress.md.
+- **M1 (High — complete):** Live Codex existing-tree entry observation relayed by the operator; option 가 selected and the cross-harness handoff recorded in `progress.md` §E.2.
 - **M2 (High — verb surface shape):** Wire the chosen surface to the creation plumbing. (가): new verb file in `internal/cli/worktree/` + `root.go` registration. (나): `--create` flag on `moai codex -w` extending the resolve path. Argument validation (REQ-WCV-003) and collision refusal (REQ-WCV-004) land here. RED first: failing tests for create-at-conventional-path and refusal-without-value.
 - **M3 (Medium — diagnostics + boundary):** Error message family consistent with the existing resolve-error shape; L1 placement validation; English strings. GREEN.
 - **M4 (Medium — guards):** Static guard test (`TestNew_NoAskUserQuestion` pattern) for the new surface; gate-baseline test confirming `SessionWorktreeEnabled` default unchanged and existing consumers byte-identical (REQ-WCV-005).
