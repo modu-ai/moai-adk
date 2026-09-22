@@ -34,9 +34,30 @@
 - Two census dispositions corrected on verbatim re-probe (INTEGRATION-LOCK-TARGET-SOURCE, UPDATE-CI-GUARD: actual compositions are guard-executable; replica over-mutation disclosed in census §4.1).
 - New boundary observations recorded during M3: non-git `$()` in printf args passes; computed command NAME (`"$REPO/bin/moai"`) refuses even git-free; git command with `$(cat …)` argument refuses; `if ! git … | grep -q` passes; plain-grep-terminated `$()` assignment + later expansion passes; literal-path git chains (no `$()`/loops) pass even as long `&&` bundles.
 
+## AC matrix (final, 2026-09-22)
+
+| AC | Status | Evidence (command → observed output, this run, tree `a2e6763f4` unless noted) |
+|----|--------|-------------------------------------------------------------------------------|
+| AC-001 census + four-field evidence | PASS | census report §1-§4 (111 union rows; sweeps 60/26/25/55; `ls .moai/specs/*/acceptance.md \| wc -l` → `795`) |
+| AC-002 census governs; proxy retired | PASS | report §2 AC-002 note (numeric-coincidence disclosure; proxy labeled by predicate+SHA wherever quoted) |
+| AC-003 boundary map + authoring rule, C1/C2 parity, build green | PASS | C1/C2 `diff` → only 2 internal-trace hunks; C2 forbidden-class scan → 0 hits in added text; `make build` → exit 0 (twice: M2, M4) |
+| AC-004 rewritten blocks executable, semantics preserved | PASS | census report §6 — six grouped re-execution invocations, all without refusal |
+| AC-005 leave files zero diff | PASS | `comm` of git-modified acceptance.md set vs rewrite list at M3 commit: all modified files ∈ rewrite set (52/52); leave files untouched |
+| AC-006 no script-file relocation | PASS | rewrites reduced to plain invocations or documented per-item plain procedures; zero `.sh` additions (progress.md M3 entry) |
+| AC-007 census closure | PASS | report §5 — sweeps ⊆ union, partition 52/53/6, 0 unprobeable, re-verified at M3 commit time |
+
+Gaps: none blocking. Residual risks: report §7 (version-specific guard behavior; leave-parse rows rest on the comment/pattern exemption measured via pass-controls 11/12).
+
 ## §E.3 Run-phase Audit-Ready Signal
 
-_<pending run-phase>_
+run_status: complete
+run_complete_at: 2026-09-22
+run_commit_sha: a2e6763f4
+run_commits: e8daa231c (M1) · dbe1a6941 (M2) · 874aaca79 (M3) · a2e6763f4 (M4)
+census_base_sha: 873a19710cac6ec737f12bfaadf976857246c6ad
+census_report: .moai/reports/t1067/census-20260922.md
+ac_pass_count: 7
+ac_fail_count: 0
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
