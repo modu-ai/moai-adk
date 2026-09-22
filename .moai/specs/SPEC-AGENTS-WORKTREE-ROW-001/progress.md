@@ -224,7 +224,7 @@ errors, zero new findings. No requirement prose was reworded to chase them.
 
 ```yaml
 run_complete_at: 2026-09-22
-run_commit_sha: pending-backfill-run   # D3 placeholder — commit 2 cannot cite its own SHA
+run_commit_sha: 013a116ed   # D3 backfill at close — commit 2, the M3+M4 evidence carrier
 run_status: complete
 ac_pass_count: 5
 ac_fail_count: 0
@@ -263,7 +263,7 @@ exists in this card's change set, so nothing to validate, add, or update.
 
 ```yaml
 sync_complete_at: 2026-09-22
-sync_commit_sha: pending-backfill-sync   # D3 placeholder — this close commit cannot cite its own SHA; backfilled in the immediately following commit
+sync_commit_sha: ca7fa5699   # D3 backfill — the 3-phase close commit; populated in the immediately following commit (a commit cannot cite its own SHA)
 sync_status: complete — independent sync-audit PASS-WITH-DEBT 96/100 (Functionality 96 / Security 100 / Craft 90 / Consistency 97; report .moai/reports/t1071/sync-audit.md)
 b12_self_test_a: PASS — grep -c 'SPEC-AGENTS-WORKTREE-ROW-001' CHANGELOG.md → 0 pre-emission (no duplicate-entry risk)
 b12_self_test_b: PASS — acceptance.md distinct AC identifiers = 5 (AC-AWR-001..005); CHANGELOG entry references the same 5
