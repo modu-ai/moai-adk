@@ -27,6 +27,7 @@ harness driving this contract lacks the capability.
 | output-style | Claude output styles | Follow this contract directly |
 | slash-commands | `/moai` slash commands | Use the underlying `moai` CLI verbs |
 | workflow-scripts | Workflow scripts (`ultracode`) | Run the steps sequentially |
+| worktree-entry | `moai cc -w <name>`; Codex lanes: `moai codex -w <worktree>` — resolves an existing tree and never creates one | Report the missing isolation; never create a tree by hand |
 
 **`Skill("<name>")` instructions carry no row, and are read literally.** `skill-loader` is a
 capability every harness driving this contract has, so it earns no row above; what is Claude-only
@@ -267,10 +268,10 @@ session re-pays the always-loaded prefix. Split only when the benefit justifies 
 
 ## 8. Harness-local instructions
 
-`AGENTS.local.md` is Codex-only and uncommitted. `moai codex` reads it from the project root and
-passes its exact content as a session `developer_instructions` override; shared `AGENTS.md` and
-`CLAUDE.md` never import it. Other harness-local settings and memory remain owned by their harness
-and are not forwarded to Codex.
+`moai codex` reads non-empty common local guidance followed by Codex-specific local guidance
+from the project root. It preserves each input body and adds source headers in one session
+`developer_instructions` override. Shared instruction documents never import these local inputs.
+Other harness-local settings and memory remain owned by their harness.
 
 Codex Web sessions read `AGENTS.md`, but local `.codex/hooks.json`, the status line, and the MoAI
 launcher injection do not run there. Treat Web sessions as read-and-review first.
@@ -301,6 +302,7 @@ duplicate those values inline.
 | `moai cc` / `moai glm` / `moai gpt` | Explicit Claude, GLM, or GPT session launchers |
 | `moai migrate cg` | Preview legacy CG migration; role changes require explicit acceptance |
 | `moai version` | Print build version and provenance |
+| `moai codex` | Codex session launcher — `cli` launch, `status` readout, `app` web; `-w <worktree>` enters an existing tree and never creates one |
 
 Run `moai --help` for the generated, current command surface.
 

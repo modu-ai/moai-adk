@@ -177,7 +177,7 @@ $ moai cc -w <worktree-name>     # or: moai glm -w <name>
    └─ Claude Code session starts here (cwd = .claude/worktrees/<name>/)
 ```
 
-`-w <name>` takes the **worktree name**, not a branch name and not a SPEC ID; it resolves to `.claude/worktrees/<name>/`. An existing worktree of that name is **reused, not recreated**, which is what makes this a valid re-entry path. Naming the worktree after the SPEC ID at creation time (`git worktree add -b feat/SPEC-X-001 .claude/worktrees/SPEC-X-001 origin/main`) lets the resume line read `moai cc -w SPEC-X-001`.
+`-w <name>` takes the **worktree name**, not a branch name and not a SPEC ID; it resolves to `.claude/worktrees/<name>/`. An existing worktree of that name is **reused, not recreated**, which is what makes this a valid re-entry path. Naming the worktree after the SPEC ID at creation time (`moai worktree new SPEC-X-001` — the sanctioned L1 creation verb; it creates the tree and returns its absolute path without entering it) lets the resume line read `moai cc -w SPEC-X-001`.
 
 **Form B — L2 worktree at `~/.moai/worktrees/<project>/<spec>/` (cross-session launch via extended `-w`):**
 

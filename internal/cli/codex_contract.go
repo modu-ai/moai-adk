@@ -31,6 +31,7 @@ const (
 	codexAgentsRelPath        = "AGENTS.md"
 	codexClaudeRelPath        = "CLAUDE.md"
 	codexLocalInstructionName = "AGENTS.local.md"
+	codexClaudeLocalName      = "CLAUDE.local.md"
 )
 
 // Link directive — the only executing line this contract may add.
