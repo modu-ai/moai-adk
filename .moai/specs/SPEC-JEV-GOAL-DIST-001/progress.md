@@ -33,3 +33,18 @@ _<pending run-phase>_
 ## §E.4 Sync-phase Audit-Ready Signal
 
 _<pending sync-phase>_
+
+## §F Phase 4 Mode Selection
+
+Decision: **serial** — one `manager-develop` spawn carrying the milestone chain M7a→M7b→M8a→M8b→M8c sequentially. Alternatives not selected: direct (multi-file semantic implementation, not a typo-fix), fanout (coding-heavy, not research-heavy), sweep (<30 files, not one uniform mechanical transform), agent-team (no operator request).
+
+| Input | Value |
+|---|---|
+| tier | M |
+| scope (file count) | ~12-15 (Go: MCP wrapper registration + receipt item + tests; rules: `moai-mcp-tools.md` ×2 copies ×2 figures; reference skill ×2 copies; `docs/jev-negative-results.md` new; template emissions if any) |
+| domain count | 4 (Go source, rules docs, skills, templates/records) |
+| file language mix | Go + markdown |
+| concurrency benefit | LOW — coding-heavy (Anthropic coding-task parallelism caveat) |
+| agent-team prereqs | not requested (no `--team` / no Team scale label) |
+
+Justification: the work is coding-heavy Go implementation with a dependency-ordered milestone chain (records last because the surfaces they document are only final after M8a/M8b), so the sequential single-spawn path is both the Anthropic-recommended default and the only mode whose milestone ordering the dependency chain permits. Selected 2026-09-22 by the run-entry session before the first run-phase `Agent()` spawn, per `orchestration-mode-selection.md` §D.
