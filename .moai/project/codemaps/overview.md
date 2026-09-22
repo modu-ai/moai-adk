@@ -9,6 +9,7 @@
 **재측정 트리**: worktree `.claude/worktrees/t869`, 브랜치 `WT-codemaps-refresh`, HEAD `a851b205c`, 2026-09-18 — § 규모 표 전체, § 구조 판정의 수치, 레이어 표의 대표 패키지, § 도식에 들어맞지 않는 패키지의 파일 수와 신규 항목(`internal/mission`·`internal/codextools`). 측정 명령은 각 표의 산출 명령 칸에 있습니다. 파일 크기(KB) 서술은 이번에 다시 쟀고, 그 밖의 서술형 판단은 앞 판을 이어받았습니다.
 **정정 재측정**: worktree `.claude/worktrees/t872`, 브랜치 `WT-codemaps-citations`, HEAD `9a8cc4277`, 2026-09-18 — § 규모 표의 다섯 값(비테스트·테스트 파일 수, 패키지 총수, 최상위 디렉터리 수)과 테스트 전용 디렉터리 서술. 위 재측정 직후 한 패키지가 삭제돼 그만큼만 다시 쟀고, 나머지 값(엣지 365/222, 임베드 589)은 같은 명령으로 재확인해 변동이 없었습니다.
 **정기 재측정**: worktree `.claude/worktrees/t999`, 브랜치 `WT-codemaps-remediation`, HEAD `56c64891a`, 2026-09-20 — § 규모 표 **일곱 값 전부**와 `internal/cli` fan-out, § `modules.md`의 패키지별 파일 수, 그리고 신규 패키지 3개(`internal/auditreceipt` · `internal/harness/rosterguard` · `internal/harness/cellguard`)의 서술. 각 값의 산출 명령은 표 안에 있고, 전부 이 트리에서 직접 실행했습니다. 서술형 판단 중 이번에 다시 확인한 것은 테스트 0 패키지 4개와 테스트 전용 디렉터리 1개뿐이며, 나머지 구조 판정은 앞 판을 이어받았습니다.
+**정기 재측정**: worktree `.claude/worktrees/t1069`, 브랜치 `WT-graph-restamp`, HEAD `0314801c2`, 2026-09-22 — § 규모 표의 여섯 값(비테스트·테스트 파일 수, 패키지 총수, 최상위 디렉터리 수, 엣지 둘)과 § 구조 판정의 `internal/cli` import 수, § 들어맞지 않는 패키지의 파일 수 두 곳(`internal/hook` · `internal/homestate`), 신규 패키지 3개(`internal/jev` · `internal/jevcred` · `internal/jevmeasure`)의 서술. 각 값의 산출 명령은 표 안에 있고 전부 이 트리에서 직접 실행했습니다. 임베드 템플릿 파일 수(588)와 테스트 0 패키지 4개·테스트 전용 디렉터리 1개도 같은 명령으로 재확인해 변동이 없었습니다.
 
 ---
 
@@ -16,15 +17,15 @@
 
 | 값 | 수치 | 산출 명령 |
 |---|---|---|
-| 비테스트 Go 파일 | 1244 | `find internal cmd pkg -name '*.go' -not -name '*_test.go' \| wc -l` |
-| 테스트 Go 파일 | 2108 | `find internal cmd pkg -name '*_test.go' \| wc -l` |
-| Go 패키지 총수 | 148 | `go list ./... \| wc -l` (`scripts/` 하위 main 3개 포함) |
-| 최상위 디렉터리 | 74 | `internal` 70(`ls -d internal/*/`) + `cmd` 2(`moai`, `t657-merge`) + `pkg` 2 |
-| 내부 import 엣지 (패키지 단위) | 371 | `go list -f '{{.ImportPath}} {{join .Imports " "}}' ./...` 후 모듈 경로 필터 |
-| 내부 import 엣지 (최상위 집계) | 227 | 위를 `internal/<X>` · `pkg/<X>` · `cmd/<X>` 수준으로 접고 self-edge 제거 |
+| 비테스트 Go 파일 | 1259 | `find internal cmd pkg -name '*.go' -not -name '*_test.go' \| wc -l` |
+| 테스트 Go 파일 | 2155 | `find internal cmd pkg -name '*_test.go' \| wc -l` |
+| Go 패키지 총수 | 151 | `go list ./... \| wc -l` (`scripts/` 하위 main 3개 포함) |
+| 최상위 디렉터리 | 77 | `internal` 73(`ls -d internal/*/`) + `cmd` 2(`moai`, `t657-merge`) + `pkg` 2 |
+| 내부 import 엣지 (패키지 단위) | 378 | `go list -f '{{.ImportPath}} {{join .Imports " "}}' ./...` 후 모듈 경로 필터 |
+| 내부 import 엣지 (최상위 집계) | 234 | 위를 `internal/<X>` · `pkg/<X>` · `cmd/<X>` 수준으로 접고 self-edge 제거 |
 | 임베드 템플릿 파일 | 588 | `find internal/template/templates -type f \| wc -l` |
 
-테스트 대 비테스트 비율이 **1.69 : 1**입니다. 테스트 파일이 0인 패키지는 4개이고
+테스트 대 비테스트 비율이 **1.71 : 1**입니다. 테스트 파일이 0인 패키지는 4개이고
 넷 다 main 패키지입니다(§ `modules.md` 참조). `internal` 70개 디렉터리 중
 `internal/skills` 하나만 비테스트 Go 파일이 0개인 테스트 전용 디렉터리입니다. 이 두 서술은
 이번 판에서 `go list -f '{{.ImportPath}} {{len .TestGoFiles}} {{len .XTestGoFiles}}'`와
@@ -32,9 +33,9 @@
 
 > **엣지 수 정정 이력.** 앵커 `25a3212a9` 판은 패키지 단위 엣지를 1638로 적었지만 당시
 > 명령 문자열이 생략형이라 재현할 수 없었습니다. 이후 `52f863f36` 판은 완전한 명령으로
-> 345 / 208을, `e7bd89ee3` 판은 351 / 214를, `9a8cc4277` 판은 365 / 222를 측정했고, 이번 판은
-> 같은 명령으로 371 / 227을 측정했습니다. 판마다 늘기만 한 것은 추세가 아니라 이 기간에
-> 패키지가 삭제되지 않았다는 사실의 반영입니다.
+> 345 / 208을, `e7bd89ee3` 판은 351 / 214를, `9a8cc4277` 판은 365 / 222를, `56c64891a` 판은
+> 371 / 227을 측정했고, 이번 판은 같은 명령으로 378 / 234를 측정했습니다. 판마다 늘기만 한
+> 것은 추세가 아니라 이 기간에 패키지가 삭제되지 않았다는 사실의 반영입니다.
 >
 > **이전 판 이후 트리에서 사라진 것.** `internal/gateway`(하위 `auth`·`conversation`·`opaque`·
 > `receipt`·`translate` 포함), `internal/codexapp`, `internal/codexbridge`와 CLI 쪽
@@ -64,11 +65,11 @@
 
 ### 부합하지 않는 근거 — 이쪽이 더 결정적입니다
 
-- **`internal/cli`가 다른 최상위 패키지 63개를 import 합니다**(최상위 집계 엣지 기준).
+- **`internal/cli`가 다른 최상위 패키지 65개를 import 합니다**(최상위 집계 엣지 기준).
   헥사고날이라면 어댑터 하나가 전 도메인에 닿을 이유가 없습니다. 실제 모양은 "명령 하나 =
   파일 하나 = 그 명령이 필요한 것 전부 import"에 가깝습니다.
 - **도메인 로직이 어댑터 안에 삽니다.** `internal/hook/quality/gate.go`가 67KB,
-  `internal/hook/session_start.go`가 63KB, `internal/cli/hook.go`가 61KB입니다(`ls -l` 바이트 ÷ 1024).
+  `internal/hook/session_start.go`가 67KB, `internal/cli/hook.go`가 61KB입니다(`ls -l` 바이트 ÷ 1024).
   이들은 프로토콜 변환이 아니라 정책입니다.
 - **자율 미션의 정책 계층도 어댑터에만 연결돼 있습니다.** 새로 생긴 `internal/mission`(15 파일)의
   비테스트 소비자는 `internal/cli/goal.go` 하나뿐이며, 그 파일이 `mission.*` 심볼을 직접 엮어
@@ -103,7 +104,7 @@
 
 분류가 어긋나는 자리는 반올림이 아니라 **발견**이므로 그대로 적습니다.
 
-- **`internal/hook` (137 파일)** — 가장 큰 불일치입니다. 겉으로는 Claude Code 훅 JSON을
+- **`internal/hook` (141 파일)** — 가장 큰 불일치입니다. 겉으로는 Claude Code 훅 JSON을
   stdin에서 읽어 stdout으로 내보내는 인바운드 어댑터지만, 안에 브랜치 가드·세션 시작
   오케스트레이션·증거 기록기 같은 순수 정책이 함께 삽니다. presentation으로 부르면 정책이
   감춰지고 domain으로 부르면 stdin/stdout 계약이 감춰집니다. 어느 쪽이든 손실이 있습니다.
@@ -137,9 +138,12 @@
   없습니다. `internal/harness/` 전체를 묶는 계약을 선언한 패키지 주석은 트리에서 찾지
   못했으므로, 이것은 인용이 아니라 **증거로부터의 추론**으로 적습니다 — 「에이전트·하네스
   메타데이터에 관한 것들」이라는 주제어가 디렉터리를 만들었을 뿐 층을 만들지는 않았습니다.
-- **`internal/homestate` (14 파일)** — `~/.moai` 아래 프로젝트별 SQLite 경로와 스키마를
+- **`internal/homestate` (15 파일)** — `~/.moai` 아래 프로젝트별 SQLite 경로와 스키마를
   소유하는 data/persistence 패키지이면서, Unix `flock`·Windows `LockFileEx`, PID 지문,
-  런타임 진입 차단까지 함께 다룹니다. 저장 계약과 플랫폼 동시성 경계가 한 패키지에 만나는
+  런타임 진입 차단까지 함께 다룹니다. 이 판에서 비정준 트리 변이 게이트(`noncanonical_tree_guard.go`
+  — 호출자 트리가 canonical 프로젝트 루트가 아니면 mutation 진입을 거절한다. `MOAI_HOME`은
+  대상만 옮길 뿐 그 사실을 바꾸지 않는다)이 admission lock과 marker 설치 두 지점에 배선됐습니다.
+  저장 계약과 플랫폼 동시성 경계가 한 패키지에 만나는
   의도적인 seam이며 패키지 단위 비테스트 소비자는 `cli`, `cli/ptycaptest`, `hook`, `hook/handoff`,
   `kanban`, `web` 여섯 곳입니다(최상위로 접으면 `cli`·`hook`·`kanban`·`web` 넷).
 

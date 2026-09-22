@@ -1,9 +1,8 @@
 package worktree
 
-// Card t805. The root help text claimed the command "supports creating"
-// worktrees while its own next paragraph says entering one is the launchers'
-// job, and no create verb is registered. Prose and the command tree drifted
-// apart with nothing reading both.
+// Card t805 originally pinned a management-only command set. Card t1070
+// deliberately reverses the no-creation doctrine by registering one thin
+// creation adapter while keeping entry in the launcher surfaces.
 //
 // This guard reads both: every registered subcommand must be named in the
 // Long text, and the Long text must not advertise creation. It asserts the
@@ -32,11 +31,10 @@ func TestWorktreeLongTextNamesExactlyTheRegisteredVerbs(t *testing.T) {
 		}
 	}
 
-	// "creating" is the specific claim that drifted: this command creates
-	// nothing, and the paragraph below the first line says so.
-	for _, claim := range []string{"creating", "Supports creating"} {
-		if strings.Contains(long, claim) {
-			t.Errorf("root help text still advertises %q — entering a worktree is the launchers' job", claim)
-		}
+	if !strings.Contains(long, "moai worktree new <name>") {
+		t.Error("root help text does not document the harness-neutral creation verb")
+	}
+	if !strings.Contains(long, "Entering an existing worktree remains the launchers' job") {
+		t.Error("root help text blurred creation with launcher-owned entry")
 	}
 }
