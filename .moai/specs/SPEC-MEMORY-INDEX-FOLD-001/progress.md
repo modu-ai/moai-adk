@@ -204,4 +204,54 @@ _<pending run-phase>_
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase>_
+```
+sync_complete_at: pending-stage2-close   # STAGE 1 draft — 확정 값은 close 커밋(STAGE 2) 시점에 기입
+sync_commit_sha: pending-backfill-sync   # D3 placeholder — 커밋은 자기 해시를 참조할 수 없으므로 STAGE 3 backfill 커밋이 실제 SHA를 기입
+sync_status: stage-1-draft               # CHANGELOG 판정 + §E.4 초안 완료; frontmatter 전이는 close 커밋(STAGE 2)에서 수행
+```
+
+### Sync 범위 요약 (docs-only close)
+
+- 본 SPEC의 저장소 트리 델타 = `.moai/specs/SPEC-MEMORY-INDEX-FOLD-001/**` 유일 — 저장소 코드·README·docs-site 등 사용자 대면 표면 변경 0.
+- 산출물 표면 2곳: (a) **외부 기억 저장소**(레포 외부 — 2차 색인 2파일 verbatim 추가 블록, MEMORY.md는 sha256 항등 무편집), (b) **SPEC 아티팩트 + 로컬 증거**(`.moai/reports/t1065/` — `.gitignore:235` 로컬 아티팩트, 커밋 대상 아님).
+
+### Run-phase 판정 요약
+
+- **AC 5/5** — AC-001 / AC-002 / AC-003 / AC-005 PASS + **AC-004 PASS-with-observation**(런타임 `modified:` 메타데이터 헝크 — §E.2 M3 (d) + verdict §4 Gaps #2; 내용 라인 영향 0). 판정서: `.moai/reports/t1065/verdict.md`(로컬 gitignored).
+
+### CHANGELOG 판정 (B12 discipline)
+
+**결정: CHANGELOG 항목 없음(NO ENTRY).** 저장소 대면 변경이 없어 기록할 항목 자체가 없다 — 기억 저장소는 레포 외부이고 SPEC 아티팩트는 내부 프로세스 아티팩트다. B12 자가검증 3종 실측 (2026-09-22 22:31–22:34 KST, HEAD `6a5fab67c` 워크트리):
+
+- **(a) 사전점검 grep** — 명령 + verbatim 출력:
+
+```
+$ grep -c 'SPEC-MEMORY-INDEX-FOLD-001' CHANGELOG.md
+0
+exit=1
+```
+
+  카운트 0 — 병렬 BATCH-SYNC 중복 항목 위험 없음. `exit=1`은 grep의 무매치 종료 코드.
+- **(b) AC 수 일치** — 적용 대상 CHANGELOG 항목 부재로 불적용(N/A). 참고 실측: Tier S로 `acceptance.md` 미보유(AC는 spec.md §3 인라인)이므로 spec.md 대상으로 계산, 식별자는 정확히 5:
+
+```
+$ grep -oE 'AC-([A-Z0-9]+-)*[0-9]+' .moai/specs/SPEC-MEMORY-INDEX-FOLD-001/spec.md | sort -u
+AC-001
+AC-002
+AC-003
+AC-004
+AC-005
+```
+
+- **(c) 파일 경로 검증** — 기입할 CHANGELOG 항목이 없어 검증할 경로 클레임 없음(N/A).
+- changelog_entry_position: N/A (no entry)
+
+### 보류 항목 (후속 스테이지)
+
+- **STAGE 2 — close 커밋**: 외부 sync-audit 판정 후 단일 close 커밋. spec.md frontmatter `in-progress → implemented → completed` 전이 + `updated:` 갱신을 4 artifacts에 원자 적용(§E.4 확정 동반). 현행 확인: spec.md:5 `status: in-progress`. 소유: manager-docs (spec-frontmatter-schema.md § Status Transition Ownership Matrix).
+- **STAGE 3 — `sync_commit_sha` backfill**: `pending-backfill-sync` 자리에 close 커밋 실제 SHA 기입 (D3 SHA placeholder backfill exemption).
+
+### Sync 부대 검증
+
+- **MX Tag validation (sync 부단계)**: N/A — 저장소 코드 델타 0으로 @MX 대상 소스 파일 없음(§E.2 전 기간 repo 코드 편집 없음과 정합).
+- **canary_compliance_check**: N/A — 본 SPEC은 자기 sync 테스트가 검증하는 선향 정책을 담지 않음(기억 색인 유지보수 카드).
