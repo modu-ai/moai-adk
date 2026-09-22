@@ -112,16 +112,6 @@ If the intent remains ambiguous after all priority checks, use AskUserQuestion t
 
 If the intent is clearly a development task with no specific routing signal, default to the **moai** workflow (plan -> run -> sync pipeline) for full autonomous execution.
 
-### Skill Suggestion (gated — default off)
-
-This is not an available feature. The skill-suggestion consumer described here exists behind the `workflow.jev.enabled` gate; every shipped default keeps that gate `false`, and its measurement gate has not been run. While the gate is off, this section is inert: route exactly as Priorities 1-4 alone dictate — run no suggestion command, present no ranked list, and never let this section change a routing outcome.
-
-Only when `workflow.jev.enabled` is `true` in the project's `.moai/config/sections/workflow.yaml`, the router MAY consult the suggestion signal alongside the priorities above, in this shape and no other:
-
-1. Run `moai jev-suggest --intent "<the raw user input>" --skills <skills.json>`, where `<skills.json>` carries the candidate skills' names and short descriptions. The anchor issues exactly two requests: a wide rank over all candidate skills batched with a Noul asking whether the turn needs a skill at all, then a rerank of the top three under fuller text.
-2. Read the command's stdout as a ranked signal carrying each candidate and its rank position. The signal is display-only: the intent router above keeps its selection authority unchanged — the suggestion dispatches nothing, selects nothing, and answers nothing, and Priorities 1-4 remain the only routing authority.
-3. Suppress the ranked list when the needs-a-skill Noul answers negatively above this consumer's fitted threshold — presenting a best-of-nothing is the defect this rule exists to prevent. No fitted threshold exists today, so the suppression trigger is unsatisfiable and the anchor's output presents unsuppressed.
-
 ---
 
 ## Workflow Quick Reference
