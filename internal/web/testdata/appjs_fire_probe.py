@@ -44,7 +44,6 @@ reached through its CDP port.
 import asyncio
 import json
 import optparse
-import re
 import sys
 import urllib.request
 
