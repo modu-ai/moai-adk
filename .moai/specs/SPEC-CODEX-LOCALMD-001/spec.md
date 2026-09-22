@@ -2,7 +2,7 @@
 id: "SPEC-CODEX-LOCALMD-001"
 title: "Codex launcher loads CLAUDE.local.md alongside AGENTS.local.md as developer_instructions"
 version: "1.0.1"
-status: "draft"
+status: "completed"
 created: "2026-09-22"
 updated: "2026-09-22"
 author: "manager-spec"
