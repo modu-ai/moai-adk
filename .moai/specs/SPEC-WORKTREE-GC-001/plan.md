@@ -60,8 +60,12 @@ ls -d .claude/worktrees/{t1051,t1060,t1065,t1067,t1068,t1071,t1073,t1074,t1078,t
 # 5. 세션 레지스트리 (점유 판정 입력)
 moai session list --json
 
-# 6. 메모리 유지-기록 교차확인 (D9 완화 — 제외 집합 밖 유지-방향 트리 탐지)
-grep -rl "폐기 금지\|보존" ~/.claude/projects/*/memory/ 2>/dev/null | head -20
+# 6. 메모리 유지-기록 교차확인 (D9 완화 — 제외 집합 밖 유지-방향 트리 탐지 / D10 수리: live 스토어 + 양성 대조)
+# D10: live CLAUDE_CONFIG_DIR profile 스토어를 잰다. 휴면 스토어 ~/.claude/projects/*/memory/ 는 0행이므로 쓰지 않는다.
+grep -rl "폐기 금지\|보존" ~/.moai/claude-profiles/*/projects/*/memory/ 2>/dev/null
+# D10 양성 대조 — 위 스윕(토픽 파일 본문 + MEMORY.md 인덱스 행)은 t1050·t1064·t810 세 keep-record를 반드시 재발견해야 한다.
+#   빈 출력은 "keep-record 없음"이 아니라 "미측정"이며 그 자체가 스윕 실패다(0-적합 제조 금지). head -20 절단 금지 — 절단은 부재로 읽힌다.
+#   범위 주기: 권위 있는 유지 규칙은 REQ-WGC-006의 지명 표면 규칙 + 3개 지명 트리(t1050/t1064/t810)이며, 이 스윕은 plan 이후 신규 기록의 보조 탐지층이다.
 ```
 
 ## §D — Constraints (안전 불변식 — 교훈 인용)
@@ -100,7 +104,7 @@ grep -rl "폐기 금지\|보존" ~/.claude/projects/*/memory/ 2>/dev/null | head
 - **M1 인벤토리·측정 (High)** — 시작 측정 쌍 기록. `git worktree list --porcelain` 전수 수집(트리 경로, 분기, lock 상태 — REAPER의 `parseWorktreeList`가 증명한 형태). 트리별 메타데이터는 shared `.git` refs에서 metadata-only 수집 — 단계 판정 조건에 트리당 git 서브프로세스 호출이 필요하지 않다. 제외 집합 필터 적용. 산출: `.moai/reports/t1084/inventory.md`.
 - **M2 분류 (High)** — 트리별 T1/T2/T3 판정 + 근거 인용. fetch 선행(C1). T1 = `git merge-base --is-ancestor <branch> origin/develop` 종료 0(fetch 후). T2 = REQ-WGC-006 기록 해소. T3 = 나머지. dirty/lock/점유 예외(C2/C3)는 판정 결과를 무시하고 T3으로 눌러 내린다. 로컬 develop에만 병합된 트리는 "pending lead bulk push" 사유로 T3 유지. 산출: `.moai/reports/t1084/classification.md` (트리당 한 행: 트리, 단계, 판정 근거 명령+출력 또는 판정 기록 경로).
 - **M3 증거 반출 (High)** — 제거 예정(T1/T2) 트리의 미추적 파일을 `.moai/reports/t1084/rescue/<tree-name>/`으로 반출. 증거류/폐기류 트리아지(REQ-WGC-010), 인용 대상 동반 반출(C6). 스킵 항목 건수 보고. `WT-legacy-cleanup`에 커밋. 산출: rescue/ 트리 + `.moai/reports/t1084/export-log.md`.
-- **M4 처치 (High)** — T1/T2 제거(`git worktree unlock` 필요시 → `git worktree remove`), T1은 분기 ref 삭제, T2는 ref 보존. 미해소 또는 방향-모호 T2 주장은 blocker 상신하고 트리 유지(REQ-WGC-013). 제거 창은 25트리 상한이며 창 사이마다 재나열·점유 재탐사·listing diff를 수행한다(REQ-WGC-011, AC-WGC-013). 제거 행렬 기록(REQ-WGC-014). 제거 후 `git worktree prune` + 전후 listing diff(C8). 산출: `.moai/reports/t1084/removal-log.md`.
+- **M4 처치 (High)** — T1/T2 제거(`git worktree unlock` 필요시 → `git worktree remove`), T1은 분기 ref 삭제, T2는 ref 보존. D12: 반출(REQ-WGC-009)이 복사 방식이므로 skipped-by-rule 잔여물이 남은 트리는 평문 `git worktree remove`가 거부한다 — `git worktree remove --force`는 그 트리의 M3 export-log.md 반출 행이 존재할 때만 허용하며, 각 반출 행이 해당 트리 `--force` 제거의 명시적 승인 근거다. 반출 행 없는 트리에는 `--force`를 붙이지 않는다(C4 판정식과 동일 게이팅 스타일, REQ-WGC-011). 미해소 또는 방향-모호 T2 주장은 blocker 상신하고 트리 유지(REQ-WGC-013). 제거 창은 25트리 상한이며 창 사이마다 재나열·점유 재탐사·listing diff를 수행한다(REQ-WGC-011, AC-WGC-013). 제거 행렬 기록(REQ-WGC-014). 제거 후 `git worktree prune` + 전후 listing diff(C8). 산출: `.moai/reports/t1084/removal-log.md`.
 - **M5 검증·판정 (Medium)** — 종료 측정 쌍, 제외 16트리 존재 재확인, 집산식 검산(E4), `verdict.md` 5-섹션 형식(REQ-WGC-016). 산출: `.moai/reports/t1084/verdict.md`.
 
 ## §G — Anti-Patterns
