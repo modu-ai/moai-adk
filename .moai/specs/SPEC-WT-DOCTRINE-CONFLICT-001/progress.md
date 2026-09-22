@@ -130,7 +130,17 @@ m1_to_mN_commit_strategy: single-run-commit (3 separable hunks + SPEC artifacts)
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase>_
+```yaml
+sync_commit_sha: "pending-backfill-sync"   # D3 window — a commit cannot cite its own hash; backfilled in a following commit
+sync_close_at: 2026-09-22
+sync_status: complete
+tier: S
+ac_pass_count: 9
+ac_fail_count: 0
+ac_debt_count: 0
+```
+
+**Sync-phase scope**: this single sync commit carries (a) the `spec.md` frontmatter transition `in-progress → completed` (`status` + `updated` only — zero body edits to spec.md / plan.md / acceptance.md), (b) this §E.4 signal, and (c) the `CHANGELOG.md` `[Unreleased] → ### Changed` entry (B12: pre-emission grep = 0 hits, distinct-AC count 9 matching the entry, all claimed paths verified to exist). The four doctrine-file copies are untouched by sync — they landed in run commit `427ec4455`.
 
 ## §F Phase 4 Mode Selection
 

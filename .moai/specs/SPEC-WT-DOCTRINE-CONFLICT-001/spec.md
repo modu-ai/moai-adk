@@ -2,7 +2,7 @@
 id: SPEC-WT-DOCTRINE-CONFLICT-001
 title: "Resolve the three-line worktree doctrine contradiction (creation recipe, unconditional git -C deprecation, Claude-exclusive runtime-tool sentence)"
 version: "0.1.0"
-status: in-progress
+status: completed
 created: 2026-09-22
 updated: 2026-09-22
 author: manager-spec
