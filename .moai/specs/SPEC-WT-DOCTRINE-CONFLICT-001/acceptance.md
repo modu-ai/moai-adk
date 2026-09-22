@@ -66,7 +66,7 @@ Docs-only SPEC: `go test` proves nothing about these edits and is explicitly NOT
 
 - **Given** card [HARD] requires naming what remains unfixed,
 - **When** the SPEC artifacts are read,
-- **Then** plan.md §B carries the four-item residual inventory (AGENTS.md/t1071 scope; absent native entry tool for non-Claude harnesses; intentional ~610/~653 divergence; same-class bare-`git worktree add` recipes remaining at the 4 docs-site worktree guides, template `main-checkout-branch-guard.md:38`, and dev-only `hns-release-specialist.md:122`) and spec.md REQ-WDC-007 binds it.
+- **Then** plan.md §B carries the four-item residual inventory (AGENTS.md/t1071 scope; absent native entry tool for non-Claude harnesses; intentional ~610/~653 divergence; same-class bare-`git worktree add` recipes remaining at the 4 docs-site worktree guides, the `worktree/faq.md` recovery recipes ×4 locales (`en:671`, `ja:662`, `ko:653`, `zh:660`), the `cli-reference/worktree.md` ×4 locales (`en:18`, `ja:18`, `ko:20`, `zh:18`), template `main-checkout-branch-guard.md:38`, and dev-only `hns-release-specialist.md:122`) and spec.md REQ-WDC-007 binds it.
 
 ## §D.1 Severity
 
