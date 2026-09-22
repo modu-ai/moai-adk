@@ -59,7 +59,8 @@ const (
 
 	// codexSpawnReadoutDiag rejects --spawn on the readout forms (AC-CL-003):
 	// a readout is not something to open a new window for.
-	codexSpawnReadoutDiag = "--spawn applies to the launch verbs only (moai codex cli --spawn / moai codex app --spawn)"
+	codexSpawnReadoutDiag           = "--spawn applies to the launch verbs only (moai codex cli --spawn / moai codex app --spawn)"
+	codexDuplicateLocalOverrideDiag = "duplicate developer_instructions override: local instruction inputs and operator config both set this key"
 )
 
 // codexVerb classifies a routed token: which tokens launch and which render
@@ -112,34 +113,71 @@ func codexChildArgs(kind codexVerb, tail []string) []string {
 	return append(args, tail...)
 }
 
-// codexLocalDeveloperInstructionArgs loads Codex-only personal guidance from
-// the project root. JSON string encoding is valid TOML basic-string syntax,
-// so it preserves newlines, quotes, and UTF-8 while remaining one argv token.
-// The local file is read-only input and is never imported from AGENTS.md.
+// @MX:ANCHOR: [AUTO] Single local-instruction producer for every launch form.
+// @MX:REASON: Compose source order and framing before encoding exactly one override.
+// @MX:SPEC: SPEC-CODEX-LOCALMD-001
+// codexLocalDeveloperInstructionArgs reads both local inputs fresh on each
+// launch. JSON string encoding preserves UTF-8 in a TOML basic string.
 func codexLocalDeveloperInstructionArgs(projectRoot string) ([]string, error) {
-	localPath := filepath.Join(projectRoot, codexLocalInstructionName)
-	info, err := os.Lstat(localPath)
-	if err != nil {
-		if errors.Is(err, os.ErrNotExist) {
-			return nil, nil
+	var payload strings.Builder
+	for _, name := range []string{codexClaudeLocalName, codexLocalInstructionName} {
+		body, err := readCodexLocalInstruction(projectRoot, name)
+		if err != nil {
+			return nil, err
 		}
-		return nil, fmt.Errorf("probe %s: %w", codexLocalInstructionName, err)
+		if len(body) == 0 {
+			continue
+		}
+		if payload.Len() > 0 {
+			payload.WriteByte('\n')
+		}
+		fmt.Fprintf(&payload, "<!-- source: %s -->\n", name)
+		payload.Write(body)
 	}
-	if !info.Mode().IsRegular() {
-		return nil, &codexPathGuardError{Rel: codexLocalInstructionName, Reason: "not a regular file (" + codexModeName(info.Mode()) + ")"}
-	}
-	body, err := os.ReadFile(localPath)
-	if err != nil {
-		return nil, fmt.Errorf("read %s: %w", codexLocalInstructionName, err)
-	}
-	if len(body) == 0 {
+	if payload.Len() == 0 {
 		return nil, nil
 	}
-	encoded, err := json.Marshal(string(body))
-	if err != nil {
-		return nil, fmt.Errorf("encode %s: %w", codexLocalInstructionName, err)
-	}
+	encoded, _ := json.Marshal(payload.String()) // A string is always JSON-encodable.
 	return []string{"-c", "developer_instructions=" + string(encoded)}, nil
+}
+
+// codexHasDeveloperOverride scans the operator's config options, including
+// attached short options, but stops at Codex's own end-of-options marker.
+func codexHasDeveloperOverride(tail []string) bool {
+	for i := 0; i < len(tail); i++ {
+		token := tail[i]
+		var value string
+		switch {
+		case token == "--":
+			return false
+		case token == "-c" || token == "--config":
+			if i+1 >= len(tail) {
+				continue
+			}
+			i++
+			value = tail[i]
+		case strings.HasPrefix(token, "--config="):
+			value = strings.TrimPrefix(token, "--config=")
+		case strings.HasPrefix(token, "-c"):
+			value = strings.TrimPrefix(strings.TrimPrefix(token, "-c"), "=")
+		default:
+			continue
+		}
+		key, _, ok := strings.Cut(value, "=")
+		if ok && strings.TrimSpace(key) == "developer_instructions" {
+			return true
+		}
+	}
+	return false
+}
+
+// @MX:WARN: [AUTO] Measure the final representation, not the source body.
+// @MX:REASON: Shell quoting can quadruple single quotes after JSON encoding.
+func checkCodexInstructionSize(size int, representation string) error {
+	if size > config.DefaultCodexInstructionArgBytes {
+		return fmt.Errorf("codex %s is %d bytes, exceeds %d-byte ceiling", representation, size, config.DefaultCodexInstructionArgBytes)
+	}
+	return nil
 }
 
 // launches reports whether the verb class starts a process (AC-CL-002's
@@ -174,6 +212,9 @@ var codexSpawnLaunchFn = defaultCodexSpawnLaunch
 // containing spaces, quotes, or $ survives the round trip.
 func defaultCodexSpawnLaunch(dir, program string, args []string) error {
 	command := buildCodexSpawnCommand(program, args)
+	if err := checkCodexInstructionSize(len(command), "spawn command"); err != nil {
+		return err
+	}
 	paneID, err := tmuxSpawnFn(dir, command)
 	if err != nil {
 		return fmt.Errorf("spawn tmux window: %w", err)
@@ -355,8 +396,9 @@ var codexCmd = &cobra.Command{
 		"the auth provider, the project wiring, the generated agent TOMLs, and\n" +
 		"the harness entry. An incomplete wiring row is informational, not an\n" +
 		"error: moai init --llm gpt generates the .codex wiring files.\n" +
-		"If AGENTS.local.md exists at the project root, its content is injected\n" +
-		"as Codex-only developer instructions for the launched session.\n" +
+		codexClaudeLocalName + " is common local guidance shared with Claude;\n" +
+		codexLocalInstructionName + " is Codex-only local guidance. Both non-empty\n" +
+		"project-root files are injected as developer instructions, in that order.\n" +
 		"\n" +
 		"  moai codex            launch the Codex CLI at the project root\n" +
 		"  moai codex cli        the same launch, named explicitly\n" +
@@ -533,6 +575,9 @@ func runCodexLaunch(cmd *cobra.Command, kind codexVerb, tail []string, spawn boo
 	if err != nil {
 		return fmt.Errorf("load Codex local instructions: %w", err)
 	}
+	if len(localArgs) > 0 && codexHasDeveloperOverride(tail) {
+		return errors.New(codexDuplicateLocalOverrideDiag)
+	}
 	childArgs := append(localArgs, codexChildArgs(kind, tail)...)
 	req := codexLaunchRequest{Program: binaryPath, Args: childArgs, Dir: dir}
 	if spawn {
@@ -546,6 +591,13 @@ func runCodexLaunch(cmd *cobra.Command, kind codexVerb, tail []string, spawn boo
 // AC-CL-002), runs it through the seam, and propagates the child's exit code
 // verbatim (AC-CL-002 rc axis, AC-CL-016).
 func codexDirectLaunch(req codexLaunchRequest) error {
+	for _, arg := range req.Args {
+		if strings.HasPrefix(arg, "developer_instructions=") {
+			if err := checkCodexInstructionSize(len(arg), "direct instruction token"); err != nil {
+				return err
+			}
+		}
+	}
 	c := exec.Command(req.Program, req.Args...)
 	c.Dir = req.Dir
 	c.Env = codexChildEnv()
@@ -582,6 +634,9 @@ func codexPropagateLaunchError(err error) error {
 // diagnostics moai cc --spawn emits, byte-identical — AC-CL-003) and opens
 // the new window through the seam.
 func codexSpawnLaunch(req codexLaunchRequest) error {
+	if err := checkCodexInstructionSize(len(buildCodexSpawnCommand(req.Program, req.Args)), "spawn command"); err != nil {
+		return err
+	}
 	if err := checkSpawnPrereqs(); err != nil {
 		return err
 	}

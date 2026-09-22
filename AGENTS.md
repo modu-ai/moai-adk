@@ -23,6 +23,7 @@ harness driving this contract lacks the capability.
 | question-channel | `AskUserQuestion` | Return a blocker report naming the missing input instead of asking in prose |
 | task-list | `TaskCreate` / `TaskUpdate` / `TaskList` / `TaskGet` | Track the work and report progress in prose |
 | design-sync | `DesignSync` | Skip the design-sync surface; say so in the report |
+| worktree-entry | `moai cc -w <name>`; Codex lanes: `moai codex -w <worktree>` — resolves an existing tree and never creates one | Report the missing isolation; never create a tree by hand |
 
 **`Skill("<name>")` instructions carry no row, and are read literally.** `skill-loader` is a
 capability every harness driving this contract has, so it earns no row above; what is Claude-only
@@ -261,8 +262,14 @@ session re-pays the always-loaded prefix. Split only when the benefit justifies 
 
 ## 8. Harness-local instructions
 
-`AGENTS.local.md` is Codex-only and uncommitted. `moai codex` reads it from the project root and
-passes its exact content as a session `developer_instructions` override; shared `AGENTS.md` and
-`CLAUDE.md` never import it. Other harness-local settings and memory remain owned by their harness
-and are not forwarded to Codex. Codex Web sessions do not run the local MoAI launcher, so this
-injection is local-CLI-only.
+`CLAUDE.local.md` is a common local input shared with Claude workflows; `AGENTS.local.md` is the
+Codex-specific input. For every local launch shape (bare, `cli`, `app`, `--spawn`, `-w`, and `-f`
+lead/agents), `moai codex` reads the non-empty regular files from the project root in that order,
+prefixes each body with its own provenance header, and passes the combined text as one session
+`developer_instructions` override. A `-w` child still reads the original project root even though
+it runs inside the worktree.
+
+Shared `AGENTS.md` and `CLAUDE.md` never import or link either local file. The launcher refuses
+links and non-regular inputs, reads through the descriptor it inspected, and fails before launch on
+an operator-supplied `developer_instructions` collision or an oversized direct/spawn argument.
+Codex Web sessions do not run the local MoAI launcher, so this injection is local-CLI-only.
