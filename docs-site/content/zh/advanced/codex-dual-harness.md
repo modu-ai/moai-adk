@@ -30,7 +30,7 @@ codex-cli 不读 Claude Code 的 `.claude/skills/`,所以技能以**镜像**(复
 
 ## 各 harness 的个人指令
 
-`AGENTS.local.md` 仅供 Codex 使用。本地 `moai codex` 启动器从项目根目录读取它,并把原始内容作为 Codex 会话的 `developer_instructions` 覆盖项传入;共享文件不会用 `@` 导入它。`CLAUDE.local.md`、`.claude/settings.local.json` 和 Claude 自动生成的 `MEMORY.md` 仍仅供 Claude 使用。Codex Web 会话不经过本地启动器,因此不会收到这项注入。
+`CLAUDE.local.md` 是与 Claude 工作流共用的本地输入，`AGENTS.local.md` 则是 Codex 专用输入。本地 `moai codex` 的所有启动路径——无参数、`cli`、`app`、`--spawn`、`-w` 以及 `-f` lead/agents——都会按此顺序读取项目根目录中非空的常规文件，在每段正文前加入 `<!-- source: <filename> -->` 来源标头，再把合并后的内容作为一个 `developer_instructions` 覆盖项传入。使用 `-w` 时，Codex 虽在工作树中运行，输入来源仍是原项目根目录。共享的 `AGENTS.md` 和 `CLAUDE.md` 都不会导入或链接这两个本地文件。启动器拒绝链接和非常规文件，并从完成检查的同一个文件描述符读取；如果操作者另行提供了 `developer_instructions`，或 direct/spawn 参数过大，启动会提前失败。其他 harness 的本地设置与记忆仍归各自 harness 所有。Codex Web 不经过本地启动器，因此不会收到这些注入内容。
 
 ## `internal/codexadapter` —— 钩子适配器库
 
