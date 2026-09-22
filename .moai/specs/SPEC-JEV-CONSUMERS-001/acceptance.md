@@ -61,8 +61,19 @@ Sub-cases 3 and 4 are the half whose failure is silent — a wrongly-suppressed 
 |---|---|---|
 | gate **run and failed** | the measurement artifact, its accuracy, and its constant-answer baseline | omit the artifact |
 | gate **could not be run** | the reason the gate is un-runnable and the withholding mechanism | cite a measurement that does not exist |
+| gate **unrun** (`AC-JEVN-016`) | what the gate still needs in order to run, and who owns it | cite a measurement, or claim the gate was withheld |
 
-A record that describes a gate-not-run consumer as "withheld on measurement" fails this criterion: it claims an observation that was never made.
+A record that describes a gate-not-run consumer as "withheld on measurement" fails this criterion: it claims an observation that was never made. A record that describes an **unrun** gate as **un-runnable** fails it for the mirror reason: it claims an impossibility that was never established, and the two call for different follow-up — an un-runnable gate is closed, an unrun one is owed.
+
+**AC-JEVN-016** *(covers `REQ-JEVN-016`)* — **[NEW 2026-09-21 — v0.3.0]** Given a consumer whose measurement gate is runnable but has not yet been run, and whose implementation is present in the tree, When the shipped default and the run-phase record are inspected, Then all five hold:
+
+1. `internal/config/defaults.go` sets `Jev.Enabled` to `false`, and no shipped template under `internal/template/templates/` sets `enabled: true` under a `jev:` key. Method: read the compiled default; `grep -rn 'jev:' -A 2 internal/template/templates/` and assert every `enabled:` in that block reads `false`. **Positive control**: the same grep over the local (non-template) `.moai/config/sections/workflow.yaml` resolves the same key, confirming the pattern matches a `jev:` block at all.
+2. With the gate off, the consumer constructs no request. Method: a recording client stub counting requests, asserting zero across the consumer's entry path with `enabled: false`. **Positive control**: the same stub with `enabled: true` records at least one — without it, zero is satisfied equally by a stub that counts nothing.
+3. With the gate off, the surrounding output is identical to its pre-Jev behaviour apart from at most one notice line. Method: byte-compare the command output against the same run with the consumer's call site absent.
+4. No documentation, release note, or CHANGELOG entry presents the consumer as available. Method: a grep over the published surfaces for the consumer's user-facing name, expecting zero; **positive control** on a surface that does name a shipped capability, confirming the search fires.
+5. The run-phase record names the state as **gate-unrun**, names what the gate still needs and who owns it, and cites no measurement artifact.
+
+Failing any of the five means the consumer is not in the gate-unrun state this criterion describes; it is either reachable at the default (and therefore shipped without its gate, which `REQ-JEVO-009` forbids) or un-runnable (and therefore governed by `AC-JEVN-015` instead).
 
 ---
 
@@ -71,13 +82,13 @@ A record that describes a gate-not-run consumer as "withheld on measurement" fai
 - `go test ./internal/kanban/... ./internal/cli/...` passes; full-suite verdict from CI. This gate covers Consumer C's packages. It does **not** reach Consumer A's or Consumer B's host surfaces, which are unresolved (`plan.md` §F, N2); a verification surface for M5 and M6 is part of answering N2, not an assumption this gate may make.
 - `golangci-lint run` clean on changed packages.
 - `make build` succeeds.
-- Each **shipped** consumer has a committed measurement artifact satisfying the gate in `SPEC-JEV-OPTIN-MEASURE-001` (`AC-JEVO-010` through `AC-JEVO-014`). A consumer disposed under `REQ-JEVN-015` has no such artifact by construction and is covered by `AC-JEVN-015` instead.
+- Each **shipped** consumer has a committed measurement artifact satisfying the gate in `SPEC-JEV-OPTIN-MEASURE-001` (`AC-JEVO-010` through `AC-JEVO-014`). A consumer disposed under `REQ-JEVN-015` or `REQ-JEVN-016` has no such artifact by construction and is covered by `AC-JEVN-015` / `AC-JEVN-016` instead. **"Shipped" here means reachable at the shipped default**, per the reading stated and defended in `spec.md` `REQ-JEVN-016` — a consumer present in the tree but off by default is not shipped, and is covered by `AC-JEVN-016`.
 
 ## §F. Definition of Done
 
 1. **Per consumer, scoped to that consumer's own criteria.** For each consumer that ships, every AC in that consumer's own section passes — §A for Consumer C, §B for Consumer A, §C for Consumer B — plus §D `AC-JEVN-015` where that consumer did not ship. A build shipping only Consumer C is **not** required to pass §B or §C; the three consumers must be able to fail independently, and a Definition of Done that couples them undoes the independence `plan.md` §C2 / §D and `design.md` §6 establish.
 2. Each consumer that ships has a committed measurement citing the pinned model id and both language arms, beating its constant-answer baseline.
-3. Each consumer that does NOT ship has its absence recorded as a decision, in exactly one of two forms per `AC-JEVN-015`: **gate run and failed** — the decision cites the measurement that withheld it; **gate could not be run** — the decision cites the un-runnable gate and the withholding mechanism, and cites no measurement.
+3. Each consumer that does NOT ship has its absence recorded as a decision, in exactly one of **three** forms: **gate run and failed** — the decision cites the measurement that withheld it (`AC-JEVN-015`); **gate could not be run** — the decision cites the un-runnable gate and the withholding mechanism, and cites no measurement (`AC-JEVN-015`); **gate unrun** — the decision names what the gate still needs and who owns it, cites no measurement, and the consumer's code, if present, satisfies all five conditions of `AC-JEVN-016`.
 4. For Consumer C specifically: the `HasAgentFindingForPair` check (`AC-JEVN-001`), the write-path absence check with its positive control (`AC-JEVN-012`), the four-combination precedence check (`AC-JEVN-003`), and the queue-hash check (`AC-JEVN-005`) all pass.
 5. The seven tests that enumerate the finding source set compile and pass after the third constant is added: `internal/kanban/backlog_findings_test.go`, `backlog_archive_test.go`, `todo_merge_procedure_test.go`, `todo_queue_merge_test.go`, `internal/cli/todo_analysis_test.go`, `todo_analysis_add_test.go`, `todo_relate_test.go`.
 6. Any milestone declared blocked in `plan.md` §F (currently M5 and M6, on N2) is either unblocked by an answer recorded at the Implementation Kickoff Approval gate, or remains out of the shipped set with its block recorded. A blocked milestone is not the same state as a gate-not-run consumer and is recorded separately.

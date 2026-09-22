@@ -46,10 +46,11 @@ exists so that remembering is not the mechanism.
 - SPEC-scoped audits produced without a card may use
   `.moai/reports/<SPEC-ID>/` instead.
 
-- FORBIDDEN: `.moai/reports/plan-audit/`. That directory is deliberately
-  gitignored — only its `.gitkeep` is tracked, and the repository's
-  `.gitignore` comment marks the directory as local artifacts. A verdict
-  written there is disposed of, not exported. Do not repurpose the directory.
+- FORBIDDEN: `.moai/reports/plan-audit/`. Nothing written there is ever read as
+  a card's verdict, and that — not the ignore rules, which cover the sanctioned
+  card destinations too — is what distinguishes the directory; the repository's
+  `.gitignore` comment records the policy behind both. A verdict written there
+  is disposed of, not exported. Do not repurpose the directory.
 
 ---
 
@@ -121,10 +122,16 @@ here.
 
 ## Committing
 
-Audit artifacts are tracked files. They reach the integration branch with the
-card's evidence commit — never left as uncommitted files in a worktree. A
-worktree holding the only copy of a verdict is a disposal hazard: the tree is
-removed when the card closes, and the verdict goes with it.
+An audit artifact is a local file. It is not expected to reach the integration
+branch, and no convention forces it there — the lead reads it on disk, in the
+tree where the card was worked. A worktree holding the only copy of a verdict is
+therefore a disposal hazard rather than an untidiness: the tree is removed when
+the card closes, and the verdict goes with it. Do not dispose of a card's
+worktree until the lead has read its verdict.
+
+Ignore-matching does not untrack a file that is already tracked, so a project
+that tracked audit artifacts before adopting this convention keeps carrying
+those files until it removes them deliberately.
 
 ---
 
@@ -139,8 +146,10 @@ Three enforcement layers, none of which depends on a person remembering:
   trusting a companion's reply. When a phase's evidence should include an
   audit verdict and the file is absent, that is a gap — the card stays put
   and the lead reports why.
-- **Mechanical check.** `ls .moai/reports/<card-id>/` — a missing verdict
-  file is the detection.
+- **Mechanical check.** `ls .moai/reports/<card-id>/` — a missing verdict file
+  is the detection. Presence on disk is the whole obligation here: the artifact
+  is local by design, so a check for branch reachability would test something
+  the convention does not ask for.
 
 ---
 
