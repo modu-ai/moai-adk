@@ -1,7 +1,10 @@
 package web
 
 import (
+	"bytes"
+	"io"
 	"net/http"
+	"os"
 	"strings"
 	"testing"
 )
@@ -82,4 +85,105 @@ func TestSaveFailureReasonReachesInlineSlot(t *testing.T) {
 	if !slotCarriesPhrase(body, "could not save profile preferences") {
 		t.Errorf("phrase present on the page but not inside the save__msg--error slot; body:\n%s", body)
 	}
+}
+
+// captureStderr swaps os.Stderr for a pipe so the test can read what the
+// production code writes through the established fmt.Fprintf(os.Stderr, ...)
+// idiom. The returned func restores stderr and yields the captured bytes.
+// Tests using it MUST NOT call t.Parallel(): os.Stderr is process-global.
+func captureStderr(t *testing.T) func() string {
+	t.Helper()
+	r, w, err := os.Pipe()
+	if err != nil {
+		t.Fatal(err)
+	}
+	old := os.Stderr
+	os.Stderr = w
+	done := make(chan string, 1)
+	go func() {
+		var buf bytes.Buffer
+		_, _ = io.Copy(&buf, r)
+		done <- buf.String()
+	}()
+	return func() string {
+		os.Stderr = old
+		_ = w.Close()
+		captured := <-done
+		_ = r.Close()
+		return captured
+	}
+}
+
+// saveFailureLines extracts the save-failure stderr lines from captured
+// output: the lines the SPEC's prefix contract owns. Other stderr traffic
+// (config-load WARN logs etc.) is not a save-failure line and is excluded
+// from the exactly-one count — counting the whole stream would conflate the
+// REQ's subject with ambient process logging.
+func saveFailureLines(captured string) []string {
+	var out []string
+	for _, line := range strings.Split(captured, "\n") {
+		if strings.HasPrefix(line, "moai web: ") {
+			out = append(out, line)
+		}
+	}
+	return out
+}
+
+// TestSaveFailureStderrLog is AC-WC17-003: a failed save appends EXACTLY one
+// stderr line, prefixed `moai web: ` (REQ-WC-017-004), naming the failed
+// seam (REQ-WC-017-003), carrying no raw error value (REQ-WC-017-005); a
+// successful save appends zero (REQ-WC-017-006).
+//
+// RED today: no save path writes to stderr at all — the only os.Stderr
+// writes in this package are the non-save sites (server.go file-watch and
+// browser-open), so the failure count is 0, not 1.
+func TestSaveFailureStderrLog(t *testing.T) {
+	t.Run("failure emits exactly one prefixed line", func(t *testing.T) {
+		a := newTestApp(t)
+		var calls []saveStep
+		recordingSeams(a, &calls, stepWritePreferences)
+		h := a.routes()
+
+		restore := captureStderr(t)
+		rec := servePost(t, h, "/save", reproForm())
+		lines := saveFailureLines(restore())
+
+		if rec.Code != http.StatusOK {
+			t.Fatalf("failed-save status = %d, want 200", rec.Code)
+		}
+		if len(lines) != 1 {
+			t.Fatalf("save-failure stderr lines = %d, want exactly 1 (0 undercounts; 2+ violates REQ-WC-017-003's exactly-one); captured:\n%s",
+				len(lines), strings.Join(lines, "\n"))
+		}
+		if !strings.HasPrefix(lines[0], "moai web: ") {
+			t.Errorf("line %q does not start with the single `moai web: ` prefix", lines[0])
+		}
+		if !strings.Contains(lines[0], "writePreferences") {
+			t.Errorf("line %q does not name the failed seam", lines[0])
+		}
+		// REQ-WC-017-005: the raw error value never reaches the line. The
+		// injected failure's message text is the value here — its presence
+		// would mean err.Error() leaked into the log.
+		if strings.Contains(lines[0], "injected failure") {
+			t.Errorf("stderr line carries the raw error value: %q", lines[0])
+		}
+	})
+
+	t.Run("success emits zero lines", func(t *testing.T) {
+		a := newTestApp(t)
+		var calls []saveStep
+		recordingSeams(a, &calls, "")
+		h := a.routes()
+
+		restore := captureStderr(t)
+		rec := servePost(t, h, "/save", reproForm())
+		lines := saveFailureLines(restore())
+
+		if rec.Code != http.StatusOK {
+			t.Fatalf("clean-save status = %d, want 200", rec.Code)
+		}
+		if len(lines) != 0 {
+			t.Errorf("successful save emitted %d save-failure stderr lines, want 0: %v", len(lines), lines)
+		}
+	})
 }

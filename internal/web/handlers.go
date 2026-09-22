@@ -5,6 +5,7 @@ import (
 	"context"
 	"fmt"
 	"net/http"
+	"os"
 	"sort"
 	"strconv"
 
@@ -494,6 +495,7 @@ func (a *app) handleSave(w http.ResponseWriter, r *http.Request) {
 
 	// REQ-WC-007: persist profile fields ONLY through the existing profile/sync functions.
 	if err := a.writePreferences(selected, prefs); err != nil {
+		logSaveFailure("writePreferences", "could not save profile preferences")
 		a.renderErrorPage(w, prefs, selected, devMode, convention, "could not save profile preferences: "+err.Error())
 		return
 	}
@@ -515,6 +517,7 @@ func (a *app) handleSave(w http.ResponseWriter, r *http.Request) {
 		// WritePreferences surfaces a readable error rather than a silent
 		// partial-state. The profile store was written; the project config was
 		// not — the message says so explicitly.
+		logSaveFailure("syncToProject", "profile preferences saved, but project config sync failed")
 		a.renderErrorPage(w, prefs, selected, devMode, convention,
 			"profile preferences saved, but project config sync failed: "+err.Error())
 		return
@@ -523,6 +526,7 @@ func (a *app) handleSave(w http.ResponseWriter, r *http.Request) {
 	// REQ-WC3-005: persist the two project-config scalars via the dedicated write
 	// seam (config-manager only; empty values keep existing).
 	if err := a.writeProjectConfig(a.cfg.ProjectRoot, devMode, convention); err != nil {
+		logSaveFailure("writeProjectConfig", "profile preferences saved, but project config write failed")
 		a.renderErrorPage(w, prefs, selected, devMode, convention,
 			"profile preferences saved, but project config write failed: "+err.Error())
 		return
@@ -532,6 +536,7 @@ func (a *app) handleSave(w http.ResponseWriter, r *http.Request) {
 	// seam (HARD-4 nested isolation; runs after the scalar write so both converge on
 	// the same on-disk sections).
 	if err := a.writeProjectNestedConfig(a.cfg.ProjectRoot, nestedForm); err != nil {
+		logSaveFailure("writeProjectNestedConfig", "profile preferences saved, but project nested config write failed")
 		a.renderErrorPage(w, prefs, selected, devMode, convention,
 			"profile preferences saved, but project nested config write failed: "+err.Error())
 		return
@@ -542,6 +547,7 @@ func (a *app) handleSave(w http.ResponseWriter, r *http.Request) {
 	// quality 확장 키는 typed 경로(REQ-WC11-010/012). 마지막에 실행되므로 앞선
 	// typed 쓰기 결과를 재로드해 수렴한다.
 	if err := a.applySchemaEdits(a.cfg.ProjectRoot, schemaEdits); err != nil {
+		logSaveFailure("applySchemaEdits", "profile preferences saved, but section config write failed")
 		a.renderErrorPage(w, prefs, selected, devMode, convention,
 			"profile preferences saved, but section config write failed: "+err.Error())
 		return
@@ -552,6 +558,7 @@ func (a *app) handleSave(w http.ResponseWriter, r *http.Request) {
 	// patchAgentFM so an explicit per-agent override submitted in the same
 	// request still wins over the re-applied tier-profile baseline.
 	if err := applyPerfTierEdits(a.cfg.ProjectRoot, perfTier); err != nil {
+		logSaveFailure("applyPerfTierEdits", "profile preferences saved, but performance_tier apply failed")
 		a.renderErrorPage(w, prefs, selected, devMode, convention,
 			"profile preferences saved, but performance_tier apply failed: "+err.Error())
 		return
@@ -562,6 +569,7 @@ func (a *app) handleSave(w http.ResponseWriter, r *http.Request) {
 	// override submitted in the same request is computed against the newly-applied
 	// tier. Agent .md frontmatter is NO LONGER mutated by the console.
 	if err := a.patchAgentFM(a.cfg.ProjectRoot, agentPins, agentSubmitted); err != nil {
+		logSaveFailure("patchAgentFM", "settings saved, but agent override write failed")
 		a.renderErrorPage(w, prefs, selected, devMode, convention,
 			"settings saved, but agent override write failed: "+err.Error())
 		return
@@ -575,6 +583,7 @@ func (a *app) handleSave(w http.ResponseWriter, r *http.Request) {
 	// the error message carries no key material (REQ-GKI-004-003).
 	if normalized := normalizeGLMKey(glmKeySubmitted); normalized != "" {
 		if err := glmcred.Save(normalized); err != nil {
+			logSaveFailure("glmcred.Save", "settings saved, but GLM credential write failed")
 			a.renderErrorPage(w, prefs, selected, devMode, convention,
 				"settings saved, but GLM credential write failed: "+err.Error())
 			return
@@ -588,6 +597,7 @@ func (a *app) handleSave(w http.ResponseWriter, r *http.Request) {
 	// surfaced as a failure, and the message carries no credential material.
 	if normalized := normalizeJevKey(jevKeySubmitted); normalized != "" {
 		if err := jevcred.Save(normalized); err != nil {
+			logSaveFailure("jevcred.Save", "settings saved, but Jev credential write failed")
 			a.renderErrorPage(w, prefs, selected, devMode, convention,
 				"settings saved, but Jev credential write failed: "+err.Error())
 			return
@@ -655,6 +665,17 @@ func (a *app) renderErrorPage(w http.ResponseWriter, prefs profile.ProfilePrefer
 	view.Banner = msg
 	view.BannerKind = "error"
 	a.render(w, http.StatusOK, view)
+}
+
+// logSaveFailure writes exactly one stderr line for a failed persistence
+// seam (SPEC-WEB-CONSOLE-017 REQ-WC-017-003/004/005). It reuses the
+// established fmt.Fprintf(os.Stderr, ...) idiom (server.go) with the single
+// `moai web: ` prefix so every save-failure line greps uniformly. The line
+// names the failed seam and the stable failure phrase ONLY — it never
+// carries the raw error value (err.Error()), which may embed credential
+// fragments (HARD-3); the user-facing banner carries the full reason instead.
+func logSaveFailure(seam, phrase string) {
+	fmt.Fprintf(os.Stderr, "moai web: save failed at %s: %s\n", seam, phrase)
 }
 
 // bindForm maps submitted form values onto a ProfilePreferences.
