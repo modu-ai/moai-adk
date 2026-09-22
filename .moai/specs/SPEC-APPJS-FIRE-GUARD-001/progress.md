@@ -240,6 +240,33 @@ M2-3 in-process 보고 전문 (랜덤 포트 `50691` 서버, CDP `50692` — `De
 
 드라이버 구조 비고: `appjs_fire_guard_test.go` — 게이트·이름 붙은 영어 skip(`MOAI_BROWSER_GUARD`/`chrome`/`python3`/`websockets` 각각 명명)·`t.Cleanup` 정리(서버·Chrome·탐침 전부)·`--lint-manifest` 게이트 실행 동반·무게이트 매니페스트-인벤토리 교차검증 테스트. `gofmt -l` 출력 없음, `go vet ./internal/web/` 통과, `GOOS=windows GOARCH=amd64 go build ./internal/web/` 통과(실행 전 재확인은 E2).
 
+### M3 — 돌연변이기 + 양방향 재측정 (HEAD = M2 커밋 위 M3 커밋)
+
+AC-AFG-002 의 0→1→0 시퀀스를 커밋된 계측기(탐침 + 돌연변이기)로 실바이너리 표면에서 전 구간 실행. 서버·Chrome 기동 래퍼는 plan §B 스텝 시퀀스와 동일(포트 18513, CDP 51062). acceptance.md §B2 판정 명령 블록의 `/tmp/t1060-probe/probe.py` 자리는 커밋된 `internal/web/testdata/appjs_fire_probe.py` 로 대체해 실행했다 — 프로토타입이 아니라 납품 계측기로의 재측정이 더 강한 근거다.
+
+| # | 측정 | 명령 | 관측 결과 | exit |
+|---|---|---|---|---|
+| M3-1 | 전제 단언 음성 시험 (REQ-AFG-008 — 패턴 부재 대상) | `grep -v 'stampRefreshed' app.js > /tmp 복사본 && python3 internal/web/testdata/appjs_fire_mutation.py --target <복사본>` | `MUTATION FAILED: registration pattern not found …` + 프리스틴 미생성 확인 | 1 (기대) |
+| M3-2 | 변이 전 탐침 | `python3 internal/web/testdata/appjs_fire_probe.py --cdp-port 51062 18513 m3-pre` | 전 지표 발화 | 0 |
+| M3-3 | 돌연변이 합성 | `python3 internal/web/testdata/appjs_fire_mutation.py --pristine /tmp/t1060-run/appjs.pristine` | `MUTATED removed@727 inserted@552 pristine=/tmp/t1060-run/appjs.pristine` — plan-phase 프로토타입과 동일 좌표 | 0 |
+| M3-4 | 변이 재빌드 뒤 탐침 — **AC-AFG-002 판정점** | (재빌드 + 서버 재기동 뒤) `python3 internal/web/testdata/appjs_fire_probe.py --cdp-port 51062 18513 m3-post-mutate` | **exit 1** — 아래 요지 발췌: `stampRefreshed is not defined` ReferenceError(load·swap 창) + 미발화 지표 `glm_reveal`·`copy_button` 이 **이름으로** 보고됨 | 1 |
+| M3-5 | 복원 + byte 동일 검증 (REQ-AFG-009) | `cp pristine app.js && cmp app.js pristine && git diff --quiet -- app.js && git status --porcelain -- internal/web/assets/` | `RESTORED_BYTE_IDENTICAL (cmp exit 0)` · `GIT_DIFF_VS_HEAD_EMPTY` · `ASSETS_PORCELAIN_LINES= 0` | 0 |
+| M3-6 | 복원 재빌드 뒤 탐침 | `python3 internal/web/testdata/appjs_fire_probe.py --cdp-port 51062 18513 m3-post-restore` | 전 지표 발화, `exit: 0` | 0 |
+
+M3-4 판정점 발췌 (`/tmp/t1060-run/probe-m3-post-mutate.json` 요지 — 전문은 실행 산출물):
+
+```text
+exit: 1
+p1_load_referenceerrors: ["Uncaught ReferenceError: stampRefreshed is not defined\n    at http://127.0.0.1:18513/static/app.js:552:49\n    at http://127.0.0.1:18513/static/app.js:661:3"]
+p2_glm_handler_fired: False
+p7_copy_handler_fired: False
+failure entries: ['glm_reveal', 'copy_button', None, None]   (None = ReferenceError 창 실패 2건)
+```
+
+정직한 관측 하나: 변이 상태에서도 `p6_popover_after_swap_fired` 는 true 였다 — popover 등록 계열(line 73)은 삽입점(합성 552행)보다 앞서 살아남기 때문이다. 이는 spec §B.2 가 이미 표시해 둔 「삽입점 이후 최상위 효과 전멸」 기전 가설과 정합하는 관측이며, AC-AFG-002 가 요구하는 것은 최소 1개 지표의 미발화 또는 ReferenceError — 충족된다. 가드의 red 가 모든 지표의 동시 붕괴를 함의하지 않는다는 것을 이 실행이 재확인했다.
+
+**종료 후 잔여 검증 (세션 종료 시점 재측정):** `git diff --stat 3e35fbacf -- internal/web/assets/app.js` 출력 없음 — base 대비 byte 동일 유지. assets porcelain 0행.
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 (비워 둔다 — manager-develop 소유.)
