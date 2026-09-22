@@ -18,7 +18,7 @@ the same CDP-over-websockets machinery and adds what the SPEC requires:
   - a --lint-manifest offline self-check (effect-kind allowlist, coverage
     count, post-swap presence).
 
-Orthogonality: this guard is ORTHOGONAL to the static sibling
+Orthogonality: this guard is orthogonal to the static sibling
 SPEC-APPJS-IIFE-GUARD-001 (static-scope analysis). Neither guard's green
 implies the other's. A static IIFE-scope pass does not prove a handler fires
 in a real browser; a green run here does not pinpoint the offending

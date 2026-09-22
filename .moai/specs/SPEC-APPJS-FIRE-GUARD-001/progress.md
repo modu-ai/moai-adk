@@ -280,9 +280,29 @@ failure entries: ['glm_reveal', 'copy_button', None, None]   (None = ReferenceEr
 
 job 설계 비고: `test-browser` 는 EOF 에 덧붙는 유일한 판정면이다 — 게이트된 드라이버 테스트는 다른 어디서도 skip 되므로(AC-AFG-003), 런타임 발화 축의 CI 판정은 이 job 만이 운반한다. Green 단계(게이트 켠 드라이버, in-process 서면)와 Red 단계(돌연변이 → 재빌드 → 탐침 exit 1 기대 + `stampRefreshed` 재검증 → 복원 → cmp/git diff byte 동일 → 재빌드 → 탐침 exit 0 기대)를 모두 운반한다. Chrome 은 고정 CfT 다운로드(`MOAI_BROWSER_GUARD_CHROME` 로 드라이버·레드 단계 양쪽에 주입), `--no-sandbox` 는 루프백 전용 시험 브라우저에 한해. **이 job 의 러너 실측(다운로드·pip·전 사이클)은 아직 없다 — 그것은 push 뒤 origin/develop CI 의 몫이며(§4.1 규율), 여기서 로컬 실행하지 않는다(배차문 D 제약).**
 
+### M5 — 문서화 + 전체 재측정 (HEAD = M4 커밋 위 M5 커밋)
+
+| # | 측정 | 명령 | 관측 결과 |
+|---|---|---|---|
+| M5-1 | 한계·직교성 주석 존재 (AC-AFG-008, REQ-AFG-013) | `grep -c` 앵커 토큰 6종 (acceptance §B AC-008 명령 그대로) | probe: `orthogonal`=1 `manifest`=18 `scenario`=3 `Chrome`=4 / driver: `orthogonal`=1 `SPEC-APPJS-IIFE-GUARD-001`=1 `static-scope`=2 — 전부 ≥1. **측정 경위**: 초판 헤더가 ORTHOGONAL 대문자로 쓰여 AC 의 소문자 토큰 0건 — 주석을 소문자 토큰으로 수리 뒤 재측정 (red 관측 → 수리 → green) |
+| M5-2 | 기존 테스트 전체 통과 + 정적 형제 무손상 (AC-AFG-005a) | `go test ./internal/web/ -count=1 -timeout 30m` | `ok github.com/modu-ai/moai-adk/internal/web 25.282s`, exit 0. `git diff --stat 3e35fbacf -- internal/web/appjs_iife_scope_test.go internal/web/appjs_reinit_test.go` 출력 없음 |
+| M5-3 | 탐침 존재 + 파생 출처 (AC-AFG-005b) | `ls internal/web/testdata/appjs_fire_probe.py && grep -c 't1041' <동일>` | 파일 존재, `t1041` 4건 |
+| M5-4 | go.mod/go.sum 무변경 (AC-AFG-005c) | `git diff --stat 3e35fbacf..HEAD -- go.mod go.sum` + working-tree porcelain | 출력 없음 양쪽 |
+| M5-5 | 최종 HEAD 게이트 실행 재측정 | `MOAI_BROWSER_GUARD=1 go test ./internal/web/ -run 'AppJsHandlersFire' -v -count=1 -timeout 10m` | `--- PASS: TestAppJsHandlersFireRuntime (11.75s)` / `--- PASS: TestAppJsHandlersFireSelectorMiss (16.53s)` / `ok … 28.677s` — HEAD `1f9f2d321` (주석 수리 후 최종 원본 바인딩) |
+| M5-6 | gofmt·vet·lint (공통 DoD + E5) | `gofmt -l internal/web/appjs_fire_guard_test.go` / `go vet ./internal/web/` / `golangci-lint run --timeout=2m ./internal/web/...` | gofmt 출력 없음 · vet 통과 · `0 issues.` (golangci-lint 2.10.1, homebrew 설치본 — 서드파티 도구로서 트리 래그 개념 외부, 버전 명기) |
+| M5-7 | 자산·모듈 보존 최종 (AC-AFG-007/E6) | `git diff --stat 3e35fbacf -- internal/web/assets/app.js` + `git status --porcelain -- internal/web/assets/ go.mod go.sum` | 출력 없음 — base 대비 byte 동일, working tree 청결 |
+
 ## §E.3 Run-phase Audit-Ready Signal
 
-(비워 둔다 — manager-develop 소유.)
+run_complete_at: 2026-09-22
+run_commit_sha: pending-backfill-M5
+run_base_sha: 3e35fbacf
+ac_pass_count: 6/6 blocking (AC-AFG-001·002·003·004·007·009 전부 관측 출력으로 PASS) + regression-class 3건(AC-AFG-005·006·008) 전부 기록 완료 — §D 분류 선언대로 기록 산출물이며 차단 요건 아님
+preserve_list: `internal/web/assets/app.js` base `3e35fbacf` 대비 byte 동일 (`git diff --stat 3e35fbacf -- <경로>` 출력 없음; M3 사이클 복원 구간에서 `cmp` exit 0 + `RESTORED_BYTE_IDENTICAL` 관측) · `go.mod`/`go.sum` 무변경 (websockets 는 Python 의존 — Go 모듈 추가 없음) · 기존 Go 코드 수정 0건(신규는 드라이버 테스트 파일 1개 + testdata 2개) · `appjs_iife_scope_test.go`/`appjs_reinit_test.go` 무손상 · 기존 CI job 8개 무변경(ci.yml numstat 157/0)
+cross_platform_build: darwin `go build ./internal/web/` exit 0 · `GOOS=windows GOARCH=amd64 go build ./internal/web/` exit 0 (실행 전 pre-flight와 M5 최종 HEAD 양쪽에서 측정) · 드라이버는 syscall/build-tag 없이 exec/os/net 만 사용
+m1_to_m5_commit_strategy: 마일스톤당 1커밋 — M1 탐침(70f37a688, draft→in-progress 전환 포함) → M2 드라이버(8375c25f8) → M3 돌연변이기(5973ac3c9) → M4 CI job(1f9f2d321) → M5 문서화+전체 재측정(pending-backfill-M5). 전 커밋 본문에 card t1060 명기 + `Authored-By-Agent: manager-develop` 트레일러. push·PR 없음(레인 규율 — 리드 일괄)
+gate_env: `MOAI_BROWSER_GUARD=1` — 게이트 없는 실행은 게이트 변수명을 영어로 명명하는 skip(AC-AFG-003 관측 M2-1), CI 판정면은 `test-browser` job 이 유일하게 운반
+evidence_paths: M1/M2/M3 세션 원문은 `/tmp/t1060-run/` (probe-*.json, m2-runtime.log, m5-fullpkg.log) — 휘발성 스크래치이므로 판정 근거가 되는 명령·출력 요지는 전부 이 §E.2 에 전사했다. §E.2 표가 이 SPEC 판정의 로컬 정본 기록이다.
 
 ## §E.4 Sync-phase Audit-Ready Signal
 

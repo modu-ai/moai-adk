@@ -20,7 +20,7 @@ import (
 //
 // The static sibling guard SPEC-APPJS-IIFE-GUARD-001
 // (appjs_iife_scope_test.go) proves handlers never cross the IIFE boundary
-// syntactically. This driver is ORTHOGONAL to it: it proves the handlers
+// syntactically. This driver is orthogonal to it: it proves the handlers
 // actually FIRE in a real Chrome against the real server surface. Neither
 // guard's green implies the other's — a static-scope pass says nothing about
 // runtime firing, and a fire-guard red does not pinpoint the offending
