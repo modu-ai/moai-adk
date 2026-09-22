@@ -2,9 +2,9 @@
 id: SPEC-WORKTREE-GC-001
 title: "Legacy worktree comprehensive audit and safe disposal: three-tier disposition with evidence-first untracked export (~530 trees)"
 version: "0.1.2"
-status: in-progress
+status: completed
 created: 2026-09-22
-updated: 2026-09-22
+updated: 2026-09-23
 author: manager-spec
 priority: P1
 phase: "v3.2.0 target"

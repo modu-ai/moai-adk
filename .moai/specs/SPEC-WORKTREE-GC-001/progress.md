@@ -66,7 +66,28 @@ resume_or_followup: none — disposal predicate exhausted; orphan dirs + any fut
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase>_
+```yaml
+sync_commit_sha: "pending-backfill-sync"   # D3 backfill window — real SHA backfilled in a follow-up commit
+sync_close_at: 2026-09-23
+sync_status: complete
+tier: M
+takeover_note: >-
+  Run phase completed via LANE TAKEOVER — the delegated manager-develop executed the disposal
+  actions (M1-M3) but died before reporting; the lane recorded everything in progress.md §E.2.
+  Evidence surface: §E.2 (this file) + .moai/reports/t1084/export-log.md + rescue/.
+changelog_emitted: false
+changelog_reason: >-
+  maintainer-local operational cleanup (legacy worktree disposal) with zero user-facing product
+  change; no CHANGELOG entry emitted per sync-phase emission discipline.
+ac_verification_note: >-
+  The executor's AC matrix was not persisted (lost with its transcript); AC-WGC-001..013
+  re-judgment from durable evidence (export-log.md, rescue/, §E.2 post-hoc verification) is the
+  sync audit's job.
+```
+
+Sync-phase scope: `spec.md` frontmatter transition (`in-progress → implemented → completed` merged
+into this single sync commit; `updated: 2026-09-23`) + this §E.4 block ONLY. Zero code changes,
+zero template-mirror edits across the whole SPEC.
 
 ## §F Phase 4 Mode Selection
 
