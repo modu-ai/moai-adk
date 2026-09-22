@@ -308,7 +308,7 @@ evidence_paths: M1/M2/M3 세션 원문은 `/tmp/t1060-run/` (probe-*.json, m2-ru
 
 ```yaml
 sync_complete_at: 2026-09-22
-sync_commit_sha: pending-backfill-sync   # 커밋은 자기 해시를 인용할 수 없다 — 다음 커밋에서 backfill
+sync_commit_sha: 0e2377323   # sync 커밋 본 SHA — backfill 커밋으로 기입 (커밋은 자기 해시를 인용할 수 없다)
 sync_status: complete
 frontmatter_status_transitions:
   in-progress: 2026-09-22    # M1 커밋 70f37a688 (draft → in-progress, manager-develop)
