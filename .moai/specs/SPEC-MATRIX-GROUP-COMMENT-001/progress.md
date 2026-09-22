@@ -330,7 +330,7 @@ observation remains unresolved and is carried forward unchanged for the operator
 
 ```yaml
 sync_complete_at: 2026-09-22
-sync_commit_sha: pending-backfill-sync   # the sync commit cannot cite its own SHA; backfilled in the following commit
+sync_commit_sha: 451acf469   # backfilled in the following commit — the sync commit cannot cite its own SHA
 sync_status: complete
 changelog_entry_added: no                # card sync commits emit no CHANGELOG entry — the release harness composes CHANGELOG at release time (verified precedent: grep -c 'SPEC-AUDIT-EXPORT-CLAUSE-001' CHANGELOG.md -> 0, measured 2026-09-22 in this tree)
 frontmatter_status_transitions:
