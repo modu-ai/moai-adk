@@ -137,7 +137,7 @@ discovered_defects:
 
 ```yaml
 sync_complete_at: 2026-09-22
-sync_commit_sha: "pending-backfill-sync"   # a commit cannot cite its own hash — backfilled in a follow-up commit (D3 exemption)
+sync_commit_sha: "7bf28b3a8"   # backfilled per the D3 exemption (placeholder was pending-backfill-sync)
 sync_status: complete-with-documented-shortfall   # 74.6% vs 85% target; REQ-012 shortfall report in §E.2 stands
 what_sync_changed:
   - CHANGELOG.md [Unreleased] > Added — SPEC-WEB-CONSOLE-018 close entry (tests-only coverage reinforcement + documented shortfall + discovered loadVerify defect recorded as known limitation)
