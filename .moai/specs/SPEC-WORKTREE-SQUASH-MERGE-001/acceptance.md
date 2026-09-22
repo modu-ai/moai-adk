@@ -208,16 +208,18 @@ right:
 Probe commands, run once per scenario:
 
 ```bash
-mb=$(git merge-base main feat)
-git branch --merged main | sed 's/^[*+ ]*//' | grep -qx feat        # S1 reachability
-git diff --quiet "$mb" feat                                         # S2 empty diff
-git cherry main feat                                                # S3 plain per-commit
-git cherry main "$(git commit-tree "$(git rev-parse feat^{tree})" -p "$mb" -m _)"   # S4 synthetic
-names=( )                                                           # S5 state check
-while IFS= read -r -d '' l; do names+=("$l"); done \
-  < <(git diff --ignore-submodules=none --no-renames --name-only -z "$mb" feat)
-[ "${#names[@]}" -eq 0 ] || git --literal-pathspecs diff --quiet --no-textconv \
-                                --ignore-submodules=none feat main -- "${names[@]}"
+# Restated for the worktree guard (plain verbs; recorded values in <angle brackets>;
+# the array form this replaces is described in the notes below the block).
+git merge-base main feat                                             # record as MB
+git branch --merged main | sed 's/^[*+ ]*//' | grep -qx feat          # S1 reachability
+git diff --quiet <MB> feat                                            # S2 empty diff
+git cherry main feat                                                  # S3 plain per-commit
+git rev-parse feat^{tree}                                             # record as FEAT_TREE
+git commit-tree <FEAT_TREE> -p <MB> -m _                              # record as S4 (synthetic commit; on no branch)
+git cherry main <S4>                                                  # S4 synthetic per-commit
+git diff --ignore-submodules=none --no-renames --name-only -z <MB> feat > /tmp/wsm-names.z   # S5 state check
+[ -s /tmp/wsm-names.z ] || git --literal-pathspecs diff --quiet --no-textconv \
+  --ignore-submodules=none feat main --pathspec-from-file=/tmp/wsm-names.z --pathspec-file-nul
 ```
 
 Six details of this block are load-bearing and were each got wrong before they were got

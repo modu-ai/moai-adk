@@ -83,6 +83,11 @@ var moaiMCPTools = []ToolDef{
 	{Name: "graph_find_code", WriteCapable: false},
 	{Name: "graph_trace_calls", WriteCapable: false},
 	{Name: "graph_shortest_path", WriteCapable: false},
+	// Gated judgment wrapper (display-only): registered unconditionally so its
+	// gate-off contract is invocable and countable, but inert behind
+	// workflow.jev.enabled — the shipped default is false, and while the
+	// chain's fitness gate stands unrun no surface may present it as available.
+	{Name: "jev_ask", WriteCapable: false},
 }
 
 // MoaiMCPTools returns the single shared declaration of the moai MCP server's

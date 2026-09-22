@@ -213,7 +213,8 @@ The repair keeps AC-012's adjudication intact (the alternative — pinning the f
 **AC-029 script** — restores the predecessor's `AC-TDN-022` edit-scope criterion, which this SPEC had dropped entirely despite `plan.md` §B10 naming shared-checkout contamination as a live risk:
 
 ```bash
-git diff --name-only "$(git merge-base origin/main HEAD)"..HEAD -- . \
+git merge-base origin/main HEAD   # record as BASE
+git diff --name-only <BASE>..HEAD -- . \
   ':(exclude).moai/specs/SPEC-TEMPLATE-DATE-NEUTRALITY-002/**' \
   ':(exclude).moai/reports/plan-audit/**' \
   ':(exclude)internal/template/templates/**' \
@@ -227,11 +228,12 @@ The merge-base anchor is rebase-stable; a hardcoded SHA silently reports unrelat
 **AC-030 script** — the only mechanical check of REQ-TDN2-017's ordering. **Both** `git log` ranges are bounded to this branch's own commits:
 
 ```bash
-BASE=$(git merge-base origin/main HEAD)
-WIDEN=$(git log --reverse --format=%H -G'202\[5-9\]' "$BASE"..HEAD -- internal/template/internal_content_leak_test.go | head -1)
-REMED=$(git log --reverse --format=%H -G'Last Updated: 2025-' "$BASE"..HEAD -- internal/template/templates | head -1)
-if [ -z "$WIDEN" ] || [ -z "$REMED" ]; then echo "NOT-EVALUABLE"
-elif git merge-base --is-ancestor "$REMED" "$WIDEN"; then echo "ORDERED"
+git merge-base origin/main HEAD   # record as BASE
+git log --reverse --format=%H -G'202\[5-9\]' <BASE>..HEAD -- internal/template/internal_content_leak_test.go | head -1   # record as WIDEN
+git log --reverse --format=%H -G'Last Updated: 2025-' <BASE>..HEAD -- internal/template/templates | head -1             # record as REMED
+# then, with the two recorded values:
+if [ -z "<WIDEN>" ] || [ -z "<REMED>" ]; then echo "NOT-EVALUABLE"
+elif git merge-base --is-ancestor <REMED> <WIDEN>; then echo "ORDERED"
 else echo "VIOLATION"; fi
 ```
 
@@ -284,8 +286,8 @@ grep -oE 'AC-TDN2-[0-9]{3}' "$SPECDIR/acceptance.md" | sort -u | wc -l    # expe
 **AC-033 script** — closes AC-029's blindness to an out-of-scope edit *inside* the template tree:
 
 ```bash
-BASE=$(git merge-base origin/main HEAD)
-git diff --name-only "$BASE"..HEAD -- internal/template/templates \
+git merge-base origin/main HEAD   # record as BASE
+git diff --name-only <BASE>..HEAD -- internal/template/templates \
   | sed 's|^internal/template/templates/||' | sort -u > /tmp/tdn2-edited
 awk -F'\t' 'NR>1{print $1}' "$SPECDIR/triage.tsv" | sort -u > /tmp/tdn2-triaged
 comm -23 /tmp/tdn2-edited /tmp/tdn2-triaged | wc -l   # assertion: expect 0

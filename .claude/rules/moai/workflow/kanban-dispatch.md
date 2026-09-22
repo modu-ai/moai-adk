@@ -156,19 +156,21 @@ Where the next phase reuses a just-cleared session, the lead re-sends the full p
 
 The lead's own session is cleared the same way, between cards rather than phases: once a card reaches `done`, the operator is asked to `/clear` the lead session, and the next turn presents the queue again.
 
-## Isolation is entered, never provisioned
+## Isolation is provisioned by MoAI, then entered through a launcher
 
 [HARD] A card's work happens inside a worktree, and that worktree is **entered through the launcher** — never created with a bare `git worktree add`.
 
 | Need | Form |
 |---|---|
+| Create a harness-neutral L1 worktree | `moai worktree new <name>` |
 | Work inside the worktree in this session | `moai cc -w <name>` |
+| Work inside it with Codex | `moai codex -w <name>` |
 | Open it in a new window, keeping this session | `moai cc -w <name> --spawn` |
 | Re-enter one from the current session | `EnterWorktree(<path>)` |
 | Leave it | `ExitWorktree` |
 | Dispose it once the card's work has merged on the remote | L2 tree (`~/.moai/worktrees/…`) only: `moai worktree done`. An L1 tree (`.claude/worktrees/…`) is disposed via the session-end keep/remove prompt — `moai worktree` never registers it |
 
-`moai worktree` deliberately carries no creation verb — entering is the launcher's job. A tree made with a raw `git worktree add` is one git knows about but MoAI does not: `done`, `clean`, and `recover` have nothing to close, and orphans accumulate until reconciled by hand.
+`moai worktree new <name>` is the sole harness-neutral creation verb. It creates an L1 tree through MoAI's shared materializer but does not enter it; entry remains the launcher's job. Never use a raw `git worktree add`: it bypasses MoAI's name validation, base selection, and post-create Git configuration.
 
 [HARD] **`moai worktree done` closes L2 trees only.** A worktree entered by short name (`moai cc -w <name>` → `.claude/worktrees/<name>/`) is L1 and is never in `moai worktree`'s registry — `done` on it is a category error, not a disposal. L1 disposal is the session-end keep/remove prompt, or `git worktree unlock` + `git worktree remove` once the session is done. The full L1/L2 boundary lives in `worktree-integration.md` § Terminology Glossary.
 

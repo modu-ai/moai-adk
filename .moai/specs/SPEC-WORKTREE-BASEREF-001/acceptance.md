@@ -224,7 +224,7 @@ Both checks below are scoped to **this SPEC's own diff**, so the criterion is de
 ```bash
 make build            # expect exit 0
 
-BASE=$(git merge-base HEAD origin/develop)
+git merge-base HEAD origin/develop   # read at measurement time — record the value as BASE in the evidence
 
 # (1) template parity, this diff only: every changed .claude/ or .moai/ path must have
 #     a template counterpart under internal/template/templates/ that this diff also changed.
@@ -233,22 +233,24 @@ BASE=$(git merge-base HEAD origin/develop)
 #     has no plain mirror), so probing only the plain name emits a FALSE
 #     NO-TEMPLATE-COUNTERPART for a correct implementation of this SPEC's own §D write list.
 #     Report only when NEITHER form was changed in this diff.
-git diff --name-only "$BASE"..HEAD -- .claude .moai | grep -v '^.moai/specs/' \
-  | while read -r f; do
-      git diff --name-only "$BASE"..HEAD -- \
-        "internal/template/templates/$f" "internal/template/templates/$f.tmpl" | grep -q . \
-        || echo "NO-TEMPLATE-COUNTERPART $f"
-    done
+#     (The two diff lists are captured by plain commands; the loop over them is git-free.)
+git diff --name-only origin/develop...HEAD -- .claude .moai | grep -v '^.moai/specs/' > /tmp/wbr-live.txt
+git diff --name-only origin/develop...HEAD -- internal/template/templates > /tmp/wbr-tmpl.txt
+while read -r f; do
+  grep -qxF "internal/template/templates/$f" /tmp/wbr-tmpl.txt \
+    || grep -qxF "internal/template/templates/$f.tmpl" /tmp/wbr-tmpl.txt \
+    || echo "NO-TEMPLATE-COUNTERPART $f"
+done < /tmp/wbr-live.txt
 # expect no NO-TEMPLATE-COUNTERPART lines
 
 # (2) .sh / .sh.tmpl twin parity, this diff only: for every hook wrapper this diff
 #     touched on either side, the two files must be identical afterwards.
-git diff --name-only "$BASE"..HEAD -- '*/hooks/moai/*.sh' '*/hooks/moai/*.sh.tmpl' \
-  | sed 's/\.tmpl$//' | sort -u \
-  | while read -r b; do
-      [ -f "internal/template/templates/${b#internal/template/templates/}.tmpl" ] || continue
-      diff -q "$b" "$b.tmpl" >/dev/null || echo "DRIFT $b"
-    done
+git diff --name-only origin/develop...HEAD -- '*/hooks/moai/*.sh' '*/hooks/moai/*.sh.tmpl' \
+  | sed 's/\.tmpl$//' | sort -u > /tmp/wbr-hooks-uniq.txt
+while read -r b; do
+  [ -f "internal/template/templates/${b#internal/template/templates/}.tmpl" ] || continue
+  diff -q "$b" "$b.tmpl" >/dev/null || echo "DRIFT $b"
+done < /tmp/wbr-hooks-uniq.txt
 # expect no DRIFT lines
 ```
 

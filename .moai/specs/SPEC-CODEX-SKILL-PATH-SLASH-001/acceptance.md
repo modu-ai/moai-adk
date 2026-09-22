@@ -294,9 +294,9 @@ config holding TWO entries for the same skill, one backslash-shaped and one slas
 
 ```bash
 git fetch origin develop
-CARD_BASE=$(git merge-base origin/develop HEAD)
-git diff --name-only "$CARD_BASE"..HEAD | wc -l                                  # control: must be >= 1
-git diff --name-only "$CARD_BASE"..HEAD -- 'internal/codexwiring/skills.go'      # probe: must be empty
+git merge-base origin/develop HEAD                                              # re-derived at read time — record the value as CARD_BASE
+git diff --name-only origin/develop...HEAD | wc -l                              # control: must be >= 1
+git diff --name-only origin/develop...HEAD -- 'internal/codexwiring/skills.go'  # probe: must be empty
 ```
 
 - [HARD] The left edge is re-derived at read time. A literal base SHA (`9ce792637`) is valid only as

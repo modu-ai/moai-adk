@@ -1028,6 +1028,14 @@ func NewDefaultWorkflowConfig() WorkflowConfig {
 		AgentStopGuard: AgentStopGuardConfig{
 			Enabled: false,
 		},
+		// The subagent destructive-write guard ships OFF the same way
+		// (SPEC-SUBAGENT-WRITE-SHRINK-GUARD-001): detection and the audit-log
+		// append always run; only the refusal of a destructively-shaped
+		// subagent Write is opt-in via local config. Template neutrality: no
+		// `enabled: true` anywhere under internal/template/templates/.
+		SubagentWriteGuard: SubagentWriteGuardConfig{
+			Enabled: false,
+		},
 		// SPEC-MOAI-MCP-SERVER-001 M2 (REQ-MCP-008 / C6): the codex review gate
 		// ships default-OFF. Distributed users get an inert Stop hook; a
 		// maintainer opts in via local config. Template neutrality (§25): no

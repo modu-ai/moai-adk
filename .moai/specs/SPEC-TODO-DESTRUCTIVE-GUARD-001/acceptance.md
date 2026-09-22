@@ -7,7 +7,10 @@
 The live queue in this repository is in active use by six concurrent lanes plus the lead. **No criterion below may be verified against the live queue.** Every runnable check runs in an isolated repository:
 
 ```bash
-REPO=$(mktemp -d) && cd "$REPO" && git init -q && mkdir -p .moai/state/todo
+REPO=$(mktemp -d)
+cd "$REPO"
+git init -q
+mkdir -p .moai/state/todo
 ```
 
 A criterion executed against the repository's own `.moai/` is void, and any evidence produced that way is inadmissible.

@@ -1,6 +1,6 @@
 # moai-mcp Tool Catalogue
 
-> Single source of truth for the 30 tools exposed by the self-hosted `moai` MCP
+> Single source of truth for the 31 tools exposed by the self-hosted `moai` MCP
 > server (`.mcp.json` → `{command: "moai", args: ["mcp-server"]}`). Each tool is
 > prefixed `mcp__moai__` at the call site. This rule tells agents and the
 > orchestrator WHEN to prefer an MCP tool over its CLI/slash equivalent.
@@ -60,7 +60,7 @@ use it to collect the diff sent to their isolated reviewer, while codex receives
 it as the working directory it reviews in. Passing it keeps all independent
 opinions about the same tree.
 
-## Tool families (26 of the 30 tools; the session-messaging family follows below)
+## Tool families (27 of the 31 tools; the session-messaging family follows below)
 
 | Family | Tools | Wired consumers |
 |---|---|---|
@@ -71,6 +71,7 @@ opinions about the same tree.
 | Codex delegation | `codex_task`, `codex_setup`, `codex_job_{status,result,cancel}` | super-advisor |
 | GLM delegation | `glm_task`, `glm_job_{status,result,cancel}` | super-advisor |
 | Code queries | `graph_file_api`, `graph_find_code`, `graph_trace_calls`, `graph_shortest_path` | any agent (signature-level code navigation from the code-derived edge layer; every answer carries tree+commit provenance) |
+| Judgment (gated) | `jev_ask` | gated-unavailable at the shipped default (`workflow.jev.enabled: false`) — no request constructed, no network call; while the chain's fitness gate stands unrun it is not presented as available. Display-only: a labelled model signal a person reads, never a completion predicate, merge approval, queue mutation, or gate input |
 
 Per-tool purpose, consumer, and CLI equivalent: `moai-mcp-tools-catalogue.md`. Claude, codex, and
 GLM audit transports fail open at the tool boundary: an unavailable backend returns
