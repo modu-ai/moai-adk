@@ -184,7 +184,7 @@ python3 containment — 백틱 포함 라인이라 셸 인용 템플릿 배제 (
 
 ```
 run_complete_at: 2026-09-22T22:21:18+09:00
-run_commit_sha: pending-backfill-m3   # D3 backfill exemption — 후속 backfill 커밋이 실제 M3 SHA로 대체
+run_commit_sha: 43b974f0b   # M3 커밋 (D3 backfill — backfill 커밋이 본 행을 실음)
 run_status: complete
 ac_pass_count: 4                      # AC-001, AC-002, AC-003, AC-005
 ac_pass_with_observation: 1           # AC-004 — runtime `modified:` metadata line (§E.2 M3 (d) + verdict §4 Gaps #2)
