@@ -116,7 +116,15 @@ func handleFactoryMsgReceipt(ctx context.Context, req mcp.CallToolRequest) (*mcp
 	return toolJSON("factory_msg_receipt", map[string]any{"message_id": id, "acknowledged": true}), nil
 }
 func handleFactoryMsgStatus(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
-	s, e := factoryStore(req)
+	run := req.GetString("run_id", "")
+	if run == "" {
+		return toolErr("factory_msg_status", errors.New("run_id is required")), nil
+	}
+	root := resolveProjectDir()
+	if e := factorymsg.ValidateActiveRun(ctx, root, run); e != nil {
+		return toolErr("factory_msg_status", e), nil
+	}
+	s, e := factorymsg.OpenExistingWithDeadline(root, run, 5*time.Second)
 	if e != nil {
 		return toolErr("factory_msg_status", e), nil
 	}

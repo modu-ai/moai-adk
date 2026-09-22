@@ -534,7 +534,7 @@ func registerMoaiMCPTools(s *server.MCPServer, projectDir string) {
 	add("factory_msg_body", mcp.NewTool("factory_msg_body", bodyOpts...), handleFactoryMsgBody)
 	receiptOpts := []mcp.ToolOption{mcp.WithDescription("Persist a disposition and acknowledge a claim for the attributed endpoint."), mcp.WithString("run_id", mcp.Required()), mcp.WithString("message_id", mcp.Required()), mcp.WithString("claim_token", mcp.Required()), mcp.WithString("disposition", mcp.Required(), mcp.Enum(factorymsg.DispositionAccepted, factorymsg.DispositionRejected, factorymsg.DispositionDuplicate, factorymsg.DispositionDeferred)), mcp.WithReadOnlyHintAnnotation(false)}
 	add("factory_msg_receipt", mcp.NewTool("factory_msg_receipt", receiptOpts...), handleFactoryMsgReceipt)
-	add("factory_msg_status", mcp.NewTool("factory_msg_status", mcp.WithDescription("Inspect payload-free factory broker counts and next-delivery truth."), mcp.WithString("run_id", mcp.Required()), mcp.WithReadOnlyHintAnnotation(true)), handleFactoryMsgStatus)
+	add("factory_msg_status", mcp.NewTool("factory_msg_status", mcp.WithDescription("Read payload-free broker counts and operational lanes for the active run. Endpoint identity is probed; task activity without evidence remains unknown. Does not claim messages."), mcp.WithString("run_id", mcp.Required()), mcp.WithReadOnlyHintAnnotation(true)), handleFactoryMsgStatus)
 	// --- M5 code-query tools (SPEC-V3R6-GRAPH-FRESHNESS-001 REQ-GF-017..019).
 	// Signature-level answers from the code-derived layer; every response
 	// carries tree+commit provenance. Read-only hints per the audit-family

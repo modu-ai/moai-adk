@@ -67,6 +67,23 @@ type Claim struct {
 type Status struct {
 	Pending, Claimed, Acknowledged, DeadLetter int
 	Capability, NextDelivery                   string
+	Lanes                                      []LaneStatus `json:"lanes"`
+}
+
+// LaneStatus keeps process liveness separate from unobserved model activity.
+// All identity fields come from the current peers row, never the launcher UI.
+type LaneStatus struct {
+	Slot          string    `json:"slot"`
+	Role          string    `json:"role"`
+	Backend       string    `json:"backend"`
+	SessionUUID   string    `json:"session_uuid"`
+	Generation    int64     `json:"generation"`
+	PID           int       `json:"pid"`
+	ProcessStart  string    `json:"process_start"`
+	UpdatedAt     time.Time `json:"updated_at"`
+	ObservedAt    time.Time `json:"observed_at"`
+	EndpointState string    `json:"endpoint_state"`
+	TaskState     string    `json:"task_state"`
 }
 type DeadLetter struct{ MessageID, Reason, CreatedAt string }
 
@@ -77,6 +94,7 @@ type Store struct {
 	maxPending, maxDead     int
 	ownerCurrent            func(int, string) bool
 	recordReject            func(context.Context, string, string) error
+	probeIdentity           func(int) (string, homestate.ProcessIdentityState)
 }
 
 func BrokerPath(projectRoot, runID string) (string, error) {
@@ -644,7 +662,7 @@ func (s *Store) SettleReceiptControls(ctx context.Context, p Peer) (int, error) 
 }
 func (s *Store) Status(ctx context.Context) (Status, error) {
 	st := Status{Capability: "hook-boundary", NextDelivery: "pending-until-next-turn"}
-	rows, err := s.db.QueryContext(ctx, `SELECT state,count(*) FROM messages GROUP BY state`)
+	rows, err := s.db.QueryContext(ctx, `SELECT state,count(*) FROM messages WHERE project_key=? AND run_id=? GROUP BY state`, s.projectKey, s.runID)
 	if err != nil {
 		return st, err
 	}
@@ -664,6 +682,57 @@ func (s *Store) Status(ctx context.Context) (Status, error) {
 			st.Acknowledged = n
 		}
 	}
+	if err := rows.Err(); err != nil {
+		return st, err
+	}
 	err = s.db.QueryRowContext(ctx, `SELECT count(*) FROM dead_letters`).Scan(&st.DeadLetter)
+	if err != nil {
+		return st, err
+	}
+	st.Lanes, err = s.laneRoster(ctx)
 	return st, err
+}
+
+func (s *Store) laneRoster(ctx context.Context) ([]LaneStatus, error) {
+	rows, err := s.db.QueryContext(ctx, `SELECT slot,role,backend,session_uuid,generation,pid,process_start,updated_at FROM peers WHERE project_key=? AND run_id=? ORDER BY slot`, s.projectKey, s.runID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	lanes := make([]LaneStatus, 0)
+	probe := s.probeIdentity
+	if probe == nil {
+		probe = homestate.ProbeProcessIdentity
+	}
+	for rows.Next() {
+		var lane LaneStatus
+		var updated string
+		if err := rows.Scan(&lane.Slot, &lane.Role, &lane.Backend, &lane.SessionUUID, &lane.Generation, &lane.PID, &lane.ProcessStart, &updated); err != nil {
+			return nil, err
+		}
+		lane.UpdatedAt, err = time.Parse(time.RFC3339Nano, updated)
+		if err != nil {
+			return nil, fmt.Errorf("invalid peer updated_at: %w", err)
+		}
+		if err := ctx.Err(); err != nil {
+			return nil, err
+		}
+		fingerprint, state := probe(lane.PID)
+		lane.ObservedAt = s.now().UTC()
+		lane.EndpointState = "unknown"
+		lane.TaskState = "unknown"
+		switch state {
+		case homestate.ProcessIdentityDead:
+			lane.EndpointState = "dead"
+		case homestate.ProcessIdentityLive:
+			if fingerprint != "" && lane.ProcessStart != "" {
+				lane.EndpointState = "stale"
+				if fingerprint == lane.ProcessStart {
+					lane.EndpointState = "live"
+				}
+			}
+		}
+		lanes = append(lanes, lane)
+	}
+	return lanes, rows.Err()
 }
