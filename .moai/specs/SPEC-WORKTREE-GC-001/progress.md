@@ -97,6 +97,18 @@ ac_verification_note: >-
   sync audit's job.
 ```
 
+Re-close (2026-09-23) — first close (79de5ad56) withdrawn after sync-audit FAIL 50/100; remediation
+landed (309340207, 943b3c907, a9e25f1d9); delta-scoped re-audit PASS (remediation fidelity 6/6,
+`.moai/reports/t1084/sync-audit.md` appended section); lead approved re-close on delta-PASS:
+
+```yaml
+reclose_at: 2026-09-23
+reclose_basis: delta-scoped re-audit PASS (remediation fidelity 6/6) — sync-audit.md appended section; lead approved re-close on delta-PASS
+reclose_sync_commit_sha: "pending-backfill-reclose"   # D3 window
+final_ac_disposition: >-
+  Honest close WITH recorded debt: AC-010 PASS; AC-001/002/003/004/009/011/012/013 recorded FAIL (procedural/record failures of the dead executor, unfixable retroactively — the trees are not revivable); the ~423-tree attribution-unknown disposal segment is DISCLOSED residual risk (§E.2 CORRECTION + operator disclosure via lead), not a no-loss proof. The no-loss claim stays at "no loss observed on every sampled branch", never higher.
+```
+
 Sync-phase scope: `spec.md` frontmatter transition (`in-progress → implemented → completed` merged
 into this single sync commit; `updated: 2026-09-23`) + this §E.4 block ONLY. Zero code changes,
 zero template-mirror edits across the whole SPEC.
