@@ -44,7 +44,7 @@ Ordering note: per card dispatch, M1 is first (independent). The most decision-l
 ### M1 — GTD todo naming-axis closure record (independent — proceed immediately)
 
 - Priority: High.
-- Vehicle (decided): a closure note at `.moai/specs/SPEC-FACTORY-WORKER-NAMING-001/gtd-todo-naming-closure.md`, committed with this SPEC's artifacts. Rationale: it documents a decision this SPEC's scope statement depends on, and the GTD SPEC directories themselves (SPEC-GTD-AUTONOMY-001, SPEC-GTD-CANON-BODY-001, both `status: completed`) must not be touched — their disposition is t1084's.
+- Vehicle (decided): a closure note at `.moai/specs/SPEC-FACTORY-WORKER-NAMING-001/gtd-todo-naming-closure.md`, committed under this SPEC directory (created in the plan-audit defect-fix commit that follows the artifact commit `5a96704e2`). Rationale: it documents a decision this SPEC's scope statement depends on, and the GTD SPEC directories themselves (SPEC-GTD-AUTONOMY-001, SPEC-GTD-CANON-BODY-001, both `status: completed`) must not be touched — their disposition is t1084's.
 - Content: operator decision 2026-09-22 (`moai todo` keeps its name; NOT renamed to GTD); GTD family (t855 naming, t867 canon, t899 landed-store, t939–t941, autonomy ×2) closed as investigation-only; t855 zero-work-commits note; disposal boundary → t1084; pointer to the two completed GTD SPECs (no status transitions performed here).
 - Deliverable: closure note file + one-line pointer from spec.md §A (already present).
 

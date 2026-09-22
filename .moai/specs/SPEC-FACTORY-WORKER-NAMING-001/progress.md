@@ -3,7 +3,6 @@
 ## §E.1 Plan-phase Audit-Ready Signal
 
 - plan_status: pending-plan-audit
-- plan_complete_at: 2026-09-22
 - artifacts: spec.md, plan.md, acceptance.md, research.md (card-mandated Tier M + research addendum), this skeleton
 - baseline: HEAD 3f3ffbb57, branch WT-worker-rename
 
