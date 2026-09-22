@@ -18,7 +18,7 @@ module: "internal/factorymsg"
 - Worktree: `WT-factory-mixed-hook`.
 - Plan baseline: `758314007` (local develop matched when authoring began).
 - Implementation baseline: `8d8e101bf`; M1 implementation commit: `cb099897a`.
-- Next gate: finish M2/M3/M4 without absorbing the t1082 worktree lifecycle, then independent sync audit.
+- Next gate: rerun AC-FMH-011 through AC-FMH-014 after Claude subscription capacity recovers, then independent sync audit.
 
 ## §B Plan artifacts
 
@@ -56,8 +56,10 @@ module: "internal/factorymsg"
 - Observed scoped tests at that commit: `internal/cli` → `ok ... 4.491s`; `internal/factorymsg` → `ok ... 1.310s`.
 - M2/M3 committed as `6bde8412c` (`feat(t1074): deliver durable mixed factory messaging`).
 - AC-FMH-001 through AC-FMH-009 exact JSON/JQ gates passed; logs are `../../reports/t1074/ac01.jsonl` through `ac09.jsonl`.
-- M4 live harnesses executed. AC-FMH-010 through AC-FMH-012 failed because the local process-start probe was `indeterminate`; AC-FMH-013 and AC-FMH-014 failed because the Claude subscription OAuth token was revoked. These rows remain FAIL, not skipped or passed.
-- AC-FMH-015 executed the full hook matrix. On the final real-worktree run the fixed empty-inbox p95 target failed (`370.799917ms`), and every matrix cell exceeded the 200ms inspection target. The threshold was not raised.
+- M4 repair added a native Darwin process-start probe, one-pass linked-worktree canonicalization, explicit Codex MCP factory env forwarding, Codex launcher attribution scrubbing/backend export, tmux factory-env propagation, and distinct live owner identities.
+- AC-FMH-010 now passes with separate real Codex model contexts, unique owner PIDs, no injected Codex session UUID, and two explicit acknowledgements. `ac10.jsonl` records `acknowledged=2` and the exact JQ gate printed `true`.
+- AC-FMH-011 was rerun after the Codex repair: the Codex lead send succeeded, then the Claude worker failed with `OAuth session expired and could not be refreshed`. The project-managed Claude profile was separately probed and authenticated far enough to return HTTP 429 weekly-limit exhaustion. AC-FMH-012 through AC-FMH-014 were not rerun because they require the same unavailable Claude subscription turn; all four rows remain FAIL, never skipped or passed.
+- AC-FMH-015 now passes without changing its thresholds. The final matrix measured empty full-hook p50 `31.216917ms`, p95 `33.143167ms`, every inspection cell below 200ms, and bounded contention at `57.022917ms` with truthful `SQLITE_BUSY` degradation. The exact JQ gate printed `true`.
 
 ## §D.1 Codex cwd redesign decision
 
@@ -69,31 +71,31 @@ module: "internal/factorymsg"
 ## §E Audit-ready signals
 
 - Plan-phase: audit-ready; independent `PASS` at score `0.94`.
-- Run-phase: M1/M2/M3 implementation complete; M4 harness implemented and executed with FAIL evidence. Independent sync audit remains pending.
+- Run-phase: M1/M2/M3 complete; M4 Codex and performance rows pass, while four Claude-dependent live rows remain blocked by current subscription capacity. Independent sync audit remains pending.
 
 ## §E.2 Run-phase evidence
 
 | Criterion / invariant | Actual output | Status |
 |---|---|---|
 | AC-FMH-001..009 | Exact named Go JSON gates each produced final `true`; `ac01.jsonl`..`ac09.jsonl`. | PASS |
-| AC-FMH-010 | `Codex owner fingerprint unavailable: state=indeterminate`. | FAIL |
-| AC-FMH-011 | `Codex owner fingerprint unavailable: state=indeterminate`. | FAIL |
-| AC-FMH-012 | `Codex owner fingerprint unavailable: state=indeterminate`. | FAIL |
-| AC-FMH-013 | Claude CLI reached subscription transport, then returned HTTP 401 revoked OAuth. | FAIL |
-| AC-FMH-014 | Pending-until-next-turn state was created; live Claude boundary turn returned HTTP 401 revoked OAuth before receipt. | FAIL |
-| AC-FMH-015 | Matrix executed for 0/16/1000 queues and 1/10 sessions; empty p95 `370.799917ms` exceeded 50ms and every real-worktree cell exceeded 200ms. | FAIL |
+| AC-FMH-010 | Exact live gate printed `true`; separate Codex contexts completed nonce round trip with `acknowledged=2`. | PASS |
+| AC-FMH-011 | Codex lead send returned `ok`; Claude worker returned `OAuth session expired and could not be refreshed`. | FAIL |
+| AC-FMH-012 | Not rerun after repair because the required Claude turn is unavailable under the same exhausted subscription. | FAIL |
+| AC-FMH-013 | Not rerun after repair because the required Claude turns are unavailable under the same exhausted subscription. | FAIL |
+| AC-FMH-014 | Not rerun after repair because the required Claude turn is unavailable under the same exhausted subscription. | FAIL |
+| AC-FMH-015 | Exact benchmark gate printed `true`; empty p95 `33.143167ms`, contention `57.022917ms`, all inspection cells below 200ms. | PASS |
 | Canonical/legacy isolation | Actual linked-worktree fixture converged; foreign run/project list/claim/read/receipt failed; legacy sentinel bytes unchanged. | PASS |
 | Template parity | Project and embedded Stop hook entries are synchronous and parity test passed. | PASS |
-| Repository-wide verdict | Not run; integration-branch CI owns this verdict. A broad local package attempt hit pre-existing live/environment-sensitive failures and `internal/hook` timeout. | PENDING |
+| Repository-wide verdict | Scoped packages outside `hook`/`cli` passed. Separate full `hook` and `cli` attempts both reached the explicit 180-second local timeout; this is a GAP, not a pass or an attributed regression. | PENDING |
 
 ## §E.3 Run-phase Audit-Ready Signal
 
 ```yaml
 run_complete_at: null
-run_commit_sha: pending-m4-evidence-commit
+run_commit_sha: pending-m4-repair-commit
 run_status: fail
-ac_pass_count: 9
-ac_fail_count: 6
+ac_pass_count: 11
+ac_fail_count: 4
 preserve_list_post_run_count: 1
 l44_pre_commit_fetch: not-run
 l44_post_push_fetch: not-applicable-no-push
@@ -101,6 +103,6 @@ new_warnings_or_lints_introduced: 0
 cross_platform_build:
   status: not-run
   reason: "M4 live blockers and benchmark regression leave the run incomplete"
-total_run_phase_files: 25
-m1_to_mN_commit_strategy: "M1 cb099897a; M2/M3 6bde8412c; M4 harness/evidence pending"
+total_run_phase_files: 28
+m1_to_mN_commit_strategy: "M1 cb099897a; M2/M3 6bde8412c; M4 harness 45285bf1b; M4 repair/evidence pending"
 ```

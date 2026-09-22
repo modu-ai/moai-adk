@@ -19,9 +19,13 @@ func currentFactoryPeer(ctx context.Context, s *factorymsg.Store) (factorymsg.Pe
 	if id, source, ok := resolveCurrentSessionID(); ok && sessionIDSourceIsAuthoritative(source) {
 		return s.Peer(ctx, id)
 	}
-	pid, err := strconv.Atoi(os.Getenv(config.EnvMoaiSessionPID))
-	if err != nil || pid < 1 {
-		return factorymsg.Peer{}, errors.New("factory endpoint attribution unavailable")
+	pid := os.Getppid()
+	if raw := os.Getenv(config.EnvMoaiSessionPID); raw != "" {
+		var err error
+		pid, err = strconv.Atoi(raw)
+		if err != nil || pid < 1 {
+			return factorymsg.Peer{}, errors.New("factory endpoint attribution unavailable")
+		}
 	}
 	fp, state := factoryProbeProcessIdentity(pid)
 	if state != homestate.ProcessIdentityLive {

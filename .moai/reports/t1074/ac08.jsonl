@@ -1,8 +1,8 @@
-{"Time":"2026-09-22T14:15:50.52543+09:00","Action":"start","Package":"github.com/modu-ai/moai-adk/internal/hook"}
-{"Time":"2026-09-22T14:15:50.878983+09:00","Action":"run","Package":"github.com/modu-ai/moai-adk/internal/hook","Test":"TestFactoryHookZeroTurnAndCapabilityTruth"}
-{"Time":"2026-09-22T14:15:50.879031+09:00","Action":"output","Package":"github.com/modu-ai/moai-adk/internal/hook","Test":"TestFactoryHookZeroTurnAndCapabilityTruth","Output":"=== RUN   TestFactoryHookZeroTurnAndCapabilityTruth\n"}
-{"Time":"2026-09-22T14:15:51.758997+09:00","Action":"output","Package":"github.com/modu-ai/moai-adk/internal/hook","Test":"TestFactoryHookZeroTurnAndCapabilityTruth","Output":"--- PASS: TestFactoryHookZeroTurnAndCapabilityTruth (0.88s)\n"}
-{"Time":"2026-09-22T14:15:51.759022+09:00","Action":"pass","Package":"github.com/modu-ai/moai-adk/internal/hook","Test":"TestFactoryHookZeroTurnAndCapabilityTruth","Elapsed":0.88}
-{"Time":"2026-09-22T14:15:51.759069+09:00","Action":"output","Package":"github.com/modu-ai/moai-adk/internal/hook","Output":"PASS\n"}
-{"Time":"2026-09-22T14:15:51.761279+09:00","Action":"output","Package":"github.com/modu-ai/moai-adk/internal/hook","Output":"ok  \tgithub.com/modu-ai/moai-adk/internal/hook\t1.236s\n"}
-{"Time":"2026-09-22T14:15:51.761295+09:00","Action":"pass","Package":"github.com/modu-ai/moai-adk/internal/hook","Elapsed":1.236}
+{"Time":"2026-09-22T15:54:11.309218+09:00","Action":"start","Package":"github.com/modu-ai/moai-adk/internal/hook"}
+{"Time":"2026-09-22T15:54:11.65725+09:00","Action":"run","Package":"github.com/modu-ai/moai-adk/internal/hook","Test":"TestFactoryHookZeroTurnAndCapabilityTruth"}
+{"Time":"2026-09-22T15:54:11.657325+09:00","Action":"output","Package":"github.com/modu-ai/moai-adk/internal/hook","Test":"TestFactoryHookZeroTurnAndCapabilityTruth","Output":"=== RUN   TestFactoryHookZeroTurnAndCapabilityTruth\n"}
+{"Time":"2026-09-22T15:54:12.587118+09:00","Action":"output","Package":"github.com/modu-ai/moai-adk/internal/hook","Test":"TestFactoryHookZeroTurnAndCapabilityTruth","Output":"--- PASS: TestFactoryHookZeroTurnAndCapabilityTruth (0.93s)\n"}
+{"Time":"2026-09-22T15:54:12.587159+09:00","Action":"pass","Package":"github.com/modu-ai/moai-adk/internal/hook","Test":"TestFactoryHookZeroTurnAndCapabilityTruth","Elapsed":0.93}
+{"Time":"2026-09-22T15:54:12.587231+09:00","Action":"output","Package":"github.com/modu-ai/moai-adk/internal/hook","Output":"PASS\n"}
+{"Time":"2026-09-22T15:54:12.589098+09:00","Action":"output","Package":"github.com/modu-ai/moai-adk/internal/hook","Output":"ok  \tgithub.com/modu-ai/moai-adk/internal/hook\t1.280s\n"}
+{"Time":"2026-09-22T15:54:12.589136+09:00","Action":"pass","Package":"github.com/modu-ai/moai-adk/internal/hook","Elapsed":1.28}

@@ -26,6 +26,7 @@ import (
 	"sync"
 	"testing"
 
+	"github.com/modu-ai/moai-adk/internal/config"
 	"github.com/spf13/cobra"
 )
 
@@ -134,6 +135,18 @@ func withCodexProjectRoot(t *testing.T, root string) *int {
 	findProjectRootFn = func() (string, error) { calls++; return root, nil }
 	t.Cleanup(func() { findProjectRootFn = prev })
 	return &calls
+}
+
+func TestCodexChildEnvScrubsForeignAttribution(t *testing.T) {
+	t.Setenv(config.EnvClaudeCodeSessionID, "foreign-claude-session")
+	t.Setenv(config.EnvMoaiSessionPID, "12345")
+	env := codexChildEnv()
+	if _, ok := codexEnvLast(env, config.EnvClaudeCodeSessionID); ok {
+		t.Fatalf("%s leaked into Codex child", config.EnvClaudeCodeSessionID)
+	}
+	if _, ok := codexEnvLast(env, config.EnvMoaiSessionPID); ok {
+		t.Fatalf("%s leaked into Codex child", config.EnvMoaiSessionPID)
+	}
 }
 
 // runCodexCmd invokes runCodex on a FRESH command (no global codexCmd state
@@ -847,6 +860,7 @@ func TestCodexSpawn_RealAssemblyThroughStubTmux(t *testing.T) {
 	// resolveCodexHomeDir's second result is the source label, not an error.
 	codexHome, _ := resolveCodexHomeDir()
 	wantCommand := codexHomeEnvVar + "=" + shellQuote(codexHome) + " " +
+		config.EnvClaudeCodeSessionID + "= " + config.EnvMoaiSessionPID + "= " +
 		shellQuote(fixture) + " --flag=v " + shellQuote("a b")
 	if gotCommand != wantCommand {
 		t.Errorf("tmux command = %q, want %q", gotCommand, wantCommand)

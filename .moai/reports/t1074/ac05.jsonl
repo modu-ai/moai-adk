@@ -1,8 +1,8 @@
-{"Time":"2026-09-22T14:15:46.60747+09:00","Action":"start","Package":"github.com/modu-ai/moai-adk/internal/factorymsg"}
-{"Time":"2026-09-22T14:15:46.71469+09:00","Action":"run","Package":"github.com/modu-ai/moai-adk/internal/factorymsg","Test":"TestFactoryCrashRecoveryExplicitReceipt"}
-{"Time":"2026-09-22T14:15:46.714738+09:00","Action":"output","Package":"github.com/modu-ai/moai-adk/internal/factorymsg","Test":"TestFactoryCrashRecoveryExplicitReceipt","Output":"=== RUN   TestFactoryCrashRecoveryExplicitReceipt\n"}
-{"Time":"2026-09-22T14:15:46.82505+09:00","Action":"output","Package":"github.com/modu-ai/moai-adk/internal/factorymsg","Test":"TestFactoryCrashRecoveryExplicitReceipt","Output":"--- PASS: TestFactoryCrashRecoveryExplicitReceipt (0.11s)\n"}
-{"Time":"2026-09-22T14:15:46.825302+09:00","Action":"pass","Package":"github.com/modu-ai/moai-adk/internal/factorymsg","Test":"TestFactoryCrashRecoveryExplicitReceipt","Elapsed":0.11}
-{"Time":"2026-09-22T14:15:46.825323+09:00","Action":"output","Package":"github.com/modu-ai/moai-adk/internal/factorymsg","Output":"PASS\n"}
-{"Time":"2026-09-22T14:15:46.825953+09:00","Action":"output","Package":"github.com/modu-ai/moai-adk/internal/factorymsg","Output":"ok  \tgithub.com/modu-ai/moai-adk/internal/factorymsg\t0.218s\n"}
-{"Time":"2026-09-22T14:15:46.826008+09:00","Action":"pass","Package":"github.com/modu-ai/moai-adk/internal/factorymsg","Elapsed":0.219}
+{"Time":"2026-09-22T15:53:53.491875+09:00","Action":"start","Package":"github.com/modu-ai/moai-adk/internal/factorymsg"}
+{"Time":"2026-09-22T15:53:53.579787+09:00","Action":"run","Package":"github.com/modu-ai/moai-adk/internal/factorymsg","Test":"TestFactoryCrashRecoveryExplicitReceipt"}
+{"Time":"2026-09-22T15:53:53.579839+09:00","Action":"output","Package":"github.com/modu-ai/moai-adk/internal/factorymsg","Test":"TestFactoryCrashRecoveryExplicitReceipt","Output":"=== RUN   TestFactoryCrashRecoveryExplicitReceipt\n"}
+{"Time":"2026-09-22T15:53:53.647453+09:00","Action":"output","Package":"github.com/modu-ai/moai-adk/internal/factorymsg","Test":"TestFactoryCrashRecoveryExplicitReceipt","Output":"--- PASS: TestFactoryCrashRecoveryExplicitReceipt (0.07s)\n"}
+{"Time":"2026-09-22T15:53:53.647478+09:00","Action":"pass","Package":"github.com/modu-ai/moai-adk/internal/factorymsg","Test":"TestFactoryCrashRecoveryExplicitReceipt","Elapsed":0.07}
+{"Time":"2026-09-22T15:53:53.647495+09:00","Action":"output","Package":"github.com/modu-ai/moai-adk/internal/factorymsg","Output":"PASS\n"}
+{"Time":"2026-09-22T15:53:53.648164+09:00","Action":"output","Package":"github.com/modu-ai/moai-adk/internal/factorymsg","Output":"ok  \tgithub.com/modu-ai/moai-adk/internal/factorymsg\t0.156s\n"}
+{"Time":"2026-09-22T15:53:53.648178+09:00","Action":"pass","Package":"github.com/modu-ai/moai-adk/internal/factorymsg","Elapsed":0.156}

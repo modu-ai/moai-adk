@@ -34,6 +34,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/modu-ai/moai-adk/internal/config"
 	"github.com/modu-ai/moai-adk/internal/execerr"
 	"github.com/spf13/cobra"
 )
@@ -191,10 +192,26 @@ func defaultCodexSpawnLaunch(dir, program string, args []string) error {
 // the new window could resolve a different CODEX_HOME than the direct path
 // put on its child.
 func buildCodexSpawnCommand(program string, args []string) string {
-	parts := make([]string, 0, len(args)+2)
+	parts := make([]string, 0, len(args)+10)
 	// resolveCodexHomeDir's second result is the source label, not an error.
 	if home, _ := resolveCodexHomeDir(); home != "" {
 		parts = append(parts, codexHomeEnvVar+"="+shellQuote(home))
+	}
+	// A tmux server can carry attribution from the session that created it.
+	// Codex must bind through its own process identity, never a foreign Claude
+	// UUID or an outer launcher's PID.
+	parts = append(parts, config.EnvClaudeCodeSessionID+"=", config.EnvMoaiSessionPID+"=")
+	for _, key := range []string{
+		config.EnvHome,
+		config.EnvMoaiKanbanID,
+		config.EnvMoaiKanbanBackend,
+		config.EnvMoaiFactoryWorker,
+		config.EnvMoaiFactoryWorkers,
+		config.EnvClaudeProjectDir,
+	} {
+		if value := os.Getenv(key); value != "" {
+			parts = append(parts, key+"="+shellQuote(value))
+		}
 	}
 	parts = append(parts, shellQuote(program))
 	for _, a := range args {
@@ -307,7 +324,14 @@ func resolveCodexWorktreeDir(projectRoot, value string) (string, error) {
 // there is nothing to inherit, and the child would otherwise resolve its own
 // default independently of the value the readout reports.
 func codexChildEnv() []string {
-	env := os.Environ()
+	env := make([]string, 0, len(os.Environ())+1)
+	for _, entry := range os.Environ() {
+		key, _, _ := strings.Cut(entry, "=")
+		if key == config.EnvClaudeCodeSessionID || key == config.EnvMoaiSessionPID {
+			continue
+		}
+		env = append(env, entry)
+	}
 	// resolveCodexHomeDir's second result is the source label, not an error.
 	if home, _ := resolveCodexHomeDir(); home != "" {
 		env = append(env, codexHomeEnvVar+"="+home)
