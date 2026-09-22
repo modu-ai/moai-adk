@@ -185,6 +185,61 @@ M1-4 실패 블록 (판정점 부분 — 전문은 셀렉터 미달 시 나머�
 
 **서면 등가 측정 일정 주석 (plan §E M1.4):** in-process 서면(`NewServer`+`Handler()`)에 대한 같은 탐침 측정은 M2 의 드라이버가 수행한다 — 드라이버 자체가 in-process 하네스라서 M1 시점에는 운반체가 없다. M1 에서는 실바이너리 표면을 재측정했고, 등가 판정은 M2 녹색 출력에서 같은 지표 집합의 발화로 확정한다(plan §F 위험 표의 「측정으로 확정」 요구는 이 순서로 충족된다).
 
+### M2 — 드라이버 테스트 (HEAD = M1 커밋 위 M2 커밋)
+
+| # | 측정 | 명령 | 관측 결과 | exit |
+|---|---|---|---|---|
+| M2-1 | 게이트 없는 실행의 이름 붙은 skip (AC-AFG-003 green) | `go test ./internal/web/ -run 'AppJsHandlersFire\|AppJsFireManifest' -v -count=1` | `--- SKIP: TestAppJsHandlersFireRuntime` + 사유행 `MOAI_BROWSER_GUARD is not set to 1 — …` (게이트 변수명 영어 노출), `TestAppJsHandlersFireSelectorMiss` 동일, 그리고 무게이트 정적 검증 `--- PASS: TestAppJsFireManifestInventoryCount` (살아있는 app.js 의 13 그룹 수 ↔ 매니페스트 `INVENTORY_TOTAL=13` 교차검증 — 매니페스트 스테일은 무게이트 영역에서도 적색) | 0 |
+| M2-2 | 게이트 켠 전 사이클 — in-process 서면 (AC-AFG-001 green + 등가 측정) | `MOAI_BROWSER_GUARD=1 go test ./internal/web/ -run 'AppJsHandlersFire' -v -count=1 -timeout 10m` | `--- PASS: TestAppJsHandlersFireRuntime (11.68s)` + `--- PASS: TestAppJsHandlersFireSelectorMiss (16.75s)` + `ok github.com/modu-ai/moai-adk/internal/web 28.767s` | 0 |
+| M2-3 | in-process 탐침 보고 전문 (등가 증거 — M1-2 실바이너리 보고와 지표별 동일) | (위 실행의 `probe t1060-driver-runtime stdout` 로그) | 아래 JSON 전문 — 8 지표 전부 true, `failures: []`, `missing_selectors: []`, `exit: 0` | 0 |
+
+M2-3 in-process 보고 전문 (랜덤 포트 `50691` 서버, CDP `50692` — `DevToolsActivePort` 자동 탐색):
+
+```json
+{
+  "label": "t1060-driver-runtime",
+  "port": "50691",
+  "base_url": "http://127.0.0.1:50691",
+  "cdp_port": "50692",
+  "p1_load_referenceerrors": [],
+  "p1_has_glm_btn": true,
+  "p2_revealed_hidden_before": true,
+  "p2_revealed_hidden_after": false,
+  "p2_glm_handler_fired": true,
+  "p3_panel_hidden_before": true,
+  "p3_panel_hidden_after_open": false,
+  "p3_popover_open_fired": true,
+  "p3_has_close_btn": true,
+  "p3_panel_hidden_after_close": true,
+  "p3_popover_close_btn_fired": true,
+  "p3_panel_hidden_after_outside": true,
+  "p3_popover_outside_close_fired": true,
+  "p4_tab_count": 14,
+  "p4_tab_selected_before": 0,
+  "p4_tab_clicked": 1,
+  "p4_tab_selected_after": 1,
+  "p4_settings_tabs_fired": true,
+  "p5_swap_clicked": true,
+  "p5_url_after_swap": "/todo",
+  "p5_swap_referenceerrors": [],
+  "p6_panel_hidden_before": true,
+  "p6_panel_hidden_after": false,
+  "p6_popover_after_swap_fired": true,
+  "p7_load_referenceerrors": [],
+  "p7_has_copy_btn": true,
+  "p7_label_before_click": "Copy",
+  "p7_label_after_click": "✓",
+  "p7_copy_handler_fired": true,
+  "failures": [],
+  "missing_selectors": [],
+  "exit": 0
+}
+```
+
+**등가 판정 (plan §E M1.4 / §F 위험 표):** M1-2(실바이너리)와 M2-3(in-process `NewServer`+`Handler()`)의 보고가 같은 탐침으로 **지표별 동일**(8/8 발화, ReferenceError 0건, exit 0) — 두 서면이 같은 app.js 표면을 서빙함을 측정으로 확정. 이 판정이 M3 이후의 서면 혼용(in-process 녹색/실바이너리 적색)을 정당화한다.
+
+드라이버 구조 비고: `appjs_fire_guard_test.go` — 게이트·이름 붙은 영어 skip(`MOAI_BROWSER_GUARD`/`chrome`/`python3`/`websockets` 각각 명명)·`t.Cleanup` 정리(서버·Chrome·탐침 전부)·`--lint-manifest` 게이트 실행 동반·무게이트 매니페스트-인벤토리 교차검증 테스트. `gofmt -l` 출력 없음, `go vet ./internal/web/` 통과, `GOOS=windows GOARCH=amd64 go build ./internal/web/` 통과(실행 전 재확인은 E2).
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 (비워 둔다 — manager-develop 소유.)
