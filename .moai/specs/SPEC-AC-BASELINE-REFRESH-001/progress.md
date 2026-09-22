@@ -114,7 +114,7 @@ boundary_grep: "grep -rn 'AskUserQuestion|mcp__askuser' internal/spec/ | grep -v
 
 ```yaml
 sync_complete_at: 2026-09-23
-sync_commit_sha: pending-backfill-sync
+sync_commit_sha: b57fec040
 sync_status: complete
 b12_self_test_a: "grep -c 'SPEC-AC-BASELINE-REFRESH-001' CHANGELOG.md → 0 (pre-emission clear; post-emission 1, entry appended under [Unreleased] ### Fixed)"
 b12_self_test_b: "grep -oE 'AC-([A-Z0-9]+-)*[0-9]+' .moai/specs/SPEC-AC-BASELINE-REFRESH-001/acceptance.md | sort -u → 8 live AC identifiers (AC-ABR-001..008; the 2 extra pattern hits AC-BASELINE-REFRESH-001 / AC-COUNT-DISCRIMINATOR-001 are SPEC-ID cross-references, not AC identifiers); CHANGELOG entry states 8"
