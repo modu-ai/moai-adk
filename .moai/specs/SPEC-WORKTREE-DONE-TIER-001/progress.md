@@ -139,7 +139,15 @@ m1_to_mN_commit_strategy: per-milestone commits on WT-done-tier-claim (M1 2cde18
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase>_
+```yaml
+sync_close_at: 2026-09-22
+sync_commit_sha: "pending-backfill-sync"   # canonical placeholder — a commit cannot cite its own SHA; backfilled in a follow-up commit
+sync_status: complete
+tier: M
+ac_pass_count: 9
+ac_fail_count: 0
+ac_pass_with_debt_count: 1   # AC-008 — whole-file mirror parity debt, inherited at the develop base (see §E.2 E1 + §E.2 E4)
+```
 
 ## §F Phase 4 Mode Selection
 

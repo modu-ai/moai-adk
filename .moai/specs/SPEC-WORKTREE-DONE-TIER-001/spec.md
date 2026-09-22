@@ -2,7 +2,7 @@
 id: SPEC-WORKTREE-DONE-TIER-001
 title: "moai worktree done L1 tier guard — make the L2-only doctrine true in code"
 version: "0.1.0"
-status: in-progress
+status: completed
 created: 2026-09-22
 updated: 2026-09-22
 author: manager-spec
