@@ -119,6 +119,7 @@ The plan-phase decision marker was resolved at run kickoff after the live-Codex 
 ```yaml
 spec_id: SPEC-WORKTREE-CREATE-VERB-001
 card: t1070
+sync_commit_sha: 895760239799d75700fcce0f853d39dec453d7ed
 phase: sync
 status: completed
 sync_status: audit-ready
@@ -138,3 +139,4 @@ artifacts:
 - Independent delta audit rebuilt the binary and observed both zero-argument and two-argument calls exit 1 with `Expected argument <name>, received N.`
 - The auditor independently reran the changed unit/Fang tests, relevant worktree/config/CLI regressions, `go vet`, gofmt, and `git diff --check`; all passed.
 - Full `internal/cli` and repository-wide CI remain explicitly outside the local PASS claim; the earlier attempted unfiltered package run failed on environment-sensitive tests and timed out, as recorded above.
+- Lifecycle amendment close: reopen commit `e142a2fd7` recorded the skipped-edge defect as `completed → in-progress`; this sync commit re-applies `in-progress → completed`. The preserved `sync_commit_sha` points to the original evidence-bearing close because a commit cannot cite its own SHA.
