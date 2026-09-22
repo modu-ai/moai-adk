@@ -29,16 +29,22 @@ import (
 var groupReadRe = regexp.MustCompile(`\.Group([^A-Za-z0-9_.]|$)`)
 
 // TestInitRegroup_TwoPages is AC-ITI-018: buildFormGroups over InitQuestions
-// yields exactly 2 groups; conversation_language + user_name open the first,
-// agent_wiring + autonomy_tier close the last (in order), both regrouped
-// questions carry Group "Agents & Autonomy", and no init question keeps the
-// retired "Quality & Workflow" label. The stepper denominator is deliberately
-// NOT asserted here (AC-ITI-021's property).
+// yields one group per Group label; conversation_language + user_name open the
+// first, agent_wiring + autonomy_tier share the second carrying Group
+// "Agents & Autonomy", and no init question keeps the retired
+// "Quality & Workflow" label. The stepper denominator is deliberately NOT
+// asserted here (AC-ITI-021's property).
+//
+// The count moved 2 -> 3 with SPEC-JEV-OPTIN-MEASURE-001 REQ-JEVO-005: the Jev
+// opt-in carries its own Group label, because appending it to
+// "Agents & Autonomy" made that page overflow the viewport and scrolled the
+// step indicator off the top. The regroup property this AC pins — consecutive
+// same-label questions merge into ONE group — is unchanged and still asserted.
 func TestInitRegroup_TwoPages(t *testing.T) {
 	questions := InitQuestions("/tmp/init-regroup")
 	groups := buildFormGroups(questions, &WizardResult{}, new(string))
-	if len(groups) != 2 {
-		t.Fatalf("init groups = %d, want exactly 2", len(groups))
+	if len(groups) != 3 {
+		t.Fatalf("init groups = %d, want exactly 3", len(groups))
 	}
 
 	// Membership + relative order (index-independent: the AC-ITI-021 denominator
@@ -77,9 +83,12 @@ func TestInitRegroup_TwoPages(t *testing.T) {
 }
 
 // TestInitStepper_Denominator4 is AC-ITI-021: walking the init form's groups,
-// each group's first line carries 4 ●/○ marks and ends "<k> / 4" with k the
+// each group's first line carries N ●/○ marks and ends "<k> / N" with k the
 // group's first question's visible position. The group count is deliberately
 // NOT asserted here (AC-ITI-018's property).
+//
+// N moved 4 -> 5 with SPEC-JEV-OPTIN-MEASURE-001 REQ-JEVO-005 (the init-only
+// Jev opt-in, on its own page). The test name keeps its historical number.
 func TestInitStepper_Denominator4(t *testing.T) {
 	result := &WizardResult{}
 	form := buildUnifiedForm(InitQuestions("/tmp/init-denominator"), result, "")
@@ -91,7 +100,7 @@ func TestInitStepper_Denominator4(t *testing.T) {
 	pages := []struct {
 		questions int
 		first     int
-	}{{questions: 2, first: 1}, {questions: 2, first: 3}}
+	}{{questions: 2, first: 1}, {questions: 2, first: 3}, {questions: 1, first: 5}}
 	for i, p := range pages {
 		frame := ptycaptest.StripANSI(d.View())
 		var firstLine string
@@ -101,10 +110,10 @@ func TestInitStepper_Denominator4(t *testing.T) {
 				break
 			}
 		}
-		if got := strings.Count(firstLine, "●") + strings.Count(firstLine, "○"); got != 4 {
-			t.Errorf("page %d first line carries %d ●/○ marks, want 4; line: %q", i+1, got, firstLine)
+		if got := strings.Count(firstLine, "●") + strings.Count(firstLine, "○"); got != 5 {
+			t.Errorf("page %d first line carries %d ●/○ marks, want 5; line: %q", i+1, got, firstLine)
 		}
-		if want := strconv.Itoa(p.first) + " / 4"; !strings.HasSuffix(firstLine, want) {
+		if want := strconv.Itoa(p.first) + " / 5"; !strings.HasSuffix(firstLine, want) {
 			t.Errorf("page %d first line %q must end with %q", i+1, firstLine, want)
 		}
 		for range p.questions {
@@ -162,7 +171,7 @@ func TestGroupLabel_NotRendered(t *testing.T) {
 	if strings.Contains(initFrame, "Agents & Autonomy") {
 		t.Error("init frames render the group label Agents & Autonomy")
 	}
-	for range 2 {
+	for range 3 {
 		id.Enter()
 	}
 	if initForm.State != huh.StateCompleted {
@@ -222,9 +231,9 @@ func TestGroupLabel_NotRendered(t *testing.T) {
 
 // TestInitRegroup_SecondGroupGolden is the regression guard AC-ITI-021 asks
 // for: the regrouped second page (two question titles, stepper ending
-// "3 / 4"). It changes under BOTH mutants (group split, extra question), so
+// "3 / 5"). It changes under BOTH mutants (group split, extra question), so
 // it is a regression guard only — never counted as evidence for either
-// property.
+// property. The denominator moved 4 -> 5 with the init-only Jev opt-in.
 func TestInitRegroup_SecondGroupGolden(t *testing.T) {
 	result := &WizardResult{}
 	form := buildUnifiedForm(InitQuestions("/tmp/init-regroup-golden"), result, "")
@@ -235,7 +244,7 @@ func TestInitRegroup_SecondGroupGolden(t *testing.T) {
 	if err := ptycaptest.CompareGolden("testdata/axis", "init-regroup-second-group", frame, *updateAxisGolden); err != nil {
 		t.Fatal(err)
 	}
-	for range 2 {
+	for range 3 {
 		d.Enter()
 	}
 	if form.State != huh.StateCompleted {

@@ -113,6 +113,10 @@ var translations = map[string]map[string]QuestionTranslation{
 				{Label: "Claude + Codex", Desc: "동일한 .claude/ 배포에 .codex/ 연결을 더하고 .mcp.json 프로비저닝을 강제로 켭니다"},
 			},
 		},
+		"jev_enabled": {
+			Title:       "Jev 판정 기능을 켤까요? (선택, 기본은 꺼짐)",
+			Description: "Jev는 건네받은 상태에 대해 정해진 형태의 질문에 답하고 확률을 돌려줍니다. 스스로 결정하지는 않습니다. 켜면 카드 본문이나 요청 본문이 외부 업체 서버로 전송됩니다. 이 질문은 init 때만 묻습니다 — 나중에 바꾸려면 `moai web` 설정 화면을 여세요.",
+		},
 	},
 	"ja": {
 		"conversation_language": {
@@ -199,6 +203,10 @@ var translations = map[string]map[string]QuestionTranslation{
 				{Label: "Claude + Codex", Desc: "同じ .claude/ デプロイに .codex/ 接続を追加し、.mcp.json のプロビジョニングを強制有効化"},
 			},
 		},
+		"jev_enabled": {
+			Title:       "Jev の型付き判定を有効にしますか？（任意・既定は無効）",
+			Description: "Jev は渡された状態について型付きの質問に答え、確率を返します。判断そのものは行いません。有効にすると、カード本文やリクエスト本文が外部ベンダーのサーバーへ送信されます。この質問は init のときだけ尋ねます — 後から変える場合は `moai web` の設定画面を開いてください。",
+		},
 	},
 	"zh": {
 		"conversation_language": {
@@ -284,6 +292,10 @@ var translations = map[string]map[string]QuestionTranslation{
 				{Label: "仅 Codex", Desc: "仅部署 AGENTS.md 与 Codex 表面 — 不会生成 .claude/ 目录、CLAUDE.md 和 .mcp.json"},
 				{Label: "Claude + Codex", Desc: "在相同的 .claude/ 部署之上追加 .codex/ 接入，并强制开启 .mcp.json 供应"},
 			},
+		},
+		"jev_enabled": {
+			Title:       "要启用 Jev 类型化判断吗？（可选，默认关闭）",
+			Description: "Jev 针对传入的状态回答类型化问题并返回概率，它本身不做任何决定。启用后，卡片正文或请求正文会发送到外部厂商的服务器。此问题仅在 init 时询问 — 之后要更改请打开 `moai web` 设置页面。",
 		},
 	},
 }

@@ -9,6 +9,8 @@ import (
 	"strings"
 
 	"github.com/modu-ai/moai-adk/internal/config"
+	"github.com/modu-ai/moai-adk/internal/glmcred"
+	"github.com/modu-ai/moai-adk/internal/jevcred"
 	"github.com/modu-ai/moai-adk/internal/profile"
 	"github.com/modu-ai/moai-adk/internal/settings"
 	"github.com/modu-ai/moai-adk/internal/settings/agentfm"
@@ -80,6 +82,17 @@ type app struct {
 	listAgentFMs func(agentsDir string) ([]agentfm.AgentInfo, error)
 	patchAgentFM func(projectRoot string, pins map[string]config.ModelEffort, submitted []string) error
 
+	// Injectable seams over the remaining three persistence steps of handleSave
+	// (SPEC-WEB-CONSOLE-017 HARD-2: recordingSeams is extended, not rewritten).
+	// They were package-level calls before this SPEC — applyPerfTierEdits is a
+	// package function, glmcred.Save / jevcred.Save are the single shared
+	// credential writers — so save-failure instrumentation could not reach
+	// them. Promoting the CALLS (not the implementations) to fields keeps the
+	// default wiring byte-identical to the old behavior.
+	applyPerfTierEdits func(projectRoot, perfTier string) error
+	glmcredSave        func(key string) error
+	jevcredSave        func(key string) error
+
 	// Injectable seams over the M4 profile CRUD surface (SPEC-WEB-CONSOLE-011
 	// REQ-WC11-032/033/034). createProfile creates the profile directory (no
 	// env side effect — distinct from profile.EnsureDir, which also mutates
@@ -140,6 +153,10 @@ func newApp(cfg Config) *app {
 
 		listAgentFMs: agentfm.List,
 		patchAgentFM: applyAgentOverrides,
+
+		applyPerfTierEdits: applyPerfTierEdits,
+		glmcredSave:        glmcred.Save,
+		jevcredSave:        jevcred.Save,
 
 		createProfile: createProfileDir,
 		renameProfile: renameProfileDir,

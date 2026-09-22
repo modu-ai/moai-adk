@@ -5,13 +5,13 @@ import (
 	"context"
 	"fmt"
 	"net/http"
+	"os"
 	"sort"
 	"strconv"
 
 	"path/filepath"
 
 	"github.com/modu-ai/moai-adk/internal/config"
-	"github.com/modu-ai/moai-adk/internal/glmcred"
 	"github.com/modu-ai/moai-adk/internal/profile"
 	"github.com/modu-ai/moai-adk/internal/settings"
 	"github.com/modu-ai/moai-adk/internal/settings/agentfm"
@@ -114,6 +114,14 @@ type pageView struct {
 	GLMKeyConfigured bool
 	GLMKeyHint       string
 
+	// JevKeyConfigured / JevKeyHint are the same bounded disclosure for the
+	// Jev credential stored in ~/.moai/.env.typesafe
+	// (SPEC-JEV-OPTIN-MEASURE-001). The full value NEVER reaches the view
+	// model — computeJevKeyHint truncates before this struct is built — and
+	// unlike its GLM sibling there is no reveal route that can cross back.
+	JevKeyConfigured bool
+	JevKeyHint       string
+
 	// ActiveTab is the settings tab the request asked for (`?tab=<id>`). It
 	// selects which panel renders visible; every panel stays in the DOM so the
 	// atomic Save contract holds. An empty or unknown value falls back to the
@@ -159,7 +167,20 @@ func (a *app) newPageView(prefs profile.ProfilePreferences, selected string) pag
 	// outside the struct literal so the full key never becomes a view-model
 	// field — only the bounded trailing-four disclosure crosses in.
 	view.GLMKeyConfigured, view.GLMKeyHint = populateGLMKeyHint()
+	// SPEC-JEV-OPTIN-MEASURE-001: same treatment for the Jev credential —
+	// computed outside the struct literal so the secret never becomes a
+	// view-model field, only the bounded disclosure.
+	view.JevKeyConfigured, view.JevKeyHint = populateJevKeyHint()
 	return view
+}
+
+// populateJevKeyHint reads the stored Jev credential and returns the bounded
+// disclosure pair for the view model. Thin wrapper, for the same reason as its
+// GLM sibling: the secret never has to be passed through the pageView struct
+// literal.
+func populateJevKeyHint() (bool, string) {
+	h := computeJevKeyHint()
+	return h.Configured, h.Hint
 }
 
 // populateGLMKeyHint reads the stored credential and returns the bounded
@@ -410,6 +431,12 @@ func (a *app) handleSave(w http.ResponseWriter, r *http.Request) {
 	glmKeySubmitted := parseGLMKeyForm(r)
 	glmKeyErrs := validateGLMKey(glmKeySubmitted)
 
+	// SPEC-JEV-OPTIN-MEASURE-001: the Jev credential follows the same order
+	// for the same reason — parsed before the validator merge so a malformed
+	// value joins the atomic-reject set, persisted only after that gate passes.
+	jevKeySubmitted := parseJevKeyForm(r)
+	jevKeyErrs := validateJevKey(jevKeySubmitted)
+
 	// goal-to-test (non-SPEC): parse the performance_tier selector hosted at the
 	// top of the agentfm panel. Parsed BEFORE the agentfm edits because it is the
 	// target tier the per-agent default comparison resolves under (G3-2/G3-4). A
@@ -450,6 +477,9 @@ func (a *app) handleSave(w http.ResponseWriter, r *http.Request) {
 	for k, v := range glmKeyErrs {
 		fieldErrs[k] = v
 	}
+	for k, v := range jevKeyErrs {
+		fieldErrs[k] = v
+	}
 	if len(fieldErrs) > 0 {
 		view := a.rejectedProjectView(prefs, selected, devMode, convention, nestedForm)
 		overlaySchemaEdits(&view, schemaEdits)
@@ -463,6 +493,7 @@ func (a *app) handleSave(w http.ResponseWriter, r *http.Request) {
 
 	// REQ-WC-007: persist profile fields ONLY through the existing profile/sync functions.
 	if err := a.writePreferences(selected, prefs); err != nil {
+		logSaveFailure("writePreferences", "could not save profile preferences")
 		a.renderErrorPage(w, prefs, selected, devMode, convention, "could not save profile preferences: "+err.Error())
 		return
 	}
@@ -484,6 +515,7 @@ func (a *app) handleSave(w http.ResponseWriter, r *http.Request) {
 		// WritePreferences surfaces a readable error rather than a silent
 		// partial-state. The profile store was written; the project config was
 		// not — the message says so explicitly.
+		logSaveFailure("syncToProject", "profile preferences saved, but project config sync failed")
 		a.renderErrorPage(w, prefs, selected, devMode, convention,
 			"profile preferences saved, but project config sync failed: "+err.Error())
 		return
@@ -492,6 +524,7 @@ func (a *app) handleSave(w http.ResponseWriter, r *http.Request) {
 	// REQ-WC3-005: persist the two project-config scalars via the dedicated write
 	// seam (config-manager only; empty values keep existing).
 	if err := a.writeProjectConfig(a.cfg.ProjectRoot, devMode, convention); err != nil {
+		logSaveFailure("writeProjectConfig", "profile preferences saved, but project config write failed")
 		a.renderErrorPage(w, prefs, selected, devMode, convention,
 			"profile preferences saved, but project config write failed: "+err.Error())
 		return
@@ -501,6 +534,7 @@ func (a *app) handleSave(w http.ResponseWriter, r *http.Request) {
 	// seam (HARD-4 nested isolation; runs after the scalar write so both converge on
 	// the same on-disk sections).
 	if err := a.writeProjectNestedConfig(a.cfg.ProjectRoot, nestedForm); err != nil {
+		logSaveFailure("writeProjectNestedConfig", "profile preferences saved, but project nested config write failed")
 		a.renderErrorPage(w, prefs, selected, devMode, convention,
 			"profile preferences saved, but project nested config write failed: "+err.Error())
 		return
@@ -511,6 +545,7 @@ func (a *app) handleSave(w http.ResponseWriter, r *http.Request) {
 	// quality 확장 키는 typed 경로(REQ-WC11-010/012). 마지막에 실행되므로 앞선
 	// typed 쓰기 결과를 재로드해 수렴한다.
 	if err := a.applySchemaEdits(a.cfg.ProjectRoot, schemaEdits); err != nil {
+		logSaveFailure("applySchemaEdits", "profile preferences saved, but section config write failed")
 		a.renderErrorPage(w, prefs, selected, devMode, convention,
 			"profile preferences saved, but section config write failed: "+err.Error())
 		return
@@ -520,7 +555,8 @@ func (a *app) handleSave(w http.ResponseWriter, r *http.Request) {
 	// re-apply the tier profile to the shipped agent files. Runs BEFORE
 	// patchAgentFM so an explicit per-agent override submitted in the same
 	// request still wins over the re-applied tier-profile baseline.
-	if err := applyPerfTierEdits(a.cfg.ProjectRoot, perfTier); err != nil {
+	if err := a.applyPerfTierEdits(a.cfg.ProjectRoot, perfTier); err != nil {
+		logSaveFailure("applyPerfTierEdits", "profile preferences saved, but performance_tier apply failed")
 		a.renderErrorPage(w, prefs, selected, devMode, convention,
 			"profile preferences saved, but performance_tier apply failed: "+err.Error())
 		return
@@ -531,6 +567,7 @@ func (a *app) handleSave(w http.ResponseWriter, r *http.Request) {
 	// override submitted in the same request is computed against the newly-applied
 	// tier. Agent .md frontmatter is NO LONGER mutated by the console.
 	if err := a.patchAgentFM(a.cfg.ProjectRoot, agentPins, agentSubmitted); err != nil {
+		logSaveFailure("patchAgentFM", "settings saved, but agent override write failed")
 		a.renderErrorPage(w, prefs, selected, devMode, convention,
 			"settings saved, but agent override write failed: "+err.Error())
 		return
@@ -543,9 +580,24 @@ func (a *app) handleSave(w http.ResponseWriter, r *http.Request) {
 	// failure is surfaced as a failure, never as success (REQ-GKI-002-005), and
 	// the error message carries no key material (REQ-GKI-004-003).
 	if normalized := normalizeGLMKey(glmKeySubmitted); normalized != "" {
-		if err := glmcred.Save(normalized); err != nil {
+		if err := a.glmcredSave(normalized); err != nil {
+			logSaveFailure("glmcred.Save", "settings saved, but GLM credential write failed")
 			a.renderErrorPage(w, prefs, selected, devMode, convention,
 				"settings saved, but GLM credential write failed: "+err.Error())
+			return
+		}
+	}
+
+	// SPEC-JEV-OPTIN-MEASURE-001: persist the Jev credential through the
+	// reader the core capability already uses (jevcred.Save) — there is no
+	// second writer. An empty/whitespace-only submission means preserve, so no
+	// write happens and the existing file is left untouched. A failure is
+	// surfaced as a failure, and the message carries no credential material.
+	if normalized := normalizeJevKey(jevKeySubmitted); normalized != "" {
+		if err := a.jevcredSave(normalized); err != nil {
+			logSaveFailure("jevcred.Save", "settings saved, but Jev credential write failed")
+			a.renderErrorPage(w, prefs, selected, devMode, convention,
+				"settings saved, but Jev credential write failed: "+err.Error())
 			return
 		}
 	}
@@ -597,11 +649,37 @@ func (a *app) projectView(prefs profile.ProfilePreferences, selected, devMode, c
 // renderErrorPage re-renders the form with a persistence-error banner while
 // keeping the submitted values visible (REQ-WC-010 — readable inline error,
 // never blank), including the two project-config selections.
+//
+// SPEC-WEB-CONSOLE-017 REQ-WC-017-001: the response is a 2xx re-render, not
+// a 500. The settings form is hx-boosted (root.templ), and htmx discards the
+// body of a non-2xx boosted response — a 500 here meant the failure reason
+// rendered into the inline save__msg--error slot never reached the browser.
+// The page body was already correct (the slot carries view.Banner via
+// settings_shell.go); the defect was the transport. A 2xx re-render is the
+// same shape the success path already uses, so the boosted swap handles
+// failure and success identically without any client-side handler.
+//
+// @MX:ANCHOR: [AUTO] the save-failure render seam — all 9 persistence seams of handleSave funnel their failure through this one re-render
+// @MX:REASON: fan_in 9 (every seam's error path); since SPEC-WEB-CONSOLE-017 it answers 2xx, not 500, so the boosted htmx swap delivers the reason to the inline slot
 func (a *app) renderErrorPage(w http.ResponseWriter, prefs profile.ProfilePreferences, selected, devMode, convention, msg string) {
 	view := a.projectView(prefs, selected, devMode, convention)
 	view.Banner = msg
 	view.BannerKind = "error"
-	a.render(w, http.StatusInternalServerError, view)
+	a.render(w, http.StatusOK, view)
+}
+
+// logSaveFailure writes exactly one stderr line for a failed persistence
+// seam (SPEC-WEB-CONSOLE-017 REQ-WC-017-003/004/005). It reuses the
+// established fmt.Fprintf(os.Stderr, ...) idiom (server.go) with the single
+// `moai web: ` prefix so every save-failure line greps uniformly. The line
+// names the failed seam and the stable failure phrase ONLY — it never
+// carries the raw error value (err.Error()), which may embed credential
+// fragments (HARD-3); the user-facing banner carries the full reason instead.
+//
+// @MX:ANCHOR: [AUTO] the single save-failure stderr emitter — all 9 persistence seams funnel through this one line; grep surface is the `moai web: ` prefix
+// @MX:REASON: fan_in 9 (one call per seam in handleSave); the one-prefix rule (REQ-WC-017-004) lives here, and raw error values must never reach this line (REQ-WC-017-005)
+func logSaveFailure(seam, phrase string) {
+	fmt.Fprintf(os.Stderr, "moai web: save failed at %s: %s\n", seam, phrase)
 }
 
 // bindForm maps submitted form values onto a ProfilePreferences.

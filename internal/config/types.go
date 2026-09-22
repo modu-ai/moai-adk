@@ -519,6 +519,18 @@ type WorkflowConfig struct {
 	// opt-in shape, same default-OFF neutrality.
 	SubagentWriteGuard SubagentWriteGuardConfig `yaml:"subagent_write_guard"`
 
+	// Jev gates the TypeSafe System One judgment capability (internal/jev).
+	// Default false: the capability ships INERT, and while it is off the
+	// package constructs no request and makes no network call at all
+	// (REQ-JEVC-015 / REQ-JEVC-017). Sibling of the opt-in switch family
+	// around it — BranchGuard, SlotLease, Codex.ReviewGate — and a bare
+	// `enabled` flag rather than a block: the pinned model id and the endpoint
+	// are compiled constants, not operator-visible configuration
+	// (CLAUDE.local.md §14 — model names and URLs live in Go consts).
+	// Template neutrality: no `enabled: true` under
+	// internal/template/templates/.
+	Jev WorkflowJevConfig `yaml:"jev"`
+
 	// Codex gates the codex audit backend + the Stop-hook review gate
 	// (SPEC-MOAI-MCP-SERVER-001 M2). The ReviewGate sub-block is the opt-in
 	// toggle for `moai hook codex-review-gate` — it ships default-OFF (C6);
@@ -798,6 +810,16 @@ type AgentStopGuardConfig struct {
 // contract). Template neutrality: no `enabled: true` anywhere under
 // internal/template/templates/.
 type SubagentWriteGuardConfig struct {
+	Enabled bool `yaml:"enabled"`
+}
+
+// WorkflowJevConfig mirrors workflow.jev.* — the opt-in gate for the TypeSafe
+// System One judgment capability (REQ-JEVC-015). It carries a bare Enabled flag
+// and nothing else: the pinned model id and the endpoint URL are compiled
+// constants in internal/jev, so there is no operator-visible knob that could
+// move the pin without a release, and no configuration path by which a request
+// could be aimed somewhere else.
+type WorkflowJevConfig struct {
 	Enabled bool `yaml:"enabled"`
 }
 

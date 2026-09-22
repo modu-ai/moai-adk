@@ -156,6 +156,29 @@ workflow:
         enabled: false
         default_max_duration: 30m
         resources: {}
+    # jev: the TypeSafe System One judgment capability. It answers a typed
+    # question about a supplied state and returns a typed answer with a
+    # probability; it generates no text and decides nothing. Ships OFF, and
+    # while it is off no request is constructed and no network call is made, so
+    # a project that never opts in pays nothing and reaches no third-party
+    # endpoint.
+    #
+    # Turning it on additionally needs a credential at ~/.moai/.env.typesafe
+    # (file mode 0600, outside the repository). Without one the capability
+    # reports itself unavailable and every consumer continues unchanged — an
+    # absent answer is never read as a negative answer.
+    #
+    # The capability is display-only: an answer is a labelled model-produced
+    # signal a person reads, never an input to a completion verdict, a merge
+    # approval, a queue mutation, or any other decision that is hard to undo.
+    #
+    # Where this setting is changed, and where it is NOT: `moai init` asks
+    # about it once, and after that the `moai web` settings screen is the only
+    # place it can be changed. It is deliberately absent from
+    # `moai update --reconfigure`, so a terminal-only user who declined at init
+    # reaches the switch through `moai web` or by editing this key by hand.
+    jev:
+        enabled: false
     # workflow_agents: dynamic-workflow purpose taxonomy -> {model, effort}
     # DEFAULTS. This block is the SSOT for workflow agent() model/effort
     # defaults; per-script literals in .claude/workflows/*.js override it.

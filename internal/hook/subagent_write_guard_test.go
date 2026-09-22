@@ -9,8 +9,8 @@ import (
 	"testing"
 	"time"
 
-	gitcore "github.com/modu-ai/moai-adk/internal/core/git"
 	"github.com/modu-ai/moai-adk/internal/config"
+	gitcore "github.com/modu-ai/moai-adk/internal/core/git"
 )
 
 // swgHandlerWithConfig builds a preToolHandler wired to a config with the
