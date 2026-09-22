@@ -10,7 +10,20 @@ import (
 	"time"
 
 	gitcore "github.com/modu-ai/moai-adk/internal/core/git"
+	"github.com/modu-ai/moai-adk/internal/config"
 )
+
+// swgHandlerWithConfig builds a preToolHandler wired to a config with the
+// guard's deny layer set to enabled, rooted at projectDir.
+func swgHandlerWithConfig(enabled bool, projectDir string) *preToolHandler {
+	cfg := config.NewDefaultConfig()
+	cfg.Workflow.SubagentWriteGuard.Enabled = enabled
+	return &preToolHandler{
+		cfg:        &auditConfigProvider{cfg: cfg},
+		policy:     DefaultSecurityPolicy(),
+		projectDir: projectDir,
+	}
+}
 
 // Tests for the subagent destructive-write guard
 // (SPEC-SUBAGENT-WRITE-SHRINK-GUARD-001). Every test names its acceptance
@@ -302,4 +315,57 @@ func BenchmarkSubagentWriteGuardDenyPath(b *testing.B) {
 	}
 	elapsed := time.Since(start)
 	b.ReportMetric(float64(elapsed.Microseconds())/float64(b.N), "µs/op")
+}
+
+// M4 wiring — the enabled deny layer returns the deny reason from the handler
+// method, so the PreToolUse call site can refuse the write.
+func TestSubagentWriteGuardHandlerEnabledDenies(t *testing.T) {
+	repo, filePath := swgSetupTrackedRepo(t, 20000)
+	h := swgHandlerWithConfig(true, repo)
+
+	input := swgPayload("agent-abc123", "general-purpose", filePath, strings.Repeat("x", 300))
+	input.CWD = repo
+
+	reason := h.checkSubagentDestructiveWrite(input)
+	if !strings.HasPrefix(reason, "SUBAGENT_DESTRUCTIVE_WRITE_VIOLATION:") {
+		t.Fatalf("reason = %q, want a deny reason with the sentinel", reason)
+	}
+}
+
+// AC-SWG-002 — the disabled path emits no deny. Paired with AC-SWG-012
+// (M5): a guard that went fully inert when disabled would pass this while
+// violating the family contract — the audit row test joins the pair.
+func TestSubagentWriteGuardHandlerDisabledAllows(t *testing.T) {
+	repo, filePath := swgSetupTrackedRepo(t, 20000)
+	h := swgHandlerWithConfig(false, repo)
+
+	input := swgPayload("agent-abc123", "general-purpose", filePath, strings.Repeat("x", 300))
+	input.CWD = repo
+
+	if reason := h.checkSubagentDestructiveWrite(input); reason != "" {
+		t.Fatalf("reason = %q, want no deny with the deny layer disabled", reason)
+	}
+}
+
+// nil and empty ConfigProvider must read as disabled — the family shape.
+func TestSubagentWriteGuardHandlerNilConfigFailClosed(t *testing.T) {
+	repo, filePath := swgSetupTrackedRepo(t, 20000)
+
+	t.Run("NilProvider", func(t *testing.T) {
+		h := &preToolHandler{cfg: nil, policy: DefaultSecurityPolicy(), projectDir: repo}
+		input := swgPayload("agent-abc123", "general-purpose", filePath, strings.Repeat("x", 300))
+		input.CWD = repo
+		if reason := h.checkSubagentDestructiveWrite(input); reason != "" {
+			t.Fatalf("reason = %q, want no deny with a nil ConfigProvider", reason)
+		}
+	})
+
+	t.Run("NilConfig", func(t *testing.T) {
+		h := &preToolHandler{cfg: &auditConfigProvider{cfg: nil}, policy: DefaultSecurityPolicy(), projectDir: repo}
+		input := swgPayload("agent-abc123", "general-purpose", filePath, strings.Repeat("x", 300))
+		input.CWD = repo
+		if reason := h.checkSubagentDestructiveWrite(input); reason != "" {
+			t.Fatalf("reason = %q, want no deny with a nil config", reason)
+		}
+	})
 }

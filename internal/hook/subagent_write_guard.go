@@ -19,6 +19,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"log/slog"
 	"os"
 	"path/filepath"
 	"strings"
@@ -267,4 +268,37 @@ func swgRunGit(dir string, args ...string) (string, error) {
 		return "", fmt.Errorf("git %s: %v (%s)", strings.Join(args, " "), err, strings.TrimSpace(stderr.String()))
 	}
 	return strings.TrimSpace(stdout.String()), nil
+}
+
+// subagentWriteGuardEnabled reports whether the deny layer is opted in, the
+// family shape (nil provider and nil config both read as disabled).
+func (h *preToolHandler) subagentWriteGuardEnabled() bool {
+	if h.cfg == nil {
+		return false
+	}
+	cfg := h.cfg.Get()
+	if cfg == nil {
+		return false
+	}
+	return cfg.Workflow.SubagentWriteGuard.Enabled
+}
+
+// checkSubagentDestructiveWrite evaluates the guard for one Write payload
+// with the configured deny layer and returns the deny reason ("" when no
+// deny). M5 appends the audit row here on every decision.
+func (h *preToolHandler) checkSubagentDestructiveWrite(input *HookInput) string {
+	ev := evaluateSubagentWrite(input, h.subagentWriteGuardEnabled())
+	if ev.Decision == "" {
+		return "" // main-session payload: never evaluated (REQ-SWG-003)
+	}
+	if ev.Decision == swgDecisionDeny {
+		slog.Warn("subagent destructive write denied",
+			"tool_name", input.ToolName,
+			"session_id", input.SessionID,
+			"file_path", ev.FilePath,
+			"reason", ev.Reason,
+		)
+		return ev.Reason
+	}
+	return ""
 }

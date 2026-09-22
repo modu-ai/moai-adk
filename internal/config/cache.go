@@ -24,7 +24,10 @@ import (
 // over an enabled:true workflow.yaml). Bumped to 3 when Workflow gained
 // SettingsDriftGate, and to 4 when Workflow gained SlotLease, for exactly that
 // reason.
-const configCacheSchemaVersion = 4
+// Bumped to 5 for SPEC-SUBAGENT-WRITE-SHRINK-GUARD-001 M4: WorkflowConfig
+// gained SubagentWriteGuard, and an old-binary cache serving a stale struct
+// is a recorded hazard (the way AgentStopGuard / SlotLease each bumped it).
+const configCacheSchemaVersion = 5
 
 // cacheFileName is the fixed cache file name under the state directory.
 // Fixed name ensures predictable gitignore and cleanup (REQ-PERF-009).

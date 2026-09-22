@@ -589,6 +589,19 @@ func (h *preToolHandler) Handle(ctx context.Context, input *HookInput) (*HookOut
 			return NewDenyOutput(reason), nil
 		}
 
+		// Subagent destructive-write guard (SPEC-SUBAGENT-WRITE-SHRINK-GUARD-001).
+		// Sits directly after the FROZEN-zone check so it cannot displace an
+		// established deny, and gates to Write alone: Edit carries the prior
+		// text, so a large deletion through it is not a blind overwrite
+		// (spec.md §B.3). Detection and the audit row run on every decision;
+		// only the refusal is gated by Workflow.SubagentWriteGuard.Enabled
+		// (default false, family contract).
+		if input.ToolName == "Write" {
+			if reason := h.checkSubagentDestructiveWrite(input); reason != "" {
+				return NewDenyOutput(reason), nil
+			}
+		}
+
 		decision, reason := h.checkFileAccess(input.ToolInput, input.ToolName)
 		if decision != "" {
 			slog.Warn("file access security check",
