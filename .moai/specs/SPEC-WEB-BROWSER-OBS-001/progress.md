@@ -57,7 +57,7 @@ m1_to_mn_commit_strategy: per-milestone commits on WT-cdp-observation (M1 06bd69
 
 ```yaml
 sync_complete_at: 2026-09-22
-sync_commit_sha: pending-backfill-sync   # replaced with the close commit's own SHA in the backfill commit (D3 backfill window)
+sync_commit_sha: 6765ec27a   # the 3-phase close commit; backfilled per D3 (this backfill commit)
 sync_status: pass-with-debt
 sync_audit_path: .moai/reports/t1081/sync-audit.md   # exists — PASS-WITH-DEBT 89.5/100 (harmonic mean, 4 dimensions), AC 6/6, zero blocking
 b12_self_test_a: pass   # `grep -c 'SPEC-WEB-BROWSER-OBS-001' CHANGELOG.md` → 0 (no duplicate-entry blocker; measured this run, tree 2708f0699)
