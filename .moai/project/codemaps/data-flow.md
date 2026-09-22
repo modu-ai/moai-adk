@@ -504,7 +504,6 @@ primary 체크아웃을 가리키므로, 그 값을 썼다면 영수증은 카�
                                            TCP 접속·종료뿐, 판정 요청을 보내지 않는다
   moai todo analyze (admission 경로만)   근접 중복 카드에 세 번째 finding 출처(jev)로 기록
                                            재분석 재스윕은 이 seam을 부르지 않는다
-  moai jev-suggest (Hidden)              게이트가 꺼진 채로는 안내 한 줄 — 스킬 제안 순위 신호
   moai web Jev 패널                      스위치와 자격증명 필드 (§ `entry-points.md` 웹 콘솔)
 
 측정 장치 — internal/jevmeasure (소비자 0)
