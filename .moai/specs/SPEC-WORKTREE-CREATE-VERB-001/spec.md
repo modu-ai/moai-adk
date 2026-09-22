@@ -1,8 +1,8 @@
 ---
 id: SPEC-WORKTREE-CREATE-VERB-001
 title: "Harness-neutral worktree creation verb — promote the existing materializeSessionWorktree creation capability into a moai CLI verb surface"
-version: "0.1.0"
-status: draft
+version: "0.2.0"
+status: completed
 created: 2026-09-22
 updated: 2026-09-22
 author: manager-spec (card t1070)
@@ -24,6 +24,7 @@ related_specs:
 
 | Date | Version | Change |
 |------|---------|--------|
+| 2026-09-22 | 0.2.0 | Implemented option 가 (`moai worktree new <name>`), closed independent-audit finding F1, and completed sync evidence (card t1070). |
 | 2026-09-22 | 0.1.0 | Initial draft authored by manager-spec (card t1070, plan phase). |
 
 ## §A Overview
@@ -32,7 +33,7 @@ moai's own doctrine (`kanban-dispatch.md`, `AGENTS.md` §3, `gitflow-lane-protoc
 
 Meanwhile, a complete harness-neutral creation implementation already exists inside moai: `materializeSessionWorktree` (`internal/cli/session_worktree.go:203`), gated default-OFF and consumed only as a side effect of `moai init` / `moai web` / `moai profile`.
 
-This SPEC defines the requirements for exposing that existing capability as a moai CLI verb. The SPEC deliberately does NOT decide the verb's surface (option 가: `moai worktree new` revival vs option 나: `moai codex -w --create`); that decision is carried as an open item in `plan.md` behind a measurement precondition.
+This SPEC defines the requirements for exposing that existing capability as a moai CLI verb. The M1 live-Codex observation and operator relay selected option 가: revive `moai worktree new` as the harness-neutral surface. The retired implementation and its `--base` / `--from-current` flags remain retired; the new command is a thin adapter over the current `materializeSessionWorktree` plumbing.
 
 ## §B Requirements (GEARS)
 
