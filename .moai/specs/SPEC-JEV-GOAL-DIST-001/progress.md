@@ -24,7 +24,9 @@ No open question is owned by this SPEC. The chain questions this SPEC records ca
 
 ## §E.2 Run-phase Evidence
 
-_<pending run-phase>_
+**Baseline re-pin (acceptance.md §Baseline pin — first act of run-phase §E.2 authorship).** Run entry landed on `c07aa8daa` (branch `WT-goal-dist`, 2026-09-22). The pre-SPEC baseline pinned at plan iter-2 (`ef3ad83e2`) is re-pinned to the run-entry SHA `c07aa8daa`; every before/after criterion in this SPEC is judged against `c07aa8daa`, never a branch name. Nothing product-tree-shaped sits between the two pins: `git diff ef3ad83e2..c07aa8daa --stat` names only the four SPEC artifacts (acceptance.md, plan.md, progress.md, spec.md — measured 2026-09-22, this worktree).
+
+### Milestone evidence
 
 ## §E.3 Run-phase Audit-Ready Signal
 

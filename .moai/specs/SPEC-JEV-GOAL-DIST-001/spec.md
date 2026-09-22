@@ -2,7 +2,7 @@
 id: SPEC-JEV-GOAL-DIST-001
 title: "Jev goal --auto governor seat, MCP wrapper, and distribution"
 version: "0.2.0"
-status: draft
+status: in-progress
 created: 2026-09-20
 updated: 2026-09-22
 author: manager-spec
