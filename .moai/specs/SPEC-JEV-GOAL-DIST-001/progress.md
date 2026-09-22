@@ -20,6 +20,8 @@ Card: t1020 · Tier M · plan-phase artifacts authored 2026-09-20; revised 2026-
 
 No open question is owned by this SPEC. The chain questions this SPEC records carry per-question statuses in spec.md §F (Q2/Q4 OPEN, CORE; Q3 OPEN, OPTIN; R1 RESOLVED; N1 SETTLED; **N2 OPEN and unowned — it blocked CONSUMERS M5 and is the reason seat (i) is withdrawn, not pending**). The aitmpl ops-checklist is recorded DEFERRED in spec.md §F.
 
+**Implementation Kickoff Approval — GRANTED** (2026-09-22, operator message 「킥오프 진입 진행하자」; plan-audit iter-2 **PASS 0.88** attached, verdict `.moai/reports/SPEC-JEV-GOAL-DIST-001/plan-audit-iter2.md`; monotonic 0.68 → 0.88, Tier M threshold 0.80 met). Progression mode: **autonomous** default per goal.md §Progression Mode (operator declined to choose; `run.md` §Run-phase Autonomy `ac_converge` governs goal arming downstream of this gate). Owed at run entry: D11 five one-line cross-reference fixes (plan-audit-iter2.md, non-blocking); baseline re-pin to the run-entry SHA per acceptance.md §Baseline pin. Plan-audit skip-eligible at `/moai run` (PASS + 0.88 ≥ 0.80 + artifacts hash unchanged since `59b66a77b`) — the skip rationale MUST be recorded in the run-phase delegation prompt Section A. N2 remains OPEN-unowned; operator decision deferred, non-blocking for this SPEC. Run executes in THIS worktree (branch `WT-goal-dist`); lanes do not push — integration via the lead-named window per `.claude/rules/local/gitflow-lane-protocol.md`.
+
 ## §E.2 Run-phase Evidence
 
 _<pending run-phase>_
