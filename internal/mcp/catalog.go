@@ -76,6 +76,11 @@ var moaiMCPTools = []ToolDef{
 	{Name: "session_msg_list", WriteCapable: false},
 	{Name: "session_msg_send", WriteCapable: true},
 	{Name: "session_msg_poll", WriteCapable: true},
+	{Name: "factory_msg_send", WriteCapable: true},
+	{Name: "factory_msg_list", WriteCapable: true},
+	{Name: "factory_msg_body", WriteCapable: false},
+	{Name: "factory_msg_receipt", WriteCapable: true},
+	{Name: "factory_msg_status", WriteCapable: false},
 	// Graph code-query family (SPEC-V3R6-GRAPH-FRESHNESS-001 M5): all
 	// read-only surfaces over the per-tree graph artifacts. The shortest-
 	// path addition rides SPEC-GRAPH-REPORT-001 REQ-GR-001.

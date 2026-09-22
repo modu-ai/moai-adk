@@ -114,7 +114,10 @@ func kanbanRoleFromEnv() (role string, lane int, ok bool) {
 	if label := os.Getenv(config.EnvMoaiFactoryWorker); label != "" {
 		n, parsed := kanban.SplitFactoryLaneLabel(label)
 		if !parsed {
-			return "", 0, false
+			n, parsed = kanban.SplitFactoryAgentLabel(label)
+			if !parsed {
+				return "", 0, false
+			}
 		}
 		return kanban.RoleLane, n, true
 	}

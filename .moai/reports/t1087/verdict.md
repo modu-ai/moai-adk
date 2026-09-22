@@ -117,3 +117,93 @@ ubuntu-24.04 러너 이미지에는 `Google Chrome 152.0.7977.82` 와 `Chromium 
 - `ci-log-d323f68fd.txt` — run 35761021136 job 106858836238 전문 (349행)
 - `ci-log-b0d9e0bbc.txt` — run 35735866560 job 106772819557 전문
 - `local-gated-test.log` — E3 로컬 재현 전문
+
+---
+
+## 재개 판정 (2026-09-23 — 원 레인 agent-23 소멸, 인계 레인이 판정)
+
+- base: `WT-browser-runner` 에 develop `783b74455` 흡수(fast-forward) 후 측정
+- 대상: CI run 35796273971 — Chrome 17.8s 완주(환경 수리 효과 확인). 남은 1건:
+  `TestAppJsHandlersFireRuntime` failures=`[{entry:glm_reveal, reason:"selector matched nothing", selector:#glmKeyReveal}]`, `p2_glm_handler_fired=false`
+
+### Claim
+
+**템플릿 소실도, probe 목록 스테일도 아니다 — 가드 픽스처의 환경 의존이다.**
+`#glmKeyReveal` 은 저장된 GLM 키가 있을 때만 렌더되는 조건부 요소이고
+(`internal/web/fieldsets.templ:225` `if view.GLMKeyConfigured {` 블록 안, `:242`),
+가드 서버 픽스처(`appjs_fire_guard_test.go:189` `startFireGuardServer`)는 키를 심지 않는다.
+그래서 가드는 **운영자 키 파일이 있는 머신에서만 통과**하고, 키가 없는 CI 러너에서는
+설계대로 selector-miss 로 발화한다.
+
+### Evidence — 같은 트리(783b74455), 키 유무만 바꾼 A/B
+
+| 조건 | 명령 | 결과 |
+|---|---|---|
+| 운영자 키 있음 (`~/.moai/.env.glm` 존재) | `MOAI_BROWSER_GUARD=1 go test ./internal/web/ -run AppJsHandlersFire -count=1 -v` | exit 0 — `--- PASS: TestAppJsHandlersFireRuntime (22.15s)`, `"failures": []` |
+| 키 없음 (CI 등가) | `unset MOAI_TEST_GLM_KEY && MOAI_HOME=<빈 스크래치 디렉터리> MOAI_BROWSER_GUARD=1 go test ./internal/web/ -run TestAppJsHandlersFireRuntime -count=1 -v` | exit 1 — `failures=[{"entry":"glm_reveal","reason":"selector matched nothing","selector":"#glmKeyReveal",...}]` → `--- FAIL: TestAppJsHandlersFireRuntime (16.46s)` |
+
+키 없음 조건의 실패 문자열은 CI 보고와 entry·reason·selector 3필드가 일치한다.
+전문: `resume/local-with-key.log`, `resume/local-no-key.log`.
+
+키 출처 (`internal/glmcred/glmcred.go:100` `Load()`): ① `MOAI_TEST_GLM_KEY`(`:32` 상수
+`EnvTestGLMKey`, 테스트 훅) → ② `MOAI_HOME`(또는 홈) 아래 `.env.glm` 의 `GLM_API_KEY=`.
+픽스처는 둘 다 설정하지 않는다(`ProfileBaseDir: t.TempDir()` 는 이 경로에 관여하지 않음).
+
+### 귀속 (커밋 열거)
+
+- 조건부 렌더: `git log -S 'id="glmKeyReveal"' -- internal/web/fieldsets.templ`
+  → `b0d3b61f8` (2026-08-08) 단일 적중. 그 시점 사본에서 이미 `:227 if view.GLMKeyConfigured {`
+  안에 `:244 id="glmKeyReveal"` — **처음부터 조건부**였다.
+- probe 항목: `git log -S '"#glmKeyReveal"' -- internal/web/testdata/appjs_fire_probe.py`
+  → `70f37a688` (2026-09-22, t1060 M1).
+- 픽스처: `git log -S 'ProfileBaseDir: t.TempDir()' -- internal/web/appjs_fire_guard_test.go`
+  → `8375c25f8` (2026-09-22, t1060 M2).
+- probe 도입 뒤 렌더 경로 변경 여부: `git log --oneline 70f37a688..HEAD -- internal/web/fieldsets.templ internal/web/glmkey.go internal/glmcred/glmcred.go internal/web/handlers.go | wc -l`
+  → `0`. 양성 대조(같은 범위, `internal/web/appjs_fire_guard_test.go`) → `2`. 0 은 미측정이 아니라 부재다.
+
+결론: 결함은 t1060 이 가드를 설계할 때부터 있었다(조건부 요소를 무조건 요소처럼 manifest 에 올리고
+픽스처는 조건을 성립시키지 않음). 지금까지 드러나지 않은 것은 CI 에서 Chrome 이 뜨지 못해
+가드가 끝까지 돌지 않았기 때문이고, t1087 환경 수리가 그것을 처음 드러냈다.
+
+### 수리 방향 제안 (구현 아님 — 리드 판정)
+
+- **권장: 픽스처가 조건을 성립시킨다.** `TestAppJsHandlersFireRuntime`(및 같은 서버를 쓰는
+  `TestAppJsHandlersFireSelectorMiss`)에서 `startFireGuardServer` 호출 전
+  `t.Setenv(glmcred.EnvTestGLMKey, "<가짜 고정 키>")`. 기존 테스트 훅을 그대로 쓰므로 새 표면 없음,
+  probe manifest·판정 로직 무변경(게이트 약화 없음), 운영자 키 파일 여부와 무관해져 로컬/CI 결과가 같아진다.
+  두 테스트 모두 `t.Parallel()` 을 쓰지 않아 `t.Setenv` 제약에 걸리지 않는다(`:84` 의 `t.Parallel` 은
+  별도 인벤토리 테스트). 영향 1파일.
+- **기각: probe 에서 `glm_reveal` 제거/조건부 skip** — `line_group 603` 핸들러 발화 검증을 잃는 게이트 약화.
+- **기각: 템플릿에서 조건 제거** — 키가 없을 때 드러낼 것이 없는 컨트롤을 그리는 제품 변경이며,
+  `fieldsets_states_test.go:162` / `mcp_glmkey_surface_test.go:106` 의 부재 단언과 충돌.
+
+### Gaps
+
+- 권장 수리의 실제 효과(키 없는 조건에서 PASS)는 수리 전이라 미측정.
+- CI run 35796273971 로그 원문은 이 절에서 다시 받지 않았다 — 리드 배차문의 인용을 근거로 했고,
+  로컬 재현의 3필드 일치로 대조했다.
+- `MOAI_HOME` 을 비운 재현은 `.env.glm` 이외의 사용자 설정(설정 섹션 등)도 함께 비운다 —
+  이번 실패 1건과 무관함은 failures 가 glm_reveal 단 1건이라는 출력으로만 확인했다.
+
+### Residual-risk
+
+- 같은 부류(렌더 조건을 픽스처가 성립시키지 않는 manifest 항목)가 다른 entry 에 잠복해 있을 수 있다 —
+  이번엔 키 없음 조건에서 glm_reveal 외 실패 0건이었으나, 다른 조건 축(설정 파일 유무 등)은 전수하지 않았다.
+
+### 수리 기록 (리드 승인 권장안 이행, 2026-09-23)
+
+- 변경 1파일: `internal/web/appjs_fire_guard_test.go` (+10) — `startFireGuardServer` 에서 서버 기동 전
+  `t.Setenv(glmcred.EnvTestGLMKey, fireGuardFakeGLMKey)`, 상수 `fireGuardFakeGLMKey = "test-fire-guard-fake-glm-key"`.
+  두 테스트(Runtime/SelectorMiss)가 같은 헬퍼를 쓰므로 주입점 1곳. probe manifest·판정 로직 무변경.
+- 가짜 키 노출 범위: `grep -rl` 결과 그 테스트 파일 1곳뿐(재현 로그 5건 무출현). 값 자체가 test 표지.
+
+| 검증 | 명령 조건 | 결과 |
+|---|---|---|
+| 수리 효과 (키 없음) | `unset MOAI_TEST_GLM_KEY && MOAI_HOME=<빈 디렉터리> MOAI_BROWSER_GUARD=1 go test ./internal/web/ -run AppJsHandlersFire -count=1 -v` | exit 0 — `p2_glm_handler_fired: true`, `"failures": []`, Runtime/SelectorMiss 둘 다 PASS (`resume/fixed-no-key.log`) |
+| 변이 검출 (Setenv 제거) | 같은 조건, `-run TestAppJsHandlersFireRuntime` | exit 1 — `appjs_fire_guard_test.go:326: fire probe exited 1 (want 0); failures=[{"entry":"glm_reveal","reason":"selector matched nothing","selector":"#glmKeyReveal",...}]` (`resume/mutant-no-seed.log`) |
+| 복원 후 재측정 (키 없음) | 위 첫 조건 | exit 0 `ok ... 29.589s` (`resume/final-no-key.log`) |
+| 복원 후 재측정 (운영자 키 있음) | `MOAI_BROWSER_GUARD=1 go test ./internal/web/ -run AppJsHandlersFire -count=1` | exit 0 `ok ... 29.227s` (`resume/final-with-key.log`) |
+| 패키지 (게이트 없음) | `go test ./internal/web/ -count=1` | exit 0 `ok ... 25.677s` |
+| 정적 | `gofmt -l` / `go vet ./internal/web/` / `golangci-lint run ./internal/web/` | 무출력 / exit 0 / `0 issues.` |
+
+Gaps: CI(Linux 러너) 실측은 push 뒤 리드 일괄 몫. 다른 패키지 미실행.

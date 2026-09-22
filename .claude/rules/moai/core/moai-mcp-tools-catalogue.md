@@ -1,5 +1,5 @@
 ---
-description: "Detail companion for moai-mcp-tools.md — the full 31-tool moai MCP catalogue with per-family tables, consumers, and CLI equivalents"
+description: "Detail companion for moai-mcp-tools.md — the full 36-tool moai MCP catalogue with per-family tables, consumers, and CLI equivalents"
 paths: "**/moai-mcp-tools.md,**/internal/cli/mcp_server.go,**/.claude/agents/moai/*.md"
 ---
 
@@ -7,11 +7,11 @@ paths: "**/moai-mcp-tools.md,**/internal/cli/mcp_server.go,**/.claude/agents/moa
 
 > Detail companion of `moai-mcp-tools.md` (the always-loaded stub). The stub owns the
 > MCP-over-CLI preference rule, the family index, and the unwired-by-design note. This file owns
-> the per-tool catalogue: purpose, wired consumer, and CLI equivalent for each of the 31 tools.
+> the per-tool catalogue: purpose, wired consumer, and CLI equivalent for each of the 36 tools.
 > Load it when wiring a tool into an agent's `tools:` list, or when choosing between an MCP tool
 > and its Bash equivalent for a specific capability.
 
-## Tool catalogue (31 tools)
+## Tool catalogue (36 tools)
 
 ### SPEC lifecycle
 
@@ -126,6 +126,21 @@ network call, and while the chain's fitness measurement gate stands unrun no
 surface presents it as available. The question-design rules for authoring
 well-formed questions live in the reference skill; the call path lives in
 `internal/jev` and the tool wraps it without a second implementation.
+
+### Factory messaging (run/session/generation bound)
+
+| Tool | Purpose | Consumer | CLI equivalent |
+|------|---------|----------|----------------|
+| `mcp__moai__factory_msg_send` | Write one idempotent envelope from the MCP server's attributed endpoint to the current endpoint of a stable logical lane | Attributed factory lead or worker session | — (MCP-only) |
+| `mcp__moai__factory_msg_list` | Claim up to 16 metadata records for the attributed endpoint, creating or renewing the claim lease; returns no body | Attributed factory lead or worker session | — (MCP-only) |
+| `mcp__moai__factory_msg_body` | Read one already-claimed message body using its message id and claim token; the body is returned as untrusted peer data | Attributed factory lead or worker session | — (MCP-only) |
+| `mcp__moai__factory_msg_receipt` | Write the claim disposition, then acknowledge the claimed message for the attributed endpoint | Attributed factory lead or worker session | — (MCP-only) |
+| `mcp__moai__factory_msg_status` | Read payload-free broker counts and operational lane state for an active run without claiming messages | Factory lead or worker; lead operational status checks | — (MCP-only) |
+
+Every call is scoped to an active `run_id`. The server-provided factory attribution identifies the
+calling endpoint; callers do not supply a peer identity. `send`, `list`, and `receipt` mutate broker
+state, while `body` and `status` are read-only. `list` deliberately returns metadata only, so raw
+peer text enters model context only through an explicit `body` call and remains untrusted.
 
 
 ---

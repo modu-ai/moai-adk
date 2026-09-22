@@ -3,6 +3,7 @@
 package cli
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"os"
@@ -49,6 +50,11 @@ func execOrSpawnClaude(claudeBin string, args, env []string) error {
 	if state != homestate.ProcessIdentityLive {
 		_ = child.Process.Kill()
 		return fmt.Errorf("launch claude on windows: child identity indeterminate")
+	}
+	if _, err := registerFactoryLaunchPending(context.Background(), launchProjectRoot(), child.Env, child.Process.Pid, childFingerprint); err != nil {
+		_ = child.Process.Kill()
+		_ = child.Wait()
+		return fmt.Errorf("register factory launch-pending endpoint: %w", err)
 	}
 	if err := transferProfileLeaseToChild(env, os.Getpid(), homestate.CurrentProcessFingerprint(), child.Process.Pid, childFingerprint); err != nil {
 		_ = child.Process.Kill()

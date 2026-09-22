@@ -42,6 +42,7 @@ type factoryMessages struct {
 	leadClasses       string // whole-card routing: one lane runs the serial 3-stage path in-session
 	leadStagger       string // fan-out-only staggered activation
 	leadFreeSlots     string // free-slot label list
+	operationalStatus string // explicit run-bound read-only operational query
 	leadSlotsNone     string // rendered when every slot is claimed
 	settingsAuto      string
 	settingsVerify    string
@@ -77,6 +78,7 @@ var factoryLocales = map[string]factoryMessages{
 			"(cache-aware-execution directive 2). This rule governs FACTORY fan-out only — the workflow " +
 			"runtime staggers itself (CLAUDE_CODE_WORKFLOW_PREFIX_STAGGER_MS) and is not governed here.",
 		leadFreeSlots:     "Free lane slots right now: %s.",
+		operationalStatus: "Inspect operational lanes with factory_msg_status({\"run_id\":%q}); endpoint liveness does not establish task activity, which remains unknown without evidence.",
 		leadSlotsNone:     "none — every slot is held by a live session",
 		settingsAuto:      "Cross-session messages are auto-accepted via the injected --settings.",
 		settingsVerify:    "Verify \"crossSessionInbound\": \"accept\" is present in your --settings file so cross-session messages are accepted.",
@@ -103,6 +105,7 @@ var factoryLocales = map[string]factoryMessages{
 			"동시 요청은 아직 기록 중인 캐시 항목을 읽을 수 없습니다(cache-aware-execution directive 2). " +
 			"이 규칙은 팩토리 팬아웃에만 적용됩니다 — 워크플로 런타임은 스스로 스태거합니다(CLAUDE_CODE_WORKFLOW_PREFIX_STAGGER_MS).",
 		leadFreeSlots:     "현재 빈 레인 슬롯: %s.",
+		operationalStatus: "factory_msg_status({\"run_id\":%q})로 운영 레인 상태를 조회하세요. 프로세스 생존 여부만으로 작업 중이라고 판단하지 않으며, 작업 관측이 없으면 unknown입니다.",
 		leadSlotsNone:     "없음 — 모든 슬롯을 생존 세션이 사용 중입니다",
 		settingsAuto:      "세션 간 메시지는 주입된 --settings 로 자동 수락됩니다.",
 		settingsVerify:    "--settings 파일에 \"crossSessionInbound\": \"accept\" 가 있는지 확인하세요. 세션 간 메시지 수락에 필요합니다.",
@@ -129,6 +132,7 @@ var factoryLocales = map[string]factoryMessages{
 			"同時リクエストは書き込み中のキャッシュエントリを読めません(cache-aware-execution directive 2)。 " +
 			"このルールはファクトリーファンアウトにのみ適用されます — ワークフローランタイムは自身でスタガーします(CLAUDE_CODE_WORKFLOW_PREFIX_STAGGER_MS)。",
 		leadFreeSlots:     "現在の空きレーンスロット: %s。",
+		operationalStatus: "factory_msg_status({\"run_id\":%q}) でレーンの稼働状態を確認してください。プロセスの生存は作業中である証拠ではなく、作業の観測がなければ unknown です。",
 		leadSlotsNone:     "なし — すべてのスロットを生存セッションが保持しています",
 		settingsAuto:      "セッション間メッセージは、注入された --settings により自動的に受理されます。",
 		settingsVerify:    "--settings ファイルに \"crossSessionInbound\": \"accept\" があることを確認してください。セッション間メッセージの受理に必要です。",
@@ -154,6 +158,7 @@ var factoryLocales = map[string]factoryMessages{
 			"(首个任务或可见进展)之后，再激活其余空闲槽位的泳道。 并发请求无法读取仍在写入的缓存条目 " +
 			"(cache-aware-execution directive 2)。本规则仅约束工厂分发 — 工作流运行时会自行错峰(CLAUDE_CODE_WORKFLOW_PREFIX_STAGGER_MS)。",
 		leadFreeSlots:     "当前空闲泳道：%s。",
+		operationalStatus: "使用 factory_msg_status({\"run_id\":%q}) 查询运行通道状态。进程存活不代表正在执行任务；没有任务观测依据时，状态为 unknown。",
 		leadSlotsNone:     "无 — 所有槽位均被存活会话占用",
 		settingsAuto:      "跨会话消息通过注入的 --settings 自动接受。",
 		settingsVerify:    "请确认 --settings 文件中包含 \"crossSessionInbound\": \"accept\"，跨会话消息的接受依赖该配置。",
