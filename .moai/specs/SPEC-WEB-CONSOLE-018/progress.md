@@ -135,4 +135,26 @@ discovered_defects:
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase>_
+```yaml
+sync_complete_at: 2026-09-22
+sync_commit_sha: "pending-backfill-sync"   # a commit cannot cite its own hash — backfilled in a follow-up commit (D3 exemption)
+sync_status: complete-with-documented-shortfall   # 74.6% vs 85% target; REQ-012 shortfall report in §E.2 stands
+what_sync_changed:
+  - CHANGELOG.md [Unreleased] > Added — SPEC-WEB-CONSOLE-018 close entry (tests-only coverage reinforcement + documented shortfall + discovered loadVerify defect recorded as known limitation)
+  - spec.md frontmatter status: in-progress → completed (single sync commit, 3-phase close; status + updated only, zero body edits)
+  - progress.md §E.4 (this signal)
+b12_self_test_a: pass   # grep -c 'SPEC-WEB-CONSOLE-018' CHANGELOG.md → 0 pre-emission (no duplicate)
+b12_self_test_b: pass   # 12 distinct AC identifiers in acceptance.md (AC-001, AC-010..015, AC-020, AC-030, AC-031, AC-040, AC-041); entry carries the same 12
+b12_self_test_c: pass   # all 6 claimed _test.go paths verified via git diff --name-only 9da176ac2^..8748aa5bc
+changelog_entry_position: "[Unreleased] > Added (top; newest-first per house convention)"
+readme_docs_site: not-applicable   # internal tests-only, no user-facing surface change
+mx_scan: "no tags added — sync surfaces are markdown-only (CHANGELOG, §E.4, spec.md frontmatter); zero exported functions touched; run landed _test.go files only (product files untouched by rule)"
+frontmatter_status_transitions:
+  from: in-progress
+  via: implemented
+  to: completed
+  carrier: single sync commit (3-phase close — no separate Mx commit)
+verification:
+  post_commit_scoped: "go test -count=1 ./internal/web/ -cover must still print 'coverage: 74.6% of statements' (docs must not move it); git status --short clean"
+  full_suite: not-run-locally-by-rule   # lead-batched push; CI on origin/develop is the full verdict
+```
