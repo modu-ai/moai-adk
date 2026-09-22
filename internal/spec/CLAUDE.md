@@ -14,6 +14,7 @@ This package is the enforcement boundary for SPEC-First DDD methodology. Lint fa
 - **Heading convention (spec-lint `MissingExclusions`)**: SPEC body §B (or equivalent "Out of Scope" section) MUST use H3 (`###`) or H4 (`####`) sub-headings with "Out of Scope —" infix (e.g., `### Out of Scope — Performance benchmarks`). List-item-only sections fail the rule. Past offenders: SPEC-V3R6-CI-BASELINE-DRIFT-001 H3 retrofit, LEGACY-CLEANUP-002 list-to-heading promotion.
 - **Catalog hash discipline**: When a SPEC body's `§A.3` evidence section changes, the SHA256 hash in `catalog.yaml` is invalidated. Regenerate via `gen-catalog-hashes.go --all` as a same-SPEC cascade (per L46 attribution discipline). Never edit `catalog.yaml` hash fields by hand.
 - **Sibling SPEC PRESERVE**: When implementing a lint extension, the new rule MUST NOT false-flag closed sibling SPECs whose `status: implemented` was set BEFORE the rule shipped. Tests must include a "no false positive on closed SPECs" subtest using ARR-001 or COORD-001 as fixture.
+- **AC-count baseline cascade (SPEC-AC-BASELINE-REFRESH-001)**: when a corpus lifecycle event lands (recorded `acceptance.md` removed via superseded/split, SPEC directory moved into `_archive/`, count-affecting corpus rewrite), regenerate `.moai/reports/t338/ac-count-baseline.txt` in the SAME commit — see `.moai/docs/ac-count-baseline-refresh.md` for the trigger events, diff-review discipline, and named-cause commit rule.
 
 ## Key Patterns
 
