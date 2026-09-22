@@ -14,8 +14,9 @@
 
 1. Root `AGENTS.md` — capability table (`:21-25`): highest change-likelihood surface, because
    the row's wording is a new contract clause every agent session reads.
-2. `internal/template/templates/AGENTS.md.tmpl` — capability table (`:21-25`): same clause, fork
-   copy; judged independently.
+2. `internal/template/templates/AGENTS.md.tmpl` — capability table (`:21-29`; seven rows — the
+   fork carries four rows the root copy lacks, per plan-audit D1): same clause, fork copy;
+   judged independently.
 3. `internal/template/templates/AGENTS.md.tmpl` — `## 11. moai CLI Verbs` (`:293-303`): the most
    mechanical of the three edits (a table row in a stable inventory).
 4. Regeneration (`make build`) and guard measurement: mechanical, last.
@@ -82,8 +83,10 @@ Each item reports command + verbatim output + tree SHA, per the attribution disc
   after the `design-sync` row (`:25`), keeping the three-column form. Row wording per REQ-AWR-001
   (entry via `moai codex -w` stated, creation-impossible limit stated, one line).
 - **M2 (Priority High)** — template mirror: (a) the same row appended to its capability table
-  (`:25`); (b) a `moai codex` verb row appended to `## 11. moai CLI Verbs` (`:303`), wording per
-  REQ-AWR-003. The two mirror edits are one unit — same file, same milestone.
+  after the table's last row (`:29` — the mirror's table has seven rows, so appending at the
+  end is the position its structure wants; a `:25` insertion would land mid-table); (b) a
+  `moai codex` verb row appended to `## 11. moai CLI Verbs` (`:303`), wording per REQ-AWR-003.
+  The two mirror edits are one unit — same file, same milestone.
 - **M3 (Priority Medium)** — `make build` (regeneration per REQ-AWR-005; Template-First cycle),
   then the E2 guard batch and E4 lint, all as one read-only verification batch.
 - **M4 (Priority Medium)** — progress.md plan-phase evidence section populated (coordinates,

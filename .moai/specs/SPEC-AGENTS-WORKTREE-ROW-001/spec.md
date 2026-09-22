@@ -49,11 +49,17 @@ opens "Work inside a worktree, entered through the launcher (`moai cc -w <name>`
 is absent from the enumeration. This section is the dispatch's `:108-111` citation; the rows
 match.
 
-**C3 — the template mirror's capability table has the same gap.**
-`internal/template/templates/AGENTS.md.tmpl:18-25` (read): the same three-column table with the
-same three rows. The mirror is an intentional fork (card constraint (c)) — this copy was judged
-on its own measurement, and it independently lacks the row. Negative control:
-`grep -c '^| worktree-entry |' internal/template/templates/AGENTS.md.tmpl` → `0`.
+**C3 — the template mirror's capability table has the same gap, on a different table shape.**
+`internal/template/templates/AGENTS.md.tmpl:18-29` (read; full-row enumeration re-run at
+plan-audit iter-1 and re-confirmed by this author): the mirror's table is three-column but
+carries **seven rows at `:23-29`** — the root copy's three (`question-channel`, `task-list`,
+`design-sync`) plus `agent-spawning`, `output-style`, `slash-commands`, `workflow-scripts`,
+four rows the root copy does not have. That four-row divergence is an intentional-fork fact
+this card documents but does not repair (the plan-audit flags it to the lead as a separate
+observation). What the copies share is the gap: neither carries a worktree row — this copy was
+judged on its own measurement (card constraint (c)), and it independently lacks the row.
+Negative control: `grep -c '^| worktree-entry |' internal/template/templates/AGENTS.md.tmpl`
+→ `0`, re-verified at audit iter-1.
 
 **C4 — the template's moai CLI Verbs table omits `moai codex`.**
 `internal/template/templates/AGENTS.md.tmpl:291-305` (read): `## 11. moai CLI Verbs` at `:291`;
@@ -132,8 +138,9 @@ by reading alone.
   three-column form so the machine guard `grep -c '^| worktree-entry |' AGENTS.md` returns `1`.
 
 - **REQ-AWR-002** (ubiquitous) — The template mirror's capability-binding table
-  (`internal/template/templates/AGENTS.md.tmpl:21-25`) shall carry the same one-line
-  `worktree-entry` row. The two copies are an intentional fork (no byte-identity invariant), so
+  (`internal/template/templates/AGENTS.md.tmpl:21-29`, a seven-row table — four rows the root
+  copy lacks) shall carry the same one-line `worktree-entry` row, appended after the table's
+  last row (`:29`). The two copies are an intentional fork (no byte-identity invariant), so
   this requirement is judged against the mirror's own table, independently of REQ-AWR-001's
   outcome.
 
@@ -149,10 +156,11 @@ by reading alone.
   in exactly two files.
 
 - **REQ-AWR-005** (event-driven) — When any file under `internal/template/templates/` is edited,
-  the embedded copy shall be regenerated with `make build` before the change is judged complete,
-  so the deployed binary and the committed template do not diverge (Template-First cycle; the
-  `agents-emit-check` inside `make build` is read-only and does not discharge this — the build
-  itself is the regeneration act).
+  `make build` shall run before the change is judged complete, recompiling the binary against
+  the committed template (Template-First cycle). Scope note: `.tmpl` files are compile-time
+  embeds — the chain's generating steps (`templ-generate`, `gen-catalog-hashes`) do not process
+  `AGENTS.md.tmpl`, so this requirement's discharge is the recompile itself; the read-only
+  `agents-emit-check` stage inside `make build` does not discharge it.
 
 ### C.1 Wording decisions taken (recorded for the plan-auditor)
 

@@ -19,9 +19,11 @@
 **When** the run-phase lands M1 and the guard runs:
 `grep -c '^| worktree-entry |' AGENTS.md`
 **Then** the command exits 0 and prints exactly `1`; the row's line contains the substring
-`moai codex -w` and the phrase `never creates one`; and the three pre-existing rows
-(`question-channel`, `task-list`, `design-sync`) are unchanged (verified by
-`grep -c '^| question-channel |' AGENTS.md` still printing `1`).
+`moai codex -w` and the phrase `never creates one`; and the three pre-existing rows remain
+present at their plan-phase counts — `question-channel` = 1, `task-list` = 1, `design-sync` = 1
+(the same counts measured pre-edit). These are presence counts: they prove the rows were not
+removed, not that their cell text is untouched — content identity of pre-existing rows is
+carried by plan.md §G's no-rewording constraint, checked at run-phase diff review.
 
 RED-now cell (measured 2026-09-22, `cd99336bf`): the guard command printed `0` (exit 1). Green
 path: run-phase M1 flips it to `1` — no other change this work makes affects this grep.
@@ -40,29 +42,53 @@ RED-now cell (measured 2026-09-22, `cd99336bf`): `0`. Green path: M2(a).
 
 **Given** the mirror's `## 11. moai CLI Verbs` table is edited in M2(b).
 **When** the guard runs: `grep -c '^| \`moai codex\`' internal/template/templates/AGENTS.md.tmpl`
-**Then** it prints exactly `1`; the row's text contains `never creates` (the resolve-only limit)
-and names the readout verb (`status`); and the nine pre-existing verb rows are unchanged
-(verified by `grep -c '^| \`moai init' internal/template/templates/AGENTS.md.tmpl` still
-printing `1`).
+**Then** it prints exactly `1`; the row's text names both the launch verb (`cli`) and the
+readout verb (`status`), and carries `never creates` (the resolve-only limit); and the nine
+pre-existing verb rows remain present at their plan-phase counts (`moai init` = 1 and the
+table's row count unchanged at 9) — presence counts, carrying plan.md §G's no-rewording
+constraint the same way as AC-AWR-001.
 
 RED-now cell (measured 2026-09-22, `cd99336bf`): `0`. Green path: M2(b).
 
-### AC-AWR-004 — the card touches nothing outside its two files
+### AC-AWR-004 — the card touches nothing outside its three files
 
-**Given** the plan-phase and run-phase commits exist on the branch.
+**Given** the plan-phase and run-phase commits exist on the branch, and the t1072 fence files
+exist at BOTH copies — dogfood (`.claude/rules/moai/workflow/worktree-integration.md`,
+`.claude/rules/moai/workflow/session-handoff-examples.md`) and template-mirror
+(`internal/template/templates/.claude/rules/moai/workflow/worktree-integration.md`,
+`internal/template/templates/.claude/rules/moai/workflow/session-handoff-examples.md`) —
+verified at plan-audit iter-1.
 **When** the scope diff runs:
 `git diff --name-only <base>..HEAD | grep -v '^\.moai/specs/SPEC-AGENTS-WORKTREE-ROW-001/' | grep -v '^AGENTS\.md$' | grep -v '^internal/template/templates/AGENTS\.md\.tmpl$' | wc -l`
-**Then** it prints `0`; and `worktree-integration.md` / `session-handoff-examples.md` show no
-diff in the range (`git log --oneline <base>..HEAD -- <each path>` empty for both); and no line
-of `internal/cli/codex_launcher.go` differs in the range.
+**Then** it prints `0`; both fence-file copies show no diff in the range
+(`git log --oneline <base>..HEAD -- <full path>` empty, per copy); and no line of
+`internal/cli/codex_launcher.go` differs in the range.
 
-### AC-AWR-005 — the embedded copy is regenerated with the source
+**Adoption cells** (verification-completeness.md §2): this AC is **green-now by construction** —
+at plan-phase close (`fdaaa27ef`) the commit range touches only the SPEC directory, so the
+filtered residual is 0 without this work constraining anything. Its red IS constructible and
+MUST be observed once at run-phase before the green is trusted: after the M1/M2 contract
+commits land, weaken the filter by one exclusion
+(`git diff --name-only <base>..HEAD | grep -v '^\.moai/specs/SPEC-AGENTS-WORKTREE-ROW-001/' | wc -l`)
+and observe `2` (the two contract files) — then observe the strict filter print `0`. The
+weakened-filter `2` is the red this instrument can show; without it the strict `0` is an
+empty-sweep pass.
+
+### AC-AWR-005 — the build recompiles against the committed template [regression-guard]
+
+**Classification: regression-guard / process gate** (verification-completeness.md §2.1). The
+red is unconstructible for this change class: no step of the build chain observes
+`AGENTS.md.tmpl` drift — `agents-emit-check`/`commands-emit-check` cover the `.codex/` and
+`.agents/` families only (`Makefile:34`, measured at plan-audit iter-1), and `//go:embed`
+embeds committed bytes without parsing. Per §2.1 this AC is NOT recorded as a proof-pass; its
+run-phase result is recorded as a process-gate discharge.
 
 **Given** M2 edited a file under `internal/template/templates/`.
-**When** `make build` runs (M3) and the E3 measurement captures its exit code.
-**Then** the command exits `0`; the `agents-emit-check` stage inside it reports no drift; and a
-second run of `make build` is a no-op (exit 0, no rewrites reported) — proving the committed
-template and the embedded copy are in step, not that the first run silently failed.
+**When** `make build` runs (M3) and the exit code is captured.
+**Then** the command exits `0` — the binary was recompiled against the committed template
+(the Template-First cycle's regeneration step, per REQ-AWR-005). No claim is made beyond this:
+nothing in this build output distinguishes a build that compiled the new rows from one that
+did not, and this AC does not assert that it does.
 
 ## §D.1 Edge cases
 
@@ -84,5 +110,5 @@ template and the embedded copy are in step, not that the first run silently fail
 
 ## §D.3 Definition of Done
 
-All five ACs PASS with verbatim outputs recorded in progress.md §E.2's plan-phase evidence;
+All five ACs PASS with verbatim outputs recorded in progress.md §E.1's plan-phase evidence;
 the single run-phase commit carries the card trailers; nothing is pushed (lead owns push).
