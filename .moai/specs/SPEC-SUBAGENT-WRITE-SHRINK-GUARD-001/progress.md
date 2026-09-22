@@ -537,7 +537,7 @@ total_run_phase_files: 9   # 2 new hook files + pre_tool.go + 3 config files + w
 ```yaml
 sync_status: audit-ready
 sync_complete_at: 2026-09-22
-sync_commit_sha: pending-backfill-sync   # backfilled in the follow-up chore commit (self-referential hazard — D3 exemption)
+sync_commit_sha: 6519a96fc            # backfilled in this chore commit (was pending-backfill-sync in 6519a96fc itself — self-referential hazard, D3 exemption)
 changelog_entry_position: "CHANGELOG.md [Unreleased] — Added 1 (top of section)"
 docs_locales_synced: n/a   # internal opt-in hook; no user-facing docs surface touched (sync dispatch: minimal scope)
 frontmatter_status_transitions:
