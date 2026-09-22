@@ -104,9 +104,17 @@ ehthumbs.db
 # Logs & Temporary Files
 # ===========================================
 *.log
-# Card evidence under .moai/reports/** is durable audit evidence, not operational
-# noise — cited evidence paths must resolve post-merge (sync-audit MAJOR-2, card t196).
-!.moai/reports/**/*.log
+# A negation for .moai/reports/**/*.log used to sit here (card t196, 2026-09-01).
+# It was removed because it could never fire: git does not re-include a file
+# inside a directory that a later rule excludes, and .moai/reports/* excludes
+# the parent. The rule was dead from the day it was written; only its comment
+# read as though something had been repaired.
+#
+# Logs under .moai/reports/ are ignored deliberately, and that is the intended
+# state — not a gap left behind by the removal. The tracked citation target is
+# the verdict file, re-included further down; a log is not exported and is
+# therefore not cited. Do not re-add a negation for it: making logs tracked is
+# exactly what the reports blanket exists to prevent.
 logs/*
 !logs/.gitkeep
 *.tmp
@@ -225,6 +233,21 @@ secret-*.*
 # evidence for lead verdicts stays on disk, never on the remote. Only the
 # plan-audit scaffold ships, mirroring the template's reports philosophy.
 .moai/reports/*
+
+# The verdict-file exception that used to sit here is WITHDRAWN (card t1059).
+# It re-included .moai/reports/<card-id>/verdict.md, which put verdict files on
+# a path to the remote — the end-state the directive above forbids in as many
+# words. It was written before that conflict was noticed, not against it.
+#
+# Do not re-add it. A verdict is exported so a later reader can re-check it on
+# this disk; reaching the remote was never what "exported" meant here.
+#
+# Withdrawing a negation only stops files created afterwards. Git does not
+# untrack a file that is already tracked, so the entries already in the index
+# stayed there and had to be removed deliberately. Adding the rule back would
+# not re-track them either — the two acts are independent, and a withdrawal on
+# its own leaves whatever is already tracked exactly where it was.
+
 !.moai/reports/plan-audit/
 .moai/reports/plan-audit/*
 !.moai/reports/plan-audit/.gitkeep

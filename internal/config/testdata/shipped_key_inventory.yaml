@@ -2619,6 +2619,9 @@
 - path: "workflow.execution_mode"
   class: W
   evidence: reader
+- path: "workflow.jev.enabled"
+  class: W
+  evidence: reader
 - path: "workflow.loop_prevention.failure_pattern_detection"
   class: W
   evidence: reader

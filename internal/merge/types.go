@@ -51,6 +51,12 @@ type MergeResult struct {
 
 	// Strategy is the merge algorithm that was applied.
 	Strategy MergeStrategy
+
+	// RetainedKeys lists the key paths (dotted) the merge kept because the new
+	// template no longer carries them. It is populated only when a genuine base
+	// was supplied: a derived base is pruned to the new template's own keys, so
+	// it cannot express "in the base, gone from the template" at all.
+	RetainedKeys []string
 }
 
 // Conflict describes a single conflict region within a merge result.
