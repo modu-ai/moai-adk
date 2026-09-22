@@ -2,7 +2,7 @@
 id: SPEC-FACTORY-LANE-WORKTREE-HANDOFF-001
 document: plan
 created: 2026-09-22
-updated: 2026-09-22
+updated: 2026-09-23
 author: manager-spec
 card: t1082
 module: "internal/factorymsg"
@@ -38,7 +38,7 @@ module: "internal/factorymsg"
 
 - `internal/factorymsg`의 기존 broker schema에 lane handoff row/event/tombstone을 추가한다. 별도 DB는 만들지 않는다.
 - reservation은 project/run/lane/card/SPEC/source endpoint/generation/nonce/local develop HEAD/target path/target branch를 CAS로 고정한다.
-- `internal/homestate.CanonicalProjectRoot`와 기존 factory run resolver로 canonical identity를 구한다.
+- canonical project identity는 `internal/homestate.CanonicalProjectRoot`로, canonical run은 기존 factory run resolver `internal/cli/factory.go:222` `enterSelectedFactoryRun`(→ `factorymsg.ResolveActiveRun`)으로 구한다. Run resolver는 homestate에 있지 않다.
 - 기존 MoAI L1 worktree materializer를 호출하고 exact target path, `HEAD == pinned develop`, clean target, `WT-<slug>` branch, branch uniqueness를 읽어 `WT_READY`로 만든다.
 - creation-base drift를 `BASE_DRIFT`로 기록하고 BOUND 없이 보존/복구 대상으로 남긴다.
 
@@ -81,7 +81,7 @@ module: "internal/factorymsg"
 | Area | Reuse/extension intent |
 |---|---|
 | `internal/factorymsg/` | 기존 broker transaction, peer generation, receipt에 handoff state/rebind/tombstone 추가 |
-| `internal/homestate/` | canonical project/run/process identity helper 재사용; 새 transport 금지 |
+| `internal/homestate/` | canonical project/process identity helper 재사용; 새 transport 금지 (run selection은 `internal/cli/factory.go:222` `enterSelectedFactoryRun`) |
 | `internal/cli/worktree/`, launcher seams | existing L1 materializer 호출 및 develop pin/branch trace 검증 |
 | `internal/cli/mcp_codex.go` 주변 | existing app-server client에 fork/start/cwd lifecycle 최소 확장 |
 | `internal/hook/` | interactive의 다음 정상 turn SessionStart evidence를 shared atomic rebind에 전달 |

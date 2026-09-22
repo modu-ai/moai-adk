@@ -2,7 +2,7 @@
 id: SPEC-FACTORY-LANE-WORKTREE-HANDOFF-001
 document: acceptance
 created: 2026-09-22
-updated: 2026-09-22
+updated: 2026-09-23
 author: manager-spec
 card: t1082
 module: "internal/factorymsg"
@@ -12,7 +12,7 @@ module: "internal/factorymsg"
 
 ## Acceptance policy
 
-- AC-FLH-001..016은 모두 MUST-PASS다.
+- AC-FLH-001..018은 모두 MUST-PASS다.
 - Unit/fixture evidence는 해당 named contract만 증명한다. AC-FLH-012/013은 실제 별도 CLI/model contexts가 아니면 PASS가 아니다.
 - 모든 GREEN command는 정확히 한 parent test의 `Action=pass`, 전체 child/subtest/package의 `Action=fail` 및 `Action=skip` 0건, 전체 log의 `NOT_RUN` 0건을 요구한다.
 - `go test -run`의 empty match, package setup failure, missing log, mock-only LIVE, direct peer registration, 수동 DB seed는 vacuous PASS가 아니라 FAIL이다.
@@ -40,6 +40,8 @@ module: "internal/factorymsg"
 | AC-FLH-014 | REQ-FLH-006, REQ-FLH-007, REQ-FLH-012 | `TestFactoryLaneHandoffNoPrivateControl` | slash automation/tmux/private socket/model-cd/Desktop emulation 호출이 0이다. |
 | AC-FLH-015 | REQ-FLH-015 | `TestFactoryLaneHandoffT1074Compatibility` | 기존 broker/roster/receipt/catalog가 유지되고 새 broker/daemon/store가 없다. |
 | AC-FLH-016 | REQ-FLH-004 | `TestFactoryLaneHandoffCreationBaseDriftRejected` | t1082에서 실제 관측된 main→develop creation-base drift mutant가 BASE_DRIFT로 fail closed한다. |
+| AC-FLH-017 | REQ-FLH-016 | `TestFactoryLaneHandoffLaunchPendingSourceNack` | launch-pending lane에 대한 handoff 요청이 `ENDPOINT_LAUNCH_PENDING` NACK이며 reservation/tombstone/worktree/app-server/endpoint 변화가 0이다. |
+| AC-FLH-018 | REQ-FLH-017 | `TestFactoryLaneHandoffRebindVsLaunchBindRace` | 같은 slot에서 launcher provisional bind와 handoff rebind를 동시에 구동해도 bound owner 1개, 패자의 이름 있는 거부, 단조 generation, orphan launch-pending 0이다. |
 
 ## RED-now ledger
 
@@ -64,6 +66,10 @@ module: "internal/factorymsg"
 | AC-FLH-015 | `rg -n -F 'func TestFactoryLaneHandoffT1074Compatibility(' internal --glob '*_test.go'` | `<empty>` | 1 |
 | AC-FLH-016 | `rg -n -F 'func TestFactoryLaneHandoffCreationBaseDriftRejected(' internal --glob '*_test.go'` | `<empty>` | 1 |
 | AC-FLH-012/013 gate quality | `rg -n -F 'func TestFactoryLaneHandoffLiveEvidenceGateRejectsMutants(' internal --glob '*_test.go'` | `<empty>` | 1 |
+| AC-FLH-017 | `rg -n -F 'func TestFactoryLaneHandoffLaunchPendingSourceNack(' internal --glob '*_test.go'` | `<empty>` | 1 |
+| AC-FLH-018 | `rg -n -F 'func TestFactoryLaneHandoffRebindVsLaunchBindRace(' internal --glob '*_test.go'` | `<empty>` | 1 |
+
+AC-FLH-017/018 두 행은 위 subject tree가 아니라 t1074 흡수 후 HEAD `1487f97a0`에서 2026-09-23에 측정했다.
 
 ## Exact acceptance gates
 
@@ -229,6 +235,26 @@ Expected final output: `true`; otherwise FAIL.
 
 ```bash
 unset ANTHROPIC_BASE_URL ANTHROPIC_API_KEY ANTHROPIC_AUTH_TOKEN Z_AI_API_KEY && mkdir -p .moai/reports/t1082 && MOAI_HOME=/tmp/t1082-ac16-home GOCACHE=/tmp/t1082-ac16-cache go test -json ./internal/cli -run '^TestFactoryLaneHandoffCreationBaseDriftRejected$' -count=1 -timeout=90s > .moai/reports/t1082/ac16.jsonl && jq -se '([.[]|select(.Action=="pass" and .Test=="TestFactoryLaneHandoffCreationBaseDriftRejected")]|length)==1 and ([.[]|select(.Action=="fail" or .Action=="skip")]|length)==0 and ([.[]|select((.Output//"")|contains("NOT_RUN"))]|length)==0' .moai/reports/t1082/ac16.jsonl
+```
+
+Expected final output: `true`; otherwise FAIL.
+
+### AC-FLH-017 — Launch-pending source endpoint NACK
+
+**Given** a lane slot whose endpoint was registered through the production launcher provisional path (`RegisterLaunchPending`, not a manual DB seed) so that lane resolution returns `ErrEndpointLaunchPending`, **when** a handoff reserve is attempted for that lane in both interactive and headless mode, **then** each returns NACK with reason `ENDPOINT_LAUNCH_PENDING`; handoff/reservation rows, tombstone rows, and dispatch release markers each count 0; no `<primary>/.claude/worktrees/<card-id>` path exists; the app-server request spy and the rollback spy each count 0; and the provisional endpoint row (slot, session key, generation, PID, process-start, updated_at) is byte-identical before and after. **And** as a control, after the production `BindLaunchPending` binds that slot, a fresh reserve for the same lane is admitted.
+
+```bash
+unset ANTHROPIC_BASE_URL ANTHROPIC_API_KEY ANTHROPIC_AUTH_TOKEN Z_AI_API_KEY && mkdir -p .moai/reports/t1082 && MOAI_HOME=/tmp/t1082-ac17-home GOCACHE=/tmp/t1082-ac17-cache go test -json ./internal/factorymsg ./internal/cli -run '^TestFactoryLaneHandoffLaunchPendingSourceNack$' -count=1 -timeout=90s > .moai/reports/t1082/ac17.jsonl && jq -se '([.[]|select(.Action=="pass" and .Test=="TestFactoryLaneHandoffLaunchPendingSourceNack")]|length)==1 and ([.[]|select(.Action=="fail" or .Action=="skip")]|length)==0 and ([.[]|select((.Output//"")|contains("NOT_RUN"))]|length)==0' .moai/reports/t1082/ac17.jsonl
+```
+
+Expected final output: `true`; otherwise FAIL.
+
+### AC-FLH-018 — Launcher bind versus handoff rebind race on one slot
+
+**Given** one broker with a lane bound at generation `g`, a handoff reservation in `SWITCH_PENDING` pinned to that source endpoint, and the source owner injected as not current so that a relaunch may re-register the slot, **when** goroutine A runs the production launcher path (`RegisterLaunchPending` then `BindLaunchPending` for a relaunched process) and goroutine B runs the handoff atomic rebind on the same slot — first under the three forced interleavings A-register→B→A-bind, B→A, and A→B via a test barrier, then under 200 unforced concurrent iterations on fresh brokers — **then** after every run: exactly one endpoint row exists for the slot and it is not launch-pending; the generation is greater than `g` and never decreased across observed commits; if B committed first, the current owner is the handoff endpoint, the handoff is `BOUND` with exactly one tombstone and one BOUND receipt, and A's registration returned the t1074 live-owner rejection without changing the row; if A changed the endpoint first, B returned NACK `STALE_GENERATION`, the handoff is `NACK`, tombstone/receipt/release counts are 0, and the current owner is the launcher-bound session. Each forced interleaving must be observed exactly as forced, or the test FAILs rather than passing vacuously. The test runs under `-race`.
+
+```bash
+unset ANTHROPIC_BASE_URL ANTHROPIC_API_KEY ANTHROPIC_AUTH_TOKEN Z_AI_API_KEY && mkdir -p .moai/reports/t1082 && MOAI_HOME=/tmp/t1082-ac18-home GOCACHE=/tmp/t1082-ac18-cache go test -json -race ./internal/factorymsg -run '^TestFactoryLaneHandoffRebindVsLaunchBindRace$' -count=1 -timeout=180s > .moai/reports/t1082/ac18.jsonl && jq -se '([.[]|select(.Action=="pass" and .Test=="TestFactoryLaneHandoffRebindVsLaunchBindRace")]|length)==1 and ([.[]|select(.Action=="fail" or .Action=="skip")]|length)==0 and ([.[]|select((.Output//"")|contains("NOT_RUN") or contains("DATA RACE"))]|length)==0' .moai/reports/t1082/ac18.jsonl
 ```
 
 Expected final output: `true`; otherwise FAIL.

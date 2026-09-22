@@ -1,10 +1,10 @@
 ---
 id: SPEC-FACTORY-LANE-WORKTREE-HANDOFF-001
 title: "Factory lane card worktree handoff"
-version: "0.2.0"
+version: "0.3.0"
 status: draft
 created: 2026-09-22
-updated: 2026-09-22
+updated: 2026-09-23
 author: manager-spec
 priority: P1
 phase: "v3.0.0"
@@ -23,6 +23,7 @@ card: t1082
 
 | Version | Date | Change |
 |---|---|---|
+| 0.3.0 | 2026-09-23 | t1074 착지(develop `861510fb6`) 후 전제 재검증 결과를 반영해 launch-pending source endpoint의 handoff 거부(REQ-FLH-016)와 launcher provisional bind 대 handoff rebind의 직렬화·순서(REQ-FLH-017)를 추가했다. |
 | 0.2.0 | 2026-09-22 | 관측된 Codex 0.155.1 경계를 반영해 interactive는 다음 정상 turn의 SessionStart, headless는 공식 app-server 반환 thread ID를 mode별 결합 증거로 분리했다. |
 | 0.1.0 | 2026-09-22 | 카드 t1082의 안정 lane → 전용 card worktree 전환 및 generation-safe endpoint rebind 계약을 최초 정의했다. |
 
@@ -121,6 +122,14 @@ When LIVE verification runs, it SHALL exercise an actual interactive `/cd` path 
 
 While implementation handles a handoff, it SHALL reuse t1074 canonical run selection, stable lane/current endpoint generation, launcher provisional endpoint followed by first-normal-turn SessionStart rebind, the factory message broker, peer roster, explicit receipts, existing homestate, the MoAI worktree launcher, and the app-server client. Headless controller binding SHALL coexist with that interactive first-turn contract without adding a broker, daemon, private transport, or parallel message store or changing legacy `sessionmsg` semantics.
 
+### REQ-FLH-016 — Launch-pending source endpoint admission
+
+When a handoff is requested for a lane whose current endpoint is still the t1074 launcher provisional (launch-pending) endpoint, the handoff SHALL return NACK with reason `ENDPOINT_LAUNCH_PENDING`, SHALL write no reservation, tombstone, worktree, app-server request, endpoint mutation, or dispatch release, and SHALL leave the provisional endpoint neither bound nor rolled back. The handoff SHALL NOT wait for, poll, retry against, or manufacture the lane's first normal turn; a later handoff SHALL require a fresh reservation after the lane's endpoint is bound.
+
+### REQ-FLH-017 — Serialized ordering of launcher bind and handoff rebind
+
+The handoff SHALL order the t1074 launcher provisional-endpoint bind before handoff admission, and SHALL serialize its atomic rebind against every launcher provisional registration or bind on the same lane as write transactions within the existing factory broker's SQLite transaction domain on that lane's single endpoint row. While a handoff is `SWITCH_PENDING`, the rebind SHALL commit only if the lane endpoint still equals the reserved source endpoint (session/thread UUID, generation, PID, process-start). When a launcher registration or bind has changed that endpoint first, the rebind SHALL NACK with `STALE_GENERATION`, write no tombstone, BOUND receipt, or dispatch release, and leave the launcher-owned endpoint current. When the rebind commits first, a later launcher bind SHALL leave the handoff-bound endpoint unchanged. In every interleaving the lane SHALL end with exactly one current bound endpoint, a generation that never decreases, and no orphan launch-pending endpoint, and the handoff SHALL NOT create its new endpoint through the launcher provisional registration path.
+
 ## Requirement-to-acceptance traceability
 
 | Requirement anchor | Acceptance criteria |
@@ -140,6 +149,8 @@ While implementation handles a handoff, it SHALL reuse t1074 canonical run selec
 | § REQ-FLH-013 | AC-FLH-011, AC-FLH-012, AC-FLH-013 |
 | § REQ-FLH-014 | AC-FLH-012, AC-FLH-013 |
 | § REQ-FLH-015 | AC-FLH-015 |
+| § REQ-FLH-016 | AC-FLH-017 |
+| § REQ-FLH-017 | AC-FLH-018 |
 
 ### Out of Scope — Idle wake and autonomous TUI control
 

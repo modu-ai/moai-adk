@@ -2,7 +2,7 @@
 id: SPEC-FACTORY-LANE-WORKTREE-HANDOFF-001
 document: design
 created: 2026-09-22
-updated: 2026-09-22
+updated: 2026-09-23
 author: manager-spec
 card: t1082
 module: "internal/factorymsg"
@@ -59,6 +59,36 @@ Work-root provenance:
 ```
 
 `lane_id`는 lead가 계속 메시지를 보내는 주소다. `thread_or_session_uuid`는 endpoint일 뿐이며 `/cd`, fork, restart 때 바뀔 수 있다. Old endpoint tombstone은 `{lane_id, old_uuid, old_generation, replaced_by_uuid, replaced_by_generation, bound_at}`를 보존한다.
+
+### 2.1 Endpoint binding order with t1074 launch-pending (REQ-FLH-016, REQ-FLH-017)
+
+t1074 착지본의 broker는 slot당 endpoint row 하나(`peers.slot` PRIMARY KEY)를 두고, launcher가 먼저 private `launch-pending:` 키로 provisional row를 등록(`RegisterLaunchPending`, `internal/factorymsg/store.go:381`)한 뒤 첫 정상 turn의 SessionStart가 exact owner identity로 그 row를 bind한다(`BindLaunchPending`, `store.go:392`; 호출부 `internal/hook/factory_messages.go:84`). Provisional row가 current인 동안 `ResolveLane`·`Peer`·`PeerByOwner`·송신 검증은 모두 `ErrEndpointLaunchPending`을 돌려준다(`store.go:485,506,521,564`).
+
+```text
+lane endpoint row lifecycle (one row per slot)
+
+launcher start ──► LAUNCH_PENDING(g) ──first normal-turn SessionStart──► BOUND(g+1)
+                   │  handoff reserve → NACK ENDPOINT_LAUNCH_PENDING      │
+                   │  (no reservation/tombstone/worktree; row untouched)  │
+                                                                          ▼
+                                             handoff reserve (source = BOUND(g+1) tuple)
+                                                                          │
+                                                                  SWITCH_PENDING_*
+                                                                          │
+              ┌───────────── one BEGIN IMMEDIATE writer at a time ────────┴──────────┐
+              ▼                                                                     ▼
+   handoff rebind commits first                              launcher re-register/bind commits first
+   CAS(source tuple) matches → BOUND(g+2)                    row → LAUNCH_PENDING(g+2) → BOUND(g+3)
+   + tombstone + BOUND receipt + release                     handoff rebind CAS mismatch →
+   later RegisterLaunchPending → t1074 live-owner reject     NACK STALE_GENERATION, no tombstone/
+   later BindLaunchPending → no-op (row not pending)         receipt/release; launcher owner current
+```
+
+순서 규칙은 세 가지다. 첫째, launcher bind가 handoff admission보다 먼저다 — launch-pending인 lane에는 reservation 자체가 생기지 않는다. 둘째, reservation 이후의 경합은 "먼저 commit한 writer가 이긴다"이며, handoff rebind는 reserved source tuple(session/thread UUID, generation, PID, process-start)에 대한 CAS이므로 launcher가 row를 먼저 바꿨다면 반드시 `STALE_GENERATION`으로 진다. 셋째, handoff는 자기 새 endpoint를 launcher provisional 경로로 만들지 않는다 — 그래야 같은 slot에 쓰는 경로가 "launcher provisional bind"와 "handoff CAS rebind" 둘로 고정되고, 둘 다 같은 row의 generation을 +1씩만 올린다.
+
+직렬화 경계는 새 장치가 아니라 기존 broker의 SQLite transaction domain이다. Broker는 `_txlock=immediate`와 `SetMaxOpenConns(1)`로 열리므로(`store.go:169,174,214,219`) 모든 쓰기 transaction이 `BEGIN IMMEDIATE`로 시작해 프로세스 사이에서도 한 writer만 RESERVED lock을 잡는다. Handoff rebind의 CAS, tombstone, BOUND receipt, release marker는 §6의 한 transaction 안에 있어야 이 경계가 성립한다. 이 경합은 코드 읽기로 세운 가설이며 재현된 실패가 아니므로, AC-FLH-018이 강제 interleaving 셋과 비강제 동시 반복으로 재현 경로를 제공한다.
+
+**Launch-pending 요청의 처리 선택 (REQ-FLH-016).** 대기 후 진행이나 bounded retry가 아니라 즉시 `ENDPOINT_LAUNCH_PENDING` NACK를 택했다. Provisional row를 bound로 바꾸는 유일한 증거는 사용자의 첫 정상 turn이며, 이 SPEC은 빈 model turn 생성(REQ-FLH-006)과 새 polling service(Out of Scope)를 모두 금지하므로 handoff 쪽에서 기다리거나 재시도할 수단이 없다. 즉시 NACK는 REQ-FLH-003의 fail-closed admission과 같은 terminal 의미(`NACK` → fresh reservation only)를 그대로 쓰고, 부작용이 0이라 provisional row의 이후 bind를 방해하지 않는다.
 
 ## 3. Common state machine
 
