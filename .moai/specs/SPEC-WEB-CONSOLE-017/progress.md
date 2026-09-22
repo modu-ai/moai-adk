@@ -128,7 +128,7 @@ CHANGELOG `[Unreleased] > Fixed` 항목 하나가 본 카드의 유일한 문서
 
 ```yaml
 sync_complete_at: 2026-09-22
-sync_commit_sha: "pending-backfill"   # 후속 커밋에서 backfill (커밋은 자기 해시를 인용할 수 없다)
+sync_commit_sha: "b15dbd57e"   # sync 커밋 실측값 — D3 백필 (후속 커밋에서 채움; 커밋은 자기 해시를 인용할 수 없다)
 sync_status: audit-ready
 b12_self_test_a: pass                 # 중복 grep: 방출 전 0 (exit 1) / 방출 후 1
 b12_self_test_b: pass                 # AC 5건 (acceptance.md §D.1 이 SSOT; 예약 토큰 0건)
