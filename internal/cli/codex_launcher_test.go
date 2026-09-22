@@ -26,6 +26,9 @@ import (
 	"sync"
 	"testing"
 
+	"github.com/modu-ai/moai-adk/internal/config"
+	"github.com/modu-ai/moai-adk/internal/factorymsg"
+	"github.com/modu-ai/moai-adk/internal/homestate"
 	"github.com/spf13/cobra"
 )
 
@@ -134,6 +137,18 @@ func withCodexProjectRoot(t *testing.T, root string) *int {
 	findProjectRootFn = func() (string, error) { calls++; return root, nil }
 	t.Cleanup(func() { findProjectRootFn = prev })
 	return &calls
+}
+
+func TestCodexChildEnvScrubsForeignAttribution(t *testing.T) {
+	t.Setenv(config.EnvClaudeCodeSessionID, "foreign-claude-session")
+	t.Setenv(config.EnvMoaiSessionPID, "12345")
+	env := codexChildEnv()
+	if _, ok := codexEnvLast(env, config.EnvClaudeCodeSessionID); ok {
+		t.Fatalf("%s leaked into Codex child", config.EnvClaudeCodeSessionID)
+	}
+	if _, ok := codexEnvLast(env, config.EnvMoaiSessionPID); ok {
+		t.Fatalf("%s leaked into Codex child", config.EnvMoaiSessionPID)
+	}
 }
 
 // runCodexCmd invokes runCodex on a FRESH command (no global codexCmd state
@@ -847,7 +862,8 @@ func TestCodexSpawn_RealAssemblyThroughStubTmux(t *testing.T) {
 	// resolveCodexHomeDir's second result is the source label, not an error.
 	codexHome, _ := resolveCodexHomeDir()
 	wantCommand := codexHomeEnvVar + "=" + shellQuote(codexHome) + " " +
-		shellQuote(fixture) + " --flag=v " + shellQuote("a b")
+		config.EnvClaudeCodeSessionID + "= " + config.EnvMoaiSessionPID + "= " +
+		"exec " + shellQuote(fixture) + " --flag=v " + shellQuote("a b")
 	if gotCommand != wantCommand {
 		t.Errorf("tmux command = %q, want %q", gotCommand, wantCommand)
 	}
@@ -861,6 +877,54 @@ func TestCodexSpawn_RealAssemblyThroughStubTmux(t *testing.T) {
 	err := runCodex(c2, []string{"cli", "--spawn"})
 	if err == nil || !strings.Contains(err.Error(), "no server") {
 		t.Errorf("tmux failure = %v, want wrapped no-server error", err)
+	}
+}
+
+func TestFactoryCodexSpawnRegistersLaunchPendingPeer(t *testing.T) {
+	t.Setenv("MOAI_HOME", t.TempDir())
+	root := t.TempDir()
+	run := "spawn-pending"
+	db, err := homestate.OpenFactory(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := db.RecordRun(context.Background(), homestate.FactoryRun{RunID: run, Backend: "codex", ManifestJSON: "{}"}); err != nil {
+		t.Fatal(err)
+	}
+	_ = db.Close()
+	t.Setenv(config.EnvMoaiKanbanID, run)
+	t.Setenv(config.EnvMoaiKanbanBackend, "codex")
+	t.Setenv(config.EnvMoaiFactoryWorker, "agent-1")
+	t.Setenv(config.EnvMoaiFactoryWorkers, "0")
+	start, state := homestate.ProbeProcessIdentity(os.Getpid())
+	if state != homestate.ProcessIdentityLive || start == "" {
+		t.Fatal("test process identity unavailable")
+	}
+	oldSpawn, oldIdentity, oldCleanup := tmuxSpawnFn, codexSpawnPaneIdentityFn, codexSpawnCleanupPaneFn
+	tmuxSpawnFn = func(string, string) (string, error) { return "%42", nil }
+	codexSpawnPaneIdentityFn = func(string) (int, string, error) { return os.Getpid(), start, nil }
+	cleanups := 0
+	codexSpawnCleanupPaneFn = func(string) error { cleanups++; return nil }
+	t.Cleanup(func() {
+		tmuxSpawnFn, codexSpawnPaneIdentityFn, codexSpawnCleanupPaneFn = oldSpawn, oldIdentity, oldCleanup
+	})
+	if err := defaultCodexSpawnLaunch(root, "/test/codex", nil); err != nil {
+		t.Fatal(err)
+	}
+	if cleanups != 0 {
+		t.Fatalf("successful spawn cleaned pane %d times", cleanups)
+	}
+	s, err := factorymsg.Open(root, run)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer s.Close()
+	status, err := s.Status(context.Background())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(status.Lanes) != 1 || status.Lanes[0].Slot != "agent-1" || status.Lanes[0].BindingState != factorymsg.BindingLaunchPending {
+		t.Fatalf("spawn pending roster=%+v", status.Lanes)
 	}
 }
 
