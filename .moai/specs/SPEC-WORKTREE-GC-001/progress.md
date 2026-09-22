@@ -33,3 +33,15 @@ _<pending run-phase>_
 ## §E.4 Sync-phase Audit-Ready Signal
 
 _<pending sync-phase>_
+
+## §F Phase 4 Mode Selection
+
+Logged 2026-09-22 by the lane orchestrator (agent-30, re-dispatch; original lane session ended) before the first run-phase Agent() spawn, per the mode-logging contract.
+
+**Input parameters**: tier=M; scope=disposal execution across cooled L1 worktrees (zero code, zero template mirrors); domains=1 (git-worktree lifecycle procedure); file language mix=markdown evidence only; concurrency benefit=LOW (serialized destructive-adjacent operations with export-before-removal ordering); agent-team prereqs=not requested.
+
+**Mode evaluation**: direct — no (multi-tree procedural execution with evidence ledger); serial — SELECTED (one manager-develop delegation carries M1-M4 in order; destructive-adjacent steps serialize by nature); fanout — no (no independent read/write units); sweep — no (not mechanical-uniform bulk; judgment-laden per-tree disposition).
+
+**Decision: serial**
+
+**Justification**: per-tree disposal decisions with export-before-removal ordering and keep-direction overrides are sequential by nature; a single executor keeps the 3-tier predicate and the evidence ledger coherent. Kickoff Approval: PASSED (operator "전부 승인" 2026-09-22, relayed by lead). Plan-audit iter-2 PASS-WITH-DEBT 0.9375; the D10-D12 post-verdict repair (ce415cb01) is the audit-prescribed fix — recorded as the run-gate skip deviation, not a silent hash claim.
