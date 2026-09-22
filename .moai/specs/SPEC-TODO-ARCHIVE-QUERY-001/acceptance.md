@@ -207,16 +207,19 @@ must not contain the verb; and the goldens' current bytes must still be `C`'s:
 
 ```
 GOLDENS=internal/cli/testdata/golden/live-readers/
-test "$(git log --diff-filter=A --format=%H -- "$GOLDENS" | wc -l | tr -d '[:space:]')" -eq 1
-C=$(git log --diff-filter=A --format=%H -- "$GOLDENS" | tail -1)
-test -n "$C"
-test "$C" != "$(git rev-parse HEAD)"
-git merge-base --is-ancestor "$C" HEAD
-! git cat-file -e "$C:internal/cli/todo_history.go" 2>/dev/null
-! git grep -q "newTodoHistoryCmd" "$C" -- internal/cli/
-git diff --exit-code "$C" -- "$GOLDENS"
+git log --diff-filter=A --format=%H -- "$GOLDENS" | wc -l | tr -d '[:space:]'   # expect: 1
+git log --diff-filter=A --format=%H -- "$GOLDENS" | tail -1                     # record the value as C
+test -n <C>
+git rev-parse HEAD                                                              # expect the value != C (record both)
+git merge-base --is-ancestor <C> HEAD
+! git cat-file -e "<C>:internal/cli/todo_history.go" 2>/dev/null
+! git grep -q "newTodoHistoryCmd" <C> -- internal/cli/
+git diff --exit-code <C> -- "$GOLDENS"
 ```
 
+Every command is plain and separately invocable; `<C>` denotes the hash recorded by the
+`tail -1` line above (the worktree guard refuses a `$()`-captured git value expanded in a later
+statement, so the value travels through the recorded evidence, not a shell variable).
 Every command is load-bearing and each has a reachable failing input. The
 **measured** rows below were reproduced in a throwaway repository at plan phase
 (`goldens` commit → `verb` commit → tampering commit, plus a separate
@@ -257,8 +260,9 @@ that: build the binary from `C` in a throwaway worktree, run it against the same
 `FIXTURE`, and diff each stream against the committed golden.
 
 ```
-C=$(git log --diff-filter=A --format=%H -- internal/cli/testdata/golden/live-readers/ | tail -1)
-TMP=$(mktemp -d); git worktree add --detach "$TMP/base" "$C"
+git log --diff-filter=A --format=%H -- internal/cli/testdata/golden/live-readers/ | tail -1   # record the value as C
+TMP=$(mktemp -d)
+git worktree add --detach "$TMP/base" <C>
 (cd "$TMP/base" && go build -o "$TMP/moai-base" ./cmd/moai)
 # run the six reads against FIXTURE with "$TMP/moai-base"; diff each against the golden
 git worktree remove --force "$TMP/base"
@@ -335,10 +339,10 @@ by an assumed filename**, **when** it is scanned for a prompting call, **then**
 the source is found and no match is in it:
 
 ```
-SRC=$(git grep -l "newTodoHistoryCmd" -- 'internal/cli/*.go' ':!internal/cli/*_test.go')
-test -n "$SRC"
-for f in $SRC; do test -f "$f"; done
-! grep -nE "AskUserQuestion|survey\.|promptui|bufio\.NewReader\(os\.Stdin\)" $SRC
+git grep -l "newTodoHistoryCmd" -- 'internal/cli/*.go' ':!internal/cli/*_test.go'   # record the list as SRC
+test -n <SRC>
+# for each file F in SRC: test -f "F"
+! grep -nE "AskUserQuestion|survey\.|promptui|bufio\.NewReader\(os\.Stdin\)" <SRC files>
 ```
 
 The first three commands are the repair for a defect in the previous wording: it

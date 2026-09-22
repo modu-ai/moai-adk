@@ -153,7 +153,7 @@ commit** `$IMPL` — defined mechanically as the first commit that adds this car
 file, `internal/harness/rosterguard/numeral.go`:
 
 ```
-IMPL=$(git log --reverse --format=%H HEAD -- internal/harness/rosterguard/numeral.go | head -1)
+git log --reverse --format=%H HEAD -- internal/harness/rosterguard/numeral.go | head -1
 ```
 
 The anchor is that one new path, NOT the `internal/harness/rosterguard/` directory. Measured on

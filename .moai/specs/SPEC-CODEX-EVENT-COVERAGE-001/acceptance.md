@@ -48,5 +48,5 @@ author: manager-spec
 1. AC-CEV-001~006 전부 GREEN (M1) — 명령+출력이 progress.md §E.2에 귀속
 2. AC-CEV-010~013 전부 충족 (M2) — 캠페인 기록 경로가 progress.md에 기재
 3. AC-CEV-020 충족 (M3 조건 판정 기록 포함)
-4. `internal/hook` diff 0행 (REQ-CEV-005 — `git diff --stat $(git merge-base HEAD origin/develop)..HEAD -- internal/hook/` 공허. HEAD 대상 diff로는 이 브랜치에 이미 커밋된 변경을 못 잡으므로 merge-base 비교가 판별식이다)
+4. `internal/hook` diff 0행 (REQ-CEV-005 — `git diff --stat origin/develop...HEAD -- internal/hook/` 공허. HEAD 대상 diff로는 이 브랜치에 이미 커밋된 변경을 못 잡으므로 merge-base 비교가 판별식이다 — 세 점 형식이 merge-base..HEAD 와 동일한 범위다)
 5. TRUST 5 — Tested(영향 패키지), Readable/Unified(주석 en·gofmt), Secured(연산자 설정 무변경), Trackable(Conventional Commit)

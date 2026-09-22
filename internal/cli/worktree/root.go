@@ -1,7 +1,7 @@
 // Package worktree provides Git worktree management subcommands.
 // @MX:NOTE: [AUTO] Worktree management for parallel SPEC development with isolated working directories
 // @MX:NOTE: [AUTO] Dependency injection pattern: WorktreeProvider set from parent CLI package
-// @MX:NOTE: [AUTO] Supports sync, remove, clean, recover, done, and the guard subcommands
+// @MX:NOTE: [AUTO] Supports new, sync, remove, clean, recover, done, and the guard subcommands
 
 package worktree
 
@@ -21,10 +21,14 @@ var WorktreeCmd = &cobra.Command{
 	Aliases: []string{"wt"},
 	Short:   "Git worktree management",
 	GroupID: "tools",
-	Long: `Manage Git worktrees for parallel SPEC development: sync, remove, clean, recover and done, plus the guard verbs snapshot, verify and restore.
+	Long: `Manage Git worktrees for parallel SPEC development: new, sync, remove, clean, recover and done, plus the guard verbs snapshot, verify and restore.
 
-Entering a worktree is the launchers' job, not this command's:
+Create a harness-neutral L1 worktree through MoAI's shared materializer:
+  moai worktree new <name>     create .claude/worktrees/<name>
+
+Entering an existing worktree remains the launchers' job:
   moai cc -w <name>            work inside the worktree
+  moai codex -w <name>         start Codex inside the worktree
   moai cc -w <name> --spawn    open it in a new tmux window, keep this session
 
 For inspection, use git directly: git worktree list`,
@@ -32,6 +36,7 @@ For inspection, use git directly: git worktree list`,
 
 func init() {
 	WorktreeCmd.AddCommand(
+		newNewCmd(),
 		newSyncCmd(),
 		newRemoveCmd(),
 		newCleanCmd(),

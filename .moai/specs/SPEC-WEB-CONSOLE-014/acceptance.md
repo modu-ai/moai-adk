@@ -175,7 +175,7 @@ SPEC-WEB-CONSOLE-013
 | AC-WC14-051 | [B] | 051 | `go test ./internal/settings/ -run TestExcludedSectionsAllRejected -v` + sectionroute_test.go에 sunset/tool-policy/mx 명시 핀 존재 (`grep -n "sunset\|tool-policy\|\"mx\"" internal/settings/sectionroute_test.go` ≥3) | PASS + grep ≥3 |
 | AC-WC14-060 | [B] | 060 | 본 SPEC 신규 i18n 키 목록(run-phase에서 확정)에 대해 4-locale 각 존재: per-locale 구간 grep (en/ko/ja/zh 오브젝트 경계 내 키별 ≥1) + `go test ./internal/web/ -run 'TestDataI18nKeysSubsetOfDictionary|TestI18nDictionaryEmbedded' -v` | 키별 4/4 + PASS |
 | AC-WC14-061 | [B] | 061 | `go test ./internal/cli/ -run 'TestI18nKeySetParity|TestI18nSegmentParity|TestBridgeFieldDefResolver|TestTUIRendersSchemaFieldSet' -v` | exit 0 |
-| AC-WC14-062 | [B] | 062 | `git diff --name-only $(git merge-base origin/main HEAD)..HEAD -- internal/statusline/` | 출력 0줄 |
+| AC-WC14-062 | [B] | 062 | `git diff --name-only origin/main...HEAD -- internal/statusline/` | 출력 0줄 |
 | AC-WC14-063 | [N] | 전체 | `golangci-lint run internal/settings/... internal/web/... internal/cli/...` | clean (또는 pre-existing만) |
 
 ## §D Quality Gates / Definition of Done
