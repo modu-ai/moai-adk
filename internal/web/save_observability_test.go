@@ -266,3 +266,83 @@ func TestSaveFailureSeamCoverage(t *testing.T) {
 		})
 	}
 }
+
+// t1051SentinelKey is a value standing in for real GLM/Jev credential material in
+// the non-leak tests (AC-WC17-004). Newline-free so key validation accepts it
+// and the persistence seams are reached.
+const t1051SentinelKey = "T1051-SENTINEL-9f8e7d6c5b4a"
+
+// TestSaveFailureNeverLeaksKeyMaterial is AC-WC17-004 (regression-guard,
+// HARD-3 / REQ-WC-017-005; continues SPEC-GLM-KEY-INPUT-001 REQ-GKI-004-003):
+// with sentinel key material submitted, a forced failure at any seam must
+// leave the sentinel absent from BOTH new observability surfaces — the
+// stderr stream and the inline failure response. Classification note
+// (acceptance.md §D.1): before AC-WC17-003 landed there was no stderr
+// surface to leak into, so this criterion could not be RED-adopted then; it
+// became RED-capable once M2 shipped and is exercised here per seam.
+func TestSaveFailureNeverLeaksKeyMaterial(t *testing.T) {
+	for _, tc := range seamTable {
+		t.Run(tc.token, func(t *testing.T) {
+			a := newTestApp(t)
+			var calls []saveStep
+			recordingSeams(a, &calls, tc.seam)
+			form := reproForm()
+			form.Set("glm_api_key", t1051SentinelKey)
+			form.Set("jev_api_key", t1051SentinelKey)
+
+			restore := captureStderr(t)
+			rec := servePost(t, a.routes(), "/save", form)
+			captured := restore()
+
+			// The forced failure must actually have happened — otherwise the
+			// non-leakage assertions below would pass against a success.
+			if !strings.Contains(rec.Body.String(), tc.phrase) {
+				t.Fatalf("forced failure at %s did not surface its phrase; nothing to assert non-leakage against", tc.token)
+			}
+			if strings.Contains(rec.Body.String(), t1051SentinelKey) {
+				t.Errorf("%s failure leaked sentinel key material into the inline response", tc.token)
+			}
+			if strings.Contains(captured, t1051SentinelKey) {
+				t.Errorf("%s failure leaked sentinel key material into stderr:\n%s", tc.token, captured)
+			}
+		})
+	}
+}
+
+// TestSaveSuccessSurfaceUnchanged is AC-WC17-005 (regression-guard,
+// REQ-WC-017-006): a clean save keeps the success surface exactly as it was —
+// the "Settings saved." banner, the saved inline state, no error slot, no
+// seam-failure phrase, zero save-failure stderr lines. It is re-asserted at
+// each landing to prove the two new surfaces changed nothing about success.
+func TestSaveSuccessSurfaceUnchanged(t *testing.T) {
+	a := newTestApp(t)
+	var calls []saveStep
+	recordingSeams(a, &calls, "")
+	form := reproForm()
+	form.Set("glm_api_key", t1051SentinelKey)
+	form.Set("jev_api_key", t1051SentinelKey)
+
+	restore := captureStderr(t)
+	rec := servePost(t, a.routes(), "/save", form)
+	captured := restore()
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("clean-save status = %d, want 200", rec.Code)
+	}
+	body := rec.Body.String()
+	if !strings.Contains(body, "Settings saved.") {
+		t.Errorf("clean save lost the success banner; body:\n%s", body)
+	}
+	if !strings.Contains(body, `data-save-state="saved"`) {
+		t.Errorf("clean save did not render the saved inline state; body:\n%s", body)
+	}
+	if strings.Contains(body, "save__msg--error") {
+		t.Errorf("clean save rendered an error slot; body:\n%s", body)
+	}
+	if strings.Contains(body, "could not save profile preferences") {
+		t.Errorf("clean save rendered a seam-failure phrase; body:\n%s", body)
+	}
+	if lines := saveFailureLines(captured); len(lines) != 0 {
+		t.Errorf("clean save emitted %d save-failure stderr lines, want 0: %v", len(lines), lines)
+	}
+}
