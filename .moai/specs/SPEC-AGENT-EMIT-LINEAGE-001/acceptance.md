@@ -77,11 +77,14 @@
   → 결정하는 조항: REQ-AEL-004 의 "shall not be attached to a CI build job as its automatic trigger"
 - **And (적용 불가 — 게이트, v0.4.0)** 커밋 산출물을 이고 있지 **않은** 트리에서 이 항목은 **실패하지 않고**, `moai doctor` 의 종료 코드를 바꾸지 않는다
   ```bash
-  REPO=$(pwd); NA="${TMPDIR:-/tmp}/t317-na"; rm -rf "$NA"
-  "$REPO/bin/moai" init "$NA" --non-interactive >/dev/null; echo init=$?
+  # <REPO> = 이 저장소 루트의 절대 경로 (워크트리 가드가 계산된 명령 이름을 거부하므로
+  # 각 줄이 리터럴 경로를 쓰도록 재표현했다; 각 줄은 별도 호출로 실행한다)
+  NA="${TMPDIR:-/tmp}/t317-na"
+  rm -rf "$NA"
+  bin/moai init "$NA" --non-interactive >/dev/null; echo init=$?
   ls "$NA"/internal/template/templates/.codex/agents/moai/*.toml 2>/dev/null | wc -l   # 0 — 적용가능성 술어 거짓
-  ( cd "$NA" && "$REPO/bin/moai" doctor --check "Agent Emit Embed"; echo check_exit=$? )        # exit=0, 항목 상태 ok
-  ( cd "$NA" && "$REPO/bin/moai" doctor >/dev/null 2>&1; echo doctor_exit=$? )         # exit=0
+  ( cd "$NA" && <REPO>/bin/moai doctor --check "Agent Emit Embed"; echo check_exit=$? )        # exit=0, 항목 상태 ok
+  ( cd "$NA" && <REPO>/bin/moai doctor >/dev/null 2>&1; echo doctor_exit=$? )         # exit=0
   rm -rf "$NA"
   ```
   Baseline (이 트리 이 실행, 설치본 `moai` 로 스크래치 배포):
@@ -99,11 +102,10 @@
   → 결정하는 조항: REQ-AEL-004 의 적용가능성 술어 + "not applicable … shall report `ok` … exit status … unchanged"
 - **And (하위 디렉터리 앵커 — 게이트, v0.5.0)** 저장소의 **하위 디렉터리에서** 돌려도 같은 판정이 나온다 — 적용 가능한 트리가 "적용 불가"로 뒤집히지 않는다. 위 뮤턴트가 심긴 상태(바이너리는 뮤턴트 이전에 빌드됨)에서, 작업 디렉터리만 바꿔 두 번 돌린다:
   ```bash
-  REPO=$(pwd)
-  ( cd "$REPO"              && "$REPO/bin/moai" doctor --check "Agent Emit Embed"; echo root_exit=$? )   # exit ≠ 0, 항목 상태 fail
-  ( cd "$REPO/internal/cli" && "$REPO/bin/moai" doctor --check "Agent Emit Embed"; echo sub_exit=$?  )   # 같은 값 — exit ≠ 0, 항목 상태 fail
+  bin/moai doctor --check "Agent Emit Embed"; echo root_exit=$?              # 저장소 루트에서 — exit ≠ 0, 항목 상태 fail
+  ( cd internal/cli && <REPO>/bin/moai doctor --check "Agent Emit Embed"; echo sub_exit=$?  )   # 같은 값 — exit ≠ 0, 항목 상태 fail
   git checkout -- internal/template/templates/.codex/agents/moai/manager-git.toml
-  ( cd "$REPO/internal/cli" && "$REPO/bin/moai" doctor --check "Agent Emit Embed"; echo sub_clean_exit=$? )  # exit=0, 항목 상태 ok
+  ( cd internal/cli && <REPO>/bin/moai doctor --check "Agent Emit Embed"; echo sub_clean_exit=$? )  # exit=0, 항목 상태 ok
   ```
   판정: `sub_exit` == `root_exit` 이고 둘 다 ≠ 0 이며 두 실행 모두 항목 상태가 `fail`, 원복 후 `sub_clean_exit=0` + 항목 상태 `ok`. **하위 디렉터리 실행이 `ok` + 「커밋 산출물 부재」 사유를 내면 이 게이트는 실패다** — 그것이 적용 가능한 트리를 적용 불가로 오판하는 형태이며, 이 SPEC 이 봉쇄하겠다고 선언한 공허성의 좁은 재발이다. 항목 상태는 위 doctor 도달 게이트와 같은 방식(출력 말미 카운터 합 = 1)으로 읽는다
   이 게이트가 필요한 이유는 실측이다 — doctor 배선은 모든 항목에 `os.Getwd()` **원값**을 넘기고 프로젝트 루트로 거슬러 올라가지 않는다(`internal/cli/doctor.go:180`, 이 트리 이 실행에서 확인). 따라서 루트 해석은 판정 지점 자신의 몫이다

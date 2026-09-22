@@ -218,11 +218,12 @@ Applies to: AC-CSI-001, AC-CSI-002 (remove the failed-section record AND break t
 ### C.2 — a scratch worktree driven by `go -C` for behavioural or multi-file mutations
 
 ```bash
-WT=$(mktemp -d)/wt
-git worktree add --detach "$WT" HEAD
-# mutate freely inside $WT — it is not the shared checkout
-go -C "$WT" test -run 'TestConfigManager_SaveRefusesFailedSection' -count=1 -v ./internal/config/
-git worktree remove --force "$WT"
+# <WT> = the scratch path: run `mktemp -d` and record its output, then use "<WT>/wt".
+# (Each line is a separate invocation — the worktree guard refuses the bundled form.)
+git worktree add --detach "<WT>/wt" HEAD
+# mutate freely inside <WT>/wt — it is not the shared checkout
+go -C "<WT>/wt" test -run 'TestConfigManager_SaveRefusesFailedSection' -count=1 -v ./internal/config/
+git worktree remove --force "<WT>/wt"
 ```
 
 Applies to: AC-CSI-005, AC-CSI-006 (the `Save` refusal interacts with both the loader's failed-section record and the manager's persistence loop — a multi-file mutation); AC-CSI-009 (remove the dedupe + header-parse together and confirm the idempotence guard fails on the new case the pre-existing test does not exercise).

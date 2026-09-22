@@ -563,6 +563,14 @@ func registerMoaiMCPTools(s *server.MCPServer, projectDir string) {
 		projectRootOption(),
 		mcp.WithReadOnlyHintAnnotation(true),
 	), handleGraphShortestPath)
+
+	// --- jev_ask → jev.Client.Ask (internal/jev) — the gated judgment wrapper.
+	// A thin caller over the ONE call path (no transport code here), inert
+	// behind workflow.jev.enabled (shipped default false): gate off → no client
+	// constructed, no network call, a gated-unavailable result. Registration is
+	// unconditional so the tool is countable and its gate-off contract is
+	// invocable; the per-tool mcp.yaml enablement map still applies above.
+	registerJevAskTool(add)
 }
 
 // readMCPToolEnablement reads the per-tool enablement map from

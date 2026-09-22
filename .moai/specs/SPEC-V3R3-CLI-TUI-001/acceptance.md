@@ -19,7 +19,7 @@
 ### 검증 명령
 
 ```bash
-cd "$(git rev-parse --show-toplevel)"
+test -f go.mod || { echo "NOT AT REPO ROOT — cd there and re-run"; exit 1; }
 ls internal/tui/{theme,box,pill,status,form,table,prompt,term,help}.go
 go test ./internal/tui/... -run "TestLightTokens|TestDarkTokens" -v
 ```
@@ -263,7 +263,7 @@ ls internal/tui/testdata/mixed-*.golden | wc -l  # >= 18 (light) + 18 (dark) = 3
 ### 검증 명령
 
 ```bash
-cd "$(git rev-parse --show-toplevel)"
+test -f go.mod || { echo "NOT AT REPO ROOT — cd there and re-run"; exit 1; }
 
 # 1) 신규 require 0건 검증
 git diff origin/main..HEAD -- go.mod | \
@@ -341,7 +341,7 @@ go test ./internal/tui/... -run "TestI18n_FallbackToEn" -v -count=1
 ### 검증 명령
 
 ```bash
-cd "$(git rev-parse --show-toplevel)"
+test -f go.mod || { echo "NOT AT REPO ROOT — cd there and re-run"; exit 1; }
 
 # 1) 전체 테스트 + race
 go test ./... -count=1 -race -timeout 5m
@@ -378,7 +378,7 @@ go test ./internal/cli/... -count=1 -run "TestInit|TestDoctor|TestStatus|TestVer
 ### 검증 명령
 
 ```bash
-cd "$(git rev-parse --show-toplevel)"
+test -f go.mod || { echo "NOT AT REPO ROOT — cd there and re-run"; exit 1; }
 
 # 1) 텍스트 박스 문자 sweep (production 코드만, _test.go 제외)
 grep -RnE '╭|─|╮|│|└|┘|━|┃|┏|┓|┗|┛|┌|┐|├|┤|┬|┴|┼' \
@@ -426,7 +426,7 @@ grep -RnE 'lipgloss\.(RoundedBorder|NormalBorder|ThickBorder|DoubleBorder|Hidden
 ### 검증 명령
 
 ```bash
-cd "$(git rev-parse --show-toplevel)"
+test -f go.mod || { echo "NOT AT REPO ROOT — cd there and re-run"; exit 1; }
 go test -run TestThemeResolve ./internal/tui/... -v -count=1
 ```
 
@@ -451,7 +451,7 @@ go test -run TestThemeResolve ./internal/tui/... -v -count=1
 ### 검증 명령
 
 ```bash
-cd "$(git rev-parse --show-toplevel)"
+test -f go.mod || { echo "NOT AT REPO ROOT — cd there and re-run"; exit 1; }
 
 # 마젠타·오렌지·핑크 계열 금지 hex 10종 sweep
 grep -RniE '#(FF00FF|E91E63|FF9800|FF5722|FF1493|FF6347|EE82EE|DA70D6|C71585|9932CC)' \
@@ -487,7 +487,7 @@ grep -RniE 'gradient.*(magenta|orange|pink)' \
 ### 검증 명령
 
 ```bash
-cd "$(git rev-parse --show-toplevel)"
+test -f go.mod || { echo "NOT AT REPO ROOT — cd there and re-run"; exit 1; }
 
 # 1) hex 직접 sweep (대소문자 변형 포함)
 grep -RnE '#(FFFFFF|FFFFff|ffffff|Ffffff|FfffFf|000000)' \
@@ -522,7 +522,7 @@ grep -RnE '#fbfaf6|#0a110f' internal/tui/theme.go | wc -l  # >= 2 (라이트 bg 
 ### 검증 명령
 
 ```bash
-cd "$(git rev-parse --show-toplevel)"
+test -f go.mod || { echo "NOT AT REPO ROOT — cd there and re-run"; exit 1; }
 
 # 1) 환경변수 설정 후 Spinner/Progress 정적 출력 검증
 MOAI_REDUCED_MOTION=1 go test -run "TestSpinnerStatic|TestProgressStatic" ./internal/tui/... -v -count=1
@@ -559,7 +559,7 @@ diff internal/tui/testdata/spinner-reduced.golden internal/tui/testdata/spinner-
 ### 검증 명령
 
 ```bash
-cd "$(git rev-parse --show-toplevel)"
+test -f go.mod || { echo "NOT AT REPO ROOT — cd there and re-run"; exit 1; }
 
 # 1) 글로벌 hex sweep — production Go 코드 (테스트/스냅샷 제외)
 grep -RnE '#[0-9a-fA-F]{6}' \
@@ -605,7 +605,7 @@ grep -RnE '#[0-9a-fA-F]{3}\b' \
 ### 검증 명령
 
 ```bash
-cd "$(git rev-parse --show-toplevel)"
+test -f go.mod || { echo "NOT AT REPO ROOT — cd there and re-run"; exit 1; }
 
 # 1) Python codepoint sweep — production code 전역
 python3 - <<'PY'

@@ -9,13 +9,15 @@ import (
 // moai MCP server's tool surface. Update it ONLY together with a matching
 // registration change in registerMoaiMCPTools — the registration/catalog
 // equality guard (internal/cli TestMoaiMCPServer_RegistrationMatchesCatalog)
-// catches drift in either direction.
-const wantCatalogSize = 30
+// catches drift in either direction. The jev_ask addition rides
+// SPEC-JEV-GOAL-DIST-001 M8a: registration is unconditional, the capability
+// itself stays gated (workflow.jev.enabled ships false).
+const wantCatalogSize = 31
 
-// TestMoaiMCPTools_Count30 asserts the catalog declares exactly
+// TestMoaiMCPTools_CatalogSize asserts the catalog declares exactly
 // wantCatalogSize tools, matching the registration count in
 // registerMoaiMCPTools.
-func TestMoaiMCPTools_Count30(t *testing.T) {
+func TestMoaiMCPTools_CatalogSize(t *testing.T) {
 	tools := MoaiMCPTools()
 	if len(tools) != wantCatalogSize {
 		t.Fatalf("catalog declares %d tools, want %d", len(tools), wantCatalogSize)

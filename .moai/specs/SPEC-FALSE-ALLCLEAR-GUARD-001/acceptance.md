@@ -408,10 +408,9 @@ Covers REQ-FAG-028, 029. **Fully replaced** — both of the previous revision's 
 
 ```bash
 # (a) per-locale change proof — 4/4 must be non-zero  (Shape 5)
-for f in docs-site/content/*/cli-reference/ast-grep.md; do
-  printf "%s -> %s\n" "$(basename $(dirname $(dirname $f)))" "$(git diff --stat 6763aff3b -- "$f" | wc -l | tr -d ' ')"
-done
-# expect: en, ja, ko, zh all > 0
+# One plain stat over the glob shows each locale's changed-line count (no per-file loop needed).
+git diff --stat 6763aff3b -- 'docs-site/content/*/cli-reference/ast-grep.md'
+# expect: a non-empty stat block for each of en, ja, ko, zh (4 files, all > 0)
 
 # (b) locale-neutral content anchor — 4/4 must carry the install target
 grep -l 'guide/quick-start' docs-site/content/*/cli-reference/ast-grep.md | wc -l    # expect: 4
