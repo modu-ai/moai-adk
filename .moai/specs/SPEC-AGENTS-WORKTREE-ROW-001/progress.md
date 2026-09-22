@@ -112,6 +112,15 @@ _<pending run-phase>_
 
 _<pending sync-phase>_
 
+## §F Phase 4 Mode Selection
+
+Decision: serial
+
+- Inputs: tier M · scope 2 contract files (AGENTS.md + AGENTS.md.tmpl) + SPEC artifact updates · domains 1 (documents only, zero code) · file language 100% markdown · concurrency benefit LOW (ordered M1→M2→M3 chain; M3's regeneration depends on M2's edits — no inter-file parallelism) · agent-team prereqs not requested
+- Mode evaluation: direct — not selected (two contract files + guard execution + make build exceed a trivial single-line change); fanout — not selected (single domain, nothing parallelizable); sweep — not selected (~2 files, semantic doc edits, not mechanical bulk); agent-team — not selected (no explicit operator request)
+- Justification: a single manager-develop (dev-swguard) spawn per milestone is the whole envelope; the coding-task-parallelism caveat and the single-domain scope both point at serial as the simpler sufficient mode
+- Kickoff status: Implementation Kickoff Approval granted by the operator 2026-09-22 ("전부 승인"), relayed via the lead with the four run constraints to be carried verbatim in the dev-swguard dispatch
+
 ---
 
 🗿 MoAI
