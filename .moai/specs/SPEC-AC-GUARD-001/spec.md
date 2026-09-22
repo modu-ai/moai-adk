@@ -2,7 +2,7 @@
 id: SPEC-AC-GUARD-001
 title: "AC authoring convention and corpus disposition for worktree-guard-refused acceptance criteria"
 version: "0.1.1"
-status: draft
+status: in-progress
 created: 2026-09-22
 updated: 2026-09-22
 author: manager-spec

@@ -15,7 +15,15 @@
 
 ## §E.2 Run-phase Evidence
 
-_<pending run-phase>_
+### M1 — Verified full-corpus block-level census (2026-09-22, census base `873a19710c`)
+
+- Disposition table: `.moai/reports/t1067/census-20260922.md` (working copy; §D.1-final home = this path per acceptance §D.1's "or `.moai/reports/t1067/`" clause).
+- Headline: corpus 795 files; sweep union population **111** files (A 60 / B 26 / C 25 / D 55); dispositions **rewrite 55 · leave-verified 50 · leave-parse 6 · unprobeable 0**.
+- Fresh guard samples: ≥2 per family recorded (families A/B plus NEW families C-H the census surfaced: nested-git-`$()`-as-argument, git-piped-into-loop, loop-over-git-substitution, subshell-with-git, test-with-embedded-git-`$()`, assignment-`&&`-expansion, non-git-command-with-git-`$()`-argument, env-prefixed-git-`$()`).
+- Measured passing shapes extend the calibration set: counter-terminated `$()` assignments (`wc -l`, `grep -c`, `awk`, `wc||echo`), echo-embedded `$()` (any terminator), comments/patterns naming git.
+- Census tooling refusals: 3 recorded, each re-expressed as plain single invocations (report §3) — never bypassed.
+- Proxy retired: AC-002 note records the numeric coincidence (verified census 55 vs retired proxy 55) with both predicates named (report §2).
+- Closure: `comm` checks — sweeps ⊆ union (0 outside), refused ∩ union = 55, union − refused = 56 (report §5).
 
 ## §E.3 Run-phase Audit-Ready Signal
 
