@@ -2,7 +2,7 @@
 id: SPEC-MEMORY-INDEX-FOLD-001
 title: "MEMORY.md 인덱스 유실 3건 수복 + 접기 판정 기록 — 세션 기억 색인 무결성 (카드 t1065)"
 version: "1.0.0"
-status: in-progress
+status: completed
 created: 2026-09-22
 updated: 2026-09-22
 author: GOOS행님

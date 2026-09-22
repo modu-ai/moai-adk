@@ -200,20 +200,19 @@ m1_to_mN_commit_strategy: 마일스톤별 커밋 — M1 d83e07033 · M2 bff24dc6
 
 메모리 저장소 doctor 결과 요약: 로드 스토어 = CLAUDE_CONFIG_DIR primary checkout (SPEC 대상 일치, index lines 129); 워크트리 접미 스토어 2개 not present. Phase 1 Plan Audit Gate: SKIPPED (3 조건 충족 — §E.2 헤더 참조).
 
-_<pending run-phase>_
-
 ## §E.4 Sync-phase Audit-Ready Signal
 
 ```
-sync_complete_at: pending-stage2-close   # STAGE 1 draft — 확정 값은 close 커밋(STAGE 2) 시점에 기입
+sync_complete_at: 2026-09-22T22:53:57+09:00   # STAGE 2 close 커밋 시점 확정 (sync-audit PASS-WITH-DEBT 0.94 수신 후)
 sync_commit_sha: pending-backfill-sync   # D3 placeholder — 커밋은 자기 해시를 참조할 수 없으므로 STAGE 3 backfill 커밋이 실제 SHA를 기입
-sync_status: stage-1-draft               # CHANGELOG 판정 + §E.4 초안 완료; frontmatter 전이는 close 커밋(STAGE 2)에서 수행
+sync_status: completed                   # sync-audit PASS-WITH-DEBT 0.94 (차단 결함 0) — close 커밋에서 확정
 ```
 
 ### Sync 범위 요약 (docs-only close)
 
 - 본 SPEC의 저장소 트리 델타 = `.moai/specs/SPEC-MEMORY-INDEX-FOLD-001/**` 유일 — 저장소 코드·README·docs-site 등 사용자 대면 표면 변경 0.
 - 산출물 표면 2곳: (a) **외부 기억 저장소**(레포 외부 — 2차 색인 2파일 verbatim 추가 블록, MEMORY.md는 sha256 항등 무편집), (b) **SPEC 아티팩트 + 로컬 증거**(`.moai/reports/t1065/` — `.gitignore:235` 로컬 아티팩트, 커밋 대상 아님).
+- **증거 경로 베이스 (sync-audit D1 흡수)**: 판정서·plan의 `evidence/t1065_diff.txt`·`evidence/t1065_before.md` 는 `.moai/specs/SPEC-MEMORY-INDEX-FOLD-001/` 기준(M1 커밋 트래킹), `evidence/run/…` 인용은 `.moai/reports/t1065/` 기준으로 해석한다.
 
 ### Run-phase 판정 요약
 
