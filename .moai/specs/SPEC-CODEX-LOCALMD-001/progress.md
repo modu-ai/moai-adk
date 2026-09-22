@@ -175,7 +175,84 @@ go: writing stat cache: open /Users/goos/go/pkg/mod/cache/download/github.com/mo
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-- independent_audit: 코드 findings 0건; AC-LMD-001~011 PASS; AC-LMD-012 HARD GAP 때문에 overall FAIL/un-PASS
-- audit_report: `.moai/reports/t1078/sync-audit.md`
-- parent_remeasurement: scoped 일반 `2.261s`, race `3.705s`, 모두 exit 0; `git diff --check` 출력 없음
-- integration: NOT_RUN
+### Claim
+
+- 구현 커밋 `6af5dc233`의 사용자 문서가 현재 계약과 맞도록 동기화됐다. `CLAUDE.local.md`는 Claude 워크플로와 공유하는 공통 로컬 입력, `AGENTS.local.md`는 Codex 전용 입력으로 설명하며, 두 비어 있지 않은 본문을 이 순서와 출처 헤더로 하나의 `developer_instructions` 값에 합성하는 계약을 기록한다.
+- bare/`cli`/`app`/`--spawn`/`-w`/`-f` lead·agents의 공통 funnel, `-w`의 원래 프로젝트 루트 입력, no-follow·same-descriptor 판독, operator config 충돌 거부, direct/spawn 크기 초과의 사전 실패, 공유 `AGENTS.md`·`CLAUDE.md`의 import/link 부재를 루트 계약과 4개 로케일 문서에 반영했다.
+- 독립 감사의 최종 관측은 코드 findings 0건, evidence gaps 0건, AC-LMD-001~012 PASS, Overall Verdict PASS다. production LIVE는 exit 0이었고 output·rollout 양쪽에서 두 nonce/source 쌍을 확인했으며 입력 hash가 전후 동일했다. current-key shared snapshot의 `fresh:false`는 검증 생략을 허용하지 않는 비차단 cache miss로 분류됐고, 감사자가 scoped regression을 직접 재실행해 대체 근거를 확보했다. 이 기록은 로컬 sync 판정을 주장하지만 push·PR·원격 통합은 주장하지 않는다.
+
+### Evidence
+
+독립 감사 보고서 `.moai/reports/t1078/sync-audit.md`의 iteration 2가 다음을 기록했다.
+
+```text
+Overall Verdict: PASS
+Score: 100/100
+코드 findings: 0
+evidence gaps: 0
+AC-LMD-001~012: PASS
+production LIVE: exit 0; output/rollout nonce+source pairs observed; inputs unchanged
+shared snapshot: fresh=false (non-blocking cache miss; scoped regression re-executed)
+```
+
+문서 표면의 좁은 회귀 테스트:
+
+```sh
+unset CLAUDECODE CODEX_THREAD_ID ANTHROPIC_BASE_URL ANTHROPIC_API_KEY ANTHROPIC_AUTH_TOKEN Z_AI_API_KEY && MOAI_HOME=/tmp/t1078-docs-verify-home GOCACHE=/tmp/t1078-docs-verify-cache go test ./internal/cli -run '^TestVersionStamp(RegistryShape|SweepByContent|Registry)$' -count=1
+```
+
+```text
+ok  	github.com/modu-ai/moai-adk/internal/cli	1.473s
+```
+
+루트 `AGENTS.md`의 Codex 계약 byte ceiling:
+
+```sh
+unset CLAUDECODE CODEX_THREAD_ID ANTHROPIC_BASE_URL ANTHROPIC_API_KEY ANTHROPIC_AUTH_TOKEN Z_AI_API_KEY && MOAI_HOME=/tmp/t1078-docs-verify-home GOCACHE=/tmp/t1078-docs-verify-cache go test ./internal/config -run '^TestCodexContractByteCeiling$' -count=1
+```
+
+```text
+ok  	github.com/modu-ai/moai-adk/internal/config	0.306s
+```
+
+4개 로케일 문서 빌드:
+
+```sh
+hugo --source /Users/goos/MoAI/moai-adk-go/.claude/worktrees/t1078/docs-site --destination /tmp/t1078-docs-build --gc --minify
+```
+
+```text
+hugo v0.160.1+extended+withdeploy darwin/arm64
+Pages: KO 188 / EN 186 / JA 186 / ZH 186
+Total in 7161 ms
+```
+
+계약·구조 검증의 관측 출력:
+
+```text
+stale_current_claims=0
+locale_contract_rows=4
+en heading_levels=##,##,##,##,##,###,###,##, link_digest=7689b989763d1dbacf75c3e10d8d629a5f4d027d1a7c25f6a82ab6a4fb6241c7
+ko heading_levels=##,##,##,##,##,###,###,##, link_digest=7689b989763d1dbacf75c3e10d8d629a5f4d027d1a7c25f6a82ab6a4fb6241c7
+ja heading_levels=##,##,##,##,##,###,###,##, link_digest=7689b989763d1dbacf75c3e10d8d629a5f4d027d1a7c25f6a82ab6a4fb6241c7
+zh heading_levels=##,##,##,##,##,###,###,##, link_digest=7689b989763d1dbacf75c3e10d8d629a5f4d027d1a7c25f6a82ab6a4fb6241c7
+diff_check_exit=0
+```
+
+### Baseline-attribution
+
+- 실행 tree: `/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t1078`, branch `WT-codex-local-md`, HEAD `6af5dc233`.
+- 이 docs pass 시작 시 `git status --short`의 유일한 출력은 다른 작업자가 소유한 `M .moai/reports/t1078/sync-audit.md`였다. 그 파일은 판독만 했고 수정·되돌림·stage하지 않았다.
+- 이 pass의 소유 변경은 `CHANGELOG.md`, 루트 `AGENTS.md` §8, `docs-site/content/{en,ko,ja,zh}/advanced/codex-dual-harness.md`, 이 `progress.md` §E.4뿐이다. README, 구현 코드, canonical spec/plan/acceptance 본문은 수정하지 않았다.
+
+### Gaps
+
+- current-key shared snapshot은 `fresh:false`다. 이는 재사용 가능한 검증 cache가 없다는 뜻이며, 독립 감사가 scoped regression을 직접 재실행했으므로 blocking gap은 아니다. snapshot 재사용 자체는 SPEC의 AC나 Definition of Done 요구가 아니다.
+- 이 docs pass에서는 LIVE, scoped implementation tests, race, lint, Windows cross-build를 재실행하지 않았다. 위 구현·LIVE 판정은 현재 독립 감사의 실제 관측을 인용한 것이고, docs pass 자체의 새 측정은 버전 표면 테스트·계약 byte ceiling·Hugo 빌드·문구/구조 parity·diff-check뿐이다.
+- sync commit, push, integration, PR은 수행하지 않았다.
+
+### Residual-risk
+
+- 한 번의 production LIVE 성공은 이후 Codex 버전이나 operator config 변화까지 보장하지 않는다.
+- Windows 실제 runtime/reparse-point 권한 동작은 여전히 실행 증거가 없고 cross-build 근거만 있다.
+- `CHANGELOG.md`의 과거 `6c647bbe2` 항목은 당시 기록으로 보존했으며, 새 SPEC 항목이 그 항목의 `CLAUDE.local.md` Claude-only 문언을 명시적으로 정정한다.
