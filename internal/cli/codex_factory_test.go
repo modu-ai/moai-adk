@@ -1,11 +1,29 @@
 package cli
 
 import (
+	"os"
 	"strings"
 	"testing"
 
+	"github.com/modu-ai/moai-adk/internal/config"
 	"github.com/modu-ai/moai-adk/internal/kanban"
+	"github.com/spf13/cobra"
 )
+
+func TestApplyCodexFactoryEntryExportsBackendAndRestores(t *testing.T) {
+	t.Setenv(config.EnvMoaiKanbanBackend, "outer")
+	restore, err := applyCodexFactoryEntry(&cobra.Command{}, false, "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := os.Getenv(config.EnvMoaiKanbanBackend); got != codexFactoryBackend {
+		t.Fatalf("factory backend = %q, want %q", got, codexFactoryBackend)
+	}
+	restore()
+	if got := os.Getenv(config.EnvMoaiKanbanBackend); got != "outer" {
+		t.Fatalf("restored factory backend = %q, want outer", got)
+	}
+}
 
 // codex_factory_test.go — `moai codex -f` surface coverage (card t865):
 // the factory token is intercepted before the verb lookup, resolved into

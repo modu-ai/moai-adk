@@ -27,6 +27,7 @@ package cli
 // anyway.
 
 import (
+	"context"
 	"fmt"
 	"io"
 	"os"
@@ -34,6 +35,8 @@ import (
 	"strings"
 
 	"github.com/modu-ai/moai-adk/internal/config"
+	"github.com/modu-ai/moai-adk/internal/factorymsg"
+	"github.com/modu-ai/moai-adk/internal/homestate"
 	"github.com/modu-ai/moai-adk/internal/kanban"
 )
 
@@ -82,6 +85,7 @@ type factoryFlagParse struct {
 	Workers      int      // always 0 post-N-removal; kept for the merge contract
 	WorkerNumber int      // n of `-f lane-<n>`; 0 unless the lane form
 	AgentRole    bool     // `-f agent`: join a running factory as an agent lane
+	RunID        string   // explicit --factory-run selector (MoAI-owned, pre--- only)
 	Rest         []string // args with -f and its consumed value removed
 }
 
@@ -100,6 +104,21 @@ func parseFactoryFlag(args []string) (p factoryFlagParse, err error) {
 		if arg == "--" {
 			p.Rest = append(p.Rest, args[i:]...)
 			break
+		}
+
+		if arg == "--factory-run" || strings.HasPrefix(arg, "--factory-run=") {
+			if strings.HasPrefix(arg, "--factory-run=") {
+				p.RunID = strings.TrimPrefix(arg, "--factory-run=")
+			} else if i+1 < len(args) && args[i+1] != "--" {
+				i++
+				p.RunID = args[i]
+			} else {
+				return p, fmt.Errorf("--factory-run requires a run id")
+			}
+			if strings.TrimSpace(p.RunID) == "" {
+				return p, fmt.Errorf("--factory-run requires a run id")
+			}
+			continue
 		}
 
 		var value string
@@ -172,6 +191,7 @@ func parseLauncherEntry(args []string) (kanbanEntryParse, error) {
 	}
 
 	entry.FactoryEnabled = true
+	entry.FactoryRun = fp.RunID
 	// The stripped args always become the launch args — for every -f shape,
 	// not only the lane form below. (The lane and agent forms append their
 	// desugared --name on top of these.)
@@ -197,6 +217,57 @@ func parseLauncherEntry(args []string) (kanbanEntryParse, error) {
 		entry.FactoryWorkers = config.DefaultFactoryLeadWorkers
 	}
 	return entry, nil
+}
+
+func enterSelectedFactoryRun(root, explicit string, requireActive bool) (func(), error) {
+	if explicit == "" && !requireActive {
+		return func() {}, nil
+	}
+	runID, err := factorymsg.ResolveActiveRun(context.Background(), root, explicit)
+	if err != nil {
+		return func() {}, err
+	}
+	restore := captureEnvState(config.EnvMoaiKanbanID)
+	_ = os.Setenv(config.EnvMoaiKanbanID, runID)
+	return restore, nil
+}
+
+func recordFactoryRunStart(root, runID, backend, specID string) error {
+	if err := kanban.RecordFactoryRunStart(root, runID, backend, specID); err != nil {
+		return err
+	}
+	db, err := homestate.OpenFactory(root)
+	if err != nil {
+		return err
+	}
+	defer db.Close()
+	return db.RecordRun(context.Background(), homestate.FactoryRun{
+		RunID: runID, Backend: backend, ManifestJSON: "{}",
+	})
+}
+
+func stripFactoryRunFlag(head []string) ([]string, string, error) {
+	rest := make([]string, 0, len(head))
+	runID := ""
+	for i := 0; i < len(head); i++ {
+		a := head[i]
+		switch {
+		case a == "--factory-run":
+			if i+1 >= len(head) {
+				return nil, "", fmt.Errorf("--factory-run requires a run id")
+			}
+			i++
+			runID = head[i]
+		case strings.HasPrefix(a, "--factory-run="):
+			runID = strings.TrimPrefix(a, "--factory-run=")
+		default:
+			rest = append(rest, a)
+		}
+	}
+	if strings.TrimSpace(runID) == "" && len(rest) != len(head) {
+		return nil, "", fmt.Errorf("--factory-run requires a run id")
+	}
+	return rest, runID, nil
 }
 
 // factoryBranch enumerates the dispatch outcomes, mirroring kanbanBranch.
