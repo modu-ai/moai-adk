@@ -635,6 +635,32 @@ jobs:
           unzip -q chrome-linux64.zip -d "$RUNNER_TEMP/cft"
           echo "MOAI_BROWSER_GUARD_CHROME=$RUNNER_TEMP/cft/chrome-linux64/chrome" >> "$GITHUB_ENV"
 
+      # card t1087: Ubuntu 24.04 runners enforce AppArmor's
+      # apparmor_restrict_unprivileged_userns — binaries without a profile are
+      # denied user-namespace creation, and Chrome's sandbox needs userns. The
+      # image's system Chrome launches because its package ships a profile; the
+      # sha256-pinned CfT binary ships none and died in <0.5s before writing
+      # DevToolsActivePort on the job's first runs (verdict:
+      # .moai/reports/t1087/verdict.md — CI evidence runs 35761021136 /
+      # 35735866560). This profile allows ONLY the pinned CfT path to create
+      # user namespaces; the sandbox itself stays ON (the green-phase driver
+      # deliberately launches without --no-sandbox, so --no-sandbox is not a
+      # fix here — the red-phase script already launches with it).
+      - name: Install AppArmor profile for pinned Chrome (unprofiled CfT dies under 24.04 userns restriction)
+        shell: bash
+        run: |
+          CHROME="$RUNNER_TEMP/cft/chrome-linux64/chrome"
+          [ -x "$CHROME" ] || { echo "pinned chrome not found at $CHROME" >&2; exit 1; }
+          sudo tee /etc/apparmor.d/moai-cft-chrome > /dev/null <<EOF
+          abi <abi/4.0>,
+          include <tunables/global>
+
+          profile moai-cft-chrome "$CHROME" flags=(unconfined) {
+            userns,
+          }
+          EOF
+          sudo apparmor_parser -r /etc/apparmor.d/moai-cft-chrome
+
       - name: Lint the probe manifest (AC-AFG-009)
         shell: bash
         run: python3 internal/web/testdata/appjs_fire_probe.py --lint-manifest
