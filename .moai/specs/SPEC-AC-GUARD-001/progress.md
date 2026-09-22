@@ -18,12 +18,12 @@
 ### M1 — Verified full-corpus block-level census (2026-09-22, census base `873a19710c`)
 
 - Disposition table: `.moai/reports/t1067/census-20260922.md` (working copy; §D.1-final home = this path per acceptance §D.1's "or `.moai/reports/t1067/`" clause).
-- Headline: corpus 795 files; sweep union population **111** files (A 60 / B 26 / C 25 / D 55); dispositions **rewrite 52 · leave-verified 53 · leave-parse 6 · unprobeable 0** (two initial rewrite dispositions — INTEGRATION-LOCK-TARGET-SOURCE, UPDATE-CI-GUARD — were reversed to leave-verified on verbatim re-probe; the census report §4.1 records the correction).
+- Headline: corpus 795 files; sweep union population **111** files (A 60 / B 26 / C 25 / D 55); dispositions **rewrite 55 · leave-verified 49 · leave-parse 7 · unprobeable 0** (census-replica over-mutations reversed three files to leave-verified on verbatim re-probe — INTEGRATION-LOCK-TARGET-SOURCE, UPDATE-CI-GUARD, UPDATE-REINSTALL-LOOP-002 — and the sync-delta completed three M3-missed rewrites — MATRIX-GROUP-COMMENT, STEERING-ALIGN-CLAUDEMD-DIET, STEERING-ALIGN-OUTPUT-STYLE-SLIM; census §4.1 records the corrections).
 - Fresh guard samples: ≥2 per family recorded (families A/B plus NEW families C-H the census surfaced: nested-git-`$()`-as-argument, git-piped-into-loop, loop-over-git-substitution, subshell-with-git, test-with-embedded-git-`$()`, assignment-`&&`-expansion, non-git-command-with-git-`$()`-argument, env-prefixed-git-`$()`).
 - Measured passing shapes extend the calibration set: counter-terminated `$()` assignments (`wc -l`, `grep -c`, `awk`, `wc||echo`), echo-embedded `$()` (any terminator), comments/patterns naming git.
 - Census tooling refusals: 3 recorded, each re-expressed as plain single invocations (report §3) — never bypassed.
 - Proxy retired: AC-002 note records the numeric coincidence (verified census 55 vs retired proxy 55) with both predicates named (report §2).
-- Closure: `comm` checks — sweeps ⊆ union (0 outside), refused ∩ union = 55, union − refused = 56 (report §5).
+- Closure: `comm` checks — sweeps ⊆ union (0 outside), final partition after sync-delta: **rewrite 55 · leave-verified 49 · leave-parse 7** (report §5).
 
 ### M3 — Corpus disposition: verified-refusing blocks rewritten (2026-09-22)
 
@@ -33,6 +33,13 @@
 - AC-006: no verification relocated into a script file; where a loop needed per-item git calls, the loop was reduced to a documented per-item plain-command procedure (e.g. SPEC-ASTGREP-EDIT-001, SPEC-DOCSITE-E2E-001, SPEC-V3R6-RULES-PATH-SCOPE-001, SPEC-PHASE-FIELD-VALIDATION-001).
 - Two census dispositions corrected on verbatim re-probe (INTEGRATION-LOCK-TARGET-SOURCE, UPDATE-CI-GUARD: actual compositions are guard-executable; replica over-mutation disclosed in census §4.1).
 - New boundary observations recorded during M3: non-git `$()` in printf args passes; computed command NAME (`"$REPO/bin/moai"`) refuses even git-free; git command with `$(cat …)` argument refuses; `if ! git … | grep -q` passes; plain-grep-terminated `$()` assignment + later expansion passes; literal-path git chains (no `$()`/loops) pass even as long `&&` bundles.
+
+### Sync-delta (2026-09-22, sync-audit PASS-WITH-DEBT 90.9 F1-F4)
+
+- F1 (blocking) closed: three M3-missed rewrites completed (MATRIX-GROUP-COMMENT-001, STEERING-ALIGN-CLAUDEMD-DIET-001, STEERING-ALIGN-OUTPUT-STYLE-SLIM-001 — process-substitution blocks restated as HEAD-diff / redirect-capture plain commands; re-executed without refusal). WORKTREE-REAPER-001 appended to census §4.3 (leave-parse, probe exit 0). UPDATE-REINSTALL-LOOP-001 confirmed OUT of the sweep union — no disposition owed (census §4.3 note).
+- Census dispositions corrected on verbatim re-probe: UPDATE-REINSTALL-LOOP-002 → leave-verified (its `B=<pre-fix-commit>` is a hand-filled placeholder, not a `$()`; the earlier rewrite row used my own over-mutated probe composition). §4.1/§4.2/§4.3 headings now match their actual row counts (55 / 49 / 7).
+- F2/F3 closed: stale heading and §E.2 closure figures corrected to the final 55/49/7 partition.
+- F4 ACCEPTED-PARTIAL: AC-003(a) mnemonic sub-clause is C1-only (template-neutrality-forbidden in C2); recorded in census report §6.
 
 ## AC matrix (final, 2026-09-22)
 
