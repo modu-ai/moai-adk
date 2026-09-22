@@ -41,11 +41,49 @@ D11 (one-clause REQ reflow) also applied as trivial one-liners.
 
 ## §E.2 Run-phase Evidence
 
-_<pending run-phase>_
+Measured 2026-09-23 in worktree `.claude/worktrees/t1086`, branch `WT-mirror-drift`,
+base HEAD `afe3b083c` (develop `783b74455` merged in after the plan-phase `d323f68fd`
+baseline). Verbatim logs under `.moai/reports/t1086/run/` (gitignored, local evidence).
+
+Pre-flight RED re-measured on `afe3b083c` (the base moved since `d323f68fd`):
+`go test ./internal/template/ -run 'TestRuleTemplateMirrorDrift' -count=1 -v` → exit 1,
+`--- FAIL: TestRuleTemplateMirrorDrift/worktree-integration.md`, other 8 PASS
+(`red-preflight.txt`); `diff local template` showed the same 2 hunks as research.md §2
+(`pre-repair-diff.txt`).
+
+Repair commit: `6ac1cc07c`.
+
+| AC | Command | Actual Output | Status |
+|----|---------|---------------|--------|
+| AC-MD-001 | `go test ./internal/template/ -run 'TestRuleTemplateMirrorDrift\|TestTemplateNoInternalContentLeak' -count=1 -v` | `--- PASS: TestRuleTemplateMirrorDrift/worktree-integration.md`, 9/9 subtests PASS, `ok github.com/modu-ai/moai-adk/internal/template 0.735s`, exit=0 | PASS |
+| AC-MD-002 (staged) | `git diff --cached --name-only` | `.claude/rules/local/wt-ac-restatement-record.md` / `.claude/rules/moai/workflow/worktree-integration.md` | PASS |
+| AC-MD-002 (commit) | `git show --name-only --format= 6ac1cc07c` | same 2 paths; no `internal/template/templates/` path, no `rule_template_mirror_test.go` | PASS |
+| AC-MD-003 | `cmp .claude/rules/moai/workflow/worktree-integration.md internal/template/templates/.claude/rules/moai/workflow/worktree-integration.md` | no output, exit 0 (pre- and post-commit) | PASS |
+| AC-MD-004 | `git ls-files .claude/rules/local/wt-ac-restatement-record.md` + grep of the four elements and `paths:` | path printed (tracked); `git check-ignore` printed nothing (exit 1); grep hits: line 3 `paths: "**/.claude/rules/moai/workflow/worktree-integration.md"`, line 32 `SPEC-AUDIT-EXPORT-CLAUSE-001/acceptance.md:622-680`, line 34 census path, line 36 `Disposition: HISTORICAL, not live evidence`, line 21 `card **t1067**`, `2026-09-22` on lines 21/26/27/35/46 | PASS |
+| AC-MD-005 | same `go test` invocation as AC-MD-001 | `--- PASS: TestTemplateNoInternalContentLeak (0.57s)`, exit=0 | PASS |
+| AC-MD-006 | `make build` | last line `go build … -o bin/moai ./cmd/moai`, exit=0; working tree unchanged afterwards (`git status --short` showed only the 2 in-scope files) | PASS |
+
+MX tag finding: None (documentation-only change, no Go source touched).
 
 ## §E.3 Run-phase Audit-Ready Signal
 
-_<pending run-phase>_
+```yaml
+run_complete_at: 2026-09-23
+run_commit_sha: 6ac1cc07c
+run_status: complete
+ac_pass_count: 6
+ac_fail_count: 0
+preserve_list_post_run_count: 2   # template copy + mirror test untouched
+l44_pre_commit_fetch: not-run (lane does not push; lead batches develop push)
+l44_post_push_fetch: not-applicable (no push)
+new_warnings_or_lints_introduced: 0 (no Go source changed)
+cross_platform_build:
+  darwin: make build exit 0
+  linux: not-measured (CI owns)
+  windows: not-measured (CI owns)
+total_run_phase_files: 2 (repair) + 2 (spec.md status, progress.md evidence)
+m1_to_mN_commit_strategy: single repair commit (M1) + separate progress/status docs commit
+```
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
