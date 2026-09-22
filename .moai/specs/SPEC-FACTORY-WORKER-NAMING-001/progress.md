@@ -36,6 +36,51 @@ Both gate observations re-measured fresh from this session against the develop r
 
 **Conclusion**: M2 gate remains **CLOSED** (factorymsg absent from develop AND SPEC-FACTORY-MIXED-HOOK-001 SPEC absent from develop). M2-M4 **halt per REQ-003**. Resume condition: t1074 (SPEC-FACTORY-MIXED-HOOK-001) lands in the local `develop` ref — observable as `git ls-tree develop --name-only internal/factorymsg/` returning non-empty AND `git show develop:.moai/specs/SPEC-FACTORY-MIXED-HOOK-001/spec.md` succeeding with frontmatter `status` ∈ {implemented, completed}.
 
+### M2 — gate OPEN + old-token inventory (2026-09-23, branch WT-worker-rename, HEAD 861510fb6)
+
+Kickoff: operator Implementation Kickoff Approval relayed by the lead 2026-09-23. All commands below ran in this session against this tree; outputs verbatim.
+
+**Step 1 — gate (REQ-002 / AC-002)**
+
+```
+$ git rev-parse --short HEAD                                   → 861510fb6
+$ git rev-parse --short develop                                → 5d2d2b780   (first read; later reads: 08113ff0f — develop is moving under concurrent lane merges)
+$ git rev-list --count --left-right develop...HEAD             → 3	0         (first read; later 18	0)
+$ git ls-tree develop --name-only internal/factorymsg/ | wc -l → 4
+$ git ls-tree develop --name-only internal/factorymsg/
+internal/factorymsg/launch_pending_rollback_test.go
+internal/factorymsg/roster_test.go
+internal/factorymsg/store.go
+internal/factorymsg/store_test.go
+$ git show develop:.moai/specs/SPEC-FACTORY-MIXED-HOOK-001/spec.md | grep '^status:' → status: completed
+```
+
+Gate **OPEN** (factorymsg present on develop AND SPEC-FACTORY-MIXED-HOOK-001 `completed`). The t1074 merge `861510fb6` is HEAD itself. develop drift since kickoff (`861510fb6..08113ff0f`, 18 commits: t1086/t1087/t1090/t1091) touches `internal/web/*_test.go`, `internal/mission/governance_receipt_jev_test.go`, `internal/harness/rosterguard/registry.go`, `.claude/rules/moai/workflow/worktree-integration.md`, `.claude/rules/local/*`, and other SPEC/report dirs — `git diff --name-only HEAD develop` shares **zero** paths with this SPEC's edit set. Absorption is deferred to the integration window (lane protocol), not done here.
+
+**Step 2 — inventory (REQ-007 input)**. Raw grep outputs: `.moai/reports/t1085/run-verdict.md` § M2 inventory. Per surface class:
+
+| # | Surface class | Files (count of `lane-` / agent-shape¹ lines) | Disposition input |
+|---|---|---|---|
+| 1 | Factory CLI production (help, usage error, parse, desugar) | cc.go 10/4 · glm.go 9/0 · factory.go 18/11 · codex_factory.go 2/5 · kanban.go 5/0 | user-facing → rename to worker; old forms parse as aliases |
+| 2 | Label vocabulary (kanban) | bootstrap.go 8/7 · factory_slots.go 2/0 · record.go 2/0 · role.go 1/0 | label producer → `worker-<n>`; parser accepts legacy `lane-<n>`/`agent-<n>` |
+| 3 | Hook factory surfaces + i18n | session_start_factory.go 4/0 · session_start_factory_i18n.go 8/8 (4 locales × 2 fields) · session_start_kanban_i18n.go 4/0 (`nameChoices`, 4 locales) · session_start_record.go / factory_messages.go 0/0 (consume the label via the kanban parsers) | 4-locale lockstep rename of notation |
+| 4 | **factorymsg (persisted, per-run broker.db)** | store.go 0/2 — `if p.Slot == "agent"` allocates `fmt.Sprintf("agent-%d", n)` (store.go:320-322); `peers.slot` is an opaque TEXT key; production callers (hook `registerFactoryHookPeer`, cli `registerFactoryLaunchPending`) pass the already-claimed env label (`MOAI_FACTORY_WORKER`), never the bare sentinel — only tests (store_test.go:459, factory_mixed_test.go:116) reach it | **schema unchanged**; rename changes only newly-written values. Compat: allocator treats an existing `agent-<n>`/`lane-<n>`/`worker-<n>` row as taking number n; old rows stay readable (opaque strings) |
+| 5 | **factory.db `workers.label` (persisted, project-scoped)** | factory_slots.go `ClaimFactoryWorkerName` / `FactoryFreeSlots`; rows hold `lane-<n>` / `agent-<n>` from pre-rename launchers, reaped by pid liveness | schema unchanged; compat: a live legacy-labelled row blocks its number for the canonical `worker-<n>` claim |
+| 6 | **kanban session record (persisted JSON)** | `Record.Role` value `"lane"` (`kanban.RoleLane`, role.go:42) + `Record.Lane` int, read by web | **KEEP** — internal persisted role key, not user notation; renaming would change on-disk record format |
+| 7 | web console | factory_lanes.go 2 (`SplitFactoryLaneLabel` ×2) | consumes the kanban parser; widening it to worker+legacy keeps legacy rows visible |
+| 8 | Tests (six named) | factory_test.go 86 lane-/2 · codex_factory_test.go 2/2 · goal_mission_test.go 13 (`lane-10` owner label) · gtd_compat_test.go 1 (`--lane lane-10`) · goal_blocked_question_regression_test.go 1 + doctor_jev_test.go 1 (prose "lane-question routing") | rename notation; prose compounds kept |
+| 9 | Tests (other factory) | session_start_factory_test.go 27 · session_start_record_test.go 7 · factory_slots_test.go 15 · factory_label_test.go 4 · web factory_lanes_test.go 12 · factory_lane_section_test.go 9 · factorymsg/*_test + hook/cli factorymsg tests (`agent-1`, `agent-2` slot fixtures) | update where they assert produced labels; legacy-input cases retained as alias coverage |
+| 10 | Rule-doc twins | local kanban-dispatch.md 2 (L211 "lane-local" adj., L266 notation) · detail 3 (L32/L182 notation, L176 "lane-local" adj.); template mirrors identical (sha `ea596b32d163` / `6607f4238a55` pairwise) | rename notation lines; keep "lane-local" (prose adjective, per-line) |
+| 11 | Out of this SPEC's write scope (public/user docs, agents) | docs-site 4 locales × (factory-mode 8 + launchers 2 + kanban-mode 2) = 48 · README ×4 = 12 · CHANGELOG 2 · manager-lead.md ×2 + `.codex` toml 1 — all advertise `-f lane-<n>` / `-f agent` | sync-phase / separate card; **published docs teach the old forms → strong keep-alias evidence** |
+| 12 | Unrelated homographs | integration-lock / slot-lease tests using `lane-2` as an arbitrary holder name (kanban 26+9+7+6+5+3+2, cli 6+6+5+7+4…), `agent-memory`, `--agent-name`, `agent-model` | not factory labels — untouched |
+| 13 | Operator-side scripts outside the repo | not measurable from this tree | informs keep-alias; out of write reach |
+
+¹ agent-shape = lines matching `-f agent` · `agent-<` · `agent-%d` · `agent lane` · `factoryAgentRole` · `Slot == "agent"`.
+
+`-f agent` repo-wide: 45 lines (8 i18n, 6 factory.go, 3 cc.go, 2 codex_factory.go, 1 bootstrap.go, tests 7, SPEC dirs 18). Doc/README/CHANGELOG/agent sweep (`-f lane` · `--name lane` · `lane-<` · `-f agent`): 65 lines across 20 files.
+
+Persisted-format verdict (constraint 2): **no blocker** — neither SQLite schema nor the record JSON shape changes; only newly-written label values change, and every reader of those values gains a legacy-accepting parse (compat read path + tests in M3).
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 - run_status: audit-ready (M1 scope)
