@@ -44,9 +44,10 @@ RED-now cell (measured 2026-09-22, `cd99336bf`): `0`. Green path: M2(a).
 **When** the guard runs: `grep -c '^| \`moai codex\`' internal/template/templates/AGENTS.md.tmpl`
 **Then** it prints exactly `1`; the row's text names both the launch verb (`cli`) and the
 readout verb (`status`), and carries `never creates` (the resolve-only limit); and the nine
-pre-existing verb rows remain present at their plan-phase counts (`moai init` = 1 and the
-table's row count unchanged at 9) — presence counts, carrying plan.md §G's no-rewording
-constraint the same way as AC-AWR-001.
+pre-existing verb rows remain present, one row per named verb (`moai init` = 1), with the
+post-edit table total expected at 10 (nine pre-existing rows plus the new `moai codex` row) —
+per-row presence counts, carrying plan.md §G's no-rewording constraint the same way as
+AC-AWR-001.
 
 RED-now cell (measured 2026-09-22, `cd99336bf`): `0`. Green path: M2(b).
 
