@@ -17,6 +17,9 @@ const (
 	pageBasic          = "Basic"
 	pageModelReport    = "Model & Report"
 	pageAgentsAutonomy = "Agents & Autonomy"
+	// SPEC-JEV-OPTIN-MEASURE-001 REQ-JEVO-005: the Jev opt-in carries its own
+	// page label so its privacy statement is not pushed out of the viewport.
+	pageJudgment = "Judgment Capability"
 )
 
 // questionIDsInGroup returns the IDs of the questions carrying the given Group
@@ -78,6 +81,7 @@ func TestInitPages_Membership(t *testing.T) {
 		{pageBasic, []string{"conversation_language", "user_name"}},
 		{pageModelReport, nil},
 		{pageAgentsAutonomy, []string{"agent_wiring", "autonomy_tier"}},
+		{pageJudgment, []string{"jev_enabled"}},
 	}
 	for _, tc := range cases {
 		got := questionIDsInGroup(questions, tc.page)

@@ -43,8 +43,9 @@
 │    warn    Telemetry Config       .moai/config/sections/telemetry.yaml not found — telemetry uses defaults                                           │
 │    warn    Glamour Cache          glamour not integrated                                                                                             │
 │    ok      Codex Wiring           not wired (claude-only project) — skipped                                                                          │
-│    5 ok, 9 warn, 0 fail                                                                                                                              │
+│    ok      Jev                    disabled (workflow.jev.enabled: false) — no request constructed, no network call                                   │
+│    6 ok, 9 warn, 0 fail                                                                                                                              │
 │                                                                                                                                                      │
-│  [Pass 20]  [Warn 12]  [Fail 0]                                                                                                                      │
+│  [Pass 21]  [Warn 12]  [Fail 0]                                                                                                                      │
 │                                                                                                                                                      │
 ╰──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯

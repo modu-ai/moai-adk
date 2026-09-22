@@ -200,6 +200,9 @@ var namesAddedAfterBaseline = map[string]bool{
 	`"Hook Delivery"`:         true,
 	"flagSlotCheckName":       true,
 	`"Git Strategy Workflow"`: true,
+	// jevCheckName — SPEC-JEV-CORE-001 (card t1020), the Jev readiness
+	// diagnostic. Registered through a constant, so it is listed bare.
+	"jevCheckName": true,
 }
 
 // TestBinaryLag_AllowlistKeysAreLiveNames asserts that every key of
