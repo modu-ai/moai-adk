@@ -203,25 +203,43 @@ func jevImporters(t *testing.T, dir string) []string {
 	return hits
 }
 
-// The capability ships with ZERO consumers, and the guard states that as an
-// exact set rather than as an absence: the doctor check is the one file allowed
-// to import the client, and it doubles as the positive control proving the
-// scanner fires.
+// The consumer set is stated as an EXACT set rather than as an absence: every
+// file allowed to import the client is named, and the doctor check doubles as
+// the positive control proving the scanner fires.
+//
+// SPEC-JEV-CORE-001 shipped this set with exactly one member, because that SPEC
+// ships the capability with zero consumers and says so in its own scope
+// (`spec.md` §D: "near-duplicate marking, lane-question routing, and skill
+// suggestion belong to SPEC-JEV-CONSUMERS-001"). Extending the set is therefore
+// the declared way a consumer arrives, not a weakening of the guard — what the
+// guard forbids is an UNDECLARED importer.
+//
+// `todo_jev_finding.go` is the first declared consumer (SPEC-JEV-CONSUMERS-001
+// M4, REQ-JEVN-001: Consumer C, near-duplicate card marking). Its own file
+// comment carries the scope it operates under, and the decision-surface guard
+// below still binds it.
 func TestJevCallPath_HasExactlyTheDeclaredConsumers(t *testing.T) {
-	const allowed = "doctor_jev.go"
+	const control = "doctor_jev.go"
+	allowed := map[string]string{
+		control:                 "SPEC-JEV-CORE-001 — the doctor check",
+		"todo_jev_finding.go":   "SPEC-JEV-CONSUMERS-001 M4 — Consumer C, near-duplicate marking",
+		"jev_skill_suggest.go":  "SPEC-JEV-CONSUMERS-001 M6 — Consumer B, skill suggestion (gate-unrun)",
+	}
 
 	hits := jevImporters(t, ".")
 	var unexpected []string
-	sawAllowed := false
+	sawControl := false
 	for _, h := range hits {
-		if h == allowed {
-			sawAllowed = true
+		if h == control {
+			sawControl = true
+		}
+		if _, ok := allowed[h]; ok {
 			continue
 		}
 		unexpected = append(unexpected, h)
 	}
-	if !sawAllowed {
-		t.Fatalf("positive control failed: %s does not import internal/jev, so the zero-result below is unattributable", allowed)
+	if !sawControl {
+		t.Fatalf("positive control failed: %s does not import internal/jev, so the zero-result below is unattributable", control)
 	}
 	if len(unexpected) > 0 {
 		t.Errorf("internal/cli files outside the declared consumer set import internal/jev: %v — a completion verdict, a merge approval, a queue mutation, an operator gate, or a slot-wait adjudication MUST NOT reach the call path, not even as an input (REQ-JEVC-012)", unexpected)
@@ -230,13 +248,52 @@ func TestJevCallPath_HasExactlyTheDeclaredConsumers(t *testing.T) {
 
 // The queue-mutation, verdict, and integration-window surfaces are named
 // explicitly, so the guard still binds if the allow-list above is ever widened.
+//
+// The scan measures TWO things, and the second was added by
+// SPEC-JEV-CONSUMERS-001 M4 because the first alone had become evadable: these
+// surfaces live in the SAME PACKAGE as the consumer, so a surface can reach the
+// call path through a plain function call while importing nothing. An
+// import-only guard would have gone green on exactly that arrangement and read
+// as "unreachable" while the reference was one identifier away. The symbol scan
+// closes it.
+//
+// ONE exception is declared, named, and cited — SPEC-JEV-CONSUMERS-001
+// REQ-JEVN-001 requires Consumer C to record its finding at card ADMISSION,
+// which is `appendAnalyzedCard` in todo_analysis.go. Nothing else on any named
+// surface may reference the consumer, and no surface may import the client.
+//
+// The exception is a recorded tension, not a resolved one: REQ-JEVC-011 and
+// REQ-JEVC-012 of SPEC-JEV-CORE-001 forbid consulting Jev for a `moai todo`
+// mutation and forbid a Jev answer mutating the backlog queue, and
+// SPEC-JEV-CONSUMERS-001 authorises precisely a finding append during
+// `todo add` without reconciling that wording. Consumer C is gated off by
+// default and its shipping gate (REQ-JEVO-009) has not been run, so nothing
+// currently reaches the call path in a shipped build; the wording
+// reconciliation belongs to the SPEC layer.
 func TestJevCallPath_UnreachableFromDecisionSurfaces(t *testing.T) {
 	surfaces := []string{
 		"gtd.go", "todo_analysis.go", "todo_autodone.go",
 		"integration.go", "integration_settings_drift.go",
 	}
+	// Same-package identifiers through which a surface could reach the client
+	// without importing it.
+	consumerSymbols := []string{
+		"jevNearDuplicateProbe",
+		"liveJevNearDuplicateProbe",
+		"appendJevNearDuplicateFinding",
+		"jevFindingSignalFragment",
+	}
+	// file -> symbol -> the SPEC clause authorising the reference.
+	authorised := map[string]map[string]string{
+		"todo_analysis.go": {
+			"appendJevNearDuplicateFinding": "SPEC-JEV-CONSUMERS-001 REQ-JEVN-001 (admission-path record)",
+			"jevFindingSignalFragment":      "SPEC-JEV-CONSUMERS-001 REQ-JEVN-005 (render form)",
+		},
+	}
+
 	fset := token.NewFileSet()
 	checked := 0
+	sawAuthorised := false
 	for _, name := range surfaces {
 		if _, err := os.Stat(name); err != nil {
 			continue // the file was renamed; the package-wide guard above still binds
@@ -251,8 +308,27 @@ func TestJevCallPath_UnreachableFromDecisionSurfaces(t *testing.T) {
 				t.Errorf("%s imports internal/jev — a queue mutation, verdict, or integration-window surface MUST NOT reach the call path (REQ-JEVC-012)", name)
 			}
 		}
+		body, err := os.ReadFile(name) // #nosec G304 -- fixed in-repository source path
+		if err != nil {
+			t.Fatalf("read %s: %v", name, err)
+		}
+		for _, sym := range consumerSymbols {
+			if !strings.Contains(string(body), sym) {
+				continue
+			}
+			if _, ok := authorised[name][sym]; ok {
+				sawAuthorised = true
+				continue
+			}
+			t.Errorf("%s references %s — a decision surface reaches the Jev consumer through a "+
+				"same-package call, which an import-only scan would have missed (REQ-JEVC-012)", name, sym)
+		}
 	}
 	if checked == 0 {
 		t.Fatal("none of the named decision surfaces was found — the scan establishes nothing; update the list")
+	}
+	if !sawAuthorised {
+		t.Fatal("positive control failed: no authorised consumer reference was found on any named surface, " +
+			"so the symbol scan above matched nothing and its silence asserts nothing")
 	}
 }

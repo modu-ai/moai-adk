@@ -118,6 +118,18 @@ const (
 	BacklogSourceMechanical = "mechanical"
 	// BacklogSourceAgent marks a finding written through `todo relate`.
 	BacklogSourceAgent = "agent"
+	// BacklogSourceJev marks a finding a TypeSafe System One answer produced
+	// (SPEC-JEV-CONSUMERS-001, REQ-JEVN-002).
+	//
+	// It is a THIRD constant rather than a reuse of either existing one
+	// because the two partition the finding space by WHO OBSERVED the
+	// relation, and a model answer is neither. Under `mechanical` a model
+	// probability would render as a `score` indistinguishable from a measured
+	// similarity; under `agent` it would clear the `machine-only` mark from
+	// pairs nobody reviewed, making the queue assert a review that never
+	// happened (REQ-JEVN-003). The second direction is the dangerous one,
+	// because a wrongly-cleared mark is invisible by construction.
+	BacklogSourceJev = "jev"
 )
 
 // BacklogSemanticRelations lists the four relations `todo relate` accepts.
@@ -409,6 +421,37 @@ func (r *BacklogRecord) RemoveFindingsNaming(id string) int {
 func (r *BacklogRecord) HasAgentFindingForPair(f BacklogFinding) bool {
 	for _, existing := range r.Findings {
 		if existing.Source == BacklogSourceAgent && existing.SamePairAs(f) {
+			return true
+		}
+	}
+	return false
+}
+
+// HasFindingForPairAnySource reports whether ANY finding — of any source —
+// names the same unordered pair as f with the same relation
+// (SPEC-JEV-CONSUMERS-001, REQ-JEVN-006 half (a)).
+//
+// It exists because neither existing path can express the settled precedence
+// rule, and the reason is the same property that makes the rule's other half
+// free. HasFindingTuple's key is {subject, related, relation, SOURCE} —
+// ordered AND source-inclusive — so a Jev finding never matches a mechanical
+// or agent one and AppendFindingOnce would never suppress it; and
+// AppendFindingOnce never calls SamePairAs, so the unordered comparison is
+// not on the append path at all.
+//
+// The asymmetry this predicate enforces is deliberate: a model signal must
+// never suppress a measurement or a judgement (that half is
+// AppendFindingOnce's unchanged default), and must never be silently
+// suppressed by one either — an un-suppressed append is indistinguishable
+// from a correct one at every surface a reader looks at, so the suppression
+// has to be expressed rather than inherited.
+//
+// Source is deliberately outside the key. Relation is deliberately inside it:
+// a `contains` recorded about a pair does not answer a `near-duplicate`
+// question about the same pair.
+func (r *BacklogRecord) HasFindingForPairAnySource(f BacklogFinding) bool {
+	for _, existing := range r.Findings {
+		if existing.Relation == f.Relation && existing.SamePairAs(f) {
 			return true
 		}
 	}

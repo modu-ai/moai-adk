@@ -270,13 +270,89 @@ func substituteHeredocBodies(command string) string {
 	return strings.Join(out, "\n")
 }
 
+// shellCommentStart returns the byte offset of the `#` that opens a shell
+// comment on the line, or -1 when the line opens none. POSIX: `#` begins a
+// comment only at the start of a word — at line start, or immediately
+// preceded by whitespace or one of the command separators `;`, `&`, `|`, `(`.
+// A `#` inside a word is a literal hash (`git switch feat#123`,
+// `v=bar/#x`); admitting any of those characters to the word-start set would
+// blind the guard on exactly the operands branch names carry. `)` and `}` are
+// deliberately NOT admitted either — the shell does open a comment after
+// them, so omitting them over-matches (the guard scans text the shell
+// discards) instead of blinding, the safe direction for this set
+// (SPEC-GUARD-COMMENT-SCAN-001 REQ-GCS-002; residuals in that spec's §F).
+func shellCommentStart(line string) int {
+	for i := 0; i < len(line); i++ {
+		if line[i] != '#' {
+			continue
+		}
+		if i == 0 {
+			return i
+		}
+		switch line[i-1] {
+		case ' ', '\t', ';', '&', '|', '(':
+			return i
+		}
+	}
+	return -1
+}
+
+// substituteShellComments elides shell comments from the command before the
+// pattern scan, so a branch-state pattern matches the command being RUN
+// rather than prose carried in a comment.
+//
+// A comment is text the shell strips before execution — it can never be the
+// command being run. Without this step the pattern scan read that prose as if
+// it were the command: `# align with git merge --ff-only develop` matched
+// `git merge` (measured 2026-09-21, SPEC-GUARD-COMMENT-SCAN-001), the same
+// "data is not a command" defect class the quoted-argument and heredoc
+// collapses already close.
+//
+// The elision is bounded to the physical line the comment opens on and no
+// further (a real command on the next line is fully scannable), starts at the
+// FIRST word-start `#` on the line (a second `#` later in the same run does
+// not restart it), and leaves the text preceding that `#` intact — a
+// branch-state command carrying a trailing comment still matches. The comment
+// run is elided rather than replaced by the operand placeholder: a quoted
+// span IS an operand the shell passes to the command, but a comment is
+// removed by the shell, so modelling it as an operand would misstate the
+// shell — `git checkout -b # x` must present no operand after `-b`.
+//
+// Ordering is load-bearing: this step runs LAST — outermost, on the already
+// quote- and heredoc-collapsed string — so a `#` inside a quoted argument or
+// a heredoc body is already part of the placeholder and opens no comment
+// (`echo "text # more" ; git switch main` keeps matching).
+//
+// Residuals (accepted, SPEC-GUARD-COMMENT-SCAN-001 spec.md §F): a manufactured
+// word-start `#` after a quoted span (`foo"bar"#baz` arrives here as
+// `foo X #baz`) elides the rest of the line — blinding; the sound fix belongs
+// to substituteQuotedArguments, a different step outside that SPEC's scope. A
+// backslash-newline continuation leaves the next physical line's `#` mid-word
+// to the shell when no whitespace precedes the backslash, but line-start here.
+// `)` and `}` are not in the word-start set, so a `#` after them is scanned
+// though the shell discards it (over-match, the safe side).
+func substituteShellComments(command string) string {
+	if !strings.Contains(command, "#") {
+		return command
+	}
+	lines := strings.Split(command, "\n")
+	for i, line := range lines {
+		if idx := shellCommentStart(line); idx >= 0 {
+			lines[i] = line[:idx]
+		}
+	}
+	return strings.Join(lines, "\n")
+}
+
 // matchBranchStateCommand returns the deny-reason suffix of the first
 // branch-state pattern matching command, and a bool indicating whether any
-// pattern matched. Quoted arguments collapse to a placeholder first
-// (substituteQuotedArguments) so a match reflects the command being invoked,
-// not its data. Used by checkBranchState (M2) and by M1 pattern-set tests.
+// pattern matched. Heredoc bodies and quoted arguments collapse to a
+// placeholder first (substituteHeredocBodies, substituteQuotedArguments) and
+// shell comments are elided last (substituteShellComments) so a match
+// reflects the command being invoked, not its data. Used by checkBranchState
+// (M2) and by M1 pattern-set tests.
 func matchBranchStateCommand(command string) (string, bool) {
-	scanned := substituteQuotedArguments(substituteHeredocBodies(command))
+	scanned := substituteShellComments(substituteQuotedArguments(substituteHeredocBodies(command)))
 	for _, p := range branchStatePatterns {
 		if p.match != nil {
 			if p.match(scanned) {

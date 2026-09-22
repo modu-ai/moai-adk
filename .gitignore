@@ -234,29 +234,19 @@ secret-*.*
 # plan-audit scaffold ships, mirroring the template's reports philosophy.
 .moai/reports/*
 
-# Narrow exception (card t1039): a verdict file is the one artifact class the
-# doctrine obliges an actor to export before citing it, so it has to be tracked
-# for that obligation to be true. Everything else under a card directory —
-# report.md, evidence.md, pr-body.md, logs, binaries — stays local-only, which
-# is what the blanket above exists to guarantee.
+# The verdict-file exception that used to sit here is WITHDRAWN (card t1059).
+# It re-included .moai/reports/<card-id>/verdict.md, which put verdict files on
+# a path to the remote — the end-state the directive above forbids in as many
+# words. It was written before that conflict was noticed, not against it.
 #
-# Three-stage idiom, the same skeleton the per-fixture exceptions below use:
-# reopen the card directories, re-exclude their contents, re-include verdict.md.
+# Do not re-add it. A verdict is exported so a later reader can re-check it on
+# this disk; reaching the remote was never what "exported" meant here.
 #
-# Depth is deliberately ONE level. `*` does not cross `/`, so this reaches
-# .moai/reports/<card-id>/verdict.md and NOT .moai/reports/<card-id>/<sub>/verdict.md.
-# The live shape it therefore misses is .moai/reports/lead/<batch>/verdict.md —
-# a lead batch verdict. That is a known, accepted exclusion, not an oversight:
-# opening a second level would also re-include the .moai/reports/t264/rescued/
-# archive, which is 18 of the 19 depth-2+ verdicts and would break "verdicts only".
-#
-# Order is load-bearing. This block must stay ABOVE the plan-audit carve-out
-# that follows: those lines re-exclude .moai/reports/plan-audit/* (keeping that
-# FORBIDDEN verdict destination ignored) and re-include its .gitkeep scaffold.
-# Moving this block below them re-opens plan-audit/verdict.md.
-!.moai/reports/*/
-.moai/reports/*/*
-!.moai/reports/*/verdict.md
+# Withdrawing a negation only stops files created afterwards. Git does not
+# untrack a file that is already tracked, so the entries already in the index
+# stayed there and had to be removed deliberately. Adding the rule back would
+# not re-track them either — the two acts are independent, and a withdrawal on
+# its own leaves whatever is already tracked exactly where it was.
 
 !.moai/reports/plan-audit/
 .moai/reports/plan-audit/*

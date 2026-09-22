@@ -77,6 +77,18 @@ func appendAnalyzedCard(rec *kanban.BacklogRecord, text string, state kanban.Bac
 	case kanban.BacklogMatchNone:
 	}
 
+	// Consumer C (SPEC-JEV-CONSUMERS-001, REQ-JEVN-001): the model's
+	// near-duplicate judgment is recorded HERE and only here. The `analyze`
+	// re-sweep below is a distinct entry point and deliberately does not call
+	// it — the re-sweep walks pairs that already carry findings, so a consumer
+	// there changes the finding population on a path the SPEC never measured.
+	//
+	// It runs AFTER the mechanical branches above so that a pair the analyser
+	// just recorded suppresses the arriving Jev finding (REQ-JEVN-006 half
+	// (a)) rather than the other way round. The return value is deliberately
+	// discarded: nothing may act on a model signal.
+	appendJevNearDuplicateFinding(rec, item)
+
 	pos := 0
 	for _, it := range rec.Items {
 		if it.State == kanban.BacklogStateQueued {
@@ -225,9 +237,24 @@ func todoFindingLine(rec *kanban.BacklogRecord, cardID string, f kanban.BacklogF
 	// taken. An agent judgement carries no score, and rendering it as
 	// "0.00" would read as a measured dissimilarity rather than as the
 	// absence of a measurement.
+	//
+	// A Jev finding is a THIRD thing (REQ-JEVN-005): a calibrated model
+	// confidence, which is neither a measured similarity nor the absence of a
+	// measurement. Both existing branches are wrong for it — inheriting the
+	// mechanical one would print the probability as `score N.NN` and read as a
+	// measurement, inheriting the agent one would drop the probability
+	// silently — so it renders with its own label. The label is the
+	// package constant rather than a literal, so the marker a reader learns to
+	// recognise here cannot drift from the one internal/jev emits elsewhere.
+	// The Jev fragment is built in todo_jev_finding.go so that the
+	// internal/jev dependency stays confined to the one file that owns the
+	// consumer.
 	score := ""
-	if f.Source == kanban.BacklogSourceMechanical {
+	switch f.Source {
+	case kanban.BacklogSourceMechanical:
 		score = fmt.Sprintf(", score %.2f", f.Score)
+	case kanban.BacklogSourceJev:
+		score = jevFindingSignalFragment(f)
 	}
 	note := ""
 	if f.Note != "" {

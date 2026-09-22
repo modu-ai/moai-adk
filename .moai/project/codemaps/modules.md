@@ -10,6 +10,8 @@
 **정정 재측정**: worktree `.claude/worktrees/t872`, 브랜치 `WT-codemaps-citations`, HEAD `9a8cc4277`, 2026-09-18 — cross-cutting 표에서 삭제된 패키지 행 하나를 빼고, § 프로덕션 코드 없이 테스트만 있는 자리를 다시 셌습니다. 다른 표의 파일 수는 같은 명령으로 재확인해 변동이 없었습니다.
 **정기 재측정**: worktree `.claude/worktrees/t999`, 브랜치 `WT-codemaps-remediation`, HEAD `56c64891a`, 2026-09-20 — 파일 수가 움직인 여섯 행(`internal/cli` 315→318, `internal/hook` 137→140, `internal/harness` 82→87, `internal/config` 56→57, `internal/spec` 36→41, `internal/statusline` 21→22)과 `internal/cli` 클러스터 표의 루트 파일 수(241→244), 그리고 신규 패키지 3개의 행 — `internal/auditreceipt`는 data/persistence 표에, `internal/harness/rosterguard` · `internal/harness/cellguard`는 § 네거티브 스페이스에 들어갔습니다. 변동이 없어 손대지 않은 행도 같은 명령으로 확인했습니다(`internal/kanban` 57 · `internal/navigator` 53 · `internal/web` 31 · `internal/session` 22 · `internal/homestate` 14 · `internal/mission` 15 · `internal/mcp` 1). 책임 칸의 서술형 판단은 이번에 건드린 행을 빼고 앞 판을 이어받았습니다.
 
+**부분 재측정**: worktree `.claude/worktrees/t1066`, 브랜치 `WT-jev-consumers`, run-phase HEAD `8c0e5dc9b`, 2026-09-22 — sync-phase 부분 갱신(card t1066). `internal/cli` 총 318→325, 루트 244→249. 루트 +5 중 이 카드 몫은 2개(`todo_jev_finding.go` — Consumer C 게이트 미실행 admission 훅, `jev_skill_suggest.go` — Consumer B 게이트 미실행 앵커)이고, 나머지 3개(`doctor_jev.go`·`init_jev_wizard.go` — t1020 CORE-001 sync, `integration_codemaps_card.go` — t1018)는 흡수된 develop 커밋으로 들어와 각 카드의 sync가 codemap을 갱신하지 않아 누적된 몫이다. 하위 패키지 +2(`update/backup/file_snapshot.go`·`mcp_snapshot.go`)도 흡수 몫이다. `provenance.json`은 `codemaps-gen` 재생성 전용 스탬프라 손대지 않았다 — 다음 전체 재생성이 다시 찍는다.
+
 파일 수는 전부 `find <dir> -name '*.go' -not -name '*_test.go' | wc -l`로 센 **비테스트 파일**이며
 하위 패키지를 포함합니다.
 
@@ -21,7 +23,7 @@
 |---|---|---|---|
 | `cmd/moai` | 1 | 배포 바이너리 유일 진입점. `cli.Execute()` 호출 후 `cli.ResolveExitCode`로 종료 코드만 매핑 | — |
 | `cmd/t657-merge` | 1 | **배포되지 않는 일회성 큐 병합 도구**(카드 t657). 파일 머리 주석이 사용자 verb가 아님을 밝히고, `internal/kanban` 저장소 API를 재사용하며 실제 저장소를 명시적 절대 경로 플래그로만 받는다 | — |
-| `internal/cli` | 318 | 아래 클러스터 표 참조 | `update`(+`plan`/`deploy`/`merge`/`backup`/`report`), `harness`, `worktree`, `agentlint`, `preference`, `wizard`, `uikit`, `printer`, `specid`, `taskledger`, `pr`, `ptycaptest` |
+| `internal/cli` | 325 | 아래 클러스터 표 참조 | `update`(+`plan`/`deploy`/`merge`/`backup`/`report`), `harness`, `worktree`, `agentlint`, `preference`, `wizard`, `uikit`, `printer`, `specid`, `taskledger`, `pr`, `ptycaptest`, `jev` |
 | `internal/hook` | 140 | Claude Code 26종 훅 이벤트의 핸들러 레지스트리와 개별 핸들러. `registry.Dispatch`가 이벤트별 체인을 돌려 `HookOutput`을 만든다 | `quality`, `security`, `mx`(+`complexity`), `memo`(+`taxonomy`), `handoff`, `perf`, `trace`, `testutil` |
 | `internal/web` | 31 | 루프백 전용 브라우저 콘솔. `a-h/templ` 컴파일 뷰(`*_templ.go`) + htmx + SSE(fsnotify)로 프로파일·설정·todo 큐를 편집하고, **codex 탭 하나는 편집이 아니라 읽기 전용 미러**다(§ codex 미러 탭) | `assets` |
 | `internal/statusline` | 22 | Claude Code statusLine 렌더러. git·github·model·backlog·goal·usage 세그먼트 조립. 렌더가 읽고 쓰는 상태의 **앵커는 세션의 현재 디렉터리가 아니라** `internal/stateanchor` seam이 정한 프로젝트 루트이며, 그 어댑터가 `internal/statusline/state_anchor.go`다 | — |
@@ -30,15 +32,15 @@
 
 ### `internal/cli` 기능 클러스터
 
-루트 244개 비테스트 파일(`find internal/cli -maxdepth 1 -name '*.go' -not -name '*_test.go'`)을
+루트 249개 비테스트 파일(`find internal/cli -maxdepth 1 -name '*.go' -not -name '*_test.go'`)을
 파일명 접두어로 묶은 것입니다. 파일 수는 같은 명령에 `-name '<접두어>*.go'`를 붙여 셌습니다.
 
 | 클러스터 | 파일 | 담당 |
 |---|---|---|
 | `update*` | 24 | 템플릿 재배포 — 계획/분류/네임스페이스 보호, 3-way 머지, 백업·롤백, 클린 인스톨, dry-run. 단계 로직은 `cli/update/{plan,deploy,merge,backup,report}` 하위로 분해돼 있다. **재배포가 일어나지 않는 경로에도 복구 하나가 붙는다** — `internal/cli/update_mirror_heal.go`는 버전 일치 update가 Deploy 앞에서 조기 반환하는 자리 옆에서 `.agents/skills` 미러를 복구하며, 존재 게이트는 프로젝트의 기록된 배포 버전이다 |
-| `doctor*` | 17 | 진단 — config, disk, harness, hook wiring, mcp version, permission, sandbox, skills, worktree base, agentemit embed, codex, 그리고 이 판에서 더해진 git-strategy workflow 판정(`doctor_git_strategy_workflow.go` — 허용 4값 판정·상시 브랜치·통합 대상을 읽기 전용으로 보고) |
-| `mcp*` | 19 | 세 갈래. `mcp_server.go`(51KB)는 stdio JSON-RPC 서버, `mcp.go`/`mcp_codex.go`(94KB — CLI 최대 파일)/`mcp_glm.go`/`mcp_convergence.go`는 codex·GLM 위임과 다중 모델 감사 수렴, 그리고 새 `mcp_claude*.go` 5개(`_runner` · `_protocol` · `_process_unix` · `_process_windows` 포함)는 `claude` CLI를 서브프로세스로 띄우는 읽기 전용 `claude_audit` 도구다. 서브프로세스 환경에서 `CLAUDE_CODE_*`·`CLAUDECODE`를 지우고 출력 상한을 둔다. `audit_multi` 수렴도 `mcp_convergence.go`에서 같은 함수를 부른다 |
-| `todo*` | 13 | 백로그 큐 CLI. 파일 헤더가 스스로를 `kanban.BacklogStore`에 대한 얇은 cobra 배선이라고 밝힌다 |
+| `doctor*` | 18 | 진단 — config, disk, harness, hook wiring, mcp version, permission, sandbox, skills, worktree base, agentemit embed, codex, jev(게이트·credential·도달성을 읽기 전용으로 확인 — 판정 요청을 보내지 않는다), 그리고 이 판에서 더해진 git-strategy workflow 판정(`doctor_git_strategy_workflow.go` — 허용 4값 판정·상시 브랜치·통합 대상을 읽기 전용으로 보고) |
+| `mcp*` | 20 | 세 갈래. `mcp_server.go`(51KB)는 stdio JSON-RPC 서버, `mcp.go`/`mcp_codex.go`(94KB — CLI 최대 파일)/`mcp_glm.go`/`mcp_convergence.go`는 codex·GLM 위임과 다중 모델 감사 수렴, 그리고 새 `mcp_claude*.go` 5개(`_runner` · `_protocol` · `_process_unix` · `_process_windows` 포함)는 `claude` CLI를 서브프로세스로 띄우는 읽기 전용 `claude_audit` 도구다. 서브프로세스 환경에서 `CLAUDE_CODE_*`·`CLAUDECODE`를 지우고 출력 상한을 둔다. `audit_multi` 수렴도 `mcp_convergence.go`에서 같은 함수를 부른다 |
+| `todo*` | 15 | 백로그 큐 CLI. 파일 헤더가 스스로를 `kanban.BacklogStore`에 대한 얇은 cobra 배선이라고 밝힌다. 이 판에서 Jev near-duplicate admission 훅(`todo_jev_finding.go` — 카드 admission 경로에서만 불리는 게이트 미실행 Consumer C 훅)이 더했다 |
 | `gtd*` | 2 | **이 판에서 새로 생긴 클러스터.** `gtd.go`의 `NewGTDCommand()`는 `newTodoCmd()`를 감싸 `Use`만 `gtd`로 바꾸고 `capture`·`clarify`·`organize`·`reflect`·`engage`를 더한다 — 같은 SQLite 큐 위의 두 번째 이름이지 별도 저장소가 아니다. `gtd_answer.go`의 `answer`는 게이트에서 멈춘 카드에 대한 운영자 답을 파일로 남기며 큐 항목을 바꾸지 않는다 |
 | `codex*` | 12 | 외부 에이전트 백엔드 런처, 잡 제어, 준비 상태 점검, 리뷰 게이트, 그리고 `moai codex -f` 진입(`codex_factory.go` — 코덱스 verb 조회 전에 factory 플래그를 떼어낸다). **여기에 사용자 HOME 계층에 대한 스킬 노출 제어 두 개가 함께 산다** — `internal/cli/codex_skills_disable.go`는 `~/.codex/config.toml`에 `enabled = false`를 실은 `[[skills.config]]` 항목을 발행하고, `internal/cli/codex_skills_prune.go`는 가리키는 파일이 사라진 유령 등록을 제거한다(부재를 증명할 수 있는 것만 지우는 allowlist 형 판정, 기본 dry-run) |
 | `migrate*` | 11 | 프로파일·에이전시·스킬 복원과 HOME SQLite 상태의 점검·이전·복구·롤백 verb. `migrate_home_state.go`는 기본 dry-run이며 실제 쓰기는 `--apply --verified-live` 이중 승인과 두 번의 zero-active census를 요구한다 |
@@ -46,12 +48,13 @@
 | `spec*` | 8 | SPEC 문서 lifecycle CLI (view/close/audit/drift) |
 | `hook*` | 7 | 훅 디스패처 진입점(`hook.go`, 61KB)과 pre-commit/pre-push 설치 |
 | `harness*` | 7 | harness route/validate/ledger/mute/delegation/clusters |
-| `init*` | 7 | 프로젝트 초기화(`init.go`) — 템플릿 배포 + settings 생성 + MCP 프로비저닝 |
+| `init*` | 9 | 프로젝트 초기화(`init.go`) — 템플릿 배포 + settings 생성 + MCP 프로비저닝. 이 판에서 init wizard의 Jev 답을 `moai web` settings 화면과 같은 공유 persistence seam 으로 돌리는 bridge(`init_jev_wizard.go`)가 더했다 |
 | `glm*` | 5 | GLM 백엔드 런처·잡 제어 |
 | `navigator*` | 5 | BAS 파이프라인 CLI 단계 (enrich/sync/tiers/route/fix) |
 | `graph*` / `gate*` / `web*` / `mx*` | 4 각 | 신선도·인용 게이트, 품질 게이트, 콘솔 기동, MX 태그 스캔 |
 | `session*` | 4 | 세션 레지스트리 조회·메시징 CLI |
-| `integration*` | 2 | 병합 창(acquire/status/release)과 **그 선행 조건인 설정 드리프트 단정**. `integration_settings_drift.go`가 `acquire`의 precondition 이자 독립 verb `moai integration preflight`이며, 창을 잡지 않고도 같은 질문을 물을 수 있게 두 표면을 함께 둔다 |
+| `integration*` | 3 | 병합 창(acquire/status/release)과 **그 선행 조건인 설정 드리프트 단정**. `integration_settings_drift.go`가 `acquire`의 precondition 이자 독립 verb `moai integration preflight`이며, 창을 잡지 않고도 같은 질문을 물을 수 있게 두 표면을 함께 둔다. 이 판에서 codemaps 부채의 상시 발화원(`integration_codemaps_card.go` — `release` 시점에 부채 문턱을 넘으면 큐에 카드를 쌓는다, 발화만 하고 고르지는 않는다)이 더했다 |
+| `jev*` | 1 | **이 판에서 새로 생긴 클러스터.** 게이트 미실행(gate-unrun) Consumer B 앵커(`jev_skill_suggest.go` — `/moai` 인텐트 라우터가 부르는 기계 앵커와 Hidden CLI `moai jev-suggest`). 기본값에서 도달 불가이며 측정 게이트(`SPEC-JEV-OPTIN-MEASURE-001`)가 실행되기 전까지 소비자로 취급되지 않는다 |
 | `kanban*` / `goal*` | 2 각 | 보드 CLI, goal 조건 arm/status/clear |
 | `skills*` | 1 | `moai skills` 명령 트리(`internal/cli/skills.go`). 스킬 노출을 **계층별** 관심사로 두고 계층을 verb 가 아니라 플래그로 명명하며, `--codex`를 필수로 만들어 사용자 HOME 쓰기를 호출 시점 opt-in으로 고정한다 |
 | 나머지 | 69 | `launcher.go`(54KB, cc/glm 런처 — `cg`는 `root.go`의 `trivialCommands`에 은퇴 토큰으로만 남았다), `slot.go`(자원 슬롯 임대 `moai slot`), `deps.go`(합성 루트), `root.go`, `profile*` 등과 플랫폼 분기(`*_windows.go` / `*_unix.go`) |

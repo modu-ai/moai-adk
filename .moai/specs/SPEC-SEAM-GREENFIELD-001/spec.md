@@ -12,7 +12,7 @@ module: "internal/settings/yamlpatch"
 lifecycle: spec-anchored
 tier: S
 tags: "yamlpatch, atomic-write, greenfield, absent-file, seam, web-console, defect, red-first"
-related_specs: [SPEC-WEB-WRITE-SAFETY-001, SPEC-MCP-CONSOLE-001, SPEC-PRECOMMIT-GATE-SCOPE-001]
+related_specs: [SPEC-WEB-WRITE-SAFETY-001, SPEC-MCP-CONSOLE-001, SPEC-PRECOMMIT-GATE-SCOPE-001, SPEC-SEAM-GREENFIELD-002]
 ---
 
 ## HISTORY
@@ -20,6 +20,7 @@ related_specs: [SPEC-WEB-WRITE-SAFETY-001, SPEC-MCP-CONSOLE-001, SPEC-PRECOMMIT-
 | Version | Date | Author | Description |
 |---------|------|--------|-------------|
 | 0.1.0 | 2026-09-08 | GOOS | 최초 draft. 카드 t544 (Class B — 결함, 원인 특정 완료). 결함 체인 6곳 plan-phase 직접 확인(트리 `52f863f36`, 2026-09-08). 카드 전제 대비 정정 1건: 기존 서브테스트 `TestYAMLPatchAtomicWriteErrors/"stat missing target"`(`yamlpatch_test.go:383-389`)가 결함 동작을 기대값으로 인코딩 중 — 수리 시 기대를 뒤집어 재작성하는 것이 통제 유지가 아니라 통계의 일부다. 디스패치의 `TestPatchFileValueInvariantPreservesBytes` 인용은 유효했다 — 테스트는 settings 패키지 외부 테스트 `internal/settings/write_safety_test.go:29`에 실재한다(plan-phase 초안의 부재 판정은 grep 범위가 yamlpatch 패키지에 한정돼 settings 패키지 테스트를 놓친 오판정이었고, 후속 커밋에서 수리됐다). |
+| — (판 올리지 않음) | 2026-09-20 | GOOS | 범위 표기 추가(본문·상태 무변경). 본 SPEC이 가능하게 만든 greenfield **생성**의 **출력 스타일** — 씨앗 `{}\n`이 flow 스타일 한 줄 문서를 낳고 그 형상이 이후 저장에 고착되는 축 — 은 본 SPEC의 범위가 아니며(§5가 제외로 명명하지 않은, 검토되지 않은 귀결이다) `SPEC-SEAM-GREENFIELD-002`(카드 t1050)가 소유한다. 본 SPEC은 `completed`로 유지된다 — 선언된 범위는 실제로 닫혔다. **이 편집의 경계는 의도적으로 두 가지(본 HISTORY 행 + `related_specs` 항목)이며, 그 결과 두 가지 잔여가 남는다 — 둘 다 드리프트가 아니라 선택이다**: (1) `updated: 2026-09-08`을 **동결**한다 — 갱신하면 세 번째 변경이 되어 「정확히 두 가지」 경계가 깨지고, 닫힌 SPEC의 frontmatter를 범위 표기 때문에 움직이는 선례가 생긴다; (2) Version 칸의 `—`는 **판을 올리지 않는 주석 행**이라는 표기다(semver를 올리면 본문이 바뀐 것처럼 읽힌다). 본문·`status`·`progress.md`는 건드리지 않았다. |
 
 ---
 

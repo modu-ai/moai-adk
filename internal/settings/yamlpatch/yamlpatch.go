@@ -50,7 +50,9 @@ type KeyEdit struct {
 // M1(d) observed as the feedback.yaml blank-line loss.
 //
 // @MX:ANCHOR: [AUTO] PatchFile은 seam 섹션 yaml의 공유 부분-쓰기 진입점이다 —
-// 호출 파일 3개 5호출점(sectionwrite, initializer_expansion ×3, init_workflow_flags)이 같은 계약에 의존한다.
+// 프로덕션 호출점은 2파일 2호출점(sectionwrite.go, init_workflow_flags.go)이고,
+// 테스트 호출점 2파일 5호출점(write_safety_test.go ×4, init_workflow_flags_test.go ×1)이
+// 같은 계약에 의존한다. internal/core/project는 yamlpatch를 참조하지 않는다.
 // @MX:REASON: [AUTO] REQ-WWS-005 (SPEC-WEB-WRITE-SAFETY-001): 기존 스칼라 교체는
 // lineSplice(대상 라인만 재작성 — 빈 줄·주석·키 순서·unknown key 원문 바이트 보존)를
 // 먼저 시도하고, upsert·해소 불가 편집만 재직렬화 폴백으로 보낸다. 재직렬화는 빈 줄을
@@ -62,6 +64,7 @@ func PatchFile(path string, edits []KeyEdit) error {
 		return nil
 	}
 
+	greenfield := false
 	data, err := os.ReadFile(path)
 	if err != nil {
 		if !os.IsNotExist(err) {
@@ -71,6 +74,19 @@ func PatchFile(path string, edits []KeyEdit) error {
 		// section loaders treat an absent file as defaults (greenfield
 		// tolerance); the seam write mirrors that — the first edit creates
 		// the file rather than erroring.
+		//
+		// REQ-SGF2-001 (SPEC-SEAM-GREENFIELD-002): the seed carries a STYLE as
+		// well as a meaning. `{}` is a flow mapping and yaml.v3 preserves the
+		// root node's style on re-encode, so a file grown from this seed was
+		// serialized as a one-line flow document and inherited that shape on
+		// every later write. The seed literal cannot be changed to a
+		// block-shaped empty document — YAML spells an empty mapping only as
+		// `{}`, and "" / "\n" parse to a non-document node while "---\n"
+		// parses to a null root, each rejected by this function's own guards
+		// below. So the seed stays and the style is cleared instead; the flag
+		// records that this document came from the seed rather than from a
+		// user's file.
+		greenfield = true
 		data = []byte("{}\n")
 	}
 
@@ -92,6 +108,18 @@ func PatchFile(path string, edits []KeyEdit) error {
 	root := doc.Content[0]
 	if root.Kind != yaml.MappingNode {
 		return fmt.Errorf("yamlpatch: %s: top-level node is not a mapping", path)
+	}
+
+	// REQ-SGF2-001/002: clear the seed's flow style so a greenfield-created
+	// file is written as block YAML, and so the second write to it inherits
+	// block rather than flow. The clearing is scoped to the greenfield path on
+	// purpose: applying it unconditionally here would silently reformat an
+	// existing document a user deliberately wrote in flow style, which
+	// REQ-SGF2-004 forbids and TestPatchFileDeliberateFlowPreservedOnUpsert
+	// catches. Nodes created by applyEdit carry no style of their own, so
+	// clearing the root is sufficient for a document that started empty.
+	if greenfield {
+		root.Style = 0
 	}
 
 	for _, e := range edits {

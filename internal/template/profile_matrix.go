@@ -258,10 +258,13 @@ func ProfileMatrixAgents() []string {
 
 // defaultProfileMatrix is the per-AGENT model+effort Go-code SSOT: 13 mapped
 // agents x 3 profiles = 39 cells. Outer key: profile {high, medium, low}. Inner
-// key: retained agent NAME (not a group — the group layer is display-only now,
-// because per-agent cells split two of the former groups). Value: {model,
-// effort}. This is the authoritative fallback for any cell absent from config
-// llm.profiles (REQ-MPM-009).
+// key: retained agent NAME, not a group — per-agent cells split two of the
+// former groups, so the group layer carries no routing information for THIS
+// map. That is local to this map, not a property of the layer: one of its two
+// callers reads it as a validation gate (see ResolveAgentModelEffort). Value:
+// {model, effort}. This
+// is the authoritative fallback for any cell absent from config llm.profiles
+// (REQ-MPM-009).
 //
 // Cell derivation (each row is monotone: high >= medium >= low). The cells are
 // anchored on a published long-horizon coding-agent benchmark that measures
@@ -479,8 +482,22 @@ func AgentGroup(agent string) (string, bool) {
 // performance_tier alias → medium).
 //
 // Lookup is by agent NAME, not by group: per-agent cells split two of the former
-// groups, so the group layer no longer carries routing information and survives
-// only as a display classification (see AgentGroup).
+// groups, so the group layer no longer carries routing information HERE. It is
+// still read by two callers, and only one of them is display (see AgentGroup):
+//
+//   - internal/cli/model.go, resolveModelProfileReport — takes the group STRING
+//     (defaulting to "-") and renders it as a report column. Display.
+//   - internal/web/agentfm.go, parseAgentFMForm — discards the string and uses
+//     only the membership BOOL, to drop an agent-frontmatter override submitted
+//     for an agent absent from the matrix. A validation gate, NOT display.
+//
+// So removing the group layer is not a matter of relocating a column — the
+// second caller loses the test that drops such a submission before it is
+// written. It would not go entirely unguarded: config.validateAgentOverrides
+// (internal/config/profile.go) rejects the same names at validation time, so the
+// effect is a changed failure mode, not an unchecked write. That fallback holds
+// only while the two sets agree, and they are separate literals in separate
+// packages with nothing keeping them in step.
 //
 // @MX:ANCHOR: [AUTO] ResolveAgentModelEffort — profile → per-agent {model, effort} resolver
 // @MX:REASON: [AUTO] fan_in >= 3 (moai model profile CLI + web preview + orchestrator spawn guidance); the runtime-arg injection SSOT replacing frontmatter mutation; precedence order (override → config profile → Go default → inherit) is load-bearing
