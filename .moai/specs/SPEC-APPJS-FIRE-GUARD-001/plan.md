@@ -30,7 +30,7 @@ restore → cmp byte-동일 → git status 청결 → build(원본) → probe �
 
 **전제 단언이 먼저다:** 돌연변이기가 727행 등록을 못 찾으면 변이가 만들어지지 않은 채 「exit 0」이 나오고 레드 단계는 조용히 공허해진다. 그래서 돌연변이기는 대상 부재를 `exit != 0` 으로 내고, job 은 돌연변이기의 exit 를 **mutate 단계 자체의 성패로** 읽는다(spec.md REQ-AFG-008). 돌연변이 좌표를 상수로 박지 않는다 — 줄 번호가 아니라 내용 패턴으로 찾는다(형제 SPEC plan §B 와 같은 이유).
 
-**복원은 성패와 무관하게 실행된다** — 스크립트가 어떤 경로로 끝나도 restore→cmp 가 돈다(REQ-AFG-009). 프로토타입이 이 순서 그대로 `RESTORED_BYTE_IDENTICAL` 을 이미 실측했다.
+**복원은 성패와 무관하게 실행된다** — 스크립트가 어떤 경로로 끝나도 restore→cmp 가 돈다(REQ-AFG-009). 프로토타입이 이 순서 그대로 `RESTORED_BYTE_IDENTICAL` 을 이미 실측했다. 이 시퀀스의 판정 형태(구체 명령·판정점·RED-now 셀 E5)는 acceptance.md AC-AFG-002 가 고정한다.
 
 ## §C 결정 3 — 탐침의 판정 계약: 3값 exit + 살아있는 매니페스트
 
@@ -60,14 +60,18 @@ restore → cmp byte-동일 → git status 청결 → build(원본) → probe �
 ### M1 — 탐침 저작 + 등가 측정 (Priority High)
 
 1. `appjs_fire_probe.py` — 매니페스트(B.3 13줄 조사 포함), 3값 exit 계약, 셀렉터 생존 검사
-2. 실바이너리 기준선 재측정 → exit 0 (spec.md §B.1 재현)
-3. in-process 서면 등가 측정 — 같은 탐침, 같은 지표 (§A 의 측정 의무)
-4. 영속화 제외 목록 확정 (REQ-AFG-012)
+2. 매니페스트 효과 종별 허용목록 {`visibility`, `label`, `clipboard`, `tab`, `swap`} + `--lint-manifest` 자기검증 모드(AC-AFG-009 판정면)
+3. 실바이너리 기준선 재측정 → exit 0 (spec.md §B.1 재현)
+4. in-process 서면 등가 측정 — 같은 탐침, 같은 지표 (§A 의 측정 의무)
+5. 영속화 제외 목록 확정 (REQ-AFG-012)
+6. 탐침 상단 영어 주석 헤더 — AC-008 앵커 토큰(`orthogonal`, `SPEC-APPJS-IIFE-GUARD-001`, `manifest`, `scenario`, `Chrome`) 포함, t1041 파생 출처 명기(AC-AFG-005)
 
 ### M2 — 드라이버 테스트 (Priority High)
 
-1. `appjs_fire_guard_test.go` — 게이트·이름 붙은 skip·in-process 서버·`t.Cleanup` 정리
-2. AC-AFG-001(정방향)/AC-AFG-003(스킵 공시) 충족
+1. `appjs_fire_guard_test.go` — 게이트·이름 붙은 skip(영어, `error_messages: en` 정책)·in-process 서버·`t.Cleanup` 정리
+2. 테스트 이름은 AC 판정 명령의 고정 앵커다: 전체 사이클 `TestAppJsHandlersFireRuntime`, 셀렉터 미달 자기검증 서브테스트 `TestAppJsHandlersFireSelectorMiss`
+3. 드라이버 상단 영어 주석 — `orthogonal`·`static-scope` 앵커 포함(AC-AFG-008)
+4. AC-AFG-001(정방향)/AC-AFG-003(스킵 공시) 충족
 
 ### M3 — 돌연변이기 + 양방향 로컬 재측정 (Priority High)
 

@@ -23,6 +23,7 @@ related_specs: [SPEC-APPJS-IIFE-GUARD-001]
 | 날짜 | 버전 | 변경 | 주체 |
 |---|---|---|---|
 | 2026-09-22 | 0.1.0 | plan-phase 최초 작성 (card t1060) | manager-spec |
+| 2026-09-22 | 0.1.0 | plan-audit iter-1 FAIL(0.75) 수리 — D1~D9 (RED-now 4요소 셀·REQ 매핑·인용 정본 일원화·skip 사유 영어) | manager-spec |
 
 ---
 
@@ -44,16 +45,24 @@ related_specs: [SPEC-APPJS-IIFE-GUARD-001]
 
 t1041 의 브라우저 탐침(`.claude/worktrees/t1041/.moai/reports/t1041/browser-probe.py` — 다른 카드의 트리에 있는 읽기 전용 참조, `/tmp` 사본으로 실행)을 이 트리에서 빌드한 바이너리(`go build -o /tmp/t1060-probe/moai ./cmd/moai` → v3.1.3, exit 0)에 대해 돌렸다. 서버는 `moai web --port 18441 --no-open --no-reuse`, 브라우저는 로컬 Chrome `--headless=new --remote-debugging-port=9333`.
 
+아래 JSON 은 progress.md §E.1 의 정본 출력과 **바이트 동일**하다(iter-2 D7 수리 — 한 측정, 어느 문서에서도 같은 인용).
+
 ```json
 {
   "label": "t1060-baseline",
+  "port": "18441",
   "p1_load_referenceerrors": [],
   "p1_has_glm_btn": true,
+  "p2_revealed_hidden_before": true,
+  "p2_revealed_hidden_after": false,
   "p2_glm_handler_fired": true,
   "p3_swap_clicked": true,
   "p3_swap_referenceerrors": [],
   "p3_url_after_swap": "/todo",
   "p4_load_referenceerrors": [],
+  "p3_has_copy_btn": true,
+  "p4_label_after_click": "✓",
+  "p4_label_before_click": "Copy",
   "p4_copy_handler_fired": true
 }
 ```
@@ -64,21 +73,35 @@ t1041 의 브라우저 탐침(`.claude/worktrees/t1041/.moai/reports/t1041/brows
 
 727 행의 등록(`document.addEventListener("htmx:afterSettle", stampRefreshed);`)을 첫째 IIFE 안(합성 좌표 552 행)으로 옮기는 돌연변이를 적용하고 **재빌드**(app.js 는 `//go:embed` 로 바이너리에 실린다)해 같은 프로브를 돌렸다:
 
+아래 JSON 은 progress.md §E.1 및 acceptance.md §B2 E5 의 정본 출력과 **바이트 동일**하다(iter-2 D7 수리 — 편집 주석은 JSON 밖으로 뺐다).
+
 ```json
 {
   "label": "t1060-mutation",
+  "port": "18442",
   "p1_load_referenceerrors": [
-    "Uncaught ReferenceError: stampRefreshed is not defined\n    at http://127.0.0.1:18442/static/app.js:552:49"
+    "Uncaught ReferenceError: stampRefreshed is not defined\n    at http://127.0.0.1:18442/static/app.js:552:49\n    at http://127.0.0.1:18442/static/app.js:661:3"
   ],
   "p1_has_glm_btn": true,
+  "p2_revealed_hidden_before": true,
+  "p2_revealed_hidden_after": true,
   "p2_glm_handler_fired": false,
-  "p3_swap_referenceerrors": ["(동일 ReferenceError)"],
-  "p4_load_referenceerrors": ["(동일 ReferenceError)"],
+  "p3_swap_clicked": true,
+  "p3_swap_referenceerrors": [
+    "Uncaught ReferenceError: stampRefreshed is not defined\n    at http://127.0.0.1:18442/static/app.js:552:49\n    at http://127.0.0.1:18442/static/app.js:661:3"
+  ],
+  "p3_url_after_swap": "/todo",
+  "p4_load_referenceerrors": [
+    "Uncaught ReferenceError: stampRefreshed is not defined\n    at http://127.0.0.1:18442/static/app.js:552:49\n    at http://127.0.0.1:18442/static/app.js:661:3"
+  ],
+  "p3_has_copy_btn": true,
+  "p4_label_after_click": "Copy",
+  "p4_label_before_click": "Copy",
   "p4_copy_handler_fired": false
 }
 ```
 
-**발화 지표가 전부 뒤집혔다** — glm 공개 버튼과 copy 버튼이 모두 죽고, 로드·스왑·재로드 3Phase 전부에서 `app.js:552` ReferenceError 가 찍혔다. 복원 후 `cmp` 로 byte 동일(`RESTORED_BYTE_IDENTICAL`)을 확인했고 작업 트리는 깨끗하다.
+**발화 지표가 전부 뒤집혔다** — glm 공개 버튼과 copy 버튼이 모두 죽고, 로드·스왑·재로드 3Phase 전부에서 ReferenceError 가 찍혔다(세 `p*_referenceerrors` 문자열은 전부 동일한 내용 — `app.js:552` 의 `stampRefreshed is not defined`). 이 재실행은 HEAD `d726ac709` 위에서 이루어졌고, 탐침은 `PROBE_EXIT=0` 을 냈다 — exit 1 을 요구하는 AC-AFG-002 에서 올바른 이유의 적색이다(acceptance.md §B2 E5). 복원 후 `cmp` 로 byte 동일(`RESTORED_BYTE_IDENTICAL`)을 확인했고 작업 트리는 깨끗하다.
 
 B.1 과 나란히 읽어야 하는 관측 하나: **`p1_has_glm_btn` 은 돌연변이에서도 `true` 였다.** 버튼이 DOM 에 존재하는 것과 발화하는 것은 독립된 축이라는 것이 이 카드의 요지 그 자체다. (glm 버튼이 158 행의 등록 — 돌연변이 지점보다 앞 — 을 두고도 죽은 것은 관측이고, 「552 행 이후의 최상위 효과가 전멸했다」는 기전 가설은 표시일 뿐이며 run-phase 에서 확인 대상이다. 추론을 측정으로 읽지 않는다.)
 
@@ -145,7 +168,7 @@ grep -n -E "addEventListener\((['\"])(click|submit|change|input)" internal/web/a
 
 ### REQ-AFG-001 (capability gate)
 
-**Where** `MOAI_BROWSER_GUARD=1` 이 설정돼 있고 Chrome·python3·websockets 가 모두 발견될 때, 드라이버 테스트는 서버 기동 → headless Chrome 기동 → 탐침 실행 → 보고 판정의 전체 사이클을 실행해야 한다(shall). 그 전제 중 하나라도 빠지면, 테스트는 건너뛰되 **무엇이 빠졌는지 이름으로 지목하는 skip 사유를 출력해야 한다**(shall). 사유 없는 skip 은 이 가드의 생존을 읽는 사람에게 「통과」와 구분되지 않는 침묵을 준다.
+**Where** `MOAI_BROWSER_GUARD=1` 이 설정돼 있고 Chrome·python3·websockets 가 모두 발견될 때, 드라이버 테스트는 서버 기동 → headless Chrome 기동 → 탐침 실행 → 보고 판정의 전체 사이클을 실행해야 한다(shall). 그 전제 중 하나라도 빠지면, 테스트는 건너뛰되 **무엇이 빠졌는지 이름으로 지목하는 skip 사유를 출력해야 한다**(shall) — 사유 메시지는 영어로 출력되며(`error_messages: en` 정책) 게이트 변수명 `MOAI_BROWSER_GUARD` 또는 빠진 전제의 이름 `chrome` / `python3` / `websockets` 이 그대로 보여야 한다(shall). 사유 없는 skip 은 이 가드의 생존을 읽는 사람에게 「통과」와 구분되지 않는 침묵을 준다.
 
 ### REQ-AFG-002 (ubiquitous)
 
