@@ -99,7 +99,7 @@ notable change for CHANGELOG consumers.
 
 ```yaml
 sync_complete_at: 2026-09-23
-sync_commit_sha: pending-backfill-sync
+sync_commit_sha: c75216583
 sync_status: complete
 b12_self_test_a: "grep -c 'SPEC-MIRROR-DOGFOOD-001' CHANGELOG.md -> 0 (pre-emission; no entry added, decision recorded above)"
 b12_self_test_b: "6 distinct AC-MD-00[1-6] identifiers in acceptance.md, matching the 6-row AC matrix"
