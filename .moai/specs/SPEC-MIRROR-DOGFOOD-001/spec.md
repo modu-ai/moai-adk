@@ -2,7 +2,7 @@
 id: SPEC-MIRROR-DOGFOOD-001
 title: "TestRuleTemplateMirrorDrift/worktree-integration.md RED repair — parity restore + dogfood record relocation"
 version: "0.1.0"
-status: in-progress
+status: completed
 created: 2026-09-23
 updated: 2026-09-23
 author: manager-spec

@@ -87,4 +87,28 @@ m1_to_mN_commit_strategy: single repair commit (M1) + separate progress/status d
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase>_
+CHANGELOG decision: NO entry added. This SPEC's changeset restores the local managed
+copy of `worktree-integration.md` to byte-identity with its already-shipped template
+mirror (the template side — the user-facing distributed artifact — carries zero
+changes; confirmed by AC-MD-002/§E.2) and relocates a displaced dogfood record into a
+new dev-only, mirror-free file under `.claude/rules/local/` (not deployed by `moai
+init`/`moai update` to user projects). No template content, no Go source, no CLI
+behavior, and no user-facing surface changed. Per CLAUDE.md §2 Template-First Rule and
+the C1-C8 neutrality doctrine, this is repo-hygiene internal to moai-adk-go dev, not a
+notable change for CHANGELOG consumers.
+
+```yaml
+sync_complete_at: 2026-09-23
+sync_commit_sha: pending-backfill-sync
+sync_status: complete
+b12_self_test_a: "grep -c 'SPEC-MIRROR-DOGFOOD-001' CHANGELOG.md -> 0 (pre-emission; no entry added, decision recorded above)"
+b12_self_test_b: "6 distinct AC-MD-00[1-6] identifiers in acceptance.md, matching the 6-row AC matrix"
+b12_self_test_c: "file paths verified via ls: .claude/rules/moai/workflow/worktree-integration.md, .claude/rules/local/wt-ac-restatement-record.md"
+changelog_entry_position: not-applicable (no entry added — see decision above)
+frontmatter_status_transitions:
+  spec_md: "in-progress -> completed (updated: 2026-09-23)"
+  plan_md: "no status field (frontmatter carries only id/title/created/card)"
+  acceptance_md: "no status field (frontmatter carries only id/title/created/card)"
+  research_md: "no status field (frontmatter carries only id/title/created/card)"
+canary_compliance_check: not-applicable (this SPEC defines no forward-looking policy)
+```
