@@ -2,7 +2,7 @@
 id: SPEC-AC-BASELINE-REFRESH-001
 title: "Durable AC-count corpus baseline refresh — in-tree regeneration mode, lifecycle-tied cascade procedure, provenance header"
 version: "0.1.1"
-status: draft
+status: in-progress
 created: 2026-09-22
 updated: 2026-09-22
 author: lane agent-20 (t1068)
