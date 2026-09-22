@@ -213,6 +213,16 @@ func Registry() []Site {
 			Claims: ClaimMembership,
 			Note:   "The shipped per-agent profile cells.",
 		},
+		{
+			ID:           "docs-truth-catalog",
+			Path:         ".moai/project/codemaps/docs-truth.md",
+			Axis:         AxisRetainedRoster,
+			Claims:       ClaimMembership | ClaimCount,
+			BlockStart:   "| # | Agent | Class | Phase scope |",
+			BlockEnd:     "| `Explore` | Anthropic built-in",
+			CountPattern: `consists of exactly \*\*(\d+) retained agents\*\*`,
+			Note:         "§1 table repaired to 13 rows by card t1069; its stale marker was retired by card t1091.",
+		},
 
 		// ── Count-only sites: a roster SIZE claim with no roster ───────────
 		//
@@ -257,22 +267,6 @@ func Registry() []Site {
 		},
 
 		// ── Retained-roster sites with a measured stale claim ──────────────
-		{
-			ID:           "docs-truth-catalog",
-			Path:         ".moai/project/codemaps/docs-truth.md",
-			Axis:         AxisRetainedRoster,
-			Claims:       ClaimMembership | ClaimCount,
-			BlockStart:   "| # | Agent | Class | Phase scope |",
-			BlockEnd:     "| `Explore` | Anthropic built-in",
-			CountPattern: `consists of exactly \*\*(\d+) retained agents\*\*`,
-			KnownStale: &Staleness{
-				Reason: "The §1 table carries 12 rows and the file records the mission-governor " +
-					"gap in its own body as an unresolved drift it declines to adjudicate.",
-				FollowUp:      "the catalog-owning document's decision, per that file's own note",
-				MissingNames:  []string{"mission-governor"},
-				DeclaredCount: 12,
-			},
-		},
 		{
 			ID:           "spec-workflow-catalog-sentence",
 			Path:         ".claude/rules/moai/workflow/spec-workflow.md",
