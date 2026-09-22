@@ -369,3 +369,218 @@ func TestSubagentWriteGuardHandlerNilConfigFailClosed(t *testing.T) {
 		}
 	})
 }
+
+// swgAuditLogPath is the audit log's path under the audit project dir.
+func swgAuditLogPath(projectDir string) string {
+	return filepath.Join(projectDir, ".moai", "logs", "subagent-write-guard.log")
+}
+
+// swgReadAuditRows reads the audit log and returns its non-empty rows.
+func swgReadAuditRows(t *testing.T, projectDir string) []string {
+	t.Helper()
+	data, err := os.ReadFile(swgAuditLogPath(projectDir))
+	if err != nil {
+		t.Fatalf("read audit log: %v", err)
+	}
+	var rows []string
+	for _, line := range strings.Split(strings.TrimSpace(string(data)), "\n") {
+		if strings.TrimSpace(line) != "" {
+			rows = append(rows, line)
+		}
+	}
+	return rows
+}
+
+// AC-SWG-012 — the disabled path still writes the audit row, marked
+// `withheld` (not `allow`). Joins AC-SWG-002: a guard that went fully inert
+// when disabled passes that criterion while destroying the withheld count —
+// the OD-1b calibration instrument (REQ-SWG-006, REQ-SWG-008a).
+func TestSubagentWriteGuardDisabledWritesWithheldRow(t *testing.T) {
+	repo, filePath := swgSetupTrackedRepo(t, 20000)
+	projectDir := t.TempDir()
+	h := swgHandlerWithConfig(false, projectDir)
+
+	input := swgPayload("agent-abc123", "general-purpose", filePath, strings.Repeat("x", 300))
+	input.CWD = repo
+
+	if reason := h.checkSubagentDestructiveWrite(input); reason != "" {
+		t.Fatalf("reason = %q, want no deny with the deny layer disabled", reason)
+	}
+	rows := swgReadAuditRows(t, projectDir)
+	if len(rows) != 1 {
+		t.Fatalf("audit rows = %d, want exactly 1 on the disabled path", len(rows))
+	}
+	if !strings.Contains(rows[0], "decision=withheld") {
+		t.Fatalf("row %q does not carry decision=withheld", rows[0])
+	}
+	if strings.Contains(rows[0], "decision=allow") {
+		t.Fatalf("row %q flattens withheld to allow — the fourth mutant", rows[0])
+	}
+}
+
+// AC-SWG-008 — an audit row on every decision path, the four decision values
+// mutually distinguishable by a reader of the log alone.
+func TestSubagentWriteGuardAuditRowOnEveryDecisionPath(t *testing.T) {
+	t.Run("Deny", func(t *testing.T) {
+		repo, filePath := swgSetupTrackedRepo(t, 20000)
+		projectDir := t.TempDir()
+		h := swgHandlerWithConfig(true, projectDir)
+		input := swgPayload("agent-abc123", "general-purpose", filePath, strings.Repeat("x", 300))
+		input.CWD = repo
+		if reason := h.checkSubagentDestructiveWrite(input); reason == "" {
+			t.Fatalf("want deny")
+		}
+		rows := swgReadAuditRows(t, projectDir)
+		if len(rows) != 1 || !strings.Contains(rows[0], "decision=deny") {
+			t.Fatalf("rows = %v, want exactly 1 deny row", rows)
+		}
+	})
+
+	t.Run("Allow", func(t *testing.T) {
+		repo, filePath := swgSetupTrackedRepo(t, 20000)
+		projectDir := t.TempDir()
+		h := swgHandlerWithConfig(true, projectDir)
+		input := swgPayload("agent-abc123", "general-purpose", filePath, strings.Repeat("x", 20600))
+		input.CWD = repo
+		if reason := h.checkSubagentDestructiveWrite(input); reason != "" {
+			t.Fatalf("want allow, got %q", reason)
+		}
+		rows := swgReadAuditRows(t, projectDir)
+		if len(rows) != 1 || !strings.Contains(rows[0], "decision=allow") {
+			t.Fatalf("rows = %v, want exactly 1 allow row", rows)
+		}
+	})
+
+	t.Run("FailOpenCarriesReason", func(t *testing.T) {
+		nonGit := t.TempDir()
+		outside := filepath.Join(nonGit, "tracked.txt")
+		if err := os.WriteFile(outside, []byte(strings.Repeat("a", 20000)), 0o644); err != nil {
+			t.Fatalf("write: %v", err)
+		}
+		projectDir := t.TempDir()
+		h := swgHandlerWithConfig(true, projectDir)
+		input := swgPayload("agent-abc123", "general-purpose", outside, strings.Repeat("x", 100))
+		input.CWD = nonGit
+		if reason := h.checkSubagentDestructiveWrite(input); reason != "" {
+			t.Fatalf("want fail-open, got %q", reason)
+		}
+		rows := swgReadAuditRows(t, projectDir)
+		if len(rows) != 1 || !strings.Contains(rows[0], "decision=fail-open") {
+			t.Fatalf("rows = %v, want exactly 1 fail-open row", rows)
+		}
+		if !strings.Contains(rows[0], "reason=\"") || strings.Contains(rows[0], "reason=\"\"") {
+			t.Fatalf("fail-open row %q does not carry its reason", rows[0])
+		}
+	})
+
+	t.Run("Withheld", func(t *testing.T) {
+		repo, filePath := swgSetupTrackedRepo(t, 20000)
+		projectDir := t.TempDir()
+		h := swgHandlerWithConfig(false, projectDir)
+		input := swgPayload("agent-abc123", "general-purpose", filePath, strings.Repeat("x", 300))
+		input.CWD = repo
+		if reason := h.checkSubagentDestructiveWrite(input); reason != "" {
+			t.Fatalf("want withheld, got deny %q", reason)
+		}
+		rows := swgReadAuditRows(t, projectDir)
+		if len(rows) != 1 || !strings.Contains(rows[0], "decision=withheld") {
+			t.Fatalf("rows = %v, want exactly 1 withheld row", rows)
+		}
+	})
+}
+
+// AC-SWG-013 — the card id is audit context, not a gate: populated from a
+// worktree-shaped cwd, empty from a primary-checkout-shaped one, with the
+// deny/allow outcome identical in both cases (REQ-SWG-013).
+func TestSubagentWriteGuardCardIdIsContextNotGate(t *testing.T) {
+	t.Run("WorktreeShapedCwd", func(t *testing.T) {
+		root := t.TempDir()
+		repo := filepath.Join(root, ".claude", "worktrees", "t9999", "repo")
+		if err := os.MkdirAll(repo, 0o755); err != nil {
+			t.Fatalf("mkdir: %v", err)
+		}
+		requireGit(t)
+		mustRunGit(t, repo, "init")
+		filePath := filepath.Join(repo, "tracked.txt")
+		if err := os.WriteFile(filePath, []byte(strings.Repeat("a", 20000)), 0o644); err != nil {
+			t.Fatalf("write: %v", err)
+		}
+		mustRunGit(t, repo, "add", "tracked.txt")
+		mustRunGit(t, repo, "-c", "user.email=t@local", "-c", "user.name=t", "commit", "-m", "seed")
+
+		projectDir := t.TempDir()
+		h := swgHandlerWithConfig(true, projectDir)
+		input := swgPayload("agent-abc123", "general-purpose", filePath, strings.Repeat("x", 300))
+		input.CWD = repo
+		if reason := h.checkSubagentDestructiveWrite(input); reason == "" {
+			t.Fatalf("want deny")
+		}
+		rows := swgReadAuditRows(t, projectDir)
+		if len(rows) != 1 {
+			t.Fatalf("rows = %d, want 1", len(rows))
+		}
+		if !strings.Contains(rows[0], "card=t9999") {
+			t.Fatalf("row %q does not carry the derived card id", rows[0])
+		}
+		if !strings.Contains(rows[0], "decision=deny") {
+			t.Fatalf("row %q is not a deny row", rows[0])
+		}
+	})
+
+	t.Run("PrimaryCheckoutShapedCwd", func(t *testing.T) {
+		repo, filePath := swgSetupTrackedRepo(t, 20000)
+		projectDir := t.TempDir()
+		h := swgHandlerWithConfig(true, projectDir)
+		input := swgPayload("agent-abc123", "general-purpose", filePath, strings.Repeat("x", 300))
+		input.CWD = repo
+		if reason := h.checkSubagentDestructiveWrite(input); reason == "" {
+			t.Fatalf("want deny — the outcome must not change with the card id unresolved")
+		}
+		rows := swgReadAuditRows(t, projectDir)
+		if len(rows) != 1 {
+			t.Fatalf("rows = %d, want 1", len(rows))
+		}
+		if !strings.Contains(rows[0], "card=") || strings.Contains(rows[0], "card=t9999") {
+			t.Fatalf("row %q must carry an empty card field", rows[0])
+		}
+	})
+}
+
+// AC-SWG-014 — the audit append is the guard's ONLY side effect: the
+// repository state is unchanged across an evaluation and the log is the only
+// file the guard writes (REQ-SWG-009).
+func TestSubagentWriteGuardOnlySideEffectIsAuditAppend(t *testing.T) {
+	repo, filePath := swgSetupTrackedRepo(t, 20000)
+	projectDir := t.TempDir()
+	h := swgHandlerWithConfig(true, projectDir)
+
+	gitStatus := func() string {
+		cmd := exec.Command("git", "-C", repo, "status", "--porcelain")
+		out, err := cmd.CombinedOutput()
+		if err != nil {
+			t.Fatalf("git status: %v\n%s", err, out)
+		}
+		return string(out)
+	}
+	before := gitStatus()
+
+	input := swgPayload("agent-abc123", "general-purpose", filePath, strings.Repeat("x", 300))
+	input.CWD = repo
+	if reason := h.checkSubagentDestructiveWrite(input); reason == "" {
+		t.Fatalf("want deny")
+	}
+
+	if after := gitStatus(); after != before {
+		t.Fatalf("git status changed across the evaluation:\nbefore: %q\nafter:  %q", before, after)
+	}
+	if _, err := os.Stat(swgAuditLogPath(projectDir)); err != nil {
+		t.Fatalf("audit log missing: %v", err)
+	}
+	entries, err := os.ReadDir(filepath.Join(projectDir, ".moai", "logs"))
+	if err != nil {
+		t.Fatalf("read logs dir: %v", err)
+	}
+	if len(entries) != 1 {
+		t.Fatalf("logs dir holds %d entries, want exactly the one audit log", len(entries))
+	}
+}

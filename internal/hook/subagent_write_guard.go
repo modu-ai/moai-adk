@@ -23,6 +23,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"time"
 
 	gitcore "github.com/modu-ai/moai-adk/internal/core/git"
 )
@@ -284,13 +285,14 @@ func (h *preToolHandler) subagentWriteGuardEnabled() bool {
 }
 
 // checkSubagentDestructiveWrite evaluates the guard for one Write payload
-// with the configured deny layer and returns the deny reason ("" when no
-// deny). M5 appends the audit row here on every decision.
+// with the configured deny layer, appends the audit row, and returns the deny
+// reason ("" when no deny).
 func (h *preToolHandler) checkSubagentDestructiveWrite(input *HookInput) string {
 	ev := evaluateSubagentWrite(input, h.subagentWriteGuardEnabled())
 	if ev.Decision == "" {
 		return "" // main-session payload: never evaluated (REQ-SWG-003)
 	}
+	appendSubagentWriteGuardAudit(h.projectRoot(), input, ev)
 	if ev.Decision == swgDecisionDeny {
 		slog.Warn("subagent destructive write denied",
 			"tool_name", input.ToolName,
@@ -301,4 +303,54 @@ func (h *preToolHandler) checkSubagentDestructiveWrite(input *HookInput) string 
 		return ev.Reason
 	}
 	return ""
+}
+
+// swgAuditRelPath is the guard's audit log, relative to the audit project
+// directory (the $CLAUDE_PROJECT_DIR → os.Getwd() resolution, matching the
+// branch guard's central-logging pin).
+const swgAuditRelPath = ".moai/logs/subagent-write-guard.log"
+
+// appendSubagentWriteGuardAudit appends one structured row per decision to
+// <auditDir>/.moai/logs/subagent-write-guard.log. The append runs on EVERY
+// decision — deny, fail-open, allow, and withheld alike — whether or not the
+// deny layer is enabled (REQ-SWG-008): the rows accumulate unconditionally,
+// which is the guard's continued-firing signal and the source of the
+// `withheld` count (the OD-1b calibration instrument, REQ-SWG-008a). The
+// derived card id is audit CONTEXT only and gates nothing (REQ-SWG-013) —
+// cardIDFromPath does not verify the card exists, so an unresolved id is
+// recorded empty and changes no outcome. Logging errors are debug-level:
+// a failed append must never turn into a deny or block the allow.
+func appendSubagentWriteGuardAudit(auditDir string, input *HookInput, ev swgEvaluation) {
+	if auditDir == "" {
+		slog.Debug("subagent_write_guard: no audit dir resolved; row not written",
+			"decision", ev.Decision)
+		return
+	}
+	sessionID, agentID, agentType := "", "", ""
+	cwd := ""
+	if input != nil {
+		sessionID = input.SessionID
+		agentID = input.AgentID
+		agentType = input.AgentType
+		cwd = input.CWD
+	}
+	cardID := cardIDFromPath(cwd)
+	entry := fmt.Sprintf("[%s] session=%s decision=%s agent_id=%s agent_type=%q path=%q pre=%d post=%d card=%s reason=%q\n",
+		time.Now().UTC().Format(time.RFC3339),
+		sessionID, ev.Decision, agentID, agentType,
+		ev.FilePath, ev.PreBytes, ev.PostBytes, cardID, ev.Reason)
+	logPath := filepath.Join(auditDir, swgAuditRelPath)
+	if err := os.MkdirAll(filepath.Dir(logPath), 0o755); err != nil {
+		slog.Debug("subagent_write_guard: could not create audit log dir", "path", logPath, "error", err)
+		return
+	}
+	f, err := os.OpenFile(logPath, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0o644)
+	if err != nil {
+		slog.Debug("subagent_write_guard: could not open audit log", "path", logPath, "error", err)
+		return
+	}
+	defer func() { _ = f.Close() }()
+	if _, err := f.WriteString(entry); err != nil {
+		slog.Debug("subagent_write_guard: could not write audit log entry", "path", logPath, "error", err)
+	}
 }
