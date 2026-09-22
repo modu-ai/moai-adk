@@ -127,9 +127,9 @@ done
 git rev-parse main:.claude/skills/moai/SKILL.md > /tmp/skill-md-baseline.hash
 
 # Per Wave
-current=$(git rev-parse HEAD:.claude/skills/moai/SKILL.md)
-baseline=$(cat /tmp/skill-md-baseline.hash)
-[ "$current" = "$baseline" ] || { echo "VIOLATION: SKILL.md modified"; exit 1; }
+git rev-parse HEAD:.claude/skills/moai/SKILL.md > /tmp/skill-md-current.hash
+diff /tmp/skill-md-current.hash /tmp/skill-md-baseline.hash > /dev/null \
+  || { echo "VIOLATION: SKILL.md modified"; exit 1; }
 ```
 
 ### Acceptance: Binary

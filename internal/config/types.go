@@ -511,6 +511,14 @@ type WorkflowConfig struct {
 	// work regardless of Enabled. Deliberately separate from IntegrationLock.
 	SlotLease SlotLeaseConfig `yaml:"slot_lease"`
 
+	// SubagentWriteGuard gates the deny layer of the PreToolUse subagent
+	// destructive-write guard (SPEC-SUBAGENT-WRITE-SHRINK-GUARD-001). Default
+	// false: detection and the audit-log append always run, but no subagent
+	// Write is ever denied until a maintainer opts in via local config.
+	// Sibling of BranchGuard / AgentModelGuard / AgentStopGuard — same
+	// opt-in shape, same default-OFF neutrality.
+	SubagentWriteGuard SubagentWriteGuardConfig `yaml:"subagent_write_guard"`
+
 	// Jev gates the TypeSafe System One judgment capability (internal/jev).
 	// Default false: the capability ships INERT, and while it is off the
 	// package constructs no request and makes no network call at all
@@ -789,6 +797,19 @@ type AgentModelGuardConfig struct {
 // record regardless of this flag, so flipping the gate on later finds the
 // registry already populated.
 type AgentStopGuardConfig struct {
+	Enabled bool `yaml:"enabled"`
+}
+
+// SubagentWriteGuardConfig mirrors workflow.subagent_write_guard.* — the
+// opt-in deny layer of the PreToolUse subagent destructive-write guard
+// (SPEC-SUBAGENT-WRITE-SHRINK-GUARD-001). When Enabled is false (the
+// distributed default) the guard still detects destructively-shaped writes
+// and still appends an audit row per decision (`withheld` when the predicate
+// holds and the layer is off), but it never refuses the write. Detection and
+// the audit append are not gated: only the refusal is (REQ-SWG-006, family
+// contract). Template neutrality: no `enabled: true` anywhere under
+// internal/template/templates/.
+type SubagentWriteGuardConfig struct {
 	Enabled bool `yaml:"enabled"`
 }
 

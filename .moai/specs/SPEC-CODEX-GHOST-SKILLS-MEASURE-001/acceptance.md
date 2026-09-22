@@ -155,12 +155,12 @@ git status --porcelain --untracked-files=all | wc -l                            
 
 ```
 git fetch origin develop
-CARD_BASE=$(git merge-base origin/develop HEAD)      # 읽는 시점에 재도출 — 핀으로 박지 않는다
-git diff --name-only "$CARD_BASE"..HEAD | wc -l      # 대조군, ≥ 1
+git merge-base origin/develop HEAD                   # 읽는 시점에 재도출 — 핀으로 박지 않고 값을 증거로 기록
+git diff --name-only origin/develop...HEAD | wc -l   # 대조군, ≥ 1
 ```
 
 **Then** 그 값이 1 이상이다. 0 이면 범위가 비었으므로 FAIL(측정 불가).
-**And** 그 위에서만 프로브를 건다 — `git diff --name-only "$CARD_BASE"..HEAD -- '*.go'` → 무출력.
+**And** 그 위에서만 프로브를 건다 — `git diff --name-only origin/develop...HEAD -- '*.go'` → 무출력.
 
 **폴백**: `origin/develop` 에 닿지 못하면 리터럴 분기점 SHA(`6a46c0edb`)가 **흡수 전에는 유효한 대체**이고 **흡수 후에는 무효**다 — 어느 경우인지 반드시 밝힌다.
 

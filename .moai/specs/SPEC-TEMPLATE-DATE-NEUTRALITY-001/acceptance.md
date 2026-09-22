@@ -517,7 +517,8 @@ Falsifiable, and it caught a real defect during authoring: the classifier's firs
 Every remediating edit **shall** land under `internal/template/templates/`, the guard file, or the CI workflow — and nowhere else.
 
 ```bash
-git diff --name-only "$(git merge-base origin/main HEAD)"..HEAD -- . \
+git merge-base origin/main HEAD   # record as BASE
+git diff --name-only <BASE>..HEAD -- . \
   ':(exclude).moai/specs/SPEC-TEMPLATE-DATE-NEUTRALITY-001/**' \
   ':(exclude)internal/template/templates/**' \
   ':(exclude)internal/template/internal_content_leak_test.go' \

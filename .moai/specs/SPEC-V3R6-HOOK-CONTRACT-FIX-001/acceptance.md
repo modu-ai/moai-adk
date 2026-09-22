@@ -111,15 +111,17 @@ go test -run 'TestDispatchCapture_UsesClaudeProjectDirWhenCwdEmpty' ./internal/h
 
 **Verification command**:
 ```bash
-test ! -e internal/hook/.moai/ && \
-  ( git status --porcelain internal/hook/.moai/ 2>/dev/null | grep -q . ; [ $? -ne 0 ] )
+test ! -e internal/hook/.moai/
+git status --porcelain internal/hook/.moai/ 2>/dev/null | grep -c .   # expect: 0 (출력 없음 = 정상)
 ```
 
-**Expected output**: exit 0 (both conditions hold: directory absent AND no git status entries).
+**Expected output**: 첫 명령 exit 0, 둘째 명령 `0` 출력 (directory absent AND no git status entries).
 
 **Idempotency check**: Re-running the cleanup step (effectively `rm -rf internal/hook/.moai/`) MUST NOT fail when the directory is already absent. Verification:
 ```bash
-rm -rf internal/hook/.moai/ && rm -rf internal/hook/.moai/ ; echo "idempotent exit=$?"
+rm -rf internal/hook/.moai/
+rm -rf internal/hook/.moai/
+echo "idempotent exit=$?"
 ```
 **Expected**: `idempotent exit=0`.
 

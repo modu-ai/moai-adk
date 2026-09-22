@@ -5,9 +5,10 @@
 **최초 측정 트리**: worktree `.claude/worktrees/t592`, 브랜치 `WT-home-state-rollout`, HEAD `e7bd89ee3`, 2026-09-10
 **재측정 트리**: worktree `.claude/worktrees/t869`, 브랜치 `WT-codemaps-refresh`, HEAD `a851b205c`, 2026-09-18 — 엣지 수, fan-in·fan-out 표 전체, 상호 참조 쌍, 새 leaf 표, `go.mod` 직접 require 항목 수와 버전, § 이례적인 것 7. § 이례적인 것 1~6의 서술은 이번에 버전·사용처 줄을 다시 대조했고 판단은 앞 판을 이어받았습니다.
 **정기 재측정**: worktree `.claude/worktrees/t999`, 브랜치 `WT-codemaps-remediation`, HEAD `56c64891a`, 2026-09-20 — 엣지 수(365→371 · 222→227), fan-in 표에서 움직인 한 행(`internal/atomicfile` 10→11), fan-out 표에서 움직인 두 행(`internal/cli` 62→63 · `internal/hook` 32→35), 그리고 작은 fan-in 표의 신규 세 항목. 나머지 행은 같은 명령으로 재확인해 변동이 없었고, § 외부 의존성과 § 순환은 이번에 다시 재지 않았습니다(앞 판 인계).
+**정기 재측정**: worktree `.claude/worktrees/t1069`, 브랜치 `WT-graph-restamp`, HEAD `0314801c2`, 2026-09-22 — 엣지 수(371→378 · 227→234), fan-in 표에서 움직인 두 행(`internal/defs` 11→12 · `internal/paths` 11→12), fan-out 표에서 움직인 두 행(`internal/cli` 63→65 · `internal/web` 15→16)과 하나의 정정(`internal/spec` — 앞 판 행이 3으로 적혔으나 스탬프 트리에서도 4였다), 작은 fan-in 표의 `internal/stateanchor` 2→3(소비자에 `internal/session` 합류)과 신규 세 행(`internal/jev` · `internal/jevcred` · `internal/jevmeasure`). § 순환은 같은 방법으로 재확인해 세 쌍 그대로였고, § 외부 의존성은 `go.mod`가 스탬프 이후 한 줄도 바뀌지 않은 것으로 확인했습니다.
 
-두 가지 해상도로 봅니다 — 패키지 단위 **371 엣지**, 이를 `internal/<X>` · `pkg/<X>` · `cmd/<X>`
-최상위로 접고 self-edge를 제거한 **227 엣지**. 아래 표는 후자 기준입니다.
+두 가지 해상도로 봅니다 — 패키지 단위 **378 엣지**, 이를 `internal/<X>` · `pkg/<X>` · `cmd/<X>`
+최상위로 접고 self-edge를 제거한 **234 엣지**. 아래 표는 후자 기준입니다.
 
 산출:
 
@@ -15,12 +16,12 @@
 $ go list -f '{{.ImportPath}} {{join .Imports " "}}' ./... \
   | awk '{src=$1; for(i=2;i<=NF;i++) if ($i ~ /^github\.com\/modu-ai\/moai-adk\//) print src, $i}' \
   | wc -l
-371
+378
 ```
 
 > 앵커 `25a3212a9` 판은 이 자리에 1638을 적었습니다. 위 명령으로 재현되지 않고 그 판의
 > 명령 인용이 생략형이라 무엇을 셌는지 복원할 수 없으므로, 이후 판은 위 명령의 출력을 싣습니다.
-> 최상위 집계는 205 → 214 → 222 → 227로 움직였습니다.
+> 최상위 집계는 205 → 214 → 222 → 227 → 234로 움직였습니다.
 
 ---
 
@@ -29,9 +30,9 @@ $ go list -f '{{.ImportPath}} {{join .Imports " "}}' ./... \
 | # | 패키지 | 피import | 레이어 |
 |---|---|---|---|
 | 1 | `internal/config` | 22 | data |
-| 2 | `internal/defs` | 11 | cross-cutting |
-| 2 | `internal/paths` | 11 | cross-cutting |
-| 2 | `internal/atomicfile` | 11 | cross-cutting |
+| 2 | `internal/defs` | 12 | cross-cutting |
+| 2 | `internal/paths` | 12 | cross-cutting |
+| 4 | `internal/atomicfile` | 11 | cross-cutting |
 | 5 | `pkg/models` | 8 | cross-cutting |
 | 5 | `internal/core` | 8 | domain |
 | 7 | `internal/execerr` | 7 | cross-cutting |
@@ -66,13 +67,16 @@ $ go list -f '{{.ImportPath}} {{join .Imports " "}}' ./... \
 
 | 패키지 | fan-in | 비고 |
 |---|---|---|
-| `internal/stateanchor` | 2 | 상태 앵커 seam. 소비자는 `internal/statusline`과 `internal/cli` |
+| `internal/stateanchor` | 3 | 상태 앵커 seam. 소비자는 `internal/statusline`, `internal/cli`, 그리고 이 판에 합류한 `internal/session` — 레지스트리 경로 해석이 같은 seam을 쓰기 시작했다(워크트리마다 갈라지던 레지스트리 하나로 모으기) |
 | `internal/chain` | 2 | 워크트리 세션 origin-trail 원장. 소비자는 `internal/cli`와 `internal/hook` |
 | `internal/gitenv` | 2 | 자식 프로세스의 git 환경 격리. 소비자는 `internal/cli`와 `internal/hook` |
-| `internal/auditreceipt` | 2 | **이 판에서 새로 들어왔다.** 소비자는 `internal/cli`와 `internal/hook` — 생산 쪽(MCP 도구 호출)과 소비 쪽(훅 가드)이 각각 하나씩이며, 그 비대칭이 아니라 대칭이 이 패키지의 설계다 |
+| `internal/auditreceipt` | 2 | **t999 판에서 새로 들어왔다.** 소비자는 `internal/cli`와 `internal/hook` — 생산 쪽(MCP 도구 호출)과 소비 쪽(훅 가드)이 각각 하나씩이며, 그 비대칭이 아니라 대칭이 이 패키지의 설계다 |
+| `internal/jev` | 2 | **이 판에서 새로 들어왔다.** 소비자는 `internal/cli`(doctor·todo admission·숨은 suggest 앵커 세 파일)와 `internal/jevmeasure`(살아 있는 `Answerer` 구현) |
+| `internal/jevcred` | 2 | **이 판에서 새로 들어왔다.** 소비자는 `internal/cli`와 `internal/web` — 위자드·doctor 쪽과 콘솔 Jev 패널이 각각 하나씩이며, 두 표면이 하나의 reader를 공유하는 것이 이 패키지의 요건이다 |
 | `internal/mission` | 1 | 소비자는 `internal/cli` 하나 — 실제로는 `internal/cli/goal.go` 한 파일이다 |
 | `internal/codextools` | 0 | 비테스트 소비자 없음(`modules.md` §네거티브 스페이스) |
-| `internal/harness/rosterguard` · `internal/harness/cellguard` | 0 | **이 판에서 새로 들어왔고, 0이 정상이다.** 테스트 시점 가드라 비테스트 소비자가 원리상 없다 — `internal/template/agentemit` · `commandemit`과 같은 이유이고 `codextools`와는 다른 이유다(`modules.md` §네거티브 스페이스) |
+| `internal/jevmeasure` | 0 | **이 판에서 새로 들어왔고, 0은 설계다 — 그러나 종류가 다른 0이다.** 테스트 시점 가드도 빌드타임 도구도 아니고, 측정 게이트가 실행되지 않은 **게이트 미실행 상태**라 소비자가 원리상 아직 없다. 게이트가 통과하면 소비자가 붙는 것이 이 0의 의미다(`modules.md` §네거티브 스페이스) |
+| `internal/harness/rosterguard` · `internal/harness/cellguard` | 0 | **t999 판에서 새로 들어왔고, 0이 정상이다.** 테스트 시점 가드라 비테스트 소비자가 원리상 없다 — `internal/template/agentemit` · `commandemit`과 같은 이유이고 `codextools`와는 다른 이유다(`modules.md` §네거티브 스페이스) |
 
 `internal/homestate`는 leaf가 아니라 최상위 fan-in **4**(`cli` · `hook` · `kanban` · `web`)의
 data/persistence seam입니다. 패키지 단위로 풀면 직접 소비자는 `internal/cli`,
@@ -90,21 +94,24 @@ admission 계약을 공유합니다.
 
 | # | 패키지 | import |
 |---|---|---|
-| 1 | `internal/cli` | **63** |
+| 1 | `internal/cli` | **65** |
 | 2 | `internal/hook` | 35 |
-| 3 | `internal/web` | 15 |
+| 3 | `internal/web` | 16 |
 | 4 | `internal/core` | 12 |
 | 5 | `internal/statusline` | 8 |
 | 6 | `internal/settings` | 7 |
 | 7 | `internal/kanban` · `feedback` | 6 각 |
-| 9 | `internal/update` · `harness` | 4 각 |
-| 11 | `internal/template` · `spec` | 3 각 |
+| 9 | `internal/update` · `spec` · `harness` | 4 각 |
+| 12 | `internal/template` · `session` · `ralph` · `profile` · `lsp` · `loop` · `graph` · `config` | 3 각 |
 
-`internal/cli`가 다른 최상위 패키지 **63개**를 import 합니다 — 사실상 전 트리에 닿습니다.
+`internal/cli`가 다른 최상위 패키지 **65개**를 import 합니다 — 사실상 전 트리에 닿습니다.
 합성 루트(`internal/cli/deps.go`)가 여기 있으므로 일부는 의도된 것이지만, 상당수는
 `deps.go`가 아니라 **개별 verb 파일에서 직접** 들어옵니다. 이 판에서 더해진
 `internal/mission`이 그 전형입니다 — `internal/cli/goal.go` 한 파일만이 그 패키지를 import 합니다.
 이것이 "명령 하나 = 파일 하나 = 그 명령이 필요한 것 전부 import"라는 수직 슬라이스 성격을 만듭니다.
+이번 +2는 Jev 계열이다 — `internal/jev`와 `internal/jevcred`가 cli의 import 목록에 합류했고,
+`internal/web`의 +1도 같은 이유(`jevcred`)다. `spec` 행의 4는 새 엣지가 아니라 **정정**이다 —
+스탬프 트리에서도 `constitution`을 포함해 4였다.
 
 ---
 

@@ -48,6 +48,11 @@ catalog:
               path: templates/.claude/skills/moai-ref-git-workflow/
               hash: 0440292378de665eb805deb439564984494411495946f9f7a96a740f54772d73
               version: 1.0.0
+            - name: moai-ref-jev-question-design
+              tier: core
+              path: templates/.claude/skills/moai-ref-jev-question-design/
+              hash: 72576ef82f76ea062d2492889d5dc7e485d6d24145463b4de678545157a0ae7b
+              version: 1.0.0
             - name: moai-ref-testing-pyramid
               tier: core
               path: templates/.claude/skills/moai-ref-testing-pyramid/
@@ -76,7 +81,7 @@ catalog:
             - name: moai-workflow-spec
               tier: core
               path: templates/.claude/skills/moai-workflow-spec/
-              hash: 5a9de9eab4d00c647a3188d6c8215e44252e3a6e0f1142ef0fc3c946b0cb1fdc
+              hash: 5f45ec55325c6f0ffbe5ad0d1d4ab9f6917cfb40f9860c630a56b240a8f81cc3
               version: 1.0.0
             - name: moai-workflow-tdd
               tier: core

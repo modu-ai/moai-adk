@@ -88,7 +88,7 @@ $ grep -n 'DEPRECATED_BACKUP_FAILED\|os.RemoveAll(abs)' internal/cli/update_clea
 | `snapshotDir` 사용처 | `grep -rln 'snapshotDir(' internal/cli/*_test.go` | `update_safety_test.go` 1개 파일 |
 | `golangci-lint` | `golangci-lint run --timeout=5m` | `0 issues.` (exit 0) |
 | `merge-base` | `git merge-base origin/main HEAD` | `83610e03e` (PR #1275 머지 후 `origin/main` 반영 완료) |
-| base의 M6 보고 문구 | `git show "$BASE":internal/cli/update_preserve_inventory.go \| grep -c 'restored %d/%d'` | `3` |
+| base의 M6 보고 문구 | `git show <BASE>:internal/cli/update_preserve_inventory.go \| grep -c 'restored %d/%d'` | `3` |
 | `deploy.go`의 실제 글로브 표현 | `grep -n 'SkillsSubdir' internal/cli/update/deploy/deploy.go` | `filepath.Join(defs.ClaudeDir, defs.SkillsSubdir, "moai*")` — 리터럴 `.claude/skills/moai*`는 **존재하지 않음**(`grep -c` → `0`) |
 | 세 HOME 호출부가 먹이는 대상 | `grep -A4 'homeDir, _ := userHomeDir()' <파일>` | `detectGoBinPathForUpdate(homeDir)` + `template.WithHomeDir(homeDir)` — **삭제 없음** |
 | 백업 회전의 보존 슬라이스 | `grep -n 'backups\[' internal/cli/update/backup/backup.go` | `backups[:len(backups)-keepCount]` (오래된 초과분 삭제) |
@@ -104,7 +104,7 @@ $ grep -n 'DEPRECATED_BACKUP_FAILED\|os.RemoveAll(abs)' internal/cli/update_clea
 #### AC-UGE-001 — 주입 가능한 stat 이음매가 존재하고 프로덕션이 그것을 경유한다
 
 ```bash
-BASE=$(git merge-base origin/main HEAD)
+git merge-base origin/main HEAD   # record as BASE
 
 # (a) 이음매 선언 — 기본값이 os.Stat 인 패키지 변수
 grep -nE '^var [a-zA-Z]*[Ss]tatFn = os\.Stat$' internal/cli/update_preserve_inventory.go
@@ -116,7 +116,7 @@ sed -n '/^func mergeBackPreserveInventory/,/^}/p' internal/cli/update_preserve_i
   | grep -cE '[a-zA-Z]*[Ss]tatFn\('
 
 # (c) baseline — 변경 전에는 이음매가 없고 os.Stat 직접 호출이 1건
-git show "$BASE":internal/cli/update_preserve_inventory.go \
+git show <BASE>:internal/cli/update_preserve_inventory.go \
   | sed -n '/^func mergeBackPreserveInventory/,/^}/p' | grep -c 'os\.Stat('
 ```
 
@@ -151,15 +151,15 @@ GOOS=windows GOARCH=amd64 go vet ./internal/cli/; echo "win-vet-exit=$?"
 #### AC-UGE-003 — 가드가 변경 전 코드에 대해 실패한다 (§A.4 overlay 반증)
 
 ```bash
-BASE=$(git merge-base origin/main HEAD)
+git merge-base origin/main HEAD   # record as BASE
 
 # (0) base 위생 검사 — 이 검사 없이는 반증이 교란된다 (아래 설명)
-git show "$BASE":internal/cli/update_preserve_inventory.go | grep -c 'restored %d/%d'
+git show <BASE>:internal/cli/update_preserve_inventory.go | grep -c 'restored %d/%d'
 
 D=$(mktemp -d /tmp/uge-m1.XXXXXX)
-git show "$BASE":internal/cli/update_preserve_inventory.go > "$D/reverted.go"
+git show <BASE>:internal/cli/update_preserve_inventory.go > "$D/reverted.go"
 printf '{"Replace":{"%s/internal/cli/update_preserve_inventory.go":"%s/reverted.go"}}\n' \
-  "$(git rev-parse --show-toplevel)" "$D" > "$D/overlay.json"
+  "$(pwd)" "$D" > "$D/overlay.json"
 
 go test -overlay="$D/overlay.json" \
   -run 'TestMergeBackPreserveInventory_PartialRestore' -count=1 -v ./internal/cli/ 2>&1 \
@@ -199,7 +199,7 @@ go tool cover -func=/tmp/uge-m1-cov.out | grep 'mergeBackPreserveInventory'
 #### AC-UGE-005 — 세 호출부가 이음매를 경유한다
 
 ```bash
-BASE=$(git merge-base origin/main HEAD)
+git merge-base origin/main HEAD   # record as BASE
 
 # (a) 변경 후 — update 서브시스템에 비이음매 호출이 남지 않는다
 grep -c 'userHomeDir()' internal/cli/update_clean_install.go internal/cli/update_template_sync.go
@@ -208,8 +208,8 @@ grep -c 'userHomeDir()' internal/cli/update_clean_install.go internal/cli/update
 grep -c 'userHomeDirFn()' internal/cli/update_clean_install.go internal/cli/update_template_sync.go
 
 # (c) baseline (§A.3 — SHA 핀 대신 merge-base 계산)
-git show "$BASE":internal/cli/update_clean_install.go | grep -c 'userHomeDir()'
-git show "$BASE":internal/cli/update_template_sync.go | grep -c 'userHomeDir()'
+git show <BASE>:internal/cli/update_clean_install.go | grep -c 'userHomeDir()'
+git show <BASE>:internal/cli/update_template_sync.go | grep -c 'userHomeDir()'
 
 # (d) 범위 밖 호출부는 건드리지 않았다 (spec.md §3)
 grep -c 'userHomeDir()' internal/cli/glm.go
@@ -273,7 +273,7 @@ for f in update_clean_install.go update_template_sync.go; do
   diff "internal/cli/$f" "$D/$f" >/dev/null; echo "$f mutation-applied=$?"
 done
 printf '{"Replace":{"%s/internal/cli/update_clean_install.go":"%s/update_clean_install.go","%s/internal/cli/update_template_sync.go":"%s/update_template_sync.go"}}\n' \
-  "$(git rev-parse --show-toplevel)" "$D" "$(git rev-parse --show-toplevel)" "$D" > "$D/overlay.json"
+  "$(pwd)" "$D" "$(pwd)" "$D" > "$D/overlay.json"
 
 go test -overlay="$D/overlay.json" -c -o /tmp/uge-6f.test ./internal/cli/; echo "compile-exit=$?"
 go test -overlay="$D/overlay.json" -run 'TestUpdateSubsystem_HomeSeamReach' -count=1 -v ./internal/cli/ > "$D/out.txt" 2>&1
@@ -366,7 +366,7 @@ sed 's|userHomeDirFn = func() (string, error) { return tmp, nil }|userHomeDirFn 
   internal/cli/update_home_radius_test.go > "$D/no_seam_test.go"
 diff internal/cli/update_home_radius_test.go "$D/no_seam_test.go" >/dev/null; echo "mutation-applied=$?"
 printf '{"Replace":{"%s/internal/cli/update_home_radius_test.go":"%s/no_seam_test.go"}}\n' \
-  "$(git rev-parse --show-toplevel)" "$D" > "$D/overlay.json"
+  "$(pwd)" "$D" > "$D/overlay.json"
 
 go test -overlay="$D/overlay.json" -c -o /tmp/uge-cli-neg.test ./internal/cli/; echo "compile-exit=$?"
 HOME="$SENT" /tmp/uge-cli-neg.test -test.run 'TestEnsureGlobalSettingsEnv_HooksRemovalRadius' -test.v >/dev/null 2>&1
@@ -424,7 +424,7 @@ perl -0pe 's/(var DeprecatedPaths = \[\]DeprecatedPathEntry\{\n)/$1\t{Path: ".mo
   internal/defs/dirs.go > "$D/dirs.go"
 diff internal/defs/dirs.go "$D/dirs.go" >/dev/null; echo "mutation-applied=$?"
 printf '{"Replace":{"%s/internal/defs/dirs.go":"%s/dirs.go"}}\n' \
-  "$(git rev-parse --show-toplevel)" "$D" > "$D/overlay.json"
+  "$(pwd)" "$D" > "$D/overlay.json"
 
 go test -overlay="$D/overlay.json" -run 'TestCleanReinstall_PreservesUserArea' -count=1 -v ./internal/cli/ > "$D/out.txt" 2>&1
 echo "fail-lines=$(grep -cE '^(--- FAIL|FAIL)' "$D/out.txt")"
@@ -516,7 +516,7 @@ sed 's|backups\[:len(backups)-keepCount\]|backups[keepCount:]|' \
   internal/cli/update/backup/backup.go > "$D/backup.go"
 diff internal/cli/update/backup/backup.go "$D/backup.go" >/dev/null; echo "mutation-applied=$?"
 printf '{"Replace":{"%s/internal/cli/update/backup/backup.go":"%s/backup.go"}}\n' \
-  "$(git rev-parse --show-toplevel)" "$D" > "$D/overlay.json"
+  "$(pwd)" "$D" > "$D/overlay.json"
 
 go test -overlay="$D/overlay.json" -run 'TestBackupSubsystem_DestructiveSurfaces' -count=1 -v ./internal/cli/ > "$D/out.txt" 2>&1
 echo "fail-lines=$(grep -cE '^(--- FAIL|FAIL)' "$D/out.txt")"
@@ -578,7 +578,7 @@ sed 's|backupDir, err := backupLegacyMemoryDir(projectRoot, legacyDir)|backupDir
   internal/cli/update/deploy/deploy.go > "$D/deploy.go"
 diff internal/cli/update/deploy/deploy.go "$D/deploy.go" >/dev/null; echo "mutation-applied=$?"
 printf '{"Replace":{"%s/internal/cli/update/deploy/deploy.go":"%s/deploy.go"}}\n' \
-  "$(git rev-parse --show-toplevel)" "$D" > "$D/overlay.json"
+  "$(pwd)" "$D" > "$D/overlay.json"
 
 go test -overlay="$D/overlay.json" -c -o /tmp/uge-11f.test ./internal/cli/; echo "compile-exit=$?"
 go test -overlay="$D/overlay.json" -run 'TestMigrateLegacyMemoryDir_PreservesUserArea' -count=1 -v ./internal/cli/ > "$D/out.txt" 2>&1
@@ -610,7 +610,7 @@ sed 's|defs\.SkillsSubdir, "moai\*"|defs.SkillsSubdir, "*"|g' \
   internal/cli/update/deploy/deploy.go > "$D/widened.go"
 diff internal/cli/update/deploy/deploy.go "$D/widened.go" >/dev/null; echo "mutation-applied=$?"
 printf '{"Replace":{"%s/internal/cli/update/deploy/deploy.go":"%s/widened.go"}}\n' \
-  "$(git rev-parse --show-toplevel)" "$D" > "$D/overlay.json"
+  "$(pwd)" "$D" > "$D/overlay.json"
 
 go test -overlay="$D/overlay.json" -run 'TestMoaiUpdate_PreservesUserArea' -count=1 -v ./internal/cli/ 2>&1 \
   | grep -cE '^(--- FAIL|FAIL)'
@@ -638,8 +638,8 @@ $ diff deploy.go widened.go >/dev/null; echo "mutation-applied=$?"
 #### AC-UGE-013 — 템플릿 중립성 (§A.5 보존 가드, NFR-UGE-002)
 
 ```bash
-BASE=$(git merge-base origin/main HEAD)
-git diff --name-only "$BASE"..HEAD -- internal/template/templates/ | wc -l
+git merge-base origin/main HEAD   # record as BASE
+git diff --name-only origin/main...HEAD -- internal/template/templates/ | wc -l
 git status --porcelain -- internal/template/templates/ | wc -l
 ```
 

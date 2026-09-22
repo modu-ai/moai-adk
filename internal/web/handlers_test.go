@@ -400,8 +400,11 @@ func TestSaveSyncFailureSurfacesReadableError(t *testing.T) {
 	if !wrote {
 		t.Fatal("WritePreferences should have been called before the sync failure")
 	}
-	if rec.Code != http.StatusInternalServerError {
-		t.Errorf("sync failure status = %d, want 500", rec.Code)
+	// SPEC-WEB-CONSOLE-017 REQ-WC-017-001: a failed save answers 200 — the
+	// boosted form discards non-2xx bodies, so the readable partial-state
+	// error only reaches the browser through a 2xx re-render.
+	if rec.Code != http.StatusOK {
+		t.Errorf("sync failure status = %d, want 200", rec.Code)
 	}
 	body := rec.Body.String()
 	if !strings.Contains(body, "sync failed") || !strings.Contains(body, "config dir read-only") {

@@ -866,7 +866,8 @@ Baseline: both exit 0 on this tree.
 
 ```bash
 # (a) committed modifications attributable to THIS SPEC — merge-base anchored
-git diff --name-only "$(git merge-base origin/main HEAD)"..HEAD -- internal/template/templates/ | wc -l
+git merge-base origin/main HEAD   # record as BASE
+git diff --name-only origin/main...HEAD -- internal/template/templates/ | wc -l
 # (b) uncommitted modifications in the working tree
 git status --porcelain internal/template/templates/ | wc -l
 ```

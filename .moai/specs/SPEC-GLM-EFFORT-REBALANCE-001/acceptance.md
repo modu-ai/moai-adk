@@ -8,8 +8,9 @@ Every criterion below is a Given-When-Then scenario with a binary outcome. Each 
 
 ```bash
 make build && make install
-test "$(moai version 2>&1 | grep -oE '[0-9a-f]{7,}' | head -1)" = "$(git rev-parse --short HEAD)" \
-  && echo FRESH || echo "STALE — criteria below will not describe this change"
+moai version 2>&1 | grep -oE '[0-9a-f]{7,}' | head -1 > /tmp/ger-bin.txt
+git rev-parse --short HEAD > /tmp/ger-head.txt
+diff /tmp/ger-bin.txt /tmp/ger-head.txt > /dev/null && echo FRESH || echo "STALE — criteria below will not describe this change"
 ```
 
 `make install` is `go install $(LDFLAGS) ./cmd/moai`. Do not substitute a bare `go install ./cmd/moai` (drops `LDFLAGS`, so `moai version` reports no usable commit and this gate becomes uncheckable), and do not `cp` over an existing `~/go/bin/moai` without `rm -f` first (CLAUDE.local.md §11: can yield exit 137 even at an identical SHA).
@@ -111,7 +112,9 @@ go test ./internal/template/... -run 'TestSessionGLMReasoningState' -count=1
 
 ```bash
 # Precondition — binary freshness (see §B.0 Freshness gate)
-test "$(moai version 2>&1 | grep -oE '[0-9a-f]{7,}' | head -1)" = "$(git rev-parse --short HEAD)" \
+moai version 2>&1 | grep -oE '[0-9a-f]{7,}' | head -1 > /tmp/ger-bin.txt
+git rev-parse --short HEAD > /tmp/ger-head.txt
+diff /tmp/ger-bin.txt /tmp/ger-head.txt > /dev/null \
   || echo "PRECONDITION FAILED: ~/go/bin/moai is stale — run make build \&\& make install"
 moai agent lint 2>&1 | grep -E 'LR-12.*(manager-spec|plan-auditor|manager-docs)'
 ```
@@ -182,7 +185,9 @@ sed -n '/^    high:/,/^    low:/p' internal/template/templates/.moai/config/sect
 
 ```bash
 # Precondition 1 — binary freshness (see §B.0 Freshness gate)
-test "$(moai version 2>&1 | grep -oE '[0-9a-f]{7,}' | head -1)" = "$(git rev-parse --short HEAD)" \
+moai version 2>&1 | grep -oE '[0-9a-f]{7,}' | head -1 > /tmp/ger-bin.txt
+git rev-parse --short HEAD > /tmp/ger-head.txt
+diff /tmp/ger-bin.txt /tmp/ger-head.txt > /dev/null \
   || echo "PRECONDITION FAILED: ~/go/bin/moai is stale — run make build \&\& make install"
 # Precondition 2 — the config that shadows the matrix must be present
 test -s .moai/config/sections/llm.yaml || echo "PRECONDITION FAILED: config absent — this criterion is vacuous without it"
@@ -209,7 +214,9 @@ manager-docs opus/low
 
 ```bash
 # Precondition — binary freshness (see §B.0 Freshness gate)
-test "$(moai version 2>&1 | grep -oE '[0-9a-f]{7,}' | head -1)" = "$(git rev-parse --short HEAD)" \
+moai version 2>&1 | grep -oE '[0-9a-f]{7,}' | head -1 > /tmp/ger-bin.txt
+git rev-parse --short HEAD > /tmp/ger-head.txt
+diff /tmp/ger-bin.txt /tmp/ger-head.txt > /dev/null \
   || echo "PRECONDITION FAILED: ~/go/bin/moai is stale — run make build \&\& make install"
 # Value-bearing: the local file is BLOCK style, so the value is on a following line
 grep -A2 -nE '^\s+(synthesize|research):' .moai/config/sections/llm.yaml

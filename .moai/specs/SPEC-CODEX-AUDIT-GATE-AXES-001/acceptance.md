@@ -18,7 +18,7 @@
 
 #### AC-CAG-003 — 비-required + inconclusive → 정규화 후 바이트 동일
 - **Given** `gates.codex` 가 `off`, `advisory`, 키 부재, 설정 파일 부재, YAML 손상인 다섯 트리와, 변경 전 코드에서 캡처해 `build_commit`·`build_lag` 를 고정 자리표시자로 정규화한 골든 파일
-- **When** 각 트리에서 바이너리 부재 조건으로 `codex_audit` 를 호출하고 같은 정규화를 적용한다. 그리고 `G=$(git log --diff-filter=A --format=%H -- <골든 파일>)` 과 `git merge-base --is-ancestor "$G" <축 (a) 구현 커밋>; echo $?` 를 실행한다
+- **When** 각 트리에서 바이너리 부재 조건으로 `codex_audit` 를 호출하고 같은 정규화를 적용한다. 그리고 `git log --diff-filter=A --format=%H -- <골든 파일> | tail -1` 로 G 를 기록하고 `git merge-base --is-ancestor <G> <축 (a) 구현 커밋>; echo $?` 를 실행한다
 - **Then** 다섯 경우 모두 직렬화 JSON 이 골든과 바이트 동일하고(`verdict == "inconclusive"`, `gate_unmet`·영수증 필드 없음), 조상 검사는 `0` 을 출력한다. 이 AC 는 축 (b) 착지 후에도 재실행해 통과한다
 
 #### AC-CAG-004 — 배포 기본값은 opt-in 이 아니다

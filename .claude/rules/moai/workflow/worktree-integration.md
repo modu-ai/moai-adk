@@ -41,21 +41,21 @@ This glossary is the canonical definition surface for the L1 / L2 worktree-layer
 
 | Layer | Name | What it is | Path / Trigger | Lifetime | Owner |
 |-------|------|-----------|----------------|----------|-------|
-| **L1** | Claude-native session worktree | Session-scoped isolation owned by a Claude Code session. Entered by short name — `moai cc -w <name>` (the launcher passes `-w` straight through to `claude`), `claude -w <name>`, or the in-session `EnterWorktree(<name>)` tool — or materialized autonomously for a subagent spawned with `Agent(isolation: "worktree")` (auto-named; the runtime decides whether to materialize it). | `.claude/worktrees/<name>/` on branch `worktree-<name>` (auto-named subagent trees use the runtime's generated name; kanban/team card worktrees rename to `WT-<slug>` per the WT- naming rule below); base per `worktree.baseRef` (`fresh` = remote default branch by default) | Session-scoped — the running session holds a `git worktree lock` on the tree by design (held while the session runs, released on its exit; a dead session's lock auto-releases on Claude Code 2.1.210+); disposed via the session-end keep/remove prompt, or `git worktree unlock` + `git worktree remove` once the session is done | Claude Code runtime. `moai worktree` does NOT manage these trees — they are never in its registry, so `done` / `clean` / `recover` have nothing to close on them |
+| **L1** | Session worktree | Session-scoped isolation created by `moai worktree new <name>`, a Claude launcher/tool, or an isolated subagent. Entered by short name through `moai cc -w <name>`, `moai codex -w <name>`, `claude -w <name>`, or `EnterWorktree(<name>)`. | `.claude/worktrees/<name>/`; harness-created branch names vary, while kanban/team card worktrees rename to `WT-<slug>` per the rule below | Session-scoped; disposed via the session-end keep/remove prompt, or `git worktree unlock` + `git worktree remove` once the session is done | Creating harness or MoAI shared materializer. L1 trees are not in the L2 lifecycle registry, so `done` / `clean` / `recover` do not close them |
 | **L2** | MoAI persistent SPEC worktree | A persistent, SPEC-scoped working directory entered **by absolute path** — `moai cc -w ~/.moai/worktrees/<project>/<SPEC>`. Used for multi-session SPEC development (run + sync phases reuse the same L2 worktree). | `~/.moai/worktrees/<project>/<SPEC>/` | Persistent — lifecycle owned by the `moai worktree` verbs (`sync`, `remove`, `clean`, `recover`, `done`, plus the guard trio `snapshot` / `verify` / `restore`); disposed only via `moai worktree done SPEC-XXX` after both run + sync PRs merge | MoAI (user-managed via `moai worktree` CLI) |
 
 Relationships:
-- A **short name** passed to `-w` (`moai cc -w <name>`) resolves against `.claude/worktrees/<name>/` and creates an **L1** tree, not an L2 one; an **L2** persistent worktree is entered by absolute path (`moai cc -w <abs-path>`). `moai worktree` deliberately carries no creation verb — entering is the launcher's job (the former `/moai plan --worktree` launch action and `moai worktree new` command are both retired). The one creation path for a worktree on an **existing** branch is the launcher's `--branch` flag: `moai cc -w <name> --branch <existing>` creates `.claude/worktrees/<name>` checked out at that branch (the branch must already exist — the flag never creates one) and registers the tree in `.moai/state/worktrees.json` so `clean`'s anchor check sees it; the gitflow integration worktree (`.claude/worktrees/develop`) is the canonical use.
+- `moai worktree new <name>` creates an **L1** tree through the current shared materializer and returns its absolute path; it never enters the tree and carries none of the retired `--base`, `--from-current`, BODP, tmux, or team behavior. A **short name** passed to a launcher `-w` resolves that L1 tree; an **L2** persistent worktree is entered by absolute path. The separate `moai cc -w <name> --branch <existing>` form remains the existing-branch path used for the gitflow integration worktree.
 - An **L1** ephemeral worktree is materialized autonomously by the Claude Code runtime for an isolated subagent; it is independent of L2 and may occur inside either the main checkout or an L2 worktree.
 - When work happens inside an L2 worktree, the paste-ready resume MUST anchor the next session there (Block 0) per `session-handoff.md` § Worktree-Anchored Resume Pattern.
 
-[HARD] **`moai worktree` verbs are L2-only.** An L1 tree under `.claude/worktrees/` is never registered with `moai worktree`, so `done`, `clean`, and `recover` cannot act on it — `moai worktree done` on an L1 tree is a category error, not a disposal. L1 disposal is the session-end keep/remove prompt, or `git worktree unlock` + `git worktree remove` after the session releases its lock. The lock itself is designed behavior, not a defect: it is held while the session runs and released on exit, and a dead session's lock auto-releases on Claude Code 2.1.210+ — a locked tree at disposal time means a live session still owns it, and the remediation is the unlock guidance, not a cause investigation.
+[HARD] **`moai worktree new` is the sole L1 exception; lifecycle verbs remain L2-only.** An L1 tree under `.claude/worktrees/` is never registered in the L2 lifecycle registry, so `done`, `clean`, and `recover` cannot act on it. L1 disposal is the session-end keep/remove prompt, or `git worktree unlock` + `git worktree remove` after the session releases its lock.
 
-[HARD] **An unpushed worktree branch is the work's only instance.** A card or lane worktree is created from inside the session with the Claude tool (`EnterWorktree(<name>)`) or launched by the operator (`moai cc -w <name>`, or `moai cc -w <name> --branch <existing>` when the tree must sit on an existing branch such as the develop integration worktree) — never with a bare `git worktree add`. Until its branch has been integrated and the remote merge has landed, dispose of no worktree, L1 or L2: disposal before that destroys the only copy of the work. Before Claude Code 2.1.246 the runtime's own background retention sweep could delete a user-created worktree under `.claude/worktrees/` when a stale background-session record pointed at it (fixed in 2.1.246) — an unpushed L1 tree could be lost with nobody disposing of it, which is one more reason this rule treats the pre-merge tree as the only copy.
+[HARD] **An unpushed worktree branch is the work's only instance.** Create an L1 tree with `moai worktree new <name>` or a supported native launcher/tool, then enter it through a launcher — never use bare `git worktree add`. Until its branch has been integrated and the remote merge has landed, dispose of no worktree.
 
 [HARD] **Kanban/team card worktree branches carry the `WT-` prefix followed by a descriptive slug.** `EnterWorktree(<name>)` auto-names its branch `worktree-<name>`; for card worktrees, rename immediately after creation with `git branch -m WT-<slug>` (renaming the checked-out branch inside a worktree is safe — the tree, its lock, and the session anchoring are unaffected — and `moai cc -w <name>` re-entry resolves by tree name, not branch name). `WT-` is the session-worktree branch convention (`SessionWorktreeBranchPrefix`, `internal/cli/session_worktree.go`).
 
-[HARD] **The slug describes the change; the card id stays out of the branch name.** At most 3 hyphen-separated tokens, at most 24 characters, lowercase `a-z0-9-` — `WT-branch-naming`, not `WT-t0`. The **worktree directory** still carries the card id (`.claude/worktrees/<card-id>`), which is what the disposal tooling and the evidence path key on, so the id is never lost — it simply stops living in the branch name. Traceability moves onto the dispatch `card:` field, the commit messages, and the evidence path; the full contract is `kanban-dispatch.md` § Isolation is entered, never provisioned.
+[HARD] **The slug describes the change; the card id stays out of the branch name.** At most 3 hyphen-separated tokens, at most 24 characters, lowercase `a-z0-9-` — `WT-branch-naming`, not `WT-t0`. The **worktree directory** still carries the card id (`.claude/worktrees/<card-id>`), which is what the disposal tooling and the evidence path key on, so the id is never lost — it simply stops living in the branch name. Traceability moves onto the dispatch `card:` field, the commit messages, and the evidence path; the full contract is `kanban-dispatch.md` § Isolation is provisioned by MoAI, then entered through a launcher.
 
 Nothing reads a card id back out of a branch name: `internal/cli/session_worktree_prmerge.go` matches the `WT-` prefix only (`strings.HasPrefix`), never the remainder. The prefix is load-bearing; the suffix is for humans.
 
@@ -194,7 +194,7 @@ That asymmetry is the reason to prefer the reset path for card work. `baseRef` i
 **The stored setting: `git_strategy.worktree_base_branch`.** `baseRef` accepts only `"fresh"` or `"head"`, so it cannot name a branch — which leaves the branch choice resting on `refs/remotes/origin/HEAD`, local repository metadata that does not survive a fresh clone. The moai setting `git_strategy.worktree_base_branch` (in `.moai/config/sections/git-strategy.yaml`) is the reproducible handle on that choice, and it has two consumers:
 
 - **At session start**, from the primary checkout only, moai points `refs/remotes/origin/HEAD` at the configured branch and prints one line saying it did. Native worktrees created afterwards read the corrected symref. Inside a linked worktree the step does nothing at all — the symref is repository-global while the config file is tracked and follows each worktree's own branch, so one writer is both sufficient and the only way two lanes do not reverse each other's writes forever.
-- **When moai creates the worktree itself** (`moai cc -w <name>`), the configured branch is passed to `git worktree add` as the base operand, so the new tree is cut from it rather than from the invoking tree's HEAD. This half honours the setting from any working tree.
+- **When MoAI creates the worktree itself** (`moai worktree new <name>` or the creating `moai cc -w <name>` form), the configured branch is passed to the shared `git worktree add` plumbing as the base operand, so the new tree is cut from it rather than from the invoking tree's HEAD. This half honours the setting from any working tree.
 
 The empty value — the shipped default — means take no action on both paths, reproducing the pre-setting behaviour exactly. A value naming a branch that has no remote-tracking counterpart is refused before either write: the session-start step prints one diagnostic line and leaves the symref alone, and worktree creation falls back to the no-operand form. Pointing `refs/remotes/origin/HEAD` at a ref that does not exist would be worse than the mismatch it was meant to fix.
 
@@ -602,6 +602,58 @@ Which one applies is decided by what you were trying to do, so identify the situ
 Ad-hoc detours happen to work — routing the content through an interpreter's own file-write call, or splitting the file into brace-free pieces — but they are **not** the convention and are not equal options. Two paths going their own way is not a convention: a reader who meets one detour in one commit and a different one elsewhere learns nothing reusable.
 
 **Running a compound command → split it into separate plain commands.** Issue the steps one at a time rather than chaining them. Note that this trades away one property worth keeping in mind: an environment scrub written as `unset … && <command>` is load-bearing as a single invocation, because each command runs in a fresh process, so that particular pairing is not one to split apart.
+
+### Acceptance-criteria commands — the measured boundary and the authoring rule
+
+A corpus-wide, block-level census of acceptance-criteria verification commands (111 files
+carrying complex git forms across `**/acceptance.md`) probed each file with a read-only replica
+of its block composition in a worktree-isolated session at Claude Code **2.1.278** (2026-09-22;
+every disposition traces to a recorded probe; measured 2026-09-22 — card t1067). Like every
+table in this section it is a record of observations, not a specification of the parser.
+
+Refused — the `names git in a form too complex to verify` refusal fires and nothing executes:
+
+| Refused form | Notes |
+|---|---|
+| git inside `$()` whose result a later statement expands — `BASE=$(git merge-base A B)` then `git diff "$BASE"..HEAD` | refuses for `;`, newline, and `&&` separation alike; refuses with `head`, `tail`, and `sort` pipeline terminators too |
+| git nested inside another git command's arguments — `git diff "$(git merge-base A B)"..HEAD` | quoted or unquoted |
+| a tree-write bundle: variable assignment (`mktemp`, `mkdir`) + git + an `rm -rf` tail in one invocation | refuses even when every git verb in it is read-only — the bundle is what refuses, not the mutation |
+| git piped into `while`/`for`, or `for f in $(git …)` | refuses with or without git inside the loop body |
+| a `( … )` subshell compound containing git | |
+| `test "$(<git $()>)"` | refuses even with a `wc -l` pipeline terminator |
+| a non-git command (`printf`, `rg`) whose argument carries a git `$()`; an env-prefixed `VAR="$(git …)" go test …` | `echo` is the measured exception, below |
+
+Measured executable: plain separately-invocable git verbs; `;` / `&&` / `||` compounds of them;
+`$?`-capture lines; a `$()` assignment with no later expansion; `$()` embedded in the same
+statement's `echo "…$(…)…"` (bare, `|wc`, `|head`, `|awk` terminators all pass); a `$()`
+assignment expanded later when the `$()` pipeline terminates in a counter stage (`wc -l`,
+`grep -c`, `awk '{print $1}'`); redirect-to-file capture (`git … > /tmp/f`); git text inside a
+quoted grep pattern or inside a comment.
+
+**Gap**: the counter-terminator exception and the echo-embedding exception are observed
+boundaries, not a mechanism — the territory between the rows is unmeasured, and per the section
+gap note above, unknown is not permitted.
+
+**Authoring rule for AC verification commands** (normative — this is the repo-side fix; the
+guard itself is the binary's):
+
+1. One plain git verb per line, run from the worktree root.
+2. Capture exit codes in separate lines — `git diff --quiet …; echo "exit=$?"` — so the exit
+   code is the verification's own field (`verification-completeness.md` §2.1), never a
+   `$()`-captured variable.
+3. Never git inside `$()`. Derive ranges with the three-dot form (`git diff --name-only
+   develop...HEAD`) and record the merge-base on its own line (`git merge-base develop HEAD`)
+   when the base value itself is evidence.
+4. No write/cleanup composition tail in a verification command. Scratch writes live under
+   `/tmp`; cleanup is a separate plain step, never an `rm -rf` bundled into the same invocation.
+5. Never relocate a refused command into a script file — the guard cannot read inside a script,
+   so the relocation hides the risk instead of removing it. Reduce the verification instead.
+6. Pin the tree SHA the measurement was taken on (`verification-completeness.md` §4).
+
+Working example: the AC-AEC-013 restatement in `SPEC-AUDIT-EXPORT-CLAUSE-001/acceptance.md:622-680`
+(plain verbs + separate `echo "exit=$?"` lines + an explicit note avoiding `$(git merge-base …)`),
+and the corpus census backing this subsection at `.moai/reports/t1067/census-20260922.md` (card
+t1067, measured 2026-09-22).
 
 **Versions measured**: the trigger table and the delimiter asymmetry were measured at Claude Code **2.1.251**. The message-shape catalogue, the git-axis counter-example, and the heredoc disagreement were measured at **2.1.275** (card t852; `claude --version` read in the measuring session). The subagent-anchor observations were measured at the version current when card t741 was measured, which was not recorded there.
 

@@ -18,7 +18,7 @@ Getting this wrong is quiet and expensive. Branching from a stale local `main` s
 |------|----------------|
 | `/moai plan --branch` (skill body) | yes (orchestrator `AskUserQuestion`) |
 
-The orchestrator evaluates the signals below, recommends a base, and asks. There is no CLI entry point: `moai worktree new` and its `--base` / `--from-current` flags are retired, and a worktree is now entered with `moai cc -w <name>` rather than created by a MoAI subcommand.
+The orchestrator evaluates the signals below, recommends a base, and asks. There is no CLI entry point for the BODP decision itself. `moai worktree new <name>` now exists only as a thin creator over the configured shared materializer; the former implementation and its `--base` / `--from-current` flags remain retired. Enter the created tree separately through a launcher.
 
 ## HARD Rules
 

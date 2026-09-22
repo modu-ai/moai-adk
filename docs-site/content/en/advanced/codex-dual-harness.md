@@ -30,7 +30,7 @@ codex-cli does not read Claude Code's `.claude/skills/`, so skills are deployed 
 
 ## Harness-local personal instructions
 
-`AGENTS.local.md` is Codex-only. The local `moai codex` launcher reads it from the project root and passes its exact content through Codex's `developer_instructions` session override; it is never imported with `@` from a shared file. `CLAUDE.local.md`, `.claude/settings.local.json`, and Claude automatic `MEMORY.md` files remain Claude-only. Codex Web sessions do not run the local launcher, so they do not receive this injection.
+`CLAUDE.local.md` is the common local input shared with Claude workflows; `AGENTS.local.md` remains Codex-specific. Every local `moai codex` route—bare, `cli`, `app`, `--spawn`, `-w`, and `-f` lead/agents—reads the non-empty regular files from the project root in that order, places a `<!-- source: <filename> -->` provenance header before each body, and sends the combined text as one `developer_instructions` override. For `-w`, the source stays the original project root even though Codex runs in the worktree. Neither shared `AGENTS.md` nor `CLAUDE.md` imports or links these local files. The launcher refuses links and non-regular inputs, reads from the same descriptor it checked, and fails before launch if the operator also supplies `developer_instructions` or if the direct/spawn argument is too large. Other harness-local settings and memory remain with their harness. Codex Web does not run the local launcher and receives none of this injection.
 
 ## `internal/codexadapter` — the hook adapter library
 

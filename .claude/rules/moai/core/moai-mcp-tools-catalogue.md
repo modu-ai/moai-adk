@@ -1,5 +1,5 @@
 ---
-description: "Detail companion for moai-mcp-tools.md — the full 30-tool moai MCP catalogue with per-family tables, consumers, and CLI equivalents"
+description: "Detail companion for moai-mcp-tools.md — the full 31-tool moai MCP catalogue with per-family tables, consumers, and CLI equivalents"
 paths: "**/moai-mcp-tools.md,**/internal/cli/mcp_server.go,**/.claude/agents/moai/*.md"
 ---
 
@@ -7,11 +7,11 @@ paths: "**/moai-mcp-tools.md,**/internal/cli/mcp_server.go,**/.claude/agents/moa
 
 > Detail companion of `moai-mcp-tools.md` (the always-loaded stub). The stub owns the
 > MCP-over-CLI preference rule, the family index, and the unwired-by-design note. This file owns
-> the per-tool catalogue: purpose, wired consumer, and CLI equivalent for each of the 30 tools.
+> the per-tool catalogue: purpose, wired consumer, and CLI equivalent for each of the 31 tools.
 > Load it when wiring a tool into an agent's `tools:` list, or when choosing between an MCP tool
 > and its Bash equivalent for a specific capability.
 
-## Tool catalogue (30 tools)
+## Tool catalogue (31 tools)
 
 ### SPEC lifecycle
 
@@ -113,6 +113,19 @@ polls completion via `glm_job_status`/`glm_job_result`, and cancels via
 learned from `glm_task` itself, which reports a structured failed result when
 the key is missing or z.ai is unreachable. GLM is OPTIONAL: a missing or
 unavailable GLM yields a fail-open result, never a hard error.
+
+### Judgment (gated, display-only)
+
+| Tool | Purpose | Consumer | CLI equivalent |
+|------|---------|----------|----------------|
+| `mcp__moai__jev_ask` | Ask the gated judgment capability typed questions over one supplied state; typed answers with probability | gated-unavailable at the shipped default (`workflow.jev.enabled: false`); display-only — a labelled model signal a person reads, never a completion predicate, merge approval, queue mutation, or gate input | — (MCP-only) |
+
+The tool is registered unconditionally so its gate-off contract is invocable
+and countable, but with the gate off it constructs no request and makes no
+network call, and while the chain's fitness measurement gate stands unrun no
+surface presents it as available. The question-design rules for authoring
+well-formed questions live in the reference skill; the call path lives in
+`internal/jev` and the tool wraps it without a second implementation.
 
 
 ---

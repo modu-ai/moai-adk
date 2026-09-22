@@ -96,8 +96,11 @@ SPEC, which are not Go files).
 **Then** they are byte-identical and still contain `max/medium/low`.
 
 ```bash
-diff <(git show <BASE>:internal/template/profile_matrix.go | sed -n '8p') \
-     <(sed -n '8p' internal/template/profile_matrix.go) && echo IDENTICAL
+# <BASE> = the merge-base value recorded on its own line (worktree guard refuses
+# process substitution with git inside; the comparison is split into plain commands).
+git show <BASE>:internal/template/profile_matrix.go | sed -n '8p' > /tmp/mgc-base-line.txt
+sed -n '8p' internal/template/profile_matrix.go > /tmp/mgc-live-line.txt
+diff /tmp/mgc-base-line.txt /tmp/mgc-live-line.txt && echo IDENTICAL
 sed -n '8p' internal/template/profile_matrix.go | grep -c 'max/medium/low'
 ```
 

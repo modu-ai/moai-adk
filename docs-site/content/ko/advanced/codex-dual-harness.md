@@ -30,7 +30,7 @@ codex-cli는 Claude Code의 `.claude/skills/`를 읽지 않으므로, 스킬을 
 
 ## 하네스별 개인 지침
 
-`AGENTS.local.md`는 Codex 전용입니다. 로컬 `moai codex` 런처가 프로젝트 루트에서 이 파일을 읽고, 내용을 그대로 Codex 세션의 `developer_instructions` 덮어쓰기로 전달합니다. 공통 파일에서 `@`로 가져오지 않습니다. `CLAUDE.local.md`·`.claude/settings.local.json`·Claude 자동 `MEMORY.md`는 Claude 전용으로 남습니다. Codex Web 세션은 로컬 런처를 거치지 않으므로 이 주입을 받지 않습니다.
+`CLAUDE.local.md`는 Claude 워크플로와 함께 쓰는 공통 로컬 입력이고, `AGENTS.local.md`는 Codex 전용 입력입니다. 로컬 `moai codex`의 모든 실행 경로(기본 실행·`cli`·`app`·`--spawn`·`-w`·`-f` lead/agents)는 프로젝트 루트에서 비어 있지 않은 일반 파일을 이 순서로 읽고, 각 본문 앞에 `<!-- source: <filename> -->` 출처 헤더를 붙여 하나의 `developer_instructions` 덮어쓰기로 전달합니다. `-w`에서도 Codex의 실행 위치만 워크트리로 바뀌며 입력은 원래 프로젝트 루트에서 읽습니다. 공용 `AGENTS.md`와 `CLAUDE.md`는 두 로컬 파일을 가져오거나 링크하지 않습니다. 런처는 링크와 일반 파일이 아닌 입력을 거부하고, 검사한 파일 디스크립터에서 그대로 읽으며, 운영자가 `developer_instructions`를 중복 지정했거나 direct/spawn 인자가 너무 크면 실행 전에 실패합니다. 다른 하네스별 설정과 메모리는 해당 하네스에만 남습니다. Codex Web은 로컬 런처를 거치지 않으므로 이 주입을 받지 않습니다.
 
 ## `internal/codexadapter` — 훅 어댑터 라이브러리
 

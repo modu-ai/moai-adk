@@ -211,6 +211,11 @@ func materializeSessionWorktree(branch string, out io.Writer) (string, error) {
 	// tree, so the parent is correct.
 	projectRoot := filepath.Dir(commonDir)
 	destDir := filepath.Join(projectRoot, sessionWorktreeSubdir, branch)
+	if _, statErr := os.Lstat(destDir); statErr == nil {
+		return "", fmt.Errorf("worktree %q already exists at %s", branch, destDir)
+	} else if !os.IsNotExist(statErr) {
+		return "", fmt.Errorf("inspect worktree destination %s: %w", destDir, statErr)
+	}
 
 	// SPEC-WORKTREE-BASEREF-001 REQ-WBR-010/011: cut the new tree from the
 	// configured base branch. With no operand `git worktree add` branches from

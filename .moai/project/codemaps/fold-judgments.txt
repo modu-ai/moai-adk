@@ -39,3 +39,50 @@ fold internal/statusline/config_root.go
 omission internal/auditreceipt
 omission internal/harness/rosterguard
 omission internal/harness/cellguard
+
+# --- 2026-09-22 refresh (worktree t1069, HEAD 0314801c2) ---
+# 위 항목들은 이 refresh 에서도 문서 본문과 대조해 그대로 성립함을 확인했으므로 남겨 둡니다.
+# 아래는 이번 refresh 가 새로 내린 판정입니다.
+
+fold internal/cli/update/backup/settings_snapshot.go
+fold internal/spec/closer.go
+fold internal/spec/era.go
+fold internal/constitution/contradiction.go
+fold internal/session/session_pid.go
+fold internal/session/registry.go
+fold internal/merge/strategies.go
+fold internal/merge/types.go
+fold internal/binlag/binlag.go
+fold internal/hook/branch_guard.go
+fold internal/hook/cwd_changed_relocate.go
+fold internal/hook/memo/taxonomy/linkage.go
+fold internal/cli/session.go
+fold internal/cli/home_state_coverage.go
+fold internal/cli/hook_install.go
+fold internal/cli/hook_install_precommit.go
+fold internal/migration/migrations/m001_hardcoded_path.go
+fold internal/settings/yamlpatch/yamlpatch.go
+fold internal/settings/schema_sections.go
+fold internal/defs/dirs.go
+fold internal/homestate/admission.go
+fold internal/config/cache.go
+fold internal/config/envkeys.go
+fold internal/template/catalog.yaml
+
+omission internal/jev
+omission internal/jevcred
+omission internal/jevmeasure
+omission internal/homestate/noncanonical_tree_guard.go
+omission internal/hook/session_heartbeat.go
+omission internal/hook/instructions_loaded.go
+omission internal/web/jevkey.go
+omission internal/settings/jev.go
+omission internal/cli/update/backup/file_snapshot.go
+omission internal/cli/update/backup/mcp_snapshot.go
+omission internal/cli/wizard/questions.go
+
+# 이번 refresh 에서 fold 로 기록하지 않은 이유가 있는 파일들:
+# internal/spec/audit.go · internal/cli/init.go · internal/config/defaults.go ·
+# internal/config/types.go · internal/template/profile_matrix.go — 다섯 모두 이번 판 이전의
+# 본문에 이미 이름이 있는 파일이라 「이름 없이 접힌다」는 fold 판정이 성립하지 않고,
+# 이번 변경분은 그 기존 서술의 수치·문장을 갱신한 것입니다. 새 판정을 내리지 않습니다.

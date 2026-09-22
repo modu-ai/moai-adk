@@ -35,7 +35,7 @@ func TestWorktreeCmd_Short(t *testing.T) {
 
 func TestWorktreeCmd_HasSubcommands(t *testing.T) {
 	expected := []string{
-		"sync", "remove", "clean", "recover", "done",
+		"new", "sync", "remove", "clean", "recover", "done",
 		"snapshot", "verify", "restore", // worktree state guard
 	}
 	for _, name := range expected {
@@ -52,13 +52,11 @@ func TestWorktreeCmd_HasSubcommands(t *testing.T) {
 	}
 }
 
-// TestWorktreeCmd_RetiredSubcommands pins the retirement of the creation,
-// navigation, and inspection subcommands. Creating and entering a worktree is
-// `moai cc -w <name>`; git's own `worktree list` covers inspection. A
-// resurrected subcommand here would put a second, diverging entry path back in
-// front of users.
+// TestWorktreeCmd_RetiredSubcommands keeps the navigation and inspection
+// subcommands retired. Card t1070 deliberately removed "new" from this list:
+// it is now a creation-only adapter, while entry remains launcher-owned.
 func TestWorktreeCmd_RetiredSubcommands(t *testing.T) {
-	retired := []string{"new", "list", "switch", "go", "config", "status"}
+	retired := []string{"list", "switch", "go", "config", "status"}
 	for _, name := range retired {
 		for _, cmd := range WorktreeCmd.Commands() {
 			if cmd.Name() == name {
@@ -70,7 +68,7 @@ func TestWorktreeCmd_RetiredSubcommands(t *testing.T) {
 
 func TestWorktreeCmd_SubcommandCount(t *testing.T) {
 	count := len(WorktreeCmd.Commands())
-	const expected = 8 // sync, remove, clean, recover, done + guard snapshot/verify/restore
+	const expected = 9 // new + sync, remove, clean, recover, done + guard snapshot/verify/restore
 	if count != expected {
 		t.Errorf("worktree should have %d subcommands, got %d", expected, count)
 	}

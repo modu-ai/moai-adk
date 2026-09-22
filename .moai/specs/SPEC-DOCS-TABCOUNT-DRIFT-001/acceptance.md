@@ -289,8 +289,8 @@ go test ./internal/web/ -run 'TestDocsTabContract'                         # ok
 **Given** M2~M4 가 끝난 트리에서,
 **When**
 ```bash
-CARD_BASE=$(git merge-base develop HEAD)
-git diff --name-only "$CARD_BASE" -- README.md README.ko.md README.ja.md README.zh.md \
+git merge-base develop HEAD   # 읽는 시점에 재구해 값을 <CARD_BASE>로 기록한다
+git diff --name-only <CARD_BASE> -- README.md README.ko.md README.ja.md README.zh.md \
   docs-site/content/ko/cli-reference/web.md docs-site/content/en/cli-reference/web.md \
   docs-site/content/ja/cli-reference/web.md docs-site/content/zh/cli-reference/web.md \
   docs-site/content/ko/advanced/moai-web-console.md docs-site/content/en/advanced/moai-web-console.md \
@@ -407,7 +407,7 @@ AC-TCD-006 의 V1·V2(이름) · V3(숫자) · V4(`fourteen`) 를 전부 통과�
 ### RG-TCD-001 — 스크린샷 미변경
 
 **Given** 카드가 마감될 때,
-**When** `git diff --quiet "$(git merge-base develop HEAD)" -- assets/images/` 를 실행하면,
+**When** `git merge-base develop HEAD` 을 기록한 뒤 `git diff --quiet <그 값> -- assets/images/` 를 실행하면,
 **Then** 종료코드가 `0` 이다(무변경). 종료코드가 판정을 운반한다 — `echo "rc=$?"` 를 뒤에 붙이지 않는다
 (그 형태는 `git diff` 의 성공 여부를 찍을 뿐 무매치를 뜻하지 않는다).
 왼쪽 끝은 AC-TCD-010 과 같은 이유로 **읽는 시점 merge-base** 다 — 리터럴 핀을 쓰면 develop 이 언젠가

@@ -180,3 +180,12 @@ workflow:
     # (internal/config/defaults.go enforces this).
     agent_stop_guard:
         enabled: true
+    # subagent_write_guard: PreToolUse deny layer against a subagent's
+    # destructive overwrite of an existing tracked file (a Write that replaces
+    # it with a fraction of what it held). Detection and the audit row
+    # (.moai/logs/subagent-write-guard.log) always run regardless of this
+    # flag; this local opt-in enables the deny layer for dogfood. Shipped
+    # default-false in template (internal/config/defaults.go enforces this;
+    # no `enabled: true` under internal/template/templates/).
+    subagent_write_guard:
+        enabled: true

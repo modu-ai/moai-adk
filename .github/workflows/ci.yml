@@ -582,3 +582,160 @@ jobs:
         run: |
           MOAI_CONSTITUTION_REGISTRY=.claude/rules/moai/core/zone-registry.md \
             ./bin/moai constitution validate
+
+  # ---------------------------------------------------------------------------
+  # test-browser: app.js handler runtime fire guard — SPEC-APPJS-FIRE-GUARD-001
+  # (card t1060). ADDITIVE ONLY (REQ-AFG-010): this job was appended at EOF and
+  # touches no existing job or step; the guarded driver tests skip everywhere
+  # else, so THIS job is the only CI verdict surface for the runtime fire axis.
+  #
+  # Green phase: the env-gated driver tests run against the in-process server
+  # surface (MOAI_BROWSER_GUARD=1). Red phase: the committed mutation tool
+  # re-introduces the historical IIFE-crossing defect, the binary is rebuilt
+  # (app.js is //go:embed'ed), and the probe must exit 1 naming the collapsed
+  # indicators; the tree is then restored and verified byte-identical before a
+  # final green probe (0 → 1 → 0, REQ-AFG-008/009).
+  #
+  # Chrome is NOT trusted from the runner image (REQ-AFG-010): a
+  # Chrome-for-Testing build is downloaded and sha256-pinned below. The pin
+  # was measured 2026-09-22 by downloading this exact URL and hashing the
+  # bytes. websockets is pinned for the same reason; it is the probe's only
+  # third-party dependency and is NEVER a Go module (go.mod/go.sum unchanged).
+  # ---------------------------------------------------------------------------
+  test-browser:
+    name: Test (browser fire guard)
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v7
+
+      - name: Set up Go
+        uses: actions/setup-go@v7
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      - name: Install pinned websockets (probe dependency — never a Go module)
+        shell: bash
+        run: |
+          python3 -m pip --version >/dev/null 2>&1 || python3 -m ensurepip --upgrade
+          python3 -m pip install --user --disable-pip-version-check --quiet "websockets==15.0.1"
+          python3 -c "import websockets; print('websockets', websockets.__version__)"
+
+      - name: Provision pinned Chrome for Testing (sha256-verified download)
+        shell: bash
+        run: |
+          CFT_VERSION="153.0.8010.52"
+          CFT_SHA256="e66f66d4802a46d4a022667e668aa950e277cadbfbed4b3777915b47413a0ef9"
+          CFT_URL="https://storage.googleapis.com/chrome-for-testing-public/${CFT_VERSION}/linux64/chrome-linux64.zip"
+          curl --fail --silent --show-error --location -o chrome-linux64.zip "$CFT_URL"
+          echo "${CFT_SHA256}  chrome-linux64.zip" | sha256sum --check --strict -
+          mkdir -p "$RUNNER_TEMP/cft"
+          unzip -q chrome-linux64.zip -d "$RUNNER_TEMP/cft"
+          echo "MOAI_BROWSER_GUARD_CHROME=$RUNNER_TEMP/cft/chrome-linux64/chrome" >> "$GITHUB_ENV"
+
+      - name: Lint the probe manifest (AC-AFG-009)
+        shell: bash
+        run: python3 internal/web/testdata/appjs_fire_probe.py --lint-manifest
+
+      - name: Green phase — gated driver tests (in-process surface)
+        env:
+          MOAI_BROWSER_GUARD: "1"
+        shell: bash
+        run: go test ./internal/web/ -run 'AppJsHandlersFire' -v -count=1 -timeout 10m
+
+      - name: Red phase — mutation cycle (0 → 1 → 0, real-binary surface)
+        shell: bash
+        run: |
+          set -euo pipefail
+          RUN_DIR="$RUNNER_TEMP/fire-guard"
+          PORT=18499
+          mkdir -p "$RUN_DIR"
+
+          start_server() {
+            "$RUN_DIR/moai" web --port "$PORT" --no-open --no-reuse > "$RUN_DIR/server.log" 2>&1 &
+            SERVER_PID=$!
+            for i in $(seq 1 50); do
+              curl -sf -o /dev/null "http://127.0.0.1:$PORT/" && return 0
+              sleep 0.2
+            done
+            echo "server never became ready" >&2
+            exit 1
+          }
+          stop_server() {
+            if [ -n "${SERVER_PID:-}" ]; then
+              kill "$SERVER_PID" 2>/dev/null || true
+              wait "$SERVER_PID" 2>/dev/null || true
+              SERVER_PID=""
+            fi
+          }
+          expect_exit() {
+            local want="$1"; shift
+            set +e
+            "$@" > "$RUN_DIR/last.out" 2>&1
+            local got=$?
+            set -e
+            if [ "$got" -ne "$want" ]; then
+              echo "EXPECTED exit $want, got $got for: $*" >&2
+              tail -40 "$RUN_DIR/last.out" >&2 || true
+              exit 1
+            fi
+          }
+
+          go build -o "$RUN_DIR/moai" ./cmd/moai
+          start_server
+
+          rm -rf "$RUN_DIR/profile"
+          # --no-sandbox: test-only browser over loopback on a CI VM.
+          "$MOAI_BROWSER_GUARD_CHROME" --headless=new --remote-debugging-port=0 \
+            --user-data-dir="$RUN_DIR/profile" --no-first-run --no-default-browser-check \
+            --disable-gpu --no-sandbox about:blank > "$RUN_DIR/chrome.log" 2>&1 &
+          CHROME_PID=$!
+          trap 'kill $CHROME_PID 2>/dev/null || true; stop_server' EXIT
+
+          CDP_PORT=""
+          for i in $(seq 1 60); do
+            if [ -f "$RUN_DIR/profile/DevToolsActivePort" ]; then
+              CDP_PORT=$(head -1 "$RUN_DIR/profile/DevToolsActivePort")
+              [ -n "$CDP_PORT" ] && break
+            fi
+            sleep 0.25
+          done
+          [ -n "$CDP_PORT" ] || { echo "Chrome never exposed a CDP port" >&2; exit 1; }
+
+          expect_exit 0 python3 internal/web/testdata/appjs_fire_probe.py \
+            --cdp-port "$CDP_PORT" "$PORT" t1060-ci-green
+
+          expect_exit 0 python3 internal/web/testdata/appjs_fire_mutation.py \
+            --pristine "$RUN_DIR/appjs.pristine"
+
+          stop_server
+          go build -o "$RUN_DIR/moai" ./cmd/moai
+          start_server
+
+          set +e
+          python3 internal/web/testdata/appjs_fire_probe.py \
+            --cdp-port "$CDP_PORT" "$PORT" t1060-ci-red > "$RUN_DIR/red.json" 2>&1
+          RED_EXIT=$?
+          set -e
+          if [ "$RED_EXIT" -ne 1 ]; then
+            echo "RED PHASE: expected probe exit 1 after mutation, got $RED_EXIT" >&2
+            cat "$RUN_DIR/red.json" >&2 || true
+            exit 1
+          fi
+          grep -q 'stampRefreshed' "$RUN_DIR/red.json" || {
+            echo "red report lacks the expected stampRefreshed ReferenceError" >&2
+            exit 1
+          }
+
+          stop_server
+          cp "$RUN_DIR/appjs.pristine" internal/web/assets/app.js
+          cmp internal/web/assets/app.js "$RUN_DIR/appjs.pristine"
+          git diff --exit-code -- internal/web/assets/app.js
+          echo "RESTORED_BYTE_IDENTICAL"
+
+          go build -o "$RUN_DIR/moai" ./cmd/moai
+          start_server
+          expect_exit 0 python3 internal/web/testdata/appjs_fire_probe.py \
+            --cdp-port "$CDP_PORT" "$PORT" t1060-ci-post-restore

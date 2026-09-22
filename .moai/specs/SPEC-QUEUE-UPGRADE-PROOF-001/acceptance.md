@@ -126,7 +126,10 @@ The criterion therefore DERIVES the path the way the production code does,
 rather than hardcoding an absolute path that is machine-specific and would rot:
 
 ```bash
-QUEUE_DB="$(dirname "$(git rev-parse --path-format=absolute --git-common-dir)")/.moai/state/todo/backlog.db"
+git rev-parse --path-format=absolute --git-common-dir > /tmp/qup-gitdir.txt
+cat /tmp/qup-gitdir.txt
+# QUEUE_DB = "$(dirname < recorded git-common-dir >)/.moai/state/todo/backlog.db"
+# — derive it from the recorded value above; do not hardcode an absolute path.
 ```
 
 `--path-format=absolute` is required, not decorative: the bare

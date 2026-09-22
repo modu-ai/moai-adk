@@ -226,10 +226,11 @@ matches=$(grep -rn 'expected user_added to be dropped' --include='*_test.go' . |
 ### AC-UYP-019 — no fixture leaked into the template tree (plan-audit D13 simplified)
 
 ```bash
-[ -z "$(git status --porcelain internal/template/templates/)" ] && echo PASS || { git status --porcelain internal/template/templates/; exit 1; }
+git status --porcelain internal/template/templates/ > /tmp/uyp-porcelain.txt
+[ -s /tmp/uyp-porcelain.txt ] && { cat /tmp/uyp-porcelain.txt; exit 1; } || echo PASS
 grep -rn 'SPEC-UPDATE-YAML-PRESERVE\|REQ-UYP-' internal/template/templates/ && { echo FAIL; exit 1; } || echo PASS
 ```
-The first command replaces the brittle `tee /dev/stderr` form (which mixed a diagnostic into the exit-status path); the bracketed emptiness test separates "show me the porcelain if non-empty" from the exit decision.
+The first command replaces the brittle `tee /dev/stderr` form (which mixed a diagnostic into the exit-status path); the porcelain is captured to a scratch file and the emptiness test (`[ -s … ]`) separates "show me the porcelain if non-empty" from the exit decision.
 
 ### AC-UYP-020 — package coverage ≥ plan-time baseline (plan-audit D11 captured the figure)
 

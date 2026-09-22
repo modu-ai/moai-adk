@@ -176,7 +176,9 @@ func TestAllSkillsInCatalog(t *testing.T) {
 	// the bare /loop backlog dispatch cycle, core.skills), net +1 = 33.
 	// moai-domain-design-dna added (reference-design deconstruction +
 	// generation domain skill, core.skills), net +1 = 34.
-	const expectedSkillCount = 34
+	// moai-ref-jev-question-design added (question-design rules reference for
+	// the gated judgment capability; core.skills), net +1 = 35.
+	const expectedSkillCount = 35
 	if len(diskSkills) != expectedSkillCount {
 		t.Errorf("expected %d skill directories on disk, found %d: %v", expectedSkillCount, len(diskSkills), diskSkills)
 	}

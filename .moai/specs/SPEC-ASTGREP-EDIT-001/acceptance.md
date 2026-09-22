@@ -277,19 +277,19 @@ template mirror by design; the `-- '.claude' '.moai'` pathspec already excludes
 the `internal/template/templates/` side.
 
 ```bash
-paths=$(git diff --name-only origin/main...HEAD -- '.claude' '.moai' \
-          | grep -v '^\.moai/specs/')
-test -n "$paths" || { echo "FAIL: empty path list"; exit 1; }
-printf '%s\n' "$paths" | while read -r p; do
-  a=$(git diff origin/main...HEAD -- "$p" \
-        | grep -E '^[+-]' | grep -vE '^(\+\+\+|---)')
-  b=$(git diff origin/main...HEAD -- "internal/template/templates/$p" \
-        | grep -E '^[+-]' | grep -vE '^(\+\+\+|---)')
-  if [ -z "$a" ]; then echo "FAIL: no delta for $p"
-  elif [ "$a" = "$b" ]; then echo "DELTA-MIRRORED  $p"
-  else echo "DELTA-DIVERGED  $p"; fi
-done
+git diff --name-only origin/main...HEAD -- '.claude' '.moai' \
+  | grep -v '^\.moai/specs/' > /tmp/ae-paths.txt
+test -s /tmp/ae-paths.txt || { echo "FAIL: empty path list"; exit 1; }
+# For each path P in /tmp/ae-paths.txt, run these two PLAIN commands (one invocation each)
+# and compare — the per-file git diff cannot ride inside a shell loop in a worktree-isolated
+# session (the guard refuses git inside loops):
+#   git diff origin/main...HEAD -- "P" | grep -E '^[+-]' | grep -vE '^(\+\+\+|---)'                  → live delta
+#   git diff origin/main...HEAD -- "internal/template/templates/P" | grep -E '^[+-]' | grep -vE '^(\+\+\+|---)'   → mirror delta
+# PASS when, for every P: the live delta is non-empty AND identical to the mirror delta
+# (echo "DELTA-MIRRORED  P"); a non-empty live delta with an empty mirror delta is
+# "FAIL: no delta for P".
 ```
+
 PASS: the path list is non-empty AND every line reads `DELTA-MIRRORED`. Any
 `DELTA-DIVERGED` line, any `FAIL:` line, or the `empty path list` message is a
 FAIL. Falsification check: mirroring a `.claude/` edit incompletely — or not at

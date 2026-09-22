@@ -217,9 +217,11 @@ done
 
 **Verification**:
 ```bash
-# Compare HEAD to plan-phase entry (the spec.md commit)
-PLAN_COMMIT=$(git log --pretty=format:'%H' -1 -- .moai/specs/SPEC-V3R6-LEGACY-CLEANUP-001/spec.md)
-git diff --name-only "$PLAN_COMMIT" HEAD -- '*.go' | wc -l
+# Compare HEAD to plan-phase entry (the spec.md commit).
+# The plan-commit SHA is read at measurement time and recorded on its own line,
+# then used as the literal <PLAN_COMMIT> in the lines below.
+git log --pretty=format:'%H' -1 -- .moai/specs/SPEC-V3R6-LEGACY-CLEANUP-001/spec.md
+git diff --name-only <PLAN_COMMIT> HEAD -- '*.go' | wc -l
 # Expected: 0
 ```
 
@@ -235,8 +237,8 @@ git diff --name-only "$PLAN_COMMIT" HEAD -- '*.go' | wc -l
 
 **Verification**:
 ```bash
-PLAN_COMMIT=$(git log --pretty=format:'%H' -1 -- .moai/specs/SPEC-V3R6-LEGACY-CLEANUP-001/spec.md)
-git diff --name-only "$PLAN_COMMIT" HEAD -- 'internal/template/templates/' | wc -l
+git log --pretty=format:'%H' -1 -- .moai/specs/SPEC-V3R6-LEGACY-CLEANUP-001/spec.md   # record as <PLAN_COMMIT>
+git diff --name-only <PLAN_COMMIT> HEAD -- 'internal/template/templates/' | wc -l
 # Expected: 0
 ```
 
@@ -254,10 +256,12 @@ git diff --name-only "$PLAN_COMMIT" HEAD -- 'internal/template/templates/' | wc 
 
 **Verification**:
 ```bash
-PLAN_COMMIT=$(git log --pretty=format:'%H' -1 -- .moai/specs/SPEC-V3R6-LEGACY-CLEANUP-001/spec.md)
+git log --pretty=format:'%H' -1 -- .moai/specs/SPEC-V3R6-LEGACY-CLEANUP-001/spec.md   # record as <PLAN_COMMIT>
+git diff --diff-filter=A --name-only <PLAN_COMMIT> HEAD -- docs-site/content/ | sort > /tmp/lcl-added.txt
+git diff --diff-filter=D --name-only <PLAN_COMMIT> HEAD -- docs-site/content/ | sort > /tmp/lcl-deleted.txt
 for loc in ko en ja zh; do
-  ADDED=$(git diff --diff-filter=A --name-only "$PLAN_COMMIT" HEAD -- "docs-site/content/$loc/" | wc -l | tr -d ' ')
-  DELETED=$(git diff --diff-filter=D --name-only "$PLAN_COMMIT" HEAD -- "docs-site/content/$loc/" | wc -l | tr -d ' ')
+  ADDED=$(grep -c "docs-site/content/$loc/" /tmp/lcl-added.txt)
+  DELETED=$(grep -c "docs-site/content/$loc/" /tmp/lcl-deleted.txt)
   if [ "$ADDED" = "0" ] && [ "$DELETED" = "0" ]; then
     echo "$loc: PASS (no add/remove)"
   else

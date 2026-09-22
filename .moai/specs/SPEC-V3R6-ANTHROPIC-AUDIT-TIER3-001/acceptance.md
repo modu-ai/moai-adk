@@ -166,7 +166,8 @@ golangci-lint run --timeout=2m
 
 **When** the verifier executes:
 ```bash
-git diff --name-only $(git log --grep="SPEC-V3R6-ANTHROPIC-AUDIT-TIER3-001" --reverse --format='%H' | head -1)^..HEAD | sort | uniq > /tmp/aat_files.txt
+git log --grep="SPEC-V3R6-ANTHROPIC-AUDIT-TIER3-001" --reverse --format='%H' | head -1   # record as FIRST_COMMIT
+git diff --name-only <FIRST_COMMIT>^..HEAD | sort | uniq > /tmp/aat_files.txt
 ```
 
 **Then** `/tmp/aat_files.txt` MUST contain ONLY files listed in `plan.md §A.5 EXTEND` (10 file paths). The file MUST NOT contain any of the following forbidden paths (REQ-AAT-014):

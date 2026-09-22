@@ -6,7 +6,7 @@
 ## 공통 전제 (모든 AC 앞에 선다)
 
 ```bash
-CARD_BASE=$(git merge-base origin/develop HEAD)   # 범위의 왼쪽 끝 — 읽는 시점에 재유도
+git merge-base origin/develop HEAD   # 범위의 왼쪽 끝 — 읽는 시점에 재유도, 출력 값을 <CARD_BASE>로 기록해 둔다
 ```
 
 리터럴 `bce6d7e08` 은 날짜 붙은 앵커이지 범위의 왼쪽 끝이 아니다.
@@ -32,8 +32,8 @@ BACKUP=/Users/goos/MoAI/moai-adk-go/.moai/reports/t531/CLAUDE.local.md.primary-u
 ```bash
 sed -n '/^### §4.1/,/^## 5\./p' CLAUDE.local.md > /tmp/s41-after.md
 /usr/bin/grep -c 'merge origin/develop' /tmp/s41-after.md      # 기대 0
-git show "$CARD_BASE":CLAUDE.local.md | sed -n '/^### §4.1/,/^## 5\./p' \
-  | /usr/bin/grep -c 'merge origin/develop'                     # 대조군: >=1 이어야 판별력 성립
+git show <CARD_BASE>:CLAUDE.local.md | sed -n '/^### §4.1/,/^## 5\./p' \
+  | /usr/bin/grep -c 'merge origin/develop'                     # 대조군: >=1 — <CARD_BASE>는 공통 전제에서 기록한 값
 ```
 
 **판정**: after 0 **그리고** base ≥1. base 가 0 이면 프로브가 죽은 것이므로 「측정 불가」로 보고한다.
@@ -168,9 +168,9 @@ AC-CLPM-003 은 PASS 로 세지 않는다.
 **Then** `.go` 파일 변경이 0 이다.
 
 ```bash
-CARD_BASE=$(git merge-base origin/develop HEAD)
-git diff --name-only "$CARD_BASE"..HEAD -- '*.go' | wc -l      # 기대 0
-git diff --name-only "$CARD_BASE"..HEAD | wc -l                # 대조군: >=1 이어야 범위가 산다
+git merge-base origin/develop HEAD                             # 읽는 시점에 재유도 — 값을 증거로 기록
+git diff --name-only origin/develop...HEAD -- '*.go' | wc -l   # 기대 0
+git diff --name-only origin/develop...HEAD | wc -l             # 대조군: >=1 이어야 범위가 산다
 ```
 
 **판정**: `.go` 0 **그리고** 전체 변경 ≥1. 전체가 0 이면 범위가 비었으므로 「측정 불가」다.

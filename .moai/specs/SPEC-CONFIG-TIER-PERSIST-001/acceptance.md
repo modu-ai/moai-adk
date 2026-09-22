@@ -872,10 +872,10 @@ Expected: `1`.
 **AC-CTP-035** — touch one byte in the template tree, observe, revert:
 
 ```bash
-F=$(git ls-files internal/template/templates/ | head -1)
-printf '\n' >> "$F"
+git ls-files internal/template/templates/ | head -1   # record the value as F
+printf '\n' >> <F>
 git diff --stat origin/main -- internal/template/templates/ | wc -l   # expect: non-zero
-git checkout -- "$F"
+git checkout -- <F>
 git diff --stat origin/main -- internal/template/templates/ | wc -l   # expect: 0
 ```
 

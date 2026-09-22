@@ -58,7 +58,7 @@ tier: M
 ### AC-CMR-005 — 스탬프 도달성 (MUST)
 
 - **Given** 재생성·검증이 완료되고
-- **When** `moai graph stamp codemaps --commit "$(git merge-base HEAD origin/develop)"`이 실행되면
+- **When** `git merge-base HEAD origin/develop`으로 기준 커밋을 기록한 뒤 `moai graph stamp codemaps --commit <기록한 값>`이 실행되면
 - **Then** provenance.json의 commit_sha가 갱신됐고 `git merge-base --is-ancestor <새 sha> origin/develop`이 rc=0이며, 새 sha는 worktree 브랜치 HEAD가 아니다(merge-base와 HEAD가 일치하는 트렁크 상태는 예외적으로 허용).
 
 증거: `jq -r .commit_sha .moai/project/codemaps/provenance.json` + merge-base 명령 rc. bare-HEAD 스탬프 흔적은 FAIL.
