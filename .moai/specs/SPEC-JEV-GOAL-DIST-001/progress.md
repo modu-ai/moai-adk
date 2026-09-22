@@ -105,7 +105,65 @@ m1_to_mN_commit_strategy: "per-milestone commits on WT-goal-dist — M7a 1470c5f
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase>_
+sync_status: complete
+sync_complete_at: 2026-09-22
+sync_commit_sha: pending-backfill-sync
+
+**Sync-phase is complete.** This SPEC's `status:` frontmatter transitions
+`in-progress → completed` on the sync commit that also carries this section and
+the `CHANGELOG.md` `[Unreleased]` → `### Added` entry — the merged
+`implemented → completed` close per the Status Transition Ownership Matrix
+(`.claude/rules/moai/development/spec-frontmatter-schema.md`). `updated:` was
+already `2026-09-22` and needed no change. `sync_commit_sha` carries the
+`pending-backfill-sync` D3 placeholder — a commit cannot cite its own SHA — and
+the real SHA is backfilled in the follow-up commit.
+
+**CHANGELOG B12 self-test (all three, this run, this tree `f1421b7f4`):**
+
+1. Pre-emission grep — `grep -c 'SPEC-JEV-GOAL-DIST-001' CHANGELOG.md` → `0`
+   (exit 1, no match) before this commit's edit; after the edit the count is
+   `1` (the entry just added).
+2. AC count match — the canonical B12 live-identifier counter over
+   `acceptance.md` (the Tier M source;
+   `ac_source=.moai/specs/SPEC-JEV-GOAL-DIST-001/acceptance.md`) → stdout
+   `14`, stderr tally `live=14 excluded=0 ambiguous=0` — non-zero, no RED
+   flag, no ambiguous identifier. The CHANGELOG entry states "14 acceptance
+   criteria, all PASS".
+3. File path verification — every path cited in the entry verified present via
+   `ls` before commit: `internal/cli/mcp_jev.go`, `internal/jev`,
+   `internal/mcp/catalog.go`, `.claude/rules/moai/core/moai-mcp-tools.md`,
+   `internal/cli/doctor_jev_test.go`, `internal/web/assets/i18n.js`,
+   `internal/mission/governance_receipt.go`,
+   `.claude/skills/moai-ref-jev-question-design/SKILL.md`,
+   `internal/template/catalog.yaml`, `docs/jev-negative-results.md` — all OK.
+
+**Sync-phase cross-cutting checks (this run, this tree `f1421b7f4`):**
+
+- **Mirror re-measure (AC-JEVG-007 surface):** `cmp` over the two
+  `moai-mcp-tools.md` copies → byte-identical; figure grep → line 3
+  "31 tools", line 63 "27 of the 31" — both figures present. The sync commit
+  touches no Go code, so no test suite is re-run locally (the full
+  `internal/cli` suite times out on this machine with zero failures — known
+  shape; CI owns the verdict).
+- **MX Tag Report (sync sub-step):** run-phase tags verified — `@MX:WARN` +
+  `@MX:REASON` + `[AUTO]` on the gate-read path (`internal/cli/mcp_jev.go:65-66`;
+  1 of the 5 per-file WARN budget) and `@MX:NOTE` + `[AUTO]` on
+  `AuxiliarySignal` (`internal/mission/governance_receipt.go:38`). WARN
+  carries its mandatory REASON; both tags sit within per-file limits; no
+  TODO/DEBT introduced. No tags added, updated, or removed by sync.
+- **Codemap rotation: SKIPPED with reason** — no `codemaps/` surface exists in
+  this worktree (directory absent; `git log -- codemaps/` empty across all
+  reachable history), so there is nothing to rotate for the changed packages
+  (`internal/mission`, `internal/cli`, `internal/mcp`). Not a silent skip.
+- **Docs scope:** README and docs-site intentionally untouched — this SPEC's
+  user-facing doc surface is the CHANGELOG entry plus the tracked repo record
+  `docs/jev-negative-results.md` (run-phase authored); `jev_ask` is
+  gated-unavailable at the shipped default, so no user guide presents it as an
+  available feature. Skill mirror parity is test-pinned
+  (`TestJevQuestionDesignSkillCopiesStayIdentical`).
+
+**Push state:** not pushed — git-flow lane discipline; the lead batch-pushes
+`origin/develop` after the integration window.
 
 ## §F Phase 4 Mode Selection
 
