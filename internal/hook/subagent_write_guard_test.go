@@ -584,3 +584,71 @@ func TestSubagentWriteGuardOnlySideEffectIsAuditAppend(t *testing.T) {
 		t.Fatalf("logs dir holds %d entries, want exactly the one audit log", len(entries))
 	}
 }
+
+// AC-SWG-011 — OD-1 answered before the thresholds were fixed, enforced
+// mechanically: the M1 survey record must exist, carry `od1_answer: OD-1a`
+// (the operator's recorded answer), and the survey's counts line must appear
+// verbatim in the REQ-SWG-012 calibration comment of the Go source. The
+// criterion's RED-now cell is EL-4 (the record's absence, pinned to tree
+// 3dfae918a in acceptance.md); this test is its green path and its own mutant
+// probe is demonstrated in the run-phase evidence.
+func TestSubagentWriteGuardOd1AnswerRecorded(t *testing.T) {
+	surveyPath := filepath.Join("..", "..", ".moai", "specs",
+		"SPEC-SUBAGENT-WRITE-SHRINK-GUARD-001", "od1-survey.md")
+	survey, err := os.ReadFile(surveyPath)
+	if err != nil {
+		t.Fatalf("od1-survey.md unreadable (the M1 survey record must exist): %v", err)
+	}
+	od1Answer := "od1_answer: OD-1a"
+	if !strings.Contains(string(survey), od1Answer) {
+		t.Fatalf("od1-survey.md missing %q", od1Answer)
+	}
+
+	var counts string
+	for _, line := range strings.Split(string(survey), "\n") {
+		if strings.HasPrefix(line, "counts: ") {
+			counts = strings.TrimPrefix(line, "counts: ")
+			break
+		}
+	}
+	if counts == "" {
+		t.Fatalf("od1-survey.md carries no counts: line")
+	}
+
+	source, err := os.ReadFile("subagent_write_guard.go")
+	if err != nil {
+		t.Fatalf("read guard source: %v", err)
+	}
+	if !strings.Contains(string(source), counts) {
+		t.Fatalf("REQ-SWG-012 calibration comment does not contain the survey's recorded counts verbatim: %q", counts)
+	}
+}
+
+// AC-SWG-006 — a repository with no commits: rev-parse succeeds but the
+// tracked-at-HEAD query exits non-zero (HEAD unresolved), which is the
+// fail-open direction, not a deny.
+func TestSubagentWriteGuardNoCommitRepoFailsOpen(t *testing.T) {
+	repo := t.TempDir()
+	requireGit(t)
+	mustRunGit(t, repo, "init")
+	filePath := filepath.Join(repo, "tracked.txt")
+	if err := os.WriteFile(filePath, []byte(strings.Repeat("a", 20000)), 0o644); err != nil {
+		t.Fatalf("write: %v", err)
+	}
+
+	input := swgPayload("agent-abc123", "general-purpose", filePath, strings.Repeat("x", 100))
+	input.CWD = repo
+
+	ev := evaluateSubagentWrite(input, true)
+	if ev.Decision != "fail-open" {
+		t.Fatalf("decision = %q, want fail-open in a repo with no commits (reason %q)", ev.Decision, ev.Reason)
+	}
+}
+
+// REQ-SWG-008 boundary — an empty audit dir writes no row and does not panic
+// (the append is debug-level fail-silent, mirroring the branch guard's audit
+// error posture).
+func TestSubagentWriteGuardAuditAppendEmptyDirIsSilent(t *testing.T) {
+	input := swgPayload("agent-abc123", "general-purpose", "/unused/path.txt", "x")
+	appendSubagentWriteGuardAudit("", input, swgEvaluation{Decision: swgDecisionDeny, FilePath: "/unused/path.txt"})
+}

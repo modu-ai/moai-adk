@@ -453,9 +453,84 @@ TDD RED-evidence invariant.
   -run '^$'` → `110268 µs/op` (Apple M4 Max, this machine, this run). Against the 5s hook
   budget that is ~2.2%; the benchmark asserts nothing about the absolute value.
 
+### M4 — config key and wiring
+
+- **RED**: `Workflow.SubagentWriteGuard undefined` (2 refs, config) +
+  `checkSubagentDestructiveWrite undefined` (6 refs, hook) — build failed, captured.
+- **GREEN**: `go test ./internal/config/ -run 'SubagentWriteGuard'` → 2/2 PASS (default
+  false + loader round trip); `go test ./internal/hook/ -run 'SubagentWriteGuard'` → 11
+  tests PASS (adds enabled-deny wiring, AC-SWG-002 disabled-allow, nil provider/config
+  fail-closed).
+- Cache schema version 4 → 5; call site placed directly after the FROZEN-zone check, gated
+  to `Write` alone; dogfood opt-in in local `workflow.yaml` (template untouched).
+
+### M5 — audit log and card-id context
+
+- **RED**: all four decision-path tests FAIL with `read audit log: ... no such file or
+  directory` — the append did not exist. Captured verbatim.
+- **GREEN**: `go test ./internal/hook/ -run 'SubagentWriteGuard' -v` → 16 tests / 28 rows
+  PASS: deny row, allow row, fail-open row carrying its reason, withheld row on the
+  disabled path, card id `t9999` from a worktree-shaped cwd and empty from a
+  primary-checkout-shaped one (outcome identical: deny in both), git status unchanged
+  across evaluation with the log as the only file written.
+- **Mutants observed** (each restored after capture):
+  - withheld→allow flattening: AC-SWG-012 RED, AC-SWG-002 green.
+  - whole-guard gating (flag gates evaluation): AC-SWG-012 RED, AC-SWG-002 green.
+  - `agent_type` as discriminant: AgentFlagMainSession RED, PlainMainSession green.
+
+### AC-SWG-011 mechanical gate
+
+`TestSubagentWriteGuardOd1AnswerRecorded` — green with the record present, RED with
+`od1-survey.md` moved aside (the acceptance's mutant probe demonstrated), green after
+restore. The test reads the survey's `counts:` line and requires it verbatim in the
+REQ-SWG-012 calibration comment.
+
+### Pre-existing failure attribution (B5)
+
+`TestFactoryLeadNoticeCarriesLaneLinesSocketAndEntryGuide` +
+`TestFactoryLeadNoticeWorkerCountDrivesLineCount` (internal/hook, session-start factory
+notice machinery) FAIL. Attribution: reproduced with the M4/M5 changes stashed
+(stash `9bcf1e43` → rerun → same failures → restore). NOT caused by this SPEC; outside the
+plan.md §F change surface. Flagged for the lead as a candidate separate card.
+
+### Self-verification batch (final tree HEAD 9e176e2fb)
+
+- **E2 builds**: `go build ./...` exit 0; `GOOS=windows GOARCH=amd64 go build ./...` exit 0.
+- **E3 coverage** (with the two pre-existing failures skipped via `-skip`, stated):
+  `go test -cover -skip 'TestFactoryLeadNotice' ./internal/hook/` → `coverage: 85.6%`;
+  `go test -cover ./internal/config/` → `coverage: 82.3%` (pre-existing package level; the
+  config files this SPEC touched are thin structs fully covered by the new tests). Guard
+  file per-function mean 93.4% (11 funcs, `go tool cover -func`).
+- **E4 boundary**: `grep -rn 'AskUserQuestion\|mcp__askuser' internal/hook/ | grep -v
+  _test.go | grep -v '// '` → 1 hit: `pre_tool.go:689 if input.ToolName == "AskUserQuestion"`.
+  Attribution: present in the base tree at `6d8262840:676` (a tool-NAME observation branch
+  — it reads the tool name, it does not invoke AskUserQuestion). NEW hits: 0. Premise
+  drift noted: `subagent_boundary_test.go` does not exist in internal/hook (it exists in
+  internal/goal and internal/session); none was created — that would be out-of-plan scope.
+- **E5 lint**: `golangci-lint run --timeout=2m` → `0 issues.` — identical to the
+  pre-change baseline (0 issues). NEW findings: 0.
+- **go vet** `./internal/hook/... ./internal/config/...` → exit 0.
+- **E6 commits** (this branch, no push): `8b2f0173c` M1-M3 (incl. `draft → in-progress`
+  transition) · `5c671a1bc` M4 · `9e176e2fb` M5 · plus this evidence commit.
+
 ## §E.3 Run-phase Audit-Ready Signal
 
-_<pending run-phase>_
+```yaml
+run_complete_at: 2026-09-22
+run_commit_sha: pending-backfill-run   # final content tree measured at 9e176e2fb; §E evidence rides this follow-up commit
+run_status: audit-ready
+ac_pass_count: 15
+ac_fail_count: 0
+preserve_list_post_run_count: 0   # change surface held to plan.md §F: 2 new hook files, pre_tool.go call site, 3 config files, local workflow.yaml, SPEC artifacts
+l44_pre_commit_fetch: not-required   # card worktree; lane does not push (lead batch-pushes develop)
+l44_post_push_fetch: n/a             # no push by lane
+new_warnings_or_lints_introduced: 0  # golangci-lint 0 issues, identical to pre-change baseline
+cross_platform_build:
+  applicable: true
+  darwin: pass   # go build ./... exit 0
+  windows: pass  # GOOS=windows GOARCH=amd64 go build ./... exit 0
+total_run_phase_files: 9   # 2 new hook files + pre_tool.go + 3 config files + workflow.yaml + spec.md frontmatter + od1-survey.md + progress.md
+```
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
