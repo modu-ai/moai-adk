@@ -204,7 +204,7 @@ m1_to_mN_commit_strategy: 마일스톤별 커밋 — M1 d83e07033 · M2 bff24dc6
 
 ```
 sync_complete_at: 2026-09-22T22:53:57+09:00   # STAGE 2 close 커밋 시점 확정 (sync-audit PASS-WITH-DEBT 0.94 수신 후)
-sync_commit_sha: pending-backfill-sync   # D3 placeholder — 커밋은 자기 해시를 참조할 수 없으므로 STAGE 3 backfill 커밋이 실제 SHA를 기입
+sync_commit_sha: b7c911e9b   # close 커밋 — STAGE 3 backfill (D3 규약: 커밋은 자기 해시를 참조할 수 없으므로 후속 커밋이 실제 SHA를 기입)
 sync_status: completed                   # sync-audit PASS-WITH-DEBT 0.94 (차단 결함 0) — close 커밋에서 확정
 ```
 
