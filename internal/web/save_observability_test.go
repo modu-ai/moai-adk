@@ -187,3 +187,82 @@ func TestSaveFailureStderrLog(t *testing.T) {
 		}
 	})
 }
+
+// seamTable is spec.md §5.1 as a test fixture: every persistence seam with
+// its stderr layer token and its stable inline failure phrase. AC-WC17-002
+// drives the save through EACH row and demands both surfaces name it — no
+// seam may be skipped. If SPEC-WEB-CONSOLE-016 rewords the banner phrases,
+// update the phrase column in the SAME commit (spec.md §6-3).
+var seamTable = []struct {
+	seam   saveStep
+	token  string
+	phrase string
+}{
+	{stepWritePreferences, "writePreferences", "could not save profile preferences"},
+	{stepSyncToProject, "syncToProject", "profile preferences saved, but project config sync failed"},
+	{stepWriteProjectCfg, "writeProjectConfig", "profile preferences saved, but project config write failed"},
+	{stepWriteNested, "writeProjectNestedConfig", "profile preferences saved, but project nested config write failed"},
+	{stepApplySchema, "applySchemaEdits", "profile preferences saved, but section config write failed"},
+	{stepApplyPerfTier, "applyPerfTierEdits", "profile preferences saved, but performance_tier apply failed"},
+	{stepPatchAgentFM, "patchAgentFM", "settings saved, but agent override write failed"},
+	{stepGlmcredSave, "glmcred.Save", "settings saved, but GLM credential write failed"},
+	{stepJevcredSave, "jevcred.Save", "settings saved, but Jev credential write failed"},
+}
+
+// TestSaveFailureSeamCoverage is AC-WC17-002: for EVERY one of the nine
+// persistence seams, a forced failure names that seam on BOTH surfaces —
+// the inline slot (REQ-A) and the stderr log (REQ-B). The pre-submit
+// absence assertion rides along per seam so the two-directional guard of
+// AC-WC17-001 holds row-wise, not just for the one seam its own test fails.
+func TestSaveFailureSeamCoverage(t *testing.T) {
+	for _, tc := range seamTable {
+		t.Run(tc.token, func(t *testing.T) {
+			a := newTestApp(t)
+			var calls []saveStep
+			recordingSeams(a, &calls, tc.seam)
+			h := a.routes()
+
+			// Pre-submit absence, per seam.
+			pre := serveGet(t, h, "/settings")
+			if pre.Code != http.StatusOK {
+				t.Fatalf("GET /settings = %d, want 200", pre.Code)
+			}
+			if strings.Contains(pre.Body.String(), tc.phrase) {
+				t.Errorf("pre-submit page already carries the %s failure phrase", tc.token)
+			}
+
+			// Both surfaces observed around the same submission: the stderr
+			// line is written while handleSave runs, the inline phrase is in
+			// the response it produces.
+			restore := captureStderr(t)
+			rec := servePost(t, h, "/save", reproForm())
+			lines := saveFailureLines(restore())
+
+			// The harness must have failed exactly the target seam (its last
+			// call) — otherwise a pass here measures the wrong row.
+			if len(calls) == 0 || calls[len(calls)-1] != tc.seam {
+				t.Fatalf("last seam reached = %v, want %q", calls, tc.seam)
+			}
+
+			// REQ-A: the phrase sits inside the inline slot of a 2xx response.
+			if rec.Code != http.StatusOK {
+				t.Fatalf("failed-save status = %d, want 200", rec.Code)
+			}
+			if !slotCarriesPhrase(rec.Body.String(), tc.phrase) {
+				t.Errorf("%s failure phrase missing from the inline slot", tc.token)
+			}
+
+			// REQ-B: exactly one stderr line, prefixed, naming the seam.
+			if len(lines) != 1 {
+				t.Fatalf("%s failure stderr lines = %d, want exactly 1; captured:\n%s",
+					tc.token, len(lines), strings.Join(lines, "\n"))
+			}
+			if !strings.HasPrefix(lines[0], "moai web: ") {
+				t.Errorf("line %q lacks the `moai web: ` prefix", lines[0])
+			}
+			if !strings.Contains(lines[0], tc.token) {
+				t.Errorf("stderr line %q does not name the seam %q", lines[0], tc.token)
+			}
+		})
+	}
+}

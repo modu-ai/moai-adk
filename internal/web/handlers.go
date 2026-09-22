@@ -12,8 +12,6 @@ import (
 	"path/filepath"
 
 	"github.com/modu-ai/moai-adk/internal/config"
-	"github.com/modu-ai/moai-adk/internal/glmcred"
-	"github.com/modu-ai/moai-adk/internal/jevcred"
 	"github.com/modu-ai/moai-adk/internal/profile"
 	"github.com/modu-ai/moai-adk/internal/settings"
 	"github.com/modu-ai/moai-adk/internal/settings/agentfm"
@@ -557,7 +555,7 @@ func (a *app) handleSave(w http.ResponseWriter, r *http.Request) {
 	// re-apply the tier profile to the shipped agent files. Runs BEFORE
 	// patchAgentFM so an explicit per-agent override submitted in the same
 	// request still wins over the re-applied tier-profile baseline.
-	if err := applyPerfTierEdits(a.cfg.ProjectRoot, perfTier); err != nil {
+	if err := a.applyPerfTierEdits(a.cfg.ProjectRoot, perfTier); err != nil {
 		logSaveFailure("applyPerfTierEdits", "profile preferences saved, but performance_tier apply failed")
 		a.renderErrorPage(w, prefs, selected, devMode, convention,
 			"profile preferences saved, but performance_tier apply failed: "+err.Error())
@@ -582,7 +580,7 @@ func (a *app) handleSave(w http.ResponseWriter, r *http.Request) {
 	// failure is surfaced as a failure, never as success (REQ-GKI-002-005), and
 	// the error message carries no key material (REQ-GKI-004-003).
 	if normalized := normalizeGLMKey(glmKeySubmitted); normalized != "" {
-		if err := glmcred.Save(normalized); err != nil {
+		if err := a.glmcredSave(normalized); err != nil {
 			logSaveFailure("glmcred.Save", "settings saved, but GLM credential write failed")
 			a.renderErrorPage(w, prefs, selected, devMode, convention,
 				"settings saved, but GLM credential write failed: "+err.Error())
@@ -596,7 +594,7 @@ func (a *app) handleSave(w http.ResponseWriter, r *http.Request) {
 	// write happens and the existing file is left untouched. A failure is
 	// surfaced as a failure, and the message carries no credential material.
 	if normalized := normalizeJevKey(jevKeySubmitted); normalized != "" {
-		if err := jevcred.Save(normalized); err != nil {
+		if err := a.jevcredSave(normalized); err != nil {
 			logSaveFailure("jevcred.Save", "settings saved, but Jev credential write failed")
 			a.renderErrorPage(w, prefs, selected, devMode, convention,
 				"settings saved, but Jev credential write failed: "+err.Error())
