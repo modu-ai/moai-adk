@@ -1,6 +1,6 @@
 # acceptance.md — SPEC-MODEL-OPUS55-001
 
-Document-level pin: every RED-now cell below was measured on tree `6e75b74db` (branch `WT-opus-55-default`) on 2026-09-23 unless a cell names another tree. Commands run from the worktree root. "Release-blocking" ACs carry command + verbatim output + exit code; "regression-guard" ACs are green today by design and exist to catch a regression (their RED is supplied by a named mutant).
+Document-level pin: every RED-now cell below was measured on tree `6e75b74db` (branch `WT-opus-55-default`) on 2026-09-23 unless a cell names another tree. Iter-2 cells were re-measured at HEAD `366ad4ee0`, whose non-SPEC tree content is identical to `6e75b74db` (`git diff --name-only 6e75b74db 366ad4ee0` lists only this SPEC's files + `.moai/reports/t1089/`). Commands run from the worktree root. "Release-blocking" ACs carry command + verbatim output + exit code; "regression-guard" ACs are green today by design and exist to catch a regression (their RED is supplied by a named mutant).
 
 ## §0 Traceability (REQ → AC)
 
@@ -12,10 +12,10 @@ Document-level pin: every RED-now cell below was measured on tree `6e75b74db` (b
 | REQ-OP55-004 (labels name Opus 5.5) | AC-OP55-004, AC-OP55-007, AC-OP55-008 |
 | REQ-OP55-005 (medium recommended) | AC-OP55-007, AC-OP55-008 |
 | REQ-OP55-006 (Opus 5.5 recommended) | AC-OP55-007, AC-OP55-008 |
-| REQ-OP55-007 (effort empty option wording) | AC-OP55-007 |
-| REQ-OP55-008 (label-drift guard) | AC-OP55-009 |
-| REQ-OP55-009 (rule prose facts, both copies) | AC-OP55-004, AC-OP55-006, AC-OP55-010 |
-| REQ-OP55-010 (effort-default rewrite) | AC-OP55-004, AC-OP55-006 |
+| REQ-OP55-007 (effort empty option wording matches launch) | AC-OP55-007 |
+| REQ-OP55-008 (label-drift guard, both halves) | AC-OP55-009 |
+| REQ-OP55-009 (canonical fact line + consistency) | AC-OP55-004, AC-OP55-006, AC-OP55-010 |
+| REQ-OP55-010 (every high-default statement rewritten) | AC-OP55-004, AC-OP55-006 |
 | REQ-OP55-011 (heading + anchors) | AC-OP55-005 |
 | REQ-OP55-012 (measured-on-Opus-5 attribution) | AC-OP55-004 |
 | REQ-OP55-013 (no template effort key) | AC-OP55-011 |
@@ -32,32 +32,33 @@ Document-level pin: every RED-now cell below was measured on tree `6e75b74db` (b
 - Then it yields `claude-opus-5-5`, carried by a constant named for Opus 5.5
 - Command: `grep -nE 'ModelIDOpus55 = "claude-opus-5-5"|"opus":[[:space:]]+ModelIDOpus55' internal/template/model_policy.go`
 - RED-now: stdout empty, exit 1
-- Green: two lines (the const declaration and the alias row), exit 0; plus AC-OP55-012 test run PASS (behavioral proof: the alias test asserts `ModelAliasCanonicalID("opus") == "claude-opus-5-5"`).
+- Green: two lines (the const declaration and the alias row), exit 0; plus AC-OP55-012 PASS, where the alias test asserts `ModelAliasCanonicalID("opus") == "claude-opus-5-5"`.
 
 ### AC-OP55-002 — claude-opus-5 normalizes to opus (REQ-OP55-002) — release-blocking
 
 - Given a stored preference carrying `claude-opus-5`
 - When the canonical-id → alias normalization runs
 - Then it returns `opus`
-- Command: `grep -nE '"claude-opus-5":[[:space:]]+"opus"' internal/template/model_policy.go`
+- Command: `grep -nE '"claude-opus-5":[[:space:]]+"opus",[[:space:]]*// superseded' internal/template/model_policy.go`
 - RED-now: stdout empty, exit 1
 - Green: exactly one line, exit 0; plus a test in `internal/template` asserting `ModelAliasFromCanonicalID("claude-opus-5") == "opus"`, whose RED output (before the row exists) is recorded verbatim in progress.md §E.2.
 
 ### AC-OP55-003 — no named constant for claude-opus-5 (REQ-OP55-003) — release-blocking
 
 - Command: `grep -rnw 'ModelIDOpus5' internal --include=*.go`
-- RED-now (counts per file via `-c`): `model_policy.go:4`, `glm_slot_test.go:1`, `model_policy_test.go:4`, `glm_slot_effort_test.go:1`, `launcher_test.go:3`, exit 0
-- Green: stdout empty, exit 1
+- RED-now (per-file counts via `-c`): `model_policy.go:4`, `glm_slot_test.go:1`, `model_policy_test.go:4`, `glm_slot_effort_test.go:1`, `launcher_test.go:3`, exit 0
+- Green: stdout empty, exit 1. This also catches the stale `ModelIDOpus48` doc comment (D15).
 
-### AC-OP55-004 — no unattributed Opus 5 on current-behavior surfaces (REQ-OP55-004, -009, -012) — release-blocking
+### AC-OP55-004 — no unattributed Opus 5 on current-behavior surfaces (REQ-OP55-004, -009, -010, -012) — release-blocking
 
-- Given the current-behavior surfaces (Go production code incl. `internal/template/templates/**`, web assets, wizard goldens, local `.claude/rules`, `.claude/skills`, `.moai/config`, root `CLAUDE.md`), with historical surfaces excluded by path (CHANGELOG.md, `.moai/specs`, `.moai/reports`, `.moai/research`, `.moai/docs`, `docs-site`, `README*.md` are outside the `find` roots) and `*_test.go` excluded
-- When probe P4 runs
-- Then it prints nothing: every remaining Opus 5 mention carries `superseded` or `measured on Opus 5`
-- Command (single invocation): `find internal pkg cmd .claude/rules .claude/skills .moai/config CLAUDE.md -type f \( -name '*.go' -o -name '*.md' -o -name '*.yaml' -o -name '*.tmpl' -o -name '*.js' -o -name '*.golden' \) ! -name '*_test.go' -exec awk 'tolower($0) ~ /opus[ -]5([^.0-9-]|\.[^0-9]|\.$|$)/ && tolower($0) !~ /superseded|measured on opus 5/ {print FILENAME ":" FNR}' {} +`
-- RED-now: 147 lines, exit 0 — verbatim list `.moai/reports/t1089/p4-rednow-6e75b74db.txt`
-- Green: stdout empty, exit 0. Because an empty stdout is also what a probe matching nothing prints, the green is read together with the positive control below.
-- Positive control (proves the probe still fires on the green tree): `awk 'tolower($0) ~ /opus[ -]5([^.0-9-]|\.[^0-9]|\.$|$)/ {n++} END {print n+0}' internal/template/model_policy.go` → ≥ 1 (the superseded deprecated-id row itself matches the base pattern).
+- Given the current-behavior surfaces — Go production code incl. `internal/template/templates/**`, web assets, wizard goldens, local `.claude/{rules,skills,agents,commands,output-styles}`, `.moai/config`, `.moai/project`, root `CLAUDE.md` and `AGENTS.md` — with historical surfaces outside the `find` roots (CHANGELOG.md, `.moai/specs`, `.moai/reports`, `.moai/research`, `.moai/docs`, `docs-site`, `README*.md`) and `*_test.go` excluded
+- When probe P4 v2 runs
+- Then it prints nothing: every remaining Opus 5 mention carries `(superseded)`, `// superseded`, or `measured on Opus 5`
+- Command (single invocation): `find internal pkg cmd .claude/rules .claude/skills .claude/agents .claude/commands .claude/output-styles .moai/config .moai/project CLAUDE.md AGENTS.md -type f \( -name '*.go' -o -name '*.md' -o -name '*.yaml' -o -name '*.tmpl' -o -name '*.js' -o -name '*.golden' \) ! -name '*_test.go' -exec awk 'tolower($0) ~ /opus[ -]?5([^.0-9-]|\.[^0-9]|\.$|$)/ && tolower($0) !~ /\(superseded\)|\/\/ superseded|measured on opus 5/ {print FILENAME ":" FNR}' {} +`
+- RED-now: 153 lines, exit 0 — verbatim sorted list `.moai/reports/t1089/p4v2-rednow-6e75b74db.txt`
+- Green: stdout empty, exit 0. Because an empty stdout is also what a probe matching nothing prints, the green is read together with the positive control.
+- Positive control (proves the probe still fires on the green tree): `awk 'tolower($0) ~ /opus[ -]?5([^.0-9-]|\.[^0-9]|\.$|$)/ {n++} END {print n+0}' internal/template/model_policy.go` → ≥ 1 (the `// superseded` deprecated-id row itself matches the base pattern).
+- Known limit: a phrase shaped "Opus 5-era" is not matched (the `-` continuation is excluded so `claude-opus-5-5` stays silent).
 
 ### AC-OP55-005 — constitution heading and zone-registry anchors move together (REQ-OP55-011) — release-blocking
 
@@ -67,38 +68,42 @@ Document-level pin: every RED-now cell below was measured on tree `6e75b74db` (b
   - `grep -c '^## Opus 5.5 Prompt Philosophy' .claude/rules/moai/core/moai-constitution.md internal/template/templates/.claude/rules/moai/core/moai-constitution.md` — RED-now `:0` / `:0`; Green `:1` / `:1`
   - `go test -count=1 -run 'TestRegistrySyncGuard|TestRegistrySyncMirrorsIdentical' -v ./internal/constitution/` — Green: both test names print `--- PASS`, no `[no tests to run]`.
 
-### AC-OP55-006 — current Opus facts stated (REQ-OP55-009, -010) — release-blocking
+### AC-OP55-006 — current Opus facts and medium default stated; no high-default claim left (REQ-OP55-009, -010) — release-blocking
 
-- Commands:
-  - `grep -c '2\.1\.280' .claude/rules/moai/development/model-policy.md internal/template/templates/.claude/rules/moai/development/model-policy.md` — RED-now `:0` / `:0`; Green ≥ 1 each
-  - `grep -c 'claude-opus-5-5' .claude/rules/moai/development/model-policy.md internal/template/templates/.claude/rules/moai/development/model-policy.md` — RED-now `:0` / `:0`; Green ≥ 1 each
-  - `grep -cE 'Opus 5\.5[^|]*medium' .claude/rules/moai/core/moai-constitution.md internal/template/templates/.claude/rules/moai/core/moai-constitution.md` — RED-now `:0` / `:0`; Green ≥ 1 each
+- (a) Canonical fact line, probe P7 (single invocation): `awk '/^- opus = Opus 5\.5/ && /claude-opus-5-5/ && /2\.1\.280/ && /1M/ && /128K/ && /\$4/ && /\$20/ && /medium/ && /always on/ {n++} END {print n+0}' .claude/rules/moai/development/model-policy.md internal/template/templates/.claude/rules/moai/development/model-policy.md` — RED-now `0`, exit 0; Green `2` (one line per copy).
+- (b) Positive medium statement on every rewritten surface: `grep -cE 'Opus 5\.5[^|]*medium|medium[^|]*Opus 5\.5' .claude/rules/moai/core/moai-constitution.md internal/template/templates/.claude/rules/moai/core/moai-constitution.md .claude/rules/moai/development/agent-authoring.md internal/template/templates/.claude/rules/moai/development/agent-authoring.md .claude/rules/moai/development/model-policy.md internal/template/templates/.claude/rules/moai/development/model-policy.md .claude/rules/moai/workflow/dynamic-workflows.md internal/template/templates/.claude/rules/moai/workflow/dynamic-workflows.md .moai/project/tech.md` — RED-now `:0` for all nine files; Green ≥ 1 for each of the nine.
+- (c) No high-default claim, probe P6: `grep -rnoE '`high` \(default\)|high: the default|defaults? to `effort: high`|default effort: high' .claude/rules .claude/skills internal/template/templates/.claude internal/template/templates/CLAUDE.md CLAUDE.md .moai/project` — RED-now 11 lines, exit 0 (plan.md §B.7); Green: stdout empty, exit 1.
+- (d) No wrong-direction rewrite, probe P5: `grep -rnE 'Opus 5\.5[^.|]*default[^.|]*high' .claude/rules .claude/skills internal/template/templates/.claude internal/template/templates/CLAUDE.md CLAUDE.md .moai/project` — now: no output, exit 1 (regression-guard); mutant "Opus 5.5 defaults to `effort: high`" prints one line, exit 0.
 
-### AC-OP55-007 — web labels and recommendation (REQ-OP55-004, -005, -006, -007) — release-blocking
+### AC-OP55-007 — web labels, recommendation, and honest empty-option wording (REQ-OP55-004, -005, -006, -007) — release-blocking
 
-- Commands (each on `internal/web/assets/i18n.js`):
-  - `grep -cE '"f\.model\.opt\.opus\[1m\]": "Opus 5\.5' internal/web/assets/i18n.js` — RED-now `0` (exit 1); Green `4`
-  - `grep -cE '"f\.effort_level\.opt\.medium": "[^"]*(Recommended|권장|推奨|推荐)' internal/web/assets/i18n.js` — RED-now `0`; Green `4`
-  - `grep -cE '"f\.model\.opt\.opus\[1m\]": "[^"]*(Recommended|권장|推奨|推荐)' internal/web/assets/i18n.js` — RED-now `0`; Green `4`
-  - `grep -cE '"opt\.runtime_default": "[^"]*(medium|중간|中)' internal/web/assets/i18n.js` — RED-now `0`; Green `4`
+Each command runs on `internal/web/assets/i18n.js`; per-locale strings are pinned so one locale cannot satisfy another's check.
+
+- Model label, English-unified (plan.md §C.8): `grep -c '"f.model.opt.opus\[1m\]": "Opus 5.5 (Recommended)"' internal/web/assets/i18n.js` — RED-now `0`; Green `4`. Companion: `grep -c '"f.model.opt.opus\[1m\]": "Opus 5"' internal/web/assets/i18n.js` — RED-now `4`; Green `0`.
+- Medium recommended, one command per locale, each Green `1`, RED-now `0`: `grep -c '"f.effort_level.opt.medium": "Medium (Recommended)"' internal/web/assets/i18n.js`; `grep -c '"f.effort_level.opt.medium": "중간 (권장)"' internal/web/assets/i18n.js`; `grep -c '"f.effort_level.opt.medium": "中 (推奨)"' internal/web/assets/i18n.js`; `grep -c '"f.effort_level.opt.medium": "中 (推荐)"' internal/web/assets/i18n.js`.
+- Empty-option wording names the fallback order (plan.md §C.7), one command per locale, each Green `1`, RED-now `0`: `grep -cE '"opt\.runtime_default": "[^"]*model policy[^"]*Opus 5\.5[^"]*"' internal/web/assets/i18n.js`; the same with `모델 정책`, `モデルポリシー`, and `模型策略` in place of `model policy`.
+- Behavioral pin keeping the label true: `go test -count=1 -run 'TestResolveLaunchEffort' -v ./internal/cli/` — Green: `--- PASS: TestResolveLaunchEffort` with its five subtests (`model_policy fallback high` → `high` among them), unchanged by this SPEC.
+- Web test updated in M2: `go test -count=1 -run 'TestModelOptLabelsEnglishUnified' -v ./internal/web/` — Green `--- PASS`.
 
 ### AC-OP55-008 — TUI wizard labels and recommendation (REQ-OP55-004, -005, -006) — release-blocking
 
-- Commands:
-  - `grep -cE 'EffortLevelMedium:[^,]*(Recommended|권장|推奨|推荐)' internal/cli/profile_setup_translations.go` — RED-now `0`; Green `4`
-  - `grep -cE 'ModelOpus1M:[^,]*Opus 5\.5[^,]*(Recommended|권장|推奨|推荐)' internal/cli/profile_setup_translations.go` — RED-now `0`; Green `4`
+Anchored on the quoted field value (a comma inside the label is allowed); one command per locale marker so each locale is proved separately.
 
-### AC-OP55-009 — label-drift guard rejects bare "Opus 5" (REQ-OP55-008) — release-blocking (mutant-proved)
+- `grep -cE 'EffortLevelMedium:[[:space:]]+"[^"]*\(Recommended\)"' internal/cli/profile_setup_translations.go` — RED-now `0`; Green `1`. Same form with `\(권장\)`, `\(推奨\)`, `\(推荐\)` — each RED-now `0`, Green `1`.
+- `grep -cE 'ModelOpus1M:[[:space:]]+"[^"]*Opus 5\.5[^"]*Recommended[^"]*"' internal/cli/profile_setup_translations.go` — RED-now `0`; Green `1`. Same form with `권장`, `推奨`, `推荐` — each RED-now `0`, Green `1`.
 
-- Given the green tree
-- When one locale's `ModelOpus` label (or one model-policy description) is mutated from "Opus 5.5" to "Opus 5 "
-- Then `go test -count=1 -run 'TestGetProfileText_OpusAliasValues' ./internal/cli/` and `go test -count=1 ./internal/cli/wizard/` each fail naming the mutated label
-- Evidence: the mutant diff, both failing outputs (verbatim), and the reverted-tree PASS, recorded in progress.md §E.2. A guard that still passes under the mutant fails this AC.
+### AC-OP55-009 — label-drift guards reject stale labels (REQ-OP55-008) — release-blocking (mutant-proved)
+
+Three mutants, each applied to the green tree alone, each reverted before the next; evidence (mutant diff, verbatim failing output, reverted-tree PASS) recorded in progress.md §E.2.
+
+- **AC-OP55-009a (guard A — profile-setup labels).** Mutant M-a: in `internal/cli/profile_setup_translations.go`, change one locale's `ModelOpus` label from "Opus 5.5" to "Opus 5 ". Command: `go test -count=1 -run 'TestGetProfileText_OpusAliasValues' ./internal/cli/` → FAIL naming that locale. Reverted tree → `ok`.
+- **AC-OP55-009b (guard B — wizard model-policy descriptions).** Mutant M-b: in `internal/cli/wizard/translations.go`, change one locale's model-policy description from "Opus 5.5" to "Opus 5 ". Command: `go test -count=1 -run 'TestModelPolicyDescsAgreeWithProfileMatrix' ./internal/cli/wizard/` → FAIL naming that locale. Reverted tree → `ok`.
+- **AC-OP55-009c (both guards follow an alias change).** Mutant M-c: point the `opus` alias at a hypothetical `claude-opus-6` (labels unchanged). Both commands above (`TestGetProfileText_OpusAliasValues`, `TestModelPolicyDescsAgreeWithProfileMatrix`) FAIL, and the derived version token printed in the failure is `6` (hyphen→dot derivation, plan.md §E K2). Reverted tree → both `ok`.
 
 ### AC-OP55-010 — local/template pair identity preserved (REQ-OP55-009) — regression-guard
 
-- Commands (each single-invocation; exit 0 = identical): `cmp .claude/rules/moai/core/zone-registry.md internal/template/templates/.claude/rules/moai/core/zone-registry.md`, and the same `cmp` for `rules/moai/development/model-policy.md`, `rules/moai/development/prompting-best-practices.md`, `rules/moai/workflow/context-window-management.md`, `skills/moai-foundation-thinking/SKILL.md`
-- Now: all five exit 0 (identical). Green: all five still exit 0 after edits. Mutant: editing only one side makes `cmp` exit 1.
+- Commands (each single-invocation; exit 0 = identical): `cmp .claude/rules/moai/core/zone-registry.md internal/template/templates/.claude/rules/moai/core/zone-registry.md`, and the same `cmp` for `rules/moai/development/model-policy.md`, `rules/moai/development/prompting-best-practices.md`, `rules/moai/workflow/context-window-management.md`, `rules/moai/workflow/dynamic-workflows.md`, `skills/moai-foundation-thinking/SKILL.md`
+- Now: all six exit 0 (identical). Green: all six still exit 0 after edits. Mutant: editing only one side makes `cmp` exit 1.
 
 ### AC-OP55-011 — no effort key in the settings template (REQ-OP55-013) — regression-guard
 
@@ -119,8 +124,8 @@ Document-level pin: every RED-now cell below was measured on tree `6e75b74db` (b
 
 ### AC-OP55-014 — historical surfaces untouched (REQ-OP55-015) — regression-guard
 
-- Command: `git diff --name-only develop...HEAD -- CHANGELOG.md docs-site README.md README.ko.md README.ja.md README.zh.md .moai/research .moai/docs`
-- Green: stdout empty. (Three-dot form measures from the merge-base with local `develop`, so absorbed develop commits do not read as this card's changes.)
+- Command: `git diff --name-only develop...HEAD -- CHANGELOG.md docs-site README.md README.ko.md README.ja.md README.zh.md .moai/research .moai/docs .moai/reports ':!.moai/reports/t1089'`
+- Green: stdout empty. (Three-dot form measures from the merge-base with local `develop`, so absorbed develop commits do not read as this card's changes; this card's own evidence directory is excluded by the pathspec.)
 - Companion: `git diff --name-only develop...HEAD -- .moai/specs` lists only `.moai/specs/SPEC-MODEL-OPUS55-001/*`.
 
 ### AC-OP55-015 — template neutrality holds (REQ-OP55-016) — release-blocking at run close
@@ -136,8 +141,9 @@ Document-level pin: every RED-now cell below was measured on tree `6e75b74db` (b
 
 - "Opus 5." at a sentence end must still be caught (P4's `\.$` / `\.[^0-9]` alternatives).
 - "claude-opus-5-5" and "Opus 5.5" must never be caught (continuation exclusion).
+- "Opus5" is caught (P4 v2 `opus[ -]?5`).
 - Wizard migration of `claude-opus-5[1m]`: the `[1m]` suffix is split off before normalization in the launcher path; run phase confirms the deprecated-row lookup sees the bare id.
-- The four golden files are regenerated, not hand-edited.
+- The three golden files are regenerated with `-update-golden`, not hand-edited.
 
 ## §3 Quality gate
 
@@ -146,4 +152,4 @@ Document-level pin: every RED-now cell below was measured on tree `6e75b74db` (b
 
 ## §4 Definition of Done
 
-All sixteen ACs green with evidence recorded in progress.md §E.2 (command + verbatim output + exit code + tree SHA); AC-OP55-009 mutant evidence present; follow-up docs card issued by the lead (plan.md §C.3).
+All sixteen ACs green with evidence recorded in progress.md §E.2 (command + verbatim output + exit code + tree SHA); AC-OP55-009a/b/c mutant evidence present; follow-up docs card issued by the lead (plan.md §C.3).

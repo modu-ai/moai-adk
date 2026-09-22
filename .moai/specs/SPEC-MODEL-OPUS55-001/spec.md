@@ -1,14 +1,14 @@
 ---
 id: SPEC-MODEL-OPUS55-001
 title: "Opus 5.5 adoption — opus alias to claude-opus-5-5, Opus 5 retired from the catalog, medium-effort default recommendation"
-version: "0.1.0"
+version: "0.1.1"
 status: draft
 created: 2026-09-23
 updated: 2026-09-23
 author: manager-spec (card t1089)
 priority: P1
 phase: "v3.2.0"
-module: "internal/template,internal/cli,internal/cli/wizard,internal/web,internal/template/templates/.claude/rules,.claude/rules"
+module: "internal/template,internal/cli,internal/cli/wizard,internal/web,internal/template/templates/.claude/rules,.claude/rules,.moai/project"
 lifecycle: spec-anchored
 tier: M
 tags: "model-policy,opus-5-5,effort,profile-wizard,web-console,template"
@@ -22,6 +22,7 @@ related_specs: [SPEC-OPUS47-COMPAT-001]
 | Version | Date | Author | Change |
 |---------|------|--------|--------|
 | 0.1.0 | 2026-09-23 | manager-spec (card t1089) | Initial plan-phase draft. Dispatched ID `SPEC-MODEL-OPUS-5-5-001` failed the SPEC-ID regex (middle segment `5` must start with a letter); canonical correction `SPEC-MODEL-OPUS55-001` (regex PASS, no collision). |
+| 0.1.1 | 2026-09-23 | manager-spec (card t1089) | Plan-audit iter-1 FAIL 0.78 repair (report `.moai/reports/t1089/plan-audit-iter1.md`), scoped to defects D1–D15: REQ-OP55-007 rewritten to match the launch-effort resolution order (D1); high/xhigh default-effort conflict inventory added, REQ-OP55-010 extended to every false default statement incl. version-agnostic ones (D2); English-unified web model label kept (D3); positive + negative effort ACs (D4); AC-009 split per guard + alias-change mutant (D5, D14); `.moai/project/{tech,product}.md` brought into scope (D6); REQ-OP55-009 pinned to one canonical fact line (D7); launch `--model` change disclosed as K6 (D8); minor fixes D9–D13, D15. |
 
 ## §A Context
 
@@ -37,7 +38,8 @@ Claude Opus 5.5 was released 2026-09-22 and Claude Code's `opus` alias now resol
 ### A.3 Measured gap (see plan.md §B for commands + verbatim output)
 
 - Code: `ModelIDOpus5 = "claude-opus-5"` is the `opus` alias target; `claude-opus-5` is not in the deprecated-id map.
-- Current-behavior surfaces carrying an unattributed Opus 5 reference: 147 lines (probe P4, plan.md §B.4) across Go production files, template rules/skills/config, local rules/skills/config, web i18n, and three wizard golden files.
+- Current-behavior surfaces carrying an unattributed Opus 5 reference: 153 lines (probe P4 v2, plan.md §B.4) across Go production files, template rules/skills/config, local rules/skills/config, `.moai/project/{tech,product}.md`, web i18n, and three wizard golden files.
+- Version-agnostic "default effort is `high`" statements: 11 hits (probe P6, plan.md §B.7), invisible to P4 because some name no Opus version.
 - Web console: model and effort already have edit-and-save paths (select fields persisted to the profile store). The measured gap is the recommendation display: the effort empty option reads "(runtime default)" and no option is marked recommended; the model option labels read "Opus 5".
 
 ## §B Requirements (GEARS)
@@ -53,13 +55,13 @@ Claude Opus 5.5 was released 2026-09-22 and Claude Code's `opus` alias now resol
 - **REQ-OP55-004** — The TUI profile wizard (en/ko/ja/zh), the model-policy question descriptions (en/ko/ja/zh), and the web console model option labels (en/ko/ja/zh) shall name Opus 5.5 wherever they name the model the `opus` alias resolves to.
 - **REQ-OP55-005** — The TUI profile wizard and the web console settings screen shall mark `medium` as the recommended session effort level in all four locales.
 - **REQ-OP55-006** — The TUI profile wizard and the web console settings screen shall mark the Opus 5.5 model option as the recommended model in all four locales.
-- **REQ-OP55-007** — The web console effort field's empty option shall state that the runtime default applies and that this default is `medium` on Opus 5.5.
+- **REQ-OP55-007** — The web console effort field's empty option shall state the launch resolution order as it actually runs: the profile's model-policy effort when a model policy is stored, otherwise Claude Code's own model default (`medium` on Opus 5.5); the label shall not claim `medium` unconditionally, and the launch-effort resolution itself shall not change.
 - **REQ-OP55-008** — When the model the `opus` alias resolves to changes, the label-drift guards shall fail until every label names the new dotted marketing version, and shall not accept a label that names a bare "Opus 5" as satisfying "Opus 5.5".
 
 ### B.3 Rule prose (template + local pairs)
 
-- **REQ-OP55-009** — Rule, skill, and config prose that describes current Opus behavior shall state Opus 5.5 (`claude-opus-5-5`), default effort `medium`, Claude Code minimum v2.1.280, 1M context, 128K output, $4 / $20 per MTok, and adaptive thinking always on, in both the template copy and the local copy.
-- **REQ-OP55-010** — The effort-default statements that currently say the current Opus model defaults to `high` (constitution § Effort defaults, agent-authoring effort paragraph, model-policy opus line) shall be rewritten so that Opus 5.5 defaults to `medium` and other effort-capable models keep their `high` default.
+- **REQ-OP55-009** — The canonical fact line for the current Opus model — the `- opus = …` line under "Current model generation mapping" in `model-policy.md`, both copies — shall state Opus 5.5, `claude-opus-5-5`, Claude Code minimum v2.1.280, 1M context, 128K output, $4 / $20 per MTok, default effort `medium`, and adaptive thinking always on; every other rule, skill, config, and project-doc mention of the current Opus model shall name Opus 5.5 and shall not contradict that line.
+- **REQ-OP55-010** — Every statement that the current model's default effort is `high` — including version-agnostic ones such as "`high` (default)" — shall be rewritten so that Opus 5.5 defaults to `medium` and other effort-capable models keep their `high` default; the full list, with keep/rewrite decisions for every high/xhigh effort statement, is plan.md §C.6.
 - **REQ-OP55-011** — When the constitution's prompt-philosophy heading is renamed, both zone-registry copies (template + local) shall carry the new anchor for CONST-V3R2-028 and CONST-V3R2-029, and no registry anchor shall point at a heading that no longer exists.
 - **REQ-OP55-012** — Where a benchmark or measurement was taken on Opus 5, the prose shall keep that attribution explicitly (the literal phrase "measured on Opus 5") rather than relabel the measurement as Opus 5.5.
 
@@ -67,7 +69,7 @@ Claude Opus 5.5 was released 2026-09-22 and Claude Code's `opus` alias now resol
 
 - **REQ-OP55-013** — The template `settings.json.tmpl` shall not carry an `effortLevel` key (or any effort key).
 - **REQ-OP55-014** — The per-agent profile matrix cells (model + effort per agent per profile column) shall not change.
-- **REQ-OP55-015** — Historical records shall not be modified: `CHANGELOG.md`, other SPEC directories under `.moai/specs/`, `.moai/reports/`, `.moai/research/`, `docs-site/`, and the four `README*.md` files.
+- **REQ-OP55-015** — Historical records shall not be modified: `CHANGELOG.md`, other SPEC directories under `.moai/specs/`, pre-existing files under `.moai/reports/` (this card's own evidence directory `.moai/reports/t1089/` excepted), `.moai/research/`, `.moai/docs/`, `docs-site/`, and the four `README*.md` files.
 - **REQ-OP55-016** — The template edits shall carry no forbidden internal-content class (SPEC IDs, REQ tokens, internal dates, commit SHAs, CLAUDE.local references) and shall keep the 16 programming languages neutral; the embedded template shall be rebuilt after template edits.
 
 ## §C Exclusions
@@ -78,8 +80,9 @@ Claude Opus 5.5 was released 2026-09-22 and Claude Code's `opus` alias now resol
 - The four `README*.md` files: their Opus 5 benchmark tables are measured facts on Opus 5 and stay unchanged; any prose update belongs to the same separate docs card.
 - `.moai/docs/mcp-recipes.md` (one Opus 5 mention) goes with that docs card.
 
-### Out of Scope — behavior changes beyond labels and defaults display
+### Out of Scope — runtime changes other than the alias target
 
+- The one runtime change this SPEC makes is the `opus` alias target: a profile model of `opus[1m]` launches as `--model claude-opus-5-5[1m]`, which needs Claude Code v2.1.280+ (plan.md §E K6). Nothing else changes at runtime.
 - No change to the launch effort fallback (explicit profile effort wins, else the model-policy-derived effort, else no override).
 - No re-derivation of the per-agent profile matrix cells (operator-settled; the matrix comment forbids re-derivation).
 - No `effortLevel` injection into any template settings file, and no `modelSettings` support.
