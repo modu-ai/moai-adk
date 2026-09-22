@@ -267,6 +267,19 @@ failure entries: ['glm_reveal', 'copy_button', None, None]   (None = ReferenceEr
 
 **종료 후 잔여 검증 (세션 종료 시점 재측정):** `git diff --stat 3e35fbacf -- internal/web/assets/app.js` 출력 없음 — base 대비 byte 동일 유지. assets porcelain 0행.
 
+### M4 — test-browser CI job (HEAD = M3 커밋 위 M4 커밋)
+
+| # | 측정 | 명령 | 관측 결과 |
+|---|---|---|---|
+| M4-1 | 기존 job·step 무변경 (AC-AFG-006a) | `git diff --numstat -- .github/workflows/ci.yml` (커밋 후 base..HEAD 동형) | `157	0	.github/workflows/ci.yml` — **삭제 0**, 추가만 존재 |
+| M4-2 | 삭제 행 0 (AC-AFG-006b) | `git diff -- .github/workflows/ci.yml \| grep -c '^-[^-]'` | `0` (grep exit 1 = 매치 없음) |
+| M4-3 | 기존 job 키 목록·순서 보존 (AC-AFG-006c) | `grep -n -E '^  [a-z0-9-]+:' .github/workflows/ci.yml` | detect(44)/test(116)/test-race(256)/test-skip-marker(321)/test-integration(373)/lint(427)/build(474)/constitution-check(544) — base 측정치와 동일·동순서, 신설 `test-browser:` 는 605행 EOF 부록뿐 |
+| M4-4 | YAML 문법 | `python3 -c "import yaml; yaml.safe_load(open('.github/workflows/ci.yml'))"` | `YAML_OK` |
+| M4-5 | Chrome-for-Testing 고정본 실측 (REQ-AFG-010 — 러너 이미지의 Chrome 을 신뢰하지 않음) | `curl -fsSL https://storage.googleapis.com/chrome-for-testing-public/153.0.8010.52/linux64/chrome-linux64.zip` + `shasum -a 256` | 195,708,470 bytes, `sha256 e66f66d4802a46d4a022667e668aa950e277cadbfbed4b3777915b47413a0ef9` — job 은 이 URL+해시를 그대로 고정하고 `sha256sum --check --strict` 로 검증 |
+| M4-6 | websockets 고정 (REQ-AFG-010) | job step: `python3 -m pip install --user "websockets==15.0.1"` | 15.0.1 — 로컬 실측 버전(C4)과 동일 고정. go.mod/go.sum 무관(탐침 유일 서드파티 의존은 Python 쪽) |
+
+job 설계 비고: `test-browser` 는 EOF 에 덧붙는 유일한 판정면이다 — 게이트된 드라이버 테스트는 다른 어디서도 skip 되므로(AC-AFG-003), 런타임 발화 축의 CI 판정은 이 job 만이 운반한다. Green 단계(게이트 켠 드라이버, in-process 서면)와 Red 단계(돌연변이 → 재빌드 → 탐침 exit 1 기대 + `stampRefreshed` 재검증 → 복원 → cmp/git diff byte 동일 → 재빌드 → 탐침 exit 0 기대)를 모두 운반한다. Chrome 은 고정 CfT 다운로드(`MOAI_BROWSER_GUARD_CHROME` 로 드라이버·레드 단계 양쪽에 주입), `--no-sandbox` 는 루프백 전용 시험 브라우저에 한해. **이 job 의 러너 실측(다운로드·pip·전 사이클)은 아직 없다 — 그것은 push 뒤 origin/develop CI 의 몫이며(§4.1 규율), 여기서 로컬 실행하지 않는다(배차문 D 제약).**
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 (비워 둔다 — manager-develop 소유.)
