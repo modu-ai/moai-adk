@@ -27,22 +27,45 @@ const (
 	GovernanceFailed      GovernanceReceiptStatus = "failed"
 )
 
+// AuxiliarySignal is ONE model-produced advisory signal the governor was
+// shown, recorded as a separate item alongside the binding fields so a reader
+// of the receipt can see what evidence accompanied the decision. It is
+// deliberately plain-typed (no import of the judgment package): the receipt
+// records what was displayed, and a display-only signal never becomes a
+// completion-predicate element or a piece of the landed-ancestry or
+// authoritative-readback evidence the binding fields carry.
+//
+// @MX:NOTE: [AUTO] deliberately absent from validateGovernanceBinding — the binding fields decide, the auxiliary item only records; the integrity digest still covers it so a receipt cannot gain or lose a recorded signal silently.
+// @MX:SPEC: SPEC-JEV-GOAL-DIST-001
+type AuxiliarySignal struct {
+	QuestionID  string  `json:"question_id"`
+	Kind        string  `json:"kind"`
+	Noul        bool    `json:"noul,omitempty"`
+	Probability float64 `json:"probability"`
+}
+
 // GovernanceReceipt is untrusted until LoadGovernanceReceipts validates its
 // content digest and binds every execution-relevant field to the current
 // contract and snapshot. Advisor prose is intentionally not part of it.
+//
+// AuxiliarySignals is deliberately absent from validateGovernanceBinding: the
+// binding fields decide, the auxiliary item only records. The integrity digest
+// still covers it (canonicalGovernanceReceipt keeps it), so a receipt cannot
+// gain or lose a recorded signal without breaking its integrity.
 type GovernanceReceipt struct {
-	Version      int                     `json:"version"`
-	Kind         GovernanceReceiptKind   `json:"kind"`
-	MissionID    string                  `json:"mission_id"`
-	ContractHash string                  `json:"contract_hash"`
-	SnapshotHash string                  `json:"snapshot_hash"`
-	Action       Action                  `json:"action"`
-	Targets      []string                `json:"targets"`
-	ExpiresAt    time.Time               `json:"expires_at"`
-	Issuer       string                  `json:"issuer"`
-	HeadSHA      string                  `json:"head_sha"`
-	Status       GovernanceReceiptStatus `json:"status"`
-	Integrity    string                  `json:"integrity"`
+	Version          int                     `json:"version"`
+	Kind             GovernanceReceiptKind   `json:"kind"`
+	MissionID        string                  `json:"mission_id"`
+	ContractHash     string                  `json:"contract_hash"`
+	SnapshotHash     string                  `json:"snapshot_hash"`
+	Action           Action                  `json:"action"`
+	Targets          []string                `json:"targets"`
+	ExpiresAt        time.Time               `json:"expires_at"`
+	Issuer           string                  `json:"issuer"`
+	HeadSHA          string                  `json:"head_sha"`
+	Status           GovernanceReceiptStatus `json:"status"`
+	AuxiliarySignals []AuxiliarySignal       `json:"auxiliary_signals,omitempty"`
+	Integrity        string                  `json:"integrity"`
 }
 
 type GovernanceExpectation struct {
@@ -61,6 +84,9 @@ func canonicalGovernanceReceipt(r GovernanceReceipt) GovernanceReceipt {
 	r.Integrity = ""
 	r.Targets = append([]string(nil), r.Targets...)
 	sort.Strings(r.Targets)
+	// Deep-copy the auxiliary items too: the digest must not depend on the
+	// caller mutating a slice after writing, exactly as for Targets.
+	r.AuxiliarySignals = append([]AuxiliarySignal(nil), r.AuxiliarySignals...)
 	return r
 }
 
