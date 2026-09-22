@@ -54,7 +54,7 @@ m1_to_mN_commit_strategy: lane-single-commit  # 레인이 커밋 — 본 레인�
 
 ```yaml
 sync_complete_at: 2026-09-22
-sync_commit_sha: pending-backfill-sync   # D3 자기참조 예외 — 실제 SHA 는 직후 커밋에서 백필
+sync_commit_sha: 475f9dd23               # 백필 2026-09-22 (D3 자기참조 예외 — 3-phase close 커밋)
 sync_status: complete
 frontmatter_status_transitions:
   spec_md: in-progress → completed       # 단일 sync 커밋 병합 체결 (implemented 스킵 아님 — 3-phase close 병합)
