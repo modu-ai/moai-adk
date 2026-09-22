@@ -209,12 +209,16 @@ errors, zero new findings. No requirement prose was reworded to chase them.
 ### E5/E6 — measured at tree `0cf533f2a`
 
 - E5 `git status --porcelain` → empty (clean; only gitignored residue possible).
-- E6 `git diff --stat 00e761af8..HEAD` → `AGENTS.md | 1 +`,
+- E6 commit-1 stat, `git show --stat 0cf533f2a` → `AGENTS.md | 1 +`,
   `internal/template/templates/AGENTS.md.tmpl | 2 ++`,
   `.moai/specs/SPEC-AGENTS-WORKTREE-ROW-001/spec.md | 2 +-` — `3 files changed, 4 insertions(+), 1 deletion(-)`.
-  Note: commit 2 (this section's carrier) adds only
-  `.moai/specs/SPEC-AGENTS-WORKTREE-ROW-001/progress.md`, a path the E6 strict filter excludes
-  by construction, so both results hold at the branch tip.
+  (F1 re-citation at sync close: this figure's producer is the per-commit form above — the
+  run-time record mis-cited it as the range command's output. The range form re-measured at the
+  close tree, `git diff --stat 00e761af8..HEAD`, prints `7 files changed, 721 insertions(+)`
+  (acceptance.md +115, plan.md +114, progress.md +282, spec.md +206, AGENTS.md +1, CHANGELOG.md +1,
+  AGENTS.md.tmpl +2) — the branch range additionally carries the plan-phase artifacts, this
+  evidence file, and the stage-1 CHANGELOG entry. Verbatim disposition in §E.4
+  `audit_f1_disposition`.)
 
 ## §E.3 Run-phase Audit-Ready Signal
 
@@ -237,11 +241,13 @@ m1_to_mN_commit_strategy: 2 commits — commit 1 carries M1+M2 contract rows + B
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-Stage-1 draft (2026-09-22, worktree t1071, branch `WT-cross-harness-row`, HEAD at draft time
-`013a116ed`). Sync stage 1 changed exactly two files: this `progress.md` §E.4 draft and one new
-`CHANGELOG.md` `[Unreleased]` entry. The close commit — carrying the `spec.md` frontmatter
-`in-progress → implemented → completed` transitions, the `updated:` refresh, and the §E.4
-backfill — follows the independent sync-audit, per the lane's two-stage close.
+Close signal (2026-09-22, worktree t1071, branch `WT-cross-harness-row`). Independent sync-audit
+verdict: **PASS-WITH-DEBT 96/100** — Functionality 96 / Security 100 / Craft 90 / Consistency 97
+(report: `.moai/reports/t1071/sync-audit.md`). Sync stage 1 changed exactly two files: this
+`progress.md` §E.4 draft and one new `CHANGELOG.md` `[Unreleased]` entry. This close commit adds
+the `spec.md` frontmatter terminal transition (`in-progress → implemented → completed`, merged
+per the 3-phase close; `updated:` already 2026-09-22, unchanged; body untouched), this §E.4
+finalization, and the audit-F1 §E.2 re-citation.
 
 **CHANGELOG decision: ENTRY** under `[Unreleased]` → `### Added` (first entry). Rationale: the
 card's substantive change is the **distributed** template mirror
@@ -257,15 +263,17 @@ exists in this card's change set, so nothing to validate, add, or update.
 
 ```yaml
 sync_complete_at: 2026-09-22
-sync_commit_sha: pending-backfill-sync   # D3 placeholder — the close commit cannot cite its own SHA; backfilled in a following commit
-sync_status: stage-1-draft (close commit pending independent sync-audit)
+sync_commit_sha: pending-backfill-sync   # D3 placeholder — this close commit cannot cite its own SHA; backfilled in the immediately following commit
+sync_status: complete — independent sync-audit PASS-WITH-DEBT 96/100 (Functionality 96 / Security 100 / Craft 90 / Consistency 97; report .moai/reports/t1071/sync-audit.md)
 b12_self_test_a: PASS — grep -c 'SPEC-AGENTS-WORKTREE-ROW-001' CHANGELOG.md → 0 pre-emission (no duplicate-entry risk)
 b12_self_test_b: PASS — acceptance.md distinct AC identifiers = 5 (AC-AWR-001..005); CHANGELOG entry references the same 5
-b12_self_test_c: PASS — every path named in the entry verified to exist: AGENTS.md, internal/template/templates/AGENTS.md.tmpl (run commit 0cf533f2a diff), .moai/specs/SPEC-AGENTS-WORKTREE-ROW-001/spec.md (ls)
+b12_self_test_c: PASS — every path named in the entry verified to exist — AGENTS.md, internal/template/templates/AGENTS.md.tmpl (run commit 0cf533f2a diff), .moai/specs/SPEC-AGENTS-WORKTREE-ROW-001/spec.md (ls)
 changelog_entry_position: "[Unreleased] → ### Added, first entry"
-frontmatter_status_transitions: deferred to the close commit (in-progress → implemented → completed rides the single sync commit per the 3-phase close; NOT a stage-1 act)
+frontmatter_status_transitions: carried by this close commit — in-progress → implemented → completed merged into the single sync commit per the 3-phase close (status only; updated already 2026-09-22; body untouched)
 mx_scan: no-op — docs-only card, zero Go source in the run diff; no @MX annotation surface in the change set
 canary_compliance_check: n/a — this SPEC defines no forward-looking policy exercised by its own sync tests
+audit_f1_disposition: §E.2 E6 command↔output pairing corrected — the `3 files changed, 4 insertions(+), 1 deletion(-)` figure re-attributed to its true producer `git show --stat 0cf533f2a` (re-observed at close, identical output), and the range form re-measured at this close tree (`git diff --stat 00e761af8..HEAD`) → `7 files changed, 721 insertions(+)` (acceptance.md +115 / plan.md +114 / progress.md +282 / spec.md +206 / AGENTS.md +1 / CHANGELOG.md +1 / AGENTS.md.tmpl +2; 0 deletions). Applied under explicit lead dispatch citing the auditor's blocking-at-close prescription
+audit_f2_scope_observation: strict scope filter at close tree (`git diff --name-only 00e761af8..HEAD` filtered by the SPEC dir, `^AGENTS\.md$`, and the template path) → exactly `CHANGELOG.md` (1 path) — the sanctioned stage-1 CHANGELOG entry; the card's only non-SPEC code-surface changes remain the two contract files
 ```
 
 ## §F Phase 4 Mode Selection
