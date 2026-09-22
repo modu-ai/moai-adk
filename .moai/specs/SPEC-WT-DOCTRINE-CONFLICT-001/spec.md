@@ -12,7 +12,7 @@ module: ".claude/rules/moai/workflow"
 lifecycle: spec-anchored
 tags: "worktree, doctrine-conflict, documentation-only, cross-harness, template-parity, git-c-scoping"
 tier: S
-related_specs: [SPEC-WT-DOC-001, SPEC-GITFLOW-DOCTRINE-ALIGN-001]
+related_specs: [SPEC-WT-DOC-001, SPEC-GITFLOW-DOCTRINE-ALIGN-001] # SPEC-WT-DOC-001 is archived — reference retained for lineage only; this SPEC has no active dependency on it (see Cross-references)
 ---
 
 ## HISTORY
@@ -20,6 +20,7 @@ related_specs: [SPEC-WT-DOC-001, SPEC-GITFLOW-DOCTRINE-ALIGN-001]
 | Date | Author | Change |
 |------|--------|--------|
 | 2026-09-22 | manager-spec | Initial creation — plan-phase artifacts for card t1072 (Class C, Tier S, docs-only). Scope fixed by the lane dispatch: judge and land three independently-diverging doctrine lines as three separately-scoped edits. Defect inventory measured on this tree (base 7f86971fc); see plan.md §B. |
+| 2026-09-22 | manager-spec | Plan-audit iter-1 delta fixes (card t1072): D1 archived-SPEC provenance annotation (SPEC-WT-DOC-001); D2 census reworded to exact form `git worktree add -b feat/SPEC` (2 occurrences) + same-class residual inventory extended to REQ-WDC-007(d)/plan.md §B; D3 baseline census corrected to 3 diff hunk headers across 2 logical regions (~610-612, ~653-665); D5 REQ-WDC-004 citation range `:44-48` → `:44-54`. |
 
 ## §A Context and Problem
 
@@ -35,7 +36,7 @@ The parenthetical presents bare `git worktree add -b ...` as the creation recipe
 
 **Ordering probe (decisive, measured on base 7f86971fc):** the recipe landed in `37abf402f` (2026-07-27, #1161); the `AGENTS.md` prohibition landed in `fd3ac06a8` (2026-08-22, t82). At `fd3ac06a8^` the recipe already existed (then at line 173). The prohibition is therefore the LATER rule; line 180's recipe is a stale leftover the later rule overturned without updating. **Fix direction: update line 180 to the sanctioned creation verb; the naming advice itself (worktree named after the SPEC ID so the resume line reads `moai cc -w SPEC-X-001`) remains valid and is preserved verbatim.**
 
-**Census (measured):** the bare recipe string `git worktree add -b feat` exists ONLY in this one file — local copy and template copy, 1 occurrence each (grep census; docs-site/, `.claude/commands/`, `.claude/skills/` are clean).
+**Census (measured):** the recipe's exact form `git worktree add -b feat/SPEC` occurs in exactly 2 places — the local and template copies of this one file, `session-handoff-examples.md:180` each (grep census). The broader same-CLASS bare-`git worktree add` recipe has additional occurrences OUTSIDE this card's fix scope — recorded in REQ-WDC-007's residual inventory (plan.md §B).
 
 ### §A.2 Item (2) — unconditional `git -C` deprecation (worktree-integration.md:227)
 
@@ -74,7 +75,7 @@ This is the doctrine's ONLY sentence stating Claude-exclusivity of the runtime t
 
 ### REQ-WDC-004 — Non-Claude alternative pointer (Ubiquitous)
 
-The runtime-tool sentence at `worktree-integration.md:220` shall name the harness-neutral alternative: the launcher `-w` forms for new-session entry (`moai cc -w`, `moai glm -w`, `moai codex -w` — already documented at `worktree-integration.md:44-48`) and, for current-session entry where no runtime tool exists, the `git -C <path>` fallback as scoped by REQ-WDC-003.
+The runtime-tool sentence at `worktree-integration.md:220` shall name the harness-neutral alternative: the launcher `-w` forms for new-session entry (`moai cc -w`, `moai glm -w`, `moai codex -w` — already documented at `worktree-integration.md:44-54`) and, for current-session entry where no runtime tool exists, the `git -C <path>` fallback as scoped by REQ-WDC-003.
 
 ### REQ-WDC-005 — Per-item scoped landing (Unwanted)
 
@@ -86,7 +87,7 @@ The change shall NOT modify: any Go code; `AGENTS.md` or `internal/template/temp
 
 ### REQ-WDC-007 — Residual record (Ubiquitous)
 
-The SPEC shall record what REMAINS unfixed after the three edits (plan.md §B): (a) `AGENTS.md` / `AGENTS.md.tmpl` stay untouched — the ability-binding table row and the `moai codex` verbs-table listing are card t1071's scope; (b) a native current-session entry tool for non-Claude harnesses remains absent (factory-lane worktree handoff is a separate queued card); (c) the intentional local-vs-template divergence at `worktree-integration.md` ~610/~653 is left as-is.
+The SPEC shall record what REMAINS unfixed after the three edits (plan.md §B): (a) `AGENTS.md` / `AGENTS.md.tmpl` stay untouched — the ability-binding table row and the `moai codex` verbs-table listing are card t1071's scope; (b) a native current-session entry tool for non-Claude harnesses remains absent (factory-lane worktree handoff is a separate queued card); (c) the intentional local-vs-template divergence at `worktree-integration.md` ~610/~653 is left as-is; (d) after the three in-scope edits, the same-CLASS bare-`git worktree add` creation recipe REMAINS unfixed at: the 4 docs-site worktree guides `docs-site/content/{en,ja,ko,zh}/worktree/guide.md` (`en:119`, `ja:114`, `ko:140`, `zh:111` — user-facing docs, separate sync surface), template `main-checkout-branch-guard.md:38` (`git worktree add -b <branch> <worktree-path> origin/main`), and dev-only `hns-release-specialist.md:122` (`git worktree add -b release/vX.Y.Z <worktree-path> origin/develop`; same file also carries a bare `git worktree add --detach` at :233) — card scope (the three cited lines) is UNCHANGED; these are residual inventory, not fix scope.
 
 ## §C Verifiable Scope Summary
 
@@ -115,5 +116,5 @@ The SPEC shall record what REMAINS unfixed after the three edits (plan.md §B): 
 - `.claude/rules/moai/workflow/worktree-integration.md` — items (2) and (3); sanctioned verbs at :44-54.
 - `.claude/rules/moai/workflow/session-handoff-examples.md` — item (1).
 - Root `AGENTS.md` worktrees contract — the later rule that item (1) trails, and the `git -C` driving mandate item (2) carves out for.
-- SPEC-WT-DOC-001 — the worktree shared-state doctrine this SPEC edits adjacent to.
+- SPEC-WT-DOC-001 (archived — reference retained for lineage only; this SPEC has no active dependency on it) — the worktree shared-state doctrine this SPEC edits adjacent to.
 - SPEC-GITFLOW-DOCTRINE-ALIGN-001 — precedent card for a three-item docs-doctrine alignment with the same per-item judgment discipline.

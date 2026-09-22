@@ -46,9 +46,9 @@ Docs-only SPEC: `go test` proves nothing about these edits and is explicitly NOT
 
 ### AC-WDC-006 — No new divergence (blocks)
 
-- **Given** the pre-edit baseline census (plan.md §C.2) counts exactly 2 diff hunks (`worktree-integration.md` local vs template, hunks at ~610-612 and ~653-658),
+- **Given** the pre-edit baseline census (plan.md §C.2) counts exactly 3 diff hunk headers across 2 logical regions (~610-612 and ~653-665 — intentional, cards t1067/t1069) (`worktree-integration.md` local vs template),
 - **When** the edit lands,
-- **Then** the same census command still returns exactly `2`, and the two surviving hunks are still at ~610 and ~653 (the intentional t1067/t1069 divergence, untouched).
+- **Then** the same census command still returns exactly `3` hunk headers across the same 2 logical regions (the intentional t1067/t1069 divergence, untouched) — NO NEW hunk headers may appear in the edited regions (~218-232).
 
 ### AC-WDC-007 — Boundary fence (blocks)
 
@@ -66,7 +66,7 @@ Docs-only SPEC: `go test` proves nothing about these edits and is explicitly NOT
 
 - **Given** card [HARD] requires naming what remains unfixed,
 - **When** the SPEC artifacts are read,
-- **Then** plan.md §B carries the three-item residual inventory (AGENTS.md/t1071 scope; absent native entry tool for non-Claude harnesses; intentional ~610/~653 divergence) and spec.md REQ-WDC-007 binds it.
+- **Then** plan.md §B carries the four-item residual inventory (AGENTS.md/t1071 scope; absent native entry tool for non-Claude harnesses; intentional ~610/~653 divergence; same-class bare-`git worktree add` recipes remaining at the 4 docs-site worktree guides, template `main-checkout-branch-guard.md:38`, and dev-only `hns-release-specialist.md:122`) and spec.md REQ-WDC-007 binds it.
 
 ## §D.1 Severity
 

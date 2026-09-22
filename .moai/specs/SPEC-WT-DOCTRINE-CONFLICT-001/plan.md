@@ -27,11 +27,12 @@ Remains UNFIXED after this SPEC (residual record, card [HARD]):
 - `AGENTS.md` / `internal/template/templates/AGENTS.md.tmpl` stay untouched — the ability-binding table row and the `moai codex` verbs-table listing belong to card t1071.
 - A native current-session entry tool for non-Claude harnesses remains absent; factory-lane worktree handoff is a separate queued card.
 - The intentional local-vs-template divergence at `worktree-integration.md` ~610-612 / ~653-658 (cards t1067/t1069 provenance) is left as-is.
+- The same-CLASS bare-`git worktree add` creation recipe REMAINS unfixed at (measured by grep on this tree): the 4 docs-site worktree guides `docs-site/content/{en,ja,ko,zh}/worktree/guide.md` (`en:119`, `ja:114`, `ko:140`, `zh:111` — user-facing docs, separate sync surface), template `internal/template/templates/.claude/rules/moai/workflow/main-checkout-branch-guard.md:38` (`git worktree add -b <branch> <worktree-path> origin/main`), and dev-only `.claude/agents/harness/hns-release-specialist.md:122` (`git worktree add -b release/vX.Y.Z <worktree-path> origin/develop`; same file also carries `git worktree add --detach` at :233). Card scope — the three cited lines in §B's fixed table — is UNCHANGED; these are residual inventory, not fix scope.
 
 ## §C Pre-flight (Run-phase entry checklist)
 
 1. [ ] Confirm tree and branch: `git -C <worktree> rev-parse --short HEAD` and `git branch --show-current` → `WT-doctrine-conflict`; re-read immediately before each commit.
-2. [ ] Confirm baseline hunk census (the invariant the edits must preserve): `diff .claude/rules/moai/workflow/worktree-integration.md internal/template/templates/.claude/rules/moai/workflow/worktree-integration.md | grep -c '^[0-9]'` → **2** (hunks ~610c, ~653c only).
+2. [ ] Confirm baseline hunk census (the invariant the edits must preserve): `diff .claude/rules/moai/workflow/worktree-integration.md internal/template/templates/.claude/rules/moai/workflow/worktree-integration.md | grep -c '^[0-9]'` → **3** — 3 diff hunk headers across 2 logical regions (~610-612 and ~653-665), intentional divergence, cards t1067/t1069.
 3. [ ] Confirm `session-handoff-examples.md` full-file parity: `diff` of the local vs template copy → empty.
 4. [ ] Capture verbatim current text of the three target sentences (spec.md §A quotes) so the run-phase edits are exact-string replacements, not fuzzy rewrites.
 
@@ -58,7 +59,7 @@ Remains UNFIXED after this SPEC (residual record, card [HARD]):
 | V3 alternative present (both copies) | `grep -c "On a harness without these runtime tools" <local>` and `<template>` | `1` each |
 | P1 session-handoff full parity restored | `diff .claude/rules/moai/workflow/session-handoff-examples.md internal/template/templates/.claude/rules/moai/workflow/session-handoff-examples.md` | empty, rc 0 |
 | P2 worktree-integration edited-region parity | `diff <(sed -n '215,235p' .claude/rules/moai/workflow/worktree-integration.md) <(sed -n '215,235p' internal/template/templates/.claude/rules/moai/workflow/worktree-integration.md)` | empty, rc 0 |
-| P3 no NEW divergence | baseline §C.2 census re-run | still exactly **2** hunks (~610c, ~653c) |
+| P3 no NEW divergence | baseline §C.2 census re-run | still exactly **3** hunk headers across the same 2 logical regions (~610-612, ~653-665) |
 | B1 AGENTS.md untouched | `git status --porcelain -- AGENTS.md internal/template/templates/AGENTS.md.tmpl` | empty |
 | B2 zero code changes | `git status --porcelain` | only the two workflow files (both copies) + the SPEC dir |
 
