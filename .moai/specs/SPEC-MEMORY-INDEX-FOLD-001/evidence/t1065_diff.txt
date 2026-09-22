@@ -1,0 +1,38 @@
+== DROPPED ENTRIES ([R]=relocated to archive, [U]=unarchived) ==
+[U] - [리드 배치 09-21 — 병합 5건·조사 13건·종합 2건 착지, 운영자 판정 A~G 와 Kickoff 4건이 병목](project_lead_batch_20260921.md) — 인계 본문은 `.moai/reports/lead/handoff-20260921.md`; 좌표 `db2270127`/미푸시 20, 워크트리 22+ 폐기 금지(종합 근거가 미추적), 리드 결함 21건은 전부 「옮기면서 원문 안 엶」
+[U] - [지도·색인을 읽는 계측기가 없으면 거짓이어도 초록이다](feedback_a_requirement_map_no_instrument_reads.md) — 한 카드에서 3회 재발; 세 번째는 **건드리지 않은 칸**이 자기 편집으로 거짓이 됨. 표를 한 행이라도 고치면 **전 행 재유도**, 검증은 편집자와 다른 주체가
+[U] - [반증 행은 살아남을 것이 지움 범위 안에 있어야 가른다](feedback_a_falsifying_row_needs_the_survivor_on_the_far_side.md) — 선행 문자를 변주한 4행 중 3행이 무력(명령이 `#` **앞**이라 지워도 남음); 후보 구현을 열거해 제외 표를 만들자 통과하지만 틀린 후보가 2→9개, 그중 6개가 blinding
+
+== ADDED ENTRIES (current, not in before) ==
+- [t1077 factory notice 격리 갭 — **로컬 develop 병합 `0314801c2`·트리 일치 `ab3b773db`**·원인 확정(clearKanbanEnv 백엔드 키 누락)·1줄 수리 `54db08ddd`](project_card_t1077_hook_notice_fix.md) — **push 착지 `0314801c2`(09-22 일괄)**·CI red는 상속 2건(t1068/t1066-F2 축, 본건 기여 0)·폐기 금지·residual 스크럽 레시피 갭은 별도 카드 상신 대기 (09-22)
+- [t1064 면제 도달성 — **기존 plan 채택(리드 정정 class C)**·develop 흡수 `1b69ee405`·D9 보충·(b) 무시-범위 이동 발견(ugrep×gitignore)·**Kickoff 게이트 운영자 무응답 ×2 정지**](project_card_t1064_exempt_reachability.md) — 승인 대기·트리 `e1a594c2b`·폐기 금지 (09-22)
+- [t1055 AgentGroup 주석 수정 — done·sync PASS 0.93·로컬 병합 `ef3ad83e2`·트리 일치 `cbc157c8f`](project_card_t1055_matrix_group_comment.md) — push 리드 일괄 대기·워크트리 폐기 금지 (09-22)
+- [t1050 병합 + 워크트리 중립성 조사](project_t1050_worktree_neutrality_handoff.md) — 카드 t1070~t1073 발행·t1071/t1072 는 AGENTS.md.tmpl 공유로 배차 전 분할 필요·t1050 워크트리 폐기 금지 (09-22)
+- [t1051 web 저장 관측성 — **done 확정·push 착지 `0314801c2`**·sync-audit PASS-WITH-DEBT 0.857·후속 t1079-81 발행](project_card_t1051_save_observability.md) — 폐기 잔여 게이트: 트레일링 팁 `d24e809c6`(판정서+F1) develop 편입 — 워크트리 유일본 (session: 5673f04f)
+- [t1066 Jev 소비자 — **SPEC 종결** `0e2a61c81`·**원격 착지 확정 `ef3ad83e2`**(09-22 리드 ff push·재검증 0 0)·sync-audit PASS 92/100·**F2 원인 규명**(422=questions 사전형+질문별 `type` 판별자 요구·응답도 사전형·R3로 200 재현 — 수리 카드 대기)](project_card_t1066_jev_consumers_run.md) — 폐기 금지 전제 해소. F2 프로브 집행 완료·GOAL-DIST plan-audit 진행 중. 측정 게이트(Q3) 미실행 — 출시 가능 아님 (09-22)
+- [리드 배치 상태 09-22 — 레인 5 배차·일괄 push 착지·CI 상속 적신 지도·운영자 대기 결정](project_lead_state_20260922.md) — 09-21 인계: `.moai/reports/lead/handoff-20260921.md`·워크트리 폐기 금지 지속
+- [t1059 export-mandate 조항 09-22 — **종결+push 착지 완료**: 일괄 `269fb89c1..ef3ad83e2`(운영자 지시 t1066 레인 릴레이)에 실려 규정 2파일 삭제 원격 반영(처분①과 정합)·CI success](project_card_t1059_export_clause.md) — 폐기 금지는 세션 종료 프롬프트 축으로 유지
+- [크로스-하네스 Codex 전수조사 09-22 — 보고서 `moai-crossharness-codex-audit-20260922.{html,md}`](reference_crossharness_codex_audit_20260922.md) — @AGENTS.md 이미 착지(t82)·AGENTS.md 정본=develop·갭 9개(차단 1=`moai codex` 런처 부재=t1074)·#11314 배포판 실측 미실행
+- [원격 ref 를 갱신 없이 읽으면 원격이 아니라 내 ref 의 나이를 잰다](feedback_reading_a_remote_ref_without_fetching_measures_your_own_staleness.md) (t1059)
+
+== FULL ORPHANS (card files referenced nowhere) ==
+t223
+t229
+t233
+t252
+t264
+t267
+t272
+t274
+t281
+t310
+t404
+t422
+t425
+t427
+t428
+t430
+t439
+t440
+t444
+t1019
