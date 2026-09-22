@@ -432,7 +432,23 @@ TDD RED-evidence invariant.
 - **Mutant (ratio inversion `<=` → `>`)**: TestSubagentWriteGuardDestructiveWriteDenied →
   FAIL (AC-SWG-001a red under the inverted ratio, as the acceptance requires);
   NormalWriteAllowed + TargetOutsideGitRepository also flipped red as expected side effects.
-  Restored → green.
+  Restored → green. NOTE (sync-audit F1): under THIS mutant both 001a and 001b went red —
+  no divergence; the pair's divergence is observed under the deny-everything mutant below.
+- **Mutant (deny-everything — predicate unconditionally true, sync-audit F1)**: field
+  extraction and stat left intact (so the deny reason stays well-formed), all four
+  predicate conditions skipped; run at tree 92baef07c:
+  ```
+  $ go test ./internal/hook/ -run 'TestSubagentWriteGuardDestructiveWriteDenied|TestSubagentWriteGuardNormalWriteAllowed' -v -count=1
+  === RUN   TestSubagentWriteGuardDestructiveWriteDenied
+  --- PASS: TestSubagentWriteGuardDestructiveWriteDenied (0.72s)
+  === RUN   TestSubagentWriteGuardNormalWriteAllowed
+      subagent_write_guard_test.go:109: decision = "deny", want allow (reason "SUBAGENT_DESTRUCTIVE_WRITE_VIOLATION:: subagent Write would replace /var/folders/kt/.../tracked.txt (existing 20000 bytes) with 20600 bytes. Re-issue the change as an Edit carrying the exact prior text, or perform the write from the main session.")
+  --- FAIL: TestSubagentWriteGuardNormalWriteAllowed (0.59s)
+  FAIL
+  ```
+  Observed divergence: **001a green / 001b red** — the deny-everything mutant passes the
+  deny criterion and fails the allow criterion, which is the divergence §D.1 states the
+  pair buys. Restored → suite green.
 
 ### M3 — path resolution and evaluation order
 
@@ -468,15 +484,49 @@ TDD RED-evidence invariant.
 
 - **RED**: all four decision-path tests FAIL with `read audit log: ... no such file or
   directory` — the append did not exist. Captured verbatim.
-- **GREEN**: `go test ./internal/hook/ -run 'SubagentWriteGuard' -v` → 16 tests / 28 rows
-  PASS: deny row, allow row, fail-open row carrying its reason, withheld row on the
-  disabled path, card id `t9999` from a worktree-shaped cwd and empty from a
-  primary-checkout-shaped one (outcome identical: deny in both), git status unchanged
-  across evaluation with the log as the only file written.
+- **GREEN**: `go test ./internal/hook/ -run 'SubagentWriteGuard' -v` → 15 test functions /
+  28 rows (15 top-level + 13 subtests) PASS: deny row, allow row, fail-open row carrying
+  its reason, withheld row on the disabled path, card id `t9999` from a worktree-shaped
+  cwd and empty from a primary-checkout-shaped one (outcome identical: deny in both), git
+  status unchanged across evaluation with the log as the only file written. (Count
+  corrected per sync-audit F3: the earlier "16 tests" overstated the function count by one
+  — 9e176e2fb measured 15 funcs / 28 rows; the row count was already correct.)
 - **Mutants observed** (each restored after capture):
   - withheld→allow flattening: AC-SWG-012 RED, AC-SWG-002 green.
   - whole-guard gating (flag gates evaluation): AC-SWG-012 RED, AC-SWG-002 green.
   - `agent_type` as discriminant: AgentFlagMainSession RED, PlainMainSession green.
+
+### Withheld counting check + condition-skipping mutant (sync-audit F2)
+
+Run at tree `92baef07c`, deny layer DISABLED, via a temporary recording driver (deleted
+after capture; its permanent test form is deferred to the calibration card together with
+F4/F5). Set: N=2 destructive payloads (tracked 20000B file, 300B/400B content) + M=4
+benign payloads composed so each fails exactly one condition — c1-only growth (20600B),
+c2-only floor (tracked 1500B file, 100B content), **c4-only size-shaped write to an
+untracked path** (untracked 20000B file, 100B content), **c3-only size-shaped write to a
+path outside the repository** (repo cwd, outside 20000B file, 100B content — rev-parse
+succeeds, containment fails).
+
+- **Counting check (green)**:
+  ```
+  $ go test ./internal/hook/ -run 'TestF2WithheldCountingCheck' -v -count=1
+      f2_temp_counting_test.go:82: counting check: 6 rows, withheld=2 (N=2) — exactly N withheld, benign set incl. c3-only and c4-only failures
+  --- PASS: TestF2WithheldCountingCheck (0.89s)
+  ```
+- **Mutant probe 3 (condition skipping — on the disabled path evaluate only conditions
+  1-2 and record withheld), RED**:
+  ```
+  $ go test ./internal/hook/ -run 'TestF2WithheldCountingCheck' -v -count=1
+      f2_temp_counting_test.go:79: withheld rows = 4, want exactly 2 (N destructive)
+          [..] decision=withheld ... path=".../tracked.txt" pre=20000 post=300 card= reason=""
+          [..] decision=withheld ... path=".../tracked.txt" pre=20000 post=400 card= reason=""
+          [..] decision=withheld ... path=".../fresh.txt" pre=20000 post=100 card= reason=""
+          [..] decision=withheld ... path=".../outside.txt" pre=20000 post=100 card= reason=""
+  --- FAIL: TestF2WithheldCountingCheck (0.98s)
+  ```
+  The mutant wrongly records `withheld` for the c3-only and c4-only benign payloads —
+  inflated count 4 ≠ N=2 — which is exactly the failure the benign set's composition was
+  built to catch. Restored → full SubagentWriteGuard suite green (`-count=1`, `ok`).
 
 ### AC-SWG-011 mechanical gate
 
