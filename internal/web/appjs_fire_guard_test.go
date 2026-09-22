@@ -13,6 +13,8 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/modu-ai/moai-adk/internal/glmcred"
 )
 
 // SPEC-APPJS-FIRE-GUARD-001 (card t1060) — runtime fire guard for the
@@ -183,11 +185,19 @@ func findRepoRoot(t *testing.T) string {
 	}
 }
 
+// fireGuardFakeGLMKey is an obviously fake value; it only has to make the
+// reveal control render and never reaches any GLM endpoint.
+const fireGuardFakeGLMKey = "test-fire-guard-fake-glm-key"
+
 // startFireGuardServer boots the in-process console server on a random
 // loopback port and registers its teardown in t.Cleanup. It returns the base
 // URL Chrome will load.
 func startFireGuardServer(t *testing.T) string {
 	t.Helper()
+	// Seed a stored GLM key through the test hook: #glmKeyReveal renders only
+	// when a key is configured, so without this the glm_reveal entry passes on
+	// a machine with an operator key and misses everywhere else (card t1087).
+	t.Setenv(glmcred.EnvTestGLMKey, fireGuardFakeGLMKey)
 	cfg := Config{
 		Port:           0,
 		NoOpen:         true,

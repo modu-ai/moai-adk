@@ -607,9 +607,9 @@ Ad-hoc detours happen to work — routing the content through an interpreter's o
 
 A corpus-wide, block-level census of acceptance-criteria verification commands (111 files
 carrying complex git forms across `**/acceptance.md`) probed each file with a read-only replica
-of its block composition in a worktree-isolated session at Claude Code **2.1.278** (2026-09-22;
-every disposition traces to a recorded probe; measured 2026-09-22 — card t1067). Like every
-table in this section it is a record of observations, not a specification of the parser.
+of its block composition in a worktree-isolated session at Claude Code **2.1.278** (every
+disposition traces to a recorded probe). Like every table in this section it is a record of
+observations, not a specification of the parser.
 
 Refused — the `names git in a form too complex to verify` refusal fires and nothing executes:
 
@@ -650,10 +650,18 @@ guard itself is the binary's):
    so the relocation hides the risk instead of removing it. Reduce the verification instead.
 6. Pin the tree SHA the measurement was taken on (`verification-completeness.md` §4).
 
-Working example: the AC-AEC-013 restatement in `SPEC-AUDIT-EXPORT-CLAUSE-001/acceptance.md:622-680`
-(plain verbs + separate `echo "exit=$?"` lines + an explicit note avoiding `$(git merge-base …)`),
-and the corpus census backing this subsection at `.moai/reports/t1067/census-20260922.md` (card
-t1067, measured 2026-09-22).
+Working example — a refused form and its executable restatement:
+
+```bash
+# REFUSED (assignment + later expansion of a git-bearing substitution):
+B=$(git merge-base develop HEAD)
+git diff --name-only "$B"..HEAD -- internal/pkg/ | wc -l
+
+# EXECUTABLE (plain verbs; base recorded on its own line; three-dot range):
+git merge-base develop HEAD                          # record the base value as evidence
+git diff --name-only develop...HEAD -- internal/pkg/ | wc -l
+git diff --quiet develop...HEAD -- internal/pkg/; echo "diff_exit=$?"
+```
 
 **Versions measured**: the trigger table and the delimiter asymmetry were measured at Claude Code **2.1.251**. The message-shape catalogue, the git-axis counter-example, and the heredoc disagreement were measured at **2.1.275** (card t852; `claude --version` read in the measuring session). The subagent-anchor observations were measured at the version current when card t741 was measured, which was not recorded there.
 

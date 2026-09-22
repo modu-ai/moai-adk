@@ -77,6 +77,9 @@ func (h *stopHandler) Handle(ctx context.Context, input *HookInput) (*HookOutput
 	// stderr. NEVER blocks stop (fail-open per REQ-SEG-005). Purely additive —
 	// inserted after all pre-existing steps, before the final return (REQ-SEG-009).
 	runEvidenceGate(projectDir, input.SessionID)
+	if factoryCtx, shouldContinue, _ := factoryHookBatch(ctx, input, EventStop); shouldContinue {
+		return &HookOutput{Decision: DecisionBlock, Reason: factoryCtx}, nil
+	}
 
 	// Stop hooks use top-level decision/reason fields per Claude Code protocol
 	// Return empty JSON {} to allow Claude to stop (default behavior)
