@@ -261,4 +261,4 @@ diff_check_exit=0
 
 - sync-audit: `.moai/reports/t1078/sync-audit.md` — Overall Verdict: **PASS**, Score **100/100**, 코드 findings 0, evidence gaps 0(non-blocking cache miss 1). AC-LMD-001~012 전부 PASS — 본 레인이 판정서를 직독해 확인(트리 `WT-codex-local-md@318b6d27` 기준).
 - Frontmatter: spec.md `status: "draft" → "completed"` 전이 — 이 close 커밋에서 실시(3-phase close 관례: completed 전이는 close 커밋에 탄다).
-- `sync_commit_sha`: pending-backfill-close — close 커밋 착지 직후 chore 커밋에서 실측 SHA 로 백필한다(D3 창).
+- `sync_commit_sha`: 193064e43 — close 커밋의 실측 SHA(이 chore 커밋에서 백필, D3 창).
