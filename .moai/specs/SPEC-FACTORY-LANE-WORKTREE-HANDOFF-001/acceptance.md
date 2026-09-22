@@ -1,0 +1,247 @@
+---
+id: SPEC-FACTORY-LANE-WORKTREE-HANDOFF-001
+document: acceptance
+created: 2026-09-22
+updated: 2026-09-22
+author: manager-spec
+card: t1082
+module: "internal/factorymsg"
+---
+
+# Acceptance — SPEC-FACTORY-LANE-WORKTREE-HANDOFF-001
+
+## Acceptance policy
+
+- AC-FLH-001..016은 모두 MUST-PASS다.
+- Unit/fixture evidence는 해당 named contract만 증명한다. AC-FLH-012/013은 실제 별도 CLI/model contexts가 아니면 PASS가 아니다.
+- 모든 GREEN command는 정확히 한 parent test의 `Action=pass`, 전체 child/subtest/package의 `Action=fail` 및 `Action=skip` 0건, 전체 log의 `NOT_RUN` 0건을 요구한다.
+- `go test -run`의 empty match, package setup failure, missing log, mock-only LIVE, direct peer registration, 수동 DB seed는 vacuous PASS가 아니라 FAIL이다.
+- 각 log는 실행 직전 `git rev-parse HEAD`와 built binary identity를 verdict에 귀속해야 한다.
+- LIVE parent test는 자유 형식 stdout 문자열로 자기 증명하지 않는다. 각 test는 card-scoped structured evidence JSON을 원자적으로 기록하고, 아래 `jq -e` predicate가 필드의 타입·값·상호 일치를 직접 검증해야 한다.
+- `TestFactoryLaneHandoffLiveEvidenceGateRejectsMutants`는 필수 필드 누락, fixture/mock/direct-registration 표식, child failure, child skip, 그리고 stored-history 증거를 `thread/start`로 바꾼 `wrong_method_thread_start`를 각각 주입한 gate mutant가 모두 거부됨을 증명한다. 이 selector는 AC 수를 늘리지 않고 AC-FLH-012/013의 공통 gate-quality 조건이다.
+
+## Summary and traceability
+
+| AC | Requirements | Named test | Observable outcome |
+|---|---|---|---|
+| AC-FLH-001 | REQ-FLH-001, REQ-FLH-003 | `TestFactoryLaneHandoffAdmissionFailClosed` | active turn, permission wait, interrupt, dirty source, untrusted cwd, path/branch collision, stale/multiple reservation이 모두 side effect 0의 NACK다. |
+| AC-FLH-002 | REQ-FLH-004, REQ-FLH-005 | `TestFactoryLaneHandoffDevelopPinAndTraceability` | local develop pin에서 launcher L1 WT가 생기고 path/branch/card/SPEC traceability가 일치한다. |
+| AC-FLH-003 | REQ-FLH-002, REQ-FLH-006 | `TestFactoryLaneHandoffInteractiveStateMachine` | idle interactive 경로가 사용자 `/cd` 뒤 다음 정상 turn의 SessionStart/cwd/branch evidence로만 BOUND되며 empty turn은 0이다. |
+| AC-FLH-004 | REQ-FLH-002, REQ-FLH-007 | `TestFactoryLaneHandoffHeadlessAppServerStateMachine` | idle headless 경로가 official fork/start 반환 ID와 controller provenance로 직접 BOUND하고 active turn을 거부한다. |
+| AC-FLH-005 | REQ-FLH-008 | `TestFactoryLaneHandoffAtomicModeEvidenceRebind` | interactive SessionStart와 headless RPC-result rebind가 각각 all-or-nothing이다. |
+| AC-FLH-006 | REQ-FLH-009 | `TestFactoryLaneHandoffDispatchAfterBound` | body는 BOUND 뒤 current generation에만 release된다. |
+| AC-FLH-007 | REQ-FLH-001, REQ-FLH-010 | `TestFactoryLaneHandoffStaleEndpointRejected` | old/stale endpoint send/read/ACK가 current endpoint hint와 함께 거부된다. |
+| AC-FLH-008 | REQ-FLH-009 | `TestFactoryLaneHandoffDuplicateAndSameLaneRedispatch` | duplicate 및 same-lane redispatch가 한 번만 실행된다. |
+| AC-FLH-009 | REQ-FLH-011 | `TestFactoryLaneHandoffCrashRecovery` | create/rebind/receipt crash points가 deterministic resume/finalize/NACK로 복구된다. |
+| AC-FLH-010 | REQ-FLH-011 | `TestFactoryLaneHandoffAbandonedWorktreeRecovery` | dirty/unmerged/unknown-owner WT가 ABANDONED로 보존되고 자동 삭제되지 않는다. |
+| AC-FLH-011 | REQ-FLH-008, REQ-FLH-009, REQ-FLH-013 | `TestFactoryLaneHandoffNoPreBoundWrites` | BOUND 전 code/commit/task ACK 0, wrong cwd write 0, primary branch switch 0, message loss 0이다. |
+| AC-FLH-012 | REQ-FLH-013, REQ-FLH-014 | `TestFactoryLiveCodexCodexWorktreeHandoff` | real Codex↔Codex가 실제 interactive `/cd`와 다음 정상 turn SessionStart, empty-turn 0을 증명한다. |
+| AC-FLH-013 | REQ-FLH-013, REQ-FLH-014 | `TestFactoryLiveClaudeCodexWorktreeHandoff` | real Claude lead↔Codex가 실제 headless `thread/fork(cwd)`와 반환 ID direct BOUND를 증명한다. |
+| AC-FLH-014 | REQ-FLH-006, REQ-FLH-007, REQ-FLH-012 | `TestFactoryLaneHandoffNoPrivateControl` | slash automation/tmux/private socket/model-cd/Desktop emulation 호출이 0이다. |
+| AC-FLH-015 | REQ-FLH-015 | `TestFactoryLaneHandoffT1074Compatibility` | 기존 broker/roster/receipt/catalog가 유지되고 새 broker/daemon/store가 없다. |
+| AC-FLH-016 | REQ-FLH-004 | `TestFactoryLaneHandoffCreationBaseDriftRejected` | t1082에서 실제 관측된 main→develop creation-base drift mutant가 BASE_DRIFT로 fail closed한다. |
+
+## RED-now ledger
+
+다음 exact selectors를 subject tree `bf39a539d97f49edf3b11517ee7c982239c60df3`에서 실행했다. 각 command는 stdout 0 bytes, exit 1이었다. 따라서 현재는 16개 criterion 모두 RED다. Test 존재 자체는 GREEN이 아니며, 각 절의 exact Go/JQ gate까지 통과해야 한다.
+
+| AC | Exact RED-now command | Observed stdout | Exit |
+|---|---|---|---:|
+| AC-FLH-001 | `rg -n -F 'func TestFactoryLaneHandoffAdmissionFailClosed(' internal --glob '*_test.go'` | `<empty>` | 1 |
+| AC-FLH-002 | `rg -n -F 'func TestFactoryLaneHandoffDevelopPinAndTraceability(' internal --glob '*_test.go'` | `<empty>` | 1 |
+| AC-FLH-003 | `rg -n -F 'func TestFactoryLaneHandoffInteractiveStateMachine(' internal --glob '*_test.go'` | `<empty>` | 1 |
+| AC-FLH-004 | `rg -n -F 'func TestFactoryLaneHandoffHeadlessAppServerStateMachine(' internal --glob '*_test.go'` | `<empty>` | 1 |
+| AC-FLH-005 | `rg -n -F 'func TestFactoryLaneHandoffAtomicModeEvidenceRebind(' internal --glob '*_test.go'` | `<empty>` | 1 |
+| AC-FLH-006 | `rg -n -F 'func TestFactoryLaneHandoffDispatchAfterBound(' internal --glob '*_test.go'` | `<empty>` | 1 |
+| AC-FLH-007 | `rg -n -F 'func TestFactoryLaneHandoffStaleEndpointRejected(' internal --glob '*_test.go'` | `<empty>` | 1 |
+| AC-FLH-008 | `rg -n -F 'func TestFactoryLaneHandoffDuplicateAndSameLaneRedispatch(' internal --glob '*_test.go'` | `<empty>` | 1 |
+| AC-FLH-009 | `rg -n -F 'func TestFactoryLaneHandoffCrashRecovery(' internal --glob '*_test.go'` | `<empty>` | 1 |
+| AC-FLH-010 | `rg -n -F 'func TestFactoryLaneHandoffAbandonedWorktreeRecovery(' internal --glob '*_test.go'` | `<empty>` | 1 |
+| AC-FLH-011 | `rg -n -F 'func TestFactoryLaneHandoffNoPreBoundWrites(' internal --glob '*_test.go'` | `<empty>` | 1 |
+| AC-FLH-012 | `rg -n -F 'func TestFactoryLiveCodexCodexWorktreeHandoff(' internal --glob '*_test.go'` | `<empty>` | 1 |
+| AC-FLH-013 | `rg -n -F 'func TestFactoryLiveClaudeCodexWorktreeHandoff(' internal --glob '*_test.go'` | `<empty>` | 1 |
+| AC-FLH-014 | `rg -n -F 'func TestFactoryLaneHandoffNoPrivateControl(' internal --glob '*_test.go'` | `<empty>` | 1 |
+| AC-FLH-015 | `rg -n -F 'func TestFactoryLaneHandoffT1074Compatibility(' internal --glob '*_test.go'` | `<empty>` | 1 |
+| AC-FLH-016 | `rg -n -F 'func TestFactoryLaneHandoffCreationBaseDriftRejected(' internal --glob '*_test.go'` | `<empty>` | 1 |
+| AC-FLH-012/013 gate quality | `rg -n -F 'func TestFactoryLaneHandoffLiveEvidenceGateRejectsMutants(' internal --glob '*_test.go'` | `<empty>` | 1 |
+
+## Exact acceptance gates
+
+### AC-FLH-001 — Admission fails closed
+
+**Given** active-turn, permission-wait, interrupted, dirty-source, symlink-escape cwd, occupied branch/path, stale reservation, and same-lane in-flight fixtures, **when** reserve is attempted, **then** each returns its exact NACK and creates no worktree, app-server request, endpoint mutation, or dispatch release.
+
+```bash
+unset ANTHROPIC_BASE_URL ANTHROPIC_API_KEY ANTHROPIC_AUTH_TOKEN Z_AI_API_KEY && mkdir -p .moai/reports/t1082 && MOAI_HOME=/tmp/t1082-ac01-home GOCACHE=/tmp/t1082-ac01-cache go test -json ./internal/factorymsg ./internal/cli -run '^TestFactoryLaneHandoffAdmissionFailClosed$' -count=1 -timeout=90s > .moai/reports/t1082/ac01.jsonl && jq -se '([.[]|select(.Action=="pass" and .Test=="TestFactoryLaneHandoffAdmissionFailClosed")]|length)==1 and ([.[]|select(.Action=="fail" or .Action=="skip")]|length)==0 and ([.[]|select((.Output//"")|contains("NOT_RUN"))]|length)==0' .moai/reports/t1082/ac01.jsonl
+```
+
+Expected final output: `true`; otherwise FAIL.
+
+### AC-FLH-002 — Develop pin, L1 creation, and traceability
+
+**Given** a local develop ref, card/SPEC/slug, and clean canonical primary fixture, **when** handoff creates the target, **then** it calls the existing MoAI materializer once, target HEAD equals the pre-create pin, directory is `<primary>/.claude/worktrees/<card-id>`, branch is `WT-<slug>`, and dispatch/commit/report trace fields are exact without primary branch movement.
+
+```bash
+unset ANTHROPIC_BASE_URL ANTHROPIC_API_KEY ANTHROPIC_AUTH_TOKEN Z_AI_API_KEY && mkdir -p .moai/reports/t1082 && MOAI_HOME=/tmp/t1082-ac02-home GOCACHE=/tmp/t1082-ac02-cache go test -json ./internal/cli -run '^TestFactoryLaneHandoffDevelopPinAndTraceability$' -count=1 -timeout=90s > .moai/reports/t1082/ac02.jsonl && jq -se '([.[]|select(.Action=="pass" and .Test=="TestFactoryLaneHandoffDevelopPinAndTraceability")]|length)==1 and ([.[]|select(.Action=="fail" or .Action=="skip")]|length)==0 and ([.[]|select((.Output//"")|contains("NOT_RUN"))]|length)==0' .moai/reports/t1082/ac02.jsonl
+```
+
+Expected final output: `true`; otherwise FAIL.
+
+### AC-FLH-003 — Interactive user-driven relocation
+
+**Given** an idle interactive Codex lane in `WT_READY`, **when** the handoff emits `/cd <target>` guidance, the user actually executes it, and the user's next normal turn produces matching SessionStart, **then** only verified target cwd/branch/HEAD/new UUID advances to BOUND; before that it remains `SWITCH_PENDING_INTERACTIVE`, no automatic slash execution or empty model turn occurs, and mismatched evidence NACKs.
+
+```bash
+unset ANTHROPIC_BASE_URL ANTHROPIC_API_KEY ANTHROPIC_AUTH_TOKEN Z_AI_API_KEY && mkdir -p .moai/reports/t1082 && MOAI_HOME=/tmp/t1082-ac03-home GOCACHE=/tmp/t1082-ac03-cache go test -json ./internal/factorymsg ./internal/hook ./internal/cli -run '^TestFactoryLaneHandoffInteractiveStateMachine$' -count=1 -timeout=90s > .moai/reports/t1082/ac03.jsonl && jq -se '([.[]|select(.Action=="pass" and .Test=="TestFactoryLaneHandoffInteractiveStateMachine")]|length)==1 and ([.[]|select(.Action=="fail" or .Action=="skip")]|length)==0 and ([.[]|select((.Output//"")|contains("NOT_RUN"))]|length)==0' .moai/reports/t1082/ac03.jsonl
+```
+
+Expected final output: `true`; otherwise FAIL.
+
+### AC-FLH-004 — Headless official app-server relocation
+
+**Given** idle stored-thread, idle no-history, active-turn, permission-wait, and interrupt fixtures, **when** headless relocation runs, **then** stored history uses `thread/fork(cwd)` and observes new ID/`forkedFromId`/`thread/started`, no-history uses `thread/start(cwd)`, controller readback verifies target cwd/branch/HEAD before direct BOUND, active/wait/interrupt NACK, and no SessionStart wait, empty `turn/start`, or `turn/steer` request exists.
+
+```bash
+unset ANTHROPIC_BASE_URL ANTHROPIC_API_KEY ANTHROPIC_AUTH_TOKEN Z_AI_API_KEY && mkdir -p .moai/reports/t1082 && MOAI_HOME=/tmp/t1082-ac04-home GOCACHE=/tmp/t1082-ac04-cache go test -json ./internal/cli -run '^TestFactoryLaneHandoffHeadlessAppServerStateMachine$' -count=1 -timeout=90s > .moai/reports/t1082/ac04.jsonl && jq -se '([.[]|select(.Action=="pass" and .Test=="TestFactoryLaneHandoffHeadlessAppServerStateMachine")]|length)==1 and ([.[]|select(.Action=="fail" or .Action=="skip")]|length)==0 and ([.[]|select((.Output//"")|contains("NOT_RUN"))]|length)==0' .moai/reports/t1082/ac04.jsonl
+```
+
+Expected final output: `true`; otherwise FAIL.
+
+### AC-FLH-005 — Atomic mode-evidence rebind
+
+**Given** matching and mismatching interactive next-turn SessionStart and headless official RPC-result/controller-readback evidence plus injected failures at every write boundary, **when** mode-specific rebind runs, **then** peer replacement, old tombstone, BOUND state, receipt, and release marker are either all visible or all absent.
+
+```bash
+unset ANTHROPIC_BASE_URL ANTHROPIC_API_KEY ANTHROPIC_AUTH_TOKEN Z_AI_API_KEY && mkdir -p .moai/reports/t1082 && MOAI_HOME=/tmp/t1082-ac05-home GOCACHE=/tmp/t1082-ac05-cache go test -json ./internal/factorymsg ./internal/hook ./internal/cli -run '^TestFactoryLaneHandoffAtomicModeEvidenceRebind$' -count=1 -timeout=90s > .moai/reports/t1082/ac05.jsonl && jq -se '([.[]|select(.Action=="pass" and .Test=="TestFactoryLaneHandoffAtomicModeEvidenceRebind")]|length)==1 and ([.[]|select(.Action=="fail" or .Action=="skip")]|length)==0 and ([.[]|select((.Output//"")|contains("NOT_RUN"))]|length)==0' .moai/reports/t1082/ac05.jsonl
+```
+
+Expected final output: `true`; otherwise FAIL.
+
+### AC-FLH-006 — Dispatch body only after BOUND
+
+**Given** one dispatch sent before relocation and one during SWITCH_PENDING, **when** old/new endpoints list and read them around rebind, **then** metadata remains durable, body claim/read is denied before BOUND, and both bodies release exactly once to the new generation after BOUND.
+
+```bash
+unset ANTHROPIC_BASE_URL ANTHROPIC_API_KEY ANTHROPIC_AUTH_TOKEN Z_AI_API_KEY && mkdir -p .moai/reports/t1082 && MOAI_HOME=/tmp/t1082-ac06-home GOCACHE=/tmp/t1082-ac06-cache go test -json ./internal/factorymsg -run '^TestFactoryLaneHandoffDispatchAfterBound$' -count=1 -timeout=90s > .moai/reports/t1082/ac06.jsonl && jq -se '([.[]|select(.Action=="pass" and .Test=="TestFactoryLaneHandoffDispatchAfterBound")]|length)==1 and ([.[]|select(.Action=="fail" or .Action=="skip")]|length)==0 and ([.[]|select((.Output//"")|contains("NOT_RUN"))]|length)==0' .moai/reports/t1082/ac06.jsonl
+```
+
+Expected final output: `true`; otherwise FAIL.
+
+### AC-FLH-007 — Old endpoint tombstone and stale rejection
+
+**Given** old UUID/generation, stale reservation, stale claim token, restarted process, and current endpoint, **when** send/read/receipt/ACK execute, **then** every stale operation NACKs without mutation, returns current non-secret endpoint/generation metadata, and current operations succeed.
+
+```bash
+unset ANTHROPIC_BASE_URL ANTHROPIC_API_KEY ANTHROPIC_AUTH_TOKEN Z_AI_API_KEY && mkdir -p .moai/reports/t1082 && MOAI_HOME=/tmp/t1082-ac07-home GOCACHE=/tmp/t1082-ac07-cache go test -json ./internal/factorymsg -run '^TestFactoryLaneHandoffStaleEndpointRejected$' -count=1 -timeout=90s > .moai/reports/t1082/ac07.jsonl && jq -se '([.[]|select(.Action=="pass" and .Test=="TestFactoryLaneHandoffStaleEndpointRejected")]|length)==1 and ([.[]|select(.Action=="fail" or .Action=="skip")]|length)==0 and ([.[]|select((.Output//"")|contains("NOT_RUN"))]|length)==0' .moai/reports/t1082/ac07.jsonl
+```
+
+Expected final output: `true`; otherwise FAIL.
+
+### AC-FLH-008 — Duplicate dispatch and same-lane redispatch
+
+**Given** identical idempotency keys before/after BOUND and retries from old/current generations, **when** dispatch repeats, **then** one body execution and one accepted receipt exist, current duplicate returns duplicate disposition, and old generation returns stale NACK.
+
+```bash
+unset ANTHROPIC_BASE_URL ANTHROPIC_API_KEY ANTHROPIC_AUTH_TOKEN Z_AI_API_KEY && mkdir -p .moai/reports/t1082 && MOAI_HOME=/tmp/t1082-ac08-home GOCACHE=/tmp/t1082-ac08-cache go test -json ./internal/factorymsg -run '^TestFactoryLaneHandoffDuplicateAndSameLaneRedispatch$' -count=1 -timeout=90s > .moai/reports/t1082/ac08.jsonl && jq -se '([.[]|select(.Action=="pass" and .Test=="TestFactoryLaneHandoffDuplicateAndSameLaneRedispatch")]|length)==1 and ([.[]|select(.Action=="fail" or .Action=="skip")]|length)==0 and ([.[]|select((.Output//"")|contains("NOT_RUN"))]|length)==0' .moai/reports/t1082/ac08.jsonl
+```
+
+Expected final output: `true`; otherwise FAIL.
+
+### AC-FLH-009 — Crash and restart recovery
+
+**Given** failpoints after reserve, create, rename, SWITCH_PENDING, each rebind write, commit, and before receipt delivery, **when** the process restarts repeatedly, **then** each case deterministically resumes, finalizes idempotently, or NACKs; no case has two current endpoints, duplicate release, or lost receipt.
+
+```bash
+unset ANTHROPIC_BASE_URL ANTHROPIC_API_KEY ANTHROPIC_AUTH_TOKEN Z_AI_API_KEY && mkdir -p .moai/reports/t1082 && MOAI_HOME=/tmp/t1082-ac09-home GOCACHE=/tmp/t1082-ac09-cache go test -json ./internal/factorymsg ./internal/cli -run '^TestFactoryLaneHandoffCrashRecovery$' -count=1 -timeout=120s > .moai/reports/t1082/ac09.jsonl && jq -se '([.[]|select(.Action=="pass" and .Test=="TestFactoryLaneHandoffCrashRecovery")]|length)==1 and ([.[]|select(.Action=="fail" or .Action=="skip")]|length)==0 and ([.[]|select((.Output//"")|contains("NOT_RUN"))]|length)==0' .moai/reports/t1082/ac09.jsonl
+```
+
+Expected final output: `true`; otherwise FAIL.
+
+### AC-FLH-010 — Abandoned worktree preservation
+
+**Given** dirty, unmerged, base-drifted, branch-collided, and unknown-owner target worktrees, **when** recovery cannot prove a safe resume, **then** it records ABANDONED with reason, preserves files/branch/commits byte-for-byte, does not remove the worktree, and does not bind or dispatch.
+
+```bash
+unset ANTHROPIC_BASE_URL ANTHROPIC_API_KEY ANTHROPIC_AUTH_TOKEN Z_AI_API_KEY && mkdir -p .moai/reports/t1082 && MOAI_HOME=/tmp/t1082-ac10-home GOCACHE=/tmp/t1082-ac10-cache go test -json ./internal/cli ./internal/factorymsg -run '^TestFactoryLaneHandoffAbandonedWorktreeRecovery$' -count=1 -timeout=90s > .moai/reports/t1082/ac10.jsonl && jq -se '([.[]|select(.Action=="pass" and .Test=="TestFactoryLaneHandoffAbandonedWorktreeRecovery")]|length)==1 and ([.[]|select(.Action=="fail" or .Action=="skip")]|length)==0 and ([.[]|select((.Output//"")|contains("NOT_RUN"))]|length)==0' .moai/reports/t1082/ac10.jsonl
+```
+
+Expected final output: `true`; otherwise FAIL.
+
+### AC-FLH-011 — Zero writes before BOUND and no message loss
+
+**Given** instrumented filesystem/Git/broker adapters across all states, **when** handoff proceeds through BOUND and one dispatch, **then** counters are exactly: pre-BOUND code writes 0, wrong-cwd writes 0, primary branch switches 0, pre-BOUND commits 0, task ACKs 0, and messages sent/received/lost `N/N/0`.
+
+```bash
+unset ANTHROPIC_BASE_URL ANTHROPIC_API_KEY ANTHROPIC_AUTH_TOKEN Z_AI_API_KEY && mkdir -p .moai/reports/t1082 && MOAI_HOME=/tmp/t1082-ac11-home GOCACHE=/tmp/t1082-ac11-cache go test -json ./internal/factorymsg ./internal/cli ./internal/hook -run '^TestFactoryLaneHandoffNoPreBoundWrites$' -count=1 -timeout=90s > .moai/reports/t1082/ac11.jsonl && jq -se '([.[]|select(.Action=="pass" and .Test=="TestFactoryLaneHandoffNoPreBoundWrites")]|length)==1 and ([.[]|select(.Action=="fail" or .Action=="skip")]|length)==0 and ([.[]|select((.Output//"")|contains("NOT_RUN"))]|length)==0' .moai/reports/t1082/ac11.jsonl
+```
+
+Expected final output: `true`; otherwise FAIL.
+
+### AC-FLH-012 — LIVE Codex lead ↔ Codex lane
+
+**Given** two real separately launched Codex model contexts in one factory run, **when** the lane receives a card and the operator actually executes `/cd` before sending the next normal user turn, **then** evidence shows `SWITCH_PENDING_INTERACTIVE` before that turn, its SessionStart-driven new thread/session generation, target statusline/cwd/`WT-*` branch, empty model turn count 0, BOUND receipt, explicit message receipt, old endpoint rejection, pre-BOUND writes 0, primary branch switch 0, and message loss 0.
+
+```bash
+unset ANTHROPIC_BASE_URL ANTHROPIC_API_KEY ANTHROPIC_AUTH_TOKEN Z_AI_API_KEY && mkdir -p .moai/reports/t1082 && MOAI_FACTORY_LIVE=1 MOAI_FACTORY_LIVE_CASE=codex-codex-interactive-cd-handoff MOAI_FACTORY_EVIDENCE=.moai/reports/t1082/ac12-evidence.json MOAI_HOME=/tmp/t1082-ac12-home GOCACHE=/tmp/t1082-ac12-cache go test -json ./internal/cli -run '^(TestFactoryLiveCodexCodexWorktreeHandoff|TestFactoryLaneHandoffLiveEvidenceGateRejectsMutants)$' -count=1 -timeout=240s > .moai/reports/t1082/ac12.jsonl && jq -se '([.[]|select(.Action=="pass" and .Test=="TestFactoryLiveCodexCodexWorktreeHandoff")]|length)==1 and ([.[]|select(.Action=="pass" and .Test=="TestFactoryLaneHandoffLiveEvidenceGateRejectsMutants")]|length)==1 and ([.[]|select(.Action=="fail" or .Action=="skip")]|length)==0 and ([.[]|select((.Output//"")|contains("NOT_RUN"))]|length)==0' .moai/reports/t1082/ac12.jsonl && jq -e '(.schema_version==1) and (.card_id=="t1082") and (.spec_id=="SPEC-FACTORY-LANE-WORKTREE-HANDOFF-001") and (.mode=="interactive") and (.contexts.separate==true) and (.contexts.lead.production_cli==true) and (.contexts.lead.real_model==true) and (.contexts.lane.production_cli==true) and (.contexts.lane.real_model==true) and (.contexts.lead.argv|type=="array" and length>0 and all(.[]; type=="string" and length>0)) and (.contexts.lane.argv|type=="array" and length>0 and all(.[]; type=="string" and length>0)) and (.contexts.lead.pid|type=="number" and .>1) and (.contexts.lane.pid|type=="number" and .>1) and (.contexts.lead.pid != .contexts.lane.pid) and (.contexts.lead.process_start|type=="string" and length>0) and (.contexts.lane.process_start|type=="string" and length>0) and (.contexts.lead.binary_sha256|type=="string" and test("^[0-9a-f]{64}$")) and (.contexts.lane.binary_sha256|type=="string" and test("^[0-9a-f]{64}$")) and (.interactive.actual_cd==true) and (.interactive.state_before_session_start=="SWITCH_PENDING_INTERACTIVE") and (.interactive.next_normal_turn_session_start==true) and (.target.reserved_cwd|type=="string" and startswith("/")) and (.target.observed_cwd==.target.reserved_cwd) and (.target.reserved_branch|type=="string" and startswith("WT-") and length>3) and (.target.observed_branch==.target.reserved_branch) and (.target.pinned_head|type=="string" and test("^[0-9a-f]{40}$")) and (.target.observed_head==.target.pinned_head) and (.empty_model_turn_count==0) and (.receipts.bound_id|type=="string" and length>0) and (.receipts.message_id|type=="string" and length>0) and (.old_endpoint.rejected==true) and (.old_endpoint.code=="STALE") and (.writes.pre_bound==0) and (.writes.wrong_cwd==0) and (.writes.primary_branch_switches==0) and (.messages.sent|type=="number" and .>0) and (.messages.received==.messages.sent) and (.messages.lost==0) and (.nonces.lead_to_lane|type=="string" and length>0) and (.nonces.lane_to_lead|type=="string" and length>0) and (.nonces.lead_to_lane != .nonces.lane_to_lead) and (.cleanup==true) and (.bypass.direct_register_peer==false) and (.bypass.db_seed==false) and (.bypass.mock==false) and (.bypass.fixture==false) and (.bypass.private_control==false)' .moai/reports/t1082/ac12-evidence.json
+```
+
+Expected outputs: 두 `jq` 모두 `true`. `.moai/reports/t1082/ac12-evidence.json`이 없거나 malformed이거나 위 exact predicate 중 하나라도 거짓이면 FAIL이다. stdout 문자열은 대체 증거가 아니다.
+
+### AC-FLH-013 — LIVE Claude lead ↔ Codex lane
+
+**Given** a real Claude lead and real separately launched headless Codex lane with stored history in one factory run, **when** the lead triggers actual `thread/fork(cwd)` and dispatches after verified direct BOUND, **then** evidence shows the official returned thread ID/lineage, controller cwd/branch/HEAD readback, SessionStart wait 0, empty model turn count 0, generation/receipt/stale-reject/zero-write/zero-loss, and bidirectional unique nonces.
+
+```bash
+unset ANTHROPIC_BASE_URL ANTHROPIC_API_KEY ANTHROPIC_AUTH_TOKEN Z_AI_API_KEY && mkdir -p .moai/reports/t1082 && MOAI_FACTORY_LIVE=1 MOAI_FACTORY_LIVE_CASE=claude-codex-headless-fork-cwd-handoff MOAI_FACTORY_EVIDENCE=.moai/reports/t1082/ac13-evidence.json MOAI_HOME=/tmp/t1082-ac13-home GOCACHE=/tmp/t1082-ac13-cache go test -json ./internal/cli -run '^(TestFactoryLiveClaudeCodexWorktreeHandoff|TestFactoryLaneHandoffLiveEvidenceGateRejectsMutants)$' -count=1 -timeout=240s > .moai/reports/t1082/ac13.jsonl && jq -se '([.[]|select(.Action=="pass" and .Test=="TestFactoryLiveClaudeCodexWorktreeHandoff")]|length)==1 and ([.[]|select(.Action=="pass" and .Test=="TestFactoryLaneHandoffLiveEvidenceGateRejectsMutants")]|length)==1 and ([.[]|select(.Action=="fail" or .Action=="skip")]|length)==0 and ([.[]|select((.Output//"")|contains("NOT_RUN"))]|length)==0' .moai/reports/t1082/ac13.jsonl && jq -e '(.schema_version==1) and (.card_id=="t1082") and (.spec_id=="SPEC-FACTORY-LANE-WORKTREE-HANDOFF-001") and (.mode=="headless") and (.contexts.separate==true) and (.contexts.lead.production_cli==true) and (.contexts.lead.real_model==true) and (.contexts.lane.production_cli==true) and (.contexts.lane.real_model==true) and (.contexts.lead.argv|type=="array" and length>0 and all(.[]; type=="string" and length>0)) and (.contexts.lane.argv|type=="array" and length>0 and all(.[]; type=="string" and length>0)) and (.contexts.lead.pid|type=="number" and .>1) and (.contexts.lane.pid|type=="number" and .>1) and (.contexts.lead.pid != .contexts.lane.pid) and (.contexts.lead.process_start|type=="string" and length>0) and (.contexts.lane.process_start|type=="string" and length>0) and (.contexts.lead.binary_sha256|type=="string" and test("^[0-9a-f]{64}$")) and (.contexts.lane.binary_sha256|type=="string" and test("^[0-9a-f]{64}$")) and (.app_server.method=="thread/fork") and (.app_server.request_cwd==.target.reserved_cwd) and (.app_server.returned_thread_id|type=="string" and length>0) and (.app_server.forked_from_id|type=="string" and length>0) and (.app_server.thread_started==true) and (.controller_readback.cwd==.target.reserved_cwd) and (.controller_readback.branch==.target.reserved_branch) and (.controller_readback.head==.target.pinned_head) and (.target.reserved_cwd|type=="string" and startswith("/")) and (.target.reserved_branch|type=="string" and startswith("WT-") and length>3) and (.target.pinned_head|type=="string" and test("^[0-9a-f]{40}$")) and (.session_start_wait_count==0) and (.empty_model_turn_count==0) and (.receipts.bound_id|type=="string" and length>0) and (.receipts.message_id|type=="string" and length>0) and (.old_endpoint.rejected==true) and (.old_endpoint.code=="STALE") and (.writes.pre_bound==0) and (.writes.wrong_cwd==0) and (.writes.primary_branch_switches==0) and (.messages.sent|type=="number" and .>0) and (.messages.received==.messages.sent) and (.messages.lost==0) and (.nonces.lead_to_lane|type=="string" and length>0) and (.nonces.lane_to_lead|type=="string" and length>0) and (.nonces.lead_to_lane != .nonces.lane_to_lead) and (.cleanup==true) and (.bypass.direct_register_peer==false) and (.bypass.db_seed==false) and (.bypass.mock==false) and (.bypass.fixture==false) and (.bypass.private_control==false)' .moai/reports/t1082/ac13-evidence.json
+```
+
+Expected outputs: 두 `jq` 모두 `true`. `.moai/reports/t1082/ac13-evidence.json`이 없거나 malformed이거나 위 exact predicate 중 하나라도 거짓이면 FAIL이다. stdout 문자열은 대체 증거가 아니다.
+
+### Common LIVE evidence-gate mutant rejection (AC-FLH-012/013)
+
+**Given** one valid interactive evidence document, one valid stored-history headless `thread/fork` evidence document, and mutants with a required field removed, `fixture=true`, `mock=true`, `direct_register_peer=true`, a child `Action=fail`, a child `Action=skip`, or `wrong_method_thread_start` that changes the stored-history method to `thread/start` and clears `forked_from_id`, **when** the same production predicates used by AC-FLH-012/013 evaluate them, **then** both valid controls pass and every mutant fails closed. The test shall compare the actual predicate implementation, not a duplicate permissive assertion. No-history `thread/start` remains valid only under AC-FLH-004 and is not a valid AC-FLH-013 LIVE control.
+
+This selector is mandatory inside both AC-FLH-012 and AC-FLH-013 commands. Its own parent PASS cannot override any global child/subtest/package `fail` or `skip`, any `NOT_RUN`, or missing/malformed card-scoped evidence.
+
+### AC-FLH-014 — No private or overstated control path
+
+**Given** spies for hook, MCP, tmux, sockets, model messages, Desktop Handoff, app-server, and user guidance, **when** interactive and headless handoffs run, **then** interactive emits guidance only, headless uses official app-server only, and slash execution/tmux/private socket/model-cd/Desktop-Handoff emulation counts are all 0.
+
+```bash
+unset ANTHROPIC_BASE_URL ANTHROPIC_API_KEY ANTHROPIC_AUTH_TOKEN Z_AI_API_KEY && mkdir -p .moai/reports/t1082 && MOAI_HOME=/tmp/t1082-ac14-home GOCACHE=/tmp/t1082-ac14-cache go test -json ./internal/cli ./internal/hook -run '^TestFactoryLaneHandoffNoPrivateControl$' -count=1 -timeout=90s > .moai/reports/t1082/ac14.jsonl && jq -se '([.[]|select(.Action=="pass" and .Test=="TestFactoryLaneHandoffNoPrivateControl")]|length)==1 and ([.[]|select(.Action=="fail" or .Action=="skip")]|length)==0 and ([.[]|select((.Output//"")|contains("NOT_RUN"))]|length)==0' .moai/reports/t1082/ac14.jsonl
+```
+
+Expected final output: `true`; otherwise FAIL.
+
+### AC-FLH-015 — t1074 and catalog compatibility
+
+**Given** existing t1074 broker/roster/receipt/SessionStart/MCP catalog fixtures plus filesystem/process inventory, **when** handoff additions run, **then** legacy behavior remains passing, catalog remains 36 total/14 write/22 read unless separately authorized, and exactly zero new broker DB roots, daemons, private sockets, or parallel message stores exist.
+
+```bash
+unset ANTHROPIC_BASE_URL ANTHROPIC_API_KEY ANTHROPIC_AUTH_TOKEN Z_AI_API_KEY && mkdir -p .moai/reports/t1082 && MOAI_HOME=/tmp/t1082-ac15-home GOCACHE=/tmp/t1082-ac15-cache go test -json ./internal/factorymsg ./internal/hook ./internal/cli ./internal/mcp -run '^TestFactoryLaneHandoffT1074Compatibility$' -count=1 -timeout=120s > .moai/reports/t1082/ac15.jsonl && jq -se '([.[]|select(.Action=="pass" and .Test=="TestFactoryLaneHandoffT1074Compatibility")]|length)==1 and ([.[]|select(.Action=="fail" or .Action=="skip")]|length)==0 and ([.[]|select((.Output//"")|contains("NOT_RUN"))]|length)==0' .moai/reports/t1082/ac15.jsonl
+```
+
+Expected final output: `true`; otherwise FAIL.
+
+### AC-FLH-016 — Creation-base drift fail-closed
+
+**Given** a mutant reproducing t1082 creation from `main@2213871af` while reserved local develop pin is `3f3ffbb57`, plus develop-moving-during-create and matching-base controls, **when** post-create provenance validation runs, **then** both mismatches return `BASE_DRIFT`, emit no SWITCH_PENDING/BOUND/dispatch, preserve the target for inspection, and only the exact-match control advances.
+
+```bash
+unset ANTHROPIC_BASE_URL ANTHROPIC_API_KEY ANTHROPIC_AUTH_TOKEN Z_AI_API_KEY && mkdir -p .moai/reports/t1082 && MOAI_HOME=/tmp/t1082-ac16-home GOCACHE=/tmp/t1082-ac16-cache go test -json ./internal/cli -run '^TestFactoryLaneHandoffCreationBaseDriftRejected$' -count=1 -timeout=90s > .moai/reports/t1082/ac16.jsonl && jq -se '([.[]|select(.Action=="pass" and .Test=="TestFactoryLaneHandoffCreationBaseDriftRejected")]|length)==1 and ([.[]|select(.Action=="fail" or .Action=="skip")]|length)==0 and ([.[]|select((.Output//"")|contains("NOT_RUN"))]|length)==0' .moai/reports/t1082/ac16.jsonl
+```
+
+Expected final output: `true`; otherwise FAIL.
+
+## Required LIVE evidence shape
+
+`.moai/reports/t1082/verdict.md`는 구현 이후에만 작성하며 다음을 포함해야 한다.
+
+- Claim, exact command와 verbatim-output log path, measured HEAD/binary attribution, Gaps, Residual-risk.
+- Per-AC PASS/FAIL. LIVE의 `NOT_RUN`, skip, auth/capacity blocker는 FAIL/GAP으로 남긴다.
+- `ac12-evidence.json`과 `ac13-evidence.json`은 위 predicate가 검사하는 versioned schema를 그대로 사용한다. 자유 형식 log key/value는 판정 입력이 아니다.
+- Run/lane/card/SPEC, reservation nonce digest, old/new endpoint IDs, generations, fork lineage, mode-specific binding evidence, BOUND receipt ID, dispatch/receipt IDs.
+- Interactive 실제 `/cd`, next-normal-turn SessionStart, empty-turn count와 headless 실제 `thread/fork(cwd)`, returned thread ID, controller provenance readback, SessionStart-wait count.
+- Target statusline screenshot/text, `pwd`, `git branch --show-current`, `git rev-parse HEAD`, primary branch before/after.
+- Pre-BOUND code/commit/task-ACK counts, wrong-cwd write count, sent/received/lost message counts.
+- Process cleanup evidence. Payload body와 credential은 기록하지 않는다.
