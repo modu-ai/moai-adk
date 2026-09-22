@@ -49,7 +49,7 @@ Relationships:
 - An **L1** ephemeral worktree is materialized autonomously by the Claude Code runtime for an isolated subagent; it is independent of L2 and may occur inside either the main checkout or an L2 worktree.
 - When work happens inside an L2 worktree, the paste-ready resume MUST anchor the next session there (Block 0) per `session-handoff.md` § Worktree-Anchored Resume Pattern.
 
-[HARD] **`moai worktree new` is the sole L1 exception; lifecycle verbs remain L2-only.** An L1 tree under `.claude/worktrees/` is never registered in the L2 lifecycle registry, so `done`, `clean`, and `recover` cannot act on it. L1 disposal is the session-end keep/remove prompt, or `git worktree unlock` + `git worktree remove` after the session releases its lock.
+[HARD] **`moai worktree new` is the sole L1 exception; `done` refuses L1 by code.** An L1 tree under `.claude/worktrees/` is never registered in the L2 lifecycle registry. `done` refuses L1 targets in code (tier guard) — with or without `--force` — and `recover` is unchanged by that guard. `clean --merged-only`'s WT- sweep (below) is the documented exception to the L2-only lifecycle. L1 disposal is the session-end keep/remove prompt, or `git worktree unlock` + `git worktree remove` after the session releases its lock.
 
 [HARD] **An unpushed worktree branch is the work's only instance.** Create an L1 tree with `moai worktree new <name>` or a supported native launcher/tool, then enter it through a launcher — never use bare `git worktree add`. Until its branch has been integrated and the remote merge has landed, dispose of no worktree.
 
