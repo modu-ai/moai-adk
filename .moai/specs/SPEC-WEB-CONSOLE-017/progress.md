@@ -11,11 +11,87 @@
 
 ## §E.2 Run-phase Evidence
 
-_<pending run-phase>_
+Run-phase executed TDD (RED-GREEN-REFACTOR), 4 milestones, tree `WT-save-observability`. Baseline attribution: all outputs below observed in this run against this tree (HEAD per row in §E.3's `run_commit_sha`; each milestone's own SHA in the commit list). Lane rule respected: `go test ./...` never run locally — package-scoped only, full suite is CI's.
+
+### M1 — REQ-A transport (commit `be94bb36e`)
+
+- **RED-1 (E8 evidence)** — `go test -run TestSaveFailureReasonReachesInlineSlot ./internal/web/`:
+  ```
+  --- FAIL: TestSaveFailureReasonReachesInlineSlot (0.02s)
+      save_observability_test.go:76: failed-save status = 500, want 200 (htmx discards non-2xx boosted bodies, so the phrase never reaches the slot)
+  FAIL
+  ```
+- **GREEN-1** — `renderErrorPage` answers 200; transport mechanism = 2xx re-render (rationale recorded in the M1 commit body per plan.md §D). Existing tests whose status assertion encoded the old 500 contract updated to 200 (status assertion only): `partial_apply_repro_test.go`, `handlers_test.go` (sync failure), `projectconfig_handler_test.go`, `projectnested_error_test.go`. The GET-read-error 500 (`TestIndexReadErrorRendersInlineError`) and profile-CRUD 500s are different paths, out of scope (§F), left untouched.
+- **Status transition** — spec.md frontmatter `draft → in-progress` performed on the M1 commit (manager-develop's single owned transition).
+
+### M2 — REQ-B stderr (commit `7a2bf81b9`)
+
+- **RED-2 (E8 evidence)** — `go test -run TestSaveFailureStderrLog ./internal/web/`:
+  ```
+  save_observability_test.go:155: save-failure stderr lines = 0, want exactly 1 (0 undercounts; 2+ violates REQ-WC-017-003's exactly-one)
+  --- FAIL: TestSaveFailureStderrLog/failure_emits_exactly_one_prefixed_line
+  ```
+  (the success-emits-zero subtest passed already — that direction was true pre-change)
+- **GREEN-2** — `logSaveFailure(seam, phrase)` helper via the established `fmt.Fprintf(os.Stderr, ...)` idiom; wired at all 9 §5.1 call sites; `err.Error()` never reaches the line.
+
+### M3 — harness extension + seam coverage (commit `0cb60f263`)
+
+- **RED-3 (E8 evidence)** — compile failure on the missing seams (`go vet ./internal/web/`):
+  ```
+  vet: internal/web/save_observability_test.go:206:3: undefined: stepApplyPerfTier
+  ```
+- **GREEN-3** — the three package-level calls (`applyPerfTierEdits`, `glmcred.Save`, `jevcred.Save`) promoted to app fields (calls, not implementations; default wiring byte-identical), `recordingSeams` extended with their recorders — signature preserved (HARD-2). `reproForm` now submits newline-free test keys so the fixture reaches glmcred.Save/jevcred.Save; recordingSeams always wires both, so tests never touch the real credential writers. Positive control asserts the full nine-step order.
+
+### M4 — guards (commit `6640003df`)
+
+- AC-WC17-004 sentinel: sentinel key material asserted absent from stderr AND the inline response at every one of the 9 seams. Classification note (acceptance.md §D.1): could not be RED before M2 existed (no stderr surface to leak into); exercised per seam now that both surfaces exist.
+- AC-WC17-005 success-surface guard: banner + saved state + no error slot + zero stderr lines.
+
+### AC Matrix (E1) — final re-measurement
+
+| AC | Status | Verification command | Observed result |
+|----|--------|---------------------|-----------------|
+| AC-WC17-001 | PASS | `go test -run TestSaveFailureReasonReachesInlineSlot ./internal/web/` | PASS (pre-submit absence + post-failure presence in slot, 2xx) |
+| AC-WC17-002 | PASS | `go test -run TestSaveFailureSeamCoverage ./internal/web/` | PASS (9/9 seam subtests, both surfaces) |
+| AC-WC17-003 | PASS | `go test -run TestSaveFailureStderrLog ./internal/web/` | PASS (exactly-one prefixed line + success zero lines) |
+| AC-WC17-004 | PASS | `go test -run TestSaveFailureNeverLeaksKeyMaterial ./internal/web/` | PASS (9/9 seam subtests, sentinel absent both surfaces) |
+| AC-WC17-005 | PASS | `go test -run TestSaveSuccessSurfaceUnchanged ./internal/web/` | PASS (banner/saved-state/no-error-slot/zero-lines) |
+
+Final package run (all of the above together + full package): `go test ./internal/web/` → `ok github.com/modu-ai/moai-adk/internal/web` (exit 0, observed 3× across M1b/M3/post-M4).
+
+### Boundary + lint (E4/E5)
+
+- E4: `grep -rn 'AskUserQuestion|mcp__askuser' internal/web/` excluding `_test.go` and comments → 0 matches (exit 1).
+- E4 (HARD-3): sentinel sweep above is the stronger instrument — text-level key-material absence observed on both surfaces, per seam.
+- E5: `golangci-lint run --timeout=2m ./internal/web/...` → `0 issues.` (baseline was `0 issues.` pre-change; NEW = 0).
+- `go vet ./internal/web/` → exit 0.
+
+### Coverage (E3)
+
+`go test -coverprofile=... ./internal/web/` → package 67.9% overall; changed paths: `handleSave` 97.0%, `renderErrorPage` 100.0%, `logSaveFailure` 100.0%, `successProjectView` 100.0%, `rejectedProjectView` 100.0% — ≥ 85% on every changed path (package-wide figure dominated by pre-existing uncovered render/monitor surfaces, unchanged by this SPEC).
 
 ## §E.3 Run-phase Audit-Ready Signal
 
-_<pending run-phase>_
+```yaml
+run_complete_at: 2026-09-22
+run_commit_sha: "6640003df"
+run_status: implemented-run-phase-complete
+ac_pass_count: 5
+ac_fail_count: 0
+preserve_list_post_run_count: 7
+l44_pre_commit_fetch: "not-applicable — lane never pushes; lead batch-pushes origin/develop (2026-09-02 operator directive)"
+l44_post_push_fetch: "not-applicable — same lane discipline"
+new_warnings_or_lints_introduced: 0
+cross_platform_build:
+  host: "exit 0 (go build ./...)"
+  windows: "exit 0 (GOOS=windows GOARCH=amd64 go build ./...)"
+total_run_phase_files: 9
+m1_to_mN_commit_strategy: "one commit per milestone (M1 be94bb36e transport / M2 7a2bf81b9 stderr / M3 0cb60f263 harness+guard / M4 6640003df sentinel+success guards), each with verbatim RED evidence captured before its GREEN; progress.md §E refresh follows as the final run-phase commit"
+```
+
+Preserve-list post-run audit (HARD-2/5/6): `recordingSeams` seam list preserved, signatures unchanged (extended by 3 recorders); `server.go:252` `web: ` site untouched; `root.templ:26-28` single-accent design decision untouched (no `banner--error` introduced); 9-seam order/count/existence unchanged (HARD-1 — order asserted by the positive control); failure phrases remain Go literals (HARD-7).
+
+Spec-lint REQ collection check (DoD 6): `reqLinePattern` (`internal/spec/lint.go:678`) = `-\s+(REQ-[A-Z]{2,5}-\d{3}-\d{3})\s*:\s*(.+)`; `grep -cE '^- REQ-WC-017-[0-9]{3}:' spec.md` = **6** — the lint green is non-vacuous for this SPEC.
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
