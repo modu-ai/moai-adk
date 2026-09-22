@@ -45,7 +45,44 @@ m1_to_mn_commit_strategy: per-milestone commits on WT-cdp-observation (M1 06bd69
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase>_
+> DRAFT (sync stage-1, manager-docs, 2026-09-22) — the sync-audit has NOT run yet; the
+> status transition and close commits ride stage 2 (post sync-auditor PASS).
+
+```yaml
+sync_complete_at: pending   # stage-2 close commit date
+sync_commit_sha: pending-backfill-sync   # written by the stage-2 close commit; backfilled after it lands (D3 backfill window)
+sync_status: pending-sync-audit          # pending: `.moai/reports/t1081/sync-audit.md` does NOT exist yet (drafted path only)
+sync_audit_path: .moai/reports/t1081/sync-audit.md   # PLANNED path — not claimed to exist
+b12_self_test_a: pass   # `grep -c 'SPEC-WEB-BROWSER-OBS-001' CHANGELOG.md` → 0 (no duplicate-entry blocker; measured this run, tree 2708f0699)
+b12_self_test_b: pass   # `grep -oE 'AC-([A-Z0-9]+-)*[0-9]+' acceptance.md | sort -u | wc -l` → 6, matching the run-phase 6/6 AC matrix (non-zero verified, not vacuous)
+b12_self_test_c: pass   # claimed evidence paths verified: `.moai/reports/t1081/{verdict.md,capture-t1081.json,server.log,run-session.sh,browser-probe-t1081.py}` exist (ls, this run); `git diff --name-only cd99336bf..HEAD -- internal/ | wc -l` → 0
+changelog_entry_position: none   # measurement-only SPEC — decision recorded below
+canary_compliance_check: not-applicable   # SPEC defines no forward-looking policy its own sync tests would exercise
+frontmatter_status_transitions:
+  in_progress_to_completed: stage-2   # NOT yet applied — rides the stage-2 sync commit (manager-docs owns it)
+updated_refresh: stage-2             # all 4 SPEC artifacts' `updated:` refresh rides the stage-2 close commit
+```
+
+### CHANGELOG emission decision — NO entry (judged and recorded)
+
+- **Claim**: SPEC-WEB-BROWSER-OBS-001 emits NO `[Unreleased]` CHANGELOG entry.
+- **Evidence**: `git diff --name-only cd99336bf..HEAD` (this run, tree 2708f0699) carries ONLY
+  the 4 SPEC artifacts under `.moai/specs/SPEC-WEB-BROWSER-OBS-001/` plus this progress.md —
+  zero production (`internal/`), template, rules, or user-facing docs paths. The run-phase
+  evidence (captures, probe, server/chrome logs) lives under `.moai/reports/t1081/`, which is
+  gitignored. `git log --all -S 'SPEC-WEB-BROWSER-OBS-001' -- CHANGELOG.md` → no commits
+  (nothing ever emitted, no suppression history to contradict).
+- **Rationale**: Keep-a-Changelog entries record changes a user of the release can observe. A
+  real-browser (CDP) observation record changed no behavior, no shipped content, and no
+  interface; emitting an entry would assert a change that does not exist. The measurement is
+  preserved where it belongs — `.moai/reports/t1081/verdict.md` (confidence class
+  `browser-observed`) and the SPEC's own progress record.
+
+### Sync-phase scope note
+
+No docs-site (4-locale) synchronization: no user-facing documentation surface changed. No
+README synchronization: no feature list, version reference, or badge affected. MX Tag
+validation is a stage-2 sync-commit sub-step, not performed in this draft.
 
 ## §F Phase 4 Mode Selection
 
