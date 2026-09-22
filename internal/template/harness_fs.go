@@ -34,6 +34,7 @@
 package template
 
 import (
+	"bytes"
 	"errors"
 	"fmt"
 	"io/fs"
@@ -63,6 +64,10 @@ const agentsSkillsPrefix = ".agents/skills/"
 type harnessFS struct {
 	underlying   fs.FS
 	catalog      fs.FS
+	shared       fs.FS
+	hideClaude   bool
+	hideCodex    bool
+	remapCatalog bool
 	catalogNames map[string]struct{} // catalog skill directory names, set once
 }
 
@@ -75,6 +80,10 @@ var _ fs.ReadDirFS = (*harnessFS)(nil)
 // use) with the codex-only hiding + remapping rules. catalogRoot must expose
 // the canonical skill catalog at "." — one directory per skill.
 func newHarnessFS(underlying, catalogRoot fs.FS) (*harnessFS, error) {
+	return newProfileHarnessFS(underlying, catalogRoot, true, false)
+}
+
+func newProfileHarnessFS(underlying, catalogRoot fs.FS, hideClaude, hideCodex bool) (*harnessFS, error) {
 	if underlying == nil {
 		return nil, errors.New("harness fs: underlying must not be nil")
 	}
@@ -91,26 +100,107 @@ func newHarnessFS(underlying, catalogRoot fs.FS) (*harnessFS, error) {
 			names[e.Name()] = struct{}{}
 		}
 	}
-	return &harnessFS{underlying: underlying, catalog: catalogRoot, catalogNames: names}, nil
+	shared, err := fs.Sub(embeddedRaw, "templates")
+	if err != nil {
+		return nil, fmt.Errorf("harness fs: shared source: %w", err)
+	}
+	return &harnessFS{underlying: underlying, catalog: catalogRoot, shared: shared, hideClaude: hideClaude, hideCodex: hideCodex, remapCatalog: !hideCodex, catalogNames: names}, nil
 }
 
 // isHidden reports whether name is a claude-only surface (REQ-IH-005).
 func (h *harnessFS) isHidden(name string) bool {
-	if name == ".claude" || strings.HasPrefix(name, ".claude/") {
+	if h.hideClaude && (name == ".claude" || strings.HasPrefix(name, ".claude/")) {
 		return true
 	}
-	for _, p := range codexHiddenPaths {
-		if name == p {
+	if h.hideClaude {
+		for _, p := range codexHiddenPaths {
+			if name == p {
+				return true
+			}
+		}
+	}
+	if h.hideCodex {
+		if name == ".codex" || strings.HasPrefix(name, ".codex/") {
 			return true
 		}
 	}
 	return false
 }
 
+// sharedSource projects the existing rule and workflow catalog into the
+// harness-neutral paths used by both hosts. The source is read-only and the
+// projection is deterministic; no user file is copied or rewritten in place.
+func (h *harnessFS) sharedSource(name string) (string, bool) {
+	for _, p := range []struct{ target, source string }{
+		{".moai/policies", ".claude/rules/moai"},
+		{".moai/workflows", ".claude/skills/moai/workflows"},
+	} {
+		if name == p.target {
+			return p.source, true
+		}
+		if rest, ok := strings.CutPrefix(name, p.target+"/"); ok {
+			return p.source + "/" + rest, true
+		}
+	}
+	return "", false
+}
+
+func normalizeHarnessReferences(data []byte) []byte {
+	text := string(data)
+	text = strings.ReplaceAll(text, ".claude/skills/moai/workflows/", ".moai/workflows/")
+	text = strings.ReplaceAll(text, ".claude/rules/moai/", ".moai/policies/")
+	text = strings.ReplaceAll(text, ".claude/skills/", ".agents/skills/")
+	text = strings.ReplaceAll(text, "CLAUDE.md", "AGENTS.md")
+	return []byte(text)
+}
+
+type normalizedFile struct {
+	fs.File
+	reader *bytes.Reader
+	info   fs.FileInfo
+}
+
+func (f *normalizedFile) Read(p []byte) (int, error) { return f.reader.Read(p) }
+func (f *normalizedFile) Stat() (fs.FileInfo, error) { return f.info, nil }
+
+type normalizedInfo struct {
+	fs.FileInfo
+	size int64
+}
+
+func (i normalizedInfo) Size() int64 { return i.size }
+
+func normalizedOpen(source fs.FS, name string, normalize bool) (fs.File, error) {
+	f, err := source.Open(name)
+	if err != nil {
+		return nil, err
+	}
+	info, err := f.Stat()
+	if err != nil {
+		_ = f.Close()
+		return nil, err
+	}
+	if info.IsDir() {
+		return f, nil
+	}
+	data, err := fs.ReadFile(source, name)
+	if err != nil {
+		_ = f.Close()
+		return nil, err
+	}
+	if normalize {
+		data = normalizeHarnessReferences(data)
+	}
+	return &normalizedFile{File: f, reader: bytes.NewReader(data), info: normalizedInfo{FileInfo: info, size: int64(len(data))}}, nil
+}
+
 // catalogRelPath maps an .agents/skills walk path onto the catalog root when
 // the second component names a catalog skill; ok=false for everything else
 // (published skills, foreign entries) which stay on the underlying FS.
 func (h *harnessFS) catalogRelPath(name string) (string, bool) {
+	if !h.remapCatalog {
+		return "", false
+	}
 	rest, ok := strings.CutPrefix(name, agentsSkillsPrefix)
 	if !ok {
 		return "", false
@@ -138,8 +228,17 @@ func (h *harnessFS) Open(name string) (fs.File, error) {
 	if h.isHidden(name) {
 		return nil, notExist("open", name)
 	}
+	if source, ok := h.sharedSource(name); ok {
+		if info, err := fs.Stat(h.underlying, name); err == nil && !info.IsDir() {
+			return h.underlying.Open(name)
+		}
+		return normalizedOpen(h.shared, source, h.hideClaude)
+	}
 	if catPath, ok := h.catalogRelPath(name); ok {
-		return h.catalog.Open(catPath)
+		return normalizedOpen(h.catalog, catPath, true)
+	}
+	if strings.HasPrefix(name, ".codex/agents/") && strings.HasSuffix(name, ".toml") {
+		return normalizedOpen(h.underlying, name, true)
 	}
 	return h.underlying.Open(name)
 }
@@ -148,6 +247,12 @@ func (h *harnessFS) Open(name string) (fs.File, error) {
 func (h *harnessFS) Stat(name string) (fs.FileInfo, error) {
 	if h.isHidden(name) {
 		return nil, notExist("stat", name)
+	}
+	if source, ok := h.sharedSource(name); ok {
+		if info, err := fs.Stat(h.underlying, name); err == nil && !info.IsDir() {
+			return info, nil
+		}
+		return fs.Stat(h.shared, source)
 	}
 	if catPath, ok := h.catalogRelPath(name); ok {
 		if statFS, ok2 := h.catalog.(fs.StatFS); ok2 {
@@ -188,6 +293,29 @@ func (h *harnessFS) ReadDir(name string) ([]fs.DirEntry, error) {
 	if h.isHidden(name) {
 		return nil, notExist("readdir", name)
 	}
+	if source, ok := h.sharedSource(name); ok {
+		projected, err := fs.ReadDir(h.shared, source)
+		if err != nil {
+			return nil, err
+		}
+		physical, err := fs.ReadDir(h.underlying, name)
+		if errors.Is(err, fs.ErrNotExist) {
+			return projected, nil
+		}
+		if err != nil {
+			return nil, err
+		}
+		seen := make(map[string]bool, len(physical))
+		for _, entry := range physical {
+			seen[entry.Name()] = true
+		}
+		for _, entry := range projected {
+			if !seen[entry.Name()] {
+				physical = append(physical, entry)
+			}
+		}
+		return physical, nil
+	}
 	if catPath, ok := h.catalogRelPath(name); ok {
 		return fs.ReadDir(h.catalog, catPath)
 	}
@@ -195,7 +323,7 @@ func (h *harnessFS) ReadDir(name string) ([]fs.DirEntry, error) {
 	if err != nil {
 		return nil, err
 	}
-	if name == ".agents/skills" {
+	if h.remapCatalog && name == ".agents/skills" {
 		catEntries, catErr := fs.ReadDir(h.catalog, ".")
 		if catErr != nil {
 			return nil, catErr
@@ -209,6 +337,24 @@ func (h *harnessFS) ReadDir(name string) ([]fs.DirEntry, error) {
 				continue
 			}
 			entries = append(entries, e)
+		}
+	}
+	if name == ".moai" {
+		for _, source := range []struct{ name, path string }{{"policies", ".claude/rules/moai"}, {"workflows", ".claude/skills/moai/workflows"}} {
+			found := false
+			for _, e := range entries {
+				if e.Name() == source.name {
+					found = true
+					break
+				}
+			}
+			if !found {
+				info, statErr := fs.Stat(h.shared, source.path)
+				if statErr != nil {
+					return nil, statErr
+				}
+				entries = append(entries, fs.FileInfoToDirEntry(namedFileInfo{FileInfo: info, name: source.name}))
+			}
 		}
 	}
 	// Drop hidden children from the listing so fs.WalkDir never descends into
@@ -226,6 +372,13 @@ func (h *harnessFS) ReadDir(name string) ([]fs.DirEntry, error) {
 	}
 	return filtered, nil
 }
+
+type namedFileInfo struct {
+	fs.FileInfo
+	name string
+}
+
+func (i namedFileInfo) Name() string { return i.name }
 
 // NewCodexOnlyDeployerWithRenderer constructs the deployer a codex-only init
 // writes through: the catalog-tier deploy FS a claude deployment would use,
@@ -275,4 +428,57 @@ func newCodexOnlyDeployer(cat *Catalog, renderer Renderer, forceUpdate bool) (De
 		return nil, fmt.Errorf("codex-only deployer: %w", err)
 	}
 	return NewDeployerWithRendererAndForceUpdate(h, renderer, forceUpdate, WithSkillMirror(false)), nil
+}
+
+// NewClaudeHarnessDeployerWithRenderer keeps Claude surfaces and shared MoAI
+// resources while excluding Codex-specific project files.
+func NewClaudeHarnessDeployerWithRenderer(cat *Catalog, renderer Renderer) (Deployer, error) {
+	return newProfileDeployer(cat, renderer, false, false, true, false)
+}
+
+func NewClaudeHarnessDeployerWithRendererAndForceUpdate(cat *Catalog, renderer Renderer) (Deployer, error) {
+	return newProfileDeployer(cat, renderer, false, false, true, true)
+}
+
+func NewClaudeHarnessSlimDeployerWithRenderer(cat *Catalog, renderer Renderer) (Deployer, error) {
+	return newProfileDeployer(cat, renderer, true, false, true, false)
+}
+
+// NewDualHarnessDeployerWithRenderer materializes both host surfaces and the
+// same shared policy/workflow resources.
+func NewDualHarnessDeployerWithRenderer(cat *Catalog, renderer Renderer) (Deployer, error) {
+	return newProfileDeployer(cat, renderer, false, false, false, false)
+}
+
+func NewDualHarnessDeployerWithRendererAndForceUpdate(cat *Catalog, renderer Renderer) (Deployer, error) {
+	return newProfileDeployer(cat, renderer, false, false, false, true)
+}
+
+func NewDualHarnessSlimDeployerWithRenderer(cat *Catalog, renderer Renderer) (Deployer, error) {
+	return newProfileDeployer(cat, renderer, true, false, false, false)
+}
+
+func newProfileDeployer(cat *Catalog, renderer Renderer, slim, hideClaude, hideCodex, forceUpdate bool) (Deployer, error) {
+	if cat == nil {
+		return nil, errors.New("harness deployer: nil catalog")
+	}
+	var base fs.FS
+	var err error
+	if slim {
+		base, err = SlimFS(embeddedRaw, cat)
+	} else {
+		base, err = fs.Sub(embeddedRaw, "templates")
+	}
+	if err != nil {
+		return nil, fmt.Errorf("harness deployer: base: %w", err)
+	}
+	catalogRoot, err := fs.Sub(embeddedRaw, "templates/"+CanonicalSkillsRelDir)
+	if err != nil {
+		return nil, fmt.Errorf("harness deployer: catalog: %w", err)
+	}
+	h, err := newProfileHarnessFS(base, catalogRoot, hideClaude, hideCodex)
+	if err != nil {
+		return nil, err
+	}
+	return NewDeployerWithRendererAndForceUpdate(h, renderer, forceUpdate, WithSkillMirror(hideCodex)), nil
 }

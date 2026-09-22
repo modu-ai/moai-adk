@@ -49,20 +49,22 @@ import (
 // SPEC-INIT-HARNESS-001 (REQ-IH-010): the seam reads llm.harness from the
 // live config — a codex-only project re-deploys through the codex-only
 // deployer (force-update semantics preserved) instead of resurrecting the
-// claude surfaces. A claude/both project, an absent key, or any harness
-// resolution failure falls through to the unchanged claude deployer.
-var newTemplateSyncDeployer = func(embedded fs.FS) template.Deployer {
+// Claude surfaces. The other profiles use their matching deployers. A
+// catalog/construction error aborts update instead of changing profiles.
+var newTemplateSyncDeployer = func(embedded fs.FS) (template.Deployer, error) {
 	renderer := template.NewRenderer(embedded)
-	if config.ReadHarness(".") == "gpt" {
-		if cat, catErr := template.LoadEmbeddedCatalog(); catErr == nil {
-			if d, dErr := template.NewCodexOnlyDeployerWithRendererAndForceUpdate(cat, renderer); dErr == nil {
-				return d
-			}
-		}
-		// Catalog or construction failure falls through to the claude
-		// deployer — same fail-open shape as CATALOG_LOAD_FAILED's warn path.
+	cat, catErr := template.LoadEmbeddedCatalog()
+	if catErr != nil {
+		return nil, fmt.Errorf("load harness catalog: %w", catErr)
 	}
-	return template.NewDeployerWithRendererAndForceUpdate(embedded, renderer, true)
+	switch config.ReadHarness(".") {
+	case "gpt":
+		return template.NewCodexOnlyDeployerWithRendererAndForceUpdate(cat, renderer)
+	case "both":
+		return template.NewDualHarnessDeployerWithRendererAndForceUpdate(cat, renderer)
+	default:
+		return template.NewClaudeHarnessDeployerWithRendererAndForceUpdate(cat, renderer)
+	}
 }
 
 // runTemplateSync synchronizes embedded templates with the project directory.
@@ -226,7 +228,10 @@ func runTemplateSyncWithReporter(cmd *cobra.Command, reporter project.ProgressRe
 
 	// Create deployer with renderer and force update enabled for template sync
 	// This ensures template files are rendered (.tmpl -> actual file) and updated even if they exist
-	deployer := newTemplateSyncDeployer(embedded)
+	deployer, err := newTemplateSyncDeployer(embedded)
+	if err != nil {
+		return fmt.Errorf("construct harness deployer: %w", err)
+	}
 
 	// t40 defect 2: AnalyzeFiles skips IsMoaiManaged paths, so analysis.Files
 	// carries only the merged/added files. Count the managed re-deployments
