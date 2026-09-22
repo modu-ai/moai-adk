@@ -2,7 +2,7 @@
 id: SPEC-JEV-GUARD-001
 title: "Jev Consumer B withdrawal — restore the consumer-guard contract (SkillSuggest ships only after measurement)"
 version: "0.1.0"
-status: in-progress
+status: completed
 created: 2026-09-22
 updated: 2026-09-22
 author: manager-spec

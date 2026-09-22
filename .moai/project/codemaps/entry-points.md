@@ -4,7 +4,8 @@
 
 **최초 측정 트리**: worktree `.claude/worktrees/t592`, 브랜치 `WT-home-state-rollout`, HEAD `e7bd89ee3`, 2026-09-10
 **재측정 트리**: worktree `.claude/worktrees/t869`, 브랜치 `WT-codemaps-refresh`, HEAD `a851b205c`, 2026-09-18 — § `main()`, § Cobra 명령 트리의 모든 수치와 등록 목록, § 훅의 개수 네 가지(설정 엔트리 38, 셸 래퍼 48, 이벤트 서브커맨드 26, `Register` 30), § MCP 서버 표면 전체. 훅 절의 부가 `RunE` 목록은 다시 대조하지 않았습니다. § HOME 상태·웹 콘솔·CI 종료 코드 절은 이번 변경과 무관해 앞 판을 이어받았습니다.
-**정기 재측정**: worktree `.claude/worktrees/t1069`, 브랜치 `WT-graph-restamp`, HEAD `0314801c2`, 2026-09-22 — § Cobra 명령 트리의 등록 수치 세 개(자기 파일 등록 파일 70 불변, `AddCommand` 219→220, `rootCmd.AddCommand` 65→66, `root.go init()` 30→31)와 새 숨은 명령 `jev-suggest`, init 위자드 질문 4→5, § 훅과 § 웹 콘솔의 신규 seam 단락. 훅의 개수 네 가지(38·48·26·30)와 § MCP 서버 표면(도구 30), § HOME 상태 절, § CI 종료 코드 절은 같은 명령으로 재확인해 변동이 없었습니다.
+**정기 재측정**: worktree `.claude/worktrees/t1069`, 브랜치 `WT-graph-restamp`, HEAD `0314801c2`, 2026-09-22 — § Cobra 명령 트리의 등록 수치 세 개(자기 파일 등록 파일 70 불변, `AddCommand` 219→220, `rootCmd.AddCommand` 65→66, `root.go init()` 30→31)와 그 판에서 새로 더해진 숨은 명령 1개(스킬 제안 앵커 — 이후 card t1083이 철수), init 위자드 질문 4→5, § 훅과 § 웹 콘솔의 신규 seam 단락. 훅의 개수 네 가지(38·48·26·30)와 § MCP 서버 표면(도구 30), § HOME 상태 절, § CI 종료 코드 절은 같은 명령으로 재확인해 변동이 없었습니다.
+**부분 재측정**: worktree `.claude/worktrees/t1083`, 브랜치 `WT-jev-guard-green`, sync-phase HEAD `dd19e6b90`, 2026-09-22 — card t1083(SPEC-JEV-GUARD-001)이 Consumer B의 숨은 스킬 제안 명령을 철수하며 § Cobra 명령 트리의 세 수치를 다시 봤습니다(`root.go init()` `rootCmd.AddCommand` 31→30, 비테스트 `AddCommand(` 220→238, 자기 파일 등록 파일 70 불변). § MCP 서버 표면(도구 수)과 § 훅·§ 웹 콘솔 절은 이 카드 변경과 무관해 손대지 않았습니다.
 
 ---
 
@@ -57,26 +58,26 @@ root.go Execute()
 
 **등록 사이트가 두 갈래**입니다.
 
-1. **`root.go`의 `init()`** — 명시적 `rootCmd.AddCommand(...)` **31회**.
+1. **`root.go`의 `init()`** — 명시적 `rootCmd.AddCommand(...)` **30회**.
    worktree, agentlint(agent/workflow 2종), statusline, ast-grep, ast-edit, telemetry,
    constitution, state, tokens, clean, **skills**, navigator 5종(enrich/sync/tiers/route/fix),
-   migration, **chain**, **jev-suggest**, harness-router, tool-policy, tool, mcp-server, mcp, inventory, preference,
+   migration, **chain**, harness-router, tool-policy, tool, mcp-server, mcp, inventory, preference,
    model, plan, feedback, inbox.
    - `skills`(`newSkillsCmd()`, `root.go:187`) — `moai skills disable <name> --codex` 형태로
      **계층을 플래그로 명명**하는 스킬 노출 제어 트리. `--codex`가 필수인 것이 opt-in의
      기계적 형태이며, 어떤 프로젝트 설정 키도 이 verb를 구동하지 않습니다(사용자 HOME에
      쓰는 일을 프로젝트 설정이 요청하게 두지 않는다).
    - `chain`(`newChainCmd()`, `root.go:220`) — 워크트리 세션 origin-trail 원장 조회·정리.
-   - `jev-suggest`(`newJevSuggestCmd()`, `root.go:217`) — **이 판에서 더해진 숨은 명령**입니다.
-     `Hidden: true`라 `moai --help` 어디에도 렌더되지 않고, 게이트 미실행 상태에서는 게이트를
-     먼저 확인한 뒤 안내 한 줄만 내고 클라이언트를 조립하지 않습니다(§ `modules.md` Jev 계열).
+   - (철수) 숨은 스킬 제안 명령 1개 — SPEC-JEV-GUARD-001(card t1083)이 Consumer B를
+     철수하며 등록도 함께 뺐습니다. 측정 게이트 통과 전에는 재등록될 수 없습니다(§ `modules.md` Jev 계열).
 2. **자기 파일의 `init()`에서 스스로 등록** — `AddCommand`를 호출하는 파일이 **70개**입니다
    (`grep -rl "AddCommand" internal/cli --include='*.go' | grep -v _test`).
    `hook.go`, `todo.go`, `kanban.go`, `glm.go`, `cc.go`, `update.go`, `doctor.go`, `spec.go`,
    `gate.go`, `graph.go`, `goal.go`, `integration.go` 등이 이 방식이고, 앞선 판 사이에
    `gtd.go`(`NewGTDCommand()` — todo 명령 트리를 감싸 `Use`만 `gtd`로 바꾼 두 번째 이름)와
    `slot.go`(`moai slot` — 무거운 실행용 세션 간 자원 임대)가 더해진 바 있습니다.
-   비테스트 `AddCommand(` 호출은 모두 **220회**, 그중 `rootCmd.AddCommand(`는 **66회**입니다.
+   비테스트 `AddCommand(` 호출은 모두 **238회**, 그중 `rootCmd.AddCommand(`는 **66회**입니다
+   (card t1083 재측정 2026-09-22 — Consumer B 등록 철수 -1과 흡수 커밋의 +분이 겹친 값).
 
 **`moai init` 위자드는 다섯 질문이 됐습니다.** 앞 판의 네 질문 세트에 다섯 번째 `jev_enabled`
 ("Judgment Capability" 그룹, 자기 페이지를 가진다)가 더해졌습니다. 이 질문은 `InitQuestions`에만

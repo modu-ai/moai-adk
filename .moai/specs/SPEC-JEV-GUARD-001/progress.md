@@ -60,7 +60,24 @@ pending: sync-phase (manager-docs — codemaps ×4 regeneration + CHANGELOG + 3-
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase — manager-docs populates; carries the codemap-regeneration obligation (4 files referencing jev-suggest) as a named sync-phase item>_
+```yaml
+sync_status: complete
+sync_complete_at: 2026-09-22
+sync_commit_sha: pending-backfill-sync
+b12_self_test_a: PASS (grep -c 'SPEC-JEV-GUARD-001' CHANGELOG.md → 0 before append)
+b12_self_test_b: PASS (acceptance.md distinct AC count = 8: AC-JEVG-001..008; AC-JEVO-012 is a cross-SPEC guard reference, not this SPEC's AC)
+b12_self_test_c: PASS (no file paths claimed in the CHANGELOG entry; remaining-consumer paths verified present — internal/cli/{mcp_jev,todo_jev_finding,doctor_jev}.go)
+changelog_entry_position: [Unreleased] → ### Fixed (first entry)
+frontmatter_status_transitions:
+  spec_md: in-progress → completed (single sync commit; updated already reads 2026-09-22)
+  plan_md: none (no frontmatter)
+  acceptance_md: none (no frontmatter)
+canary_compliance_check:
+  codemaps: 4 files updated — modules.md, docs-truth.md, data-flow.md, entry-points.md; stale-token grep over .moai/project/codemaps/ = 0 hits
+  remaining_consumers_described: yes (mcp_jev.go / todo_jev_finding.go / doctor_jev.go / init_jev_wizard.go; gated jev_ask retained)
+  mx_cross_cut: no dangling @MX tag — the single @MX:NOTE (former jev_skill_suggest.go:190) left with the withdrawn file per mx-tag-protocol
+  spec_body_edits: none (HISTORY row NOT added — spec.md body is outside manager-docs ownership per spec-frontmatter-schema.md § Forbidden ownership crossings)
+```
 
 ## §F Phase 4 Mode Selection
 
