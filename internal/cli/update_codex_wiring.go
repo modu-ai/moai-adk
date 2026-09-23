@@ -19,11 +19,20 @@ import (
 // — including the REQ-CW-003 validation refusal — warns to errOut and the
 // update continues; the hard part of the refusal (no violating bytes on
 // disk) is already guaranteed by the codexwiring package.
+//
+// A wiring lock held by another live owner is its own outcome (REQ-DHR-002):
+// nothing was changed, and the update says the wiring was not refreshed
+// rather than that it failed.
 func refreshCodexWiringBestEffortAt(projectRoot string, out, errOut io.Writer) {
 	if _, err := codexwiring.RefreshWiring(projectRoot, out, errOut); err != nil {
-		if errOut != nil {
-			_, _ = fmt.Fprintf(errOut, "warning: Codex wiring refresh failed: %v\n", err)
+		if errOut == nil {
+			return
 		}
+		if errors.Is(err, codexwiring.ErrWiringLockHeld) {
+			_, _ = fmt.Fprintf(errOut, "warning: Codex wiring not refreshed: %v (%s); rerun `moai update` or `%s` once it is released\n", err, codexwiring.WiringLockRelPath, codexwiring.RecoverCommand)
+			return
+		}
+		_, _ = fmt.Fprintf(errOut, "warning: Codex wiring refresh failed: %v\n", err)
 	}
 }
 
@@ -41,10 +50,12 @@ func refreshCodexWiringBestEffort(out, errOut io.Writer) {
 // (ErrValidationRefused) propagates as a hard error and the tool command exits
 // non-zero. The sibling refresh wrapper's warn-and-continue model is deliberately
 // NOT followed here: best-effort is allowed only for IO errors, which warn and
-// the update continues (spec §F posture).
+// the update continues (spec §F posture). A held wiring lock and a wiring file
+// that changed under the write (REQ-DHR-002/003) are outcomes the operator
+// must see, so they exit non-zero too.
 func addCodexWiringAt(projectRoot string, out, errOut io.Writer) error {
 	if _, err := codexwiring.Wire(projectRoot, out, errOut); err != nil {
-		if errors.Is(err, codexwiring.ErrValidationRefused) {
+		if errors.Is(err, codexwiring.ErrValidationRefused) || errors.Is(err, codexwiring.ErrWiringLockHeld) || errors.Is(err, codexwiring.ErrWiringConflict) {
 			return err
 		}
 		if errOut != nil {
