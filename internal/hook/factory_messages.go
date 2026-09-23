@@ -32,6 +32,7 @@ func factoryHookRoot(input *HookInput) string {
 	}
 	return input.CWD
 }
+
 // closeFactoryHookStore closes a broker handle on a hook path. By the time it
 // runs the hook's answer is decided and hooks fail open, so a close failure is
 // logged rather than turned into a hook error.
