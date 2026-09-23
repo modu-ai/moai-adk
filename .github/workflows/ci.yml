@@ -735,7 +735,7 @@ jobs:
           [ -n "$CDP_PORT" ] || { echo "Chrome never exposed a CDP port" >&2; exit 1; }
 
           expect_exit 0 python3 internal/web/testdata/appjs_fire_probe.py \
-            --cdp-port "$CDP_PORT" "$PORT" t1060-ci-green
+            --cdp-port "$CDP_PORT" --primary-entries-only "$PORT" t1060-ci-green
 
           expect_exit 0 python3 internal/web/testdata/appjs_fire_mutation.py \
             --pristine "$RUN_DIR/appjs.pristine"
@@ -746,7 +746,7 @@ jobs:
 
           set +e
           python3 internal/web/testdata/appjs_fire_probe.py \
-            --cdp-port "$CDP_PORT" "$PORT" t1060-ci-red > "$RUN_DIR/red.json" 2>&1
+            --cdp-port "$CDP_PORT" --primary-entries-only "$PORT" t1060-ci-red > "$RUN_DIR/red.json" 2>&1
           RED_EXIT=$?
           set -e
           if [ "$RED_EXIT" -ne 1 ]; then
@@ -768,4 +768,4 @@ jobs:
           go build -o "$RUN_DIR/moai" ./cmd/moai
           start_server
           expect_exit 0 python3 internal/web/testdata/appjs_fire_probe.py \
-            --cdp-port "$CDP_PORT" "$PORT" t1060-ci-post-restore
+            --cdp-port "$CDP_PORT" --primary-entries-only "$PORT" t1060-ci-post-restore
