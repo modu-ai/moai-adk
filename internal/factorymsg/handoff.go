@@ -209,6 +209,9 @@ func (s *Store) ReserveHandoff(ctx context.Context, r HandoffReservation) (Hando
 	if err := insertHandoffEvent(ctx, tx, h.ID, "", HandoffReserved, "", stamp); err != nil {
 		return Handoff{}, err
 	}
+	if err := ctxStep(ctx, StepReserveInserted); err != nil {
+		return Handoff{}, err
+	}
 	if err := tx.Commit(); err != nil {
 		return Handoff{}, err
 	}

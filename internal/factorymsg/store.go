@@ -316,6 +316,17 @@ func (p Peer) validate(projectKey, runID string) error {
 	return nil
 }
 
+// RegisterPeer writes a lane's endpoint row for a turn hook (UserPromptSubmit)
+// or, through RegisterLaunchPending, for a launcher provisional registration.
+// Inside the same write transaction it reads the lane's handoff state: a turn
+// registration is refused while a handoff is not final, and a replaced
+// (tombstoned) session is refused for good (REQ-FLH-018); a launcher
+// registration that commits finalizes an open handoff as NACK/STALE_GENERATION
+// in the same commit (REQ-FLH-017).
+//
+// @MX:WARN: [AUTO] the handoff-state read and finalize must stay inside this write transaction, serialized by BEGIN IMMEDIATE against the handoff rebind
+// @MX:REASON: REQ-FLH-017/018 — moving either before BEGIN lets a registration rotate the endpoint mid-handoff or commit a launch-pending row beside a non-final handoff (AC-FLH-019 (iv)/(v) mutants)
+// @MX:SPEC: SPEC-FACTORY-LANE-WORKTREE-HANDOFF-001
 func (s *Store) RegisterPeer(ctx context.Context, p Peer) (Peer, error) {
 	if p.ProjectKey == "project" {
 		p.ProjectKey = s.projectKey
@@ -375,12 +386,23 @@ func (s *Store) RegisterPeer(ctx context.Context, p Peer) (Peer, error) {
 	} else if !errors.Is(err, sql.ErrNoRows) {
 		return Peer{}, err
 	}
+	launcher := isLaunchPendingSession(p.SessionUUID)
+	if !launcher {
+		if err := s.refuseTurnRegistrationDuringHandoff(ctx, tx, p); err != nil {
+			return Peer{}, err
+		}
+	}
 	if p.Generation < 1 {
 		p.Generation = 1
 	}
 	_, err = tx.ExecContext(ctx, `INSERT INTO peers(slot,project_key,run_id,backend,role,session_uuid,generation,pid,process_start,updated_at) VALUES(?,?,?,?,?,?,?,?,?,?) ON CONFLICT(slot) DO UPDATE SET project_key=excluded.project_key,run_id=excluded.run_id,backend=excluded.backend,role=excluded.role,session_uuid=excluded.session_uuid,generation=excluded.generation,pid=excluded.pid,process_start=excluded.process_start,updated_at=excluded.updated_at`, p.Slot, s.projectKey, s.runID, p.Backend, p.Role, p.SessionUUID, p.Generation, p.PID, p.ProcessStart, s.now().UTC().Format(time.RFC3339Nano))
 	if err != nil {
 		return Peer{}, err
+	}
+	if launcher {
+		if err := s.finalizeHandoffOnLauncherRegistration(ctx, tx, p.Slot); err != nil {
+			return Peer{}, err
+		}
 	}
 	if err = tx.Commit(); err != nil {
 		return Peer{}, err

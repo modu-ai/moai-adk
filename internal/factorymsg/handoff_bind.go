@@ -100,11 +100,59 @@ func staleError(ctx context.Context, q rowQuerier, code, slot string) error {
 	return &StaleEndpointError{Code: code, Current: currentEndpoint(ctx, q, slot)}
 }
 
-func (s *Store) step(name string) error {
-	if s.bindStep == nil {
-		return nil
+// Named transaction steps a StepHook observes. Each fires while the calling
+// write transaction holds the broker write lock.
+const (
+	// StepBindBegun fires in the rebind right after its write transaction began.
+	StepBindBegun = "begun"
+	// StepReserveInserted fires in a reservation after its RESERVED insert, before commit.
+	StepReserveInserted = "reserve-inserted"
+	// StepRegisterHandoffRead fires in a turn-hook peer registration after it
+	// read the lane's handoff state, before it decides (REQ-FLH-018).
+	StepRegisterHandoffRead = "register-handoff-read"
+	// StepRegisterFinalize fires in a launcher provisional registration after
+	// its slot-row write and handoff read-and-finalize, before commit (REQ-FLH-017).
+	StepRegisterFinalize = "register-finalize"
+)
+
+type stepHookKey struct{}
+
+// WithStepHook returns ctx carrying a transaction step observer. It is
+// instrumentation for race tests of the handoff transactions: the hook runs at
+// each named step while the write transaction holds the broker lock, and an
+// error it returns aborts and rolls back that transaction. Production callers
+// never set it.
+func WithStepHook(ctx context.Context, hook func(step string) error) context.Context {
+	return context.WithValue(ctx, stepHookKey{}, hook)
+}
+
+// HandleStats reports this broker handle's connection-pool statistics. A race
+// test reads it to show a racer waits on the SQLite lock while holding its own
+// connection (InUse==1) rather than queueing in a shared pool (WaitCount>0).
+func (s *Store) HandleStats() sql.DBStats { return s.db.Stats() }
+
+// SharesHandle reports whether a and b are one broker handle: the same *Store
+// or the same underlying *sql.DB. Two racers sharing a handle serialize in the
+// Go pool and never reach the SQLite write-lock boundary.
+func SharesHandle(a, b *Store) bool { return a == b || a.db == b.db }
+
+// ctxStep runs the context step observer, if any.
+func ctxStep(ctx context.Context, name string) error {
+	if hook, ok := ctx.Value(stepHookKey{}).(func(string) error); ok && hook != nil {
+		return hook(name)
 	}
-	return s.bindStep(name)
+	return nil
+}
+
+// step runs the rebind write-boundary seams: the package test seam bindStep,
+// then the context observer.
+func (s *Store) step(ctx context.Context, name string) error {
+	if s.bindStep != nil {
+		if err := s.bindStep(name); err != nil {
+			return err
+		}
+	}
+	return ctxStep(ctx, name)
 }
 
 // BindHandoff is the atomic mode-evidence rebind (REQ-FLH-008). In ONE broker
@@ -131,6 +179,9 @@ func (s *Store) BindHandoff(ctx context.Context, h Handoff, ev HandoffBindEviden
 		return HandoffBinding{}, err
 	}
 	defer func() { _ = tx.Rollback() }()
+	if err := ctxStep(ctx, StepBindBegun); err != nil {
+		return HandoffBinding{}, err
+	}
 
 	var stored Handoff
 	if err := tx.QueryRowContext(ctx, `SELECT slot,card_id,spec_id,mode,nonce,state,reason,source_session,source_generation,source_pid,source_process_start,target_path,target_branch,develop_pin FROM lane_handoffs WHERE id=?`, h.ID).
@@ -157,7 +208,7 @@ func (s *Store) BindHandoff(ctx context.Context, h Handoff, ev HandoffBindEviden
 	if row.SessionUUID != stored.Source.SessionUUID || row.Generation != stored.Source.Generation || row.PID != stored.Source.PID || row.ProcessStart != stored.Source.ProcessStart {
 		return HandoffBinding{}, staleError(ctx, tx, NackStaleGeneration, stored.Slot)
 	}
-	if err := s.step("locked"); err != nil {
+	if err := s.step(ctx, "locked"); err != nil {
 		return HandoffBinding{}, err
 	}
 	if reason, detail, err := s.validateBindEvidence(ctx, tx, stored, ev); err != nil {
@@ -177,7 +228,7 @@ func (s *Store) BindHandoff(ctx context.Context, h Handoff, ev HandoffBindEviden
 		stored.Slot, b.Old.SessionUUID, b.Old.Generation, b.New.SessionUUID, b.New.Generation, stored.ID, stamp); err != nil {
 		return HandoffBinding{}, err
 	}
-	if err := s.step("tombstone"); err != nil {
+	if err := s.step(ctx, "tombstone"); err != nil {
 		return HandoffBinding{}, err
 	}
 	res, err := tx.ExecContext(ctx, `UPDATE peers SET session_uuid=?,generation=?,pid=?,process_start=?,updated_at=? WHERE slot=? AND session_uuid=? AND generation=? AND pid=? AND process_start=?`,
@@ -189,7 +240,7 @@ func (s *Store) BindHandoff(ctx context.Context, h Handoff, ev HandoffBindEviden
 	if n, err := res.RowsAffected(); err != nil || n != 1 {
 		return HandoffBinding{}, errors.New("lane endpoint changed during rebind")
 	}
-	if err := s.step("peer"); err != nil {
+	if err := s.step(ctx, "peer"); err != nil {
 		return HandoffBinding{}, err
 	}
 	if _, err := tx.ExecContext(ctx, `UPDATE lane_handoffs SET state=?,reason='',updated_at=? WHERE id=? AND nonce=? AND state=?`, HandoffBound, stamp, stored.ID, stored.Nonce, stored.State); err != nil {
@@ -198,7 +249,7 @@ func (s *Store) BindHandoff(ctx context.Context, h Handoff, ev HandoffBindEviden
 	if err := insertHandoffEvent(ctx, tx, stored.ID, stored.State, HandoffBound, "", stamp); err != nil {
 		return HandoffBinding{}, err
 	}
-	if err := s.step("bound"); err != nil {
+	if err := s.step(ctx, "bound"); err != nil {
 		return HandoffBinding{}, err
 	}
 	if _, err := tx.ExecContext(ctx, `INSERT INTO lane_handoff_receipts(id,handoff_id,slot,nonce,card_id,spec_id,old_session,old_generation,session_uuid,generation,pid,process_start,created_at) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?)`,
@@ -206,13 +257,13 @@ func (s *Store) BindHandoff(ctx context.Context, h Handoff, ev HandoffBindEviden
 		b.New.SessionUUID, b.New.Generation, ev.PID, ev.ProcessStart, stamp); err != nil {
 		return HandoffBinding{}, err
 	}
-	if err := s.step("receipt"); err != nil {
+	if err := s.step(ctx, "receipt"); err != nil {
 		return HandoffBinding{}, err
 	}
 	if b.Released, err = releaseDispatches(ctx, tx, stored.ID, b, stamp); err != nil {
 		return HandoffBinding{}, err
 	}
-	if err := s.step("release"); err != nil {
+	if err := s.step(ctx, "release"); err != nil {
 		return HandoffBinding{}, err
 	}
 	if err := tx.Commit(); err != nil {
@@ -404,4 +455,88 @@ func (s *Store) AuthorizeCardWrite(ctx context.Context, p Peer, cardID string) e
 		return NewHandoffNack(NackEndpointHandoffPending, cardID)
 	}
 	return nil
+}
+
+// refuseTurnRegistrationDuringHandoff is the REQ-FLH-018 check a turn-hook
+// peer registration (UserPromptSubmit through RegisterPeer) makes inside its
+// own write transaction, before it writes the slot row: a replaced endpoint's
+// session UUID is STALE_ENDPOINT for good, and while the lane has a non-final
+// handoff every registration is ENDPOINT_HANDOFF_PENDING — even one whose
+// PID and process-start equal the current owner's, so the post-/cd session
+// cannot move the endpoint without the rebind's tombstone and receipt.
+//
+// @MX:WARN: [AUTO] must read inside the caller's write transaction, after BEGIN IMMEDIATE and before the slot-row write
+// @MX:REASON: REQ-FLH-018 / AC-FLH-019 (i)(iv) — a read before BEGIN misses an uncommitted RESERVED row and lets the registration rotate the endpoint mid-handoff
+// @MX:SPEC: SPEC-FACTORY-LANE-WORKTREE-HANDOFF-001
+func (s *Store) refuseTurnRegistrationDuringHandoff(ctx context.Context, tx *sql.Tx, p Peer) error {
+	tombstoned, err := sessionTombstoned(ctx, tx, p.SessionUUID)
+	if err != nil {
+		return err
+	}
+	pending, err := handoffPending(ctx, tx, p.Slot)
+	if err != nil {
+		return err
+	}
+	if err := ctxStep(ctx, StepRegisterHandoffRead); err != nil {
+		return err
+	}
+	if tombstoned {
+		return staleError(ctx, tx, NackStaleEndpoint, p.Slot)
+	}
+	if pending {
+		return NewHandoffNack(NackEndpointHandoffPending, p.Slot)
+	}
+	return nil
+}
+
+// sessionTombstoned reports whether a handoff rebind replaced this session.
+func sessionTombstoned(ctx context.Context, q rowQuerier, session string) (bool, error) {
+	var n int
+	err := q.QueryRowContext(ctx, `SELECT count(*) FROM lane_endpoint_tombstones WHERE session_uuid=?`, session).Scan(&n)
+	if err != nil && strings.Contains(err.Error(), "no such table") {
+		return false, nil
+	}
+	return n > 0, err
+}
+
+// finalizeHandoffOnLauncherRegistration is the REQ-FLH-017 step a launcher
+// provisional registration runs inside its own write transaction, after its
+// slot-row write and before commit: the lane row no longer equals any open
+// handoff's reserved source, so that handoff moves to NACK/STALE_GENERATION in
+// the same commit. It writes no tombstone, BOUND receipt, or dispatch release.
+//
+// @MX:WARN: [AUTO] must run inside the launcher registration's write transaction, in the same commit as the slot-row write
+// @MX:REASON: REQ-FLH-017 / AC-FLH-018, AC-FLH-019 (v) — a separate transaction leaves a committed launch-pending row beside a non-final handoff whose source tuple no longer matches
+// @MX:SPEC: SPEC-FACTORY-LANE-WORKTREE-HANDOFF-001
+func (s *Store) finalizeHandoffOnLauncherRegistration(ctx context.Context, tx *sql.Tx, slot string) error {
+	rows, err := tx.QueryContext(ctx, `SELECT id,state FROM lane_handoffs WHERE slot=? AND `+openHandoffStates, slot)
+	if err != nil && strings.Contains(err.Error(), "no such table") {
+		return ctxStep(ctx, StepRegisterFinalize)
+	}
+	if err != nil {
+		return err
+	}
+	type open struct{ id, state string }
+	var found []open
+	for rows.Next() {
+		var o open
+		if err := rows.Scan(&o.id, &o.state); err != nil {
+			_ = rows.Close()
+			return err
+		}
+		found = append(found, o)
+	}
+	if err := rows.Close(); err != nil {
+		return err
+	}
+	stamp := s.now().UTC().Format(time.RFC3339Nano)
+	for _, o := range found {
+		if _, err := tx.ExecContext(ctx, `UPDATE lane_handoffs SET state=?,reason=?,updated_at=? WHERE id=? AND state=?`, HandoffNack, NackStaleGeneration, stamp, o.id, o.state); err != nil {
+			return err
+		}
+		if err := insertHandoffEvent(ctx, tx, o.id, o.state, HandoffNack, NackStaleGeneration, stamp); err != nil {
+			return err
+		}
+	}
+	return ctxStep(ctx, StepRegisterFinalize)
 }

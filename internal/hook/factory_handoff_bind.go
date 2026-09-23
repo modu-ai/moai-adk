@@ -85,3 +85,17 @@ func bindFactoryInteractiveHandoff(ctx context.Context, s *factorymsg.Store, inp
 	return fmt.Sprintf("factory handoff bound: card=%s spec=%s slot=%s generation=%d receipt=%s; %d dispatch(es) released to this session",
 		h.CardID, h.SpecID, b.Slot, b.New.Generation, b.ReceiptID, b.Released), true
 }
+
+// factoryHandoffRegistrationNotice names a UserPromptSubmit registration the
+// broker refused because of a lane handoff (REQ-FLH-018). The endpoint was not
+// rotated; the hook stays fail-open and only reports.
+func factoryHandoffRegistrationNotice(err error, slot string) (string, bool) {
+	if stale, ok := factorymsg.StaleEndpoint(err); ok && stale.Code == factorymsg.NackStaleEndpoint {
+		return fmt.Sprintf("factory endpoint replaced %s: slot=%s is current at %s generation %d; this session receives no factory messages",
+			stale.Code, slot, stale.Current.SessionUUID, stale.Current.Generation), true
+	}
+	if reason, ok := factorymsg.HandoffNackReason(err); ok && reason == factorymsg.NackEndpointHandoffPending {
+		return fmt.Sprintf("factory handoff pending %s: slot=%s; this session is not the lane endpoint until the handoff binds, and the endpoint is unchanged", reason, slot), true
+	}
+	return "", false
+}
