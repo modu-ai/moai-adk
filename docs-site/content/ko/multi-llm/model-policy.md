@@ -47,9 +47,9 @@ description: 작업 성격과 품질/비용 목표에 맞춰 에이전트마다 
 
 | 모델 | 식별자 | 컨텍스트 | 성격 |
 |------|--------|----------|------|
-| Claude Fable 5 | `claude-fable-5` | 256K | 신규 Mythos-tier 범용 최상위. 가장 깊은 추론과 복잡한 코딩 |
+| Claude Fable 5 | `claude-fable-5` | 1M | 신규 Mythos-tier 범용 최상위. 가장 깊은 추론과 복잡한 코딩 |
 | Claude Opus 5 / 4.8 | `opus` | 1M | 복잡한 아키텍처, 고난도 추론 |
-| Claude Sonnet 5 | `sonnet` | 200K | 속도와 지능의 균형, 일상 코딩 |
+| Claude Sonnet 5 | `sonnet` | 1M | 속도와 지능의 균형, 일상 코딩 |
 | Claude Haiku 4.5 | `claude-haiku-4-5-20251001` | 200K | 가장 빠르고 경제적, 단순·대량 작업 |
 
 > MoAI의 모델 정책은 이 라인업 전체를 쓰지 않습니다. **No-Haiku 정책**에 따라 Haiku는

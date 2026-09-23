@@ -31,9 +31,9 @@ description: 讲解按任务性质与质量/成本目标为每个智能体分配
 
 | 模型 | 标识符 | 上下文 | 特性 |
 |------|--------|----------|------|
-| Claude Fable 5 | `claude-fable-5` | 256K | 新 Mythos 级通用旗舰。最深的推理与复杂编码 |
+| Claude Fable 5 | `claude-fable-5` | 1M | 新 Mythos 级通用旗舰。最深的推理与复杂编码 |
 | Claude Opus 5 / 4.8 | `opus` | 1M | 复杂架构、高难度推理 |
-| Claude Sonnet 5 | `sonnet` | 200K | 速度与智能的平衡，日常编码 |
+| Claude Sonnet 5 | `sonnet` | 1M | 速度与智能的平衡，日常编码 |
 | Claude Haiku 4.5 | `claude-haiku-4-5-20251001` | 200K | 最快最省，简单 · 大批量任务 |
 
 > MoAI 的模型策略并不使用这份阵容的全部。按 **No-Haiku 策略**，Haiku 不出现在智能体矩阵的任何位置，多轮智能体行全部由 Opus 承担。原因就在下一节。

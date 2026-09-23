@@ -51,9 +51,9 @@ MoAI-ADK가 에이전트를 부를 때마다 슬쩍 결정하는 것이 하나 �
 
 | 모델 | 식별자 | 컨텍스트 | 어울리는 일 |
 |------|--------|----------|------------|
-| **Claude Fable 5** | `claude-fable-5` | 256K | 신규 Mythos-tier 범용 최상위. 가장 깊은 추론과 복잡한 코딩 |
+| **Claude Fable 5** | `claude-fable-5` | 1M | 신규 Mythos-tier 범용 최상위. 가장 깊은 추론과 복잡한 코딩 |
 | **Claude Opus 5 / 4.8** | — | 1M | 복잡한 아키텍처와 고난도 추론 |
-| **Claude Sonnet 5** | — | 200K | 속도와 지능의 균형, 일상 코딩 |
+| **Claude Sonnet 5** | — | 1M | 속도와 지능의 균형, 일상 코딩 |
 | **Claude Haiku 4.5** | `claude-haiku-4-5-20251001` | 200K | 가장 빠르고 경제적, 단순·대량 작업 |
 
 {{< callout type="info" >}}
