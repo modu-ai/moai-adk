@@ -1,5 +1,5 @@
 ---
-description: "Detail companion for moai-constitution.md — the Opus 5 / 4.8 prompt-philosophy guidance and the full Lessons Protocol operational detail (topic-file store, harness edit discipline, auto-capture triggers, domain matching, integration points)"
+description: "Detail companion for moai-constitution.md — the Opus 5.5 prompt-philosophy guidance and the full Lessons Protocol operational detail (topic-file store, harness edit discipline, auto-capture triggers, domain matching, integration points)"
 paths: "**/moai-constitution.md,**/agent-authoring.md,**/.claude/skills/moai/workflows/*.md"
 ---
 
@@ -10,7 +10,7 @@ paths: "**/moai-constitution.md,**/agent-authoring.md,**/.claude/skills/moai/wor
 > the Lessons Protocol's operational machinery. Load it when authoring an agent prompt for a
 > specific model tier, or when capturing, draining, or acting on a lesson.
 
-## Opus 5 / 4.8 Prompt Philosophy
+## Opus 5.5 Prompt Philosophy
 
 The binding bullet list lives in the stub. This section carries only what does not belong on the
 always-loaded surface.
