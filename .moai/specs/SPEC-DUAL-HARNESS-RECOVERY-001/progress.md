@@ -942,6 +942,32 @@ sync에서 `grep -rn`으로 `docs-site/content`를 조사했다. 틀린 문장�
 | `cli-reference/doctor.md` § Codex Wiring check | 훅·MCP·스킬 미러·사이드카 해시 항목 | 중단된 배선 변경(저널 미완료 항목, 참조 없는 임시 파일)과 복구 명령 보고 |
 | `advanced/codex-dual-harness.md` | `moai codex` 경로 목록에 `-w`가 있으나 anchor·잠금·두 번째 작성자 거부는 없음, `-k` 없음 | `moai codex -w` anchor 규칙, `moai codex -k`, 감사 역할의 sandbox 상속 한계 |
 
+### 설계 기준 판정 (acceptance.md §C·§D 완료 정의)
+
+판정식은 acceptance.md §C 그대로이며, 각 AC 판정은 §E.2 기록을 옮긴 것이다(sync에서 새로 잰 값 없음). 완료 정의는 이 표의 위치를 §E.2로 적었으나, §E.2는 run-phase(manager-develop) 소유이므로 sync-phase 소유인 이 절에 둔다.
+
+| 설계 기준 | 대응 AC (acceptance.md §A) | 판정 | 근거 (§E.2) |
+|---|---|---|---|
+| AC-MIG-01 | AC-DHR-001 ~ 005, 021, 022 | **PASS** — 일곱 AC 모두 `true` | "Absorb d088aa738" 재측정 표 (M3·M4 원측정) |
+| AC-WT-01 | AC-DHR-006 ~ 009 | **PASS** — 네 AC 모두 `true`. AC-DHR-006 Windows 분기는 `NOT_RUN`(CI 관측 전, §C 규칙대로 따로 적음) | "Absorb d088aa738" 표 (M5 원측정) |
+| AC-AGENT-01 | 결정적 AC-DHR-010, 011, 013 / LIVE AC-DHR-012, 023 | **FAIL (t1143 이관)** — 결정적 셋은 `true`지만 LIVE AC-DHR-012는 `FAIL`, AC-DHR-023은 미충족. §C의 `PARTIAL`은 LIVE가 `NOT_RUN`·`ABORTED`일 때만 쓰는 값이고 두 LIVE는 실행되어 기대값에 못 미쳤으므로 `PARTIAL`이 아니라 `FAIL`이다. 이 SPEC 안에서 PASS가 아니며, 0.3.1 이관 조항대로 충족은 t1143이 이어받는다 | M6(결정적), M8(LIVE), "Absorb d088aa738" 표 |
+| AC-MSG-01 | AC-DHR-014 ~ 016, 020 | **PASS** — 네 AC 모두 `true`. AC-DHR-014 분기 B는 측정 결과(분기 A)에 맞지 않는 분기라 `N/A (branch)` | M1(AC-DHR-020, `outcome` = `reproduced`), M2, "Absorb d088aa738" 표 |
+| AC-FACT-01 | 결정적 AC-DHR-017, 019 / LIVE AC-DHR-018 | **PASS** — 결정적 둘 `true`, LIVE 4조합 합산 판정식 `true`. 단 LIVE 근거는 d088aa738 흡수 **전** 트리 | M7(결정적), M8(LIVE), "Absorb d088aa738" 절 (b) |
+
+### sync-audit 수리 처분 (`.moai/reports/t1100/sync-audit.md`)
+
+| 결함 | 처분 |
+|---|---|
+| F1 | AC-DHR-012·023과 REQ-DHR-015 런타임 조항을 카드 t1143으로 이관 — `de5faa77a`(manager-spec) |
+| F2 | 위 설계 기준 판정표 추가 — 이 커밋 |
+| F3 | CHANGELOG 배선 잠금 문장을 실제 동작으로 정정(`moai update`는 경고 후 계속, 비0 종료는 `moai tool enable codex`; 복구 진입점 셋 명시) — 이 커밋 |
+| F4 | `remove` 잠금 상태 판독 불가 분기 테스트 — `99708f8a4` |
+| F5 | 보존 커밋 `8925682d2`·`bd6fbbd1d`의 사용자 가시 변경을 CHANGELOG `### Changed` (4)~(7)로 추가 — 이 커밋 |
+| F6 | CHANGELOG 항목에 인수 기준 판정 현황 문장 추가 — 이 커밋 |
+| F7 | Codex 감사 역할 부록이 Export mandate를 우선하도록 수리 — `393f11e2f` |
+| F10 | 저장소 밖에서 실패하던 `remove` 테스트 5건 — 이 카드가 들인 결함(`7755dce38`에서 PASS, `de5faa77a`에서 저장소 밖 FAIL로 귀속 측정), 기록 `ecdc8f559` |
+| F8 및 Low 항목 | 채무 목록으로 이월 |
+
 ### Audit-ready 신호
 
 ```yaml
