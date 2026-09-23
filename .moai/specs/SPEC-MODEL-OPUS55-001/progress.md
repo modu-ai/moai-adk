@@ -139,4 +139,58 @@ m1_to_mN_commit_strategy: per-milestone commits M1..M4 on WT-opus-55-default, no
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase>_
+Sync by manager-docs on 2026-09-23, card t1089. Worktree `.claude/worktrees/t1089`, branch `WT-opus-55-default`. Sync started at HEAD `eb629efb5`; develop `1dbe5e2f3` had been absorbed at `9e6d57f4f`.
+
+### E.4.1 AC-OP55-012 re-close (post-absorb; supersedes the E.2.2 row 012 FAIL)
+
+The orchestrator re-measured this AC after the absorb. The manager-docs sync read every log below back from disk.
+
+| Package set | Evidence file | Decisive line |
+|---|---|---|
+| template, wizard, settings, constitution | `run-ac012-pkgs.log` | `ok` ×4. web was the only FAIL in this run |
+| web | `remeasure-ac012-web.log` | `ok  	github.com/modu-ai/moai-adk/internal/web	22.656s` |
+| cli, targeted (5 tests) | `remeasure-ac012-cli.log` | `TestGLM_FactoryWorkerEntry`, `TestSessionPIDStamp_NotSetFromHooks`, `TestResolveLaunchEffort`, `TestModelPolicyLabels_AgreeWithProfileMatrix`, `TestGetProfileText_OpusAliasValues` all pass (13 `--- PASS` lines including subtests); last line `ok  	github.com/modu-ai/moai-adk/internal/cli	1.689s` |
+| cli, full package with lane env scrubbed | `run-k4-cli-full-scrubbed.log` | `ok  	github.com/modu-ai/moai-adk/internal/cli	1327.513s` |
+| lint on template, cli, web, settings | `remeasure-ac012-lint.log` | `0 issues.` |
+
+Result: AC-OP55-012 is **PASS**, so the tally is **16/16 PASS**. The unscrubbed cli run had two failures caused only by env leakage (`TestCodexSpawn_RealAssemblyThroughStubTmux`, `TestCC_FactoryEntryThroughRunCC/-f_lane-2`). E.2.6 records both, and they are not attributed to this card.
+
+AC-OP55-014 was re-run by manager-docs on HEAD `eb629efb5`: `git diff --name-only develop...HEAD -- CHANGELOG.md docs-site README.md README.ko.md README.ja.md README.zh.md .moai/research .moai/docs .moai/reports ':!.moai/reports/t1089'` gave empty stdout, so it is PASS.
+
+### E.4.2 Sync decisions
+
+- **CHANGELOG.md not touched.** REQ-OP55-015 and AC-OP55-014 list CHANGELOG.md as a historical surface this SPEC must not modify. Release notes for this change belong to the release lane, per the lead's decision on 2026-09-23.
+- **README and docs-site not touched.** Card t1094 owns them (spec.md §C).
+- **Status transition.** Only `spec.md` `status:` changed, `in-progress → completed`, on this sync commit. `updated:` was already `2026-09-23`. plan.md and acceptance.md have no status frontmatter.
+- **Basis for `completed`.** acceptance.md §4 Definition of Done requires all sixteen ACs green with evidence in §E.2. Rows 001–011 and 013–016 are PASS in E.2.2, AC-012 is PASS in E.4.1, and the AC-009a/b/c mutant evidence is in `run-ac009-mutants.log`. The follow-up docs card from the DoD is t1094.
+- **N2–N4 dispositions** (from E.2.4, unchanged):
+  - N2: P6 was worded around, and acceptance.md is unchanged.
+  - N3: `measured on Opus 5` attribution was adopted. The Known-limit note already exists at acceptance.md:61 ("a phrase shaped 'Opus 5-era' is not matched"), so no new note was added.
+  - N4: adopted. `opt.runtime_default` names where the effort policy comes from.
+
+### E.4.3 Residual risk
+
+- **K4 is fixed** (`eb629efb5`, E.2.6). `max` is now passed as `--effort max` and is never written as settings `effortLevel`. Three residuals remain:
+  - (a) A Claude Code session launched through GLM now also receives `--effort max` for a max profile. It used to receive settings `effortLevel`.
+  - (b) An operator-supplied `--settings` still suppresses profile effort injection. This behavior predates this card.
+  - (c) No live `claude --effort max` launch was run. The basis is the official model-config doc quote only.
+- **K6.** A profile `opus[1m]` launches `--model claude-opus-5-5[1m]`, which requires Claude Code v2.1.280+. No version floor was added.
+- **TUI wizard.** The wizard's effort empty option (`settings.EmptyLabelFor("effort_level")`) still reads "(runtime default)". This is outside REQ-OP55-007, which covers the web console only. It is a candidate for a follow-up card.
+
+### E.4.4 Signal
+
+```yaml
+sync_complete_at: 2026-09-23
+sync_commit_sha: pending-backfill   # a commit cannot cite its own hash
+sync_status: complete
+ac_pass_count: 16
+ac_fail_count: 0
+frontmatter_status_transitions:
+  spec_md: in-progress -> completed
+changelog_entry_position: none   # REQ-OP55-015 / AC-OP55-014 forbid CHANGELOG edits
+b12_self_test_a: not-applicable   # no CHANGELOG emission
+b12_self_test_b: "acceptance.md distinct AC ids = 16"
+b12_self_test_c: not-applicable
+docs_surfaces_touched: none   # README/docs-site -> card t1094
+push: not-run   # lead batch-pushes develop
+```
