@@ -194,6 +194,16 @@ const fireGuardFakeGLMKey = "test-fire-guard-fake-glm-key"
 // URL Chrome will load.
 func startFireGuardServer(t *testing.T) string {
 	t.Helper()
+	url, _ := startFireGuardServerAt(t, findRepoRoot(t))
+	return url
+}
+
+// startFireGuardServerAt boots a console server on the given project root and
+// returns its base URL together with the root it actually serves. The root is
+// returned rather than assumed so AC-AFG-013 can MEASURE which tree each
+// server serves instead of reading the wiring and trusting it.
+func startFireGuardServerAt(t *testing.T, projectRoot string) (baseURL, servedRoot string) {
+	t.Helper()
 	// Seed a stored GLM key through the test hook: #glmKeyReveal renders only
 	// when a key is configured, so without this the glm_reveal entry passes on
 	// a machine with an operator key and misses everywhere else (card t1087).
@@ -201,7 +211,7 @@ func startFireGuardServer(t *testing.T) string {
 	cfg := Config{
 		Port:           0,
 		NoOpen:         true,
-		ProjectRoot:    findRepoRoot(t),
+		ProjectRoot:    projectRoot,
 		ProfileBaseDir: t.TempDir(),
 	}
 	srv, err := NewServer(cfg)
@@ -210,7 +220,47 @@ func startFireGuardServer(t *testing.T) string {
 	}
 	hs := httptest.NewServer(srv.Handler())
 	t.Cleanup(hs.Close)
-	return hs.URL
+	return hs.URL, cfg.ProjectRoot
+}
+
+// provisionFireGuardSandbox builds the disposable project copy the
+// validation-reject entry is served from (REQ-AFG-014 (1)) and returns its
+// root.
+//
+// Lifetime is bound to t.TempDir() and to nothing else (REQ-AFG-014 (3)):
+// the framework removes it on EVERY exit path, panics and early failures
+// included. There is deliberately no defer and no trailing removal statement
+// here — a trailing cleanup line is one the process may never reach, and
+// AC-AFG-011 (d) checks this file for exactly that shape.
+//
+// Contents: .moai/config is copied because it is what POST /save's write
+// seams (SyncToProjectConfig, writeProjectConfig) target, so the byte
+// invariance assertion has something real to be invariant about. Nothing else
+// is copied — the reject path never reads further, and a smaller copy is a
+// smaller surface to keep unchanged.
+func provisionFireGuardSandbox(t *testing.T) string {
+	t.Helper()
+	root := filepath.Join(t.TempDir(), "sandbox-project")
+	src := filepath.Join(findRepoRoot(t), ".moai", "config")
+	dst := filepath.Join(root, ".moai", "config")
+	if err := os.MkdirAll(filepath.Dir(dst), 0o755); err != nil {
+		t.Fatalf("create sandbox root: %v", err)
+	}
+	if err := os.CopyFS(dst, os.DirFS(src)); err != nil {
+		t.Fatalf("copy .moai/config into the sandbox root: %v", err)
+	}
+	return root
+}
+
+// startFireGuardSandboxServer boots the SECOND server instance — the one that
+// serves the disposable copy. It is additive: startFireGuardServer's real-root
+// wiring above is untouched, so every unmarked manifest entry keeps serving
+// exactly the tree it served before this card (plan §A0, option (a)).
+func startFireGuardSandboxServer(t *testing.T) (baseURL, sandboxRoot string) {
+	t.Helper()
+	root := provisionFireGuardSandbox(t)
+	url, served := startFireGuardServerAt(t, root)
+	return url, served
 }
 
 // launchFireGuardChrome starts headless Chrome with an ephemeral CDP port and
@@ -399,4 +449,148 @@ func mustJSON(t *testing.T, v any) string {
 		return fmt.Sprintf("%v", v)
 	}
 	return string(b)
+}
+
+// ── card t1106 — validation-reject submit surface ───────────────────────────
+
+// fireGuardProbePath returns the committed probe's absolute path.
+func fireGuardProbePath(t *testing.T) string {
+	t.Helper()
+	return filepath.Join(findRepoRoot(t), "internal", "web", "testdata", "appjs_fire_probe.py")
+}
+
+// TestAppJsFireSandboxPairing is AC-AFG-012: the inseparability of the
+// `validation-reject` effect kind and its TWO manifest markers is a MACHINE
+// judgement, in both directions. (a) the committed manifest passes its own
+// self-check, and (b) a synthetic entry that declares `validation-reject`
+// while missing either marker is rejected with exit 1 that NAMES the missing
+// condition. Forward-only would pass a rule that rejects nothing.
+//
+// Ungated on purpose: this is a data-loss guard (REQ-AFG-014), so it runs on
+// every `go test` of the package, with no browser and no server.
+func TestAppJsFireSandboxPairing(t *testing.T) {
+	t.Parallel()
+	probe := fireGuardProbePath(t)
+
+	// (a) forward: the committed manifest satisfies the rule.
+	out, err := exec.Command("python3", probe, "--lint-manifest").CombinedOutput()
+	if err != nil {
+		t.Fatalf("--lint-manifest rejected the committed manifest: %v\n%s", err, out)
+	}
+
+	// (b) reverse: each synthetic entry is missing one (or both) markers.
+	cases := []struct {
+		name      string
+		entry     map[string]any
+		wantNamed []string
+	}{
+		{
+			name: "missing sandbox-serving marker",
+			entry: map[string]any{
+				"id": "synthetic_missing_sandbox", "line_group": nil, "page": "/settings",
+				"selector": "#settings-form", "effect": "validation-reject",
+				"requires_no_write_assertion": true,
+				"check":                       "synthetic pairing fixture",
+			},
+			wantNamed: []string{"requires_sandbox_serving"},
+		},
+		{
+			name: "missing no-write-assertion marker",
+			entry: map[string]any{
+				"id": "synthetic_missing_nowrite", "line_group": nil, "page": "/settings",
+				"selector": "#settings-form", "effect": "validation-reject",
+				"requires_sandbox_serving": true,
+				"check":                    "synthetic pairing fixture",
+			},
+			wantNamed: []string{"requires_no_write_assertion"},
+		},
+		{
+			name: "missing both markers",
+			entry: map[string]any{
+				"id": "synthetic_missing_both", "line_group": nil, "page": "/settings",
+				"selector": "#settings-form", "effect": "validation-reject",
+				"check": "synthetic pairing fixture",
+			},
+			wantNamed: []string{"requires_sandbox_serving", "requires_no_write_assertion"},
+		},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			payload := mustJSON(t, tc.entry)
+			out, err := exec.Command("python3", probe, "--lint-manifest", "--extra-entry", payload).CombinedOutput()
+			if err == nil {
+				t.Fatalf("synthetic %s was ACCEPTED (exit 0) — an entry may not claim validation-reject without both markers; output:\n%s", tc.name, out)
+			}
+			var exitErr *exec.ExitError
+			if !errors.As(err, &exitErr) || exitErr.ExitCode() != 1 {
+				t.Fatalf("synthetic %s: want exit 1, got %v\n%s", tc.name, err, out)
+			}
+			for _, want := range tc.wantNamed {
+				if !strings.Contains(string(out), want) {
+					t.Errorf("rejection does not NAME the missing condition %q — the report must say which condition is absent; output:\n%s", want, out)
+				}
+			}
+		})
+	}
+}
+
+// TestAppJsFireSandboxRouting is AC-AFG-013: the disposable copy serves the
+// NEW entry and nothing else, measured in BOTH directions. A predicate that
+// only checks "a sandbox server exists" passes the world where every entry
+// silently moved onto the copy — the exact blast radius option (b) was
+// rejected for (plan §A0). So this test asserts, mechanically:
+//
+//	(a) the primary server's ProjectRoot is still findRepoRoot,
+//	(b) every entry WITHOUT the sandbox-serving marker routes to the primary
+//	    base and every entry WITH it routes to the sandbox base — red in
+//	    either direction — with both families non-empty,
+//	(c) the sandbox server's root is a disposable copy, not the repo root.
+//
+// Ungated: routing is a wiring property, so it needs no browser.
+func TestAppJsFireSandboxRouting(t *testing.T) {
+	primaryBase, primaryRoot := startFireGuardServerAt(t, findRepoRoot(t))
+	sandboxBase, sandboxRoot := startFireGuardSandboxServer(t)
+
+	if primaryRoot != findRepoRoot(t) {
+		t.Errorf("(a) primary server ProjectRoot = %q, want findRepoRoot %q — unmarked entries must keep serving the real repo root", primaryRoot, findRepoRoot(t))
+	}
+	if sandboxRoot == findRepoRoot(t) {
+		t.Fatalf("(c) sandbox server serves the real repo root %q — the disposable copy is the whole point", sandboxRoot)
+	}
+
+	out, err := exec.Command("python3", fireGuardProbePath(t),
+		"--print-routing", "--base-url", primaryBase, "--sandbox-base-url", sandboxBase).Output()
+	if err != nil {
+		t.Fatalf("--print-routing failed: %v\n%s", err, out)
+	}
+	var routing struct {
+		Routes  map[string]string `json:"routes"`
+		Markers map[string]bool   `json:"sandbox_marked"`
+	}
+	if err := json.Unmarshal(out, &routing); err != nil {
+		t.Fatalf("parse routing report: %v\n%s", err, out)
+	}
+	if len(routing.Routes) == 0 {
+		t.Fatal("routing report is empty — nothing was measured")
+	}
+	var marked, unmarked int
+	for id, base := range routing.Routes {
+		if routing.Markers[id] {
+			marked++
+			if base != sandboxBase {
+				t.Errorf("(b) marked entry %q routes to %q, want the sandbox base %q — a marked entry must never touch the real repo root", id, base, sandboxBase)
+			}
+			continue
+		}
+		unmarked++
+		if base != primaryBase {
+			t.Errorf("(b) unmarked entry %q routes to %q, want the primary base %q — blast radius must stay zero", id, base, primaryBase)
+		}
+	}
+	if marked == 0 {
+		t.Error("(b) no entry carries the sandbox-serving marker — the sandbox direction of this judgement is vacuous")
+	}
+	if unmarked == 0 {
+		t.Error("(b) every entry carries the sandbox-serving marker — the primary direction of this judgement is vacuous")
+	}
 }

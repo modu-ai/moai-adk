@@ -67,10 +67,47 @@ import websockets
 
 INVENTORY_TOTAL = 13
 
-# Reversible effect kinds a manifest entry may exercise (REQ-AFG-012). Save-
-# and submit-family controls are outside the allowlist: the probe must never
-# write project configuration.
+# Reversible effect kinds a manifest entry may exercise unconditionally
+# (REQ-AFG-012). Save- and submit-family controls are outside this family: the
+# probe must never write project configuration.
 ALLOWED_EFFECTS = {"visibility", "label", "clipboard", "tab", "swap"}
+
+# Conditional persistence family (REQ-AFG-014, card t1106). A CLOSED
+# enumeration whose only member today is `validation-reject`: such an entry may
+# exercise a form submit ONLY when it carries BOTH markers below. This is an
+# enumeration, not a rule - "any persisting kind that carries the markers"
+# would be a widening, and adding a member is a SPEC amendment.
+CONDITIONAL_EFFECTS = {"validation-reject"}
+
+# The two manifest markers a conditional entry must carry, inseparably:
+#   requires_sandbox_serving    -> REQ-AFG-014 (1): a dedicated second server
+#                                  serves this entry from a disposable project
+#                                  copy, never from the real repo root. This
+#                                  marker IS the routing key (route_for_entry).
+#   requires_no_write_assertion -> REQ-AFG-014 (2): the probe snapshots the
+#                                  sandbox root immediately before the submit
+#                                  and right after the reject render settles,
+#                                  and fails on a single changed byte.
+# REQ-AFG-014 (3) (lifetime bound to t.TempDir()) is deliberately NOT a
+# manifest marker: it is a Go-side lifetime property a committed manifest
+# cannot carry, and the driver judges it (AC-AFG-011 (d)).
+REQUIRED_CONDITIONAL_MARKERS = ("requires_sandbox_serving", "requires_no_write_assertion")
+
+# Paths the exercised request's write seams can reach inside the sandbox root.
+# POST /save persists project configuration through SyncToProjectConfig and
+# writeProjectConfig (internal/web/handlers.go), and both land under
+# .moai/config/sections/. A no-write comparison exclusion MUST NOT cover this
+# subtree even with a stated reason (REQ-AFG-014 (2)): excluding it would make
+# the assertion green by construction exactly where a regression would appear.
+WRITE_SEAM_PREFIXES = (".moai/config/sections",)
+
+# Paths excluded from the byte-invariance comparison, each with its reason.
+# EMPTY today, and that emptiness is measured rather than assumed: the sandbox
+# server's profile store lives OUTSIDE the sandbox root (ProfileBaseDir is a
+# separate t.TempDir()), so the reject path touches nothing inside it. An
+# entry added here must state WHY, and lint_manifest refuses any entry that
+# reaches into WRITE_SEAM_PREFIXES.
+NO_WRITE_EXCLUSIONS = []  # [{"path": "<relative path>", "reason": "<why>"}]
 
 ENTRIES = [
     {
@@ -138,6 +175,24 @@ ENTRIES = [
         "effect": "label",
         "check": "click flashes the copy button label to the check mark",
     },
+    {
+        # card t1106 - the validation-reject submit surface. line_group is None
+        # for the same reason swap_todo_nav's is: this is an htmx-boost +
+        # server-render surface, not an app.js addEventListener registration
+        # group, so it does not move INVENTORY_TOTAL.
+        "id": "validation_reject_banner",
+        "line_group": None,
+        "page": "/settings",
+        "selector": "#settings-form",
+        "effect": "validation-reject",
+        "requires_sandbox_serving": True,
+        "requires_no_write_assertion": True,
+        "submit_button": 'button[type="submit"][form="settings-form"]',
+        "banner_selector": '.banner[role="status"]',
+        "invalid_field": "permission_mode",
+        "invalid_value": "bogus",
+        "check": "submitting an invalid permission_mode paints the validation-reject banner (the card t1105 fix) on screen",
+    },
 ]
 
 EXCLUSIONS = [
@@ -179,27 +234,81 @@ EXCLUSIONS = [
 ]
 
 
-def lint_manifest():
+def effect_problems(entry):
+    """Judge one entry's effect kind against the two closed families.
+
+    Returns a list of problem strings, each NAMING what is missing (AC-AFG-012
+    (b) requires the rejection to say WHICH condition is absent).
+    """
+    eid = entry.get("id")
+    effect = entry.get("effect")
+    if effect in ALLOWED_EFFECTS:
+        return []
+    if effect in CONDITIONAL_EFFECTS:
+        missing = [m for m in REQUIRED_CONDITIONAL_MARKERS if entry.get(m) is not True]
+        return [
+            "entry %r declares effect %r but is missing the required condition marker %r "
+            "- the effect kind and its conditions are inseparable (REQ-AFG-014)"
+            % (eid, effect, m)
+            for m in missing
+        ]
+    return [
+        "entry %r effect %r belongs to neither closed family: unconditional %s / conditional %s"
+        % (eid, effect, sorted(ALLOWED_EFFECTS), sorted(CONDITIONAL_EFFECTS))
+    ]
+
+
+def route_for_entry(entry, primary_base, sandbox_base):
+    """Return the base URL this entry is driven against (REQ-AFG-014 (1)).
+
+    The sandbox-serving marker IS the routing key, in BOTH directions: a marked
+    entry never runs against the primary base, and an unmarked entry never runs
+    against the sandbox base. Returns None when a marked entry has no sandbox
+    base - the caller turns that into exit 2 (caller wiring fault), never a
+    silent skip and never a fallback to the primary base.
+    """
+    if entry.get("requires_sandbox_serving") is True:
+        return sandbox_base or None
+    return primary_base
+
+
+def lint_manifest(extra_entry=None):
     """--lint-manifest: offline structural self-check of the manifest.
 
     Exit 0 = manifest well-formed; 1 = a rule is violated (named); 2 = the
-    mode itself was misused.
+    mode itself was misused. --extra-entry appends ONE synthetic entry to the
+    judged set without touching the committed manifest, so the reverse
+    direction of the rule (does it actually reject?) can be OBSERVED rather
+    than assumed (AC-AFG-012 (b)).
     """
     problems = []
-    if len(ENTRIES) == 0:
-        problems.append("manifest has zero entries — a green with an empty manifest measures nothing")
-    for e in ENTRIES:
+    entries = list(ENTRIES)
+    if extra_entry is not None:
+        entries.append(extra_entry)
+    if len(entries) == 0:
+        problems.append("manifest has zero entries - a green with an empty manifest measures nothing")
+    for e in entries:
         for field in ("id", "page", "selector", "effect", "check"):
             if not e.get(field):
                 problems.append("entry %r missing field %r" % (e.get("id"), field))
-        if e.get("effect") not in ALLOWED_EFFECTS:
-            problems.append(
-                "entry %r effect %r outside the reversible allowlist %s"
-                % (e.get("id"), e.get("effect"), sorted(ALLOWED_EFFECTS))
-            )
+        problems.extend(effect_problems(e))
     for x in EXCLUSIONS:
         if not x.get("selector") or not x.get("reason"):
             problems.append("exclusion for line_group %r needs selector and reason" % (x.get("line_group"),))
+    # No-write comparison exclusions: each needs a reason, and none may cover a
+    # path the exercised write seam can reach (REQ-AFG-014 (2)).
+    for x in NO_WRITE_EXCLUSIONS:
+        if not x.get("path") or not x.get("reason"):
+            problems.append("no-write exclusion %r needs both path and reason" % (x,))
+            continue
+        rel = x["path"].lstrip("./")
+        for prefix in WRITE_SEAM_PREFIXES:
+            if rel == prefix or rel.startswith(prefix + "/"):
+                problems.append(
+                    "no-write exclusion %r covers %r, which the exercised request's write seam reaches "
+                    "- excluding it would make the byte-invariance assertion green by construction"
+                    % (x["path"], prefix)
+                )
     entry_groups = {e["line_group"] for e in ENTRIES if e.get("line_group")}
     exclusion_groups = {x["line_group"] for x in EXCLUSIONS if x.get("line_group")}
     overlap = entry_groups & exclusion_groups
@@ -208,7 +317,7 @@ def lint_manifest():
     covered = entry_groups | exclusion_groups
     if len(covered) != INVENTORY_TOTAL:
         problems.append(
-            "inventory coverage: %d unique groups covered, INVENTORY_TOTAL=%d — every click/change "
+            "inventory coverage: %d unique groups covered, INVENTORY_TOTAL=%d - every click/change "
             "registration group must be an entry or an exclusion" % (len(covered), INVENTORY_TOTAL)
         )
     if not any(e.get("post_swap") for e in ENTRIES):
@@ -218,8 +327,16 @@ def lint_manifest():
             print("LINT: " + p)
         return 1
     print(
-        "LINT OK: %d entries + %d exclusions cover %d inventory groups; all effects within %s; post-swap entry present"
-        % (len(ENTRIES), len(EXCLUSIONS), len(covered), sorted(ALLOWED_EFFECTS))
+        "LINT OK: %d entries + %d exclusions cover %d inventory groups; effects within "
+        "unconditional %s or conditional %s (conditional entries carry %s); post-swap entry present"
+        % (
+            len(entries),
+            len(EXCLUSIONS),
+            len(covered),
+            sorted(ALLOWED_EFFECTS),
+            sorted(CONDITIONAL_EFFECTS),
+            list(REQUIRED_CONDITIONAL_MARKERS),
+        )
     )
     return 0
 
@@ -531,10 +648,68 @@ def main():
     p.add_option("--cdp-port", default="9222", help="Chrome DevTools protocol port")
     p.add_option("--base-url", default=None, help="base URL of the console server (default http://127.0.0.1:<port>)")
     p.add_option("--lint-manifest", action="store_true", default=False, help="validate the manifest offline and exit")
+    p.add_option(
+        "--sandbox-base-url",
+        default=None,
+        help="base URL of the SECOND server, the one serving the disposable project copy; "
+        "entries carrying the sandbox-serving marker are driven against this base and no other",
+    )
+    p.add_option(
+        "--sandbox-root",
+        default=None,
+        help="filesystem path of the disposable project copy — the tree whose byte invariance the "
+        "no-write assertion measures across the submit (REQ-AFG-014 (2))",
+    )
+    p.add_option(
+        "--primary-entries-only",
+        action="store_true",
+        default=False,
+        help="affirmative reduction declaration (REQ-AFG-014 (1)): drive ONLY the entries without "
+        "the sandbox-serving marker. Absence of --sandbox-base-url never implies this — without the "
+        "declaration a marked entry with no sandbox base is exit 2, never a silent skip",
+    )
+    p.add_option(
+        "--print-routing",
+        action="store_true",
+        default=False,
+        help="offline: print the per-entry base-URL routing decision as JSON and exit, so the routing "
+        "can be judged in both directions without a browser (AC-AFG-013)",
+    )
+    p.add_option(
+        "--extra-entry",
+        default=None,
+        help="mutation probe: JSON object appended to the judged entry set for --lint-manifest only "
+        "(the committed manifest is never modified) - lets the reverse direction of the rule be observed",
+    )
     global opts
     (opts, args) = p.parse_args()
     if opts.lint_manifest:
-        return lint_manifest()
+        extra = None
+        if opts.extra_entry:
+            try:
+                extra = json.loads(opts.extra_entry)
+            except ValueError as exc:
+                print("LINT: --extra-entry is not valid JSON: %s" % exc)
+                return 2
+            if not isinstance(extra, dict):
+                print("LINT: --extra-entry must be a JSON object")
+                return 2
+        return lint_manifest(extra)
+    if opts.print_routing:
+        routes = {}
+        for e in ENTRIES:
+            routes[e["id"]] = route_for_entry(e, opts.base_url, opts.sandbox_base_url)
+        print(
+            json.dumps(
+                {
+                    "routes": routes,
+                    "sandbox_marked": {e["id"]: e.get("requires_sandbox_serving") is True for e in ENTRIES},
+                },
+                ensure_ascii=False,
+                indent=2,
+            )
+        )
+        return 0
     if len(args) != 2:
         p.error("expected <server-port> <label>")
     try:
