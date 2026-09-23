@@ -71,8 +71,10 @@ module: "internal/factorymsg"
 - operator 종결 경로 `moai factory handoff abandon-lane --slot <slot>`을 기존 `moai factory handoff` 명령 그룹(`internal/cli/factory_handoff_recover.go`)에 붙이고 종결 transaction은 `internal/factorymsg`에 둔다(REQ-FLH-011). source owner가 current이거나 판정 불가면 `SOURCE_OWNER_LIVE` 거부, 아니면 한 transaction에서 `ABANDONED`/`OPERATOR_ABANDONED`를 쓰고 worktree 보존·BOUND/tombstone/receipt/release 0·종결 뒤 t1074 UserPromptSubmit 복귀를 AC-FLH-020 named test로 먼저 RED 확인한다. source owner 판정 seam은 종결 store 함수가 인자로 받는 `func(int) (string, homestate.ProcessIdentityState)` probe 하나다(선례 `internal/cli/factory_handoff_recover.go:30`의 `RecoverLegacyResume(..., homestate.ProbeProcessIdentity, ...)`). cli 명령은 이를 패키지 변수 하나로 연결하고, AC-FLH-020 테스트는 그 변수만 바꿔 Live/Dead/Indeterminate를 만든다. 3상태를 bool로 접는 `ownerCurrent`는 쓰지 않는다. 시간 기준 자동 종결은 만들지 않는다. sync phase 문서는 이 명령을 막힌 lane의 수동 복구 명령으로 적는다.
 - t1074 factory broker/roster/receipt/SessionStart tests와 MCP catalog invariant를 재실행한다.
 
-### M5 — Real mixed-factory verification
+### M5 — Real mixed-factory verification (카드 t1145로 이관)
 
+> **0.5.11: M5는 이 SPEC 범위 밖이다.** 리드 결정 (a)에 따라 REQ-FLH-014와 AC-FLH-012·013을 spec.md § Out of Scope — LIVE cross-harness proof와 acceptance.md § Exclusions로 옮기고 카드 t1145에 넘겼다. 이 SPEC의 run·sync는 M5를 실행하지 않으며, 아래 항목은 t1145가 이어받을 원래 계획으로만 남긴다. 트리에 남은 gate-quality test는 옮긴 AC 본문의 predicate를 그대로 읽는다.
+>
 > **0.5.10 리드 결정: M5 LIVE는 카드 t1145로 분리됐다.** 이 SPEC 안에서 M5가 낸 것은 LIVE가 아닌 gate-quality test(`TestFactoryLaneHandoffLiveEvidenceGateRejectsMutants`) 하나다. AC-FLH-012·013은 `NOT_RUN → t1145`다(progress.md § M5 lane record). handoff controller와 재기동 reconciler는 테스트 밖에서 부르는 곳이 없어서, 이 SPEC이 착지해도 handoff는 운영자가 쓸 수 있는 기능이 아니다. 운영자가 쓰려면 t1145가 필요하다. REQ-FLH-014는 t1145까지 충족되지 않는다. 아래 항목은 원래 계획으로 남겨 둔다.
 
 - built-tree `moai`와 실제 별도 model contexts로 Codex↔Codex 및 Claude lead↔Codex를 실행한다.
@@ -100,7 +102,7 @@ module: "internal/factorymsg"
 
 1. 각 AC의 exact named test를 먼저 작성해 RED를 확인한다.
 2. 단위 테스트는 Go JSON event와 `jq -se`로 정확히 한 named PASS, 전체 child/subtest/package fail 0, 전체 skip 0, `NOT_RUN` 0을 요구한다.
-3. LIVE는 provider credential을 command 안에서 scrub하되 실제 설치 인증 context를 사용하는 기존 t1074 harness 규칙을 따르고, 별도 `jq -e`로 card-scoped evidence의 exact typed schema와 cross-field equality를 검증한다.
+3. (0.5.11: 3·4항의 LIVE 검증은 카드 t1145로 이관됐다.) LIVE는 provider credential을 command 안에서 scrub하되 실제 설치 인증 context를 사용하는 기존 t1074 harness 규칙을 따르고, 별도 `jq -e`로 card-scoped evidence의 exact typed schema와 cross-field equality를 검증한다.
 4. 두 LIVE gate는 `TestFactoryLaneHandoffLiveEvidenceGateRejectsMutants` PASS도 요구한다. 이 test는 acceptance의 production predicate를 직접 호출해 missing/fixture/mock/direct-registration/child-fail/child-skip 및 stored-history `wrong_method_thread_start` mutant가 모두 거부됨을 증명한다.
 5. 변경 범위 unit/race/vet 후 t1074 regression과 MCP catalog 36/14/22 invariant를 실행한다.
 6. 전체 suite는 로컬 loaded-machine proof로 대체하지 않고 push 후 CI에 맡긴다.
