@@ -95,8 +95,8 @@ var reqBareWidePattern = regexp.MustCompile(`^\**(REQ-[A-Z0-9]+(?:-[A-Z0-9]+)*-\
 // 565 corpus statement lines starts with any excluded shape. A statement
 // that opens with bold (`**When** …`) is NOT a `* ` bullet and is accepted.
 //
-// Only the first statement line becomes Text, as with the list collector: a
-// statement wrapped over several lines is truncated to its first line.
+// A statement wrapped over several lines is joined into one Text by
+// joinStatementContinuation (card t1138), as for the single-line form.
 var reqBareHeaderPattern = regexp.MustCompile(`^\*\*(REQ-[A-Z0-9]+(?:-[A-Z0-9]+)*-\d+)(?:\*\*)?\s*(?:\([^)]*\))?\s*(?:\*\*)?\s*$`)
 
 // reqOrderedListPattern matches a numbered list item ("1. ", "12. ").
@@ -119,6 +119,46 @@ func isTwoLineStatement(next string) bool {
 	return !reqBareHeaderPattern.MatchString(next) && !reqBareWidePattern.MatchString(next)
 }
 
+// joinStatementContinuation returns first followed by every continuation line of
+// the same paragraph, starting at lines[next], joined with single spaces — card
+// t1138 (t1120 audit finding F1).
+//
+// Taking one physical line as Text truncated every wrapped statement, and where
+// the SHALL token sat on a later line the modality judge reported a defect the
+// author never wrote: 8 advisory false positives among the 565 two-line headers
+// alone. The heading collector already joins its paragraph
+// (firstParagraphBelowHeading); this gives the bare and list collectors the same
+// property.
+//
+// A continuation line is a line isTwoLineStatement accepts: a plain paragraph
+// line, never blank and never a list item, table row, heading, blockquote, code
+// fence, thematic break, HTML line or another REQ definition. The first line that
+// fails ends the paragraph. When indented is true (a list item) the line is
+// judged after its indentation is stripped, so an indented wrapped line
+// continues the item while an indented sub-bullet or fence still ends it; an
+// unindented plain line continues it as a markdown lazy continuation. When
+// indented is false (a bare definition) an indented line ends the paragraph.
+//
+// Joining only appends after the first line, so the leading text the modality
+// judge keys its prefix on is unchanged.
+func joinStatementContinuation(first string, lines []string, next int, indented bool) string {
+	var parts []string
+	if t := strings.TrimSpace(first); t != "" {
+		parts = append(parts, t)
+	}
+	for ; next < len(lines); next++ {
+		line := lines[next]
+		if indented {
+			line = strings.TrimSpace(line)
+		}
+		if !isTwoLineStatement(line) {
+			break
+		}
+		parts = append(parts, strings.TrimSpace(line))
+	}
+	return strings.Join(parts, " ")
+}
+
 // parseREQsBareForm returns one REQEntry per unindented, marker-less definition,
 // in document order, with Line as a 1-based index into body. A single-line
 // definition carries its statement after the separator; a two-line definition
@@ -129,15 +169,15 @@ func parseREQsBareForm(body string) []REQEntry {
 	for i, line := range lines {
 		id, text := "", ""
 		if matches := reqBareWidePattern.FindStringSubmatch(line); len(matches) >= 3 {
-			id, text = matches[1], matches[2]
+			id, text = matches[1], joinStatementContinuation(matches[2], lines, i+1, false)
 		} else if m := reqBareHeaderPattern.FindStringSubmatch(line); m != nil && i+1 < len(lines) && isTwoLineStatement(lines[i+1]) {
-			id, text = m[1], lines[i+1]
+			id, text = m[1], joinStatementContinuation(lines[i+1], lines, i+2, false)
 		} else {
 			continue
 		}
 		reqs = append(reqs, REQEntry{
 			ID:      id,
-			Text:    strings.TrimSpace(text),
+			Text:    text,
 			Line:    i + 1,
 			Widened: true,
 			Source:  REQSourceBare,

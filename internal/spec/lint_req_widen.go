@@ -69,7 +69,7 @@ func parseREQsWide(body string) []REQEntry {
 		if len(matches) >= 3 {
 			reqs = append(reqs, REQEntry{
 				ID:   matches[1],
-				Text: strings.TrimSpace(matches[2]),
+				Text: joinStatementContinuation(matches[2], lines, i+1, true),
 				Line: i + 1,
 			})
 		}
