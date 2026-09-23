@@ -108,15 +108,6 @@ func registerFactoryHookPeer(ctx context.Context, input *HookInput, mode factory
 	return fmt.Sprintf("factory messaging bound: run=%s slot=%s generation=%d; messages arrive at turn boundaries, not idle wake", runID, p.Slot, p.Generation)
 }
 
-// factoryHookDegraded records a cut-short inbox inspection and returns the
-// state string for it. Both hook call sites discard that state, so without this
-// log a degraded inspection would leave no trace anywhere — the empty inbox it
-// produces is indistinguishable from an inbox that was genuinely empty.
-func factoryHookDegraded(step string, err error) string {
-	slog.Warn("factory hook: inbox inspection degraded", "step", step, "error", err)
-	return "degraded: " + err.Error()
-}
-
 func factoryHookBatch(ctx context.Context, input *HookInput, event EventType) (string, bool, string) {
 	ctx, cancel := context.WithTimeout(ctx, factoryHookInspectionDeadline)
 	defer cancel()
@@ -139,20 +130,26 @@ func factoryHookBatch(ctx context.Context, input *HookInput, event EventType) (s
 		// — a spent inspection budget, a busy database, an I/O failure — means
 		// the lookup never completed, and reporting that as unbound turns a
 		// bound lane's inbox into a silent empty read.
+		//
+		// This makes the state string truthful; it does not surface it. Both
+		// call sites still discard the state, and a hook process discards slog
+		// records too (internal/cli/logging.go resolveLoggingDecision), so a
+		// degraded inspection is still not reported anywhere. Closing that is
+		// card t1144.
 		if errors.Is(err, sql.ErrNoRows) || errors.Is(err, factorymsg.ErrEndpointLaunchPending) {
 			return "", false, "unbound-session"
 		}
-		return "", false, factoryHookDegraded("peer lookup", err)
+		return "", false, "degraded: " + err.Error()
 	}
 	if err := s.CheckWritable(ctx); err != nil {
-		return "", false, factoryHookDegraded("writability check", err)
+		return "", false, "degraded: " + err.Error()
 	}
 	if _, err = s.SettleReceiptControls(ctx, p); err != nil {
-		return "", false, factoryHookDegraded("receipt settle", err)
+		return "", false, "degraded: " + err.Error()
 	}
 	claims, err := s.Claim(ctx, p, factorymsg.MaxBatch, 30*time.Second)
 	if err != nil {
-		return "", false, factoryHookDegraded("claim", err)
+		return "", false, "degraded: " + err.Error()
 	}
 	ids := make([]string, 0, len(claims))
 	for _, c := range claims {
