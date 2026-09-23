@@ -507,6 +507,45 @@ SPEC 재량 안의 결정:
 6. (M5) POSIX 직접 launch에서 exec가 실패하면 이미 건 lock이 남는다. 그 pid는 곧 죽으므로 anchor가 아니게 되고 다음 launch가 교체하지만, 그 사이 짧게 anchored로 읽힐 수 있다.
 7. (M5) `moai cc -w`의 사전 판정은 이름 값을 `<project root>/.claude/worktrees/<name>`으로 해석한다. Claude Code가 이름을 다른 뿌리(예: git 최상위가 project root와 다른 경우)로 해석하면 판정이 다른 트리를 볼 수 있다. 이 저장소 구성에서는 둘이 같다(코드 판독, 미측정).
 
+### Absorb develop 5f264c381 (t1125) + AC-005 re-measure
+
+위 M5 절의 AC-DHR-005 PARTIAL / UNPROVEN 기록은 그대로 둔다. 이 절은 그 뒤에 이어진 측정이다.
+
+흡수: 리드가 고정한 로컬 develop 커밋 `5f264c38141139cbad47bd4b0e0240d841d6acbb`(card t1125, `moai update`의 `.agents/skills/moai` 끊긴 링크 수리)을 `git merge --no-ff 5f264c381…`로 흡수했다. 움직이는 브랜치 이름이 아니라 고정 SHA를 병합했다. 병합 커밋 `ab4a2662d`(부모 `cff38a43e`, `5f264c381`). 충돌 없음. 병합 직후 기본 메시지 커밋(`67ffc8065`)을 카드 id가 든 메시지로 고쳐 쓴 것이 `ab4a2662d`이며, 트리와 부모는 같다.
+
+unskip: `internal/cli/harness_profile_transition_test.go`의 `claude_to_both` 행에서 `BLOCKED` skip 사유와 그 설명 주석을 지웠다(커밋 `d46141178`). `internal/template`은 고치지 않았다.
+
+AC 판정(명령은 `acceptance.md`의 것을 그대로 실행. `internal/cli` 세 건은 같은 compound 호출 앞에 `unset MOAI_KANBAN_BACKEND MOAI_FACTORY_WORKER MOAI_FACTORY_WORKERS &&`를 붙였다. 측정 트리 = HEAD `d46141178`, `git rev-parse HEAD^{tree}` → `0eb3352c4a895b54699fb474dec16eeefbccf72a`):
+
+| AC | 판정 출력 | 증거 파일 | pass / fail / skip 이벤트 |
+|---|---|---|---|
+| AC-DHR-005 | `true` | `.moai/reports/t1100/ac005.jsonl` | 7 / 0 / 0 — 여섯 행 전부 pass(`claude_to_both` 0.95s 포함) |
+| AC-DHR-001 (회귀) | `true` | `.moai/reports/t1100/ac001.jsonl` | 11 / 0 / 0 |
+| AC-DHR-002 (회귀) | `true` | `.moai/reports/t1100/ac002.jsonl` | 11 / 0 / 0 |
+| AC-DHR-003 (회귀) | `true` | `.moai/reports/t1100/ac003.jsonl` | 6 / 0 / 0 |
+| AC-DHR-004 (회귀) | `true` | `.moai/reports/t1100/ac004.jsonl` | 5 / 0 / 0 |
+| AC-DHR-021 (회귀) | `true` | `.moai/reports/t1100/ac021.jsonl` | 5 / 0 / 0 |
+| AC-DHR-022 (회귀) | `true` | `.moai/reports/t1100/ac022.jsonl` | 5 / 0 / 0 |
+
+pass/fail/skip 수는 각 파일에 `jq -sr '"pass=\([.[]|select(.Action=="pass" and .Test!=null)]|length) fail=\([.[]|select(.Action=="fail")]|length) skip=\([.[]|select(.Action=="skip")]|length)"'`로 셌다.
+
+`claude_to_both`가 t1125 때문에 통과하는지 확인한 변이: `internal/template/skill_mirror.go`의 `releaseOwnMirrorLink` 첫 줄에 `return nil`을 넣고 `go test -run 'TestHarnessProfileTransitionPreservesUserData/claude_to_both' ./internal/cli/`를 돌리면 `deploy templates: template deploy mkdir ".agents/skills/moai": mkdir .agents/skills/moai: file exists`로 FAIL한다 — M4·M5가 기록한 오류와 같은 문구다. 변이를 지운 뒤 `git status --short`에 남은 변경은 테스트 파일 하나뿐이었다(템플릿 파일은 커밋 상태로 복귀).
+
+M5 가설과의 대조: M5는 "관리 경로 정리 단계가 symlink의 대상을 지워, 끊긴 링크가 배포자의 `MkdirAll`을 막는다"를 미측정 가설로 적었다. t1125는 `DeployWithResult`에서 부모 디렉터리 `MkdirAll` 바로 앞에 `releaseOwnMirrorLink`를 넣어, 배포가 `.agents/skills/<skill>/` 아래에 실제 파일을 쓸 때 본문이 정확히 `MirrorLinkTarget(skill)`인 자기 링크만 지운다. 고친 자리(`MkdirAll` 직전)와 막힌 경로(`.agents/skills/moai`)는 가설과 일치하고, 위 변이로 이 수리가 `claude_to_both`를 통과시키는 원인임을 확인했다. 다만 "정리 단계가 링크 대상을 지운다"는 전반부는 t1125의 godoc이 같은 내용을 적고 있을 뿐, 이 흡수에서 링크 대상의 부재를 `Lstat`로 따로 재지는 않았다.
+
+품질 게이트(HEAD `d46141178` 트리):
+
+```text
+$ go vet ./internal/cli ./internal/codexwiring ./internal/manifest
+(출력 없음) vet_exit=0
+$ golangci-lint run ./internal/cli/... ./internal/codexwiring/... ./internal/manifest/...
+0 issues.
+```
+
+범위: `internal/factorymsg`의 `Store.Send` lane slot 조회는 건드리지 않았다 — `git diff --stat cff38a43e d46141178 -- internal/factorymsg` 출력 없음. unskip 커밋은 `git diff --stat ab4a2662d d46141178` 기준 테스트 파일 하나(1 insertion, 7 deletions)다. M6는 시작하지 않았다.
+
+미측정: AC-DHR-006~009는 이번에 다시 돌리지 않았다(요청 범위 밖). `internal/cli` 전체 스위트와 Windows 빌드도 돌리지 않았다. golangci-lint의 exit code는 파이프 뒤 `tail`의 것이라 판정 근거는 `0 issues.` 출력이다.
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 _<pending run-phase>_
