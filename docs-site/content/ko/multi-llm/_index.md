@@ -52,7 +52,7 @@ MoAI-ADK가 에이전트를 부를 때마다 슬쩍 결정하는 것이 하나 �
 | 모델 | 식별자 | 컨텍스트 | 어울리는 일 |
 |------|--------|----------|------------|
 | **Claude Fable 5** | `claude-fable-5` | 256K | 신규 Mythos-tier 범용 최상위. 가장 깊은 추론과 복잡한 코딩 |
-| **Claude Opus 5 / 4.8** | — | 1M | 복잡한 아키텍처와 고난도 추론 |
+| **Claude Opus 5.5 / 5 / 4.8** | — | 1M | 복잡한 아키텍처와 고난도 추론 |
 | **Claude Sonnet 5** | — | 200K | 속도와 지능의 균형, 일상 코딩 |
 | **Claude Haiku 4.5** | `claude-haiku-4-5-20251001` | 200K | 가장 빠르고 경제적, 단순·대량 작업 |
 
@@ -76,7 +76,7 @@ effort는 다섯 단계로 붙습니다.
 | `xhigh` | 더 깊이. 고난도 추론·복잡한 코딩 |
 | `max` | 가장 깊은 추론 |
 
-`xhigh`와 `max`는 Opus 5·Opus 4.8·Sonnet 5·Opus 4.7에서 지원합니다. 두 단계를
+`xhigh`와 `max`는 Opus 5.5·Opus 5·Opus 4.8·Sonnet 5·Opus 4.7에서 지원합니다. 두 단계를
 한 번에 켜는 단축어가 **ultrathink** 키워드입니다. 이 키워드는
 `effort: xhigh`를 설정하는 동시에 **Adaptive Thinking** (추론 토큰을 모델이
 스스로 할당하도록 맡기는 방식)을 켭니다.
