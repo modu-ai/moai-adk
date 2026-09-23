@@ -69,10 +69,15 @@ func storeUniqueConstraints(t *testing.T, s *Store) string {
 // a second deliverable message row.
 //
 // With MOAI_T1100_EVIDENCE_DIR set, the evidence JSON is written there and a
-// single tag line carrying its sha256 is printed to stdout. Without it, the
-// same measurement runs and its path-traversal checks still fail the test, but
-// no file or tag line is produced, so a plain package run stays green.
+// single tag line carrying its sha256 is printed to stdout. Without it the
+// test is not run: it skips with a reason that starts with NOT_RUN, so a CI
+// census line shows the measurement did not happen rather than a silent pass
+// (lead decision: skip form, not a failure).
 func TestIdemScopeRestartReproduction(t *testing.T) {
+	dir := os.Getenv(idemScopeEvidenceEnv)
+	if dir == "" {
+		t.Skipf("NOT_RUN %s unset: the measurement writes its evidence only through the acceptance command", idemScopeEvidenceEnv)
+	}
 	t.Setenv("MOAI_HOME", t.TempDir())
 	s, err := Open(t.TempDir(), "run")
 	if err != nil {
@@ -201,20 +206,16 @@ func TestIdemScopeRestartReproduction(t *testing.T) {
 		t.Fatal(err)
 	}
 	body = append(body, '\n')
-	if dir := os.Getenv(idemScopeEvidenceEnv); dir != "" {
-		if err := os.MkdirAll(dir, 0o755); err != nil {
-			t.Fatalf("create evidence dir: %v", err)
-		}
-		if err := os.WriteFile(filepath.Join(dir, "ac020-evidence.json"), body, 0o644); err != nil {
-			t.Fatalf("write evidence: %v", err)
-		}
-		sum := sha256.Sum256(body)
-		// Printed to stdout, not via t.Log, so the go test -json Output field
-		// is exactly this line with no file:line prefix or indentation.
-		fmt.Println("IDEM_SCOPE_REPRO_SHA256 " + hex.EncodeToString(sum[:]))
-	} else {
-		t.Logf("%s unset: measurement ran, evidence file not written", idemScopeEvidenceEnv)
+	if err := os.MkdirAll(dir, 0o755); err != nil {
+		t.Fatalf("create evidence dir: %v", err)
 	}
+	if err := os.WriteFile(filepath.Join(dir, "ac020-evidence.json"), body, 0o644); err != nil {
+		t.Fatalf("write evidence: %v", err)
+	}
+	sum := sha256.Sum256(body)
+	// Printed to stdout, not via t.Log, so the go test -json Output field
+	// is exactly this line with no file:line prefix or indentation.
+	fmt.Println("IDEM_SCOPE_REPRO_SHA256 " + hex.EncodeToString(sum[:]))
 
 	switch ev.Outcome {
 	case "NOT_RUN":
