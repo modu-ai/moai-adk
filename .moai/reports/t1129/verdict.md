@@ -151,3 +151,19 @@ find exit=0 matches=       0
 - `go test -count=1 -run 'Profile|TUI|Wizard|Golden|Effort|Schema|Bridge|GetProfileText' ./internal/cli` -> `ok github.com/modu-ai/moai-adk/internal/cli 14.728s`
 - `golangci-lint run ./internal/settings/... ./internal/web/... ./internal/cli/` -> `0 issues.` — lane-recheck-lint.log
 - Diff read by the lane: 9 code/golden files, en label byte-identical (constant concatenation), bridge fallback keeps untranslated empty keys on the schema label.
+
+## Sync audit (sync-auditor, lens --i18n, HEAD e0edeb3c0)
+
+- Verdict: **PASS-WITH-DEBT** — Functionality 95 / Security 98 / Craft 90 / Consistency 90 (harmonic ≈ 93.1); 0 blocking.
+- Auditor-run: `go test -count=1 ./internal/settings/... ./internal/web/...` -> `ok .../settings 0.827s`, `ok .../web 25.927s`; `go test -count=1 -run 'Effort|Golden|TUI|Schema|Bridge|English|Leak' ./internal/cli -v` -> `ok .../internal/cli 2.941s` (TestEffortEmptyLabelLocalized, TestEffortEmptyLabelCarriesRuntimeDefaultFact, TestProfileWizardGolden_NoEnglishLeak, TestTUIEmptyLabelsSchemaSourced PASS); gofmt/vet clean; en label byte-identical; bridge key `opt.runtime_default` used only by effort_level.
+- Debt:
+  - D1 [Medium, pre-existing, out of scope] `(project default)` empty label still English on ko/ja/zh wizard (model, development_mode).
+  - D2 [Medium, pre-existing, out of scope] model_policy wizard labels English on all locales; `NoEnglishLeak` only checks strings differing from en, so locale-invariant English is structurally invisible.
+  - D3 [Low] `internal/web/console_ux_fix_test.go:252` hard-coded `Opus 5\.5` + comment :233 — **fixed in-card** (see below).
+  - D4 [Low] guards use `strings.Contains`; a model rename to a prefix of the old name (e.g. "Opus 5") would pass on stale strings.
+  - D5 [Info] same fact outside the guard: `.claude/rules/moai/development/model-policy.md:19` (+ template mirror), `docs-site/content/{en,ko,ja,zh}/multi-llm/model-policy.md`, `README{,.ko,.ja,.zh}.md:246`.
+
+## D3 fix (lane)
+
+- `internal/web/console_ux_fix_test.go`: regex now uses `regexp.QuoteMeta(settings.RuntimeDefaultEffortModel)`; comment points at the constant.
+- `gofmt -l internal/web/` -> empty; `go vet ./internal/web/` -> exit 0; `go test -count=1 -run TestEffortOptRecommendationLabels -v ./internal/web/` -> `--- PASS` / `ok .../internal/web 0.707s`; `golangci-lint run ./internal/web/...` -> `0 issues.`
