@@ -631,6 +631,11 @@ ok 59.694s, --- PASS 23건, FAIL/SKIP 0
 - REQ-DHR-013은 enforced 근거로 documented를 허용한다. 리드 지시문의 변이 (ii)는 "documented/unmeasured 근거의 enforced"를 거부 대상으로 적었지만, 이 구현은 SPEC을 따라 unmeasured만 거부하고 documented는 생성기가 실제로 쓰는 필드일 때만 허용한다. 현재 계약에 documented enforced 행은 없다.
 - AC 판정 증거 파일 세 개는 HEAD `8d1480148`에서 다시 만든 것이다. 변이·게이트 증거는 같은 내용의 커밋 전 작업 트리에서 쟀다(커밋 직후 `git status --short` 0줄).
 
+리드 요청 기록(M6 이후 추가):
+
+- **(a) embed-check 재현.** M6 이전 커밋 `0a635a852`를 `git archive`로 scratch에 풀어 `go build`한 바이너리(87,396,386 bytes)로 HEAD `9555d3fad`에서 `make embed-check BIN=<scratch>/moai-pre-m6`를 실행 → exit 2, `compared 0/12 artifacts — moai-pre-m6 carries no embedded counterpart for: <12개 TOML 전부>`. M6 실행과 같은 모양이므로 M6가 만든 결함이 아니라 이전부터 있던 결함이다. 가설(미측정): `doctor_agentemit_embed.go:346`이 `moai init --non-interactive`로 추출하는데 그 기본 프로필이 `.codex`를 배포하지 않는다. Repair moved to card t1134 (lead-issued; cause hypothesis recorded as unmeasured).
+- **(b) enforced 근거 해석.** 레인 배차문은 documented 또는 unmeasured 근거의 enforced 매핑을 거부하라고 적었지만, REQ-DHR-013이 documented를 허용하므로 구현은 unmeasured만 거부한다(리드가 SPEC 우선을 확인). 현재 계약의 documented-enforced 행은 0개다.
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 _<pending run-phase>_
