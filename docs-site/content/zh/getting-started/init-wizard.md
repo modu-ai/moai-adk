@@ -91,16 +91,16 @@ moai init my-project
 
 ```bash
 ? 选择性能层级:
-▸ Medium - Opus 5.5 (high~low) + Sonnet (low, single-shot rows only)
-  High - Opus 5.5 (max~medium) + Sonnet (low, single-shot rows only)
-  Low - Opus 5.5 (medium~low) + Sonnet (low, docs/e2e/single-shot rows)
+  Max - Opus 5.5 (high~medium) + Sonnet (low, 文档/一次性任务) — Max $200 套餐
+▸ Medium (推荐) - Opus 5.5 (high~low) + Sonnet (low, 文档/一次性任务) — Max $100 套餐
+  Low - Opus 5.5 (high~low) + Sonnet (low, 文档/E2E/一次性任务) — Plus $20 套餐
 ```
 
 | 层级 | 特点 |
 |------|------|
-| **High** | 最高质量 —— 对调用频率最低的两个代理使用 `max` 推理深度 |
-| **Medium**（默认） | 质量与成本的平衡 —— 成本/分数曲线的膝点 |
-| **Low** | 每任务最低成本 —— 智能体类代理降至 Opus `low` effort |
+| **Max** | 质量优先 —— 审计、顾问、协调类代理保持 `high` |
+| **Medium**（默认，推荐） | 质量与成本的平衡 —— 成本/分数曲线的膝点 |
+| **Low** | 每任务最低成本 —— 大多数智能体类代理降至 Opus `medium` |
 
 该设置保存到 `.moai/config/sections/llm.yaml` 的 `performance_tier` 字段，并作为 `profile` 字段(配置矩阵列)的 legacy 别名读取。用 `--profile high|medium|low` 标志直接指定则保存到 `profile` 字段。每个配置文件的代理 model+effort 映射请参阅[配置矩阵](/zh/advanced/profile-matrix/)页面。
 

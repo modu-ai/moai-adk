@@ -66,5 +66,15 @@ ko 에만 있는 적중 파일 6개(claude-code/_index, context-window, features
 
 ## 6. 잔여 위험 · 리드 판단 요청
 1. **범위 밖 드리프트 발견**: model-policy 라인업 표의 Fable 행(`Fable 5`, 256K)과 Sonnet 5 컨텍스트(200K)는 공식 문서(Fable 5.1 1M, Sonnet 5 1M)와 다르다. prompt-caching 표도 같은 두 행이 낡았다. 이 카드는 Opus 5.5 만 다뤄 손대지 않았다 — 별도 카드 후보.
-2. init-wizard 화면 예시는 이미 코드와 어긋나 있었다(코드: Max/Medium/Low 와 effort 범위가 다름). 모델명만 바꿨다 — 화면 재동기는 별도 카드 후보.
+2. ~~init-wizard 화면 예시 불일치~~ — §7 에서 해소.
+
+## 7. t1089 착지 후 대조 (흡수 `e52ba05e7`)
+
+- 흡수: `176d8b658` → 흡수 커밋 `74e713709` (충돌 0), `e52ba05e7` → 충돌 0 (README 4종 자동 병합, 귀속 문장 각 1개 유지)
+- t1089 최종 동작과 문서 대조:
+  - 위저드 세션 effort `medium - 균형 (권장)` (`internal/cli/profile_setup_translations.go:272`), 웹 `f.effort_level.opt.medium` = `중간 (권장)` (`internal/web/assets/i18n.js:1357`) → model-policy 「위저드·웹 콘솔이 `medium` 권장」 문장과 일치
+  - `max` 는 settings `effortLevel` 이 아닌 `--effort max` 실행 인자로 전달 (`internal/cli/launch_effort_settings.go`) → docs-site·README 어디에도 `effortLevel`/`--effort` 서술 없음 (`grep -rnE "effortLevel|--effort|CLAUDE_CODE_EFFORT_LEVEL"` 0건), 모순 없음
+  - 위저드 성능 티어 라벨 (`internal/cli/wizard/questions.go:121-123`, `translations.go:93-95/183-185/273-275`) 과 init-wizard 화면 예시가 달랐음 → 4 로케일 화면 3줄을 각 로케일 코드 문구로 교체(Max / Medium 권장 / Low, 범위·플랜 포함)
+  - 표의 「두 에이전트에 `max`」는 `profile_matrix.go:291` 「`max` is absent from every cell」과 모순, 「Low 는 Opus `low`」는 같은 주석(대부분 `medium`)과 모순 → Max/Low 행을 코드 기준으로 수정, Medium 에 권장 표기
+- 흡수 + 수정 후 `hugo --minify --quiet` exit 0, warn/error 0
 3. 날짜 스냅샷 라인업(8월 기준)은 참이지만 독자가 「최신」으로 읽을 수 있다. 갱신 여부는 Fable 5.1 반영과 함께 결정하는 편이 맞다.
