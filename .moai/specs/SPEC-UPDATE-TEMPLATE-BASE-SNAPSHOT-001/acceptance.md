@@ -20,7 +20,7 @@ The mandatory falsifiability AC (AC-TBS-010) mirrors the prior SPEC's AC-UYP-022
 | REQ-TBS-008 (MergeYAML3Way signature unchanged) | AC-TBS-008 |
 | REQ-TBS-009 (2-way fallback remains available) | AC-TBS-009 |
 | REQ-TBS-010 (template-blessed key adopted, not misread) | AC-TBS-010 (falsifiability), AC-TBS-011, AC-TBS-026 |
-| REQ-TBS-011 (user-customized key preserved) | AC-TBS-012, AC-TBS-024, AC-TBS-025 |
+| REQ-TBS-011 (user-customized key preserved) | AC-TBS-012, AC-TBS-024, AC-TBS-025, AC-TBS-027 |
 | REQ-TBS-012 (quality.yaml real-3-way correctness) | AC-TBS-013 |
 | REQ-TBS-013 (first-update-after-feature completes cleanly + writes snapshot) | AC-TBS-014 |
 | REQ-TBS-014 (snapshot write best-effort non-blocking) | AC-TBS-015 |
@@ -30,7 +30,7 @@ Cross-cutting ACs: AC-TBS-017 (cross-platform build), AC-TBS-018 (subagent bound
 
 ## §C Severity Model
 
-- **MUST-PASS**: AC-TBS-001, 002, 003, 004, 005, 006a, 007, 008, 009, 010 (falsifiability — itself a MUST-PASS), 011, 013, 014, 015, 016, 022, 023, 024, 025, 026 (023-026 added 2026-09-24, card t1139).
+- **MUST-PASS**: AC-TBS-001, 002, 003, 004, 005, 006a, 007, 008, 009, 010 (falsifiability — itself a MUST-PASS), 011, 013, 014, 015, 016, 022, 023, 024, 025, 026, 027 (023-027 added 2026-09-24, card t1139).
 - **SHOULD-PASS**: AC-TBS-006b, 012, 017, 018, 019, 020, 021.
 
 ## §D Acceptance Criteria Matrix (Given-When-Then)
@@ -41,10 +41,13 @@ Cross-cutting ACs: AC-TBS-017 (cross-platform build), AC-TBS-018 (subagent bound
 **When** `moai init` completes successfully (templates deployed; since the 2026-09-24 amendment the write fires right after the deploy, before the wizard section patches — the render-not-user-value property is AC-TBS-023)
 **Then** `.moai/cache/template-snapshot/sections/` exists and contains one file per `.yaml`/`.yml` in `.moai/config/sections/`.
 
-**Verification command**:
+**Verification command** (package path corrected 2026-09-24, card t1139: `TestInit_WritesSnapshot` lives in `internal/cli/update_snapshot_hook_test.go`, so the former `./internal/cli/update/backup/` selector swept zero tests):
 ```bash
-go test ./internal/cli/update/backup/ -run TestInit_WritesSnapshot -count=1 -v
-grep -q '^--- PASS: TestInit_WritesSnapshot' <(go test ./internal/cli/update/backup/ -run TestInit_WritesSnapshot -count=1 -v 2>&1)
+go test ./internal/cli/ -run '^TestInit_WritesSnapshot$' -count=1 -v
+grep -q '^--- PASS: TestInit_WritesSnapshot' <(go test ./internal/cli/ -run '^TestInit_WritesSnapshot$' -count=1 -v 2>&1)
+# Hook ordering (the write fires right after the deploy, before the wizard section patches):
+go test ./internal/core/project/ -run 'TestInit_AfterTemplateDeploy' -count=1 -v
+# Expected: exit 0; three '--- PASS:' lines (RunsBeforeSectionWrites, SkippedOnFallback, SkippedOnDeployFailure)
 ```
 
 ### AC-TBS-002 — Snapshot written right after every `moai update` template deploy, and not by `runUpdateRestore` (AMENDED 2026-09-24, card t1139)
@@ -59,10 +62,22 @@ grep -q '^--- PASS: TestInit_WritesSnapshot' <(go test ./internal/cli/update/bac
 **When** `runUpdateRestore` (the lockout-escape path) restores that backup
 **Then** the restored user value is present in the live `.moai/config/sections/` file (positive control) AND the snapshot file is byte-identical to its pre-restore content.
 
-**Verification command**:
+**Verification command** (re-pointed 2026-09-24, card t1139, after the sync-audit found the helper-level tests do not exercise the call sites — a mutation reverting the clean-install fix passed all 59 related tests):
+
+Primary — discriminating end-to-end tests that drive the real call sites:
 ```bash
-go test ./internal/cli/ -run 'TestUpdateRestore_WritesSnapshot_TemplateSync|TestUpdateRestore_WritesSnapshot_CleanInstall|TestRunUpdateRestore_LeavesSnapshotUntouched' -count=1 -v
+go test ./internal/cli/ -run '^(TestUpdateForce_SnapshotIsTheDeployedRender|TestCleanReinstall_SnapshotIsTheDeployedRenderAndIdentitySurvives|TestRunUpdateRestore_LeavesSnapshotUntouched)$' -count=1 -v
 # Expected: exit 0; output contains all three '--- PASS:' lines
+#   TestUpdateForce_SnapshotIsTheDeployedRender                       — template-sync site
+#   TestCleanReinstall_SnapshotIsTheDeployedRenderAndIdentitySurvives — clean-install site (runs the real runCleanReinstall;
+#                                                                        mutation-probed: reverting either half of the fix fails it)
+#   TestRunUpdateRestore_LeavesSnapshotUntouched                      — restore site (no write)
+```
+
+Secondary — helper-level tests (they call the snapshot helper directly and do NOT reach the call sites; they are not evidence that either update site writes at the right point):
+```bash
+go test ./internal/cli/ -run '^(TestUpdateRestore_WritesSnapshot_TemplateSync|TestUpdateRestore_WritesSnapshot_CleanInstall)$' -count=1 -v
+# Expected: exit 0; output contains both '--- PASS:' lines
 ```
 
 ### AC-TBS-023 — Snapshot equals the deployed render, not the user's value (REQ-TBS-001, REQ-TBS-002; added 2026-09-24, card t1139)
@@ -111,6 +126,19 @@ go test ./internal/cli/ -run 'TestUpdateForce_UserCustomizationSurvivesTwoUpdate
 ```bash
 go test ./internal/cli/ -run 'TestUpdateForce_TemplateChangedKeyStillPropagates' -count=1 -v
 # Expected: exit 0; output contains '--- PASS: TestUpdateForce_TemplateChangedKeyStillPropagates'
+```
+
+### AC-TBS-027 — Identity names the render cannot carry verbatim survive updates (REQ-TBS-011; added 2026-09-24, card t1139)
+
+**Given** the identity loaders `config.LoadProjectName` / `config.LoadUserName` that feed the update render context
+**When** the stored `project.name` or `user.name` contains a value the template render cannot carry verbatim — a `$`, `{{`, or `}}` (the renderer's unexpanded-token check), a `"` or `\` (the double-quoted YAML scalar), a non-graphic rune, or invalid UTF-8
+**Then** the loader returns `""` for that value (the render carries an empty name), every name the loader DOES accept renders through the real embedded `project.yaml` / `user.yaml` templates without error and parses back byte-identical, AND after a real `moai init` followed by a hand-edit of both names to such values, two consecutive forced updates both succeed, keep both names verbatim, and print no section-merge failure for either file (BASE is the deployed render, so the merge reads the user's value as a customization and keeps it).
+
+**Verification command**:
+```bash
+go test ./internal/config/ -run '^TestLoadIdentity_RejectsValuesTheRenderCannotCarry$' -count=1 -v
+go test ./internal/cli/ -run '^(TestIdentityLoader_AcceptedNamesRenderVerbatim|TestUpdateForce_UnrenderableIdentityNamesSurvive)$' -count=1 -v
+# Expected: both exit 0; output contains the three '--- PASS:' lines
 ```
 
 ### AC-TBS-003 — Snapshot carries rendered values, not placeholders
@@ -310,10 +338,10 @@ grep -q '^--- PASS: TestMerge_QualityYaml_Real3Way_WithSnapshot' <(go test ./int
 **When** `moai update` runs end-to-end
 **Then** (a) the update completes with exit code 0 (no breakage) AND (b) `.moai/cache/template-snapshot/sections/` exists after the update.
 
-**Verification command**:
+**Verification command** (package path corrected 2026-09-24, card t1139: the test lives in `internal/cli/update_snapshot_hook_test.go`, so the former `./internal/cli/update/backup/` selector swept zero tests):
 ```bash
-go test ./internal/cli/update/backup/ -run TestFirstUpdate_NoSnapshot_CompletesAndWritesSnapshot -count=1 -v
-grep -q '^--- PASS: TestFirstUpdate_NoSnapshot_CompletesAndWritesSnapshot' <(go test ./internal/cli/update/backup/ -run TestFirstUpdate_NoSnapshot_CompletesAndWritesSnapshot -count=1 -v 2>&1)
+go test ./internal/cli/ -run '^TestFirstUpdate_NoSnapshot_CompletesAndWritesSnapshot$' -count=1 -v
+grep -q '^--- PASS: TestFirstUpdate_NoSnapshot_CompletesAndWritesSnapshot' <(go test ./internal/cli/ -run '^TestFirstUpdate_NoSnapshot_CompletesAndWritesSnapshot$' -count=1 -v 2>&1)
 ```
 
 ### AC-TBS-015 — Snapshot write best-effort non-blocking (REQ-TBS-014)
@@ -322,12 +350,12 @@ grep -q '^--- PASS: TestFirstUpdate_NoSnapshot_CompletesAndWritesSnapshot' <(go 
 **When** `WriteSnapshot(projectRoot)` is called from within `moai init` / `moai update`
 **Then** `WriteSnapshot` returns a non-nil error BUT the enclosing `moai init` / `moai update` still returns nil (the snapshot failure does not propagate).
 
-**Verification command**:
+**Verification command** (package path corrected 2026-09-24, card t1139: both tests live in `internal/cli/update_snapshot_hook_test.go`; in `./internal/cli/update/backup/` the selector swept zero tests, the only near match there being the differently-named helper test `TestWriteSnapshot_FailureDoesNotBlock`):
 ```bash
-go test ./internal/cli/update/backup/ -run TestWriteSnapshot_FailureDoesNotBlockInit -count=1 -v
-go test ./internal/cli/update/backup/ -run TestWriteSnapshot_FailureDoesNotBlockUpdate -count=1 -v
-grep -q '^--- PASS: TestWriteSnapshot_FailureDoesNotBlockInit' <(go test ./internal/cli/update/backup/ -run TestWriteSnapshot_FailureDoesNotBlockInit -count=1 -v 2>&1)
-grep -q '^--- PASS: TestWriteSnapshot_FailureDoesNotBlockUpdate' <(go test ./internal/cli/update/backup/ -run TestWriteSnapshot_FailureDoesNotBlockUpdate -count=1 -v 2>&1)
+go test ./internal/cli/ -run '^TestWriteSnapshot_FailureDoesNotBlockInit$' -count=1 -v
+go test ./internal/cli/ -run '^TestWriteSnapshot_FailureDoesNotBlockUpdate$' -count=1 -v
+grep -q '^--- PASS: TestWriteSnapshot_FailureDoesNotBlockInit' <(go test ./internal/cli/ -run '^TestWriteSnapshot_FailureDoesNotBlockInit$' -count=1 -v 2>&1)
+grep -q '^--- PASS: TestWriteSnapshot_FailureDoesNotBlockUpdate' <(go test ./internal/cli/ -run '^TestWriteSnapshot_FailureDoesNotBlockUpdate$' -count=1 -v 2>&1)
 ```
 
 ### AC-TBS-016 — Snapshot scope limited to `.moai/config/sections/` (REQ-TBS-015)
