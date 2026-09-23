@@ -482,13 +482,14 @@ SWAP_ARM_AND_CLICK_JS = """(function(){
   var m={token:token, ev:[]};
   m.settled=new Promise(function(res){
     document.addEventListener('htmx:afterSwap', function(){m.ev.push('htmx:afterSwap');});
-    document.addEventListener('htmx:afterSettle', function(){m.ev.push('htmx:afterSettle');res(true);});
+    document.addEventListener('htmx:afterSettle', function(){m.ev.push('htmx:afterSettle');if(m.tSettle==null){m.tSettle=performance.now();}res(true);});
   });
   window.__fireSwap=m;
   var old=document.querySelector('[data-pop="profile"]');
   if(old){old.setAttribute('data-fire-old-trigger', token);}
   var b=a.closest('[hx-boost]');
   var boosted=!!b && b.getAttribute('hx-boost')==='true';
+  m.t0=performance.now();
   a.click();
   return {clicked:true, boost_ancestor:boosted};
 })()"""
@@ -510,9 +511,31 @@ SWAP_PREMISE_JS = """(function(){
   return {
     b_same_document: same,
     c_swap_events: same && m.ev.indexOf('htmx:afterSwap')>=0 && m.ev.indexOf('htmx:afterSettle')>=0,
-    d_swap_inserted_trigger: !!t && t.getAttribute('data-fire-old-trigger')!==token
+    d_swap_inserted_trigger: !!t && t.getAttribute('data-fire-old-trigger')!==token,
+    settle_ms: (same && m.tSettle!=null) ? (m.tSettle - m.t0) : null
   };
 })()"""
+
+# The four REQ-AFG-016 premise legs, in report order. A leg missing from the
+# observation counts as false: a report that never measured a leg cannot pass it.
+PREMISE_LEGS = ("a_boost_ancestor", "b_same_document", "c_swap_events", "d_swap_inserted_trigger")
+
+
+def premise_false_legs(premise):
+    """Names of the premise legs that are not true, in PREMISE_LEGS order."""
+    premise = premise or {}
+    return [leg for leg in PREMISE_LEGS if premise.get(leg) is not True]
+
+
+def post_swap_fired(rep):
+    """The post-swap indicator counts as fired only on a swap that was a swap
+    and whose afterSettle was observed (REQ-AFG-016): a flip after a full
+    navigation or an expired wait measures a race, not re-wiring."""
+    return (
+        rep.get("p6_panel_flip_observed") is True
+        and rep.get("p5_settle_wait") == "observed"
+        and not rep.get("p5_swap_premise_false_legs")
+    )
 
 
 async def wait_after_settle(cdp):
@@ -633,6 +656,15 @@ async def run_scenario(cdp, base):
     # order - an observed property, not a contract; plan.md §F).
     token = os.urandom(8).hex()
     swap = ENTRY_BY_ID["swap_boosted_tab"]
+    # --settle-delay-ms (AC-AFG-014 measurement step 2): widen the gap between
+    # the body swap and htmx:afterSettle. The value is read back from the page
+    # and reported, so the report says what was applied, not what was asked.
+    if opts.settle_delay_ms is not None:
+        rep["p5_settle_delay_ms"] = await ev(
+            cdp,
+            "(function(){if(!window.htmx){return null;}htmx.config.defaultSettleDelay=%d;"
+            "return htmx.config.defaultSettleDelay})()" % opts.settle_delay_ms,
+        )
     clicked = await ev(cdp, SWAP_ARM_AND_CLICK_JS % (json.dumps(token), json.dumps(swap["selector"])))
     clicked = clicked or {}
     rep["p5_swap_clicked"] = clicked.get("clicked") is True
@@ -659,21 +691,17 @@ async def run_scenario(cdp, base):
         "c_swap_events": legs.get("c_swap_events") is True,
         "d_swap_inserted_trigger": legs.get("d_swap_inserted_trigger") is True,
     }
-    rep["p5_swap_premise_false_legs"] = [k for k, v in rep["p5_swap_premise"].items() if v is not True]
+    rep["p5_swap_premise_false_legs"] = premise_false_legs(rep["p5_swap_premise"])
+    # click -> htmx:afterSettle, in page time (null when the event was never
+    # recorded in this document).
+    rep["p5_settle_elapsed_ms"] = legs.get("settle_ms")
     rep["p6_panel_hidden_before"] = await ev(cdp, "(document.querySelector('%s')||{}).hidden" % panel_sel)
     await ev(cdp, "document.querySelector('[data-pop=\"profile\"]').click()")
     rep["p6_panel_hidden_after"] = await poll(cdp, "(document.querySelector('%s')||{}).hidden" % panel_sel, False)
     rep["p6_panel_flip_observed"] = (
         rep["p6_panel_hidden_before"] is True and rep["p6_panel_hidden_after"] is False
     )
-    # The post-swap indicator counts as fired only on a swap that was a swap
-    # and whose afterSettle was observed (REQ-AFG-016): a flip after a full
-    # navigation or an expired wait measures a race, not re-wiring.
-    rep["p6_popover_after_swap_fired"] = (
-        rep["p6_panel_flip_observed"]
-        and rep["p5_settle_wait"] == "observed"
-        and not rep["p5_swap_premise_false_legs"]
-    )
+    rep["p6_popover_after_swap_fired"] = post_swap_fired(rep)
     cdp.take_errors()
 
     # Phase 7 — fresh load of /specs, then copy_button label flash.
@@ -975,6 +1003,34 @@ def judge(rep, driven_ids):
     return failures
 
 
+def judge_report_file(path):
+    """--judge-report: judge a recorded (or synthetic) report offline.
+
+    The derived swap fields are recomputed from the raw observations with the
+    helpers run_scenario uses, so what is exercised is the live rule and not a
+    copy of it. The driven set is the report's own when it carries one, and
+    the real-root family otherwise. Exit 2 when the file cannot be read.
+    """
+    try:
+        with open(path, encoding="utf-8") as fh:
+            rep = json.load(fh)
+    except (OSError, ValueError) as exc:
+        print(json.dumps({"error": "cannot read report %s: %s" % (path, exc)}))
+        return 2
+    if not isinstance(rep, dict):
+        print(json.dumps({"error": "report %s is not a JSON object" % path}))
+        return 2
+    rep["p5_swap_premise_false_legs"] = premise_false_legs(rep.get("p5_swap_premise"))
+    rep["p6_popover_after_swap_fired"] = post_swap_fired(rep)
+    driven = rep.get("driven_entries")
+    if not isinstance(driven, list):
+        driven = [e["id"] for e in ENTRIES if e.get("requires_sandbox_serving") is not True]
+    failures = judge(rep, set(driven))
+    rep["exit"] = 0 if not failures else 1
+    print(json.dumps(rep, ensure_ascii=False, indent=2))
+    return rep["exit"]
+
+
 async def main_async(args):
     port = args[0]
     label = args[1]
@@ -1037,11 +1093,15 @@ async def main_async(args):
         return 2
 
     # Machine-fault preflight: the servers must answer before Chrome is engaged.
+    # It asks for /settings - the page both scenarios load first - rather than
+    # "/": the overview aggregates the whole served tree, and on the real repo
+    # root under machine load it measured 1.5-3.8 s against this 5 s bound
+    # (card t1108), turning a liveness check into a machine-load check.
     for name, url in (("primary", base), ("sandbox", sandbox_base if driven_marked else None)):
         if not url:
             continue
         try:
-            urllib.request.urlopen(url + "/", timeout=5).read(1024)
+            urllib.request.urlopen(url + "/settings", timeout=5).read(1024)
         except Exception as exc:
             print(json.dumps({"label": label, "error": "%s server unreachable: %s" % (name, exc)}))
             return 2
@@ -1058,6 +1118,12 @@ async def main_async(args):
             await cdp.send("Runtime.enable")
             await cdp.send("Log.enable")
             await cdp.send("Page.enable")
+            # --cpu-throttle (AC-AFG-014): tab-scoped CPU throttling. It lives
+            # and dies with this tab - closing the tab in the finally below is
+            # the whole cleanup, there is no process to reap.
+            if opts.cpu_throttle is not None:
+                await cdp.send("Emulation.setCPUThrottlingRate", {"rate": opts.cpu_throttle})
+                rep["cpu_throttle_rate"] = opts.cpu_throttle
             if [e for e in driven if e.get("requires_sandbox_serving") is not True]:
                 rep.update(await run_scenario(cdp, base))
             for entry in driven_marked:
@@ -1122,8 +1188,32 @@ def main():
         help="mutation probe: JSON object appended to the judged entry set for --lint-manifest only "
         "(the committed manifest is never modified) - lets the reverse direction of the rule be observed",
     )
+    p.add_option(
+        "--cpu-throttle",
+        type="float",
+        default=None,
+        help="tab-scoped CPU throttling rate applied through Emulation.setCPUThrottlingRate for the "
+        "whole run (AC-AFG-014); it ends when the probe closes its tab",
+    )
+    p.add_option(
+        "--settle-delay-ms",
+        type="int",
+        default=None,
+        help="set htmx.config.defaultSettleDelay on /settings before the swap click, widening the gap "
+        "between the body swap and htmx:afterSettle (AC-AFG-014 measurement step 2); the applied "
+        "value is read back and reported",
+    )
+    p.add_option(
+        "--judge-report",
+        default=None,
+        help="offline: read a report JSON file, re-derive the swap premise from its raw observations "
+        "with the same rules the live run uses, judge it, print it and exit 0/1 - so the premise "
+        "rule can be observed leg by leg without a browser (AC-AFG-015 (v))",
+    )
     global opts
     (opts, args) = p.parse_args()
+    if opts.judge_report:
+        return judge_report_file(opts.judge_report)
     if opts.lint_manifest:
         extra = None
         if opts.extra_entry:

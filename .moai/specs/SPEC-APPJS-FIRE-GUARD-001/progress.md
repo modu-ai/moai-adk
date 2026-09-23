@@ -436,6 +436,68 @@ job 설계 비고: `test-browser` 는 EOF 에 덧붙는 유일한 판정면이�
 
 **M9 로 넘기는 것:** 스로틀 12배 반복·M1/M2 돌연변이(AC-AFG-014), 다리별 역방향 고정물 네 판·합성 보고서(AC-AFG-015), 드라이버 (c) 단언의 다리 결속(AC-AFG-001 (c)). M8-6·M8-7 은 적색 방향이 exit 2 로 새지 않는지만 본 선행 스모크이며 AC 판정 근거가 아니다.
 
+### M9 — 드라이버: 스로틀 반복 + 돌연변이 판 + 자기확인 양방향 (card t1108, base `d102a9b2d` 위 M9 커밋)
+
+같은 worktree·branch 에서 2026-09-23 에 수행했다. `ci.yml` 은 건드리지 않았다(M10 몫). 바꾼 파일은 셋이다.
+
+- `internal/web/appjs_fire_swap_test.go`(신설) — `TestAppJsFirePostSwapSettleWait`·`TestAppJsFireSwapPremise`·`TestAppJsFireSwapPremiseLegs`. 고정물은 전부 커밋된 탐침의 일회용 사본이고 `t.TempDir()` 아래에만 쓴다. 사본은 정확한 앵커 치환으로 만들며, 앵커가 0회나 2회 이상이면 실행 전에 실패한다(아무것도 바꾸지 못한 고정물이 결과로 읽히지 않게).
+- `internal/web/appjs_fire_guard_test.go` — 보고서 구조체에 스왑 필드를 더하고, `TestAppJsHandlersFireRuntime` 의 (c) 단언에 네 다리를 묶었다(`fireSwapPremiseProblems`: 다리 부재·거짓·거짓 다리 목록 비어 있지 않음·settle 미관측 중 하나라도 있으면 적색).
+- `internal/web/testdata/appjs_fire_probe.py` — 옵션 셋(`--cpu-throttle`: 탐침 탭에 `Emulation.setCPUThrottlingRate`, 탭을 닫으면 끝난다 / `--settle-delay-ms`: `htmx.config.defaultSettleDelay` 설정 후 값을 페이지에서 되읽어 보고 / `--judge-report <file>`: 보고서 JSON 을 읽어 판정만 한다), 클릭→`htmx:afterSettle` 시간(`p5_settle_elapsed_ms`, 페이지 시계), 다리 규칙을 헬퍼 둘(`premise_false_legs`·`post_swap_fired`)로 빼서 라이브 실행과 `--judge-report` 가 **같은 규칙**을 쓰게 했다. `SETTLE_WAIT_BOUND_MS = 8000` 불변, `popover_after_swap` 의 selector-matched-nothing 판정 줄 불변(`git diff -U0` 에 0건).
+- **범위 인접 변경 1건 — 리드 확인 요청.** 기계결함 사전 점검의 요청 경로를 `"/"` → `"/settings"` 로 바꿨다(5초 상한 불변). 근거: 개발 실행 m9-settle-dev1 이 마지막 늦은 리스너 실행에서 `{"error": "primary server unreachable: timed out"}`(exit 2)로 떨어졌다. 같은 트리를 실바이너리로 서빙해 잰 값은 `/` 가 1.54~3.77초, `/settings` 가 0.03~0.08초(각 5회, load average 65)다. `/` 는 서빙 트리 전체를 모으는 개요 화면이라 부하 아래서 생존 확인이 부하 측정으로 변한다. 두 시나리오가 처음 싣는 쪽이 `/settings` 다. 되돌릴 경우 이 변경만 빼면 된다.
+
+**AC-AFG-014 — 측정 순서 1단계(스로틀 12배 단독)로 판정됐다. 증폭은 적용하지 않았다(미적용).** M1·M2 가 각각 10/10 적색이었으므로 2단계로 가지 않았다.
+
+| 판 | 조건 | 발화(exit 0 + 스왑 뒤 발화 + 네 다리 참 + settle 관측) | 적색(exit 1 + 스왑 뒤 비발화) | 그 밖 | 클릭→afterSettle 중앙값 |
+|---|---|---|---|---|---|
+| 정상 | 스로틀 12배, 증폭 없음 | **10/10** | 0/10 | 0 | 511.9 ms (n=10, 474.9~545.0) |
+| M1 경로 폴링 | 같음 | 0/10 | **10/10** | 0 | 기록 없음(이벤트 전에 읽음) |
+| M2 대기 제거 | 같음 | 0/10 | **10/10** | 0 | 기록 없음 |
+
+적색 사유 분포:
+
+| 판 | 사유(보고서 원문, 항목: 사유) | 횟수 |
+|---|---|---|
+| M1 | `popover_after_swap: not judged as fired: swap premise not met (c_swap_events, d_swap_inserted_trigger)` + `swap_boosted_tab: swap premise not met: c_swap_events, d_swap_inserted_trigger` | 10 |
+| M2 | 위와 같음 (c·d 거짓 — 스왑 응답 전에 옛 트리거를 읽음) | 9 |
+| M2 | `popover_after_swap: not judged as fired: swap premise not met (c_swap_events)` + `swap_boosted_tab: swap premise not met: c_swap_events` (d 참 — 바디는 이미 교체됐으나 afterSettle 전) | 1 |
+
+M2 의 c 단독 1회는 대기의 필요성이 「옛 트리거가 살아 있다」만이 아님을 보인다 — 새 트리거가 들어온 뒤에도 settle 전이면 재결합이 아직이다. 두 돌연변이 모두 `indicator did not fire` 경로로는 적색이 나지 않았고, 전부 자기확인 다리로 적색이 났다.
+
+AC-AFG-014 (d) 만료 대기(늦은 리스너 사본, 스로틀 12배): `exit 1`, `mutant_swap_confirmed_by_dom: true`, `p5_settle_wait: "expired"`, `p5_settle_wait_detail: "htmx:afterSettle not observed within 8000 ms"`, `p6_popover_after_swap_fired: false`, 사유 `popover_after_swap: afterSettle wait expired` + `swap_boosted_tab: swap premise not met: c_swap_events`.
+
+**AC-AFG-015** (`TestAppJsFireSwapPremise`, 스로틀 없음):
+
+| 판 | exit | 네 다리 (a/b/c/d) | 거짓 다리 목록 | settle | 스왑 뒤 발화 |
+|---|---|---|---|---|---|
+| (i) 커밋된 탐침 | 0 | 참/참/참/참 | `[]` | observed | true |
+| (ii) `a[href="/todo"]` 사본 | 1 | 거짓/거짓/거짓/참 | `[a_boost_ancestor b_same_document c_swap_events]` | document replaced | false |
+| (iii) 늦은 리스너(DOM 조건으로 스왑 확인 + 2초 고정 대기 뒤 부착) | 1 | 참/참/거짓/참 | `[c_swap_events]` | expired | false |
+| (iv) 옛 트리거 표지를 스왑 뒤 노드에 | 1 | 참/참/참/거짓 | `[d_swap_inserted_trigger]` | observed | false |
+
+(v) `TestAppJsFireSwapPremiseLegs`(무게이트): 전부 참인 대조 보고서 exit 0, 한 다리만 거짓인 합성 보고서 넷은 각각 exit 1 이고 그 다리만 지목한다(하위 테스트 4건 PASS). 규칙 역방향 확인: 스크래치 사본에서 `premise_false_legs` 가 `c_swap_events` 를 무시하게 고친 판은 c 단독 거짓 보고서에 **exit 0** 을 냈다(커밋된 판은 exit 1) — `c_swap_events` 하위 테스트가 그 돌연변이를 적색으로 잡는다.
+
+**AC-AFG-002 0→1→0 재측정(개정 2 매니페스트, 실바이너리 `moai web`, ci.yml 레드 단계와 같은 순서):** `PRE exit=0` → `MUTATED removed@727 inserted@552` (`MUTATE exit=0`) → `POST-MUTATE exit=1` → `RESTORED_BYTE_IDENTICAL (cmp exit 0)` → `POST-RESTORE exit=0`. 적색 보고서의 `stampRefreshed` 등장 4회(레드 단계 grep 은 계속 걸린다). 옛 관측(M3-4)과의 대조:
+
+| 지표 | M3-4 (개정 전, 전체 이동) | M9 (개정 2, 실제 boost 스왑) |
+|---|---|---|
+| 무너진 지표 | `glm_reveal`·`copy_button` | `glm_reveal`·`copy_button` — 같음 |
+| `p6_popover_after_swap_fired` | true | true — 같음 (자기확인 네 다리도 참, settle observed) |
+| ReferenceError 창 | load·swap (M3 기록 원문) | `p1_load` 1건 + `p7_load` 1건, **`p5_swap` 0건** |
+
+무너지는 쪽은 스왑 창이다. 전체 이동이던 개정 전에는 새 문서가 `app.js` 를 다시 실행해 로드 시점 예외가 스왑 창에 찍혔다. 실제 스왑에서는 그 창이 비고, 대신 `/specs` 재로드 창(p7)이 예외를 받는다. plan.md §F 「`p5_swap_referenceerrors` 창의 의미 변화」가 추론으로 적어 둔 것이 관측됐다.
+
+| # | 측정 | 명령 | 관측 결과 | exit |
+|---|---|---|---|---|
+| M9-1 | 게이트 전체 사이클(판정) | `MOAI_BROWSER_GUARD=1 go test ./internal/web/ -run 'AppJs.*Fire' -count=1 -timeout 20m -v` | 11건 전부 `--- PASS`, `--- SKIP` 0건, `ok … 752.411s`. `TestAppJsFirePostSwapSettleWait (516.01s)`, `TestAppJsFireSwapPremise (55.56s)`, `TestAppJsHandlersFireRuntime (24.44s)`. 측정 시점 load average 66 | 0 |
+| M9-2 | 무게이트 무회귀 | `go test ./internal/web/ -run 'AppJs' -count=1` | `ok … 4.683s` | 0 |
+| M9-3 | 정적 검사 | `go vet ./internal/web/` / `golangci-lint run ./internal/web/...` / `ruff check internal/web/testdata/appjs_fire_probe.py` | 출력 없음 / `0 issues.` / `All checks passed!` | 0/0/0 |
+| M9-4 | 매니페스트 자기검증 | `python3 internal/web/testdata/appjs_fire_probe.py --lint-manifest` | `LINT OK: 9 entries + 7 exclusions cover 13 inventory groups; …` | 0 |
+| M9-5 | AC-AFG-002 재측정 | 위 순서(로그 `.moai/reports/t1108/logs/m9-ac002.log`) | 0→1→0, 복원 byte 동일, 종료 뒤 `git status --short` 에 `app.js` 없음 | 0/1/0 |
+
+**M10 에 넘기는 수치:** 게이트 선택 집합의 벽시계는 **752.4초**로 CI 그린 단계의 `-timeout 10m`(600초)을 넘는다. 단 이 값은 load average 66 인 개발 기계의 값이다. 병합 트리에서 `-timeout 10m` 으로 먼저 재는 것은 M10.2 몫이다. 가장 큰 몫은 `TestAppJsFirePostSwapSettleWait`(516초, 탐침 31회)다.
+
+**개발 실행 기록(판정 근거 아님):** m9-settle-dev1 에서 1단계 결과는 같았다(정상 10/10, 중앙값 402.2 ms / M1·M2 각 10/10 적색, 사유 전부 c·d). 이 실행은 (d) 늦은 리스너 실행이 사전 점검 시간 초과(exit 2)로 FAIL 했고, 위 사전 점검 변경의 근거가 됐다. m9-premise-dev1 은 AC-AFG-015 네 판을 M9-1 과 같은 결과로 통과했다.
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 run_complete_at: 2026-09-22
