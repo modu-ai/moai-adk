@@ -256,7 +256,7 @@ The sync-audit returned **FAIL** (`.moai/reports/t1089/sync-audit.md`; that dire
 
 #### E.4.5.2 AC tally, corrections, and status
 
-The SPEC now has 18 ACs: the 16 original ones plus AC-OP55-007a and 007b from the amendment.
+The SPEC has 16 ACs, AC-OP55-001 to 016, counted the way spec.md and acceptance.md §4 DoD count them. The amendment added AC-OP55-007a and 007b as sub-criteria of AC-OP55-007, in the same way 006a–e sit under 006 and 009a–c sit under 009. Every sub-criterion is listed individually below.
 
 - **AC-OP55-001–011 and 013–016: PASS.** The evidence is in E.2.2. E.2.7 re-ran the probes on the repair tree: P4 v2 printed nothing, P5 and P6 printed nothing, P7 printed `2`, and the 6 SAME pairs gave `cmp` rc=0. `make build` returned rc=0.
 - **AC-OP55-007a: PASS.** `run-f1-green.log` contains all three named tests passing in a run that ends `ok`.
@@ -272,7 +272,7 @@ The SPEC now has 18 ACs: the 16 original ones plus AC-OP55-007a and 007b from th
     - The control, `git diff --name-only eb629efb5 0512e6e5f | wc -l`, printed 3, all non-Go files.
   - **Full `internal/cli` on the repair tree: unmeasured.** The repair `6e49cfd0e` changed Go code, so the K4-tree pass does not carry over. The repair tree's full run ended `panic: test timed out after 25m0s` / `FAIL … 1501.160s` at load 28–41 (`run-repair-cli-full.log`). I record this as a Gap. It is neither a pass nor a demonstrated code failure.
 - **F6 correction: `TestCC_FactoryEntryThroughRunCC/-f_lane-2`.** E.2.6 and E.4.1 attributed this failure to lane env leakage, which was wrong.
-  - The failure is an ordering flake that originates in `internal/factorymsg` and is unrelated to this card.
+  - The cause is a Unix-second run-id collision, unrelated to this card. That wording follows the subject of the t1103 merge commit: "isolate the cc -f lane-2 subtest from Unix-second run-id collisions".
   - develop already fixed it in t1103 (`14289b640`).
   - It still needs confirming with a targeted re-run after the develop absorb in the merge window.
   - `TestCodexSpawn_RealAssemblyThroughStubTmux` stays attributed as env-leak-only (E.2.6).
@@ -309,14 +309,67 @@ The SPEC now has 18 ACs: the 16 original ones plus AC-OP55-007a and 007b from th
 
 ```yaml
 sync_complete_at: 2026-09-23
-sync_commit_sha: 6f15f3b73
-sync_status: implemented-with-gap   # full internal/cli unmeasured on repair tree 6e49cfd0e
+reclose_sync_commit: 6f15f3b73   # renamed from sync_commit_sha so the live slot is E.4.6's alone
+sync_status: implemented-with-gap   # superseded by E.4.6
 prior_close: d0037fba8 completed -> sync-audit FAIL -> amendment 5abca9135 -> untrack 7f183119f -> repair 6e49cfd0e
-ac_total: 18
-ac_pass_count: 17
-ac_gap: [AC-OP55-012]   # full internal/cli timed out at load 28-41; not a demonstrated code failure
+ac_total: 16   # 001-016; 006a-e, 007a/b, 009a-c are sub-criteria
+ac_pass_count: 15
+ac_gap: [AC-OP55-012]   # full internal/cli timed out at load 28-41; closed on the merge tree in E.4.6
 frontmatter_status_transitions:
   spec_md: in-progress -> implemented   # completed withheld per acceptance.md §4 DoD
+changelog_entry_position: none   # REQ-OP55-015 / AC-OP55-014
+docs_surfaces_touched: none   # README/docs-site -> card t1094
+push: not-run   # lead batch-pushes develop
+```
+
+### E.4.6 Merge-tree close (HEAD `9b2e6fc09`)
+
+HEAD `9b2e6fc09` is the merge of local develop `fa2a302c6` into `WT-opus-55-default`. The merge was clean, with no conflicts. Sync re-audit iter-2 returned **PASS-WITH-DEBT 88.3**, bound to `b9535ed06` (`.moai/reports/t1089/sync-audit-iter2.md`, local and untracked). The orchestrator measured the evidence below on the merge tree. manager-docs read the decisive lines back from the logs under `.moai/reports/t1089/`, which are also untracked.
+
+#### E.4.6.1 Evidence
+
+| Check | Command | Decisive output | Log |
+|---|---|---|---|
+| AC-OP55-012, full `internal/cli` | `unset <lane MOAI_* vars> && go test -count=1 -timeout 30m ./internal/cli/`, run under slot `go-test-cli` (held, then released) | `ok  	github.com/modu-ai/moai-adk/internal/cli	1092.260s`, `exit=0`; `grep -c -- '--- FAIL'` printed `0` | `merge-cli-full.log` |
+| `internal/template` | `go test -count=1 ./internal/template/` | `ok  	github.com/modu-ai/moai-adk/internal/template	66.259s` | `merge-template.log` |
+| Build | `go build ./...` | exit 0 | orchestrator |
+| SPEC lint (rules added by the absorb included) | `moai spec lint SPEC-MODEL-OPUS55-001` | `✓ No findings` | orchestrator |
+| F6, targeted | `go test -run TestCC_FactoryEntryThroughRunCC -v ./internal/cli/` | `--- PASS: TestCC_FactoryEntryThroughRunCC (2.54s)`, `ok` | `merge-f6-targeted.log` |
+
+**F6 caveat.** The absorbed develop renamed the flaky subtest. `-f_lane-2` no longer exists: `grep -c 'f_lane-2' merge-f6-targeted.log` printed `0`, so the original subtest cannot be re-run by name. Its successor passes: `--- PASS: TestCC_FactoryEntryThroughRunCC/-f_worker-2_desugars_into_the_lane_branch`. The cause is Unix-second run-id collisions, fixed by t1103 (`14289b640`).
+
+#### E.4.6.2 AC tally and status
+
+- The SPEC has 16 ACs (AC-OP55-001–016), counted as spec.md and acceptance.md §4 DoD count them. 006a–e, 007a/b and 009a–c are sub-criteria.
+- **All 16 are PASS.** AC-001 to 011 (including 007a/007b) and AC-013 to 016 have their evidence in E.2.2, E.2.7 and E.4.5.2.
+- **AC-OP55-012's gap is closed on the merge tree.** Every package it names now reads `ok`:
+  - cli: `ok 1092.260s` on `9b2e6fc09`.
+  - template: `ok 66.259s` on `9b2e6fc09`.
+  - web, wizard, settings and constitution: `ok` in `remeasure-ac012-web.log`, `run-ac012-pkgs.log` and `run-repair-template.log`. Neither the repair nor this card's merge changed those packages.
+- The AC-009a/b/c mutant evidence is present (`run-ac009-mutants.log`).
+- The follow-up docs card is t1094.
+- **Status: `implemented → completed`.** Every AC is green with evidence, which satisfies acceptance.md §4 DoD. `updated:` was already `2026-09-23`.
+
+#### E.4.6.3 Residual risk (additions to E.4.5.3, which still stands)
+
+- **N1 (Low).** An option value that begins with `--effort` is misread as the operator's effort flag, so profile effort injection is suppressed when it should not be. The lead will card this together with F4.
+- **N3.** plan.md:194 still reads "RED until it lands", which is now stale. The plan.md body belongs to manager-spec, so manager-docs has not edited it. It is recorded here as a known stale phrase.
+- **F6.** The original `-f_lane-2` subtest cannot be re-run by name (see E.4.6.1). Only its renamed successor has been observed passing.
+- **AC-007b probe carrier.** AC-007b is verified by a probe loaded through `-overlay` from an untracked evidence file (`f2-probe-zz_f2_probe_test.go.txt`). The in-tree guard for the same behavior is `TestLaunchEffortOperatorEffortAnywhereSuppressesInjection` (E.2.7).
+
+#### E.4.6.4 Signal
+
+```yaml
+sync_complete_at: 2026-09-23
+sync_commit_sha: pending-backfill
+sync_status: complete
+close_tree: 9b2e6fc09   # merge of local develop fa2a302c6, clean
+sync_audit: PASS-WITH-DEBT 88.3 (iter-2, bound to b9535ed06)
+ac_total: 16   # 001-016; sub-criteria 006a-e, 007a/b, 009a-c all PASS
+ac_pass_count: 16
+ac_gap: []
+frontmatter_status_transitions:
+  spec_md: implemented -> completed
 changelog_entry_position: none   # REQ-OP55-015 / AC-OP55-014
 docs_surfaces_touched: none   # README/docs-site -> card t1094
 push: not-run   # lead batch-pushes develop
