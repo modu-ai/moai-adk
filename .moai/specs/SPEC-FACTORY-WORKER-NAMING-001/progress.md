@@ -174,6 +174,72 @@ embedded-FS probe (temporary test, removed): kanban-dispatch.md worker-1..worker
 
 Inherited-failure attribution method: the baseline tree `861510fb6` was exported with `git archive` into a scratch directory and the same test selectors were run there with the same scrubbed environment.
 
+### M4 addendum — collision reporting (2026-09-23, lead verdict on e794ec133)
+
+Lead verdict: (1) M4 keep-alias for all three old forms ACCEPTED; (2) the unified number space stays, but a collision with a live legacy row must be reported by name, never silent; (3) public docs out of scope (follow-up card).
+
+**Where the code path differs from the verdict's split, and the reading taken.** Before this addendum every path was the same silent bump inside `ClaimFactoryWorker(Name)`. The auto number for `-f worker` is computed BEFORE the claim (`NextFactoryWorkerNumber`, highest live claim of any shape + 1), so it never collides inside the claim, and "skipping past" a legacy row cannot be observed there. Reading adopted:
+
+- **Explicit number** (`-f worker-<n>`, `-f lane-<n>`, `--name worker-<n>`/`lane-<n>`/`agent-<n>`): when the requested number is held by a live legacy row, the claim fails with `*kanban.FactoryLegacyCollisionError` naming that row, and nothing is recorded. A number held by a live canonical `worker-<n>` row still bumps as before; legacy rows passed over during that bump are named on stderr.
+- **Auto-assigned number** (`-f worker`, legacy `-f agent`): never refused. The skipped legacy rows are the live legacy rows numbered from one past the highest live canonical number up to the chosen number, i.e. the rows that raised the number above what canonical-only numbering would have given. They are named in a stderr hint.
+- Plumbing: `kanban.ClaimFactoryWorker(root, requested, auto, pid, alive) (FactoryClaim{Label, SkippedLegacy}, error)`. `ClaimFactoryWorkerName` stays as the explicit wrapper. `kanbanEntryParse.FactoryAutoNumber` is set only by the `-f worker`/`-f agent` desugar and passed through `resolveFactoryWorkerName(root, label, auto, notes)` from cc/glm. The codex door passes `role != ""`.
+
+**RED: behavior-neutral seam first, then assertion-level failure.** The new API landed as a stub that delegated to the old silent body, so the tests compiled and failed on assertions:
+
+```
+$ unset MOAI_FACTORY_WORKER MOAI_FACTORY_WORKERS MOAI_KANBAN_BACKEND MOAI_KANBAN_SETTINGS_INJECTED ... && go test ./internal/kanban/ -run 'TestClaimFactoryWorkerExplicitLegacyCollisionNamesTheRow|TestClaimFactoryWorkerReportsSkippedLegacyRows' -count=1
+--- FAIL: TestClaimFactoryWorkerReportsSkippedLegacyRows (0.00s)
+    --- FAIL: TestClaimFactoryWorkerReportsSkippedLegacyRows/explicit_bump (0.42s)
+        factory_legacy_collision_test.go:83: explicit bump skipped [], want [lane-4]
+    --- FAIL: TestClaimFactoryWorkerReportsSkippedLegacyRows/auto (0.43s)
+        factory_legacy_collision_test.go:70: auto claim skipped [], want [lane-2 agent-4]
+--- FAIL: TestClaimFactoryWorkerExplicitLegacyCollisionNamesTheRow (1.20s)
+    factory_legacy_collision_test.go:41: explicit worker-3 over live agent-3: err = <nil>, want *FactoryLegacyCollisionError
+    factory_legacy_collision_test.go:41: explicit lane-3 over live lane-3: err = <nil>, want *FactoryLegacyCollisionError
+    factory_legacy_collision_test.go:41: explicit agent-2 over live lane-2: err = <nil>, want *FactoryLegacyCollisionError
+FAIL	github.com/modu-ai/moai-adk/internal/kanban	1.520s
+$ ... && go test ./internal/cli/ -run 'TestResolveFactoryWorkerNameExplicitLegacyCollisionIsAnError|TestResolveFactoryWorkerNameAutoNamesSkippedLegacyRows|TestParseLauncherEntryMarksAutoAssignedNumbers' -count=1
+--- FAIL: TestResolveFactoryWorkerNameExplicitLegacyCollisionIsAnError (0.43s)
+    factory_legacy_collision_test.go:34: explicit worker-3 over live agent-3 launched as "worker-4"; want an error naming agent-3
+--- FAIL: TestResolveFactoryWorkerNameAutoNamesSkippedLegacyRows (0.41s)
+    factory_legacy_collision_test.go:57: stderr "" lacks "lane-2" (the skipped legacy row must be named)
+--- FAIL: TestParseLauncherEntryMarksAutoAssignedNumbers (0.34s)
+    factory_legacy_collision_test.go:72: parseLauncherEntry(-f worker).FactoryAutoNumber = false, want true
+FAIL	github.com/modu-ai/moai-adk/internal/cli	1.957s
+```
+
+In the first cli line, `launched as "worker-4"`, the pre-addendum silent hop is observed directly.
+
+**Superseded M3 assertion.** `kanban/factory_worker_label_test.go` subtest "live legacy row blocks its number" asserted the silent hop (`worker-3` over live `lane-3` → `worker-5`). Under the verdict it now asserts the named error and that the legacy row survives. It went red on GREEN (`= ("worker-3", worker-3 is held by legacy label lane-3), want worker-5`) and was rewritten, not deleted.
+
+**GREEN (verbatim).**
+
+```
+$ ... && go test ./internal/cli/ -run 'TestResolveFactoryWorkerNameExplicitLegacyCollisionIsAnError|TestResolveFactoryWorkerNameAutoNamesSkippedLegacyRows' -count=1 -v
+    factory_legacy_collision_test.go:36: operator-facing error: claim factory worker worker-3: worker-3 is held by legacy label agent-3 (a live session launched under the legacy spelling; legacy agent-<n> and lane-<n> labels share the worker number space) — pick another number with -f worker-<n>, or use -f worker to take the next free one
+--- PASS: TestResolveFactoryWorkerNameExplicitLegacyCollisionIsAnError (0.42s)
+    factory_legacy_collision_test.go:56: operator-facing stderr: factory: skipped number(s) held by legacy label(s) lane-2 — legacy agent-<n> and lane-<n> labels share the worker number space; launching as worker-3
+--- PASS: TestResolveFactoryWorkerNameAutoNamesSkippedLegacyRows (0.43s)
+ok  	github.com/modu-ai/moai-adk/internal/cli	1.627s
+$ ... && go test ./internal/cli/ -run '...Legacy...|ParseLauncher|ParseFactory|StripCodex|NextFactory|CC_Factory|LauncherHelp|UsageError|TestGTD|ACFB019' -count=1 -v   → 27 PASS, 0 FAIL; ok  github.com/modu-ai/moai-adk/internal/cli 10.771s
+$ ... && go test ./internal/kanban/... ./internal/factorymsg/... -count=1
+ok  	github.com/modu-ai/moai-adk/internal/kanban	180.154s
+ok  	github.com/modu-ai/moai-adk/internal/factorymsg	4.798s
+$ go vet ./internal/cli/... ./internal/kanban/... ./internal/hook/... ./internal/factorymsg/...   → vet-ok
+$ golangci-lint run ./internal/kanban/... ./internal/cli/...   → 25 issues: errcheck: 25   (= the pre-existing internal/cli baseline; kanban contributes 0)
+```
+
+```
+$ ... && go test -timeout 25m ./internal/cli/ -count=1          (full package, after the addendum)
+--- FAIL: TestGLM_FactoryWorkerEntry (0.17s)            [inherited — fails identically on 861510fb6, see M3/M4 verification]
+--- FAIL: TestSessionPIDStamp_NotSetFromHooks (0.06s)   [inherited — same]
+FAIL	github.com/modu-ai/moai-adk/internal/cli	1085.233s   (not a timeout; TestACFB019 no longer fails)
+```
+
+`internal/hook` was not re-run for the addendum. It does not call `ClaimFactoryWorker` or `resolveFactoryWorkerName`; `go vet` over it passed.
+
+CHANGELOG: one line added under `## [Unreleased]` → `### Changed`, "Factory worker numbering (behavior change, card t1085)".
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 - run_status: audit-ready (M1-M4 complete)
