@@ -25,11 +25,20 @@ package cli
 // ANTHROPIC_REASONING_EFFORT and treats Claude's 5-step vocabulary as inert —
 // buildEnvForGLMLaunch owns that path and is untouched here.
 
-import "github.com/modu-ai/moai-adk/internal/profile"
+import (
+	"strings"
+
+	"github.com/modu-ai/moai-adk/internal/profile"
+	"github.com/modu-ai/moai-adk/internal/template"
+)
 
 // effortSettingsKey is the Claude Code settings key carrying the session's
 // launch effort level.
 const effortSettingsKey = "effortLevel"
+
+// effortFlagLong is the Claude Code launch flag that sets the effort level for
+// a single session.
+const effortFlagLong = "--effort"
 
 // launchEffortPrefsFn reads the profile preferences the effort resolution uses.
 // Tests override it so they never read the host's real profile.
@@ -42,28 +51,65 @@ var launchEffortPrefsFn = profile.ReadPreferences
 // empty resolves to "" — which injects nothing, leaving the payload (and so the
 // launch) byte-identical to a launcher that never knew about effort.
 //
+// The second return value carries launch argv to append. It is non-empty only
+// for a resolved `max`, which never enters the payload — see the note below.
+//
 // Fail-open: an unreadable profile contributes no effort rather than blocking
 // the launch, matching crossSessionSettingsPayload's stance on a bad config.
-func applyLaunchEffort(payload map[string]any, profileName string) map[string]any {
+func applyLaunchEffort(payload map[string]any, profileName string) (map[string]any, []string) {
 	prefs, err := launchEffortPrefsFn(profileName)
 	if err != nil {
-		return payload
+		return payload, nil
 	}
 	effort := resolveLaunchEffort(prefs.EffortLevel, prefs.ModelPolicy)
 	if effort == "" {
-		return payload
+		return payload, nil
+	}
+	// @MX:NOTE: [AUTO] max leaves the settings path. Claude Code's settings
+	// `effortLevel` accepts low / medium / high / xhigh only — `max` is not an
+	// accepted level there — and the documented way to run one session at max is
+	// the `--effort max` launch flag, which Claude Code applies to the current
+	// session only. CLAUDE_CODE_EFFORT_LEVEL is not used: it is an override that
+	// refuses an in-session /effort change (see buildEnvForClaudeLaunch).
+	if effort == template.EffortLevelMax {
+		return payload, []string{effortFlagLong, effort}
 	}
 	if payload == nil {
 		payload = map[string]any{}
 	}
 	payload[effortSettingsKey] = effort
-	return payload
+	return payload, nil
+}
+
+// operatorSuppliedEffort reports whether the operator already passed an
+// --effort flag before any `--` separator, in which case the profile effort
+// adds no second flag — the operator's explicit launch choice wins.
+func operatorSuppliedEffort(args []string) bool {
+	for _, arg := range args {
+		if arg == "--" {
+			return false
+		}
+		if arg == effortFlagLong || strings.HasPrefix(arg, effortFlagLong+"=") {
+			return true
+		}
+	}
+	return false
+}
+
+// launchEffortArgs filters the argv applyLaunchEffort produced against what the
+// operator already supplied.
+func launchEffortArgs(effortArgs, args []string) []string {
+	if len(effortArgs) == 0 || operatorSuppliedEffort(args) {
+		return nil
+	}
+	return effortArgs
 }
 
 // buildEnvForClaudeLaunch returns the environment the Claude backend launches
 // with. It returns base unchanged — and that is the INVARIANT this seam exists
 // to state, not an accident of the current implementation. The profile's effort
-// travels in the injected --settings payload, so nothing on this path may add,
+// travels in the injected --settings payload (or, for max, the --effort launch
+// flag — see applyLaunchEffort), so nothing on this path may add,
 // replace, or strip CLAUDE_CODE_EFFORT_LEVEL: adding one restores the override
 // that froze the session's effort, and stripping one discards the user's own
 // documented per-session override.

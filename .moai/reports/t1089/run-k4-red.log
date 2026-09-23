@@ -1,0 +1,15 @@
+=== RUN   TestLaunchEffortMaxTravelsAsArgvOnGeneralInjection
+    launch_effort_settings_test.go:228: settings effortLevel = max; max must never be written to the settings payload
+    launch_effort_settings_test.go:231: args = [-p dev --settings /var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/moai-crosssession-71043-1790123998861679000.json], want exactly one --effort max
+--- FAIL: TestLaunchEffortMaxTravelsAsArgvOnGeneralInjection (0.00s)
+=== RUN   TestLaunchEffortMaxTravelsAsArgvOnKanbanInjection
+    launch_effort_settings_test.go:248: settings effortLevel = max; max must never be written to the settings payload
+    launch_effort_settings_test.go:251: flag = [--settings /var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/moai-kanban-71043-1790123998862352000.json], want exactly one --effort max
+--- FAIL: TestLaunchEffortMaxTravelsAsArgvOnKanbanInjection (0.00s)
+=== RUN   TestLaunchEffortXHighStaysOnSettingsPath
+--- PASS: TestLaunchEffortXHighStaysOnSettingsPath (0.00s)
+=== RUN   TestLaunchEffortMaxDefersToOperatorEffortFlag
+--- PASS: TestLaunchEffortMaxDefersToOperatorEffortFlag (0.00s)
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/cli	0.779s
+FAIL

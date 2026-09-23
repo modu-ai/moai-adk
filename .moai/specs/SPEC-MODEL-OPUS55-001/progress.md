@@ -84,9 +84,39 @@ Drift the probes did not see. There are three items.
 
 ### E.2.5 Residual risk
 
-- K4 (unchanged): the official settings reference says `effortLevel` does not accept `max`, but the launcher can pass `max`.
+- K4: fixed. It is no longer residual; see E.2.6.
 - K6: a profile `opus[1m]` now launches `--model claude-opus-5-5[1m]`, which needs Claude Code v2.1.280+. No version floor was added.
 - The TUI wizard's effort empty option comes from `settings.EmptyLabelFor("effort_level")` and still reads "(runtime default)". REQ-OP55-007 covers only the web console option.
+
+### E.2.6 K4 fix — `max` leaves the settings path (Kanban lead dispatch, tree `6cd26e504`)
+
+- **Defect path.** The orchestrator measured it as follows:
+  - The profile value `effort_level: max` passes through `resolveLaunchEffort` and `applyLaunchEffort`, which wrote `effortLevel: "max"` into the injected `--settings` payload.
+  - Claude Code's settings key does not accept `max`. The model-config page says: "set `effortLevel` to `low`, `medium`, `high`, or `xhigh` … `max` isn't accepted as a level in either key".
+- **Fix.**
+  - `applyLaunchEffort` (`internal/cli/launch_effort_settings.go`) now returns `(payload, launchArgs)`. A resolved `max` never enters the payload and comes back as `[--effort max]`. The `@MX:NOTE` on that branch explains why.
+  - low/medium/high/xhigh are unchanged and stay on the settings path.
+  - `CLAUDE_CODE_EFFORT_LEVEL` is still not used, and `buildEnvForClaudeLaunch` is unchanged.
+  - An operator-supplied `--effort` wins, so no second flag is added.
+- **Argv injection sites.** Both paths append the flag after the settings pair, or on their own when the payload is empty:
+  - `appendCrossSessionSettings` (`internal/cli/crosssession_settings.go`, general launch funnel `launcher.go:219`).
+  - `prepareKanbanSettings` (`internal/cli/kanban_settings.go`, kanban/factory lanes in `cc.go` / `glm.go`).
+- **GLM env path.** `buildEnvForGLMLaunch` is not touched.
+- **RED** before the fix: `go test -count=1 -run 'TestLaunchEffortMax|TestLaunchEffortXHighStaysOnSettingsPath' -v ./internal/cli/` (`run-k4-red.log`):
+  - `launch_effort_settings_test.go:228: settings effortLevel = max; max must never be written to the settings payload`
+  - `launch_effort_settings_test.go:231: args = [-p dev --settings …/moai-crosssession-….json], want exactly one --effort max`
+  - the same two failures on the kanban path (`:248`, `:251`)
+  - `FAIL github.com/modu-ai/moai-adk/internal/cli`
+- **GREEN.** `go test -count=1 -run 'TestLaunchEffort|TestApplyLaunchEffort|TestClaudeLaunchEnvPreservesInheritedEffort|TestResolveLaunchEffort|Kanban|CrossSession' -v ./internal/cli/` returned 46 `--- PASS` and `ok` (`run-k4-green.log`). Passing tests include:
+  - `TestLaunchEffortMaxTravelsAsArgvOnGeneralInjection`
+  - `TestLaunchEffortMaxTravelsAsArgvOnKanbanInjection`
+  - `TestLaunchEffortXHighStaysOnSettingsPath`
+  - `TestLaunchEffortMaxDefersToOperatorEffortFlag`
+  - `TestApplyLaunchEffort/max_returns_launch_argv_and_stays_out_of_the_payload`
+  - `TestClaudeLaunchEnvPreservesInheritedEffort`
+- **Mutant.** Removing the operator-`--effort` guard makes `TestLaunchEffortMaxDefersToOperatorEffortFlag` fail with `args = [--effort low --effort max], want only the operator's --effort low`. After revert it returns `ok`.
+- **Checks.** `go vet ./internal/cli/` returned no output. `golangci-lint run ./internal/cli/...` returned `0 issues.` with rc=0 (`run-k4-lint.log`).
+- **Full `internal/cli`** (slot `go-test-cli`), unscrubbed lane env: `FAIL` 1108.8s, with only `TestCodexSpawn_RealAssemblyThroughStubTmux` and `TestCC_FactoryEntryThroughRunCC/-f_lane-2` (`AMBIGUOUS_FACTORY`) failing (`run-k4-cli-full.log`). Both pass once the lane `MOAI_*` env is unset in the same invocation (`run-k4-cli-scrubbed.log`). The full-package run was repeated with the scrubbed env in one compound invocation (`unset MOAI_AUTONOMY_TIER MOAI_FACTORY_WORKER MOAI_FACTORY_WORKERS MOAI_KANBAN_BACKEND MOAI_KANBAN_SETTINGS_INJECTED MOAI_LAUNCH_PROVIDER MOAI_PROFILE_LEASE_TOKEN MOAI_SESSION_PID MOAI_CONFIG_SOURCE && go test -count=1 -timeout 25m ./internal/cli/`) and returned `ok  	github.com/modu-ai/moai-adk/internal/cli	1327.513s` (`run-k4-cli-full-scrubbed.log`). The slot was re-acquired for that run and released afterwards.
 
 ## §E.3 Run-phase Audit-Ready Signal
 

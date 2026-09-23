@@ -1,0 +1,16 @@
+=== RUN   TestCodexSpawn_RealAssemblyThroughStubTmux
+--- PASS: TestCodexSpawn_RealAssemblyThroughStubTmux (0.00s)
+=== RUN   TestCC_FactoryEntryThroughRunCC
+=== RUN   TestCC_FactoryEntryThroughRunCC/bare_-f_is_the_one-lane_factory_lead
+=== RUN   TestCC_FactoryEntryThroughRunCC/bare_-f_launches_the_lead_with_the_default_count
+=== RUN   TestCC_FactoryEntryThroughRunCC/-f_N_is_retired_post-N-removal_at_the_cc_entry
+=== RUN   TestCC_FactoryEntryThroughRunCC/-f_lane-2_desugars_into_the_lane_branch
+=== RUN   TestCC_FactoryEntryThroughRunCC/-f_with_-k_errors_before_the_launch
+--- PASS: TestCC_FactoryEntryThroughRunCC (0.81s)
+    --- PASS: TestCC_FactoryEntryThroughRunCC/bare_-f_is_the_one-lane_factory_lead (0.23s)
+    --- PASS: TestCC_FactoryEntryThroughRunCC/bare_-f_launches_the_lead_with_the_default_count (0.18s)
+    --- PASS: TestCC_FactoryEntryThroughRunCC/-f_N_is_retired_post-N-removal_at_the_cc_entry (0.00s)
+    --- PASS: TestCC_FactoryEntryThroughRunCC/-f_lane-2_desugars_into_the_lane_branch (0.40s)
+    --- PASS: TestCC_FactoryEntryThroughRunCC/-f_with_-k_errors_before_the_launch (0.00s)
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/cli	1.637s
