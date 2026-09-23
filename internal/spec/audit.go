@@ -331,6 +331,39 @@ func auditSpec(specDir, specID string, opts AuditOptions) ([]DriftFinding, Era, 
 	return findings, era, tokensSpent, nil
 }
 
+// amendmentsHeadingPattern matches the HISTORY Amendments record heading. The
+// frontmatter SSOT names it `## Amendments`; SPECs in the wild nest it one level
+// deeper (`### Amendments`) under `## HISTORY`, so both depths are accepted.
+var amendmentsHeadingPattern = regexp.MustCompile(`(?m)^#{2,3}[ \t]+Amendments[ \t]*$`)
+
+// isValidInPlaceAmendment reports whether a SPEC is in the sanctioned
+// `completed → in-progress (amendment)` state (spec-frontmatter-schema.md).
+// Such a SPEC legitimately keeps the prior close's §E.2 + §E.4 +
+// sync_commit_sha, so SyncStatusDrift must not fire — its --backfill-only
+// remediation would set status back to completed and revert the amendment.
+//
+// Predicate (all three required, card t1111):
+//  1. status == in-progress — the only status the SSOT sanctions for an
+//     amendment. A stray amendment_of on an implemented / planned SPEC is
+//     not an amendment and keeps being reported.
+//  2. amendment_of non-empty — the SSOT's declaration field, read through the
+//     shared frontmatter parser.
+//  3. an Amendments heading in the body — the SSOT requires amendment_of to be
+//     paired with the HISTORY record; a field copied without its record does
+//     not exempt.
+//
+// Any parse failure fails closed (not an amendment → the finding still fires).
+func isValidInPlaceAmendment(specStatus, specContent string) bool {
+	if specStatus != "in-progress" {
+		return false
+	}
+	fm, body, err := ExtractFrontmatter(specContent)
+	if err != nil || strings.TrimSpace(fm.AmendmentOf) == "" {
+		return false
+	}
+	return amendmentsHeadingPattern.MatchString(body)
+}
+
 // checkV3R6Drift performs the V3R6 status-drift detection under the 3-phase
 // lifecycle (SPEC-V3R6-LIFECYCLE-REDESIGN-001 REQ-LR-019).
 //
@@ -375,6 +408,9 @@ func checkV3R6Drift(specDir, specID string, signals EraSignals) *DriftFinding {
 	// (sync phase complete) but spec.md status != completed. This is the re-anchored
 	// successor to the legacy Y_Y_Y_Y_StatusDrift predicate (REQ-LR-019).
 	if hasRunEvidence && hasSyncMarker && syncSHA != "" {
+		if isValidInPlaceAmendment(specStatus, string(specContent)) {
+			return nil
+		}
 		return &DriftFinding{
 			SpecID:      specID,
 			Era:         string(EraV3R6),
