@@ -242,7 +242,7 @@ AC-015a alone would pass on one that retires nothing.
 
 ## §D.2 Severity
 
-All sixteen criteria are **release-blocking**, including AC-013 leg 1: each either protects a live
+All 17 criteria are **release-blocking**, including AC-013 leg 1: each either protects a live
 lead's run or establishes that a dead lead's run actually leaves `active`.
 
 **AC-013 leg 2 is the one non-gating obligation.** It is not release-blocking and is never recorded

@@ -467,11 +467,16 @@ Stated so that no absence below reads as a finding.
   is the team lead's measurement against t1082's own worktree (2026-09-23), cited as that. The live
   residual is same-package rather than same-file: this SPEC edits
   `internal/factorymsg/store.go` while t1082 adds `handoff*.go` to that package.
-- **The plan-audit iter-3 report is not on disk.** `.moai/reports/t1107/` holds
-  `plan-audit-iter1.md` and `plan-audit-iter2.md` only (`.moai/reports/` is gitignored, so it is not
-  recoverable from history either). Iteration 3's findings reach this file only through the revision
-  record in `spec.md` §H and the D11-D17 defect text in the iter-2 report. Nothing above is
-  attributed to an iter-3 document.
+- **The plan-audit iter-3 report IS on disk, and nothing above is attributed to it.**
+  `.moai/reports/t1107/plan-audit-iter3.md` exists — 38,933 bytes, timestamped 2026-09-23 13:52 —
+  and its first content line carries the required header verbatim: `상한 초과 사유: 운영자 범위
+  확장(pane door) 뒤의 재감사`. An earlier revision of this item asserted the file was absent and,
+  being under a gitignored path, unrecoverable from history. That assertion was false. It was a
+  timing artifact, not a bad read: the directory was checked roughly two minutes before the auditor
+  finished writing the report into it, so the absence was real when observed and already stale when
+  written down. What remains true is the attribution boundary — the findings reaching this file come
+  from `spec.md` §H's revision record and the D11-D17 defect text in the iter-2 report, so nothing
+  above rests on the iter-3 document.
 - **Accumulated scale in real installations was never measured.** No real `factory.db` was opened.
   The design does not need the figure — reconciliation is per-resolution, not a sweep sized to a
   population — but the number is unknown, not small.
