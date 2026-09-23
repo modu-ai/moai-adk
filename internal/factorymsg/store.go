@@ -363,6 +363,12 @@ func (s *Store) RegisterPeer(ctx context.Context, p Peer) (Peer, error) {
 	var oldGen int64
 	var oldPID int
 	err = tx.QueryRowContext(ctx, `SELECT session_uuid,generation,pid,process_start FROM peers WHERE slot=?`, p.Slot).Scan(&oldSession, &oldGen, &oldPID, &oldStart)
+	launcher := isLaunchPendingSession(p.SessionUUID)
+	if !launcher {
+		if refuse := s.refuseTurnRegistrationDuringHandoff(ctx, tx, p); refuse != nil {
+			return Peer{}, refuse
+		}
+	}
 	if err == nil {
 		if oldSession == p.SessionUUID {
 			if oldPID != p.PID || oldStart != p.ProcessStart {
@@ -385,12 +391,6 @@ func (s *Store) RegisterPeer(ctx context.Context, p Peer) (Peer, error) {
 		}
 	} else if !errors.Is(err, sql.ErrNoRows) {
 		return Peer{}, err
-	}
-	launcher := isLaunchPendingSession(p.SessionUUID)
-	if !launcher {
-		if err := s.refuseTurnRegistrationDuringHandoff(ctx, tx, p); err != nil {
-			return Peer{}, err
-		}
 	}
 	if p.Generation < 1 {
 		p.Generation = 1

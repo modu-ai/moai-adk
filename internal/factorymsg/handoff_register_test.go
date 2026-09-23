@@ -45,6 +45,23 @@ func TestRegisterPeerOnBrokerWithoutHandoffTables(t *testing.T) {
 	}
 }
 
+// TestTurnRegistrationDuringHandoffIsPendingForAnyIdentity: REQ-FLH-018
+// rejects every turn-hook registration on a lane with a non-final handoff with
+// ENDPOINT_HANDOFF_PENDING — also one whose owner identity differs from a live
+// source owner, which t1074 alone would refuse only as "live owner".
+func TestTurnRegistrationDuringHandoffIsPendingForAnyIdentity(t *testing.T) {
+	f := newRaceFixture(t, false)
+	f.toSwitchPending(t)
+	before := readEndpointRow(t, f.seed.db, raceSlot)
+	other := f.postCD("post-cd-uuid")
+	other.ProcessStart = "another-process-start"
+	_, err := f.seed.RegisterPeer(context.Background(), other)
+	requireNackReason(t, err, NackEndpointHandoffPending)
+	if after := readEndpointRow(t, f.seed.db, raceSlot); after != before {
+		t.Fatalf("refused registration wrote the row: before=%+v after=%+v", before, after)
+	}
+}
+
 // TestHandoffStepHookAbortsItsTransaction: an error returned by the step
 // observer rolls back the whole write transaction it fires in — registration,
 // launcher finalize, reservation, and rebind alike — so a race test's barrier
