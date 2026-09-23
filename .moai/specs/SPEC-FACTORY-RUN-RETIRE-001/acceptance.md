@@ -96,9 +96,12 @@ which is the exact failure `verification-completeness.md` §2 warns about.
   test asserts the REQ-003b direction explicitly — an indistinguishable fingerprint pair returns
   `live`, never `dead`.
 
-- **AC-004** Given a sandbox holding two `active` runs whose owners are both dead, When a worker
-  joins with no `--factory-run`, Then the join succeeds, and the `runs` table afterwards shows the
-  run it joined as the sole `active` row with the other transitioned to `retired`.
+- **AC-004** Given a sandbox holding two `active` runs, one whose owner is dead and one whose owner
+  is live, When a worker joins with no `--factory-run`, Then the join succeeds, and the `runs` table
+  afterwards shows the run it joined as the sole `active` row with the other transitioned to
+  `retired`. The all-owners-dead shape is a different criterion, not this one: REQ-005 retires on a
+  positive `dead` classification, so every owner dead leaves **zero** `active` rows and resolution
+  fails closed with `NO_ACTIVE_FACTORY` — the fail-closed leg AC-009 carries.
 
 - **AC-005** Given two `active` runs, one owned by a process that is still alive for the whole
   exercise and one owned by a dead process, When reconciliation runs, Then the live-owner run is

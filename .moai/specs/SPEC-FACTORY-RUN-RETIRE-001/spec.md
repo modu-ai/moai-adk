@@ -1,7 +1,7 @@
 ---
 id: SPEC-FACTORY-RUN-RETIRE-001
 title: "Factory run retirement — owner-liveness reconciliation so a dead lead's run leaves 'active'"
-version: "0.9.0"
+version: "0.10.0"
 status: in-progress
 created: 2026-09-23
 updated: 2026-09-23
@@ -418,14 +418,14 @@ Each Gap in `.moai/reports/t1107/verdict.md` §4 is dispositioned here:
   indistinguishable. It resolves toward `live`, so the failure mode is a surviving stale run — which
   has the `--factory-run` escape — never a retired live one.
 
-## §G Accepted debt — audit findings recorded and declined
+## §G Accepted debt — audit findings recorded and dispositioned
 
 Recorded so that a later audit reads these as decided rather than overlooked. D7-D10 were raised at
 plan-audit iter-1 and declined on the team lead's routing; D20-D21 were raised at the Tier L audit
 and **retained** — they are live debt carried deliberately, each with the evidence that makes
 carrying it defensible, not findings dismissed as wrong:
 
-| Finding | Why declined |
+| Finding | Disposition and why |
 |---|---|
 | **D7** — REQ ids are not monotonically ordered (`REQ-002b`, `REQ-002d`, `REQ-003b` interleave, and `REQ-009` is now a gap) | The suffix form keeps each requirement adjacent to the one it refines, and the `REQ-009` gap is deliberate (see §B); renumbering would break the traceability already written into `acceptance.md` §D.3 for no reader gain. |
 | **D8** — verification-verb classification in the AC matrix is uneven | The matrix column is a reader's index, not a contract; each AC's own Given-When-Then carries the binding form. |
@@ -523,6 +523,27 @@ carrying it defensible, not findings dismissed as wrong:
   continuation of v0.8.0, and the note's "in this revision" pointed at the wrong revision. Both
   paragraphs are moved back under v0.5.0 unchanged. This entry also closes the one-commit lag
   v0.8.1 left behind: a §H that records every commit but its own reproduces D23 at depth one.
+  Commit: this revision.
+- 2026-09-23 — v0.10.0 — manager-spec — **AC-004's Given restated** plus the §G heading and
+  column rename. AC-004 read "two `active` runs whose owners are **both dead** … Then the join
+  succeeds, and … the run it joined as the sole `active` row": the two halves cannot both hold.
+  REQ-005 retires on a positive `dead` classification, so two dead owners leave **zero** `active`
+  rows and resolution correctly fails closed with `NO_ACTIVE_FACTORY` — there is then no run joined
+  and no surviving `active` row. **REQ-005 is canonical and the Given was the wrong half**: the Then
+  is the criterion's subject (REQ-004's dead-owner retirement followed by a successful join, per the
+  §D matrix row), it is satisfiable only when exactly one owner is dead, and three artifacts already
+  describe that shape — `progress.md` §E.2 F1, the AC-011 door exercise (`tltbl4 retired` against a
+  dead owner, `tltbl8 active` against a live pane owner), and §A.1's own claim that "AC-004/AC-005
+  … measure both the dead-owner and live-owner branches". So the Given now states one dead owner and
+  one live one, and the Then stands unchanged. The all-owners-dead behaviour is real and keeps its
+  guard: `TestResolveActiveRunBothOwnersDead` is untouched, and AC-004 now names AC-009's
+  fail-closed leg as where that shape is carried. **Four audit rounds did not catch this** because
+  each examined AC *form* — mutation direction, mechanical checkability, vacuous-green shapes —
+  without once executing a Given against its own Then; form review cannot see a criterion that is
+  well-shaped and self-contradictory. Separately, §G's heading and column still read "declined"
+  while its amended intro and the D20/D21 rows say **retained**; both now read "dispositioned" /
+  "Disposition and why", which accommodate declined and retained findings alike. No row body, no
+  other criterion, no requirement, and no design text was touched; counts stay REQ 16 / AC 17.
   Commit: this revision.
 - **Provenance correction (iter-2, D17).** The two retired strings quoted in this bullet —
   `REQ-002c` and `REQ-013b` — appear here as **quotations of removed text, not as live
