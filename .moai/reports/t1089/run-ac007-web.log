@@ -1,6 +1,0 @@
-=== RUN   TestModelOptLabelsEnglishUnified
---- PASS: TestModelOptLabelsEnglishUnified (0.00s)
-=== RUN   TestEffortOptRecommendationLabels
---- PASS: TestEffortOptRecommendationLabels (0.00s)
-PASS
-ok  	github.com/modu-ai/moai-adk/internal/web	0.572s
