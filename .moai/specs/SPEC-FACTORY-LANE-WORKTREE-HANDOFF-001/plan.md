@@ -38,6 +38,7 @@ module: "internal/factorymsg"
 
 - `internal/factorymsg`의 기존 broker schema에 lane handoff row/event/tombstone을 추가한다. 별도 DB는 만들지 않는다.
 - reservation은 project/run/lane/card/SPEC/source endpoint/generation/nonce/local develop HEAD/target path/target branch를 CAS로 고정한다.
+- (REQ-FLH-016) reservation admission은 source 행 판독, launch-pending 판정, `RESERVED` 삽입을 하나의 broker write transaction(`BEGIN IMMEDIATE`) 안에서 수행한다. source endpoint가 t1074 launch-pending이면 `ENDPOINT_LAUNCH_PENDING` NACK를 반환하고 reservation·tombstone·worktree·app-server 요청·endpoint 변경·dispatch release를 하나도 쓰지 않는다. 판독 위치는 AC-FLH-019 순서 (vii)이 판별하며, 그 순서가 run phase의 첫 RED다.
 - canonical project identity는 `internal/homestate.CanonicalProjectRoot`로, canonical run은 기존 factory run resolver `internal/cli/factory.go:222` `enterSelectedFactoryRun`(→ `factorymsg.ResolveActiveRun`)으로 구한다. Run resolver는 homestate에 있지 않다.
 - 기존 MoAI L1 worktree materializer를 호출하고 exact target path, `HEAD == pinned develop`, clean target, `WT-<slug>` branch, branch uniqueness를 읽어 `WT_READY`로 만든다.
 - creation-base drift를 `BASE_DRIFT`로 기록하고 BOUND 없이 보존/복구 대상으로 남긴다.
@@ -56,6 +57,8 @@ module: "internal/factorymsg"
 - BOUND 전 body claim/read/ACK와 code-write authorization을 거부한다.
 - stale send/ACK는 현재 endpoint/generation metadata를 포함한 NACK로 응답한다.
 - duplicate dispatch와 same-lane redispatch는 현행 t1074 스키마의 idempotency key를 바꾸지 않고 멱등 처리한다. handoff generation은 key에 넣지 않고 stale-generation NACK 판정에만 쓴다(key 기준 결정은 t1100 소유, design.md §8).
+- (REQ-FLH-017) 착지된 t1074 `Store.RegisterPeer`(`internal/factorymsg/store.go:315`; `RegisterLaunchPending` :391이 이 함수로 쓴다)의 write transaction 안에 같은 lane의 handoff 상태 판독을 추가한다. 비종결 handoff가 있는 lane에서 launcher provisional 등록이 commit되면 같은 transaction에서 handoff를 `NACK`/`STALE_GENERATION`으로 종결하고 tombstone·BOUND receipt·dispatch release는 쓰지 않는다. t1074 live-owner 규칙으로 거부된 등록은 handoff를 바꾸지 않는다. rebind는 같은 SQLite transaction 영역에서 등록과 직렬화하고, 등록 뒤에 실행되면 `STALE_GENERATION`을 반환하며 아무것도 쓰지 않는다. 검증: AC-FLH-018, AC-FLH-019 (v)·(vii).
+- (REQ-FLH-018) 같은 `RegisterPeer` transaction 안에서, 비종결 handoff가 있는 lane의 UserPromptSubmit 등록(`registerFactoryUserPromptPeer`, `internal/hook/factory_messages.go:49` → `registerFactoryHookPeer` :53)을 `ENDPOINT_HANDOFF_PENDING`으로 거부하고 endpoint 행·generation·tombstone·receipt·release marker를 바꾸지 않는다. rebind가 먼저 commit된 뒤 tombstone된 source session UUID로 오는 등록은 `STALE_ENDPOINT`로 거부한다. 검증: AC-FLH-019 (i)–(iv).
 
 ### M4 — Recovery, safety, and compatibility
 
@@ -80,11 +83,11 @@ module: "internal/factorymsg"
 
 | Area | Reuse/extension intent |
 |---|---|
-| `internal/factorymsg/` | 기존 broker transaction, peer generation, receipt에 handoff state/rebind/tombstone 추가 |
+| `internal/factorymsg/` | 기존 broker transaction, peer generation, receipt에 handoff state/rebind/tombstone 추가; 같은 transaction 안에서 source 행을 읽는 reservation admission과 `ENDPOINT_LAUNCH_PENDING` NACK(REQ-FLH-016); 착지된 t1074 `Store.RegisterPeer` transaction 안의 handoff 상태 판독·launcher 등록 시 종결(REQ-FLH-017)·UserPromptSubmit 등록 거부(REQ-FLH-018) |
 | `internal/homestate/` | canonical project/process identity helper 재사용; 새 transport 금지 (run selection은 `internal/cli/factory.go:222` `enterSelectedFactoryRun`) |
 | `internal/cli/worktree/`, launcher seams | existing L1 materializer 호출 및 develop pin/branch trace 검증 |
 | `internal/cli/mcp_codex.go` 주변 | existing app-server client에 fork/start/cwd lifecycle 최소 확장 |
-| `internal/hook/` | interactive의 다음 정상 turn SessionStart evidence를 shared atomic rebind에 전달 |
+| `internal/hook/` | interactive의 다음 정상 turn SessionStart evidence를 shared atomic rebind에 전달; UserPromptSubmit 등록 경로가 `RegisterPeer`의 `ENDPOINT_HANDOFF_PENDING`/`STALE_ENDPOINT` 거부를 받는 지점(REQ-FLH-018)과 AC-FLH-018/019의 package `hook` 경합 test |
 | `internal/cli/*_live_test.go` | cleanup-guaranteed real mixed-factory LIVE harness |
 
 ## Verification strategy
