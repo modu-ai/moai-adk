@@ -357,6 +357,36 @@ job 설계 비고: `test-browser` 는 EOF 에 덧붙는 유일한 판정면이�
 | M5-6 | gofmt·vet·lint (공통 DoD + E5) | `gofmt -l internal/web/appjs_fire_guard_test.go` / `go vet ./internal/web/` / `golangci-lint run --timeout=2m ./internal/web/...` | gofmt 출력 없음 · vet 통과 · `0 issues.` (golangci-lint 2.10.1, homebrew 설치본 — 서드파티 도구로서 트리 래그 개념 외부, 버전 명기) |
 | M5-7 | 자산·모듈 보존 최종 (AC-AFG-007/E6) | `git diff --stat 3e35fbacf -- internal/web/assets/app.js` + `git status --porcelain -- internal/web/assets/ go.mod go.sum` | 출력 없음 — base 대비 byte 동일, working tree 청결 |
 
+### M6·M7 — 개정분: `validation-reject` 편입 (card t1106, HEAD `0fbc75afc` → `19f210fe5`)
+
+개정 run 은 worktree `/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t1106`, branch `WT-fireguard-reject-submit` 에서 2026-09-23 에 수행됐다. 원판 M1~M5 기록(위)은 한 줄도 고치지 않았다 — 나중 사실에 맞춰 관측을 손보지 않는다.
+
+| # | 측정 | 명령 | 관측 결과 | exit |
+|---|---|---|---|---|
+| M6-1 | AC-AFG-012 RED — 불가분성을 판정할 규칙 자체가 없음 | `go test ./internal/web/ -run 'AppJsFireSandboxPairing' -count=1` | `want exit 1, got exit status 2` / `appjs_fire_probe.py: error: no such option: --extra-entry` (세 합성 항목 전부) | 1 |
+| M6-2 | AC-AFG-012 GREEN — 정방향 + 역방향 3건 | 같은 명령 | `--- PASS: TestAppJsFireSandboxPairing` + 하위 3건(`missing_sandbox-serving_marker`·`missing_no-write-assertion_marker`·`missing_both_markers`) 전부 PASS — 각 거부가 빠진 조건을 이름으로 보고 | 0 |
+| M6-3 | AC-AFG-009 정방향 — 커밋된 매니페스트가 두 닫힌 계열을 만족 | `python3 internal/web/testdata/appjs_fire_probe.py --lint-manifest` | `LINT OK: 9 entries + 7 exclusions cover 13 inventory groups; effects within unconditional ['clipboard', 'label', 'swap', 'tab', 'visibility'] or conditional ['validation-reject'] (conditional entries carry ['requires_sandbox_serving', 'requires_no_write_assertion']); post-swap entry present` — `INVENTORY_TOTAL` 불변(13) | 0 |
+| M7-1 | AC-AFG-013 RED — 라우팅 판정 주체 부재 | `go test ./internal/web/ -run 'AppJsFireSandboxRouting' -count=1` | `undefined: startFireGuardServerAt` / `undefined: startFireGuardSandboxServer` (빌드 실패) | 1 |
+| M7-2 | AC-AFG-013 GREEN (a)(b)(c-배선) | 같은 명령 | `--- PASS: TestAppJsFireSandboxRouting` — primary root == `findRepoRoot`, sandbox root ≠ 실루트, 표식 8/1 양방향 일치 | 0 |
+| M7-3 | AC-AFG-013 돌연변이 ① — 전 항목을 사본으로 (안 (b) 를 몰래 취한 상태) | `route_for_entry` 의 `return primary_base` → `return sandbox_base or primary_base` 후 같은 명령 | `(b) unmarked entry "popover_open" routes to "http://127.0.0.1:60604", want the primary base "http://127.0.0.1:60603"` 외 7건 | 1 (적색 관측) |
+| M7-4 | AC-AFG-013 돌연변이 ② — 표식 항목을 실루트로 | `return sandbox_base or None` → `return primary_base` 후 같은 명령 | `(b) marked entry "validation_reject_banner" routes to "…:60695", want the sandbox base "…:60696"` | 1 (적색 관측) |
+| M7-5 | AC-AFG-010/011 RED — 판정 주체는 생겼으나 탐침에 사본 시나리오 없음 | `MOAI_BROWSER_GUARD=1 go test ./internal/web/ -run 'AppJsFireValidationReject' -count=1 -v` | `failures: [{"entry": "validation_reject_banner", "reason": "selector matched nothing", "selector": "#settings-form"}]`, `"exit": 1` — 같은 실행에서 기존 8지표는 전부 발화 | 1 |
+| M7-6 | AC-AFG-010 GREEN — 거부 배너가 칠해짐 | `MOAI_BROWSER_GUARD=1 go test ./internal/web/ -run 'AppJsFireValidationRejectPaints' -count=1 -v` | `s_banner_before_submit: false` → `s_invalid_set: "bogus"` → `s_banner_text: "Validation failed — no changes were saved."`, paint 술식 통과, `s_window_referenceerrors: []` / `--- PASS` (38.72s) | 0 |
+| M7-7 | AC-AFG-010 돌연변이 — 배너를 `hidden` 으로 렌더 | 같은 실행 안 2회차, `--inject-banner-hidden` | `s_injected_banner_hidden: true` → 탐침 exit 1. 「노드 존재」 술식이었다면 통과했을 변이가 적색 — 술식 채택 가능 | 1 (적색 관측) |
+| M7-8 | AC-AFG-011 (b) 정방향 — 사본 바이트 불변 | `MOAI_BROWSER_GUARD=1 go test ./internal/web/ -run 'AppJsFireValidationRejectNoWrites' -count=1 -v` | `s_snapshot_files: 35`, `s_changed_paths: []`, `"exit": 0` | 0 |
+| M7-9 | AC-AFG-011 (c) 역방향 — 쓰기 이음매가 닿는 자리에 1바이트 | 같은 실행 안 2회차, `--inject-sandbox-write .moai/config/sections/quality.yaml` | `s_changed_paths: [{"path": ".moai/config/sections/quality.yaml", "change": "modified"}]`, `"exit": 1` — 달라진 경로를 이름으로 보고 | 1 (적색 관측) |
+| M7-10 | AC-AFG-011 (d) — 수명 판정의 비공허성 | 드라이버 말미에 `defer os.RemoveAll(sandboxRoot)` 주석 1행 주입 후 같은 명령 | `(d) driver carries "defer os.Remove" …` 2건 적색 → 복원 후 녹색. 첫 판은 자기 픽스처 리터럴에 걸려 적색이었고(자기 참조), 바늘을 문자열 연결로 조립해 수리 | 1 → 0 |
+| M7-11 | AC-AFG-001 (a) — 축소 선언과 운전/제외 회계 | `MOAI_BROWSER_GUARD=1 go test ./internal/web/ -run 'AppJsHandlersFireRuntime' -count=1 -v` | `reduction_declared: true`, `driven_count: 8`, `excluded_entries` = 표식 계열, `"exit": 0` / `--- PASS` (12.79s) — 운전 집합이 「표식 없는 전 항목」 술어와 정확히 일치 | 0 |
+| M7-12 | REQ-AFG-014 (1)(i) — 부재는 선언이 아니다 | `go test ./internal/web/ -run 'AppJsFireReductionDeclaration' -count=1` | exit 2 + `--sandbox-base-url` 미배선 · `validation_reject_banner` 이름 보고 → PASS | 0 |
+| M7-13 | 같은 판정의 비공허성 확인 | `if driven_marked and not sandbox_base:` → `if False and …` 후 같은 명령 | **첫 판은 이 변이를 통과시켰다**(모든 기계결함이 exit 2 이므로 exit 코드만으로는 갈리지 않는다) — 판정에 「명명된 원인」을 더한 뒤 재측정: `the fault does not name the missing wiring (--sandbox-base-url)` 적색 | 1 (적색 관측) |
+| M7-14 | AC-AFG-008 — 앵커 토큰 7종 + 직교성 | acceptance §B AC-008 의 `grep -c` 9행 그대로 | probe: `orthogonal`=1 `manifest`=26 `scenario`=6 `Chrome`=4 `paint`=12 `sandbox-root`=5 / driver: `orthogonal`=1 `SPEC-APPJS-IIFE-GUARD-001`=1 `static-scope`=2 `two-surfaces`=1 — 전부 ≥1 | 0 |
+| M7-15 | AC-AFG-013 (c) — 전 게이트 사이클 무회귀 | `MOAI_BROWSER_GUARD=1 go test ./internal/web/ -run 'AppJs' -count=1` | `ok github.com/modu-ai/moai-adk/internal/web 96.737s` | 0 |
+| M7-16 | 패키지 전체 + 공통 DoD | `go test ./internal/web/ -count=1` / `go vet ./internal/web/` / `gofmt -l internal/web/` / `golangci-lint run ./internal/web/...` / `go build ./...` | `ok … 23.840s` · vet 통과 · gofmt 출력 없음 · `0 issues.` · build 통과 | 0 |
+
+**사본 구성 실측:** 사본에 복사하는 것은 `.moai/config` 뿐이고(35파일 — `s_snapshot_files`), 그것이 `handleSave` 의 쓰기 이음매(`SyncToProjectConfig`·`writeProjectConfig`)가 겨누는 자리다. 무쓰기 비교의 제외 목록은 **비어 있고**, 그 비어 있음은 가정이 아니라 측정이다 — 정방향 35파일 전수 비교에서 변경 0건. `lint_manifest` 가 `.moai/config/sections` 를 덮는 제외를 기계로 거부하므로, 이 단언이 나중에 「구성상 초록」으로 약해질 수 없다.
+
+**두 서면을 섞지 않는 방식:** 제출 계열(AC-010·011)과 실루트 계열(AC-001)은 **서로 다른 실행**이고, 어느 쪽 초록도 상대의 집합을 대신 주장하지 않는다. 실루트 실행은 축소를 적극 선언하고 운전 8건·제외 1건을 보고서에 남긴다(M7-11). 선언 없는 부재는 exit 2 다(M7-12).
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 run_complete_at: 2026-09-22
@@ -368,6 +398,35 @@ cross_platform_build: darwin `go build ./internal/web/` exit 0 · `GOOS=windows 
 m1_to_m5_commit_strategy: 마일스톤당 1커밋 — M1 탐침(70f37a688, draft→in-progress 전환 포함) → M2 드라이버(8375c25f8) → M3 돌연변이기(5973ac3c9) → M4 CI job(1f9f2d321) → M5 문서화+전체 재측정(pending-backfill-M5). 전 커밋 본문에 card t1060 명기 + `Authored-By-Agent: manager-develop` 트레일러. push·PR 없음(레인 규율 — 리드 일괄)
 gate_env: `MOAI_BROWSER_GUARD=1` — 게이트 없는 실행은 게이트 변수명을 영어로 명명하는 skip(AC-AFG-003 관측 M2-1), CI 판정면은 `test-browser` job 이 유일하게 운반
 evidence_paths: M1/M2/M3 세션 원문은 `/tmp/t1060-run/` (probe-*.json, m2-runtime.log, m5-fullpkg.log) — 휘발성 스크래치이므로 판정 근거가 되는 명령·출력 요지는 전부 이 §E.2 에 전사했다. §E.2 표가 이 SPEC 판정의 로컬 정본 기록이다.
+
+
+### 개정분 Run-phase Audit-Ready Signal (card t1106)
+
+run_complete_at: 2026-09-23
+run_commit_sha: 19f210fe5
+run_base_sha: 0fbc75afc
+run_status: PASS
+ac_pass_count: 4/4 개정 blocking (AC-AFG-010·011·012·013 전부 양방향 관측 출력으로 PASS) + 상속 AC-AFG-001 개정 문언(운전 집합 술어 + 회계) PASS + AC-AFG-009 개정 문언 PASS; regression-class AC-AFG-008 앵커 7종 기록 완료
+ac_fail_count: 0
+preserve_list_post_run_count: `internal/web/assets/app.js` 무변경 · `go.mod`/`go.sum` 무변경(사본 스냅샷은 Python stdlib `hashlib`/`os` 뿐) · 제품 소스(`internal/web/*.go` 비테스트) 무변경 · `startFireGuardServer` 의 실루트 배선 의미 불변 · 정적 형제 2파일 무손상 · `.github/workflows/ci.yml` 무변경 — run-phase 변경 파일은 정확히 2개(`internal/web/appjs_fire_guard_test.go`, `internal/web/testdata/appjs_fire_probe.py`)
+l44_pre_commit_fetch: 미실행 — 레인 규율상 이 워크트리는 push 하지 않으며, 커밋 직전 `git rev-parse --short HEAD` + `git branch --show-current` 재독만 수행했다(매 커밋 전 3회). 부재를 「청결」로 읽지 않기 위해 기록한다
+l44_post_push_fetch: 해당 없음 — push 없음(리드 일괄)
+new_warnings_or_lints_introduced: 0 (`golangci-lint run ./internal/web/...` → `0 issues.`, `go vet` 통과, `gofmt -l` 무출력)
+cross_platform_build:
+  darwin: `go build ./...` exit 0
+  windows: 미측정 — 개정분은 Go 테스트 파일 1개와 Python testdata 1개뿐이고 syscall·build tag 를 쓰지 않으나, 재지 않은 것은 재지 않았다고 적는다. 매트릭스 판정은 push 뒤 CI 몫
+total_run_phase_files: 3 — `internal/web/appjs_fire_guard_test.go`, `internal/web/testdata/appjs_fire_probe.py`, `.moai/specs/SPEC-APPJS-FIRE-GUARD-001/progress.md`(§E.2/§E.3 개정분)
+m1_to_mN_commit_strategy: 슬라이스당 1커밋 — 35a1015f9(표식·라우팅: M6.1-6.3 + M7.1-7.3) → 1302f1f76(사본 시나리오·paint·무쓰기: M6.4-6.5 + M7.4-7.5) → 19f210fe5(축소 선언·한계 주석·재측정: M6.6 + M7.6-7.8) → 본 progress 기록. 전 커밋 본문에 card t1106 명기. push·PR 없음
+status_transition: 없음 — `status: in-progress` 는 plan-phase 에서 이미 설정돼 있었다(spec/plan/acceptance/progress 4파일 모두). `draft → in-progress` 는 이 run 에서 수행할 것이 남아 있지 않았고, `implemented`/`completed` 로의 전진은 manager-docs 소관이라 건드리지 않았다
+unmeasured:
+  - `test-browser` CI job 의 러너 실측(개정분 포함) — push 뒤 CI 몫이며 여기서 돌리지 않았다
+  - windows/linux 크로스 빌드 — 위 cross_platform_build 참조
+  - `moai spec audit` 의 `SyncStatusDrift` MUST-FIX — 별도 카드 소유의 알려진 오탐이며 그 처방(`--backfill-only`)은 개정을 되돌리므로 적용하지 않았다
+  - 전체 스위트(`go test ./...`) — 로컬 금지(§4.1), 판정은 CI 몫
+carried_debt:
+  - `§C` DoD 한 줄(N-5) 미작성 — plan-audit 이 알고 넘긴 부채
+  - `exit 2` 를 Then 절로 재는 AC 없음 — M7-12/13 이 보고서 출력 층에서 교차 확인했으나 AC 층의 공백은 그대로다
+  - D-Δ1(§A 서사의 AC-AFG-009 REQ 매핑 미공시), N2(REQ-AFG-010 job-coverage 절반) 미해소
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
