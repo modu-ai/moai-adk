@@ -277,7 +277,38 @@ These chains are excluded from this SPEC (spec.md §F) and registered as `unveri
 - `internal/codexadapter/output_test.go:278` `TestPreToolUseAskDropped` asserts `ask` → `{}`; M2c
   inverts it.
 
-All three are intentional characterization amendments (plan.md M2c, M2e), not regressions.
+Added in v0.4.0 (plan-audit iter-3 R3), from a grep of every `_test.go` under
+`internal/codexadapter`, `internal/codexwiring`, `internal/cli`, and `internal/template` for
+`Interrupt|PreCompact|PostCompact|PermissionRequest|permission-request|post-compact|wantAdapted|Unadapted`:
+
+- `internal/codexadapter/events_test.go:24–42` `TestEventTableMapping` pins `{"compact", false}`,
+  `{"post-compact", false}`, `{"permission-request", false}` (`:37–39`) and
+  `"Interrupt": {"", false}` (`:42`) — SPEC-CODEX-EVENT-COVERAGE-001 REQ-CEV-001. M2e rewrites the
+  four rows as adapted, with Interrupt carrying `interrupt`.
+- `events_test.go:111` `TestResolveRecognizedButUnadapted` iterates PreCompact, PostCompact,
+  PermissionRequest, and Interrupt (`:114`) expecting refusal — REQ-CEV-003. M2e rewrites it; the
+  unknown-vs-unadapted distinction it guards is kept by `TestResolveUnknownEvent` (`:158`).
+- `events_test.go:134` `TestResolveInterruptNoCounterpart` expects Interrupt to be refused with no
+  dispatcher-arg claim — REQ-CEV-003. M2e rewrites it to expect `interrupt`.
+- `internal/cli/hook_harness_codex_test.go:305` `TestHarnessCodexUnadaptedSubcommandRejected` uses
+  `compact` as its unadapted example. M2e retargets or rewrites it.
+- Conditional: `internal/codexadapter/stderr_test.go:78` `TestExcludedEventsHaveNoClass` pins no
+  stderr classification for PreCompact, PostCompact, and PermissionRequest (`:82–84`). It is
+  amended only if M2e gives those events a stderr class.
+
+Examined and not amended:
+
+- `internal/codexadapter/dispatcher_registration_test.go` skips rows with an empty `DispatcherArg`
+  (`:40–47`). Once Interrupt carries `interrupt`, the test requires that subcommand to be
+  registered in `internal/cli/hook.go` — a check the M2e `moai hook interrupt` subcommand
+  satisfies, not an amendment.
+- The remaining grep hits (`hook_e2e_test.go`, `hook_test.go`, `codex_job_control_test.go`,
+  `codex_live_protocol_probe_test.go`, `preference/m4_crash_repro_test.go`,
+  `internal/template/settings_test.go`) concern the Claude-side dispatcher, the codex app-server
+  `turn/interrupt` RPC, or the Claude settings template, none of which this SPEC changes.
+
+All listed amendments are intentional (plan.md M2c, M2e), not regressions. Adapting the four rows
+reverses SPEC-CODEX-EVENT-COVERAGE-001 REQ-CEV-001, REQ-CEV-003, and REQ-CEV-004 (spec.md §D).
 
 ## R2. Existing live-test conventions
 

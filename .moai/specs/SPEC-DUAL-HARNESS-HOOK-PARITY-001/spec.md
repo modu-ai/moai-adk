@@ -1,7 +1,7 @@
 ---
 id: SPEC-DUAL-HARNESS-HOOK-PARITY-001
 title: "Dual harness M2 — hook chain, decision preservation, goal continuation, and obligation coverage parity between Claude Code and Codex"
-version: "0.3.0"
+version: "0.4.0"
 status: draft
 created: 2026-09-23
 updated: 2026-09-23
@@ -10,7 +10,7 @@ priority: P1
 phase: "v3.2.0 target"
 module: "internal/codexadapter, internal/codexwiring, internal/cli, internal/goal, internal/verify"
 lifecycle: spec-anchored
-tags: "dual-harness, codex, hook, stop-chain, decision-preservation, goal, receipt, obligation-coverage, card-t1099"
+tags: "dual-harness, codex, hook, stop-chain, decision-preservation, goal, receipt, obligation-coverage, live-uncertified, card-t1099"
 tier: L
 card: t1099
 related_specs: [SPEC-CODEX-HOOK-ADAPTER-001, SPEC-CODEX-EVENT-COVERAGE-001, SPEC-CODEX-DUAL-AGENTS-001, SPEC-CODEX-WIRING-001]
@@ -21,8 +21,10 @@ related_specs: [SPEC-CODEX-HOOK-ADAPTER-001, SPEC-CODEX-EVENT-COVERAGE-001, SPEC
 ## HISTORY
 
 - 2026-09-23 v0.1.0 — Initial draft (manager-spec, card t1099, Class C). Derived from the dual-harness full design (`reports/moai-dual-harness-full-design-20260922.md` §07–§09, §17 F2/F3, §18 M2, §19), the implementation status report (`reports/moai-dual-harness-implementation-status-20260923.md`, verdict FAIL), and the handoff (`reports/moai-dual-harness-handoff-20260923.md`). Code anchors re-measured at HEAD `530d8cc06` — see research.md §R1.
-- 2026-09-23 v0.3.0 — Revision after plan-audit iter-2 (FAIL 0.87, `.moai/reports/plan-audit/SPEC-DUAL-HARNESS-HOOK-PARITY-001-iter2.md`): review gates classed `fail-open-on-missing` on both harnesses to match Claude's source (N1); an in-hook timing leg added and the unmeasured "rule is met" claim withdrawn (N2); goal-status inventory extended to `internal/hook`, with the test's scan scope stated (N3); a unit leg added for the visible needs_input deny (N6); member 1's factory-continuation path exempted from the advisory cut-off (N4); durable live-uncertified marker required at sync close (N5); AC-HPR-004 mutation replaced (N8); adapted row count settled at 12 (N9).
 - 2026-09-23 v0.2.0 — Revision after plan-audit iter-1 (FAIL 0.82, `.moai/reports/plan-audit/SPEC-DUAL-HARNESS-HOOK-PARITY-001-iter1.md`). Codex Stop timeout reframed as a design variable with a per-member budget table and a measurement AC (D2, D11); Claude user-interrupt cancellation source removed and recorded UNSUPPORTED (D3); live-test NOT_RUN hole closed (D4); live commands completed (D6); non-Stop chains excluded with counts (D5); mutation cells, partial legs, AC-OBS-01/AC-POL-01 mapping, template branch coverage, and pinned-test amendments addressed (D7, D8, D10, D12, D13); Q4 moved to run-phase M2d (D9). Clarifications resolved (D1): Q1 whole-catalog AC-POL-01, Q2 fail-closed visible deny, Q6 keep HOOK-ADAPTER REQ-7 (lead via Jev, standing operator delegation); Q3 new `cancelled` status and Q5 no live runs, closing as partial (live-uncertified) (operator, directly). Decision record: plan.md §C.
+- 2026-09-23 v0.3.0 — Revision after plan-audit iter-2 (FAIL 0.87, `.moai/reports/plan-audit/SPEC-DUAL-HARNESS-HOOK-PARITY-001-iter2.md`): review gates classed `fail-open-on-missing` on both harnesses to match Claude's source (N1); an in-hook timing leg added and the unmeasured "rule is met" claim withdrawn (N2); goal-status inventory extended to `internal/hook`, with the test's scan scope stated (N3); a unit leg added for the visible needs_input deny (N6); member 1's factory-continuation path exempted from the advisory cut-off (N4); durable live-uncertified marker required at sync close (N5); AC-HPR-004 mutation replaced (N8); adapted row count settled at 12 (N9).
+- 2026-09-23 v0.4.0 — Revision after plan-audit iter-3 (FAIL 0.90, `.moai/reports/plan-audit/SPEC-DUAL-HARNESS-HOOK-PARITY-001-iter3.md`), scoped to R1–R4 by operator decision (plan.md §C). R1: member 6 (codex review gate) leaves `fail-open-on-missing` and becomes a `required-gate` on the receipt method — codex installed with a reviewable change and no fresh passing receipt continues the turn, codex binary missing allows with a discard record, matching Claude; `fail-open-on-missing` now covers member 7 only. R2: the sync gate's own self-gate (last commit subject is a sync-phase commit, then language marker and code delta) is evaluated in-hook on Codex before any receipt compare, so a non-sync HEAD allows on both harnesses. R3: the intentional test-amendment list is completed and REQ-CEV-001/003 are recorded as reversed alongside REQ-CEV-004. R4: the durable partial-closure marker moves into plan phase — the `live-uncertified` tag and this HISTORY line are written now by manager-spec, leaving the sync close only manager-docs' own surfaces. Also A2 (factory 200 ms bound cited and counted) and A4 (HISTORY order).
+- 2026-09-23 v0.4.0 (closure mode) — This SPEC closes as **partial (live-uncertified)** by operator decision Q5: no live Claude Code or Codex run is executed, every live leg records `NOT_RUN`, and the aggregate verdict is not-PASS for every obligation that needs a live leg. Live certification is deferred to a follow-up card issued by the lead; its id is recorded in progress.md §E.4 at sync close. This line and the `live-uncertified` tag are the plan-phase half of the durable marker (spec.md §E).
 
 ## §A Background and Motivation
 
@@ -79,8 +81,8 @@ verdict: per-verdict attribution, and rejecting skips, empty runs, and stale rec
 
 ### C.1 Stop chain parity (AC-HOOK-01)
 
-- **REQ-HPR-001** (Ubiquitous): The Stop-chain inventory shall enumerate every handler registered on the Claude `Stop` event in the distributed settings template and classify each as `required-gate`, `fail-open-on-missing`, `goal`, or `advisory`, with a declared Codex effect path or an explicit `UNSUPPORTED` record carrying evidence.
-- **REQ-HPR-002** (Ubiquitous): For every `required-gate`, `fail-open-on-missing`, and `goal` member, the Codex harness shall produce the same normalized decision (`allow` / `deny` / `needs_input` / `retryable_error` / `fatal_error`) as the Claude harness on the same event-input golden and the same project configuration, and a continuation reason class that is either identical or paired with it in the declared reason-class mapping (design.md §D3.4).
+- **REQ-HPR-001** (Ubiquitous): The Stop-chain inventory shall enumerate every handler registered on the Claude `Stop` event in the distributed settings template and classify each as `required-gate`, `fail-open-on-missing` (only a member whose Claude source allows the stop when its persisted result is missing), `goal`, or `advisory`, with a declared Codex effect path — in-hook, or receipt with its named receipt producer — or an explicit `UNSUPPORTED` record carrying evidence.
+- **REQ-HPR-002** (Ubiquitous): For every `required-gate`, `fail-open-on-missing`, and `goal` member, the Codex harness shall evaluate the member's own applicability predicates (its self-gates, such as the sync gate's sync-phase-commit predicate and the codex review gate's reviewable-change and reviewer-installed predicates) before any receipt comparison, and shall produce the same normalized decision (`allow` / `deny` / `needs_input` / `retryable_error` / `fatal_error`) as the Claude harness on the same event-input golden, the same project configuration, and the same environment (including whether the codex binary is installed), and a continuation reason class that is either identical or paired with it in the declared reason-class mapping (design.md §D3.4).
 - **REQ-HPR-003** (Capability gate): **Where** the project is deployed with the `gpt` profile (no `.claude/` tree), every `required-gate` and `goal` Stop-chain member shall remain executable on Codex without depending on a file under `.claude/hooks/`.
 - **REQ-HPR-004** (Event-driven): **When** an `advisory` Stop-chain member fails on either harness, the chain shall record the failure and continue, and shall never record that member as passed.
 - **REQ-HPR-005** (Ubiquitous): The Stop chain shall honour each member's existing configuration switch (for example the sync gate's blocking opt-out) identically on both harnesses, so that the same configuration yields the same effect.
@@ -125,7 +127,7 @@ verdict: per-verdict attribution, and rejecting skips, empty runs, and stale rec
 | Related SPEC | Overlap | Relation |
 |---|---|---|
 | SPEC-CODEX-HOOK-ADAPTER-001 (completed) | Event-name normalization (REQ-1), inert-key output mapping (REQ-2), no-silent-no-op (REQ-3), exit-2 semantics (REQ-4), package placement "nothing under internal/hook is modified" (REQ-7) | This SPEC extends the adapter; it keeps REQ-7 by placing new code in `internal/codexadapter`, `internal/cli`, and existing service packages. REQ-HPR-007 tightens the card-t590 PreToolUse drop branch that the adapter added after that SPEC closed. |
-| SPEC-CODEX-EVENT-COVERAGE-001 (completed) | The 12-row event table, the Interrupt row (REQ-CEV-001..006), and the codex-cli 0.153.4 firing campaign (REQ-CEV-007..011) with the trigger-not-achieved vs not-fired distinction | This SPEC adapts the four rows that SPEC held back. REQ-CEV-005 ("M1 shall not register a new dispatcher subcommand") was scoped to that SPEC's M1; REQ-HPR-012 adds the Interrupt path in `internal/cli`/`internal/codexadapter`, keeping REQ-CEV-002 (no constant in `internal/hook`). REQ-HPR-013 inherits its trigger-not-achieved distinction. Adapting Interrupt reverses REQ-CEV-004 (no Interrupt handler installed): `TestRenderHooks_InterruptNeverInstalled` is inverted as an intentional amendment in M2e. The campaign must be re-run: the installed codex-cli is 0.155.1, not 0.153.4 (research.md §R1.7). |
+| SPEC-CODEX-EVENT-COVERAGE-001 (completed) | The 12-row event table, the Interrupt row (REQ-CEV-001..006), and the codex-cli 0.153.4 firing campaign (REQ-CEV-007..011) with the trigger-not-achieved vs not-fired distinction | This SPEC adapts the four rows that SPEC held back. REQ-CEV-005 ("M1 shall not register a new dispatcher subcommand") was scoped to that SPEC's M1; REQ-HPR-012 adds the Interrupt path in `internal/cli`/`internal/codexadapter`, keeping REQ-CEV-002 (no constant in `internal/hook`). REQ-HPR-013 inherits its trigger-not-achieved distinction. Adapting the four held-back rows reverses three of that SPEC's requirements, each as an intentional amendment in M2e (plan.md §F, research.md §R1.13): REQ-CEV-001 (the Interrupt row has an empty `DispatcherArg` and `Adapted` false — pinned by `TestEventTableMapping`), REQ-CEV-003 (`Resolve("Interrupt")` refuses with the unadapted class — pinned by `TestResolveRecognizedButUnadapted` and `TestResolveInterruptNoCounterpart`), and REQ-CEV-004 (no Interrupt handler installed — pinned by `TestRenderHooks_InterruptNeverInstalled`). REQ-CEV-006's census comment in `events.go` is rewritten to the new 12-adapted truth, which keeps that requirement's intent (the comment states the truth after the change). The campaign must be re-run: the installed codex-cli is 0.155.1, not 0.153.4 (research.md §R1.7). |
 | SPEC-CODEX-DUAL-AGENTS-001 (completed) | Neutral agent source → `.codex/agents/*.toml`; per-agent Claude `hooks:` frontmatter documented as having no Codex per-agent equivalent; Codex-side permission enforcement excluded | No requirement overlap. The per-agent hook drop stays a documented drop; role-level permission enforcement belongs to sibling card t1100 (AC-AGENT-01). |
 | SPEC-CODEX-WIRING-001 | `RenderHooks` merge model and `--harness codex` runtime flag | This SPEC changes what the table renders (adapted rows, Stop composition); the merge/preservation contract of that SPEC is unchanged. |
 
@@ -139,17 +141,28 @@ reported as not-PASS for every obligation that needs a live leg. Live certificat
 a separate follow-up card. No artifact of this SPEC may describe the hook, approval, or goal layer
 as certified on either host.
 
-Durable marker at sync close (plan-audit iter-2 N5). The status enum has no "partial" value, so
-the sync phase writes `status: completed` and must also carry the partial state in three places a
-reader of the SPEC cannot miss:
+Durable marker (plan-audit iter-2 N5; placement revised by iter-3 R4). The status enum has no
+"partial" value, so the sync phase writes `status: completed`, and the partial state is carried in
+four places a reader of the SPEC cannot miss. Each is written by the agent that owns its surface
+(`.claude/rules/moai/development/spec-frontmatter-schema.md` § Forbidden ownership crossings:
+manager-docs may change only `status:` and `updated:` in spec.md, plan.md, and acceptance.md):
 
-- a `live-uncertified` token appended to the frontmatter `tags`;
-- a HISTORY line stating that the SPEC closed partial (live-uncertified) and naming the follow-up
-  card;
-- a progress.md §E.4 statement quoting the not-PASS aggregate verdict and listing the `NOT_RUN`
-  live legs.
+- **Plan phase, manager-spec (already written in v0.4.0):**
+  - the `live-uncertified` token in the frontmatter `tags`;
+  - the HISTORY line "v0.4.0 (closure mode)" stating that the SPEC closes partial
+    (live-uncertified) and that live certification goes to a follow-up card.
+- **Sync phase, manager-docs (its own surfaces):**
+  - a progress.md §E.4 statement quoting the not-PASS aggregate verdict, listing the `NOT_RUN`
+    live legs, and naming the follow-up card's id;
+  - a CHANGELOG entry for this SPEC that says "partial (live-uncertified)" and names the same
+    follow-up card.
 
-A sync close missing any of the three is incomplete.
+Why the two frontmatter/HISTORY markers are written now and not at sync: the partial closure is
+already decided (Q5), so their content does not depend on any run-phase result, and writing them
+at sync would require manager-docs to edit spec.md body content, which it may not do. Everything
+that does depend on run results — the aggregate verdict, the `NOT_RUN` list, the follow-up card id
+— lives on surfaces manager-docs owns. A sync close missing either sync-phase marker is incomplete,
+and a sync close that removes either plan-phase marker is a defect.
 
 ## §E.1 Constraints
 

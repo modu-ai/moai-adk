@@ -8,6 +8,7 @@
 - REQ count 25 (REQ-HPR-001..025), AC count 22 (AC-HPR-001..022)
 - v0.2.0 (plan-audit iter-1 revision): Q1–Q6 resolved, decision record in plan.md §C; no open clarification markers
 - v0.3.0 (plan-audit iter-2 revision): N1–N6, N8, N9 addressed; Q1/Q2/Q6 to be confirmed by the operator at Implementation Kickoff (N7)
+- v0.4.0 (plan-audit iter-3 revision, delta re-audit authorized for R1–R4): member 6 on the receipt method, fail-closed when codex is installed (R1); sync-gate self-gate before the receipt (R2); intentional test-amendment list completed (R3); plan-phase `live-uncertified` tag + closure-mode HISTORY line written, sync close limited to §E.4 + CHANGELOG (R4); A2, A4
 - Completion condition: closes as partial (live-uncertified) per operator decision Q5 (spec.md §E)
 
 ## §E.2 Run-phase Evidence
