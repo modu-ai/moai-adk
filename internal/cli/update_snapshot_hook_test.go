@@ -69,12 +69,46 @@ func TestUpdateRestore_WritesSnapshot_CleanInstall(t *testing.T) {
 	testHelperWritesSnapshot(t)
 }
 
-// TestUpdateRestore_WritesSnapshot_RunUpdateRestore is AC-TBS-002
-// (runUpdateRestore lockout-escape site). update_restore.go calls
-// writeTemplateSnapshotBestEffort after RestoreFromBackupDir completes.
-func TestUpdateRestore_WritesSnapshot_RunUpdateRestore(t *testing.T) {
+// TestRunUpdateRestore_LeavesSnapshotUntouched replaces the former
+// AC-TBS-002 runUpdateRestore site test (card t1139). The lockout-escape
+// restore deploys no template, so it has no render to record; writing the
+// restored user config into the snapshot would make it the next merge BASE and
+// the next update would drop every customization it carries. The snapshot the
+// last deploy wrote must survive the restore byte-for-byte.
+func TestRunUpdateRestore_LeavesSnapshotUntouched(t *testing.T) {
 	t.Parallel()
-	testHelperWritesSnapshot(t)
+	projectRoot, backupDir := newRestoreFixture(t)
+
+	// The last deploy's render: user.name empty, as the template renders it.
+	snapPath := filepath.Join(backup.SnapshotDir(projectRoot), "sections", "user.yaml")
+	if err := os.MkdirAll(filepath.Dir(snapPath), defs.DirPerm); err != nil {
+		t.Fatalf("mkdir snapshot: %v", err)
+	}
+	const rendered = "user:\n  name: \"\"\n"
+	if err := os.WriteFile(snapPath, []byte(rendered), defs.FilePerm); err != nil {
+		t.Fatalf("write snapshot: %v", err)
+	}
+
+	var buf bytes.Buffer
+	if err := runUpdateRestore(projectRoot, backupDir, &buf); err != nil {
+		t.Fatalf("runUpdateRestore: %v", err)
+	}
+
+	// Positive control: the restore did write the user's value to the tree.
+	live, err := os.ReadFile(filepath.Join(projectRoot, defs.MoAIDir, defs.SectionsSubdir, "user.yaml"))
+	if err != nil {
+		t.Fatalf("read restored user.yaml: %v", err)
+	}
+	if !bytes.Contains(live, []byte("fixture-operator")) {
+		t.Fatalf("restore did not write the backed-up user.yaml; got %q", live)
+	}
+	got, err := os.ReadFile(snapPath)
+	if err != nil {
+		t.Fatalf("read snapshot: %v", err)
+	}
+	if string(got) != rendered {
+		t.Errorf("runUpdateRestore rewrote the snapshot: got %q, want the last render %q", got, rendered)
+	}
 }
 
 // testHelperWritesSnapshot is the shared body for the three restore-site
