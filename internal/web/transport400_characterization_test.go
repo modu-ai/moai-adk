@@ -6,25 +6,30 @@ import (
 	"testing"
 )
 
-// SPEC-WEB-TRANSPORT-001 M2 (REQ-TR400-001, AC-TR400-001) — D-400a server-side
-// characterization. httptest-submits a validation-failing POST /save and
-// measures what the 400 response body actually carries: the error banner and
-// at least one per-field error message.
+// SPEC-WEB-TRANSPORT-001 M2 (REQ-TR400-001, AC-TR400-001) — the D-400a body
+// contract of the validation-reject path: a validation-failing POST /save
+// renders the error banner and at least one per-field error message.
 //
-// This is a CHARACTERIZATION test: it pins the behavior the validation-reject
-// path exhibits today (handlers.go renders the full page at status 400 with
-// the banner + merged field errors). It makes no judgment about whether htmx
-// delivers this body under hx-boost — that is D-400b (M1) and the browser
-// axis (card t1081). If a remediation card later changes the 400 path, this
-// test converts to a specification test at that time.
+// This began as a CHARACTERIZATION test, pinning what the path did at the time
+// (a full page rendered at status 400) while explicitly withholding judgment
+// on whether htmx delivered that body under hx-boost. Its own closing note
+// said: "If a remediation card later changes the 400 path, this test converts
+// to a specification test at that time." Card t1105 is that card — it measured
+// the join (the pinned htmx build answers 4xx with swap:false, so the body was
+// rendered and then discarded) and moved the path to 2xx.
 //
-// FAIL classification (REQ-TR400-003 truth table): a body-without-feedback
-// observation here is the measurement-invalid (server-contract divergence)
-// grade — re-measure, escalate; it is never evidence of defect-absence.
+// So this is now a SPECIFICATION test. What it asserts is unchanged in
+// substance — banner and per-field error present, nothing persisted — but the
+// status it expects is the swappable one, and a failure here is a regression
+// rather than a re-measurement. The swap side of the contract is asserted
+// separately in transport400_swap_contract_test.go.
 
-// TestCharacterizeValidation400BodyFeedback characterizes the 400 body of the
-// validation-reject path: status 400 AND the banner phrase AND at least one
-// per-field error marker present in the response body.
+// TestCharacterizeValidation400BodyFeedback specifies the body of the
+// validation-reject path: a swappable status AND the banner phrase AND at
+// least one per-field error marker present in the response body.
+//
+// The name keeps its original spelling so the SPEC-WEB-TRANSPORT-001 evidence
+// trail (t1080's verdict cites this test by name) still resolves.
 func TestCharacterizeValidation400BodyFeedback(t *testing.T) {
 	t.Parallel()
 
@@ -48,8 +53,8 @@ func TestCharacterizeValidation400BodyFeedback(t *testing.T) {
 	form.Set("permission_mode", "bogus")
 	rec := servePost(t, a.routes(), "/save", form)
 
-	if rec.Code != http.StatusBadRequest {
-		t.Fatalf("validation-reject status = %d, want 400 (body: %.400s)", rec.Code, rec.Body.String())
+	if rec.Code != http.StatusOK {
+		t.Fatalf("validation-reject status = %d, want 200 (body: %.400s)", rec.Code, rec.Body.String())
 	}
 	if writeCalled {
 		t.Fatal("write seam invoked on validation failure — request did not traverse the atomic-reject path")
@@ -59,15 +64,15 @@ func TestCharacterizeValidation400BodyFeedback(t *testing.T) {
 
 	const banner = "Validation failed — no changes were saved."
 	if !strings.Contains(body, banner) {
-		t.Errorf("400 body does not carry the banner phrase %q (D-400a divergence candidate — re-measure per REQ-TR400-003 before any judgment)", banner)
+		t.Errorf("validation-reject body does not carry the banner phrase %q — regression: the reject path renders no visible reason (card t1105)", banner)
 	}
 
 	const fieldErr = "unrecognized permission mode: bogus"
 	if !strings.Contains(body, fieldErr) {
-		t.Errorf("400 body does not carry the per-field error marker %q (D-400a divergence candidate — re-measure per REQ-TR400-003 before any judgment)", fieldErr)
+		t.Errorf("validation-reject body does not carry the per-field error marker %q — regression: the field that failed is not identified to the user (card t1105)", fieldErr)
 	}
 
 	if strings.Contains(body, banner) && strings.Contains(body, fieldErr) {
-		t.Logf("D-400a MEASURED: 400 body carries banner %q AND per-field error %q (%d bytes)", banner, fieldErr, len(body))
+		t.Logf("D-400a SPECIFIED: validation-reject body carries banner %q AND per-field error %q (%d bytes)", banner, fieldErr, len(body))
 	}
 }
