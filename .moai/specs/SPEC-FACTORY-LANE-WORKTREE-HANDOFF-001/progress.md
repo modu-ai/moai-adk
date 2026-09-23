@@ -139,3 +139,9 @@ implementation_kickoff_approval: not-granted
 - Absorbed local develop `08113ff0f` (t1074 landed as `861510fb6`) at merge `a2d8afe84`; one comment-only conflict in `internal/mcp/catalog_test.go` resolved to develop wording.
 - Premise recheck: `.moai/reports/t1082/premise-recheck-20260923.md` — 10 premises match; M1 (ResolveLane returns ErrEndpointLaunchPending, no REQ/AC for handoff during launch-pending), M2 (two rebind paths: BindLaunchPending vs RESERVED→BOUND), M3 (run resolver location wording).
 - Run phase NOT started; awaiting operator Kickoff gate and a decision on M1/M2.
+
+## §H Plan-audit closure (2026-09-23)
+
+- iter-4 FAIL 0.81 → iter-5 FAIL 0.81 → iter-6 PASS-WITH-DEBT 0.86 (Tier L threshold 0.85, margin 0.0125) at SPEC commit `6ad4824a2`; reports `.moai/reports/t1082/plan-audit-iter{4,5,6}.md`; N1 decision `.moai/reports/t1082/n1-decision-20260923.md`.
+- Carried debt (all optional, no BLOCKING): N7 major — reservation source-row read inside its own transaction is not discriminated; absorb as AC-FLH-019 order (vii) at the first RED of run phase. N8 spec.md:133 unconditional "leave unchanged" vs t1074 dead-owner restart. N9 fixture wording (ownerCurrent injection, source seed path, (v) not-current vs live owner). N10 dirty-target NACK reason. N11 plan.md milestones lack REQ-016..018 work incl. t1074 RegisterPeer transaction change. N12 progress.md frontmatter `updated`.
+- Run phase NOT started; awaiting operator Implementation Kickoff Approval via lead.
