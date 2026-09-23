@@ -122,7 +122,7 @@ Drift the probes did not see. There are three items.
 
 ```yaml
 run_complete_at: 2026-09-23
-run_commit_sha: pending-backfill   # M4 commit carries this section; M1 06c5133dd, M2 7100be63b, M3 43aa64cba
+run_commit_sha: eb629efb5   # M4 commit carries this section; M1 06c5133dd, M2 7100be63b, M3 43aa64cba, M4 56de931ca, K4 eb629efb5
 run_status: complete-with-attributed-failures
 ac_pass_count: 15
 ac_fail_count: 1   # AC-OP55-012: pre-existing web/cli failures on the absorbed tree; see E.2.2 row 012
@@ -181,7 +181,7 @@ AC-OP55-014 was re-run by manager-docs on HEAD `eb629efb5`: `git diff --name-onl
 
 ```yaml
 sync_complete_at: 2026-09-23
-sync_commit_sha: pending-backfill   # a commit cannot cite its own hash
+sync_commit_sha: d0037fba8
 sync_status: complete
 ac_pass_count: 16
 ac_fail_count: 0
