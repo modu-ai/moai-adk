@@ -3,6 +3,8 @@ package cli
 import (
 	"context"
 	"errors"
+	"fmt"
+	"io"
 	"strings"
 
 	"github.com/modu-ai/moai-adk/internal/config"
@@ -29,7 +31,7 @@ func factoryLaunchEnabled(env []string) bool {
 // registerFactoryLaunchPending publishes only process-backed launch evidence.
 // A SessionStart hook later replaces its private provisional row key with the
 // actual session UUID through Store.RegisterPeer's owner-preserving upsert.
-func registerFactoryLaunchPending(ctx context.Context, root string, env []string, pid int, processStart string) (factorymsg.Peer, error) {
+func registerFactoryLaunchPending(ctx context.Context, root string, env []string, pid int, processStart string) (_ factorymsg.Peer, err error) {
 	runID := strings.TrimSpace(launchEnvValue(env, config.EnvMoaiKanbanID))
 	worker := strings.TrimSpace(launchEnvValue(env, config.EnvMoaiFactoryWorker))
 	workers := strings.TrimSpace(launchEnvValue(env, config.EnvMoaiFactoryWorkers))
@@ -54,14 +56,14 @@ func registerFactoryLaunchPending(ctx context.Context, root string, env []string
 	if err != nil {
 		return factorymsg.Peer{}, err
 	}
-	defer s.Close()
+	defer closeFactoryInto(&err, s, "factory message broker")
 	return s.RegisterLaunchPending(ctx, factorymsg.Peer{
 		ProjectKey: homestate.ProjectKey(root), RunID: runID, Backend: backend,
 		Role: role, Slot: slot, Generation: 1, PID: pid, ProcessStart: processStart,
 	})
 }
 
-func rollbackFactoryLaunchPending(ctx context.Context, root string, pending factorymsg.Peer) error {
+func rollbackFactoryLaunchPending(ctx context.Context, root string, pending factorymsg.Peer) (err error) {
 	if pending.SessionUUID == "" {
 		return nil
 	}
@@ -69,7 +71,16 @@ func rollbackFactoryLaunchPending(ctx context.Context, root string, pending fact
 	if err != nil {
 		return err
 	}
-	defer s.Close()
+	defer closeFactoryInto(&err, s, "factory message broker")
 	_, err = s.RollbackLaunchPending(ctx, pending)
 	return err
+}
+
+// closeFactoryInto closes c as its caller returns and reports a close failure
+// through *errp — but only when the caller is not already returning an error,
+// so the first failure stays the one the caller sees, unwrapped.
+func closeFactoryInto(errp *error, c io.Closer, what string) {
+	if cerr := c.Close(); cerr != nil && *errp == nil {
+		*errp = fmt.Errorf("close %s: %w", what, cerr)
+	}
 }
