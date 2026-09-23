@@ -45,8 +45,14 @@ the decisions most expensive to reverse first.
   are the intended building blocks.
 - File set owned by this SPEC: `internal/homestate/factory.go`, `internal/homestate/runtime.go`, a
   new `internal/homestate/factory_run_retire.go`, `internal/factorymsg/store.go`,
-  `internal/cli/factory_handoff_recover.go` (the existing `moai factory` command group), plus tests.
-  Files owned by t1082 and t1109 are listed in spec.md §E; touching one halts with a blocker report.
+  `internal/cli/launch_exec_windows.go` (the REQ-002b restamp call site),
+  `internal/cli/factory_handoff_recover.go` (the existing `moai factory` command group), a new
+  `test/integration/harness/it08_factory_run_retire_test.go`, plus package tests. Files owned by
+  t1082 and t1109 are listed in spec.md §E; touching one halts with a blocker report.
+- **Overlap status, stated honestly**: this tree cannot establish non-overlap with t1082, because
+  t1082's files do not exist here. The zero-overlap figure is the team lead's measurement against
+  t1082's own worktree (2026-09-23), cited as that. Re-confirm before integration, and treat the
+  same-package `internal/factorymsg/store.go` clash as a live residual (spec.md §E).
 - Template neutrality (C1-C8) applies to anything under `internal/template/templates/`; `make build`
   after any template edit; `make agents-emit` after any agent `.md` edit. Neither is expected here.
 
@@ -67,10 +73,23 @@ its verbatim output, attributed to that run and that tree.
   transaction. The caller supplies `os.Getpid()` and `homestate.CurrentProcessFingerprint()`.
 - Add the `retired` status value and a `run.retired` event kind. Retirement is an `UPDATE` of
   `status`; the row is never deleted (REQ-010).
-- Decision recorded here for review: the stamp is the **recording process**, not the eventual child.
-  On POSIX `syscall.Exec` preserves PID and start time, so the stamp is the session; on Windows the
-  launcher blocks in `child.Wait()` for the session's lifetime, so it is live exactly as long. One
-  stamp, both platforms, no per-platform branch.
+- **Decision recorded here for review — the owner is the SESSION process, and the platform branch is
+  explicit.** On POSIX `syscall.Exec` preserves PID and start time, so the launcher stamp already
+  IS the session identity and no restamp is needed. On Windows `child.Start()` creates a distinct
+  session process, so the launcher restamps the row with `child.Process.Pid` + `childFingerprint` —
+  the same two values it already hands `registerFactoryLaunchPending`
+  (`launch_exec_windows.go:50,55`) — immediately after the child's identity is probed live and
+  before the peer registration.
+
+  An earlier draft claimed one unconditional stamp worked on both shapes. That was measured false
+  (spec.md §A.1): a Windows launcher killed while its child survives would probe dead and its live
+  session's run would be retired, and the column and the peer fallback would name different
+  processes. The branch costs about ten lines at one call site and removes both.
+
+  The pre-restamp window is correct rather than tolerated: between `RecordRun` and the restamp the
+  launcher IS the only process, so a launch that fails in that window leaves a row whose stamped
+  owner dies with it and is correctly reaped — which is exactly the rejected-alternative (e)
+  rationale the stamped column exists for.
 
 ### M2 — The liveness predicate and the reconciler (new interface)
 
@@ -109,12 +128,20 @@ its verbatim output, attributed to that run and that tree.
   `runs` table after each. This milestone exists because the three doors were **read, not run**
   during reproduction; re-reading the source does not close it.
 
-### M6 — Migration, mutation, and cross-platform verification
+### M6 — Migration, mutation, and cross-platform placement
 
 - Legacy-row migration path: a v2 database with two unstamped `active` rows, reconciled via the peer
   fallback.
-- Both mutation directions (spec.md REQ-005 and REQ-004), per acceptance.md §D.3.
-- Affected-package tests; CI supplies the darwin/linux/windows verdict.
+- Both mutation directions (AC-015a / AC-015b).
+- **Cross-platform placement, not a cross-platform verdict.** The liveness/reconciler exercise goes
+  at `test/integration/harness/it08_factory_run_retire_test.go` behind `//go:build integration` —
+  measured as the only path the three-OS `test-integration` job runs
+  (`go test -tags=integration ./test/integration/harness/...`, `ci.yml:381`). The unit `test` job is
+  ubuntu-only (`ci.yml:124`) and `ci.yml` has no `pull_request` trigger for `develop`, so the
+  three-OS result arrives on the **develop push after integration**, not before. The run phase
+  records darwin locally and records the rest as deferred — it does not claim a verdict it cannot
+  obtain (AC-013).
+- Affected-package tests: `go test ./internal/homestate/... ./internal/factorymsg/... ./internal/cli/...`.
 
 ## §G Anti-patterns
 

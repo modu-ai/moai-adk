@@ -22,25 +22,58 @@ linked worktree, and the environment must be scrubbed in the same compound invoc
 Evidence that the isolation held: the only factory state created by the exercise is under the
 sandbox `MOAI_HOME`, and its project key is not this repository's.
 
-## §C AC Matrix
+## §C Two-cell adoption — RED-now and green path
 
-| AC | Requirement | Milestone | Severity | Verification |
-|----|-------------|-----------|----------|--------------|
-| AC-001 | REQ-001/002 | M1 | MUST | schema read + stamped-row query |
-| AC-002 | REQ-010 | M1 | MUST | row survives retirement + event row present |
-| AC-003 | REQ-003 | M2 | MUST | classifier unit test, PID-reuse case |
-| AC-004 | REQ-004 | M2/M3 | MUST | dead-owner run retired, join succeeds |
-| AC-005 | REQ-005 | M2/M3 | MUST | live-owner run NOT retired |
-| AC-006 | REQ-005 | M2 | MUST | indeterminate-owner run NOT retired |
-| AC-007 | REQ-006 | M2/M6 | MUST | v2 legacy DB reconciled via peer fallback |
-| AC-008 | REQ-007 | M3 | MUST | surviving-ambiguity error text |
-| AC-009 | REQ-014 | M3 | MUST | fail-closed regression, both directions |
-| AC-010 | REQ-008/009 | M4 | MUST | `moai factory runs` list + refuse-live |
-| AC-011 | REQ-011 | M5 | MUST | executed `moai glm -f`, captured `runs` |
-| AC-012 | REQ-011 | M5 | MUST | executed `moai codex -f`, captured `runs` |
-| AC-013 | REQ-013 | M6 | MUST | darwin + linux + windows CI result |
-| AC-014 | REQ-012 | M1-M6 | MUST | isolation evidence per exercise |
-| AC-015 | REQ-004/005 | M6 | MUST | mutation, both directions |
+[HARD] Per `verification-completeness.md` §2, every release-blocking criterion below is adopted
+with a pair of cells: a RED-now observation on the pre-implementation tree, and the milestone that
+flips it. The RED-now cells live in the evidence ledger at §C.1 and are cited by id from the matrix.
+
+**Document-level tree pin**: every RED-now cell below was measured on commit **`bb5b8f9d1`**
+(branch `WT-factory-run-retire`). No criterion carries its own pin, so this document-level pin binds
+all of them.
+
+### C.1 RED-now evidence ledger
+
+Each entry carries the four required elements: a single-invocation read-only command, its verbatim
+stdout, its exit code, and the tree SHA (the document pin above). Every RED below is red because
+**the symbol, column, or surface it names does not exist yet** — not because of unrelated files, and
+not because the criterion is unsatisfiable.
+
+| id | command | verbatim stdout | exit | why red |
+|----|---------|-----------------|------|---------|
+| R-01 | `grep -c lead_pid internal/homestate/factory.go` | `0` | 1 | the owner-identity column is not in the `runs` DDL |
+| R-02 | `grep -c "factorySchemaVersion = 3" internal/homestate/factory.go` | *(empty)* | 1 | schema is still at version 2 |
+| R-03 | `grep -rn migrateFactoryV2ToV3 internal/homestate` | *(empty)* | 1 | no v2→v3 migration exists, so no legacy row can be reconciled |
+| R-04 | `grep -c retired internal/homestate/runtime.go` | `0` | 1 | no `retired` status value and no `run.retired` event are written anywhere |
+| R-05 | `grep -rn ReconcileActiveRuns internal/homestate` | *(empty)* | 1 | the reconciler does not exist |
+| R-06 | `grep -c "Use: \"runs\"" internal/cli/factory_handoff_recover.go` | `0` | 1 | the `moai factory runs` operator surface does not exist |
+| R-07 | `grep -rln factory_run_retire test/integration/harness` | *(empty)* | 1 | no test sits on the one path the three-OS CI job runs |
+| R-08 | `grep -c "AC-011 PASS" .moai/specs/SPEC-FACTORY-RUN-RETIRE-001/progress.md` | `0` | 1 | no door invocation has been recorded |
+
+Deliberately **not** used as a RED cell: any `go test -run <NewTestName>` selector. A Go test binary
+given a selector that matches zero tests exits 0 and prints `ok` — a vacuous green dressed as a red,
+which is the exact failure `verification-completeness.md` §2 warns about.
+
+## §C.2 AC Matrix
+
+| AC | Requirement | Milestone | Severity | RED-now | Green path (what flips it) |
+|----|-------------|-----------|----------|---------|----------------------------|
+| AC-001 | REQ-001/002 | M1 | release-blocking | R-01, R-02 | M1 adds the columns and the stamp; the query returns a non-zero pid and version 3 |
+| AC-002 | REQ-010 | M1 | release-blocking | R-04 | M1 adds the `retired` transition and the `run.retired` event |
+| AC-003 | REQ-003/003b | M2 | release-blocking | R-05 | M2 adds the classifier; the PID-reuse case returns `dead` |
+| AC-004 | REQ-004 | M2/M3 | release-blocking | R-05 | M2/M3 retire dead owners; the join succeeds |
+| AC-005 | REQ-005 | M2/M3 | release-blocking | R-05 | M2/M3 leave a live owner's run `active` |
+| AC-006 | REQ-005 | M2 | release-blocking | R-05 | M2 leaves an indeterminate owner's run `active` |
+| AC-007 | REQ-006 | M2/M6 | release-blocking | R-03 | M1 migration + M2 peer fallback retire the legacy rows |
+| AC-008 | REQ-007 | M3 | release-blocking | R-05 | M3 adds classifications to the ambiguity error text |
+| AC-009 | REQ-014 | M3 | release-blocking | R-05 | M3 preserves both sentinels through the new path |
+| AC-010 | REQ-008/009 | M4 | release-blocking | R-06 | M4 adds `moai factory runs` and its refuse-live branch |
+| AC-011 | REQ-011 | M5 | release-blocking | R-08 | M5 executes `moai glm -f` and records the result |
+| AC-012 | REQ-011 | M5 | release-blocking | R-08 | M5 executes `moai codex -f` and records the result |
+| AC-013 | REQ-013/013b | M6 | regression-guard | R-07 | M6 places the exercise under the three-OS path — see §D note |
+| AC-014 | REQ-012 | M1-M6 | release-blocking | R-05 | each exercise records its isolation evidence |
+| AC-015 | REQ-004/005 | M6 | release-blocking | R-05 | M6 mutation, both directions |
+| AC-016 | REQ-002b/002c | M1 | release-blocking | R-01 | M1 restamp makes stamp and lead peer name one process |
 
 ## §D Acceptance Criteria (Given-When-Then)
 
@@ -56,7 +89,11 @@ sandbox `MOAI_HOME`, and its project key is not this repository's.
 - **AC-003** Given a recorded owner identity whose PID is live but whose process-start fingerprint
   differs from the recorded one (the PID-reuse shape), When the classifier runs, Then it returns
   `dead` — and given the same PID with the matching fingerprint it returns `live`. A classifier that
-  consults only the PID fails this criterion.
+  consults only the PID fails this criterion. The fingerprints are supplied as fixture values, not
+  harvested by racing a real PID-reuse: on linux the fingerprint has one-second resolution
+  (`ps -o lstart=`), so a real same-second reuse is indistinguishable there by construction. The
+  test asserts the REQ-003b direction explicitly — an indistinguishable fingerprint pair returns
+  `live`, never `dead`.
 
 - **AC-004** Given a sandbox holding two `active` runs whose owners are both dead, When a worker
   joins with no `--factory-run`, Then the join succeeds, and the `runs` table afterwards shows the
@@ -100,13 +137,38 @@ sandbox `MOAI_HOME`, and its project key is not this repository's.
   captured immediately afterwards, Then `progress.md` records the invocation, its exit code, and the
   verbatim table, with the same source-citation exclusion as AC-011.
 
-- **AC-013** Given the merged branch, When CI runs, Then the liveness-predicate and reconciler tests
-  report a result on darwin, linux, and windows. The originating reproduction was darwin-only; a
-  darwin-only test result does not satisfy this criterion.
+- **AC-013** *(regression-guard, not release-blocking — see the note below)* Given the
+  liveness-predicate and reconciler exercise placed at `test/integration/harness/` behind
+  `//go:build integration`, When the `test-integration` job runs on the develop push that follows
+  this card's integration, Then it reports a result on ubuntu-latest, macos-latest, and
+  windows-latest.
+
+  **Why this is a regression-guard and not a release gate.** Measured at `bb5b8f9d1`: the unit
+  `test` job matrix is `os: [ubuntu-latest]` alone (`ci.yml:124`); the three-OS matrix lives only in
+  `test-integration` (`ci.yml:381`), which runs `go test -tags=integration ./test/integration/harness/...`;
+  and `ci.yml` triggers on `push: [main, develop]` plus `pull_request: [main]` — there is no
+  `pull_request` trigger for `develop`. A card merging to `develop` therefore has **no pre-merge
+  path to a three-OS result**. Per `verification-completeness.md` § The undecidable disposition, a
+  criterion whose green cannot be produced before the gate it guards loses release-blocking
+  eligibility rather than being written more confidently.
+
+  What IS verified before integration: **darwin only**, from the lane's own local run, recorded with
+  command and output. Linux and windows are **deferred to the post-integration develop-push CI run**
+  and carried as named residual risk in `spec.md` §F. An earlier draft of this criterion demanded a
+  pre-merge three-OS verdict, which no correct work on this card could have produced.
 
 - **AC-014** Given any exercise in AC-001..AC-012, When it completes, Then the factory state it
   created lives only under the sandbox `MOAI_HOME` and carries a project key that is not this
   repository's — recorded as the directory listing plus the key.
+
+- **AC-016** Given a run recorded through a **spawn-shaped** launch (the Windows shape, exercised
+  under test by driving the restamp path directly rather than by requiring a Windows host), When the
+  run row and the run's `role='lead'` peer are both read, Then the `lead_pid` /
+  `lead_process_start` on the row equal the `pid` / `process_start` on the peer — the two sources
+  name one process. And given a **replace-shaped** launch (the POSIX `syscall.Exec` shape), Then the
+  same equality holds without a restamp. A design in which the row names the launcher while the peer
+  names the child fails this criterion: that divergence is the D1 defect this SPEC was revised to
+  remove, and it is the shape that would retire a live session's run.
 
 ## §D.1 Mutation criteria (both directions)
 
@@ -122,20 +184,30 @@ AC-015a alone would pass on one that retires nothing.
 
 ## §D.2 Severity
 
-All criteria above are MUST. There are no nice-to-have criteria in this SPEC: every one of them
-either protects a live lead's run or establishes that a dead lead's run actually leaves `active`.
+Fifteen of the sixteen criteria are **release-blocking**: each either protects a live lead's run or
+establishes that a dead lead's run actually leaves `active`.
+
+**AC-013 is the one exception — classified `regression-guard`.** Its green cannot be produced before
+this card integrates (no `pull_request` CI trigger exists for `develop`), so per
+`verification-completeness.md` § The undecidable disposition it loses release-blocking eligibility
+rather than standing as a gate nothing can pass. It is not recorded as a pass at integration time;
+it becomes a guard against later regression once the develop-push run reports.
 
 ## §D.3 Traceability
 
-REQ-001→AC-001 · REQ-002→AC-001 · REQ-003→AC-003 · REQ-004→AC-004/AC-015b · REQ-005→AC-005/AC-006/AC-015a ·
-REQ-006→AC-007 · REQ-007→AC-008 · REQ-008→AC-010 · REQ-009→AC-010 · REQ-010→AC-002 ·
-REQ-011→AC-011/AC-012 · REQ-012→AC-014 · REQ-013→AC-013 · REQ-014→AC-009.
+REQ-001→AC-001 · REQ-002→AC-001 · REQ-002b→AC-016 · REQ-003→AC-003 · REQ-003b→AC-003 ·
+REQ-004→AC-004/AC-015b · REQ-005→AC-005/AC-006/AC-015a · REQ-006→AC-007 · REQ-007→AC-008 ·
+REQ-008→AC-010 · REQ-009→AC-010 · REQ-010→AC-002 · REQ-011→AC-011/AC-012 · REQ-012→AC-014 ·
+REQ-013→AC-013 · REQ-014→AC-009.
 
-Every REQ in `spec.md` §B has at least one AC; every AC traces to at least one REQ.
+Every one of the 16 REQs in `spec.md` §B has at least one AC; every one of the 16 ACs traces to at
+least one REQ. Both counts sit exactly at the Tier M budget ceiling (16 requirements, 16 acceptance
+criteria, applied independently per `spec-workflow.md` § SPEC Complexity Tier).
 
 ## §D.4 Definition of Done
 
-- All 15 ACs recorded PASS in `progress.md` §E.2 with command plus verbatim output.
+- All 15 release-blocking ACs recorded PASS in `progress.md` §E.2 with command plus verbatim
+  output. AC-013 (regression-guard) is recorded as **deferred with its reason**, never as a pass.
 - `go test ./internal/homestate/... ./internal/factorymsg/... ./internal/cli/...` passes in the run
   tree; CI supplies the full-suite and cross-platform verdict.
 - `golangci-lint run` reports zero findings on the changed packages.
