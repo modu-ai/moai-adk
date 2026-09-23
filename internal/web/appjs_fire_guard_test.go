@@ -377,6 +377,7 @@ func fireGuardOutputTail(b *bytes.Buffer) string {
 // run carries its own report.
 func runFireGuardProbe(t *testing.T, scriptPath, cdpPort, baseURL, label string, extra ...string) (int, fireProbeReport) {
 	t.Helper()
+	requirePython3(t)
 	port := strings.TrimPrefix(strings.TrimPrefix(baseURL, "http://"), "https://")
 	if host, p, err := net.SplitHostPort(port); err == nil && host == "127.0.0.1" {
 		port = p
@@ -849,6 +850,7 @@ func TestAppJsFireValidationRejectNoWrites(t *testing.T) {
 // instead of leaving a frozen number behind.
 func fireManifestFamilies(t *testing.T) (unmarked, marked []string) {
 	t.Helper()
+	requirePython3(t)
 	out, err := exec.Command("python3", fireGuardProbePath(t),
 		"--print-routing", "--base-url", "http://primary.invalid", "--sandbox-base-url", "http://sandbox.invalid").Output()
 	if err != nil {
