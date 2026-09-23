@@ -534,6 +534,10 @@ type SPECFrontmatter struct {
 	// (absent → no badge, not an error). Not one of the 12 required fields, so
 	// FrontmatterSchemaRule does not report its absence.
 	Tier string `yaml:"tier,omitempty"`
+	// AmendmentOf is the optional in-place / successor amendment declaration
+	// (completed → in-progress (amendment) transition). Not one of the 12
+	// required fields. Read by the audit SyncStatusDrift amendment exemption.
+	AmendmentOf string `yaml:"amendment_of,omitempty"`
 }
 
 type REQEntry struct {
