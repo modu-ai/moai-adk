@@ -546,6 +546,91 @@ $ golangci-lint run ./internal/cli/... ./internal/codexwiring/... ./internal/man
 
 미측정: AC-DHR-006~009는 이번에 다시 돌리지 않았다(요청 범위 밖). `internal/cli` 전체 스위트와 Windows 빌드도 돌리지 않았다. golangci-lint의 exit code는 파이프 뒤 `tail`의 것이라 판정 근거는 `0 issues.` 출력이다.
 
+### M6 — 역할 권한 계약과 감사 역할 Codex 예외 (REQ-DHR-013 ~ 015)
+
+커밋: RED `4c2c316fc`(테스트 두 파일만) → GREEN `8d1480148`(구현·manifest·생성물·AGENTS 행). 시작 HEAD `0a635a852`. 측정 트리 = HEAD `8d1480148`, `git rev-parse HEAD^{tree}` → `b7e4b2c3c3af7a24d940c48c15b225b4d415cd7d`. RED 커밋이 GREEN 커밋보다 앞서므로 테스트가 먼저라는 순서는 커밋 그래프가 증언한다.
+
+AC 판정(명령은 `acceptance.md`의 것을 그대로 실행, HEAD `8d1480148`에서 재실행):
+
+| AC | 판정 출력 | 증거 파일 |
+|---|---|---|
+| AC-DHR-010 | `true` | `.moai/reports/t1100/ac010.jsonl` |
+| AC-DHR-011 | `true` | `.moai/reports/t1100/ac011.jsonl` |
+| AC-DHR-013 | `true` | `.moai/reports/t1100/ac013.jsonl` |
+
+AC-DHR-012·023은 LIVE(M8)라 이번에 돌리지 않았다 — `NOT_RUN`.
+
+RED(구현 전, 원문 발췌 — 전체는 `.moai/reports/t1100/m6/red-ac013.txt`, `red-ac010-011.txt`):
+
+```text
+--- FAIL: TestCodexAuditRolesReadOnlyScopedException (0.02s)
+    audit_role_exception_test.go:55: sync-auditor: emitted sandbox_mode = "workspace-write", want read-only
+    audit_role_exception_test.go:65: .codex/agents/moai/plan-auditor.toml: committed artifact does not carry the return-text instruction
+    audit_role_exception_test.go:110: AGENTS.md template carries no "| audit-verdict-file |" capability row
+FAIL	github.com/modu-ai/moai-adk/internal/template/agentemit	0.388s
+---
+internal/template/agentemit/permission_contract_test.go:29:85: undefined: agentemit.AxisMapping
+internal/template/agentemit/permission_contract_test.go:99:27: undefined: agentemit.BuildPermissionReport
+FAIL	github.com/modu-ai/moai-adk/internal/template/agentemit [build failed]
+```
+
+설계 요점:
+
+- **계약의 위치.** `agents-codex.yaml`에 `permission_contract`(축 표 8행 — `mcp-server`는 grant/deny 두 제한 종류로 나뉜다 — 와 역할별 계약 sandbox)와 `codex_role_addenda`를 둔다. 역할이 요구하는 제한은 `permission.go` `RoleRequirements`가 Claude 도구 목록과 계약 sandbox에서 도출한다: sandbox/mode 항상, 쓰는 역할은 write-path-scope, Claude 쪽에 없는 도구 계열은 shell/subagent/web deny, moai MCP 보유 역할은 mcp-server grant + mcp-tool subset, 비보유 역할은 mcp-server deny. UNSUPPORTED 보고 집합은 이 도출에서 계산되며 고정 목록이 아니다.
+- **축 매핑(설계 §C.1과 같음).** enforced 2행: sandbox/mode(`sandbox_mode`, measured — Codex가 값을 받아들인다는 관측이며 런타임 쓰기 차단은 주장하지 않음), mcp-server/grant(`mcp_servers`, measured). UNSUPPORTED 6행: write-path-scope(measured), shell(unmeasured), mcp-server/deny(unmeasured), mcp-tool(documented), subagent(unmeasured), web(documented).
+- **거부 조건.** manifest 검증: 7축 전부 존재, 행마다 두 값 중 하나, unmeasured enforced 거부, enforced 행이 생성기가 실제로 쓰지 않는 필드를 가리키면 거부, 증거 문구 없는 행 거부. 생성 시점: 요구 제한에 맞는 행이 없으면 실패, 방출 `sandbox_mode`가 계약 sandbox와 다르면 실패(계약 sandbox는 `role_values`와 일부러 따로 둔다 — 한쪽만 넓히면 걸린다).
+- **보고.** `BuildPermissionReport`는 생성기가 방출하면서 검사한 판정을 그대로 돌려준다. `Pass`에는 enforced만 들어가고 UNSUPPORTED는 `Unsupported`에만 들어간다.
+- **감사 역할 예외.** `plan-auditor`·`sync-auditor`의 `role_values`와 계약 sandbox를 `read-only`로 두고, 두 역할에만 Codex 전용 addendum("판정·보고 텍스트를 최종 응답으로 반환하고 파일을 직접 쓰지 않는다")을 본문 뒤에 붙인다. `plan-auditor`는 Claude 쪽 도구에 Write·Edit가 있어 기존 "read-only 역할의 쓰기 도구 거부" 검사에 걸리므로, addendum이 있는 역할에만 그 검사를 면제한다(쓰기가 부모로 옮겨졌기 때문). `read-vs-write-distinction` 근거와 `shell` 계열 근거 문구를 새 계약에 맞게 고쳤다.
+- **부모 지시 표면 = 배포 `AGENTS.md`(`templates/AGENTS.md.tmpl`)의 capability 표 새 행 `audit-verdict-file`.** 고른 이유: Codex는 `AGENTS.md`를 항상 읽고, 이 표는 "어느 하네스가 그 능력을 갖지 못한 곳에만 행을 둔다"는 규칙으로 정확히 이 경우를 담는다. Claude 구현 열은 "감사자가 자기 판정 파일을 쓴다"로 두어 Claude 경로가 그대로임을 같은 행이 말한다. Codex 전용 발행물(`.agents/skills/moai-*`)은 부모 세션이 반드시 읽는다는 보장이 없어 택하지 않았다. 저장소 루트 `AGENTS.md`는 고치지 않았다 — 이 저장소는 `.codex/agents/`를 배포받아 쓰지 않으므로(`git ls-files .codex` → `.codex/config.toml`만) 그 행이 가리킬 Codex 감사 역할이 없다.
+- **Claude 경로 불변.** `git diff --stat 0a635a852 HEAD -- .claude/agents/moai/plan-auditor.md .claude/agents/moai/sync-auditor.md internal/template/templates/.claude/agents/moai/plan-auditor.md internal/template/templates/.claude/agents/moai/sync-auditor.md internal/factorymsg` 출력 0줄.
+
+생성물 diff(`make agents-emit`, 손편집 없음): `plan-auditor.toml`·`sync-auditor.toml` 각 +6/−1 — 머리 주석 한 줄(`# Codex-only addendum appended after the verbatim body (mapping manifest).`), 본문 뒤 `## Codex Runtime Addendum` 단락, `sandbox_mode = "workspace-write"` → `"read-only"`. 나머지 10개 TOML은 바이트 그대로다.
+
+기존 테스트 수정(REQ-DHR-013/015가 요구): `golden_test.go` 감사 역할 sandbox 기대값을 read-only로, 본문 비교를 "원문 본문 + manifest addendum"으로 바꿨다(원문 본문이 앞에 그대로 오는지도 따로 단언). `agentemit_test.go`의 ship-omitted 경로는 계약이 있는 상태에서 `sandbox_mode`를 빼면 실패해야 함을 먼저 단언하고, 계약까지 뺀 변형에서 기존 동작을 본다.
+
+변이(각각 적용 → 세 AC 테스트 실행 → scratch 백업으로 복원, 복원 후 `git diff --stat` 확인):
+
+| 변이 | 결과 |
+|---|---|
+| (i) `role_values` plan-auditor → workspace-write | 010·011·013 FAIL — `role "plan-auditor" emits sandbox_mode "workspace-write" but its permission contract states "read-only"` |
+| (i-b) `role_values`와 계약 둘 다 workspace-write(일관된 확장) | 013 FAIL(`emitted sandbox_mode = "workspace-write", want read-only`), 011 FAIL(`plan-auditor/write-path-scope/path-scope: must not be in the UNSUPPORTED set`). 010은 PASS — 계약과 방출이 서로 일치하므로 010이 잡을 대상이 아니다 |
+| (ii-a) shell(unmeasured)을 enforced로 | 010·011·013 FAIL — `permission contract shell/deny is enforced on an unmeasured basis` |
+| (ii-b) web(documented)을 생성기가 안 쓰는 필드로 enforced | 010·011·013 FAIL — `claims enforcement through field "web_enabled", which this emitter does not write` |
+| (iii) `AGENTS.md.tmpl`의 `audit-verdict-file` 행 삭제 | 013 FAIL — `AGENTS.md template carries no "| audit-verdict-file |" capability row` |
+| (iv) C2 `plan-auditor.md`에 반환 지시 문장 삽입 | 013 FAIL — `Claude definition carries the Codex-only return-text instruction` |
+| (v) 보고가 UNSUPPORTED를 Pass로 셈 | 011 FAIL — `counted as PASS with mapping "UNSUPPORTED"` + 기대 집합 40항목 전부 missing |
+| (vi) web 축 행 삭제 | 010·011·013 FAIL — `permission contract does not cover axis web` |
+
+테스트 안의 변이(항상 실행): 축 매핑 한 개 삭제(메모리) → EmitAll이 `web`을 이름으로 거부, `mission-governor` read-only 계약 역할을 workspace-write로 방출 → 거부, unmeasured→enforced와 축 이름 변경(YAML) → ParseManifest 거부, 안 쓰는 필드 enforced(메모리) → 거부. AC-013 테스트 안: `role_values`에서 plan-auditor 삭제·sync-auditor workspace-write → 거부.
+
+품질 게이트(HEAD `8d1480148`와 같은 내용의 작업 트리에서 측정, 증거 `.moai/reports/t1100/m6/`):
+
+```text
+$ make build                     → exit=0 (agents-emit-check·commands-emit-check·tool-policy-drift-check 선행 통과, catalog.yaml 변경 없음)
+$ make agents-emit-check         → exit=0  ok  .../internal/template/agentemit
+$ make commands-emit-check       → exit=0  ok  .../internal/template/commandemit
+$ go test ./internal/template/... -count=1 -timeout 20m
+ok  .../internal/template 187.680s / ok .../agentemit 0.996s / ok .../commandemit 0.238s
+$ go test ./internal/template -run 'Neutral|Leak|AgentsDisclosure' -count=1 -v
+17 PASS, 0 SKIP (TestTemplateNoInternalContentLeak, TestTemplateNeutralityAudit, TestAgentsDisclosureCompleteness 등)
+$ go test ./internal/config -run '^TestCodexContractByteCeiling$' -v
+internal/template/templates/AGENTS.md.tmpl = 18723 bytes (ceiling 24576, headroom 5853) — PASS
+$ go vet ./internal/template/agentemit/ ./internal/template/   → exit=0, 출력 없음
+$ golangci-lint run ./internal/template/agentemit/... ./internal/template/   → exit=0, 0 issues.
+$ GOOS=windows go build ./internal/template/...   → exit=0
+$ go test ./internal/codexwiring -count=1   → ok 2.299s
+$ unset MOAI_KANBAN … MOAI_FACTORY_WORKERS && go test ./internal/cli -run '<AC-001~009 비LIVE 이름 7개>|InitCodex|CodexInit|CodexOnly|UpdateHarness|CodexContract' -count=1 -v
+ok 59.694s, --- PASS 23건, FAIL/SKIP 0
+```
+
+미측정·주의:
+
+- `make embed-check`는 exit 2 — `compared 0/12 artifacts — moai carries no embedded counterpart for` **12개 전부**(바뀌지 않은 10개 포함). 검사기가 `moai init --non-interactive`로 추출하는데(`internal/cli/doctor_agentemit_embed.go:346`) 기본 프로필이 `.codex`를 배포하지 않는 것으로 보이며, M6 내용과 무관한 추출 경로 문제로 판단한다(이 판단은 코드 판독이고 HEAD `0a635a852` 바이너리로 대조하지 않았다). 대신 바이트 탐침: `LC_ALL=C grep -a -c 'Codex-only addendum appended after the verbatim body' bin/moai` → `2`, 바뀌지 않은 `manager-git` 머리 주석 → `1`.
+- 첫 lint 실행은 다른 프로세스의 golangci-lint 잠금(`parallel golangci-lint is running`, exit 3)에 걸렸고, 단독 재실행이 위 `0 issues.`다.
+- `internal/cli` 전체 스위트, `.github/workflows/template-neutrality-check.yaml` CI 스크립트 자체, Codex 실제 바이너리에서의 read-only 강제(AC-DHR-012)와 부모의 원문 기록(AC-DHR-023)은 돌리지 않았다.
+- REQ-DHR-013은 enforced 근거로 documented를 허용한다. 리드 지시문의 변이 (ii)는 "documented/unmeasured 근거의 enforced"를 거부 대상으로 적었지만, 이 구현은 SPEC을 따라 unmeasured만 거부하고 documented는 생성기가 실제로 쓰는 필드일 때만 허용한다. 현재 계약에 documented enforced 행은 없다.
+- AC 판정 증거 파일 세 개는 HEAD `8d1480148`에서 다시 만든 것이다. 변이·게이트 증거는 같은 내용의 커밋 전 작업 트리에서 쟀다(커밋 직후 `git status --short` 0줄).
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 _<pending run-phase>_
