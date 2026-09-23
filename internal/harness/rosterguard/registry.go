@@ -391,31 +391,53 @@ func Registry() []Site {
 		// twin. Deriving would cost a reviewer one row instead of two and would
 		// blind the guard to a repair landing on only one copy of a pair — the
 		// case recorded a few rows above, firing.
+		// The two rows below carried three declarations written against a
+		// sentence that t1127/t1131/t1140 replaced, and all three had to go
+		// together (card t1141). The document is the party that became CORRECT:
+		// it now reads "13 rows — 12 agents plus `Explore` — × 3 columns = 39
+		// cells", which is the roster that delegationmap's retainedCatalog and
+		// CLAUDE.md §4 both carry. The registry was the stale party.
+		//
+		// What each dropped declaration had asserted, and why it is now false:
+		//
+		//   KnownStale (DeclaredCount 11) — the recorded staleness is REPAIRED.
+		//   Leaving the marker is not the safe side: check.go fires on a marker
+		//   whose declared value no longer matches the site, so a resolved
+		//   staleness left behind reads as a fresh drift.
+		//
+		//   SweepUnreachable ("names no agents") — the file now mentions twelve
+		//   of the thirteen roster names, so the sweep reaches it and the
+		//   exemption asserts something measurably untrue.
+		//
+		// The names are NOT replaced by a membership assertion, which is what
+		// the sweep's own message suggests. The mentions are incidental prose —
+		// `Explore` search, `manager-git` mechanics, `manager-docs` in the low
+		// column — scattered as illustrations of the two model rules, with no
+		// enumerating block anywhere in the file. A membership claim here would
+		// assert a roster listing the document never makes, and would then have
+		// to declare `manager-lead`'s absence as a gap when nothing is missing:
+		// a name is absent because no rule needed it as an example.
+		//
+		// NumeralUnreachable is added rather than widening the numeral layer:
+		// the new sentence counts "rows" and plain "agents", neither of which is
+		// in rosterNounRe's noun class, so the layer cannot reach this claim
+		// without a vocabulary change that would move every other file's breadth
+		// set too.
 		{
-			ID:               "model-policy-profile-matrix-size",
-			SweepUnreachable: "count-only claim: the sentence sizes the profile matrix and names no agents",
-			Path:             ".claude/rules/moai/development/model-policy.md",
-			Axis:             AxisRetainedRoster,
-			Claims:           ClaimCount,
-			CountPattern:     `\((\d+) retained agents × 3 columns`,
-			KnownStale: &Staleness{
-				Reason:        "Cites 11 where the retained roster carries 13; the 33-cell figure is sized off that stale count, identically to product.md and tech.md.",
-				FollowUp:      "unassigned — reported by card t930, prose repair out of its scope",
-				DeclaredCount: 11,
-			},
+			ID:                 "model-policy-profile-matrix-size",
+			NumeralUnreachable: "the count noun is `rows` (and `agents` unqualified), outside the numeral layer's noun class",
+			Path:               ".claude/rules/moai/development/model-policy.md",
+			Axis:               AxisRetainedRoster,
+			Claims:             ClaimCount,
+			CountPattern:       `\((\d+) rows — \d+ agents plus`,
 		},
 		{
-			ID:               "model-policy-profile-matrix-size-mirror",
-			SweepUnreachable: "count-only claim; template mirror of the row above",
-			Path:             "internal/template/templates/.claude/rules/moai/development/model-policy.md",
-			Axis:             AxisRetainedRoster,
-			Claims:           ClaimCount,
-			CountPattern:     `\((\d+) retained agents × 3 columns`,
-			KnownStale: &Staleness{
-				Reason:        "Template mirror of the row above, stale identically.",
-				FollowUp:      "unassigned — reported by card t930, prose repair out of its scope",
-				DeclaredCount: 11,
-			},
+			ID:                 "model-policy-profile-matrix-size-mirror",
+			NumeralUnreachable: "same noun class miss; template mirror of the row above",
+			Path:               "internal/template/templates/.claude/rules/moai/development/model-policy.md",
+			Axis:               AxisRetainedRoster,
+			Claims:             ClaimCount,
+			CountPattern:       `\((\d+) rows — \d+ agents plus`,
 		},
 		{
 			ID:               "foundation-core-skill-catalog-size",
