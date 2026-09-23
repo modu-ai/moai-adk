@@ -90,7 +90,7 @@ moai init my-project
 选择分配给智能体的 AI 模型层级 —— 这是代币经济学的核心设置。
 
 ```bash
-? 选择性能层级:
+? 选择模型策略:
   Max - Opus 5.5 (high~medium) + Sonnet (low, 文档/一次性任务) — Max $200 套餐
 ▸ Medium (推荐) - Opus 5.5 (high~low) + Sonnet (low, 文档/一次性任务) — Max $100 套餐
   Low - Opus 5.5 (high~low) + Sonnet (low, 文档/E2E/一次性任务) — Plus $20 套餐
@@ -98,7 +98,7 @@ moai init my-project
 
 | 层级 | 特点 |
 |------|------|
-| **Max** | 质量优先 —— 审计、顾问、协调类代理保持 `high` |
+| **Max** | 质量优先 —— 与 Medium 相同，只有 `builder-harness` 和 `e2e-tester` 两个代理的 effort 高一级 |
 | **Medium**（默认，推荐） | 质量与成本的平衡 —— 成本/分数曲线的膝点 |
 | **Low** | 每任务最低成本 —— 大多数智能体类代理降至 Opus `medium` |
 

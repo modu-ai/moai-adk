@@ -90,7 +90,7 @@ The name of your project. The default is the current directory name.
 Choose the AI model tier assigned to agents — the core Tokenomics setting.
 
 ```bash
-? Choose the performance tier:
+? Select model policy:
   Max - Opus 5.5 (high~medium) + Sonnet (low, docs/single-shot rows) — Max $200 plan
 ▸ Medium (Recommended) - Opus 5.5 (high~low) + Sonnet (low, docs/single-shot rows) — Max $100 plan
   Low - Opus 5.5 (high~low) + Sonnet (low, docs/e2e/single-shot rows) — Plus $20 plan
@@ -98,7 +98,7 @@ Choose the AI model tier assigned to agents — the core Tokenomics setting.
 
 | Tier | Characteristics |
 |------|------|
-| **Max** | Quality first — the auditing, advising, and coordinating agents stay at `high` |
+| **Max** | Quality first — same as Medium except that `builder-harness` and `e2e-tester` run one effort level higher |
 | **Medium** (default, recommended) | Balance of quality and cost — the knee of the cost/score curve |
 | **Low** | Lowest cost per task — most agentic agents drop to Opus `medium` |
 

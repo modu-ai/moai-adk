@@ -2,7 +2,7 @@
 
 - card: t1094 · Tier S · branch `WT-opus55-docs` · base 로컬 develop `08113ff0f`
 - 정본: t1089 `SPEC-MODEL-OPUS55-001` (spec.md §A.2·§C, plan.md §C.2·§C.3·§C.6·§C.8) — 읽기만 함
-- 상태: **초안·커밋 완료, 병합 창 요청 안 함** (t1089 develop 착지 전)
+- 상태: **t1089 착지(`e52ba05e7`) 흡수·대조 완료, sync-audit PASS-WITH-DEBT 87.7 (차단 0) — 병합 창 요청 단계** (순번: t1112 다음)
 
 ## 1. 공식 근거 (이 실행에서 재조회)
 
@@ -62,11 +62,13 @@ ko 에만 있는 적중 파일 6개(claude-code/_index, context-window, features
 ## 5. 미관측 (Gaps)
 - Vercel 프리뷰 렌더 미확인 (push 금지)
 - `scripts/docs-i18n-check.sh` 는 이 트리에 없음 — 로케일 패리티 기계 검사 불가
-- t1089 의 실제 위저드·웹 라벨 문구는 아직 미착지 — 문서의 「위저드·웹 콘솔이 medium 권장」은 t1089 REQ-OP55-005 결정을 근거로 한 선반영
+- 실제 `moai init` 위저드 화면은 띄워 보지 않음 — 코드 문자열 대조로 대신함 (§7). (종전 Gap 「t1089 라벨 미착지」는 §7 에서 착지본 대조로 해소)
 
 ## 6. 잔여 위험 · 리드 판단 요청
 1. **범위 밖 드리프트 발견**: model-policy 라인업 표의 Fable 행(`Fable 5`, 256K)과 Sonnet 5 컨텍스트(200K)는 공식 문서(Fable 5.1 1M, Sonnet 5 1M)와 다르다. prompt-caching 표도 같은 두 행이 낡았다. 이 카드는 Opus 5.5 만 다뤄 손대지 않았다 — 별도 카드 후보.
 2. ~~init-wizard 화면 예시 불일치~~ — §7 에서 해소.
+3. 날짜 스냅샷 라인업(8월 기준)은 참이지만 독자가 「최신」으로 읽을 수 있다. 갱신 여부는 Fable 5.1 반영과 함께 결정하는 편이 맞다.
+4. **(sync-audit F1)** 「high 티어는 호출 빈도가 가장 낮은 두 에이전트에 `max`」 서술이 cli.md · introduction.md · what-is-moai-adk.md · tokenomics-overview.md × 4 로케일 = 16곳에 남아 있다. `profile_matrix.go:291`(max 는 어느 칸에도 없음)과 모순이며, 이 카드가 init-wizard 만 고쳐 페이지 간 불일치가 생겼다. t1089 이전부터의 낡은 서술 — 별도 카드 후보.
 
 ## 7. t1089 착지 후 대조 (흡수 `e52ba05e7`)
 
@@ -77,4 +79,13 @@ ko 에만 있는 적중 파일 6개(claude-code/_index, context-window, features
   - 위저드 성능 티어 라벨 (`internal/cli/wizard/questions.go:121-123`, `translations.go:93-95/183-185/273-275`) 과 init-wizard 화면 예시가 달랐음 → 4 로케일 화면 3줄을 각 로케일 코드 문구로 교체(Max / Medium 권장 / Low, 범위·플랜 포함)
   - 표의 「두 에이전트에 `max`」는 `profile_matrix.go:291` 「`max` is absent from every cell」과 모순, 「Low 는 Opus `low`」는 같은 주석(대부분 `medium`)과 모순 → Max/Low 행을 코드 기준으로 수정, Medium 에 권장 표기
 - 흡수 + 수정 후 `hugo --minify --quiet` exit 0, warn/error 0
-3. 날짜 스냅샷 라인업(8월 기준)은 참이지만 독자가 「최신」으로 읽을 수 있다. 갱신 여부는 Fable 5.1 반영과 함께 결정하는 편이 맞다.
+
+## 8. sync-audit 대응 (`.moai/reports/t1094/sync-audit.md`, PASS-WITH-DEBT 87.7, 차단 0)
+
+| 발견 | 처분 |
+|---|---|
+| F1 max 서술 16곳 | 범위 밖 — §6-4 로 리드에게 상신 |
+| F2 화면 제목 「성능 티어 선택」≠ 코드 「모델 정책 선택」 | 수리 — 4 로케일 제목을 `questions.go:106` / `translations.go:90·180·270` 문구로 교체 |
+| F3 profile-matrix·comparison 에 미재측정 문장 없음 | 유지 — 두 페이지 모두 해당 문장 안에서 「Opus 5」를 측정 모델로 이미 명시. 귀속은 충족, 문장 추가는 보류 |
+| F4 Max 행이 Medium 과 구분 안 됨 | 수리 — 「Medium 과 같되 `builder-harness`·`e2e-tester` 만 한 단계 높은 effort」 (`profile_matrix.go:333-334` high/medium vs `:348-349` medium/low 확인) |
+| F5/F6 판정서 상태·Gaps·§6 배치 | 수리 — 머리말·Gaps·§6 갱신 (이 절 포함) |
