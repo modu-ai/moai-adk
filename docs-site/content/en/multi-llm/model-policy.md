@@ -54,9 +54,9 @@ which model from the lineup below, at which reasoning depth.
 
 | Model | Identifier | Context | Character |
 |------|--------|----------|------|
-| Claude Fable 5 | `claude-fable-5` | 256K | New Mythos-tier general-purpose flagship. Deepest reasoning and complex coding |
+| Claude Fable 5 | `claude-fable-5` | 1M | New Mythos-tier general-purpose flagship. Deepest reasoning and complex coding |
 | Claude Opus 5.5 | `opus` | 1M | Complex architecture, hard reasoning |
-| Claude Sonnet 5 | `sonnet` | 200K | Balance of speed and intelligence, everyday coding |
+| Claude Sonnet 5 | `sonnet` | 1M | Balance of speed and intelligence, everyday coding |
 | Claude Haiku 4.5 | `claude-haiku-4-5-20251001` | 200K | Fastest and most economical; simple, high-volume work |
 
 > MoAI's model policy does not use this whole lineup. Under the **No-Haiku
