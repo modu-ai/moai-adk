@@ -208,6 +208,29 @@ which is the exact failure `verification-completeness.md` §2 warns about.
   resolved. This criterion drives that seam directly with fixture identities, so it runs on any host
   and asserts all three shapes — no Windows host and no live tmux server required.
 
+  **Second leg — the seam is actually called at every non-replace call site.** Driving the seam with
+  fixture identities proves the seam *behaves*; it says nothing about whether each door *reaches* it.
+  A door that never calls the seam leaves its run stamped with the launching process and passes the
+  first leg unchanged — which is exactly how defect D18 survived three audits. This leg therefore
+  asserts, at source level, that a restamp-seam call is present at each of the three non-replace call
+  sites: `internal/cli/launch_exec_windows.go` (spawn), `internal/cli/codex_direct_windows.go`
+  (spawn), and `internal/cli/codex_launcher.go` (pane). The two replace-shaped sites
+  (`launch_exec_posix.go`, `codex_direct_posix.go`) are asserted **absent** from that required set —
+  a replace-shaped door needs no restamp, and demanding one there would make the leg false about the
+  design it is checking.
+
+  The assertion is **source-level**, reading the call sites rather than executing the doors, because
+  two of the three sit behind `//go:build windows`: the darwin host this card runs on can neither
+  execute them nor compile a call to them. That host constraint is what kept the gap invisible, so
+  the leg is written to hold without it — no Windows host, no live tmux server.
+
+  **Mutation direction, one site at a time.** Delete the seam call at `launch_exec_windows.go` and
+  re-run: this leg turns red. Restore it, delete the one at `codex_direct_windows.go`, re-run: red.
+  Restore, delete the one at `codex_launcher.go`, re-run: red. All three deletions are probed
+  **individually and separately** — an assertion that only goes red when all three are missing stays
+  green while two sites are correct and one is silently not, which is the vacuous shape this SPEC
+  rejects throughout. A leg that survives any single-site deletion has not closed D18.
+
   A design in which the row names the launcher while the peer names the session fails this
   criterion. That divergence is the D1 defect on the spawn shape and the D11 defect on the pane
   shape — the same failure twice, and the shape that retires a live session's run.

@@ -71,8 +71,12 @@ axis is the **door's launch shape**, not the platform — two of the three shape
 `codex_direct_posix.go:34` is the replace shape: `syscall.Exec` preserves PID and start time, so the
 record-time stamp already names the session, exactly as `launch_exec_posix.go:33` does.
 `codex_direct_windows.go:24` is the spawn shape: it registers the child and then blocks in
-`cmd.Wait()`, exactly as `launch_exec_windows.go:54` does, so REQ-002b's restamp covers it
-unmodified. Neither needs a rule of its own — but neither may be left unnamed either: a reader who
+`cmd.Wait()`, exactly as `launch_exec_windows.go:54` does, so **REQ-002b's existing rule already
+covers it — the rule needs no new clause, and the call site does need the restamp call.** Those are
+two different claims, and collapsing them is defect D18: "an existing rule covers this door" never
+means "this door's call site needs no edit". Every non-replace door carries the restamp call; what
+the shape match settles is only that no door-specific rule has to be written for this one.
+Neither `codex_direct_*` site needs a rule of its own — but neither may be left unnamed either: a reader who
 finds five call sites and a SPEC discussing two would reasonably conclude three were missed.
 
 **The pane shape is the uncovered one.** At `codex_launcher.go:230` the registered identity is the

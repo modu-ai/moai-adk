@@ -168,8 +168,14 @@ its verbatim output, attributed to that run and that tree.
   pane door is the one this SPEC's scope was extended to cover.
 - Exercise the REQ-002d refusal too (AC-012): force the identity resolver to fail, then confirm the
   launch exits non-zero and no `runs` row carries the launcher's PID.
-- `codex_direct_posix.go` / `codex_direct_windows.go` are **not** executed here; spec.md §A.1
-  asserts each is covered by shape match, and that assertion is what discharges them.
+- `codex_direct_posix.go` is **replace**-shaped: it needs no edit and no execution evidence here.
+  `syscall.Exec` preserves the identity the record-time stamp already named (spec.md §A.1), so
+  there is nothing for this milestone to exercise.
+- `codex_direct_windows.go` is **spawn**-shaped and therefore **is** an edit target — it carries the
+  REQ-002b restamp call like every other non-replace door. Only its *execution* evidence is deferred:
+  this is a darwin host and that door sits behind `//go:build windows`, so the run arrives post-merge
+  on the three-OS `test-integration` job. Its restamp call is covered **pre-merge** by AC-016's
+  source-level leg, which reads the call site rather than executing the door.
 
 ### M6 — Migration, mutation, and cross-platform placement
 
