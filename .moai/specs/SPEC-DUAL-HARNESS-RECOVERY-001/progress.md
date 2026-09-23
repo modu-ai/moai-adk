@@ -125,6 +125,81 @@ $ golangci-lint run ./internal/factorymsg/...
 10 issues: errcheck 10 — store.go 8, launch_pending_rollback_test.go 2 (새 파일 0건, 기존 파일의 기존 지적)
 ```
 
+### M2 — dispatch record, 결과 적용 판정 순서, 분기 A 범위 이관 (REQ-DHR-016 ~ 021)
+
+증거 디렉터리는 gitignore 대상이므로 판정 근거를 값으로 적는다.
+
+커밋(순서가 곧 작업 순서다. 특성 테스트 커밋이 이관 커밋보다 앞선다 — `verification-claim-integrity.md` §2.3):
+
+| 커밋 | 내용 |
+|---|---|
+| `2e6389bf7` | `dispatches` 테이블, 판정 순서 표(design §D.3), 재할당, 같은 attempt 재부여, superseded status, `ErrStalePeer` |
+| `d070e8ea5` | 이관 전 특성 테스트 `TestLegacyBrokerRowsSurviveOpen` (구 스키마 DB의 행·ID·열 값 보존) |
+| `60de6bd44` | 분기 A: 멱등 범위를 `(project_key, run_id, sender_slot, idem_key)`로 이관, 기존 DB 마이그레이션 |
+| `158c91289` | `TestIdemScopeRestartReproduction`의 빈 `MOAI_T1100_EVIDENCE_DIR` 처리를 `NOT_RUN` skip으로 변경(리드 결정) |
+
+AC 판정(명령은 `acceptance.md`의 것을 그대로 실행, HEAD `158c91289`):
+
+| AC | 명령 | 판정 출력 | 증거 파일 | pass 이벤트 / fail·skip |
+|---|---|---|---|---|
+| AC-DHR-014 공통 | `^TestDispatchResultExactlyOnce$` | `true` | `.moai/reports/t1100/ac014.jsonl` | 8 / 0 |
+| AC-DHR-014 분기 A | `^(TestDispatchResultExactlyOnce\|TestIdemScopeLaneMigration)$` | `true` | `.moai/reports/t1100/ac014-branch.jsonl` | 11 / 0 |
+| AC-DHR-014 분기 B | — | `N/A (branch)` | — | AC-DHR-020 = `reproduced` |
+| AC-DHR-015 | `^TestDispatchStaleFencingAndSuperseded$` | `true` | `.moai/reports/t1100/ac015.jsonl` | 1 / 0 |
+| AC-DHR-016 | `^TestDispatchReassignmentFencesLateResult$` | `true` | `.moai/reports/t1100/ac016.jsonl` | 1 / 0 |
+
+AC-DHR-014 변이(작업 트리에서 임시 수정 후 원복, 원복은 파일 sha1 일치로 확인):
+
+- 판정 순서 5 삭제: `duplicate_delivery` → `invalid-state`, `sender_restart_after_result` → `stale`(AC가 예측한 값), 6개 공통 하위 테스트 모두 FAIL.
+- 4·5 순서 교환: `old_generation_redelivery` → `duplicate`(`want "stale"`)로 FAIL.
+- 분기 A 범위를 송신 세션으로 되돌림(스키마 UNIQUE와 충돌 재조회 둘 다): `sender_restart_lane_scope` → `rows=2`로 FAIL.
+
+마이그레이션 메모:
+
+- 스키마 차이: 구 `UNIQUE(sender_session,idem_key)` → 신 `sender_slot TEXT NOT NULL DEFAULT ''` 열 추가 + `UNIQUE(project_key,run_id,sender_slot,idem_key)`. `SchemaVersion` 1 → 2.
+- 이관은 `Open`과 `OpenExistingWithDeadline` 둘 다에서 돈다(훅 경로가 기존 run을 여는 경우 대비). 이미 이관된 DB에서는 카탈로그 조회 한 번만 하고 쓰지 않는다.
+- 이관은 immediate 트랜잭션 하나에서 새 테이블 생성 → 복사 → 행 수 대조 → 구 테이블 삭제 → 이름 변경 → 수신 인덱스 재생성 순이다. 트랜잭션 안에서 열 존재를 다시 확인하므로 동시에 여는 두 프로세스 중 하나만 이관한다.
+- `sender_slot` 매핑: 송신 세션이 현재 `peers`에 있으면 그 slot, 없으면 `legacy:<session>`. 한 실제 slot에 매핑되는 행은 모두 그 slot의 단일 현재 세션에서 왔으므로 구 per-session 유일성이 충돌 없음을 보장한다.
+- 특성 테스트의 구 스키마 상수 `legacySchemaV1`이 이관 직전 트리(`2e6389bf7`)의 `schema` 상수와 바이트 동일함을 일회성 테스트로 확인했다(`legacySchemaV1 == schema (1192 bytes)`, 커밋하지 않음).
+- `TestIdemScopeLaneMigration`은 `open`·`open_existing` 두 진입점에서 행 보존·ID 보존·slot 매핑·같은 범위 재시도 → 원래 ID·수신자/수신 generation/kind/task_ref/correlation/payload 차이 거부(행 불변)·재오픈 멱등을 확인한다. `TestMessagesLaneScopeDDLMatchesSchema`가 이관 대상 DDL과 새 DB의 DDL이 갈라지지 않게 잡는다.
+
+SPEC 재량 안의 결정:
+
+- 결과 메시지 종류는 기존 `status_report`를 쓴다. 새 kind를 만들지 않았다.
+- `ApplyResult` 판정 4에서 lane의 `peers` 행이 없으면(현재 generation을 알 수 없음) `stale`로 닫는다.
+- 재할당의 "이전 소유자 비생존 확인"은 이전 assignee lane의 현재 `peers` 행 소유 프로세스가 살아 있지 않은 것으로 판정한다(같은 프로세스가 새 generation을 가진 경우도 살아 있는 것으로 본다 — 보수적).
+- 재부여(`RegrantDispatch`)는 같은 lane의 더 높은 generation으로만 허용하고, 호출자 상태 변경을 콜백으로 받아 같은 트랜잭션에서 실행한다(콜백 오류 시 재부여도 롤백 — AC-DHR-015 테스트가 확인).
+- 메시지 receipt는 dispatch를 전혀 움직이지 않는다. `delivered`·`started`는 assignee의 명시 호출로만 오른다.
+- superseded 판정: pending·claimed 메시지의 수신 (session, generation)이 현재 `peers` 어느 행과도 맞지 않으면 superseded. `Send`는 현재 endpoint에만 보내므로 불일치는 곧 lane 재등록을 뜻한다. 기존 `TestFactorySessionGenerationOwnership`의 기대값(`Pending == 1`)을 REQ-DHR-020에 맞춰 `Superseded == 2, Pending == 0, Claimed == 0`으로 바꿨다(재등록 전 pending 1건 + 재등록 전 claim된 1건).
+- 새 `sender_slot` 열에 `DEFAULT ''`를 뒀다. `Send`는 항상 검증된 slot을 넣고, 기본값은 열을 모르는 쓰기(구 바이너리, `internal/hook` 테스트의 raw INSERT 픽스처)를 깨지 않기 위한 것이다.
+- `Envelope`/`Claim`에 `SenderSlot`을 더했다(수신자가 재시작한 송신자의 결과 보고를 만들 때 필요). MCP 도구 JSON에는 필드가 하나 늘 뿐이다.
+- `internal/cli/mcp_factory_msg.go`, `internal/mcp/catalog.go`는 고치지 않았다. AC-DHR-014 ~ 016 중 도구 표면을 요구하는 것이 없고, `factory_msg_status`는 `Status`를 그대로 직렬화하므로 `Superseded`가 자동으로 실린다.
+
+`TestIdemScopeRestartReproduction`(M1 측정 테스트) 처리 — 리드 결정(skip 형태):
+
+- 빈 `MOAI_T1100_EVIDENCE_DIR`: `t.Skipf("NOT_RUN MOAI_T1100_EVIDENCE_DIR unset: …")`로 끝난다. fail 형태와의 차이는 그 한 줄(`Skipf` ↔ `Fatalf`)뿐이다. `acceptance.md` §A:22 문구 수정은 manager-spec 몫으로 남긴다(이 레인은 고치지 않았다).
+- 변이 확인: AC-DHR-020 실행 명령을 환경 변수 없이 저장소 밖 scratch jsonl로 실행하고, 보존된 증거 파일의 사본과 함께 AC-DHR-020 판정식을 그대로 돌렸다. 출력 `false`(exit 1). jsonl의 해당 줄: `idem_scope_repro_test.go:79: NOT_RUN MOAI_T1100_EVIDENCE_DIR unset: the measurement writes its evidence only through the acceptance command`, `--- SKIP: TestIdemScopeRestartReproduction (0.00s)`.
+- 분기 A 이후 측정(환경 변수를 scratch로 지정): `outcome` = `not-reproduced`, `unique_constraint` = `UNIQUE(project_key,run_id,sender_slot,idem_key)`, `second_send_result` = `same-id`, `rows` = 1, `claimed_ids` = 1, `control_claimed` = 1, 테스트 PASS. 측정 로직은 바꾸지 않았다. 이 결과는 AC-DHR-020의 M1 측정을 대신하지 않는다.
+- M1 보존 증거(`.moai/reports/t1100/ac020*`)는 건드리지 않았다. `ac020-evidence.json` sha256 = `9ff051e0…685f8`(M1 기록과 같음).
+
+품질 게이트(HEAD `158c91289`):
+
+```text
+$ go test ./internal/factorymsg -count=1
+ok  	github.com/modu-ai/moai-adk/internal/factorymsg	4.939s
+$ go vet ./internal/factorymsg
+(출력 없음, exit 0)
+$ golangci-lint run ./internal/factorymsg/...
+10 issues: errcheck 10 — store.go 8, launch_pending_rollback_test.go 2 (M1과 같은 수·같은 파일 분포, 새 파일 0건)
+$ unset MOAI_KANBAN … && go test ./internal/cli -run 'FactoryMsg|McpFactory|FactoryMixed|FactoryOperational|LaunchPending|CodexLauncher' -count=1
+HEAD 158c91289에서 5회: ok 4회(13.9s ~ 15.4s), FAIL 1회(첫 실행 — tail -1만 남겨 실패 테스트 이름을 잡지 못함, 미귀속)
+$ unset MOAI_KANBAN … && go test ./internal/hook -run 'Factory' -count=1
+FAIL — TestFactoryHookBenchmarkBudget (MOAI_FACTORY_BENCH=1 필요, 기준 트리 e503d07a4에서도 같은 FAIL),
+       TestFactoryUserPromptSubmitRebindsLaunchPendingPeer (간헐 — 아래)
+```
+
+`TestFactoryUserPromptSubmitRebindsLaunchPendingPeer`는 기준 트리(`git archive e503d07a4`를 scratch에 풀어 실행)에서도 간헐 실패한다. 실패 원인은 200ms 훅 바인드 기한 안의 `context deadline exceeded`다. 같은 부하에서 기준·변경 테스트 바이너리를 번갈아 12회씩 돌린 결과 기준 FAIL 4/12, 변경 FAIL 3/12(load average 약 26~34). 이 변경이 만든 실패로 보지 않는다.
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 _<pending run-phase>_
