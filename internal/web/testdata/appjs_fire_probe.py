@@ -53,8 +53,10 @@ judgement (REQ-AFG-014 (1)).
 
 Dependencies: stdlib (asyncio, json, sys, urllib.request) + websockets (the
 only third-party dependency; pinned in the test-browser CI job — never a Go
-module). Chrome is located by the caller (the Go driver or the CI job) and
-reached through its CDP port.
+module). websockets is imported where the CDP connection is opened, not at
+module scope, so the browser-free modes (--lint-manifest, --print-routing)
+run on the stdlib alone and need nothing installed. Chrome is located by the
+caller (the Go driver or the CI job) and reached through its CDP port.
 """
 
 import asyncio
@@ -64,8 +66,6 @@ import optparse
 import os
 import sys
 import urllib.request
-
-import websockets
 
 # ── Manifest ────────────────────────────────────────────────────────────────
 #
@@ -895,6 +895,11 @@ async def main_async(args):
         except Exception as exc:
             print(json.dumps({"label": label, "error": "%s server unreachable: %s" % (name, exc)}))
             return 2
+
+    # Imported here, not at module scope: the browser-free modes must not
+    # depend on a package only the gated test-browser job installs. A missing
+    # package on this path still fails loudly — there is no fallback.
+    import websockets
 
     tab = new_tab(cdp_host)
     try:
