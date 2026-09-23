@@ -8,9 +8,9 @@ Tier **L** (large). Justification in §A.
 
 Tier **L**. Complexity Estimator reasoning:
 
-- **Scope (LOC)**: estimated 400-800 LOC production. New snapshot package (write + read + fallback), two write-time hook sites (`moai init` end, `moai update` restore end), one read-time change (`BackupMoaiConfig` prefers snapshot), migration/fallback path, plus lifecycle and provenance tests. This sits in the upper-M / lower-L band; the new persisted-artifact dimension pushes it firmly to L.
-- **Files affected**: estimated 10-14 files. New: `internal/cli/update/backup/snapshot.go`, `snapshot_test.go`, `base_loader.go`, `base_loader_test.go`, a provenance-focused test, a `quality.yaml`-focused test. Modified: `backup.go` (BackupMoaiConfig base-source switch), `init.go` (snapshot-write hook), `update_template_sync.go` (snapshot-write hook after restore), `update_clean_install.go` (snapshot-write hook after restore). Indirectly-touched: existing `backup_test.go` (add snapshot-present cases). This exceeds the Tier M ceiling of 15 files only on a generous count; the *constitutional* axis (new on-disk data model + lifecycle + migration) is the deciding factor and places the SPEC at L per the Tier guidance "> 1000 LOC or constitutional".
-- **Blast radius**: spans three subsystems — `moai init`, the `moai update` clean-install path, and the `moai update` template-sync path. Two distinct write triggers (init-end, update-restore-end) and one read-site change. This is not a single-file fix; it is a new persisted artifact with a lifecycle.
+- **Scope (LOC)**: estimated 400-800 LOC production. New snapshot package (write + read + fallback), two write-time hook sites (`moai init` end, `moai update` restore end — amended 2026-09-24, card t1139: `moai init` post-deploy, `moai update` post-deploy/pre-restore; see Decision D4), one read-time change (`BackupMoaiConfig` prefers snapshot), migration/fallback path, plus lifecycle and provenance tests. This sits in the upper-M / lower-L band; the new persisted-artifact dimension pushes it firmly to L.
+- **Files affected**: estimated 10-14 files. New: `internal/cli/update/backup/snapshot.go`, `snapshot_test.go`, `base_loader.go`, `base_loader_test.go`, a provenance-focused test, a `quality.yaml`-focused test. Modified: `backup.go` (BackupMoaiConfig base-source switch), `init.go` (snapshot-write hook), `update_template_sync.go` (snapshot-write hook after restore), `update_clean_install.go` (snapshot-write hook after restore). *(Amended 2026-09-24, card t1139: both update hooks now sit after the deploy, before the restore; the init hook moved into `internal/core/project/initializer.go` `InitOptions.AfterTemplateDeploy`; `update_restore.go` no longer writes; companion `internal/config/loader_identity.go` added.)* Indirectly-touched: existing `backup_test.go` (add snapshot-present cases). This exceeds the Tier M ceiling of 15 files only on a generous count; the *constitutional* axis (new on-disk data model + lifecycle + migration) is the deciding factor and places the SPEC at L per the Tier guidance "> 1000 LOC or constitutional".
+- **Blast radius**: spans three subsystems — `moai init`, the `moai update` clean-install path, and the `moai update` template-sync path. Two distinct write triggers (init-end, update-restore-end — amended 2026-09-24, card t1139: init post-deploy and update post-deploy/pre-restore, see Decision D4) and one read-site change. This is not a single-file fix; it is a new persisted artifact with a lifecycle.
 - **Risk**: medium-high. The change is behaviour-visible on every `moai update`, and the snapshot must survive the update clean step (`update_cleanup.go` / `update_clean_install.go`) which deletes `.moai/config/`. The backward-compat surface (pre-existing installs with no snapshot) is non-trivial and carries its own design question (Decision D6 below).
 - **Not Tier M**: a Tier M SPEC would not introduce a new persisted on-disk artifact with its own lifecycle and migration semantics. The prior SPEC (`SPEC-UPDATE-YAML-PRESERVE-001`) was Tier M precisely because it was a representation fix with no new persisted data model — this SPEC is the provenance fix the prior SPEC deferred *because* it needs the new persisted data model.
 - **Not Tier S**: out of the question — multi-file, multi-subsystem, new artifact.
@@ -29,7 +29,7 @@ plan-auditor PASS threshold at Tier L: **0.85**.
 | 2-way fallback at restore | `restore.go:139` (`MergeYAMLDeep`) | CONFIRMED — frozen by REQ-TBS-009 |
 | `BackupMoaiConfig` call sites | `update_template_sync.go:210,345`, `update_clean_install.go:359` | CONFIRMED — 3 production sites |
 | `RestoreMoaiConfig` call sites | `update_template_sync.go:420`, `update_clean_install.go:451` | CONFIRMED — 2 production sites |
-| `moai init` deploy success return | `init.go:723` (`return nil`) | CONFIRMED — snapshot-write hook point (Decision D4) |
+| `moai init` deploy success return | `init.go:723` (`return nil`) | CONFIRMED — snapshot-write hook point (original Decision D4; SUPERSEDED 2026-09-24, card t1139 — the write now fires from `InitOptions.AfterTemplateDeploy` right after the deploy, before the wizard section patches) |
 | `.moai/cache/` gitignored | `.gitignore:273` | CONFIRMED |
 | `.moai/state/` gitignored | `.gitignore:207,275` | CONFIRMED |
 | `defs.MoAIDir` / `ConfigSubdir` / `SectionsSubdir` | `internal/defs/dirs.go:14,96-99` | CONFIRMED |
@@ -42,9 +42,9 @@ The prior SPEC's `plan.md:146` contract binds this SPEC: "the follow-up changes 
 ## §B Known Issues
 
 - The existing `SaveTemplateDefaults` has 7+ direct test callers in the repo (`internal/cli/update/backup/backup_test.go`, `internal/cli/update_fileops_test.go`, `internal/cli/coverage_improvement_test.go`, `internal/cli/target_coverage_test.go`, `internal/cli/update/backup/backup_error_test.go`). Changing `SaveTemplateDefaults`'s signature ripples to all of them. Decision D2 chooses a non-breaking surface to avoid that ripple.
-- `update_clean_install.go` runs `BackupMoaiConfig` → clean → deploy → `RestoreMoaiConfig` → ... in sequence. The snapshot write MUST happen AFTER restore completes (Decision D4), not before — otherwise the snapshot records the pre-clean (old) state and the next update's BASE is the very files being replaced.
+- `update_clean_install.go` runs `BackupMoaiConfig` → clean → deploy → `RestoreMoaiConfig` → ... in sequence. ~~The snapshot write MUST happen AFTER restore completes (Decision D4), not before — otherwise the snapshot records the pre-clean (old) state and the next update's BASE is the very files being replaced.~~ *(Amended 2026-09-24, card t1139.)* The snapshot write MUST happen AFTER the deploy and BEFORE the restore (Decision D4 as amended): before the deploy it would record the pre-clean (old) state; after the restore it records the user's restored values as BASE and the next update drops every carried customization.
 - The snapshot directory (`.moai/cache/template-snapshot/`) is NOT under any preserve root the clean step honours, so the clean step will not delete it. But the clean step DOES touch `.moai/cache/` in some flows (per `update_cleanup.go`'s walk). Decision D5 verifies this empirically at M0 and pins the location accordingly.
-- **Third restore-completion site (D4, iter-1 audit D4)**: `internal/cli/update_restore.go:53` calls `backup.RestoreFromBackupDir` from `runUpdateRestore` — the user-invocable lockout-escape entry point (referenced by `SPEC-UPDATE-DATA-SURVIVAL-001` plan.md §B.3). This is a DISTINCT path from the two normal update sites (`update_template_sync.go:420` and `update_clean_install.go:451`); it is NOT routed through either. After it runs, the on-disk config reflects the chosen backup. Decision D4 wires a third `WriteSnapshot` hook here so the snapshot invariant ("snapshot = what the current install just received") holds uniformly across all three restore-completion sites; the research.md call-graph work confirms this enumeration is exhaustive.
+- **Third restore-completion site (D4, iter-1 audit D4)**: `internal/cli/update_restore.go:53` calls `backup.RestoreFromBackupDir` from `runUpdateRestore` — the user-invocable lockout-escape entry point (referenced by `SPEC-UPDATE-DATA-SURVIVAL-001` plan.md §B.3). This is a DISTINCT path from the two normal update sites (`update_template_sync.go:420` and `update_clean_install.go:451`); it is NOT routed through either. After it runs, the on-disk config reflects the chosen backup. ~~Decision D4 wires a third `WriteSnapshot` hook here so the snapshot invariant ("snapshot = what the current install just received") holds uniformly across all three restore-completion sites;~~ the research.md call-graph work confirms this enumeration is exhaustive. *(Amended 2026-09-24, card t1139: `runUpdateRestore` deploys no template, so under the amended Decision D4 it writes NO snapshot — the last deploy's snapshot stays the newest render. Writing the restored user config there was part of the measured poisoning defect.)*
 
 ## §C Pre-Flight (Run-Phase Entry Checks)
 
@@ -70,7 +70,10 @@ grep -rn "RestoreMoaiConfig\|RestoreFromBackupDir" internal/ --include='*.go' | 
 #   internal/cli/update_template_sync.go:420   (normal update — template-sync path)
 #   internal/cli/update_clean_install.go:451   (normal update — clean-install path)
 #   internal/cli/update_restore.go:53          (user-invocable runUpdateRestore / lockout-escape)
-# All three require a WriteSnapshot hook per Decision D4.
+# Original D4: all three require a WriteSnapshot hook.
+# Amended D4 (2026-09-24, card t1139): the snapshot hooks sit after the DEPLOY at the
+# two update sites (before the restore) and after the deploy in init; update_restore.go
+# deploys nothing and writes no snapshot.
 
 # 6. Confirm the snapshot location candidate is gitignored
 grep -n "\.moai/cache" .gitignore
@@ -126,22 +129,44 @@ grep -n "\.moai/cache" .gitignore
 
 **Edge case — files in `.moai/config/sections/` that are NOT template-sourced** (user-created custom sections, e.g. a project-local `foo.yaml`): the snapshot copies them too, because `SaveTemplateDefaults`'s current scope is "every file under sections/" (it walks the embedded FS, but the merge at restore time walks the *backup*, which includes user-created sections). Copying user-created sections into the snapshot is harmless — the 3-way merge's `old == base` test fires for them, and since they have no NEW template counterpart they route through the "target file does not exist" branch at `restore.go:89-95` anyway. No behaviour change for user-created sections.
 
-### Decision D4 — write timing: end of successful init AND end of every successful restore-completion site (three sites)
+### Decision D4 — write timing: immediately after every successful template deploy, before any user value is written over it (three sites) — AMENDED 2026-09-24 (card t1139)
 
-**Chosen**: FOUR write triggers total — one at init end, three at restore-completion sites.
+> **Amendment note (2026-09-24, card t1139).** The original D4 (preserved verbatim below under "Superseded original D4") placed the snapshot write at the END of `moai init` (after the init wizard patches the section files) and AFTER the config restore at every update site, plus a fourth write at the end of `runUpdateRestore`. That placement violates this SPEC's own invariant — "snapshot = what the current install just received" (the rendered template): at both points the section files already hold USER values (wizard answers, restored customizations). The snapshot therefore recorded user values as BASE; at the next update BASE == OLD, the 3-way merge read that as "template changed", and replaced the user values with the new render. Measured: after `moai update --force` on a fresh `moai init`, `project.name` and `user.name` became `""` and `lsp.enabled` went `true → false` — exactly 3 keys changed across all sections. The original rejected alternative ("write BEFORE restore at backup time") named a different point — capturing the pre-update state; the correct point, not considered at plan time, is **after the fresh deploy and before restore/patches**.
+>
+> **Amended decision — THREE write triggers** (was four):
+>
+> 1. **`moai init` — right after the template deploy succeeds**, and BEFORE the wizard section patches (`WritePhase1Configs` → `writeLSPYAML` and the other Page-3 writers, `WriteWorkflowTogglesYAML`, `writeReportConfig`). Wired through a new `InitOptions.AfterTemplateDeploy` hook in `internal/core/project/initializer.go`, set from `internal/cli/init.go`. NOT written on the fallback (no-deployer) path, which deploys no template render.
+> 2. **`moai update` template-sync path — right after the deploy** (after the settings/MCP staging, `update_template_sync.go`), BEFORE the config restore. This run's BASE was already copied into the backup, so the write cannot affect this run's merge.
+> 3. **`moai update` clean-install path — right after the deploy** (after the settings/MCP staging, `update_clean_install.go`), BEFORE Step 5.5's config restore.
+>
+> The post-restore writes at both update sites are REMOVED.
+>
+> **`runUpdateRestore` (lockout-escape) — NO LONGER writes a snapshot.** It deploys nothing and writes restored user values; snapshotting them recreates the poisoning. The last deploy's snapshot remains the newest real render and is left untouched. **Trade-off**: a template change between the restored backup's generation and the last deploy reads as a user customization for one cycle — the merge keeps the user's data and never loses it; the next deploy's snapshot corrects the BASE.
+>
+> **Companion change (same fix, not part of D4)**: the update render contexts now carry `ProjectName` / `UserName` loaded from the existing config (`internal/config/loader_identity.go` `LoadProjectName` / `LoadUserName`, precedent `LoadGitMode`), so unchanged identity renders identically and the merge never has to rely on reading a name as a customization against the snapshot.
+>
+> **Residual risk (not mitigated in card t1139)**: installs whose EXISTING snapshot was written under the superseded D4 are already poisoned (BASE = user values). On the first update after upgrading, such an install loses `lsp.enabled` (and any key it customized before a previous update) ONCE; from then on the snapshot is a pure render. A follow-up card is proposed to cover this one-time loss.
+>
+> **Superseded original D4** (kept for history; do not implement):
+
+~~**Chosen**: FOUR write triggers total — one at init end, three at restore-completion sites.~~ *(superseded by the amendment above)*
 
 1. **`moai init` end** — after `init.go:697` (`ScaffoldEvolutionDir`) and before `init.go:723` (`return nil`). At this point templates are deployed and rendered on disk; the snapshot captures the fresh-install baseline.
 2. **`moai update` restore end — template-sync path** — after `RestoreMoaiConfig` returns nil in `update_template_sync.go:420`. NEW templates deployed + merged; snapshot captures "what this update just produced".
 3. **`moai update` restore end — clean-install path** — after `RestoreMoaiConfig` returns nil in `update_clean_install.go:451`. Same invariant.
 4. **`runUpdateRestore` end — lockout-escape path** — after `backup.RestoreFromBackupDir` returns nil in `update_restore.go:53`. The user-invocable restore entry applies a chosen backup to the tree; the post-restore on-disk config IS the new baseline for the next update, so writing the snapshot here keeps the invariant uniform. (iter-1 audit D4: this is a DISTINCT third restore-completion site, not one of the two normal update sites; the research.md §B call graph confirms the enumeration is exhaustive.)
 
-**Why wire all three restore sites, not just the two normal ones**: omitting the lockout-escape site would leave the snapshot stale (or absent) after a user repairs via `moai update --restore <dir>`. The next normal `moai update` would then read either no snapshot (REQ-TBS-007 fallback — today's wrong-base behaviour) or a pre-repair snapshot (wrong base). Wiring the third site costs one best-effort call and closes the gap.
+**[SUPERSEDED 2026-09-24, card t1139 — `runUpdateRestore` no longer writes; see amendment] Why wire all three restore sites, not just the two normal ones**: omitting the lockout-escape site would leave the snapshot stale (or absent) after a user repairs via `moai update --restore <dir>`. The next normal `moai update` would then read either no snapshot (REQ-TBS-007 fallback — today's wrong-base behaviour) or a pre-repair snapshot (wrong base). Wiring the third site costs one best-effort call and closes the gap.
 
-**Rejected — write snapshot BEFORE restore (at backup time)**: would record the pre-update (old) state as the BASE for the next update, defeating the purpose. The merge needs BASE = what the user's *previous* update delivered, which is exactly the post-restore state of the prior cycle.
+**Rejected — write snapshot BEFORE restore (at backup time)**: would record the pre-update (old) state as the BASE for the next update, defeating the purpose. ~~The merge needs BASE = what the user's *previous* update delivered, which is exactly the post-restore state of the prior cycle.~~ *(Amended 2026-09-24, card t1139: the rejection of the backup-time point stands — that point captures the pre-update tree. Its justification was wrong: what the previous update "delivered" is its template RENDER, not its post-restore state, because the post-restore state carries the user's values. The chosen point is neither backup time nor post-restore, but between the deploy and the restore.)*
+
+**Rejected (added 2026-09-24, card t1139) — write snapshot AFTER restore / at the end of init (the superseded original D4)**: the section files then hold user values (restored customizations, wizard answers), the snapshot records them as BASE, and the next update's merge sees BASE == OLD and replaces them with the new render. This is the measured defect the amendment fixes.
+
+**Rejected (added 2026-09-24, card t1139) — keep writing at `runUpdateRestore`**: that path deploys no template; the only thing it could record is restored user values, which recreates the poisoning above.
 
 **Rejected — write snapshot only on `moai init`, not on `moai update`**: would make the snapshot stale after the first `moai update` — the BASE would forever reflect the install-time template version, not the most-recently-deployed version. Every subsequent template change would then misfire `old != base` for the same wrong reason as today.
 
-**Error handling (REQ-TBS-014)**: all four write triggers call the snapshot writer with best-effort semantics — a non-nil error is logged to stderr and swallowed. The enclosing `init`/`update`/`update-restore` returns its original result. The next update falls back per REQ-TBS-007.
+**Error handling (REQ-TBS-014)**: all write triggers (four under the superseded D4, three under the amendment) call the snapshot writer with best-effort semantics — a non-nil error is logged to stderr and swallowed. The enclosing `init`/`update`/`update-restore` returns its original result. The next update falls back per REQ-TBS-007.
 
 ### Decision D5 — snapshot survives the clean step: verified by location, asserted by test
 
@@ -153,7 +178,7 @@ grep -n "\.moai/cache" .gitignore
 
 ### Decision D6 — backward compatibility: graceful fallback to embedded-raw on first run
 
-**Chosen**: the first `moai update` after this feature ships encounters an absent snapshot. `SaveTemplateBase` (Decision D2) delegates to `SaveTemplateDefaults`, producing the same BASE bytes as today. The update completes with today's behaviour. At the end of the update's restore, the snapshot-write trigger (Decision D4) writes the first snapshot. The NEXT update then has a correct BASE.
+**Chosen**: the first `moai update` after this feature ships encounters an absent snapshot. `SaveTemplateBase` (Decision D2) delegates to `SaveTemplateDefaults`, producing the same BASE bytes as today. The update completes with today's behaviour. Right after the update's deploy (before its restore — Decision D4 as amended 2026-09-24, card t1139; originally "at the end of the update's restore"), the snapshot-write trigger writes the first snapshot. The NEXT update then has a correct BASE.
 
 **Migration cost**: exactly one update cycle of "still wrong base" for pre-existing installs. This is acceptable because (a) it is strictly better than today (which is always wrong base), (b) the harm ordering makes a stale value less damaging than a destroyed file, and (c) there is no way to reconstruct a historically-correct snapshot from the current on-disk state without making the very assumption this SPEC invalidates.
 
@@ -212,7 +237,9 @@ Unit tests: `TestSaveTemplateBase_PrefersSnapshot`, `TestSaveTemplateBase_FallsB
 
 **Files**: edit `internal/cli/init.go`, `internal/cli/update_template_sync.go`, `internal/cli/update_clean_install.go`; new regression test `internal/cli/update/backup/snapshot_survival_test.go`.
 
-Wire `WriteSnapshot(projectRoot)`:
+> **Amended 2026-09-24 (card t1139)** — the wiring below is the superseded original D4 placement, kept for history. The amended placement: `init` via `InitOptions.AfterTemplateDeploy` right after the deploy (before the wizard section patches); `update_template_sync.go` and `update_clean_install.go` right after the deploy (after the settings/MCP staging, before the config restore); `update_restore.go` writes no snapshot. See Decision D4.
+
+Wire `WriteSnapshot(projectRoot)` (superseded placement):
 - In `init.go` just before the final `return nil` at `:723` — wrap in best-effort (log + swallow).
 - In `update_template_sync.go` after the `RestoreMoaiConfig` block at `:420-430` — wrap in best-effort.
 - In `update_clean_install.go` after the `RestoreMoaiConfig` block at `:451` — wrap in best-effort.

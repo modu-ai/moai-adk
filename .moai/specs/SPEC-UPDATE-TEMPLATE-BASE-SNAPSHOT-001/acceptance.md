@@ -10,8 +10,8 @@ The mandatory falsifiability AC (AC-TBS-010) mirrors the prior SPEC's AC-UYP-022
 
 | REQ | AC(s) |
 |---|---|
-| REQ-TBS-001 (snapshot at end of `moai init`) | AC-TBS-001 |
-| REQ-TBS-002 (snapshot at end of `moai update` restore) | AC-TBS-002 |
+| REQ-TBS-001 (snapshot after `moai init` deploy, before wizard patches — amended 2026-09-24, card t1139) | AC-TBS-001, AC-TBS-023 |
+| REQ-TBS-002 (snapshot after `moai update` deploy, before restore; none at `runUpdateRestore` — amended 2026-09-24, card t1139) | AC-TBS-002, AC-TBS-023 |
 | REQ-TBS-003 (snapshot = rendered bytes, not `{{.Version}}`) | AC-TBS-003 |
 | REQ-TBS-004 (snapshot under `.moai/cache/`, survives clean step) | AC-TBS-004 |
 | REQ-TBS-005 (snapshot gitignored) | AC-TBS-005 |
@@ -19,8 +19,8 @@ The mandatory falsifiability AC (AC-TBS-010) mirrors the prior SPEC's AC-UYP-022
 | REQ-TBS-007 (fallback when snapshot absent) | AC-TBS-007 |
 | REQ-TBS-008 (MergeYAML3Way signature unchanged) | AC-TBS-008 |
 | REQ-TBS-009 (2-way fallback remains available) | AC-TBS-009 |
-| REQ-TBS-010 (template-blessed key adopted, not misread) | AC-TBS-010 (falsifiability), AC-TBS-011 |
-| REQ-TBS-011 (user-customized key preserved) | AC-TBS-012 |
+| REQ-TBS-010 (template-blessed key adopted, not misread) | AC-TBS-010 (falsifiability), AC-TBS-011, AC-TBS-026 |
+| REQ-TBS-011 (user-customized key preserved) | AC-TBS-012, AC-TBS-024, AC-TBS-025 |
 | REQ-TBS-012 (quality.yaml real-3-way correctness) | AC-TBS-013 |
 | REQ-TBS-013 (first-update-after-feature completes cleanly + writes snapshot) | AC-TBS-014 |
 | REQ-TBS-014 (snapshot write best-effort non-blocking) | AC-TBS-015 |
@@ -30,15 +30,15 @@ Cross-cutting ACs: AC-TBS-017 (cross-platform build), AC-TBS-018 (subagent bound
 
 ## §C Severity Model
 
-- **MUST-PASS**: AC-TBS-001, 002, 003, 004, 005, 006a, 007, 008, 009, 010 (falsifiability — itself a MUST-PASS), 011, 013, 014, 015, 016, 022.
+- **MUST-PASS**: AC-TBS-001, 002, 003, 004, 005, 006a, 007, 008, 009, 010 (falsifiability — itself a MUST-PASS), 011, 013, 014, 015, 016, 022, 023, 024, 025, 026 (023-026 added 2026-09-24, card t1139).
 - **SHOULD-PASS**: AC-TBS-006b, 012, 017, 018, 019, 020, 021.
 
 ## §D Acceptance Criteria Matrix (Given-When-Then)
 
-### AC-TBS-001 — Snapshot written at end of `moai init`
+### AC-TBS-001 — Snapshot written by `moai init` (right after the template deploy — amended 2026-09-24, card t1139)
 
 **Given** a fresh `t.TempDir()` project with no `.moai/cache/template-snapshot/`
-**When** `moai init` completes successfully (templates deployed)
+**When** `moai init` completes successfully (templates deployed; since the 2026-09-24 amendment the write fires right after the deploy, before the wizard section patches — the render-not-user-value property is AC-TBS-023)
 **Then** `.moai/cache/template-snapshot/sections/` exists and contains one file per `.yaml`/`.yml` in `.moai/config/sections/`.
 
 **Verification command**:
@@ -47,20 +47,70 @@ go test ./internal/cli/update/backup/ -run TestInit_WritesSnapshot -count=1 -v
 grep -q '^--- PASS: TestInit_WritesSnapshot' <(go test ./internal/cli/update/backup/ -run TestInit_WritesSnapshot -count=1 -v 2>&1)
 ```
 
-### AC-TBS-002 — Snapshot written at end of every `moai update` restore-completion site
+### AC-TBS-002 — Snapshot written right after every `moai update` template deploy, and not by `runUpdateRestore` (AMENDED 2026-09-24, card t1139)
+
+> **Amendment note (2026-09-24, card t1139).** The original AC-TBS-002 required a snapshot write at the END of all three restore-completion sites, including `runUpdateRestore`. Under Decision D4 as amended (plan.md), the two update sites write right after their deploy and before the config restore, and `runUpdateRestore` — which deploys nothing — writes no snapshot. The original `TestUpdateRestore_WritesSnapshot_RunUpdateRestore` subtest is replaced in code by `TestRunUpdateRestore_LeavesSnapshotUntouched`. Superseded original wording: ~~"**When** `moai update`'s restore phase completes successfully on ANY of the three restore-completion sites (template-sync path, clean-install path, OR the user-invocable `runUpdateRestore` lockout-escape path) **Then** `.moai/cache/template-snapshot/sections/` exists and is non-empty after each."~~
 
 **Given** a `t.TempDir()` project with a populated `.moai/config/sections/` and no snapshot
-**When** `moai update`'s restore phase completes successfully on ANY of the three restore-completion sites (template-sync path, clean-install path, OR the user-invocable `runUpdateRestore` lockout-escape path)
-**Then** `.moai/cache/template-snapshot/sections/` exists and is non-empty after each.
+**When** a `moai update` template deploy completes successfully on the template-sync path or the clean-install path
+**Then** `.moai/cache/template-snapshot/sections/` exists and is non-empty after each, written BEFORE the config restore runs.
+
+**And Given** a project with a snapshot holding the last deploy's render and a backup directory holding a user value
+**When** `runUpdateRestore` (the lockout-escape path) restores that backup
+**Then** the restored user value is present in the live `.moai/config/sections/` file (positive control) AND the snapshot file is byte-identical to its pre-restore content.
 
 **Verification command**:
 ```bash
-go test ./internal/cli/update/backup/ -run 'TestUpdateRestore_WritesSnapshot' -count=1 -v
-grep -q '^--- PASS:' <(go test ./internal/cli/update/backup/ -run 'TestUpdateRestore_WritesSnapshot' -count=1 -v 2>&1)
-# Dedicated subtests for each of the three restore-completion sites:
-go test ./internal/cli/update/backup/ -run 'TestUpdateRestore_WritesSnapshot_TemplateSync' -count=1 -v
-go test ./internal/cli/update/backup/ -run 'TestUpdateRestore_WritesSnapshot_CleanInstall' -count=1 -v
-go test ./internal/cli/update/backup/ -run 'TestUpdateRestore_WritesSnapshot_RunUpdateRestore' -count=1 -v
+go test ./internal/cli/ -run 'TestUpdateRestore_WritesSnapshot_TemplateSync|TestUpdateRestore_WritesSnapshot_CleanInstall|TestRunUpdateRestore_LeavesSnapshotUntouched' -count=1 -v
+# Expected: exit 0; output contains all three '--- PASS:' lines
+```
+
+### AC-TBS-023 — Snapshot equals the deployed render, not the user's value (REQ-TBS-001, REQ-TBS-002; added 2026-09-24, card t1139)
+
+**Given** a project created by a real `moai init` whose wizard answer sets `lsp.enabled: true` while the template renders `lsp.enabled: false`
+**When** init completes, and again after one forced `moai update`
+**Then** the snapshot's `lsp.yaml` carries `lsp.enabled: false` (the template render) at both points, AND the live `.moai/config/sections/lsp.yaml` carries `lsp.enabled: true` after the update (positive control that snapshot and live tree genuinely differ at this key).
+
+**Verification command**:
+```bash
+go test ./internal/cli/ -run 'TestUpdateForce_SnapshotIsTheDeployedRender' -count=1 -v
+# Expected: exit 0; output contains '--- PASS: TestUpdateForce_SnapshotIsTheDeployedRender'
+```
+
+### AC-TBS-024 — Identity and wizard keys survive two consecutive forced updates (REQ-TBS-011; added 2026-09-24, card t1139)
+
+**Given** a project created by a real `moai init` with a non-empty `project.name`, a non-empty `user.name`, and the wizard-patched `lsp.enabled: true`, with a positive control asserting init wrote all three
+**When** `moai update --force` runs twice in succession
+**Then** after each update `project.name` and `user.name` equal the init values and `lsp.enabled` is `true`.
+
+**Verification command**:
+```bash
+go test ./internal/cli/ -run 'TestUpdateForce_PreservesInitIdentityAndWizardKeys' -count=1 -v
+# Expected: exit 0; output contains '--- PASS: TestUpdateForce_PreservesInitIdentityAndWizardKeys'
+```
+
+### AC-TBS-025 — A user customization survives two consecutive updates (REQ-TBS-011; added 2026-09-24, card t1139)
+
+**Given** an initialized project whose user edited `quality.yaml` `constitution.test_coverage_target` from the template's `85` to `91` after init
+**When** `moai update --force` runs twice in succession
+**Then** `test_coverage_target` is `91` after the first AND the second update (the second-cycle poisoning case: a post-restore snapshot would make the second update's BASE the user value and the template default would win).
+
+**Verification command**:
+```bash
+go test ./internal/cli/ -run 'TestUpdateForce_UserCustomizationSurvivesTwoUpdates' -count=1 -v
+# Expected: exit 0; output contains '--- PASS: TestUpdateForce_UserCustomizationSurvivesTwoUpdates'
+```
+
+### AC-TBS-026 — A template-changed key the user never touched still propagates (REQ-TBS-010; added 2026-09-24, card t1139)
+
+**Given** an initialized project whose live `lsp.yaml` AND snapshot `lsp.yaml` both carry a "previous template" value for `lsp.delegate_to_astgrep.rules_dir` that the current template renders differently
+**When** `moai update --force` runs
+**Then** the live `rules_dir` equals the current template value (`old == base` fires and the new render is adopted).
+
+**Verification command**:
+```bash
+go test ./internal/cli/ -run 'TestUpdateForce_TemplateChangedKeyStillPropagates' -count=1 -v
+# Expected: exit 0; output contains '--- PASS: TestUpdateForce_TemplateChangedKeyStillPropagates'
 ```
 
 ### AC-TBS-003 — Snapshot carries rendered values, not placeholders
@@ -371,10 +421,12 @@ go test ./internal/cli/update/backup/ -count=1 2>&1 | tail -5
 ## §E Edge Cases
 
 - **Concurrent `moai update` invocations on the same project**: out of scope (single-user offline model per `SPEC-SEC-HARDEN-003` §F.1). The snapshot write is not locked; a concurrent update would race on the snapshot directory. This is the same trust model as `.moai/config/` itself.
-- **User manually deletes `.moai/cache/`**: the next update falls back per REQ-TBS-007 (no snapshot → embedded-raw BASE → today's behaviour) and re-writes the snapshot at restore end. Self-healing.
+- **User manually deletes `.moai/cache/`**: the next update falls back per REQ-TBS-007 (no snapshot → embedded-raw BASE → today's behaviour) and re-writes the snapshot right after its deploy (originally "at restore end"; amended 2026-09-24, card t1139). Self-healing.
 - **Snapshot from a much older template version**: exactly the correct BASE — the merge's job is to diff against the user's previous install, however old. If the user skipped N releases, the snapshot captures the N-releases-ago rendered state, and the merge correctly distinguishes "user customized" from "template changed across N releases".
 - **Snapshot file present but corrupted (invalid YAML)**: `SaveTemplateBase` copies the bytes verbatim into the per-backup BASE; `RestoreMoaiConfig` then attempts `MergeYAML3Way`, the BASE parse fails, and the 2-way fallback fires (REQ-TBS-009). The corrupted snapshot does not break the update; it merely degrades this one cycle to 2-way behaviour.
-- **First-ever `moai init` on a brand-new project**: snapshot is written at init end (REQ-TBS-001). There is no "prior install" to snapshot from, but the freshly-deployed rendered files ARE the correct baseline for the NEXT update.
+- **First-ever `moai init` on a brand-new project**: snapshot is written right after init's template deploy, before the wizard section patches (REQ-TBS-001; originally "at init end", amended 2026-09-24, card t1139). There is no "prior install" to snapshot from, but the freshly-deployed rendered files ARE the correct baseline for the NEXT update.
+- **Install whose existing snapshot was written under the superseded D4 (added 2026-09-24, card t1139)**: that snapshot holds user values as BASE. The first update after upgrading loses `lsp.enabled` (and any key customized before a previous update) ONCE; that update's deploy then writes a pure-render snapshot and later updates are correct. Recorded as residual risk in plan.md Decision D4; not mitigated by this card.
+- **`runUpdateRestore` after a template change (added 2026-09-24, card t1139)**: the lockout-escape restore leaves the last deploy's snapshot in place. A key the template changed between the restored backup's generation and that deploy reads as a user customization for one cycle — the user's value is kept, never lost.
 
 ## §F Definition of Done
 
