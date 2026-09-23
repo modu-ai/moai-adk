@@ -62,6 +62,72 @@ func TestTurnRegistrationDuringHandoffIsPendingForAnyIdentity(t *testing.T) {
 	}
 }
 
+// TestRegistrationHandoffStoreErrorsFailClosed: when the REQ-FLH-017/018 read
+// or the launcher finalize write fails inside RegisterPeer's transaction, the
+// registration returns the error and the whole transaction rolls back — the
+// slot row and the handoff stay exactly as they were.
+func TestRegistrationHandoffStoreErrorsFailClosed(t *testing.T) {
+	ctx := context.Background()
+	turn := func(f *bindFixture) Peer {
+		p := f.source
+		p.SessionUUID = "post-cd-uuid"
+		p.ProcessStart = f.ownerStart
+		return p
+	}
+	launcher := func(f *bindFixture) Peer {
+		p := f.source
+		p.SessionUUID = ""
+		p.ProcessStart = f.ownerStart
+		return p
+	}
+	cases := []struct {
+		name     string
+		pending  bool
+		sabotage []string
+		register func(*bindFixture) (Peer, error)
+	}{
+		{"tombstone_read_fails", false, []string{
+			`DROP TABLE lane_endpoint_tombstones`,
+			`CREATE VIEW lane_endpoint_tombstones AS SELECT 1 AS unrelated`,
+		}, func(f *bindFixture) (Peer, error) { return f.s.RegisterPeer(ctx, turn(f)) }},
+		{"handoff_read_fails", false, []string{
+			`DROP TABLE lane_handoffs`,
+			`CREATE VIEW lane_handoffs AS SELECT 'lane-1' AS slot`,
+		}, func(f *bindFixture) (Peer, error) { return f.s.RegisterPeer(ctx, turn(f)) }},
+		{"finalize_update_fails", true, []string{
+			`CREATE TRIGGER refuse_handoff_update BEFORE UPDATE ON lane_handoffs BEGIN SELECT RAISE(ABORT, 'update refused'); END`,
+		}, func(f *bindFixture) (Peer, error) { return f.s.RegisterLaunchPending(ctx, launcher(f)) }},
+		{"finalize_event_fails", true, []string{
+			`DROP TABLE lane_handoff_events`,
+		}, func(f *bindFixture) (Peer, error) { return f.s.RegisterLaunchPending(ctx, launcher(f)) }},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			f := newBindSeed(t)
+			if tc.pending {
+				f.reserveToPending(t, HandoffModeInteractive)
+			}
+			for _, stmt := range tc.sabotage {
+				if _, err := f.s.db.Exec(stmt); err != nil {
+					t.Fatalf("%s: %v", stmt, err)
+				}
+			}
+			before := readEndpointRow(t, f.s.db, bindSlot)
+			if _, err := tc.register(f); err == nil {
+				t.Fatal("registration succeeded while its handoff read or finalize failed")
+			}
+			if after := readEndpointRow(t, f.s.db, bindSlot); after != before {
+				t.Fatalf("failed registration wrote the row: before=%+v after=%+v", before, after)
+			}
+			if tc.pending {
+				if st, _ := f.handoffState(t); st != HandoffSwitchPendingInteractive {
+					t.Fatalf("failed registration moved the handoff to %s", st)
+				}
+			}
+		})
+	}
+}
+
 // TestHandoffStepHookAbortsItsTransaction: an error returned by the step
 // observer rolls back the whole write transaction it fires in — registration,
 // launcher finalize, reservation, and rebind alike — so a race test's barrier
