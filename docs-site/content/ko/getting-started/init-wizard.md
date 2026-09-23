@@ -86,7 +86,7 @@ Git 자동화 모드·프로바이더는 마법사에서 묻지 않습니다. `m
 ```bash
 ? 배포하고 연결할 에이전트 하니스 선택
 ▸ Claude 단독 (권장) - .claude/ 표면과 AGENTS.md를 배포합니다 (지금까지의 기본 동작)
-  Codex 단독         - AGENTS.md와 Codex 표면만 배포합니다 — .claude/ 디렉터, CLAUDE.md, .mcp.json이 생기지 않습니다
+  Codex 단독         - AGENTS.md와 Codex 표면만 배포합니다 — .claude/ 디렉터리, CLAUDE.md, .mcp.json이 생기지 않습니다
   Claude + Codex     - 동일한 .claude/ 배포에 .codex/ 연결을 더하고 .mcp.json 프로비저닝을 강제로 켭니다
 ```
 

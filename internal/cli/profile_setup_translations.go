@@ -43,7 +43,7 @@ type profileSetupText struct {
 	ModelFable1M       string
 	ModelHaiku         string
 	ModelOpusPlan      string
-	// Effort level selector. The empty "(runtime default)" option label is NOT a
+	// Effort level selector. The empty option label is NOT a
 	// field here — it is single-sourced from settings.EmptyLabelFor("effort_level")
 	// so the wizard and the web console render the identical label. Same for the
 	// model / development_mode / git_convention empty options.
