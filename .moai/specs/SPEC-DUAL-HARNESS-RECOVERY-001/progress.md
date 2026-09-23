@@ -636,6 +636,49 @@ ok 59.694s, --- PASS 23건, FAIL/SKIP 0
 - **(a) embed-check 재현.** M6 이전 커밋 `0a635a852`를 `git archive`로 scratch에 풀어 `go build`한 바이너리(87,396,386 bytes)로 HEAD `9555d3fad`에서 `make embed-check BIN=<scratch>/moai-pre-m6`를 실행 → exit 2, `compared 0/12 artifacts — moai-pre-m6 carries no embedded counterpart for: <12개 TOML 전부>`. M6 실행과 같은 모양이므로 M6가 만든 결함이 아니라 이전부터 있던 결함이다. 가설(미측정): `doctor_agentemit_embed.go:346`이 `moai init --non-interactive`로 추출하는데 그 기본 프로필이 `.codex`를 배포하지 않는다. Repair moved to card t1134 (lead-issued; cause hypothesis recorded as unmeasured).
 - **(b) enforced 근거 해석.** 레인 배차문은 documented 또는 unmeasured 근거의 enforced 매핑을 거부하라고 적었지만, REQ-DHR-013이 documented를 허용하므로 구현은 unmeasured만 거부한다(리드가 SPEC 우선을 확인). 현재 계약의 documented-enforced 행은 0개다.
 
+### M7 — 결정적 4조합 카드 흐름과 판정식 (REQ-DHR-022, 024)
+
+커밋: `00ba7cb90` — 새 테스트 파일 `internal/factorymsg/card_flow_test.go`(218줄) 하나. 제품 코드 변경 없음: `git diff --stat 9555d3fad -- internal/factorymsg/store.go internal/factorymsg/dispatch.go` 출력 0줄(`Store.Send` lane slot 멱등 조회 모양 그대로 — t1082가 그 위에 얹는다). 시작 HEAD `9555d3fad`(기록 커밋 `02a8cc438` 이후).
+
+테스트 설계: `TestFactoryCardFlowFourCombinations`의 하위 테스트 `claude-claude`·`codex-codex`·`claude-codex`·`codex-claude`(이름은 `<lead>-<worker>`). 각 조합은 lead와 worker 두 lane을 그 backend 표지로 등록하고 `ResolveLane`으로 브로커가 표지를 기록했는지 확인한 뒤, M2 API로 `assigned → delivered → started`를 진행한다(할당 메시지 receipt 뒤 `assigned`, 추가 메시지 receipt 뒤에도 `delivered` 유지). 첫 worker가 결과를 보낸 뒤 중단되고(프로세스 비생존), `ReassignDispatch`(revoke 없이)로 attempt 2가 다른 lane에 간다. 중단된 attempt의 `StartDispatch`는 `ErrDispatchFenced`, 그 lane이 새 generation으로 돌아온 뒤 옛 endpoint의 전이는 t1112 seam(`verifyPeerOn`, 트랜잭션 안)에서 `ErrStalePeer`다. 늦은 attempt 1 결과는 attempt 2가 started이고 아직 보고하기 전에 한 번, 보고 뒤에 한 번, `integrated` 뒤에 한 번 적용해 모두 `stale`, attempt 2 결과 재전달은 `duplicate`. attempt 2 결과 메시지의 도착·claim만으로는 `started`에 머문다. `accepted` 판정 수가 정확히 1이고 기록된 결과가 attempt 2의 것인지 끝에서 확인한다. 이 테스트는 증거 파일을 쓰지 않으므로 `MOAI_T1100_EVIDENCE_DIR`로 skip하지 않는다(리드 확인).
+
+AC 판정(명령은 `acceptance.md` 그대로, 테스트 커밋과 같은 내용의 작업 트리에서 실행):
+
+| AC | 판정 출력 | 증거 파일 |
+|---|---|---|
+| AC-DHR-017 | `true` | `.moai/reports/t1100/ac017.jsonl` |
+| AC-DHR-019 (명령 1, 판정식 6종) | `true` | 명령 자체(합성 입력) |
+| AC-DHR-019 (명령 2, 증거 채널) | `true` | 명령 자체(`mktemp -d`, 실행 뒤 삭제) |
+| AC-DHR-014 (회귀) | `true` | `.moai/reports/t1100/ac014.jsonl` |
+| AC-DHR-015 (회귀) | `true` | `.moai/reports/t1100/ac015.jsonl` |
+| AC-DHR-016 (회귀) | `true` | `.moai/reports/t1100/ac016.jsonl` |
+
+AC-DHR-018은 LIVE(M8)라 돌리지 않았다 — `NOT_RUN`.
+
+RED: M2 코드에서 이 흐름은 처음부터 동작한다 — 첫 실행의 실패(`card_flow_test.go:175: claim identity mismatch` ×4)는 테스트 쪽 결함이었다(receipt 뒤 `ReadBody`로 재적용하려 함). 재전달을 "claim 시점에 읽은 `ResultReport` 재사용"으로 고친 뒤 4/4 PASS. 따라서 RED는 변이로 보인다(각 변이 적용 → AC-017 명령 → scratch 백업으로 `dispatch.go` 복원, 복원 후 sha256 `87028a35…8196105` 원본과 같음):
+
+| 변이 | AC-017 테스트 출력(원문) | AC-017 판정 |
+|---|---|---|
+| (i) `ApplyResult`에서 (5) duplicate/collision 검사와 (7) state 검사 제거 — 한 dispatch에 결과가 두 번 적용됨 | `card_flow_test.go:177: attempt 2 redelivery: outcome "accepted", want "duplicate"` ×4 조합 | `false` (`m7/mutant-i-applied-twice.jsonl`) |
+| (i-b) (2)(3) attempt·lane 검사 제거 — 늦은 attempt 1 결과가 먼저 적용됨 | `card_flow_test.go:155: late attempt 1 before attempt 2 reports: outcome "accepted", want "stale"` ×4 | `false` (`m7/mutant-ib-late-accepted.jsonl`) |
+| (ii) 판정식이 SKIP을 pass로 셈 — AC-019 명령 1의 `P`에서 `.Action=="pass"`를 `(.Action=="pass" or .Action=="skip")`로, fail 절에서 skip 제거 | 전부 skip 흐름 `b=true` | AC-019 명령 1 `false` |
+| (ii-b) AC-017 판정식에 합성 입력: 하위 테스트 하나 skip + 부모·패키지 pass | — | `false` (`m7/synthetic-ac017-one-skip.jsonl`) |
+| (ii-c) AC-017 판정식에 패키지 `ok` 줄과 패키지 pass만 | — | `false` (`m7/synthetic-ac017-package-ok-only.jsonl`) |
+
+품질 게이트(같은 작업 트리):
+
+```text
+$ go test ./internal/factorymsg/... -count=1   → exit=0  ok .../internal/factorymsg 15.699s (m7/factorymsg-full.txt)
+$ go vet ./internal/factorymsg/                 → exit=0, 출력 없음
+$ golangci-lint run ./internal/factorymsg/...   → exit=0, 0 issues.
+```
+
+미측정·주의:
+
+- 증거 파일(`.moai/reports/`)은 `.gitignore:235`로 미추적이다. 판정을 가른 명령과 출력은 위 표에 옮겨 적었다.
+- 조합의 backend 표지는 브로커 `peers.backend` 열의 값일 뿐이다. 결정적 흐름은 backend에 따라 분기하는 코드를 지나지 않으므로, 네 조합이 서로 다른 경로를 검사한다고 주장하지 않는다 — 실제 CLI 차이는 AC-DHR-018(LIVE)의 몫이다.
+- `internal/cli`, 다른 패키지는 돌리지 않았다(변경 없음).
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 _<pending run-phase>_
