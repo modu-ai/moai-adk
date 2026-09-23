@@ -726,6 +726,93 @@ INVALID 실행 증거 파일(`…invalid-pre-755ae6576.*`)은 판정식 입력�
 - LIVE 재실행은 하지 않았다(이 마감의 지시: 모델 호출 없음). AC-012/023의 판정은 위 증거 파일의 기존 값이다.
 - `internal/cli` 전체 스위트는 돌리지 않았다 — embed 관련 테스트만(`AgentEmitEmbed|ExtractEmission|BoundedTail|FindEmbedCheckRoot|NearestProjectRoot`, ok).
 
+### Absorb d088aa738 (t1082) + Send lookup combination
+
+위 M8 절까지의 기록은 그대로 둔다. 이 절은 sync 전에 리드가 고정한 로컬 develop 커밋을 흡수하고 병합 트리에서 다시 잰 기록이다.
+
+흡수: `git merge --no-ff d088aa738465aeb3c6e1a40d23bda278c416db0e`(card t1082 lane worktree handoff, t1133 hook inspect 오분류 수리, t1141 rosterguard 규칙 표 행 포함). 움직이는 브랜치 이름이 아니라 고정 SHA를 병합했다. 병합 커밋 `a8546ec1d`(부모 `37e5074ff`, `d088aa738`), 병합 트리 `git rev-parse HEAD^{tree}` → `8be4b0eafef3cb4c50426d75bc4349e4d7ea333e`.
+
+충돌 두 파일과 해소:
+
+- `internal/factorymsg/store.go` — `Send`의 멱등 재조회. 리드가 정한 결합 규칙(서로 독립인 두 조건)을 그대로 적용했다. 원래 행은 이 브랜치의 범위 `(project_key, run_id, sender_slot, idem_key)`로 찾는다(REQ-DHR-017 분기 A, 모양 유지). 수신자 비교 단계에서만 t1082의 `originalRecipient`(`lane_message_releases` 조회)로 원래 수신자를 구해 요청의 수신자와 비교하고, 다르면 변경 없이 거부한다(REQ-DHR-017 "different recipient"). 최종 코드:
+
+  ```go
+  // The idempotency scope is the sender's lane slot, not its session:
+  // a retry after a sender restart returns the original message.
+  err = s.db.QueryRowContext(ctx, `SELECT id,schema_version,project_key,run_id,kind,sender_session,sender_generation,recipient_session,recipient_generation,task_ref,correlation_id,created_at,expires_at,payload FROM messages WHERE project_key=? AND run_id=? AND sender_slot=? AND idem_key=?`, s.projectKey, s.runID, env.SenderSlot, r.IdempotencyKey).Scan(...)
+  // The recipient the request is compared against is the one the original
+  // was sent to: a handoff release may since have moved the row's columns.
+  origSession, origGen := env.RecipientSession, env.RecipientGeneration
+  if err == nil {
+      origSession, origGen = s.originalRecipient(ctx, env)
+  }
+  if err == nil && (env.Kind != r.Kind || origSession != r.To.SessionUUID || origGen != r.To.Generation || env.TaskRef != r.TaskRef || env.CorrelationID != r.CorrelationID || !bytes.Equal(payload, r.Payload)) {
+      return Envelope{}, errors.New("idempotency key collision with different request")
+  }
+  ```
+
+- `internal/cli/codex_launcher.go` `defaultCodexSpawnLaunch` — 이 브랜치의 anchor 게이트(`factory || codexSpawnAnchorFn != nil`)를 유지하고 t1082의 run owner 재스탬프(REQ-002b)와 거부 시 owner 해제(REQ-002d)를 받아들였다. 둘 다 `factory`일 때만 돈다(anchor 전용 실행에서는 run이 없다). anchor 거부 경로도 `factory`일 때 `clearFactoryRunOwner`를 부른다 — 두 쪽 어디에도 없던 한 줄이며, REQ-002d("거부 시 launching 프로세스 identity를 가진 run을 남기지 않는다")를 이 브랜치가 추가한 거부 경로에도 적용한 것이다. 이 한 줄을 직접 겨누는 테스트는 없다(잔여 위험).
+
+결합이 드러낸 테스트 한 건: `TestIdemScopeMigrationPreservesForeignV1Tables/open`이 병합 트리에서 FAIL했다(`.moai/reports/t1100/absorb-t1082/pkg-tests.txt` 1차 실행, `foreign v1 tables changed`). 원인은 착지한 t1082의 `handoffBindSchema`가 store를 열 때 `lane_dispatch_releases`·`lane_handoff_receipts`·`lane_message_releases`를 새로 만들어, `name LIKE 'lane_%'` 카탈로그 비교에 이 테이블들이 잡힌 것이다 — 이관이 외래 테이블을 바꾼 것이 아니다(다섯 외래 객체의 DDL과 행은 전후 같다). 픽스처 DDL은 착지한 `handoffSchema`와 바이트 같다. 카탈로그 스냅숏을 외래 DDL이 정의하는 다섯 객체로 좁혔다(병합 커밋에 포함). 이후 같은 명령 `ok`.
+
+develop 쪽 이음새 보존: `git diff d088aa738 HEAD -- internal/factorymsg/store.go`에 `verifyPeerOn`·`ErrStalePeer`·`staleOrUnregistered`가 0회 나온다(`.moai/reports/t1100/absorb-t1082/store-vs-develop.diff`). `git diff --stat d088aa738 HEAD -- internal/factorymsg/stale_peer_seam_test.go internal/factorymsg/verify_peer_test.go internal/factorymsg/handoff_bind.go internal/hook/factory_messages.go internal/hook/factory_inspect_budget_test.go` 출력 없음.
+
+AC 판정(측정 트리 = HEAD `a8546ec1d`, 트리 `8be4b0eaf…`). 명령은 `acceptance.md` 원문이며, 기존 run 증거를 덮지 않도록 출력 경로만 `.moai/reports/t1100/absorb-t1082/`로 바꿨다. `internal/cli` 명령은 같은 compound 호출 앞에서 `MOAI_KANBAN_BACKEND MOAI_FACTORY_WORKER MOAI_FACTORY_WORKERS`까지 함께 `unset`했다.
+
+| AC | 판정 출력 | 증거 파일 (`.moai/reports/t1100/absorb-t1082/`) | pass / fail / skip 이벤트 |
+|---|---|---|---|
+| AC-DHR-001 | `true` | `ac001.jsonl` | 11 / 0 / 0 |
+| AC-DHR-002 | `true` | `ac002.jsonl` | 11 / 0 / 0 |
+| AC-DHR-003 | `true` | `ac003.jsonl` | 6 / 0 / 0 |
+| AC-DHR-004 | `true` | `ac004.jsonl` | 5 / 0 / 0 |
+| AC-DHR-005 | `true` | `ac005.jsonl` | 7 / 0 / 0 |
+| AC-DHR-006 | `true` | `ac006.jsonl` | 7 / 0 / 0 (darwin — Windows 분기는 여전히 `NOT_RUN`) |
+| AC-DHR-007 | `true` | `ac007.jsonl` | 10 / 0 / 0 |
+| AC-DHR-008 | `true` | `ac008.jsonl` | 6 / 0 / 0 |
+| AC-DHR-009 | `true` | `ac009.jsonl` | 11 / 0 / 0 |
+| AC-DHR-010 | `true` | `ac010.jsonl` | 1 / 0 / 0 |
+| AC-DHR-011 | `true` | `ac011.jsonl` | 1 / 0 / 0 |
+| AC-DHR-013 | `true` | `ac013.jsonl` | 1 / 0 / 0 |
+| AC-DHR-014 공통 | `true` | `ac014.jsonl` | 8 / 0 / 0 |
+| AC-DHR-014 분기 A | `true` | `ac014-branch.jsonl` | 11 / 0 / 0 |
+| AC-DHR-014 분기 B | `N/A (branch)` | — | — |
+| AC-DHR-015 | `true` | `ac015.jsonl` | 1 / 0 / 0 |
+| AC-DHR-016 | `true` | `ac016.jsonl` | 1 / 0 / 0 |
+| AC-DHR-017 | `true` | `ac017.jsonl` | 5 / 0 / 0 |
+| AC-DHR-019 (두 명령) | `true`, `true` | (합성 입력, 파일 없음) | — |
+| AC-DHR-020 | `true` (보존 증거 판정, M1 재측정 안 함) | `../ac020.jsonl` + `../ac020-evidence.json`, 해시 `ac020-evidence.sha` | `outcome` = `reproduced`, 측정 HEAD `9ba43c05f` |
+| AC-DHR-021 | `true` | `ac021.jsonl` | 5 / 0 / 0 |
+| AC-DHR-022 | `true` | `ac022.jsonl` | 5 / 0 / 0 |
+| AC-DHR-012 / 018 / 023 (LIVE) | 재실행 안 함 — M8 기록 유지 | — | — |
+
+t1082 AC-FLH-008(`.moai/specs/SPEC-FACTORY-LANE-WORKTREE-HANDOFF-001/acceptance.md` § AC-FLH-008 명령을 그대로 실행, 출력 `.moai/reports/t1082/ac08.jsonl`, 사본 `absorb-t1082/flh008.jsonl`): `true`, 1 / 0 / 0. 이 테스트는 BOUND 뒤 K1을 다른 수신자로 재사용하면 K1 envelope에 합쳐지지 않음을 확인하므로, 위 결합 규칙의 수신자 비교가 release 뒤 원래 수신자를 기준으로 거부함을 병합 트리에서 직접 밟는다.
+
+rosterguard(`go test ./internal/harness/rosterguard -count=1 -v`, `rosterguard.txt`): `ok … 15.372s`, `--- PASS` 56건(최상위 20건), `--- FAIL`/`--- SKIP` 0건. 최상위 20건: TestNumeralResidualArithmeticCloses, TestNumeralSelectionIsNearestPreceding, TestNeutralisationRunsBeforeMatching, TestNumeralDischargeFollowsTheD2Rule, TestUndeclaredCountClaimNamesBothDischargePaths, TestNumeralScopeIsTheSweepScopePlusResearch, TestLiveWordAxisBreadthSetIsEmptyOutsideThisPackage, TestNumeralAxisFindsNoUndeclaredCountClaim, TestNumeralBreadthSetEqualsTheDeclaredUnion, TestNumeralExemptionsAreWellFormed, TestHistoricalCitationsAreNotFindings, TestNumeralGuardFiresOnDeliberatelyWrongInput, TestNoAgentNameIsASubstringOfAnother, TestCanonicalSourceIsTheDefinitionFileSetPlusExplore, TestRegistryIsWellFormed, TestRegisteredSitesMatchTheirDeclaredAxis, TestSweepFindsNoUndeclaredRosterListing, TestKnownStaleInventory, TestGuardFiresOnDeliberatelyWrongInput, TestSweepFiresOnAnUndeclaredListing.
+
+그 밖의 게이트(병합 트리):
+
+```text
+$ make build                     → exit 0 (make-build.txt; bin/moai Commit=a8546ec1d)
+$ make embed-check               → ok  Agent Emit Embed  12/12 embedded agent-emit artifacts match the committed set (moai); Pass 1 Warn 0 Fail 0
+$ go test ./internal/factorymsg/... ./internal/codexwiring/... ./internal/manifest/... ./internal/template/agentemit/... -count=1
+ok  internal/factorymsg 30.736s / ok internal/codexwiring 0.540s / ok internal/manifest 0.169s / ok internal/template/agentemit 0.239s (pkg-tests.txt, exit=0)
+$ go test ./internal/cli/ -count=1 -run "Codex|RunOwner|Restamp|PaneDoor|WorktreeLaunch|PRMergeCleanup" -v
+ok  internal/cli 115.954s — PASS 488, FAIL 0 (cli-codex-targeted.txt)
+$ go test ./internal/hook -count=1 -run "Factory|Inspect" -v
+ok  internal/hook 60.349s — PASS 87, FAIL 0, SKIP 1 (TestFactoryHookBenchmarkBudget); t1133의 TestFactoryHookBatchDeadlineIsNotReportedAsUnbound PASS (hook-factory.txt)
+$ go vet (factorymsg, cli, codexwiring, manifest, template/agentemit, harness/rosterguard) → 출력 없음, exit=0 (vet.txt)
+$ golangci-lint run (같은 패키지) → 0 issues., exit=0 (lint.txt)
+$ GOOS=windows GOARCH=amd64 go build ./... → exit=0 (build-windows.txt)
+```
+
+미측정·주의:
+- `internal/cli` 전체 스위트는 돌리지 않았다(codex·run owner·anchor 선택 테스트만). 전 패키지 판정은 develop push 뒤 CI 몫이다.
+- `TestFactoryHookBenchmarkBudget`은 SKIP이다(벤치 게이트 테스트, 이번 결합과 무관하게 기본 SKIP). hook 전체 스위트는 돌리지 않았다.
+- AC-DHR-006의 Windows 분기는 로컬에서 실행되지 않는다(`NOT_RUN` 유지).
+- anchor 거부 경로의 `clearFactoryRunOwner` 호출(factory 모드)은 직접 겨누는 테스트가 없다.
+- t1082 부채 F6-F9 / N1-N6은 카드 t1145 소관이라 손대지 않았다. AC-FLH-008 외 t1082 AC는 다시 돌리지 않았다.
+- LIVE AC(012/018/023)는 재실행하지 않았다. 병합 뒤 LIVE 동작은 관측되지 않았다.
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 _<pending run-phase>_
