@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 	"reflect"
@@ -177,13 +178,13 @@ func TestFactoryHookBenchmarkBudget(t *testing.T) {
 	if p, err = s.RegisterPeer(context.Background(), p); err != nil {
 		t.Fatal(err)
 	}
-	defer s.Close()
+	closeOnCleanup(t, "factory message broker", s)
 	path, _ := factorymsg.BrokerPath(root, run)
 	locker, err := sql.Open("sqlite", "file:"+path)
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer locker.Close()
+	closeOnCleanup(t, "contention locker", locker)
 	_, _ = locker.Exec(`PRAGMA busy_timeout=1`)
 	if _, err = locker.Exec(`BEGIN IMMEDIATE`); err != nil {
 		t.Fatal(err)
@@ -207,10 +208,25 @@ func recordActiveFactoryRun(t *testing.T, root, run string) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer db.Close()
+	defer func() {
+		if err := db.Close(); err != nil {
+			t.Errorf("close factory state: %v", err)
+		}
+	}()
 	if err := db.RecordRun(context.Background(), homestate.FactoryRun{RunID: run, LeadSessionID: "lead", Backend: "test", ManifestJSON: "{}"}); err != nil {
 		t.Fatal(err)
 	}
+}
+
+// closeOnCleanup closes c when the test finishes and reports a close failure
+// as a test error instead of discarding it.
+func closeOnCleanup(t *testing.T, what string, c io.Closer) {
+	t.Helper()
+	t.Cleanup(func() {
+		if err := c.Close(); err != nil {
+			t.Errorf("close %s: %v", what, err)
+		}
+	})
 }
 
 func TestFactorySessionStartRebindsLaunchPendingPeer(t *testing.T) {
@@ -227,7 +243,7 @@ func TestFactorySessionStartRebindsLaunchPendingPeer(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer s.Close()
+	closeOnCleanup(t, "factory message broker", s)
 	pending, err := s.RegisterLaunchPending(context.Background(), factorymsg.Peer{
 		ProjectKey: homestate.ProjectKey(root), RunID: run, Backend: "codex",
 		Role: "lead", Slot: "lead", PID: owner, ProcessStart: start,

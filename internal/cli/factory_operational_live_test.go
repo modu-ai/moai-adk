@@ -1163,12 +1163,15 @@ func startOperationalTerminal(t *testing.T, root, bin string, args, env []string
 	b := &operationalTerminal{stdin: w, trust: operationalDirectoryTrust{root: root}, hookTrust: operationalHookTrust{operationalDirectoryTrust: operationalDirectoryTrust{root: root}}}
 	cmd.Stdin, cmd.Stdout, cmd.Stderr = r, b, b
 	if err := cmd.Start(); err != nil {
-		r.Close()
-		w.Close()
-		t.Fatal(err)
+		t.Fatal(errors.Join(err, r.Close(), w.Close()))
 	}
 	b.pid = cmd.Process.Pid
-	r.Close()
+	// The child holds its own copy of the read end; a failure closing the
+	// parent's copy is reported without aborting before the terminal's
+	// cleanup below is armed.
+	if err := r.Close(); err != nil {
+		t.Errorf("close parent copy of terminal stdin: %v", err)
+	}
 	done := make(chan error, 1)
 	go func() { done <- cmd.Wait() }()
 	stopInventory := make(chan struct{})
@@ -1217,7 +1220,9 @@ func startOperationalTerminal(t *testing.T, root, bin string, args, env []string
 					owned[pid] = fp
 				}
 			}
-			w.Close()
+			if err := w.Close(); err != nil {
+				record("close terminal stdin: %v", err)
+			}
 			for pid, fp := range owned {
 				actual, state := homestate.ProbeProcessIdentity(pid)
 				if state == homestate.ProcessIdentityLive && fp == actual {
@@ -1308,7 +1313,7 @@ func waitOperationalOwnedExit(owned map[int]string, probe func(int) (string, hom
 	}
 }
 
-func operationalRegisteredLanes(root string) (string, []factorymsg.LaneStatus, error) {
+func operationalRegisteredLanes(root string) (_ string, _ []factorymsg.LaneStatus, err error) {
 	path, err := homestate.FactoryDBPath(root)
 	if err != nil {
 		return "", nil, err
@@ -1320,7 +1325,7 @@ func operationalRegisteredLanes(root string) (string, []factorymsg.LaneStatus, e
 	if err != nil {
 		return "", nil, err
 	}
-	defer db.Close()
+	defer closeFactoryInto(&err, db, "factory state")
 	var run string
 	if err = db.QueryRow(`SELECT run_id FROM runs WHERE status='active'`).Scan(&run); err != nil {
 		return "", nil, err
@@ -1329,7 +1334,7 @@ func operationalRegisteredLanes(root string) (string, []factorymsg.LaneStatus, e
 	if err != nil {
 		return run, nil, err
 	}
-	defer s.Close()
+	defer closeFactoryInto(&err, s, "factory message broker")
 	st, err := s.Status(context.Background())
 	return run, st.Lanes, err
 }
