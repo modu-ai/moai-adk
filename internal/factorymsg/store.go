@@ -45,6 +45,20 @@ const (
 var safeID = regexp.MustCompile(`^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$`)
 var ErrEndpointLaunchPending = errors.New("factory endpoint is launch-pending")
 
+// ErrStalePeer reports that a peer identity no longer matches its registered
+// row (wrong generation, session, pid, or process start) or has no row at all.
+// Test with errors.Is. A richer stale error defined elsewhere can join this
+// class by implementing `Is(target error) bool` that returns true for
+// ErrStalePeer. ErrEndpointLaunchPending is deliberately a separate class: a
+// launch-pending endpoint is awaiting its first bind, not superseded.
+var ErrStalePeer = errors.New("stale or unregistered peer")
+
+// queryer is the single-row query surface shared by *sql.DB, *sql.Tx, and
+// *sql.Conn, so a check can run on whichever handle the caller holds.
+type queryer interface {
+	QueryRowContext(ctx context.Context, query string, args ...any) *sql.Row
+}
+
 const launchPendingSessionPrefix = "launch-pending:"
 
 type Peer struct {
@@ -567,7 +581,22 @@ func validDisposition(d string) bool {
 	return false
 }
 func newID() string { var b [16]byte; _, _ = rand.Read(b[:]); return hex.EncodeToString(b[:]) }
+
+// verifyPeer checks p against the registry on s.db. It must not be called
+// while the caller holds an open transaction: the store has one pooled
+// connection, so it would wait for that connection until ctx expires. Use
+// verifyPeerOn with the transaction instead.
 func (s *Store) verifyPeer(ctx context.Context, p Peer) error {
+	return s.verifyPeerOn(ctx, s.db, p)
+}
+
+// verifyPeerOn checks p against the registry using q, which may be s.db or a
+// transaction/connection the caller already holds. A mismatch or missing row
+// returns ErrStalePeer; a launch-pending session returns ErrEndpointLaunchPending.
+//
+// @MX:ANCHOR: [AUTO] stale-peer check shared by every Send/Poll/Ack entry and by in-transaction callers
+// @MX:REASON: fan_in >= 7 via verifyPeer; the queryer seam lets tx-holding callers avoid the one-connection pool deadlock
+func (s *Store) verifyPeerOn(ctx context.Context, q queryer, p Peer) error {
 	if p.ProjectKey == "project" {
 		p.ProjectKey = s.projectKey
 	}
@@ -578,12 +607,12 @@ func (s *Store) verifyPeer(ctx context.Context, p Peer) error {
 		return ErrEndpointLaunchPending
 	}
 	var n int
-	err := s.db.QueryRowContext(ctx, `SELECT count(*) FROM peers WHERE slot=? AND session_uuid=? AND generation=? AND pid=? AND process_start=?`, p.Slot, p.SessionUUID, p.Generation, p.PID, p.ProcessStart).Scan(&n)
+	err := q.QueryRowContext(ctx, `SELECT count(*) FROM peers WHERE slot=? AND session_uuid=? AND generation=? AND pid=? AND process_start=?`, p.Slot, p.SessionUUID, p.Generation, p.PID, p.ProcessStart).Scan(&n)
 	if err != nil {
 		return err
 	}
 	if n != 1 {
-		return errors.New("stale or unregistered peer")
+		return ErrStalePeer
 	}
 	return nil
 }
