@@ -4,9 +4,9 @@ weight: 50
 draft: false
 ---
 
-通过 MoAI-ADK 的交互式设置向导完成首次设置。向导只询问必须由人来决定的 5 项 —— 对话语言、姓名、要部署的代理框架、会话权限模式,以及是否启用 Jev 类型化判断。其余设置(模型策略、报告格式、质量门禁、设计工作流等)按推荐默认值保存,之后需要时可以更改。
+通过 MoAI-ADK 的交互式设置向导完成首次设置。向导只询问必须由人来决定的 5 项 —— 对话语言、姓名、要部署的代理框架、会话权限模式，以及是否启用 Jev 类型化判断。其余设置(模型策略、报告格式、质量门禁、设计工作流等)按推荐默认值保存，之后需要时可以更改。
 
-大多数设置保存为 `.moai/config/sections/` 下的 YAML 文件,每个文件只负责一个关注点,修改某个值时只需打开对应文件。会话权限模式是例外,它写入用户级的 Claude Code 设置(见下方 Page 2)。
+大多数设置保存为 `.moai/config/sections/` 下的 YAML 文件，每个文件只负责一个关注点，修改某个值时只需打开对应文件。会话权限模式是例外，它写入用户级的 Claude Code 设置(见下方 Page 2)。
 
 ## 启动设置向导
 
@@ -35,7 +35,7 @@ moai init
 
 ## 向导结构
 
-初始化向导不提供模式选择,始终按同一流程运行。没有扩大或缩小问题范围的标志,每个人看到的问题都一样。问题共 5 个,分为 3 页。屏幕顶部的进度指示(`● ● ● ○ ○ 3 / 5`)统计的是问题数,不是页数。
+初始化向导不提供模式选择，始终按同一流程运行。没有扩大或缩小问题范围的标志，每个人看到的问题都一样。问题共 5 个，分为 3 页。屏幕顶部的进度指示(`● ● ● ○ ○ 3 / 5`)统计的是问题数，不是页数。
 
 | 页面 | 问题 |
 |------|------|
@@ -48,12 +48,12 @@ moai init my-project
 ```
 
 {{< callout type="info" >}}
-向导不会询问 Git 自动化模式和提供商。`moai init` 会根据仓库中已配置的 Git 远程自动判断。之后要更改 Git 设置,请运行 `moai update -c` (`--config`)。Git 相关问题(自动化模式、提供商、认证信息)只会在这条路径中出现。
+向导不会询问 Git 自动化模式和提供商。`moai init` 会根据仓库中已配置的 Git 远程自动判断。之后要更改 Git 设置，请运行 `moai update -c` (`--config`)。Git 相关问题(自动化模式、提供商、认证信息)只会在这条路径中出现。
 {{< /callout >}}
 
 ## Page 1 —— 基本
 
-设置对话语言和姓名两项。两者都有预填的默认值,直接按 Enter 即可继续。
+设置对话语言和姓名两项。对话语言有预填的默认值，姓名只有在配置文件中已保存时才会预填。无论哪种情况，直接按 Enter 即可继续。
 
 **对话语言** —— MoAI 与你对话时使用的语言。选择后向导界面会立即切换为该语言。
 
@@ -76,14 +76,14 @@ moai init my-project
 该设置保存到 `.moai/config/sections/user.yaml` 的 `user.name` 字段。
 
 {{< callout type="info" >}}
-向导不询问项目名称。`moai init <项目名>` 会使用你传入的名称,不传则使用当前文件夹名称。也可以用 `--name` 标志直接指定。
+向导不询问项目名称。`moai init <项目名>` 会使用你传入的名称，不传则使用当前文件夹名称。也可以用 `--name` 标志直接指定。
 {{< /callout >}}
 
 ## Page 2 —— 代理与自主
 
 ### 代理框架
 
-选择要为此项目部署并接入哪个代理框架。选择不同,放到项目根目录的文件也不同。
+选择要为此项目部署并接入哪个代理框架。选择不同，放到项目根目录的文件也不同。
 
 ```bash
 ? 选择要部署并接入的代理框架
@@ -92,7 +92,7 @@ moai init my-project
   Claude + Codex   - 在相同的 .claude/ 部署之上追加 .codex/ 接入，并强制开启 .mcp.json 供应
 ```
 
-指定 `--llm claude|gpt|both` 标志时,标志优先于此处的回答。
+指定 `--llm claude|gpt|both` 标志时，标志优先于此处的回答。
 
 ### 会话权限模式
 
@@ -105,27 +105,27 @@ moai init my-project
   跳过权限检查        - 跳过所有提示;需要沙箱证明 (Docker/gVisor 等)
 ```
 
-该设置不写入项目 YAML,而是写入用户级的 Claude Code 设置(`defaultMode`)。默认的"自动接受编辑"对应 `defaultMode: acceptEdits`。"跳过权限检查"只有在存在沙箱证明且终止开关关闭时才会生效,否则会降为自动模式应用。指定 `--autonomy-tier semi-auto|automatic|fully-autonomous` 标志时,标志优先于此处的回答。
+该设置不写入项目 YAML，而是写入用户级的 Claude Code 设置(`defaultMode`)。默认的"自动接受编辑"对应 `defaultMode: acceptEdits`。"跳过权限检查"只有在存在沙箱证明且终止开关关闭时才会生效，否则会降为自动模式应用。指定 `--autonomy-tier semi-auto|automatic|fully-autonomous` 标志时，标志优先于此处的回答。
 
 ## Page 3 —— 判断能力
 
 ### Jev 类型化判断
 
-Jev 针对传入的状态回答类型化问题并返回概率,它本身不做任何决定。
+Jev 针对传入的状态回答类型化问题并返回概率，它本身不做任何决定。
 
 ```bash
 ? 要启用 Jev 类型化判断吗？（可选，默认关闭）
 ```
 
-默认值为**关闭**。启用后,卡片正文或请求正文会发送到外部厂商的服务器,请在了解这一点后再选择。该设置保存到 `.moai/config/sections/workflow.yaml` 的 `workflow.jev.enabled` 字段。
+默认值为**关闭**。启用后，卡片正文或请求正文会发送到外部厂商的服务器，请在了解这一点后再选择。该设置保存到 `.moai/config/sections/workflow.yaml` 的 `workflow.jev.enabled` 字段。
 
 {{< callout type="warning" >}}
-此问题只在 `moai init` 中出现。`moai update -c` 不会询问,之后要更改请打开 `moai web` 设置页面。
+此问题只在 `moai init` 中出现。`moai update -c` 不会询问，之后要更改请打开 `moai web` 设置页面。
 {{< /callout >}}
 
 ## 向导不询问的设置
 
-以下各项不经询问、直接按默认值保存。要更改,请传入标志,或在设置完成后使用 `moai update -c` 或 `moai web`。
+以下各项不经询问、直接按默认值保存。要更改，请传入标志，或在设置完成后使用 `moai update -c` 或 `moai web`。
 
 | 项目 | 默认值 | 更改方式 |
 |------|--------|----------|
@@ -138,7 +138,7 @@ Jev 针对传入的状态回答类型化问题并返回概率,它本身不做任
 
 ### 性能层级(模型策略)
 
-`moai init` 不询问模型策略,直接保存为 Medium。使用 `moai update -c` 重新设置时会显示下面的界面。
+`moai init` 不询问模型策略，直接保存为 Medium。使用 `moai update -c` 重新设置时会显示下面的界面。
 
 ```bash
 ? 选择模型策略:
@@ -153,11 +153,11 @@ Jev 针对传入的状态回答类型化问题并返回概率,它本身不做任
 | **Medium**（默认，推荐） | 质量与成本的平衡 —— 成本/分数曲线的膝点 |
 | **Low** | 每任务最低成本 —— 大多数智能体类代理降至 Opus `medium` |
 
-各性能层级的代理 model+effort 映射请参阅[配置矩阵](/zh/advanced/profile-matrix/)页面。
+该设置保存到 `.moai/config/sections/llm.yaml` 的 `performance_tier` 字段，并作为 `profile` 字段(配置矩阵列)的 legacy 别名读取。用 `--profile high|medium|low` 标志直接指定则保存到 `profile` 字段。每个配置文件的代理 model+effort 映射请参阅[配置矩阵](/zh/advanced/profile-matrix/)页面。
 
 ## 非交互模式(CI/CD)
 
-用标志指定所有值,即可不经向导完成初始化:
+用标志指定所有值，即可不经向导完成初始化:
 
 ```bash
 moai init my-project \

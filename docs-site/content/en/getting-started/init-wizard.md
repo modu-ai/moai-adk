@@ -53,7 +53,7 @@ Git automation mode and provider are NOT asked by the wizard. `moai init` auto-d
 
 ## Page 1 — Basic
 
-Two basic values: conversation language and your name. Both come pre-filled, so pressing Enter moves you on.
+Two basic values: conversation language and your name. The language comes pre-filled, and the name is pre-filled when your profile already has one; either way, pressing Enter moves you on.
 
 **Conversation language** — the language MoAI uses when talking with you. The wizard switches to it immediately.
 
@@ -153,7 +153,7 @@ The values below are saved with their defaults without asking. To change them, p
 | **Medium** (default, recommended) | Balance of quality and cost — the knee of the cost/score curve |
 | **Low** | Lowest cost per task — most agentic agents drop to Opus `medium` |
 
-For the per-agent model+effort mapping of each performance tier, see the [Profile Matrix](/en/advanced/profile-matrix/) page.
+This setting is saved in the `performance_tier` field of `.moai/config/sections/llm.yaml` and is read as a legacy alias of the `profile` field (the profile matrix column). Specifying the `--profile high|medium|low` flag directly stores it in the `profile` field (the legacy value `max` is accepted as input and normalized to `high`). For the per-profile agent model+effort mapping, see the [Profile Matrix](/en/advanced/profile-matrix/) page.
 
 ## Non-interactive mode (CI/CD)
 
