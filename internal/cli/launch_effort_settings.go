@@ -91,13 +91,37 @@ func applyLaunchEffort(payload map[string]any, profileName string) (map[string]a
 // launcher forwards everything after `--` to Claude Code and appends its
 // injected flags after it, so an operator `-- --effort low` would otherwise
 // reach Claude Code alongside an injected `--effort max` (two --effort flags).
+//
+// @MX:NOTE: [AUTO] a token in VALUE position is not a flag. The token after a
+// free-text option (promptValueFlags) is that option's value — prompt text that
+// may happen to read `--effort...` — so it is skipped rather than read as an
+// operator --effort, which would wrongly suppress the injected `--effort max`.
+// The list is deliberately limited to the free-text prompt options: a generic
+// argv scan cannot know every Claude Code option's arity, and these are the
+// only forwarded options whose value is arbitrary text an operator can
+// plausibly start with `--effort`. Known limit: an `--effort` token given as
+// the space-separated value of any OTHER value-taking option is still read as
+// an operator flag (fail-safe direction: no injection, never two flags). The
+// `--opt=value` spelling needs no skip — the whole token starts with the option.
 func operatorSuppliedEffort(args []string) bool {
-	for _, arg := range args {
+	for i := 0; i < len(args); i++ {
+		arg := args[i]
+		if promptValueFlags[arg] {
+			i++ // skip the option's value
+			continue
+		}
 		if arg == effortFlagLong || strings.HasPrefix(arg, effortFlagLong+"=") {
 			return true
 		}
 	}
 	return false
+}
+
+// promptValueFlags are the Claude Code options whose space-separated value is
+// free text (see operatorSuppliedEffort).
+var promptValueFlags = map[string]bool{
+	"--append-system-prompt": true,
+	"--system-prompt":        true,
 }
 
 // launchEffortArgs filters the argv applyLaunchEffort produced against what the
