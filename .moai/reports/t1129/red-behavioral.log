@@ -1,8 +1,0 @@
---- FAIL: TestEffortEmptyLabelLocalized (0.00s)
-    profile_setup_effort_empty_label_test.go:32: ko: empty effort label is the untranslated English schema literal "(model policy, else Claude Code default: medium on Opus 5.5)"
-    profile_setup_effort_empty_label_test.go:32: ja: empty effort label is the untranslated English schema literal "(model policy, else Claude Code default: medium on Opus 5.5)"
-    profile_setup_effort_empty_label_test.go:32: zh: empty effort label is the untranslated English schema literal "(model policy, else Claude Code default: medium on Opus 5.5)"
-FAIL
-FAIL	github.com/modu-ai/moai-adk/internal/cli	0.934s
-FAIL
-exit=1
