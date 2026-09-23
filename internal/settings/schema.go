@@ -308,11 +308,24 @@ const (
 	// emptyLabelRuntimeDefault is the effort_level empty option. An empty effort
 	// is not a bare runtime default: resolveLaunchEffort falls back to the
 	// model-policy-derived effort, and only with no policy does Claude Code's own
-	// default apply. The TUI wizard renders this literal on every locale (the
-	// console localizes opt.runtime_default instead), so it names the same two
-	// fallbacks as that key's en text in a shorter form that fits the wizard row
+	// default apply. It is the en wizard label; the ko/ja/zh wizard renders a
+	// localized label resolved through the opt.runtime_default key (the console
+	// localizes the same key), so it names the same two fallbacks as that key's
+	// en text in a shorter form that fits the wizard row
 	// (TestEffortEmptyLabelNamesBothFallbacks).
-	emptyLabelRuntimeDefault = "(model policy, else Claude Code default: medium on Opus 5.5)"
+	emptyLabelRuntimeDefault = "(model policy, else Claude Code default: " + RuntimeDefaultEffort + " on " + RuntimeDefaultEffortModel + ")"
+)
+
+// Claude Code's own default effort and the model it applies to — the fact the
+// effort_level empty-option labels state. Defined once here; the labels that
+// cannot be built from these constants (the ko/ja/zh wizard texts in
+// internal/cli and every opt.runtime_default entry in internal/web/assets/i18n.js)
+// are pinned to them by TestEffortEmptyLabelCarriesRuntimeDefaultFact and
+// TestRuntimeDefaultI18nCarriesEffortFact, so a model change is one edit here
+// plus the strings those tests name.
+const (
+	RuntimeDefaultEffort      = "medium"
+	RuntimeDefaultEffortModel = "Opus 5.5"
 )
 
 // allFields는 6개 섹션의 34개 정규 필드를 렌더 순서대로 구성하여 반환한다.
