@@ -272,9 +272,35 @@ func ResolveActiveRun(ctx context.Context, projectRoot, explicit string) (_ stri
 		return "", errors.New("NO_ACTIVE_FACTORY")
 	case 1:
 		return runs[0], nil
-	default:
-		return "", errors.New("AMBIGUOUS_FACTORY")
 	}
+	// Reconciliation runs only on the branch that was going to fail anyway, so
+	// a single-active-run join pays nothing. It only ever REMOVES provably-dead
+	// owners from the active set — it never selects among survivors, so the
+	// fail-closed behaviour below is preserved and ambiguity that survives it
+	// is real ambiguity.
+	rec, err := db.ReconcileActiveRuns(ctx, homestate.ReconcileOptions{Fallback: LeadIdentityLookupFor(projectRoot)})
+	if err != nil {
+		return "", err
+	}
+	switch len(rec.Remaining) {
+	case 0:
+		return "", errors.New("NO_ACTIVE_FACTORY")
+	case 1:
+		return rec.Remaining[0].RunID, nil
+	default:
+		return "", errors.New("AMBIGUOUS_FACTORY: " + describeRunOwners(rec.Remaining))
+	}
+}
+
+// describeRunOwners renders the surviving runs with their owner
+// classifications, so the operator reads why each survived rather than an
+// opaque refusal.
+func describeRunOwners(owners []homestate.RunOwner) string {
+	parts := make([]string, 0, len(owners))
+	for _, o := range owners {
+		parts = append(parts, fmt.Sprintf("%s (owner %s)", o.RunID, o.Classification))
+	}
+	return strings.Join(parts, ", ")
 }
 func (s *Store) Close() error { return s.db.Close() }
 

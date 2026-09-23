@@ -26,11 +26,119 @@ Recorded at the lead's request, in the lead's words:
 
 ## §E.2 Run-phase Evidence
 
-_<pending run-phase>_
+Tree: branch `WT-factory-run-retire`, worktree `.claude/worktrees/t1107`, base `9b1805a67`.
+Host: darwin/arm64, go1.26.8. cycle_type=tdd. All evidence below is from **this run, this tree**.
+Raw captures live in `.moai/reports/t1107/run/`.
+
+### E.2.0 Pre-flight (plan.md §C)
+
+| Check | Command | Observed |
+|---|---|---|
+| sibling-card sets disjoint | `ls internal/cli/factory_lane_handoff* internal/factorymsg/handoff* internal/cli/mcp_codex.go internal/hook/factory_messages*` | `no matches found`, exit 1 — the t1082 / t1109 files do not exist in this tree (so this tree cannot establish non-overlap; the lead's t1082-worktree measurement stands as cited) |
+| no retirement path exists | `grep -rn "UPDATE runs\|DELETE FROM runs" --include='*.go' . \| grep -v _test.go` | no output, exit 1 |
+| instrument control | `grep -rn "status='active'" --include='*.go' . \| grep -v _test.go` | 2 hits (`internal/factorymsg/store.go:257`, `internal/homestate/runtime.go:25`), exit 0 — the search shape works, so the zero above is an absence |
+
+### E.2.1 RED evidence (TDD invariant i — captured BEFORE GREEN)
+
+| Layer | File | Verbatim RED |
+|---|---|---|
+| homestate | `.moai/reports/t1107/run/red-homestate.txt` | `undefined: OwnerClassification` / `unknown field LeadPID in struct literal of type FactoryRun` / `db.ReconcileActiveRuns undefined` … `FAIL github.com/modu-ai/moai-adk/internal/homestate [build failed]` |
+| factorymsg | `.moai/reports/t1107/run/red-factorymsg.txt` | `--- FAIL: TestResolveActiveRunRetiresDeadOwnerAndJoins` (`resolve: AMBIGUOUS_FACTORY`), `--- FAIL: TestResolveActiveRunBothOwnersDead` (`err = AMBIGUOUS_FACTORY, want NO_ACTIVE_FACTORY`), `--- FAIL: TestResolveActiveRunAmbiguityNamesClassifications` (`error "AMBIGUOUS_FACTORY" does not contain "run-live"`), `--- FAIL: TestResolveActiveRunMigratesAndReapsLegacyRowsViaPeerFallback` |
+| cli (seam) | `.moai/reports/t1107/run/red-cli-owner.txt` | `undefined: stampFactoryRunOwner`, then behaviourally: all three `required/*` subtests of `TestRestampSeamIsCalledAtEveryNonReplaceCallSite` FAIL, and `--- FAIL: TestPaneDoorRefusalLeavesNoLauncherStampedRun` (`run row still carries the launching process's pid 97122`) |
+| cli (operator) | `.moai/reports/t1107/run/red-cli-runs.txt` | `factory runs: unknown command "runs" for "factory"` |
+
+### E.2.2 AC matrix
+
+| AC | Status | Verification command | Actual output |
+|----|--------|----------------------|---------------|
+| AC-001 | PASS | `go test ./internal/homestate/ -run TestRecordRunStampsSessionOwnerIdentity -v` | `--- PASS: TestRecordRunStampsSessionOwnerIdentity (0.47s)` — owner stamp `(4242, "1700000000.000001")`, `schema_version = 3` |
+| AC-002 | PASS | `go test ./internal/homestate/ -run TestRetireRunPreservesRowAndAppendsEvent -v` | `--- PASS` — row count 1 after retirement, `status='retired'`, one `run.retired` event |
+| AC-003 | PASS | `go test ./internal/homestate/ -run TestClassifyOwnerUsesFingerprintNotBarePID -v` | `--- PASS` — matching fingerprint → live; live pid + differing fingerprint → dead; REQ-003b direction asserted explicitly |
+| AC-004 | PASS (SPEC defect flagged — see E.2.5) | `sh .moai/reports/t1107/run/doors-run.sh worker-join -- cc -f worker-1` | `exit=0`; `tltbl4 retired` (dead owner 68247), `tltbl8 active` (live pane owner 68638). Unit cover: `--- PASS: TestResolveActiveRunRetiresDeadOwnerAndJoins`, `--- PASS: TestResolveActiveRunBothOwnersDead` |
+| AC-005 | PASS | same worker-join run above + `go test ./internal/homestate/ -run TestReconcileRetiresDeadAndLeavesLive -v` | live owner held open across the measurement (tmux pane 68638, command sleeps 600s) stayed `active`; dead-owner run `retired`. `--- PASS` |
+| AC-006 | PASS | `go test ./internal/homestate/ -run TestReconcileLeavesIndeterminateActive -v` | `--- PASS` — unprobeable owner stays `active`, reported `indeterminate` |
+| AC-007 | PASS | `go test ./internal/factorymsg/ -run TestResolveActiveRunMigratesAndReapsLegacyRowsViaPeerFallback -v` + `go test ./internal/homestate/ -run TestMigrateFactoryV2ToV3PreservesRows -v` | `--- PASS` both — a seeded schema-v2 DB with two unstamped `active` rows and dead `role='lead'` peers migrates to v3 and both rows retire through the peer fallback; the ambiguity is gone |
+| AC-008 | PASS | `go test ./internal/factorymsg/ -run TestResolveActiveRunAmbiguityNamesClassifications -v` | `--- PASS` — error text contains `AMBIGUOUS_FACTORY`, both surviving run ids, and each classification |
+| AC-009 | PASS (regression guard — green before and after) | `go test ./internal/factorymsg/ -run TestResolveActiveRunPreservesFailClosedSentinels -v` | `--- PASS` — zero active → `NO_ACTIVE_FACTORY`; two live-owner runs → `AMBIGUOUS_FACTORY`; neither returns a run id |
+| AC-010 | PASS | `sh doors-run.sh factory-runs -- factory runs` and `… -- factory runs --retire tltbl8` | listing shows `tltbl4 retired dead`, `tltbl8 active live`, exit 0; `--retire tltbl8` → `Factory run owner is not dead: run tltbl8 owner classified live.`, `exit=1`, run left `active`. Indeterminate leg covered by `--- PASS: TestRetireRunIfDeadRefusesLiveAndIndeterminate` and `--- PASS: TestFactoryRunsCommandReportsAndRefuses` |
+| AC-011 | PASS | four executed door invocations, `.moai/reports/t1107/run/doors-evidence.md` §1 | `moai cc -f` → `tltb75` row (91883 / 1790158577.527848) == lead peer; `moai glm -f` → `tltb7r` (95054 / 1790158599.696629) == peer; `moai codex -f` → `tltb98` (5309 / 1790158652.056659) == peer; `moai codex -f --spawn` → `tltbl8` (68638 / 1790159084.722334) == peer, and tmux reports `PANE %1 pane_pid=68638` |
+| AC-012 | PASS-WITH-GAP | `go test ./internal/cli/ -run TestPaneDoorRefusalLeavesNoLauncherStampedRun -v` | `--- PASS` — the production `defaultCodexSpawnLaunch` refusal branch runs, the pane is cleaned up, and no `runs` row carries the launcher's pid. **Gap**: the resolver's real 2s deadline was not exhausted by a live tmux pane (`#{pane_pid}` names the pane's shell, alive before the exec'd command returns) — the seam was forced to its exhaustion return instead. `doors-evidence.md` §4 |
+| AC-013 leg 1 | PASS | `go test -tags=integration -v ./test/integration/harness/ -run TestFactoryRunRetire` | `--- PASS: TestFactoryRunRetire (0.58s)` + `ok github.com/modu-ai/moai-adk/test/integration/harness 0.910s` — the `--- PASS:` line is present, so the selector actually selected the test |
+| AC-013 leg 2 | **PENDING** (not a pass) | — | No CI run exists for a card branch before it merges: `ci.yml` triggers on `push: [main, develop]` and `pull_request: [main]`, and this project does not push `WT-` branches. The ubuntu / macos / windows conclusions land on the develop push after integration and are to be recorded by run id. |
+| AC-014 | PASS | `find /private/tmp/t1107-doors/moaihome -name '*.db'` + `ls ~/.moai/db \| grep moai-adk-go` | all created state under `…/db/proj-c6f77cbe/factory/…`; this repository's key is `moai-adk-go-1bd3d038`, a different directory the exercise never opened. Every Go test uses a project root under `t.TempDir()` with `HOME`/`MOAI_HOME`/`MOAI_CLAUDE_BIN` scrubbed |
+| AC-015a | PASS | mutant B (`retirable` → `true`), `.moai/reports/t1107/run/mutant-b-no-guard.txt` | 5 tests FAIL, including `--- FAIL: TestReconcileNeverRetiresLiveOrIndeterminate` and `--- FAIL: TestRetireRunIfDeadRefusesLiveAndIndeterminate` |
+| AC-015b | PASS | mutant C (`retirable` → `false`), `.moai/reports/t1107/run/mutant-c-no-retire.txt` | 4 tests FAIL, including `--- FAIL: TestRetireRunPreservesRowAndAppendsEvent` and `--- FAIL: TestReconcileRetiresDeadAndLeavesLive` |
+| AC-016 leg 1 | PASS | `go test ./internal/cli/ -run TestRunOwnerAndLeadPeerNameOneProcessOnEveryShape -v` | `--- PASS` on all three subtests (replace / spawn / pane), driven through the build-tag-free seam with fixture identities; plus the four executed doors under AC-011, where row and peer agree on every one |
+| AC-016 leg 2 | PASS | `go test ./internal/cli/ -run TestRestampSeamIsCalledAtEveryNonReplaceCallSite -v`, plus three per-site mutants | All five subtests PASS. Per-site mutation, probed **individually**: mutant D (delete the call in `launch_exec_windows.go`) → only `required/launch_exec_windows.go` FAILs; mutant E (`codex_direct_windows.go`) → only that site FAILs; mutant F (`codex_launcher.go`) → only that site FAILs. Files: `mutant-d-*`, `mutant-e-*`, `mutant-f-*` |
+| AC-017 | PASS | mutant A (reject-list `retirable`), `.moai/reports/t1107/run/mutant-a-rejectlist.txt` | The required divergence, observed: `--- PASS: TestReconcileRetiresDeadAndLeavesLive` (AC-005), `--- PASS: TestReconcileLeavesIndeterminateActive` (AC-006), `--- PASS: TestRetireRunIfDeadRefusesLiveAndIndeterminate` and `--- PASS: TestFactoryRunsCommandReportsAndRefuses` (AC-010) — while `--- FAIL: TestEveryRetirementPathDeclinesUnenumeratedClassification` fails on **all three** paths (reconciler / migration pass / operator retire). Restored to the positive form and re-verified green |
+
+### E.2.3 Cross-cutting verification
+
+| Item | Command | Observed |
+|---|---|---|
+| Cross-platform build | `go build ./...` then `GOOS=windows GOARCH=amd64 go build ./...` | both exit 0 (`both builds ok`) |
+| Affected-package tests | `go test ./internal/homestate/... ./internal/factorymsg/...` | `ok …/internal/homestate 24.254s coverage: 67.1%` · `ok …/internal/factorymsg 11.920s coverage: 70.3%` |
+| `internal/cli` suite | `go test ./internal/cli/... -timeout 30m` | `FAIL …/internal/cli 1801.359s` — exactly one test, `TestFactoryOperationalFixtureUsesProductionInit`, with `factory messaging degraded: context deadline exceeded`. Re-run in isolation on the same tree: `--- PASS: TestFactoryOperationalFixtureUsesProductionInit (6.81s)`. Every `internal/cli/*` sub-package `ok`. Load-sensitive, not attributed to this change; CI supplies the clean-environment verdict |
+| Lint | `golangci-lint run --timeout=10m ./internal/homestate/... ./internal/factorymsg/... ./internal/cli/...` | `0 issues.` exit 0 |
+| Scope | `git status --short` | only this SPEC's declared file set; no t1082 file (`factory_lane_handoff*`, `handoff*`, `mcp_codex.go`, `defaults.go`) and no t1109 file (`hook/factory_messages*`) touched |
+| Sentinels preserved | `TestResolveActiveRunPreservesFailClosedSentinels` | `AMBIGUOUS_FACTORY` and `NO_ACTIVE_FACTORY` still literal substrings of the failure text |
+
+### E.2.4 Files changed
+
+Modified: `internal/homestate/factory.go`, `internal/homestate/runtime.go`,
+`internal/factorymsg/store.go`, `internal/cli/factory.go`,
+`internal/cli/factory_handoff_recover.go`, `internal/cli/launch_exec_windows.go`,
+`internal/cli/codex_direct_windows.go`, `internal/cli/codex_launcher.go`,
+`internal/homestate/handoff_lease_test.go`.
+
+Added: `internal/homestate/factory_run_retire.go`, `internal/factorymsg/factory_run_retire.go`,
+`internal/cli/factory_run_owner.go`, `test/integration/harness/it08_factory_run_retire_test.go`,
+plus the four package test files.
+
+One pre-existing test was **adjusted, not deleted**: `TestFactoryV1ClaimedRowsUpgradeToV2` asserted
+the v1 chain terminates at schema version `"2"`; it now asserts `"3"`, because the chain is
+v1→v2→v3. Its subject (the claimed-row upgrade) is unchanged.
+
+### E.2.5 Two findings the run phase surfaced
+
+**F1 — AC-004's Given contradicts its own Then (SPEC defect).** The criterion reads "two `active`
+runs whose owners are **both dead** … Then the join succeeds, and the `runs` table afterwards shows
+the run it joined as the sole `active` row with the other transitioned to `retired`." Those cannot
+both hold: reconciliation retires **every** dead owner, so two dead owners leave zero active runs
+and resolution correctly fails closed with `NO_ACTIVE_FACTORY`. The Then describes the shape the
+reproduction actually produced — one stale run plus one live one. Both readings are implemented and
+recorded rather than one being chosen silently: `TestResolveActiveRunRetiresDeadOwnerAndJoins`
+covers the Then (and is the shape the executed worker-join demonstrates), and
+`TestResolveActiveRunBothOwnersDead` covers the Given followed to its actual consequence. **No
+requirement was changed**; this is reported for manager-spec to reconcile.
+
+**F2 — a migration hazard found by an existing test, and fixed.** `factoryDDL` runs **before** the
+schema-version check, so on a database whose `runs` table did not yet exist the DDL creates it
+already carrying the v3 columns, and a blind `ALTER TABLE … ADD COLUMN` then fails with
+`duplicate column name: lead_pid`. Caught by `TestFactoryV1ClaimedRowsUpgradeToV2`.
+`migrateFactoryV2ToV3` now reads `PRAGMA table_info(runs)` and adds only the missing columns.
 
 ## §E.3 Run-phase Audit-Ready Signal
 
-_<pending run-phase>_
+```yaml
+run_complete_at: 2026-09-23
+run_commit_sha: pending-backfill-run
+run_status: implemented
+ac_pass_count: 16          # AC-001..AC-012, AC-013 leg 1, AC-014, AC-015a/b, AC-016 (both legs), AC-017
+ac_fail_count: 0
+ac_pending_count: 1        # AC-013 leg 2 — post-merge, non-gating, recorded pending with its reason
+ac_pass_with_gap_count: 1  # AC-012 — see §E.2.2
+preserve_list_post_run_count: 0
+l44_pre_commit_fetch: n/a (no push in this phase)
+l44_post_push_fetch: n/a (no push in this phase)
+new_warnings_or_lints_introduced: 0
+cross_platform_build:
+  darwin_arm64: pass
+  windows_amd64_cross_compile: pass
+  linux: deferred to the develop-push CI run
+total_run_phase_files: 17
+m1_to_mN_commit_strategy: single run-phase commit covering M1-M6
+```
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
