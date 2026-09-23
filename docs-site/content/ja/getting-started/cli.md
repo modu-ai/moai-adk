@@ -449,9 +449,9 @@ MoAI-ADK はエージェントに最適な AI モデルを割り当てるパフ�
 
 | ティア | 特徴 |
 |------|------|
-| **high** | 最高品質 — 呼び出し頻度が最も低い2つのエージェントに `max` の推論深度 |
+| **high** | 最高品質 — medium と同じだが、`builder-harness` と `e2e-tester` の 2 エージェントだけ effort が 1 段階上 |
 | **medium** (デフォルト値) | 品質とコストのバランス — コスト/スコア曲線の膝 |
-| **low** | 作業あたり最低コスト — エージェンティックなエージェントは Opus `low` effort に下がり、Sonnet は単発の行のみ |
+| **low** | 作業あたり最低コスト — 監査・調整の行は `medium`、`builder-harness` は Opus `low` まで下がり（`super-advisor` と `mission-governor` は `high` を維持）、Sonnet は単発の行と `e2e-tester` に |
 
 ```bash
 # 初期化時に設定
