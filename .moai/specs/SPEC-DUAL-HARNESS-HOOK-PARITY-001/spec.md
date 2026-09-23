@@ -1,7 +1,7 @@
 ---
 id: SPEC-DUAL-HARNESS-HOOK-PARITY-001
 title: "Dual harness M2 — hook chain, decision preservation, goal continuation, and obligation coverage parity between Claude Code and Codex"
-version: "0.1.0"
+version: "0.2.0"
 status: draft
 created: 2026-09-23
 updated: 2026-09-23
@@ -21,6 +21,7 @@ related_specs: [SPEC-CODEX-HOOK-ADAPTER-001, SPEC-CODEX-EVENT-COVERAGE-001, SPEC
 ## HISTORY
 
 - 2026-09-23 v0.1.0 — Initial draft (manager-spec, card t1099, Class C). Derived from the dual-harness full design (`reports/moai-dual-harness-full-design-20260922.md` §07–§09, §17 F2/F3, §18 M2, §19), the implementation status report (`reports/moai-dual-harness-implementation-status-20260923.md`, verdict FAIL), and the handoff (`reports/moai-dual-harness-handoff-20260923.md`). Code anchors re-measured at HEAD `530d8cc06` — see research.md §R1.
+- 2026-09-23 v0.2.0 — Revision after plan-audit iter-1 (FAIL 0.82, `.moai/reports/plan-audit/SPEC-DUAL-HARNESS-HOOK-PARITY-001-iter1.md`). Codex Stop timeout reframed as a design variable with a per-member budget table and a measurement AC (D2, D11); Claude user-interrupt cancellation source removed and recorded UNSUPPORTED (D3); live-test NOT_RUN hole closed (D4); live commands completed (D6); non-Stop chains excluded with counts (D5); mutation cells, partial legs, AC-OBS-01/AC-POL-01 mapping, template branch coverage, and pinned-test amendments addressed (D7, D8, D10, D12, D13); Q4 moved to run-phase M2d (D9). Clarifications resolved (D1): Q1 whole-catalog AC-POL-01, Q2 fail-closed visible deny, Q6 keep HOOK-ADAPTER REQ-7 (lead via Jev, standing operator delegation); Q3 new `cancelled` status and Q5 no live runs, closing as partial (live-uncertified) (operator, directly). Decision record: plan.md §C.
 
 ## §A Background and Motivation
 
@@ -55,7 +56,7 @@ application path and check (AC-POL-01). No obligation registry exists in the tre
 In scope — the four acceptance families of design §19 assigned to M2:
 
 - **AC-HOOK-01** — effect equivalence of the Claude mandatory Stop chain on Codex, proven by
-  event-input goldens and by real firing in both hosts.
+  event-input goldens and, in a follow-up card, by real firing in both hosts (live legs are built but not run here — §E).
 - **AC-HOOK-02** — `deny` / `needs_input` never degrade to `allow`; `PreCompact`, `PostCompact`,
   `PermissionRequest`, and `Interrupt` fire and preserve decisions; inexpressible, timeout, and
   corrupt-output cases are injected.
@@ -65,12 +66,19 @@ In scope — the four acceptance families of design §19 assigned to M2:
 - **AC-POL-01** — every required obligation in the registry is wired to both harnesses'
   application path and to a check; a variant with one obligation removed fails.
 
+Mapping note. Design §17 maps AC-POL-01 to F1/M1, not to M2. This card pulls it forward by
+operator scope because the obligation registry is the instrument M2's own verdicts are judged by.
+Design §17 also maps F3 to AC-OBS-01 at M2. This SPEC covers the part of AC-OBS-01 that decides a
+verdict: per-verdict attribution, and rejecting skips, empty runs, and stale receipts
+(REQ-HPR-019, REQ-HPR-022..024). The doctor/status display part of AC-OBS-01 stays out of scope
+(§F).
+
 ## §C Requirements (GEARS)
 
 ### C.1 Stop chain parity (AC-HOOK-01)
 
 - **REQ-HPR-001** (Ubiquitous): The Stop-chain inventory shall enumerate every handler registered on the Claude `Stop` event in the distributed settings template and classify each as `required-gate`, `goal`, or `advisory`, with a declared Codex effect path or an explicit `UNSUPPORTED` record carrying evidence.
-- **REQ-HPR-002** (Ubiquitous): For every `required-gate` and `goal` member, the Codex harness shall produce the same normalized decision (`allow` / `deny` / `needs_input` / `retryable_error` / `fatal_error`) and the same continuation reason class as the Claude harness on the same event-input golden and the same project configuration.
+- **REQ-HPR-002** (Ubiquitous): For every `required-gate` and `goal` member, the Codex harness shall produce the same normalized decision (`allow` / `deny` / `needs_input` / `retryable_error` / `fatal_error`) as the Claude harness on the same event-input golden and the same project configuration, and a continuation reason class that is either identical or paired with it in the declared reason-class mapping (design.md §D3.4).
 - **REQ-HPR-003** (Capability gate): **Where** the project is deployed with the `gpt` profile (no `.claude/` tree), every `required-gate` and `goal` Stop-chain member shall remain executable on Codex without depending on a file under `.claude/hooks/`.
 - **REQ-HPR-004** (Event-driven): **When** an `advisory` Stop-chain member fails on either harness, the chain shall record the failure and continue, and shall never record that member as passed.
 - **REQ-HPR-005** (Ubiquitous): The Stop chain shall honour each member's existing configuration switch (for example the sync gate's blocking opt-out) identically on both harnesses, so that the same configuration yields the same effect.
@@ -79,7 +87,7 @@ In scope — the four acceptance families of design §19 assigned to M2:
 
 - **REQ-HPR-006** (Ubiquitous): The hook layer shall normalize every decision-bearing handler result to one of `allow`, `deny`, `needs_input`, `retryable_error`, `fatal_error` before harness-specific translation, and the translation table shall be declared per event per harness.
 - **REQ-HPR-007** (Unwanted): The Codex translation shall not map a `deny` or a `needs_input` decision to `allow`, nor to any output that the Codex host resolves as allow under any approval policy MoAI supports.
-- **REQ-HPR-008** (Event-detected): **When** Codex cannot express a `needs_input` decision on an event, the adapter shall produce a fail-closed outcome (deny with a reason naming the required user input, or a pause routed to MoAI's explicit user-input path) and shall record the case as `UNSUPPORTED-native` with the measured host behaviour.
+- **REQ-HPR-008** (Event-detected): **When** Codex cannot express a `needs_input` decision on an event, the adapter shall produce a fail-closed deny whose reason names the required user input, shall surface the conversion visibly through the adapter's discard record, and shall record the case as `UNSUPPORTED-native` with the host behaviour (measured, or `NOT_RUN` where no live run exists).
 - **REQ-HPR-009** (Event-detected): **When** a decision-bearing hook times out, crashes, exits with a non-contract code, or emits unparseable output on a decision-bearing event (`PreToolUse`, `PermissionRequest`, `Stop` required-gate), the observed host outcome shall be measured on both harnesses, and where a host resolves the failure as allow, the case shall be recorded as `UNSUPPORTED` with a declared mitigation rather than as `PASS`.
 - **REQ-HPR-010** (Event-driven): **When** Codex fires `PreCompact` or `PostCompact`, MoAI shall run the same checkpoint-save and checkpoint-restore behaviour it runs for Claude, and the restored content shall match the saved content.
 - **REQ-HPR-011** (Event-driven): **When** Codex fires `PermissionRequest`, MoAI shall apply the same permission decision logic as for Claude, and a `deny` produced by that logic shall reach the host as a deny.
@@ -89,7 +97,7 @@ In scope — the four acceptance families of design §19 assigned to M2:
 ### C.3 Goal continuation (AC-GOAL-01)
 
 - **REQ-HPR-014** (State-driven): **While** a goal is armed for the session, the Codex Stop path shall consult the existing goal evaluator (not a new goal engine), request turn continuation while any condition is unmet, and allow the stop with the goal state reading `satisfied` once every condition is satisfied.
-- **REQ-HPR-015** (Event-driven): **When** a user cancellation (Codex `Interrupt`, Claude user interrupt, or `moai goal clear`) is recorded for the run, the cancellation shall take precedence over an unmet goal, the loop shall not resume automatically, and the goal state shall record a cancellation distinct from `satisfied`.
+- **REQ-HPR-015** (Event-driven): **When** a user cancellation is recorded for the run by one of its two producers — the Codex `Interrupt` event handled by MoAI, or an explicit `moai goal clear` — the cancellation shall take precedence over an unmet goal and the loop shall not resume automatically; the Interrupt producer shall record the new status `cancelled`, `moai goal clear` shall leave no goal state, neither shall read as `satisfied`, and every non-test reader of goal status shall handle `cancelled` explicitly, with an unrecognised status surfacing a diagnostic rather than a silent block or `satisfied`.
 - **REQ-HPR-016** (Event-driven): **When** a goal bound (turn ceiling, wall-clock, stagnation) is reached, the loop shall terminate with a persisted verdict whose status is not `satisfied`.
 - **REQ-HPR-017** (Unwanted): The goal state shall not be recorded as `satisfied` because the host stopped the session despite a block decision (a consecutive-block cap, `stop_hook_active`, or any other host override).
 
@@ -119,7 +127,17 @@ In scope — the four acceptance families of design §19 assigned to M2:
 | SPEC-CODEX-DUAL-AGENTS-001 (completed) | Neutral agent source → `.codex/agents/*.toml`; per-agent Claude `hooks:` frontmatter documented as having no Codex per-agent equivalent; Codex-side permission enforcement excluded | No requirement overlap. The per-agent hook drop stays a documented drop; role-level permission enforcement belongs to sibling card t1100 (AC-AGENT-01). |
 | SPEC-CODEX-WIRING-001 | `RenderHooks` merge model and `--harness codex` runtime flag | This SPEC changes what the table renders (adapted rows, Stop composition); the merge/preservation contract of that SPEC is unchanged. |
 
-## §E Constraints
+## §E Completion condition — this SPEC closes as partial (live-uncertified)
+
+Operator decision Q5 (2026-09-23): no live Claude Code or Codex run is executed in this SPEC. The
+live legs of AC-HPR-004, 007, 008, 009, 010, 011, 012, 020, and 021 are built as opt-in tests and
+stay `NOT_RUN`. `NOT_RUN` is not PASS. The SPEC therefore closes as **partial (live-uncertified)**:
+every unit and golden AC must be PASS under acceptance.md rule P, and the aggregate verdict is
+reported as not-PASS for every obligation that needs a live leg. Live certification is deferred to
+a separate follow-up card. No artifact of this SPEC may describe the hook, approval, or goal layer
+as certified on either host.
+
+## §E.1 Constraints
 
 - Reuse before build: the goal evaluator (`internal/goal`), the verification snapshot key (`internal/verify` `Key` — HEAD + porcelain + diff + untracked digest), and the sync gate's existing outcome record are the starting points for REQ-HPR-014..021; a new engine or store needs a written justification in design.md.
 - `internal/hook` (the Claude-side dispatcher vocabulary) is not modified, per SPEC-CODEX-HOOK-ADAPTER-001 REQ-7, unless design.md records an explicit amendment accepted at plan audit.
@@ -151,9 +169,25 @@ The following are out of scope for this SPEC. Items marked t1100 belong to the s
 - The 17-command × two-CLI certification matrix.
 - MCP handshake, tool call, approval, and cancellation parity.
 
+### Out of Scope — non-Stop multi-handler chains
+
+AC-HOOK-01 is narrowed to the Stop chain here. Design §08 lists other chains, and the Claude
+template registers several handlers on some of those events. Codex renders one handler per event
+(`internal/codexwiring/hooks.go:97–111`). Handler counts measured from
+`internal/template/templates/.claude/settings.json.tmpl` at `530d8cc06`; some entries sit inside
+`{{ if .HookOptIn.Enabled }}` branches:
+
+- PreToolUse: 4 entries, all `handle-pre-tool.sh`.
+- PostToolUse: 5 entries — `handle-post-tool.sh`, 3× `status-transition-ownership.sh`, `handle-harness-observe.sh`.
+- SubagentStop: 3 entries — `handle-subagent-stop.sh`, `handle-harness-observe-subagent-stop.sh`, `chain-event.sh`.
+- SessionStart: 2 entries — `handle-session-start.sh`, `handle-session-start-navigator.sh`.
+- UserPromptSubmit: 2 entries — `handle-user-prompt-submit.sh`, `handle-harness-observe-user-prompt-submit.sh`.
+- Owner: a follow-up card to be issued by the lead. The chains are registered in the obligation registry as `unverified` so the aggregate verdict cannot read PASS while they are unexamined.
+
 ### Out of Scope — adjacent items not assigned to M2
 
 - Policy delivery completeness for standing/scoped rules (M1, AC-TPL-01/02). The obligation registry built here records those obligations; building their Codex delivery path is M1 work.
-- Doctor/status readiness display (AC-OBS-01), beyond the per-verdict attribution fields REQ-HPR-024 requires.
+- The doctor/status readiness display part of AC-OBS-01. Its verdict-integrity part (attribution; rejecting skips, empty runs, and stale receipts) is in scope through REQ-HPR-019 and REQ-HPR-022..024.
+- A Claude-side user-interrupt cancellation producer. The Claude Stop hook does not fire on user interrupt, and the only interrupt signal (`IsInterrupt`, `internal/hook/types.go:249`) belongs to PostToolUseFailure, which this SPEC excludes below. This source is recorded in the obligation registry as `UNSUPPORTED` with that evidence; it is not built here.
 - Desktop, Web, and non-macOS runtime certification; verdicts from this SPEC are scoped to the OS they ran on.
 - Claude events with no Codex counterpart (`TaskCompleted`, `TeammateIdle`, `StopFailure`, `PostToolUseFailure`, `Notification`) — parity for them is not claimed.

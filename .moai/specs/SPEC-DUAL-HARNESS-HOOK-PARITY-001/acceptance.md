@@ -2,12 +2,13 @@
 
 ## §A Scope of Verification
 
-Twenty acceptance criteria, grouped under the four design acceptance families (design §19):
+Twenty-one acceptance criteria, grouped under the four design acceptance families (design §19):
 AC-HOOK-01 → AC-HPR-001..005, AC-HOOK-02 → AC-HPR-006..011, AC-GOAL-01 → AC-HPR-012..015,
-receipts → AC-HPR-016..017, AC-POL-01 → AC-HPR-018..019, isolation → AC-HPR-020.
+receipts and timeouts → AC-HPR-016, 017, 021, AC-POL-01 → AC-HPR-018..019, isolation → AC-HPR-020.
 
 Test names below are the run-phase deliverables; they do not exist at HEAD `530d8cc06`.
-The command column is the exact command the verifier runs.
+The command column is the exact command the verifier runs. Each AC with a live leg names two
+commands: a golden/unit command, and a live command gated by `MOAI_PARITY_LIVE=1`.
 
 ## §B HARD evidence rules (bind every AC)
 
@@ -30,36 +31,44 @@ The command column is the exact command the verifier runs.
 5. **UNSUPPORTED is not PASS.** Where a host cannot express a requirement, the AC records
    `UNSUPPORTED` with evidence; the aggregate verdict (AC-HPR-019) is then FAIL for that
    obligation.
-6. **Every AC names a negative/mutation case.** The mutation must be applied on a scratch copy or
-   inside the test (never committed) and must turn the AC's check red.
+6. **Every AC names a mutation.** The mutation changes the thing under test (code, fixture, or
+   environment) so that a correct check turns red. It is applied inside the test or on a scratch
+   copy, never committed. A second positive case is not a mutation.
 7. **Attribution.** Every recorded verdict carries commit, working-tree digest
    (`moai verify check --key-current` or the `internal/verify` `Key` value), `claude --version`,
    `codex --version`, and `uname -sm` (REQ-HPR-024).
+8. **A live test never returns normally without its trigger.** When a live test cannot achieve
+   its trigger (no compaction, no approval request, SIGINT not delivered, a policy that could not
+   be set, host binary or credentials missing), it MUST call `t.Skipf` with the attempted command
+   and the observed output, so rule P reads `NOT_RUN`. It also writes a verdict record. The
+   aggregate reads **both** the go-test action and the record, and takes the weaker: a `pass`
+   action paired with a `NOT_RUN` record is `NOT_RUN`. AC-HPR-019 carries this as a mutation.
 
 ## §C AC Matrix
 
-| AC | Family | REQ | Kind | Verification command | Negative / mutation |
+| AC | Family | REQ | Kind | Verification command(s) | Mutation |
 |---|---|---|---|---|---|
-| AC-HPR-001 | HOOK-01 | REQ-HPR-001 | unit | `go test -json -count=1 -run '^TestStopChainInventoryMatchesClaudeTemplate$' ./internal/codexwiring/` | add a handler to the template Stop array without an inventory row → fails naming it |
-| AC-HPR-002 | HOOK-01 | REQ-HPR-002, REQ-HPR-005 | golden | `go test -json -count=1 -run '^TestStopChainEffectParityGolden' ./internal/cli/` | make the Codex path return `{}` for the goal-unmet golden → fails |
+| AC-HPR-001 | HOOK-01 | REQ-HPR-001 | unit | `go test -json -count=1 -run '^TestStopChainInventoryMatchesClaudeTemplate$' ./internal/codexwiring/` | add a handler to the template Stop array without an inventory row → fails naming it; render with `HookOptIn.Enabled=true` against an inventory lacking `harness-observe-stop` → fails |
+| AC-HPR-002 | HOOK-01 | REQ-HPR-002, REQ-HPR-005 | golden | `go test -json -count=1 -run '^TestStopChainEffectParityGolden' ./internal/cli/` | make the Codex path return `{}` for the goal-unmet golden → fails; make the Codex `unmeasured` case allow the stop → fails |
 | AC-HPR-003 | HOOK-01 | REQ-HPR-003 | golden | `go test -json -count=1 -run '^TestStopChainGPTProfileNoClaudeDependency$' ./internal/cli/` | point one member at a `.claude/hooks/` path → fails naming the member |
-| AC-HPR-004 | HOOK-01 | REQ-HPR-002, REQ-HPR-013 | live | `MOAI_PARITY_LIVE=1 go test -json -count=1 -run '^TestLiveStopChainGoalContinuation' ./internal/cli/` | goal-met fixture must stop (no continuation) |
-| AC-HPR-005 | HOOK-01 | REQ-HPR-004 | golden | `go test -json -count=1 -run '^TestStopChainAdvisoryFailureRecorded$' ./internal/cli/` | advisory member returns error → chain continues AND record reads failed, not passed |
+| AC-HPR-004 | HOOK-01 | REQ-HPR-002, REQ-HPR-013 | live | `MOAI_PARITY_LIVE=1 go test -json -count=1 -run '^TestLiveStopChainGoalContinuation$' ./internal/cli/` | replace the goal condition's command with one that exits 0 → host must stop; a run that still continues fails |
+| AC-HPR-005 | HOOK-01 | REQ-HPR-004 | golden | `go test -json -count=1 -run '^TestStopChainAdvisoryFailureRecorded$' ./internal/cli/` | make the recorder mark a failed advisory member as passed → fails |
 | AC-HPR-006 | HOOK-02 | REQ-HPR-006, REQ-HPR-007 | unit | `go test -json -count=1 -run '^TestDecisionTranslationNeverLoosens' ./internal/codexadapter/` | restore the `ask` → `{}` drop branch → fails |
-| AC-HPR-007 | HOOK-02 | REQ-HPR-007, REQ-HPR-008 | live | `MOAI_PARITY_LIVE=1 go test -json -count=1 -run '^TestLiveCodexNeedsInputOutcome' ./internal/cli/` | each supported Codex approval policy; an observed allow → `UNSUPPORTED` + mitigation row |
-| AC-HPR-008 | HOOK-02 | REQ-HPR-009 | unit + live | `go test -json -count=1 -run '^TestHookFaultInjection' ./internal/cli/` and `MOAI_PARITY_LIVE=1 … -run '^TestLiveHookFaultOutcome'` | timeout, exit 1, corrupt stdout, exit 2 on PreToolUse / PermissionRequest / Stop gate |
-| AC-HPR-009 | HOOK-02 | REQ-HPR-010, REQ-HPR-013 | golden + live | `go test -json -count=1 -run '^TestCodexCompactCheckpointRoundTrip$' ./internal/cli/` | corrupt the saved memo → restore mismatch detected |
-| AC-HPR-010 | HOOK-02 | REQ-HPR-011, REQ-HPR-013 | golden + live | `go test -json -count=1 -run '^TestCodexPermissionRequestDenyPreserved$' ./internal/cli/` | updatedInput-marker input must deny on both harnesses |
-| AC-HPR-011 | HOOK-02 | REQ-HPR-012, REQ-HPR-013 | unit + live | `go test -json -count=1 -run '^TestCodexInterruptRecordsCancellation$' ./internal/cli/` | `grep -rn 'EventInterrupt' internal/hook/*.go` must print nothing |
-| AC-HPR-012 | GOAL-01 | REQ-HPR-014 | golden + live | `go test -json -count=1 -run '^TestCodexGoalContinueUntilMet$' ./internal/cli/` | goal unmet → block; flip to met → allow + `satisfied` |
-| AC-HPR-013 | GOAL-01 | REQ-HPR-015 | golden | `go test -json -count=1 -run '^TestGoalCancellationPrecedence$' ./internal/cli/` | cancellation + unmet goal must NOT block |
-| AC-HPR-014 | GOAL-01 | REQ-HPR-016 | golden | `go test -json -count=1 -run '^TestGoalBudgetTerminationNotSuccess$' ./internal/goal/` | ceiling/wall-clock/stagnation each → status ≠ `satisfied` |
-| AC-HPR-015 | GOAL-01 | REQ-HPR-017 | golden | `go test -json -count=1 -run '^TestGoalHostOverrideNotSuccess$' ./internal/cli/` | `stop_hook_active:true` and block-cap stop → status stays non-satisfied |
-| AC-HPR-016 | Receipt | REQ-HPR-018 | unit | `go test -json -count=1 -run '^TestRenderedTimeoutCoversMemberBudget$' ./internal/codexwiring/` | a member budget above its rendered timeout → fails |
-| AC-HPR-017 | Receipt | REQ-HPR-019 | unit | `go test -json -count=1 -run '^TestCheckReceipt' ./internal/verify/` | mutate each of the 5 fields in turn; delete the receipt |
+| AC-HPR-007 | HOOK-02 | REQ-HPR-007, REQ-HPR-008 | live | `MOAI_PARITY_LIVE=1 go test -json -count=1 -run '^TestLiveCodexNeedsInputOutcome$' ./internal/cli/` | build the adapter with the old drop-to-`{}` translation → under a non-prompting policy the tool executes and the test fails |
+| AC-HPR-008 | HOOK-02 | REQ-HPR-009 | unit + live | unit: `go test -json -count=1 -run '^TestHookFaultInjection' ./internal/cli/` · live: `MOAI_PARITY_LIVE=1 go test -json -count=1 -run '^TestLiveHookFaultOutcome$' ./internal/cli/` | make the Codex output path emit `{}` on a parse error → the unit test fails |
+| AC-HPR-009 | HOOK-02 | REQ-HPR-010, REQ-HPR-013 | golden + live | golden: `go test -json -count=1 -run '^TestCodexCompactCheckpointRoundTrip$' ./internal/cli/` · live: `MOAI_PARITY_LIVE=1 go test -json -count=1 -run '^TestLiveCodexCompactFires$' ./internal/cli/` | corrupt the saved memo → restore mismatch detected; leave the rows unadapted → the golden fails |
+| AC-HPR-010 | HOOK-02 | REQ-HPR-011, REQ-HPR-013 | golden + live | golden: `go test -json -count=1 -run '^TestCodexPermissionRequestDenyPreserved$' ./internal/cli/` · live: `MOAI_PARITY_LIVE=1 go test -json -count=1 -run '^TestLiveCodexPermissionRequestFires$' ./internal/cli/` | route PermissionRequest through a pass-through that drops the handler's deny → fails |
+| AC-HPR-011 | HOOK-02 | REQ-HPR-012, REQ-HPR-013 | unit + live | unit: `go test -json -count=1 -run '^TestCodexInterruptRecordsCancellation$' ./internal/cli/` · live: `MOAI_PARITY_LIVE=1 go test -json -count=1 -run '^TestLiveCodexInterruptFires$' ./internal/cli/` | skip writing the cancellation record → fails. Invariant check alongside: `grep -rn 'EventInterrupt' internal/hook/*.go` prints nothing |
+| AC-HPR-012 | GOAL-01 | REQ-HPR-014 | golden + live | golden: `go test -json -count=1 -run '^TestCodexGoalContinueUntilMet$' ./internal/cli/` · live: `MOAI_PARITY_LIVE=1 go test -json -count=1 -run '^TestLiveCodexGoalContinueUntilMet$' ./internal/cli/` | make the evaluator re-execute on a receipt miss instead of returning `unmeasured` → fails; make a met goal keep blocking → fails |
+| AC-HPR-013 | GOAL-01 | REQ-HPR-015 | golden | `go test -json -count=1 -run '^TestGoalCancellationPrecedence$' ./internal/cli/` · `go test -json -count=1 -run '^TestGoalStatusConsumersHandleCancelled$' ./internal/goal/` | disable the cancellation branch in the Stop chain → the unmet goal blocks and the test fails; remove `cancelled` from the evaluator's early-return set (`evaluate.go:294`) → fails; write an unknown status → a silent block or `satisfied` fails the test |
+| AC-HPR-014 | GOAL-01 | REQ-HPR-016 | golden | `go test -json -count=1 -run '^TestGoalBudgetTerminationNotSuccess$' ./internal/goal/` | make a ceiling exit write `satisfied` → fails |
+| AC-HPR-015 | GOAL-01 | REQ-HPR-017 | golden | `go test -json -count=1 -run '^TestGoalHostOverrideNotSuccess$' ./internal/cli/` | make `stop_hook_active:true` mark the goal `satisfied` → fails |
+| AC-HPR-016 | Timeout | REQ-HPR-018 | unit | `go test -json -count=1 -run '^TestStopChainAggregateBudgetFitsTimeout$' ./internal/codexwiring/` | raise one in-hook member's internal budget by 1 s past the aggregate → fails |
+| AC-HPR-017 | Receipt | REQ-HPR-019 | unit | `go test -json -count=1 -run '^TestCheckReceipt' ./internal/verify/` | mutate each of the 5 fields in turn; delete the receipt; truncate it mid-write |
 | AC-HPR-018 | POL-01 | REQ-HPR-020, REQ-HPR-021 | unit | `go test -json -count=1 -run '^TestObligationCoverage' ./internal/<registry-pkg>/` | remove one obligation's Codex path, then its check → each fails naming the id |
-| AC-HPR-019 | POL-01 | REQ-HPR-022, REQ-HPR-023, REQ-HPR-024 | unit | `go test -json -count=1 -run '^TestParityVerdictAggregate' ./internal/<registry-pkg>/` | inject skip, NOT_RUN, UNSUPPORTED, missing attribution → aggregate ≠ PASS |
-| AC-HPR-020 | Isolation | REQ-HPR-025 | live | `MOAI_PARITY_LIVE=1 go test -json -count=1 -run '^TestLiveCodexHomeIsolation$' ./internal/cli/` | hash of `~/.codex` (config + hooks) before/after must be equal |
+| AC-HPR-019 | POL-01 | REQ-HPR-022, REQ-HPR-023, REQ-HPR-024 | unit | `go test -json -count=1 -run '^TestParityVerdictAggregate' ./internal/<registry-pkg>/` | inject each of: skip; empty run; `NOT_RUN`; `UNSUPPORTED`; missing attribution field; config-existence-only evidence; a `pass` action paired with a `NOT_RUN` record → each makes the aggregate not PASS |
+| AC-HPR-020 | Isolation | REQ-HPR-025 | live | `MOAI_PARITY_LIVE=1 go test -json -count=1 -run '^TestLiveHarnessIsolation$' ./internal/cli/` | start one Codex process without the temporary `CODEX_HOME` → the detector fails; start one Claude run with cwd at the repository root → the detector fails |
+| AC-HPR-021 | Timeout | REQ-HPR-018 | live (measurement) | `MOAI_PARITY_LIVE=1 go test -json -count=1 -run '^TestLiveCodexStopTimeoutCeiling$' ./internal/cli/` | negative control: a handler that sleeps past its declared timeout must be observed killed (or the non-kill recorded as a host fact); a probe that records a ceiling without running the sleeper fails |
 
 `<registry-pkg>` is fixed by design.md §D4 (plan.md Q1 governs its scope); the verifier substitutes the decided path.
 
@@ -67,41 +76,47 @@ The command column is the exact command the verifier runs.
 
 ### AC-HOOK-01 — Stop chain effect equivalence
 
-- **AC-HPR-001** — **Given** the distributed `settings.json.tmpl` Stop array, **When** the inventory test parses it, **Then** every registered handler appears exactly once in the Stop-chain inventory with a class (`required-gate` / `goal` / `advisory`) and a Codex path or `UNSUPPORTED` record, and the inventory has no row absent from the template.
-- **AC-HPR-002** — **Given** event-input goldens for Stop (goal unmet, goal met, no goal, sync gate failing check, sync gate passing check, sync gate with the blocking opt-out, review gate block, review gate allow), **When** each golden is run through the Claude path and the Codex path with the same project configuration, **Then** the normalized decision and continuation reason class are equal for every `required-gate` and `goal` member.
+- **AC-HPR-001** — **Given** the distributed `settings.json.tmpl`, rendered twice (`HookOptIn.Enabled` false and true), **When** the inventory test reads each rendered Stop array, **Then** every registered handler appears exactly once in the Stop-chain inventory with a class (`required-gate` / `goal` / `advisory`) and a Codex placement or `UNSUPPORTED` record; the opt-in-only member is flagged as conditional; and the inventory has no row absent from both renders.
+- **AC-HPR-002** — **Given** event-input goldens for Stop (goal unmet, goal met, goal receipt absent, no goal, sync gate failing check, sync gate passing check, sync gate receipt absent, sync gate with the blocking opt-out, review gate block, review gate allow), **When** each golden is run through the Claude path and the Codex path with the same project configuration, **Then** the normalized decision is equal for every `required-gate` and `goal` member, and the reason class is identical or paired by the design.md §D3.4 mapping.
 - **AC-HPR-003** — **Given** a project deployed with the `gpt` profile into a temp directory, **When** the Codex Stop chain runs on the goal-unmet and gate-failing goldens, **Then** each required member executes and returns its decision, and no member resolves a path under `.claude/`.
-- **AC-HPR-004** — **Given** a scratch project with an armed, unmet mechanical goal, **When** a real turn ends in Claude Code (`claude -p`) and in Codex (temporary `CODEX_HOME`), **Then** each host continues the turn with the goal's reason and the captured hook log shows the goal member fired; **And Given** the goal is met, **Then** each host stops. A host that cannot be run yields `NOT_RUN`, not PASS.
-- **AC-HPR-005** — **Given** an advisory member forced to fail, **When** the Stop chain runs on either harness, **Then** the decision is unaffected, a failure record for that member exists, and no record marks it passed.
+- **AC-HPR-004** — **Given** a scratch project with an armed, unmet mechanical goal whose receipt the agent records during the turn, **When** a real turn ends in Claude Code (`claude -p`) and in Codex (temporary `CODEX_HOME`), **Then** each host continues the turn with the goal's reason and the captured hook log shows the goal member fired; **And Given** the goal is met, **Then** each host stops. A host that cannot be run makes the test `t.Skipf` (rule 8).
+- **AC-HPR-005** — **Given** an advisory member forced to fail or to exceed its internal budget, **When** the Stop chain runs on either harness, **Then** the decision is unaffected, a failure record for that member exists, and no record marks it passed.
 
 ### AC-HOOK-02 — decision preservation and event adaptation
 
 - **AC-HPR-006** — **Given** the translation table for every decision-bearing event, **When** the property test feeds every normalized decision, **Then** no `deny` or `needs_input` input produces `allow`, an empty object, or any output in the table's host-resolves-as-allow set.
 - **AC-HPR-007** — **Given** a PreToolUse hook returning `needs_input`, **When** Codex runs under each approval policy MoAI supports, **Then** the tool call does not execute without user input; any policy where it does is recorded `UNSUPPORTED` with the observed output and the fail-closed mitigation.
 - **AC-HPR-008** — **Given** injected faults (timeout past the registered budget, exit 1, unparseable stdout, exit 2), **When** they occur on PreToolUse, PermissionRequest, and the Stop required gate, **Then** the adapter never emits an allow for them, and the observed host outcome for each fault × event × harness is recorded; any host-side allow is `UNSUPPORTED`.
-- **AC-HPR-009** — **Given** the PreCompact/PostCompact rows are adapted, **When** a golden PreCompact payload is followed by a PostCompact payload on the Codex path, **Then** the restored memo equals the saved memo; the live compaction trigger result is effect-verified or `NOT_RUN`.
-- **AC-HPR-010** — **Given** the PermissionRequest row is adapted, **When** a payload whose tool input carries the updated-input marker arrives on the Codex path, **Then** Codex receives a deny with a non-empty reason; the live trigger result is effect-verified or `NOT_RUN`.
-- **AC-HPR-011** — **Given** the Interrupt row is adapted, **When** a Codex Interrupt payload arrives, **Then** a cancellation record bound to the session and run is written, and `internal/hook` carries no Interrupt constant; the live SIGINT result is effect-verified or `NOT_RUN`.
+- **AC-HPR-009** — **Given** the PreCompact/PostCompact rows are adapted, **When** a golden PreCompact payload is followed by a PostCompact payload on the Codex path, **Then** the restored memo equals the saved memo; **And When** the live test drives Codex to a compaction, **Then** both events are observed firing with the memo round-trip, or the test `t.Skipf`s with the attempted trigger.
+- **AC-HPR-010** — **Given** the PermissionRequest row is adapted, **When** a payload whose tool input carries the updated-input marker arrives on the Codex path, **Then** Codex receives a deny with a non-empty reason; **And When** the live test drives Codex to an approval request, **Then** the deny is observed taking effect, or the test `t.Skipf`s with the attempted trigger.
+- **AC-HPR-011** — **Given** the Interrupt row is adapted, **When** a Codex Interrupt payload arrives, **Then** a cancellation record bound to the session and run is written, and `internal/hook` carries no Interrupt constant; **And When** the live test delivers SIGINT to a Codex turn, **Then** the record is observed, or the test `t.Skipf`s with the attempted delivery.
 
 ### AC-GOAL-01 — goal continuation, cancellation, budget
 
-- **AC-HPR-012** — **Given** an armed goal with an unmet condition, **When** Codex Stop fires, **Then** the output requests continuation with the evaluator's reason; **When** the condition becomes satisfied, **Then** the next Stop allows and the goal state reads `satisfied`.
-- **AC-HPR-013** — **Given** an armed unmet goal and a recorded cancellation, **When** Stop fires on either harness, **Then** the stop is allowed, the goal state records the cancellation (not `satisfied`), and a subsequent Stop does not resume the loop.
+- **AC-HPR-012** — **Given** an armed goal with an unmet condition and a fresh failing receipt, **When** Codex Stop fires, **Then** the output requests continuation with the evaluator's reason; **When** the receipt is absent, **Then** the output requests continuation naming the command to run (`unmeasured`), and nothing is re-executed in the hook; **When** a fresh passing receipt exists, **Then** the next Stop allows and the goal state reads `satisfied`.
+- **AC-HPR-013** — **Given** an armed unmet goal, **When** the cancellation is produced by a real producer, **Then**:
+  - Interrupt leg: after the Codex Interrupt golden payload is fed to `moai hook interrupt --harness codex` and Stop then fires, the stop is allowed, the goal state reads `cancelled`, and a subsequent Stop does not resume the loop.
+  - Clear leg: after `moai goal clear`, which removes the goal state (`internal/goal/state.go:120–127`), Stop does not block and no record reads `satisfied`.
+  - Neither leg injects a pre-written cancellation record.
+  - Every non-test reader of goal status handles `cancelled` explicitly. The consumer inventory (research.md §R1.10) is enumerated by `TestGoalStatusConsumersHandleCancelled`, which fails when a new reader appears that it does not list.
+  - A goal file carrying an unrecognised status yields a visible diagnostic. It never yields a silent block and never reads as `satisfied`.
 - **AC-HPR-014** — **Given** a goal at its turn ceiling, wall-clock bound, or stagnation limit, **When** Stop fires, **Then** the loop terminates, a verdict is persisted, and the status is not `satisfied`.
 - **AC-HPR-015** — **Given** an unmet goal, **When** the host stops despite a block (`stop_hook_active:true`, or the consecutive-block cap), **Then** the goal state is not `satisfied`.
 
-### Receipts
+### Receipts and timeouts
 
-- **AC-HPR-016** — **Given** the rendered Codex `hooks.json`, **When** each handler's registered timeout is compared with the declared internal budget of the member it runs, **Then** no member's budget exceeds its timeout.
-- **AC-HPR-017** — **Given** a receipt written after a passing out-of-hook check, **When** the Stop chain evaluates it unchanged, **Then** it is accepted; **When** HEAD, working-tree digest, configuration digest, command, or tool version differs (each mutated separately), or the receipt is absent, **Then** the check is treated as not run.
+- **AC-HPR-016** — **Given** the rendered Codex `hooks.json` and the declared per-member internal budgets (design.md §D3.3), **When** the test evaluates `Σ(internal budgets of in-hook members) + chain_overhead` for the single Codex Stop handler, **Then** the sum is ≤ the rendered Stop timeout `T_stop`, receipt members count only their compare budget, and `T_stop` is ≤ the recorded `T_codex_max` whenever AC-HPR-021 has produced one.
+- **AC-HPR-017** — **Given** a receipt written after a passing out-of-hook check, **When** the Stop chain evaluates it unchanged, **Then** it is accepted; **When** HEAD, working-tree digest, configuration digest, command, or tool version differs (each mutated separately), or the receipt is absent or truncated, **Then** the check is treated as not run.
+- **AC-HPR-021** — **Given** a scratch project under a temporary `CODEX_HOME`, **When** the probe renders a Stop handler at an ascending ladder of timeouts, each running a sleeper just under its timeout plus one sleeper past it, **Then** it records, for each rung, whether Codex accepted the configuration, waited, and honoured the handler's decision. The largest honoured rung is recorded as `T_codex_max` with its evidence. Until the probe has run, `T_codex_max` is `NOT_RUN` and `T_stop` stays at the current render constant.
 
 ### AC-POL-01 — obligation coverage
 
-- **AC-HPR-018** — **Given** the obligation registry, **When** the coverage check runs, **Then** it passes only if every required obligation has a Claude path, a Codex path (or an explicit `UNSUPPORTED`/`blocked` marker), and a check id that resolves to an existing test; **When** one obligation's Codex path or check is removed, **Then** it fails naming that obligation.
-- **AC-HPR-019** — **Given** per-obligation verdicts, **When** the aggregate is computed, **Then** it is PASS only if every required obligation is effect-verified with full attribution; a skip, an empty run, a `NOT_RUN`, an `UNSUPPORTED`, a `blocked`, or a missing attribution field makes it not PASS.
+- **AC-HPR-018** — **Given** the obligation registry, **When** the coverage check runs, **Then** it passes only if every required obligation has a Claude path, a Codex path (or an explicit `UNSUPPORTED`/`blocked`/`unverified` marker), and a check id that resolves to an existing test; **When** one obligation's Codex path or check is removed, **Then** it fails naming that obligation.
+- **AC-HPR-019** — **Given** per-obligation verdicts, **When** the aggregate is computed from both the go-test action and the verdict record, **Then** it is PASS only if every required obligation is effect-verified with full attribution; a skip, an empty run, a `NOT_RUN`, an `UNSUPPORTED`, a `blocked`, an `unverified`, a missing attribution field, config-existence-only evidence, or a `pass` action paired with a `NOT_RUN` record makes it not PASS.
 
 ### Isolation
 
-- **AC-HPR-020** — **Given** the live suite, **When** it runs, **Then** every Codex process sees a temporary `CODEX_HOME`, and the content hash of the operator's `~/.codex` config and hooks is identical before and after.
+- **AC-HPR-020** — **Given** the live suite, **When** it runs, **Then** every Codex process sees a temporary `CODEX_HOME` and the content hash of the operator's `~/.codex` config and hooks is identical before and after; and every Claude run's working directory is under the OS temp dir and outside the repository root.
 
 ## §E Edge Cases
 
@@ -120,9 +135,14 @@ The command column is the exact command the verifier runs.
 
 ## §G Definition of Done
 
-- AC-HPR-001..020 each carry a recorded verdict with attribution in progress.md §E.2.
-- Every unit/golden AC is PASS under rule P.
-- Every live AC is effect-verified, or is `NOT_RUN`/`UNSUPPORTED` with evidence — and in that case the SPEC closes with the aggregate verdict reported as FAIL for the affected obligations, not as full parity.
+- AC-HPR-001..021 each carry a recorded verdict with attribution in progress.md §E.2.
+- Every unit/golden AC and every unit/golden leg is PASS under rule P.
+- Operator decision Q5 (2026-09-23): no live leg is run in this SPEC. The live tests are built and
+  opt-in, and each live leg (AC-HPR-004, 007, the live legs of 008–012, 020, 021) is recorded
+  `NOT_RUN` by running it without `MOAI_PARITY_LIVE`, with its `t.Skipf` output quoted.
+- The SPEC closes as **partial (live-uncertified)**, with the aggregate verdict reported as not-PASS
+  for every obligation that needs a live leg. Live certification belongs to a separate follow-up
+  card.
 - No claim of "full dual-harness parity" is made from this SPEC alone; sibling card t1100 and M1/M5 remain.
 
 ## §H RED-now Evidence Ledger (plan phase)
@@ -146,7 +166,7 @@ expected to flip the observation.
 L-03 stdout is shown with the leading tab collapsed to one space for table rendering; the raw
 output carries a tab after the colon.
 
-The live ACs (AC-HPR-004, 007, the live legs of 008–011, and 020) have no RED-now cell that can be
-re-executed at plan time without a live host run. They are classified **regression-guard /
-NOT_RUN** until M2g records a first observation (verification-completeness §2.1, undecidable
-disposition).
+The live ACs (AC-HPR-004, 007, the live legs of 008–012, 020, 021) have no RED-now cell that can be
+re-executed at plan time without a live host run. Under operator decision Q5 they stay **NOT_RUN**
+for this SPEC and are classified **regression-guard** (verification-completeness §2.1, undecidable
+disposition) until the follow-up live-certification card records a first observation.
