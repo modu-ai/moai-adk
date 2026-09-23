@@ -173,7 +173,10 @@ func (f *dispatchFixture) applyFromClaim(c Claim, id string, attempt int64) stri
 	if err != nil {
 		f.t.Fatal(err)
 	}
-	out, err := f.s.ApplyResult(context.Background(), ResultReport{DispatchID: id, Attempt: attempt, Slot: f.slots[c.SenderSession], Generation: c.SenderGeneration, Digest: ResultDigest(body), Ref: c.ID})
+	if want := f.slots[c.SenderSession]; c.SenderSlot != want {
+		f.t.Fatalf("envelope sender slot %q, want %q", c.SenderSlot, want)
+	}
+	out, err := f.s.ApplyResult(context.Background(), ResultReport{DispatchID: id, Attempt: attempt, Slot: c.SenderSlot, Generation: c.SenderGeneration, Digest: ResultDigest(body), Ref: c.ID})
 	if err != nil {
 		f.t.Fatal(err)
 	}
@@ -295,6 +298,28 @@ func TestDispatchResultExactlyOnce(t *testing.T) {
 		}
 		requireOutcome(t, "restarted reporter", f.apply(ResultReport{DispatchID: id, Attempt: 1, Slot: restarted.Slot, Generation: restarted.Generation, Digest: ResultDigest([]byte(body)), Ref: "retry"}), ApplyDuplicate)
 		requireUnchanged(t, "retry after restart", first, f.dispatch(id))
+	})
+
+	t.Run("sender_restart_lane_scope", func(t *testing.T) {
+		f := newDispatchFixture(t)
+		worker := f.register("lane-1", "worker", "w-s1", "start-w1")
+		f.assign(id, worker)
+		orig, err := f.sendResult(worker, id, 1, body)
+		if err != nil {
+			t.Fatal(err)
+		}
+		restarted := f.restart(worker, "w-s2", "start-w2")
+		retry, err := f.sendResult(restarted, id, 1, body)
+		if err != nil {
+			t.Fatalf("same-scope retry after restart: %v", err)
+		}
+		if retry.ID != orig.ID || f.messageRows(ResultKey(id, 1)) != 1 {
+			t.Fatalf("lane-scoped retry must return the original message: orig=%s retry=%s rows=%d", orig.ID, retry.ID, f.messageRows(ResultKey(id, 1)))
+		}
+		claims, err := f.s.Claim(context.Background(), f.lead, MaxBatch, time.Minute)
+		if err != nil || len(claims) != 1 || claims[0].ID != orig.ID {
+			t.Fatalf("recipient must see exactly the original message: %+v err=%v", claims, err)
+		}
 	})
 
 	t.Run("broker_restart", func(t *testing.T) {
