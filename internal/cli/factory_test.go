@@ -881,14 +881,31 @@ func TestCC_FactoryEntryThroughRunCC(t *testing.T) {
 	})
 
 	t.Run("-f worker-2 desugars into the lane branch", func(t *testing.T) {
+		// A lane joins exactly one active factory run and fails closed on zero
+		// (NO_ACTIVE_FACTORY) or several (AMBIGUOUS_FACTORY). The bare -f
+		// subtests above share the parent's project dir and each record a lead
+		// run whose id is a Unix-second timestamp, so how many active runs they
+		// leave depends on whether they straddle a second boundary. Give this
+		// subtest its own project and seed the one run it joins.
+		root := t.TempDir()
+		t.Setenv(config.EnvClaudeProjectDir, root)
+		t.Setenv("MOAI_HOME", t.TempDir())
 		clearFactoryTestEnv(t)
 		c := installFactoryLaunchSeam(t)
+
+		const run = "run-cc-lane-entry"
+		if err := recordFactoryRunStart(root, run, kanban.BackendClaude, ""); err != nil {
+			t.Fatalf("record factory run: %v", err)
+		}
 
 		buf := new(bytes.Buffer)
 		ccCmd.SetOut(buf)
 		ccCmd.SetErr(buf)
 		if err := runCC(ccCmd, []string{"-f", "worker-2"}); err != nil {
 			t.Fatalf("runCC(-f worker-2): %v", err)
+		}
+		if c.runID != run {
+			t.Errorf("%s at launch = %q, want the active run %q", config.EnvMoaiKanbanID, c.runID, run)
 		}
 		if c.worker != "worker-2" {
 			t.Errorf("MOAI_FACTORY_WORKER at launch = %q, want worker-2", c.worker)
@@ -919,14 +936,28 @@ func TestCC_FactoryEntryThroughRunCC(t *testing.T) {
 	// Keep-alias coverage: the legacy `-f lane-<n>` spelling still launches,
 	// under the canonical worker label, with a deprecation hint on stderr.
 	t.Run("-f lane-5 legacy alias launches as worker-5 with a hint", func(t *testing.T) {
+		// Same isolation as the worker-2 subtest: its own project and the one
+		// active run it joins, so the bare -f subtests above cannot make the
+		// join ambiguous.
+		root := t.TempDir()
+		t.Setenv(config.EnvClaudeProjectDir, root)
+		t.Setenv("MOAI_HOME", t.TempDir())
 		clearFactoryTestEnv(t)
 		c := installFactoryLaunchSeam(t)
+
+		const run = "run-cc-legacy-lane-entry"
+		if err := recordFactoryRunStart(root, run, kanban.BackendClaude, ""); err != nil {
+			t.Fatalf("record factory run: %v", err)
+		}
 
 		buf := new(bytes.Buffer)
 		ccCmd.SetOut(buf)
 		ccCmd.SetErr(buf)
 		if err := runCC(ccCmd, []string{"-f", "lane-5"}); err != nil {
 			t.Fatalf("runCC(-f lane-5): %v", err)
+		}
+		if c.runID != run {
+			t.Errorf("%s at launch = %q, want the active run %q", config.EnvMoaiKanbanID, c.runID, run)
 		}
 		if c.worker != "worker-5" {
 			t.Errorf("MOAI_FACTORY_WORKER at launch = %q, want worker-5", c.worker)
