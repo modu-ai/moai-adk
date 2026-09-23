@@ -30,6 +30,10 @@ $ go test ./internal/cli -run '^TestFactoryLive(CodexCodex|CodexClaude|ClaudeCod
 --- SKIP x4, 패키지 결과 ok (SKIP은 PASS 아님)
 ```
 
+- plan_complete_at: 2026-09-23T01:51:02Z
+- plan_status: audit-ready
+- plan-audit iter-4(delta) 결과 PASS-WITH-DEBT 0.93(`.moai/reports/plan-audit/SPEC-DUAL-HARNESS-RECOVERY-001-review-4-delta.md`). 선택 채무: D1(plan.md:132 "도달"→"초과" 문구), D2(operator-decisions.md가 gitignore 대상), 이월 N2·N5·N6.
+
 ## Revision iter-2
 
 plan-audit iter-1의 결함 D1~D21을 이번 개정에서 어떻게 처리했는지 적는다. 각 결함의 근거 명령은 이번 실행에서 이 트리에 다시 돌렸다.
@@ -95,8 +99,6 @@ plan-audit iter-2(`.moai/reports/plan-audit/SPEC-DUAL-HARNESS-RECOVERY-001-revie
 
 _<pending run-phase>_
 
-- plan 단계에서 정한 기록 의무(plan-audit iter-3 N3): 증거 디렉터리 `.moai/reports/t1100/`는 gitignore 대상이라 워크트리와 함께 사라지므로, AC-DHR-020의 측정 결과(`outcome`), 측정한 커밋 SHA(`ac020-head.txt`의 값), 증거 파일의 sha256을 경로가 아니라 값으로 이 절에 직접 적는다.
-
 ## §E.3 Run-phase Audit-Ready Signal
 
 _<pending run-phase>_
@@ -121,3 +123,5 @@ plan-audit iter-3(FAIL 0.89, `.moai/reports/plan-audit/SPEC-DUAL-HARNESS-RECOVER
 | N7 | acceptance.md:412 (AC-DHR-023) | 반환문 부재 시 출력에 `NOT_RUN`을 찍지 않고 `ac023-evidence.json`의 `"not_run": true`로만 기록 → 같은 jsonl을 읽는 AC-DHR-012 판정식과 분리 |
 
 손대지 않은 것: N2·N5·N6(범위 밖), plan.md:132 위험 표의 "예산 도달 시 `ABORTED`"(N1과 같은 표현이지만 이번 델타의 지정 줄이 아니어서 보고만 함).
+
+N3 위치 이동(후속 커밋): 위 N3 행이 progress.md:98(§E.2)에 넣은 기록 의무 문장을 acceptance.md §D 완료 정의 목록(436행 바로 다음 줄)으로 옮겼다. 위치만 바꿨고 문구는 그대로다. 제자리에서 읽히도록 끝의 참조 "이 절에"만 "`progress.md` §E.2에"로 고쳤다. §E.2는 run 단계 증거 절(manager-develop 소관)이라 plan 단계 의무를 두지 않는다. §E.2 자리표시 `_<pending run-phase>_`는 그대로다.

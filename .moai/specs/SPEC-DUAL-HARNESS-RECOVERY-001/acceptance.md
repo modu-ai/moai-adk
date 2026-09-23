@@ -434,3 +434,4 @@ shasum -a 256 .moai/reports/t1100/ac023-evidence.json > .moai/reports/t1100/ac02
 - `agents-codex.yaml`이나 `internal/template/templates/.claude/agents/moai/*.md`를 고치면 `make agents-emit`을 실행하고, `.codex/agents/moai/*.toml`을 손으로 고치지 않는다.
 - factorymsg 스키마를 바꾸는 경우(분기 A)만 기존 DB 파일을 여는 마이그레이션 테스트를 포함한다(기존 행 보존, `SchemaVersion` 증가). 분기 B에서는 스키마가 그대로임을 AC-DHR-014 분기 B 명령이 확인한다.
 - 완료 정의: §C 표의 다섯 기준 판정과 그 근거 파일 경로가 `progress.md` §E.2에 기록되고, LIVE 항목은 실행했으면 증거 경로, 안 했으면 `NOT_RUN`, 예산으로 멈췄으면 `ABORTED`로 적힌다. `PARTIAL`을 PASS로 적지 않는다.
+- plan 단계에서 정한 기록 의무(plan-audit iter-3 N3): 증거 디렉터리 `.moai/reports/t1100/`는 gitignore 대상이라 워크트리와 함께 사라지므로, AC-DHR-020의 측정 결과(`outcome`), 측정한 커밋 SHA(`ac020-head.txt`의 값), 증거 파일의 sha256을 경로가 아니라 값으로 `progress.md` §E.2에 직접 적는다.
