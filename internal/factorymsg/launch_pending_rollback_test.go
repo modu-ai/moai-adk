@@ -2,6 +2,7 @@ package factorymsg
 
 import (
 	"context"
+	"io"
 	"os"
 	"path/filepath"
 	"sync"
@@ -79,7 +80,7 @@ func TestBindLaunchPendingRejectsOwnerMismatch(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer s.Close()
+	closeOnCleanup(t, "factory message broker", s)
 	start, state := homestate.ProbeProcessIdentity(os.Getpid())
 	if state != homestate.ProcessIdentityLive || start == "" {
 		t.Fatal("test process identity unavailable")
@@ -113,7 +114,7 @@ func TestRollbackLaunchPendingDeletesOnlyExactProvisionalOwner(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer s.Close()
+	closeOnCleanup(t, "factory message broker", s)
 	start := homestate.CurrentProcessFingerprint()
 	pending, err := s.RegisterLaunchPending(context.Background(), Peer{
 		ProjectKey: homestate.ProjectKey(root), RunID: "run-rollback", Backend: "codex",
@@ -158,4 +159,15 @@ func TestRollbackLaunchPendingDeletesOnlyExactProvisionalOwner(t *testing.T) {
 	if err != nil || len(status.Lanes) != 1 || status.Lanes[0].Slot != "lead" {
 		t.Fatalf("exact rollback affected other row: status=%+v err=%v", status, err)
 	}
+}
+
+// closeOnCleanup closes c when the test finishes and reports a close failure
+// as a test error instead of discarding it.
+func closeOnCleanup(t *testing.T, what string, c io.Closer) {
+	t.Helper()
+	t.Cleanup(func() {
+		if err := c.Close(); err != nil {
+			t.Errorf("close %s: %v", what, err)
+		}
+	})
 }
