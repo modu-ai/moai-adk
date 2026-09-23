@@ -1,7 +1,7 @@
 ---
 id: SPEC-FACTORY-LANE-WORKTREE-HANDOFF-001
 title: "Factory lane card worktree handoff"
-version: "0.5.5"
+version: "0.5.6"
 status: in-progress
 created: 2026-09-22
 updated: 2026-09-23
@@ -23,6 +23,7 @@ card: t1082
 
 | Version | Date | Change |
 |---|---|---|
+| 0.5.6 | 2026-09-23 | 리드 결정: 0.5.5에서 REQ-FLH-010에 더한 「tombstone된 session UUID는 나중 resume까지 포함해 영구히 거부된다」를 단언하는 AC가 없었으므로, 새 AC를 만들지 않고 REQ-FLH-010이 이미 매핑된 AC-FLH-007에 다리 하나를 더했다. BOUND rebind가 tombstone한 이전 session UUID로 t1074 UserPromptSubmit 등록 경로(`RegisterPeer`, launch-pending이 아닌 session)를 통해 나중 resume·재기동·broker 핸들 재개방 뒤 재등록하면 각각 `STALE_ENDPOINT`로 거부되고, `StaleEndpoint` redirect가 현재 endpoint session·generation을 담으며, endpoint 행·tombstone·BOUND receipt가 바뀌지 않는다. launcher 경로는 launcher bind가 tombstone을 읽지 않으므로 단언 대상에서 명시적으로 뺐다. named test·명령·jq 게이트·요약행·추적표는 바꾸지 않았고, acceptance.md RED 원장에 이 다리가 아직 named test에 없다는 측정(HEAD `e2c2d33b1`, exit 1)과 앵커·양성 대조를 더했다. |
 | 0.5.5 | 2026-09-23 | 리드 결정 두 건을 한 개정으로 반영했다. (1) acceptance.md AC-FLH-008 수신 측 문구만 명시적으로 고쳤다(문구 변경, 판정식 불변). 「같은 recipient generation 안의 K1 봉투 반복 전달」을 「receipt 전에 lease가 만료되어 같은 봉투가 다시 claim되는 경우」로, 「one accepted receipt」를 「broker가 수락한 receipt row가 정확히 1건」으로 바꿨다. 근거: 현재 기준에서 같은 봉투가 다시 도착하는 경로는 at-least-once lease 만료 재전달뿐이며, named test `TestFactoryLaneHandoffDuplicateAndSameLaneRedispatch`가 이미 그렇게 모델링한다. named test·명령·jq 게이트·요약행은 바꾸지 않았다. (2) 막힌 handoff의 operator 종결 경로를 추가했다. 비종결 handoff 동안 REQ-FLH-018이 UserPromptSubmit 등록을 모두 거부하므로, `/cd`를 하지 않고 launcher 밖에서 재기동한 interactive lane은 영구히 거부되고 시간 초과나 포기 계기도 없었다. REQ-FLH-011에 `moai factory handoff abandon-lane --slot <slot>`을 규정해 source owner가 current가 아님을 t1074 PID·process-start 규칙으로 확인한 뒤(아니면 `SOURCE_OWNER_LIVE` 거부) 한 transaction에서 `ABANDONED`/`OPERATOR_ABANDONED`로 종결하고, worktree 보존·BOUND/tombstone/receipt/release 무쓰기·종결 뒤 t1074 복귀를 요구했다. AC-FLH-020을 추가했고, 시간 기준 자동 종결은 명시적으로 범위 밖에 두었으며, sync 문서가 이 명령을 적도록 했다. design.md §3 `WT_READY` 전이·§2.1 F②-3·§9 결정표와 plan.md M4를 맞췄다. 또 REQ-FLH-010에 tombstone된 session UUID는 이전 session의 나중 resume까지 포함해 영구히 거부된다는 문장과 그 이유를 더했다. |
 | 0.5.4 | 2026-09-23 | idempotency 기준에 대해 중립으로 고쳤다(리드 조율: t1100이 AC-020 근거에 따라 기준을 송신 session에서 송신 lane slot 범위로 옮긴다. 근거 기록 `.moai/reports/t1082/ac008-idempotency-check.md`). 기준이나 스키마가 「바뀌지 않는다」고 단언하던 문장을 REQ-FLH-009, design.md §2.1 잔여 위험·§8, plan.md M3, acceptance.md AC-FLH-008·요약행에서 걷어내고, 「t1082는 idempotency 기준 자체를 바꾸지 않으며 기준은 t1100(SPEC-DUAL-HARNESS-RECOVERY-001)이 소유한다」로 바꿨다. AC-FLH-008은 어느 기준에서도 성립하도록 다시 적었다: 다른 recipient로 K1을 재사용한 요청은 기존 K1 봉투로 합쳐지지 않는다는 것만 단언하고 거부인지 별도 봉투인지는 단언하지 않으며, fixture가 key 기준에 기대지 않아야 한다는 조건을 더했다. 같은 generation 안 body 1회 실행, 수신 측 `DispositionDuplicate`, 이전 generation stale NACK, BOUND 뒤 새 key 요구는 그대로다. |
 | 0.5.3 | 2026-09-23 | plan.md만 바꿨다. AC-FLH-003/004의 named test가 BOUND 관측을 요구하는데 BOUND는 M3 atomic rebind 한 transaction의 산출물이므로(REQ-FLH-008, design.md §6), M2에서 headless 원자적 BOUND 문구를 빼고 두 adapter를 `SWITCH_PENDING_*`까지로 한정했으며 headless BOUND와 AC-FLH-003/004 named test를 M3로 옮겼다(lane 결정 option A). AC 본문은 바꾸지 않았다. |

@@ -79,6 +79,16 @@ AC-FLH-020 행은 0.5.5 개정에서 HEAD `730139bd6`에서 2026-09-23에 측정
 
 0.5.1 개정으로 AC-FLH-019에 추가된 순서 (vii)(reservation의 source 행 판독 위치 판별)는 run phase의 첫 RED다. run phase는 named test `TestFactoryLaneHandoffRebindVsUserPromptRegisterRace`를 순서 (vii)부터 작성해, reservation 구현이 존재하기 전 그 순서가 실패함을 먼저 관측한다. 위 표의 AC-FLH-019 행은 named test 부재로 여전히 RED이며, 이 개정은 새 named test를 추가하지 않는다.
 
+0.5.6 개정으로 AC-FLH-007에 추가된 tombstone 재등록 다리(UserPromptSubmit 경로의 `STALE_ENDPOINT` 거부)는 named test `TestFactoryLaneHandoffStaleEndpointRejected`가 아직 단언하지 않는다. 이 다리의 RED 이유는 named test 부재가 아니라, named test 본문에 turn registration 호출이 없다는 것이다. HEAD `e2c2d33b1f21c3bf018c8f586d735e640202013a`에서 2026-09-23에 측정했다.
+
+| 측정 | Command | Observed stdout | Exit |
+|---|---|---|---:|
+| AC-FLH-007 tombstone 재등록 다리 (RED) | `awk '/^func TestFactoryLaneHandoffStaleEndpointRejected\(/{f=1} f&&/RegisterPeer/{print FILENAME":"FNR": "$0; n++} f&&/^}/{exit} END{exit n?0:1}' internal/factorymsg/handoff_bind_test.go` | `<empty>` | 1 |
+| 앵커 대조 (같은 범위 진입 확인) | 위 command에서 `RegisterPeer`를 `requireStale`로 바꾼 것 | `handoff_bind_test.go:545`, `:565` 두 줄 | 0 |
+| 양성 대조 (같은 프로브가 발화하는가) | 위 command에서 함수명을 `TestFactoryLaneHandoffRebindVsUserPromptRegisterRace`로, 파일을 `internal/factorymsg/lane_handoff_race_test.go`로 바꾼 것 | `lane_handoff_race_test.go:316`, `:372`, `:404`, `:439`, `:476`, `:552` 여섯 줄 | 0 |
+
+앵커 대조는 프로브가 named test 본문에 실제로 들어갔음을, 양성 대조는 같은 프로브가 `RegisterPeer` 호출을 찾을 수 있음을 보인다. 따라서 첫 행의 빈 출력은 측정 실패가 아니라 부재다. 이 다리는 run phase에서 named test에 추가되며, 명령·jq 게이트는 바뀌지 않는다.
+
 ## Exact acceptance gates
 
 ### AC-FLH-001 — Admission fails closed
@@ -143,7 +153,7 @@ Expected final output: `true`; otherwise FAIL.
 
 ### AC-FLH-007 — Old endpoint tombstone and stale rejection
 
-**Given** old UUID/generation, stale reservation, stale claim token, restarted process, and current endpoint, **when** send/read/receipt/ACK execute, **then** every stale operation NACKs without mutation, returns current non-secret endpoint/generation metadata, and current operations succeed.
+**Given** old UUID/generation, stale reservation, stale claim token, restarted process, and current endpoint, **when** send/read/receipt/ACK execute, **then** every stale operation NACKs without mutation, returns current non-secret endpoint/generation metadata, and current operations succeed. **And** given the source endpoint that a BOUND rebind tombstoned, **when** a turn registration carrying that old (tombstoned) session UUID is submitted through the t1074 UserPromptSubmit registration path (`RegisterPeer` with a session UUID that is not launch-pending) — once as a later resume of the old session with its recorded PID and process-start, once as a restart of it with a new PID and process-start, and once more after the broker handle is reopened — **then** each is refused with `STALE_ENDPOINT`, the refusal's `StaleEndpoint` redirect names the lane's current endpoint session UUID and generation, and the lane endpoint row (session UUID, generation, PID, process-start), the tombstone rows, and the BOUND receipt rows are identical before and after each attempt. This leg asserts the turn-registration path only. The launcher path is not asserted: a launcher registration writes a fresh launch-pending token rather than the old UUID, and the launcher bind does not read the tombstones, so this criterion requires no refusal of a tombstoned UUID there.
 
 ```bash
 unset ANTHROPIC_BASE_URL ANTHROPIC_API_KEY ANTHROPIC_AUTH_TOKEN Z_AI_API_KEY && mkdir -p .moai/reports/t1082 && MOAI_HOME=/tmp/t1082-ac07-home GOCACHE=/tmp/t1082-ac07-cache go test -json ./internal/factorymsg -run '^TestFactoryLaneHandoffStaleEndpointRejected$' -count=1 -timeout=90s > .moai/reports/t1082/ac07.jsonl && jq -se '([.[]|select(.Action=="pass" and .Test=="TestFactoryLaneHandoffStaleEndpointRejected")]|length)==1 and ([.[]|select(.Action=="fail" or .Action=="skip")]|length)==0 and ([.[]|select((.Output//"")|contains("NOT_RUN"))]|length)==0' .moai/reports/t1082/ac07.jsonl
