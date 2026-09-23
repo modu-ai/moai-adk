@@ -94,6 +94,24 @@ const (
 // specStatusPattern extracts `status:` field from spec.md frontmatter.
 var specStatusPattern = regexp.MustCompile(`(?m)^status:\s*(.+?)\s*$`)
 
+// NormalizeStatusValue turns a raw `status:` value capture into the status
+// value: surrounding whitespace is trimmed and one pair of matching YAML quotes
+// ("..." or '...') is stripped, so `status: "completed"` compares equal to
+// `status: completed`. Mismatched or inner quotes are left untouched. Every
+// frontmatter `status:` reader that compares the value (this package's and
+// internal/kanban's) routes its capture through here so they all agree on one
+// value; a reader that only quotes the raw text back does not.
+//
+// @MX:ANCHOR: [AUTO] shared status normalizer — fan_in 5 across internal/spec and internal/kanban
+// @MX:REASON: changing which quotes are stripped shifts every status comparison (audit, closer, ParseStatus, ownership lint, kanban board) at once
+func NormalizeStatusValue(raw string) string {
+	v := strings.TrimSpace(raw)
+	if len(v) >= 2 && (v[0] == '"' || v[0] == '\'') && v[len(v)-1] == v[0] {
+		v = strings.TrimSpace(v[1 : len(v)-1])
+	}
+	return v
+}
+
 // sectionIHeading is the canonical progress.md §I Token Accounting heading.
 // It MUST match the literal produced by the M3 §I writer
 // (internal/tokenusage.SectionIHeading). A local constant is used instead of a
@@ -461,7 +479,8 @@ func checkV3R6Drift(specDir, specID string, signals EraSignals) *DriftFinding {
 	if len(statusMatch) < 2 {
 		return nil // no status field — skip
 	}
-	specStatus := strings.TrimSpace(statusMatch[1])
+	// Normalized once here; isValidInPlaceAmendment receives this value.
+	specStatus := NormalizeStatusValue(statusMatch[1])
 
 	hasRunEvidence := hasProgressMarker(signals.ProgressMDContent, "§E.2")
 	// The §E.4 leg asks whether the sync phase HAPPENED, so it reads the

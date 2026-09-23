@@ -83,7 +83,7 @@ shift+tab 戻る • enter 次へ
   は対応モデル（Opus 5.5、Sonnet 5、Opus 4.7                                    
   以降）が必要です。エージェントごとの推論強度はエージェントモデルポリシーで決ま
   ります。                                                                      
-    (runtime default)                                                           
+    (model policy, else Claude Code default: medium on Opus 5.5)                
     low - 最速、簡易推論                                                        
     medium - バランス (推奨)                                                    
   ▸ high - 深い推論                                                             

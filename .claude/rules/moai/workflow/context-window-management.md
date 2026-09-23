@@ -23,7 +23,7 @@ reimplement them. Rationale and the layer vocabulary:
 | GLM-5.3 via `moai glm`/`moai cg` (1M) | 1,000,000 tokens | **50%** | ~500,000 tokens |
 | Fable (1M) | 1,000,000 tokens | **50%** | ~500,000 tokens |
 | Sonnet 5 (1M) | 1,000,000 tokens | **50%** | ~500,000 tokens |
-| Sonnet 4.x / earlier standard (200K) | 200,000 tokens | **90%** | ~180,000 tokens |
+| 200K sessions — Sonnet 4.6 / Opus 4.6 without `[1m]`, Opus 4.8+ on Bedrock / Google Cloud / Foundry, Sonnet 4.5 / Opus 4.5 and earlier | 200,000 tokens | **90%** | ~180,000 tokens |
 | Haiku (200K) | 200,000 tokens | **90%** | ~180,000 tokens |
 
 The model-specific threshold is the operational ceiling — beyond it, plan for a `/clear` before the next non-trivial action. Both this rule and `session-handoff.md` Trigger #1 read from this same table.
