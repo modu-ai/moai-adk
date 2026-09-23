@@ -95,6 +95,8 @@ plan-audit iter-2(`.moai/reports/plan-audit/SPEC-DUAL-HARNESS-RECOVERY-001-revie
 
 _<pending run-phase>_
 
+- plan 단계에서 정한 기록 의무(plan-audit iter-3 N3): 증거 디렉터리 `.moai/reports/t1100/`는 gitignore 대상이라 워크트리와 함께 사라지므로, AC-DHR-020의 측정 결과(`outcome`), 측정한 커밋 SHA(`ac020-head.txt`의 값), 증거 파일의 sha256을 경로가 아니라 값으로 이 절에 직접 적는다.
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 _<pending run-phase>_
@@ -102,3 +104,20 @@ _<pending run-phase>_
 ## §E.4 Sync-phase Audit-Ready Signal
 
 _<pending sync-phase>_
+
+## Revision iter-4 (delta)
+
+plan-audit iter-3(FAIL 0.89, `.moai/reports/plan-audit/SPEC-DUAL-HARNESS-RECOVERY-001-review-3.md`)의 blocking 결함 N1과 선택 결함 N3·N4·N7, §E 리드 조정 항목 ①만 고친 좁은 델타다. 아래 줄 외에는 바꾸지 않았고, REQ·AC 수(25·23)와 모든 jq 판정식은 그대로다.
+
+| 항목 | 바뀐 줄 | 내용 |
+|---|---|---|
+| N1 | spec.md:164 (REQ-DHR-023) | "reaches its invocation or time budget" → 예산을 **넘게 될 때**(9번째 호출이 필요하거나 900초 초과) 그 호출 전에 중단·`ABORTED`, 정확히 8회로 끝난 조합은 `ABORTED` 아님 |
+| N1 | plan.md:116 | "예산 도달 시 중단" → "예산 초과 시 … 그 호출 전에 중단", 예산과 같은 호출 수로 끝난 실행은 `ABORTED` 아님 |
+| N1 | acceptance.md:213 (AC-DHR-012) | "14에 닿으면" → "15번째 호출이 필요해지면", 정확히 14회로 끝난 실행은 `ABORTED` 아님 (판정식 `$e.invocations==14` 그대로) |
+| N1 | acceptance.md:312 (AC-DHR-018) | "예산에 닿은 조합" → "예산을 넘게 된 조합(9번째 호출 또는 900초 초과)", 8회 이하·900초 이하는 `ABORTED` 아님 (판정식 `<=8`·`<=900` 그대로) |
+| §E ① | spec.md:237 | 리드 조정 항목 1을 "① 해소 — t1082 `745ae0e6d` (v0.5.2): REQ-FLH-009(t1082 spec.md:103), AC-FLH-008(t1082 acceptance.md:152-158)이 같은 recipient generation 안의 계약을 담음, 칸반 리드가 커밋에서 확인"으로 바꿈. 항목 2(분기 A 조건부)는 그대로 |
+| N4 | spec.md:20, :208, :237 | t1082 SPEC 상태 서술 "unmerged draft"/"미병합 draft" → 미병합, t1082 브랜치에서 status in-progress (v0.5.2, `745ae0e6d`) |
+| N3 | progress.md:98 (§E.2) | AC-DHR-020의 `outcome`, 측정 커밋 SHA, 증거 sha256을 값으로 §E.2에 적는 기록 의무 한 줄 추가(새 AC 없음). §E.2 자리표시는 그대로 |
+| N7 | acceptance.md:412 (AC-DHR-023) | 반환문 부재 시 출력에 `NOT_RUN`을 찍지 않고 `ac023-evidence.json`의 `"not_run": true`로만 기록 → 같은 jsonl을 읽는 AC-DHR-012 판정식과 분리 |
+
+손대지 않은 것: N2·N5·N6(범위 밖), plan.md:132 위험 표의 "예산 도달 시 `ABORTED`"(N1과 같은 표현이지만 이번 델타의 지정 줄이 아니어서 보고만 함).

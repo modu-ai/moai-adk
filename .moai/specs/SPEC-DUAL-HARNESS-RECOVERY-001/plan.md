@@ -113,7 +113,7 @@ run 완료 보고는 `acceptance.md` §C 표를 채운다. 각 행은 명령, �
 
 - REQ-DHR-014(LIVE 부분), REQ-DHR-015(LIVE 부분), REQ-DHR-023, AC-DHR-012, 018, 023
 - 파일: `internal/cli/factory_live_test.go`(카드 흐름 케이스 추가, 기존 왕복 케이스 유지), 새 `internal/cli/codex_role_live_test.go`
-- 실행 조건: 격리된 임시 저장소·`MOAI_HOME`·`CODEX_HOME`, §B-4 예산(AC-DHR-012·023 합쳐 14회, AC-DHR-018 조합당 8회·900초), 예산 도달 시 중단·`ABORTED`, 첫 spawn 전 정리 등록, 조합마다 따로 실행.
+- 실행 조건: 격리된 임시 저장소·`MOAI_HOME`·`CODEX_HOME`, §B-4 예산(AC-DHR-012·023 합쳐 14회, AC-DHR-018 조합당 8회·900초), 예산 초과 시(예산 다음 호출이 필요해지거나 900초를 넘으면) 그 호출 전에 중단·`ABORTED`(예산과 정확히 같은 호출 수로 끝난 실행은 `ABORTED`가 아님), 첫 spawn 전 정리 등록, 조합마다 따로 실행.
 
 ## §G 위험
 

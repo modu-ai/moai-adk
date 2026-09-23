@@ -17,7 +17,7 @@ depends_on:
   - SPEC-FACTORY-MIXED-HOOK-001
   - SPEC-CODEX-WIRING-001
 related_specs:
-  - SPEC-FACTORY-LANE-WORKTREE-HANDOFF-001  # unmerged draft; exists only on the t1082 branch/worktree, not in this tree
+  - SPEC-FACTORY-LANE-WORKTREE-HANDOFF-001  # unmerged; status in-progress on the t1082 branch (v0.5.2, 745ae0e6d); exists only on the t1082 branch/worktree, not in this tree
   - SPEC-CODEX-DUAL-AGENTS-001
   - SPEC-CODEX-LAUNCH-VERB-001
   - SPEC-CODEX-LAUNCHER-001
@@ -161,7 +161,7 @@ The factory test suite SHALL drive each of the four backend combinations (Claude
 
 ### REQ-DHR-023 — LIVE mixed factory card flow evidence
 
-When LIVE verification runs, each of the four backend combinations SHALL complete the card flow of REQ-DHR-022 in real separate CLI and model contexts inside an isolated temporary repository and `MOAI_HOME`, within at most 8 model invocations and 900 seconds per combination, with cleanup of every spawned process registered before the first spawn. When a combination reaches its invocation or time budget, the case SHALL stop, clean up, and report `ABORTED`. Each case SHALL emit its own evidence record. LIVE evidence SHALL be recorded separately from the deterministic evidence and SHALL NOT be claimed to run in CI unless a CI workflow that sets the LIVE gate is observed.
+When LIVE verification runs, each of the four backend combinations SHALL complete the card flow of REQ-DHR-022 in real separate CLI and model contexts inside an isolated temporary repository and `MOAI_HOME`, within at most 8 model invocations and 900 seconds per combination, with cleanup of every spawned process registered before the first spawn. When a combination would exceed its invocation budget (a 9th model invocation would be needed) or exceeds its 900-second time budget, the case SHALL stop before that invocation, clean up, and report `ABORTED`; a combination that finishes within its budget, including one that uses exactly 8 invocations, SHALL NOT be reported as `ABORTED`. Each case SHALL emit its own evidence record. LIVE evidence SHALL be recorded separately from the deterministic evidence and SHALL NOT be claimed to run in CI unless a CI workflow that sets the LIVE gate is observed.
 
 ### REQ-DHR-024 — SKIP and NOT_RUN are not PASS
 
@@ -205,7 +205,7 @@ When the run phase starts, before any change to the factorymsg schema, the repro
 
 ## §E t1082 경계 (SPEC-FACTORY-LANE-WORKTREE-HANDOFF-001)
 
-t1082의 SPEC은 이 트리에 없다. `.claude/worktrees/t1082/.moai/specs/SPEC-FACTORY-LANE-WORKTREE-HANDOFF-001/`에만 있는 미병합 draft이며, 아래 인용은 이번 개정 시점에 그 경로를 읽기 전용으로 읽은 것이다. t1082의 열린 결정 M1(launch-pending 중 handoff)과 M2(두 rebind 경로)는 t1082의 것이고, 이 SPEC은 그 둘을 결정하지 않는다.
+t1082의 SPEC은 이 트리에 없다. `.claude/worktrees/t1082/.moai/specs/SPEC-FACTORY-LANE-WORKTREE-HANDOFF-001/`에만 있는 미병합 SPEC이며(이 개정 시점 t1082 브랜치에서 status in-progress, v0.5.2 `745ae0e6d`), 아래 인용은 이번 개정 시점에 그 경로를 읽기 전용으로 읽은 것이다. t1082의 열린 결정 M1(launch-pending 중 handoff)과 M2(두 rebind 경로)는 t1082의 것이고, 이 SPEC은 그 둘을 결정하지 않는다.
 
 ### 겹침 표
 
@@ -234,7 +234,7 @@ t1082의 SPEC은 이 트리에 없다. `.claude/worktrees/t1082/.moai/specs/SPEC
 
 이 SPEC이 정하지 않고 리드에게 넘기는 사항이다.
 
-1. ND2 반영 확인: t1082가 좁힌 계약(BOUND 뒤 재전송은 새 키, 같은 키 `duplicate`는 같은 generation 안)을 t1082 SPEC 본문(REQ-FLH-009, design.md 204-205행, AC-FLH-008)에 반영하는지. 새 키도 dispatch ID와 attempt를 담아야 REQ-DHR-016의 키 범위가 지켜진다. 새 키에 붙일 구분자는 t1082가 정한다.
+1. ① 해소 — t1082 `745ae0e6d` (v0.5.2, t1082 브랜치에서 status in-progress): REQ-FLH-009(t1082 spec.md:103)와 AC-FLH-008(t1082 acceptance.md:152-158)이 같은 recipient generation 안의 계약(BOUND 뒤 재전송은 새 키, 같은 키 `duplicate`는 같은 recipient generation 안)을 담는다. 칸반 리드가 해당 커밋에서 확인했다. 새 키도 dispatch ID와 attempt를 담아야 REQ-DHR-016의 키 범위가 지켜진다. 새 키에 붙일 구분자는 t1082가 정한다.
 2. 분기 A(`reproduced`)가 선택되면 t1082의 "unchanged" 문구 조정(위 멱등 범위 규칙). 운영자 결정 3에 따른 기존 항목이며 ND2와 별개다.
 
 ## §F 범위 밖

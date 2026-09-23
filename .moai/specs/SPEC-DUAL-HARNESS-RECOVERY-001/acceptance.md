@@ -210,7 +210,7 @@ MCP 경유 부작용은 이 AC가 증명하지 않으며 `UNSUPPORTED`로 남는
 
 음성·변이(판정식이 `false`여야 하는 입력, plan-audit iter-3에서 합성 입력으로 확인): 같은 역할 이름 12개와 빈 nonce(iter-2 변이), 같은 역할 이름 12개와 유효한 nonce, nonce 하나가 빈 값, 12개 역할이 같은 nonce, 생성 목록 밖의 역할 이름, 양성 대조 해시가 빈 값, 호출 수 0, 호출 수 15, 같은 감사 역할 두 번, 태그 줄 해시와 파일 해시 불일치, 테스트 skip. 증거 파일이 없으면 판정 명령이 판정식에 닿지 않아 `true`가 나오지 않는다.
 
-SKIP 의미: `MOAI_CODEX_ROLE_LIVE=1`이 없으면 이 테스트는 SKIP하고 AC-DHR-012는 `NOT_RUN`이다. 호출 수가 14에 닿으면 테스트는 남은 단계를 멈추고 `ABORTED`를 찍은 뒤 실패한다. CI에서 이 게이트를 켜는 워크플로는 plan 시점에 관측되지 않았다.
+SKIP 의미: `MOAI_CODEX_ROLE_LIVE=1`이 없으면 이 테스트는 SKIP하고 AC-DHR-012는 `NOT_RUN`이다. 15번째 호출이 필요해지면(호출 수가 14를 넘게 되면) 테스트는 그 호출을 시작하지 않고 남은 단계를 멈추며 `ABORTED`를 찍은 뒤 실패한다. 호출 수가 정확히 14로 끝난 실행은 `ABORTED`가 아니다. CI에서 이 게이트를 켜는 워크플로는 plan 시점에 관측되지 않았다.
 
 실행:
 
@@ -309,7 +309,7 @@ mkdir -p .moai/reports/t1100 && go test -json ./internal/factorymsg -run '^TestF
 
 음성·변이(판정식이 `false`, 합성 입력으로 확인): 한 조합 호출 9, 한 조합 정리 pid 없음, 네 조합 같은 nonce, 파일 이름과 다른 조합 이름, 실행 뒤 수정된 증거 파일(태그 해시 불일치). 증거 파일 하나가 없으면 판정 명령이 판정식에 닿지 않는다.
 
-SKIP 의미: `MOAI_FACTORY_LIVE=1`이 없으면 네 테스트는 SKIP하며 AC-DHR-018은 `NOT_RUN`, AC-FACT-01은 증명되지 않음이다. 예산에 닿은 조합은 `ABORTED`를 찍고 실패한다. plan 시점에 `.github/workflows/`에서 `MOAI_FACTORY_LIVE`를 쓰는 워크플로는 관측되지 않았으므로 CI 실행을 주장하지 않는다.
+SKIP 의미: `MOAI_FACTORY_LIVE=1`이 없으면 네 테스트는 SKIP하며 AC-DHR-018은 `NOT_RUN`, AC-FACT-01은 증명되지 않음이다. 예산을 넘게 된 조합(9번째 모델 호출이 필요해지거나 경과 시간이 900초를 넘음)은 그 호출 전에 멈추고 `ABORTED`를 찍은 뒤 실패한다. 호출 8회 이하·900초 이하로 끝난 조합은 `ABORTED`가 아니다. plan 시점에 `.github/workflows/`에서 `MOAI_FACTORY_LIVE`를 쓰는 워크플로는 관측되지 않았으므로 CI 실행을 주장하지 않는다.
 
 ```bash
 mkdir -p .moai/reports/t1100 && rm -f .moai/reports/t1100/ac018-evidence-claude-claude.json && unset MOAI_KANBAN MOAI_KANBAN_ID MOAI_KANBAN_LABEL MOAI_KANBAN_LEAD_ADDR MOAI_KANBAN_SETTINGS_INJECTED && MOAI_FACTORY_LIVE=1 MOAI_FACTORY_LIVE_CASE=cardflow-claude-claude MOAI_T1100_EVIDENCE_DIR=../../.moai/reports/t1100 go test -json ./internal/cli -run '^TestFactoryLiveCardFlowClaudeClaude$' -count=1 -timeout=1000s > .moai/reports/t1100/ac018-live-claude-claude.jsonl
@@ -409,7 +409,7 @@ AC-DHR-012와 같은 실행(같은 jsonl, 같은 호출 예산 14회)의 (ii) �
 
 음성·변이(판정식이 `false`, 합성 입력으로 확인): 반환문 해시와 판정 파일 해시 불일치, 같은 역할 두 번, 빈 해시끼리 같음, 실행 뒤 수정된 증거 파일(태그 해시 불일치).
 
-세션 기록에 하위 에이전트 반환문이 남지 않으면 테스트는 `NOT_RUN`을 찍고, 이 AC는 `NOT_RUN`이다(반환문을 얻을 수 없으면 원문 일치를 판정하지 않는다). 실행 명령은 AC-DHR-012의 실행 명령이다(그 명령이 `ac023-evidence.json`도 먼저 지운다).
+세션 기록에 하위 에이전트 반환문이 남지 않으면 테스트는 출력에 `NOT_RUN`을 찍지 않고 `ac023-evidence.json`에 `"not_run": true`만 기록하며(같은 jsonl을 읽는 AC-DHR-012 판정식이 이 사유로 `false`가 되지 않게 한다), 이 AC는 `NOT_RUN`이다(반환문을 얻을 수 없으면 원문 일치를 판정하지 않는다). 실행 명령은 AC-DHR-012의 실행 명령이다(그 명령이 `ac023-evidence.json`도 먼저 지운다).
 
 판정:
 
