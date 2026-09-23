@@ -112,6 +112,7 @@ func (e errFake) Error() string { return string(e) }
 // --- disposal-path wiring ---
 
 func TestRunRemove_PrunesLaunchLedgerAfterSuccess(t *testing.T) {
+	stubReadableEmptyLockList(t)
 	calls := ledgerSeam(t)
 	origProvider := WorktreeProvider
 	t.Cleanup(func() { WorktreeProvider = origProvider })

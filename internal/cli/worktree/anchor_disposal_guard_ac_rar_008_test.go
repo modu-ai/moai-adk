@@ -100,6 +100,7 @@ func TestACRAR008_RemoveCoordinate(t *testing.T) {
 
 	t.Run("converse control: no live session reports free", func(t *testing.T) {
 		isolateCallerRegistry(t)
+		stubReadableEmptyLockList(t)
 		tree := t.TempDir()
 		writeTreeRegistry(t, tree, []session.Entry{deadEntry(t, tree)})
 		mock := installProvider(t, tree)
