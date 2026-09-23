@@ -46,7 +46,7 @@ not because the criterion is unsatisfiable.
 | R-03 | `grep -rn migrateFactoryV2ToV3 internal/homestate` | *(empty)* | 1 | no v2→v3 migration exists, so no legacy row can be reconciled |
 | R-04 | `grep -c retired internal/homestate/runtime.go` | `0` | 1 | no `retired` status value and no `run.retired` event are written anywhere |
 | R-05 | `grep -rn ReconcileActiveRuns internal/homestate` | *(empty)* | 1 | the reconciler does not exist |
-| R-06 | `grep -c "Use: \"runs\"" internal/cli/factory_handoff_recover.go` | `0` | 1 | the `moai factory runs` operator surface does not exist |
+| R-06 | `grep -cE 'Use:[[:space:]]+"runs"' internal/cli/factory_handoff_recover.go` | `0` | 1 | the `moai factory runs` operator surface does not exist |
 | R-07 | `grep -rln factory_run_retire test/integration/harness` | *(empty)* | 1 | no test sits on the one path the three-OS CI job runs |
 | R-08 | `grep -c "AC-011 PASS" .moai/specs/SPEC-FACTORY-RUN-RETIRE-001/progress.md` | `0` | 1 | no door invocation has been recorded |
 

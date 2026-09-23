@@ -1,7 +1,7 @@
 ---
 id: SPEC-FACTORY-RUN-RETIRE-001
 title: "Factory run retirement — owner-liveness reconciliation so a dead lead's run leaves 'active'"
-version: "0.10.0"
+version: "0.11.0"
 status: completed
 created: 2026-09-23
 updated: 2026-09-24
@@ -422,8 +422,8 @@ Each Gap in `.moai/reports/t1107/verdict.md` §4 is dispositioned here:
 
 Recorded so that a later audit reads these as decided rather than overlooked. D7-D10 were raised at
 plan-audit iter-1 and declined on the team lead's routing; D20-D21 were raised at the Tier L audit
-and **retained** — they are live debt carried deliberately, each with the evidence that makes
-carrying it defensible, not findings dismissed as wrong:
+and retained at plan time, and both are now **closed** — each by the very condition it was recorded
+with, met in the run phase and evidenced below rather than asserted:
 
 | Finding | Disposition and why |
 |---|---|
@@ -431,8 +431,8 @@ carrying it defensible, not findings dismissed as wrong:
 | **D8** — verification-verb classification in the AC matrix is uneven | The matrix column is a reader's index, not a contract; each AC's own Given-When-Then carries the binding form. |
 | **D9** — REQ-002 states a transaction constraint (an implementation detail) at the requirement layer | Deliberate: an owner stamp written outside the row's own transaction can be lost against the row it describes, which is an observable behaviour, not an internal choice. |
 | **D10** — one measurement is attributed in both §A and §A.1 | The duplication is between a summary and its detail section; removing either costs a reader the attribution at the point of use. |
-| **D20** — the RED-now evidence ledger in `acceptance.md` §C.1 carries a document-level tree pin of `bb5b8f9d1`, now several commits behind HEAD | Retained because the pin's staleness has **zero observational impact**, and that is measured rather than assumed: `git diff bb5b8f9d1 4b29af46f -- internal/ .github/ test/` is empty, and the Tier L auditor re-ran all eight RED cells at HEAD and found them **8/8 still red**. What would make this debt live again: any code-side change under `internal/`, `.github/`, or `test/` — at which point the ledger must be re-pinned and the cells re-measured. |
-| **D21** — the premise that the tmux pane identity names the session process is not measured inside this SPEC | Retained because the premise is graded as a **prediction** in all three places it appears rather than asserted as measured; AC-011 closes it by execution in the run phase; and `plan.md` M5 requires a blocker report rather than a silent downgrade if the sandbox cannot provide a tmux server. External support exists but is not a substitute: the iter-3 auditor independently measured it on tmux 3.6a (`pane_pid` is the executed command itself, with no children) and found it true — which is not the same as this SPEC having measured it. |
+| **D20** — the RED-now evidence ledger in `acceptance.md` §C.1 carries a document-level tree pin of `bb5b8f9d1`, now several commits behind HEAD | **CLOSED.** The condition recorded with it — "any code-side change under `internal/`, `.github/`, or `test/`" — **has fired**: the implementation commit `eaa3322a1` changed both `internal/` and `test/`, and `git diff --stat bb5b8f9d1 HEAD -- internal/ .github/ test/` now reports 17 files changed (+1821/−13). Closing rather than re-pinning, because the condition was written while the ledger was a **pre-implementation baseline awaiting the run phase**, where a code change meant the RED cells might no longer be red for the reason claimed. Once the implementation lands, those cells have discharged their job: the pin is then a correct historical record of the tree the RED was measured against, and being behind HEAD is what a historical pin is *for*. Re-pinning to HEAD would be actively wrong — it would assert a RED ledger against a tree where the cells are, by design, green. The pin stays at `bb5b8f9d1` and is read as history, not as a current measurement. |
+| **D21** — the premise that the tmux pane identity names the session process is not measured inside this SPEC | **CLOSED** by the condition recorded with it: "AC-011 closes it by execution in the run phase". AC-011 executed, and the evidence is in `progress.md` §E.2 — the pane door (`moai codex -f --spawn`) recorded run row `tltbl8` carrying `68638 / 1790159084.722334`, with tmux itself reporting `PANE %1 pane_pid=68638`: the same process. The premise is therefore now measured **inside this SPEC**, in the run phase, which is precisely what the retention was conditioned on; the external tmux 3.6a corroboration is no longer load-bearing. `plan.md` M5's blocker-report requirement was never reached, since the sandbox did provide a tmux server. |
 
 ## §H History
 
@@ -557,3 +557,25 @@ carrying it defensible, not findings dismissed as wrong:
   performed in v0.4.0 (REQ-009 into REQ-005) is of a different kind: it removes a **shipped**
   duplicate statement of one invariant whose two copies had measurably drifted, which is the D14
   defect itself.
+- 2026-09-24 — v0.11.0 — manager-spec — **§G D20 and D21 closed** plus the **R-06 pattern repair**,
+  all three because each item's own recorded condition had already been met and the record had not
+  followed. **D20**: its re-opening condition ("any code-side change under `internal/`, `.github/`,
+  or `test/`") fired at `eaa3322a1`, which changed `internal/` and `test/` —
+  `git diff --stat bb5b8f9d1 HEAD -- internal/ .github/ test/` now reports 17 files changed
+  (+1821/−13). Closed rather than re-pinned: the condition was written while the ledger was a
+  pre-implementation baseline, where a code change could invalidate a RED cell; once the
+  implementation lands the cells have discharged their job and the pin is history, so re-pinning to
+  HEAD would assert a RED ledger against a tree where the cells are by design green. **D21**: its
+  closing condition ("AC-011 closes it by execution in the run phase") was met and recorded —
+  `progress.md` §E.2 AC-011 shows the pane door's row `tltbl8` carrying
+  `68638 / 1790159084.722334` with tmux reporting `PANE %1 pane_pid=68638`, the same process — so
+  the premise is now measured inside this SPEC and the debt is no longer live. **R-06**: the cell's
+  selector spelled one space where the gofmt-aligned source has three
+  (`internal/cli/factory_handoff_recover.go:64`), so it returned `0` both before **and** after
+  implementation and could never flip — an instrument-manufactured zero inside the SPEC's own
+  verification apparatus, the same shape §C.1 already rejects for `go test -run` selectors. Replaced
+  with the whitespace-tolerant `grep -cE 'Use:[[:space:]]+"runs"'`, verified in all three
+  directions: `0` at `9b1805a67` (so the recorded RED value stays honest), `1` at HEAD (so the cell
+  actually flips), and `0` against `internal/cli/factory.go` (so the pattern is not matching
+  everything). No requirement, no other acceptance criterion, and no design or research text was
+  touched; counts stay REQ 16 / AC 17 and `status:` stays `completed`. Commit: this revision.
