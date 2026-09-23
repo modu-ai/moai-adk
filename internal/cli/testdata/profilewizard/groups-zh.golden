@@ -81,7 +81,7 @@ shift+tab 返回 • enter 下一步
   会话推理强度                                                                  
   使用此配置文件启动的 Claude 会话的推理深度。xhigh/max 需要支持它们的模型（Opus
   5.5、Sonnet 5、Opus 4.7 及以上）。各代理的推理强度由代理模型策略决定。        
-    (runtime default)                                                           
+    (model policy, else Claude Code default: medium on Opus 5.5)                
     low - 最快，简略推理                                                        
     medium - 均衡 (推荐)                                                        
   ▸ high - 深度推理                                                             

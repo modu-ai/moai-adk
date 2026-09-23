@@ -27,16 +27,16 @@ description: 作業の性質と品質/コストの目標に合わせてエージ
 
 まず選択肢を確認しておきます。モデルポリシーとは、以下のラインナップのどのモデルを、どの推論深度で使うかを選ぶ規則です。
 
-### モデルラインナップ (2026-08)
+### モデルラインナップ (2026-09)
 
 | モデル | 識別子 | コンテキスト | 性格 |
 |------|--------|----------|------|
-| Claude Fable 5 | `claude-fable-5` | 256K | 新規 Mythos-tier 汎用最上位。最も深い推論と複雑なコーディング |
-| Claude Opus 5 / 4.8 | `opus` | 1M | 複雑なアーキテクチャ、高難度の推論 |
-| Claude Sonnet 5 | `sonnet` | 200K | 速度と知能のバランス、日常的なコーディング |
+| Claude Fable 5 | `claude-fable-5` | 1M | 新規 Mythos-tier 汎用最上位。最も深い推論と複雑なコーディング |
+| Claude Opus 5.5 | `opus` | 1M | 複雑なアーキテクチャ、高難度の推論 |
+| Claude Sonnet 5 | `sonnet` | 1M | 速度と知能のバランス、日常的なコーディング |
 | Claude Haiku 4.5 | `claude-haiku-4-5-20251001` | 200K | 最速かつ低コスト、単純・大量の作業 |
 
-> MoAI のモデルポリシーはこのラインナップ全体を使いません。**No-Haiku ポリシー**により Haiku はエージェントマトリクスのどこにも登場せず、マルチターンのエージェンティック行はすべて Opus が担当します。理由はすぐ次の節で説明します。
+> MoAI のモデルポリシーはこのラインナップ全体を使いません。**No-Haiku ポリシー**により Haiku はエージェントマトリクスのどこにも登場せず、マルチターンのエージェンティック行は Opus が担当します(例外は `low` プロファイルの `e2e-tester` だけです)。理由はすぐ次の節で説明します。
 
 ### 推論深度 (effort)
 
@@ -47,8 +47,10 @@ description: 作業の性質と品質/コストの目標に合わせてエージ
 | `low` | 最も浅い推論。速くて安い |
 | `medium` | バランス。デフォルトプロファイルの基準点 |
 | `high` | 深い推論 |
-| `xhigh` | さらに深い推論 (Opus 5 · 4.8 · Sonnet 5 · Opus 4.7 が対応) |
+| `xhigh` | さらに深い推論 (Opus 5.5 · Opus 5 · 4.8 · Sonnet 5 · Opus 4.7 が対応) |
 | `max` | 最も深い推論 |
+
+> **デフォルトの effort**: Opus 5.5 のデフォルト effort は `medium` で、effort に対応するほかのモデルはほとんどが `high` をデフォルトにしています。MoAI のプロファイルウィザードと Web コンソールも、セッションの effort として `medium` を推奨します。`opus` エイリアスが Opus 5.5 に解決されるには Claude Code v2.1.280 以上が必要です。
 
 > **`ultrathink` キーワード**: `ultrathink` を入力すると、`effort:xhigh` と Adaptive Thinking (推論トークンの自動割り当て) が同時に有効になります。固定の `budget_tokens` は使いません — モデル自身が推論深度を配分します。`/effort low|medium|high|xhigh|max|ultracode|auto` スラッシュコマンドでも切り替えられます。
 
@@ -66,7 +68,7 @@ description: 作業の性質と品質/コストの目標に合わせてエージ
 **名前の整理**: `llm.yaml` の `profile` フィールド、legacy の `performance_tier` エイリアス、CLI フラグ `--model-policy` はいずれも `high`/`medium`/`low` の 3 値をそのまま使い、1:1 で対応します。デフォルトは `medium` です。旧最上位ティア名の `max` は、既存設定が読み込まれ続けるよう今も `high` の**読み取り専用エイリアス**として扱われますが、保存時には常に `high` と記録されます。移行作業は不要です。`performance_tier` は `profile` がないときのみ読み込まれます。
 {{< /callout >}}
 
-> **ポリシーを下げても、より弱いモデルクラスに移るわけではありません。** 長い息のエージェンティック作業では、Opus の `low` effort がどの effort の Sonnet よりもスコアが高く、同時に課題あたりコストも安くなります。そこで `low` ポリシーは推論深度を下げて Opus *の内側* で節約し、マルチステップの完走失敗が問題にならない単発の行でのみ Sonnet を使います。
+> **ポリシーを下げても、ほとんどの行はより弱いモデルクラスに移りません。** 長い息のエージェンティック作業では、Opus の `low` effort がどの effort の Sonnet よりもスコアが高く、同時に課題あたりコストも安くなります。そこで `low` ポリシーは推論深度を下げて Opus *の内側* で節約し、Sonnet はもともと単発の行に使い、`low` でモデルが変わる行は `e2e-tester`(`sonnet / low`)だけです。
 
 ## エージェント別割り当て表
 
@@ -107,8 +109,8 @@ description: 作業の性質と品質/コストの目標に合わせてエージ
 ## 割り当て原則
 
 - **支出は判断する行に**: ポリシーはコスト/スコア曲線の導出ではなく、確定されたオペレーター判断です。監査・助言行（`plan-auditor`、`sync-auditor`、`super-advisor`）と調整行（`manager-design`、`manager-lead`）、判定行（`mission-governor`）が `high` を維持する一方、著作・実装行（`manager-spec`、`manager-develop`）は 3 プロファイルすべて `medium` にとどまります。
-- **エージェンティック行はすべて Opus**: `manager-spec`、`manager-develop`、`plan-auditor`、`sync-auditor`、`manager-design`、`manager-lead`、`builder-harness`、`e2e-tester` などマルチターン作業はすべて Opus に残します。Opus の `low` がどの effort の Sonnet よりもスコアが高く、課題あたりコストが安いからです。
-- **Sonnet は単発・入力支配の行のみ**: `manager-docs` のドキュメント整理、`manager-git` の機械的作業、`Explore` の探索は入力が大半を占める単一パスで終わり、マルチステップの完走失敗を心配する必要がなく、その場所では Sonnet の安い入力単価が決め手になります。この 3 行は 3 つのプロファイルすべてで `sonnet / low` に固定です。
+- **エージェンティック行は Opus**: `manager-spec`、`manager-develop`、`plan-auditor`、`sync-auditor`、`manager-design`、`manager-lead`、`builder-harness`、`e2e-tester` などマルチターン作業は Opus に残します(`e2e-tester` だけは `low` で `sonnet / low`)。Opus の `low` がどの effort の Sonnet よりもスコアが高く、課題あたりコストが安いからです。
+- **Sonnet が担う単発・入力支配の行**: `manager-docs` のドキュメント整理、`manager-git` の機械的作業、`Explore` の探索は入力が大半を占める単一パスで終わり、マルチステップの完走失敗を心配する必要がなく、その場所では Sonnet の安い入力単価が決め手になります。この 3 行は 3 つのプロファイルすべてで `sonnet / low` に固定です。`low` プロファイルでは `e2e-tester` も `sonnet / low` になります。
 - **`max` を受ける行はない**: `max` は `high` の上の唯一の段階として語彙に残りますが、現在使用するセルはありません。
 - **`xhigh` はどこにも使わない**: Opus ではスコアが `high` と同じなのにコストだけ 49% 余分にかかります。
 

@@ -305,7 +305,14 @@ func statuslineThemeOptions() []OptionDef {
 const (
 	emptyLabelUnset          = "(unset)"
 	emptyLabelProjectDefault = "(project default)"
-	emptyLabelRuntimeDefault = "(runtime default)"
+	// emptyLabelRuntimeDefault is the effort_level empty option. An empty effort
+	// is not a bare runtime default: resolveLaunchEffort falls back to the
+	// model-policy-derived effort, and only with no policy does Claude Code's own
+	// default apply. The TUI wizard renders this literal on every locale (the
+	// console localizes opt.runtime_default instead), so it names the same two
+	// fallbacks as that key's en text in a shorter form that fits the wizard row
+	// (TestEffortEmptyLabelNamesBothFallbacks).
+	emptyLabelRuntimeDefault = "(model policy, else Claude Code default: medium on Opus 5.5)"
 )
 
 // allFields는 6개 섹션의 34개 정규 필드를 렌더 순서대로 구성하여 반환한다.

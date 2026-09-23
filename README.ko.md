@@ -243,6 +243,8 @@ DeepSWE 리더보드 (과제 113개, 노력도별 보기)가 이를 보여준다
 
 Opus 5를 가장 낮은 노력으로 돌린 쪽이 Sonnet 5를 가장 높은 노력으로 돌린 쪽보다 점수가 높고 (58% vs 54%), 과제당 비용은 16분의 1이다 ($1.66 vs $26.40) — Sonnet의 토큰 단가가 더 싸다는 점은 이길 수 없다. 원인은 268 스텝 대 36 스텝이다. 청구서를 쓰는 것은 토큰 요율이 아니라 재시도 루프다. 비용은 **과제마다 알맞은 모델과 추론 깊이를 배정**하는 것으로 결정된다.
 
+위 표는 Opus 5에서 측정한 값이다. MoAI의 `opus` 별칭은 이제 Opus 5.5를 가리키며 (Claude Code v2.1.280 이상 필요, 기본 effort `medium`), Opus 5.5는 아직 재측정하지 않았다.
+
 <p align="center">
   <img src="./assets/images/why-tokenomics-infographic-ko.png" alt="토크노믹스의 역설 — 가격은 98% 하락, 지출은 320% 상승. 해법은 측정→배정→다이어트→중단의 4단계" width="80%">
 </p>
@@ -296,7 +298,7 @@ cd my-project
 | 선택 | 프로젝트 루트에 생기는 것 |
 |---|---|
 | `claude` (기본값) | `.claude/` 표면 전체와 `AGENTS.md` — 지금까지의 기본 동작 |
-| `gpt` | Codex 단독 배포: `AGENTS.md`와 Codex 표면(`.codex/`, `.agents/skills/`, `.moai/`)만 설치. `.claude/` 디렉터, `CLAUDE.md`, `.mcp.json`은 생기지 않는다. Claude 전용 런타임 기능(AskUserQuestion, 서브에이전트 소환, output style, 슬래시 명령, Workflow 스크립트)은 사용할 수 없다 |
+| `gpt` | Codex 단독 배포: `AGENTS.md`와 Codex 표면(`.codex/`, `.agents/skills/`, `.moai/`)만 설치. `.claude/` 디렉터리, `CLAUDE.md`, `.mcp.json`은 생기지 않는다. Claude 전용 런타임 기능(AskUserQuestion, 서브에이전트 소환, output style, 슬래시 명령, Workflow 스크립트)은 사용할 수 없다 |
 | `both` | `claude` 배포에 `.codex/` 연결을 더한다. `.mcp.json` 프로비저닝은 강제로 켜진다 |
 
 

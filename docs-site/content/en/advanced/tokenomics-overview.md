@@ -94,16 +94,16 @@ The operational threshold at which the budget guard stops is model-specific. Lar
 
 | Model class | Window | Handoff threshold | Absolute ceiling |
 |-------------|--------|-------------------|------------------|
-| Opus 5 (1M) | 1,000,000 tokens | 50% | ~500,000 tokens |
+| Opus 5.5 (1M) | 1,000,000 tokens | 50% | ~500,000 tokens |
 | GLM-5.3 (1M) | 1,000,000 tokens | 50% | ~500,000 tokens |
-| Fable (256K) | 256,000 tokens | 90% | ~230,000 tokens |
-| Sonnet / Opus standard (200K) | 200,000 tokens | 90% | ~180,000 tokens |
+| Fable / Sonnet 5 (1M) | 1,000,000 tokens | 50% | ~500,000 tokens |
+| Sonnet 4.5 and earlier (200K) | 200,000 tokens | 90% | ~180,000 tokens |
 
-The 1M-context models (Opus 5, GLM-5.3) recommend handoff at 50%. A wider window does not mean using it to the end — folding earlier to protect cache and headroom is the more stable choice. Watch the statusline context gauge (CW%) and prepare a `/clear` as you approach the threshold. For the detailed procedure and handoff-message structure, see the [Token Budget Management and Graceful Stop](/en/advanced/token-budget/) page.
+The 1M-context models (Opus 5.5, GLM-5.3) recommend handoff at 50%. A wider window does not mean using it to the end — folding earlier to protect cache and headroom is the more stable choice. Watch the statusline context gauge (CW%) and prepare a `/clear` as you approach the threshold. For the detailed procedure and handoff-message structure, see the [Token Budget Management and Graceful Stop](/en/advanced/token-budget/) page.
 
 ## Model Tier Routing
 
-What concretizes Layer B's routing is the model profile policy. MoAI-ADK v3.0 excludes Haiku from the routing model set and distributes work across a 3-tier structure keyed to task character — Sonnet on single-shot rows, Opus across the agentic ladder, and `max` effort on the two rarest-invocation rows. The rationale for this design and the profile matrix implementation are covered in the next two pages.
+What concretizes Layer B's routing is the model profile policy. MoAI-ADK v3.0 excludes Haiku from the routing model set and distributes work across a 3-tier structure keyed to task character — Sonnet on single-shot rows, Opus across the agentic ladder, with the higher effort levels concentrated on the rows that judge (auditing, advising, coordinating). The rationale for this design and the profile matrix implementation are covered in the next two pages.
 
 - [3-Tier Agent Architecture](/en/advanced/no-haiku-3tier/) — why Haiku is excluded, DeepSWE leaderboard rationale
 - [Profile Matrix](/en/advanced/profile-matrix/) — the single 3-column per-agent profile matrix

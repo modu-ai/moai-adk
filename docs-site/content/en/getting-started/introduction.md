@@ -144,12 +144,12 @@ MoAI-ADK assigns each agent the optimal model and reasoning depth. The goal is t
 
 | Tier | Characteristics |
 |------|------|
-| **high** | Highest quality — `max` reasoning depth on the two agents with the lowest call frequency |
+| **high** | Highest quality — same as medium except that `builder-harness` and `e2e-tester` run one effort level higher |
 | **medium** (default) | Balance of quality and cost |
-| **low** | Lowest cost per task — agentic agents drop to Opus `low` effort, and Sonnet appears only on single-shot rows |
+| **low** | Lowest cost per task — the auditing and coordinating rows drop to `medium` and `builder-harness` to Opus `low` (`super-advisor` and `mission-governor` stay at `high`), and Sonnet covers the single-shot rows plus `e2e-tester` |
 
 {{< callout type="info" >}}
-The default tier is **medium**. Changing the tier does not change the model class — only each agent's Opus reasoning depth moves. `low` keeps every agentic row on Opus `low` effort and uses Sonnet only on single-shot rows; `high` raises the two lowest-call-frequency agents to `max` effort. Set it with the `--model-policy` flag or in the initialization wizard.
+The default tier is **medium**. Changing the tier mostly moves each agent's Opus reasoning depth; the only model change is `e2e-tester`, which moves to Sonnet under `low`. `low` drops the auditing and coordinating rows to `medium` and `builder-harness` to `low`, and uses Sonnet only on single-shot rows and `e2e-tester`; `high` raises only `builder-harness` and `e2e-tester` one effort level above medium. No tier assigns `max` to any agent. Set it with the `--model-policy` flag or in the initialization wizard.
 {{< /callout >}}
 
 ### Execution modes and orchestration
