@@ -399,6 +399,114 @@ SPEC 재량 안의 결정:
 
 후속 카드 후보(리드 결정, 착지 후): factorymsg `Open` 자체가 부하 걸린 머신에서 약 39–43 ms/op(훅 바인드 예산 200 ms의 약 20%)이며 원인은 재지 않았다(측정은 "Absorb develop" 절 (b)).
 
+### M5 — Codex worktree anchor, 폐기 동등성, `moai codex -k` (REQ-DHR-008 ~ 012)
+
+커밋:
+
+| 커밋 | 내용 |
+|---|---|
+| `990ab3416` | session: lock 보유자 접근자(`CodexAnchorLockReason`, `LockReasonPID`, `LockHolderConfirmedDead`) — 새 파일 `anchor_lock_holder.go`. `anchor_lock.go`는 바꾸지 않았다 |
+| `669dda570` | worktree: `remove`가 lock-aware 판정으로 anchor를 가린다. `TestWorktreeDisposalRefusesUnintegratedCodexTree` |
+| `26227a7b4` | cli: `moai codex -w` anchor lock·교체 가드·생성 base 대조·동시 writer 거부, `moai cc -w` 읽기 전용 사전 판정, `moai codex -k` |
+
+AC 판정(명령은 `acceptance.md`의 것을 그대로 실행. 측정 트리는 커밋 `26227a7b4`와 같은 내용 — AC 실행 뒤 코드 변경 없음, 이 문서 커밋만 뒤따른다):
+
+| AC | 판정 출력 | 증거 파일 | pass / fail / skip 이벤트 |
+|---|---|---|---|
+| AC-DHR-006 | `true` | `.moai/reports/t1100/ac006.jsonl` | 7 / 0 / 0 |
+| AC-DHR-007 | `true` | `.moai/reports/t1100/ac007.jsonl` | 10 / 0 / 0 |
+| AC-DHR-008 | `true` | `.moai/reports/t1100/ac008.jsonl` | 6 / 0 / 0 |
+| AC-DHR-009 | `true` | `.moai/reports/t1100/ac009.jsonl` | 11 / 0 / 0 |
+| AC-DHR-001 (회귀) | `true` | `.moai/reports/t1100/ac001.jsonl` | 11 / 0 / 0 |
+| AC-DHR-002 (회귀) | `true` | `.moai/reports/t1100/ac002.jsonl` | 11 / 0 / 0 |
+| AC-DHR-003 (회귀) | `true` | `.moai/reports/t1100/ac003.jsonl` | 6 / 0 / 0 |
+| AC-DHR-004 (회귀) | `true` | `.moai/reports/t1100/ac004.jsonl` | 5 / 0 / 0 |
+| AC-DHR-021 (회귀) | `true` | `.moai/reports/t1100/ac021.jsonl` | 5 / 0 / 0 |
+| AC-DHR-022 (회귀) | `true` | `.moai/reports/t1100/ac022.jsonl` | 5 / 0 / 0 |
+| AC-DHR-005 | `false` — **PARTIAL / UNPROVEN** (아래) | `.moai/reports/t1100/ac005.jsonl` | 6 / 0 / 1 |
+
+AC-DHR-006의 Windows 분기는 `NOT_RUN`이다. `codex_direct_windows.go`(`//go:build windows`)의 `codexDirectAnchorPID`는 darwin 로컬 실행에서 컴파일되지 않고, CI Windows 잡에서 이 테스트의 pass를 관측하기 전에는 인용하지 않는다. 로컬에서 잰 것은 `GOOS=windows GOARCH=amd64` 빌드와 vet이 통과한다는 것뿐이다(아래). 위 `true`는 darwin 분기다.
+
+**AC-DHR-005 — PARTIAL / UNPROVEN.** PASS로 세지 않는다. M5는 이 AC의 행을 바꾸지 않았다(M4와 같은 6 / 0 / 1).
+
+- 통과한 행(5): `gpt_to_both`, `both_to_claude`, `both_to_gpt`, `gpt_to_claude`, `older_binary_to_newer`.
+- 건너뛴 행(1): `claude_to_both` — `t.Skip`. 건너뛴 이유(테스트 출력 그대로): `BLOCKED on the template deployer: update fails at mkdir .agents/skills/moai (claude skill-mirror link) before any .codex/ step`. 그 밑의 update 오류(M4 관측): `moai update`가 `mkdir .agents/skills/moai: file exists`로 실패한다.
+- 추정 원인: 관리 경로 정리 단계가 symlink의 대상을 지워, 끊긴 링크가 배포자의 `MkdirAll`을 막는다. **재현·측정하지 않았다** — 코드 판독 가설이다.
+- 건너뛴 행은 PASS로 세지 않는다. 판정식은 skip 0을 요구하므로 `false`가 맞는 출력이다.
+- 후속: 배포자 결함은 별도 카드로 간다(리드 결정 (a), 2026-09-23). t1100은 고치지 않는다. 그 카드가 develop에 착지하면 t1100은 develop을 흡수하고 sync 전에 AC-DHR-005를 다시 돌린다.
+
+RED 증거(E8):
+
+- 컴파일 RED(구현 전, `go vet`): `vet: internal/cli/worktree/disposal_codex_tree_test.go:63:18: undefined: session.CodexAnchorLockReason`, `internal/cli/codex_worktree_anchor_test.go:149:35: undefined: codexWorktreeWriterCheck`, `…:149:61: undefined: codexWorktreeAnchorLock`, `…:149:86: undefined: codexResolveBaseCommit`.
+- 동작 RED(동작 없는 스켈레톤을 넣고 실행, 스켈레톤은 GREEN 전에 지움):
+  - `codex_worktree_anchor_test.go:194: …/new-tree: no git worktree lock after launch`
+  - `…:221: launch accepted a tree whose HEAD is not the resolved base`
+  - `…:257: launch replaced or ignored a live lock`
+  - `…:300: round 0: both launchers proceeded`
+  - `…:418: codex -w live_lock: launch into an anchored tree was allowed` (unreadable_lock·registry_only, cc 쪽 세 칸도 같은 모양)
+  - `…:584: anchor got (0, ""), cleanups 0; want the pane identity and no cleanup`
+  - `codex_kanban_test.go:151: codex [-k SPEC-PARITY-001]:  (stderr "unknown verb - usage: moai codex [cli] [-w [worktree]] [-- codex-args...] | moai codex status | moai codex app\n")`
+  - `disposal_codex_tree_test.go:259: …/codex-locked: refusal must name the anchor source (lock), got: remove worktree: remove worktree at "…` (claude-locked도 같음)
+- 스켈레톤에서 이미 통과한 것: `TestPRMergeCleanupRefusesAnchoredCodexTree`, `TestWorktreeDisposalRefusesUnintegratedCodexTree/{done,done_force,clean}`, `TestCodexKanbanEntryParity/unsupported`. 설계 §B.3이 "시험만"이라 한 경로이고, 빈틈은 드러나지 않았다. 그래서 `clean.go`와 `session_worktree_prmerge.go`는 바꾸지 않았다.
+- 편차: 교체 경합 테스트의 두 번째 루프(한 launcher가 끝난 뒤 낡은 읽기를 가진 다른 launcher가 진행)는 GREEN 뒤, 아래 변이 (v)가 첫 루프만으로는 약하게 잡힌 것을 보고 더했다.
+
+변이(작업 트리 임시 수정 → 실행 → 원복. 원복은 `shasum` 대조로 확인 — 세 파일 모두 수정 전 해시와 같음):
+
+| 변이 | 대상 테스트 | 결과 |
+|---|---|---|
+| (i) 동시 writer 판정이 lock을 무시(`AnchorDecision(tree, session.LockInfo{}, now)`) | AC-DHR-007 | FAIL `live_lock/codex`, `live_lock/cc`, `unreadable_lock/codex`, `unreadable_lock/cc` (registry_only는 통과 — lock 무관 경로) |
+| (ii) `remove`가 lock을 무시 | AC-DHR-008 | FAIL `remove`: `codex-locked`, `claude-locked` 둘 다 `refusal must name the anchor source (lock)` |
+| (iii) `moai cc -w` 사전 판정이 lock을 씀 | AC-DHR-007 | FAIL `dead_lock_allowed/cc` (`cc pre-check rewrote the lock: "claude session dead (pid 94231)" -> "moai codex session dead (pid 90202)"`), `cc_precheck_never_locks` (`cc pre-check wrote a lock`) |
+| (iv) 생성 base 대조를 끔 | AC-DHR-006 | FAIL `base_mismatch_refused_tree_kept`: `launch accepted a tree whose HEAD is not the resolved base` |
+| (v) 교체 가드의 O_EXCL과 가드 안 재읽기를 함께 뺌 | AC-DHR-006 | FAIL(첫 루프만 있을 때) — 다만 "패자 거부문이 worktree lock을 말하지 않음"으로만 잡혔다(git 자신의 `is not locked`로 패자가 떨어짐) |
+| (v') 가드 안 재읽기만 뺌 | AC-DHR-006(두 번째 루프 추가 후) | FAIL `stale round 0: the launcher holding a stale read also proceeded` — 설계 §B.1이 적은 위험(늦은 쪽 unlock이 먼저 쪽 새 lock을 지움)을 그대로 재현 |
+
+품질 게이트(HEAD `26227a7b4`와 같은 내용의 트리):
+
+```text
+$ go vet ./internal/cli/ ./internal/cli/worktree/ ./internal/session/
+(출력 없음, exit 0)
+$ golangci-lint run ./internal/cli/... ./internal/session/...
+0 issues.
+$ GOOS=windows GOARCH=amd64 go build ./internal/cli/ ./internal/cli/worktree/ ./internal/session/
+(출력 없음, exit 0)
+$ GOOS=windows GOARCH=amd64 go vet ./internal/cli/ ./internal/session/ ./internal/cli/worktree/
+(출력 없음, exit 0)
+$ go test ./internal/cli/worktree/... ./internal/session/... -count=1 -cover
+ok  	github.com/modu-ai/moai-adk/internal/cli/worktree	40.450s	coverage: 87.0% of statements
+ok  	github.com/modu-ai/moai-adk/internal/session	18.633s	coverage: 88.0% of statements
+$ unset MOAI_KANBAN … MOAI_FACTORY_WORKERS && go test ./internal/cli -run 'Codex|CC|Cc|Claude|Worktree|Kanban|Kanb|Launch|Launcher|Spawn|PRMerge|SessionWorktree|Factory|Lead|Companion|Glm|GLM' -count=1 -json
+pass 2177, fail 0, skip 18 (skip는 LIVE 테스트와 기존 skip), 패키지 pass 318.1s
+```
+
+`internal/cli` 패키지 전체 커버리지는 재지 않았다(전체 스위트 금지). M5 새 함수의 함수별 커버리지(M5 테스트만 실행): `stripCodexKanbanFlag` 96.6%, `applyCodexKanbanEntry` 100%, `placeCodexAnchorLock` 82.1%, `worktreeWriterRefusal` 83.3%, `readWorktreeLock` 87.5%, `verifyCodexWorktreeBase` 83.3%, `ccWorktreeWriterPrecheck` 76.9%, `lockCodexTree` 62.5% — 덮이지 않은 쪽은 git 명령 실패 분기다.
+
+범위: `git diff --stat 47a886ded HEAD -- internal/factorymsg internal/cli/worktree/done.go internal/session/anchor_lock.go` 출력 없음. `Store.Send`의 lane slot 멱등 조회 모양 그대로(t1082가 그 위에 얹는다). `done`의 L1 거부 그대로이며 `done`/`done --force`가 여덟 트리 모두 `L1_SESSION_WORKTREE`로 거부하는 것을 AC-DHR-008이 잰다.
+
+SPEC 재량 안의 결정:
+
+- **새 파일 셋.** `internal/session/anchor_lock_holder.go`(접근자), `internal/cli/codex_kanban.go`(`-k` 파서·적용), 테스트 파일들. 계획 §F 파일 목록 밖이지만 모두 목록에 있는 기능의 몸체다. `anchor_lock.go`를 고치지 않고 재사용하려면 lock 보유자 pid와 "확정 사망"을 읽을 수단이 필요했고, 판정 로직을 복제하지 않으려고 같은 패키지의 비공개 함수에 위임하는 접근자만 더했다.
+- **`cc.go` 한 곳 호출.** `moai cc -w` 사전 판정의 몸체는 `session_worktree.go`(`ccWorktreeWriterPrecheck`)에 있고, 호출은 `runClaudeEntry`의 worktree 처리 지점(`resolveWorktreeExistingBranch` 다음, `normalizeWorktreeFlag` 전) 한 줄이다. 이미 있는 트리에만 적용하고, lock은 읽기만 한다.
+- **lock pid.** 직접 launch는 POSIX·Windows 모두 `os.Getpid()`다. 값은 같지만 이유가 달라(POSIX는 exec로 pid가 이어짐, Windows는 기다리는 부모) build-tag 파일마다 `codexDirectAnchorPID`로 따로 두고 이유를 적었다. lock은 `codexDirectLaunch` 호출 직전에 건다. `--spawn`은 pane이 생긴 뒤에야 pid가 있으므로 pane 안에서 lock을 걸고, 실패하면 pane을 닫는다(`TestCodexSpawnAnchorsToPanePID`, AC 밖).
+- **lock 사유.** `moai codex session <트리 이름> (pid <n> start <process-start>)`. start를 모르면 생략.
+- **교체 가드.** `<git-dir>/moai-anchor-replace`를 O_EXCL로 만들고 끝나면 지운다. 가드 생성 실패, 가드 안 재읽기의 사유 변화, `git worktree lock` 실패, 쓴 뒤 읽은 사유가 자기 pid가 아닌 경우 모두 거부. 거부문에 가드 경로와 "launcher가 없으면 지우고 다시 시도"를 적었다.
+- **생성 base 대조.** base를 커밋으로 먼저 해석하고(`rev-parse --verify <base>^{commit}`), 생성 뒤 HEAD와 비교한다. 다르면 거부하고 트리는 남긴다. 해석 정책(`codexWorktreeBase`)은 바꾸지 않았다.
+- **동시 writer 판정.** 기존 lock-and-registry 합집합(`AnchorDecision`)을 그대로 쓰고, lock 사유의 pid가 이 프로세스이면 자기 것으로 본다. 진단은 `WORKTREE_WRITER_ANCHORED:` 접두사 + 출처(`source: lock|registry`) + 보유자(lock 사유 원문, registry면 `session <id> pid <n>`). lock 목록을 읽지 못하면 미확정으로 거부한다. 새로 만든 트리에는 판정을 걸지 않는다(작성자가 있을 수 없음).
+- **`remove`.** 레지스트리 경로는 기존 문구 그대로 먼저 본다. 레지스트리가 비었을 때 lock을 읽어 살아 있거나 미확정인 보유자면 `ANCHORED_SESSIONS_PRESENT: live session anchored in <path> - <detail> (source: lock, holder: <사유>)`로 거부. lock 목록 판독 실패도 미확정으로 거부(기존에는 레지스트리만 봤으므로 동작 변화). 죽은 lock은 moai가 막지 않고 git 판정에 맡긴다(기존 명시 제거 의미 유지).
+- **`moai codex -k`.** 토큰은 동사 조회 전에 떼어 내고, 모양 판정은 cc의 `parseKanbanFlag`·`parseCompanionLabel`·`parseLeadLabel`에 넘긴다. 이름은 cc와 같은 레지스트리(`resolveCompanionName`, `appendLeadName`)로 claim하고, Codex에는 `--name`이 없으므로 환경변수(`MOAI_KANBAN_LABEL`, `MOAI_KANBAN_LEAD_NAME`)로 전한다. 받지 않는 모양: `-k <수>`, `-k --name worker-<n>`, `--kanban=<값>`, `-k`와 `-f` 동시, 읽기 전용 `status`와 `-k`, `-k` 없는 `--name`, 값 없는 `--name`. `--spawn` 경로에도 kanban 사실이 가도록 tmux 명령 앞 환경 목록에 `MOAI_KANBAN`, `MOAI_KANBAN_SPEC`, `MOAI_KANBAN_LABEL`, `MOAI_KANBAN_LEAD_ADDR`, `MOAI_KANBAN_LEAD_NAME`을 더했다(값이 있을 때만 붙음).
+- **캡처 하네스.** 기존 launch 메커니즘 테스트는 git 저장소가 아닌 평범한 디렉터리를 쓰므로 `withCodexLaunchCapture`가 anchor seam 넷(writer 판정, lock, base 해석, base 대조)을 열어 둔다. anchor를 재는 테스트는 `withRealCodexWorktreeAnchor`로 실제 몸체를 되돌린다. 위 변이 (i)~(v')는 모두 실제 몸체에서 잡혔다.
+- **메시지 언어.** 기존 CLI 문구처럼 영어.
+
+잔여 위험(기록만, 착지 후 리드 분류):
+
+1. update 경로는 manifest를 저장하지 않는다. update만 거친 프로젝트에는 고아 배선·미배포 템플릿 보고가 나오지 않는다(M4 관측).
+2. claude 프로필로 바꾼 뒤 운영자가 의도적으로 `moai tool enable codex`를 한 경우에도, manifest에 `.codex/` 템플릿 배포 기록이 남아 있으면 고아로 보고된다.
+3. 미배포 템플릿 경고가 update마다 12줄씩 반복된다.
+4. (M5) 교체 가드 파일은 가드를 쥔 launcher가 교체 도중 죽으면 남는다. 그 뒤 그 트리의 죽은 lock 교체는 가드가 지워질 때까지 거부된다(거부문이 가드 경로와 조치를 적는다). 자동 회수는 없다.
+5. (M5) Windows에서 기다리는 부모만 강제 종료되면 자식 Codex가 살아 있어도 lock이 죽은 것으로 읽힌다(설계 §B.1, plan §G). Windows 분기 자체가 로컬에서 `NOT_RUN`이다.
+6. (M5) POSIX 직접 launch에서 exec가 실패하면 이미 건 lock이 남는다. 그 pid는 곧 죽으므로 anchor가 아니게 되고 다음 launch가 교체하지만, 그 사이 짧게 anchored로 읽힐 수 있다.
+7. (M5) `moai cc -w`의 사전 판정은 이름 값을 `<project root>/.claude/worktrees/<name>`으로 해석한다. Claude Code가 이름을 다른 뿌리(예: git 최상위가 project root와 다른 경우)로 해석하면 판정이 다른 트리를 볼 수 있다. 이 저장소 구성에서는 둘이 같다(코드 판독, 미측정).
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 _<pending run-phase>_
