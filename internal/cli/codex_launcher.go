@@ -494,19 +494,19 @@ func runCodex(cmd *cobra.Command, args []string) error {
 	// factory token selects this session's factory role and is never a codex
 	// verb. The env is applied only on a launch path — a readout with -f is
 	// a usage error, exactly as -w with a readout is.
-	head, factoryLead, factoryAgent, factoryLane, ferr := stripCodexFactoryFlag(head)
+	head, factoryLead, factoryRole, factoryLane, ferr := stripCodexFactoryFlag(head)
 	if ferr != nil {
 		return ferr
 	}
 	var factoryRestore func()
-	if factoryLead || factoryAgent || factoryLane != "" {
+	if factoryLead || factoryRole != "" || factoryLane != "" {
 		var applyErr error
-		factoryRestore, applyErr = applyCodexFactoryEntry(cmd, factoryAgent, factoryLane)
+		factoryRestore, applyErr = applyCodexFactoryEntry(cmd, factoryRole, factoryLane)
 		if applyErr != nil {
 			return applyErr
 		}
 		defer factoryRestore()
-		restoreRun, selectErr := enterSelectedFactoryRun(launchProjectRoot(), factoryRun, factoryAgent || factoryLane != "")
+		restoreRun, selectErr := enterSelectedFactoryRun(launchProjectRoot(), factoryRun, factoryRole != "" || factoryLane != "")
 		if selectErr != nil {
 			return selectErr
 		}
@@ -537,7 +537,7 @@ func runCodex(cmd *cobra.Command, args []string) error {
 	if kind.launches() {
 		return runCodexLaunch(cmd, kind, tail, spawn, worktree)
 	}
-	if worktree.present || factoryLead || factoryAgent || factoryLane != "" {
+	if worktree.present || factoryLead || factoryRole != "" || factoryLane != "" {
 		// A readout starts no process, so it has no working directory to
 		// point anywhere — and no factory role to enter either.
 		return codexUsageFailure(cmd)
