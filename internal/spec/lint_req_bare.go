@@ -68,19 +68,64 @@ import (
 // attribution ONLY and never reaches a severity decision.
 var reqBareWidePattern = regexp.MustCompile(`^\**(REQ-[A-Z0-9]+(?:-[A-Z0-9]+)*-\d+)\s*\**\s*(?:\([^)]*\)\s*\**\s*)?(?:—|:)\s*(.*)$`)
 
-// parseREQsBareForm returns one REQEntry per unindented, marker-less line that
-// reqBareWidePattern admits as a definition, in document order, with Line as a
-// 1-based index into body.
+// Two-line bare form — card t1120.
+//
+// The separator requirement above left one corpus shape uncollected: a header
+// line carrying ONLY the ID (and optionally its classifier), with the statement
+// on the next line —
+//
+//	**REQ-ROUTE-001 (Event-Driven)**
+//	**When** the user calls …, the system **shall** …
+//
+// — 565 headers across 29 spec.md files (t1104 §5, re-measured for t1120). Every
+// one is bold, and every one is followed by a plain, unindented statement line.
+//
+// reqBareHeaderPattern is deliberately separate from reqBareWidePattern so that
+// the single-line pattern keeps refusing separator-less lines
+// (TestParseREQsBare_RequiresASeparator). It is narrower than the single-line
+// pattern in one way: the opening `**` is REQUIRED. A lone unbolded ID line at
+// column zero is what a wrapped prose paragraph produces, and the corpus holds
+// no unbolded header, so the bold costs nothing and closes that hole.
+//
+// The next line is the statement only when it is a plain paragraph line:
+// non-empty, unindented, not a list item, table row, heading or blockquote, and
+// not itself a REQ header or bare definition. Anything else means the header
+// labels nothing collectable, and it is skipped rather than guessed at.
+var reqBareHeaderPattern = regexp.MustCompile(`^\*\*(REQ-[A-Z0-9]+(?:-[A-Z0-9]+)*-\d+)(?:\*\*)?\s*(?:\([^)]*\))?\s*(?:\*\*)?\s*$`)
+
+// isTwoLineStatement reports whether next can be the statement line under a
+// two-line bare header.
+func isTwoLineStatement(next string) bool {
+	if strings.TrimSpace(next) == "" || next[0] == ' ' || next[0] == '\t' {
+		return false
+	}
+	for _, p := range []string{"- ", "* ", "+ ", "|", "#", ">"} {
+		if strings.HasPrefix(next, p) {
+			return false
+		}
+	}
+	return !reqBareHeaderPattern.MatchString(next) && !reqBareWidePattern.MatchString(next)
+}
+
+// parseREQsBareForm returns one REQEntry per unindented, marker-less definition,
+// in document order, with Line as a 1-based index into body. A single-line
+// definition carries its statement after the separator; a two-line definition
+// carries it on the line after the header, and Line points at the header.
 func parseREQsBareForm(body string) []REQEntry {
 	var reqs []REQEntry
-	for i, line := range strings.Split(body, "\n") {
-		matches := reqBareWidePattern.FindStringSubmatch(line)
-		if len(matches) < 3 {
+	lines := strings.Split(body, "\n")
+	for i, line := range lines {
+		id, text := "", ""
+		if matches := reqBareWidePattern.FindStringSubmatch(line); len(matches) >= 3 {
+			id, text = matches[1], matches[2]
+		} else if m := reqBareHeaderPattern.FindStringSubmatch(line); m != nil && i+1 < len(lines) && isTwoLineStatement(lines[i+1]) {
+			id, text = m[1], lines[i+1]
+		} else {
 			continue
 		}
 		reqs = append(reqs, REQEntry{
-			ID:      matches[1],
-			Text:    strings.TrimSpace(matches[2]),
+			ID:      id,
+			Text:    strings.TrimSpace(text),
 			Line:    i + 1,
 			Widened: true,
 			Source:  REQSourceBare,
