@@ -331,6 +331,144 @@ Filtered profiles: `run-m2-factorymsg.cov`, `run-m2-cli-handoff-card.cov`, `run-
 - `TestCodexSpawn_RealAssemblyThroughStubTmux` fails when the lane's factory env (`MOAI_KANBAN_BACKEND`, `MOAI_FACTORY_WORKER`, `MOAI_FACTORY_WORKERS`) is not scrubbed; it passes with them unset (`run-m2-codexspawn-envscrub.log`). Not touched by M2; the prescribed scrub list lacks those three.
 - `.moai/reports/t1082/ac008-idempotency-check.md` was modified in this worktree at 10:28:48 by another writer during this run (a "개정 반영" section, +16 lines). Not staged by M2; reported to the lead.
 
+### M3a — Atomic mode-evidence rebind, pre-BOUND gates, stale redirect (2026-09-23, manager-develop, cycle_type=tdd)
+
+**Split.** The lane split plan.md M3 into M3a (AC-FLH-003..008, this section) and M3b (REQ-FLH-017/018 inside t1074 `RegisterPeer`, AC-FLH-018, AC-FLH-019 orders (i)–(vi)). plan.md is unchanged. M3a does not modify `RegisterPeer`.
+
+**Scope delivered (commit `399a95c9c`).**
+
+- `internal/factorymsg/handoff_bind.go` (new): `Store.BindHandoff` — one write transaction (`BEGIN IMMEDIATE` from the `_txlock=immediate` DSN) that reads the handoff by id, refuses a stale nonce or a non-pending state with `STALE_GENERATION`, CASes the lane row against the reserved source tuple (session, generation, PID, process-start; mismatch → `STALE_GENERATION`, no write), validates evidence (mode, card/SPEC, cwd == worktree root == target, branch, HEAD == pin, new non-provisional unused UUID, current owner, headless thread id == recorded relocation), NACKs mismatched evidence in the same transaction, and otherwise writes: tombstone → peer row CAS update to generation+1 → handoff `BOUND` + event → `lane_handoff_receipts` row → dispatch release (`lane_message_releases` per message + `lane_dispatch_releases` marker). A BOUND handoff retried with the same evidence returns the same receipt and writes nothing. `StaleEndpointError{Code, Current}` carries non-secret redirect metadata (slot, session UUID, generation; a provisional token is redacted). `AuthorizeCardWrite` admits code writes only for the endpoint the card's BOUND receipt names.
+- `internal/factorymsg/store.go`: `verifyPeer` classifies a non-current identity as `STALE_ENDPOINT` (tombstoned) or `STALE_GENERATION` (current session, older generation), else the unchanged t1074 error; `Claim` (inside its transaction), `ReadBody`, `RecordDisposition`, `Receipt` refuse with `ENDPOINT_HANDOFF_PENDING` while the peer's slot has a non-final handoff (pre-check plus a `NOT EXISTS` clause in the statement); a claim mismatch on a released pre-handoff token is `STALE_GENERATION`; `Send`'s idempotency collision compares a released envelope against its original recipient. Schema gains three tables (same broker DB). Test seam `bindStep`.
+- `internal/factorymsg/handoff.go`: `HandoffNackReason` also reports a `StaleEndpointError` code.
+- `internal/hook/factory_handoff_bind.go` (new) + one call in `factory_messages.go`: on SessionStart, a session that is not the lane's current endpoint, with a `SWITCH_PENDING_INTERACTIVE` handoff on the slot, is bound through `BindHandoff` from a Git readback of the SessionStart cwd (canonical cwd, toplevel, branch, HEAD) and the t1074 owner identity. No handoff / WT_READY / headless → t1074 path unchanged.
+- `internal/cli/factory_lane_handoff_bind.go` (new): `bindLaneHandoffHeadless` — recorded relocation thread id + fresh `readbackHandoffTarget` → `BindHandoff`. Added to the AC-FLH-014 control-file scan list.
+
+#### RED evidence (verbatim, captured before any M3a implementation)
+
+HEAD `b08569bac`, log `.moai/reports/t1082/run-m3a-red.log`, command `go test ./internal/factorymsg ./internal/hook ./internal/cli -run '^(TestFactoryLaneHandoffInteractiveStateMachine|TestFactoryLaneHandoffHeadlessAppServerStateMachine|TestFactoryLaneHandoffAtomicModeEvidenceRebind|TestFactoryLaneHandoffDispatchAfterBound|TestFactoryLaneHandoffStaleEndpointRejected|TestFactoryLaneHandoffDuplicateAndSameLaneRedispatch)$' -count=1 -timeout=180s`, exit 1:
+
+```text
+# github.com/modu-ai/moai-adk/internal/factorymsg [github.com/modu-ai/moai-adk/internal/factorymsg.test]
+internal/factorymsg/handoff_bind_test.go:118:34: undefined: HandoffBindEvidence
+internal/factorymsg/handoff_bind_test.go:119:9: undefined: HandoffBindEvidence
+internal/factorymsg/handoff_bind_test.go:187:15: undefined: StaleEndpoint
+internal/factorymsg/handoff_bind_test.go:212:9: f.s.bindStep undefined (type *Store has no field or method bindStep)
+internal/factorymsg/handoff_bind_test.go:218:19: f.s.BindHandoff undefined (type *Store has no field or method BindHandoff)
+internal/factorymsg/handoff_bind_test.go:233:8: f.s.bindStep undefined (type *Store has no field or method bindStep)
+internal/factorymsg/handoff_bind_test.go:234:18: f.s.BindHandoff undefined (type *Store has no field or method BindHandoff)
+internal/factorymsg/handoff_bind_test.go:268:22: f.s.BindHandoff undefined (type *Store has no field or method BindHandoff)
+internal/factorymsg/handoff_bind_test.go:278:31: undefined: HandoffBindEvidence
+internal/factorymsg/handoff_bind_test.go:281:51: undefined: HandoffBindEvidence
+internal/factorymsg/handoff_bind_test.go:281:51: too many errors
+FAIL	github.com/modu-ai/moai-adk/internal/factorymsg [build failed]
+# github.com/modu-ai/moai-adk/internal/cli [github.com/modu-ai/moai-adk/internal/cli.test]
+internal/cli/factory_lane_handoff_bind_test.go:15:34: undefined: laneHandoffBind
+internal/cli/factory_lane_handoff_bind_test.go:21:9: undefined: laneHandoffBind
+internal/cli/factory_lane_handoff_bind_test.go:24:92: undefined: factorymsg.HandoffBinding
+internal/cli/factory_lane_handoff_bind_test.go:71:14: undefined: bindLaneHandoffHeadless
+internal/cli/factory_lane_handoff_bind_test.go:97:17: undefined: bindLaneHandoffHeadless
+internal/cli/factory_lane_handoff_bind_test.go:121:12: undefined: bindLaneHandoffHeadless
+internal/cli/factory_lane_handoff_bind_test.go:141:12: undefined: bindLaneHandoffHeadless
+--- FAIL: TestFactoryLaneHandoffInteractiveStateMachine (3.59s)
+    --- FAIL: TestFactoryLaneHandoffInteractiveStateMachine/pending_until_next_turn_then_bound (0.73s)
+        factory_handoff_bind_test.go:204: SELECT count(*) FROM lane_handoff_receipts: SQL logic error: no such table: lane_handoff_receipts (1)
+    --- FAIL: TestFactoryLaneHandoffInteractiveStateMachine/no_evidence_before_the_cd_guidance (0.70s)
+        factory_handoff_bind_test.go:268: SELECT count(*) FROM lane_handoff_receipts: SQL logic error: no such table: lane_handoff_receipts (1)
+    --- FAIL: TestFactoryLaneHandoffInteractiveStateMachine/mismatch/branch_moved (0.54s)
+        factory_handoff_bind_test.go:296: mismatched SessionStart notice = ""
+    --- FAIL: TestFactoryLaneHandoffInteractiveStateMachine/mismatch/head_moved (0.72s)
+        factory_handoff_bind_test.go:296: mismatched SessionStart notice = ""
+    --- FAIL: TestFactoryLaneHandoffInteractiveStateMachine/mismatch/cwd_not_target (0.49s)
+        factory_handoff_bind_test.go:296: mismatched SessionStart notice = ""
+    --- FAIL: TestFactoryLaneHandoffInteractiveStateMachine/mismatch/cwd_subdirectory (0.41s)
+        factory_handoff_bind_test.go:296: mismatched SessionStart notice = ""
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/hook	4.304s
+FAIL	github.com/modu-ai/moai-adk/internal/cli [build failed]
+FAIL
+```
+
+RED reasons: rebind API absent (factorymsg, cli — compile level); the hook ignored the next-turn SessionStart (empty notice) and the receipt table did not exist (hook — runtime level).
+
+Second RED, mid-GREEN (sender-layer AC-FLH-008): after the first `BindHandoff` implementation (in-place release), `go test ./internal/factorymsg ...` failed `handoff_bind_test.go:628: K1 with a different recipient was merged into envelope 93c1c5348fee599e386a8db9c7b39b79` — the release re-addresses K1, so `Send`'s dedupe merged a K1 reuse toward the rebound endpoint. Fixed by comparing a released envelope against its original recipient.
+
+Third RED (legacy broker): `TestClaimOnBrokerWithoutHandoffTables`, log `.moai/reports/t1082/run-m3a-red-legacy-broker.log`, exit 1: `handoff_bind_test.go:728: claim on a pre-handoff broker = [] err=SQL logic error: no such table: lane_handoffs (1)` — the hook hot path opens the broker without schema setup; the new claim gate failed on a broker created before the handoff tables. Fixed: an absent table reads as no handoff.
+
+**Mutant checks (guards observed red; each applied, run, reverted):**
+
+| Mutant | Command | Result | Log |
+|---|---|---|---|
+| rebind without the source-tuple CAS | `go test ./internal/factorymsg -run '^TestFactoryLaneHandoffAtomicModeEvidenceRebind$'` | FAIL `interactive/source_tuple_moved` + `headless/source_tuple_moved`: `err=<nil>, want a stale-endpoint NACK STALE_GENERATION`, exit 1 | `run-m3a-mutant-no-cas.log` |
+| `Claim` without the pre-BOUND gate | `go test ./internal/factorymsg -run '^TestFactoryLaneHandoffDispatchAfterBound$'` | FAIL `claim before BOUND: err=<nil>, want NACK ENDPOINT_HANDOFF_PENDING`, exit 1 | `run-m3a-mutant-no-claim-gate.log` |
+| `verifyPeer` without stale classification | `go test ./internal/factorymsg -run '^(TestFactoryLaneHandoffStaleEndpointRejected\|TestFactoryLaneHandoffDuplicateAndSameLaneRedispatch)$'` | FAIL on every old-endpoint op: `err=stale or unregistered peer, want a stale-endpoint NACK STALE_ENDPOINT`, exit 1 | `run-m3a-mutant-no-stale-class.log` |
+| `Send` dedupe ignores the original recipient | `go test ./internal/factorymsg -run '^TestFactoryLaneHandoffDuplicateAndSameLaneRedispatch$'` | FAIL `K1 with a different recipient was merged into envelope 7e0f…`, exit 1 | `run-m3a-mutant-send-merges-released.log` |
+
+#### GREEN evidence (final tree, scrubbed env: kanban/factory/provider vars unset in the same invocation)
+
+| Check | Command | Result |
+|---|---|---|
+| race, factorymsg | `go test -race -count=1 -coverprofile=/tmp/t1082-m3a-factorymsg.cov ./internal/factorymsg/...` | `ok … coverage: 77.1% of statements`, exit 0 (`run-m3a-race-factorymsg.log`) |
+| race, hook (full package) | `go test -race -count=1 -coverprofile=/tmp/t1082-m3a-hook.cov ./internal/hook` | `ok … 422.845s coverage: 85.6%`, exit 0, no DATA RACE (`run-m3a-race-hook.log`) |
+| race, cli subset | `go test -race -count=1 ./internal/cli -run '^(TestFactoryLaneHandoff.*\|TestLaneHandoff.*\|TestSessionWorktree.*\|TestCodex.*\|TestMoaiMCPServer_RegistrationMatchesCatalog\|TestFactoryMsgStatusReadOnlyRoster\|TestFactoryLeadNoticeUsesOperationalStatus\|TestFactoryMsg.*)$' -v` (no `MOAI_HOME`) | exit 0; 898 PASS, 0 FAIL, 5 SKIP (pre-existing env-gated `TestCodexLive_*`), 0 DATA RACE (`run-m3a-race-cli.log`) |
+| vet | `go vet ./internal/factorymsg/... ./internal/hook/... ./internal/cli/...` | exit 0 |
+| lint | `golangci-lint run ./internal/factorymsg/... ./internal/hook/... ./internal/cli/...` | `0 issues.`, exit 0 |
+| build | `go build ./...`; `GOOS=windows GOARCH=amd64 go build ./...` | exit 0 / exit 0 |
+| gofmt | `gofmt -l internal/factorymsg internal/hook internal/cli` | empty |
+
+#### AC matrix for M3a (acceptance.md commands verbatim, prefixed with the lane env scrub)
+
+| AC | Status | Named test (package) | Gate output / exit | Evidence |
+|---|---|---|---|---|
+| AC-FLH-003 | PASS | `TestFactoryLaneHandoffInteractiveStateMachine` (hook) | `true`, exit 0 | `ac03.jsonl` — pending until next turn then BOUND; no evidence before `/cd` guidance; 4 mismatch NACKs |
+| AC-FLH-004 | PASS | `TestFactoryLaneHandoffHeadlessAppServerStateMachine` (cli) | `true`, exit 0 (re-run on final tree) | `ac04.jsonl` — 9 subtests: fork, start, 3 non-idle NACKs, readback mismatch, unreadable target, interactive refused, no relocation evidence |
+| AC-FLH-005 | PASS | `TestFactoryLaneHandoffAtomicModeEvidenceRebind` (factorymsg) | `true`, exit 0 | `ac05.jsonl` — both modes: failpoint at `locked`/5 writes all-absent, all-present, idempotent retry, 13–14 mismatch NACKs, stale nonce, CAS loser |
+| AC-FLH-006 | PASS | `TestFactoryLaneHandoffDispatchAfterBound` (factorymsg) | `true`, exit 0 | `ac06.jsonl` |
+| AC-FLH-007 | PASS | `TestFactoryLaneHandoffStaleEndpointRejected` (factorymsg) | `true`, exit 0 | `ac07.jsonl` — 11 stale ops with byte-level no-mutation snapshot, restart survival, current ops succeed |
+| AC-FLH-008 | PASS | `TestFactoryLaneHandoffDuplicateAndSameLaneRedispatch` (factorymsg) | `true`, exit 0 | `ac08.jsonl` |
+
+Regressions (acceptance.md verbatim, final tree): AC-FLH-001 `true`, AC-FLH-002 `true`, AC-FLH-014 `true`, AC-FLH-016 `true`, AC-FLH-017 `true`, AC-FLH-019 (order vii only, `-race`) `true` — each exit 0. AC-FLH-019 is still NOT a PASS (orders (i)–(vi) are M3b).
+
+**t1074 hook tests ×5 (flakiness re-check, §J).** `MOAI_HOME=/tmp/t1082-m3a-hookx5-home go test -count=5 ./internal/hook -run '^(TestFactoryUserPromptSubmitRebindsLaunchPendingPeer|TestFactoryBoundUserPromptSubmitDoesNotRewritePeer|TestFactorySessionStartCannotRotateAuthoritativeUserPromptBinding)$' -v` → 15/15 PASS, 0 FAIL, exit 0; durations 0.60–1.01s (`run-m3a-hook-x5.log`). The M1 flake did not recur in this measurement; still not established either way.
+
+#### Coverage (file-level, statement-weighted, from the final-tree profiles)
+
+| File | Profile | Covered |
+|---|---|---|
+| `internal/factorymsg/handoff_bind.go` (new) | `/tmp/t1082-m3a-factorymsg.cov` | 136/160 = 85.0% |
+| `internal/factorymsg/store.go` (t1074 file, changed) | same | 346/489 = 70.8% (M2 profile `run-m2-factorymsg.cov`: 305/473 = 64.5%) |
+| `internal/factorymsg/handoff.go` (changed) | same | 88/102 = 86.3% |
+| `internal/hook/factory_handoff_bind.go` (new) | `/tmp/t1082-m3a-hook.cov` | 31/36 = 86.1% |
+| `internal/hook/factory_messages.go` (t1074 file, 3 lines changed) | same | 70/83 = 84.3% |
+| `internal/cli/factory_lane_handoff_bind.go` (new) | `/tmp/t1082-m3a-cli.cov` | 14/16 = 87.5% |
+| `internal/cli/factory_lane_handoff.go` | same | 80/100 = 80.0% — not touched by M3a; unchanged |
+
+Uncovered lines in `handoff_bind.go` are DB-error returns and a commit-ACK-loss read of a missing release marker.
+
+#### Gaps
+
+- AC-FLH-018 and AC-FLH-019 orders (i)–(vi), the 200 unforced iterations, and REQ-FLH-017/018 inside `RegisterPeer`: M3b. NOT_RUN.
+- LIVE (AC-FLH-012/013) and the real Codex `/cd` SessionStart ordering: M5. NOT_RUN.
+- AC-FLH-008 recipient layer: the test models "repeated delivery" as a lease redelivery before the receipt (delivery 1 executes and records `accepted`, the lease lapses, delivery 2 records `duplicate` and is the one successful receipt). The final disposition is therefore `duplicate`, not `accepted`; "one accepted receipt" is read as "exactly one receipt the broker accepted". Under the current basis no second envelope with the same key can exist, so no other shape of repeated delivery is reachable. Reviewer judgement needed on this reading.
+- AC-FLH-007 "stale claim token" is tested both ways: the old endpoint with its token (`STALE_ENDPOINT` at `verifyPeer`) and the current endpoint presenting a released pre-handoff token (`STALE_GENERATION`). A token superseded by a lease redelivery (not by a handoff) keeps the t1074 "claim identity mismatch".
+- Headless owner identity: `bindLaneHandoffHeadless` takes the owner PID/process-start from its caller; there is no production caller yet, and M2's relocation client closes its app-server process after the RPC, so which process owns a headless endpoint in production is not settled.
+- `TestLaneHandoffBindRefusalsAndRedirects`, `TestClaimOnBrokerWithoutHandoffTables` (had its own RED), and the `target_unreadable_at_bind` / `interactive_handoff_refused` subtests of AC-FLH-004 were added after GREEN to raise coverage; the first and the two subtests had no individual RED.
+- Not measured: full `internal/cli` suite (CI owns it).
+
+#### Residual risks
+
+- The hook binds from whatever SessionStart arrives with a non-current session while the handoff is `SWITCH_PENDING_INTERACTIVE`. Until M3b, a UserPromptSubmit of the post-`/cd` session that arrives before that SessionStart still goes through unmodified t1074 `RegisterPeer`, which rotates the endpoint without tombstone or receipt; the later SessionStart then finds a current session and the handoff stays pending. That is exactly REQ-FLH-018's case and is M3b's job.
+- A mismatched SessionStart NACKs the handoff; a SessionStart from an unrelated session carrying the lane's factory env would do the same. Recovery is a fresh reservation.
+- Pre-BOUND refusal of `Claim` also stops receipt-bearing and status messages for that lane; the hook batch reports `degraded` for the duration.
+- `ReadBody`/`RecordDisposition`/`Receipt` make one extra read per call (the pending check); `verifyPeer`'s failure path makes up to two extra reads.
+
+#### What M3b must know
+
+- **Transaction shape.** `BindHandoff` reads, in order and inside one `BEGIN IMMEDIATE`: the handoff row by id → nonce check → BOUND short-circuit → pending-state check → the slot's peer row (CAS against `lane_handoffs.source_*`) → `bindStep("locked")` → evidence validation (NACK written in the same transaction) → writes, each followed by `bindStep`: `tombstone`, `peer`, `bound`, `receipt`, `release` → commit. Every refusal before `locked` writes nothing.
+- **Seams.** `Store.bindStep func(step string) error` (unexported, set from package `factorymsg` tests) fires after the rebind holds the write lock (`"locked"`) and after each write; a barrier there holds R's transaction open for AC-FLH-019 order (ii). The REQ-FLH-017/018 seams belong in `RegisterPeer` and are not added here.
+- **Refusal vocabulary already in place.** `NackStaleGeneration`, `NackStaleEndpoint`, `NackEndpointHandoffPending` constants exist; `HandoffNackReason` returns the code for both `HandoffNackError` and `StaleEndpointError`. A launcher registration that finalizes a handoff should move it to `NACK`/`STALE_GENERATION`; `BindHandoff` then refuses it with `STALE_GENERATION` and writes nothing (covered by `finalized_handoff_is_stale`).
+- **REQ-FLH-018 `STALE_ENDPOINT` on the tombstoned source UUID.** `lane_endpoint_tombstones` has `(slot, session_uuid, generation)`; `RegisterPeer` can look up by `session_uuid` inside its transaction.
+- **Open-state predicate.** `openHandoffStates` (SQL fragment) and `handoffPending(ctx, q, slot)` accept a `*sql.Tx`; reuse them inside `RegisterPeer` so the read happens after `BEGIN`.
+
 ## §J Lead follow-ups after M1 (2026-09-23)
 
 ### Hook-test flakiness — not established
