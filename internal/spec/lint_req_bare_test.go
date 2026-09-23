@@ -62,6 +62,42 @@ Blank prefix indentation is also not a definition:
 	}
 }
 
+// Negative control, corpus-derived. The shapes below are taken VERBATIM from
+// .moai/specs (card t1104 review, lead directive): a wrapped continuation line
+// of a markdown list item that happens to cite a REQ ID followed by a colon.
+// The citation is indented, carries no bold marker, and reads exactly like a
+// bare definition to a pattern that tolerates leading whitespace — which is why
+// the anchor is column zero and not `^\s*`.
+//
+// Provenance: SPEC-ASTGREP-LANG16-001 spec.md:503 and
+// SPEC-BACKLOG-HYGIENE-001 spec.md:319.
+func TestParseREQsBare_DoesNotCollectIndentedContinuationCitation(t *testing.T) {
+	const body = `## Out of Scope
+
+- Cleaning, expanding, or promoting ` + "`.moai/astgrep-rules/`" + `, owned by
+  SPEC-ASTGREP-DOGFOOD-CLEANUP-001 (completed). This SPEC touches it only to the extent of
+  REQ-A16-020: it is not a mirror source.
+- The invariant that binds is
+  REQ-BH-005: no card dropped, edited, closed, reordered, unpicked, or picked.
+`
+	if got := parseREQsWithProvenance(body); len(got) != 0 {
+		t.Errorf("collected %d entries from indented continuation citations, want 0: %+v", len(got), got)
+	}
+}
+
+// Negative control: a line opening with a markdown list bullet belongs to the
+// list collector, and the bare pattern must not also reach it.
+func TestParseREQsBare_DoesNotReachListBullets(t *testing.T) {
+	for _, line := range []string{
+		"* REQ-PRB-001 — asterisk bullet, space, bare id.",
+		"- REQ-PRB-002 — hyphen bullet, space, bare id.",
+	} {
+		if reqBareWidePattern.MatchString(line) {
+			t.Errorf("bare pattern matched a list bullet line: %q", line)
+		}
+	}
+}
+
 // Negative control: the three existing shapes MUST NOT be double-collected by
 // the bare collector — each line still yields exactly one entry, with the
 // Source its own collector assigns.

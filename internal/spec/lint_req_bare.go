@@ -25,10 +25,29 @@ import (
 // three collectors are kept honest by their marker — the marker is what
 // separates a definition from a prose mention of the same ID. A bare line has
 // no marker, so the only remaining discriminator is POSITION: a definition
-// OPENS its line with the ID, a citation does not. Allowing leading whitespace
-// would give that discriminator away, because an indented continuation line or
-// a line inside an indented block would then read as a definition. The
-// unindented anchor is therefore load-bearing, not an oversight.
+// OPENS its line with the ID, a citation does not.
+//
+// [HARD] THERE IS NO `\s*` AFTER THE `^`, AND NONE MAY BE ADDED. An earlier
+// revision of this pattern read `^\**\s*(REQ-…)`, which looks equivalent and is
+// not: with no bold marker present, `\**` matches empty and the `\s*` then eats
+// the indentation, so every indented line became eligible. Two corpus shapes
+// were mis-collected as definitions before it was removed, both wrapped
+// continuation lines of a markdown list item that merely CITE a REQ ID. Each
+// begins with two spaces, written below as <SP><SP> because gofmt normalises
+// leading whitespace inside a comment block and the indentation IS the point:
+//
+//	<SP><SP>REQ-A16-020: it is not a mirror source.
+//	        — SPEC-ASTGREP-LANG16-001 spec.md:503
+//	<SP><SP>REQ-BH-005: no card dropped, edited, closed, reordered, unpicked, or picked.
+//	        — SPEC-BACKLOG-HYGIENE-001 spec.md:319
+//
+// The same `\s*` also let `\**` consume a `*` LIST BULLET and the space behind
+// it, so `* REQ-X — …` reached this collector as well as the list one. Dropping
+// `\s*` closes both holes with the same character, and both are measured by
+// TestParseREQsBare_DoesNotCollectIndentedContinuationCitation and
+// TestParseREQsBare_DoesNotReachListBullets.
+//
+// The unindented anchor is therefore load-bearing, not an oversight.
 //
 // The ID shape, the optional bold markers, the optional parenthesised
 // classifier and the `—`/`:` separator are deliberately IDENTICAL to
@@ -47,7 +66,7 @@ import (
 // bare line by construction does not have — and is demoted through the single
 // existing axis (reqFindingSeverity). REQSourceBare records the shape for
 // attribution ONLY and never reaches a severity decision.
-var reqBareWidePattern = regexp.MustCompile(`^\**\s*(REQ-[A-Z0-9]+(?:-[A-Z0-9]+)*-\d+)\s*\**\s*(?:\([^)]*\)\s*\**\s*)?(?:—|:)\s*(.*)$`)
+var reqBareWidePattern = regexp.MustCompile(`^\**(REQ-[A-Z0-9]+(?:-[A-Z0-9]+)*-\d+)\s*\**\s*(?:\([^)]*\)\s*\**\s*)?(?:—|:)\s*(.*)$`)
 
 // parseREQsBareForm returns one REQEntry per unindented, marker-less line that
 // reqBareWidePattern admits as a definition, in document order, with Line as a
