@@ -345,3 +345,59 @@ func TestLaunchEffortMaxDefersToOperatorEffortFlag(t *testing.T) {
 		t.Errorf("args = %v, want only the operator's %s low", got, launchEffortFlag)
 	}
 }
+
+// TestLaunchEffortValuePositionEffortStillInjectsMax: an --effort token that is
+// the VALUE of a free-text option (the operator's prompt text happens to read
+// `--effort...`) is not an operator --effort flag, so the profile's resolved
+// max must still be injected as `--effort max` on both injection paths.
+func TestLaunchEffortValuePositionEffortStillInjectsMax(t *testing.T) {
+	shapes := [][]string{
+		{"--append-system-prompt", launchEffortFlag + "=low"},
+		{"--append-system-prompt", launchEffortFlag},
+		{"--system-prompt", launchEffortFlag},
+		{"--", "--append-system-prompt", launchEffortFlag + "=low"},
+	}
+	hasMaxPair := func(args []string) bool {
+		for i := 0; i+1 < len(args); i++ {
+			if args[i] == launchEffortFlag && args[i+1] == "max" {
+				return true
+			}
+		}
+		return false
+	}
+	for _, op := range shapes {
+		t.Run("general "+strings.Join(op, " "), func(t *testing.T) {
+			root := withCrossSessionConfig(t, "")
+			withLaunchEffortPrefs(t, profile.ProfilePreferences{EffortLevel: "max"}, nil)
+			got := appendCrossSessionSettings(root, "dev", append([]string(nil), op...))
+			if !hasMaxPair(got[len(op):]) {
+				t.Errorf("op=%v argv=%v: want an injected %s max after the operator args", op, got, launchEffortFlag)
+			}
+		})
+		t.Run("kanban "+strings.Join(op, " "), func(t *testing.T) {
+			withCrossSessionConfig(t, "")
+			withLaunchEffortPrefs(t, profile.ProfilePreferences{EffortLevel: "max"}, nil)
+			flag, cleanup := prepareKanbanSettings("dev", append([]string(nil), op...))
+			t.Cleanup(cleanup)
+			if !hasMaxPair(flag) {
+				t.Errorf("op=%v injected=%v: want %s max", op, flag, launchEffortFlag)
+			}
+		})
+	}
+}
+
+// TestLaunchEffortOperatorEffortAfterPromptValueStillSuppresses guards the
+// value-position skip from over-reaching: only the one token after a prompt
+// option is skipped, so a real operator --effort that follows the prompt text
+// still suppresses the injection.
+func TestLaunchEffortOperatorEffortAfterPromptValueStillSuppresses(t *testing.T) {
+	for _, op := range [][]string{
+		{"--append-system-prompt", "be terse", launchEffortFlag, "low"},
+		{"--append-system-prompt=be terse", launchEffortFlag + "=low"},
+		{"--system-prompt", "x", "--", launchEffortFlag, "low"},
+	} {
+		if !operatorSuppliedEffort(op) {
+			t.Errorf("operatorSuppliedEffort(%v) = false, want true (the operator's --effort follows the prompt value)", op)
+		}
+	}
+}

@@ -453,7 +453,7 @@ The `--team` flag and its four launch patterns are retired. Entering a worktree 
 | Stop/SubagentStop hook stability | **2.1.97** | Prior versions failed on long-running sessions |
 | `moai doctor` MCP scope duplicate detection | **2.1.110** | Warns on MCP server duplication across `.mcp.json` + settings.json |
 | Bash tool timeout ceiling enforcement | **2.1.110** | Maximum 600,000ms (10 min) enforced by runtime |
-| `effortLevel` setting for Opus 4.7 | **2.1.110** | Supports `low`/`medium`/`high`/`xhigh`/`max` effort levels |
+| `effortLevel` setting for Opus 4.7 | **2.1.110** | Accepts `low`/`medium`/`high`/`xhigh`; `max` is not accepted there (MoAI's launcher passes a resolved max as the `--effort max` launch argument) |
 | `CLAUDE_ENV_FILE` on Windows | **2.1.111** | Prior versions: no-op on Windows; fixed to inject env as on macOS/Linux |
 | `disableBypassPermissionsMode` policy | **2.1.111** | Prevents agents from requesting `bypassPermissions` when `true` |
 
