@@ -29,7 +29,7 @@ The lead and lane sessions keep **only orchestration** in their context windows.
 
 The pair most easily confused: a **column** names a phase of the work (`run`); a **lane** names who carries one card through those phases (the `run` session in `.claude/worktrees/t0`). One is a stage on the board, the other is a stream through the stages.
 
-Factory Mode companions are named `lane-1..lane-N` — `lane` is the user-facing term. A factory lane owns a card end to end rather than one column (§ Factory in-lane 3-stage); in Kanban Mode a lane is one column's session carrying its column's cards.
+Factory Mode companions are labelled `worker-1..worker-N` — `lane` stays the prose term for the slot. A factory lane owns a card end to end rather than one column (§ Factory in-lane 3-stage); in Kanban Mode a lane is one column's session carrying its column's cards.
 
 ## The board
 
@@ -179,7 +179,7 @@ Discipline:
 
 ## Factory in-lane 3-stage
 
-Factory Mode (`moai cc -f <N>` / `moai glm -f <N>`) trades the per-column board for whole-card ownership: one lead plus `lane-1..lane-N` sessions, each lane owning one card end to end. Lanes are launched by hand like kanban companions; the lead keeps the run-id, the queue, and the verdict.
+Factory Mode (`moai cc -f <N>` / `moai glm -f <N>`) trades the per-column board for whole-card ownership: one lead plus `worker-1..worker-N` sessions, each lane owning one card end to end. Lanes are launched by hand like kanban companions; the lead keeps the run-id, the queue, and the verdict.
 
 - **Routing.** The lead routes a card WHOLE to a free lane — free means the lane's previous card reached `done` and its evidence was read. A lane busy on a card is not addressed; with every lane busy, the card waits in the queue rather than being dispatched. The address block is unchanged; `cmd` names the entry stage the class prescribes (`/moai plan` for C, `/moai run` for B, the direct close for A), and the lane proceeds through the remaining stages without further dispatches.
 - **Serial stages, sub-agent execution.** Plan completes before run begins, run before sync — a lane never runs two stages of the same card concurrently. Within a stage it fans out sub-agents per § Per-card fan-out and sub-agent execution.

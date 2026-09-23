@@ -77,7 +77,7 @@ func runOperationalLauncherProof(t *testing.T, proveBoundChain bool) {
 	}
 	var terminals []*operationalTerminal
 	bootstrapMCP := bootstrapOperationalTrust(t, root, bin, env)
-	for _, args := range [][]string{{"codex", "-f"}, {"codex", "-f", "agent"}, {"codex", "-f", "agent"}} {
+	for _, args := range [][]string{{"codex", "-f"}, {"codex", "-f", "worker"}, {"codex", "-f", "worker"}} {
 		term := startOperationalTerminal(t, root, bin, args, env)
 		terminals = append(terminals, term)
 		want := len(terminals)
@@ -111,9 +111,9 @@ func runOperationalLauncherProof(t *testing.T, proveBoundChain bool) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	for i, slot := range []string{"agent-1", "agent-2", "lead"} {
+	for i, slot := range []string{"lead", "worker-1", "worker-2"} {
 		lane := lanes[i]
-		terminalIndex := map[string]int{"lead": 0, "agent-1": 1, "agent-2": 2}[slot]
+		terminalIndex := map[string]int{"lead": 0, "worker-1": 1, "worker-2": 2}[slot]
 		children, err := operationalDescendants(terminals[terminalIndex].pid)
 		if err != nil || children[lane.PID] == "" {
 			t.Fatalf("owner is not a descendant of its exact production launcher: slot=%s pid=%d err=%v", slot, lane.PID, err)
@@ -128,8 +128,8 @@ func runOperationalLauncherProof(t *testing.T, proveBoundChain bool) {
 		}
 		t.Logf("OWNER %s registered=%s measured=%s tree=%s", slot, lane.ProcessStart, fp, out)
 	}
-	t.Log("PRODUCTION_ARGV_OK moai codex -f | moai codex -f agent | moai codex -f agent")
-	t.Log("LAUNCH_PENDING_ROSTER_OK lead,agent-1,agent-2")
+	t.Log("PRODUCTION_ARGV_OK moai codex -f | moai codex -f worker | moai codex -f worker")
+	t.Log("LAUNCH_PENDING_ROSTER_OK lead,worker-1,worker-2")
 	t.Log("NO_SESSION_UUID_BEFORE_TURN_OK")
 	t.Log("NO_BYPASS_OK")
 	if !proveBoundChain {
@@ -138,7 +138,7 @@ func runOperationalLauncherProof(t *testing.T, proveBoundChain bool) {
 	if err := waitOperationalPromptReady(terminals, 45*time.Second); err != nil {
 		t.Fatalf("Codex prompt composer not ready: %v", err)
 	}
-	t.Log("PROMPT_COMPOSER_READY_OK lead,agent-1,agent-2")
+	t.Log("PROMPT_COMPOSER_READY_OK lead,worker-1,worker-2")
 	for i, terminal := range terminals {
 		prompt := fmt.Sprintf("Reply with exactly FACTORY_READY_%d and do not call any tool.", i+1)
 		if err := submitOperationalPrompt(terminal, prompt, 10*time.Second); err != nil {
@@ -148,7 +148,7 @@ func runOperationalLauncherProof(t *testing.T, proveBoundChain bool) {
 		for time.Now().Before(deadline) {
 			_, current, readErr := operationalRegisteredLanes(root)
 			if readErr == nil && len(current) == 3 {
-				slot := []string{"lead", "agent-1", "agent-2"}[i]
+				slot := []string{"lead", "worker-1", "worker-2"}[i]
 				for _, lane := range current {
 					if lane.Slot == slot && lane.BindingState == factorymsg.BindingBound && lane.SessionUUID != "" {
 						goto rebound
@@ -169,8 +169,8 @@ func runOperationalLauncherProof(t *testing.T, proveBoundChain bool) {
 			t.Fatalf("lane not rebound: %+v", lane)
 		}
 	}
-	t.Log("USERPROMPT_REBIND_OK lead,agent-1,agent-2")
-	t.Log("BOUND_ROSTER_OK lead,agent-1,agent-2")
+	t.Log("USERPROMPT_REBIND_OK lead,worker-1,worker-2")
+	t.Log("BOUND_ROSTER_OK lead,worker-1,worker-2")
 	stableBefore := append([]factorymsg.LaneStatus(nil), lanes...)
 	for i := range stableBefore {
 		stableBefore[i].ObservedAt = time.Time{}
@@ -181,7 +181,7 @@ func runOperationalLauncherProof(t *testing.T, proveBoundChain bool) {
 		if err := submitOperationalPrompt(terminal, prompt, 10*time.Second); err != nil {
 			t.Fatalf("submit bound prompt to terminal %d: %v", i, err)
 		}
-		slot := []string{"lead", "agent-1", "agent-2"}[i]
+		slot := []string{"lead", "worker-1", "worker-2"}[i]
 		var sessionID string
 		for _, lane := range stableBefore {
 			if lane.Slot == slot {
@@ -204,7 +204,7 @@ func runOperationalLauncherProof(t *testing.T, proveBoundChain bool) {
 	if !reflect.DeepEqual(stableBefore, stableAfter) {
 		t.Fatalf("bound follow-up prompt rewrote peers: before=%+v after=%+v", stableBefore, stableAfter)
 	}
-	t.Log("BOUND_PROMPT_NO_REWRITE_OK lead,agent-1,agent-2")
+	t.Log("BOUND_PROMPT_NO_REWRITE_OK lead,worker-1,worker-2")
 	lead := lanes[2]
 	leadMCP := operationalOwnedMCP(t, lead.PID, bin)
 	if bootstrapMCP == leadMCP {
@@ -226,7 +226,7 @@ func runOperationalLauncherProof(t *testing.T, proveBoundChain bool) {
 		t.Fatal("MCP status mutated broker rows")
 	}
 	t.Logf("MCP_RESTART_OK old=%d new=%d binary=%s sha256=%x", bootstrapMCP, leadMCP, bin, sha256.Sum256(data))
-	t.Log("LEAD_MCP_ROSTER_OK lead,agent-1,agent-2")
+	t.Log("LEAD_MCP_ROSTER_OK lead,worker-1,worker-2")
 	// Phase 2 is a separate project; its peer is registered by production
 	// SessionStart, not by RegisterPeer or SQL seeding in this fixture.
 	other := t.TempDir()
@@ -304,25 +304,38 @@ func runOperationalLauncherProof(t *testing.T, proveBoundChain bool) {
 // while making Codex's login-shell lookup resolve the same binary that launched
 // the fixture. A login shell may rebuild PATH from user startup files and pick
 // an installed, stale moai even when the fixture prepended its build directory.
+//
+// The boundary under test is "a login shell's startup files decide which moai
+// runs", not zsh itself, so the fixture takes whichever login shell the host
+// has and seeds that shell's own profile in a private directory: zsh reads
+// $ZDOTDIR/.zprofile; bash, the fallback on hosts without zsh (Linux CI
+// runners), reads $HOME/.bash_profile, so HOME is pointed at the private
+// directory for the shell processes this env reaches. A host with neither
+// shell still fails loudly — the boundary cannot be measured there.
 func operationalHookShellEnv(t *testing.T, bin string, env []string) []string {
 	t.Helper()
-	shell, err := exec.LookPath("zsh")
-	if err != nil {
-		t.Fatalf("Codex hook-shell fixture requires zsh: %v", err)
-	}
-	zdotdir := t.TempDir()
 	profile := "export PATH=" + shellQuote(filepath.Dir(bin)) + ":\"$PATH\"\n"
-	if err := os.WriteFile(filepath.Join(zdotdir, ".zprofile"), []byte(profile), 0600); err != nil {
+	profileDir := t.TempDir()
+	var shell, profileFile, dirKey string
+	if zsh, err := exec.LookPath("zsh"); err == nil {
+		shell, profileFile, dirKey = zsh, ".zprofile", "ZDOTDIR"
+	} else if bash, bashErr := exec.LookPath("bash"); bashErr == nil {
+		shell, profileFile, dirKey = bash, ".bash_profile", "HOME"
+	} else {
+		t.Fatalf("Codex hook-shell fixture requires a login shell (zsh or bash): zsh: %v; bash: %v", err, bashErr)
+	}
+	if err := os.WriteFile(filepath.Join(profileDir, profileFile), []byte(profile), 0600); err != nil {
 		t.Fatal(err)
 	}
 	filtered := make([]string, 0, len(env)+2)
 	for _, item := range env {
 		key, _, _ := strings.Cut(item, "=")
-		if key != "SHELL" && key != "ZDOTDIR" {
+		if key != "SHELL" && key != "ZDOTDIR" && key != dirKey {
 			filtered = append(filtered, item)
 		}
 	}
-	filtered = append(filtered, "SHELL="+shell, "ZDOTDIR="+zdotdir)
+	filtered = append(filtered, "SHELL="+shell, dirKey+"="+profileDir)
+	t.Logf("HOOK_LOGIN_SHELL %s profile=%s", shell, profileFile)
 	resolve := exec.Command(shell, "-lc", "command -v moai")
 	resolve.Env = filtered
 	out, err := resolve.Output()
@@ -1150,12 +1163,15 @@ func startOperationalTerminal(t *testing.T, root, bin string, args, env []string
 	b := &operationalTerminal{stdin: w, trust: operationalDirectoryTrust{root: root}, hookTrust: operationalHookTrust{operationalDirectoryTrust: operationalDirectoryTrust{root: root}}}
 	cmd.Stdin, cmd.Stdout, cmd.Stderr = r, b, b
 	if err := cmd.Start(); err != nil {
-		r.Close()
-		w.Close()
-		t.Fatal(err)
+		t.Fatal(errors.Join(err, r.Close(), w.Close()))
 	}
 	b.pid = cmd.Process.Pid
-	r.Close()
+	// The child holds its own copy of the read end; a failure closing the
+	// parent's copy is reported without aborting before the terminal's
+	// cleanup below is armed.
+	if err := r.Close(); err != nil {
+		t.Errorf("close parent copy of terminal stdin: %v", err)
+	}
 	done := make(chan error, 1)
 	go func() { done <- cmd.Wait() }()
 	stopInventory := make(chan struct{})
@@ -1204,7 +1220,9 @@ func startOperationalTerminal(t *testing.T, root, bin string, args, env []string
 					owned[pid] = fp
 				}
 			}
-			w.Close()
+			if err := w.Close(); err != nil {
+				record("close terminal stdin: %v", err)
+			}
 			for pid, fp := range owned {
 				actual, state := homestate.ProbeProcessIdentity(pid)
 				if state == homestate.ProcessIdentityLive && fp == actual {
@@ -1295,7 +1313,7 @@ func waitOperationalOwnedExit(owned map[int]string, probe func(int) (string, hom
 	}
 }
 
-func operationalRegisteredLanes(root string) (string, []factorymsg.LaneStatus, error) {
+func operationalRegisteredLanes(root string) (_ string, _ []factorymsg.LaneStatus, err error) {
 	path, err := homestate.FactoryDBPath(root)
 	if err != nil {
 		return "", nil, err
@@ -1307,7 +1325,7 @@ func operationalRegisteredLanes(root string) (string, []factorymsg.LaneStatus, e
 	if err != nil {
 		return "", nil, err
 	}
-	defer db.Close()
+	defer closeFactoryInto(&err, db, "factory state")
 	var run string
 	if err = db.QueryRow(`SELECT run_id FROM runs WHERE status='active'`).Scan(&run); err != nil {
 		return "", nil, err
@@ -1316,7 +1334,7 @@ func operationalRegisteredLanes(root string) (string, []factorymsg.LaneStatus, e
 	if err != nil {
 		return run, nil, err
 	}
-	defer s.Close()
+	defer closeFactoryInto(&err, s, "factory message broker")
 	st, err := s.Status(context.Background())
 	return run, st.Lanes, err
 }

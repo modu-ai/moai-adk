@@ -45,7 +45,7 @@ func TestProjectNestedGitConventionRoundTrip(t *testing.T) {
 
 // TestProjectNestedRejectStillRejects covers the rejected-POST server contract after
 // the project render surface was retired (SPEC-DESIGN-MOAIWEBV2-001 M1): a POST with
-// an invalid nested field is still validated and rejected atomically (400, no disk
+// an invalid nested field is still validated and rejected atomically (banner, no disk
 // write). The value-echo re-render assertions were removed with the project widgets —
 // those fields no longer render (development_mode / git_convention / quality.* are now
 // editable via yaml config / CLI), but the preserved parse+validate seam
@@ -67,9 +67,10 @@ func TestProjectNestedRejectStillRejects(t *testing.T) {
 		"git_convention.auto_detection.sample_size":          "175",
 	})
 	rec := servePost(t, a.routes(), "/save", form)
-	if rec.Code != http.StatusBadRequest {
-		t.Fatalf("reject status = %d, want 400; body: %s", rec.Code, rec.Body.String())
+	if rec.Code != http.StatusOK {
+		t.Fatalf("reject status = %d, want 200; body: %s", rec.Code, rec.Body.String())
 	}
+	assertValidationRejectBanner(t, rec.Body.String())
 	// Atomic reject — no value persisted (originals survive).
 	cfg := loadRawCfg(t, root)
 	if cfg.Quality.TestCoverageTarget != 70 {

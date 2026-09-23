@@ -62,7 +62,7 @@ func TestCodexDirectPOSIXExecPreservesFactoryOwner(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		defer s.Close()
+		closeOnCleanup(t, "factory message broker", s)
 		status, err := s.Status(context.Background())
 		if err != nil {
 			t.Fatal(err)
@@ -172,7 +172,7 @@ func TestCodexDirectPOSIXExecFailureRollsBackExactPending(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer s.Close()
+	closeOnCleanup(t, "factory message broker", s)
 	status, err := s.Status(context.Background())
 	if err != nil {
 		t.Fatal(err)

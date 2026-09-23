@@ -69,23 +69,23 @@ shift+tab 戻る • enter 次へ
 ┃ このプロファイルで起動する際のモデルをオーバーライドします。                  
 ┃   (project default)                                                           
 ┃   fable[1m] (Fable 5 + 1Mコンテキスト)                                        
-┃ ▸ opus[1m] (Opus 5 + 1Mコンテキスト)                                          
+┃ ▸ opus[1m] (Opus 5.5 + 1Mコンテキスト、推奨)                                  
 ┃   sonnet[1m] (Sonnet 5 + 1Mコンテキスト)                                      
 ┃   haiku (Haiku 4.5、最速)                                                     
   エージェントモデルポリシー                                                    
   各エージェントに最適なモデルを割り当て、トークン消費を制御します。            
                                                                                 
-  ▸ High - Opus 5 (high~medium) + Sonnet (low, docs/single-shot rows)           
-    Medium - Opus 5 (high~low) + Sonnet (low, docs/single-shot rows)            
-    Low - Opus 5 (high~low) + Sonnet (low, docs/e2e/single-shot rows)           
+  ▸ High - Opus 5.5 (high~medium) + Sonnet (low, docs/single-shot rows)         
+    Medium - Opus 5.5 (high~low) + Sonnet (low, docs/single-shot rows)          
+    Low - Opus 5.5 (high~low) + Sonnet (low, docs/e2e/single-shot rows)         
   セッション推論レベル                                                          
   このプロファイルで起動する Claude セッションの推論深度です。xhigh/max         
-  は対応モデル（Opus 5、Sonnet 5、Opus 4.7                                      
+  は対応モデル（Opus 5.5、Sonnet 5、Opus 4.7                                    
   以降）が必要です。エージェントごとの推論強度はエージェントモデルポリシーで決ま
   ります。                                                                      
     (runtime default)                                                           
     low - 最速、簡易推論                                                        
-    medium - バランス                                                           
+    medium - バランス (推奨)                                                    
   ▸ high - 深い推論                                                             
     xhigh - 拡張推論 (セッション専用、エージェントマトリクスは high を使用)     
     max - 最大推論                                                              

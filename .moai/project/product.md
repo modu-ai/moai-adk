@@ -148,7 +148,7 @@ Code analysis via structural AST (Abstract Syntax Tree) pattern matching.
 
 Support for multiple LLM providers, a 33-cell profile matrix, and hybrid cost-optimization modes.
 
-- **Claude Mode** (`moai cc`): Full Claude model stack anchored on Opus 5 (1M-context) with a 5-level effort scale (`low` / `medium` / `high` / `xhigh` / `max`). Per-agent effort calibration is driven by the 33-cell profile matrix (11 retained agents x 3 model tiers) materialized by `internal/template/profile_matrix`
+- **Claude Mode** (`moai cc`): Full Claude model stack anchored on Opus 5.5 (1M-context) with a 5-level effort scale (`low` / `medium` / `high` / `xhigh` / `max`). Per-agent effort calibration is driven by the 33-cell profile matrix (11 retained agents x 3 model tiers) materialized by `internal/template/profile_matrix`
 - **GLM Mode** (`moai glm`): Route the session through Z.AI's GLM-5.2 (1M-context, `DefaultGLMHigh = "glm-5.2"` without the `[1m]` suffix -- the `[1m]` is expanded at the launcher layer in `internal/cli/launcher.go` only when the 1M-context variant is requested)
 - **Hybrid CG Mode** (`moai cg`): Claude leader with GLM teammates via tmux panes for 60-70% cost reduction on implementation-heavy tasks
 - **Model Profile Matrix** (`.moai/config/sections/llm.yaml`): 3-tier model profiles (`low` / `medium` / `high`) composing the 33-cell agent-by-tier matrix rendered into template deployment

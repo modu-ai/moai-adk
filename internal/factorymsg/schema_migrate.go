@@ -6,13 +6,6 @@ import (
 	"fmt"
 )
 
-// queryer is the read surface shared by *sql.DB and *sql.Tx, so checks that
-// run inside a transaction never reach for a second connection (the store
-// holds exactly one).
-type queryer interface {
-	QueryRowContext(ctx context.Context, query string, args ...any) *sql.Row
-}
-
 // messagesLaneScopeDDL is the messages table at schema version 2: idempotency
 // is scoped to (project_key, run_id, sender_slot, idem_key), independent of
 // the sender's session UUID and generation. It must stay identical to the

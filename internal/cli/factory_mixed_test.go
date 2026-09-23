@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io"
 	"os"
 	"strings"
 	"sync"
@@ -48,7 +49,7 @@ func TestFactoryLauncherRegistersLaunchPendingPeers(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer s.Close()
+	closeOnCleanup(t, "factory message broker", s)
 	status, err := s.Status(context.Background())
 	if err != nil {
 		t.Fatal(err)
@@ -91,18 +92,18 @@ func TestFactoryRunSelectionAtomicSlotsAndArgv(t *testing.T) {
 	if got, err := factorymsg.ResolveActiveRun(context.Background(), root, "run-b"); err != nil || got != "run-b" {
 		t.Fatalf("explicit=%q %v", got, err)
 	}
-	p, err := parseFactoryFlag([]string{"-f", "agent", "--factory-run", "run-b", "--", "--factory-run", "child", "x"})
+	p, err := parseFactoryFlag([]string{"-f", "worker", "--factory-run", "run-b", "--", "--factory-run", "child", "x"})
 	if err != nil {
 		t.Fatal(err)
 	}
-	if p.RunID != "run-b" || !p.AgentRole || len(p.Rest) != 4 || p.Rest[0] != "--" || p.Rest[1] != "--factory-run" || p.Rest[2] != "child" || p.Rest[3] != "x" {
+	if p.RunID != "run-b" || !p.WorkerRole || len(p.Rest) != 4 || p.Rest[0] != "--" || p.Rest[1] != "--factory-run" || p.Rest[2] != "child" || p.Rest[3] != "x" {
 		t.Fatalf("parse=%+v", p)
 	}
 	s, err := factorymsg.Open(root, "run-b")
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer s.Close()
+	closeOnCleanup(t, "factory message broker", s)
 	start := homestate.CurrentProcessFingerprint()
 	if start == "" {
 		start = "test-start"
@@ -113,7 +114,7 @@ func TestFactoryRunSelectionAtomicSlotsAndArgv(t *testing.T) {
 		wg.Add(1)
 		go func(i int) {
 			defer wg.Done()
-			peer := factorymsg.Peer{ProjectKey: homestate.ProjectKey(root), RunID: "run-b", Backend: "codex", Role: "worker", Slot: "agent", SessionUUID: fmt.Sprintf("session-%d", i), Generation: 1, PID: os.Getpid(), ProcessStart: start}
+			peer := factorymsg.Peer{ProjectKey: homestate.ProjectKey(root), RunID: "run-b", Backend: "codex", Role: "worker", Slot: "worker", SessionUUID: fmt.Sprintf("session-%d", i), Generation: 1, PID: os.Getpid(), ProcessStart: start}
 			got, e := s.RegisterPeer(context.Background(), peer)
 			if e != nil {
 				t.Errorf("register: %v", e)
@@ -134,4 +135,15 @@ func TestFactoryRunSelectionAtomicSlotsAndArgv(t *testing.T) {
 	if len(seen) != 8 {
 		t.Fatalf("atomic slots=%d", len(seen))
 	}
+}
+
+// closeOnCleanup closes c when the test finishes and reports a close failure
+// as a test error instead of discarding it.
+func closeOnCleanup(t *testing.T, what string, c io.Closer) {
+	t.Helper()
+	t.Cleanup(func() {
+		if err := c.Close(); err != nil {
+			t.Errorf("close %s: %v", what, err)
+		}
+	})
 }
