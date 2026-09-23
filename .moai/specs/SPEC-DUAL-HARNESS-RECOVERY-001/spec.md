@@ -2,7 +2,7 @@
 id: SPEC-DUAL-HARNESS-RECOVERY-001
 title: "Dual-harness recovery — Codex wiring unwire/rollback, Codex worktree and kanban parity, role permission contract, exactly-once dispatch results, mixed factory card flow"
 version: "0.3.0"
-status: draft
+status: in-progress
 created: 2026-09-23
 updated: 2026-09-23
 author: manager-spec

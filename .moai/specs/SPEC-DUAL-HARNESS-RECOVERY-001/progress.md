@@ -97,7 +97,33 @@ plan-audit iter-2(`.moai/reports/plan-audit/SPEC-DUAL-HARNESS-RECOVERY-001-revie
 
 ## §E.2 Run-phase Evidence
 
-_<pending run-phase>_
+### M1 — AC-DHR-020 멱등 범위 재현 측정 (REQ-DHR-025)
+
+증거 디렉터리 `.moai/reports/t1100/`는 gitignore 대상이므로 아래 판정 근거를 값으로 적는다(`acceptance.md` §D 기록 의무).
+
+- 상태 전이: `spec.md` `status: draft → in-progress` (이 M1 커밋). 나머지 산출물은 frontmatter에 `status` 필드가 없다.
+- 측정 트리: `ac020-head.txt` = `9ba43c05f`. 그 트리의 factorymsg 스키마는 바뀌지 않았고, 추가된 것은 새 테스트 파일 `internal/factorymsg/idem_scope_repro_test.go` 하나뿐이다(프로덕션 코드·스키마 변경 없음). 테스트 파일은 측정 시점에 미커밋이었고 이 M1 커밋으로 들어간다.
+- 실행: acceptance.md AC-DHR-020의 실행·판정 명령을 그대로 실행했다. 실행 exit 0, 판정 출력 `true`, 판정 exit 0.
+- 결과(`outcome`): **`reproduced`**
+- 증거 파일 sha256: `9ff051e039834a34833a22838dbec45c28a8b0c3abeebcceecc954b36b7685f8` (`ac020-evidence.sha`와 jsonl 태그 줄 `IDEM_SCOPE_REPRO_SHA256 9ff051e0…685f8`이 일치)
+- 저장소가 연 unique 제약(`sqlite_master`에서 읽음): `UNIQUE(sender_session,idem_key)`
+- 수치: `sender_sessions` = [`t1100-sender-session-1`, `t1100-sender-session-2`], `sender_generations` = [1, 2], `first_send_id` = `27ab1b87110c5e1e25b21d654093b653`, `second_send_result` = `new-id`, `rows` = 2, `claimed_ids` = 2, `control_claimed` = 1
+- 판정식 음성 변이(저장소 밖 합성 입력, AC 판정식 그대로): 정상 `reproduced`(2/2/`new-id`) `true`, 정상 `not-reproduced`(1/1/`same-id`) `true`. `not-reproduced`에 행 0·claim 0, 두 번째 전송 `error`, 같은 세션 두 번, 대조 claim 0, `reproduced`인데 행 1, generation 미증가(2→2), 출력에 `NOT_RUN` — 7건 모두 `false`.
+- 선택된 REQ-DHR-017 분기: **A** (송신 lane slot 기준으로 멱등 범위를 옮기고 기존 행을 손실 없이 이관). M2가 이 분기로 스키마를 정한다. AC-DHR-014는 분기 A 명령만 판정하고 분기 B는 `N/A (branch)`로 적는다.
+- 리드 조정 필요: 결과가 `reproduced`이므로 t1082 조정이 필요하다(`plan.md` §B-3, `spec.md` §E 항목 2). t1082 REQ-FLH-009의 "current t1074 schema's idempotency key unchanged" 문구가 분기 A와 맞지 않는다.
+- 측정 방식 메모: 재시작은 같은 slot `lane-1`에 새 세션 UUID와 새 process_start로 재등록하고 이전 소유 프로세스를 죽은 것으로 두는 방식으로 모사했다(`ownerCurrent` 테스트 대체). auto-assign 센티넬이 아니라 명시 slot을 써서 로컬 develop의 센티넬 개명(t1085)과 무관하게 한다.
+- `MOAI_T1100_EVIDENCE_DIR`가 비어 있을 때: 측정과 경로 통과 검사는 그대로 돌고(통과 못 하면 `NOT_RUN`을 찍고 실패), 증거 파일과 태그 줄만 만들지 않는다. 그래서 일반 `go test ./internal/factorymsg`는 초록으로 남는다. 이는 `acceptance.md` §A의 "값이 비어 있으면 테스트는 `NOT_RUN`을 찍고 실패한다"와 다르며, 리드 지시(CI 초록 유지)를 따른 것이다 — 리드 판정 대상.
+
+품질 게이트(측정 트리 + 새 테스트 파일):
+
+```text
+$ go test ./internal/factorymsg -count=1
+ok  	github.com/modu-ai/moai-adk/internal/factorymsg	3.297s
+$ go vet ./internal/factorymsg
+(출력 없음, exit 0)
+$ golangci-lint run ./internal/factorymsg/...
+10 issues: errcheck 10 — store.go 8, launch_pending_rollback_test.go 2 (새 파일 0건, 기존 파일의 기존 지적)
+```
 
 ## §E.3 Run-phase Audit-Ready Signal
 
