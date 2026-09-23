@@ -181,6 +181,8 @@ m1_to_mN_commit_strategy: per-milestone commits M1..M4 on WT-opus-55-default, no
 
 Sync by manager-docs on 2026-09-23, card t1089. Worktree `.claude/worktrees/t1089`, branch `WT-opus-55-default`. Sync started at HEAD `eb629efb5`; develop `1dbe5e2f3` had been absorbed at `9e6d57f4f`.
 
+> **Superseded in part by E.4.5.** The first close (`d0037fba8`, completed; backfill `0842a0ac4`) was followed by a sync-audit **FAIL**. E.4.5 is the re-close after the repair round, measured at HEAD `6e49cfd0e`, and replaces this section's tally, status, `-f_lane-2` attribution, N3 statement, residual list and signal. E.4.1–E.4.4 are kept as the record of the first close.
+
 ### E.4.1 AC-OP55-012 re-close (post-absorb; supersedes the E.2.2 row 012 FAIL)
 
 The orchestrator re-measured this AC after the absorb. The manager-docs sync read every log below back from disk.
@@ -221,8 +223,8 @@ AC-OP55-014 was re-run by manager-docs on HEAD `eb629efb5`: `git diff --name-onl
 
 ```yaml
 sync_complete_at: 2026-09-23
-sync_commit_sha: d0037fba8
-sync_status: complete
+first_close_sync_commit: d0037fba8   # renamed from sync_commit_sha so the live slot is E.4.5's alone
+sync_status: complete   # first close; superseded by E.4.5
 ac_pass_count: 16
 ac_fail_count: 0
 frontmatter_status_transitions:
@@ -231,6 +233,91 @@ changelog_entry_position: none   # REQ-OP55-015 / AC-OP55-014 forbid CHANGELOG e
 b12_self_test_a: not-applicable   # no CHANGELOG emission
 b12_self_test_b: "acceptance.md distinct AC ids = 16"
 b12_self_test_c: not-applicable
+docs_surfaces_touched: none   # README/docs-site -> card t1094
+push: not-run   # lead batch-pushes develop
+```
+
+### E.4.5 Re-close after the sync-audit FAIL (HEAD `6e49cfd0e`)
+
+#### E.4.5.1 Audit findings and dispositions
+
+The sync-audit returned **FAIL** (`.moai/reports/t1089/sync-audit.md`; that directory has been local and untracked since `7f183119f`). The findings were resolved as follows.
+
+| Finding | Disposition | Carrier |
+|---|---|---|
+| F1 (blocking): operator `--effort` after `--` was not detected | Fixed. `operatorSuppliedEffort` now scans the whole argv, both `--effort X` and `--effort=X` | `6e49cfd0e`; E.2.7 (`run-f1-red.log` → `run-f1-green.log`) |
+| F2: `max` delivery was not a stated requirement | Fixed by in-place amendment: spec.md v0.1.2, `completed → in-progress`, REQ-OP55-007(b), AC-OP55-007a/007b | `5abca9135` |
+| F3: `settings-management.md:93` put `max` in `effortLevel` | Fixed, template first; both copies read "never written there" | `6e49cfd0e`; E.2.7 |
+| F8: per-model default prose ("others default to `high`") ignored Opus 4.7 = `xhigh` | Fixed in every occurrence this card introduced | `6e49cfd0e`; E.2.7 |
+| F5: N3 disposition misstated | Corrected in E.4.5.2 | this commit |
+| F6: `-f_lane-2` mis-attributed to env leakage | Re-attributed in E.4.5.2 | this commit |
+| F7: residual list incomplete | Completed in E.4.5.3 | this commit |
+| F4, F9, F10 | Recorded as residuals in E.4.5.3 | — |
+
+#### E.4.5.2 AC tally, corrections, and status
+
+The SPEC now has 18 ACs: the 16 original ones plus AC-OP55-007a and 007b from the amendment.
+
+- **AC-OP55-001–011 and 013–016: PASS.** The evidence is in E.2.2. E.2.7 re-ran the probes on the repair tree: P4 v2 printed nothing, P5 and P6 printed nothing, P7 printed `2`, and the 6 SAME pairs gave `cmp` rc=0. `make build` returned rc=0.
+- **AC-OP55-007a: PASS.** `run-f1-green.log` contains all three named tests passing in a run that ends `ok`.
+- **AC-OP55-007b: PASS.** The AC's own command, `go test -overlay <scratch>/overlay.json -count=1 -run 'TestZZF2ProbeOperatorEffortAnywhere' -v ./internal/cli/`, printed `--- PASS: TestZZF2ProbeOperatorEffortAnywhere (0.00s)` and `ok  	github.com/modu-ai/moai-adk/internal/cli	1.238s`, exit 0 (`run-ac007b.log`). The selector matched a test that ran, so the pass covers a non-empty set.
+- **AC-OP55-012: not green on the current tree. This is a Gap.**
+  - **Measured on the repair tree:**
+    - template and constitution returned `ok` (`run-repair-template.log`).
+    - The targeted cli run returned `ok` with 47 PASS (`run-f1-green.log`).
+    - `golangci-lint` on cli and template returned `0 issues.` (`run-repair-lint.log`).
+  - **Measured before the repair only:** web, wizard and settings returned `ok` (`remeasure-ac012-web.log`, `run-ac012-pkgs.log`). The repair did not touch those packages.
+  - **Last full `internal/cli` pass:** `ok  	github.com/modu-ai/moai-adk/internal/cli	1327.513s`, on the K4 tree `eb629efb5` (`run-k4-cli-full-scrubbed.log`). That tree's Go files match `0512e6e5f`:
+    - `git diff --stat eb629efb5 0512e6e5f -- '*.go'` printed nothing.
+    - The control, `git diff --name-only eb629efb5 0512e6e5f | wc -l`, printed 3, all non-Go files.
+  - **Full `internal/cli` on the repair tree: unmeasured.** The repair `6e49cfd0e` changed Go code, so the K4-tree pass does not carry over. The repair tree's full run ended `panic: test timed out after 25m0s` / `FAIL … 1501.160s` at load 28–41 (`run-repair-cli-full.log`). I record this as a Gap. It is neither a pass nor a demonstrated code failure.
+- **F6 correction: `TestCC_FactoryEntryThroughRunCC/-f_lane-2`.** E.2.6 and E.4.1 attributed this failure to lane env leakage, which was wrong.
+  - The failure is an ordering flake that originates in `internal/factorymsg` and is unrelated to this card.
+  - develop already fixed it in t1103 (`14289b640`).
+  - It still needs confirming with a targeted re-run after the develop absorb in the merge window.
+  - `TestCodexSpawn_RealAssemblyThroughStubTmux` stays attributed as env-leak-only (E.2.6).
+- **F5 correction: N3.** Two different known limits were being conflated.
+  - acceptance.md:61 covers one of them: a phrase shaped "Opus 5-era" is not matched by P4.
+  - The limit N3 actually raised is the breadth of the `(superseded)` exemption. That exemption applies to the whole line, so any Opus 5 mention on a line that carries `(superseded)` passes P4.
+  - That second limit is **not** in acceptance.md; it is recorded only here. manager-docs may not edit the acceptance.md body, so if it belongs in acceptance.md, that is manager-spec's edit.
+- **Unchanged decisions:**
+  - N2: P6 was worded around.
+  - N4: adopted.
+  - CHANGELOG.md is not touched (REQ-OP55-015 / AC-OP55-014). Release notes belong to the release lane.
+  - README and docs-site are not touched; card t1094 owns them.
+- **Status: `in-progress → implemented`. It stops there.**
+  - acceptance.md §4 DoD requires every AC green with evidence.
+  - AC-OP55-012's Green line requires every package line `ok`, including the full `internal/cli` run under the slot.
+  - That run is unmeasured on the repair tree, so `completed` is not justified.
+  - To reach `completed`: get a full `internal/cli` `ok` on `6e49cfd0e` or its develop merge tree, with the lane env scrubbed and the machine not under load. After that, a manager-docs close commit can make `implemented → completed`.
+  - `updated:` was already `2026-09-23`.
+
+#### E.4.5.3 Residual risk (complete list)
+
+- **K4** was fixed in `eb629efb5` and extended by F1 in `6e49cfd0e`. Three residuals remain:
+  - (a) The `--effort max` argv injection applies to every provider funnel: cc, glm and gpt. Each of them previously received settings `effortLevel`.
+  - (b) An operator-supplied `--settings` suppresses profile effort injection. This predates the card.
+  - (c) No live `claude --effort max` launch was run. The basis is a doc quote only.
+- **K6.** `opus[1m]` launches `--model claude-opus-5-5[1m]`, which requires Claude Code v2.1.280+. No version floor was added.
+- **Coverage.** `internal/template` is at 81.7%, below the 85% target. That is the same as the pre-card baseline, so this card did not lower it.
+- **TUI wizard.** The empty effort option (`settings.EmptyLabelFor("effort_level")`) still reads "(runtime default)". It is outside REQ-OP55-007 and is a follow-up card candidate.
+- **F4.** `coding-standards.md:103` and `worktree-integration.md:456` still say `max` goes in `effortLevel`. That prose predates the card; the lead will card it.
+- **F9.** The M-c mutant (AC-009c) ran before the third label guard existed, so it did not exercise that guard.
+- **F10.** The local copy says GLM-5.2 while the template says GLM-5.3. This drift is unrelated to the card.
+
+#### E.4.5.4 Signal
+
+```yaml
+sync_complete_at: 2026-09-23
+sync_commit_sha: pending-backfill
+sync_status: implemented-with-gap   # full internal/cli unmeasured on repair tree 6e49cfd0e
+prior_close: d0037fba8 completed -> sync-audit FAIL -> amendment 5abca9135 -> untrack 7f183119f -> repair 6e49cfd0e
+ac_total: 18
+ac_pass_count: 17
+ac_gap: [AC-OP55-012]   # full internal/cli timed out at load 28-41; not a demonstrated code failure
+frontmatter_status_transitions:
+  spec_md: in-progress -> implemented   # completed withheld per acceptance.md §4 DoD
+changelog_entry_position: none   # REQ-OP55-015 / AC-OP55-014
 docs_surfaces_touched: none   # README/docs-site -> card t1094
 push: not-run   # lead batch-pushes develop
 ```

@@ -2,7 +2,7 @@
 id: SPEC-MODEL-OPUS55-001
 title: "Opus 5.5 adoption — opus alias to claude-opus-5-5, Opus 5 retired from the catalog, medium-effort default recommendation"
 version: "0.1.2"
-status: in-progress
+status: implemented
 created: 2026-09-23
 updated: 2026-09-23
 author: manager-spec (card t1089)
