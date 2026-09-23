@@ -3,6 +3,7 @@ package cli
 import (
 	"context"
 	"errors"
+	"log/slog"
 	"os"
 	"strconv"
 	"time"
@@ -49,7 +50,7 @@ func handleFactoryMsgSend(ctx context.Context, req mcp.CallToolRequest) (*mcp.Ca
 	if e != nil {
 		return toolErr("factory_msg_send", e), nil
 	}
-	defer s.Close()
+	defer closeFactoryToolStore("factory_msg_send", s)
 	from, e := currentFactoryPeer(ctx, s)
 	if e != nil {
 		return toolErr("factory_msg_send", e), nil
@@ -69,7 +70,7 @@ func handleFactoryMsgList(ctx context.Context, req mcp.CallToolRequest) (*mcp.Ca
 	if e != nil {
 		return toolErr("factory_msg_list", e), nil
 	}
-	defer s.Close()
+	defer closeFactoryToolStore("factory_msg_list", s)
 	p, e := currentFactoryPeer(ctx, s)
 	if e != nil {
 		return toolErr("factory_msg_list", e), nil
@@ -85,7 +86,7 @@ func handleFactoryMsgBody(ctx context.Context, req mcp.CallToolRequest) (*mcp.Ca
 	if e != nil {
 		return toolErr("factory_msg_body", e), nil
 	}
-	defer s.Close()
+	defer closeFactoryToolStore("factory_msg_body", s)
 	p, e := currentFactoryPeer(ctx, s)
 	if e != nil {
 		return toolErr("factory_msg_body", e), nil
@@ -101,7 +102,7 @@ func handleFactoryMsgReceipt(ctx context.Context, req mcp.CallToolRequest) (*mcp
 	if e != nil {
 		return toolErr("factory_msg_receipt", e), nil
 	}
-	defer s.Close()
+	defer closeFactoryToolStore("factory_msg_receipt", s)
 	p, e := currentFactoryPeer(ctx, s)
 	if e != nil {
 		return toolErr("factory_msg_receipt", e), nil
@@ -128,10 +129,19 @@ func handleFactoryMsgStatus(ctx context.Context, req mcp.CallToolRequest) (*mcp.
 	if e != nil {
 		return toolErr("factory_msg_status", e), nil
 	}
-	defer s.Close()
+	defer closeFactoryToolStore("factory_msg_status", s)
 	st, e := s.Status(ctx)
 	if e != nil {
 		return toolErr("factory_msg_status", e), nil
 	}
 	return toolJSON("factory_msg_status", st), nil
+}
+
+// closeFactoryToolStore closes a broker handle after a tool call has produced
+// its result. The result already reflects what the store committed, so a close
+// failure is logged rather than rewriting a completed call into a tool error.
+func closeFactoryToolStore(tool string, s *factorymsg.Store) {
+	if err := s.Close(); err != nil {
+		slog.Warn("factory message broker close failed", "tool", tool, "error", err)
+	}
 }

@@ -108,7 +108,7 @@ func TestFactoryOperationalFixtureUsesProductionInit(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer store.Close()
+	closeOnCleanup(t, "factory message broker", store)
 	if _, err := store.RegisterLaunchPending(context.Background(), factorymsg.Peer{
 		ProjectKey: homestate.ProjectKey(root), RunID: run, Backend: "codex",
 		Role: "lead", Slot: "lead", PID: os.Getpid(), ProcessStart: start,
@@ -418,8 +418,8 @@ func TestFactoryOperationalHookTrustOnce(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		defer r.Close()
-		defer w.Close()
+		closeOnCleanup(t, "pipe reader", r)
+		closeOnCleanup(t, "pipe writer", w)
 		term := operationalTerminal{stdin: w, trust: operationalDirectoryTrust{root: root, sent: true}, hookTrust: operationalHookTrust{operationalDirectoryTrust: operationalDirectoryTrust{root: root}}}
 		_, _ = term.Write([]byte(screen))
 		for i := 0; i < 2; i++ {
@@ -535,8 +535,8 @@ func TestFactoryOperationalDirectoryTrustOnce(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		defer r.Close()
-		defer w.Close()
+		closeOnCleanup(t, "pipe reader", r)
+		closeOnCleanup(t, "pipe writer", w)
 		term := operationalTerminal{stdin: w, trust: operationalDirectoryTrust{root: root}}
 		_, _ = term.Write([]byte("\x1b[6n" + screen))
 		for i := 0; i < 2; i++ {

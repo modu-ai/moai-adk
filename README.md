@@ -66,18 +66,18 @@ Companion sessions are launched **by hand, one per terminal** — a session neve
 
 When you open a kanban run, the bootstrap notice carries a default recommendation — token availability first: lead on `moai glm -k`, plan on `moai cc -k --name plan`, run on `moai glm -k --name run`, sync on `moai cc -k --name sync`. The reasoning is the kind of thinking each lane needs. Plan and sync turn on judgment and review, so they sit on Claude; run is implementation-heavy, so GLM keeps its cost down. The lead is not the seat that renders verdicts — it watches the queue and moves cards — so GLM, cheap to keep waiting, fits it. When a Claude verdict is needed under a GLM lead, escape through a session named `judge` — the only route by which the GLM lead uses Claude. When one account starts hitting 429s, spreading lanes across accounts is the workable move. This mix is only the default — a different combination, or unifying every session on one backend, is equally fine.
 
-### Factory Mode — many cards at once across N lanes
+### Factory Mode — many cards at once across N workers
 
-`-f` opens a factory lead, Kanban's second form. Where a kanban card hops between columns, a factory card goes **whole to one lane**, and that lane carries it through `plan → run → sync` serially in-session, each phase spawned as `Agent()` subagents. Lanes are labelled `lane-1` … `lane-N`.
+`-f` opens a factory lead, Kanban's second form. Where a kanban card hops between columns, a factory card goes **whole to one worker**, and that worker carries it through `plan → run → sync` serially in-session, each phase spawned as `Agent()` subagents. Workers are labelled `worker-1` … `worker-N`. The old names `agent-<n>` / `lane-<n>` still work as deprecated aliases.
 
 ```bash
-moai cc -f                    # lead — one lane (lane-1) by default
-moai cc -f 4                  # lead — four lanes
-moai cc -f lane-1             # a lane, in its own terminal
-moai glm -f lane-3            # …and one lane on the GLM backend
+moai cc -f                    # lead only (one worker, worker-1)
+moai cc -f worker             # a worker, auto-joins the next free number
+moai cc -f worker-3           # a worker, picking the number directly
+moai glm -f worker            # …and one worker on the GLM backend
 ```
 
-Grow a run one lane at a time with `moai cc -f lane-<n>`. That form already names the lane, so passing `--name`/`-n` alongside it is an error. A number is skipped only while a live session holds it — a dead lane's number is released and reused. Lane ownership is recorded in `~/.moai/db/<project-key>/factory/factory.db` — or, when the launch directory is a temporary one (no absolute `MOAI_HOME` override), project-local under `<base>/.moai/db/<project-key>/factory/`, the same exception the backlog queue follows; a legacy `.moai/state/factory/workers.json` is imported once and retained only as rollback evidence. A lane runs up to 10 concurrent `Agent()` subagents, and write-capable spawns are isolated in their own worktree. Never bring every lane up at once — start the first, confirm it is actually producing output, then activate the rest. Cards are never split across lanes. `-k` still drives the three-role kanban chain; one launch takes one entry token, so `-k` with `-f` is an error. CG is retired; use `moai migrate cg` to preview explicit migration choices.
+Grow a run one worker at a time with `moai cc -f worker` (auto-join the next free number) or `moai cc -f worker-<n>` (that number exactly). Both forms already name the worker, so passing `--name`/`-n` alongside them is an error. An explicitly-picked number that collides with a live legacy worker (`agent-<n>`/`lane-<n>`) is refused by name; auto-assignment with `-f worker` is never refused, and reports by name which legacy numbers it skipped. A number is otherwise skipped only while a live session holds it — a dead worker's claim no longer blocks its number (an explicit pick reuses it right away), but `-f worker` auto-assignment always takes one past the highest live number and never backfills a gap. Worker ownership is recorded in `~/.moai/db/<project-key>/factory/factory.db` — or, when the launch directory is a temporary one (no absolute `MOAI_HOME` override), project-local under `<base>/.moai/db/<project-key>/factory/`, the same exception the backlog queue follows; a legacy `.moai/state/factory/workers.json` is imported once and retained only as rollback evidence. A worker runs up to 10 concurrent `Agent()` subagents, and write-capable spawns are isolated in their own worktree. Never bring every worker up at once — start the first, confirm it is actually producing output, then activate the rest. Cards are never split across workers. `-k` still drives the three-role kanban chain; one launch takes one entry token, so `-k` with `-f` is an error. CG is retired; use `moai migrate cg` to preview explicit migration choices.
 
 > Details: [Kanban mode — Factory Mode](https://adk.mo.ai.kr/en/advanced/kanban-mode)
 

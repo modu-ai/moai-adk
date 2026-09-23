@@ -214,9 +214,10 @@ func TestAgentFMValidationRejectsOutOfSet(t *testing.T) {
 		"agentfm.dev-a.model":  {"gpt5"},
 		"agentfm.dev-a.effort": {"superhigh"},
 	})
-	if rec.Code != http.StatusBadRequest {
-		t.Fatalf("out-of-set submission status = %d, want 400", rec.Code)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("out-of-set submission status = %d, want 200", rec.Code)
 	}
+	assertValidationRejectBanner(t, rec.Body.String())
 	if devAfter, _ := os.ReadFile(devPath); string(devAfter) != string(devBefore) {
 		t.Error("agent file changed despite validation reject")
 	}

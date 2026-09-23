@@ -229,9 +229,10 @@ func TestSaveInvalidSchemaValueRejected(t *testing.T) {
 	rec := postSave(t, a, url.Values{
 		"git_strategy.mode": {"bogus"},
 	})
-	if rec.Code != http.StatusBadRequest {
-		t.Fatalf("POST /save status = %d, want 400", rec.Code)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("POST /save status = %d, want 200", rec.Code)
 	}
+	assertValidationRejectBanner(t, rec.Body.String())
 	if got := readSectionFile(t, root, "git-strategy"); got != beforeGS {
 		t.Error("git-strategy.yaml changed despite validation reject (atomic reject violated)")
 	}

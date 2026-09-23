@@ -96,7 +96,7 @@ func factoryLaunchEntry() string {
 // (a) the run id and the session name that must accompany it; (b) why
 // bootstrap is manual and how lane names are assigned; (c) the N lane
 // launch lines; (d) the entry-point guide — cc/glm/gpt backend choice, the
-// -f N form, the incremental -f lane-<n> form, the per-lane fan-out — plus
+// -f worker join, the incremental -f worker-<n> form, the per-lane fan-out — plus
 // the leader socket path; (e) the dispatch discipline — whole-card routing
 // (each card to ONE lane, which runs the serial plan -> run -> sync path
 // in-session), the fan-out-only stagger rule, and the
@@ -104,10 +104,10 @@ func factoryLaunchEntry() string {
 // notice. There is no SPEC line — the factory entry carries a lane count,
 // not a SPEC identifier.
 //
-// The lane launch lines each carry the t118 `-f lane-<i>` form — one
+// The lane launch lines each carry the t118 `-f worker-<i>` form — one
 // flag token that both selects the factory and names the lane, and that a
 // lead can also paste ONE line from to add a single lane later — with the
-// lane-<i> name the lead's addressing vocabulary uses, so the operator's
+// worker-<i> name the lead's addressing vocabulary uses, so the operator's
 // paste and the lead's dispatch target are the same string by construction.
 //
 // QUEUE POLLING IS DELIBERATELY NOT TAUGHT HERE. The watch-dispatch-collect
@@ -192,7 +192,7 @@ func factoryLeadNotice(runID string, workers int, root, lang string) string {
 // final name). It does NOT print the launch block, for the same reason as
 // kanbanCompanionNotice.
 //
-// The incremental `-f lane-<n>` entry carries no run count (the launcher
+// The incremental `-f worker-<n>` entry carries no run count (the launcher
 // publishes 0), and the count-less sentence names the label alone rather
 // than fabricating a fan-out size. Both sentences take (label, workers);
 // the per-locale word order differs (en/ja/ko say the count first, zh the
