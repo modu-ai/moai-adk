@@ -59,6 +59,20 @@ type fireProbeReport struct {
 	P7LoadReferenceErrors []string `json:"p7_load_referenceerrors"`
 
 	P6PopoverAfterSwapFired bool `json:"p6_popover_after_swap_fired"`
+
+	// card t1106 — the driven/excluded accounting REQ-AFG-014 (1) requires of
+	// every run, and the sandbox-serving entry's observations.
+	ReductionDeclared bool     `json:"reduction_declared"`
+	DrivenCount       int      `json:"driven_count"`
+	DrivenEntries     []string `json:"driven_entries"`
+	ExcludedEntries   []string `json:"excluded_entries"`
+
+	SandboxInvalidSet      string            `json:"s_invalid_set"`
+	SandboxPaint           *firePaintReport  `json:"s_paint"`
+	SandboxLoadRefErrors   []string          `json:"s_load_referenceerrors"`
+	SandboxWindowRefErrors []string          `json:"s_window_referenceerrors"`
+	SandboxChangedPaths    []fireChangedPath `json:"s_changed_paths"`
+	SandboxSnapshotFiles   int               `json:"s_snapshot_files"`
 }
 
 type fireProbeFailure struct {
@@ -313,13 +327,15 @@ func launchFireGuardChrome(t *testing.T, chromePath string) string {
 // script and returns its exit code plus the parsed report. Probe stdout is
 // the evidence surface — it is echoed verbatim into the test log so a red
 // run carries its own report.
-func runFireGuardProbe(t *testing.T, scriptPath, cdpPort, baseURL, label string) (int, fireProbeReport) {
+func runFireGuardProbe(t *testing.T, scriptPath, cdpPort, baseURL, label string, extra ...string) (int, fireProbeReport) {
 	t.Helper()
 	port := strings.TrimPrefix(strings.TrimPrefix(baseURL, "http://"), "https://")
 	if host, p, err := net.SplitHostPort(port); err == nil && host == "127.0.0.1" {
 		port = p
 	}
-	cmd := exec.Command("python3", scriptPath, "--cdp-port", cdpPort, port, label)
+	args := append([]string{scriptPath, "--cdp-port", cdpPort}, extra...)
+	args = append(args, port, label)
+	cmd := exec.Command("python3", args...)
 	var stdout, stderr strings.Builder
 	cmd.Stdout = &stdout
 	cmd.Stderr = &stderr
@@ -592,5 +608,160 @@ func TestAppJsFireSandboxRouting(t *testing.T) {
 	}
 	if unmarked == 0 {
 		t.Error("(b) every entry carries the sandbox-serving marker — the primary direction of this judgement is vacuous")
+	}
+}
+
+// firePaintReport is the probe's paint judgement for the validation-reject
+// banner. Node existence alone is NOT a pass (REQ-AFG-015): a layout box must
+// exist, no ancestor may hide it, and the text must be non-empty.
+type firePaintReport struct {
+	Found    bool    `json:"found"`
+	Box      bool    `json:"box"`
+	Hidden   bool    `json:"hidden"`
+	Width    float64 `json:"width"`
+	Height   float64 `json:"height"`
+	TextLen  int     `json:"text_len"`
+	Text     string  `json:"text"`
+	HiddenBy string  `json:"hidden_by"`
+}
+
+type fireChangedPath struct {
+	Path   string `json:"path"`
+	Change string `json:"change"`
+}
+
+// startFireGuardBrowserStack boots the prerequisites every gated
+// sandbox-serving test needs: the real-root server, the second server on the
+// disposable copy, and headless Chrome. It returns the two bases, the sandbox
+// root, and the CDP port.
+func startFireGuardBrowserStack(t *testing.T) (primaryBase, sandboxBase, sandboxRoot, cdpPort string) {
+	t.Helper()
+	chromePath := requireFireGuardPrereqs(t)
+	primaryBase = startFireGuardServer(t)
+	sandboxBase, sandboxRoot = startFireGuardSandboxServer(t)
+	cdpPort = launchFireGuardChrome(t, chromePath)
+	return primaryBase, sandboxBase, sandboxRoot, cdpPort
+}
+
+// TestAppJsFireValidationRejectPaints is AC-AFG-010: submitting a
+// validation-failing value must leave the reject banner PAINTED — the card
+// t1105 fix delivered a 2xx so htmx would swap the response in, and this is
+// the guard that the swapped-in banner actually reaches the screen.
+//
+// The predicate is deliberately not "the node exists": the response-body layer
+// already proves the banner is in the markup (transport400_swap_contract_test.go
+// and siblings). What this adds is reach — a layout box, no hiding ancestor,
+// non-empty text, and zero ReferenceErrors in the same window. The
+// --inject-banner-hidden mutant below is what keeps that predicate honest: a
+// banner rendered hidden must NOT pass.
+func TestAppJsFireValidationRejectPaints(t *testing.T) {
+	primaryBase, sandboxBase, sandboxRoot, cdpPort := startFireGuardBrowserStack(t)
+	probe := fireGuardProbePath(t)
+
+	exitCode, report := runFireGuardProbe(t, probe, cdpPort, primaryBase, "t1106-reject-paints",
+		"--sandbox-base-url", sandboxBase, "--sandbox-root", sandboxRoot)
+	if exitCode != 0 {
+		t.Fatalf("probe exited %d (want 0); failures=%s", exitCode, mustJSON(t, report.Failures))
+	}
+	if report.SandboxInvalidSet != "bogus" {
+		t.Fatalf("the probe did not place a validation-failing value in the form (s_invalid_set=%q) — a submit that could have SUCCEEDED measures the wrong path", report.SandboxInvalidSet)
+	}
+	paint := report.SandboxPaint
+	if paint == nil {
+		t.Fatal("probe reported no paint judgement for the validation-reject banner")
+	}
+	if !paint.Found {
+		t.Fatalf("no banner node after the reject render: %s", mustJSON(t, paint))
+	}
+	if !paint.Box {
+		t.Errorf("(a) banner has no layout box (%gx%g) — it is in the DOM but not on the screen", paint.Width, paint.Height)
+	}
+	if paint.Hidden {
+		t.Errorf("(a) banner is hidden by an ancestor (%s) — reaching the DOM is not reaching the screen", paint.HiddenBy)
+	}
+	if paint.TextLen == 0 {
+		t.Error("(b) banner text is empty — an empty banner tells the user nothing")
+	}
+	if len(report.SandboxLoadRefErrors) != 0 || len(report.SandboxWindowRefErrors) != 0 {
+		t.Errorf("(c) ReferenceErrors in the reject window: load=%v submit=%v", report.SandboxLoadRefErrors, report.SandboxWindowRefErrors)
+	}
+
+	// Mutant probe (AC-AFG-010): weaken the surface, not the predicate — the
+	// same run with the banner forced hidden must go red. A predicate that
+	// only checks node existence passes this mutant, and is unadoptable.
+	mutantExit, mutantReport := runFireGuardProbe(t, probe, cdpPort, primaryBase, "t1106-reject-paints-mutant",
+		"--sandbox-base-url", sandboxBase, "--sandbox-root", sandboxRoot, "--inject-banner-hidden")
+	if mutantExit != 1 {
+		t.Fatalf("a banner rendered hidden exited %d (want 1) — the paint predicate is too shallow to adopt; report=%s", mutantExit, mustJSON(t, mutantReport.SandboxPaint))
+	}
+}
+
+// TestAppJsFireValidationRejectNoWrites is AC-AFG-011: the submit happens on a
+// disposable copy and the copy stays byte-identical across it, judged in BOTH
+// directions.
+//
+//	(a) the serving root is the disposable copy, not findRepoRoot,
+//	(b)(c) the probe compares the copy's bytes either side of the submit and
+//	       exits 1 naming the path when one changes — OBSERVED by injecting a
+//	       one-byte write under .moai/config/sections/, the subtree
+//	       handleSave's write seams actually reach, so the reverse direction
+//	       cannot be satisfied by an implementation that excludes it,
+//	(d) the copy's root derives from t.TempDir() and its lifetime hangs on no
+//	    defer and no trailing removal statement — cleanup that a panic or an
+//	    early failure can skip is not cleanup.
+func TestAppJsFireValidationRejectNoWrites(t *testing.T) {
+	primaryBase, sandboxBase, sandboxRoot, cdpPort := startFireGuardBrowserStack(t)
+	probe := fireGuardProbePath(t)
+
+	// (a) + (d) — the root the second server serves.
+	if sandboxRoot == findRepoRoot(t) {
+		t.Fatalf("(a) the submit is being served from the real repo root %q", sandboxRoot)
+	}
+	tempParent := filepath.Dir(t.TempDir())
+	if got := filepath.Dir(filepath.Dir(sandboxRoot)); got != tempParent {
+		t.Errorf("(d) sandbox root %q is not derived from t.TempDir() (%q != %q) — its removal must be the framework's job, on every exit path", sandboxRoot, got, tempParent)
+	}
+	driverSrc, err := os.ReadFile(filepath.Join(findRepoRoot(t), "internal", "web", "appjs_fire_guard_test.go"))
+	if err != nil {
+		t.Fatalf("read driver source: %v", err)
+	}
+	// The needles are assembled rather than written out: a literal
+	// "os.Remove"+"All" in this file would be matched by this very scan, and
+	// the test would fail on its own fixture instead of on the driver.
+	for _, forbidden := range []string{"defer os." + "Remove", "os." + "RemoveAll"} {
+		if strings.Contains(string(driverSrc), forbidden) {
+			t.Errorf("(d) driver carries %q — the sandbox copy's lifetime must hang on t.TempDir()/t.Cleanup alone; a trailing removal is a line the process may never reach", forbidden)
+		}
+	}
+
+	// (b) forward: the real submit changes nothing.
+	exitCode, report := runFireGuardProbe(t, probe, cdpPort, primaryBase, "t1106-reject-nowrites",
+		"--sandbox-base-url", sandboxBase, "--sandbox-root", sandboxRoot)
+	if exitCode != 0 {
+		t.Fatalf("probe exited %d (want 0); failures=%s", exitCode, mustJSON(t, report.Failures))
+	}
+	if report.SandboxSnapshotFiles == 0 {
+		t.Fatal("the byte-invariance comparison covered zero files — an invariance claim over an empty set asserts nothing")
+	}
+	if len(report.SandboxChangedPaths) != 0 {
+		t.Fatalf("the validation-reject path wrote to the sandbox: %s", mustJSON(t, report.SandboxChangedPaths))
+	}
+
+	// (c) reverse: a single injected byte under the subtree the write seams
+	// reach must be caught and NAMED.
+	const injected = ".moai/config/sections/quality.yaml"
+	mutantExit, mutantReport := runFireGuardProbe(t, probe, cdpPort, primaryBase, "t1106-reject-nowrites-mutant",
+		"--sandbox-base-url", sandboxBase, "--sandbox-root", sandboxRoot, "--inject-sandbox-write", injected)
+	if mutantExit != 1 {
+		t.Fatalf("a one-byte write under %s exited %d (want 1) — the no-write assertion does not actually watch the paths the write seams reach", injected, mutantExit)
+	}
+	named := false
+	for _, c := range mutantReport.SandboxChangedPaths {
+		if c.Path == injected {
+			named = true
+		}
+	}
+	if !named {
+		t.Fatalf("the failure does not NAME the changed path %s: %s", injected, mustJSON(t, mutantReport.SandboxChangedPaths))
 	}
 }
