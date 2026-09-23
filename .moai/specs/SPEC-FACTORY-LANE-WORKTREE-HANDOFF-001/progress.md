@@ -2,7 +2,7 @@
 id: SPEC-FACTORY-LANE-WORKTREE-HANDOFF-001
 document: progress
 created: 2026-09-22
-updated: 2026-09-23
+updated: 2026-09-24
 author: manager-spec
 card: t1082
 module: "internal/factorymsg"
@@ -13,7 +13,7 @@ module: "internal/factorymsg"
 ## §A Status
 
 - Current SPEC status: `in-progress` (M1 commit, manager-develop). The plan-era lines below are kept as written.
-- Current phase: run, M1, M2, M3a and M3b complete; M4 not started (see §E.2).
+- Current phase: run, M1, M2, M3a, M3b and M4 complete (M4 code HEAD `c16d1422a`); M5 (LIVE) not started (see §E.2 and § M4 lane record).
 - Card/worktree/branch: `t1082` / `.claude/worktrees/t1082` / `WT-factory-lane-worktree-handoff`.
 - Plan subject HEAD: `bf39a539d97f49edf3b11517ee7c982239c60df3`.
 - Implementation: NOT STARTED.
@@ -715,3 +715,101 @@ CONFLICT (content): Merge conflict in internal/factorymsg/store.go
 exit=1
 ```
 One conflicted hunk, in `Send`'s idempotency re-lookup (printed tree lines 710-722): t1100 replaces the base lookup with a `sender_slot`-scoped SELECT and compares against the envelope's recipient columns; t1082 keeps the `sender_session` SELECT plus the `originalRecipient` step. This is the planned seam — the likely resolution is t1100's base SELECT with t1082's `originalRecipient` step layered on the comparison — but it was measured only, not resolved (t1100's lane).
+
+## § M4 lane record — Recovery, safety, and compatibility (2026-09-23/24, manager-develop, cycle_type=tdd)
+
+Base `a44c9f30c`. Commits (all name card t1082):
+
+| SHA | Subject |
+|---|---|
+| `e15be1b70` | fix(factorymsg): refuse tombstoned session UUID on launcher resume bind |
+| `1ffab026b` | feat(factory): add `moai factory handoff abandon-lane` operator termination |
+| `8fa0d5f5d` | feat(factory): add lane handoff crash points and restart reconciler |
+| `c16d1422a` | test(factory): cover abandon store transaction and recovery edges |
+
+Code HEAD for every measurement below is `c16d1422a` unless a row names an earlier commit. Logs are under `.moai/reports/t1082/` (gitignored, local only).
+
+### What changed
+
+- **D1(b), REQ-FLH-010** — `internal/factorymsg/store.go` `BindLaunchPending`: inside its write transaction, before the slot row is read, `sessionTombstoned(ctx, tx, p.SessionUUID)` (session UUID only, any generation); on hit returns `staleError(ctx, tx, NackStaleEndpoint, slot)` and writes nothing. `staleOrUnregistered`'s pair match is not used. The t1074 hunk is one guarded block plus two doc lines. `internal/hook/factory_messages.go`: the SessionStart branch maps a `BindLaunchPending` error through `factoryHandoffRegistrationNotice` before the degraded fallback.
+- **REQ-FLH-011 abandon** — `internal/factorymsg/handoff_abandon.go` `Store.AbandonLane(ctx, slot, probe func(int) (string, homestate.ProcessIdentityState))`: one write transaction rereads the lane's open handoff and probes the recorded source owner. Live with the recorded start, Live with an empty start, and Indeterminate refuse with `SOURCE_OWNER_LIVE`; no open handoff refuses with `HANDOFF_NOT_PENDING`; otherwise `ABANDONED`/`OPERATOR_ABANDONED` plus one event row, nothing else. `internal/cli/factory_handoff_recover.go`: `moai factory handoff abandon-lane --slot <slot> [--run <id>]`, wired through the single package variable `abandonLaneProbe` (production value `homestate.ProbeProcessIdentity`).
+- **REQ-FLH-011 crash recovery** — `internal/cli/factory_lane_handoff_recover.go`: crash points `reserved`, `created`, `renamed`, `switch-pending`, `relocated`, `bound` behind the test-only `laneHandoffFailpoint`; rebind writes are injected through the existing `WithStepHook`. `recoverLaneHandoff` decides from broker/filesystem/Git facts: `none` (no handoff, NACK, ABANDONED), `finalize` (BOUND: receipt + release + tombstone read back, nothing written; any missing is reported as corruption), `abandoned` (target unregistered `OWNER_UNKNOWN`, dirty `TARGET_DIRTY`, commits beyond the pin `TARGET_UNMERGED`, off-pin `BASE_DRIFT`, other branch `BRANCH_COLLISION`, vanished `TARGET_MISSING`), `resume` (RESERVED → create/rename/verify → WT_READY; WT_READY and SWITCH_PENDING_INTERACTIVE unchanged; SWITCH_PENDING_HEADLESS with recorded relocation → rebind), `nack` (headless with no recorded relocation → `RELOCATION_EVIDENCE_INVALID`; a rebind that NACKs). No path deletes a worktree. `createHandoffTarget`'s provenance tail moved into `verifyCreatedTarget` so recovery reuses it. New store helpers: `AbandonHandoff`, `HandoffReceipt`.
+
+### RED → GREEN per AC
+
+| AC leg | RED (command, observed, log) | GREEN (log) |
+|---|---|---|
+| AC-FLH-007 turn-registration ×3, BOUND-row | `go test ./internal/factorymsg -run '^TestFactoryLaneHandoffStaleEndpointRejected$' -count=1` at `a44c9f30c` + new test: exit 1, `handoff_bind_test.go:630: err=<nil>, want a stale-endpoint NACK STALE_ENDPOINT` (BOUND-row leg; the three turn-registration legs already passed — M3b behavior, first time in the named test) — `run-m4-red-ac07.log` | `run-m4-green-ac07.log`, exit 0 |
+| AC-FLH-007 launcher resume + positive | same leg run alone through a temporary probe test (deleted after): exit 1, `handoff_bind_test.go:713: launcher resume: tombstoned session bound to the launch-pending row` — `run-m4-red-ac07-launcher.log` | subtest `launcher_resume_leg` PASS |
+| AC-FLH-003 BOUND notice + launch-pending notice | `go test ./internal/hook -run '^TestFactoryLaneHandoffInteractiveStateMachine$' -count=1 -v`: exit 1; BOUND leg `SessionStart = ""`; launch-pending leg `SessionStart = "factory messaging bound: … generation=5 …"` vs UserPromptSubmit `"… current at  generation 4; …"` — `run-m4-red-ac03.log` | `run-m4-green-ac03.log`, exit 0 |
+| AC-FLH-020 | compile RED `undefined: abandonLaneProbe`, `undefined: factorymsg.NackSourceOwnerLive` (`run-m4-red1-ac20.log`); behavioral RED with the seam variable only: exit 1, `result err=unknown flag: --slot, want NACK SOURCE_OWNER_LIVE` in all four states + `HANDOFF_NOT_PENDING` case (`run-m4-red2-ac20.log`) | `run-m4-green-ac20.log`, exit 0 |
+| AC-FLH-009 / AC-FLH-010 | compile RED (`run-m4-red1-ac09-ac10.log`); with crash points and a stub reconciler: every crash point reached, every subtest `reconcile: not implemented` (13 + 5), exit 1 (`run-m4-red2-ac09-ac10.log`) | `run-m4-green-ac09-ac10.log`, exit 0 |
+
+The AC-FLH-003 fixture follows the SPEC writer's note: the handoff-bound owner is a helper child that is killed AND reaped (`startStoppableLiveOwner`/`stopAndWait`; `startStoppableOwner` in factorymsg), then polled until the probe no longer reads it current.
+
+### Mutant table (each applied to the GREEN tree and reverted; restoration verified by `shasum -c`)
+
+| Mutant | Caught by | Result | Log |
+|---|---|---|---|
+| pair-match tombstone (`session_uuid=? AND generation=?` with the input generation) | AC-007 BOUND-row (`:630`), AC-003 both legs (`:269`, `:310`) | exit 1 / exit 1 | `run-m4-mutant-pair-match-tombstone.log` |
+| no tombstone read in `BindLaunchPending` | AC-007 `:630`, AC-003 `:269`, `:310` | exit 1 / exit 1 | `run-m4-mutant-no-tombstone-read.log` |
+| tombstone read only after a launch-pending row was found | AC-007 `:630`, AC-003 BOUND leg `:269` | exit 1 / exit 1 | `run-m4-mutant-tombstone-after-launch-pending.log` |
+| hook not wired (SessionStart bind error → degraded) | AC-003 `:269`, `:310` | exit 1 | `run-m4-mutant-hook-not-wired.log` |
+| Indeterminate collapsed into "not current" | AC-020 `:174` in all four states | exit 1 | `run-m4-mutant-indeterminate-collapsed.log` |
+| `ownerCurrent` bool seam reused | AC-020 `:174` in all four states | exit 1 | `run-m4-mutant-ownercurrent-bool-seam.log` |
+| ABANDONED deletes the worktree | AC-010 `:343` target files changed | exit 1 | `run-m4-mutant-abandon-deletes-worktree.log` |
+| dirty check removed | AC-010 dirty `decision = resume/` | exit 1 | `run-m4-mutant-no-dirty-check.log` |
+| unmerged commits resumed | AC-010 unmerged | exit 1 | `run-m4-mutant-unmerged-resumed.log` |
+| headless without relocation stays pending | AC-009 `after_switch_pending_headless_before_rpc` | exit 1 | `run-m4-mutant-headless-no-relocation-stays-pending.log` |
+| BOUND not finalized | AC-009 `after_commit_before_receipt_delivery` | exit 1 (first attempt was a build failure; re-run compiled) | `run-m4-mutant-bound-not-finalized.log` |
+| card-id branch not renamed on resume | AC-009 `after_create_before_rename` → `BRANCH_COLLISION` | exit 1 | `run-m4-mutant-no-rename-resume.log` |
+
+### Verification batch (lane env scrubbed in the same invocation)
+
+| Check | Command | Result |
+|---|---|---|
+| AC gates, acceptance.md verbatim | AC-001..010, 014, 016..020 run through the scrub | 16/16 `true`, exit 0 each (`run-m4-ac-gates.txt`, `ac*.jsonl`) |
+| race, factorymsg | `go test -race -count=1 -timeout=600s -coverprofile=… ./internal/factorymsg/...` | `ok … 61.916s coverage: 79.7%`, 0 DATA RACE (`run-m4-race-factorymsg.log`) |
+| race, hook (all packages) | `go test -race -count=1 -timeout=900s ./internal/hook/...` at `8fa0d5f5d` | `FAIL internal/hook 543.303s`; 0 DATA RACE; subpackages ok. Failures: `TestFactoryUserPromptSubmitRebindsLaunchPendingPeer`, `TestFactoryBoundUserPromptSubmitDoesNotRewritePeer` (`factory endpoint is launch-pending`), `TestSessionStart_MissPathSpendsNoJoinBudgetOnDrift` (timing budget) (`run-m4-race-hook.log`). See attribution below |
+| cli subset, race | `go test -race -count=1 -timeout=20m ./internal/cli -run '^(TestFactoryLaneHandoff.*\|TestLaneHandoff.*\|TestSessionWorktree.*\|TestCodex.*\|TestMoaiMCPServer_RegistrationMatchesCatalog\|TestFactoryMsg.*\|TestFactory.*\|TestHandoff.*\|TestRecover.*)$' -v` with `MOAI_FACTORY_WORKER(S)`/`MOAI_KANBAN_BACKEND` also unset | `ok … 204.969s`; 1022 PASS, 0 FAIL, 12 SKIP (env-gated live probes), 0 DATA RACE; `TestMoaiMCPServer_RegistrationMatchesCatalog` PASS (`run-m4-race-cli.log`) |
+| vet | `go vet ./internal/factorymsg/... ./internal/hook/... ./internal/cli/...` | exit 0 |
+| lint | `golangci-lint run` same packages | `0 issues.`, exit 0 (`run-m4-lint.log`) |
+| build | `go build ./...`; `GOOS=windows GOARCH=amd64 go build ./...`; `GOOS=windows GOARCH=amd64 go vet ./internal/hook ./internal/factorymsg ./internal/cli` | exit 0 ×3 |
+| gofmt | `gofmt -l internal/factorymsg internal/hook internal/cli` | empty |
+
+**Hook failures are pre-existing, not M4.** Same four tests ×5 (`-count=5`): M4 tree 15 PASS / 5 FAIL (`run-m4-hook-flake-x5.log`); base `a44c9f30c` exported by `git archive` 11 PASS / 9 FAIL with the same messages (`run-m4-hook-flake-x5-base-a44c9f30c.log`, load average 43 at the time). These are the §J M1 flake and a wall-clock budget test; both fail more often on the base than on M4 in this sample, which does not establish anything about M4 beyond "not introduced".
+
+**First cli run was contaminated by this lane's own factory env.** `TestCodexSpawn_RealAssemblyThroughStubTmux` failed with `MOAI_FACTORY_WORKER=agent-41` in the expected tmux command; with those variables also unset it passes (`run-m4-cli-codexspawn-scrubbed.log`), and the full subset re-run above is clean.
+
+### Coverage (file-level, statement-weighted)
+
+| File | Profile | Covered |
+|---|---|---|
+| `internal/factorymsg/handoff_abandon.go` (M4) | factorymsg package | 43/50 = 86.0% |
+| `internal/factorymsg/handoff_bind.go` | factorymsg | 182/210 = 86.7% |
+| `internal/factorymsg/handoff.go` | factorymsg | 91/104 = 87.5% |
+| `internal/factorymsg/store.go` (t1074 file) | factorymsg | 367/503 = 73.0% (M3b 71.8%); the new guard block is covered |
+| `internal/hook/factory_messages.go` | hook (`8fa0d5f5d`) | 75/87 = 86.2% |
+| `internal/hook/factory_handoff_bind.go` | hook | 35/41 = 85.4% |
+| `internal/cli/factory_lane_handoff_recover.go` (M4) | cli, `-coverpkg` run of the four M4 tests | 77/91 = 84.6% |
+| `internal/cli/factory_handoff_recover.go` | cli subset profile (`8fa0d5f5d`) | 51/59 = 86.4% |
+| `internal/cli/factory_lane_handoff.go` | cli subset | 99/104 = 95.2% |
+| `internal/cli/factory_lane_handoff_switch.go` | cli subset | 71/79 = 89.9% |
+| `internal/cli/factory_lane_handoff_bind.go` | cli subset | 17/19 = 89.5% |
+
+### Gaps
+
+- AC-FLH-015 `TestFactoryLaneHandoffT1074Compatibility` does not exist; M4 re-ran the existing t1074 broker/roster/receipt/SessionStart tests and the MCP catalog invariant instead. The named test, with its 36/14/22 catalog count and zero-new-store inventory, is unwritten.
+- AC-FLH-011 `TestFactoryLaneHandoffNoPreBoundWrites` does not exist and was not in the M4 dispatch.
+- `factory_lane_handoff_recover.go` is at 84.6%, below 85%; the uncovered blocks are broker/Git I/O error returns.
+- The cli coverage figures for the older files come from the `8fa0d5f5d` subset run; the last commit adds tests only.
+- Full `internal/cli` suite not run (CI owns it). LIVE AC-FLH-012/013: M5, NOT_RUN.
+- `TestAbandonLaneOwnerStates`, `TestAbandonLaneRefusals`, `TestAbandonHandoffAndReceiptReadback`, `TestLaneHandoffRecoveryEdges` were written after GREEN for coverage and have no individual RED.
+- The AC-FLH-020 test swaps only `abandonLaneProbe`; the cli production value is never exercised against a real dead owner.
+
+### Residual risks
+
+- `recoverLaneHandoff` has no production caller yet, like the rest of the handoff controller; it is reached only from tests until a command or M5 wiring calls it.
+- A recovered SWITCH_PENDING_HEADLESS rebind trusts the caller's `Owner` to be the relocated thread's owner; a wrong owner yields `BINDING_EVIDENCE_INVALID` NACK, not a wrong bind.
+- The `BindLaunchPending` refusal keeps the launch-pending row in place until its owner dies (as REQ-FLH-010/017 specify); the lane's roster shows `launch_pending` with an empty session in that window.
+- Crash points are a panic-based seam; they model process death for the broker (transactions roll back) but not partial Git operations inside `git worktree add`.
