@@ -174,7 +174,7 @@ restore → cmp byte-동일 → git status 청결 → build(원본) → probe �
 
 ### M9 — 드라이버: 스로틀 반복 + 돌연변이 판 + 자기확인 양방향 (card t1108, Priority High)
 
-1. `TestAppJsFirePostSwapSettleWait` — 게이트된 in-process 실루트 표면에서 탭 한정 CPU 스로틀 12배를 걸고, 정상 판과 돌연변이 판(대기를 URL 폴링으로 되돌리거나 제거한 일회용 사본)을 각각 10회 돌린다. 스로틀만으로 돌연변이 판이 10/10 적색이 아니면, 두 판에 똑같이 settle 지연을 넓히고 그 효과(afterSwap→afterSettle 간격)를 관측해 보고서에 싣는다(AC-AFG-014)
+1. `TestAppJsFirePostSwapSettleWait` — 게이트된 in-process 실루트 표면에서 탭 한정 CPU 스로틀 12배를 걸고, 정상 판과 돌연변이 판(대기를 URL 폴링으로 되돌리거나 제거한 일회용 사본)을 각각 10회 돌린다. 측정 순서는 리드 결정(B1)으로 고정돼 있다 — ① 스로틀 12배 **단독**으로 먼저 재고, 거기서 돌연변이 판이 적색이면 그것으로 판정한다. ② 적색이 아닐 때에만 settle 지연 증폭을 **두 판에 똑같이** 걸고, 증폭이 먹혔다는 관측(`htmx:afterSettle` 까지의 시간 증가)과 함께 같은 조건의 정상 판 10/10 발화·돌연변이 판 10/10 적색을 보인다. ③ 판정서에 증폭 적용 여부와 값을 적는다(AC-AFG-014)
 2. `TestAppJsFireSwapPremise` — 커밋된 탐침의 자기확인 네 다리 참(exit 0)과, 스왑 선택자를 `a[href="/todo"]` 로 바꾼 일회용 사본의 exit 1 + 지목된 다리를 둘 다 관측한다. 사본 방식은 `TestAppJsHandlersFireSelectorMiss` 와 같다(AC-AFG-015)
 3. `TestAppJsHandlersFireRuntime` 의 (c) 단언에 자기확인 네 다리를 묶는다(AC-AFG-001 (c) 개정 문언)
 4. 스로틀·돌연변이 사본·Chrome 탭의 수명은 `t.Cleanup`·`t.TempDir()` 에만 맡긴다(REQ-AFG-006)
@@ -183,10 +183,11 @@ restore → cmp byte-동일 → git status 청결 → build(원본) → probe �
 
 ### M10 — CI 선택자 확장 + 병합 트리 측정 (card t1108, Priority Medium)
 
-1. `.github/workflows/ci.yml:672` 의 `-run 'AppJsHandlersFire'` 를 `-run 'AppJs.*Fire'` 로 바꾼다. **이 한 곳만** 바꾼다. `--primary-entries-only` 3곳(734/745/767)과 `-timeout 10m` 은 그대로 둔다
-2. 병합 트리에서 AC-AFG-016 의 세 명령을 실행한다. 선택된 테스트 전부 `--- PASS`, `--- SKIP` 0건
-3. AC-AFG-006 재측정 — base `3e35fbacf` 대비 삭제 0, 기존 job 8개 목록·순서 불변
-4. 리드의 일괄 push 뒤 `test-browser` 로그에서 같은 테스트 이름을 읽어 기록한다(레인은 push 하지 않는다)
+1. `.github/workflows/ci.yml:672` 의 `-run 'AppJsHandlersFire'` 를 `-run 'AppJs.*Fire'` 로 바꾼다. `--primary-entries-only` 3곳(734/745/767)은 그대로 둔다
+2. 병합 트리에서 AC-AFG-016 의 세 명령을 **먼저 `-timeout 10m` 으로** 실행한다. 선택된 테스트 전부 `--- PASS`, `--- SKIP` 0건
+3. 10분을 넘으면(리드 결정 B3, 이 카드 범위 안) 그린 단계 한 줄(`:672`)의 `-timeout` **만** 측정 소요 시간 + 여유로 올리고, 올린 값으로 다시 잰다. 측정 명령과 측정 소요 시간을 판정서와 커밋 메시지 둘 다에 인용한다. 다른 단계의 상한은 건드리지 않는다
+4. AC-AFG-006 재측정 — base `3e35fbacf` 대비 삭제 0, 기존 job 8개 목록·순서 불변
+5. 리드의 일괄 push 뒤 `test-browser` 로그에서 같은 테스트 이름을 읽어 기록한다(레인은 push 하지 않는다)
 
 ## §F 위험
 
@@ -204,11 +205,11 @@ restore → cmp byte-동일 → git status 청결 → build(원본) → probe �
 | paint 술식이 「노드 존재」로 약화되는 것 | 조용한 공허 | AC-AFG-010 의 돌연변이 프로브 — 배너를 `hidden` 으로 렌더하는 합성 변이가 통과하면 채택 불가 |
 | 무쓰기 비교 창이 너무 넓어 읽기-경로 부수효과를 잡는 것 | 간헐 적색 | 스냅샷을 제출 직전·거부 렌더 직후로 한정(§A0); 제외 경로는 사유와 함께 열거 |
 | 사본 구성이 부족해 `/settings` 가 거부 경로에 도달하지 못하는 것 | 시끄러움 — red | M7 이 최소 구성 집합을 측정으로 확정; 도달 실패는 exit 2(기계결함)로 분류돼 제품 결함과 갈린다 |
-| 실제 스왑 경로에서 URL 폴링판이 스로틀만으로는 실패하지 않는 것 (card t1108) | 조용함 — 대기의 필요성을 보이지 못한 초록 | AC-AFG-014 가 settle 지연 확대를 두 판에 똑같이 허용하고, 그 효과를 관측하게 한다. 그래도 적색이 아니면 blocker |
+| 실제 스왑 경로에서 URL 폴링판이 스로틀만으로는 실패하지 않는 것 (card t1108) | 조용함 — 대기의 필요성을 보이지 못한 초록 | AC-AFG-014 의 고정 순서(리드 결정 B1): 스로틀 12배 단독 측정이 먼저이고, 판정되지 않을 때에만 두 판에 똑같이 건 증폭과 그 효과 관측을 쓴다. 증폭 적용 여부·값은 판정서에 기록. 그래도 적색이 아니면 blocker |
 | 스왑이 프로필 트리거를 교체하지 않아 옛 핸들러가 살아남는 것 (card t1108) | 조용함 — 재바인딩이 아니라 옛 결합을 잰 초록 | REQ-AFG-016 (d). 정상 판에서 (d) 가 거짓이면 다리를 빼지 않고 blocker 로 보고한다 |
 | `htmx:afterSettle` 리스너 실행 순서 — 탐침의 해제가 `initConsole` 의 재결합보다 먼저 도는 것 (card t1108) | 간헐 적색 | 탐침 리스너는 `app.js` 보다 늦게 등록되므로 등록 순서상 뒤에 돈다(§A00). 이 순서가 깨지면 AC-AFG-014 정상 판이 적색으로 드러낸다 |
 | `p5_swap_referenceerrors` 창의 의미 변화 (card t1108) | 조용함 — 창 이름은 그대로인데 재는 것이 달라진다 | 개정 전 이 창은 전체 이동 중, 즉 새 문서가 `app.js` 를 다시 실행하며 던진 **로드 시점** 예외를 모았다. 개정 후에는 실제 스왑 중에 난 예외를 모은다. boost 스왑은 `defer` 로 로드된 `app.js` 를 다시 실행하지 않으므로, 로드 시점 예외는 이 창에 다시 찍히지 않는다(추론 — 미관측). 로드 시점 예외는 여전히 `p1_load_referenceerrors`·`p7_load_referenceerrors` 가 잡는다. 레드 단계의 `stampRefreshed` 가 어느 창에 찍히는지는 M9.6 의 재측정으로 관측한다 |
-| 선택 집합이 커져 CI `-timeout 10m` 을 넘는 것 (card t1108) | 시끄러움 — job red | AC-AFG-016 이 로컬 병합 트리에서 같은 상한으로 재서 미리 드러낸다. 상한 조정은 개정 2 범위 밖이므로 넘으면 리드에게 보고한다 |
+| 선택 집합이 커져 CI `-timeout 10m` 을 넘는 것 (card t1108) | 시끄러움 — job red | AC-AFG-016 이 로컬 병합 트리에서 같은 상한으로 먼저 잰다. 넘으면 그린 단계 한 줄의 `-timeout` 만 측정값 + 여유로 올리고 근거를 판정서·커밋 메시지에 인용한다(리드 결정 B3, M10.3) |
 | 스왑 링크 후보(`?tab=audit`)가 탭 구성 변경으로 사라지는 것 (card t1108) | 시끄러움 — red | 셀렉터 생존 검사(REQ-AFG-004)와 자기확인 (a) 가 이름 붙은 적색으로 드러낸다 |
 
 ## §G 안티패턴 — 하지 않을 것

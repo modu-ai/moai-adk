@@ -29,6 +29,7 @@ amendment_of: SPEC-APPJS-FIRE-GUARD-001
 | 2026-09-23 | 0.2.0 | 개정분 plan-audit iter-1 FAIL(0.86) 수리 — D1(사본 base 부재 시 계약 미정의 + AC-001 의 8/9 모호) · D2(무쓰기 제외 목록의 범위 무제한) · D3(AC-008 한계 축 4→7 스테일) · D4/N3(조건 표식 수 3 vs 2 모순). REQ·AC 신설 0건, 기존 번호 불변 | manager-spec |
 | 2026-09-23 | 0.2.0 | 개정분 plan-audit iter-2 PASS-WITH-DEBT(0.90) 의 차단급 잔여 2건 인라인 수리 — N-1(AC-AFG-001 (a) 의 판정을 개수 `> 0` 에서 「사본 서빙 표식이 없는 항목 전부」 술어 일치 + 운전 수·제외 이름 보고로 승격) · N-2(§A 의 「AC-001~008 문언 불변」 서사를 실제 개정 세 곳으로 정정). `acceptance.md` 절 편집만 — REQ·AC 신설 0건, `spec.md` 본문 무수정 | manager-spec |
 | 2026-09-23 | 0.3.0 | in-place amendment 2 — post-swap 지표의 **전제 교정** (card t1108). REQ-AFG-007 문언 개정(실제 hx-boost 스왑 + `htmx:afterSettle` **이벤트** 대기; 개정 전 문언은 조문 안에 보존), REQ-AFG-016 신설(스왑 자기확인), §B.7 실측 추가, §B.1·§B.2·REQ-AFG-007 근거 서술에 날짜 붙은 사후 정정 주석, §C 개정 결정 2 추가, AC-AFG-014·015·016 신설, AC-AFG-001 (c)·AC-AFG-006·AC-AFG-013 문언 보강. 나머지 REQ-AFG-001~006·008~015 번호·문언 불변 | manager-spec |
+| 2026-09-23 | 0.3.0 | 리드 blocker 결정 반영 (card t1108) — B1: AC-AFG-014 에 고정 측정 순서(스로틀 12배 단독 먼저 → 판정되지 않을 때에만 두 판에 동일한 settle 지연 증폭 + 효과 관측 → 증폭 적용 여부·값 기록). B3: AC-AFG-016 에 그린 단계 `-timeout` 조건부 상향(병합 트리 실측이 10m 초과 시 그 한 줄만, 근거 인용). B2: 원문 유지. REQ·AC 신설 0건 | manager-spec |
 
 ### Amendments
 
@@ -46,7 +47,7 @@ amendment_of: SPEC-APPJS-FIRE-GUARD-001
 | prior completed version | 0.1.0 (변동 없음 — 0.2.0 개정은 run-phase 까지 develop 에 착지했으나 sync 로 닫히지 않았다. 마지막 완료 판은 여전히 위 표의 0.1.0 / `0e2377323` 이다) |
 | amendment base | branch `WT-popover-swap-flake`, HEAD `52a486635`, tree `895ad8954` (0.2.0 run-phase 와 그 F1 수리가 병합된 로컬 develop) |
 | rationale | card t1108 판정서(`.moai/reports/t1108/verdict.md`)가 `popover_after_swap` 의 간헐 실패 원인을 확정했다 — 5단계가 클릭하는 `a[href="/todo"]` 에는 `hx-boost` 조상이 없어 클릭이 **메인 프레임 전체 이동**이고, 탐침은 URL 변경만 기다린 채 6단계로 넘어가 새 문서의 초기화보다 먼저 클릭할 수 있다. 따라서 REQ-AFG-007 이 전제한 「hx-boost 스왑 뒤」는 이 SPEC 의 어느 판에서도 실제로 측정된 적이 없다. 리드 결정: 방향 (a) — REQ-AFG-007 의 의도(실제 스왑 뒤 재바인딩)를 유지하고, 전제가 조용히 재발하지 않도록 스왑 자체를 탐침이 확인하게 한다 |
-| scope | REQ-AFG-007 문언 개정 + REQ-AFG-016 신설. 매니페스트의 스왑 항목·스왑 뒤 항목 정의 변경(스왑 링크는 `/settings` 위 boost 링크, 스왑 뒤 페이지는 `/settings`). CI 는 `.github/workflows/ci.yml:672` 의 `-run` 정규식 한 곳만 넓힌다(`'AppJsHandlersFire'` → `'AppJs.*Fire'`) — `--primary-entries-only` 3곳(734/745/767)은 유지. `app.js`·제품 템플릿·`INVENTORY_TOTAL` 불변 |
+| scope | REQ-AFG-007 문언 개정 + REQ-AFG-016 신설. 매니페스트의 스왑 항목·스왑 뒤 항목 정의 변경(스왑 링크는 `/settings` 위 boost 링크, 스왑 뒤 페이지는 `/settings`). CI 는 `.github/workflows/ci.yml:672` 그린 단계 한 줄만 바꾼다 — `-run` 정규식을 넓히고(`'AppJsHandlersFire'` → `'AppJs.*Fire'`), 병합 트리 실측이 10분을 넘을 때에만 같은 줄의 `-timeout` 을 측정값 + 여유로 올린다(리드 결정 B3). `--primary-entries-only` 3곳(734/745/767)은 유지. `app.js`·제품 템플릿·`INVENTORY_TOTAL` 불변 |
 
 ---
 
@@ -438,7 +439,7 @@ CI 는 신설 전용 job(`test-browser`)에서 이 가드를 실행해야 하고
 
 - **판정 규칙의 관측 층 불일치는 기록만 하고 고치지 않는다.** `internal/web/testdata/appjs_fire_probe.py:789` 는 `popover_after_swap` 의 「selector matched nothing」을 **패널** `.hidden` 값이 null 인지로 판정한다(`rep.get("p6_panel_hidden_before") is not None`). 그런데 보고서의 `selector` 칸에는 **트리거** 선택자 `[data-pop="profile"]` 이 찍힌다(`:798`·`:802` 가 매니페스트 항목의 `selector` 를 그대로 싣고, 그 값은 `:183` 의 트리거 선택자다). 트리거는 있고 패널이 없는 경우와 그 반대를 보고서만으로는 가를 수 없다. 이 개정은 그 규칙의 변경을 요구하지 않는다. 판정서가 인용한 좌표 `:474` 는 t1106 병합 전 트리의 것이며, 같은 규칙이 이 트리에서는 `:789` 에 있다.
 - **`app.js`·제품 템플릿을 바꾸지 않는다.** boost 된 `/todo` 링크를 만들어 옛 매니페스트를 살리는 길은 §C 개정 결정 2 에서 기각했다.
-- **CI 는 `.github/workflows/ci.yml:672` 의 `-run` 정규식 한 곳만 바꾼다.** `--primary-entries-only` 3곳(734/745/767)은 유지한다 — 빼면 t1106 의 F1(표식 항목이 사본 base 없이 운전돼 exit 2)이 되살아난다. `-timeout 10m` 과 그 밖의 단계는 건드리지 않는다.
+- **CI 는 `.github/workflows/ci.yml:672` 그린 단계 한 줄만 바꾼다.** 바꾸는 것은 `-run` 정규식이다. `-timeout 10m` 은 병합 트리 실측이 그 상한을 넘을 때에만, 측정 소요 시간 + 여유로 올린다(리드 결정 B3, AC-AFG-016). `--primary-entries-only` 3곳(734/745/767)은 유지한다 — 빼면 t1106 의 F1(표식 항목이 사본 base 없이 운전돼 exit 2)이 되살아난다. 그 밖의 단계와 그 상한은 건드리지 않는다.
 - **`INVENTORY_TOTAL` 과 lint 커버리지 산식을 바꾸지 않는다**(§B.7.6).
 - **보고서 키(`p5_*`·`p6_*`)의 이름을 바꾸지 않는다.** 드라이버의 JSON 태그가 고정하는 계약이다. 스왑 창 이름 `p5_swap_referenceerrors` 의 **의미**가 바뀌는 문제는 §F 가 아니라 plan.md §F 잔여 위험에 기록했다.
 - **실바이너리 레드 단계의 돌연변이 대상을 바꾸지 않는다.** 스왑이 실제 스왑이 되면서 돌연변이 아래에서 어느 지표가 무너지는지는 달라질 수 있다. 그 결과는 run-phase 가 AC-AFG-002 재측정으로 **관측**하며, 미리 가정하지 않는다.
