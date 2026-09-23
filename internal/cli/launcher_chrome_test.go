@@ -76,11 +76,19 @@ func TestLaunchIgnoresLegacyChromeSetting(t *testing.T) {
 // TestLaunchForwardsExplicitChromeFlags proves the user's own choice reaches
 // Claude Code unchanged, exactly once.
 func TestLaunchForwardsExplicitChromeFlags(t *testing.T) {
-	for _, flag := range []string{"--no-chrome", "--chrome"} {
-		t.Run(flag, func(t *testing.T) {
-			args := captureLaunchArgs(t, "", []string{flag})
-			if n := countArg(args, flag); n != 1 {
-				t.Errorf("argv = %v carries %s %d time(s), want exactly 1 (user choice passed through)", args, flag, n)
+	for _, tc := range []struct {
+		name  string
+		extra []string
+		flag  string
+	}{
+		{"--no-chrome", []string{"--no-chrome"}, "--no-chrome"},
+		{"--chrome", []string{"--chrome"}, "--chrome"},
+		{"after separator", []string{"--", "--no-chrome"}, "--no-chrome"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			args := captureLaunchArgs(t, "", tc.extra)
+			if n := countArg(args, tc.flag); n != 1 {
+				t.Errorf("argv = %v carries %s %d time(s), want exactly 1 (user choice passed through)", args, tc.flag, n)
 			}
 		})
 	}
