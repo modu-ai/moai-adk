@@ -1,0 +1,45 @@
+=== RUN   TestRuleTemplateMirrorDrift
+=== PAUSE TestRuleTemplateMirrorDrift
+=== CONT  TestRuleTemplateMirrorDrift
+=== RUN   TestRuleTemplateMirrorDrift/hooks-system.md
+=== PAUSE TestRuleTemplateMirrorDrift/hooks-system.md
+=== RUN   TestRuleTemplateMirrorDrift/spec-workflow.md
+=== PAUSE TestRuleTemplateMirrorDrift/spec-workflow.md
+=== RUN   TestRuleTemplateMirrorDrift/session-handoff.md
+=== PAUSE TestRuleTemplateMirrorDrift/session-handoff.md
+=== RUN   TestRuleTemplateMirrorDrift/worktree-integration.md
+=== PAUSE TestRuleTemplateMirrorDrift/worktree-integration.md
+=== RUN   TestRuleTemplateMirrorDrift/session-handoff-examples.md
+=== PAUSE TestRuleTemplateMirrorDrift/session-handoff-examples.md
+=== RUN   TestRuleTemplateMirrorDrift/model-policy.md
+=== PAUSE TestRuleTemplateMirrorDrift/model-policy.md
+=== RUN   TestRuleTemplateMirrorDrift/resource-slot-lease.md
+=== PAUSE TestRuleTemplateMirrorDrift/resource-slot-lease.md
+=== RUN   TestRuleTemplateMirrorDrift/default.md
+=== PAUSE TestRuleTemplateMirrorDrift/default.md
+=== RUN   TestRuleTemplateMirrorDrift/frontend.md
+=== PAUSE TestRuleTemplateMirrorDrift/frontend.md
+=== CONT  TestRuleTemplateMirrorDrift/hooks-system.md
+=== CONT  TestRuleTemplateMirrorDrift/model-policy.md
+=== CONT  TestRuleTemplateMirrorDrift/default.md
+=== CONT  TestRuleTemplateMirrorDrift/worktree-integration.md
+=== CONT  TestRuleTemplateMirrorDrift/session-handoff-examples.md
+=== CONT  TestRuleTemplateMirrorDrift/resource-slot-lease.md
+=== CONT  TestRuleTemplateMirrorDrift/session-handoff.md
+=== CONT  TestRuleTemplateMirrorDrift/spec-workflow.md
+=== CONT  TestRuleTemplateMirrorDrift/frontend.md
+=== NAME  TestRuleTemplateMirrorDrift/worktree-integration.md
+    rule_template_mirror_test.go:174: RULE_TEMPLATE_MIRROR_DRIFT: source file .claude/rules/moai/workflow/worktree-integration.md differs from its mirror at /Users/goos/MoAI/moai-adk-go/.claude/worktrees/t1086/internal/template/templates/.claude/rules/moai/workflow/worktree-integration.md (source 61473 bytes, mirror 61638 bytes); run 'cp /Users/goos/MoAI/moai-adk-go/.claude/worktrees/t1086/.claude/rules/moai/workflow/worktree-integration.md /Users/goos/MoAI/moai-adk-go/.claude/worktrees/t1086/internal/template/templates/.claude/rules/moai/workflow/worktree-integration.md' and stage both files
+--- FAIL: TestRuleTemplateMirrorDrift (0.00s)
+    --- PASS: TestRuleTemplateMirrorDrift/default.md (0.00s)
+    --- PASS: TestRuleTemplateMirrorDrift/hooks-system.md (0.00s)
+    --- PASS: TestRuleTemplateMirrorDrift/model-policy.md (0.00s)
+    --- PASS: TestRuleTemplateMirrorDrift/spec-workflow.md (0.00s)
+    --- PASS: TestRuleTemplateMirrorDrift/resource-slot-lease.md (0.00s)
+    --- PASS: TestRuleTemplateMirrorDrift/session-handoff-examples.md (0.00s)
+    --- PASS: TestRuleTemplateMirrorDrift/session-handoff.md (0.00s)
+    --- FAIL: TestRuleTemplateMirrorDrift/worktree-integration.md (0.00s)
+    --- PASS: TestRuleTemplateMirrorDrift/frontend.md (0.00s)
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/template	0.402s
+FAIL
