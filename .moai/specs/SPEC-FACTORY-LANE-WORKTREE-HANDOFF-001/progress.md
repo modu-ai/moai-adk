@@ -1029,7 +1029,7 @@ grep -n 'func (e \*StaleEndpointError) Error' internal/factorymsg/handoff_bind.g
 
 ### sync_commit_sha
 
-- `sync_commit_sha: pending-backfill-sync` — a commit cannot cite its own hash; backfilled in a following commit.
+- `sync_commit_sha: c832b646d` (backfilled by this commit; the sync commit itself was `c832b646d`).
 - `sync_complete_at: 2026-09-24`
 - `sync_status: completed`
 
