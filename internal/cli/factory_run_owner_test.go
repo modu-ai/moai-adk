@@ -214,3 +214,53 @@ func TestPaneDoorRefusalLeavesNoLauncherStampedRun(t *testing.T) {
 		t.Fatalf("run row still carries the launching process's pid %d (start %q); that identity is known in advance to die", pid, start)
 	}
 }
+
+// REQ-002d on the anchor-refusal path — in factory mode, when the spawned
+// pane's identity resolves but the worktree anchor lock is refused (a second
+// writer, or a tree already anchored), the launch is refused with the anchor
+// error AND the run row no longer carries the launching process's identity.
+// The refusal returns before the pane restamp, so without the owner clear on
+// this path the launcher's soon-dead pid would survive on the run.
+func TestPaneDoorAnchorRefusalClearsFactoryRunOwner(t *testing.T) {
+	root := runOwnerSandbox(t)
+	const runID = "run-pane-anchor-refusal"
+	launcherPID := os.Getpid()
+	seedRun(t, root, runID, launcherPID, "launcher-start")
+	if pid, start := runOwnerStamp(t, root, runID); pid != launcherPID || start != "launcher-start" {
+		t.Fatalf("precondition: seeded owner = (%d, %q), want (%d, %q)", pid, start, launcherPID, "launcher-start")
+	}
+
+	t.Setenv(config.EnvMoaiKanbanID, runID)
+	t.Setenv(config.EnvMoaiFactoryWorkers, "2")
+	t.Setenv(config.EnvMoaiKanbanBackend, "codex")
+
+	restoreSpawn := tmuxSpawnFn
+	restoreIdentity := codexSpawnPaneIdentityFn
+	restoreCleanup := codexSpawnCleanupPaneFn
+	restoreAnchor := codexSpawnAnchorFn
+	t.Cleanup(func() {
+		tmuxSpawnFn = restoreSpawn
+		codexSpawnPaneIdentityFn = restoreIdentity
+		codexSpawnCleanupPaneFn = restoreCleanup
+		codexSpawnAnchorFn = restoreAnchor
+	})
+
+	tmuxSpawnFn = func(string, string) (string, error) { return "%43", nil }
+	codexSpawnPaneIdentityFn = func(string) (int, string, error) { return 90002, "pane-start", nil }
+	cleaned := false
+	codexSpawnCleanupPaneFn = func(string) error { cleaned = true; return nil }
+	errAnchor := errors.New("codex worktree already anchored by a live writer")
+	anchorCalls := 0
+	codexSpawnAnchorFn = func(int, string) error { anchorCalls++; return errAnchor }
+
+	err := defaultCodexSpawnLaunch(root, "codex", []string{"--version"})
+	if !errors.Is(err, errAnchor) {
+		t.Fatalf("launch error = %v, want the anchor refusal", err)
+	}
+	if anchorCalls != 1 || !cleaned {
+		t.Fatalf("anchor calls = %d, pane cleaned = %v; want the anchor-refusal path taken once with pane cleanup", anchorCalls, cleaned)
+	}
+	if pid, start := runOwnerStamp(t, root, runID); pid != 0 || start != "" {
+		t.Fatalf("run owner after anchor refusal = (%d, %q), want cleared (0, \"\"); the launcher's identity is known in advance to die", pid, start)
+	}
+}
