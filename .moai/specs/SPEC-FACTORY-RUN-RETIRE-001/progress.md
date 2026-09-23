@@ -142,4 +142,60 @@ m1_to_mN_commit_strategy: single run-phase commit covering M1-M6
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase>_
+```yaml
+sync_complete_at: 2026-09-24
+sync_commit_sha: pending-backfill-sync   # a commit cannot cite its own hash; the lead reads it off the sync commit
+sync_status: audit-ready
+changelog_entry_position: "CHANGELOG.md `## [Unreleased]` → `### Fixed`, first entry (the defect and the retirement mechanism) AND `### Added`, first entry (the `moai factory runs` operator surface)"
+frontmatter_status_transitions:
+  spec_md: "in-progress -> implemented -> completed"    # merged into this single sync commit
+  plan_md: "n/a - no frontmatter block"
+  acceptance_md: "n/a - no frontmatter block"
+  progress_md: "n/a - no frontmatter block"
+  updated_field: "2026-09-23 -> 2026-09-24 (spec.md only)"
+b12_self_test_a: "grep -c 'SPEC-FACTORY-RUN-RETIRE-001' CHANGELOG.md -> 0 before emission (clean; no duplicate from a parallel BATCH-SYNC session)"
+b12_self_test_b: "grep -oE 'AC-([A-Z0-9]+-)*[0-9]+' acceptance.md | sort -u | wc -l -> 17 (AC-001..AC-017), non-zero so not a vacuous match; matches the 17-row matrix in acceptance.md SS-C.2 and the 'all 17 criteria' statement in SS-D.2"
+b12_self_test_c: "every path cited in the two CHANGELOG entries verified present via ls before commit - 11 paths: internal/homestate/{factory_run_retire.go,factory.go,runtime.go}, internal/factorymsg/{factory_run_retire.go,store.go}, internal/cli/{factory_run_owner.go,factory.go,factory_handoff_recover.go,codex_launcher.go,launch_exec_windows.go,codex_direct_windows.go}, test/integration/harness/it08_factory_run_retire_test.go"
+canary_compliance_check: "n/a - this SPEC defines no forward-looking policy that its own sync would test"
+
+docs_synchronised:
+  changelog: "2 entries (Fixed + Added), both at the top of their section"
+  readme_4_locale: "README.md / README.ko.md / README.ja.md / README.zh.md - one sentence appended to the factory-mode paragraph in each, recording the self-healing run record and the moai factory runs operator surface; no template mirror exists for README, so no Template-First rebuild is owed"
+  docs_site: "not changed - measured, not assumed: grep -rn 'moai factory' docs-site/ returns 0 lines, so the command group has no page to synchronise. Authoring a new 4-locale reference page for an already-undocumented command group is a follow-up documentation card, not sync-phase drift repair (sync-audit S3)"
+  codemaps: "no restamp owed - moai graph check: codemaps described-source-diff value=28 threshold=40 verdict=fresh; citations fresh; exit 0"
+
+ac_final_standing:
+  pass: 16                 # AC-001..AC-012, AC-013 leg 1, AC-014, AC-015a/b, AC-016 (both legs), AC-017
+  fail: 0
+  pending: 1               # AC-013 leg 2 - carried forward UNCHANGED, never upgraded to a pass
+  pass_with_gap: 1         # AC-012 - carried forward UNCHANGED with its gap stated
+  ac_013_leg2: "PENDING. No CI run exists for a card branch before it merges: ci.yml triggers on push [main, develop] and pull_request [main], and this project does not push WT- branches. The ubuntu / macos / windows conclusions land on the develop push that follows integration and are to be confirmed by run id."
+  ac_012: "PASS-WITH-GAP. The production pane-door refusal branch executed and left no launcher-stamped run, but the resolver's real 2-second deadline was not exhausted by a live tmux pane - #{pane_pid} names the pane's shell, alive before the exec'd command returns - so the seam was forced to its exhaustion return instead."
+  retained_debt: "D20 and D21 (spec.md SS-G) remain RETAINED with their evidence and re-opening conditions; neither is closed by this sync."
+
+sync_phase_verification:
+  tests: "go test ./internal/homestate/... ./internal/factorymsg/... ./internal/cli/... (env-scrubbed, single compound invocation) -> ok homestate 27.400s, ok factorymsg 14.090s, FAIL internal/cli 1639.462s with exactly one failing test, every internal/cli/* sub-package ok. Capture: .moai/reports/t1107/sync/test-affected.txt"
+  the_one_failure: "TestFactoryOperationalFixtureUsesProductionInit. Re-measured with go test ./internal/cli/ -run TestFactoryOperationalFixtureUsesProductionInit -count=3 -v -> three verbatim '--- PASS:' lines (5.65s / 6.34s / 7.37s), exit 0. Capture: .moai/reports/t1107/sync/test-flake-retry-v.txt. Load-sensitive: the assertion is governed by a 200ms deadline (factoryHookInspectionDeadline, internal/hook/factory_messages.go:20); it failed at host load average 24.89 with a peer session running go test ./internal/hook/, and passed 3/3 at 16.00-21.28. NOT established: a measurement on an idle host, or one at the merge base - see sync-audit SS-6."
+  env_scrub_finding: "An unscrubbed run failed TestCodexSpawn_RealAssemblyThroughStubTmux because this session's MOAI_FACTORY_WORKER / MOAI_FACTORY_WORKERS / MOAI_KANBAN_BACKEND leaked into the assembled tmux command. With the scrub the failure is absent - an artifact of the measuring session, not a defect."
+  lint: "golangci-lint run --timeout=15m ./internal/homestate/... ./internal/factorymsg/... ./internal/cli/... -> '0 issues.', exit 0. Capture: .moai/reports/t1107/sync/lint.txt"
+  spec_lint: "moai spec lint SPEC-FACTORY-RUN-RETIRE-001 -> 'No findings - all SPEC documents are valid', exit 0. Capture: .moai/reports/t1107/sync/spec-lint.txt"
+  spec_audit: "mcp__moai__spec_audit(project_root=<this worktree>, filter_spec=SPEC-FACTORY-RUN-RETIRE-001) -> total_specs 1, modern_era_clean 1, one INFO EraAutoDetected finding; no drift"
+  scope: "git diff --name-only 176d8b658 HEAD -> 23 paths (6 SPEC artifacts + 17 code/test files, matching SS-E.3 total_run_phase_files: 17). Zero hits for the t1082 set and zero for the t1109 set."
+  full_suite: "NOT run locally by design (parallel lanes doing so drove this machine to load 413 on 2026-08-15). CI supplies the full-suite and cross-platform verdict."
+
+sync_audit:
+  report: ".moai/reports/t1107/sync/sync-audit.md"
+  independence: "SELF-AUDIT by the sync agent, not an independent sync-auditor spawn - this agent carries no Agent tool and cannot spawn one. The report is evidence for the lead to read; the binding verdict is the lead's."
+  proposed_verdict: "PASS-WITH-DEBT, harmonic mean 0.93 (Functionality 0.93 / Security 0.95 / Craft 0.94 / Consistency 0.90), zero blocking findings"
+  findings:
+    S1: "HAND-BACK. progress.md SS-E.3 still carries run_commit_sha: pending-backfill-run. The value is knowable (the run commit is eaa3322a1) but SS-E.3 is manager-develop's artifact, so it was left unchanged rather than edited across an ownership boundary."
+    S2: "HAND-BACK, low severity. AC-007's Then ('the join no longer fails with AMBIGUOUS_FACTORY') is literally true but invites the same misreading AC-004 was repaired for: both peers dead means both rows retire, so zero active rows remain and the join fails closed with NO_ACTIVE_FACTORY rather than succeeding. Implementation and run-phase evidence are correct; only the wording is weak. spec.md / acceptance.md body text is manager-spec's."
+    S3: "Follow-up card recommended. grep -rn 'moai factory' docs-site/ -> 0 lines; grep -c per README locale -> 0 (pre-edit). The command group has no page to synchronise, so a new 4-locale reference page is a documentation card rather than sync-phase drift repair. The narrower real gap - the user-visible behaviour change - was closed in all four READMEs."
+    S4: "Observation only. retirable is called at exactly two non-test sites (factory_run_retire.go:175 and :207); AC-017's 'migration pass' leg reaches :175 as well, differing only by supplying a Fallback. Two of the three legs therefore share one call site. This is REQ-005's stated intent working, not a defect, but the SS-E.2.2 wording reads as three independent guards."
+  ac_given_then_satisfiability: "The additional checklist item the lead asked for was applied to all 17 criteria: each Given's premises were executed to their consequence under the SPEC's own rules and checked against its own Then. 17 of 17 satisfiable. AC-004's repair at ae9443156 holds. One residue: AC-007 (S2 above). Rationale recorded in the sync-audit report SS-5 - form review (mutation direction, mechanical checkability, vacuous-green shapes) cannot see a well-formed criterion that contradicts itself, which is why AC-004 survived three Tier M iterations and a full Tier L audit."
+
+not_done:
+  - "No push. No PR. The branch is integrated by the lead; this worktree holds the only copy of the work."
+  - "S1 and S2 are handed back rather than fixed - both require editing an artifact this agent does not own."
+  - "No docs-site page authored (S3)."
+```
