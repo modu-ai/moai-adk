@@ -641,11 +641,15 @@ func runLaunchClaude(profileName string, extraArgs []string) error {
 	} else if settings["DO_CLAUDE_BYPASS"] == "true" && permMode == "" {
 		permMode = "bypassPermissions"
 	}
-	chrome := settings["DO_CLAUDE_CHROME"] == "true"
 	cont := settings["DO_CLAUDE_CONTINUE"] == "true"
 	model := settings["DO_CLAUDE_MODEL"]
 
 	// 5. Parse extra args (overrides)
+	// --chrome / --no-chrome are not interpreted here: they pass through to
+	// Claude Code verbatim, and the launcher adds neither on its own. It used to
+	// inject --no-chrome unless DO_CLAUDE_CHROME was "true", which kept /chrome
+	// from attaching in every launched session (card t1110). DO_CLAUDE_CHROME is
+	// no longer read; a stale value in settings.local.json is harmless.
 	var passThrough []string
 	for i := 0; i < len(extraArgs); i++ {
 		arg := extraArgs[i]
@@ -656,10 +660,6 @@ func runLaunchClaude(profileName string, extraArgs []string) error {
 			break
 		}
 		switch arg {
-		case "--chrome":
-			chrome = true
-		case "--no-chrome":
-			chrome = false
 		case "-b", "--bypass":
 			permMode = "bypassPermissions"
 		case "--permission-mode":
@@ -728,9 +728,6 @@ func runLaunchClaude(profileName string, extraArgs []string) error {
 		a := []string{"claude"}
 		if permMode != "" && permMode != "acceptEdits" {
 			a = append(a, "--permission-mode", permMode)
-		}
-		if !chrome {
-			a = append(a, "--no-chrome")
 		}
 		if withContinue {
 			a = append(a, "--continue")

@@ -29,7 +29,7 @@ moai cc [-p profile] [-w [name]] [-- claude-args...]
 | `-c, --continue` | 继续上一个会话 |
 | `-m, --model <model>` | 覆盖模型选择 |
 | `-w, --worktree [name]` | 在隔离的 git worktree(`.claude/worktrees/<name>/`)中启动 —— 省略名称时自动生成 |
-| `--chrome` / `--no-chrome` | 切换 Chrome MCP |
+| `--chrome` / `--no-chrome` | 原样传递给 Claude Code。启动器不会自行添加任一标志，因此除非传入 `--no-chrome`，否则可通过 `/chrome` 连接 |
 | `-k, --kanban [SPEC-ID]` | 进入看板主控 —— 把 `plan → run → sync` 链种进本会话。附上 SPEC-ID 时以该 SPEC 为目标 |
 | `-k --name <role>` | 作为伴随会话加入已打开的看板 run。角色为 `plan` · `run` · `sync`。同一角色名已被活着的会话占用时取下一个编号 (`plan-1`, `plan-2`, …) |
 | `-f, --factory [N]` | 进入**工厂主控** —— 开出 N 条泳道（`lane-1`…`lane-N`）的工厂 run。省略 N 时从一条泳道（`lane-1`）起步，之后按下面的增量形式添加。主控通过跨会话消息把操作者选中的卡片分给空闲泳道 |

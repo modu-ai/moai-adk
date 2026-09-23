@@ -29,7 +29,7 @@ Removes GLM-specific environment variables from `.claude/settings.local.json`, r
 | `-c, --continue` | Continue the previous session |
 | `-m, --model <model>` | Override the model selection |
 | `-w, --worktree [name]` | Launch inside an isolated git worktree (`.claude/worktrees/<name>/`) — name omitted means auto-generated |
-| `--chrome` / `--no-chrome` | Toggle the Chrome MCP |
+| `--chrome` / `--no-chrome` | Passed through to Claude Code unchanged; the launcher adds neither, so `/chrome` can attach unless you pass `--no-chrome` |
 | `-k, --kanban [SPEC-ID]` | Enter as the kanban lead — seeds the `plan → run → sync` chain in this session. With a SPEC-ID attached, that SPEC is the target |
 | `-k --name <role>` | Join an open kanban run as a companion session. Roles are `plan` · `run` · `sync`. If a live session already holds the role name, the next number is attached (`plan-1`, `plan-2`, …) |
 | `-f, --factory [N]` | Enter as the **factory lead** — a factory run opening N lanes (`lane-1`…`lane-N`). Omit N and the run starts with a single lane (`lane-1`), grown one at a time with the incremental form below. The lead deals the cards the operator picks to free lanes over cross-session messages |
