@@ -17,8 +17,8 @@ func TestFactoryLaneLabelJoinSplitRoundTrips(t *testing.T) {
 }
 
 // TestSplitFactoryLaneLabelRejectsNonShapes asserts the shape IS the
-// discriminator: anything that is not `lane-<n>` (n >= 1) reads as "not a
-// lane", never as an error.
+// discriminator: anything that is not `worker-<n>` or the legacy `lane-<n>`
+// (n >= 1) reads as "not a worker", never as an error.
 func TestSplitFactoryLaneLabelRejectsNonShapes(t *testing.T) {
 	t.Parallel()
 
@@ -26,8 +26,8 @@ func TestSplitFactoryLaneLabelRejectsNonShapes(t *testing.T) {
 		"", "lane", "lane-", "lane-0", "lane--3", "lane-a",
 		"lane-3-extra", "Lane-3", "lanes-3",
 		"plan-lane-3", // first hyphen is the boundary; role is "plan"
-		"worker-3",    // the pre-rename label reads as "not a lane" — the
-		"worker-1",    // t118→final naming break is deliberate (no alias)
+		"agent-3",     // the legacy agent shape has its own parser
+		"worker--3", "worker-3-extra",
 	} {
 		if _, ok := SplitFactoryLaneLabel(label); ok {
 			t.Errorf("SplitFactoryLaneLabel(%q) admitted a non-lane shape", label)

@@ -77,7 +77,7 @@ func runOperationalLauncherProof(t *testing.T, proveBoundChain bool) {
 	}
 	var terminals []*operationalTerminal
 	bootstrapMCP := bootstrapOperationalTrust(t, root, bin, env)
-	for _, args := range [][]string{{"codex", "-f"}, {"codex", "-f", "agent"}, {"codex", "-f", "agent"}} {
+	for _, args := range [][]string{{"codex", "-f"}, {"codex", "-f", "worker"}, {"codex", "-f", "worker"}} {
 		term := startOperationalTerminal(t, root, bin, args, env)
 		terminals = append(terminals, term)
 		want := len(terminals)
@@ -111,9 +111,9 @@ func runOperationalLauncherProof(t *testing.T, proveBoundChain bool) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	for i, slot := range []string{"agent-1", "agent-2", "lead"} {
+	for i, slot := range []string{"lead", "worker-1", "worker-2"} {
 		lane := lanes[i]
-		terminalIndex := map[string]int{"lead": 0, "agent-1": 1, "agent-2": 2}[slot]
+		terminalIndex := map[string]int{"lead": 0, "worker-1": 1, "worker-2": 2}[slot]
 		children, err := operationalDescendants(terminals[terminalIndex].pid)
 		if err != nil || children[lane.PID] == "" {
 			t.Fatalf("owner is not a descendant of its exact production launcher: slot=%s pid=%d err=%v", slot, lane.PID, err)
@@ -128,8 +128,8 @@ func runOperationalLauncherProof(t *testing.T, proveBoundChain bool) {
 		}
 		t.Logf("OWNER %s registered=%s measured=%s tree=%s", slot, lane.ProcessStart, fp, out)
 	}
-	t.Log("PRODUCTION_ARGV_OK moai codex -f | moai codex -f agent | moai codex -f agent")
-	t.Log("LAUNCH_PENDING_ROSTER_OK lead,agent-1,agent-2")
+	t.Log("PRODUCTION_ARGV_OK moai codex -f | moai codex -f worker | moai codex -f worker")
+	t.Log("LAUNCH_PENDING_ROSTER_OK lead,worker-1,worker-2")
 	t.Log("NO_SESSION_UUID_BEFORE_TURN_OK")
 	t.Log("NO_BYPASS_OK")
 	if !proveBoundChain {
@@ -138,7 +138,7 @@ func runOperationalLauncherProof(t *testing.T, proveBoundChain bool) {
 	if err := waitOperationalPromptReady(terminals, 45*time.Second); err != nil {
 		t.Fatalf("Codex prompt composer not ready: %v", err)
 	}
-	t.Log("PROMPT_COMPOSER_READY_OK lead,agent-1,agent-2")
+	t.Log("PROMPT_COMPOSER_READY_OK lead,worker-1,worker-2")
 	for i, terminal := range terminals {
 		prompt := fmt.Sprintf("Reply with exactly FACTORY_READY_%d and do not call any tool.", i+1)
 		if err := submitOperationalPrompt(terminal, prompt, 10*time.Second); err != nil {
@@ -148,7 +148,7 @@ func runOperationalLauncherProof(t *testing.T, proveBoundChain bool) {
 		for time.Now().Before(deadline) {
 			_, current, readErr := operationalRegisteredLanes(root)
 			if readErr == nil && len(current) == 3 {
-				slot := []string{"lead", "agent-1", "agent-2"}[i]
+				slot := []string{"lead", "worker-1", "worker-2"}[i]
 				for _, lane := range current {
 					if lane.Slot == slot && lane.BindingState == factorymsg.BindingBound && lane.SessionUUID != "" {
 						goto rebound
@@ -169,8 +169,8 @@ func runOperationalLauncherProof(t *testing.T, proveBoundChain bool) {
 			t.Fatalf("lane not rebound: %+v", lane)
 		}
 	}
-	t.Log("USERPROMPT_REBIND_OK lead,agent-1,agent-2")
-	t.Log("BOUND_ROSTER_OK lead,agent-1,agent-2")
+	t.Log("USERPROMPT_REBIND_OK lead,worker-1,worker-2")
+	t.Log("BOUND_ROSTER_OK lead,worker-1,worker-2")
 	stableBefore := append([]factorymsg.LaneStatus(nil), lanes...)
 	for i := range stableBefore {
 		stableBefore[i].ObservedAt = time.Time{}
@@ -181,7 +181,7 @@ func runOperationalLauncherProof(t *testing.T, proveBoundChain bool) {
 		if err := submitOperationalPrompt(terminal, prompt, 10*time.Second); err != nil {
 			t.Fatalf("submit bound prompt to terminal %d: %v", i, err)
 		}
-		slot := []string{"lead", "agent-1", "agent-2"}[i]
+		slot := []string{"lead", "worker-1", "worker-2"}[i]
 		var sessionID string
 		for _, lane := range stableBefore {
 			if lane.Slot == slot {
@@ -204,7 +204,7 @@ func runOperationalLauncherProof(t *testing.T, proveBoundChain bool) {
 	if !reflect.DeepEqual(stableBefore, stableAfter) {
 		t.Fatalf("bound follow-up prompt rewrote peers: before=%+v after=%+v", stableBefore, stableAfter)
 	}
-	t.Log("BOUND_PROMPT_NO_REWRITE_OK lead,agent-1,agent-2")
+	t.Log("BOUND_PROMPT_NO_REWRITE_OK lead,worker-1,worker-2")
 	lead := lanes[2]
 	leadMCP := operationalOwnedMCP(t, lead.PID, bin)
 	if bootstrapMCP == leadMCP {
@@ -226,7 +226,7 @@ func runOperationalLauncherProof(t *testing.T, proveBoundChain bool) {
 		t.Fatal("MCP status mutated broker rows")
 	}
 	t.Logf("MCP_RESTART_OK old=%d new=%d binary=%s sha256=%x", bootstrapMCP, leadMCP, bin, sha256.Sum256(data))
-	t.Log("LEAD_MCP_ROSTER_OK lead,agent-1,agent-2")
+	t.Log("LEAD_MCP_ROSTER_OK lead,worker-1,worker-2")
 	// Phase 2 is a separate project; its peer is registered by production
 	// SessionStart, not by RegisterPeer or SQL seeding in this fixture.
 	other := t.TempDir()
