@@ -395,8 +395,10 @@ func Registry() []Site {
 		// sentence that t1127/t1131/t1140 replaced, and all three had to go
 		// together (card t1141). The document is the party that became CORRECT:
 		// it now reads "13 rows — 12 agents plus `Explore` — × 3 columns = 39
-		// cells", which is the roster that delegationmap's retainedCatalog and
-		// CLAUDE.md §4 both carry. The registry was the stale party.
+		// cells", and 13 is what template.ProfileMatrixAgents() carries — the
+		// set CheckSite actually compares against (delegationmap's
+		// retainedCatalog and CLAUDE.md §4 agree, as cross-checks). The
+		// registry was the stale party.
 		//
 		// What each dropped declaration had asserted, and why it is now false:
 		//
@@ -410,13 +412,16 @@ func Registry() []Site {
 		//   exemption asserts something measurably untrue.
 		//
 		// The names are NOT replaced by a membership assertion, which is what
-		// the sweep's own message suggests. The mentions are incidental prose —
-		// `Explore` search, `manager-git` mechanics, `manager-docs` in the low
-		// column — scattered as illustrations of the two model rules, with no
-		// enumerating block anywhere in the file. A membership claim here would
-		// assert a roster listing the document never makes, and would then have
-		// to declare `manager-lead`'s absence as a gap when nothing is missing:
-		// a name is absent because no rule needed it as an example.
+		// the sweep's own message suggests. The reason is a NAMING system, not
+		// an omission — the tier table's effort-baseline cell does partition the
+		// whole roster, but it writes six of the thirteen in shorthand
+		// (`design`, `lead`, `harness`, `e2e`, `docs`, `git`) beside seven
+		// canonical names. NamesIn bounds a name by non-identifier characters,
+		// and `-` is one of them, so `lead` never satisfies `manager-lead`.
+		// A membership claim keyed on canonical names would therefore report
+		// four agents that ARE in the table as absent, and silencing that would
+		// mean either four fabricated KnownStale gaps or expanding the
+		// document's shorthand to suit the test.
 		//
 		// NumeralUnreachable is added rather than widening the numeral layer:
 		// the new sentence counts "rows" and plain "agents", neither of which is
