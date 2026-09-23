@@ -1,7 +1,7 @@
 ---
 id: SPEC-FACTORY-RUN-RETIRE-001
 title: "Factory run retirement — owner-liveness reconciliation so a dead lead's run leaves 'active'"
-version: "0.5.0"
+version: "0.8.0"
 status: draft
 created: 2026-09-23
 updated: 2026-09-23
@@ -420,8 +420,10 @@ Each Gap in `.moai/reports/t1107/verdict.md` §4 is dispositioned here:
 
 ## §G Accepted debt — audit findings recorded and declined
 
-Recorded so that a later audit reads these as decided rather than overlooked. Raised at plan-audit
-iter-1 and declined on the team lead's routing:
+Recorded so that a later audit reads these as decided rather than overlooked. D7-D10 were raised at
+plan-audit iter-1 and declined on the team lead's routing; D20-D21 were raised at the Tier L audit
+and **retained** — they are live debt carried deliberately, each with the evidence that makes
+carrying it defensible, not findings dismissed as wrong:
 
 | Finding | Why declined |
 |---|---|
@@ -429,6 +431,8 @@ iter-1 and declined on the team lead's routing:
 | **D8** — verification-verb classification in the AC matrix is uneven | The matrix column is a reader's index, not a contract; each AC's own Given-When-Then carries the binding form. |
 | **D9** — REQ-002 states a transaction constraint (an implementation detail) at the requirement layer | Deliberate: an owner stamp written outside the row's own transaction can be lost against the row it describes, which is an observable behaviour, not an internal choice. |
 | **D10** — one measurement is attributed in both §A and §A.1 | The duplication is between a summary and its detail section; removing either costs a reader the attribution at the point of use. |
+| **D20** — the RED-now evidence ledger in `acceptance.md` §C.1 carries a document-level tree pin of `bb5b8f9d1`, now several commits behind HEAD | Retained because the pin's staleness has **zero observational impact**, and that is measured rather than assumed: `git diff bb5b8f9d1 4b29af46f -- internal/ .github/ test/` is empty, and the Tier L auditor re-ran all eight RED cells at HEAD and found them **8/8 still red**. What would make this debt live again: any code-side change under `internal/`, `.github/`, or `test/` — at which point the ledger must be re-pinned and the cells re-measured. |
+| **D21** — the premise that the tmux pane identity names the session process is not measured inside this SPEC | Retained because the premise is graded as a **prediction** in all three places it appears rather than asserted as measured; AC-011 closes it by execution in the run phase; and `plan.md` M5 requires a blocker report rather than a silent downgrade if the sandbox cannot provide a tmux server. External support exists but is not a substitute: the iter-3 auditor independently measured it on tmux 3.6a (`pane_pid` is the executed command itself, with no children) and found it true — which is not the same as this SPEC having measured it. |
 
 ## §H History
 
@@ -468,6 +472,31 @@ iter-1 and declined on the team lead's routing:
   of 16, so `tier:` is raised and `design.md` + `research.md` join the artifact set. The tier change
   is pre-authorized by the operator; nothing was merged, dropped, or renumbered to avoid it
   (`acceptance.md` §D.5). The plan-auditor PASS threshold rises 0.80 → 0.85 with the tier.
+- 2026-09-23 — v0.6.0 — manager-spec — **D18** repair, `plan.md` only (+18/−4). §D said the restamp
+  seam had "the two call sites" while M1 simultaneously assigned a restamp obligation to
+  `codex_direct_windows.go:24`; the file set now names **three** seam call sites
+  (`launch_exec_windows.go` spawn, `codex_direct_windows.go` spawn, `codex_launcher.go` pane), and
+  the single exclusion bullet became two so that `codex_direct_windows.go` is stated **in** the set
+  and `codex_direct_posix.go` **out** of it on replace-shape grounds — the two files are never named
+  in one sentence in §D again. The count defect was §D-local: §F already said three in two places
+  (`:108`, `:117`), so the document disagreed with itself. Commit `cecc94ee9`.
+- 2026-09-23 — v0.7.0 — manager-spec — two authorized fact corrections. `acceptance.md:245` read
+  "All sixteen criteria" against 17 elsewhere — a stale numeral left by the AC-017 addition.
+  `research.md` §J item 6 asserted `plan-audit-iter3.md` was absent from disk and unrecoverable;
+  that was false — the file exists (38,933 bytes, 2026-09-23 13:52, carrying the required header
+  line). The wrong claim was a timing artifact: the directory was read roughly two minutes before
+  the auditor finished writing the report into it, so the absence was real when observed and stale
+  when written down. Commit `acb03bede`.
+- 2026-09-23 — v0.8.0 — manager-spec — **D22** plus the two **D18** twins. D22: AC-016 gains a
+  **second leg** asserting at source level that a restamp-seam call is present at each of the three
+  non-replace call sites, with the two replace-shaped sites asserted absent from that required set,
+  and mutation specified **per site** — deleting the call at any one of the three must turn the leg
+  red, probed individually. D22 was the verification-layer twin of D18: no criterion could detect a
+  missing seam call, which is the structural reason D18 survived three audits. The twins: `plan.md`
+  M5 no longer binds the two `codex_direct_*` files in one sentence, and §A.1 replaced "covers it
+  unmodified" with the distinction that an existing rule covering a door never means that door's
+  call site needs no edit. AC count unchanged at 17 — the new leg lives inside AC-016. Commit
+  `4b29af46f`.
   **D14 restated positively**: REQ-005 now says retirement happens **only on a positive `dead`
   classification**, rather than listing states to reject — an enumeration is correct only for the
   classification set alive when it was written and silently begins retiring any state added later.
