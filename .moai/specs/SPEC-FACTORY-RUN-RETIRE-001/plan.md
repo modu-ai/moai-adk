@@ -133,14 +133,18 @@ its verbatim output, attributed to that run and that tree.
 - Legacy-row migration path: a v2 database with two unstamped `active` rows, reconciled via the peer
   fallback.
 - Both mutation directions (AC-015a / AC-015b).
-- **Cross-platform placement, not a cross-platform verdict.** The liveness/reconciler exercise goes
-  at `test/integration/harness/it08_factory_run_retire_test.go` behind `//go:build integration` —
-  measured as the only path the three-OS `test-integration` job runs
-  (`go test -tags=integration ./test/integration/harness/...`, `ci.yml:381`). The unit `test` job is
-  ubuntu-only (`ci.yml:124`) and `ci.yml` has no `pull_request` trigger for `develop`, so the
-  three-OS result arrives on the **develop push after integration**, not before. The run phase
-  records darwin locally and records the rest as deferred — it does not claim a verdict it cannot
-  obtain (AC-013).
+- **Cross-platform placement now has a verified green path (spec.md §A.2).** The liveness/reconciler
+  exercise goes at `test/integration/harness/it08_factory_run_retire_test.go` behind
+  `//go:build integration` — the only path the three-OS `test-integration` job runs. That job has no
+  `if:` of its own and inherits its gate through `needs: test`, so a develop push touching Go code
+  runs it on ubuntu, macos, and windows; run `35802361895` is the confirming observation.
+- **Verify selection, not just presence.** Close leg 1 of AC-013 with
+  `go test -tags=integration -v ./test/integration/harness/ -run TestFactoryRunRetire` and confirm a
+  `--- PASS: TestFactoryRunRetire` line. A selector matching zero tests exits 0 and prints `ok`, so
+  a bare `ok` would let the three-OS job run nothing while every surface reported green.
+- **Do not claim the three-OS verdict at close.** `ci.yml` has no `pull_request` trigger for
+  `develop` and this project does not push `WT-` branches, so leg 2 lands only on the develop push
+  after integration. Record darwin locally; record leg 2 as pending with its run id to follow.
 - Affected-package tests: `go test ./internal/homestate/... ./internal/factorymsg/... ./internal/cli/...`.
 
 ## §G Anti-patterns

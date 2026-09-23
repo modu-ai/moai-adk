@@ -1,7 +1,7 @@
 ---
 id: SPEC-FACTORY-RUN-RETIRE-001
 title: "Factory run retirement — owner-liveness reconciliation so a dead lead's run leaves 'active'"
-version: "0.2.0"
+version: "0.3.0"
 status: draft
 created: 2026-09-23
 updated: 2026-09-23
@@ -76,6 +76,40 @@ The SPEC therefore fixes the identity **semantically**: the owner of a run is th
 process** — the process the `role='lead'` peer already names — and the platform branch that makes
 the stamp name it is explicit (REQ-002b) rather than assumed away.
 
+### A.2 The three-OS green path exists, and it lands after the merge
+
+Measured in this tree at `bb5b8f9d1`, and confirmed against a real run:
+
+- `.github/workflows/ci.yml:17-18` — `on: push: branches: [main, develop]`. A develop push triggers
+  the workflow; `pull_request` is scoped to `branches: [main]`.
+- `ci.yml:79-85` — the `go_code` path filter matches `**/*.go`, `go.mod`, `go.sum`, `Makefile`,
+  the two workflow files, and `.moai/**`.
+- `ci.yml:120,124` — job `test`: `if: needs.detect.outputs.go_code == 'true'`, matrix
+  `os: [ubuntu-latest]`.
+- `ci.yml:373-381` — job `test-integration`: `needs: test`, matrix
+  `os: [ubuntu-latest, macos-latest, windows-latest]`, and **no `if:` of its own** — it inherits its
+  gate through `needs: test`.
+
+Confirming run (`gh run view 35802361895`): `event: push`, `branch: develop`, head
+`1dbe5e2f33147b8ae58dfb76f5bde3a43ba4b47f`; jobs `Integration Tests (ubuntu-latest)`,
+`(macos-latest)`, `(windows-latest)` each `success`. The run's overall conclusion was `failure` on
+unrelated jobs — worth stating, because it shows the three-OS jobs execute and report on their own
+terms rather than only inside an all-green run.
+
+**The timing, stated plainly.** That trigger is a **push to `develop`**, which happens only after a
+lane's branch merges; `pull_request` does not cover `develop`, and this project does not push `WT-`
+branches, so a card branch receives **no CI run at all before merge**. Therefore:
+
+| Verification | When | How |
+|---|---|---|
+| darwin | pre-merge | the lane's own local run, recorded with command and output |
+| ubuntu | post-merge | job `test` on the develop push |
+| ubuntu + macos + windows | post-merge | job `test-integration` on the same develop push |
+
+An acceptance criterion worded as though the three-OS result gates this card's merge would be false
+about its own timing — the same defect class as the one this section corrects, one step later. AC-013
+is written against the table above.
+
 ## §B Requirements (GEARS)
 
 ### Owner identity
@@ -145,16 +179,10 @@ the stamp name it is explicit (REQ-002b) rather than assumed away.
   converges a linked worktree onto the primary checkout — a test that omits this isolation mutates
   the developer's live factory state rather than a fixture.
 - **REQ-013** (Ubiquitous): The owner-liveness predicate and the reconciler shall be exercised on
-  darwin, linux, and windows, and the SPEC shall state which of those results exist before the
-  card integrates and which arrive after. Measured CI shape at `bb5b8f9d1`: the unit `test` job
-  (`.github/workflows/ci.yml:124`) has matrix `os: [ubuntu-latest]` alone; three-OS coverage exists
-  only in `test-integration` (`ci.yml:381`, `os: [ubuntu-latest, macos-latest, windows-latest]`,
-  gated behind the `integration` build tag and scoped to `./test/integration/harness/...`) and in
-  `release-pr-multi-os.yml`, which triggers on `pull_request: branches: [main]` only. The
-  cross-platform exercise shall therefore live at `test/integration/harness/` behind
-  `//go:build integration` — the one path the existing three-OS job actually runs — and the SPEC
-  shall record that the linux and windows verdicts arrive on the develop-push CI run, after this
-  card integrates (§F).
+  darwin, linux, and windows via the three-OS `test-integration` job, and the SPEC shall state
+  which results exist before the card integrates and which arrive after. The exercise shall live at
+  `test/integration/harness/` behind `//go:build integration` — the one path that job runs — and
+  shall be verified to be actually selected there, not merely present (§A.2).
 
 ## §C Design Decision — the retirement mechanism
 
@@ -190,6 +218,42 @@ it is a second entry to the same mechanism, not a second mechanism.
 | **(e) Owner identity from the broker `peers` row alone, with no `runs` column** | Simpler (no schema change) and it is the REQ-006 fallback — but it cannot see a run whose record was written and whose launch then failed before the peer was registered (`recordFactoryRunStart` at `internal/cli/cc.go:191` precedes `execOrSpawnClaude`). That path leaves a permanently-`indeterminate` row, i.e. a second generator of the same defect. The stamped column closes it; the peer lookup is kept as the legacy-row fallback where the column is empty. |
 | **(f) One owner stamp with no per-platform branch** (the first draft's design) | Rejected on measurement, not on taste: §A.1 shows the launcher and the session are the same process on POSIX and two different processes on Windows. A single unconditional stamp therefore names a process that can die while the session lives, which retires a live run — a direct REQ-005 violation — and puts the primary and fallback identity sources on different processes. REQ-002b makes the branch explicit instead. |
 
+### C.1 Sub-decision — which identity the run row stamps
+
+Rejecting (f) settles that *some* platform handling is needed; it does not settle *which*. Two
+options were put forward. Both preserve the live-run boundary, so the choice is made on what each
+actually buys.
+
+**Chosen: (a) — stamp the session process, one identity per run.** On a spawn-shaped launch the row
+carries the child's PID and fingerprint, matching what `launch_exec_windows.go:50,55` already
+registers on the peer; on a replace-shaped launch the launcher stamp already is that identity. One
+identity per run, and REQ-002 and REQ-006 name the same process by construction (REQ-002b).
+
+**Rejected: (b) — record both launcher and child identities, owner live when EITHER is alive.**
+Three reasons, in order of weight:
+
+1. **It does not remove the platform branch; it relocates it.** A child identity exists only where a
+   child exists — on a replace-shaped launch there is no second process to record — so the *writer*
+   stays platform-conditional either way. (b)'s stated benefit is not achieved, and the branch ends
+   up in two places (writer and predicate) rather than one.
+2. **The second identity adds no discrimination.** The cases it is meant to tolerate are already
+   tolerated by (a). Orphaned child, launcher killed: (a) stamps the child, which is alive →
+   `live`, correct. On a replace-shaped launch the two identities are the same process, so the
+   second column is degenerate there. No case was found where (b) classifies correctly and (a) does
+   not.
+3. **It breaks the single-source agreement that REQ-002b exists to establish.** The `role='lead'`
+   peer registers exactly one identity, so a two-identity column cannot be filled from the REQ-006
+   fallback on a legacy row. That needs a further rule for partially-known owners — more surface,
+   guarding a case reason 2 shows is empty.
+
+(b)'s genuine merit is that OR-ing two liveness answers biases harder toward `live`, and biasing
+toward `live` is the correct direction (REQ-003b). But (a) already reaches `live` in every case
+examined, so the bias buys no additional safety here — only a second column and a partial-data rule.
+
+Should the run phase find a concrete case where (a) misclassifies a live session as dead, that
+finding reopens this sub-decision rather than being worked around: (b) is the standing fallback, and
+the case is the evidence that would justify its cost.
+
 ## §D Gaps carried from the reproduction
 
 Each Gap in `.moai/reports/t1107/verdict.md` §4 is dispositioned here:
@@ -200,7 +264,7 @@ Each Gap in `.moai/reports/t1107/verdict.md` §4 is dispositioned here:
 | GLM and Codex lead doors read but never executed | **Covered** — REQ-011 plus AC-011/AC-012, which are satisfied only by a recorded invocation and its captured `runs` output. |
 | Lead-process-death behaviour never measured (the stub lead exits immediately) | **Covered** — REQ-003/004/005 plus AC-004/AC-005, which measure both the dead-owner and live-owner branches with a controlled long-lived process. |
 | Accumulated scale in real use never measured | **Partly covered.** REQ-008's report surfaces the count on demand; this SPEC does not measure the existing population of any real installation, and does not need to — reconciliation is per-resolution, not a one-shot sweep sized to a population. |
-| Windows never measured (darwin only) | **Partly covered, with the deferral named.** REQ-013/013b place the exercise where the existing three-OS job runs it. Stated plainly: the originating reproduction is darwin-only, and per §F the linux and windows results arrive on the develop-push CI run — after this card integrates, not before. |
+| Windows never measured (darwin only) | **Covered, with the timing named.** REQ-013 places the exercise where the verified three-OS job runs it (§A.2). Stated plainly: the originating reproduction is darwin-only, darwin is the only platform verified pre-merge, and the ubuntu / macos / windows results arrive on the develop-push run after this card integrates. |
 
 ## §E Exclusions
 
@@ -247,10 +311,9 @@ Each Gap in `.moai/reports/t1107/verdict.md` §4 is dispositioned here:
 ## §F Residual risk
 
 - **Cross-platform verdict timing.** Only darwin is verified before this card integrates — the
-  lane's own local run. The linux and windows results arrive from the `test-integration` job on the
-  develop push that follows integration, because `ci.yml` has no `pull_request` trigger for
-  `develop` and the unit `test` matrix is ubuntu-only. This is a named deferral, not a gap the ACs
-  pretend to close.
+  lane's own local run. The ubuntu / macos / windows results arrive from the `test-integration` job
+  on the develop push that follows integration (§A.2 carries the wiring citation and the confirming
+  run). A named deferral with a verified landing place, not a gap the ACs pretend to close.
 - **Windows restamp is designed, not measured here.** REQ-002b's restamp is authored from a source
   read of `launch_exec_windows.go`; no windows host was exercised during plan phase. The run phase's
   AC-016 covers the logic under test, and the platform verdict follows the timing above.
@@ -288,3 +351,9 @@ iter-1 and declined on the team lead's routing:
   actually shows, with the lead's measurement cited to its source. D5: three GEARS aspect labels
   corrected. D6: linux fingerprint resolution folded in as REQ-003b. D7-D10 recorded as accepted
   debt in §G.
+- 2026-09-23 — v0.3.0 — manager-spec — iter-2 follow-up. §A.2 added: the three-OS `test-integration`
+  green path is verified (wiring citations plus confirming run `35802361895`), together with the
+  timing table showing darwin as the only pre-merge platform. AC-013 is split into a release-blocking
+  pre-merge leg — which asserts the test is actually *selected*, not merely present — and a
+  non-gating post-merge leg. §C.1 added: the D1 sub-decision recording option (a) chosen and option
+  (b) rejected with reasons.

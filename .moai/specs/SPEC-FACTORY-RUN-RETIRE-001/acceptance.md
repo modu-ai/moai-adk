@@ -70,7 +70,7 @@ which is the exact failure `verification-completeness.md` §2 warns about.
 | AC-010 | REQ-008/009 | M4 | release-blocking | R-06 | M4 adds `moai factory runs` and its refuse-live branch |
 | AC-011 | REQ-011 | M5 | release-blocking | R-08 | M5 executes `moai glm -f` and records the result |
 | AC-012 | REQ-011 | M5 | release-blocking | R-08 | M5 executes `moai codex -f` and records the result |
-| AC-013 | REQ-013/013b | M6 | regression-guard | R-07 | M6 places the exercise under the three-OS path — see §D note |
+| AC-013 | REQ-013 | M6 | leg 1 release-blocking / leg 2 post-merge | R-07 | M6 places the exercise under the three-OS path; leg 1 green is `--- PASS: TestFactoryRunRetire` locally, leg 2 is the develop-push run |
 | AC-014 | REQ-012 | M1-M6 | release-blocking | R-05 | each exercise records its isolation evidence |
 | AC-015 | REQ-004/005 | M6 | release-blocking | R-05 | M6 mutation, both directions |
 | AC-016 | REQ-002b/002c | M1 | release-blocking | R-01 | M1 restamp makes stamp and lead peer name one process |
@@ -137,25 +137,30 @@ which is the exact failure `verification-completeness.md` §2 warns about.
   captured immediately afterwards, Then `progress.md` records the invocation, its exit code, and the
   verbatim table, with the same source-citation exclusion as AC-011.
 
-- **AC-013** *(regression-guard, not release-blocking — see the note below)* Given the
-  liveness-predicate and reconciler exercise placed at `test/integration/harness/` behind
-  `//go:build integration`, When the `test-integration` job runs on the develop push that follows
-  this card's integration, Then it reports a result on ubuntu-latest, macos-latest, and
-  windows-latest.
+- **AC-013** — two legs with different timing; only the first gates the merge.
 
-  **Why this is a regression-guard and not a release gate.** Measured at `bb5b8f9d1`: the unit
-  `test` job matrix is `os: [ubuntu-latest]` alone (`ci.yml:124`); the three-OS matrix lives only in
-  `test-integration` (`ci.yml:381`), which runs `go test -tags=integration ./test/integration/harness/...`;
-  and `ci.yml` triggers on `push: [main, develop]` plus `pull_request: [main]` — there is no
-  `pull_request` trigger for `develop`. A card merging to `develop` therefore has **no pre-merge
-  path to a three-OS result**. Per `verification-completeness.md` § The undecidable disposition, a
-  criterion whose green cannot be produced before the gate it guards loses release-blocking
-  eligibility rather than being written more confidently.
+  **Leg 1 — pre-merge, release-blocking.** Given the liveness-predicate and reconciler exercise
+  placed at `test/integration/harness/it08_factory_run_retire_test.go` behind
+  `//go:build integration`, When `go test -tags=integration -v ./test/integration/harness/ -run TestFactoryRunRetire`
+  is run locally on darwin, Then the output contains a `--- PASS: TestFactoryRunRetire` line.
 
-  What IS verified before integration: **darwin only**, from the lane's own local run, recorded with
-  command and output. Linux and windows are **deferred to the post-integration develop-push CI run**
-  and carried as named residual risk in `spec.md` §F. An earlier draft of this criterion demanded a
-  pre-merge three-OS verdict, which no correct work on this card could have produced.
+  The `-v` and the `--- PASS:` line are the load-bearing part, not decoration: a Go test binary
+  given a selector that matches **zero** tests exits 0 and prints `ok`, so a bare `ok` would satisfy
+  a weaker wording while the three-OS job silently runs nothing. This leg asserts the test is
+  actually *selected*, which is the property the post-merge leg depends on.
+
+  **Leg 2 — post-merge, confirmation only, NOT a merge gate.** Given leg 1 passed and the card's
+  branch has merged, When the develop push triggers `test-integration`, Then jobs
+  `Integration Tests (ubuntu-latest)`, `(macos-latest)`, and `(windows-latest)` each report a
+  result, recorded by run id in `progress.md`.
+
+  **Why leg 2 cannot gate the merge.** `ci.yml` triggers on `push: [main, develop]` and
+  `pull_request: [main]` — there is no `pull_request` trigger for `develop`, and this project does
+  not push `WT-` branches, so a card branch gets no CI run before it merges (`spec.md` §A.2 carries
+  the line citations and the confirming run `35802361895`, whose three Integration Tests jobs each
+  reported `success` on a develop push). Writing leg 2 as a merge gate would make the criterion
+  false about its own timing. Pre-merge coverage is darwin only; ubuntu / macos / windows are
+  post-merge, and `spec.md` §F carries that as named residual risk.
 
 - **AC-014** Given any exercise in AC-001..AC-012, When it completes, Then the factory state it
   created lives only under the sandbox `MOAI_HOME` and carries a project key that is not this
@@ -184,21 +189,22 @@ AC-015a alone would pass on one that retires nothing.
 
 ## §D.2 Severity
 
-Fifteen of the sixteen criteria are **release-blocking**: each either protects a live lead's run or
-establishes that a dead lead's run actually leaves `active`.
+All sixteen criteria are **release-blocking**, including AC-013 leg 1: each either protects a live
+lead's run or establishes that a dead lead's run actually leaves `active`.
 
-**AC-013 is the one exception — classified `regression-guard`.** Its green cannot be produced before
-this card integrates (no `pull_request` CI trigger exists for `develop`), so per
-`verification-completeness.md` § The undecidable disposition it loses release-blocking eligibility
-rather than standing as a gate nothing can pass. It is not recorded as a pass at integration time;
-it becomes a guard against later regression once the develop-push run reports.
+**AC-013 leg 2 is the one non-gating obligation.** It is not release-blocking and is never recorded
+as a pass at integration time, because no CI run exists for a card branch before it merges — the
+three-OS result lands on the develop push that follows. It is recorded as **pending** at close and
+**confirmed** when the run id is read. This is a timing fact about the CI wiring (`spec.md` §A.2),
+not a weakened criterion: leg 1 gates the merge on the property leg 2 depends on — that the test is
+actually selected by the integration path.
 
 ## §D.3 Traceability
 
 REQ-001→AC-001 · REQ-002→AC-001 · REQ-002b→AC-016 · REQ-003→AC-003 · REQ-003b→AC-003 ·
 REQ-004→AC-004/AC-015b · REQ-005→AC-005/AC-006/AC-015a · REQ-006→AC-007 · REQ-007→AC-008 ·
 REQ-008→AC-010 · REQ-009→AC-010 · REQ-010→AC-002 · REQ-011→AC-011/AC-012 · REQ-012→AC-014 ·
-REQ-013→AC-013 · REQ-014→AC-009.
+REQ-013→AC-013 (both legs) · REQ-014→AC-009.
 
 Every one of the 16 REQs in `spec.md` §B has at least one AC; every one of the 16 ACs traces to at
 least one REQ. Both counts sit exactly at the Tier M budget ceiling (16 requirements, 16 acceptance
@@ -206,8 +212,9 @@ criteria, applied independently per `spec-workflow.md` § SPEC Complexity Tier).
 
 ## §D.4 Definition of Done
 
-- All 15 release-blocking ACs recorded PASS in `progress.md` §E.2 with command plus verbatim
-  output. AC-013 (regression-guard) is recorded as **deferred with its reason**, never as a pass.
+- All 16 release-blocking criteria (AC-001..AC-016, AC-013 counted at leg 1) recorded PASS in
+  `progress.md` §E.2 with command plus verbatim output. AC-013 leg 2 is recorded **pending with its
+  reason**, never as a pass, and is confirmed by run id after the develop push.
 - `go test ./internal/homestate/... ./internal/factorymsg/... ./internal/cli/...` passes in the run
   tree; CI supplies the full-suite and cross-platform verdict.
 - `golangci-lint run` reports zero findings on the changed packages.
