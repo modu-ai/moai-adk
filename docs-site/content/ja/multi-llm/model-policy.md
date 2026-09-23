@@ -36,7 +36,7 @@ description: 作業の性質と品質/コストの目標に合わせてエージ
 | Claude Sonnet 5 | `sonnet` | 1M | 速度と知能のバランス、日常的なコーディング |
 | Claude Haiku 4.5 | `claude-haiku-4-5-20251001` | 200K | 最速かつ低コスト、単純・大量の作業 |
 
-> MoAI のモデルポリシーはこのラインナップ全体を使いません。**No-Haiku ポリシー**により Haiku はエージェントマトリクスのどこにも登場せず、マルチターンのエージェンティック行はすべて Opus が担当します。理由はすぐ次の節で説明します。
+> MoAI のモデルポリシーはこのラインナップ全体を使いません。**No-Haiku ポリシー**により Haiku はエージェントマトリクスのどこにも登場せず、マルチターンのエージェンティック行は Opus が担当します(例外は `low` プロファイルの `e2e-tester` だけです)。理由はすぐ次の節で説明します。
 
 ### 推論深度 (effort)
 
@@ -110,7 +110,7 @@ description: 作業の性質と品質/コストの目標に合わせてエージ
 
 - **支出は判断する行に**: ポリシーはコスト/スコア曲線の導出ではなく、確定されたオペレーター判断です。監査・助言行（`plan-auditor`、`sync-auditor`、`super-advisor`）と調整行（`manager-design`、`manager-lead`）、判定行（`mission-governor`）が `high` を維持する一方、著作・実装行（`manager-spec`、`manager-develop`）は 3 プロファイルすべて `medium` にとどまります。
 - **エージェンティック行は Opus**: `manager-spec`、`manager-develop`、`plan-auditor`、`sync-auditor`、`manager-design`、`manager-lead`、`builder-harness`、`e2e-tester` などマルチターン作業は Opus に残します(`e2e-tester` だけは `low` で `sonnet / low`)。Opus の `low` がどの effort の Sonnet よりもスコアが高く、課題あたりコストが安いからです。
-- **Sonnet は単発・入力支配の行のみ**: `manager-docs` のドキュメント整理、`manager-git` の機械的作業、`Explore` の探索は入力が大半を占める単一パスで終わり、マルチステップの完走失敗を心配する必要がなく、その場所では Sonnet の安い入力単価が決め手になります。この 3 行は 3 つのプロファイルすべてで `sonnet / low` に固定です。
+- **Sonnet が担う単発・入力支配の行**: `manager-docs` のドキュメント整理、`manager-git` の機械的作業、`Explore` の探索は入力が大半を占める単一パスで終わり、マルチステップの完走失敗を心配する必要がなく、その場所では Sonnet の安い入力単価が決め手になります。この 3 行は 3 つのプロファイルすべてで `sonnet / low` に固定です。`low` プロファイルでは `e2e-tester` も `sonnet / low` になります。
 - **`max` を受ける行はない**: `max` は `high` の上の唯一の段階として語彙に残りますが、現在使用するセルはありません。
 - **`xhigh` はどこにも使わない**: Opus ではスコアが `high` と同じなのにコストだけ 49% 余分にかかります。
 

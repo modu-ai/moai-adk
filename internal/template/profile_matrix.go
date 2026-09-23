@@ -311,13 +311,14 @@ func ProfileMatrixAgents() []string {
 //
 //   - Sonnet 5 holds three rows in every column — Explore (search),
 //     manager-git (git mechanics), and manager-docs (documentation) — plus
-//     e2e-tester in the economical column only. Explore and manager-git are
-//     single-shot, input-dominated, non-agentic rows where the multi-step
-//     completion failure does not apply and the lower input price does. The
-//     reason for the other two is not recorded: manager-docs has been sonnet
-//     since the first grouped matrix, and the low-column e2e-tester cell
-//     arrived with the per-agent matrix, neither with a stated rationale. Do
-//     not extend the single-shot argument to them without one.
+//     e2e-tester in the economical column only. What is recorded differs by
+//     row. The per-agent matrix (31da99a7b) classed Explore, manager-git, and
+//     the low-column docs and e2e rows as single-shot, input-dominated,
+//     non-agentic rows, where the multi-step completion failure does not
+//     apply and the lower input price does. manager-docs moved to sonnet in
+//     the two upper columns later, with the operator-specified
+//     judgment-weighted policy (t205), which records it as profile-invariant
+//     alongside manager-git and Explore and states no further reason.
 //
 // Invariants asserted by tests: zero haiku; zero fable; models subset of
 // {opus, sonnet}; efforts subset of {low, medium, high, max} (no `xhigh` cell);

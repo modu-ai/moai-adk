@@ -60,8 +60,9 @@ which model from the lineup below, at which reasoning depth.
 | Claude Haiku 4.5 | `claude-haiku-4-5-20251001` | 200K | Fastest and most economical; simple, high-volume work |
 
 > MoAI's model policy does not use this whole lineup. Under the **No-Haiku
-> policy**, Haiku appears nowhere in the agent matrix, and every multi-turn
-> agentic row is carried by Opus. The reason is in the very next section.
+> policy**, Haiku appears nowhere in the agent matrix, and the multi-turn
+> agentic rows are carried by Opus (the one exception is `e2e-tester` in the
+> `low` profile). The reason is in the very next section.
 
 ### Reasoning depth (effort)
 
@@ -167,11 +168,12 @@ table.
   `builder-harness`, `e2e-tester` — multi-turn work remains on Opus (only
   `e2e-tester` moves to `sonnet / low` under `low`), because
   Opus at `low` outscores Sonnet at any effort while costing less per task.
-- **Sonnet only on single-shot, input-dominated rows**: documentation synthesis
+- **Sonnet on the single-shot, input-dominated rows**: documentation synthesis
   (`manager-docs`), the mechanical work of `manager-git`, and the exploration
   of `Explore` finish in one input-dominated pass, so multi-step completion
   failure is never a concern, and there Sonnet's cheap input price is decisive.
-  These three rows are fixed at `sonnet / low` across all three profiles.
+  These three rows are fixed at `sonnet / low` across all three profiles. Under
+  `low`, `e2e-tester` also takes `sonnet / low`.
 - **No row takes `max`**: `max` remains the only level above `high` in the
   vocabulary, but no cell currently uses it.
 - **`xhigh` used nowhere**: on Opus it scores the same as `high` at 49% more

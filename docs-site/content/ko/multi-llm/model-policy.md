@@ -53,8 +53,8 @@ description: 작업 성격과 품질/비용 목표에 맞춰 에이전트마다 
 | Claude Haiku 4.5 | `claude-haiku-4-5-20251001` | 200K | 가장 빠르고 경제적, 단순·대량 작업 |
 
 > MoAI의 모델 정책은 이 라인업 전체를 쓰지 않습니다. **No-Haiku 정책**에 따라 Haiku는
-> 에이전트 매트릭스 어디에도 등장하지 않으며, 멀티턴 에이전틱 행은 전부 Opus가
-> 맡습니다. 이유는 바로 다음 절에 나옵니다.
+> 에이전트 매트릭스 어디에도 등장하지 않으며, 멀티턴 에이전틱 행은 Opus가
+> 맡습니다(`low` 프로필의 `e2e-tester`만 예외). 이유는 바로 다음 절에 나옵니다.
 
 ### 추론 깊이(effort)
 
@@ -154,10 +154,11 @@ description: 작업 성격과 품질/비용 목표에 맞춰 에이전트마다 
   `sync-auditor`, `manager-design`, `manager-lead`, `builder-harness`, `e2e-tester`
   등 멀티턴 작업은 Opus에 남깁니다(`e2e-tester`만 `low`에서 `sonnet / low`). Opus의 `low`가 어떤 effort의 Sonnet보다 점수는
   높고 과제당 비용은 싸기 때문입니다.
-- **Sonnet은 단발성·입력 지배 행에만**: `manager-docs`의 문서 정리, `manager-git`의
+- **Sonnet이 맡는 단발성·입력 지배 행**: `manager-docs`의 문서 정리, `manager-git`의
   기계적 작업, `Explore` 탐색은 입력이 대부분인 단일 패스로 끝나 멀티스텝 완주 실패를
   걱정할 일이 없고, 그 자리에서는 Sonnet의 싼 입력 단가가 결정적입니다. 이 세 행은
-  세 프로필 모두에서 `sonnet / low`로 고정입니다.
+  세 프로필 모두에서 `sonnet / low`로 고정입니다. `low` 프로필에서는 `e2e-tester`도
+  `sonnet / low`를 받습니다.
 - **어떤 행도 `max`를 받지 않음**: `max`는 `high` 위의 유일한 단계로 어휘에 남지만,
   현재 그것을 쓰는 셀은 없습니다.
 - **`xhigh`는 어디에도 쓰지 않음**: Opus에서는 점수가 `high`와 같은데 비용만 49% 더

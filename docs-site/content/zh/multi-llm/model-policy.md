@@ -36,7 +36,7 @@ description: 讲解按任务性质与质量/成本目标为每个智能体分配
 | Claude Sonnet 5 | `sonnet` | 1M | 速度与智能的平衡，日常编码 |
 | Claude Haiku 4.5 | `claude-haiku-4-5-20251001` | 200K | 最快最省，简单 · 大批量任务 |
 
-> MoAI 的模型策略并不使用这份阵容的全部。按 **No-Haiku 策略**，Haiku 不出现在智能体矩阵的任何位置，多轮智能体行全部由 Opus 承担。原因就在下一节。
+> MoAI 的模型策略并不使用这份阵容的全部。按 **No-Haiku 策略**，Haiku 不出现在智能体矩阵的任何位置，多轮智能体行由 Opus 承担（唯一例外是 `low` 配置下的 `e2e-tester`）。原因就在下一节。
 
 ### 推理深度（effort）
 
@@ -110,7 +110,7 @@ description: 讲解按任务性质与质量/成本目标为每个智能体分配
 
 - **开销流向做判断的行**： 这套策略是敲定的运营者判断，不是成本/得分推导。审计·顾问行（`plan-auditor`、`sync-auditor`、`super-advisor`）、协调行（`manager-design`、`manager-lead`）与判定行（`mission-governor`）保持 `high`，而撰写·实现行（`manager-spec`、`manager-develop`）在三个配置文件中都停在 `medium`。
 - **智能体行用 Opus**： `manager-spec`、`manager-develop`、`plan-auditor`、`sync-auditor`、`manager-design`、`manager-lead`、`builder-harness`、`e2e-tester` 等多轮工作留在 Opus（只有 `e2e-tester` 在 `low` 下为 `sonnet / low`）。因为 Opus 的 `low` 比任何 effort 的 Sonnet 得分高、每任务成本却更低。
-- **Sonnet 只用于单发·以输入为主的行**： `manager-docs` 的文档整理、`manager-git` 的机械性工作与 `Explore` 探索都是一次以输入为主的 pass 就结束，不存在多步完赛失败的问题，而在这些位置 Sonnet 更低的输入单价是决定性的。这三行在三个配置文件下都固定为 `sonnet / low`。
+- **Sonnet 承担的单发·以输入为主的行**： `manager-docs` 的文档整理、`manager-git` 的机械性工作与 `Explore` 探索都是一次以输入为主的 pass 就结束，不存在多步完赛失败的问题，而在这些位置 Sonnet 更低的输入单价是决定性的。这三行在三个配置文件下都固定为 `sonnet / low`。在 `low` 配置下，`e2e-tester` 也为 `sonnet / low`。
 - **没有任何行取 `max`**： `max` 仍作为 `high` 之上唯一的级别留在词汇表中，但当前没有格子使用它。
 - **`xhigh` 哪里都不用**： 在 Opus 上得分与 `high` 相同，成本却多 49%。
 
