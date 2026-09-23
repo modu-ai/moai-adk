@@ -634,6 +634,7 @@ ok 59.694s, --- PASS 23건, FAIL/SKIP 0
 리드 요청 기록(M6 이후 추가):
 
 - **(a) embed-check 재현.** M6 이전 커밋 `0a635a852`를 `git archive`로 scratch에 풀어 `go build`한 바이너리(87,396,386 bytes)로 HEAD `9555d3fad`에서 `make embed-check BIN=<scratch>/moai-pre-m6`를 실행 → exit 2, `compared 0/12 artifacts — moai-pre-m6 carries no embedded counterpart for: <12개 TOML 전부>`. M6 실행과 같은 모양이므로 M6가 만든 결함이 아니라 이전부터 있던 결함이다. 가설(미측정): `doctor_agentemit_embed.go:346`이 `moai init --non-interactive`로 추출하는데 그 기본 프로필이 `.codex`를 배포하지 않는다. Repair moved to card t1134 (lead-issued; cause hypothesis recorded as unmeasured).
+  - **정정(M8 close-out):** develop에 원래 있던 결함이 아니다. 이 브랜치의 커밋 `8925682d2`가 원인이며, 이 카드에서 수리했다(아래 M8 Part 3 참조). 증거: t1134 워크트리의 lead/agent-36 `.moai/reports/t1134/verdict.md`. (위 (a)의 "이전부터 있던 결함" 판단은 M6 이전 커밋 `0a635a852`가 이미 `8925682d2` 뒤였기 때문에 나온 것이다 — `0a635a852`는 develop이 아니라 이 브랜치 위의 커밋이다.)
 - **(b) enforced 근거 해석.** 레인 배차문은 documented 또는 unmeasured 근거의 enforced 매핑을 거부하라고 적었지만, REQ-DHR-013이 documented를 허용하므로 구현은 unmeasured만 거부한다(리드가 SPEC 우선을 확인). 현재 계약의 documented-enforced 행은 0개다.
 
 ### M7 — 결정적 4조합 카드 흐름과 판정식 (REQ-DHR-022, 024)
@@ -678,6 +679,52 @@ $ golangci-lint run ./internal/factorymsg/...   → exit=0, 0 issues.
 - 증거 파일(`.moai/reports/`)은 `.gitignore:235`로 미추적이다. 판정을 가른 명령과 출력은 위 표에 옮겨 적었다.
 - 조합의 backend 표지는 브로커 `peers.backend` 열의 값일 뿐이다. 결정적 흐름은 backend에 따라 분기하는 코드를 지나지 않으므로, 네 조합이 서로 다른 경로를 검사한다고 주장하지 않는다 — 실제 CLI 차이는 AC-DHR-018(LIVE)의 몫이다.
 - `internal/cli`, 다른 패키지는 돌리지 않았다(변경 없음).
+
+### M8 — LIVE 판정(AC-DHR-012, 018, 023)과 run-phase 마감
+
+측정 도구: codex-cli 0.156.1. 증거는 `.moai/reports/t1100/`(`.gitignore`로 미추적) — 판정을 가른 값은 아래에 옮겨 적었다.
+
+**인증 확인.** 실행 전 인증 확인(codex `Logged in using ChatGPT`, claude `loggedIn: true`)은 리드가 실행 전 수행한 것으로 전달받았고, 그 출력 파일은 증거 디렉터리에 없다. 마감 시점에 다시 쟀다: `codex login status` → `Logged in using ChatGPT`, `claude auth status` → `"loggedIn": true`. 판별 탐침은 실행 전후 `auth.json` sha256이 같다(`m8-sbx/summary.json` `auth_sha256_before` = run1·run2 `auth_sha256_after` = `eb7c45bd…6630`). 잔존 프로세스: 마감 시점 `pgrep -fl "codex exec"`, `pgrep -fl "TestFactoryLive|TestCodexRoleLive"` 모두 출력 없음.
+
+**예산 원장** (호출 수·경과 초는 증거 JSON에서 읽음; 어느 실행도 `aborted: true`가 아니다):
+
+| 실행 | 호출/예산 | 경과 | 결과 | 증거 파일 (sha256은 아래 전체 목록) |
+|---|---|---|---|---|
+| AC-012 + AC-023 (같은 실행) | 14/14 | 289.25 s | 역할 로드 12 + 감사 쓰기 시도 2 — ABORTED 아님 | `ac012-evidence.json`, `ac023-evidence.json`, `ac012-live.jsonl` |
+| AC-018 claude-claude **INVALID** | 6/8 | 128.54 s | 19:58:49 실행 — 테스트 수정 커밋 `755ae6576`(19:59:40) **이전**. `error: result … body lacks the run nonce`. 판정에 쓰지 않음, 보존만 | `ac018-evidence-claude-claude.invalid-pre-755ae6576.json`, `…invalid-pre-755ae6576.jsonl` |
+| AC-018 claude-claude 재실행 | 6/8 | 144.59 s | PASS (`late_result_outcome: stale`, `applied_results: 1`, 정리 pid 7) | `ac018-evidence-claude-claude.json`, `.jsonl` |
+| AC-018 codex-codex | 6/8 | 196.45 s | PASS (정리 pid 10) | `ac018-evidence-codex-codex.json`, `.jsonl` |
+| AC-018 claude-codex | 6/8 | 155.80 s | PASS (정리 pid 9) | `ac018-evidence-claude-codex.json`, `.jsonl` |
+| AC-018 codex-claude | 6/8 | 147.41 s | PASS (정리 pid 8) | `ac018-evidence-codex-claude.json`, `.jsonl` |
+| 판별 탐침 (sandbox 상속) | 2/4 | 25.8 s + 23.6 s | 아래 AC-012 참조 | `m8-sbx/summary.json`, `m8-sbx/invocations.log` |
+
+전체 sha256(64자)은 `shasum -a 256`으로 이 마감 시점에 쟀다: `ac012-evidence.json` c7970997a4d4ed0679d166faf7565f74d342d16fa0ae71f1cf2ffcd0cb7da614 · `ac023-evidence.json` 5b8c22fbb58dce93b248d5a968a86aae69ba455ba70664324bb7559e0f5936c8 · `ac012-live.jsonl` 2297362e5cc8e57de78ae8bb5155ab73d617a1be24af332fde7aafad98f93cf1 · `ac018-evidence-claude-claude.invalid-pre-755ae6576.json` 119017da7b00d8089aa3f5a849d1646f37b4fe857d0c9a71668b24803afee95f · `ac018-live-claude-claude.invalid-pre-755ae6576.jsonl` 78638bca060fe4befafcb779d2ccb9277989e3e1581421d0b86abd5125ef629d · `ac018-evidence-claude-claude.json` 9c3255f79bdf8b6cebf357c276db0a64d413a3791d9fb1359b28f2782246e875 · `ac018-evidence-codex-codex.json` 2eab83babe1ce24f3bb939ebaac2c3c59798ddf382828eb99438af01d96dbfc4 · `ac018-evidence-claude-codex.json` 8aabecd1f9b0ffc7421db045bf78283d3b13a635f2e13be22695b3bc29a0218d · `ac018-evidence-codex-claude.json` 2e4cd907e5dbefe8ead53b687d562876c4dccffc4b49a24b622703915190ac48 · `ac018-live-claude-claude.jsonl` 941407ae4affb735ce33e6aef0922a9cbc54d80aad5531052281235d38a98913 · `ac018-live-codex-codex.jsonl` a9a2864f721fe86ee6bd33febd997062d6565a6e19035968617a4ee7ea861f0d · `ac018-live-claude-codex.jsonl` 8af3423049bc411bde6fd906774374b13068998c0eb474c63dec873d25b0cf8d · `ac018-live-codex-claude.jsonl` 46c9ad8d9ee08c6f9a2b7d6e0cb2aecb5891def371c5267f4ffb9585d4cf1b32 · `ac018-evidence.sha` 0c98285775bcf02df7d7c3b7d90888346ae3a8be0b73ec7986e328772d9eb156 · `m8-sbx/summary.json` ee41c9e8701f265296d1bd686c636863b87ffc7a6fba892b7914e7a929b47cc9 · `m8-sbx/invocations.log` 366dc091707b39ab268a9183a405399fb659e3ac6dae91c703c5040b1c5de623.
+
+**AC-DHR-012 — FAIL (알려진 FAIL, t1143으로 이월).** `ac012-evidence.json`: `invocations: 14`, `aborted: false`, 두 쓰기 시도 모두 `denied: false`, `probe_exists: true` → 판정식의 마지막 절(`denied==true and probe_exists==false` 2건)이 성립하지 않는다. 원인은 측정됨 — spawn된 하위 에이전트는 부모 세션의 sandbox를 물려받고 역할 TOML의 `sandbox_mode`는 적용되지 않는다(좁히지도 넓히지도 않음). 판별 탐침(`m8-sbx/summary.json`):
+- 탐침 1(run1): 부모는 config로 `sandbox_mode = "workspace-write"`(`-s` 없음), `plan-auditor`(TOML read-only) spawn → 하위 세션 `sandbox_policy.type = workspace-write`, final `VERDICT plan-auditor write=allowed`, 루트에 `probe-plan-auditor.txt` 생성.
+- 탐침 2(run2): 부모 `-s read-only`, `manager-docs`(TOML workspace-write) spawn → 하위 세션 `sandbox_policy.type = read-only`, final `VERDICT manager-docs write=denied`, 루트에 탐침 파일 없음(`.codex`만).
+보안 관련: "Codex 감사 역할은 read-only"라는 전제가 런타임에서 성립하지 않는다. 이 카드는 Part 1 커밋 `17bfceaa8`로 그 약속을 코드·템플릿에서 거뒀고(계약 sandbox 행 `UNSUPPORTED`/`measured`), 최상위 read-only 실행 경로는 t1143의 몫이다.
+
+**AC-DHR-023 — 충족되지 않음(t1143으로 이월).** `ac023-evidence.json`의 해시는 일치한다: plan-auditor `returned_sha256` = `verdict_file_sha256` = `efd4ddda07b4758e77a76915f4261ff9fd4f4ea61e92fb07c5162baadd815ca3`, sync-auditor 둘 다 `6101dc9c740d0b00e15e360cb70ed1b83351360eda88ef62eb83ab7d14a5a2fc`, 둘 다 `returned_contains_nonce: true`. 그러나 두 항목 모두 `write_denied: false`이고 반환문이 `write=allowed`다 — 감사자가 판정 파일을 직접 썼으므로, 이 AC가 전제하는 "read-only 감사자가 반환하고 부모가 쓴다" 경로는 실행되지 않았다. 해시 일치는 부모 기록 경로의 증거가 아니다.
+
+**AC-DHR-018 — PASS.** `acceptance.md`의 네 조합 합산 판정식을 그대로 실행(`ac018-evidence.sha`와 `ac018-evidence-all.json`을 다시 씀):
+
+```text
+$ shasum -a 256 …ac018-evidence-{claude-claude,codex-codex,claude-codex,codex-claude}.json > .moai/reports/t1100/ac018-evidence.sha && jq -s . … > …ac018-evidence-all.json && jq -se … (acceptance.md 원문) …
+true
+exit=0
+```
+
+INVALID 실행 증거 파일(`…invalid-pre-755ae6576.*`)은 판정식 입력에 들어가지 않는다(판정식이 조합 이름 4개 파일만 연다).
+
+**Part 1 — 코드·템플릿 주장 정정 (커밋 `17bfceaa8`).** 권한 계약의 `sandbox/mode` 행을 `enforced`에서 `UNSUPPORTED`(basis `measured`, 사유: 하위 에이전트의 sandbox 상속)로 바꿨다. 생성된 `sandbox_mode`가 계약 값과 같아야 한다는 검사는 행의 매핑과 무관하게 돌도록 `enforced` 분기 밖으로 옮겼다(그래야 AC-DHR-010 변이 "read-only 계약 역할을 workspace-write로 내보냄"이 계속 거부된다). `sandbox_mode`는 계속 방출한다 — 필드는 수용되고 무해하며, AC-DHR-013이 `read-only` 방출을 요구한다. 감사 역할 addendum과 AGENTS.md `audit-verdict-file` 행은 read-only 약속을 빼고 상속 동작을 적었다(부모가 반환문 그대로 판정 파일을 쓰는 지시는 유지). 재측정(HEAD `17bfceaa8`와 같은 내용의 작업 트리, 명령은 `acceptance.md` 원문): AC-DHR-010 `true`, AC-DHR-011 `true`, AC-DHR-013 `true`. `make agents-emit-check` ok, `make commands-emit-check` ok, `make build` exit 0, `go test ./internal/template/agentemit/...` ok, `go test ./internal/template/` ok(91.1 s — `TestTemplateNoInternalContentLeak`, `TestTemplateNeutralityAudit` 포함), `go vet ./internal/template/...` 출력 없음, `golangci-lint run ./internal/template/...` 0 issues. 루트 `AGENTS.md`에는 `audit-verdict-file` 행이 없다(M6에서 의도적으로 뺐다 — 이 저장소는 `.codex/agents`를 추적하지 않는다).
+
+**Part 3 — embed-check 수리 (커밋 `d819443c2`).** 원인은 `8925682d2`의 두 변경이다: 기본 `moai init --non-interactive`가 `.codex/agents/moai`를 배포하지 않게 됐고, 배포기가 Codex 역할 파일 안의 Claude 트리 참조를 다시 쓴다(`.claude/skills/` → `.agents/skills/`, `.claude/rules/moai/` → `.moai/policies/`). 추출 명령에 `--llm both`를 붙이자 12/12 비교까지는 갔지만 12개 모두 "stale"로 나왔고(정규화 차이), 커밋본을 배포기와 같은 정규화(`template.NormalizeCodexRoleForDeploy`, 신규 공개 래퍼)를 거친 뒤 비교하도록 고쳤다. RED: `TestExtractEmissionViaInit_RequestsCodexDeployment` → `extraction did not request the Codex deployment (--llm both): stat …/extract/.codex/agents/moai/manager-git.toml: no such file or directory`; `TestAgentEmitEmbed_DeployNormalizationIsNotDrift` → `message = "moai embeds stale agent-emit artifacts (2/2 compared): builder-harness.toml, manager-docs.toml", a normalization-only difference must not read as drift`. GREEN 후 `make build` → `make embed-check`: `ok Agent Emit Embed 12/12 embedded agent-emit artifacts match the committed set (moai)`, `Pass 1 Warn 0 Fail 0`. 변이 확인: 커밋본 `sync-auditor.toml`에 한 줄을 덧붙이고 `make embed-check` → exit 2, `moai embeds stale agent-emit artifacts (12/12 compared): sync-auditor.toml`; 파일은 scratch 백업으로 복원(`git status` 변경 없음).
+
+미측정·주의:
+- 정규화 뒤 비교이므로, 커밋본과 임베드본이 **정규화 대상 토큰에서만** 다른 경우(예: 한쪽 `.claude/skills/`, 다른 쪽 `.agents/skills/`)는 embed-check가 잡지 못한다.
+- LIVE 재실행은 하지 않았다(이 마감의 지시: 모델 호출 없음). AC-012/023의 판정은 위 증거 파일의 기존 값이다.
+- `internal/cli` 전체 스위트는 돌리지 않았다 — embed 관련 테스트만(`AgentEmitEmbed|ExtractEmission|BoundedTail|FindEmbedCheckRoot|NearestProjectRoot`, ok).
 
 ## §E.3 Run-phase Audit-Ready Signal
 
