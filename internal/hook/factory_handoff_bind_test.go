@@ -3,11 +3,14 @@ package hook
 import (
 	"context"
 	"database/sql"
+	"fmt"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"strings"
+	"sync"
 	"testing"
+	"time"
 
 	"github.com/modu-ai/moai-adk/internal/config"
 	"github.com/modu-ai/moai-adk/internal/factorymsg"
@@ -254,6 +257,64 @@ func TestFactoryLaneHandoffInteractiveStateMachine(t *testing.T) {
 		if again := f.row(t); again != bound {
 			t.Fatalf("bound endpoint rewritten: before=%+v after=%+v", bound, again)
 		}
+
+		// The tombstoned source session resumes at the primary checkout: its
+		// SessionStart gets the shared endpoint-replaced notice, byte-equal to
+		// its UserPromptSubmit notice, and nothing moves.
+		durable := f.durable(t)
+		start := sessionStart("src-uuid", f.primary)
+		prompt := registerFactoryUserPromptPeer(context.Background(), &HookInput{SessionID: "src-uuid", CWD: f.primary, Prompt: "resume"})
+		want := fmt.Sprintf("factory endpoint replaced STALE_ENDPOINT: slot=lane-1 is current at post-cd-uuid generation %d; this session receives no factory messages", bound.Generation)
+		if start != want || prompt != want {
+			t.Fatalf("tombstoned session notices:\nSessionStart     = %q\nUserPromptSubmit = %q\nwant             = %q", start, prompt, want)
+		}
+		if after := f.row(t); after != bound {
+			t.Fatalf("tombstoned SessionStart moved the endpoint: before=%+v after=%+v", bound, after)
+		}
+		if after := f.durable(t); after != durable {
+			t.Fatal("tombstoned SessionStart changed tombstone or receipt rows")
+		}
+	})
+
+	t.Run("launch_pending_notice_matches_user_prompt", func(t *testing.T) {
+		f := newInteractiveHandoffFixture(t, true)
+		ctx := context.Background()
+		// The handoff-bound owner is a helper process so it can be made not
+		// current; the rebind is the production store transaction.
+		helper := startStoppableLiveOwner(t)
+		b, err := f.store.BindHandoff(ctx, f.h, factorymsg.HandoffBindEvidence{
+			Mode: factorymsg.HandoffModeInteractive, Nonce: f.h.Nonce, CardID: f.h.CardID, SpecID: f.h.SpecID,
+			SessionUUID: "post-cd-uuid", PID: helper.pid, ProcessStart: helper.start,
+			Cwd: f.target, WorktreeRoot: f.target, Branch: "WT-lane-handoff", Head: f.pin,
+		})
+		if err != nil {
+			t.Fatal(err)
+		}
+		helper.stopAndWait(t)
+		owner, start := factoryHookOwnerIdentity(t)
+		pending, err := f.store.RegisterLaunchPending(ctx, factorymsg.Peer{
+			ProjectKey: homestate.ProjectKey(f.primary), RunID: f.run, Backend: "codex",
+			Role: "worker", Slot: "lane-1", PID: owner, ProcessStart: start,
+		})
+		if err != nil {
+			t.Fatalf("launcher registration after the bound owner stopped: %v", err)
+		}
+		if pending.Generation <= b.New.Generation {
+			t.Fatalf("launch-pending generation %d not above %d", pending.Generation, b.New.Generation)
+		}
+		row, durable := f.row(t), f.durable(t)
+		prompt := registerFactoryUserPromptPeer(ctx, &HookInput{SessionID: "src-uuid", CWD: f.primary, Prompt: "resume"})
+		sess := sessionStart("src-uuid", f.primary)
+		want := fmt.Sprintf("factory endpoint replaced STALE_ENDPOINT: slot=lane-1 is current at  generation %d; this session receives no factory messages", pending.Generation)
+		if sess != prompt || prompt != want {
+			t.Fatalf("launch-pending notices:\nSessionStart     = %q\nUserPromptSubmit = %q\nwant             = %q", sess, prompt, want)
+		}
+		if after := f.row(t); after != row {
+			t.Fatalf("launch-pending row changed: before=%+v after=%+v", row, after)
+		}
+		if after := f.durable(t); after != durable {
+			t.Fatal("tombstone or receipt rows changed")
+		}
 	})
 
 	t.Run("no_evidence_before_the_cd_guidance", func(t *testing.T) {
@@ -300,5 +361,89 @@ func TestFactoryLaneHandoffInteractiveStateMachine(t *testing.T) {
 			}
 			f.requireNothingBound(t, before)
 		})
+	}
+}
+
+// durable renders the tombstone and BOUND receipt rows as one comparable string.
+func (f *interactiveHandoffFixture) durable(t *testing.T) string {
+	t.Helper()
+	var out []string
+	for _, q := range []string{
+		`SELECT slot||'|'||session_uuid||'|'||generation||'|'||replaced_by_session||'|'||replaced_by_generation||'|'||handoff_id||'|'||bound_at FROM lane_endpoint_tombstones ORDER BY session_uuid,generation`,
+		`SELECT id||'|'||handoff_id||'|'||session_uuid||'|'||generation||'|'||pid||'|'||process_start||'|'||created_at FROM lane_handoff_receipts ORDER BY id`,
+	} {
+		rows, err := f.db(t).Query(q)
+		if err != nil {
+			t.Fatal(err)
+		}
+		for rows.Next() {
+			var s string
+			if err := rows.Scan(&s); err != nil {
+				t.Fatal(err)
+			}
+			out = append(out, s)
+		}
+		_ = rows.Close()
+		out = append(out, "#")
+	}
+	return strings.Join(out, ";")
+}
+
+// stoppableLiveOwner is the owner helper child with a stop that kills AND
+// reaps it: a killed but unreaped child is a zombie the probe still reads as
+// live, so the endpoint it owns would stay current.
+type stoppableLiveOwner struct {
+	pid   int
+	start string
+	stop  func()
+}
+
+func startStoppableLiveOwner(t *testing.T) stoppableLiveOwner {
+	t.Helper()
+	cmd := exec.Command(os.Args[0], "-test.run=^TestFactoryHandoffOwnerHelperProcess$", "-test.timeout=300s")
+	cmd.Env = append(os.Environ(), ownerHelperEnv+"=1")
+	stdin, err := cmd.StdinPipe()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := cmd.Start(); err != nil {
+		t.Fatalf("start owner helper: %v", err)
+	}
+	var once sync.Once
+	stop := func() {
+		once.Do(func() {
+			_ = stdin.Close()
+			_ = cmd.Process.Kill()
+			_ = cmd.Wait()
+		})
+	}
+	t.Cleanup(stop)
+	deadline := time.Now().Add(5 * time.Second)
+	for {
+		start, state := homestate.ProbeProcessIdentity(cmd.Process.Pid)
+		if state == homestate.ProcessIdentityLive && start != "" {
+			return stoppableLiveOwner{pid: cmd.Process.Pid, start: start, stop: stop}
+		}
+		if time.Now().After(deadline) {
+			t.Fatalf("owner helper %d never became probeable (state=%v)", cmd.Process.Pid, state)
+		}
+		time.Sleep(10 * time.Millisecond)
+	}
+}
+
+// stopAndWait makes the owner not current under the t1074 live-owner rule.
+func (o stoppableLiveOwner) stopAndWait(t *testing.T) {
+	t.Helper()
+	o.stop()
+	deadline := time.Now().Add(5 * time.Second)
+	for {
+		start, state := homestate.ProbeProcessIdentity(o.pid)
+		if state != homestate.ProcessIdentityLive || start != o.start {
+			return
+		}
+		if time.Now().After(deadline) {
+			t.Fatalf("owner %d still current after kill and wait", o.pid)
+		}
+		time.Sleep(10 * time.Millisecond)
 	}
 }

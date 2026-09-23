@@ -97,6 +97,9 @@ func registerFactoryHookPeer(ctx context.Context, input *HookInput, mode factory
 		}
 		p, bound, bindErr := s.BindLaunchPending(ctx, want)
 		if bindErr != nil {
+			if notice, ok := factoryHandoffRegistrationNotice(bindErr, slot); ok {
+				return notice
+			}
 			return "factory messaging degraded: " + bindErr.Error()
 		}
 		if !bound {

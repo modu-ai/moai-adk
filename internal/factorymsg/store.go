@@ -442,7 +442,9 @@ func (s *Store) RegisterLaunchPending(ctx context.Context, p Peer) (Peer, error)
 
 // BindLaunchPending atomically replaces the exact launcher-owned provisional
 // row. A bound row is never rotated here; authoritative turn hooks use
-// RegisterPeer for that separate policy.
+// RegisterPeer for that separate policy. A session UUID a handoff rebind
+// tombstoned is refused with STALE_ENDPOINT on any row, inside this write
+// transaction and before the row is read.
 func (s *Store) BindLaunchPending(ctx context.Context, p Peer) (Peer, bool, error) {
 	if p.ProjectKey == "project" {
 		p.ProjectKey = s.projectKey
@@ -458,6 +460,13 @@ func (s *Store) BindLaunchPending(ctx context.Context, p Peer) (Peer, bool, erro
 		return Peer{}, false, err
 	}
 	defer func() { _ = tx.Rollback() }()
+	// t1082 REQ-FLH-010: a tombstoned session UUID is refused for good, before
+	// any row is read or changed, whatever the generation.
+	if tombstoned, err := sessionTombstoned(ctx, tx, p.SessionUUID); err != nil {
+		return Peer{}, false, err
+	} else if tombstoned {
+		return Peer{}, false, staleError(ctx, tx, NackStaleEndpoint, p.Slot)
+	}
 
 	var current Peer
 	err = tx.QueryRowContext(ctx, `SELECT project_key,run_id,backend,role,slot,session_uuid,generation,pid,process_start FROM peers WHERE slot=?`, p.Slot).Scan(

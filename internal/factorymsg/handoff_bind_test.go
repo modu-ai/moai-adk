@@ -3,6 +3,7 @@ package factorymsg
 import (
 	"context"
 	"errors"
+	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
@@ -586,6 +587,184 @@ func TestFactoryLaneHandoffStaleEndpointRejected(t *testing.T) {
 	}
 	if err := sendFrom(current, f.lead, "from-current"); err != nil {
 		t.Fatalf("send from current endpoint: %v", err)
+	}
+
+	// Tombstoned session UUID through the t1074 UserPromptSubmit path
+	// (RegisterPeer, not launch-pending): a resume with the recorded owner, a
+	// restart with a new owner, and the same after the handle is reopened.
+	durable := func(s *Store) string {
+		return dumpRows(t, s, `SELECT slot,session_uuid,generation,replaced_by_session,replaced_by_generation,handoff_id,bound_at FROM lane_endpoint_tombstones ORDER BY session_uuid,generation`) +
+			"#" + dumpRows(t, s, `SELECT id,handoff_id,old_session,old_generation,session_uuid,generation,pid,process_start,created_at FROM lane_handoff_receipts ORDER BY id`)
+	}
+	turnRegistration := func(s *Store, name string, pid int, start string) {
+		t.Helper()
+		row, rows := readEndpointRow(t, s.db, bindSlot), durable(s)
+		_, err := s.RegisterPeer(ctx, Peer{ProjectKey: "project", RunID: f.run, Backend: "codex", Role: "worker", Slot: bindSlot, SessionUUID: "src-uuid", Generation: 1, PID: pid, ProcessStart: start})
+		requireStale(t, err, NackStaleEndpoint, current)
+		if after := readEndpointRow(t, s.db, bindSlot); after != row {
+			t.Fatalf("%s: endpoint row changed: before=%+v after=%+v", name, row, after)
+		}
+		if after := durable(s); after != rows {
+			t.Fatalf("%s: tombstone or receipt rows changed", name)
+		}
+	}
+	turnRegistration(reopened, "resume_recorded_owner", f.source.PID, f.source.ProcessStart)
+	turnRegistration(reopened, "restart_new_owner", 999_983, "restart-start")
+	if err := reopened.Close(); err != nil {
+		t.Fatal(err)
+	}
+	again, err := Open(f.root, f.run)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = again.Close() })
+	turnRegistration(again, "after_reopen", f.source.PID, f.source.ProcessStart)
+
+	// BOUND row, before any launcher registration: a SessionStart bind of the
+	// tombstoned UUID is refused, not silently passed over.
+	row, rows := readEndpointRow(t, again.db, bindSlot), durable(again)
+	_, ok, err := again.BindLaunchPending(ctx, Peer{ProjectKey: "project", RunID: f.run, Backend: "codex", Role: "worker", Slot: bindSlot, SessionUUID: "src-uuid", Generation: 1, PID: current.PID, ProcessStart: current.ProcessStart})
+	if ok {
+		t.Fatal("BOUND row: tombstoned session bound")
+	}
+	requireStale(t, err, NackStaleEndpoint, current)
+	if after := readEndpointRow(t, again.db, bindSlot); after != row {
+		t.Fatalf("BOUND row: endpoint row changed: before=%+v after=%+v", row, after)
+	}
+	if after := durable(again); after != rows {
+		t.Fatal("BOUND row: tombstone or receipt rows changed")
+	}
+
+	t.Run("launcher_resume_leg", func(t *testing.T) { staleEndpointLauncherResumeLeg(t) })
+}
+
+// dumpRows renders every row of query as one comparable string.
+func dumpRows(t *testing.T, s *Store, query string) string {
+	t.Helper()
+	rows, err := s.db.Query(query)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = rows.Close() }()
+	cols, err := rows.Columns()
+	if err != nil {
+		t.Fatal(err)
+	}
+	var out []string
+	for rows.Next() {
+		vals := make([]any, len(cols))
+		ptrs := make([]any, len(cols))
+		for i := range vals {
+			ptrs[i] = &vals[i]
+		}
+		if err := rows.Scan(ptrs...); err != nil {
+			t.Fatal(err)
+		}
+		out = append(out, fmt.Sprint(vals...))
+	}
+	if err := rows.Err(); err != nil {
+		t.Fatal(err)
+	}
+	return strings.Join(out, ";")
+}
+
+// staleEndpointLauncherResumeLeg is the AC-FLH-007 launcher resume and
+// positive legs (REQ-FLH-010, lead decision D1=(b)). The handoff-bound owner
+// is a live helper process so the test can make it not current.
+func staleEndpointLauncherResumeLeg(t *testing.T) {
+	f := newBindSeed(t)
+	ctx := context.Background()
+	f.reserveToPending(t, HandoffModeInteractive)
+	boundOwner := startStoppableOwner(t)
+	ev := f.evidence()
+	ev.PID, ev.ProcessStart = boundOwner.PID, boundOwner.Start
+	b, err := f.s.BindHandoff(ctx, f.h, ev)
+	if err != nil {
+		t.Fatal(err)
+	}
+	tombGen := f.source.Generation
+	const bindInputGeneration = 1 // the production SessionStart hook's bind input
+	if bindInputGeneration == tombGen {
+		t.Fatalf("bind input generation %d equals the tombstoned generation; the leg would not discriminate a pair match", tombGen)
+	}
+	boundOwner.Stop(t)
+
+	durable := func() string {
+		return dumpRows(t, f.s, `SELECT slot,session_uuid,generation,replaced_by_session,replaced_by_generation,handoff_id,bound_at FROM lane_endpoint_tombstones ORDER BY session_uuid,generation`) +
+			"#" + dumpRows(t, f.s, `SELECT id,handoff_id,old_session,old_generation,session_uuid,generation,pid,process_start,created_at FROM lane_handoff_receipts ORDER BY id`)
+	}
+	rowsBefore := durable()
+	launcher := startStoppableOwner(t)
+	lane := Peer{ProjectKey: "project", RunID: f.run, Backend: "codex", Role: "worker", Slot: bindSlot, PID: launcher.PID, ProcessStart: launcher.Start}
+	pending, err := f.s.RegisterLaunchPending(ctx, lane)
+	if err != nil {
+		t.Fatalf("launcher registration after the bound owner stopped: %v", err)
+	}
+	if pending.Generation <= b.New.Generation {
+		t.Fatalf("launch-pending generation %d not above the handoff-bound generation %d", pending.Generation, b.New.Generation)
+	}
+	committed := dumpRows(t, f.s, `SELECT session_uuid,generation,pid,process_start,updated_at FROM peers WHERE slot='`+bindSlot+`'`)
+	redirect := Peer{Slot: bindSlot, SessionUUID: "", Generation: pending.Generation}
+
+	resume := lane
+	resume.SessionUUID, resume.Generation = "src-uuid", bindInputGeneration
+	_, ok, err := f.s.BindLaunchPending(ctx, resume)
+	if ok {
+		t.Fatal("launcher resume: tombstoned session bound to the launch-pending row")
+	}
+	requireStale(t, err, NackStaleEndpoint, redirect)
+	if got := dumpRows(t, f.s, `SELECT session_uuid,generation,pid,process_start,updated_at FROM peers WHERE slot='`+bindSlot+`'`); got != committed {
+		t.Fatalf("launch-pending row changed by the refused bind:\nbefore=%s\nafter=%s", committed, got)
+	}
+	if got := durable(); got != rowsBefore {
+		t.Fatal("launcher resume: tombstone or receipt rows changed")
+	}
+
+	turn := resume
+	if _, err := f.s.RegisterPeer(ctx, turn); err == nil {
+		t.Fatal("turn registration of the tombstoned session accepted")
+	} else {
+		requireStale(t, err, NackStaleEndpoint, redirect)
+	}
+	if got := dumpRows(t, f.s, `SELECT session_uuid,generation,pid,process_start,updated_at FROM peers WHERE slot='`+bindSlot+`'`); got != committed {
+		t.Fatal("launch-pending row changed by the refused turn registration")
+	}
+
+	revived := resume
+	revived.Generation = pending.Generation + 1
+	send := func(from, to Peer, key string) error {
+		_, err := f.s.Send(ctx, SendRequest{From: from, To: to, Kind: KindStatusReport, IdempotencyKey: key, TaskRef: "t1082", CorrelationID: "c-" + key, TTL: time.Hour, Payload: []byte("x")})
+		return err
+	}
+	if err := send(revived, f.lead, "from-revived"); !errors.Is(err, ErrStalePeer) {
+		t.Fatalf("send from the refused bind's identity: err=%v, want ErrStalePeer class", err)
+	}
+	if err := send(f.lead, revived, "to-revived"); !errors.Is(err, ErrStalePeer) {
+		t.Fatalf("send to the refused bind's identity: err=%v, want ErrStalePeer class", err)
+	}
+
+	// Positive leg: once the launch-pending owner is not current, a fresh
+	// launcher registration and an untombstoned bind succeed.
+	launcher.Stop(t)
+	fresh := lane
+	fresh.PID, fresh.ProcessStart = os.Getpid(), f.ownerStart
+	pending2, err := f.s.RegisterLaunchPending(ctx, fresh)
+	if err != nil {
+		t.Fatalf("fresh launcher registration: %v", err)
+	}
+	if pending2.Generation <= pending.Generation {
+		t.Fatalf("fresh launch-pending generation %d not above %d", pending2.Generation, pending.Generation)
+	}
+	fresh.SessionUUID, fresh.Generation = "fresh-uuid", bindInputGeneration
+	bound, ok, err := f.s.BindLaunchPending(ctx, fresh)
+	if err != nil || !ok {
+		t.Fatalf("untombstoned bind ok=%v err=%v", ok, err)
+	}
+	if bound.Generation <= pending2.Generation {
+		t.Fatalf("bound generation %d not above %d", bound.Generation, pending2.Generation)
+	}
+	if row := readEndpointRow(t, f.s.db, bindSlot); row.Session != "fresh-uuid" || row.Generation != bound.Generation {
+		t.Fatalf("current endpoint = %+v, want fresh-uuid at %d", row, bound.Generation)
 	}
 }
 
