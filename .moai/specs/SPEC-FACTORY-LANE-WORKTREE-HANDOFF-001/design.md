@@ -112,6 +112,7 @@ launcher start ──► LAUNCH_PENDING(g) ──first legit UserPromptSubmit (m
 
 - **F②-3 launcher 밖 재기동.** factory 환경변수를 가진 셸에서 `codex resume` 등으로 launcher를 거치지 않고 재기동하면 handoff를 종결하는 가등록이 없다. lane은 죽은 source 행에 묶이고, 첫 UserPromptSubmit은 REQ-FLH-018로 거부된다. launch-pending 고아는 아니지만 REQ-FLH-017의 목적(재기동 lane의 결합 복원)은 달성되지 않는다. 발생은 관측되지 않았다. 복구는 사용자의 `/cd` 뒤 SessionStart evidence로 rebind를 시도하거나(검증 실패면 `NACK`), §9에 따라 operator가 `ABANDONED`로 종결하는 것이다.
 - **NACK 뒤 고아 headless fork thread.** `SWITCH_PENDING_HEADLESS`에서 `thread/fork` 요청을 낸 뒤 launcher 가등록이 handoff를 종결하면, 뒤늦게 도착한 fork 결과의 새 thread는 어느 endpoint에도 결합되지 않은 채 남는다. rebind는 `STALE_GENERATION`으로 아무것도 쓰지 않으므로 broker 상태는 안전하지만 app-server 쪽 thread 정리는 이 SPEC 범위 밖이다.
+- **BOUND 전후 같은 key의 1회 실행은 제공하지 않는다 (AC-FLH-008 축소, 리드 결정 (a)).** BOUND 뒤 재전송은 새 key를 쓰므로 `Send`에게는 별개 봉투이고, BOUND를 가로지르는 같은 dispatch의 중복 제거는 이 SPEC이 보장하지 않는다. "BOUND 전후 같은 key로 보내도 한 번만 실행된다"가 필요해지면 idempotency 기준을 바꾸는 일은 t1100의 후속 작업이며, t1082는 이를 제공하지 않는다. 근거: `.moai/reports/t1082/ac008-idempotency-check.md`.
 
 직렬화 경계는 새 장치가 아니라 기존 broker의 SQLite transaction domain이다. Broker는 `_txlock=immediate`로 열리므로(`store.go:169,214`) 모든 쓰기 transaction이 `BEGIN IMMEDIATE`로 시작해 프로세스 사이에서도 한 writer만 RESERVED lock을 잡는다. 단 각 `Store` 핸들은 `SetMaxOpenConns(1)`(`store.go:174,219`)이라, 같은 핸들을 공유하는 두 goroutine은 Go connection pool에서 먼저 직렬화되고 `BEGIN IMMEDIATE` 경계에 도달하지 않는다. 실제 경합은 launcher 프로세스, hook 프로세스, handoff controller가 각자 연 핸들 사이에서 일어나므로 경합 재현은 racer마다 별도 `Store` 핸들을 요구한다. Handoff rebind의 CAS, tombstone, BOUND receipt, release marker, launcher 가등록과 그 handoff 종결, UserPromptSubmit의 handoff 상태 판독과 거부 판정은 각각 한 transaction 안에 있어야 이 경계가 성립한다. 상태를 `BEGIN` 전에 읽으면 아직 commit되지 않은 reservation을 놓치므로, AC-FLH-019는 reservation transaction을 쥔 채 멈춘 상대를 두고 이 판독 위치를 판별한다. 이 경합은 코드 읽기와 저장소 수준 프로브로 세운 가설이며 종단 재현된 실패가 아니므로, AC-FLH-018(launcher 경로)과 AC-FLH-019(UserPromptSubmit 경로)가 별도 핸들 위의 강제 interleaving과 비강제 동시 반복으로 재현 경로를 제공한다.
 
@@ -201,8 +202,9 @@ t1082 자체가 `main@2213871af`에서 생성된 뒤 `develop@3f3ffbb57`로 수�
 - Body lookup과 claim은 handoff generation이 BOUND일 때만 current endpoint에 허용된다.
 - Old endpoint의 direct send/read/receipt/ACK는 tombstone lookup 후 NACK한다.
 - NACK의 redirect metadata는 current UUID/generation만 포함하며 body, token, secret은 포함하지 않는다.
-- Duplicate dispatch는 현행 t1074 스키마의 idempotency key를 바꾸지 않고 그대로 써서 판정한다. Handoff generation은 key의 일부가 아니며 stale-generation NACK 판정에만 쓴다. 따라서 BOUND 전후 같은 dispatch의 key가 같다(AC-FLH-008). Key의 기준(송신 session인가 lane slot인가)은 t1100이 소유하며 이 SPEC은 현행 스키마를 따른다. 경계: record schema·idempotency·fencing은 t1100, BOUND hold·tombstone·relocation LIVE는 t1082다. 이 SPEC은 schema 요구를 추가하지 않는다.
-- Same-lane redispatch는 current BOUND generation이면 duplicate disposition, 이전 generation이면 stale NACK다.
+- Duplicate 판정은 두 층에서 따로 일어난다. 송신 측에서는 `Store.Send`가 현행 t1074 스키마의 `UNIQUE(sender_session, idem_key)` 충돌을 만나면 kind·recipient_session·recipient_generation·task_ref·correlation_id·payload가 모두 같을 때만 기존 봉투를 돌려주고(새 행 없음), 하나라도 다르면 `idempotency key collision with different request`로 거부한다. 수신 측에서는 같은 봉투가 다시 전달될 때의 receipt 처분이 `DispositionDuplicate`다. 이 SPEC은 스키마와 idempotency 기준을 바꾸지 않는다.
+- BOUND는 lane endpoint의 recipient session과 generation을 바꾸므로(REQ-FLH-008), BOUND 뒤 rebound endpoint로의 재전송은 새 idempotency key를 쓴다. 같은 key로 보내면 recipient가 달라 `Send`가 거부한다. 같은 key의 duplicate 처리는 같은 recipient generation 안에서만 요구한다(AC-FLH-008). Handoff generation은 key의 일부가 아니며, 이전 generation으로 향한 redispatch는 stale NACK다. Key의 기준(송신 session인가 lane slot인가)은 t1100이 소유하며 이 SPEC은 현행 스키마를 따른다. 경계: record schema·idempotency·fencing은 t1100, BOUND hold·tombstone·relocation LIVE는 t1082다. 이 SPEC은 schema 요구를 추가하지 않는다.
+- Same-lane redispatch는 같은 recipient generation 안의 같은 key 재전송이면 duplicate(송신 측은 기존 봉투 반환, 수신 측은 body 1회 실행과 `DispositionDuplicate` 처분)이고, 이전 generation이면 stale NACK다.
 
 ## 9. Crash recovery decision table
 

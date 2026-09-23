@@ -56,7 +56,7 @@ module: "internal/factorymsg"
 - 같은 broker transaction에서 old peer tombstone, new peer generation, handoff `BOUND`, BOUND receipt, dispatch release marker를 기록한다.
 - BOUND 전 body claim/read/ACK와 code-write authorization을 거부한다.
 - stale send/ACK는 현재 endpoint/generation metadata를 포함한 NACK로 응답한다.
-- duplicate dispatch와 same-lane redispatch는 현행 t1074 스키마의 idempotency key를 바꾸지 않고 멱등 처리한다. handoff generation은 key에 넣지 않고 stale-generation NACK 판정에만 쓴다(key 기준 결정은 t1100 소유, design.md §8).
+- duplicate dispatch는 현행 t1074 스키마의 idempotency key(`UNIQUE(sender_session, idem_key)`)를 바꾸지 않고, 같은 recipient generation 안에서만 멱등 처리한다. BOUND 뒤 rebound endpoint로의 재전송은 새 key를 쓴다(같은 key는 recipient가 달라 `Send`가 거부한다). handoff generation은 key에 넣지 않으며, 이전 generation으로 향한 redispatch는 stale NACK다(key 기준 결정은 t1100 소유, design.md §8).
 - (REQ-FLH-017) 착지된 t1074 `Store.RegisterPeer`(`internal/factorymsg/store.go:315`; `RegisterLaunchPending` :391이 이 함수로 쓴다)의 write transaction 안에 같은 lane의 handoff 상태 판독을 추가한다. 비종결 handoff가 있는 lane에서 launcher provisional 등록이 commit되면 같은 transaction에서 handoff를 `NACK`/`STALE_GENERATION`으로 종결하고 tombstone·BOUND receipt·dispatch release는 쓰지 않는다. t1074 live-owner 규칙으로 거부된 등록은 handoff를 바꾸지 않는다. rebind는 같은 SQLite transaction 영역에서 등록과 직렬화하고, 등록 뒤에 실행되면 `STALE_GENERATION`을 반환하며 아무것도 쓰지 않는다. 검증: AC-FLH-018, AC-FLH-019 (v)·(vii).
 - (REQ-FLH-018) 같은 `RegisterPeer` transaction 안에서, 비종결 handoff가 있는 lane의 UserPromptSubmit 등록(`registerFactoryUserPromptPeer`, `internal/hook/factory_messages.go:49` → `registerFactoryHookPeer` :53)을 `ENDPOINT_HANDOFF_PENDING`으로 거부하고 endpoint 행·generation·tombstone·receipt·release marker를 바꾸지 않는다. rebind가 먼저 commit된 뒤 tombstone된 source session UUID로 오는 등록은 `STALE_ENDPOINT`로 거부한다. 검증: AC-FLH-019 (i)–(iv).
 

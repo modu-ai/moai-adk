@@ -1,7 +1,7 @@
 ---
 id: SPEC-FACTORY-LANE-WORKTREE-HANDOFF-001
 title: "Factory lane card worktree handoff"
-version: "0.5.1"
+version: "0.5.2"
 status: in-progress
 created: 2026-09-22
 updated: 2026-09-23
@@ -23,6 +23,7 @@ card: t1082
 
 | Version | Date | Change |
 |---|---|---|
+| 0.5.2 | 2026-09-23 | AC-FLH-008을 좁혔다(리드 결정 (a), 근거 `.moai/reports/t1082/ac008-idempotency-check.md`). `Store.Send`는 같은 `(sender_session, idem_key)`라도 recipient가 다르면 거부하므로, BOUND 전후 같은 key로 보낸 재전송은 duplicate가 될 수 없다. 그래서 BOUND 뒤 rebound endpoint로의 재전송은 새 key를 쓰게 하고, 같은 key duplicate 처리는 같은 recipient generation 안에서만 요구했다. stale-generation NACK와 같은 generation duplicate의 body 1회 실행은 유지했다. 송신 측 `Send` 판정과 수신 측 receipt 처분 `DispositionDuplicate`를 층별로 나눠 적었다. 스키마와 idempotency 기준은 바꾸지 않았다(t1100 소관). REQ-FLH-009, design.md §2.1 잔여 위험·§8, plan.md M3, acceptance.md 요약행을 같은 기준으로 맞췄다. |
 | 0.5.1 | 2026-09-23 | run 진입 채무 정리(plan-audit iter-6 N7–N11): reservation이 source 행을 자기 write transaction 안에서 읽는지 판별하는 AC-FLH-019 순서 (vii)를 추가하고 REQ-FLH-016을 AC-FLH-019에 추적 연결했으며, REQ-FLH-017의 「나중 launcher 등록은 결합 endpoint를 바꾸지 않는다」를 결합 owner가 current인 동안으로 한정했고, fresh reservation 재진입의 dirty target 사유 `TARGET_DIRTY`를 정의했다. AC-FLH-018/019 fixture 문구와 plan 마일스톤도 맞췄다. |
 | 0.5.0 | 2026-09-23 | 미종결 handoff 중 launcher 가등록이 같은 transaction에서 handoff를 `NACK`/`STALE_GENERATION`으로 종결하도록 규정해 재기동 lane의 t1074 결합 경로를 복원했고(REQ-FLH-017, 결정 ②), t1074 결합자 서술을 UserPromptSubmit 필수·SessionStart best-effort로 바로잡았으며(REQ-FLH-015), 같은 transaction 판독 판별 순서·NACK 뒤 fresh reservation 진입·idempotency key 기준을 명시했다. |
 | 0.4.0 | 2026-09-23 | t1074 착지분의 세 번째 slot 쓰기 경로인 UserPromptSubmit `RegisterPeer`를 모델링해, 미완료 handoff 동안 그 경로가 같은 broker transaction 안에서 거부되도록 규정했다(REQ-FLH-018). |
@@ -99,7 +100,7 @@ When mode-specific endpoint evidence arrives, the handoff SHALL validate the res
 
 ### REQ-FLH-009 — Dispatch ordering and idempotency
 
-While a handoff is not `BOUND`, the factory broker SHALL preserve dispatch metadata for the lane but SHALL deny body claim/read and implementation side effects. When the matching durable `BOUND` receipt is observed, the broker SHALL release the dispatch body exactly once to the current generation and SHALL handle duplicate dispatch and same-lane redispatch without duplicate execution, detecting duplicates by the current t1074 schema's idempotency key unchanged. The handoff generation SHALL NOT be part of that key and SHALL be used only to NACK a stale-generation redispatch.
+While a handoff is not `BOUND`, the factory broker SHALL preserve dispatch metadata for the lane but SHALL deny body claim/read and implementation side effects. When the matching durable `BOUND` receipt is observed, the broker SHALL release the dispatch body exactly once to the current generation. The broker SHALL handle a duplicate dispatch within the same recipient generation without duplicate execution, detecting it by the current t1074 schema's idempotency key (`UNIQUE(sender_session, idem_key)`) unchanged; same-key duplicate handling is required only within one recipient generation. When the sender resends a dispatch after `BOUND` to the rebound endpoint, the sender SHALL use a new idempotency key. The handoff generation SHALL NOT be part of the idempotency key, and a redispatch addressed to a stale generation SHALL be NACKed.
 
 ### REQ-FLH-010 — Tombstone and stale traffic rejection
 

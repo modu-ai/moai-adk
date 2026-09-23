@@ -31,7 +31,7 @@ module: "internal/factorymsg"
 | AC-FLH-005 | REQ-FLH-008 | `TestFactoryLaneHandoffAtomicModeEvidenceRebind` | interactive SessionStart와 headless RPC-result rebind가 각각 all-or-nothing이다. |
 | AC-FLH-006 | REQ-FLH-009 | `TestFactoryLaneHandoffDispatchAfterBound` | body는 BOUND 뒤 current generation에만 release된다. |
 | AC-FLH-007 | REQ-FLH-001, REQ-FLH-010 | `TestFactoryLaneHandoffStaleEndpointRejected` | old/stale endpoint send/read/ACK가 current endpoint hint와 함께 거부된다. |
-| AC-FLH-008 | REQ-FLH-009 | `TestFactoryLaneHandoffDuplicateAndSameLaneRedispatch` | duplicate 및 same-lane redispatch가 한 번만 실행된다. |
+| AC-FLH-008 | REQ-FLH-009 | `TestFactoryLaneHandoffDuplicateAndSameLaneRedispatch` | 같은 recipient generation 안의 같은 key duplicate는 한 번만 실행되고, BOUND 뒤 재전송은 새 key를 쓰며, 이전 generation은 stale NACK다. |
 | AC-FLH-009 | REQ-FLH-011 | `TestFactoryLaneHandoffCrashRecovery` | create/rebind/receipt crash points가 deterministic resume/finalize/NACK로 복구된다. |
 | AC-FLH-010 | REQ-FLH-011 | `TestFactoryLaneHandoffAbandonedWorktreeRecovery` | dirty/unmerged/unknown-owner WT가 ABANDONED로 보존되고 자동 삭제되지 않는다. |
 | AC-FLH-011 | REQ-FLH-008, REQ-FLH-009, REQ-FLH-013 | `TestFactoryLaneHandoffNoPreBoundWrites` | BOUND 전 code/commit/task ACK 0, wrong cwd write 0, primary branch switch 0, message loss 0이다. |
@@ -149,7 +149,13 @@ Expected final output: `true`; otherwise FAIL.
 
 ### AC-FLH-008 — Duplicate dispatch and same-lane redispatch
 
-**Given** identical idempotency keys before/after BOUND and retries from old/current generations, **when** dispatch repeats, **then** one body execution and one accepted receipt exist, current duplicate returns duplicate disposition, and old generation returns stale NACK.
+**Given** a dispatch sent with idempotency key K1, an identical repeat of that K1 request within the same recipient generation, a resend after BOUND to the rebound endpoint using a new key K2, a request after BOUND that reuses K1 with a different recipient session/generation, and a retry addressed to the old generation, **when** dispatch repeats, **then** each check holds at the layer it names:
+
+- Sender layer (`Store.Send`): the identical same-generation K1 repeat returns the existing envelope (same message id, one `messages` row for K1); the K1 request with a different recipient is rejected with `idempotency key collision with different request` and writes no row; the K2 resend is accepted as a distinct envelope addressed to the current generation.
+- Recipient layer (receipt disposition): the K1 body executes once with one accepted receipt; a repeated delivery of the K1 envelope within the same recipient generation is acknowledged with `DispositionDuplicate` and does not execute the body again.
+- Stale-generation layer: the retry addressed to the old generation returns stale NACK.
+
+Same-key duplicate handling is asserted only within one recipient generation. Same-key deduplication across BOUND is not asserted; changing the idempotency basis belongs to t1100.
 
 ```bash
 unset ANTHROPIC_BASE_URL ANTHROPIC_API_KEY ANTHROPIC_AUTH_TOKEN Z_AI_API_KEY && mkdir -p .moai/reports/t1082 && MOAI_HOME=/tmp/t1082-ac08-home GOCACHE=/tmp/t1082-ac08-cache go test -json ./internal/factorymsg -run '^TestFactoryLaneHandoffDuplicateAndSameLaneRedispatch$' -count=1 -timeout=90s > .moai/reports/t1082/ac08.jsonl && jq -se '([.[]|select(.Action=="pass" and .Test=="TestFactoryLaneHandoffDuplicateAndSameLaneRedispatch")]|length)==1 and ([.[]|select(.Action=="fail" or .Action=="skip")]|length)==0 and ([.[]|select((.Output//"")|contains("NOT_RUN"))]|length)==0' .moai/reports/t1082/ac08.jsonl
