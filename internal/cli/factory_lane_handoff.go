@@ -5,7 +5,8 @@ package cli
 // Preparation of a stable lane's move into a card-dedicated L1 worktree:
 // fail-closed admission, local develop pin, a durable broker reservation, the
 // existing MoAI materializer, and exact provenance verification up to
-// WT_READY. Relocation (SWITCH_PENDING_*) and the atomic rebind are M2/M3.
+// WT_READY. Relocation to SWITCH_PENDING_* is M2
+// (factory_lane_handoff_switch.go); the atomic rebind to BOUND is M3.
 
 import (
 	"context"
@@ -43,11 +44,16 @@ type laneHandoffRequest struct {
 }
 
 // laneHandoffAppServer is the headless relocation client. Preparation never
-// calls it; the M2 headless switch step does.
+// calls it; the M2 headless switch step does. The default is the existing
+// codex app-server client (codexLaneHandoffAppServer).
 type laneHandoffAppServer interface {
-	ForkThread(ctx context.Context, sourceThreadID, cwd string) (string, error)
-	StartThread(ctx context.Context, cwd string) (string, error)
+	ForkThread(ctx context.Context, sourceThreadID, cwd string) (codexThreadRelocation, error)
+	StartThread(ctx context.Context, cwd string) (codexThreadRelocation, error)
 }
+
+// handoffCommand runs every handoff subprocess (git only). It is a seam so a
+// test can observe that no other process — tmux included — is ever started.
+var handoffCommand = exec.Command
 
 type laneHandoffDeps struct {
 	Materialize func(name string, out io.Writer) (string, error)
@@ -70,12 +76,12 @@ func laneHandoffTraceOf(h factorymsg.Handoff) laneHandoffTrace {
 }
 
 func handoffGitOutput(dir string, args ...string) (string, error) {
-	out, err := exec.Command("git", append([]string{"-C", dir}, args...)...).Output()
+	out, err := handoffCommand("git", append([]string{"-C", dir}, args...)...).Output()
 	return strings.TrimSpace(string(out)), err
 }
 
 func handoffRefExists(dir, ref string) bool {
-	return exec.Command("git", "-C", dir, "show-ref", "--verify", "--quiet", ref).Run() == nil
+	return handoffCommand("git", "-C", dir, "show-ref", "--verify", "--quiet", ref).Run() == nil
 }
 
 func canonicalPath(p string) (string, error) {

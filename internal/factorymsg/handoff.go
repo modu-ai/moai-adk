@@ -42,6 +42,20 @@ const (
 	NackTargetPathConflict    = "TARGET_PATH_CONFLICT"
 	NackTargetDirty           = "TARGET_DIRTY"
 	NackBaseDrift             = "BASE_DRIFT"
+
+	// Relocation reasons (M2). A readback mismatch is found before any
+	// app-server request; the other two after a headless request was issued.
+	NackTargetReadbackMismatch    = "TARGET_READBACK_MISMATCH"
+	NackRelocationRPCFailed       = "RELOCATION_RPC_FAILED"
+	NackRelocationEvidenceInvalid = "RELOCATION_EVIDENCE_INVALID"
+)
+
+// Official Codex app-server methods whose result is headless relocation
+// evidence (REQ-FLH-007). Nothing else is: not SessionStart, not an empty
+// turn/start, not turn/steer.
+const (
+	RelocationMethodThreadFork  = "thread/fork"
+	RelocationMethodThreadStart = "thread/start"
 )
 
 // handoffSchema extends the existing broker; it never creates a second store.
@@ -51,6 +65,7 @@ const handoffSchema = `
 CREATE TABLE IF NOT EXISTS lane_handoffs(id TEXT PRIMARY KEY, project_key TEXT NOT NULL, run_id TEXT NOT NULL, slot TEXT NOT NULL, card_id TEXT NOT NULL, spec_id TEXT NOT NULL, mode TEXT NOT NULL, nonce TEXT NOT NULL UNIQUE, handoff_generation INTEGER NOT NULL, source_backend TEXT NOT NULL, source_role TEXT NOT NULL, source_session TEXT NOT NULL, source_generation INTEGER NOT NULL, source_pid INTEGER NOT NULL, source_process_start TEXT NOT NULL, develop_pin TEXT NOT NULL, target_path TEXT NOT NULL, target_branch TEXT NOT NULL, state TEXT NOT NULL, reason TEXT NOT NULL DEFAULT '', created_at TEXT NOT NULL, updated_at TEXT NOT NULL);
 CREATE UNIQUE INDEX IF NOT EXISTS lane_handoffs_one_open ON lane_handoffs(slot) WHERE state IN ('RESERVED','WT_READY','SWITCH_PENDING_INTERACTIVE','SWITCH_PENDING_HEADLESS');
 CREATE TABLE IF NOT EXISTS lane_handoff_events(id INTEGER PRIMARY KEY AUTOINCREMENT, handoff_id TEXT NOT NULL, from_state TEXT NOT NULL, to_state TEXT NOT NULL, reason TEXT NOT NULL DEFAULT '', created_at TEXT NOT NULL);
+CREATE TABLE IF NOT EXISTS lane_handoff_relocations(handoff_id TEXT PRIMARY KEY, nonce TEXT NOT NULL, method TEXT NOT NULL, source_thread_id TEXT NOT NULL, thread_id TEXT NOT NULL, forked_from_id TEXT NOT NULL, thread_started INTEGER NOT NULL, request_cwd TEXT NOT NULL, response_cwd TEXT NOT NULL, readback_cwd TEXT NOT NULL, readback_branch TEXT NOT NULL, readback_head TEXT NOT NULL, recorded_at TEXT NOT NULL);
 CREATE TABLE IF NOT EXISTS lane_endpoint_tombstones(slot TEXT NOT NULL, session_uuid TEXT NOT NULL, generation INTEGER NOT NULL, replaced_by_session TEXT NOT NULL, replaced_by_generation INTEGER NOT NULL, handoff_id TEXT NOT NULL, bound_at TEXT NOT NULL, PRIMARY KEY(slot,session_uuid,generation));
 `
 
@@ -204,7 +219,24 @@ func insertHandoffEvent(ctx context.Context, tx *sql.Tx, id, from, to, reason, a
 
 // MarkHandoffWTReady records a verified target worktree for a RESERVED handoff.
 func (s *Store) MarkHandoffWTReady(ctx context.Context, h Handoff) (Handoff, error) {
-	return s.transitionHandoff(ctx, h, func(state string) bool { return state == HandoffReserved }, HandoffWTReady, "")
+	return s.transitionHandoff(ctx, h, func(state, _ string) bool { return state == HandoffReserved }, HandoffWTReady, "")
+}
+
+// MarkHandoffSwitchPendingInteractive records that the user-executed /cd
+// guidance was issued for an interactive WT_READY handoff (REQ-FLH-006).
+func (s *Store) MarkHandoffSwitchPendingInteractive(ctx context.Context, h Handoff) (Handoff, error) {
+	return s.transitionHandoff(ctx, h, switchFrom(HandoffModeInteractive), HandoffSwitchPendingInteractive, "")
+}
+
+// MarkHandoffSwitchPendingHeadless records that the official app-server
+// relocation request is about to be issued for a headless WT_READY handoff
+// (REQ-FLH-007). The two modes never enter each other's pending state.
+func (s *Store) MarkHandoffSwitchPendingHeadless(ctx context.Context, h Handoff) (Handoff, error) {
+	return s.transitionHandoff(ctx, h, switchFrom(HandoffModeHeadless), HandoffSwitchPendingHeadless, "")
+}
+
+func switchFrom(mode string) func(state, storedMode string) bool {
+	return func(state, storedMode string) bool { return state == HandoffWTReady && storedMode == mode }
 }
 
 // NackHandoff terminally refuses an unfinished handoff; only a fresh
@@ -213,21 +245,21 @@ func (s *Store) NackHandoff(ctx context.Context, h Handoff, reason string) (Hand
 	if reason == "" {
 		return Handoff{}, errors.New("handoff NACK requires a reason")
 	}
-	return s.transitionHandoff(ctx, h, isOpenHandoffState, HandoffNack, reason)
+	return s.transitionHandoff(ctx, h, func(state, _ string) bool { return isOpenHandoffState(state) }, HandoffNack, reason)
 }
 
 // transitionHandoff is a nonce-and-state CAS; a stale caller changes nothing.
-func (s *Store) transitionHandoff(ctx context.Context, h Handoff, allowedFrom func(string) bool, to, reason string) (Handoff, error) {
+func (s *Store) transitionHandoff(ctx context.Context, h Handoff, allowedFrom func(state, mode string) bool, to, reason string) (Handoff, error) {
 	tx, err := s.db.BeginTx(ctx, nil)
 	if err != nil {
 		return Handoff{}, err
 	}
 	defer func() { _ = tx.Rollback() }()
-	var state string
-	if err := tx.QueryRowContext(ctx, `SELECT state FROM lane_handoffs WHERE id=? AND nonce=?`, h.ID, h.Nonce).Scan(&state); err != nil {
+	var state, mode string
+	if err := tx.QueryRowContext(ctx, `SELECT state,mode FROM lane_handoffs WHERE id=? AND nonce=?`, h.ID, h.Nonce).Scan(&state, &mode); err != nil {
 		return Handoff{}, fmt.Errorf("handoff %s: %w", h.ID, err)
 	}
-	if !allowedFrom(state) {
+	if !allowedFrom(state, mode) {
 		return Handoff{}, fmt.Errorf("handoff %s cannot move %s -> %s", h.ID, state, to)
 	}
 	now := s.now().UTC()

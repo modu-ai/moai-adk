@@ -36,13 +36,13 @@ type laneHandoffFixture struct {
 
 type spyHandoffAppServer struct{ calls int }
 
-func (s *spyHandoffAppServer) ForkThread(context.Context, string, string) (string, error) {
+func (s *spyHandoffAppServer) ForkThread(context.Context, string, string) (codexThreadRelocation, error) {
 	s.calls++
-	return "", nil
+	return codexThreadRelocation{}, nil
 }
-func (s *spyHandoffAppServer) StartThread(context.Context, string) (string, error) {
+func (s *spyHandoffAppServer) StartThread(context.Context, string) (codexThreadRelocation, error) {
 	s.calls++
-	return "", nil
+	return codexThreadRelocation{}, nil
 }
 
 func handoffGit(t *testing.T, dir string, args ...string) string {
