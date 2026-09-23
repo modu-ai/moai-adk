@@ -97,10 +97,11 @@ description: 작업 성격과 품질/비용 목표에 맞춰 에이전트마다 
 없을 때만 읽습니다.
 {{< /callout >}}
 
-> **정책을 낮춘다고 더 약한 모델 클래스로 가는 건 아닙니다.** 호흡이 긴 에이전틱
+> **정책을 낮춰도 대부분의 행은 더 약한 모델 클래스로 가지 않습니다.** 호흡이 긴 에이전틱
 > 작업에서는 Opus의 `low` effort가 어떤 effort의 Sonnet보다도 점수가 높고, 동시에
 > 과제당 비용도 쌉니다. 그래서 `low` 정책은 추론 깊이를 낮춰 Opus *안에서* 아끼고,
-> 멀티스텝 완주 실패가 문제되지 않는 단발성 행에서만 Sonnet을 씁니다.
+> Sonnet은 원래부터 단발성 행에 쓰며, `low`에서 모델이 바뀌는 행은
+> `e2e-tester` 하나뿐입니다(`sonnet / low`).
 
 ## 에이전트별 배정표
 
@@ -149,9 +150,9 @@ description: 작업 성격과 품질/비용 목표에 맞춰 에이전트마다 
   행(`manager-design`, `manager-lead`), 판정 행(`mission-governor`)이 `high`를
   유지하는 동안, 저작·구현 행
   (`manager-spec`, `manager-develop`)은 세 프로필 모두 `medium`에 머뭅니다.
-- **모든 에이전틱 행은 Opus**: `manager-spec`, `manager-develop`, `plan-auditor`,
+- **에이전틱 행은 Opus**: `manager-spec`, `manager-develop`, `plan-auditor`,
   `sync-auditor`, `manager-design`, `manager-lead`, `builder-harness`, `e2e-tester`
-  등 멀티턴 작업은 전부 Opus에 남깁니다. Opus의 `low`가 어떤 effort의 Sonnet보다 점수는
+  등 멀티턴 작업은 Opus에 남깁니다(`e2e-tester`만 `low`에서 `sonnet / low`). Opus의 `low`가 어떤 effort의 Sonnet보다 점수는
   높고 과제당 비용은 싸기 때문입니다.
 - **Sonnet은 단발성·입력 지배 행에만**: `manager-docs`의 문서 정리, `manager-git`의
   기계적 작업, `Explore` 탐색은 입력이 대부분인 단일 패스로 끝나 멀티스텝 완주 실패를

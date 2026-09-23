@@ -309,9 +309,15 @@ func ProfileMatrixAgents() []string {
 //     frontmatter is the load-bearing channel; it does not by itself alter
 //     delivered GLM behavior. See glm_effort_overlay.go.
 //
-//   - Sonnet 5 is retained ONLY for single-shot, input-dominated, non-agentic
-//     rows (Explore search, manager-git mechanics) where the multi-step
-//     completion failure does not apply and the lower input price does.
+//   - Sonnet 5 holds three rows in every column — Explore (search),
+//     manager-git (git mechanics), and manager-docs (documentation) — plus
+//     e2e-tester in the economical column only. Explore and manager-git are
+//     single-shot, input-dominated, non-agentic rows where the multi-step
+//     completion failure does not apply and the lower input price does. The
+//     reason for the other two is not recorded: manager-docs has been sonnet
+//     since the first grouped matrix, and the low-column e2e-tester cell
+//     arrived with the per-agent matrix, neither with a stated rationale. Do
+//     not extend the single-shot argument to them without one.
 //
 // Invariants asserted by tests: zero haiku; zero fable; models subset of
 // {opus, sonnet}; efforts subset of {low, medium, high, max} (no `xhigh` cell);

@@ -105,11 +105,11 @@ so existing configs keep resolving, but saves always record `high` — there is
 nothing to migrate. `performance_tier` is read only when `profile` is absent.
 {{< /callout >}}
 
-> **Lowering the policy does not mean moving to a weaker model class.** On
+> **Lowering the policy keeps almost every row on the same model class.** On
 > long-horizon agentic work, Opus at `low` effort outscores Sonnet at any
 > effort while costing less per task. So the `low` policy economizes *within*
-> Opus by lowering reasoning depth, and uses Sonnet only on single-shot rows
-> where multi-step completion failure is not a concern.
+> Opus by lowering reasoning depth. Sonnet stays on the single-shot rows, and
+> the only row that changes model under `low` is `e2e-tester` (`sonnet / low`).
 
 ## Per-agent assignment table
 
@@ -162,9 +162,10 @@ table.
   (`mission-governor`) hold `high`, while the authoring and
   implementing rows (`manager-spec`, `manager-develop`) sit at `medium` in all
   three profiles.
-- **Every agentic row stays on Opus**: `manager-spec`, `manager-develop`,
+- **Agentic rows stay on Opus**: `manager-spec`, `manager-develop`,
   `plan-auditor`, `sync-auditor`, `manager-design`, `manager-lead`,
-  `builder-harness`, `e2e-tester` — all multi-turn work remains on Opus, because
+  `builder-harness`, `e2e-tester` — multi-turn work remains on Opus (only
+  `e2e-tester` moves to `sonnet / low` under `low`), because
   Opus at `low` outscores Sonnet at any effort while costing less per task.
 - **Sonnet only on single-shot, input-dominated rows**: documentation synthesis
   (`manager-docs`), the mechanical work of `manager-git`, and the exploration

@@ -12,7 +12,7 @@ MoAI-ADK は、維持されるエージェント 13 個を 1 つの **プロフ�
 
 - `high` — 品質優先の列。支出は「生産する行」ではなく「判断する行」に集中します: 監査・助言行（`plan-auditor`、`sync-auditor`、`super-advisor`）と調整行（`manager-design`、`manager-lead`）、判定行（`mission-governor`）が `high` を維持し、著作・実装行（`manager-spec`、`manager-develop`）は 3 列すべて `medium` にとどまります。`max` を受ける行はありません。`xhigh` はどのセルにも現れません — Opus 5 では `high` と同じスコアでコストだけが明確に高くなるためです。
 - `medium`（デフォルト） — バランス列。`high` 列とちょうど 2 行（`builder-harness` が `medium` へ、`e2e-tester` が `low` へ）でのみ異なります。値が無いか空の場合は `medium` として解釈されます。
-- `low` — 経済列。Opus 5 の `low` は、どの effort の Sonnet 5 よりもスコアが高く **かつ** 課題あたりコストが安いため、エージェンティック行はすべて Opus のまま維持されます。ほとんどの Opus 行は `medium` に下がりますが、`super-advisor` と `mission-governor` は `high` を保ちます — エスカレーション経路と封印されたミッションの判定こそ、安い列で最も健全に保つ価値がある場所だからです。Sonnet は単発・入力支配の行にのみ現れます。
+- `low` — 経済列。Opus 5 の `low` は、どの effort の Sonnet 5 よりもスコアが高く **かつ** 課題あたりコストが安いため、エージェンティック行は Opus のまま維持されます(例外は `sonnet / low` に下がる `e2e-tester` だけです)。ほとんどの Opus 行は `medium` に下がりますが、`super-advisor` と `mission-governor` は `high` を保ちます — エスカレーション経路と封印されたミッションの判定こそ、安い列で最も健全に保つ価値がある場所だからです。それ以外で Sonnet が現れるのは単発・入力支配の行だけです。
 
 `max` は `high` の **読み取り専用エイリアス** です。既存設定の `profile: max` はそのまま `high` として解釈され、保存時には常に正規名 `high` で記録されます。マイグレーション作業は不要です。
 

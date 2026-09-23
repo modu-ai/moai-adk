@@ -94,7 +94,7 @@ MoAI-ADK는 Claude Code 구독 요금제에 맞춰 에이전트에 최적의 AI 
 | **low** | 작업당 최저 비용 — 감사·조율 행이 `medium`으로, `builder-harness`는 Opus `low`로, `e2e-tester`는 Sonnet으로 내려갑니다. `super-advisor`와 `mission-governor`만 `high`를 지킵니다 |
 
 {{< callout type="warning" >}}
-**왜 중요한가요?** 티어를 낮춘다는 것은 모델 클래스가 아니라 *추론 깊이*를 낮춘다는 뜻입니다. 오래 이어지는 에이전틱 작업에서는 Opus의 `low` effort가 어떤 effort의 Sonnet보다도 점수가 높고 작업당 비용도 낮습니다. 청구액을 좌우하는 것은 토큰당 단가가 아니라, 모델이 작업을 끝낼 때까지 밟은 스텝 수이기 때문입니다. 그래서 `low`는 Opus 안에서 아끼고, 여러 스텝을 밟다 실패할 일이 없는 단발성 행 (`manager-git`, `Explore`) 에서만 Sonnet을 씁니다.
+**왜 중요한가요?** 티어를 낮춘다는 것은 주로 모델 클래스가 아니라 *추론 깊이*를 낮춘다는 뜻입니다. 오래 이어지는 에이전틱 작업에서는 Opus의 `low` effort가 어떤 effort의 Sonnet보다도 점수가 높고 작업당 비용도 낮습니다. 청구액을 좌우하는 것은 토큰당 단가가 아니라, 모델이 작업을 끝낼 때까지 밟은 스텝 수이기 때문입니다. 그래서 `low`는 Opus 안에서 아낍니다. Sonnet을 쓰는 곳은 모든 티어의 `manager-docs`·`manager-git`·`Explore`와, `low` 티어의 `e2e-tester`뿐입니다.
 {{< /callout >}}
 
 ### 티어별 에이전트 모델 배정

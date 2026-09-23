@@ -90,7 +90,7 @@ MoAI-ADK は Claude Code のサブスクリプション料金プランに合わ�
 | **low** | 作業あたり最低コスト — 監査・調整行は `medium` へ、`builder-harness` は Opus `low` へ、`e2e-tester` は Sonnet へ下がります。`high` を保つのは `super-advisor` と `mission-governor` だけです |
 
 {{< callout type="warning" >}}
-**なぜ重要ですか?** ティアを下げることはモデルクラスではなく *推論深度* を下げることです。長期にわたるエージェンティックな作業では、Opus の `low` effort が `max` を含むあらゆる effort の Sonnet よりもスコアが高く、作業あたりのコストも低くなります — 請求額を決めるのはトークン単価ではなく、モデルが完了までに費やしたステップ数です。したがって `low` は Opus の中で節約し、複数ステップを踏んでから失敗するおそれのない単発の行 (`manager-git`、`Explore`) でのみ Sonnet を使います。
+**なぜ重要ですか?** ティアを下げることは主にモデルクラスではなく *推論深度* を下げることです。長期にわたるエージェンティックな作業では、Opus の `low` effort が `max` を含むあらゆる effort の Sonnet よりもスコアが高く、作業あたりのコストも低くなります — 請求額を決めるのはトークン単価ではなく、モデルが完了までに費やしたステップ数です。したがって `low` は Opus の中で節約します。Sonnet を使うのは、全ティアの `manager-docs`・`manager-git`・`Explore` と、`low` ティアの `e2e-tester` だけです。
 {{< /callout >}}
 
 ### ティア別エージェントモデル割り当て

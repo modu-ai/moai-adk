@@ -68,7 +68,7 @@ description: 作業の性質と品質/コストの目標に合わせてエージ
 **名前の整理**: `llm.yaml` の `profile` フィールド、legacy の `performance_tier` エイリアス、CLI フラグ `--model-policy` はいずれも `high`/`medium`/`low` の 3 値をそのまま使い、1:1 で対応します。デフォルトは `medium` です。旧最上位ティア名の `max` は、既存設定が読み込まれ続けるよう今も `high` の**読み取り専用エイリアス**として扱われますが、保存時には常に `high` と記録されます。移行作業は不要です。`performance_tier` は `profile` がないときのみ読み込まれます。
 {{< /callout >}}
 
-> **ポリシーを下げても、より弱いモデルクラスに移るわけではありません。** 長い息のエージェンティック作業では、Opus の `low` effort がどの effort の Sonnet よりもスコアが高く、同時に課題あたりコストも安くなります。そこで `low` ポリシーは推論深度を下げて Opus *の内側* で節約し、マルチステップの完走失敗が問題にならない単発の行でのみ Sonnet を使います。
+> **ポリシーを下げても、ほとんどの行はより弱いモデルクラスに移りません。** 長い息のエージェンティック作業では、Opus の `low` effort がどの effort の Sonnet よりもスコアが高く、同時に課題あたりコストも安くなります。そこで `low` ポリシーは推論深度を下げて Opus *の内側* で節約し、Sonnet はもともと単発の行に使い、`low` でモデルが変わる行は `e2e-tester`(`sonnet / low`)だけです。
 
 ## エージェント別割り当て表
 
@@ -109,7 +109,7 @@ description: 作業の性質と品質/コストの目標に合わせてエージ
 ## 割り当て原則
 
 - **支出は判断する行に**: ポリシーはコスト/スコア曲線の導出ではなく、確定されたオペレーター判断です。監査・助言行（`plan-auditor`、`sync-auditor`、`super-advisor`）と調整行（`manager-design`、`manager-lead`）、判定行（`mission-governor`）が `high` を維持する一方、著作・実装行（`manager-spec`、`manager-develop`）は 3 プロファイルすべて `medium` にとどまります。
-- **エージェンティック行はすべて Opus**: `manager-spec`、`manager-develop`、`plan-auditor`、`sync-auditor`、`manager-design`、`manager-lead`、`builder-harness`、`e2e-tester` などマルチターン作業はすべて Opus に残します。Opus の `low` がどの effort の Sonnet よりもスコアが高く、課題あたりコストが安いからです。
+- **エージェンティック行は Opus**: `manager-spec`、`manager-develop`、`plan-auditor`、`sync-auditor`、`manager-design`、`manager-lead`、`builder-harness`、`e2e-tester` などマルチターン作業は Opus に残します(`e2e-tester` だけは `low` で `sonnet / low`)。Opus の `low` がどの effort の Sonnet よりもスコアが高く、課題あたりコストが安いからです。
 - **Sonnet は単発・入力支配の行のみ**: `manager-docs` のドキュメント整理、`manager-git` の機械的作業、`Explore` の探索は入力が大半を占める単一パスで終わり、マルチステップの完走失敗を心配する必要がなく、その場所では Sonnet の安い入力単価が決め手になります。この 3 行は 3 つのプロファイルすべてで `sonnet / low` に固定です。
 - **`max` を受ける行はない**: `max` は `high` の上の唯一の段階として語彙に残りますが、現在使用するセルはありません。
 - **`xhigh` はどこにも使わない**: Opus ではスコアが `high` と同じなのにコストだけ 49% 余分にかかります。
