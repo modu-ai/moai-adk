@@ -2,7 +2,7 @@
 id: SPEC-DUAL-HARNESS-HOOK-PARITY-001
 title: "Dual harness M2 — hook chain, decision preservation, goal continuation, and obligation coverage parity between Claude Code and Codex"
 version: "0.6.0"
-status: draft
+status: in-progress
 created: 2026-09-23
 updated: 2026-09-23
 author: manager-spec

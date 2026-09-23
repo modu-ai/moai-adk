@@ -13,7 +13,17 @@
 
 ## §E.2 Run-phase Evidence
 
-_<pending run-phase>_
+### Run-phase entry (2026-09-23)
+
+- Implementation Kickoff Approval: granted by the operator on 2026-09-23. Progression mode: step-wise
+  (the run stops after each milestone for operator review).
+- Operator confirmation of the Jev-sourced decisions: **Q1** (whole-catalog obligation registry, M1
+  rows `blocked:M1`), **Q2** (Codex `needs_input` → fail-closed deny, surfaced visibly), and **Q6**
+  (SPEC-CODEX-HOOK-ADAPTER-001 REQ-7 kept — nothing under `internal/hook` changes) were confirmed by
+  the operator at kickoff (plan.md §C, plan-audit iter-2 N7). They are now operator decisions.
+- Status transition `draft → in-progress` on spec.md (the only artifact carrying frontmatter).
+- Run baseline: HEAD `9e92fbb88` on `WT-dual-harness-parity-rebuild` (develop `533929f2b`
+  absorbed; the SPEC last changed at `b10042d04`).
 
 ## §E.3 Run-phase Audit-Ready Signal
 
