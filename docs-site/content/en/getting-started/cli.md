@@ -351,7 +351,7 @@ Flags common to both launch commands.
 |--------|------|
 | `-c, --continue` | Continue the previous session |
 | `-m, --model <model>` | Override the model selection |
-| `--chrome` / `--no-chrome` | Toggle the Chrome MCP |
+| `--chrome` / `--no-chrome` | Passed through to Claude Code unchanged; the launcher adds neither, so `/chrome` can attach unless you pass `--no-chrome` |
 
 > The `auto` permission mode is not available on GLM (a third-party provider) — it is supported only in `moai cc`.
 
