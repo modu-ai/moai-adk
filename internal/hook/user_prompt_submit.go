@@ -12,12 +12,44 @@ import (
 	"path/filepath"
 	"regexp"
 	"strings"
+	"time"
 	"unicode"
 	"unicode/utf8"
 
 	"github.com/modu-ai/moai-adk/internal/config"
 	"github.com/modu-ai/moai-adk/internal/workflow"
 )
+
+// factoryBindBudget is the wall-clock the factory peer BIND gets on a user
+// prompt. It is deliberately its own budget and not the shared
+// factoryHookInspectionDeadline (200ms) the inbox inspection uses, because the
+// two do different amounts of work and only one of them has a consequence when
+// it is cut short.
+//
+// WHY THE SHARED 200ms WAS WRONG HERE. Card t1109 measured the bind missing
+// that deadline repeatedly under load: at loadavg ~32, four consecutive turns
+// all exceeded it, so the lane never bound at all. The work does not fit:
+// ValidateActiveRun alone measured 38.45ms and factorymsg.Open 36.74ms —
+// 75.45ms, 37.7% of the whole 200ms, consumed before RegisterPeer starts, on an
+// unloaded machine. Under load those two scale together and the remainder does
+// not fit in what is left.
+//
+// WHY IT IS FINITE, AND WHY THIS SIZE. A hook that can hang is worse than a
+// hook that gives up: the UserPromptSubmit hook is configured with a 5s timeout
+// in settings.json, and every millisecond it spends is a millisecond the user
+// waits before their prompt is answered. The budget is therefore bounded well
+// inside that 5s, leaving the inbox inspection (a further 200ms) and the
+// session-title work their own room. Card t1109 measured the miss rate at
+// candidate budgets and recorded the result in .moai/reports/t1109/verdict.md.
+//
+// MISSING IT IS STILL NOT AN ERROR. When the bind does not finish inside this
+// budget the hook reports a degraded notice and the next turn retries, exactly
+// as before — this changes how often that path is taken, never what it does.
+//
+// It is a var rather than a const solely so a test can shrink it and observe
+// the exhausted-budget path deterministically, without depending on machine
+// load. Production never assigns to it.
+var factoryBindBudget = 2 * time.Second
 
 // specFilePattern is the glob pattern for finding spec.md files in SPEC directories.
 const specFilePattern = ".moai/specs/*/spec.md"
@@ -108,7 +140,7 @@ func (h *userPromptSubmitHandler) Handle(ctx context.Context, input *HookInput) 
 	// Detect workflow context
 	additionalCtx := detectWorkflowContext(prompt)
 	if strings.TrimSpace(prompt) != "" {
-		bindCtx, cancel := context.WithTimeout(ctx, factoryHookInspectionDeadline)
+		bindCtx, cancel := context.WithTimeout(ctx, factoryBindBudget)
 		bindNotice := registerFactoryUserPromptPeer(bindCtx, input)
 		cancel()
 		if bindNotice != "" {

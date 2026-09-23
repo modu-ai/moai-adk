@@ -376,6 +376,149 @@ func factoryPeerSnapshot(t *testing.T, s *factorymsg.Store, slot string) factory
 	return factorymsg.LaneStatus{}
 }
 
+// bindAcrossTurns drives UserPromptSubmit turns until the lead lane resolves,
+// which is the contract registerFactoryHookPeer actually offers: a bind that
+// does not complete inside factoryHookInspectionDeadline is reported as a
+// degraded STRING, not an error, and the next turn tries again. A test that
+// asserts the FIRST turn binds is asserting something the hook never promised.
+//
+// Two properties keep this from being a wait dressed up as a retry:
+//
+//  1. Every non-binding turn MUST carry a degraded notice. A turn that neither
+//     binds nor reports degradation is a real defect and fails here rather than
+//     being absorbed by another attempt.
+//  2. The turn bound is small and derived, not tuned. A single turn was
+//     measured at roughly 10% failure on an unloaded machine (card t1109
+//     baseline: 4 of 40); four independent turns put the residual near 1e-4,
+//     which is why the bound is 4 and not "however many it takes".
+//
+// It returns the bound peer and the notices seen, so a caller can assert on the
+// first turn's notice when that is what it is testing.
+func bindAcrossTurns(t *testing.T, s *factorymsg.Store, input *HookInput) (factorymsg.Peer, []string) {
+	t.Helper()
+	const maxTurns = 4
+	var notices []string
+	for turn := 1; turn <= maxTurns; turn++ {
+		out, err := NewUserPromptSubmitHandler(nil).Handle(context.Background(), input)
+		if err != nil {
+			t.Fatalf("turn %d: Handle: %v", turn, err)
+		}
+		notice := ""
+		if out.HookSpecificOutput != nil {
+			notice = out.HookSpecificOutput.AdditionalContext
+		}
+		notices = append(notices, notice)
+		bound, resolveErr := s.ResolveLane(context.Background(), "lead")
+		if resolveErr == nil {
+			return bound, notices
+		}
+		if !strings.Contains(notice, "factory messaging degraded") {
+			t.Fatalf("turn %d neither bound nor reported degradation: resolve=%v notice=%q",
+				turn, resolveErr, notice)
+		}
+	}
+	t.Fatalf("lane never bound across %d turns: notices=%q", maxTurns, notices)
+	return factorymsg.Peer{}, notices
+}
+
+// TestFactoryUserPromptSubmitExhaustedBudgetStaysDegraded pins the behaviour
+// when the bind genuinely cannot finish in its budget — the shape card t1109
+// observed on a loaded machine, where four consecutive turns each exceeded the
+// old 200ms and the lane never bound.
+//
+// It reproduces that shape WITHOUT depending on machine load: shrinking
+// factoryBindBudget to a value no real bind can meet is the same condition as a
+// machine too slow to meet a larger one, and it is deterministic. The test
+// asserts the two things that must not change when the budget is missed —
+// the hook still fails open (no error), and it still says so in its notice —
+// and that the peer is left launch-pending for a later turn to retry.
+func TestFactoryUserPromptSubmitExhaustedBudgetStaysDegraded(t *testing.T) {
+	_, _, s, _, input := factoryPromptPendingFixture(t)
+
+	restore := factoryBindBudget
+	factoryBindBudget = time.Nanosecond
+	t.Cleanup(func() { factoryBindBudget = restore })
+
+	for turn := 1; turn <= 4; turn++ {
+		input.Prompt = "Turn that cannot finish inside the budget."
+		out, err := NewUserPromptSubmitHandler(nil).Handle(context.Background(), input)
+		if err != nil {
+			t.Fatalf("turn %d: the hook must fail open, not error: %v", turn, err)
+		}
+		notice := ""
+		if out.HookSpecificOutput != nil {
+			notice = out.HookSpecificOutput.AdditionalContext
+		}
+		if !strings.Contains(notice, "factory messaging degraded") {
+			t.Fatalf("turn %d: exhausted budget was not reported: notice=%q", turn, notice)
+		}
+		if _, resolveErr := s.ResolveLane(context.Background(), "lead"); resolveErr == nil {
+			t.Fatalf("turn %d: bound despite a budget no bind can meet", turn)
+		}
+	}
+
+	// The retry path is intact: restoring the budget binds on the next turn.
+	factoryBindBudget = restore
+	input.Prompt = "Turn with the real budget."
+	if _, err := NewUserPromptSubmitHandler(nil).Handle(context.Background(), input); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := s.ResolveLane(context.Background(), "lead"); err != nil {
+		t.Fatalf("lane did not bind once the budget was restored: %v", err)
+	}
+}
+
+// TestFactoryUserPromptSubmitRecoversAfterFirstTurnFailure pins the retry
+// contract deterministically, with no load and no sleeping.
+//
+// [HARD] WHAT THIS FORCES, AND WHAT IT DOES NOT. The first turn is handed an
+// already-expired context. registerFactoryHookPeer wraps the caller's context
+// in context.WithTimeout, and WithTimeout keeps the EARLIER of the two
+// deadlines, so an expired caller context makes the first turn fail without
+// touching the 200ms constant or any production line.
+//
+// That forced failure surfaces as NO_ACTIVE_FACTORY, because ValidateActiveRun
+// reaches the dead context first — it is NOT a context-deadline-exceeded
+// failure. So this test verifies recovery after a FIRST-TURN FAILURE IN
+// GENERAL, which is the contract, and deliberately does not claim to exercise
+// the deadline path. The deadline path itself was observed separately under
+// load during card t1109 (16 natural context-deadline-exceeded failures, with
+// the bind recovering on later turns); that measurement lives in
+// .moai/reports/t1109/verdict.md §7.3 and is not reproducible as a unit test
+// without depending on machine load, which is why it is not one.
+func TestFactoryUserPromptSubmitRecoversAfterFirstTurnFailure(t *testing.T) {
+	_, _, s, pending, input := factoryPromptPendingFixture(t)
+
+	expired, cancel := context.WithDeadline(context.Background(), time.Now().Add(-time.Second))
+	defer cancel()
+
+	input.Prompt = "First turn — forced to fail before it can bind."
+	out, err := NewUserPromptSubmitHandler(nil).Handle(expired, input)
+	if err != nil {
+		t.Fatalf("forced-failure turn returned an error; the hook must fail open: %v", err)
+	}
+	notice := ""
+	if out.HookSpecificOutput != nil {
+		notice = out.HookSpecificOutput.AdditionalContext
+	}
+	if !strings.Contains(notice, "factory messaging degraded") {
+		t.Fatalf("forced failure did not report degradation: notice=%q", notice)
+	}
+	if _, resolveErr := s.ResolveLane(context.Background(), "lead"); resolveErr == nil {
+		t.Fatal("forced-failure turn bound anyway — the premise of this test is broken")
+	}
+
+	input.Prompt = "Second turn — ordinary context."
+	bound, notices := bindAcrossTurns(t, s, input)
+	if bound.SessionUUID != input.SessionID || bound.Generation <= pending.Generation ||
+		bound.PID != pending.PID || bound.ProcessStart != pending.ProcessStart {
+		t.Fatalf("recovered bind has the wrong identity: bound=%+v pending=%+v", bound, pending)
+	}
+	if !strings.Contains(notices[0], "factory messaging bound") {
+		t.Fatalf("recovery turn did not announce the bind: notices=%q", notices)
+	}
+}
+
 func TestFactoryUserPromptSubmitRebindsLaunchPendingPeer(t *testing.T) {
 	_, _, s, pending, input := factoryPromptPendingFixture(t)
 	before := factoryPeerSnapshot(t, s, "lead")
@@ -410,31 +553,40 @@ func TestFactoryUserPromptSubmitRebindsLaunchPendingPeer(t *testing.T) {
 		t.Fatal(err)
 	}
 	input.Prompt = "Inspect the assigned factory work."
-	out, err := NewUserPromptSubmitHandler(nil).Handle(context.Background(), input)
-	if err != nil {
-		t.Fatal(err)
-	}
-	bound, err := s.ResolveLane(context.Background(), "lead")
-	if err != nil {
-		t.Fatal(err)
-	}
+	// The bind is not promised on the FIRST turn — a turn that misses
+	// factoryHookInspectionDeadline reports a degraded notice and the next turn
+	// retries (card t1109). bindAcrossTurns holds that contract: it still fails
+	// on a turn that neither binds nor reports degradation.
+	bound, notices := bindAcrossTurns(t, s, input)
 	if bound.SessionUUID != input.SessionID || bound.Generation <= pending.Generation || bound.PID != pending.PID || bound.ProcessStart != pending.ProcessStart {
 		t.Fatalf("bound=%+v pending=%+v", bound, pending)
 	}
-	if out.HookSpecificOutput == nil || !strings.Contains(out.HookSpecificOutput.AdditionalContext, "factory messaging bound") || !strings.Contains(out.HookSpecificOutput.AdditionalContext, messageID) {
-		t.Fatalf("missing bind notice: %+v", out)
+	binding := notices[len(notices)-1]
+	if !strings.Contains(binding, "factory messaging bound") || !strings.Contains(binding, messageID) {
+		t.Fatalf("missing bind notice: %q (all turns: %q)", binding, notices)
 	}
 }
 
 func TestFactoryBoundUserPromptSubmitDoesNotRewritePeer(t *testing.T) {
-	root, run, s, _, input := factoryPromptPendingFixture(t)
-	input.Prompt = "Bind this real user turn."
-	if _, err := NewUserPromptSubmitHandler(nil).Handle(context.Background(), input); err != nil {
-		t.Fatal(err)
-	}
-	bound, err := s.ResolveLane(context.Background(), "lead")
-	if err != nil {
-		t.Fatal(err)
+	root, run, s, pending, input := factoryPromptPendingFixture(t)
+	// This test measures what happens to an ALREADY BOUND peer — that a later
+	// prompt does not rewrite it. Getting the lane bound is a PRECONDITION, not
+	// the subject, so it is established through the store API rather than
+	// through the hook. Binding through the hook would import the hook's
+	// budget-miss nondeterminism (card t1109) into a test that is not about
+	// binding at all, and a flake there would say nothing about the no-rewrite
+	// contract this test exists to hold.
+	//
+	// The bind path itself is covered by
+	// TestFactoryUserPromptSubmitRebindsLaunchPendingPeer and the two
+	// budget/recovery tests above.
+	bound, didBind, err := s.BindLaunchPending(context.Background(), factorymsg.Peer{
+		ProjectKey: pending.ProjectKey, RunID: pending.RunID, Backend: pending.Backend,
+		Role: pending.Role, Slot: pending.Slot, SessionUUID: input.SessionID,
+		Generation: 1, PID: pending.PID, ProcessStart: pending.ProcessStart,
+	})
+	if err != nil || !didBind {
+		t.Fatalf("precondition: could not bind the lane directly: bound=%v err=%v", didBind, err)
 	}
 	sender := bound
 	sender.Role, sender.Slot, sender.SessionUUID = "worker", "agent-1", "sender-session"
