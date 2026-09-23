@@ -138,13 +138,7 @@ func TestHarnessProfileTransitionPreservesUserData(t *testing.T) {
 		older          bool
 		blocked        string
 	}{
-		// The claude deployment leaves .agents/skills/moai as a skill-mirror
-		// symbolic link; the update's managed-path clean removes the link's
-		// destination, and the both deployment then fails with
-		// "template deploy mkdir .agents/skills/moai: file exists" before any
-		// .codex/ step runs. The fix is in the template deployer, outside
-		// this change; the row stays visible as a skip rather than a pass.
-		{"claude_to_both", "claude", "both", false, "BLOCKED on the template deployer: update fails at mkdir .agents/skills/moai (claude skill-mirror link) before any .codex/ step"},
+		{"claude_to_both", "claude", "both", false, ""},
 		{"gpt_to_both", "gpt", "both", false, ""},
 		{"both_to_claude", "both", "claude", false, ""},
 		{"both_to_gpt", "both", "gpt", false, ""},
