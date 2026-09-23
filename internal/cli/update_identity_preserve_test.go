@@ -38,6 +38,14 @@ const (
 // LSP enabled (the wizard-patched key the template ships as false).
 func initIdentityProject(t *testing.T) string {
 	t.Helper()
+	return initIdentityProjectNamed(t, identityProjectName, identityProjectName, identityUserName)
+}
+
+// initIdentityProjectNamed is initIdentityProject with the project directory
+// name, the --name value, and the wizard's user name supplied by the caller —
+// the names init itself writes, not a later hand edit.
+func initIdentityProjectNamed(t *testing.T, dirName, projectName, userName string) string {
+	t.Helper()
 	prepareSafeInitHome(t)
 
 	origInteractive := isInteractiveStdin
@@ -50,7 +58,7 @@ func initIdentityProject(t *testing.T) string {
 
 	wizResult := &wizard.WizardResult{
 		ConversationLang:          "en",
-		UserName:                  identityUserName,
+		UserName:                  userName,
 		AgentWiring:               "claude",
 		AutonomyTier:              "semi-auto",
 		LSPEnabled:                true,
@@ -63,11 +71,11 @@ func initIdentityProject(t *testing.T) string {
 	runWizardFn = func(_, _, _ string) (*wizard.WizardResult, error) { return wizResult, nil }
 	t.Cleanup(func() { runWizardFn = origWizard })
 
-	projectDir := filepath.Join(t.TempDir(), identityProjectName)
+	projectDir := filepath.Join(t.TempDir(), dirName)
 	cmd := newInitTestCmd()
 	// An absolute positional argument names the project by the whole path
 	// (init.go uses the argument verbatim), so the name is pinned by flag.
-	if err := cmd.Flags().Set("name", identityProjectName); err != nil {
+	if err := cmd.Flags().Set("name", projectName); err != nil {
 		t.Fatalf("set --name: %v", err)
 	}
 	var out, errBuf bytes.Buffer

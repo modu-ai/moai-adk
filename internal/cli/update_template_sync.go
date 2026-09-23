@@ -316,11 +316,9 @@ func runTemplateSyncWithReporter(cmd *cobra.Command, reporter project.ProgressRe
 	// Without it every render falls back to the template default (manual).
 	gitMode := config.LoadGitMode(projectRoot)
 	// Card t1139: the same holds for the project and user names that
-	// project.yaml / user.yaml render. Without them the render carries empty
-	// names, and the merge could only keep the user's value by reading it as a
-	// customization against the snapshot.
-	projectName := config.LoadProjectName(projectRoot)
-	userName := config.LoadUserName(projectRoot)
+	// project.yaml / user.yaml render. A name the render cannot carry verbatim
+	// comes back "" (see loadUpdateIdentity for when the merge then keeps it).
+	projectName, userName := loadUpdateIdentity(projectRoot)
 
 	// Define deployment steps
 	steps := []struct {

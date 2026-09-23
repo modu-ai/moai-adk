@@ -445,6 +445,7 @@ func runCleanReinstall(ctx context.Context, projectRoot string, opts CleanReinst
 	// handling is deliberately unchanged.
 	homeDir, _ := userHomeDirFn()
 	goBinPath := detectGoBinPathForUpdate(homeDir)
+	projectName, userName := loadUpdateIdentity(projectRoot)
 	tmplCtx := template.NewTemplateContext(
 		template.WithGoBinPath(goBinPath),
 		template.WithResolvedMoaiPath(resolveMoaiExecutable()),
@@ -458,8 +459,8 @@ func runCleanReinstall(ctx context.Context, projectRoot string, opts CleanReinst
 		template.WithGitMode(config.LoadGitMode(projectRoot)),
 		// Card t1139: render project.yaml / user.yaml with the names the
 		// project already carries, for the same reason as the mode above.
-		template.WithProject(config.LoadProjectName(projectRoot), projectRoot),
-		template.WithUser(config.LoadUserName(projectRoot)),
+		template.WithProject(projectName, projectRoot),
+		template.WithUser(userName),
 	)
 
 	if deployErr := deployWithMirrorNotice(ctx, deployer, projectRoot, mgr, tmplCtx, errOut); deployErr != nil {

@@ -55,55 +55,13 @@ func TestLoadProjectAndUserName_FallbackEmpty(t *testing.T) {
 	}
 }
 
-// TestLoadIdentity_RejectsValuesTheRenderCannotCarry pins the card t1139
-// follow-up (sync-audit F1/F3): the update renders project.yaml / user.yaml
-// with these names inside a double-quoted YAML scalar and then runs the
-// renderer's unexpanded-token check over the output. A name that trips that
-// check halts the whole update at "Validate Templates"; a name that breaks the
-// double-quoted scalar makes the 3-way merge fail on every update. Such a value
-// must read as "" — the pre-t1139 render — so the merge keeps the user's value
-// as a customization instead.
-func TestLoadIdentity_RejectsValuesTheRenderCannotCarry(t *testing.T) {
+// TestLoadIdentity_ReturnsStoredValueVerbatim pins that the readers do no
+// filtering of their own: values the update render cannot carry are read back
+// exactly as stored, and the render-carry decision belongs to the caller
+// (internal/cli loadUpdateIdentity, which can reach the renderer).
+func TestLoadIdentity_ReturnsStoredValueVerbatim(t *testing.T) {
 	t.Parallel()
-	rejected := map[string]string{
-		"dollar env token":    "$TEAM",
-		"dollar embedded":     "team-$TEAM-x",
-		"dollar brace token":  "${TEAM}",
-		"lone dollar":         "cost$",
-		"template action":     "{{.Version}}",
-		"template open only":  "a{{b",
-		"template close only": "a}}b",
-		"double quote":        `Kim "Goos"`,
-		"backslash":           `C:\Users\x`,
-		"newline":             "a\nb",
-		"carriage return":     "a\rb",
-		"tab":                 "a\tb",
-		"nul":                 "a\x00b",
-		"escape":              "a\x1bb",
-		"del":                 "a\x7fb",
-		"next line":           "a\u0085b",
-		"line separator":      "a\u2028b",
-		"byte order mark":     "a\ufeffb",
-	}
-	for label, value := range rejected {
-		root := t.TempDir()
-		quoted := yamlQuoted(value)
-		writeIdentitySection(t, root, "project.yaml", "project:\n  name: "+quoted+"\n")
-		writeIdentitySection(t, root, "user.yaml", "user:\n  name: "+quoted+"\n")
-		if got := LoadProjectName(root); got != "" {
-			t.Errorf("%s: LoadProjectName = %q, want empty (value cannot be rendered verbatim)", label, got)
-		}
-		if got := LoadUserName(root); got != "" {
-			t.Errorf("%s: LoadUserName = %q, want empty (value cannot be rendered verbatim)", label, got)
-		}
-	}
-}
-
-// TestLoadIdentity_KeepsOrdinaryValues is the positive control for the
-// rejection above: ordinary punctuation and non-ASCII letters pass through.
-func TestLoadIdentity_KeepsOrdinaryValues(t *testing.T) {
-	t.Parallel()
-	for _, value := range []string{"p-gpt", "구스", "Goos Kim", "o'neil", "a: b # c", "{single}", "50%", "a{b}c", "ümlaut_ß"} {
+	for _, value := range []string{"p-gpt", "구스", "o'neil", "a: b # c", "$TEAM", "{{.Version}}", "cost$5", "a{{b", `Kim "Goos"`, `C:\Users\x`, "a\tb", "👩\u200d💻 x"} {
 		root := t.TempDir()
 		quoted := yamlQuoted(value)
 		writeIdentitySection(t, root, "project.yaml", "project:\n  name: "+quoted+"\n")
