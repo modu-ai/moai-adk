@@ -108,6 +108,15 @@ func registerFactoryHookPeer(ctx context.Context, input *HookInput, mode factory
 	return fmt.Sprintf("factory messaging bound: run=%s slot=%s generation=%d; messages arrive at turn boundaries, not idle wake", runID, p.Slot, p.Generation)
 }
 
+// factoryHookDegraded records a cut-short inbox inspection and returns the
+// state string for it. Both hook call sites discard that state, so without this
+// log a degraded inspection would leave no trace anywhere — the empty inbox it
+// produces is indistinguishable from an inbox that was genuinely empty.
+func factoryHookDegraded(step string, err error) string {
+	slog.Warn("factory hook: inbox inspection degraded", "step", step, "error", err)
+	return "degraded: " + err.Error()
+}
+
 func factoryHookBatch(ctx context.Context, input *HookInput, event EventType) (string, bool, string) {
 	ctx, cancel := context.WithTimeout(ctx, factoryHookInspectionDeadline)
 	defer cancel()
@@ -126,17 +135,24 @@ func factoryHookBatch(ctx context.Context, input *HookInput, event EventType) (s
 	defer closeFactoryHookStore(s)
 	p, err := s.Peer(ctx, input.SessionID)
 	if err != nil {
-		return "", false, "unbound-session"
+		// Only a genuinely unregistered endpoint is unbound. Every other error
+		// — a spent inspection budget, a busy database, an I/O failure — means
+		// the lookup never completed, and reporting that as unbound turns a
+		// bound lane's inbox into a silent empty read.
+		if errors.Is(err, sql.ErrNoRows) || errors.Is(err, factorymsg.ErrEndpointLaunchPending) {
+			return "", false, "unbound-session"
+		}
+		return "", false, factoryHookDegraded("peer lookup", err)
 	}
 	if err := s.CheckWritable(ctx); err != nil {
-		return "", false, "degraded: " + err.Error()
+		return "", false, factoryHookDegraded("writability check", err)
 	}
 	if _, err = s.SettleReceiptControls(ctx, p); err != nil {
-		return "", false, "degraded: " + err.Error()
+		return "", false, factoryHookDegraded("receipt settle", err)
 	}
 	claims, err := s.Claim(ctx, p, factorymsg.MaxBatch, 30*time.Second)
 	if err != nil {
-		return "", false, "degraded: " + err.Error()
+		return "", false, factoryHookDegraded("claim", err)
 	}
 	ids := make([]string, 0, len(claims))
 	for _, c := range claims {
