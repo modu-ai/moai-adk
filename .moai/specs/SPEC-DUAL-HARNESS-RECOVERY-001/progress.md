@@ -813,6 +813,34 @@ $ GOOS=windows GOARCH=amd64 go build ./... → exit=0 (build-windows.txt)
 - t1082 부채 F6-F9 / N1-N6은 카드 t1145 소관이라 손대지 않았다. AC-FLH-008 외 t1082 AC는 다시 돌리지 않았다.
 - LIVE AC(012/018/023)는 재실행하지 않았다. 병합 뒤 LIVE 동작은 관측되지 않았다.
 
+리드 지정 기록 항목(미측정·잔여 위험):
+- (a) `foreign_v1_tables_test.go`의 카탈로그 스냅숏을 외래 DDL이 정의하는 다섯 객체로 좁혔으므로, 이 테스트는 이제 그 밖의 `lane_*` 객체에 대한 부수 효과를 보지 못한다. 이관이 다른 `lane_*` 테이블·인덱스를 건드려도 이 테스트는 초록으로 남는다. sync-audit 점검 항목이다.
+- (b) LIVE AC-DHR-012 / 018 / 023은 d088aa738 흡수 뒤 다시 돌리지 않았다. 판정 근거는 흡수 전 트리의 M8 기록이며, 병합 트리에서의 LIVE 동작은 관측되지 않았다.
+
+#### Merge-resolution line test
+
+위 목록의 "anchor 거부 경로의 `clearFactoryRunOwner` 호출은 직접 겨누는 테스트가 없다"는 흡수 시점 관측으로 그대로 둔다. 이 절에서 그 한 줄을 겨누는 테스트를 추가했다.
+
+- 대상 줄: `internal/cli/codex_launcher.go` `defaultCodexSpawnLaunch`의 anchor 거부 분기 `if factory { clearErr = clearFactoryRunOwner(dir, runID) }`(흡수 커밋 `a8546ec1d`에서 추가, 두 부모 어디에도 없음).
+- 테스트: `TestPaneDoorAnchorRefusalClearsFactoryRunOwner`(`internal/cli/factory_run_owner_test.go`). factory 환경(`MOAI_KANBAN_ID`, `MOAI_FACTORY_WORKERS=2`, `MOAI_KANBAN_BACKEND=codex`)에서 launcher pid로 run을 심고 전제를 단언한 뒤, pane identity는 성공시키고 `codexSpawnAnchorFn`은 거부시킨다. 단언: 반환 오류가 anchor 오류를 감싼다(`errors.Is`), anchor 호출 1회와 pane 정리가 일어난다(거부 경로를 실제로 밟음), run owner가 `(0, "")`로 해제된다.
+- 변이(그 한 줄을 `_ = runID`로 치환) 실행 출력:
+
+  ```text
+  factory_run_owner_test.go:264: run owner after anchor refusal = (84442, "launcher-start"), want cleared (0, ""); the launcher's identity is known in advance to die
+  --- FAIL: TestPaneDoorAnchorRefusalClearsFactoryRunOwner (0.38s)
+  ```
+
+- 복원 후(`shasum -a 256 internal/cli/codex_launcher.go` → 변이 전과 같은 `7824a547910739a7482663ef36a7fbe6b655c5dfc2a4de7bfa910ac86428416e`) 출력:
+
+  ```text
+  --- PASS: TestPaneDoorAnchorRefusalClearsFactoryRunOwner (0.48s)
+  ok  	github.com/modu-ai/moai-adk/internal/cli	1.109s
+  ```
+
+- 이웃 테스트(같은 compound `unset … && go test -count=1 -run '^(…)$' -v ./internal/cli/`): TestCodexDirectPOSIXExecPreservesFactoryOwner, TestCodexWorktreeAnchorLockAndBase·TestCodexWorktreeAnchorLockReplacementRace(AC-DHR-006), TestWorktreeLaunchRejectsConcurrentWriter(AC-DHR-007), TestPRMergeCleanupRefusesAnchoredCodexTree, TestCodexSpawnAnchorsToPanePID, TestRunOwnerAndLeadPeerNameOneProcessOnEveryShape, TestRestampSeamIsCalledAtEveryNonReplaceCallSite, TestPaneDoorRefusalLeavesNoLauncherStampedRun, 새 테스트 — 10건 PASS, `ok … 19.570s`.
+- `go vet ./internal/cli` exit 0, `GOOS=windows GOARCH=amd64 go vet ./internal/cli` exit 0, `golangci-lint run ./internal/cli/...` → `0 issues.`
+- 한계: 성공 경로의 owner 재스탬프는 이 테스트가 아니라 `TestRunOwnerAndLeadPeerNameOneProcessOnEveryShape`가 맡는다. anchor 거부 경로에서 `clearFactoryRunOwner` 자체가 실패할 때 그 오류가 합쳐지는지는 겨누지 않았다.
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 _<pending run-phase>_
