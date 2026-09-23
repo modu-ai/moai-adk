@@ -8,6 +8,7 @@ import (
 
 	"github.com/modu-ai/moai-adk/internal/harness/v4manifest"
 	"github.com/modu-ai/moai-adk/internal/profile"
+	"github.com/modu-ai/moai-adk/internal/settings"
 )
 
 // Tests for the console UX fix batch (web console feedback round):
@@ -230,8 +231,9 @@ func TestModelOptLabelsEnglishUnified(t *testing.T) {
 // TestEffortOptRecommendationLabels verifies the effort select marks medium as
 // the recommended level in each locale (and no other level), and that the
 // empty option states the launch fallback order honestly: the model-policy
-// effort first, otherwise Claude Code's own model default (medium on Opus 5.5).
-// Entries are pinned per locale so one locale cannot satisfy another's check.
+// effort first, otherwise Claude Code's own model default
+// (settings.RuntimeDefaultEffortModel). Entries are pinned per locale so one
+// locale cannot satisfy another's check.
 func TestEffortOptRecommendationLabels(t *testing.T) {
 	dict := readEmbeddedAsset(t, "i18n.js")
 	for _, entry := range []string{
@@ -249,9 +251,9 @@ func TestEffortOptRecommendationLabels(t *testing.T) {
 		t.Errorf("a non-medium effort level carries a recommendation marker: %s", m)
 	}
 	for _, policy := range []string{"model policy", "모델 정책", "モデルポリシー", "模型策略"} {
-		re := regexp.MustCompile(`"opt\.runtime_default": "[^"]*` + regexp.QuoteMeta(policy) + `[^"]*Opus 5\.5[^"]*"`)
+		re := regexp.MustCompile(`"opt\.runtime_default": "[^"]*` + regexp.QuoteMeta(policy) + `[^"]*` + regexp.QuoteMeta(settings.RuntimeDefaultEffortModel) + `[^"]*"`)
 		if n := len(re.FindAllString(dict, -1)); n != 1 {
-			t.Errorf("opt.runtime_default naming %q then Opus 5.5 appears %d times, want 1", policy, n)
+			t.Errorf("opt.runtime_default naming %q then %s appears %d times, want 1", policy, settings.RuntimeDefaultEffortModel, n)
 		}
 	}
 }
