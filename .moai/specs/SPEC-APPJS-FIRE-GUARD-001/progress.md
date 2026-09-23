@@ -416,6 +416,13 @@ cross_platform_build:
   darwin: `go build ./...` exit 0
   windows: 미측정 — 개정분은 Go 테스트 파일 1개와 Python testdata 1개뿐이고 syscall·build tag 를 쓰지 않으나, 재지 않은 것은 재지 않았다고 적는다. 매트릭스 판정은 push 뒤 CI 몫
 total_run_phase_files: 3 — `internal/web/appjs_fire_guard_test.go`, `internal/web/testdata/appjs_fire_probe.py`, `.moai/specs/SPEC-APPJS-FIRE-GUARD-001/progress.md`(§E.2/§E.3 개정분)
+run_phase_correction_after_f1 (card t1106, sync-audit-delta F2 — 추기이지 정정 덮어쓰기가 아니다):
+  위 `preserve_list_post_run_count` 와 `total_run_phase_files` 두 줄은 **쓰인 시점(`19f210fe5`)에는 참이었고**, 그 뒤 sync-audit 이 낸 차단 결함 F1 을 수리하면서 거짓이 됐다. 관측 기록을 나중 사실에 맞춰 고쳐 쓰면 「무엇을 언제 봤는가」가 사라지므로, 원문을 남기고 여기에 덧붙인다.
+  - `.github/workflows/ci.yml` 은 **무변경이 아니다.** 커밋 `9722f76f1` 이 `test-browser` 잡의 맨손 탐침 호출 3곳(734·745·767)에 `--primary-entries-only` 를 달았다. 사유: 이 카드가 넣은 `validation_reject_banner`(`requires_sandbox_serving: True`) 때문에 선언 없는 호출이 REQ-AFG-014 (1) 에 따라 exit 2 로 거부되어 CI 잡이 죽었다. 즉 **이 카드가 만든 파손의 수리**이며, 탐침의 거부는 설계대로 올바른 동작이라 손대지 않았다.
+  - 따라서 run-phase 변경 파일은 2개가 아니라 **3개**(`appjs_fire_guard_test.go`, `appjs_fire_probe.py`, `ci.yml`)이고, `total_run_phase_files` 는 3 이 아니라 **4**다(위 3개 + 이 `progress.md`). 실측: `git diff --name-only 0fbc75afc..HEAD` → 4행.
+  - 이 수정이 CI 가 보는 범위를 줄이지는 않는다 — 기계 측정: base `0fbc75afc` 의 매니페스트는 8항목 전부 무표식이고, 현재 9항목 중 표식은 이 카드 신설분 하나뿐이다. `--primary-entries-only` 가 구동하는 8항목은 **카드 이전 CI 가 보던 바로 그 집합**이다. 잃은 커버리지 0.
+  - 독트린 확인: `ci-autofix-protocol.md` § CI Infrastructure Preservation 의 워크플로 수정 금지는 자기 마지막 줄이 `applies to every cycle_type=autofix invocation` 으로 범위를 선언한다. 이 수리는 리드 지시의 run-phase 수리이므로 저촉되지 않는다.
+
 m1_to_mN_commit_strategy: 슬라이스당 1커밋 — 35a1015f9(표식·라우팅: M6.1-6.3 + M7.1-7.3) → 1302f1f76(사본 시나리오·paint·무쓰기: M6.4-6.5 + M7.4-7.5) → 19f210fe5(축소 선언·한계 주석·재측정: M6.6 + M7.6-7.8) → 본 progress 기록. 전 커밋 본문에 card t1106 명기. push·PR 없음
 status_transition: 없음 — `status: in-progress` 는 plan-phase 에서 이미 설정돼 있었다(spec/plan/acceptance/progress 4파일 모두). `draft → in-progress` 는 이 run 에서 수행할 것이 남아 있지 않았고, `implemented`/`completed` 로의 전진은 manager-docs 소관이라 건드리지 않았다
 unmeasured:
