@@ -221,3 +221,31 @@ RED reason: reservation code absent. Second RED — AC-FLH-001/002/016/017, log 
 - `TestEnsureGLMCredentials` and `TestEnsureGLMCredentialsFilePerm` fail on HEAD in this environment too (`.moai/reports/t1082/run-m1-baseline-hook-HEAD.log`).
 - The controller's git facts (dirty source, branch, path) are read outside the broker transaction; a concurrent actor can change them between the check and the reservation. Post-create verification re-reads them, so a race produces a NACK, not a false `WT_READY`.
 - The materializer resolves the repository from the process cwd; the controller verifies the created path equals `<canonical primary>/.claude/worktrees/<card-id>` and NACKs otherwise.
+
+## §J Lead follow-ups after M1 (2026-09-23)
+
+### Hook-test flakiness — not established
+
+Two measurements disagree; the defect is **not established**. Re-check when M3 re-runs the hook path; report with failing output if it recurs.
+
+| Who | Tree | Command | When | Result |
+|---|---|---|---|---|
+| manager-develop (M1) | base `92c932cac` factorymsg (per its note) | not recorded in the log — the log holds output only (`.moai/reports/t1082/run-m1-baseline-hook-HEAD-x5.log`) | log timestamps ~10:13 | `TestFactoryUserPromptSubmitRebindsLaunchPendingPeer` + `TestFactoryBoundUserPromptSubmitDoesNotRewritePeer` 3/5 FAIL `factory endpoint is launch-pending`; with M1 1/5. Test durations in that log ~2.3s |
+| lane orchestrator | M1 HEAD `17f7b89e2` | `unset <kanban/provider vars> && MOAI_HOME=<scratch>/home2 go test -count=5 ./internal/hook -run '^(TestFactoryUserPromptSubmitRebindsLaunchPendingPeer\|TestFactoryBoundUserPromptSubmitDoesNotRewritePeer\|TestFactorySessionStartCannotRotateAuthoritativeUserPromptBinding)$' -v` | after M1 return | 15/15 PASS, durations 0.57–1.04s |
+
+Duration gap (~2.3s vs ~0.6–1.0s) suggests load-dependent timing, not verified.
+
+### factorymsg coverage baseline
+
+| Tree | Command | Coverage |
+|---|---|---|
+| pre-M1 `92c932cac` (exported via `git archive` to scratch) | `go test -count=1 -cover ./internal/factorymsg/` | 64.5% |
+| post-M1 `32b384917` | `go test -count=1 -coverprofile=<scratch>/m1.cov ./internal/factorymsg/` | 68.0% |
+| card-added `internal/factorymsg/handoff.go` | from the same profile, statement-weighted | 85.3% (81/95) |
+| card-added `internal/cli/factory_lane_handoff.go` | `go test -count=1 -run 'LaneHandoff' -coverprofile=… ./internal/cli/` | 80.0% (80/100); lowest `createHandoffTarget` 61.9% |
+
+M1 raised package coverage (+3.5pp); the package-level shortfall vs 85% predates this card. Whether card-added code reaches 85% is judged before run closes.
+
+### AC-FLH-008 narrowed (lead option a)
+
+SPEC revision `745ae0e6d` (v0.5.2): same-key duplicate only within the same recipient generation; resend after BOUND uses a new key; schema unchanged; sender-side Send vs recipient-side `DispositionDuplicate` separated. Evidence `.moai/reports/t1082/ac008-idempotency-check.md`. Plan-audit hash cache invalidated by this body edit; no re-audit requested.
