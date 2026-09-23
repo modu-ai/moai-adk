@@ -39,13 +39,17 @@ func makeAmendmentSpecMD(id, status, amendmentOf, heading string) string {
 		"| 날짜 | 버전 | 변경 | 주체 |\n|---|---|---|---|\n" +
 		"| 2026-09-22 | 0.1.0 | plan | manager-spec |\n" +
 		"| 2026-09-23 | 0.2.0 | in-place amendment | manager-spec |\n\n"
+	// heading empty still writes the record rows (citing the sync SHA) but with no
+	// Amendments heading — a record the SSOT does not recognise, so the negative
+	// controls stay discriminating even for the SHA-citation leg.
 	if heading != "" {
-		fm += heading + "\n\n| 항목 | 값 |\n|---|---|\n" +
-			"| prior completed version | 0.1.0 |\n" +
-			"| prior_completed_sha | `0e2377323` |\n" +
-			"| rationale | extend the guard |\n" +
-			"| scope | probe + driver only |\n\n"
+		fm += heading + "\n\n"
 	}
+	fm += "| 항목 | 값 |\n|---|---|\n" +
+		"| prior completed version | 0.1.0 |\n" +
+		"| prior_completed_sha | `0e2377323` |\n" +
+		"| rationale | extend the guard |\n" +
+		"| scope | probe + driver only |\n\n"
 	fm += "---\n\n## §A 배경\n\nbody\n"
 	return fm
 }
