@@ -298,7 +298,7 @@ cd my-project
 | 선택 | 프로젝트 루트에 생기는 것 |
 |---|---|
 | `claude` (기본값) | `.claude/` 표면 전체와 `AGENTS.md` — 지금까지의 기본 동작 |
-| `gpt` | Codex 단독 배포: `AGENTS.md`와 Codex 표면(`.codex/`, `.agents/skills/`, `.moai/`)만 설치. `.claude/` 디렉터, `CLAUDE.md`, `.mcp.json`은 생기지 않는다. Claude 전용 런타임 기능(AskUserQuestion, 서브에이전트 소환, output style, 슬래시 명령, Workflow 스크립트)은 사용할 수 없다 |
+| `gpt` | Codex 단독 배포: `AGENTS.md`와 Codex 표면(`.codex/`, `.agents/skills/`, `.moai/`)만 설치. `.claude/` 디렉터리, `CLAUDE.md`, `.mcp.json`은 생기지 않는다. Claude 전용 런타임 기능(AskUserQuestion, 서브에이전트 소환, output style, 슬래시 명령, Workflow 스크립트)은 사용할 수 없다 |
 | `both` | `claude` 배포에 `.codex/` 연결을 더한다. `.mcp.json` 프로비저닝은 강제로 켜진다 |
 
 

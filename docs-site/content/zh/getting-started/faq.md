@@ -90,7 +90,7 @@ MoAI-ADK 会根据 Claude Code 订阅套餐为智能体分配最优 AI 模型。
 | **low** | 每任务成本最低 — 审计·协调行降到 `medium`，`builder-harness` 降到 Opus `low`，`e2e-tester` 降到 Sonnet。只有 `super-advisor` 与 `mission-governor` 保持 `high` |
 
 {{< callout type="warning" >}}
-**为什么重要？** 降低层级降低的是*推理深度*，而不是模型级别。在长时程 agentic 任务中，Opus 的 `low` effort 比任何 effort（包括 `max`）的 Sonnet 评分更高、每任务成本更低 — 账单由模型完成任务所花的步数决定，而不是按 token 的单价。因此 `low` 是在 Opus 内部节省，仅在不存在多步完成失败问题的单次调用行（`manager-git`、`Explore`）上才使用 Sonnet。
+**为什么重要？** 降低层级主要降低的是*推理深度*，而不是模型级别。在长时程 agentic 任务中，Opus 的 `low` effort 比任何 effort（包括 `max`）的 Sonnet 评分更高、每任务成本更低 — 账单由模型完成任务所花的步数决定，而不是按 token 的单价。因此 `low` 是在 Opus 内部节省。使用 Sonnet 的只有各层级的 `manager-docs`、`manager-git`、`Explore`，以及 `low` 层级的 `e2e-tester`。
 {{< /callout >}}
 
 ### 各层级智能体模型分配
