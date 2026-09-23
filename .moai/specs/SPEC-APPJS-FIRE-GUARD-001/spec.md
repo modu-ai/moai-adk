@@ -1,7 +1,7 @@
 ---
 id: SPEC-APPJS-FIRE-GUARD-001
 title: "app.js 버튼 핸들러 런타임 발화 가드 — 정적 경계 가드의 초록이 실제 발화를 함의하지 않음을 브라우저에서 재단다"
-version: "0.2.0"
+version: "0.3.0"
 status: in-progress
 created: 2026-09-22
 updated: 2026-09-23
@@ -10,7 +10,7 @@ priority: P2
 phase: "v3.2.0 target"
 module: "internal/web"
 lifecycle: spec-anchored
-tags: "web, app.js, runtime, browser, cdp, fire, guard, e2e, t1060, t1106"
+tags: "web, app.js, runtime, browser, cdp, fire, guard, e2e, t1060, t1106, t1108"
 era: V3R6
 tier: M
 related_specs: [SPEC-APPJS-IIFE-GUARD-001]
@@ -28,6 +28,7 @@ amendment_of: SPEC-APPJS-FIRE-GUARD-001
 | 2026-09-23 | 0.2.0 | in-place amendment — 검증 거부 배너의 **화면 도달**을 이 가드로 편입 (card t1106). REQ-AFG-014·015 신설, §B.6 실측 추가, §C 결정 5 추가. 기존 REQ-AFG-001~013 번호·문언 불변 | manager-spec |
 | 2026-09-23 | 0.2.0 | 개정분 plan-audit iter-1 FAIL(0.86) 수리 — D1(사본 base 부재 시 계약 미정의 + AC-001 의 8/9 모호) · D2(무쓰기 제외 목록의 범위 무제한) · D3(AC-008 한계 축 4→7 스테일) · D4/N3(조건 표식 수 3 vs 2 모순). REQ·AC 신설 0건, 기존 번호 불변 | manager-spec |
 | 2026-09-23 | 0.2.0 | 개정분 plan-audit iter-2 PASS-WITH-DEBT(0.90) 의 차단급 잔여 2건 인라인 수리 — N-1(AC-AFG-001 (a) 의 판정을 개수 `> 0` 에서 「사본 서빙 표식이 없는 항목 전부」 술어 일치 + 운전 수·제외 이름 보고로 승격) · N-2(§A 의 「AC-001~008 문언 불변」 서사를 실제 개정 세 곳으로 정정). `acceptance.md` 절 편집만 — REQ·AC 신설 0건, `spec.md` 본문 무수정 | manager-spec |
+| 2026-09-23 | 0.3.0 | in-place amendment 2 — post-swap 지표의 **전제 교정** (card t1108). REQ-AFG-007 문언 개정(실제 hx-boost 스왑 + `htmx:afterSettle` **이벤트** 대기; 개정 전 문언은 조문 안에 보존), REQ-AFG-016 신설(스왑 자기확인), §B.7 실측 추가, §B.1·§B.2·REQ-AFG-007 근거 서술에 날짜 붙은 사후 정정 주석, §C 개정 결정 2 추가, AC-AFG-014·015·016 신설, AC-AFG-001 (c)·AC-AFG-006·AC-AFG-013 문언 보강. 나머지 REQ-AFG-001~006·008~015 번호·문언 불변 | manager-spec |
 
 ### Amendments
 
@@ -37,6 +38,15 @@ amendment_of: SPEC-APPJS-FIRE-GUARD-001
 | prior_completed_sha | `0e2377323` (`docs(SPEC-APPJS-FIRE-GUARD-001): sync-phase artifacts — 3-phase close (card t1060)`) |
 | rationale | card t1105 가 `handleSave` 의 검증 거부 경로를 400 → 200 으로 고쳤지만, 그 검증은 **단위 테스트(응답 본문 안에 배너가 있는가)** 뿐이었다. 배너가 **브라우저에서 실제로 칠해지는가**는 t1105 판정서가 Gap 으로 명시 기록했고, 그 sync-audit 이 미측정 구간을 「boost 200 이 스왑되는가」가 아니라 「**이 본문이** 칠해지는가」로 좁혔다. 이 가드가 이미 브라우저에서 발화를 재는 유일한 계측기이므로, 그 구간은 새 러너가 아니라 이 SPEC 의 확장으로 닫는다. |
 | scope | 기존 탐침(`internal/web/testdata/appjs_fire_probe.py`)과 드라이버(`internal/web/appjs_fire_guard_test.go`)의 **확장**만. 신규 러너 금지. REQ-AFG-012 는 약화되지 않으며, 그 조문이 이미 이름한 두 경로 중 **둘째 경로(일회용 프로젝트 사본)** 를 처음으로 사용한다. |
+
+#### 개정 2 — 0.3.0 (card t1108)
+
+| 항목 | 값 |
+|---|---|
+| prior completed version | 0.1.0 (변동 없음 — 0.2.0 개정은 run-phase 까지 develop 에 착지했으나 sync 로 닫히지 않았다. 마지막 완료 판은 여전히 위 표의 0.1.0 / `0e2377323` 이다) |
+| amendment base | branch `WT-popover-swap-flake`, HEAD `52a486635`, tree `895ad8954` (0.2.0 run-phase 와 그 F1 수리가 병합된 로컬 develop) |
+| rationale | card t1108 판정서(`.moai/reports/t1108/verdict.md`)가 `popover_after_swap` 의 간헐 실패 원인을 확정했다 — 5단계가 클릭하는 `a[href="/todo"]` 에는 `hx-boost` 조상이 없어 클릭이 **메인 프레임 전체 이동**이고, 탐침은 URL 변경만 기다린 채 6단계로 넘어가 새 문서의 초기화보다 먼저 클릭할 수 있다. 따라서 REQ-AFG-007 이 전제한 「hx-boost 스왑 뒤」는 이 SPEC 의 어느 판에서도 실제로 측정된 적이 없다. 리드 결정: 방향 (a) — REQ-AFG-007 의 의도(실제 스왑 뒤 재바인딩)를 유지하고, 전제가 조용히 재발하지 않도록 스왑 자체를 탐침이 확인하게 한다 |
+| scope | REQ-AFG-007 문언 개정 + REQ-AFG-016 신설. 매니페스트의 스왑 항목·스왑 뒤 항목 정의 변경(스왑 링크는 `/settings` 위 boost 링크, 스왑 뒤 페이지는 `/settings`). CI 는 `.github/workflows/ci.yml:672` 의 `-run` 정규식 한 곳만 넓힌다(`'AppJsHandlersFire'` → `'AppJs.*Fire'`) — `--primary-entries-only` 3곳(734/745/767)은 유지. `app.js`·제품 템플릿·`INVENTORY_TOTAL` 불변 |
 
 ---
 
@@ -118,6 +128,8 @@ t1041 의 브라우저 탐침(`.claude/worktrees/t1041/.moai/reports/t1041/brows
 
 B.1 과 나란히 읽어야 하는 관측 하나: **`p1_has_glm_btn` 은 돌연변이에서도 `true` 였다.** 버튼이 DOM 에 존재하는 것과 발화하는 것은 독립된 축이라는 것이 이 카드의 요지 그 자체다. (glm 버튼이 158 행의 등록 — 돌연변이 지점보다 앞 — 을 두고도 죽은 것은 관측이고, 「552 행 이후의 최상위 효과가 전멸했다」는 기전 가설은 표시일 뿐이며 run-phase 에서 확인 대상이다. 추론을 측정으로 읽지 않는다.)
 
+> **사후 정정 (2026-09-23, card t1108) — B.1·B.2 의 「스왑」은 스왑이 아니었다.** 위 두 JSON 과 서술은 관측 당시의 원문이므로 고치지 않는다. 다만 그 해석 하나를 정정한다. 두 프로토타입의 `p3_swap_*` 단계와 `p3_url_after_swap: "/todo"` 는 **hx-boost 바디 스왑이 아니라 메인 프레임 전체 이동**의 관측이다. 클릭하는 `a[href="/todo"]` 에는 `hx-boost` 조상이 없고, 콘솔 어디에도 boost 된 `/todo` 링크가 없다(§B.7.1·§B.7.3). 따라서 B.2 에서 「스왑 Phase 가 같은 ReferenceError 를 찍었다」는 관측은 **새 문서가 `app.js` 를 다시 실행하며 로드 시점 예외를 다시 던진 것**이다. 스왑 뒤 재바인딩을 관측한 것이 아니다. 이 해석에 기대던 REQ-AFG-007 의 근거 서술도 같은 날짜로 정정했다(§D REQ-AFG-007).
+
 ### B.3 app.js 상호작용 표면 인벤토리
 
 ```bash
@@ -164,6 +176,24 @@ LINT OK: 8 entries + 7 exclusions cover 13 inventory groups; all effects within 
 **B.6.4 — 인벤토리는 이 개정으로 변하지 않는다.** `grep -n -E "addEventListener\((['\"])(click|submit|change|input)" internal/web/assets/app.js` → 여전히 **13줄**(73/83/109/158/327/352/406/414/473/513/530/603/648). 검증 거부는 app.js 의 등록 지점이 아니라 htmx boost + 서버 렌더 표면이므로, 신설 항목은 기존 `swap_todo_nav` 와 같이 `line_group: None` 계열이다. 따라서 `INVENTORY_TOTAL = 13` 과 lint 의 커버리지 산식(비-None line_group 집합만 센다)은 **건드리지 않는다**.
 
 **B.6.5 — 정직한 기록: 이 개정의 세 기준은 모두 오늘 빈 스윕이다.** 세 판정 선택자 전부 `[no tests to run]` 으로 exit 0 을 낸다(원문 출력·exit·트리 SHA 는 acceptance.md §B2 증거 장부 E6/E7/E8 에 4요소로 적었다). 빈 스윕의 초록은 통과가 아니라 미측정이다.
+
+### B.7 개정 2(card t1108)의 실측 — post-swap 단계의 전제가 성립하지 않았다
+
+출처는 둘이다. 원인 측정은 card t1108 판정서 `.moai/reports/t1108/verdict.md` 와 그 로그 `.moai/reports/t1108/logs/` 이다. 판정서 §2~§4 는 tree `0c70186fd` 에서 쟀고, 측정 스크립트는 저장소 밖 스크래치에서 실행했다. 드라이버 표면 측정은 `logs/gate-inprocess.log` 이며 HEAD `52a486635`(tree `895ad8954`)에서 쟀다. 코드 좌표는 이 개정의 기준 트리 HEAD `52a486635` 에서 다시 읽었다. **판정서가 인용한 탐침 줄 번호(`:398-403`·`:410-411`·`:474`)는 t1106 병합 전 트리의 좌표이므로 여기서는 쓰지 않는다.**
+
+**B.7.1 — 5단계의 클릭은 전체 이동이다.** 5단계(`internal/web/testdata/appjs_fire_probe.py:531-540`)는 첫 `a[href="/todo"]` 를 클릭한다. 그 뒤로는 `location.pathname == "/todo"` 만 폴링한다(`:538`, `poll(cdp, "location.pathname", "/todo", timeout=8.0)`). 1~4단계가 `/settings` 에 머물러 있으므로 클릭은 `/settings` 위에서 일어난다. 반면 매니페스트 항목 `swap_todo_nav` 는 `page: "/"` 를 선언한다(`:172-178`). 선언된 페이지와 실제로 행사하는 페이지가 다르다는 사실도 함께 기록한다. 판정서 §2 의 시간순 계측 5회는 모두 새 문서로의 이동이었고, `htmx:afterSwap`·`htmx:afterSettle` 은 **0회**였다. 대기 조건이 참이 된 순간에 `DOMContentLoaded` 는 5회 모두 아직 나지 않았다.
+
+**B.7.2 — 6단계는 초기화보다 먼저 클릭할 수 있다.** 6단계(`:542-551`)는 곧바로 패널 `.hidden` 을 읽고 트리거를 클릭한다. 주석(`:543-544`)은 「initConsole re-runs on htmx:afterSettle」이라며 스왑을 전제하지만, 탐침 소스에서 `htmx:afterSettle` 을 담은 줄은 그 주석 하나뿐이다(`grep -n 'htmx:afterSettle' internal/web/testdata/appjs_fire_probe.py` → `544:    # re-runs on htmx:afterSettle).`, exit 0). 즉 기다리는 코드가 없다. `app.js` 는 `defer` 로 로드되고(`internal/web/shell.templ:106`), `wirePopovers` 는 호출 시점 DOM 의 트리거에 직접 핸들러를 붙인다(`internal/web/assets/app.js:65`). `initConsole` 은 `DOMContentLoaded` 에서 호출된다(`app.js:548`). 그래서 파싱이 덜 끝났으면 패널이 없어 「selector matched nothing」이 되고, 파싱은 끝났으나 초기화 전이면 「indicator did not fire」가 된다. 재현율은 판정서 §3 에 있다(탭 한정 CPU 스로틀 12배에서 macOS 30/30, Linux 7/10 실패). `DOMContentLoaded` 까지 기다린 대조군은 같은 조건에서 30/30, 10/10 발화했다. CI 사유 「indicator did not fire」는 판정 결과로 재현되지 않았다 — 해당 상태가 관측된 데서 한 **추론**이다(판정서 §6).
+
+**B.7.3 — 콘솔에는 boost 된 `/todo` 링크가 없다.** 템플릿의 `hx-boost` 는 두 곳뿐이다. 설정 폼 `internal/web/root.templ:56` 과 프로필 팝오버 `internal/web/shell.templ:307` 이다(`grep -n 'hx-boost' internal/web/*.templ` 가 주석 1행과 이 두 행을 낸다). 런타임 인벤토리(판정서 §4)에서도 `/`·`/settings`·`/todo`·`/specs` 어디에도 boost 된 `/todo` 링크는 0개였다.
+
+**B.7.4 — 실제 스왑 경로는 드라이버 표면에 존재한다.** 측정은 `logs/gate-inprocess.log` 이다. 드라이버와 **같은** in-process 표면(`startFireGuardServer`, 비어 있는 `ProfileBaseDir`)에서 임시 게이트 테스트로 쟀고, 테스트 파일은 측정 뒤 삭제했다(소스 사본 `logs/zz_t1108_gate_test.go.txt`). `/settings` 는 설정 폼 안에서 boost 된 `/settings?tab=audit` 링크 4개와 `/settings?tab=mcp` 링크 8개를 렌더한다. `/settings?tab=audit` 클릭의 결과는 다음과 같다. 메인 프레임 이동은 0회였고 같은 문서에 머물렀다. `DOMContentLoaded`·`htmx:afterSwap`·`htmx:afterSettle` 이 기록됐다. `htmx:afterSettle` **이벤트**를 기다린 뒤 팝오버가 CPU 스로틀 12배에서 3/3 발화했다. 실바이너리 표면에서는 판정서 §4(a) 가 macOS 12배 5/5, Linux 12배 3/3 발화를 기록했다.
+
+**B.7.5 — 탭 선택자는 조회 전용이다.** `?tab=` 은 GET 처리기에서 `view.ActiveTab = r.URL.Query().Get("tab")` 로 읽힐 뿐이다(`internal/web/handlers.go:263`). `?profile=` 도 조회 값이다(`internal/web/app.go:287`, `internal/web/screens.go:50`). 따라서 boost 링크 클릭은 영속화 부수효과가 없고, REQ-AFG-012 의 비영속 계열(`swap`)에 그대로 머문다. (리드 배차문은 `?tab=` 의 근거로 `app.go:287`·`screens.go:50` 을 댔으나, 두 줄이 읽는 것은 `profile` 이다. `tab` 을 읽는 줄은 `handlers.go:263` 이다.)
+
+**B.7.6 — 인벤토리와 커버리지 산식은 변하지 않는다.** 스왑 항목은 `line_group: None` 이다(`:173`). 스왑 뒤 항목은 `line_group: 73` 인데, `popover_open`(`:133`)과 **같은** 그룹이라 커버리지 집합에 새 원소를 더하지 않는다. 오늘의 자기검증 출력은 다음과 같다(단일 호출, exit 0): `LINT OK: 9 entries + 7 exclusions cover 13 inventory groups; effects within unconditional ['clipboard', 'label', 'swap', 'tab', 'visibility'] or conditional ['validation-reject'] (conditional entries carry ['requires_sandbox_serving', 'requires_no_write_assertion']); post-swap entry present`. 두 항목의 `page`·`selector` 가 바뀌어도 `INVENTORY_TOTAL = 13` 을 바꿀 이유가 없다.
+
+**B.7.7 — CI 는 t1106 의 제출 계열 테스트를 돌리지 않는다.** `.github/workflows/ci.yml:672` 의 그린 단계 선택자는 `-run 'AppJsHandlersFire'` 이다. 이 선택자가 고르는 테스트는 `go test ./internal/web/ -list 'AppJsHandlersFire'` 로 쟀을 때 `TestAppJsHandlersFireRuntime`·`TestAppJsHandlersFireSelectorMiss` 두 개뿐이다. 넓힌 선택자 `'AppJs.*Fire'` 는 여덟 개를 고르며, 여기에 `TestAppJsFireValidationRejectPaints`·`TestAppJsFireValidationRejectNoWrites` 가 들어 있다(원문은 acceptance.md §B2.2 E13·E14). 한편 맨손 탐침 호출 3곳의 `--primary-entries-only`(`grep -c -- '--primary-entries-only' .github/workflows/ci.yml` → `3`)는 t1106 F1 수리의 결과다. 이 플래그를 빼면 표식 항목이 사본 base 없이 운전돼 exit 2 가 난다(progress.md §E.3 개정분 `run_phase_correction_after_f1`).
 
 ---
 
@@ -236,7 +266,33 @@ LINT OK: 8 entries + 7 exclusions cover 13 inventory groups; all effects within 
 
 **도달(paint)의 판별식은 「존재」가 아니다.** DOM 에 노드가 있다는 것은 배너가 보인다는 뜻이 아니다 — 판별식은 가시성(레이아웃 박스 존재 + 조상 사슬 미은닉)과 비어 있지 않은 텍스트이며, 거부 응답 **이후**의 문서에서 측정한다. 구체 술식은 run-phase 소관이되, 「존재만으로 통과」는 금지다(REQ-AFG-015).
 
+### 채택(개정 2, card t1108): post-swap 지표는 **실제 boost 스왑** 뒤, **`htmx:afterSettle` 이벤트** 뒤에만 행사한다
+
+**문제:** REQ-AFG-007 의 대상은 「스왑 뒤 재바인딩」이다. 그런데 매니페스트가 행사하던 것은 전체 이동 직후, 초기화 전의 클릭이었다(§B.7.1·§B.7.2). 이 결정이 뒤집히면 탐침의 5·6단계와 두 매니페스트 항목 정의가 함께 뒤집힌다.
+
+**채택안은 리드가 정한 방향 (a) 다.** REQ-AFG-007 의 의도를 유지하고, 매니페스트를 그 의도에 맞게 옮긴다.
+
+1. **스왑 링크는 served surface 위에서 `hx-boost="true"` 조상을 가진 링크다.** 오늘 그 조건을 만족하는 것은 `/settings` 설정 폼 안의 boost 링크다(§B.7.4 — `/settings?tab=audit`·`/settings?tab=mcp`). 스왑 뒤 페이지도 `/settings` 가 된다. 구체 선택자 문자열은 run-phase 소관이다(§E 「구현 세부」). 계약은 「boost 조상 + 실루트 서버 표면」이다.
+2. **스왑 뒤 대기는 `htmx:afterSettle` 이벤트다.** 리스너는 클릭 **전에** 같은 문서에 등록한다. 등록이 클릭보다 늦으면 이벤트를 놓치고, 그 누락이 시간 초과로 나타나 원인을 가린다. 시간 연장(sleep·drain 을 늘리는 것)과 URL 변경 폴링은 둘 다 금지다. 앞의 것은 부하가 바뀌면 다시 깨지고, 뒤의 것이 바로 이번 결함의 형태다. 대기에 상한은 두되, 그 상한은 부재를 **이름 붙은 적색**으로 바꾸는 장치이지 통과 경로가 아니다.
+3. **스왑이 스왑이었는지를 탐침이 스스로 확인한다(REQ-AFG-016 신설).**
+
+**3번을 채택하는 이유.** 이번 결함은 SPEC 의 첫 판(t1060)부터 t1106 개정까지 한 번도 드러나지 않았다. 5단계는 URL 이 `/todo` 가 됐는지만 봤고, 전체 이동도 그 조건을 만족하기 때문이다. 검사가 전제를 재지 않으면 `hx-boost` 배치가 바뀔 때마다 같은 오류가 조용히 되돌아온다(판정서 §7). 링크에서 boost 조상이 빠지거나 폼에서 `hx-boost` 가 제거될 때가 그렇다. 자기확인은 그 변화를 셀렉터 스테일과 같은 급의 적색으로 바꾼다(REQ-AFG-004 와 같은 논리 — verification-completeness §1.3 continued firing). 비용은 탐침 안의 판정 몇 개와, 셀렉터 미달과 나란한 실패 사유 하나다. 계측기 전제가 틀렸다는 것을 CI 가 매번 알려 주는 값으로 싸다.
+
+**자기확인이 exit 2 가 아니라 exit 1 인 이유.** exit 2 는 CDP·서버 도달 불가 같은 계측 기반 결함이다(REQ-AFG-005). 스왑 전제의 붕괴는 제품 표면의 변화, 즉 boost 배치 변경으로 생기며, 그 결과 매니페스트가 더는 자기 대상을 재지 못하게 된다. 이것은 셀렉터 스테일(REQ-AFG-004, exit 1)과 같은 부류다.
+
+**기각한 대안**
+
+| 대안 | 기각 사유 |
+|---|---|
+| (b) 지금 링크를 그대로 두고 `DOMContentLoaded` 뒤의 초기화 완료를 기다린다 | 판정서 §3 의 대조군이 이 방향의 안정성을 보였다. 그러나 이 방향에서는 검사 대상이 「전체 이동 뒤 초기화」로 바뀌고, 이는 1·3·7단계의 전체 로드 검사와 같은 성격이다. **REQ-AFG-007 이 보려던 스왑 뒤 재바인딩(`htmx:afterSettle` 리스너)을 어떤 단계도 검사하지 않게 된다.** 리드가 (a) 를 택했다 |
+| boost 된 `/todo` 링크를 제품에 새로 만든다 | 이 SPEC 은 `internal/web/` 제품 표면을 바꾸지 않는다(REQ-AFG-011 의 정신, §E). 가드를 통과시키려고 제품을 바꾸는 것은 순서가 뒤집힌 것이다 |
+| 대기를 고정 시간으로 늘린다 | 부하가 커지면 다시 깨진다. 스로틀 12배에서 30/30 실패한 형태의 연장선이다 |
+| 자기확인 없이 링크만 바꾼다 | 이번 결함의 재발 경로가 그대로 남는다(위 「3번을 채택하는 이유」) |
+
+**스왑 항목의 id 를 바꾼다.** `swap_todo_nav` → `swap_boosted_tab`. 새 정의에서 이 항목은 `/todo` 로도, nav 링크로도 가지 않는다. 옛 이름을 두면 이름이 스스로에 대해 거짓을 말하게 되고, 이번 결함이 바로 이름과 실제가 어긋난 채 몇 개 판을 버틴 사례다. `popover_after_swap` 은 새 정의에서도 정확하므로 유지한다. 보고서 키(`p5_*`·`p6_*`)는 드라이버의 JSON 태그(`appjs_fire_guard_test.go:70`·`:73`)가 고정하는 계약이라 **바꾸지 않는다**. 이름을 바꾸는 파급 범위는 plan.md §E M8.6 에 전부 열거했다.
+
 ---
+
 
 ## §D 요구사항 (GEARS)
 
@@ -264,9 +320,19 @@ LINT OK: 8 entries + 7 exclusions cover 13 inventory groups; all effects within 
 
 드라이버 테스트는 실제 서버 표면을 띄우고(§C 서버 거점), headless Chrome 을 띄우고, 탐침을 실행해, 모든 지표의 발화와 load 시점 ReferenceError 0건을 단언해야 한다(shall). 서버·Chrome·탐침 프로세스의 정리는 `t.Cleanup` 에 등록돼야 한다(shall) — 뒤에 붙은 kill 은 정리가 아니며, 어떤 종료 경로에서도 프로세스가 남으면 안 된다.
 
-### REQ-AFG-007 (ubiquitous)
+### REQ-AFG-007 (event-driven — 개정 2, card t1108 에서 문언 개정)
 
-매니페스트는 hx-boost 바디 스왑 **뒤에** 최소 1개 지표를 행사해야 한다(shall). 역사적 결함 가족이 스왑 뒤의 무관한 등록을 죽였고(B.2 에서 스왑 Phase 가 같은 ReferenceError 를 찍은 것이 그 재확인이다), 스왑 뒤 발화야말로 이 가드가 정적 가드와 구별되는 축 중 하나다.
+매니페스트는 hx-boost 바디 스왑 **뒤에** 최소 1개 지표를 행사해야 한다(shall). 그리고 **When** 탐침이 스왑 뒤 지표를 행사할 때, 탐침은 다음을 지켜야 한다(shall):
+
+1. **스왑은 실제 hx-boost 스왑이어야 한다.** 스왑을 일으키는 클릭 대상은 served surface 에서 `hx-boost="true"` 조상을 가진 링크여야 한다(shall). 그 표면은 실루트 서버다 — 스왑 항목과 스왑 뒤 항목은 사본 서빙 표식을 갖지 않는다. 그 스왑이 스왑이었음은 REQ-AFG-016 의 자기확인이 판정한다(shall). URL 이 바뀌었다는 사실만으로 스왑을 추정해서는 안 된다(shall not).
+2. **스왑과 지표 행사 사이의 대기는 `htmx:afterSettle` 이벤트여야 한다.** 스왑된 문서에서 그 이벤트가 관측되는 것을 기다려야 하고(shall), 리스너는 클릭 **전에** 같은 문서에 등록돼 있어야 한다(shall). 대기는 시간 연장(고정 sleep·drain 의 증량)이어서는 안 되고(shall not), URL 변경 폴링(`location.pathname` 등)이어서도 안 된다(shall not).
+3. **대기에 둔 상한은 부재를 적색으로 바꾸는 장치다.** 상한 안에 `htmx:afterSettle` 이 관측되지 않으면 탐침은 그 항목을 이름으로 보고하며 실패해야 하고(shall), 그 만료를 통과로 읽어서는 안 된다(shall not).
+
+역사적 결함 가족은 스왑 뒤의 무관한 등록을 죽였다. 스왑 뒤 발화는 이 가드가 정적 가드와 구별되는 축 중 하나다. `app.js` 는 스왑 뒤 재바인딩을 `htmx:afterSettle` 리스너로 수행하므로(§B.7.2), 그 이벤트를 기다리지 않는 검사는 재바인딩이 아니라 경주를 잰다.
+
+> **개정 전 문언 (0.1.0 ~ 0.2.0, 이력 보존).** 「매니페스트는 hx-boost 바디 스왑 **뒤에** 최소 1개 지표를 행사해야 한다(shall). 역사적 결함 가족이 스왑 뒤의 무관한 등록을 죽였고(B.2 에서 스왑 Phase 가 같은 ReferenceError 를 찍은 것이 그 재확인이다), 스왑 뒤 발화야말로 이 가드가 정적 가드와 구별되는 축 중 하나다.」
+>
+> **사후 정정 (2026-09-23, card t1108).** 괄호 안 근거는 틀렸다. B.2 의 「스왑 Phase」는 전체 이동이었고, 거기 찍힌 ReferenceError 는 새 문서가 `app.js` 를 다시 실행하며 난 로드 시점 예외다(§B.2 사후 정정, §B.7.1). 조문의 **의도**(스왑 뒤 재바인딩을 잰다)는 유지한다. 그 의도가 어느 판에서도 실제로 측정되지 않았다는 사실이 이 개정의 계기다.
 
 ### REQ-AFG-008 (event-driven)
 
@@ -320,6 +386,19 @@ CI 는 신설 전용 job(`test-browser`)에서 이 가드를 실행해야 하고
 
 같은 관측 창에서 load/swap ReferenceError 0건 계약(REQ-AFG-005·006)은 그대로 적용된다(shall).
 
+### REQ-AFG-016 (event-driven — 개정 2, card t1108: 스왑 자기확인)
+
+**When** 탐침이 스왑 항목을 행사할 때, 탐침은 그 클릭에 대해 다음 네 다리를 스스로 확인하고 결과를 보고서에 다리별로 담아야 한다(shall):
+
+- (a) **boost 조상** — 클릭 시점에 클릭 대상이 `hx-boost="true"` 조상을 가졌다.
+- (b) **같은 문서** — 클릭부터 스왑 뒤 지표 행사까지 새 메인 프레임 문서가 생기지 않았다. 판정은 클릭 전에 문서에 심은 표지가 행사 시점에도 남아 있는가로 한다.
+- (c) **스왑 이벤트** — 그 같은 문서에서 `htmx:afterSwap` 과 `htmx:afterSettle` 이 모두 관측됐다.
+- (d) **스왑이 만든 트리거** — 스왑 뒤에 행사한 트리거가 스왑이 삽입한 노드다. 판정은 클릭 전에 옛 트리거 노드에 표지를 달고, 스왑 뒤 같은 선택자가 가리키는 노드에 그 표지가 없는가로 한다. 옛 노드가 핸들러를 가진 채 살아남았다면, 발화는 재바인딩이 아니라 옛 결합을 잰 것이다.
+
+**When** 네 다리 중 하나라도 거짓일 때, 탐침은 **exit 1** 로 실패해야 한다(shall). 보고서는 스왑 항목을 이름으로 지목하고, 거짓이 된 다리를 사유로 담아야 한다(shall) — 예: `swap premise not met: full navigation`. 그 실행에서 스왑 뒤 지표를 발화로 판정해서는 안 된다(shall not). 이 실패는 REQ-AFG-005 의 exit 1 범주(지표 붕괴 또는 셀렉터 미달)에 드는 새 **사유**일 뿐이며, 3값 exit 계약에 값을 더하지 않는다.
+
+이 조항은 스왑의 **전제**를 재고, REQ-AFG-007 은 그 전제 위의 **발화**를 잰다. 둘 중 하나만 있으면 판단이 서지 않는다. 자기확인이 없으면 전체 이동도 스왑으로 통과하고, 발화 판정이 없으면 스왑이 일어난 것만 확인할 뿐 재바인딩은 재지 않는다.
+
 ---
 
 ## §E 제외 범위
@@ -355,6 +434,15 @@ CI 는 신설 전용 job(`test-browser`)에서 이 가드를 실행해야 하고
 - 성공 저장 경로(배너가 `ok` 로 칠해지는 경우)를 행사하지 않는다 — 성공 저장은 실제 영속화이고, 사본 위에서라도 이 가드의 목적 밖이다.
 - 배너의 시각적 스타일·대비·접근성을 재지 않는다(§E 일반 브라우저 테스트 인프라 제외와 같은 이유).
 
+### Out of Scope — 개정 2(card t1108)가 넓히지 않는 것
+
+- **판정 규칙의 관측 층 불일치는 기록만 하고 고치지 않는다.** `internal/web/testdata/appjs_fire_probe.py:789` 는 `popover_after_swap` 의 「selector matched nothing」을 **패널** `.hidden` 값이 null 인지로 판정한다(`rep.get("p6_panel_hidden_before") is not None`). 그런데 보고서의 `selector` 칸에는 **트리거** 선택자 `[data-pop="profile"]` 이 찍힌다(`:798`·`:802` 가 매니페스트 항목의 `selector` 를 그대로 싣고, 그 값은 `:183` 의 트리거 선택자다). 트리거는 있고 패널이 없는 경우와 그 반대를 보고서만으로는 가를 수 없다. 이 개정은 그 규칙의 변경을 요구하지 않는다. 판정서가 인용한 좌표 `:474` 는 t1106 병합 전 트리의 것이며, 같은 규칙이 이 트리에서는 `:789` 에 있다.
+- **`app.js`·제품 템플릿을 바꾸지 않는다.** boost 된 `/todo` 링크를 만들어 옛 매니페스트를 살리는 길은 §C 개정 결정 2 에서 기각했다.
+- **CI 는 `.github/workflows/ci.yml:672` 의 `-run` 정규식 한 곳만 바꾼다.** `--primary-entries-only` 3곳(734/745/767)은 유지한다 — 빼면 t1106 의 F1(표식 항목이 사본 base 없이 운전돼 exit 2)이 되살아난다. `-timeout 10m` 과 그 밖의 단계는 건드리지 않는다.
+- **`INVENTORY_TOTAL` 과 lint 커버리지 산식을 바꾸지 않는다**(§B.7.6).
+- **보고서 키(`p5_*`·`p6_*`)의 이름을 바꾸지 않는다.** 드라이버의 JSON 태그가 고정하는 계약이다. 스왑 창 이름 `p5_swap_referenceerrors` 의 **의미**가 바뀌는 문제는 §F 가 아니라 plan.md §F 잔여 위험에 기록했다.
+- **실바이너리 레드 단계의 돌연변이 대상을 바꾸지 않는다.** 스왑이 실제 스왑이 되면서 돌연변이 아래에서 어느 지표가 무너지는지는 달라질 수 있다. 그 결과는 run-phase 가 AC-AFG-002 재측정으로 **관측**하며, 미리 가정하지 않는다.
+
 ### Out of Scope — 구현 세부
 
 - 셀렉터 문자열·매니페스트의 최종 항목 목록·Chrome 고정 버전 숫자·정확한 워크플로 YAML 은 run-phase 소관이다. 이 SPEC 은 계약과 판별식만 정한다.
@@ -381,7 +469,7 @@ CI 는 신설 전용 job(`test-browser`)에서 이 가드를 실행해야 하고
 
 ## §G 인수조건
 
-Tier M 이므로 AC 정본은 별도 `acceptance.md` 다. 요약: (1) 게이트 켠 드라이버가 실트리에서 전 지표 발화로 통과하되 매니페스트 0행·ReferenceError 를 함께 거부, (2) 돌연변이 재도입 시 탐침 exit 1 — 양방향 모두 관측된 출력으로, (3) 게이트 없는 실행은 사유를 이름으로 대는 skip, (4) 기존 job·assets·go.mod 무변경. 개정분(card t1106): (5) 검증 실패 제출 뒤 거부 배너가 **칠해졌음**을 관측, (6) 그 제출이 일회용 사본 위에서만 일어나고 사본이 바이트 불변임을 탐침이 단언, (7) 매니페스트의 **두 조건 표식**(사본 전용 서빙 · 무쓰기 단언) 없이 `validation-reject` 를 주장하는 항목은 매니페스트 자기검증이 거부하고, 셋째 조건(프레임워크 등록 수명)은 매니페스트가 운반할 수 없는 Go 쪽 수명 속성이므로 드라이버 측 기계 판정(AC-AFG-011 (d))이 진다, (8) 기존 항목의 서빙 루트 불변 — 사본은 신설 항목만 서빙한다.
+Tier M 이므로 AC 정본은 별도 `acceptance.md` 다. 요약: (1) 게이트 켠 드라이버가 실트리에서 전 지표 발화로 통과하되 매니페스트 0행·ReferenceError 를 함께 거부, (2) 돌연변이 재도입 시 탐침 exit 1 — 양방향 모두 관측된 출력으로, (3) 게이트 없는 실행은 사유를 이름으로 대는 skip, (4) 기존 job·assets·go.mod 무변경. 개정분(card t1106): (5) 검증 실패 제출 뒤 거부 배너가 **칠해졌음**을 관측, (6) 그 제출이 일회용 사본 위에서만 일어나고 사본이 바이트 불변임을 탐침이 단언, (7) 매니페스트의 **두 조건 표식**(사본 전용 서빙 · 무쓰기 단언) 없이 `validation-reject` 를 주장하는 항목은 매니페스트 자기검증이 거부하고, 셋째 조건(프레임워크 등록 수명)은 매니페스트가 운반할 수 없는 Go 쪽 수명 속성이므로 드라이버 측 기계 판정(AC-AFG-011 (d))이 진다, (8) 기존 항목의 서빙 루트 불변 — 사본은 신설 항목만 서빙한다. 개정 2(card t1108): (9) CPU 스로틀 12배의 in-process 표면에서 스왑 뒤 지표가 실제 boost 스왑과 `htmx:afterSettle` 이벤트 대기 뒤에 발화하고, 대기를 개정 전의 URL 폴링으로 되돌린 돌연변이는 같은 조건에서 적색이다, (10) 스왑 링크를 boost 조상이 없는 링크로 바꾸면 스왑 자기확인이 적색이고 스왑 항목을 사유와 함께 지목한다, (11) 병합 트리에서 넓힌 CI 선택자 `'AppJs.*Fire'` 가 실루트 계열과 제출 계열을 둘 다 skip 없이 돌린다.
 
 ---
 
@@ -399,3 +487,6 @@ Tier M 이므로 AC 정본은 별도 `acceptance.md` 다. 요약: (1) 게이트 
 - card t1106 — 이 개정(REQ-AFG-014·015)의 배차 카드.
 - `internal/web/handlers.go` — `handleSave` 의 검증 거부 블록(t1105 주석이 boost·htmx 2.0.4 responseHandling 근거를 담고 있다).
 - `internal/web/transport400_swap_contract_test.go` / `transport400_characterization_test.go` / `transport400_htmx_contract_test.go` — 응답 **본문** 층의 기존 검증면. 이 개정은 그 위층(도달)만 더한다.
+- card t1108 — 개정 2(REQ-AFG-007 문언 개정, REQ-AFG-016)의 배차 카드. 원인 확정 판정서 `.moai/reports/t1108/verdict.md`, 측정 로그 `.moai/reports/t1108/logs/`(드라이버 표면 측정 `gate-inprocess.log`).
+- `internal/web/root.templ:56` / `internal/web/shell.templ:307` — 콘솔의 `hx-boost` 두 자리(설정 폼, 프로필 팝오버).
+- `internal/web/handlers.go:263` — `?tab=` 을 읽는 GET 경로(조회 전용).

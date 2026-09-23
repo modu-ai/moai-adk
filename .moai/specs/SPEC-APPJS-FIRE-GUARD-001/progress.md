@@ -171,6 +171,30 @@ plan_complete_at: 2026-09-23
 - **재발 방지.** 서브에이전트에 지시를 추가할 때는 ① spawn 프롬프트에 싣거나 ② 보내기 전에 종료하고 새로 띄우거나, 둘 중 하나만 한다. 그리고 후속 전송 전에 "이 에이전트가 대기 중인가"만이 아니라 **"지금 이 트리를 읽고 있는 다른 주체가 있는가"** 를 함께 묻는다 — 감사·리뷰·검증 패스가 열려 있으면 안전한 후속은 없다. spawn 이후 도착한 지시는 **다음 spawn 의 프롬프트**로 간다. 이후 이 카드의 모든 에이전트(`manager-spec` ×3, `plan-auditor` ×2)는 보고 직후 종료하고 그 이름으로 메시지를 보내지 않았다.
 - 당대 기록 정본: `.moai/reports/t1106/incident-audit-window-write.md`. 교훈은 레인 메모리의 기존 항목에 **3번째 발생**으로 갱신했다(신규 파일 아님) — 그 항목의 종전 "how to apply" 가 이 경우엔 틀린 답을 준다는 정정을 함께 실었다.
 
+### 개정 2 plan-phase (card t1108, 2026-09-23)
+
+plan_status: audit-ready
+plan_complete_at: 2026-09-23
+
+**Claim** — 0.2.0 개정이 run-phase 까지 develop 에 착지한 상태(sync 미완, `status: in-progress` 유지)에서 이 SPEC 을 0.3.0 으로 한 번 더 개정했다. 범위는 다음과 같다. REQ-AFG-007 문언 개정(실제 hx-boost 스왑 + `htmx:afterSettle` 이벤트 대기, 개정 전 문언은 조문 안에 보존), REQ-AFG-016 신설(스왑 자기확인 네 다리), AC-AFG-014·015·016 신설, AC-AFG-001 (c)·AC-AFG-006·AC-AFG-013 문언 보강, §B.1·§B.2 해석의 날짜 붙은 사후 정정이다. 스왑 항목 id 는 `swap_todo_nav` → `swap_boosted_tab` 로 바꾼다. REQ 16건·AC 16건으로, Tier M 상한과 같다.
+
+**Evidence** — 전부 이 트리(`.claude/worktrees/t1108`, branch `WT-popover-swap-flake`, HEAD `52a486635`, tree `895ad8954`)에서 2026-09-23 측정했다. 4요소 원문은 acceptance.md §B2.2 장부 E11~E16 에 있다:
+
+- `go test ./internal/web/ -run 'AppJsFirePostSwapSettleWait' -v -count=1` → `ok … 0.564s [no tests to run]`, exit `0` (E11)
+- `go test ./internal/web/ -run 'AppJsFireSwapPremise' -v -count=1` → `ok … 0.353s [no tests to run]`, exit `0` (E12)
+- `go test ./internal/web/ -list 'AppJsHandlersFire'` → 2개(`TestAppJsHandlersFireRuntime`, `TestAppJsHandlersFireSelectorMiss`), exit `0` (E13)
+- `go test ./internal/web/ -list 'AppJs.*Fire'` → 8개, 제출 계열 2개 포함, exit `0` (E14)
+- `grep -n 'htmx:afterSettle' internal/web/testdata/appjs_fire_probe.py` → `544:` 주석 1행, exit `0` (E15)
+- `grep -n "run 'AppJsHandlersFire'" .github/workflows/ci.yml` → `672:`, exit `0`; `grep -c -- '--primary-entries-only' .github/workflows/ci.yml` → `3` (E16)
+- `python3 internal/web/testdata/appjs_fire_probe.py --lint-manifest` → `LINT OK: 9 entries + 7 exclusions cover 13 inventory groups; …; post-swap entry present`, exit `0` (spec.md §B.7.6)
+- 원인 측정은 판정서 `.moai/reports/t1108/verdict.md`(tree `0c70186fd`)와 드라이버 표면 측정 `.moai/reports/t1108/logs/gate-inprocess.log`(HEAD `52a486635`)를 **읽어서** 인용했고, 이 plan-phase 에서 다시 돌리지 않았다
+
+**Baseline-attribution** — 위 명령은 전부 이 실행에서 이 트리를 대상으로 쟀다. 판정서 §2~§4 의 측정은 다른 트리(`0c70186fd`)에서 저장소 밖 스크래치 스크립트로 한 것이므로, 이 SPEC 은 그 수치를 판정서의 관측으로만 인용하고 이 트리의 측정으로 옮겨 적지 않았다. 판정서의 탐침 줄 번호는 t1106 병합 전 좌표라서, 이 트리에서 다시 읽은 좌표(`:531-551`·`:768`·`:789`)로 바꿔 썼다.
+
+**Gaps** — (1) 실제 boost 스왑 경로에서 URL 폴링판의 실패율은 측정되지 않았다. AC-014 가 증폭을 허용하고, 그래도 적색이 아니면 blocker 로 되돌린다. (2) REQ-AFG-016 (d)(스왑이 트리거를 새로 만든다)는 **추론**이다. (3) 개정 2 plan-audit 은 아직 실행되지 않았다. (4) 리드 배차문이 `?tab=` 근거로 댄 `app.go:287`·`screens.go:50` 은 `profile` 을 읽는 줄이었다. `tab` 은 `handlers.go:263` 에서 읽으며, spec.md §B.7.5 에 정정해 적었다.
+
+**Residual-risk** — 스왑 창 `p5_swap_referenceerrors` 의 의미가 로드 시점 예외에서 스왑 중 예외로 바뀐다(plan.md §F). 선택 집합이 넓어져 CI `-timeout 10m` 을 넘을 수 있다(AC-016 이 로컬에서 같은 상한으로 먼저 잰다).
+
 ## §E.2 Run-phase Evidence
 
 run-phase 측정 전체는 worktree `/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t1060`, branch `WT-appjs-handler-guard` 위에서 2026-09-22 이번 run 실행 중 수행됐다(각 측정 시점 HEAD는 항목별로 병기). 바이너리는 이 트리에서 빌드해 경로로 호출했다(`go build -o /tmp/t1060-run/moai ./cmd/moai` — §2.2 도구 출처).

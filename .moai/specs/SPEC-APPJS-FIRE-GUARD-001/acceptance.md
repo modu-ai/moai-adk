@@ -8,7 +8,7 @@
 
 | AC | 방향 | 분류 | 대응 REQ |
 |---|---|---|---|
-| AC-AFG-001 | 정방향 | blocking | REQ-AFG-001, REQ-AFG-003, REQ-AFG-005, REQ-AFG-006, REQ-AFG-007 |
+| AC-AFG-001 | 정방향 | blocking | REQ-AFG-001, REQ-AFG-003, REQ-AFG-005, REQ-AFG-006, REQ-AFG-007, REQ-AFG-016 |
 | AC-AFG-002 | 역방향 | blocking | REQ-AFG-008 |
 | AC-AFG-003 | 경계 | blocking | REQ-AFG-001 |
 | AC-AFG-004 | 생존 | blocking | REQ-AFG-004 |
@@ -21,6 +21,11 @@
 | AC-AFG-011 | 무쓰기 + 사본 서빙 | blocking | REQ-AFG-014 |
 | AC-AFG-012 | 조건 불가분성 | blocking | REQ-AFG-014 |
 | AC-AFG-013 | 폭발 반경 0 (라우팅) | blocking | REQ-AFG-014 |
+| AC-AFG-014 | 스왑 뒤 발화 + 대기의 필요성 (스로틀 12배) | blocking | REQ-AFG-007 |
+| AC-AFG-015 | 스왑 자기확인 (양방향) | blocking | REQ-AFG-016 |
+| AC-AFG-016 | CI 선택자가 두 계열을 모두 돌린다 | blocking | REQ-AFG-010, REQ-AFG-014, REQ-AFG-015 |
+
+AC-014~016 은 card t1108 개정 2 에서 신설했다(REQ-AFG-007 문언 개정 + REQ-AFG-016 신설). 개정 2 는 상속 AC 세 곳의 **문언을 보강**했고, 번호·분류는 그대로다. 첫째는 **AC-AFG-001** 의 Then (c) 다. 「hx-boost 스왑 뒤」를 REQ-AFG-016 자기확인을 통과한 **실제 스왑**으로 좁혔고, 대응 REQ 에 REQ-AFG-016 을 보탰다. 둘째는 **AC-AFG-006** 이다. `<base>` 를 원판 run base `3e35fbacf` 로 고정하는 주석을 달았다 — 개정 2 의 `ci.yml:672` 편집이 이 AC 의 「삭제·수정 0」과 충돌하지 않음을 판정 가능하게 하려는 것이다. 셋째는 **AC-AFG-013** 의 근거 문단이다. 스왑 두 항목이 더는 `/todo` 를 보지 않는다는 주석을 달았다. 개정 2 는 AC-AFG-013 의 Then 을 바꾸지 않았다.
 
 AC-010~013 은 card t1106 개정분이다(REQ-AFG-014·015). AC-001~008 의 **번호·분류·대응 REQ 는 불변**이나, **문언은 세 곳이 개정됐다** — **AC-AFG-001** 의 Then (a) 는 이 사이클의 판정 집합을 「사본 서빙 표식이 없는 항목 전부」라는 **술어**로 명시하고 보고서에 운전 항목 수·선언 제외 항목 이름을 함께 요구하도록 바뀌었고(card t1106 iter-2·iter-3), **AC-AFG-008** 의 Then 은 한계 축이 넷에서 일곱으로 늘며 앵커 토큰 `paint`·`sandbox-root`·`two-surfaces` 셋이 보태졌으며(iter-2, D3 수리), 셋째가 아래 문단의 AC-AFG-009 다. **AC-AFG-009 는 문언만 개정됐다** — 리터럴 다섯 열거가 `validation-reject` 편입 뒤 AC-AFG-012 와 정면 모순되므로(둘 다 blocking, 같은 매니페스트에 exit 1 과 exit 0 을 동시 요구), 그 목록이 인코딩하던 규칙으로 바꿨다. 번호·분류·대응 REQ 의 REQ-AFG-012 는 그대로이고, 요구사항 문언은 한 글자도 바뀌지 않았다.
 
@@ -34,9 +39,11 @@ iter-2 수리로 매핑이 갈린 곳: REQ-AFG-007 → AC-001(c) 가 실질 검�
 
 **Given** `MOAI_BROWSER_GUARD=1` 과 Chrome·python3·websockets 가 모두 있는 환경, 그리고 이 트리의 `internal/web` 패키지가 있을 때,
 **When** 드라이버 테스트를 실행하면,
-**Then** exit 0 이고 **그리고 동시에** (a) 이 사이클의 운전 집합이 **매니페스트에서 사본 서빙 표식이 없는 항목 전부**와 **정확히 일치**하고(술어로 판정한다 — 개정 시점의 「8」이라는 수가 아니라 「표식 없음」이라는 성질이 기준이며, 표식 없는 항목이 하나라도 선언으로 제외되면 실패다), 그 수가 0보다 크며 **그 전부가 발화**했고, 제외 집합이 **정확히 표식 계열**임을 확인할 수 있도록 보고서에 **운전한 항목 수**와 **선언으로 제외된 항목의 이름**이 함께 적혀 있어야 하며, (b) load·swap ReferenceError 가 0건이며, (c) hx-boost 스왑 **뒤에** 최소 1지표가 발화했음을 보고서가 담고 있어야 한다.
+**Then** exit 0 이고 **그리고 동시에** (a) 이 사이클의 운전 집합이 **매니페스트에서 사본 서빙 표식이 없는 항목 전부**와 **정확히 일치**하고(술어로 판정한다 — 개정 시점의 「8」이라는 수가 아니라 「표식 없음」이라는 성질이 기준이며, 표식 없는 항목이 하나라도 선언으로 제외되면 실패다), 그 수가 0보다 크며 **그 전부가 발화**했고, 제외 집합이 **정확히 표식 계열**임을 확인할 수 있도록 보고서에 **운전한 항목 수**와 **선언으로 제외된 항목의 이름**이 함께 적혀 있어야 하며, (b) load·swap ReferenceError 가 0건이며, (c) hx-boost 스왑 **뒤에** 최소 1지표가 발화했음을 보고서가 담고 있어야 한다. **(c) 의 「스왑」은 REQ-AFG-016 의 자기확인 네 다리(boost 조상·같은 문서·`htmx:afterSwap`+`htmx:afterSettle`·스왑이 만든 트리거)가 보고서에서 모두 참인 스왑이어야 하며(card t1108 개정 2), 한 다리라도 거짓이면 (c) 는 충족되지 않는다.**
 
 세 단언이 **함께** 걸려야 한다. 지표 단언만 있으면 빈 매니페스트가 통과하고, ReferenceError 단언만 있으면 버튼이 안 눌려도 통과한다.
+
+> **(c) 를 좁힌 이유(card t1108 개정 2).** 개정 전의 (c) 는 전체 이동 직후의 클릭으로도 만족됐다. 0.1.0 ~ 0.2.0 의 모든 초록이 그 형태였다(spec.md §B.7.1). 자기확인 다리를 (c) 에 묶지 않으면, 스왑 자기확인이 적색일 때도 이 AC 는 발화 지표 하나로 초록이 될 수 있다.
 
 > **이 사이클의 판정 집합은 실루트 계열 8항목이고, 제출은 여기 들어오지 않는다 — 결정이지 숫자 정정이 아니다(card t1106 iter-2, D1 수리).** 개정으로 매니페스트에 아홉째 항목(`validation-reject`)이 들어오지만, 이 AC 의 「전 항목」은 **그것을 포함하도록 넓어지지 않는다**. AC-AFG-001 은 **상속된 blocking 기준**이고 그 논지는 「이 매니페스트가 전부 발화한다」이다. 아홉째를 조용히 그 안에 들여보내면, 누구도 결정하지 않은 채 상속 기준의 **의미가 바뀐다** — 제출을 행사하는 사이클과 행사하지 않는 사이클이 한 이름 아래 섞이고, 나중 독자는 초록을 보고 어느 쪽이 돌았는지 알 수 없다. 그래서 두 계열을 **AC 층에서 가른다**.
 >
@@ -135,6 +142,8 @@ grep -n -E '^  [a-z0-9-]+:' .github/workflows/ci.yml              # base 측정�
 ```
 
 범위 판정식은 흡수 ref 기준 `merge-base`으로 잡고, 귀속은 `git log <base>..HEAD -- <경로>` 커밋 열거로 답는다 — 두 끝점 diff 로 단정하지 않는다. 세 명령 모두 기계 판정이며 육안 단계는 없다(iter-2 D8 수리).
+
+> **`<base>` 고정(card t1108 개정 2).** 이 AC 의 `<base>` 는 원판 run base `3e35fbacf` 다. 그 트리에는 `test-browser` job 이 없다(`git show 3e35fbacf:.github/workflows/ci.yml | grep -c 'test-browser'` → `0`). 따라서 `test-browser` 안의 편집은 이 base 대비 전부 **추가**로 잡힌다. t1106 의 `--primary-entries-only` 3곳과 개정 2 의 `:672` 정규식 확장이 여기에 해당한다(`:672` 는 `test-browser:` 키 `:605` 아래에 있다). 판정 대상인 기존 job 8개의 행은 개정 2 에서도 한 바이트도 바뀌지 않는다.
 
 - 분류: **regression-class** — RED-now 셀 없음(§D 선언). green path: M4.
 
@@ -252,6 +261,8 @@ go test ./internal/web/ -run 'AppJsFireSandboxPairing' -v -count=1
 
 이 AC 가 막는 것은 구체적이다: `ProjectRoot` 를 사본으로 통째 바꾸면 `glm_reveal`(시드된 자격증명 상태 의존), `swap_todo_nav`·`popover_after_swap`(`/todo`), `copy_button`(`/specs`) 이 전부 다른 트리를 보게 된다. 그때의 초록은 **틀린 트리를 잰 초록**이다.
 
+> **주석(card t1108 개정 2).** 위 문단은 t1106 개정 시점의 매니페스트를 서술한 것이라 원문대로 둔다. 개정 2 이후 스왑 항목은 `swap_boosted_tab` 로 이름이 바뀌고, 스왑 두 항목은 `/todo` 가 아니라 `/settings` 를 본다. 두 항목 모두 실루트 계열에 머물므로 이 AC 의 판정 (a)(b)(c) 는 달라지지 않는다.
+
 ```bash
 go test ./internal/web/ -run 'AppJsFireSandboxRouting' -v -count=1
 MOAI_BROWSER_GUARD=1 go test ./internal/web/ -run 'AppJsHandlersFireRuntime' -v -count=1
@@ -261,6 +272,55 @@ MOAI_BROWSER_GUARD=1 go test ./internal/web/ -run 'AppJsHandlersFireRuntime' -v 
 - 보조 관측(적색 아님): 오늘은 서버가 하나이고 전 항목이 `findRepoRoot` 를 본다 — `grep -n 'ProjectRoot:' internal/web/appjs_fire_guard_test.go` → `204:		ProjectRoot:    findRepoRoot(t),` (단 1행, exit 0). 이 「1행」이 폭발 반경 문제의 근거다.
 - **green path**: M7 이 두 번째 서버 인스턴스와 표식 기반 라우팅을 붙여 뒤집는다.
 - **돌연변이 프로브**: 「사본 서버가 존재한다」만 보는 판정식은, 전 항목이 사본으로 가는 변이(= 안 (b) 를 몰래 취한 상태)를 통과시킨다 — 따라서 (a) 와 (b) 를 **양방향으로** 걸지 않은 판정식은 채택 불가다.
+
+### AC-AFG-014 — 스왑 뒤 지표는 스로틀 아래서도 발화하고, 대기를 되돌리면 적색이다 (card t1108)
+
+**Given** `MOAI_BROWSER_GUARD=1` 과 전제(Chrome·python3·websockets)가 갖춰진 환경, 드라이버의 in-process 실루트 표면(`startFireGuardServer`, 비어 있는 `ProfileBaseDir`), 탭 한정 CPU 스로틀 12배(`Emulation.setCPUThrottlingRate`, 탭을 닫으면 사라져 따로 정리할 프로세스가 없는 수단)가 있을 때,
+**When** 드라이버 테스트가 스왑과 스왑 뒤 지표 행사를 **정상 판**과 **돌연변이 판**으로 각각 10회 반복하면 — 정상 판은 커밋된 탐침이고, 돌연변이 판은 탐침의 `htmx:afterSettle` 대기를 개정 전 형태(URL 경로 폴링)로 되돌리거나 대기를 제거한 일회용 사본이다 —
+**Then** (a) 정상 판은 10/10 회 스왑 뒤 지표가 발화하고, 매 회 REQ-AFG-016 자기확인 네 다리가 모두 참이어야 한다. (b) 돌연변이 판은 10/10 회 적색이어야 한다(사유 `indicator did not fire` 또는 `selector matched nothing`, 스왑 뒤 항목 이름과 함께). (c) 두 판은 같은 스로틀과 같은 증폭 설정 아래서 돌아야 하며, 보고서는 증폭을 썼는지와 그 값을 적어야 한다(아래 「증폭」).
+
+```bash
+MOAI_BROWSER_GUARD=1 go test ./internal/web/ -run 'AppJsFirePostSwapSettleWait' -v -count=1
+```
+
+> **증폭 — 돌연변이 판이 스로틀만으로 적색이 되지 않을 때.** 실제 boost 스왑에서는 `pushState` 와 바디 교체가 같은 동기 작업에서 끝나고, `htmx:afterSettle` 은 settle 지연(htmx 2.0.4 기본 `defaultSettleDelay: 20`) 뒤에 온다. URL 폴링판이 그 사이에 클릭할지는 CDP 왕복 시간에 달려 있고, **실제 스왑 경로에서 폴링판의 실패율은 아직 측정되지 않았다**(판정서의 스로틀 측정은 전체 이동 경로의 것이다). 스로틀 12배만으로 (b) 가 10/10 이 되지 않으면, run-phase 는 **두 판에 똑같이** 페이지 안의 `htmx.config.defaultSettleDelay` 를 넓혀 settle 창을 벌린다. 이때 그 증폭이 실제로 먹혔는지도 관측해야 한다 — 보고서에 `htmx:afterSwap` 에서 `htmx:afterSettle` 까지의 간격을 적고, 그 간격이 설정값 이상이어야 한다. 증폭을 쓰고도 (b) 가 10/10 이 되지 않으면 이 AC 는 채택 불가다. 대기가 재바인딩에 실제로 필요하다는 것을 이 형태로는 보일 수 없다는 뜻이므로, 조용히 통과시키지 말고 리드에게 blocker 로 보고한다.
+
+- **RED-now**: 증거 장부 **E11** — 판정 주체가 존재하지 않는다(빈 스윕, exit 0, `[no tests to run]`). 보조 관측 **E15**(적색 아님): 오늘의 탐침에서 `htmx:afterSettle` 이 나오는 곳은 주석 한 줄뿐이다 — 기다리는 코드가 없다.
+- 보조 관측(적색 아님, 다른 트리·다른 수단): 전체 이동 경로의 URL 폴링판은 스로틀 12배에서 macOS 30/30·Linux 7/10 실패했고, 판정서 로그 `rate-mac-12.jsonl`·`t1108-linux-rate.log` 에 남아 있다. in-process 표면의 실제 스왑 + afterSettle 대기는 3/3 발화했다(`logs/gate-inprocess.log`, HEAD `52a486635`). 두 관측 모두 이 AC 의 판정 명령이 낸 것이 아니므로 green 증거로 쓰지 않는다.
+- **green path**: M8 이 탐침의 5·6단계를 실제 boost 스왑 + afterSettle 이벤트 대기로 바꾸고, M9 가 게이트된 반복 테스트와 돌연변이 판을 실어 뒤집는다. 통과 형태: `--- PASS: TestAppJsFirePostSwapSettleWait` + 정상 판 10/10 · 돌연변이 판 10/10 적색 보고.
+- **돌연변이 프로브**: 정상 판만 도는 판정식은 대기가 없어도 통과한다. 스왑이 트리거를 새로 만들지 않아 옛 핸들러가 살아남는 경우가 그렇다. 그래서 (b) 와 REQ-AFG-016 (d) 가 함께 걸려야 한다 — 이 AC 는 한 방향으로 채택하지 않는다(verification-completeness §2).
+
+### AC-AFG-015 — 스왑이 스왑이 아니면 적색이고, 이름을 댄다 (card t1108)
+
+**Given** `MOAI_BROWSER_GUARD=1` 과 전제가 갖춰진 환경, 드라이버의 in-process 실루트 표면이 있을 때,
+**When** 드라이버 테스트가 (i) 커밋된 탐침으로 실루트 계열을 한 번 운전하고, (ii) 스왑 항목의 선택자를 boost 조상이 **없는** 링크로 바꾼 일회용 사본으로 다시 운전하면 — 바꿀 선택자는 개정 전 선택자 `a[href="/todo"]` 다. 사본 방식은 AC-AFG-004 의 `TestAppJsHandlersFireSelectorMiss` 와 같고, 커밋된 파일은 건드리지 않는다 —
+**Then** (a) (i) 은 exit 0 이고, 보고서의 자기확인 네 다리가 모두 참이어야 한다. (b) (ii) 는 **exit 1** 이고, 보고서가 스왑 항목(`swap_boosted_tab`)을 지목하며 거짓이 된 다리를 사유로 담아야 한다 — 최소 (a) boost 조상 또는 (b) 같은 문서 다리. (c) (ii) 에서 스왑 뒤 지표(`popover_after_swap`)가 발화로 판정되지 않아야 한다.
+
+```bash
+MOAI_BROWSER_GUARD=1 go test ./internal/web/ -run 'AppJsFireSwapPremise' -v -count=1
+```
+
+- **RED-now**: 증거 장부 **E12** — 판정 주체가 존재하지 않는다(빈 스윕, exit 0, `[no tests to run]`). 보조 관측(적색 아님): 오늘의 탐침은 URL 이 `/todo` 가 됐는지만 판정한다(`appjs_fire_probe.py:768` `rep.get("p5_url_after_swap") == "/todo"`) — 전체 이동도 이 조건을 만족하므로 (ii) 는 오늘 적색이 될 수 없다.
+- **green path**: M8 이 자기확인 네 다리와 사유 보고를, M9 가 양방향 테스트를 실어 뒤집는다. 통과 형태: `--- PASS: TestAppJsFireSwapPremise` + (ii) 의 exit 1 과 지목된 다리.
+- **돌연변이 프로브**: `htmx:afterSettle` 관측만 보는 자기확인은, 전체 이동 뒤 새 문서에서 다른 boost 요청이 settle 하는 경우를 스왑으로 통과시킨다. 그래서 (b) 같은 문서 다리가 따로 있어야 한다. 반대로 같은 문서만 보는 자기확인은, 클릭이 아무 일도 하지 않은 경우를 통과시킨다. 그래서 (c) 이벤트 다리가 따로 있어야 한다.
+
+### AC-AFG-016 — CI 선택자가 두 계열을 모두 skip 없이 돌린다 (card t1108)
+
+**Given** 개정 2 가 병합된 트리가 있을 때,
+**When** `.github/workflows/ci.yml` 을 기계로 재고, 병합 트리에서 넓힌 선택자로 게이트 켠 패키지 테스트를 돌리면,
+**Then** (a) `test-browser` 그린 단계의 선택자가 정확히 `-run 'AppJs.*Fire'` 이고, (b) `--primary-entries-only` 가 여전히 **3곳**에 있으며(t1106 F1 재발 방지), (c) `MOAI_BROWSER_GUARD=1` 실행에서 그 선택자가 고른 **모든** 테스트가 `--- PASS` 이고 `--- SKIP` 이 0건이어야 한다. 그 집합에는 적어도 실루트 계열 `TestAppJsHandlersFireRuntime`·`TestAppJsHandlersFireSelectorMiss`, 제출 계열 `TestAppJsFireValidationRejectPaints`·`TestAppJsFireValidationRejectNoWrites`, 개정 2 의 `TestAppJsFirePostSwapSettleWait`·`TestAppJsFireSwapPremise` 가 들어 있어야 한다. 선택된 수가 0이거나 `[no tests to run]` 이면 통과가 아니다.
+
+```bash
+grep -nF "run 'AppJs.*Fire'" .github/workflows/ci.yml
+grep -c -- '--primary-entries-only' .github/workflows/ci.yml
+MOAI_BROWSER_GUARD=1 go test ./internal/web/ -run 'AppJs.*Fire' -v -count=1 -timeout 10m
+```
+
+> **판정면은 병합 트리의 로컬 실행이고, CI 로그는 기록이다.** 레인은 push 하지 않으므로(리드 일괄) 러너 로그는 레인이 볼 수 없다. blocking 판정은 병합 트리에서 위 세 명령의 출력으로 한다. 리드는 일괄 push 뒤 `test-browser` 로그에서 같은 테스트 이름이 `--- PASS` 인지 읽고 기록한다. `-timeout 10m` 은 CI 행과 같은 값이며, 선택 집합이 커지면서 이 상한을 넘으면 그것 자체가 적색이다(plan.md §F).
+
+- **RED-now**: 증거 장부 **E13** — 오늘의 CI 선택자 `'AppJsHandlersFire'` 가 고르는 테스트는 두 개뿐이고, 제출 계열(`TestAppJsFireValidationReject*`)은 CI 에서 **한 번도 돌지 않는다**. 올바른 이유의 적색이다 — t1106 이 넣은 blocking AC-010·011 의 판정 테스트가 CI 판정면에 없다. 보조 **E14**(적색 아님 — 넓힌 뒤의 목표 집합). **E16**: `ci.yml:672` 의 현재 선택자 원문.
+- **green path**: M10 이 `ci.yml:672` 한 곳을 넓히고, 병합 트리에서 위 세 명령을 실행해 뒤집는다. 이 AC 는 plan-audit 이 상속 부채로 남긴 N2(REQ-AFG-010 의 「전용 job 이 이 가드를 돌린다」 절반이 개정분 테스트를 덮지 않음)를 닫는다.
+- **돌연변이 프로브**: 선택자 문자열만 보는 판정식은 선택자가 아무 테스트도 고르지 않아도 통과한다. 그래서 (c) 가 이름 붙은 테스트 집합과 SKIP 0건을 함께 요구한다.
 
 ---
 
@@ -446,15 +506,121 @@ ok  	github.com/modu-ai/moai-adk/internal/web	0.646s [no tests to run]
 
 exit 코드: `0`. 트리: `176d8b658`.
 
+### §B2.2 개정 2(card t1108) RED-now 항목
+
+E11~E16 은 worktree `/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t1108`, branch `WT-popover-swap-flake`, HEAD **`52a486635`**(tree `895ad8954`)에서 2026-09-23 개정 2 작성 중에 측정했다. E1~E5(`d726ac709`), E6~E10(`176d8b658`)과 다른 트리이므로 서로 섞어 인용하지 않는다.
+
+**E11** — AC-014. 명령:
+
+```
+go test ./internal/web/ -run 'AppJsFirePostSwapSettleWait' -v -count=1
+```
+
+원문 출력:
+
+```
+testing: warning: no tests to run
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/web	0.564s [no tests to run]
+```
+
+exit 코드: `0`. 트리: `52a486635`. 적색의 성질: 판정 주체가 존재하지 않는다 — 빈 스윕의 초록은 통과가 아니라 미측정이다(verification-completeness §1.1).
+
+**E12** — AC-015. 명령:
+
+```
+go test ./internal/web/ -run 'AppJsFireSwapPremise' -v -count=1
+```
+
+원문 출력:
+
+```
+testing: warning: no tests to run
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/web	0.353s [no tests to run]
+```
+
+exit 코드: `0`. 트리: `52a486635`.
+
+**E13** — AC-016 (적색). 명령:
+
+```
+go test ./internal/web/ -list 'AppJsHandlersFire'
+```
+
+원문 출력:
+
+```
+TestAppJsHandlersFireRuntime
+TestAppJsHandlersFireSelectorMiss
+ok  	github.com/modu-ai/moai-adk/internal/web	0.442s
+```
+
+exit 코드: `0`. 트리: `52a486635`. 적색의 성질: 오늘의 CI 선택자가 고르는 집합에 제출 계열(`TestAppJsFireValidationReject*`)이 없다. AC-016 (c) 가 요구하는 집합과 어긋나며, 원인(선택자가 좁다)이 분명한 올바른-이유 적색이다.
+
+**E14** — AC-016 보조(적색 아님 — 넓힌 선택자의 목표 집합). 명령:
+
+```
+go test ./internal/web/ -list 'AppJs.*Fire'
+```
+
+원문 출력:
+
+```
+TestAppJsFireManifestInventoryCount
+TestAppJsHandlersFireRuntime
+TestAppJsHandlersFireSelectorMiss
+TestAppJsFireSandboxPairing
+TestAppJsFireSandboxRouting
+TestAppJsFireValidationRejectPaints
+TestAppJsFireValidationRejectNoWrites
+TestAppJsFireReductionDeclaration
+ok  	github.com/modu-ai/moai-adk/internal/web	0.408s
+```
+
+exit 코드: `0`. 트리: `52a486635`. 개정 2 의 두 신설 테스트는 이 목록에 아직 없다(E11·E12 의 빈 스윕과 같은 사실).
+
+**E15** — AC-014 보조(적색 아님). 명령:
+
+```
+grep -n 'htmx:afterSettle' internal/web/testdata/appjs_fire_probe.py
+```
+
+원문 출력:
+
+```
+544:    # re-runs on htmx:afterSettle).
+```
+
+exit 코드: `0`. 트리: `52a486635`. 탐침에서 `htmx:afterSettle` 을 담은 줄은 주석 하나뿐이다. 스왑 뒤 대기는 `:538` 의 `poll(cdp, "location.pathname", "/todo", timeout=8.0)` 이다.
+
+**E16** — AC-016 보조(적색 아님 — 편집 대상 행의 현재 원문). 명령:
+
+```
+grep -n "run 'AppJsHandlersFire'" .github/workflows/ci.yml
+```
+
+원문 출력:
+
+```
+672:        run: go test ./internal/web/ -run 'AppJsHandlersFire' -v -count=1 -timeout 10m
+```
+
+exit 코드: `0`. 트리: `52a486635`. 같은 트리에서 `grep -c -- '--primary-entries-only' .github/workflows/ci.yml` → `3`, exit `0`. 이 3 이 AC-016 (b) 의 보존 기준값이다.
+
 ---
 
 ## §C Definition of Done
 
 분류를 따른다 — blocking AC 의 통과는 이 SPEC 의 run-phase 완료의 차단 요건이고, regression-class AC 의 통과는 **기록되는** 산출물이지 차단 요건이 아니다(§D 선언과 정합).
 
-blocking (AC-AFG-001, 002, 003, 004, 007, 009, 010, 011, 012, 013):
+blocking (AC-AFG-001, 002, 003, 004, 007, 009, 010, 011, 012, 013, 014, 015, 016):
 
-- [ ] 10건 전부 통과, 각각 판정 명령의 **출력 그대로**를 progress.md §E.2 에 기록
+- [ ] 13건 전부 통과, 각각 판정 명령의 **출력 그대로**를 progress.md §E.2 에 기록 (개정 2 에서 10 → 13, AC-014·015·016 추가)
+- [ ] AC-014 의 양방향 — 정상 판 10/10 발화와 돌연변이 판 10/10 적색을 **같은 스로틀·같은 증폭 설정**에서 관측한 출력 보존. 증폭을 썼다면 settle 간격 실측치도 함께
+- [ ] AC-015 의 양방향 — 커밋된 탐침의 자기확인 네 다리 참(exit 0)과, boost 조상 없는 링크 사본의 exit 1 + 지목된 다리를 둘 다 관측한 출력 보존
+- [ ] AC-016 — 병합 트리에서 넓힌 선택자가 고른 테스트 목록과 각 `--- PASS`, `--- SKIP` 0건의 출력 보존. 리드가 일괄 push 뒤 읽은 `test-browser` 로그 기록은 별도 행으로 남긴다
+- [ ] AC-AFG-002 의 0→1→0 시퀀스를 **개정 2 매니페스트로 재측정** — 스왑이 실제 스왑이 되면서 돌연변이 아래 어느 지표가 무너지는지가 달라질 수 있으므로, 옛 관측을 이월하지 않는다
 - [ ] AC-002 의 0→1→0 시퀀스 전 구간 출력 보존(복원 검증 포함)
 - [ ] AC-011 의 (c) 방향 — 사본 루트 안 `.moai/config/sections/` 아래(쓰기 이음매가 닿는 자리) 파일 1바이트 합성 변경에서 탐침 exit 1 을 **관측**한 출력 보존(양방향 없이는 반쪽이다)
 - [ ] AC-009 정방향(커밋된 매니페스트 exit 0)과 AC-012 역방향(조건이 빠진 합성 항목 exit 1 + 빠진 조건 이름) **둘 다** 관측한 출력 보존 — 정방향만으로는 아무것도 거부하지 않는 판정식이 통과한다
@@ -470,7 +636,7 @@ regression-class (AC-AFG-005, 006, 008):
 - [ ] `go vet ./internal/web/` 통과; `gofmt -l internal/web/appjs_fire_guard_test.go` 출력 없음
 - [ ] `git status --porcelain` — `internal/web/assets/` 변경 0건
 - [ ] `go.mod`/`go.sum` 변경 0건 (탐침 의존은 `websockets` 단 하나, Go 쪽 신규 없음)
-- [ ] 마일스톤 집행 순서는 plan §E (M1→M7) 를 따른다 — green path 귀속(AC-004→M1/M2, AC-001·003→M2, AC-002→M1·M3, AC-007·009→M1·M3, AC-005·006·008→M4·M5, AC-010·012→M6·M7, AC-011·013→M7)과 충돌하는 순서 없음
+- [ ] 마일스톤 집행 순서는 plan §E (M1→M10) 를 따른다 — green path 귀속(AC-004→M1/M2, AC-001·003→M2, AC-002→M1·M3, AC-007·009→M1·M3, AC-005·006·008→M4·M5, AC-010·012→M6·M7, AC-011·013→M7, AC-014·015→M8·M9, AC-016→M10)과 충돌하는 순서 없음. 개정 2 에서 AC-001 (c) 는 M8·M9 뒤에야 새 문언으로 판정 가능하다
 
 ---
 
@@ -495,3 +661,7 @@ regression-class (AC-AFG-005, 006, 008):
 - **두 서버 서면의 표면 등가는 어느 AC 도 주장하지 않는다** — 사본 서버는 거부 경로 한 갈래만 운반한다(spec.md §F 7). 안 (b)(전 항목 사본 서빙)를 택했다면 기존 8항목의 사본 위 무회귀가 인수조건이 됐겠지만, §C 개정 결정에서 (a) 를 택했으므로 그 측정은 필요하지 않고 **하지도 않았다**.
 - **성공 저장 경로는 어느 AC 도 행사하지 않는다** — 개정분의 `validation-reject` 항목은 거부 경로 한 갈래만 운반한다.
 - **E5 의 서버·Chrome 기동 단계는 장부 명령의 전제다** — 탐침 단일 호출이 단일 관측점이고, 기동 절차는 plan §B 에 고정돼 있다.
+- **실제 boost 스왑 경로에서 URL 폴링판이 얼마나 자주 실패하는지는 측정되지 않았다**(card t1108 개정 2). 판정서의 스로틀 측정은 전체 이동 경로의 것이다. 그래서 AC-014 는 증폭(settle 지연 확대)을 인정하고, 증폭까지 써도 돌연변이 판이 적색이 아니면 blocker 로 되돌리게 했다.
+- **REQ-AFG-016 (d)(스왑이 만든 트리거)가 오늘의 표면에서 참인지는 측정되지 않았다.** boost 스왑의 기본 대상이 바디라서 프로필 트리거도 교체될 것으로 **추론**하지만, 관측한 적은 없다. 정상 판에서 (d) 가 거짓으로 나오면, 이 표면에는 스왑이 만든 트리거가 없다는 뜻이다. 그 경우 REQ-AFG-007 의 재바인딩 전제가 이 항목으로는 성립하지 않으므로, (d) 를 빼지 말고 리드에게 blocker 로 보고한다.
+- **`popover_after_swap` 의 「selector matched nothing」은 패널 값으로 판정된다**(`appjs_fire_probe.py:789`). 보고서는 트리거 선택자를 싣는다. 이 불일치는 spec.md §E 에 관찰로만 기록했고, 어느 AC 도 그 변경을 요구하지 않는다.
+- **CI 러너에서의 스로틀 반복 실행 시간은 측정되지 않았다.** AC-016 (c) 는 `-timeout 10m` 을 CI 와 같은 값으로 걸어 상한 초과를 적색으로 만든다. 상한 자체를 바꾸는 것은 개정 2 의 범위 밖이다.
