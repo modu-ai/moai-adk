@@ -13,7 +13,7 @@ module: "internal/factorymsg"
 ## §A Status
 
 - Current SPEC status: `in-progress` (M1 commit, manager-develop). The plan-era lines below are kept as written.
-- Current phase: run, M1 and M2 complete; M3 not started (see §E.2).
+- Current phase: run, M1, M2, M3a and M3b complete; M4 not started (see §E.2).
 - Card/worktree/branch: `t1082` / `.claude/worktrees/t1082` / `WT-factory-lane-worktree-handoff`.
 - Plan subject HEAD: `bf39a539d97f49edf3b11517ee7c982239c60df3`.
 - Implementation: NOT STARTED.
@@ -468,6 +468,152 @@ Uncovered lines in `handoff_bind.go` are DB-error returns and a commit-ACK-loss 
 - **Refusal vocabulary already in place.** `NackStaleGeneration`, `NackStaleEndpoint`, `NackEndpointHandoffPending` constants exist; `HandoffNackReason` returns the code for both `HandoffNackError` and `StaleEndpointError`. A launcher registration that finalizes a handoff should move it to `NACK`/`STALE_GENERATION`; `BindHandoff` then refuses it with `STALE_GENERATION` and writes nothing (covered by `finalized_handoff_is_stale`).
 - **REQ-FLH-018 `STALE_ENDPOINT` on the tombstoned source UUID.** `lane_endpoint_tombstones` has `(slot, session_uuid, generation)`; `RegisterPeer` can look up by `session_uuid` inside its transaction.
 - **Open-state predicate.** `openHandoffStates` (SQL fragment) and `handoffPending(ctx, q, slot)` accept a `*sql.Tx`; reuse them inside `RegisterPeer` so the read happens after `BEGIN`.
+
+### M3b — RegisterPeer serialized with the handoff rebind (2026-09-23, manager-develop, cycle_type=tdd)
+
+**Scope delivered.** Base `2c22fb10a`. Commits: `eaeea53f4` (implementation + AC tests), `a26804e48` (step-abort / legacy-broker / handle-probe tests), `6c24dd493` (fix: handoff check moved ahead of the live-owner rule, with its RED test), `409ee64b8` (fail-closed store-error tests). Code HEAD for every measurement below is `409ee64b8` unless a row says otherwise.
+
+- `internal/factorymsg/store.go` — `RegisterPeer` (t1074) gains two t1082 calls inside its own write transaction. A **turn registration** (session UUID not launch-pending) calls `refuseTurnRegistrationDuringHandoff` right after the slot-row read, before the t1074 live-owner rule and the row write. A **launcher provisional registration** (`isLaunchPendingSession(p.SessionUUID)`, the path `RegisterLaunchPending` takes) calls `finalizeHandoffOnLauncherRegistration` after the slot-row write and before commit. A live-owner rejection returns before the write, so it never reaches the finalize step and leaves the handoff unchanged. No new caller flag: the launch-pending session prefix already separates the two paths.
+- `internal/factorymsg/handoff_bind.go` — `refuseTurnRegistrationDuringHandoff`: `sessionTombstoned(ctx, tx, uuid)` → `STALE_ENDPOINT` (redirect via `staleError(ctx, tx, …)`); `handoffPending(ctx, tx, slot)` → `ENDPOINT_HANDOFF_PENDING`. This applies even when the PID and process-start equal the owner's. `finalizeHandoffOnLauncherRegistration`: every open handoff on the slot → `NACK`/`STALE_GENERATION` plus an event row. It writes no tombstone, receipt or release. Both reads tolerate a broker created before the handoff tables (`no such table` → none). Race instrumentation: `WithStepHook(ctx, fn)` step observer (fires only while the write lock is held; an error aborts that transaction), step names `StepBindBegun` / `StepReserveInserted` / `StepRegisterHandoffRead` / `StepRegisterFinalize`, and `Store.HandleStats()` / `SharesHandle(a, b)` for the separate-handle proof from package `hook`. `Store.step` now takes ctx; M3a's `bindStep` seam and its step list are unchanged.
+- `internal/factorymsg/handoff.go` — `ReserveHandoff` fires `StepReserveInserted` after its RESERVED insert, before commit.
+- `internal/hook/factory_messages.go` + `factory_handoff_bind.go` — `registerFactoryHookPeer` maps the two refusals to named notices: `factory handoff pending ENDPOINT_HANDOFF_PENDING: slot=…; … endpoint is unchanged` and `factory endpoint replaced STALE_ENDPOINT: slot=… is current at <session> generation <g>; …`. The hook stays fail-open, and the endpoint is not rotated because the store refused.
+
+**Lead constraint (t1100 / t1112) — compliance.** `staleOrUnregistered` is unchanged and has no new callers. The REQ-FLH-018 `STALE_ENDPOINT` check queries `lane_endpoint_tombstones` through the `*sql.Tx` that `RegisterPeer` already holds (`sessionTombstoned(ctx, tx, …)`), and its redirect is built with `staleError(ctx, tx, …)`, also on the tx. The code is local to the new t1082 functions, and nothing queries `s.db` inside the transaction. `Send` and its idempotency re-lookup (`lane_message_releases` path) are untouched: `git diff 2c22fb10a a26804e48 -- internal/factorymsg/store.go` shows only three hunks — the `RegisterPeer` doc/MX comment, the `launcher` local with the turn-registration call, and the finalize call. `6c24dd493` moves the turn-registration call up; it touches nothing else in `store.go`.
+
+#### RED evidence (verbatim, captured before the RegisterPeer logic existed)
+
+First RED, compile level (tests written first), HEAD `2c22fb10a`, `go test ./internal/factorymsg -run '^TestFactoryLaneHandoffRebindVsUserPromptRegisterRace$' -count=1 -timeout=180s`, exit 1 (`run-m3b-red1.log`):
+
+```text
+# github.com/modu-ai/moai-adk/internal/factorymsg [github.com/modu-ai/moai-adk/internal/factorymsg.test]
+internal/factorymsg/lane_handoff_race_test.go:91:51: undefined: WithStepHook
+internal/factorymsg/lane_handoff_race_test.go:322:24: undefined: StepRegisterHandoffRead
+internal/factorymsg/lane_handoff_race_test.go:475:24: undefined: StepReserveInserted
+internal/factorymsg/lane_handoff_race_test.go:514:24: undefined: StepReserveInserted
+internal/factorymsg/lane_handoff_race_test.go:585:24: undefined: StepRegisterFinalize
+FAIL	github.com/modu-ai/moai-adk/internal/factorymsg [build failed]
+FAIL
+```
+
+Second RED, behavioral: after adding only the seam instrumentation (step names fired at the future read points, no handoff logic). Same command, exit 1 (`run-m3b-red2.log`):
+
+```text
+--- FAIL: TestFactoryLaneHandoffRebindVsUserPromptRegisterRace (8.74s)
+    lane_handoff_race_test.go:312: AC_FLH_019_ORDERS_COVERED=i,ii,iii,iv,v,vi,vii,unforced200
+    --- FAIL: TestFactoryLaneHandoffRebindVsUserPromptRegisterRace/order_i_registration_holds_first_then_rebind (0.32s)
+        lane_handoff_race_test.go:340: R_blocked_observed=true
+        lane_handoff_race_test.go:345: err=<nil>, want NACK ENDPOINT_HANDOFF_PENDING
+    --- FAIL: TestFactoryLaneHandoffRebindVsUserPromptRegisterRace/order_ii_rebind_holds_first_then_registrations (0.37s)
+        lane_handoff_race_test.go:387: H_blocked_observed=true
+        lane_handoff_race_test.go:414: err=<nil>, want NACK STALE_ENDPOINT
+    --- FAIL: TestFactoryLaneHandoffRebindVsUserPromptRegisterRace/order_iv_registration_reads_handoff_inside_its_transaction (0.42s)
+        lane_handoff_race_test.go:491: H_blocked_observed=true
+        lane_handoff_race_test.go:498: V_commit_at=2026-09-23T13:34:43.492678+09:00 H_return_at=2026-09-23T13:34:43.526105+09:00
+        lane_handoff_race_test.go:502: err=<nil>, want NACK ENDPOINT_HANDOFF_PENDING
+    --- FAIL: TestFactoryLaneHandoffRebindVsUserPromptRegisterRace/order_v_launcher_registration_finalizes_handoff_in_its_commit (0.40s)
+        lane_handoff_race_test.go:530: A_blocked_observed=true
+        lane_handoff_race_test.go:537: V_commit_at=2026-09-23T13:34:43.8862+09:00 A_return_at=2026-09-23T13:34:43.921228+09:00
+        lane_handoff_race_test.go:549: handoff = RESERVED/ while the row is launch-pending, want NACK/STALE_GENERATION from A's commit
+    --- FAIL: TestFactoryLaneHandoffRebindVsUserPromptRegisterRace/unforced_200_iterations (6.32s)
+        lane_handoff_race_test.go:631: iteration 31: R rebind: stale or unregistered peer: STALE_GENERATION; lane lane-1 is current at post-cd-uuid generation 3
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/factorymsg	9.023s
+FAIL
+```
+
+RED reasons, which are the defect REQ-FLH-017/018 describes: during a non-final handoff, the post-`/cd` UserPromptSubmit registration rotated the endpoint without a tombstone or receipt ((i), (iv), and unforced, where the rotation then made R's CAS fail). The tombstoned `src-uuid` was re-accepted (ii). The launcher registration committed a launch-pending row beside a still-`RESERVED` handoff (v). Orders (iii), (vi), and (vii) passed at this point: (iii) and (vi) are t1074 controls, and (vii)'s reservation-side read was already inside the transaction since M1.
+
+Third RED, hook surface: `go test ./internal/hook -run '^TestFactoryUserPromptRegistrationSurfacesHandoffRefusals$' -count=1`, exit 1 (`run-m3b-red-hook-surface.log`): `factory_handoff_race_test.go:720: pending-handoff notice = "factory messaging degraded: handoff NACK ENDPOINT_HANDOFF_PENDING: lane-1"`. The refusal surfaced only as a generic degraded message.
+
+Fourth RED, check order (found while writing this record: the diff showed the turn-registration check sitting *after* the t1074 live-owner rule), HEAD `a26804e48` + new test, `go test ./internal/factorymsg -run '^TestTurnRegistrationDuringHandoffIsPendingForAnyIdentity$' -count=1`, exit 1 (`run-m3b-red-order-before-live-owner.log`):
+
+```text
+--- FAIL: TestTurnRegistrationDuringHandoffIsPendingForAnyIdentity (0.04s)
+    handoff_register_test.go:59: err=factory logical lane has a live owner, want NACK ENDPOINT_HANDOFF_PENDING
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/factorymsg	0.307s
+FAIL
+```
+
+REQ-FLH-018 names `ENDPOINT_HANDOFF_PENDING` for every turn registration during a non-final handoff. A registration with a different identity while the source owner was live got the generic t1074 message instead. The row was unchanged either way, so the gap was the reason code, not a write. Fixed in `6c24dd493`.
+
+**AC-FLH-018 had no fresh RED.** It was written after the REQ-FLH-017 finalize code had already gone GREEN under AC-FLH-019 order (v). Its discrimination is shown by mutants M3 and M4 below instead.
+
+#### Mutant checks (each applied to the GREEN tree, run, then reverted; restoration verified with `cmp`)
+
+| Mutant | Command (tests scoped) | Result | Log |
+|---|---|---|---|
+| M1 — no in-transaction handoff read for turn registrations | AC-019 + hook surface test | FAIL (i) `H never reached step "register-handoff-read"`; (ii) `err=<nil>, want NACK STALE_ENDPOINT`; (iv) `err=<nil>, want NACK ENDPOINT_HANDOFF_PENDING`; unforced `iteration 7: R rebind: … STALE_GENERATION`; hook `pending-handoff notice = "factory messaging bound: …"`; exit 1 | `run-m3b-mutant-no-read.log` |
+| M2 — the handoff read moved before `BEGIN` (decision taken from that snapshot) | AC-019 order (iv) | FAIL `H_blocked_observed=true` … `err=<nil>, want NACK ENDPOINT_HANDOFF_PENDING`, exit 1 | `run-m3b-mutant-read-before-begin.log` |
+| M3 — launcher finalize removed | AC-018 + AC-019 | FAIL AC-019 (v) `handoff = RESERVED/ while the row is launch-pending`; AC-018 (iii)/(iv)/(v) `handoff … = SWITCH_PENDING_HEADLESS/, want NACK/STALE_GENERATION`, (i) + AC-019 (vii) lose their seam, unforced red; exit 1 | `run-m3b-mutant-no-finalize.log` |
+| M4 — the finalize decision taken from a read before `BEGIN` | AC-018 + AC-019 | FAIL AC-019 (v) `handoff = RESERVED/ while the row is launch-pending` (and (vii), whose seam is skipped when the stale read sees no handoff); **AC-018 stays green** — its orders never hold an uncommitted handoff against A, so the read position is discriminated by AC-019 (v) only; exit 1 | `run-m3b-mutant-finalize-read-before-begin.log` |
+| M5 — tombstone check removed | AC-019 + hook surface test | FAIL (ii) `err=<nil>, want NACK STALE_ENDPOINT`; hook `stale-endpoint notice = "factory messaging bound: … generation=4 …"`; exit 1 | `run-m3b-mutant-no-tombstone.log` |
+| M6 — `no such table` tolerance removed from `sessionTombstoned` | `TestRegisterPeerOnBrokerWithoutHandoffTables` | FAIL `turn registration on a pre-handoff broker = {…} err=SQL logic error: no such table: lane_endpoint_tombstones (1)`, exit 1 | inline (session output) |
+
+#### Fixture defect found and fixed during GREEN (AC-018 unforced)
+
+The first AC-018 GREEN runs landed 200/200 on rebind-first, both with the spawn order alternated and with sub-2 ms random jitter added. Timing each racer alone showed racer A taking ~37 ms against B's <1 ms. A temporary probe inside `RegisterPeer` (reverted; `cmp`-verified) measured `BEGIN` at ~8–45 µs and the whole transaction at <300 µs. So the delay was in the test, not the store: `f.relaunch()` resolved `homestate.ProjectKey(root)` inside the racer goroutine, after the start signal. The fix builds both racers' arguments before the start signal. The unforced block then exercised both branches (38 launcher-first / 162 rebind-first in that run), and the jitter was removed.
+
+#### How RegisterPeer tells the two registrations apart
+
+`isLaunchPendingSession(p.SessionUUID)` is the existing signal. `RegisterLaunchPending` always writes `launch-pending:<id>` through `RegisterPeer`. Every turn-hook registration carries the hook's real session UUID, and `BindLaunchPending` rejects a launch-pending UUID. The `launcher` bool is computed once, after the slot-row read. No caller flag was added.
+
+#### GREEN evidence (code HEAD `409ee64b8`; every command prefixed with the lane env scrub in the same invocation)
+
+| Check | Command | Result |
+|---|---|---|
+| race, factorymsg | `go test -race -count=1 -timeout=600s -coverprofile=/tmp/t1082-m3b-factorymsg.cov ./internal/factorymsg/...` | `ok … 41.493s coverage: 78.6% of statements`, exit 0, 0 DATA RACE (`run-m3b-race-factorymsg.log`) |
+| race, hook (full package) | `go test -race -count=1 -timeout=900s -coverprofile=/tmp/t1082-m3b-hook.cov ./internal/hook` on `6c24dd493` (the `409ee64b8` diff is one factorymsg `_test.go` file, so the hook package and its production dependencies are byte-identical) | `ok … 268.122s coverage: 85.6% of statements`, exit 0, 0 DATA RACE, 0 FAIL (`run-m3b-race-hook.log`). The earlier run on `eaeea53f4` (`run-m3b-race-hook-eaeea53f4.log`, `ok … 265.584s`, 0 DATA RACE) is superseded because `6c24dd493` changed `store.go` |
+| race, cli subset | `go test -race -count=1 -timeout=900s -coverprofile=/tmp/t1082-m3b-cli.cov ./internal/cli -run '^(TestFactoryLaneHandoff.*\|TestLaneHandoff.*\|TestSessionWorktree.*\|TestCodex.*\|TestMoaiMCPServer_RegistrationMatchesCatalog\|TestFactoryMsgStatusReadOnlyRoster\|TestFactoryLeadNoticeUsesOperationalStatus\|TestFactoryMsg.*)$' -v` (`MOAI_HOME` unset) | `ok … 79.916s`, exit 0; 912 PASS, 0 FAIL, 5 SKIP (pre-existing env-gated `TestCodexLive_*`), 0 DATA RACE (`run-m3b-race-cli.log`) |
+| vet | `go vet ./internal/factorymsg/... ./internal/hook/... ./internal/cli/...` | exit 0 |
+| lint | `golangci-lint run ./internal/factorymsg/... ./internal/hook/... ./internal/cli/...` | `0 issues.`, exit 0 (`run-m3b-lint.log`); the first run on `eaeea53f4` flagged one `unused` test helper, removed before commit |
+| build | `go build ./...`; `GOOS=windows GOARCH=amd64 go build ./...` | exit 0 / exit 0 |
+| windows test compile | `GOOS=windows GOARCH=amd64 go vet ./internal/hook ./internal/factorymsg ./internal/cli` | exit 0. The AC-018 live-owner helper re-executes the test binary (`os.Args[0]`), not a Unix `sleep`, so the hook test also builds on the Windows leg |
+| gofmt | `gofmt -l internal/factorymsg internal/hook internal/cli` | empty |
+
+#### AC matrix (acceptance.md commands verbatim, run through the lane env scrub; HEAD `409ee64b8`)
+
+| AC | Status | Named test (package) | Gate output / exit | Evidence |
+|---|---|---|---|---|
+| AC-FLH-018 | PASS | `TestFactoryLaneHandoffRebindVsLaunchBindRace` (hook) | `true`, exit 0 | `ac18.jsonl` — `--- PASS … (58.21s)`; orders (i) `B_blocked_observed=true` + `RACER_HANDLES_DISTINCT=2`, (ii) `A_blocked_observed=true` + `RACER_HANDLES_DISTINCT=2`, (iii)–(v); `UNFORCED_OUTCOMES launcher_first=151 rebind_first=49` |
+| AC-FLH-019 | PASS | `TestFactoryLaneHandoffRebindVsUserPromptRegisterRace` (factorymsg) | `true`, exit 0 | `ac19.jsonl` — `AC_FLH_019_ORDERS_COVERED=i,ii,iii,iv,v,vi,vii,unforced200`; `R_blocked_observed` (i), `H_blocked_observed` (ii, iv), `A_blocked_observed` (v), `V_blocked_observed` (vii), each with `RACER_HANDLES_DISTINCT=2`; `UNFORCED_OUTCOMES i=7 ii=193` |
+
+AC-FLH-019 order (vii) now uses the production launcher registration as adversary A, held at `StepRegisterFinalize` inside `RegisterPeer`. This replaces M1's raw-SQL stand-in, which acceptance.md allowed only until the REQ-FLH-017 step existed.
+
+**Regressions** (acceptance.md verbatim, HEAD `409ee64b8`): AC-FLH-001 `true`, 002 `true`, 003 `true`, 004 `true`, 005 `true`, 006 `true`, 007 `true`, 008 `true`, 014 `true`, 016 `true`, 017 `true` — each exit 0 (`ac01.jsonl` … `ac17.jsonl`).
+
+**t1074 hook tests ×5.** `MOAI_HOME=/tmp/t1082-m3b-hookx5-home go test -count=5 ./internal/hook -run '^(TestFactoryUserPromptSubmitRebindsLaunchPendingPeer|TestFactoryBoundUserPromptSubmitDoesNotRewritePeer|TestFactorySessionStartCannotRotateAuthoritativeUserPromptBinding)$' -v` → 15 PASS, 0 FAIL, exit 0, durations 0.54–0.97 s (`run-m3b-hook-x5.log`). The M1 flake did not recur; still not established either way. `TestFactorySessionStartCannotRotateAuthoritativeUserPromptBinding` and `TestFactoryUserPromptSubmitRebindsLaunchPendingPeer` are in this set: no handoff exists there, so REQ-FLH-018 does not apply and t1074 alias correction holds.
+
+#### Coverage (file-level, statement-weighted, from the profiles above)
+
+| File | Profile | Covered |
+|---|---|---|
+| `internal/factorymsg/handoff_bind.go` (t1082) | factorymsg | 181/209 = 86.6% (M3a 136/160 = 85.0%) |
+| `internal/factorymsg/handoff.go` (t1082) | factorymsg | 91/104 = 87.5% |
+| `internal/factorymsg/store.go` (t1074 file) | factorymsg | 356/496 = 71.8%; the M3b-added lines (`launcher`, both calls) are all covered. Uncovered blocks are pre-existing t1074 error returns |
+| `internal/hook/factory_handoff_bind.go` (t1082) | hook | 35/41 = 85.4% |
+| `internal/hook/factory_messages.go` (t1074 file, 3 lines changed) | hook | 72/85 = 84.7% (M3a 70/83); the new notice branch is covered |
+| `internal/cli/factory_lane_handoff.go` (t1082, M1) | cli (`/tmp/t1082-m3b-cli.cov`) | **95/100 = 95.0%** (was 80/100 = 80.0%; `createHandoffTarget` fully covered) |
+| `internal/cli/factory_lane_handoff_bind.go` (t1082) | cli | 14/16 = 87.5% (unchanged) |
+| `internal/cli/factory_lane_handoff_switch.go` (t1082) | cli | 68/76 = 89.5% (unchanged) |
+
+`factory_lane_handoff.go` was raised by `internal/cli/factory_lane_handoff_create_test.go`: admission refusals (unknown activity, invalid slug, no active run with default deps, missing develop pin, cwd = target with no earlier handoff) and every `createHandoffTarget` provenance refusal (materializer error, other path, missing card branch, develop moved after creation, detached HEAD, branch checked out twice, dirty target), each via a one-defect fake materializer. The five remaining statements have no reachable trigger short of a broken filesystem or database: `filepath.Abs` fails only if `Getwd` fails; `factorymsg.Open`, `HandoffsForLane` (×2) and `NackHandoff` fail only on broker I/O after a successful open.
+
+#### Gaps
+
+- LIVE (AC-FLH-012/013) and the real Codex `/cd` SessionStart ordering: M5. NOT_RUN.
+- AC-FLH-018 uses a **headless** handoff. The AC says "`SWITCH_PENDING`" without a mode. With an interactive handoff, order (iv)'s relaunched SessionStart would reach the M3a interactive binder, which NACKs the handoff on the cwd readback mismatch (`TARGET_READBACK_MISMATCH`) before A registers. The expected `NACK`/`STALE_GENERATION`-by-A would then be unreachable for a reason outside REQ-FLH-017. The interactive-relaunch shape is not covered by a race test.
+- AC-FLH-018 had no fresh RED (the finalize code was driven by AC-019 (v)); its discrimination is shown by mutants M3/M4 only. Under M4 (finalize read before `BEGIN`), AC-018 stays green — only AC-019 (v) catches that mutant.
+- Tests added after GREEN without an individual RED: `TestLaneHandoffPreparationRefusals`, `TestLaneHandoffCreateTargetProvenance` (both pin M1 behavior for coverage), `TestRegisterPeerOnBrokerWithoutHandoffTables` (red under M6), `TestHandoffStepHookAbortsItsTransaction`, `TestRacerHandleProbes`, `TestRegistrationHandoffStoreErrorsFailClosed`.
+- The unforced outcome split is a single observation per run (AC-018 151/49, AC-019 7/193). No distribution is asserted; the AC does not require one.
+- Not measured: full `internal/cli` suite (CI owns it).
+
+#### Residual risks
+
+- **A turn registration is now refused for the whole non-final window, whatever its identity.** An interactive lane whose operator never runs `/cd` keeps a pending handoff, and every later UserPromptSubmit from a new session (a restart that did not go through the launcher, e.g. a resumed session) is refused with `ENDPOINT_HANDOFF_PENDING` until the handoff is NACKed or abandoned. The launcher path finalizes the handoff (REQ-FLH-017); a non-launcher restart has no such path. This is the specified behavior, not a defect, but no timeout or abandon trigger for a stuck `SWITCH_PENDING_INTERACTIVE` exists yet.
+- A tombstoned session UUID is refused permanently (`STALE_ENDPOINT`), including a legitimate resume of the old session after the lane moved.
+- `WithStepHook`, `HandleStats` and `SharesHandle` are exported for the hook-package race test. Production callers never pass a step hook; a caller that did could abort handoff transactions.
+- The live-owner helper in the AC-018 test is a re-executed test binary killed and reaped by `t.Cleanup`. If the test process crashes before cleanup runs, the helper is expected to see EOF on its stdin pipe and exit. That path was not observed.
 
 ## §J Lead follow-ups after M1 (2026-09-23)
 
