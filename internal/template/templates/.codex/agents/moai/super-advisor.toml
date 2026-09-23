@@ -130,7 +130,7 @@ Static `skills:` preload is kept to a minimum (token diet — progressive disclo
 - Read-only verification batching (single-turn parallel Bash): `.claude/rules/moai/core/agent-common-protocol.md` § Parallel Execution.
 '''
 model_reasoning_effort = "high"
-sandbox_mode = "workspace-write"
+sandbox_mode = "read-only"
 [mcp_servers.moai]
 command = "moai"
 args = ["mcp-server"]

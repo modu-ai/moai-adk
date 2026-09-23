@@ -22,9 +22,10 @@ type LayoutConfig struct {
 
 // FieldConfig is one optional-field emission switch.
 type FieldConfig struct {
-	Emit  bool              `yaml:"emit"`
-	Value string            `yaml:"value"` // emitted value (sandbox_mode)
-	Map   map[string]string `yaml:"map"`   // source->target map (model_reasoning_effort)
+	Emit       bool              `yaml:"emit"`
+	Value      string            `yaml:"value"`       // emitted value (sandbox_mode)
+	Map        map[string]string `yaml:"map"`         // source->target map (model_reasoning_effort)
+	RoleValues map[string]string `yaml:"role_values"` // per-role sandbox overrides
 	// AcceptedValues is the probe-measured value set for scalar fields
 	// (sandbox_mode). When non-empty and Emit is true, Value must belong to
 	// it — the emitter's own enforcement of the measured enumeration.
@@ -126,13 +127,24 @@ func ParseManifest(data []byte) (Manifest, error) {
 	if fc, ok := m.Fields["model_reasoning_effort"]; ok && fc.Emit && len(fc.Map) == 0 {
 		return Manifest{}, fmt.Errorf("agentemit: manifest emits model_reasoning_effort with an empty map")
 	}
-	if fc, ok := m.Fields["sandbox_mode"]; ok && fc.Emit && len(fc.AcceptedValues) > 0 {
+	if fc, ok := m.Fields["sandbox_mode"]; ok {
+		if !fc.Emit && len(fc.RoleValues) > 0 {
+			return Manifest{}, fmt.Errorf("agentemit: sandbox_mode role_values require emit: true")
+		}
+		if fc.Emit && len(fc.AcceptedValues) == 0 {
+			return Manifest{}, fmt.Errorf("agentemit: sandbox_mode requires a measured accepted_values set")
+		}
 		accepted := make(map[string]bool, len(fc.AcceptedValues))
 		for _, v := range fc.AcceptedValues {
 			accepted[v] = true
 		}
-		if !accepted[fc.Value] {
+		if fc.Emit && !accepted[fc.Value] {
 			return Manifest{}, fmt.Errorf("agentemit: manifest sandbox_mode value %q is outside the measured value set %v — never emit an unconfirmed value", fc.Value, fc.AcceptedValues)
+		}
+		for role, value := range fc.RoleValues {
+			if role == "" || !accepted[value] {
+				return Manifest{}, fmt.Errorf("agentemit: role %q sandbox_mode value %q is outside the measured value set %v", role, value, fc.AcceptedValues)
+			}
 		}
 	}
 	// The moai-mcp class requires a complete server grant: an empty table

@@ -58,6 +58,23 @@ func TestEmitAllSandboxEmittedWhenConfirmed(t *testing.T) {
 	}
 }
 
+func TestRoleSandboxRejectsWriteToolsAndInvalidModes(t *testing.T) {
+	set := fstest.MapFS{
+		"agents/solo.md": &fstest.MapFile{Data: []byte(fixtureMD(
+			"solo", "d.\n", "Read, Write", "inherit", "low", nil, "b\n",
+		))},
+	}
+	man := mustManifest(t)
+	man.Fields["sandbox_mode"].RoleValues = map[string]string{"solo": "read-only"}
+	if _, err := agentemit.EmitAll(set, "agents", man); err == nil || !strings.Contains(err.Error(), "Write") {
+		t.Fatalf("read-only role carrying Write must fail, got %v", err)
+	}
+	man.Fields["sandbox_mode"].RoleValues = map[string]string{"solo": "unmeasured"}
+	if _, err := agentemit.EmitAll(set, "agents", man); err == nil || !strings.Contains(err.Error(), "unmeasured") {
+		t.Fatalf("unmeasured sandbox mode must fail, got %v", err)
+	}
+}
+
 // TestParseManifestFailClosed drives every manifest self-validation branch:
 // a manifest that is structurally invalid must be rejected, never repaired.
 func TestParseManifestFailClosed(t *testing.T) {

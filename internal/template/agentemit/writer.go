@@ -120,10 +120,31 @@ func renderTOML(doc AgentDoc, man Manifest, hasMCP bool) ([]byte, error) {
 	}
 
 	if fc, ok := man.Fields["sandbox_mode"]; ok && fc.Emit {
-		if !basicStringSafe(fc.Value) {
-			return nil, fmt.Errorf("manifest sandbox_mode value %q is not representable as a TOML basic string", fc.Value)
+		mode := fc.Value
+		if override, ok := fc.RoleValues[doc.Name]; ok {
+			mode = override
 		}
-		fmt.Fprintf(&b, "sandbox_mode = %q\n", fc.Value)
+		measured := false
+		for _, value := range fc.AcceptedValues {
+			if mode == value {
+				measured = true
+				break
+			}
+		}
+		if !measured {
+			return nil, fmt.Errorf("%s: role %q sandbox_mode %q is outside the measured value set", doc.File, doc.Name, mode)
+		}
+		if !basicStringSafe(mode) {
+			return nil, fmt.Errorf("manifest sandbox_mode value %q is not representable as a TOML basic string", mode)
+		}
+		if mode == "read-only" {
+			for _, tool := range doc.Tools {
+				if tool == "Write" || tool == "Edit" {
+					return nil, fmt.Errorf("%s: read-only role %q carries write tool %q", doc.File, doc.Name, tool)
+				}
+			}
+		}
+		fmt.Fprintf(&b, "sandbox_mode = %q\n", mode)
 	}
 
 	// MCP server grant LAST, as a TOML table: sections must follow all root

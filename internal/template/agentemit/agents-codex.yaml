@@ -59,11 +59,14 @@ fields:
   # `workspace-write`, `danger-full-access`" — and a bad value makes codex
   # drop the whole agent file (visible "Ignoring malformed agent role
   # definition" error). workspace-write is a measured member and
-  # delegation-confirmed; a read-only sandbox would break the go-test-style
-  # verification work the agent bodies mandate, so it ships for all 12.
+  # delegation-confirmed. Roles whose work does not require a local file write
+  # use read-only; audit roles that export verdict files keep workspace-write.
   sandbox_mode:
     emit: true
     value: workspace-write
+    role_values:
+      mission-governor: read-only
+      super-advisor: read-only
     accepted_values:
       - read-only
       - workspace-write
@@ -106,15 +109,15 @@ classes:
     disposition: documented-drop
     rationale: >-
       The Read-vs-Write tool distinction is not mechanically preserved on
-      Codex: its sandbox is workspace-level, not tool-level. Body prose
-      already disciplines write behavior.
+      Codex: its sandbox is workspace-level, not tool-level. Read-only roles
+      use the runtime sandbox; other roles rely on body scope restrictions.
   - class: shell
     disposition: consequence
     rationale: >-
-      Shell executes built-in on Codex. A read-only sandbox would break the
-      go-test-style verification work the agent bodies mandate, so the
-      P-01-measured member workspace-write ships via the sandbox_mode field
-      (see fields.sandbox_mode).
+      Shell executes built-in on Codex. Roles that write test outputs or
+      verdict files use workspace-write; roles with no local write duty can
+      use read-only. The sandbox constrains filesystem effects but does not
+      remove the shell tool from a role.
   - class: web
     disposition: documented-drop
     rationale: >-
@@ -254,7 +257,11 @@ documented_drops:
   - id: read-vs-write-distinction
     rationale: >-
       Codex sandbox is workspace-level; the granular Read/Write tool split
-      cannot be preserved mechanically.
+      cannot be preserved mechanically. mission-governor and super-advisor
+      are read-only at the filesystem sandbox level. Their shell and MCP
+      access cannot be restricted per tool through this TOML. sync-auditor
+      must write its verdict file, so making it read-only would violate the
+      current export mandate; its no-code-edit rule remains prompt-level.
   - id: per-agent-web-grants
     rationale: >-
       Web access is global Codex config; per-agent WebFetch/WebSearch grants

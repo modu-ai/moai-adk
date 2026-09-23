@@ -168,7 +168,7 @@ func hashMDTree(t *testing.T) map[string]string {
 // TestRealSetCodexShape pins the AC-007/AC-008/AC-009 (+ sandbox) shape over
 // the real 12: exactly the 7 inventory carriers declare mcp_servers, every
 // agent carries its manifest-mapped model_reasoning_effort, zero carry a
-// model key, and all carry the P-01-confirmed sandbox_mode.
+// model key, and role-specific sandbox modes match the manifest.
 func TestRealSetCodexShape(t *testing.T) {
 	pub := emitRealSet(t)
 	for path, data := range pub.CodexTOML {
@@ -207,9 +207,13 @@ func TestRealSetCodexShape(t *testing.T) {
 			t.Errorf("%s (%s): model key must be omitted", path, name)
 		}
 
-		// P-01: sandbox_mode = workspace-write everywhere.
-		if got, _ := doc["sandbox_mode"].(string); got != "workspace-write" {
-			t.Errorf("%s (%s): sandbox_mode = %q, want workspace-write", path, name, got)
+		// Read-only roles must be constrained by the runtime sandbox, not body prose.
+		wantSandbox := "workspace-write"
+		if name == "mission-governor" || name == "super-advisor" {
+			wantSandbox = "read-only"
+		}
+		if got, _ := doc["sandbox_mode"].(string); got != wantSandbox {
+			t.Errorf("%s (%s): sandbox_mode = %q, want %s", path, name, got, wantSandbox)
 		}
 
 		// R-005: developer_instructions decodes non-empty (byte-equality to
