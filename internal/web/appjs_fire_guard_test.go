@@ -10,6 +10,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"regexp"
+	"sort"
 	"strings"
 	"testing"
 	"time"
@@ -38,12 +39,22 @@ import (
 // driver owns process lifetime through t.Cleanup — server, Chrome, and probe
 // all die with the test, on every exit path.
 //
-// Sandbox note (REQ-AFG-012): the manifest exercises reversible effects only
-// (visibility/label/tab/swap — save-family controls are excluded in the
-// probe), so serving the real repo root is safe. The ProjectRoot field below
-// is the wiring point: if a manifest entry ever needs a persistence-family
-// control, the driver MUST switch it to a one-off project copy instead of
-// loosening the manifest.
+// Sandbox wiring (REQ-AFG-012 / REQ-AFG-014, card t1106): that directive has
+// now been EXECUTED. A manifest entry did come to need a persistence-family
+// control — the validation-reject submit — and the answer was a one-off
+// project copy, not a looser manifest. What runs where:
+//
+//   - real repo root (startFireGuardServer, ProjectRoot: findRepoRoot): every
+//     entry WITHOUT the sandbox-serving marker. Unchanged, to the byte.
+//   - disposable copy (startFireGuardSandboxServer, a t.TempDir()-derived
+//     root): the marked entries, and only those. The marker IS the routing
+//     key, so the two families cannot silently swap places.
+//
+// Limit (spec.md §F 7) — two-surfaces: this guard does NOT claim the two
+// server surfaces are equivalent. The copy carries one branch, the reject
+// path; everything else stays on the real root. That asymmetry is how the
+// blast radius stays zero, and reading a green here as "the copy serves the
+// same thing" would be reading a claim the guard never makes.
 
 const fireGuardGateEnv = "MOAI_BROWSER_GUARD"
 
@@ -386,15 +397,39 @@ func TestAppJsHandlersFireRuntime(t *testing.T) {
 		t.Fatalf("--lint-manifest rejected the committed manifest: %v\n%s", err, out)
 	}
 
-	exitCode, report := runFireGuardProbe(t, probePath, cdpPort, baseURL, "t1060-driver-runtime")
+	// card t1106: this cycle drives the real-root family and says so. The
+	// reduction is an affirmative declaration, never inferred from a missing
+	// sandbox base — and the driven/excluded accounting below is what stops
+	// "declare everything away" from reading as a pass.
+	exitCode, report := runFireGuardProbe(t, probePath, cdpPort, baseURL, "t1060-driver-runtime",
+		"--primary-entries-only")
 
 	if exitCode != 0 {
 		t.Fatalf("fire probe exited %d (want 0); failures=%s missing=%s",
 			exitCode, mustJSON(t, report.Failures), mustJSON(t, report.MissingSelectors))
 	}
-	// (a) every manifest entry fired — the probe judge folds missing selectors
-	// and collapsed indicators into failures; entry count > 0 is enforced
-	// upstream by the lint self-check above and the ungated inventory test.
+	// (a) the driven set is every entry WITHOUT the sandbox-serving marker —
+	// judged as a predicate, not against a count frozen at amendment time, so
+	// a later entry cannot be quietly declared away. The marked family is
+	// excluded here and judged by AC-AFG-010/011/013 in their own runs.
+	wantDriven, wantExcluded := fireManifestFamilies(t)
+	if !report.ReductionDeclared {
+		t.Error("(a) the run does not carry the reduction declaration — absence of a sandbox base must never imply a narrowed cycle")
+	}
+	if report.DrivenCount != len(report.DrivenEntries) {
+		t.Errorf("(a) driven_count=%d disagrees with driven_entries=%v", report.DrivenCount, report.DrivenEntries)
+	}
+	if report.DrivenCount == 0 {
+		t.Fatal("(a) the run drove nothing — an empty cycle is not a passing cycle")
+	}
+	if got := sortedCopy(report.DrivenEntries); !slicesEqual(got, wantDriven) {
+		t.Errorf("(a) driven set %v != the unmarked manifest family %v — every unmarked entry must be driven, and no marked entry may be", got, wantDriven)
+	}
+	if got := sortedCopy(report.ExcludedEntries); !slicesEqual(got, wantExcluded) {
+		t.Errorf("(a) excluded set %v != the marked family %v — exclusion is a reported event, and it must be exactly the sandbox-serving family", got, wantExcluded)
+	}
+	// every driven entry fired — the probe judge folds missing selectors
+	// and collapsed indicators into failures.
 	if len(report.Failures) != 0 {
 		t.Fatalf("probe reported failures despite exit 0: %s", mustJSON(t, report.Failures))
 	}
@@ -442,7 +477,9 @@ func TestAppJsHandlersFireSelectorMiss(t *testing.T) {
 		t.Fatalf("write tampered probe copy: %v", err)
 	}
 
-	exitCode, report := runFireGuardProbe(t, tamperedPath, cdpPort, baseURL, "t1060-driver-selector-miss")
+	// Same cycle shape as the forward run: the real-root family, declared.
+	exitCode, report := runFireGuardProbe(t, tamperedPath, cdpPort, baseURL, "t1060-driver-selector-miss",
+		"--primary-entries-only")
 
 	if exitCode != 1 {
 		t.Fatalf("stale-selector probe exited %d (want 1) — a manifest selector matching nothing must be red, never a quiet zero; report=%s", exitCode, mustJSON(t, report))
@@ -763,5 +800,89 @@ func TestAppJsFireValidationRejectNoWrites(t *testing.T) {
 	}
 	if !named {
 		t.Fatalf("the failure does not NAME the changed path %s: %s", injected, mustJSON(t, mutantReport.SandboxChangedPaths))
+	}
+}
+
+// fireManifestFamilies reads the committed manifest and splits it the way the
+// routing key does: entries WITHOUT the sandbox-serving marker, and entries
+// WITH it. The split is derived from the manifest rather than written down
+// here, so a manifest that grows a tenth entry moves this expectation with it
+// instead of leaving a frozen number behind.
+func fireManifestFamilies(t *testing.T) (unmarked, marked []string) {
+	t.Helper()
+	out, err := exec.Command("python3", fireGuardProbePath(t),
+		"--print-routing", "--base-url", "http://primary.invalid", "--sandbox-base-url", "http://sandbox.invalid").Output()
+	if err != nil {
+		t.Fatalf("read manifest families via --print-routing: %v\n%s", err, out)
+	}
+	var routing struct {
+		Markers map[string]bool `json:"sandbox_marked"`
+	}
+	if err := json.Unmarshal(out, &routing); err != nil {
+		t.Fatalf("parse routing report: %v\n%s", err, out)
+	}
+	if len(routing.Markers) == 0 {
+		t.Fatal("the manifest reports no entries — nothing to split")
+	}
+	for id, isMarked := range routing.Markers {
+		if isMarked {
+			marked = append(marked, id)
+			continue
+		}
+		unmarked = append(unmarked, id)
+	}
+	return sortedCopy(unmarked), sortedCopy(marked)
+}
+
+func sortedCopy(in []string) []string {
+	out := append([]string(nil), in...)
+	sort.Strings(out)
+	return out
+}
+
+func slicesEqual(a, b []string) bool {
+	if len(a) != len(b) {
+		return false
+	}
+	for i := range a {
+		if a[i] != b[i] {
+			return false
+		}
+	}
+	return true
+}
+
+// TestAppJsFireReductionDeclaration pins the affirmative half of REQ-AFG-014
+// (1): the ABSENCE of a sandbox base must not be read as a reduction. Without
+// the declaration, a manifest entry that requires sandbox serving and has
+// nowhere to be served from is a caller-wiring fault — exit 2, with the entry
+// NAMED — never a silent skip and never a fallback onto the real repo root.
+//
+// Ungated: the contract is decided before any server or browser is contacted,
+// so an unreachable port is enough to reach it.
+func TestAppJsFireReductionDeclaration(t *testing.T) {
+	t.Parallel()
+	_, marked := fireManifestFamilies(t)
+	if len(marked) == 0 {
+		t.Skip("no sandbox-serving entry in the manifest — this contract has nothing to bind; recorded as not measured, not as a pass")
+	}
+
+	out, err := exec.Command("python3", fireGuardProbePath(t),
+		"--cdp-port", "1", "--base-url", "http://127.0.0.1:1", "1", "t1106-no-declaration").CombinedOutput()
+	var exitErr *exec.ExitError
+	if !errors.As(err, &exitErr) || exitErr.ExitCode() != 2 {
+		t.Fatalf("want exit 2 (caller wiring fault), got %v\n%s", err, out)
+	}
+	// Exit 2 alone does not pin this: every machine fault is exit 2, so an
+	// implementation that skipped the marked entry and then tripped over an
+	// unreachable browser would look identical. The named cause is what
+	// separates them.
+	if !strings.Contains(string(out), "--sandbox-base-url") {
+		t.Errorf("the fault does not name the missing wiring (--sandbox-base-url) — any other exit 2 would read the same: %s", out)
+	}
+	for _, id := range marked {
+		if !strings.Contains(string(out), id) {
+			t.Errorf("the fault does not NAME the unservable entry %q: %s", id, out)
+		}
 	}
 }

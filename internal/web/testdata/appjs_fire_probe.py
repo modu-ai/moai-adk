@@ -29,11 +29,27 @@ What this guard does NOT cover (SPEC-APPJS-FIRE-GUARD-001 spec.md §F):
      the quality of the exclusion reasons bounds the guard),
   2. paths the fixed scenario never exercises (one scenario, one order),
   3. browsers other than Chrome (single-engine guard),
-  4. precise static-cause attribution (that is the static guard's job).
+  4. precise static-cause attribution (that is the static guard's job),
+  5. anything about the banner beyond its paint (card t1106): this measures a
+     layout box, no hiding ancestor, and non-empty text - the wording, the
+     contrast, the scroll position and the focus move are outside it,
+  6. writes outside the sandbox-root (card t1106): the byte-invariance
+     assertion watches the disposable copy and nothing else, so traces left in
+     a profile store, a temp directory or the process environment are not
+     measured. An exclusion from the comparison is only as good as its stated
+     reason, and lint_manifest refuses one that reaches a write seam.
 
 Usage:
-  appjs_fire_probe.py [--cdp-port N] [--base-url URL] <server-port> <label>
-  appjs_fire_probe.py --lint-manifest
+  appjs_fire_probe.py [--cdp-port N] [--base-url URL]
+                      [--sandbox-base-url URL --sandbox-root PATH]
+                      [--primary-entries-only] <server-port> <label>
+  appjs_fire_probe.py --lint-manifest [--extra-entry JSON]
+  appjs_fire_probe.py --print-routing --base-url URL --sandbox-base-url URL
+
+Two bases, one report: entries carrying the sandbox-serving marker are driven
+against the disposable copy the second server serves, every other entry
+against the primary base, and both families' observations join one three-value
+judgement (REQ-AFG-014 (1)).
 
 Dependencies: stdlib (asyncio, json, sys, urllib.request) + websockets (the
 only third-party dependency; pinned in the test-browser CI job — never a Go
