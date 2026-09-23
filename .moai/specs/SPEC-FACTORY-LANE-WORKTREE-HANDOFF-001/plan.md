@@ -47,13 +47,15 @@ module: "internal/factorymsg"
 
 - interactive adapter는 `IDLE`이 확인된 lane에 `/cd <absolute-target>` 안내와 nonce만 발행하고 `SWITCH_PENDING_INTERACTIVE`로 전이한다.
 - headless adapter는 active turn/permission wait/interrupt를 먼저 거부한다. history가 있으면 target `cwd`를 지정한 `thread/fork`, 없으면 `thread/start(cwd)`를 사용하고, 공식 응답의 새 thread ID, `thread/started`, lineage를 기록한다.
-- controller는 target cwd/branch/HEAD를 직접 readback한 뒤 headless endpoint를 원자적으로 BOUND한다. SessionStart, 빈 `turn/start`, `turn/steer`는 relocation evidence로 사용하지 않는다.
+- controller는 target cwd/branch/HEAD를 직접 readback하고 headless relocation evidence(새 thread ID, `thread/started`, lineage)를 기록한다. BOUND는 M2에서 쓰지 않는다 — BOUND는 source-tuple CAS·tombstone·peer swap·BOUND 상태·BOUND receipt·dispatch release marker를 한 transaction으로 묶는 M3 atomic rebind의 산출물이다(REQ-FLH-008, design.md §6). SessionStart, 빈 `turn/start`, `turn/steer`는 relocation evidence로 사용하지 않는다.
+- M2는 두 adapter를 각각 `SWITCH_PENDING_INTERACTIVE` / `SWITCH_PENDING_HEADLESS`까지 전이시키고, 기존 app-server client에 `thread/fork`를 추가한다. AC-FLH-014는 M2에서 닫는다. M2의 adapter 단위 테스트는 AC-FLH-003/004의 named test와 다른 이름을 쓴다.
 - 기존 `mcp_codex.go` JSON-RPC transport, request/notification parser, bounded process cleanup을 재사용한다.
 
 ### M3 — Mode-evidence atomic rebind and dispatch release
 
 - interactive는 사용자의 다음 정상 turn에서 온 SessionStart를, headless는 공식 fork/start 결과와 controller readback을 받아 canonical cwd, worktree root, HEAD, branch, nonce, new UUID, PID/process-start를 검증한다.
 - 같은 broker transaction에서 old peer tombstone, new peer generation, handoff `BOUND`, BOUND receipt, dispatch release marker를 기록한다.
+- headless는 M2가 기록한 relocation evidence와 controller readback을 받아 이 transaction으로 원자적으로 BOUND한다. AC-FLH-003의 `TestFactoryLaneHandoffInteractiveStateMachine`과 AC-FLH-004의 `TestFactoryLaneHandoffHeadlessAppServerStateMachine`은 BOUND 관측을 요구하므로 rebind와 함께 M3에서 작성하고 PASS시킨다.
 - BOUND 전 body claim/read/ACK와 code-write authorization을 거부한다.
 - stale send/ACK는 현재 endpoint/generation metadata를 포함한 NACK로 응답한다.
 - duplicate dispatch는 현행 t1074 스키마의 idempotency key(`UNIQUE(sender_session, idem_key)`)를 바꾸지 않고, 같은 recipient generation 안에서만 멱등 처리한다. BOUND 뒤 rebound endpoint로의 재전송은 새 key를 쓴다(같은 key는 recipient가 달라 `Send`가 거부한다). handoff generation은 key에 넣지 않으며, 이전 generation으로 향한 redispatch는 stale NACK다(key 기준 결정은 t1100 소유, design.md §8).
