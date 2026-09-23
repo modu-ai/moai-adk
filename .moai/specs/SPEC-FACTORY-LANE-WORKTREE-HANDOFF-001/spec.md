@@ -1,7 +1,7 @@
 ---
 id: SPEC-FACTORY-LANE-WORKTREE-HANDOFF-001
 title: "Factory lane card worktree handoff"
-version: "0.5.4"
+version: "0.5.5"
 status: in-progress
 created: 2026-09-22
 updated: 2026-09-23
@@ -23,6 +23,7 @@ card: t1082
 
 | Version | Date | Change |
 |---|---|---|
+| 0.5.5 | 2026-09-23 | acceptance.md AC-FLH-008 수신 측 문구만 명시적으로 고쳤다(리드 결정: 문구 변경, 판정식 불변). 「같은 recipient generation 안의 K1 봉투 반복 전달」을 「receipt 전에 lease가 만료되어 같은 봉투가 다시 claim되는 경우」로, 「one accepted receipt」를 「broker가 수락한 receipt row가 정확히 1건」으로 바꿨다. 근거: 현재 기준에서 같은 봉투가 다시 도착하는 경로는 at-least-once lease 만료 재전달뿐이며, named test `TestFactoryLaneHandoffDuplicateAndSameLaneRedispatch`가 이미 그렇게 모델링한다. named test·명령·jq 게이트·요약행은 바꾸지 않았다. |
 | 0.5.4 | 2026-09-23 | idempotency 기준에 대해 중립으로 고쳤다(리드 조율: t1100이 AC-020 근거에 따라 기준을 송신 session에서 송신 lane slot 범위로 옮긴다. 근거 기록 `.moai/reports/t1082/ac008-idempotency-check.md`). 기준이나 스키마가 「바뀌지 않는다」고 단언하던 문장을 REQ-FLH-009, design.md §2.1 잔여 위험·§8, plan.md M3, acceptance.md AC-FLH-008·요약행에서 걷어내고, 「t1082는 idempotency 기준 자체를 바꾸지 않으며 기준은 t1100(SPEC-DUAL-HARNESS-RECOVERY-001)이 소유한다」로 바꿨다. AC-FLH-008은 어느 기준에서도 성립하도록 다시 적었다: 다른 recipient로 K1을 재사용한 요청은 기존 K1 봉투로 합쳐지지 않는다는 것만 단언하고 거부인지 별도 봉투인지는 단언하지 않으며, fixture가 key 기준에 기대지 않아야 한다는 조건을 더했다. 같은 generation 안 body 1회 실행, 수신 측 `DispositionDuplicate`, 이전 generation stale NACK, BOUND 뒤 새 key 요구는 그대로다. |
 | 0.5.3 | 2026-09-23 | plan.md만 바꿨다. AC-FLH-003/004의 named test가 BOUND 관측을 요구하는데 BOUND는 M3 atomic rebind 한 transaction의 산출물이므로(REQ-FLH-008, design.md §6), M2에서 headless 원자적 BOUND 문구를 빼고 두 adapter를 `SWITCH_PENDING_*`까지로 한정했으며 headless BOUND와 AC-FLH-003/004 named test를 M3로 옮겼다(lane 결정 option A). AC 본문은 바꾸지 않았다. |
 | 0.5.2 | 2026-09-23 | AC-FLH-008을 좁혔다(리드 결정 (a), 근거 `.moai/reports/t1082/ac008-idempotency-check.md`). `Store.Send`는 같은 `(sender_session, idem_key)`라도 recipient가 다르면 거부하므로, BOUND 전후 같은 key로 보낸 재전송은 duplicate가 될 수 없다. 그래서 BOUND 뒤 rebound endpoint로의 재전송은 새 key를 쓰게 하고, 같은 key duplicate 처리는 같은 recipient generation 안에서만 요구했다. stale-generation NACK와 같은 generation duplicate의 body 1회 실행은 유지했다. 송신 측 `Send` 판정과 수신 측 receipt 처분 `DispositionDuplicate`를 층별로 나눠 적었다. 스키마와 idempotency 기준은 바꾸지 않았다(t1100 소관). REQ-FLH-009, design.md §2.1 잔여 위험·§8, plan.md M3, acceptance.md 요약행을 같은 기준으로 맞췄다. |
