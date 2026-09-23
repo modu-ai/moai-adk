@@ -885,6 +885,7 @@ func TestCC_FactoryEntryThroughRunCC(t *testing.T) {
 		// subtest its own project and seed the one run it joins.
 		root := t.TempDir()
 		t.Setenv(config.EnvClaudeProjectDir, root)
+		t.Setenv("MOAI_HOME", t.TempDir())
 		clearFactoryTestEnv(t)
 		c := installFactoryLaunchSeam(t)
 
