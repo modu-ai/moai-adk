@@ -270,14 +270,14 @@ func ProfileMatrixAgents() []string {
 // anchored on a published long-horizon coding-agent benchmark that measures
 // score, cost per task, output tokens, and agent steps at every effort level:
 //
-//   - Opus 5 dominates Sonnet 5 at EVERY effort on that benchmark: Opus 5 at
+//   - Opus dominates Sonnet 5 at EVERY effort on that benchmark (measured on Opus 5): Opus at
 //     `low` scores higher AND costs less per task than Sonnet 5 at any level,
 //     because Sonnet 5 spends a multiple of the agent steps and output tokens
 //     to finish the same long-horizon task. Unit token price is therefore not
 //     the cost driver — completion efficiency is. Opus is consequently the
 //     model for every multi-turn agentic row.
 //
-//   - `xhigh` is retired from the matrix: on Opus 5 it scores the same as
+//   - `xhigh` is retired from the matrix: measured on Opus 5, it scores the same as
 //     `high` while costing materially more, so it is strictly dominated. `max`
 //     is the only level above `high`, so a row that wants more than `high`
 //     takes `max`.

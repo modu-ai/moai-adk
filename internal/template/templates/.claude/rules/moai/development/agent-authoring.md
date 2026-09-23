@@ -219,7 +219,7 @@ Agent bodies are system prompts. Author them per Anthropic's prompting best prac
 - Control reasoning depth with `effort` (xhigh for coding/agentic, minimum high for intelligence-sensitive); never `budget_tokens` (rejected on Opus 4.7+).
 - Steer subagent fan-out explicitly: Opus 4.8 spawns fewer subagents by default — say when fan-out across items/files is desirable, and when to work directly instead.
 
-See also `.claude/rules/moai/development/karpathy-quickref.md` (4 coding principles) and `.claude/rules/moai/core/moai-constitution.md` § Opus 5 / 4.8 Prompt Philosophy.
+See also `.claude/rules/moai/development/karpathy-quickref.md` (4 coding principles) and `.claude/rules/moai/core/moai-constitution.md` § Opus 5.5 Prompt Philosophy.
 
 ## Tool Permissions
 
@@ -335,7 +335,7 @@ This mechanism→context-cost ladder is a *cross-mechanism* cost axis. It runs p
 
 ## Effort-Level Calibration Matrix
 
-Per-agent default effort levels for the Opus 4.7+ / 4.8 substrate. The `effort` frontmatter field overrides the session effort level and is scoped to a single agent run; `xhigh` and `max` require Opus 4.7 or later. For the substrate-level effort policy (defaults, when to raise/lower), see `.claude/rules/moai/core/moai-constitution.md` § Opus 5 / 4.8 Prompt Philosophy.
+Per-agent default effort levels for the Opus 4.7+ / 4.8 substrate. The `effort` frontmatter field overrides the session effort level and is scoped to a single agent run; `xhigh` and `max` require Opus 4.7 or later. For the substrate-level effort policy (defaults, when to raise/lower), see `.claude/rules/moai/core/moai-constitution.md` § Opus 5.5 Prompt Philosophy.
 
 ### Retained Agents (10 — active, spawnable)
 
@@ -377,4 +377,4 @@ The following agents were retired during the catalog consolidation (10 retained 
 | `claude-code-guide` | Claude Code Q&A | `Explore` |
 | `researcher` | research | `Explore` / WebSearch |
 
-Effort values: `low` / `medium` / `high` / `xhigh` / `max`. Opus 5 defaults to `effort: high` on the Claude API and Claude Code; raise to `xhigh` for coding/agentic work. On Opus 5, `low` and `medium` are stronger than on earlier Opus models, so they are the primary token-cost lever rather than a last resort.
+Effort values: `low` / `medium` / `high` / `xhigh` / `max`. Opus 5.5 defaults to `effort: medium` on the Claude API and Claude Code, and `medium` is MoAI's recommended session effort. Other effort-capable models default to a higher level; raise the effort per role (`high` / `xhigh` / `max`) where the work needs it. The vendor guidance that `low` and `medium` are stronger than on earlier Opus models was measured on Opus 5, so treat them as the primary token-cost lever rather than a last resort.

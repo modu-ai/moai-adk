@@ -55,8 +55,9 @@ func operatorSuppliedSettings(args []string) bool {
 // — dialogExpiry and an isolatePeerMachines opt-in ride along, only the
 // inbound value is forced to accept, because kanban dispatch stalls without
 // it) to a session-private path under os.TempDir(), and returns the
-// --settings flag pair to append to the backend's argv, plus a cleanup
-// function that removes the file and restores the signal env var.
+// --settings flag pair to append to the backend's argv (followed by
+// `--effort max` when the profile resolves max — see applyLaunchEffort), plus
+// a cleanup function that removes the file and restores the signal env var.
 //
 // When the operator supplied their own --settings (REQ-FB-007), OR when the
 // write fails (fail-open, C8/EC-4), no flag is returned and cleanup is a no-op.
@@ -78,7 +79,11 @@ func prepareKanbanSettings(profileName string, args []string) (flag []string, cl
 	// CLAUDE_CODE_EFFORT_LEVEL for the reason launch_effort_settings.go gives:
 	// the env var refuses an in-session /effort or /model change, so a lane
 	// could never raise its own effort mid-card.
-	payload := applyLaunchEffort(crossSessionSettingsPayload(crossSessionConfigRootFn()), profileName)
+	payload, effortArgs := applyLaunchEffort(crossSessionSettingsPayload(crossSessionConfigRootFn()), profileName)
+	effortArgs = launchEffortArgs(effortArgs, args)
+	if payload == nil {
+		payload = map[string]any{}
+	}
 	payload["crossSessionInbound"] = "accept"
 
 	path, err := writeTransientSettingsFile(payload, "moai-kanban")
@@ -92,7 +97,7 @@ func prepareKanbanSettings(profileName string, args []string) (flag []string, cl
 	restoreInjected := captureEnvState(config.EnvMoaiKanbanSettingsInjected)
 	_ = os.Setenv(config.EnvMoaiKanbanSettingsInjected, "1")
 
-	return []string{settingsFlagLong, path}, func() {
+	return append([]string{settingsFlagLong, path}, effortArgs...), func() {
 		_ = os.Remove(path)
 		restoreInjected()
 	}
