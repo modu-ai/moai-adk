@@ -4,7 +4,9 @@ weight: 50
 draft: false
 ---
 
-通过 MoAI-ADK 的交互式设置向导完成首次设置。按你的开发环境配置语言、模型策略、报告格式、质量/工作流设置。这里设定的所有值都会保存为 `.moai/config/sections/` 下的 YAML 文件,之后随时可以直接改文件,或重新运行向导来更改。
+通过 MoAI-ADK 的交互式设置向导完成首次设置。向导只询问必须由人来决定的 5 项 —— 对话语言、姓名、要部署的代理框架、会话权限模式,以及是否启用 Jev 类型化判断。其余设置(模型策略、报告格式、质量门禁、设计工作流等)按推荐默认值保存,之后需要时可以更改。
+
+大多数设置保存为 `.moai/config/sections/` 下的 YAML 文件,每个文件只负责一个关注点,修改某个值时只需打开对应文件。会话权限模式是例外,它写入用户级的 Claude Code 设置(见下方 Page 2)。
 
 ## 启动设置向导
 
@@ -33,30 +35,30 @@ moai init
 
 ## 向导结构
 
-初始化向导始终运行相同的固定 3 页流程 —— 没有可扩大或缩小提问范围的模式标志,所有用户看到的提问都相同。
+初始化向导不提供模式选择,始终按同一流程运行。没有扩大或缩小问题范围的标志,每个人看到的问题都一样。问题共 5 个,分为 3 页。屏幕顶部的进度指示(`● ● ● ○ ○ 3 / 5`)统计的是问题数,不是页数。
 
-| 页面 | 提问 |
+| 页面 | 问题 |
 |------|------|
-| **Page 1 —— 基本** | 对话语言、名称、项目名称 |
-| **Page 2 —— 模型与报告** | 性能层级(模型策略)、报告格式 |
-| **Page 3 —— 质量与工作流** | LSP 集成、强制质量门禁、项目模式、设计工作流、Claude Design 联动 |
+| **Page 1 —— 基本** | 对话语言、姓名 |
+| **Page 2 —— 代理与自主** | 要部署的代理框架、会话权限模式 |
+| **Page 3 —— 判断能力** | 是否启用 Jev 类型化判断 |
 
 ```bash
 moai init my-project
 ```
 
 {{< callout type="info" >}}
-向导不会询问 Git 自动化模式与提供方。`moai init` 会从仓库中已配置的 Git 远程自动检测。之后想更改 Git 设置,请运行 `moai update -c`(`--config`)—— 只有该路径会显示单独的 Git 提问集(自动化模式、提供方、凭据)。
+向导不会询问 Git 自动化模式和提供商。`moai init` 会根据仓库中已配置的 Git 远程自动判断。之后要更改 Git 设置,请运行 `moai update -c` (`--config`)。Git 相关问题(自动化模式、提供商、认证信息)只会在这条路径中出现。
 {{< /callout >}}
 
 ## Page 1 —— 基本
 
-### 第 1 步:选择对话语言
+设置对话语言和姓名两项。两者都有预填的默认值,直接按 Enter 即可继续。
 
-选择 Claude 回复所用的语言。之后的所有提问都会以该语言呈现。
+**对话语言** —— MoAI 与你对话时使用的语言。选择后向导界面会立即切换为该语言。
 
 ```bash
-? 选择对话语言:
+? 选择对话语言
 ▸ English
   Korean (한국어)
   Japanese (日本語)
@@ -65,99 +67,86 @@ moai init my-project
 
 该设置保存到 `.moai/config/sections/language.yaml`。
 
-### 第 2 步:输入名称
-
-配置文件中使用的用户名。可按 Enter 跳过。
+**姓名** —— MoAI 称呼你时使用的名字。留空则跳过。
 
 ```bash
-? 输入名称: [名称]
+? 输入您的姓名: [姓名]
 ```
 
 该设置保存到 `.moai/config/sections/user.yaml` 的 `user.name` 字段。
 
-### 第 3 步:项目名称
+{{< callout type="info" >}}
+向导不询问项目名称。`moai init <项目名>` 会使用你传入的名称,不传则使用当前文件夹名称。也可以用 `--name` 标志直接指定。
+{{< /callout >}}
 
-项目的名称。默认值为当前目录名。
+## Page 2 —— 代理与自主
 
-```bash
-? 输入项目名称: [my-project]
-```
+### 代理框架
 
-## Page 2 —— 模型与报告
-
-### 性能层级(模型策略)
-
-选择分配给智能体的 AI 模型层级 —— 这是代币经济学的核心设置。
+选择要为此项目部署并接入哪个代理框架。选择不同,放到项目根目录的文件也不同。
 
 ```bash
-? 选择性能层级:
-▸ Medium - Opus 5 (high~low) + Sonnet (low, single-shot rows only)
-  High - Opus 5 (max~medium) + Sonnet (low, single-shot rows only)
-  Low - Opus 5 (medium~low) + Sonnet (low, docs/e2e/single-shot rows)
+? 选择要部署并接入的代理框架
+▸ 仅 Claude (推荐) - 部署 .claude/ 表面与 AGENTS.md（沿用至今的默认行为）
+  仅 Codex         - 仅部署 AGENTS.md 与 Codex 表面 — 不会生成 .claude/ 目录、CLAUDE.md 和 .mcp.json
+  Claude + Codex   - 在相同的 .claude/ 部署之上追加 .codex/ 接入，并强制开启 .mcp.json 供应
 ```
 
-| 层级 | 特点 |
-|------|------|
-| **High** | 最高质量 —— 对调用频率最低的两个代理使用 `max` 推理深度 |
-| **Medium**（默认） | 质量与成本的平衡 —— 成本/分数曲线的膝点 |
-| **Low** | 每任务最低成本 —— 智能体类代理降至 Opus `low` effort |
+指定 `--llm claude|gpt|both` 标志时,标志优先于此处的回答。
 
-该设置保存到 `.moai/config/sections/llm.yaml` 的 `performance_tier` 字段，并作为 `profile` 字段(配置矩阵列)的 legacy 别名读取。用 `--profile high|medium|low` 标志直接指定则保存到 `profile` 字段。每个配置文件的代理 model+effort 映射请参阅[配置矩阵](/zh/advanced/profile-matrix/)页面。
+### 会话权限模式
 
-### 报告格式
-
-选择报告生成为 HTML+Markdown 还是仅 Markdown。
+选择 Claude Code 会话以哪种权限模式启动。
 
 ```bash
-? 选择报告格式:
-▸ HTML + Markdown (推荐) - 同时生成可在浏览器查看的 HTML 报告与 Markdown
-  仅 Markdown - 仅生成 Markdown 报告(更轻量,便于 diff)
+? 选择会话权限模式
+▸ 自动接受编辑 (推荐) - 自动接受文件编辑;其他工具仍需确认
+  自动模式            - 在分类器安全检查下自动批准工具调用
+  跳过权限检查        - 跳过所有提示;需要沙箱证明 (Docker/gVisor 等)
 ```
 
-该设置保存到 `.moai/config/sections/report.yaml` 的 `report.format` 字段。
+该设置不写入项目 YAML,而是写入用户级的 Claude Code 设置(`defaultMode`)。默认的"自动接受编辑"对应 `defaultMode: acceptEdits`。"跳过权限检查"只有在存在沙箱证明且终止开关关闭时才会生效,否则会降为自动模式应用。指定 `--autonomy-tier semi-auto|automatic|fully-autonomous` 标志时,标志优先于此处的回答。
 
-## Page 3 —— 质量与工作流
+## Page 3 —— 判断能力
 
-### LSP integration
+### Jev 类型化判断
 
-选择是否在 run 阶段启用语言服务器诊断。默认为 **启用(Yes)**,如不需要可回答 No 来 opt-out。
-
-该设置保存到 `.moai/config/sections/lsp.yaml` 的 `lsp.enabled` 字段。
-
-### quality gates
-
-选择是否强制 TRUST 5 质量门禁。
-
-- **Enforce quality gates** (默认: Yes)—— 质量门禁失败时阻断实现推进
-
-该设置保存到 `.moai/config/sections/quality.yaml` 的 `constitution.enforce_quality` 字段。
-
-### project mode
-
-选择项目协作模式。
+Jev 针对传入的状态回答类型化问题并返回概率,它本身不做任何决定。
 
 ```bash
-? Select project mode:
-▸ Personal (Recommended) - Solo developer
-  Team - Multi-developer setup
+? 要启用 Jev 类型化判断吗？（可选，默认关闭）
 ```
 
-### design workflow
+默认值为**关闭**。启用后,卡片正文或请求正文会发送到外部厂商的服务器,请在了解这一点后再选择。该设置保存到 `.moai/config/sections/workflow.yaml` 的 `workflow.jev.enabled` 字段。
 
-选择是否启用 MoAI 设计流水线与 Claude Design 联动。
+{{< callout type="warning" >}}
+此问题只在 `moai init` 中出现。`moai update -c` 不会询问,之后要更改请打开 `moai web` 设置页面。
+{{< /callout >}}
 
-- **Enable design workflow** (默认: Yes)
-- **Enable Claude Design integration** (默认: Yes,仅在启用 design 时显示)
+## 向导不询问的设置
 
-这些设置保存到 `.moai/config/sections/design.yaml` 的 `design.enabled` / `design.claude_design.enabled` 字段。
+以下各项不经询问、直接按默认值保存。要更改,请传入标志,或在设置完成后使用 `moai update -c` 或 `moai web`。
+
+| 项目 | 默认值 | 更改方式 |
+|------|--------|----------|
+| 性能层级(模型策略) | Medium | `--model-policy` 或 `--profile`、`moai update -c` |
+| 报告格式 | HTML + Markdown | `moai update -c` |
+| LSP 集成 | 开启 | `--enable-lsp` |
+| 强制质量门禁 | 开启 | `--enforce-quality` |
+| 设计工作流与 Claude Design 集成 | 开启 | `--enable-design` |
+| Git 自动化模式与提供商 | 根据远程仓库设置判断 | `--git-mode`、`--git-provider`、`moai update -c` |
+
+各性能层级的代理 model+effort 映射请参阅[配置矩阵](/zh/advanced/profile-matrix/)页面。
 
 ## 非交互模式(CI/CD)
 
-用标志指定所有值即可无需向导完成初始化:
+用标志指定所有值,即可不经向导完成初始化:
 
 ```bash
 moai init my-project \
   --non-interactive \
+  --llm claude \
+  --autonomy-tier semi-auto \
   --profile medium \
   --enable-lsp=false \
   --enforce-quality

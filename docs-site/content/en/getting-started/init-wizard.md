@@ -4,7 +4,9 @@ weight: 50
 draft: false
 ---
 
-Complete your first setup through MoAI-ADK's interactive setup wizard. It configures the language, model policy, report format, and quality/workflow settings to match your development environment. Every value you set here is saved as a YAML file under `.moai/config/sections/`, so you can change it any time later by editing the file directly or re-running the wizard.
+Complete your first setup through MoAI-ADK's interactive setup wizard. The wizard asks only the five things a person has to choose — conversation language, name, the agent harness to deploy, the session permission mode, and whether to enable Jev typed judgments. Everything else (model policy, report format, quality gates, design workflow, and so on) is saved with its recommended default, and you can change it later.
+
+Most settings are saved as YAML files under `.moai/config/sections/`, one concern per file, so changing a value means opening just that file. The session permission mode is the exception: it is written to your user-level Claude Code settings (see Page 2 below).
 
 ## Starting the setup wizard
 
@@ -33,13 +35,13 @@ moai init
 
 ## Wizard structure
 
-The initialization wizard always runs the same fixed 3-page flow — there is no mode flag that widens or narrows the question set; every user sees the same questions.
+The initialization wizard always runs the same flow — there is no mode flag that widens or narrows the question set; every user sees the same questions. It asks five questions spread over three pages. The progress indicator at the top of the screen (`● ● ● ○ ○ 3 / 5`) counts questions, not pages.
 
 | Page | Questions |
 |------|-----------|
-| **Page 1 — Basic** | Conversation language, name, project name |
-| **Page 2 — Model & Report** | Performance tier (model policy), report format |
-| **Page 3 — Quality & Workflow** | LSP integration, enforce quality gates, project mode, design workflow, Claude Design integration |
+| **Page 1 — Basic** | Conversation language, name |
+| **Page 2 — Agents & Autonomy** | Agent harness to deploy, session permission mode |
+| **Page 3 — Judgment Capability** | Whether to enable Jev typed judgments |
 
 ```bash
 moai init my-project
@@ -51,113 +53,100 @@ Git automation mode and provider are NOT asked by the wizard. `moai init` auto-d
 
 ## Page 1 — Basic
 
-### Step 1: choose the conversation language
+Two basic values: conversation language and your name. Both come pre-filled, so pressing Enter moves you on.
 
-Choose the language Claude will respond in. Every subsequent question renders in this language.
+**Conversation language** — the language MoAI uses when talking with you. The wizard switches to it immediately.
 
 ```bash
-? Choose the conversation language:
+? Select conversation language
 ▸ English
   Korean (한국어)
   Japanese (日本語)
   Chinese (中文)
 ```
 
-This setting is saved in `.moai/config/sections/language.yaml`.
+This setting is saved to `.moai/config/sections/language.yaml`.
 
-### Step 2: enter your name
-
-The user name used in the config files. Press Enter to skip.
+**Name** — how MoAI addresses you. Leave it empty to skip.
 
 ```bash
 ? Enter your name: [name]
 ```
 
-This setting is saved in the `user.name` field of `.moai/config/sections/user.yaml`.
+This setting is saved to the `user.name` field in `.moai/config/sections/user.yaml`.
 
-### Step 3: project name
+{{< callout type="info" >}}
+The project name is not asked. `moai init` uses the name you pass as `moai init <project-name>`, or the current folder name when you give none. You can also set it directly with the `--name` flag.
+{{< /callout >}}
 
-The name of your project. The default is the current directory name.
+## Page 2 — Agents & Autonomy
 
-```bash
-? Enter project name: [my-project]
-```
+### Agent harness
 
-## Page 2 — Model & Report
-
-### Performance tier (model policy)
-
-Choose the AI model tier assigned to agents — the core Tokenomics setting.
+Choose which agent harness MoAI deploys and wires for this project. The choice decides which files land at the project root.
 
 ```bash
-? Choose the performance tier:
-▸ Medium - Opus 5 (high~low) + Sonnet (low, single-shot rows only)
-  High - Opus 5 (max~medium) + Sonnet (low, single-shot rows only)
-  Low - Opus 5 (medium~low) + Sonnet (low, docs/e2e/single-shot rows)
+? Select the agent harness to deploy and wire
+▸ Claude only (Recommended) - Deploy the .claude/ surface plus AGENTS.md (today's default behavior)
+  GPT (Codex) only          - AGENTS.md and Codex surfaces only — no .claude/ tree, no CLAUDE.md, no .mcp.json
+  Claude + Codex            - Same .claude/ deployment plus .codex/ wiring; .mcp.json provisioning forced on
 ```
 
-| Tier | Characteristics |
-|------|------|
-| **High** | Highest quality — `max` reasoning depth on the two rarest-invocation agents |
-| **Medium** (default) | Balance of quality and cost — the knee of the cost/score curve |
-| **Low** | Lowest cost per task — agentic agents drop to Opus `low` effort |
+The `--llm claude|gpt|both` flag takes precedence over this answer.
 
-This setting is saved in the `performance_tier` field of `.moai/config/sections/llm.yaml` and is read as a legacy alias of the `profile` field (the profile matrix column). Specifying the `--profile high|medium|low` flag directly stores it in the `profile` field (the legacy value `max` is accepted as input and normalized to `high`). For the per-profile agent model+effort mapping, see the [Profile Matrix](/en/advanced/profile-matrix/) page.
+### Session permission mode
 
-### Report format
-
-Choose whether reports are generated as HTML+Markdown or Markdown only.
+Choose the permission mode Claude Code sessions start in.
 
 ```bash
-? Choose the report format:
-▸ HTML + Markdown (Recommended) - generate both a browser-viewable HTML report and Markdown
-  Markdown only - generate Markdown reports only (lighter, diff-friendly)
+? Select the session permission mode
+▸ Accept edits on (Recommended) - Auto-accept file edits; prompt for other tools
+  Auto mode                     - Auto-approve tool calls under classifier safety checks
+  Bypass permissions            - Skip all prompts; requires sandbox proof (Docker/gVisor/etc.)
 ```
 
-This setting is saved in the `report.format` field of `.moai/config/sections/report.yaml`.
+This setting is written to your user-level Claude Code settings (`defaultMode`), not to a project YAML file. The default, Accept edits on, becomes `defaultMode: acceptEdits`. Bypass permissions applies only when a sandbox proof is present and the kill switch is off; otherwise it is applied as Auto mode instead. The `--autonomy-tier semi-auto|automatic|fully-autonomous` flag takes precedence over this answer.
 
-## Page 3 — Quality & Workflow
+## Page 3 — Judgment Capability
 
-### LSP integration
+### Jev typed judgments
 
-Choose whether to enable language-server diagnostics in the run phase. The default is **enabled (Yes)**; answer No to opt out.
-
-This setting is saved in the `lsp.enabled` field of `.moai/config/sections/lsp.yaml`.
-
-### quality gates
-
-Choose whether to enforce the TRUST 5 quality gates.
-
-- **Enforce quality gates** (default: Yes) — block implementation from proceeding when a quality gate fails
-
-This setting is saved in the `constitution.enforce_quality` field of `.moai/config/sections/quality.yaml`.
-
-### project mode
-
-Choose the project collaboration mode.
+Jev answers a typed question about supplied state and returns a probability; it decides nothing.
 
 ```bash
-? Select project mode:
-▸ Personal (Recommended) - Solo developer
-  Team - Multi-developer setup
+? Enable Jev typed judgments? (optional, off by default)
 ```
 
-### design workflow
+The default is **off**. Enabling it sends card text or request text to a third-party server, so decide with that in mind. This setting is saved to the `workflow.jev.enabled` field in `.moai/config/sections/workflow.yaml`.
 
-Choose whether to enable the MoAI design pipeline and Claude Design integration.
+{{< callout type="warning" >}}
+This question is asked only by `moai init`. `moai update -c` does not ask it — to change it later, open the `moai web` settings.
+{{< /callout >}}
 
-- **Enable design workflow** (default: Yes)
-- **Enable Claude Design integration** (default: Yes, shown only when design is enabled)
+## Settings the wizard does not ask
 
-These settings are saved in the `design.enabled` / `design.claude_design.enabled` fields of `.moai/config/sections/design.yaml`.
+The values below are saved with their defaults without asking. To change them, pass a flag, or use `moai update -c` or `moai web` after setup.
+
+| Setting | Default | How to change |
+|---------|---------|---------------|
+| Performance tier (model policy) | Medium | `--model-policy` or `--profile`, `moai update -c` |
+| Report format | HTML + Markdown | `moai update -c` |
+| LSP integration | On | `--enable-lsp` |
+| Enforce quality gates | On | `--enforce-quality` |
+| Design workflow and Claude Design integration | On | `--enable-design` |
+| Git automation mode and provider | Detected from the repository's remotes | `--git-mode`, `--git-provider`, `moai update -c` |
+
+For the per-agent model+effort mapping of each performance tier, see the [Profile Matrix](/en/advanced/profile-matrix/) page.
 
 ## Non-interactive mode (CI/CD)
 
-By specifying all values with flags, you can initialize without the wizard:
+Specify every value with flags to initialize without the wizard:
 
 ```bash
 moai init my-project \
   --non-interactive \
+  --llm claude \
+  --autonomy-tier semi-auto \
   --profile medium \
   --enable-lsp=false \
   --enforce-quality

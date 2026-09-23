@@ -4,7 +4,9 @@ weight: 50
 draft: false
 ---
 
-MoAI-ADK のインタラクティブな設定ウィザードで最初の設定を完了しましょう。言語、モデルポリシー、レポート形式、品質・ワークフロー設定を開発環境に合わせて構成します。ここで決めた値はすべて `.moai/config/sections/` 配下の YAML ファイルに保存されるので、後からいつでもファイルを直接直したりウィザードを再実行したりして変更できます。
+MoAI-ADK のインタラクティブな設定ウィザードで最初の設定を完了しましょう。ウィザードが尋ねるのは、人が選ぶ必要のある 5 つだけです — 会話言語、名前、デプロイするエージェントハーネス、セッションの権限モード、Jev の型付き判定を有効にするかどうか。それ以外の設定(モデルポリシー、レポート形式、品質ゲート、デザインワークフローなど)は推奨の既定値で保存され、必要なら後から変更できます。
+
+設定の多くは `.moai/config/sections/` 配下の YAML ファイルに保存されます。ファイルごとに 1 つの関心事だけを受け持つので、値を変えるときはそのファイルだけを開けば済みます。セッションの権限モードだけは例外で、ユーザーレベルの Claude Code 設定に書き込まれます(下の Page 2 を参照)。
 
 ## 設定ウィザードの開始
 
@@ -33,30 +35,30 @@ moai init
 
 ## ウィザードの構成
 
-初期化ウィザードは常に同じ固定された 3 ページの流れで動作します — 質問範囲を広げたり狭めたりするモードフラグは存在せず、すべてのユーザーに同じ質問セットが表示されます。
+初期化ウィザードは、モード選択なしで常に同じ流れで動作します。質問の範囲を広げたり狭めたりするフラグはなく、誰に対しても同じ質問を表示します。質問は 5 つで、3 ページに分かれています。画面上部の進行表示(`● ● ● ○ ○ 3 / 5`)はページではなく質問の数を数えます。
 
 | ページ | 質問 |
-|------|------|
-| **Page 1 — 基本** | 会話言語、名前、プロジェクト名 |
-| **Page 2 — モデル & レポート** | パフォーマンスティア (モデルポリシー)、レポート形式 |
-| **Page 3 — 品質 & ワークフロー** | LSP 統合、品質ゲート強制、プロジェクトモード、デザインワークフロー、Claude Design 連携 |
+|--------|------|
+| **Page 1 — 基本** | 会話言語、名前 |
+| **Page 2 — エージェントと自律性** | デプロイするエージェントハーネス、セッションの権限モード |
+| **Page 3 — 判定機能** | Jev の型付き判定を有効にするか |
 
 ```bash
 moai init my-project
 ```
 
 {{< callout type="info" >}}
-Git 自動化モード・プロバイダーはウィザードでは尋ねません。`moai init` はリポジトリに既に設定されている Git リモートから自動検出します。後から Git 設定を変更するには `moai update -c` (`--config`) を実行してください — このパスでのみ別の Git 質問セット (自動化モード、プロバイダー、認証情報) が表示されます。
+Git 自動化モードとプロバイダーはウィザードでは尋ねません。`moai init` がリポジトリに既に設定されている Git リモートから自動で判断します。後から Git 設定を変えるには `moai update -c` (`--config`) を実行してください。Git 関連の質問(自動化モード、プロバイダー、認証情報)はこの経路でのみ表示されます。
 {{< /callout >}}
 
 ## Page 1 — 基本
 
-### ステップ 1: 会話言語の選択
+会話言語と名前の 2 つを決めます。どちらも既定値が入っているので、Enter を押すだけで先に進めます。
 
-Claude が応答する言語を選択します。以降のすべての質問がこの言語で表示されます。
+**会話言語** — MoAI が会話に使う言語です。選ぶとすぐにウィザードの画面もその言語に切り替わります。
 
 ```bash
-? 会話言語を選択してください:
+? 会話言語を選択
 ▸ English
   Korean (한국어)
   Japanese (日本語)
@@ -65,99 +67,86 @@ Claude が応答する言語を選択します。以降のすべての質問が�
 
 この設定は `.moai/config/sections/language.yaml` に保存されます。
 
-### ステップ 2: 名前の入力
-
-設定ファイルに使われるユーザー名です。Enter を押してスキップできます。
+**名前** — MoAI があなたを呼ぶときの名前です。空のままにすると省略されます。
 
 ```bash
-? 名前を入力: [名前]
+? お名前を入力: [名前]
 ```
 
 この設定は `.moai/config/sections/user.yaml` の `user.name` フィールドに保存されます。
 
-### ステップ 3: プロジェクト名
+{{< callout type="info" >}}
+プロジェクト名は尋ねません。`moai init <プロジェクト名>` に渡した名前を使い、名前を渡さなければ現在のフォルダー名を使います。`--name` フラグで直接指定することもできます。
+{{< /callout >}}
 
-プロジェクトの名前です。デフォルト値は現在のディレクトリ名です。
+## Page 2 — エージェントと自律性
 
-```bash
-? プロジェクト名を入力: [my-project]
-```
+### エージェントハーネス
 
-## Page 2 — モデル & レポート
-
-### パフォーマンスティア (モデルポリシー)
-
-エージェントに割り当てる AI モデルティアを選択します — トークノミクスの核心設定です。
+このプロジェクトにどのエージェントハーネスをデプロイして接続するかを選びます。選択によってプロジェクトルートに置かれるファイルが変わります。
 
 ```bash
-? パフォーマンスティアを選択:
-▸ Medium - Opus 5 (high~low) + Sonnet (low, single-shot rows only)
-  High - Opus 5 (max~medium) + Sonnet (low, single-shot rows only)
-  Low - Opus 5 (medium~low) + Sonnet (low, docs/e2e/single-shot rows)
+? デプロイして接続するエージェントハーネスを選択
+▸ Claude のみ (推奨) - .claude/ サーフェスと AGENTS.md をデプロイします (従来のデフォルト動作)
+  Codex のみ         - AGENTS.md と Codex サーフェスのみデプロイ — .claude/ ツリー、CLAUDE.md、.mcp.json は作成されません
+  Claude + Codex     - 同じ .claude/ デプロイに .codex/ 接続を追加し、.mcp.json のプロビジョニングを強制有効化
 ```
 
-| ティア | 特徴 |
-|------|------|
-| **High** | 最高品質 — 呼び出し頻度が最も低い 2 エージェントに `max` 推論深度 |
-| **Medium** (デフォルト) | 品質とコストのバランス — コスト/スコア曲線の膝 |
-| **Low** | タスクあたり最低コスト — エージェンティックなエージェントは Opus `low` effort へ |
+`--llm claude|gpt|both` フラグを指定すると、この回答よりフラグが優先されます。
 
-この設定は `.moai/config/sections/llm.yaml` の `performance_tier` フィールドに保存され、`profile` フィールド(プロファイルマトリクス列)の legacy エイリアスとして読み込まれます。`--profile high|medium|low` フラグで直接指定すると `profile` フィールドに保存されます。プロファイル別のエージェント model+effort マッピングは [プロファイルマトリクス](/ja/advanced/profile-matrix/) ページを参照してください。
+### セッションの権限モード
 
-### レポート形式
-
-レポートを HTML+Markdown で生成するか、Markdown のみで生成するかを選択します。
+Claude Code のセッションをどの権限モードで開始するかを選びます。
 
 ```bash
-? レポート形式を選択:
-▸ HTML + Markdown (推奨) - ブラウザで閲覧できる HTML レポートと Markdown を両方生成
-  Markdown のみ - Markdown レポートのみ生成 (軽量、diff フレンドリー)
+? セッションの権限モードを選択
+▸ 編集を自動承認 (推奨) - ファイル編集は自動承認; その他のツールは確認
+  自動モード            - 分類器の安全検査のもとでツール呼び出しを自動承認
+  権限をバイパス        - すべてのプロンプトを省略; サンドボックス証明が必要 (Docker/gVisor 等)
 ```
 
-この設定は `.moai/config/sections/report.yaml` の `report.format` フィールドに保存されます。
+この設定はプロジェクトの YAML ではなく、ユーザーレベルの Claude Code 設定(`defaultMode`)に書き込まれます。既定の「編集を自動承認」は `defaultMode: acceptEdits` になります。「権限をバイパス」はサンドボックス証明があり、キルスイッチがオフのときにだけ適用され、そうでなければ自動モードに下げて適用されます。`--autonomy-tier semi-auto|automatic|fully-autonomous` フラグを指定すると、この回答よりフラグが優先されます。
 
-## Page 3 — 品質 & ワークフロー
+## Page 3 — 判定機能
 
-### LSP integration
+### Jev の型付き判定
 
-run ステップで言語サーバー診断を有効化するか選択します。デフォルト値は **有効 (Yes)** で、無効にしたい場合は No と答えて opt-out できます。
-
-この設定は `.moai/config/sections/lsp.yaml` の `lsp.enabled` フィールドに保存されます。
-
-### quality gates
-
-TRUST 5 品質ゲートの強制有無を選択します。
-
-- **Enforce quality gates** (デフォルト値: Yes) — 品質ゲート失敗時に実装の進行を遮断
-
-この設定は `.moai/config/sections/quality.yaml` の `constitution.enforce_quality` フィールドに保存されます。
-
-### project mode
-
-プロジェクトの協業モードを選択します。
+Jev は渡された状態について型付きの質問に答え、確率を返す機能です。判断そのものは行いません。
 
 ```bash
-? Select project mode:
-▸ Personal (Recommended) - Solo developer
-  Team - Multi-developer setup
+? Jev の型付き判定を有効にしますか？（任意・既定は無効）
 ```
 
-### design workflow
+既定値は**無効**です。有効にするとカード本文やリクエスト本文が外部ベンダーのサーバーへ送信されるので、それを踏まえて選んでください。この設定は `.moai/config/sections/workflow.yaml` の `workflow.jev.enabled` フィールドに保存されます。
 
-MoAI デザインパイプラインと Claude Design 連携を有効化するか選択します。
+{{< callout type="warning" >}}
+この質問は `moai init` でだけ表示されます。`moai update -c` では尋ねないので、後から変えるには `moai web` の設定画面を開いてください。
+{{< /callout >}}
 
-- **Enable design workflow** (デフォルト値: Yes)
-- **Enable Claude Design integration** (デフォルト値: Yes、design 有効化時のみ表示)
+## ウィザードが尋ねない設定
 
-これらの設定は `.moai/config/sections/design.yaml` の `design.enabled` / `design.claude_design.enabled` フィールドに保存されます。
+以下の値は尋ねずに既定値で保存されます。変えるにはフラグを指定するか、セットアップ後に `moai update -c` または `moai web` を使ってください。
+
+| 項目 | 既定値 | 変更方法 |
+|------|--------|----------|
+| パフォーマンスティア(モデルポリシー) | Medium | `--model-policy` または `--profile`、`moai update -c` |
+| レポート形式 | HTML + Markdown | `moai update -c` |
+| LSP 統合 | オン | `--enable-lsp` |
+| 品質ゲートの強制 | オン | `--enforce-quality` |
+| デザインワークフロー・Claude Design 連携 | オン | `--enable-design` |
+| Git 自動化モード・プロバイダー | リモートリポジトリの設定から判断 | `--git-mode`、`--git-provider`、`moai update -c` |
+
+パフォーマンスティアごとのエージェント model+effort マッピングは [プロファイルマトリクス](/ja/advanced/profile-matrix/) ページを参照してください。
 
 ## 非対話型モード (CI/CD)
 
-フラグですべての値を指定するとウィザードなしで初期化できます:
+フラグですべての値を指定すると、ウィザードなしで初期化できます:
 
 ```bash
 moai init my-project \
   --non-interactive \
+  --llm claude \
+  --autonomy-tier semi-auto \
   --profile medium \
   --enable-lsp=false \
   --enforce-quality
