@@ -304,25 +304,38 @@ func runOperationalLauncherProof(t *testing.T, proveBoundChain bool) {
 // while making Codex's login-shell lookup resolve the same binary that launched
 // the fixture. A login shell may rebuild PATH from user startup files and pick
 // an installed, stale moai even when the fixture prepended its build directory.
+//
+// The boundary under test is "a login shell's startup files decide which moai
+// runs", not zsh itself, so the fixture takes whichever login shell the host
+// has and seeds that shell's own profile in a private directory: zsh reads
+// $ZDOTDIR/.zprofile; bash, the fallback on hosts without zsh (Linux CI
+// runners), reads $HOME/.bash_profile, so HOME is pointed at the private
+// directory for the shell processes this env reaches. A host with neither
+// shell still fails loudly — the boundary cannot be measured there.
 func operationalHookShellEnv(t *testing.T, bin string, env []string) []string {
 	t.Helper()
-	shell, err := exec.LookPath("zsh")
-	if err != nil {
-		t.Fatalf("Codex hook-shell fixture requires zsh: %v", err)
-	}
-	zdotdir := t.TempDir()
 	profile := "export PATH=" + shellQuote(filepath.Dir(bin)) + ":\"$PATH\"\n"
-	if err := os.WriteFile(filepath.Join(zdotdir, ".zprofile"), []byte(profile), 0600); err != nil {
+	profileDir := t.TempDir()
+	var shell, profileFile, dirKey string
+	if zsh, err := exec.LookPath("zsh"); err == nil {
+		shell, profileFile, dirKey = zsh, ".zprofile", "ZDOTDIR"
+	} else if bash, bashErr := exec.LookPath("bash"); bashErr == nil {
+		shell, profileFile, dirKey = bash, ".bash_profile", "HOME"
+	} else {
+		t.Fatalf("Codex hook-shell fixture requires a login shell (zsh or bash): zsh: %v; bash: %v", err, bashErr)
+	}
+	if err := os.WriteFile(filepath.Join(profileDir, profileFile), []byte(profile), 0600); err != nil {
 		t.Fatal(err)
 	}
 	filtered := make([]string, 0, len(env)+2)
 	for _, item := range env {
 		key, _, _ := strings.Cut(item, "=")
-		if key != "SHELL" && key != "ZDOTDIR" {
+		if key != "SHELL" && key != "ZDOTDIR" && key != dirKey {
 			filtered = append(filtered, item)
 		}
 	}
-	filtered = append(filtered, "SHELL="+shell, "ZDOTDIR="+zdotdir)
+	filtered = append(filtered, "SHELL="+shell, dirKey+"="+profileDir)
+	t.Logf("HOOK_LOGIN_SHELL %s profile=%s", shell, profileFile)
 	resolve := exec.Command(shell, "-lc", "command -v moai")
 	resolve.Env = filtered
 	out, err := resolve.Output()
