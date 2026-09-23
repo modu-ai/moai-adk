@@ -96,6 +96,9 @@ func HandoffNackReason(err error) (string, bool) {
 	if errors.As(err, &nack) {
 		return nack.Reason, true
 	}
+	if stale, ok := StaleEndpoint(err); ok {
+		return stale.Code, true
+	}
 	return "", false
 }
 

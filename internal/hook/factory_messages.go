@@ -92,6 +92,9 @@ func registerFactoryHookPeer(ctx context.Context, input *HookInput, mode factory
 		return "factory messaging degraded: " + peerErr.Error()
 	}
 	if mode == factoryPeerBindSessionStart {
+		if notice, handled := bindFactoryInteractiveHandoff(ctx, s, input, want); handled {
+			return notice
+		}
 		p, bound, bindErr := s.BindLaunchPending(ctx, want)
 		if bindErr != nil {
 			return "factory messaging degraded: " + bindErr.Error()

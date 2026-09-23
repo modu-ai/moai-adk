@@ -166,10 +166,10 @@ func (f *laneHandoffFixture) requireNoEndpointEffects(t *testing.T, before hando
 		t.Fatalf("endpoint row mutated: before=%+v after=%+v", before, after)
 	}
 	for q, want := range map[string]int{
-		`SELECT count(*) FROM lane_handoffs WHERE state='BOUND'`:      0,
+		`SELECT count(*) FROM lane_handoffs WHERE state='BOUND'`:          0,
 		`SELECT count(*) FROM lane_handoff_events WHERE to_state='BOUND'`: 0,
-		`SELECT count(*) FROM lane_endpoint_tombstones`:               0,
-		`SELECT count(*) FROM messages`:                               0,
+		`SELECT count(*) FROM lane_endpoint_tombstones`:                   0,
+		`SELECT count(*) FROM messages`:                                   0,
 	} {
 		if n := f.count(t, q); n != want {
 			t.Fatalf("%s = %d, want %d", q, n, want)
@@ -444,7 +444,7 @@ func TestLaneHandoffHeadlessSwitchNacksMissingCodexBinary(t *testing.T) {
 // --- AC-FLH-014 ---
 
 // handoffControlFiles are the production files that drive a lane handoff.
-var handoffControlFiles = []string{"factory_lane_handoff.go", "factory_lane_handoff_switch.go"}
+var handoffControlFiles = []string{"factory_lane_handoff.go", "factory_lane_handoff_switch.go", "factory_lane_handoff_bind.go"}
 
 // scanHandoffControl lists every private or overstated control path the
 // handoff sources reach for: forbidden imports (sockets, hook, MCP), forbidden

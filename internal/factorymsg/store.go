@@ -102,6 +102,10 @@ type Store struct {
 	ownerCurrent            func(int, string) bool
 	recordReject            func(context.Context, string, string) error
 	probeIdentity           func(int) (string, homestate.ProcessIdentityState)
+	// bindStep, when set by a test, runs at each named boundary of the atomic
+	// handoff rebind ("locked", then after each of its five writes); an error
+	// aborts and rolls back the whole transaction.
+	bindStep func(step string) error
 }
 
 func BrokerPath(projectRoot, runID string) (string, error) {
@@ -292,7 +296,7 @@ CREATE TABLE IF NOT EXISTS peers(slot TEXT PRIMARY KEY, project_key TEXT NOT NUL
 CREATE TABLE IF NOT EXISTS messages(id TEXT PRIMARY KEY, schema_version INTEGER NOT NULL, project_key TEXT NOT NULL, run_id TEXT NOT NULL, sender_session TEXT NOT NULL, sender_generation INTEGER NOT NULL, recipient_session TEXT NOT NULL, recipient_generation INTEGER NOT NULL, kind TEXT NOT NULL, idem_key TEXT NOT NULL, task_ref TEXT NOT NULL, correlation_id TEXT NOT NULL, created_at TEXT NOT NULL, expires_at TEXT NOT NULL, payload BLOB NOT NULL, state TEXT NOT NULL, claim_token TEXT NOT NULL DEFAULT '', claim_expires_at TEXT, disposition TEXT NOT NULL DEFAULT '', acknowledged_at TEXT, UNIQUE(sender_session,idem_key));
 CREATE INDEX IF NOT EXISTS messages_recipient_state ON messages(recipient_session,recipient_generation,state,created_at);
 CREATE TABLE IF NOT EXISTS dead_letters(id INTEGER PRIMARY KEY AUTOINCREMENT, message_id TEXT NOT NULL, reason TEXT NOT NULL, created_at TEXT NOT NULL);
-` + handoffSchema
+` + handoffSchema + handoffBindSchema
 
 func (p Peer) validate(projectKey, runID string) error {
 	for name, v := range map[string]string{"project_key": p.ProjectKey, "run_id": p.RunID, "backend": p.Backend, "role": p.Role, "slot": p.Slot, "session_uuid": p.SessionUUID} {
@@ -579,7 +583,7 @@ func (s *Store) verifyPeer(ctx context.Context, p Peer) error {
 		return err
 	}
 	if n != 1 {
-		return errors.New("stale or unregistered peer")
+		return s.staleOrUnregistered(ctx, p)
 	}
 	return nil
 }
@@ -632,7 +636,13 @@ func (s *Store) Send(ctx context.Context, r SendRequest) (Envelope, error) {
 		var created, expires string
 		var payload []byte
 		err = s.db.QueryRowContext(ctx, `SELECT id,schema_version,project_key,run_id,kind,sender_generation,recipient_session,recipient_generation,task_ref,correlation_id,created_at,expires_at,payload FROM messages WHERE sender_session=? AND idem_key=?`, env.SenderSession, r.IdempotencyKey).Scan(&env.ID, &env.SchemaVersion, &env.ProjectKey, &env.RunID, &env.Kind, &env.SenderGeneration, &env.RecipientSession, &env.RecipientGeneration, &env.TaskRef, &env.CorrelationID, &created, &expires, &payload)
-		if err == nil && (env.Kind != r.Kind || env.RecipientSession != r.To.SessionUUID || env.RecipientGeneration != r.To.Generation || env.TaskRef != r.TaskRef || env.CorrelationID != r.CorrelationID || !bytes.Equal(payload, r.Payload)) {
+		// A handoff release moves an envelope's recipient columns to the new
+		// generation; the request it was sent as still names the original one.
+		origSession, origGen := env.RecipientSession, env.RecipientGeneration
+		if err == nil {
+			_ = s.db.QueryRowContext(ctx, `SELECT from_session,from_generation FROM lane_message_releases WHERE message_id=?`, env.ID).Scan(&origSession, &origGen)
+		}
+		if err == nil && (env.Kind != r.Kind || origSession != r.To.SessionUUID || origGen != r.To.Generation || env.TaskRef != r.TaskRef || env.CorrelationID != r.CorrelationID || !bytes.Equal(payload, r.Payload)) {
 			return Envelope{}, errors.New("idempotency key collision with different request")
 		}
 		env.CreatedAt, _ = time.Parse(time.RFC3339Nano, created)
@@ -690,6 +700,9 @@ func (s *Store) Claim(ctx context.Context, p Peer, limit int, lease time.Duratio
 		return nil, err
 	}
 	defer func() { _ = tx.Rollback() }()
+	if err := s.refuseWhileHandoffPending(ctx, tx, p.Slot); err != nil {
+		return nil, err
+	}
 	if _, err := tx.ExecContext(ctx, `INSERT INTO dead_letters(message_id,reason,created_at) SELECT id,'ttl:expired',? FROM messages WHERE recipient_session=? AND recipient_generation=? AND state IN ('pending','claimed') AND expires_at<=?`, now.Format(time.RFC3339Nano), p.SessionUUID, p.Generation, now.Format(time.RFC3339Nano)); err != nil {
 		return nil, err
 	}
@@ -732,10 +745,13 @@ func (s *Store) ReadBody(ctx context.Context, p Peer, id, token string) ([]byte,
 	if err := s.verifyPeer(ctx, p); err != nil {
 		return nil, err
 	}
+	if err := s.refuseWhileHandoffPending(ctx, s.db, p.Slot); err != nil {
+		return nil, err
+	}
 	var body []byte
-	err := s.db.QueryRowContext(ctx, `SELECT payload FROM messages WHERE id=? AND recipient_session=? AND recipient_generation=? AND state='claimed' AND claim_token=?`, id, p.SessionUUID, p.Generation, token).Scan(&body)
+	err := s.db.QueryRowContext(ctx, `SELECT payload FROM messages WHERE id=? AND recipient_session=? AND recipient_generation=? AND state='claimed' AND claim_token=? AND NOT EXISTS(SELECT 1 FROM lane_handoffs WHERE slot=? AND `+openHandoffStates+`)`, id, p.SessionUUID, p.Generation, token, p.Slot).Scan(&body)
 	if err != nil {
-		return nil, errors.New("claim identity mismatch")
+		return nil, s.claimMismatch(ctx, p, id, token)
 	}
 	return body, nil
 }
@@ -746,13 +762,16 @@ func (s *Store) RecordDisposition(ctx context.Context, p Peer, id, token, d stri
 	if err := s.verifyPeer(ctx, p); err != nil {
 		return err
 	}
-	r, err := s.db.ExecContext(ctx, `UPDATE messages SET disposition=? WHERE id=? AND recipient_session=? AND recipient_generation=? AND state='claimed' AND claim_token=?`, d, id, p.SessionUUID, p.Generation, token)
+	if err := s.refuseWhileHandoffPending(ctx, s.db, p.Slot); err != nil {
+		return err
+	}
+	r, err := s.db.ExecContext(ctx, `UPDATE messages SET disposition=? WHERE id=? AND recipient_session=? AND recipient_generation=? AND state='claimed' AND claim_token=? AND NOT EXISTS(SELECT 1 FROM lane_handoffs WHERE slot=? AND `+openHandoffStates+`)`, d, id, p.SessionUUID, p.Generation, token, p.Slot)
 	if err != nil {
 		return err
 	}
 	n, _ := r.RowsAffected()
 	if n != 1 {
-		return errors.New("claim identity mismatch")
+		return s.claimMismatch(ctx, p, id, token)
 	}
 	return nil
 }
@@ -760,12 +779,23 @@ func (s *Store) Receipt(ctx context.Context, p Peer, id, token string) error {
 	if err := s.verifyPeer(ctx, p); err != nil {
 		return err
 	}
-	r, err := s.db.ExecContext(ctx, `UPDATE messages SET state='acknowledged',acknowledged_at=? WHERE id=? AND recipient_session=? AND recipient_generation=? AND state='claimed' AND claim_token=? AND disposition IN ('accepted','rejected','duplicate','deferred')`, s.now().UTC().Format(time.RFC3339Nano), id, p.SessionUUID, p.Generation, token)
+	if err := s.refuseWhileHandoffPending(ctx, s.db, p.Slot); err != nil {
+		return err
+	}
+	r, err := s.db.ExecContext(ctx, `UPDATE messages SET state='acknowledged',acknowledged_at=? WHERE id=? AND recipient_session=? AND recipient_generation=? AND state='claimed' AND claim_token=? AND disposition IN ('accepted','rejected','duplicate','deferred') AND NOT EXISTS(SELECT 1 FROM lane_handoffs WHERE slot=? AND `+openHandoffStates+`)`, s.now().UTC().Format(time.RFC3339Nano), id, p.SessionUUID, p.Generation, token, p.Slot)
 	if err != nil {
 		return err
 	}
 	n, _ := r.RowsAffected()
 	if n != 1 {
+		if err := s.claimMismatch(ctx, p, id, token); err != nil {
+			if _, stale := StaleEndpoint(err); stale {
+				return err
+			}
+			if reason, ok := HandoffNackReason(err); ok && reason == NackEndpointHandoffPending {
+				return err
+			}
+		}
 		return errors.New("receipt requires matching claim and persisted disposition")
 	}
 	return nil
