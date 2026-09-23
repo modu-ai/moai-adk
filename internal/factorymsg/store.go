@@ -584,7 +584,8 @@ func newID() string { var b [16]byte; _, _ = rand.Read(b[:]); return hex.EncodeT
 
 // verifyPeer checks p against the registry on s.db. It must not be called
 // while the caller holds an open transaction: the store has one pooled
-// connection, so it would wait for that connection until ctx expires. Use
+// connection, so it would wait for that connection until ctx is done — and
+// with a ctx that has no deadline or cancellation, it would wait forever. Use
 // verifyPeerOn with the transaction instead.
 func (s *Store) verifyPeer(ctx context.Context, p Peer) error {
 	return s.verifyPeerOn(ctx, s.db, p)
@@ -593,6 +594,9 @@ func (s *Store) verifyPeer(ctx context.Context, p Peer) error {
 // verifyPeerOn checks p against the registry using q, which may be s.db or a
 // transaction/connection the caller already holds. A mismatch or missing row
 // returns ErrStalePeer; a launch-pending session returns ErrEndpointLaunchPending.
+// Any other error — a peer that fails validation, or a failed registry query
+// (including ctx cancellation or deadline) — is returned unchanged and does
+// not match ErrStalePeer.
 //
 // @MX:ANCHOR: [AUTO] stale-peer check shared by every Send/Poll/Ack entry and by in-transaction callers
 // @MX:REASON: fan_in >= 7 via verifyPeer; the queryer seam lets tx-holding callers avoid the one-connection pool deadlock
