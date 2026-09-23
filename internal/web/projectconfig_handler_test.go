@@ -87,7 +87,7 @@ func projectSaveForm(devMode, convention string) url.Values {
 }
 
 // TestSaveRejectsBogusDevelopmentMode covers AC-WC3-001a + EC: a non-canonical
-// development_mode yields HTTP 400, a development_mode field error, and NO project
+// development_mode yields a swappable status, a development_mode field error, and NO project
 // config write (the write seam must not be invoked).
 func TestSaveRejectsBogusDevelopmentMode(t *testing.T) {
 	t.Parallel()
@@ -96,18 +96,20 @@ func TestSaveRejectsBogusDevelopmentMode(t *testing.T) {
 	a.writeProjectConfig = func(string, string, string) error { wrote = true; return nil }
 
 	rec := servePost(t, a.routes(), "/save", projectSaveForm("xyz", "angular"))
-	if rec.Code != http.StatusBadRequest {
-		t.Errorf("bogus development_mode status = %d, want 400", rec.Code)
+	if rec.Code != http.StatusOK {
+		t.Errorf("bogus development_mode status = %d, want 200", rec.Code)
 	}
+	assertValidationRejectBanner(t, rec.Body.String())
 	// SPEC-DESIGN-MOAIWEBV2-001 M1: field-error echo retired with the project render
-	// surface; the server 400 + atomic no-write (below) are the preserved contract.
+	// surface; the reject banner + atomic no-write (below) are the preserved contract
+	// (card t1105 moved the status off 400 so htmx delivers the rendered reason).
 	if wrote {
 		t.Error("write seam was invoked despite validation failure — must be atomic reject")
 	}
 }
 
 // TestSaveRejectsBogusConvention covers AC-WC3-002a: a non-canonical git_convention
-// yields 400 + field error + no write.
+// yields a swappable status + field error + no write.
 func TestSaveRejectsBogusConvention(t *testing.T) {
 	t.Parallel()
 	a := newTestApp(t)
@@ -115,11 +117,13 @@ func TestSaveRejectsBogusConvention(t *testing.T) {
 	a.writeProjectConfig = func(string, string, string) error { wrote = true; return nil }
 
 	rec := servePost(t, a.routes(), "/save", projectSaveForm("ddd", "gitflow"))
-	if rec.Code != http.StatusBadRequest {
-		t.Errorf("bogus git_convention status = %d, want 400", rec.Code)
+	if rec.Code != http.StatusOK {
+		t.Errorf("bogus git_convention status = %d, want 200", rec.Code)
 	}
+	assertValidationRejectBanner(t, rec.Body.String())
 	// SPEC-DESIGN-MOAIWEBV2-001 M1: field-error echo retired with the project render
-	// surface; the server 400 + atomic no-write (below) are the preserved contract.
+	// surface; the reject banner + atomic no-write (below) are the preserved contract
+	// (card t1105 moved the status off 400 so htmx delivers the rendered reason).
 	if wrote {
 		t.Error("write seam invoked despite validation failure")
 	}
@@ -170,7 +174,7 @@ func TestSaveEmptyProjectConfigPasses(t *testing.T) {
 	}
 }
 
-// TestSaveEC2AtomicReject covers EC-2: one bogus + one valid → 400, FieldErrors
+// TestSaveEC2AtomicReject covers EC-2: one bogus + one valid → reject, FieldErrors
 // has only development_mode, and NEITHER value is persisted (atomic reject).
 func TestSaveEC2AtomicReject(t *testing.T) {
 	t.Parallel()
@@ -179,11 +183,12 @@ func TestSaveEC2AtomicReject(t *testing.T) {
 	a.writeProjectConfig = func(string, string, string) error { wrote = true; return nil }
 
 	rec := servePost(t, a.routes(), "/save", projectSaveForm("xyz", "angular"))
-	if rec.Code != http.StatusBadRequest {
-		t.Errorf("EC-2 status = %d, want 400", rec.Code)
+	if rec.Code != http.StatusOK {
+		t.Errorf("EC-2 status = %d, want 200", rec.Code)
 	}
+	assertValidationRejectBanner(t, rec.Body.String())
 	// SPEC-DESIGN-MOAIWEBV2-001 M1: the development_mode field-error echo retired with
-	// the project render surface; the server 400 + atomic no-write (below) are the
+	// the project render surface; the reject banner + atomic no-write (below) are the
 	// preserved contract (REQ-MWV2-031).
 	if wrote {
 		t.Error("EC-2 must be an atomic reject — no value persisted when any field is invalid")

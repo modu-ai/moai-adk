@@ -29,7 +29,7 @@ moai cc [-p profile] [-w [name]] [-- claude-args...]
 | `-c, --continue` | 前回のセッションを継続 |
 | `-m, --model <model>` | モデル選択をオーバーライド |
 | `-w, --worktree [name]` | 隔離された git worktree (`.claude/worktrees/<name>/`) で起動 — 名前を省略すると自動生成 |
-| `--chrome` / `--no-chrome` | Chrome MCP のトグル |
+| `--chrome` / `--no-chrome` | Claude Code にそのまま渡します。ランチャーはどちらも自動では付けないため、`--no-chrome` を指定しない限り `/chrome` で接続できます |
 | `-k, --kanban [SPEC-ID]` | カンバンリードとして進入 — `plan → run → sync` チェーンをこのセッションにシード。SPEC-ID を付けるとその SPEC を目標に |
 | `-k --name <role>` | 開いているカンバンランに同伴セッションとして合流。ロールは `plan` · `run` · `sync`。同じロール名の生存セッションがあれば次の番号が付く (`plan-1`, `plan-2`, …) |
 | `-f, --factory` | **ファクトリーリード**として進入 — ワーカー 1 人(`worker-1`)でファクトリーランを開きます。リードは運営者が選んだカードをセッション間メッセージで空きワーカーに配分 |

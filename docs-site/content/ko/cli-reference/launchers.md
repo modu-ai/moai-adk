@@ -29,7 +29,7 @@ moai cc [-p profile] [-w [name]] [-- claude-args...]
 | `-c, --continue` | 이전 세션 이어서 시작 |
 | `-m, --model <model>` | 모델 선택 재정의 |
 | `-w, --worktree [name]` | 격리된 git worktree(`.claude/worktrees/<name>/`)에서 실행 — 이름 생략 시 자동 생성 |
-| `--chrome` / `--no-chrome` | Chrome MCP 토글 |
+| `--chrome` / `--no-chrome` | Claude Code 에 그대로 전달합니다. 런처가 스스로 붙이지 않으므로 `--no-chrome` 을 넘기지 않는 한 `/chrome` 으로 연결할 수 있습니다 |
 | `-k, --kanban [SPEC-ID]` | 칸반 리드 진입 — `plan → run → sync` 체인을 이 세션에 시드. SPEC-ID를 붙이면 그 SPEC을 목표로 |
 | `-k --name <role>` | 열린 칸반 런에 동반 세션으로 합류. 역할은 `plan` · `run` · `sync`. 같은 역할 이름이 살아 있는 세션이면 다음 번호로 붙음 (`plan-1`, `plan-2`, …) |
 | `-f, --factory` | **팩토리 리드** 진입 — 워커 하나(`worker-1`)로 팩토리 런을 엽니다. 리드는 운영자가 고른 카드를 교차 세션 메시지로 빈 워커에 배분 |
