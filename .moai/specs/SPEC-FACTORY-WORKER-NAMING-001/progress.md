@@ -293,7 +293,7 @@ docs-site/README/`manager-lead.md` synchronization.
 
 ```yaml
 sync_complete_at: 2026-09-23
-sync_commit_sha: pending-backfill-sync
+sync_commit_sha: 3ec4c94e4
 sync_status: complete
 b12_self_test_a: pass   # grep -c SPEC-FACTORY-WORKER-NAMING-001 CHANGELOG.md → 0 before this commit's addition (single new entry, no duplicate)
 b12_self_test_b: pass   # AC count: 10 distinct AC-NNN identifiers in acceptance.md, matches CHANGELOG entry's "10 acceptance criteria (AC-001..010)"
