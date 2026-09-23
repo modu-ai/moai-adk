@@ -13,7 +13,7 @@ module: "internal/factorymsg"
 ## §A Status
 
 - Current SPEC status: `in-progress` (M1 commit, manager-develop). The plan-era lines below are kept as written.
-- Current phase: run, M1, M2, M3a, M3b and M4 complete (M4 code HEAD `c16d1422a`; follow-up tests `a0d4755a7` on develop absorb `09e620d2d`); M5 (LIVE) not started (see §E.2, § M4 lane record, and its M4 follow-up subsection).
+- Current phase: run, M1, M2, M3a, M3b and M4 complete (M4 code HEAD `c16d1422a`; follow-up tests `a0d4755a7` on develop absorb `09e620d2d`); M5 (LIVE) blocked, both LIVE rows NOT_RUN = LIVE FAIL, gate-quality test delivered (see § M5 lane record).
 - Card/worktree/branch: `t1082` / `.claude/worktrees/t1082` / `WT-factory-lane-worktree-handoff`.
 - Plan subject HEAD: `bf39a539d97f49edf3b11517ee7c982239c60df3`.
 - Implementation: NOT STARTED.
@@ -873,3 +873,66 @@ The absorbed develop includes t1109 "launch-pending bind budget split". Whether 
 - The AC-FLH-011 filesystem instrument is observational: snapshots taken at each state and compared. Writes are not intercepted at the syscall level, and a write undone between two observations is invisible.
 - Neither new named test has a behavioral RED; discrimination rests on the five mutants.
 - The full `internal/cli` and `internal/hook` suites were not run on the merged tree (CI owns them).
+
+## § M5 lane record — LIVE mixed-factory verification (2026-09-24, manager-develop, cycle_type=tdd)
+
+Base HEAD `7cbaf966c`. Result: **LIVE FAIL (NOT_RUN on both rows)**. Only the non-LIVE gate-quality test was delivered. No model was called.
+
+### Delivered
+
+- `internal/cli/factory_lane_handoff_live_gate_test.go` — `TestFactoryLaneHandoffLiveEvidenceGateRejectsMutants`. It reads the `jq -se` and `jq -e` programs from the AC-FLH-012 and AC-FLH-013 bash blocks in `acceptance.md` and runs them with the `jq` binary, so the production predicates are tested, not a copy. Per AC: a valid evidence control and a valid event-stream control must pass. Then every leaf field is removed one at a time, `bypass.fixture|mock|direct_register_peer=true`, a child `fail`, a child `skip`, and a `NOT_RUN` output line must all be rejected. AC-FLH-013 also covers `wrong_method_thread_start` (`thread/start`, `forked_from_id=null`). A missing `jq` is `t.Fatal`, not a skip.
+
+### RED → GREEN
+
+| Step | Command | Observed | Log |
+|---|---|---|---|
+| RED (test absent) | `go test -json ./internal/cli -run '^TestFactoryLaneHandoffLiveEvidenceGateRejectsMutants$' -count=1` | `ok … [no tests to run]`; named PASS count `0` | `run-m5-red-gate.jsonl` |
+| GREEN | same, `-v` | PASS; `AC-FLH-012: 2 valid controls passed, 51 mutants rejected`, `AC-FLH-013: … 55 mutants rejected`; jq named-PASS/no-fail/no-skip `true` | `run-m5-gate.jsonl` |
+| Mutant: predicate loosened | `acceptance.md` copy in scratchpad with every ` and (.bypass.fixture==false)` removed; the const was pointed at it, then reverted (`grep -c scratchpad` → 0) | exit 1; `mutant missing:bypass.fixture accepted` and `mutant bypass.fixture=true accepted` for both ACs | `run-m5-gate-mutant-loose-fixture.log` |
+
+`go vet ./internal/cli` exit 0; `golangci-lint run --new-from-rev=HEAD ./internal/cli/` → `0 issues.`
+
+### LIVE gate commands (acceptance.md verbatim, lane env and provider credentials scrubbed in the same invocation)
+
+| AC | `go test` exit | `jq -se` gate | Live test PASS count | Evidence JSON | Verdict |
+|---|---|---|---|---|---|
+| AC-FLH-012 | 0 | `false` | 0 (`TestFactoryLiveCodexCodexWorktreeHandoff` does not exist) | absent | FAIL (NOT_RUN) |
+| AC-FLH-013 | 0 | `false` | 0 (`TestFactoryLiveClaudeCodexWorktreeHandoff` does not exist) | absent | FAIL (NOT_RUN) |
+
+Logs: `ac12.jsonl`, `ac13.jsonl`. The go test exit is 0 because the selector matched only the gate test. The `jq -se` predicate is what gives FAIL here.
+
+### Model calls and wall time (lead condition 5)
+
+| Combination | Mode | Model calls | LIVE wall time | Status |
+|---|---|---|---|---|
+| Codex lead ↔ Codex lane | interactive `/cd` | 0 | 0 s | NOT_RUN |
+| Claude lead ↔ Codex lane | headless `thread/fork(cwd)` | 0 | 0 s | NOT_RUN |
+
+Machine-readable copy: `.moai/reports/t1082/m5-live-ledger.json`. `ac12-evidence.json` and `ac13-evidence.json` were **not** written: the SPEC gives that job to the LIVE tests alone, and a hand-written evidence file is exactly the self-report REQ-FLH-014 rejects.
+
+### Authentication check (lead condition 2; isolated homes per condition 3)
+
+| Harness | Command | Output | Exit |
+|---|---|---|---|
+| codex 0.156.1 | `CODEX_HOME=<scratchpad>/codexhome codex login status` | `Not logged in` | 1 |
+| claude 2.1.280 | `CLAUDE_CONFIG_DIR=<scratchpad>/home/.claude claude auth status` | `"loggedIn": false, "authMethod": "none"` | 1 |
+
+Login was not attempted (condition 2). The worktree guard refused a shell-level `HOME=` override, so the claude check isolated only `CLAUDE_CONFIG_DIR`.
+
+### Blockers (why nothing LIVE ran)
+
+1. **No model-call cap in the SPEC.** spec/plan/design/acceptance set a time cap (`go test -timeout=240s` per LIVE command) but no call count. Lead condition 1 says to stop in that case.
+2. **Isolation vs. authentication conflict.** Lead condition 3 requires isolated HOME/CODEX_HOME, and in those homes both harnesses are unauthenticated (above). plan.md §Verification 3 requires the "actual installed auth context" of the t1074 harness. Both cannot hold without copying credentials into the isolated home, and that was not done.
+3. **No production trigger for a handoff.** `prepareLaneHandoff`, `switchLaneHandoffInteractive`, and `switchLaneHandoffHeadless` have no non-test caller: `grep` finds none outside `_test.go`, and the only production call of `bindLaneHandoffHeadless` is in recovery. No CLI command or MCP tool exists (the MCP catalog is pinned at 36/14/22). AC-FLH-013 says "the lead triggers actual `thread/fork(cwd)`" with `contexts.lead.production_cli==true`. A lead model context has no production way to do that. Calling the Go functions from test code would be the test acting, not the lead. That is a SPEC gap, not a lane decision.
+4. **AC-FLH-012 needs a human.** The interactive row needs a real `/cd` and a real next normal turn in a Codex TUI. Driving the TUI is private control (tmux send-keys, AC-FLH-014), so it cannot be scripted. The operator must type `/cd <target>` in a live Codex lane, then send one normal message.
+5. **The t1074 harness is not reusable as-is.** `newFactoryLiveFixture` registers peers with `RegisterPeer` directly (fails `bypass.direct_register_peer==false`), and its "claude" backend runs `moai glm`, not Claude.
+
+### Gaps
+
+- The LIVE rows did not run. The real `/cd` SessionStart ordering and the real `thread/fork(cwd)` against stored history remain unobserved.
+- The gate test's valid controls are constructed documents. They show that the predicates accept a well-formed document. They say nothing about whether a real run would produce one.
+- The event-stream mutants use a synthetic `go test -json` stream, not a captured one.
+
+### Residual risk
+
+- The gate test reads predicates by regex from the first bash block under each AC heading. If `acceptance.md` is restructured so the block moves, the test fails with "no bash block" or "lacks a jq predicate" instead of passing silently. A block that keeps the heading but carries different jq programs is read as the new truth by design.
