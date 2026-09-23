@@ -134,6 +134,23 @@ Jev 는 건네받은 상태에 대해 정해진 형태의 질문에 답하고 �
 | 디자인 워크플로우·Claude Design 연동 | 켜짐 | `--enable-design` |
 | Git 자동화 모드·프로바이더 | 원격 저장소 설정에서 판단 | `--git-mode`, `--git-provider`, `moai update -c` |
 
+### 성능 티어 (모델 정책)
+
+모델 정책은 `moai init` 에서는 묻지 않고 Medium 으로 저장됩니다. `moai update -c` 로 다시 설정할 때 아래 화면이 나옵니다.
+
+```bash
+? 모델 정책 선택:
+  Max - Opus 5.5 (high~medium) + Sonnet (low, 문서/단발성 작업) — Max $200 플랜
+▸ Medium (권장) - Opus 5.5 (high~low) + Sonnet (low, 문서/단발성 작업) — Max $100 플랜
+  Low - Opus 5.5 (high~low) + Sonnet (low, 문서/E2E/단발성 작업) — Plus $20 플랜
+```
+
+| 티어 | 특징 |
+|------|------|
+| **Max** | 품질 우선 — Medium과 같되 `builder-harness`와 `e2e-tester` 두 에이전트만 한 단계 높은 effort로 돌립니다 |
+| **Medium** (기본값·권장) | 품질과 비용의 균형 — 비용/점수 곡선의 무릎 |
+| **Low** | 작업당 최저 비용 — 에이전틱 에이전트는 대부분 Opus `medium`으로 내려갑니다 |
+
 성능 티어별 에이전트 model+effort 매핑은 [프로필 매트릭스](/ko/advanced/profile-matrix/) 페이지를 참조하세요.
 
 ## 비대화형 모드 (CI/CD)

@@ -136,6 +136,23 @@ Jev 针对传入的状态回答类型化问题并返回概率,它本身不做任
 | 设计工作流与 Claude Design 集成 | 开启 | `--enable-design` |
 | Git 自动化模式与提供商 | 根据远程仓库设置判断 | `--git-mode`、`--git-provider`、`moai update -c` |
 
+### 性能层级(模型策略)
+
+`moai init` 不询问模型策略,直接保存为 Medium。使用 `moai update -c` 重新设置时会显示下面的界面。
+
+```bash
+? 选择模型策略:
+  Max - Opus 5.5 (high~medium) + Sonnet (low, 文档/一次性任务) — Max $200 套餐
+▸ Medium (推荐) - Opus 5.5 (high~low) + Sonnet (low, 文档/一次性任务) — Max $100 套餐
+  Low - Opus 5.5 (high~low) + Sonnet (low, 文档/E2E/一次性任务) — Plus $20 套餐
+```
+
+| 层级 | 特点 |
+|------|------|
+| **Max** | 质量优先 —— 与 Medium 相同，只有 `builder-harness` 和 `e2e-tester` 两个代理的 effort 高一级 |
+| **Medium**（默认，推荐） | 质量与成本的平衡 —— 成本/分数曲线的膝点 |
+| **Low** | 每任务最低成本 —— 大多数智能体类代理降至 Opus `medium` |
+
 各性能层级的代理 model+effort 映射请参阅[配置矩阵](/zh/advanced/profile-matrix/)页面。
 
 ## 非交互模式(CI/CD)

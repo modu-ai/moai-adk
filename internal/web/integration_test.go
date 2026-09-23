@@ -198,10 +198,12 @@ func TestGoldenPath_ReadWriteRoundTrip(t *testing.T) {
 		"permission_mode":   {"definitely-not-a-mode"}, // invalid → reject whole submit
 	}
 	resp = postForm(t, client, base+"/save", badForm, "127.0.0.1")
-	if resp.StatusCode != http.StatusBadRequest {
-		t.Errorf("POST /save invalid status = %d, want 400", resp.StatusCode)
+	if resp.StatusCode != http.StatusOK {
+		t.Errorf("POST /save invalid status = %d, want 200", resp.StatusCode)
 	}
+	badBody, _ := io.ReadAll(resp.Body)
 	_ = resp.Body.Close()
+	assertValidationRejectBanner(t, string(badBody))
 	afterBad, _ := profile.ReadPreferences(profileName)
 	if afterBad.ConversationLang != beforeLang {
 		t.Errorf("invalid submit changed state: ConversationLang = %q, want unchanged %q", afterBad.ConversationLang, beforeLang)

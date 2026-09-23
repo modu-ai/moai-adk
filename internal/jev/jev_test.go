@@ -2,12 +2,14 @@ package jev
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"io"
 	"net"
 	"net/http"
 	"net/http/httptest"
 	"regexp"
+	"strconv"
 	"strings"
 	"testing"
 )
@@ -44,8 +46,10 @@ func jsonResponse(status int, body string) *http.Response {
 	}
 }
 
-const okBody = `{"model":"jev-1.13.0","usage":{"input_tokens":123},"answers":[` +
-	`{"question_id":"q1","kind":"noul","noul":true,"probability":0.62}]}`
+// okBody is the documented System One response shape: answers is a MAP keyed
+// by the caller's question id, and a noul answer is a probability in [0, 1].
+const okBody = `{"model":"jev-1.13.0","usage":{"input_tokens":123,"output_tokens":0},"answers":{` +
+	`"q1":{"type":"noul","noul":0.62}}}`
 
 // testClient builds an enabled client with a stored credential and the supplied
 // Doer — the standard fixture for the transport tests.
@@ -320,7 +324,9 @@ func TestOversize_WholeRequestBoundSeparateFromStateBound(t *testing.T) {
 	state := strings.Repeat("s", 20_000*bytesPerTokenEstimate)
 	var qs []Question
 	for i := 0; i < 20; i++ {
-		qs = append(qs, Question{ID: "q", Text: strings.Repeat("q", 3_000*bytesPerTokenEstimate), Kind: KindNoul})
+		// Distinct ids: the wire keys questions by id, so a repeated id is
+		// refused as malformed before the size bounds are reached.
+		qs = append(qs, Question{ID: "q" + strconv.Itoa(i), Text: strings.Repeat("q", 3_000*bytesPerTokenEstimate), Kind: KindNoul})
 	}
 	got := c.Ask(context.Background(), Request{State: state, Questions: qs})
 	if got.Availability != Oversize {
@@ -348,10 +354,10 @@ func TestEmptyQuestions_IsRefusedNotSent(t *testing.T) {
 // ---------------------------------------------------------------------------
 
 func TestBatching_SeveralQuestionsOverOneStateSendOneRequest(t *testing.T) {
-	body := `{"model":"jev-1.13.0","usage":{"input_tokens":200},"answers":[` +
-		`{"question_id":"a","kind":"noul","noul":true,"probability":0.7},` +
-		`{"question_id":"b","kind":"noul","noul":false,"probability":0.3},` +
-		`{"question_id":"c","kind":"score","score":0.5,"probability":0.5}]}`
+	body := `{"model":"jev-1.13.0","usage":{"input_tokens":200},"answers":{` +
+		`"a":{"type":"noul","noul":0.7},` +
+		`"b":{"type":"noul","noul":0.3},` +
+		`"c":{"type":"score","score":1,"legend":{"0":"low","1":"high"},"probabilities":{"0":0.5,"1":0.5},"confidence":0.5}}}`
 	d := &countingDoer{Response: func(int) (*http.Response, error) { return jsonResponse(200, body), nil }}
 	c := testClient(d)
 
@@ -360,7 +366,7 @@ func TestBatching_SeveralQuestionsOverOneStateSendOneRequest(t *testing.T) {
 		Questions: []Question{
 			{ID: "a", Text: "first?", Kind: KindNoul},
 			{ID: "b", Text: "second?", Kind: KindNoul},
-			{ID: "c", Text: "third?", Kind: KindScore},
+			{ID: "c", Text: "third?", Kind: KindScore, Levels: []string{"low", "high"}},
 		},
 	})
 	if !got.OK() {
@@ -528,7 +534,7 @@ func TestScreenPayload_BothDirectionsDirectly(t *testing.T) {
 // ---------------------------------------------------------------------------
 
 func TestAnswerLabel_IsDistinguishableFromMeasurementAndJudgement(t *testing.T) {
-	a := Answer{QuestionID: "q1", Kind: KindNoul, Noul: true, Probability: 0.62}
+	a := Answer{QuestionID: "q1", Kind: KindNoul, Probability: 0.62}
 	label := a.Label()
 	if !strings.Contains(label, SignalLabel) {
 		t.Errorf("Label() = %q, want it to carry the %q marker", label, SignalLabel)
@@ -642,5 +648,183 @@ func TestEstimateTokens_MonotonicAndConservative(t *testing.T) {
 	cjk := EstimateTokens(strings.Repeat("가", 30))
 	if cjk < ascii {
 		t.Errorf("EstimateTokens under-estimates multi-byte text: %d (CJK) < %d (ASCII) for the same rune count", cjk, ascii)
+	}
+}
+
+// ---------------------------------------------------------------------------
+// Wire format (the documented System One schema, https://docs.typesafe.ai/api.md)
+// ---------------------------------------------------------------------------
+
+// The endpoint rejects a list-shaped questions field with HTTP 422 and a noul
+// carrying neither criteria nor instructions with HTTP 400. The request body is
+// therefore asserted against the documented shape: questions is an OBJECT keyed
+// by the caller's question id, each entry carries type + instructions, and the
+// id is the key rather than a field.
+func TestRequestBody_IsTheDocumentedMapShape(t *testing.T) {
+	d := &countingDoer{Response: func(int) (*http.Response, error) { return jsonResponse(200, okBody), nil }}
+	c := testClient(d)
+	got := c.Ask(context.Background(), Request{
+		State: "one state",
+		Questions: []Question{
+			{ID: "alive", Text: "Is the premise alive?", Kind: KindNoul},
+			{ID: "lane", Text: "Which lane owns it?", Kind: KindChoice, Choices: []string{"lane-1", "lane-2"}},
+			{ID: "risk", Text: "How risky is it?", Kind: KindScore, Levels: []string{"low", "medium", "high"}},
+			{ID: "plain", Text: "Unkinded question defaults to noul?"},
+		},
+	})
+	if !got.OK() {
+		t.Fatalf("Availability = %q (%s)", got.Availability, got.Condition)
+	}
+	if len(d.Bodies) != 1 {
+		t.Fatalf("recorded %d bodies, want 1", len(d.Bodies))
+	}
+	var body map[string]any
+	if err := json.Unmarshal([]byte(d.Bodies[0]), &body); err != nil {
+		t.Fatalf("body is not JSON: %v\n%s", err, d.Bodies[0])
+	}
+	if body["model"] != ModelID || body["state"] != "one state" {
+		t.Errorf("model/state = %v/%v, want %q/%q", body["model"], body["state"], ModelID, "one state")
+	}
+	qs, ok := body["questions"].(map[string]any)
+	if !ok {
+		t.Fatalf("questions = %T, want a JSON object keyed by question id:\n%s", body["questions"], d.Bodies[0])
+	}
+	if len(qs) != 4 {
+		t.Fatalf("questions has %d keys, want 4: %v", len(qs), qs)
+	}
+	entry := func(id string) map[string]any {
+		m, ok := qs[id].(map[string]any)
+		if !ok {
+			t.Fatalf("questions[%q] = %T, want an object", id, qs[id])
+		}
+		for _, legacy := range []string{"question_id", "question", "kind", "choices"} {
+			if _, present := m[legacy]; present {
+				t.Errorf("questions[%q] carries undocumented field %q", id, legacy)
+			}
+		}
+		return m
+	}
+
+	alive := entry("alive")
+	if alive["type"] != "noul" || alive["instructions"] != "Is the premise alive?" {
+		t.Errorf("noul entry = %v, want type noul + instructions", alive)
+	}
+	if _, present := alive["criteria"]; present {
+		t.Errorf("noul entry carries criteria %v; the text travels as instructions", alive["criteria"])
+	}
+
+	lane := entry("lane")
+	if lane["type"] != "choice" || lane["instructions"] != "Which lane owns it?" {
+		t.Errorf("choice entry = %v, want type choice + instructions", lane)
+	}
+	criteria, ok := lane["criteria"].(map[string]any)
+	if !ok || len(criteria) != 2 || criteria["lane-1"] == nil || criteria["lane-2"] == nil {
+		t.Errorf("choice criteria = %#v, want an object keyed by every option", lane["criteria"])
+	}
+
+	risk := entry("risk")
+	if risk["type"] != "score" || risk["instructions"] != "How risky is it?" {
+		t.Errorf("score entry = %v, want type score + instructions", risk)
+	}
+	levels, ok := risk["criteria"].([]any)
+	if !ok || len(levels) != 3 || levels[0] != "low" || levels[2] != "high" {
+		t.Errorf("score criteria = %#v, want the ordered level list", risk["criteria"])
+	}
+
+	if plain := entry("plain"); plain["type"] != "noul" {
+		t.Errorf("unkinded question type = %v, want the noul default", plain["type"])
+	}
+}
+
+// The vendor's edge rejects some default client User-Agents (HTTP 403, error
+// code 1010). The client identifies itself with its own constant instead of Go's
+// default.
+func TestRequest_SendsTheClientUserAgentNotGosDefault(t *testing.T) {
+	var gotUA string
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		gotUA = r.Header.Get("User-Agent")
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(okBody))
+	}))
+	defer srv.Close()
+
+	c := New(true)
+	c.Endpoint = srv.URL
+	c.LoadCredential = func() string { return "NOT-A-REAL-KEY-ua" }
+	if got := c.Ask(context.Background(), oneQuestion()); !got.OK() {
+		t.Fatalf("Availability = %q (%s)", got.Availability, got.Condition)
+	}
+	if gotUA != UserAgent {
+		t.Errorf("User-Agent = %q, want %q", gotUA, UserAgent)
+	}
+	if gotUA == "" || strings.HasPrefix(gotUA, "Go-http-client") {
+		t.Errorf("User-Agent = %q is empty or Go's default", gotUA)
+	}
+}
+
+// The documented response carries answers as a map keyed by question id. A noul
+// answer is a PROBABILITY; choice and score carry per-option probabilities and a
+// confidence. Answers come back in the request's question order.
+func TestDecode_DocumentedResponseShape(t *testing.T) {
+	body := `{"model":"jev-1.13.0","usage":{"input_tokens":55,"output_tokens":0},"answers":{` +
+		`"risk":{"type":"score","score":2,"legend":{"0":"low","1":"medium","2":"high"},"probabilities":{"0":0.1,"1":0.2,"2":0.7},"confidence":0.7},` +
+		`"alive":{"type":"noul","noul":0.83},` +
+		`"lane":{"type":"choice","choice":"lane-2","probabilities":{"lane-1":0.25,"lane-2":0.75},"confidence":0.75}}}`
+	d := &countingDoer{Response: func(int) (*http.Response, error) { return jsonResponse(200, body), nil }}
+	c := testClient(d)
+	got := c.Ask(context.Background(), Request{
+		State: "s",
+		Questions: []Question{
+			{ID: "alive", Text: "alive?", Kind: KindNoul},
+			{ID: "lane", Text: "lane?", Kind: KindChoice, Choices: []string{"lane-1", "lane-2"}},
+			{ID: "risk", Text: "risk?", Kind: KindScore, Levels: []string{"low", "medium", "high"}},
+		},
+	})
+	if !got.OK() {
+		t.Fatalf("Availability = %q (%s)", got.Availability, got.Condition)
+	}
+	if len(got.Answers) != 3 {
+		t.Fatalf("len(Answers) = %d, want 3: %+v", len(got.Answers), got.Answers)
+	}
+	noul, choice, score := got.Answers[0], got.Answers[1], got.Answers[2]
+	if noul.QuestionID != "alive" || noul.Kind != KindNoul || noul.Probability != 0.83 {
+		t.Errorf("noul answer = %+v, want alive/noul/p=0.83", noul)
+	}
+	if choice.QuestionID != "lane" || choice.Kind != KindChoice || choice.Choice != "lane-2" ||
+		choice.Probability != 0.75 || choice.Probabilities["lane-1"] != 0.25 {
+		t.Errorf("choice answer = %+v, want lane/choice/lane-2/confidence 0.75", choice)
+	}
+	if score.QuestionID != "risk" || score.Kind != KindScore || score.Score != 2 ||
+		score.Probability != 0.7 || score.Legend["2"] != "high" || score.Probabilities["2"] != 0.7 {
+		t.Errorf("score answer = %+v, want risk/score/2/confidence 0.7/legend", score)
+	}
+}
+
+// A question the documented schema cannot express is refused unsent: a choice
+// needs options, a score needs levels, an unknown type has no wire form, and
+// question ids become map keys, so an empty or repeated id would silently
+// collapse two questions into one.
+func TestMalformedQuestions_AreRefusedUnsent(t *testing.T) {
+	cases := []struct {
+		name string
+		qs   []Question
+	}{
+		{"choice without options", []Question{{ID: "q", Text: "which?", Kind: KindChoice}}},
+		{"score without levels", []Question{{ID: "q", Text: "how much?", Kind: KindScore}}},
+		{"unknown kind", []Question{{ID: "q", Text: "?", Kind: AnswerKind("essay")}}},
+		{"empty id", []Question{{ID: "", Text: "?", Kind: KindNoul}}},
+		{"duplicate id", []Question{{ID: "q", Text: "a?", Kind: KindNoul}, {ID: "q", Text: "b?", Kind: KindNoul}}},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			d := &countingDoer{Response: func(int) (*http.Response, error) { return jsonResponse(200, okBody), nil }}
+			got := testClient(d).Ask(context.Background(), Request{State: "s", Questions: tc.qs})
+			if got.Availability != Malformed {
+				t.Errorf("Availability = %q (%s), want %q", got.Availability, got.Condition, Malformed)
+			}
+			if d.Calls != 0 {
+				t.Errorf("transport calls = %d, want 0 — a malformed question is refused unsent", d.Calls)
+			}
+		})
 	}
 }

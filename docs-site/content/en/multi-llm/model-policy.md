@@ -50,12 +50,12 @@ it.
 First, the options on the table. The model policy is the rule for choosing
 which model from the lineup below, at which reasoning depth.
 
-### Model lineup (2026-08)
+### Model lineup (2026-09)
 
 | Model | Identifier | Context | Character |
 |------|--------|----------|------|
 | Claude Fable 5 | `claude-fable-5` | 256K | New Mythos-tier general-purpose flagship. Deepest reasoning and complex coding |
-| Claude Opus 5 / 4.8 | `opus` | 1M | Complex architecture, hard reasoning |
+| Claude Opus 5.5 | `opus` | 1M | Complex architecture, hard reasoning |
 | Claude Sonnet 5 | `sonnet` | 200K | Balance of speed and intelligence, everyday coding |
 | Claude Haiku 4.5 | `claude-haiku-4-5-20251001` | 200K | Fastest and most economical; simple, high-volume work |
 
@@ -72,8 +72,12 @@ How deeply the model thinks is chosen from five levels.
 | `low` | Shallowest reasoning. Fast and cheap |
 | `medium` | Balanced. The reference point of the default profile |
 | `high` | Deep reasoning |
-| `xhigh` | Deeper reasoning (supported on Opus 5 · 4.8 · Sonnet 5 · Opus 4.7) |
+| `xhigh` | Deeper reasoning (supported on Opus 5.5 · Opus 5 · 4.8 · Sonnet 5 · Opus 4.7) |
 | `max` | Deepest reasoning |
+
+> **Default effort**: Opus 5.5 defaults to `medium`; most other effort-capable models default to `high`.
+> MoAI's profile wizard and web console also recommend `medium` as the session effort. The `opus`
+> alias resolves to Opus 5.5 only on Claude Code v2.1.280 or later.
 
 > **The `ultrathink` keyword**: typing `ultrathink` turns on `effort:xhigh`
 > together with Adaptive Thinking (automatic allocation of reasoning tokens).

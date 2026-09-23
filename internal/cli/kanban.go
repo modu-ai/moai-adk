@@ -49,10 +49,10 @@ const kanbanUnsupportedBackendSentinel = "KANBAN_MODE_UNSUPPORTED_BACKEND"
 //
 //	-k                  → the three-role kanban chain (lead branch)
 //	-k SPEC-ID          → the kanban chain tied to a SPEC
-//	-k N (N ≥ 1)        → Factory Mode with N numbered lanes
-//	-k --name lane-<n>  → Factory Mode as lane n; the count defaults to
+//	-k N (N ≥ 1)        → Factory Mode with N numbered workers
+//	-k --name worker-<n> → Factory Mode as worker n; the count defaults to
 //	                       config.DefaultFactoryWorkers because the
-//	                       lane-shape name selected the factory with no
+//	                       worker-shape name selected the factory with no
 //	                       count supplied (a bare -k alone is the kanban lead,
 //	                       so a count-less FACTORY lead does not exist)
 //
@@ -61,12 +61,16 @@ const kanbanUnsupportedBackendSentinel = "KANBAN_MODE_UNSUPPORTED_BACKEND"
 // meaningful SPEC identifier. FactoryEnabled implies KanbanEnabled (the -k
 // token was present); the launcher branches on FactoryEnabled first.
 type kanbanEntryParse struct {
-	Spec           string   // non-numeric positional — the kanban SPEC identifier
-	KanbanEnabled  bool     // -k present (any shape)
-	FactoryEnabled bool     // -k selected the factory (numeric count or lane-shape name)
-	FactoryWorkers int      // the factory count (explicit or the default)
-	FactoryRun     string   // explicit --factory-run selector for mixed factory joins
-	Rest           []string // args with -k and its consumed value removed
+	Spec           string // non-numeric positional — the kanban SPEC identifier
+	KanbanEnabled  bool   // -k present (any shape)
+	FactoryEnabled bool   // -k selected the factory (numeric count or worker-shape name)
+	FactoryWorkers int    // the factory count (explicit or the default)
+	FactoryRun     string // explicit --factory-run selector for mixed factory joins
+	// FactoryAutoNumber marks a worker number the launcher chose itself
+	// (`-f worker`), as opposed to one the operator typed (`-f worker-<n>`,
+	// `--name worker-<n>`); the claim reports legacy collisions differently.
+	FactoryAutoNumber bool
+	Rest              []string // args with -k and its consumed value removed
 }
 
 // parseKanbanFlag extracts --kanban / -k and its optional value from args.
@@ -132,10 +136,10 @@ func parseKanbanFlag(args []string) (p kanbanEntryParse, err error) {
 		p.Spec = value
 	}
 
-	// A bare -k plus a lane-shape --name selected the factory with no count
+	// A bare -k plus a worker-shape --name selected the factory with no count
 	// supplied — the count-less factory entry, resolved to the default here.
 	// parseFactoryLaneLabel stops at the pass-through marker like this
-	// parser does, so a `-- --name lane-1` passthrough never selects it.
+	// parser does, so a `-- --name worker-1` passthrough never selects it.
 	if p.KanbanEnabled && !p.FactoryEnabled {
 		if _, isLane := parseFactoryLaneLabel(args); isLane {
 			p.FactoryEnabled = true

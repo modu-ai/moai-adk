@@ -136,6 +136,23 @@ The values below are saved with their defaults without asking. To change them, p
 | Design workflow and Claude Design integration | On | `--enable-design` |
 | Git automation mode and provider | Detected from the repository's remotes | `--git-mode`, `--git-provider`, `moai update -c` |
 
+### Performance tier (model policy)
+
+`moai init` does not ask for the model policy; it saves Medium. The screen below appears when you reconfigure with `moai update -c`.
+
+```bash
+? Select model policy:
+  Max - Opus 5.5 (high~medium) + Sonnet (low, docs/single-shot rows) — Max $200 plan
+▸ Medium (Recommended) - Opus 5.5 (high~low) + Sonnet (low, docs/single-shot rows) — Max $100 plan
+  Low - Opus 5.5 (high~low) + Sonnet (low, docs/e2e/single-shot rows) — Plus $20 plan
+```
+
+| Tier | Characteristics |
+|------|------|
+| **Max** | Quality first — same as Medium except that `builder-harness` and `e2e-tester` run one effort level higher |
+| **Medium** (default, recommended) | Balance of quality and cost — the knee of the cost/score curve |
+| **Low** | Lowest cost per task — most agentic agents drop to Opus `medium` |
+
 For the per-agent model+effort mapping of each performance tier, see the [Profile Matrix](/en/advanced/profile-matrix/) page.
 
 ## Non-interactive mode (CI/CD)

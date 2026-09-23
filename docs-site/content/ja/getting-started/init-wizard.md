@@ -136,6 +136,23 @@ Jev は渡された状態について型付きの質問に答え、確率を返�
 | デザインワークフロー・Claude Design 連携 | オン | `--enable-design` |
 | Git 自動化モード・プロバイダー | リモートリポジトリの設定から判断 | `--git-mode`、`--git-provider`、`moai update -c` |
 
+### パフォーマンスティア(モデルポリシー)
+
+モデルポリシーは `moai init` では尋ねず、Medium で保存されます。`moai update -c` で再設定するときに次の画面が表示されます。
+
+```bash
+? モデルポリシーを選択:
+  Max - Opus 5.5 (high~medium) + Sonnet (low, ドキュメント/単発タスク) — Max $200 プラン
+▸ Medium (推奨) - Opus 5.5 (high~low) + Sonnet (low, ドキュメント/単発タスク) — Max $100 プラン
+  Low - Opus 5.5 (high~low) + Sonnet (low, ドキュメント/E2E/単発タスク) — Plus $20 プラン
+```
+
+| ティア | 特徴 |
+|------|------|
+| **Max** | 品質優先 — Medium と同じだが、`builder-harness` と `e2e-tester` の 2 エージェントだけ effort を 1 段階上げます |
+| **Medium** (デフォルト・推奨) | 品質とコストのバランス — コスト/スコア曲線の膝 |
+| **Low** | タスクあたり最低コスト — エージェンティックなエージェントの多くは Opus `medium` へ |
+
 パフォーマンスティアごとのエージェント model+effort マッピングは [プロファイルマトリクス](/ja/advanced/profile-matrix/) ページを参照してください。
 
 ## 非対話型モード (CI/CD)

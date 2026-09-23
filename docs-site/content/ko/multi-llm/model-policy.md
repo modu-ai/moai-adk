@@ -43,12 +43,12 @@ description: 작업 성격과 품질/비용 목표에 맞춰 에이전트마다 
 먼저 선택지를 짚고 넘어갑니다. 모델 정책은 아래 라인업 가운데 어느 모델을, 어느
 추론 깊이로 쓸지를 고르는 규칙입니다.
 
-### 모델 라인업 (2026-08)
+### 모델 라인업 (2026-09)
 
 | 모델 | 식별자 | 컨텍스트 | 성격 |
 |------|--------|----------|------|
 | Claude Fable 5 | `claude-fable-5` | 256K | 신규 Mythos-tier 범용 최상위. 가장 깊은 추론과 복잡한 코딩 |
-| Claude Opus 5 / 4.8 | `opus` | 1M | 복잡한 아키텍처, 고난도 추론 |
+| Claude Opus 5.5 | `opus` | 1M | 복잡한 아키텍처, 고난도 추론 |
 | Claude Sonnet 5 | `sonnet` | 200K | 속도와 지능의 균형, 일상 코딩 |
 | Claude Haiku 4.5 | `claude-haiku-4-5-20251001` | 200K | 가장 빠르고 경제적, 단순·대량 작업 |
 
@@ -65,8 +65,12 @@ description: 작업 성격과 품질/비용 목표에 맞춰 에이전트마다 
 | `low` | 가장 얕은 추론. 빠르고 쌈 |
 | `medium` | 균형. 기본 프로필의 기준점 |
 | `high` | 깊은 추론 |
-| `xhigh` | 더 깊은 추론 (Opus 5 · 4.8 · Sonnet 5 · Opus 4.7 지원) |
+| `xhigh` | 더 깊은 추론 (Opus 5.5 · Opus 5 · 4.8 · Sonnet 5 · Opus 4.7 지원) |
 | `max` | 가장 깊은 추론 |
+
+> **기본 effort**: Opus 5.5의 기본 effort는 `medium`이고, effort를 지원하는 다른 모델은 대부분 `high`가 기본입니다.
+> MoAI의 프로필 위저드와 웹 콘솔도 세션 effort로 `medium`을 권장합니다. `opus` 별칭이
+> Opus 5.5로 풀리려면 Claude Code v2.1.280 이상이 필요합니다.
 
 > **`ultrathink` 키워드**: `ultrathink`를 입력하면 `effort:xhigh`와 Adaptive Thinking
 > (추론 토큰 자동 할당)가 함께 켜집니다. 고정된 `budget_tokens`는 쓰지 않습니다 — 모델이

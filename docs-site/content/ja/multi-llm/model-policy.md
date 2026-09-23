@@ -27,12 +27,12 @@ description: 作業の性質と品質/コストの目標に合わせてエージ
 
 まず選択肢を確認しておきます。モデルポリシーとは、以下のラインナップのどのモデルを、どの推論深度で使うかを選ぶ規則です。
 
-### モデルラインナップ (2026-08)
+### モデルラインナップ (2026-09)
 
 | モデル | 識別子 | コンテキスト | 性格 |
 |------|--------|----------|------|
 | Claude Fable 5 | `claude-fable-5` | 256K | 新規 Mythos-tier 汎用最上位。最も深い推論と複雑なコーディング |
-| Claude Opus 5 / 4.8 | `opus` | 1M | 複雑なアーキテクチャ、高難度の推論 |
+| Claude Opus 5.5 | `opus` | 1M | 複雑なアーキテクチャ、高難度の推論 |
 | Claude Sonnet 5 | `sonnet` | 200K | 速度と知能のバランス、日常的なコーディング |
 | Claude Haiku 4.5 | `claude-haiku-4-5-20251001` | 200K | 最速かつ低コスト、単純・大量の作業 |
 
@@ -47,8 +47,10 @@ description: 作業の性質と品質/コストの目標に合わせてエージ
 | `low` | 最も浅い推論。速くて安い |
 | `medium` | バランス。デフォルトプロファイルの基準点 |
 | `high` | 深い推論 |
-| `xhigh` | さらに深い推論 (Opus 5 · 4.8 · Sonnet 5 · Opus 4.7 が対応) |
+| `xhigh` | さらに深い推論 (Opus 5.5 · Opus 5 · 4.8 · Sonnet 5 · Opus 4.7 が対応) |
 | `max` | 最も深い推論 |
+
+> **デフォルトの effort**: Opus 5.5 のデフォルト effort は `medium` で、effort に対応するほかのモデルはほとんどが `high` をデフォルトにしています。MoAI のプロファイルウィザードと Web コンソールも、セッションの effort として `medium` を推奨します。`opus` エイリアスが Opus 5.5 に解決されるには Claude Code v2.1.280 以上が必要です。
 
 > **`ultrathink` キーワード**: `ultrathink` を入力すると、`effort:xhigh` と Adaptive Thinking (推論トークンの自動割り当て) が同時に有効になります。固定の `budget_tokens` は使いません — モデル自身が推論深度を配分します。`/effort low|medium|high|xhigh|max|ultracode|auto` スラッシュコマンドでも切り替えられます。
 
