@@ -189,8 +189,11 @@ func TestFactorySessionGenerationOwnership(t *testing.T) {
 		}
 	}
 	status, _ := store.Status(context.Background())
-	if status.Pending != 1 {
-		t.Fatalf("pre-rebind pending was lost, pending=%d", status.Pending)
+	// The pre-rebind pending message and the earlier still-claimed one are
+	// kept, and reported as superseded rather than pending or claimed
+	// (REQ-DHR-020).
+	if status.Superseded != 2 || status.Pending != 0 || status.Claimed != 0 {
+		t.Fatalf("pre-rebind messages were lost or miscounted: %+v", status)
 	}
 }
 

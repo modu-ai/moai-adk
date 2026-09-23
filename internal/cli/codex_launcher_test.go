@@ -122,8 +122,18 @@ func withCodexLaunchCapture(t *testing.T) *codexLaunchCapture {
 		return nil
 	}
 	codexLookPath = func(string) (string, error) { return sentinelCodexBinaryPath, nil }
+	// The worktree anchor seams touch a real repository's lock state; the
+	// launch-mechanics cells use plain directories, so they are pinned open
+	// here. Cells that measure the anchor restore the real bodies with
+	// withRealCodexWorktreeAnchor.
+	prevCheck, prevLock, prevBase, prevResolve := codexWorktreeWriterCheck, codexWorktreeAnchorLock, codexWorktreeBaseCheck, codexResolveBaseCommit
+	codexWorktreeWriterCheck = func(string) error { return nil }
+	codexWorktreeAnchorLock = func(string, int, string) error { return nil }
+	codexWorktreeBaseCheck = func(string, string, string) error { return nil }
+	codexResolveBaseCommit = func(string, string) (string, error) { return "", nil }
 	t.Cleanup(func() {
 		codexDirectLaunchFn, codexSpawnLaunchFn, codexLookPath = prevDirect, prevSpawn, prevLook
+		codexWorktreeWriterCheck, codexWorktreeAnchorLock, codexWorktreeBaseCheck, codexResolveBaseCommit = prevCheck, prevLock, prevBase, prevResolve
 	})
 	return cap
 }

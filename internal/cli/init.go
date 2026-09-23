@@ -786,22 +786,26 @@ func runInit(cmd *cobra.Command, args []string) (err error) {
 	// file set; the slim/full split lives entirely inside .claude/** which
 	// harnessFS hides). claude and both keep the deployers below untouched
 	// (REQ-IH-003/004).
-	if agentWiringSelection == agentWiringGPT {
-		var codexErr error
-		deployer, codexErr = template.NewCodexOnlyDeployerWithRenderer(cat, renderer)
-		if codexErr != nil {
-			return fmt.Errorf("codex-only deployer: %w", codexErr)
+	switch agentWiringSelection {
+	case agentWiringGPT:
+		deployer, err = template.NewCodexOnlyDeployerWithRenderer(cat, renderer)
+	case agentWiringBoth:
+		if shouldDistributeAll(cmd) {
+			deployer, err = template.NewDualHarnessDeployerWithRenderer(cat, renderer)
+		} else {
+			deployer, err = template.NewDualHarnessSlimDeployerWithRenderer(cat, renderer)
+			emitSlimModeNotice(cmd.OutOrStdout())
 		}
-	} else if shouldDistributeAll(cmd) {
-		deployer = template.NewDeployerWithRenderer(embeddedFS, renderer)
-	} else {
-		var slimErr error
-		deployer, slimErr = template.NewSlimDeployerWithRenderer(cat, renderer)
-		if slimErr != nil {
-			return fmt.Errorf("CATALOG_LOAD_FAILED: slim deployer: %w", slimErr)
+	default:
+		if shouldDistributeAll(cmd) {
+			deployer, err = template.NewClaudeHarnessDeployerWithRenderer(cat, renderer)
+		} else {
+			deployer, err = template.NewClaudeHarnessSlimDeployerWithRenderer(cat, renderer)
+			emitSlimModeNotice(cmd.OutOrStdout())
 		}
-		// REQ-021 informational notice on slim mode (4 substring guarantee).
-		emitSlimModeNotice(cmd.OutOrStdout())
+	}
+	if err != nil {
+		return fmt.Errorf("construct %s harness deployer: %w", agentWiringSelection, err)
 	}
 
 	initializer := project.NewInitializer(deployer, mgr, nil)

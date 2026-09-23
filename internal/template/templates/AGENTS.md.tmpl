@@ -10,10 +10,12 @@ the whole discovery chain.
 **tail**, silently — no warning, no stderr, exit 0. Clauses below are ordered most-critical-first
 for that reason.
 
-This file is the canonical cross-harness contract. `.claude/rules/moai/**` and `CLAUDE.md` expand
-Claude-only mechanisms (question channel, subagent spawning, skills, session handoff); they do not
-override a cross-harness clause here. Compression removed rationale and incident records, never an
-obligation.
+This file is the canonical cross-harness contract. Shared detail lives in
+`.moai/policies/**` and `.moai/workflows/**`. When Claude is installed,
+`.claude/rules/moai/**` and `CLAUDE.md` expand Claude-only mechanisms (question
+channel, subagent spawning, skills, session handoff); they do not override a
+cross-harness clause here. Compression removed rationale and incident records,
+never an obligation.
 
 **Capability bindings.** Names below are the neutral tool classes; a row exists only where a
 harness driving this contract lacks the capability.
@@ -28,13 +30,14 @@ harness driving this contract lacks the capability.
 | slash-commands | `/moai` slash commands | Use the underlying `moai` CLI verbs |
 | workflow-scripts | Workflow scripts (`ultracode`) | Run the steps sequentially |
 | worktree-entry | `moai cc -w <name>`; Codex lanes: `moai codex -w <worktree>` — resolves an existing tree and never creates one | Report the missing isolation; never create a tree by hand |
+| audit-verdict-file | The auditor agent writes its own verdict or report file | On Codex, audit roles (`plan-auditor`, `sync-auditor`) run as subagents and follow the parent session's sandbox; the role file's read-only setting is not enforced. They return their verdict text, and the parent orchestrator writes the verdict or report file with exactly the returned text, unedited |
 
 **`Skill("<name>")` instructions carry no row, and are read literally.** `skill-loader` is a
 capability every harness driving this contract has, so it earns no row above; what is Claude-only
 is the per-agent grant, not the reach. Where a harness loads a skill by reading it rather than by
-calling a tool, the same file is already there: the deploy mirrors every skill to
-`.agents/skills/<name>/SKILL.md` alongside `.claude/skills/<name>/SKILL.md`, so
-`Skill("moai-workflow-tdd")` names `.agents/skills/moai-workflow-tdd/SKILL.md`. Agent bodies keep
+calling a tool, the deployed skill is in `.agents/skills/<name>/SKILL.md` for Codex and
+`.claude/skills/<name>/SKILL.md` for Claude. The `both` profile installs both paths.
+`Skill("moai-workflow-tdd")` names the corresponding deployed SKILL.md. Agent bodies keep
 the tool-call wording for that reason — it is an address, not a Claude-only instruction.
 Codex-side loading is **deferred** — read the mirrored SKILL.md directly; no loader resolves
 `Skill("...")` calls.

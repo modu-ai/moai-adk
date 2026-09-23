@@ -275,6 +275,11 @@ func runClaudeEntry(cmd *cobra.Command, args []string, commandName, mode, backen
 	if err != nil {
 		return err
 	}
+	// A tree another live session is anchored in gets no second writer. The
+	// check only reads; Claude Code writes its own lock on entry.
+	if err := ccWorktreeWriterPrecheck(filteredArgs); err != nil {
+		return err
+	}
 	filteredArgs = normalizeWorktreeFlag(filteredArgs)
 	return launch(profileName, mode, filteredArgs)
 }
