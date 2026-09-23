@@ -1,0 +1,6 @@
+--- FAIL: TestFactoryLaneHandoffNoPrivateControl (0.78s)
+    factory_lane_handoff_switch_test.go:494: interactive app-server sessions = 1, want 0 (no model turn)
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/cli	1.524s
+FAIL
+exit=1

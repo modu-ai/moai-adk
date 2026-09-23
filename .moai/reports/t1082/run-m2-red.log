@@ -1,0 +1,29 @@
+3c6725fbb
+# github.com/modu-ai/moai-adk/internal/factorymsg [github.com/modu-ai/moai-adk/internal/factorymsg.test]
+internal/factorymsg/handoff_switch_test.go:57:33: undefined: HeadlessRelocation
+internal/factorymsg/handoff_switch_test.go:58:9: undefined: HeadlessRelocation
+internal/factorymsg/handoff_switch_test.go:59:11: undefined: RelocationMethodThreadFork
+internal/factorymsg/handoff_switch_test.go:73:17: s.MarkHandoffSwitchPendingHeadless undefined (type *Store has no field or method MarkHandoffSwitchPendingHeadless)
+internal/factorymsg/handoff_switch_test.go:77:16: s.MarkHandoffSwitchPendingInteractive undefined (type *Store has no field or method MarkHandoffSwitchPendingInteractive)
+internal/factorymsg/handoff_switch_test.go:81:17: s.MarkHandoffSwitchPendingInteractive undefined (type *Store has no field or method MarkHandoffSwitchPendingInteractive)
+internal/factorymsg/handoff_switch_test.go:95:18: hs.MarkHandoffSwitchPendingInteractive undefined (type *Store has no field or method MarkHandoffSwitchPendingInteractive)
+internal/factorymsg/handoff_switch_test.go:98:16: hs.MarkHandoffSwitchPendingHeadless undefined (type *Store has no field or method MarkHandoffSwitchPendingHeadless)
+internal/factorymsg/handoff_switch_test.go:103:45: undefined: NackRelocationRPCFailed
+internal/factorymsg/handoff_switch_test.go:116:35: undefined: HeadlessRelocation
+internal/factorymsg/handoff_switch_test.go:116:35: too many errors
+FAIL	github.com/modu-ai/moai-adk/internal/factorymsg [build failed]
+# github.com/modu-ai/moai-adk/internal/cli [github.com/modu-ai/moai-adk/internal/cli.test]
+internal/cli/factory_lane_handoff_switch_test.go:80:7: undefined: codexMethodThreadFork
+internal/cli/factory_lane_handoff_switch_test.go:86:20: undefined: codexMethodThreadFork
+internal/cli/factory_lane_handoff_switch_test.go:142:95: undefined: laneHandoffSwitch
+internal/cli/factory_lane_handoff_switch_test.go:143:9: undefined: laneHandoffSwitch
+internal/cli/factory_lane_handoff_switch_test.go:189:14: undefined: switchLaneHandoffInteractive
+internal/cli/factory_lane_handoff_switch_test.go:223:14: undefined: switchLaneHandoffInteractive
+internal/cli/factory_lane_handoff_switch_test.go:247:16: undefined: switchLaneHandoffHeadless
+internal/cli/factory_lane_handoff_switch_test.go:254:47: undefined: codexMethodThreadFork
+internal/cli/factory_lane_handoff_switch_test.go:260:28: f.store.HeadlessRelocationFor undefined (type *factorymsg.Store has no field or method HeadlessRelocationFor)
+internal/cli/factory_lane_handoff_switch_test.go:264:23: undefined: factorymsg.HeadlessRelocation
+internal/cli/factory_lane_handoff_switch_test.go:264:23: too many errors
+FAIL	github.com/modu-ai/moai-adk/internal/cli [build failed]
+FAIL
+exit=1

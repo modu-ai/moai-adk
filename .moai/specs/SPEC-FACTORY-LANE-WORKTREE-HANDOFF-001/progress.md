@@ -13,7 +13,7 @@ module: "internal/factorymsg"
 ## §A Status
 
 - Current SPEC status: `in-progress` (M1 commit, manager-develop). The plan-era lines below are kept as written.
-- Current phase: run, M1 complete; M2 not started (see §E.2).
+- Current phase: run, M1 and M2 complete; M3 not started (see §E.2).
 - Card/worktree/branch: `t1082` / `.claude/worktrees/t1082` / `WT-factory-lane-worktree-handoff`.
 - Plan subject HEAD: `bf39a539d97f49edf3b11517ee7c982239c60df3`.
 - Implementation: NOT STARTED.
@@ -221,6 +221,115 @@ RED reason: reservation code absent. Second RED — AC-FLH-001/002/016/017, log 
 - `TestEnsureGLMCredentials` and `TestEnsureGLMCredentialsFilePerm` fail on HEAD in this environment too (`.moai/reports/t1082/run-m1-baseline-hook-HEAD.log`).
 - The controller's git facts (dirty source, branch, path) are read outside the broker transaction; a concurrent actor can change them between the check and the reservation. Post-create verification re-reads them, so a race produces a NACK, not a false `WT_READY`.
 - The materializer resolves the repository from the process cwd; the controller verifies the created path equals `<canonical primary>/.claude/worktrees/<card-id>` and NACKs otherwise.
+
+### M2 — Interactive and headless relocation adapters (2026-09-23, manager-develop, cycle_type=tdd)
+
+**Boundary.** Lane decision option A, recorded in plan.md at `3c6725fbb`: both adapters stop at `SWITCH_PENDING_*`. M2 writes no BOUND, tombstone, BOUND receipt, peer change, or dispatch release. AC-FLH-003/004 named tests are not written in M2 (M3 owns them); the M2 adapter tests use other names. AC-FLH-014 closes in M2.
+
+**Scope delivered.**
+
+- `internal/factorymsg/handoff.go`: CAS transitions `MarkHandoffSwitchPendingInteractive` / `MarkHandoffSwitchPendingHeadless`, each allowed only from `WT_READY` and only for its own stored mode (`transitionHandoff` now reads `state,mode` in the same transaction). New NACK reasons `TARGET_READBACK_MISMATCH`, `RELOCATION_RPC_FAILED`, `RELOCATION_EVIDENCE_INVALID`; method constants `thread/fork`, `thread/start`.
+- `internal/factorymsg/handoff_relocation.go` (new): `lane_handoff_relocations` table in the existing broker schema (no new DB). `RecordHeadlessRelocation` re-reads state/mode/nonce inside its write transaction, accepts only `SWITCH_PENDING_HEADLESS`, validates the evidence, and inserts once. The validator refuses `SessionStart`, `turn/start`, `turn/steer`, `wrong_method_thread_start` (stored history + `thread/start`), `wrong_method_thread_fork`, missing `thread/started`, empty or non-new thread id, lineage not naming the source, and any cwd/branch/HEAD mismatch against the reservation.
+- `internal/cli/mcp_codex.go` (existing client): `codexMethodThreadFork`, `codexNotifyThreadStarted`; `codexInitialize` extracted from `openCodexSessionResolved` (same summaries); `awaitCodexResponseObserving` (the existing parser, now handing non-matching lines to an observer; `awaitCodexResponse` delegates to it); `runCodexThreadRelocation` issues exactly one of `thread/fork {threadId,cwd}` / `thread/start {cwd}` over `codexSession`, reuses `conn.close()` for bounded teardown, and waits for `thread/started` of the returned id. No new transport.
+- `internal/cli/factory_lane_handoff_switch.go` (new): `switchLaneHandoffInteractive` (idle check → `SWITCH_PENDING_INTERACTIVE` → operator guidance with `/cd <absolute target>` and the nonce; no app-server contact) and `switchLaneHandoffHeadless` (idle check → controller readback guard → `SWITCH_PENDING_HEADLESS` → fork/start → controller readback → `RecordHeadlessRelocation`). Non-idle, RPC failure, readback failure, and invalid evidence each record a NACK on the handoff. Production client `codexLaneHandoffAppServer` is bounded by `config.DefaultCodexHandoffRelocationTimeout` (60s, new in `internal/config/defaults.go`).
+- `internal/cli/factory_lane_handoff.go`: `laneHandoffAppServer` now returns `codexThreadRelocation`; git subprocesses go through the `handoffCommand` seam so a test can observe every process started.
+
+#### RED evidence (verbatim, captured before any M2 implementation)
+
+HEAD `3c6725fbb`, log `.moai/reports/t1082/run-m2-red.log`:
+
+```text
+3c6725fbb
+# github.com/modu-ai/moai-adk/internal/factorymsg [github.com/modu-ai/moai-adk/internal/factorymsg.test]
+internal/factorymsg/handoff_switch_test.go:57:33: undefined: HeadlessRelocation
+internal/factorymsg/handoff_switch_test.go:58:9: undefined: HeadlessRelocation
+internal/factorymsg/handoff_switch_test.go:59:11: undefined: RelocationMethodThreadFork
+internal/factorymsg/handoff_switch_test.go:73:17: s.MarkHandoffSwitchPendingHeadless undefined (type *Store has no field or method MarkHandoffSwitchPendingHeadless)
+internal/factorymsg/handoff_switch_test.go:77:16: s.MarkHandoffSwitchPendingInteractive undefined (type *Store has no field or method MarkHandoffSwitchPendingInteractive)
+internal/factorymsg/handoff_switch_test.go:81:17: s.MarkHandoffSwitchPendingInteractive undefined (type *Store has no field or method MarkHandoffSwitchPendingInteractive)
+internal/factorymsg/handoff_switch_test.go:95:18: hs.MarkHandoffSwitchPendingInteractive undefined (type *Store has no field or method MarkHandoffSwitchPendingInteractive)
+internal/factorymsg/handoff_switch_test.go:98:16: hs.MarkHandoffSwitchPendingHeadless undefined (type *Store has no field or method MarkHandoffSwitchPendingHeadless)
+internal/factorymsg/handoff_switch_test.go:103:45: undefined: NackRelocationRPCFailed
+internal/factorymsg/handoff_switch_test.go:116:35: undefined: HeadlessRelocation
+internal/factorymsg/handoff_switch_test.go:116:35: too many errors
+FAIL	github.com/modu-ai/moai-adk/internal/factorymsg [build failed]
+# github.com/modu-ai/moai-adk/internal/cli [github.com/modu-ai/moai-adk/internal/cli.test]
+internal/cli/factory_lane_handoff_switch_test.go:80:7: undefined: codexMethodThreadFork
+internal/cli/factory_lane_handoff_switch_test.go:86:20: undefined: codexMethodThreadFork
+internal/cli/factory_lane_handoff_switch_test.go:142:95: undefined: laneHandoffSwitch
+internal/cli/factory_lane_handoff_switch_test.go:143:9: undefined: laneHandoffSwitch
+internal/cli/factory_lane_handoff_switch_test.go:189:14: undefined: switchLaneHandoffInteractive
+internal/cli/factory_lane_handoff_switch_test.go:223:14: undefined: switchLaneHandoffInteractive
+internal/cli/factory_lane_handoff_switch_test.go:247:16: undefined: switchLaneHandoffHeadless
+internal/cli/factory_lane_handoff_switch_test.go:254:47: undefined: codexMethodThreadFork
+internal/cli/factory_lane_handoff_switch_test.go:260:28: f.store.HeadlessRelocationFor undefined (type *factorymsg.Store has no field or method HeadlessRelocationFor)
+internal/cli/factory_lane_handoff_switch_test.go:264:23: undefined: factorymsg.HeadlessRelocation
+internal/cli/factory_lane_handoff_switch_test.go:264:23: too many errors
+FAIL	github.com/modu-ai/moai-adk/internal/cli [build failed]
+FAIL
+exit=1
+```
+
+RED reason: adapter, relocation client, and relocation store code absent. The RED is compile-level for all M2 tests, including AC-FLH-014.
+
+**Mutant checks (guards observed red).** Each mutant was applied, run, and reverted:
+
+| Mutant | Command | Result | Log |
+|---|---|---|---|
+| forbidden literal `tmux send-keys` in the interactive guidance | `go test ./internal/cli -run '^TestFactoryLaneHandoffNoPrivateControl$'` | FAIL, static half names `factory_lane_handoff_switch.go:130:3: literal ...`, exit 1 | `run-m2-mutant-static-literal.log` |
+| interactive switch calls `StartThread` | same | FAIL `interactive app-server sessions = 1, want 0 (no model turn)`, exit 1 | `run-m2-mutant-interactive-appserver.log` |
+| client always issues `thread/start` (history dropped) | `go test ./internal/cli -run '^(TestFactoryLaneHandoffNoPrivateControl\|TestLaneHandoffHeadlessSwitchForksStoredHistory)$'` | FAIL `handoff NACK RELOCATION_EVIDENCE_INVALID: wrong_method_thread_start` (3 failures), exit 1 | `run-m2-mutant-wrong-method.log` |
+
+#### GREEN evidence
+
+| Check | Command (scrubbed env, one invocation each) | Result |
+|---|---|---|
+| M2 tests | `go test -race -v ./internal/factorymsg ./internal/cli -run '^(TestHandoffSwitchPendingIsModeBound\|TestHeadlessRelocationEvidenceRejectsNonEvidence\|TestLaneHandoff.*Switch.*\|TestFactoryLaneHandoffNoPrivateControl)$'` | both packages `ok`; 11 parent PASS, 41 PASS lines, 0 FAIL/SKIP (`run-m2-green.log`) |
+| race, factorymsg | `go test -race -count=1 ./internal/factorymsg/...` | `ok`, exit 0 (`run-m2-race-factorymsg.log`) |
+| race, cli subset | `go test -race -count=1 ./internal/cli -run '^(TestFactoryLaneHandoff.*\|TestLaneHandoff.*\|TestSessionWorktree.*\|TestCodex.*\|TestMoaiMCPServer_RegistrationMatchesCatalog\|TestFactoryMsgStatusReadOnlyRoster\|TestFactoryLeadNoticeUsesOperationalStatus)$' -v` with `MOAI_KANBAN_BACKEND MOAI_FACTORY_WORKER MOAI_FACTORY_WORKERS` also unset | `ok`, exit 0; 278 PASS, 0 FAIL, 5 SKIP (pre-existing env-gated `TestCodexLive_*`), 0 DATA RACE (`run-m2-race-cli.log`) |
+| race, handoff incl. supplementary tests | `go test -race -count=1 -run 'LaneHandoff' -coverprofile=… ./internal/cli/` | `ok`, exit 0 (`run-m2-cover-cli.log`) |
+| vet | `go vet ./internal/factorymsg/... ./internal/cli/... ./internal/config/...` | exit 0 |
+| lint | `golangci-lint run ./internal/factorymsg/... ./internal/cli/... ./internal/config/...` | `0 issues.`, exit 0 |
+| build | `go build ./...`; `GOOS=windows GOARCH=amd64 go build ./...` | exit 0 / exit 0 (`run-m2-build.log`) |
+
+#### AC matrix for M2
+
+| AC | Status | Acceptance command | Exit / output | Evidence |
+|---|---|---|---|---|
+| AC-FLH-014 | PASS | acceptance.md verbatim (`./internal/cli ./internal/hook`), prefixed with the lane env scrub | `true`, exit 0 | `.moai/reports/t1082/ac14.jsonl`; re-run on the final tree after the supplementary tests |
+| AC-FLH-003 | NOT_RUN | named test is M3 (option A) | — | adapter behavior covered by `TestLaneHandoffInteractiveSwitch*` (different names) |
+| AC-FLH-004 | NOT_RUN | named test is M3 (option A) | — | adapter behavior covered by `TestLaneHandoffHeadlessSwitch*` (different names) |
+
+M1 regression (acceptance.md verbatim, lane env scrub prefix): AC-FLH-001 `true`, AC-FLH-002 `true`, AC-FLH-016 `true`, AC-FLH-017 `true`, AC-FLH-019 (order vii only) `true` — each exit 0; jsonl files overwritten in place.
+
+#### Coverage (file-level, statement-weighted, from the cover profiles)
+
+| File | Profile | Covered |
+|---|---|---|
+| `internal/factorymsg/handoff_relocation.go` (new) | `go test -count=1 -coverprofile ./internal/factorymsg/` (package 70.4%, M1 68.0%) | 46/48 = 95.8% |
+| `internal/factorymsg/handoff.go` | same | 86/100 = 86.0% |
+| `internal/cli/factory_lane_handoff_switch.go` (new) | `go test -race -count=1 -run 'LaneHandoff' -coverprofile ./internal/cli/` | 66/76 = 86.8% |
+| `internal/cli/factory_lane_handoff.go` | same | 80/100 = 80.0% (M1 code; unchanged figure) |
+| `internal/cli/mcp_codex.go` card-added (`codexInitialize`, `runCodexThreadRelocation`, `awaitCodexResponse*`) | `go test -count=1 -run '(LaneHandoff\|Codex)' -coverprofile ./internal/cli/` | 57/64 = 89.1% |
+
+Filtered profiles: `run-m2-factorymsg.cov`, `run-m2-cli-handoff-card.cov`, `run-m2-cli-card.cov`.
+
+#### Gaps
+
+- AC-FLH-003/004 named tests and their BOUND observation: M3. NOT_RUN is not PASS.
+- Live Codex: the relocation client ran only against the in-process fake app-server on the `codexConn` seam (official 0.155.1 response shapes, request lines parsed back from the wire). The real subprocess transport (`realCodexConn` pipes, `readLoop`, kill-after-3s close) was not exercised for `thread/fork`; that is M5 LIVE. NOT_RUN.
+- The fake is scripted by me: whether a real 0.155.1 app-server emits `thread/started` after a `thread/fork` response (both orders are tested), and whether `thread.cwd` always equals top-level `cwd`, are not observed.
+- `TestLaneHandoffSwitchRefusesSecondSwitch`, `TestLaneHandoffHeadlessSwitchNacksMissingCodexBinary`, and the reverse half of `TestLaneHandoffSwitchModesDoNotCross` were added after GREEN to lift switch-file coverage from 81.6% to 86.8%; they had no individual RED.
+- The source lane's activity (idle / active turn / permission wait / interrupting) is an input the caller supplies; M2 does not observe it from the app-server (no `thread/read`).
+- `factory_lane_handoff.go` stays at 80.0% (below 85%, M1 code, lowest `createHandoffTarget`).
+- Not measured: the full `internal/cli` and `internal/hook` suites (CI owns them).
+
+#### Residual risks
+
+- A NACK after `thread/fork` was issued leaves the forked thread orphaned on the app-server side (design.md §2.1 already records this; cleanup is out of scope).
+- The readback is taken before the RPC (guard) and after it (recorded); the target can still change between the recorded readback and the M3 rebind, which re-validates.
+- `TestCodexSpawn_RealAssemblyThroughStubTmux` fails when the lane's factory env (`MOAI_KANBAN_BACKEND`, `MOAI_FACTORY_WORKER`, `MOAI_FACTORY_WORKERS`) is not scrubbed; it passes with them unset (`run-m2-codexspawn-envscrub.log`). Not touched by M2; the prescribed scrub list lacks those three.
+- `.moai/reports/t1082/ac008-idempotency-check.md` was modified in this worktree at 10:28:48 by another writer during this run (a "개정 반영" section, +16 lines). Not staged by M2; reported to the lead.
 
 ## §J Lead follow-ups after M1 (2026-09-23)
 
