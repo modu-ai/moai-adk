@@ -145,14 +145,14 @@ Model policy is set via `moai init --model-policy <tier>`. The 3-tier system is 
 
 | Tier | Philosophy | Top-model deployment | Effort baseline |
 |------|------------|-----------------|------------------------|
-| `high` | Quality first — Opus on every reasoning / coding / authoring row | Opus on every row except manager-docs, manager-git, Explore (Sonnet); Fable 0 | `high` on plan-auditor/sync-auditor/super-advisor/mission-governor/design/lead/harness; `medium` on manager-spec/manager-develop/e2e; `low` on docs/git/Explore |
+| `high` | Quality first — Opus on every reasoning and coding row | Opus on every row except manager-docs, manager-git, Explore (Sonnet); Fable 0 | `high` on plan-auditor/sync-auditor/super-advisor/mission-governor/design/lead/harness; `medium` on manager-spec/manager-develop/e2e; `low` on docs/git/Explore |
 | `medium` (default) | Same models as `high`; builder-harness and e2e step down one level | Opus on every row except manager-docs, manager-git, Explore (Sonnet); Fable 0 | `high` on plan-auditor/sync-auditor/super-advisor/mission-governor/design/lead; `medium` on manager-spec/manager-develop/harness; `low` on e2e/docs/git/Explore |
 | `low` | Cost minimum — Opus `low` still outscores Sonnet at any effort AND costs less per task | Opus retained on every agentic row; Sonnet on e2e / docs / git / Explore | `high` on super-advisor/mission-governor; `medium` on manager-spec/plan-auditor/sync-auditor/manager-develop/design/lead; `low` on harness/e2e/docs/git/Explore |
 
 The per-agent cells are the `llm.profiles` matrix (13 rows — 12 agents plus `Explore` — × 3 columns = 39 cells; Go SSOT `template.DefaultProfileMatrix`). Every agent row is monotone across `high >= medium >= low`. The matrix encodes two model rules, both measured on a long-horizon coding-agent benchmark that reports score, cost per task, output tokens, and agent steps at every effort level:
 
 1. **Opus dominates Sonnet at every effort.** Opus at `low` scores higher AND costs less per task than Sonnet at any level, because Sonnet spends a multiple of the agent steps and output tokens to finish the same long-horizon task. Completion efficiency — not unit token price — drives cost, so Opus is the model for every multi-turn agentic row.
-2. **Sonnet is retained only for single-shot, input-dominated, non-agentic rows** (`Explore` search, `manager-git` mechanics, `manager-docs` in every column, plus `e2e-tester` in the `low` column), where that multi-step completion failure does not apply and the lower input price does.
+2. **Sonnet is retained for single-shot, input-dominated, non-agentic rows** (`Explore` search, `manager-git` mechanics, plus `manager-docs` and `e2e-tester` in the `low` column), where that multi-step completion failure does not apply and the lower input price does. `manager-docs` is also Sonnet in the two upper columns, set later by operator policy as profile-invariant alongside `manager-git` and `Explore`; that policy records no further reason.
 
 `xhigh` is absent from the matrix on purpose: on Opus it scores the same as `high` at materially higher cost (measured on Opus 5), so it is strictly dominated. `max` is absent as well: no cell uses it, so `high` is the ceiling in every column.
 
