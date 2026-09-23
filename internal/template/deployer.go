@@ -256,6 +256,10 @@ func (d *deployer) DeployWithResult(ctx context.Context, projectRoot string, m m
 			}
 		}
 
+		if err := releaseOwnMirrorLink(projectRoot, destRelPath); err != nil {
+			return fmt.Errorf("template deploy release mirror link %q: %w", destRelPath, err)
+		}
+
 		// Create parent directories
 		destDir := filepath.Dir(destPath)
 		if err := os.MkdirAll(destDir, 0o755); err != nil {
