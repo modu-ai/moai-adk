@@ -139,7 +139,10 @@ var effortRank = map[string]int{
 // and the sonnet row membership from the matrix and fails when the prose disagrees.
 func TestModelPolicyLabels_AgreeWithProfileMatrix(t *testing.T) {
 	matrix := template.DefaultProfileMatrix()
-	opusDisplay := "Opus " + strings.TrimPrefix(template.ModelAliasCanonicalID("opus"), "claude-opus-")
+	// The canonical id spells the dotted marketing version with hyphens
+	// (claude-opus-5-5 -> "5.5"); the label must name that version as a whole token.
+	opusVersion := strings.ReplaceAll(strings.TrimPrefix(template.ModelAliasCanonicalID("opus"), "claude-opus-"), "-", ".")
+	opusDisplay := "Opus " + opusVersion
 
 	for _, tc := range []struct {
 		profile string
@@ -180,7 +183,7 @@ func TestModelPolicyLabels_AgreeWithProfileMatrix(t *testing.T) {
 
 			for _, lang := range fourLocales {
 				label := tc.label(getProfileText(lang))
-				if !strings.Contains(label, opusDisplay) {
+				if !namesOpusVersion(label, opusVersion) {
 					t.Errorf("lang=%q label %q should name %q", lang, label, opusDisplay)
 				}
 				if !strings.Contains(label, wantSpan) {

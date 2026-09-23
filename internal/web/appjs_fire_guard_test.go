@@ -1,6 +1,7 @@
 package web
 
 import (
+	"bytes"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -216,7 +217,10 @@ func startFireGuardServer(t *testing.T) string {
 // launchFireGuardChrome starts headless Chrome with an ephemeral CDP port and
 // registers its teardown in t.Cleanup. It returns the CDP port read from the
 // browser's DevToolsActivePort file (the documented discovery mechanism for
-// --remote-debugging-port=0).
+// --remote-debugging-port=0). Teardown kills and reaps Chrome's whole process
+// group, not just the parent, so no child still writes into the profile when
+// its TempDir is removed (card t1098). Chrome's combined stdout/stderr is
+// captured and its tail logged when the test fails.
 func launchFireGuardChrome(t *testing.T, chromePath string) string {
 	t.Helper()
 	profile := t.TempDir()
@@ -229,14 +233,21 @@ func launchFireGuardChrome(t *testing.T, chromePath string) string {
 		"--disable-gpu",
 		"about:blank",
 	)
+	var output bytes.Buffer
+	cmd.Stdout = &output
+	cmd.Stderr = &output
+	fireGuardSetProcessGroup(cmd)
 	if err := cmd.Start(); err != nil {
 		t.Fatalf("start headless Chrome: %v", err)
 	}
 	done := make(chan struct{})
 	go func() { _ = cmd.Wait(); close(done) }()
+	// Cleanup is LIFO: this runs before the profile TempDir's RemoveAll.
 	t.Cleanup(func() {
-		_ = cmd.Process.Kill()
-		<-done
+		fireGuardKillAndReap(t, cmd, done)
+		if t.Failed() {
+			t.Logf("chrome output tail:\n%s", fireGuardOutputTail(&output))
+		}
 	})
 
 	portFile := filepath.Join(profile, "DevToolsActivePort")
@@ -251,12 +262,24 @@ func launchFireGuardChrome(t *testing.T, chromePath string) string {
 		}
 		select {
 		case <-done:
-			t.Fatal("headless Chrome exited before exposing a CDP port")
+			t.Fatalf("headless Chrome exited before exposing a CDP port; chrome output tail:\n%s", fireGuardOutputTail(&output))
 		case <-time.After(100 * time.Millisecond):
 		}
 	}
 	t.Fatal("headless Chrome did not write DevToolsActivePort within 20s")
 	return ""
+}
+
+// fireGuardOutputTail returns the last 4096 bytes of Chrome's captured output.
+// Callers read it only after the Wait goroutine closed done, so the exec copy
+// goroutines have finished writing.
+func fireGuardOutputTail(b *bytes.Buffer) string {
+	const tailMax = 4096
+	out := b.Bytes()
+	if len(out) > tailMax {
+		out = out[len(out)-tailMax:]
+	}
+	return string(out)
 }
 
 // runFireGuardProbe executes the committed (or a caller-supplied) probe
