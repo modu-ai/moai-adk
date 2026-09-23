@@ -545,11 +545,11 @@ func runFactoryCardFlow(t *testing.T, tc factoryLiveCase) {
 			return fmt.Errorf("create dispatch: %v", err)
 		}
 		send := func(slot string, attempt int64) string {
-			return fmt.Sprintf("Use factory_msg_send exactly once: run_id=%s to_slot=%s kind=dispatch_notice idempotency_key=%s task_ref=t1100 correlation_id=assign-%d-%s ttl_seconds=1200 body=assign dispatch=%s attempt=%d nonce=%s. Report only the returned message id.", f.runID, slot, factorymsg.AssignmentKey(id, attempt), attempt, n, id, attempt, n)
+			return fmt.Sprintf("Use factory_msg_send exactly once: run_id=%s to_slot=%s kind=dispatch_notice idempotency_key=%s task_ref=t1100 correlation_id=assign-%d-%s ttl_seconds=1200 body=assign;dispatch=%s;attempt=%d;nonce=%s (pass this body value exactly, as one unbroken string). Report only the returned message id.", f.runID, slot, factorymsg.AssignmentKey(id, attempt), attempt, n, id, attempt, n)
 		}
 		receive := "For run_id=" + f.runID + " call factory_msg_list, read every listed body with factory_msg_body, then call factory_msg_receipt with disposition=accepted for each. Do not send any message."
 		result := func(attempt int64, preface string) string {
-			return fmt.Sprintf("%sUse factory_msg_send exactly once: run_id=%s to_slot=lead kind=status_report idempotency_key=%s task_ref=t1100 correlation_id=result-%d-%s ttl_seconds=1200 body=result dispatch=%s attempt=%d nonce=%s. Report only the returned message id.", preface, f.runID, factorymsg.ResultKey(id, attempt), attempt, n, id, attempt, n)
+			return fmt.Sprintf("%sUse factory_msg_send exactly once: run_id=%s to_slot=lead kind=status_report idempotency_key=%s task_ref=t1100 correlation_id=result-%d-%s ttl_seconds=1200 body=result;dispatch=%s;attempt=%d;nonce=%s (pass this body value exactly, as one unbroken string). Report only the returned message id.", preface, f.runID, factorymsg.ResultKey(id, attempt), attempt, n, id, attempt, n)
 		}
 		if err := f.step(t, budget, "lead assigns attempt 1", f.lead, send("agent-1", 1), f.expectStatus(1, 0, 0)); err != nil {
 			return err
