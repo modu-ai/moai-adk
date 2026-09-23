@@ -15,6 +15,7 @@ import (
 	"github.com/modu-ai/moai-adk/internal/config"
 	"github.com/modu-ai/moai-adk/internal/factorymsg"
 	"github.com/modu-ai/moai-adk/internal/homestate"
+	"github.com/modu-ai/moai-adk/internal/session"
 )
 
 func factoryHookFixture(t *testing.T) (string, *factorymsg.Store, factorymsg.Peer, factorymsg.Peer, *HookInput) {
@@ -215,11 +216,7 @@ func TestFactorySessionStartRebindsLaunchPendingPeer(t *testing.T) {
 	t.Setenv(config.EnvMoaiFactoryWorkers, "1")
 	t.Setenv(config.EnvMoaiFactoryWorker, "")
 	t.Setenv(config.EnvMoaiKanbanBackend, "codex")
-	t.Setenv(config.EnvMoaiSessionPID, fmt.Sprint(os.Getpid()))
-	start, state := homestate.ProbeProcessIdentity(os.Getpid())
-	if state != homestate.ProcessIdentityLive || start == "" {
-		t.Fatal("test process identity unavailable")
-	}
+	owner, start := factoryHookOwnerIdentity(t)
 	s, err := factorymsg.Open(root, run)
 	if err != nil {
 		t.Fatal(err)
@@ -227,7 +224,7 @@ func TestFactorySessionStartRebindsLaunchPendingPeer(t *testing.T) {
 	defer s.Close()
 	pending, err := s.RegisterLaunchPending(context.Background(), factorymsg.Peer{
 		ProjectKey: homestate.ProjectKey(root), RunID: run, Backend: "codex",
-		Role: "lead", Slot: "lead", PID: os.Getpid(), ProcessStart: start,
+		Role: "lead", Slot: "lead", PID: owner, ProcessStart: start,
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -305,11 +302,7 @@ func factoryPromptPendingFixture(t *testing.T) (string, string, *factorymsg.Stor
 	t.Setenv(config.EnvMoaiFactoryWorkers, "1")
 	t.Setenv(config.EnvMoaiFactoryWorker, "")
 	t.Setenv(config.EnvMoaiKanbanBackend, "codex")
-	t.Setenv(config.EnvMoaiSessionPID, fmt.Sprint(os.Getpid()))
-	start, state := homestate.ProbeProcessIdentity(os.Getpid())
-	if state != homestate.ProcessIdentityLive || start == "" {
-		t.Fatal("test process identity unavailable")
-	}
+	owner, start := factoryHookOwnerIdentity(t)
 	s, err := factorymsg.Open(root, run)
 	if err != nil {
 		t.Fatal(err)
@@ -317,13 +310,32 @@ func factoryPromptPendingFixture(t *testing.T) (string, string, *factorymsg.Stor
 	t.Cleanup(func() { _ = s.Close() })
 	pending, err := s.RegisterLaunchPending(context.Background(), factorymsg.Peer{
 		ProjectKey: homestate.ProjectKey(root), RunID: run, Backend: "codex",
-		Role: "lead", Slot: "lead", PID: os.Getpid(), ProcessStart: start,
+		Role: "lead", Slot: "lead", PID: owner, ProcessStart: start,
 	})
 	if err != nil {
 		t.Fatal(err)
 	}
 	input := &HookInput{SessionID: "actual-user-prompt-session", ProjectDir: root, CWD: root}
 	return root, run, s, pending, input
+}
+
+// factoryHookOwnerIdentity returns the session owner the production hook path
+// resolves for this test process, plus that owner's process-start identity.
+// The fixture derives the owner from the same resolver the hook calls rather
+// than stamping the launcher's session-PID variable: hook sources must never
+// write that variable (internal/cli TestSessionPIDStamp_NotSetFromHooks), and
+// the resolver's ancestry walk already names a live owner for a test binary.
+func factoryHookOwnerIdentity(t *testing.T) (int, string) {
+	t.Helper()
+	owner, resolved := session.ResolveOwnerPID()
+	if !resolved {
+		t.Fatal("session owner of the test process is unresolvable")
+	}
+	start, state := homestate.ProbeProcessIdentity(owner)
+	if state != homestate.ProcessIdentityLive || start == "" {
+		t.Fatalf("session owner %d process identity unavailable (state=%v)", owner, state)
+	}
+	return owner, start
 }
 
 func factoryPeerSnapshot(t *testing.T, s *factorymsg.Store, slot string) factorymsg.LaneStatus {
