@@ -144,3 +144,10 @@ find exit=0 matches=       0
 - 가드는 두 상수 값이 문자열에 "들어 있는지"만 본다. 상수가 바뀌어도 옛 값과 새 값이 문자열에 함께 남으면 통과한다. 모델명 교체 시 문장 전체를 사람이 다시 읽어야 한다.
 - `schemaOptionBridge` 에 `f.*.opt.*` 형태가 아닌 키(`opt.runtime_default`)가 처음 들어갔다. 브리지 키를 i18n 옵션 키 전수와 대조하는 향후 테스트가 생기면 이 키를 예외로 다뤄야 할 수 있다.
 - 다른 빈 옵션 라벨(`(project default)`, `(unset)`)은 여전히 모든 로케일에서 영어로 렌더된다. 이 카드 범위 밖이며, 같은 메커니즘(브리지에 키 추가 + 로케일 값)으로 확장 가능하다.
+
+## Lane independent recheck (after agent return, HEAD 94604338f)
+
+- `go test -count=1 ./internal/settings/... ./internal/web/...` -> exit 0 (settings 0.402s, agentfm, yamlpatch, web 24.264s ok) — lane-recheck-settings-web.log
+- `go test -count=1 -run 'Profile|TUI|Wizard|Golden|Effort|Schema|Bridge|GetProfileText' ./internal/cli` -> `ok github.com/modu-ai/moai-adk/internal/cli 14.728s`
+- `golangci-lint run ./internal/settings/... ./internal/web/... ./internal/cli/` -> `0 issues.` — lane-recheck-lint.log
+- Diff read by the lane: 9 code/golden files, en label byte-identical (constant concatenation), bridge fallback keeps untranslated empty keys on the schema label.
