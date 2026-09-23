@@ -498,6 +498,25 @@ AC-AFG-014 (d) 만료 대기(늦은 리스너 사본, 스로틀 12배): `exit 1`
 
 **개발 실행 기록(판정 근거 아님):** m9-settle-dev1 에서 1단계 결과는 같았다(정상 10/10, 중앙값 402.2 ms / M1·M2 각 10/10 적색, 사유 전부 c·d). 이 실행은 (d) 늦은 리스너 실행이 사전 점검 시간 초과(exit 2)로 FAIL 했고, 위 사전 점검 변경의 근거가 됐다. m9-premise-dev1 은 AC-AFG-015 네 판을 M9-1 과 같은 결과로 통과했다.
 
+### M10 — CI 선택자 확장 + 병합 트리 측정 (card t1108, base `d80132034`) — **BLOCKED (M10.3, 20분 job 상한 안에 안 들어감)**
+
+같은 worktree·branch 에서 2026-09-23 에 수행했다. **커밋하지 않았다.** 워킹 트리에는 M10.1 의 한 줄(`ci.yml:672` `-run 'AppJsHandlersFire'` → `-run 'AppJs.*Fire'`, `-timeout 10m` 그대로)만 미커밋으로 남아 있다.
+
+| # | 측정 | 명령 | 관측 결과 | exit |
+|---|---|---|---|---|
+| M10-1 | AC-016 (a)(b) | `grep -nF "run 'AppJs.*Fire'" .github/workflows/ci.yml` / `grep -c -- '--primary-entries-only' .github/workflows/ci.yml` | `672: … -run 'AppJs.*Fire' -v -count=1 -timeout 10m` / `3` | 0/0 |
+| M10-2 | AC-016 (c), CI 와 같은 상한 | `MOAI_BROWSER_GUARD=1 go test ./internal/web/ -run 'AppJs.*Fire' -v -count=1 -timeout 10m` (로그 `logs/m10-gated-10m.log`) | `panic: test timed out after 10m0s` / `running tests: TestAppJsFirePostSwapSettleWait (7m16s)` / `FAIL … 600.676s`. 앞선 5건 PASS(Runtime 20.12s·SelectorMiss 46.78s·SandboxRouting 1.29s·ValidationRejectPaints 42.96s·NoWrites 52.84s). 시작 load 45.7 | 1 |
+| M10-3 | B3 상한 상향 시험(15m) | 같은 명령 `-timeout 15m` (로그 `logs/m10-gated-raised.log`) | `panic: test timed out after 15m0s` / `running tests: TestAppJsFirePostSwapSettleWait (12m53s)` / `FAIL … 900.542s`. `--- SKIP` 0건. 시작 load 8.0, 종료 load 63.0 | 1 |
+| M10-4 | AC-006 | `git diff --numstat 3e35fbacf -- .github/workflows/ci.yml` / `git diff 3e35fbacf -- .github/workflows/ci.yml \| grep -c '^-[^-]'` / `grep -n -E '^  [a-z0-9-]+:'` 양쪽 | `187	0` / `0` / 기존 8개 job 키 행번호·순서 base 와 동일(44 detect … 544 constitution-check), 추가 `605: test-browser:` 뿐 | 0 |
+| M10-5 | 무게이트 | `go test ./internal/web/ -run 'AppJs' -count=1` | `ok … 2.661s` | 0 |
+| M10-6 | YAML | `python3 -c 'import yaml;…safe_load(open(".github/workflows/ci.yml"))'` / `actionlint .github/workflows/ci.yml` | `yaml ok; jobs: [… 8개 …, 'test-browser']` / 출력 없음 | 0/0 |
+
+**막힌 이유 — `TestAppJsFirePostSwapSettleWait` 의 소요 시간이 분기에 따라 두 배가 된다.** M10-3 에서 1단계 M1 이 `fired 2/10 | red 8/10` 로 10/10 적색을 채우지 못해, 설계대로(`appjs_fire_swap_test.go:280-292`) 2단계 증폭(`amplification=1000ms`)으로 넘어갔다. 1단계는 탐침 31회(M9: 516.01s), 2단계는 같은 세 판 30회를 더한다. 15분 판은 2단계 M2 도중에 끊겼다(로그의 탐침 줄 62 대 M9 45).
+
+적합 산술(측정값만 사용): M9 비율 516.01s / 31회 ≈ 16.6s/회 → 2단계 경로 ≈ 61회 ≈ 1015s, 나머지 테스트 752.4 − 516.0 ≈ 236s → 그린 단계 ≈ 1250s ≈ 20.8분. job 의 나머지(설정+Chrome+lint ≈ 21s, 레드 ≈ 27s ≈ 0.8분)를 더하면 ≈ 21.6분 > `timeout-minutes: 20`. CI 가 로컬보다 약 0.9배 빠르다고 가정해도(옛 그린 단계 CI 63s 대 로컬 67~73s) ≈ 1125s + 48s ≈ 19.6분으로 여유가 없다. 1단계만 도는 경로는 들어가지만(M9 752.4s), 어느 경로를 탈지는 M1 경합 결과에 달려 있어 상한을 그 경로에 맞출 수 없다. 리드 결정 B3·plan M10.3 에 따라 job 상한은 올리지 않고 멈춘다. 15m 상향은 되돌렸다.
+
+**미측정:** 2단계 경로의 완주 소요 시간(두 판 모두 상한에 끊김), CI 러너에서의 분포. 두 판 모두 부하 45~63 의 개발 기계 값이다.
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 run_complete_at: 2026-09-22
