@@ -336,6 +336,12 @@ func runHookEvent(cmd *cobra.Command, event hook.EventType) error {
 		deps.PerfTiming.MarkDispatch(dispatchStart, time.Now())
 	}
 	if err != nil {
+		// SPEC-DUAL-HARNESS-HOOK-PARITY-001 M2c (REQ-HPR-009): under codex a
+		// fault on a decision-bearing event is a fail-closed deny, not an
+		// exit 1 with an empty stdout that Codex may resolve as allow.
+		if harnessCodex && isCodexDecisionBearing(event) {
+			return writeCodexFailClosed(event, fmt.Errorf("dispatch hook: %w", err))
+		}
 		return fmt.Errorf("dispatch hook: %w", err)
 	}
 
