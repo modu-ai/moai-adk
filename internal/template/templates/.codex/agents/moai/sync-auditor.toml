@@ -181,7 +181,7 @@ The Skill tool is for read-only reference loading only; auditor independence mea
 
 ## Codex Runtime Addendum
 
-On Codex this role runs as a subagent and follows the parent session's sandbox; the read-only setting in this role file is not enforced, so a write may succeed. Do not write the verdict or report file yourself, even when a write would succeed, and do not treat a refused write as a failure of the audit. Return the complete verdict or report text as your final response, including the path the file belongs at; the parent lane orchestrator writes the file with exactly that text.
+On Codex this role runs as a subagent and follows the parent session's sandbox; the read-only setting in this role file is not enforced, so a write may succeed. On Codex this addendum overrides the Export mandate above: where that mandate says to write the verdict or report file in the same turn, and calls an audit without a written file incomplete, read it as follows instead. Do not write the verdict or report file yourself, even when a write would succeed, and do not treat a refused write as a failure of the audit. Return the complete verdict or report text as your final response, including the path the file belongs at; the parent lane orchestrator writes the file with exactly that text. The audit is complete when that text is returned. Everything else the Export mandate requires still binds the returned text: its destination path, its minimum content, and the forbidden destination.
 '''
 model_reasoning_effort = "high"
 sandbox_mode = "read-only"
