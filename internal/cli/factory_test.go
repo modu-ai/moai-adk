@@ -877,14 +877,30 @@ func TestCC_FactoryEntryThroughRunCC(t *testing.T) {
 	})
 
 	t.Run("-f lane-2 desugars into the lane branch", func(t *testing.T) {
+		// A lane joins exactly one active factory run and fails closed on zero
+		// (NO_ACTIVE_FACTORY) or several (AMBIGUOUS_FACTORY). The bare -f
+		// subtests above share the parent's project dir and each record a lead
+		// run whose id is a Unix-second timestamp, so how many active runs they
+		// leave depends on whether they straddle a second boundary. Give this
+		// subtest its own project and seed the one run it joins.
+		root := t.TempDir()
+		t.Setenv(config.EnvClaudeProjectDir, root)
 		clearFactoryTestEnv(t)
 		c := installFactoryLaunchSeam(t)
+
+		const run = "run-cc-lane-entry"
+		if err := recordFactoryRunStart(root, run, kanban.BackendClaude, ""); err != nil {
+			t.Fatalf("record factory run: %v", err)
+		}
 
 		buf := new(bytes.Buffer)
 		ccCmd.SetOut(buf)
 		ccCmd.SetErr(buf)
 		if err := runCC(ccCmd, []string{"-f", "lane-2"}); err != nil {
 			t.Fatalf("runCC(-f lane-2): %v", err)
+		}
+		if c.runID != run {
+			t.Errorf("%s at launch = %q, want the active run %q", config.EnvMoaiKanbanID, c.runID, run)
 		}
 		if c.worker != "lane-2" {
 			t.Errorf("MOAI_FACTORY_WORKER at launch = %q, want lane-2", c.worker)
