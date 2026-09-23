@@ -1,7 +1,7 @@
 ---
 id: SPEC-FACTORY-LANE-WORKTREE-HANDOFF-001
 title: "Factory lane card worktree handoff"
-version: "0.5.3"
+version: "0.5.4"
 status: in-progress
 created: 2026-09-22
 updated: 2026-09-23
@@ -23,6 +23,7 @@ card: t1082
 
 | Version | Date | Change |
 |---|---|---|
+| 0.5.4 | 2026-09-23 | idempotency 기준에 대해 중립으로 고쳤다(리드 조율: t1100이 AC-020 근거에 따라 기준을 송신 session에서 송신 lane slot 범위로 옮긴다. 근거 기록 `.moai/reports/t1082/ac008-idempotency-check.md`). 기준이나 스키마가 「바뀌지 않는다」고 단언하던 문장을 REQ-FLH-009, design.md §2.1 잔여 위험·§8, plan.md M3, acceptance.md AC-FLH-008·요약행에서 걷어내고, 「t1082는 idempotency 기준 자체를 바꾸지 않으며 기준은 t1100(SPEC-DUAL-HARNESS-RECOVERY-001)이 소유한다」로 바꿨다. AC-FLH-008은 어느 기준에서도 성립하도록 다시 적었다: 다른 recipient로 K1을 재사용한 요청은 기존 K1 봉투로 합쳐지지 않는다는 것만 단언하고 거부인지 별도 봉투인지는 단언하지 않으며, fixture가 key 기준에 기대지 않아야 한다는 조건을 더했다. 같은 generation 안 body 1회 실행, 수신 측 `DispositionDuplicate`, 이전 generation stale NACK, BOUND 뒤 새 key 요구는 그대로다. |
 | 0.5.3 | 2026-09-23 | plan.md만 바꿨다. AC-FLH-003/004의 named test가 BOUND 관측을 요구하는데 BOUND는 M3 atomic rebind 한 transaction의 산출물이므로(REQ-FLH-008, design.md §6), M2에서 headless 원자적 BOUND 문구를 빼고 두 adapter를 `SWITCH_PENDING_*`까지로 한정했으며 headless BOUND와 AC-FLH-003/004 named test를 M3로 옮겼다(lane 결정 option A). AC 본문은 바꾸지 않았다. |
 | 0.5.2 | 2026-09-23 | AC-FLH-008을 좁혔다(리드 결정 (a), 근거 `.moai/reports/t1082/ac008-idempotency-check.md`). `Store.Send`는 같은 `(sender_session, idem_key)`라도 recipient가 다르면 거부하므로, BOUND 전후 같은 key로 보낸 재전송은 duplicate가 될 수 없다. 그래서 BOUND 뒤 rebound endpoint로의 재전송은 새 key를 쓰게 하고, 같은 key duplicate 처리는 같은 recipient generation 안에서만 요구했다. stale-generation NACK와 같은 generation duplicate의 body 1회 실행은 유지했다. 송신 측 `Send` 판정과 수신 측 receipt 처분 `DispositionDuplicate`를 층별로 나눠 적었다. 스키마와 idempotency 기준은 바꾸지 않았다(t1100 소관). REQ-FLH-009, design.md §2.1 잔여 위험·§8, plan.md M3, acceptance.md 요약행을 같은 기준으로 맞췄다. |
 | 0.5.1 | 2026-09-23 | run 진입 채무 정리(plan-audit iter-6 N7–N11): reservation이 source 행을 자기 write transaction 안에서 읽는지 판별하는 AC-FLH-019 순서 (vii)를 추가하고 REQ-FLH-016을 AC-FLH-019에 추적 연결했으며, REQ-FLH-017의 「나중 launcher 등록은 결합 endpoint를 바꾸지 않는다」를 결합 owner가 current인 동안으로 한정했고, fresh reservation 재진입의 dirty target 사유 `TARGET_DIRTY`를 정의했다. AC-FLH-018/019 fixture 문구와 plan 마일스톤도 맞췄다. |
@@ -101,7 +102,7 @@ When mode-specific endpoint evidence arrives, the handoff SHALL validate the res
 
 ### REQ-FLH-009 — Dispatch ordering and idempotency
 
-While a handoff is not `BOUND`, the factory broker SHALL preserve dispatch metadata for the lane but SHALL deny body claim/read and implementation side effects. When the matching durable `BOUND` receipt is observed, the broker SHALL release the dispatch body exactly once to the current generation. The broker SHALL handle a duplicate dispatch within the same recipient generation without duplicate execution, detecting it by the current t1074 schema's idempotency key (`UNIQUE(sender_session, idem_key)`) unchanged; same-key duplicate handling is required only within one recipient generation. When the sender resends a dispatch after `BOUND` to the rebound endpoint, the sender SHALL use a new idempotency key. The handoff generation SHALL NOT be part of the idempotency key, and a redispatch addressed to a stale generation SHALL be NACKed.
+While a handoff is not `BOUND`, the factory broker SHALL preserve dispatch metadata for the lane but SHALL deny body claim/read and implementation side effects. When the matching durable `BOUND` receipt is observed, the broker SHALL release the dispatch body exactly once to the current generation. The broker SHALL handle a duplicate dispatch within the same recipient generation without duplicate execution, detecting it by the broker's idempotency key; same-key duplicate handling is required only within one recipient generation. This handoff does not change the idempotency basis itself; the basis is owned by t1100 (SPEC-DUAL-HARNESS-RECOVERY-001). When the sender resends a dispatch after `BOUND` to the rebound endpoint, the sender SHALL use a new idempotency key, whichever basis is in force. The handoff generation SHALL NOT be part of the idempotency key, and a redispatch addressed to a stale generation SHALL be NACKed.
 
 ### REQ-FLH-010 — Tombstone and stale traffic rejection
 
