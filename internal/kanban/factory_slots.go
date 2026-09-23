@@ -8,7 +8,7 @@
 // right now — from the SessionStart hook that renders the lead notice, and
 // internal/hook cannot import internal/cli (the cli package imports hook for
 // the `moai hook` subcommand), so the cluster moved to this package: the one
-// that already owns the lane-label vocabulary (FactoryLaneLabel) and the
+// that already owns the worker-label vocabulary (FactoryLaneLabel) and the
 // backlog store the loop polls. The cli call sites keep their historical
 // package-private names via thin delegates.
 //
@@ -23,7 +23,6 @@ package kanban
 
 import (
 	"context"
-	"database/sql"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -123,14 +122,12 @@ func ClaimFactoryWorkerName(root, requested string, pid int, alive func(int) boo
 	if err := homestate.CheckRuntimeAdmission(root); err != nil {
 		return requested, err
 	}
-	n, ok := SplitFactoryLaneLabel(requested)
-	isAgent := false
+	// Any worker shape is accepted; the claim is always recorded under the
+	// canonical `worker-<n>` label (a legacy `lane-<n>` / `agent-<n>`
+	// request is a deprecated spelling of the same number).
+	n, ok := factoryLabelNumber(requested)
 	if !ok {
-		n, ok = SplitFactoryAgentLabel(requested)
-		isAgent = ok
-	}
-	if !ok {
-		return requested, fmt.Errorf("invalid factory lane label %q", requested)
+		return requested, fmt.Errorf("invalid factory worker label %q", requested)
 	}
 	db, err := homestate.OpenFactory(root)
 	if err != nil {
@@ -155,6 +152,10 @@ func ClaimFactoryWorkerName(root, requested string, pid int, alive func(int) boo
 		pid   int
 	}
 	var stale []claim
+	// taken holds the numbers of the surviving (live) claims in every worker
+	// shape, so a row written by a pre-rename launcher (`lane-3`, `agent-3`)
+	// keeps its number out of reach of a canonical `worker-3` claim.
+	taken := map[int]bool{}
 	for rows.Next() {
 		var row claim
 		if err := rows.Scan(&row.label, &row.pid); err != nil {
@@ -163,6 +164,10 @@ func ClaimFactoryWorkerName(root, requested string, pid int, alive func(int) boo
 		}
 		if row.pid <= 0 || !alive(row.pid) {
 			stale = append(stale, row)
+			continue
+		}
+		if num, isWorker := factoryLabelNumber(row.label); isWorker {
+			taken[num] = true
 		}
 	}
 	if err := rows.Close(); err != nil {
@@ -174,23 +179,12 @@ func ClaimFactoryWorkerName(root, requested string, pid int, alive func(int) boo
 		}
 	}
 
-	final := requested
-	for {
-		var existing int
-		err := tx.QueryRow(`SELECT pid FROM workers WHERE label=?`, final).Scan(&existing)
-		if err == sql.ErrNoRows {
-			break
-		}
-		if err != nil {
-			return requested, err
-		}
+	for taken[n] {
 		n++
-		if isAgent {
-			final = FactoryAgentLabel(n)
-		} else {
-			final = FactoryLaneLabel(n)
-		}
 	}
+	// Every surviving row is live and was counted into taken, so the
+	// canonical label for n is free by construction.
+	final := FactoryLaneLabel(n)
 	at := time.Now().UTC().Format(time.RFC3339Nano)
 	if _, err := tx.Exec(`INSERT INTO workers(label,pid,registered_at,heartbeat_at) VALUES(?,?,?,?)`, final, pid, at, at); err != nil {
 		return requested, err
@@ -217,16 +211,24 @@ func PruneFactoryDeadClaims(reg map[string]FactoryWorkerEntry, alive func(int) b
 }
 
 // FactoryFreeSlots returns the FREE slot numbers among 1..workers under root
-// — the lead loop's picker input. A slot is free when its lane-<n> label
+// — the lead loop's picker input. A slot is free when its number
 // has no live claim: absent from the registry, mapped to a non-positive pid,
 // or mapped to a pid the probe reports dead (dead claims are pruned on the
 // way through, same rule as the bump path). Fail-open on registry errors via
 // LoadFactoryRegistry, so an unreadable registry reads as all-free.
 func FactoryFreeSlots(root string, workers int, alive func(int) bool) []int {
 	reg := PruneFactoryDeadClaims(LoadFactoryRegistry(FactoryRegistryPath(root)), alive)
+	// Pruning leaves only live claims; a live claim in any worker shape —
+	// canonical or legacy — occupies its number.
+	taken := map[int]bool{}
+	for label := range reg {
+		if n, ok := factoryLabelNumber(label); ok {
+			taken[n] = true
+		}
+	}
 	free := make([]int, 0, workers)
 	for i := 1; i <= workers; i++ {
-		if claim, taken := reg[FactoryLaneLabel(i)]; !taken || claim.PID <= 0 || !alive(claim.PID) {
+		if !taken[i] {
 			free = append(free, i)
 		}
 	}

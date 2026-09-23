@@ -317,17 +317,21 @@ func (s *Store) RegisterPeer(ctx context.Context, p Peer) (Peer, error) {
 		return Peer{}, err
 	}
 	defer func() { _ = tx.Rollback() }()
-	if p.Slot == "agent" {
+	// The bare `worker` sentinel (and its legacy spelling `agent`) takes the
+	// next free `worker-<n>` slot. A number is taken when a row exists under
+	// the canonical slot or either legacy spelling (`agent-<n>`, `lane-<n>`),
+	// so rows an older launcher wrote into this run keep their number.
+	if p.Slot == "worker" || p.Slot == "agent" {
 		for n := 1; ; n++ {
-			slot := fmt.Sprintf("agent-%d", n)
-			var x string
-			e := tx.QueryRowContext(ctx, `SELECT session_uuid FROM peers WHERE slot=?`, slot).Scan(&x)
-			if errors.Is(e, sql.ErrNoRows) {
-				p.Slot = slot
-				break
-			}
+			var count int
+			e := tx.QueryRowContext(ctx, `SELECT count(*) FROM peers WHERE slot IN (?,?,?)`,
+				fmt.Sprintf("worker-%d", n), fmt.Sprintf("agent-%d", n), fmt.Sprintf("lane-%d", n)).Scan(&count)
 			if e != nil {
 				return Peer{}, e
+			}
+			if count == 0 {
+				p.Slot = fmt.Sprintf("worker-%d", n)
+				break
 			}
 		}
 	}
