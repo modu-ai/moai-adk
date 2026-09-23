@@ -95,7 +95,7 @@ The key point is that planning and auditing are separated — the one who built 
 {{< callout type="info" >}}
 **4-tier token-cost tiers** ({{< icon flash danger >}} max · {{< icon flash warn >}} high · {{< icon flash primary >}} medium · {{< icon flash muted >}} low): `model: inherit` inherits the parent session model, and effort determines the reasoning-token budget.
 
-The values above are the **shipped frontmatter**, which is pinned to the `medium` column of the [profile matrix](/en/advanced/profile-matrix/) so a fresh deployment matches the default profile. Switching the profile rewrites these values — under `high`, `manager-develop` and `super-advisor` move to `max` (the only two cells that use it), and under `low` the agentic rows drop to `low` while `manager-docs` and `e2e-tester` fall back to Sonnet. Inspect the resolved values for the active profile with `moai model profile`.
+The values above are the **shipped frontmatter**, which is pinned to the `medium` column of the [profile matrix](/en/advanced/profile-matrix/) so a fresh deployment matches the default profile. Switching the profile rewrites these values — under `high`, only `builder-harness` and `e2e-tester` move up one level (no cell uses `max`), and under `low` the auditing and coordinating rows drop to `medium`, `builder-harness` drops to `low`, and `e2e-tester` moves to Sonnet. Inspect the resolved values for the active profile with `moai model profile`.
 {{< /callout >}}
 
 ## Manager-Develop Domain Context Injection

@@ -105,7 +105,7 @@ MoAI-ADK는 **13개 에이전트** (12개 MoAI 사용자 정의 + 1개 Anthropic
 | `Explore` | 읽기 전용 코드 탐색 · 분석 (Anthropic 내장, 파일 없음) |
 
 {{< callout type="info" title="모델과 추론 깊이" >}}
-각 에이전트의 `model`/`effort` 값은 배포되는 frontmatter이며, [프로필 매트릭스](/ko/advanced/profile-matrix/)의 설정에 따라 함께 바뀝니다. `model: inherit`은 부모 세션 모델을 그대로 이어받고, `effort`가 추론 토큰 예산을 결정합니다. 프로필을 올리면 구현·자문 에이전트가 더 깊은 추론으로 올라가고, 내리면 가벼운 작업은 더 싼 모델로 폴백합니다. 활성 프로필에서 실제 값을 확인하려면 `moai model profile`을 실행하세요.
+각 에이전트의 `model`/`effort` 값은 배포되는 frontmatter이며, [프로필 매트릭스](/ko/advanced/profile-matrix/)의 설정에 따라 함께 바뀝니다. `model: inherit`은 부모 세션 모델을 그대로 이어받고, `effort`가 추론 토큰 예산을 결정합니다. 프로필을 바꾸면 이 값이 다시 쓰입니다 — `high`에서는 `builder-harness`와 `e2e-tester`만 한 단계 올라가고(`max`를 쓰는 칸은 없음), `low`에서는 감사·조율 행이 `medium`으로, `builder-harness`가 `low`로 내려가며 `e2e-tester`는 Sonnet으로 바뀝니다. 활성 프로필에서 실제 값을 확인하려면 `moai model profile`을 실행하세요.
 {{< /callout >}}
 
 ## 계획과 감사의 분리 — 왜 만든 쪽이 검사하지 않는가
