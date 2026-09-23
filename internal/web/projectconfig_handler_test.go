@@ -96,9 +96,10 @@ func TestSaveRejectsBogusDevelopmentMode(t *testing.T) {
 	a.writeProjectConfig = func(string, string, string) error { wrote = true; return nil }
 
 	rec := servePost(t, a.routes(), "/save", projectSaveForm("xyz", "angular"))
-	if rec.Code != http.StatusBadRequest {
-		t.Errorf("bogus development_mode status = %d, want 400", rec.Code)
+	if rec.Code != http.StatusOK {
+		t.Errorf("bogus development_mode status = %d, want 200", rec.Code)
 	}
+	assertValidationRejectBanner(t, rec.Body.String())
 	// SPEC-DESIGN-MOAIWEBV2-001 M1: field-error echo retired with the project render
 	// surface; the server 400 + atomic no-write (below) are the preserved contract.
 	if wrote {
@@ -115,9 +116,10 @@ func TestSaveRejectsBogusConvention(t *testing.T) {
 	a.writeProjectConfig = func(string, string, string) error { wrote = true; return nil }
 
 	rec := servePost(t, a.routes(), "/save", projectSaveForm("ddd", "gitflow"))
-	if rec.Code != http.StatusBadRequest {
-		t.Errorf("bogus git_convention status = %d, want 400", rec.Code)
+	if rec.Code != http.StatusOK {
+		t.Errorf("bogus git_convention status = %d, want 200", rec.Code)
 	}
+	assertValidationRejectBanner(t, rec.Body.String())
 	// SPEC-DESIGN-MOAIWEBV2-001 M1: field-error echo retired with the project render
 	// surface; the server 400 + atomic no-write (below) are the preserved contract.
 	if wrote {
@@ -179,9 +181,10 @@ func TestSaveEC2AtomicReject(t *testing.T) {
 	a.writeProjectConfig = func(string, string, string) error { wrote = true; return nil }
 
 	rec := servePost(t, a.routes(), "/save", projectSaveForm("xyz", "angular"))
-	if rec.Code != http.StatusBadRequest {
-		t.Errorf("EC-2 status = %d, want 400", rec.Code)
+	if rec.Code != http.StatusOK {
+		t.Errorf("EC-2 status = %d, want 200", rec.Code)
 	}
+	assertValidationRejectBanner(t, rec.Body.String())
 	// SPEC-DESIGN-MOAIWEBV2-001 M1: the development_mode field-error echo retired with
 	// the project render surface; the server 400 + atomic no-write (below) are the
 	// preserved contract (REQ-MWV2-031).

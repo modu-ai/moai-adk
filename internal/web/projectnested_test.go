@@ -250,9 +250,10 @@ func TestProjectNestedAtomicReject(t *testing.T) {
 		"quality.tdd_settings.min_coverage_per_commit": "150",
 	})
 	rec := servePost(t, a.routes(), "/save", form)
-	if rec.Code != http.StatusBadRequest {
-		t.Fatalf("atomic reject status = %d, want 400; body: %s", rec.Code, rec.Body.String())
+	if rec.Code != http.StatusOK {
+		t.Fatalf("atomic reject status = %d, want 200; body: %s", rec.Code, rec.Body.String())
 	}
+	assertValidationRejectBanner(t, rec.Body.String())
 	// SPEC-DESIGN-MOAIWEBV2-001 M1: the project render surface was retired, so the
 	// per-field error is no longer echoed into the (now-absent) widget. The server
 	// contract — 400 status + atomic no-write below — is preserved (REQ-MWV2-031).
@@ -275,9 +276,10 @@ func TestProjectNestedOutOfRangeReject(t *testing.T) {
 
 	form := nestedSaveForm(map[string]string{"quality.test_coverage_target": "150"})
 	rec := servePost(t, a.routes(), "/save", form)
-	if rec.Code != http.StatusBadRequest {
-		t.Fatalf("out-of-range status = %d, want 400; body: %s", rec.Code, rec.Body.String())
+	if rec.Code != http.StatusOK {
+		t.Fatalf("out-of-range status = %d, want 200; body: %s", rec.Code, rec.Body.String())
 	}
+	assertValidationRejectBanner(t, rec.Body.String())
 	// SPEC-DESIGN-MOAIWEBV2-001 M1: field-error echo retired with the project render
 	// surface; the server 400 + atomic no-write below remain the preserved contract.
 	cfg := loadRawCfg(t, root)
@@ -298,9 +300,10 @@ func TestProjectNestedCustomConventionRejected(t *testing.T) {
 	// Set convention=custom (scalar) → enum-rejected (custom engine removed).
 	form := nestedSaveForm(map[string]string{"git_convention": "custom"})
 	rec := servePost(t, a.routes(), "/save", form)
-	if rec.Code != http.StatusBadRequest {
-		t.Fatalf("custom-rejected status = %d, want 400; body: %s", rec.Code, rec.Body.String())
+	if rec.Code != http.StatusOK {
+		t.Fatalf("custom-rejected status = %d, want 200; body: %s", rec.Code, rec.Body.String())
 	}
+	assertValidationRejectBanner(t, rec.Body.String())
 	// SPEC-DESIGN-MOAIWEBV2-001 M1: the enum-reject message echo retired with the
 	// project render surface; the server 400 + atomic no-write below are preserved.
 	cfg := loadRawCfg(t, root)

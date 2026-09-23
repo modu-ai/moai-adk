@@ -67,9 +67,10 @@ func TestProjectNestedRejectStillRejects(t *testing.T) {
 		"git_convention.auto_detection.sample_size":          "175",
 	})
 	rec := servePost(t, a.routes(), "/save", form)
-	if rec.Code != http.StatusBadRequest {
-		t.Fatalf("reject status = %d, want 400; body: %s", rec.Code, rec.Body.String())
+	if rec.Code != http.StatusOK {
+		t.Fatalf("reject status = %d, want 200; body: %s", rec.Code, rec.Body.String())
 	}
+	assertValidationRejectBanner(t, rec.Body.String())
 	// Atomic reject — no value persisted (originals survive).
 	cfg := loadRawCfg(t, root)
 	if cfg.Quality.TestCoverageTarget != 70 {

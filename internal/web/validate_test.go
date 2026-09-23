@@ -85,9 +85,10 @@ func TestSaveInvalidModelRejected(t *testing.T) {
 		"model":           {"gpt-4"},
 	}
 	rec := servePost(t, h, "/save", form)
-	if rec.Code != http.StatusBadRequest {
-		t.Errorf("invalid model status = %d, want 400", rec.Code)
+	if rec.Code != http.StatusOK {
+		t.Errorf("invalid model status = %d, want 200", rec.Code)
 	}
+	assertValidationRejectBanner(t, rec.Body.String())
 	if wrote || synced {
 		t.Error("persistence functions called despite invalid model (state must be unchanged)")
 	}
@@ -137,9 +138,10 @@ func TestSaveInvalidEffortLevelRejected(t *testing.T) {
 		"effort_level":    {"ultra"},
 	}
 	rec := servePost(t, h, "/save", form)
-	if rec.Code != http.StatusBadRequest {
-		t.Errorf("invalid effort_level status = %d, want 400", rec.Code)
+	if rec.Code != http.StatusOK {
+		t.Errorf("invalid effort_level status = %d, want 200", rec.Code)
 	}
+	assertValidationRejectBanner(t, rec.Body.String())
 	if wrote {
 		t.Error("WritePreferences called despite invalid effort_level")
 	}
