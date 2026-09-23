@@ -237,7 +237,7 @@ func TestProjectNestedToggleUnchecked(t *testing.T) {
 }
 
 // TestProjectNestedAtomicReject covers AC-WC7-012 (REQ-WC7-007, HARD-5, EC-2): one
-// valid nested field + one invalid nested field → 400, no section written (all
+// valid nested field + one invalid nested field → reject, no section written (all
 // persisted values unchanged), re-render with the per-field error.
 func TestProjectNestedAtomicReject(t *testing.T) {
 	t.Parallel()
@@ -256,7 +256,8 @@ func TestProjectNestedAtomicReject(t *testing.T) {
 	assertValidationRejectBanner(t, rec.Body.String())
 	// SPEC-DESIGN-MOAIWEBV2-001 M1: the project render surface was retired, so the
 	// per-field error is no longer echoed into the (now-absent) widget. The server
-	// contract — 400 status + atomic no-write below — is preserved (REQ-MWV2-031).
+	// contract — the reject banner + atomic no-write below — is preserved
+	// (REQ-MWV2-031; card t1105 moved the status off 400 so htmx delivers the reason).
 	cfg := loadRawCfg(t, root)
 	// NEITHER value persisted — original 70 must survive (atomic reject).
 	if cfg.Quality.TestCoverageTarget != 70 {
@@ -268,7 +269,7 @@ func TestProjectNestedAtomicReject(t *testing.T) {
 }
 
 // TestProjectNestedOutOfRangeReject covers AC-WC7-013 (REQ-WC7-014, HARD-3):
-// quality.test_coverage_target=150 → 400, a FieldErrors entry for the field, write 0.
+// quality.test_coverage_target=150 → reject, a FieldErrors entry for the field, write 0.
 func TestProjectNestedOutOfRangeReject(t *testing.T) {
 	t.Parallel()
 	root := seedNestedProject(t)
@@ -281,7 +282,7 @@ func TestProjectNestedOutOfRangeReject(t *testing.T) {
 	}
 	assertValidationRejectBanner(t, rec.Body.String())
 	// SPEC-DESIGN-MOAIWEBV2-001 M1: field-error echo retired with the project render
-	// surface; the server 400 + atomic no-write below remain the preserved contract.
+	// surface; the reject banner + atomic no-write below remain the preserved contract.
 	cfg := loadRawCfg(t, root)
 	if cfg.Quality.TestCoverageTarget != 70 {
 		t.Errorf("out-of-range write leaked test_coverage_target = %d, want 70 (no write)", cfg.Quality.TestCoverageTarget)
@@ -290,7 +291,7 @@ func TestProjectNestedOutOfRangeReject(t *testing.T) {
 
 // TestProjectNestedCustomConventionRejected covers AC-WC9-009 (REQ-WC9-003): the
 // `custom` engine is removed, so submitting git_convention=custom is rejected at the
-// 4-value enum validator (no custom.pattern concept) → 400, FieldErrors for
+// 4-value enum validator (no custom.pattern concept) → reject, FieldErrors for
 // git_convention, write 0 (atomic reject leaves the persisted convention angular).
 func TestProjectNestedCustomConventionRejected(t *testing.T) {
 	t.Parallel()
@@ -305,7 +306,7 @@ func TestProjectNestedCustomConventionRejected(t *testing.T) {
 	}
 	assertValidationRejectBanner(t, rec.Body.String())
 	// SPEC-DESIGN-MOAIWEBV2-001 M1: the enum-reject message echo retired with the
-	// project render surface; the server 400 + atomic no-write below are preserved.
+	// project render surface; the reject banner + atomic no-write below are preserved.
 	cfg := loadRawCfg(t, root)
 	// convention scalar must NOT be persisted (atomic reject leaves angular).
 	if cfg.GitConvention.Convention != "angular" {

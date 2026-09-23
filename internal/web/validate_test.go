@@ -70,7 +70,7 @@ func TestValidatePrefs_ModelPolicyField(t *testing.T) {
 }
 
 // TestSaveInvalidModelRejected verifies AC-WC2-002a: a POST /save with an
-// out-of-list model is rejected (400), no persistence occurs, and the form
+// out-of-list model is rejected (swappable status + banner), no persistence occurs, and the form
 // re-renders with a per-field model error.
 func TestSaveInvalidModelRejected(t *testing.T) {
 	a := newTestApp(t)
@@ -124,7 +124,7 @@ func TestSaveValidModelPersisted(t *testing.T) {
 }
 
 // TestSaveInvalidEffortLevelRejected verifies AC-WC2-003: an out-of-list
-// effort_level is rejected (400), state unchanged.
+// effort_level is rejected (swappable status + banner), state unchanged.
 func TestSaveInvalidEffortLevelRejected(t *testing.T) {
 	a := newTestApp(t)
 	var wrote bool
