@@ -1,7 +1,7 @@
 ---
 id: SPEC-DUAL-HARNESS-RECOVERY-001
 title: "Dual-harness recovery — Codex wiring unwire/rollback, Codex worktree and kanban parity, role permission contract, exactly-once dispatch results, mixed factory card flow"
-version: "0.1.0"
+version: "0.2.0"
 status: draft
 created: 2026-09-23
 updated: 2026-09-23
@@ -17,7 +17,7 @@ depends_on:
   - SPEC-FACTORY-MIXED-HOOK-001
   - SPEC-CODEX-WIRING-001
 related_specs:
-  - SPEC-FACTORY-LANE-WORKTREE-HANDOFF-001
+  - SPEC-FACTORY-LANE-WORKTREE-HANDOFF-001  # unmerged draft; exists only on the t1082 branch/worktree, not in this tree
   - SPEC-CODEX-DUAL-AGENTS-001
   - SPEC-CODEX-LAUNCH-VERB-001
   - SPEC-CODEX-LAUNCHER-001
@@ -32,19 +32,21 @@ related_specs:
 | Version | Date | Change |
 |---|---|---|
 | 0.1.0 | 2026-09-23 | 카드 t1100 plan 초안. 이중 하네스 설계(§19)의 AC-MIG-01, AC-WT-01, AC-AGENT-01, AC-MSG-01, AC-FACT-01 다섯 기준만 다룬다. |
+| 0.2.0 | 2026-09-23 | plan-audit iter-1(FAIL 0.76) 결함 D1~D21 수리. 리드 결정 1~4·D6 반영(출처와 한계는 `plan.md` §B). 멱등 범위를 조건부 REQ로 바꾸고 재현 측정 REQ-DHR-025를 추가. 배선 잠금을 codexwiring 소유 잠금으로 교체. 감사 역할의 Codex 예외를 REQ-DHR-015로 한정. |
 
 ## §A 배경과 목적
 
 `reports/moai-dual-harness-full-design-20260922.md`(설계 제안, 구현 기록 아님)는 Claude Code와 Codex CLI의 동등 지원을 14개 인수 기준으로 정의한다. 이 SPEC은 그중 상태·복구(M4)와 실행·협업(M3)에 속하는 다섯 기준만 구현 가능한 요구사항으로 옮긴다.
 
-이 트리(`d87e9af2e`)에서 코드를 읽고 확인한 출발점은 다음과 같다. 자세한 근거와 줄 번호는 `research.md`에 있다.
+이 트리에서 코드를 읽고 확인한 출발점은 다음과 같다. 자세한 근거와 줄 번호는 `research.md`에 있다.
 
 - `internal/codexwiring`은 설치만 한다. 제거 경로가 없고, 신뢰 사이드카(`.moai/state/codex-wiring.json`)는 전체 파일 해시 두 개만 담는다. 원자적 쓰기는 temp+rename뿐이며 저널, 잠금, rename 직전 해시 재확인, 기록 후 대조가 없다.
+- `hooks.json`은 매번 문서 전체를 다시 직렬화한다(`hooks.go:122`). 따라서 이 파일에 대한 보존 보장은 바이트가 아니라 구조 단위로만 할 수 있다. `config.toml`은 텍스트 덧붙이기·줄 삽입으로만 바뀌므로 MoAI가 만든 영역 밖의 바이트는 그대로다.
 - claude 프로필 배포는 `.codex/`를 숨기지만(`harness_fs.go` `hideCodex`), 이미 있는 `.codex/*`를 치우지 않는다. `both → claude` 전환 후 배선 파일과 에이전트 TOML이 고아로 남는다.
 - `moai codex -w`는 새 트리를 만들거나 기존 트리에 들어가지만, 동시 writer 검사나 소유 표식을 남기지 않는다. `moai codex -k`는 없다(`-f`는 있다).
-- Codex 역할 TOML은 작업 공간 단위 `sandbox_mode`만 표현한다. 역할별 shell·MCP 도구 제한은 표현할 수 없다.
-- `internal/factorymsg`는 전달을 at-least-once로 보장하고 멱등 키로 송신 중복을 막는다. 멱등 범위가 송신자 세션 UUID라서 송신자가 재시작하면 같은 키도 새 메시지가 된다. 결과를 한 번만 반영하는 작업 레코드는 없다.
-- 혼합 팩토리 4조합 테스트는 `MOAI_FACTORY_LIVE=1` 없이는 모두 `SKIP`이다. 이때도 패키지 결과는 `ok`로 출력된다(이번 실행에서 관측).
+- Codex 역할 TOML은 작업 공간 단위 `sandbox_mode`와 역할별 MCP 서버 부여(`[mcp_servers.<name>]` 테이블)를 표현한다. 한 MCP 서버 안의 도구 단위 제한, 경로 단위 쓰기 제한은 표현하지 못한다.
+- `internal/factorymsg`는 전달을 at-least-once로 보장하고 멱등 키로 송신 중복을 막는다. 멱등 범위가 송신자 세션 UUID라서, 송신자가 재시작하면 같은 키도 새 메시지 행이 될 수 있다(코드 판독, 미측정). 결과를 한 번만 반영하는 작업 레코드는 없다.
+- 혼합 팩토리 4조합 테스트는 `MOAI_FACTORY_LIVE=1` 없이는 모두 `SKIP`이다. 이때도 패키지 결과는 `ok`로 출력된다(plan 단계에서 관측).
 
 ## §B 범위
 
@@ -52,60 +54,60 @@ related_specs:
 
 | 설계 기준 | 이 SPEC의 REQ | 이 SPEC의 AC |
 |---|---|---|
-| AC-MIG-01 | REQ-DHR-001 ~ REQ-DHR-007 | AC-DHR-001 ~ AC-DHR-005 |
+| AC-MIG-01 | REQ-DHR-001 ~ REQ-DHR-007 | AC-DHR-001 ~ AC-DHR-005, AC-DHR-021, AC-DHR-022 |
 | AC-WT-01 | REQ-DHR-008 ~ REQ-DHR-012 | AC-DHR-006 ~ AC-DHR-009 |
-| AC-AGENT-01 | REQ-DHR-013 ~ REQ-DHR-015 | AC-DHR-010 ~ AC-DHR-013 |
-| AC-MSG-01 | REQ-DHR-016 ~ REQ-DHR-021 | AC-DHR-014 ~ AC-DHR-016 |
+| AC-AGENT-01 | REQ-DHR-013 ~ REQ-DHR-015 | AC-DHR-010 ~ AC-DHR-013, AC-DHR-023 |
+| AC-MSG-01 | REQ-DHR-016 ~ REQ-DHR-021, REQ-DHR-025 | AC-DHR-014 ~ AC-DHR-016, AC-DHR-020 |
 | AC-FACT-01 | REQ-DHR-022 ~ REQ-DHR-024 | AC-DHR-017 ~ AC-DHR-019 |
 
 ### 이전 결정과의 관계
 
 - SPEC-FACTORY-MIXED-HOOK-001 REQ-FMH-006은 브로커가 at-least-once 전달을 유지하고 exactly-once 실행을 주장하지 않는다고 정했다. 이 SPEC은 그 결정을 뒤집지 않는다. "한 번만 반영"은 메시지 전달이 아니라 작업 레코드(dispatch record)에 결과를 적용하는 단계에서 보장한다.
-- SPEC-CODEX-WIRING-001 REQ-CW-005는 기존 `[mcp_servers.moai]` 테이블과 `status_line` 키를 사용자 소유로 본다. 이 SPEC은 MoAI가 직접 만든 부분만 MoAI 소유로 기록하고, 설치 전에 있던 부분은 계속 사용자 소유로 둔다.
-- SPEC-CODEX-WIRING-001 REQ-CW-012는 배선 생성기가 `.codex/agents/**`를 건드리지 못하게 한다. 에이전트 TOML의 정리는 배선 생성기가 아니라 템플릿 manifest 경로(REQ-DHR-007)가 맡는다.
-- 설계 ADR-02(기존 상태 저장 API 재사용)에 따라 소유 기록은 `internal/manifest`, 작업 레코드는 기존 factorymsg SQLite 브로커를 확장한다. 새 저장소나 데몬은 만들지 않는다.
+- SPEC-CODEX-WIRING-001 REQ-CW-005는 기존 `[mcp_servers.moai]` 테이블과 `status_line` 키를 사용자 소유로 보고 다시 쓰지 않는다. 같은 생성기가 `hooks.json`에서는 `moai hook ` 접두사나 `.codex/hooks/moai/` 네임스페이스 명령을 가진 handler를 이미 있더라도 MoAI 소유로 보고 매번 교체한다(`hooks.go:138-141`, `:167`). 이 SPEC의 소유 분류(REQ-DHR-001)는 이 두 기존 동작을 그대로 따른다. handler는 명령 식별자로 MoAI 소유, config 부분은 MoAI가 이번 기록 아래서 직접 만든 것만 MoAI 소유다.
+- SPEC-CODEX-WIRING-001 REQ-CW-012는 배선 생성기가 `.codex/agents/**`를 건드리지 못하게 한다. 이 SPEC도 에이전트 TOML을 지우지 않는다. 프로필 전환으로 배포되지 않게 된 템플릿 파일은 보고만 한다(REQ-DHR-007).
+- 설계 ADR-02(기존 상태 저장 API 재사용)에 따라 소유 기록은 `internal/manifest`, 작업 레코드는 기존 factorymsg SQLite 브로커를 확장한다. 새 저장소나 데몬은 만들지 않는다. 배선 잠금은 사이드카와 같은 `.moai/state/` 아래의 파일 하나다.
 
 ## §C 요구사항 (GEARS)
 
 ### REQ-DHR-001 — Codex wiring ownership provenance
 
-The Codex wiring generator SHALL record, for every file and every file part it writes, a provenance entry through `internal/manifest` naming the path, the owned part (whole file, a hook handler identified by its `moai hook ` command, a TOML table, or a TOML key), whether MoAI created that part or found it pre-existing, and the hash of the bytes MoAI wrote. A part that existed before MoAI first wrote the file SHALL be recorded as user-owned and SHALL never be promoted to MoAI-owned by a later run.
+The Codex wiring generator SHALL record, for every file and every file part it writes, a provenance entry through `internal/manifest` naming the path, the part kind (`whole-file`, `hook-handler`, `json-key`, `toml-table`, or `toml-key`), the part key, the origin (`created`, `preexisting`, or `unknown`), and the hash of the bytes MoAI wrote. A hook handler whose command starts with `moai hook ` or lies inside the `.codex/hooks/moai/` namespace SHALL be recorded as `created`, because the generator replaces such handlers on every run. The top-level `description` key of `hooks.json` SHALL be recorded as a `json-key` part whose origin is `created` only when MoAI added it. A `[tui]` table that MoAI appended as a whole SHALL be recorded as a `toml-table` part, and a `status_line` assignment MoAI inserted into a user `[tui]` table SHALL be recorded as a `toml-key` part. When a part other than a MoAI-identified handler already exists and the project carries no earlier MoAI wiring evidence (no manifest part record, no trust sidecar, no wiring journal), the generator SHALL record it as `preexisting`. When such a part exists and earlier wiring evidence exists but no part record does, the generator SHALL record it as `unknown`. A `preexisting` or `unknown` part SHALL never be promoted to `created` by a later run.
 
-### REQ-DHR-002 — Journaled per-file atomic write with readback
+### REQ-DHR-002 — Journaled per-file write under the wiring lock
 
-When the Codex wiring generator writes a file, it SHALL stage the full content in a temporary file in the target directory, append a journal entry naming the path, the pre-write hash, and the intended post-write hash, acquire the existing project update lock, re-read the target and compare its hash with the pre-write hash immediately before rename, rename, then read the target back and compare its hash with the intended post-write hash before marking the journal entry complete. The generator SHALL NOT claim that a multi-file wiring pass is atomic as a whole.
+When the Codex wiring generator, the unwire step, or the recovery step changes a wiring file, it SHALL hold a wiring lock owned by the wiring package, distinct from the `moai update` lock and acquirable whether or not the caller already holds the update lock, and while holding it SHALL append a journal entry naming the path, the operation, the pre-change hash, the intended post-change hash, the intended provenance record, and the temporary file name; stage the full content in that temporary file in the target directory; re-read the target and compare its hash with the pre-change hash immediately before rename; rename; read the target back and compare its hash with the intended post-change hash; apply the intended provenance record to the manifest; and only then mark the journal entry complete. Where both locks are held, the wiring lock SHALL be acquired after the update lock. When the wiring lock is held by a live or undetermined other owner, the step SHALL change no wiring file and SHALL return a distinct lock-held outcome that its caller reports. The generator SHALL NOT claim that a multi-file wiring pass is atomic as a whole.
 
 ### REQ-DHR-003 — Refusal on concurrent or user modification
 
-When the target hash re-read immediately before rename differs from the pre-write hash, the Codex wiring generator SHALL NOT rename, SHALL leave the target byte-identical, SHALL record the journal entry as `conflict`, and SHALL report the path and both hashes as a conflict with a non-zero outcome for that file.
+When the target hash re-read immediately before rename differs from the pre-change hash, the Codex wiring step SHALL NOT rename, SHALL leave the target byte-identical, SHALL remove its temporary file, SHALL record the journal entry as `conflict`, and SHALL report the path and both hashes as a conflict with a non-zero outcome for that file.
 
-### REQ-DHR-004 — Interrupted-install recovery
+### REQ-DHR-004 — Interrupted-change recovery and its entry points
 
-When `moai tool enable codex`, `moai update`, the Codex unwire command, or `moai doctor` finds an incomplete wiring journal entry, the recovery step SHALL classify each entry by the target's current hash as `completed` (equals the post-write hash), `not-applied` (equals the pre-write hash), or `diverged` (equals neither), SHALL finalize `completed` entries, SHALL discard the staged file of `not-applied` entries without touching the target, and SHALL leave `diverged` targets untouched and reported. Recovery SHALL NOT overwrite a file whose current hash is neither the pre-write nor the post-write hash.
+When `moai tool enable codex`, `moai tool disable codex`, or the update-path wiring refresh starts while an incomplete wiring journal entry exists, the recovery step SHALL run under the wiring lock before any new write and SHALL classify each entry by the target's current state as `completed` (equals the intended post-change state), `not-applied` (equals the pre-change state), or `diverged` (equals neither); SHALL apply the entry's recorded provenance and mark `completed` entries complete; SHALL discard the temporary file of `not-applied` entries without touching the target; SHALL leave `diverged` targets untouched and reported; and SHALL delete a `.codexwiring-*` temporary file in a wiring target directory that no journal entry references. Recovery SHALL NOT overwrite a file whose current state is neither the pre-change nor the intended post-change state. `moai doctor` SHALL report incomplete journal entries and unreferenced temporary files with the command that recovers them, and SHALL NOT write, rename, or delete any file.
 
-### REQ-DHR-005 — Owned-part-only unwire
+### REQ-DHR-005 — Owned-part-only unwire through `moai tool disable codex`
 
-When the operator runs the Codex unwire command, the unwire step SHALL remove only parts whose provenance is MoAI-created AND whose current bytes hash to the recorded hash. Where a file also contains user-owned parts, the unwire step SHALL rewrite the file with only the MoAI-owned parts removed through the REQ-DHR-002 write path, preserving every other byte. The unwire step SHALL delete a whole file only when the entire file is MoAI-created and its hash matches the record.
+When the operator runs `moai tool disable codex`, the unwire step SHALL remove only parts whose origin is `created` and whose current content hashes to the recorded hash, through the REQ-DHR-002 write path. For `config.toml` it SHALL produce exactly the pre-unwire bytes with each removed part's recorded byte region, including the separator MoAI inserted with it, cut out, and SHALL leave every other byte unchanged. For `hooks.json`, which the generator re-serializes, it SHALL preserve every non-MoAI top-level key value, every user hook entry's matcher, and every user handler as parsed JSON values, in their original order, and SHALL NOT claim byte preservation. It SHALL delete a whole file only when the file's provenance is `whole-file` with origin `created` and the file hash matches the record; otherwise it SHALL fall back to part-level removal.
 
-### REQ-DHR-006 — No deletion on hash alone
+### REQ-DHR-006 — No write through unverified ownership or symbolic links
 
-The Codex unwire and recovery steps SHALL NOT delete or modify a file or part on hash evidence alone. When a part lacks a MoAI-created provenance record, is recorded user-owned, has a hash mismatch, or resolves through a symbolic link to a location outside the project root, the step SHALL leave it untouched and SHALL report its path and the reason (`no-provenance`, `user-owned`, `modified`, or `symlink-boundary`).
+The Codex wiring write, unwire, and recovery steps SHALL NOT delete or modify a file or part on hash evidence alone. When a part lacks a provenance record, is recorded `preexisting` or `unknown`, has a hash mismatch, or when the target path is itself a symbolic link or any directory between the project root and the target resolves through a symbolic link to a location outside the project root, the step SHALL leave it untouched and SHALL report its path and the reason (`no-provenance`, `user-owned`, `unknown-origin`, `modified`, or `symlink-boundary`). The check SHALL use the link itself (`Lstat`), not the link's destination.
 
-### REQ-DHR-007 — Harness profile transition preservation
+### REQ-DHR-007 — Harness profile transitions report and preserve
 
-When the configured harness profile transitions (`claude → both`, `gpt → both`, `both → claude`, `both → gpt`, `gpt → claude`, or an older binary's deployment is refreshed by a newer one), the deployment SHALL preserve every user-owned file and part. When the target profile no longer deploys a path that the manifest records as template-managed (for example `.codex/agents/moai/*.toml` after `both → claude`), the deployment SHALL classify it with the existing deprecated-path classification, SHALL remove only pristine entries after backup, and SHALL keep and report user-modified or unverified entries. When the Codex wiring files become orphaned by such a transition, the deployment SHALL report them and SHALL NOT remove them unless the Codex unwire step runs.
+When the configured harness profile transitions (`claude → both`, `gpt → both`, `both → claude`, `both → gpt`, `gpt → claude`, or an older binary's deployment is refreshed by a newer one), the deployment SHALL preserve every user-owned file and part. When the Codex wiring files become orphaned by such a transition, `moai update` SHALL report each orphaned file and the command that removes it (`moai tool disable codex`) and SHALL NOT remove or rewrite it. When the target profile no longer deploys a template path that the manifest records (for example `.codex/agents/moai/*.toml` after `both → claude`), the deployment SHALL report it and SHALL NOT delete it.
 
 ### REQ-DHR-008 — Codex worktree anchor
 
-When `moai codex -w` launches a Codex session into a new or existing card worktree, the launcher SHALL place a git worktree lock on that tree whose reason carries `pid <n>` of the process that becomes the Codex session, before the Codex process starts, so the existing lock-aware anchor decision recognizes the tree as anchored for the session's lifetime. When the tree already carries a lock whose recorded pid is confirmed dead, the launcher SHALL replace it; it SHALL NOT replace a lock whose pid is live or whose liveness is undetermined.
+When `moai codex -w` launches a Codex session into a new or existing card worktree, the launcher SHALL place a git worktree lock on that tree whose reason carries `pid <n>` before the Codex process starts, so the existing lock-aware anchor decision recognizes the tree as anchored for the session's lifetime. On POSIX, where the launcher replaces itself with the Codex process, `<n>` SHALL be the launcher's own pid. On Windows, where the launcher starts the Codex child and waits for it, `<n>` SHALL be the waiting launcher's pid. When the tree already carries a lock whose recorded pid is confirmed dead, the launcher SHALL replace it only while holding a per-tree replacement guard that it creates exclusively, SHALL re-read the lock reason under that guard, and SHALL refuse the launch with a non-zero exit when the reason changed, when the guard cannot be created, or when `git worktree lock` fails; it SHALL NOT force a lock and SHALL NOT replace a lock whose pid is live or whose liveness is undetermined.
 
 ### REQ-DHR-009 — Concurrent writer rejection
 
 When `moai codex -w` or `moai cc -w` targets an existing worktree that the existing anchor decision reports as anchored by a live or undetermined owner other than the caller, the launcher SHALL refuse to launch with a non-zero exit and a diagnostic naming the anchor source and holder, and SHALL NOT modify the tree, its lock, or its branch.
 
-### REQ-DHR-010 — Un-integrated tree deletion rejection
+### REQ-DHR-010 — Disposal parity for Codex-created trees
 
-The worktree disposal paths (`moai worktree clean --stale`, `moai worktree done`, and session-exit cleanup) SHALL refuse to remove a Codex-created worktree that holds commits not integrated into its base branch, holds uncommitted changes, or is anchored by a live or undetermined owner, with the same classification and diagnostics they apply to Claude-created trees.
+The worktree disposal paths `moai worktree clean --stale`, `moai worktree done`, `moai worktree remove`, and session-exit cleanup SHALL apply to a Codex-created worktree the same guards they apply to a Claude-created worktree in the same state, and SHALL treat a git worktree lock placed under REQ-DHR-008 whose pid is live or undetermined as an anchor. `moai worktree clean --stale`, `moai worktree done`, and session-exit cleanup SHALL refuse to remove such a tree when it holds commits not integrated into its base branch, holds uncommitted changes, or is anchored, and SHALL name the reason. `moai worktree remove` SHALL keep its existing explicit-removal semantics for integration state and SHALL refuse an anchored tree unless `--force` is given.
 
 ### REQ-DHR-011 — Codex worktree creation base verification
 
@@ -113,43 +115,43 @@ When `moai codex -w` creates a new worktree, the launcher SHALL resolve the base
 
 ### REQ-DHR-012 — Codex kanban entry parity
 
-Where the operator passes `-k` or `--kanban` to `moai codex`, the launcher SHALL accept the same entry shapes as `moai cc -k` for the roles this SPEC admits, SHALL publish the same kanban launch facts with backend `codex`, SHALL claim or resolve the session name with the same rules, and SHALL NOT forward the kanban tokens to the Codex child process. When an unsupported shape is passed, the launcher SHALL exit non-zero with a usage diagnostic rather than degrade to a plain launch.
+Where the operator passes `-k` or `--kanban` to `moai codex`, the launcher SHALL accept the same lead and companion entry shapes as `moai cc -k`, SHALL publish the same kanban launch facts with backend `codex`, SHALL claim or resolve the session name with the same rules, and SHALL NOT forward the kanban tokens to the Codex child process. When an unsupported shape is passed, the launcher SHALL exit non-zero with a usage diagnostic rather than degrade to a plain launch.
 
 ### REQ-DHR-013 — Role permission contract
 
-The agent emitter SHALL carry a permission contract for each of the 12 Codex roles naming the role's required write scope, shell use, MCP servers, subagent spawning, and web access, and SHALL map every axis to exactly one of `enforced` (with the Codex field that enforces it) or `UNSUPPORTED` (with the host-expressivity reason). When a role's contract requires a restriction that is neither enforced nor declared `UNSUPPORTED`, the emitter SHALL fail. The emitter SHALL NOT emit a sandbox value broader than the role's contract requires.
+The agent emitter SHALL carry a permission contract for each of the 12 Codex roles over the axes `sandbox`, `write-path-scope`, `shell`, `mcp-server`, `mcp-tool`, `subagent`, and `web`, and SHALL map every axis on which the contract requires a restriction to exactly one of `enforced` (naming the Codex field that enforces it and a `measured` or `documented` basis) or `UNSUPPORTED` (naming the host-expressivity reason and a `measured`, `documented`, or `unmeasured` basis). An axis with an `unmeasured` basis SHALL NOT be mapped `enforced`. When a role's contract requires a restriction that is neither enforced nor declared `UNSUPPORTED`, the emitter SHALL fail. The emitter SHALL NOT emit a `sandbox_mode` broader than the role's contract states.
 
 ### REQ-DHR-014 — Unsupported axes are never reported as passing
 
-The Codex role verification SHALL report every `UNSUPPORTED` axis as `UNSUPPORTED` and SHALL NOT count it as PASS. When runtime role loading and read-only enforcement are verified against a real Codex binary, that verification SHALL be recorded as a separate evidence item naming the Codex version; an unexecuted runtime verification SHALL be reported as `NOT_RUN`.
+The Codex role verification SHALL report every `UNSUPPORTED` axis as `UNSUPPORTED` and SHALL NOT count it as PASS. When runtime role loading and read-only enforcement are verified against a real Codex binary, that verification SHALL be recorded as a separate evidence item naming the Codex version, the invocation count, and positive evidence of each claim; an unexecuted runtime verification SHALL be reported as `NOT_RUN`, and one stopped by its invocation budget SHALL be reported as `ABORTED`.
 
-### REQ-DHR-015 — Auditor write-scope boundary
+### REQ-DHR-015 — Codex audit roles are read-only and return their verdict text
 
-Where `plan-auditor` or `sync-auditor` runs on Codex with `workspace-write`, the audit workflow SHALL capture a working-tree snapshot before the auditor starts and verify it after the auditor returns against an allowlist of the auditor's declared report and verdict paths. When any path outside the allowlist changed, the verification SHALL exit non-zero, the audit verdict SHALL be rejected, and the changed paths SHALL be reported.
+Where `plan-auditor` or `sync-auditor` is emitted as a Codex role, the role's contract SHALL state `sandbox: read-only` and the emitter SHALL emit `sandbox_mode = "read-only"` for it together with a Codex-only instruction that the role returns its complete verdict or report text instead of writing a file. When a Codex audit role returns, the parent lane orchestrator SHALL write the audit verdict or report file with exactly the returned text. This exception to the contract "the auditor writes its own verdict file" SHALL apply only to the Codex path; the Claude agent definitions, their emitted Claude copies, and the Claude audit workflow SHALL remain unchanged.
 
 ### REQ-DHR-016 — Dispatch record
 
-The factory broker SHALL store one dispatch record per run and dispatch identifier carrying the dispatch ID, card ID, target lane slot, attempt number, the assignee generation used as the fencing token, the idempotency key, the lifecycle state, and a result reference. The lifecycle states SHALL be `assigned`, `delivered`, `started`, `result_recorded`, `integrated`, and `abandoned`, recorded as distinct states. A message arrival or receipt SHALL NOT move a dispatch past `delivered`.
+The factory broker SHALL store one dispatch record per run and dispatch identifier carrying the dispatch ID, card ID, assignee lane slot, attempt number, the assignee generation used as the fencing token, the result digest, the lifecycle state, and a result reference. The lifecycle states SHALL be `assigned`, `delivered`, `started`, `result_recorded`, `integrated`, and `abandoned`, recorded as distinct states. The idempotency keys of the assignment message and the result message SHALL be scoped to the dispatch ID and attempt, so a reassignment to another lane or attempt uses a new key. A message arrival or receipt SHALL NOT move a dispatch past `delivered`.
 
-### REQ-DHR-017 — Lane-stable idempotency scope
+### REQ-DHR-017 — Idempotency scope decided by measurement
 
-The factory broker SHALL scope message and result idempotency to the project key, run ID, sender lane slot, and idempotency key, independent of the sender's session UUID and generation, so that a retry after a sender restart deduplicates to the original record. When the same scope carries a different recipient lane, kind, task reference, correlation ID, or payload, the broker SHALL reject it without mutation.
+Where the measurement of REQ-DHR-025 recorded `reproduced`, the factory broker SHALL scope message idempotency to the project key, run ID, sender lane slot, and idempotency key, independent of the sender's session UUID and generation, SHALL migrate existing rows without loss, and SHALL return the original message for a same-scope retry after a sender restart. Where that measurement recorded `not-reproduced`, the broker SHALL keep the existing `UNIQUE(sender_session, idem_key)` scope and SHALL NOT migrate the message schema. In both branches, when the same scope carries a different recipient, kind, task reference, correlation ID, or payload, the broker SHALL reject it without mutation.
 
 ### REQ-DHR-018 — Exactly-once result application under fencing
 
-When a worker reports a result for a dispatch, the factory broker SHALL apply it in one transaction that verifies the reporter's lane and current generation equal the dispatch's assignee lane and generation and that the dispatch is in `started`. When the same result is applied again through duplicate delivery, lease redelivery after a lost receipt, or a retry after restart, the broker SHALL leave the dispatch unchanged and return a `duplicate` outcome. When the reporter's generation or attempt is stale, the broker SHALL reject it with a stale outcome and leave the dispatch unchanged. The broker message layer SHALL remain at-least-once.
+When the receiver of a result message applies it to a dispatch record, the factory broker SHALL decide in one transaction and in this order: (1) no record for the dispatch ID → `unknown`; (2) the reported attempt differs from the record's current attempt → `stale`; (3) the reporter's lane differs from the assignee lane → `stale`; (4) the reporter's generation is lower than the lane's current generation → `stale`; (5) the record already holds a result for this attempt → `duplicate` when the result digest is equal, `collision` when it differs; (6) the reporter's generation differs from the assignee generation → `stale`; (7) the record is not in `started` → `invalid-state`; (8) otherwise record the result, set `result_recorded`, and return `accepted`. Every outcome other than `accepted` SHALL leave the record unchanged. The broker message layer SHALL remain at-least-once.
 
 ### REQ-DHR-019 — Result persisted before receipt
 
-When a worker processes a message that carries a result, the result SHALL be recorded in the dispatch record before the message receipt is acknowledged, so that a crash between recording and receipt leads to redelivery that REQ-DHR-018 resolves as `duplicate`.
+When the receiver of a message that carries a result processes it, the receiver SHALL apply the result to the dispatch record under REQ-DHR-018 before acknowledging the message receipt, so that a crash between the application and the receipt leads to a redelivery that REQ-DHR-018 resolves as `duplicate`.
 
 ### REQ-DHR-020 — Superseded-generation messages
 
-When a lane's generation advances while messages addressed to its previous generation are pending or claimed, the factory broker SHALL NOT let the superseded generation claim, read, dispose, or acknowledge them and SHALL report them as `superseded` in the broker status rather than as pending. The broker SHALL re-issue dispatch authority only through a new dispatch attempt (REQ-DHR-021) and SHALL NOT release a superseded message body on its own.
+When a lane's generation advances while messages addressed to its previous generation are pending or claimed, the factory broker SHALL NOT let the superseded generation claim, read, dispose, or acknowledge them and SHALL report them as `superseded` in the broker status rather than as pending. The broker SHALL NOT itself release a superseded message body to the new generation. Dispatch authority SHALL move to a new generation only through a new attempt (REQ-DHR-021) or through a same-attempt regrant that updates the record's assignee generation in the same transaction as the caller's own state change; this SPEC provides the regrant operation and leaves its admission conditions to the SPEC that calls it.
 
 ### REQ-DHR-021 — Reassignment fences the previous attempt
 
-When the lead reassigns a dispatch, the factory broker SHALL require that the previous assignee's owner is confirmed not live or that the lead explicitly revokes it, SHALL increment the attempt, SHALL record the new assignee lane and generation, and SHALL thereafter treat any result from the previous attempt as stale under REQ-DHR-018.
+When the lead reassigns a dispatch, the factory broker SHALL require that the previous assignee's owner is confirmed not live or that the lead explicitly revokes it, SHALL increment the attempt, SHALL record the new assignee lane and generation, and SHALL thereafter treat any result from the previous attempt as `stale` under REQ-DHR-018.
 
 ### REQ-DHR-022 — Deterministic mixed-backend card flow
 
@@ -157,22 +159,26 @@ The factory test suite SHALL drive each of the four backend combinations (Claude
 
 ### REQ-DHR-023 — LIVE mixed factory card flow evidence
 
-When LIVE verification runs, each of the four backend combinations SHALL complete the card flow of REQ-DHR-022 in real separate CLI and model contexts inside an isolated temporary repository and `MOAI_HOME`, within a declared per-case model invocation budget and timeout, with cleanup of every spawned process registered before the first spawn. Each case SHALL write its own evidence file. LIVE evidence SHALL be recorded separately from the deterministic evidence and SHALL NOT be claimed to run in CI unless a CI workflow that sets the LIVE gate is observed.
+When LIVE verification runs, each of the four backend combinations SHALL complete the card flow of REQ-DHR-022 in real separate CLI and model contexts inside an isolated temporary repository and `MOAI_HOME`, within at most 8 model invocations and 900 seconds per combination, with cleanup of every spawned process registered before the first spawn. When a combination reaches its invocation or time budget, the case SHALL stop, clean up, and report `ABORTED`. Each case SHALL emit its own evidence record. LIVE evidence SHALL be recorded separately from the deterministic evidence and SHALL NOT be claimed to run in CI unless a CI workflow that sets the LIVE gate is observed.
 
 ### REQ-DHR-024 — SKIP and NOT_RUN are not PASS
 
-Every verification command in this SPEC SHALL count `pass` events for the exact named tests and SHALL fail when any named test reports `skip` or `fail`, when the expected pass count is not met, or when output contains `NOT_RUN`. A package-level `ok` line SHALL NOT be accepted as evidence.
+Every verification command in this SPEC SHALL count `pass` events for the exact named tests and SHALL fail when any named test reports `skip` or `fail`, when the expected pass count is not met, or when output contains `NOT_RUN` or `ABORTED`. A package-level `ok` line SHALL NOT be accepted as evidence.
+
+### REQ-DHR-025 — Idempotency-scope reproduction measurement
+
+When the run phase starts, before any change to the factorymsg schema, the reproduction test SHALL register a sender lane, send a message with an idempotency key, re-register the same lane slot with a new session UUID so that its generation advances, send an identical message with the same idempotency key, and record `reproduced` when a second message row exists that the recipient can claim, or `not-reproduced` otherwise, together with the unique constraint text the store was opened with, the row count, and the number of distinct message IDs the recipient claimed.
 
 ## §D 요구사항 ↔ 인수 기준 추적
 
 | Requirement anchor | Acceptance criteria |
 |---|---|
 | § REQ-DHR-001 | AC-DHR-003, AC-DHR-004 |
-| § REQ-DHR-002 | AC-DHR-001 |
+| § REQ-DHR-002 | AC-DHR-001, AC-DHR-022 |
 | § REQ-DHR-003 | AC-DHR-001 |
-| § REQ-DHR-004 | AC-DHR-002 |
+| § REQ-DHR-004 | AC-DHR-002, AC-DHR-021 |
 | § REQ-DHR-005 | AC-DHR-003 |
-| § REQ-DHR-006 | AC-DHR-004 |
+| § REQ-DHR-006 | AC-DHR-001, AC-DHR-004 |
 | § REQ-DHR-007 | AC-DHR-005 |
 | § REQ-DHR-008 | AC-DHR-006 |
 | § REQ-DHR-009 | AC-DHR-007 |
@@ -181,29 +187,30 @@ Every verification command in this SPEC SHALL count `pass` events for the exact 
 | § REQ-DHR-012 | AC-DHR-009 |
 | § REQ-DHR-013 | AC-DHR-010 |
 | § REQ-DHR-014 | AC-DHR-011, AC-DHR-012 |
-| § REQ-DHR-015 | AC-DHR-013 |
+| § REQ-DHR-015 | AC-DHR-013, AC-DHR-023 |
 | § REQ-DHR-016 | AC-DHR-014 |
 | § REQ-DHR-017 | AC-DHR-014 |
-| § REQ-DHR-018 | AC-DHR-014, AC-DHR-015 |
+| § REQ-DHR-018 | AC-DHR-014, AC-DHR-015, AC-DHR-016 |
 | § REQ-DHR-019 | AC-DHR-014 |
 | § REQ-DHR-020 | AC-DHR-015 |
 | § REQ-DHR-021 | AC-DHR-016 |
 | § REQ-DHR-022 | AC-DHR-017 |
 | § REQ-DHR-023 | AC-DHR-018 |
 | § REQ-DHR-024 | AC-DHR-019 |
+| § REQ-DHR-025 | AC-DHR-020 |
 
 ## §E t1082 경계 (SPEC-FACTORY-LANE-WORKTREE-HANDOFF-001)
 
-t1082는 draft이며 run이 시작되지 않았다. 열린 결정 M1(launch-pending 중 handoff)과 M2(두 rebind 경로)는 t1082의 것이고, 이 SPEC은 그 둘을 결정하지 않는다.
+t1082의 SPEC은 이 트리에 없다. `.claude/worktrees/t1082/.moai/specs/SPEC-FACTORY-LANE-WORKTREE-HANDOFF-001/`에만 있는 미병합 draft이며, 아래 인용은 이번 개정 시점에 그 경로를 읽기 전용으로 읽은 것이다. t1082의 열린 결정 M1(launch-pending 중 handoff)과 M2(두 rebind 경로)는 t1082의 것이고, 이 SPEC은 그 둘을 결정하지 않는다.
 
 ### 겹침 표
 
 | t1100 | t1082 | 공유 파일 | 소유 |
 |---|---|---|---|
 | REQ-DHR-016 dispatch record | REQ-FLH-009 dispatch 보존·BOUND 후 방출 / AC-FLH-006 | `internal/factorymsg/store.go` | 레코드 스키마와 상태 전이: t1100. BOUND 전 body 보류 gate: t1082 |
-| REQ-DHR-017 멱등 범위 | REQ-FLH-009 "idempotency를 handoff generation에 결합" / AC-FLH-008 | `store.go` (`UNIQUE(sender_session, idem_key)`) | 범위 정의: t1100 한 곳. t1082는 새 범위를 만들지 않는다 |
-| REQ-DHR-018 결과 적용 fencing | REQ-FLH-010 tombstone·STALE_* / AC-FLH-007 | `store.go` `verifyPeer`, peers 테이블 | generation 비교 규칙: t1100. tombstone·redirect metadata·재시작 후 생존: t1082 |
-| REQ-DHR-020 superseded 메시지 | REQ-FLH-009 SWITCH_PENDING 중 metadata 보존 | `store.go` Claim/Status | superseded 표시와 claim 금지: t1100. handoff 중 보류 dispatch를 새 generation으로 방출하는 경로: t1082 |
+| REQ-DHR-017, 025 멱등 범위 | REQ-FLH-009 "current t1074 schema's idempotency key unchanged" / AC-FLH-008 | `store.go` (`UNIQUE(sender_session,idem_key)`) | 범위 결정: t1100(측정 결과에 따른 조건부). 이관 시 t1082 영향은 리드가 조정 |
+| REQ-DHR-018 결과 적용 fencing | REQ-FLH-010 tombstone·STALE_* / AC-FLH-007 | `store.go` `verifyPeer`, peers 테이블 | 결과 적용 판정 순서: t1100. tombstone·redirect metadata·재시작 후 생존: t1082 |
+| REQ-DHR-020 superseded 메시지 | REQ-FLH-009 SWITCH_PENDING 중 metadata 보존, BOUND 후 방출 | `store.go` Claim/Status | superseded 표시·claim 금지·같은 attempt 재부여 연산: t1100. 재부여를 호출할 조건(BOUND): t1082 |
 | REQ-DHR-021 재할당 | REQ-FLH-011 crash·재시작·abandoned 복구 / AC-FLH-009 | `store.go` | 일반 재할당(새 attempt): t1100. handoff 전이의 resume/finalize/ABANDONED: t1082 |
 | REQ-DHR-022 / 023 4조합 | REQ-FLH-014 LIVE Codex↔Codex, Claude↔Codex / AC-FLH-012, 013 | `internal/cli/factory_live_test.go` | 일반 카드 흐름 왕복: t1100. `/cd`·`thread/fork` relocation LIVE: t1082 |
 | REQ-DHR-008 ~ 011 codex -w | REQ-FLH-004 develop pin·L1 생성 / AC-FLH-002, 016 | `internal/cli/codex_launcher.go`, `session_worktree.go` `gitWorktreeAddReal` | codex -w anchor·base 대조·동시 writer 거부: t1100. lane handoff용 develop pin과 `BASE_DRIFT`: t1082 |
@@ -212,14 +219,17 @@ t1082는 draft이며 run이 시작되지 않았다. 열린 결정 M1(launch-pend
 ### 경계 규칙
 
 - generation 필드는 기존 `peers.generation` 하나다. 이 SPEC은 fencing용 두 번째 필드를 만들지 않는다. dispatch record의 assignee generation은 그 값의 복사본이다.
-- 멱등 범위는 REQ-DHR-017의 하나다. t1082 design.md §8의 "t1074 idempotency key에 handoff generation을 결합"을 키에 generation을 섞는 뜻으로 읽으면 AC-FLH-008(BOUND 전후 같은 키 → 실행 한 번)과 어긋난다. 이 SPEC은 그 결합을 "BOUND gate + generation fencing"으로 표현하자고 제안하며, 최종 문구는 t1082가 정한다.
-- t1082는 이 SPEC의 계약을 소비하는 쪽이다. handoff 상태기계(RESERVED, WT_READY, SWITCH_PENDING, BOUND)는 t1100의 lifecycle 위에 얹히는 gate이며 두 번째 상태기계가 아니다.
+- REQ-DHR-018의 판정 (4)는 "이전 generation의 재시도는 stale"이라는 t1082 AC-FLH-008의 성질(t1082 acceptance.md의 AC-FLH-008 본문)과 같은 방향이다. 현재 generation의 재시도는 (5)에서 `duplicate`가 된다.
+- 대화형 `/cd` handoff는 같은 프로세스를 유지하므로(t1082 REQ-FLH-006) REQ-DHR-021의 "비생존 확인"이 성립하지 않는다. 그래서 REQ-DHR-020은 새 attempt 외에 같은 attempt 재부여 연산을 제공한다. t1082가 BOUND 방출을 이 연산으로 표현할지, 명시 철회 후 새 attempt로 표현할지는 t1082가 정한다.
+- 멱등 범위: t1082 spec.md REQ-FLH-009(이 개정 시점 본문)는 "detecting duplicates by the current t1074 schema's idempotency key unchanged"라고 적고, t1082 design.md(같은 시점, 204행)는 "키의 기준은 t1100이 소유하며 이 SPEC은 현행 스키마를 따른다"고 적는다. REQ-DHR-025 측정이 `reproduced`여서 범위를 옮기면 이 문구와 맞춰야 한다. 이 SPEC은 t1082의 문구를 정하지 않으며, 맞출 필요가 생기면 리드가 t1082와 조정한다(리드에게 전달할 제안: REQ-FLH-009의 "unchanged"를 "t1100이 정한 범위"로 바꾸는 것).
+- t1082는 이 SPEC의 계약을 소비하는 쪽이다. handoff 상태기계(RESERVED, WT_READY, SWITCH_PENDING, BOUND)는 t1100의 lifecycle 위에 얹히는 gate로 제안되며, 두 번째 상태기계로 만들지 않는 것은 t1082의 수락을 전제로 한다.
 
 ## §F 범위 밖
 
 ### Out of Scope — M1 정책·템플릿 완결성
 
 - AC-POL-01, AC-TPL-01/02: 중립 정책 배포, 참조 완결성, 재생성 결정론.
+- `AGENTS.md.tmpl`의 worktree-entry 행("resolves an existing tree and never creates one")과 실제 `moai codex -w` 생성 동작의 불일치. 이번 조사에서 관측했지만 이 카드에서 고치지 않는다(`research.md` §C).
 
 ### Out of Scope — M2 훅·승인·목표
 
@@ -229,14 +239,20 @@ t1082는 draft이며 run이 시작되지 않았다. 열린 결정 M1(launch-pend
 ### Out of Scope — M5 인증·MCP
 
 - AC-WF-01(17개 명령 인증), AC-MCP-01, AC-OBS-01.
+- MCP 서버 안의 도구 단위 제한 구현. 이 SPEC은 표현 불가를 `UNSUPPORTED`로 기록만 한다.
 
 ### Out of Scope — 다른 실행 프로파일
 
-- Desktop·Web·원격 실행 프로파일, macOS 이외 운영체제 인증. Windows 경로는 기존 테스트를 깨지 않는 수준으로만 유지한다.
+- Desktop·Web·원격 실행 프로파일, macOS 이외 운영체제 인증. Windows 동작은 REQ-DHR-008에 적었지만 이 SPEC은 Windows 실측을 요구하지 않는다. 로컬 검증은 darwin이며 Windows 결과는 CI 매트릭스에서 관측될 때만 인용한다.
+
+### Out of Scope — 템플릿 파일 삭제와 구버전 config 부분 제거
+
+- 프로필 전환 때 배포되지 않게 된 템플릿 관리 파일의 삭제. 보고만 한다.
+- provenance 기록 이전에 설치된 `[mcp_servers.moai]`·`status_line`의 자동 제거. `unknown`으로 기록되어 unwire가 남기고 보고한다. 운영자가 손으로 지운다.
 
 ### Out of Scope — t1082 소관
 
-- lane worktree relocation(`/cd`, `thread/fork`), handoff tombstone과 redirect metadata, launch-pending handoff(M1), 두 rebind 경로(M2).
+- lane worktree relocation(`/cd`, `thread/fork`), handoff tombstone과 redirect metadata, launch-pending handoff(M1), 두 rebind 경로(M2), 같은 attempt 재부여를 부를 조건.
 
 ### Out of Scope — dispatch record의 나머지 설계 필드
 

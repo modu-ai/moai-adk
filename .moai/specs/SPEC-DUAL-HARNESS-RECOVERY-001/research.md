@@ -32,6 +32,14 @@ card: t1100
 | 기존 update 경로에 잠금·폐기 분류·백업 도구가 있음 | `internal/cli/update_cleanup.go:56` `acquireUpdateLock`, `:203` `backupDeprecatedPaths`, `:343` `classifyDeprecatedFile` |
 | 이전 결정: 기존 `[mcp_servers.moai]`·`status_line`은 사용자 소유 | SPEC-CODEX-WIRING-001 REQ-CW-005 |
 | 이전 결정: 배선 생성기는 `.codex/agents/**`를 건드리지 않음 | SPEC-CODEX-WIRING-001 REQ-CW-012 |
+| (iter-2 추가) `hooks.json`은 문서 전체를 `json.MarshalIndent`로 다시 렌더한다. 섞인 entry는 `marshalEntry`로 재구성된다 | `hooks.go:122`, `:198-212` |
+| (iter-2 추가) 최상위 `description`이 없으면 MoAI가 추가한다 | `hooks.go:115-117` |
+| (iter-2 추가) `.codex/hooks/moai/` 네임스페이스 명령도 MoAI 소유로 보고 교체한다 | `hooks.go:138-141`, `:167` |
+| (iter-2 추가) `[tui]`가 없으면 테이블 전체를 덧붙인다. 덧붙일 때 `appendSection`이 구분 빈 줄을 넣는다 | `configtoml.go:145`, `:221-229` |
+| (iter-2 추가) `acquireUpdateLock`은 package cli 비공개, O_EXCL. `runUpdate`는 이 잠금을 쥔 채 배선 갱신을 부른다. cli가 codexwiring을 import한다 | `update_cleanup.go:56-88`, `update.go:275-279`, `:506`, `update_codex_wiring.go:14` |
+| (iter-2 추가) codexwiring의 moai 내부 import는 `codexadapter`, `hook`뿐이다 | `grep -h '"github.com/modu-ai' internal/codexwiring/*.go` |
+| (iter-2 추가) manifest 파싱 실패 시 `.corrupt`로 옮기고 새 manifest로 초기화한다 | `manifest.go:81-88` |
+| (iter-2 추가) `moai doctor --fix`는 제안만 한다. 관련 검사 주석도 "never writes files" | `doctor.go:59`, `:1079` |
 
 ### B.2 launcher·worktree (B 확인)
 
@@ -48,6 +56,11 @@ card: t1100
 | `moai cc -w`도 진입 전 동시 writer 검사가 없음(Claude Code의 EnterWorktree가 lock을 씀) | `session_worktree.go` 150-260 |
 | codex `-f`(factory) 진입은 이미 있음 | `codex_factory.go`(카드 t865) |
 | codex `-k`는 없음. cc 쪽 파서 `parseKanbanFlag`(`kanban.go:86`), `parseLauncherEntry`(`factory.go:176`) | grep 결과 |
+| (iter-2 추가) `moai worktree done`·`remove`의 anchor 가드는 레지스트리 기반 `LiveAnchoredSessions`이며 git worktree lock을 보지 않는다. lock-aware `AnchorDecision`은 `clean.go:136, 352`, `session_worktree_prmerge.go:217`에서만 쓴다 | `done.go:86, 284`, `remove.go:51` |
+| (iter-2 추가) `remove`는 `git worktree remove [--force]`를 부른다(`--force`는 한 번) | `internal/core/git/worktree.go:103-115` |
+| (iter-2 추가) 세션 종료 정리는 dirty·unpushed 판정 후 제거하며 anchor 판정은 없다. `auto_cleanup`이 꺼져 있으면 아무것도 하지 않는다 | `session_worktree.go:635-689` |
+| (iter-2 추가) Windows direct launch는 자식을 시작하고 `cmd.Wait()`로 기다린다 | `codex_direct_windows.go:14-29` |
+| (iter-2 추가) lock 사유의 pid 생존 판정은 `sessionProcessLiveness` seam이며 POSIX·Windows 구현이 있다 | `anchor_lock.go:59, 128-147`, `anchor_pid_unix.go`, `anchor_pid_windows.go` |
 
 ### B.3 agentemit (B 확인)
 
@@ -58,6 +71,10 @@ card: t1100
 | `sync-auditor` Claude 도구에 Write/Edit 없음, Bash 있음 | `sync-auditor.md` `tools:` |
 | `plan-auditor` Claude 도구에 Write/Edit 있음 | `plan-auditor.md` `tools:` |
 | `codex_task`의 쓰기는 프로젝트 opt-in(`workflow.codex.task.allow_write`)으로만 허용 | `codex_task.go:203-221` |
+| (iter-2 추가) 역할별 MCP 서버 부여는 역할 TOML의 `[mcp_servers.moai]` 테이블로 표현되며 codex-cli 0.147.0에서 등록이 실측됐다(배열형은 거부). 한 서버 안의 도구 단위 필터는 표현 불가로 기록돼 있다 | `agents-codex.yaml:196-207` |
+| (iter-2 추가) 생성된 12개 TOML 중 7개에 `[mcp_servers.moai]`가 있다: manager-develop, manager-lead, manager-docs, plan-auditor, super-advisor, manager-spec, sync-auditor | `grep -l '^\[mcp_servers.moai\]' internal/template/templates/.codex/agents/moai/*.toml` |
+| (iter-2 추가) 현재 생성기 근거는 "sync-auditor must write its verdict file, so making it read-only would violate the current export mandate"라고 적는다. D6 결정 (a)로 이 근거를 고쳐야 한다 | `agents-codex.yaml:262-264` |
+| (iter-2 추가) 부여하지 않은 역할이 프로젝트 `config.toml`의 전역 `[mcp_servers.moai]`를 물려받는지는 측정 기록이 없다 | 기록 부재(측정하지 않음) |
 
 ### B.4 factorymsg (C 확인)
 
@@ -97,7 +114,10 @@ card: t1100
 | C | exactly-once를 factorymsg 계약으로 본다 | t1074 REQ-FMH-006이 exactly-once 실행을 주장하지 않는다고 명시 | "한 번 반영"은 dispatch record 적용 단계로 한정(REQ-DHR-018) |
 | C | 멱등 범위 문제 언급 없음 | 범위가 송신자 세션 UUID라 송신자 재시작 뒤 재전송이 중복됨 | REQ-DHR-017 |
 | C | 재시작 시 메시지 처리 언급 없음 | 수신 generation이 바뀌면 이전 generation 앞 메시지가 claim 불가 상태로 남음(코드 판독, 미측정) | REQ-DHR-020, AC-DHR-015가 측정 |
-| C | 경계 제안: "한 generation, 한 멱등 범위" | 제안 자체는 맞다. 그러나 t1082 design.md §8 "idempotency key에 handoff generation을 결합"은 키에 generation을 섞는 뜻으로 읽히며, 그러면 AC-FLH-008(BOUND 전후 같은 키 → 실행 한 번)과 모순된다 | spec.md §E에 "BOUND gate + generation fencing"으로 표현하자는 제안을 기록. 최종 문구는 t1082 소관 |
+| C | 경계 제안: "한 generation, 한 멱등 범위" | 제안 자체는 맞다. 초안 시점의 t1082 design.md §8은 "idempotency key에 handoff generation을 결합"으로 읽혔다. iter-2 시점에 t1082를 다시 읽으니 design.md 204행이 "Handoff generation은 key의 일부가 아니며… Key의 기준은 t1100이 소유하며 이 SPEC은 현행 스키마를 따른다"로 바뀌어 있고, spec.md REQ-FLH-009 본문은 "detecting duplicates by the current t1074 schema's idempotency key unchanged"다 | spec.md §E 경계 규칙에 현재 문구를 인용. 분기 A로 범위를 옮기면 "unchanged"와 맞춰야 하며 리드가 조정 |
+| (iter-2) 초안 자체 | AGENTS.md 템플릿의 worktree-entry 행이 "`moai codex -w <worktree>` — resolves an existing tree and never creates one"이라고 적는다 | `resolveOrCreateCodexWorktreeDir`는 이름이 가리키는 트리가 없으면 만든다(`codex_launcher.go:398-429`) | 불일치 관측. 이 카드의 범위 밖(spec.md §F) |
+| (iter-2) 초안 자체 | design.md 초안 C.1 "역할별 MCP 도구 제한 — 서버 등록은 세션 단위" | 역할별 서버 부여는 표현되고 실측돼 있다(위 B.3). 표현 못 하는 것은 서버 안의 도구 단위 제한과, 부여하지 않은 역할에 대한 거부(미측정)다 | design.md C.1을 서버 단위·도구 단위로 나눠 고침 |
+| (iter-2) 초안 자체 | B.3 삭제 보호 "분류는 누가 만들었든 적용된다" | `done`·`remove`는 레지스트리만 보므로 lock만 가진 Codex 트리를 anchor로 보지 않는다 | REQ-DHR-010에 lock 판정 요구 추가 |
 
 ## §D 이번 plan 단계 측정
 
@@ -123,5 +143,9 @@ ok  	github.com/modu-ai/moai-adk/internal/cli	0.826s
 - Codex `read-only` 역할에서 shell 쓰기·네트워크가 실제로 막히는지.
 - 수신자 재시작 뒤 이전 generation 앞 메시지가 실제로 남는지(코드 판독만 함).
 - Claude Code의 EnterWorktree가 이미 lock된 트리에서 어떻게 동작하는지.
-- `moai worktree verify`가 허용 목록을 받을 수 있는지(없으면 run 단계에서 추가).
+- 송신자 재시작 뒤 같은 멱등 키 재전송이 두 번째 메시지 행을 만드는지(코드 판독만 함 → AC-DHR-020이 run 첫 단계에서 측정).
+- git이 lock된 worktree를 `worktree remove --force` 한 번으로 지우지 않는다는 동작(git 문서상 동작, 이 트리에서 측정 안 함 → AC-DHR-008).
+- Codex 세션 기록(rollout)에 하위 에이전트 반환문이 남는지(→ AC-DHR-023, 남지 않으면 `NOT_RUN`).
+- 부여하지 않은 역할이 전역 MCP 서버를 물려받는지.
+- Windows에서의 anchor lock 동작.
 - `internal/cli` 전체 테스트, CI 결과. 이번 단계에서는 실행하지 않았다.
