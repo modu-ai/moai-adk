@@ -28,13 +28,22 @@ const (
 // The rule is exact rather than conservative on purpose. The next merge's BASE
 // is the snapshot of the previous render, so:
 //
-//   - A name init wrote is one init rendered verbatim — the same render — so it
-//     is always kept, and the merge sees NEW == BASE == OLD.
-//   - A name that is dropped is one no render could have written (a hand edit
-//     such as "$TEAM", "{{.Version}}", `"`, `\`). Its BASE therefore differs
-//     from the user's value, and the 3-way merge keeps the user's value as a
-//     customization. Dropping a name whose BASE equals the user's value would
-//     let the merge take the empty NEW value and erase it.
+//   - A name init stored verbatim — the stored value equals what the render
+//     produces for it — round-trips through the same render, so it is kept and
+//     the merge sees NEW == BASE == OLD.
+//   - A name whose stored form does not round-trip renders "". When it is a
+//     hand edit no render could have written ("$TEAM", "{{.Version}}", `"`,
+//     `\`), its BASE differs from the user's value and the 3-way merge keeps
+//     the user's value as a customization.
+//
+// Known limitation: a stored value that does not round-trip AND equals BASE
+// is erased — the merge takes the empty render. project.yaml.tmpl does not
+// escape the name inside its double-quoted scalar, so a --name carrying a YAML
+// backslash escape (`a\\b`, `a\nb`, `Kim \"Goos\"`) is stored by init as a
+// different string that is also the snapshot BASE; the next update empties
+// project.name. Pinned by TestUpdateForce_KnownLimitation_InitEscapedProjectName;
+// the fix (escape identity values in the init/project template render) is a
+// follow-up.
 func loadUpdateIdentity(projectRoot string) (projectName, userName string) {
 	fsys, err := template.EmbeddedTemplates()
 	if err != nil {

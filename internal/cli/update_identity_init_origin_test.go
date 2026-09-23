@@ -1,7 +1,8 @@
 package cli
 
-// Card t1139 sync re-audit N1: a name init itself wrote must survive forced
-// updates. The update render context carries the existing project.name /
+// Card t1139 sync re-audit N1: a name init stored verbatim must survive forced
+// updates (a name init stores altered — see the known-limitation test at the
+// end of this file — is outside that guarantee). The update render context carries the existing project.name /
 // user.name; a name that context drops renders as "" while the snapshot BASE
 // still holds the init render of that name, so BASE == OLD and the 3-way merge
 // takes the empty NEW value — the name is erased and the update reports
@@ -114,5 +115,48 @@ func TestCleanReinstall_InitOriginNameSurvives(t *testing.T) {
 		if got := sectionValue(t, sectionsFile(root, f.file), f.key, "name"); got != name {
 			t.Errorf("after reinstall + update: %s.name = %q, want %q", f.key, got, name)
 		}
+	}
+}
+
+// TestUpdateForce_KnownLimitation_InitEscapedProjectName pins a KNOWN
+// LIMITATION (sync-audit N3), not a desired behavior. project.yaml.tmpl puts
+// the name into a double-quoted YAML scalar without escaping it, so a --name
+// carrying a YAML backslash escape is stored by init as a DIFFERENT string
+// (`a\\b` typed, `a\b` stored). The stored value does not round-trip through
+// the render, loadUpdateIdentity reads it as "", and because the snapshot BASE
+// holds that same stored value (BASE == OLD) the merge takes the empty render:
+// the forced update erases project.name and reports no error. user.name is not
+// affected — init rewrites user.yaml after the render, so its BASE differs
+// from the stored value and the merge keeps it as a customization.
+//
+// The loss is pinned rather than skipped on purpose: a skipped test measures
+// nothing, while this one keeps the limitation a measured fact and forces the
+// follow-up fix (escape identity values in the init/project template render)
+// to flip it deliberately. Once init stores the typed name verbatim, the first
+// assertion fails with instructions — replace this test with a survival
+// assertion then.
+func TestUpdateForce_KnownLimitation_InitEscapedProjectName(t *testing.T) {
+	const typed, stored = `a\\b`, `a\b`
+	root := initIdentityProjectNamed(t, "proj", typed, typed)
+
+	if got := sectionValue(t, sectionsFile(root, "project.yaml"), "project", "name"); got != stored {
+		t.Fatalf("after init: project.name = %q, want %q — init no longer alters escaped names; the limitation is fixed, replace this test with a survival assertion", got, stored)
+	}
+	if got, _ := loadUpdateIdentity(root); got != "" {
+		t.Fatalf("loadUpdateIdentity project = %q, want \"\" (the stored value now round-trips; re-derive this test)", got)
+	}
+
+	output, syncErr := runForcedTemplateSyncResult(t, root)
+	if syncErr != nil {
+		t.Fatalf("update halted: %v", syncErr)
+	}
+	if strings.Contains(output, "merge failed") {
+		t.Errorf("update printed a merge failure; the pinned limitation is silent:\n%s", output)
+	}
+	if got := sectionValue(t, sectionsFile(root, "project.yaml"), "project", "name"); got != "" {
+		t.Errorf("KNOWN LIMITATION changed: project.name after update = %q, want \"\" (erased by the empty render)", got)
+	}
+	if got := sectionValue(t, sectionsFile(root, "user.yaml"), "user", "name"); got != typed {
+		t.Errorf("user.name after update = %q, want %q (the limitation is confined to project.name)", got, typed)
 	}
 }
