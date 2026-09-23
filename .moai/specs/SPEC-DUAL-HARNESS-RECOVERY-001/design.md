@@ -25,7 +25,7 @@ card: t1100
 | `parts[].key` | handler는 이벤트 키 + 명령, json-key는 `description`, toml-table은 `mcp_servers.moai` 또는 `tui`, toml-key는 `tui.status_line` |
 | `parts[].origin` | `created` / `preexisting` / `unknown` |
 | `parts[].hash` | MoAI가 쓴 부분의 해시. `preexisting`·`unknown`은 비움 |
-| `parts[].region` | config.toml 한정: MoAI가 넣은 바이트 영역(앞에 붙인 구분 빈 줄 포함). unwire가 이 영역을 내용으로 찾아 잘라 낸다 |
+| `parts[].region` | config.toml 한정: MoAI가 넣은 바이트 영역(앞에 붙인 구분 빈 줄 포함). unwire가 이 영역을 내용으로 찾아 잘라 낸다. 원본이 줄바꿈으로 끝나지 않을 때 덧붙이기·줄 삽입이 파일 끝에 더하는 줄바꿈 한 바이트(`configtoml.go:225-227`, `:130-141`)는 영역 밖이며 unwire가 되돌리지 않는다. REQ-DHR-005의 바이트 기준점은 unwire 직전 파일이므로 이 바이트가 있어도 기준은 성립한다 |
 
 부분 종류와 코드 근거:
 
@@ -94,7 +94,7 @@ manifest 반영이 저널 완료보다 앞이다. 그래서 둘 사이에서 멈
 | P0 | 저널 없이 `.codexwiring-*` 임시 파일만 있음(구버전 `writeAtomic` 잔재 포함) | 잠금 아래서 참조 없는 임시 파일 삭제. 대상 무변경 |
 | P1 | 저널 추가 후, 임시 파일 작성 전·중 | not-applied: 임시 파일 있으면 삭제 |
 | P2 | 임시 파일 작성 후, 재확인 전 | not-applied: 임시 파일 삭제 |
-| P3 | 재확인 후, rename 전 | not-applied(대상 = pre) 또는 diverged(사용자가 그 사이 수정) |
+| P3 | 재확인 후, rename 전 | not-applied(대상 = pre) 또는 diverged(사용자가 그 사이 수정). 어느 쪽이든 임시 파일 삭제 |
 | P4 | rename 후, 대조 전 | completed(대상 = post) → provenance 적용 후 완료 |
 | P5 | 대조 후, manifest 반영 전 | completed → provenance 적용 후 완료 |
 | P6 | manifest 반영 후, 완료 표시 전 | completed → provenance 재적용(같은 값) 후 완료 |
@@ -105,7 +105,7 @@ manifest 반영이 저널 완료보다 앞이다. 그래서 둘 사이에서 멈
 |---|---|---|---|
 | staged / renamed | post(삭제면 부재) | completed | provenance 적용, 완료 처리 |
 | staged | pre | not-applied | 임시 파일 삭제, 대상 무변경 |
-| 무엇이든 | 둘 다 아님 | diverged | 대상 무변경, 보고 |
+| 무엇이든 | 둘 다 아님 | diverged | 대상 무변경, 그 항목이 참조하는 임시 파일 삭제, 보고 |
 | conflict | 무엇이든 | conflict | 보고만 |
 
 진입점: `moai tool enable codex`, `moai tool disable codex`, update 경로의 배선 갱신. `moai doctor`는 미완료 저널과 참조 없는 임시 파일을 보고하고 복구 명령을 안내할 뿐 쓰지 않는다(`doctor.go:59`의 `--fix`도 제안만 한다).
@@ -129,14 +129,16 @@ manifest 반영이 저널 완료보다 앞이다. 그래서 둘 사이에서 멈
 | 파일 | 보장 | 기준점 | 시험 방법 |
 |---|---|---|---|
 | `config.toml` | 바이트 보존: 결과 = unwire 직전 바이트에서 제거한 부분의 기록 영역만 잘라 낸 것 | unwire 직전 파일 | 기대 바이트를 테스트가 직접 만들어 `bytes.Equal` |
-| `hooks.json` | 구조 보존: MoAI 외 최상위 키 값, 사용자 entry의 matcher, 사용자 handler를 JSON 값으로 비교해 같고 순서도 같음. 바이트 보존은 주장하지 않음(`hooks.go:122` `MarshalIndent`, `:198-212` `marshalEntry` 재직렬화) | unwire 직전 파일을 파싱한 구조 | 파싱한 구조 비교 |
+| `hooks.json` | 구조 보존: MoAI 외 최상위 키 값, 사용자 entry의 matcher, 사용자 handler를 JSON 값으로 비교해 같음. 순서 보존은 배열 원소(이벤트별 entry 목록, entry별 handler 목록)에만 적용한다. 객체 키 순서는 렌더러가 정렬하므로(`hooks.go:120-122`) 비교하지 않는다. 바이트 보존은 주장하지 않음(`hooks.go:122` `MarshalIndent`, `:198-212` `marshalEntry` 재직렬화) | unwire 직전 파일을 파싱한 구조 | 파싱한 구조 비교 |
 
 설치 쪽도 같은 symlink 검사를 거친다(A.3). `writeAtomic`의 rename(`wire.go:241`)은 경로 위의 symlink를 일반 파일로 바꾸므로, 검사 없이 쓰면 사용자 링크가 사라지거나 프로젝트 밖에 쓴다.
 
 ### A.6 프로필 전환 (REQ-DHR-007)
 
 - 배선 파일(`hooks.json`, `config.toml`, 사이드카)은 전환만으로 지우지도 고치지도 않는다. `moai update`는 고아로 보고하고 `moai tool disable codex`를 안내한다(리드 결정 1).
-- 대상 프로필이 배포하지 않는 템플릿 관리 경로(`.codex/agents/moai/*.toml` 등)도 보고만 한다. 현재 폐기 경로 목록은 정적 `defs.DeprecatedPaths`(`update_cleanup.go:127-131`)라 프로필 차이에서 목록을 만드는 장치가 없고, 이 카드의 범위(codexwiring)를 넘는다.
+- 대상 프로필이 배포하지 않는 `.codex/` 템플릿 관리 경로(`.codex/agents/moai/*.toml` 등)도 보고만 한다.
+- 전제 정정(plan-audit iter-2 ND6, 코드 판독): 프로필 차이로 파일을 지우는 장치는 정적 `defs.DeprecatedPaths`(`update_cleanup.go:127-131`)만이 아니다. update의 `cleanManagedPathsStage`는 프로필과 무관하게 `deploy.CleanMoaiManagedPaths`를 부르고(`update_template_sync.go:405-424`), 이 함수는 `ManagedCleanTargets`의 `.claude/settings.json`, `.claude/{commands,agents,hooks}/moai`, `.claude/skills/moai*`, `.claude/rules/moai`, `.claude/output-styles/moai`를 지운다(`deploy.go:56-85`). 템플릿에 없는 파일은 지우기 전에 `.moai-backups/<시각>/pre-clean/` 아래로 복사한다(같은 파일 함수 주석, 카드 t111). gpt 프로필 배포자는 `.claude/**`를 숨긴다(`internal/template/harness_fs.go:112` `isHidden`, `update_template_sync.go:60-67` 프로필별 배포자 선택).
+- 따라서 코드상으로는 `both → gpt`(및 `claude → gpt`) 전환의 update가 위 `.claude/` 관리 뿌리를 지운 뒤 다시 배포하지 않는다. 이는 코드 판독이며 측정하지 않았다(가설). 이 카드의 범위(codexwiring)가 아니므로 고치지 않고 `spec.md` §F에 범위 밖 발견과 후속 카드 후보로 적는다. REQ-DHR-007과 AC-DHR-005는 `.codex/` 쪽과 배선 파일만 판정하며 `.claude/` 관리 뿌리의 상태를 주장하지 않는다.
 
 ## §B Codex worktree 소유와 동시 writer (REQ-DHR-008 ~ 012)
 
@@ -158,14 +160,17 @@ manifest 반영이 저널 완료보다 앞이다. 그래서 둘 사이에서 멈
 
 ### B.3 삭제 보호
 
-| 경로 | 현재 anchor 판정 | 현재 통합·변경 판정 | 이 SPEC의 변화 |
-|---|---|---|---|
-| `moai worktree clean --stale` | lock-aware `AnchorDecision`(`clean.go:136, 352`) | 미통합 커밋·로컬 변경 분류 | Codex 트리가 실제로 걸리는지 시험만. 빈틈이 나오면 고침 |
-| `moai worktree done` | 레지스트리 기반 `LiveAnchoredSessions`(`done.go:86, 284`) | L1 tier guard | lock-anchored Codex 트리를 anchor로 인식하도록 lock 판정 추가 |
-| `moai worktree remove` | 레지스트리 기반 `LiveAnchoredSessions`(`remove.go:51`) | 없음(명시 제거). git 자체가 dirty 트리를 `--force` 없이 거부 | lock 판정 추가. 통합 상태 판정은 추가하지 않음 |
-| 세션 종료 정리 | 없음 | dirty·unpushed 판정(`session_worktree.go:635-689`) | Codex 트리 상태에 같은 판정이 적용되는지 시험 |
+`moai codex -w <name>`은 이름을 받으면 `<project root>/.claude/worktrees/<name>`에 트리를 만든다(`codex_launcher.go:411` `filepath.Join(projectRoot, sessionWorktreeSubdir, value)`, `session_worktree.go:47` `".claude" + sep + "worktrees"`). 절대 경로 값은 이미 있는 L2 트리에 들어갈 뿐 만들지 않는다(`codex_launcher.go:356-378` `resolveCodexWorktreeDir`). 그래서 Codex가 만든 트리는 모두 L1이다.
 
-`done`·`remove`는 레지스트리만 본다. Codex 세션은 레지스트리에 항목을 남기지 않으므로, lock만 가진 Codex 트리는 지금 이 두 경로의 moai anchor 가드를 통과한다. git이 lock된 트리를 `worktree remove --force` 한 번으로는 지우지 않는 것은 git 문서상의 동작이며 이번에 측정하지 않았다. AC-DHR-008이 측정한다. POSIX codex direct launch는 exec로 자신을 바꾸므로 세션 종료 정리 단계 자체가 없다. 이 경로의 시험은 정리 함수에 Codex 트리 상태를 넣어 같은 판정이 나오는지를 본다.
+| 경로 | L1 Codex 트리를 지울 수 있나 | 현재 판정 | 이 SPEC의 변화 |
+|---|---|---|---|
+| `moai worktree done` | 아니오. `<mainRoot>/.claude/worktrees/` 아래 트리는 `--force`와 무관하게 `L1_SESSION_WORKTREE`로 거부(`done.go:76-81`, `:277`, SPEC-WORKTREE-DONE-TIER-001 completed) | tier 거부가 anchor 가드보다 앞 | 없음. 기존 계약을 뒤집지 않는다. Claude L1 트리와 결과가 같은지 시험만 |
+| `moai worktree clean --stale --yes` | 예(L1 제외 규칙 없음, 저장소 뿌리와 현재 트리만 보호 `clean.go:549-560`) | lock-aware `AnchorDecision`(`clean.go:136, 352`), 미커밋 변경, base 미병합, 무시된 내용 | 없음. Codex 트리가 실제로 걸리는지 시험만. 빈틈이 나오면 고침 |
+| `moai worktree remove` | 예(명시 제거) | 레지스트리 기반 `LiveAnchoredSessions`(`remove.go:51`)만. lock만 가진 Codex 트리는 moai 가드를 통과하고 git이 판정 | lock-aware `AnchorDecision`으로 anchor 판정. `--force` 없으면 anchor 출처를 적고 거부. 통합 상태 판정은 추가하지 않음 |
+| PR-merge 정리(`auto_cleanup` 켜짐, `moai session register`·`list` 시) | 예(`WT-*` 브랜치 트리 전부, `session_worktree_prmerge.go:170-173`) | 미커밋 변경, unpushed, lock-aware `AnchorDecision`(`:217`), lock 존재 사전 거부 `LockRefusesRemoval` | 없음. Codex 트리 상태에 같은 판정이 나오는지 시험만 |
+| 세션 종료 정리 | 해당 없음. `moai cc`·`moai web` 경로만 부른다(`init.go:504`, `web.go:115`). Codex launch는 부르지 않는다 | dirty·unpushed | 없음. 이 SPEC의 판정 대상이 아니다 |
+
+git이 lock된 트리를 `worktree remove`(또는 `--force` 한 번)로 지우지 않는 것은 git 문서상의 동작이며 이번에 측정하지 않았다. `remove`에 moai 쪽 lock-aware 판정을 넣는 목적은 git 오류가 아니라 anchor 출처를 적은 거부를 내는 것이다. AC-DHR-008이 측정한다.
 
 ### B.4 kanban 진입
 
@@ -179,15 +184,15 @@ REQ-DHR-013의 축 목록과 같다. 각 축은 근거를 갖는다.
 
 | 축 | Codex 역할 TOML로 강제 가능? | 매핑 | 근거 |
 |---|---|---|---|
-| `sandbox` | `sandbox_mode` 3값(`read-only`, `workspace-write`, `danger-full-access`) | `enforced` | measured: `agents-codex.yaml:57-73`(codex-cli 0.147.0 P-01, 잘못된 값이면 역할 파일 전체가 버려짐) |
+| `sandbox` | `sandbox_mode` 3값(`read-only`, `workspace-write`, `danger-full-access`) | `enforced` | 필드 수용: measured(`agents-codex.yaml:57-73`, codex-cli 0.147.0 P-01 — 허용값 목록과 잘못된 값이면 역할 파일 전체가 버려짐). 쓰기 강제: AC-DHR-012 전까지 미측정(아래 문단) |
 | `write-path-scope` | 불가. 3값 중 경로 단위가 없음 | `UNSUPPORTED` | measured: 위와 같은 허용값 집합 |
 | `shell` | 역할 TOML에서 shell 사용을 끄는 필드를 찾지 못함 | `UNSUPPORTED` | unmeasured |
-| `mcp-server` | 역할별 `[mcp_servers.<name>]` 테이블로 서버를 부여할 수 있음. 부여하지 않은 역할이 프로젝트 `config.toml`의 전역 등록을 물려받는지는 측정되지 않음 | 부여: `enforced`. 거부: `UNSUPPORTED` | 부여 measured: `agents-codex.yaml:196-207`(0.147.0, 배열형 거부·테이블형 등록). 생성된 12개 중 7개 TOML에 테이블 있음(`grep -l '^\[mcp_servers.moai\]'`). 거부 unmeasured |
+| `mcp-server` | 역할별 `[mcp_servers.<name>]` 테이블로 서버를 부여할 수 있음. 부여하지 않은 역할이 프로젝트 `config.toml`의 전역 등록을 물려받는지는 측정되지 않음 | 제한 종류별로 하나씩(REQ-DHR-013). 부여: `enforced`. 거부: `UNSUPPORTED` | 부여 measured: `agents-codex.yaml:196-207`(0.147.0, 배열형 거부·테이블형 등록). 생성된 12개 중 7개 TOML에 테이블 있음(`grep -l '^\[mcp_servers.moai\]'`). 거부 unmeasured |
 | `mcp-tool` | 불가. 한 서버 안의 도구 단위 필터 없음 | `UNSUPPORTED` | documented: `agents-codex.yaml:206-207` "Per-tool filtering inside one MCP server is unavailable — documented drop" |
 | `subagent` | 역할별 하위 에이전트 허가 필드를 찾지 못함 | `UNSUPPORTED` | unmeasured |
 | `web` | 역할별 웹 허가 필드 없음. 웹 접근은 전역 설정 | `UNSUPPORTED` | documented: `agents-codex.yaml` `per-agent-web-grants` 항목 |
 
-`read-only` 역할에서 shell 명령의 쓰기가 실제로 막히는지는 측정하지 않았다. AC-DHR-012의 LIVE 항목이 측정한다. 그 전까지 "read-only가 쓰기를 막는다"는 가설이다.
+`sandbox` 축의 `enforced`는 "Codex가 이 필드와 값을 받아들인다"는 관측에 근거한다. `read-only` 역할에서 shell 명령의 쓰기가 실제로 막히는지는 측정하지 않았다. AC-DHR-012의 LIVE 항목이 측정한다. 그 전까지 "read-only가 쓰기를 막는다"는 가설이며, REQ-DHR-013에 따라 런타임 차단 주장은 REQ-DHR-014의 LIVE 증거에만 기댄다.
 
 `UNSUPPORTED` 보고 집합은 고정 목록이 아니라 계약에서 계산한다. 어떤 역할의 계약이 어떤 축에서 제한을 요구하고, 그 축이 위 표에서 `UNSUPPORTED`이면 (역할, 축)이 보고 집합에 들어간다(AC-DHR-011).
 
@@ -239,7 +244,7 @@ Codex의 12개 역할은 MoAI 11개 + `mission-governor`다. CLAUDE.md의 12개(
 | `result_attempt`, `result_digest`, `result_ref` | 기록된 결과의 attempt, 본문 해시, 참조. 한 번만 설정 |
 | `updated_at` | 기록 시각 |
 
-메시지 멱등 키: 할당 `dispatch:<dispatch_id>:<attempt>`, 결과 `result:<dispatch_id>:<attempt>`. 재할당은 attempt가 바뀌므로 다른 lane으로 보내도 키 충돌(다른 수신자 → 거부)에 걸리지 않는다.
+메시지 멱등 키: 할당 `dispatch:<dispatch_id>:<attempt>`, 결과 `result:<dispatch_id>:<attempt>`. 재할당은 attempt가 바뀌므로 다른 lane으로 보내도 키 충돌(다른 수신자 → 거부)에 걸리지 않는다. 같은 attempt 재부여는 attempt를 바꾸지 않으므로, 재부여 뒤 같은 키로 새 generation에게 할당을 다시 보내면 현행 메시지 층이 수신 세션·generation 불일치로 거부한다(`store.go:624-626`). 리드 조정 결정(2026-09-23)에 따라 그 재전송은 새 키를 쓰며(t1082 소관), 이 SPEC은 이 경우를 위해 멱등 범위를 바꾸지 않는다(`spec.md` §E). 운영자 결정 3의 조건부 이관(D.4)과는 별개다.
 
 ### D.2 전이
 
@@ -301,5 +306,6 @@ run의 첫 마일스톤이 이를 측정한다(REQ-DHR-025, AC-DHR-020). 재현 
 
 - generation 필드는 하나(`peers.generation`), 결과 적용 판정 순서도 하나(D.3).
 - 멱등 범위는 측정 결과에 따라 t1100이 정한다(D.4). 옮기게 되면 리드가 t1082와 조정한다.
+- 같은 attempt 재부여 뒤 재전송(ND2)은 리드 조정 결정으로 t1082가 새 키를 쓴다. 이 SPEC은 이 경우 멱등 범위를 바꾸지 않는다. 결정 3의 조건부 분기와 별개다.
 - t1082의 handoff 상태기계는 D.2 위에 얹히는 gate로 제안되며, t1100은 handoff 상태를 읽지도 쓰지도 않는다.
 - t1082의 M1(launch-pending 중 handoff), M2(두 rebind 경로)는 이 설계가 결정하지 않는다.

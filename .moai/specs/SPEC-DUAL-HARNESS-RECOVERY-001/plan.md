@@ -11,7 +11,7 @@ card: t1100
 
 ## §A 맥락
 
-- 카드 t1100, 워크트리 `.claude/worktrees/t1100-recovery`, 브랜치 `WT-dual-harness-recovery`. plan 초안 기준 HEAD `d87e9af2e`, 초안 SPEC 커밋 `09e24fd08`, 이번 개정은 plan-audit iter-1(`.moai/reports/plan-audit/SPEC-DUAL-HARNESS-RECOVERY-001-review-1.md`, FAIL 0.76) 수리다.
+- 카드 t1100, 워크트리 `.claude/worktrees/t1100-recovery`, 브랜치 `WT-dual-harness-recovery`. plan 초안 기준 HEAD `d87e9af2e`, 초안 SPEC 커밋 `09e24fd08`, iter-2 개정은 plan-audit iter-1(`.moai/reports/plan-audit/SPEC-DUAL-HARNESS-RECOVERY-001-review-1.md`, FAIL 0.76) 수리였고(커밋 `2bac34f3e`), 이번 iter-3 개정은 plan-audit iter-2(`.moai/reports/plan-audit/SPEC-DUAL-HARNESS-RECOVERY-001-review-2.md`, FAIL 0.81) 결함 ND1~ND14 수리다. 처리표는 `progress.md` "Revision iter-3".
 - 설계 원문은 제안 문서다(`reports/moai-dual-harness-full-design-20260922.md`). 구현 증거로 쓰지 않는다.
 - 개발 방식: 새 동작은 TDD(먼저 실패하는 테스트), 기존 동작 보존은 특성 테스트. 변경 패키지 단위로만 로컬 검증하고 전체 판정은 CI 몫이다.
 
@@ -90,13 +90,14 @@ run 완료 보고는 `acceptance.md` §C 표를 채운다. 각 행은 명령, �
 
 - REQ-DHR-005, 007, AC-DHR-003 ~ 005
 - 파일: `internal/cli/tool.go`(disable 하위 명령), `internal/codexwiring/`(unwire 본체), `internal/cli/update_codex_wiring.go`, `internal/cli/update_template_sync.go`(고아 보고)
+- 범위 경계: update의 관리 경로 정리 단계(`CleanMoaiManagedPaths`)가 프로필과 무관하게 `.claude/` 관리 뿌리를 지우는 동작은 바꾸지 않는다(`spec.md` §F, `design.md` §A.6). M4의 테스트는 `.codex/` 쪽과 배선 파일만 단언한다.
 
 ### M5 — Codex worktree anchor, 폐기 동등성, `-k` (Priority High)
 
 사용자 동선: `-k` 역할(§B-2), 거부 진단 문구.
 
 - REQ-DHR-008 ~ 012, AC-DHR-006 ~ 009
-- 파일: `internal/cli/codex_launcher.go`, `codex_direct_posix.go`, `codex_direct_windows.go`, `session_worktree.go`(`moai cc -w` 사전 판정, 세션 종료 정리 판정), `kanban.go` / `factory.go`(파서 재사용 지점), `internal/session/anchor_lock.go`(수정 없이 재사용이 목표), `internal/cli/worktree/done.go`·`remove.go`(lock 판정 추가), `clean.go`(AC-DHR-008에서 빈틈이 드러날 때만)
+- 파일: `internal/cli/codex_launcher.go`, `codex_direct_posix.go`, `codex_direct_windows.go`, `session_worktree.go`(`moai cc -w` 사전 판정), `kanban.go` / `factory.go`(파서 재사용 지점), `internal/session/anchor_lock.go`(수정 없이 재사용이 목표), `internal/cli/worktree/remove.go`(lock-aware anchor 판정), `clean.go`·`session_worktree_prmerge.go`(AC-DHR-008에서 빈틈이 드러날 때만), `done.go`는 바꾸지 않는다(L1 거부 유지, SPEC-WORKTREE-DONE-TIER-001)
 
 ### M6 — 역할 권한 계약과 감사 역할 Codex 예외 (Priority Medium)
 
@@ -123,7 +124,8 @@ run 완료 보고는 `acceptance.md` §C 표를 채운다. 각 행은 명령, �
 | manifest 손상·초기화 뒤 이미 `created`였던 config 부분이 `unknown`이 된다 | 제거 가능성만 잃고 사용자 부분 오분류는 없음. 보고로 드러냄 |
 | exec 후 lock 해제 주체가 없음 | 죽은 pid lock은 anchor가 아니므로 무해. 다음 launch가 가드 아래서 교체 |
 | Windows에서 부모 moai만 강제 종료되면 codex 자식이 살아 있어도 lock이 죽은 것으로 보인다 | 잔여 위험으로 명시. Windows 실측은 범위 밖 |
-| `done`·`remove`는 지금 레지스트리만 본다 | M5에서 lock 판정 추가, AC-DHR-008이 측정 |
+| `remove`는 지금 레지스트리만 본다. `done`은 L1 트리를 늘 거부한다 | M5에서 `remove`에 lock-aware 판정 추가. `done`은 바꾸지 않음. AC-DHR-008이 측정 |
+| gpt 프로필 update가 `.claude/` 관리 뿌리를 지운 뒤 다시 배포하지 않을 수 있다(코드 판독, 미측정) | 이 카드 범위 밖. `spec.md` §F에 후속 카드 후보로 기록 |
 | `moai cc -w` 사전 판정이 Claude Code 자체 lock과 겹친다 | 사전 판정은 읽기만 하고 lock을 쓰지 않는다 |
 | 부모 오케스트레이터가 감사 반환문을 바꿔 적을 수 있다 | AC-DHR-023(LIVE)이 세션 기록과 판정 파일을 해시로 대조. 세션 기록에 반환문이 없으면 `NOT_RUN` |
 | 결정 출처가 건별 운영자 확인이 아니다(§B) | 기록에 한계를 명시. Kickoff 게이트는 운영자 |
@@ -132,5 +134,6 @@ run 완료 보고는 `acceptance.md` §C 표를 채운다. 각 행은 명령, �
 ## §H 참조
 
 - `spec.md` §E(t1082 경계), `design.md`, `research.md`, `acceptance.md`
-- `.moai/reports/plan-audit/SPEC-DUAL-HARNESS-RECOVERY-001-review-1.md`, `.moai/reports/t1100/operator-decisions.md`
+- `.moai/reports/plan-audit/SPEC-DUAL-HARNESS-RECOVERY-001-review-1.md`, `-review-2.md`, `.moai/reports/t1100/operator-decisions.md`
+- SPEC-WORKTREE-DONE-TIER-001(`moai worktree done`의 L1 거부, completed)
 - SPEC-FACTORY-MIXED-HOOK-001 REQ-FMH-006(at-least-once), SPEC-CODEX-WIRING-001 REQ-CW-005/012
