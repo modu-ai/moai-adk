@@ -97,7 +97,7 @@ The operational threshold at which the budget guard stops is model-specific. Lar
 | Opus 5.5 (1M) | 1,000,000 tokens | 50% | ~500,000 tokens |
 | GLM-5.3 (1M) | 1,000,000 tokens | 50% | ~500,000 tokens |
 | Fable / Sonnet 5 (1M) | 1,000,000 tokens | 50% | ~500,000 tokens |
-| Sonnet 4.x and earlier standard (200K) | 200,000 tokens | 90% | ~180,000 tokens |
+| Sonnet 4.5 and earlier (200K) | 200,000 tokens | 90% | ~180,000 tokens |
 
 The 1M-context models (Opus 5.5, GLM-5.3) recommend handoff at 50%. A wider window does not mean using it to the end — folding earlier to protect cache and headroom is the more stable choice. Watch the statusline context gauge (CW%) and prepare a `/clear` as you approach the threshold. For the detailed procedure and handoff-message structure, see the [Token Budget Management and Graceful Stop](/en/advanced/token-budget/) page.
 

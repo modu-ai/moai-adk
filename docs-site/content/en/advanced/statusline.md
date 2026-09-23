@@ -140,7 +140,7 @@ The marker attached beside the CW bar is the statusline's most important recomme
 flowchart TD
     A["measure context usage<br/>(by raw usage)"] --> B{"window size class"}
     B -- "1M context<br/>(Opus 5.5, Sonnet 5, Fable, GLM-5.3)" --> C{"usage 50% or more?"}
-    B -- "200K standard<br/>(Haiku, earlier Sonnet)" --> D{"usage 90% or more?"}
+    B -- "200K standard<br/>(Haiku, Sonnet 4.5 and earlier)" --> D{"usage 90% or more?"}
     C -- "no" --> N["no marker<br/>(safe zone)"]
     D -- "no" --> N
     C -- "yes" --> S["soft marker (⚠️/clear)<br/>recommendation"]

@@ -140,7 +140,7 @@ PR 段落用颜色区分评审状态。`approved` 绿色、`pending` 黄色、`c
 flowchart TD
     A["测量上下文使用率<br/>(以 raw 用量为准)"] --> B{"窗口大小等级"}
     B -- "1M 上下文<br/>(Opus 5.5, Sonnet 5, Fable, GLM-5.3)" --> C{"使用率 ≥50%?"}
-    B -- "200K 标准<br/>(Haiku, 旧版 Sonnet)" --> D{"使用率 ≥90%?"}
+    B -- "200K 标准<br/>(Haiku, Sonnet 4.5 及更早)" --> D{"使用率 ≥90%?"}
     C -- "否" --> N["无标记<br/>(安全区间)"]
     D -- "否" --> N
     C -- "是" --> S["soft 标记 (⚠️/clear)<br/>建议"]

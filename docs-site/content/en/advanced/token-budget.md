@@ -25,7 +25,7 @@ The operational threshold is model-specific. Larger windows tolerate higher perc
 | Opus 5.5 (1M) | 1,000,000 tokens | 50% | ~500,000 tokens |
 | GLM-5.3 (1M) | 1,000,000 tokens | 50% | ~500,000 tokens |
 | Fable / Sonnet 5 (1M) | 1,000,000 tokens | 50% | ~500,000 tokens |
-| Sonnet 4.x and earlier standard (200K) | 200,000 tokens | 90% | ~180,000 tokens |
+| Sonnet 4.5 and earlier (200K) | 200,000 tokens | 90% | ~180,000 tokens |
 | Haiku (200K) | 200,000 tokens | 90% | ~180,000 tokens |
 
 GLM-5.3 (via `moai glm`) is a 1M-context model and is operated at the 50% threshold. Claude Code reports `context_window_size` based on the Claude slot (Opus=1M, Sonnet/Haiku=200K), so raw telemetry may show ~180K under GLM; MoAI corrects this to 1M. Trust the statusline CW% gauge.
