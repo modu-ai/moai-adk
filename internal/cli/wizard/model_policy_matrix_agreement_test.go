@@ -1,6 +1,7 @@
 package wizard
 
 import (
+	"regexp"
 	"strings"
 	"testing"
 
@@ -14,8 +15,8 @@ import (
 // "Keep these in sync with that matrix, not with a marketing summary" — and the
 // descriptions had drifted anyway, in all four locales at once: they advertised
 // "Fable 5 (low)" and "Opus 4.8 (xhigh~low)" while defaultProfileMatrix holds
-// zero fable cells, zero haiku cells, no xhigh cell, and resolves opus to
-// claude-opus-5. A comment is not a guard; this is.
+// zero fable cells, zero haiku cells, no xhigh cell, and resolves opus to the
+// current canonical Opus id. A comment is not a guard; this is.
 //
 // The banned tokens are DERIVED from the matrix rather than listed by hand, so
 // the day a model or effort genuinely enters the matrix, this test stops
@@ -61,12 +62,17 @@ func TestModelPolicyDescsAgreeWithProfileMatrix(t *testing.T) {
 	// The canonical opus id is the version the descriptions must name. Taking
 	// the marketing version from the id keeps the two in lockstep: bumping the
 	// alias table to a future Opus fails this test until the copy follows.
-	opusID := template.ModelAliasCanonicalID("opus") // e.g. "claude-opus-5"
-	wantVersion := strings.TrimPrefix(opusID, "claude-opus-")
+	// The id spells a dotted marketing version with hyphens, so the hyphens map
+	// back to dots (e.g. "claude-opus-5-5" -> "5.5").
+	opusID := template.ModelAliasCanonicalID("opus")
+	wantVersion := strings.ReplaceAll(strings.TrimPrefix(opusID, "claude-opus-"), "-", ".")
 	if wantVersion == "" || wantVersion == opusID {
 		t.Fatalf("cannot derive an opus version from canonical id %q; the "+
 			"version assertion below would be vacuous", opusID)
 	}
+	// A whole-token match: a bare "Opus 5" must not satisfy "Opus 5.5", and
+	// "Opus 5.5" must not satisfy "Opus 5".
+	versionRe := regexp.MustCompile(`Opus ` + regexp.QuoteMeta(wantVersion) + `([^.0-9]|$)`)
 
 	src := QuestionByID(DefaultQuestions(t.TempDir()), "model_policy")
 	if src == nil {
@@ -96,7 +102,7 @@ func TestModelPolicyDescsAgreeWithProfileMatrix(t *testing.T) {
 				}
 			}
 
-			if !strings.Contains(opt.Desc, "Opus "+wantVersion) {
+			if !versionRe.MatchString(opt.Desc) {
 				t.Errorf("locale %q option %q: description does not name "+
 					"\"Opus %s\" (derived from canonical id %q)\n  desc: %s",
 					locale, opt.Value, wantVersion, opusID, opt.Desc)
