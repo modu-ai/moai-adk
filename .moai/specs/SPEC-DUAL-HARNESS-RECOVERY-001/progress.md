@@ -841,6 +841,51 @@ $ GOOS=windows GOARCH=amd64 go build ./... → exit=0 (build-windows.txt)
 - `go vet ./internal/cli` exit 0, `GOOS=windows GOARCH=amd64 go vet ./internal/cli` exit 0, `golangci-lint run ./internal/cli/...` → `0 issues.`
 - 한계: 성공 경로의 owner 재스탬프는 이 테스트가 아니라 `TestRunOwnerAndLeadPeerNameOneProcessOnEveryShape`가 맡는다. anchor 거부 경로에서 `clearFactoryRunOwner` 자체가 실패할 때 그 오류가 합쳐지는지는 겨누지 않았다.
 
+### sync-audit remediation (F4, F7, F10)
+
+출처: `.moai/reports/t1100/sync-audit.md`의 F4·F7·F10 행(리드 결정). 커밋 `99708f8a4`(F4·F10), `393f11e2f`(F7).
+
+#### F4 — `remove`의 잠금 상태 판독 불가 분기
+
+- 테스트: `internal/cli/worktree/remove_lock_unreadable_test.go` — `TestRunRemove_UnreadableLockSourceRefusesWithoutForce`(:52), `TestRunRemove_UnreadableLockSourceForceProceeds`(:73). `gitWorktreeCmd` 이음매로 `git worktree list`만 실패시키고, `CLAUDE_PROJECT_DIR`을 임시 디렉터리로 격리해 레지스트리가 판정에 끼지 않게 했다. 단언: `--force` 없이는 거부, 오류에 `ANCHORED_SESSIONS_PRESENT`·`cause=lock-source-unreadable`·`source: lock`·대상 경로가 모두 있음, `Remove()` 미호출. `--force`에서는 `Remove()` 호출과 `force removing`·원인 토큰을 담은 경고.
+- 변이: `remove.go:64`의 `lockErr != nil ||` 삭제(변이 전 `shasum -a 256` = `a6e71daf1dfb9eb055eca3f1f4b137e8382abdb7e3e13397891fe7a660bb0b9b`).
+
+  ```text
+  --- FAIL: TestRunRemove_UnreadableLockSourceRefusesWithoutForce (0.00s)
+      remove_lock_unreadable_test.go:58: remove must refuse while the lock state of the target cannot be read
+  --- FAIL: TestRunRemove_UnreadableLockSourceForceProceeds (0.00s)
+      remove_lock_unreadable_test.go:85: --force must warn naming the unreadable lock source, output: "Removed worktree at /var/folders/.../TestRunRemove_UnreadableLockSourceForceProceeds3740241829/001\n"
+  FAIL	github.com/modu-ai/moai-adk/internal/cli/worktree	0.313s
+  ```
+
+- 복원 뒤 해시 `a6e71daf1dfb9eb055eca3f1f4b137e8382abdb7e3e13397891fe7a660bb0b9b`(변이 전과 같음), `ok  	github.com/modu-ai/moai-adk/internal/cli/worktree	0.156s`.
+
+#### F10 — git 저장소 밖에서 실패하는 `remove` 테스트 5건: 귀속 측정
+
+- 기준: `7755dce38`(카드 착수 시 로컬 develop). `git merge-base --is-ancestor 7755dce38 de5faa77a` exit 0.
+- 방법: `git archive -o <scratch>/{base,head}.tar <commit>` → 세션 scratchpad(`/private/tmp/...`)에 풀기. 그 디렉터리에서 `git rev-parse --show-toplevel` → `fatal: not a git repository (or any of the parent directories): .git`. 실행: `go -C <tree> test -count=1 -run 'TestACRAR008_RemoveCoordinate|TestRunRemove_Error|TestRunRemove_PrunesLaunchLedgerAfterSuccess|TestRunRemove_RemovesWhenNoAnchoredSession|TestRunRemove_Success' -v ./internal/cli/worktree/` (`CLAUDE_PROJECT_DIR`·`GIT_DIR` 미설정 확인).
+- `7755dce38`: 5건 모두 `--- PASS`, `ok  	github.com/modu-ai/moai-adk/internal/cli/worktree	0.398s`.
+- `de5faa77a`: 5건 모두 `--- FAIL`. 대표 출력: `subcommands_test.go:120: runRemove error: ANCHORED_SESSIONS_PRESENT: live session anchored in /tmp/test-wt - cause=lock-source-unreadable; read worktree lock state: exit status 128 (source: lock, holder: undetermined)`. 마지막 줄 `FAIL	github.com/modu-ai/moai-adk/internal/cli/worktree	0.476s`.
+- 판정: 이 카드가 들여온 회귀(기준에서 통과, HEAD에서 실패). 수리: 새 도우미 `stubReadableEmptyLockList`(읽히는 빈 목록)를 다섯 테스트에 연결했다(`TestACRAR008_RemoveCoordinate`는 converse 하위 테스트만).
+- 수리 뒤 같은 scratch(수리한 테스트 파일 복사)에서 5건 + F4 2건 모두 `--- PASS`, `ok  	github.com/modu-ai/moai-adk/internal/cli/worktree	0.471s`.
+- 패키지 전체를 저장소 밖에서 돌린 결과: 기준 `7755dce38`과 수리 뒤 HEAD 모두 실패는 `TestRunClean_MergedOnly`, `TestRunClean_MergedOnlyNone` 두 건으로 같다(기존 부채, 이 카드 범위 밖).
+- 저장소 안: `go test -count=1 ./internal/cli/worktree/` → `ok  	github.com/modu-ai/moai-adk/internal/cli/worktree	21.491s`. `go vet` exit 0, `GOOS=windows GOARCH=amd64 go vet` exit 0, `golangci-lint run ./internal/cli/worktree/...` → `0 issues.`
+
+#### F7 — Codex 감사 역할 부록과 Export mandate의 상충
+
+- 수정 위치: 원본 `internal/template/agentemit/agents-codex.yaml`의 `codex_role_addenda`만. TOML은 `make agents-emit`로 재생성. Claude 정의(C1·C2)는 바꾸지 않았다.
+- 방출 결과(`sync-auditor.toml:184`, `plan-auditor.toml:739`) 전후:
+
+  ```text
+  전: ... so a write may succeed. Do not write the verdict or report file yourself, even when a write would succeed, and do not treat a refused write as a failure of the audit. Return the complete verdict or report text as your final response, including the path the file belongs at; the parent lane orchestrator writes the file with exactly that text.
+  후: ... so a write may succeed. On Codex this addendum overrides the Export mandate above: where that mandate says to write the verdict or report file in the same turn, and calls an audit without a written file incomplete, read it as follows instead. Do not write the verdict or report file yourself, even when a write would succeed, and do not treat a refused write as a failure of the audit. Return the complete verdict or report text as your final response, including the path the file belongs at; the parent lane orchestrator writes the file with exactly that text. The audit is complete when that text is returned. Everything else the Export mandate requires still binds the returned text: its destination path, its minimum content, and the forbidden destination.
+  ```
+
+- `make agents-emit-check` exit 0, `make commands-emit-check` exit 0, `make build` exit 0, `make embed-check` exit 0 — `Agent Emit Embed  12/12 embedded agent-emit artifacts match the committed set (moai)`.
+- acceptance.md 명령 그대로: AC-DHR-010 → `true`, AC-DHR-011 → `true`, AC-DHR-013 → `true`.
+- `go test -count=1 ./internal/template/agentemit/...` → `ok`. `go test -count=1 ./internal/template/` → `ok  	github.com/modu-ai/moai-adk/internal/template	57.506s`(중립성·내부 내용 누출 테스트 `TestTemplateNoInternalContentLeak`, `TestTemplateNeutralityAudit`, `TestTemplateNeutralityAuditC8Preserve`, `TestMCPNeutralityTemplateShape` 등 개별 PASS 확인). `go vet`·windows `go vet` exit 0, `golangci-lint run ./internal/template/agentemit/...` → `0 issues.`
+- 한계: 새 문구가 Codex 감사자의 실제 행동(파일을 쓰지 않는지)을 바꾸는지는 LIVE로 측정하지 않았다(LIVE 호출 금지 지시). 그 관측은 t1143의 LIVE 재측정 몫이다.
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 _<pending run-phase>_
