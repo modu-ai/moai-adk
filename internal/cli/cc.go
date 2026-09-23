@@ -48,7 +48,9 @@ Flags:
                                 .moai/state/worktrees.json for worktree tooling.
       --spawn                   Run this command in a new tmux window instead of
                                 replacing the current session (requires tmux)
-  --chrome / --no-chrome        Toggle Chrome MCP
+  --chrome / --no-chrome        Passed through to Claude Code unchanged; the
+                                launcher adds neither (Chrome stays attachable
+                                via /chrome unless you pass --no-chrome)
 
 Kanban Mode:
   -k, --kanban [SPEC-ID]       Enter as the LEAD of a kanban run. Seeds a

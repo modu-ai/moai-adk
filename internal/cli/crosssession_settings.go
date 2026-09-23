@@ -78,21 +78,23 @@ func crossSessionSettingsPayload(root string) map[string]any {
 // launch effort (launch_effort_settings.go) — ONE injection point, so the
 // precedence between the two never splits across call sites. An effort-only
 // payload is a valid injection: a neutral crosssession.yaml no longer means
-// "inject nothing" when the profile resolves an effort.
+// "inject nothing" when the profile resolves an effort. A resolved `max` is
+// the exception: it is appended as `--effort max` rather than written to the
+// payload (applyLaunchEffort), unless the operator passed --effort already.
 //
 // @MX:NOTE: [AUTO] guards TestTemplateNeverShipsIsolatePeerMachines + TestLauncherNeverInjectsIsolatePeerMachinesByDefault
 func appendCrossSessionSettings(root, profileName string, args []string) []string {
 	if operatorSuppliedSettings(args) {
 		return args
 	}
-	payload := applyLaunchEffort(crossSessionSettingsPayload(root), profileName)
-	if len(payload) == 0 {
-		return args
+	payload, effortArgs := applyLaunchEffort(crossSessionSettingsPayload(root), profileName)
+	effortArgs = launchEffortArgs(effortArgs, args)
+	if len(payload) > 0 {
+		path, err := writeTransientSettingsFile(payload, "moai-crosssession")
+		if err == nil {
+			args = append(args, settingsFlagLong, path)
+		}
+		// Fail-open on a write error: launch without the injected --settings.
 	}
-	path, err := writeTransientSettingsFile(payload, "moai-crosssession")
-	if err != nil {
-		// Fail-open: launch without the injected --settings.
-		return args
-	}
-	return append(args, settingsFlagLong, path)
+	return append(args, effortArgs...)
 }

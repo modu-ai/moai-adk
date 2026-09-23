@@ -95,7 +95,7 @@ The key point is that planning and auditing are separated — the one who built 
 {{< callout type="info" >}}
 **4-tier token-cost tiers** ({{< icon flash danger >}} max · {{< icon flash warn >}} high · {{< icon flash primary >}} medium · {{< icon flash muted >}} low): `model: inherit` inherits the parent session model, and effort determines the reasoning-token budget.
 
-The values above are the **shipped frontmatter**, which is pinned to the `medium` column of the [profile matrix](/en/advanced/profile-matrix/) so a fresh deployment matches the default profile. Switching the profile rewrites these values — under `high`, `manager-develop` and `super-advisor` move to `max` (the only two cells that use it), and under `low` the agentic rows drop to `low` while `manager-docs` and `e2e-tester` fall back to Sonnet. Inspect the resolved values for the active profile with `moai model profile`.
+The values above are the **shipped frontmatter**, which is pinned to the `medium` column of the [profile matrix](/en/advanced/profile-matrix/) so a fresh deployment matches the default profile. Switching the profile rewrites these values — under `high`, only `builder-harness` and `e2e-tester` move up one level (no cell uses `max`), and under `low` the auditing and coordinating rows drop to `medium`, `builder-harness` drops to `low`, and `e2e-tester` moves to Sonnet. Inspect the resolved values for the active profile with `moai model profile`.
 {{< /callout >}}
 
 ## Manager-Develop Domain Context Injection
@@ -187,7 +187,7 @@ Once every AC row for milestone Mn is PASS and the cross-verification of those r
 2. **Append a fold row** — add one line to `progress.md` §E.2 in the existing row format: `M<n>: <AC-id-1>=PASS, ... | evidence: .moai/reports/<card-id>/verdict.md | fold-at: <ISO-8601>`. The `M<n>:` prefix was chosen so it does not collide with the §E heading matcher in `internal/spec/era.go`, letting the two coexist without touching the matcher.
 3. **Run `/compact`** — compact with explicit retain instructions: retain-current-milestone (the milestone just finished and its fold row), retain-fold-rows (every earlier fold row in §E.2), and retain-armed-goal (the condition armed via `/moai goal`, if any).
 
-Two invariants hold after the fold: post-compaction token usage must be lower than it was before compaction, and it must simultaneously sit below the model-specific handoff threshold (50% for the 1M class, 90% for the 200K/256K class). If it did not drop, treat the fold as failed and re-plan. When `/compact` is unavailable in a sub-agent context, return a blocker report so the orchestrator can compact on its behalf or route around it via `/clear` plus a resume message.
+Two invariants hold after the fold: post-compaction token usage must be lower than it was before compaction, and it must simultaneously sit below the model-specific handoff threshold (50% for the 1M class, 90% for the 200K class). If it did not drop, treat the fold as failed and re-plan. When `/compact` is unavailable in a sub-agent context, return a blocker report so the orchestrator can compact on its behalf or route around it via `/clear` plus a resume message.
 
 ```mermaid
 flowchart TD

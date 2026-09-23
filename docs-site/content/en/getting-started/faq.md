@@ -90,7 +90,7 @@ MoAI-ADK assigns the optimal AI model to each agent according to your Claude Cod
 | **low** | Lowest cost per task — the auditing and coordinating rows drop to `medium`, `builder-harness` to Opus `low`, and `e2e-tester` to Sonnet. Only `super-advisor` and `mission-governor` hold `high` |
 
 {{< callout type="warning" >}}
-**Why does this matter?** Lowering the tier lowers *reasoning depth*, not model class. On a long-horizon agentic task, Opus at `low` effort scores higher and costs less per task than Sonnet at any effort — the bill is set by how many steps a model spends finishing, not by the per-token rate. So `low` economizes within Opus and reaches for Sonnet only on single-shot rows (`manager-git`, `Explore`) where multi-step completion failure does not apply.
+**Why does this matter?** Lowering the tier mostly lowers *reasoning depth*, not model class. On a long-horizon agentic task, Opus at `low` effort scores higher and costs less per task than Sonnet at any effort — the bill is set by how many steps a model spends finishing, not by the per-token rate. So `low` economizes within Opus; Sonnet runs only `manager-docs`, `manager-git`, and `Explore` in every tier, plus `e2e-tester` in the `low` tier.
 {{< /callout >}}
 
 ### Agent Model Assignment per Tier

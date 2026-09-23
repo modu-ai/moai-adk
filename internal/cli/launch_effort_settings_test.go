@@ -50,7 +50,7 @@ func withNoLaunchEffort(t *testing.T) {
 func TestApplyLaunchEffort(t *testing.T) {
 	t.Run("explicit effort_level lands under effortLevel", func(t *testing.T) {
 		withLaunchEffortPrefs(t, profile.ProfilePreferences{EffortLevel: "xhigh", ModelPolicy: "low"}, nil)
-		got := applyLaunchEffort(map[string]any{}, "dev")
+		got, _ := applyLaunchEffort(map[string]any{}, "dev")
 		if got[effortSettingsKey] != "xhigh" {
 			t.Errorf("%s = %v, want xhigh (explicit effort_level wins)", effortSettingsKey, got[effortSettingsKey])
 		}
@@ -58,7 +58,7 @@ func TestApplyLaunchEffort(t *testing.T) {
 
 	t.Run("model_policy supplies the fallback", func(t *testing.T) {
 		withLaunchEffortPrefs(t, profile.ProfilePreferences{ModelPolicy: "high"}, nil)
-		got := applyLaunchEffort(map[string]any{}, "dev")
+		got, _ := applyLaunchEffort(map[string]any{}, "dev")
 		if got[effortSettingsKey] != "high" {
 			t.Errorf("%s = %v, want high (model_policy fallback)", effortSettingsKey, got[effortSettingsKey])
 		}
@@ -66,7 +66,7 @@ func TestApplyLaunchEffort(t *testing.T) {
 
 	t.Run("both empty injects nothing", func(t *testing.T) {
 		withNoLaunchEffort(t)
-		got := applyLaunchEffort(map[string]any{}, "dev")
+		got, _ := applyLaunchEffort(map[string]any{}, "dev")
 		if _, ok := got[effortSettingsKey]; ok {
 			t.Errorf("%s present (%v) for an effort-less profile; the launch must stay byte-identical", effortSettingsKey, got[effortSettingsKey])
 		}
@@ -74,7 +74,7 @@ func TestApplyLaunchEffort(t *testing.T) {
 
 	t.Run("unreadable profile fails open", func(t *testing.T) {
 		withLaunchEffortPrefs(t, profile.ProfilePreferences{EffortLevel: "max"}, errors.New("read preferences: boom"))
-		got := applyLaunchEffort(map[string]any{"crossSessionInbound": "accept"}, "dev")
+		got, _ := applyLaunchEffort(map[string]any{"crossSessionInbound": "accept"}, "dev")
 		if _, ok := got[effortSettingsKey]; ok {
 			t.Errorf("%s injected despite a read error; the effort must fail open", effortSettingsKey)
 		}
@@ -83,9 +83,20 @@ func TestApplyLaunchEffort(t *testing.T) {
 		}
 	})
 
+	t.Run("max returns launch argv and stays out of the payload", func(t *testing.T) {
+		withLaunchEffortPrefs(t, profile.ProfilePreferences{EffortLevel: "max"}, nil)
+		got, args := applyLaunchEffort(map[string]any{}, "dev")
+		if _, ok := got[effortSettingsKey]; ok {
+			t.Errorf("%s = %v; max is not an accepted settings level", effortSettingsKey, got[effortSettingsKey])
+		}
+		if len(args) != 2 || args[0] != launchEffortFlag || args[1] != "max" {
+			t.Errorf("launch args = %v, want [%s max]", args, launchEffortFlag)
+		}
+	})
+
 	t.Run("nil payload is materialized", func(t *testing.T) {
 		withLaunchEffortPrefs(t, profile.ProfilePreferences{EffortLevel: "medium"}, nil)
-		got := applyLaunchEffort(nil, "dev")
+		got, _ := applyLaunchEffort(nil, "dev")
 		if got[effortSettingsKey] != "medium" {
 			t.Errorf("%s = %v, want medium from a nil payload", effortSettingsKey, got[effortSettingsKey])
 		}
@@ -181,5 +192,212 @@ func TestLaunchEffortNeverInjectedWhenOperatorSuppliedSettings(t *testing.T) {
 	args := []string{settingsFlagLong, "/tmp/operator.json"}
 	if got := appendCrossSessionSettings(root, "dev", args); len(got) != 2 {
 		t.Errorf("args = %v, want unchanged (operator-supplied --settings wins over the effort injection)", got)
+	}
+}
+
+// launchEffortFlag is the Claude Code launch flag that sets the effort for one
+// session. Spelled literally here so the tests do not borrow the production
+// constant they are checking.
+const launchEffortFlag = "--effort"
+
+// injectedSettingsEffort returns the effortLevel carried by the transient
+// settings file an argv points at via --settings, and whether a --settings
+// flag was present at all.
+func injectedSettingsEffort(t *testing.T, args []string) (effort any, hasSettings bool) {
+	t.Helper()
+	for i := 0; i+1 < len(args); i++ {
+		if args[i] == settingsFlagLong {
+			payload := readSettingsPayload(t, args[i+1])
+			return payload[effortSettingsKey], true
+		}
+	}
+	return nil, false
+}
+
+// countEffortFlags counts `--effort` occurrences in an argv and returns the
+// value following the last one.
+func countEffortFlags(args []string) (count int, value string) {
+	for i := 0; i < len(args); i++ {
+		if args[i] == launchEffortFlag && i+1 < len(args) {
+			count++
+			value = args[i+1]
+		}
+	}
+	return count, value
+}
+
+// TestLaunchEffortMaxTravelsAsArgvOnGeneralInjection pins the K4 fix on the
+// general launch path: Claude Code does not accept `max` as a settings
+// effortLevel, so a resolved max must never be written there and must reach
+// the launch argv as `--effort max` (session-scoped) instead.
+func TestLaunchEffortMaxTravelsAsArgvOnGeneralInjection(t *testing.T) {
+	root := withCrossSessionConfig(t, "")
+	withLaunchEffortPrefs(t, profile.ProfilePreferences{EffortLevel: "max"}, nil)
+
+	got := appendCrossSessionSettings(root, "dev", []string{"-p", "dev"})
+	if effort, ok := injectedSettingsEffort(t, got); ok && effort != nil {
+		t.Errorf("settings %s = %v; max must never be written to the settings payload", effortSettingsKey, effort)
+	}
+	if n, v := countEffortFlags(got); n != 1 || v != "max" {
+		t.Errorf("args = %v, want exactly one %s max", got, launchEffortFlag)
+	}
+}
+
+// TestLaunchEffortMaxTravelsAsArgvOnKanbanInjection is the same pin for the
+// kanban / factory lane injection.
+func TestLaunchEffortMaxTravelsAsArgvOnKanbanInjection(t *testing.T) {
+	withCrossSessionConfig(t, "")
+	withLaunchEffortPrefs(t, profile.ProfilePreferences{EffortLevel: "max"}, nil)
+
+	flag, cleanup := prepareKanbanSettings("dev", []string{"-p", "dev"})
+	t.Cleanup(cleanup)
+	effort, ok := injectedSettingsEffort(t, flag)
+	if !ok {
+		t.Fatalf("flag = %v, want a --settings pair (crossSessionInbound: accept is still required)", flag)
+	}
+	if effort != nil {
+		t.Errorf("settings %s = %v; max must never be written to the settings payload", effortSettingsKey, effort)
+	}
+	if n, v := countEffortFlags(flag); n != 1 || v != "max" {
+		t.Errorf("flag = %v, want exactly one %s max", flag, launchEffortFlag)
+	}
+}
+
+// TestLaunchEffortXHighStaysOnSettingsPath guards the other direction: every
+// level the settings key accepts keeps travelling as a launch DEFAULT, so an
+// in-session /effort change can still replace it — no --effort flag appears.
+func TestLaunchEffortXHighStaysOnSettingsPath(t *testing.T) {
+	root := withCrossSessionConfig(t, "")
+	withLaunchEffortPrefs(t, profile.ProfilePreferences{EffortLevel: "xhigh"}, nil)
+
+	got := appendCrossSessionSettings(root, "dev", []string{"-p", "dev"})
+	if effort, _ := injectedSettingsEffort(t, got); effort != "xhigh" {
+		t.Errorf("settings %s = %v, want xhigh", effortSettingsKey, effort)
+	}
+	if n, _ := countEffortFlags(got); n != 0 {
+		t.Errorf("args = %v carry %s; only max leaves the settings path", got, launchEffortFlag)
+	}
+
+	flag, cleanup := prepareKanbanSettings("dev", []string{"-p", "dev"})
+	t.Cleanup(cleanup)
+	if effort, _ := injectedSettingsEffort(t, flag); effort != "xhigh" {
+		t.Errorf("kanban settings %s = %v, want xhigh", effortSettingsKey, effort)
+	}
+	if n, _ := countEffortFlags(flag); n != 0 {
+		t.Errorf("kanban flag = %v carries %s; only max leaves the settings path", flag, launchEffortFlag)
+	}
+}
+
+// countEffortTokens counts every --effort token in an argv, in both the
+// `--effort X` and `--effort=X` spellings.
+func countEffortTokens(args []string) int {
+	n := 0
+	for _, a := range args {
+		if a == launchEffortFlag || strings.HasPrefix(a, launchEffortFlag+"=") {
+			n++
+		}
+	}
+	return n
+}
+
+// TestLaunchEffortOperatorEffortAnywhereSuppressesInjection: the launcher
+// forwards everything after `--` to Claude Code and appends its injected flags
+// after it, so an operator --effort on either side of `--`, in either
+// spelling, must suppress the profile's `--effort max` on both injection
+// paths — otherwise Claude Code receives two --effort flags.
+func TestLaunchEffortOperatorEffortAnywhereSuppressesInjection(t *testing.T) {
+	shapes := [][]string{
+		{launchEffortFlag, "low"},
+		{launchEffortFlag + "=low"},
+		{"--", launchEffortFlag, "low"},
+		{"--", launchEffortFlag + "=low"},
+	}
+	for _, op := range shapes {
+		t.Run("general "+strings.Join(op, " "), func(t *testing.T) {
+			root := withCrossSessionConfig(t, "")
+			withLaunchEffortPrefs(t, profile.ProfilePreferences{EffortLevel: "max"}, nil)
+			got := appendCrossSessionSettings(root, "dev", append([]string(nil), op...))
+			if n := countEffortTokens(got); n != 1 {
+				t.Errorf("op=%v argv=%v effortFlags=%d want 1 (the operator's)", op, got, n)
+			}
+		})
+		t.Run("kanban "+strings.Join(op, " "), func(t *testing.T) {
+			withCrossSessionConfig(t, "")
+			withLaunchEffortPrefs(t, profile.ProfilePreferences{EffortLevel: "max"}, nil)
+			flag, cleanup := prepareKanbanSettings("dev", append([]string(nil), op...))
+			t.Cleanup(cleanup)
+			if n := countEffortTokens(flag); n != 0 {
+				t.Errorf("op=%v injected=%v effortFlags=%d want 0", op, flag, n)
+			}
+		})
+	}
+}
+
+// TestLaunchEffortMaxDefersToOperatorEffortFlag: an operator who passes
+// --effort themselves owns the session effort; the profile max adds no
+// second flag.
+func TestLaunchEffortMaxDefersToOperatorEffortFlag(t *testing.T) {
+	root := withCrossSessionConfig(t, "")
+	withLaunchEffortPrefs(t, profile.ProfilePreferences{EffortLevel: "max"}, nil)
+
+	got := appendCrossSessionSettings(root, "dev", []string{launchEffortFlag, "low"})
+	if n, v := countEffortFlags(got); n != 1 || v != "low" {
+		t.Errorf("args = %v, want only the operator's %s low", got, launchEffortFlag)
+	}
+}
+
+// TestLaunchEffortValuePositionEffortStillInjectsMax: an --effort token that is
+// the VALUE of a free-text option (the operator's prompt text happens to read
+// `--effort...`) is not an operator --effort flag, so the profile's resolved
+// max must still be injected as `--effort max` on both injection paths.
+func TestLaunchEffortValuePositionEffortStillInjectsMax(t *testing.T) {
+	shapes := [][]string{
+		{"--append-system-prompt", launchEffortFlag + "=low"},
+		{"--append-system-prompt", launchEffortFlag},
+		{"--system-prompt", launchEffortFlag},
+		{"--", "--append-system-prompt", launchEffortFlag + "=low"},
+	}
+	hasMaxPair := func(args []string) bool {
+		for i := 0; i+1 < len(args); i++ {
+			if args[i] == launchEffortFlag && args[i+1] == "max" {
+				return true
+			}
+		}
+		return false
+	}
+	for _, op := range shapes {
+		t.Run("general "+strings.Join(op, " "), func(t *testing.T) {
+			root := withCrossSessionConfig(t, "")
+			withLaunchEffortPrefs(t, profile.ProfilePreferences{EffortLevel: "max"}, nil)
+			got := appendCrossSessionSettings(root, "dev", append([]string(nil), op...))
+			if !hasMaxPair(got[len(op):]) {
+				t.Errorf("op=%v argv=%v: want an injected %s max after the operator args", op, got, launchEffortFlag)
+			}
+		})
+		t.Run("kanban "+strings.Join(op, " "), func(t *testing.T) {
+			withCrossSessionConfig(t, "")
+			withLaunchEffortPrefs(t, profile.ProfilePreferences{EffortLevel: "max"}, nil)
+			flag, cleanup := prepareKanbanSettings("dev", append([]string(nil), op...))
+			t.Cleanup(cleanup)
+			if !hasMaxPair(flag) {
+				t.Errorf("op=%v injected=%v: want %s max", op, flag, launchEffortFlag)
+			}
+		})
+	}
+}
+
+// TestLaunchEffortOperatorEffortAfterPromptValueStillSuppresses guards the
+// value-position skip from over-reaching: only the one token after a prompt
+// option is skipped, so a real operator --effort that follows the prompt text
+// still suppresses the injection.
+func TestLaunchEffortOperatorEffortAfterPromptValueStillSuppresses(t *testing.T) {
+	for _, op := range [][]string{
+		{"--append-system-prompt", "be terse", launchEffortFlag, "low"},
+		{"--append-system-prompt=be terse", launchEffortFlag + "=low"},
+		{"--system-prompt", "x", "--", launchEffortFlag, "low"},
+	} {
+		if !operatorSuppliedEffort(op) {
+			t.Errorf("operatorSuppliedEffort(%v) = false, want true (the operator's --effort follows the prompt value)", op)
+		}
 	}
 }

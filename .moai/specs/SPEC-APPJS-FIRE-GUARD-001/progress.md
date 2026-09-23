@@ -106,6 +106,71 @@ plan_complete_at: 2026-09-22
 
 ---
 
+### 개정 plan-phase (card t1106, 2026-09-23)
+
+plan_status: audit-ready
+plan_complete_at: 2026-09-23
+
+**Claim** — `completed` 였던 이 SPEC 이 in-place amendment 로 plan-phase 에 재진입했다(`status: completed → in-progress`, `amendment_of: SPEC-APPJS-FIRE-GUARD-001`, HISTORY `### Amendments`). 개정 범위는 REQ-AFG-014·015 와 AC-AFG-010·011·012·013 신설이며, 기존 REQ-AFG-001~013 / AC-AFG-001~009 의 번호·문언·분류는 불변이다. REQ-AFG-012 는 약화되지 않았다 — 그 조문이 이미 이름한 두 경로 중 둘째(일회용 프로젝트 사본)를 처음 사용한다.
+
+**Evidence** — 전부 이 트리(`.claude/worktrees/t1106`, branch `WT-fireguard-reject-submit`, HEAD `176d8b658`), 2026-09-23 측정. 원문 출력·exit·트리 SHA 4요소는 acceptance.md §B2.1 장부 E6~E9:
+
+- `go test ./internal/web/ -run 'AppJsFireValidationRejectPaints' -v -count=1` → `testing: warning: no tests to run` / `PASS` / `ok … 0.424s [no tests to run]`, exit `0` (E6)
+- `go test ./internal/web/ -run 'AppJsFireValidationRejectNoWrites' -v -count=1` → 동일 형태 `0.429s`, exit `0` (E7)
+- `go test ./internal/web/ -run 'AppJsFireSandboxPairing' -v -count=1` → 동일 형태 `0.428s`, exit `0` (E8)
+- `python3 internal/web/testdata/appjs_fire_probe.py --lint-manifest` → `LINT OK: 8 entries + 7 exclusions cover 13 inventory groups; all effects within ['clipboard', 'label', 'swap', 'tab', 'visibility']; post-swap entry present`, exit `0` (E9 — 보조, 적색 아님)
+- `grep -c 'validation-reject' internal/web/testdata/appjs_fire_probe.py` → `0`, exit `1`
+- `grep -n 'ProjectRoot:' internal/web/appjs_fire_guard_test.go` → `204:		ProjectRoot:    findRepoRoot(t),`, exit `0` — 오늘의 드라이버가 실저장소 루트를 서빙함의 근거
+- `grep -n -E "addEventListener\((['\"])(click|submit|change|input)" internal/web/assets/app.js` → 13행(73/83/109/158/327/352/406/414/473/513/530/603/648) — `INVENTORY_TOTAL = 13` 불변 확인
+- `go test ./internal/web/ -run 'AppJsFireSandboxRouting' -v -count=1` → `testing: warning: no tests to run` / `PASS` / `ok … 0.646s [no tests to run]`, exit `0` (E10 — AC-AFG-013 의 RED-now)
+
+**Baseline-attribution** — 위 명령 전부 이 실행, 이 트리(HEAD `176d8b658`)에서 측정. E1~E5 는 다른 트리(`d726ac709`)의 측정이므로 섞어 인용하지 않는다.
+
+**결정 기록** — 사본 서빙 범위는 **안 (a)**(사본은 신설 제출 항목만 서빙, 두 번째 서버 인스턴스, 사본 서빙 표식이 라우팅 키)를 채택했다. 안 (b)(전 항목 사본 서빙)는 기각 — 기존 8항목의 사본 위 무회귀를 먼저 측정해야 하고, 원판이 의도적으로 실저장소를 서빙하던 fidelity 를 합성 사본으로 바꾼다. 사본 수명은 `t.TempDir()` 파생으로만 보증한다(`defer`/말미 제거문 금지).
+
+**Gaps** — (1) 개정분 plan-audit 은 iter-1(FAIL 0.86) 이 실행됐고 iter-2 수리가 적용됐다 — **iter-2 재심사는 아직 실행되지 않았다**(아래 「개정분 plan-audit 이력」). (2) AC-010 의 green 통과 형태(배너 paint 관측), AC-011 의 (c) 방향(합성 쓰기에서 exit 1), AC-012 의 (b) 방향(조건 빠진 합성 항목 거부)은 모두 아직 관측되지 않았다 — 뒤집는 것은 M6·M7 의 몫이다. (3) 배너를 칠하는 구체 술식과 검증 실패 값의 선택은 run-phase 소관으로 남겼다. (4) 사본에 무엇을 복사해야 `/settings` 가 거부 경로까지 도달하는지는 측정되지 않았다(M7 이 측정으로 확정). (5) 안 (a) 를 택했으므로 기존 8항목의 **사본 위** 거동은 측정하지 않았고, 이 개정은 그것을 주장하지 않는다 — 기존 항목은 실루트 서버에 그대로 남는다.
+
+**Residual-risk** — 사본 구성이 부족하면 제출이 거부 경로가 아니라 다른 오류로 끝날 수 있다(그 경우 기계결함 exit 2 로 갈린다). 무쓰기 비교 창이 넓으면 읽기-경로 부수효과가 간헐 적색을 만든다(plan §A0 의 시간 경계로 완화).
+
+### 개정분 plan-audit 이력 (card t1106)
+
+| iter | 판정 | 내용 |
+|---|---|---|
+| 1 | FAIL 0.86 (Tier M 역치 0.80) | 차단 결함 4건. `.moai/reports/t1106/plan-audit.md`. 역치를 넘겼으나 must-pass 미실패 상태에서 **blocking AC 안의 모순·계약 구멍**을 이유로 FAIL — 합계가 두 blocking AC 의 불일치를 흡수하지 않는다 |
+| 2 | PASS-WITH-DEBT 0.90 (Tier M 역치 0.80) | 아래 4건 수리 적용. REQ·AC 신설 0건 — 전부 기존 조문의 절 편집. D1~D4·N3 전부 CLOSED, 차단급 신규 결함 2건(N-1 major / N-2 minor). `.moai/reports/t1106/plan-audit-iter2.md` |
+| (인라인 수리) | — | Tier M iter 상한 소진 상태에서 리드 판정으로 N-1·N-2 를 절 편집으로 인라인 수리(아래 블록). REQ·AC 신설 0건 |
+
+**iter-2 처분 (4건 전부 수리, 범위 밖 재저작 없음)** — 2026-09-23, HEAD `176d8b658`:
+
+- **D1(major, blocking) — 사본 base 부재 시 계약 미정의 + AC-001 의 8/9 모호.** 깊은 절반은 **결정으로** 처리했다(리드 지침): **두 계열을 AC 층에서 가른다** — AC-AFG-001 은 상속된 blocking 기준이므로 그 「전 항목」을 아홉째로 넓히지 않고 **실루트 계열 8항목**으로 명시 확정하고, 제출 사이클은 AC-AFG-010(+011·013)이 별도 실행으로 진다. 아홉 항목 중 판정 없이 남는 것은 없다.
+  - `spec.md` REQ-AFG-014 (1) 에 두 불릿 신설. ① 표식 항목이 있는데 `--sandbox-base-url` 이 없으면 **exit 2 + 항목 이름 보고**, 침묵 스킵과 primary base 대체 운전을 **이름으로 금지**(exit 1 이 아닌 2 인 이유는 호출자 배선 결함이기 때문 — REQ-AFG-005 의 기계결함 값). ② 일부만 운전하려면 **적극적 축소 선언**이 있어야 한다 — 부재가 축소를 함의하지 않고(shall not), 보고서가 운전 수와 제외 항목 **이름**을 담으며, 제외 집합은 정확히 표식 계열이고 운전 집합이 비면 exit 1(「아무것도 운전하지 않는 선언」으로 초록 불가).
+  - `acceptance.md` AC-AFG-001 (a) 를 실루트 계열 8항목으로 확정 + 가름의 근거·비공허성·제출 계열의 귀속처를 본문에 서술. AC-AFG-010 에 「이 실행은 AC-001 의 실행과 별개이고, 제출 계열의 전제는 여기서 전제로 서술된다」를 명시.
+  - `plan.md` M7.8 을 같은 집합(8항목 + 적극적 축소 선언 + 제외 항목 이름 보고)으로 정렬하고, 제출 판정이 M7.4 소관임을 명시.
+- **D2(major, blocking) — 무쓰기 제외 목록의 범위 무제한.** `spec.md` REQ-AFG-014 (2) 에 범위 금지 추가: 제외는 **행사 요청의 쓰기 이음매가 닿는 경로를 덮을 수 없다**(`/save` 의 경우 사본 루트 안 `.moai/config/sections/**` — `handleSave` → `SyncToProjectConfig`·`writeProjectConfig`). `acceptance.md` AC-AFG-011 (c) 의 합성 쓰기를 「사본 안 임의 파일」 → **이음매 도달 가능 경로**로 고정(§C DoD 의 같은 문장도 함께 정렬).
+- **D3(minor, blocking) — AC-008 한계 축 스테일.** `네 한계 축` → **`일곱 한계 축`**, 앵커 토큰 3개 신설(`paint`=§F 5, `sandbox-root`=§F 6, `two-surfaces`=§F 7) + grep 판정 명령 3행 추가. `plan.md` M6.6 이 `paint`·`sandbox-root` 를, **M7.7 이 §F 7 과 `two-surfaces` 를** 지도록 배정(종전에는 축 7 이 어느 마일스톤에도 배정되지 않았다).
+- **D4(major, blocking) + N3 — 조건 표식 수 모순(AC-009 「세 조건」 vs AC-012 「두 조건」).** `acceptance.md` AC-AFG-009 를 **(1)·(2) 두 조건 표식**으로 고치고, 조건 (3)(`t.TempDir()` 파생 수명)은 매니페스트가 운반할 수 없는 Go 쪽 속성이므로 **AC-AFG-011 (d)** 가 진다고 명시. `spec.md` §G (7) 을 같은 분담으로 정렬(N3).
+
+**iter-2 가 건드리지 않은 것** — 감사가 닫혔다고 확인한 두 결정(안 (a) 사본은 신설 항목만 서빙 / 사본 서빙과 무쓰기 단언의 불가분 쌍)은 재개방하지 않았다. REQ-AFG-012 본문 무수정. 조건부 계열은 여전히 **닫힌 열거**(오늘 원소 1개, `validation-reject`)이며 「표식만 갖추면 통과」 규칙으로 넓어지지 않았다. `moai spec audit` 의 `SyncStatusDrift` MUST-FIX 는 **오탐 — 별도 카드 소관**이다(리드 처분). 수리하지 않았고 우회도 넣지 않았으며, 어떤 요구사항 문언도 이것을 이유로 바뀌지 않았다.
+
+**N2(REQ-AFG-010 의 「전용 job 이 이 가드를 돌린다」 절반이 개정분 테스트에 대해 AC 미커버)** — 리드 확인대로 **상속된 부채**이며 이 카드에서 닫지 않는다. AC 를 더하지 않았고 커버리지를 그대로 뒀다 — 카드 판정서에 상속 부채로 기록된다.
+
+**iter-2 판정 뒤 인라인 수리 (N-1·N-2, 2건, card t1106)** — 2026-09-23, HEAD `176d8b658`. 리드 판정으로 두 건만 절 편집한다. REQ·AC 신설 0건, 결정 재개방 0건.
+
+- **N-1(major, blocking) — 운전 집합이 호출자 선언으로 축소 가능해진 뒤에도 AC-AFG-001 (a) 의 하한이 `> 0` 에 머물러 있었다.** iter-2 의 **적극적 축소 선언**(REQ-AFG-014 (1))이 운전 집합을 호출자가 줄일 수 있게 만들었는데, (a) 는 여전히 「수가 0보다 크며 그 전부가 발화」로만 쟀다 — 실루트 8항목 중 일곱을 선언으로 제외하면 하나를 운전·발화시키고 **blocking AC 를 통과**한다. REQ-AFG-014 (1)(iii)(제외 집합은 정확히 표식 계열, 운전 집합이 비면 exit 1)과 (ii)(운전 수·제외 이름 보고)가 `shall` 로 금지하지만 **그것을 재는 AC 가 없었다**. 수리: AC-AFG-001 (a) 의 판정을 **개수가 아니라 술어**로 바꿨다 — 운전 집합이 「사본 서빙 표식이 없는 항목 전부」와 **정확히 일치**해야 하고(표식 없는 항목이 하나라도 제외되면 실패), 비공허성(`> 0` + 전부 발화)은 유지하며, 제외 집합이 정확히 표식 계열임을 확인할 수 있도록 **운전 항목 수 + 선언 제외 항목 이름**의 보고서 기재를 Then 절에 추가했다. 이 문안은 같은 AC 의 「가름의 형태」 블록과 REQ-AFG-014 (1)(i)(ii)(iii) 이 이미 쓴 성질을 판정 절로 승격한 것이고, 새 기제를 도입하지 않는다. 「8」이라는 스냅숏 수치는 술어의 괄호 주석으로 내렸다(run-phase 가 표식 없는 항목을 더해도 스테일해지지 않는다).
+- **N-2(minor, blocking) — AC 매트릭스 서사가 상속 AC 문언 불변을 거짓 주장.** `acceptance.md` §A 의 `AC-001~008 의 번호·문언·분류는 불변이다` 는 이 개정분에서 거짓이다 — AC-AFG-001 의 Then(판정 집합)과 AC-AFG-008 의 Then(한계 축 4→7 + 앵커 토큰 3개)이 재저작됐다. 수리: 참인 부분(**번호·분류·대응 REQ 불변**)은 보존하고, 문언 개정 **세 곳**(AC-AFG-001 판정 집합의 술어화 + 보고서 기재, AC-AFG-008 축 4→7 및 `paint`·`sandbox-root`·`two-surfaces`, AC-AFG-009 효과 종별 계열)을 이름으로 적었다. N-1 수리 뒤의 **최종 상태**를 서술한다.
+
+**인라인 수리가 건드리지 않은 것** — 8항목 분리 결정, 축소 선언의 세 조건, `spec.md` §D 의 `세 조건` 문언(정확하다 — 조건은 셋, 매니페스트 표식으로 표현되는 것이 둘), AC-AFG-009 조건부 계열의 닫힌 열거, REQ-AFG-012 본문. N-3·N-4·N-5(optional)는 닫지 않았다 — §C DoD 확장(N-5)은 감사자의 N-1 권고에 포함돼 있으나 이 위임의 범위 밖이라 미수행 부채로 남긴다.
+
+**감사 창 안의 외부 쓰기 (프로세스 결함, card t1106)** — 2026-09-23 **12:49:11**. plan-audit iteration 2 가 진행 중인 트리에 SPEC 4파일이 통째로 다시 쓰였고, 변경은 표면이 아니라 실질이었다 — D1 처분이 9항목에서 8항목 + `적극적 축소 선언` 으로 반전됐다.
+
+- **원인.** 레인이 iteration-2 수리 에이전트를 **띄운 뒤에** 리드의 D1 방향(AC 층에서 사이클 분리)을 후속 메시지로 전달했다. 그 에이전트는 이미 9항목 안을 만들어 완료 보고를 마친 상태였고, 뒤늦게 깨어나 분리안을 적용하면서 같은 트리의 **두 번째 작성자**가 됐다. 지시는 spawn 프롬프트에 실렸어야 했다. 원인의 일부는 리드 쪽에도 있다(리드 자인) — 그 메시지가 iteration 2 가 이미 떠 있는 시점에 도착했다.
+- **탐지.** 감사자가 이미 읽은 파일을 다시 읽어 내용이 달라진 것을 발견하고, `stat` 으로 확인한 뒤 **조용히 진행하지 않고 보고**했다. 그리고 판정을 명명된 스냅샷에 고정해 보고서가 어느 텍스트를 판정한 것인지 말하게 했다.
+- **조치.** 보고 즉시 `TaskStop` → 4파일 mtime `12:49:11` 고정 확인 → `md5 -q acceptance.md` = `c4bace1f157a0bdafa244acd0d78882b` 가 감사자 핀과 바이트 동일함을 대조 → 감사자에게 "핀이 곧 디스크 상태이니 확정하라, 원인이 레인 쪽이라고 판정을 무르게 하지 말라" 회신.
+- **폐기된 것.** 레인이 9항목 판본에서 수행한 D1~D4 확인은 폐기 텍스트에 대한 것이므로 이월하지 않았고, 감사자에게 고정 스냅샷에서 전부 재도출하도록 지시했다. 감사자는 그 확인 내용을 애초에 본 적이 없다고 판정서에 적었다.
+- **손실.** 없음. 비용은 레인의 중간 검증 한 회차가 다시 필요해진 것뿐이다.
+- **재발 방지.** 서브에이전트에 지시를 추가할 때는 ① spawn 프롬프트에 싣거나 ② 보내기 전에 종료하고 새로 띄우거나, 둘 중 하나만 한다. 그리고 후속 전송 전에 "이 에이전트가 대기 중인가"만이 아니라 **"지금 이 트리를 읽고 있는 다른 주체가 있는가"** 를 함께 묻는다 — 감사·리뷰·검증 패스가 열려 있으면 안전한 후속은 없다. spawn 이후 도착한 지시는 **다음 spawn 의 프롬프트**로 간다. 이후 이 카드의 모든 에이전트(`manager-spec` ×3, `plan-auditor` ×2)는 보고 직후 종료하고 그 이름으로 메시지를 보내지 않았다.
+- 당대 기록 정본: `.moai/reports/t1106/incident-audit-window-write.md`. 교훈은 레인 메모리의 기존 항목에 **3번째 발생**으로 갱신했다(신규 파일 아님) — 그 항목의 종전 "how to apply" 가 이 경우엔 틀린 답을 준다는 정정을 함께 실었다.
+
 ## §E.2 Run-phase Evidence
 
 run-phase 측정 전체는 worktree `/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t1060`, branch `WT-appjs-handler-guard` 위에서 2026-09-22 이번 run 실행 중 수행됐다(각 측정 시점 HEAD는 항목별로 병기). 바이너리는 이 트리에서 빌드해 경로로 호출했다(`go build -o /tmp/t1060-run/moai ./cmd/moai` — §2.2 도구 출처).
@@ -292,6 +357,36 @@ job 설계 비고: `test-browser` 는 EOF 에 덧붙는 유일한 판정면이�
 | M5-6 | gofmt·vet·lint (공통 DoD + E5) | `gofmt -l internal/web/appjs_fire_guard_test.go` / `go vet ./internal/web/` / `golangci-lint run --timeout=2m ./internal/web/...` | gofmt 출력 없음 · vet 통과 · `0 issues.` (golangci-lint 2.10.1, homebrew 설치본 — 서드파티 도구로서 트리 래그 개념 외부, 버전 명기) |
 | M5-7 | 자산·모듈 보존 최종 (AC-AFG-007/E6) | `git diff --stat 3e35fbacf -- internal/web/assets/app.js` + `git status --porcelain -- internal/web/assets/ go.mod go.sum` | 출력 없음 — base 대비 byte 동일, working tree 청결 |
 
+### M6·M7 — 개정분: `validation-reject` 편입 (card t1106, HEAD `0fbc75afc` → `19f210fe5`)
+
+개정 run 은 worktree `/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t1106`, branch `WT-fireguard-reject-submit` 에서 2026-09-23 에 수행됐다. 원판 M1~M5 기록(위)은 한 줄도 고치지 않았다 — 나중 사실에 맞춰 관측을 손보지 않는다.
+
+| # | 측정 | 명령 | 관측 결과 | exit |
+|---|---|---|---|---|
+| M6-1 | AC-AFG-012 RED — 불가분성을 판정할 규칙 자체가 없음 | `go test ./internal/web/ -run 'AppJsFireSandboxPairing' -count=1` | `want exit 1, got exit status 2` / `appjs_fire_probe.py: error: no such option: --extra-entry` (세 합성 항목 전부) | 1 |
+| M6-2 | AC-AFG-012 GREEN — 정방향 + 역방향 3건 | 같은 명령 | `--- PASS: TestAppJsFireSandboxPairing` + 하위 3건(`missing_sandbox-serving_marker`·`missing_no-write-assertion_marker`·`missing_both_markers`) 전부 PASS — 각 거부가 빠진 조건을 이름으로 보고 | 0 |
+| M6-3 | AC-AFG-009 정방향 — 커밋된 매니페스트가 두 닫힌 계열을 만족 | `python3 internal/web/testdata/appjs_fire_probe.py --lint-manifest` | `LINT OK: 9 entries + 7 exclusions cover 13 inventory groups; effects within unconditional ['clipboard', 'label', 'swap', 'tab', 'visibility'] or conditional ['validation-reject'] (conditional entries carry ['requires_sandbox_serving', 'requires_no_write_assertion']); post-swap entry present` — `INVENTORY_TOTAL` 불변(13) | 0 |
+| M7-1 | AC-AFG-013 RED — 라우팅 판정 주체 부재 | `go test ./internal/web/ -run 'AppJsFireSandboxRouting' -count=1` | `undefined: startFireGuardServerAt` / `undefined: startFireGuardSandboxServer` (빌드 실패) | 1 |
+| M7-2 | AC-AFG-013 GREEN (a)(b)(c-배선) | 같은 명령 | `--- PASS: TestAppJsFireSandboxRouting` — primary root == `findRepoRoot`, sandbox root ≠ 실루트, 표식 8/1 양방향 일치 | 0 |
+| M7-3 | AC-AFG-013 돌연변이 ① — 전 항목을 사본으로 (안 (b) 를 몰래 취한 상태) | `route_for_entry` 의 `return primary_base` → `return sandbox_base or primary_base` 후 같은 명령 | `(b) unmarked entry "popover_open" routes to "http://127.0.0.1:60604", want the primary base "http://127.0.0.1:60603"` 외 7건 | 1 (적색 관측) |
+| M7-4 | AC-AFG-013 돌연변이 ② — 표식 항목을 실루트로 | `return sandbox_base or None` → `return primary_base` 후 같은 명령 | `(b) marked entry "validation_reject_banner" routes to "…:60695", want the sandbox base "…:60696"` | 1 (적색 관측) |
+| M7-5 | AC-AFG-010/011 RED — 판정 주체는 생겼으나 탐침에 사본 시나리오 없음 | `MOAI_BROWSER_GUARD=1 go test ./internal/web/ -run 'AppJsFireValidationReject' -count=1 -v` | `failures: [{"entry": "validation_reject_banner", "reason": "selector matched nothing", "selector": "#settings-form"}]`, `"exit": 1` — 같은 실행에서 기존 8지표는 전부 발화 | 1 |
+| M7-6 | AC-AFG-010 GREEN — 거부 배너가 칠해짐 | `MOAI_BROWSER_GUARD=1 go test ./internal/web/ -run 'AppJsFireValidationRejectPaints' -count=1 -v` | `s_banner_before_submit: false` → `s_invalid_set: "bogus"` → `s_banner_text: "Validation failed — no changes were saved."`, paint 술식 통과, `s_window_referenceerrors: []` / `--- PASS` (38.72s) | 0 |
+| M7-7 | AC-AFG-010 돌연변이 — 배너를 `hidden` 으로 렌더 | 같은 실행 안 2회차, `--inject-banner-hidden` | `s_injected_banner_hidden: true` → 탐침 exit 1. 「노드 존재」 술식이었다면 통과했을 변이가 적색 — 술식 채택 가능 | 1 (적색 관측) |
+| M7-8 | AC-AFG-011 (b) 정방향 — 사본 바이트 불변 | `MOAI_BROWSER_GUARD=1 go test ./internal/web/ -run 'AppJsFireValidationRejectNoWrites' -count=1 -v` | `s_snapshot_files: 35`, `s_changed_paths: []`, `"exit": 0` | 0 |
+| M7-9 | AC-AFG-011 (c) 역방향 — 쓰기 이음매가 닿는 자리에 1바이트 | 같은 실행 안 2회차, `--inject-sandbox-write .moai/config/sections/quality.yaml` | `s_changed_paths: [{"path": ".moai/config/sections/quality.yaml", "change": "modified"}]`, `"exit": 1` — 달라진 경로를 이름으로 보고 | 1 (적색 관측) |
+| M7-10 | AC-AFG-011 (d) — 수명 판정의 비공허성 | 드라이버 말미에 `defer os.RemoveAll(sandboxRoot)` 주석 1행 주입 후 같은 명령 | `(d) driver carries "defer os.Remove" …` 2건 적색 → 복원 후 녹색. 첫 판은 자기 픽스처 리터럴에 걸려 적색이었고(자기 참조), 바늘을 문자열 연결로 조립해 수리 | 1 → 0 |
+| M7-11 | AC-AFG-001 (a) — 축소 선언과 운전/제외 회계 | `MOAI_BROWSER_GUARD=1 go test ./internal/web/ -run 'AppJsHandlersFireRuntime' -count=1 -v` | `reduction_declared: true`, `driven_count: 8`, `excluded_entries` = 표식 계열, `"exit": 0` / `--- PASS` (12.79s) — 운전 집합이 「표식 없는 전 항목」 술어와 정확히 일치 | 0 |
+| M7-12 | REQ-AFG-014 (1)(i) — 부재는 선언이 아니다 | `go test ./internal/web/ -run 'AppJsFireReductionDeclaration' -count=1` | exit 2 + `--sandbox-base-url` 미배선 · `validation_reject_banner` 이름 보고 → PASS | 0 |
+| M7-13 | 같은 판정의 비공허성 확인 | `if driven_marked and not sandbox_base:` → `if False and …` 후 같은 명령 | **첫 판은 이 변이를 통과시켰다**(모든 기계결함이 exit 2 이므로 exit 코드만으로는 갈리지 않는다) — 판정에 「명명된 원인」을 더한 뒤 재측정: `the fault does not name the missing wiring (--sandbox-base-url)` 적색 | 1 (적색 관측) |
+| M7-14 | AC-AFG-008 — 앵커 토큰 7종 + 직교성 | acceptance §B AC-008 의 `grep -c` 9행 그대로 | probe: `orthogonal`=1 `manifest`=26 `scenario`=6 `Chrome`=4 `paint`=12 `sandbox-root`=5 / driver: `orthogonal`=1 `SPEC-APPJS-IIFE-GUARD-001`=1 `static-scope`=2 `two-surfaces`=1 — 전부 ≥1 | 0 |
+| M7-15 | AC-AFG-013 (c) — 전 게이트 사이클 무회귀 | `MOAI_BROWSER_GUARD=1 go test ./internal/web/ -run 'AppJs' -count=1` | `ok github.com/modu-ai/moai-adk/internal/web 96.737s` | 0 |
+| M7-16 | 패키지 전체 + 공통 DoD | `go test ./internal/web/ -count=1` / `go vet ./internal/web/` / `gofmt -l internal/web/` / `golangci-lint run ./internal/web/...` / `go build ./...` | `ok … 23.840s` · vet 통과 · gofmt 출력 없음 · `0 issues.` · build 통과 | 0 |
+
+**사본 구성 실측:** 사본에 복사하는 것은 `.moai/config` 뿐이고(35파일 — `s_snapshot_files`), 그것이 `handleSave` 의 쓰기 이음매(`SyncToProjectConfig`·`writeProjectConfig`)가 겨누는 자리다. 무쓰기 비교의 제외 목록은 **비어 있고**, 그 비어 있음은 가정이 아니라 측정이다 — 정방향 35파일 전수 비교에서 변경 0건. `lint_manifest` 가 `.moai/config/sections` 를 덮는 제외를 기계로 거부하므로, 이 단언이 나중에 「구성상 초록」으로 약해질 수 없다.
+
+**두 서면을 섞지 않는 방식:** 제출 계열(AC-010·011)과 실루트 계열(AC-001)은 **서로 다른 실행**이고, 어느 쪽 초록도 상대의 집합을 대신 주장하지 않는다. 실루트 실행은 축소를 적극 선언하고 운전 8건·제외 1건을 보고서에 남긴다(M7-11). 선언 없는 부재는 exit 2 다(M7-12).
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 run_complete_at: 2026-09-22
@@ -303,6 +398,42 @@ cross_platform_build: darwin `go build ./internal/web/` exit 0 · `GOOS=windows 
 m1_to_m5_commit_strategy: 마일스톤당 1커밋 — M1 탐침(70f37a688, draft→in-progress 전환 포함) → M2 드라이버(8375c25f8) → M3 돌연변이기(5973ac3c9) → M4 CI job(1f9f2d321) → M5 문서화+전체 재측정(pending-backfill-M5). 전 커밋 본문에 card t1060 명기 + `Authored-By-Agent: manager-develop` 트레일러. push·PR 없음(레인 규율 — 리드 일괄)
 gate_env: `MOAI_BROWSER_GUARD=1` — 게이트 없는 실행은 게이트 변수명을 영어로 명명하는 skip(AC-AFG-003 관측 M2-1), CI 판정면은 `test-browser` job 이 유일하게 운반
 evidence_paths: M1/M2/M3 세션 원문은 `/tmp/t1060-run/` (probe-*.json, m2-runtime.log, m5-fullpkg.log) — 휘발성 스크래치이므로 판정 근거가 되는 명령·출력 요지는 전부 이 §E.2 에 전사했다. §E.2 표가 이 SPEC 판정의 로컬 정본 기록이다.
+
+
+### 개정분 Run-phase Audit-Ready Signal (card t1106)
+
+run_complete_at: 2026-09-23
+run_commit_sha: 19f210fe5
+run_base_sha: 0fbc75afc
+run_status: PASS
+ac_pass_count: 4/4 개정 blocking (AC-AFG-010·011·012·013 전부 양방향 관측 출력으로 PASS) + 상속 AC-AFG-001 개정 문언(운전 집합 술어 + 회계) PASS + AC-AFG-009 개정 문언 PASS; regression-class AC-AFG-008 앵커 7종 기록 완료
+ac_fail_count: 0
+preserve_list_post_run_count: `internal/web/assets/app.js` 무변경 · `go.mod`/`go.sum` 무변경(사본 스냅샷은 Python stdlib `hashlib`/`os` 뿐) · 제품 소스(`internal/web/*.go` 비테스트) 무변경 · `startFireGuardServer` 의 실루트 배선 의미 불변 · 정적 형제 2파일 무손상 · `.github/workflows/ci.yml` 무변경 — run-phase 변경 파일은 정확히 2개(`internal/web/appjs_fire_guard_test.go`, `internal/web/testdata/appjs_fire_probe.py`)
+l44_pre_commit_fetch: 미실행 — 레인 규율상 이 워크트리는 push 하지 않으며, 커밋 직전 `git rev-parse --short HEAD` + `git branch --show-current` 재독만 수행했다(매 커밋 전 3회). 부재를 「청결」로 읽지 않기 위해 기록한다
+l44_post_push_fetch: 해당 없음 — push 없음(리드 일괄)
+new_warnings_or_lints_introduced: 0 (`golangci-lint run ./internal/web/...` → `0 issues.`, `go vet` 통과, `gofmt -l` 무출력)
+cross_platform_build:
+  darwin: `go build ./...` exit 0
+  windows: 미측정 — 개정분은 Go 테스트 파일 1개와 Python testdata 1개뿐이고 syscall·build tag 를 쓰지 않으나, 재지 않은 것은 재지 않았다고 적는다. 매트릭스 판정은 push 뒤 CI 몫
+total_run_phase_files: 3 — `internal/web/appjs_fire_guard_test.go`, `internal/web/testdata/appjs_fire_probe.py`, `.moai/specs/SPEC-APPJS-FIRE-GUARD-001/progress.md`(§E.2/§E.3 개정분)
+run_phase_correction_after_f1 (card t1106, sync-audit-delta F2 — 추기이지 정정 덮어쓰기가 아니다):
+  위 `preserve_list_post_run_count` 와 `total_run_phase_files` 두 줄은 **쓰인 시점(`19f210fe5`)에는 참이었고**, 그 뒤 sync-audit 이 낸 차단 결함 F1 을 수리하면서 거짓이 됐다. 관측 기록을 나중 사실에 맞춰 고쳐 쓰면 「무엇을 언제 봤는가」가 사라지므로, 원문을 남기고 여기에 덧붙인다.
+  - `.github/workflows/ci.yml` 은 **무변경이 아니다.** 커밋 `9722f76f1` 이 `test-browser` 잡의 맨손 탐침 호출 3곳(734·745·767)에 `--primary-entries-only` 를 달았다. 사유: 이 카드가 넣은 `validation_reject_banner`(`requires_sandbox_serving: True`) 때문에 선언 없는 호출이 REQ-AFG-014 (1) 에 따라 exit 2 로 거부되어 CI 잡이 죽었다. 즉 **이 카드가 만든 파손의 수리**이며, 탐침의 거부는 설계대로 올바른 동작이라 손대지 않았다.
+  - 따라서 run-phase 변경 파일은 2개가 아니라 **3개**(`appjs_fire_guard_test.go`, `appjs_fire_probe.py`, `ci.yml`)이고, `total_run_phase_files` 는 3 이 아니라 **4**다(위 3개 + 이 `progress.md`). 실측: `git diff --name-only 0fbc75afc..HEAD` → 4행.
+  - 이 수정이 CI 가 보는 범위를 줄이지는 않는다 — 기계 측정: base `0fbc75afc` 의 매니페스트는 8항목 전부 무표식이고, 현재 9항목 중 표식은 이 카드 신설분 하나뿐이다. `--primary-entries-only` 가 구동하는 8항목은 **카드 이전 CI 가 보던 바로 그 집합**이다. 잃은 커버리지 0.
+  - 독트린 확인: `ci-autofix-protocol.md` § CI Infrastructure Preservation 의 워크플로 수정 금지는 자기 마지막 줄이 `applies to every cycle_type=autofix invocation` 으로 범위를 선언한다. 이 수리는 리드 지시의 run-phase 수리이므로 저촉되지 않는다.
+
+m1_to_mN_commit_strategy: 슬라이스당 1커밋 — 35a1015f9(표식·라우팅: M6.1-6.3 + M7.1-7.3) → 1302f1f76(사본 시나리오·paint·무쓰기: M6.4-6.5 + M7.4-7.5) → 19f210fe5(축소 선언·한계 주석·재측정: M6.6 + M7.6-7.8) → 본 progress 기록. 전 커밋 본문에 card t1106 명기. push·PR 없음
+status_transition: 없음 — `status: in-progress` 는 plan-phase 에서 이미 설정돼 있었다(spec/plan/acceptance/progress 4파일 모두). `draft → in-progress` 는 이 run 에서 수행할 것이 남아 있지 않았고, `implemented`/`completed` 로의 전진은 manager-docs 소관이라 건드리지 않았다
+unmeasured:
+  - `test-browser` CI job 의 러너 실측(개정분 포함) — push 뒤 CI 몫이며 여기서 돌리지 않았다
+  - windows/linux 크로스 빌드 — 위 cross_platform_build 참조
+  - `moai spec audit` 의 `SyncStatusDrift` MUST-FIX — 별도 카드 소유의 알려진 오탐이며 그 처방(`--backfill-only`)은 개정을 되돌리므로 적용하지 않았다
+  - 전체 스위트(`go test ./...`) — 로컬 금지(§4.1), 판정은 CI 몫
+carried_debt:
+  - `§C` DoD 한 줄(N-5) 미작성 — plan-audit 이 알고 넘긴 부채
+  - `exit 2` 를 Then 절로 재는 AC 없음 — M7-12/13 이 보고서 출력 층에서 교차 확인했으나 AC 층의 공백은 그대로다
+  - D-Δ1(§A 서사의 AC-AFG-009 REQ 매핑 미공시), N2(REQ-AFG-010 job-coverage 절반) 미해소
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
