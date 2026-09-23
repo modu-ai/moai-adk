@@ -15,6 +15,9 @@ import (
 // TestUpdateClaudeToBothSucceeds reproduces the claude -> both transition:
 // a claude deployment leaves .agents/skills/<skill> skill-mirror links, and the
 // update that follows ApplyHarness("both") must complete its template sync.
+// On a tree whose both profile ships no file beneath a mirror-link path this
+// passes with or without the fix; it guards the transition once catalog skills
+// are re-homed under .agents/skills (the dual-harness recovery work, t1100).
 func TestUpdateClaudeToBothSucceeds(t *testing.T) {
 	t.Setenv("HOME", t.TempDir())
 	t.Setenv("MOAI_SANDBOX_PROOF", "")
@@ -55,20 +58,6 @@ func TestUpdateClaudeToBothSucceeds(t *testing.T) {
 	cmd.SetErr(&buf)
 	cmd.SetContext(context.Background())
 	if err := runTemplateSyncWithReporter(cmd, nil, true); err != nil {
-		t.Fatalf("template sync after claude -> both: %v\n%s", err, lastLinesOf(buf.String(), 20))
+		t.Fatalf("template sync after claude -> both: %v\n%s", err, tailLines(buf.String(), 20))
 	}
-}
-
-func lastLinesOf(s string, n int) string {
-	b := []byte(s)
-	count := 0
-	for i := len(b) - 1; i >= 0; i-- {
-		if b[i] == '\n' {
-			count++
-			if count > n {
-				return string(b[i+1:])
-			}
-		}
-	}
-	return s
 }

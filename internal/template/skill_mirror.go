@@ -196,7 +196,7 @@ func releaseOwnMirrorLink(projectRoot, destRelPath string) error {
 	if err != nil || info.Mode()&os.ModeSymlink == 0 {
 		return nil
 	}
-	if current, readErr := os.Readlink(linkPath); readErr != nil || current != MirrorLinkTarget(skill) {
+	if current, readErr := os.Readlink(linkPath); readErr != nil || filepath.ToSlash(current) != MirrorLinkTarget(skill) {
 		return nil
 	}
 	return os.Remove(linkPath)
