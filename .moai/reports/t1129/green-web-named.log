@@ -1,0 +1,14 @@
+=== RUN   TestEffortOptRecommendationLabels
+--- PASS: TestEffortOptRecommendationLabels (0.00s)
+=== RUN   TestSchemaEmptyLabelParity
+2026/09/23 18:54:09 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestSchemaEmptyLabelParity2084492312/001/.moai/config/sections
+2026/09/23 18:54:09 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestSchemaEmptyLabelParity2084492312/001/.moai/config/sections
+2026/09/23 18:54:09 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestSchemaEmptyLabelParity2084492312/001/.moai/config/sections
+--- PASS: TestSchemaEmptyLabelParity (0.01s)
+=== RUN   TestEffortEmptyLabelNamesBothFallbacks
+--- PASS: TestEffortEmptyLabelNamesBothFallbacks (0.00s)
+=== RUN   TestRuntimeDefaultI18nCarriesEffortFact
+--- PASS: TestRuntimeDefaultI18nCarriesEffortFact (0.00s)
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/web	0.462s
+exit=0

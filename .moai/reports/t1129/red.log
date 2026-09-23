@@ -1,0 +1,6 @@
+# github.com/modu-ai/moai-adk/internal/cli [github.com/modu-ai/moai-adk/internal/cli.test]
+internal/cli/profile_setup_effort_empty_label_test.go:54:42: undefined: settings.RuntimeDefaultEffort
+internal/cli/profile_setup_effort_empty_label_test.go:54:73: undefined: settings.RuntimeDefaultEffortModel
+FAIL	github.com/modu-ai/moai-adk/internal/cli [build failed]
+FAIL
+exit=1

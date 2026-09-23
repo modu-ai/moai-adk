@@ -1,0 +1,49 @@
+=== RUN   TestEffortEmptyLabelLocalized
+=== PAUSE TestEffortEmptyLabelLocalized
+=== RUN   TestEffortEmptyLabelCarriesRuntimeDefaultFact
+=== PAUSE TestEffortEmptyLabelCarriesRuntimeDefaultFact
+=== RUN   TestProfileWizardGolden_LocaleFrames
+=== RUN   TestProfileWizardGolden_LocaleFrames/ko
+=== RUN   TestProfileWizardGolden_LocaleFrames/ja
+=== RUN   TestProfileWizardGolden_LocaleFrames/zh
+--- PASS: TestProfileWizardGolden_LocaleFrames (0.46s)
+    --- PASS: TestProfileWizardGolden_LocaleFrames/ko (0.15s)
+    --- PASS: TestProfileWizardGolden_LocaleFrames/ja (0.15s)
+    --- PASS: TestProfileWizardGolden_LocaleFrames/zh (0.15s)
+=== RUN   TestProfileWizardGolden_NoEnglishLeak
+=== RUN   TestProfileWizardGolden_NoEnglishLeak/ko
+=== RUN   TestProfileWizardGolden_NoEnglishLeak/ja
+=== RUN   TestProfileWizardGolden_NoEnglishLeak/zh
+--- PASS: TestProfileWizardGolden_NoEnglishLeak (0.51s)
+    --- PASS: TestProfileWizardGolden_NoEnglishLeak/ko (0.16s)
+    --- PASS: TestProfileWizardGolden_NoEnglishLeak/ja (0.18s)
+    --- PASS: TestProfileWizardGolden_NoEnglishLeak/zh (0.17s)
+=== RUN   TestTUIEmptyLabelsSchemaSourced
+=== PAUSE TestTUIEmptyLabelsSchemaSourced
+=== RUN   TestSchemaSelectOptions_DerivedFromSchema
+=== RUN   TestSchemaSelectOptions_DerivedFromSchema/model
+=== RUN   TestSchemaSelectOptions_DerivedFromSchema/effort_level
+=== RUN   TestSchemaSelectOptions_DerivedFromSchema/permission_mode
+=== RUN   TestSchemaSelectOptions_DerivedFromSchema/development_mode
+--- PASS: TestSchemaSelectOptions_DerivedFromSchema (0.00s)
+    --- PASS: TestSchemaSelectOptions_DerivedFromSchema/model (0.00s)
+    --- PASS: TestSchemaSelectOptions_DerivedFromSchema/effort_level (0.00s)
+    --- PASS: TestSchemaSelectOptions_DerivedFromSchema/permission_mode (0.00s)
+    --- PASS: TestSchemaSelectOptions_DerivedFromSchema/development_mode (0.00s)
+=== RUN   TestSchemaSelectOptions_EmptyLabelFromSchema
+--- PASS: TestSchemaSelectOptions_EmptyLabelFromSchema (0.00s)
+=== RUN   TestSchemaSelectOptions_ModelValuesSurviveNormalizer
+--- PASS: TestSchemaSelectOptions_ModelValuesSurviveNormalizer (0.00s)
+=== RUN   TestSchemaSelectOptions_Localized
+--- PASS: TestSchemaSelectOptions_Localized (0.00s)
+=== RUN   TestProfileTextFields_Referenced
+--- PASS: TestProfileTextFields_Referenced (0.07s)
+=== CONT  TestEffortEmptyLabelLocalized
+=== CONT  TestTUIEmptyLabelsSchemaSourced
+=== CONT  TestEffortEmptyLabelCarriesRuntimeDefaultFact
+--- PASS: TestEffortEmptyLabelLocalized (0.00s)
+--- PASS: TestTUIEmptyLabelsSchemaSourced (0.00s)
+--- PASS: TestEffortEmptyLabelCarriesRuntimeDefaultFact (0.00s)
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/cli	1.772s
+exit=0
