@@ -33,6 +33,8 @@ card: t1100
 
 D6 결정의 설계 §10 대조: 원문(`reports/moai-dual-harness-full-design-20260922.md:177`)은 "역할별 권한을 호스트가 표현하지 못하면 더 넓은 권한을 조용히 부여하지 않는다. 외부 worker의 sandbox로 강제할 수 있는지 먼저 검증하고 불가능하면 해당 역할을 차단한다"이다. (a)는 쓰기 경계를 sandbox(read-only)로 강제하므로 차단 분기로 가지 않는다. read-only 강제가 실제로 동작하는지는 AC-DHR-012(LIVE)가 잰다. 그 전까지 강제는 가설이며, AC-DHR-012가 `NOT_RUN`이면 AC-AGENT-01은 `PARTIAL`이다.
 
+**D6 정정 주 (측정, codex-cli 0.156.1).** AC-DHR-012 LIVE와 판별 탐침 2회에서, `spawn_agent`로 띄운 하위 에이전트는 부모 세션의 sandbox를 물려받고 역할 TOML의 `sandbox_mode`는 좁히지도 넓히지도 못한다는 것이 관측되었다(`design.md` §C.1 정정 문단). "(a)는 쓰기 경계를 sandbox(read-only)로 강제한다"는 앞 문단의 전제는 이 경로에서 성립하지 않는다. 리드 결정: 이 카드는 AC-DHR-012를 알려진 FAIL로 기록하고 닫으며, 최상위 read-only 실행 경로(감사자를 별도의 `codex exec -s read-only`로 실행)는 후속 카드 t1143에서 다룬다. 역할 차단은 하지 않는다. 위 결정 표와 문단은 이력으로 그대로 둔다.
+
 ## §C 사전 점검 (run 착수 시)
 
 - `git rev-parse --short HEAD`, `git branch --show-current`로 트리를 재확인한다(기대: `WT-dual-harness-recovery`).

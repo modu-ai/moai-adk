@@ -208,6 +208,8 @@ mkdir -p .moai/reports/t1100 && go test -json ./internal/template/agentemit -run
 
 MCP 경유 부작용은 이 AC가 증명하지 않으며 `UNSUPPORTED`로 남는다. `mission-governor`와 `super-advisor`의 read-only 강제는 이 AC가 측정하지 않는다.
 
+> **[알려진 FAIL — 후속 카드 t1143으로 이월]** 이 카드(t1100)에서 AC-DHR-012는 알려진 FAIL이다. codex-cli 0.156.1, `codex exec`, `approval_policy=never`로 LIVE 실행한 결과, 12개 역할 로드와 호출 수 14는 관측되었으나, `plan-auditor`와 `sync-auditor`는 역할 TOML이 `sandbox_mode = "read-only"`인데도 `sandbox_policy.type=workspace-write`로 실행되었고 두 탐침 쓰기가 모두 성공했다(`denied=false`, `probe_exists=true`). 역할 TOML의 `developer_instructions`와 `model_reasoning_effort`는 적용되었으므로 역할 파일은 로드되었고 sandbox만 적용되지 않았다. 판별 탐침 2회는 하위 에이전트가 부모 세션의 sandbox를 물려받는다는 것을 보였다(`design.md` §C.1 정정 문단). 증거: `.moai/reports/t1100/ac012-evidence.json`, `ac012-live.jsonl`, `m8-sbx/`. 위 기대값과 판정식은 바꾸지 않는다. 이 AC를 충족시키는 최상위 read-only 실행 경로는 t1143의 몫이다.
+
 음성·변이(판정식이 `false`여야 하는 입력, plan-audit iter-3에서 합성 입력으로 확인): 같은 역할 이름 12개와 빈 nonce(iter-2 변이), 같은 역할 이름 12개와 유효한 nonce, nonce 하나가 빈 값, 12개 역할이 같은 nonce, 생성 목록 밖의 역할 이름, 양성 대조 해시가 빈 값, 호출 수 0, 호출 수 15, 같은 감사 역할 두 번, 태그 줄 해시와 파일 해시 불일치, 테스트 skip. 증거 파일이 없으면 판정 명령이 판정식에 닿지 않아 `true`가 나오지 않는다.
 
 SKIP 의미: `MOAI_CODEX_ROLE_LIVE=1`이 없으면 이 테스트는 SKIP하고 AC-DHR-012는 `NOT_RUN`이다. 15번째 호출이 필요해지면(호출 수가 14를 넘게 되면) 테스트는 그 호출을 시작하지 않고 남은 단계를 멈추며 `ABORTED`를 찍은 뒤 실패한다. 호출 수가 정확히 14로 끝난 실행은 `ABORTED`가 아니다. CI에서 이 게이트를 켜는 워크플로는 plan 시점에 관측되지 않았다.
@@ -408,6 +410,8 @@ AC-DHR-012와 같은 실행(같은 jsonl, 같은 호출 예산 14회)의 (ii) �
 **Then** 같은 테스트가 쓴 증거 파일 `ac023-evidence.json`(§A 증거 채널, 태그 줄 `AC023_EVIDENCE_SHA256 <hex>`)의 두 항목마다 역할이 `plan-auditor`와 `sync-auditor` 각각 하나이고, 감사 역할의 쓰기 시도가 거부되었으며(AC-DHR-012의 쓰기 시도와 같은 실행), 판정 파일이 있고, 세션 기록에서 꺼낸 하위 에이전트 반환문의 sha256(64자 hex)과 판정 파일의 sha256이 같으며, 반환문에 그 실행의 nonce가 들어 있다.
 
 음성·변이(판정식이 `false`, 합성 입력으로 확인): 반환문 해시와 판정 파일 해시 불일치, 같은 역할 두 번, 빈 해시끼리 같음, 실행 뒤 수정된 증거 파일(태그 해시 불일치).
+
+> **[이 카드의 관측과 한계 — 후속 카드 t1143으로 이월]** codex-cli 0.156.1 LIVE 실행에서 두 감사 역할 모두 반환문 sha256과 판정 파일 sha256이 같게 관측되었다. 그러나 감사자가 쓰기 권한을 가진 상태(`write_denied=false`)로 실행되어 판정 파일을 감사자 자신이 썼다. 이 AC가 전제하는 "read-only 감사자가 반환하고 부모가 판정 파일을 쓴다" 경로는 실행되지 않았다. 따라서 해시 일치는 부모 기록 경로의 원문 일치 증거가 아니며, 이 AC는 AC-DHR-012와 함께 이 카드에서 충족되지 않는다. 증거: `.moai/reports/t1100/ac023-evidence.json`. 기대값과 판정식은 바꾸지 않는다.
 
 세션 기록에 하위 에이전트 반환문이 남지 않으면 테스트는 출력에 `NOT_RUN`을 찍지 않고 `ac023-evidence.json`에 `"not_run": true`만 기록하며(같은 jsonl을 읽는 AC-DHR-012 판정식이 이 사유로 `false`가 되지 않게 한다), 이 AC는 `NOT_RUN`이다(반환문을 얻을 수 없으면 원문 일치를 판정하지 않는다). 실행 명령은 AC-DHR-012의 실행 명령이다(그 명령이 `ac023-evidence.json`도 먼저 지운다).
 

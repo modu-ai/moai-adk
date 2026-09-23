@@ -184,7 +184,7 @@ REQ-DHR-013의 축 목록과 같다. 각 축은 근거를 갖는다.
 
 | 축 | Codex 역할 TOML로 강제 가능? | 매핑 | 근거 |
 |---|---|---|---|
-| `sandbox` | `sandbox_mode` 3값(`read-only`, `workspace-write`, `danger-full-access`) | `enforced` | 필드 수용: measured(`agents-codex.yaml:57-73`, codex-cli 0.147.0 P-01 — 허용값 목록과 잘못된 값이면 역할 파일 전체가 버려짐). 쓰기 강제: AC-DHR-012 전까지 미측정(아래 문단) |
+| `sandbox` | 역할 TOML은 `sandbox_mode` 3값(`read-only`, `workspace-write`, `danger-full-access`)을 받아들인다. 그러나 하위 에이전트 역할은 부모 세션의 sandbox를 물려받으며, 역할 TOML의 `sandbox_mode`로는 강제되지 않는다(measured, codex-cli 0.156.1) | 하위 에이전트 역할: 강제 불가(부모 세션 sandbox 상속). 정정 전 표기는 `enforced`였다 | 필드 수용: measured(`agents-codex.yaml:57-73`, codex-cli 0.147.0 P-01 — 허용값 목록과 잘못된 값이면 역할 파일 전체가 버려짐). 수용은 강제가 아니다. 쓰기 강제: measured 불성립(codex-cli 0.156.1, AC-DHR-012 LIVE와 판별 탐침 2회 — 아래 정정 문단) |
 | `write-path-scope` | 불가. 3값 중 경로 단위가 없음 | `UNSUPPORTED` | measured: 위와 같은 허용값 집합 |
 | `shell` | 역할 TOML에서 shell 사용을 끄는 필드를 찾지 못함 | `UNSUPPORTED` | unmeasured |
 | `mcp-server` | 역할별 `[mcp_servers.<name>]` 테이블로 서버를 부여할 수 있음. 부여하지 않은 역할이 프로젝트 `config.toml`의 전역 등록을 물려받는지는 측정되지 않음 | 제한 종류별로 하나씩(REQ-DHR-013). 부여: `enforced`. 거부: `UNSUPPORTED` | 부여 measured: `agents-codex.yaml:196-207`(0.147.0, 배열형 거부·테이블형 등록). 생성된 12개 중 7개 TOML에 테이블 있음(`grep -l '^\[mcp_servers.moai\]'`). 거부 unmeasured |
@@ -193,6 +193,13 @@ REQ-DHR-013의 축 목록과 같다. 각 축은 근거를 갖는다.
 | `web` | 역할별 웹 허가 필드 없음. 웹 접근은 전역 설정 | `UNSUPPORTED` | documented: `agents-codex.yaml` `per-agent-web-grants` 항목 |
 
 `sandbox` 축의 `enforced`는 "Codex가 이 필드와 값을 받아들인다"는 관측에 근거한다. `read-only` 역할에서 shell 명령의 쓰기가 실제로 막히는지는 측정하지 않았다. AC-DHR-012의 LIVE 항목이 측정한다. 그 전까지 "read-only가 쓰기를 막는다"는 가설이며, REQ-DHR-013에 따라 런타임 차단 주장은 REQ-DHR-014의 LIVE 증거에만 기댄다.
+
+**측정 결과에 따른 정정 (card t1100, codex-cli 0.156.1).** 위 가설은 `spawn_agent` 경로에서 성립하지 않았다. 측정 조건은 `codex exec`, `approval_policy=never`다.
+
+- AC-DHR-012 LIVE: 역할 TOML이 `sandbox_mode = "read-only"`인 `plan-auditor`와 `sync-auditor`를 하위 에이전트로 띄웠더니 둘 다 `sandbox_policy.type=workspace-write`로 실행되었고 탐침 쓰기가 성공했다(`denied=false`, `probe_exists=true`). 같은 역할 TOML의 `developer_instructions`와 `model_reasoning_effort`(`high`)는 적용되었다. 역할 파일은 로드되었고 sandbox만 적용되지 않았다. 증거: `.moai/reports/t1100/ac012-evidence.json`, `ac012-live.jsonl`.
+- 판별 탐침 2회(`.moai/reports/t1100/m8-sbx/`): (1) 부모를 `config.toml`로 `workspace-write`에 두고 `-s` 없이 `plan-auditor`(read-only TOML)를 띄우면 하위 에이전트는 `workspace-write`였고 쓰기가 허용되었다. (2) 부모를 `-s read-only`로 띄우고 `manager-docs`(workspace-write TOML)를 띄우면 하위 에이전트는 `read-only`였고 쓰기가 거부되었다("operation not permitted").
+- 결론: 하위 에이전트는 부모 세션의 sandbox를 물려받는다. 역할 TOML의 `sandbox_mode`는 부모보다 좁히지도 넓히지도 못한다. 이 결론은 원래 read-only였던 `mission-governor`, `super-advisor`에도 똑같이 적용된다.
+- 따라서 `sandbox` 축의 `enforced` 매핑은 하위 에이전트 역할에 대해 근거를 잃는다. 이 문서는 그 축을 "강제 불가(부모 세션 sandbox 상속)"로 고쳐 적는다. 방출기의 축 계약(`agents-codex.yaml`의 `axis: sandbox`, `mapping: enforced`)과 생성된 TOML은 이 카드에서 고치지 않았다. 계약과 코드를 맞추는 일은 후속 카드 t1143의 몫이다.
 
 `UNSUPPORTED` 보고 집합은 고정 목록이 아니라 계약에서 계산한다. 어떤 역할의 계약이 어떤 축에서 제한을 요구하고, 그 축이 위 표에서 `UNSUPPORTED`이면 (역할, 축)이 보고 집합에 들어간다(AC-DHR-011).
 
@@ -206,6 +213,8 @@ REQ-DHR-013의 축 목록과 같다. 각 축은 근거를 갖는다.
 | sync-auditor | workspace-write | **read-only**(REQ-DHR-015) | 없음(Bash로 판정 파일 작성) |
 | manager-spec, manager-develop, manager-docs, manager-git, manager-design, manager-lead, builder-harness, e2e-tester | workspace-write | 유지 | Write, Edit. manager-lead만 Agent 보유 |
 
+정정 주: 위 표의 `sandbox_mode` 열은 생성된 TOML에 적힌 값이다. 하위 에이전트로 띄운 역할의 실제 sandbox는 이 값이 아니라 부모 세션의 sandbox다(§C.1 정정 문단, codex-cli 0.156.1). `mission-governor`, `super-advisor`의 "read-only 유지"도 `spawn_agent` 경로에서는 런타임에 강제되지 않는다.
+
 Codex의 12개 역할은 MoAI 11개 + `mission-governor`다. CLAUDE.md의 12개(MoAI 11개 + 내장 `Explore`)와 구성이 다르다.
 
 ### C.3 감사 역할의 Codex 예외 (REQ-DHR-015)
@@ -213,6 +222,8 @@ Codex의 12개 역할은 MoAI 11개 + `mission-governor`다. CLAUDE.md의 12개(
 설계 §10 원문(`reports/moai-dual-harness-full-design-20260922.md:177`): "역할별 권한을 호스트가 표현하지 못하면 더 넓은 권한을 조용히 부여하지 않는다. 외부 worker의 sandbox로 강제할 수 있는지 먼저 검증하고 불가능하면 해당 역할을 차단한다."
 
 감사 역할에 필요한 쓰기는 보고·판정 경로뿐인데 Codex sandbox는 경로 단위 제한(`write-path-scope`)을 표현하지 못한다. 그래서 `workspace-write`는 필요보다 넓다. 리드 결정 (a)(출처와 한계는 `plan.md` §B)에 따라 Codex에서 두 역할을 `read-only`로 두고, 판정·보고 파일은 부모 lane 오케스트레이터가 감사자의 반환문 그대로 기록한다. 쓰기 범위를 sandbox가 강제하므로 설계 §10의 "차단" 분기로 가지 않는다.
+
+**정정 주 (측정, codex-cli 0.156.1).** 바로 앞 문장의 전제, 즉 감사 역할의 쓰기를 sandbox가 강제한다는 전제는 `spawn_agent` 경로의 런타임에서 성립하지 않는다. 하위 에이전트는 부모 세션의 sandbox를 물려받고, 역할 TOML의 `read-only`는 적용되지 않았다(§C.1 정정 문단). 따라서 D6 (a)의 read-only 감사자 전제는 이 경로에서 충족되지 않으며, 이 카드에서 AC-DHR-012는 알려진 FAIL로 기록된다. 감사자를 별도의 최상위 `codex exec -s read-only`로 실행하는 경로는 후속 카드 t1143으로 넘긴다. 설계 §10의 "해당 역할 차단" 분기는 이 카드에서 실행하지 않는다(리드 결정). 위 결정 기록 문장은 이력으로 그대로 둔다.
 
 변경 범위:
 
