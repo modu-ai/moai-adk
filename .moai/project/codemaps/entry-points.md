@@ -6,6 +6,7 @@
 **재측정 트리**: worktree `.claude/worktrees/t869`, 브랜치 `WT-codemaps-refresh`, HEAD `a851b205c`, 2026-09-18 — § `main()`, § Cobra 명령 트리의 모든 수치와 등록 목록, § 훅의 개수 네 가지(설정 엔트리 38, 셸 래퍼 48, 이벤트 서브커맨드 26, `Register` 30), § MCP 서버 표면 전체. 훅 절의 부가 `RunE` 목록은 다시 대조하지 않았습니다. § HOME 상태·웹 콘솔·CI 종료 코드 절은 이번 변경과 무관해 앞 판을 이어받았습니다.
 **정기 재측정**: worktree `.claude/worktrees/t1069`, 브랜치 `WT-graph-restamp`, HEAD `0314801c2`, 2026-09-22 — § Cobra 명령 트리의 등록 수치 세 개(자기 파일 등록 파일 70 불변, `AddCommand` 219→220, `rootCmd.AddCommand` 65→66, `root.go init()` 30→31)와 그 판에서 새로 더해진 숨은 명령 1개(스킬 제안 앵커 — 이후 card t1083이 철수), init 위자드 질문 4→5, § 훅과 § 웹 콘솔의 신규 seam 단락. 훅의 개수 네 가지(38·48·26·30)와 § MCP 서버 표면(도구 30), § HOME 상태 절, § CI 종료 코드 절은 같은 명령으로 재확인해 변동이 없었습니다.
 **부분 재측정**: worktree `.claude/worktrees/t1083`, 브랜치 `WT-jev-guard-green`, sync-phase HEAD `dd19e6b90`, 2026-09-22 — card t1083(SPEC-JEV-GUARD-001)이 Consumer B의 숨은 스킬 제안 명령을 철수하며 § Cobra 명령 트리의 세 수치를 다시 봤습니다(`root.go init()` `rootCmd.AddCommand` 31→30, 비테스트 `AddCommand(` 220→219, `rootCmd.AddCommand(` 66→65, 자기 파일 등록 파일 70 불변 — 수치는 비테스트 파일만 대상으로 센 값: `find internal/cli -name '*.go' -not -name '*_test.go' -print0 | xargs -0 grep -h 'AddCommand(' | wc -l` = 219, 같은 형태에 `rootCmd\.AddCommand(` = 65). § MCP 서버 표면(도구 수)과 § 훅·§ 웹 콘솔 절은 이 카드 변경과 무관해 손대지 않았습니다.
+**부분 재측정**: worktree `.claude/worktrees/t1092`, 브랜치 `WT-codemaps-restamp`, base `08113ff0f`, 2026-09-23 — 카드 t1092, 앵커 `598e8f748` 이후 착지분을 반영. § MCP 서버 표면의 도구 수 30→36(신규 `factory_msg_{send,list,body,receipt,status}` 5개 + `jev_ask` 1개, 목록·신규 절 갱신)과 § Cobra 명령 트리에 `moai worktree new <name>` 신규 서브커맨드 서술을 더했습니다. § Cobra 명령 트리의 등록 수치(`AddCommand` 카운트 등)는 이번 변경에서 움직이지 않아(신규 서브커맨드는 `worktree` 자식 패키지의 `WorktreeCmd.AddCommand`이지 루트 3수치가 세는 자리가 아님) 다시 재지 않았습니다. § `main()`·§ 훅·§ 웹 콘솔·§ HOME 상태·§ CI 종료 코드 절은 이 카드 변경과 무관해 손대지 않았습니다.
 
 ---
 
@@ -68,6 +69,12 @@ root.go Execute()
      기계적 형태이며, 어떤 프로젝트 설정 키도 이 verb를 구동하지 않습니다(사용자 HOME에
      쓰는 일을 프로젝트 설정이 요청하게 두지 않는다).
    - `chain`(`newChainCmd()`, `root.go:220`) — 워크트리 세션 origin-trail 원장 조회·정리.
+   - **이 판에서 `worktree` 아래 신규 서브커맨드가 더했다** — `moai worktree new <name>`
+     (`internal/cli/worktree/new.go`)은 기존 `materializeSessionWorktree`(cc.go)를 그대로
+     호출하는 얇은 어댑터로, `.claude/worktrees/<name>` 자리에 harness-neutral L1 워크트리
+     하나만 만들고 진입·base·path·tmux·team·BODP 등 은퇴된 동작은 되살리지 않는다.
+     이름은 traversal·경로 구분자가 없는 단일 leaf 문자열로 검증된다. 생성 뒤 진입은 별도
+     런처(`moai cc -w <name>` / `EnterWorktree`) 몫이다.
    - (철수) 숨은 스킬 제안 명령 1개 — SPEC-JEV-GUARD-001(card t1083)이 Consumer B를
      철수하며 등록도 함께 뺐습니다. 측정 게이트 통과 전에는 재등록될 수 없습니다(§ `modules.md` Jev 계열).
 2. **자기 파일의 `init()`에서 스스로 등록** — `AddCommand`를 호출하는 파일이 **70개**입니다
@@ -191,15 +198,22 @@ agent-stop-audit 선례대록대로 침묵하고 계속합니다.
 - **명령**: `internal/cli/mcp_server.go`의 `newMCPServerCmd()` — `root.go`에서 등록. stdio
   JSON-RPC이고 `mark3labs/mcp-go` SDK는 전송만 담당합니다. **기본 off**이며 `.mcp.json`
   프로비저닝은 opt-in입니다.
-- **도구 수**: `mcp_server.go` 안 `add(...)` 호출 **30회**(그중 28개는 이름 리터럴,
-  2개는 상수 경유 — `claudeAuditToolName`과 `auditMultiToolName`). 카탈로그
-  `internal/mcp/catalog.go`도 **30개**를 선언하며 두 수가 일치합니다.
+- **도구 수**: `mcp_server.go` 안 `add(...)` 호출 **35회** + `registerJevAskTool(add)`를 통한
+  1회(총 **36**), 그중 대부분은 이름 리터럴이고 2개는 상수 경유 — `claudeAuditToolName`과
+  `auditMultiToolName`. 카탈로그 `internal/mcp/catalog.go`도 `Name:` 선언 **36개**를 가지며
+  두 수가 일치합니다(이 판에서 30→36, 아래 신규 6개 몫).
 - **도구 목록**: `session_list`, `goal_status`, `goal_arm`, `spec_progress`, `verify_snapshot`,
   `verify_trend`, `spec_audit`, `spec_drift`, `audit_cache`,
   `codex_{audit,setup,task,job_status,job_result,job_cancel}`, `claude_audit`,
   `glm_{task,job_status,job_result,job_cancel,audit}`, `audit_multi`,
   `session_msg_{register,list,send,poll}`,
+  `factory_msg_{send,list,body,receipt,status}`, `jev_ask`,
   `graph_{file_api,find_code,trace_calls,shortest_path}`.
+- **이 판에서 신규 6개**: `factory_msg_{send,list,body,receipt,status}`(`internal/factorymsg` 위의
+  factory 전용 런-스코프 메시지 브로커 표면 — 발신은 현재 MCP 서버 프로세스의 세션/PID로
+  귀속되고, `factory_msg_body`가 반환하는 본문만 신뢰되지 않는 데이터로 취급된다)와 `jev_ask`
+  (`workflow.jev.enabled` 뒤에 게이트된 표시 전용 TypeSafe System One 판단 — 게이트가 꺼져
+  있으면 요청을 조립하지 않는다. `internal/cli/mcp_jev.go`).
 - **가드**: `mcp.yaml`에서 도구별 활성화를 읽고, `add()` 헬퍼의 첫 인자가 `mcp.NewTool` 이름 및
   카탈로그와 일치해야 한다는 계약을 가드 테스트가 강제합니다
   (`mcp_annotation_guard_test.go`, `mcp_boundary_test.go`).

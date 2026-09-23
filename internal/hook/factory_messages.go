@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"log/slog"
 	"os"
 	"strings"
 	"time"
@@ -31,6 +32,16 @@ func factoryHookRoot(input *HookInput) string {
 	}
 	return input.CWD
 }
+
+// closeFactoryHookStore closes a broker handle on a hook path. By the time it
+// runs the hook's answer is decided and hooks fail open, so a close failure is
+// logged rather than turned into a hook error.
+func closeFactoryHookStore(s *factorymsg.Store) {
+	if err := s.Close(); err != nil {
+		slog.Warn("factory hook: message broker close failed", "error", err)
+	}
+}
+
 func registerFactorySessionStartPeer(ctx context.Context, input *HookInput) string {
 	return registerFactoryHookPeer(ctx, input, factoryPeerBindSessionStart)
 }
@@ -71,7 +82,7 @@ func registerFactoryHookPeer(ctx context.Context, input *HookInput, mode factory
 	if err != nil {
 		return "factory messaging degraded: " + err.Error()
 	}
-	defer s.Close()
+	defer closeFactoryHookStore(s)
 	want := factorymsg.Peer{ProjectKey: homestate.ProjectKey(root), RunID: runID, Backend: backend, Role: role, Slot: slot, SessionUUID: input.SessionID, Generation: 1, PID: ownerPID, ProcessStart: start}
 	if current, peerErr := s.Peer(ctx, input.SessionID); peerErr == nil {
 		if current.ProjectKey == want.ProjectKey && current.RunID == want.RunID && current.Backend == want.Backend && current.Role == want.Role && current.Slot == want.Slot && current.PID == want.PID && current.ProcessStart == want.ProcessStart {
@@ -112,7 +123,7 @@ func factoryHookBatch(ctx context.Context, input *HookInput, event EventType) (s
 	if err != nil {
 		return "", false, "degraded: " + err.Error()
 	}
-	defer s.Close()
+	defer closeFactoryHookStore(s)
 	p, err := s.Peer(ctx, input.SessionID)
 	if err != nil {
 		return "", false, "unbound-session"

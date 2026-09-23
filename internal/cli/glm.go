@@ -233,7 +233,12 @@ func runGLM(cmd *cobra.Command, args []string) error {
 			return runErr
 		}
 		defer restoreRun()
-		_ = kanban.RecordFactoryRunStart(launchProjectRoot(), os.Getenv(config.EnvMoaiKanbanID), kanban.BackendGLM, entry.Spec)
+		// Same recording as the cc lead: the kanban store AND the factory state
+		// a lane's -f lane-<n> join resolves. Recording only the former left
+		// every GLM-led run unjoinable (NO_ACTIVE_FACTORY).
+		if err := recordFactoryRunStart(launchProjectRoot(), os.Getenv(config.EnvMoaiKanbanID), kanban.BackendGLM, entry.Spec); err != nil {
+			return fmt.Errorf("record factory run: %w", err)
+		}
 		defer exportKanbanLaunchFacts(entry.Spec, kanban.BackendGLM)()
 		var leadName string
 		filteredArgs, leadName = appendLeadName(filteredArgs, launchProjectRoot(), cmd.ErrOrStderr())

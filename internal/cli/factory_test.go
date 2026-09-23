@@ -921,10 +921,20 @@ func TestGLM_FactoryWorkerEntry(t *testing.T) {
 	// via launchProjectRoot -> resolveProjectDir ($CLAUDE_PROJECT_DIR or cwd),
 	// a resolver the findProjectRootFn stub does not intercept — redirect it to
 	// a temp sandbox so the registry write stays out of the package cwd.
-	t.Setenv(config.EnvClaudeProjectDir, t.TempDir())
+	root := t.TempDir()
+	t.Setenv(config.EnvClaudeProjectDir, root)
+	t.Setenv("MOAI_HOME", t.TempDir())
 
 	clearFactoryTestEnv(t)
 	c := installFactoryLaunchSeam(t)
+
+	// A lane joins an existing factory run and fails closed with
+	// NO_ACTIVE_FACTORY when none is active, so the fixture records the run a
+	// lead would have started before the lane enters.
+	const run = "run-glm-lane-entry"
+	if err := recordFactoryRunStart(root, run, kanban.BackendGLM, ""); err != nil {
+		t.Fatalf("record factory run: %v", err)
+	}
 
 	buf := new(bytes.Buffer)
 	glmCmd.SetOut(buf)
@@ -932,10 +942,45 @@ func TestGLM_FactoryWorkerEntry(t *testing.T) {
 	if err := runGLM(glmCmd, []string{"-f", "lane-3"}); err != nil {
 		t.Fatalf("runGLM(-f lane-3): %v", err)
 	}
+	if c.runID != run {
+		t.Errorf("%s at launch = %q, want the active run %q", config.EnvMoaiKanbanID, c.runID, run)
+	}
 	if c.worker != "lane-3" {
 		t.Errorf("MOAI_FACTORY_WORKER at launch = %q, want lane-3", c.worker)
 	}
 	if c.cap != "10" {
 		t.Errorf("%s at launch = %q, want 10 (the per-lane cap)", config.EnvClaudeCodeMaxConcurrentSubagents, c.cap)
+	}
+}
+
+// TestGLM_FactoryLeadRunIsJoinableByLane drives both halves of a GLM factory
+// through runGLM in one project: the run a bare -f lead starts must be the
+// active run a -f lane-<n> join resolves. A lead that records its run only in
+// the kanban store leaves the lane with NO_ACTIVE_FACTORY.
+func TestGLM_FactoryLeadRunIsJoinableByLane(t *testing.T) {
+	root := t.TempDir()
+	t.Setenv(config.EnvClaudeProjectDir, root)
+	t.Setenv("MOAI_HOME", t.TempDir())
+
+	clearFactoryTestEnv(t)
+	c := installFactoryLaunchSeam(t)
+
+	buf := new(bytes.Buffer)
+	glmCmd.SetOut(buf)
+	glmCmd.SetErr(buf)
+	if err := runGLM(glmCmd, []string{"-f"}); err != nil {
+		t.Fatalf("runGLM(-f): %v", err)
+	}
+	leadRun := c.runID
+	if leadRun == "" {
+		t.Fatalf("the GLM lead launched without a factory run id")
+	}
+
+	clearFactoryTestEnv(t)
+	if err := runGLM(glmCmd, []string{"-f", "lane-3"}); err != nil {
+		t.Fatalf("runGLM(-f lane-3) after a GLM lead started run %q: %v", leadRun, err)
+	}
+	if c.runID != leadRun {
+		t.Errorf("lane joined run %q, want the GLM lead's run %q", c.runID, leadRun)
 	}
 }
