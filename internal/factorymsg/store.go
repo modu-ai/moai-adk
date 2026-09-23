@@ -44,6 +44,10 @@ const (
 var safeID = regexp.MustCompile(`^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$`)
 var ErrEndpointLaunchPending = errors.New("factory endpoint is launch-pending")
 
+// ErrStalePeer rejects a caller that is not the current endpoint of its lane,
+// including a superseded generation of a re-registered lane.
+var ErrStalePeer = errors.New("stale or unregistered peer")
+
 const launchPendingSessionPrefix = "launch-pending:"
 
 type Peer struct {
@@ -71,8 +75,11 @@ type Claim struct {
 }
 type Status struct {
 	Pending, Claimed, Acknowledged, DeadLetter int
-	Capability, NextDelivery                   string
-	Lanes                                      []LaneStatus `json:"lanes"`
+	// Superseded counts pending or claimed messages whose recipient endpoint
+	// is no longer current; they are not counted as Pending or Claimed.
+	Superseded               int
+	Capability, NextDelivery string
+	Lanes                    []LaneStatus `json:"lanes"`
 }
 
 // LaneStatus keeps process liveness separate from unobserved model activity.
@@ -185,6 +192,10 @@ func OpenExistingWithDeadline(projectRoot, runID string, deadline time.Duration)
 		_ = db.Close()
 		return nil, err
 	}
+	if err := ensureSchema(ctx, db); err != nil {
+		_ = db.Close()
+		return nil, fmt.Errorf("upgrade factory message broker: %w", err)
+	}
 	return s, nil
 }
 
@@ -228,6 +239,10 @@ func OpenWithDeadline(projectRoot, runID string, deadline time.Duration) (*Store
 	if _, err = db.ExecContext(ctx, schema); err != nil {
 		_ = db.Close()
 		return nil, fmt.Errorf("initialize factory message broker: %w", err)
+	}
+	if err = ensureSchema(ctx, db); err != nil {
+		_ = db.Close()
+		return nil, fmt.Errorf("upgrade factory message broker: %w", err)
 	}
 	if err = os.Chmod(path, 0o600); err != nil {
 		_ = db.Close()
@@ -554,6 +569,10 @@ func validDisposition(d string) bool {
 }
 func newID() string { var b [16]byte; _, _ = rand.Read(b[:]); return hex.EncodeToString(b[:]) }
 func (s *Store) verifyPeer(ctx context.Context, p Peer) error {
+	return s.verifyPeerOn(ctx, s.db, p)
+}
+
+func (s *Store) verifyPeerOn(ctx context.Context, q queryer, p Peer) error {
 	if p.ProjectKey == "project" {
 		p.ProjectKey = s.projectKey
 	}
@@ -564,12 +583,12 @@ func (s *Store) verifyPeer(ctx context.Context, p Peer) error {
 		return ErrEndpointLaunchPending
 	}
 	var n int
-	err := s.db.QueryRowContext(ctx, `SELECT count(*) FROM peers WHERE slot=? AND session_uuid=? AND generation=? AND pid=? AND process_start=?`, p.Slot, p.SessionUUID, p.Generation, p.PID, p.ProcessStart).Scan(&n)
+	err := q.QueryRowContext(ctx, `SELECT count(*) FROM peers WHERE slot=? AND session_uuid=? AND generation=? AND pid=? AND process_start=?`, p.Slot, p.SessionUUID, p.Generation, p.PID, p.ProcessStart).Scan(&n)
 	if err != nil {
 		return err
 	}
 	if n != 1 {
-		return errors.New("stale or unregistered peer")
+		return ErrStalePeer
 	}
 	return nil
 }
@@ -785,24 +804,30 @@ func (s *Store) SettleReceiptControls(ctx context.Context, p Peer) (int, error) 
 }
 func (s *Store) Status(ctx context.Context) (Status, error) {
 	st := Status{Capability: "hook-boundary", NextDelivery: "pending-until-next-turn"}
-	rows, err := s.db.QueryContext(ctx, `SELECT state,count(*) FROM messages WHERE project_key=? AND run_id=? GROUP BY state`, s.projectKey, s.runID)
+	// A message is superseded when its recipient endpoint is no longer the
+	// current one: Send only addresses current endpoints, so a missing match
+	// means the lane re-registered after the message was queued.
+	rows, err := s.db.QueryContext(ctx, `SELECT m.state, EXISTS(SELECT 1 FROM peers p WHERE p.session_uuid=m.recipient_session AND p.generation=m.recipient_generation), count(*) FROM messages m WHERE m.project_key=? AND m.run_id=? GROUP BY 1,2`, s.projectKey, s.runID)
 	if err != nil {
 		return st, err
 	}
 	defer rows.Close()
 	for rows.Next() {
 		var state string
+		var current bool
 		var n int
-		if err := rows.Scan(&state, &n); err != nil {
+		if err := rows.Scan(&state, &current, &n); err != nil {
 			return st, err
 		}
-		switch state {
-		case "pending":
-			st.Pending = n
-		case "claimed":
-			st.Claimed = n
-		case "acknowledged":
-			st.Acknowledged = n
+		switch {
+		case (state == "pending" || state == "claimed") && !current:
+			st.Superseded += n
+		case state == "pending":
+			st.Pending += n
+		case state == "claimed":
+			st.Claimed += n
+		case state == "acknowledged":
+			st.Acknowledged += n
 		}
 	}
 	if err := rows.Err(); err != nil {
