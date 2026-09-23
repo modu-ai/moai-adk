@@ -358,3 +358,27 @@ M1 raised package coverage (+3.5pp); the package-level shortfall vs 85% predates
 ### AC-FLH-008 narrowed (lead option a)
 
 SPEC revision `745ae0e6d` (v0.5.2): same-key duplicate only within the same recipient generation; resend after BOUND uses a new key; schema unchanged; sender-side Send vs recipient-side `DispositionDuplicate` separated. Evidence `.moai/reports/t1082/ac008-idempotency-check.md`. Plan-audit hash cache invalidated by this body edit; no re-audit requested.
+
+## §K Lane record after M2 (2026-09-23)
+
+### Coverage, side by side (lead request)
+
+| Tree | factorymsg package | Card-added files |
+|---|---|---|
+| pre-M1 `92c932cac` (git archive → scratch, `go test -cover ./internal/factorymsg/`) | 64.5% | — |
+| post-M1 `32b384917` | 68.0% | handoff.go 85.3% · factory_lane_handoff.go 80.0% |
+| post-M2 `b56b41898` (manager-develop measurement, M2 section) | 70.4% | handoff.go 86.0% · handoff_relocation.go 95.8% · factory_lane_handoff_switch.go 86.8% · mcp_codex.go card-added funcs 89.1% · factory_lane_handoff.go 80.0% |
+
+Card-added file below 85%: `internal/cli/factory_lane_handoff.go` (80.0%; lowest func `createHandoffTarget` 61.9%). Raise it or record the reason before run closes. The package-level shortfall predates this card.
+
+### M2/M3 boundary (lane decision, option A)
+
+AC-FLH-003 and AC-FLH-004 both require observing BOUND, and BOUND exists only in M3's atomic rebind (REQ-FLH-008, design.md §6). plan.md moved the headless BOUND and both named tests to M3 at `3c6725fbb`; AC bodies unchanged. Rationale recorded in the local report `.moai/reports/t1082/ac008-idempotency-check.md` (reports are local, not tracked). M3's checklist starts with AC-FLH-003 and AC-FLH-004.
+
+### Idempotency-basis neutrality
+
+SPEC `1e753b7eb` (v0.5.4): statements asserting the key basis is unchanged were replaced by "t1082 does not change the idempotency basis; the basis is owned by t1100". AC-FLH-008 now holds under either basis, and its fixtures must not rely on `sender_session` being in the uniqueness key. The earlier line in this file saying "schema unchanged" (AC-FLH-008 narrowed entry) is historical for v0.5.2.
+
+### Reports untracked
+
+`.moai/reports/t1082/` (48 files) untracked at `db6529b95`: `.moai/reports/*` is ignored on purpose. Reports stay local and are exported to the primary checkout at close, verified with `diff -r`.
