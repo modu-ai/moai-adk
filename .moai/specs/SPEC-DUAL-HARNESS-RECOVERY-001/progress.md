@@ -200,6 +200,91 @@ FAIL — TestFactoryHookBenchmarkBudget (MOAI_FACTORY_BENCH=1 필요, 기준 트
 
 `TestFactoryUserPromptSubmitRebindsLaunchPendingPeer`는 기준 트리(`git archive e503d07a4`를 scratch에 풀어 실행)에서도 간헐 실패한다. 실패 원인은 200ms 훅 바인드 기한 안의 `context deadline exceeded`다. 같은 부하에서 기준·변경 테스트 바이너리를 번갈아 12회씩 돌린 결과 기준 FAIL 4/12, 변경 FAIL 3/12(load average 약 26~34). 이 변경이 만든 실패로 보지 않는다.
 
+### M3 — 배선 소유 기록, 저널, 배선 잠금 (REQ-DHR-001 ~ 004, 006)
+
+증거 디렉터리는 gitignore 대상이므로 판정 근거를 값으로 적는다.
+
+커밋:
+
+| 커밋 | 내용 |
+|---|---|
+| `b9b425db0` | 리드 게이트 ① 특성 테스트 `TestIdemScopeMigrationPreservesForeignV1Tables` (t1082 v1 DDL이 얹힌 DB의 이관) |
+| `206a0b701` | manifest: `generated_managed` provenance, `FileEntry.Parts`(kind/key/origin/hash/region) |
+| `78ab5b83d` | codexwiring: 배선 잠금, 저널 쓰기 경로(P1~P6, D1/D2), 복구, Lstat 경계, 부분 origin 규칙 |
+| `3f74a5f9e` | cli: update 경로의 lock-held 보고, enable의 lock-held·conflict 비영 종료, doctor 저널 보고(읽기 전용) |
+
+AC 판정(명령은 `acceptance.md`의 것을 그대로 실행, HEAD `3f74a5f9e`, 작업 트리 깨끗함):
+
+| AC | 판정 출력 | 증거 파일 | pass / fail / skip 이벤트 |
+|---|---|---|---|
+| AC-DHR-001 | `true` | `.moai/reports/t1100/ac001.jsonl` | 11 / 0 / 0 |
+| AC-DHR-002 | `true` | `.moai/reports/t1100/ac002.jsonl` | 11 / 0 / 0 (하위 10건: P0~P6, P3_user_modified, D1, D2) |
+| AC-DHR-021 | `false` | `.moai/reports/t1100/ac021.jsonl` | 4 / 0 / 1 — `disable` 하위 테스트가 M4 차단으로 skip |
+| AC-DHR-022 | `true` | `.moai/reports/t1100/ac022.jsonl` | 5 / 0 / 0 |
+
+AC-DHR-021은 PASS가 아니다. `moai tool disable codex`(REQ-DHR-005)가 M4 범위라 이 마일스톤에 없다. `disable` 하위 테스트는 `t.Skip("BLOCKED on M4: …")`로 남겼고 판정식은 skip을 `false`로 센다. M4가 disable 명령을 만들면서 이 하위 테스트를 채운다. 복구 진입점 자체(`codexwiring.Recover`)는 이미 있고 enable·update 하위 테스트가 그 경로를 지난다.
+
+변이(작업 트리에서 임시 수정 후 원복, 원복은 파일 비교로 확인):
+
+- AC-DHR-001: 테스트 안의 변이 표(`writeGuards`)로 rename 직전 재확인 제거, 기록 후 대조 제거, Lstat 검사 제거 — 셋 다 각 테스트의 `mutant_*` 하위 테스트에서 "탐지 안 됨"으로 관측되고, 정상 경로는 탐지됨.
+- AC-DHR-022: `WiringLockRelPath`를 `.moai/.update.lock`으로 바꾼 변이(배선 잠금 대신 update 잠금을 다시 잡음) → `update_holds_update_lock` FAIL: `refresh under the update lock did not refresh (warn=warning: Codex wiring not refreshed: lock held by another process (.moai/.update.lock); …)`. 나머지 셋은 PASS.
+- origin 규칙(`TestCodexWiringPartOrigins`): 증거 무시 변이 → `unknown_with_sidecar_evidence` FAIL(`recorded "preexisting", want unknown`), 기록 유지를 created에만 한정한 변이 → `preexisting_without_evidence` FAIL(`second pass promoted preexisting to "unknown"`).
+- 리드 게이트 ① 특성 테스트: 이관 중 `DELETE FROM lane_endpoint_tombstones` 변이 → FAIL(`foreign v1 tables changed`), 이관 건너뛰기 변이 → FAIL(`sender_slot columns=0`).
+
+RED 증거(E8):
+
+- codexwiring 새 테스트는 구현 전 컴파일 RED: `undefined: PartKeyMCPTable`, `undefined: passOptions`, `undefined: wireWith`, `undefined: ErrWiringConflict` 등, `FAIL … [build failed]`.
+- doctor 읽기 전용 보고는 구현 전 단언 RED: `doctor report lacks ".codex/hooks.json"`, `… ".codexwiring-orphanentry"`, `… "moai tool enable codex"`, `… "incomplete"`, `--- FAIL: TestCodexWiringRecoveryEntryPoints/doctor_readonly`.
+- 편차(정직하게 적는다): `TestCodexWiringLockUnderUpdateLock`, `TestCodexWiringRecoveryEntryPoints`의 enable/update, `TestWiringLockOwnership`, `TestInspectJournalReadOnly`, `TestCodexWiringPartOrigins`, `TestGeneratedManagedPartsRoundTrip`은 해당 코드를 먼저 쓴 뒤 작성했다(test-after). 대신 위 변이로 각 테스트가 공허하지 않음을 확인했다.
+
+품질 게이트(HEAD `3f74a5f9e` 트리):
+
+```text
+$ go test ./internal/codexwiring ./internal/manifest -count=1
+ok  	github.com/modu-ai/moai-adk/internal/codexwiring	0.565s
+ok  	github.com/modu-ai/moai-adk/internal/manifest	0.284s
+$ go test -cover ./internal/codexwiring ./internal/manifest -count=1
+codexwiring coverage: 85.9% (기준 트리 b9b425db0: 89.6%)  manifest coverage: 88.3%
+$ go vet ./internal/codexwiring ./internal/manifest ./internal/cli
+(출력 없음, exit 0)
+$ GOOS=windows GOARCH=amd64 go build ./internal/codexwiring/ ./internal/manifest/ ./internal/cli/
+(출력 없음, exit 0)
+$ golangci-lint run ./internal/codexwiring/... ./internal/manifest/... ./internal/cli/...
+25 issues: errcheck 25 — 기준 트리 b9b425db0(git archive → scratch)와 같은 수·같은 파일 분포, 새 지적 0
+$ unset MOAI_KANBAN … && go test ./internal/cli -run 'Codex|Doctor|ToolEnable|UpdateCodex|Wiring|RunInit|InitCodex|Harness' -count=1
+pass 1542, skip 10, FAIL 1 — TestCodexSpawn_RealAssemblyThroughStubTmux: 세션 환경의 MOAI_KANBAN_BACKEND/MOAI_FACTORY_WORKER가 unset 목록 밖이라 새어 들어간 것. 그 셋까지 지우고 단독 재실행하면 ok. 이 변경과 무관.
+$ unset MOAI_KANBAN … MOAI_KANBAN_BACKEND MOAI_FACTORY_WORKER MOAI_FACTORY_WORKERS && go test ./internal/cli -run 'FactoryOperational|FactoryMixed|LaunchPending|CodexLauncher|McpFactory|FactoryMsg' -count=1
+exit 0
+```
+
+보존: `wire_test.go`, `sidecar_test.go`, `hooks_test.go`, `configtoml_test.go`, `statusline_test.go`는 수정하지 않았고 전부 통과한다(REQ-CW-005/006).
+
+SPEC 재량 안의 결정:
+
+- 저널은 `.moai/state/codex-wiring-journal.json` 한 파일(JSON 문서, 잠금 아래 원자적 교체). 새 패스는 복구 뒤 해결된 항목을 비우고 그 패스의 항목만 남긴다. 잠금은 `.moai/state/codex-wiring.lock`(pid + 프로세스 시작 지문). 죽은 pid·재사용 pid는 정리, 살아 있거나 판별 불가면 held, 내용을 못 읽는 잠금 파일은 1분 동안 held.
+- 저널 항목 상태: `staged`, `complete`, `conflict`, `diverged`, `discarded`. 복구는 `staged`만 분류한다.
+- 파일을 다시 쓸 필요가 없는 패스(바이트 동일)는 저널 없이 manifest 부분 기록만 갱신한다(파일이 바뀌지 않으므로 중단 지점이 없음).
+- `whole-file` created 기록은 파일이 MoAI의 마지막 쓰기와 같을 때만 해시를 따라간다. 다른 무엇이 파일을 바꿨으면 그 주장을 버리고 부분 단위로 내려간다(사용자 handler가 섞인 파일을 unwire가 통째로 지우지 않게 하려는 것).
+- 복구 진입점: `Wire`·`RefreshWiring`(enable과 update 경로)이 쓰기 전에 잠금 아래서 복구를 돈다. `RefreshWiring`은 배선 파일이 없어도 저널이 있으면 복구만 돈다. disable은 M4가 `codexwiring.Recover`를 부른다.
+- doctor 보고는 `codexwiring.InspectJournal`(잠금·쓰기 없음)을 쓴다. Codex가 없는 머신의 비배선 프로젝트에서도 미완료 저널은 보고한다(그 경우 다른 Codex 소견은 내지 않음).
+- `MOAI_T1100_EVIDENCE_DIR` skip 규약은 이번 AC 테스트에 적용하지 않았다. `acceptance.md` §A가 그 증거 채널을 AC-DHR-012·018·020·023에만 두고, AC-DHR-001·002·021·022 명령은 그 변수를 넘기지 않는다. 적용하면 네 판정식이 모두 skip으로 `false`가 된다 — 리드 판정 대상.
+
+리드 게이트 ② — M2 검증에서 이름을 잡지 못한 `internal/cli` FAIL:
+
+- 테스트 이름: `TestFactoryOperationalFixtureUsesProductionInit`
+- 실패 출력: `factory_operational_fixture_test.go:151: Codex UserPromptSubmit did not run built binding path: {"hookSpecificOutput":{"hookEventName":"UserPromptSubmit","additionalContext":"factory messaging degraded: context deadline exceeded"}}`
+- 재현(HEAD `3e7115d3d`, M2 부분집합 명령 그대로 `-json`): 1회 실행 FAIL, 실패 테스트는 이것 하나(통과 75).
+- 반복: 단독 실행을 HEAD와 기준 트리(`git archive e503d07a4`를 scratch에 풀어 실행 — 이 트리의 체크아웃이 아님)로 번갈아 6회씩. HEAD FAIL 3/6, 기준 FAIL 1/6, 실패 메시지는 양쪽 같음. load average가 69→23으로 내려가는 동안 뒤쪽 실행은 양쪽 모두 통과.
+- 코드 경로: 훅 바인드 전체가 200ms 기한(`internal/hook/user_prompt_submit.go:111`, `factoryHookInspectionDeadline`) 안에서 `ProbeProcessIdentity`, `ValidateActiveRun`, `factorymsg.Open`, `Peer`, `RegisterPeer`를 돈다. `git log e503d07a4..HEAD` 중 이 경로에 닿는 것은 `internal/factorymsg/store.go`·`schema_migrate.go`로, `Open`마다 카탈로그 조회 한 번(`ensureSchema`)이 더해졌다.
+- 귀속: 기존 부하 민감 간헐 실패다(기준 트리에서도 같은 메시지로 재현). M2는 같은 예산 안에 조회 한 번을 더해 노출을 조금 늘렸을 수 있으나, 3/6 대 1/6은 표본이 작아 가를 수 없다. 결정적 실패가 아니므로 이 카드에서 고치지 않았다.
+
+리드 게이트 ③ — `TestFactoryUserPromptSubmitRebindsLaunchPendingPeer` intermittent failure — t1109 소관, 기존 트리에서도 재현 (base 4/12, changed 3/12); not fixed in this card.
+
+리드 게이트 ① — t1082 스키마 호환(병합하지 않고 확인만):
+
+- 1차(t1082 tip `b08569bac`, merge-base `7755dce38`): `git merge-tree --write-tree HEAD WT-factory-lane-worktree-handoff` → 충돌 없음(트리 `c30db17fd`). 그 트리를 scratch에 풀어 `go build`(factorymsg·hook·cli)와 `go vet ./internal/factorymsg` 통과, `go test ./internal/factorymsg` ok. 의미 술어("t1082 DDL이 이미 적용된 v1 DB에서 t1100 이관이 행 수 대조를 통과하고 새 테이블을 보존한다")는 `TestIdemScopeMigrationPreservesForeignV1Tables`로 이 브랜치와 병합 트리 양쪽에서 PASS(`open`, `open_existing` 두 진입점). 역순(t1082가 먼저 develop에 착지) 경우도 같은 모양이다 — t1082만 가진 바이너리가 만든 DB는 v1 messages + 핸드오프 테이블이고, 병합 스키마의 `CREATE TABLE IF NOT EXISTS`는 기존 테이블을 건드리지 않으며 이관은 `sender_slot` 열 유무로만 판단한다(스키마 버전 상수에 의존하지 않음).
+- 2차(이 카드 작업 중 t1082 tip이 `2c22fb10a`로 이동): 같은 명령이 `CONFLICT (content): Merge conflict in internal/factorymsg/store.go`를 낸다. 충돌 두 곳 — `verifyPeer`(이쪽 `ErrStalePeer` ↔ 저쪽 `s.staleOrUnregistered(ctx, p)`), `Send`의 멱등 충돌 재조회(이쪽 lane slot 범위 ↔ 저쪽 `lane_message_releases` 원 수신자 조회). `handoffSchema` DDL은 두 tip 사이에 바뀌지 않았고, 새로 `handoffBindSchema` 테이블 셋이 더해졌다(특성 테스트 픽스처에는 없음). 리드 지시에 따라 고치지 않았다 — 결함과 선택지는 완료 보고의 blocker 절에 있다.
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 _<pending run-phase>_
