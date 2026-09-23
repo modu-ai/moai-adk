@@ -351,7 +351,7 @@ moai glm [-p profile] [-- claude-args...]
 |--------|------|
 | `-c, --continue` | 以前のセッションを継続 |
 | `-m, --model <model>` | モデル選択の上書き |
-| `--chrome` / `--no-chrome` | Chrome MCP のトグル |
+| `--chrome` / `--no-chrome` | Claude Code にそのまま渡します。ランチャーはどちらも自動では付けないため、`--no-chrome` を指定しない限り `/chrome` で接続できます |
 
 > `auto` 権限モードは GLM (サードパーティプロバイダー) では使えません — `moai cc` でのみ対応します。
 

@@ -88,17 +88,17 @@ Git 자동화 모드·프로바이더는 마법사에서 묻지 않습니다. `m
 에이전트에 할당할 AI 모델 티어를 선택합니다 — 토크노믹스의 핵심 설정입니다. 어떤 티어를 고르느냐에 따라 같은 작업의 청구액이 크게 갈립니다.
 
 ```bash
-? 성능 티어 선택:
-▸ Medium - Opus 5 (high~low) + Sonnet (low, single-shot rows only)
-  High - Opus 5 (max~medium) + Sonnet (low, single-shot rows only)
-  Low - Opus 5 (medium~low) + Sonnet (low, docs/e2e/single-shot rows)
+? 모델 정책 선택:
+  Max - Opus 5.5 (high~medium) + Sonnet (low, 문서/단발성 작업) — Max $200 플랜
+▸ Medium (권장) - Opus 5.5 (high~low) + Sonnet (low, 문서/단발성 작업) — Max $100 플랜
+  Low - Opus 5.5 (high~low) + Sonnet (low, 문서/E2E/단발성 작업) — Plus $20 플랜
 ```
 
 | 티어 | 특징 |
 |------|------|
-| **High** | 최고 품질 — 호출 빈도가 가장 낮은 두 에이전트에 `max` 추론 깊이 |
-| **Medium** (기본값) | 품질과 비용의 균형 — 비용/점수 곡선의 무릎 |
-| **Low** | 작업당 최저 비용 — 에이전틱 에이전트는 Opus `low` effort로 내려갑니다 |
+| **Max** | 품질 우선 — Medium과 같되 `builder-harness`와 `e2e-tester` 두 에이전트만 한 단계 높은 effort로 돌립니다 |
+| **Medium** (기본값·권장) | 품질과 비용의 균형 — 비용/점수 곡선의 무릎 |
+| **Low** | 작업당 최저 비용 — 에이전틱 에이전트는 대부분 Opus `medium`으로 내려갑니다 |
 
 이 설정은 `.moai/config/sections/llm.yaml` 의 `performance_tier` 필드에 저장되며, `profile` 필드(프로필 매트릭스 열)의 legacy 별칭으로 읽힙니다. `--profile high|medium|low` 플래그로 직접 지정하면 `profile` 필드에 저장됩니다. 프로필별 에이전트 model+effort 매핑은 [프로필 매트릭스](/ko/advanced/profile-matrix/) 페이지를 참조하세요.
 

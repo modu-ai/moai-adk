@@ -139,7 +139,7 @@ CW バーの横に付くマーカーは、statusline が送る最も重要な勧
 ```mermaid
 flowchart TD
     A["コンテキスト使用率の測定<br/>(raw 使用量基準)"] --> B{"ウィンドウサイズクラス"}
-    B -- "1M コンテキスト<br/>(Opus 5, Sonnet 5, Fable, GLM-5.3)" --> C{"使用率 50% 以上?"}
+    B -- "1M コンテキスト<br/>(Opus 5.5, Sonnet 5, Fable, GLM-5.3)" --> C{"使用率 50% 以上?"}
     B -- "200K 標準<br/>(Haiku, 旧 Sonnet)" --> D{"使用率 90% 以上?"}
     C -- "いいえ" --> N["マーカーなし<br/>(安全区間)"]
     D -- "いいえ" --> N

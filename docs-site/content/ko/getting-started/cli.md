@@ -353,7 +353,7 @@ moai glm [-p profile] [-- claude-args...]
 |--------|------|
 | `-c, --continue` | 이전 세션 이어가기 |
 | `-m, --model <model>` | 모델 선택 덮어쓰기 |
-| `--chrome` / `--no-chrome` | Chrome MCP 토글 |
+| `--chrome` / `--no-chrome` | Claude Code 에 그대로 전달합니다. 런처가 스스로 붙이지 않으므로 `--no-chrome` 을 넘기지 않는 한 `/chrome` 으로 연결할 수 있습니다 |
 
 > `auto` 권한 모드는 GLM(제3자 제공자)에서는 사용할 수 없습니다 — `moai cc` 에서만 지원됩니다.
 

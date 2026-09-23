@@ -211,6 +211,7 @@ MoAI-ADK는 두 가지 장치로 이 일관성을 지킵니다.
 | 모델 | 컨텍스트 | 최소 캐시 토큰 |
 |------|----------|----------------|
 | Claude Fable 5 | 1M | 512 |
+| Claude Opus 5.5 | 1M | 512 |
 | Claude Opus 5 | 1M | 1,024 |
 | Claude Sonnet 5 | 1M | 1,024 |
 | Claude Opus 4.7 | 1M | 2,048 |

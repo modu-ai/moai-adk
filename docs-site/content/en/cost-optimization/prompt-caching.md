@@ -229,6 +229,7 @@ no error).
 | Model | Context | Minimum cache tokens |
 |------|----------|----------------|
 | Claude Fable 5 | 1M | 512 |
+| Claude Opus 5.5 | 1M | 512 |
 | Claude Opus 5 | 1M | 1,024 |
 | Claude Sonnet 5 | 1M | 1,024 |
 | Claude Opus 4.7 | 1M | 2,048 |

@@ -151,6 +151,7 @@ semi-auto 下，等待任务开工批准或回答问题很容易停超过 5 分�
 | 模型 | 上下文 | 最小缓存代币 |
 |------|----------|----------------|
 | Claude Fable 5 | 1M | 512 |
+| Claude Opus 5.5 | 1M | 512 |
 | Claude Opus 5 | 1M | 1,024 |
 | Claude Sonnet 5 | 1M | 1,024 |
 | Claude Opus 4.7 | 1M | 2,048 |
