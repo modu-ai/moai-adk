@@ -37,7 +37,7 @@ func init() {
 }
 
 var glmCmd = &cobra.Command{
-	Use:   "glm [-p profile] [-k [SPEC-ID] | -k --name <role> | -f [N] | -f lane-<n>] [-- claude-args...]",
+	Use:   "glm [-p profile] [-k [SPEC-ID] | -k --name <role> | -f | -f worker | -f worker-<n>] [-- claude-args...]",
 	Short: "Launch Claude Code with GLM backend",
 	Long: `Launch Claude Code with GLM backend.
 
@@ -75,23 +75,26 @@ Kanban Mode:
                                 free number (plan-1, plan-2, ...).
 
 Factory Mode (dedicated -f entry):
-  -f, --factory [N]            Enter as the LEAD of a factory run with N
-                                numbered lanes; N omitted = one lane
-                                (lane-1), grown afterwards with the
-                                incremental form below. The lead routes
-                                operator-picked cards to free lanes over
-                                cross-session messages — each card goes
-                                WHOLE to one lane, which carries it through
+  -f, --factory                Enter as the LEAD of a factory run (one
+                                worker, worker-1, grown afterwards with the
+                                forms below). The lead routes operator-picked
+                                cards to free workers over cross-session
+                                messages — each card goes WHOLE to one
+                                worker, which carries it through
                                 plan -> run -> sync in-session.
-  -f lane-<n>                  Launch exactly one additional lane — lane
-                                n — and connect it to the lead socket of the
-                                running factory. A number whose label is held by a
-                                live session is bumped to the next free number.
-  -k <N> / -k <N> --name lane-<i>
+  -f worker                    Join the running factory as a WORKER: the
+                                next free worker-<n> label is claimed for
+                                this session.
+  -f worker-<n>                Launch exactly one additional worker —
+                                worker n — and connect it to the lead socket
+                                of the running factory. A number whose
+                                label is held by a live session is
+                                bumped to the next free number.
+  -k <N> / -k <N> --name worker-<i>
                                 The v1.2.0 unified -k factory shapes, still
-                                valid: -k N is the lead of an N-lane run,
-                                -k N --name lane-<i> is lane i of it (a
-                                bare -k --name lane-<i> defaults to 8).
+                                valid: -k N is the lead of an N-worker run,
+                                -k N --name worker-<i> is worker i of it (a
+                                bare -k --name worker-<i> defaults to 8).
                                 One entry token per launch: -k and -f
                                 together is an error.
 
@@ -115,9 +118,9 @@ Examples:
   moai glm -p work         # Use 'work' profile with GLM
   moai glm -k              # Kanban lead on GLM: seeds the chain
   moai glm -k --name run           # Kanban companion on GLM (the GLM-recommended role)
-  moai glm -f              # Factory lead on GLM: one lane (lane-1)
-  moai glm -f 4            # Factory lead on GLM: announces lane-1..lane-4
-  moai glm -f lane-2       # Add lane 2 to the running factory (GLM backend)
+  moai glm -f              # Factory lead on GLM: one worker (worker-1)
+  moai glm -f worker       # Join the running factory as the next free worker (GLM backend)
+  moai glm -f worker-2     # Add worker 2 to the running factory (GLM backend)
 
 Mixed Claude/GLM teammate roles require verified teammate routing support.
 Use 'moai cc' to switch back to Claude backend.`,
@@ -256,7 +259,7 @@ func runGLM(cmd *cobra.Command, args []string) error {
 		defer restoreRun()
 		// See cc.go: a live-held lane number is bumped, and the bumped value
 		// must reach the backend argv.
-		finalLabel, claimErr := resolveFactoryWorkerName(launchProjectRoot(), factoryLabel, cmd.ErrOrStderr())
+		finalLabel, claimErr := resolveFactoryWorkerName(launchProjectRoot(), factoryLabel, entry.FactoryAutoNumber, cmd.ErrOrStderr())
 		if claimErr != nil {
 			return claimErr
 		}
