@@ -96,3 +96,40 @@ func TestCleanReinstall_SnapshotWarningGoesToErrOut(t *testing.T) {
 		t.Errorf("snapshot warnings on Out = %d, want 0 (warnings belong on the error stream)\nout:\n%s", n, out)
 	}
 }
+
+// TestCleanReinstall_HandEditedUnrenderableNamesSurvive pins sync-audit O1:
+// the clean-reinstall Step 5 render context must take its names through
+// loadUpdateIdentity, not the raw config loaders. With the raw loaders a
+// hand-edited "$TEAM" name reaches the renderer's unexpanded-token check and
+// the reinstall halts at step 5; through loadUpdateIdentity the name renders
+// empty, the reinstall completes, and the user's value survives.
+func TestCleanReinstall_HandEditedUnrenderableNamesSurvive(t *testing.T) {
+	const project, user = "$TEAM", "{{.Version}}"
+	root := initIdentityProject(t)
+	setIdentityName(t, sectionsFile(root, "project.yaml"), identityProjectName, project)
+	setIdentityName(t, sectionsFile(root, "user.yaml"), identityUserName, user)
+
+	writeTestFile(t, root, ".moai/config/sections/system.yaml", "moai:\n    version: v2.16.1\n")
+	writeTestFile(t, root, ".claude/agents/moai/manager-strategy.md", "retired\n")
+
+	var out, errOut bytes.Buffer
+	result, err := runCleanReinstall(context.Background(), root, CleanReinstallOptions{
+		Out:              &out,
+		ErrOut:           &errOut,
+		RunMigrateAgency: (&stubMigrateRunner{}).Run,
+	})
+	if err != nil {
+		t.Fatalf("runCleanReinstall: %v\nout: %s\nerr: %s", err, out.String(), errOut.String())
+	}
+	if !result.Detected.IsV2 {
+		t.Fatalf("fixture was not detected as v2; the reinstall body never ran (details: %v)", result.Detected.SignalDetails)
+	}
+	for _, f := range []struct{ file, key, want string }{
+		{"project.yaml", "project", project},
+		{"user.yaml", "user", user},
+	} {
+		if got := sectionValue(t, sectionsFile(root, f.file), f.key, "name"); got != f.want {
+			t.Errorf("after reinstall: %s.name = %q, want %q", f.key, got, f.want)
+		}
+	}
+}
