@@ -55,7 +55,10 @@ func foreignSnapshot(t *testing.T, db *sql.DB) map[string][]string {
 		}
 		_ = rows.Close()
 	}
-	cat, err := db.Query(`SELECT type,name,COALESCE(sql,'') FROM sqlite_master WHERE name LIKE 'lane_%' ORDER BY name`)
+	// The catalogue is limited to the objects the foreign DDL defines: tables a
+	// newer store's own schema adds on open (the handoff-bind tables) are not
+	// foreign objects the migration could have altered.
+	cat, err := db.Query(`SELECT type,name,COALESCE(sql,'') FROM sqlite_master WHERE name IN ('lane_handoffs','lane_handoffs_one_open','lane_handoff_events','lane_handoff_relocations','lane_endpoint_tombstones') ORDER BY name`)
 	if err != nil {
 		t.Fatal(err)
 	}

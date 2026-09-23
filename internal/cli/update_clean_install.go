@@ -445,6 +445,7 @@ func runCleanReinstall(ctx context.Context, projectRoot string, opts CleanReinst
 	// handling is deliberately unchanged.
 	homeDir, _ := userHomeDirFn()
 	goBinPath := detectGoBinPathForUpdate(homeDir)
+	projectName, userName := loadUpdateIdentity(projectRoot)
 	tmplCtx := template.NewTemplateContext(
 		template.WithGoBinPath(goBinPath),
 		template.WithResolvedMoaiPath(resolveMoaiExecutable()),
@@ -456,6 +457,10 @@ func runCleanReinstall(ctx context.Context, projectRoot string, opts CleanReinst
 		// Step 4 removes only deprecated paths, so git-strategy.yaml is still on
 		// disk here; without the mode the reinstall renders the template default.
 		template.WithGitMode(config.LoadGitMode(projectRoot)),
+		// Card t1139: render project.yaml / user.yaml with the names the
+		// project already carries, for the same reason as the mode above.
+		template.WithProject(projectName, projectRoot),
+		template.WithUser(userName),
 	)
 
 	if deployErr := deployWithMirrorNotice(ctx, deployer, projectRoot, mgr, tmplCtx, errOut); deployErr != nil {
@@ -474,6 +479,13 @@ func runCleanReinstall(ctx context.Context, projectRoot string, opts CleanReinst
 	// would read the difference between the two renders as a user edit —
 	// re-applying a stale value the user never chose.
 	backup.StageDeployedMCPSnapshot(projectRoot, mgr, errOut)
+	// Card t1139: record the section render this deploy wrote as the next
+	// update's merge BASE, before Step 5.5 restores the user's values over it
+	// (a post-restore snapshot records user values as BASE and the next merge
+	// drops every carried customization). Best-effort non-blocking; a failure
+	// is a warning, so it goes to errOut (out carries stdout in production),
+	// matching the template-sync path.
+	writeTemplateSnapshotBestEffort(projectRoot, errOut)
 	_, _ = fmt.Fprintln(out, "[clean-reinstall] Embedded templates reinstalled")
 
 	// ---------------------------------------------------------------
@@ -503,10 +515,6 @@ func runCleanReinstall(ctx context.Context, projectRoot string, opts CleanReinst
 			return result, recovery.fail("step 5.5: restore .moai/config sections", restoreErr)
 		}
 		_, _ = fmt.Fprintln(out, "[clean-reinstall] .moai/config/sections/*.yaml merge-restored (user values preserved)")
-		// SPEC-UPDATE-TEMPLATE-BASE-SNAPSHOT-001 (REQ-TBS-002, Decision D4
-		// trigger #3): capture the post-restore on-disk config so the next
-		// update has a rendered BASE. Best-effort non-blocking (REQ-TBS-014).
-		writeTemplateSnapshotBestEffort(projectRoot, out)
 		// Backup-dir accumulation cap — the same pruning the normal path
 		// performs after its restore step (backup.CleanupOldBackups). Only
 		// timestamped config-backup dirs under .moai-backups/ are candidates;

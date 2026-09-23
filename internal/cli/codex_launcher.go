@@ -227,24 +227,44 @@ func defaultCodexSpawnLaunch(dir, program string, args []string) error {
 	env := os.Environ()
 	factory := factoryLaunchEnabled(env)
 	if factory || codexSpawnAnchorFn != nil {
+		runID := launchEnvValue(env, config.EnvMoaiKanbanID)
 		pid, start, identityErr := codexSpawnPaneIdentityFn(paneID)
 		if identityErr == nil && codexSpawnAnchorFn != nil {
 			// A pane left running without its lock would be an unanchored
 			// writer; close it instead.
 			if anchorErr := codexSpawnAnchorFn(pid, start); anchorErr != nil {
 				cleanupErr := codexSpawnCleanupPaneFn(paneID)
-				return fmt.Errorf("anchor spawned Codex worktree: %w", errors.Join(anchorErr, cleanupErr))
+				var clearErr error
+				if factory {
+					// REQ-002d holds on this refusal path too: no run keeps
+					// the launching process's identity.
+					clearErr = clearFactoryRunOwner(dir, runID)
+				}
+				return fmt.Errorf("anchor spawned Codex worktree: %w", errors.Join(anchorErr, cleanupErr, clearErr))
 			}
 		}
 		if identityErr == nil && factory {
 			_, identityErr = registerFactoryLaunchPending(context.Background(), dir, env, pid, start)
+		}
+		if identityErr == nil && factory {
+			// REQ-002b — the pane shape: this launcher returns and exits
+			// immediately, so the record-time stamp names a process that is
+			// already gone by the time anyone reads it. Restamp with the pane
+			// identity the resolver above already probed live, so the run row
+			// and the run's role='lead' peer name one process.
+			identityErr = stampFactoryRunOwner(dir, runID, pid, start)
 		}
 		if identityErr != nil {
 			cleanupErr := codexSpawnCleanupPaneFn(paneID)
 			if !factory {
 				return fmt.Errorf("anchor spawned Codex worktree: %w", errors.Join(identityErr, cleanupErr))
 			}
-			return fmt.Errorf("register spawned factory launch-pending endpoint: %w", errors.Join(identityErr, cleanupErr))
+			// REQ-002d — refuse, and leave no run carrying the launching
+			// process's identity: that identity is known in advance to die, and
+			// a run holding it would be retired while its session was meant to
+			// be alive.
+			clearErr := clearFactoryRunOwner(dir, runID)
+			return fmt.Errorf("register spawned factory launch-pending endpoint: %w", errors.Join(identityErr, cleanupErr, clearErr))
 		}
 	}
 	_, _ = fmt.Fprintf(os.Stdout, "Spawned pane %s running `%s` in %s\n", paneID, command, dir)
