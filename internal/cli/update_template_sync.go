@@ -698,6 +698,9 @@ func runTemplateSyncWithReporter(cmd *cobra.Command, reporter project.ProgressRe
 		}
 	}
 	renderUpdateOutcome(out, len(analysis.Files), detail, configBackupPath, th)
+	// REQ-DHR-007: a .codex/ template the target harness profile (or this
+	// version) no longer ships is reported and left in place, never deleted.
+	reportUndeployedCodexTemplates(errOut, projectRoot, mgr.Manifest().Files, restoredSet)
 	report.EmitHooksReviewGuidance(out)
 
 	_, _ = fmt.Fprintln(out)

@@ -118,7 +118,16 @@ func TestCodexWiringRecoveryEntryPoints(t *testing.T) {
 		assertRecovered(t, root)
 	})
 	t.Run("disable", func(t *testing.T) {
-		t.Skip("BLOCKED on M4: `moai tool disable codex` (REQ-DHR-005) does not exist yet; its recovery entry is codexwiring.Recover, exercised by enable and update here")
+		root := wiredProject(t)
+		interruptWiring(t, root)
+		var out, warn bytes.Buffer
+		if err := runToolDisableCodexAt(root, &out, &warn, false); err != nil {
+			t.Fatalf("disable: %v (%s)", err, warn.String())
+		}
+		assertRecovered(t, root)
+		if _, err := os.Stat(filepath.Join(root, codexwiring.HooksRelPath)); !os.IsNotExist(err) {
+			t.Fatalf("disable did not unwire after recovering: %v\n%s", err, out.String())
+		}
 	})
 	t.Run("update", func(t *testing.T) {
 		root := wiredProject(t)
