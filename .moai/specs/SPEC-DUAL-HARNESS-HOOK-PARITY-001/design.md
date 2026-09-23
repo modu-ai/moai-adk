@@ -176,7 +176,7 @@ mapping used for the goal member. The claim is narrower than "no allow without a
 does allow without a review verdict, at step 2 (`stop_hook_active`, `:71–72`) and when the review
 call errors (`:95–101`). What holds is this: at `stop_hook_active: false`, with the gate enabled, a
 reviewable change, and codex installed, neither harness allows the stop before the review call has
-completed for the current tree — on Claude the call runs in-hook, and on Codex the runner's receipt
+completed for the current tree, below the Codex-only §D3.8 cap — on Claude the call runs in-hook, and on Codex the runner's receipt
 records its outcome (`inconclusive` on a call error, mirroring `:95–101`).
 
 **Self-gates before receipts (plan-audit iter-3 R2).** A member that does not apply on Claude must
@@ -235,7 +235,7 @@ of member 1 (telemetry prune, reflection, evidence gate, `stop.go:59–79`) stay
 |---|---|---|---|
 | condition ran and failed | `unmet` | `unmet` (receipt present, failing exit) | yes (identical) |
 | condition passed | `met` → allow | `met` → allow (receipt present, exit 0, all fields equal) | yes (identical) |
-| condition not measured on this tree state | (does not arise: Claude runs it in-hook) | `unmeasured` → continuation naming the command to run | **yes, declared mapping `unmeasured` ↔ `unmet`**: both continue the turn, and neither may allow the stop |
+| condition not measured on this tree state | (does not arise: Claude runs it in-hook) | `unmeasured` → continuation naming the command to run | **yes, declared mapping `unmeasured` ↔ `unmet`**: both continue the turn, and neither may allow the stop below the Codex-only §D3.8 cap |
 | required gate (sync gate) failed, `stop_hook_active: false` | `gate_failed` → block (a fresh run, or the stored block re-delivered) | `gate_failed` → block (receipt shows fail) | yes (identical) |
 | required gate (sync gate) failed and already recorded, `stop_hook_active: true` | allow; the stored block is not re-delivered on that turn and no state changes (`sync-phase-quality-gate.sh:484–486`, header `:53–56`) | allow (fresh `fail` receipt); the receipt is not changed, and the next Stop without the flag blocks | yes (identical) |
 | required gate (sync gate) not measured, self-gate holds (HEAD is a sync-phase commit with a code delta) | (does not arise: Claude runs it in-hook) | `unmeasured` → continuation naming the gate command | yes, same declared mapping as above |
@@ -244,7 +244,7 @@ of member 1 (telemetry prune, reflection, evidence gate, `stop.go:59–79`) stay
 | codex review gate (member 6), **codex binary missing** | allow, fail-open (`codex_review_gate.go:78–80`) | allow, fail-open, **plus** a discard record and reason text naming the missing reviewer | yes (identical decision). The Codex-only diagnostic is an addition to the output, not a different decision |
 | codex review gate (member 6), codex installed, review FAIL | block (`:103–107`) | block (fresh receipt, verdict `fail`) | yes (identical) |
 | codex review gate (member 6), codex installed, review pass, inconclusive, or call error | allow (`:95–101`, `:109`) | allow (fresh receipt, verdict `pass` or `inconclusive`) | yes (identical) |
-| codex review gate (member 6), codex installed, **receipt missing or stale** | (does not arise: Claude runs the review in-hook) | `unmeasured` → continuation naming the review runner command | **yes, declared mapping `unmeasured` ↔ review ran in-hook**: at `stop_hook_active: false`, neither harness allows the stop before the review call has completed for the current tree (Claude still allows without a verdict at step 2 and on a call error, `:95–101`; the Codex runner records that error as `inconclusive`) |
+| codex review gate (member 6), codex installed, **receipt missing or stale** | (does not arise: Claude runs the review in-hook) | `unmeasured` → continuation naming the review runner command | **yes, declared mapping `unmeasured` ↔ review ran in-hook**: at `stop_hook_active: false`, neither harness allows the stop before the review call has completed for the current tree, below the Codex-only §D3.8 cap (Claude still allows without a verdict at step 2 and on a call error, `:95–101`; the Codex runner records that error as `inconclusive`) |
 | codex review gate (member 6), codex installed, `stop_hook_active: true` (receipt missing, stale, `fail`, or `pass`) | allow (step 2, `codex_review_gate.go:71–72`, before the reviewer lookup and the review call) | allow (step 2, before any receipt read) | yes (identical). Step 2 is the only bound on the step-7 continuation shared by both harnesses (§D3.3); Codex adds the §D3.8 cap |
 | sync gate (self-gate holds) or member 6 (codex installed), receipt missing or stale, **Nth consecutive `unmeasured` continuation** for the same gate, HEAD, and working-tree digest (N from §D3.8) | (does not arise: Claude runs the check in-hook) | allow, **plus** a discard record and reason text naming the gate as `unverified` and the command that was never run | **no — declared Codex-only parity deviation (§D3.8).** Not a PASS: the gate reads `unverified` (NOT_RUN class) in the verdict and the registry. These cap goldens are Codex-only and are excluded from the Claude/Codex equality comparison |
 | multi review gate (member 7), result present and blocking | block | block | yes (identical) |
@@ -252,9 +252,10 @@ of member 1 (telemetry prune, reflection, evidence gate, `stop.go:59–79`) stay
 | multi review gate (member 7), **result missing** | allow, fail-open (`multi_review_gate.go:47, :79`) | allow, fail-open, **plus** a discard record and reason text naming the missing result | yes (identical decision). The Codex-only diagnostic is an addition to the output, not a different decision |
 
 The AC-HPR-002 goldens encode this table. Any other pairing fails the golden, including a Codex
-`allow` against a Claude continuation, a Codex `unmeasured` from the goal, the sync gate, or member
-6 that allows the stop, a Codex sync gate that requires a receipt when HEAD is not a sync-phase
-commit, a member-6 allow while codex is installed and the receipt is missing or stale, a member-6
+`allow` against a Claude continuation, a Codex `unmeasured` from the goal that allows the stop, a
+Codex `unmeasured` from the sync gate or member 6 that allows the stop below the §D3.8 cap, a Codex
+sync gate that requires a receipt when HEAD is not a sync-phase commit, a member-6 allow below the
+§D3.8 cap while codex is installed and the receipt is missing or stale, a member-6
 continuation or block at `stop_hook_active: true`, a Codex sync gate that blocks on a fresh `fail`
 receipt at `stop_hook_active: true`, and a missing-result or missing-reviewer allow that writes no
 discard record.
@@ -345,6 +346,7 @@ gate id, HEAD, and working-tree digest (the §D3.6 `head` and `tree_digest` fiel
   writes an `unverified` record — the gate is never silently dropped;
 - the count **resets to 0** when a fresh receipt for the current key is read (a receipt was
   produced), or when HEAD or the working-tree digest differs from the stored key.
+- "consecutive" means the count accumulated per gate and key within the session: only the two resets above clear it, so an intervening Stop that is not `unmeasured` (a step-2 allow, a self-gate that no longer holds, a different user prompt) leaves it unchanged.
 
 `unverified` is NOT_RUN-class. The verdict record and the obligation registry read a capped gate as
 `unverified`, never as PASS (REQ-HPR-022, REQ-HPR-023); AC-HPR-019 injects it. The cap bounds the
