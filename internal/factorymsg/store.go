@@ -45,6 +45,20 @@ const (
 var safeID = regexp.MustCompile(`^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$`)
 var ErrEndpointLaunchPending = errors.New("factory endpoint is launch-pending")
 
+// ErrStalePeer reports that a peer identity no longer matches its registered
+// row (wrong generation, session, pid, or process start) or has no row at all.
+// Test with errors.Is. A richer stale error defined elsewhere can join this
+// class by implementing `Is(target error) bool` that returns true for
+// ErrStalePeer. ErrEndpointLaunchPending is deliberately a separate class: a
+// launch-pending endpoint is awaiting its first bind, not superseded.
+var ErrStalePeer = errors.New("stale or unregistered peer")
+
+// queryer is the single-row query surface shared by *sql.DB, *sql.Tx, and
+// *sql.Conn, so a check can run on whichever handle the caller holds.
+type queryer interface {
+	QueryRowContext(ctx context.Context, query string, args ...any) *sql.Row
+}
+
 const launchPendingSessionPrefix = "launch-pending:"
 
 type Peer struct {
@@ -342,17 +356,21 @@ func (s *Store) RegisterPeer(ctx context.Context, p Peer) (Peer, error) {
 		return Peer{}, err
 	}
 	defer func() { _ = tx.Rollback() }()
-	if p.Slot == "agent" {
+	// The bare `worker` sentinel (and its legacy spelling `agent`) takes the
+	// next free `worker-<n>` slot. A number is taken when a row exists under
+	// the canonical slot or either legacy spelling (`agent-<n>`, `lane-<n>`),
+	// so rows an older launcher wrote into this run keep their number.
+	if p.Slot == "worker" || p.Slot == "agent" {
 		for n := 1; ; n++ {
-			slot := fmt.Sprintf("agent-%d", n)
-			var x string
-			e := tx.QueryRowContext(ctx, `SELECT session_uuid FROM peers WHERE slot=?`, slot).Scan(&x)
-			if errors.Is(e, sql.ErrNoRows) {
-				p.Slot = slot
-				break
-			}
+			var count int
+			e := tx.QueryRowContext(ctx, `SELECT count(*) FROM peers WHERE slot IN (?,?,?)`,
+				fmt.Sprintf("worker-%d", n), fmt.Sprintf("agent-%d", n), fmt.Sprintf("lane-%d", n)).Scan(&count)
 			if e != nil {
 				return Peer{}, e
+			}
+			if count == 0 {
+				p.Slot = fmt.Sprintf("worker-%d", n)
+				break
 			}
 		}
 	}
@@ -589,7 +607,26 @@ func validDisposition(d string) bool {
 	return false
 }
 func newID() string { var b [16]byte; _, _ = rand.Read(b[:]); return hex.EncodeToString(b[:]) }
+
+// verifyPeer checks p against the registry on s.db. It must not be called
+// while the caller holds an open transaction: the store has one pooled
+// connection, so it would wait for that connection until ctx is done — and
+// with a ctx that has no deadline or cancellation, it would wait forever. Use
+// verifyPeerOn with the transaction instead.
 func (s *Store) verifyPeer(ctx context.Context, p Peer) error {
+	return s.verifyPeerOn(ctx, s.db, p)
+}
+
+// verifyPeerOn checks p against the registry using q, which may be s.db or a
+// transaction/connection the caller already holds. A mismatch or missing row
+// returns ErrStalePeer; a launch-pending session returns ErrEndpointLaunchPending.
+// Any other error — a peer that fails validation, or a failed registry query
+// (including ctx cancellation or deadline) — is returned unchanged and does
+// not match ErrStalePeer.
+//
+// @MX:ANCHOR: [AUTO] stale-peer check shared by every Send/Poll/Ack entry and by in-transaction callers
+// @MX:REASON: fan_in >= 7 via verifyPeer; the queryer seam lets tx-holding callers avoid the one-connection pool deadlock
+func (s *Store) verifyPeerOn(ctx context.Context, q queryer, p Peer) error {
 	if p.ProjectKey == "project" {
 		p.ProjectKey = s.projectKey
 	}
@@ -600,12 +637,12 @@ func (s *Store) verifyPeer(ctx context.Context, p Peer) error {
 		return ErrEndpointLaunchPending
 	}
 	var n int
-	err := s.db.QueryRowContext(ctx, `SELECT count(*) FROM peers WHERE slot=? AND session_uuid=? AND generation=? AND pid=? AND process_start=?`, p.Slot, p.SessionUUID, p.Generation, p.PID, p.ProcessStart).Scan(&n)
+	err := q.QueryRowContext(ctx, `SELECT count(*) FROM peers WHERE slot=? AND session_uuid=? AND generation=? AND pid=? AND process_start=?`, p.Slot, p.SessionUUID, p.Generation, p.PID, p.ProcessStart).Scan(&n)
 	if err != nil {
 		return err
 	}
 	if n != 1 {
-		return s.staleOrUnregistered(ctx, p)
+		return s.staleOrUnregistered(ctx, q, p)
 	}
 	return nil
 }
@@ -658,11 +695,9 @@ func (s *Store) Send(ctx context.Context, r SendRequest) (Envelope, error) {
 		var created, expires string
 		var payload []byte
 		err = s.db.QueryRowContext(ctx, `SELECT id,schema_version,project_key,run_id,kind,sender_generation,recipient_session,recipient_generation,task_ref,correlation_id,created_at,expires_at,payload FROM messages WHERE sender_session=? AND idem_key=?`, env.SenderSession, r.IdempotencyKey).Scan(&env.ID, &env.SchemaVersion, &env.ProjectKey, &env.RunID, &env.Kind, &env.SenderGeneration, &env.RecipientSession, &env.RecipientGeneration, &env.TaskRef, &env.CorrelationID, &created, &expires, &payload)
-		// A handoff release moves an envelope's recipient columns to the new
-		// generation; the request it was sent as still names the original one.
 		origSession, origGen := env.RecipientSession, env.RecipientGeneration
 		if err == nil {
-			_ = s.db.QueryRowContext(ctx, `SELECT from_session,from_generation FROM lane_message_releases WHERE message_id=?`, env.ID).Scan(&origSession, &origGen)
+			origSession, origGen = s.originalRecipient(ctx, env)
 		}
 		if err == nil && (env.Kind != r.Kind || origSession != r.To.SessionUUID || origGen != r.To.Generation || env.TaskRef != r.TaskRef || env.CorrelationID != r.CorrelationID || !bytes.Equal(payload, r.Payload)) {
 			return Envelope{}, errors.New("idempotency key collision with different request")
@@ -672,6 +707,16 @@ func (s *Store) Send(ctx context.Context, r SendRequest) (Envelope, error) {
 		return env, err
 	}
 	return env, err
+}
+
+// originalRecipient returns the recipient an existing envelope was sent to. A
+// handoff release moves the envelope's recipient columns to the new generation;
+// the request it was sent as still names the original one, recorded in
+// lane_message_releases. With no release row it is the envelope's recipient.
+func (s *Store) originalRecipient(ctx context.Context, env Envelope) (string, int64) {
+	session, gen := env.RecipientSession, env.RecipientGeneration
+	_ = s.db.QueryRowContext(ctx, `SELECT from_session,from_generation FROM lane_message_releases WHERE message_id=?`, env.ID).Scan(&session, &gen)
+	return session, gen
 }
 
 func (s *Store) recordDead(ctx context.Context, messageID, reason string) error {

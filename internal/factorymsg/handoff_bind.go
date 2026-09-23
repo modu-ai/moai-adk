@@ -48,6 +48,11 @@ func (e *StaleEndpointError) Error() string {
 	return fmt.Sprintf("stale or unregistered peer: %s; lane %s is current at %s generation %d", e.Code, e.Current.Slot, e.Current.SessionUUID, e.Current.Generation)
 }
 
+// Is places a stale-endpoint refusal in the ErrStalePeer class, so callers
+// testing errors.Is(err, ErrStalePeer) see it while errors.As and StaleEndpoint
+// still recover the redirect.
+func (e *StaleEndpointError) Is(target error) bool { return target == ErrStalePeer }
+
 // StaleEndpoint reports the stale-endpoint refusal carried by err, if any.
 func StaleEndpoint(err error) (*StaleEndpointError, bool) {
 	var stale *StaleEndpointError
@@ -81,11 +86,7 @@ type HandoffBinding struct {
 	BoundAt                    time.Time
 }
 
-type rowQuerier interface {
-	QueryRowContext(ctx context.Context, query string, args ...any) *sql.Row
-}
-
-func currentEndpoint(ctx context.Context, q rowQuerier, slot string) EndpointRef {
+func currentEndpoint(ctx context.Context, q queryer, slot string) EndpointRef {
 	ref := EndpointRef{Slot: slot}
 	if err := q.QueryRowContext(ctx, `SELECT session_uuid,generation FROM peers WHERE slot=?`, slot).Scan(&ref.SessionUUID, &ref.Generation); err != nil {
 		return EndpointRef{Slot: slot}
@@ -96,12 +97,13 @@ func currentEndpoint(ctx context.Context, q rowQuerier, slot string) EndpointRef
 	return ref
 }
 
-func staleError(ctx context.Context, q rowQuerier, code, slot string) error {
+func staleError(ctx context.Context, q queryer, code, slot string) error {
 	return &StaleEndpointError{Code: code, Current: currentEndpoint(ctx, q, slot)}
 }
 
-// Named transaction steps a StepHook observes. Each fires while the calling
-// write transaction holds the broker write lock.
+// Named transaction steps a StepHook observes. These are a test-only seam:
+// production code never observes them. Each fires while the calling write
+// transaction holds the broker write lock.
 const (
 	// StepBindBegun fires in the rebind right after its write transaction began.
 	StepBindBegun = "begun"
@@ -117,7 +119,8 @@ const (
 
 type stepHookKey struct{}
 
-// WithStepHook returns ctx carrying a transaction step observer. It is
+// WithStepHook is a test-only seam: production code never passes a step hook.
+// It returns ctx carrying a transaction step observer. It is
 // instrumentation for race tests of the handoff transactions: the hook runs at
 // each named step while the write transaction holds the broker lock, and an
 // error it returns aborts and rolls back that transaction. Production callers
@@ -126,12 +129,14 @@ func WithStepHook(ctx context.Context, hook func(step string) error) context.Con
 	return context.WithValue(ctx, stepHookKey{}, hook)
 }
 
-// HandleStats reports this broker handle's connection-pool statistics. A race
+// HandleStats is a test-only seam: production code never reads it.
+// It reports this broker handle's connection-pool statistics. A race
 // test reads it to show a racer waits on the SQLite lock while holding its own
 // connection (InUse==1) rather than queueing in a shared pool (WaitCount>0).
 func (s *Store) HandleStats() sql.DBStats { return s.db.Stats() }
 
-// SharesHandle reports whether a and b are one broker handle: the same *Store
+// SharesHandle is a test-only seam: production code never calls it.
+// It reports whether a and b are one broker handle: the same *Store
 // or the same underlying *sql.DB. Two racers sharing a handle serialize in the
 // Go pool and never reach the SQLite write-lock boundary.
 func SharesHandle(a, b *Store) bool { return a == b || a.db == b.db }
@@ -386,7 +391,7 @@ const openHandoffStates = `state IN ('RESERVED','WT_READY','SWITCH_PENDING_INTER
 // handoffPending reports whether slot has an unfinished handoff. Body claim,
 // read, disposition, ACK, and code-write authorization are refused while it
 // does (REQ-FLH-009/013).
-func handoffPending(ctx context.Context, q rowQuerier, slot string) (bool, error) {
+func handoffPending(ctx context.Context, q queryer, slot string) (bool, error) {
 	var n int
 	err := q.QueryRowContext(ctx, `SELECT count(*) FROM lane_handoffs WHERE slot=? AND `+openHandoffStates, slot).Scan(&n)
 	if err != nil && strings.Contains(err.Error(), "no such table") {
@@ -397,7 +402,7 @@ func handoffPending(ctx context.Context, q rowQuerier, slot string) (bool, error
 	return n > 0, err
 }
 
-func (s *Store) refuseWhileHandoffPending(ctx context.Context, q rowQuerier, slot string) error {
+func (s *Store) refuseWhileHandoffPending(ctx context.Context, q queryer, slot string) error {
 	pending, err := handoffPending(ctx, q, slot)
 	if err != nil {
 		return err
@@ -410,18 +415,20 @@ func (s *Store) refuseWhileHandoffPending(ctx context.Context, q rowQuerier, slo
 
 // staleOrUnregistered classifies a peer identity that is not current: a
 // tombstoned endpoint (STALE_ENDPOINT), a current session at an older
-// generation (STALE_GENERATION), or neither.
-func (s *Store) staleOrUnregistered(ctx context.Context, p Peer) error {
+// generation (STALE_GENERATION), or neither (ErrStalePeer). Every query runs on
+// q, the handle the caller holds, so a caller inside a transaction never waits
+// on the one-connection pool.
+func (s *Store) staleOrUnregistered(ctx context.Context, q queryer, p Peer) error {
 	var slot string
-	err := s.db.QueryRowContext(ctx, `SELECT slot FROM lane_endpoint_tombstones WHERE session_uuid=? AND generation=? LIMIT 1`, p.SessionUUID, p.Generation).Scan(&slot)
+	err := q.QueryRowContext(ctx, `SELECT slot FROM lane_endpoint_tombstones WHERE session_uuid=? AND generation=? LIMIT 1`, p.SessionUUID, p.Generation).Scan(&slot)
 	if err == nil {
-		return staleError(ctx, s.db, NackStaleEndpoint, slot)
+		return staleError(ctx, q, NackStaleEndpoint, slot)
 	}
 	var gen int64
-	if err := s.db.QueryRowContext(ctx, `SELECT slot,generation FROM peers WHERE session_uuid=?`, p.SessionUUID).Scan(&slot, &gen); err == nil && gen != p.Generation {
-		return staleError(ctx, s.db, NackStaleGeneration, slot)
+	if err := q.QueryRowContext(ctx, `SELECT slot,generation FROM peers WHERE session_uuid=?`, p.SessionUUID).Scan(&slot, &gen); err == nil && gen != p.Generation {
+		return staleError(ctx, q, NackStaleGeneration, slot)
 	}
-	return errors.New("stale or unregistered peer")
+	return ErrStalePeer
 }
 
 // claimMismatch classifies a claim that matched no row: a handoff that became
@@ -490,7 +497,7 @@ func (s *Store) refuseTurnRegistrationDuringHandoff(ctx context.Context, tx *sql
 }
 
 // sessionTombstoned reports whether a handoff rebind replaced this session.
-func sessionTombstoned(ctx context.Context, q rowQuerier, session string) (bool, error) {
+func sessionTombstoned(ctx context.Context, q queryer, session string) (bool, error) {
 	var n int
 	err := q.QueryRowContext(ctx, `SELECT count(*) FROM lane_endpoint_tombstones WHERE session_uuid=?`, session).Scan(&n)
 	if err != nil && strings.Contains(err.Error(), "no such table") {

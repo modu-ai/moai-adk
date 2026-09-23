@@ -139,7 +139,7 @@ PR 段落用颜色区分评审状态。`approved` 绿色、`pending` 黄色、`c
 ```mermaid
 flowchart TD
     A["测量上下文使用率<br/>(以 raw 用量为准)"] --> B{"窗口大小等级"}
-    B -- "1M 上下文<br/>(Opus 5, GLM-5.3)" --> C{"使用率 ≥50%?"}
+    B -- "1M 上下文<br/>(Opus 5.5, GLM-5.3)" --> C{"使用率 ≥50%?"}
     B -- "200K / 256K 标准<br/>(Sonnet, Haiku, Fable)" --> D{"使用率 ≥90%?"}
     C -- "否" --> N["无标记<br/>(安全区间)"]
     D -- "否" --> N

@@ -666,3 +666,41 @@ SPEC `1e753b7eb` (v0.5.4): statements asserting the key basis is unchanged were 
 ### Reports untracked
 
 `.moai/reports/t1082/` (48 files) untracked at `db6529b95`: `.moai/reports/*` is ignored on purpose. Reports stay local and are exported to the primary checkout at close, verified with `diff -r`.
+
+## Develop absorb + t1112 alignment (2026-09-23)
+
+State: `git merge --no-ff develop` (MERGE_HEAD `52a486635`, contains t1112 `987fa3e73`) onto `b34625050`. Blocked on one lead decision (below); resolved by lead decision (A), then committed — merge SHA recorded in § Merge commit and merge-tree.
+
+### Conflict resolution
+One hunk, `verifyPeerOn` mismatch branch → `return s.staleOrUnregistered(ctx, q, p)`.
+- `staleOrUnregistered(ctx, q queryer, p)` runs every query (incl. both `staleError` calls) on the caller's handle; final fallback returns `ErrStalePeer`.
+- `rowQuerier` (t1082) and `queryer` (t1112) had the identical shape; `rowQuerier` removed, all uses renamed to `queryer`.
+- `(*StaleEndpointError).Is(target) bool { return target == ErrStalePeer }` — the hook t1112 documented on `ErrStalePeer`. `errors.As` / `StaleEndpoint(err)` unchanged.
+- `Send` idempotency re-lookup: the `lane_message_releases` original-recipient read extracted into `(*Store).originalRecipient` with identical semantics (Scan on no-row leaves the envelope's recipient). Base lookup untouched for t1100.
+- No new stale-check callers.
+
+### RED → GREEN
+New tests `internal/factorymsg/stale_align_test.go`: `TestStaleEndpointErrorJoinsErrStalePeerClass`, `TestVerifyPeerOnStaleInsideOpenTxKeepsRedirect`.
+RED against the unaligned resolution (hunk = HEAD side, `staleOrUnregistered` on `s.db`), `.moai/reports/t1082/align-red.txt`:
+- `errors.Is(stale or unregistered peer: STALE_GENERATION; lane agent-1 is current at b generation 1, ErrStalePeer)=false`
+- `stale generation: verifyPeerOn(tx) err=stale or unregistered peer after 2.005905209s — waited on the pool`
+GREEN after alignment: both pass; t1112 `TestVerifyPeerOnRunsInsideOpenTx` passes (it was RED on the unaligned resolution: `took 2.001048292s`).
+
+### Blocker — t1112 exact-text pins
+Still red after alignment (`.moai/reports/t1082/align-race-factorymsg.txt`): `TestCharacterizeVerifyPeerOutcomes/wrong_generation` and `TestStalePeerOutcomeMatchesErrStalePeer` (`stale_peer_seam_test.go:27`) pin `err.Error() == "stale or unregistered peer"` for a same-session wrong-generation peer. Under t1082 that case is a STALE_GENERATION redirect whose text carries the current endpoint. The two are incompatible; `errors.Is` holds in both tests.
+- (A) Relax the two t1112 pins for the wrong-generation case to `errors.Is(ErrStalePeer)` + `StaleEndpoint` redirect (edits another card's tests).
+- (B) Make `StaleEndpointError.Error()` return the bare `ErrStalePeer` text (t1112 tests pass untouched). Downside: MCP `factory_msg_send` surfaces errors only as `toolErr` text (`internal/cli/mcp_server.go:966`), so peers lose the current-endpoint hint AC-FLH-007 requires; the hook notice reads fields and is unaffected.
+
+**Lead decision: (A).** Basis: t1112's own contract on `ErrStalePeer` (`store.go:46-50`: a richer stale error joins the class via `Is(target) bool`); (B) would erase AC-FLH-007's current-endpoint hint on the MCP path. Applied: only the wrong-generation case is loosened, in `TestCharacterizeVerifyPeerOutcomes/wrong_generation` and `TestStalePeerOutcomeMatchesErrStalePeer` — it asserts `errors.Is(err, ErrStalePeer)` and a `StaleEndpoint(err)` redirect carrying the current session and generation. Session / pid / process-start / missing-row keep their exact-text assertions; `staleText` is kept. Each changed assertion carries the one-line t1082 AC-FLH-007 comment. After (A): `go test -race -count=1 ./internal/factorymsg/...` exit 0 (`.moai/reports/t1082/align-race-factorymsg-A.txt`); ac05/ac07/ac18/ac19 re-run verbatim → `true`, exit 0.
+
+### Test-only exports (lead item ④)
+Kept exported. `internal/hook/factory_handoff_race_test.go` is package `hook` and must call the unexported hook production entry points `registerFactorySessionStartPeer` / `registerFactoryUserPromptPeer` (`internal/hook/factory_messages.go:45,49`) — the AC contract forbids test-only registration paths. It cannot move into `internal/factorymsg` (package `factorymsg` importing `hook` is an import cycle; package `factorymsg_test` cannot reach unexported hook functions), and `export_test.go` symbols are invisible to package `hook`'s test binary. Each of `WithStepHook`, `HandleStats`, `SharesHandle` and the `Step*` constant block now carries a one-line test-only-seam godoc; no non-test caller exists (grep: only the definitions).
+
+### Regressions (uncommitted merge tree)
+- `go test -race ./internal/factorymsg`: exit 1 before decision (A) — only the two t1112 text pins above; exit 0 after (A).
+- `go test -race -run 'Handoff|Factory' ./internal/hook`: exit 0. `go test -race -run 'LaneHandoff' ./internal/cli`: exit 0.
+- `go vet` (factorymsg, hook, cli) 0; `golangci-lint run` 0 (`0 issues.`); `go build ./...` 0; `GOOS=windows go build ./...` 0.
+- AC commands verbatim: ac01–ac08, ac14, ac16, ac17, ac18, ac19 → all `true`, exit 0 (`.moai/reports/t1082/ac*.jsonl`).
+
+### merge-tree vs t1100
+Not measured: it is specified after the merge commit, which is blocked.
