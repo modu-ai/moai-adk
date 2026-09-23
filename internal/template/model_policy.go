@@ -42,16 +42,16 @@ func IsValidModelPolicy(s string) bool {
 	return false
 }
 
-// ModelIDOpus5 is the canonical model ID for Claude Opus 5 — the current target
-// of the "opus" alias and the default Opus model as of Claude Code v2.1.219
-// (native 1M context). Opus 5 is priced identically to its predecessor Opus 4.8
-// ($5/$25 per MTok) while Opus 4.8 has moved to the vendor's legacy model list,
-// so the alias is advanced with no cost delta.
+// ModelIDOpus55 is the canonical model ID for Claude Opus 5.5 — the current
+// target of the "opus" alias, which requires Claude Code v2.1.280 or later.
+// Opus 5.5 has a 1M-token context window and 128K max output, is priced at
+// $4/$20 per MTok, keeps adaptive thinking always on, and defaults to the
+// `medium` effort level (other effort-capable models default to `high`).
 // Used by launcher.go to route the model and by profile translations.
-const ModelIDOpus5 = "claude-opus-5"
+const ModelIDOpus55 = "claude-opus-5-5"
 
 // ModelIDOpus48 is the superseded canonical model ID for Claude Opus 4.8, now
-// replaced by ModelIDOpus5. Retained as a named constant because historical
+// replaced by ModelIDOpus55. Retained as a named constant because historical
 // prefs files still carry it; it resolves back to the "opus" alias via
 // ModelDeprecatedCanonicalIDs (deprecated-id normalization).
 const ModelIDOpus48 = "claude-opus-4-8"
@@ -75,7 +75,7 @@ const ModelIDOpus48 = "claude-opus-4-8"
 // @MX:ANCHOR: [AUTO] ModelAliasTable — single SSOT for alias↔canonical-id mapping
 // @MX:REASON: [AUTO] fan_in >= 3 (launcher.go expandModelString + profile_setup.go normalizeModel + settings/schema.go modelOptions); hardcoding-prevention per CLAUDE.local.md §14
 var ModelAliasTable = map[string]string{
-	"opus":     ModelIDOpus5,
+	"opus":     ModelIDOpus55,
 	"sonnet":   "claude-sonnet-5",
 	"fable":    "claude-fable-5",
 	"haiku":    "claude-haiku-4-5",
@@ -95,6 +95,7 @@ var ModelDeprecatedCanonicalIDs = map[string]string{
 	"claude-opus-4-6":   "opus",
 	"claude-opus-4-7":   "opus",
 	ModelIDOpus48:       "opus",
+	"claude-opus-5":     "opus", // superseded by ModelIDOpus55
 	"claude-sonnet-4-6": "sonnet",
 }
 
