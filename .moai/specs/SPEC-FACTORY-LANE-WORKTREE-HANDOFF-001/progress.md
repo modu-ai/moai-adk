@@ -874,6 +874,44 @@ The absorbed develop includes t1109 "launch-pending bind budget split". Whether 
 - Neither new named test has a behavioral RED; discrimination rests on the five mutants.
 - The full `internal/cli` and `internal/hook` suites were not run on the merged tree (CI owns them).
 
+## §L Sync-phase documentation pass (2026-09-24, manager-docs)
+
+### Claim
+
+- `status: in-progress` is unchanged. No transition (`draft→in-progress`, `in-progress→implemented→completed`) was performed. The rule cited: `spec.md` HISTORY 0.5.10 already records the lead's decision that status stays `in-progress` while AC-FLH-012/013 are `NOT_RUN → t1145` — this sync-phase pass did not re-decide that; it followed it.
+- No body content in `spec.md` / `plan.md` / `acceptance.md` / `design.md` / `research.md` was modified (Status Transition Ownership Matrix, `.claude/rules/moai/development/spec-frontmatter-schema.md` § Forbidden ownership crossings).
+- One `CHANGELOG.md` `[Unreleased]` entry was added, naming the SPEC as internal infrastructure with no production trigger, naming `moai factory handoff abandon-lane --slot <slot>` as the sole operator-reachable surface, and naming the two behavior changes live today (launcher-resume `STALE_ENDPOINT` refusal, SessionStart endpoint-replaced notice reuse).
+
+### Evidence
+
+```text
+grep -c 'SPEC-FACTORY-LANE-WORKTREE-HANDOFF-001' CHANGELOG.md   (before edit)
+0
+
+grep -oE 'AC-([A-Z0-9]+-)*[0-9]+' .moai/specs/SPEC-FACTORY-LANE-WORKTREE-HANDOFF-001/acceptance.md | sort -u | wc -l
+20
+
+grep -n 'STALE_ENDPOINT\|BindLaunchPending' internal/hook/factory_handoff_bind.go internal/hook/factory_messages.go
+internal/hook/factory_handoff_bind.go:92:func factoryHandoffRegistrationNotice(err error, slot string) (string, bool) {
+internal/hook/factory_messages.go:98:  p, bound, bindErr := s.BindLaunchPending(ctx, want)
+internal/hook/factory_messages.go:100: if notice, ok := factoryHandoffRegistrationNotice(bindErr, slot); ok {
+```
+
+### Baseline-attribution
+
+- Read against `.claude/worktrees/t1082` HEAD `b741e6b3c` (card t1082, branch `WT-factory-lane-worktree-handoff`), this run, this tree.
+- File paths cited in the CHANGELOG entry (`internal/cli/factory_handoff_recover.go`, `internal/factorymsg/handoff_bind.go`, `internal/hook/factory_handoff_bind.go`, `internal/hook/factory_messages.go`) were verified to exist on this tree before the entry was written.
+- Production-caller absence for `prepareLaneHandoff` / `switchLaneHandoffInteractive` / `switchLaneHandoffHeadless` / `recoverLaneHandoff` is carried forward from `spec.md`'s "Known limitation" section (0.5.10) and `progress.md` § M4/M5 lane records; not re-measured in this pass.
+
+### Gaps
+
+- No fresh sync-audit was run as part of this pass (documentation-only; status does not transition, so the sync-phase quality gate that governs `implemented → completed` does not apply).
+- Whether the sync/close convention would ever permit `completed` for a SPEC with a MUST-PASS AC left `NOT_RUN` was not decided here — the lead's 0.5.10 decision already settled that this SPEC stays `in-progress`, so the question did not need re-deciding.
+
+### Residual-risk
+
+- The CHANGELOG entry's description of the abandon-lane command's current uselessness (nothing to act on until t1145) will go stale the moment any production trigger lands; a future SPEC/card should update or supersede this entry rather than read it as still current once that changes.
+
 ## § M5 lane record — LIVE mixed-factory verification (2026-09-24, manager-develop, cycle_type=tdd)
 
 Base HEAD `7cbaf966c`. Result: **LIVE FAIL (NOT_RUN on both rows)**. Only the non-LIVE gate-quality test was delivered. No model was called.
