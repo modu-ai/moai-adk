@@ -9,8 +9,9 @@ import (
 )
 
 // DiscardBranchCount is the number of output-transform branches this adapter
-// carries that drop or repair output: the three inert keys, plus the PreToolUse
-// permissionDecision branch (card t590). It is shared with the test that
+// carries that drop, convert, or repair output: the three inert keys, plus the
+// PreToolUse permissionDecision branch (card t590; its ask/defer arm converts
+// to a fail-closed deny since SPEC-DUAL-HARNESS-HOOK-PARITY-001 M2c). It is shared with the test that
 // enumerates them, so adding a branch without a matching test case fails
 // rather than passing silently (SPEC-CODEX-HOOK-ADAPTER-001 AC-REQ-3b).
 const DiscardBranchCount = 4
@@ -27,16 +28,24 @@ const defaultBlockReason = "blocked by a MoAI hook (no reason supplied)"
 const defaultDenyReason = "denied by a MoAI hook (no reason supplied)"
 
 // preToolUseDropDecisions are the permissionDecision values Codex refuses on
-// PreToolUse, per codex-rs hooks/src/engine/output_parser.rs
-// (unsupported_pre_tool_use_hook_specific_output): allow without updatedInput
-// is "unsupported permissionDecision:allow", ask is always rejected, and defer
-// fails deserialization. Dropping the decision degrades the output to a
-// no-opinion `{}`, which hands the choice to Codex's own approval flow — the
-// harness-native reading of "no opinion". deny is deliberately absent: with a
-// non-empty permissionDecisionReason it is valid and passes through
-// byte-identical (card t590).
+// PreToolUse that are safe to drop, per codex-rs
+// hooks/src/engine/output_parser.rs (unsupported_pre_tool_use_hook_specific_output):
+// allow without updatedInput is "unsupported permissionDecision:allow".
+// Dropping it degrades the output to a no-opinion `{}`, which hands the choice
+// to Codex's own approval flow — no looser than the allow it replaces (card
+// t590). deny is deliberately absent: with a non-empty
+// permissionDecisionReason it is valid and passes through byte-identical.
 var preToolUseDropDecisions = map[string]bool{
 	"allow": true,
+}
+
+// preToolUseNeedsInputDecisions are the Claude permissionDecision values that
+// mean "a human must decide" (normalized needs_input). Codex refuses both — ask
+// always, defer at deserialization — and dropping them to `{}` would let Codex
+// proceed under a non-prompting approval policy (REQ-HPR-007). They are
+// translated to a fail-closed deny naming the required input instead, and the
+// conversion is recorded (SPEC-DUAL-HARNESS-HOOK-PARITY-001 M2c, design.md §D5).
+var preToolUseNeedsInputDecisions = map[string]bool{
 	"ask":   true,
 	"defer": true,
 }
@@ -83,8 +92,9 @@ var additionalContextEvents = map[hook.EventType]bool{
 // Two rewrites exist. The inert-key rewrite (continue:false → decision:block
 // with a filled reason, systemMessage → additionalContext where a channel
 // exists) is event-blind. The PreToolUse decision rewrite (card t590) drops
-// the decision shapes Codex's PreToolUse parser refuses and repairs the deny
-// shape it accepts only with a reason — see normalizePreToolUseDecision.
+// the allow shape Codex's PreToolUse parser refuses, converts ask/defer to a
+// fail-closed deny (M2c), and repairs the deny shape it accepts only with a
+// reason — see normalizePreToolUseDecision.
 //
 // It returns the mapped payload and the list of messages that could not be
 // delivered on this event. A caller that ignores the discards violates REQ-3:
@@ -190,7 +200,7 @@ func needsMapping(payload map[string]json.RawMessage, event hook.EventType) bool
 		return false
 	}
 	decision, _ := hso["permissionDecision"].(string)
-	if preToolUseDropDecisions[decision] {
+	if preToolUseDropDecisions[decision] || preToolUseNeedsInputDecisions[decision] {
 		return true
 	}
 	if decision == "deny" {
@@ -208,9 +218,12 @@ func needsMapping(payload map[string]json.RawMessage, event hook.EventType) bool
 // the Codex PreToolUse parser accepts (card t590, contract: codex-rs
 // hooks/src/engine/output_parser.rs):
 //
-//   - allow without updatedInput, ask, and defer are dropped entirely — each
-//     is refused by Codex, and the no-opinion `{}` hands the choice to Codex's
-//     own approval flow. Dropping is announced through the returned discards.
+//   - allow without updatedInput is dropped entirely — Codex refuses it, and
+//     the no-opinion `{}` hands the choice to Codex's own approval flow.
+//     Dropping is announced through the returned discards.
+//   - ask and defer (normalized needs_input) become a fail-closed deny through
+//     TranslateCodex, whose reason names the required input; the conversion is
+//     announced through one discard record (M2c, design.md §D5).
 //   - deny with a blank permissionDecisionReason gains the default reason (a
 //     blank-reason deny is rejected outright; the fill keeps the deny a deny).
 //   - a permissionDecisionReason without a permissionDecision is dropped (a
@@ -240,6 +253,22 @@ func normalizePreToolUseDecision(out map[string]any) ([]Discard, error) {
 			ContentLength: len(dropped),
 			Reason:        fmt.Sprintf("permissionDecision:%s is not accepted by Codex PreToolUse; degraded to no-opinion", decision),
 		}}, nil
+	case preToolUseNeedsInputDecisions[decision]:
+		reason, _ := hso["permissionDecisionReason"].(string)
+		rendered, discards, err := TranslateCodex(hook.EventPreToolUse, DecisionNeedsInput, reason)
+		if err != nil {
+			return nil, err
+		}
+		var deny map[string]any
+		if err := json.Unmarshal(rendered, &deny); err != nil {
+			return nil, fmt.Errorf("decode needs_input deny: %w", err)
+		}
+		denyHSO, ok := deny["hookSpecificOutput"].(map[string]any)
+		if !ok {
+			return nil, fmt.Errorf("needs_input on PreToolUse rendered no deny: %s", rendered)
+		}
+		out["hookSpecificOutput"] = denyHSO
+		return discards, nil
 	case decision == "deny":
 		reason, _ := hso["permissionDecisionReason"].(string)
 		if strings.TrimSpace(reason) == "" {

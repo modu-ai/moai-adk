@@ -106,6 +106,48 @@ func TestDecisionTranslationNeverLoosens(t *testing.T) {
 		}
 	})
 
+	t.Run("the real Codex output path never loosens", func(t *testing.T) {
+		// M2c: the rows above are only a contract until the live output path
+		// renders through them. Feed every deny and needs_input through the
+		// functions the `--harness codex` dispatcher actually calls.
+		for _, ev := range DecisionBearingEvents() {
+			for _, d := range []Decision{DecisionDeny, DecisionNeedsInput} {
+				label := "codex/" + string(ev) + "/" + string(d)
+				raw, _, err := TranslateCodex(ev, d, "approval required")
+				if err != nil {
+					t.Errorf("%s: TranslateCodex: %v", label, err)
+					continue
+				}
+				if strings.TrimSpace(string(raw)) == "{}" {
+					t.Errorf("%s: real path rendered the empty object", label)
+				}
+				if strings.Contains(string(raw), `"allow"`) {
+					t.Errorf("%s: real path rendered an allow: %s", label, raw)
+				}
+			}
+		}
+
+		// The Claude-shape PreToolUse decisions a handler actually emits:
+		// deny, and the two human-must-decide shapes (ask, defer).
+		for _, decision := range []string{"deny", "ask", "defer"} {
+			in := []byte(`{"hookSpecificOutput":{"hookEventName":"PreToolUse","permissionDecision":"` + decision + `","permissionDecisionReason":"confirm?"}}`)
+			raw, _, err := MapOutput(hook.EventPreToolUse, in)
+			if err != nil {
+				t.Errorf("PreToolUse %s: MapOutput: %v", decision, err)
+				continue
+			}
+			var v map[string]any
+			if err := json.Unmarshal(raw, &v); err != nil {
+				t.Errorf("PreToolUse %s: mapped output is not JSON: %s", decision, raw)
+				continue
+			}
+			hso, _ := v["hookSpecificOutput"].(map[string]any)
+			if hso["permissionDecision"] != "deny" {
+				t.Errorf("PreToolUse %s: MapOutput gave %s, want a deny", decision, raw)
+			}
+		}
+	})
+
 	t.Run("the checker names a restored ask drop", func(t *testing.T) {
 		// Mutation (acceptance.md §B rule 6, applied in-test): restore the
 		// card-t590 ask → {} drop on the Codex PreToolUse needs_input row.

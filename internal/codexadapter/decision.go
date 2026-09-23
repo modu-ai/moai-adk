@@ -84,9 +84,9 @@ func DecisionBearingEvents() []hook.EventType {
 // harness x normalized decision. The never-loosens property of REQ-HPR-007 is
 // checked against these rows (AC-HPR-006), not against prose.
 //
-// The live Codex output path (MapOutput) is switched onto these rows in M2c;
-// until then the table is the declared contract and MapOutput keeps its
-// card-t590 behavior.
+// The live Codex output path renders through these rows via TranslateCodex:
+// MapOutput for a PreToolUse ask/defer, and the `--harness codex` dispatcher
+// for a handler fault (M2c).
 var translationTable = buildTranslationTable()
 
 func buildTranslationTable() []Translation {
