@@ -175,6 +175,33 @@ func MirrorLinkTarget(skill string) string {
 	return path.Join("..", "..", CanonicalSkillsRelDir, skill)
 }
 
+// releaseOwnMirrorLink removes the skill-mirror link a previous deploy left at
+// .agents/skills/<skill> when this deploy writes a real file beneath that path
+// (a profile whose templates ship .agents/skills/<skill>/ as a directory). Left
+// in place, the link makes MkdirAll fail with "file exists" once the managed
+// clean has removed its target, and writes through it into .claude/skills
+// while the target still exists. Only a link whose body is exactly
+// MirrorLinkTarget(skill) is removed; any other entry is left untouched.
+func releaseOwnMirrorLink(projectRoot, destRelPath string) error {
+	rest, ok := strings.CutPrefix(destRelPath, filepath.ToSlash(MirrorSkillsRelDir)+"/")
+	if !ok {
+		return nil
+	}
+	skill, remainder, found := strings.Cut(rest, "/")
+	if !found || skill == "" || remainder == "" {
+		return nil
+	}
+	linkPath := filepath.Join(projectRoot, MirrorSkillsRelDir, skill)
+	info, err := os.Lstat(linkPath)
+	if err != nil || info.Mode()&os.ModeSymlink == 0 {
+		return nil
+	}
+	if current, readErr := os.Readlink(linkPath); readErr != nil || current != MirrorLinkTarget(skill) {
+		return nil
+	}
+	return os.Remove(linkPath)
+}
+
 // symlink invokes the configured symlink function (os.Symlink by default).
 func (d *deployer) symlink(oldname, newname string) error {
 	if d.symlinkFn != nil {
