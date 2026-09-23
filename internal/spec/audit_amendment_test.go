@@ -1,6 +1,9 @@
 package spec
 
-import "testing"
+import (
+	"strings"
+	"testing"
+)
 
 // Card t1111 — SyncStatusDrift must not fire on a SPEC that is legitimately under
 // in-place amendment. The frontmatter SSOT sanctions `completed → in-progress
@@ -107,4 +110,85 @@ func TestAudit_SyncStatusDrift_NotAValidAmendmentStillFires(t *testing.T) {
 			}
 		})
 	}
+}
+
+// progressWithSyncSHA carries sync-complete evidence whose §E.4 sync_commit_sha
+// is the given value.
+func progressWithSyncSHA(sha string) string {
+	return "## §E.2 Run-phase Evidence\n\nrun rows\n\n" +
+		"## §E.4 Sync-phase Audit-Ready Signal\n\nsync_commit_sha: " + sha + "\n"
+}
+
+func syncStatusDriftForProgress(t *testing.T, id, specMD, progressMD string) *DriftFinding {
+	t.Helper()
+	baseDir := buildAuditFixture(t, []auditFixtureSpec{{id: id, specMD: specMD, progressMD: progressMD}})
+	result, err := Audit(AuditOptions{BaseDir: baseDir, FilterEra: "V3R6"})
+	if err != nil {
+		t.Fatalf("Audit() error = %v", err)
+	}
+	for i := range result.DriftFindings {
+		f := result.DriftFindings[i]
+		if f.SpecID == id && f.FindingType == FindingSyncStatusDrift {
+			return &f
+		}
+	}
+	return nil
+}
+
+func requireMustFixSyncStatusDrift(t *testing.T, f *DriftFinding, what string) {
+	t.Helper()
+	if f == nil {
+		t.Fatalf("SyncStatusDrift not emitted for %s — the amendment exemption swallowed genuine drift", what)
+	}
+	if f.Severity != "MUST-FIX" {
+		t.Errorf("severity = %q, want MUST-FIX", f.Severity)
+	}
+}
+
+// F1/P2 — an amendment that was itself re-synced (new sync_commit_sha in §E.4)
+// but whose status transition was skipped is genuine drift: the §E.4 evidence is
+// no longer the prior close's, and amendment_of + the Amendments record persist
+// after an amendment closes, so they alone must not exempt it.
+func TestAudit_SyncStatusDrift_AmendmentResyncedStillFires(t *testing.T) {
+	t.Parallel()
+	id := "SPEC-V3R6-AMEND-RESYNC-001"
+	// The Amendments section cites prior_completed_sha 0e2377323; §E.4 carries a new SHA.
+	specMD := makeAmendmentSpecMD(id, "in-progress", id, "### Amendments")
+	f := syncStatusDriftForProgress(t, id, specMD, progressWithSyncSHA("7f3c1a9b2"))
+	requireMustFixSyncStatusDrift(t, f, "an amendment re-synced with a new sync_commit_sha")
+}
+
+// F1/P1 — a successor amendment (amendment_of names the parent) has no prior
+// close of its own; its Amendments record cites the PARENT's sha. Sync complete
+// + in-progress is therefore always genuine drift.
+func TestAudit_SyncStatusDrift_SuccessorAmendmentStillFires(t *testing.T) {
+	t.Parallel()
+	id := "SPEC-V3R6-AMEND-SUCC-002"
+	specMD := makeAmendmentSpecMD(id, "in-progress", "SPEC-V3R6-AMEND-SUCC-001", "### Amendments")
+	f := syncStatusDriftForProgress(t, id, specMD, progressWithSyncSHA("a1b2c3d4e"))
+	requireMustFixSyncStatusDrift(t, f, "a successor amendment with its own completed sync")
+}
+
+// F1 section bound — the new sync SHA cited OUTSIDE the Amendments section (a
+// HISTORY row, a later section) must not satisfy the citation check.
+func TestAudit_SyncStatusDrift_SyncSHACitedOutsideAmendmentsStillFires(t *testing.T) {
+	t.Parallel()
+	id := "SPEC-V3R6-AMEND-BOUND-001"
+	specMD := makeAmendmentSpecMD(id, "in-progress", id, "### Amendments")
+	specMD = strings.Replace(specMD, "| in-place amendment | manager-spec |",
+		"| in-place amendment, re-synced at `7f3c1a9b2` | manager-spec |", 1)
+	specMD += "\n## §G Notes\n\nre-sync commit 7f3c1a9b2\n"
+	f := syncStatusDriftForProgress(t, id, specMD, progressWithSyncSHA("7f3c1a9b2"))
+	requireMustFixSyncStatusDrift(t, f, "a sync SHA cited only outside the Amendments section")
+}
+
+// F2 — an Amendments heading that exists only inside a fenced code block is not
+// an Amendments record, even when the fence carries the matching SHA.
+func TestAudit_SyncStatusDrift_FencedAmendmentsHeadingStillFires(t *testing.T) {
+	t.Parallel()
+	id := "SPEC-V3R6-AMEND-FENCE-001"
+	specMD := makeAmendmentSpecMD(id, "in-progress", id, "")
+	specMD += "\n## §H Example\n\n```markdown\n### Amendments\n\n| prior_completed_sha | `0e2377323` |\n```\n"
+	f := syncStatusDriftForProgress(t, id, specMD, progressWithSyncSHA("0e2377323"))
+	requireMustFixSyncStatusDrift(t, f, "an Amendments heading only inside a fenced code block")
 }
