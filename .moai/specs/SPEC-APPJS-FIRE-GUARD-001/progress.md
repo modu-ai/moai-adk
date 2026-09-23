@@ -418,6 +418,24 @@ job 설계 비고: `test-browser` 는 EOF 에 덧붙는 유일한 판정면이�
 
 **두 서면을 섞지 않는 방식:** 제출 계열(AC-010·011)과 실루트 계열(AC-001)은 **서로 다른 실행**이고, 어느 쪽 초록도 상대의 집합을 대신 주장하지 않는다. 실루트 실행은 축소를 적극 선언하고 운전 8건·제외 1건을 보고서에 남긴다(M7-11). 선언 없는 부재는 exit 2 다(M7-12).
 
+### M8 — 탐침: 실제 boost 스왑 + afterSettle 대기 + 스왑 자기확인 (card t1108, base `894b7b0a5` 위 M8 커밋)
+
+개정 2 run 은 worktree `.claude/worktrees/t1108`, branch `WT-popover-swap-flake` 에서 2026-09-23 에 수행됐다. 위 기록(M1~M7)은 고치지 않았다. 바꾼 파일은 `internal/web/testdata/appjs_fire_probe.py` 하나다(드라이버·`ci.yml`·SPEC 본문 불변).
+
+변경 요지: 스왑 항목 `swap_todo_nav` → `swap_boosted_tab`(`page: "/settings"`, 선택자 `#settings-form a[href="/settings?tab=audit"]`). 5단계는 **한 번의 평가 안에서** 문서 표지(`window.__fireSwap`)·`htmx:afterSwap`/`htmx:afterSettle` 리스너·옛 트리거 표지(`data-fire-old-trigger`)를 심은 뒤 클릭한다. 대기는 그 리스너가 푸는 promise 를 `awaitPromise` 로 기다리는 `wait_after_settle`(상한 `SETTLE_WAIT_BOUND_MS = 8000`, 만료 시 `"expired"` 반환 — `poll` 을 쓰지 않는다). `location.pathname` 폴링은 제거했다. 다리 (a)는 클릭 시점, (b)(c)(d)는 6단계 행사 직전에 읽어 `p5_swap_premise` 에 다리별로 싣는다. `p6_popover_after_swap_fired` 는 패널 전환(`p6_panel_flip_observed`) **그리고** settle 관측 **그리고** 거짓 다리 0 일 때만 참이다. 판정: 거짓 다리 → 스왑 항목 `swap premise not met: <다리>`; settle 만료 → `popover_after_swap` 「afterSettle wait expired」. `popover_after_swap` 의 selector-matched-nothing 판정 줄(패널 기준)은 바이트 불변(`git diff -U0` 에 그 줄 0건).
+
+| # | 측정 | 명령 | 관측 결과 | exit |
+|---|---|---|---|---|
+| M8-1 | 문법 | `python3 -m py_compile internal/web/testdata/appjs_fire_probe.py` | 출력 없음 | 0 |
+| M8-2 | 매니페스트 자기검증 | `python3 internal/web/testdata/appjs_fire_probe.py --lint-manifest` | `LINT OK: 9 entries + 7 exclusions cover 13 inventory groups; … post-swap entry present` — `INVENTORY_TOTAL` 불변(13) | 0 |
+| M8-3 | 옛 id·옛 선택자 잔존 | `git grep -n -e 'swap_todo_nav' -e 'a\[href="/todo"\]' -- internal/ .github/` | 출력 없음 | 1 (0행) |
+| M8-4 | 비게이트 무회귀 | `go test ./internal/web/ -run 'AppJs' -count=1 -v` | PASS 9건(`FireSandboxRouting`·`FireManifestInventoryCount`·`FireReductionDeclaration`·`FireSandboxPairing`(+하위 3) 등), SKIP 4건(`HandlersFireRuntime`·`HandlersFireSelectorMiss`·`FireValidationRejectPaints`·`FireValidationRejectNoWrites` — 게이트 미설정), `ok … 2.748s` | 0 |
+| M8-5 | 게이트 전체 사이클 | `MOAI_BROWSER_GUARD=1 go test ./internal/web/ -run 'AppJs.*Fire' -count=1 -timeout 8m -v` | 8건 전부 PASS, `ok … 148.057s`. 런타임 보고서: `p5_settle_wait: "observed"`, `p5_url_after_swap: "/settings?tab=audit"`, `p5_swap_premise` 네 다리 모두 `true`, `p6_popover_after_swap_fired: true`, `failures: []`, `"exit": 0` | 0 |
+| M8-6 | 역방향 스모크 ① 전체 이동(`a[href="/todo"]` 1회용 사본, 임시 게이트 테스트 — 실행 후 삭제) | `MOAI_BROWSER_GUARD=1 go test ./internal/web/ -run 'TestT1108M8Smoke' -count=1 -timeout 5m -v` | exit 1(기계결함 exit 2 아님). 거짓 다리 `a_boost_ancestor, b_same_document, c_swap_events`, `d_swap_inserted_trigger: true`. `p5_settle_wait: "document replaced"`. 패널은 전환됐으나(`p6_panel_flip_observed: true`) `p6_popover_after_swap_fired: false` | 1 (적색 관측) |
+| M8-7 | 역방향 스모크 ② 만료 강제(상한 1ms 사본, 같은 실행) | 같은 명령 | exit 1. `popover_after_swap` 사유 `afterSettle wait expired`, 스왑 항목 `swap premise not met: c_swap_events, d_swap_inserted_trigger`(스왑 응답 전에 읽음 — 옛 트리거가 살아 있음을 (d)가 잡음) | 1 (적색 관측) |
+
+**M9 로 넘기는 것:** 스로틀 12배 반복·M1/M2 돌연변이(AC-AFG-014), 다리별 역방향 고정물 네 판·합성 보고서(AC-AFG-015), 드라이버 (c) 단언의 다리 결속(AC-AFG-001 (c)). M8-6·M8-7 은 적색 방향이 exit 2 로 새지 않는지만 본 선행 스모크이며 AC 판정 근거가 아니다.
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 run_complete_at: 2026-09-22

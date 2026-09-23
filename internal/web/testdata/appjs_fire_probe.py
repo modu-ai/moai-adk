@@ -169,21 +169,27 @@ ENTRIES = [
         "check": "click reveals the GLM key output node (hidden true -> false)",
     },
     {
-        "id": "swap_todo_nav",
+        # card t1108: the link lives under the settings form's hx-boost, so the
+        # click is a real htmx body swap on /settings. The selector is not what
+        # makes it a swap - the four REQ-AFG-016 premise legs are, and the probe
+        # measures them itself on every run.
+        "id": "swap_boosted_tab",
         "line_group": None,
-        "page": "/",
-        "selector": 'a[href="/todo"]',
+        "page": "/settings",
+        "selector": '#settings-form a[href="/settings?tab=audit"]',
         "effect": "swap",
-        "check": "clicking the nav link performs an hx-boost body swap to /todo",
+        "check": "clicking a link under the settings form's hx-boost performs a real htmx body swap "
+        "(REQ-AFG-016: boost ancestor, same document, htmx:afterSwap + htmx:afterSettle observed, "
+        "post-swap trigger is a swap-inserted node)",
     },
     {
         "id": "popover_after_swap",
         "line_group": 73,
-        "page": "/todo",
+        "page": "/settings",
         "selector": '[data-pop="profile"]',
         "effect": "visibility",
         "post_swap": True,
-        "check": "REQ-AFG-007: an indicator still fires AFTER the hx-boost swap",
+        "check": "REQ-AFG-007: an indicator still fires AFTER the hx-boost swap, exercised once htmx:afterSettle is observed",
     },
     {
         "id": "copy_button",
@@ -195,7 +201,7 @@ ENTRIES = [
     },
     {
         # card t1106 - the validation-reject submit surface. line_group is None
-        # for the same reason swap_todo_nav's is: this is an htmx-boost +
+        # for the same reason swap_boosted_tab's is: this is an htmx-boost +
         # server-render surface, not an app.js addEventListener registration
         # group, so it does not move INVENTORY_TOTAL.
         "id": "validation_reject_banner",
@@ -453,6 +459,95 @@ async def navigate(cdp, url, drain_seconds=4.0):
 # ReferenceError collection windows: page load, the post-swap window, and the
 # final fresh load. A ReferenceError in ANY of them fails the run.
 
+ENTRY_BY_ID = {e["id"]: e for e in ENTRIES}
+
+# Upper bound on the htmx:afterSettle wait (card t1108). It is not a delay: the
+# wait returns the moment the event arrives. It only converts "never arrived"
+# into a named red (REQ-AFG-007 (3)).
+SETTLE_WAIT_BOUND_MS = 8000
+
+# Arms the swap self-check and clicks, in ONE evaluation so the listeners are
+# provably registered before the click (REQ-AFG-007 (2), REQ-AFG-016):
+#   - window.__fireSwap is the document marker (leg (b)); a new main-frame
+#     document has no such object,
+#   - the listeners record htmx:afterSwap / htmx:afterSettle into it (leg (c))
+#     and resolve the settle promise the wait awaits,
+#   - the old trigger node is tagged so leg (d) can tell a swap-inserted node
+#     from a survivor,
+#   - leg (a) is read at click time from the click target's nearest hx-boost
+#     ancestor.
+SWAP_ARM_AND_CLICK_JS = """(function(){
+  var token=%s, a=document.querySelector(%s);
+  if(!a){return {clicked:false};}
+  var m={token:token, ev:[]};
+  m.settled=new Promise(function(res){
+    document.addEventListener('htmx:afterSwap', function(){m.ev.push('htmx:afterSwap');});
+    document.addEventListener('htmx:afterSettle', function(){m.ev.push('htmx:afterSettle');res(true);});
+  });
+  window.__fireSwap=m;
+  var old=document.querySelector('[data-pop="profile"]');
+  if(old){old.setAttribute('data-fire-old-trigger', token);}
+  var b=a.closest('[hx-boost]');
+  var boosted=!!b && b.getAttribute('hx-boost')==='true';
+  a.click();
+  return {clicked:true, boost_ancestor:boosted};
+})()"""
+
+# Awaits the settle promise planted by SWAP_ARM_AND_CLICK_JS, bounded in-page.
+# Resolves true on the event, false on expiry, and throws when the marker is
+# gone (the document was replaced before the wait began).
+SETTLE_WAIT_JS = """(function(){
+  var m=window.__fireSwap;
+  if(!m){throw new Error('document marker gone before the wait began');}
+  return Promise.race([m.settled, new Promise(function(r){setTimeout(function(){r(false);}, %d);})]);
+})()"""
+
+# Premise legs (b)(c)(d), read at the moment the post-swap indicator is
+# exercised (REQ-AFG-016).
+SWAP_PREMISE_JS = """(function(){
+  var token=%s, m=window.__fireSwap, t=document.querySelector('[data-pop="profile"]');
+  var same=!!m && m.token===token;
+  return {
+    b_same_document: same,
+    c_swap_events: same && m.ev.indexOf('htmx:afterSwap')>=0 && m.ev.indexOf('htmx:afterSettle')>=0,
+    d_swap_inserted_trigger: !!t && t.getAttribute('data-fire-old-trigger')!==token
+  };
+})()"""
+
+
+async def wait_after_settle(cdp):
+    """Wait for the htmx:afterSettle event armed before the click.
+
+    Returns (outcome, detail) with outcome one of "observed", "expired", or
+    "document replaced". Deliberately NOT built on poll(): poll hands back the
+    current value on expiry and lets the caller carry on, and REQ-AFG-007 (3)
+    forbids that meaning here - expiry is a failure event, not a value.
+    """
+    try:
+        r = await cdp.send(
+            "Runtime.evaluate",
+            {
+                "expression": SETTLE_WAIT_JS % SETTLE_WAIT_BOUND_MS,
+                "returnByValue": True,
+                "awaitPromise": True,
+            },
+            timeout=SETTLE_WAIT_BOUND_MS / 1000.0 + 10,
+        )
+    except RuntimeError as exc:
+        # A main-frame navigation mid-await tears down the context the promise
+        # lives in; that is the full-navigation shape, not a machine fault.
+        msg = str(exc)
+        if "navigat" in msg or "context" in msg.lower() or "destroyed" in msg:
+            return "document replaced", msg
+        raise
+    res = r.get("result", {})
+    if res.get("exceptionDetails"):
+        return "document replaced", (res["exceptionDetails"].get("exception") or {}).get("description", "")
+    value = res.get("result", {}).get("value")
+    if value is True:
+        return "observed", "htmx:afterSettle observed"
+    return "expired", "htmx:afterSettle not observed within %d ms" % SETTLE_WAIT_BOUND_MS
+
 
 async def run_scenario(cdp, base):
     rep = {}
@@ -528,25 +623,56 @@ async def run_scenario(cdp, base):
     )
     cdp.take_errors()
 
-    # Phase 5 — swap_todo_nav: click the nav link; htmx boost swaps the body
-    # without a full reload. URL must land on /todo with no ReferenceErrors.
-    rep["p5_swap_clicked"] = await ev(
-        cdp,
-        "(function(){var a=document.querySelector('a[href=\"/todo\"]');"
-        "if(a){a.click();return true}return false})()",
-    )
-    rep["p5_url_after_swap"] = await poll(cdp, "location.pathname", "/todo", timeout=8.0)
+    # Phase 5 — swap_boosted_tab (card t1108): click a link under the settings
+    # form's hx-boost, so htmx swaps the body in place. BEFORE the click, in the
+    # same document and in the same evaluation, the probe plants a document
+    # marker, registers htmx:afterSwap / htmx:afterSettle listeners, and tags
+    # the old trigger node (REQ-AFG-016 legs (b)(c)(d)). app.js registered its
+    # own afterSettle listener at load, so initConsole's re-wiring runs before
+    # the probe's listener resolves the wait (listener order = registration
+    # order - an observed property, not a contract; plan.md §F).
+    token = os.urandom(8).hex()
+    swap = ENTRY_BY_ID["swap_boosted_tab"]
+    clicked = await ev(cdp, SWAP_ARM_AND_CLICK_JS % (json.dumps(token), json.dumps(swap["selector"])))
+    clicked = clicked or {}
+    rep["p5_swap_clicked"] = clicked.get("clicked") is True
+    # Wait for the htmx:afterSettle EVENT, not for a URL and not for time. The
+    # bound turns absence into a named red: on expiry the wait reports
+    # "expired" and the run fails - it never returns a current value and
+    # carries on (REQ-AFG-007 (3)).
+    if rep["p5_swap_clicked"]:
+        rep["p5_settle_wait"], rep["p5_settle_wait_detail"] = await wait_after_settle(cdp)
+    else:
+        rep["p5_settle_wait"], rep["p5_settle_wait_detail"] = "not started", "the swap link was not clicked"
+    rep["p5_url_after_swap"] = await ev(cdp, "location.pathname + location.search")
     rep["p5_swap_referenceerrors"] = only_reference_errors(cdp.take_errors())
     cdp.take_errors()
 
-    # Phase 6 — popover_after_swap (REQ-AFG-007): the swap killed the old DOM;
-    # a wired popover trigger on the NEW body must still fire (initConsole
-    # re-runs on htmx:afterSettle).
+    # Phase 6 — popover_after_swap (REQ-AFG-007): the swap replaced the body;
+    # a popover trigger on the NEW body must still fire, and it is exercised
+    # only after htmx:afterSettle was observed in phase 5 (initConsole re-runs
+    # on that event). The premise legs (b)(c)(d) are read at exercise time.
+    legs = await ev(cdp, SWAP_PREMISE_JS % json.dumps(token)) or {}
+    rep["p5_swap_premise"] = {
+        "a_boost_ancestor": clicked.get("boost_ancestor") is True,
+        "b_same_document": legs.get("b_same_document") is True,
+        "c_swap_events": legs.get("c_swap_events") is True,
+        "d_swap_inserted_trigger": legs.get("d_swap_inserted_trigger") is True,
+    }
+    rep["p5_swap_premise_false_legs"] = [k for k, v in rep["p5_swap_premise"].items() if v is not True]
     rep["p6_panel_hidden_before"] = await ev(cdp, "(document.querySelector('%s')||{}).hidden" % panel_sel)
     await ev(cdp, "document.querySelector('[data-pop=\"profile\"]').click()")
     rep["p6_panel_hidden_after"] = await poll(cdp, "(document.querySelector('%s')||{}).hidden" % panel_sel, False)
-    rep["p6_popover_after_swap_fired"] = (
+    rep["p6_panel_flip_observed"] = (
         rep["p6_panel_hidden_before"] is True and rep["p6_panel_hidden_after"] is False
+    )
+    # The post-swap indicator counts as fired only on a swap that was a swap
+    # and whose afterSettle was observed (REQ-AFG-016): a flip after a full
+    # navigation or an expired wait measures a race, not re-wiring.
+    rep["p6_popover_after_swap_fired"] = (
+        rep["p6_panel_flip_observed"]
+        and rep["p5_settle_wait"] == "observed"
+        and not rep["p5_swap_premise_false_legs"]
     )
     cdp.take_errors()
 
@@ -765,7 +891,9 @@ def judge(rep, driven_ids):
         "popover_close_btn": rep.get("p3_popover_close_btn_fired"),
         "popover_outside_close": rep.get("p3_popover_outside_close_fired"),
         "settings_tabs": rep.get("p4_settings_tabs_fired"),
-        "swap_todo_nav": rep.get("p5_url_after_swap") == "/todo" and rep.get("p5_swap_clicked") is True,
+        # card t1108: a swap is judged by its own premise self-check
+        # (REQ-AFG-016), never by the URL it landed on.
+        "swap_boosted_tab": rep.get("p5_swap_clicked") is True and rep.get("p5_swap_premise_false_legs") == [],
         "popover_after_swap": rep.get("p6_popover_after_swap_fired"),
         "copy_button": rep.get("p7_copy_handler_fired"),
         # card t1106: the banner must be PAINTED, the submit must have carried
@@ -785,11 +913,25 @@ def judge(rep, driven_ids):
         "popover_close_btn": rep.get("p3_has_close_btn"),
         "popover_outside_close": rep.get("p3_panel_hidden_before") is not None,
         "settings_tabs": isinstance(rep.get("p4_tab_count"), int) and rep.get("p4_tab_count", 0) > 0,
-        "swap_todo_nav": rep.get("p5_swap_clicked") is True,
+        "swap_boosted_tab": rep.get("p5_swap_clicked") is True,
         "popover_after_swap": rep.get("p6_panel_hidden_before") is not None,
         "copy_button": rep.get("p7_has_copy_btn"),
         "validation_reject_banner": rep.get("s_has_form") is True and rep.get("s_has_submit") is True,
     }
+    # card t1108: the two swap entries say WHY they did not pass. A false
+    # premise leg names the swap entry and the leg (REQ-AFG-016); a settle wait
+    # that did not observe the event names the post-swap entry (REQ-AFG-007 (3)).
+    false_legs = rep.get("p5_swap_premise_false_legs") or []
+    settle = rep.get("p5_settle_wait")
+    swap_reasons = {}
+    if false_legs:
+        swap_reasons["swap_boosted_tab"] = "swap premise not met: " + ", ".join(false_legs)
+    if settle == "expired":
+        swap_reasons["popover_after_swap"] = "afterSettle wait expired"
+    elif settle != "observed":
+        swap_reasons["popover_after_swap"] = "afterSettle wait ended without the event (%s)" % settle
+    elif false_legs:
+        swap_reasons["popover_after_swap"] = "not judged as fired: swap premise not met (%s)" % ", ".join(false_legs)
     for entry in ENTRIES:
         eid = entry["id"]
         if eid not in driven_ids:
@@ -803,7 +945,15 @@ def judge(rep, driven_ids):
             )
             continue
         if by_id.get(eid) is not True:
-            failures.append({"entry": eid, "reason": "indicator did not fire", "check": entry["check"]})
+            failures.append({"entry": eid, "reason": swap_reasons.get(eid, "indicator did not fire"), "check": entry["check"]})
+    # An expired settle wait is always named on the post-swap entry, even when
+    # that entry already failed for another reason (e.g. its selector check).
+    if (
+        "popover_after_swap" in driven_ids
+        and settle == "expired"
+        and not any(f.get("reason") == "afterSettle wait expired" for f in failures)
+    ):
+        failures.append({"entry": "popover_after_swap", "reason": "afterSettle wait expired"})
     windows = ["p1_load_referenceerrors", "p5_swap_referenceerrors", "p7_load_referenceerrors"]
     if "validation_reject_banner" in driven_ids:
         windows += ["s_load_referenceerrors", "s_window_referenceerrors"]
