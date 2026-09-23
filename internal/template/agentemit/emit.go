@@ -18,6 +18,13 @@ import (
 // EmitAll produces the dual publication of the agent set under agentsRoot.
 // On any validation error it returns (nil, err) — no partial artifact set.
 func EmitAll(fsys fs.FS, agentsRoot string, man Manifest) (*Publication, error) {
+	pub, _, err := emitAll(fsys, agentsRoot, man)
+	return pub, err
+}
+
+// emitAll is EmitAll plus the permission-contract verdicts the emission
+// checked (nil when the manifest carries no contract).
+func emitAll(fsys fs.FS, agentsRoot string, man Manifest) (*Publication, []AxisVerdict, error) {
 	var files []string
 	walkErr := fs.WalkDir(fsys, agentsRoot, func(p string, d fs.DirEntry, err error) error {
 		if err != nil {
@@ -32,10 +39,10 @@ func EmitAll(fsys fs.FS, agentsRoot string, man Manifest) (*Publication, error) 
 		return nil
 	})
 	if walkErr != nil {
-		return nil, fmt.Errorf("agentemit: walk %s: %w", agentsRoot, walkErr)
+		return nil, nil, fmt.Errorf("agentemit: walk %s: %w", agentsRoot, walkErr)
 	}
 	if len(files) == 0 {
-		return nil, fmt.Errorf("agentemit: no .md sources under %s", agentsRoot)
+		return nil, nil, fmt.Errorf("agentemit: no .md sources under %s", agentsRoot)
 	}
 	sort.Strings(files)
 
@@ -44,20 +51,21 @@ func EmitAll(fsys fs.FS, agentsRoot string, man Manifest) (*Publication, error) 
 		data []byte
 	}
 	var tomls []artifact
+	var verdicts []AxisVerdict
 	seenName := map[string]string{}
 	md := map[string][]byte{}
 
 	for _, file := range files {
 		data, err := fs.ReadFile(fsys, file)
 		if err != nil {
-			return nil, fmt.Errorf("agentemit: read %s: %w", file, err)
+			return nil, nil, fmt.Errorf("agentemit: read %s: %w", file, err)
 		}
 		doc, err := ParseAgentDoc(file, data)
 		if err != nil {
-			return nil, err
+			return nil, nil, err
 		}
 		if prev, dup := seenName[doc.Name]; dup {
-			return nil, fmt.Errorf("%s: duplicate agent name %q (also declared by %s) — Codex namespace collision", file, doc.Name, prev)
+			return nil, nil, fmt.Errorf("%s: duplicate agent name %q (also declared by %s) — Codex namespace collision", file, doc.Name, prev)
 		}
 		seenName[doc.Name] = file
 
@@ -65,16 +73,25 @@ func EmitAll(fsys fs.FS, agentsRoot string, man Manifest) (*Publication, error) 
 		for _, tok := range doc.Tools {
 			class, ok := classifyToken(man, tok)
 			if !ok {
-				return nil, fmt.Errorf("%s: unknown tool token %q — not mapped to any class in the Codex mapping manifest", file, tok)
+				return nil, nil, fmt.Errorf("%s: unknown tool token %q — not mapped to any class in the Codex mapping manifest", file, tok)
 			}
 			if class == "moai-mcp" {
 				hasMCP = true
 			}
 		}
 
-		tomlData, err := renderTOML(doc, man, hasMCP)
+		tomlData, sandbox, err := renderTOML(doc, man, hasMCP)
 		if err != nil {
-			return nil, err
+			return nil, nil, err
+		}
+		// Every restriction the role's contract requires is enforced by this
+		// emission or declared UNSUPPORTED — never dropped silently.
+		if man.PermissionContract != nil {
+			vs, err := roleVerdicts(doc, man, sandbox, hasMCP)
+			if err != nil {
+				return nil, nil, err
+			}
+			verdicts = append(verdicts, vs...)
 		}
 		tomls = append(tomls, artifact{path: codexTOMLPath(man, file), data: tomlData})
 
@@ -86,7 +103,7 @@ func EmitAll(fsys fs.FS, agentsRoot string, man Manifest) (*Publication, error) 
 	for _, a := range tomls {
 		pub.CodexTOML[a.path] = a.data
 	}
-	return pub, nil
+	return pub, verdicts, nil
 }
 
 // codexTOMLPath resolves the emitted TOML path for one .md source according

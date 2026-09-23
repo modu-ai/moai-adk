@@ -60,13 +60,21 @@ fields:
   # drop the whole agent file (visible "Ignoring malformed agent role
   # definition" error). workspace-write is a measured member and
   # delegation-confirmed. Roles whose work does not require a local file write
-  # use read-only; audit roles that export verdict files keep workspace-write.
+  # use read-only. The two audit roles are read-only too: their only write is
+  # the verdict or report file, the sandbox cannot confine a write to that
+  # path (write-path-scope is UNSUPPORTED below), so on Codex they return the
+  # text and the parent lane orchestrator writes the file (codex_role_addenda
+  # plus the deployed AGENTS.md audit-verdict-file row). Every value here must
+  # equal the permission contract's sandbox for that role — the emitter
+  # refuses any other mode.
   sandbox_mode:
     emit: true
     value: workspace-write
     role_values:
       mission-governor: read-only
       super-advisor: read-only
+      plan-auditor: read-only
+      sync-auditor: read-only
     accepted_values:
       - read-only
       - workspace-write
@@ -115,9 +123,10 @@ classes:
     disposition: consequence
     rationale: >-
       Shell executes built-in on Codex. Roles that write test outputs or
-      verdict files use workspace-write; roles with no local write duty can
-      use read-only. The sandbox constrains filesystem effects but does not
-      remove the shell tool from a role.
+      other working files use workspace-write; roles with no local write duty,
+      and the audit roles whose verdict file the parent writes, use
+      read-only. The sandbox constrains filesystem effects but does not
+      remove the shell tool from a role (permission contract axis shell).
   - class: web
     disposition: documented-drop
     rationale: >-
@@ -257,11 +266,17 @@ documented_drops:
   - id: read-vs-write-distinction
     rationale: >-
       Codex sandbox is workspace-level; the granular Read/Write tool split
-      cannot be preserved mechanically. mission-governor and super-advisor
-      are read-only at the filesystem sandbox level. Their shell and MCP
-      access cannot be restricted per tool through this TOML. sync-auditor
-      must write its verdict file, so making it read-only would violate the
-      current export mandate; its no-code-edit rule remains prompt-level.
+      cannot be preserved mechanically. mission-governor, super-advisor,
+      plan-auditor, and sync-auditor are read-only at the filesystem sandbox
+      level. Their shell and MCP access cannot be restricted per tool through
+      this TOML. The audit roles' only write duty is their verdict or report
+      file, and the sandbox cannot confine a write to one path, so
+      workspace-write would grant more than the role needs. On Codex only,
+      the audit roles therefore return the complete verdict or report text
+      (codex_role_addenda) and the parent lane orchestrator writes the file
+      with exactly that text (deployed AGENTS.md, audit-verdict-file row).
+      The Claude definitions and the Claude audit workflow are unchanged:
+      there the auditor still writes its own file.
   - id: per-agent-web-grants
     rationale: >-
       Web access is global Codex config; per-agent WebFetch/WebSearch grants
@@ -344,6 +359,125 @@ mcp_server_grant:
   command: moai
   args:
     - mcp-server
+
+# Role permission contract. Each role's contract requires restrictions that
+# the emitter derives from its Claude tool list and its contract sandbox
+# (permission.go RoleRequirements): sandbox/mode always; write-path-scope for
+# writing roles; shell, subagent, web denials where the Claude role lacks that
+# tool class; mcp-server grant + mcp-tool subset for moai MCP carriers and an
+# mcp-server denial for the rest. Every required restriction maps to exactly
+# one row below, either `enforced` (a field this emitter writes; basis
+# measured or documented — never unmeasured) or `UNSUPPORTED` (the host
+# cannot express it). A required restriction with no row fails emission.
+#
+# An `enforced` basis states what was observed about the field — that Codex
+# accepts it. Whether a field actually blocks the restricted action at
+# runtime is NOT claimed here; that rests only on the live role verification.
+# UNSUPPORTED rows are reported as UNSUPPORTED and never counted as passing.
+permission_contract:
+  axes:
+    - axis: sandbox
+      kind: mode
+      mapping: enforced
+      field: sandbox_mode
+      basis: measured
+      evidence: >-
+        codex-cli 0.147.0 (P-01) names the accepted set verbatim on a bad
+        value (read-only, workspace-write, danger-full-access) and drops the
+        whole agent file on any other value; workspace-write registered and
+        delegated. Observed: the field and its values are accepted. Runtime
+        write blocking under read-only is unmeasured here.
+    - axis: write-path-scope
+      kind: path-scope
+      mapping: UNSUPPORTED
+      basis: measured
+      reason: >-
+        sandbox_mode has three workspace-level values and no path-level
+        value, so a write cannot be confined to a path subset per role.
+      evidence: >-
+        The same P-01 accepted set (codex-cli 0.147.0) — no member names a
+        path.
+    - axis: shell
+      kind: deny
+      mapping: UNSUPPORTED
+      basis: unmeasured
+      reason: >-
+        No agent-TOML field that removes the shell tool from a role has been
+        found; shell executes built-in on Codex.
+      evidence: >-
+        No probe has tested a per-role shell switch; the classes row shell
+        records shell as a sandbox consequence, not a grant.
+    - axis: mcp-server
+      kind: grant
+      mapping: enforced
+      field: mcp_servers
+      basis: measured
+      evidence: >-
+        codex-cli 0.147.0 rejects the array form and registers the table
+        form [mcp_servers.moai] with command and args (classes row moai-mcp,
+        mcp_server_grant). Observed: the per-role table is accepted.
+    - axis: mcp-server
+      kind: deny
+      mapping: UNSUPPORTED
+      basis: unmeasured
+      reason: >-
+        Whether a role without an [mcp_servers] table inherits the project
+        config.toml registration is not known, so a per-role denial cannot
+        be claimed.
+      evidence: >-
+        No probe has run a role without the table against a project that
+        registers the server globally.
+    - axis: mcp-tool
+      kind: subset
+      mapping: UNSUPPORTED
+      basis: documented
+      reason: >-
+        Codex exposes an MCP server's tools as a unit; there is no per-tool
+        filter inside one server.
+      evidence: >-
+        Documented drop per-tool-mcp-filtering and classes row moai-mcp.
+    - axis: subagent
+      kind: deny
+      mapping: UNSUPPORTED
+      basis: unmeasured
+      reason: >-
+        No per-role spawn grant field has been found in agent TOML.
+      evidence: >-
+        classes row subagent-spawn records the grant as not expressible; no
+        probe has tested a per-role switch.
+    - axis: web
+      kind: deny
+      mapping: UNSUPPORTED
+      basis: documented
+      reason: >-
+        Web access is a global Codex setting; agent TOML has no per-role web
+        field.
+      evidence: >-
+        Documented drop per-agent-web-grants and classes row web.
+  # The sandbox each role's contract states. Kept independent of
+  # fields.sandbox_mode.role_values on purpose: the emitter refuses an
+  # emitted mode that differs from this value, so a widened override is
+  # caught rather than trusted.
+  default_sandbox: workspace-write
+  role_sandbox:
+    mission-governor: read-only
+    super-advisor: read-only
+    plan-auditor: read-only
+    sync-auditor: read-only
+
+# Codex-only text appended after a role's verbatim body in its emitted TOML.
+# The neutral .md files (and the Claude audit workflow) never carry it.
+codex_role_addenda:
+  plan-auditor: &audit_return >-
+    ## Codex Runtime Addendum
+
+
+    On Codex this role runs with a read-only sandbox. Do not write the
+    verdict or report file yourself, and do not treat a refused write as a
+    failure of the audit. Return the complete verdict or report text as your
+    final response, including the path the file belongs at; the parent lane
+    orchestrator writes the file with exactly that text.
+  sync-auditor: *audit_return
 
 # Correspondence notes (no artifact emitted either side).
 correspondence_notes:

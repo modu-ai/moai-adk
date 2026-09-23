@@ -208,8 +208,11 @@ func TestRealSetCodexShape(t *testing.T) {
 		}
 
 		// Read-only roles must be constrained by the runtime sandbox, not body prose.
+		// The audit roles are read-only on Codex: the parent writes their
+		// verdict file from the returned text.
 		wantSandbox := "workspace-write"
-		if name == "mission-governor" || name == "super-advisor" {
+		switch name {
+		case "mission-governor", "super-advisor", "plan-auditor", "sync-auditor":
 			wantSandbox = "read-only"
 		}
 		if got, _ := doc["sandbox_mode"].(string); got != wantSandbox {
@@ -229,6 +232,10 @@ func TestRealSetCodexShape(t *testing.T) {
 // its agent, and name equals the frontmatter name, 12 of 12.
 func TestRealSetBodiesByteEqual(t *testing.T) {
 	pub := emitRealSet(t)
+	man, err := agentemit.LoadManifest()
+	if err != nil {
+		t.Fatalf("LoadManifest: %v", err)
+	}
 	for path, data := range pub.CodexTOML {
 		doc, err := decodeTOML(string(data))
 		if err != nil {
@@ -247,8 +254,18 @@ func TestRealSetBodiesByteEqual(t *testing.T) {
 		if parsed.Name != name {
 			t.Errorf("%s: TOML name %q != frontmatter name %q", path, name, parsed.Name)
 		}
-		if got, _ := doc["developer_instructions"].(string); got != string(parsed.Body) {
-			t.Errorf("%s: developer_instructions not byte-equal to .md body", path)
+		// The body is carried verbatim; a role with a Codex-only addendum
+		// gets exactly that addendum after it, and nothing else changes.
+		got, _ := doc["developer_instructions"].(string)
+		want := string(parsed.Body)
+		if add, ok := man.CodexRoleAddenda[name]; ok {
+			want += "\n" + strings.TrimRight(add, "\n") + "\n"
+		}
+		if !strings.HasPrefix(got, string(parsed.Body)) {
+			t.Errorf("%s: developer_instructions does not start with the verbatim .md body", path)
+		}
+		if got != want {
+			t.Errorf("%s: developer_instructions is not the .md body plus its manifest addendum", path)
 		}
 	}
 }

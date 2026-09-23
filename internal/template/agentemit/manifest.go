@@ -74,6 +74,13 @@ type Manifest struct {
 	DocumentedDrops      []DocumentedDrop        `yaml:"documented_drops"`
 	CorrespondenceNotes  []CorrespondenceNote    `yaml:"correspondence_notes"`
 	MCPServerGrant       *McpServerGrant         `yaml:"mcp_server_grant"`
+	// PermissionContract is the role permission contract (permission.go).
+	// When present, emission fails for any required restriction that is
+	// neither enforced nor declared UNSUPPORTED.
+	PermissionContract *PermissionContract `yaml:"permission_contract"`
+	// CodexRoleAddenda maps a role name to Codex-only text appended after
+	// its verbatim body in the emitted TOML. The neutral .md is untouched.
+	CodexRoleAddenda map[string]string `yaml:"codex_role_addenda"`
 }
 
 // LoadManifest parses and self-validates the embedded default manifest.
@@ -145,6 +152,24 @@ func ParseManifest(data []byte) (Manifest, error) {
 			if role == "" || !accepted[value] {
 				return Manifest{}, fmt.Errorf("agentemit: role %q sandbox_mode value %q is outside the measured value set %v", role, value, fc.AcceptedValues)
 			}
+		}
+	}
+	for role, text := range m.CodexRoleAddenda {
+		if role == "" || strings.TrimSpace(text) == "" {
+			return Manifest{}, fmt.Errorf("agentemit: codex_role_addenda entry %q carries no text", role)
+		}
+	}
+	if m.PermissionContract != nil {
+		fc, ok := m.Fields["sandbox_mode"]
+		if !ok || !fc.Emit {
+			return Manifest{}, fmt.Errorf("agentemit: permission contract requires sandbox_mode emission (the sandbox axis is enforced through it)")
+		}
+		accepted := make(map[string]bool, len(fc.AcceptedValues))
+		for _, v := range fc.AcceptedValues {
+			accepted[v] = true
+		}
+		if err := validateContract(m.PermissionContract, accepted); err != nil {
+			return Manifest{}, err
 		}
 	}
 	// The moai-mcp class requires a complete server grant: an empty table
