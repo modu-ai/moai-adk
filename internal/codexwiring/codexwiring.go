@@ -89,6 +89,13 @@ type Result struct {
 	HooksSkipped bool
 	// ConfigWritten reports config.toml bytes were written this run.
 	ConfigWritten bool
+	// Conflicts lists files that changed under the write (REQ-DHR-003).
+	Conflicts []Conflict
+	// Refusals lists files left untouched, with the reason (REQ-DHR-006).
+	Refusals []Refusal
+	// Recovered lists the interrupted changes recovery resolved before this
+	// pass wrote anything (REQ-DHR-004).
+	Recovered []RecoveryOutcome
 }
 
 // wiringFilesExist reports whether either wiring artifact exists — the opt-in
