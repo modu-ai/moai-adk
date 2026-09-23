@@ -680,7 +680,11 @@ jobs:
           mkdir -p "$RUN_DIR"
 
           start_server() {
-            "$RUN_DIR/moai" web --port "$PORT" --no-open --no-reuse > "$RUN_DIR/server.log" 2>&1 &
+            # card t1113: #glmKeyReveal renders only when a GLM key is stored;
+            # seed the same fake key as fireGuardFakeGLMKey in
+            # internal/web/appjs_fire_guard_test.go (MOAI_TEST_GLM_KEY seam).
+            MOAI_TEST_GLM_KEY="test-fire-guard-fake-glm-key" \
+              "$RUN_DIR/moai" web --port "$PORT" --no-open --no-reuse > "$RUN_DIR/server.log" 2>&1 &
             SERVER_PID=$!
             for i in $(seq 1 50); do
               curl -sf -o /dev/null "http://127.0.0.1:$PORT/" && return 0
