@@ -193,6 +193,110 @@ store §D3.6 names. When M2d decides the port shape (Q4), it also chooses betwee
 - (b) change the Claude parser as well, which would need a golden proving Claude behaviour is
   unchanged.
 
+### M2c — decision hardening (2026-09-24 close-out)
+
+Commits: `6a3e745d5` (codexadapter: `needs_input` rendered as a fail-closed deny through the
+translation table — new `translate.go` with `TranslateCodex` / `RequiredInputUserApproval`;
+`MapOutput` routes a PreToolUse `ask`/`defer` through it) and `c2d06a518` (cli: a Codex hook
+fault on a decision-bearing event is answered with the table's `fatal_error` deny on exit 0 —
+`hook_codex_failclosed.go`). Measured on Darwin arm64, go1.26.8, against the tree at HEAD
+`c2d06a518`. `git diff --stat HEAD~2 HEAD -- internal/hook` printed nothing (Q6 / HOOK-ADAPTER REQ-7
+kept).
+
+**Evidence provenance — read this first.** The agent that wrote both commits was killed by an API
+rate limit after committing and before recording any evidence. Its RED-first observations — the
+failing test output captured before each implementation — were lost with it and cannot be
+reconstructed. What follows is **post-hoc mutation evidence** gathered by a close-out agent on
+the committed code: each mutation was applied to the implementation, the covering tests were
+observed red, and the mutation was reverted by re-editing (not `git checkout --`), with
+`git diff --stat` printing nothing after each revert. Mutation evidence shows the tests can detect
+the defect; it does not show the tests were written before the code.
+
+**AC leg → covering test**
+
+| AC leg | Covering test (package) |
+|---|---|
+| AC-HPR-006 table leg (M2a) | `TestDecisionTranslationNeverLoosens` table subtests (`./internal/codexadapter/`) |
+| AC-HPR-006 real path — every deny / needs_input through `TranslateCodex` on every decision-bearing event, and Claude-shape `deny`/`ask`/`defer` through `MapOutput` | `TestDecisionTranslationNeverLoosens/the_real_Codex_output_path_never_loosens` |
+| AC-HPR-006 intentional amendment (plan.md M2c row) | `TestPreToolUseAskBecomesFailClosedDeny` (inverted from `TestPreToolUseAskDropped`; covers `ask` and `defer`) |
+| AC-HPR-022 PreToolUse + PermissionRequest: deny names the required input, keeps the handler reason, exactly one sink record, stderr mirror | `TestNeedsInputVisibleDeny/PreToolUse`, `/PermissionRequest` |
+| AC-HPR-022 real PreToolUse path through `MapOutput` | `TestNeedsInputVisibleDeny/PreToolUse_ask_via_MapOutput` |
+| AC-HPR-008 unit — timeout, exit 1 (handler error), unparseable output, exit 2 on PreToolUse and Stop through the real subcommand under `--harness codex` | `TestHookFaultInjection/{PreToolUse,Stop}/{timeout,exit_1_(handler_error),unparseable_output,exit_2}` (`./internal/cli/`) |
+| AC-HPR-008 unit — PermissionRequest (row unadapted until M2e, so the fail-closed writer is called directly) | `TestHookFaultInjection/PermissionRequest/{timeout,exit_1_(handler_error),unparseable_output}` |
+| `TranslateCodex` branches (fatal_error, deny/advisory shapes, decision-bearing list) | `TestTranslateCodexFatalErrorIsFailClosed`, `TestTranslateCodexDenyAndAdvisoryShapes`, `TestIsDecisionBearingMatchesTheDeclaredList` |
+
+Gaps in M2c scope found: none; no test or implementation was added by the close-out.
+
+**Green runs (post-revert, HEAD `c2d06a518`)**
+
+- `go test -json -count=1 -run 'TestDecisionTranslationNeverLoosens|TestNeedsInputVisibleDeny|TestPreToolUseAskBecomesFailClosedDeny|TestTranslateCodex|TestIsDecisionBearing' ./internal/codexadapter/`
+  → `jq … | sort | uniq -c` → `16 pass`. No `skip`, no `fail`.
+- `go test -json -count=1 -timeout 25m -run 'TestHookFaultInjection' ./internal/cli/` → `12 pass`
+  (11 subtests + parent). No `skip`, no `fail`.
+- The same two runs before the mutations gave the same counts (16 pass, 12 pass).
+- `go test -count=1 -cover ./internal/codexadapter/` → `ok … codexadapter 0.623s coverage: 88.4% of statements`
+- `go vet ./internal/codexadapter/ ./internal/cli/` → no output (exit 0)
+- `golangci-lint run ./internal/codexadapter/... ./internal/cli/` → `0 issues.`
+- Output files are kept under `.moai/state/verify/m2c/` (git-ignored, local only).
+
+**Mutation evidence (each applied, observed red, reverted; `git diff --stat` empty after each)**
+
+1. Restore the card-t590 drop (`"ask": true, "defer": true` back in `preToolUseDropDecisions`,
+   `output.go`) →
+   `decision_test.go:146: PreToolUse ask: MapOutput gave {}, want a deny`;
+   `output_test.go:296: ask: output = {}, want a hookSpecificOutput deny, not the no-opinion object`;
+   `needs_input_test.go:132: PreToolUse: rendered the empty no-opinion object; a needs_input must never degrade to {}` → FAIL
+2. Suppress the discard record (`if row.DiscardRecorded && false`, `translate.go`) →
+   `output_test.go:306: ask: discards = 0, want 1`;
+   `needs_input_test.go:102: open diagnostic sink: open …/.moai/logs/codex-adapter.jsonl: no such file or directory`
+   (PreToolUse and PermissionRequest) → FAIL
+3. Drop the required-input name from the reason (`"input required: …"`, `translate.go`) →
+   `needs_input_test.go:91: deny reason "input required: Codex hooks cannot ask for it, so MoAI denied this PermissionRequest fail-closed — Critical config file: settings.json" does not name the required input "user approval"`;
+   `output_test.go:303: ask: reason = "input required: …", want it to name "user approval" and keep the handler reason` → FAIL
+4. A hook fault yields allow:
+   - a. the fail-closed writer emits `{}` (`hook_codex_failclosed.go`; the AC-HPR-008 mutation in
+     acceptance.md) → all nine fault legs fail, e.g.
+     `hook_fault_injection_test.go:176: PreToolUse: stdout = "{}", want a fail-closed deny (Codex resolves an empty or {} output as allow)`
+     and `hook_fault_injection_test.go:224: PermissionRequest: stdout = "{}", …` → FAIL
+   - b. the dispatcher swallows a timeout / handler error (`return nil`, `hook.go`) →
+     `hook_fault_injection_test.go:176: Stop: stdout = "", want a fail-closed deny …`
+     (timeout and exit 1 on PreToolUse and Stop) → FAIL
+   - c. unparseable output passed through as `{}` (`hook_harness_codex.go`) →
+     `hook_fault_injection_test.go:176: PreToolUse: stdout = "{}", …` and the Stop leg → FAIL
+   - d. exit 2 no longer propagates under codex (`&& !harnessCodex`, `hook.go`) →
+     `hook_fault_injection_test.go:197: RunE = <nil>, want exit code 2 to pass through`
+     (PreToolUse and Stop) → FAIL
+5. `MapOutput` bypasses the table (the `ask`/`defer` arm hand-builds a deny carrying only the
+   handler reason, no `TranslateCodex`, no discard) →
+   `output_test.go:303: ask: reason = "confirm?", want it to name "user approval" and keep the handler reason`;
+   `output_test.go:306: ask: discards = 0, want 1`;
+   `needs_input_test.go:134: deny reason "Critical config file: settings.json" does not name the required input "user approval"` → FAIL.
+   `TestDecisionTranslationNeverLoosens` stayed green under this mutation: its real-path leg checks
+   that the output is a deny, not which route produced it. The bypass is caught by the AC-HPR-022
+   tests.
+6. `needs_input` falls back to `{}` inside `TranslateCodex` (AC-HPR-022's third named mutation) →
+   `decision_test.go:122: codex/PermissionRequest/needs_input: real path rendered the empty object`
+   (all four decision-bearing events);
+   `needs_input_test.go:89: PermissionRequest: rendered the empty no-opinion object; a needs_input must never degrade to {}` → FAIL
+
+**Not in M2c / not observed**
+
+- Live legs (`TestLiveHookFaultOutcome`, AC-HPR-007, the host outcome per fault × event × harness)
+  are not executed (operator Q5); they belong to M2g as `NOT_RUN`.
+- The timeout leg is simulated: the fault registry returns `hook.ErrHookTimeout`. No test sleeps
+  past `config.DefaultHookDispatcherTimeout`, and what Codex does when it kills the process at its
+  `hooks.json` timeout is the live leg.
+- "Exit 1" is modelled in-process as a handler error. No handler sets `HookOutput.ExitCode = 1`;
+  that shape is not covered.
+- PermissionRequest reaches the fail-closed writer only by a direct call until the row is adapted
+  in M2e.
+
+Residual risk (observed while mapping, outside the AC-HPR-008 fault list): when stdin is not
+valid JSON, `runHookEvent` (`hook.go`, the `ReadInput` error branch) writes the default `{}` on
+exit 0 on every path, including `--harness codex` on a decision-bearing event. Codex may resolve
+that `{}` as allow. The AC-HPR-008 legs cover unparseable hook *output*, not unparseable *input*,
+so this was left unchanged. It needs an operator decision on whether it is in scope.
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 _<pending run-phase>_
