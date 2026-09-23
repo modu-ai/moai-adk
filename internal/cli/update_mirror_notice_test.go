@@ -233,7 +233,7 @@ func runTemplateSyncCapturing(t *testing.T, dep template.Deployer) (stdout, stde
 	t.Setenv("HOME", tmpDir)
 
 	prev := newTemplateSyncDeployer
-	newTemplateSyncDeployer = func(fs.FS) template.Deployer { return dep }
+	newTemplateSyncDeployer = func(fs.FS) (template.Deployer, error) { return dep, nil }
 	t.Cleanup(func() { newTemplateSyncDeployer = prev })
 
 	var outBuf, errBuf bytes.Buffer
@@ -308,39 +308,34 @@ func TestTemplateSync_PlainDeployerStillDeploys(t *testing.T) {
 // notice is unreachable in production while every injected-double test above
 // stays green.
 
-// AC-DRW-009 assertion 1 — the seam's default builds the production deployer:
-// the embedded FS, a renderer, and forceUpdate=true, exactly as the inline
-// construction it replaced did.
+// AC-DRW-009 assertion 1 — the seam's default builds a production deployer
+// for each harness profile with force-update behavior.
 func TestSeamDefaultIsTheProductionDeployer(t *testing.T) {
 	t.Parallel()
 
 	file := parseCLIFile(t, "update_template_sync.go")
 	value := seamVarValue(t, file, "newTemplateSyncDeployer")
 
-	var found *ast.CallExpr
+	found := map[string]bool{}
 	ast.Inspect(value, func(n ast.Node) bool {
 		call, ok := n.(*ast.CallExpr)
 		if !ok {
 			return true
 		}
-		if sel, ok := call.Fun.(*ast.SelectorExpr); ok && sel.Sel.Name == "NewDeployerWithRendererAndForceUpdate" {
-			found = call
-			return false
+		if sel, ok := call.Fun.(*ast.SelectorExpr); ok {
+			found[sel.Sel.Name] = true
 		}
 		return true
 	})
 
-	if found == nil {
-		t.Fatal("newTemplateSyncDeployer default does not construct the production deployer " +
-			"(no template.NewDeployerWithRendererAndForceUpdate call); a test-shaped default would leave " +
-			"production permanently silent while every injected-double test stayed green")
-	}
-	if len(found.Args) != 3 {
-		t.Fatalf("NewDeployerWithRendererAndForceUpdate called with %d args, want 3", len(found.Args))
-	}
-	if ident, ok := found.Args[2].(*ast.Ident); !ok || ident.Name != "true" {
-		t.Errorf("forceUpdate argument is %s, want true — template sync must overwrite existing files",
-			exprString(found.Args[2]))
+	for _, name := range []string{
+		"NewCodexOnlyDeployerWithRendererAndForceUpdate",
+		"NewDualHarnessDeployerWithRendererAndForceUpdate",
+		"NewClaudeHarnessDeployerWithRendererAndForceUpdate",
+	} {
+		if !found[name] {
+			t.Errorf("production deployer %s is not selected", name)
+		}
 	}
 }
 
@@ -350,7 +345,10 @@ func TestSeamDefaultIsTheProductionDeployer(t *testing.T) {
 func TestSeamDefaultSatisfiesResultDeployer(t *testing.T) {
 	t.Parallel()
 
-	dep := newTemplateSyncDeployer(fstest.MapFS{})
+	dep, err := newTemplateSyncDeployer(fstest.MapFS{})
+	if err != nil {
+		t.Fatalf("construct deployer: %v", err)
+	}
 	if dep == nil {
 		t.Fatal("newTemplateSyncDeployer returned nil")
 	}
