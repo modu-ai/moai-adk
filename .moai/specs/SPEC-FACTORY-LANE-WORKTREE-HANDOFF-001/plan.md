@@ -2,7 +2,7 @@
 id: SPEC-FACTORY-LANE-WORKTREE-HANDOFF-001
 document: plan
 created: 2026-09-22
-updated: 2026-09-23
+updated: 2026-09-24
 author: manager-spec
 card: t1082
 module: "internal/factorymsg"
@@ -72,6 +72,8 @@ module: "internal/factorymsg"
 - t1074 factory broker/roster/receipt/SessionStart tests와 MCP catalog invariant를 재실행한다.
 
 ### M5 — Real mixed-factory verification
+
+> **0.5.10 리드 결정: M5 LIVE는 카드 t1145로 분리됐다.** 이 SPEC 안에서 M5가 낸 것은 LIVE가 아닌 gate-quality test(`TestFactoryLaneHandoffLiveEvidenceGateRejectsMutants`) 하나다. AC-FLH-012·013은 `NOT_RUN → t1145`다(progress.md § M5 lane record). handoff controller와 재기동 reconciler는 테스트 밖에서 부르는 곳이 없어서, 이 SPEC이 착지해도 handoff는 운영자가 쓸 수 있는 기능이 아니다. 운영자가 쓰려면 t1145가 필요하다. REQ-FLH-014는 t1145까지 충족되지 않는다. 아래 항목은 원래 계획으로 남겨 둔다.
 
 - built-tree `moai`와 실제 별도 model contexts로 Codex↔Codex 및 Claude lead↔Codex를 실행한다.
 - interactive 행은 실제 `/cd`와 다음 정상 turn SessionStart 및 empty-turn count 0을, headless 행은 실제 `thread/fork(cwd)` 반환 ID와 SessionStart 대기 0을 강제한다.

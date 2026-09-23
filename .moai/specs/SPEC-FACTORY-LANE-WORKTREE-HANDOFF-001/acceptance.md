@@ -2,7 +2,7 @@
 id: SPEC-FACTORY-LANE-WORKTREE-HANDOFF-001
 document: acceptance
 created: 2026-09-22
-updated: 2026-09-23
+updated: 2026-09-24
 author: manager-spec
 card: t1082
 module: "internal/factorymsg"
@@ -35,8 +35,8 @@ module: "internal/factorymsg"
 | AC-FLH-009 | REQ-FLH-011 | `TestFactoryLaneHandoffCrashRecovery` | create/rebind/receipt crash points가 deterministic resume/finalize/NACK로 복구된다. |
 | AC-FLH-010 | REQ-FLH-011 | `TestFactoryLaneHandoffAbandonedWorktreeRecovery` | dirty/unmerged/unknown-owner WT가 ABANDONED로 보존되고 자동 삭제되지 않는다. |
 | AC-FLH-011 | REQ-FLH-008, REQ-FLH-009, REQ-FLH-013 | `TestFactoryLaneHandoffNoPreBoundWrites` | BOUND 전 code/commit/task ACK 0, wrong cwd write 0, primary branch switch 0, message loss 0이다. |
-| AC-FLH-012 | REQ-FLH-013, REQ-FLH-014 | `TestFactoryLiveCodexCodexWorktreeHandoff` | real Codex↔Codex가 실제 interactive `/cd`와 다음 정상 turn SessionStart, empty-turn 0을 증명한다. |
-| AC-FLH-013 | REQ-FLH-013, REQ-FLH-014 | `TestFactoryLiveClaudeCodexWorktreeHandoff` | real Claude lead↔Codex가 실제 headless `thread/fork(cwd)`와 반환 ID direct BOUND를 증명한다. |
+| AC-FLH-012 | REQ-FLH-013, REQ-FLH-014 | `TestFactoryLiveCodexCodexWorktreeHandoff` | real Codex↔Codex가 실제 interactive `/cd`와 다음 정상 turn SessionStart, empty-turn 0을 증명한다. **`NOT_RUN → t1145`** (progress.md § M5 lane record) |
+| AC-FLH-013 | REQ-FLH-013, REQ-FLH-014 | `TestFactoryLiveClaudeCodexWorktreeHandoff` | real Claude lead↔Codex가 실제 headless `thread/fork(cwd)`와 반환 ID direct BOUND를 증명한다. **`NOT_RUN → t1145`** (progress.md § M5 lane record) |
 | AC-FLH-014 | REQ-FLH-006, REQ-FLH-007, REQ-FLH-012 | `TestFactoryLaneHandoffNoPrivateControl` | slash automation/tmux/private socket/model-cd/Desktop emulation 호출이 0이다. |
 | AC-FLH-015 | REQ-FLH-015 | `TestFactoryLaneHandoffT1074Compatibility` | 기존 broker/roster/receipt/catalog가 유지되고 새 broker/daemon/store가 없다. |
 | AC-FLH-016 | REQ-FLH-004 | `TestFactoryLaneHandoffCreationBaseDriftRejected` | t1082에서 실제 관측된 main→develop creation-base drift mutant가 BASE_DRIFT로 fail closed한다. |
@@ -279,6 +279,8 @@ Expected final output: `true`; otherwise FAIL.
 
 ### AC-FLH-012 — LIVE Codex lead ↔ Codex lane
 
+**상태: `NOT_RUN → t1145`.** 이 SPEC 안에서는 실행되지 않았고 FAIL로 남는다. 운영자의 실제 `/cd`가 필요하고, handoff를 시작하는 production 경로가 없기 때문이다(progress.md § M5 lane record). 아래 기대 결과·명령·jq predicate는 바꾸지 않았다.
+
 **Given** two real separately launched Codex model contexts in one factory run, **when** the lane receives a card and the operator actually executes `/cd` before sending the next normal user turn, **then** evidence shows `SWITCH_PENDING_INTERACTIVE` before that turn, its SessionStart-driven new thread/session generation, target statusline/cwd/`WT-*` branch, empty model turn count 0, BOUND receipt, explicit message receipt, old endpoint rejection, pre-BOUND writes 0, primary branch switch 0, and message loss 0.
 
 ```bash
@@ -288,6 +290,8 @@ unset ANTHROPIC_BASE_URL ANTHROPIC_API_KEY ANTHROPIC_AUTH_TOKEN Z_AI_API_KEY && 
 Expected outputs: 두 `jq` 모두 `true`. `.moai/reports/t1082/ac12-evidence.json`이 없거나 malformed이거나 위 exact predicate 중 하나라도 거짓이면 FAIL이다. stdout 문자열은 대체 증거가 아니다.
 
 ### AC-FLH-013 — LIVE Claude lead ↔ Codex lane
+
+**상태: `NOT_RUN → t1145`.** 이 SPEC 안에서는 실행되지 않았고 FAIL로 남는다. lead가 `thread/fork(cwd)`를 일으킬 production 경로가 없고, 격리 home에서는 두 harness 모두 인증되지 않았기 때문이다(progress.md § M5 lane record). 아래 기대 결과·명령·jq predicate는 바꾸지 않았다.
 
 **Given** a real Claude lead and real separately launched headless Codex lane with stored history in one factory run, **when** the lead triggers actual `thread/fork(cwd)` and dispatches after verified direct BOUND, **then** evidence shows the official returned thread ID/lineage, controller cwd/branch/HEAD readback, SessionStart wait 0, empty model turn count 0, generation/receipt/stale-reject/zero-write/zero-loss, and bidirectional unique nonces.
 

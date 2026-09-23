@@ -1,10 +1,10 @@
 ---
 id: SPEC-FACTORY-LANE-WORKTREE-HANDOFF-001
 title: "Factory lane card worktree handoff"
-version: "0.5.9"
+version: "0.5.10"
 status: in-progress
 created: 2026-09-22
-updated: 2026-09-23
+updated: 2026-09-24
 author: manager-spec
 priority: P1
 phase: "v3.0.0"
@@ -23,6 +23,7 @@ card: t1082
 
 | Version | Date | Change |
 |---|---|---|
+| 0.5.10 | 2026-09-24 | 리드 결정: M5 LIVE를 카드 t1145로 분리했다(Jev S 0.74 / K 0.28). 근거는 progress.md § M5 lane record다. LIVE는 두 행 모두 `NOT_RUN`으로 FAIL이었고 model 호출은 0회였다. 막힌 이유는 넷이다. SPEC에 model 호출 상한이 없었다. 격리한 home에서는 두 harness 모두 인증되지 않았다. handoff를 시작하는 production 경로가 없었다. AC-FLH-012는 운영자의 실제 `/cd`가 필요하다. 그래서 AC-FLH-012·013의 기대 결과·명령·jq predicate는 그대로 두고, AC 본문과 acceptance.md 요약행, 이 문서의 추적표에 `NOT_RUN → t1145`를 적었다. Scope 영역에 알려진 한계를 더했다. M1–M4가 착지시킨 handoff controller와 재기동 reconciler는 테스트 밖에서 부르는 곳이 없어서, 이 SPEC이 착지해도 handoff는 쓸 수 있는 기능이 아니다. 운영자가 쓰려면 t1145가 필요하고, REQ-FLH-014는 t1145까지 충족되지 않는다. design.md 잔여 위험과 plan.md M5에 같은 내용을 짧게 적었다. t1145의 범위는 이 SPEC이 정하지 않는다. status는 in-progress 그대로다. |
 | 0.5.9 | 2026-09-23 | 리드 결정: v058 minor M1·M2 를 재감사 없이 M4 에 흡수 — M1 순서 정정(의미 불변), M2 hook 다리 단언 추가. 근거는 `.moai/reports/t1082/plan-audit-delta-v058.md`의 M1·M2다. M1: acceptance.md AC-FLH-007에서 BOUND 행 다리를 launcher 다리 앞으로 옮겨 서술 순서를 상태 진행 순서와 맞췄고, 문장·명령·jq 게이트·named test는 바꾸지 않았다. M2: AC-FLH-003 hook 안내문 다리에, 현재 endpoint가 launch-pending 행일 때 tombstone된 session의 SessionStart 안내문이 같은 상태의 UserPromptSubmit 안내문(빈 session 렌더링)과 바이트 동일하고 행을 바꾸지 않는다는 단언을 더했으며, 요약행과 RED 원장(HEAD `ec33efa6a`, exit 1)·앵커·양성 대조·행동 탐침 관측을 기록했다. |
 | 0.5.8 | 2026-09-23 | 델타 plan-audit(`.moai/reports/t1082/plan-audit-delta-v057.md`) FAIL 0.80의 N1–N5를 한 개정으로 모두 고쳤다. 리드 결정: Tier L이고 사용자에게 보이는 동작이 AC 없이 run에 들어가면 안 되므로 N1–N5를 함께 고친다. Jev 판정(0.47/0.45)은 결정적이지 않아 근거로 쓰지 않았고 독트린으로 정했다. N1: REQ-FLH-017 종착 문장에서 「결합된 현재 endpoint 정확히 하나」와 「고아 launch-pending 없음」 두 조항이 같은 예외를 받도록 문장을 다시 짰다. REQ-FLH-010으로 bind를 거부당한 살아 있는 launcher owner가 쥔 launch-pending 행은, 그 owner가 current인 동안 결합되지 않은 채 lane의 유일한 현재 endpoint로 남으며 고아가 아니다. design §2.1 정합 항목도 맞췄다. N2: AC-FLH-007 launcher 다리의 bind 입력 `Generation`을 production SessionStart hook의 상수 1로 고정하고 tombstone generation과 다름을 테스트가 먼저 단언하게 했으며, 송신 다리 두 개의 identity를 「거부된 bind가 만들었을 identity」(tombstone된 UUID, launch-pending generation + 1, launcher PID·process-start)로 고정했다. N3: AC-FLH-007에 이미 BOUND인 행에서 tombstone된 UUID의 `BindLaunchPending`이 `STALE_ENDPOINT`로 거부되고 아무것도 쓰지 않는 다리를, AC-FLH-003(hook 패키지 named test)에 BOUND 뒤 이전 session의 SessionStart가 기존 endpoint-replaced 안내문을 그대로 내는 다리를 더했다. REQ-FLH-010 추적에 AC-FLH-003을 더하고, 두 다리의 RED 원장(HEAD `03390136a`)과 앵커·양성 대조를 기록했다. N4: design의 운영자 신호 서술을 코드에 맞췄다. roster 값은 `launch_pending`이고, 기존 안내문은 조치를 지시하지 않으며, launch-pending 행이 현재 endpoint일 때 session 자리는 빈 값으로 렌더된다. 빈 session 렌더링은 새 요구가 아니라 잔여 위험으로 적었다. N5: plan M4 재실행 목록을 `rg -l 'BindLaunchPending' internal --glob '*_test.go'`의 실제 출력 8개 파일과 그 세 패키지로 바꿨다. D3·D5·D6은 건드리지 않았다. |
 | 0.5.7 | 2026-09-23 | 델타 plan-audit(`.moai/reports/t1082/plan-audit-delta-v056.md`) FAIL 0.80의 D1·D2·D4를 리드 결정대로 고쳤다. D1은 선택지 (b)로 정했다(Jev noul 0.82). REQ-FLH-010의 「resume까지 포함한 영구 거부」가 launcher resume 경로에도 걸리도록, SessionStart launcher bind(`BindLaunchPending`)가 자기 write transaction 안에서 tombstone 집합을 session UUID만으로(generation 무관) 읽고 `STALE_ENDPOINT`와 현재 endpoint redirect로 거부하며 아무것도 쓰지 않게 했다. 거부 뒤 launch-pending 행은 launcher 등록이 commit한 그대로 두고, 그 owner가 t1074 규칙으로 current가 아니게 된 뒤 새 launcher 등록이 대체한다. 행 삭제(rollback)는 generation을 되돌리므로 택하지 않았다. REQ-FLH-017의 dead-owner 재등록 문장과 「고아 launch-pending 없음」 불변식에 이 경우를 명시했다. 운영자 신호는 SessionStart hook의 기존 `STALE_ENDPOINT` 안내문과 lane roster의 `launch-pending` 결합 상태다. AC-FLH-007에 launcher 다리와 양성 다리를 더하고, 사실과 어긋났던 launcher 경로 제외문과 그 근거(D4: 뒤이은 SessionStart bind는 이전 UUID를 쓴다)를 지웠으며, 요약행을 맞추고 RED 원장에 launcher 다리 측정(HEAD `113daeb83`, exit 1)과 앵커·양성 대조를 더했다. 구현은 M4에서 하며, 닫힌 카드 t1074가 소유한 `internal/factorymsg/store.go`를 건드리는 비용은 리드 결정으로 받아들였다. D2는 AC-FLH-020에 허용 seam을 이름으로 적었다. 종결 store 함수가 `func(int) (string, homestate.ProcessIdentityState)` probe를 인자로 받고(선례 `internal/cli/factory_handoff_recover.go:30` `RecoverLegacyResume`), cli 명령이 그것을 패키지 변수로 연결하며, 테스트는 그 변수만 바꿔 Live/Dead/Indeterminate를 만든다. 이 다리가 `ownerCurrent` bool 재사용 변이를 잡는다는 점도 적었다. D3·D5·D6은 건드리지 않았다. |
@@ -70,6 +71,12 @@ factory lead 운영자로서 안정 lane에 카드를 배차한 뒤 그 lane의 
 - 이 worktree는 `moai worktree new t1082` 실행 시 primary `main@2213871af`에서 잘못 시작했고, 이후 `git merge --ff-only develop`로 `develop@3f3ffbb57`에 맞춰졌다. 이 관측된 creation-base drift는 REQ-FLH-004와 AC-FLH-016의 필수 실패 사례다.
 - t1074 의존 merge는 `bf39a539d`, 의존 commit `8c5d9be99`는 현재 HEAD의 ancestor다.
 - 현재 MCP catalog는 단위 검증에서 36개(쓰기 14, 읽기 22)로 관측됐다. 이 SPEC은 새 MCP tool을 기본 해법으로 추가하지 않는다.
+
+### Known limitation — handoff에 production 진입 경로가 없다 (0.5.10, t1145 대기)
+
+- M1–M4가 착지시킨 handoff controller(`prepareLaneHandoff`, `switchLaneHandoffInteractive`, `switchLaneHandoffHeadless`)와 재기동 reconciler(`recoverLaneHandoff`)는 테스트 밖에서 부르는 곳이 없다. HEAD `7043f1ca6`에서 `_test.go`를 뺀 `internal`·`cmd`·`pkg`를 grep하면 이 네 이름은 선언과 주석에만 나온다. handoff를 시작하는 CLI 명령도 MCP tool도 없다.
+- 그래서 이 SPEC이 착지해도 lane worktree handoff는 운영자가 쓸 수 있는 기능이 아니다. 운영자가 쓰려면 카드 t1145가 필요하다. `moai factory handoff abandon-lane`은 CLI에 연결돼 있지만 비종결 handoff를 끝내는 명령일 뿐이다. production에서는 handoff를 만들 수 없으므로 이 명령이 다룰 대상도 생기지 않는다.
+- REQ-FLH-014(LIVE cross-harness proof)는 t1145까지 충족되지 않는다. AC-FLH-012·013은 `NOT_RUN → t1145`다. 근거는 progress.md § M5 lane record다.
 
 ## Requirements (GEARS)
 
@@ -161,8 +168,8 @@ While a lane has a handoff in a non-final state (`RESERVED`, `WT_READY`, `SWITCH
 | § REQ-FLH-010 | AC-FLH-003, AC-FLH-007 |
 | § REQ-FLH-011 | AC-FLH-009, AC-FLH-010, AC-FLH-020 |
 | § REQ-FLH-012 | AC-FLH-014 |
-| § REQ-FLH-013 | AC-FLH-011, AC-FLH-012, AC-FLH-013 |
-| § REQ-FLH-014 | AC-FLH-012, AC-FLH-013 |
+| § REQ-FLH-013 | AC-FLH-011, AC-FLH-012 (`NOT_RUN → t1145`), AC-FLH-013 (`NOT_RUN → t1145`) |
+| § REQ-FLH-014 | AC-FLH-012 (`NOT_RUN → t1145`), AC-FLH-013 (`NOT_RUN → t1145`) — t1145까지 미충족 |
 | § REQ-FLH-015 | AC-FLH-015, AC-FLH-018 |
 | § REQ-FLH-016 | AC-FLH-017, AC-FLH-019 |
 | § REQ-FLH-017 | AC-FLH-018, AC-FLH-019 |
