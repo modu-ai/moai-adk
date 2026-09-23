@@ -10,14 +10,17 @@ import (
 	"github.com/modu-ai/moai-adk/internal/defs"
 )
 
-// M3 — Snapshot write-time hook wiring. The four trigger sites (Decision D4)
-// all funnel through writeTemplateSnapshotBestEffort. These tests pin that
-// funnel so the init/update/restore wiring is behaviorally verified without
-// standing up the full cobra command flow.
+// M3 — Snapshot write-time hook wiring. The trigger sites of Decision D4 as
+// amended by card t1139 — init right after its template deploy, and each update
+// path right after its deploy — funnel through writeTemplateSnapshotBestEffort;
+// runUpdateRestore deploys nothing and writes no snapshot. The helper tests
+// below pin the funnel itself; the call-site ordering is pinned end to end in
+// update_identity_preserve_test.go and update_identity_clean_install_test.go.
 
-// TestInit_WritesSnapshot is AC-TBS-001: the end of `moai init` writes the
-// snapshot. init.go calls writeTemplateSnapshotBestEffort; this test exercises
-// the exact helper init invokes and asserts the snapshot appears on disk.
+// TestInit_WritesSnapshot is AC-TBS-001 at the helper level. init.go calls
+// writeTemplateSnapshotBestEffort from InitOptions.AfterTemplateDeploy, right
+// after the template deploy and before any wizard patch; this test exercises
+// that helper and asserts the snapshot appears on disk.
 func TestInit_WritesSnapshot(t *testing.T) {
 	t.Parallel()
 	projectRoot := t.TempDir()
@@ -31,7 +34,7 @@ func TestInit_WritesSnapshot(t *testing.T) {
 		t.Fatalf("write system.yaml: %v", err)
 	}
 
-	// The exact call init.go makes at the end of runInit.
+	// The exact call init.go makes from its AfterTemplateDeploy hook.
 	var buf bytes.Buffer
 	writeTemplateSnapshotBestEffort(projectRoot, &buf)
 
@@ -53,17 +56,23 @@ func TestInit_WritesSnapshot(t *testing.T) {
 	}
 }
 
-// TestUpdateRestore_WritesSnapshot_TemplateSync is AC-TBS-002 (template-sync
-// restore site). update_template_sync.go calls writeTemplateSnapshotBestEffort
-// after RestoreMoaiConfig completes.
+// TestUpdateRestore_WritesSnapshot_TemplateSync exercises the helper the
+// template-sync deploy site calls. Since card t1139 update_template_sync.go
+// calls writeTemplateSnapshotBestEffort right after the Deploy Templates step,
+// BEFORE Restore Settings runs RestoreMoaiConfig. This test reaches only the
+// helper, never that call site; the call-site ordering is pinned end to end by
+// TestUpdateForce_SnapshotIsTheDeployedRender.
 func TestUpdateRestore_WritesSnapshot_TemplateSync(t *testing.T) {
 	t.Parallel()
 	testHelperWritesSnapshot(t)
 }
 
-// TestUpdateRestore_WritesSnapshot_CleanInstall is AC-TBS-002 (clean-install
-// restore site). update_clean_install.go calls writeTemplateSnapshotBestEffort
-// after RestoreMoaiConfig completes.
+// TestUpdateRestore_WritesSnapshot_CleanInstall exercises the helper the
+// clean-reinstall deploy site calls. Since card t1139 update_clean_install.go
+// calls writeTemplateSnapshotBestEffort right after the Step 5 deploy, BEFORE
+// Step 5.5 runs RestoreMoaiConfig. This test reaches only the helper, never
+// that call site; the call-site ordering and the identity render are pinned end
+// to end by TestCleanReinstall_SnapshotIsTheDeployedRenderAndIdentitySurvives.
 func TestUpdateRestore_WritesSnapshot_CleanInstall(t *testing.T) {
 	t.Parallel()
 	testHelperWritesSnapshot(t)
@@ -111,9 +120,9 @@ func TestRunUpdateRestore_LeavesSnapshotUntouched(t *testing.T) {
 	}
 }
 
-// testHelperWritesSnapshot is the shared body for the three restore-site
-// tests: all three call writeTemplateSnapshotBestEffort, so they share the
-// same post-restore snapshot assertion.
+// testHelperWritesSnapshot is the shared body for the two update deploy-site
+// helper tests: both sites call writeTemplateSnapshotBestEffort, so they share
+// the same "the helper copies the section files" assertion.
 func testHelperWritesSnapshot(t *testing.T) {
 	projectRoot := t.TempDir()
 	if err := os.MkdirAll(filepath.Join(projectRoot, defs.MoAIDir, defs.SectionsSubdir), defs.DirPerm); err != nil {
@@ -130,7 +139,7 @@ func testHelperWritesSnapshot(t *testing.T) {
 
 	snapDir := filepath.Join(projectRoot, defs.MoAIDir, "cache", "template-snapshot", "sections")
 	if _, err := os.Stat(filepath.Join(snapDir, "quality.yaml")); err != nil {
-		t.Fatalf("restore site did not write snapshot: %v", err)
+		t.Fatalf("snapshot helper did not write the snapshot: %v", err)
 	}
 }
 

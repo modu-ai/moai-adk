@@ -481,8 +481,10 @@ func runCleanReinstall(ctx context.Context, projectRoot string, opts CleanReinst
 	// Card t1139: record the section render this deploy wrote as the next
 	// update's merge BASE, before Step 5.5 restores the user's values over it
 	// (a post-restore snapshot records user values as BASE and the next merge
-	// drops every carried customization). Best-effort non-blocking.
-	writeTemplateSnapshotBestEffort(projectRoot, out)
+	// drops every carried customization). Best-effort non-blocking; a failure
+	// is a warning, so it goes to errOut (out carries stdout in production),
+	// matching the template-sync path.
+	writeTemplateSnapshotBestEffort(projectRoot, errOut)
 	_, _ = fmt.Fprintln(out, "[clean-reinstall] Embedded templates reinstalled")
 
 	// ---------------------------------------------------------------
