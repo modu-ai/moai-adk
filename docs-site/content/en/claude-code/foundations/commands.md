@@ -88,7 +88,7 @@ The table above is for quick reference. This section covers five commands most c
 | Model | Characteristics |
 | :--- | :--- |
 | Fable 5 (`claude-fable-5`) | Currently top-tier (Mythos-tier). Deepest reasoning |
-| Opus 5 | Next-tier. Complex coding and design |
+| Opus 5.5 | Next-tier. Complex coding and design |
 | Sonnet 5 | Balanced. Everyday work |
 | Haiku 4.5 | Light, fast, lightweight work |
 

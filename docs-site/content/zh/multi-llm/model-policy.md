@@ -27,13 +27,13 @@ description: 讲解按任务性质与质量/成本目标为每个智能体分配
 
 先把可选项摆清楚。模型策略就是在下面的阵容中挑选用哪个模型、以哪个推理深度来用的规则。
 
-### 模型阵容（2026-08）
+### 模型阵容（2026-09）
 
 | 模型 | 标识符 | 上下文 | 特性 |
 |------|--------|----------|------|
-| Claude Fable 5 | `claude-fable-5` | 256K | 新 Mythos 级通用旗舰。最深的推理与复杂编码 |
-| Claude Opus 5 / 4.8 | `opus` | 1M | 复杂架构、高难度推理 |
-| Claude Sonnet 5 | `sonnet` | 200K | 速度与智能的平衡，日常编码 |
+| Claude Fable 5 | `claude-fable-5` | 1M | 新 Mythos 级通用旗舰。最深的推理与复杂编码 |
+| Claude Opus 5.5 | `opus` | 1M | 复杂架构、高难度推理 |
+| Claude Sonnet 5 | `sonnet` | 1M | 速度与智能的平衡，日常编码 |
 | Claude Haiku 4.5 | `claude-haiku-4-5-20251001` | 200K | 最快最省，简单 · 大批量任务 |
 
 > MoAI 的模型策略并不使用这份阵容的全部。按 **No-Haiku 策略**，Haiku 不出现在智能体矩阵的任何位置，多轮智能体行全部由 Opus 承担。原因就在下一节。
@@ -47,8 +47,10 @@ description: 讲解按任务性质与质量/成本目标为每个智能体分配
 | `low` | 最浅的推理。快且便宜 |
 | `medium` | 平衡。默认配置文件的基准点 |
 | `high` | 深推理 |
-| `xhigh` | 更深的推理（Opus 5 · 4.8 · Sonnet 5 · Opus 4.7 支持） |
+| `xhigh` | 更深的推理（Opus 5.5 · Opus 5 · 4.8 · Sonnet 5 · Opus 4.7 支持） |
 | `max` | 最深的推理 |
+
+> **默认 effort**： Opus 5.5 的默认 effort 是 `medium`，其他支持 effort 的模型大多默认 `high`。MoAI 的配置向导和 Web 控制台也推荐把会话 effort 设为 `medium`。`opus` 别名要解析为 Opus 5.5，需要 Claude Code v2.1.280 或更高版本。
 
 > **`ultrathink` 关键字**： 输入 `ultrathink` 会同时开启 `effort:xhigh` 和 Adaptive Thinking（推理代币自动分配）。不使用固定的 `budget_tokens` —— 模型自行分配推理深度。也可以用 `/effort low|medium|high|xhigh|max|ultracode|auto` 斜杠命令切换。
 
