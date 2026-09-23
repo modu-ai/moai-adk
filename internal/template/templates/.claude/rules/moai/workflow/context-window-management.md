@@ -18,15 +18,15 @@ reimplement them. Rationale and the layer vocabulary:
 
 | Model class | Window | Handoff threshold | Absolute ceiling |
 |-------------|--------|-------------------|------------------|
-| Opus 5.5 (1M) | 1,000,000 tokens | **50%** | ~500,000 tokens |
-| Opus 4.8 (1M) | 1,000,000 tokens | **50%** | ~500,000 tokens |
+| Opus 5.5 on the Anthropic API (1M) | 1,000,000 tokens | **50%** | ~500,000 tokens |
+| Opus 4.8 on the Anthropic API (1M) | 1,000,000 tokens | **50%** | ~500,000 tokens |
 | GLM-5.3 via `moai glm`/`moai cg` (1M) | 1,000,000 tokens | **50%** | ~500,000 tokens |
 | Fable (1M) | 1,000,000 tokens | **50%** | ~500,000 tokens |
 | Sonnet 5 (1M) | 1,000,000 tokens | **50%** | ~500,000 tokens |
-| 200K sessions — Sonnet 4.6 / Opus 4.6 without `[1m]`, Opus 4.8+ on Bedrock / Google Cloud / Foundry, Sonnet 4.5 / Opus 4.5 and earlier | 200,000 tokens | **90%** | ~180,000 tokens |
+| 200K sessions — Sonnet 4.6 / Opus 4.6 without `[1m]`; Opus 4.8+ running with a 200K window (e.g. on Bedrock / Google Cloud / Foundry); any native-1M model under `CLAUDE_CODE_DISABLE_1M_CONTEXT=1`; Sonnet 4.5 / Opus 4.5 and earlier | 200,000 tokens | **90%** | ~180,000 tokens |
 | Haiku (200K) | 200,000 tokens | **90%** | ~180,000 tokens |
 
-The model-specific threshold is the operational ceiling — beyond it, plan for a `/clear` before the next non-trivial action. Both this rule and `session-handoff.md` Trigger #1 read from this same table.
+A session that matches both a 1M row and the 200K-sessions row takes the 200K row: the window the session actually runs with sets the threshold, not the model name. The model-specific threshold is the operational ceiling — beyond it, plan for a `/clear` before the next non-trivial action. Both this rule and `session-handoff.md` Trigger #1 read from this same table.
 
 ### GLM-5.3 context window (Issue #653)
 
