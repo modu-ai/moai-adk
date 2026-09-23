@@ -12,7 +12,7 @@ module: "internal/factorymsg"
 
 ## §A Status
 
-- Current SPEC status: `in-progress` (M1 commit, manager-develop). The plan-era lines below are kept as written.
+- Current SPEC status: `completed` (this sync commit, manager-docs; HISTORY 0.5.11 transferred REQ-FLH-014/AC-FLH-012/013 out of scope to t1145; see §E.4 below). The plan-era lines below are kept as written for the historical record.
 - Current phase: run, M1, M2, M3a, M3b and M4 complete (M4 code HEAD `c16d1422a`; follow-up tests `a0d4755a7` on develop absorb `09e620d2d`); M5 (LIVE) blocked, both LIVE rows NOT_RUN = LIVE FAIL, gate-quality test delivered (see § M5 lane record).
 - Card/worktree/branch: `t1082` / `.claude/worktrees/t1082` / `WT-factory-lane-worktree-handoff`.
 - Plan subject HEAD: `bf39a539d97f49edf3b11517ee7c982239c60df3`.
@@ -878,7 +878,8 @@ The absorbed develop includes t1109 "launch-pending bind budget split". Whether 
 
 ### Claim
 
-- `status: in-progress` is unchanged. No transition (`draft→in-progress`, `in-progress→implemented→completed`) was performed. The rule cited: `spec.md` HISTORY 0.5.10 already records the lead's decision that status stays `in-progress` while AC-FLH-012/013 are `NOT_RUN → t1145` — this sync-phase pass did not re-decide that; it followed it.
+- `status: in-progress` is unchanged. No transition (`draft→in-progress`, `in-progress→implemented→completed`) was performed. The rule cited: `spec.md` HISTORY 0.5.10 records that status stays `in-progress` while AC-FLH-012/013 are `NOT_RUN → t1145` — this sync-phase pass did not re-decide that; it followed it.
+- **Correction (F2, `.moai/reports/t1082/sync-audit-deep.md`):** 0.5.10 attributed the "keep status in-progress" call to the lead. Per the lead's own dispatch, the lead did not decide status — the lane did. That attribution is fixed here and in `spec.md` HISTORY 0.5.11 (manager-spec's edit, not this pass's). **This §L pass itself is now superseded**: HISTORY 0.5.11 transferred REQ-FLH-014/AC-FLH-012/013 out of scope to t1145, and the lead's ruling after that transfer is to close this SPEC as `completed` — see § below for the transition this superseding pass performs.
 - No body content in `spec.md` / `plan.md` / `acceptance.md` / `design.md` / `research.md` was modified (Status Transition Ownership Matrix, `.claude/rules/moai/development/spec-frontmatter-schema.md` § Forbidden ownership crossings).
 - One `CHANGELOG.md` `[Unreleased]` entry was added, naming the SPEC as internal infrastructure with no production trigger, naming `moai factory handoff abandon-lane --slot <slot>` as the sole operator-reachable surface, and naming the two behavior changes live today (launcher-resume `STALE_ENDPOINT` refusal, SessionStart endpoint-replaced notice reuse).
 
@@ -974,3 +975,74 @@ Login was not attempted (condition 2). The worktree guard refused a shell-level 
 ### Residual risk
 
 - The gate test reads predicates by regex from the first bash block under each AC heading. If `acceptance.md` is restructured so the block moves, the test fails with "no bash block" or "lacks a jq predicate" instead of passing silently. A block that keeps the heading but carries different jq programs is read as the new truth by design.
+
+## §E.4 Sync-phase Audit-Ready Signal (2026-09-24, manager-docs)
+
+### Claim
+
+- This sync commit performs the `in-progress → completed` status transition on `spec.md` frontmatter (`status:` and `updated:` fields only; no body edits), following the lead's ruling that the SPEC closes now that the unmet LIVE scope (REQ-FLH-014, AC-FLH-012/013) has been transferred out of scope to card t1145 by `spec.md` HISTORY 0.5.11 — a manager-spec edit landed at commit `22a368ef7`, prior to and separate from this commit.
+- `CHANGELOG.md` `[Unreleased]` entry for this SPEC (added by an earlier sync-phase pass, `c0aa65eb5`) was corrected in place, not re-appended: F3 (LIVE-refusal scoping overstatement), F4 (two observable-today changes missing — 7 new broker tables, `STALE_GENERATION` redirect text), F5 (`AuthorizeCardWrite` no-production-caller gap), and the LIVE-scope reframe from "`NOT_RUN` in scope, FAIL" to "out of scope, transferred to t1145" were applied per `.moai/reports/t1082/sync-audit-deep.md` findings F2–F5.
+- `progress.md` §L's Claim section was corrected in place (F2): the "keep status in-progress" call was the lane's judgment, not the lead's, per the lead's own dispatch; `spec.md` HISTORY 0.5.11 carries the same correction.
+- No body content in `spec.md` / `plan.md` / `acceptance.md` / `design.md` / `research.md` was modified by this commit (Status Transition Ownership Matrix, `.claude/rules/moai/development/spec-frontmatter-schema.md` § Forbidden ownership crossings). The 0.5.11 body edit (Exclusions/Out-of-Scope transfer) was manager-spec's, landed in a prior commit.
+
+### Evidence
+
+```text
+grep -c 'SPEC-FACTORY-LANE-WORKTREE-HANDOFF-001' CHANGELOG.md   (before this commit's edit — entry already existed from c0aa65eb5, so this is an in-place correction, not a new append)
+1
+
+grep -oE 'AC-([A-Z0-9]+-)*[0-9]+' .moai/specs/SPEC-FACTORY-LANE-WORKTREE-HANDOFF-001/acceptance.md | sort -u | wc -l
+20   (AC-FLH-001..020; AC-FLH-012/013 remain present as § Exclusions entries per 0.5.11, text preserved verbatim for t1145)
+
+for p in internal/cli/factory_handoff_recover.go internal/factorymsg/handoff_bind.go internal/hook/factory_handoff_bind.go internal/hook/factory_messages.go internal/factorymsg/verify_peer_test.go internal/factorymsg/store.go; do test -f "$p" && echo "OK $p" || echo "MISSING $p"; done
+OK internal/cli/factory_handoff_recover.go
+OK internal/factorymsg/handoff_bind.go
+OK internal/hook/factory_handoff_bind.go
+OK internal/hook/factory_messages.go
+OK internal/factorymsg/verify_peer_test.go
+OK internal/factorymsg/store.go
+
+grep -n 'CREATE TABLE' internal/factorymsg/store.go internal/factorymsg/handoff.go internal/factorymsg/handoff_bind.go | grep -v _test | wc -l
+10   (3 base tables in store.go: peers, messages, dead_letters; 7 handoff-related: lane_handoffs, lane_handoff_events, lane_handoff_relocations, lane_endpoint_tombstones, lane_handoff_receipts, lane_dispatch_releases, lane_message_releases)
+
+grep -n 'func (e \*StaleEndpointError) Error' internal/factorymsg/handoff_bind.go
+47:func (e *StaleEndpointError) Error() string {
+```
+
+### Baseline-attribution
+
+- Read against `.claude/worktrees/t1082` HEAD `22a368ef7` (card t1082, branch `WT-factory-lane-worktree-handoff`), this run, this tree.
+- F3/F4/F5 factual claims (table count, `STALE_GENERATION` redirect text, `AuthorizeCardWrite` caller absence, tombstone writer singularity) were directly re-verified in this pass by reading `internal/factorymsg/handoff_bind.go`, `internal/factorymsg/store.go`, and `internal/factorymsg/verify_peer_test.go` on this tree — not carried over from `sync-audit-deep.md` unread.
+- `sync-audit-deep.md` itself was read at its own stated baseline (HEAD `c0aa65eb5`); this commit's tree has since moved to `22a368ef7` (manager-spec's 0.5.11 edit) before this pass began.
+
+### b12_self_test
+
+- `b12_self_test_a` (pre-emission duplicate-entry grep): **NOT_APPLICABLE_AS_WRITTEN** — the CHANGELOG entry for this SPEC already existed (grep count 1) before this commit, because an earlier sync-phase pass (`c0aa65eb5`) authored it. This commit corrects that existing entry in place rather than appending a new one, so the ≥1 guard (designed to catch a *duplicate append*) does not fire a stop condition here; the applicable check is "was the existing entry edited, not duplicated", confirmed by `git diff` showing one paragraph modified, zero new `[SPEC-FACTORY-LANE-WORKTREE-HANDOFF-001]` bullets added.
+- `b12_self_test_b` (AC count match): **PASS** — 20 distinct AC identifiers in `acceptance.md` (AC-FLH-001..020); the CHANGELOG entry does not enumerate an AC count itself (it names specific ACs — AC-FLH-012, AC-FLH-013 — in the context of their scope transfer), so no count mismatch is possible; this is a structural non-mismatch, not a passed numeric comparison.
+- `b12_self_test_c` (file path verification): **PASS** — all 6 paths cited in the CHANGELOG entry and this §E.4 section verified to exist on this tree via `test -f` (see Evidence above).
+
+### frontmatter_status_transitions
+
+- `spec.md`: `status: in-progress → completed`, `updated: 2026-09-24` (already current from the 0.5.11 commit; this commit does not change the date, only `status:`).
+- `plan.md` / `acceptance.md`: no `status:` frontmatter field present in this SPEC's artifact set (confirmed by frontmatter grep); no transition to perform on those two files.
+- `progress.md`: no `status:` frontmatter field either; §A's prose "Current SPEC status" line was updated in this commit to read `completed` (see §A above) as the progress-record's own status marker, since this document carries status in prose rather than frontmatter.
+
+### sync_commit_sha
+
+- `sync_commit_sha: pending-backfill-sync` — a commit cannot cite its own hash; backfilled in a following commit.
+- `sync_complete_at: 2026-09-24`
+- `sync_status: completed`
+
+### canary_compliance_check
+
+- Not applicable. This SPEC defines no forward-looking policy that its own sync tests.
+
+### Gaps
+
+- No fresh independent sync-audit (Functionality/Security/Craft/Consistency scoring) was run as part of *this* correction pass — it consumes and corrects findings from the prior deep sync-audit (`.moai/reports/t1082/sync-audit-deep.md`) rather than re-auditing from scratch. Whether the corrected CHANGELOG/progress.md text itself now passes a fresh audit is unverified by this pass.
+- `design.md` / `research.md` were not re-read for their own F2-equivalent attribution errors beyond what `sync-audit-deep.md` already flagged (F2 named only `spec.md`, `CHANGELOG.md`, `progress.md`).
+
+### Residual-risk
+
+- `sync_commit_sha` remains a placeholder until backfilled; a reader who cites this section before the backfill commit lands is citing an incomplete record.
+- The CHANGELOG entry's description of `abandon-lane`'s current uselessness and the no-production-trigger framing will go stale the moment t1145 lands a production caller; a future SPEC/card should update or supersede this entry rather than read it as still current once that changes (carried forward from the prior §L Residual-risk, still true).
