@@ -309,7 +309,7 @@ The SPEC now has 18 ACs: the 16 original ones plus AC-OP55-007a and 007b from th
 
 ```yaml
 sync_complete_at: 2026-09-23
-sync_commit_sha: pending-backfill
+sync_commit_sha: 6f15f3b73
 sync_status: implemented-with-gap   # full internal/cli unmeasured on repair tree 6e49cfd0e
 prior_close: d0037fba8 completed -> sync-audit FAIL -> amendment 5abca9135 -> untrack 7f183119f -> repair 6e49cfd0e
 ac_total: 18
