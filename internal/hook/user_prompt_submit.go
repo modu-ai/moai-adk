@@ -34,13 +34,23 @@ import (
 // unloaded machine. Under load those two scale together and the remainder does
 // not fit in what is left.
 //
-// WHY IT IS FINITE, AND WHY THIS SIZE. A hook that can hang is worse than a
-// hook that gives up: the UserPromptSubmit hook is configured with a 5s timeout
-// in settings.json, and every millisecond it spends is a millisecond the user
-// waits before their prompt is answered. The budget is therefore bounded well
-// inside that 5s, leaving the inbox inspection (a further 200ms) and the
-// session-title work their own room. Card t1109 measured the miss rate at
-// candidate budgets and recorded the result in .moai/reports/t1109/verdict.md.
+// WHAT THIS BUDGET ACTUALLY COVERS — it is NOT the bind's upper bound.
+// It bounds only the context-aware part of the path: ValidateActiveRun, Peer
+// and RegisterPeer. factorymsg.Open takes no context — it carries its own 5s
+// deadline built on context.Background() — and session.ResolveOwnerPID and
+// homestate.ProbeProcessIdentity take none either, so none of them can be cut
+// short by this value. That was equally true when the bind ran on the 200ms
+// inspection deadline, so it is not a regression this change introduces; it is
+// a limit on what this change can promise.
+//
+// The real outer bound is the hook's own timeout: the UserPromptSubmit hook is
+// configured with 5s in settings.json, and internal/cli/hook.go wraps Handle in
+// a 5s context of its own. A hook that can hang is worse than a hook that gives
+// up, and every millisecond spent here is a millisecond the user waits — so
+// this budget is sized to fit inside that, alongside the inbox inspection (a
+// further 200ms) and the session-title work, rather than to be the thing that
+// stops a runaway. Card t1109 measured the miss rate at candidate budgets and
+// recorded the result in .moai/reports/t1109/verdict.md.
 //
 // MISSING IT IS STILL NOT AN ERROR. When the bind does not finish inside this
 // budget the hook reports a degraded notice and the next turn retries, exactly

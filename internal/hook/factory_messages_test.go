@@ -378,19 +378,23 @@ func factoryPeerSnapshot(t *testing.T, s *factorymsg.Store, slot string) factory
 
 // bindAcrossTurns drives UserPromptSubmit turns until the lead lane resolves,
 // which is the contract registerFactoryHookPeer actually offers: a bind that
-// does not complete inside factoryHookInspectionDeadline is reported as a
-// degraded STRING, not an error, and the next turn tries again. A test that
-// asserts the FIRST turn binds is asserting something the hook never promised.
+// does not complete inside factoryBindBudget is reported as a degraded STRING,
+// not an error, and the next turn tries again. A test that asserts the FIRST
+// turn binds is asserting something the hook never promised.
 //
 // Two properties keep this from being a wait dressed up as a retry:
 //
 //  1. Every non-binding turn MUST carry a degraded notice. A turn that neither
 //     binds nor reports degradation is a real defect and fails here rather than
 //     being absorbed by another attempt.
-//  2. The turn bound is small and derived, not tuned. A single turn was
-//     measured at roughly 10% failure on an unloaded machine (card t1109
-//     baseline: 4 of 40); four independent turns put the residual near 1e-4,
-//     which is why the bound is 4 and not "however many it takes".
+//  2. The turn bound is small and fixed at 4, and it is NOT derived from a
+//     per-turn failure probability. An earlier revision of this comment argued
+//     from one: ~10% per turn, so four turns leave 1e-4. That multiplication
+//     assumes the turns are independent and card t1109 measured that they are
+//     not — once the machine is slow every turn misses together, and four
+//     consecutive misses were observed repeatedly rather than at 1e-4.
+//     See .moai/reports/t1109/verdict.md §9. Four turns is a cap that keeps a
+//     genuinely stuck bind from looping, not a probabilistic safety margin.
 //
 // It returns the bound peer and the notices seen, so a caller can assert on the
 // first turn's notice when that is what it is testing.
@@ -421,6 +425,37 @@ func bindAcrossTurns(t *testing.T, s *factorymsg.Store, input *HookInput) (facto
 	return factorymsg.Peer{}, notices
 }
 
+// TestFactoryBindBudgetStaysInsideTheHookTimeout guards the direction the rest
+// of this file does not: a budget made LARGER.
+//
+// Every other test here shrinks factoryBindBudget or leaves it alone, so raising
+// it is invisible to them — the t1109 sync audit demonstrated this by setting it
+// to 24h and watching all twelve executions pass. The hook has a 5s timeout
+// (settings.json, and internal/cli/hook.go wraps Handle in a 5s context), and a
+// bind budget at or above that hands the whole turn to one step and leaves the
+// inbox inspection and session-title work nothing.
+//
+// The bound is deliberately generous rather than pinned to today's 2s: this
+// asserts the property that matters (the budget is a fraction of the turn), not
+// the current value, so tuning the value within reason does not red this test
+// while removing the ceiling does.
+func TestFactoryBindBudgetStaysInsideTheHookTimeout(t *testing.T) {
+	const hookTimeout = 5 * time.Second
+	if factoryBindBudget <= 0 {
+		t.Fatalf("factoryBindBudget must be positive, got %v", factoryBindBudget)
+	}
+	if factoryBindBudget >= hookTimeout {
+		t.Fatalf("factoryBindBudget %v leaves the rest of the turn nothing: "+
+			"the hook's own timeout is %v", factoryBindBudget, hookTimeout)
+	}
+	// The inbox inspection runs after the bind inside the same turn and has its
+	// own deadline; the two together must still fit.
+	if factoryBindBudget+factoryHookInspectionDeadline >= hookTimeout {
+		t.Fatalf("bind budget %v plus inspection deadline %v does not fit in %v",
+			factoryBindBudget, factoryHookInspectionDeadline, hookTimeout)
+	}
+}
+
 // TestFactoryUserPromptSubmitExhaustedBudgetStaysDegraded pins the behaviour
 // when the bind genuinely cannot finish in its budget — the shape card t1109
 // observed on a loaded machine, where four consecutive turns each exceeded the
@@ -432,6 +467,18 @@ func bindAcrossTurns(t *testing.T, s *factorymsg.Store, input *HookInput) (facto
 // asserts the two things that must not change when the budget is missed —
 // the hook still fails open (no error), and it still says so in its notice —
 // and that the peer is left launch-pending for a later turn to retry.
+//
+// [HARD] WHICH DEGRADED BRANCH THIS TAKES. A 1ns budget kills the context
+// before ValidateActiveRun finishes, and that function reports a dead context
+// as NO_ACTIVE_FACTORY rather than as a deadline error, so the notice here
+// reads `degraded: NO_ACTIVE_FACTORY` — NOT the `degraded: context deadline
+// exceeded` a genuinely slow machine produces. The assertion deliberately
+// matches the `factory messaging degraded` prefix both branches share, so it
+// holds for either; what it does not do is prove the deadline branch
+// specifically. That branch was observed under load during card t1109 (39 of 40
+// turns at the restored 200ms budget) and is recorded in
+// .moai/reports/t1109/verdict.md, not reproduced here, because reproducing it
+// would mean depending on machine load — the thing this test exists to avoid.
 func TestFactoryUserPromptSubmitExhaustedBudgetStaysDegraded(t *testing.T) {
 	_, _, s, _, input := factoryPromptPendingFixture(t)
 
@@ -554,9 +601,9 @@ func TestFactoryUserPromptSubmitRebindsLaunchPendingPeer(t *testing.T) {
 	}
 	input.Prompt = "Inspect the assigned factory work."
 	// The bind is not promised on the FIRST turn — a turn that misses
-	// factoryHookInspectionDeadline reports a degraded notice and the next turn
-	// retries (card t1109). bindAcrossTurns holds that contract: it still fails
-	// on a turn that neither binds nor reports degradation.
+	// factoryBindBudget reports a degraded notice and the next turn retries
+	// (card t1109). bindAcrossTurns holds that contract: it still fails on a
+	// turn that neither binds nor reports degradation.
 	bound, notices := bindAcrossTurns(t, s, input)
 	if bound.SessionUUID != input.SessionID || bound.Generation <= pending.Generation || bound.PID != pending.PID || bound.ProcessStart != pending.ProcessStart {
 		t.Fatalf("bound=%+v pending=%+v", bound, pending)
