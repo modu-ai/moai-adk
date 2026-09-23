@@ -1,0 +1,47 @@
+# AC-OP55-009 mutant evidence — tree 43aa64cba (+ uncommitted fix to profile_setup_schema_options_test.go), 2026-09-23
+# Each mutant applied alone, run, then reverted by restoring a byte copy taken before the edit.
+
+## M-a (guard A): internal/cli/profile_setup_translations.go:261
+-		ModelOpus:             "opus (Opus 5.5, 적응형 사고)",
++		ModelOpus:             "opus (Opus 5 , 적응형 사고)",
+$ go test -count=1 -run TestGetProfileText_OpusAliasValues ./internal/cli/
+--- FAIL: TestGetProfileText_OpusAliasValues (0.00s)
+    profile_setup_translations_test.go:105: lang="ko": ModelOpus "opus (Opus 5 , 적응형 사고)" should reference Opus 5.5 (derived from "claude-opus-5-5")
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/cli	0.882s
+exit=1
+reverted -> ok  	github.com/modu-ai/moai-adk/internal/cli	0.551s
+
+## M-b (guard B): internal/cli/wizard/translations.go:93 (ko model_policy "Max")
+-	{Label: "Max", Desc: "Opus 5.5 (high~medium) + Sonnet (low, 문서/단발성 작업) — Max $200 플랜"},
++	{Label: "Max", Desc: "Opus 5  (high~medium) + Sonnet (low, 문서/단발성 작업) — Max $200 플랜"},
+$ go test -count=1 -run TestModelPolicyDescsAgreeWithProfileMatrix ./internal/cli/wizard/
+--- FAIL: TestModelPolicyDescsAgreeWithProfileMatrix (0.00s)
+    model_policy_matrix_agreement_test.go:106: locale "ko" option "high": description does not name "Opus 5.5" (derived from canonical id "claude-opus-5-5")
+          desc: Opus 5  (high~medium) + Sonnet (low, 문서/단발성 작업) — Max $200 플랜
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/cli/wizard	0.337s
+exit=1
+reverted -> ok  	github.com/modu-ai/moai-adk/internal/cli/wizard	0.329s
+
+## M-c (both guards follow an alias change): internal/template/model_policy.go:78
+-	"opus":     ModelIDOpus55,
++	"opus":     "claude-opus-6",
+$ go test -count=1 -run TestGetProfileText_OpusAliasValues ./internal/cli/
+--- FAIL: TestGetProfileText_OpusAliasValues (0.00s)
+    profile_setup_translations_test.go:105: lang="en": ModelOpus "opus (Opus 5.5, adaptive thinking)" should reference Opus 6 (derived from "claude-opus-6")
+    (… 20 lines: 5 labels × 4 locales, each "should reference Opus 6")
+FAIL	github.com/modu-ai/moai-adk/internal/cli	0.756s
+exit=1
+$ go test -count=1 -run TestModelPolicyDescsAgreeWithProfileMatrix ./internal/cli/wizard/
+--- FAIL: TestModelPolicyDescsAgreeWithProfileMatrix (0.00s)
+    model_policy_matrix_agreement_test.go:106: locale "en" option "high": description does not name "Opus 6" (derived from canonical id "claude-opus-6")
+    (… 12 failures: 3 options × 4 locales)
+FAIL	github.com/modu-ai/moai-adk/internal/cli/wizard	0.319s
+exit=1
+reverted -> go test -count=1 -run 'TestGetProfileText_OpusAliasValues|TestModelPolicyLabels_AgreeWithProfileMatrix|TestResolveLaunchEffort' -v ./internal/cli/
+  --- PASS: TestResolveLaunchEffort (5 subtests PASS)
+  --- PASS: TestModelPolicyLabels_AgreeWithProfileMatrix (high/medium/low PASS)
+  --- PASS: TestGetProfileText_OpusAliasValues
+  ok  	github.com/modu-ai/moai-adk/internal/cli	0.586s
+reverted -> ok  	github.com/modu-ai/moai-adk/internal/cli/wizard	0.147s

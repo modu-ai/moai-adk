@@ -1,0 +1,17 @@
+# Pre-existing internal/web failure on the pristine absorbed tree (NOT introduced by this card)
+# Tree: git archive f30d07ea7 (go.mod go.sum internal pkg cmd) extracted to a scratch dir; no card edits present.
+
+$ go -C <scratch>/base-f30d test -count=1 -run 'TestDataI18nKeysSubsetOfDictionary|TestI18nKeySetParity' ./internal/web/
+--- FAIL: TestDataI18nKeysSubsetOfDictionary (0.03s)
+    i18n_test.go:273: data-i18n key "f.mcp.tools.factory_msg_send.enabled.title" in the rendered page is absent from the dictionary (R6: would render blank/untranslated)
+    (… 10 lines: factory_msg_{send,list,body,receipt,status}.enabled.{title,desc})
+--- FAIL: TestI18nKeySetParity (0.14s)
+    schema_label_test.go:106: i18n.js missing key "f.mcp.tools.factory_msg_send.enabled.title" in all 4 locales (schema field "mcp.tools.factory_msg_send.enabled")
+    (… 10 lines, same key set)
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/web	0.699s
+exit=1
+
+Attribution: the factory_msg_* MCP tools arrived via internal/mcp/catalog.go in the develop absorb (08113ff0f,
+listed in `git diff --name-only 084722b91 f30d07ea7`); `grep -c factory_msg` on the base i18n.js = 0.
+This card's i18n.js diff adds/removes no keys, so these two failures are identical before and after the card.

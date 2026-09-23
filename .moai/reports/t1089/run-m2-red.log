@@ -1,0 +1,44 @@
+# M2 RED — captured on worktree t1089, tree = f30d07ea7 + M1 working-tree edits + M2 guard/test edits (labels not yet changed)
+
+$ go test -count=1 -run 'TestGetProfileText_OpusAliasValues|TestGetProfileText_RecommendationMarkers' ./internal/cli/
+--- FAIL: TestGetProfileText_OpusAliasValues (0.00s)
+    profile_setup_translations_test.go:105: lang="en": ModelOpus "opus (Opus 5, adaptive thinking)" should reference Opus 5.5 (derived from "claude-opus-5-5")
+    profile_setup_translations_test.go:105: lang="en": ModelOpus1M "opus[1m] (Opus 5 + 1M context)" should reference Opus 5.5 (derived from "claude-opus-5-5")
+    profile_setup_translations_test.go:105: lang="en": ModelPolicyHigh "High - Opus 5 (high~medium) + Sonnet (low, docs/single-shot rows)" should reference Opus 5.5 (derived from "claude-opus-5-5")
+    (… 20 lines total: ModelOpus/ModelOpus1M/ModelPolicyHigh/Medium/Low × en/ko/ja/zh)
+--- FAIL: TestGetProfileText_RecommendationMarkers (0.00s)
+    profile_setup_translations_test.go:134: lang="en": EffortLevelMedium "medium - balanced" lacks the (Recommended) marker
+    profile_setup_translations_test.go:137: lang="en": ModelOpus1M "opus[1m] (Opus 5 + 1M context)" lacks the Recommended marker
+    profile_setup_translations_test.go:134: lang="ko": EffortLevelMedium "medium - 균형" lacks the (권장) marker
+    profile_setup_translations_test.go:137: lang="ko": ModelOpus1M "opus[1m] (Opus 5 + 1M 컨텍스트)" lacks the 권장 marker
+    profile_setup_translations_test.go:134: lang="ja": EffortLevelMedium "medium - バランス" lacks the (推奨) marker
+    profile_setup_translations_test.go:137: lang="ja": ModelOpus1M "opus[1m] (Opus 5 + 1Mコンテキスト)" lacks the 推奨 marker
+    profile_setup_translations_test.go:134: lang="zh": EffortLevelMedium "medium - 均衡" lacks the (推荐) marker
+    profile_setup_translations_test.go:137: lang="zh": ModelOpus1M "opus[1m] (Opus 5 + 1M 上下文)" lacks the 推荐 marker
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/cli	0.766s
+
+$ go test -count=1 -run TestModelPolicyDescsAgreeWithProfileMatrix ./internal/cli/wizard/
+--- FAIL: TestModelPolicyDescsAgreeWithProfileMatrix (0.00s)
+    model_policy_matrix_agreement_test.go:106: locale "en" option "high": description does not name "Opus 5.5" (derived from canonical id "claude-opus-5-5")
+          desc: Opus 5 (high~medium) + Sonnet (low, docs/single-shot rows) — Max $200 plan
+    (… 12 failures: en/ko/ja/zh × high/medium/low)
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/cli/wizard	0.317s
+
+$ go test -count=1 -run 'TestModelOptLabelsEnglishUnified|TestEffortOptRecommendationLabels' ./internal/web/
+--- FAIL: TestModelOptLabelsEnglishUnified (0.00s)
+    console_ux_fix_test.go:209: i18n.js has 0 occurrences of "f.model.opt.opus[1m]": "Opus 5.5 (Recommended)", want 4 (one per locale, English-unified)
+    console_ux_fix_test.go:225: i18n.js still carries the old context-window label "\"f.model.opt.opus\": \"Opus 5\""
+    console_ux_fix_test.go:225: i18n.js still carries the old context-window label "\"f.model.opt.opus[1m]\": \"Opus 5\""
+--- FAIL: TestEffortOptRecommendationLabels (0.00s)
+    console_ux_fix_test.go:244: i18n.js has 0 occurrences of "f.effort_level.opt.medium": "Medium (Recommended)", want 1
+    console_ux_fix_test.go:244: i18n.js has 0 occurrences of "f.effort_level.opt.medium": "중간 (권장)", want 1
+    console_ux_fix_test.go:244: i18n.js has 0 occurrences of "f.effort_level.opt.medium": "中 (推奨)", want 1
+    console_ux_fix_test.go:244: i18n.js has 0 occurrences of "f.effort_level.opt.medium": "中 (推荐)", want 1
+    console_ux_fix_test.go:254: opt.runtime_default naming "model policy" then Opus 5.5 appears 0 times, want 1
+    console_ux_fix_test.go:254: opt.runtime_default naming "모델 정책" then Opus 5.5 appears 0 times, want 1
+    console_ux_fix_test.go:254: opt.runtime_default naming "モデルポリシー" then Opus 5.5 appears 0 times, want 1
+    console_ux_fix_test.go:254: opt.runtime_default naming "模型策略" then Opus 5.5 appears 0 times, want 1
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/web	0.523s
