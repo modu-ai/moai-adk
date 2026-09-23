@@ -368,3 +368,51 @@ func TestFactoryLaneHandoffAbandonedWorktreeRecovery(t *testing.T) {
 		})
 	}
 }
+
+// TestLaneHandoffRecoveryEdges pins the reconciler's remaining decisions: no
+// handoff, a created target that vanished, and a resumed headless rebind the
+// broker NACKs; plus the abandon command's argument refusals.
+func TestLaneHandoffRecoveryEdges(t *testing.T) {
+	ctx := context.Background()
+	t.Run("no_handoff", func(t *testing.T) {
+		f := newLaneHandoffFixture(t, "develop", true)
+		if got := f.reconcile(t); got.Decision != laneRecoveryNone {
+			t.Fatalf("decision = %s, want none", got.Decision)
+		}
+	})
+	t.Run("target_missing", func(t *testing.T) {
+		f := newLaneHandoffFixture(t, "develop", true)
+		h := f.wtReady(t, factorymsg.HandoffModeHeadless)
+		handoffGit(t, f.primary, "worktree", "remove", "--force", h.TargetPath)
+		got := f.reconcile(t)
+		if got.Decision != laneRecoveryAbandoned || got.Reason != factorymsg.NackTargetMissing {
+			t.Fatalf("decision = %s/%s, want abandoned/%s", got.Decision, got.Reason, factorymsg.NackTargetMissing)
+		}
+	})
+	t.Run("resumed_rebind_nacked", func(t *testing.T) {
+		f := newLaneHandoffFixture(t, "develop", true)
+		withFakeHandoffAppServer(t, &fakeHandoffAppServer{newThreadID: "thr-forked"})
+		h := f.wtReady(t, factorymsg.HandoffModeHeadless)
+		if _, err := switchLaneHandoffHeadless(ctx, h, f.switchRequest(laneActivityIdle, "thr-source"), laneHandoffDeps{}); err != nil {
+			t.Fatal(err)
+		}
+		req := f.recoverRequest(t)
+		req.Owner.OwnerProcessStart = "not-the-owner-start" // the relocated thread's owner is not current
+		got, err := recoverLaneHandoff(ctx, req, f.deps())
+		if err != nil || got.Decision != laneRecoveryNack || got.Reason != factorymsg.NackBindingEvidenceInvalid {
+			t.Fatalf("decision = %+v err=%v, want nack/%s", got, err, factorymsg.NackBindingEvidenceInvalid)
+		}
+		if st := f.storedHandoff(t, h.ID); st.State != factorymsg.HandoffNack {
+			t.Fatalf("stored = %s, want NACK", st.State)
+		}
+	})
+	t.Run("abandon_command_arguments", func(t *testing.T) {
+		newLaneHandoffFixture(t, "develop", true) // cwd and active run for the command
+		if _, err := runFactoryHandoffCommand(t, "abandon-lane"); err == nil {
+			t.Fatal("abandon-lane without --slot accepted")
+		}
+		if _, err := runFactoryHandoffCommand(t, "abandon-lane", "--slot", handoffTestSlot, "--run", "no-such-run"); err == nil {
+			t.Fatal("abandon-lane on an inactive run accepted")
+		}
+	})
+}
