@@ -18,7 +18,7 @@ import "testing"
 const twoLineREQFixture = "## Requirements\n" +
 	"\n" +
 	"**REQ-ROUTE-001 (Event-Driven)**  \n" +
-	"**When** 사용자가 `/moai design \"<brief>\"`를 호출하면, the 시스템 **shall** 자동으로 브리프를 분석한다.\n" +
+	"**When** 사용자가 `/moai design \"<brief>\"`를 호출하면, the 시스템 **shall** 자동으로 브랜드 컨텍스트(`.moai/project/brand/`)의 존재 여부를 확인하고, 없을 경우 브랜드 인터뷰 플로우를 제안한다.\n" +
 	"\n" +
 	"**REQ-APP-001** (Ubiquitous)\n" +
 	"Each of the 9 retained MoAI agent definitions shall declare `SendMessage` in its frontmatter `tools:` CSV, in both the working tree and the template mirror.\n"
@@ -30,7 +30,7 @@ func TestParseREQsTwoLine_CollectsHeaderPlusStatement(t *testing.T) {
 		text string
 		line int
 	}{
-		"REQ-ROUTE-001": {"**When** 사용자가 `/moai design \"<brief>\"`를 호출하면, the 시스템 **shall** 자동으로 브리프를 분석한다.", 3},
+		"REQ-ROUTE-001": {"**When** 사용자가 `/moai design \"<brief>\"`를 호출하면, the 시스템 **shall** 자동으로 브랜드 컨텍스트(`.moai/project/brand/`)의 존재 여부를 확인하고, 없을 경우 브랜드 인터뷰 플로우를 제안한다.", 3},
 		"REQ-APP-001":   {"Each of the 9 retained MoAI agent definitions shall declare `SendMessage` in its frontmatter `tools:` CSV, in both the working tree and the template mirror.", 6},
 	}
 	if len(got) != len(want) {
@@ -58,9 +58,15 @@ func TestParseREQsTwoLine_CollectsHeaderPlusStatement(t *testing.T) {
 }
 
 // Negative controls. Each body is a shape that must NOT become a definition.
-// The quoted and indented lines, and the column-zero prose citation, are
-// verbatim corpus lines; the remaining cases pin the next-line conditions that
-// separate a header from a label with no statement under it.
+//
+// The quoted, indented and column-zero citation lines are verbatim corpus
+// lines. They pin that no citation shape found in the corpus is collected, but
+// they do NOT discriminate the new guards: none opens with `**`, so the header
+// pattern rejects them before the next-line check is reached, and no mutant of
+// this card's guards makes them fail. The corpus holds no bold header that the
+// guards reject, so the discriminating cases below are necessarily synthetic:
+// the unbolded ID line pins the required bold, and the header-then-… cases pin
+// the next-line conditions.
 func TestParseREQsTwoLine_DoesNotCollectNonDefinitions(t *testing.T) {
 	cases := map[string]string{
 		// SPEC-BOARDLOCK-ERRNO-001 spec.md:122 — a blockquote citation.
@@ -85,6 +91,10 @@ func TestParseREQsTwoLine_DoesNotCollectNonDefinitions(t *testing.T) {
 		"header then another header":  "**REQ-X-001** (Ubiquitous)\n**REQ-X-002** (Ubiquitous)\n",
 		"header at end of body":       "**REQ-X-001** (Ubiquitous)",
 		"header then bare definition": "**REQ-X-001** (Ubiquitous)\n**REQ-X-002** — The system shall do it.\n",
+		"header then numbered item":   "**REQ-X-001** (Ubiquitous)\n1. The system shall do it.\n",
+		"header then code fence":      "**REQ-X-001** (Ubiquitous)\n```go\n",
+		"header then thematic break":  "**REQ-X-001** (Ubiquitous)\n---\n",
+		"header then html line":       "**REQ-X-001** (Ubiquitous)\n<details>\n",
 	}
 	for name, body := range cases {
 		t.Run(name, func(t *testing.T) {

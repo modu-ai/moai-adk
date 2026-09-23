@@ -88,10 +88,19 @@ var reqBareWidePattern = regexp.MustCompile(`^\**(REQ-[A-Z0-9]+(?:-[A-Z0-9]+)*-\
 // no unbolded header, so the bold costs nothing and closes that hole.
 //
 // The next line is the statement only when it is a plain paragraph line:
-// non-empty, unindented, not a list item, table row, heading or blockquote, and
-// not itself a REQ header or bare definition. Anything else means the header
-// labels nothing collectable, and it is skipped rather than guessed at.
+// non-empty, unindented, not a list item (bulleted or numbered), table row,
+// heading, blockquote, code fence, thematic break or HTML line, and not itself
+// a REQ header or bare definition. Anything else means the header labels
+// nothing collectable, and it is skipped rather than guessed at. None of the
+// 565 corpus statement lines starts with any excluded shape. A statement
+// that opens with bold (`**When** …`) is NOT a `* ` bullet and is accepted.
+//
+// Only the first statement line becomes Text, as with the list collector: a
+// statement wrapped over several lines is truncated to its first line.
 var reqBareHeaderPattern = regexp.MustCompile(`^\*\*(REQ-[A-Z0-9]+(?:-[A-Z0-9]+)*-\d+)(?:\*\*)?\s*(?:\([^)]*\))?\s*(?:\*\*)?\s*$`)
+
+// reqOrderedListPattern matches a numbered list item ("1. ", "12. ").
+var reqOrderedListPattern = regexp.MustCompile(`^\d+\. `)
 
 // isTwoLineStatement reports whether next can be the statement line under a
 // two-line bare header.
@@ -99,10 +108,13 @@ func isTwoLineStatement(next string) bool {
 	if strings.TrimSpace(next) == "" || next[0] == ' ' || next[0] == '\t' {
 		return false
 	}
-	for _, p := range []string{"- ", "* ", "+ ", "|", "#", ">"} {
+	for _, p := range []string{"- ", "* ", "+ ", "|", "#", ">", "```", "---", "<"} {
 		if strings.HasPrefix(next, p) {
 			return false
 		}
+	}
+	if reqOrderedListPattern.MatchString(next) {
+		return false
 	}
 	return !reqBareHeaderPattern.MatchString(next) && !reqBareWidePattern.MatchString(next)
 }
