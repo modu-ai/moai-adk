@@ -74,6 +74,7 @@ which is the exact failure `verification-completeness.md` §2 warns about.
 | AC-014 | REQ-012 | M1-M6 | release-blocking | R-05 | each exercise records its isolation evidence |
 | AC-015 | REQ-004/005 | M6 | release-blocking | R-05 | M6 mutation, both directions |
 | AC-016 | REQ-002b, REQ-013 | M1 | release-blocking | R-01 | M1 restamp makes stamp and lead peer name one process, driven through the build-tag-free seam on all three shapes |
+| AC-017 | REQ-005 | M2/M4 | release-blocking | R-05 | M2/M4 retire only on positive `dead`; an unenumerated classification declines by default |
 
 ## §D Acceptance Criteria (Given-When-Then)
 
@@ -211,6 +212,22 @@ which is the exact failure `verification-completeness.md` §2 warns about.
   criterion. That divergence is the D1 defect on the spawn shape and the D11 defect on the pane
   shape — the same failure twice, and the shape that retires a live session's run.
 
+- **AC-017** Given a classification value the retirement code does **not** enumerate — a fourth
+  state introduced by the test, beyond `live` / `dead` / `indeterminate` — When it is put through
+  every retirement path (reconciler, migration pass, and `--retire`), Then each path declines to
+  retire, without having been told about that value.
+
+  **This is the criterion that separates a positive rule from a reject-list, and nothing else in
+  this file does.** An enumeration written "reject `live`, reject `indeterminate`" passes AC-005,
+  AC-006 and AC-010 unchanged — those name the two states it happens to list — and then silently
+  retires the fourth state the day one is added. Only a probe with an unenumerated value can tell
+  the two implementations apart.
+
+  **Mutant probe.** Rewrite the guard as `if c == live || c == indeterminate { refuse }` and re-run:
+  AC-005, AC-006 and AC-010 stay green, AC-017 turns red. That divergence is the whole point of the
+  criterion — if a mutant can satisfy every other criterion while violating REQ-005, the rest of the
+  file is too shallow to adopt the requirement on its own.
+
 ## §D.1 Mutation criteria (both directions)
 
 - **AC-015a** Given the implemented reconciler, When the liveness guard is removed so that a `live`
@@ -238,23 +255,24 @@ actually selected by the integration path.
 ## §D.3 Traceability
 
 REQ-001→AC-001 · REQ-002→AC-001 · REQ-002b→AC-016 · REQ-002d→AC-012 · REQ-003→AC-003 ·
-REQ-003b→AC-003 · REQ-004→AC-004/AC-015b · REQ-005→AC-005/AC-006/AC-010/AC-015a · REQ-006→AC-007 ·
-REQ-007→AC-008 · REQ-008→AC-010 · REQ-010→AC-002 · REQ-011→AC-011 · REQ-012→AC-014 ·
-REQ-013→AC-013 (both legs) + AC-016 (the seam) · REQ-014→AC-009.
+REQ-003b→AC-003 · REQ-004→AC-004/AC-015b · REQ-005→AC-005/AC-006/AC-010/AC-015a/**AC-017** ·
+REQ-006→AC-007 · REQ-007→AC-008 · REQ-008→AC-010 · REQ-010→AC-002 · REQ-011→AC-011 ·
+REQ-012→AC-014 · REQ-013→AC-013 (both legs) + AC-016 (the seam) · REQ-014→AC-009.
 
 `REQ-009` is absent by design — retired into REQ-005 at v0.4.0, its number left as a gap rather than
 closed by renumbering (`spec.md` §B).
 
-Every one of the 16 REQs in `spec.md` §B has at least one AC; every one of the 16 ACs traces to at
-least one REQ. Both counts sit exactly at the Tier M budget ceiling (16 requirements, 16 acceptance
-criteria, applied independently per `spec-workflow.md` § SPEC Complexity Tier) — see § D.5 for how
-each count was held there, and for the alternative if either consolidation is judged cosmetic.
+Every one of the 16 REQs in `spec.md` §B has at least one AC; every one of the 17 ACs traces to at
+least one REQ. The AC count exceeds the Tier M ceiling of 16, so this SPEC is **Tier L** (ceilings
+25/25) — see § D.5 for the arithmetic and `spec.md` §H for the tier-change record.
 
 ## §D.4 Definition of Done
 
-- All 16 release-blocking criteria (AC-001..AC-016, AC-013 counted at leg 1) recorded PASS in
+- All 17 release-blocking criteria (AC-001..AC-017, AC-013 counted at leg 1) recorded PASS in
   `progress.md` §E.2 with command plus verbatim output. AC-013 leg 2 is recorded **pending with its
   reason**, never as a pass, and is confirmed by run id after the develop push.
+- The AC-017 mutant probe run and recorded: with the reject-list mutant in place, AC-005 / AC-006 /
+  AC-010 green and AC-017 red. A run that cannot show that divergence has not exercised REQ-005.
 - `go test ./internal/homestate/... ./internal/factorymsg/... ./internal/cli/...` passes in the run
   tree; CI supplies the full-suite and cross-platform verdict.
 - `golangci-lint run` reports zero findings on the changed packages.
@@ -262,35 +280,38 @@ each count was held there, and for the alternative if either consolidation is ju
 - The `AMBIGUOUS_FACTORY` and `NO_ACTIVE_FACTORY` sentinels still appear in resolution failures
   (AC-009), so no downstream matcher is silently broken.
 
-## §D.5 Budget disclosure — how both counts stayed at 16, and what the alternative is
+## §D.5 Budget record — the count was written first, and the tier followed it
 
-Scope **increased** at v0.4.0 by operator decision (the pane door). Recording the arithmetic openly,
-because a ceiling met by renumbering is a hidden scope cut and the previous "merge to stay at 16"
-was exactly that (`spec.md` §H, provenance correction).
+Scope **increased** at v0.4.0 by operator decision (the pane door), and again at v0.5.0 (AC-017).
+Tier-up is pre-authorized, so this section records the arithmetic rather than negotiating it: the
+counts are what the scope needs, and `tier: L` follows from them.
 
-**Requirements: 16 + 1 − 1 = 16.**
+**Requirements: 16.**
 
 - **+1** `REQ-002d` — the refuse-when-no-identity path. New behaviour, distinct trigger; it cannot
   fold into REQ-002b, which states a restamp.
-- **−1** `REQ-009` retired into `REQ-005`. This is a **substantive** consolidation, not bookkeeping:
-  REQ-005 and REQ-009 stated one invariant — never retire a run that is not provably dead — on two
-  surfaces, and the two copies had **measurably drifted** (REQ-005 covered `live` and
-  `indeterminate`; REQ-009 covered `live` only). That drift *is* defect D14. Stating the invariant
-  once, binding every retirement path, removes the defect by construction rather than patching the
-  narrower copy and leaving the duplication in place to drift again.
+- **−1** `REQ-009` retired into `REQ-005`. This consolidation stands on its **own merit**, not on
+  the count — and D14's sharpened framing makes that clearer than it was at v0.4.0. The invariant
+  wants to be stated **once and positively** (retire only on a positive `dead`); re-splitting it
+  across a reconciler requirement and a command requirement is precisely what let the two copies
+  drift to different reject-lists. Restoring REQ-009 would reintroduce the defect, so the merge is
+  now the only correct shape regardless of budget.
 
-**Acceptance criteria: 16 + 1 − 1 = 16.**
+**Acceptance criteria: 17 — over the Tier M ceiling of 16.**
 
-- **+1** `AC-012` reassigned to the REQ-002d refusal path (it previously carried the codex-door
-  execution).
-- **−1** the codex-door execution folded into `AC-011`, which now carries one evidence row per lead
-  door. This is substantive for the same reason: the old AC-011/AC-012 pair named **two** doors
-  while REQ-011 now governs **five call sites across four doors**, so a two-criterion split was
-  already incomplete against its own requirement. One criterion with a complete row set is a
-  correction, not a compression.
+- **+1** `AC-012` reassigned to the REQ-002d refusal path.
+- **−1** the codex-door execution folded into `AC-011`, one evidence row per lead door. Substantive:
+  the old AC-011/AC-012 pair named **two** doors while REQ-011 governs **five call sites across four
+  doors**, so the split was already incomplete against its own requirement.
+- **+1** `AC-017` — the unenumerated-classification probe. This is the criterion the SPEC could not
+  do without: every other criterion is satisfied by a reject-list mutant that violates REQ-005, so
+  without AC-017 the positive rule is asserted and never tested.
 
-**If the lead judges either consolidation cosmetic, the honest counts are 17 requirements and/or 17
-acceptance criteria, and the correct response is to tier this SPEC up to L — not to renumber.**
-Tier L raises both ceilings to 25 and adds `design.md` + `research.md` to the artifact set, and
-raises the plan-auditor PASS threshold from 0.80 to 0.85. That call is the lead's; this section
-exists so it is made on the arithmetic rather than on a number that was already made to fit.
+**Consequence: this SPEC is Tier L.** 17 acceptance criteria exceed the Tier M ceiling, so the tier
+rises to L (ceilings 25/25) and the artifact set gains `design.md` + `research.md`. The
+plan-auditor PASS threshold rises with it, **0.80 → 0.85**.
+
+The LOC and file-count guidance still reads Tier M (~8 files, well under 1000 LOC); the **budget**
+is what carries this SPEC over, and per `spec-workflow.md` the ceilings are the binding constraint —
+"exceeding either ceiling is a signal to tier up or to split the SPEC, not to relax the budget". No
+criterion was dropped, merged, or renumbered to avoid the tier change.

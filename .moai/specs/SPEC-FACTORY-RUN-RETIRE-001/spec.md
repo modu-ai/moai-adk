@@ -1,7 +1,7 @@
 ---
 id: SPEC-FACTORY-RUN-RETIRE-001
 title: "Factory run retirement — owner-liveness reconciliation so a dead lead's run leaves 'active'"
-version: "0.4.0"
+version: "0.5.0"
 status: draft
 created: 2026-09-23
 updated: 2026-09-23
@@ -11,7 +11,7 @@ phase: "v3.2.0 target"
 module: "internal/homestate, internal/factorymsg, internal/cli"
 lifecycle: spec-anchored
 tags: "factory, run-lifecycle, liveness, ambiguous-factory, migration, card-t1107"
-tier: M
+tier: L
 card: t1107
 related_specs: [SPEC-FACTORY-MIXED-HOOK-001, SPEC-FACTORY-WORKER-NAMING-001, SPEC-FACTORY-MODE-001]
 ---
@@ -166,12 +166,24 @@ is written against the table above.
 - **REQ-004** (Event-driven): **When** factory run resolution observes more than one active run,
   the resolver shall first retire every active run whose owner is classified `dead`, then re-resolve
   over the remaining active runs.
-- **REQ-005** (Unwanted): **No retirement path** — the resolution-time reconciler, the legacy-row
-  migration pass, and the operator maintenance command alike — shall retire a run whose owner is
-  classified `live` **or** `indeterminate`. The invariant is stated once, for every path, because
-  stating it twice is what let the two copies drift: an earlier draft bound the reconciler to
-  `live` *and* `indeterminate` while binding the command to `live` only, which made the operator
-  command able to retire an unprobeable run and made §F's "never to retiring a live run" false.
+- **REQ-005** (Ubiquitous): **Every retirement path** — the resolution-time reconciler, the
+  legacy-row migration pass, and the operator maintenance command alike — shall retire a run **only
+  on a positive `dead` classification**. Every other classification value, present or future,
+  declines retirement by default.
+
+  The rule is stated **positively**, not as a reject-list, and that is the load-bearing part. A rule
+  written "reject `live`, reject `indeterminate`" is an enumeration: it is correct only for the
+  classification set that existed when it was written, and it silently begins retiring any state
+  added later. The positive form fails safe by construction — a fourth classification retires
+  nothing until someone deliberately admits it.
+
+  It is stated **once**, for every path, because stating it twice is what let the copies drift. The
+  D14 defect was exactly that: an earlier draft bound the reconciler to reject `live` and
+  `indeterminate` while binding the operator command to reject `live` alone, so `indeterminate` fell
+  through to retirement on the command. The consequence is host-wide rather than an edge case — on
+  a host where the liveness probe fails consistently, **every** run classifies `indeterminate`, so
+  `--retire` would retire anything asked of it including live sessions, and §F's "never to retiring
+  a live run" would be false for that entire host.
 - **REQ-006** (Event-driven): **When** a run row carries no owner stamp — the shape of every row
   written before this SPEC lands — the reconciler shall take the run's registered `role='lead'` peer
   identity (PID plus process start) as the liveness source, and shall classify the owner
@@ -447,6 +459,22 @@ iter-1 and declined on the team lead's routing:
   assumed fixed. **D15**: REQ-013 gains the build-tag-free restamp seam, so AC-016 can assert the
   spawn and pane shapes from darwin. **D17**: the four dead `002c` / `013b` tokens removed.
   **D13**: R-02's transcribed stdout corrected from `*(empty)*` to `0`.
+- 2026-09-23 — v0.5.0 — manager-spec — plan-audit iter-3 revision (D11-D17) plus the **tier change**.
+  **Tier M → Tier L**: AC-017 brings the acceptance-criterion count to 17, over the Tier M ceiling
+  of 16, so `tier:` is raised and `design.md` + `research.md` join the artifact set. The tier change
+  is pre-authorized by the operator; nothing was merged, dropped, or renumbered to avoid it
+  (`acceptance.md` §D.5). The plan-auditor PASS threshold rises 0.80 → 0.85 with the tier.
+  **D14 restated positively**: REQ-005 now says retirement happens **only on a positive `dead`
+  classification**, rather than listing states to reject — an enumeration is correct only for the
+  classification set alive when it was written and silently begins retiring any state added later.
+  AC-017 is the criterion that separates the two, and it is the only one that does: a reject-list
+  mutant satisfies AC-005, AC-006 and AC-010 unchanged. The consequence recorded with it is
+  host-wide, not an edge case — where the probe fails consistently every run reads `indeterminate`,
+  so the old command rule would have retired live sessions across that entire host.
+  **Audit-withdrawal note**: the auditor withdrew its `320cdeb90` observations (reading a second
+  tree during an audit pinned to `c1ae8ff5e`) and declined to judge that delta. D11, D12 and D17 are
+  therefore treated as fully open, and the evidence recorded for each in this revision is this
+  SPEC's own measurement, not partial credit carried over from the audit.
 - **Provenance correction (iter-2, D17).** The two retired strings quoted in this bullet —
   `REQ-002c` and `REQ-013b` — appear here as **quotations of removed text, not as live
   references**; they resolve to nothing, which is the point being recorded. The v0.2.0 entry above
