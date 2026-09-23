@@ -25,11 +25,20 @@ package cli
 // ANTHROPIC_REASONING_EFFORT and treats Claude's 5-step vocabulary as inert —
 // buildEnvForGLMLaunch owns that path and is untouched here.
 
-import "github.com/modu-ai/moai-adk/internal/profile"
+import (
+	"strings"
+
+	"github.com/modu-ai/moai-adk/internal/profile"
+	"github.com/modu-ai/moai-adk/internal/template"
+)
 
 // effortSettingsKey is the Claude Code settings key carrying the session's
 // launch effort level.
 const effortSettingsKey = "effortLevel"
+
+// effortFlagLong is the Claude Code launch flag that sets the effort level for
+// a single session.
+const effortFlagLong = "--effort"
 
 // launchEffortPrefsFn reads the profile preferences the effort resolution uses.
 // Tests override it so they never read the host's real profile.
@@ -42,28 +51,93 @@ var launchEffortPrefsFn = profile.ReadPreferences
 // empty resolves to "" — which injects nothing, leaving the payload (and so the
 // launch) byte-identical to a launcher that never knew about effort.
 //
+// The second return value carries launch argv to append. It is non-empty only
+// for a resolved `max`, which never enters the payload — see the note below.
+//
 // Fail-open: an unreadable profile contributes no effort rather than blocking
 // the launch, matching crossSessionSettingsPayload's stance on a bad config.
-func applyLaunchEffort(payload map[string]any, profileName string) map[string]any {
+func applyLaunchEffort(payload map[string]any, profileName string) (map[string]any, []string) {
 	prefs, err := launchEffortPrefsFn(profileName)
 	if err != nil {
-		return payload
+		return payload, nil
 	}
 	effort := resolveLaunchEffort(prefs.EffortLevel, prefs.ModelPolicy)
 	if effort == "" {
-		return payload
+		return payload, nil
+	}
+	// @MX:NOTE: [AUTO] max leaves the settings path. Claude Code's settings
+	// `effortLevel` accepts low / medium / high / xhigh only — `max` is not an
+	// accepted level there — and the documented way to run one session at max is
+	// the `--effort max` launch flag, which Claude Code applies to the current
+	// session only. CLAUDE_CODE_EFFORT_LEVEL is not used: it is an override that
+	// refuses an in-session /effort change (see buildEnvForClaudeLaunch).
+	if effort == template.EffortLevelMax {
+		return payload, []string{effortFlagLong, effort}
 	}
 	if payload == nil {
 		payload = map[string]any{}
 	}
 	payload[effortSettingsKey] = effort
-	return payload
+	return payload, nil
+}
+
+// operatorSuppliedEffort reports whether the operator already passed an
+// --effort flag (`--effort X` or `--effort=X`) anywhere in argv, in which case
+// the profile effort adds no second flag — the operator's explicit launch
+// choice wins.
+//
+// @MX:NOTE: [AUTO] scans the WHOLE argv, including tokens after `--`. Unlike
+// operatorSuppliedSettings, a `--` separator does not end the search: the
+// launcher forwards everything after `--` to Claude Code and appends its
+// injected flags after it, so an operator `-- --effort low` would otherwise
+// reach Claude Code alongside an injected `--effort max` (two --effort flags).
+//
+// @MX:NOTE: [AUTO] a token in VALUE position is not a flag. The token after a
+// free-text option (promptValueFlags) is that option's value — prompt text that
+// may happen to read `--effort...` — so it is skipped rather than read as an
+// operator --effort, which would wrongly suppress the injected `--effort max`.
+// The list is deliberately limited to the free-text prompt options: a generic
+// argv scan cannot know every Claude Code option's arity, and these are the
+// only forwarded options whose value is arbitrary text an operator can
+// plausibly start with `--effort`. Known limit: an `--effort` token given as
+// the space-separated value of any OTHER value-taking option is still read as
+// an operator flag (fail-safe direction: no injection, never two flags). The
+// `--opt=value` spelling needs no skip — the whole token starts with the option.
+func operatorSuppliedEffort(args []string) bool {
+	for i := 0; i < len(args); i++ {
+		arg := args[i]
+		if promptValueFlags[arg] {
+			i++ // skip the option's value
+			continue
+		}
+		if arg == effortFlagLong || strings.HasPrefix(arg, effortFlagLong+"=") {
+			return true
+		}
+	}
+	return false
+}
+
+// promptValueFlags are the Claude Code options whose space-separated value is
+// free text (see operatorSuppliedEffort).
+var promptValueFlags = map[string]bool{
+	"--append-system-prompt": true,
+	"--system-prompt":        true,
+}
+
+// launchEffortArgs filters the argv applyLaunchEffort produced against what the
+// operator already supplied.
+func launchEffortArgs(effortArgs, args []string) []string {
+	if len(effortArgs) == 0 || operatorSuppliedEffort(args) {
+		return nil
+	}
+	return effortArgs
 }
 
 // buildEnvForClaudeLaunch returns the environment the Claude backend launches
 // with. It returns base unchanged — and that is the INVARIANT this seam exists
 // to state, not an accident of the current implementation. The profile's effort
-// travels in the injected --settings payload, so nothing on this path may add,
+// travels in the injected --settings payload (or, for max, the --effort launch
+// flag — see applyLaunchEffort), so nothing on this path may add,
 // replace, or strip CLAUDE_CODE_EFFORT_LEVEL: adding one restores the override
 // that froze the session's effort, and stripping one discards the user's own
 // documented per-session override.

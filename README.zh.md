@@ -66,18 +66,18 @@ moai cc -k --name sync
 
 打开看板时，引导信息会一并给出默认推荐 —— 若优先考虑 token 可用性：主控用 `moai glm -k`，plan 用 `moai cc -k --name plan`，run 用 `moai glm -k --name run`，sync 用 `moai cc -k --name sync`。这样安排的理由是每条泳道需要的推理种类不同：plan 和 sync 是做判断和评审的列，交给 Claude；run 以实现为主，用 GLM 压低成本。主控不是下判定的位置，而是守着队列搬卡片的位置，适合常驻等待成本不高的 GLM。GLM 主控之下需要 Claude 判定时，会经名为 `judge` 的会话绕出去 —— 这是 GLM 主控使用 Claude 的唯一途径。一个账号开始被 429 限流时，把各条泳道分散到不同账号来安排是行之有效的做法。这个组合终究只是默认推荐 —— 换别的组合、或把全部会话统一到单一后端都没问题。
 
-### 工厂模式 —— N 条泳道同时搬运多张卡片
+### 工厂模式 —— N 名工作者同时搬运多张卡片
 
-`-f` 打开工厂主控，这是看板的第二种形态。看板里的卡片在各列之间跳，而工厂里的卡片**整张进一条泳道**，由那条泳道在会话内串行走完 `plan → run → sync`，每个阶段都以 `Agent()` 子智能体的形式启动。泳道名为 `lane-1` … `lane-N`。
+`-f` 打开工厂主控，这是看板的第二种形态。看板里的卡片在各列之间跳，而工厂里的卡片**整张进一名工作者**，由那名工作者在会话内串行走完 `plan → run → sync`，每个阶段都以 `Agent()` 子智能体的形式启动。工作者名为 `worker-1` … `worker-N`。旧名 `agent-<n>` / `lane-<n>` 也会继续以已弃用别名的身份生效。
 
 ```bash
-moai cc -f                    # 主控 —— 默认一条泳道 (lane-1)
-moai cc -f 4                  # 主控 —— 四条泳道
-moai cc -f lane-1             # 一条泳道，在自己的终端里
-moai glm -f lane-3            # ……GLM 后端上的一条泳道
+moai cc -f                    # 只打开主控（一名工作者，worker-1）
+moai cc -f worker             # 一名工作者，自动加入下一个空号
+moai cc -f worker-3           # 一名工作者，直接指定编号
+moai glm -f worker            # ……GLM 后端上的一名工作者
 ```
 
-用 `moai cc -f lane-<n>` 一条一条地加泳道。这种写法已经指定了泳道名，再给 `--name`/`-n` 会报错。只有活着的会话占用的编号才会被跳过 —— 泳道死了，编号就释放，可以再用。泳道归属记录在 `~/.moai/db/<project-key>/factory/factory.db` 中 —— 启动目录是临时目录时（没有绝对 `MOAI_HOME` 覆盖）则记录在项目本地的 `<base>/.moai/db/<project-key>/factory/` 下，与 backlog 队列同一例外；旧的 `.moai/state/factory/workers.json` 只导入一次，之后仅作为回滚凭据保留。一条泳道最多并发运行 10 个 `Agent()` 子智能体，其中承担写入的生成各自隔离在自己的工作树里。千万不要一次把所有泳道全开 —— 先起第一条，确认它真的开始产出，再激活其余。卡片绝不会被拆到多条泳道上。`-k` 依旧驱动三角色的看板链；一次启动只能带一个进入标记，所以 `-k` 与 `-f` 同时给出会报错，已停用的 `moai cg` 会显示迁移提示并退出。 工厂 run 现在会记录持有它的会话的进程标识，因此 lead 已经死掉的 run 会在下一个 worker 加入时自动退役，那次加入不再卡在 `AMBIGUOUS_FACTORY` 上。`moai factory runs` 列出每个 run 及其属主的存活状态，`moai factory runs --retire <run-id>` 手动退役指定的 run，属主没有真正死掉就会被拒绝。
+用 `moai cc -f worker`（自动加入下一个空号）或 `moai cc -f worker-<n>`（精确那个编号）一名一名地加工作者。两种写法都已经指定了工作者名，再给 `--name`/`-n` 会报错。直接指定的编号若与存活的旧式工作者（`agent-<n>`/`lane-<n>`）相撞，会被点名拒绝；`-f worker` 的自动分配不会被拒绝，只会点名告知跳过了哪些旧式编号。除此之外，只有活着的会话占用的编号才会被跳过 —— 工作者死了，占用不再挡住那个编号（直接指定的编号可以立刻重用），但 `-f worker` 的自动分配总是取存活最高编号 +1，不会回填中间的空号。工作者归属记录在 `~/.moai/db/<project-key>/factory/factory.db` 中 —— 启动目录是临时目录时（没有绝对 `MOAI_HOME` 覆盖）则记录在项目本地的 `<base>/.moai/db/<project-key>/factory/` 下，与 backlog 队列同一例外；旧的 `.moai/state/factory/workers.json` 只导入一次，之后仅作为回滚凭据保留。一名工作者最多并发运行 10 个 `Agent()` 子智能体，其中承担写入的生成各自隔离在自己的工作树里。千万不要一次把所有工作者全开 —— 先起第一名，确认它真的开始产出，再激活其余。卡片绝不会被拆到多名工作者上。`-k` 依旧驱动三角色的看板链；一次启动只能带一个进入标记，所以 `-k` 与 `-f` 同时给出会报错，已停用的 `moai cg` 会显示迁移提示并退出。 工厂 run 现在会记录持有它的会话的进程标识，因此 lead 已经死掉的 run 会在下一个 worker 加入时自动退役，那次加入不再卡在 `AMBIGUOUS_FACTORY` 上。`moai factory runs` 列出每个 run 及其属主的存活状态，`moai factory runs --retire <run-id>` 手动退役指定的 run，属主没有真正死掉就会被拒绝。
 
 > 详见：[看板模式 —— 工厂模式](https://adk.mo.ai.kr/zh/advanced/kanban-mode)
 
@@ -242,6 +242,8 @@ DeepSWE 排行榜（113 项任务、按努力度分视图）证明了这一点�
 | sonnet-5 [max] | 54%±4 | $26.40 | 被 opus-5 [low] 支配 |
 
 Opus 5 用最低努力度跑，得分反而高于 Sonnet 5 用最高努力度（58% vs 54%），单任务成本只有十六分之一（$1.66 vs $26.40）—— 尽管 Sonnet 的 token 单价更便宜。原因是 268 步对 36 步：写账单的是重试循环，不是 token 费率。成本由**给每个任务指派合适的模型和推理深度**决定。
+
+上表是在 Opus 5 上测得的数值。MoAI 的 `opus` 别名现在指向 Opus 5.5（需要 Claude Code v2.1.280 或更高版本，默认 effort 为 `medium`），Opus 5.5 尚未重新测量。
 
 <p align="center">
   <img src="./assets/images/why-tokenomics-infographic-zh.png" alt="token 经济学悖论 —— 价格跌 98%、支出涨 320%。对策是 测量→指派→瘦身→刹停 四步" width="80%">

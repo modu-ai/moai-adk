@@ -622,7 +622,7 @@ func loadSpecCloseState(specDir, specID string) (*closeState, error) {
 	state.SpecMDPath = specMDPath
 	state.SpecMDContent = string(specContent)
 	if m := specStatusPattern.FindStringSubmatch(string(specContent)); len(m) > 1 {
-		state.SpecMDStatus = strings.TrimSpace(m[1])
+		state.SpecMDStatus = NormalizeStatusValue(m[1])
 	}
 
 	// progress.md (optional — V2.x SPECs lack this)

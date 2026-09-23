@@ -8,6 +8,7 @@ import (
 
 	"github.com/modu-ai/moai-adk/internal/harness/v4manifest"
 	"github.com/modu-ai/moai-adk/internal/profile"
+	"github.com/modu-ai/moai-adk/internal/settings"
 )
 
 // Tests for the console UX fix batch (web console feedback round):
@@ -191,14 +192,15 @@ func TestLLMSectionRenamedGLMSettings(t *testing.T) {
 
 // TestModelOptLabelsEnglishUnified verifies the model <option> labels render as
 // unified English names across all 4 locales (no context-window annotation):
-// Fable 5 / Opus 5 / Sonnet 5 / Haiku 4.5. opus/sonnet/fable are exposed ONLY as
-// their [1m] variants (1M always on), so the picker surface is exactly 4 options
-// and each English label appears exactly 4 times in i18n.js (one per locale).
+// Fable 5 / Opus 5.5 (Recommended) / Sonnet 5 / Haiku 4.5. opus/sonnet/fable are
+// exposed ONLY as their [1m] variants (1M always on), so the picker surface is
+// exactly 4 options and each English label appears exactly 4 times in i18n.js
+// (one per locale). The opus option carries the recommendation marker.
 func TestModelOptLabelsEnglishUnified(t *testing.T) {
 	dict := readEmbeddedAsset(t, "i18n.js")
 	wants := map[string]string{
 		"f.model.opt.fable[1m]":  "Fable 5",
-		"f.model.opt.opus[1m]":   "Opus 5",
+		"f.model.opt.opus[1m]":   "Opus 5.5 (Recommended)",
 		"f.model.opt.sonnet[1m]": "Sonnet 5",
 		"f.model.opt.haiku":      "Haiku 4.5",
 	}
@@ -210,6 +212,8 @@ func TestModelOptLabelsEnglishUnified(t *testing.T) {
 	}
 	// The old context-window-annotated labels must be gone from the model opt keys.
 	for _, banned := range []string{
+		`"f.model.opt.opus": "Opus 5"`,
+		`"f.model.opt.opus[1m]": "Opus 5"`,
 		`"f.model.opt.opus": "Opus 4.8 (200K)"`,
 		`"f.model.opt.opus[1m]": "Opus 4.8 (1M)"`,
 		`"f.model.opt.sonnet": "Sonnet 5 (200K)"`,
@@ -220,6 +224,36 @@ func TestModelOptLabelsEnglishUnified(t *testing.T) {
 	} {
 		if strings.Contains(dict, banned) {
 			t.Errorf("i18n.js still carries the old context-window label %q", banned)
+		}
+	}
+}
+
+// TestEffortOptRecommendationLabels verifies the effort select marks medium as
+// the recommended level in each locale (and no other level), and that the
+// empty option states the launch fallback order honestly: the model-policy
+// effort first, otherwise Claude Code's own model default
+// (settings.RuntimeDefaultEffortModel). Entries are pinned per locale so one
+// locale cannot satisfy another's check.
+func TestEffortOptRecommendationLabels(t *testing.T) {
+	dict := readEmbeddedAsset(t, "i18n.js")
+	for _, entry := range []string{
+		`"f.effort_level.opt.medium": "Medium (Recommended)"`,
+		`"f.effort_level.opt.medium": "중간 (권장)"`,
+		`"f.effort_level.opt.medium": "中 (推奨)"`,
+		`"f.effort_level.opt.medium": "中 (推荐)"`,
+	} {
+		if n := strings.Count(dict, entry); n != 1 {
+			t.Errorf("i18n.js has %d occurrences of %s, want 1", n, entry)
+		}
+	}
+	otherLevel := regexp.MustCompile(`"f\.effort_level\.opt\.(low|high|xhigh|max)": "[^"]*(Recommended|권장|推奨|推荐)[^"]*"`)
+	if m := otherLevel.FindString(dict); m != "" {
+		t.Errorf("a non-medium effort level carries a recommendation marker: %s", m)
+	}
+	for _, policy := range []string{"model policy", "모델 정책", "モデルポリシー", "模型策略"} {
+		re := regexp.MustCompile(`"opt\.runtime_default": "[^"]*` + regexp.QuoteMeta(policy) + `[^"]*` + regexp.QuoteMeta(settings.RuntimeDefaultEffortModel) + `[^"]*"`)
+		if n := len(re.FindAllString(dict, -1)); n != 1 {
+			t.Errorf("opt.runtime_default naming %q then %s appears %d times, want 1", policy, settings.RuntimeDefaultEffortModel, n)
 		}
 	}
 }

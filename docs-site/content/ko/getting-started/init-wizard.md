@@ -4,11 +4,9 @@ weight: 50
 draft: false
 ---
 
-MoAI-ADK의 인터랙티브 설정 마법사로 처음 설정을 마쳐 보세요. 언어, 모델 정책, 리포트 형식, 품질/워크플로우 설정을 개발 환경에 맞게 잡아 줍니다. 여기서 정한 값은 전부 `.moai/config/sections/` 아래 YAML 파일로 저장되므로, 나중에 언제든 파일을 직접 고치거나 마법사를 다시 실행해 바꿀 수 있습니다.
+MoAI-ADK의 인터랙티브 설정 마법사로 처음 설정을 마쳐 보세요. 마법사는 꼭 사람이 골라야 하는 다섯 가지만 묻습니다 — 대화 언어, 이름, 배포할 에이전트 하니스, 세션 권한 모드, Jev 판정 기능 사용 여부입니다. 나머지 설정(모델 정책, 리포트 형식, 품질 게이트, 디자인 워크플로우 등)은 권장 기본값으로 저장되고, 필요하면 나중에 바꿀 수 있습니다.
 
-마법사가 묻는 것은 "이 프로젝트를 어떤 스타일로 끌고 갈 것인가" 입니다. Claude 가 답할 언어, 에이전트(agent, 스스로 일하는 AI) 에게 줄 모델의 품질 단계, 문서를 어떤 형식으로 뽑을지, 품질 게이트를 얼마나 엄하게 걸지 — 모두 프로젝트 성격이 정하는 값입니다. 그래서 마법사는 기본값을 제안하되, 최종 선택은 사용자에게 맡깁니다.
-
-설정이 YAML 파일 여러 개로 쪼개진 이유는 각 파일이 하나의 관심사(언어, 모델, 품질, 디자인 등)만 담당하기 때문입니다. 한 값을 바꿀 때 해당 파일만 열면 되고, git diff 도 한 영역씩 깔끔하게 나옵니다. 마법사는 이 파일들을 한 번에 만들어 주는 역할입니다.
+설정은 대부분 `.moai/config/sections/` 아래 YAML 파일로 저장됩니다. 파일마다 하나의 관심사(언어, 모델, 품질, 디자인 등)만 담당하므로, 한 값을 바꿀 때 해당 파일만 열면 되고 git diff 도 한 영역씩 깔끔하게 나옵니다. 세션 권한 모드만은 예외로, 사용자 수준의 Claude Code 설정에 기록됩니다(아래 3단계 참고).
 
 ## 1단계 — 마법사 시작
 
@@ -35,13 +33,13 @@ moai init
 `moai init`은 현재 폴더에 바로 설치합니다. 신규 프로젝트는 `moai init <프로젝트명>`으로 생성하세요.
 {{< /callout >}}
 
-**마법사 구조** — 초기화 마법사는 모드 선택 없이 항상 같은 3-페이지 흐름으로 동작합니다. 별도 플래그로 질문 범위를 늘리거나 줄이지 않고, 누구에게나 같은 질문을 보여 줍니다.
+**마법사 구조** — 초기화 마법사는 모드 선택 없이 항상 같은 흐름으로 동작합니다. 질문은 다섯 개이고 세 페이지로 나뉘며, 누구에게나 같은 질문을 보여 줍니다. 화면 위쪽의 진행 표시(`● ● ● ○ ○ 3 / 5`)는 페이지가 아니라 질문 수를 셉니다.
 
 | 페이지 | 질문 |
 |--------|------|
-| **Page 1 — 기본** | 대화 언어, 이름, 프로젝트 이름 |
-| **Page 2 — 모델 및 리포트** | 성능 티어 (모델 정책), 리포트 형식 |
-| **Page 3 — 품질 및 워크플로우** | LSP 통합, 품질 게이트 강제, 프로젝트 모드, 디자인 워크플로우, Claude Design 연동 |
+| **Page 1 — 기본** | 대화 언어, 이름 |
+| **Page 2 — 에이전트와 자율성** | 배포할 에이전트 하니스, 세션 권한 모드 |
+| **Page 3 — 판정 기능** | Jev 판정 기능 사용 여부 |
 
 ```bash
 moai init my-project
@@ -53,12 +51,12 @@ Git 자동화 모드·프로바이더는 마법사에서 묻지 않습니다. `m
 
 ## 2단계 — 기본 설정 (Page 1)
 
-세 가지 기본 값을 정합니다. 대화 언어, 사용자 이름, 프로젝트 이름입니다. 모두 마법사가 기본값을 제안하므로, Enter 만 눌러도 넘어갈 수 있습니다.
+두 가지 기본 값을 정합니다. 대화 언어와 사용자 이름입니다. 대화 언어는 기본값이 채워져 있고, 이름은 프로필에 저장된 값이 있을 때만 채워집니다. 어느 쪽이든 Enter 만 눌러도 넘어갈 수 있습니다.
 
-**대화 언어** — Claude 가 응답할 언어를 선택합니다. 이후 모든 질문도 이 언어로 표시됩니다.
+**대화 언어** — MoAI 가 대화할 언어를 선택합니다. 고르는 즉시 마법사 화면도 그 언어로 바뀝니다.
 
 ```bash
-? 대화 언어를 선택하세요:
+? 대화 언어 선택
 ▸ English
   Korean (한국어)
   Japanese (日本語)
@@ -67,7 +65,7 @@ Git 자동화 모드·프로바이더는 마법사에서 묻지 않습니다. `m
 
 이 설정은 `.moai/config/sections/language.yaml` 에 저장됩니다.
 
-**이름** — 설정 파일과 커밋 메타데이터에 사용될 사용자 이름입니다. Enter를 눌러 건너뛸 수 있습니다.
+**이름** — MoAI 가 사용자를 부를 이름입니다. 비워 두면 건너뜁니다.
 
 ```bash
 ? 이름 입력: [이름]
@@ -75,81 +73,85 @@ Git 자동화 모드·프로바이더는 마법사에서 묻지 않습니다. `m
 
 이 설정은 `.moai/config/sections/user.yaml` 의 `user.name` 필드에 저장됩니다.
 
-**프로젝트 이름** — 프로젝트 이름입니다. 기본값은 현재 디렉터리 이름입니다.
+{{< callout type="info" >}}
+프로젝트 이름은 묻지 않습니다. `moai init <프로젝트명>` 에 준 이름을 쓰고, 이름 없이 실행하면 현재 폴더 이름을 씁니다. `--name` 플래그로 직접 지정할 수도 있습니다.
+{{< /callout >}}
+
+## 3단계 — 에이전트와 자율성 (Page 2)
+
+### 에이전트 하니스
+
+이 프로젝트에 어떤 에이전트 하니스를 배포하고 연결할지 고릅니다. 선택에 따라 프로젝트 루트에 놓이는 파일이 달라집니다.
 
 ```bash
-? 프로젝트 이름 입력: [my-project]
+? 배포하고 연결할 에이전트 하니스 선택
+▸ Claude 단독 (권장) - .claude/ 표면과 AGENTS.md를 배포합니다 (지금까지의 기본 동작)
+  Codex 단독         - AGENTS.md와 Codex 표면만 배포합니다 — .claude/ 디렉터리, CLAUDE.md, .mcp.json이 생기지 않습니다
+  Claude + Codex     - 동일한 .claude/ 배포에 .codex/ 연결을 더하고 .mcp.json 프로비저닝을 강제로 켭니다
 ```
 
-## 3단계 — 모델 및 리포트 (Page 2)
+`--llm claude|gpt|both` 플래그를 주면 이 답보다 플래그가 우선합니다.
+
+### 세션 권한 모드
+
+Claude Code 세션이 어떤 권한 모드로 시작할지 고릅니다.
+
+```bash
+? 세션 권한 모드 선택
+▸ 편집 자동 수락 (권장) - 파일 편집은 자동 수락; 다른 도구는 확인
+  자동 모드             - 분류기 안전 검사 하에 도구 호출 자동 승인
+  권한 우회             - 모든 프롬프트 생략; 샌드박스 증명 필요 (Docker/gVisor 등)
+```
+
+이 설정은 프로젝트 YAML 이 아니라 사용자 수준의 Claude Code 설정(`defaultMode`)에 기록됩니다. 기본값인 편집 자동 수락은 `defaultMode: acceptEdits` 가 됩니다. 권한 우회는 샌드박스 증명이 있고 킬 스위치가 꺼져 있을 때만 적용되며, 그렇지 않으면 자동 모드로 낮춰 적용됩니다. `--autonomy-tier semi-auto|automatic|fully-autonomous` 플래그를 주면 이 답보다 플래그가 우선합니다.
+
+## 4단계 — 판정 기능 (Page 3)
+
+### Jev 판정 기능
+
+Jev 는 건네받은 상태에 대해 정해진 형태의 질문에 답하고 확률을 돌려주는 기능입니다. 스스로 결정하지는 않습니다.
+
+```bash
+? Jev 판정 기능을 켤까요? (선택, 기본은 꺼짐)
+```
+
+기본값은 **꺼짐** 입니다. 켜면 카드 본문이나 요청 본문이 외부 업체 서버로 전송되므로, 그 점을 확인한 뒤 고르세요. 이 설정은 `.moai/config/sections/workflow.yaml` 의 `workflow.jev.enabled` 필드에 저장됩니다.
+
+{{< callout type="warning" >}}
+이 질문은 `moai init` 에서만 나옵니다. `moai update -c` 에서는 묻지 않으므로, 나중에 바꾸려면 `moai web` 설정 화면을 여세요.
+{{< /callout >}}
+
+## 마법사가 묻지 않는 설정
+
+아래 값은 묻지 않고 기본값으로 저장됩니다. 바꾸려면 플래그를 주거나, 설치 뒤 `moai update -c` 또는 `moai web` 을 쓰세요.
+
+| 항목 | 기본값 | 바꾸는 방법 |
+|------|--------|-------------|
+| 성능 티어 (모델 정책) | Medium | `--model-policy` 또는 `--profile`, `moai update -c` |
+| 리포트 형식 | HTML + Markdown | `moai update -c` |
+| LSP 통합 | 켜짐 | `--enable-lsp` |
+| 품질 게이트 강제 | 켜짐 | `--enforce-quality` |
+| 디자인 워크플로우·Claude Design 연동 | 켜짐 | `--enable-design` |
+| Git 자동화 모드·프로바이더 | 원격 저장소 설정에서 판단 | `--git-mode`, `--git-provider`, `moai update -c` |
 
 ### 성능 티어 (모델 정책)
 
-에이전트에 할당할 AI 모델 티어를 선택합니다 — 토크노믹스의 핵심 설정입니다. 어떤 티어를 고르느냐에 따라 같은 작업의 청구액이 크게 갈립니다.
+모델 정책은 `moai init` 에서는 묻지 않고 Medium 으로 저장됩니다. `moai update -c` 로 다시 설정할 때 아래 화면이 나옵니다.
 
 ```bash
-? 성능 티어 선택:
-▸ Medium - Opus 5 (high~low) + Sonnet (low, single-shot rows only)
-  High - Opus 5 (max~medium) + Sonnet (low, single-shot rows only)
-  Low - Opus 5 (medium~low) + Sonnet (low, docs/e2e/single-shot rows)
+? 모델 정책 선택:
+  Max - Opus 5.5 (high~medium) + Sonnet (low, 문서/단발성 작업) — Max $200 플랜
+▸ Medium (권장) - Opus 5.5 (high~low) + Sonnet (low, 문서/단발성 작업) — Max $100 플랜
+  Low - Opus 5.5 (high~low) + Sonnet (low, 문서/E2E/단발성 작업) — Plus $20 플랜
 ```
 
 | 티어 | 특징 |
 |------|------|
-| **High** | 최고 품질 — 호출 빈도가 가장 낮은 두 에이전트에 `max` 추론 깊이 |
-| **Medium** (기본값) | 품질과 비용의 균형 — 비용/점수 곡선의 무릎 |
-| **Low** | 작업당 최저 비용 — 에이전틱 에이전트는 Opus `low` effort로 내려갑니다 |
+| **Max** | 품질 우선 — Medium과 같되 `builder-harness`와 `e2e-tester` 두 에이전트만 한 단계 높은 effort로 돌립니다 |
+| **Medium** (기본값·권장) | 품질과 비용의 균형 — 비용/점수 곡선의 무릎 |
+| **Low** | 작업당 최저 비용 — 에이전틱 에이전트는 대부분 Opus `medium`으로 내려갑니다 |
 
 이 설정은 `.moai/config/sections/llm.yaml` 의 `performance_tier` 필드에 저장되며, `profile` 필드(프로필 매트릭스 열)의 legacy 별칭으로 읽힙니다. `--profile high|medium|low` 플래그로 직접 지정하면 `profile` 필드에 저장됩니다. 프로필별 에이전트 model+effort 매핑은 [프로필 매트릭스](/ko/advanced/profile-matrix/) 페이지를 참조하세요.
-
-### 리포트 형식
-
-리포트를 HTML+Markdown으로 생성할지, Markdown만 생성할지 선택합니다.
-
-```bash
-? 리포트 형식 선택:
-▸ HTML + Markdown (권장) - 브라우저에서 볼 수 있는 HTML 리포트와 Markdown을 함께 생성
-  Markdown만 - Markdown 리포트만 생성 (가볍고 diff 친화적)
-```
-
-이 설정은 `.moai/config/sections/report.yaml` 의 `report.format` 필드에 저장됩니다.
-
-## 4단계 — 품질 및 워크플로우 (Page 3)
-
-마지막 페이지는 품질 게이트와 워크플로우 스위치를 켜고 끄는 자리입니다. 모두 기본값(활성)이 권장이지만, 프로젝트 성격에 따라 끌 수 있습니다.
-
-### LSP integration
-
-run 단계에서 언어 서버 진단을 활성화할지 선택합니다. 기본값은 **활성화** (Yes) 이며, 원치 않으면 No를 선택해 끌 수 있습니다.
-
-이 설정은 `.moai/config/sections/lsp.yaml` 의 `lsp.enabled` 필드에 저장됩니다.
-
-### quality gates
-
-TRUST 5 품질 게이트 강제 여부를 선택합니다.
-
-- **Enforce quality gates** (기본값: Yes) — 품질 게이트 실패 시 구현 진행 차단
-
-이 설정은 `.moai/config/sections/quality.yaml` 의 `constitution.enforce_quality` 필드에 저장됩니다.
-
-### project mode
-
-프로젝트 협업 모드를 선택합니다.
-
-```bash
-? Select project mode:
-▸ Personal (Recommended) - Solo developer
-  Team - Multi-developer setup
-```
-
-### design workflow
-
-MoAI 디자인 파이프라인과 Claude Design 연동을 활성화할지 선택합니다.
-
-- **Enable design workflow** (기본값: Yes)
-- **Enable Claude Design integration** (기본값: Yes, design 활성화 시만 표시)
-
-이 설정들은 `.moai/config/sections/design.yaml` 의 `design.enabled` / `design.claude_design.enabled` 필드에 저장됩니다.
 
 ## 비대화형 모드 (CI/CD)
 
@@ -158,6 +160,8 @@ MoAI 디자인 파이프라인과 Claude Design 연동을 활성화할지 선택
 ```bash
 moai init my-project \
   --non-interactive \
+  --llm claude \
+  --autonomy-tier semi-auto \
   --profile medium \
   --enable-lsp=false \
   --enforce-quality

@@ -351,7 +351,7 @@ moai glm [-p profile] [-- claude-args...]
 |--------|------|
 | `-c, --continue` | 续接上一个会话 |
 | `-m, --model <model>` | 覆盖模型选择 |
-| `--chrome` / `--no-chrome` | 切换 Chrome MCP |
+| `--chrome` / `--no-chrome` | 原样传递给 Claude Code。启动器不会自行添加任一标志，因此除非传入 `--no-chrome`，否则可通过 `/chrome` 连接 |
 
 > `auto` 权限模式在 GLM(第三方提供者)中不可用 —— 仅在 `moai cc` 中支持。
 
@@ -449,9 +449,9 @@ MoAI-ADK 提供为智能体分配最优 AI 模型的性能层级系统 —— �
 
 | 层级 | 特点 |
 |------|------|
-| **high** | 最高质量 —— 对调用频率最低的两个智能体使用 `max` 推理深度 |
+| **high** | 最高质量 —— 与 medium 相同，只有 `builder-harness` 和 `e2e-tester` 两个智能体的 effort 高一级 |
 | **medium** (默认) | 质量与成本的平衡 —— 成本/评分曲线的拐点 |
-| **low** | 每任务成本最低 —— agentic 智能体降到 Opus `low` effort,Sonnet 仅用于单次调用的行 |
+| **low** | 每任务成本最低 —— 审计与协调行降到 `medium`，`builder-harness` 降到 Opus `low`(`super-advisor` 与 `mission-governor` 保持 `high`)，Sonnet 用于单发行和 `e2e-tester` |
 
 ```bash
 # 初始化时设置

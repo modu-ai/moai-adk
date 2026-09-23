@@ -270,14 +270,14 @@ func ProfileMatrixAgents() []string {
 // anchored on a published long-horizon coding-agent benchmark that measures
 // score, cost per task, output tokens, and agent steps at every effort level:
 //
-//   - Opus 5 dominates Sonnet 5 at EVERY effort on that benchmark: Opus 5 at
+//   - Opus dominates Sonnet 5 at EVERY effort on that benchmark (measured on Opus 5): Opus at
 //     `low` scores higher AND costs less per task than Sonnet 5 at any level,
 //     because Sonnet 5 spends a multiple of the agent steps and output tokens
 //     to finish the same long-horizon task. Unit token price is therefore not
 //     the cost driver — completion efficiency is. Opus is consequently the
 //     model for every multi-turn agentic row.
 //
-//   - `xhigh` is retired from the matrix: on Opus 5 it scores the same as
+//   - `xhigh` is retired from the matrix: measured on Opus 5, it scores the same as
 //     `high` while costing materially more, so it is strictly dominated. `max`
 //     is the only level above `high`, so a row that wants more than `high`
 //     takes `max`.
@@ -309,9 +309,16 @@ func ProfileMatrixAgents() []string {
 //     frontmatter is the load-bearing channel; it does not by itself alter
 //     delivered GLM behavior. See glm_effort_overlay.go.
 //
-//   - Sonnet 5 is retained ONLY for single-shot, input-dominated, non-agentic
-//     rows (Explore search, manager-git mechanics) where the multi-step
-//     completion failure does not apply and the lower input price does.
+//   - Sonnet 5 holds three rows in every column — Explore (search),
+//     manager-git (git mechanics), and manager-docs (documentation) — plus
+//     e2e-tester in the economical column only. What is recorded differs by
+//     row. The per-agent matrix (31da99a7b) classed Explore, manager-git, and
+//     the low-column docs and e2e rows as single-shot, input-dominated,
+//     non-agentic rows, where the multi-step completion failure does not
+//     apply and the lower input price does. manager-docs moved to sonnet in
+//     the two upper columns later, with the operator-specified
+//     judgment-weighted policy (t205), which records it as profile-invariant
+//     alongside manager-git and Explore and states no further reason.
 //
 // Invariants asserted by tests: zero haiku; zero fable; models subset of
 // {opus, sonnet}; efforts subset of {low, medium, high, max} (no `xhigh` cell);

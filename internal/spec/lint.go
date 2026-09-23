@@ -534,6 +534,10 @@ type SPECFrontmatter struct {
 	// (absent → no badge, not an error). Not one of the 12 required fields, so
 	// FrontmatterSchemaRule does not report its absence.
 	Tier string `yaml:"tier,omitempty"`
+	// AmendmentOf is the optional in-place / successor amendment declaration
+	// (completed → in-progress (amendment) transition). Not one of the 12
+	// required fields. Read by the audit SyncStatusDrift amendment exemption.
+	AmendmentOf string `yaml:"amendment_of,omitempty"`
 }
 
 type REQEntry struct {
@@ -594,6 +598,14 @@ const (
 	// every entry through all three Source values and requiring the severity
 	// distribution to be unchanged each time.
 	REQSourceHeading
+	// REQSourceBare is a definition line carrying NO markdown marker at all
+	// (`**REQ-X-001** — …` opening its own line). Card t1104.
+	//
+	// [HARD] Like REQSourceTable and REQSourceHeading, this value is
+	// ATTRIBUTION ONLY and MUST NOT reach reqFindingSeverity or any other
+	// severity decision. Bare entries are demoted through the EXISTING single
+	// axis (Widened), exactly as table and heading entries are.
+	REQSourceBare
 )
 
 func (s REQSource) String() string {
@@ -602,6 +614,8 @@ func (s REQSource) String() string {
 		return "table"
 	case REQSourceHeading:
 		return "heading"
+	case REQSourceBare:
+		return "bare"
 	default:
 		return "list"
 	}

@@ -353,7 +353,7 @@ moai glm [-p profile] [-- claude-args...]
 |--------|------|
 | `-c, --continue` | 이전 세션 이어가기 |
 | `-m, --model <model>` | 모델 선택 덮어쓰기 |
-| `--chrome` / `--no-chrome` | Chrome MCP 토글 |
+| `--chrome` / `--no-chrome` | Claude Code 에 그대로 전달합니다. 런처가 스스로 붙이지 않으므로 `--no-chrome` 을 넘기지 않는 한 `/chrome` 으로 연결할 수 있습니다 |
 
 > `auto` 권한 모드는 GLM(제3자 제공자)에서는 사용할 수 없습니다 — `moai cc` 에서만 지원됩니다.
 
@@ -451,9 +451,9 @@ MoAI-ADK에는 에이전트마다 최적의 AI 모델을 배정하는 성능 티
 
 | 티어 | 특징 |
 |------|------|
-| **high** | 최고 품질 — 호출 빈도가 가장 낮은 두 에이전트에 `max` 추론 깊이 |
+| **high** | 최고 품질 — medium과 같되 `builder-harness`·`e2e-tester` 두 에이전트만 effort 한 단계 위 |
 | **medium** (기본값) | 품질과 비용의 균형 |
-| **low** | 작업당 최저 비용 — 에이전틱 에이전트는 Opus `low` effort로 내려가고, Sonnet은 단발성 행에만 |
+| **low** | 작업당 최저 비용 — 감사·조율 행은 `medium`, `builder-harness`는 Opus `low`로 내려가고(`super-advisor`·`mission-governor`는 `high` 유지), Sonnet은 단발성 행과 `e2e-tester`에 |
 
 ```bash
 # 초기화 시 설정

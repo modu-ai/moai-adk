@@ -44,7 +44,7 @@ func TestGLMSlotEffortForModel(t *testing.T) {
 		{"fable", "e-fable"},
 		{"opus[1m]", "e-high"},                           // 1M suffix split before lookup
 		{"sonnet[1m]", "e-medium"},                       //
-		{template.ModelIDOpus5, "e-high"},                // canonical id reverse-mapped
+		{template.ModelIDOpus55, "e-high"},               // canonical id reverse-mapped
 		{"claude-sonnet-5", "e-medium"},                  //
 		{"", ""},                                         // no model pinned → no slot claim
 		{config.DefaultGLM53, ""},                        // raw GLM id is not an alias → ""

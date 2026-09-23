@@ -16,13 +16,18 @@ MOAI_AC_BASELINE_REGENERATE=1 go test ./internal/spec -run TestACCounterBaseline
 
 ## 2. 방아쇠 이벤트 — 이것들이 일어나면 cascade 의무가 생긴다
 
-다음 세 가지는 공통점이 있다: **커밋된 스냅샷의 관측 대상 집단이나 관측값을 움직인다.**
+다음 네 가지는 공통점이 있다: **커밋된 스냅샷의 관측 대상 집단이나 관측값을 움직인다.**
 
 | 이벤트 | 게이트에 나타나는 모양 | 실제 전례 |
 |---|---|---|
 | `acceptance.md` 의 superseded/split 로 인한 삭제 | `:479` vanish — "present in the snapshot but no longer matched by the corpus glob" (하드 실패) | `20cdeb6bd` — SPEC-MODEL-PROFILE-MATRIX-002 를 네 successor 로 분해하며 삭제 |
 | SPEC 디렉터리의 `_archive/` 이동 | 같은 vanish — depth-1 glob 이 더는 그 파일을 매치하지 않는다 | (아직 없음 — 첫 발생이 이 절차의 첫 시험이다) |
 | AC 개수에 영향을 주는 corpus 재작성 (B12 절 카운터 문법 변경, corpus glob 변경) | 광범위한 count-move 하드 실패 | t573 (`d9b472409`) — corpus 기준 재작성 후 cascade 누락 |
+| 기존 `acceptance.md` 를 제자리에서 고쳐 AC 수가 바뀌는 경우 (SPEC 개정) | 그 파일 한 행의 count-move 하드 실패 — 파일은 코퍼스에 그대로 있는데 기록된 개수만 어긋난다 | `0fbc75afc` — SPEC-APPJS-FIRE-GUARD-001 을 0.1.0 → 0.2.0 으로 개정하며 AC 를 추가하고 cascade 를 빠뜨렸다 |
+
+**네 번째 행은 파일이 사라지지도 코퍼스 기준이 바뀌지도 않는 유일한 방아쇠다.** 세 번째 행과 갈리는 지점은 코퍼스 집단이 아니라 관측값이다: corpus 재작성은 여러 파일의 개수를 한꺼번에 움직이고, SPEC 개정은 **한 파일의 개수만** 움직인다. 두 경우 모두 하드 실패이므로 cascade 의무는 같다.
+
+개정 절차와의 접점: `completed → in-progress (amendment)` 전이(`.claude/rules/moai/development/spec-frontmatter-schema.md` § Status Transition Ownership Matrix)를 거쳐 기존 `acceptance.md` 의 AC 를 더하거나 빼는 개정은 그 자체로 네 번째 행에 해당한다. 개정 커밋에 §3 **같은 커밋 규칙**이 그대로 적용된다 — 재생성된 스냅샷은 개정 커밋과 같은 커밋에 들어가야 하고, 나누면 그 사이 어떤 HEAD 에서든 게이트가 빨간불이다.
 
 **새 `acceptance.md` 의 추가는 방아쇠가 아니다.** 부재(absent) 행은 v0.5.0 협정상 "report, not fail" 이고 다음 재생성에서 흡수되는 것이 문서화된 수명주기다. 다만 부재 행은 적체로 불어나기만 하므로(아래 §5), 추가만 있던 기간에도 가끔은 소모성 재생성을 해 주는 것이 보고의 가독성을 지킨다.
 
