@@ -67,6 +67,11 @@ fields:
   # plus the deployed AGENTS.md audit-verdict-file row). Every value here must
   # equal the permission contract's sandbox for that role — the emitter
   # refuses any other mode.
+  # MEASURED (codex-cli 0.156.1): the value states the role's intended mode
+  # but is NOT applied to a role spawned as a subagent — the subagent inherits
+  # the parent session's sandbox (permission_contract sandbox row). It is
+  # still emitted: the field is accepted, harmless, and keeps the stated
+  # contract visible in each role file.
   sandbox_mode:
     emit: true
     value: workspace-write
@@ -117,16 +122,20 @@ classes:
     disposition: documented-drop
     rationale: >-
       The Read-vs-Write tool distinction is not mechanically preserved on
-      Codex: its sandbox is workspace-level, not tool-level. Read-only roles
-      use the runtime sandbox; other roles rely on body scope restrictions.
+      Codex: its sandbox is workspace-level, not tool-level, and a role
+      spawned as a subagent inherits the parent session's sandbox rather than
+      its own sandbox_mode (measured, codex-cli 0.156.1). Every role
+      therefore relies on body scope restrictions for write discipline.
   - class: shell
     disposition: consequence
     rationale: >-
       Shell executes built-in on Codex. Roles that write test outputs or
       other working files use workspace-write; roles with no local write duty,
-      and the audit roles whose verdict file the parent writes, use
-      read-only. The sandbox constrains filesystem effects but does not
-      remove the shell tool from a role (permission contract axis shell).
+      and the audit roles whose verdict file the parent writes, state
+      read-only. That stated mode is not applied to a spawned subagent (it
+      inherits the parent session's sandbox — permission contract axis
+      sandbox), and in no case does the sandbox remove the shell tool from a
+      role (permission contract axis shell).
   - class: web
     disposition: documented-drop
     rationale: >-
@@ -267,9 +276,11 @@ documented_drops:
     rationale: >-
       Codex sandbox is workspace-level; the granular Read/Write tool split
       cannot be preserved mechanically. mission-governor, super-advisor,
-      plan-auditor, and sync-auditor are read-only at the filesystem sandbox
-      level. Their shell and MCP access cannot be restricted per tool through
-      this TOML. The audit roles' only write duty is their verdict or report
+      plan-auditor, and sync-auditor state read-only in their role files, but
+      a role spawned as a subagent inherits the parent session's sandbox, so
+      that stated mode is not enforced (measured, codex-cli 0.156.1). Their
+      shell and MCP access cannot be restricted per tool through this TOML
+      either. The audit roles' only write duty is their verdict or report
       file, and the sandbox cannot confine a write to one path, so
       workspace-write would grant more than the role needs. On Codex only,
       the audit roles therefore return the complete verdict or report text
@@ -368,7 +379,9 @@ mcp_server_grant:
 # mcp-server denial for the rest. Every required restriction maps to exactly
 # one row below, either `enforced` (a field this emitter writes; basis
 # measured or documented — never unmeasured) or `UNSUPPORTED` (the host
-# cannot express it). A required restriction with no row fails emission.
+# cannot express or does not apply it). A required restriction with no row
+# fails emission. The emitted sandbox_mode must equal the contract value
+# whatever the sandbox row's mapping.
 #
 # An `enforced` basis states what was observed about the field — that Codex
 # accepts it. Whether a field actually blocks the restricted action at
@@ -378,15 +391,24 @@ permission_contract:
   axes:
     - axis: sandbox
       kind: mode
-      mapping: enforced
-      field: sandbox_mode
+      mapping: UNSUPPORTED
       basis: measured
+      reason: >-
+        A role spawned as a subagent inherits the parent session's sandbox;
+        the role file's sandbox_mode is not applied, neither narrowing nor
+        widening it. The emitter still writes sandbox_mode equal to the
+        contract value (the field is accepted and states the intended mode),
+        but no per-role sandbox is enforced at runtime.
       evidence: >-
-        codex-cli 0.147.0 (P-01) names the accepted set verbatim on a bad
-        value (read-only, workspace-write, danger-full-access) and drops the
-        whole agent file on any other value; workspace-write registered and
-        delegated. Observed: the field and its values are accepted. Runtime
-        write blocking under read-only is unmeasured here.
+        codex-cli 0.147.0 (P-01) accepts the field and its three values.
+        codex-cli 0.156.1 live role run: plan-auditor and sync-auditor, whose
+        role files state read-only, ran with sandbox_policy workspace-write
+        and their probe writes succeeded, while the same role files'
+        developer_instructions and model_reasoning_effort were applied.
+        Discriminating probes: a workspace-write parent spawning plan-auditor
+        (read-only file) gave a workspace-write subagent whose write
+        succeeded; a read-only parent spawning manager-docs (workspace-write
+        file) gave a read-only subagent whose write was denied.
     - axis: write-path-scope
       kind: path-scope
       mapping: UNSUPPORTED
@@ -472,10 +494,12 @@ codex_role_addenda:
     ## Codex Runtime Addendum
 
 
-    On Codex this role runs with a read-only sandbox. Do not write the
-    verdict or report file yourself, and do not treat a refused write as a
-    failure of the audit. Return the complete verdict or report text as your
-    final response, including the path the file belongs at; the parent lane
+    On Codex this role runs as a subagent and follows the parent session's
+    sandbox; the read-only setting in this role file is not enforced, so a
+    write may succeed. Do not write the verdict or report file yourself, even
+    when a write would succeed, and do not treat a refused write as a failure
+    of the audit. Return the complete verdict or report text as your final
+    response, including the path the file belongs at; the parent lane
     orchestrator writes the file with exactly that text.
   sync-auditor: *audit_return
 

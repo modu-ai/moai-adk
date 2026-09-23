@@ -162,7 +162,7 @@ func ParseManifest(data []byte) (Manifest, error) {
 	if m.PermissionContract != nil {
 		fc, ok := m.Fields["sandbox_mode"]
 		if !ok || !fc.Emit {
-			return Manifest{}, fmt.Errorf("agentemit: permission contract requires sandbox_mode emission (the sandbox axis is enforced through it)")
+			return Manifest{}, fmt.Errorf("agentemit: permission contract requires sandbox_mode emission (role files state the contract sandbox through it)")
 		}
 		accepted := make(map[string]bool, len(fc.AcceptedValues))
 		for _, v := range fc.AcceptedValues {

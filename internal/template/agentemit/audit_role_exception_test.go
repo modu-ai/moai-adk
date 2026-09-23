@@ -1,8 +1,9 @@
 // audit_role_exception_test.go — the Codex-only audit-role exception.
 //
-// On Codex the two audit roles run with a read-only sandbox and return their
-// verdict text; the parent lane orchestrator writes the verdict or report
-// file with exactly that text. The exception is Codex-only: the Claude agent
+// On Codex the two audit roles state a read-only sandbox_mode (not applied to
+// a spawned subagent, which inherits the parent session's sandbox) and return
+// their verdict text; the parent lane orchestrator writes the verdict or
+// report file with exactly that text. The exception is Codex-only: the Claude agent
 // definitions (the local copy under the repository .claude tree and the
 // neutral template copy) carry no trace of it, and the Claude audit workflow
 // is untouched.
@@ -37,7 +38,7 @@ const repoRoot = "../../.."
 func TestCodexAuditRolesReadOnlyScopedException(t *testing.T) {
 	pub := emitRealSet(t)
 
-	// Emitted + committed artifacts: read-only sandbox and the return-text
+	// Emitted + committed artifacts: read-only sandbox_mode and the return-text
 	// instruction on exactly the two audit roles.
 	withMarker := map[string]bool{}
 	for path, data := range pub.CodexTOML {

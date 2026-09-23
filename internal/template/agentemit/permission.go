@@ -227,16 +227,17 @@ func roleVerdicts(doc AgentDoc, man Manifest, emittedSandbox string, hasMCP bool
 			if !known || m.Field != want {
 				return nil, fmt.Errorf("%s: role %q restriction %s/%s claims enforcement through field %q, which this emitter does not write", doc.File, doc.Name, r.Axis, r.Kind, m.Field)
 			}
-			switch r {
-			case Requirement{Axis: "sandbox", Kind: "mode"}:
-				contract := man.PermissionContract.ContractSandbox(doc.Name)
-				if emittedSandbox != contract {
-					return nil, fmt.Errorf("%s: role %q emits sandbox_mode %q but its permission contract states %q — never emit a mode other than the contract's", doc.File, doc.Name, emittedSandbox, contract)
-				}
-			case Requirement{Axis: "mcp-server", Kind: "grant"}:
-				if !hasMCP {
-					return nil, fmt.Errorf("%s: role %q requires the moai server grant but none is emitted", doc.File, doc.Name)
-				}
+			if r == (Requirement{Axis: "mcp-server", Kind: "grant"}) && !hasMCP {
+				return nil, fmt.Errorf("%s: role %q requires the moai server grant but none is emitted", doc.File, doc.Name)
+			}
+		}
+		// The emitted sandbox_mode must equal the contract's value whatever
+		// the sandbox row's mapping: an UNSUPPORTED row records that the host
+		// does not enforce the field, never a licence to emit a wider mode.
+		if r == (Requirement{Axis: "sandbox", Kind: "mode"}) {
+			contract := man.PermissionContract.ContractSandbox(doc.Name)
+			if emittedSandbox != contract {
+				return nil, fmt.Errorf("%s: role %q emits sandbox_mode %q but its permission contract states %q — never emit a mode other than the contract's", doc.File, doc.Name, emittedSandbox, contract)
 			}
 		}
 		out = append(out, AxisVerdict{Role: doc.Name, Axis: r.Axis, Kind: r.Kind, Mapping: m.Mapping, Field: m.Field, Basis: m.Basis, Reason: m.Reason})

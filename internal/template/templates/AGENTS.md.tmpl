@@ -30,7 +30,7 @@ harness driving this contract lacks the capability.
 | slash-commands | `/moai` slash commands | Use the underlying `moai` CLI verbs |
 | workflow-scripts | Workflow scripts (`ultracode`) | Run the steps sequentially |
 | worktree-entry | `moai cc -w <name>`; Codex lanes: `moai codex -w <worktree>` — resolves an existing tree and never creates one | Report the missing isolation; never create a tree by hand |
-| audit-verdict-file | The auditor agent writes its own verdict or report file | Codex audit roles (`plan-auditor`, `sync-auditor`) run read-only and return their verdict text; the parent orchestrator writes the verdict or report file with exactly the returned text, unedited |
+| audit-verdict-file | The auditor agent writes its own verdict or report file | On Codex, audit roles (`plan-auditor`, `sync-auditor`) run as subagents and follow the parent session's sandbox; the role file's read-only setting is not enforced. They return their verdict text, and the parent orchestrator writes the verdict or report file with exactly the returned text, unedited |
 
 **`Skill("<name>")` instructions carry no row, and are read literally.** `skill-loader` is a
 capability every harness driving this contract has, so it earns no row above; what is Claude-only
