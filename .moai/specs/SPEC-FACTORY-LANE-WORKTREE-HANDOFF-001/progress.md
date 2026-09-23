@@ -38,7 +38,7 @@ module: "internal/factorymsg"
 - t1082 worktree/branch와 t1074 dependency ancestry를 읽었다.
 - 실제 creation-base drift가 reflog에 남아 있음을 관측했다.
 - 기존 MCP catalog/status narrow baseline은 현재 tree에서 통과했다.
-- 16개 t1082 named tests는 현재 모두 부재하여 plan RED 상태다.
+- 20개 t1082 named tests(AC 19 + 공통 gate-quality 1; `grep -E '^unset ' acceptance.md | grep -oE 'Test[A-Za-z]+' | sort -u | wc -l` → 20)는 현재 모두 부재하여 plan RED 상태다.
 - Strict SPEC lint는 빈 finding 배열을 반환했고, 18 REQ/19 AC heading과 양방향 trace reference를 확인했다.
 - 사용자 승인에 따라 interactive next-normal-turn SessionStart와 headless official returned-thread-ID direct BOUND를 mode별 계약으로 분리했다.
 - 모든 acceptance jq gate가 child/subtest/package의 `fail` 또는 `skip`을 전역 거부하도록 강화됐다.

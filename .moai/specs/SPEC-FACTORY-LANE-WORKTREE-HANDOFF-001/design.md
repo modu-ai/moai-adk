@@ -62,16 +62,16 @@ Work-root provenance:
 
 ### 2.1 Endpoint binding order with t1074 launch-pending (REQ-FLH-016, REQ-FLH-017, REQ-FLH-018)
 
-t1074 착지본의 broker는 slot당 endpoint row 하나(`peers.slot` PRIMARY KEY)를 두고, launcher가 먼저 private `launch-pending:` 키로 provisional row를 등록(`RegisterLaunchPending`, `internal/factorymsg/store.go:381`)한 뒤 첫 정상 turn의 SessionStart가 exact owner identity로 그 row를 bind한다(`BindLaunchPending`, `store.go:392`; 호출부 `internal/hook/factory_messages.go:84`). Provisional row가 current인 동안 `ResolveLane`·`Peer`·`PeerByOwner`·송신 검증은 모두 `ErrEndpointLaunchPending`을 돌려준다(`store.go:485,506,521,564`).
+t1074 착지본의 broker는 slot당 endpoint row 하나(`peers.slot` PRIMARY KEY)를 두고, launcher가 먼저 private `launch-pending:` 키로 provisional row를 등록(`RegisterLaunchPending`, `internal/factorymsg/store.go:381`)한다. 그 row를 bound로 바꾸는 **필수** 결합자는 첫 정당한 비어 있지 않은 UserPromptSubmit이다(`RegisterPeer`, `store.go:305`; 호출부 `internal/hook/factory_messages.go:93`). 그보다 먼저 온 SessionStart가 exact owner identity로 같은 row를 bind할 수 있지만(`BindLaunchPending`, `store.go:392`; 호출부 `factory_messages.go:84`) best-effort이며 순서가 보장되지 않는다(t1074 `SPEC-FACTORY-MIXED-HOOK-001` spec.md:57 REQ-FMH-001). Provisional row가 current인 동안 `ResolveLane`·`Peer`·`PeerByOwner`·송신 검증은 모두 `ErrEndpointLaunchPending`을 돌려준다(`store.go:485,506,521,564`).
 
 착지 코드(HEAD `d28ed9aa4`)에서 같은 slot 행에 쓰는 비-테스트 경로는 네 개이고, 이 SPEC의 handoff CAS rebind가 다섯 번째로 더해진다.
 
 | # | Writer | Store entry point | 호출부 | 행에 대한 효과 |
 |---|---|---|---|---|
-| 1 | launcher provisional registration | `RegisterLaunchPending` (`store.go:381`, 내부적으로 `RegisterPeer`) | `internal/cli/factory_launch_pending.go:58` | `launch-pending:` 키로 row 생성 또는 교체 |
+| 1 | launcher provisional registration | `RegisterLaunchPending` (`store.go:381`, 내부적으로 `RegisterPeer`) | `internal/cli/factory_launch_pending.go:58` | `launch-pending:` 키로 row 생성 또는 교체. 비종결 handoff가 있으면 같은 transaction에서 그 handoff를 `NACK`/`STALE_GENERATION`으로 종결(이 SPEC, REQ-FLH-017). t1074 live-owner 규칙으로 거부되면 handoff 불변 |
 | 2 | launcher rollback | `RollbackLaunchPending` (`store.go:455`) | `internal/cli/factory_launch_pending.go:73` | exact provisional identity일 때만 row 삭제 |
-| 3 | SessionStart bind | `BindLaunchPending` (`store.go:392`) | `internal/hook/factory_messages.go:84` | pending row만 CAS로 bound 전환, 그 외 no-op |
-| 4 | UserPromptSubmit registration | `RegisterPeer` (`store.go:305`) | `internal/hook/factory_messages.go:93` ← `registerFactoryUserPromptPeer` (`factory_messages.go:38`) ← `internal/hook/user_prompt_submit.go:112` | 살아 있는 같은 owner(PID·process-start 동일)가 새 session UUID를 내면 거절 없이 generation+1로 endpoint 교체 |
+| 3 | SessionStart bind | `BindLaunchPending` (`store.go:392`) | `internal/hook/factory_messages.go:84` | pending row만 CAS로 bound 전환, 그 외 no-op(`store.go:419`). t1074 best-effort 선행 결합자, 순서 무관 |
+| 4 | UserPromptSubmit registration | `RegisterPeer` (`store.go:305`) | `internal/hook/factory_messages.go:93` ← `registerFactoryUserPromptPeer` (`factory_messages.go:38`) ← `internal/hook/user_prompt_submit.go:112` | t1074 필수 launch-pending 결합자(REQ-FMH-001): launch-pending row를 관측된 session으로 bound 전환. 살아 있는 같은 owner(PID·process-start 동일)가 새 session UUID를 내면 거절 없이 generation+1로 endpoint 교체(`store.go:353-359`). 비종결 handoff 동안에는 거부(REQ-FLH-018) |
 | 5 | handoff atomic rebind (이 SPEC) | §6 transaction | handoff controller | reserved source tuple CAS 후 교체 + tombstone + BOUND receipt |
 
 4번 경로의 효과는 interactive `/cd` 직후 turn과 같은 모양이다. 새 session UUID, 같은 Codex process, 그리고 tombstone·receipt 없는 endpoint 교체다.
@@ -79,30 +79,41 @@ t1074 착지본의 broker는 slot당 endpoint row 하나(`peers.slot` PRIMARY KE
 ```text
 lane endpoint row lifecycle (one row per slot)
 
-launcher start ──► LAUNCH_PENDING(g) ──first normal-turn SessionStart──► BOUND(g+1)
-                   │  handoff reserve → NACK ENDPOINT_LAUNCH_PENDING      │
-                   │  (no reservation/tombstone/worktree; row untouched)  │
-                                                                          ▼
+launcher start ──► LAUNCH_PENDING(g) ──first legit UserPromptSubmit (mandatory)──► BOUND(g+1)
+                   │                  or earlier SessionStart (best-effort)       │
+                   │  handoff reserve → NACK ENDPOINT_LAUNCH_PENDING              │
+                   │  (no reservation/tombstone/worktree; row untouched)          │
+                                                                                  ▼
                                              handoff reserve (source = BOUND(g+1) tuple)
-                                                                          │
-                                                                  SWITCH_PENDING_*
-                                                                          │
-              ┌───────────── one BEGIN IMMEDIATE writer at a time ────────┴──────────┐
-              ▼                                                                     ▼
-   handoff rebind commits first                              launcher re-register/bind commits first
-   CAS(source tuple) matches → BOUND(g+2)                    row → LAUNCH_PENDING(g+2) → BOUND(g+3)
-   + tombstone + BOUND receipt + release                     handoff rebind CAS mismatch →
-   later RegisterLaunchPending → t1074 live-owner reject     NACK STALE_GENERATION, no tombstone/
-   later BindLaunchPending → no-op (row not pending)         receipt/release; launcher owner current
+                                                                                  │
+                                                         RESERVED / WT_READY / SWITCH_PENDING_*
+                                                                                  │
+              ┌───────────── one BEGIN IMMEDIATE writer at a time ────────────────┴──────────┐
+              ▼                                                                             ▼
+   handoff rebind commits first                              launcher re-registration commits first
+   CAS(source tuple) matches → BOUND(g+2)                    same tx: handoff → NACK STALE_GENERATION
+   + tombstone + BOUND receipt + release                     (no tombstone/receipt/release)
+   later RegisterLaunchPending → t1074 live-owner reject     row → LAUNCH_PENDING(g+2)
+   later BindLaunchPending → no-op (row not pending)         → UserPromptSubmit / SessionStart bind → BOUND(g+3)
+                                                             later handoff rebind → STALE_GENERATION, no write
 ```
 
-순서 규칙은 세 가지다. 첫째, launcher bind가 handoff admission보다 먼저다 — launch-pending인 lane에는 reservation 자체가 생기지 않는다. 둘째, reservation 이후의 경합은 "먼저 commit한 writer가 이긴다"이며, handoff rebind는 reserved source tuple(session/thread UUID, generation, PID, process-start)에 대한 CAS이므로 launcher가 row를 먼저 바꿨다면 반드시 `STALE_GENERATION`으로 진다. 셋째, handoff는 자기 새 endpoint를 launcher provisional 경로로 만들지 않는다. 넷째, handoff가 비종결 상태(`RESERVED`, `WT_READY`, `SWITCH_PENDING_*`)인 동안 위 표 4번 UserPromptSubmit registration은 같은 broker write transaction 안에서 handoff 상태를 읽고 `ENDPOINT_HANDOFF_PENDING`으로 거부되며 행을 바꾸지 않는다(REQ-FLH-018). 따라서 비종결 handoff가 있는 slot에서 endpoint를 옮길 수 있는 writer는 launcher 경로(1-3번, REQ-FLH-017이 CAS로 순서를 정함)와 handoff rebind뿐이다.
+순서 규칙은 네 가지다. 첫째, launcher bind가 handoff admission보다 먼저다 — launch-pending인 lane에는 reservation 자체가 생기지 않는다(REQ-FLH-016). 둘째, reservation 이후의 경합은 "먼저 commit한 writer가 이긴다"이다. launcher 가등록이 먼저 commit하면 그 transaction이 같은 slot의 비종결 handoff를 `NACK`/`STALE_GENERATION`으로 종결하고, 뒤이은 handoff rebind는 reserved source tuple(session/thread UUID, generation, PID, process-start)에 대한 CAS와 상태 판독에서 반드시 `STALE_GENERATION`으로 지며 아무것도 쓰지 않는다(REQ-FLH-017). 셋째, handoff는 자기 새 endpoint를 launcher provisional 경로로 만들지 않는다. 넷째, handoff가 비종결 상태(`RESERVED`, `WT_READY`, `SWITCH_PENDING_*`)인 동안 위 표 4번 UserPromptSubmit registration은 같은 broker write transaction 안에서 handoff 상태를 읽고 `ENDPOINT_HANDOFF_PENDING`으로 거부되며 행을 바꾸지 않는다(REQ-FLH-018).
+
+네 규칙이 지키는 불변식은 하나다. **비종결 handoff 동안 slot 행은 reserved source tuple과 같고, 그 행을 바꾸는 handoff rebind 외의 모든 commit은 같은 transaction에서 handoff를 종결한다.** 표의 writer별로 보면 1번은 commit하면 handoff를 종결하고 거부되면 행과 handoff를 모두 두며, 2번(rollback)과 3번(SessionStart bind)은 pending 행에만 작동하는데 비종결 handoff 동안 행은 bound source tuple이므로 일치할 수 없고, 4번은 거부된다. 따라서 "launch-pending 행 + 비종결 handoff" 상태는 도달할 수 없다 — admission 쪽은 REQ-FLH-016이, 등록 쪽은 REQ-FLH-017이 막는다.
 
 **UserPromptSubmit 경로의 처리 선택 (REQ-FLH-018).** "먼저 commit하면 tombstone을 남기고 handoff는 `STALE_GENERATION`으로 진다"가 아니라 "비종결 handoff 동안 같은 transaction 안에서 거부"를 택했다. 먼저 commit을 허용하면 검증되지 않은 transaction이 endpoint를 교체하게 되어 REQ-FLH-008의 "모든 검증이 성공한 뒤에만 한 transaction이 교체한다"가 깨지고, tombstone은 REQ-FLH-010이 전제하는 교체의 일부가 아니라 사후 보정이 되며, 그 사이 lane은 BOUND 없이 새 cwd에 결합되어 REQ-FLH-013의 pre-BOUND 무결성을 흐린다. 또한 Codex가 `/cd` 뒤 turn에서 SessionStart와 UserPromptSubmit을 어떤 순서로 발화하는지는 관측되지 않았는데, 거부를 택하면 순서와 무관하게 결과가 같다(UserPromptSubmit이 먼저면 거부되고 SessionStart evidence가 rebind하며, rebind가 먼저면 이후 UserPromptSubmit은 같은 identity라 no-op이다).
 
-교착 방지는 §9 결정표가 맡는다. Handoff가 `NACK` 또는 `ABANDONED`라는 종결 상태에 이르면 UserPromptSubmit registration은 t1074 의미로 복귀하되, BOUND가 아니므로 dispatch body는 계속 막힌다.
+교착 방지는 §9 결정표가 맡는다. Handoff가 `NACK` 또는 `ABANDONED`라는 종결 상태에 이르면 UserPromptSubmit registration은 t1074 의미로 복귀하되, BOUND가 아니므로 dispatch body는 계속 막힌다. 비종결 handoff 중 lane이 launcher로 재기동되면 재기동 프로세스의 SessionStart가 launcher 등록보다 먼저 발화해도(행이 아직 pending이 아니라 `BindLaunchPending`이 no-op, `store.go:419`) 교착이 생기지 않는다. 뒤이은 launcher 등록 commit이 handoff를 종결하므로 첫 UserPromptSubmit은 REQ-FLH-018에 걸리지 않고 t1074대로 provisional 행을 결합한다.
 
-직렬화 경계는 새 장치가 아니라 기존 broker의 SQLite transaction domain이다. Broker는 `_txlock=immediate`로 열리므로(`store.go:169,214`) 모든 쓰기 transaction이 `BEGIN IMMEDIATE`로 시작해 프로세스 사이에서도 한 writer만 RESERVED lock을 잡는다. 단 각 `Store` 핸들은 `SetMaxOpenConns(1)`(`store.go:174,219`)이라, 같은 핸들을 공유하는 두 goroutine은 Go connection pool에서 먼저 직렬화되고 `BEGIN IMMEDIATE` 경계에 도달하지 않는다. 실제 경합은 launcher 프로세스, hook 프로세스, handoff controller가 각자 연 핸들 사이에서 일어나므로 경합 재현은 racer마다 별도 `Store` 핸들을 요구한다. Handoff rebind의 CAS, tombstone, BOUND receipt, release marker와 UserPromptSubmit 거부 판정은 각각 한 transaction 안에 있어야 이 경계가 성립한다. 이 경합은 코드 읽기와 저장소 수준 프로브로 세운 가설이며 종단 재현된 실패가 아니므로, AC-FLH-018(launcher 경로)과 AC-FLH-019(UserPromptSubmit 경로)가 별도 핸들 위의 강제 interleaving과 비강제 동시 반복으로 재현 경로를 제공한다.
+**Launcher 재등록의 처리 선택 (REQ-FLH-017, 결정 ②).** 비종결 handoff 중 launcher 가등록이 commit하면 같은 transaction에서 handoff를 `NACK`/`STALE_GENERATION`으로 종결하고 tombstone·BOUND receipt·dispatch release는 쓰지 않는다. 가등록이 commit되는 조건 — source owner가 current가 아니거나 같은 identity(`store.go:342-359`) — 에서는 rebind CAS가 어차피 영원히 실패하므로, 즉시 종결은 결과를 바꾸지 않고 판정 시점만 앞당긴다. REQ-FLH-017이 launcher 승리 시 tombstone을 금지하므로 종결에도 tombstone을 붙이지 않는다. 대안인 "launch-pending 행이고 호출자가 그 provisional owner와 같으면 UserPromptSubmit만 예외로 결합"은 이 순서 하나만 막는다. SessionStart가 alias session으로 먼저 결합한 뒤에는 행이 pending이 아니라 예외가 적용되지 않고, 죽은 handoff가 t1074 alias 교정을 무기한 막는다. Dead-source UserPromptSubmit이 handoff를 종결하는 보조 장치는 넣지 않았다. 결과가 발화 순서에 따라 `BOUND`/`NACK`로 갈리는 경로와, liveness 불명을 "current 아님"으로 판정하는 것이 §9 "liveness 불명 → ABANDONED"와 부딪히는 긴장을 새로 들여오기 때문이다.
+
+**잔여 위험 (결정 ②).**
+
+- **F②-3 launcher 밖 재기동.** factory 환경변수를 가진 셸에서 `codex resume` 등으로 launcher를 거치지 않고 재기동하면 handoff를 종결하는 가등록이 없다. lane은 죽은 source 행에 묶이고, 첫 UserPromptSubmit은 REQ-FLH-018로 거부된다. launch-pending 고아는 아니지만 REQ-FLH-017의 목적(재기동 lane의 결합 복원)은 달성되지 않는다. 발생은 관측되지 않았다. 복구는 사용자의 `/cd` 뒤 SessionStart evidence로 rebind를 시도하거나(검증 실패면 `NACK`), §9에 따라 operator가 `ABANDONED`로 종결하는 것이다.
+- **NACK 뒤 고아 headless fork thread.** `SWITCH_PENDING_HEADLESS`에서 `thread/fork` 요청을 낸 뒤 launcher 가등록이 handoff를 종결하면, 뒤늦게 도착한 fork 결과의 새 thread는 어느 endpoint에도 결합되지 않은 채 남는다. rebind는 `STALE_GENERATION`으로 아무것도 쓰지 않으므로 broker 상태는 안전하지만 app-server 쪽 thread 정리는 이 SPEC 범위 밖이다.
+
+직렬화 경계는 새 장치가 아니라 기존 broker의 SQLite transaction domain이다. Broker는 `_txlock=immediate`로 열리므로(`store.go:169,214`) 모든 쓰기 transaction이 `BEGIN IMMEDIATE`로 시작해 프로세스 사이에서도 한 writer만 RESERVED lock을 잡는다. 단 각 `Store` 핸들은 `SetMaxOpenConns(1)`(`store.go:174,219`)이라, 같은 핸들을 공유하는 두 goroutine은 Go connection pool에서 먼저 직렬화되고 `BEGIN IMMEDIATE` 경계에 도달하지 않는다. 실제 경합은 launcher 프로세스, hook 프로세스, handoff controller가 각자 연 핸들 사이에서 일어나므로 경합 재현은 racer마다 별도 `Store` 핸들을 요구한다. Handoff rebind의 CAS, tombstone, BOUND receipt, release marker, launcher 가등록과 그 handoff 종결, UserPromptSubmit의 handoff 상태 판독과 거부 판정은 각각 한 transaction 안에 있어야 이 경계가 성립한다. 상태를 `BEGIN` 전에 읽으면 아직 commit되지 않은 reservation을 놓치므로, AC-FLH-019는 reservation transaction을 쥔 채 멈춘 상대를 두고 이 판독 위치를 판별한다. 이 경합은 코드 읽기와 저장소 수준 프로브로 세운 가설이며 종단 재현된 실패가 아니므로, AC-FLH-018(launcher 경로)과 AC-FLH-019(UserPromptSubmit 경로)가 별도 핸들 위의 강제 interleaving과 비강제 동시 반복으로 재현 경로를 제공한다.
 
 **Launch-pending 요청의 처리 선택 (REQ-FLH-016).** 대기 후 진행이나 bounded retry가 아니라 즉시 `ENDPOINT_LAUNCH_PENDING` NACK를 택했다. Provisional row를 bound로 바꾸는 유일한 증거는 사용자의 첫 정상 turn이며, 이 SPEC은 빈 model turn 생성(REQ-FLH-006)과 새 polling service(Out of Scope)를 모두 금지하므로 handoff 쪽에서 기다리거나 재시도할 수단이 없다. 즉시 NACK는 REQ-FLH-003의 fail-closed admission과 같은 terminal 의미(`NACK` → fresh reservation only)를 그대로 쓰고, 부작용이 0이라 provisional row의 이후 bind를 방해하지 않는다.
 
@@ -190,7 +201,7 @@ t1082 자체가 `main@2213871af`에서 생성된 뒤 `develop@3f3ffbb57`로 수�
 - Body lookup과 claim은 handoff generation이 BOUND일 때만 current endpoint에 허용된다.
 - Old endpoint의 direct send/read/receipt/ACK는 tombstone lookup 후 NACK한다.
 - NACK의 redirect metadata는 current UUID/generation만 포함하며 body, token, secret은 포함하지 않는다.
-- Duplicate dispatch는 t1074 idempotency key에 handoff generation을 결합한다.
+- Duplicate dispatch는 현행 t1074 스키마의 idempotency key를 바꾸지 않고 그대로 써서 판정한다. Handoff generation은 key의 일부가 아니며 stale-generation NACK 판정에만 쓴다. 따라서 BOUND 전후 같은 dispatch의 key가 같다(AC-FLH-008). Key의 기준(송신 session인가 lane slot인가)은 t1100이 소유하며 이 SPEC은 현행 스키마를 따른다. 경계: record schema·idempotency·fencing은 t1100, BOUND hold·tombstone·relocation LIVE는 t1082다. 이 SPEC은 schema 요구를 추가하지 않는다.
 - Same-lane redispatch는 current BOUND generation이면 duplicate disposition, 이전 generation이면 stale NACK다.
 
 ## 9. Crash recovery decision table
@@ -200,6 +211,8 @@ t1082 자체가 `main@2213871af`에서 생성된 뒤 `develop@3f3ffbb57`로 수�
 | reservation만 있고 target 없음 | create 재시도 또는 explicit ABANDONED |
 | target 존재, exact pin/branch/clean | `WT_READY` 재구성 |
 | target 존재, wrong HEAD/branch/collision | `BASE_DRIFT`/`BRANCH_COLLISION` NACK |
+| `NACK` 뒤 같은 card의 fresh reservation, lane cwd가 이미 그 target (사용자가 `/cd`한 뒤 evidence 검증이 실패한 경우) | 그 cwd와 target은 untrusted/conflicting이 아니다. target이 clean이고 reserved `WT-*` branch이며 fresh develop pin과 같으면 admission 후 materializer 재호출 없이 `WT_READY` 재구성. 불일치면 `BASE_DRIFT`/`BRANCH_COLLISION` NACK. 이후 mode별 relocation·evidence·rebind 규칙(REQ-FLH-006/007/008)은 그대로 적용 |
+| 비종결 handoff 동안 launcher provisional registration commit | 같은 transaction에서 handoff `NACK`/`STALE_GENERATION`; tombstone·BOUND receipt·dispatch release 0. 행은 launch-pending이고 t1074 UserPromptSubmit(필수) 또는 선행 SessionStart(best-effort)가 bind. 이후 handoff rebind는 `STALE_GENERATION`, 무쓰기. Registration이 t1074 live-owner 규칙으로 거부되면 handoff·행 불변 |
 | interactive SWITCH_PENDING, old endpoint still current, 다음 정상-turn SessionStart 없음 | pending 유지; 빈 turn 및 자동 dispatch 금지 |
 | 비종결 handoff 동안 UserPromptSubmit registration이 `ENDPOINT_HANDOFF_PENDING`으로 거부됨 | endpoint 불변; evidence가 오면 rebind, 검증 실패면 `NACK`, 판단 불가면 `ABANDONED`. 종결 뒤 UserPromptSubmit은 t1074 의미로 복귀하고 dispatch body는 계속 거부; 재시도는 fresh reservation만 |
 | headless SWITCH_PENDING, 공식 RPC result 또는 provenance readback 불완전 | NACK 또는 safe retry; SessionStart 대기 및 자동 dispatch 금지 |

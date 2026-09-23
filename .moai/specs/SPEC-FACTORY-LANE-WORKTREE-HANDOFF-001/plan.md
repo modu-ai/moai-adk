@@ -55,7 +55,7 @@ module: "internal/factorymsg"
 - 같은 broker transaction에서 old peer tombstone, new peer generation, handoff `BOUND`, BOUND receipt, dispatch release marker를 기록한다.
 - BOUND 전 body claim/read/ACK와 code-write authorization을 거부한다.
 - stale send/ACK는 현재 endpoint/generation metadata를 포함한 NACK로 응답한다.
-- duplicate dispatch와 same-lane redispatch는 `(run,lane,card,handoff_generation,idempotency_key)`로 멱등 처리한다.
+- duplicate dispatch와 same-lane redispatch는 현행 t1074 스키마의 idempotency key를 바꾸지 않고 멱등 처리한다. handoff generation은 key에 넣지 않고 stale-generation NACK 판정에만 쓴다(key 기준 결정은 t1100 소유, design.md §8).
 
 ### M4 — Recovery, safety, and compatibility
 

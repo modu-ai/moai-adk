@@ -1,7 +1,7 @@
 ---
 id: SPEC-FACTORY-LANE-WORKTREE-HANDOFF-001
 title: "Factory lane card worktree handoff"
-version: "0.4.0"
+version: "0.5.0"
 status: draft
 created: 2026-09-22
 updated: 2026-09-23
@@ -23,6 +23,7 @@ card: t1082
 
 | Version | Date | Change |
 |---|---|---|
+| 0.5.0 | 2026-09-23 | 미종결 handoff 중 launcher 가등록이 같은 transaction에서 handoff를 `NACK`/`STALE_GENERATION`으로 종결하도록 규정해 재기동 lane의 t1074 결합 경로를 복원했고(REQ-FLH-017, 결정 ②), t1074 결합자 서술을 UserPromptSubmit 필수·SessionStart best-effort로 바로잡았으며(REQ-FLH-015), 같은 transaction 판독 판별 순서·NACK 뒤 fresh reservation 진입·idempotency key 기준을 명시했다. |
 | 0.4.0 | 2026-09-23 | t1074 착지분의 세 번째 slot 쓰기 경로인 UserPromptSubmit `RegisterPeer`를 모델링해, 미완료 handoff 동안 그 경로가 같은 broker transaction 안에서 거부되도록 규정했다(REQ-FLH-018). |
 | 0.3.0 | 2026-09-23 | t1074 착지(develop `861510fb6`) 후 전제 재검증 결과를 반영해 launch-pending source endpoint의 handoff 거부(REQ-FLH-016)와 launcher provisional bind 대 handoff rebind의 직렬화·순서(REQ-FLH-017)를 추가했다. |
 | 0.2.0 | 2026-09-22 | 관측된 Codex 0.155.1 경계를 반영해 interactive는 다음 정상 turn의 SessionStart, headless는 공식 app-server 반환 thread ID를 mode별 결합 증거로 분리했다. |
@@ -73,7 +74,7 @@ Where the lane is interactive Codex, the handoff SHALL allow only a user-driven 
 
 ### REQ-FLH-003 — Fail-closed admission
 
-When the source lane has an active turn, a permission wait, an interrupt in progress, a dirty source checkout, a stale reservation, an untrusted cwd, a branch owned by another worktree, a conflicting target path, or another unfinished handoff for the same lane, the handoff SHALL return a reason-specific NACK without creating a worktree, relocating the endpoint, or releasing a dispatch.
+When the source lane has an active turn, a permission wait, an interrupt in progress, a dirty source checkout, a stale reservation, an untrusted cwd, a branch owned by another worktree, a conflicting target path, or another unfinished handoff for the same lane, the handoff SHALL return a reason-specific NACK without creating a worktree, relocating the endpoint, or releasing a dispatch. When a fresh reservation follows a `NACK`ed handoff for the same card while the lane's cwd is already that card's target worktree, the handoff SHALL treat that cwd and target as neither untrusted nor conflicting and SHALL admit the reservation into `WT_READY` reconstruction without a second materializer call only if the target is clean, on the reserved `WT-*` branch, and at the fresh develop pin; otherwise it SHALL NACK with `BASE_DRIFT` or `BRANCH_COLLISION`.
 
 ### REQ-FLH-004 — Develop pin and creation-base integrity
 
@@ -97,7 +98,7 @@ When mode-specific endpoint evidence arrives, the handoff SHALL validate the res
 
 ### REQ-FLH-009 — Dispatch ordering and idempotency
 
-While a handoff is not `BOUND`, the factory broker SHALL preserve dispatch metadata for the lane but SHALL deny body claim/read and implementation side effects. When the matching durable `BOUND` receipt is observed, the broker SHALL release the dispatch body exactly once to the current generation and SHALL handle duplicate dispatch and same-lane redispatch without duplicate execution by binding idempotency to the handoff generation.
+While a handoff is not `BOUND`, the factory broker SHALL preserve dispatch metadata for the lane but SHALL deny body claim/read and implementation side effects. When the matching durable `BOUND` receipt is observed, the broker SHALL release the dispatch body exactly once to the current generation and SHALL handle duplicate dispatch and same-lane redispatch without duplicate execution, detecting duplicates by the current t1074 schema's idempotency key unchanged. The handoff generation SHALL NOT be part of that key and SHALL be used only to NACK a stale-generation redispatch.
 
 ### REQ-FLH-010 — Tombstone and stale traffic rejection
 
@@ -121,7 +122,7 @@ When LIVE verification runs, it SHALL exercise an actual interactive `/cd` path 
 
 ### REQ-FLH-015 — Reuse and compatibility
 
-While implementation handles a handoff, it SHALL reuse t1074 canonical run selection, stable lane/current endpoint generation, launcher provisional endpoint followed by first-normal-turn SessionStart rebind, the factory message broker, peer roster, explicit receipts, existing homestate, the MoAI worktree launcher, and the app-server client. Headless controller binding SHALL coexist with that interactive first-turn contract without adding a broker, daemon, private transport, or parallel message store or changing legacy `sessionmsg` semantics.
+While implementation handles a handoff, it SHALL reuse t1074 canonical run selection, stable lane/current endpoint generation, launcher provisional endpoint bound by the first legitimate non-empty UserPromptSubmit (mandatory) or an earlier order-independent SessionStart (best-effort) per SPEC-FACTORY-MIXED-HOOK-001 REQ-FMH-001, the factory message broker, peer roster, explicit receipts, existing homestate, the MoAI worktree launcher, and the app-server client. Headless controller binding SHALL coexist with that interactive first-turn contract without adding a broker, daemon, private transport, or parallel message store or changing legacy `sessionmsg` semantics.
 
 ### REQ-FLH-016 — Launch-pending source endpoint admission
 
@@ -129,11 +130,11 @@ When a handoff is requested for a lane whose current endpoint is still the t1074
 
 ### REQ-FLH-017 — Serialized ordering of launcher bind and handoff rebind
 
-The handoff SHALL order the t1074 launcher provisional-endpoint bind before handoff admission, and SHALL serialize its atomic rebind against every launcher provisional registration or bind on the same lane as write transactions within the existing factory broker's SQLite transaction domain on that lane's single endpoint row. While a handoff is `SWITCH_PENDING`, the rebind SHALL commit only if the lane endpoint still equals the reserved source endpoint (session/thread UUID, generation, PID, process-start). When a launcher registration or bind has changed that endpoint first, the rebind SHALL NACK with `STALE_GENERATION`, write no tombstone, BOUND receipt, or dispatch release, and leave the launcher-owned endpoint current. When the rebind commits first, a later launcher bind SHALL leave the handoff-bound endpoint unchanged. In every interleaving the lane SHALL end with exactly one current bound endpoint, a generation that never decreases, and no orphan launch-pending endpoint, and the handoff SHALL NOT create its new endpoint through the launcher provisional registration path.
+The handoff SHALL order the t1074 launcher provisional-endpoint bind before handoff admission, and SHALL serialize its atomic rebind against every launcher provisional registration or bind on the same lane as write transactions within the existing factory broker's SQLite transaction domain on that lane's single endpoint row. While a handoff is non-final (`RESERVED`, `WT_READY`, `SWITCH_PENDING_INTERACTIVE`, or `SWITCH_PENDING_HEADLESS`), the lane endpoint row SHALL equal the reserved source endpoint (session/thread UUID, generation, PID, process-start), and any committed change to that row other than the handoff rebind SHALL finalize the handoff in the same transaction. When a t1074 launcher provisional registration commits on a lane whose handoff is non-final, that same registration transaction SHALL move the handoff to `NACK` with reason `STALE_GENERATION` and SHALL write no tombstone, BOUND receipt, or dispatch release; a registration rejected by the t1074 live-owner rule SHALL leave the handoff unchanged. When the rebind runs after such a registration, it SHALL return `STALE_GENERATION`, write nothing, and leave the launcher-owned endpoint current, which the t1074 binder then binds. When the rebind commits first, a later launcher registration or bind SHALL leave the handoff-bound endpoint unchanged. In every interleaving the lane SHALL end, once the t1074 binder has run, with exactly one current bound endpoint, a generation that never decreases, no orphan launch-pending endpoint, and no non-final handoff whose reserved source tuple differs from the row, and the handoff SHALL NOT create its new endpoint through the launcher provisional registration path.
 
 ### REQ-FLH-018 — UserPromptSubmit peer registration during an unfinished handoff
 
-While a lane has a handoff in a non-final state (`RESERVED`, `WT_READY`, `SWITCH_PENDING_INTERACTIVE`, or `SWITCH_PENDING_HEADLESS`), the t1074 UserPromptSubmit peer registration for that lane's slot SHALL be rejected with `ENDPOINT_HANDOFF_PENDING` inside the same broker write transaction that reads the handoff state, SHALL leave the endpoint row, generation, tombstones, receipts, and dispatch release markers unchanged, and SHALL NOT move the endpoint even when the caller's PID and process-start identity equal the current owner's and only the session UUID differs. When the handoff rebind has committed first, a later UserPromptSubmit registration carrying the handoff-bound endpoint identity SHALL leave that endpoint and its generation unchanged, and one carrying the tombstoned source session UUID SHALL be rejected with `STALE_ENDPOINT`. When the handoff reaches `NACK` or `ABANDONED`, UserPromptSubmit registration SHALL resume t1074 semantics without releasing any dispatch body. The rejection SHALL be enforced within the existing factory broker and hook path without adding a broker, daemon, or store.
+While a lane has a handoff in a non-final state (`RESERVED`, `WT_READY`, `SWITCH_PENDING_INTERACTIVE`, or `SWITCH_PENDING_HEADLESS`), the t1074 UserPromptSubmit peer registration for that lane's slot SHALL be rejected with `ENDPOINT_HANDOFF_PENDING` inside the same broker write transaction that reads the handoff state, SHALL leave the endpoint row, generation, tombstones, receipts, and dispatch release markers unchanged, and SHALL NOT move the endpoint even when the caller's PID and process-start identity equal the current owner's and only the session UUID differs. When the handoff rebind has committed first, a later UserPromptSubmit registration carrying the handoff-bound endpoint identity SHALL leave that endpoint and its generation unchanged, and one carrying the tombstoned source session UUID SHALL be rejected with `STALE_ENDPOINT`. When the handoff reaches `NACK` or `ABANDONED`, UserPromptSubmit registration SHALL resume t1074 semantics without releasing any dispatch body. This rejection SHALL NOT strand a lane restarted through the launcher: that launcher's provisional registration finalizes the handoff first (REQ-FLH-017), after which the handoff is final, this requirement no longer applies, and the t1074 UserPromptSubmit binding proceeds. The rejection SHALL be enforced within the existing factory broker and hook path without adding a broker, daemon, or store.
 
 ## Requirement-to-acceptance traceability
 
@@ -153,9 +154,9 @@ While a lane has a handoff in a non-final state (`RESERVED`, `WT_READY`, `SWITCH
 | § REQ-FLH-012 | AC-FLH-014 |
 | § REQ-FLH-013 | AC-FLH-011, AC-FLH-012, AC-FLH-013 |
 | § REQ-FLH-014 | AC-FLH-012, AC-FLH-013 |
-| § REQ-FLH-015 | AC-FLH-015 |
+| § REQ-FLH-015 | AC-FLH-015, AC-FLH-018 |
 | § REQ-FLH-016 | AC-FLH-017 |
-| § REQ-FLH-017 | AC-FLH-018 |
+| § REQ-FLH-017 | AC-FLH-018, AC-FLH-019 |
 | § REQ-FLH-018 | AC-FLH-019 |
 
 ### Out of Scope — Idle wake and autonomous TUI control
