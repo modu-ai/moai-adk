@@ -69,7 +69,7 @@ The second entry carries a session-start cost: `context7` launches through `npx 
 
 The generic `moai mcp add|remove|list` CLI manages third-party entries via the SAME atomic-RMW seam the GLM tools CLI uses (flock + compare-retry + backup-before-publish + idempotent-skip); users NEVER hand-edit `.mcp.json`. Authenticated HTTP servers (z.ai, Semgrep, Sentry) keep their `${VAR}`-literal env-expansion pattern; the GLM-backend z.ai web-tooling servers (`zai-mcp-server`, `web_search_prime`, `web_reader`) remain available via `moai glm tools enable` under a GLM session (see `.claude/rules/moai/core/glm-web-tooling.md` for the HARD routing table). Users may also configure Claude Code's native MCP support directly — see the official Claude Code MCP documentation.
 
-> Sequential Thinking MCP was retired in an earlier deep-reasoning consolidation. Use the `ultrathink` keyword (Adaptive Thinking on Opus 4.7+, including Opus 5 and 4.8) for deep reasoning.
+> Sequential Thinking MCP was retired in an earlier deep-reasoning consolidation. Use the `ultrathink` keyword (Adaptive Thinking on Opus 4.7+, including Opus 5.5 and 4.8) for deep reasoning.
 
 **`alwaysLoad` field (Claude Code v2.1.119+)** — Claude Code supports an `"alwaysLoad": true` field on MCP server entries in a user-authored `.mcp.json`; when set, the server's tool schema loads at session start instead of via the deferred-load default. This is a Claude Code platform feature documented for reference; MoAI-ADK does not emit it from its own templates.
 
@@ -103,7 +103,7 @@ Reference: https://code.claude.com/docs/en/settings.
 - Architecture decisions
 - Technology trade-off analysis
 
-Use the `ultrathink` keyword in user prompts to activate Adaptive Thinking (Opus 4.7+, including Opus 5 and 4.8). This is the canonical deep-reasoning path; Sequential Thinking MCP was retired in an earlier consolidation.
+Use the `ultrathink` keyword in user prompts to activate Adaptive Thinking (Opus 4.7+, including Opus 5.5 and 4.8). This is the canonical deep-reasoning path; Sequential Thinking MCP was retired in an earlier consolidation.
 
 ### MoAI Configuration
 
