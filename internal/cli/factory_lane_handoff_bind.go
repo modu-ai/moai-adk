@@ -50,9 +50,13 @@ func bindLaneHandoffHeadless(ctx context.Context, h factorymsg.Handoff, b laneHa
 	if err != nil {
 		return factorymsg.HandoffBinding{}, nackSwitch(ctx, store, h, factorymsg.NewHandoffNack(factorymsg.NackTargetReadbackMismatch, err.Error()))
 	}
-	return store.BindHandoff(ctx, h, factorymsg.HandoffBindEvidence{
+	binding, err := store.BindHandoff(ctx, h, factorymsg.HandoffBindEvidence{
 		Mode: factorymsg.HandoffModeHeadless, Nonce: h.Nonce, CardID: h.CardID, SpecID: h.SpecID,
 		SessionUUID: rel.ThreadID, PID: b.OwnerPID, ProcessStart: b.OwnerProcessStart,
 		Cwd: rb.Cwd, WorktreeRoot: rb.Cwd, Branch: rb.Branch, Head: rb.Head,
 	})
+	if err == nil {
+		laneHandoffFailpoint(handoffPointBound)
+	}
+	return binding, err
 }

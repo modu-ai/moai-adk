@@ -179,6 +179,7 @@ func prepareLaneHandoff(ctx context.Context, req laneHandoffRequest, deps laneHa
 	if err != nil {
 		return factorymsg.Handoff{}, err
 	}
+	laneHandoffFailpoint(handoffPointReserved)
 	var reason string
 	if reentry {
 		reason = verifyReentryTarget(h)
@@ -240,9 +241,18 @@ func createHandoffTarget(h factorymsg.Handoff, primary string, deps laneHandoffD
 	if got, err := canonicalPath(created); err != nil || got != h.TargetPath {
 		return factorymsg.NackTargetPathConflict
 	}
+	laneHandoffFailpoint(handoffPointCreated)
 	if _, err := handoffGitOutput(h.TargetPath, "branch", "-m", h.CardID, h.TargetBranch); err != nil {
 		return factorymsg.NackBranchCollision
 	}
+	laneHandoffFailpoint(handoffPointRenamed)
+	return verifyCreatedTarget(h, primary)
+}
+
+// verifyCreatedTarget checks the exact provenance of a created and renamed
+// target: HEAD and local develop equal the pin, the reserved branch is checked
+// out here and nowhere else, and the tree is clean.
+func verifyCreatedTarget(h factorymsg.Handoff, primary string) string {
 	head, err := handoffGitOutput(h.TargetPath, "rev-parse", "HEAD")
 	if err != nil || head != h.DevelopPin {
 		return factorymsg.NackBaseDrift

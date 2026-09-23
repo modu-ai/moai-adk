@@ -17,7 +17,48 @@ const (
 	NackSourceOwnerLive   = "SOURCE_OWNER_LIVE"
 	NackHandoffNotPending = "HANDOFF_NOT_PENDING"
 	AbandonOperator       = "OPERATOR_ABANDONED"
+
+	// Restart-recovery ABANDONED reasons for a target that cannot be proven
+	// safe to resume. The target is preserved in every case.
+	NackTargetUnmerged = "TARGET_UNMERGED" // commits on the card branch beyond the pin
+	NackOwnerUnknown   = "OWNER_UNKNOWN"   // a directory at the target this repository does not register as a worktree
+	NackTargetMissing  = "TARGET_MISSING"  // a created target that no longer exists
 )
+
+// AbandonHandoff records a non-final handoff ABANDONED with reason, as a
+// nonce-and-state CAS. It writes nothing else and never touches the target.
+func (s *Store) AbandonHandoff(ctx context.Context, h Handoff, reason string) (Handoff, error) {
+	if reason == "" {
+		return Handoff{}, errors.New("handoff ABANDONED requires a reason")
+	}
+	return s.transitionHandoff(ctx, h, func(state, _ string) bool { return isOpenHandoffState(state) }, HandoffAbandoned, reason)
+}
+
+// HandoffReceipt reads back the durable BOUND facts of a handoff: its receipt
+// and release count, and whether the replaced endpoint's tombstone exists. ok
+// is false when any of the three is missing — which the one-transaction
+// rebind makes impossible, so a caller treats it as corruption, not a gap to
+// fill.
+func (s *Store) HandoffReceipt(ctx context.Context, handoffID string) (HandoffBinding, bool, error) {
+	b := HandoffBinding{HandoffID: handoffID}
+	var created string
+	err := s.db.QueryRowContext(ctx, `SELECT r.id,r.slot,r.old_session,r.old_generation,r.session_uuid,r.generation,r.created_at,d.message_count
+		FROM lane_handoff_receipts r JOIN lane_dispatch_releases d ON d.handoff_id=r.handoff_id WHERE r.handoff_id=?`, handoffID).
+		Scan(&b.ReceiptID, &b.Slot, &b.Old.SessionUUID, &b.Old.Generation, &b.New.SessionUUID, &b.New.Generation, &created, &b.Released)
+	if errors.Is(err, sql.ErrNoRows) {
+		return HandoffBinding{}, false, nil
+	}
+	if err != nil {
+		return HandoffBinding{}, false, err
+	}
+	var tombstones int
+	if err := s.db.QueryRowContext(ctx, `SELECT count(*) FROM lane_endpoint_tombstones WHERE handoff_id=? AND session_uuid=? AND generation=?`, handoffID, b.Old.SessionUUID, b.Old.Generation).Scan(&tombstones); err != nil {
+		return HandoffBinding{}, false, err
+	}
+	b.Old.Slot, b.New.Slot = b.Slot, b.Slot
+	b.BoundAt, _ = time.Parse(time.RFC3339Nano, created)
+	return b, tombstones == 1, nil
+}
 
 // sourceOwnerNotCurrent reports whether the recorded source owner is provably
 // not current. Live with the recorded process-start is current; Dead, or Live

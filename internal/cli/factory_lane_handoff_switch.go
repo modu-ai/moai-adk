@@ -119,6 +119,7 @@ func switchLaneHandoffInteractive(ctx context.Context, h factorymsg.Handoff, sw 
 	if err != nil {
 		return factorymsg.Handoff{}, err
 	}
+	laneHandoffFailpoint(handoffPointSwitchPending)
 	out := deps.Out
 	if out == nil {
 		out = io.Discard
@@ -165,6 +166,7 @@ func switchLaneHandoffHeadless(ctx context.Context, h factorymsg.Handoff, sw lan
 	if err != nil {
 		return factorymsg.Handoff{}, err
 	}
+	laneHandoffFailpoint(handoffPointSwitchPending)
 	var rel codexThreadRelocation
 	if sw.SourceThreadID != "" {
 		rel, err = app.ForkThread(ctx, sw.SourceThreadID, pending.TargetPath)
@@ -186,5 +188,6 @@ func switchLaneHandoffHeadless(ctx context.Context, h factorymsg.Handoff, sw lan
 	if err := store.RecordHeadlessRelocation(ctx, pending, evidence); err != nil {
 		return factorymsg.Handoff{}, nackSwitch(ctx, store, pending, err)
 	}
+	laneHandoffFailpoint(handoffPointRelocated)
 	return pending, nil
 }
