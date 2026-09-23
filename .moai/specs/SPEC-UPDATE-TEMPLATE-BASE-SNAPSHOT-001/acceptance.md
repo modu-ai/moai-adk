@@ -128,17 +128,17 @@ go test ./internal/cli/ -run 'TestUpdateForce_TemplateChangedKeyStillPropagates'
 # Expected: exit 0; output contains '--- PASS: TestUpdateForce_TemplateChangedKeyStillPropagates'
 ```
 
-### AC-TBS-027 — Identity names the render cannot carry verbatim survive updates (REQ-TBS-011; added 2026-09-24, card t1139)
+### AC-TBS-027 — Identity names survive updates under the render round-trip rule (REQ-TBS-011; added 2026-09-24, card t1139; rewritten the same day for the round-trip rule)
 
-**Given** the identity loaders `config.LoadProjectName` / `config.LoadUserName` that feed the update render context
-**When** the stored `project.name` or `user.name` contains a value the template render cannot carry verbatim — a `$`, `{{`, or `}}` (the renderer's unexpanded-token check), a `"` or `\` (the double-quoted YAML scalar), a non-graphic rune, or invalid UTF-8
-**Then** the loader returns `""` for that value (the render carries an empty name), every name the loader DOES accept renders through the real embedded `project.yaml` / `user.yaml` templates without error and parses back byte-identical, AND after a real `moai init` followed by a hand-edit of both names to such values, two consecutive forced updates both succeed, keep both names verbatim, and print no section-merge failure for either file (BASE is the deployed render, so the merge reads the user's value as a customization and keeps it).
+**Given** the update render context, whose `project.name` / `user.name` come from the stored config — `config.LoadProjectName` / `config.LoadUserName` return the stored value verbatim — and pass through the update's accept rule: a stored name is kept only if the embedded `project.yaml.tmpl` / `user.yaml.tmpl`, rendered through the same renderer the update deploys with (a context carrying the name, the project root, and the version), renders without error AND the output parses back to exactly that name; otherwise the context carries `""`, and an empty name passes through unchanged
+**When** (a) a real `moai init` writes the names itself — any name init accepts, e.g. `cost$5`, `my$app`, `a{{b`, a ZWJ emoji, a tab, `$HOME` — and two consecutive forced updates run, including once through the clean-reinstall path followed by an update; or (b) after a real `moai init` both names are hand-edited to values no render can carry verbatim — e.g. `$TEAM`, `${TEAM}`, `{{.Version}}`, `"`, `\`, a raw newline — and two consecutive forced updates run
+**Then** in case (a) the accept rule keeps the name (init renders it the same way, so the snapshot BASE equals both the new render and the user's value), and every update succeeds, keeps both names verbatim, and prints no section-merge failure for either file; in case (b) the accept rule drops the name, the snapshot BASE (the deployed render) therefore differs from the user's value — the precise condition under which the 3-way merge keeps the user's value as a customization — and both updates succeed, keep both names verbatim, and print no section-merge failure; AND every name the accept rule keeps renders through the real embedded templates without error and parses back byte-identical; AND the config loaders return the stored value verbatim, without filtering.
 
 **Verification command**:
 ```bash
-go test ./internal/config/ -run '^TestLoadIdentity_RejectsValuesTheRenderCannotCarry$' -count=1 -v
-go test ./internal/cli/ -run '^(TestIdentityLoader_AcceptedNamesRenderVerbatim|TestUpdateForce_UnrenderableIdentityNamesSurvive)$' -count=1 -v
-# Expected: both exit 0; output contains the three '--- PASS:' lines
+go test ./internal/config/ -run '^TestLoadIdentity_ReturnsStoredValueVerbatim$' -count=1 -v
+go test ./internal/cli/ -run '^(TestIdentityLoader_AcceptedNamesRenderVerbatim|TestUpdateForce_UnrenderableIdentityNamesSurvive|TestUpdateForce_InitOriginNamesSurvive|TestCleanReinstall_InitOriginNameSurvives)$' -count=1 -v
+# Expected: both exit 0; output contains the five '--- PASS:' lines
 ```
 
 ### AC-TBS-003 — Snapshot carries rendered values, not placeholders
