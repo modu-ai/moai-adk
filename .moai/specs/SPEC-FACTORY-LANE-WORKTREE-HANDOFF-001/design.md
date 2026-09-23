@@ -110,7 +110,7 @@ launcher start ──► LAUNCH_PENDING(g) ──first legit UserPromptSubmit (m
 
 **잔여 위험 (결정 ②).**
 
-- **F②-3 launcher 밖 재기동.** factory 환경변수를 가진 셸에서 `codex resume` 등으로 launcher를 거치지 않고 재기동하면 handoff를 종결하는 가등록이 없다. lane은 죽은 source 행에 묶이고, 첫 UserPromptSubmit은 REQ-FLH-018로 거부된다. launch-pending 고아는 아니지만 REQ-FLH-017의 목적(재기동 lane의 결합 복원)은 달성되지 않는다. 발생은 관측되지 않았다. 복구는 사용자의 `/cd` 뒤 SessionStart evidence로 rebind를 시도하거나(검증 실패면 `NACK`), §9에 따라 operator가 `ABANDONED`로 종결하는 것이다.
+- **F②-3 launcher 밖 재기동.** factory 환경변수를 가진 셸에서 `codex resume` 등으로 launcher를 거치지 않고 재기동하면 handoff를 종결하는 가등록이 없다. lane은 죽은 source 행에 묶이고, 첫 UserPromptSubmit은 REQ-FLH-018로 거부된다. launch-pending 고아는 아니지만 REQ-FLH-017의 목적(재기동 lane의 결합 복원)은 달성되지 않는다. 발생은 관측되지 않았다. 복구는 사용자의 `/cd` 뒤 SessionStart evidence로 rebind를 시도하거나(검증 실패면 `NACK`), operator가 `moai factory handoff abandon-lane --slot <slot>`으로 `ABANDONED`/`OPERATOR_ABANDONED`로 종결하는 것이다(REQ-FLH-011, §9). 이 명령은 source owner가 current가 아닐 때만 종결하므로 살아 있는 lane의 handoff는 끊지 않는다.
 - **NACK 뒤 고아 headless fork thread.** `SWITCH_PENDING_HEADLESS`에서 `thread/fork` 요청을 낸 뒤 launcher 가등록이 handoff를 종결하면, 뒤늦게 도착한 fork 결과의 새 thread는 어느 endpoint에도 결합되지 않은 채 남는다. rebind는 `STALE_GENERATION`으로 아무것도 쓰지 않으므로 broker 상태는 안전하지만 app-server 쪽 thread 정리는 이 SPEC 범위 밖이다.
 - **BOUND 전후 같은 key의 1회 실행은 제공하지 않는다 (AC-FLH-008 축소, 리드 결정 (a)).** BOUND 뒤 재전송은 새 key를 쓰므로 `Send`에게는 별개 봉투이고, BOUND를 가로지르는 같은 dispatch의 중복 제거는 이 SPEC이 보장하지 않는다. "BOUND 전후 같은 key로 보내도 한 번만 실행된다"가 성립하는지는 idempotency 기준에 달렸고, 그 기준은 t1100(SPEC-DUAL-HARNESS-RECOVERY-001)이 소유한다. t1082는 기준 자체를 바꾸지 않으며 이 성질을 제공하지도 검증하지도 않는다. 근거: `.moai/reports/t1082/ac008-idempotency-check.md`.
 
@@ -124,7 +124,7 @@ launcher start ──► LAUNCH_PENDING(g) ──first legit UserPromptSubmit (m
 |---|---|---|---|
 | `UNBOUND` | handoff 없음 | `RESERVED` | denied |
 | `RESERVED` | admission + CAS reservation | `WT_READY`, `NACK`, `ABANDONED` | denied |
-| `WT_READY` | exact path/HEAD/branch verified | interactive/headless `SWITCH_PENDING` | denied |
+| `WT_READY` | exact path/HEAD/branch verified | interactive/headless `SWITCH_PENDING`, `ABANDONED`(operator, REQ-FLH-011) | denied |
 | `SWITCH_PENDING_INTERACTIVE` | user `/cd` instruction issued while idle | next normal-turn SessionStart → `BOUND`, `NACK`, `ABANDONED` | denied |
 | `SWITCH_PENDING_HEADLESS` | fork/start request issued while idle | official returned thread ID + controller readback → `BOUND`, `NACK`, `ABANDONED` | denied |
 | `BOUND` | atomic rebind transaction committed | dispatch release | current endpoint only |
@@ -217,6 +217,7 @@ t1082 자체가 `main@2213871af`에서 생성된 뒤 `develop@3f3ffbb57`로 수�
 | 비종결 handoff 동안 launcher provisional registration commit | 같은 transaction에서 handoff `NACK`/`STALE_GENERATION`; tombstone·BOUND receipt·dispatch release 0. 행은 launch-pending이고 t1074 UserPromptSubmit(필수) 또는 선행 SessionStart(best-effort)가 bind. 이후 handoff rebind는 `STALE_GENERATION`, 무쓰기. Registration이 t1074 live-owner 규칙으로 거부되면 handoff·행 불변 |
 | interactive SWITCH_PENDING, old endpoint still current, 다음 정상-turn SessionStart 없음 | pending 유지; 빈 turn 및 자동 dispatch 금지 |
 | 비종결 handoff 동안 UserPromptSubmit registration이 `ENDPOINT_HANDOFF_PENDING`으로 거부됨 | endpoint 불변; evidence가 오면 rebind, 검증 실패면 `NACK`, 판단 불가면 `ABANDONED`. 종결 뒤 UserPromptSubmit은 t1074 의미로 복귀하고 dispatch body는 계속 거부; 재시도는 fresh reservation만 |
+| operator가 비종결 handoff에 `moai factory handoff abandon-lane --slot <slot>` 실행 | 같은 transaction에서 handoff 상태와 source owner를 다시 읽는다. source owner가 t1074 PID·process-start 규칙으로 current이거나 판정 불가면 `SOURCE_OWNER_LIVE`로 거부하고 무쓰기. 아니면 `ABANDONED`/`OPERATOR_ABANDONED`; worktree·branch·commit 보존, BOUND·tombstone·receipt·release 0; 이후 UserPromptSubmit은 t1074 의미로 복귀. 비종결 handoff가 없으면 `HANDOFF_NOT_PENDING`, 무쓰기. 시간 기준 자동 종결은 없다 |
 | headless SWITCH_PENDING, 공식 RPC result 또는 provenance readback 불완전 | NACK 또는 safe retry; SessionStart 대기 및 자동 dispatch 금지 |
 | BOUND row와 new peer/tombstone/receipt 모두 존재 | idempotent finalize/readback |
 | new peer만 보이고 BOUND/receipt가 없음 | transaction 불가능 상태이므로 corruption NACK; 추측 복구 금지 |

@@ -67,6 +67,7 @@ module: "internal/factorymsg"
 - crash points: reserve 후, create 전/후, rename 전/후, SWITCH_PENDING 후, rebind transaction 전/후, receipt 전/후를 fault injection한다.
 - restart reconciler는 DB와 filesystem/git/app-server facts를 읽고 resume/finalize/ABANDONED만 선택한다.
 - dirty/unmerged/owner-unknown worktree는 자동 삭제하지 않는다.
+- operator 종결 경로 `moai factory handoff abandon-lane --slot <slot>`을 기존 `moai factory handoff` 명령 그룹(`internal/cli/factory_handoff_recover.go`)에 붙이고 종결 transaction은 `internal/factorymsg`에 둔다(REQ-FLH-011). source owner가 current이거나 판정 불가면 `SOURCE_OWNER_LIVE` 거부, 아니면 한 transaction에서 `ABANDONED`/`OPERATOR_ABANDONED`를 쓰고 worktree 보존·BOUND/tombstone/receipt/release 0·종결 뒤 t1074 UserPromptSubmit 복귀를 AC-FLH-020 named test로 먼저 RED 확인한다. 시간 기준 자동 종결은 만들지 않는다. sync phase 문서는 이 명령을 막힌 lane의 수동 복구 명령으로 적는다.
 - t1074 factory broker/roster/receipt/SessionStart tests와 MCP catalog invariant를 재실행한다.
 
 ### M5 — Real mixed-factory verification

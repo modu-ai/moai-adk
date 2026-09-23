@@ -12,7 +12,7 @@ module: "internal/factorymsg"
 
 ## Acceptance policy
 
-- AC-FLH-001..019는 모두 MUST-PASS다.
+- AC-FLH-001..020은 모두 MUST-PASS다.
 - Unit/fixture evidence는 해당 named contract만 증명한다. AC-FLH-012/013은 실제 별도 CLI/model contexts가 아니면 PASS가 아니다.
 - 모든 GREEN command는 정확히 한 parent test의 `Action=pass`, 전체 child/subtest/package의 `Action=fail` 및 `Action=skip` 0건, 전체 log의 `NOT_RUN` 0건을 요구한다.
 - `go test -run`의 empty match, package setup failure, missing log, mock-only LIVE, production 경로를 우회한 fixture 준비(직접 peer 등록, 수동 DB seed)는 vacuous PASS가 아니라 FAIL이다. 피시험 대상 자체인 production store entry point — AC-FLH-018/019가 hook·launcher 경로와 같은 함수를 racer의 production `Open` 핸들에서 부르는 것 — 는 fixture 준비가 아니므로 이 금지 대상이 아니다. 그 호출에는 test 전용 등록 경로나 변형을 두지 않는다.
@@ -43,6 +43,7 @@ module: "internal/factorymsg"
 | AC-FLH-017 | REQ-FLH-016 | `TestFactoryLaneHandoffLaunchPendingSourceNack` | launch-pending lane에 대한 handoff 요청이 `ENDPOINT_LAUNCH_PENDING` NACK이며 reservation/tombstone/worktree/app-server/endpoint 변화가 0이다. |
 | AC-FLH-018 | REQ-FLH-015, REQ-FLH-017 | `TestFactoryLaneHandoffRebindVsLaunchBindRace` | 같은 slot에서 launcher provisional registration/bind와 handoff rebind를 동시에 구동해도 bound owner 1개, 패자의 이름 있는 거부, 단조 generation, orphan launch-pending 0이다. launcher 등록이 먼저 commit하면 그 commit에서 handoff가 `NACK`/`STALE_GENERATION`이 되고, SessionStart 선행 순서에서도 UserPromptSubmit이 provisional 행을 결합한다. |
 | AC-FLH-019 | REQ-FLH-016, REQ-FLH-017, REQ-FLH-018 | `TestFactoryLaneHandoffRebindVsUserPromptRegisterRace` | 비종결 handoff 동안 같은 owner·새 session UUID의 UserPromptSubmit registration이 별도 핸들에서 경합해도 tombstone·receipt 없는 endpoint 이동 0, 단조 generation, 패자의 이름 있는 거부다. 미commit reservation을 쥔 상대가 있을 때 registration·launcher 등록이 handoff 상태를 자기 transaction 안에서 읽음을 판별하고, 반대로 미commit launcher 등록을 쥔 상대가 있을 때 reservation이 source 행을 자기 transaction 안에서 읽음(순서 (vii))을 판별한다. |
+| AC-FLH-020 | REQ-FLH-011 | `TestFactoryLaneHandoffOperatorAbandon` | 막힌 비종결 handoff를 operator 명령 `moai factory handoff abandon-lane --slot <slot>`이 source owner가 current가 아닐 때만 한 transaction에서 `ABANDONED`/`OPERATOR_ABANDONED`로 종결하고, live owner면 `SOURCE_OWNER_LIVE`로 무쓰기 거부하며, worktree를 보존하고 BOUND·tombstone·receipt·release를 쓰지 않으며, 종결 뒤 UserPromptSubmit 등록이 t1074 의미로 복귀한다. |
 
 ## RED-now ledger
 
@@ -70,8 +71,11 @@ module: "internal/factorymsg"
 | AC-FLH-017 | `rg -n -F 'func TestFactoryLaneHandoffLaunchPendingSourceNack(' internal --glob '*_test.go'` | `<empty>` | 1 |
 | AC-FLH-018 | `rg -n -F 'func TestFactoryLaneHandoffRebindVsLaunchBindRace(' internal --glob '*_test.go'` | `<empty>` | 1 |
 | AC-FLH-019 | `rg -n -F 'func TestFactoryLaneHandoffRebindVsUserPromptRegisterRace(' internal --glob '*_test.go'` | `<empty>` | 1 |
+| AC-FLH-020 | `rg -n -F 'func TestFactoryLaneHandoffOperatorAbandon(' internal --glob '*_test.go'` | `<empty>` | 1 |
 
 AC-FLH-017/018 두 행은 위 subject tree가 아니라 t1074 흡수 후 HEAD `1487f97a0`에서 2026-09-23에 측정했다. AC-FLH-019 행은 HEAD `d28ed9aa4`에서 2026-09-23에 측정했다. 세 행 모두 RED 이유는 named test 부재다. 0.5.0 개정으로 기준이 바뀐 AC-FLH-018/019 두 행은 HEAD `2e3ec3d4b`에서 2026-09-23에 같은 command로 재측정했고, 둘 다 stdout 0 bytes, exit 1이었다. 새 named test는 추가되지 않았다.
+
+AC-FLH-020 행은 0.5.5 개정에서 HEAD `730139bd6`에서 2026-09-23에 측정했다. stdout 0 bytes, exit 1이며 RED 이유는 named test 부재다.
 
 0.5.1 개정으로 AC-FLH-019에 추가된 순서 (vii)(reservation의 source 행 판독 위치 판별)는 run phase의 첫 RED다. run phase는 named test `TestFactoryLaneHandoffRebindVsUserPromptRegisterRace`를 순서 (vii)부터 작성해, reservation 구현이 존재하기 전 그 순서가 실패함을 먼저 관측한다. 위 표의 AC-FLH-019 행은 named test 부재로 여전히 RED이며, 이 개정은 새 named test를 추가하지 않는다.
 
@@ -303,6 +307,22 @@ Each forced interleaving must be observed exactly as forced — the recorded sta
 
 ```bash
 unset ANTHROPIC_BASE_URL ANTHROPIC_API_KEY ANTHROPIC_AUTH_TOKEN Z_AI_API_KEY && mkdir -p .moai/reports/t1082 && MOAI_HOME=/tmp/t1082-ac19-home GOCACHE=/tmp/t1082-ac19-cache go test -json -race ./internal/factorymsg ./internal/hook -run '^TestFactoryLaneHandoffRebindVsUserPromptRegisterRace$' -count=1 -timeout=180s > .moai/reports/t1082/ac19.jsonl && jq -se '([.[]|select(.Action=="pass" and .Test=="TestFactoryLaneHandoffRebindVsUserPromptRegisterRace")]|length)==1 and ([.[]|select(.Action=="fail" or .Action=="skip")]|length)==0 and ([.[]|select((.Output//"")|contains("NOT_RUN") or contains("DATA RACE"))]|length)==0 and ([.[]|select((.Output//"")|contains("RACER_HANDLES_DISTINCT=2"))]|length)>=1' .moai/reports/t1082/ac19.jsonl
+```
+
+Expected final output: `true`; otherwise FAIL.
+
+### AC-FLH-020 — Operator termination of a stuck handoff
+
+**Given** a lane with a non-final handoff in each of `RESERVED`, `WT_READY`, `SWITCH_PENDING_INTERACTIVE`, and `SWITCH_PENDING_HEADLESS`, a dirty target worktree with an unmerged commit, a UserPromptSubmit registration for that slot that is refused with `ENDPOINT_HANDOFF_PENDING` before termination, and three source-owner cases — owner current by the t1074 PID and process-start rule, owner liveness that cannot be established, and owner not current — **when** the operator runs `moai factory handoff abandon-lane --slot <slot>`, **then**:
+
+- Owner current, and owner liveness not established: the command is refused with `SOURCE_OWNER_LIVE`, and the handoff row, endpoint row, generation, tombstones, receipts, and dispatch release markers are byte-for-byte unchanged.
+- Owner not current: the handoff is `ABANDONED` with reason `OPERATOR_ABANDONED`, written in one broker write transaction; the target worktree's files, branch, and commits are preserved and the worktree is not removed; the count of `BOUND` states, tombstones, BOUND receipts, and dispatch releases written is 0; and a UserPromptSubmit registration for the slot issued after the commit follows t1074 semantics and is not refused with `ENDPOINT_HANDOFF_PENDING`, while dispatch bodies stay withheld because no `BOUND` exists.
+- A second run on the same slot, and a run on a slot with no non-final handoff, report `HANDOFF_NOT_PENDING` and write nothing.
+
+The command is reached through the production `moai` command tree, not by calling the store function directly, and the fixture does not stub the liveness probe beyond the process-identity seam the t1074 rule already exposes.
+
+```bash
+unset ANTHROPIC_BASE_URL ANTHROPIC_API_KEY ANTHROPIC_AUTH_TOKEN Z_AI_API_KEY && mkdir -p .moai/reports/t1082 && MOAI_HOME=/tmp/t1082-ac20-home GOCACHE=/tmp/t1082-ac20-cache go test -json ./internal/cli ./internal/factorymsg -run '^TestFactoryLaneHandoffOperatorAbandon$' -count=1 -timeout=120s > .moai/reports/t1082/ac20.jsonl && jq -se '([.[]|select(.Action=="pass" and .Test=="TestFactoryLaneHandoffOperatorAbandon")]|length)==1 and ([.[]|select(.Action=="fail" or .Action=="skip")]|length)==0 and ([.[]|select((.Output//"")|contains("NOT_RUN"))]|length)==0' .moai/reports/t1082/ac20.jsonl
 ```
 
 Expected final output: `true`; otherwise FAIL.

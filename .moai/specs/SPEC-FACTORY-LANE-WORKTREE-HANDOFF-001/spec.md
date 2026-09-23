@@ -23,7 +23,7 @@ card: t1082
 
 | Version | Date | Change |
 |---|---|---|
-| 0.5.5 | 2026-09-23 | acceptance.md AC-FLH-008 수신 측 문구만 명시적으로 고쳤다(리드 결정: 문구 변경, 판정식 불변). 「같은 recipient generation 안의 K1 봉투 반복 전달」을 「receipt 전에 lease가 만료되어 같은 봉투가 다시 claim되는 경우」로, 「one accepted receipt」를 「broker가 수락한 receipt row가 정확히 1건」으로 바꿨다. 근거: 현재 기준에서 같은 봉투가 다시 도착하는 경로는 at-least-once lease 만료 재전달뿐이며, named test `TestFactoryLaneHandoffDuplicateAndSameLaneRedispatch`가 이미 그렇게 모델링한다. named test·명령·jq 게이트·요약행은 바꾸지 않았다. |
+| 0.5.5 | 2026-09-23 | 리드 결정 두 건을 한 개정으로 반영했다. (1) acceptance.md AC-FLH-008 수신 측 문구만 명시적으로 고쳤다(문구 변경, 판정식 불변). 「같은 recipient generation 안의 K1 봉투 반복 전달」을 「receipt 전에 lease가 만료되어 같은 봉투가 다시 claim되는 경우」로, 「one accepted receipt」를 「broker가 수락한 receipt row가 정확히 1건」으로 바꿨다. 근거: 현재 기준에서 같은 봉투가 다시 도착하는 경로는 at-least-once lease 만료 재전달뿐이며, named test `TestFactoryLaneHandoffDuplicateAndSameLaneRedispatch`가 이미 그렇게 모델링한다. named test·명령·jq 게이트·요약행은 바꾸지 않았다. (2) 막힌 handoff의 operator 종결 경로를 추가했다. 비종결 handoff 동안 REQ-FLH-018이 UserPromptSubmit 등록을 모두 거부하므로, `/cd`를 하지 않고 launcher 밖에서 재기동한 interactive lane은 영구히 거부되고 시간 초과나 포기 계기도 없었다. REQ-FLH-011에 `moai factory handoff abandon-lane --slot <slot>`을 규정해 source owner가 current가 아님을 t1074 PID·process-start 규칙으로 확인한 뒤(아니면 `SOURCE_OWNER_LIVE` 거부) 한 transaction에서 `ABANDONED`/`OPERATOR_ABANDONED`로 종결하고, worktree 보존·BOUND/tombstone/receipt/release 무쓰기·종결 뒤 t1074 복귀를 요구했다. AC-FLH-020을 추가했고, 시간 기준 자동 종결은 명시적으로 범위 밖에 두었으며, sync 문서가 이 명령을 적도록 했다. design.md §3 `WT_READY` 전이·§2.1 F②-3·§9 결정표와 plan.md M4를 맞췄다. 또 REQ-FLH-010에 tombstone된 session UUID는 이전 session의 나중 resume까지 포함해 영구히 거부된다는 문장과 그 이유를 더했다. |
 | 0.5.4 | 2026-09-23 | idempotency 기준에 대해 중립으로 고쳤다(리드 조율: t1100이 AC-020 근거에 따라 기준을 송신 session에서 송신 lane slot 범위로 옮긴다. 근거 기록 `.moai/reports/t1082/ac008-idempotency-check.md`). 기준이나 스키마가 「바뀌지 않는다」고 단언하던 문장을 REQ-FLH-009, design.md §2.1 잔여 위험·§8, plan.md M3, acceptance.md AC-FLH-008·요약행에서 걷어내고, 「t1082는 idempotency 기준 자체를 바꾸지 않으며 기준은 t1100(SPEC-DUAL-HARNESS-RECOVERY-001)이 소유한다」로 바꿨다. AC-FLH-008은 어느 기준에서도 성립하도록 다시 적었다: 다른 recipient로 K1을 재사용한 요청은 기존 K1 봉투로 합쳐지지 않는다는 것만 단언하고 거부인지 별도 봉투인지는 단언하지 않으며, fixture가 key 기준에 기대지 않아야 한다는 조건을 더했다. 같은 generation 안 body 1회 실행, 수신 측 `DispositionDuplicate`, 이전 generation stale NACK, BOUND 뒤 새 key 요구는 그대로다. |
 | 0.5.3 | 2026-09-23 | plan.md만 바꿨다. AC-FLH-003/004의 named test가 BOUND 관측을 요구하는데 BOUND는 M3 atomic rebind 한 transaction의 산출물이므로(REQ-FLH-008, design.md §6), M2에서 headless 원자적 BOUND 문구를 빼고 두 adapter를 `SWITCH_PENDING_*`까지로 한정했으며 headless BOUND와 AC-FLH-003/004 named test를 M3로 옮겼다(lane 결정 option A). AC 본문은 바꾸지 않았다. |
 | 0.5.2 | 2026-09-23 | AC-FLH-008을 좁혔다(리드 결정 (a), 근거 `.moai/reports/t1082/ac008-idempotency-check.md`). `Store.Send`는 같은 `(sender_session, idem_key)`라도 recipient가 다르면 거부하므로, BOUND 전후 같은 key로 보낸 재전송은 duplicate가 될 수 없다. 그래서 BOUND 뒤 rebound endpoint로의 재전송은 새 key를 쓰게 하고, 같은 key duplicate 처리는 같은 recipient generation 안에서만 요구했다. stale-generation NACK와 같은 generation duplicate의 body 1회 실행은 유지했다. 송신 측 `Send` 판정과 수신 측 receipt 처분 `DispositionDuplicate`를 층별로 나눠 적었다. 스키마와 idempotency 기준은 바꾸지 않았다(t1100 소관). REQ-FLH-009, design.md §2.1 잔여 위험·§8, plan.md M3, acceptance.md 요약행을 같은 기준으로 맞췄다. |
@@ -107,11 +107,11 @@ While a handoff is not `BOUND`, the factory broker SHALL preserve dispatch metad
 
 ### REQ-FLH-010 — Tombstone and stale traffic rejection
 
-When an old endpoint, stale generation, stale reservation token, or pre-handoff claim token attempts send, read, receipt, or ACK, the broker SHALL reject it with `STALE_ENDPOINT` or `STALE_GENERATION` and return non-secret redirect metadata naming the current lane endpoint and generation. The tombstone SHALL survive restart.
+When an old endpoint, stale generation, stale reservation token, or pre-handoff claim token attempts send, read, receipt, or ACK, the broker SHALL reject it with `STALE_ENDPOINT` or `STALE_GENERATION` and return non-secret redirect metadata naming the current lane endpoint and generation. The tombstone SHALL survive restart. A tombstoned session UUID SHALL be refused permanently, including a later resume of the old session, because an endpoint that has once been relocated must never be revived as a second writer on the same lane.
 
 ### REQ-FLH-011 — Crash, restart, and abandoned worktree recovery
 
-When a crash occurs before or after creation, branch rename, `SWITCH_PENDING`, the rebind transaction, or receipt delivery, recovery SHALL reread the stored nonce and filesystem, Git, and broker facts and select exactly one of resume, idempotent finalize, or `ABANDONED`. It SHALL preserve dirty or unmerged worktrees without automatic deletion and SHALL NOT guess past a live foreign owner or uncertain endpoint.
+When a crash occurs before or after creation, branch rename, `SWITCH_PENDING`, the rebind transaction, or receipt delivery, recovery SHALL reread the stored nonce and filesystem, Git, and broker facts and select exactly one of resume, idempotent finalize, or `ABANDONED`. It SHALL preserve dirty or unmerged worktrees without automatic deletion and SHALL NOT guess past a live foreign owner or uncertain endpoint. When an operator runs `moai factory handoff abandon-lane --slot <slot>` (a verb on the existing `moai factory handoff` command group, using the existing factory broker store and adding no daemon, broker, or store) for a lane whose handoff is non-final, the command SHALL first verify with the t1074 PID and process-start liveness rule that the handoff's recorded source owner is not current, and SHALL refuse with `SOURCE_OWNER_LIVE` and write nothing when that owner is current or its liveness cannot be established. When that verification passes, the command SHALL write the handoff `ABANDONED` with reason `OPERATOR_ABANDONED` in one broker write transaction that rereads the handoff state and the source owner, SHALL leave the worktree, its branch, and its commits in place, and SHALL write no `BOUND` state, no tombstone, no BOUND receipt, and no dispatch release; after that commit REQ-FLH-018 no longer applies to the lane and t1074 UserPromptSubmit registration semantics return. When the lane has no non-final handoff, the command SHALL write nothing and report `HANDOFF_NOT_PENDING`. The sync-phase user documentation SHALL name `moai factory handoff abandon-lane --slot <slot>` as the manual recovery command for a lane stuck behind a non-final handoff.
 
 ### REQ-FLH-012 — Authority and product-boundary truth
 
@@ -155,7 +155,7 @@ While a lane has a handoff in a non-final state (`RESERVED`, `WT_READY`, `SWITCH
 | § REQ-FLH-008 | AC-FLH-005, AC-FLH-011 |
 | § REQ-FLH-009 | AC-FLH-006, AC-FLH-008, AC-FLH-011 |
 | § REQ-FLH-010 | AC-FLH-007 |
-| § REQ-FLH-011 | AC-FLH-009, AC-FLH-010 |
+| § REQ-FLH-011 | AC-FLH-009, AC-FLH-010, AC-FLH-020 |
 | § REQ-FLH-012 | AC-FLH-014 |
 | § REQ-FLH-013 | AC-FLH-011, AC-FLH-012, AC-FLH-013 |
 | § REQ-FLH-014 | AC-FLH-012, AC-FLH-013 |
@@ -178,6 +178,10 @@ While a lane has a handoff in a non-final state (`RESERVED`, `WT_READY`, `SWITCH
 
 - 이 handoff는 card 선택, queue 완료, PR/merge, deploy 권한을 부여하지 않는다.
 - `BOUND` receipt는 transport/work-root 결합 증거이며 구현 완료 증거가 아니다.
+
+### Out of Scope — Timeout-based automatic handoff finalization
+
+- 비종결 handoff를 시간 경과만으로 자동 종결하지 않는다. 시간 기준 종결에는 주기적으로 도는 행위자가 필요한데 이 SPEC은 새 daemon·polling service를 두지 않으며, interactive `SWITCH_PENDING`은 사용자의 `/cd`와 다음 정상 turn을 기다리는 사람 속도의 대기라 어떤 상한을 정해도 정상적으로 느린 lane을 끊을 수 있다. 막힌 lane은 REQ-FLH-011의 operator 명령 `moai factory handoff abandon-lane --slot <slot>`로 종결한다.
 
 ### Out of Scope — New transport infrastructure
 
