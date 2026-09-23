@@ -361,7 +361,7 @@ HEAD `9b2e6fc09` is the merge of local develop `fa2a302c6` into `WT-opus-55-defa
 
 ```yaml
 sync_complete_at: 2026-09-23
-sync_commit_sha: pending-backfill
+sync_commit_sha: 3c7f6f38e
 sync_status: complete
 close_tree: 9b2e6fc09   # merge of local develop fa2a302c6, clean
 sync_audit: PASS-WITH-DEBT 88.3 (iter-2, bound to b9535ed06)
