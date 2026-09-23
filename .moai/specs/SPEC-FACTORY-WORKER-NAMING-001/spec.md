@@ -2,7 +2,7 @@
 id: SPEC-FACTORY-WORKER-NAMING-001
 title: "Factory worker naming — GTD todo naming closure, agent→worker join token, lane-N→worker-N notation"
 version: "0.1.0"
-status: in-progress
+status: completed
 created: 2026-09-22
 updated: 2026-09-23
 author: manager-spec

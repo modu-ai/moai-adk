@@ -272,4 +272,46 @@ CHANGELOG: one line added under `## [Unreleased]` → `### Changed`, "Factory wo
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase>_
+### Post-absorption re-measurement (this session, env-scrubbed)
+
+After the orchestrator absorbed local `develop` (`f0fdd88e4`) into `WT-worker-rename` via merge
+commit `dadb10970` (one conflict resolved in `internal/cli/factory_test.go` — kept develop's
+active-run assertion + worker-3 vocabulary), the following were re-run on the merged tree with
+`unset MOAI_FACTORY_WORKER MOAI_FACTORY_WORKERS MOAI_KANBAN_BACKEND MOAI_KANBAN_SETTINGS_INJECTED`
+in the same compound command:
+
+- `go vet ./internal/cli/ ./internal/kanban/ ./internal/factorymsg/ ./internal/hook/` → exit 0
+- `go test -count=1 ./internal/cli/ -run 'TestGLM_Factory|TestSessionPIDStamp|Legacy|WorkerVocabulary|TestGTD|ACFB019'` → `ok github.com/modu-ai/moai-adk/internal/cli 16.885s` — the two previously-inherited failures (`TestGLM_FactoryWorkerEntry`, `TestSessionPIDStamp_NotSetFromHooks`) now PASS: card t1074/t1077's fixes landed on develop and were absorbed by the merge.
+- `go test -count=1 -v ./internal/hook/ -run Factory` → `ok 14.731s`; `TestFactoryHookBenchmarkBudget` → explicit `--- SKIP` (not-measured skip, per t1097's guard requiring `MOAI_FACTORY_BENCH=1`), overall `ok 0.432s`.
+
+Net effect: the run-phase §E.3 debt items (1) and (2) (`TestGLM_FactoryWorkerEntry`,
+`TestSessionPIDStamp_NotSetFromHooks`) are resolved by the develop absorption, not by this SPEC's
+own work. Debt item (3) (`TestFactoryHookBenchmarkBudget` requiring `MOAI_FACTORY_BENCH=1`) persists
+as an explicit skip, unchanged. Debt items (4) and (5) (public docs, `moai cc -f <N>` retired form
+in kanban-dispatch twins) remain out of this SPEC's write scope — tracked as a follow-up card for
+docs-site/README/`manager-lead.md` synchronization.
+
+```yaml
+sync_complete_at: 2026-09-23
+sync_commit_sha: pending-backfill-sync
+sync_status: complete
+b12_self_test_a: pass   # grep -c SPEC-FACTORY-WORKER-NAMING-001 CHANGELOG.md → 0 before this commit's addition (single new entry, no duplicate)
+b12_self_test_b: pass   # AC count: 10 distinct AC-NNN identifiers in acceptance.md, matches CHANGELOG entry's "10 acceptance criteria (AC-001..010)"
+b12_self_test_c: pass   # file paths cited (spec.md, internal/hook/session_start_factory_i18n.go) verified to exist via ls
+changelog_entry_position: "[Unreleased] → Changed (immediately before the existing 'Factory worker numbering' entry for the same card)"
+frontmatter_status_transitions:
+  spec_md: in-progress → completed
+  plan_md: no-status-field
+  acceptance_md: no-status-field
+  progress_md: no-status-field (this §E.4 section is the sync-phase close record)
+canary_compliance_check: not-applicable
+readme_docs_site_entry: none — public docs (docs-site, README ×4, manager-lead.md) are out of this SPEC's write scope per the sync dispatch; a follow-up card is the lead's responsibility to issue
+```
+
+### Sync-phase scope note
+
+This sync commit's scope is CHANGELOG.md (one new entry) + the two SPEC-artifact frontmatter/
+progress.md edits above + this record. No independent sync-auditor pass was invoked within this
+delegation (the dispatch scoped this session to CHANGELOG + lifecycle close + spec lint only); an
+independent sync-audit verdict is a Gap, not a Claim, and is left for the orchestrator/sync-auditor
+to run as a follow-on step per the standard plan→run-audit→sync→sync-audit chain.
