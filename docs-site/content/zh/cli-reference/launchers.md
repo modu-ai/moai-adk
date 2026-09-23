@@ -32,7 +32,7 @@ moai cc [-p profile] [-w [name]] [-- claude-args...]
 | `--chrome` / `--no-chrome` | 切换 Chrome MCP |
 | `-k, --kanban [SPEC-ID]` | 进入看板主控 —— 把 `plan → run → sync` 链种进本会话。附上 SPEC-ID 时以该 SPEC 为目标 |
 | `-k --name <role>` | 作为伴随会话加入已打开的看板 run。角色为 `plan` · `run` · `sync`。同一角色名已被活着的会话占用时取下一个编号 (`plan-1`, `plan-2`, …) |
-| `-f, --factory [N]` | 进入**工厂主控** —— 开出 N 名工作者（`worker-1`…`worker-N`）的工厂 run。省略 N 时只打开主控。主控通过跨会话消息把操作者选中的卡片分给空闲工作者 |
+| `-f, --factory` | 进入**工厂主控** —— 打开工厂 run，一名工作者（`worker-1`）。主控通过跨会话消息把操作者选中的卡片分给空闲工作者 |
 | `-f worker` | 让一名工作者自动加入下一个空号，连到正在运行的工厂主控套接字 |
 | `-f worker-<n>` | 精确启动那个编号（`worker-<n>`）的工作者。编号与存活的正规工作者冲突时顺延到下一个空号；与存活的旧式工作者（`agent-<n>`/`lane-<n>`）冲突则会被点名拒绝。`moai glm -f worker` / `-f worker-<n>` 在 GLM 后端上行为相同 |
 | `-k <N>` / `-k <N> --name worker-<i>` | v1.2.0 的统一形式，至今仍然有效 —— `-k <N>` 是 N 名工作者 run 的主控，`-k <N> --name worker-<i>` 是其中的工作者 `<i>`。不带 N 只用 `-k --name worker-<i>` 时默认 8 名工作者 |

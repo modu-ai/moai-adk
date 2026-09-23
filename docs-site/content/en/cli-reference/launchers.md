@@ -32,7 +32,7 @@ Removes GLM-specific environment variables from `.claude/settings.local.json`, r
 | `--chrome` / `--no-chrome` | Toggle the Chrome MCP |
 | `-k, --kanban [SPEC-ID]` | Enter as the kanban lead — seeds the `plan → run → sync` chain in this session. With a SPEC-ID attached, that SPEC is the target |
 | `-k --name <role>` | Join an open kanban run as a companion session. Roles are `plan` · `run` · `sync`. If a live session already holds the role name, the next number is attached (`plan-1`, `plan-2`, …) |
-| `-f, --factory [N]` | Enter as the **factory lead** — a factory run opening N workers (`worker-1`…`worker-N`). Omit N and only the lead opens. The lead deals the cards the operator picks to free workers over cross-session messages |
+| `-f, --factory` | Enter as the **factory lead** — opens a factory run with one worker (`worker-1`). The lead deals the cards the operator picks to free workers over cross-session messages |
 | `-f worker` | Auto-join one more worker at the next free number and attach it to the lead socket of a running factory |
 | `-f worker-<n>` | Bring up exactly that worker (`worker-<n>`) as one more. A number already held by a live canonical worker bumps to the next free number; a number held by a live legacy worker (`agent-<n>`/`lane-<n>`) is refused by name. `moai glm -f worker` / `-f worker-<n>` behave the same on the GLM backend |
 | `-k <N>` / `-k <N> --name worker-<i>` | The v1.2.0 combined form, still valid — `-k <N>` is the lead of an N-worker run, `-k <N> --name worker-<i>` is worker `<i>` within it. `-k --name worker-<i>` without N defaults to 8 workers |

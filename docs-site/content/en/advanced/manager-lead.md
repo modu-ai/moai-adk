@@ -32,7 +32,7 @@ This is an advanced page. It goes one layer deeper into the boundary between the
 
 Role A takes the execution of a Tier-L-scale SPEC, folds context at every milestone (Context-Folding) to keep the window light, and runs peer cross-validation on every acceptance criterion (AC — the criterion for a pass verdict) that has been marked pass, so the run survives end-to-end in a single window.
 
-Role B is the work in which the **lead session owns the dispatch cycle** in kanban mode (`moai cc -k`) and factory mode (`moai cc -f N`). The kanban lead moves cards across the board along the `lead > plan > run > sync` chain — the `plan` session fans per-card SPEC authoring out to parallel `Agent()` workers — while the factory lead assigns an operator-picked card to an empty worker as a whole. Neither one creates a session. The operator launches companion sessions and workers by hand, one per terminal, and the lead addresses them by name to send messages.
+Role B is the work in which the **lead session owns the dispatch cycle** in kanban mode (`moai cc -k`) and factory mode (`moai cc -f`). The kanban lead moves cards across the board along the `lead > plan > run > sync` chain — the `plan` session fans per-card SPEC authoring out to parallel `Agent()` workers — while the factory lead assigns an operator-picked card to an empty worker as a whole. Neither one creates a session. The operator launches companion sessions and workers by hand, one per terminal, and the lead addresses them by name to send messages.
 
 Three disciplines run through both roles. Work proceeds **in order rather than in competition**, completion is judged **only on evidence that was read, never on a claim**, and the user-question channel belongs to the orchestrator — when this agent is blocked, it returns a blocker report.
 
@@ -83,7 +83,7 @@ Role A is not a path that underlies every run by default. The orchestrator hands
 
 These three conditions are "all must be true," not "any one is true." A single-milestone, 10-file refactor touching one domain looks as if only one condition is missing, but in fact none of the three hold, so it does not enter the `manager-lead` path. That is by design — sequential mode is cheaper and faster.
 
-Role B's entry is simpler. If the session's SessionStart context declares the `lead` role of kanban mode (`moai cc -k`) or factory mode (`moai cc -f N`), that is all it takes, and the thresholds do not apply — because the board (or the set of workers) is itself the work. A subagent spawn has no SessionStart context, so Role B cannot be entered by spawning.
+Role B's entry is simpler. If the session's SessionStart context declares the `lead` role of kanban mode (`moai cc -k`) or factory mode (`moai cc -f`), that is all it takes, and the thresholds do not apply — because the board (or the set of workers) is itself the work. A subagent spawn has no SessionStart context, so Role B cannot be entered by spawning.
 
 Before calling `manager-lead`, the orchestrator records this choice in the `§F Phase 4 Mode Selection` field of `progress.md`. Users can grep this record to confirm which path the current run took.
 

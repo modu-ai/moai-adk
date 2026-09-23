@@ -33,11 +33,10 @@ In kanban, the card class defined the shape of the shortcut — Class A skipped 
 ## Entry — opening the lead and the workers
 
 ```bash
-# Lead — a 4-worker factory run (prints the launch commands for worker-1..worker-4)
-$ moai cc -f 4
+# Lead — opens the factory lead (one worker, worker-1)
+$ moai cc -f
 
 # Workers — each in its own terminal; the role token joins the next free number
-$ moai cc -f worker
 $ moai cc -f worker
 $ moai cc -f worker
 $ moai cc -f worker
@@ -97,7 +96,7 @@ Never activate every worker at once. Activate the first worker, wait for evidenc
 
 ## Worker-number ownership — factory.db
 
-Which worker holds which number is recorded in `~/.moai/db/<project-key>/factory/factory.db`. A project whose launch directory is a temporary one (no absolute `MOAI_HOME` override) keeps this database project-local at `<base>/.moai/db/<project-key>/factory/factory.db`, the same exception the backlog queue follows. When a new worker opens, its number skips **only those held by live sessions** and attaches to the next free number — a dead worker's number is released and reused, and its leftover claims are cleared from the database too. A worker launched under a legacy spelling (`agent-<n>` / `lane-<n>`) shares the same number space, so auto-assignment skips live legacy rows and reports them by name, and an explicitly-picked number colliding with a live legacy row is refused (see "When a number collides with a live legacy worker" above). A legacy `.moai/state/factory/workers.json` is imported once and retained as rollback evidence. The `-f worker-<n>` form (or legacy `-f lane-<n>`) already names the worker, so passing `--name`/`-n` alongside it is an error.
+Which worker holds which number is recorded in `~/.moai/db/<project-key>/factory/factory.db`. A project whose launch directory is a temporary one (no absolute `MOAI_HOME` override) keeps this database project-local at `<base>/.moai/db/<project-key>/factory/factory.db`, the same exception the backlog queue follows. When a new worker opens, its number skips **only those held by live sessions** and attaches to the next free number — a dead worker's claim no longer blocks its number (leftover claims are cleared from the database too) — an explicitly-picked `-f worker-<n>` can reuse that number right away, but `-f worker` auto-assignment always takes one past the highest live number and never backfills a gap. A worker launched under a legacy spelling (`agent-<n>` / `lane-<n>`) shares the same number space, so auto-assignment skips live legacy rows and reports them by name, and an explicitly-picked number colliding with a live legacy row is refused (see "When a number collides with a live legacy worker" above). A legacy `.moai/state/factory/workers.json` is imported once and retained as rollback evidence. The `-f worker-<n>` form (or legacy `-f lane-<n>`) already names the worker, so passing `--name`/`-n` alongside it is an error.
 
 ## What does not change
 

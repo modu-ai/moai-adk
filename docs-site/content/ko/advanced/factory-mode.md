@@ -33,11 +33,10 @@ added_in: "v3.2"
 ## 진입 — 리드와 워커 열기
 
 ```bash
-# 리드 — 워커 4명짜리 팩토리 런 (worker-1..worker-4 실행 명령을 알려 줍니다)
-$ moai cc -f 4
+# 리드 — 팩토리 리드를 엽니다(워커 하나, worker-1)
+$ moai cc -f
 
 # 워커 — 각자 자기 터미널에서, 역할 토큰으로 다음 빈 번호에 합류합니다
-$ moai cc -f worker
 $ moai cc -f worker
 $ moai cc -f worker
 $ moai cc -f worker
@@ -53,9 +52,9 @@ $ moai glm -f worker
 
 **번호가 살아 있는 레거시 워커와 겹치면.** `agent-<n>`·`lane-<n>` 같은 옛 철자로 띄운 워커도 같은 번호 공간을 씁니다. `-f worker-<n>`으로 직접 고른 번호를 살아 있는 레거시 행이 쥐고 있으면 합류가 이름을 대며 거부됩니다 — 예: `worker-3 is held by legacy label agent-3 (a live session launched under the legacy spelling; legacy agent-<n> and lane-<n> labels share the worker number space) — pick another number with -f worker-<n>, or use -f worker to take the next free one`. `-f worker`로 다음 빈 번호를 자동으로 받을 때는 거부되지 않고, 건너뛴 레거시 번호를 이름 붙여 알려 줍니다 — 예: `factory: skipped number(s) held by legacy label(s) lane-2 — legacy agent-<n> and lane-<n> labels share the worker number space; launching as worker-3`.
 
-**레거시 철자는 지원 중단 예정 alias입니다.** `-f agent`(그리고 `agent-<n>` 이름)와 `-f lane-<n>` / `--name lane-<n>`은 그대로 파싱되어 정확히 같은 결과를 내지만, 캐논 형태(`-f worker`, `worker-<n>`)로 정착하며 실행마다 "지원 중단 예정 철자" 힌트를 출력합니다. 제거되지는 않았고, 바꿔 쓰기를 권하는 힌트만 켜져 있는 상태입니다.
+**레거시 철자는 지원 중단 예정 별칭입니다.** `-f agent`(그리고 `agent-<n>` 이름)와 `-f lane-<n>` / `--name lane-<n>`은 그대로 파싱되어 정확히 같은 결과를 내지만, 정식 형태(`-f worker`, `worker-<n>`)로 정착하며 실행마다 "지원 중단 예정 철자" 힌트를 출력합니다. 제거되지는 않았고, 바꿔 쓰기를 권하는 힌트만 켜져 있는 상태입니다.
 
-한 번의 실행에는 진입 토큰 하나만 붙을 수 있습니다 — `-k`와 `-f`를 함께 쓰면 에러입니다. v1.2.0의 통일 진입 형태인 `-k <N>`(리드)과 `-k <N> --name worker-<i>`(워커)는 그대로 유효합니다(N 없이 `-k --name worker-<i>`만 쓰면 기본 8워커). `--name lane-<i>`도 지원 중단 예정 alias로 계속 동작합니다. 칸반 리드의 소켓이 `/tmp/moai-socket-kanban/<run-id>`에 열리듯, 팩토리 리드의 소켓은 `/tmp/moai-socket-factory/<run-id>`에 열리고 부트스트랩 안내가 실제 경로를 함께 알려 줍니다. CG는 폐기되었습니다. `moai migrate cg`로 이전 선택지를 먼저 확인하세요.
+한 번의 실행에는 진입 토큰 하나만 붙을 수 있습니다 — `-k`와 `-f`를 함께 쓰면 에러입니다. v1.2.0의 통일 진입 형태인 `-k <N>`(리드)과 `-k <N> --name worker-<i>`(워커)는 그대로 유효합니다(N 없이 `-k --name worker-<i>`만 쓰면 기본 8워커). `--name lane-<i>`도 지원 중단 예정 별칭으로 계속 동작합니다. 칸반 리드의 소켓이 `/tmp/moai-socket-kanban/<run-id>`에 열리듯, 팩토리 리드의 소켓은 `/tmp/moai-socket-factory/<run-id>`에 열리고 부트스트랩 안내가 실제 경로를 함께 알려 줍니다. CG는 폐기되었습니다. `moai migrate cg`로 이전 선택지를 먼저 확인하세요.
 
 ## 리드의 라우팅 — 카드는 빈 워커에 통째로
 
@@ -97,7 +96,7 @@ flowchart TD
 
 ## 워커 번호 소유 — factory.db
 
-어느 번호를 어느 워커가 쥐고 있는지는 `~/.moai/db/<project-key>/factory/factory.db`에 기록됩니다. 기점 디렉터리가 임시 디렉터리인 프로젝트(절대 `MOAI_HOME` 오버라이드 없음)는 이 데이터베이스를 프로젝트 로컬 `<base>/.moai/db/<project-key>/factory/factory.db`에 둡니다 — 백로그 큐와 같은 예외입니다. 새 워커를 띄우면 번호는 **살아 있는 세션이 쥔 것만 건너뛰어** 다음 빈 번호로 붙습니다 — 죽은 워커의 번호는 풀려서 다시 쓰이고, 남은 claim도 데이터베이스에서 치워집니다. `agent-<n>`·`lane-<n>` 같은 레거시 철자로 띄운 워커도 같은 번호 공간을 공유하므로, 자동 배정은 살아 있는 레거시 행을 건너뛰고 그 사실을 이름 붙여 알려 주며, 직접 고른 번호가 살아 있는 레거시 행과 겹치면 거부됩니다(위 "번호가 살아 있는 레거시 워커와 겹치면" 참고). 기존 `.moai/state/factory/workers.json`은 한 번만 가져오고 롤백 증거로 남깁니다. 워커 이름은 `-f worker-<n>`(또는 레거시 `-f lane-<n>`) 형태가 이미 이름을 정하므로 `--name`/`-n`과 함께 쓰면 에러입니다.
+어느 번호를 어느 워커가 쥐고 있는지는 `~/.moai/db/<project-key>/factory/factory.db`에 기록됩니다. 기점 디렉터리가 임시 디렉터리인 프로젝트(절대 `MOAI_HOME` 오버라이드 없음)는 이 데이터베이스를 프로젝트 로컬 `<base>/.moai/db/<project-key>/factory/factory.db`에 둡니다 — 백로그 큐와 같은 예외입니다. 새 워커를 띄우면 번호는 **살아 있는 세션이 쥔 것만 건너뛰어** 다음 빈 번호로 붙습니다 — 죽은 워커의 claim은 더 이상 그 번호를 막지 않게 되고(남은 claim은 데이터베이스에서 치워집니다) — 직접 고른 `-f worker-<n>`은 그 번호를 바로 다시 쓸 수 있지만, `-f worker` 자동 배정은 항상 살아 있는 최고 번호+1을 받으므로 중간에 빈 번호를 채우지는 않습니다. `agent-<n>`·`lane-<n>` 같은 레거시 철자로 띄운 워커도 같은 번호 공간을 공유하므로, 자동 배정은 살아 있는 레거시 행을 건너뛰고 그 사실을 이름 붙여 알려 주며, 직접 고른 번호가 살아 있는 레거시 행과 겹치면 거부됩니다(위 "번호가 살아 있는 레거시 워커와 겹치면" 참고). 기존 `.moai/state/factory/workers.json`은 한 번만 가져오고 롤백 증거로 남깁니다. 워커 이름은 `-f worker-<n>`(또는 레거시 `-f lane-<n>`) 형태가 이미 이름을 정하므로 `--name`/`-n`과 함께 쓰면 에러입니다.
 
 ## 달라지지 않는 것
 

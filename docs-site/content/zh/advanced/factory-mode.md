@@ -33,11 +33,10 @@ added_in: "v3.2"
 ## 进入 —— 打开主控与工作者
 
 ```bash
-# 主控 —— 4 名工作者的工厂 run (会告知 worker-1..worker-4 的启动命令)
-$ moai cc -f 4
+# 主控 —— 打开工厂主控（一名工作者，worker-1）
+$ moai cc -f
 
 # 工作者 —— 各自在自己的终端里，用角色标记加入下一个空号
-$ moai cc -f worker
 $ moai cc -f worker
 $ moai cc -f worker
 $ moai cc -f worker
@@ -49,7 +48,7 @@ $ moai cc -f worker-3
 $ moai glm -f worker
 ```
 
-`-f` 后面不接值时，打开的是工厂主控。要以工作者身份加入，用 `-f worker`（自动加入下一个空号）或 `-f worker-<n>`（精确那个编号）—— 工作者与看板的伴随会话一样，由**人在各自的终端里亲自**启动 —— 会话替别的会话启动的路径不存在。
+`-f` 后面不接值时，打开的是工厂主控。要以工作者身份加入，用 `-f worker`（自动加入下一个空号）或 `-f worker-<n>`（精确那个编号）—— 工作者与看板的伴随会话一样，由**人在各自的终端里亲自**启动 —— 没有哪个会话能替另一个会话启动。
 
 **当编号与存活的旧式工作者撞上时。** 用 `agent-<n>`、`lane-<n>` 这类旧拼写启动的工作者，用的是同一个编号空间。`-f worker-<n>` 直接选定的编号若被存活的旧式行占着，加入会被点名拒绝 —— 例如：`worker-3 is held by legacy label agent-3 (a live session launched under the legacy spelling; legacy agent-<n> and lane-<n> labels share the worker number space) — pick another number with -f worker-<n>, or use -f worker to take the next free one`。用 `-f worker` 自动领取下一个空号时不会被拒绝，只会点名告知跳过了哪些旧式编号 —— 例如：`factory: skipped number(s) held by legacy label(s) lane-2 — legacy agent-<n> and lane-<n> labels share the worker number space; launching as worker-3`。
 
@@ -97,7 +96,7 @@ flowchart TD
 
 ## 工作者编号的归属 —— factory.db
 
-哪个编号被哪名工作者握着，记录在 `~/.moai/db/<project-key>/factory/factory.db` 里。启动目录是临时目录的项目（没有绝对 `MOAI_HOME` 覆盖）会把这一数据库放在项目本地的 `<base>/.moai/db/<project-key>/factory/factory.db` —— 与 backlog 队列同一例外。新工作者启动时，编号只跳过**仍被活着的会话握住的**那些，落到下一个空号 —— 已死工作者的编号会被释放并重新使用，残留的占用也从数据库中清掉。用 `agent-<n>`、`lane-<n>` 这类旧式拼写启动的工作者也共享同一编号空间，所以自动分配会跳过存活的旧式行并点名告知，直接选定的编号若与存活的旧式行相撞则会被拒绝（见上文“当编号与存活的旧式工作者撞上时”）。旧的 `.moai/state/factory/workers.json` 只导入一次，之后作为回滚凭据保留。`-f worker-<n>`（或旧式的 `-f lane-<n>`）形式已经定下了名字，所以与 `--name`/`-n` 同时给出会报错。
+哪个编号被哪名工作者握着，记录在 `~/.moai/db/<project-key>/factory/factory.db` 里。启动目录是临时目录的项目（没有绝对 `MOAI_HOME` 覆盖）会把这一数据库放在项目本地的 `<base>/.moai/db/<project-key>/factory/factory.db` —— 与 backlog 队列同一例外。新工作者启动时，编号只跳过**仍被活着的会话握住的**那些，落到下一个空号 —— 已死工作者的占用不再挡住那个编号（残留的占用也从数据库中清掉）—— 直接指定的 `-f worker-<n>` 可以立刻重用那个编号，但 `-f worker` 的自动分配总是取存活最高编号 +1，不会回填中间的空号。用 `agent-<n>`、`lane-<n>` 这类旧式拼写启动的工作者也共享同一编号空间，所以自动分配会跳过存活的旧式行并点名告知，直接选定的编号若与存活的旧式行相撞则会被拒绝（见上文“当编号与存活的旧式工作者撞上时”）。旧的 `.moai/state/factory/workers.json` 只导入一次，之后作为回滚凭据保留。`-f worker-<n>`（或旧式的 `-f lane-<n>`）形式已经定下了名字，所以与 `--name`/`-n` 同时给出会报错。
 
 ## 不变的东西
 
