@@ -850,6 +850,18 @@ func runInit(cmd *cobra.Command, args []string) (err error) {
 	// Card t1029: same judgement for the .mcp.json staging copy.
 	backup.JudgeLeftoverMCPSnapshot(opts.ProjectRoot, cmd.ErrOrStderr())
 
+	// SPEC-UPDATE-TEMPLATE-BASE-SNAPSHOT-001 (REQ-TBS-001) as corrected by card
+	// t1139: capture the template snapshot — the NEXT update's merge BASE — at
+	// the one moment the section files hold the pure template render: right
+	// after the deploy, before the initializer's section patches (lsp.enabled
+	// and the other Page-3 answers) and before the post-Execute writers below
+	// (profile sync, Jev, performance tier, profile, harness). Taken later, the
+	// snapshot records those answers as BASE and the first update resets them
+	// to the template default. Best-effort non-blocking (REQ-TBS-014).
+	errOut := cmd.ErrOrStderr()
+	opts.AfterTemplateDeploy = func(root string) {
+		writeTemplateSnapshotBestEffort(root, errOut)
+	}
 	result, err := executor.Execute(ctx, opts)
 	if err != nil {
 		// SPEC-INIT-DEPLOY-EXIT-001 (REQ-IDE-004): warnings the executor
@@ -1074,12 +1086,9 @@ func runInit(cmd *cobra.Command, args []string) (err error) {
 	// the init result.
 	flushUpdateNotice(p)
 
-	// SPEC-UPDATE-TEMPLATE-BASE-SNAPSHOT-001 (REQ-TBS-001, Decision D4 trigger
-	// #1): capture the freshly-deployed rendered config as the snapshot baseline
-	// so the NEXT moai update has a rendered BASE for the 3-way merge. Best-effort
-	// non-blocking (REQ-TBS-014): a failure is logged to stderr and swallowed so
-	// init never fails on a snapshot write.
-	writeTemplateSnapshotBestEffort(opts.ProjectRoot, cmd.ErrOrStderr())
+	// The template snapshot is written by opts.AfterTemplateDeploy (set before
+	// executor.Execute), not here: by this point the section files carry the
+	// wizard answers, and a snapshot of them is not a template render (t1139).
 
 	return nil
 }

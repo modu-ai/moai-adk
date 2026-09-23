@@ -11,7 +11,8 @@ import (
 
 // SnapshotSubdir is the snapshot directory relative to defs.MoAIDir. The
 // snapshot is a verbatim byte-copy of the on-disk rendered
-// .moai/config/sections/ tree, written at install/update completion so the
+// .moai/config/sections/ tree, written right after each install/update
+// template deploy (before user values are written over it) so the
 // 3-way merge has a RENDERED base (Decision D3, REQ-TBS-003) rather than the
 // raw embedded template carrying {{.Version}} placeholders.
 //
@@ -44,10 +45,12 @@ func SnapshotDir(projectRoot string) string {
 // does not abort the enclosing init/update. The caller MUST NOT propagate a
 // snapshot-write failure into the init/update result.
 //
-// @MX:ANCHOR: [AUTO] snapshot write entry — fan_in 4 (init + 3 restore sites)
-// @MX:REASON: all four Decision D4 trigger sites funnel through this single
-// write; a behavior change here propagates to init + both update paths + the
-// lockout-escape restore simultaneously. SaveTemplateBase reads the result.
+// @MX:ANCHOR: [AUTO] snapshot write entry — fan_in 3 (init + 2 update deploy sites)
+// @MX:REASON: every trigger site funnels through this single write, and each
+// MUST call it right after a template deploy and before any user value is
+// written over the section files (card t1139); a behavior change here
+// propagates to init and both update paths at once. SaveTemplateBase reads the
+// result as the next merge BASE.
 func WriteSnapshot(projectRoot string) error {
 	srcDir := filepath.Join(projectRoot, defs.MoAIDir, defs.SectionsSubdir)
 	info, err := os.Stat(srcDir)

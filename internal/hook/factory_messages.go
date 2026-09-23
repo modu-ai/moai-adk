@@ -135,7 +135,20 @@ func factoryHookBatch(ctx context.Context, input *HookInput, event EventType) (s
 	defer closeFactoryHookStore(s)
 	p, err := s.Peer(ctx, input.SessionID)
 	if err != nil {
-		return "", false, "unbound-session"
+		// Only a genuinely unregistered endpoint is unbound. Every other error
+		// — a spent inspection budget, a busy database, an I/O failure — means
+		// the lookup never completed, and reporting that as unbound turns a
+		// bound lane's inbox into a silent empty read.
+		//
+		// This makes the state string truthful; it does not surface it. Both
+		// call sites still discard the state, and a hook process discards slog
+		// records too (internal/cli/logging.go resolveLoggingDecision), so a
+		// degraded inspection is still not reported anywhere. Closing that is
+		// card t1144.
+		if errors.Is(err, sql.ErrNoRows) || errors.Is(err, factorymsg.ErrEndpointLaunchPending) {
+			return "", false, "unbound-session"
+		}
+		return "", false, "degraded: " + err.Error()
 	}
 	if err := s.CheckWritable(ctx); err != nil {
 		return "", false, "degraded: " + err.Error()

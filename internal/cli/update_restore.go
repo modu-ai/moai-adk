@@ -57,13 +57,12 @@ func runUpdateRestore(projectRoot, backupDir string, out io.Writer) error {
 		return err
 	}
 
-	// SPEC-UPDATE-TEMPLATE-BASE-SNAPSHOT-001 (REQ-TBS-002, Decision D4 trigger
-	// #4): the lockout-escape path applies a chosen backup to the tree; the
-	// post-restore on-disk config IS the new baseline for the next update, so
-	// the snapshot invariant ("snapshot = what the current install received")
-	// holds uniformly across all three restore-completion sites. Best-effort
-	// non-blocking (REQ-TBS-014).
-	writeTemplateSnapshotBestEffort(projectRoot, out)
+	// Card t1139: this path deliberately does NOT write the template snapshot.
+	// The snapshot is the merge BASE and must record a template render; the
+	// restored config holds the user's values, and recording those as BASE
+	// makes the next update read every customization as "unchanged" and drop
+	// it. No template is deployed here, so the snapshot the last deploy wrote
+	// stays the most recent render and is left as it is.
 
 	_, _ = fmt.Fprintf(out, "Restored .moai/config from %s\n", absBackup)
 	return nil

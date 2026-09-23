@@ -72,7 +72,9 @@ git check-ignore .moai/cache/template-snapshot/sections/system.yaml
 
 ## §B Restore-completion call graph — is `runUpdateRestore` a distinct fourth path?
 
-**Claim**: there are exactly THREE distinct restore-completion sites in the production code, and ALL THREE require a `WriteSnapshot` hook per Decision D4.
+> **Amendment note (2026-09-24, card t1139).** The enumeration below (three restore-completion sites, exhaustive) remains a correct measurement of the call graph. Its disposition does not: under Decision D4 as amended (plan.md), the snapshot is written after the DEPLOY at the two update sites (before `RestoreMoaiConfig`), not after the restore, and `runUpdateRestore` writes NO snapshot because it deploys nothing — snapshotting its restored user values was part of the measured poisoning defect (`project.name`, `user.name` → `""`, `lsp.enabled` true → false after `moai update --force` on a fresh init). Superseded text is marked inline.
+
+**Claim**: there are exactly THREE distinct restore-completion sites in the production code~~, and ALL THREE require a `WriteSnapshot` hook per Decision D4~~ *(disposition superseded 2026-09-24, card t1139)*.
 
 This resolves iter-1 audit D4 and the open question flagged in iter-0 plan.md §B.
 
@@ -89,7 +91,7 @@ grep -rn 'RestoreMoaiConfig' internal/ --include='*.go' | grep -v _test.go
 | `:420` | `internal/cli/update_template_sync.go` | Normal `moai update` — template-sync path. Restore after deploy. |
 | `:451` | `internal/cli/update_clean_install.go` | Normal `moai update` — clean-install path. Restore after force-deploy. |
 
-These are the two normal update sites. Both are wired for `WriteSnapshot` per Decision D4 triggers #2 and #3.
+These are the two normal update sites. ~~Both are wired for `WriteSnapshot` per Decision D4 triggers #2 and #3.~~ *(Amended 2026-09-24, card t1139: both paths write the snapshot right after their deploy, BEFORE this restore call.)*
 
 ### B.2 `RestoreFromBackupDir` callers (the lockout-escape path)
 
@@ -118,12 +120,14 @@ Tests do not require `WriteSnapshot` hooks (they do not initiate a real update c
 
 ### B.4 Disposition
 
-**Decision D4 wires all three sites**:
+> **Amended disposition (2026-09-24, card t1139)**: no restore-completion site writes the snapshot. The template-sync and clean-install paths write it right after their deploy (before the restore); `runUpdateRestore` writes none and the last deploy's snapshot stays the newest render. Trade-off: a template change between the restored backup's generation and the last deploy reads as a user customization for one cycle — data is kept, never lost. The superseded original disposition follows.
+
+~~**Decision D4 wires all three sites**~~ *(superseded)*:
 1. `update_template_sync.go:420` (template-sync restore end)
 2. `update_clean_install.go:451` (clean-install restore end)
 3. `update_restore.go:53` (`runUpdateRestore` end — the lockout-escape path)
 
-The third site is wired for invariant uniformity: after a user repairs via `moai update --restore <dir>`, the on-disk config reflects the chosen backup, and the snapshot should capture that state so the next normal `moai update` has a correct BASE. Omitting this site would leave the snapshot stale or absent after a repair, degrading the next update to the REQ-TBS-007 fallback (today's wrong-base behaviour) for one more cycle.
+[SUPERSEDED 2026-09-24, card t1139] The third site is wired for invariant uniformity: after a user repairs via `moai update --restore <dir>`, the on-disk config reflects the chosen backup, and the snapshot should capture that state so the next normal `moai update` has a correct BASE. Omitting this site would leave the snapshot stale or absent after a repair, degrading the next update to the REQ-TBS-007 fallback (today's wrong-base behaviour) for one more cycle.
 
 **No fourth site exists.** The enumeration is exhaustive.
 
@@ -195,7 +199,7 @@ This SPEC honours that contract:
 | Question | Status | Resolution |
 |---|---|---|
 | Clean-step touches `.moai/cache/`? | RESOLVED (§A) | NO — across all variants. Empirically verified. |
-| `runUpdateRestore` is a distinct restore site? | RESOLVED (§B) | YES — third site, wired per Decision D4. |
+| `runUpdateRestore` is a distinct restore site? | RESOLVED (§B) | YES — third site. ~~Wired per Decision D4.~~ Amended 2026-09-24 (card t1139): writes no snapshot (deploys nothing). |
 | Snapshot carries resolved placeholders? | RESOLVED (§C) | YES — on-disk copy, post-render. |
 | `quality.yaml` is the primary victim? | RESOLVED (§D) | YES — dedicated AC-TBS-013. |
 | Prior SPEC's read-path freeze honoured? | RESOLVED (§E) | YES — signature + read path unchanged. |
