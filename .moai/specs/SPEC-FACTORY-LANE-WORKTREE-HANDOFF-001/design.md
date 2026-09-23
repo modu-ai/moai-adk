@@ -60,9 +60,21 @@ Work-root provenance:
 
 `lane_id`는 lead가 계속 메시지를 보내는 주소다. `thread_or_session_uuid`는 endpoint일 뿐이며 `/cd`, fork, restart 때 바뀔 수 있다. Old endpoint tombstone은 `{lane_id, old_uuid, old_generation, replaced_by_uuid, replaced_by_generation, bound_at}`를 보존한다.
 
-### 2.1 Endpoint binding order with t1074 launch-pending (REQ-FLH-016, REQ-FLH-017)
+### 2.1 Endpoint binding order with t1074 launch-pending (REQ-FLH-016, REQ-FLH-017, REQ-FLH-018)
 
 t1074 착지본의 broker는 slot당 endpoint row 하나(`peers.slot` PRIMARY KEY)를 두고, launcher가 먼저 private `launch-pending:` 키로 provisional row를 등록(`RegisterLaunchPending`, `internal/factorymsg/store.go:381`)한 뒤 첫 정상 turn의 SessionStart가 exact owner identity로 그 row를 bind한다(`BindLaunchPending`, `store.go:392`; 호출부 `internal/hook/factory_messages.go:84`). Provisional row가 current인 동안 `ResolveLane`·`Peer`·`PeerByOwner`·송신 검증은 모두 `ErrEndpointLaunchPending`을 돌려준다(`store.go:485,506,521,564`).
+
+착지 코드(HEAD `d28ed9aa4`)에서 같은 slot 행에 쓰는 비-테스트 경로는 네 개이고, 이 SPEC의 handoff CAS rebind가 다섯 번째로 더해진다.
+
+| # | Writer | Store entry point | 호출부 | 행에 대한 효과 |
+|---|---|---|---|---|
+| 1 | launcher provisional registration | `RegisterLaunchPending` (`store.go:381`, 내부적으로 `RegisterPeer`) | `internal/cli/factory_launch_pending.go:58` | `launch-pending:` 키로 row 생성 또는 교체 |
+| 2 | launcher rollback | `RollbackLaunchPending` (`store.go:455`) | `internal/cli/factory_launch_pending.go:73` | exact provisional identity일 때만 row 삭제 |
+| 3 | SessionStart bind | `BindLaunchPending` (`store.go:392`) | `internal/hook/factory_messages.go:84` | pending row만 CAS로 bound 전환, 그 외 no-op |
+| 4 | UserPromptSubmit registration | `RegisterPeer` (`store.go:305`) | `internal/hook/factory_messages.go:93` ← `registerFactoryUserPromptPeer` (`factory_messages.go:38`) ← `internal/hook/user_prompt_submit.go:112` | 살아 있는 같은 owner(PID·process-start 동일)가 새 session UUID를 내면 거절 없이 generation+1로 endpoint 교체 |
+| 5 | handoff atomic rebind (이 SPEC) | §6 transaction | handoff controller | reserved source tuple CAS 후 교체 + tombstone + BOUND receipt |
+
+4번 경로의 효과는 interactive `/cd` 직후 turn과 같은 모양이다. 새 session UUID, 같은 Codex process, 그리고 tombstone·receipt 없는 endpoint 교체다.
 
 ```text
 lane endpoint row lifecycle (one row per slot)
@@ -84,9 +96,13 @@ launcher start ──► LAUNCH_PENDING(g) ──first normal-turn SessionStart�
    later BindLaunchPending → no-op (row not pending)         receipt/release; launcher owner current
 ```
 
-순서 규칙은 세 가지다. 첫째, launcher bind가 handoff admission보다 먼저다 — launch-pending인 lane에는 reservation 자체가 생기지 않는다. 둘째, reservation 이후의 경합은 "먼저 commit한 writer가 이긴다"이며, handoff rebind는 reserved source tuple(session/thread UUID, generation, PID, process-start)에 대한 CAS이므로 launcher가 row를 먼저 바꿨다면 반드시 `STALE_GENERATION`으로 진다. 셋째, handoff는 자기 새 endpoint를 launcher provisional 경로로 만들지 않는다 — 그래야 같은 slot에 쓰는 경로가 "launcher provisional bind"와 "handoff CAS rebind" 둘로 고정되고, 둘 다 같은 row의 generation을 +1씩만 올린다.
+순서 규칙은 세 가지다. 첫째, launcher bind가 handoff admission보다 먼저다 — launch-pending인 lane에는 reservation 자체가 생기지 않는다. 둘째, reservation 이후의 경합은 "먼저 commit한 writer가 이긴다"이며, handoff rebind는 reserved source tuple(session/thread UUID, generation, PID, process-start)에 대한 CAS이므로 launcher가 row를 먼저 바꿨다면 반드시 `STALE_GENERATION`으로 진다. 셋째, handoff는 자기 새 endpoint를 launcher provisional 경로로 만들지 않는다. 넷째, handoff가 비종결 상태(`RESERVED`, `WT_READY`, `SWITCH_PENDING_*`)인 동안 위 표 4번 UserPromptSubmit registration은 같은 broker write transaction 안에서 handoff 상태를 읽고 `ENDPOINT_HANDOFF_PENDING`으로 거부되며 행을 바꾸지 않는다(REQ-FLH-018). 따라서 비종결 handoff가 있는 slot에서 endpoint를 옮길 수 있는 writer는 launcher 경로(1-3번, REQ-FLH-017이 CAS로 순서를 정함)와 handoff rebind뿐이다.
 
-직렬화 경계는 새 장치가 아니라 기존 broker의 SQLite transaction domain이다. Broker는 `_txlock=immediate`와 `SetMaxOpenConns(1)`로 열리므로(`store.go:169,174,214,219`) 모든 쓰기 transaction이 `BEGIN IMMEDIATE`로 시작해 프로세스 사이에서도 한 writer만 RESERVED lock을 잡는다. Handoff rebind의 CAS, tombstone, BOUND receipt, release marker는 §6의 한 transaction 안에 있어야 이 경계가 성립한다. 이 경합은 코드 읽기로 세운 가설이며 재현된 실패가 아니므로, AC-FLH-018이 강제 interleaving 셋과 비강제 동시 반복으로 재현 경로를 제공한다.
+**UserPromptSubmit 경로의 처리 선택 (REQ-FLH-018).** "먼저 commit하면 tombstone을 남기고 handoff는 `STALE_GENERATION`으로 진다"가 아니라 "비종결 handoff 동안 같은 transaction 안에서 거부"를 택했다. 먼저 commit을 허용하면 검증되지 않은 transaction이 endpoint를 교체하게 되어 REQ-FLH-008의 "모든 검증이 성공한 뒤에만 한 transaction이 교체한다"가 깨지고, tombstone은 REQ-FLH-010이 전제하는 교체의 일부가 아니라 사후 보정이 되며, 그 사이 lane은 BOUND 없이 새 cwd에 결합되어 REQ-FLH-013의 pre-BOUND 무결성을 흐린다. 또한 Codex가 `/cd` 뒤 turn에서 SessionStart와 UserPromptSubmit을 어떤 순서로 발화하는지는 관측되지 않았는데, 거부를 택하면 순서와 무관하게 결과가 같다(UserPromptSubmit이 먼저면 거부되고 SessionStart evidence가 rebind하며, rebind가 먼저면 이후 UserPromptSubmit은 같은 identity라 no-op이다).
+
+교착 방지는 §9 결정표가 맡는다. Handoff가 `NACK` 또는 `ABANDONED`라는 종결 상태에 이르면 UserPromptSubmit registration은 t1074 의미로 복귀하되, BOUND가 아니므로 dispatch body는 계속 막힌다.
+
+직렬화 경계는 새 장치가 아니라 기존 broker의 SQLite transaction domain이다. Broker는 `_txlock=immediate`로 열리므로(`store.go:169,214`) 모든 쓰기 transaction이 `BEGIN IMMEDIATE`로 시작해 프로세스 사이에서도 한 writer만 RESERVED lock을 잡는다. 단 각 `Store` 핸들은 `SetMaxOpenConns(1)`(`store.go:174,219`)이라, 같은 핸들을 공유하는 두 goroutine은 Go connection pool에서 먼저 직렬화되고 `BEGIN IMMEDIATE` 경계에 도달하지 않는다. 실제 경합은 launcher 프로세스, hook 프로세스, handoff controller가 각자 연 핸들 사이에서 일어나므로 경합 재현은 racer마다 별도 `Store` 핸들을 요구한다. Handoff rebind의 CAS, tombstone, BOUND receipt, release marker와 UserPromptSubmit 거부 판정은 각각 한 transaction 안에 있어야 이 경계가 성립한다. 이 경합은 코드 읽기와 저장소 수준 프로브로 세운 가설이며 종단 재현된 실패가 아니므로, AC-FLH-018(launcher 경로)과 AC-FLH-019(UserPromptSubmit 경로)가 별도 핸들 위의 강제 interleaving과 비강제 동시 반복으로 재현 경로를 제공한다.
 
 **Launch-pending 요청의 처리 선택 (REQ-FLH-016).** 대기 후 진행이나 bounded retry가 아니라 즉시 `ENDPOINT_LAUNCH_PENDING` NACK를 택했다. Provisional row를 bound로 바꾸는 유일한 증거는 사용자의 첫 정상 turn이며, 이 SPEC은 빈 model turn 생성(REQ-FLH-006)과 새 polling service(Out of Scope)를 모두 금지하므로 handoff 쪽에서 기다리거나 재시도할 수단이 없다. 즉시 NACK는 REQ-FLH-003의 fail-closed admission과 같은 terminal 의미(`NACK` → fresh reservation only)를 그대로 쓰고, 부작용이 0이라 provisional row의 이후 bind를 방해하지 않는다.
 
@@ -185,6 +201,7 @@ t1082 자체가 `main@2213871af`에서 생성된 뒤 `develop@3f3ffbb57`로 수�
 | target 존재, exact pin/branch/clean | `WT_READY` 재구성 |
 | target 존재, wrong HEAD/branch/collision | `BASE_DRIFT`/`BRANCH_COLLISION` NACK |
 | interactive SWITCH_PENDING, old endpoint still current, 다음 정상-turn SessionStart 없음 | pending 유지; 빈 turn 및 자동 dispatch 금지 |
+| 비종결 handoff 동안 UserPromptSubmit registration이 `ENDPOINT_HANDOFF_PENDING`으로 거부됨 | endpoint 불변; evidence가 오면 rebind, 검증 실패면 `NACK`, 판단 불가면 `ABANDONED`. 종결 뒤 UserPromptSubmit은 t1074 의미로 복귀하고 dispatch body는 계속 거부; 재시도는 fresh reservation만 |
 | headless SWITCH_PENDING, 공식 RPC result 또는 provenance readback 불완전 | NACK 또는 safe retry; SessionStart 대기 및 자동 dispatch 금지 |
 | BOUND row와 new peer/tombstone/receipt 모두 존재 | idempotent finalize/readback |
 | new peer만 보이고 BOUND/receipt가 없음 | transaction 불가능 상태이므로 corruption NACK; 추측 복구 금지 |
