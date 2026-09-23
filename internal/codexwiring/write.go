@@ -32,11 +32,25 @@ const (
 	ReasonSymlinkBoundary RefusalReason = "symlink-boundary"
 	ReasonConflict        RefusalReason = "conflict"
 	ReasonDiverged        RefusalReason = "diverged"
+	// ReasonNoProvenance: no part record exists and nothing shows MoAI ever
+	// wired the project.
+	ReasonNoProvenance RefusalReason = "no-provenance"
+	// ReasonUserOwned: the part was present before MoAI wiring.
+	ReasonUserOwned RefusalReason = "user-owned"
+	// ReasonUnknownOrigin: the part may be MoAI's but no record proves it.
+	ReasonUnknownOrigin RefusalReason = "unknown-origin"
+	// ReasonModified: MoAI created the part, but it no longer matches what
+	// MoAI wrote.
+	ReasonModified RefusalReason = "modified"
+	// ReasonUnparseable: the file cannot be parsed, so no part can be located.
+	ReasonUnparseable RefusalReason = "unparseable"
 )
 
-// Refusal is one file a wiring step left untouched, with the reason.
+// Refusal is one file, or one part of a file, a wiring step left untouched,
+// with the reason. Part is empty when the refusal concerns the whole file.
 type Refusal struct {
 	Path   string
+	Part   string
 	Reason RefusalReason
 	Detail string
 }
@@ -80,6 +94,9 @@ type pass struct {
 	evidence  bool
 	crashed   bool
 	res       Result
+	// clearDisabled makes an explicit enable rewrite the sidecar without the
+	// disable marker even when no wiring file changed.
+	clearDisabled bool
 }
 
 func newPass(root string, out, warn io.Writer, opts passOptions, evidence bool) *pass {
@@ -156,7 +173,10 @@ func boundaryViolation(root, rel string) string {
 //
 // @MX:ANCHOR: [AUTO] the single write path for every Codex wiring file change
 // @MX:REASON: wiring, recovery-driven completion, and unwire all rely on this ordering; journal-before-temp and provenance-before-complete are what make every interruption point recoverable
-func (p *pass) write(rel string, content []byte, entry manifest.FileEntry) (bool, error) {
+//
+// entry is the manifest record the change leaves behind; nil removes the
+// record (an unwire that took away every part MoAI owned).
+func (p *pass) write(rel string, content []byte, entry *manifest.FileEntry) (bool, error) {
 	target := filepath.Join(p.root, filepath.FromSlash(rel))
 	if p.opts.guards.lstat {
 		if why := boundaryViolation(p.root, rel); why != "" {
@@ -169,7 +189,7 @@ func (p *pass) write(rel string, content []byte, entry manifest.FileEntry) (bool
 		return false, fmt.Errorf("read %s: %w", rel, err)
 	}
 	post := sha256Hex(content)
-	e := JournalEntry{ID: randomToken(), Op: OpWrite, Path: rel, PreHash: pre, PostHash: post, Temp: tempPrefix + randomToken(), Provenance: &entry, State: JournalStaged}
+	e := JournalEntry{ID: randomToken(), Op: OpWrite, Path: rel, PreHash: pre, PostHash: post, Temp: tempPrefix + randomToken(), Provenance: entry, State: JournalStaged}
 	if err := appendJournal(p.root, e); err != nil {
 		return false, err
 	}
@@ -228,7 +248,7 @@ func (p *pass) write(rel string, content []byte, entry manifest.FileEntry) (bool
 	if err := p.at(pointReadBack, rel); err != nil {
 		return false, err
 	}
-	if err := applyProvenance(p.root, rel, &entry, p.warn); err != nil {
+	if err := applyProvenance(p.root, rel, entry, p.warn); err != nil {
 		return false, err
 	}
 	if err := p.at(pointProvenance, rel); err != nil {

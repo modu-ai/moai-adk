@@ -20,6 +20,10 @@ import (
 type sidecarDoc struct {
 	HooksSHA256  string `json:"hooks_sha256"`
 	ConfigSHA256 string `json:"config_sha256"`
+	// Disabled records that `moai tool disable codex` took the wiring out.
+	// The update-path refresh treats it as an opt-out that outlives any
+	// user-owned wiring file left behind; `moai tool enable codex` clears it.
+	Disabled bool `json:"disabled,omitempty"`
 }
 
 // ErrValidationRefused marks a REQ-CW-003 refusal: rendered bytes failed the
@@ -80,11 +84,12 @@ func runPass(projectRoot string, out, warn io.Writer, opts passOptions, gated bo
 	if err != nil {
 		return Result{Recovered: recovered}, fmt.Errorf("recover interrupted wiring change: %w", err)
 	}
-	if gated && !wiringFilesExist(projectRoot) {
+	if gated && (!wiringFilesExist(projectRoot) || wiringDisabled(projectRoot)) {
 		return Result{Recovered: recovered}, nil
 	}
 	p := newPass(projectRoot, out, warn, opts, evidence)
 	p.res.Recovered = recovered
+	p.clearDisabled = !gated && wiringDisabled(projectRoot)
 	err = p.wireProject()
 	return p.res, err
 }
@@ -148,7 +153,7 @@ func (p *pass) wireProject() error {
 			res.HooksChanged = false // unchanged regeneration — no write, no guidance
 			p.recordUnchanged(HooksRelPath, recorded, entry)
 		} else {
-			written, err := p.write(HooksRelPath, rendered, entry)
+			written, err := p.write(HooksRelPath, rendered, &entry)
 			if err != nil {
 				if p.crashed {
 					return err
@@ -179,7 +184,7 @@ func (p *pass) wireProject() error {
 		if cfgExisted && bytesEqual(cfgNext, cfgExisting) {
 			p.recordUnchanged(ConfigRelPath, recorded, entry)
 		} else {
-			written, err := p.write(ConfigRelPath, cfgNext, entry)
+			written, err := p.write(ConfigRelPath, cfgNext, &entry)
 			if err != nil {
 				if p.crashed {
 					return err
@@ -197,7 +202,7 @@ func (p *pass) wireProject() error {
 	// and the on-disk hooks still byte-match the render — the current file IS
 	// the last generated content, verified, so re-recording restores the
 	// divergence signal instead of silently degrading to "no baseline".
-	sidecarNeeded := res.HooksWritten
+	sidecarNeeded := res.HooksWritten || p.clearDisabled
 	if !sidecarNeeded && !res.HooksSkipped && len(rendered) > 0 {
 		if _, present, serr := LoadSidecar(projectRoot); serr == nil && !present {
 			if onDisk, rerr := os.ReadFile(hooksPath); rerr == nil && bytesEqual(onDisk, rendered) {
@@ -267,6 +272,12 @@ func writeSidecar(projectRoot string, hooks, config []byte) error {
 		return fmt.Errorf("create sidecar directory: %w", err)
 	}
 	return writeAtomic(path, append(raw, '\n'))
+}
+
+// wiringDisabled reports whether the sidecar records a disable.
+func wiringDisabled(projectRoot string) bool {
+	doc, present, err := LoadSidecar(projectRoot)
+	return err == nil && present && doc.Disabled
 }
 
 // LoadSidecar reads the trust sidecar, if present. A missing sidecar is not an
