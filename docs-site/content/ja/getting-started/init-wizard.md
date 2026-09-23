@@ -90,17 +90,17 @@ Claude が応答する言語を選択します。以降のすべての質問が�
 エージェントに割り当てる AI モデルティアを選択します — トークノミクスの核心設定です。
 
 ```bash
-? パフォーマンスティアを選択:
-▸ Medium - Opus 5 (high~low) + Sonnet (low, single-shot rows only)
-  High - Opus 5 (max~medium) + Sonnet (low, single-shot rows only)
-  Low - Opus 5 (medium~low) + Sonnet (low, docs/e2e/single-shot rows)
+? モデルポリシーを選択:
+  Max - Opus 5.5 (high~medium) + Sonnet (low, ドキュメント/単発タスク) — Max $200 プラン
+▸ Medium (推奨) - Opus 5.5 (high~low) + Sonnet (low, ドキュメント/単発タスク) — Max $100 プラン
+  Low - Opus 5.5 (high~low) + Sonnet (low, ドキュメント/E2E/単発タスク) — Plus $20 プラン
 ```
 
 | ティア | 特徴 |
 |------|------|
-| **High** | 最高品質 — 呼び出し頻度が最も低い 2 エージェントに `max` 推論深度 |
-| **Medium** (デフォルト) | 品質とコストのバランス — コスト/スコア曲線の膝 |
-| **Low** | タスクあたり最低コスト — エージェンティックなエージェントは Opus `low` effort へ |
+| **Max** | 品質優先 — Medium と同じだが、`builder-harness` と `e2e-tester` の 2 エージェントだけ effort を 1 段階上げます |
+| **Medium** (デフォルト・推奨) | 品質とコストのバランス — コスト/スコア曲線の膝 |
+| **Low** | タスクあたり最低コスト — エージェンティックなエージェントの多くは Opus `medium` へ |
 
 この設定は `.moai/config/sections/llm.yaml` の `performance_tier` フィールドに保存され、`profile` フィールド(プロファイルマトリクス列)の legacy エイリアスとして読み込まれます。`--profile high|medium|low` フラグで直接指定すると `profile` フィールドに保存されます。プロファイル別のエージェント model+effort マッピングは [プロファイルマトリクス](/ja/advanced/profile-matrix/) ページを参照してください。
 

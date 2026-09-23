@@ -25,7 +25,8 @@ func TestGLMSlotForModel(t *testing.T) {
 		{"fable", GLMSlotFable},
 		{"opus[1m]", GLMSlotHigh},               // 1M suffix split before lookup
 		{"fable[1m]", GLMSlotFable},             //
-		{ModelIDOpus5, GLMSlotHigh},             // canonical id reverse-mapped
+		{ModelIDOpus55, GLMSlotHigh},            // canonical id reverse-mapped
+		{"claude-opus-5", GLMSlotHigh},          // superseded id reverse-mapped
 		{"claude-sonnet-5", GLMSlotMedium},      //
 		{"claude-haiku-4-5", GLMSlotLow},        //
 		{"", ""},                                // no model pinned

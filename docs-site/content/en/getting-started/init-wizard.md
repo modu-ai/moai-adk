@@ -90,17 +90,17 @@ The name of your project. The default is the current directory name.
 Choose the AI model tier assigned to agents — the core Tokenomics setting.
 
 ```bash
-? Choose the performance tier:
-▸ Medium - Opus 5 (high~low) + Sonnet (low, single-shot rows only)
-  High - Opus 5 (max~medium) + Sonnet (low, single-shot rows only)
-  Low - Opus 5 (medium~low) + Sonnet (low, docs/e2e/single-shot rows)
+? Select model policy:
+  Max - Opus 5.5 (high~medium) + Sonnet (low, docs/single-shot rows) — Max $200 plan
+▸ Medium (Recommended) - Opus 5.5 (high~low) + Sonnet (low, docs/single-shot rows) — Max $100 plan
+  Low - Opus 5.5 (high~low) + Sonnet (low, docs/e2e/single-shot rows) — Plus $20 plan
 ```
 
 | Tier | Characteristics |
 |------|------|
-| **High** | Highest quality — `max` reasoning depth on the two rarest-invocation agents |
-| **Medium** (default) | Balance of quality and cost — the knee of the cost/score curve |
-| **Low** | Lowest cost per task — agentic agents drop to Opus `low` effort |
+| **Max** | Quality first — same as Medium except that `builder-harness` and `e2e-tester` run one effort level higher |
+| **Medium** (default, recommended) | Balance of quality and cost — the knee of the cost/score curve |
+| **Low** | Lowest cost per task — most agentic agents drop to Opus `medium` |
 
 This setting is saved in the `performance_tier` field of `.moai/config/sections/llm.yaml` and is read as a legacy alias of the `profile` field (the profile matrix column). Specifying the `--profile high|medium|low` flag directly stores it in the `profile` field (the legacy value `max` is accepted as input and normalized to `high`). For the per-profile agent model+effort mapping, see the [Profile Matrix](/en/advanced/profile-matrix/) page.
 
