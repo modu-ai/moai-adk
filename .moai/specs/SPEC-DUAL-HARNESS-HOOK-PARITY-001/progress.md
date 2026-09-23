@@ -101,6 +101,98 @@ Residual risk: a goal file with an empty `status` now reads as unrecognised (dia
 instead of being evaluated. Every writer in the tree sets a status, so no such file is expected, but
 a hand-edited or pre-schema file would stop blocking.
 
+### M2b — receipt contract and Stop budget (2026-09-23)
+
+Commits: `1be628d9f` (verify receipt contract) and `dba21895e` (Codex Stop-chain budget
+declarations). Measured on Darwin arm64, go1.26.8, against the tree at those commits.
+`git diff --stat HEAD -- internal/hook` printed nothing.
+
+Re-measured anchors: `defaultHandlerTimeout = 10` (`codexwiring.go:60`), `moaiHandlerTimeout`
+(`hooks.go:33–39`), the Stop row `{hook.EventStop, "stop", true}` (`events.go:74`), `verify.Key`
+(`key.go:39`), `Fresh` (`freshness.go:17`), and `CheckEntry` (`schema.go:34`). Ledger L-06 is
+closed: `ToolVersion` now appears in `internal/verify`.
+
+**AC-HPR-017 — receipt fields** (`TestCheckReceipt*`, `./internal/verify/`)
+
+- RED (compile): `receipt_test.go:12:24: undefined: Receipt` … `undefined: CheckReceipt` → build failed
+- RED (runtime, stub = today's snapshot semantics, key + command only):
+  `TestCheckReceiptFieldMismatchIsNotRun/config_digest: config_digest differs but the receipt was accepted`;
+  `…/tool_version: tool_version differs but the receipt was accepted`;
+  `TestCheckReceiptLegacyEntryIsNotRun: a legacy entry without the receipt fields must not be accepted`;
+  `…/head: reason must name head, got "stale key"`
+- GREEN: `go test -json -count=1 -run '^TestCheckReceipt' ./internal/verify/` (output kept at
+  `.moai/state/verify/m2b/receipt.json`), then `jq -r 'select(.Test!=null) | .Action' | sort | uniq -c`
+  → `21 pass`, `21 run`. No `skip` and no `fail`.
+- Mutations (source, each reverted): dropping one field from the comparison, for each of the five
+  fields, turned red the matching subtests. For example, dropping `head` failed
+  `TestCheckReceiptStoredFieldMismatchIsNotRun/head` and `TestCheckReceiptFieldMismatchIsNotRun/head`.
+  Dropping `tool_version` also failed `TestCheckReceiptEmptyFieldIsNotRun/tool_version`.
+  An absent receipt treated as run →
+  `absent receipt must read as not run, got {Run:true …}`, plus the round-trip and truncation
+  tests fail. A truncated snapshot synthesized as a receipt →
+  `a truncated receipt must load as absent, got &{…}`.
+- Rule: every one of the five fields must be non-empty on both sides and equal. An absent receipt,
+  a truncated file, an unbound field, or a record older than the TTL (`DefaultTTL`, kept as an
+  extra bound) reads as not run.
+
+**Backward compatibility** (`TestSnapshotRecordShapeBackwardCompatible`, characterization)
+
+- It passed on the pre-change shape, before any schema edit, and passes after. A legacy snapshot
+  still loads and still serves `Source.Lookup`. Re-saving it writes no `config_digest`,
+  `tool_version`, or `verdict` key.
+- Mutation (reverted): dropping `omitempty` from `tool_version` →
+  `re-saved legacy snapshot gained key "tool_version"` → FAIL.
+- `go test -count=1 -timeout 25m -run 'Verify|StopGoal|MCP' ./internal/cli/` → `ok … cli 22.743s`
+  (the `moai verify` readers and the stop-goal lookup).
+
+**AC-HPR-016 — declaration and sum leg** (`TestStopChainAggregateBudgetFitsTimeout`,
+`TestStopChainReceiptPlacement`, `TestStopUnmeasuredCapDeclared`, `./internal/codexwiring/`)
+
+- RED (compile): `stop_budget_test.go:48:9: undefined: StopChainMembers` …
+- RED (runtime, the Claude registration timeouts carried over):
+  `member 3 (moai hook stop-goal) budget 1m30s exceeds T_stop 10s (REQ-HPR-018)`;
+  `Σ member budgets 32m50s + chain_overhead 1s = 32m51s exceeds T_stop 10s`;
+  `member 6 … receipt placement = false, want true`
+- GREEN: `go test -json -count=1 -run '^TestStop' ./internal/codexwiring/` (output kept at
+  `.moai/state/verify/m2b/budget.json`) → all three tests `pass`. No `skip` and no `fail`.
+- Mutations (reverted): the AC's own, raising member 3's budget by 1 s →
+  `Σ member budgets 8.2s + chain_overhead 2.8s = 11s exceeds T_stop 10s` → FAIL. Rendering the
+  Stop handler at 20 s while `T_codex_max` is unmeasured →
+  `T_codex_max is unmeasured, so T_stop must stay at the render constant 10s, got 20s` → FAIL.
+  Setting `StopUnmeasuredCap = 1` → FAIL. Placing member 6 in-hook → FAIL.
+- Declared values. **All are proposals, and none is a measurement.**
+  - T_stop is 10 s, read from the rendered `hooks.json`.
+  - Member budgets are (2 + 0.2) + 0.5 + 2 + 0.5 + 0.5 + 0.5 + 0.5 + 0.5 = 7.2 s, where 0.2 s is
+    member 1's uncut factory step.
+  - `StopChainOverhead` is 2.8 s: the full headroom, so the runner deadline equals the member sum
+    and any budget raise has to be traded against another member.
+  - `StopTimeoutCodexMax` is 0, meaning NOT_RUN (Q5).
+  - `StopUnmeasuredCap` is 3 and `StopCapStateDir` is `.moai/state/codex-stop-cap`. M2d finalizes
+    both.
+- Not in M2b: the timing leg (`TestStopChainMemberCostWithinBudget`, M2d). The budgets are not
+  validated until it passes.
+
+**Package runs and static checks**
+
+- `go test -count=1 -cover ./internal/verify/` → `ok … 84.6%`. The HEAD baseline, measured the
+  same way with the M2b files set aside, was `81.0%`. `receipt.go` is at 100% except
+  `LoadReceipt` (87.5%). The remaining shortfall against 85% is in pre-existing files.
+- `go test -count=1 -cover ./internal/codexwiring/` → `ok … 89.6%`
+- `go vet ./internal/codexwiring/ ./internal/verify/` → exit 0
+- `golangci-lint run ./internal/codexwiring/... ./internal/verify/...` → `0 issues.`
+
+**Deviation and open decision for M2d: where the sync-gate receipt is stored.** Design §D3.3
+says the sync gate's receipt is the existing `.moai/state/sync-quality-gate.last` line, extended
+with the §D3.6 fields. M2b does not change that line. The Claude script rejects any trailing
+field: at `sync-phase-quality-gate.sh:440–445` a non-empty `R_EXTRA` leaves `RECORD_OUTCOME`
+empty, so the checks re-run. Extending the line in place would therefore change Claude
+behaviour on every turn, which §D3.3 rules out. The receipt contract stores any gate outcome as a
+verify snapshot entry instead, with `verdict` = `pass`/`fail`/`inconclusive`. That is the other
+store §D3.6 names. When M2d decides the port shape (Q4), it also chooses between two options:
+- (a) the out-of-hook sync-gate entry writes a verify receipt, and `.last` stays Claude-only;
+- (b) change the Claude parser as well, which would need a golden proving Claude behaviour is
+  unchanged.
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 _<pending run-phase>_
