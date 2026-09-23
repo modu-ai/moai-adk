@@ -1,8 +1,0 @@
-{"Time":"2026-09-23T10:44:55.497443+09:00","Action":"start","Package":"github.com/modu-ai/moai-adk/internal/cli"}
-{"Time":"2026-09-23T10:44:56.178595+09:00","Action":"run","Package":"github.com/modu-ai/moai-adk/internal/cli","Test":"TestFactoryLaneHandoffDevelopPinAndTraceability"}
-{"Time":"2026-09-23T10:44:56.178677+09:00","Action":"output","Package":"github.com/modu-ai/moai-adk/internal/cli","Test":"TestFactoryLaneHandoffDevelopPinAndTraceability","Output":"=== RUN   TestFactoryLaneHandoffDevelopPinAndTraceability\n"}
-{"Time":"2026-09-23T10:44:57.097167+09:00","Action":"output","Package":"github.com/modu-ai/moai-adk/internal/cli","Test":"TestFactoryLaneHandoffDevelopPinAndTraceability","Output":"--- PASS: TestFactoryLaneHandoffDevelopPinAndTraceability (0.92s)\n"}
-{"Time":"2026-09-23T10:44:57.097204+09:00","Action":"pass","Package":"github.com/modu-ai/moai-adk/internal/cli","Test":"TestFactoryLaneHandoffDevelopPinAndTraceability","Elapsed":0.92}
-{"Time":"2026-09-23T10:44:57.097385+09:00","Action":"output","Package":"github.com/modu-ai/moai-adk/internal/cli","Output":"PASS\n"}
-{"Time":"2026-09-23T10:44:57.099085+09:00","Action":"output","Package":"github.com/modu-ai/moai-adk/internal/cli","Output":"ok  \tgithub.com/modu-ai/moai-adk/internal/cli\t1.601s\n"}
-{"Time":"2026-09-23T10:44:57.099114+09:00","Action":"pass","Package":"github.com/modu-ai/moai-adk/internal/cli","Elapsed":1.6019999999999999}
