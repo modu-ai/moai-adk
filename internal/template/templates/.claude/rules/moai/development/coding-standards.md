@@ -100,7 +100,7 @@ Settings fields introduced by specific Claude Code versions:
 
 | Field | Version | Notes |
 |-------|---------|-------|
-| `effortLevel` | v2.1.110 | Sets CLAUDE_CODE_EFFORT_LEVEL; values: low/medium/high/xhigh/max |
+| `effortLevel` | v2.1.110 | Persistent effort default; values: low/medium/high/xhigh. `max` is not accepted here — MoAI's launcher passes a resolved max as the `--effort max` launch argument |
 | `disableBypassPermissionsMode` | v2.1.111 | Prevents agents from using bypassPermissions mode when true |
 | `Bash(timeout=N)` | v2.1.110 | Per-command Bash timeout in ms; max 600,000ms |
 

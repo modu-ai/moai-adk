@@ -50,18 +50,19 @@ it.
 First, the options on the table. The model policy is the rule for choosing
 which model from the lineup below, at which reasoning depth.
 
-### Model lineup (2026-08)
+### Model lineup (2026-09)
 
 | Model | Identifier | Context | Character |
 |------|--------|----------|------|
-| Claude Fable 5 | `claude-fable-5` | 256K | New Mythos-tier general-purpose flagship. Deepest reasoning and complex coding |
-| Claude Opus 5 / 4.8 | `opus` | 1M | Complex architecture, hard reasoning |
-| Claude Sonnet 5 | `sonnet` | 200K | Balance of speed and intelligence, everyday coding |
+| Claude Fable 5 | `claude-fable-5` | 1M | New Mythos-tier general-purpose flagship. Deepest reasoning and complex coding |
+| Claude Opus 5.5 | `opus` | 1M | Complex architecture, hard reasoning |
+| Claude Sonnet 5 | `sonnet` | 1M | Balance of speed and intelligence, everyday coding |
 | Claude Haiku 4.5 | `claude-haiku-4-5-20251001` | 200K | Fastest and most economical; simple, high-volume work |
 
 > MoAI's model policy does not use this whole lineup. Under the **No-Haiku
-> policy**, Haiku appears nowhere in the agent matrix, and every multi-turn
-> agentic row is carried by Opus. The reason is in the very next section.
+> policy**, Haiku appears nowhere in the agent matrix, and the multi-turn
+> agentic rows are carried by Opus (the one exception is `e2e-tester` in the
+> `low` profile). The reason is in the very next section.
 
 ### Reasoning depth (effort)
 
@@ -72,8 +73,12 @@ How deeply the model thinks is chosen from five levels.
 | `low` | Shallowest reasoning. Fast and cheap |
 | `medium` | Balanced. The reference point of the default profile |
 | `high` | Deep reasoning |
-| `xhigh` | Deeper reasoning (supported on Opus 5 · 4.8 · Sonnet 5 · Opus 4.7) |
+| `xhigh` | Deeper reasoning (supported on Opus 5.5 · Opus 5 · 4.8 · Sonnet 5 · Opus 4.7) |
 | `max` | Deepest reasoning |
+
+> **Default effort**: Opus 5.5 defaults to `medium`; most other effort-capable models default to `high`.
+> MoAI's profile wizard and web console also recommend `medium` as the session effort. The `opus`
+> alias resolves to Opus 5.5 only on Claude Code v2.1.280 or later.
 
 > **The `ultrathink` keyword**: typing `ultrathink` turns on `effort:xhigh`
 > together with Adaptive Thinking (automatic allocation of reasoning tokens).
@@ -101,11 +106,11 @@ so existing configs keep resolving, but saves always record `high` — there is
 nothing to migrate. `performance_tier` is read only when `profile` is absent.
 {{< /callout >}}
 
-> **Lowering the policy does not mean moving to a weaker model class.** On
+> **Lowering the policy keeps almost every row on the same model class.** On
 > long-horizon agentic work, Opus at `low` effort outscores Sonnet at any
 > effort while costing less per task. So the `low` policy economizes *within*
-> Opus by lowering reasoning depth, and uses Sonnet only on single-shot rows
-> where multi-step completion failure is not a concern.
+> Opus by lowering reasoning depth. Sonnet stays on the single-shot rows, and
+> the only row that changes model under `low` is `e2e-tester` (`sonnet / low`).
 
 ## Per-agent assignment table
 
@@ -158,15 +163,17 @@ table.
   (`mission-governor`) hold `high`, while the authoring and
   implementing rows (`manager-spec`, `manager-develop`) sit at `medium` in all
   three profiles.
-- **Every agentic row stays on Opus**: `manager-spec`, `manager-develop`,
+- **Agentic rows stay on Opus**: `manager-spec`, `manager-develop`,
   `plan-auditor`, `sync-auditor`, `manager-design`, `manager-lead`,
-  `builder-harness`, `e2e-tester` — all multi-turn work remains on Opus, because
+  `builder-harness`, `e2e-tester` — multi-turn work remains on Opus (only
+  `e2e-tester` moves to `sonnet / low` under `low`), because
   Opus at `low` outscores Sonnet at any effort while costing less per task.
-- **Sonnet only on single-shot, input-dominated rows**: documentation synthesis
+- **Sonnet on the single-shot, input-dominated rows**: documentation synthesis
   (`manager-docs`), the mechanical work of `manager-git`, and the exploration
   of `Explore` finish in one input-dominated pass, so multi-step completion
   failure is never a concern, and there Sonnet's cheap input price is decisive.
-  These three rows are fixed at `sonnet / low` across all three profiles.
+  These three rows are fixed at `sonnet / low` across all three profiles. Under
+  `low`, `e2e-tester` also takes `sonnet / low`.
 - **No row takes `max`**: `max` remains the only level above `high` in the
   vocabulary, but no cell currently uses it.
 - **`xhigh` used nowhere**: on Opus it scores the same as `high` at 49% more

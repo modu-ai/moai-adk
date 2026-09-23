@@ -88,7 +88,7 @@ description: "Claude Code의 슬래시 명령어 — 내장 명령, 커스텀 �
 | 모델 | 특징 |
 | :--- | :--- |
 | Fable 5 (`claude-fable-5`) | 현재 최상위(Mythos-tier). 가장 깊은 추론 |
-| Opus 5 | 차상위. 복잡한 코딩과 설계 |
+| Opus 5.5 | 차상위. 복잡한 코딩과 설계 |
 | Sonnet 5 | 균형형. 일상 작업 |
 | Haiku 4.5 | 가볍고 빠른 경량 작업 |
 

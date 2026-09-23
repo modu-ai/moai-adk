@@ -138,7 +138,7 @@ For anti-hallucination policy, see `.claude/rules/moai/core/moai-constitution.md
 
 ## 12. MCP Servers & Deep Analysis Modes
 
-- **UltraThink** (`ultrathink` keyword) / **Adaptive Thinking** (Opus 4.7+, incl. Opus 5/4.8): sets `effort: xhigh` + Adaptive Thinking (dynamically allocated reasoning tokens, no fixed budget_tokens). See Skill("moai-foundation-thinking").
+- **UltraThink** (`ultrathink` keyword) / **Adaptive Thinking** (Opus 4.7+, incl. Opus 5.5/4.8): sets `effort: xhigh` + Adaptive Thinking (dynamically allocated reasoning tokens, no fixed budget_tokens). See Skill("moai-foundation-thinking").
 - **Context7**: up-to-date library docs (resolve-library-id, get-library-docs). **claude-in-chrome**: browser automation.
 - **Dynamic Workflows / ultracode**: `/effort ultracode` combines xhigh effort with workflow orchestration (v2.1.154+). MCP config: `.claude/rules/moai/core/settings-management.md`. See `.claude/rules/moai/workflow/dynamic-workflows.md`.
 

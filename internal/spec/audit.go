@@ -94,6 +94,24 @@ const (
 // specStatusPattern extracts `status:` field from spec.md frontmatter.
 var specStatusPattern = regexp.MustCompile(`(?m)^status:\s*(.+?)\s*$`)
 
+// NormalizeStatusValue turns a raw `status:` value capture into the status
+// value: surrounding whitespace is trimmed and one pair of matching YAML quotes
+// ("..." or '...') is stripped, so `status: "completed"` compares equal to
+// `status: completed`. Mismatched or inner quotes are left untouched. Every
+// frontmatter `status:` reader that compares the value (this package's and
+// internal/kanban's) routes its capture through here so they all agree on one
+// value; a reader that only quotes the raw text back does not.
+//
+// @MX:ANCHOR: [AUTO] shared status normalizer — fan_in 5 across internal/spec and internal/kanban
+// @MX:REASON: changing which quotes are stripped shifts every status comparison (audit, closer, ParseStatus, ownership lint, kanban board) at once
+func NormalizeStatusValue(raw string) string {
+	v := strings.TrimSpace(raw)
+	if len(v) >= 2 && (v[0] == '"' || v[0] == '\'') && v[len(v)-1] == v[0] {
+		v = strings.TrimSpace(v[1 : len(v)-1])
+	}
+	return v
+}
+
 // sectionIHeading is the canonical progress.md §I Token Accounting heading.
 // It MUST match the literal produced by the M3 §I writer
 // (internal/tokenusage.SectionIHeading). A local constant is used instead of a
@@ -331,6 +349,114 @@ func auditSpec(specDir, specID string, opts AuditOptions) ([]DriftFinding, Era, 
 	return findings, era, tokensSpent, nil
 }
 
+// markdownHeadingPattern matches an ATX heading line, capturing its level
+// markers and its text.
+var markdownHeadingPattern = regexp.MustCompile(`^(#{1,6})[ \t]+(.*?)[ \t]*$`)
+
+// shaTokenPattern matches an abbreviated-or-full hex commit SHA token.
+var shaTokenPattern = regexp.MustCompile(`\b[0-9a-fA-F]{7,40}\b`)
+
+// minSHAPrefixLen is the shortest SHA the amendment citation check accepts;
+// shorter values are too ambiguous to identify a commit.
+const minSHAPrefixLen = 7
+
+// amendmentsSection returns the body of the HISTORY Amendments record — the
+// lines after an `## Amendments` / `### Amendments` heading up to the next
+// heading of equal or higher level. The frontmatter SSOT names it
+// `## Amendments`; SPECs in the wild nest it one level deeper under
+// `## HISTORY`, so both depths are accepted. Headings inside fenced code
+// blocks are ignored, so an example snippet is never read as the record.
+func amendmentsSection(body string) (string, bool) {
+	var (
+		inFence    bool
+		inSection  bool
+		level      int
+		sectionBuf []string
+	)
+	for _, line := range strings.Split(body, "\n") {
+		trimmed := strings.TrimSpace(line)
+		if strings.HasPrefix(trimmed, "```") || strings.HasPrefix(trimmed, "~~~") {
+			inFence = !inFence
+			if inSection {
+				sectionBuf = append(sectionBuf, line)
+			}
+			continue
+		}
+		if !inFence {
+			if m := markdownHeadingPattern.FindStringSubmatch(line); m != nil {
+				hLevel := len(m[1])
+				if inSection {
+					if hLevel <= level {
+						return strings.Join(sectionBuf, "\n"), true
+					}
+				} else if (hLevel == 2 || hLevel == 3) && m[2] == "Amendments" {
+					inSection, level = true, hLevel
+					continue
+				}
+			}
+		}
+		if inSection {
+			sectionBuf = append(sectionBuf, line)
+		}
+	}
+	return strings.Join(sectionBuf, "\n"), inSection
+}
+
+// citesSHA reports whether text contains a SHA token that prefix-matches sha in
+// either direction (abbreviated vs full form), both sides at least
+// minSHAPrefixLen characters.
+func citesSHA(text, sha string) bool {
+	sha = strings.ToLower(strings.TrimSpace(sha))
+	if len(sha) < minSHAPrefixLen {
+		return false
+	}
+	for _, tok := range shaTokenPattern.FindAllString(text, -1) {
+		tok = strings.ToLower(tok)
+		if strings.HasPrefix(tok, sha) || strings.HasPrefix(sha, tok) {
+			return true
+		}
+	}
+	return false
+}
+
+// isValidInPlaceAmendment reports whether a SPEC is in the sanctioned
+// `completed → in-progress (amendment)` state (spec-frontmatter-schema.md)
+// AND its sync evidence is still the prior close's. Such a SPEC legitimately
+// keeps the prior close's §E.2 + §E.4 + sync_commit_sha, so SyncStatusDrift
+// must not fire — its --backfill-only remediation would set status back to
+// completed and revert the amendment.
+//
+// Predicate (all four required, card t1111):
+//  1. status == in-progress — the only status the SSOT sanctions for an
+//     amendment. A stray amendment_of on an implemented / planned SPEC is
+//     not an amendment and keeps being reported.
+//  2. amendment_of non-empty — the SSOT's declaration field, read through the
+//     shared frontmatter parser.
+//  3. an Amendments record in the body (heading outside fenced code) — the
+//     SSOT requires amendment_of to be paired with the HISTORY record.
+//  4. the §E.4 sync_commit_sha is cited inside that record (as the
+//     prior_completed_sha), SHA prefix match either direction. amendment_of
+//     and the record both persist after the amendment itself closes, so
+//     without this leg a re-synced amendment that skipped its status
+//     transition, or a successor amendment (whose record cites the parent's
+//     close), would be hidden forever.
+//
+// Any parse failure fails closed (not an amendment → the finding still fires).
+func isValidInPlaceAmendment(specStatus, specContent, syncSHA string) bool {
+	if specStatus != "in-progress" {
+		return false
+	}
+	fm, body, err := ExtractFrontmatter(specContent)
+	if err != nil || strings.TrimSpace(fm.AmendmentOf) == "" {
+		return false
+	}
+	section, ok := amendmentsSection(body)
+	if !ok {
+		return false
+	}
+	return citesSHA(section, syncSHA)
+}
+
 // checkV3R6Drift performs the V3R6 status-drift detection under the 3-phase
 // lifecycle (SPEC-V3R6-LIFECYCLE-REDESIGN-001 REQ-LR-019).
 //
@@ -353,7 +479,8 @@ func checkV3R6Drift(specDir, specID string, signals EraSignals) *DriftFinding {
 	if len(statusMatch) < 2 {
 		return nil // no status field — skip
 	}
-	specStatus := strings.TrimSpace(statusMatch[1])
+	// Normalized once here; isValidInPlaceAmendment receives this value.
+	specStatus := NormalizeStatusValue(statusMatch[1])
 
 	hasRunEvidence := hasProgressMarker(signals.ProgressMDContent, "§E.2")
 	// The §E.4 leg asks whether the sync phase HAPPENED, so it reads the
@@ -375,6 +502,9 @@ func checkV3R6Drift(specDir, specID string, signals EraSignals) *DriftFinding {
 	// (sync phase complete) but spec.md status != completed. This is the re-anchored
 	// successor to the legacy Y_Y_Y_Y_StatusDrift predicate (REQ-LR-019).
 	if hasRunEvidence && hasSyncMarker && syncSHA != "" {
+		if isValidInPlaceAmendment(specStatus, string(specContent), syncSHA) {
+			return nil
+		}
 		return &DriftFinding{
 			SpecID:      specID,
 			Era:         string(EraV3R6),
