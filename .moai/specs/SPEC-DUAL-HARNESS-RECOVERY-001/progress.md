@@ -901,7 +901,7 @@ sync에서 `grep -rn`으로 `docs-site/content`를 조사했다. 틀린 문장�
 
 ```yaml
 sync_complete_at: 2026-09-24
-sync_commit_sha: pending-backfill
+sync_commit_sha: d05dcea22774249de2de9609b3db3a71e8851f64
 sync_status: complete
 sync_base_head: 76b8a163d
 b12_self_test_a: "grep -c 'SPEC-DUAL-HARNESS-RECOVERY-001' CHANGELOG.md -> 0 before emission"
