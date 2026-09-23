@@ -29,6 +29,7 @@ amendment_of: SPEC-APPJS-FIRE-GUARD-001
 | 2026-09-23 | 0.2.0 | 개정분 plan-audit iter-1 FAIL(0.86) 수리 — D1(사본 base 부재 시 계약 미정의 + AC-001 의 8/9 모호) · D2(무쓰기 제외 목록의 범위 무제한) · D3(AC-008 한계 축 4→7 스테일) · D4/N3(조건 표식 수 3 vs 2 모순). REQ·AC 신설 0건, 기존 번호 불변 | manager-spec |
 | 2026-09-23 | 0.2.0 | 개정분 plan-audit iter-2 PASS-WITH-DEBT(0.90) 의 차단급 잔여 2건 인라인 수리 — N-1(AC-AFG-001 (a) 의 판정을 개수 `> 0` 에서 「사본 서빙 표식이 없는 항목 전부」 술어 일치 + 운전 수·제외 이름 보고로 승격) · N-2(§A 의 「AC-001~008 문언 불변」 서사를 실제 개정 세 곳으로 정정). `acceptance.md` 절 편집만 — REQ·AC 신설 0건, `spec.md` 본문 무수정 | manager-spec |
 | 2026-09-23 | 0.3.0 | in-place amendment 2 — post-swap 지표의 **전제 교정** (card t1108). REQ-AFG-007 문언 개정(실제 hx-boost 스왑 + `htmx:afterSettle` **이벤트** 대기; 개정 전 문언은 조문 안에 보존), REQ-AFG-016 신설(스왑 자기확인), §B.7 실측 추가, §B.1·§B.2·REQ-AFG-007 근거 서술에 날짜 붙은 사후 정정 주석, §C 개정 결정 2 추가, AC-AFG-014·015·016 신설, AC-AFG-001 (c)·AC-AFG-006·AC-AFG-013 문언 보강. 나머지 REQ-AFG-001~006·008~015 번호·문언 불변 | manager-spec |
+| 2026-09-23 | 0.3.0 | 개정 2 plan-audit iter-1 FAIL(0.84) 수리 (card t1108) — D1(차단): AC-AFG-015 에 다리별 역방향 고정물 추가((a)(b)(c) 동시 거짓의 전체 이동 판 + 다리 단독 합성 보고서 + (c) 단독·(d) 단독 라이브 사본). D2: AC-AFG-014 돌연변이를 둘로 정의(`/settings` 경로 폴링 판, 대기 제거 판), 만료 대기 적색 명시. D3: B1 분기 술어를 10/10 으로 고정, 증폭 효과 관측을 필수화. D4: 올린 `-timeout` 이 job `timeout-minutes: 20` 을 넘으면 blocker. D5: 한계로 기록. D6: REQ-AFG-007 (3) 에 exit 1 과 지목 대상. D7: REQ-AFG-007 형식 표기. D8: `app.go:288`. D9: AC-AFG-016 매핑에 REQ-AFG-007·016. REQ·AC 신설 0건 | manager-spec |
 | 2026-09-23 | 0.3.0 | 리드 blocker 결정 반영 (card t1108) — B1: AC-AFG-014 에 고정 측정 순서(스로틀 12배 단독 먼저 → 판정되지 않을 때에만 두 판에 동일한 settle 지연 증폭 + 효과 관측 → 증폭 적용 여부·값 기록). B3: AC-AFG-016 에 그린 단계 `-timeout` 조건부 상향(병합 트리 실측이 10m 초과 시 그 한 줄만, 근거 인용). B2: 원문 유지. REQ·AC 신설 0건 | manager-spec |
 
 ### Amendments
@@ -190,7 +191,7 @@ LINT OK: 8 entries + 7 exclusions cover 13 inventory groups; all effects within 
 
 **B.7.4 — 실제 스왑 경로는 드라이버 표면에 존재한다.** 측정은 `logs/gate-inprocess.log` 이다. 드라이버와 **같은** in-process 표면(`startFireGuardServer`, 비어 있는 `ProfileBaseDir`)에서 임시 게이트 테스트로 쟀고, 테스트 파일은 측정 뒤 삭제했다(소스 사본 `logs/zz_t1108_gate_test.go.txt`). `/settings` 는 설정 폼 안에서 boost 된 `/settings?tab=audit` 링크 4개와 `/settings?tab=mcp` 링크 8개를 렌더한다. `/settings?tab=audit` 클릭의 결과는 다음과 같다. 메인 프레임 이동은 0회였고 같은 문서에 머물렀다. `DOMContentLoaded`·`htmx:afterSwap`·`htmx:afterSettle` 이 기록됐다. `htmx:afterSettle` **이벤트**를 기다린 뒤 팝오버가 CPU 스로틀 12배에서 3/3 발화했다. 실바이너리 표면에서는 판정서 §4(a) 가 macOS 12배 5/5, Linux 12배 3/3 발화를 기록했다.
 
-**B.7.5 — 탭 선택자는 조회 전용이다.** `?tab=` 은 GET 처리기에서 `view.ActiveTab = r.URL.Query().Get("tab")` 로 읽힐 뿐이다(`internal/web/handlers.go:263`). `?profile=` 도 조회 값이다(`internal/web/app.go:287`, `internal/web/screens.go:50`). 따라서 boost 링크 클릭은 영속화 부수효과가 없고, REQ-AFG-012 의 비영속 계열(`swap`)에 그대로 머문다. (리드 배차문은 `?tab=` 의 근거로 `app.go:287`·`screens.go:50` 을 댔으나, 두 줄이 읽는 것은 `profile` 이다. `tab` 을 읽는 줄은 `handlers.go:263` 이다.)
+**B.7.5 — 탭 선택자는 조회 전용이다.** `?tab=` 은 GET 처리기에서 `view.ActiveTab = r.URL.Query().Get("tab")` 로 읽힐 뿐이다(`internal/web/handlers.go:263`). `?profile=` 도 조회 값이다(`internal/web/app.go:288` — 함수 `selectedProfile` 은 `:287`, `internal/web/screens.go:50`). 따라서 boost 링크 클릭은 영속화 부수효과가 없고, REQ-AFG-012 의 비영속 계열(`swap`)에 그대로 머문다. (리드 배차문은 `?tab=` 의 근거로 `app.go:287`·`screens.go:50` 을 댔으나, 두 줄이 읽는 것은 `profile` 이다. `tab` 을 읽는 줄은 `handlers.go:263` 이다.)
 
 **B.7.6 — 인벤토리와 커버리지 산식은 변하지 않는다.** 스왑 항목은 `line_group: None` 이다(`:173`). 스왑 뒤 항목은 `line_group: 73` 인데, `popover_open`(`:133`)과 **같은** 그룹이라 커버리지 집합에 새 원소를 더하지 않는다. 오늘의 자기검증 출력은 다음과 같다(단일 호출, exit 0): `LINT OK: 9 entries + 7 exclusions cover 13 inventory groups; effects within unconditional ['clipboard', 'label', 'swap', 'tab', 'visibility'] or conditional ['validation-reject'] (conditional entries carry ['requires_sandbox_serving', 'requires_no_write_assertion']); post-swap entry present`. 두 항목의 `page`·`selector` 가 바뀌어도 `INVENTORY_TOTAL = 13` 을 바꿀 이유가 없다.
 
@@ -321,13 +322,17 @@ LINT OK: 8 entries + 7 exclusions cover 13 inventory groups; all effects within 
 
 드라이버 테스트는 실제 서버 표면을 띄우고(§C 서버 거점), headless Chrome 을 띄우고, 탐침을 실행해, 모든 지표의 발화와 load 시점 ReferenceError 0건을 단언해야 한다(shall). 서버·Chrome·탐침 프로세스의 정리는 `t.Cleanup` 에 등록돼야 한다(shall) — 뒤에 붙은 kill 은 정리가 아니며, 어떤 종료 경로에서도 프로세스가 남으면 안 된다.
 
-### REQ-AFG-007 (event-driven — 개정 2, card t1108 에서 문언 개정)
+### REQ-AFG-007 (ubiquitous 머리 문장 + event-driven 절 — 개정 2, card t1108 에서 문언 개정)
 
-매니페스트는 hx-boost 바디 스왑 **뒤에** 최소 1개 지표를 행사해야 한다(shall). 그리고 **When** 탐침이 스왑 뒤 지표를 행사할 때, 탐침은 다음을 지켜야 한다(shall):
+> **형식 표기(plan-audit iter-1 D7).** 이 조항은 두 GEARS 형식을 담는다. 머리 문장은 주어가 매니페스트인 **ubiquitous** 문장이고, 번호 붙은 세 절은 주어가 탐침인 **event-driven** 절이다. 두 번호로 나누지 않은 이유는 Tier M 의 REQ 상한이 16 이고 이 SPEC 이 이미 16건이기 때문이다. 조항을 나누면 상한을 넘는다. 대신 각 부분의 형식을 여기 밝힌다.
+
+**(ubiquitous)** 매니페스트는 hx-boost 바디 스왑 **뒤에** 최소 1개 지표를 행사해야 한다(shall).
+
+**(event-driven)** **When** 탐침이 스왑 뒤 지표를 행사할 때, 탐침은 다음을 지켜야 한다(shall):
 
 1. **스왑은 실제 hx-boost 스왑이어야 한다.** 스왑을 일으키는 클릭 대상은 served surface 에서 `hx-boost="true"` 조상을 가진 링크여야 한다(shall). 그 표면은 실루트 서버다 — 스왑 항목과 스왑 뒤 항목은 사본 서빙 표식을 갖지 않는다. 그 스왑이 스왑이었음은 REQ-AFG-016 의 자기확인이 판정한다(shall). URL 이 바뀌었다는 사실만으로 스왑을 추정해서는 안 된다(shall not).
 2. **스왑과 지표 행사 사이의 대기는 `htmx:afterSettle` 이벤트여야 한다.** 스왑된 문서에서 그 이벤트가 관측되는 것을 기다려야 하고(shall), 리스너는 클릭 **전에** 같은 문서에 등록돼 있어야 한다(shall). 대기는 시간 연장(고정 sleep·drain 의 증량)이어서는 안 되고(shall not), URL 변경 폴링(`location.pathname` 등)이어서도 안 된다(shall not).
-3. **대기에 둔 상한은 부재를 적색으로 바꾸는 장치다.** 상한 안에 `htmx:afterSettle` 이 관측되지 않으면 탐침은 그 항목을 이름으로 보고하며 실패해야 하고(shall), 그 만료를 통과로 읽어서는 안 된다(shall not).
+3. **대기에 둔 상한은 부재를 적색으로 바꾸는 장치다.** 상한 안에 `htmx:afterSettle` 이 관측되지 않으면 탐침은 **exit 1** 로 실패해야 한다(shall). 이는 REQ-AFG-005 의 exit 1 범주(지표 붕괴)에 드는 사유이며 3값 계약에 값을 더하지 않는다. 보고서는 **스왑 뒤 항목(`popover_after_swap`)** 을 사유 「afterSettle 대기 만료」와 함께 지목해야 한다(shall). 같은 실행에서 REQ-AFG-016 (c) 도 거짓이면 스왑 항목도 함께 지목하며, 두 지목은 모두 보고서에 남는다. 탐침은 그 만료를 통과로 읽어서는 안 된다(shall not). 구체적으로, 새 대기는 오늘 탐침의 `poll` 이 쓰는 「상한이 지나면 그 시점의 현재값을 돌려주고 진행한다」는 의미론(`internal/web/testdata/appjs_fire_probe.py:434-443`, 마지막 줄 `return await ev(cdp, expr)`)을 **재사용해서는 안 된다**(shall not). 만료는 값이 아니라 실패 사건이다.
 
 역사적 결함 가족은 스왑 뒤의 무관한 등록을 죽였다. 스왑 뒤 발화는 이 가드가 정적 가드와 구별되는 축 중 하나다. `app.js` 는 스왑 뒤 재바인딩을 `htmx:afterSettle` 리스너로 수행하므로(§B.7.2), 그 이벤트를 기다리지 않는 검사는 재바인딩이 아니라 경주를 잰다.
 
@@ -439,9 +444,10 @@ CI 는 신설 전용 job(`test-browser`)에서 이 가드를 실행해야 하고
 
 - **판정 규칙의 관측 층 불일치는 기록만 하고 고치지 않는다.** `internal/web/testdata/appjs_fire_probe.py:789` 는 `popover_after_swap` 의 「selector matched nothing」을 **패널** `.hidden` 값이 null 인지로 판정한다(`rep.get("p6_panel_hidden_before") is not None`). 그런데 보고서의 `selector` 칸에는 **트리거** 선택자 `[data-pop="profile"]` 이 찍힌다(`:798`·`:802` 가 매니페스트 항목의 `selector` 를 그대로 싣고, 그 값은 `:183` 의 트리거 선택자다). 트리거는 있고 패널이 없는 경우와 그 반대를 보고서만으로는 가를 수 없다. 이 개정은 그 규칙의 변경을 요구하지 않는다. 판정서가 인용한 좌표 `:474` 는 t1106 병합 전 트리의 것이며, 같은 규칙이 이 트리에서는 `:789` 에 있다.
 - **`app.js`·제품 템플릿을 바꾸지 않는다.** boost 된 `/todo` 링크를 만들어 옛 매니페스트를 살리는 길은 §C 개정 결정 2 에서 기각했다.
-- **CI 는 `.github/workflows/ci.yml:672` 그린 단계 한 줄만 바꾼다.** 바꾸는 것은 `-run` 정규식이다. `-timeout 10m` 은 병합 트리 실측이 그 상한을 넘을 때에만, 측정 소요 시간 + 여유로 올린다(리드 결정 B3, AC-AFG-016). `--primary-entries-only` 3곳(734/745/767)은 유지한다 — 빼면 t1106 의 F1(표식 항목이 사본 base 없이 운전돼 exit 2)이 되살아난다. 그 밖의 단계와 그 상한은 건드리지 않는다.
+- **CI 는 `.github/workflows/ci.yml:672` 그린 단계 한 줄만 바꾼다.** 바꾸는 것은 `-run` 정규식이다. `-timeout 10m` 은 병합 트리 실측이 그 상한을 넘을 때에만, 측정 소요 시간 + 여유로 올린다(리드 결정 B3, AC-AFG-016). 올린 값이 job 상한 `timeout-minutes: 20`(`ci.yml:608`) 안에 들어가지 않으면 job 상한은 바꾸지 않고 run-phase 가 멈추며 blocker 로 보고한다(plan-audit iter-1 D4). `--primary-entries-only` 3곳(734/745/767)은 유지한다 — 빼면 t1106 의 F1(표식 항목이 사본 base 없이 운전돼 exit 2)이 되살아난다. 그 밖의 단계와 그 상한은 건드리지 않는다.
 - **`INVENTORY_TOTAL` 과 lint 커버리지 산식을 바꾸지 않는다**(§B.7.6).
 - **보고서 키(`p5_*`·`p6_*`)의 이름을 바꾸지 않는다.** 드라이버의 JSON 태그가 고정하는 계약이다. 스왑 창 이름 `p5_swap_referenceerrors` 의 **의미**가 바뀌는 문제는 §F 가 아니라 plan.md §F 잔여 위험에 기록했다.
+- **스왑 대기와 자기확인 (c) 는 이벤트가 「이 클릭의 요청」에서 나왔는지는 묻지 않는다 — 알려진 한계로 기록만 한다(plan-audit iter-1 D5).** `app.js` 에는 같은 문서 안에서 스왑을 일으키는 실시간 갱신 경로가 있다(`internal/web/assets/app.js:686-695` — `htmx.ajax("GET", window.location.href, {target: ".body", select: ".body", swap: "outerHTML"})`). 설정 화면에 실시간 영역이 생기면 무관한 settle 이 대기를 풀고 (c) 를 참으로 만들 수 있다. 오늘 `/settings` 템플릿에는 실시간 영역이 없다(`grep -c 'data-live=' internal/web/root.templ` → `0`). 그래서 이 개정은 요구사항을 바꾸지 않고, plan.md §F 잔여 위험과 acceptance.md §D 에 기록한다.
 - **실바이너리 레드 단계의 돌연변이 대상을 바꾸지 않는다.** 스왑이 실제 스왑이 되면서 돌연변이 아래에서 어느 지표가 무너지는지는 달라질 수 있다. 그 결과는 run-phase 가 AC-AFG-002 재측정으로 **관측**하며, 미리 가정하지 않는다.
 
 ### Out of Scope — 구현 세부
@@ -470,7 +476,7 @@ CI 는 신설 전용 job(`test-browser`)에서 이 가드를 실행해야 하고
 
 ## §G 인수조건
 
-Tier M 이므로 AC 정본은 별도 `acceptance.md` 다. 요약: (1) 게이트 켠 드라이버가 실트리에서 전 지표 발화로 통과하되 매니페스트 0행·ReferenceError 를 함께 거부, (2) 돌연변이 재도입 시 탐침 exit 1 — 양방향 모두 관측된 출력으로, (3) 게이트 없는 실행은 사유를 이름으로 대는 skip, (4) 기존 job·assets·go.mod 무변경. 개정분(card t1106): (5) 검증 실패 제출 뒤 거부 배너가 **칠해졌음**을 관측, (6) 그 제출이 일회용 사본 위에서만 일어나고 사본이 바이트 불변임을 탐침이 단언, (7) 매니페스트의 **두 조건 표식**(사본 전용 서빙 · 무쓰기 단언) 없이 `validation-reject` 를 주장하는 항목은 매니페스트 자기검증이 거부하고, 셋째 조건(프레임워크 등록 수명)은 매니페스트가 운반할 수 없는 Go 쪽 수명 속성이므로 드라이버 측 기계 판정(AC-AFG-011 (d))이 진다, (8) 기존 항목의 서빙 루트 불변 — 사본은 신설 항목만 서빙한다. 개정 2(card t1108): (9) CPU 스로틀 12배의 in-process 표면에서 스왑 뒤 지표가 실제 boost 스왑과 `htmx:afterSettle` 이벤트 대기 뒤에 발화하고, 대기를 개정 전의 URL 폴링으로 되돌린 돌연변이는 같은 조건에서 적색이다, (10) 스왑 링크를 boost 조상이 없는 링크로 바꾸면 스왑 자기확인이 적색이고 스왑 항목을 사유와 함께 지목한다, (11) 병합 트리에서 넓힌 CI 선택자 `'AppJs.*Fire'` 가 실루트 계열과 제출 계열을 둘 다 skip 없이 돌린다.
+Tier M 이므로 AC 정본은 별도 `acceptance.md` 다. 요약: (1) 게이트 켠 드라이버가 실트리에서 전 지표 발화로 통과하되 매니페스트 0행·ReferenceError 를 함께 거부, (2) 돌연변이 재도입 시 탐침 exit 1 — 양방향 모두 관측된 출력으로, (3) 게이트 없는 실행은 사유를 이름으로 대는 skip, (4) 기존 job·assets·go.mod 무변경. 개정분(card t1106): (5) 검증 실패 제출 뒤 거부 배너가 **칠해졌음**을 관측, (6) 그 제출이 일회용 사본 위에서만 일어나고 사본이 바이트 불변임을 탐침이 단언, (7) 매니페스트의 **두 조건 표식**(사본 전용 서빙 · 무쓰기 단언) 없이 `validation-reject` 를 주장하는 항목은 매니페스트 자기검증이 거부하고, 셋째 조건(프레임워크 등록 수명)은 매니페스트가 운반할 수 없는 Go 쪽 수명 속성이므로 드라이버 측 기계 판정(AC-AFG-011 (d))이 진다, (8) 기존 항목의 서빙 루트 불변 — 사본은 신설 항목만 서빙한다. 개정 2(card t1108): (9) CPU 스로틀 12배의 in-process 표면에서 스왑 뒤 지표가 실제 boost 스왑과 `htmx:afterSettle` 이벤트 대기 뒤에 발화하고, 두 돌연변이 — 대기를 `location.pathname == "/settings"` 폴링으로 되돌린 판(스왑 대상 경로라 settle 전에 이미 참이다)과 afterSettle 대기를 제거한 판 — 는 같은 조건에서 적색이며, 만료된 대기는 통과가 아니라 적색이다, (10) 자기확인 네 다리가 **다리마다** 제 고정물에서 거짓이 되고, 그때 그 다리를 지목하며 적색이다((a)·(b)·(c) 는 전체 이동 돌연변이에서 동시에, 각 다리 단독은 합성 보고서 고정물로, (c) 단독은 리스너를 클릭 뒤에 붙인 사본으로, (d) 단독은 표지를 스왑 뒤 노드에 다는 사본으로), (11) 병합 트리에서 넓힌 CI 선택자 `'AppJs.*Fire'` 가 실루트 계열과 제출 계열을 둘 다 skip 없이 돌린다.
 
 ---
 

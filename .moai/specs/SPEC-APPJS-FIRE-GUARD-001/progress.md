@@ -195,6 +195,13 @@ plan_complete_at: 2026-09-23
 
 **Residual-risk** — 스왑 창 `p5_swap_referenceerrors` 의 의미가 로드 시점 예외에서 스왑 중 예외로 바뀐다(plan.md §F). 선택 집합이 넓어져 CI `-timeout 10m` 을 넘을 수 있다. 이 상한 조정은 이 카드 범위 안이다(리드 결정 B3). AC-016 이 병합 트리에서 같은 10분 상한으로 먼저 재고, 넘을 때에만 그린 단계 한 줄(`ci.yml:672`)의 `-timeout` 을 측정 소요 시간 + 여유로 올린다. 그때는 측정 명령과 소요 시간을 판정서와 커밋 메시지에 인용한다. 다른 단계의 상한은 건드리지 않는다.
 
+### 개정 2 plan-audit 이력 (card t1108)
+
+| iter | 판정 | 내용 |
+|---|---|---|
+| 1 | FAIL 0.84 (Tier M 역치 0.80) | 대상 `926dc8842`, 보고서 `.moai/reports/t1108/plan-audit.md`. 차단급 D1: REQ-AFG-016 다리 (c)(d) 를 적색으로 만드는 AC 가 없었다. 그 밖에 D2~D9 |
+| (수리) | — | D1: AC-AFG-015 에 다리별 역방향 고정물 5종((i) 정상 / (ii) 전체 이동 (a)(b)(c) 거짓 / (iii) 리스너 클릭 뒤 (c) 단독 / (iv) 표지 스왑 뒤 (d) 단독 / (v) 다리 단독 합성 보고서 4종, 무게이트 `TestAppJsFireSwapPremiseLegs`). D2: AC-014 돌연변이를 M1(`/settings` 경로 폴링)·M2(대기 제거)로 정의하고, 만료 대기 적색을 (d) 로 추가. D3: 분기 술어 10/10 고정, 증폭 효과 관측 필수화. D4: job `timeout-minutes: 20` 초과 시 blocker. D5: 한계로 기록. D6·D7: REQ-AFG-007 (3) exit 1·지목 대상, 형식 표기. D8: `app.go:288`. D9: AC-016 매핑. REQ·AC 신설 0건. E17(`go test ./internal/web/ -run 'AppJsFireSwapPremiseLegs' -v -count=1` → `[no tests to run]`, exit 0, 트리 `926dc8842`)을 장부에 추가 |
+
 ## §E.2 Run-phase Evidence
 
 run-phase 측정 전체는 worktree `/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t1060`, branch `WT-appjs-handler-guard` 위에서 2026-09-22 이번 run 실행 중 수행됐다(각 측정 시점 HEAD는 항목별로 병기). 바이너리는 이 트리에서 빌드해 경로로 호출했다(`go build -o /tmp/t1060-run/moai ./cmd/moai` — §2.2 도구 출처).
