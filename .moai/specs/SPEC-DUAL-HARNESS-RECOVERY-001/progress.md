@@ -285,6 +285,42 @@ SPEC 재량 안의 결정:
 - 1차(t1082 tip `b08569bac`, merge-base `7755dce38`): `git merge-tree --write-tree HEAD WT-factory-lane-worktree-handoff` → 충돌 없음(트리 `c30db17fd`). 그 트리를 scratch에 풀어 `go build`(factorymsg·hook·cli)와 `go vet ./internal/factorymsg` 통과, `go test ./internal/factorymsg` ok. 의미 술어("t1082 DDL이 이미 적용된 v1 DB에서 t1100 이관이 행 수 대조를 통과하고 새 테이블을 보존한다")는 `TestIdemScopeMigrationPreservesForeignV1Tables`로 이 브랜치와 병합 트리 양쪽에서 PASS(`open`, `open_existing` 두 진입점). 역순(t1082가 먼저 develop에 착지) 경우도 같은 모양이다 — t1082만 가진 바이너리가 만든 DB는 v1 messages + 핸드오프 테이블이고, 병합 스키마의 `CREATE TABLE IF NOT EXISTS`는 기존 테이블을 건드리지 않으며 이관은 `sender_slot` 열 유무로만 판단한다(스키마 버전 상수에 의존하지 않음).
 - 2차(이 카드 작업 중 t1082 tip이 `2c22fb10a`로 이동): 같은 명령이 `CONFLICT (content): Merge conflict in internal/factorymsg/store.go`를 낸다. 충돌 두 곳 — `verifyPeer`(이쪽 `ErrStalePeer` ↔ 저쪽 `s.staleOrUnregistered(ctx, p)`), `Send`의 멱등 충돌 재조회(이쪽 lane slot 범위 ↔ 저쪽 `lane_message_releases` 원 수신자 조회). `handoffSchema` DDL은 두 tip 사이에 바뀌지 않았고, 새로 `handoffBindSchema` 테이블 셋이 더해졌다(특성 테스트 픽스처에는 없음). 리드 지시에 따라 고치지 않았다 — 결함과 선택지는 완료 보고의 blocker 절에 있다.
 
+### Absorb develop (post-t1112)
+
+흡수: 로컬 `develop` `987fa3e73`을 `git merge --no-ff develop`로 흡수, 병합 커밋 `6a4d75f32`(부모 `b21036c1f`, `987fa3e73`). 충돌은 `internal/factorymsg/store.go` 두 곳. 해소는 t1112 이음매를 그대로 채택했다 — `ErrStalePeer`(Is 훅 godoc 포함)·`queryer`·`verifyPeerOn`/`verifyPeer`는 develop 판. 이 브랜치의 중복 `ErrStalePeer`는 버리고, `schema_migrate.go`에 있던 중복 `queryer` 인터페이스를 지웠다. dispatch의 트랜잭션 안 stale 검사 네 곳은 이미 `s.verifyPeerOn(ctx, tx, …)`를 거친다. `Send` 멱등 재조회의 lane slot 범위(분기 A)는 그대로다. 이음매 동일성: `git diff develop HEAD -- internal/factorymsg/stale_peer_seam_test.go internal/factorymsg/verify_peer_test.go` 출력 0바이트, `store.go`의 이음매 두 구간(`// ErrStalePeer reports`…`const launchPendingSessionPrefix`, `// verifyPeer checks p`…`func (s *Store) Send(`)은 develop 판과 바이트 동일(2473 바이트, 양쪽 같음).
+
+병합 트리(`6a4d75f32`) 재측정 — acceptance.md 명령 그대로, AC-DHR-020은 재실행하지 않음(M1 증거 `ac020*` 보존, `outcome: reproduced` → 분기 A):
+
+| AC | jq 판정 |
+|---|---|
+| AC-DHR-014 공통 | `true` |
+| AC-DHR-014 분기 A | `true` |
+| AC-DHR-015 | `true` |
+| AC-DHR-016 | `true` |
+| AC-DHR-001 | `true` |
+| AC-DHR-002 | `true` |
+| AC-DHR-022 | `true` |
+| AC-DHR-021 | `false` — 유일한 원인은 `TestCodexWiringRecoveryEntryPoints/disable` skip(`BLOCKED on M4: moai tool disable codex (REQ-DHR-005) does not exist yet`). enable·update·doctor_readonly와 상위 테스트는 pass, fail 0 |
+
+- `go test ./internal/factorymsg/... -count=1 -v` → `ok … 5.988s`. develop 이음매 테스트 `TestStalePeerOutcomeMatchesErrStalePeer`·`TestVerifyPeerOnRunsInsideOpenTx`와 이 브랜치의 `TestIdemScopeMigrationPreservesForeignV1Tables` 모두 PASS. SKIP 하나는 `TestIdemScopeRestartReproduction`(`NOT_RUN MOAI_T1100_EVIDENCE_DIR unset`) — AC-DHR-020 증거 작성 테스트라 의도된 skip.
+- `go test ./internal/codexwiring/... ./internal/manifest/... -count=1` → 둘 다 `ok`.
+- `go vet ./internal/factorymsg ./internal/codexwiring ./internal/manifest ./internal/cli` → exit 0.
+
+(a) 증거 디렉터리 skip의 경계(리드 확인): `MOAI_T1100_EVIDENCE_DIR` NOT_RUN skip은 증거 파일을 쓰는 테스트에만 적용한다. 판정식이 pass 이벤트만 세는 AC(AC-DHR-001·002·021·022)의 테스트는 skip하지 않는다 — 거기서 skip하면 판정식이 공허한 `false`가 된다.
+
+(b) M2가 `factorymsg` 열기에 더한 카탈로그 조회(`ensureSchema`의 `dispatches` 테이블·`sender_slot` 열 조회) 비용. 이미 이관된 DB에서 잰 벤치마크(`internal/factorymsg/ensure_schema_bench_test.go`, 운영 코드 무변경). 명령: `go test ./internal/factorymsg -run '^$' -bench 'BenchmarkEnsureSchema|BenchmarkPeersCount|BenchmarkOpenExisting' -benchtime=2000x -count=5`, 이어서 조회 유무 비교는 `-bench 'BenchmarkOpenExisting' -benchtime=200x -count=5`. 머신: Apple M4 Max, 측정 중 load average 약 15~16.
+
+| 벤치마크 | ns/op (5회) |
+|---|---|
+| `BenchmarkEnsureSchemaMigrated`(조회 단독) | 33888 / 27310 / 30384 / 20805 / 18715 |
+| `BenchmarkPeersCountReference`(같은 핸들의 기존 `peers` 조회, 척도용) | 3098 / 3175 / 3002 / 3019 / 3028 |
+| `BenchmarkOpenExistingWithoutProbeReplica`(열기 − `ensureSchema`, 테스트 안 복제) | 39011324 / 39970116 / 39320995 / 38514948 / 39494672 |
+| `BenchmarkOpenExistingMigrated`(`OpenExistingWithDeadline` + `Close` 전체) | 43113090 / 38977421 / 39117844 / 39078249 / 39358968 |
+
+조회 하나의 비용은 약 19~34µs로, 훅 바인드 기한 200ms(`internal/hook/factory_messages.go:20` `factoryHookInspectionDeadline`, 사용처 `internal/hook/user_prompt_submit.go:111`)의 약 0.01~0.02%다. 열기 전체는 조회 유무와 관계없이 약 39ms/op로 같아서 두 열기 벤치마크의 차이는 잡음 안에 있다. 즉 M2가 더한 조회는 리드 게이트 ②의 간헐 실패를 설명할 크기가 아니다. 한편 조회와 무관한 기존 열기 비용 약 39ms 자체는 기한의 약 20%를 차지하며, 이것은 이 카드 이전부터 있던 비용이다(원인은 재지 않았다).
+
+(c) errcheck: 흡수 전 `b21036c1f`에서 `golangci-lint run ./internal/factorymsg/... ./internal/codexwiring/... ./internal/manifest/... ./internal/cli/...` → `35 issues: * errcheck: 35`. 35건 전부 이 브랜치가 바꾸지 않은 줄이다 — `internal/factorymsg/store.go` 8건은 `git blame` 커밋 `45285bf1b`·`cb099897a`·`6bde8412c`·`8c5d9be99`로 모두 `7755dce38..b21036c1f` 밖이고, 나머지 27건이 있는 `internal/cli`·`internal/factorymsg` 파일은 이 브랜치의 변경 파일 목록에 없다. 흡수 후 `6a4d75f32`에서 같은 명령 → `0 issues.`(exit 0, golangci-lint 2.10.1). 이 브랜치가 따로 고친 줄은 없다 — 35건은 t1097이 develop에서 이미 고친 것이다. 벤치마크 파일 추가 뒤 `golangci-lint run ./internal/factorymsg/...` → `0 issues.`.
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 _<pending run-phase>_
