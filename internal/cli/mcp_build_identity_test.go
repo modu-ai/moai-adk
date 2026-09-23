@@ -633,8 +633,16 @@ func TestAuditLagUsesBinlagSeam(t *testing.T) {
 	// todo_landed.go coordinate asks at record time, and equally not a
 	// binary-vs-source freshness comparison.
 	//
+	// factory_lane_handoff_recover.go:212 is the lane-handoff restart
+	// reconciler's DECLARED addition (SPEC-FACTORY-LANE-WORKTREE-HANDOFF-001,
+	// card t1082): it classifies a target worktree whose HEAD moved off the
+	// reservation's develop pin as unmerged (the pin is still an ancestor) or
+	// drifted (it is not). That is referential integrity between two
+	// repository revisions, not binary freshness, so binlag.Evaluate is not
+	// its owner either.
+	//
 	// The coordinate is line-keyed like its neighbours, so an edit above it
-	// in todo_landed.go or todo_autodone.go moves it and this baseline needs
+	// in todo_landed.go, todo_autodone.go, or factory_lane_handoff_recover.go moves it and this baseline needs
 	// re-measuring; that brittleness is the guard's existing design, not
 	// something introduced here.
 	want := map[string]bool{
@@ -644,11 +652,12 @@ func TestAuditLagUsesBinlagSeam(t *testing.T) {
 		// deadline attribution were added above these two comparisons, moving
 		// them from 245/253. Same two comparisons, same count — only the
 		// coordinates moved.
-		"home_state_coverage.go:264": true,
-		"home_state_coverage.go:272": true,
-		"mcp_review_material.go:95":  true,
-		"todo_landed.go:231":         true,
-		"todo_autodone.go:340":       true,
+		"home_state_coverage.go:264":          true,
+		"home_state_coverage.go:272":          true,
+		"mcp_review_material.go:95":           true,
+		"todo_landed.go:231":                  true,
+		"todo_autodone.go:340":                true,
+		"factory_lane_handoff_recover.go:212": true,
 	}
 	got := map[string]bool{}
 	entries, err := os.ReadDir(".")
