@@ -25,13 +25,20 @@ var scriptNames = map[*unicode.RangeTable]string{
 
 // localeStrings flattens every per-locale string table in translations.go into
 // "path -> value" pairs for one locale, so a new table field is covered without
-// touching this test.
-func localeStrings(locale string) map[string]string {
-	out := map[string]string{}
+// touching this test. A table that yields no strings is reported in empty, so a
+// shape change that hides a whole table from the walk fails loudly instead of
+// passing with nothing checked.
+func localeStrings(locale string) (out map[string]string, empty []string) {
+	out = map[string]string{}
 	add := func(prefix string, v reflect.Value) {
+		before := len(out)
 		var walk func(path string, v reflect.Value)
 		walk = func(path string, v reflect.Value) {
 			switch v.Kind() {
+			case reflect.Pointer, reflect.Interface:
+				if !v.IsNil() {
+					walk(path, v.Elem())
+				}
 			case reflect.String:
 				out[path] = v.String()
 			case reflect.Struct:
@@ -49,13 +56,18 @@ func localeStrings(locale string) map[string]string {
 			}
 		}
 		walk(prefix, v)
+		// English is the source language: questions.go carries its strings,
+		// so the question translation table has no "en" entry by design.
+		if len(out) == before && (locale != "en" || prefix != "translations") {
+			empty = append(empty, prefix)
+		}
 	}
 	add("translations", reflect.ValueOf(translations[locale]))
 	add("uiStrings", reflect.ValueOf(uiStrings[locale]))
 	add("helpActionLabels", reflect.ValueOf(helpActionLabels[locale]))
 	add("downgradeConfirmTexts", reflect.ValueOf(downgradeConfirmTexts[locale]))
 	add("profileQuestionTexts", reflect.ValueOf(profileQuestionTexts[locale]))
-	return out
+	return out, empty
 }
 
 // TestTranslationsNoForeignScriptLeak catches a locale's string carrying
@@ -64,21 +76,20 @@ func localeStrings(locale string) map[string]string {
 // because they only check that a value is present, not what it is written in.
 func TestTranslationsNoForeignScriptLeak(t *testing.T) {
 	for locale, forbidden := range forbiddenScripts {
-		strs := localeStrings(locale)
-		if len(strs) == 0 {
-			t.Errorf("locale %q: no strings collected — the walk is not reaching the tables", locale)
-			continue
+		strs, empty := localeStrings(locale)
+		for _, table := range empty {
+			t.Errorf("locale %q: no strings collected from %s — the walk is not reaching that table", locale, table)
 		}
+	strings:
 		for path, s := range strs {
 			for _, r := range s {
 				for _, tbl := range forbidden {
 					if unicode.Is(tbl, r) {
 						t.Errorf("locale %q: %s contains %s %q: %q", locale, path, scriptNames[tbl], r, s)
-						goto next
+						continue strings
 					}
 				}
 			}
-		next:
 		}
 	}
 }
