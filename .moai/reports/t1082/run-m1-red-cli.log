@@ -1,0 +1,14 @@
+# github.com/modu-ai/moai-adk/internal/cli [github.com/modu-ai/moai-adk/internal/cli.test]
+internal/cli/factory_lane_handoff_test.go:148:63: undefined: laneHandoffRequest
+internal/cli/factory_lane_handoff_test.go:149:9: undefined: laneHandoffRequest
+internal/cli/factory_lane_handoff_test.go:151:59: undefined: laneActivityIdle
+internal/cli/factory_lane_handoff_test.go:156:37: undefined: laneHandoffDeps
+internal/cli/factory_lane_handoff_test.go:157:9: undefined: laneHandoffDeps
+internal/cli/factory_lane_handoff_test.go:208:24: undefined: factorymsg.HandoffNackReason
+internal/cli/factory_lane_handoff_test.go:253:43: undefined: factorymsg.HandoffModeInteractive
+internal/cli/factory_lane_handoff_test.go:253:78: undefined: factorymsg.HandoffModeHeadless
+internal/cli/factory_lane_handoff_test.go:254:13: undefined: prepareLaneHandoff
+internal/cli/factory_lane_handoff_test.go:255:41: undefined: factorymsg.NackEndpointLaunchPending
+internal/cli/factory_lane_handoff_test.go:255:41: too many errors
+FAIL	github.com/modu-ai/moai-adk/internal/cli [build failed]
+FAIL

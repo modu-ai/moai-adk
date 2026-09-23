@@ -1,0 +1,59 @@
+=== RUN   TestFactorySessionStartCannotRotateAuthoritativeUserPromptBinding
+--- PASS: TestFactorySessionStartCannotRotateAuthoritativeUserPromptBinding (1.04s)
+=== RUN   TestFactoryUserPromptSubmitRebindsLaunchPendingPeer
+2026/09/23 10:14:13 INFO user prompt submitted session_id=actual-user-prompt-session prompt_preview=""
+2026/09/23 10:14:13 INFO user prompt submitted session_id=actual-user-prompt-session prompt_preview=" \t\n "
+2026/09/23 10:14:13 INFO user prompt submitted session_id=actual-user-prompt-session prompt_preview="Inspect the assigned factory work."
+--- PASS: TestFactoryUserPromptSubmitRebindsLaunchPendingPeer (0.78s)
+=== RUN   TestFactoryBoundUserPromptSubmitDoesNotRewritePeer
+2026/09/23 10:14:13 INFO user prompt submitted session_id=actual-user-prompt-session prompt_preview="Bind this real user turn."
+2026/09/23 10:14:14 INFO user prompt submitted session_id=actual-user-prompt-session prompt_preview="Check the existing factory inbox."
+--- PASS: TestFactoryBoundUserPromptSubmitDoesNotRewritePeer (0.69s)
+=== RUN   TestFactorySessionStartCannotRotateAuthoritativeUserPromptBinding
+--- PASS: TestFactorySessionStartCannotRotateAuthoritativeUserPromptBinding (1.01s)
+=== RUN   TestFactoryUserPromptSubmitRebindsLaunchPendingPeer
+2026/09/23 10:14:15 INFO user prompt submitted session_id=actual-user-prompt-session prompt_preview=""
+2026/09/23 10:14:15 INFO user prompt submitted session_id=actual-user-prompt-session prompt_preview=" \t\n "
+2026/09/23 10:14:15 INFO user prompt submitted session_id=actual-user-prompt-session prompt_preview="Inspect the assigned factory work."
+--- PASS: TestFactoryUserPromptSubmitRebindsLaunchPendingPeer (0.74s)
+=== RUN   TestFactoryBoundUserPromptSubmitDoesNotRewritePeer
+2026/09/23 10:14:16 INFO user prompt submitted session_id=actual-user-prompt-session prompt_preview="Bind this real user turn."
+2026/09/23 10:14:16 INFO user prompt submitted session_id=actual-user-prompt-session prompt_preview="Check the existing factory inbox."
+--- PASS: TestFactoryBoundUserPromptSubmitDoesNotRewritePeer (0.90s)
+=== RUN   TestFactorySessionStartCannotRotateAuthoritativeUserPromptBinding
+--- PASS: TestFactorySessionStartCannotRotateAuthoritativeUserPromptBinding (0.98s)
+=== RUN   TestFactoryUserPromptSubmitRebindsLaunchPendingPeer
+2026/09/23 10:14:18 INFO user prompt submitted session_id=actual-user-prompt-session prompt_preview=""
+2026/09/23 10:14:18 INFO user prompt submitted session_id=actual-user-prompt-session prompt_preview=" \t\n "
+2026/09/23 10:14:18 INFO user prompt submitted session_id=actual-user-prompt-session prompt_preview="Inspect the assigned factory work."
+--- PASS: TestFactoryUserPromptSubmitRebindsLaunchPendingPeer (0.64s)
+=== RUN   TestFactoryBoundUserPromptSubmitDoesNotRewritePeer
+2026/09/23 10:14:18 INFO user prompt submitted session_id=actual-user-prompt-session prompt_preview="Bind this real user turn."
+2026/09/23 10:14:19 INFO user prompt submitted session_id=actual-user-prompt-session prompt_preview="Check the existing factory inbox."
+--- PASS: TestFactoryBoundUserPromptSubmitDoesNotRewritePeer (0.70s)
+=== RUN   TestFactorySessionStartCannotRotateAuthoritativeUserPromptBinding
+--- PASS: TestFactorySessionStartCannotRotateAuthoritativeUserPromptBinding (1.00s)
+=== RUN   TestFactoryUserPromptSubmitRebindsLaunchPendingPeer
+2026/09/23 10:14:20 INFO user prompt submitted session_id=actual-user-prompt-session prompt_preview=""
+2026/09/23 10:14:20 INFO user prompt submitted session_id=actual-user-prompt-session prompt_preview=" \t\n "
+2026/09/23 10:14:20 INFO user prompt submitted session_id=actual-user-prompt-session prompt_preview="Inspect the assigned factory work."
+--- PASS: TestFactoryUserPromptSubmitRebindsLaunchPendingPeer (0.70s)
+=== RUN   TestFactoryBoundUserPromptSubmitDoesNotRewritePeer
+2026/09/23 10:14:21 INFO user prompt submitted session_id=actual-user-prompt-session prompt_preview="Bind this real user turn."
+2026/09/23 10:14:21 INFO user prompt submitted session_id=actual-user-prompt-session prompt_preview="Check the existing factory inbox."
+--- PASS: TestFactoryBoundUserPromptSubmitDoesNotRewritePeer (0.70s)
+=== RUN   TestFactorySessionStartCannotRotateAuthoritativeUserPromptBinding
+--- PASS: TestFactorySessionStartCannotRotateAuthoritativeUserPromptBinding (1.09s)
+=== RUN   TestFactoryUserPromptSubmitRebindsLaunchPendingPeer
+2026/09/23 10:14:23 INFO user prompt submitted session_id=actual-user-prompt-session prompt_preview=""
+2026/09/23 10:14:23 INFO user prompt submitted session_id=actual-user-prompt-session prompt_preview=" \t\n "
+2026/09/23 10:14:23 INFO user prompt submitted session_id=actual-user-prompt-session prompt_preview="Inspect the assigned factory work."
+    factory_messages_test.go:419: factory endpoint is launch-pending
+--- FAIL: TestFactoryUserPromptSubmitRebindsLaunchPendingPeer (0.88s)
+=== RUN   TestFactoryBoundUserPromptSubmitDoesNotRewritePeer
+2026/09/23 10:14:24 INFO user prompt submitted session_id=actual-user-prompt-session prompt_preview="Bind this real user turn."
+2026/09/23 10:14:24 INFO user prompt submitted session_id=actual-user-prompt-session prompt_preview="Check the existing factory inbox."
+--- PASS: TestFactoryBoundUserPromptSubmitDoesNotRewritePeer (0.92s)
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/hook	13.227s
+FAIL

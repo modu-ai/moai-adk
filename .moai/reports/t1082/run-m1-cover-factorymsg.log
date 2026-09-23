@@ -1,0 +1,13 @@
+ok  	github.com/modu-ai/moai-adk/internal/factorymsg	5.027s	coverage: 68.0% of statements
+github.com/modu-ai/moai-adk/internal/factorymsg/handoff.go:66:	Error				66.7%
+github.com/modu-ai/moai-adk/internal/factorymsg/handoff.go:74:	NewHandoffNack			100.0%
+github.com/modu-ai/moai-adk/internal/factorymsg/handoff.go:79:	HandoffNackReason		75.0%
+github.com/modu-ai/moai-adk/internal/factorymsg/handoff.go:106:	validate			100.0%
+github.com/modu-ai/moai-adk/internal/factorymsg/handoff.go:126:	isOpenHandoffState		100.0%
+github.com/modu-ai/moai-adk/internal/factorymsg/handoff.go:143:	ReserveHandoff			81.8%
+github.com/modu-ai/moai-adk/internal/factorymsg/handoff.go:200:	insertHandoffEvent		100.0%
+github.com/modu-ai/moai-adk/internal/factorymsg/handoff.go:206:	MarkHandoffWTReady		100.0%
+github.com/modu-ai/moai-adk/internal/factorymsg/handoff.go:212:	NackHandoff			100.0%
+github.com/modu-ai/moai-adk/internal/factorymsg/handoff.go:220:	transitionHandoff		80.0%
+github.com/modu-ai/moai-adk/internal/factorymsg/handoff.go:249:	HandoffsForLane			86.7%
+total:								(statements)			68.0%

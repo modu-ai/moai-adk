@@ -292,7 +292,7 @@ CREATE TABLE IF NOT EXISTS peers(slot TEXT PRIMARY KEY, project_key TEXT NOT NUL
 CREATE TABLE IF NOT EXISTS messages(id TEXT PRIMARY KEY, schema_version INTEGER NOT NULL, project_key TEXT NOT NULL, run_id TEXT NOT NULL, sender_session TEXT NOT NULL, sender_generation INTEGER NOT NULL, recipient_session TEXT NOT NULL, recipient_generation INTEGER NOT NULL, kind TEXT NOT NULL, idem_key TEXT NOT NULL, task_ref TEXT NOT NULL, correlation_id TEXT NOT NULL, created_at TEXT NOT NULL, expires_at TEXT NOT NULL, payload BLOB NOT NULL, state TEXT NOT NULL, claim_token TEXT NOT NULL DEFAULT '', claim_expires_at TEXT, disposition TEXT NOT NULL DEFAULT '', acknowledged_at TEXT, UNIQUE(sender_session,idem_key));
 CREATE INDEX IF NOT EXISTS messages_recipient_state ON messages(recipient_session,recipient_generation,state,created_at);
 CREATE TABLE IF NOT EXISTS dead_letters(id INTEGER PRIMARY KEY AUTOINCREMENT, message_id TEXT NOT NULL, reason TEXT NOT NULL, created_at TEXT NOT NULL);
-`
+` + handoffSchema
 
 func (p Peer) validate(projectKey, runID string) error {
 	for name, v := range map[string]string{"project_key": p.ProjectKey, "run_id": p.RunID, "backend": p.Backend, "role": p.Role, "slot": p.Slot, "session_uuid": p.SessionUUID} {

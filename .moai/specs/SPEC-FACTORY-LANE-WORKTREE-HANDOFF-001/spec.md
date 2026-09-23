@@ -2,7 +2,7 @@
 id: SPEC-FACTORY-LANE-WORKTREE-HANDOFF-001
 title: "Factory lane card worktree handoff"
 version: "0.5.1"
-status: draft
+status: in-progress
 created: 2026-09-22
 updated: 2026-09-23
 author: manager-spec

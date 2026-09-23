@@ -1,0 +1,12 @@
+=== RUN   TestFactoryLaneHandoffRebindVsUserPromptRegisterRace
+    lane_handoff_race_test.go:64: AC_FLH_019_ORDERS_COVERED=vii
+=== RUN   TestFactoryLaneHandoffRebindVsUserPromptRegisterRace/order_vii_reservation_reads_source_inside_its_transaction
+    lane_handoff_race_test.go:113: RACER_HANDLES_DISTINCT=2
+    lane_handoff_race_test.go:182: V_blocked_observed=true
+    lane_handoff_race_test.go:196: A_commit_at=2026-09-23T10:03:03.790018+09:00 V_return_at=2026-09-23T10:03:03.822033+09:00
+    lane_handoff_race_test.go:203: subject result = {ID:f27cd2a9506ffff1dd3d67cbcec3e686 ProjectKey:project-2bbaf324 RunID:run-handoff-vii Slot:lane-1 CardID:t1082 SpecID:SPEC-FACTORY-LANE-WORKTREE-HANDOFF-001 Mode:interactive Nonce:7f5c01211fad516c00ea3c23ee896000 Generation:1 Source:{ProjectKey:project-2bbaf324 RunID:run-handoff-vii Backend:codex Role:worker Slot:lane-1 SessionUUID:src-uuid Generation:2 PID:37439 ProcessStart:fake-start-vii} DevelopPin:3f3ffbb57aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa TargetPath:/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestFactoryLaneHandoffRebindVsUserPromptRegisterRaceorder_vii_r1450001193/001/project/.claude/worktrees/t1082 TargetBranch:WT-lane-handoff State:RESERVED Reason: CreatedAt:2026-09-23 01:03:03.820606 +0000 UTC UpdatedAt:2026-09-23 01:03:03.820606 +0000 UTC} err=<nil>, want NACK ENDPOINT_LAUNCH_PENDING
+--- FAIL: TestFactoryLaneHandoffRebindVsUserPromptRegisterRace (0.44s)
+    --- FAIL: TestFactoryLaneHandoffRebindVsUserPromptRegisterRace/order_vii_reservation_reads_source_inside_its_transaction (0.43s)
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/factorymsg	0.800s
+FAIL

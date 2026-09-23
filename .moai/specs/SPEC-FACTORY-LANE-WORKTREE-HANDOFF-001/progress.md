@@ -12,8 +12,8 @@ module: "internal/factorymsg"
 
 ## §A Status
 
-- Current SPEC status: `draft`.
-- Current phase: plan artifact authoring only.
+- Current SPEC status: `in-progress` (M1 commit, manager-develop). The plan-era lines below are kept as written.
+- Current phase: run, M1 complete; M2 not started (see §E.2).
 - Card/worktree/branch: `t1082` / `.claude/worktrees/t1082` / `WT-factory-lane-worktree-handoff`.
 - Plan subject HEAD: `bf39a539d97f49edf3b11517ee7c982239c60df3`.
 - Implementation: NOT STARTED.
@@ -151,3 +151,73 @@ implementation_kickoff_approval: not-granted
 - Approval path: lead approved under the operator's standing delegation (09-23) using Jev (noul) answers kickoff 0.69 / scope_cut 0.12 / reversible 0.57; that path is in tension with CLAUDE.local.md §29 (operator gates are grade 3, never delegated to Jev), which the lead escalated to the operator. The operator then approved the Kickoff directly in the t1082 lane session via AskUserQuestion ("직접 승인하고 run 진행"). The binding approval is the operator's direct answer.
 - Conditions (lead): (1) absorb N7 as the first RED — AC-FLH-019 order (vii), reservation reads the source row inside its own transaction; (2) scope unchanged (no Part C cut); (3) fix N8–N12 wording during run, and state the plan-milestone gap (REQ-FLH-016..018 work and the t1074 RegisterPeer transaction change) at the head of the run plan; (4) fill the plan-phase gaps (execution reproduction of the new forced orders, `-race`) with run evidence — live NOT_RUN is not PASS; (5) develop CI Race Test failure `TestCC_FactoryEntryThroughRunCC/-f_lane-2` AMBIGUOUS_FACTORY (factory_test.go:887, run 35802361895) is out of this card's scope.
 - Pre-run absorb: local develop `f0fdd88e4` merged at `ec821ce83`, no conflicts; factory-code delta limited to t1097 close-error handling (`cc50115ae`, `06bd358a6`) — SPEC line coordinates in store.go / factory_messages.go shifted, semantics unchanged.
+
+## §E.2 Run-phase Evidence
+
+### M1 — Durable reservation and worktree provenance (2026-09-23, manager-develop, cycle_type=tdd)
+
+**Run plan head (N11).** The original plan milestones did not carry the REQ-FLH-016..018 work or the t1074 `RegisterPeer` transaction change. They are now placed as follows: REQ-FLH-016 (reservation reads the source row inside its own `BEGIN IMMEDIATE`, `ENDPOINT_LAUNCH_PENDING` NACK) is M1; REQ-FLH-017 (launcher registration finalizes an unfinished handoff inside `RegisterPeer`'s transaction) and REQ-FLH-018 (UserPromptSubmit registration rejected with `ENDPOINT_HANDOFF_PENDING` inside the same transaction), together with the t1074 `RegisterPeer` transaction change, are M3. M1 did not modify `RegisterPeer`.
+
+**Scope delivered.** Handoff row, event, and tombstone tables in the existing broker schema (`internal/factorymsg/handoff.go`, appended to the `schema` executed by `OpenWithDeadline`; no new DB, no daemon). `Store.ReserveHandoff` pins project/run/lane/card/SPEC/source endpoint tuple/handoff generation/nonce/develop pin/target path/target branch in one write transaction; `MarkHandoffWTReady` / `NackHandoff` are nonce-and-state CAS transitions; a partial unique index enforces one unfinished handoff per lane. The cli controller `prepareLaneHandoff` (`internal/cli/factory_lane_handoff.go`) resolves canonical identity through `homestate.CanonicalProjectRoot` and the run through `factorymsg.ResolveActiveRun`, applies fail-closed admission, pins local `develop`, calls the existing materializer `materializeSessionWorktree` once, renames the branch to `WT-<slug>`, and verifies path, HEAD == pin, develop unmoved, branch, branch uniqueness, and a clean target before `WT_READY`. Creation-base drift becomes `NACK`/`BASE_DRIFT` with the target preserved. The N6/N10 re-entry rule reconstructs `WT_READY` without a materializer call and otherwise NACKs `TARGET_DIRTY`, `BRANCH_COLLISION`, `BASE_DRIFT` in that order.
+
+**AC-FLH-019 order (vii) fixture.** Adversary A used the acceptance-allowed fixture: a raw `BEGIN IMMEDIATE` on A's own production-`Open` handle (production DSN) that rewrites the slot row to launch-pending and holds it. The REQ-FLH-017 finalize step inside `RegisterPeer` does not exist until M3.
+
+#### RED evidence (verbatim, captured before any implementation)
+
+First RED — AC-FLH-019 order (vii), HEAD `92c932cac`, log `.moai/reports/t1082/run-m1-red-ac19-vii.log`:
+
+```text
+$ go test -race ./internal/factorymsg -run '^TestFactoryLaneHandoffRebindVsUserPromptRegisterRace$' -count=1 -timeout=180s
+# github.com/modu-ai/moai-adk/internal/factorymsg [github.com/modu-ai/moai-adk/internal/factorymsg.test]
+internal/factorymsg/lane_handoff_race_test.go:143:8: undefined: Handoff
+internal/factorymsg/lane_handoff_race_test.go:149:21: vStore.ReserveHandoff undefined (type *Store has no field or method ReserveHandoff)
+internal/factorymsg/lane_handoff_race_test.go:149:41: undefined: HandoffReservation
+internal/factorymsg/lane_handoff_race_test.go:151:21: undefined: HandoffModeInteractive
+internal/factorymsg/lane_handoff_race_test.go:201:21: undefined: HandoffNackReason
+internal/factorymsg/lane_handoff_race_test.go:202:27: undefined: NackEndpointLaunchPending
+internal/factorymsg/lane_handoff_race_test.go:203:70: undefined: NackEndpointLaunchPending
+FAIL	github.com/modu-ai/moai-adk/internal/factorymsg [build failed]
+FAIL
+exit=1
+```
+
+RED reason: reservation code absent. Second RED — AC-FLH-001/002/016/017, log `.moai/reports/t1082/run-m1-red-cli.log`: build failed on `undefined: laneHandoffRequest`, `undefined: prepareLaneHandoff`, `undefined: factorymsg.NackEndpointLaunchPending` (exit 1) — controller code absent.
+
+**Discrimination check (read-before-BEGIN mutant).** After GREEN, `ReserveHandoff` was temporarily changed to read the source row through `s.db` before `BeginTx`. The (vii) test then failed with exactly the predicted defect — `subject result = {... Source:{... SessionUUID:src-uuid Generation:2 ...} State:RESERVED ...} err=<nil>, want NACK ENDPOINT_LAUNCH_PENDING` (exit 1, log `.moai/reports/t1082/run-m1-mutant-read-before-begin.log`). The original was restored and re-verified.
+
+#### GREEN evidence
+
+| Check | Command (scrubbed env, one invocation each) | Result |
+|---|---|---|
+| AC-019 (vii) | `go test -race -v ./internal/factorymsg -run '^TestFactoryLaneHandoffRebindVsUserPromptRegisterRace$'` | PASS; log lines `RACER_HANDLES_DISTINCT=2`, `V_blocked_observed=true`, `A_commit_at < V_return_at` |
+| cli M1 tests | `go test ./internal/cli -run '^(TestFactoryLaneHandoffLaunchPendingSourceNack\|...AdmissionFailClosed\|...DevelopPinAndTraceability\|...CreationBaseDriftRejected)$' -v` | 4/4 PASS, `.moai/reports/t1082/run-m1-green-cli.log` |
+| race, factorymsg | `go test -race -count=1 ./internal/factorymsg/...` | `ok` (in `.moai/reports/t1082/run-m1-race.log`; re-run with coverage `.moai/reports/t1082/run-m1-cover-factorymsg.log`) |
+| race, cli subset | `go test -race -count=1 ./internal/cli -run '^(TestFactoryLaneHandoff.*\|TestSessionWorktree.*\|TestFactoryMsgStatusReadOnlyRoster\|TestFactoryLeadNoticeUsesOperationalStatus\|TestMoaiMCPServer_RegistrationMatchesCatalog)$'` | exit 0, 17 PASS |
+| vet | `go vet ./internal/factorymsg/... ./internal/cli/...` | exit 0 |
+| lint | `golangci-lint run ./internal/factorymsg/... ./internal/cli/...` | exit 0, `0 issues.` |
+| build | `go build ./...`; `GOOS=windows GOARCH=amd64 go build ./...` | exit 0 / exit 0 |
+
+#### AC matrix for M1
+
+| AC | Status | Acceptance command | Exit / output | Evidence |
+|---|---|---|---|---|
+| AC-FLH-001 | PASS | acceptance.md verbatim (`./internal/factorymsg ./internal/cli`) | `true`, exit 0 | `.moai/reports/t1082/ac01.jsonl` — 13 subtests incl. re-entry clean/dirty/branch/pin |
+| AC-FLH-002 | PASS | acceptance.md verbatim (`./internal/cli`) | `true`, exit 0 | `.moai/reports/t1082/ac02.jsonl` |
+| AC-FLH-016 | PASS | acceptance.md verbatim (`./internal/cli`) | `true`, exit 0 | `.moai/reports/t1082/ac16.jsonl` — main-creation mutant, develop-moves-during-create, matching control |
+| AC-FLH-017 | PASS (see gap on spies) | acceptance.md verbatim (`./internal/factorymsg ./internal/cli`) | `true`, exit 0 | `.moai/reports/t1082/ac17.jsonl` |
+| AC-FLH-019 | NOT PASS — order (vii) only | acceptance.md verbatim (`-race ./internal/factorymsg ./internal/hook`) | gate prints `true`, exit 0 | `.moai/reports/t1082/ac19.jsonl`. The gate's `true` is NOT an AC-FLH-019 PASS: orders (i)–(vi) and the 200 unforced iterations need the M3 rebind and `RegisterPeer` changes. The test logs `AC_FLH_019_ORDERS_COVERED=vii` |
+
+#### Gaps
+
+- AC-FLH-019 orders (i)–(vi) and the unforced iterations: not written, pending M3. AC-FLH-018 not started (M3).
+- AC-FLH-017 app-server spy: preparation has no relocation step in M1, so the spy is structurally unreachable; the count 0 becomes a live guard only when M2 wires the headless switch. The "rollback spy" is realized as byte-identity of the provisional row (including `updated_at`) plus the controller having no access to `RollbackLaunchPending`; no call-counting rollback spy exists.
+- AC-FLH-017 "dispatch release markers": no release-marker surface exists before M3; the test counts `messages` rows (0) instead.
+- `validate()` branches in `handoff.go` were not each driven by an individual RED; `TestLaneHandoffStoreLifecycle` was added after GREEN as supplementary coverage.
+- Package coverage: `internal/factorymsg` 68.0% (handoff.go functions 66.7–100%, uncovered lines are DB-error branches); `factory_lane_handoff.go` 61.9–100% per function from the handoff tests only. The package-wide 85% target is not met for `internal/factorymsg`; its pre-M1 baseline was not measured.
+
+#### Residual risks
+
+- `TestFactoryUserPromptSubmitRebindsLaunchPendingPeer` and `TestFactoryBoundUserPromptSubmitDoesNotRewritePeer` (package `hook`) are flaky on the unmodified HEAD `92c932cac` factorymsg as well: 3/5 runs failed with `factory endpoint is launch-pending` (`.moai/reports/t1082/run-m1-baseline-hook-HEAD-x5.log`); with M1 1/5 and 1/5 (env-scrubbed). Not attributable to M1; cause not investigated (out of scope). `TestFactorySessionStartCannotRotateAuthoritativeUserPromptBinding` passed 15/15.
+- `TestEnsureGLMCredentials` and `TestEnsureGLMCredentialsFilePerm` fail on HEAD in this environment too (`.moai/reports/t1082/run-m1-baseline-hook-HEAD.log`).
+- The controller's git facts (dirty source, branch, path) are read outside the broker transaction; a concurrent actor can change them between the check and the reservation. Post-create verification re-reads them, so a race produces a NACK, not a false `WT_READY`.
+- The materializer resolves the repository from the process cwd; the controller verifies the created path equals `<canonical primary>/.claude/worktrees/<card-id>` and NACKs otherwise.
