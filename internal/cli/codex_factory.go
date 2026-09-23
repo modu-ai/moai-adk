@@ -128,7 +128,7 @@ func applyCodexFactoryEntry(cmd *cobra.Command, role string, lane string) (func(
 		}
 	}
 	if lane != "" {
-		final, claimErr := resolveFactoryWorkerName(launchProjectRoot(), lane, cmd.ErrOrStderr())
+		final, claimErr := resolveFactoryWorkerName(launchProjectRoot(), lane, role != "", cmd.ErrOrStderr())
 		if claimErr != nil {
 			restoreFacts()
 			return noop, claimErr

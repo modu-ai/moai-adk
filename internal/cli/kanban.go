@@ -61,12 +61,16 @@ const kanbanUnsupportedBackendSentinel = "KANBAN_MODE_UNSUPPORTED_BACKEND"
 // meaningful SPEC identifier. FactoryEnabled implies KanbanEnabled (the -k
 // token was present); the launcher branches on FactoryEnabled first.
 type kanbanEntryParse struct {
-	Spec           string   // non-numeric positional — the kanban SPEC identifier
-	KanbanEnabled  bool     // -k present (any shape)
-	FactoryEnabled bool     // -k selected the factory (numeric count or worker-shape name)
-	FactoryWorkers int      // the factory count (explicit or the default)
-	FactoryRun     string   // explicit --factory-run selector for mixed factory joins
-	Rest           []string // args with -k and its consumed value removed
+	Spec           string // non-numeric positional — the kanban SPEC identifier
+	KanbanEnabled  bool   // -k present (any shape)
+	FactoryEnabled bool   // -k selected the factory (numeric count or worker-shape name)
+	FactoryWorkers int    // the factory count (explicit or the default)
+	FactoryRun     string // explicit --factory-run selector for mixed factory joins
+	// FactoryAutoNumber marks a worker number the launcher chose itself
+	// (`-f worker`), as opposed to one the operator typed (`-f worker-<n>`,
+	// `--name worker-<n>`); the claim reports legacy collisions differently.
+	FactoryAutoNumber bool
+	Rest              []string // args with -k and its consumed value removed
 }
 
 // parseKanbanFlag extracts --kanban / -k and its optional value from args.

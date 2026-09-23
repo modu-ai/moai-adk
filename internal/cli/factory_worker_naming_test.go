@@ -96,7 +96,7 @@ func TestResolveFactoryWorkerNameCanonicalizesLegacyWithHint(t *testing.T) {
 	}
 	for _, c := range cases {
 		var notes bytes.Buffer
-		got, err := resolveFactoryWorkerName(t.TempDir(), c.label, &notes)
+		got, err := resolveFactoryWorkerName(t.TempDir(), c.label, false, &notes)
 		if err != nil || got != c.want {
 			t.Fatalf("resolve %s = (%q, %v), want %s", c.label, got, err, c.want)
 		}
@@ -107,7 +107,7 @@ func TestResolveFactoryWorkerNameCanonicalizesLegacyWithHint(t *testing.T) {
 	}
 
 	var notes bytes.Buffer
-	if got, err := resolveFactoryWorkerName(t.TempDir(), "worker-1", &notes); err != nil || got != "worker-1" || notes.Len() != 0 {
+	if got, err := resolveFactoryWorkerName(t.TempDir(), "worker-1", false, &notes); err != nil || got != "worker-1" || notes.Len() != 0 {
 		t.Errorf("canonical free label = (%q, %v, notes %q), want worker-1 with no note", got, err, notes.String())
 	}
 }

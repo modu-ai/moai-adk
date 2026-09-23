@@ -2,6 +2,7 @@ package kanban
 
 import (
 	"slices"
+	"strings"
 	"testing"
 )
 
@@ -107,6 +108,9 @@ func TestClaimFactoryWorkerNameCanonicalizesAndRespectsLegacyClaims(t *testing.T
 		}
 	})
 
+	// A live legacy row keeps its number: an operator-typed claim of that
+	// number is refused by name (never silently moved) and the legacy row
+	// survives. Collision reporting in full: factory_legacy_collision_test.go.
 	t.Run("live legacy row blocks its number", func(t *testing.T) {
 		t.Parallel()
 		root := t.TempDir()
@@ -116,13 +120,12 @@ func TestClaimFactoryWorkerNameCanonicalizesAndRespectsLegacyClaims(t *testing.T
 		}); err != nil {
 			t.Fatalf("seed: %v", err)
 		}
-		got, err := ClaimFactoryWorkerName(root, "worker-3", 203, alive)
-		if err != nil || got != "worker-5" {
-			t.Fatalf("claim worker-3 over live lane-3/agent-4 = (%q, %v), want worker-5", got, err)
+		if _, err := ClaimFactoryWorkerName(root, "worker-3", 203, alive); err == nil || !strings.Contains(err.Error(), "lane-3") {
+			t.Fatalf("claim worker-3 over live lane-3 = %v, want an error naming lane-3", err)
 		}
 		reg := LoadFactoryRegistry(FactoryRegistryPath(root))
 		if _, ok := reg["lane-3"]; !ok {
-			t.Errorf("the live legacy row must survive the claim, registry = %v", reg)
+			t.Errorf("the live legacy row must survive the refused claim, registry = %v", reg)
 		}
 	})
 }

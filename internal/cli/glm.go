@@ -254,7 +254,7 @@ func runGLM(cmd *cobra.Command, args []string) error {
 		defer restoreRun()
 		// See cc.go: a live-held lane number is bumped, and the bumped value
 		// must reach the backend argv.
-		finalLabel, claimErr := resolveFactoryWorkerName(launchProjectRoot(), factoryLabel, cmd.ErrOrStderr())
+		finalLabel, claimErr := resolveFactoryWorkerName(launchProjectRoot(), factoryLabel, entry.FactoryAutoNumber, cmd.ErrOrStderr())
 		if claimErr != nil {
 			return claimErr
 		}

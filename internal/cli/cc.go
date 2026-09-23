@@ -209,7 +209,7 @@ func runClaudeEntry(cmd *cobra.Command, args []string, commandName, mode, backen
 		// A number held by a live session is bumped to the next free one, and
 		// the bumped value must reach the backend argv — the session name is
 		// the address the lead dispatches to.
-		finalLabel, claimErr := resolveFactoryWorkerName(launchProjectRoot(), factoryLabel, cmd.ErrOrStderr())
+		finalLabel, claimErr := resolveFactoryWorkerName(launchProjectRoot(), factoryLabel, entry.FactoryAutoNumber, cmd.ErrOrStderr())
 		if claimErr != nil {
 			return claimErr
 		}

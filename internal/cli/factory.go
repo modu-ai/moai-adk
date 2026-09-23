@@ -28,6 +28,7 @@ package cli
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -224,6 +225,7 @@ func parseLauncherEntry(args []string) (kanbanEntryParse, error) {
 			label = kanban.FactoryAgentLabel(next)
 		}
 		entry.Rest = append(entry.Rest, nameFlagLong, label)
+		entry.FactoryAutoNumber = true
 	case fp.WorkerNumber > 0:
 		if operatorSuppliedName(fp.Rest) {
 			return entry, fmt.Errorf("-f worker-<n> already names the worker; drop the --name/-n flag (got args %v)", fp.Rest)
@@ -443,13 +445,26 @@ var factoryProcessAlive = kanban.FactoryProcessAlive
 // label MUST have a worker shape, canonical or legacy; the claim records the
 // canonical worker-<n>. notes, when non-nil, receives the operator-visible
 // lines: the deprecation hint for a legacy spelling, and the bump line.
-func resolveFactoryWorkerName(root, label string, notes io.Writer) (string, error) {
-	final, err := kanban.ClaimFactoryWorkerName(root, label, os.Getpid(), factoryProcessAlive)
+func resolveFactoryWorkerName(root, label string, auto bool, notes io.Writer) (string, error) {
+	claim, err := kanban.ClaimFactoryWorker(root, label, auto, os.Getpid(), factoryProcessAlive)
+	var collision *kanban.FactoryLegacyCollisionError
+	if errors.As(err, &collision) {
+		// Legacy agent-/lane- labels share the worker number space; an
+		// operator-typed number held by one is refused by name, never moved.
+		return "", fmt.Errorf("claim factory worker %s: %s (a live session launched under the legacy spelling; "+
+			"legacy agent-<n> and lane-<n> labels share the worker number space) — "+
+			"pick another number with -f worker-<n>, or use -f worker to take the next free one", label, collision)
+	}
 	if err != nil {
 		return "", fmt.Errorf("claim factory worker %s: %w", label, err)
 	}
+	final := claim.Label
 	if notes == nil {
 		return final, nil
+	}
+	if len(claim.SkippedLegacy) > 0 {
+		_, _ = fmt.Fprintf(notes, "factory: skipped number(s) held by legacy label(s) %s — legacy agent-<n> and lane-<n> labels share the worker number space; launching as %s\n",
+			strings.Join(claim.SkippedLegacy, ", "), final)
 	}
 	// Both notes are best-effort operator guidance; the SessionStart worker
 	// notice is the reliable surface for the final name.
