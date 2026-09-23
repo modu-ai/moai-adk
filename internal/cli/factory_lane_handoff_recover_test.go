@@ -2,6 +2,7 @@ package cli
 
 import (
 	"context"
+	"database/sql"
 	"errors"
 	"os"
 	"path/filepath"
@@ -404,6 +405,64 @@ func TestLaneHandoffRecoveryEdges(t *testing.T) {
 		}
 		if st := f.storedHandoff(t, h.ID); st.State != factorymsg.HandoffNack {
 			t.Fatalf("stored = %s, want NACK", st.State)
+		}
+	})
+	t.Run("no_active_run", func(t *testing.T) {
+		f := newLaneHandoffFixture(t, "develop", true)
+		req := f.recoverRequest(t)
+		req.RunID = "no-such-run"
+		if _, err := recoverLaneHandoff(ctx, req, f.deps()); err == nil {
+			t.Fatal("recovery on an inactive run accepted")
+		}
+	})
+	t.Run("develop_moved_after_rename", func(t *testing.T) {
+		f := newLaneHandoffFixture(t, "develop", true)
+		crashAt(t, handoffPointRenamed)
+		if !crashed(t, func() {
+			_, _ = prepareLaneHandoff(ctx, f.request(handoffTestCard, handoffTestSlug, factorymsg.HandoffModeHeadless), f.deps())
+		}) {
+			t.Fatal("controller did not die after the rename")
+		}
+		handoffGit(t, f.primary, "update-ref", "refs/heads/develop", f.mainSHA)
+		got := f.reconcile(t)
+		if got.Decision != laneRecoveryAbandoned || got.Reason != factorymsg.NackBaseDrift {
+			t.Fatalf("decision = %s/%s, want abandoned/%s", got.Decision, got.Reason, factorymsg.NackBaseDrift)
+		}
+	})
+	t.Run("rename_collides_on_resume", func(t *testing.T) {
+		f := newLaneHandoffFixture(t, "develop", true)
+		crashAt(t, handoffPointCreated)
+		if !crashed(t, func() {
+			_, _ = prepareLaneHandoff(ctx, f.request(handoffTestCard, handoffTestSlug, factorymsg.HandoffModeHeadless), f.deps())
+		}) {
+			t.Fatal("controller did not die after creation")
+		}
+		handoffGit(t, f.primary, "branch", handoffTestBranch, f.developPin)
+		got := f.reconcile(t)
+		if got.Decision != laneRecoveryAbandoned || got.Reason != factorymsg.NackBranchCollision {
+			t.Fatalf("decision = %s/%s, want abandoned/%s", got.Decision, got.Reason, factorymsg.NackBranchCollision)
+		}
+	})
+	t.Run("bound_without_receipt_is_corruption", func(t *testing.T) {
+		f := newLaneHandoffFixture(t, "develop", true)
+		withFakeHandoffAppServer(t, &fakeHandoffAppServer{newThreadID: "thr-forked"})
+		f.driveHeadless(ctx, t)
+		path, err := factorymsg.BrokerPath(f.primary, f.run)
+		if err != nil {
+			t.Fatal(err)
+		}
+		db, err := sql.Open("sqlite", "file:"+filepath.ToSlash(path))
+		if err != nil {
+			t.Fatal(err)
+		}
+		// Test-only corruption the one-transaction rebind cannot produce.
+		if _, err := db.Exec(`DELETE FROM lane_handoff_receipts`); err != nil {
+			t.Fatal(err)
+		}
+		_ = db.Close()
+		laneHandoffFailpoint = func(string) {}
+		if _, err := recoverLaneHandoff(ctx, f.recoverRequest(t), f.deps()); err == nil || !strings.Contains(err.Error(), "refusing to guess") {
+			t.Fatalf("BOUND without receipt: err=%v, want a corruption report", err)
 		}
 	})
 	t.Run("abandon_command_arguments", func(t *testing.T) {
