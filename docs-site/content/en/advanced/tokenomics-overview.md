@@ -103,7 +103,7 @@ The 1M-context models (Opus 5.5, GLM-5.3) recommend handoff at 50%. A wider wind
 
 ## Model Tier Routing
 
-What concretizes Layer B's routing is the model profile policy. MoAI-ADK v3.0 excludes Haiku from the routing model set and distributes work across a 3-tier structure keyed to task character — Sonnet on single-shot rows, Opus across the agentic ladder, with the higher effort levels reserved for the rows that judge (auditing, advising, coordinating). The rationale for this design and the profile matrix implementation are covered in the next two pages.
+What concretizes Layer B's routing is the model profile policy. MoAI-ADK v3.0 excludes Haiku from the routing model set and distributes work across a 3-tier structure keyed to task character — Sonnet on single-shot rows, Opus across the agentic ladder, with the higher effort levels concentrated on the rows that judge (auditing, advising, coordinating). The rationale for this design and the profile matrix implementation are covered in the next two pages.
 
 - [3-Tier Agent Architecture](/en/advanced/no-haiku-3tier/) — why Haiku is excluded, DeepSWE leaderboard rationale
 - [Profile Matrix](/en/advanced/profile-matrix/) — the single 3-column per-agent profile matrix

@@ -451,7 +451,7 @@ MoAI-ADK 提供为智能体分配最优 AI 模型的性能层级系统 —— �
 |------|------|
 | **high** | 最高质量 —— 与 medium 相同，只有 `builder-harness` 和 `e2e-tester` 两个智能体的 effort 高一级 |
 | **medium** (默认) | 质量与成本的平衡 —— 成本/评分曲线的拐点 |
-| **low** | 每任务成本最低 —— 大多数 agentic 智能体降到 Opus `medium`（`super-advisor` 保持 `high`），Sonnet 用于单次调用的行和 `e2e-tester` |
+| **low** | 每任务成本最低 —— 审计与协调行降到 `medium`，`builder-harness` 降到 Opus `low`(`super-advisor` 与 `mission-governor` 保持 `high`)，Sonnet 用于单发行和 `e2e-tester` |
 
 ```bash
 # 初始化时设置

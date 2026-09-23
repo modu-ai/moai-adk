@@ -525,7 +525,7 @@ MoAI-ADK assigns the optimal model and reasoning depth to each agent. The goal i
 |------|------|
 | **high** | Highest quality — same as medium except that `builder-harness` and `e2e-tester` run one effort level higher |
 | **medium** (default) | Balance of quality and cost — the knee of the cost/score curve |
-| **low** | Lowest cost per task — most agentic agents drop to Opus `medium` (`super-advisor` stays at `high`), and Sonnet covers the single-shot rows plus `e2e-tester` |
+| **low** | Lowest cost per task — the auditing and coordinating rows drop to `medium` and `builder-harness` to Opus `low` (`super-advisor` and `mission-governor` stay at `high`), and Sonnet covers the single-shot rows plus `e2e-tester` |
 
 ### How to Configure
 

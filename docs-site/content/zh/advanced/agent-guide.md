@@ -95,7 +95,7 @@ MoAI-ADK 使用 **13 个核心智能体**（12 个 MoAI 自定义 + 1 个 Anthro
 {{< callout type="info" >}}
 **4 级 token 成本层级**（{{< icon flash danger >}} max · {{< icon flash warn >}} high · {{< icon flash primary >}} medium · {{< icon flash muted >}} low）：`model: inherit` 继承父会话模型，effort 决定推理 token 的预算。
 
-上表数值是**随附的 frontmatter**，它固定在[配置矩阵](/zh/advanced/profile-matrix/)的 `medium` 列上，使全新部署与默认配置文件保持一致。切换配置文件会重写这些数值 — 在 `high` 下，`manager-develop` 与 `super-advisor` 移到 `max`（仅这两格使用它），在 `low` 下代理式行降到 `low`，同时 `manager-docs` 与 `e2e-tester` 回退到 Sonnet。可用 `moai model profile` 查看活动配置文件下解析出的数值。
+上表数值是**随附的 frontmatter**，它固定在[配置矩阵](/zh/advanced/profile-matrix/)的 `medium` 列上，使全新部署与默认配置文件保持一致。切换配置文件会重写这些数值 — 在 `high` 下只有 `builder-harness` 与 `e2e-tester` 提高一级（没有任何一格使用 `max`），在 `low` 下审计与协调行降到 `medium`，`builder-harness` 降到 `low`，`e2e-tester` 改用 Sonnet。可用 `moai model profile` 查看活动配置文件下解析出的数值。
 {{< /callout >}}
 
 ## Manager-Develop 领域上下文注入

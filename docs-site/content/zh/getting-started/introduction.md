@@ -145,10 +145,10 @@ MoAI-ADK 为每个智能体分配最优的模型与推理深度。目标是在�
 |------|------|
 | **high** | 最高质量 —— 与 medium 相同，只有 `builder-harness` 和 `e2e-tester` 两个智能体的 effort 高一级 |
 | **medium**（默认） | 质量与成本的平衡 |
-| **low** | 每任务成本最低 —— 大多数智能体行降到 Opus `medium`（`super-advisor` 保持 `high`），Sonnet 用于单发行和 `e2e-tester` |
+| **low** | 每任务成本最低 —— 审计与协调行降到 `medium`，`builder-harness` 降到 Opus `low`(`super-advisor` 与 `mission-governor` 保持 `high`)，Sonnet 用于单发行和 `e2e-tester` |
 
 {{< callout type="info" >}}
-默认档位是 **medium**。调整档位也不会换模型等级，只改变各智能体的 Opus 推理深度。`low` 让大多数智能体行保持 Opus `medium`，只在单发行和 `e2e-tester` 上用 Sonnet；`high` 只把 `builder-harness` 和 `e2e-tester` 两个智能体的 effort 比 medium 提高一级。任何档位都没有 `max` 单元格。通过 `--model-policy` 标志或初始化向导设置。
+默认档位是 **medium**。调整档位主要改变各智能体的 Opus 推理深度，唯一换模型的是在 `low` 下改用 Sonnet 的 `e2e-tester`。`low` 把审计与协调行降到 `medium`、`builder-harness` 降到 `low`，只在单发行和 `e2e-tester` 上用 Sonnet；`high` 只把 `builder-harness` 和 `e2e-tester` 两个智能体的 effort 比 medium 提高一级。任何档位都没有 `max` 单元格。通过 `--model-policy` 标志或初始化向导设置。
 {{< /callout >}}
 
 ### 执行模式与编排

@@ -525,9 +525,9 @@ MoAI-ADK는 에이전트마다 가장 알맞은 모델과 추론 깊이를 배�
 
 | 정책 | 특징 |
 |------|------|
-| **high** | 최고 품질 — medium과 같되 `builder-harness`와 `e2e-tester` 두 에이전트만 effort를 한 단계 올립니다 |
+| **high** | 최고 품질 — medium과 같되 `builder-harness`·`e2e-tester` 두 에이전트만 effort 한 단계 위 |
 | **medium** (기본) | 품질과 비용의 균형 |
-| **low** | 작업당 최저 비용 — 에이전틱 에이전트는 대부분 Opus `medium`으로 내려가고(`super-advisor`는 `high` 유지), Sonnet은 단발성 행과 `e2e-tester`에 |
+| **low** | 작업당 최저 비용 — 감사·조율 행은 `medium`, `builder-harness`는 Opus `low`로 내려가고(`super-advisor`·`mission-governor`는 `high` 유지), Sonnet은 단발성 행과 `e2e-tester`에 |
 
 ### 설정 방법
 

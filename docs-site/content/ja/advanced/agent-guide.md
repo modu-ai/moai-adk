@@ -96,7 +96,7 @@ MoAI-ADK は **13 個のコアエージェント** (12 個の MoAI カスタム 
 {{< callout type="info" >}}
 **4 段のトークンコストティア** ({{< icon flash danger >}} max · {{< icon flash warn >}} high · {{< icon flash primary >}} medium · {{< icon flash muted >}} low): `model: inherit` は親セッションのモデルを継承し、effort が推論トークンの予算を決めます。
 
-上記の値は **配布時の frontmatter** であり、新規デプロイがデフォルトプロファイルと一致するように[プロファイルマトリクス](/ja/advanced/profile-matrix/)の `medium` 列に固定されています。プロファイルを切り替えるとこれらの値は書き換わります — `high` では `manager-develop` と `super-advisor` が `max`(それを使う唯一の 2 セル)に移り、`low` ではエージェンティック行が `low` に下がり、`manager-docs` と `e2e-tester` は Sonnet にフォールバックします。アクティブプロファイルで解決された値は `moai model profile` で確認してください。
+上記の値は **配布時の frontmatter** であり、新規デプロイがデフォルトプロファイルと一致するように[プロファイルマトリクス](/ja/advanced/profile-matrix/)の `medium` 列に固定されています。プロファイルを切り替えるとこれらの値は書き換わります — `high` では `builder-harness` と `e2e-tester` だけが 1 段階上がり(`max` を使うセルはありません)、`low` では監査・調整の行が `medium` に、`builder-harness` が `low` に下がり、`e2e-tester` は Sonnet に移ります。アクティブプロファイルで解決された値は `moai model profile` で確認してください。
 {{< /callout >}}
 
 ## Manager-Develop ドメインコンテキスト注入
