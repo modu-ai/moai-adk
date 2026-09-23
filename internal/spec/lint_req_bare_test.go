@@ -98,6 +98,30 @@ func TestParseREQsBare_DoesNotReachListBullets(t *testing.T) {
 	}
 }
 
+// Negative control: the `—`/`:` separator is REQUIRED, and this guard is what
+// holds it. Making it optional changes nothing any other guard measures, yet it
+// admits 1279 further corpus lines — the separator is the piece that separates
+// "this line states a requirement" from "this line names one".
+//
+// The header shape below is real and currently uncollected: a bare REQ header
+// whose statement lives on the NEXT line (565 such headers across 29 spec.md
+// files, measured 2026-09-23). Collecting it is out of this card's scope; what
+// this guard fixes in place is that it is not collected BY ACCIDENT, through a
+// separator that quietly became optional.
+//
+// Provenance: SPEC-AGENCY-ABSORB-001 spec.md:107-108.
+func TestParseREQsBare_RequiresASeparator(t *testing.T) {
+	for _, line := range []string{
+		"**REQ-ROUTE-001 (Event-Driven)**",
+		"**REQ-PRB-001**",
+		"REQ-PRB-002",
+	} {
+		if reqBareWidePattern.MatchString(line) {
+			t.Errorf("bare pattern matched a separator-less line: %q", line)
+		}
+	}
+}
+
 // Negative control: the three existing shapes MUST NOT be double-collected by
 // the bare collector — each line still yields exactly one entry, with the
 // Source its own collector assigns.
