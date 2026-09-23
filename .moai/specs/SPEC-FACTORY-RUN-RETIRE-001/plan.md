@@ -44,11 +44,19 @@ the decisions most expensive to reverse first.
   `platformPIDState`, and the existing `migrateFactoryV1ToV2` migration shape are all in service and
   are the intended building blocks.
 - File set owned by this SPEC: `internal/homestate/factory.go`, `internal/homestate/runtime.go`, a
-  new `internal/homestate/factory_run_retire.go`, `internal/factorymsg/store.go`,
-  `internal/cli/launch_exec_windows.go` (the REQ-002b restamp call site),
-  `internal/cli/factory_handoff_recover.go` (the existing `moai factory` command group), a new
-  `test/integration/harness/it08_factory_run_retire_test.go`, plus package tests. Files owned by
-  t1082 and t1109 are listed in spec.md §E; touching one halts with a blocker report.
+  new `internal/homestate/factory_run_retire.go`, `internal/factorymsg/store.go`, a new
+  **build-tag-free** `internal/cli/factory_run_owner.go` (the REQ-002b restamp seam),
+  `internal/cli/launch_exec_windows.go` and `internal/cli/codex_launcher.go` (the two call sites
+  that invoke that seam), `internal/cli/factory_handoff_recover.go` (the existing `moai factory`
+  command group), a new `test/integration/harness/it08_factory_run_retire_test.go`, plus package
+  tests. Files owned by t1082 and t1109 are listed in spec.md §E; touching one halts with a blocker
+  report.
+- **`codex_launcher.go` joined the set at v0.4.0** (the pane door, D11). It is not in either sibling
+  card's set: t1082 owns `factory_lane_handoff*.go`, `handoff*.go`, `mcp_codex.go`,
+  `defaults.go`; t1109 owns `hook/factory_messages*.go`. Re-confirm before integration.
+- **`codex_direct_posix.go` and `codex_direct_windows.go` are deliberately NOT in the set.** Each is
+  covered by an existing rule because its shape matches an executed door (spec.md §A.1), so neither
+  needs an edit. Their absence is a stated conclusion, not an oversight.
 - **Overlap status, stated honestly**: this tree cannot establish non-overlap with t1082, because
   t1082's files do not exist here. The zero-overlap figure is the team lead's measurement against
   t1082's own worktree (2026-09-23), cited as that. Re-confirm before integration, and treat the
@@ -73,23 +81,34 @@ its verbatim output, attributed to that run and that tree.
   transaction. The caller supplies `os.Getpid()` and `homestate.CurrentProcessFingerprint()`.
 - Add the `retired` status value and a `run.retired` event kind. Retirement is an `UPDATE` of
   `status`; the row is never deleted (REQ-010).
-- **Decision recorded here for review — the owner is the SESSION process, and the platform branch is
-  explicit.** On POSIX `syscall.Exec` preserves PID and start time, so the launcher stamp already
-  IS the session identity and no restamp is needed. On Windows `child.Start()` creates a distinct
-  session process, so the launcher restamps the row with `child.Process.Pid` + `childFingerprint` —
-  the same two values it already hands `registerFactoryLaunchPending`
-  (`launch_exec_windows.go:50,55`) — immediately after the child's identity is probed live and
-  before the peer registration.
+- **Decision recorded here for review — the owner is the SESSION process, and the branch is by
+  DOOR SHAPE, not by platform.** Three shapes, one rule (spec.md §A.1):
+  - **replace** (`launch_exec_posix.go:33`, `codex_direct_posix.go:34`) — `syscall.Exec` preserves
+    PID and start time, so the record-time stamp already IS the session identity. No restamp.
+  - **spawn** (`launch_exec_windows.go:54`, `codex_direct_windows.go:24`) — the launcher restamps
+    with `child.Process.Pid` + `childFingerprint`, the same two values it already hands
+    `registerFactoryLaunchPending`, right after the child's identity is probed live.
+  - **pane** (`codex_launcher.go:230`) — the launcher restamps with the tmux pane identity that
+    `defaultCodexSpawnPaneIdentity` has already resolved live, before it returns and exits.
 
-  An earlier draft claimed one unconditional stamp worked on both shapes. That was measured false
-  (spec.md §A.1): a Windows launcher killed while its child survives would probe dead and its live
-  session's run would be retired, and the column and the peer fallback would name different
-  processes. The branch costs about ten lines at one call site and removes both.
+- **The seam carries no build tag, and that is load-bearing, not tidiness.** Put the restamp in a
+  new `internal/cli/factory_run_owner.go` taking `(root, runID, pid, fingerprint)`; the three call
+  sites each pass the identity they resolved. Writing it inside `launch_exec_windows.go` would trap
+  it behind `//go:build windows`, where a darwin host cannot compile a call to it — and the pane
+  door that needs the identical restamp is on darwin. That is D15.
+
+  An earlier draft claimed one unconditional stamp worked on every shape. That was measured false
+  (spec.md §A.1) on spawn and again on pane: a launcher that dies while its session survives leaves
+  a stamped identity that probes dead, its live session's run gets retired, and the column and the
+  peer fallback name different processes. One seam plus three call sites removes all of it.
 
   The pre-restamp window is correct rather than tolerated: between `RecordRun` and the restamp the
   launcher IS the only process, so a launch that fails in that window leaves a row whose stamped
   owner dies with it and is correctly reaped — which is exactly the rejected-alternative (e)
-  rationale the stamped column exists for.
+  rationale the stamped column exists for. On the pane door that window is wider — from
+  `recordFactoryRunStart` (`codex_launcher.go:515`) until the pane identity resolves inside
+  `runCodexLaunch` — and REQ-002d governs its failure exit: refuse, and leave no run carrying the
+  launcher's identity.
 
 ### M2 — The liveness predicate and the reconciler (new interface)
 
@@ -119,14 +138,24 @@ its verbatim output, attributed to that run and that tree.
 - Extend the existing `moai factory` command group (`internal/cli/factory_handoff_recover.go`
   `newFactoryCommand`) with `runs`: list every run with status, owner classification, and
   timestamps; `--retire <run-id>` retires exactly the named run and refuses when its owner is
-  classified `live` (REQ-009).
+  classified `live` **or `indeterminate`** (REQ-005, which binds every retirement path — the command
+  shares the reconciler's predicate rather than carrying a second, laxer copy of it. The laxer copy
+  was defect D14).
 - No interactive prompt: the subagent boundary forbids it, and the command is operator-invoked.
 
-### M5 — Three-door execution evidence
+### M5 — Door execution evidence, pane door included
 
-- Exercise `moai cc -f`, `moai glm -f`, and `moai codex -f` in the isolated sandbox and capture the
-  `runs` table after each. This milestone exists because the three doors were **read, not run**
-  during reproduction; re-reading the source does not close it.
+- Exercise `moai cc -f`, `moai glm -f`, `moai codex -f`, and **`moai codex -f --spawn`** in the
+  isolated sandbox, capturing the `runs` table plus the stamped owner against the run's lead peer
+  after each (AC-011). This milestone exists because every door was **read, not run** during
+  reproduction; re-reading the source does not close it.
+- The `--spawn` leg needs a live tmux server in the sandbox. Where the sandbox cannot provide one,
+  that is a **blocker report naming the obstacle**, never a silent downgrade to a source read — the
+  pane door is the one this SPEC's scope was extended to cover.
+- Exercise the REQ-002d refusal too (AC-012): force the identity resolver to fail, then confirm the
+  launch exits non-zero and no `runs` row carries the launcher's PID.
+- `codex_direct_posix.go` / `codex_direct_windows.go` are **not** executed here; spec.md §A.1
+  asserts each is covered by shape match, and that assertion is what discharges them.
 
 ### M6 — Migration, mutation, and cross-platform placement
 

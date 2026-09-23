@@ -1,7 +1,7 @@
 ---
 id: SPEC-FACTORY-RUN-RETIRE-001
 title: "Factory run retirement — owner-liveness reconciliation so a dead lead's run leaves 'active'"
-version: "0.3.0"
+version: "0.4.0"
 status: draft
 created: 2026-09-23
 updated: 2026-09-23
@@ -54,27 +54,47 @@ Two further facts, measured in this tree, shape the prescription:
    `ProcessStart` into the per-run broker database (`peers` table, `internal/factorymsg/store.go`).
    This is the t1074 PID-plus-start-identity convention, already in service.
 
-### A.1 The two launch shapes name different processes
+### A.1 Three launch shapes, five call sites
 
-Measured at `bb5b8f9d1` in this tree:
+There are **five** `registerFactoryLaunchPending` call sites in this tree, in **three** shapes. The
+axis is the **door's launch shape**, not the platform — two of the three shapes appear on darwin.
 
-- `internal/cli/launch_exec_posix.go:33` registers `os.Getpid()` +
-  `homestate.CurrentProcessFingerprint()` — the **launcher**. `syscall.Exec` then replaces that
-  process, preserving both the PID and the process start time, so the launcher identity *becomes*
-  the session identity. Launcher and session are one process.
-- `internal/cli/launch_exec_windows.go:50,55` registers `child.Process.Pid` + `childFingerprint` —
-  the **child**. Here launcher and session are two distinct processes with distinct identities.
+| Call site | Identity registered | The launching process afterwards | Shape |
+|---|---|---|---|
+| `internal/cli/launch_exec_posix.go:33` | launcher PID + `CurrentProcessFingerprint()` | replaced by `syscall.Exec` — launcher **is** the session | **replace** |
+| `internal/cli/codex_direct_posix.go:34` | launcher PID, then `syscall.Exec` | replaced — launcher **is** the session | **replace** |
+| `internal/cli/launch_exec_windows.go:54` | `child.Process.Pid` + `childFingerprint` | blocks in `child.Wait()` for the session's life | **spawn** |
+| `internal/cli/codex_direct_windows.go:24` | child PID, then `cmd.Wait()` | blocks for the session's life | **spawn** |
+| `internal/cli/codex_launcher.go:230` | **tmux pane PID** (`#{pane_pid}`) + its fingerprint | **exits immediately** | **pane** |
 
-A first draft of this SPEC asserted that stamping the recording process was valid on both shapes
-with no per-platform branch. That premise is **false on Windows** and it breaks the live-run
-protection directly: a Windows launcher killed while its child session survives would leave a
-stamped identity that probes dead, and reconciliation would retire a run whose session is still
-live. It would also put the stamped column and the peer fallback on *different processes*, so the
-primary source and the fallback source could disagree about the same run.
+**The two `codex_direct_*` sites are covered, and the coverage is asserted rather than assumed.**
+`codex_direct_posix.go:34` is the replace shape: `syscall.Exec` preserves PID and start time, so the
+record-time stamp already names the session, exactly as `launch_exec_posix.go:33` does.
+`codex_direct_windows.go:24` is the spawn shape: it registers the child and then blocks in
+`cmd.Wait()`, exactly as `launch_exec_windows.go:54` does, so REQ-002b's restamp covers it
+unmodified. Neither needs a rule of its own — but neither may be left unnamed either: a reader who
+finds five call sites and a SPEC discussing two would reasonably conclude three were missed.
 
-The SPEC therefore fixes the identity **semantically**: the owner of a run is the **session
-process** — the process the `role='lead'` peer already names — and the platform branch that makes
-the stamp name it is explicit (REQ-002b) rather than assumed away.
+**The pane shape is the uncovered one.** At `codex_launcher.go:230` the registered identity is the
+**tmux pane's** process (`tmuxPanePID` → `#{pane_pid}`), resolved live by
+`defaultCodexSpawnPaneIdentity` — a process that is neither the launcher nor a child of it, and that
+outlives the launcher entirely. The launcher meanwhile reaches `recordFactoryRunStart`
+(`codex_launcher.go:515`) **before** `runCodexLaunch` opens the pane, and then returns and exits.
+So a record-time stamp on this door names a process that is already gone by the time anyone reads
+it, while the session it was supposed to describe runs on in the pane. Reconciliation would classify
+that owner dead and **retire a live session's run** — precisely the boundary this SPEC exists to
+protect. `codex_launcher.go` carries no build tag, so this hole is on **darwin**.
+
+Control proving the axis is door-shape and not platform: `moai cc -f --spawn` is safe, because
+`cc.go:153-155` returns before `recordFactoryRunStart` at `cc.go:191` — the spawning process never
+records a run at all; the spawned session records its own.
+
+A first draft of this SPEC asserted that stamping the recording process was valid on every shape
+with no per-platform branch. That premise is false on both the spawn and the pane shapes, and it
+breaks the live-run protection directly. The SPEC therefore fixes the identity **semantically**: the
+owner of a run is the **session process** — the process the `role='lead'` peer already names — and
+every door whose launching process is not that session restamps to it (REQ-002b), or refuses to
+launch when no session identity can be obtained (REQ-002d).
 
 ### A.2 The three-OS green path exists, and it lands after the merge
 
@@ -120,12 +140,17 @@ is written against the table above.
 - **REQ-002** (Event-driven): **When** a factory run start is recorded, the factory state shall
   stamp the recording process's PID and its process-start fingerprint onto that run's row in the
   same transaction that writes the row.
-- **REQ-002b** (Capability gate): **Where** the host's launch shape spawns a child session process
-  instead of replacing the launching process, the launcher shall restamp the run's owner identity
-  with the spawned session process's PID and fingerprint before that session becomes reachable — so
-  that on every platform the stamped identity and the registered `role='lead'` peer identity name
-  the **same** process, and the REQ-006 fallback can never disagree with the REQ-002 primary about
-  which process owns a run.
+- **REQ-002b** (Capability gate): **Where** a launch door does not replace the launching process
+  with the session process — the **spawn** shape (a child the launcher waits on) and the **pane**
+  shape (a tmux pane the launcher leaves running) alike — the launcher shall restamp the run's owner
+  identity with that session process's PID and fingerprint before the session becomes reachable, so
+  that on every door the stamped identity and the registered `role='lead'` peer identity name the
+  **same** process and the REQ-006 fallback can never disagree with the REQ-002 primary about which
+  process owns a run.
+- **REQ-002d** (Event-driven): **When** a launch door that does not replace the launching process
+  cannot obtain a live session identity, the launcher shall refuse the launch and shall leave no run
+  stamped with the launching process's identity — because that identity is known in advance to die,
+  and a run carrying it would be retired while its session is alive.
 - **REQ-003** (Ubiquitous): The owner-liveness predicate shall classify a run's owner as exactly one
   of `live`, `dead`, or `indeterminate`, using PID **together with** process-start identity — a
   bare PID probe is insufficient because process ids are reused.
@@ -141,8 +166,12 @@ is written against the table above.
 - **REQ-004** (Event-driven): **When** factory run resolution observes more than one active run,
   the resolver shall first retire every active run whose owner is classified `dead`, then re-resolve
   over the remaining active runs.
-- **REQ-005** (Unwanted): The reconciler shall not retire a run whose owner is classified `live` or
-  `indeterminate`.
+- **REQ-005** (Unwanted): **No retirement path** — the resolution-time reconciler, the legacy-row
+  migration pass, and the operator maintenance command alike — shall retire a run whose owner is
+  classified `live` **or** `indeterminate`. The invariant is stated once, for every path, because
+  stating it twice is what let the two copies drift: an earlier draft bound the reconciler to
+  `live` *and* `indeterminate` while binding the command to `live` only, which made the operator
+  command able to retire an unprobeable run and made §F's "never to retiring a live run" false.
 - **REQ-006** (Event-driven): **When** a run row carries no owner stamp — the shape of every row
   written before this SPEC lands — the reconciler shall take the run's registered `role='lead'` peer
   identity (PID plus process start) as the liveness source, and shall classify the owner
@@ -165,14 +194,18 @@ is written against the table above.
 - **REQ-008** (Event-driven): **When** the operator invokes the factory run maintenance command, the
   CLI shall report every active run with its owner classification, and shall retire a run only when
   the operator names that run id explicitly.
-- **REQ-009** (Unwanted): The maintenance command shall not retire a run whose owner is classified
-  `live`, regardless of the operator naming it.
+> **REQ-009 is retired into REQ-005 and the number is deliberately not reused.** It stated the
+> live-run protection a second time, for the operator command only, and the narrower copy is the
+> D14 defect itself. The gap in the numbering is kept rather than closed by renumbering, because
+> renumbering would break every traceability reference already written against REQ-010..REQ-014.
 
 ### Doors, tests, platforms
 
-- **REQ-011** (Ubiquitous): Run recording and run resolution shall behave identically at the three
-  lead entry doors — `moai cc -f`, `moai glm -f`, and `moai codex -f` — each of which reaches the
-  same recorder.
+- **REQ-011** (Ubiquitous): Run recording and run resolution shall satisfy REQ-002b at **every**
+  lead entry door — `moai cc -f`, `moai glm -f`, `moai codex -f`, and `moai codex -f --spawn` —
+  covering all five `registerFactoryLaunchPending` call sites enumerated in §A.1 across all three
+  launch shapes. A door is covered either by an executed observation or by an explicit statement
+  that its shape matches an executed one; an unnamed door is not a covered door.
 - **REQ-012** (Ubiquitous): Every test or reproduction that opens factory state shall isolate
   `HOME`, `MOAI_HOME`, and the launched-binary path (`MOAI_CLAUDE_BIN`), and shall use a project
   directory outside this repository's worktree set, because `homestate.CanonicalProjectRoot`
@@ -182,7 +215,11 @@ is written against the table above.
   darwin, linux, and windows via the three-OS `test-integration` job, and the SPEC shall state
   which results exist before the card integrates and which arrive after. The exercise shall live at
   `test/integration/harness/` behind `//go:build integration` — the one path that job runs — and
-  shall be verified to be actually selected there, not merely present (§A.2).
+  shall be verified to be actually selected there, not merely present (§A.2). Additionally, the
+  REQ-002b restamp shall be reachable through a **build-tag-free seam** taking an already-resolved
+  `(runID, pid, fingerprint)`, so the restamp behaviour is exercisable from any host. A restamp
+  written only inside `launch_exec_windows.go` would sit behind `//go:build windows` and could not
+  be exercised on darwin at all — and the pane door needing that same restamp **is** on darwin.
 
 ## §C Design Decision — the retirement mechanism
 
@@ -202,7 +239,7 @@ Why this one:
 - It preserves fail-closed behaviour (REQ-014). Reconciliation only ever *reduces* the active set by
   removing provably dead owners; ambiguity that survives it is real ambiguity.
 
-An explicit operator command (REQ-008/009) ships alongside it, not as an alternative: a run whose
+An explicit operator command (REQ-008, bound by REQ-005) ships alongside it, not as an alternative: a run whose
 owner is `indeterminate` is never auto-retired by design (REQ-005), so without a deliberate operator
 surface such a row would be permanently unremovable. The command shares the one liveness predicate;
 it is a second entry to the same mechanism, not a second mechanism.
@@ -253,6 +290,39 @@ examined, so the bias buys no additional safety here — only a second column an
 Should the run phase find a concrete case where (a) misclassifies a live session as dead, that
 finding reopens this sub-decision rather than being worked around: (b) is the standing fallback, and
 the case is the evidence that would justify its cost.
+
+### C.2 Sub-decision — what the pane door stamps
+
+The pane door raises the question the lead posed: what identity can this door **honestly** stamp,
+given the launcher exits immediately?
+
+**It can stamp the pane's process, and that answer needs no invention** —
+`defaultCodexSpawnPaneIdentity` (`codex_launcher.go:242`) already resolves exactly the value
+required: it polls `tmuxPanePID` until `homestate.ProbeProcessIdentity` reports the pane process
+`live` with a non-empty fingerprint, within a 2-second deadline, and hands that pair to
+`registerFactoryLaunchPending`. Those are the same two values REQ-002b wants, already probed live,
+already on the happy path. The pane shape therefore takes the **same rule** as the spawn shape —
+restamp with the session identity — and the only thing that differs is *where* the identity comes
+from. This is why REQ-002b is generalized to "does not replace the launching process" rather than
+given a third clause: one behaviour, three doors.
+
+**The ordering is the part that needs stating.** `recordFactoryRunStart` (`codex_launcher.go:515`)
+runs before `runCodexLaunch` opens the pane, so at record time no session exists to name. The
+record-time stamp is therefore the launcher, correct only for the instant it describes, and the
+restamp at the pane-identity site is what makes it true. A launch that dies between those two points
+leaves a run stamped with a dead launcher — which reconciliation correctly reaps, since no session
+was ever reachable.
+
+**When no identity is obtainable, refuse — do not stamp a process known to be dying.** That is
+REQ-002d, and it matches what the code already does on its failure path: on identity error
+`defaultCodexSpawnLaunch` kills the pane (`codexSpawnCleanupPaneFn`) and returns the joined error.
+REQ-002d adds the run-state half of that refusal — the run must not be left carrying the launcher's
+identity — which the current code has no reason to do because it has no run stamp to clean up yet.
+
+Rejected for this door: **deferring the stamp and leaving the run unstamped**. An unstamped run is
+`indeterminate` under REQ-006, so it is never auto-retired (REQ-005) and accumulates as exactly the
+residue this SPEC exists to drain — it converts a live-run hazard into a permanent-blocking one
+rather than removing it.
 
 ## §D Gaps carried from the reproduction
 
@@ -322,7 +392,12 @@ Each Gap in `.moai/reports/t1107/verdict.md` §4 is dispositioned here:
 - Same-package semantic clash with t1082 on `internal/factorymsg/store.go` — see §E.
 - `ProbeProcessIdentity` returns `indeterminate` on any probe error. A host where probing routinely
   fails would never auto-retire anything; this degrades to today's behaviour plus an explicit
-  operator surface, and never to retiring a live run.
+  operator surface, and never to retiring a live run. That last clause is now true **by
+  construction** rather than by assertion: REQ-005 binds every retirement path, the operator command
+  included, so there is no longer a surface that accepts `indeterminate` (the D14 defect).
+- **Pane-door restamp is designed, not measured here.** The identity values REQ-002b needs are
+  already resolved live by `defaultCodexSpawnPaneIdentity`, but no `moai codex -f --spawn` launch
+  was executed during plan phase; AC-011 makes that an executed observation in the run phase.
 - Linux one-second fingerprint resolution (REQ-003b) leaves a narrow same-second PID-reuse case
   indistinguishable. It resolves toward `live`, so the failure mode is a surviving stale run — which
   has the `--factory-run` escape — never a retired live one.
@@ -334,7 +409,7 @@ iter-1 and declined on the team lead's routing:
 
 | Finding | Why declined |
 |---|---|
-| **D7** — REQ ids are not monotonically ordered (REQ-002b/002c/003b/013b interleave) | The suffix form keeps each requirement adjacent to the one it refines; renumbering would break the traceability already written into `acceptance.md` §D.3 for no reader gain. |
+| **D7** — REQ ids are not monotonically ordered (`REQ-002b`, `REQ-002d`, `REQ-003b` interleave, and `REQ-009` is now a gap) | The suffix form keeps each requirement adjacent to the one it refines, and the `REQ-009` gap is deliberate (see §B); renumbering would break the traceability already written into `acceptance.md` §D.3 for no reader gain. |
 | **D8** — verification-verb classification in the AC matrix is uneven | The matrix column is a reader's index, not a contract; each AC's own Given-When-Then carries the binding form. |
 | **D9** — REQ-002 states a transaction constraint (an implementation detail) at the requirement layer | Deliberate: an owner stamp written outside the row's own transaction can be lost against the row it describes, which is an observable behaviour, not an internal choice. |
 | **D10** — one measurement is attributed in both §A and §A.1 | The duplication is between a summary and its detail section; removing either costs a reader the attribution at the point of use. |
@@ -345,8 +420,8 @@ iter-1 and declined on the team lead's routing:
   authored from the reproduced defect in `.moai/reports/t1107/verdict.md`.
 - 2026-09-23 — v0.2.0 — manager-spec — plan-audit iter-1 FAIL revision. D1: the "one stamp, no
   per-platform branch" premise was measured false on Windows and removed; the owner is respecified
-  as the **session process** with an explicit restamp (REQ-002b/002c) and a new rejected
-  alternative (f). D2: REQ-013/013b respecified against the measured CI shape, with the
+  as the **session process** with an explicit restamp (REQ-002b) and a new rejected
+  alternative (f). D2: REQ-013 respecified against the measured CI shape, with the
   post-integration deferral named in §F. D4: the zero-overlap claim restated as what this tree
   actually shows, with the lead's measurement cited to its source. D5: three GEARS aspect labels
   corrected. D6: linux fingerprint resolution folded in as REQ-003b. D7-D10 recorded as accepted
@@ -357,3 +432,30 @@ iter-1 and declined on the team lead's routing:
   pre-merge leg — which asserts the test is actually *selected*, not merely present — and a
   non-gating post-merge leg. §C.1 added: the D1 sub-decision recording option (a) chosen and option
   (b) rejected with reasons.
+- 2026-09-23 — v0.4.0 — manager-spec — plan-audit iter-2 FAIL revision (verdict pinned to
+  `c1ae8ff5e`; `320cdeb90` was an unexamined successor). **D11**: §A.1 rewritten around the five
+  `registerFactoryLaunchPending` call sites in three launch shapes; REQ-002b generalized from
+  "spawns a child" to "does not replace the launching process", so it covers the tmux **pane** door
+  (`codex_launcher.go:230`) as well; REQ-002d added for the refuse-when-no-identity path; §C.2 added
+  recording what the pane door stamps and why; the two `codex_direct_*` sites are asserted covered
+  by shape match rather than left implicit; REQ-011 restated over all five sites. Scope EXTENDED by
+  operator decision — the auditor's suggested narrowing was rejected. **D14**: the live-run
+  invariant is now stated once (REQ-005) binding every retirement path including the operator
+  command; the narrower `REQ-009` is retired into it and its number left as a deliberate gap.
+  **D12**: AC-013 leg 2's green condition changed from "reports a result" (which a failing run also
+  satisfies) to `success` on all three jobs — verified still-present at `320cdeb90` rather than
+  assumed fixed. **D15**: REQ-013 gains the build-tag-free restamp seam, so AC-016 can assert the
+  spawn and pane shapes from darwin. **D17**: the four dead `002c` / `013b` tokens removed.
+  **D13**: R-02's transcribed stdout corrected from `*(empty)*` to `0`.
+- **Provenance correction (iter-2, D17).** The two retired strings quoted in this bullet —
+  `REQ-002c` and `REQ-013b` — appear here as **quotations of removed text, not as live
+  references**; they resolve to nothing, which is the point being recorded. The v0.2.0 entry above
+  previously paired each with its surviving sibling, and the v0.3.0 work described "merging
+  REQ-002c into REQ-002b" as a consolidation. That description was wrong and is corrected here:
+  both retired strings were
+  **intermediate drafting states within a single uncommitted editing session** and never existed in
+  any committed tree — `bb5b8f9d1` included. The "merge to stay at 16" was therefore bookkeeping
+  rather than a real consolidation, and it left the dead tokens D17 found. The consolidation
+  performed in v0.4.0 (REQ-009 into REQ-005) is of a different kind: it removes a **shipped**
+  duplicate statement of one invariant whose two copies had measurably drifted, which is the D14
+  defect itself.

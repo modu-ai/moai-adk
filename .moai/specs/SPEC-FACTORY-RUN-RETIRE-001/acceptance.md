@@ -42,7 +42,7 @@ not because the criterion is unsatisfiable.
 | id | command | verbatim stdout | exit | why red |
 |----|---------|-----------------|------|---------|
 | R-01 | `grep -c lead_pid internal/homestate/factory.go` | `0` | 1 | the owner-identity column is not in the `runs` DDL |
-| R-02 | `grep -c "factorySchemaVersion = 3" internal/homestate/factory.go` | *(empty)* | 1 | schema is still at version 2 |
+| R-02 | `grep -c "factorySchemaVersion = 3" internal/homestate/factory.go` | `0` | 1 | schema is still at version 2 |
 | R-03 | `grep -rn migrateFactoryV2ToV3 internal/homestate` | *(empty)* | 1 | no v2→v3 migration exists, so no legacy row can be reconciled |
 | R-04 | `grep -c retired internal/homestate/runtime.go` | `0` | 1 | no `retired` status value and no `run.retired` event are written anywhere |
 | R-05 | `grep -rn ReconcileActiveRuns internal/homestate` | *(empty)* | 1 | the reconciler does not exist |
@@ -67,13 +67,13 @@ which is the exact failure `verification-completeness.md` §2 warns about.
 | AC-007 | REQ-006 | M2/M6 | release-blocking | R-03 | M1 migration + M2 peer fallback retire the legacy rows |
 | AC-008 | REQ-007 | M3 | release-blocking | R-05 | M3 adds classifications to the ambiguity error text |
 | AC-009 | REQ-014 | M3 | release-blocking | R-05 | M3 preserves both sentinels through the new path |
-| AC-010 | REQ-008/009 | M4 | release-blocking | R-06 | M4 adds `moai factory runs` and its refuse-live branch |
-| AC-011 | REQ-011 | M5 | release-blocking | R-08 | M5 executes `moai glm -f` and records the result |
-| AC-012 | REQ-011 | M5 | release-blocking | R-08 | M5 executes `moai codex -f` and records the result |
+| AC-010 | REQ-008, REQ-005 | M4 | release-blocking | R-06 | M4 adds `moai factory runs` and its refuse branch, refusing both `live` and `indeterminate` |
+| AC-011 | REQ-011 | M5 | release-blocking | R-08 | M5 executes all four lead doors, pane door included, one evidence row each |
+| AC-012 | REQ-002d | M5 | release-blocking | R-08 | M5 exercises the no-identity refusal and shows no launcher-stamped run survives it |
 | AC-013 | REQ-013 | M6 | leg 1 release-blocking / leg 2 post-merge | R-07 | M6 places the exercise under the three-OS path; leg 1 green is `--- PASS: TestFactoryRunRetire` locally, leg 2 is the develop-push run |
 | AC-014 | REQ-012 | M1-M6 | release-blocking | R-05 | each exercise records its isolation evidence |
 | AC-015 | REQ-004/005 | M6 | release-blocking | R-05 | M6 mutation, both directions |
-| AC-016 | REQ-002b/002c | M1 | release-blocking | R-01 | M1 restamp makes stamp and lead peer name one process |
+| AC-016 | REQ-002b, REQ-013 | M1 | release-blocking | R-01 | M1 restamp makes stamp and lead peer name one process, driven through the build-tag-free seam on all three shapes |
 
 ## §D Acceptance Criteria (Given-When-Then)
 
@@ -122,20 +122,43 @@ which is the exact failure `verification-completeness.md` §2 warns about.
   and given two `active` runs with live owners, Then it fails with `AMBIGUOUS_FACTORY`. Neither case
   returns a run id.
 
-- **AC-010** Given a sandbox with one live-owner and one dead-owner `active` run, When
-  `moai factory runs` is invoked, Then its output names both runs with their status and owner
-  classification; and When `moai factory runs --retire <live-owner-run-id>` is invoked, Then it exits
-  non-zero, the run remains `active`, and the message names liveness as the reason.
+- **AC-010** Given a sandbox holding one live-owner, one dead-owner, and one **indeterminate-owner**
+  `active` run, When `moai factory runs` is invoked, Then its output names all three with their
+  status and owner classification; and When `--retire` is invoked against each in turn, Then the
+  live-owner run is refused, **the indeterminate-owner run is refused**, and only the dead-owner run
+  is retired — each refusal exiting non-zero, leaving the run `active`, and naming its classification
+  as the reason.
 
-- **AC-011** Given the isolated sandbox, When `moai glm -f` is **executed** (not read) and the
-  `runs` table is captured immediately afterwards, Then `progress.md` records the invocation, its
-  exit code, and the verbatim table — and states whether the glm door exhibits the same
-  record-without-retirement behaviour as the `cc` door. The criterion is satisfied only by a
-  recorded invocation; quoting `internal/cli/glm.go:242` does not satisfy it.
+  The indeterminate leg is the D14 defect: an earlier draft bound the command to `live` alone, which
+  let a deliberate `--retire` reach a run whose owner could not be probed — the same live-run
+  retirement the reconciler is forbidden from performing, arrived at through the operator surface
+  instead. REQ-005 now binds every path, so this criterion and AC-006 assert one invariant on two
+  surfaces rather than two invariants that can drift apart.
 
-- **AC-012** Given the isolated sandbox, When `moai codex -f` is **executed** and the `runs` table is
-  captured immediately afterwards, Then `progress.md` records the invocation, its exit code, and the
-  verbatim table, with the same source-citation exclusion as AC-011.
+- **AC-011** Given the isolated sandbox, When **each** lead door is **executed** (not read) and the
+  `runs` table is captured immediately afterwards, Then `progress.md` carries one row per door —
+  invocation, exit code, verbatim `runs` table, and the stamped `lead_pid` / `lead_process_start`
+  against the run's `role='lead'` peer identity. The doors, matching `spec.md` §A.1:
+
+  | Door | Shape | Obligation |
+  |---|---|---|
+  | `moai cc -f` | replace | executed |
+  | `moai glm -f` | replace | executed |
+  | `moai codex -f` | replace | executed |
+  | `moai codex -f --spawn` | **pane** | executed — this is the D11 door; it is the one whose stamp must survive the launcher exiting |
+
+  The criterion is satisfied only by recorded invocations; quoting `internal/cli/glm.go:242` or
+  `codex_launcher.go:230` does not satisfy it. The two `codex_direct_*` sites are **not** listed as
+  executed: `spec.md` §A.1 asserts each is covered because its shape matches an executed door, and
+  that assertion — not silence — is what discharges them.
+
+- **AC-012** Given a launch through a door that does not replace the launching process, When the
+  session identity cannot be obtained (the pane-identity resolver exhausting its deadline, or the
+  spawned child failing its liveness probe), Then the launch is refused with a non-zero exit **and**
+  no `runs` row is left carrying the launching process's PID — verified by querying
+  `lead_pid` for that run id after the refusal and finding either no row or a row not naming the
+  launcher. A refusal that cleans up the pane but leaves the run stamped fails this criterion:
+  that residue is the D11 defect with the launch merely failing earlier.
 
 - **AC-013** — two legs with different timing; only the first gates the merge.
 
@@ -151,8 +174,13 @@ which is the exact failure `verification-completeness.md` §2 warns about.
 
   **Leg 2 — post-merge, confirmation only, NOT a merge gate.** Given leg 1 passed and the card's
   branch has merged, When the develop push triggers `test-integration`, Then jobs
-  `Integration Tests (ubuntu-latest)`, `(macos-latest)`, and `(windows-latest)` each report a
-  result, recorded by run id in `progress.md`.
+  `Integration Tests (ubuntu-latest)`, `(macos-latest)`, and `(windows-latest)` each report
+  conclusion **`success`** — recorded by run id in `progress.md`, together with the per-job
+  conclusions read from `gh run view <id> --json jobs`.
+
+  "Reports a result" is deliberately **not** the condition: a FAILING job also reports a result, so
+  that wording would be satisfied by the very outcome this criterion exists to catch. (This was the
+  wording at `320cdeb90`; re-read there rather than assumed resolved.)
 
   **Why leg 2 cannot gate the merge.** `ci.yml` triggers on `push: [main, develop]` and
   `pull_request: [main]` — there is no `pull_request` trigger for `develop`, and this project does
@@ -166,14 +194,22 @@ which is the exact failure `verification-completeness.md` §2 warns about.
   created lives only under the sandbox `MOAI_HOME` and carries a project key that is not this
   repository's — recorded as the directory listing plus the key.
 
-- **AC-016** Given a run recorded through a **spawn-shaped** launch (the Windows shape, exercised
-  under test by driving the restamp path directly rather than by requiring a Windows host), When the
-  run row and the run's `role='lead'` peer are both read, Then the `lead_pid` /
-  `lead_process_start` on the row equal the `pid` / `process_start` on the peer — the two sources
-  name one process. And given a **replace-shaped** launch (the POSIX `syscall.Exec` shape), Then the
-  same equality holds without a restamp. A design in which the row names the launcher while the peer
-  names the child fails this criterion: that divergence is the D1 defect this SPEC was revised to
-  remove, and it is the shape that would retire a live session's run.
+- **AC-016** Given a run recorded through each of the three launch shapes, When the run row and the
+  run's `role='lead'` peer are both read, Then the row's `lead_pid` / `lead_process_start` equal the
+  peer's `pid` / `process_start` — the two sources name one process — for **replace** (no restamp
+  needed), **spawn** (restamped to the child), and **pane** (restamped to the tmux pane process).
+
+  **The restamp seam must be build-tag-free for this criterion to be assertable at all.** A restamp
+  living only in `launch_exec_windows.go` sits behind `//go:build windows`, so a darwin host cannot
+  even compile a call to it, and the criterion would be unrunnable on the one platform where the
+  pane door actually exists. The seam therefore takes an already-resolved `(runID, pid, fingerprint)`
+  and carries no build tag; the platform files and the pane door each supply the identity they
+  resolved. This criterion drives that seam directly with fixture identities, so it runs on any host
+  and asserts all three shapes — no Windows host and no live tmux server required.
+
+  A design in which the row names the launcher while the peer names the session fails this
+  criterion. That divergence is the D1 defect on the spawn shape and the D11 defect on the pane
+  shape — the same failure twice, and the shape that retires a live session's run.
 
 ## §D.1 Mutation criteria (both directions)
 
@@ -201,14 +237,18 @@ actually selected by the integration path.
 
 ## §D.3 Traceability
 
-REQ-001→AC-001 · REQ-002→AC-001 · REQ-002b→AC-016 · REQ-003→AC-003 · REQ-003b→AC-003 ·
-REQ-004→AC-004/AC-015b · REQ-005→AC-005/AC-006/AC-015a · REQ-006→AC-007 · REQ-007→AC-008 ·
-REQ-008→AC-010 · REQ-009→AC-010 · REQ-010→AC-002 · REQ-011→AC-011/AC-012 · REQ-012→AC-014 ·
-REQ-013→AC-013 (both legs) · REQ-014→AC-009.
+REQ-001→AC-001 · REQ-002→AC-001 · REQ-002b→AC-016 · REQ-002d→AC-012 · REQ-003→AC-003 ·
+REQ-003b→AC-003 · REQ-004→AC-004/AC-015b · REQ-005→AC-005/AC-006/AC-010/AC-015a · REQ-006→AC-007 ·
+REQ-007→AC-008 · REQ-008→AC-010 · REQ-010→AC-002 · REQ-011→AC-011 · REQ-012→AC-014 ·
+REQ-013→AC-013 (both legs) + AC-016 (the seam) · REQ-014→AC-009.
+
+`REQ-009` is absent by design — retired into REQ-005 at v0.4.0, its number left as a gap rather than
+closed by renumbering (`spec.md` §B).
 
 Every one of the 16 REQs in `spec.md` §B has at least one AC; every one of the 16 ACs traces to at
 least one REQ. Both counts sit exactly at the Tier M budget ceiling (16 requirements, 16 acceptance
-criteria, applied independently per `spec-workflow.md` § SPEC Complexity Tier).
+criteria, applied independently per `spec-workflow.md` § SPEC Complexity Tier) — see § D.5 for how
+each count was held there, and for the alternative if either consolidation is judged cosmetic.
 
 ## §D.4 Definition of Done
 
@@ -221,3 +261,36 @@ criteria, applied independently per `spec-workflow.md` § SPEC Complexity Tier).
 - No file from the t1082 or t1109 sets appears in `git diff --name-only` against the base.
 - The `AMBIGUOUS_FACTORY` and `NO_ACTIVE_FACTORY` sentinels still appear in resolution failures
   (AC-009), so no downstream matcher is silently broken.
+
+## §D.5 Budget disclosure — how both counts stayed at 16, and what the alternative is
+
+Scope **increased** at v0.4.0 by operator decision (the pane door). Recording the arithmetic openly,
+because a ceiling met by renumbering is a hidden scope cut and the previous "merge to stay at 16"
+was exactly that (`spec.md` §H, provenance correction).
+
+**Requirements: 16 + 1 − 1 = 16.**
+
+- **+1** `REQ-002d` — the refuse-when-no-identity path. New behaviour, distinct trigger; it cannot
+  fold into REQ-002b, which states a restamp.
+- **−1** `REQ-009` retired into `REQ-005`. This is a **substantive** consolidation, not bookkeeping:
+  REQ-005 and REQ-009 stated one invariant — never retire a run that is not provably dead — on two
+  surfaces, and the two copies had **measurably drifted** (REQ-005 covered `live` and
+  `indeterminate`; REQ-009 covered `live` only). That drift *is* defect D14. Stating the invariant
+  once, binding every retirement path, removes the defect by construction rather than patching the
+  narrower copy and leaving the duplication in place to drift again.
+
+**Acceptance criteria: 16 + 1 − 1 = 16.**
+
+- **+1** `AC-012` reassigned to the REQ-002d refusal path (it previously carried the codex-door
+  execution).
+- **−1** the codex-door execution folded into `AC-011`, which now carries one evidence row per lead
+  door. This is substantive for the same reason: the old AC-011/AC-012 pair named **two** doors
+  while REQ-011 now governs **five call sites across four doors**, so a two-criterion split was
+  already incomplete against its own requirement. One criterion with a complete row set is a
+  correction, not a compression.
+
+**If the lead judges either consolidation cosmetic, the honest counts are 17 requirements and/or 17
+acceptance criteria, and the correct response is to tier this SPEC up to L — not to renumber.**
+Tier L raises both ceilings to 25 and adds `design.md` + `research.md` to the artifact set, and
+raises the plan-auditor PASS threshold from 0.80 to 0.85. That call is the lead's; this section
+exists so it is made on the arithmetic rather than on a number that was already made to fit.
