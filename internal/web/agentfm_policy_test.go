@@ -169,9 +169,10 @@ func TestAgentFMPolicy_InvalidValuesRejected(t *testing.T) {
 			form := baseSaveForm()
 			form.Set(tc.field, tc.value)
 			rec := servePost(t, a.routes(), "/save", form)
-			if rec.Code != http.StatusBadRequest {
-				t.Fatalf("POST /save (%s=%s) = %d, want 400", tc.field, tc.value, rec.Code)
+			if rec.Code != http.StatusOK {
+				t.Fatalf("POST /save (%s=%s) = %d, want 200", tc.field, tc.value, rec.Code)
 			}
+			assertValidationRejectBanner(t, rec.Body.String())
 			if after := readLLMYAML(t, root); string(after) != string(before) {
 				t.Errorf("llm.yaml mutated by a rejected %s post", tc.field)
 			}

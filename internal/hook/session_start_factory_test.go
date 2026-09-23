@@ -9,19 +9,19 @@ import (
 	"github.com/modu-ai/moai-adk/internal/kanban"
 )
 
-// TestFactoryGuideNamesAgentJoinInEveryLocale pins t868: the CLI accepts
-// `-f agent` (join as the next free agent-<n>), so every locale's entry guide
-// must name that form alongside the numbered `-f lane-<n>` form, and the lane
-// naming sentence must cover agent-<n> lanes too.
-func TestFactoryGuideNamesAgentJoinInEveryLocale(t *testing.T) {
+// TestFactoryGuideNamesWorkerJoinInEveryLocale pins t868: the CLI accepts
+// `-f worker` (join as the next free worker-<n>), so every locale's entry guide
+// must name that form alongside the numbered `-f worker-<n>` form, and the lane
+// naming sentence must cover worker-<n> lanes too.
+func TestFactoryGuideNamesWorkerJoinInEveryLocale(t *testing.T) {
 	for lang, m := range factoryLocales {
-		for _, want := range []string{"`moai %[2]s -f agent`", "`moai %[2]s -f lane-<n>`", "agent-<n>"} {
+		for _, want := range []string{"`moai %[2]s -f worker`", "`moai %[2]s -f worker-<n>`", "worker-<n>"} {
 			if !strings.Contains(m.entryGuide, want) {
 				t.Errorf("%s entryGuide missing %q:\n%s", lang, want, m.entryGuide)
 			}
 		}
-		if !strings.Contains(m.leadManual, "agent-<n>") {
-			t.Errorf("%s leadManual does not name agent-<n> lanes:\n%s", lang, m.leadManual)
+		if !strings.Contains(m.leadManual, "worker-<n>") {
+			t.Errorf("%s leadManual does not name worker-<n> lanes:\n%s", lang, m.leadManual)
 		}
 	}
 }
@@ -38,8 +38,8 @@ func TestFactoryBootstrapNoticeSilentForOrdinarySession(t *testing.T) {
 
 // TestFactoryLeadNoticeCarriesLaneLinesSocketAndEntryGuide is the AC bundle
 // for the lead notice (t118): N lane launch lines carrying the incremental
-// `-f lane-<i>` form, the entry-point guidance naming `moai glm -f <N>` and
-// the `-f lane-<n>` form, the per-lane fan-out line, the leader socket
+// `-f worker-<i>` form, the entry-point guidance naming `moai glm -f <N>` and
+// the `-f worker-<n>` form, the per-lane fan-out line, the leader socket
 // path, and the run id alongside the session name that must match it.
 func TestFactoryLeadNoticeCarriesLaneLinesSocketAndEntryGuide(t *testing.T) {
 	t.Setenv(config.EnvMoaiLaunchProvider, "")
@@ -55,11 +55,11 @@ func TestFactoryLeadNoticeCarriesLaneLinesSocketAndEntryGuide(t *testing.T) {
 		// The lead is named by its bare role (t133): the run id lives in the
 		// header line above, not in the session name.
 		"named lead.",
-		"moai cc -f lane-1",
-		"moai cc -f lane-2",
-		"moai cc -f lane-3",
+		"moai cc -f worker-1",
+		"moai cc -f worker-2",
+		"moai cc -f worker-3",
 		"moai glm -f",
-		"moai cc -f lane-<n>",
+		"moai cc -f worker-<n>",
 		"starts a Claude factory lead",
 		"Every lane can run up to 10 agents concurrently in parallel.",
 		"/tmp/moai-socket-factory/abc123",
@@ -70,7 +70,7 @@ func TestFactoryLeadNoticeCarriesLaneLinesSocketAndEntryGuide(t *testing.T) {
 	}
 	// The count must be exact — an off-by-one fan-out misaddresses lanes.
 	// The launch lines are NUMBERED; the entry guide's generic
-	// `moai cc -f lane-<n>` mention is not a launch line, so the count
+	// `moai cc -f worker-<n>` mention is not a launch line, so the count
 	// matches digits only.
 	if got := len(factoryLaunchLineRe.FindAllString(notice, -1)); got != 3 {
 		t.Errorf("launch line count = %d, want 3:\n%s", got, notice)
@@ -78,9 +78,9 @@ func TestFactoryLeadNoticeCarriesLaneLinesSocketAndEntryGuide(t *testing.T) {
 }
 
 // factoryLaunchLineRe matches exactly the per-lane launch lines of the
-// factory lead notice (`moai cc -f lane-<i>`, i a number) — the entry
-// guide's `lane-<n>` placeholder is excluded by the digit class.
-var factoryLaunchLineRe = regexp.MustCompile(`moai cc -f lane-[0-9]+`)
+// factory lead notice (`moai cc -f worker-<i>`, i a number) — the entry
+// guide's `worker-<n>` placeholder is excluded by the digit class.
+var factoryLaunchLineRe = regexp.MustCompile(`moai cc -f worker-[0-9]+`)
 
 // TestFactoryLeadNoticeWorkerCountDrivesLineCount asserts N drives the line
 // count directly (the v1 no-upper-bound rule: any N >= 1 prints N lines).
@@ -113,38 +113,38 @@ func TestFactoryLeadNoticeEmptyWithoutRunID(t *testing.T) {
 // since the launcher's stderr note is gone by the time the TUI takes the
 // screen. The exact-sentence assertion also pins the (label, count) argument
 // order of the workerJoin format: the pre-t118 formats carried %d before %s
-// while the call passed the label first, rendering %!d(string=lane-4) —
-// a Contains("lane-4") assertion passed right through that garbage, so the
+// while the call passed the label first, rendering %!d(string=worker-4) —
+// a Contains("worker-4") assertion passed right through that garbage, so the
 // whole sentence is asserted here.
 func TestFactoryWorkerNoticeNamesLabel(t *testing.T) {
 	clearKanbanEnv(t)
 
-	t.Setenv(config.EnvMoaiFactoryWorker, "lane-4")
+	t.Setenv(config.EnvMoaiFactoryWorker, "worker-4")
 	t.Setenv(config.EnvMoaiFactoryWorkers, "3")
 
 	// Card t224: the notice is the join line PLUS the standing spawn authority
 	// (appended, never substituted) — assert the join line as a prefix-presence
 	// rather than whole-output equality.
 	got := factoryBootstrapNotice("", langEnglish)
-	if !strings.HasPrefix(got, "Factory Mode: joined a 3-lane run as lane-4.") {
+	if !strings.HasPrefix(got, "Factory Mode: joined a 3-lane run as worker-4.") {
 		t.Errorf("lane notice missing the join line prefix:\n%s", got)
 	}
 	if !strings.Contains(got, "Standing spawn authority") {
 		t.Errorf("lane notice lost the standing spawn authority:\n%s", got)
 	}
 
-	// The incremental `-f lane-<n>` form carries no count (workers=0); the
+	// The incremental `-f worker-<n>` form carries no count (workers=0); the
 	// count-less sentence must render, not fabricate a fan-out size and not
 	// leak a bad verb.
 	t.Setenv(config.EnvMoaiFactoryWorkers, "0")
 	if got := factoryBootstrapNotice("", langEnglish); !strings.HasPrefix(got,
-		"Factory Mode: joined the factory run as lane-4.") {
+		"Factory Mode: joined the factory run as worker-4.") {
 		t.Errorf("count-less lane notice missing the join line prefix:\n%s", got)
 	}
 
 	// A malformed label emits nothing (fail-open, mirroring the companion
 	// branch) — no error, no notice.
-	t.Setenv(config.EnvMoaiFactoryWorker, "not-a-lane-label")
+	t.Setenv(config.EnvMoaiFactoryWorker, "not-a-worker-label")
 	if got := factoryBootstrapNotice("", langEnglish); got != "" {
 		t.Errorf("malformed lane label must emit nothing, got:\n%s", got)
 	}
@@ -158,13 +158,13 @@ func TestFactoryWorkerNoticeLocaleWordOrders(t *testing.T) {
 	clearKanbanEnv(t)
 
 	for _, lang := range []string{"en", "ko", "ja", "zh"} {
-		got := factoryWorkerNotice("lane-2", 5, lang)
-		if !strings.Contains(got, "lane-2") || !strings.Contains(got, "5") ||
+		got := factoryWorkerNotice("worker-2", 5, lang)
+		if !strings.Contains(got, "worker-2") || !strings.Contains(got, "5") ||
 			strings.Contains(got, "%!") {
 			t.Errorf("locale %q worker join rendered wrong: %q", lang, got)
 		}
-		gotNoCount := factoryWorkerNotice("lane-2", 0, lang)
-		if !strings.Contains(gotNoCount, "lane-2") || strings.Contains(gotNoCount, "%!") {
+		gotNoCount := factoryWorkerNotice("worker-2", 0, lang)
+		if !strings.Contains(gotNoCount, "worker-2") || strings.Contains(gotNoCount, "%!") {
 			t.Errorf("locale %q count-less join rendered wrong: %q", lang, gotNoCount)
 		}
 	}
@@ -235,10 +235,10 @@ func TestFactoryLeadNoticeCarriesDispatchDiscipline(t *testing.T) {
 	clearKanbanEnv(t)
 
 	root := t.TempDir()
-	// lane-2 claimed by THIS test process — a pid that is genuinely alive,
+	// worker-2 claimed by THIS test process — a pid that is genuinely alive,
 	// so slot 2 reads busy without a probe seam.
 	if err := kanban.SaveFactoryRegistry(kanban.FactoryRegistryPath(root), map[string]kanban.FactoryWorkerEntry{
-		"lane-2": kanban.NewFactoryWorkerEntry(),
+		"worker-2": kanban.NewFactoryWorkerEntry(),
 	}); err != nil {
 		t.Fatalf("seed registry: %v", err)
 	}
@@ -256,7 +256,7 @@ func TestFactoryLeadNoticeCarriesDispatchDiscipline(t *testing.T) {
 		"cache-aware-execution directive 2",
 		"FACTORY fan-out only",
 		"CLAUDE_CODE_WORKFLOW_PREFIX_STAGGER_MS",
-		"Free lane slots right now: lane-1, lane-3.",
+		"Free lane slots right now: worker-1, worker-3.",
 	} {
 		if !strings.Contains(notice, want) {
 			t.Errorf("lead notice missing dispatch-discipline token %q:\n%s", want, notice)
@@ -288,7 +288,7 @@ func TestFactoryLeadNoticeDispatchDisciplineKorean(t *testing.T) {
 		"`/loop`",
 		"plan -> run -> sync",
 		"CLAUDE_CODE_WORKFLOW_PREFIX_STAGGER_MS",
-		"현재 빈 레인 슬롯: lane-1, lane-2.",
+		"현재 빈 레인 슬롯: worker-1, worker-2.",
 	} {
 		if !strings.Contains(notice, want) {
 			t.Errorf("ko lead notice missing dispatch-discipline token %q:\n%s", want, notice)
