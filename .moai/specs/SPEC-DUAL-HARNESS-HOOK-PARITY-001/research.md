@@ -65,7 +65,7 @@ What each Stop wrapper invokes (static grep of the wrapper bodies):
 | handle-security-turn.sh | `moai hook security-turn` (async) | 5 | advisory |
 | handle-security-commit.sh | `moai hook security-commit` (async) | 5 | advisory |
 | handle-codex-review-gate.sh | `moai hook codex-review-gate` | 900 | required-gate (config-conditional) |
-| handle-multi-review-gate.sh | `moai hook multi-review-gate` | 900 | required-gate (config-conditional) |
+| handle-multi-review-gate.sh | `moai hook multi-review-gate` | 900 | required-gate (config-conditional) — superseded by design.md §D3.3: `fail-open-on-missing` (plan-audit iter-3 R1); the dated proposal is kept as measured |
 | handle-harness-observe-stop.sh | `moai hook harness-observe-stop` (inside `{{ if .HookOptIn.Enabled }}`) | 5 | advisory |
 
 Correction (v0.2.0, plan-audit iter-1 D2): the v0.1.0 table recorded "—" for the last three
@@ -296,13 +296,30 @@ Added in v0.4.0 (plan-audit iter-3 R3), from a grep of every `_test.go` under
   stderr classification for PreCompact, PostCompact, and PermissionRequest (`:82–84`). It is
   amended only if M2e gives those events a stderr class.
 
+Added in v0.5.0 (plan-audit iter-4 S2), from a grep of `internal/cli` tests for
+`should have [0-9]+ subcommands` and for `hookCmd.Commands()`:
+
+- `internal/cli/hook_test.go:61–75` `TestHookCmd_SubcommandCount` and
+  `internal/cli/hook_pre_push_test.go:370–387` `TestHookCmd_PrePushSubcommandCount` both pin
+  `len(hookCmd.Commands()) == 43` (`:73`, `:386`). The M2e `moai hook interrupt` subcommand makes
+  44. M2e updates both counts and adds a comment line naming this SPEC.
+- `internal/cli/hook_e2e_test.go:289` `TestHookValidEventTypes_AllHaveSubcommands`: its reverse
+  check (`:352–387`) fails for any subcommand that neither maps to an `EventType` nor appears in
+  `utilitySubcmds` (`:359`). `internal/hook` has no Interrupt event type, and AC-HPR-011 keeps it
+  that way, so M2e adds `interrupt` to `utilitySubcmds`.
+- The other `hookCmd.Commands()` loops (`internal/cli/misc_coverage_test.go:154` and following)
+  look up named subcommands and pin no count or set; they are not amended.
+- Any further `moai hook` subcommand decided in M2d (the codex review runner or the sync-gate
+  port, if either lands under `moai hook`) amends the same three tests again (plan.md M2d).
+
 Examined and not amended:
 
 - `internal/codexadapter/dispatcher_registration_test.go` skips rows with an empty `DispatcherArg`
   (`:40–47`). Once Interrupt carries `interrupt`, the test requires that subcommand to be
   registered in `internal/cli/hook.go` — a check the M2e `moai hook interrupt` subcommand
   satisfies, not an amendment.
-- The remaining grep hits (`hook_e2e_test.go`, `hook_test.go`, `codex_job_control_test.go`,
+- The remaining grep hits (`hook_e2e_test.go` and `hook_test.go` apart from the three tests
+  listed above under v0.5.0, which the v0.4.0 pass misfiled here, then `codex_job_control_test.go`,
   `codex_live_protocol_probe_test.go`, `preference/m4_crash_repro_test.go`,
   `internal/template/settings_test.go`) concern the Claude-side dispatcher, the codex app-server
   `turn/interrupt` RPC, or the Claude settings template, none of which this SPEC changes.

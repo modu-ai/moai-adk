@@ -144,8 +144,18 @@ missing or stale, its reason names the runner command, so the next turn produces
 The Codex member 6 evaluates in the same order as Claude (`:56–61`):
 
 1. gate disabled → allow, on both harnesses;
-2. `stop_hook_active` set → allow, on both harnesses (evaluated when the Codex payload carries the
-   field; whether Codex's Stop payload carries it is a live fact, not measured here);
+2. `stop_hook_active` set → allow, on both harnesses (Claude `:71–72`). Step 2 is evaluated
+   before any receipt read, so it also precedes step 7. **Step 2 is the only bound on the step-7
+   continuation:** member 6 carries no turn counter, ceiling, or retry limit (unlike the goal member,
+   which has its turn ceiling), so on Codex, as on Claude, a continued turn gets one more Stop and
+   then allows. The field's presence in the Codex Stop payload is measured: the captured payload
+   `.moai/specs/SPEC-CODEX-HOOK-ADAPTER-001/testdata/hook-payloads/Stop.json:9` carries
+   `"stop_hook_active": false`, and `TestGoldenStopCarriesStopHookActive`
+   (`internal/codexadapter/golden_test.go:118–128`) pins the field. What is **not** measured is
+   whether Codex sets the value to `true` on the Stop that follows a hook-driven continuation; that
+   needs a live run, which stays `NOT_RUN` under operator decision Q5. If Codex never sets it, the
+   step-7 continuation is unbounded on Codex — recorded as a live-unmeasured host fact, not assumed
+   away. AC-HPR-002 carries a `stop_hook_active: true` golden and a skip-step-2 mutation;
 3. no reviewable change (the same `reviewGateChangeDetector` predicate, `:48`, `:74–76`) → allow,
    on both harnesses;
 4. codex binary missing (the same `codexLookPath` lookup, `internal/cli/mcp_codex.go:457`) → allow
@@ -158,8 +168,12 @@ The Codex member 6 evaluates in the same order as Claude (`:56–61`):
    the runner command. This never allows (fail-closed).
 
 Step 7 is the Codex counterpart of Claude running the review in-hook. §D3.4 declares it as the same
-mapping used for the goal member: neither harness lets the stop through before a review verdict for
-the current tree exists.
+mapping used for the goal member. The claim is narrower than "no allow without a verdict": Claude
+does allow without a review verdict, at step 2 (`stop_hook_active`, `:71–72`) and when the review
+call errors (`:95–101`). What holds is this: at `stop_hook_active: false`, with the gate enabled, a
+reviewable change, and codex installed, neither harness allows the stop before the review call has
+completed for the current tree — on Claude the call runs in-hook, and on Codex the runner's receipt
+records its outcome (`inconclusive` on a call error, mirroring `:95–101`).
 
 **Self-gates before receipts (plan-audit iter-3 R2).** A member that does not apply on Claude must
 not apply on Codex. So the Codex chain evaluates each gate's own applicability predicates in-hook,
@@ -174,8 +188,20 @@ before any receipt compare, and allows when they do not hold:
   no recognised language marker (`:227–231`) and no code-file delta in `HEAD~1..HEAD`
   (`:233–253`). The Codex member evaluates the same predicates, in the same order, before reading
   the receipt. Only when all of them hold does it require the receipt; a missing, stale, or failing
-  receipt then continues or blocks exactly as the rows of §D3.4 say. The blocking opt-out
-  (`MOAI_SYNC_GATE_BLOCKING`, `:386–395`) is read on both harnesses (REQ-HPR-005).
+  receipt then continues or blocks exactly as the rows of §D3.4 say, subject to the
+  `stop_hook_active` rule below. The blocking opt-out (`MOAI_SYNC_GATE_BLOCKING`, `:386–395`) is
+  read on both harnesses (REQ-HPR-005).
+
+  **`stop_hook_active` on the sync gate (plan-audit iter-4 S1).** A Codex receipt is the analogue
+  of Claude's stored gate record, not of a run that executes the checks: the gate command already
+  ran out of hook. Claude never re-delivers a stored block on a turn whose stdin carries
+  `"stop_hook_active": true` — it exits 0 with no state change
+  (`internal/template/templates/.claude/hooks/moai/sync-phase-quality-gate.sh:484–486`; header
+  `:53–56`), and the next turn without the flag re-delivers it. So a fresh `fail` receipt with
+  `stop_hook_active: true` → **allow** on Codex, with no receipt or state change; the next Stop
+  without the flag blocks again. The same header states that "the flag never suppresses the
+  output of a run that executes the checks" (`:55–56`). The Codex analogue of that run is the
+  missing or stale receipt, so that case keeps its `unmeasured` continuation whatever the flag says.
 - **Codex review gate (member 6).** Steps 1–4 above.
 - **Goal (member 3).** "No goal armed" allows before any receipt lookup, on both harnesses (already
   a golden).
@@ -201,14 +227,16 @@ of member 1 (telemetry prune, reflection, evidence gate, `stop.go:59–79`) stay
 | condition ran and failed | `unmet` | `unmet` (receipt present, failing exit) | yes (identical) |
 | condition passed | `met` → allow | `met` → allow (receipt present, exit 0, all fields equal) | yes (identical) |
 | condition not measured on this tree state | (does not arise: Claude runs it in-hook) | `unmeasured` → continuation naming the command to run | **yes, declared mapping `unmeasured` ↔ `unmet`**: both continue the turn, and neither may allow the stop |
-| required gate (sync gate) failed | `gate_failed` → block | `gate_failed` → block (receipt shows fail) | yes (identical) |
+| required gate (sync gate) failed, `stop_hook_active: false` | `gate_failed` → block (a fresh run, or the stored block re-delivered) | `gate_failed` → block (receipt shows fail) | yes (identical) |
+| required gate (sync gate) failed and already recorded, `stop_hook_active: true` | allow; the stored block is not re-delivered on that turn and no state changes (`sync-phase-quality-gate.sh:484–486`, header `:53–56`) | allow (fresh `fail` receipt); the receipt is not changed, and the next Stop without the flag blocks | yes (identical) |
 | required gate (sync gate) not measured, self-gate holds (HEAD is a sync-phase commit with a code delta) | (does not arise: Claude runs it in-hook) | `unmeasured` → continuation naming the gate command | yes, same declared mapping as above |
 | sync gate, self-gate does not hold (HEAD is not a sync-phase commit, or no language marker, or no code delta) | allow, silent (`sync-phase-quality-gate.sh:207–218`, `:227–231`, `:233–253`) | allow; the receipt is not read | yes (identical) |
 | codex review gate (member 6), gate disabled, `stop_hook_active`, or no reviewable change | allow (`codex_review_gate.go:68–76`) | allow; the receipt is not read | yes (identical) |
 | codex review gate (member 6), **codex binary missing** | allow, fail-open (`codex_review_gate.go:78–80`) | allow, fail-open, **plus** a discard record and reason text naming the missing reviewer | yes (identical decision). The Codex-only diagnostic is an addition to the output, not a different decision |
 | codex review gate (member 6), codex installed, review FAIL | block (`:103–107`) | block (fresh receipt, verdict `fail`) | yes (identical) |
 | codex review gate (member 6), codex installed, review pass, inconclusive, or call error | allow (`:95–101`, `:109`) | allow (fresh receipt, verdict `pass` or `inconclusive`) | yes (identical) |
-| codex review gate (member 6), codex installed, **receipt missing or stale** | (does not arise: Claude runs the review in-hook) | `unmeasured` → continuation naming the review runner command | **yes, declared mapping `unmeasured` ↔ review ran in-hook**: neither harness allows the stop before a review verdict for the current tree exists |
+| codex review gate (member 6), codex installed, **receipt missing or stale** | (does not arise: Claude runs the review in-hook) | `unmeasured` → continuation naming the review runner command | **yes, declared mapping `unmeasured` ↔ review ran in-hook**: at `stop_hook_active: false`, neither harness allows the stop before the review call has completed for the current tree (Claude still allows without a verdict at step 2 and on a call error, `:95–101`; the Codex runner records that error as `inconclusive`) |
+| codex review gate (member 6), codex installed, `stop_hook_active: true` (receipt missing, stale, `fail`, or `pass`) | allow (step 2, `codex_review_gate.go:71–72`, before the reviewer lookup and the review call) | allow (step 2, before any receipt read) | yes (identical). Step 2 is the only bound on the step-7 continuation (§D3.3) |
 | multi review gate (member 7), result present and blocking | block | block | yes (identical) |
 | multi review gate (member 7), result present and passing | allow | allow | yes (identical) |
 | multi review gate (member 7), **result missing** | allow, fail-open (`multi_review_gate.go:47, :79`) | allow, fail-open, **plus** a discard record and reason text naming the missing result | yes (identical decision). The Codex-only diagnostic is an addition to the output, not a different decision |
@@ -216,8 +244,10 @@ of member 1 (telemetry prune, reflection, evidence gate, `stop.go:59–79`) stay
 The AC-HPR-002 goldens encode this table. Any other pairing fails the golden, including a Codex
 `allow` against a Claude continuation, a Codex `unmeasured` from the goal, the sync gate, or member
 6 that allows the stop, a Codex sync gate that requires a receipt when HEAD is not a sync-phase
-commit, a member-6 allow while codex is installed and the receipt is missing or stale, and a
-missing-result or missing-reviewer allow that writes no discard record.
+commit, a member-6 allow while codex is installed and the receipt is missing or stale, a member-6
+continuation or block at `stop_hook_active: true`, a Codex sync gate that blocks on a fresh `fail`
+receipt at `stop_hook_active: true`, and a missing-result or missing-reviewer allow that writes no
+discard record.
 
 ### §D3.5 Aggregate budget rule for the single Codex Stop handler (option B; resolves D11)
 
