@@ -143,12 +143,12 @@ MoAI-ADK は各エージェントに最適なモデルと推論の深さを割�
 
 | ティア | 特徴 |
 |------|------|
-| **high** | 最高品質 — 呼び出し頻度が最も低い 2 エージェントに `max` の推論の深さ |
+| **high** | 最高品質 — medium と同じだが、`builder-harness` と `e2e-tester` の 2 エージェントだけ effort を 1 段階上げる |
 | **medium** (デフォルト) | 品質とコストのバランス |
-| **low** | 課題あたり最低コスト — エージェンティックなエージェントは Opus `low` effort まで下がり、Sonnet は単発の行のみ |
+| **low** | 課題あたり最低コスト — エージェンティックなエージェントの多くは Opus `medium` まで下がり（`super-advisor` は `high` を維持）、Sonnet は単発の行と `e2e-tester` に |
 
 {{< callout type="info" >}}
-デフォルトのティアは **medium** です。ティアを調整してもモデルクラスは変わらず、各エージェントの Opus 推論の深さだけが変わります。`low` はエージェンティック行をすべて Opus `low` effort に保ち単発の行でのみ Sonnet を使い、`high` は呼び出し頻度が最も低い 2 エージェントを `max` effort に引き上げます。`--model-policy` フラグまたは初期化ウィザードで設定します。
+デフォルトのティアは **medium** です。ティアを調整してもモデルクラスは変わらず、各エージェントの Opus 推論の深さだけが変わります。`low` はエージェンティック行の多くを Opus `medium` に置き、単発の行と `e2e-tester` でのみ Sonnet を使い、`high` は medium から `builder-harness` と `e2e-tester` の 2 エージェントだけ effort を 1 段階上げます。どのティアにも `max` のセルはありません。`--model-policy` フラグまたは初期化ウィザードで設定します。
 {{< /callout >}}
 
 ### 実行モードとオーケストレーション

@@ -451,9 +451,9 @@ MoAI-ADK에는 에이전트마다 최적의 AI 모델을 배정하는 성능 티
 
 | 티어 | 특징 |
 |------|------|
-| **high** | 최고 품질 — 호출 빈도가 가장 낮은 두 에이전트에 `max` 추론 깊이 |
+| **high** | 최고 품질 — medium과 같되 `builder-harness`와 `e2e-tester` 두 에이전트만 effort를 한 단계 올립니다 |
 | **medium** (기본값) | 품질과 비용의 균형 |
-| **low** | 작업당 최저 비용 — 에이전틱 에이전트는 Opus `low` effort로 내려가고, Sonnet은 단발성 행에만 |
+| **low** | 작업당 최저 비용 — 에이전틱 에이전트는 대부분 Opus `medium`으로 내려가고(`super-advisor`는 `high` 유지), Sonnet은 단발성 행과 `e2e-tester`에 |
 
 ```bash
 # 초기화 시 설정

@@ -143,12 +143,12 @@ MoAI-ADK는 각 에이전트에 최적의 모델과 추론 깊이를 할당합�
 
 | 티어 | 특징 |
 |------|------|
-| **high** | 최고 품질 — 호출 빈도가 가장 낮은 두 에이전트에 `max` 추론 깊이 |
+| **high** | 최고 품질 — medium과 같되 `builder-harness`와 `e2e-tester` 두 에이전트만 effort를 한 단계 올립니다 |
 | **medium** (기본값) | 품질과 비용의 균형 |
-| **low** | 작업당 최저 비용 — 에이전틱 에이전트는 Opus `low` effort로 내려가고, Sonnet은 단발성 행에만 |
+| **low** | 작업당 최저 비용 — 에이전틱 에이전트는 대부분 Opus `medium`으로 내려가고(`super-advisor`는 `high` 유지), Sonnet은 단발성 행과 `e2e-tester`에 |
 
 {{< callout type="info" >}}
-기본 티어는 **medium** 입니다. 티어를 조절해도 모델 클래스는 그대로이고, 각 에이전트의 Opus 추론 깊이만 달라집니다. `low`는 에이전틱 행을 모두 Opus `low` effort로 두고 단발성 행에서만 Sonnet을 쓰며, `high`는 호출 빈도가 가장 낮은 두 에이전트를 `max` effort로 올립니다. `--model-policy` 플래그 또는 초기화 마법사에서 설정합니다.
+기본 티어는 **medium** 입니다. 티어를 조절해도 모델 클래스는 그대로이고, 각 에이전트의 Opus 추론 깊이만 달라집니다. `low`는 에이전틱 행을 대부분 Opus `medium`으로 두고 단발성 행과 `e2e-tester`에만 Sonnet을 쓰며, `high`는 medium에서 `builder-harness`와 `e2e-tester` 두 에이전트의 effort만 한 단계 올립니다. 어느 티어에도 `max` 셀은 없습니다. `--model-policy` 플래그 또는 초기화 마법사에서 설정합니다.
 {{< /callout >}}
 
 ### 실행 모드와 오케스트레이션
