@@ -288,6 +288,51 @@ func TestLaunchEffortXHighStaysOnSettingsPath(t *testing.T) {
 	}
 }
 
+// countEffortTokens counts every --effort token in an argv, in both the
+// `--effort X` and `--effort=X` spellings.
+func countEffortTokens(args []string) int {
+	n := 0
+	for _, a := range args {
+		if a == launchEffortFlag || strings.HasPrefix(a, launchEffortFlag+"=") {
+			n++
+		}
+	}
+	return n
+}
+
+// TestLaunchEffortOperatorEffortAnywhereSuppressesInjection: the launcher
+// forwards everything after `--` to Claude Code and appends its injected flags
+// after it, so an operator --effort on either side of `--`, in either
+// spelling, must suppress the profile's `--effort max` on both injection
+// paths — otherwise Claude Code receives two --effort flags.
+func TestLaunchEffortOperatorEffortAnywhereSuppressesInjection(t *testing.T) {
+	shapes := [][]string{
+		{launchEffortFlag, "low"},
+		{launchEffortFlag + "=low"},
+		{"--", launchEffortFlag, "low"},
+		{"--", launchEffortFlag + "=low"},
+	}
+	for _, op := range shapes {
+		t.Run("general "+strings.Join(op, " "), func(t *testing.T) {
+			root := withCrossSessionConfig(t, "")
+			withLaunchEffortPrefs(t, profile.ProfilePreferences{EffortLevel: "max"}, nil)
+			got := appendCrossSessionSettings(root, "dev", append([]string(nil), op...))
+			if n := countEffortTokens(got); n != 1 {
+				t.Errorf("op=%v argv=%v effortFlags=%d want 1 (the operator's)", op, got, n)
+			}
+		})
+		t.Run("kanban "+strings.Join(op, " "), func(t *testing.T) {
+			withCrossSessionConfig(t, "")
+			withLaunchEffortPrefs(t, profile.ProfilePreferences{EffortLevel: "max"}, nil)
+			flag, cleanup := prepareKanbanSettings("dev", append([]string(nil), op...))
+			t.Cleanup(cleanup)
+			if n := countEffortTokens(flag); n != 0 {
+				t.Errorf("op=%v injected=%v effortFlags=%d want 0", op, flag, n)
+			}
+		})
+	}
+}
+
 // TestLaunchEffortMaxDefersToOperatorEffortFlag: an operator who passes
 // --effort themselves owns the session effort; the profile max adds no
 // second flag.

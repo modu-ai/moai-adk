@@ -123,7 +123,7 @@ The dynamic workflow `agent()` primitive accepts an opts object `{model, effort,
 
 [ZONE:Evolvable] [HARD] When a `.claude/workflows/*.js` script invokes `agent()`, the script author SHALL set `effort` explicitly per the purpose taxonomy below rather than inheriting the session default. Set `model` explicitly only when the purpose demands a specific tier (sonnet with `effort: low` for mechanical extraction; opus for deep architectural reasoning); otherwise omit it to inherit the main-loop model.
 
-The official effort levels are `low`, `medium`, `high` (default on most models; `medium` on Opus 5.5), `xhigh`, `max` (`https://platform.claude.com/docs/en/build-with-claude/effort`). The taxonomy below maps each workflow-agent purpose to a recommended `(model, effort)`.
+The official effort levels are `low`, `medium`, `high` (default on most models; `medium` on Opus 5.5, `xhigh` on Opus 4.7), `xhigh`, `max` (`https://platform.claude.com/docs/en/build-with-claude/effort`). The taxonomy below maps each workflow-agent purpose to a recommended `(model, effort)`.
 
 > **Config surface.** The `workflow_agents:` block in `.moai/config/sections/workflow.yaml` is the SSOT for these per-purpose `(model, effort)` DEFAULTS — the web console and tooling read/write that block, and per-script literals in `.claude/workflows/*.js` remain overrides that win over the config defaults. Values are validated against the closed sets above (model: inherit/sonnet/opus; effort: low/medium/high/xhigh/max — the Go validator additionally tolerates a retired legacy model value for backward compatibility).
 

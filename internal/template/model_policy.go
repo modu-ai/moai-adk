@@ -46,7 +46,8 @@ func IsValidModelPolicy(s string) bool {
 // target of the "opus" alias, which requires Claude Code v2.1.280 or later.
 // Opus 5.5 has a 1M-token context window and 128K max output, is priced at
 // $4/$20 per MTok, keeps adaptive thinking always on, and defaults to the
-// `medium` effort level (other effort-capable models default to `high`).
+// `medium` effort level (defaults differ per model: `high` on most other
+// effort-capable models, `xhigh` on Opus 4.7).
 // Used by launcher.go to route the model and by profile translations.
 const ModelIDOpus55 = "claude-opus-5-5"
 

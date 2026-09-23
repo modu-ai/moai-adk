@@ -12,7 +12,7 @@ Go is the implementation language for the MoAI-ADK rewrite. The project uses Go 
 
 **Opus 5.5 / 4.8 Model Matrix** (v3.0):
 - Anchor model: `claude-opus-5-5` (1M-context, 128K output, the `opus` alias target and default Opus as of Claude Code 2.1.280, which is also its minimum version); `claude-opus-4-8` and `claude-opus-4-7` still supported, and the previous `claude-opus-5` (superseded) stays selectable by full model name
-- Effort levels: `low` / `medium` / `high` / `xhigh` / `max`. Opus 5.5 defaults to `medium`, which is also the recommended session effort. Other effort-capable models default to `high`
+- Effort levels: `low` / `medium` / `high` / `xhigh` / `max`. Opus 5.5 defaults to `medium`, which is also the recommended session effort. Other effort-capable models default to `high`, except Opus 4.7, which defaults to `xhigh`
 - Adaptive Thinking: enabled via `thinking: {type: "adaptive"}` -- Opus 4.7+ rejects fixed `budget_tokens` with HTTP 400, so fixed thinking budgets are prohibited
 - 33-cell profile matrix: 11 retained agents x 3 model tiers (`low` / `medium` / `high`) materialized by `internal/template/profile_matrix.go` and rendered into agent frontmatter at deploy time
 - GLM tier-models table (`internal/config/defaults.go`): `DefaultGLMHigh = "glm-5.2"` (NO `[1m]` suffix -- the `[1m]` is added at the launcher layer in `internal/cli/launcher.go` only when the 1M-context variant is requested); `DefaultGLMMedium = "glm-4.7"`; `DefaultGLMLow = "glm-4.5-air"`; `DefaultGLMBaseURL = "https://api.z.ai/api/anthropic"`

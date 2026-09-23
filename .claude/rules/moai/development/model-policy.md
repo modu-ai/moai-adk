@@ -16,7 +16,7 @@ Agent definition `model` field accepts only these values:
 - haiku: Claude Haiku (fastest, lowest cost)
 
 Current model generation mapping:
-- opus = Opus 5.5 (`claude-opus-5-5`) on the Anthropic API — the `opus` alias target and default Opus model; requires Claude Code v2.1.280 or later; native 1M context, 128K max output, $4 / $20 per MTok, fast mode available, adaptive thinking always on (cannot be disabled), default effort `medium`. Other effort-capable models default to `high`; raise the effort per role where the work needs it. The previous Opus 5 id `claude-opus-5` (superseded) stays selectable by full model name.
+- opus = Opus 5.5 (`claude-opus-5-5`) on the Anthropic API — the `opus` alias target and default Opus model; requires Claude Code v2.1.280 or later; native 1M context, 128K max output, $4 / $20 per MTok, fast mode available, adaptive thinking always on (cannot be disabled), default effort `medium`. Defaults differ per model: `high` on most other effort-capable models, `xhigh` on Opus 4.7; raise the effort per role where the work needs it. The previous Opus 5 id `claude-opus-5` (superseded) stays selectable by full model name.
 - sonnet = Sonnet 5 on the Anthropic API (current generation; native 1M window, no `[1m]` suffix, no usage credits — CC 2.1.197). Behind an LLM gateway or with `CLAUDE_CODE_DISABLE_1M_CONTEXT=1`, `sonnet` budgets 200K. See § Sonnet 5 Native-1M Re-scope (CC 2.1.198). Note that `CLAUDE_CODE_DISABLE_1M_CONTEXT` is not sonnet-specific: per the CC 2.1.223 changelog it holds **every** Claude model with a native 1M window — Opus 5.5 included — to 200K via auto-compaction, and a startup warning appears when auto-compaction is not holding the session to 200K. The official env-vars page still describes the flag in Sonnet-5 terms (upstream doc lag as of CC 2.1.225); the changelog is the current source.
 - fable = Fable (current generation; added to the model enum per CC v2.1.196 model-priority update)
 - haiku = Haiku (current generation; retired from MoAI agent routing per the No-Haiku policy — value remains valid for documentation/example YAML)
@@ -227,7 +227,7 @@ Claude models support five effort levels that control reasoning depth. The set i
 
 - max: can improve demanding tasks but shows diminishing returns; reserve for tasks that justify it
 - xhigh: deeper reasoning at higher token spend; raise to it per role for hard coding and agentic work
-- high: default on most effort-capable models (not Opus 5.5); minimum for intelligence-sensitive work
+- high: default on most effort-capable models (Opus 5.5 defaults to `medium` and Opus 4.7 to `xhigh`); minimum for intelligence-sensitive work
 - medium: the default on Opus 5.5 and MoAI's recommended session effort; reduces token usage for work that can trade off some intelligence
 - low: short, scoped, latency-sensitive tasks — and the documented level for read-only subagents
 

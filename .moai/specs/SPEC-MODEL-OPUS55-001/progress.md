@@ -118,6 +118,46 @@ Drift the probes did not see. There are three items.
 - **Checks.** `go vet ./internal/cli/` returned no output. `golangci-lint run ./internal/cli/...` returned `0 issues.` with rc=0 (`run-k4-lint.log`).
 - **Full `internal/cli`** (slot `go-test-cli`), unscrubbed lane env: `FAIL` 1108.8s, with only `TestCodexSpawn_RealAssemblyThroughStubTmux` and `TestCC_FactoryEntryThroughRunCC/-f_lane-2` (`AMBIGUOUS_FACTORY`) failing (`run-k4-cli-full.log`). Both pass once the lane `MOAI_*` env is unset in the same invocation (`run-k4-cli-scrubbed.log`). The full-package run was repeated with the scrubbed env in one compound invocation (`unset MOAI_AUTONOMY_TIER MOAI_FACTORY_WORKER MOAI_FACTORY_WORKERS MOAI_KANBAN_BACKEND MOAI_KANBAN_SETTINGS_INJECTED MOAI_LAUNCH_PROVIDER MOAI_PROFILE_LEASE_TOKEN MOAI_SESSION_PID MOAI_CONFIG_SOURCE && go test -count=1 -timeout 25m ./internal/cli/`) and returned `ok  	github.com/modu-ai/moai-adk/internal/cli	1327.513s` (`run-k4-cli-full-scrubbed.log`). The slot was re-acquired for that run and released afterwards.
 
+### E.2.7 Sync-audit repair round — F1, F3, F8 (tree `7f183119f`)
+
+Source: sync-audit FAIL (`.moai/reports/t1089/sync-audit.md`, local) and the in-place amendment `5abca9135` (REQ-OP55-007(b), AC-OP55-007a/b). Evidence logs are written under `.moai/reports/t1089/run-f1-*.log`, `run-ac007b.log`, and `run-repair-*.log`. They are local and untracked by design.
+
+- **F1 (blocking) — operator `--effort` after `--`.** `operatorSuppliedEffort` (`internal/cli/launch_effort_settings.go`) stopped scanning at `--`. The launcher forwards everything after `--` to Claude Code and appends injected flags after it.
+  - **RED:** the new in-tree test `TestLaunchEffortOperatorEffortAnywhereSuppressesInjection` covers 4 operator shapes × the general and kanban paths. `go test -count=1 -run TestLaunchEffortOperatorEffortAnywhereSuppressesInjection -v ./internal/cli/` (`run-f1-red.log`) printed:
+    - `launch_effort_settings_test.go:321: op=[-- --effort low] argv=[-- --effort low --effort max] effortFlags=2 want 1 (the operator's)`
+    - `launch_effort_settings_test.go:330: op=[-- --effort low] injected=[--settings …/moai-kanban-….json --effort max] effortFlags=1 want 0`
+    - the same two failures for `[-- --effort=low]`
+    - the four before-`--` subtests PASS, and the run ends `FAIL github.com/modu-ai/moai-adk/internal/cli`
+  - **Fix:** the function now scans the whole argv, both `--effort X` and `--effort=X`. The `@MX:NOTE` explains why `--` does not end the search, unlike `operatorSuppliedSettings`.
+  - **GREEN:** `go test -count=1 -run 'TestLaunchEffort|TestApplyLaunchEffort|TestClaudeLaunchEnvPreservesInheritedEffort|TestResolveLaunchEffort|Kanban|CrossSession' -v ./internal/cli/` returned 47 `--- PASS` and `ok … 1.126s` (`run-f1-green.log`). All 8 `TestLaunchEffortOperatorEffortAnywhereSuppressesInjection/*` subtests PASS. AC-OP55-007a's three tests are in the same PASS set.
+- **AC-OP55-007b (its own command).** The probe source `.moai/reports/t1089/f2-probe-zz_f2_probe_test.go.txt` was copied to a scratch `zz_f2_probe_test.go`, and an overlay JSON maps `internal/cli/zz_f2_probe_test.go` to it. `go test -overlay <scratch>/overlay.json -count=1 -run 'TestZZF2ProbeOperatorEffortAnywhere' -v ./internal/cli/` printed `--- PASS: TestZZF2ProbeOperatorEffortAnywhere (0.00s)` / `ok  	github.com/modu-ai/moai-adk/internal/cli	1.238s` with exit 0 (`run-ac007b.log`). The swept set is not empty: the test name prints `--- PASS`, not `[no tests to run]`.
+- **F3 — `settings-management.md:93`.** Template edited first, then local; the two lines are identical. The line now reads:
+  - "The launcher passes a profile effort of `low`, `medium`, `high`, or `xhigh` as an `effortLevel` …"
+  - "A resolved `max` is never written there (the settings key does not accept `max`): it travels as the `--effort max` launch argument, which applies to that session only, and an operator-supplied `--effort` anywhere in the argv suppresses it."
+  - Check: `grep -c 'never written there'` → `:1` / `:1`.
+- **F8 — "Other effort-capable models default to `high`".** The official model-config doc says Opus 4.7 defaults to `xhigh`. Every occurrence this card introduced was corrected, template first where a template twin exists:
+  - model-policy.md fact line: "Defaults differ per model: `high` on most other effort-capable models, `xhigh` on Opus 4.7".
+  - model-policy.md calibration bullet: "- high: default on most effort-capable models (Opus 5.5 defaults to `medium` and Opus 4.7 to `xhigh`)".
+  - dynamic-workflows.md level list: "`high` (default on most models; `medium` on Opus 5.5, `xhigh` on Opus 4.7)".
+  - tech.md: "… default to `high`, except Opus 4.7, which defaults to `xhigh`".
+  - `ModelIDOpus55` doc comment in `internal/template/model_policy.go`.
+  - The constitution and agent-authoring say "default to a higher level". That is accurate (4.7 is `xhigh`, others `high`), so they were kept.
+- **Probes after the edit:**
+  - P6: no output, rc=1.
+  - P5: no output, rc=1.
+  - P7: `2`.
+  - P4 v2: no output.
+  - `cmp` on the 6 SAME pairs: all rc=0.
+- **Build and checks:**
+  - `make build` rc=0 (`run-repair-make-build.log`).
+  - `go test -count=1 ./internal/template/ ./internal/constitution/` returned `ok … internal/template 115.033s` / `ok … internal/constitution 2.032s` (`run-repair-template.log`).
+  - `go vet ./internal/cli/ ./internal/template/` returned no output.
+  - `golangci-lint run ./internal/cli/... ./internal/template/...` returned `0 issues.` with rc=0 (`run-repair-lint.log`).
+- **Full `internal/cli` — GAP (not a pass).** Under slot `go-test-cli`, one scrubbed compound invocation (`unset MOAI_AUTONOMY_TIER … MOAI_CONFIG_SOURCE && go test -count=1 -timeout 25m ./internal/cli/`) ended `panic: test timed out after 25m0s` (running: `TestTodoHistoryStatesWithheldCount`) and `FAIL … 1501.160s` (`run-repair-cli-full.log`). `uptime` afterwards read `load averages: 28.68 41.10 37.65`. Per the dispatch it was not retried. Failures seen before the timeout:
+  - `TestCC_FactoryEntryThroughRunCC/-f_lane-2` — the known flake fixed on develop by t1103, not yet absorbed.
+  - `TestFactoryOperationalFixtureUsesProductionInit` — `Codex UserPromptSubmit did not run built binding path: … "factory messaging degraded: context deadline exceeded"`. This is a deadline under load, in a test that touches no file this card changed.
+  - The package verdict for this round is therefore unmeasured. The targeted `internal/cli` runs above are the measured evidence, and the last full-package `ok` on a K4-only tree is E.2.6.
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 ```yaml

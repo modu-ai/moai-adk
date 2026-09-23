@@ -82,13 +82,17 @@ func applyLaunchEffort(payload map[string]any, profileName string) (map[string]a
 }
 
 // operatorSuppliedEffort reports whether the operator already passed an
-// --effort flag before any `--` separator, in which case the profile effort
-// adds no second flag — the operator's explicit launch choice wins.
+// --effort flag (`--effort X` or `--effort=X`) anywhere in argv, in which case
+// the profile effort adds no second flag — the operator's explicit launch
+// choice wins.
+//
+// @MX:NOTE: [AUTO] scans the WHOLE argv, including tokens after `--`. Unlike
+// operatorSuppliedSettings, a `--` separator does not end the search: the
+// launcher forwards everything after `--` to Claude Code and appends its
+// injected flags after it, so an operator `-- --effort low` would otherwise
+// reach Claude Code alongside an injected `--effort max` (two --effort flags).
 func operatorSuppliedEffort(args []string) bool {
 	for _, arg := range args {
-		if arg == "--" {
-			return false
-		}
 		if arg == effortFlagLong || strings.HasPrefix(arg, effortFlagLong+"=") {
 			return true
 		}
