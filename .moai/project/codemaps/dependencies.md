@@ -6,9 +6,10 @@
 **재측정 트리**: worktree `.claude/worktrees/t869`, 브랜치 `WT-codemaps-refresh`, HEAD `a851b205c`, 2026-09-18 — 엣지 수, fan-in·fan-out 표 전체, 상호 참조 쌍, 새 leaf 표, `go.mod` 직접 require 항목 수와 버전, § 이례적인 것 7. § 이례적인 것 1~6의 서술은 이번에 버전·사용처 줄을 다시 대조했고 판단은 앞 판을 이어받았습니다.
 **정기 재측정**: worktree `.claude/worktrees/t999`, 브랜치 `WT-codemaps-remediation`, HEAD `56c64891a`, 2026-09-20 — 엣지 수(365→371 · 222→227), fan-in 표에서 움직인 한 행(`internal/atomicfile` 10→11), fan-out 표에서 움직인 두 행(`internal/cli` 62→63 · `internal/hook` 32→35), 그리고 작은 fan-in 표의 신규 세 항목. 나머지 행은 같은 명령으로 재확인해 변동이 없었고, § 외부 의존성과 § 순환은 이번에 다시 재지 않았습니다(앞 판 인계).
 **정기 재측정**: worktree `.claude/worktrees/t1069`, 브랜치 `WT-graph-restamp`, HEAD `0314801c2`, 2026-09-22 — 엣지 수(371→378 · 227→234), fan-in 표에서 움직인 두 행(`internal/defs` 11→12 · `internal/paths` 11→12), fan-out 표에서 움직인 두 행(`internal/cli` 63→65 · `internal/web` 15→16)과 하나의 정정(`internal/spec` — 앞 판 행이 3으로 적혔으나 스탬프 트리에서도 4였다), 작은 fan-in 표의 `internal/stateanchor` 2→3(소비자에 `internal/session` 합류)과 신규 세 행(`internal/jev` · `internal/jevcred` · `internal/jevmeasure`). § 순환은 같은 방법으로 재확인해 세 쌍 그대로였고, § 외부 의존성은 `go.mod`가 스탬프 이후 한 줄도 바뀌지 않은 것으로 확인했습니다.
+**부분 재측정**: worktree `.claude/worktrees/t1092`, 브랜치 `WT-codemaps-restamp`, base `08113ff0f`, 2026-09-23 — 카드 t1092. 엣지 수(378→381 · 234→237). 신규 패키지 `internal/factorymsg`는 fan-in 2(`internal/cli` · `internal/hook`이 import)로 작은 fan-in 표(상위 14 밖)에 속하며, fan-out 상위 표에는 두 소비자 쪽 수치 변화가 반영됐지만 순위표 자체는 움직이지 않았습니다(`internal/cli`·`internal/hook` 모두 기존에도 상위권). § 순환·§ 외부 의존성·상호 참조 쌍 목록은 이번 변경과 무관해 손대지 않았습니다.
 
-두 가지 해상도로 봅니다 — 패키지 단위 **378 엣지**, 이를 `internal/<X>` · `pkg/<X>` · `cmd/<X>`
-최상위로 접고 self-edge를 제거한 **234 엣지**. 아래 표는 후자 기준입니다.
+두 가지 해상도로 봅니다 — 패키지 단위 **381 엣지**, 이를 `internal/<X>` · `pkg/<X>` · `cmd/<X>`
+최상위로 접고 self-edge를 제거한 **237 엣지**. 아래 표는 후자 기준입니다.
 
 산출:
 
@@ -16,12 +17,12 @@
 $ go list -f '{{.ImportPath}} {{join .Imports " "}}' ./... \
   | awk '{src=$1; for(i=2;i<=NF;i++) if ($i ~ /^github\.com\/modu-ai\/moai-adk\//) print src, $i}' \
   | wc -l
-378
+381
 ```
 
 > 앵커 `25a3212a9` 판은 이 자리에 1638을 적었습니다. 위 명령으로 재현되지 않고 그 판의
 > 명령 인용이 생략형이라 무엇을 셌는지 복원할 수 없으므로, 이후 판은 위 명령의 출력을 싣습니다.
-> 최상위 집계는 205 → 214 → 222 → 227 → 234로 움직였습니다.
+> 최상위 집계는 205 → 214 → 222 → 227 → 234 → 237로 움직였습니다.
 
 ---
 
@@ -94,8 +95,8 @@ admission 계약을 공유합니다.
 
 | # | 패키지 | import |
 |---|---|---|
-| 1 | `internal/cli` | **65** |
-| 2 | `internal/hook` | 35 |
+| 1 | `internal/cli` | **66** |
+| 2 | `internal/hook` | 36 |
 | 3 | `internal/web` | 16 |
 | 4 | `internal/core` | 12 |
 | 5 | `internal/statusline` | 8 |
@@ -104,7 +105,7 @@ admission 계약을 공유합니다.
 | 9 | `internal/update` · `spec` · `harness` | 4 각 |
 | 12 | `internal/template` · `session` · `ralph` · `profile` · `lsp` · `loop` · `graph` · `config` | 3 각 |
 
-`internal/cli`가 다른 최상위 패키지 **65개**를 import 합니다 — 사실상 전 트리에 닿습니다.
+`internal/cli`가 다른 최상위 패키지 **66개**를 import 합니다(이 판에서 `internal/factorymsg` 신규 합류) — 사실상 전 트리에 닿습니다.
 합성 루트(`internal/cli/deps.go`)가 여기 있으므로 일부는 의도된 것이지만, 상당수는
 `deps.go`가 아니라 **개별 verb 파일에서 직접** 들어옵니다. 이 판에서 더해진
 `internal/mission`이 그 전형입니다 — `internal/cli/goal.go` 한 파일만이 그 패키지를 import 합니다.

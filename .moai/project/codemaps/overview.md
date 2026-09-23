@@ -10,6 +10,7 @@
 **정정 재측정**: worktree `.claude/worktrees/t872`, 브랜치 `WT-codemaps-citations`, HEAD `9a8cc4277`, 2026-09-18 — § 규모 표의 다섯 값(비테스트·테스트 파일 수, 패키지 총수, 최상위 디렉터리 수)과 테스트 전용 디렉터리 서술. 위 재측정 직후 한 패키지가 삭제돼 그만큼만 다시 쟀고, 나머지 값(엣지 365/222, 임베드 589)은 같은 명령으로 재확인해 변동이 없었습니다.
 **정기 재측정**: worktree `.claude/worktrees/t999`, 브랜치 `WT-codemaps-remediation`, HEAD `56c64891a`, 2026-09-20 — § 규모 표 **일곱 값 전부**와 `internal/cli` fan-out, § `modules.md`의 패키지별 파일 수, 그리고 신규 패키지 3개(`internal/auditreceipt` · `internal/harness/rosterguard` · `internal/harness/cellguard`)의 서술. 각 값의 산출 명령은 표 안에 있고, 전부 이 트리에서 직접 실행했습니다. 서술형 판단 중 이번에 다시 확인한 것은 테스트 0 패키지 4개와 테스트 전용 디렉터리 1개뿐이며, 나머지 구조 판정은 앞 판을 이어받았습니다.
 **정기 재측정**: worktree `.claude/worktrees/t1069`, 브랜치 `WT-graph-restamp`, HEAD `0314801c2`, 2026-09-22 — § 규모 표의 여섯 값(비테스트·테스트 파일 수, 패키지 총수, 최상위 디렉터리 수, 엣지 둘)과 § 구조 판정의 `internal/cli` import 수, § 들어맞지 않는 패키지의 파일 수 두 곳(`internal/hook` · `internal/homestate`), 신규 패키지 3개(`internal/jev` · `internal/jevcred` · `internal/jevmeasure`)의 서술. 각 값의 산출 명령은 표 안에 있고 전부 이 트리에서 직접 실행했습니다. 임베드 템플릿 파일 수(588)와 테스트 0 패키지 4개·테스트 전용 디렉터리 1개도 같은 명령으로 재확인해 변동이 없었습니다.
+**부분 재측정**: worktree `.claude/worktrees/t1092`, 브랜치 `WT-codemaps-restamp`, base `08113ff0f`, 2026-09-23 — 카드 t1092. § 규모 표 일곱 값을 같은 명령으로 다시 쟀습니다 — 비테스트 1259→1272, 테스트 2155→2190, 패키지 총수 151→152(신규 `internal/factorymsg`), 최상위 디렉터리 77→78(`internal` 73→74), 내부 import 엣지 378→381(패키지 단위)·234→237(최상위 집계), 임베드 템플릿 588→589. § 구조 판정·§ 도식에 들어맞지 않는 패키지 절은 이번 변경과 무관해 손대지 않았습니다.
 
 ---
 
@@ -17,13 +18,13 @@
 
 | 값 | 수치 | 산출 명령 |
 |---|---|---|
-| 비테스트 Go 파일 | 1259 | `find internal cmd pkg -name '*.go' -not -name '*_test.go' \| wc -l` |
-| 테스트 Go 파일 | 2155 | `find internal cmd pkg -name '*_test.go' \| wc -l` |
-| Go 패키지 총수 | 151 | `go list ./... \| wc -l` (`scripts/` 하위 main 3개 포함) |
-| 최상위 디렉터리 | 77 | `internal` 73(`ls -d internal/*/`) + `cmd` 2(`moai`, `t657-merge`) + `pkg` 2 |
-| 내부 import 엣지 (패키지 단위) | 378 | `go list -f '{{.ImportPath}} {{join .Imports " "}}' ./...` 후 모듈 경로 필터 |
-| 내부 import 엣지 (최상위 집계) | 234 | 위를 `internal/<X>` · `pkg/<X>` · `cmd/<X>` 수준으로 접고 self-edge 제거 |
-| 임베드 템플릿 파일 | 588 | `find internal/template/templates -type f \| wc -l` |
+| 비테스트 Go 파일 | 1272 | `find internal cmd pkg -name '*.go' -not -name '*_test.go' \| wc -l` |
+| 테스트 Go 파일 | 2190 | `find internal cmd pkg -name '*_test.go' \| wc -l` |
+| Go 패키지 총수 | 152 | `go list ./... \| wc -l` (`scripts/` 하위 main 3개 포함) |
+| 최상위 디렉터리 | 78 | `internal` 74(`ls -d internal/*/`) + `cmd` 2(`moai`, `t657-merge`) + `pkg` 2 |
+| 내부 import 엣지 (패키지 단위) | 381 | `go list -f '{{.ImportPath}} {{join .Imports " "}}' ./...` 후 모듈 경로 필터 |
+| 내부 import 엣지 (최상위 집계) | 237 | 위를 `internal/<X>` · `pkg/<X>` · `cmd/<X>` 수준으로 접고 self-edge 제거 |
+| 임베드 템플릿 파일 | 589 | `find internal/template/templates -type f \| wc -l` |
 
 테스트 대 비테스트 비율이 **1.71 : 1**입니다. 테스트 파일이 0인 패키지는 4개이고
 넷 다 main 패키지입니다(§ `modules.md` 참조). `internal` 70개 디렉터리 중
@@ -65,7 +66,7 @@
 
 ### 부합하지 않는 근거 — 이쪽이 더 결정적입니다
 
-- **`internal/cli`가 다른 최상위 패키지 65개를 import 합니다**(최상위 집계 엣지 기준).
+- **`internal/cli`가 다른 최상위 패키지 66개를 import 합니다**(최상위 집계 엣지 기준).
   헥사고날이라면 어댑터 하나가 전 도메인에 닿을 이유가 없습니다. 실제 모양은 "명령 하나 =
   파일 하나 = 그 명령이 필요한 것 전부 import"에 가깝습니다.
 - **도메인 로직이 어댑터 안에 삽니다.** `internal/hook/quality/gate.go`가 67KB,

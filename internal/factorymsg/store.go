@@ -10,6 +10,7 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
+	"io"
 	"net/url"
 	"os"
 	"path/filepath"
@@ -124,7 +125,7 @@ func Open(projectRoot, runID string) (*Store, error) {
 
 // ValidateActiveRun rejects stale or invented run identifiers without
 // initializing registry state.
-func ValidateActiveRun(ctx context.Context, projectRoot, runID string) error {
+func ValidateActiveRun(ctx context.Context, projectRoot, runID string) (err error) {
 	if !safeID.MatchString(runID) {
 		return errors.New("invalid factory run id")
 	}
@@ -139,7 +140,7 @@ func ValidateActiveRun(ctx context.Context, projectRoot, runID string) error {
 	if err != nil {
 		return err
 	}
-	defer db.Close()
+	defer closeInto(&err, db, "factory state")
 	var status string
 	if err := db.QueryRowContext(ctx, `SELECT status FROM runs WHERE run_id=?`, runID).Scan(&status); err != nil || status != "active" {
 		return errors.New("NO_ACTIVE_FACTORY")
@@ -237,12 +238,12 @@ func OpenWithDeadline(projectRoot, runID string, deadline time.Duration) (*Store
 }
 
 // ResolveActiveRun selects one active factory run or fails closed on 0/many.
-func ResolveActiveRun(ctx context.Context, projectRoot, explicit string) (string, error) {
+func ResolveActiveRun(ctx context.Context, projectRoot, explicit string) (_ string, err error) {
 	db, err := homestate.OpenFactory(projectRoot)
 	if err != nil {
 		return "", err
 	}
-	defer db.Close()
+	defer closeInto(&err, db, "factory state")
 	if explicit != "" {
 		if !safeID.MatchString(explicit) {
 			return "", errors.New("invalid factory run id")
@@ -257,7 +258,7 @@ func ResolveActiveRun(ctx context.Context, projectRoot, explicit string) (string
 	if err != nil {
 		return "", err
 	}
-	defer rows.Close()
+	defer closeInto(&err, rows, "active run rows")
 	var runs []string
 	for rows.Next() {
 		var id string
@@ -276,6 +277,15 @@ func ResolveActiveRun(ctx context.Context, projectRoot, explicit string) (string
 	}
 }
 func (s *Store) Close() error { return s.db.Close() }
+
+// closeInto closes c as its caller returns and reports a close failure through
+// *errp — but only when the caller is not already returning an error, so the
+// first failure stays the one the caller sees, unwrapped and comparable.
+func closeInto(errp *error, c io.Closer, what string) {
+	if cerr := c.Close(); cerr != nil && *errp == nil {
+		*errp = fmt.Errorf("close %s: %w", what, cerr)
+	}
+}
 
 const schema = `
 CREATE TABLE IF NOT EXISTS peers(slot TEXT PRIMARY KEY, project_key TEXT NOT NULL, run_id TEXT NOT NULL, backend TEXT NOT NULL, role TEXT NOT NULL, session_uuid TEXT NOT NULL UNIQUE, generation INTEGER NOT NULL, pid INTEGER NOT NULL, process_start TEXT NOT NULL, updated_at TEXT NOT NULL);
@@ -525,12 +535,12 @@ func (s *Store) PeerByOwner(ctx context.Context, pid int, processStart string) (
 
 // CheckWritable performs a rollback-only reservation so hook inspection can
 // report lock contention truthfully without mutating queue state.
-func (s *Store) CheckWritable(ctx context.Context) error {
+func (s *Store) CheckWritable(ctx context.Context) (err error) {
 	conn, err := s.db.Conn(ctx)
 	if err != nil {
 		return err
 	}
-	defer conn.Close()
+	defer closeInto(&err, conn, "broker connection")
 	if _, err := conn.ExecContext(ctx, `BEGIN IMMEDIATE`); err != nil {
 		return err
 	}
@@ -643,12 +653,12 @@ func (s *Store) recordDead(ctx context.Context, messageID, reason string) error 
 	_, err := s.db.ExecContext(ctx, `DELETE FROM dead_letters WHERE id NOT IN (SELECT id FROM dead_letters ORDER BY id DESC LIMIT ?)`, s.maxDead)
 	return err
 }
-func (s *Store) DeadLetters(ctx context.Context) ([]DeadLetter, error) {
+func (s *Store) DeadLetters(ctx context.Context) (_ []DeadLetter, err error) {
 	rows, err := s.db.QueryContext(ctx, `SELECT message_id,reason,created_at FROM dead_letters ORDER BY id`)
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
+	defer closeInto(&err, rows, "broker rows")
 	var out []DeadLetter
 	for rows.Next() {
 		var d DeadLetter
@@ -660,7 +670,7 @@ func (s *Store) DeadLetters(ctx context.Context) ([]DeadLetter, error) {
 	return out, rows.Err()
 }
 
-func (s *Store) Claim(ctx context.Context, p Peer, limit int, lease time.Duration) ([]Claim, error) {
+func (s *Store) Claim(ctx context.Context, p Peer, limit int, lease time.Duration) (_ []Claim, err error) {
 	if err := s.verifyPeer(ctx, p); err != nil {
 		return nil, err
 	}
@@ -693,7 +703,7 @@ func (s *Store) Claim(ctx context.Context, p Peer, limit int, lease time.Duratio
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
+	defer closeInto(&err, rows, "broker rows")
 	var out []Claim
 	for rows.Next() {
 		var c Claim
@@ -783,13 +793,13 @@ func (s *Store) SettleReceiptControls(ctx context.Context, p Peer) (int, error) 
 	n, _ := r.RowsAffected()
 	return int(n), nil
 }
-func (s *Store) Status(ctx context.Context) (Status, error) {
+func (s *Store) Status(ctx context.Context) (_ Status, err error) {
 	st := Status{Capability: "hook-boundary", NextDelivery: "pending-until-next-turn"}
 	rows, err := s.db.QueryContext(ctx, `SELECT state,count(*) FROM messages WHERE project_key=? AND run_id=? GROUP BY state`, s.projectKey, s.runID)
 	if err != nil {
 		return st, err
 	}
-	defer rows.Close()
+	defer closeInto(&err, rows, "broker rows")
 	for rows.Next() {
 		var state string
 		var n int
@@ -816,12 +826,12 @@ func (s *Store) Status(ctx context.Context) (Status, error) {
 	return st, err
 }
 
-func (s *Store) laneRoster(ctx context.Context) ([]LaneStatus, error) {
+func (s *Store) laneRoster(ctx context.Context) (_ []LaneStatus, err error) {
 	rows, err := s.db.QueryContext(ctx, `SELECT slot,role,backend,session_uuid,generation,pid,process_start,updated_at FROM peers WHERE project_key=? AND run_id=? ORDER BY slot`, s.projectKey, s.runID)
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
+	defer closeInto(&err, rows, "broker rows")
 	lanes := make([]LaneStatus, 0)
 	probe := s.probeIdentity
 	if probe == nil {

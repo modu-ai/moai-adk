@@ -232,7 +232,7 @@ func enterSelectedFactoryRun(root, explicit string, requireActive bool) (func(),
 	return restore, nil
 }
 
-func recordFactoryRunStart(root, runID, backend, specID string) error {
+func recordFactoryRunStart(root, runID, backend, specID string) (err error) {
 	if err := kanban.RecordFactoryRunStart(root, runID, backend, specID); err != nil {
 		return err
 	}
@@ -240,7 +240,7 @@ func recordFactoryRunStart(root, runID, backend, specID string) error {
 	if err != nil {
 		return err
 	}
-	defer db.Close()
+	defer closeFactoryInto(&err, db, "factory state")
 	return db.RecordRun(context.Background(), homestate.FactoryRun{
 		RunID: runID, Backend: backend, ManifestJSON: "{}",
 	})
