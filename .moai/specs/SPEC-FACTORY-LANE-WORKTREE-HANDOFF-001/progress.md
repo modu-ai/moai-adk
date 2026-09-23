@@ -702,5 +702,16 @@ Kept exported. `internal/hook/factory_handoff_race_test.go` is package `hook` an
 - `go vet` (factorymsg, hook, cli) 0; `golangci-lint run` 0 (`0 issues.`); `go build ./...` 0; `GOOS=windows go build ./...` 0.
 - AC commands verbatim: ac01–ac08, ac14, ac16, ac17, ac18, ac19 → all `true`, exit 0 (`.moai/reports/t1082/ac*.jsonl`).
 
-### merge-tree vs t1100
-Not measured: it is specified after the merge commit, which is blocked.
+### Merge commit and merge-tree
+Merge commit: `f1073a5888f6511ec012a451df192c0345362d98` (parents `b34625050`, `52a486635`).
+
+`git merge-tree --write-tree --name-only WT-dual-harness-recovery WT-factory-lane-worktree-handoff; echo "exit=$?"`:
+```
+7859a44bf8d778992e63d83e63a47f168947f04a
+internal/factorymsg/store.go
+
+Auto-merging internal/factorymsg/store.go
+CONFLICT (content): Merge conflict in internal/factorymsg/store.go
+exit=1
+```
+One conflicted hunk, in `Send`'s idempotency re-lookup (printed tree lines 710-722): t1100 replaces the base lookup with a `sender_slot`-scoped SELECT and compares against the envelope's recipient columns; t1082 keeps the `sender_session` SELECT plus the `originalRecipient` step. This is the planned seam — the likely resolution is t1100's base SELECT with t1082's `originalRecipient` step layered on the comparison — but it was measured only, not resolved (t1100's lane).
