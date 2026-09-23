@@ -2,7 +2,7 @@
 id: SPEC-DUAL-HARNESS-RECOVERY-001
 document: progress
 created: 2026-09-23
-updated: 2026-09-23
+updated: 2026-09-24
 author: manager-spec
 card: t1100
 ---
@@ -847,7 +847,81 @@ _<pending run-phase>_
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase>_
+작성: manager-docs. sync 시작 트리 HEAD `76b8a163d`(트리 `9726ee39a8df`), 브랜치 `WT-dual-harness-recovery`. 이 절은 새 측정을 하지 않았고, AC 판정은 모두 §E.2의 기록(흡수 절과 M8)을 옮긴 것이다. sync에서 직접 잰 것은 CHANGELOG B12 자체 검사, 문서 사이트 grep, `AGENTS.md` grep, `moai spec lint`뿐이다.
+
+### sync 요약
+
+- CHANGELOG `[Unreleased]`: `### Added` 맨 위에 본 항목(하위 목록 10개: `moai tool disable codex`, update 보고 전환, 저널·잠금·복구, doctor 보고, `moai codex -w` anchor, `moai cc -w` 사전 검사, `moai codex -k`, factory messaging, 역할 권한 계약, 알려진 한계), `### Changed` 맨 위에 리드 지정 동작 변경 3건, `### Fixed` 맨 위에 doctor embed-check 수리 1건.
+- 상태 전이: `spec.md` `in-progress → implemented → completed`(단일 sync 커밋). `plan.md`·`acceptance.md`·`progress.md`에는 `status:` 필드가 없어 `updated:`만 2026-09-24로 갱신했다(없는 필드는 추가하지 않음). 본문은 손대지 않았다.
+- 코드·테스트: 변경 없음.
+
+### AC 원장 (출처: §E.2)
+
+| AC | 판정 | 근거 위치 |
+|---|---|---|
+| AC-DHR-001 ~ 011, 013 ~ 017, 019, 021, 022 (결정적) | `true` — 병합 트리 `a8546ec1d`에서 재측정 | §E.2 "Absorb d088aa738" 표 |
+| AC-DHR-014 분기 B | `N/A (branch)` | 같은 표 |
+| AC-DHR-020 | `true` — 보존 증거 판정, `outcome` = `reproduced`, 측정 HEAD `9ba43c05f` | 같은 표, M1 |
+| AC-DHR-006 | darwin `true`, Windows 분기 로컬 `NOT_RUN` | 같은 표 |
+| t1082 AC-FLH-008 | `true` (1/0/0) | 같은 절 |
+| AC-DHR-018 (LIVE) | PASS — 4조합 모두(claude-claude 재실행, codex-codex, claude-codex, codex-claude), 합산 판정식 `true` | M8 |
+| AC-DHR-012 (LIVE) | **FAIL (알려진 FAIL)** — 두 쓰기 시도 `denied: false`; 하위 에이전트가 부모 sandbox를 상속. 후속 카드 t1143 | M8 |
+| AC-DHR-023 (LIVE) | **충족되지 않음** — 해시는 일치하지만 `write_denied: false`, 부모 기록 경로가 실행되지 않음. 후속 카드 t1143 | M8 |
+| LIVE 전체 | d088aa738 흡수 **뒤 재실행하지 않음** — 판정 근거는 흡수 전 트리 | 흡수 절 (b) |
+
+### 잔여 위험
+
+- 흡수 절 (a): `foreign_v1_tables_test.go`의 카탈로그 스냅숏을 외래 DDL의 다섯 객체로 좁혔다. 이관이 그 밖의 `lane_*` 테이블·인덱스를 건드려도 이 테스트는 초록으로 남는다.
+- LIVE 동작은 병합 트리에서 관측되지 않았다.
+- AC-DHR-006 Windows 분기는 CI에서만 판정된다.
+- embed-check는 정규화 뒤 비교이므로 정규화 대상 토큰에서만 다른 드리프트를 잡지 못한다(M8 Part 3).
+- anchor 거부 경로에서 `clearFactoryRunOwner` 자체가 실패할 때 오류 합성은 겨누는 테스트가 없다("Merge-resolution line test" 한계).
+- `internal/cli` 전체 스위트는 로컬에서 돌리지 않았다 — 전 패키지 판정은 develop push 뒤 CI 몫이다.
+
+### sync-audit 점검 항목 (리드 지정)
+
+1. Codex 감사 역할이 read-only라는 약속이 남아 있지 않은가. sync에서 잰 값: `grep -niE 'read-only|sandbox' AGENTS.md internal/template/templates/AGENTS.md.tmpl` → 루트 `AGENTS.md`는 git read-only 조사 문장 2건·검증 배치 1건뿐(감사 역할 언급 없음, `audit-verdict-file` 행 없음). 템플릿 `AGENTS.md.tmpl:33` `audit-verdict-file` 행은 "subagents … follow the parent session's sandbox; the role file's read…"로 상속 동작을 적는다. docs-site에서 Codex 감사 역할의 read-only를 약속하는 문장은 찾지 못했다(아래 문서 사이트 절).
+2. `moai worktree remove` 거부가 문서화됐는가: CHANGELOG `### Changed` 동작 변경 (1). docs-site `cli-reference/worktree.md`는 아직 반영 전(후속).
+3. 결합된 `Send` 조회: `internal/factorymsg/store.go` — 원래 행은 `sender_slot` 범위로 찾고, 수신자 비교만 `originalRecipient`로 한다(§E.2 흡수 절 코드). CHANGELOG factory messaging 하위 항목 마지막 문장.
+4. 병합 해소 줄과 테스트: `codex_launcher.go` anchor 거부 분기의 `clearFactoryRunOwner`, `TestPaneDoorAnchorRefusalClearsFactoryRunOwner`(`f66bf9372`), 변이 FAIL → 복원 PASS 기록은 "Merge-resolution line test".
+5. `foreign_v1` 스냅숏 축소: 위 잔여 위험 첫 항목.
+
+### 문서 사이트 후속 (이 카드에서는 4개 로케일 재작성을 하지 않음)
+
+sync에서 `grep -rn`으로 `docs-site/content`를 조사했다. 틀린 문장으로 확정한 것은 없고, 이번 변경을 빠뜨린 페이지만 있다.
+
+| 페이지 (4개 로케일 각각) | 현재 서술 | 후속 필요 |
+|---|---|---|
+| `cli-reference/update.md` § Add Codex to an existing project | `moai tool enable codex`만 설명 | `moai tool disable codex`, 고아 배선·미배포 `.codex/` 템플릿을 지우지 않고 보고한다는 점, 배선 잠금이 잡혀 있을 때 비0 종료 |
+| `cli-reference/worktree.md` § moai worktree remove (ja 포함, `worktree/guide.md`·`faq.md`) | `--force`: "Force removal even with uncommitted changes" | 잠금 목록을 읽지 못하면 `--force` 없이 거부, `--force`가 anchor 거부도 넘긴다는 점 |
+| `cli-reference/doctor.md` § Codex Wiring check | 훅·MCP·스킬 미러·사이드카 해시 항목 | 중단된 배선 변경(저널 미완료 항목, 참조 없는 임시 파일)과 복구 명령 보고 |
+| `advanced/codex-dual-harness.md` | `moai codex` 경로 목록에 `-w`가 있으나 anchor·잠금·두 번째 작성자 거부는 없음, `-k` 없음 | `moai codex -w` anchor 규칙, `moai codex -k`, 감사 역할의 sandbox 상속 한계 |
+
+### Audit-ready 신호
+
+```yaml
+sync_complete_at: 2026-09-24
+sync_commit_sha: pending-backfill
+sync_status: complete
+sync_base_head: 76b8a163d
+b12_self_test_a: "grep -c 'SPEC-DUAL-HARNESS-RECOVERY-001' CHANGELOG.md -> 0 before emission"
+b12_self_test_b: "distinct AC ids in acceptance.md = 28 (23 AC-DHR-001..023 + 5 design criteria AC-MIG-01, AC-WT-01, AC-AGENT-01, AC-MSG-01, AC-FACT-01); CHANGELOG entry states 23 acceptance criteria mapped to 5 design criteria"
+b12_self_test_c: "ls of all 19 code paths cited in the entry -> all exist"
+changelog_entry_position: "[Unreleased] ### Added top; ### Changed top (behavior changes); ### Fixed top (doctor embed-check)"
+frontmatter_status_transitions:
+  spec.md: "in-progress -> implemented -> completed"
+  plan.md: "no status field; updated refreshed"
+  acceptance.md: "no status field; updated refreshed"
+  progress.md: "no status field; updated refreshed"
+known_fail:
+  AC-DHR-012: "FAIL - Codex subagents inherit the parent sandbox; follow-up t1143"
+  AC-DHR-023: "not satisfied - parent-writes path not exercised; follow-up t1143"
+not_run:
+  - "AC-DHR-006 Windows branch (local)"
+  - "LIVE AC-DHR-012/018/023 after d088aa738 absorption"
+out_of_scope: "t1082 debts F6-F9, N1-N6 -> card t1145"
+docs_site_followup: "update.md, worktree.md (+guide/faq), doctor.md, codex-dual-harness.md in 4 locales"
+```
 
 ## Revision iter-4 (delta)
 

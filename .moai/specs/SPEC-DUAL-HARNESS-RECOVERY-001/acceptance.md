@@ -2,7 +2,7 @@
 id: SPEC-DUAL-HARNESS-RECOVERY-001
 document: acceptance
 created: 2026-09-23
-updated: 2026-09-23
+updated: 2026-09-24
 author: manager-spec
 card: t1100
 ---
