@@ -1,7 +1,7 @@
 ---
 id: SPEC-FACTORY-RUN-RETIRE-001
 title: "Factory run retirement — owner-liveness reconciliation so a dead lead's run leaves 'active'"
-version: "0.8.0"
+version: "0.9.0"
 status: draft
 created: 2026-09-23
 updated: 2026-09-23
@@ -472,6 +472,17 @@ carrying it defensible, not findings dismissed as wrong:
   of 16, so `tier:` is raised and `design.md` + `research.md` join the artifact set. The tier change
   is pre-authorized by the operator; nothing was merged, dropped, or renumbered to avoid it
   (`acceptance.md` §D.5). The plan-auditor PASS threshold rises 0.80 → 0.85 with the tier.
+  **D14 restated positively**: REQ-005 now says retirement happens **only on a positive `dead`
+  classification**, rather than listing states to reject — an enumeration is correct only for the
+  classification set alive when it was written and silently begins retiring any state added later.
+  AC-017 is the criterion that separates the two, and it is the only one that does: a reject-list
+  mutant satisfies AC-005, AC-006 and AC-010 unchanged. The consequence recorded with it is
+  host-wide, not an edge case — where the probe fails consistently every run reads `indeterminate`,
+  so the old command rule would have retired live sessions across that entire host.
+  **Audit-withdrawal note**: the auditor withdrew its `320cdeb90` observations (reading a second
+  tree during an audit pinned to `c1ae8ff5e`) and declined to judge that delta. D11, D12 and D17 are
+  therefore treated as fully open, and the evidence recorded for each in this revision is this
+  SPEC's own measurement, not partial credit carried over from the audit.
 - 2026-09-23 — v0.6.0 — manager-spec — **D18** repair, `plan.md` only (+18/−4). §D said the restamp
   seam had "the two call sites" while M1 simultaneously assigned a restamp obligation to
   `codex_direct_windows.go:24`; the file set now names **three** seam call sites
@@ -497,17 +508,22 @@ carrying it defensible, not findings dismissed as wrong:
   unmodified" with the distinction that an existing rule covering a door never means that door's
   call site needs no edit. AC count unchanged at 17 — the new leg lives inside AC-016. Commit
   `4b29af46f`.
-  **D14 restated positively**: REQ-005 now says retirement happens **only on a positive `dead`
-  classification**, rather than listing states to reject — an enumeration is correct only for the
-  classification set alive when it was written and silently begins retiring any state added later.
-  AC-017 is the criterion that separates the two, and it is the only one that does: a reject-list
-  mutant satisfies AC-005, AC-006 and AC-010 unchanged. The consequence recorded with it is
-  host-wide, not an edge case — where the probe fails consistently every run reads `indeterminate`,
-  so the old command rule would have retired live sessions across that entire host.
-  **Audit-withdrawal note**: the auditor withdrew its `320cdeb90` observations (reading a second
-  tree during an audit pinned to `c1ae8ff5e`) and declined to judge that delta. D11, D12 and D17 are
-  therefore treated as fully open, and the evidence recorded for each in this revision is this
-  SPEC's own measurement, not partial credit carried over from the audit.
+- 2026-09-23 — v0.8.1 — manager-spec — record-layer repair closing the Tier L audit's **D23** and
+  **D24**. D23: §H had lost three commits (`cecc94ee9`, `acb03bede`, `4b29af46f`) and the
+  frontmatter `version:` still read `"0.5.0"`, so a reader of §H alone would conclude D18 was open
+  and would find the AC-016 second leg in the document with no history explaining it; the three
+  entries above were written and `version:` caught up 0.5.0 → 0.8.0. D24: the retained debts D20
+  and D21 appeared in no artifact, so §G gained a row for each — with the evidence that makes
+  carrying them defensible and the condition that re-opens each — and the §G intro was amended so
+  the table no longer reads as uniformly declined. Requirement and acceptance-criterion text was
+  not touched. Commit `1c872c495`.
+- 2026-09-23 — v0.9.0 — manager-spec — attribution restoration plus this record. The v0.8.1
+  insertion landed after the v0.5.0 bullet's last line, so that bullet's two continuation
+  paragraphs — **D14 restated positively** and the **Audit-withdrawal note** — came to read as
+  continuation of v0.8.0, and the note's "in this revision" pointed at the wrong revision. Both
+  paragraphs are moved back under v0.5.0 unchanged. This entry also closes the one-commit lag
+  v0.8.1 left behind: a §H that records every commit but its own reproduces D23 at depth one.
+  Commit: this revision.
 - **Provenance correction (iter-2, D17).** The two retired strings quoted in this bullet —
   `REQ-002c` and `REQ-013b` — appear here as **quotations of removed text, not as live
   references**; they resolve to nothing, which is the point being recorded. The v0.2.0 entry above
