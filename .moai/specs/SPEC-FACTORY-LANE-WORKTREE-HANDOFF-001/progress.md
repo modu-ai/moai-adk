@@ -13,7 +13,7 @@ module: "internal/factorymsg"
 ## §A Status
 
 - Current SPEC status: `in-progress` (M1 commit, manager-develop). The plan-era lines below are kept as written.
-- Current phase: run, M1, M2, M3a, M3b and M4 complete (M4 code HEAD `c16d1422a`); M5 (LIVE) not started (see §E.2 and § M4 lane record).
+- Current phase: run, M1, M2, M3a, M3b and M4 complete (M4 code HEAD `c16d1422a`; follow-up tests `a0d4755a7` on develop absorb `09e620d2d`); M5 (LIVE) not started (see §E.2, § M4 lane record, and its M4 follow-up subsection).
 - Card/worktree/branch: `t1082` / `.claude/worktrees/t1082` / `WT-factory-lane-worktree-handoff`.
 - Plan subject HEAD: `bf39a539d97f49edf3b11517ee7c982239c60df3`.
 - Implementation: NOT STARTED.
@@ -813,3 +813,63 @@ The AC-FLH-003 fixture follows the SPEC writer's note: the handoff-bound owner i
 - A recovered SWITCH_PENDING_HEADLESS rebind trusts the caller's `Owner` to be the relocated thread's owner; a wrong owner yields `BINDING_EVIDENCE_INVALID` NACK, not a wrong bind.
 - The `BindLaunchPending` refusal keeps the launch-pending row in place until its owner dies (as REQ-FLH-010/017 specify); the lane's roster shows `launch_pending` with an empty session in that window.
 - Crash points are a panic-based seam; they model process death for the broker (transactions roll back) but not partial Git operations inside `git worktree add`.
+
+### M4 follow-up — AC-FLH-011/015 named tests, recovery coverage, merged-tree re-measure (2026-09-24)
+
+Tree: the lane absorbed local develop as merge `09e620d2d` (brings `cb625f74b`, which contains t1109 `aae9bafb5`). Commit on top: `a0d4755a7` test(factory): add AC-FLH-011 and AC-FLH-015 named tests, raise recovery coverage. All measurements below are on `a0d4755a7`.
+
+**RED (named tests absent).** `grep -rn "func <name>(" internal --include='*_test.go'` exit 1 for both names, with the positive control `TestFactoryLaneHandoffNoPrivateControl` found (exit 0) (`run-m4b-red-absent.txt`). The acceptance.md gate commands, run verbatim through the lane scrub at `09e620d2d`: AC-FLH-011 `false` exit 1, AC-FLH-015 `false` exit 1 (`run-m4b-red-gates.txt`). The behavior both tests assert already existed, so there is no behavioral RED. Discrimination is shown by the mutants below instead.
+
+**AC-FLH-011 `TestFactoryLaneHandoffNoPreBoundWrites`** (`internal/cli/factory_lane_handoff_nowrite_test.go`). Instruments the handoff Git adapter (`handoffCommand`, argv recorded) and uses the crash-point seam as an observation hook. It measures every state: `reserved`, `created`, `renamed`, `WT_READY`, `switch-pending`, `relocated`, `SWITCH_PENDING_HEADLESS`. At each state it checks:
+- the primary branch and HEAD, its status, and its file listing;
+- target cleanliness and commits beyond the pin;
+- `AuthorizeCardWrite` on the source;
+- claim followed by receipt on the source.
+
+After BOUND, one dispatch round runs on the bound endpoint. Observed: `AC_FLH_011_COUNTERS code_writes=0 wrong_cwd_writes=0 primary_switches=0 pre_bound_commits=0 task_acks=0 messages=2/2/0 git_calls=19`.
+
+**AC-FLH-015 `TestFactoryLaneHandoffT1074Compatibility`** (`internal/cli/factory_lane_handoff_compat_test.go`):
+- MCP catalog `36/14/22`, and the registered server matches it.
+- A full headless handoff to BOUND plus a restart reconcile (`finalize`) run on the run.
+- The t1074 launcher register+bind, send, claim, body, disposition, receipt and roster path then runs on `lane-2` in the same run.
+- The store inventory under `MOAI_HOME` and the primary (SQLite files and sockets) is unchanged. The handoff tables live in the existing broker file at `BrokerPath`.
+- Every subprocess the handoff started is a finished `git`.
+
+Observed: `AC_FLH_015 catalog=36/14/22 stores=2 git_calls=19`.
+
+**Mutants** (applied to the GREEN tree, reverted, restoration asserted by sha256 in the runner):
+
+| Mutant | Test | Result | Log |
+|---|---|---|---|
+| `AuthorizeCardWrite` always grants | 011 | FAIL `code_writes=7` | `run-m4b-mutant-ac11-authorize-always.log` |
+| controller runs `git -C <primary> checkout -b` after reserve | 011 | FAIL `primary_switches=7` | `run-m4b-mutant-ac11-primary-branch-switch.log` |
+| rebind release moves no message (`… AND 0`) | 011 | FAIL `messages sent/received/lost = 2/0/2` | `run-m4b-mutant-ac11-release-drops-messages.log` (the first draft of this mutant was malformed SQL, and it failed for that reason. It was rewritten, re-run, and the log was overwritten) |
+| controller writes `.moai/handoff-queue.db` | 015 | FAIL `store inventory changed` | `run-m4b-mutant-ac15-parallel-store-file.log` |
+| controller starts `git status` without waiting | 015 | FAIL `was never waited: a lingering process` | `run-m4b-mutant-ac15-lingering-subprocess.log` |
+
+**Recovery coverage.** `TestLaneHandoffRecoveryEdges` gains four subtests: inactive run, develop moved after the rename crash (→ `BASE_DRIFT`), card-branch rename collision on resume (→ `BRANCH_COLLISION`), and BOUND without its receipt (→ corruption error; the receipt row is deleted by test-only SQL). `internal/cli/factory_lane_handoff_recover.go`: 81/91 = **89.0%** (was 84.6%). Measured with `go test -coverpkg=./internal/factorymsg,./internal/cli -run '^(TestFactoryLaneHandoff.*|TestLaneHandoff.*)$' ./internal/cli` (`run-m4b-cli-xpkg-cover.log`).
+
+**Hook flakiness on the merged tree.** Same four tests ×5 with `-race`, scrubbed env (`run-m4-hook-flake-merged.log`): 20 PASS / 0 FAIL, exit 0. Load average was 19.5 at start and 18.5 at end. The `session_start_drift_fill_test.go:579` lines are `t.Log`, not failures. No failure remained, so no base (`cb625f74b`) run was needed.
+
+| Tree | Runs | PASS | FAIL | Attribution |
+|---|---|---|---|---|
+| `8fa0d5f5d` (before absorb) | 20 | 15 | 5 | same messages on base `a44c9f30c` (11/9) → pre-existing |
+| `a0d4755a7` (after absorb) | 20 | 20 | 0 | none |
+
+The absorbed develop includes t1109 "launch-pending bind budget split". Whether that commit is why the launch-pending flake is gone is **not established** (one sample, different load).
+
+**Verification batch** (lane env scrubbed in the same invocation):
+
+| Check | Result |
+|---|---|
+| AC-FLH-001..011, 014..020 via acceptance.md commands verbatim | 18/18 `true`, exit 0 each (`run-m4b-ac-gates.txt`, first line is the HEAD SHA) |
+| `go test -race -count=1 ./internal/factorymsg/...` | `ok 44.042s`, 0 DATA RACE (`run-m4b-race-factorymsg.log`) |
+| `go vet` factorymsg/hook/cli | exit 0 |
+| `golangci-lint run` factorymsg/hook/cli | `0 issues.`, exit 0 (`run-m4b-lint.log`) |
+| `GOOS=windows GOARCH=amd64 go build ./...`, `go vet` of the three packages | exit 0 / exit 0 |
+
+**Gaps.**
+- AC-FLH-015's Given lists SessionStart fixtures. The named test lives in `internal/cli` and does not drive the hook SessionStart path; the t1074 SessionStart tests in `internal/hook` are covered only by the flake re-run above (4 tests) and the M4 full hook run.
+- The AC-FLH-011 filesystem instrument is observational: snapshots taken at each state and compared. Writes are not intercepted at the syscall level, and a write undone between two observations is invisible.
+- Neither new named test has a behavioral RED; discrimination rests on the five mutants.
+- The full `internal/cli` and `internal/hook` suites were not run on the merged tree (CI owns them).
