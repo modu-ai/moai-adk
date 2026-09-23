@@ -92,8 +92,14 @@ func registerFactoryHookPeer(ctx context.Context, input *HookInput, mode factory
 		return "factory messaging degraded: " + peerErr.Error()
 	}
 	if mode == factoryPeerBindSessionStart {
+		if notice, handled := bindFactoryInteractiveHandoff(ctx, s, input, want); handled {
+			return notice
+		}
 		p, bound, bindErr := s.BindLaunchPending(ctx, want)
 		if bindErr != nil {
+			if notice, ok := factoryHandoffRegistrationNotice(bindErr, slot); ok {
+				return notice
+			}
 			return "factory messaging degraded: " + bindErr.Error()
 		}
 		if !bound {
@@ -103,6 +109,9 @@ func registerFactoryHookPeer(ctx context.Context, input *HookInput, mode factory
 	}
 	p, err := s.RegisterPeer(ctx, want)
 	if err != nil {
+		if notice, ok := factoryHandoffRegistrationNotice(err, slot); ok {
+			return notice
+		}
 		return "factory messaging degraded: " + err.Error()
 	}
 	return fmt.Sprintf("factory messaging bound: run=%s slot=%s generation=%d; messages arrive at turn boundaries, not idle wake", runID, p.Slot, p.Generation)
