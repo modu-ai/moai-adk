@@ -90,13 +90,13 @@ measurement; they are the deadlines the chain runner sets per member, not host t
 
 | # | Member | Claude registration timeout | Claude in-hook cost bound | Codex placement (default, `T_stop` = 10 s) | Codex internal budget | Receipt producer on Codex | Class |
 |---|---|---|---|---|---|---|---|
-| 1 | `moai hook stop` (turn state, telemetry prune, reflection, evidence gate, factory batch) | 5 s | handler work, no external command | in-hook | 2 s | — | advisory (factory continuation is decision-bearing) |
+| 1 | `moai hook stop` (turn state, telemetry prune, reflection, evidence gate, factory batch) | 5 s | handler work, no external command | in-hook | 2 s for the advisory steps; the factory-continuation step is exempt from the cut-off (see below) | — | advisory, except the factory-continuation path (`stop.go:80–81`), which is decision-bearing |
 | 2 | sync-phase quality gate (compile/vet per detected language) | 60 s | compile/vet over the tree | **receipt** | 0.5 s (compare only) | the sync gate's decision core run out of hook through a `moai` entry decided in M2d; its record is the existing `.moai/state/sync-quality-gate.last` (`<head-sha> <outcome> <worktree-content-id>`), extended with the §D3.6 fields | required-gate |
 | 3 | `moai hook stop-goal` | 120 s | 90 s per mechanical condition × N | **in-hook, lookup-only** | 2 s | `moai verify record` (`internal/cli/verify.go:88`), run by the working agent after it runs the condition command; the evaluator's existing snapshot source (`verify.Source.Lookup`, `internal/verify/source.go:44`) reads it | goal |
 | 4 | `moai hook security-turn` | 5 s, async | observation | in-hook (MoAI's measured Codex handler whitelist is `{type, command, timeout}`, `hooks.go:16–18`, with no async key) | 0.5 s | — | advisory |
 | 5 | `moai hook security-commit` | 5 s, async | observation | in-hook | 0.5 s | — | advisory |
-| 6 | `moai hook codex-review-gate` | 900 s | codex review RPC ≤ 900 s (`codex_review_gate.go:87`) | **receipt** | 0.5 s (compare only) | a codex review result persisted during the turn (the `codex_audit` MCP tool or a `moai` CLI entry, decided in M2d). Invoking a codex review RPC from inside a Codex host's own Stop hook is nested Codex execution and is not measured, so it is not chosen | required-gate (config-conditional) |
-| 7 | `moai hook multi-review-gate` | 900 s | reads a persisted result only (`multi_review_gate.go:108–117`) | in-hook | 0.5 s | already receipt-shaped: `.moai/state/audit-multi/<session>.json`, written by the `audit_multi` MCP tool during the turn | required-gate (config-conditional) |
+| 6 | `moai hook codex-review-gate` | 900 s | codex review RPC ≤ 900 s (`codex_review_gate.go:87`) | **receipt** | 0.5 s (compare only) | a codex review result persisted during the turn (the `codex_audit` MCP tool or a `moai` CLI entry, decided in M2d). Invoking a codex review RPC from inside a Codex host's own Stop hook is nested Codex execution and is not measured, so it is not chosen | **fail-open-on-missing** (config-conditional) |
+| 7 | `moai hook multi-review-gate` | 900 s | reads a persisted result only (`multi_review_gate.go:108–117`) | in-hook | 0.5 s | already receipt-shaped: `.moai/state/audit-multi/<session>.json`, written by the `audit_multi` MCP tool during the turn | **fail-open-on-missing** (config-conditional) |
 | 8 | `moai hook harness-observe-stop` (inside a `{{ if .HookOptIn.Enabled }}` branch) | 5 s | observation | in-hook | 0.5 s | — | advisory |
 
 Member 3 runs in-hook because comparing receipts is cheap. What changes on Codex is that a
@@ -108,6 +108,31 @@ conditions (transcript claims) are evaluated in-hook as today. They run no comma
 On Claude every member keeps its current registration and in-hook behaviour. This SPEC does not
 change the Claude Stop array.
 
+**Class `fail-open-on-missing` (members 6 and 7).** Plan-audit iter-2 N1 corrected the v0.2.0
+classing of the two review gates as `required-gate`. On Claude both gates allow the stop when their
+result is missing, and the source states this on purpose:
+
+- `internal/cli/multi_review_gate.go:47`: "no session id / missing state file → ALLOW (fail-open; no
+  result yet)". The return is at `:79`.
+- `internal/cli/multi_review_gate.go:110–111`: "The fail-open direction is load-bearing: a missing
+  optional backend's evidence-of-absence must NOT trap the session."
+- `internal/cli/codex_review_gate.go:59`: "codex missing → ALLOW (fail-open; can't trap the
+  session)".
+
+This SPEC does not change Claude behaviour. It gives the two gates the same class on both
+harnesses. When the gate's result is present, the gate decides on it (a block stays a block). When
+the result is missing, the gate allows, and on Codex the allow is never silent: the chain writes a
+discard record through `RecordDiscards` (`internal/codexadapter/diagnostics.go:24`) and puts
+reason text on the output naming the missing result. The goal member (3) and the sync gate (2)
+stay fail-closed: a missing receipt continues the turn and never allows.
+
+**Member 1's factory-continuation path (plan-audit iter-2 N4).** `stop.go:80–81` returns a
+`decision: block` when the factory batch asks the lane to keep working. That path is exempt from
+the 2 s advisory cut-off. If it is interrupted by the handler's outer timeout, the chain treats the
+member as `unmeasured` and continues the turn. It never turns a continuation into an allow. The
+other steps of member 1 (telemetry prune, reflection, evidence gate, `stop.go:59–79`) stay advisory
+under the 2 s budget.
+
 ### §D3.4 Continuation reason classes and the declared mapping (REQ-HPR-002)
 
 | Situation | Claude class | Codex class | Treated as equivalent? |
@@ -115,11 +140,15 @@ change the Claude Stop array.
 | condition ran and failed | `unmet` | `unmet` (receipt present, failing exit) | yes (identical) |
 | condition passed | `met` → allow | `met` → allow (receipt present, exit 0, all fields equal) | yes (identical) |
 | condition not measured on this tree state | (does not arise: Claude runs it in-hook) | `unmeasured` → continuation naming the command to run | **yes, declared mapping `unmeasured` ↔ `unmet`**: both continue the turn, and neither may allow the stop |
-| required gate failed | `gate_failed` → block | `gate_failed` → block (receipt shows fail) | yes (identical) |
-| required gate not measured | (does not arise) | `unmeasured` → continuation naming the gate command | yes, same declared mapping as above |
+| required gate (sync gate) failed | `gate_failed` → block | `gate_failed` → block (receipt shows fail) | yes (identical) |
+| required gate (sync gate) not measured | (does not arise: Claude runs it in-hook) | `unmeasured` → continuation naming the gate command | yes, same declared mapping as above |
+| review gate (member 6 or 7), result present and blocking | block | block | yes (identical) |
+| review gate (member 6 or 7), result present and passing or inconclusive | allow | allow | yes (identical) |
+| review gate (member 6 or 7), **result missing** | allow, fail-open (`multi_review_gate.go:47, :79`; `codex_review_gate.go:59`) | allow, fail-open, **plus** a discard record and reason text naming the missing result | yes (identical decision). The Codex-only diagnostic is an addition to the output, not a different decision |
 
 The AC-HPR-002 goldens encode this table. Any other pairing fails the golden, including a Codex
-`allow` against a Claude continuation, or a Codex `unmeasured` that allows the stop.
+`allow` against a Claude continuation, a Codex `unmeasured` from the goal or sync gate that allows
+the stop, and a Codex review-gate missing-result allow that writes no discard record.
 
 ### §D3.5 Aggregate budget rule for the single Codex Stop handler (option B; resolves D11)
 
@@ -132,14 +161,22 @@ Option B runs all members inside one Codex handler, one after another. The compa
 - Receipt members contribute only their compare budget, never their out-of-hook cost.
 - `chain_overhead` is a named constant fixed in M2b (input parsing, attribution, dedup, output
   write). It is declared, not implied.
-- With the proposed budgets above: 2 + 0.5 + 2 + 0.5 + 0.5 + 0.5 + 0.5 + 0.5 = 7 s before
-  overhead, leaving at most 3 s for `chain_overhead` under the current 10 s render constant.
-  Operator decision Q5 (no live runs in this SPEC) means AC-HPR-021 stays `NOT_RUN`, so
-  `T_codex_max` is unknown and `T_stop` stays at 10 s for this SPEC. The aggregate rule is met by
-  these budgets, not by raising `T_stop`. AC-HPR-016 fails if the declared budgets or the overhead
-  constant push the sum past 10 s.
+- The proposed budgets sum to 2 + 0.5 + 2 + 0.5 + 0.5 + 0.5 + 0.5 + 0.5 = 7 s before overhead,
+  leaving at most 3 s for `chain_overhead` under the current 10 s render constant. That is a
+  statement about **declared** budgets. Whether each member's actual in-hook cost fits its budget
+  is **not yet measured**, and this document does not claim that it does. Member 1 (telemetry
+  prune plus `AnalyzeSessionAndLog`, `stop.go:59–73`) and member 3 (in-hook model-condition
+  evaluation) are the likeliest to exceed their budgets.
+- The measurement belongs to run-phase M2d: each in-hook member runs on the golden fixtures with
+  its observed cost recorded (AC-HPR-016, timing leg). A member whose observed maximum exceeds its
+  declared budget fails the leg. The budget is then raised within the aggregate, or the member moves
+  to receipt placement.
+- Operator decision Q5 (no live runs in this SPEC) means AC-HPR-021 stays `NOT_RUN`, so
+  `T_codex_max` is unknown and `T_stop` stays at 10 s for this SPEC.
 - A member that exceeds its internal budget at runtime is cut off. An advisory member is recorded
-  failed (REQ-HPR-004). A required-gate or goal member yields `unmeasured`, never allow.
+  failed (REQ-HPR-004). The goal member and the sync gate yield `unmeasured` and never allow. A
+  `fail-open-on-missing` gate that is cut off is treated as result-missing: it allows, with the
+  discard record. Member 1's factory-continuation path is not cut off (see §D3.3).
 
 ### §D3.6 Receipt fields (REQ-HPR-019)
 
@@ -219,11 +256,13 @@ is not reused (operator decision Q3).
 The second producer, `moai goal clear`, does not write a status at all. It removes the goal state
 (`internal/goal/state.go:120–127`), so the next Stop finds no goal and does not block, and nothing
 reads `satisfied`. `StatusCleared` is defined (`schema.go:73`) and read once
-(`evaluate.go:294`), but no non-test code writes it (research.md §R1.10).
+(`evaluate.go:294`), but no non-test code writes it (research.md §R1.10). A third site also removes
+goal state: `internal/hook/stop_failure.go:111` calls `goal.ClearGoal` on an unrecoverable
+StopFailure. That is a failure path, not a user cancellation, and it does not write `cancelled`.
 
 Every non-test reader of goal status must handle `cancelled` explicitly, and an unrecognised
-status must surface a diagnostic rather than be treated silently. Measured readers (research.md
-§R1.10):
+status must surface a diagnostic rather than be treated silently. Measured readers and writers
+(research.md §R1.10; grep scope `internal/goal internal/cli internal/hook`):
 
 | Reader | What it does with the status | Required handling of `cancelled` |
 |---|---|---|
@@ -235,9 +274,15 @@ status must surface a diagnostic rather than be treated silently. Measured reade
 | `internal/cli/goal.go:1282, 1331` | `goal status` output (list and single) | renders `cancelled` verbatim — asserted by test |
 | `internal/goal/dashboard.go:141` | dashboard status string | renders `cancelled` verbatim — asserted by test |
 | `internal/cli/hook_stop_goal.go` emission condition | emits only on block or exit transitions | a `cancelled` goal emits nothing and never blocks |
+| `internal/cli/goal.go:1313` | `moai goal clear` → `goal.ClearGoal` (removes state) | none — asserted by test |
+| `internal/hook/session_start_compact.go:88` | reader; acts only on `armed` | none; `internal/hook` stays untouched (REQ-7, Q6) — asserted by test |
+| `internal/hook/handoff_inject.go:185` | writer of `armed` for an injected goal | none; `internal/hook` stays untouched — asserted by test |
+| `internal/hook/stop_failure.go:111` | `goal.ClearGoal` on an unrecoverable StopFailure (failure path, not cancellation) | none; `internal/hook` stays untouched — asserted by test |
 
-`TestGoalStatusConsumersHandleCancelled` (AC-HPR-013) enumerates this table and fails when a new
-non-test reader of `goal.Status` appears that the table does not list. An unrecognised status
+`TestGoalStatusConsumersHandleCancelled` (AC-HPR-013) enumerates this table. Its scan scope is the
+package list `internal/goal`, `internal/cli`, and `internal/hook`, non-test files only. It fails
+when a new site that reads or writes `goal.Status`, or calls `goal.ClearGoal`, appears in those
+packages and the table does not list it. An unrecognised status
 value yields a stderr diagnostic from the evaluator and no block; it is never mapped to
 `satisfied`.
 
@@ -254,7 +299,7 @@ The status addition changes a persisted schema, so it is milestone M2a in plan.m
 `codexadapter.CodexEventInterrupt` already exists outside `internal/hook` (SPEC-CODEX-EVENT-COVERAGE-001
 REQ-CEV-002). The Interrupt row gets a dispatcher arg handled entirely in `internal/cli` (a new
 `moai hook interrupt` subcommand scoped to `--harness codex`), which writes the cancellation record
-through the goal package. No Claude-side registration is added.
+through the goal package. No Claude-side registration is added. With the arg in place the row is adapted, so the adapted count becomes 12 and `RenderHooks` installs an Interrupt handler. That reverses SPEC-CODEX-EVENT-COVERAGE-001 REQ-CEV-004, and its test is amended in M2e.
 
 **Decided (Q6): SPEC-CODEX-HOOK-ADAPTER-001 REQ-7 is kept.** Nothing under `internal/hook` is
 modified. Shared Stop-member functions are extracted into `internal/cli` or

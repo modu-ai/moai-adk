@@ -198,9 +198,26 @@ $ grep -n "func ClearGoal\|os.Remove" internal/goal/state.go
 ```
 
 The three non-test lines are two definition lines and one reader (`evaluate.go:294`), not three
-readers. Non-test readers of goal status, from
-`grep -rn "StatusArmed\|StatusSatisfied\|StatusCeilingExit\|StatusUnsatisfiable\|\.Status" internal/goal internal/cli`
-(goal-status hits only):
+readers.
+
+Correction (v0.3.0, plan-audit iter-2 N3): the v0.2.0 grep was scoped to `internal/goal internal/cli`
+and missed three sites in `internal/hook`. Re-run over all three packages:
+
+```text
+$ grep -rn "goal\.Status\|g\.Status\|StatusArmed\|StatusSatisfied\|StatusCeilingExit\|StatusUnsatisfiable\|StatusCleared\|ClearGoal(" internal/goal internal/cli internal/hook | grep -v _test.go
+(schema.go:65–78 and :130, dashboard.go:141, state.go:120, evaluate.go:294/306/325/340/404/435 as before, plus:)
+internal/cli/launcher_blockcap_infinite.go:68:	if g.Status != goal.StatusArmed || g.Ceiling.MaxTurns != 0 {
+internal/cli/handoff.go:85:	... g.Status == goalpkg.StatusArmed {
+internal/cli/goal.go:1282:	... g.SessionID, g.Status, g.Goal)
+internal/cli/goal.go:1313:	if err := goal.ClearGoal(root, sessionID); err != nil {
+internal/cli/goal.go:1331:	_, _ = fmt.Fprintf(out, "status:     %s\n", g.Status)
+internal/hook/session_start_compact.go:88:	if g.Status != goal.StatusArmed {
+internal/hook/handoff_inject.go:185:		Status:          goal.StatusArmed,
+internal/hook/stop_failure.go:111:	if err := goal.ClearGoal(root, input.SessionID); err != nil {
+```
+
+The same grep also hit four `binlag.Status*` cases in `internal/cli/doctor.go:606–623`. Those are a
+different type and are not goal-status sites. Goal-status sites:
 
 | Location | Use |
 |---|---|
@@ -211,6 +228,10 @@ readers. Non-test readers of goal status, from
 | `internal/cli/launcher_blockcap_infinite.go:68` | acts only on `armed` |
 | `internal/cli/handoff.go:85` | embeds only an `armed` goal |
 | `internal/cli/goal.go:1282, 1331` | `goal status` output |
+| `internal/cli/goal.go:1313` | `moai goal clear` → `ClearGoal` |
+| `internal/hook/session_start_compact.go:88` | reader, acts only on `armed` |
+| `internal/hook/handoff_inject.go:185` | writer of `armed` |
+| `internal/hook/stop_failure.go:111` | `ClearGoal` on unrecoverable StopFailure |
 
 design.md §D6 assigns the `cancelled` handling for each row.
 
@@ -246,13 +267,17 @@ These chains are excluded from this SPEC (spec.md §F) and registered as `unveri
 
 ### R1.13 Tests that pin behaviour this SPEC changes (static)
 
-- `internal/codexadapter/events_test.go:64–70` `TestAdaptedRowCount` pins `wantAdapted = 8`; M2e
-  makes it 11 (PreCompact, PostCompact, PermissionRequest), or 12 once Interrupt gains a
-  dispatcher arg.
+- `internal/codexadapter/events_test.go:67` `TestAdaptedRowCount` pins `wantAdapted = 8`. M2e sets
+  it to **12**: PreCompact, PostCompact, and PermissionRequest are adapted, and Interrupt gains the
+  dispatcher arg `interrupt` (design.md §D7).
+- `internal/codexwiring/hooks_test.go:73` `TestRenderHooks_InterruptNeverInstalled` asserts the
+  rendered `hooks.json` carries no Interrupt key (SPEC-CODEX-EVENT-COVERAGE-001 REQ-CEV-004 /
+  AC-CEV-005). Once Interrupt is adapted, `RenderHooks` installs it, so M2e inverts this test to
+  assert the Interrupt handler **is** rendered.
 - `internal/codexadapter/output_test.go:278` `TestPreToolUseAskDropped` asserts `ask` → `{}`; M2c
   inverts it.
 
-Both are intentional characterization amendments (plan.md M2c, M2e), not regressions.
+All three are intentional characterization amendments (plan.md M2c, M2e), not regressions.
 
 ## R2. Existing live-test conventions
 

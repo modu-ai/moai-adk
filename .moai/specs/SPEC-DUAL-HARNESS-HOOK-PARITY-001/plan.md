@@ -31,6 +31,9 @@ The Jev-sourced decisions (Q1, Q2, Q6) carry the delegation's confidence as reco
 decisions, not measurements. The operator can reopen any of them at Implementation Kickoff
 Approval.
 
+Q1, Q2, and Q6 are to be confirmed by the operator at Implementation Kickoff Approval (plan-audit
+iter-2 N7). Q2 in particular changes user-visible Codex behaviour.
+
 ## §D Constraints
 
 - No push, no branch switch, and no edit of any other worktree. Integration follows the local develop chain via the lead.
@@ -41,7 +44,7 @@ Approval.
 ## §E Self-verification (plan phase)
 
 - SPEC ID regex: PASS (executed; see progress.md §E.1).
-- 25 REQs (Tier L ceiling 25) and 21 ACs (ceiling 25) as list items (`- **REQ-HPR-NNN**`) so the lint collector sees them.
+- 25 REQs (Tier L ceiling 25) and 22 ACs (ceiling 25) as list items (`- **REQ-HPR-NNN**`) so the lint collector sees them.
 - Each REQ maps to ≥1 AC (acceptance.md §C). Each AC names a command and a mutation.
 
 ## §F Milestones
@@ -51,15 +54,15 @@ last. Priorities are labels only.
 
 | Milestone | Priority | Content | ACs | Depends on |
 |---|---|---|---|---|
-| **M2a — decision & state models** | High | Normalized decision type and per-event translation table (design.md §D1). New goal status `cancelled` (Q3) and its handling in every reader of goal status listed in design.md §D6: `schema.go` set, `evaluate.go:294` early return, the writers at `evaluate.go:306/325/340/404/435`, `launcher_blockcap_infinite.go:68`, `handoff.go:85`, `goal.go:1282/1331`, `dashboard.go:141`, `hook_stop_goal.go` emission; unknown-status diagnostic. Obligation registry schema and loader (design.md §D4, Q1) | AC-HPR-006 (table), AC-HPR-013 (status consumers), AC-HPR-018 (schema) | — |
+| **M2a — decision & state models** | High | Normalized decision type and per-event translation table (design.md §D1). New goal status `cancelled` (Q3) and its handling in every reader of goal status listed in design.md §D6: `schema.go` set, `evaluate.go:294` early return, the writers at `evaluate.go:306/325/340/404/435`, `launcher_blockcap_infinite.go:68`, `handoff.go:85`, `goal.go:1282/1331`, `dashboard.go:141`, `goal.go:1313`, `hook_stop_goal.go` emission. The `internal/hook` sites (`session_start_compact.go:88`, `handoff_inject.go:185`, `stop_failure.go:111`) are asserted unchanged (REQ-7). `TestGoalStatusConsumersHandleCancelled` scans `internal/goal`, `internal/cli`, and `internal/hook`. Unknown-status diagnostic. Obligation registry schema and loader (design.md §D4, Q1) | AC-HPR-006 (table), AC-HPR-013 (status consumers), AC-HPR-018 (schema) | — |
 | **M2b — receipt contract and Stop budget** | High | Extend the `internal/verify` snapshot record and the sync gate's outcome record with config digest, command, and tool version; comparison predicate; not-run on any mismatch (design.md §D3.6). Declare per-member internal budgets and the `chain_overhead` constant; `T_stop` stays 10 s (Q5) | AC-HPR-016, AC-HPR-017 | M2a |
-| **M2c — decision hardening** | High | Replace the `ask`/`defer` drop with the fail-closed visible deny (Q2). Fault-injection tests for timeout, exit 1, corrupt output, exit 2. **Intentional characterization amendment:** `TestPreToolUseAskDropped` (`output_test.go:278`) is inverted, not kept green | AC-HPR-006, AC-HPR-008 (unit) | M2a |
-| **M2d — Stop chain on Codex** | High | Inventory over both template renders (REQ-HPR-001). Go chain runner with the merge rule (design.md §D2). Lookup-only goal evaluation and receipt placement per design.md §D3.3. **Decide the sync-gate port shape here (Q4)** and record it in progress.md. Goldens for Claude-vs-Codex effect, including the `unmeasured` mapping | AC-HPR-001, 002, 003, 005 | M2a, M2b |
-| **M2e — event adaptation** | High | Adapt PreCompact, PostCompact, PermissionRequest; add the Interrupt path in `internal/cli` (design.md §D7, Q6); update the `events.go` census comment. **Intentional characterization amendment:** `TestAdaptedRowCount` (`events_test.go:67`, `wantAdapted = 8`) is raised to the new count, not kept green | AC-HPR-009, 010, 011 (golden/unit legs) | M2a |
+| **M2c — decision hardening** | High | Replace the `ask`/`defer` drop with the fail-closed visible deny (Q2). Fault-injection tests for timeout, exit 1, corrupt output, exit 2. Unit test for the visible deny: reason names the required input, and a `RecordDiscards` entry is written. **Intentional characterization amendment:** `TestPreToolUseAskDropped` (`output_test.go:278`) is inverted, not kept green | AC-HPR-006, AC-HPR-008 (unit), AC-HPR-022 | M2a |
+| **M2d — Stop chain on Codex** | High | Inventory over both template renders (REQ-HPR-001). Go chain runner with the merge rule (design.md §D2). Lookup-only goal evaluation and receipt placement per design.md §D3.3. **Decide the sync-gate port shape here (Q4)** and record it in progress.md. Goldens for Claude-vs-Codex effect, including the `unmeasured` mapping and the `fail-open-on-missing` review-gate rows. **Timing step:** run each in-hook member on the golden fixtures, record its observed maximum cost in progress.md §E.2, and adjust the declared budgets or move a member to receipt placement if any member exceeds its budget. Member 1's factory-continuation path is exempt from the cut-off (design.md §D3.3) | AC-HPR-001, 002, 003, 005, 016 (timing leg) | M2a, M2b |
+| **M2e — event adaptation** | High | Adapt PreCompact, PostCompact, PermissionRequest; add the Interrupt path in `internal/cli` (design.md §D7, Q6); update the `events.go` census comment. **Intentional characterization amendments:** `TestAdaptedRowCount` (`events_test.go:67`) goes from `wantAdapted = 8` to `wantAdapted = 12`. `TestRenderHooks_InterruptNeverInstalled` (`internal/codexwiring/hooks_test.go:73`, which enforces SPEC-CODEX-EVENT-COVERAGE-001 REQ-CEV-004 / AC-CEV-005) is inverted to assert that the Interrupt handler is rendered. Neither is kept green | AC-HPR-009, 010, 011 (golden/unit legs) | M2a |
 | **M2f — goal parity** | High | Codex Stop → existing evaluator in lookup-only mode; cancellation precedence through the real producers; budget termination; host override ≠ satisfied | AC-HPR-012 (golden), 013, 014, 015 | M2a, M2d, M2e |
 | **M2g — live legs, built but not run** | Medium | `MOAI_PARITY_LIVE` axis declared in `codex_live_axis_declaration_test.go`; temp `CODEX_HOME`; scratch-project `claude -p`; `t.Skipf` discipline (acceptance.md §B rule 8); the Stop-timeout ceiling probe. **Not executed** (Q5): each live leg is run once without the switch and its `NOT_RUN` skip output is recorded | AC-HPR-004, 007, live legs of 008–012, 020, 021 — all `NOT_RUN` | M2c–M2f |
 | **M2h — coverage & verdict aggregation** | Medium | Populate the registry with the whole catalog (Q1): M2 obligations, M1 rows `blocked:M1`, the Claude-interrupt row `UNSUPPORTED`, and the non-Stop chains `unverified`. Coverage check; aggregate verdict reading both the go-test action and the verdict record | AC-HPR-018, 019 | M2a–M2g |
-| **M2i — mechanical tail** | Low | `RenderHooks` table update, `make build`, doc comments, codemaps refresh. The two amended tests above are intentional; every other existing codexwiring/codexadapter test stays green | regression of the unamended tests | M2d, M2e |
+| **M2i — mechanical tail** | Low | `RenderHooks` table update, `make build`, doc comments, codemaps refresh. The three amended tests above are intentional; every other existing codexwiring/codexadapter test stays green | regression of the unamended tests | M2d, M2e |
 
 ## §G Risks
 
