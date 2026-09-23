@@ -291,8 +291,18 @@ MOAI_BROWSER_GUARD=1 go test ./internal/web/ -run 'AppJsHandlersFireRuntime' -v 
 >
 > 판별 조건은 「**같은 조건에서** 정상 판은 초록이고 돌연변이 판은 적색이다」 하나다. 세 판에 똑같이 건 증폭은 이 조건을 바꾸지 않는다.
 
+> **어느 경로가 이 AC 를 채우는가 — 개정 3(card t1108, 2026-09-24, 리드 결정 (b); plan.md §A000).** 이 AC 를 채우는 경로는 둘이고, 판정서는 어느 경로였는지를 테스트 로그의 경로 표시(`local-b1` / `ci-stage2`)와 함께 적어야 한다.
+>
+> - **로컬 B1 경로** — 스위치 `MOAI_BROWSER_GUARD_SETTLE_STAGE2` 가 없거나 `1` 이 아니다. 위 「측정 순서」 1→2→3 을 그대로 따른다. 1단계로 판정되면 증폭은 「미적용」이다.
+> - **CI 2단계 경로** — `MOAI_BROWSER_GUARD_SETTLE_STAGE2=1`(`.github/workflows/ci.yml` `test-browser` 그린 단계 `env:` 에만 설정). 1단계를 건너뛰고 2단계에서 시작한다. 증폭 값은 1000 ms 로 세 판에 똑같이 건다. 이 경로도 **2단계의 판정 조건을 하나도 줄이지 않는다.** 다음을 모두 보여야 통과다: 증폭 효과 관측(증폭 없는 정상 판 10회와 증폭한 정상 판 10회의 click→`htmx:afterSettle` 소요 시간 원문과 두 중앙값, 증폭 쪽 중앙값이 더 큼), 정상 판 10/10 발화(매 회 자기확인 네 다리 참), M1·M2 **각각** 10/10 적색과 각각의 적색 사유 분포, (d) 만료 사본의 exit 1 + `popover_after_swap` 지목. 효과 관측이 빠지거나 중앙값이 커지지 않으면 이 경로의 결과로 판정할 수 없다(실패). CI 2단계 경로에서 빠지는 것은 증폭 없는 M1·M2 측정뿐이다.
+>
+> 두 경로 모두 위 판별 조건 「같은 조건에서 정상 판은 초록, 돌연변이 판은 적색」을 지킨다. 개정 3 의 근거(1단계 비결정성과 job 상한)는 plan.md §A000 에 있다.
+
 ```bash
+# 로컬 B1 경로
 MOAI_BROWSER_GUARD=1 go test ./internal/web/ -run 'AppJsFirePostSwapSettleWait' -v -count=1
+# CI 2단계 경로
+MOAI_BROWSER_GUARD=1 MOAI_BROWSER_GUARD_SETTLE_STAGE2=1 go test ./internal/web/ -run 'AppJsFirePostSwapSettleWait' -v -count=1
 ```
 
 > **증폭이 필요할 수 있는 이유.** 실제 boost 스왑에서는 `pushState` 와 바디 교체가 같은 동기 작업에서 끝나고, `htmx:afterSettle` 은 settle 지연(htmx 2.0.4 기본 `defaultSettleDelay: 20`) 뒤에 온다. 대기가 없는 판(M1·M2)이 그 사이에 클릭할지는 CDP 왕복 시간에 달려 있고, **실제 스왑 경로에서 대기 없는 판의 실패율은 아직 측정되지 않았다**(판정서의 스로틀 측정은 전체 이동 경로의 것이다). 그래서 위 「측정 순서」의 2단계가 있다. 증폭을 쓰고도 같은 조건에서 M1·M2 가 10/10 적색이 되지 않으면 이 AC 는 채택 불가다. 대기가 재바인딩에 실제로 필요하다는 것을 이 형태로는 보일 수 없다는 뜻이므로, 조용히 통과시키지 말고 리드에게 blocker 로 보고한다.
@@ -339,12 +349,14 @@ go test ./internal/web/ -run 'AppJsFireSwapPremiseLegs' -v -count=1
 ```bash
 grep -nF "run 'AppJs.*Fire'" .github/workflows/ci.yml
 grep -c -- '--primary-entries-only' .github/workflows/ci.yml
-MOAI_BROWSER_GUARD=1 go test ./internal/web/ -run 'AppJs.*Fire' -v -count=1 -timeout 10m
+MOAI_BROWSER_GUARD=1 MOAI_BROWSER_GUARD_SETTLE_STAGE2=1 go test ./internal/web/ -run 'AppJs.*Fire' -v -count=1 -timeout 10m
 ```
+
+> **개정 3(card t1108, 2026-09-24).** 세 번째 명령은 CI 그린 단계와 같은 조건으로 돌아야 하므로 스위치 `MOAI_BROWSER_GUARD_SETTLE_STAGE2=1` 을 함께 건다(plan.md §A000). 그린 단계에는 이 변수가 `env:` 에 한 행으로 들어가며, 그 밖의 단계·job 에는 두지 않는다. 판정서는 이 실행의 벽시계 소요 시간, 시작·종료 load average, job 상한 20분 대비 여유를 **수치로** 적는다(plan.md M10.2). 워킹 트리의 미커밋 `-run` 변경은 그 소요 시간이 상한 안에 든다는 측정이 기록된 뒤에만 커밋한다.
 
 > **판정면은 병합 트리의 로컬 실행이고, CI 로그는 기록이다.** 레인은 push 하지 않으므로(리드 일괄) 러너 로그는 레인이 볼 수 없다. blocking 판정은 병합 트리에서 위 세 명령의 출력으로 한다. 리드는 일괄 push 뒤 `test-browser` 로그에서 같은 테스트 이름이 `--- PASS` 인지 읽고 기록한다.
 
-> **시간 상한 — 리드 결정(card t1108, B3: 이 카드 범위 안).** 세 번째 명령은 **먼저** CI 행과 같은 `-timeout 10m` 으로 병합 트리에서 잰다. 그 안에 끝나면 상한은 건드리지 않는다. 넘으면 그린 단계 한 줄(현재 `.github/workflows/ci.yml:672`)의 `-timeout` **만** 측정된 소요 시간에 여유를 더한 값으로 올린다. 다른 어떤 단계의 상한도 바꾸지 않는다. **올린 값이 job 상한 `timeout-minutes: 20`(`.github/workflows/ci.yml:608`) 안에 들어가지 않으면, job 상한을 올리지 말고 run-phase 를 멈춰 리드에게 blocker 로 보고한다**(plan-audit iter-1 D4 — job 예산에는 Chrome 설치·빌드·레드 단계가 함께 든다). 올린 경우에는 측정 명령과 측정된 소요 시간을 판정서와 커밋 메시지 **둘 다**에 원문으로 인용하고, 올린 값으로 세 번째 명령을 다시 돌려 (c) 를 판정한다. 이때 AC-006 기준으로 `:672` 는 여전히 `test-browser` 안의 추가 행이다.
+> **시간 상한 — 리드 결정(card t1108, B3: 이 카드 범위 안).** 세 번째 명령은 **먼저** CI 행과 같은 `-timeout 10m` 으로 병합 트리에서 잰다. 그 안에 끝나면 상한은 건드리지 않는다. 넘으면 그린 단계 한 줄(현재 `.github/workflows/ci.yml:672`)의 `-timeout` **만** 측정된 소요 시간에 여유를 더한 값으로 올린다. 다른 어떤 단계의 상한도 바꾸지 않는다. **올린 값이 job 상한 `timeout-minutes: 20`(`.github/workflows/ci.yml:608`) 안에 들어가지 않으면, job 상한을 올리지 말고 run-phase 를 멈춰 리드에게 blocker 로 보고한다**(plan-audit iter-1 D4 — job 예산에는 Chrome 설치·빌드·레드 단계가 함께 든다). 올린 경우에는 측정 명령과 측정된 소요 시간을 판정서와 커밋 메시지 **둘 다**에 원문으로 인용하고, 올린 값으로 세 번째 명령을 다시 돌려 (c) 를 판정한다. 이때 AC-006 기준으로 `:672` 는 여전히 `test-browser` 안의 추가 행이다. 개정 3 의 스위치 행도 `test-browser` 안의 추가 행이다.
 
 - **RED-now**: 증거 장부 **E13** — 오늘의 CI 선택자 `'AppJsHandlersFire'` 가 고르는 테스트는 두 개뿐이고, 제출 계열(`TestAppJsFireValidationReject*`)은 CI 에서 **한 번도 돌지 않는다**. 올바른 이유의 적색이다 — t1106 이 넣은 blocking AC-010·011 의 판정 테스트가 CI 판정면에 없다. 보조 **E14**(적색 아님 — 넓힌 뒤의 목표 집합). **E16**: `ci.yml:672` 의 현재 선택자 원문.
 - **green path**: M10 이 `ci.yml:672` 한 곳을 넓히고, 병합 트리에서 위 세 명령을 실행해 뒤집는다. 이 AC 는 plan-audit 이 상속 부채로 남긴 N2(REQ-AFG-010 의 「전용 job 이 이 가드를 돌린다」 절반이 개정분 테스트를 덮지 않음)를 닫는다.
@@ -710,4 +722,4 @@ regression-class (AC-AFG-005, 006, 008):
 - **스왑 대기와 자기확인 (c) 는 settle 이벤트가 「이 클릭의 요청」에서 나왔는지 묻지 않는다**(plan-audit iter-1 D5, 알려진 한계). 같은 문서 안에서 스왑을 일으키는 실시간 갱신 경로(`app.js:686-695`)가 설정 화면에 생기면, 무관한 settle 이 대기를 풀고 (c) 를 참으로 만들 수 있다. 오늘 `/settings` 템플릿에는 실시간 영역이 없다(`grep -c 'data-live=' internal/web/root.templ` → `0`). 어느 AC 도 이 결합을 판정하지 않는다.
 - **다리 (a) 의 측정 배선 오류는 어느 고정물도 단독으로 잡지 못한다**(plan-audit iter-2 N4, 알려진 한계 — 기록된 부채). (a) 의 측정이 실제로는 (b) 를 재도록 잘못 배선돼도 AC-015 (ii)(두 다리가 함께 거짓)와 (v)(판정층만 검사)를 모두 통과한다. 라이브 (a) 단독 고정물은 탐침 사본이 boost 조상 없는 `hx-get` 링크를 주입하고 `htmx.process` 로 활성화하는 방식으로 가능할 것으로 **추론**하지만, 측정하지 않았고 이 개정은 요구하지 않는다.
 - **`popover_after_swap` 의 「selector matched nothing」은 패널 값으로 판정된다**(`appjs_fire_probe.py:789`). 보고서는 트리거 선택자를 싣는다. 이 불일치는 spec.md §E 에 관찰로만 기록했고, 어느 AC 도 그 변경을 요구하지 않는다.
-- **CI 러너에서의 스로틀 반복 실행 시간은 측정되지 않았다.** AC-016 은 병합 트리에서 CI 와 같은 `-timeout 10m` 으로 먼저 잰다. 넘으면 그린 단계 한 줄의 상한만 측정값에 여유를 더한 값으로 올린다(리드 결정, B3 — 이 카드 범위 안). 그 값이 job 상한 20분 안에 들어가지 않으면 blocker 다. CI 러너 자체의 소요 시간은 리드의 일괄 push 뒤에야 관측된다.
+- **CI 러너에서의 스로틀 반복 실행 시간은 측정되지 않았다.** 개정 3 뒤로 CI 는 스위치 `MOAI_BROWSER_GUARD_SETTLE_STAGE2=1` 로 2단계에서 시작하므로, 로컬에서 재는 것도 그 경로다. 1단계는 CI 에서 돌지 않아 1단계의 비결정성은 CI 판정면에 드러나지 않는다(plan.md §A000). AC-016 은 병합 트리에서 CI 와 같은 `-timeout 10m` 으로 먼저 잰다. 넘으면 그린 단계 한 줄의 상한만 측정값에 여유를 더한 값으로 올린다(리드 결정, B3 — 이 카드 범위 안). 그 값이 job 상한 20분 안에 들어가지 않으면 blocker 다. CI 러너 자체의 소요 시간은 리드의 일괄 push 뒤에야 관측된다.

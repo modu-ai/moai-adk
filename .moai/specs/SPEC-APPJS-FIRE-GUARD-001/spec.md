@@ -1,10 +1,10 @@
 ---
 id: SPEC-APPJS-FIRE-GUARD-001
 title: "app.js 버튼 핸들러 런타임 발화 가드 — 정적 경계 가드의 초록이 실제 발화를 함의하지 않음을 브라우저에서 재단다"
-version: "0.3.0"
+version: "0.3.1"
 status: in-progress
 created: 2026-09-22
-updated: 2026-09-23
+updated: 2026-09-24
 author: manager-spec
 priority: P2
 phase: "v3.2.0 target"
@@ -32,6 +32,7 @@ amendment_of: SPEC-APPJS-FIRE-GUARD-001
 | 2026-09-23 | 0.3.0 | 개정 2 plan-audit iter-2 PASS-WITH-DEBT(0.89) 인라인 수리 (card t1108) — N1: AC-AFG-015 (iii)·AC-AFG-014 (d) 고정물을 「`htmx:afterSettle` 이 지나간 뒤에야 리스너를 붙이는 사본」으로. N2: AC-AFG-014 (b) 적색 판별식을 「exit 1 + `popover_after_swap` 비발화」로 넓히고 사유 분포 기록. N3: REQ-AFG-007 (3) 의 구현 좌표를 근거 주석으로 이동(금지는 조문에 유지). N4: 알려진 한계로 기록(부채). REQ·AC 신설 0건 | manager-spec |
 | 2026-09-23 | 0.3.0 | 개정 2 plan-audit iter-1 FAIL(0.84) 수리 (card t1108) — D1(차단): AC-AFG-015 에 다리별 역방향 고정물 추가((a)(b)(c) 동시 거짓의 전체 이동 판 + 다리 단독 합성 보고서 + (c) 단독·(d) 단독 라이브 사본). D2: AC-AFG-014 돌연변이를 둘로 정의(`/settings` 경로 폴링 판, 대기 제거 판), 만료 대기 적색 명시. D3: B1 분기 술어를 10/10 으로 고정, 증폭 효과 관측을 필수화. D4: 올린 `-timeout` 이 job `timeout-minutes: 20` 을 넘으면 blocker. D5: 한계로 기록. D6: REQ-AFG-007 (3) 에 exit 1 과 지목 대상. D7: REQ-AFG-007 형식 표기. D8: `app.go:288`. D9: AC-AFG-016 매핑에 REQ-AFG-007·016. REQ·AC 신설 0건 | manager-spec |
 | 2026-09-23 | 0.3.0 | 리드 blocker 결정 반영 (card t1108) — B1: AC-AFG-014 에 고정 측정 순서(스로틀 12배 단독 먼저 → 판정되지 않을 때에만 두 판에 동일한 settle 지연 증폭 + 효과 관측 → 증폭 적용 여부·값 기록). B3: AC-AFG-016 에 그린 단계 `-timeout` 조건부 상향(병합 트리 실측이 10m 초과 시 그 한 줄만, 근거 인용). B2: 원문 유지. REQ·AC 신설 0건 | manager-spec |
+| 2026-09-24 | 0.3.1 | 개정 3 — run-phase M10 blocker 에 대한 리드 결정 (b) 반영 (card t1108). CI 는 `TestAppJsFirePostSwapSettleWait` 를 2단계(세 판 동일 증폭 1000 ms + 필수 효과 관측)에서 시작하고 1단계(스로틀 12배 단독)는 로컬 전용. 스위치 `MOAI_BROWSER_GUARD_SETTLE_STAGE2=1`(그린 단계 `env:` 에만). 근거: 15m 판 `FAIL … 900.542s`·1단계 M1 `fired 2/10 \| red 8/10`(M9 는 10/10 적색)·2단계 경로 산술 ≈21.6분 > job 20분. plan.md §A000 신설·M9.1·M10.1~3a·§F, acceptance.md AC-014 경로 절·AC-016 명령·한계, spec.md scope·§E CI 문언. REQ·AC 신설 0건, 번호 불변 | manager-spec |
 
 ### Amendments
 
@@ -49,7 +50,7 @@ amendment_of: SPEC-APPJS-FIRE-GUARD-001
 | prior completed version | 0.1.0 (변동 없음 — 0.2.0 개정은 run-phase 까지 develop 에 착지했으나 sync 로 닫히지 않았다. 마지막 완료 판은 여전히 위 표의 0.1.0 / `0e2377323` 이다) |
 | amendment base | branch `WT-popover-swap-flake`, HEAD `52a486635`, tree `895ad8954` (0.2.0 run-phase 와 그 F1 수리가 병합된 로컬 develop) |
 | rationale | card t1108 판정서(`.moai/reports/t1108/verdict.md`)가 `popover_after_swap` 의 간헐 실패 원인을 확정했다 — 5단계가 클릭하는 `a[href="/todo"]` 에는 `hx-boost` 조상이 없어 클릭이 **메인 프레임 전체 이동**이고, 탐침은 URL 변경만 기다린 채 6단계로 넘어가 새 문서의 초기화보다 먼저 클릭할 수 있다. 따라서 REQ-AFG-007 이 전제한 「hx-boost 스왑 뒤」는 이 SPEC 의 어느 판에서도 실제로 측정된 적이 없다. 리드 결정: 방향 (a) — REQ-AFG-007 의 의도(실제 스왑 뒤 재바인딩)를 유지하고, 전제가 조용히 재발하지 않도록 스왑 자체를 탐침이 확인하게 한다 |
-| scope | REQ-AFG-007 문언 개정 + REQ-AFG-016 신설. 매니페스트의 스왑 항목·스왑 뒤 항목 정의 변경(스왑 링크는 `/settings` 위 boost 링크, 스왑 뒤 페이지는 `/settings`). CI 는 `.github/workflows/ci.yml:672` 그린 단계 한 줄만 바꾼다 — `-run` 정규식을 넓히고(`'AppJsHandlersFire'` → `'AppJs.*Fire'`), 병합 트리 실측이 10분을 넘을 때에만 같은 줄의 `-timeout` 을 측정값 + 여유로 올린다(리드 결정 B3). `--primary-entries-only` 3곳(734/745/767)은 유지. `app.js`·제품 템플릿·`INVENTORY_TOTAL` 불변 |
+| scope | REQ-AFG-007 문언 개정 + REQ-AFG-016 신설. 매니페스트의 스왑 항목·스왑 뒤 항목 정의 변경(스왑 링크는 `/settings` 위 boost 링크, 스왑 뒤 페이지는 `/settings`). CI 는 `.github/workflows/ci.yml:672` 그린 단계 한 줄만 바꾼다 — `-run` 정규식을 넓히고(`'AppJsHandlersFire'` → `'AppJs.*Fire'`), 병합 트리 실측이 10분을 넘을 때에만 같은 줄의 `-timeout` 을 측정값 + 여유로 올린다(리드 결정 B3). `--primary-entries-only` 3곳(734/745/767)은 유지. 개정 3(2026-09-24): 같은 그린 단계의 `env:` 에 스위치 `MOAI_BROWSER_GUARD_SETTLE_STAGE2: "1"` 한 행을 더한다 — CI 는 `TestAppJsFirePostSwapSettleWait` 를 2단계에서 시작한다(plan.md §A000). `app.js`·제품 템플릿·`INVENTORY_TOTAL` 불변 |
 
 ---
 
@@ -447,7 +448,7 @@ CI 는 신설 전용 job(`test-browser`)에서 이 가드를 실행해야 하고
 
 - **판정 규칙의 관측 층 불일치는 기록만 하고 고치지 않는다.** `internal/web/testdata/appjs_fire_probe.py:789` 는 `popover_after_swap` 의 「selector matched nothing」을 **패널** `.hidden` 값이 null 인지로 판정한다(`rep.get("p6_panel_hidden_before") is not None`). 그런데 보고서의 `selector` 칸에는 **트리거** 선택자 `[data-pop="profile"]` 이 찍힌다(`:798`·`:802` 가 매니페스트 항목의 `selector` 를 그대로 싣고, 그 값은 `:183` 의 트리거 선택자다). 트리거는 있고 패널이 없는 경우와 그 반대를 보고서만으로는 가를 수 없다. 이 개정은 그 규칙의 변경을 요구하지 않는다. 판정서가 인용한 좌표 `:474` 는 t1106 병합 전 트리의 것이며, 같은 규칙이 이 트리에서는 `:789` 에 있다.
 - **`app.js`·제품 템플릿을 바꾸지 않는다.** boost 된 `/todo` 링크를 만들어 옛 매니페스트를 살리는 길은 §C 개정 결정 2 에서 기각했다.
-- **CI 는 `.github/workflows/ci.yml:672` 그린 단계 한 줄만 바꾼다.** 바꾸는 것은 `-run` 정규식이다. `-timeout 10m` 은 병합 트리 실측이 그 상한을 넘을 때에만, 측정 소요 시간 + 여유로 올린다(리드 결정 B3, AC-AFG-016). 올린 값이 job 상한 `timeout-minutes: 20`(`ci.yml:608`) 안에 들어가지 않으면 job 상한은 바꾸지 않고 run-phase 가 멈추며 blocker 로 보고한다(plan-audit iter-1 D4). `--primary-entries-only` 3곳(734/745/767)은 유지한다 — 빼면 t1106 의 F1(표식 항목이 사본 base 없이 운전돼 exit 2)이 되살아난다. 그 밖의 단계와 그 상한은 건드리지 않는다.
+- **CI 는 `.github/workflows/ci.yml:672` 그린 단계 한 줄만 바꾼다.** 바꾸는 것은 `-run` 정규식이다. `-timeout 10m` 은 병합 트리 실측이 그 상한을 넘을 때에만, 측정 소요 시간 + 여유로 올린다(리드 결정 B3, AC-AFG-016). 올린 값이 job 상한 `timeout-minutes: 20`(`ci.yml:608`) 안에 들어가지 않으면 job 상한은 바꾸지 않고 run-phase 가 멈추며 blocker 로 보고한다(plan-audit iter-1 D4). `--primary-entries-only` 3곳(734/745/767)은 유지한다 — 빼면 t1106 의 F1(표식 항목이 사본 base 없이 운전돼 exit 2)이 되살아난다. 그 밖의 단계와 그 상한은 건드리지 않는다. 개정 3(card t1108, 2026-09-24): 같은 그린 단계의 `env:` 에 스위치 `MOAI_BROWSER_GUARD_SETTLE_STAGE2: "1"` 한 행이 더 들어간다. 이 행도 그린 단계 안의 추가이며, 이 변수를 다른 단계·job·workflow 전역 `env:` 에 두지 않는다(plan.md §A000, M10.1).
 - **`INVENTORY_TOTAL` 과 lint 커버리지 산식을 바꾸지 않는다**(§B.7.6).
 - **보고서 키(`p5_*`·`p6_*`)의 이름을 바꾸지 않는다.** 드라이버의 JSON 태그가 고정하는 계약이다. 스왑 창 이름 `p5_swap_referenceerrors` 의 **의미**가 바뀌는 문제는 §F 가 아니라 plan.md §F 잔여 위험에 기록했다.
 - **스왑 대기와 자기확인 (c) 는 이벤트가 「이 클릭의 요청」에서 나왔는지는 묻지 않는다 — 알려진 한계로 기록만 한다(plan-audit iter-1 D5).** `app.js` 에는 같은 문서 안에서 스왑을 일으키는 실시간 갱신 경로가 있다(`internal/web/assets/app.js:686-695` — `htmx.ajax("GET", window.location.href, {target: ".body", select: ".body", swap: "outerHTML"})`). 설정 화면에 실시간 영역이 생기면 무관한 settle 이 대기를 풀고 (c) 를 참으로 만들 수 있다. 오늘 `/settings` 템플릿에는 실시간 영역이 없다(`grep -c 'data-live=' internal/web/root.templ` → `0`). 그래서 이 개정은 요구사항을 바꾸지 않고, plan.md §F 잔여 위험과 acceptance.md §D 에 기록한다.
