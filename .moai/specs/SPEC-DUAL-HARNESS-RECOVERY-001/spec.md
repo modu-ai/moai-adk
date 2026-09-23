@@ -1,7 +1,7 @@
 ---
 id: SPEC-DUAL-HARNESS-RECOVERY-001
 title: "Dual-harness recovery — Codex wiring unwire/rollback, Codex worktree and kanban parity, role permission contract, exactly-once dispatch results, mixed factory card flow"
-version: "0.3.0"
+version: "0.3.1"
 status: completed
 created: 2026-09-23
 updated: 2026-09-24
@@ -35,6 +35,7 @@ related_specs:
 | 0.1.0 | 2026-09-23 | 카드 t1100 plan 초안. 이중 하네스 설계(§19)의 AC-MIG-01, AC-WT-01, AC-AGENT-01, AC-MSG-01, AC-FACT-01 다섯 기준만 다룬다. |
 | 0.2.0 | 2026-09-23 | plan-audit iter-1(FAIL 0.76) 결함 D1~D21 수리. 리드 결정 1~4·D6 반영(출처와 한계는 `plan.md` §B). 멱등 범위를 조건부 REQ로 바꾸고 재현 측정 REQ-DHR-025를 추가. 배선 잠금을 codexwiring 소유 잠금으로 교체. 감사 역할의 Codex 예외를 REQ-DHR-015로 한정. |
 | 0.3.0 | 2026-09-23 | plan-audit iter-2(FAIL 0.81) 결함 ND1~ND14 수리. `done`의 L1 거부를 기존 계약으로 인정하고 삭제 보호를 실제 삭제 경로에 둠(REQ-DHR-010). ND2는 리드 조정 결정을 §E에 기록. LIVE·측정 증거를 파일 채널로 옮김(1 KiB 분할 회피). 프로필 전환 전제를 코드 판독에 맞게 고치고 Claude 쪽 관리 뿌리 삭제는 범위 밖 발견으로 둠. REQ·AC 수는 그대로(25·23). |
+| 0.3.1 | 2026-09-24 | 리드 결정에 따라 sync-audit(`.moai/reports/t1100/sync-audit.md`, 감사 대상 HEAD `dfaba6381`) F1을 반영했다. 감사는 AC-DHR-012가 FAIL, AC-DHR-023이 미충족, REQ-DHR-015의 런타임 조항(read-only 감사자가 반환하고 부모가 판정 파일을 쓴다)이 미충족인데도 status가 `completed`이고 정식 이관 기록이 없다고 지적했다. 원인은 측정으로 확인했다. codex-cli 0.156.1에서 `spawn_agent`로 띄운 하위 에이전트는 부모 세션의 sandbox를 물려받고, 역할 TOML의 `sandbox_mode`는 적용되지 않는다(`design.md` §C.1 정정 문단). 세 항목은 후속 카드 t1143(최상위 read-only 실행 경로)으로 정식 이관한다. 이관 방식은 t1082 선례(SPEC-FACTORY-LANE-WORKTREE-HANDOFF-001 0.5.10)를 따른다. 요구사항 SHALL 문구, AC 본문, 판정식(jq), 기대값은 한 글자도 바꾸지 않고 제자리에 두며, t1143이 그대로 이어받는다. acceptance.md의 두 AC 주석, 매핑표, §C 집계표, §D 완료 정의와 이 문서의 REQ-DHR-015 한계 주석, §D 추적표, § Out of Scope — AC-DHR-012·023과 REQ-DHR-015 런타임 조항에 이관 표시를 더했다. status는 되돌리지 않는다. 나머지 범위에 대해서는 `completed`가 유지되며, 이 SPEC은 이관한 세 항목을 충족한다고 주장하지 않는다. |
 
 ## §A 배경과 목적
 
@@ -132,6 +133,8 @@ The Codex role verification SHALL report every `UNSUPPORTED` axis as `UNSUPPORTE
 Where `plan-auditor` or `sync-auditor` is emitted as a Codex role, the role's contract SHALL state `sandbox: read-only` and the emitter SHALL emit `sandbox_mode = "read-only"` for it together with a Codex-only instruction that the role returns its complete verdict or report text instead of writing a file. When a Codex audit role returns, the parent lane orchestrator SHALL write the audit verdict or report file with exactly the returned text. This exception to the contract "the auditor writes its own verdict file" SHALL apply only to the Codex path; the Claude agent definitions, their emitted Claude copies, and the Claude audit workflow SHALL remain unchanged.
 
 > **알려진 한계 (측정, codex-cli 0.156.1 — REQ-DHR-013·015 공통).** `spawn_agent`로 띄운 하위 에이전트는 부모 세션의 sandbox를 물려받으며, 역할 TOML의 `sandbox_mode`는 그 sandbox를 좁히지도 넓히지도 못한다. `plan-auditor`와 `sync-auditor`는 `read-only` TOML로 방출되었는데도 `workspace-write`로 실행되어 쓰기에 성공했다(`design.md` §C.1 정정 문단, AC-DHR-012). 따라서 REQ-DHR-013의 `sandbox` 축 `enforced` 매핑과 REQ-DHR-015의 read-only 감사자는 이 경로에서 런타임에 충족되지 않는다. 두 요구사항의 SHALL 문구는 그대로 유지하며, 그 충족(최상위 `codex exec -s read-only` 실행 경로)은 후속 카드 t1143의 몫이다.
+>
+> **정식 이관 (0.3.1, sync-audit F1 리드 결정).** REQ-DHR-015의 런타임 조항 — 감사 역할이 read-only로 실행되어 판정문을 반환하고 부모 lane 오케스트레이터가 그 원문으로 판정 파일을 쓴다는 부분 — 은 카드 t1143으로 정식 이관한다. 이 SPEC 범위에서는 충족되지 않았고, 이 SPEC은 충족을 주장하지 않는다. 이 SPEC 안에서 REQ-DHR-015는 방출 쪽 계약(AC-DHR-013)으로만 검증된다. 위 SHALL 문구는 바꾸지 않으며 t1143이 그대로 이어받는다. 함께 이관하는 AC는 AC-DHR-012와 AC-DHR-023이다(§ Out of Scope — AC-DHR-012·023과 REQ-DHR-015 런타임 조항).
 
 ### REQ-DHR-016 — Dispatch record
 
@@ -190,8 +193,8 @@ When the run phase starts, before any change to the factorymsg schema, the repro
 | § REQ-DHR-011 | AC-DHR-006 |
 | § REQ-DHR-012 | AC-DHR-009 |
 | § REQ-DHR-013 | AC-DHR-010 |
-| § REQ-DHR-014 | AC-DHR-011, AC-DHR-012 |
-| § REQ-DHR-015 | AC-DHR-013, AC-DHR-023 |
+| § REQ-DHR-014 | AC-DHR-011, AC-DHR-012 (`FAIL → t1143 이관`) |
+| § REQ-DHR-015 | AC-DHR-013, AC-DHR-023 (`미충족 → t1143 이관`) — 런타임 조항은 t1143까지 미충족 |
 | § REQ-DHR-016 | AC-DHR-014 |
 | § REQ-DHR-017 | AC-DHR-014, AC-DHR-015 |
 | § REQ-DHR-018 | AC-DHR-014, AC-DHR-015, AC-DHR-016 |
@@ -281,6 +284,12 @@ t1082의 SPEC은 이 트리에 없다. `.claude/worktrees/t1082/.moai/specs/SPEC
 ### Out of Scope — dispatch record의 나머지 설계 필드
 
 - `scope` / `authority_ref`, `worktree_ref` / `expected_head`, 결과 외 `evidence_refs`. AC-MSG-01·AC-FACT-01 판정에 필요하지 않다. `worktree_ref` / `expected_head`는 t1082가 필요할 때 추가한다.
+
+### Out of Scope — AC-DHR-012·023과 REQ-DHR-015 런타임 조항 (카드 t1143으로 이관, 0.3.1)
+
+- 리드 결정(sync-audit `.moai/reports/t1100/sync-audit.md` F1)에 따라 AC-DHR-012(FAIL), AC-DHR-023(미충족), REQ-DHR-015의 런타임 조항을 이 SPEC의 충족 범위에서 빼고 카드 t1143(최상위 read-only 실행 경로)에 넘겼다. 이 SPEC은 이 세 항목을 충족한다고 주장하지 않는다.
+- 원인(측정, codex-cli 0.156.1): `spawn_agent`로 띄운 하위 에이전트가 부모 세션의 sandbox를 물려받아, 역할 TOML의 `sandbox_mode = "read-only"`가 적용되지 않았다. 근거는 `design.md` §C.1 정정 문단과 `acceptance.md`의 두 AC 이관 주석이다.
+- 세 항목의 원문(요구사항 SHALL 문구, AC 본문의 Given/When/Then, 판정식 jq, 기대값)은 옮기지 않고 제자리에 둔다. t1143이 바꾸지 않고 이어받는다.
 
 ### Out of Scope — 새 저장소·전송 수단
 

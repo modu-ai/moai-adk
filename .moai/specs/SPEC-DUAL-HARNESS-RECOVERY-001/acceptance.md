@@ -42,7 +42,7 @@ card: t1100
 | AC-DHR-009 | REQ-DHR-012 | AC-WT-01 |
 | AC-DHR-010 | REQ-DHR-013 | AC-AGENT-01 |
 | AC-DHR-011 | REQ-DHR-014 | AC-AGENT-01 |
-| AC-DHR-012 | REQ-DHR-014 | AC-AGENT-01 (LIVE) |
+| AC-DHR-012 | REQ-DHR-014 | AC-AGENT-01 (LIVE) — **`FAIL → t1143 이관`** |
 | AC-DHR-013 | REQ-DHR-015 | AC-AGENT-01 |
 | AC-DHR-014 | REQ-DHR-016, REQ-DHR-017, REQ-DHR-018, REQ-DHR-019 | AC-MSG-01 |
 | AC-DHR-015 | REQ-DHR-017, REQ-DHR-018, REQ-DHR-020 | AC-MSG-01 |
@@ -53,7 +53,7 @@ card: t1100
 | AC-DHR-020 | REQ-DHR-025 | AC-MSG-01 |
 | AC-DHR-021 | REQ-DHR-004 | AC-MIG-01 |
 | AC-DHR-022 | REQ-DHR-002 | AC-MIG-01 |
-| AC-DHR-023 | REQ-DHR-015 | AC-AGENT-01 (LIVE) |
+| AC-DHR-023 | REQ-DHR-015 | AC-AGENT-01 (LIVE) — **`미충족 → t1143 이관`** |
 
 ## §B 인수 기준
 
@@ -208,7 +208,7 @@ mkdir -p .moai/reports/t1100 && go test -json ./internal/template/agentemit -run
 
 MCP 경유 부작용은 이 AC가 증명하지 않으며 `UNSUPPORTED`로 남는다. `mission-governor`와 `super-advisor`의 read-only 강제는 이 AC가 측정하지 않는다.
 
-> **[알려진 FAIL — 후속 카드 t1143으로 이월]** 이 카드(t1100)에서 AC-DHR-012는 알려진 FAIL이다. codex-cli 0.156.1, `codex exec`, `approval_policy=never`로 LIVE 실행한 결과, 12개 역할 로드와 호출 수 14는 관측되었으나, `plan-auditor`와 `sync-auditor`는 역할 TOML이 `sandbox_mode = "read-only"`인데도 `sandbox_policy.type=workspace-write`로 실행되었고 두 탐침 쓰기가 모두 성공했다(`denied=false`, `probe_exists=true`). 역할 TOML의 `developer_instructions`와 `model_reasoning_effort`는 적용되었으므로 역할 파일은 로드되었고 sandbox만 적용되지 않았다. 판별 탐침 2회는 하위 에이전트가 부모 세션의 sandbox를 물려받는다는 것을 보였다(`design.md` §C.1 정정 문단). 증거: `.moai/reports/t1100/ac012-evidence.json`, `ac012-live.jsonl`, `m8-sbx/`. 위 기대값과 판정식은 바꾸지 않는다. 이 AC를 충족시키는 최상위 read-only 실행 경로는 t1143의 몫이다.
+> **[카드 t1143으로 이관 — 이 SPEC 범위에서 충족되지 않음. 판정식과 기대값은 바꾸지 않음 (0.3.1, sync-audit F1 리드 결정)]** Carried over to card t1143 — not satisfied in this SPEC's scope; judge and expected values unchanged. 이 SPEC은 AC-DHR-012가 통과했다고 주장하지 않으며, 위 본문과 판정식은 t1143이 그대로 이어받는다. 이 카드(t1100)에서 AC-DHR-012는 알려진 FAIL이다. codex-cli 0.156.1, `codex exec`, `approval_policy=never`로 LIVE 실행한 결과, 12개 역할 로드와 호출 수 14는 관측되었으나, `plan-auditor`와 `sync-auditor`는 역할 TOML이 `sandbox_mode = "read-only"`인데도 `sandbox_policy.type=workspace-write`로 실행되었고 두 탐침 쓰기가 모두 성공했다(`denied=false`, `probe_exists=true`). 역할 TOML의 `developer_instructions`와 `model_reasoning_effort`는 적용되었으므로 역할 파일은 로드되었고 sandbox만 적용되지 않았다. 판별 탐침 2회는 하위 에이전트가 부모 세션의 sandbox를 물려받는다는 것을 보였다(`design.md` §C.1 정정 문단). 증거: `.moai/reports/t1100/ac012-evidence.json`, `ac012-live.jsonl`, `m8-sbx/`. 위 기대값과 판정식은 바꾸지 않는다. 이 AC를 충족시키는 최상위 read-only 실행 경로는 t1143의 몫이다.
 
 음성·변이(판정식이 `false`여야 하는 입력, plan-audit iter-3에서 합성 입력으로 확인): 같은 역할 이름 12개와 빈 nonce(iter-2 변이), 같은 역할 이름 12개와 유효한 nonce, nonce 하나가 빈 값, 12개 역할이 같은 nonce, 생성 목록 밖의 역할 이름, 양성 대조 해시가 빈 값, 호출 수 0, 호출 수 15, 같은 감사 역할 두 번, 태그 줄 해시와 파일 해시 불일치, 테스트 skip. 증거 파일이 없으면 판정 명령이 판정식에 닿지 않아 `true`가 나오지 않는다.
 
@@ -411,7 +411,7 @@ AC-DHR-012와 같은 실행(같은 jsonl, 같은 호출 예산 14회)의 (ii) �
 
 음성·변이(판정식이 `false`, 합성 입력으로 확인): 반환문 해시와 판정 파일 해시 불일치, 같은 역할 두 번, 빈 해시끼리 같음, 실행 뒤 수정된 증거 파일(태그 해시 불일치).
 
-> **[이 카드의 관측과 한계 — 후속 카드 t1143으로 이월]** codex-cli 0.156.1 LIVE 실행에서 두 감사 역할 모두 반환문 sha256과 판정 파일 sha256이 같게 관측되었다. 그러나 감사자가 쓰기 권한을 가진 상태(`write_denied=false`)로 실행되어 판정 파일을 감사자 자신이 썼다. 이 AC가 전제하는 "read-only 감사자가 반환하고 부모가 판정 파일을 쓴다" 경로는 실행되지 않았다. 따라서 해시 일치는 부모 기록 경로의 원문 일치 증거가 아니며, 이 AC는 AC-DHR-012와 함께 이 카드에서 충족되지 않는다. 증거: `.moai/reports/t1100/ac023-evidence.json`. 기대값과 판정식은 바꾸지 않는다.
+> **[카드 t1143으로 이관 — 이 SPEC 범위에서 충족되지 않음. 판정식과 기대값은 바꾸지 않음 (0.3.1, sync-audit F1 리드 결정)]** Carried over to card t1143 — not satisfied in this SPEC's scope; judge and expected values unchanged. 이 SPEC은 AC-DHR-023이 통과했다고 주장하지 않으며, 위 본문과 판정식은 t1143이 그대로 이어받는다. 아래는 이 카드의 관측과 한계다. codex-cli 0.156.1 LIVE 실행에서 두 감사 역할 모두 반환문 sha256과 판정 파일 sha256이 같게 관측되었다. 그러나 감사자가 쓰기 권한을 가진 상태(`write_denied=false`)로 실행되어 판정 파일을 감사자 자신이 썼다. 이 AC가 전제하는 "read-only 감사자가 반환하고 부모가 판정 파일을 쓴다" 경로는 실행되지 않았다. 따라서 해시 일치는 부모 기록 경로의 원문 일치 증거가 아니며, 이 AC는 AC-DHR-012와 함께 이 카드에서 충족되지 않는다. 증거: `.moai/reports/t1100/ac023-evidence.json`. 기대값과 판정식은 바꾸지 않는다.
 
 세션 기록에 하위 에이전트 반환문이 남지 않으면 테스트는 출력에 `NOT_RUN`을 찍지 않고 `ac023-evidence.json`에 `"not_run": true`만 기록하며(같은 jsonl을 읽는 AC-DHR-012 판정식이 이 사유로 `false`가 되지 않게 한다), 이 AC는 `NOT_RUN`이다(반환문을 얻을 수 없으면 원문 일치를 판정하지 않는다). 실행 명령은 AC-DHR-012의 실행 명령이다(그 명령이 `ac023-evidence.json`도 먼저 지운다).
 
@@ -427,7 +427,7 @@ shasum -a 256 .moai/reports/t1100/ac023-evidence.json > .moai/reports/t1100/ac02
 |---|---|---|---|
 | AC-MIG-01 | AC-DHR-001 ~ 005, 021, 022 | 없음 | 일곱 AC 모두 `true` |
 | AC-WT-01 | AC-DHR-006 ~ 009 | 없음 | 네 AC 모두 `true`. AC-DHR-006의 Windows 분기는 CI 관측 전까지 `NOT_RUN`으로 따로 적음 |
-| AC-AGENT-01 | AC-DHR-010, 011, 013 | AC-DHR-012, 023 | 결정적 셋 `true` + LIVE 둘 `true`. LIVE가 `NOT_RUN`·`ABORTED`이면 `PARTIAL`이며 PASS 아님. `UNSUPPORTED` 항목은 PASS 집계에서 뺀 채 따로 나열 |
+| AC-AGENT-01 | AC-DHR-010, 011, 013 | AC-DHR-012, 023 | 결정적 셋 `true` + LIVE 둘 `true`. LIVE가 `NOT_RUN`·`ABORTED`이면 `PARTIAL`이며 PASS 아님. `UNSUPPORTED` 항목은 PASS 집계에서 뺀 채 따로 나열. **LIVE 둘(AC-DHR-012 FAIL, AC-DHR-023 미충족)은 0.3.1에서 카드 t1143으로 이관했다. 이 SPEC 안에서 이 기준은 PASS가 아니며, 판정식과 PASS 조건은 바꾸지 않는다** |
 | AC-MSG-01 | AC-DHR-014 ~ 016, 020 | 없음 | 네 AC 모두 `true`. AC-DHR-014는 공통 명령과 측정 결과에 맞는 분기 명령 둘 다 `true` |
 | AC-FACT-01 | AC-DHR-017, 019 | AC-DHR-018 | 결정적 둘 `true` + LIVE `true`. LIVE가 `NOT_RUN`·`ABORTED`이면 `PARTIAL` |
 
@@ -438,4 +438,5 @@ shasum -a 256 .moai/reports/t1100/ac023-evidence.json > .moai/reports/t1100/ac02
 - `agents-codex.yaml`이나 `internal/template/templates/.claude/agents/moai/*.md`를 고치면 `make agents-emit`을 실행하고, `.codex/agents/moai/*.toml`을 손으로 고치지 않는다.
 - factorymsg 스키마를 바꾸는 경우(분기 A)만 기존 DB 파일을 여는 마이그레이션 테스트를 포함한다(기존 행 보존, `SchemaVersion` 증가). 분기 B에서는 스키마가 그대로임을 AC-DHR-014 분기 B 명령이 확인한다.
 - 완료 정의: §C 표의 다섯 기준 판정과 그 근거 파일 경로가 `progress.md` §E.2에 기록되고, LIVE 항목은 실행했으면 증거 경로, 안 했으면 `NOT_RUN`, 예산으로 멈췄으면 `ABORTED`로 적힌다. `PARTIAL`을 PASS로 적지 않는다.
+- 이관 항목(0.3.1, sync-audit F1 리드 결정): AC-DHR-012(FAIL), AC-DHR-023(미충족), REQ-DHR-015의 런타임 조항은 카드 t1143으로 정식 이관했다. 이 SPEC의 완료 정의는 이 세 항목의 충족을 요구하지 않으며, 이 SPEC은 그 충족을 주장하지 않는다. 두 AC의 본문, 판정식, 기대값은 제자리에 그대로 두고 t1143이 이어받는다.
 - plan 단계에서 정한 기록 의무(plan-audit iter-3 N3): 증거 디렉터리 `.moai/reports/t1100/`는 gitignore 대상이라 워크트리와 함께 사라지므로, AC-DHR-020의 측정 결과(`outcome`), 측정한 커밋 SHA(`ac020-head.txt`의 값), 증거 파일의 sha256을 경로가 아니라 값으로 `progress.md` §E.2에 직접 적는다.
