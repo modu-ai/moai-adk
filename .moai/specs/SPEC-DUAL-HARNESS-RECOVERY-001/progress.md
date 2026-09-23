@@ -321,6 +321,84 @@ SPEC 재량 안의 결정:
 
 (c) errcheck: 흡수 전 `b21036c1f`에서 `golangci-lint run ./internal/factorymsg/... ./internal/codexwiring/... ./internal/manifest/... ./internal/cli/...` → `35 issues: * errcheck: 35`. 35건 전부 이 브랜치가 바꾸지 않은 줄이다 — `internal/factorymsg/store.go` 8건은 `git blame` 커밋 `45285bf1b`·`cb099897a`·`6bde8412c`·`8c5d9be99`로 모두 `7755dce38..b21036c1f` 밖이고, 나머지 27건이 있는 `internal/cli`·`internal/factorymsg` 파일은 이 브랜치의 변경 파일 목록에 없다. 흡수 후 `6a4d75f32`에서 같은 명령 → `0 issues.`(exit 0, golangci-lint 2.10.1). 이 브랜치가 따로 고친 줄은 없다 — 35건은 t1097이 develop에서 이미 고친 것이다. 벤치마크 파일 추가 뒤 `golangci-lint run ./internal/factorymsg/...` → `0 issues.`.
 
+### M4 — `moai tool disable codex`, 고아 배선·미배포 템플릿 보고 (REQ-DHR-005, 007)
+
+커밋:
+
+| 커밋 | 내용 |
+|---|---|
+| `f8c08006f` | codexwiring: `Unwire`(created 부분만 제거, 저널 쓰기 경로·잠금·복구 재사용), 사이드카 disable 표식, `OwnedWiringFiles` |
+| `2368cbd1c` | cli: `moai tool disable codex`, update 경로의 고아 배선 보고(재작성 없음), 더 이상 배포되지 않는 `.codex/` 템플릿 보고, AC-DHR-021 `disable` 하위 테스트 활성화 |
+
+AC 판정(명령은 `acceptance.md`의 것을 그대로 실행, HEAD `2368cbd1c`, 작업 트리 깨끗함):
+
+| AC | 판정 출력 | 증거 파일 | pass / fail / skip 이벤트 |
+|---|---|---|---|
+| AC-DHR-003 | `true` | `.moai/reports/t1100/ac003.jsonl` | 6 / 0 / 0 |
+| AC-DHR-004 | `true` | `.moai/reports/t1100/ac004.jsonl` | 5 / 0 / 0 |
+| AC-DHR-005 | `false` | `.moai/reports/t1100/ac005.jsonl` | 6 / 0 / 1 — `claude_to_both` 행 skip(아래 blocker) |
+| AC-DHR-021 | `true` | `.moai/reports/t1100/ac021.jsonl` | 5 / 0 / 0 (`disable` 하위 테스트가 이제 실행·통과) |
+| AC-DHR-001 (회귀) | `true` | `.moai/reports/t1100/ac001.jsonl` | 11 / 0 / 0 |
+| AC-DHR-002 (회귀) | `true` | `.moai/reports/t1100/ac002.jsonl` | 11 / 0 / 0 |
+| AC-DHR-022 (회귀) | `true` | `.moai/reports/t1100/ac022.jsonl` | 5 / 0 / 0 |
+
+AC-DHR-005는 PASS가 아니다. 여섯 행 중 다섯이 통과하고 `claude_to_both` 한 행을 `t.Skip("BLOCKED on the template deployer: …")`로 남겼다. 그 행은 `.codex/` 단계에 닿기 전에 update 자체가 실패한다 — `template sync: Deploy Templates: deploy templates: template deploy mkdir ".agents/skills/moai": mkdir .agents/skills/moai: file exists`. claude 배포 뒤 `.agents/skills/moai`는 심볼릭 링크다(관측: `Lstat` mode `Lrwxr-xr-x`, both 배포 뒤는 `drwxr-xr-x`). 링크 대상이 update의 관리 경로 정리 단계에서 지워져 링크가 끊긴 채 both 배포자의 `MkdirAll`을 막는다는 것은 코드 판독 가설이며 재지 않았다. 수리 위치는 `internal/template` 배포자로, M4 파일 범위(`plan.md` §F) 밖이라 고치지 않았다. 이 M4 변경은 배포 단계보다 뒤(`renderUpdateOutcome` 다음)에만 한 줄을 더하므로 원인이 아니다(코드 판독 — 기준 트리에서 같은 행을 재지는 않았다).
+
+RED 증거(E8):
+
+- codexwiring 새 테스트, 구현 전 컴파일 RED: `undefined: UnwireResult`, `undefined: Unwire`, `undefined: ReasonUserOwned`, `undefined: ReasonNoProvenance`, `undefined: ReasonUnknownOrigin`, `undefined: ReasonModified`, `undefined: OwnedWiringFiles`, `FAIL … [build failed]`.
+- cli 새 테스트, 구현 전 컴파일 RED: `undefined: runToolDisableCodexAt`(`codex_wiring_recovery_test.go:124`, `tool_disable_codex_test.go:51`, `:72`).
+- AC-DHR-005 단언 RED(보고 구현 전): `undeployed .codex/agents/moai/builder-harness.toml not reported`(열두 역할 모두), `orphaned wiring not reported with "moai tool disable codex"`(`both_to_claude`, `gpt_to_claude`), `undeployed .codex/agents/moai/retired-role.toml not reported`(`older_binary_to_newer`).
+- 첫 GREEN 시도의 실패 두 건(구현 수정으로 해소): 사용자가 키 순서를 바꿔 재직렬화한 MoAI handler가 `modified`로 남음 → handler 해시를 생성기 필드 순서로 정규화. 소유 기록이 없는 프로젝트에도 disable 표식 사이드카를 만들어 트리가 바뀜 → 표식은 이전 배선 증거가 있거나 무언가를 제거했을 때만.
+- 편차: `TestOwnedWiringFiles`, `TestCodexUnwireHooksModifiedAndUnparseable`은 커버리지를 85% 위로 올리려고 구현 뒤에 썼다(test-after). AC-DHR-004의 두 번째 재배선 라운드는 변이 `unknown_promoted`가 살아남은 것을 보고 더했다(아래 표).
+
+변이(작업 트리 임시 수정 → 실행 → 원복, 원복은 `shasum` 대조로 확인 — 네 파일 모두 수정 전과 같은 해시):
+
+| 변이 | 대상 테스트 | 결과 |
+|---|---|---|
+| (i) unwire가 `unknown` 부분을 지움 | AC-DHR-004 | FAIL `old_install_unknown_origin`: `re-wired old install config changed` |
+| (i) 같은 변이 | AC-DHR-003 | PASS — AC-DHR-003 픽스처에는 `unknown` 부분이 없다(사전 존재는 `preexisting`). 대신 `TestToolDisableCodexCommand/report`가 FAIL(`report lacks "kept … [mcp_servers.moai] (unknown-origin)"`) |
+| 사전 존재 테이블을 `created`로 기록 | AC-DHR-003 | FAIL `preexisting_table_kept`: `config bytes` |
+| 구분 빈 줄을 영역에서 뺌 | AC-DHR-003 | FAIL `config_appended_tables_bytes`, `config_status_line_key_bytes`, `preexisting_table_kept` |
+| provenance 확인 없이 해시만 비교해 삭제 | AC-DHR-004 | FAIL `no_provenance_canonical_content`: `tree changed` |
+| 재배선 첫 회에 `unknown` 대신 `created` 기록 | AC-DHR-004 | FAIL round 1 |
+| 기존 `unknown` 기록을 다음 배선에서 `created`로 승격 | AC-DHR-004 | 처음엔 PASS(생존) → 두 번째 재배선 라운드를 더한 뒤 FAIL round 2 |
+| (ii) update가 고아 배선을 보고 대신 제거(`Unwire` 호출) | AC-DHR-005 | FAIL `both_to_claude`, `gpt_to_claude`: `orphaned wiring rewritten` |
+| (ii-b) update가 미배포 `.codex/` 템플릿을 지움 | AC-DHR-005 | FAIL `both_to_claude`, `gpt_to_claude`, `older_binary_to_newer`: `not preserved byte-identical` 25건 |
+
+품질 게이트(HEAD `2368cbd1c` 트리):
+
+```text
+$ go test ./internal/codexwiring/... ./internal/manifest/... -count=1 -cover
+ok  	github.com/modu-ai/moai-adk/internal/codexwiring	0.665s	coverage: 86.9% of statements
+ok  	github.com/modu-ai/moai-adk/internal/manifest	0.312s	coverage: 88.3% of statements
+$ golangci-lint run ./internal/codexwiring/... ./internal/manifest/... ./internal/cli/...
+0 issues.
+$ go vet ./internal/codexwiring ./internal/manifest ./internal/cli         (커밋 직전 같은 내용의 트리)
+(출력 없음, exit 0)
+$ GOOS=windows GOARCH=amd64 go build ./internal/codexwiring/ ./internal/manifest/ ./internal/cli/   (커밋 직전 같은 내용의 트리)
+(출력 없음, exit 0)
+$ unset MOAI_KANBAN … MOAI_FACTORY_WORKER && go test ./internal/cli -run 'Codex|Doctor|Tool|Wiring|Harness|TemplateSync|UpdateLLM|Mirror|RunUpdate|RunInit|InitCodex' -count=1 -json
+pass 1750, skip 12, fail 1 — TestCodexSpawn_RealAssemblyThroughStubTmux: M3 때와 같은 환경 누출(MOAI_FACTORY_WORKERS가 unset 목록 밖). 그 변수까지 지우고 단독 재실행하면 ok.
+```
+
+`go vet`과 Windows 빌드는 두 커밋 직전, 테스트 파일 한 곳(`unwire_test.go` 재배선 두 번째 라운드)만 다른 트리에서 실행했다. 이후 커밋 HEAD에서 다시 돈 것은 lint와 두 패키지 테스트다.
+
+범위: `internal/factorymsg`는 건드리지 않았다(`git diff --stat e8d42f959 HEAD -- internal/factorymsg` 출력 없음). `Store.Send`의 lane slot 멱등 조회 모양도 그대로다(리드 지시, t1082가 그 위에 원 수신자 조회를 얹는다). `CleanMoaiManagedPaths` 동작도 바꾸지 않았고 AC-DHR-005 테스트는 `.claude/` 아래를 단언하지 않는다.
+
+SPEC 재량 안의 결정:
+
+- **disable 표식.** `moai tool disable codex` 뒤에도 사용자 소유 `config.toml`이 남으면, 파일 존재를 opt-in으로 읽는 update 갱신(REQ-CW-009)이 다음 update에서 MoAI 테이블을 다시 붙인다. 그러면 결정 1("제거는 disable로만")이 update 한 번에 무력해진다. 그래서 사이드카에 `disabled: true`를 기록하고, 존재 게이트가 있는 update 갱신은 이 표식을 opt-out으로 읽어 배선하지 않는다(복구는 그대로 돈다). `moai tool enable codex`가 표식을 지운다. 표식은 이전 배선 증거가 있거나 무언가를 제거했을 때만 쓴다 — MoAI가 배선한 적 없는 프로젝트의 트리는 disable로 바뀌지 않는다(AC-DHR-004 첫 대상).
+- **고아 판정.** "구성된 프로필이 Codex를 쓰지 않는다(`claude`)" 그리고 "manifest가 `.codex/` 템플릿 배포를 기록한다(생성 배선 파일 제외)"일 때만 고아다. claude 프로필에서 `moai tool enable codex`로 배선한 프로젝트는 `.codex/` 템플릿이 배포된 적이 없으므로 고아가 아니고 예전처럼 갱신된다. 고아로 보고하는 파일은 `OwnedWiringFiles` — created 부분을 가진 파일, 그리고 부분 기록이 전혀 없는데 사이드카가 있는 구버전 설치의 배선 파일.
+- **미배포 템플릿 보고.** update가 로드한 manifest의 `.codex/` 항목(생성 배선 제외) 중 이번 배포 목록(`restoredSet`)에 없고 디스크에 있는 경로를 보고한다. 프로필 전환(both → claude)과 구버전 → 신버전의 폐기 템플릿을 같은 규칙이 덮는다. 지우지 않는다.
+- **update는 manifest를 저장하지 않는다(관측).** update 경로는 배포 추적을 메모리에만 하고 `manifest.json`에 쓰지 않는다(`grep '\.Save()'`로 저장처는 `core/project/initializer.go`와 `cli/profile_setup.go`뿐; update만 거친 픽스처의 manifest에는 `.codex/` 템플릿 키가 없었다). 그래서 AC-DHR-005 테스트는 각 행의 출발 배포를 `moai init --llm <from>`으로 만든다. update만으로 만들어진 프로젝트에서는 미배포 템플릿 보고와 고아 판정이 발화하지 않는다 — 잔여 위험으로 적는다.
+- **hooks.json handler 비교.** 기록 해시는 생성기가 쓴 필드 순서(`type`, `command`, `timeout`)의 compact JSON 해시다. 세 키만 가진 handler는 그 순서로 다시 직렬화해 비교하고, 그 밖은 compact 바이트로 비교한다. 객체 키 순서를 비교하지 않는다는 REQ-DHR-005와 맞춘 것이다.
+- **unwire 결과 파일은 화이트리스트 게이트를 거치지 않는다.** 부분 제거는 새 키를 만들지 않으므로 생성기의 REQ-CW-003 게이트를 적용하지 않았다. 사용자 파일에 이미 있던 비화이트리스트 키(테스트의 `x_user_note`)는 그대로 둔다.
+- **메시지 언어.** 기존 `tool enable codex`와 update 경고처럼 CLI 문구는 영어(현지화 계층 없음), 경고는 `warning:` 접두사로 stderr.
+- `MOAI_T1100_EVIDENCE_DIR` skip 규약은 적용하지 않았다 — 이번 AC 테스트는 모두 통과 이벤트만 세고 증거 파일을 쓰지 않는다(리드 확인 경계).
+
+후속 카드 후보(리드 결정, 착지 후): factorymsg `Open` 자체가 부하 걸린 머신에서 약 39–43 ms/op(훅 바인드 예산 200 ms의 약 20%)이며 원인은 재지 않았다(측정은 "Absorb develop" 절 (b)).
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 _<pending run-phase>_
