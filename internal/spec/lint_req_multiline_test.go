@@ -16,7 +16,8 @@ import (
 // other two.
 //
 // Every fixture paragraph is copied verbatim from the corpus:
-//   - SPEC-TODO-LAND-AUTO-DONE-001 spec.md:155-160 (two-line bare, SHALL on line 3)
+//   - SPEC-TODO-LAND-AUTO-DONE-001 spec.md:155-158 (two-line bare, SHALL on line 3;
+//     the source paragraph continues to line 160 and is cut after line 158 here)
 //   - SPEC-CODEX-BLANK-REVIEW-FAILCLOSED-001 spec.md:140-142 (single-line bare, SHALL on line 2)
 //   - SPEC-AC-ANCHOR-SCOPE-001 spec.md:77-80 (list item, SHALL on line 4 — first line of the item kept, tail cut at the fixture end)
 const multiLineREQFixture = "## Requirements\n" +
@@ -119,6 +120,10 @@ func TestParseREQsMultiLine_StopsAtBlockBoundaries(t *testing.T) {
 			"**REQ-X-001 (Ubiquitous)**\nThe system shall do A:\n- first condition\n", "REQ-X-001", "The system shall do A:"},
 		{"two-line header statement then fence",
 			"**REQ-X-001 (Ubiquitous)**\nThe system shall do A:\n```yaml\n", "REQ-X-001", "The system shall do A:"},
+		{"bare definition then tilde fence",
+			"**REQ-X-001** — The system shall do A:\n~~~yaml\n", "REQ-X-001", "The system shall do A:"},
+		{"bare definition then parenthesis-numbered item",
+			"**REQ-X-001** — The system shall do A:\n1) first step\n", "REQ-X-001", "The system shall do A:"},
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
@@ -136,6 +141,84 @@ func TestParseREQsMultiLine_StopsAtBlockBoundaries(t *testing.T) {
 				t.Fatalf("%s not collected from %q", c.id, c.body)
 			}
 		})
+	}
+}
+
+// Widened-only shapes the corpus fixture above does not cover: an ID line whose
+// separator carries no text, and an unindented lazy continuation of a list item.
+func TestParseREQsMultiLine_EmptyFirstLineAndLazyContinuation(t *testing.T) {
+	cases := []struct {
+		name, body, id, want string
+	}{
+		{"bare definition with nothing after the separator",
+			"**REQ-X-001** —\nThe system shall do A.\n", "REQ-X-001", "The system shall do A."},
+		{"list item continued by an unindented line",
+			"- REQ-X-001: The system\nshall do A.\n", "REQ-X-001", "The system shall do A."},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			var found bool
+			for _, e := range parseREQsWithProvenance(c.body) {
+				if e.ID != c.id {
+					continue
+				}
+				found = true
+				if e.Text != c.want {
+					t.Errorf("Text = %q, want %q", e.Text, c.want)
+				}
+				if !e.Widened {
+					t.Errorf("Widened = false, want true (the fixture must exercise the joined path)")
+				}
+			}
+			if !found {
+				t.Fatalf("%s not collected from %q", c.id, c.body)
+			}
+		})
+	}
+}
+
+// Sync-audit F1: an entry the NARROW pattern also collects gates (Widened =
+// false), so it must keep its pre-t1138 single-line Text. Joining its
+// continuation would turn an advisory finding into a gating one (empty first
+// line + WHEN without SHALL below → error ModalityMalformed) or introduce a
+// non-advisory LegacyEARSKeyword (IF on the ID line, THEN below).
+func TestParseREQsMultiLine_NarrowEntriesKeepSingleLineText(t *testing.T) {
+	const body = "- REQ-FXA-001-001: When the operator acts,\n" +
+		"  the system shall respond.\n" +
+		"\n" +
+		"- REQ-FXA-001-002: \n" +
+		"  WHEN the operator acts the system responds.\n" +
+		"\n" +
+		"- REQ-FXA-001-003: IF the file is absent\n" +
+		"  THEN the system shall report it.\n"
+
+	want := map[string]string{
+		"REQ-FXA-001-001": "When the operator acts,",
+		"REQ-FXA-001-002": "",
+		"REQ-FXA-001-003": "IF the file is absent",
+	}
+	reqs := parseREQsWithProvenance(body)
+	if len(reqs) != len(want) {
+		t.Fatalf("collected %d REQ entries, want %d: %+v", len(reqs), len(want), reqs)
+	}
+	for _, e := range reqs {
+		if e.Widened {
+			t.Errorf("%s: Widened = true, want false (the fixture must be narrow-collected)", e.ID)
+		}
+		if e.Text != want[e.ID] {
+			t.Errorf("%s: Text = %q, want %q (the narrow single-line Text)", e.ID, e.Text, want[e.ID])
+		}
+	}
+
+	// REQ-FXA-001-001 and -003 keep the gating ModalityMalformed their single
+	// line already produced before t1138 — that finding is the preserved
+	// behavior, not a regression. What joining would ADD is checked here: a
+	// gating ModalityMalformed on -002 (line 4) and any LegacyEARSKeyword.
+	doc := &SPECDoc{Path: "spec.md", REQs: reqs}
+	for _, f := range (&EARSModalityRule{}).Check(doc, nil) {
+		if f.Code == "LegacyEARSKeyword" || (f.Code == "ModalityMalformed" && f.Line == 4) {
+			t.Errorf("line %d: %s (advisory=%v) — joining reached a gating entry: %s", f.Line, f.Code, f.Advisory, f.Message)
+		}
 	}
 }
 

@@ -99,8 +99,8 @@ var reqBareWidePattern = regexp.MustCompile(`^\**(REQ-[A-Z0-9]+(?:-[A-Z0-9]+)*-\
 // joinStatementContinuation (card t1138), as for the single-line form.
 var reqBareHeaderPattern = regexp.MustCompile(`^\*\*(REQ-[A-Z0-9]+(?:-[A-Z0-9]+)*-\d+)(?:\*\*)?\s*(?:\([^)]*\))?\s*(?:\*\*)?\s*$`)
 
-// reqOrderedListPattern matches a numbered list item ("1. ", "12. ").
-var reqOrderedListPattern = regexp.MustCompile(`^\d+\. `)
+// reqOrderedListPattern matches a numbered list item ("1. ", "12. ", "1) ").
+var reqOrderedListPattern = regexp.MustCompile(`^\d+[.)] `)
 
 // isTwoLineStatement reports whether next can be the statement line under a
 // two-line bare header.
@@ -108,7 +108,7 @@ func isTwoLineStatement(next string) bool {
 	if strings.TrimSpace(next) == "" || next[0] == ' ' || next[0] == '\t' {
 		return false
 	}
-	for _, p := range []string{"- ", "* ", "+ ", "|", "#", ">", "```", "---", "<"} {
+	for _, p := range []string{"- ", "* ", "+ ", "|", "#", ">", "```", "~~~", "---", "<"} {
 		if strings.HasPrefix(next, p) {
 			return false
 		}
@@ -139,8 +139,12 @@ func isTwoLineStatement(next string) bool {
 // unindented plain line continues it as a markdown lazy continuation. When
 // indented is false (a bare definition) an indented line ends the paragraph.
 //
-// Joining only appends after the first line, so the leading text the modality
-// judge keys its prefix on is unchanged.
+// When first is non-empty, joining only appends after it, so the leading text
+// the modality judge keys its prefix on is unchanged. When first is empty (an ID
+// line whose separator carries no text), the first continuation line becomes the
+// prefix instead — that is the statement the author wrote, and it is the point
+// of the join. Entries the narrow pattern also collects are exempt from joining
+// altogether (parseREQsWithProvenance), because they gate.
 func joinStatementContinuation(first string, lines []string, next int, indented bool) string {
 	var parts []string
 	if t := strings.TrimSpace(first); t != "" {
