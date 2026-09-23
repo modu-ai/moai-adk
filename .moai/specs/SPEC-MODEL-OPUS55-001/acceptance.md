@@ -12,7 +12,7 @@ Document-level pin: every RED-now cell below was measured on tree `6e75b74db` (b
 | REQ-OP55-004 (labels name Opus 5.5) | AC-OP55-004, AC-OP55-007, AC-OP55-008 |
 | REQ-OP55-005 (medium recommended) | AC-OP55-007, AC-OP55-008 |
 | REQ-OP55-006 (Opus 5.5 recommended) | AC-OP55-007, AC-OP55-008 |
-| REQ-OP55-007 (effort empty option wording matches launch) | AC-OP55-007 |
+| REQ-OP55-007 (effort empty option wording matches launch; (b) max delivery + operator precedence) | AC-OP55-007, AC-OP55-007a, AC-OP55-007b |
 | REQ-OP55-008 (label-drift guard, both halves) | AC-OP55-009 |
 | REQ-OP55-009 (canonical fact line + consistency) | AC-OP55-004, AC-OP55-006, AC-OP55-010 |
 | REQ-OP55-010 (every high-default statement rewritten) | AC-OP55-004, AC-OP55-006, AC-OP55-006e |
@@ -87,6 +87,22 @@ Each command runs on `internal/web/assets/i18n.js`; per-locale strings are pinne
 - Empty-option wording names the fallback order (plan.md §C.7), one command per locale, each Green `1`, RED-now `0`: `grep -cE '"opt\.runtime_default": "[^"]*model policy[^"]*Opus 5\.5[^"]*"' internal/web/assets/i18n.js`; the same with `모델 정책`, `モデルポリシー`, and `模型策略` in place of `model policy`.
 - Behavioral pin keeping the label true: `go test -count=1 -run 'TestResolveLaunchEffort' -v ./internal/cli/` — Green: `--- PASS: TestResolveLaunchEffort` with its five subtests (`model_policy fallback high` → `high` among them), unchanged by this SPEC.
 - Web test updated in M2: `go test -count=1 -run 'TestModelOptLabelsEnglishUnified' -v ./internal/web/` — Green `--- PASS`.
+- **AC-OP55-007a — `max` never in settings, travels as `--effort max` (REQ-OP55-007 (b)) — regression-guard.** Measured at HEAD `0512e6e5f` (amendment 0.1.2).
+  - Command: `go test -count=1 -run 'TestLaunchEffortMaxTravelsAsArgvOnGeneralInjection|TestLaunchEffortMaxTravelsAsArgvOnKanbanInjection|TestLaunchEffortXHighStaysOnSettingsPath' -v ./internal/cli/`
+  - Now (GREEN, since `eb629efb5`): `--- PASS: TestLaunchEffortMaxTravelsAsArgvOnGeneralInjection`, `--- PASS: TestLaunchEffortMaxTravelsAsArgvOnKanbanInjection`, `--- PASS: TestLaunchEffortXHighStaysOnSettingsPath` (verbatim in `.moai/reports/t1089/f2-probe-rednow-0512e6e5f.txt`).
+  - Mutant that turns it RED: delete the `if effort == template.EffortLevelMax { … }` early return in `applyLaunchEffort` (internal/cli/launch_effort_settings.go) so `max` falls through to `payload[effortSettingsKey] = effort` → both `MaxTravelsAsArgv…` tests fail ("max must never be written to the settings payload"). Opposite-direction mutant: route every level to argv → `TestLaunchEffortXHighStaysOnSettingsPath` fails.
+- **AC-OP55-007b — operator `--effort` anywhere in argv suppresses injection (REQ-OP55-007 (b)) — release-blocking.** Measured at HEAD `0512e6e5f` (amendment 0.1.2); the sync-audit F1 fix in run flips it.
+  - Given a profile resolving `max`, When the operator argv is each of `[--effort low]`, `[--effort=low]`, `[-- --effort low]`, `[-- --effort=low]`, Then the general-path argv carries exactly one `--effort` token (the operator's) and the kanban injection adds zero `--effort` tokens.
+  - RED-now command (tree untouched, probe supplied by overlay): `go test -overlay <scratch>/overlay.json -count=1 -run 'TestZZF2ProbeOperatorEffortAnywhere' -v ./internal/cli/`, probe source `.moai/reports/t1089/f2-probe-zz_f2_probe_test.go.txt`
+  - RED-now output (exit 1; the two before-`--` cases pass, the two after-`--` cases fail — F1):
+    ```
+    general op=[-- --effort low] argv=[-- --effort low --effort max] effortFlags=2 want 1
+    kanban op=[-- --effort low] injected=[--settings …/moai-kanban-….json --effort max] effortFlags=1 want 0
+    general op=[-- --effort=low] argv=[-- --effort=low --effort max] effortFlags=2 want 1
+    kanban op=[-- --effort=low] injected=[--settings …/moai-kanban-….json --effort max] effortFlags=1 want 0
+    --- FAIL: TestZZF2ProbeOperatorEffortAnywhere
+    ```
+  - Green: the run-phase F1 fix commits an equivalent in-tree test covering the same four argv shapes on both paths; `go test -count=1 -run '<that test>' -v ./internal/cli/` prints `--- PASS`, and the overlay probe above also passes.
 
 ### AC-OP55-008 — TUI wizard labels and recommendation (REQ-OP55-004, -005, -006) — release-blocking
 

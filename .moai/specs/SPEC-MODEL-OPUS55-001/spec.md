@@ -1,8 +1,8 @@
 ---
 id: SPEC-MODEL-OPUS55-001
 title: "Opus 5.5 adoption — opus alias to claude-opus-5-5, Opus 5 retired from the catalog, medium-effort default recommendation"
-version: "0.1.1"
-status: completed
+version: "0.1.2"
+status: in-progress
 created: 2026-09-23
 updated: 2026-09-23
 author: manager-spec (card t1089)
@@ -13,6 +13,7 @@ lifecycle: spec-anchored
 tier: M
 tags: "model-policy,opus-5-5,effort,profile-wizard,web-console,template"
 related_specs: [SPEC-OPUS47-COMPAT-001]
+amendment_of: SPEC-MODEL-OPUS55-001
 ---
 
 # SPEC-MODEL-OPUS55-001 — Opus 5.5 adoption
@@ -23,6 +24,16 @@ related_specs: [SPEC-OPUS47-COMPAT-001]
 |---------|------|--------|--------|
 | 0.1.0 | 2026-09-23 | manager-spec (card t1089) | Initial plan-phase draft. Dispatched ID `SPEC-MODEL-OPUS-5-5-001` failed the SPEC-ID regex (middle segment `5` must start with a letter); canonical correction `SPEC-MODEL-OPUS55-001` (regex PASS, no collision). |
 | 0.1.1 | 2026-09-23 | manager-spec (card t1089) | Plan-audit iter-1 FAIL 0.78 repair (report `.moai/reports/t1089/plan-audit-iter1.md`), scoped to defects D1–D15: REQ-OP55-007 rewritten to match the launch-effort resolution order (D1); high/xhigh default-effort conflict inventory added, REQ-OP55-010 extended to every false default statement incl. version-agnostic ones (D2); English-unified web model label kept (D3); positive + negative effort ACs (D4); AC-009 split per guard + alias-change mutant (D5, D14); `.moai/project/{tech,product}.md` brought into scope (D6); REQ-OP55-009 pinned to one canonical fact line (D7); launch `--model` change disclosed as K6 (D8); minor fixes D9–D13, D15. |
+| 0.1.2 | 2026-09-23 | manager-spec (card t1089) | In-place amendment (see § Amendments). |
+
+## Amendments
+
+| Field | Value |
+|-------|-------|
+| prior completed version | 0.1.1 |
+| prior_completed_sha | d0037fba8 |
+| rationale | Sync-audit F2 (`.moai/reports/t1089/sync-audit.md`): §C said "Nothing else changes at runtime" and plan.md §E K4 said "Not changed here", but run commit `eb629efb5` changed how a resolved `max` effort reaches Claude Code. The SPEC body contradicted shipped behavior and no REQ/AC covered it. |
+| scope | §C runtime-change bullet; REQ-OP55-007 gains the effort-delivery clause (REQ-OP55-007 (b)); plan.md §E K4 row; acceptance AC-OP55-007a/b + trace row. REQ/AC counts stay 16/16 (folded as sub-criteria). Operator-precedence wording is written for the correct behavior (argv anywhere, before or after `--`, space or `=` form); the run-phase F1 fix delivers it. Nothing else changed. |
 
 ## §A Context
 
@@ -55,7 +66,7 @@ Claude Opus 5.5 was released 2026-09-22 and Claude Code's `opus` alias now resol
 - **REQ-OP55-004** — The TUI profile wizard (en/ko/ja/zh), the model-policy question descriptions (en/ko/ja/zh), and the web console model option labels (en/ko/ja/zh) shall name Opus 5.5 wherever they name the model the `opus` alias resolves to.
 - **REQ-OP55-005** — The TUI profile wizard and the web console settings screen shall mark `medium` as the recommended session effort level in all four locales.
 - **REQ-OP55-006** — The TUI profile wizard and the web console settings screen shall mark the Opus 5.5 model option as the recommended model in all four locales.
-- **REQ-OP55-007** — The web console effort field's empty option shall state the launch resolution order as it actually runs: the profile's model-policy effort when a model policy is stored, otherwise Claude Code's own model default (`medium` on Opus 5.5); the label shall not claim `medium` unconditionally, and the launch-effort resolution itself shall not change.
+- **REQ-OP55-007** — The web console effort field's empty option shall state the launch resolution order as it actually runs: the profile's model-policy effort when a model policy is stored, otherwise Claude Code's own model default (`medium` on Opus 5.5); the label shall not claim `medium` unconditionally, and the launch-effort resolution itself shall not change. (b) When the resolved launch effort is `max`, the launcher shall pass it as the `--effort max` launch argument and shall not write `max` into the injected `--settings` `effortLevel`; `low`/`medium`/`high`/`xhigh` shall keep travelling as the settings `effortLevel`; `CLAUDE_CODE_EFFORT_LEVEL` shall not be set; and when the operator's argv already carries `--effort` anywhere — before or after a `--` separator, in the space or `=` form — the launcher shall inject no `--effort` of its own on either the general or the kanban path.
 - **REQ-OP55-008** — When the model the `opus` alias resolves to changes, the label-drift guards shall fail until every label names the new dotted marketing version, and shall not accept a label that names a bare "Opus 5" as satisfying "Opus 5.5".
 
 ### B.3 Rule prose (template + local pairs)
@@ -82,7 +93,7 @@ Claude Opus 5.5 was released 2026-09-22 and Claude Code's `opus` alias now resol
 
 ### Out of Scope — runtime changes other than the alias target
 
-- The one runtime change this SPEC makes is the `opus` alias target: a profile model of `opus[1m]` launches as `--model claude-opus-5-5[1m]`, which needs Claude Code v2.1.280+ (plan.md §E K6). Nothing else changes at runtime.
+- This SPEC makes two runtime changes. (1) The `opus` alias target: a profile model of `opus[1m]` launches as `--model claude-opus-5-5[1m]`, which needs Claude Code v2.1.280+ (plan.md §E K6). (2) Delivery of a resolved `max` effort (REQ-OP55-007 (b), plan.md §E K4): Claude Code does not accept `max` as a settings `effortLevel` ("`max` isn't accepted as a level in either key", code.claude.com/docs/en/model-config), so `max` is passed as the session-scoped `--effort max` launch argument on the general and kanban paths, while the other four levels stay on the settings path; an operator-supplied `--effort` anywhere in argv wins. Nothing else changes at runtime.
 - No change to the launch effort fallback (explicit profile effort wins, else the model-policy-derived effort, else no override).
 - No re-derivation of the per-agent profile matrix cells (operator-settled; the matrix comment forbids re-derivation).
 - No `effortLevel` injection into any template settings file, and no `modelSettings` support.
