@@ -46,7 +46,8 @@ the decisions most expensive to reverse first.
 - File set owned by this SPEC: `internal/homestate/factory.go`, `internal/homestate/runtime.go`, a
   new `internal/homestate/factory_run_retire.go`, `internal/factorymsg/store.go`, a new
   **build-tag-free** `internal/cli/factory_run_owner.go` (the REQ-002b restamp seam),
-  `internal/cli/launch_exec_windows.go` and `internal/cli/codex_launcher.go` (the two call sites
+  `internal/cli/launch_exec_windows.go`, `internal/cli/codex_direct_windows.go` and
+  `internal/cli/codex_launcher.go` (the three call sites
   that invoke that seam), `internal/cli/factory_handoff_recover.go` (the existing `moai factory`
   command group), a new `test/integration/harness/it08_factory_run_retire_test.go`, plus package
   tests. Files owned by t1082 and t1109 are listed in spec.md §E; touching one halts with a blocker
@@ -54,9 +55,22 @@ the decisions most expensive to reverse first.
 - **`codex_launcher.go` joined the set at v0.4.0** (the pane door, D11). It is not in either sibling
   card's set: t1082 owns `factory_lane_handoff*.go`, `handoff*.go`, `mcp_codex.go`,
   `defaults.go`; t1109 owns `hook/factory_messages*.go`. Re-confirm before integration.
-- **`codex_direct_posix.go` and `codex_direct_windows.go` are deliberately NOT in the set.** Each is
-  covered by an existing rule because its shape matches an executed door (spec.md §A.1), so neither
-  needs an edit. Their absence is a stated conclusion, not an oversight.
+- **`codex_direct_windows.go` IS in the set — spawn shape, seam call required.** Measured shape at
+  `internal/cli/codex_direct_windows.go:14-30`: `cmd.Start()` →
+  `ProbeProcessIdentity(cmd.Process.Pid)` → `registerFactoryLaunchPending(..., cmd.Process.Pid,
+  start)` → `cmd.Wait()`. The launching process survives the launch, so REQ-002b binds this door.
+  It needs **no rule of its own** — the existing spawn rule (§F M1) already covers it — but it does
+  need the **seam call**, because the restamp only happens where a call site makes it happen.
+  Without that one edit, the Windows `moai codex -f` door leaves the launcher's identity on the run
+  row, and a launcher that dies while its codex child lives gets that run retired. "Needs no new
+  rule" and "needs no edit" are different claims; conflating them was defect D18. Neither sibling
+  card owns this file (t1082: `factory_lane_handoff*.go`, `handoff*.go`, `mcp_codex.go`,
+  `defaults.go`; t1109: `hook/factory_messages*.go`) — re-confirm before integration.
+- **`codex_direct_posix.go` is deliberately NOT in the set — replace shape, no edit.**
+  `syscall.Exec` at `internal/cli/codex_direct_posix.go:39` replaces the launching process, and the
+  record-time stamp at `:34` has already written `os.Getpid()` +
+  `homestate.CurrentProcessFingerprint()`, so that stamp already IS the session identity and there
+  is no restamp to add. Its absence is a stated conclusion, not an oversight.
 - **Overlap status, stated honestly**: this tree cannot establish non-overlap with t1082, because
   t1082's files do not exist here. The zero-overlap figure is the team lead's measurement against
   t1082's own worktree (2026-09-23), cited as that. Re-confirm before integration, and treat the
