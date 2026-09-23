@@ -299,7 +299,7 @@ The v2 agent architecture (SPEC-AGENT-ARCH-V2-001) explicitly rejected 4 alterna
 
 **Rejected approach**: Pin concrete model IDs (e.g., `model: opus`) in agent frontmatter to control per-agent model selection at the file level.
 
-**Why rejected**: The `[1m]` entitlement inheritance bug (Anthropic issues #45847 / #51060 / #36670) — a frontmatter model pin breaks `[1m]` entitlement flow from the parent session, causing spawn failures. The v2 design uses `model: inherit` (all 11 MoAI-custom agents) + per-spawn runtime-arg injection for tier-dependent model selection instead. See `.claude/rules/moai/development/model-policy.md` § Inherit-by-Default Convention.
+**Why rejected**: The `[1m]` entitlement inheritance bug (Anthropic issues #45847 / #51060 / #36670) — a frontmatter model pin breaks `[1m]` entitlement flow from the parent session, causing spawn failures. The v2 design uses `model: inherit` (11 of the 12 MoAI-custom agents; `manager-git` alone pins `model: sonnet`) + per-spawn runtime-arg injection for tier-dependent model selection instead. See `.claude/rules/moai/development/model-policy.md` § Inherit-by-Default Convention.
 
 ### 4. Time-루프 에이전트 (Time-loop Agent)
 

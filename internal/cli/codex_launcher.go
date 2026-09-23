@@ -225,13 +225,27 @@ func defaultCodexSpawnLaunch(dir, program string, args []string) error {
 		return fmt.Errorf("spawn tmux window: %w", err)
 	}
 	if env := os.Environ(); factoryLaunchEnabled(env) {
+		runID := launchEnvValue(env, config.EnvMoaiKanbanID)
 		pid, start, identityErr := codexSpawnPaneIdentityFn(paneID)
 		if identityErr == nil {
 			_, identityErr = registerFactoryLaunchPending(context.Background(), dir, env, pid, start)
 		}
+		if identityErr == nil {
+			// REQ-002b — the pane shape: this launcher returns and exits
+			// immediately, so the record-time stamp names a process that is
+			// already gone by the time anyone reads it. Restamp with the pane
+			// identity the resolver above already probed live, so the run row
+			// and the run's role='lead' peer name one process.
+			identityErr = stampFactoryRunOwner(dir, runID, pid, start)
+		}
 		if identityErr != nil {
 			cleanupErr := codexSpawnCleanupPaneFn(paneID)
-			return fmt.Errorf("register spawned factory launch-pending endpoint: %w", errors.Join(identityErr, cleanupErr))
+			// REQ-002d — refuse, and leave no run carrying the launching
+			// process's identity: that identity is known in advance to die, and
+			// a run holding it would be retired while its session was meant to
+			// be alive.
+			clearErr := clearFactoryRunOwner(dir, runID)
+			return fmt.Errorf("register spawned factory launch-pending endpoint: %w", errors.Join(identityErr, cleanupErr, clearErr))
 		}
 	}
 	_, _ = fmt.Fprintf(os.Stdout, "Spawned pane %s running `%s` in %s\n", paneID, command, dir)

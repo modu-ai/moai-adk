@@ -9,6 +9,7 @@ import (
 	"os"
 	"os/exec"
 
+	"github.com/modu-ai/moai-adk/internal/config"
 	"github.com/modu-ai/moai-adk/internal/homestate"
 )
 
@@ -46,15 +47,28 @@ func execOrSpawnClaude(claudeBin string, args, env []string) error {
 	if err := child.Start(); err != nil {
 		return fmt.Errorf("launch claude on windows: %w", err)
 	}
+	runID := launchEnvValue(child.Env, config.EnvMoaiKanbanID)
 	childFingerprint, state := homestate.ProbeProcessIdentity(child.Process.Pid)
 	if state != homestate.ProcessIdentityLive {
 		_ = child.Process.Kill()
-		return fmt.Errorf("launch claude on windows: child identity indeterminate")
+		// REQ-002d — refuse, and leave no run carrying this launcher's pid.
+		clearErr := clearFactoryRunOwner(launchProjectRoot(), runID)
+		return fmt.Errorf("launch claude on windows: child identity indeterminate: %w", clearErr)
 	}
 	if _, err := registerFactoryLaunchPending(context.Background(), launchProjectRoot(), child.Env, child.Process.Pid, childFingerprint); err != nil {
 		_ = child.Process.Kill()
 		_ = child.Wait()
-		return fmt.Errorf("register factory launch-pending endpoint: %w", err)
+		clearErr := clearFactoryRunOwner(launchProjectRoot(), runID)
+		return fmt.Errorf("register factory launch-pending endpoint: %w", errors.Join(err, clearErr))
+	}
+	// REQ-002b — the spawn shape: this process is a supervisor that outlives
+	// nothing, so the record-time stamp is true only until it exits. Restamp
+	// the run row with the child's identity, the same pair just handed to
+	// registerFactoryLaunchPending, so both identity sources name one process.
+	if err := stampFactoryRunOwner(launchProjectRoot(), runID, child.Process.Pid, childFingerprint); err != nil {
+		_ = child.Process.Kill()
+		_ = child.Wait()
+		return fmt.Errorf("stamp factory run owner: %w", err)
 	}
 	if err := transferProfileLeaseToChild(env, os.Getpid(), homestate.CurrentProcessFingerprint(), child.Process.Pid, childFingerprint); err != nil {
 		_ = child.Process.Kill()
