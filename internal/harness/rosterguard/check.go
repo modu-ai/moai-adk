@@ -331,11 +331,15 @@ func diff(want, got []string) (missing, extra []string) {
 // describe the roster AS IT WAS and must not be rewritten to match today; a
 // worktrees dir is another card's checkout; .moai/state is runtime,
 // untracked machine-local state, not a roster anyone maintains — it differs
-// per machine, so a hit there is not a property of the tree CI checks.
+// per machine, so a hit there is not a property of the tree CI checks;
+// .moai/cache and .moai/logs are untracked for the same reason (a cached
+// template snapshot and the agent-model audit log both list the roster).
 var sweepSkipPrefixes = []string{
 	"docs-site/",
 	".moai/specs/",
 	".moai/state/",
+	".moai/cache/",
+	".moai/logs/",
 	".moai/reports/",
 	".moai/release-notes/",
 	".claude/worktrees/",
