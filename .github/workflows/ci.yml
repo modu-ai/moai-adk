@@ -668,8 +668,9 @@ jobs:
       - name: Green phase — gated driver tests (in-process surface)
         env:
           MOAI_BROWSER_GUARD: "1"
+          MOAI_BROWSER_GUARD_SETTLE_STAGE2: "1"
         shell: bash
-        run: go test ./internal/web/ -run 'AppJsHandlersFire' -v -count=1 -timeout 10m
+        run: go test ./internal/web/ -run 'AppJs.*Fire' -v -count=1 -timeout 17m
 
       - name: Red phase — mutation cycle (0 → 1 → 0, real-binary surface)
         shell: bash
