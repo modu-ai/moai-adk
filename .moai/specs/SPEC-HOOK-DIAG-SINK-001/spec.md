@@ -2,7 +2,7 @@
 id: SPEC-HOOK-DIAG-SINK-001
 title: "훅 경로 진단 레코드의 파일 싱크 기록 — 무신호 해소"
 version: "0.3.3"
-status: draft
+status: in-progress
 created: 2026-09-24
 updated: 2026-09-24
 author: manager-spec

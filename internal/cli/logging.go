@@ -49,16 +49,23 @@ func resolveLogLevel() slog.Level {
 
 // resolveLoggingDecision chooses the log destination for one CLI invocation.
 //
-// The `moai hook` path discards every record: stdout carries the hook's
-// structured JSON contract and stderr is read by the Claude Code runtime, so a
-// stray record corrupts the exchange. That carve-out is unconditional —
-// MOAI_LOG_LEVEL does not re-open it.
+// The `moai hook` path reaches NEITHER standard stream: stdout carries the
+// hook's structured JSON contract and stderr is read by the Claude Code
+// runtime, so a stray record corrupts the exchange. That carve-out is
+// unconditional — MOAI_LOG_LEVEL does not re-open it.
+//
+// The records are no longer thrown away, though. They go to a lazy-open append
+// file under the resolved project root (hookSink), because discarding them left
+// every diagnostic a hook emits unreadable anywhere: a hook that reported an
+// anomaly and a hook that reported nothing were indistinguishable. The sink is
+// fail-open — an unresolvable root degrades it back to discarding rather than
+// failing the hook.
 //
 // Every other subcommand writes to stderr, never stdout, which stays reserved
 // for machine-readable output (--format=json / sarif payloads).
 func resolveLoggingDecision(args []string) loggingDecision {
 	if isHookCommand(args) {
-		return loggingDecision{dest: io.Discard, level: defaultLogLevel}
+		return loggingDecision{dest: newHookSink(resolveHookProjectRoot()), level: defaultLogLevel}
 	}
 	return loggingDecision{dest: os.Stderr, level: resolveLogLevel()}
 }
