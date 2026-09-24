@@ -53,8 +53,14 @@ func validateWizardInput(result *wizard.WizardResult) error {
 
 // validateHTTPSURL requires a well-formed absolute https:// URL with a host.
 // A plaintext http:// endpoint is rejected so a captured token or credential
-// is never transmitted over an unencrypted channel.
+// is never transmitted over an unencrypted channel. A `"` or `\` is rejected
+// because git-strategy.yaml renders the URL inside a double-quoted YAML scalar
+// without escaping: `"` breaks the file and `\` is stored as a different
+// string. url.Parse already rejects control characters.
 func validateHTTPSURL(raw string) error {
+	if strings.ContainsAny(raw, `"\`) {
+		return errors.New(`must not contain '"' or '\'`)
+	}
 	u, err := url.Parse(raw)
 	if err != nil {
 		return fmt.Errorf("not a well-formed URL: %w", err)
