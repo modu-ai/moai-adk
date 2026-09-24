@@ -32,7 +32,10 @@ func (h *postCompactHandler) Handle(ctx context.Context, input *HookInput) (*Hoo
 		"session_id", input.SessionID,
 	)
 
-	projectDir := resolveProjectDir(input)
+	// Read from the same root the PreCompact writer uses (resolveProjectRoot,
+	// card t1165); resolveProjectDir (input.CWD first) would look under a
+	// subdirectory cwd and miss the memo.
+	projectDir := resolveProjectRoot(input)
 
 	data := map[string]any{
 		"session_id": input.SessionID,

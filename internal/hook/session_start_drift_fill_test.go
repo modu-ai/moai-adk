@@ -504,99 +504,143 @@ func TestDriftFill_StaleLockIsReclaimable(t *testing.T) {
 // AC-DCF-009 — the miss path spends no join budget on drift.
 // ---------------------------------------------------------------------------
 
-// TestSessionStart_MissPathSpendsNoJoinBudgetOnDrift sets the OLD drift seam to
-// ten times the join bound and asserts the miss path spends none of that.
+// TestSessionStart_MissPathSpendsNoJoinBudgetOnDrift observes the property
+// AC-DCF-009 is about: on a cache MISS the deferred advisory step performs no
+// in-band drift computation, Handle does not wait for the drift work, and the
+// fill that replaces the computation is dispatched out of band.
 //
 // MEASUREMENT SUBJECT (a run-phase observation-method decision, recorded here
 // beside the test). AC-DCF-009's green path states the ratio as "Handle returns
 // with elapsed < deferredScanJoinBound / 5". Handle's total wall clock cannot
 // carry that ratio for a reason unrelated to this card: its SYNCHRONOUS work —
-// config load, session registry, migration, settings — measures ~80 ms on this
+// config load, session registry, migration, settings — measures ~170 ms on this
 // machine, already above the 50 ms figure, and no change to the drift path can
 // move it. Asserting the ratio against that total would be red at arrival and
 // red forever, which is the "impossible" direction acceptance.md §2 names as
 // disqualifying.
 //
-// The ratio is therefore applied to the quantity it is about — the drift
-// contribution — in two ways, both stricter than a tester's judgement:
+// The earlier form of this test applied the ratio to two derived durations
+// instead (the deferred step alone, and the miss-minus-hit delta). Both were
+// wall clock, and a third assertion compared Handle's ENTIRE cost against a
+// drift-specific bound at a ~1.4x margin, so the test measured the machine: a
+// sibling lane observed 6/6 FAIL at load 29.6-36.2 while idle CI stayed green
+// (card t1166). Its "instrument that makes the timings interpretable" — a slow
+// driftCountFn that must never be consulted — could not fire either: nothing in
+// this package reads driftCountFn any more (it is assigned in session_start.go
+// and read by no non-test code), so the injected cost was never paid and the
+// assertion was vacuous against ANY implementation. That is the same trap
+// TestSessionStart_DeferredScanDoesNotBlockReturn documents in its own comment.
 //
-//	(a) The DEFERRED STEP itself, the step that used to carry the compute, is
-//	    measured directly against the literal bound/5 ratio.
-//	(b) Handle's miss-path cost is measured against Handle's OWN cache-hit cost
-//	    in the same test: the delta is the drift contribution, and it must be
-//	    below the same bound/5 ratio. The baseline is measured, not assumed.
+// The ratio is therefore replaced by ORDERING observations, which are what the
+// property actually says and carry no clock:
 //
-// Before the change both would be ~the full 250 ms bound; the pre-change code
-// paid it on every cold session and discarded the result.
+//	(a) the deferred step on a miss omits the advisory and dispatches the
+//	    out-of-band fill (spawn seam = 1, start seam = 0);
+//	(b) Handle returns while the deferred drift work is still inside a gate the
+//	    TEST holds — so Handle demonstrably did not wait for it. The gate is
+//	    installed at driftCachedCountFn, the seam the deferred step actually
+//	    consults, and the test asserts the gate was entered, so a seam nobody
+//	    calls cannot satisfy (b) the way the old instrument did;
+//	(c) the in-band compute seam is never consulted. Dead on this path today, so
+//	    it is a REGRESSION GUARD, not a verdict: it is red under a mutant that
+//	    re-introduces the in-band computation in computeDeferredAdvisory.
+//
+// Absolute input lag is deliberately NOT asserted here. That axis is owned by
+// TestSessionStart_HandleInputLagBudget, whose 1.5 s bound is the repository's
+// convention for a load-sensitive wall-clock assertion: a gross-regression
+// guard derived from a measured maximum (n=300) times 2.5, never a latency SLO
+// (.moai/reports/t662/verdict.md).
 func TestSessionStart_MissPathSpendsNoJoinBudgetOnDrift(t *testing.T) {
 	t.Setenv("ANTHROPIC_BASE_URL", "")
-	installDriftFillSeams(t, "head-budget")
 
+	// (c) The in-band compute seam, counted rather than slowed. A sleep here
+	// buys nothing: the seam is unreachable from the deferred path, so the cost
+	// was never paid — see the header comment.
+	var inBandCalls atomic.Int32
 	origDrift := driftCountFn
 	t.Cleanup(func() { driftCountFn = origDrift })
-	consulted := make(chan struct{}, 1)
-	driftCountFn = func(ctx context.Context, _ string) (int, error) {
-		select {
-		case consulted <- struct{}{}:
-		default:
-		}
-		time.Sleep(10 * deferredScanJoinBound)
+	driftCountFn = func(context.Context, string) (int, error) {
+		inBandCalls.Add(1)
 		return driftWarningThreshold, nil
 	}
 
-	budget := deferredScanJoinBound / 5
+	// (a) The deferred step itself, observed directly.
+	t.Run("the deferred step omits the advisory and dispatches the fill", func(t *testing.T) {
+		dir := driftFillProject(t)
+		c := installDriftFillSeams(t, "head-budget-step")
+		installCachedCountSeam(t, 0, false)
 
-	// (a) the deferred step, measured directly.
-	missDir := driftFillProject(t)
-	installCachedCountSeam(t, 0, false)
-	h := &sessionStartHandler{}
-	stepStart := time.Now()
-	advisory := h.computeDeferredAdvisory(missDir, true)
-	stepElapsed := time.Since(stepStart)
-	if stepElapsed >= budget {
-		t.Fatalf("the deferred advisory step took %v on a cache miss, want < %v", stepElapsed, budget)
-	}
-	if _, ok := advisory["status_drift_warning"]; ok {
-		t.Fatalf("the deferred step rendered status_drift_warning on a miss; advisory=%v", advisory)
-	}
+		h := &sessionStartHandler{}
+		advisory := h.computeDeferredAdvisory(dir, true)
 
-	// (b) Handle's miss cost against its own measured hit baseline.
-	hitDir := driftFillProject(t)
-	installCachedCountSeam(t, 0, true) // a hit below the warning threshold: no fill, no advisory
-	completedHit := registerDeferredScanSeam(t)
-	hitStart := time.Now()
-	handleOnce(t, hitDir, "sess-drift-budget-hit")
-	hitElapsed := time.Since(hitStart)
-	waitDeferred(t, completedHit, 5*time.Second)
+		if _, ok := advisory["status_drift_warning"]; ok {
+			t.Fatalf("the deferred step rendered status_drift_warning on a miss; advisory=%v", advisory)
+		}
+		if got := c.spawnAttempts.Load(); got != 1 {
+			t.Fatalf("spawn attempts on a cache miss = %d, want exactly 1 — the compute was not replaced by an out-of-band fill", got)
+		}
+		if got := c.startCalls.Load(); got != 0 {
+			t.Fatalf("process starts = %d, want 0 — the counting stub is the only start point in this binary", got)
+		}
+	})
 
-	installCachedCountSeam(t, 0, false)
-	completedMiss := registerDeferredScanSeam(t)
-	missStart := time.Now()
-	payload := handleOnce(t, missDir, "sess-drift-budget-miss")
-	missElapsed := time.Since(missStart)
-	waitDeferred(t, completedMiss, 5*time.Second)
+	// (b) Handle's relationship to the deferred drift work, observed as an
+	// ORDER rather than a duration.
+	t.Run("Handle does not wait for the deferred drift work", func(t *testing.T) {
+		dir := driftFillProject(t)
+		c := installDriftFillSeams(t, "head-budget-handle")
 
-	t.Logf("deferred step on a miss: %v; Handle hit baseline: %v; Handle miss: %v; budget: %v",
-		stepElapsed, hitElapsed, missElapsed, budget)
+		// The gate: the deferred step's cache resolve blocks here until this
+		// test releases it, and answers a MISS when it does. The backstop is NOT
+		// the discriminator — it exists so a join-forever mutant fails loudly
+		// instead of hanging until the package timeout.
+		const gateBackstop = 5 * time.Second
+		release := make(chan struct{})
+		var gateEntries atomic.Int32
+		origCached := driftCachedCountFn
+		t.Cleanup(func() { driftCachedCountFn = origCached })
+		driftCachedCountFn = func(string) (int, bool) {
+			gateEntries.Add(1)
+			select {
+			case <-release:
+			case <-time.After(gateBackstop):
+			}
+			return 0, false
+		}
 
-	if delta := missElapsed - hitElapsed; delta >= budget {
-		t.Fatalf("Handle cost %v more on a cache miss than on a hit, want < %v (hit=%v miss=%v)",
-			delta, budget, hitElapsed, missElapsed)
-	}
-	if missElapsed >= deferredScanJoinBound {
-		t.Fatalf("Handle took %v on a cache miss, which is at or above the full join bound %v it used to pay",
-			missElapsed, deferredScanJoinBound)
-	}
-	if _, ok := payload["status_drift_warning"]; ok {
-		t.Fatalf("a cache miss rendered status_drift_warning; payload=%v", payload)
-	}
+		completed := registerDeferredScanSeam(t)
+		payload := handleOnce(t, dir, "sess-drift-budget-miss")
 
-	// The instrument that makes the timings interpretable: the in-band
-	// computation was never consulted, so its cost could not have been paid.
-	select {
-	case <-consulted:
-		t.Fatal("the in-band drift computation was consulted on the miss path")
-	default:
+		// THE ORDERING OBSERVATION: the deferred goroutine cannot have finished,
+		// because the gate is still held by this test. If Handle had joined the
+		// drift work, it could only have returned after the gate released.
+		select {
+		case <-completed:
+			t.Fatal("Handle returned only after the deferred advisory scan completed — either it waited for the drift work instead of bounding the join, or the deferred step no longer consults the gated seam (the gate-entry assertion below separates the two)")
+		default:
+		}
+		if _, ok := payload["status_drift_warning"]; ok {
+			t.Fatalf("a cache miss rendered status_drift_warning; payload=%v", payload)
+		}
+
+		close(release)
+		waitDeferred(t, completed, 5*time.Second)
+
+		// The positive control over the gate: an instrument nothing consults
+		// proves nothing (that is the defect this test was rewritten to remove).
+		if got := gateEntries.Load(); got != 1 {
+			t.Fatalf("the gated cache resolve was entered %d time(s), want 1 — the seam the ordering assertion rests on is not on the deferred path", got)
+		}
+		if got := c.spawnAttempts.Load(); got != 1 {
+			t.Fatalf("spawn attempts on a cache miss = %d, want exactly 1 — the out-of-band fill was not dispatched", got)
+		}
+		if got := c.startCalls.Load(); got != 0 {
+			t.Fatalf("process starts = %d, want 0", got)
+		}
+	})
+
+	if got := inBandCalls.Load(); got != 0 {
+		t.Fatalf("the in-band drift computation was consulted %d time(s) on the miss path", got)
 	}
 }
 
