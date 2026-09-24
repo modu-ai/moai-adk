@@ -207,7 +207,7 @@ CLAUDE.local.md                # This file
 
 ### [HARD] §2.3 moai update는 관리 대상 뿌리 안의 로컬 전용 파일을 통째로 삭제한다
 
-**요지 — 본문 전량은 `.moai/docs/update-local-file-survival.md` 로 이관됐다(card t750).** `CleanMoaiManagedPaths`(`internal/cli/update/deploy/deploy.go:107`)가 템플릿 재배포 **전에** 관리 대상 뿌리(`.claude/settings.json` · `.claude/{commands,agents,hooks}/moai` · `.claude/skills/moai*` 글롭 · `.claude/rules/moai` · `.claude/output-styles/moai` · `.moai/config`)를 통째로 삭제하고 임베드 템플릿에 있는 것만 다시 깐다. **보호 목록 설정은 존재하지 않고**, `Updated N files` 요약에 삭제는 나타나지 않는다. **[HARD] 새 로컬 전용 파일은 위 뿌리 밖에 둔다** — 용도별 배치 표(룰·스킬·ast-grep·하네스)는 이관 문서에 있다. **[HARD] update 후엔 매번** ① 삭제 검증(`git status --porcelain | grep '^ D'` — 0이어야 정상)과 ② `git-strategy.yaml` git-flow 키 재적용을 실행한다 — 명령과 실측 근거는 이관 문서에.
+**요지 — 본문 전량은 `.moai/docs/update-local-file-survival.md` 로 이관됐다(card t750).** `CleanMoaiManagedPaths`(`internal/cli/update/deploy/deploy.go:107`)가 템플릿 재배포 **전에** 관리 대상 뿌리(`.claude/settings.json` · `.claude/{commands,agents,hooks}/moai` · `.claude/skills/moai*` 글롭 · `.claude/rules/moai` · `.claude/output-styles/moai` · `.moai/config`)를 통째로 삭제하고 임베드 템플릿에 있는 것만 다시 깐다. **보호 목록 설정은 존재하지 않고**, `Updated N files` 요약에 삭제는 나타나지 않는다. **[HARD] 새 로컬 전용 파일은 위 뿌리 밖에 둔다** — 용도별 배치 표(룰·스킬·ast-grep·하네스)는 이관 문서에 있다. **[HARD] update 후엔 매번** ① 삭제 검증(`git status --porcelain | grep '^ D'` — 0이어야 정상)과 ② `git-strategy.yaml` git-flow 키 **+ `worktree_base_branch: develop`** 재적용을 실행한다(후자를 빼면 `moai worktree new` 가 카드 트리를 develop 이 아니라 main 에서 판다 — 2026-09-24 6건, card t1159). 재적용은 `--source=develop` 이다(`HEAD`=main 에는 그 키가 없다) — 명령과 실측 근거는 이관 문서에.
 
 ### [HARD] settings.local.json Separation
 
