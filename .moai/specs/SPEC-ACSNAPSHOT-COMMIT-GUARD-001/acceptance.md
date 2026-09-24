@@ -85,7 +85,7 @@ Common Given (unless stated): a throwaway repo in `t.TempDir()` whose `HEAD` hol
 
 ### AC-ABG-010 — Hostile path text reaches no shell and no pattern (release-blocking)
 
-**Given** a qualifying directory whose single segment contains the substring `$(touch pwned)`, a space, and the regex metacharacters `.` and `[`, with a matching baseline record and a second record whose path differs only in that metacharacter's position, **When** the file is amended to move its count and the checker runs, **Then** it rejects naming that exact path and the right record's value, and no file named `pwned` exists anywhere under the temp repo afterwards.
+**Given** a qualifying directory whose single, whitespace-free segment is `SPEC-$(touch${IFS}pwned).[x-001` (carrying `$(`, `${IFS}`, and the regex metacharacters `.` and `[`; whitespace is excluded because the baseline grammar is whitespace-split, spec.md §A.6), with a matching baseline record and a second record whose path differs only by replacing that `.` with another character, **When** the file is amended to move its count and the checker runs, **Then** it rejects naming that exact path and the right record's value, and no file named `pwned` exists anywhere under the temp repo afterwards.
 - RED-now: ledger E1. Green path: M1; subtest `hostile_path`.
 
 ### AC-ABG-011 — Real `git commit` enforcement, with and without the hookdir (release-blocking)
@@ -108,10 +108,11 @@ Common Given (unless stated): a throwaway repo in `t.TempDir()` whose `HEAD` hol
 **Given** an installed throwaway repo with a hookdir `pre-commit` and a `.moai-pre-commit.sha256` file, **When** the installer runs and a rejected plus a passing commit are attempted, **Then** the sha256 of `.git/hooks/pre-commit` and of `.git/hooks/.moai-pre-commit.sha256` and the value of `core.hooksPath` are identical before and after, and the checker leaves the baseline file's index and working-tree content byte-unchanged.
 - RED-now: ledger E2. Green path: M2; subtest `install/managed_untouched`.
 
-### AC-ABG-015 — Documentation, and the lead's live-install evidence
+### AC-ABG-015 — Documentation of the gate
 
-**Then** `grep -c 'hook.ac-baseline-guard' .moai/docs/ac-count-baseline-refresh.md` prints a value ≥ 1, and the doc names `NOT CHECKED`, `--no-verify`, `SKIP_MOAI_PRECOMMIT`, the lead as install owner, and the completion-report quoting obligation. After the lead's install (spec.md §A.4-3 — not a lane step): `git config --get-regexp '^hook\.ac-baseline-guard\.'` prints exactly two lines, and one rejected plus one passing commit in a `develop`-absorbed tree are recorded.
-- RED-now: ledger E3 (doc), E4 (config). Green path: M3 (doc); lead install after the develop merge (live evidence).
+**Then** `grep -c 'hook.ac-baseline-guard' .moai/docs/ac-count-baseline-refresh.md` prints a value ≥ 1, and the doc names `NOT CHECKED`, `--no-verify`, `SKIP_MOAI_PRECOMMIT`, the lead as install owner, the completion-report quoting obligation, and the install command.
+- RED-now: ledger E3. Green path: M3.
+- Not part of this criterion: the live-repository observation after the lead's install (`git config --get-regexp '^hook\.ac-baseline-guard\.'` printing two lines, plus one rejected and one passing commit in a `develop`-absorbed tree; RED-now reference ledger E4). It can exist only after the develop merge, while sync closes this SPEC before that merge, so it is a post-merge lead-recorded observation and never a Definition-of-Done gate (spec.md §A.4-3).
 
 ### AC-ABG-016 — Swept count, single counter source, placement, corpus gate intact
 
@@ -140,4 +141,4 @@ Common Given (unless stated): a throwaway repo in `t.TempDir()` whose `HEAD` hol
 - Release-blocking criteria (001, 002, 003, 004, 008, 009, 010, 011) green with recorded command, verbatim output, exit code, and run-tree SHA in progress.md §E.2.
 - AC-ABG-016 swept count shows no empty sweep and no skip on the run machine.
 - `go vet ./internal/spec/...` and `golangci-lint run ./internal/spec/...` clean.
-- AC-ABG-015 live evidence recorded by the lead after install.
+- AC-ABG-015 documentation present. (The lead's post-merge live-install observation is recorded separately and does not gate this SPEC's close.)

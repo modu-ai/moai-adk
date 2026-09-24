@@ -10,7 +10,8 @@
 - Plan-audit iteration 1 (2026-09-24): FAIL 0.80 (MP-7), report `.moai/reports/plan-audit/SPEC-ACSNAPSHOT-COMMIT-GUARD-001-review-1.md`. Repaired in 0.2.0: D1–D8 closed; optional D9–D16 applied (D16: trailer on the revision commit).
 - Installation owner resolved by operator decision (spec.md §A.4-3): the lead installs once after the develop merge; this lane never touches the shared git config.
 - Open items: 0 clarification markers.
-- plan_status: audit-ready (pending plan-audit iteration 2)
+- Plan-audit iteration 2 (2026-09-24): FAIL 0.92 on N1 only (D1–D16 confirmed closed), report `.moai/reports/plan-audit/SPEC-ACSNAPSHOT-COMMIT-GUARD-001-review-2.md`. Repaired in 0.2.1: N1 whitespace-free hostile path, N2 `ENVIRON`-based lookup example, N3 live-install observation demoted to a post-merge lead observation.
+- plan_status: audit-ready (pending re-audit)
 - The baseline snapshot was NOT regenerated; this SPEC's `acceptance.md` is an absent-from-snapshot report row until the next reviewed regeneration.
 
 ## §E.2 Run-phase Evidence

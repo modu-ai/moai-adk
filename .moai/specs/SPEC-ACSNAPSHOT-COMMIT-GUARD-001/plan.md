@@ -67,7 +67,7 @@ GREEN: write `check-staged.sh`:
 - extract the counter from `git show :.claude/agents/moai/manager-docs.md` between the sentinels, requiring exactly one pair, END after BEGIN, non-empty body;
 - write each staged blob (`git show ":$path"`, path passed as one quoted argument) to a `mktemp` file removed by `trap`; run `sh -c "$counter"` with `AC_FILE` set to the temp file; classify exit 0 / 3 / other;
 - sort HALT identifiers before comparing;
-- look up the record in `git show :.moai/reports/t338/ac-count-baseline.txt` by exact first-field equality (e.g. `awk -v p="$path" '$1 == p'`, never a pattern built from the path); compare per REQ-ABG-002;
+- look up the record in `git show :.moai/reports/t338/ac-count-baseline.txt` by exact first-field equality (e.g. `P="$path" awk '$1 == ENVIRON["P"]'` — passed through the environment, never `awk -v`, which interprets backslash escapes in the value, and never a pattern built from the path); compare per REQ-ABG-002;
 - accumulate per-file results, then decide: any mismatch → exit non-zero (fault lines still printed); else faults → exit 0 with `NOT CHECKED`; else `checked` line;
 - reject text reuses the regeneration command and doc path verbatim (F3).
 
@@ -81,7 +81,7 @@ GREEN: write `install-hook.sh`; the configured command runs the checker if prese
 
 ### M3 — Priority Medium: documentation and install hand-off (REQ-ABG-016)
 
-Update `.moai/docs/ac-count-baseline-refresh.md`. Record in progress.md the exact install command for the lead and the post-install observation the lead records as AC-ABG-015 evidence.
+Update `.moai/docs/ac-count-baseline-refresh.md`. Record in progress.md the exact install command for the lead. The live-repository observation after install is a post-merge lead observation, not a gate of this SPEC (spec.md §A.4-3); AC-ABG-015 gates only the documentation.
 
 ### M4 — Priority Low: mechanical closure
 
