@@ -272,6 +272,14 @@ Gaps (M5):
 
 증거: `.moai/reports/t1143/m5-approval-probe/`(`config-B2.toml`, `codexhome-config-B2.toml`, `prompt-B2.txt`, `B2.jsonl`(0바이트), `B2.err`). 로그인 파일 sha256 전후 동일(`eb7c45bd…6630`), 픽스처 경로로 거른 `ps` 결과 0건, 토큰 grep 0건. 픽스처와 격리 `CODEX_HOME`은 지웠다.
 
+### M5 approval probe B'' — 실행 전 재구성 점검에서 중단 (LIVE 0, 누계 39/43)
+
+리드 결정(`verdict.md` § "Lead decision after rerun B'"): #39는 승인된 재실행으로 집계하고 원장에 `NOT MEASURED — fixture root outside a git repository (a condition other than the tested variable changed)` 태그를 달았다. B'' 한 번이 승인됐지만, #37 픽스처를 기록된 증거로 바이트 단위까지 재구성할 수 없으면 실행하지 말라는 조건이 붙었다.
+
+- 기록된 세 요소(`config-A.toml`, `prompt-A.txt`, #37 argv)로 만든 #37 입력과 B'' 입력의 `diff -ru` 결과는 사전 승인 표 두 줄(+ 빈 줄) 추가뿐이다(원문은 `verdict.md`). 프롬프트와 argv는 동일하다.
+- 그래도 실행하지 않았다. 증거에 없는 것: (1) #37의 CODEX_HOME(`~/.t1143-ap-codexhome`, 세션 기록의 skill root로 확인) 안 `config.toml` — 신뢰 항목이 기록되지 않았고 디렉터리는 지워졌다. #39를 시작 검사에서 멈춘 바로 그 요소다. (2) #37 루트가 저장소였는지 — #37·#38 세션 기록의 `"git": {}`는 저장소임을 보여 주지 않는다. 리드 전제("git-repo root")를 #37에 대조할 수 없다. (3) #37 moai 서버 바이너리의 빌드 커밋.
+- 결론: 도구별 사전 승인 효과는 측정되지 않았다. 이번 단계 LIVE 0회, 누계 39/43. 픽스처는 만들지 않았고 프로세스도 띄우지 않았다.
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 run 단계는 끝나지 않았다. AC-CAR-011이 NOT_RUN이고, AC-CAR-010 실행 1은 리드가 INVALID로 기록했으며 재실행되지 않았다. MCP 경로는 도구별 승인 설정이 통과시키는지 측정되지 않았다(approval probe B INVALID).
