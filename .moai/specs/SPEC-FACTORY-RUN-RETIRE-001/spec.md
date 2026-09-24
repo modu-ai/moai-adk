@@ -1,7 +1,7 @@
 ---
 id: SPEC-FACTORY-RUN-RETIRE-001
 title: "Factory run retirement — owner-liveness reconciliation so a dead lead's run leaves 'active'"
-version: "0.11.0"
+version: "0.12.0"
 status: completed
 created: 2026-09-23
 updated: 2026-09-24
@@ -575,7 +575,40 @@ with, met in the run phase and evidenced below rather than asserted:
   implementation and could never flip — an instrument-manufactured zero inside the SPEC's own
   verification apparatus, the same shape §C.1 already rejects for `go test -run` selectors. Replaced
   with the whitespace-tolerant `grep -cE 'Use:[[:space:]]+"runs"'`, verified in all three
-  directions: `0` at `9b1805a67` (so the recorded RED value stays honest), `1` at HEAD (so the cell
-  actually flips), and `0` against `internal/cli/factory.go` (so the pattern is not matching
-  everything). No requirement, no other acceptance criterion, and no design or research text was
-  touched; counts stay REQ 16 / AC 17 and `status:` stays `completed`. Commit: this revision.
+  directions: `0` at the ledger's own document-level pin `bb5b8f9d1` — the tree every RED-now cell
+  was measured against, so the recorded RED value stays honest — `1` at HEAD (so the cell actually
+  flips), and `0` against `internal/cli/factory.go` (so the pattern is not matching everything). The
+  honesty leg was also re-measured at `9b1805a67` and reads `0` there too, so both trees agree and
+  the conclusion is unaffected by which one is read. No requirement, no other acceptance
+  criterion, and no design or research text was touched; counts stay REQ 16 / AC 17 and
+  `status:` stays `completed`. Commit: this revision.
+- 2026-09-24 — v0.12.0 — manager-spec — **three wording defects** found by the t1107 audit, all of
+  the same family as v0.10.0's AC-004 repair: a criterion that is well-shaped and still says
+  something other than what it means. **A1 — AC-009's premise widened.** AC-004 delegates the
+  all-owners-dead shape to "the fail-closed leg AC-009 carries", but AC-009's own premises were only
+  "zero `active` runs" and "two `active` runs with live owners" — neither is "two `active` runs whose
+  owners are all dead", a third premise in which both rows retire and the remaining count *reaches*
+  zero. The behaviour was never missing (`TestResolveActiveRunBothOwnersDead`,
+  `internal/factorymsg/factory_run_retire_test.go:126`); the coverage text was, so a reader following
+  AC-004's pointer arrived at a criterion that did not name the shape. The first `Given` now reads
+  "zero `active` runs remaining after reconciliation — whether none existed to begin with or every
+  owner was classified `dead` and retired", which makes the delegation land. No AC id was created or
+  removed. **S2 — AC-007's third `Then` clause restated.** It read "and the join no longer fails with
+  `AMBIGUOUS_FACTORY`", which is literally true and reads as "succeeds": followed to its consequence
+  under REQ-005, both dead owners retire, zero `active` rows remain, and the join fails closed with
+  `NO_ACTIVE_FACTORY`. A negation that a reader completes into the wrong positive is the exact
+  misreading AC-004 was repaired for, so the clause now states the outcome — fails closed with
+  `NO_ACTIVE_FACTORY`, landing on AC-009's leg — rather than what it is not. The other two clauses and
+  the migration-path sentence are unchanged. **F1 — R-06's honesty-check attribution corrected.** The
+  v0.11.0 entry attributed the `0` reading to `9b1805a67`, but the ledger that cell lives in binds a
+  document-level pin of `bb5b8f9d1`, so the paragraph cited a tree the ledger does not. Independent
+  re-measurement (`.moai/reports/t1107/verify-debt-closure.md` §C3) reads `0` / exit 1 on **both**
+  trees under the new pattern, so the recorded RED value and the conclusion stand; only the
+  attribution was wrong, and it now names the ledger's own pin with the second tree stated beside it.
+  The `1`-at-HEAD leg and the `internal/cli/factory.go` negative control are untouched. Not repaired:
+  the audit's F2 (an over-stated §H placement rationale resting on a reattachment hazard) — a sweep of
+  the SPEC directory finds no such rationale sentence in any tracked artifact and `90e952b80` carries
+  no placement reasoning, so the claim existed only in a repairing agent's return message and §H's
+  ordering is left exactly as it stands; inventing the sentence in order to correct it would
+  manufacture the defect. No requirement, no design, and no research text was touched; counts stay
+  REQ 16 / AC 17 and `status:` stays `completed`. Commit: this revision.
