@@ -182,6 +182,10 @@ fi
 if [ -f "$d/delay" ]; then
   sleep "$(cat "$d/delay")"
 fi
+if [ -f "$d/swap.dir" ]; then
+  rm -rf "$(cat "$d/swap.dir")"
+  ln -s "$(cat "$d/swap.to")" "$(cat "$d/swap.dir")"
+fi
 [ -f "$d/exec.out" ] && cat "$d/exec.out"
 exit "$(cat "$d/exec.rc" 2>/dev/null || echo 0)"
 `
@@ -768,7 +772,7 @@ func TestCodexAuditLaunchVerbatimWrite(t *testing.T) {
 			t.Fatal(err)
 		}
 		orig := codexAuditRename
-		codexAuditRename = func(string, string) error { return errors.New("simulated interruption") }
+		codexAuditRename = func(*os.Root, string, string) error { return errors.New("simulated interruption") }
 		t.Cleanup(func() { codexAuditRename = orig })
 		r := runAudit(t, codexAuditRequest{Role: "sync-auditor", ProjectRoot: repo.a, CallerDir: repo.a1, Root: repo.a1, Out: dest})
 		codexAuditRename = orig

@@ -35,6 +35,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"regexp"
+	"runtime"
 	"strings"
 	"time"
 
@@ -112,7 +113,7 @@ type codexAuditRecord struct {
 
 // Test seams.
 var (
-	codexAuditRename       = renameWithRetry
+	codexAuditRename       = codexAuditRenameIn
 	codexAuditRecordSuffix = func() string {
 		var b [4]byte
 		_, _ = rand.Read(b[:])
@@ -139,6 +140,7 @@ type codexAuditPlan struct {
 	instrToken string
 	recRel     string
 	recFile    *os.File
+	recDir     *os.Root // the checked record directory; the verdict may never land in it
 	started    time.Time
 }
 
@@ -202,19 +204,19 @@ func prepareCodexAudit(ctx context.Context, req codexAuditRequest) *codexAuditPl
 	argv = append(argv, "-C", root, "--json", "-")
 
 	started := codexAuditNow().UTC()
-	recRel, recFile, err := codexAuditReserveRecord(root, req.Role, started)
+	recRel, recFile, recDir, err := codexAuditReserveRecord(root, req.Role, started)
 	if err != nil {
 		return fail("cannot reserve launch record: %v", err)
 	}
 	return &codexAuditPlan{req: req, root: root, dest: dest, program: program, role: role,
-		argv: argv, instrToken: instrToken, recRel: recRel, recFile: recFile, started: started}
+		argv: argv, instrToken: instrToken, recRel: recRel, recFile: recFile, recDir: recDir, started: started}
 }
 
 // run starts the audit process, writes the verdict on success, and completes
 // the launch record whatever the outcome.
 func (p *codexAuditPlan) run(ctx context.Context) codexAuditResult {
 	req := p.req
-	defer func() { _ = p.recFile.Close() }()
+	defer func() { _ = p.recFile.Close(); _ = p.recDir.Close() }()
 
 	message, runErr := codexAuditExec(ctx, p.program, p.argv, p.root, req.Task, req.Stderr, req.Timeout)
 	result := codexAuditResult{RecordPath: p.recRel}
@@ -238,11 +240,11 @@ func (p *codexAuditPlan) run(ctx context.Context) codexAuditResult {
 		failure = "empty final message"
 	default:
 		if p.dest != "" {
-			if werr := codexAuditWriteVerdict(p.dest, []byte(message)); werr != nil {
+			rel, werr := codexAuditWriteVerdict(p.root, p.dest, []byte(message), p.recDir)
+			if werr != nil {
 				failure = "verdict write failed: " + werr.Error()
 				break
 			}
-			rel := codexAuditRel(p.root, p.dest)
 			sum := sha256.Sum256([]byte(message))
 			hexSum := hex.EncodeToString(sum[:])
 			rec.VerdictPath, rec.VerdictSHA256 = &rel, &hexSum
@@ -347,8 +349,10 @@ func codexAuditValidateDest(root, out string) (string, error) {
 	if err != nil || rel == "." || rel == ".." || strings.HasPrefix(rel, ".."+string(filepath.Separator)) || filepath.IsAbs(rel) {
 		return "", fmt.Errorf("%s is outside the report tree", out)
 	}
+	// Names are compared case-insensitively because the default macOS and
+	// Windows filesystems are: CODEX-AUDIT and codex-audit are one directory.
 	parts := strings.Split(rel, string(filepath.Separator))
-	if parts[0] == codexAuditRecordSubdir {
+	if strings.EqualFold(parts[0], codexAuditRecordSubdir) || codexAuditSameEntry(filepath.Join(reports, parts[0]), filepath.Join(reports, codexAuditRecordSubdir)) {
 		return "", fmt.Errorf("%s is inside the launcher's record directory", out)
 	}
 	if codexAuditHasGitComponent(resolved) {
@@ -362,11 +366,83 @@ func codexAuditValidateDest(root, out string) (string, error) {
 
 func codexAuditHasGitComponent(p string) bool {
 	for _, part := range strings.Split(filepath.ToSlash(p), "/") {
-		if part == ".git" {
+		if strings.EqualFold(part, ".git") {
 			return true
 		}
 	}
 	return false
+}
+
+// codexAuditSameEntry reports whether two existing paths name the same
+// file-system object, which catches aliases a string comparison cannot see
+// (case folding, Unicode normalization). A missing path is never the same.
+func codexAuditSameEntry(a, b string) bool {
+	fa, errA := os.Lstat(a)
+	fb, errB := os.Lstat(b)
+	return errA == nil && errB == nil && os.SameFile(fa, fb)
+}
+
+// codexAuditOpenDir opens root/rel as a directory handle, creating missing
+// components. Each component is looked up with Lstat through its parent's
+// handle and refused when it is a symlink or not a directory; it is then
+// opened from that same parent handle and its identity compared with the
+// Lstat result, so a component swapped between the check and the open is
+// refused. Every write that follows goes through the returned handle, never
+// through the path name, so a later swap of any component cannot redirect
+// it. A component that is the same directory as forbid is refused.
+//
+// @MX:WARN: [AUTO] confinement of launcher writes; a name-based re-walk here would reopen the symlink-swap escape
+// @MX:REASON: the audit runs for minutes while a sandboxed writer can replace report directories with symlinks
+func codexAuditOpenDir(root, rel string, forbid *os.Root) (*os.Root, error) {
+	var forbidInfo os.FileInfo
+	if forbid != nil {
+		fi, err := forbid.Stat(".")
+		if err != nil {
+			return nil, err
+		}
+		forbidInfo = fi
+	}
+	cur, err := os.OpenRoot(root)
+	if err != nil {
+		return nil, err
+	}
+	walked := "."
+	for _, name := range strings.Split(filepath.ToSlash(filepath.Clean(rel)), "/") {
+		if name == "." || name == "" {
+			continue
+		}
+		walked = filepath.Join(walked, name)
+		fi, err := cur.Lstat(name)
+		if errors.Is(err, fs.ErrNotExist) {
+			if err = cur.Mkdir(name, 0o755); err == nil || errors.Is(err, fs.ErrExist) {
+				fi, err = cur.Lstat(name)
+			}
+		}
+		if err != nil {
+			_ = cur.Close()
+			return nil, err
+		}
+		if fi.Mode()&os.ModeSymlink != 0 || !fi.IsDir() {
+			_ = cur.Close()
+			return nil, fmt.Errorf("%s is not a plain directory (symlink or other file)", filepath.ToSlash(walked))
+		}
+		next, err := cur.OpenRoot(name)
+		_ = cur.Close()
+		if err != nil {
+			return nil, err
+		}
+		got, err := next.Stat(".")
+		if err != nil || !os.SameFile(fi, got) {
+			_ = next.Close()
+			return nil, fmt.Errorf("%s changed while it was being opened", filepath.ToSlash(walked))
+		}
+		if forbidInfo != nil && os.SameFile(got, forbidInfo) {
+			_ = next.Close()
+			return nil, fmt.Errorf("%s is the launcher's record directory", filepath.ToSlash(walked))
+		}
+		cur = next
+	}
+	return cur, nil
 }
 
 // codexAuditResolve returns the absolute, symlink-free form of an existing path.
@@ -543,17 +619,20 @@ func codexAuditMCPServerNames(ctx context.Context, program, root string) ([]stri
 
 // codexAuditReserveRecord creates the launch record exclusively before the
 // audit starts, so a taken name stops the launch instead of losing a record.
-func codexAuditReserveRecord(root, role string, at time.Time) (string, *os.File, error) {
-	dir := filepath.Join(root, filepath.FromSlash(codexAuditReportsDir), codexAuditRecordSubdir)
-	if err := os.MkdirAll(dir, 0o755); err != nil {
-		return "", nil, err
+// The record directory is opened through codexAuditOpenDir, so neither it nor
+// .moai/reports may be a symlink; the returned handle stays open for the run.
+func codexAuditReserveRecord(root, role string, at time.Time) (string, *os.File, *os.Root, error) {
+	dir, err := codexAuditOpenDir(root, codexAuditReportsDir+"/"+codexAuditRecordSubdir, nil)
+	if err != nil {
+		return "", nil, nil, err
 	}
 	name := fmt.Sprintf("%s-%s-%s.launch.json", role, at.Format("20060102T150405Z"), codexAuditRecordSuffix())
-	f, err := os.OpenFile(filepath.Join(dir, name), os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0o644)
+	f, err := dir.OpenFile(name, os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0o644)
 	if err != nil {
-		return "", nil, err
+		_ = dir.Close()
+		return "", nil, nil, err
 	}
-	return codexAuditReportsDir + "/" + codexAuditRecordSubdir + "/" + name, f, nil
+	return codexAuditReportsDir + "/" + codexAuditRecordSubdir + "/" + name, f, dir, nil
 }
 
 // codexAuditExec runs the audit process under a bound and returns its final
@@ -621,30 +700,46 @@ func codexAuditExitCode(err error) int {
 }
 
 // codexAuditWriteVerdict replaces dest atomically: either the previous file
-// or the complete new one, never a partial file.
-func codexAuditWriteVerdict(dest string, data []byte) error {
-	dir := filepath.Dir(dest)
-	if err := os.MkdirAll(dir, 0o755); err != nil {
-		return err
+// or the complete new one, never a partial file. The destination's directory
+// is opened as a handle by walking from root without following symlinks
+// (codexAuditOpenDir); the temporary file is created and renamed inside that
+// handle, so the file lands in the directory that was checked even if a path
+// component is swapped meanwhile. It returns the worktree-relative path that
+// was actually written, for the launch record.
+func codexAuditWriteVerdict(root, dest string, data []byte, recDir *os.Root) (string, error) {
+	rel, err := filepath.Rel(root, dest)
+	if err != nil || rel == "." || strings.HasPrefix(rel, "..") || filepath.IsAbs(rel) {
+		return "", fmt.Errorf("%s is not below the working root", dest)
 	}
-	tmp, err := os.CreateTemp(dir, ".codex-audit-*.tmp")
+	dir, err := codexAuditOpenDir(root, filepath.Dir(rel), recDir)
 	if err != nil {
-		return err
+		return "", err
 	}
-	name := tmp.Name()
-	defer func() { _ = os.Remove(name) }()
+	defer func() { _ = dir.Close() }()
+	base := filepath.Base(rel)
+	var rnd [8]byte
+	_, _ = rand.Read(rnd[:])
+	name := ".codex-audit-" + hex.EncodeToString(rnd[:]) + ".tmp"
+	tmp, err := dir.OpenFile(name, os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0o600)
+	if err != nil {
+		return "", err
+	}
+	defer func() { _ = dir.Remove(name) }()
 	if _, err := tmp.Write(data); err != nil {
 		_ = tmp.Close()
-		return err
+		return "", err
 	}
 	if err := tmp.Sync(); err != nil {
 		_ = tmp.Close()
-		return err
+		return "", err
 	}
 	if err := tmp.Close(); err != nil {
-		return err
+		return "", err
 	}
-	return codexAuditRename(name, dest)
+	if err := codexAuditRename(dir, name, base); err != nil {
+		return "", err
+	}
+	return filepath.ToSlash(rel), nil
 }
 
 // codexAuditRedactArgv replaces the instruction token with its digest.
@@ -660,12 +755,21 @@ func codexAuditRedactArgv(argv []string, token, instructions string) []string {
 	return out
 }
 
-func codexAuditRel(root, p string) string {
-	rel, err := filepath.Rel(root, p)
-	if err != nil {
-		return filepath.ToSlash(p)
+// codexAuditRenameIn renames within one directory handle. Windows can refuse
+// a rename briefly while another process holds the target open, so it is
+// retried there, as renameWithRetry does for path-based renames.
+func codexAuditRenameIn(dir *os.Root, oldname, newname string) error {
+	err := dir.Rename(oldname, newname)
+	if err == nil || runtime.GOOS != "windows" {
+		return err
 	}
-	return filepath.ToSlash(rel)
+	for range 10 {
+		time.Sleep(5 * time.Millisecond)
+		if err = dir.Rename(oldname, newname); err == nil {
+			return nil
+		}
+	}
+	return err
 }
 
 // codexAuditGit runs a read-only git query and returns trimmed stdout.

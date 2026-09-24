@@ -280,6 +280,16 @@ Gaps (M5):
 - 그래도 실행하지 않았다. 증거에 없는 것: (1) #37의 CODEX_HOME(`~/.t1143-ap-codexhome`, 세션 기록의 skill root로 확인) 안 `config.toml` — 신뢰 항목이 기록되지 않았고 디렉터리는 지워졌다. #39를 시작 검사에서 멈춘 바로 그 요소다. (2) #37 루트가 저장소였는지 — #37·#38 세션 기록의 `"git": {}`는 저장소임을 보여 주지 않는다. 리드 전제("git-repo root")를 #37에 대조할 수 없다. (3) #37 moai 서버 바이너리의 빌드 커밋.
 - 결론: 도구별 사전 승인 효과는 측정되지 않았다. 이번 단계 LIVE 0회, 누계 39/43. 픽스처는 만들지 않았고 프로세스도 띄우지 않았다.
 
+### sync-audit fix (F1–F3, F5) — `.moai/reports/t1143/sync-audit.md`, LIVE 0
+
+재현 테스트를 먼저 쓰고(현재 코드에서 실패 확인), 원인을 한 번 따진 뒤 최소 수정했다. 테스트: `internal/cli/codex_audit_confine_test.go`. 가짜 `codex`에 실행 중 디렉터리를 심볼릭 링크로 바꾸는 선택 단계를 더했다(`swap.dir`/`swap.to`가 있을 때만).
+
+- F1(판정 파일 쓰기의 TOCTOU): `TestCodexAuditLaunchWriteRaceConfined` — 가짜 `codex`가 실행 중 `.moai/reports/x`(가운데 성분)를 워크트리 밖 심볼릭 링크로 바꾼다. 수정 전 FAIL: `verdict escaped the worktree through the swapped component: [.../outside/y/v.md]`(`run/fix-red-F1.log`). 원인: 이름으로 검증한 뒤 이름으로 다시 걸어가 쓴다(MkdirAll·CreateTemp·rename). 쓰기 시점에 이름으로 다시 확인하는 것도 같은 틈이라 증상 처방이다. 수정: `codexAuditOpenDir`가 워크트리 뿌리부터 성분마다 부모 핸들에서 Lstat(심볼릭 링크·비디렉터리 거부) → 같은 부모 핸들에서 `OpenRoot` → `SameFile`로 동일성 확인을 거쳐 디렉터리 핸들(`os.Root`)을 연다. 임시 파일 생성과 rename은 그 핸들 안에서만 한다. launch record의 `verdict_path`는 실제로 쓴 경로다. 수정 후 PASS(`run/fix-green-F1.log`, 경쟁은 여전히 일어나고 워크트리 밖에는 아무것도 없으며 종료 코드 1, `verdict_path` null, `failure_reason` 기록).
+- F2(대소문자 별칭): `TestCodexAuditLaunchRecordAliasRefused` — `CODEX-AUDIT`·`Codex-Audit` 별칭으로 기존 launch record 덮어쓰기, `.GIT`·`.Git` 성분. 수정 전 네 경우 모두 수락(`run/fix-red-F2.log`). 원인: 대소문자 무시 파일 시스템 위에서 바이트 단위 문자열 비교. 수정: `strings.EqualFold`와 `os.SameFile` 동일성 비교, 그리고 쓰기 경로의 디렉터리 걷기에서 기록 디렉터리 핸들과 같은 디렉터리를 거부. 수정 후 PASS(`run/fix-green-F2.log`).
+- F3(심볼릭 링크 기록 디렉터리): `TestCodexAuditLaunchSymlinkedRecordDir` — `.moai/reports/codex-audit`, 그리고 `.moai/reports` 자체(stdout 반환)를 밖으로 가리키는 링크. 수정 전 두 경우 모두 launch record가 워크트리 밖에 생김(`run/fix-red-F3.log`). 원인은 F1과 같다(MkdirAll·OpenFile이 링크를 따라감, O_EXCL은 마지막 성분만 지킴). 수정: 기록 예약도 같은 `codexAuditOpenDir`로 연 핸들에서 `O_EXCL`로 만든다. 수정 후 PASS(`run/fix-green-F3.log`), 감사 프로세스는 시작되지 않는다.
+- F5: CHANGELOG와 이 파일 §E.4의 집계를 "17 verdict rows over the 16 acceptance criteria (AC-CAR-012 as 012a/012b): 12 PASS, 3 FAIL, 1 INVALID, 1 NOT_RUN"과 "12 deterministic verdict rows"로 고치고 `b12_self_test_b` 줄을 맞췄다.
+- 검증(이 트리): `go test ./internal/cli -run CodexAudit` ok(PASS 48, SKIP 2 = LIVE 테스트, `run/fix-tests.log`); AC-CAR-003·004·005·014 판정식 원문 모두 `true`(`run/fix-judge-*.log`); `go vet` exit 0; `golangci-lint run ./internal/cli/...` `0 issues.`; `GOOS=windows GOARCH=amd64 go build ./...` exit 0, Windows vet exit 0.
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 run 단계는 끝나지 않았다. AC-CAR-011이 NOT_RUN이고, AC-CAR-010 실행 1은 리드가 INVALID로 기록했으며 재실행되지 않았다. MCP 경로는 도구별 승인 설정이 통과시키는지 측정되지 않았다(approval probe B INVALID).
@@ -348,7 +358,7 @@ m1_to_mN_commit_strategy: one or more commits per milestone on WT-codex-audit-re
 | AC-CAR-010 | INVALID (run 1: "routed to decoy server", lead-recorded, no rerun) | ledger #35–#36, `.moai/reports/t1143/verdict.md` § "Lead decision after M5" |
 | AC-CAR-011 | NOT_RUN (0/2 calls; lead instructed stop when AC-CAR-010 could not proceed) | `.moai/reports/t1143/verdict.md` § "Lead decision after M5" |
 
-12 PASS, 3 FAIL, 1 INVALID, 1 NOT_RUN of 16 total AC. Per `acceptance.md` §D/§E, none of the three design bundles reaches full PASS and the card's own completion definition is not met for the carried-over scope; this SPEC closes `completed` for the delivered launcher/instruction-surface/instruction-preservation scope only, following the SPEC-DUAL-HARNESS-RECOVERY-001 v0.3.1 (card t1100) precedent for closing with formally-transferred unmet items. This SPEC does **not** claim AC-DHR-012, AC-DHR-023, AC-CAR-012b, AC-CAR-010, or AC-CAR-011 as satisfied.
+17 verdict rows over the 16 acceptance criteria of acceptance.md (AC-CAR-012 judged as 012a and 012b): 12 PASS, 3 FAIL (AC-DHR-012, AC-DHR-023, AC-CAR-012b), 1 INVALID (AC-CAR-010), 1 NOT_RUN (AC-CAR-011). Per `acceptance.md` §D/§E, none of the three design bundles reaches full PASS and the card's own completion definition is not met for the carried-over scope; this SPEC closes `completed` for the delivered launcher/instruction-surface/instruction-preservation scope only, following the SPEC-DUAL-HARNESS-RECOVERY-001 v0.3.1 (card t1100) precedent for closing with formally-transferred unmet items. This SPEC does **not** claim AC-DHR-012, AC-DHR-023, AC-CAR-012b, AC-CAR-010, or AC-CAR-011 as satisfied.
 
 ### Carry-over table (formal transfer, unchanged AC bodies/judges/expected values)
 
@@ -373,7 +383,7 @@ sync_complete_at: 2026-09-24
 sync_commit_sha: pending-backfill-sync
 sync_status: completed_with_carryover
 b12_self_test_a: pass         # grep -c 'SPEC-CODEX-AUDIT-READONLY-001' CHANGELOG.md == 1 (this entry only)
-b12_self_test_b: pass         # 16 distinct AC-CAR-*/AC-DHR-* identifiers in acceptance.md, CHANGELOG cites 16 total (12/2/1/1 split)
+b12_self_test_b: pass         # 16 distinct AC-CAR-*/AC-DHR-* identifiers in acceptance.md; CHANGELOG cites 17 verdict rows over 16 ACs (AC-CAR-012 as 012a/012b): 12 PASS / 3 FAIL / 1 INVALID / 1 NOT_RUN
 b12_self_test_c: pass         # all cited file paths verified via ls
 changelog_entry_position: Unreleased > Added (top entry)
 frontmatter_status_transitions:
