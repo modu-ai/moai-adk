@@ -160,7 +160,7 @@ m1_to_mN_commit_strategy: single run-phase commit covering M1-M6
 
 ```yaml
 sync_complete_at: 2026-09-24
-sync_commit_sha: pending-backfill-sync   # a commit cannot cite its own hash; the lead reads it off the sync commit
+sync_commit_sha: 85414b3e6   # a commit cannot cite its own hash; backfilled by card t1169
 sync_status: audit-ready
 changelog_entry_position: "CHANGELOG.md `## [Unreleased]` → `### Fixed`, first entry (the defect and the retirement mechanism) AND `### Added`, first entry (the `moai factory runs` operator surface)"
 frontmatter_status_transitions:
