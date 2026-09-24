@@ -74,6 +74,99 @@ GREEN — 같은 명령, 배선 후 (EXIT=0):
 ok  	github.com/modu-ai/moai-adk/internal/cli	0.848s
 ```
 
+### M3 — 레벨 경계 (cycle_type=tdd)
+
+범위: `plan.md` §C M3 뿐이다. M4(증가 억제)·M5(기계적 마감)는 착수하지 않았다.
+
+편집 대상:
+
+- `internal/cli/hook_sink_level_test.go` (신규) — 가드 6 `TestHookSinkLevelBoundary`
+- `internal/cli/logging.go` — 훅 분기의 `level` 을 `defaultLogLevel` 고정에서 `resolveLogLevel()`
+  로 교체 + `defaultLogLevel` / `resolveLoggingDecision` 주석 2곳
+
+M1 이 §E.2 에 "훅 분기의 `level` 은 아직 `defaultLogLevel` 고정이며 … 그 교체는 M3(§B-4)의
+것이다"라고 남긴 그 교체다. **그 고정은 REQ-HDS-005 가 미구현 상태였다는 뜻이고, RED 가
+그것을 이름으로 잡았다** — 아래 RED 증거의 첫 출력이 `resolved level WARN, want INFO` 다.
+
+주석 2곳을 함께 고친 이유: `resolveLoggingDecision` 의 "그 carve-out 은 무조건적이다 —
+`MOAI_LOG_LEVEL` 이 다시 열지 않는다"는 문장은 **목적지에 대해서는 참으로 남지만**, 이
+교체 이후에는 "변수가 이 경로에서 아무 효과도 없다"로 읽힐 수 있다. `defaultLogLevel` 의
+"비-훅 경로에서" 라는 한정도 이제 거짓이다. 둘 다 테스트를 깨뜨리지 않으므로 AC-HDS-016 이
+막으려는 것과 같은 계열의 조용한 거짓이다.
+
+#### AC PASS/FAIL 매트릭스 (M3 소관분)
+
+| AC | 판정 | 검증 명령 | 실제 출력 |
+|---|---|---|---|
+| AC-HDS-007 | PASS | `go test ./internal/cli/ -list '^TestHookSinkLevelBoundary$' \| grep -cE '^Test'` / `go test ./internal/cli/ -run '^TestHookSinkLevelBoundary$' -count=1` | 1단 `1` · 2단 `ok github.com/modu-ai/moai-adk/internal/cli 0.990s` (EXIT=0), 서브테스트 `default_config_admits_warn_only` PASS |
+| AC-HDS-008 | PASS | 같은 두 단 명령 | 1단 `1` · 2단 EXIT=0, 서브테스트 `lowered_level_admits_info` + `the_same_record_differs_across_the_two_settings` PASS |
+
+AC-HDS-009 는 **M3 소관이 아니다.** `acceptance.md` § 가드 이름 표가 그것을 가드 2
+(`TestHookPathHookDestIsNeitherStdStream`, M2 착지)에 배정했고, 그 가드가 이미 네 레벨 값 ×
+두 인자 모양을 순회하며 `dest` 가 두 표준 스트림 어느 쪽도 아님을 단언한다. 가드 6 에서 다시
+단언하면 그 표가 바뀔 때 고칠 자리가 둘이 되고 얻는 커버리지는 0 이다 — 두 가드가 변수의 두
+축(목적지 / 레벨)을 하나씩 나눠 진다. 이 판단을 가드 6 의 doc comment 에도 적어 두었다.
+
+M3 밖의 AC(002~006 · 010~014)는 여전히 **미판정**이다.
+
+#### RED 증거 (§E E8 — GREEN 이전 실패 출력 전문)
+
+RED — `go test ./internal/cli/ -run '^TestHookSinkLevelBoundary$' -count=1` (EXIT=1):
+
+```
+--- FAIL: TestHookSinkLevelBoundary (0.00s)
+    --- FAIL: TestHookSinkLevelBoundary/lowered_level_admits_info (0.00s)
+        hook_sink_level_test.go:68: resolveLoggingDecision with MOAI_LOG_LEVEL="INFO" resolved level WARN, want INFO; the variable governs the hook sink's minimum level (REQ-HDS-005)
+    --- FAIL: TestHookSinkLevelBoundary/the_same_record_differs_across_the_two_settings (0.00s)
+        hook_sink_level_test.go:83: resolveLoggingDecision with MOAI_LOG_LEVEL="INFO" resolved level WARN, want INFO; the variable governs the hook sink's minimum level (REQ-HDS-005)
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/cli	0.706s
+FAIL
+```
+
+GREEN — 같은 명령, 교체 후 (EXIT=0, `-v`):
+
+```
+--- PASS: TestHookSinkLevelBoundary (0.00s)
+    --- PASS: TestHookSinkLevelBoundary/default_config_admits_warn_only (0.00s)
+    --- PASS: TestHookSinkLevelBoundary/lowered_level_admits_info (0.00s)
+    --- PASS: TestHookSinkLevelBoundary/the_same_record_differs_across_the_two_settings (0.00s)
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/cli	0.990s
+```
+
+#### 반증 (변이 2건 — 두 축 각각)
+
+RED 는 **관대한 방향**(경계가 너무 낮게 잡히는 실패)을 재지 않는다. 변이를 두 개 돌려 두 축을
+각각 빨갛게 만들었다. 둘 다 커밋하지 않았고 원본을 백업에서 복원했다.
+
+변이 A — 훅 분기를 `level: slog.LevelDebug` 로 고정 (결정값 축):
+
+```
+--- FAIL: TestHookSinkLevelBoundary/default_config_admits_warn_only
+        resolveLoggingDecision with MOAI_LOG_LEVEL="" resolved level DEBUG, want WARN
+--- FAIL: TestHookSinkLevelBoundary/lowered_level_admits_info
+        resolveLoggingDecision with MOAI_LOG_LEVEL="INFO" resolved level DEBUG, want INFO
+--- FAIL: TestHookSinkLevelBoundary/the_same_record_differs_across_the_two_settings
+```
+
+변이 A 는 **결정값 단언에서 먼저 멈추므로 싱크 행 수 축을 빨갛게 만들지 못한다.** 그래서
+변이 B 를 따로 돌렸다 — `defaultLogLevel = slog.LevelDebug`. 기댓값이 상수와 함께 움직이므로
+결정값 단언을 통과하고 파일 내용 단언에 도달한다:
+
+```
+--- FAIL: TestHookSinkLevelBoundary/default_config_admits_warn_only
+        sink holds 1 line(s) carrying "hook-sink-level-probe-info", want 0: info sits below defaultLogLevel …
+        sink holds 1 line(s) carrying "hook-sink-level-probe-debug", want 0: debug sits below defaultLogLevel …
+--- FAIL: TestHookSinkLevelBoundary/the_same_record_differs_across_the_two_settings
+        the info probe appears 1 time(s) at the default AND 1 time(s) with MOAI_LOG_LEVEL=INFO; …
+```
+
+변이 B 의 세 번째 줄이 **공허 방지 팔이 실제로 문다**는 증거다: 두 환경이 같은 답을 내면
+빨개진다. AC-HDS-008 은 "낮추면 info 가 싱크에 있다"만 요구하므로, `t.Setenv` 를 아예
+호출하지 않아도 — 애초에 기본값이 아닌 싱크를 읽으면 — 충족될 수 있다. 차분 팔이 그 경로를
+막는다.
+
 ### AC-HDS-016 전수 판정 기록
 
 모집단은 기준선 SHA `bbc855f45` 에 고정된 그물이다:
