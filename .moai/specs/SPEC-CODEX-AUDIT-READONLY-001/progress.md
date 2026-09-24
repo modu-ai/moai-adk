@@ -111,6 +111,48 @@ Gaps (M2):
 - MCP 경로의 겉면(도구, 비동기 작업)은 M3 범위이며 없다. `route`는 `direct`(테스트)와 `shell`(동사)만 기록된다.
 - 변이 실행 m004b에서 가짜 codex의 `sleep 30` 자식이 남았고, 정리하면서 다른 세션의 폴링 루프에 속한 `sleep 30` 하나(pid 30259)까지 종료했다. 그 루프는 계속 돌았다(새 `sleep` 확인). 이후 테스트 하위 항목마다 정리 훅을 등록했다.
 
+### M3 — MCP 경로와 지시면 (LIVE 없음, 커밋 `6781ce995`)
+
+`route.txt`가 `mcp`이므로 plan §C M3의 R2 분기를 구현했다.
+
+- MCP 도구 셋: `codex_role_audit`(시작, 쓰기 가능), `codex_role_audit_status`, `codex_role_audit_result`(읽기 전용). 시작 도구는 `moai codex audit`와 같은 핵심 함수를 부른다. 핵심 함수를 `prepareCodexAudit`(모든 거부 + launch record 예약)와 `run`(프로세스·판정 파일·record)으로 나눴고 동사도 같은 둘을 쓴다. 거부는 작업이 생기기 전에 일어나며 아무것도 쓰지 않는다. 받아들인 호출은 곧바로 작업 id를 돌려주고 감사는 서버 프로세스 안의 goroutine에서 돈다(호스트의 도구 시간 한도가 감사를 끊지 않게). `worktree_root`는 필수 입력이고, 핵심 함수의 호출자 워크트리는 서버가 시작된 디렉터리(M2 첫 항목에서 lane 워크트리로 잰 값)로 정한다. 입력 이름은 `project_root`가 아니라 `worktree_root`다(선택 입력인 `project_root` 계열과 뜻이 달라 규칙 문서의 `project_root` 목록에 섞지 않았다).
+- 지시면: 템플릿 `AGENTS.md.tmpl`의 `audit-verdict-file` 행과 `agents-codex.yaml`의 read-only 역할 넷 부록이 MCP 도구 `codex_role_audit`만 이름으로 적고, `spawn_agent`로 띄우지 말라고 적으며, launcher가 반환문 그대로 파일을 쓴다고 적는다. 셸 동사 이름은 지시면에 없다. 역할 TOML 넷은 `make agents-emit`으로만 재생성했다. 측정 경로 사본 `internal/template/agentemit/testdata/measured-route.txt`를 더했다.
+- 목록 수 36 → 39(쓰기 15, 읽기 24): 규칙 `moai-mcp-tools.md`와 `moai-mcp-tools-catalogue.md`(로컬과 템플릿 미러, 바이트 동일), `internal/mcp/catalog.go`·`catalog_test.go`, `factory_lane_handoff_compat_test.go`의 36/14/22 → 39/15/24, 웹 콘솔 `i18n.js` 네 로케일 키와 `codex_panel_test.go` 고정 목록.
+- 기존 기대 테스트: `audit_role_exception_test.go`(부모 쓰기 표지를 "the launcher writes …"로), `golden_test.go` 주석.
+
+RED(구현 전): `go test ./internal/template/agentemit -run TestAuditRoleLauncherInstructionSurface` → 16건 실패(`run/m3-red-agentemit.log`), `go test ./internal/cli -run TestCodexAuditMCPTool` → 컴파일 실패 `undefined: codexRoleAuditToolName`(`run/m3-red-mcp.log`).
+
+판정식(acceptance 원문, 커밋 `6781ce995` 트리, `run/m3-judges.log`):
+
+| AC | 판정 출력 | 변이 → 판정 출력 |
+|---|---|---|
+| AC-CAR-007 | `true` | m007 행에 `moai codex audit`를 함께 적음 → `false` |
+| AC-CAR-008 | `true` | m008 추가 템플릿 줄에 카드 번호 → `false`(판정식의 `develop...HEAD`를 작업 트리 비교 `develop`로 바꾼 변형; 같은 변형이 복원한 트리에서 `true`) |
+| AC-CAR-013 | `true` | m013 MCP 도구가 `worktree_root`를 호출자 워크트리로 믿음 → `false` |
+
+검증(이 트리, 이 실행):
+
+| 명령 | 종료 코드 | 로그 |
+|---|---|---|
+| `make agents-emit` | 0 | `run/m3-agents-emit.log` |
+| `make build` | 0 | `run/m3-make-build.log` |
+| `make -s agents-emit-check` | 0 | `run/m3-agents-emit-check.log` |
+| `go test ./internal/template/...` | 0 | `run/m3-test-template.log` |
+| `go test ./internal/template/agentemit/...` | 0 | `run/m3-test-agentemit.log` |
+| `go test ./internal/mcp/...` | 0 | `run/m3-test-mcp.log` |
+| `go test ./internal/web/...`(목록 추가 전 3건 실패 → 추가 후) | 0 | `run/m3-test-web.log` |
+| `go test ./internal/cli -run 'Codex\|MCP\|…\|Sweep'`(kanban·factory 변수 제거) | 0 | `run/m3-test-cli.log` |
+| `go vet ./internal/cli/... ./internal/mcp/... ./internal/web/... ./internal/template/...` | 0 | `run/m3-vet.log` |
+| `GOOS=windows GOARCH=amd64 go build ./...` / `go vet ./internal/cli/...` | 0 / 0 | `run/m3-windows-build.log`, `run/m3-windows-vet.log` |
+| `golangci-lint run` (위 네 패키지 트리) | 0, `0 issues.` | `run/m3-lint.log` |
+
+Gaps (M3):
+
+- Codex가 쓰기 가능 표시(read-only 힌트 false)인 MCP 도구 호출을 `default_tools_approval_mode = "writes"`와 부모 승인 정책 아래서 어떻게 다루는지 재지 않았다. M1 P-C의 시험 도구는 read-only 표시였다. 레인에서 `codex_role_audit` 호출이 승인 요청에서 멈추거나 거부될 수 있으며 M5 LIVE가 처음 재는 곳이다.
+- 작업 표는 서버 프로세스 메모리에만 있다. 서버가 끝나면 작업 id는 사라지며, 이미 시작한 감사 프로세스는 자기 시간 한도까지 돈다(프로세스 그룹이 서버와 분리되어 있음). 판정 파일과 launch record는 그대로 남는다.
+- AC-CAR-008의 변이는 커밋 범위(`develop...HEAD`)가 아니라 작업 트리 비교로 보였다. 커밋된 변이로 원문 판정식을 돌리지는 않았다.
+- `factory_lane_handoff_compat_test.go`(다른 SPEC의 AC-FLH-015)와 웹 콘솔 테스트의 고정 수를 이 카드가 바꿨다.
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 _<pending run-phase>_
