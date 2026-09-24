@@ -618,6 +618,15 @@ carried_debt:
 - 위 `total_run_phase_files: 4` 항목은 실제로 바뀐 파일 수와 어긋난다. `git diff --name-only 894b7b0a5 HEAD` 는 이 개정에서 9개 경로를 보인다: `.github/workflows/ci.yml`, `.moai/specs/SPEC-APPJS-FIRE-GUARD-001/{acceptance,plan,progress,spec}.md`, `CHANGELOG.md`, `internal/web/appjs_fire_guard_test.go`, `internal/web/appjs_fire_swap_test.go`, `internal/web/testdata/appjs_fire_probe.py`. 나열에서 빠진 것은 `internal/web/appjs_fire_guard_test.go`(M2 기존 파일, `d80132034`(M9)에서 재변경)와 `.moai/specs/SPEC-APPJS-FIRE-GUARD-001/acceptance.md`(`db240a026`, 개정 3 이 AC-AFG-014/015/016 을 추가)다.
 - `preserve_list_post_run_count` 의 「`internal/web/appjs_fire_swap_test.go` 신설(M8)」은 신설 시점이 틀렸다. `git log --diff-filter=A -- internal/web/appjs_fire_swap_test.go` → `d80132034`(M9). M8(`d102a9b2d`)은 이 파일을 아직 만들지 않았다.
 
+### 정정 (sync-audit F9, card t1108) — 위 F3 정정문 자체의 오류, 원문 보존·아래 덧붙임
+
+- 바로 위 F3 정정문의 괄호 안 「`db240a026`, 개정 3 이 AC-AFG-014/015/016 을 추가」는 틀렸다. AC-AFG-014/015/016 을 처음 넣은 것은 개정 2 커밋 `1e2c64057` 이다(`git log --oneline -S 'AC-AFG-014' -- .moai/specs/SPEC-APPJS-FIRE-GUARD-001/acceptance.md` 의 최고참 행이 `1e2c64057`이고, 이 커밋은 base `894b7b0a5`의 조상이다 — `git merge-base --is-ancestor` exit 0). `db240a026`이 `acceptance.md`에 실제로 한 일은 AC-AFG-014 에 로컬 B1 경로 / CI 2단계 경로 두 갈래 서술을 넣고 AC-AFG-016 세 번째 명령에 스위치를 붙인 것이며, 그 커밋의 diff 에는 `AC-AFG-014`/`015`/`016` 식별자 자체를 신설하는 줄이 없다. 인용한 SHA 가 `acceptance.md`를 건드린다는 점은 맞았지만, 건드린 내용의 서술이 틀렸다.
+- `total_run_phase_files` 의 run-phase 기준 파일 수는 **8**이다(`CHANGELOG.md`는 sync 커밋 `28f691617`에서만 바뀐 sync-phase 파일이라 run-phase 기준에서 제외).
+
+### 정정 (sync-audit F12, card t1108) — 위 §E.3 개정분 `what_changed` 필드의 오류, 원문 보존·아래 덧붙임
+
+- 위 `what_changed` 필드의 「구 탐침은 스왑을 전혀 수행하지 않고 고정 지연만 기다렸다」는 부정확하다. 실제로 구 탐침은 `a[href="/todo"]`(boost 조상 없는 전체 페이지 네비게이션)를 클릭한 뒤 `location.pathname`을 `timeout=8.0`으로 폴링했다 — 고정 지연 대기가 아니라 URL 변화를 조건으로 한 폴링이었다(CHANGELOG.md 의 같은 부정확함은 F2 ①로 이미 정정됨; 근거: `git show d102a9b2d -- internal/web/testdata/appjs_fire_probe.py` 의 제거 줄).
+
 ## §E.4 Sync-phase Audit-Ready Signal
 
 ```yaml
