@@ -169,6 +169,37 @@ func TestStopChainAdvisoryFailureRecorded(t *testing.T) {
 	}
 }
 
+// TestStopChainGateCutOffNeverAllows pins design §D3.5: a goal or required
+// gate cut off at its internal budget yields `unmeasured` and never allows;
+// the fail-open-on-missing member 7 cut off reads as result-missing — it
+// allows, with the discard record.
+func TestStopChainGateCutOffNeverAllows(t *testing.T) {
+	f := newTimingFixture(t)
+	c := newCodexStopChain(f.root, stopInput("timing-s", false))
+	c.member1 = allowMember1
+	c.budgetFor = func(n int) time.Duration {
+		switch n {
+		case 2, 3, 6, 7:
+			return time.Nanosecond
+		}
+		return wideStopBudget(n)
+	}
+	res := c.run(context.Background())
+	for _, n := range []int{2, 3, 6} {
+		m := memberByNumber(t, res, n)
+		if m.Decision != codexadapter.DecisionDeny || m.Class != reasonUnmeasured || !strings.Contains(m.Err, "budget") {
+			t.Errorf("member %d cut off: got %s/%q err %q, want a deny/unmeasured naming the budget", n, m.Decision, m.Class, m.Err)
+		}
+	}
+	m7 := memberByNumber(t, res, 7)
+	if m7.Decision != codexadapter.DecisionAllow || m7.Status != stopStatusFailOpen || len(m7.Discards) != 1 {
+		t.Errorf("member 7 cut off: got %s/%q with %d discard(s), want a fail-open allow with one record", m7.Decision, m7.Status, len(m7.Discards))
+	}
+	if res.Output == nil || res.Output.Decision != hook.DecisionBlock {
+		t.Fatalf("merged output = %+v, want a Stop block", res.Output)
+	}
+}
+
 // runCodexStopSubcommand runs `moai hook stop --harness codex` against root,
 // with the registry serving out1 as member 1's output.
 func runCodexStopSubcommand(t *testing.T, root string, input *hook.HookInput, out1 *hook.HookOutput) (string, error) {
