@@ -365,13 +365,21 @@ func TestSweepFiresOnAnUndeclaredListing(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(tmp, "docs-site", "page.md"), []byte(strings.Join(universe, "\n")), 0o600); err != nil {
 		t.Fatal(err)
 	}
+	// Runtime state is machine-local and untracked; a full roster there must
+	// not be reported either.
+	if err := os.MkdirAll(filepath.Join(tmp, ".moai", "state", "verify"), 0o750); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(tmp, ".moai", "state", "verify", "probe.txt"), []byte(strings.Join(universe, "\n")), 0o600); err != nil {
+		t.Fatal(err)
+	}
 
 	got, err := Sweep(tmp, universe)
 	if err != nil {
 		t.Fatal(err)
 	}
 	if len(got) != 1 || got[0] != "new-listing.md" {
-		t.Fatalf("sweep = %v, want exactly [new-listing.md] (a file below the threshold must not be reported, and docs-site must stay excluded)", got)
+		t.Fatalf("sweep = %v, want exactly [new-listing.md] (a file below the threshold must not be reported, and docs-site and .moai/state must stay excluded)", got)
 	}
 }
 
