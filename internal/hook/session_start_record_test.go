@@ -98,7 +98,7 @@ func TestRecordIsKeyedByTheRuntimeSessionIDNotTheSidecar(t *testing.T) {
 // lead records 0.
 func TestFactoryLaneRecordsItsNumberAndLeadRecordsZero(t *testing.T) {
 	t.Run("lane-3", func(t *testing.T) {
-		root := t.TempDir()
+		root := newMoaiProjectRoot(t)
 		scrubKanbanEnv(t)
 		t.Setenv(config.EnvMoaiFactoryWorker, kanban.FactoryLaneLabel(3))
 		t.Setenv(config.EnvMoaiFactoryWorkers, "4")
@@ -122,7 +122,7 @@ func TestFactoryLaneRecordsItsNumberAndLeadRecordsZero(t *testing.T) {
 	})
 
 	t.Run("kanban lead", func(t *testing.T) {
-		root := t.TempDir()
+		root := newMoaiProjectRoot(t)
 		scrubKanbanEnv(t)
 		t.Setenv(config.EnvMoaiKanban, "1")
 		t.Setenv(config.EnvMoaiKanbanBackend, kanban.BackendClaude)
@@ -149,7 +149,7 @@ func TestCardIdentifierDerivation(t *testing.T) {
 	primaryCheckout := filepath.Join("/Users/goos/moai", "moai-adk-go")
 
 	t.Run("(a) card worktree, no override", func(t *testing.T) {
-		root := t.TempDir()
+		root := newMoaiProjectRoot(t)
 		scrubKanbanEnv(t)
 		t.Setenv(config.EnvMoaiKanban, "1")
 		t.Setenv(config.EnvMoaiKanbanCard, "")
@@ -166,7 +166,7 @@ func TestCardIdentifierDerivation(t *testing.T) {
 	})
 
 	t.Run("(b) override wins", func(t *testing.T) {
-		root := t.TempDir()
+		root := newMoaiProjectRoot(t)
 		scrubKanbanEnv(t)
 		t.Setenv(config.EnvMoaiKanban, "1")
 		t.Setenv(config.EnvMoaiKanbanCard, "t999")
@@ -183,7 +183,7 @@ func TestCardIdentifierDerivation(t *testing.T) {
 	})
 
 	t.Run("(c) primary checkout yields no card", func(t *testing.T) {
-		root := t.TempDir()
+		root := newMoaiProjectRoot(t)
 		scrubKanbanEnv(t)
 		t.Setenv(config.EnvMoaiKanban, "1")
 		t.Setenv(config.EnvMoaiKanbanCard, "")
@@ -220,7 +220,7 @@ func TestCardIdentifierFromADeepCwdInsideACardWorktree(t *testing.T) {
 		t.Fatalf("MkdirAll: %v", err)
 	}
 
-	root := t.TempDir()
+	root := newMoaiProjectRoot(t)
 	writeKanbanSessionRecord(&HookInput{SessionID: "real-wt", ProjectDir: root, CWD: deep})
 
 	rec, err := kanban.Read(root, "real-wt")
@@ -363,7 +363,7 @@ func TestCardIDFromPathRequiresAWorktreesParent(t *testing.T) {
 // §E edge case: a session that is neither a kanban nor a factory session gets
 // no record. The absence is the correct answer, not a degraded one.
 func TestNonKanbanSessionWritesNoRecord(t *testing.T) {
-	root := t.TempDir()
+	root := newMoaiProjectRoot(t)
 	scrubKanbanEnv(t)
 	t.Setenv(config.EnvMoaiKanban, "")
 	t.Setenv(config.EnvMoaiKanbanLabel, "")
@@ -383,7 +383,7 @@ func TestNonKanbanSessionWritesNoRecord(t *testing.T) {
 func TestReEntrySourcesDoNotWriteOrOverwrite(t *testing.T) {
 	for _, source := range []string{"resume", "clear", "compact", "fork"} {
 		t.Run(source, func(t *testing.T) {
-			root := t.TempDir()
+			root := newMoaiProjectRoot(t)
 			scrubKanbanEnv(t)
 			t.Setenv(config.EnvMoaiKanban, "1")
 			t.Setenv(config.EnvMoaiKanbanBackend, kanban.BackendClaude)

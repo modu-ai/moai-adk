@@ -43,6 +43,13 @@ func chainLineageBanner(projectDir, cwd, sessionID string) string {
 	if projectDir == "" {
 		return ""
 	}
+	// Same guard as the write-side resolver (resolveProjectRoot): chain.NewStore
+	// creates <projectDir>/.moai/state/chain/, so a projectDir that is not
+	// already a MoAI root — the protocol fills it from a subdirectory cwd when
+	// CLAUDE_PROJECT_DIR is unset — would grow a stray tree (card t1165).
+	if _, err := os.Stat(filepath.Join(projectDir, ".moai")); err != nil {
+		return ""
+	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), chainBannerTimeout)
 	defer cancel()
