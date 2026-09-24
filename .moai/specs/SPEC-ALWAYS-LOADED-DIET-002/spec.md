@@ -1,7 +1,7 @@
 ---
 id: SPEC-ALWAYS-LOADED-DIET-002
 title: "지시문 예산 두 축 — 18파일 합계 150,000자 미만 + 룰 파일당 40,000자 미만, 구속 조항 무손실"
-version: "0.2.0"
+version: "0.3.0"
 status: draft
 created: 2026-09-25
 updated: 2026-09-25
@@ -23,6 +23,7 @@ related_specs: [SPEC-ALWAYS-LOADED-DIET-001, SPEC-AGENTS-MD-CANON-001, SPEC-V3R6
 | 날짜 | 버전 | 변경 | 작성자 |
 |---|---|---|---|
 | 2026-09-25 | 0.1.0 | 최초 작성 (card t1175, plan phase). 근거는 `.moai/reports/t1175/discovery.md` | manager-spec |
+| 2026-09-25 | 0.3.0 | plan-audit iter2 (FAIL 0.805) 수리. **D5 는 설계 변경** — 포인터 줄 재유입 항을 파일별 가중으로 실측(종전 목표 8,796 / 개정 목표 9,019 — 이동량에 비례)해 투영을 gross/net 으로 재구성하고 저재유입 파일 8개의 목표를 상향(107,800 → 117,200 gross, net 108,181, 여유 11,238). **D7** 삭제 경로를 재배치 표 발동 조건에 편입(REQ-017)하고 stub 포인터 줄 검사를 신설(REQ-018). D1·D2·D3 및 마이너 4건 수리 | manager-spec |
 | 2026-09-25 | 0.2.0 | 리드 판정으로 **파일당 40,000자 축**을 범위에 편입(REQ-014·015·016, AC-009). 이 축과 충돌한 `design.md §2`("새 companion 을 만들지 않는다")를 개정 — 목적지는 수용량으로 고른다. 이미 초과한 룰 4개의 수리는 범위 밖, 악화 금지만 진다 | manager-spec |
 
 ---
@@ -78,13 +79,15 @@ M2 가 필요한 이유는 `AGENTS.md` 다 — 그 파일은 "다른 어떤 지�
 - **REQ-ALD2-007** (Ubiquitous) — The 이 SPEC 이 수정하는 모든 룰 파일 shall 라이브 사본(`.claude/rules/**`)과 템플릿 사본(`internal/template/templates/.claude/rules/**`)이 같은 커밋에서 동등해진다 — 이미 존재하는 분기의 해소를 포함한다.
 - **REQ-ALD2-008** (When) — **When** `skill-routing.md` 의 템플릿 미러가 수정될 때, the 템플릿 사본 shall 라이브 사본과 동일한 `paths:` frontmatter 를 갖는다. 현재 템플릿 사본에는 frontmatter 가 전혀 없어 사용자 프로젝트에 always-loaded 로 배포된다.
 - **REQ-ALD2-009** (Ubiquitous) — The 옮겨진 절을 가리키는 모든 교차참조 shall 이동 후에도 해소된다 — 끊긴 앵커를 남기지 않는다.
-- **REQ-ALD2-010** (Ubiquitous) — The 구현 shall 옮긴 절 전부를 목적지 companion·해당 companion 의 `paths:` 키·그 키가 self-keyed 가 아니라 domain-keyed 인 이유와 함께 나열한 재배치 표를 산출한다.
+- **REQ-ALD2-010** (Ubiquitous) — The 구현 shall **always-loaded 표면에서 제거된 모든 비구속 산문**을 재배치 표에 한 행씩 나열한다 — 기제가 M1(companion 으로 이동)이든 M1′(중복 제거)이든 M2(제자리 압축에 의한 삭제)든 무관하다. 이동 행은 목적지 companion·그 `paths:` 키·domain-keyed 근거를 채우고, **삭제 행은 목적지 칸에 `삭제(목적지 없음)` 를 적는다.** 두 종류 모두 범위 의존 칸(Q1/Q2)을 채운다.
 - **REQ-ALD2-011** (Where) — **Where** 대상 파일이 `AGENTS.md` 인 경우, the 구현 shall M2(제자리 압축)만 적용하고 M1(companion 재배치)을 적용하지 않는다 — 그 파일의 자기충족성 선언과 비-Claude 하네스의 읽기 경로 때문이다.
 - **REQ-ALD2-012** (While) — **While** M2 제자리 압축이 수행되는 동안, the 구현 shall 의미를 보존한다 — 의무·조건·예외·수치 중 어느 것도 삭제하지 않는다.
 - **REQ-ALD2-013** (Unwanted) — The 구현 shall not always-loaded 표면의 의무 사본을, 같은 의무가 path-scoped 룰에도 존재한다는 이유로 삭제한다. 그 룰이 로드되지 않는 턴에는 의무가 사라지므로, 중복 제거로 위장한 REQ-AMC-002 강등이다. 중복 제거(M1′)는 **비구속 산문에만** 적용된다.
 - **REQ-ALD2-014** (Ubiquitous) — The 이 SPEC 이 내용을 쓰는 모든 룰 파일 shall 작업 후 40,000자 미만으로 끝난다 — `moai hook instructions-loaded` 가 로드되는 파일마다 강제하는 한도다(`internal/hook/instructions_loaded.go:86-104`). 이 축은 REQ-ALD2-001(18파일 합계)과 **별개**이며, 어느 쪽의 통과도 다른 쪽을 함의하지 않는다.
 - **REQ-ALD2-015** (Unwanted) — The 구현 shall not 40,000자를 이미 초과한 룰 파일에 내용을 추가한다. 초과 파일을 목적지로 쓰면 그 파일의 초과에 기여하게 되고, 수리 의무가 이 카드로 넘어온다.
 - **REQ-ALD2-016** (Ubiquitous) — The 40,000자를 초과하는 룰 파일의 개수 shall 작업 전후로 늘지 않는다. 기준선은 두 트리 각각 **4개**다(실측). 이는 신규 companion 이 스스로 한도를 넘기는 경우를 잡는 래칫이다.
+- **REQ-ALD2-017** (Unwanted) — The 재배치 표 shall not 삭제 경로를 누락한다. 표의 발동 조건이 "옮겼을 때"뿐이면 `AGENTS.md`(M2)와 `CLAUDE.md`(M1′)는 **정의상 행을 만들지 않으며**, 두 파일의 감축분(계획의 11% 이상)이 범위 이탈 검토를 통째로 건너뛴다.
+- **REQ-ALD2-018** (When) — **When** stub 에 새 포인터 줄이 쓰일 때(REQ-ALD2-005a 가 요구하는 바), the 포인터 줄 shall 옮긴 절을 이름으로 호명하는 것 외의 새 규범적 내용을 담지 않는다. REQ-ALD2-006 은 companion 에만 걸리므로, 이 조항이 없으면 **stub 은 어떤 기준도 검사하지 않는 표면**이 된다.
 
 ---
 
@@ -139,9 +142,12 @@ M2 가 필요한 이유는 `AGENTS.md` 다 — 그 파일은 "다른 어떤 지�
 | 2 | 구속 조항 줄 목록의 정규화·정렬 sha256 이 작업 전후 동일 | 기계적 |
 | 3 | 수정한 모든 파일의 template ↔ live 동등 | 기계적 |
 | 4 | 옮긴 절을 가리키는 교차참조가 전부 해소 | 기계적 |
-| 5 | 재배치 표가 존재하고 모든 companion `paths:` 가 domain-keyed | 문서 + 검토 |
-| 6 | 이 카드가 쓴 모든 룰 파일이 40,000자 미만 | 기계적 |
-| 7 | 40,000자 초과 룰 파일 개수가 4개에서 늘지 않음 | 기계적 |
+| 5 | 재배치 표가 존재하고 모든 companion `paths:` 가 domain-keyed (AC-004·006) | 문서 + 검토 |
+| 6 | companion 이 원본에 없던 내용을 획득하지 않음 (AC-008) | 기계적 |
+| 7 | 이 카드가 쓴 모든 룰 파일이 40,000자 미만 (AC-009a) | 기계적 |
+| 8 | 40,000자 초과 룰 파일 개수가 4개에서 늘지 않음 (AC-009b) | 기계적 |
+
+이 표는 `acceptance.md §D.1` 의 MUST-PASS 8개와 **일대일로 대응한다** — 어느 한쪽에만 있는 기준이 없도록 AC 번호를 병기했다. 판정의 정본은 `acceptance.md` 이고, 이 표는 요약이다.
 
 ---
 

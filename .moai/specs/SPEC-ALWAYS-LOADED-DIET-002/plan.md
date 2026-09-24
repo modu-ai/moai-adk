@@ -45,7 +45,7 @@ M2 의 `CLAUDE.md` 작업은 이제 막히지 않는다.
 
 판정: SPEC 이 채택한 입장을 그대로 유지하되 마커에서 **REQ-ALD2-013 으로 승격**한다 — always-loaded 사본의 의무는 같은 의무가 path-scoped 룰에 있다는 이유로 지우지 않는다. 그 룰이 로드되지 않는 턴에는 의무가 사라지므로, **중복 제거로 위장한 REQ-AMC-002 강등**이다. 중복 제거는 비구속 산문에만 적용된다.
 
-투영이 요구치를 이미 10,857자 넘기므로, 이 위험을 감수할 예산 압력도 없다. `CLAUDE.md` 의 구속 조항 줄은 4개뿐(실측)이라 실무 충돌 여지도 작다.
+개정 투영(`design.md §3.3`)의 net 여유가 11,238자이므로, 이 위험을 감수할 예산 압력도 없다. `CLAUDE.md` 의 구속 조항 줄은 4개뿐(실측)이라 실무 충돌 여지도 작다.
 
 측정으로 이미 해소된 항목:
 
@@ -85,19 +85,21 @@ M2 의 `CLAUDE.md` 작업은 이제 막히지 않는다.
 
 ### M3 — 대형 stub 4개 (우선순위: High · 감축량의 절반)
 
-`kanban-dispatch.md`(16,000) · `agent-common-protocol.md`(15,000) · `askuser-protocol.md`(11,000) · `session-handoff.md`(10,000). 합계 52,000자 — 요구치의 54%.
+`kanban-dispatch.md`(16,000) · `agent-common-protocol.md`(15,000) · `askuser-protocol.md`(11,000) · `session-handoff.md`(10,000). 합계 52,000자 (gross) — net 45,773, 요구치의 47%. 이 넷이 재유입률 최상위 구간(6.17%~17.44%)이라 gross 와 net 차이가 가장 크다.
 
 파일 하나씩 순차로 처리하고, 파일을 닫을 때마다 AC-ALD2-002 해시를 재측정한다. 네 개를 모두 고친 뒤 한 번만 재는 방식은 어느 파일이 해시를 깼는지 못 가린다.
 
 ### M4 — 중형 stub 4개 (우선순위: Medium)
 
-`moai-constitution.md`(7,000) · `verification-claim-integrity.md`(6,000) · `cross-session-messaging.md`(9,000) · `context-window-management.md`(5,000). 합계 27,000자.
+`moai-constitution.md`(**8,500**) · `verification-claim-integrity.md`(6,000) · `cross-session-messaging.md`(9,000) · `context-window-management.md`(**6,500**). 합계 **30,000**자 (gross).
 
 M3 과 같은 규율: 파일 단위 순차 + 파일마다 해시 재측정.
 
 ### M5 — 소형 stub 6개 (우선순위: Medium · 기계적)
 
-`moai-mcp-tools.md`(4,000) · `cache-aware-execution.md`(3,000) · `goal-directive.md`(3,000) · `main-checkout-branch-guard.md`(3,500) · `skill-routing.md`(1,800) · `native-idiom-and-register.md`(1,500). 합계 16,800자.
+`moai-mcp-tools.md`(**5,500**) · `cache-aware-execution.md`(**4,000**) · `goal-directive.md`(**4,500**) · `main-checkout-branch-guard.md`(**5,000**) · `skill-routing.md`(**2,200**) · `native-idiom-and-register.md`(**2,000**). 합계 **23,200**자 (gross).
+
+이 여섯이 v0.3.0 에서 전부 상향됐다 — 재유입률이 0.86%~4.37% 로 낮아 gross 를 올려도 net 손실이 작기 때문이다(`design.md §3.3` 재배분 원칙). M3 의 고율 파일은 올리지 않았다.
 
 ### M6 — `skill-routing.md` 템플릿 미러 결함 수정 (우선순위: Medium · 기계적 · 독립)
 
@@ -123,7 +125,7 @@ M3 과 같은 규율: 파일 단위 순차 + 파일마다 해시 재측정.
 
 ## §D. 기술적 접근
 
-- 기제는 M1(companion 재배치)과 M2(제자리 압축) 둘뿐이며, 새 companion 파일은 만들지 않는다 — always-loaded 룰 14개가 전부 이미 path-scoped companion 을 갖고 있다(`design.md §2`).
+- 기제는 M1(companion 재배치)·M1′(`CLAUDE.md` 중복 제거)·M2(제자리 압축) 셋이다. **목적지는 수용량으로 고른다** — 여유 있는 기존 companion 우선, 없으면 신규 companion, 이미 40,000자를 넘긴 파일에는 쓰지 않는다(`design.md §2` 개정판). M6.5 에서 신규 companion 3개가 생긴다.
 - 구속 조항 줄은 **축자 동결**된다. 재작성도, 재배치도, 재들여쓰기도 하지 않는다.
 
   **이것은 규율이지 검사가 아니다 — 둘을 구분해 둔다.** AC-ALD2-002 의 해시가 강제하는 것은 이보다 **느슨하다**: 파이프라인의 `sed` 가 들여쓰기를 정규화하고 `sort` 가 파일 내 순서를 정규화하므로, **재들여쓰기와 파일 내 재배치는 해시를 깨지 않고 통과한다.** 검사가 실제로 금지하는 것은 셋뿐이다 — 16파일 밖으로 내보내기, 삭제, 문구 수정(AC-ALD2-002 § 이 해시가 구속하는 것).
@@ -163,7 +165,7 @@ find .claude/rules/moai -name '*.md' -exec wc -m {} + | sort -rn | awk '$1>=4000
 |---|---|
 | 범위 이탈이 해시 PASS 에 가려짐 | 재배치 표의 **범위 의존** 칸(AC-ALD2-004)과 M1 조건 1 단서. 판정은 검토 몫이며, AC-ALD2-002 PASS 가 이 축을 대신하지 않는다 |
 | `CLAUDE.md` 두 사본을 따로 감축하다 한쪽을 빠뜨림 | M2 종료 시 두 사본 각각에 `wc -m` 과 구속 조항 grep 을 돌린다. 미러 동등 판정은 제외되지만 **각 사본의 동결은 제외되지 않는다** |
-| 파일별 목표 일부 미달 | 투영에 10,857자 여유. 회수처는 재배치 가능 비율이 가장 높은 `moai-mcp-tools.md`(91.2%)·`main-checkout-branch-guard.md`(90.4%) |
+| 파일별 목표 일부 미달 | 개정 투영에 net 여유 11,238자. 재유입이 실측의 2배여도 통과(+2,220). 회수처는 저재유입 파일 — `moai-mcp-tools.md`(0.86%)·`main-checkout-branch-guard.md`(1.69%) |
 | 템플릿 사본 변경이 중립성 CI 가드를 건드림 | M7 에서 `go test ./internal/template/...` 로 선제 확인. 룰 본문에 SPEC ID·내부 날짜·커밋 SHA 를 넣지 않는다 |
 | 이 트리가 develop 에서 뒤처져 병합 시 충돌 | 병합 창을 받은 뒤 `git merge develop` 흡수 → **병합 트리에서 재측정**. 병합 전 측정을 병합 후 근거로 재사용하지 않는다 |
 
