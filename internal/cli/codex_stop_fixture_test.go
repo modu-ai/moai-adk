@@ -6,6 +6,7 @@ package cli
 
 import (
 	"bufio"
+	"context"
 	"encoding/json"
 	"os"
 	"os/exec"
@@ -170,6 +171,15 @@ func sinkRecords(t *testing.T, root string) []codexadapter.Discard {
 		}
 	}
 	return out
+}
+
+// fakeCodexVersion pins the reviewer version both the receipt producer and the
+// Stop chain read, so a test does not spawn a real codex binary.
+func fakeCodexVersion(t *testing.T, v string) {
+	t.Helper()
+	prev := codexVersionProbe
+	codexVersionProbe = func(context.Context, string) (string, error) { return v, nil }
+	t.Cleanup(func() { codexVersionProbe = prev })
 }
 
 func countDiscards(recs []codexadapter.Discard, keyPart string) int {

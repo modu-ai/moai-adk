@@ -48,7 +48,8 @@ mismatch the consumer re-executes the check.
 Verbs:
   verify record   record one executed check result under the current-tree key
   verify check    freshness query — exit 0 fresh / exit 1 stale
-  verify sync-gate     run the sync-phase gate checks, record a receipt (Codex Stop chain)`,
+  verify sync-gate     run the sync-phase gate checks, record a receipt (Codex Stop chain)
+  verify codex-review  run the codex review of uncommitted changes, record a receipt (Codex Stop chain)`,
 		GroupID:      "tools",
 		SilenceUsage: true,
 	}
