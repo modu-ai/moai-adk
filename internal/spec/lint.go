@@ -125,6 +125,11 @@ func NewLinter(opts LinterOptions) *Linter {
 		haikuBaseDir = "."
 	}
 
+	// Tier artifact-set table (card t1121): read once per Linter from the
+	// project root's spec-workflow.md and shared by the per-SPEC rule and its
+	// corpus-warning companion.
+	tierTable := &tierArtifactTable{root: lintProjectRoot(opts.BaseDir)}
+
 	l.rules = []Rule{
 		&EARSModalityRule{},
 		&REQIDUniquenessRule{},
@@ -184,7 +189,15 @@ func NewLinter(opts LinterOptions) *Linter {
 		// map demotes ERRORS, so the entry would be inert for a warning, and an
 		// inert entry in a policy map reads as intent. AC-SSF-010 guards it.
 		&SyncSHASlotFormatRule{},
+		// TierArtifactMissingRule — card t1121. Per-SPEC: checks the SPEC dir
+		// against the artifact set its `tier:` requires, read at lint time from
+		// spec-workflow.md § SPEC Complexity Tier. Warning only; lint.skip and
+		// era demotion apply. Not in eraDemotableCodes (warnings never reach it).
+		&TierArtifactMissingRule{table: tierTable},
 		// cross-SPEC rules
+		// TierArtifactTableRule — card t1121. One corpus warning when the
+		// spec-workflow.md Tier table is present but unparseable.
+		&TierArtifactTableRule{table: tierTable},
 		&DependencyCycleRule{},
 		&DuplicateSPECIDRule{},
 		// HaikuResidualRule — cross-SPEC HARD gate (NOT skip-able; CheckAll
