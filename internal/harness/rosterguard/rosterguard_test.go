@@ -373,13 +373,25 @@ func TestSweepFiresOnAnUndeclaredListing(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(tmp, ".moai", "state", "verify", "probe.txt"), []byte(strings.Join(universe, "\n")), 0o600); err != nil {
 		t.Fatal(err)
 	}
+	// The cache and the logs are untracked for the same reason.
+	for _, rel := range []string{
+		filepath.Join(".moai", "cache", "template-snapshot", "sections", "delegation.yaml"),
+		filepath.Join(".moai", "logs", "agent-model-audit.jsonl"),
+	} {
+		if err := os.MkdirAll(filepath.Join(tmp, filepath.Dir(rel)), 0o750); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(filepath.Join(tmp, rel), []byte(strings.Join(universe, "\n")), 0o600); err != nil {
+			t.Fatal(err)
+		}
+	}
 
 	got, err := Sweep(tmp, universe)
 	if err != nil {
 		t.Fatal(err)
 	}
 	if len(got) != 1 || got[0] != "new-listing.md" {
-		t.Fatalf("sweep = %v, want exactly [new-listing.md] (a file below the threshold must not be reported, and docs-site and .moai/state must stay excluded)", got)
+		t.Fatalf("sweep = %v, want exactly [new-listing.md] (a file below the threshold must not be reported, and docs-site, .moai/state, .moai/cache and .moai/logs must stay excluded)", got)
 	}
 }
 
