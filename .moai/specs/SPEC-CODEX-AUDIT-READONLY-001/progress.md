@@ -232,9 +232,65 @@ Gaps (M4 재실행):
 - 역할 로드 탐침은 여전히 부모 `-s workspace-write` + `spawn_agent` 경로다(이어받은 (i) 그대로). 네 read-only 역할이 이 경로에서 `workspace-write`로 돈다는 t1100 관측은 이 카드가 바꾸지 않았다.
 - 음성 대조의 jq 조항 실행은 `jq`가 PATH에 있어야 한다. 없으면 테스트가 실패로 알린다(건너뛰지 않음).
 
+### M5 — AC-CAR-010 LIVE (2/3 호출, 누계 36/43), AC-CAR-011 NOT_RUN
+
+새 테스트 파일 `internal/cli/codex_audit_live_test.go`(`!windows`): `TestCodexAuditLaunchLiveContract`(AC-CAR-010)와 `TestCodexAuditLaunchLiveReadOnlyRoles`(AC-CAR-011). 격리 저장소, 로그인은 심볼릭 링크, 프로젝트 층 `.codex/config.toml`에 `sandbox_mode = "workspace-write"`와 `[mcp_servers.moai]`(기록 래퍼 → 이 트리에서 빌드한 `moai mcp-server`, `default_tools_approval_mode = "writes"`), 사용자 층에 `[mcp_servers.decoy]`(같은 방식의 기록 래퍼). 모든 경로·탐침 필드는 `deriveCodexAuditEvidence`로 계산한다. 첫 호출 전에 상한 블록(호출당 330초, AC-CAR-010 1100초 / AC-CAR-011 800초, 호출당 사용자 턴 1, (b) 자식은 launcher 자체 한도 20분)을 `verdict.md`에 적었다.
+
+AC-CAR-010 실행(2026-09-24T09:52:16Z–09:52:54Z, go test 종료 코드 1, 원장 #35–#36, 로그인 sha256 전후 동일):
+
+- (a) 직접 호출: 세션 `read-only`(프로젝트 config의 `workspace-write`에도 불구하고), nonce 되돌림 일치(`NONCE-2449720537de6d04197e9e48f92bd6eb`), 탐침 `exit_code` 1, 탐침 파일 없음, `write_denied` true, 감사 프로세스 동안 MCP 기동 moai 0 / decoy 0. (a)의 조건은 모두 충족.
+- (b) 부모 `codex exec -s workspace-write -c approval_policy="never"`가 `codex_role_audit`를 한 번 불렀고, Codex가 프로세스를 띄우기 전에 거부했다. `--json` 항목 원문: `{"type":"mcp_tool_call","server":"decoy","tool":"codex_role_audit",…,"result":null,"error":{"message":"MCP tool call requires approval, but approval policy is never"},"status":"failed"}`. 부모 세션 기록의 도구 출력 원문: `{"content":[{"type":"text","text":"MCP tool call requires approval, but approval policy is never"}],"isError":true}`. 부모의 최종 메시지: `TOOL-REFUSED MCP tool call requires approval, but approval policy is never`. 부모가 부른 서버는 프로젝트 층 `moai`가 아니라 사용자 층 `decoy`였다(같은 도구를 노출함). 그래서 `default_tools_approval_mode = "writes"`를 단 `moai` 서버에서의 동작은 이번 실행이 재지 않았다. 양성 대조: 부모 세션 동안 MCP 기동 moai 1 / decoy 1(즉시 기동).
+- 판정식 원문 출력 `false`(호출 수 2, (b) 필드 없음). 리드 지시("SPEC 경로가 진행할 수 없으면 멈추고 보고")에 따라 AC-CAR-011은 시작하지 않았다(0/2, NOT_RUN). 재실행 없음.
+
+검증: `go test ./internal/cli -run 'CodexAudit|CodexRole|LiveBudget|LiveEvidence|Rollout'`(환경 변수 전부 제거) 0(`run/m5-test-cli.log`), `go vet ./internal/cli/...` 0, `golangci-lint run ./internal/cli/...` 0 `0 issues.`(`run/m5-lint.log`), `GOOS=windows GOARCH=amd64 go build ./...` 0, 윈도 `go vet` 0. 증거 토큰 grep 0건.
+
+Gaps (M5):
+
+- (b)의 쓰기 가능 MCP 도구 호출이 `approval_policy="never"`에서 거부됨을 관측했지만, 거부된 서버는 승인 모드를 따로 선언하지 않은 `decoy`다. `moai` 서버(`writes` 모드)도 같이 거부하는지는 이번 실행이 재지 않았다. `internal/codexwiring/configtoml.go`의 주석은 `writes`가 read-only 표시가 없는 도구에 승인을 요구한다고 적지만, 이것은 문서이지 측정이 아니다.
+- AC-CAR-011은 NOT_RUN이다(리드 결정 대기, 호출 0회 사용).
+
 ## §E.3 Run-phase Audit-Ready Signal
 
-_<pending run-phase>_
+run 단계는 끝나지 않았다. AC-CAR-011이 NOT_RUN이고 AC-CAR-010이 SPEC의 (b) 경로 거부로 FAIL이라 리드 결정이 필요하다.
+
+| AC | 상태 | 근거(판정식 출력과 위치) |
+|---|---|---|
+| AC-CAR-001 | PASS | 판정식 `true`(HEAD `434a39e1f` 재판정), 변이 m001 `false` — §E.2 M2 |
+| AC-CAR-002 | PASS | `true`(HEAD 재판정), 변이 m002/m002b `false` — M2 |
+| AC-CAR-003 | PASS | `true`(HEAD 재판정), 변이 m003/m003b `false` — M2 |
+| AC-CAR-004 | PASS | `true`(HEAD 재판정), 변이 m004/m004b `false` — M2 |
+| AC-CAR-005 | PASS | `true`(HEAD 재판정), 변이 m005/b/c `false` — M2 |
+| AC-CAR-006 | PASS | `true`(HEAD 재판정), 변이 m006 `false` — M2 |
+| AC-CAR-007 | PASS | `true`(HEAD 재판정), 변이 m007 `false` — M3 |
+| AC-CAR-008 | PASS | `true`(HEAD 재판정), 작업 트리 변형 변이 `false` — M3 |
+| AC-CAR-009 | PASS | `true`(M4 재실행 뒤) — M4 |
+| AC-CAR-010 | FAIL | `false` — (a) 조건 충족, (b) `codex_role_audit` 호출이 "MCP tool call requires approval, but approval policy is never"로 거부 — M5 |
+| AC-CAR-011 | NOT_RUN | 호출 0회, 리드 지시로 멈춤 — M5 |
+| AC-CAR-012a | PASS | `true`, 변이 `false` — M4 |
+| AC-CAR-012b | FAIL | `false`(M4 재실행; 유도 필드 조건은 충족, 같은 테스트 pass 이벤트 0) — M4 재실행 |
+| AC-CAR-013 | PASS | `true`(HEAD 재판정), 변이 m013 `false` — M3 |
+| AC-CAR-014 | PASS | `true`(HEAD 재판정), 변이 m014/m014b `false` — M2 |
+| AC-DHR-012 | FAIL | `false`(M4 재실행: `manager-lead`, `mission-governor` nonce 불일치; 실행 1은 리드가 INVALID로 기록) |
+| AC-DHR-023 | FAIL | `false`(같은 이유; 내용 조건은 충족) |
+
+```yaml
+run_complete_at: null            # run not complete: AC-CAR-011 NOT_RUN, lead decision pending
+run_commit_sha: <backfill>       # the M5 commit carrying this section
+run_status: blocked
+ac_pass_count: 12
+ac_fail_count: 4
+ac_not_run_count: 1
+preserve_list_post_run_count: null   # not measured in this run
+l44_pre_commit_fetch: not_measured
+l44_post_push_fetch: not_applicable  # lanes do not push (lead batch push)
+new_warnings_or_lints_introduced: 0  # golangci-lint ./internal/cli/... 0 issues (run/m5-lint.log)
+cross_platform_build:
+  darwin: go build/test on this host, exit 0 (run/m5-test-cli.log)
+  windows_amd64: GOOS=windows GOARCH=amd64 go build ./... exit 0 (run/m5-windows-build.log)
+total_run_phase_files: 41        # git diff --name-only develop...HEAD | wc -l at 434a39e1f
+live_calls_used: 36              # of the absolute cap 43
+m1_to_mN_commit_strategy: one or more commits per milestone on WT-codex-audit-readonly, no push
+```
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
