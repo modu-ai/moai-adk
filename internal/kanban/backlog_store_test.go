@@ -479,7 +479,13 @@ func TestBacklogConcurrentAdd_UniqueIDs(t *testing.T) {
 		go func(i int) {
 			defer wg.Done()
 			item, _, err := store.Add(fmt.Sprintf("card %d", i))
-			ids[i], errs[i] = item.ID, err
+			// Add returns a nil item alongside a non-nil error; reading
+			// item.ID then panics the goroutine and takes the whole package
+			// binary down with it, hiding the error this test exists to report.
+			errs[i] = err
+			if err == nil {
+				ids[i] = item.ID
+			}
 		}(i)
 	}
 	wg.Wait()
