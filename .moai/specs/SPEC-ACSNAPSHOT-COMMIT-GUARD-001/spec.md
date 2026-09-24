@@ -2,7 +2,7 @@
 id: SPEC-ACSNAPSHOT-COMMIT-GUARD-001
 title: "Commit-time guard — reject an in-place acceptance.md amendment whose AC count no longer matches the staged corpus snapshot"
 version: "0.2.1"
-status: draft
+status: in-progress
 created: 2026-09-24
 updated: 2026-09-24
 author: manager-spec (card t1150)

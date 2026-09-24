@@ -400,19 +400,40 @@ func acComparison(want acBaselineEntry, known bool, halted bool, haltIDs string,
 // asserted but never executed — and the absent-and-halting row (the seam the
 // v0.5.0 amendment resolved) occurs in no live tree at all.
 func TestACBaselineComparisonTransitions(t *testing.T) {
-	count := acBaselineEntry{live: 7, excluded: 2}
-	halt := acBaselineEntry{halt: true, haltIDs: "AC-SYN-002"}
-	cases := []struct {
-		name       string
-		want       acBaselineEntry
-		known      bool
-		halted     bool
-		ids        string
-		live       int
-		exc        int
-		wantErr    bool
-		wantReport string
-	}{
+	for _, tc := range acComparisonTransitionCases {
+		problem, report := acComparison(tc.want, tc.known, tc.halted, tc.ids, tc.live, tc.exc)
+		if (problem != "") != tc.wantErr {
+			t.Errorf("%s: acComparison problem = %q, wantErr=%v", tc.name, problem, tc.wantErr)
+		}
+		if report != tc.wantReport {
+			t.Errorf("%s: acComparison report = %q, want %q", tc.name, report, tc.wantReport)
+		}
+	}
+}
+
+// acComparisonTransitionCase is one row of the transition table. The table is
+// package-level so the commit-guard parity test (ac_baseline_commit_guard_test.go)
+// iterates the same rows instead of restating them.
+type acComparisonTransitionCase struct {
+	name       string
+	want       acBaselineEntry
+	known      bool
+	halted     bool
+	ids        string
+	live       int
+	exc        int
+	wantErr    bool
+	wantReport string
+}
+
+var (
+	acTransitionCount = acBaselineEntry{live: 7, excluded: 2}
+	acTransitionHalt  = acBaselineEntry{halt: true, haltIDs: "AC-SYN-002"}
+)
+
+var acComparisonTransitionCases = func() []acComparisonTransitionCase {
+	count, halt := acTransitionCount, acTransitionHalt
+	return []acComparisonTransitionCase{
 		{"count-stable", count, true, false, "", 7, 2, false, ""},
 		{"count-moved", count, true, false, "", 8, 2, true, ""},
 		{"count-state-moved-live-to-excluded", count, true, false, "", 6, 3, true, ""},
@@ -428,16 +449,7 @@ func TestACBaselineComparisonTransitions(t *testing.T) {
 		// the snapshot recorded as COUNT that starts halting still fails.
 		{"d: recorded-COUNT starts halting", count, true, true, "AC-SYN-002", 0, 0, true, ""},
 	}
-	for _, tc := range cases {
-		problem, report := acComparison(tc.want, tc.known, tc.halted, tc.ids, tc.live, tc.exc)
-		if (problem != "") != tc.wantErr {
-			t.Errorf("%s: acComparison problem = %q, wantErr=%v", tc.name, problem, tc.wantErr)
-		}
-		if report != tc.wantReport {
-			t.Errorf("%s: acComparison report = %q, want %q", tc.name, report, tc.wantReport)
-		}
-	}
-}
+}()
 
 // TestACCounterFullCorpusMatchesBaseline covers AC-ACD-006. The corpus size is
 // re-derived on every run; the depth-1 glob is what is frozen, not the count.
