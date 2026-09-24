@@ -100,6 +100,29 @@ type Linter struct {
 	rules    []Rule
 }
 
+// projectRootFromBaseDir derives the project root from a LinterOptions.BaseDir.
+// BaseDir is the SPEC search directory: the CLI's detectBaseDir returns
+// <root>/.moai/specs when that directory exists and <root> otherwise, so the
+// root is recovered by stripping a trailing ".moai/specs" segment pair.
+func projectRootFromBaseDir(baseDir string) string {
+	if baseDir == "" {
+		return "."
+	}
+	parent, last := filepath.Split(filepath.Clean(baseDir))
+	if last != "specs" {
+		return baseDir
+	}
+	grandparent, moai := filepath.Split(filepath.Clean(parent))
+	if moai != ".moai" {
+		return baseDir
+	}
+	root := filepath.Clean(grandparent)
+	if root == "" {
+		return "."
+	}
+	return root
+}
+
 // NewLinter creates a new Linter instance
 // Loads zone registry if options.RegistryPath is specified
 func NewLinter(opts LinterOptions) *Linter {
@@ -119,11 +142,11 @@ func NewLinter(opts LinterOptions) *Linter {
 	}
 
 	// HaikuResidualRule scans the project tree (not a SPEC document), so it
-	// needs the project root. Default to "." matching discoverSPECs behavior.
-	haikuBaseDir := opts.BaseDir
-	if haikuBaseDir == "" {
-		haikuBaseDir = "."
-	}
+	// needs the project root, while opts.BaseDir is the SPEC search directory —
+	// the CLI supplies <root>/.moai/specs whenever that directory exists. Strip
+	// that trailing pair so every caller lands on the project root; any other
+	// BaseDir is already the root. Empty defaults to "." matching discoverSPECs.
+	haikuBaseDir := projectRootFromBaseDir(opts.BaseDir)
 
 	// Tier artifact-set table (card t1121): each SPEC's project root is derived
 	// from its own spec.md path (BaseDir is only the fallback), and that root's

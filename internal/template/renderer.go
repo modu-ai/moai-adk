@@ -27,6 +27,38 @@ var templateFuncMap = template.FuncMap{
 	"posixPath": func(s string) string {
 		return strings.ReplaceAll(s, "\\", "/")
 	},
+	// yamlEscape escapes a string for safe embedding inside a YAML
+	// double-quoted scalar ("..."); the template keeps the quotes.
+	"yamlEscape": yamlEscape,
+}
+
+// @MX:NOTE: [AUTO] Escapes only what a YAML double-quoted scalar cannot carry literally (quote, backslash, line breaks, non-printable controls); every other character is emitted unchanged so ordinary values render byte-identical to the unescaped form.
+// yamlEscape returns s escaped for the inside of a YAML double-quoted scalar,
+// so that the rendered scalar parses back to exactly s. `"` and `\` are
+// backslash-escaped; characters YAML either folds (LF, CR, NEL) or rejects
+// (C0 controls other than tab, DEL, C1 controls, U+FFFE, U+FFFF) are written
+// as \uXXXX escapes. Tab, printable ASCII, and printable non-ASCII (Hangul,
+// emoji, ...) pass through unchanged. An invalid UTF-8 byte decodes as U+FFFD
+// and is emitted as that rune: YAML text must be valid UTF-8, and no escape
+// denotes a raw byte.
+func yamlEscape(s string) string {
+	var b strings.Builder
+	b.Grow(len(s))
+	for _, r := range s {
+		switch {
+		case r == '"':
+			b.WriteString(`\"`)
+		case r == '\\':
+			b.WriteString(`\\`)
+		case r == '\t':
+			b.WriteRune(r)
+		case r < 0x20, r == 0x7f, r >= 0x80 && r <= 0x9f, r == 0xfffe, r == 0xffff:
+			fmt.Fprintf(&b, `\u%04X`, r)
+		default:
+			b.WriteRune(r)
+		}
+	}
+	return b.String()
 }
 
 // unexpandedTokenPattern detects leftover dynamic tokens in rendered output.

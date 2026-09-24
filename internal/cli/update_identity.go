@@ -82,18 +82,18 @@ func loadUpdateUserValues(projectRoot string) template.ContextOption {
 //     produces for it — round-trips through the same render, so it is kept and
 //     the merge sees NEW == BASE == OLD.
 //   - A name whose stored form does not round-trip renders "". When it is a
-//     hand edit no render could have written ("$TEAM", "{{.Version}}", `"`,
-//     `\`), its BASE differs from the user's value and the 3-way merge keeps
-//     the user's value as a customization.
+//     hand edit no render could have written ("$TEAM", "{{.Version}}" — the
+//     renderer's unexpanded-token guard rejects both), its BASE differs from
+//     the user's value and the 3-way merge keeps the user's value as a
+//     customization.
 //
-// Known limitation: a stored value that does not round-trip AND equals BASE
-// is erased — the merge takes the empty render. project.yaml.tmpl does not
-// escape the name inside its double-quoted scalar, so a --name carrying a YAML
-// backslash escape (`a\\b`, `a\nb`, `Kim \"Goos\"`) is stored by init as a
-// different string that is also the snapshot BASE; the next update empties
-// project.name. Pinned by TestUpdateForce_KnownLimitation_InitEscapedProjectName;
-// the fix (escape identity values in the init/project template render) is a
-// follow-up.
+// The section templates escape the name inside its double-quoted scalar
+// (yamlEscape, card t1162), so a name carrying `"` or `\` renders and parses
+// back verbatim; init stores it unaltered and the update keeps it. The
+// remaining gap is a stored value that does not round-trip AND equals BASE:
+// the merge takes the empty render. An init render no longer produces such a
+// value: a name the renderer rejects makes the deploy return the render error
+// instead of writing the file.
 func loadUpdateIdentity(projectRoot string) (projectName, userName string) {
 	fsys, err := template.EmbeddedTemplates()
 	if err != nil {

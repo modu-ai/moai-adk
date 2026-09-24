@@ -240,8 +240,10 @@ func TestUpdateForce_UserOwnedKeys_UnrenderableValueFallsBack(t *testing.T) {
 		t.Fatalf("renderable github_username carried as %q, want %q", got, "gh-plain")
 	}
 
-	const unrenderable = `gh"user`
-	setUsername(`'gh"user'`)
+	// A `"` is no longer unrenderable (card t1162 escapes the value); the
+	// renderer's unexpanded-token guard still rejects `$USER`.
+	const unrenderable = `gh$USER`
+	setUsername(`'gh$USER'`)
 	if got := template.NewTemplateContext(loadUpdateUserValues(root)).GitHubUsername; got != "" {
 		t.Fatalf("unrenderable github_username carried as %q, want the default \"\"", got)
 	}
