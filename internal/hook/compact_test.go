@@ -149,7 +149,7 @@ func TestCompactHandler_Handle_DataContainsSessionID(t *testing.T) {
 func TestCompactHandler_Handle_WritesMemoFile(t *testing.T) {
 	t.Parallel()
 
-	projectDir := t.TempDir()
+	projectDir := newMoaiProjectRoot(t)
 
 	input := &HookInput{
 		SessionID:     "sess-memo-write",
