@@ -47,7 +47,8 @@ mismatch the consumer re-executes the check.
 
 Verbs:
   verify record   record one executed check result under the current-tree key
-  verify check    freshness query — exit 0 fresh / exit 1 stale`,
+  verify check    freshness query — exit 0 fresh / exit 1 stale
+  verify sync-gate     run the sync-phase gate checks, record a receipt (Codex Stop chain)`,
 		GroupID:      "tools",
 		SilenceUsage: true,
 	}
@@ -55,8 +56,16 @@ Verbs:
 
 	cmd.AddCommand(newVerifyRecordCmd(&projectRoot))
 	cmd.AddCommand(newVerifyCheckCmd(&projectRoot))
+	for _, build := range verifyExtraCommands {
+		cmd.AddCommand(build(&projectRoot))
+	}
 	return cmd
 }
+
+// verifyExtraCommands are the receipt-producer verbs registered by
+// verify_receipts.go (SPEC-DUAL-HARNESS-HOOK-PARITY-001 M2d), built with the
+// shared --project-root value.
+var verifyExtraCommands []func(projectRoot *string) *cobra.Command
 
 // verifyResolveRoot resolves the project root for snapshot I/O: an explicit
 // --project-root wins (absolutized — never joined onto cwd); otherwise the
