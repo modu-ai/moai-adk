@@ -50,6 +50,67 @@ Gaps (M1):
 - MCP 서버 시작 디렉터리는 픽스처 세션 루트로 쟀다. 실제 레인 워크트리에서 moai MCP 서버로 잰 것이 아니다. MCP 도구 기본 시간 한도는 재지 않았다(픽스처는 `tool_timeout_sec = 400`).
 - P-B의 세션 중 MCP 재기동 원인은 재지 않았다.
 
+### M2 — 첫 항목: lane 워크트리의 moai MCP 서버 시작 디렉터리 (LIVE 1/1, 누계 6/43)
+
+명령: `PATH=<scratch>/m2/bin:<시스템 PATH> CODEX_HOME=<fixture> timeout 300 codex exec -s read-only -c approval_policy=never -c model_reasoning_effort=low -C /Users/goos/MoAI/moai-adk-go/.claude/worktrees/t1143 --json -o <scratch>/m2/out/last.txt - < prompt.txt`. 프로젝트 층 `[mcp_servers.moai]`의 `command = "moai"`가 PATH 맨 앞의 통과형 기록 래퍼로 풀리고, 래퍼는 자기 `pwd -P`와 `lsof -a -p $$ -d cwd`를 기록한 뒤 `/Users/goos/go/bin/moai`로 `exec`한다(같은 pid가 `moai mcp-server`가 된다). 세션 sandbox는 `read-only`로 두어 워크트리에 쓰지 않게 했다. `CODEX_HOME`은 격리 사본(인증 파일은 심볼릭 링크)이며 측정 뒤 지웠다.
+
+관측(`.moai/reports/t1143/m2-startdir/moai-launch.log`, `rollout-summary.json`):
+
+```
+2026-09-24T08:29:02Z pid=24313 ppid=24149 pwd=/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t1143 args=mcp-server
+p24313
+fcwd
+n/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t1143
+```
+
+종료 코드 0, 16초. 세션이 부른 `spec_progress`의 결과 `_root` = `{"dir":"/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t1143","source":"ser…"}`(모델이 160자에서 잘라 반환. `ser`로 시작하는 원천 이름은 `internal/cli/mcp_project_root.go`의 `server-cwd`뿐). 로그인 파일 sha256 전후 `eb7c45bd…ef6630` 동일. 결론: moai MCP 서버는 이 lane 워크트리에서 시작한다. D5.1의 R2 전제가 성립하므로 `route.txt`는 `mcp`로 둔다.
+
+### M2 — launcher 핵심 함수와 `moai codex audit` 동사 (TDD, LIVE 없음)
+
+새 파일 `internal/cli/codex_audit_launch.go`, `internal/cli/codex_audit_launch_test.go`(`!windows`, 가짜 `codex` 셸 스크립트), 변경 `internal/config/defaults.go`(`DefaultCodexAuditTimeout` 20분, `DefaultCodexAuditListTimeout` 30초).
+
+- 인자: `codex mcp list --json` 한 번 → `codex exec -s read-only -c approval_policy="never" -c model_reasoning_effort="<역할 값>" -c developer_instructions=<JSON> -c mcp_servers.<name>.enabled=false … -C <root> --json -`(작업 문은 stdin). 서버 이름이 `^[A-Za-z0-9_-]+$` 밖이면 이름으로 끌 수 없으므로 실행하지 않는다.
+- 역할 자격: 방출된 역할 이름 중 `agentemit` 매니페스트 권한 계약의 sandbox가 `read-only`인 것. 역할 파일이 없거나 파일의 `sandbox_mode`가 `read-only`가 아니면 거부한다.
+- 루트: 심볼릭 링크를 푼 뒤 호출자 워크트리의 최상위와 같고, 같은 git common dir이며, `git worktree list --porcelain`에 등록돼 있어야 한다. 목적지: 루트의 `.moai/reports/` 아래, `codex-audit/` 밖, `.git` 성분 없음(어휘·해석 양쪽).
+- 순서: 루트 → 목적지 → 역할 → 상한(`checkCodexInstructionSize`, 최종 토큰 길이) → codex 위치 → `mcp list` → launch record 배타 예약(`O_EXCL`) → `exec`(프로세스 그룹, `configureClaudeAuditProcess`/`runClaudeAuditProcess` 재사용) → 판정 파일 원자적 쓰기 → record 기록과 `LAUNCH_RECORD <상대 경로>`.
+
+RED(구현 전): `go test ./internal/cli -run 'CodexAudit' -count=1` → 컴파일 실패 `undefined: codexAuditResult` 등(`.moai/reports/t1143/run/m2-red.log`), 이어 stub 상태에서 9개 테스트 모두 `--- FAIL`(`m2-red-stub.log`).
+
+판정식(acceptance 원문 그대로 실행, `.moai/reports/t1143/run/m2-judges.log`):
+
+| AC | 판정 출력 | 변이 → 판정 출력 |
+|---|---|---|
+| AC-CAR-001 | `true` | m001 이름 하나 비활성화 누락 → `false` |
+| AC-CAR-002 | `true` | m002 계약 자격 검사 제거 → `false`; m002b 역할 파일 sandbox 검사 제거 → `false` |
+| AC-CAR-003 | `true` | m003 반환문 trim → `false`; m003b 이름 바꾸기 전 부분 쓰기 → `false` |
+| AC-CAR-004 | `true` | m004 0 아닌 종료를 성공 처리 → `false`; m004b 프로세스 그룹 설정 제거 → `false` |
+| AC-CAR-005 | `true` | m005 호출자 워크트리 검사 제거 → `false`; m005b `codex-audit` 제외 제거 → `false`; m005c `.git` 검사 제거 → `false` |
+| AC-CAR-006 | `true` | m006 상한을 원문 길이로 측정 → `false` |
+| AC-CAR-014 | `true` | m014 지시문 미가림 → `false`; m014b `O_EXCL` 제거 → `false` |
+
+m002는 처음 `true`로 살아남았다(역할 파일 sandbox 검사가 같은 사례를 막음 — 충분한 방어 둘). 역할 파일을 `read-only`로 고친 쓰기 역할 사례를 테스트에 더한 뒤 `false`가 되었다(`m2-mutants.log`).
+
+검증(모두 이 트리, 이 실행):
+
+| 명령 | 종료 코드 | 로그 |
+|---|---|---|
+| `go test ./internal/cli -run 'Codex' -count=1`(kanban·factory 변수 제거, `MOAI_FACTORY_WORKER` 포함) | 0, `ok … 160.387s` | `run/m2-test-cli-codex.log` |
+| `go test ./internal/cli -run 'Guard\|Scan\|Neutral\|Hardcod\|Registration\|Subcommand\|AskUser\|Literal\|Sweep' -count=1` | 0 | `run/m2-test-cli-guards.log` |
+| `go test ./internal/config/... -count=1` | 0 | `run/m2-test-config.log` |
+| `go vet ./internal/cli/...` | 0 | `run/m2-vet.log` |
+| `GOOS=windows GOARCH=amd64 go build ./...` | 0 | `run/m2-windows-build.log` |
+| `GOOS=windows GOARCH=amd64 go vet ./internal/cli/...` | 0 | `run/m2-windows-vet.log` |
+| `golangci-lint run ./internal/cli/... ./internal/config/...` | 0, `0 issues.` | `run/m2-lint.log` |
+| `go test ./internal/cli -run 'CodexAudit' -coverprofile` → `codex_audit_launch.go` 문장 333 중 284 | 85.3% | `run/m2-cover-func.txt` |
+
+Gaps (M2):
+
+- 첫 `-run 'Codex'` 실행은 `TestCodexSpawn_RealAssemblyThroughStubTmux` 한 건이 실패했다. 기대 문자열에 없는 `MOAI_FACTORY_WORKER=agent-44`가 레인 환경에서 들어왔기 때문이며, 이 변수까지 지운 재실행은 통과했다. 같은 실패가 develop에서도 나는지는 재지 않았다.
+- 결정적 테스트 파일은 `!windows`다(가짜 codex가 POSIX 셸). Windows에서는 컴파일·vet만 확인했고 동작은 확인하지 않았다.
+- 판정 파일 쓰기는 성공했는데 launch record 쓰기가 실패하면 launcher는 0이 아닌 코드로 끝나지만 판정 파일은 남는다. 이 경로는 테스트하지 않았다.
+- MCP 경로의 겉면(도구, 비동기 작업)은 M3 범위이며 없다. `route`는 `direct`(테스트)와 `shell`(동사)만 기록된다.
+- 변이 실행 m004b에서 가짜 codex의 `sleep 30` 자식이 남았고, 정리하면서 다른 세션의 폴링 루프에 속한 `sleep 30` 하나(pid 30259)까지 종료했다. 그 루프는 계속 돌았다(새 `sleep` 확인). 이후 테스트 하위 항목마다 정리 훅을 등록했다.
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 _<pending run-phase>_

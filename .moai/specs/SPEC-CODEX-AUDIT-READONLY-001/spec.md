@@ -2,7 +2,7 @@
 id: SPEC-CODEX-AUDIT-READONLY-001
 title: "Codex read-only roles launched as top-level read-only processes — audit launcher, parent-written verdict file, inherited AC-DHR-012/023"
 version: "0.4.0"
-status: draft
+status: in-progress
 created: 2026-09-24
 updated: 2026-09-24
 author: manager-spec
