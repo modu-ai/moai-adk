@@ -115,16 +115,21 @@ which is the exact failure `verification-completeness.md` §2 warns about.
 - **AC-007** Given a factory database created at schema version 2 holding two unstamped `active`
   rows, each with a registered `role='lead'` peer whose PID is dead, When a worker joins with no
   `--factory-run`, Then the database migrates to version 3, both legacy rows are retired through the
-  peer fallback, and the join no longer fails with `AMBIGUOUS_FACTORY`. This is the migration path:
-  a run phase that only prevents new duplicates does not satisfy it.
+  peer fallback, and the join then fails closed with `NO_ACTIVE_FACTORY` — not `AMBIGUOUS_FACTORY`.
+  Retiring both legacy rows leaves zero `active` rows, so the criterion's subject is that the
+  ambiguity is gone and resolution lands on AC-009's fail-closed leg; it is **not** that the join
+  succeeds. This is the migration path: a run phase that only prevents new duplicates does not
+  satisfy it.
 
 - **AC-008** Given two `active` runs that both survive reconciliation (one live owner, one
   indeterminate), When resolution runs, Then it fails with an error whose text contains
   `AMBIGUOUS_FACTORY`, both surviving run ids, and each one's classification.
 
-- **AC-009** Given zero `active` runs, When resolution runs, Then it fails with `NO_ACTIVE_FACTORY`;
-  and given two `active` runs with live owners, Then it fails with `AMBIGUOUS_FACTORY`. Neither case
-  returns a run id.
+- **AC-009** Given zero `active` runs remaining after reconciliation — whether none existed to begin
+  with **or** every owner was classified `dead` and retired, the all-owners-dead shape AC-004
+  delegates here — When resolution runs, Then it fails with `NO_ACTIVE_FACTORY`; and given two
+  `active` runs with live owners, Then it fails with `AMBIGUOUS_FACTORY`. Neither case returns a run
+  id.
 
 - **AC-010** Given a sandbox holding one live-owner, one dead-owner, and one **indeterminate-owner**
   `active` run, When `moai factory runs` is invoked, Then its output names all three with their
