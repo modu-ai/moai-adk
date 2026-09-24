@@ -297,6 +297,47 @@ exit 0 on every path, including `--harness codex` on a decision-bearing event. C
 that `{}` as allow. The AC-HPR-008 legs cover unparseable hook *output*, not unparseable *input*,
 so this was left unchanged. It needs an operator decision on whether it is in scope.
 
+### M2d — Stop chain on Codex (2026-09-24, recorded per sub-step)
+
+Base HEAD `fabc33812`, branch `WT-dual-harness-parity-rebuild`. Measured on Darwin arm64. Every
+RED below was captured before the implementation it names, as the sub-step ran.
+
+**Operator decisions for M2d (source: operator, 09-24)**
+
+- Sync-gate receipt store = option (a): the Codex sync check writes a verify-snapshot receipt (the
+  M2b `CheckEntry` with `verdict` / `config_digest` / `tool_version`). `.moai/state/sync-quality-gate.last`
+  stays Claude-only. `.claude/hooks/moai/sync-phase-quality-gate.sh` is not modified, so Claude
+  behaviour stays byte-identical.
+- Q4 (sync-gate port shape) is decided in this milestone per plan.md/design.md (see Q4 below).
+- The malformed-stdin fail-open in `internal/cli/hook.go` (`runHookEvent`, `ReadInput` error branch)
+  is out of scope and split to a separate card. It is not changed here.
+
+**AC-HPR-001 — Stop-chain inventory over both template renders**
+(`TestStopChainInventoryMatchesClaudeTemplate`, `./internal/codexwiring/`)
+
+- Inventory: `StopChainMembers` gained `ClaudeScript`, `Conditional`, and `ReceiptProducer`. The
+  checker is `CheckStopInventory(plain, optIn []string)` in `stop_inventory.go`. The test renders
+  `settings.json.tmpl` with `HookOptIn.Enabled` false and true, reads each Stop array in
+  registration order, and requires: each handler maps to exactly one row; each row has a class and a
+  placement (a receipt row names its producer); the opt-in-only row is `Conditional`; no row is
+  absent from both renders; the numbering follows the template order.
+- RED (compile): `stop_inventory_test.go:70:17: undefined: CheckStopInventory` …
+  `m.ClaudeScript undefined (type StopMember has no field or method ClaudeScript)`.
+- RED (runtime, a stub checker that returns nothing):
+  `an unlisted Stop handler was not reported; problems = []` and
+  `the opt-in-only member was not reported missing; problems = []`. The top-level check passed
+  vacuously on the stub, which is why the test carries the two in-memory mutations as subtests.
+- GREEN: `go test -json -count=1 -run '^TestStopChainInventoryMatchesClaudeTemplate$' ./internal/codexwiring/`
+  (kept at `.moai/state/verify/m2d/ac001.json`) → `3 pass` (the test and both subtests). No `skip`,
+  no `fail`.
+- Mutations (each reverted with Edit; `git diff --stat` on the file empty after each):
+  1. A `handle-mutant-stop.sh` handler added to the template's Stop array →
+     `Stop handler handle-mutant-stop.sh (render opt-in off) has no inventory row` (and the opt-in
+     render), plus the order shift for members 2–8 → FAIL.
+  2. Member 8 `Conditional: false` →
+     `inventory row 8 (moai hook harness-observe-stop) conditional = false, but the renders say opt-in-only = true` → FAIL.
+  3. (in-test) inventory without `harness-observe-stop` against the opt-in render → reported.
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 _<pending run-phase>_
