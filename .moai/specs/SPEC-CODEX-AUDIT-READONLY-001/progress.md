@@ -326,4 +326,59 @@ m1_to_mN_commit_strategy: one or more commits per milestone on WT-codex-audit-re
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase>_
+### AC verdict table (as recorded; carried-over items counted as their recorded status, never PASS)
+
+| AC | Verdict | Evidence |
+|---|---|---|
+| AC-CAR-001 | PASS | re-run at HEAD `9e1e926cf`, `.moai/reports/t1143/run/sync-judges.log` |
+| AC-CAR-002 | PASS | re-run at HEAD `9e1e926cf`, `.moai/reports/t1143/run/sync-judges.log` |
+| AC-CAR-003 | PASS | re-run at HEAD `9e1e926cf`, `.moai/reports/t1143/run/sync-judges.log` |
+| AC-CAR-004 | PASS | re-run at HEAD `9e1e926cf`, `.moai/reports/t1143/run/sync-judges.log` |
+| AC-CAR-005 | PASS | re-run at HEAD `9e1e926cf`, `.moai/reports/t1143/run/sync-judges.log` |
+| AC-CAR-006 | PASS | re-run at HEAD `9e1e926cf`, `.moai/reports/t1143/run/sync-judges.log` |
+| AC-CAR-007 | PASS | re-run at HEAD `9e1e926cf`, `.moai/reports/t1143/run/sync-judges.log` |
+| AC-CAR-008 | PASS | re-run at HEAD `9e1e926cf`, `.moai/reports/t1143/run/sync-judges.log` |
+| AC-CAR-009 | PASS | re-run at HEAD `9e1e926cf`, `.moai/reports/t1143/run/sync-judges.log` |
+| AC-CAR-012a | PASS | re-run at HEAD `9e1e926cf`, `.moai/reports/t1143/run/sync-judges.log` |
+| AC-CAR-013 | PASS | re-run at HEAD `9e1e926cf`, `.moai/reports/t1143/run/sync-judges.log` (`route.txt` = `mcp`) |
+| AC-CAR-014 | PASS | re-run at HEAD `9e1e926cf`, `.moai/reports/t1143/run/sync-judges.log` |
+| AC-DHR-012 | FAIL | run 2 (rerun), ledger #21–#34 — `manager-lead`/`mission-governor` nonce mismatch — `.moai/reports/t1143/verdict.md` |
+| AC-DHR-023 | FAIL | run 2 (rerun), same evidence — content clauses satisfied, pass-event clause fails |
+| AC-CAR-012b | FAIL | run 2 (rerun), same evidence — derivation fields satisfied, pass-event clause fails |
+| AC-CAR-010 | INVALID (run 1: "routed to decoy server", lead-recorded, no rerun) | ledger #35–#36, `.moai/reports/t1143/verdict.md` § "Lead decision after M5" |
+| AC-CAR-011 | NOT_RUN (0/2 calls; lead instructed stop when AC-CAR-010 could not proceed) | `.moai/reports/t1143/verdict.md` § "Lead decision after M5" |
+
+12 PASS, 3 FAIL, 1 INVALID, 1 NOT_RUN of 16 total AC. Per `acceptance.md` §D/§E, none of the three design bundles reaches full PASS and the card's own completion definition is not met for the carried-over scope; this SPEC closes `completed` for the delivered launcher/instruction-surface/instruction-preservation scope only, following the SPEC-DUAL-HARNESS-RECOVERY-001 v0.3.1 (card t1100) precedent for closing with formally-transferred unmet items. This SPEC does **not** claim AC-DHR-012, AC-DHR-023, AC-CAR-012b, AC-CAR-010, or AC-CAR-011 as satisfied.
+
+### Carry-over table (formal transfer, unchanged AC bodies/judges/expected values)
+
+| Item | Status | Follow-up card |
+|---|---|---|
+| AC-DHR-012 / AC-DHR-023 / AC-CAR-012b (role-load judge vs. role contracts that refuse task-less requests) | FAIL | t1171 |
+| AC-CAR-010 (routed to decoy server) | INVALID | t1172 |
+| AC-CAR-011 (never started) | NOT_RUN | t1172 |
+| Per-tool MCP pre-approval effect under `approval_policy=never`; fixture-input export; non-model trust-check CLI; template-default operator approval; key-name loader validation | open | t1172 |
+| AC-FLH-015 (SPEC-FACTORY-LANE-WORKTREE-HANDOFF-001) MCP-tool-count prose drift (36/14/22 vs. this card's 39/15/24) | recorded, not fixed | t1170 |
+
+### LIVE call summary
+
+- LIVE total: 39/43 (absolute cap). Full per-call ledger, caps declared before each item, and every lead decision: `.moai/reports/t1143/verdict.md`.
+
+### Deterministic-judge re-verification (this sync commit)
+
+Re-ran the 12 deterministic/derivation acceptance criteria VERBATIM against HEAD `9e1e926cf` (env-scrubbed: `unset MOAI_KANBAN MOAI_KANBAN_ID MOAI_KANBAN_LABEL MOAI_KANBAN_LEAD_ADDR MOAI_KANBAN_SETTINGS_INJECTED MOAI_KANBAN_BACKEND MOAI_FACTORY_WORKERS`); all 12 `true`. Output: `.moai/reports/t1143/run/sync-judges.log`.
+
+```yaml
+sync_complete_at: 2026-09-24
+sync_commit_sha: pending-backfill-sync
+sync_status: completed_with_carryover
+b12_self_test_a: pass         # grep -c 'SPEC-CODEX-AUDIT-READONLY-001' CHANGELOG.md == 1 (this entry only)
+b12_self_test_b: pass         # 16 distinct AC-CAR-*/AC-DHR-* identifiers in acceptance.md, CHANGELOG cites 16 total (12/2/1/1 split)
+b12_self_test_c: pass         # all cited file paths verified via ls
+changelog_entry_position: Unreleased > Added (top entry)
+frontmatter_status_transitions:
+  spec_md: "in-progress -> completed (status field only; version/updated/HISTORY untouched per ownership matrix)"
+canary_compliance_check: not_applicable   # this SPEC defines no forward-looking policy that its own sync tests
+```
+
+_<pending backfill of sync_commit_sha in a following commit>_
