@@ -10,11 +10,16 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/modu-ai/moai-adk/internal/cli/wizard"
 	"github.com/modu-ai/moai-adk/internal/template"
 )
 
-// urlCandidates are well-formed https URLs with a host; only the quote and the
-// backslash cannot be carried verbatim by the template's quoted scalar.
+// urlCandidates are well-formed https URLs with a host. The rejected ones
+// include every input sync-audit found the template could not carry verbatim
+// (a quote, a backslash, invalid UTF-8, C1 controls, NEL, U+2028, a
+// noncharacter) and some it can carry but that are not printable (NBSP,
+// zero-width space, BOM): the validator is deliberately stricter than the
+// template.
 var urlCandidates = []struct {
 	url      string
 	accepted bool
@@ -25,13 +30,25 @@ var urlCandidates = []struct {
 	{"https://gitlab.example.com/it's", true},
 	{"https://gitlab.example.com/a b", true},
 	{"https://gitlab.example.com/한글", true},
+	{"https://gitlab.example.com/a#b: c", true},
+	{"https://gitlab.example.com/%41|@&*!", true},
 	{`https://gitlab.example.com/a"b`, false},
 	{`https://gitlab.example.com/a\b`, false},
 	{`https://gitlab.example.com/a\nb`, false},
 	{`https://gitlab.example.com/"`, false},
+	{"https://gitlab.example.com/a\xffb", false},
+	{"https://gitlab.example.com/a\u0080b", false},
+	{"https://gitlab.example.com/a\u009fb", false},
+	{"https://gitlab.example.com/a\u0085b", false},
+	{"https://gitlab\u0085.example.com", false},
+	{"https://gitlab.example.com/a\u2028 b", false},
+	{"https://gitlab.example.com/a\ufffeb", false},
+	{"https://gitlab.example.com/a\u00a0b", false},
+	{"https://gitlab.example.com/a\u200bb", false},
+	{"https://gitlab.example.com/\ufeffa", false},
 }
 
-func TestValidateHTTPSURL_RejectsQuoteAndBackslash(t *testing.T) {
+func TestValidateHTTPSURL_RejectsValuesTheTemplateCannotCarry(t *testing.T) {
 	t.Parallel()
 	for _, c := range urlCandidates {
 		err := validateHTTPSURL(c.url)
@@ -44,35 +61,47 @@ func TestValidateHTTPSURL_RejectsQuoteAndBackslash(t *testing.T) {
 	}
 }
 
-// TestValidateHTTPSURL_AcceptsExactlyWhatTheTemplateRoundTrips pins the
-// relation to card t1147's update predicate (rendersVerbatim): for every
-// candidate, init accepts the URL iff git-strategy.yaml.tmpl renders it and
-// parses it back verbatim. Anything init accepts is therefore also carried by
-// the update render, so no init-accepted URL can be written altered (BASE ==
-// OLD) and later erased by an update.
-func TestValidateHTTPSURL_AcceptsExactlyWhatTheTemplateRoundTrips(t *testing.T) {
+// TestValidateHTTPSURL_AcceptedValuesRoundTrip pins the relation to card
+// t1147's update predicate (rendersVerbatim) in the one direction t1147
+// needs: every candidate init accepts is rendered by git-strategy.yaml.tmpl
+// and parsed back verbatim, so within this candidate set no init-accepted URL
+// is written altered (BASE == OLD) and later erased by an update. The reverse
+// does not hold by design: the validator also rejects some values the
+// template could carry (see urlCandidates).
+func TestValidateHTTPSURL_AcceptedValuesRoundTrip(t *testing.T) {
 	t.Parallel()
 	fsys, err := template.EmbeddedTemplates()
 	if err != nil {
 		t.Fatalf("embedded templates: %v", err)
 	}
 	renderer := template.NewRenderer(fsys)
-	sawRejected := false
+	accepted, failsRoundTrip := 0, 0
 	for _, c := range urlCandidates {
 		ctx := template.NewTemplateContext(template.WithGitLabInstanceURL(c.url))
 		roundTrips := rendersVerbatim(renderer, gitStrategySectionTemplate, ctx, c.url, "git_strategy", "gitlab", "instance_url")
-		accepted := validateHTTPSURL(c.url) == nil
-		if accepted != roundTrips {
-			t.Errorf("%q: validateHTTPSURL accepted=%v, template round-trip=%v", c.url, accepted, roundTrips)
-		}
 		if !roundTrips {
-			sawRejected = true
+			failsRoundTrip++
+		}
+		if validateHTTPSURL(c.url) == nil {
+			accepted++
+			if !roundTrips {
+				t.Errorf("%q: accepted by validateHTTPSURL but does not round-trip through the template", c.url)
+			}
 		}
 	}
-	// Positive control: the candidate set must contain a URL the template
-	// cannot carry, or the equivalence above is vacuous.
-	if !sawRejected {
-		t.Fatal("no candidate failed the template round-trip; the equivalence check measures nothing")
+	// Positive controls: the set must exercise both sides, or the check above
+	// measures nothing.
+	if accepted == 0 || failsRoundTrip == 0 {
+		t.Fatalf("candidate set is vacuous: %d accepted, %d failing the round-trip", accepted, failsRoundTrip)
+	}
+}
+
+// TestValidateWizardInput_RejectsQuotedGitLabURL covers the wizard entry point.
+func TestValidateWizardInput_RejectsQuotedGitLabURL(t *testing.T) {
+	t.Parallel()
+	err := validateWizardInput(&wizard.WizardResult{GitLabInstanceURL: `https://gitlab.example.com/a"b`})
+	if err == nil || !strings.Contains(err.Error(), "gitlab_instance_url") {
+		t.Fatalf("validateWizardInput = %v, want a gitlab_instance_url rejection", err)
 	}
 }
 
