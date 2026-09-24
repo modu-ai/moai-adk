@@ -52,6 +52,32 @@ git restore --source=develop -- .moai/config/sections/git-strategy.yaml
 - `git_strategy.manual`: `workflow: git-flow` [2026-08-27 감사 정정], 그리고 `main_branch:` 바로 아래에 `develop_branch: develop` / `release_branch_prefix: release/` / `rc_version_format: vX.Y.Z-rc.N` 세 줄.
 - `git_strategy` 최상위: `worktree_base_branch: develop` — **이 줄이 목록에서 빠져 있어 2026-09-24 에 카드 트리 6개가 develop 이 아니라 main 에서 났다**(t1154·t1153·t1075·t1157·t1158·t1159). 빈 값은 `SPEC-WORKTREE-BASEREF-001` 의 중립 기본값이라 `moai worktree new` 가 base 오퍼랜드 없이 `git worktree add` 를 돌리고, git 은 호출 트리의 HEAD(= primary 의 `main`)에서 판다. 손실이 조용하다 — 확인 grep 이 `workflow` 만 보면 이 되돌림은 통과한다. 근거: `.moai/reports/t1159/measurement.md`.
 
+**[HARD] AC 스냅숏 커밋 가드의 무장 상태는 세션 시작마다 읽는다 (card t1161).** t1150 이
+넣은 가드(`git config hook.ac-baseline-guard.{event,command}` + `scripts/ac-baseline/check-staged.sh`)는
+**꺼져도 조용하다** — 키 삭제·git < 2.54·체커 부재 세 경우 모두 커밋이 그냥 통과하고, 그 통과는
+"가드가 돌아서 아무것도 못 찾았다"와 출력이 같다. 침묵이 정보를 담지 않으므로 말해 주는 표면이
+따로 있어야 한다:
+
+```bash
+# 읽기 전용. 무장이면 침묵(stdout `ARMED`), 아니면 고장마다 stderr 1줄. 항상 exit 0
+sh scripts/ac-baseline/check-armed.sh
+```
+
+배선: `.claude/settings.local.json` 의 `SessionStart` 에 항목 하나를 더한다(§28 의 lsel 2항목과
+같은 자리·같은 이유 — tracked `settings.json` 은 `moai update` 가 통째 재배포해 배선이 매번
+유실된다). **`moai doctor` 에는 넣지 않는다**: doctor 체크는 Go 제품 코드라 전 사용자 배포판에
+실려 나가고, 이 가드는 이 저장소 전용 도구다(템플릿 미러 없음).
+
+```jsonc
+// .claude/settings.local.json  .hooks.SessionStart[0].hooks[] 에 추가
+{ "type": "command", "command": "bash", "timeout": 30,
+  "args": ["-c", "[ -f \"$0\" ] && exec sh \"$0\"; exit 0",
+           "${CLAUDE_PROJECT_DIR}/scripts/ac-baseline/check-armed.sh"] }
+```
+
+`scripts/` 는 관리 대상 뿌리 밖이므로 이 스크립트는 `moai update` 가 지우지 않는다 — 재적용
+대상이 아니다. 배선만 settings.local.json 에 있고, 그 파일은 런타임이 쓰는 로컬 전용이다.
+
 **[HARD] 보고된 파일 수를 믿지 않는다.** `Updated N files`의 N은 관리 대상 뿌리 **밖** 파일만 센다(`internal/cli/update/plan/plan.go:73` `if IsMoaiManaged(...) { continue }`). 2026-08-15 실측: 보고 32, 실제 175. **삭제는 이 요약에 전혀 나타나지 않는다.**
 
 **삭제만이 손실이 아니다 — 덮어쓰기 2종** (2026-08-15 실측):

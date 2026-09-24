@@ -49,7 +49,10 @@ func (h *instructionsLoadedHandler) Handle(ctx context.Context, input *HookInput
 	// unconditionally, so stdout/stderr stay clean for the hook JSON contract.
 	// The persistent record is therefore an audit row, written here — without it
 	// the three host-supplied fields are observable nowhere.
-	appendRuleLoadAudit(input.CWD, RuleLoadAuditRecord{
+	// The destination is the write-side project root, never input.CWD: a
+	// session whose cwd is a subdirectory would otherwise grow a stray
+	// <subdir>/.moai/logs/ tree (card t1160).
+	appendRuleLoadAudit(resolveProjectRoot(input), RuleLoadAuditRecord{
 		SessionID:       input.SessionID,
 		FilePath:        instructionPath,
 		LoadReason:      input.LoadReason,
