@@ -167,6 +167,102 @@ RED 는 **관대한 방향**(경계가 너무 낮게 잡히는 실패)을 재지
 호출하지 않아도 — 애초에 기본값이 아닌 싱크를 읽으면 — 충족될 수 있다. 차분 팔이 그 경로를
 막는다.
 
+### M4 — 증가 억제 (cycle_type=tdd)
+
+범위: `plan.md` §C M4 뿐이다. M5(기계적 마감)는 착수하지 않았다.
+
+편집 대상:
+
+- `internal/hook/hook_sink_prune_test.go` (신규) — 가드 4 `TestHookSinkIsPrunedAtSessionEnd`
+- `internal/hook/prune_logs.go` — `hookRuntimeLogFileName` 상수 · `PruneStats.HookRuntimeLogAged`
+  필드 · 후보 분기 1개 · 요약 로그 행 1개 · doc comment
+- `internal/config/defaults.go` — `DefaultHookRuntimeLogRetentionDays`
+
+새 정리 기제를 만들지 않았다(REQ-HDS-009). 싱크는 `agentModelAuditFileName` 후보와 **글자
+그대로 같은 모양**으로 편입됐다 — 이름 일치 → 임계값 비교 → `PruneStats` 필드 보고.
+
+#### 판단 1건 — 싱크의 임계값은 호출자의 `retentionDays` 가 아니다
+
+REQ-HDS-010 이 보존일수를 `internal/config/defaults.go` 의 **명명 상수**로 요구한다. 그 요구를
+그대로 따르면 상수가 실제로 쓰여야 하므로, 싱크는 `DefaultHookRuntimeLogRetentionDays` 로
+자기 컷오프를 계산하고 호출자가 넘긴 `retentionDays`(trace · task-metrics ·
+agent-model-audit 를 지배)를 쓰지 않는다. 오늘 두 값은 같은 30 이고, 호출자는 하나뿐이며
+그 하나가 `config.DefaultTraceRetentionDays` 를 넘긴다.
+
+**대가를 적어 둔다**: 호출자가 `retentionDays` 를 낮춰도 싱크는 따라 내려가지 않는다. 이것은
+SPEC 이 명시적으로 정하지 않은 자리이고, 상수를 만들되 쓰지 않는 쪽(죽은 상수)과 상수를 안
+만드는 쪽(REQ-HDS-010 위반) 사이에서 고른 값이다. 되돌리려면 `sinkCutoff` 를 `cutoff` 로
+바꾸는 한 줄이다.
+
+#### AC PASS/FAIL 매트릭스 (M4 소관분)
+
+| AC | 판정 | 검증 명령 | 실제 출력 |
+|---|---|---|---|
+| AC-HDS-010 | PASS | `go test ./internal/hook/... -list '^TestHookSinkIsPrunedAtSessionEnd$' \| grep -cE '^Test'` / `go test ./internal/hook/... -run '^TestHookSinkIsPrunedAtSessionEnd$' -count=1` | 1단 `1` · 2단 `ok github.com/modu-ai/moai-adk/internal/hook 0.388s` (EXIT=0), 서브테스트 `aged_sink_is_removed_and_reported` + `sink_inside_the_threshold_is_kept` 둘 다 PASS |
+
+AC-HDS-011 은 **M4 소관이 아니다**(M5). 다만 M4 가 그것을 깨지 않았음을 확인했다 —
+`grep -rn '"\.moai/logs/hook-runtime\.log"' --include='*.go' internal/ | grep -v _test.go`
+는 여전히 1행이고 그 행이 `internal/cli/hook_sink.go:19` 의 `const` 선언이다. M4 가
+`internal/hook` 에 더한 상수는 **기본 이름**(`"hook-runtime.log"`)이라 그 그물에 걸리지 않는다
+— `internal/cli` 가 `internal/hook` 을 import 하지 (그 반대가 아니라) 때문에 전체 경로 상수를
+공유할 수 없고, 정리는 `logsDir` 를 엔트리 이름으로 훑으므로 기본 이름만 있으면 된다.
+
+M4 밖의 AC(002~006 · 011~014)는 여전히 **미판정**이다.
+
+#### RED 증거 (§E E8 — GREEN 이전 실패 출력 전문)
+
+RED — `go test ./internal/hook/... -run '^TestHookSinkIsPrunedAtSessionEnd$' -count=1` (EXIT=1):
+
+```
+# github.com/modu-ai/moai-adk/internal/hook [github.com/modu-ai/moai-adk/internal/hook.test]
+internal/hook/hook_sink_prune_test.go:27:33: undefined: hookRuntimeLogFileName
+internal/hook/hook_sink_prune_test.go:52:12: stats.HookRuntimeLogAged undefined (type PruneStats has no field or method HookRuntimeLogAged)
+internal/hook/hook_sink_prune_test.go:53:54: stats.HookRuntimeLogAged undefined (type PruneStats has no field or method HookRuntimeLogAged)
+internal/hook/hook_sink_prune_test.go:69:12: stats.HookRuntimeLogAged undefined (type PruneStats has no field or method HookRuntimeLogAged)
+internal/hook/hook_sink_prune_test.go:71:11: stats.HookRuntimeLogAged undefined (type PruneStats has no field or method HookRuntimeLogAged)
+FAIL	github.com/modu-ai/moai-adk/internal/hook [build failed]
+```
+
+GREEN — 같은 명령, 구현 후 (EXIT=0, `-v`):
+
+```
+=== RUN   TestHookSinkIsPrunedAtSessionEnd
+=== RUN   TestHookSinkIsPrunedAtSessionEnd/aged_sink_is_removed_and_reported
+=== RUN   TestHookSinkIsPrunedAtSessionEnd/sink_inside_the_threshold_is_kept
+--- PASS: TestHookSinkIsPrunedAtSessionEnd (0.00s)
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/hook	0.388s
+```
+
+#### 반증 (변이 2건 — 두 팔 각각)
+
+두 팔이 서로 다른 변이에 문다. 한 변이로 둘 다 빨개지지 않는다는 것이 두 팔이 서로 다른
+것을 재고 있다는 증거다. 둘 다 커밋하지 않았고 원본을 백업에서 복원했다.
+
+변이 A — 싱크를 후보에서 제외(`if name == hookRuntimeLogFileName && false`):
+
+```
+--- FAIL: TestHookSinkIsPrunedAtSessionEnd/aged_sink_is_removed_and_reported (0.00s)
+        hook_sink_prune_test.go:53: HookRuntimeLogAged = 0, want 1
+        hook_sink_prune_test.go:56: aged sink still present: stat err = <nil>, want IsNotExist
+FAIL	github.com/modu-ai/moai-adk/internal/hook	0.547s
+```
+
+변이 B — 임계값 무시하고 전부 제거(`if true || info.ModTime().Before(sinkCutoff)`):
+
+```
+--- FAIL: TestHookSinkIsPrunedAtSessionEnd/sink_inside_the_threshold_is_kept (0.00s)
+        hook_sink_prune_test.go:70: HookRuntimeLogAged = 1, want 0 (file is inside the threshold)
+        hook_sink_prune_test.go:74: sink inside the threshold was removed: … no such file or directory
+FAIL	github.com/modu-ai/moai-adk/internal/hook	0.555s
+```
+
+변이 A 만 돌렸다면 "전부 지우는" 구현이 가드를 통과한다. 변이 B 가 그 경로를 막는다 —
+보존 팔은 장식이 아니라 제거 팔을 해석 가능하게 만드는 것이다.
+
+변이 B 의 출력에는 부수적으로 요약 로그 행도 찍혔다(`hook_runtime_log_aged=1`) — 새 필드가
+`slog.Info` 요약까지 실제로 도달한다는 관측이다.
+
 ### AC-HDS-016 전수 판정 기록
 
 모집단은 기준선 SHA `bbc855f45` 에 고정된 그물이다:

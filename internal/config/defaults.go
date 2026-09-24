@@ -261,6 +261,19 @@ const (
 	// always preserved (EC-3).
 	DefaultTraceRetentionDays = 30
 
+	// DefaultHookRuntimeLogRetentionDays is the age threshold (in days) past
+	// which the `moai hook` path's log sink (.moai/logs/hook-runtime.log,
+	// written by internal/cli/hook_sink.go) is pruned at SessionEnd
+	// (SPEC-HOOK-DIAG-SINK-001 REQ-HDS-009 / REQ-HDS-010). The sink is an
+	// append-only file with no rotation of its own, so this threshold is the
+	// only thing bounding its growth.
+	//
+	// It is a SEPARATE constant from DefaultTraceRetentionDays rather than a
+	// reuse of it: the two artifacts age for different reasons (a trace is one
+	// session's record, the sink is a rolling diagnostic tail), so REQ-HDS-010
+	// gives the sink its own named knob. They happen to share a value today.
+	DefaultHookRuntimeLogRetentionDays = 30
+
 	// Home disk/clean defaults (SPEC-V3R6-MOAI-CLEAN-HOME-001). These are the
 	// compiled-in configuration surface for the `moai doctor` Home Disk Usage
 	// check and `moai clean --home`: DefaultHomeDiskWarnBytes is the cleanable-
