@@ -189,22 +189,14 @@ func TestCodexRoleLiveLoadAndReadOnly(t *testing.T) {
 
 	for i, role := range roles {
 		nonce := factoryLiveID()
-		msg := fmt.Sprintf("This is a load probe. Do not read or change any file and do not run any command. Your final response must be exactly one line and nothing else: NONCE %s", nonce)
-		if role == codexRolePositiveRole {
-			msg = fmt.Sprintf("This is a write probe. Run exactly this one shell command in the current working directory: printf '%%s' '%s' > %s . Do not change any other file. Your final response must be exactly one line and nothing else: NONCE %s", nonce, codexRolePositiveFile, nonce)
-		}
+		msg := codexRoleLoadProbe(role, nonce)
 		prompt := fmt.Sprintf("You are a test harness driver. Use the spawn_agent tool exactly once with agent_type set to %q and this exact message for the subagent: %q. Wait for that subagent to finish (use wait_agent). Then reply with the subagent's final message verbatim and nothing else. Do not run any command yourself and do not change any file yourself.", role, msg)
 		rollouts, exitErr, ok := call("role "+role, prompt)
 		if !ok {
 			break
 		}
-		load := codexRoleLoad{Name: role, NonceSent: nonce, ParentExitError: exitErr}
-		if sub, found := codexSubagentFor(rollouts, role); found {
-			load.SubagentRoleObserved, load.SubagentSandbox = sub.Role, sub.Sandbox
-			if m := codexRoleNoncePattern.FindStringSubmatch(sub.Final); m != nil {
-				load.NonceReturned = m[1]
-			}
-		}
+		load := codexRoleLoadFrom(role, nonce, rollouts)
+		load.ParentExitError = exitErr
 		loads = append(loads, load)
 		if role == codexRolePositiveRole {
 			if b, err := os.ReadFile(filepath.Join(root, codexRolePositiveFile)); err == nil {
@@ -371,12 +363,10 @@ func codexRoleAssert(t *testing.T, roles []string, loads []codexRoleLoad, positi
 	if len(loads) != len(roles) {
 		t.Errorf("role loads = %d, want %d", len(loads), len(roles))
 	}
-	seen := map[string]bool{}
-	for _, l := range loads {
-		if l.NonceReturned == "" || l.NonceReturned != l.NonceSent || seen[l.NonceSent] {
+	if !codexRoleLoadsOK(roles, loads) {
+		for _, l := range loads {
 			t.Errorf("role %s: sent %q returned %q (observed role %q)", l.Name, l.NonceSent, l.NonceReturned, l.SubagentRoleObserved)
 		}
-		seen[l.NonceSent] = true
 	}
 	if positive["exists"] != true {
 		t.Errorf("positive control %s was not written by the workspace-write role", codexRolePositiveFile)
@@ -533,4 +523,51 @@ func liveExitCode(err error) int {
 		return ee.ExitCode()
 	}
 	return -1
+}
+
+// codexRoleLoadProbeFrame is the one framing every role-load probe carries, for
+// all twelve roles alike. It states what the message is NOT, so no role's own
+// contract (SPEC work, a plan, an audit, a mission decision, lead coordination)
+// reads it as its task and answers with that contract's output instead.
+const codexRoleLoadProbeFrame = "Harness load check. This message is not a task: it asks for no SPEC work, no plan, no audit, no mission decision, and no lead or coordination action, so no part of your usual procedure applies to it."
+
+// codexRoleLoadProbe is the subagent message for one role load. The
+// positive-control role (the inherited workspace-write write probe) carries
+// the same frame and nonce line with its one write step in place of the
+// no-command sentence.
+func codexRoleLoadProbe(role, nonce string) string {
+	step := "Do not read or change any file and do not run any command."
+	if role == codexRolePositiveRole {
+		step = fmt.Sprintf("Run exactly this one shell command in the current working directory: printf '%%s' '%s' > %s . Do not change any other file.", nonce, codexRolePositiveFile)
+	}
+	return fmt.Sprintf("%s %s Your final response must be exactly one line and nothing else: NONCE %s", codexRoleLoadProbeFrame, step, nonce)
+}
+
+// codexRoleLoadFrom extracts one role load from the session records of its
+// item: the subagent session that ran under the role, and the nonce it returned.
+func codexRoleLoadFrom(role, nonce string, rollouts []codexRollout) codexRoleLoad {
+	load := codexRoleLoad{Name: role, NonceSent: nonce}
+	if sub, found := codexSubagentFor(rollouts, role); found {
+		load.SubagentRoleObserved, load.SubagentSandbox = sub.Role, sub.Sandbox
+		if m := codexRoleNoncePattern.FindStringSubmatch(sub.Final); m != nil {
+			load.NonceReturned = m[1]
+		}
+	}
+	return load
+}
+
+// codexRoleLoadsOK is the AC-DHR-012 role-load condition: every role loaded
+// once and returned exactly the distinct nonce it was sent.
+func codexRoleLoadsOK(roles []string, loads []codexRoleLoad) bool {
+	if len(loads) != len(roles) {
+		return false
+	}
+	seen := map[string]bool{}
+	for _, l := range loads {
+		if l.NonceSent == "" || l.NonceReturned != l.NonceSent || seen[l.NonceSent] {
+			return false
+		}
+		seen[l.NonceSent] = true
+	}
+	return true
 }

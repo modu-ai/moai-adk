@@ -192,6 +192,46 @@ Gaps (M4):
 - (ii)의 `codex mcp list --json`은 빈 목록을 돌려줘 MCP 비활성화 인자가 없었다. 두 층 MCP 비활성화의 LIVE 확인은 AC-CAR-010(M5) 몫이다.
 - 첫 `-run 'Codex…'` 실행은 레인 환경의 `MOAI_KANBAN_BACKEND`·`MOAI_FACTORY_WORKERS`가 남아 `TestCodexSpawn_RealAssemblyThroughStubTmux`가 실패했다. 전부 지운 재실행은 통과했다.
 
+### M4 재실행 — 리드가 실행 1을 INVALID로 기록한 뒤 (LIVE 14/14, 누계 34/43)
+
+리드 결정(`verdict.md` § "Lead decision after M4"): 실행 1(원장 #7–#20)을 "INVALID — probe wording conflicts with the role contract"로 기록하고, 판정식을 바꾸지 않은 채 역할 로드 탐침 문구만 12개 역할에 똑같이 바꿔 한 번만 다시 돌린다. 같은 두 역할이 다시 실패하면 FAIL로 기록하고 멈춘다. 실행 1의 원장 줄과 결과 줄에 그 태그를 덧붙였다(지우거나 고치지 않음).
+
+탐침 문구(하위 에이전트에게 보내는 메시지):
+
+- 이전: `This is a load probe. Do not read or change any file and do not run any command. Your final response must be exactly one line and nothing else: NONCE <nonce>` (양성 대조 역할은 `This is a write probe. Run exactly this one shell command … Your final response must be exactly one line and nothing else: NONCE <nonce>`)
+- 이후: `Harness load check. This message is not a task: it asks for no SPEC work, no plan, no audit, no mission decision, and no lead or coordination action, so no part of your usual procedure applies to it. Do not read or change any file and do not run any command. Your final response must be exactly one line and nothing else: NONCE <nonce>`. 양성 대조 역할(`manager-docs`)은 같은 앞머리와 같은 NONCE 줄을 쓰고, 명령 금지 문장 자리에 인수받은 쓰기 단계 하나만 둔다. 공통 앞머리는 상수 `codexRoleLoadProbeFrame`, 조립은 `codexRoleLoadProbe`이며 `TestCodexRoleLoadProbeWordingIsUniform`이 모든 역할의 앞머리·NONCE 줄 동일성과 역할 이름 부재를 고정한다. 부모 프롬프트와 판정식은 바꾸지 않았다.
+
+비LIVE 음성 대조(`TestCodexRoleLoadNegativeControl`, 결정적): m8 run1 기록으로 `e2e-tester`의 하위 세션이 없는 상태(역할 파일 미로드)를 만들면 `codexRoleLoadFrom`이 nonce를 추출하지 못하고, LIVE 테스트가 쓰는 `codexRoleLoadsOK`가 false이며, AC-DHR-012 판정식의 역할 로드 조항(원문)을 같은 모양의 증거 파일에 jq로 돌린 출력이 다음과 같다(`run/m4r-negative-control.log`):
+
+```
+codex_role_load_control_test.go:78: AC-DHR-012 role-load clause, every role loaded: true
+codex_role_load_control_test.go:79: AC-DHR-012 role-load clause, e2e-tester not loaded: false
+```
+
+재실행: 2026-09-24T09:39:29Z–09:43:46Z, go test 종료 코드 1, 테스트 255초, 호출 14회, `aborted: false`, 로그인 파일 sha256 14회 모두 전후 `eb7c45bd…ef6630`. 상한 블록을 첫 호출 전에 `verdict.md`에 다시 적었고 원장 #21–#34를 남겼다.
+
+역할별 nonce: 10개 일치(`builder-harness`, `e2e-tester`, `manager-design`, `manager-develop`, `manager-docs`, `manager-git`, `manager-spec`, `plan-auditor`, `super-advisor`, `sync-auditor`). 불일치 2개: `manager-lead` 반환 `LEAD BLOCKED: The delegation named no work.`, `mission-governor` 반환 JSON `blocker` 결정("…The requested nonce-only response conflicts with the required decision-object o…"). 리드 조건에 따라 **FAIL**로 기록하고 더 돌리지 않았다. (ii)는 실행 1과 같다: 두 감사 모두 `route: launcher`, 쓰기 거부(`probe_exit_code: 1`, 탐침 파일 없음), 판정 파일 = 반환문.
+
+판정식(원문 그대로, 재실행 증거 기준):
+
+| AC | 출력 |
+|---|---|
+| AC-DHR-012 | `false` |
+| AC-DHR-023 | `false` |
+| AC-CAR-012b | `false` |
+| AC-CAR-012a | `true` |
+| AC-CAR-009 | `true` |
+
+AC-DHR-023과 AC-CAR-012b의 내용 조건은 실행 1처럼 충족되지만, 두 판정식이 요구하는 같은 테스트의 pass 이벤트가 두 역할 실패로 0이라 `false`다.
+
+검증(환경 정리 `unset MOAI_KANBAN MOAI_KANBAN_ID MOAI_KANBAN_LABEL MOAI_KANBAN_LEAD_ADDR MOAI_KANBAN_SETTINGS_INJECTED MOAI_KANBAN_BACKEND MOAI_FACTORY_WORKER MOAI_FACTORY_WORKERS && …`): `go test ./internal/cli -run 'CodexAudit|CodexRole|Codex|LiveBudget|LiveEvidence|Rollout'` 0(`run/m4r-test-cli.log`), `go vet ./internal/cli/...` 0, `golangci-lint run ./internal/cli/...` 0 `0 issues.`, `GOOS=windows GOARCH=amd64 go build ./...` 0, 윈도 `go vet` 0. 증거 토큰 grep 0건.
+
+Gaps (M4 재실행):
+
+- AC-DHR-012/023, AC-CAR-012b는 FAIL이다. `manager-lead`와 `mission-governor`의 역할 계약이 "과업 없음"이나 "결정 객체 외 출력"을 거부하도록 쓰여 있어, 두 역할에 공통인 탐침 문구로는 NONCE 한 줄 응답을 얻지 못했다. 역할 파일이 로드된 사실 자체는 두 역할의 계약 출력으로 드러나지만, 판정식은 NONCE만 받는다. 판정식이나 탐침 방식을 바꾸는 결정은 이 카드의 권한 밖이다.
+- 역할 로드 탐침은 여전히 부모 `-s workspace-write` + `spawn_agent` 경로다(이어받은 (i) 그대로). 네 read-only 역할이 이 경로에서 `workspace-write`로 돈다는 t1100 관측은 이 카드가 바꾸지 않았다.
+- 음성 대조의 jq 조항 실행은 `jq`가 PATH에 있어야 한다. 없으면 테스트가 실패로 알린다(건너뛰지 않음).
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 _<pending run-phase>_
