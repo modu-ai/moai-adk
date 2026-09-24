@@ -179,6 +179,9 @@ if [ -f "$d/sleep" ]; then
   echo $! > "$d/child.pid"
   wait
 fi
+if [ -f "$d/delay" ]; then
+  sleep "$(cat "$d/delay")"
+fi
 [ -f "$d/exec.out" ] && cat "$d/exec.out"
 exit "$(cat "$d/exec.rc" 2>/dev/null || echo 0)"
 `

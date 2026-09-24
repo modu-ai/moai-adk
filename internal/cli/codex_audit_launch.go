@@ -49,6 +49,7 @@ import (
 const (
 	codexAuditRouteDirect = "direct" // called in-process (tests)
 	codexAuditRouteShell  = "shell"  // the `moai codex audit` verb
+	codexAuditRouteMCP    = "mcp"    // the codex_role_audit MCP tool
 )
 
 const (
@@ -126,15 +127,41 @@ type codexAuditRole struct {
 	effort       string
 }
 
+// codexAuditPlan is a validated launch: every refusal has already happened,
+// the launch record is reserved, and only the audit process remains to run.
+type codexAuditPlan struct {
+	req        codexAuditRequest
+	root       string
+	dest       string
+	program    string
+	role       codexAuditRole
+	argv       []string
+	instrToken string
+	recRel     string
+	recFile    *os.File
+	started    time.Time
+}
+
 // @MX:ANCHOR: [AUTO] single entry for every read-only role launch (verb, MCP tool, LIVE tests)
 // @MX:REASON: the argv contract, confinement, and verbatim write must be identical on every route; a second path would reopen the spawn_agent write hole
 // runCodexAudit validates, launches, and records one read-only audit. It
 // returns a non-zero ExitCode (never a Go error) for every refusal or
 // failure, with the reason on req.Stderr.
 func runCodexAudit(ctx context.Context, req codexAuditRequest) (codexAuditResult, error) {
-	fail := func(format string, args ...any) (codexAuditResult, error) {
-		_, _ = fmt.Fprintf(req.Stderr, "codex audit %s: "+format+"\n", append([]any{req.Role}, args...)...)
+	plan := prepareCodexAudit(ctx, req)
+	if plan == nil {
 		return codexAuditResult{ExitCode: 1}, nil
+	}
+	return plan.run(ctx), nil
+}
+
+// prepareCodexAudit performs every check that refuses a launch and reserves
+// the launch record. A refusal writes its reason to req.Stderr, creates no
+// file, and returns nil; the returned plan owns the reserved record.
+func prepareCodexAudit(ctx context.Context, req codexAuditRequest) *codexAuditPlan {
+	fail := func(format string, args ...any) *codexAuditPlan {
+		_, _ = fmt.Fprintf(req.Stderr, "codex audit %s: "+format+"\n", append([]any{req.Role}, args...)...)
+		return nil
 	}
 
 	root, err := codexAuditValidateRoot(ctx, req.ProjectRoot, req.CallerDir, req.Root)
@@ -179,16 +206,24 @@ func runCodexAudit(ctx context.Context, req codexAuditRequest) (codexAuditResult
 	if err != nil {
 		return fail("cannot reserve launch record: %v", err)
 	}
-	defer func() { _ = recFile.Close() }()
+	return &codexAuditPlan{req: req, root: root, dest: dest, program: program, role: role,
+		argv: argv, instrToken: instrToken, recRel: recRel, recFile: recFile, started: started}
+}
 
-	message, runErr := codexAuditExec(ctx, program, argv, root, req.Task, req.Stderr, req.Timeout)
-	result := codexAuditResult{RecordPath: recRel}
+// run starts the audit process, writes the verdict on success, and completes
+// the launch record whatever the outcome.
+func (p *codexAuditPlan) run(ctx context.Context) codexAuditResult {
+	req := p.req
+	defer func() { _ = p.recFile.Close() }()
+
+	message, runErr := codexAuditExec(ctx, p.program, p.argv, p.root, req.Task, req.Stderr, req.Timeout)
+	result := codexAuditResult{RecordPath: p.recRel}
 	rec := codexAuditRecord{
 		SchemaVersion: codexAuditRecordVersion,
 		Role:          req.Role,
 		Route:         req.Route,
-		StartedAt:     started.Format(time.RFC3339),
-		Argv:          codexAuditRedactArgv(argv, instrToken, role.instructions),
+		StartedAt:     p.started.Format(time.RFC3339),
+		Argv:          codexAuditRedactArgv(p.argv, p.instrToken, p.role.instructions),
 		Sandbox:       codexAuditSandbox,
 		MCPServers:    "disabled",
 		Covers:        codexAuditCovers,
@@ -202,12 +237,12 @@ func runCodexAudit(ctx context.Context, req codexAuditRequest) (codexAuditResult
 	case message == "":
 		failure = "empty final message"
 	default:
-		if dest != "" {
-			if werr := codexAuditWriteVerdict(dest, []byte(message)); werr != nil {
+		if p.dest != "" {
+			if werr := codexAuditWriteVerdict(p.dest, []byte(message)); werr != nil {
 				failure = "verdict write failed: " + werr.Error()
 				break
 			}
-			rel := codexAuditRel(root, dest)
+			rel := codexAuditRel(p.root, p.dest)
 			sum := sha256.Sum256([]byte(message))
 			hexSum := hex.EncodeToString(sum[:])
 			rec.VerdictPath, rec.VerdictSHA256 = &rel, &hexSum
@@ -226,15 +261,15 @@ func runCodexAudit(ctx context.Context, req codexAuditRequest) (codexAuditResult
 	}
 	rec.EndedAt = codexAuditNow().UTC().Format(time.RFC3339)
 	body, _ := json.MarshalIndent(rec, "", "  ")
-	if _, werr := recFile.Write(append(body, '\n')); werr != nil && failure == "" {
+	if _, werr := p.recFile.Write(append(body, '\n')); werr != nil && failure == "" {
 		failure = "launch record write failed: " + werr.Error()
 		result.ExitCode = 1
 	}
-	_, _ = fmt.Fprintf(req.Stderr, "LAUNCH_RECORD %s\n", recRel)
+	_, _ = fmt.Fprintf(req.Stderr, "LAUNCH_RECORD %s\n", p.recRel)
 	if failure != "" {
 		_, _ = fmt.Fprintf(req.Stderr, "codex audit %s: audit failed: %s\n", req.Role, failure)
 	}
-	return result, nil
+	return result
 }
 
 // codexAuditValidateRoot accepts root only when, after symlink resolution, it

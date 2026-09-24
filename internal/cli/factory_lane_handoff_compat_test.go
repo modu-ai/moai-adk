@@ -86,8 +86,10 @@ func (r *processRecorder) install(t *testing.T) {
 
 // TestFactoryLaneHandoffT1074Compatibility is AC-FLH-015 (REQ-FLH-015): with
 // the handoff additions exercised end to end, the t1074 broker, roster, and
-// receipt behavior still holds on the same broker, the MCP catalog stays at 36
-// tools (14 write-capable, 22 read-only) and matches the registered server,
+// receipt behavior still holds on the same broker, the MCP catalog stays at 39
+// tools (15 write-capable, 24 read-only — 36/14/22 when the handoff landed,
+// plus the Codex read-only role launcher's start/status/result trio added
+// later) and matches the registered server,
 // and the handoff adds no broker database root, daemon, private socket, or
 // parallel message store.
 func TestFactoryLaneHandoffT1074Compatibility(t *testing.T) {
@@ -100,12 +102,12 @@ func TestFactoryLaneHandoffT1074Compatibility(t *testing.T) {
 			read++
 		}
 	}
-	if total := write + read; total != 36 || write != 14 || read != 22 {
-		t.Fatalf("MCP catalog = %d total / %d write / %d read, want 36/14/22", total, write, read)
+	if total := write + read; total != 39 || write != 15 || read != 24 {
+		t.Fatalf("MCP catalog = %d total / %d write / %d read, want 39/15/24", total, write, read)
 	}
 	registered := listToolNames(t)
-	if len(registered) != 36 {
-		t.Fatalf("registered MCP tools = %d, want 36", len(registered))
+	if len(registered) != 39 {
+		t.Fatalf("registered MCP tools = %d, want 39", len(registered))
 	}
 	inCatalog := map[string]bool{}
 	for _, def := range mcpcat.MoaiMCPTools() {
@@ -229,5 +231,5 @@ func TestFactoryLaneHandoffT1074Compatibility(t *testing.T) {
 			t.Fatalf("handoff subprocess %v was never waited: a lingering process", c.Args)
 		}
 	}
-	t.Logf("AC_FLH_015 catalog=36/14/22 stores=%d git_calls=%d", len(before), len(procs.cmds))
+	t.Logf("AC_FLH_015 catalog=39/15/24 stores=%d git_calls=%d", len(before), len(procs.cmds))
 }
