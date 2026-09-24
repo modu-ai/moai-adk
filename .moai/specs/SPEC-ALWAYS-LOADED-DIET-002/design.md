@@ -4,30 +4,38 @@
 
 ---
 
-## §1. 파일별 실측 (이 실행, 이 트리)
+## §1. 파일별 실측 (라이브 트리, 이 실행)
 
-문단 단위 분류. 문단이 `[HARD]` / `MUST` / `MUST NOT` / `shall ` 중 하나라도 담으면 **구속**, 아니면 **재배치 가능**으로 센다. `discovery.md` §5 의 집계(173,286)를 파일 단위로 푼 것이며, 차이(172,363 vs 173,286)는 discovery 가 룰 14개를 템플릿 트리에서 잰 반면 여기서는 라이브 트리에서 쟀기 때문이다 — 같은 축의 같은 방법이다.
+> **[개정 — 2026-09-25, plan-audit iter3 N6]** 종전 표에는 **생성기 산물**이 있었다. 측정 스크립트가 문단마다 `len(para)+2` 로 구분자 2자를 더해, 파일마다 합이 `현재+2` 가 되고 총계가 부풀었다. 가장 뚜렷한 증상은 `goal-directive` 의 재배치 6,877 — **파일 자체가 6,875자라 어느 트리에서도 산출 불가능한 값**이었다. 구분자를 어느 쪽에도 귀속시키지 않는 방식으로 다시 도출했다.
 
-| 파일 | 현재 | 구속 | 재배치 가능 | 가능 비율 |
-|---|---:|---:|---:|---:|
-| `workflow/kanban-dispatch.md` | 39,077 | 18,945 | 20,134 | 51.5% |
-| `core/agent-common-protocol.md` | 28,381 | 7,905 | 20,478 | 72.2% |
-| `core/askuser-protocol.md` | 24,466 | 8,742 | 15,726 | 64.3% |
-| `workflow/session-handoff.md` | 19,908 | 6,412 | 13,498 | 67.8% |
-| `CLAUDE.md` | 19,305 | 3,033 | 16,274 | 84.3% |
-| `core/moai-constitution.md` | 17,272 | 7,180 | 10,094 | 58.4% |
-| `core/verification-claim-integrity.md` | 16,636 | 8,046 | 8,592 | 51.6% |
-| `AGENTS.md` | 16,374 | 2,817 | 13,559 | 82.8% |
-| `workflow/cross-session-messaging.md` | 16,330 | 2,497 | 13,835 | 84.7% |
-| `workflow/context-window-management.md` | 11,447 | 2,561 | 8,887 | 77.6% |
-| `core/moai-mcp-tools.md` | 7,400 | 651 | 6,751 | 91.2% |
-| `workflow/cache-aware-execution.md` | 6,907 | 1,861 | 5,048 | 73.1% |
-| `workflow/goal-directive.md` | 6,875 | 0 | 6,877 | 100.0% |
-| `workflow/main-checkout-branch-guard.md` | 6,814 | 658 | 6,158 | 90.4% |
-| `workflow/skill-routing.md` | 5,709 | 2,465 | 3,246 | 56.9% |
-| `core/native-idiom-and-register.md` | 3,815 | 842 | 2,975 | 78.0% |
-| `language.yaml` + `user.yaml` | 227 | 0 | 227 | — |
-| **합계** | **246,943** | **74,615** | **172,363** | **69.8%** |
+측정 대상은 **라이브 트리**(`.claude/rules/moai/`, 그리고 저장소 루트의 `CLAUDE.md`·`AGENTS.md`). 문단 단위 분류 — 문단이 `[HARD]` / `MUST` / `MUST NOT` / `shall ` 중 하나라도 담으면 **구속**, 아니면 **재배치 가능**. 문단 사이 빈 줄은 **어느 쪽도 아니므로** 두 열의 합은 `현재` 보다 작다.
+
+| 파일 | 현재 | 구속 | 재배치 가능 | 구분자 | 가능 비율 |
+|---|---:|---:|---:|---:|---:|
+| `workflow/kanban-dispatch.md` | 39,077 | 18,867 | 19,974 | 236 | 51.1% |
+| `core/agent-common-protocol.md` | 28,381 | 7,861 | 20,284 | 236 | 71.5% |
+| `core/askuser-protocol.md` | 24,466 | 8,702 | 15,554 | 210 | 63.6% |
+| `workflow/session-handoff.md` | 19,908 | 6,392 | 13,392 | 124 | 67.3% |
+| `CLAUDE.md` | 19,305 | 3,025 | 16,120 | 160 | 83.5% |
+| `core/moai-constitution.md` | 17,272 | 7,152 | 9,962 | 158 | 57.7% |
+| `core/verification-claim-integrity.md` | 16,636 | 8,012 | 8,516 | 108 | 51.2% |
+| `AGENTS.md` | 16,374 | 2,807 | 13,437 | 130 | 82.1% |
+| `workflow/cross-session-messaging.md` | 16,330 | 2,485 | 13,747 | 98 | 84.2% |
+| `workflow/context-window-management.md` | 11,447 | 2,549 | 8,823 | 75 | 77.1% |
+| `core/moai-mcp-tools.md` | 7,400 | 649 | 6,709 | 42 | 90.7% |
+| `workflow/cache-aware-execution.md` | 6,907 | 1,851 | 5,018 | 38 | 72.7% |
+| `workflow/goal-directive.md` | 6,875 | 0 | 6,833 | 42 | 99.4% |
+| `workflow/main-checkout-branch-guard.md` | 6,814 | 652 | 6,096 | 66 | 89.5% |
+| `workflow/skill-routing.md` | 5,709 | 2,455 | 3,212 | 42 | 56.3% |
+| `core/native-idiom-and-register.md` | 3,815 | 838 | 2,943 | 34 | 77.1% |
+| `language.yaml` + `user.yaml` | 227 | 0 | 227 | 0 | — |
+| **합계** | **246,943** | **74,297** | **170,847** | 1,799 | **69.2%** |
+
+검산: 74,297 + 170,847 + 1,799 = 246,943 ✓ (열 셋이 파일 전체를 남김없이 분할한다).
+
+**종전 값과의 차이**: 재배치 가능 풀 172,363 → **170,847** (−1,516). 구분자 1,799자 중 대부분이 종전에 재배치 가능으로 잘못 귀속돼 있었다. 이 수정은 §B 가 인용하는 헤드라인 수치를 움직이므로 자릿수만 고치지 않고 그 주장도 다시 검토했다 — 결론은 §B 참조: 풀 170,847 은 요구치 96,943 의 **1.76배**(종전 1.78배)이고, 구속 조항을 강등하지 않고 도달 가능하다는 결론은 유지된다.
+
+**개정 목표(§3.2) 대비 파일별 적합성도 다시 확인했다** — gross 117,200 은 풀의 68.6%이고, 16개 파일 전부에서 목표가 그 파일의 풀 안에 들어간다. 가장 빡빡한 것은 `moai-constitution`(8,500 / 9,962 = 85%)이다.
 
 `goal-directive.md` 의 구속 0 은 그 파일이 이미 stub 화되어 구속 조항을 detail 과 `goal.md` 로 **참조**만 하고 있기 때문이다 — 분리 선례로 삼을 파일이지, 마음껏 잘라도 되는 파일이 아니다.
 
@@ -47,22 +55,32 @@
 
 아래 표는 **각 stub 이 이미 가진 companion 의 목록**이지 최종 배정이 아니다. 최종 배정은 수용량을 반영한 **§2.2** 이며, 이 표의 세 행(`kanban-dispatch`·`session-handoff`·`agent-common-protocol`)은 거기서 바뀐다.
 
-**수치의 트리 표기 (D4)**: 이 절과 §2.1 의 모든 자수는 **라이브 트리**(`.claude/rules/moai/`) 실측이다. 파일당 한도 4개 목록은 두 트리에서 동일함을 확인했으나(`spec.md §D`), companion 자수는 두 트리가 갈릴 수 있으므로 어느 쪽을 잰 것인지 밝힌다. §1 의 18파일 실측도 라이브 트리 기준이며, `discovery.md §5` 의 집계(173,286)만 템플릿 트리 기준이라 0.5% 차이가 난다.
+**수치의 트리 표기 (D4 — iter3 에서 회귀 판정, 재측정 후 정정)**
 
-| stub (always-loaded) | 기존 companion (path-scoped) | companion 현재 크기 |
+> **[개정 — iter3 D4]** 종전 수리는 "이 절과 §2.1 의 모든 자수는 라이브 트리 실측"이라고 **단언했는데 재측정 없이 쓴 문장이었고, 사실과 반대였다.** 실제로는 이 절의 표가 **템플릿** 값(`agent-common-protocol-reference` 31,174 등), §2.1 이 **라이브** 값(31,207 등)이었다. 미측정 귀속은 아무것도 주장하지 않아 정직하지만, 측정한 것처럼 들리는 틀린 귀속은 그렇지 않다 — Gap 을 위반된 주장으로 승격시킨 셈이다. 두 트리를 다시 재고 아래에 쓴다.
+
+**두 트리를 모두 쟀다.** 아래 표와 §2.1·§2.2 의 companion 자수는 전부 **라이브 트리**(`.claude/rules/moai/`)로 통일했다. §1 의 18파일 실측도 라이브다.
+
+**두 트리가 갈리는 companion 이 14개 중 6개 있다**(라이브 − 템플릿): `main-checkout-branch-guard-detail` +362 · `moai-constitution-detail` +145 · `verification-claim-integrity-detail` +64 · `cross-session-messaging-detail` +61 · `agent-common-protocol-reference` +33 · `cache-aware-execution-reference` +25. 나머지 8개는 바이트 동일.
+
+이 분기는 이 카드가 만든 것이 아니라 **선행 상태**다. 다만 이 카드가 그중 어느 것이든 목적지로 쓰면 REQ-ALD2-007(미러 동등)이 걸리므로, 해당 companion 은 수정 시 두 사본을 같은 커밋에서 맞춘다 — 분기를 물려받은 채 덮지 않는다.
+
+수용량 판정(§2.1)에 라이브를 쓰는 이유: 파일당 한도를 발화시키는 것은 **세션이 실제로 로드하는 사본**이고, 이 저장소에서 그것은 라이브다. 템플릿 사본은 사용자 프로젝트에서 같은 역할을 하므로 REQ-ALD2-007 이 따로 덮는다.
+
+| stub (always-loaded) | 기존 companion (path-scoped) | companion 현재 크기 (라이브) |
 |---|---|---:|
 | `workflow/kanban-dispatch.md` | `workflow/kanban-dispatch-detail.md` | 41,036 |
-| `core/agent-common-protocol.md` | `core/agent-common-protocol-reference.md` | 31,174 |
+| `core/agent-common-protocol.md` | `core/agent-common-protocol-reference.md` | 31,207 |
 | `core/askuser-protocol.md` | `core/askuser-protocol-reference.md` | 15,646 |
 | `workflow/session-handoff.md` | `workflow/session-handoff-examples.md` | 41,616 |
-| `core/moai-constitution.md` | `core/moai-constitution-detail.md` | 7,499 |
-| `core/verification-claim-integrity.md` | `core/verification-claim-integrity-detail.md` | 21,283 |
-| `workflow/cross-session-messaging.md` | `workflow/cross-session-messaging-detail.md` | 15,160 |
+| `core/moai-constitution.md` | `core/moai-constitution-detail.md` | 7,644 |
+| `core/verification-claim-integrity.md` | `core/verification-claim-integrity-detail.md` | 21,347 |
+| `workflow/cross-session-messaging.md` | `workflow/cross-session-messaging-detail.md` | 15,221 |
 | `workflow/context-window-management.md` | `workflow/context-window-management-detail.md` | 7,486 |
 | `core/moai-mcp-tools.md` | `core/moai-mcp-tools-catalogue.md` | 11,424 |
-| `workflow/cache-aware-execution.md` | `workflow/cache-aware-execution-reference.md` | 5,816 |
+| `workflow/cache-aware-execution.md` | `workflow/cache-aware-execution-reference.md` | 5,841 |
 | `workflow/goal-directive.md` | `workflow/goal-directive-detail.md` | 20,283 |
-| `workflow/main-checkout-branch-guard.md` | `workflow/main-checkout-branch-guard-detail.md` | 9,622 |
+| `workflow/main-checkout-branch-guard.md` | `workflow/main-checkout-branch-guard-detail.md` | 9,984 |
 | `workflow/skill-routing.md` | `workflow/skill-routing-detail.md` | 1,351 |
 | `core/native-idiom-and-register.md` | `core/native-idiom-and-register-detail.md` | 2,509 |
 | `CLAUDE.md` | 없음 — 기존 path-scoped 룰을 가리킨다 | — |
@@ -130,22 +148,22 @@
 
 | 파일 | 풀 | 종전 | **개정 목표(gross)** | 재유입률 | 재유입 | **net** |
 |---|---:|---:|---:|---:|---:|---:|
-| `kanban-dispatch.md` | 20,134 | 16,000 | 16,000 | 17.44% | 2,790 | 13,210 |
-| `agent-common-protocol.md` | 20,478 | 15,000 | 15,000 | 12.88% | 1,932 | 13,068 |
-| `askuser-protocol.md` | 15,726 | 11,000 | 11,000 | 6.17% | 679 | 10,321 |
-| `session-handoff.md` | 13,498 | 10,000 | 10,000 | 8.26% | 826 | 9,174 |
-| `cross-session-messaging.md` | 13,835 | 9,000 | 9,000 | 7.85% | 706 | 8,294 |
-| `moai-constitution.md` | 10,094 | 7,000 | **8,500** | 1.88% | 160 | 8,340 |
-| `CLAUDE.md` | 16,274 | 8,000 | 8,000 | 8.67% | 694 | 7,306 |
-| `context-window-management.md` | 8,887 | 5,000 | **6,500** | 3.10% | 202 | 6,298 |
-| `verification-claim-integrity.md` | 8,592 | 6,000 | 6,000 | 8.18% | 491 | 5,509 |
-| `moai-mcp-tools.md` | 6,751 | 4,000 | **5,500** | 0.86% | 47 | 5,453 |
-| `main-checkout-branch-guard.md` | 6,158 | 3,500 | **5,000** | 1.69% | 84 | 4,916 |
-| `goal-directive.md` | 6,877 | 3,000 | **4,500** | 3.75% | 169 | 4,331 |
-| `AGENTS.md` | 13,559 | 4,000 | 4,000 | **0%** | 0 | 4,000 |
-| `cache-aware-execution.md` | 5,048 | 3,000 | **4,000** | 1.87% | 75 | 3,925 |
-| `skill-routing.md` | 3,246 | 1,800 | **2,200** | 4.37% | 96 | 2,104 |
-| `native-idiom-and-register.md` | 2,975 | 1,500 | **2,000** | 3.39% | 68 | 1,932 |
+| `kanban-dispatch.md` | 19,974 | 16,000 | 16,000 | 17.44% | 2,790 | 13,210 |
+| `agent-common-protocol.md` | 20,284 | 15,000 | 15,000 | 12.88% | 1,932 | 13,068 |
+| `askuser-protocol.md` | 15,554 | 11,000 | 11,000 | 6.17% | 679 | 10,321 |
+| `session-handoff.md` | 13,392 | 10,000 | 10,000 | 8.26% | 826 | 9,174 |
+| `cross-session-messaging.md` | 13,747 | 9,000 | 9,000 | 7.85% | 706 | 8,294 |
+| `moai-constitution.md` | 9,962 | 7,000 | **8,500** | 1.88% | 160 | 8,340 |
+| `CLAUDE.md` | 16,120 | 8,000 | 8,000 | 8.67% | 694 | 7,306 |
+| `context-window-management.md` | 8,823 | 5,000 | **6,500** | 3.10% | 202 | 6,298 |
+| `verification-claim-integrity.md` | 8,516 | 6,000 | 6,000 | 8.18% | 491 | 5,509 |
+| `moai-mcp-tools.md` | 6,709 | 4,000 | **5,500** | 0.86% | 47 | 5,453 |
+| `main-checkout-branch-guard.md` | 6,096 | 3,500 | **5,000** | 1.69% | 84 | 4,916 |
+| `goal-directive.md` | 6,833 | 3,000 | **4,500** | 3.75% | 169 | 4,331 |
+| `AGENTS.md` | 13,437 | 4,000 | 4,000 | **0%** | 0 | 4,000 |
+| `cache-aware-execution.md` | 5,018 | 3,000 | **4,000** | 1.87% | 75 | 3,925 |
+| `skill-routing.md` | 3,212 | 1,800 | **2,200** | 4.37% | 96 | 2,104 |
+| `native-idiom-and-register.md` | 2,943 | 1,500 | **2,000** | 3.39% | 68 | 1,932 |
 | yaml 2개 | — | 0 | 0 | — | 0 | 0 |
 | **합계** | | 107,800 | **117,200** | | **9,019** | **108,181** |
 
@@ -181,9 +199,9 @@ post-state: 246,943 − 108,181 = **138,762** < 150,000.
 
 실측의 2배여도 통과한다. **종전 목표로는 ×1.5 에서 이미 미달이었다** — 재유입 13,194, net 94,606, 부족 2,337.
 
-**이것은 문서 편집이 아니라 설계 변경이다.** 파일별 목표 7개가 바뀌었고, `plan.md` 의 마일스톤 목표 수치도 함께 바뀐다. 감사 보고서의 "모든 수리는 문서 편집, 설계 변경 없음" 분류는 이 항목에 대해서는 맞지 않다.
+**이것은 문서 편집이 아니라 설계 변경이다.** 파일별 목표 **8개**가 바뀌었고, `plan.md` 의 마일스톤 목표 수치도 함께 바뀐다. 감사 보고서의 "모든 수리는 문서 편집, 설계 변경 없음" 분류는 이 항목에 대해서는 맞지 않다.
 
-`AGENTS.md` 의 30%(4,000/13,559)는 다른 행보다 낮다. M2 만 허용되기 때문이며(REQ-ALD2-011), 절충이 아니라 그 요구사항의 직접적 귀결이다. `CLAUDE.md` 의 49% 도 같은 이유로 보수적이다 — 중복 제거는 "정본이 실제로 다른 곳에 있는가"를 건건이 확인해야 하고, 확인되지 않은 문단은 그대로 둔다.
+`AGENTS.md` 의 30%(4,000/13,437)는 다른 행보다 낮다. M2 만 허용되기 때문이며(REQ-ALD2-011), 절충이 아니라 그 요구사항의 직접적 귀결이다. `CLAUDE.md` 의 50%(8,000/16,120)도 같은 이유로 보수적이다 — 중복 제거는 "정본이 실제로 다른 곳에 있는가"를 건건이 확인해야 하고, 확인되지 않은 문단은 그대로 둔다.
 
 ---
 
@@ -191,17 +209,28 @@ post-state: 246,943 − 108,181 = **138,762** < 150,000.
 
 REQ-ALD2-010 이 요구하는 산출물의 **양식**이다. 실제 절 이름은 run phase 에서 각 파일을 열어 확정한다 — plan phase 에서 절 목록을 미리 못 박으면 열어 보고 달라졌을 때 SPEC 을 고쳐야 한다.
 
-| # | 출발 stub | 옮기는 절 | 목적지 companion | companion `paths:` | domain-keyed 근거 | 범위 의존 |
-|---|---|---|---|---|---|---|
-| R-01 | `kanban-dispatch.md` | *(run 에서 확정)* | `kanban-dispatch-detail.md` | *(run 에서 확정)* | *(run 에서 확정)* | *(run 에서 확정)* |
-| … | … | … | … | … | … | … |
+| # | 출발 stub | **기제** | 제거되는 절 | 목적지 | companion `paths:` | domain-keyed 근거 | 범위 의존 |
+|---|---|---|---|---|---|---|---|
+| R-01 | `kanban-dispatch.md` | M1 | *(run 에서 확정)* | *(신규 companion — §2.2)* | *(run)* | *(run)* | *(run)* |
+| R-02 | `AGENTS.md` | **M2** | *(run 에서 확정)* | **`삭제(목적지 없음)`** | **해당없음** | **해당없음** | *(run)* |
+| R-03 | `CLAUDE.md` | **M1′** | *(run 에서 확정)* | **`삭제(목적지 없음)`** | **해당없음** | **해당없음** | *(run)* |
+| … | … | … | … | … | … | … | … |
+
+> **[개정 — iter3 N3]** 종전 스키마에는 `기제` 열이 없었고 목적지·`paths:`·domain-keyed 근거 세 칸이 **필수**였다. 그 형태로는 삭제 행을 담을 수 없다 — M2·M1′ 에는 목적지가 없어 세 칸이 답할 수 없는 질문이 된다. REQ-ALD2-017 과 AC-ALD2-004 는 삭제 행을 **요구하는데** 표에는 그것을 넣을 자리가 없었던 것이다. run 중에 표를 채우는 사람이 요구받은 것을 적을 칸이 없는 양식을 마주하게 된다. `기제` 열을 추가하고 삭제 행의 세 칸을 `해당없음` 으로 규정한다.
 
 각 행이 만족해야 하는 조건:
 
-1. **옮기는 절**은 `[HARD]` / `MUST` / `MUST NOT` / `shall ` 을 한 줄도 포함하지 않는다(REQ-ALD2-002·003).
-2. **`paths:`** 는 부모 stub 경로만 담지 않는다. 그 companion 이 다루는 작업을 하는 동안 세션이 실제로 건드리는 경로를 함께 키로 잡는다(REQ-ALD2-004).
-3. **domain-keyed 근거**는 "이 companion 이 필요해지는 작업은 무엇이며 그 작업이 어느 경로를 건드리는가"를 한 문장으로 답한다.
-4. **범위 의존**은 그 절을 참조하는 stub 내 구속 조항을 **열거**하고, 조항마다 두 질문에 모두 답한다 — **Q1** 이동 후에도 자기 범위 문맥에 도달하는가(축소 방향), **Q2** 범위가 이동 전보다 넓어지지 않았는가(확대 방향). 참조하는 조항이 없으면 `없음` 이라 적는다 — 빈칸으로 두지 않는다. `없음` 은 확인했다는 뜻이고 빈칸은 보지 않았다는 뜻이며, 둘은 같지 않다.
+0. **`기제`** 는 `M1`(companion 으로 이동) · `M1′`(중복 제거) · `M2`(제자리 압축 삭제) 중 하나다. 이 값이 아래 조건 2·3 의 적용 여부를 정한다.
+1. **제거되는 절**은 `[HARD]` / `MUST` / `MUST NOT` / `shall ` 을 한 줄도 포함하지 않는다(REQ-ALD2-002·003).
+2. *(M1 행에만 적용)* **`paths:`** 는 부모 stub 경로만 담지 않는다. 그 companion 이 다루는 작업을 하는 동안 세션이 실제로 건드리는 경로를 함께 키로 잡는다(REQ-ALD2-004).
+3. *(M1 행에만 적용)* **domain-keyed 근거**는 "이 companion 이 필요해지는 작업은 무엇이며 그 작업이 어느 경로를 건드리는가"를 한 문장으로 답한다.
+
+   **M1′·M2 행에서 2·3 은 `해당없음` 이다** — 목적지가 없으므로 답할 대상이 없다. `해당없음` 은 빈칸이 아니며, 조건 4(범위 의존)는 **기제와 무관하게 모든 행에** 적용된다.
+4. **범위 의존**은 제거되는 절에 **지배받는** stub 내 구속 조항을 **열거**하고, 조항마다 두 질문에 모두 답한다 — **Q1** 이동 후에도 자기 범위 문맥에 도달하는가(축소), **Q2** 범위가 이동 전보다 넓어지지 않았는가(확대).
+
+   **선택 술어 — 참조가 아니라 「지배받는가」다.** 그 절을 **참조**하는 조항만 세면 방향 2 가 빠져나간다 — 범위를 좁히던 문장은 아래 조항에 **참조되지 않고 위치로 지배**하기 때문이다(§D.3 방향 2 의 문장: "바로 아래의 `[HARD]` 조항"). 열거 대상은 셋이다: (a) 그 절을 명시적으로 참조하는 조항, (b) 제거 지점에 **인접**한 조항 — 같은 절·같은 소제목 아래, 또는 바로 위·아래, (c) 그 절이 정의·한정하던 용어를 쓰는 조항. `없음` 은 **셋 모두 확인한 뒤**에만 적는다.
+
+   `없음` 은 빈칸과 다르다 — 확인했다는 뜻이다. 다만 셋 중 하나만 보고 적은 `없음` 은 빈칸과 같다.
 
    Q2 가 따로 필요한 이유: 범위를 **좁히던** 비구속 문장이 절과 함께 떠나면 남은 구속 조항이 더 넓게 읽힌다. 결손이 아니라 증가 방향의 실패라 손실 탐지기가 발화하지 않고, Q1 만 묻는 칸은 그것을 통과시킨다.
 
