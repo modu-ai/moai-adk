@@ -1,10 +1,10 @@
 ---
 id: SPEC-FACTORY-LANE-WORKTREE-HANDOFF-001
 title: "Factory lane card worktree handoff"
-version: "0.5.11"
+version: "0.5.12"
 status: completed
 created: 2026-09-22
-updated: 2026-09-24
+updated: 2026-09-25
 author: manager-spec
 priority: P1
 phase: "v3.0.0"
@@ -23,6 +23,7 @@ card: t1082
 
 | Version | Date | Change |
 |---|---|---|
+| 0.5.12 | 2026-09-25 | 카드 t1170. 카드 t1143(SPEC-CODEX-AUDIT-READONLY-001)이 MCP catalog를 39개(쓰기 15, 읽기 24)로 올려 AC-FLH-015 Then 절의 `36 total/14 write/22 read` 리터럴이 현재 값과 어긋났다. 새 리터럴로 다시 고정하지 않고, catalogue SSOT(`.claude/rules/moai/core/moai-mcp-tools.md` + `moai-mcp-tools-catalogue.md`, `internal/mcp/catalog_test.go`가 고정)를 참조하도록 바꿨다. 다음 catalog 변경이 이 SPEC에 다시 드리프트를 만들지 않게 하기 위해서다. 같은 리터럴을 쓰던 plan.md 형제 문장도 같은 방식으로 맞췄고, spec.md의 plan 시점 관측(36/14/22)은 이력으로 남기고 현재 개수는 SSOT가 정한다는 괄호만 덧붙였다. 판정식(AC-FLH-015 bash 블록)과 AC 개수는 바꾸지 않았다. progress.md의 관측 기록도 손대지 않았다. 카드 t1145의 SPEC 본문에 있는 「36/14/22 유지」 문구 여섯 곳은 t1145가 develop을 흡수할 때 스스로 고치며, 여기서는 바꾸지 않았다. |
 | 0.5.11 | 2026-09-24 | 리드 결정 (a)(Jev (a) 0.79 / (b) 0.16)에 따라 sync-audit `.moai/reports/t1082/sync-audit-deep.md`의 F1·F2·F10을 반영했다. F1: REQ-FLH-014와 AC-FLH-012·013을 이 SPEC 범위에서 빼 § Out of Scope — LIVE cross-harness proof(카드 t1145로 이관)와 acceptance.md § Exclusions로 옮기고 카드 t1145에 넘겼다. 요구사항 문장, Given/When/Then, 기대 결과, 명령, jq predicate는 t1145가 바꾸지 않고 이어받도록 원문 그대로 옮겼다. 활성 REQ 목록, 추적표, acceptance.md의 요약표·MUST-PASS 조항·LIVE policy 조항·RED-now 원장 해당 행, plan.md M5에서 두 AC를 뺐다. REQ-FLH-013의 LIVE 검증 다리도 함께 넘어가 이 SPEC 안에서 REQ-FLH-013은 AC-FLH-011로만 검증한다. `internal/cli/factory_lane_handoff_live_gate_test.go`는 옮긴 제목 아래 bash 블록을 그대로 읽는다. § Known limitation(production 진입 경로 없음)은 여전히 참이라 남겼다. F2: 0.5.10 행은 status를 in-progress로 둔 것을 리드 결정처럼 적었는데, 실제로는 레인 판단이었고 리드는 status를 정하지 않았다. 그 문장을 고쳤다. 이관을 마친 뒤 리드 판정은 이 SPEC을 `completed`로 닫는 것이다. 전이 자체는 sync에서 manager-docs가 하며, 여기서는 status를 바꾸지 않는다. F10: acceptance.md의 활성 AC 명령 18개의 환경 정리(`unset`) 목록에 `MOAI_KANBAN_BACKEND`·`MOAI_FACTORY_WORKERS`를 더했다. 이관한 AC-FLH-012·013 명령은 원문 보존을 위해 손대지 않았고, t1145가 이어받을 때 더해야 한다고 § Exclusions에 적었다. |
 | 0.5.10 | 2026-09-24 | 리드 결정: M5 LIVE를 카드 t1145로 분리했다(Jev S 0.74 / K 0.28). 근거는 progress.md § M5 lane record다. LIVE는 두 행 모두 `NOT_RUN`으로 FAIL이었고 model 호출은 0회였다. 막힌 이유는 넷이다. SPEC에 model 호출 상한이 없었다. 격리한 home에서는 두 harness 모두 인증되지 않았다. handoff를 시작하는 production 경로가 없었다. AC-FLH-012는 운영자의 실제 `/cd`가 필요하다. 그래서 AC-FLH-012·013의 기대 결과·명령·jq predicate는 그대로 두고, AC 본문과 acceptance.md 요약행, 이 문서의 추적표에 `NOT_RUN → t1145`를 적었다. Scope 영역에 알려진 한계를 더했다. M1–M4가 착지시킨 handoff controller와 재기동 reconciler는 테스트 밖에서 부르는 곳이 없어서, 이 SPEC이 착지해도 handoff는 쓸 수 있는 기능이 아니다. 운영자가 쓰려면 t1145가 필요하고, REQ-FLH-014는 t1145까지 충족되지 않는다. design.md 잔여 위험과 plan.md M5에 같은 내용을 짧게 적었다. t1145의 범위는 이 SPEC이 정하지 않는다. status를 in-progress로 둔 것은 레인 판단이며 리드가 정한 것이 아니다(0.5.11에서 정정). |
 | 0.5.9 | 2026-09-23 | 리드 결정: v058 minor M1·M2 를 재감사 없이 M4 에 흡수 — M1 순서 정정(의미 불변), M2 hook 다리 단언 추가. 근거는 `.moai/reports/t1082/plan-audit-delta-v058.md`의 M1·M2다. M1: acceptance.md AC-FLH-007에서 BOUND 행 다리를 launcher 다리 앞으로 옮겨 서술 순서를 상태 진행 순서와 맞췄고, 문장·명령·jq 게이트·named test는 바꾸지 않았다. M2: AC-FLH-003 hook 안내문 다리에, 현재 endpoint가 launch-pending 행일 때 tombstone된 session의 SessionStart 안내문이 같은 상태의 UserPromptSubmit 안내문(빈 session 렌더링)과 바이트 동일하고 행을 바꾸지 않는다는 단언을 더했으며, 요약행과 RED 원장(HEAD `ec33efa6a`, exit 1)·앵커·양성 대조·행동 탐침 관측을 기록했다. |
@@ -71,7 +72,7 @@ factory lead 운영자로서 안정 lane에 카드를 배차한 뒤 그 lane의 
 - 현재 plan 기준 HEAD: `bf39a539d97f49edf3b11517ee7c982239c60df3`.
 - 이 worktree는 `moai worktree new t1082` 실행 시 primary `main@2213871af`에서 잘못 시작했고, 이후 `git merge --ff-only develop`로 `develop@3f3ffbb57`에 맞춰졌다. 이 관측된 creation-base drift는 REQ-FLH-004와 AC-FLH-016의 필수 실패 사례다.
 - t1074 의존 merge는 `bf39a539d`, 의존 commit `8c5d9be99`는 현재 HEAD의 ancestor다.
-- 현재 MCP catalog는 단위 검증에서 36개(쓰기 14, 읽기 22)로 관측됐다. 이 SPEC은 새 MCP tool을 기본 해법으로 추가하지 않는다.
+- 현재 MCP catalog는 단위 검증에서 36개(쓰기 14, 읽기 22)로 관측됐다(plan 시점 관측이다. 현재 개수는 catalogue SSOT `.claude/rules/moai/core/moai-mcp-tools.md`가 정하며, 카드 t1143이 39개(쓰기 15, 읽기 24)로 올렸다). 이 SPEC은 새 MCP tool을 기본 해법으로 추가하지 않는다.
 
 ### Known limitation — handoff에 production 진입 경로가 없다 (0.5.10, t1145 대기)
 

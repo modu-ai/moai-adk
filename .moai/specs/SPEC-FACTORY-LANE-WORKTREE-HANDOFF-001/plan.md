@@ -104,7 +104,7 @@ module: "internal/factorymsg"
 2. 단위 테스트는 Go JSON event와 `jq -se`로 정확히 한 named PASS, 전체 child/subtest/package fail 0, 전체 skip 0, `NOT_RUN` 0을 요구한다.
 3. (0.5.11: 3·4항의 LIVE 검증은 카드 t1145로 이관됐다.) LIVE는 provider credential을 command 안에서 scrub하되 실제 설치 인증 context를 사용하는 기존 t1074 harness 규칙을 따르고, 별도 `jq -e`로 card-scoped evidence의 exact typed schema와 cross-field equality를 검증한다.
 4. 두 LIVE gate는 `TestFactoryLaneHandoffLiveEvidenceGateRejectsMutants` PASS도 요구한다. 이 test는 acceptance의 production predicate를 직접 호출해 missing/fixture/mock/direct-registration/child-fail/child-skip 및 stored-history `wrong_method_thread_start` mutant가 모두 거부됨을 증명한다.
-5. 변경 범위 unit/race/vet 후 t1074 regression과 MCP catalog 36/14/22 invariant를 실행한다.
+5. 변경 범위 unit/race/vet 후 t1074 regression과 MCP catalog invariant(총수와 쓰기/읽기 구성은 catalogue SSOT `.claude/rules/moai/core/moai-mcp-tools.md` + `moai-mcp-tools-catalogue.md`가 정하고 `internal/mcp/catalog_test.go`가 고정한다)를 실행한다.
 6. 전체 suite는 로컬 loaded-machine proof로 대체하지 않고 push 후 CI에 맡긴다.
 
 ## Rollback and failure handling
