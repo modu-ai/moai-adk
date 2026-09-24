@@ -81,6 +81,9 @@ type fireProbeReport struct {
 	P5SwapPremise          map[string]bool `json:"p5_swap_premise"`
 	P5SwapPremiseFalseLegs []string        `json:"p5_swap_premise_false_legs"`
 	CPUThrottleRate        float64         `json:"cpu_throttle_rate"`
+	// card t1167 — written only when the settle wait ended "document
+	// replaced": did the navigated document finish loading within the bound?
+	P5ReplacedDocumentReady *bool `json:"p5_replaced_document_ready"`
 	// Written only by the late-listener fixture copy: did the DOM condition
 	// confirm the swap before the listeners were attached?
 	MutantSwapConfirmedByDOM *bool `json:"mutant_swap_confirmed_by_dom"`

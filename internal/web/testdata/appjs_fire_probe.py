@@ -572,6 +572,24 @@ async def wait_after_settle(cdp):
     return "expired", "htmx:afterSettle not observed within %d ms" % SETTLE_WAIT_BOUND_MS
 
 
+# Readiness of the document that replaced the armed one (card t1167): the
+# marker is gone (so this IS the new document, not the old one mid-teardown)
+# and the new document finished loading. Without this the premise legs and
+# phase 6 read a document that may still be mid-parse, and leg (d) flips on
+# runner speed instead of on what the swap did.
+REPLACED_DOCUMENT_READY_JS = "!window.__fireSwap && document.readyState==='complete'"
+REPLACED_NOT_READY_REASON = "replaced document not ready within %d ms" % SETTLE_WAIT_BOUND_MS
+
+
+async def wait_replaced_document_ready(cdp):
+    """After a "document replaced" settle outcome, wait for the new document to
+    finish loading, bounded by SETTLE_WAIT_BOUND_MS. Returns True when it did,
+    False on expiry - the caller records it and judge() names it, so an
+    expired wait is never read as a loaded document."""
+    ready = await poll(cdp, REPLACED_DOCUMENT_READY_JS, True, timeout=SETTLE_WAIT_BOUND_MS / 1000.0)
+    return ready is True
+
+
 async def run_scenario(cdp, base):
     rep = {}
 
@@ -676,6 +694,10 @@ async def run_scenario(cdp, base):
         rep["p5_settle_wait"], rep["p5_settle_wait_detail"] = await wait_after_settle(cdp)
     else:
         rep["p5_settle_wait"], rep["p5_settle_wait_detail"] = "not started", "the swap link was not clicked"
+    # A full navigation ends the settle wait as soon as the marker is gone,
+    # which can be before the new document has parsed its body (card t1167).
+    if rep["p5_settle_wait"] == "document replaced":
+        rep["p5_replaced_document_ready"] = await wait_replaced_document_ready(cdp)
     rep["p5_url_after_swap"] = await ev(cdp, "location.pathname + location.search")
     rep["p5_swap_referenceerrors"] = only_reference_errors(cdp.take_errors())
     cdp.take_errors()
@@ -958,6 +980,8 @@ def judge(rep, driven_ids):
         swap_reasons["popover_after_swap"] = "afterSettle wait expired"
     elif settle != "observed":
         swap_reasons["popover_after_swap"] = "afterSettle wait ended without the event (%s)" % settle
+        if rep.get("p5_replaced_document_ready") is False:
+            swap_reasons["popover_after_swap"] += "; " + REPLACED_NOT_READY_REASON
     elif false_legs:
         swap_reasons["popover_after_swap"] = "not judged as fired: swap premise not met (%s)" % ", ".join(false_legs)
     for entry in ENTRIES:
@@ -982,6 +1006,15 @@ def judge(rep, driven_ids):
         and not any(f.get("reason") == "afterSettle wait expired" for f in failures)
     ):
         failures.append({"entry": "popover_after_swap", "reason": "afterSettle wait expired"})
+    # Likewise an expired readiness wait on a replaced document (card t1167):
+    # the premise was read off a document that never finished loading, and
+    # the report must say so even when the entry failed for another reason.
+    if (
+        "popover_after_swap" in driven_ids
+        and rep.get("p5_replaced_document_ready") is False
+        and not any(REPLACED_NOT_READY_REASON in (f.get("reason") or "") for f in failures)
+    ):
+        failures.append({"entry": "popover_after_swap", "reason": REPLACED_NOT_READY_REASON})
     windows = ["p1_load_referenceerrors", "p5_swap_referenceerrors", "p7_load_referenceerrors"]
     if "validation_reject_banner" in driven_ids:
         windows += ["s_load_referenceerrors", "s_window_referenceerrors"]
