@@ -261,6 +261,17 @@ Gaps (M5):
 
 증거: `.moai/reports/t1143/m5-approval-probe/`(픽스처 설정 A·B, 프롬프트, `--json` 출력, 세션 기록 둘, 키 적재 탐침). 로그인 파일 sha256 전후 동일, 남은 `codex exec` 프로세스 0, 토큰 grep 0건. 픽스처와 격리 `CODEX_HOME`은 지웠다.
 
+### M5 approval probe rerun — B' (LIVE 1/1, 누계 39/43)
+
+리드 결정(`verdict.md` § "Lead decision after the M5 approval probe"): 호출 B(#38)는 원장에 `INVALID — prompt blocked the exec custom-tool path` 태그를 달고 지우지 않았다. 재실행 1회 승인, 마지막 판별 시도.
+
+- 호출 B'(#39): moai 서버만(`codex mcp list --json` 비모델 확인에서 서버 1개), 픽스처 `.codex/config.toml` = `default_tools_approval_mode = "writes"` + `[mcp_servers.moai.tools.codex_role_audit] approval_mode = "approve"`, 부모 `codex exec -s workspace-write -c approval_policy=never`, 프롬프트는 `exec` 사용자 정의 도구로 이 MCP 도구를 한 번 부르는 것만 허용(shell 명령·다른 도구·파일 변경 금지). exit 1, 1초 미만. stdout(`--json`) 0바이트, stderr 전체 원문: `Not inside a trusted directory and --skip-git-repo-check was not specified.`
+- Codex가 세션을 시작하지 않았다. `thread.started`도 모델 턴도 세션 기록도 없고, `mcp_tool_call`은 0건이다. 분류: **NOT MEASURED**.
+- 원인은 이 레인의 픽스처 결함이다. 호출 수를 1로 묶으려고 픽스처 루트를 일부러 저장소가 아닌 디렉터리로 만들었는데(moai 서버가 자식을 띄우기 전에 거부하도록), `codex exec`는 저장소 체크아웃 또는 신뢰 디렉터리를 요구하고 CODEX_HOME의 `trust_level = "trusted"` 항목은 그 조건으로 인정되지 않았다. #37·#38의 루트는 저장소였다. 자식 `codex exec`, launch record, verdict 쓰기 모두 없다.
+- 결론: 도구별 사전 승인이 `approval_policy=never`를 넘는지는 **측정되지 않았다**. 리드 조건 (3)에 따라 LIVE를 더 쓰지 않고 이 카드는 "pre-approval effect not measured"로 멈춘다. 남은 4회는 AC-CAR-010/011용으로 남겼다(실행 안 함). #39는 프로세스 한 칸을 썼지만 모델 요청은 0건이었다 — 이것을 승인된 재실행 소진으로 볼지는 리드 판단이다.
+
+증거: `.moai/reports/t1143/m5-approval-probe/`(`config-B2.toml`, `codexhome-config-B2.toml`, `prompt-B2.txt`, `B2.jsonl`(0바이트), `B2.err`). 로그인 파일 sha256 전후 동일(`eb7c45bd…6630`), 픽스처 경로로 거른 `ps` 결과 0건, 토큰 grep 0건. 픽스처와 격리 `CODEX_HOME`은 지웠다.
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 run 단계는 끝나지 않았다. AC-CAR-011이 NOT_RUN이고, AC-CAR-010 실행 1은 리드가 INVALID로 기록했으며 재실행되지 않았다. MCP 경로는 도구별 승인 설정이 통과시키는지 측정되지 않았다(approval probe B INVALID).
@@ -301,7 +312,7 @@ cross_platform_build:
   darwin: go build/test on this host, exit 0 (run/m5-test-cli.log)
   windows_amd64: GOOS=windows GOARCH=amd64 go build ./... exit 0 (run/m5-windows-build.log)
 total_run_phase_files: 41        # git diff --name-only develop...HEAD | wc -l at 434a39e1f
-live_calls_used: 38              # of the absolute cap 43
+live_calls_used: 39              # of the absolute cap 43 (#39 = B' rerun, NOT MEASURED)
 m1_to_mN_commit_strategy: one or more commits per milestone on WT-codex-audit-readonly, no push
 ```
 
