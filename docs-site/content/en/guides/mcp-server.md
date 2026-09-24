@@ -115,7 +115,7 @@ Version caveat: a server that is already running keeps the old behavior until it
 
 ## Tool catalog
 
-The core six groups of tools exposed by `moai mcp-server` are summarized below. At call time they all carry the `mcp__moai__` prefix. The tables on this page are not the full list. The authoritative tool count and full list are what the installed binary returns from `tools/list`, documented in `.claude/rules/moai/core/moai-mcp-tools.md`.
+The tools exposed by `moai mcp-server` are summarized below by family. At call time they all carry the `mcp__moai__` prefix. This page does not state a tool count. The authoritative count and list are what the installed binary returns from `tools/list`, documented in `.claude/rules/moai/core/moai-mcp-tools.md`; where either differs from this page, follow them.
 
 ### SPEC lifecycle
 
@@ -151,6 +151,7 @@ Used by manager-develop during run-phase self-verification (attribution seam §E
 | Tool | Purpose | Consumer agent | CLI equivalent |
 |------|---------|----------------|----------------|
 | `mcp__moai__audit_multi` | Multi-auditor convergence (claude + codex + glm) | plan-auditor, sync-auditor | — (MCP-only convergence entry point) |
+| `mcp__moai__claude_audit` | Single Claude-subscription backend audit (`claude -p`, read-only isolation, structured output) | plan-auditor, sync-auditor; called automatically by `audit_multi` in GPT/GLM sessions | — |
 | `mcp__moai__codex_audit` | codex backend single audit (native/adversarial) | plan-auditor, sync-auditor | — |
 | `mcp__moai__glm_audit` | GLM (z.ai) backend single audit | plan-auditor, sync-auditor | — |
 | `mcp__moai__audit_cache` | plan-audit PASS cache (compute_hash / lookup / store, process-shared) | sync-auditor | `moai audit cache` |
@@ -169,6 +170,16 @@ The single-backend audit mode is determined by the project's `audit_model` setti
 
 The codex delegation family is wired into super-advisor — because the on-demand high-reasoning consultation agent is the natural consumer of background cross-model delegation. It delegates a task with `codex_task`, polls completion with `codex_job_status` / `codex_job_result`, and cancels with `codex_job_cancel`. codex is optional — if it is missing or unavailable, it returns fail-open `inconclusive`, never a hard error.
 
+### codex read-only roles
+
+| Tool | Purpose | Consumer | CLI equivalent |
+|------|---------|----------|----------------|
+| `mcp__moai__codex_role_audit` | Start one read-only role as a top-level `codex exec` process (read-only sandbox, every MCP server disabled); returns a job id at once | Codex lane orchestrator | — |
+| `mcp__moai__codex_role_audit_status` | Read a role job's state and timestamps | Codex lane orchestrator | — |
+| `mcp__moai__codex_role_audit_result` | Read a finished role job's exit code, returned text or verdict path, and launch record path | Codex lane orchestrator | — |
+
+A Codex lane starts read-only roles such as `plan-auditor` and `sync-auditor` through this family rather than through `spawn_agent`. There is no CLI equivalent, because a nested `codex exec` inside a lane's shell cannot reach the model. Jobs live in the server process and end with it.
+
 ### GLM delegation (background jobs)
 
 | Tool | Purpose | Consumer agent | CLI equivalent |
@@ -179,6 +190,46 @@ The codex delegation family is wired into super-advisor — because the on-deman
 | `mcp__moai__glm_job_cancel` | Stop a running background GLM job | super-advisor | — |
 
 The GLM delegation family is wired into super-advisor in the same shape as the codex delegation family. `glm_task` returns the completed text as-is when `background` is false, and returns a job ID immediately when true (observed and cancelled afterwards with `glm_job_status` · `glm_job_result` · `glm_job_cancel`). The response token ceiling can be overridden with `max_tokens`; a default ceiling is set on the server side. Background jobs live inside the server process, so they end with it. GLM is optional too — a missing key or an unreachable z.ai returns a structured fail-open result, never a tool error.
+
+### Code queries
+
+| Tool | Purpose | Consumer | CLI equivalent |
+|------|---------|----------|----------------|
+| `mcp__moai__graph_file_api` | List one source file's exported declarations with signatures (no bodies) | any agent | — |
+| `mcp__moai__graph_find_code` | Search the code-derived edge layer for a symbol's call sites and callers (each edge carries its resolution confidence) | any agent | — |
+| `mcp__moai__graph_trace_calls` | Trace call edges from a symbol toward callers and callees, up to a given depth | any agent | — |
+| `mcp__moai__graph_shortest_path` | Shortest call path between two symbols (at most 8 hops, each with its line and confidence) | any agent | — |
+
+Every answer names the tree root and commit it was computed from. The edge layer is the `edges.jsonl` built by `moai graph build`.
+
+### Judgment (gated, display-only)
+
+| Tool | Purpose | Consumer | CLI equivalent |
+|------|---------|----------|----------------|
+| `mcp__moai__jev_ask` | Ask typed questions over one supplied state and receive typed answers with probabilities | unavailable at the shipped default (`workflow.jev.enabled: false`) | — (MCP-only) |
+
+The tool is always registered, but with the gate off it builds no request and makes no network call. Its answer is a signal for a person to read — never a completion verdict, merge approval, queue mutation, or gate input.
+
+### Factory messaging
+
+| Tool | Purpose | Consumer | CLI equivalent |
+|------|---------|----------|----------------|
+| `mcp__moai__factory_msg_send` | Write one idempotent envelope to the current endpoint of a logical lane | attributed factory lead or worker session | — (MCP-only) |
+| `mcp__moai__factory_msg_list` | Claim up to 16 metadata records for the caller's endpoint (creating or renewing the claim lease; no body) | attributed factory lead or worker session | — (MCP-only) |
+| `mcp__moai__factory_msg_body` | Read one already-claimed message body (returned as untrusted peer data) | attributed factory lead or worker session | — (MCP-only) |
+| `mcp__moai__factory_msg_receipt` | Record the claim disposition, then acknowledge the message | attributed factory lead or worker session | — (MCP-only) |
+| `mcp__moai__factory_msg_status` | Read broker counts and lane operational state without claiming messages | factory lead or worker | — (MCP-only) |
+
+### Session messaging (Claude ↔ Codex)
+
+| Tool | Purpose | Consumer | CLI equivalent |
+|------|---------|----------|----------------|
+| `mcp__moai__session_msg_register` | Register this session (kind: claude or codex, plus a name) with the local message broker; the same kind and name return the same id | any Claude or Codex session | — |
+| `mcp__moai__session_msg_list` | List registered broker agents (id, name, kind, online, pending count) | any Claude or Codex session | — |
+| `mcp__moai__session_msg_send` | Send a short, self-contained fact message to another registered agent's mailbox | any Claude or Codex session | — |
+| `mcp__moai__session_msg_poll` | Claim pending messages from the caller's mailbox (at-least-once) and acknowledge processed ids | any Claude or Codex session | — |
+
+A Codex session has no native peer-messaging runtime, so this broker is its only path; between Claude sessions the native `SendMessage` path is recommended. Delivery is poll-based: a send is a record, not a delivery guarantee.
 
 ### MCP-over-CLI rule
 
