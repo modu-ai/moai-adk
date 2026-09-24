@@ -2,12 +2,12 @@
 title: MCP Server
 weight: 12
 draft: false
-description: "The provisioning, 21-tool catalog, authentication, and lazy-loading policy of the self-hosted moai mcp-server (a stdio local MCP server) provided by MoAI-ADK."
+description: "The provisioning, tool catalog, authentication, and lazy-loading policy of the self-hosted moai mcp-server (a stdio local MCP server) provided by MoAI-ADK."
 ---
 
 # MCP Server
 
-MoAI-ADK rides on top of the Claude Code MCP ecosystem, then adds **its own MCP server** on top of that. A single binary (`moai mcp-server`) runs as a stdio local server, exposing 21 MoAI-ADK-specific tools — SPEC lifecycle audit, verification snapshots, the goal engine, cross-model audit, codex/GLM delegation — to the Claude Code runtime.
+MoAI-ADK rides on top of the Claude Code MCP ecosystem, then adds **its own MCP server** on top of that. A single binary (`moai mcp-server`) runs as a stdio local server, exposing MoAI-ADK-specific tools — SPEC lifecycle audit, verification snapshots, the goal engine, cross-model audit, codex/GLM delegation — to the Claude Code runtime.
 
 {{< callout type="info" title="Relationship between the two MCP docs" >}}
 [**Claude Code generic MCP**](/en/claude-code/extensibility/mcp) covers the platform's own MCP (Model Context Protocol) integration — the USB-port analogy, server registration, transport types, the `/mcp` command, OAuth authentication, and the lazy-loading principle.
@@ -29,14 +29,14 @@ The Claude Code MCP ecosystem and MoAI's self-hosted MCP server are separate ser
 flowchart TD
     CC["Claude Code runtime<br/>(tool permission · lazy loading · approval)"]
     CMCP["Generic MCP server<br/>(context7, chrome-devtools, …)"]
-    MMCP["moai mcp-server<br/>(MoAI self-hosted · 21 tools)"]
+    MMCP["moai mcp-server<br/>(MoAI self-hosted tools)"]
     CC --> CMCP
     CC --> MMCP
     MMCP --> TOOLS["SPEC lifecycle · verification · goal · audit · codex/GLM delegation"]
     CMCP --> EXT["External tools (library docs · browser automation · …)"]
 ```
 
-The key point is that "MoAI does not provision MCP" is a **half-truth**. It is true that external MCP servers (context7, playwright, etc.) are not provisioned by default. But the one MoAI self-hosted server is installed as default-on at `moai init` time. This server is the channel through which MoAI's 21-tool catalog reaches Claude Code.
+The key point is that "MoAI does not provision MCP" is a **half-truth**. It is true that external MCP servers (context7, playwright, etc.) are not provisioned by default. But the one MoAI self-hosted server is installed as default-on at `moai init` time. This server is the channel through which MoAI's tool catalog reaches Claude Code.
 
 ## .mcp.json provisioning
 
@@ -113,9 +113,9 @@ For `audit_multi` the root reaches **both** backends of the fan-out: codex recei
 
 Version caveat: a server that is already running keeps the old behavior until it restarts, even after the binary underneath it is replaced — a subprocess does not reload itself. What a caller can check is whether `project_root` appears in the `ListTools` response.
 
-## 21-tool catalog
+## Tool catalog
 
-The 21 tools exposed by `moai mcp-server` divide into six groups. At call time they all carry the `mcp__moai__` prefix.
+The core six groups of tools exposed by `moai mcp-server` are summarized below. At call time they all carry the `mcp__moai__` prefix. The tables on this page are not the full list. The authoritative tool count and full list are what the installed binary returns from `tools/list`, documented in `.claude/rules/moai/core/moai-mcp-tools.md`.
 
 ### SPEC lifecycle
 
