@@ -163,3 +163,60 @@ func TestHaikuResidualRule_RegisteredAndNotSkippable(t *testing.T) {
 		t.Fatal("HaikuResidualRule does NOT implement crossSPECRule (CheckAll) — its findings would be per-SPEC and skippable, violating the HARD-gate requirement")
 	}
 }
+
+// haikuFindings runs a full CLI-shaped Lint against the given project root and
+// returns only the HaikuResidual findings. The BaseDir passed is the one the
+// CLI actually supplies (detectBaseDir returns <root>/.moai/specs whenever that
+// directory exists), which is the axis this rule was blind on.
+func haikuFindings(t *testing.T, root string) []Finding {
+	t.Helper()
+	linter := NewLinter(LinterOptions{BaseDir: filepath.Join(root, ".moai", "specs")})
+	report, err := linter.Lint(nil)
+	if err != nil {
+		t.Fatalf("Lint: %v", err)
+	}
+	var out []Finding
+	for _, f := range report.Findings {
+		if f.Code == "HaikuResidual" {
+			out = append(out, f)
+		}
+	}
+	return out
+}
+
+// TestHaikuResidualRule_CLIShapedBaseDir is the regression guard for the
+// baseDir wiring defect: NewLinter passed opts.BaseDir (the SPEC search dir,
+// <root>/.moai/specs from the CLI) straight to HaikuResidualRule, which needs
+// the project root. Every scan surface then resolved to a nonexistent path and
+// the rule silently reported zero findings from the CLI.
+func TestHaikuResidualRule_CLIShapedBaseDir(t *testing.T) {
+	t.Parallel()
+	root := t.TempDir()
+	if err := os.MkdirAll(filepath.Join(root, ".moai", "specs"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	writeHaikuFixtureFile(t, root, ".claude/agents/moai/bad-agent.md",
+		"---\nname: bad\nmodel: haiku\n---\nbody\n")
+
+	findings := haikuFindings(t, root)
+	if len(findings) == 0 {
+		t.Fatalf("CLIShapedBaseDir: expected >=1 HaikuResidual finding when BaseDir is <root>/.moai/specs, got 0")
+	}
+}
+
+// TestHaikuResidualRule_CLIShapedBaseDirCleanTree is the negative control: the
+// fix derives the project root from a CLI-shaped BaseDir, and a haiku-free tree
+// must still yield zero findings (the rule did not become always-firing).
+func TestHaikuResidualRule_CLIShapedBaseDirCleanTree(t *testing.T) {
+	t.Parallel()
+	root := t.TempDir()
+	if err := os.MkdirAll(filepath.Join(root, ".moai", "specs"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	writeHaikuFixtureFile(t, root, ".claude/agents/moai/good-agent.md",
+		"---\nname: good\nmodel: inherit\n---\nbody\n")
+
+	if findings := haikuFindings(t, root); len(findings) != 0 {
+		t.Fatalf("CLIShapedBaseDirCleanTree: expected 0 HaikuResidual findings, got %d: %+v", len(findings), findings)
+	}
+}
