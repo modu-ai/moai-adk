@@ -586,6 +586,33 @@ carried_debt:
   - `exit 2` 를 Then 절로 재는 AC 없음 — M7-12/13 이 보고서 출력 층에서 교차 확인했으나 AC 층의 공백은 그대로다
   - D-Δ1(§A 서사의 AC-AFG-009 REQ 매핑 미공시), N2(REQ-AFG-010 job-coverage 절반) 미해소
 
+### 개정분 Run-phase Audit-Ready Signal (card t1108, 개정 3)
+
+run_complete_at: 2026-09-24
+run_commit_sha: 21bbfabfb
+run_base_sha: 894b7b0a5
+run_status: PASS
+ac_pass_count: AC-AFG-014(CI 2단계 경로) PASS — M10-10 판정 판에서 정상/M1/M2 세 판 전부 관측 출력으로 확인(§E.2 M10 재개 표); AC-AFG-015 (iii) `false_legs=[c_swap_events] settle=expired` PASS; AC-AFG-016 (a)(b)(c) 전부 PASS(M10-1/M10-2 계열 재측정 — 최종 판은 `-timeout 17m` `logs/m10b-ci-17m.log`)
+ac_fail_count: 0
+what_changed: M8 이 탐침을 실제 htmx boost 스왑 + `htmx:afterSettle` 대기로 바꿔 `popover_after_swap` 간헐 실패의 원인을 제거했다(구 탐침은 스왑을 전혀 수행하지 않고 고정 지연만 기다렸다). M9 가 스로틀 반복(12배)·M1/M2 돌연변이·다리별 역방향 판을 추가했다. M10 은 CI 선택자를 `AppJsHandlersFire` → `AppJs.*Fire` 로 넓히려다 `TestAppJsFirePostSwapSettleWait` 의 게이트 전체 사이클이 CI `-timeout 10m`/`20m` job 상한을 초과하는 것을 발견해 BLOCKED 로 멈췄고(M10.3), 리드 결정 (b) 로 SPEC 개정 3(`db240a026`)을 거쳐 CI 전용 스위치 `MOAI_BROWSER_GUARD_SETTLE_STAGE2`(정확히 `"1"` 일 때만 2단계부터 시작, `0d3c07d31`)를 신설한 뒤 `ci.yml` 그린 단계를 `-run 'AppJs.*Fire' -timeout 17m` + 스위치 env 로 갱신했다(`21bbfabfb`, 본 run_commit_sha)
+preserve_list_post_run_count: `internal/web/appjs_fire_swap_test.go` 신설(M8) + 스위치·신규 무게이트 테스트 추가(M10 재개) · `internal/web/testdata/appjs_fire_probe.py` boost 스왑 지원 확장(M8) · `.github/workflows/ci.yml` 그린 단계 3줄 변경(`-run` 패턴, 신규 env, `-timeout`)뿐 — 기존 8개 job 키의 행번호·순서는 base 대비 불변(M10-4/M10-6 재측정) · `internal/web/assets/app.js` 무변경(제품 소스 손대지 않음)
+new_warnings_or_lints_introduced: 0 — `go vet ./internal/web/` 출력 없음, `golangci-lint run ./internal/web/...` → `0 issues.`, `ruff check internal/web/testdata/appjs_fire_probe.py` → `All checks passed!` (M9-3); `python3 -c 'import yaml;…safe_load(...)'` 로 `ci.yml` 파싱 성공, `actionlint` 는 직전 10m 판에서 exit 0 확인(본 판은 워크트리 가드가 거부해 재측정 안 함 — Gap, §E.2 M10 재개 표 하단)
+cross_platform_build:
+  darwin: `go build ./...` 미재측정 이번 개정분에서는 별도 실행 안 함(§E.3 base 항목의 darwin exit 0 이 유효 — Go 소스 변경은 테스트 파일 1개뿐)
+  windows: 미측정 — syscall·build tag 없음(§E.3 base 판단과 동일), CI 매트릭스 판정은 push 뒤 CI 몫
+total_run_phase_files: 4 — `internal/web/appjs_fire_swap_test.go`(신설, M8+M9+M10 재개 누적), `internal/web/testdata/appjs_fire_probe.py`(boost 스왑 지원), `.github/workflows/ci.yml`(그린 단계 3줄), `.moai/specs/SPEC-APPJS-FIRE-GUARD-001/{spec,plan,progress}.md`(개정 3 서술 + M8~M10 기록)
+l44_pre_commit_fetch: 미실행 — 레인 규율상 이 워크트리는 push 하지 않으며, 커밋 직전 `git rev-parse --short HEAD` + `git branch --show-current` 재독만 수행했다
+l44_post_push_fetch: 해당 없음 — push 없음(리드 일괄)
+m1_to_mN_commit_strategy: 마일스톤당 1커밋 — `d102a9b2d`(M8) → `d80132034`(M9) → `fe16e8fa1`(M10 BLOCKED 기록) → `db240a026`(SPEC 개정 3) → `0d3c07d31`(개정 3 스위치 구현) → `21bbfabfb`(ci.yml 최종). 전 커밋 본문에 card t1108 명기. push·PR 없음(레인 규율 — 리드 일괄)
+status_transition: 없음 — `status: in-progress` 는 이미 설정돼 있었다. `implemented`/`completed` 로의 전진은 manager-docs(sync-phase) 소관이라 이 run에서는 건드리지 않았다
+unmeasured:
+  - `test-browser` CI job 의 러너 실측(개정 3 반영본) — push 뒤 CI 몫이며 여기서 돌리지 않았다
+  - windows/linux 크로스 빌드
+  - `actionlint .github/workflows/ci.yml` 최종본 재측정 — 워크트리 가드 거부(§E.2 M10 재개 Gap)
+  - 전체 스위트(`go test ./...`) — 로컬 금지(§4.1), 판정은 CI 몫
+carried_debt:
+  - 위 §E.3 base 섹션의 carried_debt(§C DoD N-5, exit-2-as-Then AC 부재, D-Δ1, N2)는 이 개정으로 해소되지 않았다 — 그대로 이월
+
 ## §E.4 Sync-phase Audit-Ready Signal
 
 ```yaml
@@ -607,6 +634,29 @@ mx_validation:
   status: no-op
   reason: run-phase 신규 파일은 Go 테스트 파일 1개 + Python testdata 스크립트 2개 + ci.yml EOF 덧붙임 — 신규 exported 함수·고 fan_in·위험 패턴 해당 0건 (@MX 스캔 3개 신규 파일 0적중; 제품 소스·assets 무변경은 §E.3 preserve_list)
 sync_phase_scope_note: writable set honored exactly — progress.md §E.4 + spec.md frontmatter(status+updated)만 수정; §E.1–§E.3, spec/plan/acceptance 본문, CHANGELOG.md, internal/web/** 소스 전부 미수정
+```
+
+### 개정분 Sync-phase Audit-Ready Signal (card t1108, 개정 3 재-close)
+
+```yaml
+sync_complete_at: 2026-09-24
+sync_commit_sha: pending-backfill-sync   # 본 sync 커밋 자기 해시 — 후속 커밋에서 backfill (커밋은 자기 해시를 인용할 수 없다)
+sync_status: complete
+frontmatter_status_transitions:
+  in-progress: 2026-09-23   # 1e2c64057 (개정 2 plan-phase, card t1108) — 이전 completed→in-progress 재개는 card t1106 개정에서 이미 있었고, 이번 sync는 개정 3(db240a026)이 얹힌 뒤의 재-close다
+  implemented: 2026-09-24   # 본 sync 커밋(merged transition)
+  completed: 2026-09-24     # 본 sync 커밋(merged transition)
+changelog_entry_added: yes   # CHANGELOG.md [Unreleased] → ### Fixed 최상단 1건 추가
+ac_count_check: acceptance.md 고유 AC 식별자 16건(AC-AFG-001..016, grep -oE 'AC-AFG-[0-9]+' | sort -u | wc -l) — 이 sync 는 개정 3 이 새로 확정한 AC-AFG-014/015/016 세 건의 CI green-path PASS 를 §E.3 개정분 신호로 기록한다(§E.3 위 절 참조); 상속 AC-AFG-001..013 은 손대지 않음
+total_sync_phase_files: 4   # progress.md(§E.3 개정분 + §E.4 개정분), spec.md(frontmatter status+updated), CHANGELOG.md([Unreleased] ### Fixed 1건)
+canary_compliance_check: not-applicable  # 이 SPEC 은 장래 정책을 정의하지 않는다 — 브라우저 발화 가드 인프라 납품이 전부
+b12_self_test_a_pre_emission_grep: 1 hit — grep -c 'SPEC-APPJS-FIRE-GUARD-001' CHANGELOG.md, **이번 커밋이 작성한 바로 그 엔트리 1건**(중복 아님; 사전 상태는 0, 본 sync가 최초 emission)
+b12_self_test_b_ac_count_match: 16 == 16 (pass) — acceptance.md 고유 식별자 16건, 위 ac_count_check 진술과 일치
+b12_self_test_c_file_path_verification: pass — CHANGELOG 엔트리가 인용하는 경로 `.github/workflows/ci.yml`(`ls` 확인) 1개뿐, 코드 경로 인용 없음
+mx_validation:
+  status: no-op
+  reason: 이 sync-phase 에서 변경된 파일은 progress.md·spec.md(frontmatter)·CHANGELOG.md 뿐 — 신규 exported 함수·고 fan_in·위험 패턴 해당 0건. run-phase(§E.3 개정분)의 @MX 스캔은 이미 0적중으로 완료됨
+sync_phase_scope_note: writable set — progress.md(§E.3 개정분 + 본 §E.4 개정분) + spec.md frontmatter(status: in-progress → completed, updated 불변 2026-09-24 유지) + CHANGELOG.md([Unreleased] 1건 추가). spec/plan/acceptance 본문, internal/web/**, .github/workflows/ci.yml 소스 전부 미수정(run-phase에서 이미 완료)
 ```
 
 ## §F Phase 4 Mode Selection

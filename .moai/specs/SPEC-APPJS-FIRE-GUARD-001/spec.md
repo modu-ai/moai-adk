@@ -2,7 +2,7 @@
 id: SPEC-APPJS-FIRE-GUARD-001
 title: "app.js 버튼 핸들러 런타임 발화 가드 — 정적 경계 가드의 초록이 실제 발화를 함의하지 않음을 브라우저에서 재단다"
 version: "0.3.1"
-status: in-progress
+status: completed
 created: 2026-09-22
 updated: 2026-09-24
 author: manager-spec
