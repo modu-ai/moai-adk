@@ -81,7 +81,12 @@ func TestLintProjectRoot(t *testing.T) {
 // TestTierArtifactTable_RootFor: a spec.md under <root>/.moai/specs/<SPEC>/
 // names its own root; any other location falls back.
 func TestTierArtifactTable_RootFor(t *testing.T) {
-	root := filepath.Join(string(filepath.Separator), "proj")
+	// rootFor goes through filepath.Abs, which adds the current drive letter on
+	// Windows; an absolute t.TempDir() root keeps the expectation OS-neutral.
+	root, err := filepath.Abs(t.TempDir())
+	if err != nil {
+		t.Fatal(err)
+	}
 	tbl := &tierArtifactTable{fallbackRoot: "FALLBACK"}
 	if got := tbl.rootFor(filepath.Join(root, ".moai", "specs", "SPEC-X-001", "spec.md")); got != root {
 		t.Errorf("rootFor(.moai/specs path) = %q, want %q", got, root)

@@ -302,6 +302,42 @@ func TestTierArtifact_RootBaseDirFallback(t *testing.T) {
 	}
 }
 
+// TestTierArtifact_PerRootTables lints SPECs under three project roots in ONE
+// Linter run: root A carries the standard table, root B a reduced table whose
+// L row is only spec.md + plan.md, root C no rule file at all. Each SPEC must
+// be judged by its own root's table.
+//
+// MUTATION: cache the table under a single fixed key (ignore the root) — B and
+// C inherit A's table and report findings, turning this red.
+func TestTierArtifact_PerRootTables(t *testing.T) {
+	reduced := strings.Replace(tierTableFixture,
+		"**5 files**: spec.md + plan.md + acceptance.md + design.md + research.md",
+		"**2 files**: spec.md + plan.md", 1)
+	rootA := tierProject(t, tierTableFixture)
+	rootB := tierProject(t, reduced)
+	rootC := tierProject(t, "")
+	addTierSPEC(t, rootA, "SPEC-ROOTA-001", "tier: L", "plan.md", "acceptance.md")
+	addTierSPEC(t, rootB, "SPEC-ROOTB-001", "tier: L", "plan.md")
+	addTierSPEC(t, rootC, "SPEC-ROOTC-001", "tier: L")
+
+	linter := spec.NewLinter(spec.LinterOptions{BaseDir: t.TempDir()})
+	report, err := linter.Lint([]string{
+		filepath.Join(rootA, ".moai", "specs", "SPEC-ROOTA-001", "spec.md"),
+		filepath.Join(rootB, ".moai", "specs", "SPEC-ROOTB-001", "spec.md"),
+		filepath.Join(rootC, ".moai", "specs", "SPEC-ROOTC-001", "spec.md"),
+	})
+	if err != nil {
+		t.Fatalf("Lint: %v", err)
+	}
+	got := findingsForCode(report.Findings, tierArtifactMissingCode)
+	if len(got) != 1 || !strings.Contains(got[0].Message, "SPEC-ROOTA-001") {
+		t.Fatalf("want exactly one finding, for SPEC-ROOTA-001; got %d: %+v", len(got), got)
+	}
+	if u := findingsForCode(report.Findings, tierArtifactUnreadableCode); len(u) != 0 {
+		t.Errorf("no root has an unreadable table, got: %+v", u)
+	}
+}
+
 // TestTierArtifact_LintSkipApplies: lint.skip on the SPEC silences the code,
 // matching every other per-SPEC rule.
 func TestTierArtifact_LintSkipApplies(t *testing.T) {

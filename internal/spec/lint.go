@@ -125,9 +125,10 @@ func NewLinter(opts LinterOptions) *Linter {
 		haikuBaseDir = "."
 	}
 
-	// Tier artifact-set table (card t1121): read once per Linter from the
-	// project root's spec-workflow.md and shared by the per-SPEC rule and its
-	// corpus-warning companion.
+	// Tier artifact-set table (card t1121): each SPEC's project root is derived
+	// from its own spec.md path (BaseDir is only the fallback), and that root's
+	// spec-workflow.md is read once and cached per root for this Linter. The
+	// cache is shared by the per-SPEC rule and its corpus-warning companion.
 	tierTable := &tierArtifactTable{fallbackRoot: lintProjectRoot(opts.BaseDir)}
 
 	l.rules = []Rule{
