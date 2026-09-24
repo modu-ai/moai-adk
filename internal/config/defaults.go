@@ -465,6 +465,17 @@ var DefaultMultiReviewGateTimeout = 900 * time.Second
 // verifies the bound cheap to run instead of a ten-minute test.
 var DefaultCodexTaskTimeout = 600 * time.Second
 
+// DefaultCodexAuditTimeout bounds ONE read-only audit process started by the
+// Codex audit launcher (`moai codex audit`). An audit reads a SPEC and its
+// tree and can take minutes; past this bound the launcher terminates the
+// process group and writes no verdict. Not a const so a test can shorten it.
+var DefaultCodexAuditTimeout = 20 * time.Minute
+
+// DefaultCodexAuditListTimeout bounds the `codex mcp list --json` lookup the
+// audit launcher runs before the audit to learn which MCP servers to disable.
+// The lookup makes no model call, so its bound is short.
+var DefaultCodexAuditListTimeout = 30 * time.Second
+
 // DefaultCodexHandoffRelocationTimeout bounds ONE headless lane relocation
 // request — initialize, thread/fork or thread/start, and the thread/started
 // wait (SPEC-FACTORY-LANE-WORKTREE-HANDOFF-001 REQ-FLH-007). No model turn runs

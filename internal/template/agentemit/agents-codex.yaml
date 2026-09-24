@@ -494,20 +494,36 @@ codex_role_addenda:
     ## Codex Runtime Addendum
 
 
-    On Codex this role runs as a subagent and follows the parent session's
-    sandbox; the read-only setting in this role file is not enforced, so a
-    write may succeed. On Codex this addendum overrides the Export mandate
-    above: where that mandate says to write the verdict or report file in the
-    same turn, and calls an audit without a written file incomplete, read it
-    as follows instead. Do not write the verdict or report file yourself, even
-    when a write would succeed, and do not treat a refused write as a failure
-    of the audit. Return the complete verdict or report text as your final
-    response, including the path the file belongs at; the parent lane
-    orchestrator writes the file with exactly that text. The audit is complete
-    when that text is returned. Everything else the Export mandate requires
-    still binds the returned text: its destination path, its minimum content,
-    and the forbidden destination.
+    On Codex this role is started by the launcher, the moai MCP tool
+    `codex_role_audit`, as one top-level `codex exec` process with the
+    read-only sandbox and every MCP server disabled; it is never started
+    through `spawn_agent`. Your writes are denied, and the MCP tools named
+    above are unavailable in this process, so read the repository directly.
+    On Codex this addendum overrides the Export mandate above: where that
+    mandate says to write the verdict or report file in the same turn, and
+    calls an audit without a written file incomplete, read it as follows
+    instead. Do not write the verdict or report file yourself, and do not treat
+    a refused write as a failure of the audit. Return the complete verdict or
+    report text as your final response, including the path the file belongs
+    at; the launcher writes the verdict or report file with exactly the
+    returned text, at the destination the parent named when it started you.
+    The audit is complete when that text is returned. Everything else the
+    Export mandate requires still binds the returned text: its destination
+    path, its minimum content, and the forbidden destination.
   sync-auditor: *audit_return
+  mission-governor: &readonly_launch >-
+    ## Codex Runtime Addendum
+
+
+    On Codex this role is started by the launcher, the moai MCP tool
+    `codex_role_audit`, as one top-level `codex exec` process with the
+    read-only sandbox and every MCP server disabled; it is never started
+    through `spawn_agent`. Your writes are denied, and the MCP tools named
+    above are unavailable in this process, so read the repository directly.
+    Return your complete result as your final response; when the parent named
+    a destination file, the launcher writes that file with exactly the
+    returned text.
+  super-advisor: *readonly_launch
 
 # Correspondence notes (no artifact emitted either side).
 correspondence_notes:

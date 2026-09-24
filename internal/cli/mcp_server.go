@@ -367,6 +367,15 @@ func registerMoaiMCPTools(s *server.MCPServer, projectDir string) {
 		mcp.WithReadOnlyHintAnnotation(false),
 	), handleCodexJobCancel)
 
+	// --- Codex read-only role launcher (codex_role_audit start/status/result) ---
+	//
+	// The MCP route to the same launcher core as `moai codex audit`: a read-only
+	// contract role runs as one top-level read-only codex exec process in the
+	// background, so the host's tool timeout never cuts an audit short.
+	for _, rt := range codexRoleAuditTools() {
+		add(rt.tool.Name, rt.tool, rt.handler)
+	}
+
 	// --- GLM task delegation + job lifecycle ---
 	//
 	// Mirrors the codex task/job family above against the GLM (z.ai) backend:
