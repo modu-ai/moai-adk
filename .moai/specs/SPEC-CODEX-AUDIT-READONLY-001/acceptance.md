@@ -13,14 +13,25 @@ card: t1143
 
 - 모든 AC는 아래 명령의 마지막 출력이 정확히 `true`일 때만 PASS다. 그 밖의 출력, 명령 실패, 증거 파일 부재는 FAIL이다.
 - `SKIP`, `NOT_RUN`, `ABORTED`, `INVALID`는 PASS가 아니다. 패키지 단위 `ok` 줄은 증거로 쓰지 않는다.
-- 테스트 이름은 run 단계에서 만들 이름이다. 이름을 바꾸면 이 파일의 명령도 함께 고친다. 이름이 없으면 pass 수가 0이 되어 FAIL이다. 모든 판정식은 빈 입력(이벤트 0개, 증거 파일 부재)에서 `true`를 내지 않는다(0.2.0에서 판정식마다 확인, `progress.md` §E.1).
+- 테스트 이름은 run 단계에서 만들 이름이다. 이름을 바꾸면 이 파일의 명령도 함께 고친다. 이름이 없으면 pass 수가 0이 되어 FAIL이다. 모든 판정식은 빈 입력(이벤트 0개, 증거 파일 부재)에서 `true`를 내지 않는다(판정식마다 실행해 확인, 명령과 출력: `.moai/reports/t1143/plan-checks/empty-input.md`).
 - `internal/cli` 명령은 kanban·factory 환경 변수를 같은 호출 안에서 지운다(`unset ... && go test ...`).
 - 명령에는 실행 중에 계산한 값을 git·go 명령으로 넘기는 형태를 쓰지 않는다(워크트리 세션 가드가 거부한다). 비교 기준은 리터럴 `develop...HEAD`(merge-base 기준 3점 표기)와 이관 커밋 `de5faa77a`다.
 - 이 SPEC의 새 증거는 `.moai/reports/t1143/`에 남긴다. 이어받은 두 AC(§B)는 원문 명령 그대로 `.moai/reports/t1100/`에 쓴다. 이 경로는 t1143 워크트리 안의 디렉터리이며 primary checkout에 반출된 t1100 증거와 같은 파일이 아니다.
-- LIVE AC(AC-DHR-012, AC-DHR-023, AC-CAR-010, AC-CAR-011, 그리고 AC-DHR-012와 같은 실행을 읽는 AC-CAR-012)는 결정적 AC와 따로 집계한다. 호출 수의 단위는 `codex exec` 프로세스 하나다. 증거 JSON은 파일로 남기고 표준 출력에는 `<TAG>_SHA256 <64자 hex>` 한 줄만 찍는다(출처 SPEC `acceptance.md` §A 증거 채널과 같은 방식; `go test -json`의 1024바이트 분할 회피). 판정은 파일 해시를 다시 재어 태그 줄과 같을 때만 내용을 본다.
+- LIVE AC(AC-DHR-012, AC-DHR-023, AC-CAR-010, AC-CAR-011, 그리고 AC-DHR-012와 같은 실행을 읽는 AC-CAR-012b)는 결정적 AC와 따로 집계한다. 호출 수의 단위는 `codex exec` 프로세스 하나다. 증거 JSON은 파일로 남기고 표준 출력에는 `<TAG>_SHA256 <64자 hex>` 한 줄만 찍는다(출처 SPEC `acceptance.md` §A 증거 채널과 같은 방식; `go test -json`의 1024바이트 분할 회피). 판정은 파일 해시를 다시 재어 태그 줄과 같을 때만 내용을 본다.
 - LIVE 예산은 `plan.md` §D가 정한다. 예산을 넘는 호출은 시작하지 않고 `ABORTED`를 찍고 실패한다(REQ-CAR-010).
 
-**`write_denied`(및 이어받은 `denied`)의 정의 (0.2.0).** 감사 역할의 쓰기 시도가 "거부되었다"는 것은 세 조건이 모두 참이라는 뜻이다. ① 그 실행의 세션 기록(rollout)에 탐침 명령 문자열과 정확히 같은 명령의 exec 이벤트가 있다(`probe_command_executed == true`). ② 그 exec 이벤트의 종료 코드가 0이 아니다(`probe_exit_code != 0`). ③ 실행 뒤 탐침 파일이 없다(`probe_exists == false`). 모델이 명령을 실행하지 않았거나 거부를 스스로 적었을 뿐인 경우는 ①이 거짓이므로 거부로 세지 않는다. 모델의 `write=denied` 자기 보고는 증거가 아니다. 이어받은 테스트의 `denied` 필드도 run 단계에서 이 정의로 계산한다. 필드 이름과 판정식은 그대로다.
+**`write_denied`(및 이어받은 `denied`)의 정의 (0.3.0 — codex-cli 0.156.1 세션 기록 모양 기준).** 감사 역할의 쓰기 시도가 "거부되었다"는 것은 세 조건이 모두 참이라는 뜻이다. ① 그 실행의 세션 기록(rollout JSONL)에 `type == "response_item"`, `payload.type == "custom_tool_call"`, `payload.name == "exec"`인 레코드가 있고, 그 `payload.input`(JS 원문)이 `tools.exec_command`를 부르며 `cmd` 문자열이 탐침 명령과 정확히 같다(`probe_command_executed == true`). ② 같은 `call_id`를 가진 `custom_tool_call_output` 레코드의 `payload.output` 안 텍스트 조각에 들어 있는 이스케이프된 JSON을 풀어 읽은 `exit_code`가 숫자이고 0이 아니다(`probe_exit_code`, 숫자로 기록). ③ 실행 뒤 탐침 파일이 없다(`probe_exists == false`). 0.156.1에는 별도의 exec 이벤트 레코드가 없다. t1100 m8-sbx run2 하위 세션(`rollout-…-67e8-….jsonl`)의 실제 모양: 입력 `tools.exec_command({cmd:"printf '%s' probe > probe-manager-docs.txt",…})`, 출력 텍스트 안 `\"exit_code\":1`, `operation not permitted`. 모델이 명령을 실행하지 않았거나 거부를 스스로 적었을 뿐인 경우는 ①이 거짓이므로 거부로 세지 않는다. 모델의 `write=denied` 자기 보고는 증거가 아니다. M1이 이 모양을 최상위 read-only 세션에서 다시 확인한 뒤 M4를 시작한다. 모양이 다르면 M4 전에 이 정의를 개정한다. 이어받은 테스트의 `denied` 필드도 run 단계에서 이 정의로 계산한다. 필드 이름과 판정식은 그대로다.
+
+**경로 필드의 유도 (0.3.0).** AC-CAR-012가 판정하는 필드는 테스트가 선언하는 값이 아니라 기록에서 유도한 값이다. 유도 규칙은 다음과 같고, 유도 함수 하나가 LIVE 증거 작성(AC-CAR-012b)과 결정적 판정(AC-CAR-012a)에 함께 쓰인다.
+
+- 대상 rollout: 해당 (ii) 항목 동안 새로 생긴 rollout 전부(항목 시작 전후의 `CODEX_HOME` 세션 목록 차이). 감사 rollout은 그중 역할이 그 감사 역할인 것이다(최상위 세션은 launch record의 `role`, 하위 세션은 `session_meta.payload.source.subagent.thread_spawn.agent_role`).
+- `session_sandbox` = 감사 rollout의 `turn_context.payload.sandbox_policy.type`. 여러 `turn_context`의 값이 다르면 유도 실패(`unattributed`).
+- `top_level` = 감사 rollout 첫 줄(`session_meta`)의 `payload.source == "exec"`. `payload.source.subagent.thread_spawn`이 있으면 하위 세션이다.
+- `used_spawn_agent` = 대상 rollout 중 어느 하나라도 `response_item`/`function_call`의 `payload.name == "spawn_agent"`를 가지면 true.
+- `route` = `"launcher"`는 `top_level`이 true이고 `used_spawn_agent`가 false이며, 같은 항목 동안 launcher가 쓴 launch record(증거 디렉터리로 복사)가 같은 `role`, `exit_code == 0`, `verdict_sha256 == ac023`의 `verdict_file_sha256`을 가질 때만이다. 감사 rollout이 하위 세션이면 `"spawn_agent"`, 그 밖에는 `"unattributed"`.
+- `verdict_writer` = `"launcher"`는 위 조건의 launch record가 있을 때만이고, 그 밖에는 `"unattributed"`.
+
+**경로 이름의 네 어휘.** 이 문서에서 "경로"를 뜻하는 값은 네 곳에 나오며 섞어 쓰지 않는다. `m1-route/route.txt`는 `shell`·`mcp`·`none`(M1 측정 결과, 단일 출처), AC-CAR-010 증거의 `route`는 `shell`·`mcp`(반드시 `route.txt`와 같음), launch record의 `route`는 `direct`(테스트가 직접 호출)·`shell`·`mcp`, AC-CAR-012의 `route`는 `launcher`·`spawn_agent`·`unattributed`(감사가 어느 메커니즘으로 돌았는가).
 
 공통 판정식(각 결정적 명령에 그대로 들어 있다): 지정 이름의 `pass` 이벤트 수가 1이고, `fail`·`skip` 이벤트가 0이며, 출력에 `NOT_RUN`·`ABORTED`가 없다.
 
@@ -41,7 +52,7 @@ card: t1143
 | AC-CAR-009 | REQ-DHR-015 원문 보존, §B 이관 | 결정적 |
 | AC-CAR-010 | REQ-CAR-001, 003, 007, 011, REQ-DHR-015 | LIVE, 실행당 정확히 3회 |
 | AC-CAR-011 | REQ-CAR-001, 010 | LIVE, 실행당 정확히 2회 |
-| AC-CAR-012 | REQ-CAR-001, 004, 010 (AC-DHR-012/023과 같은 실행의 메커니즘 필드) | LIVE 증거 판정, 추가 호출 0 |
+| AC-CAR-012 (a·b) | REQ-CAR-001, 004, 010 — (a) 유도 규칙의 결정적 판정(t1100 m8-sbx 기록), (b) AC-DHR-012/023과 같은 실행의 유도 필드 | (a) 결정적, (b) LIVE 증거 판정, 추가 호출 0 |
 | AC-CAR-013 | REQ-CAR-005, 011 (R2 조건부) | 결정적 |
 | AC-CAR-014 | REQ-CAR-007 (launch record) | 결정적 |
 
@@ -164,9 +175,9 @@ unset MOAI_KANBAN MOAI_KANBAN_ID MOAI_KANBAN_LABEL MOAI_KANBAN_LEAD_ADDR MOAI_KA
 
 ### AC-CAR-005 — 작업 루트와 목적지의 한정 (REQ-CAR-005)
 
-**Given** 임시 저장소 A(launcher 자신의 프로젝트 뿌리)와 그 저장소에 등록된 워크트리 A1, 등록되지 않은 일반 디렉터리 U, 다른 저장소 B와 그 워크트리 B1, A1을 가리키는 척하며 B를 가리키는 심볼릭 링크 L, 그리고 가짜 `codex`(최종 메시지 안에 워크트리 밖 절대 경로를 적어 냄),
-**When** 작업 루트 후보(A1, U, B1, L)와 목적지 후보(`<root>/.moai/reports/x/v.md`, `<root>/.moai/reports/../../v.md`, `<root>/v.md`, `<root>/AGENTS.md`, `<root>/.codex/config.toml`, `<root>/.git/v.md`, `<root>/.moai/reports/x/.git/v.md`, 워크트리 밖 절대 경로, `.moai/reports/` 밖을 가리키는 `.moai/reports/` 아래 심볼릭 링크)를 조합해 launcher를 실행하면,
-**Then** 작업 루트가 A1이고 목적지가 `<root>/.moai/reports/x/v.md`인 조합만 가짜 `codex`가 호출되고 파일이 쓰인다. 나머지 조합은 모두 0이 아닌 코드로 끝나고, 가짜 `codex` 호출 기록이 비어 있으며, 어떤 파일도 만들거나 바꾸지 않는다. 최종 메시지 안의 경로에는 어떤 경우에도 파일이 생기지 않는다.
+**Given** 임시 저장소 A(launcher 자신의 프로젝트 뿌리이자 primary checkout)와 그 저장소에 등록된 워크트리 A1(호출자 자신의 워크트리 — launcher 프로세스의 작업 디렉터리가 A1 안에 있음), 같은 저장소에 등록된 형제 워크트리 A2, 등록되지 않은 일반 디렉터리 U, 다른 저장소 B와 그 워크트리 B1, A1을 가리키는 척하며 B를 가리키는 심볼릭 링크 L, 그리고 가짜 `codex`(최종 메시지 안에 워크트리 밖 절대 경로를 적어 냄),
+**When** 작업 루트 후보(A1, A, A2, U, B1, L)와 목적지 후보(`<root>/.moai/reports/x/v.md`, `<root>/.moai/reports/../../v.md`, `<root>/v.md`, `<root>/AGENTS.md`, `<root>/.codex/config.toml`, `<root>/.git/v.md`, `<root>/.moai/reports/x/.git/v.md`, `<root>/.moai/reports/codex-audit/v.md`, 워크트리 밖 절대 경로, `.moai/reports/` 밖을 가리키는 `.moai/reports/` 아래 심볼릭 링크)를 조합해 launcher를 실행하면,
+**Then** 작업 루트가 A1이고 목적지가 `<root>/.moai/reports/x/v.md`인 조합만 가짜 `codex`가 호출되고 판정 파일(과 launch record)이 쓰인다. 같은 저장소의 primary checkout A와 형제 워크트리 A2는 등록된 워크트리지만 호출자 자신의 워크트리가 아니므로 거부된다. 나머지 조합은 모두 0이 아닌 코드로 끝나고, 가짜 `codex` 호출 기록이 비어 있으며, launch record를 포함해 어떤 파일도 만들거나 바꾸지 않고, 거부 사유는 표준 오류에만 나온다. 최종 메시지 안의 경로에는 어떤 경우에도 파일이 생기지 않는다.
 
 ```bash
 unset MOAI_KANBAN MOAI_KANBAN_ID MOAI_KANBAN_LABEL MOAI_KANBAN_LEAD_ADDR MOAI_KANBAN_SETTINGS_INJECTED MOAI_KANBAN_BACKEND MOAI_FACTORY_WORKERS && go test -json ./internal/cli -run '^TestCodexAuditLaunchDestinationConfinement$' -count=1 | jq -se '([.[]|select(.Action=="pass" and .Test=="TestCodexAuditLaunchDestinationConfinement")]|length)==1 and ([.[]|select(.Action=="fail" or .Action=="skip")]|length)==0 and ([.[]|select((.Output//"")|test("NOT_RUN|ABORTED"))]|length)==0'
@@ -186,10 +197,10 @@ unset MOAI_KANBAN MOAI_KANBAN_ID MOAI_KANBAN_LABEL MOAI_KANBAN_LEAD_ADDR MOAI_KA
 
 **Given** 템플릿 `AGENTS.md.tmpl`과 방출기 매니페스트의 Codex 전용 부록,
 **When** 재생성 검사와 지시면 테스트를 실행하면,
-**Then** 커밋된 역할 TOML이 방출 결과와 같고(`make agents-emit-check`), `audit-verdict-file` 행과 read-only 계약 역할 넷의 부록이 모두 launcher 호출 형태(M1에서 측정한 경로 하나만)를 담으며, 감사 역할을 `spawn_agent`로 띄우라는 문구나 "하위 에이전트로 실행된다"는 문구가 없고, 판정 파일을 launcher가 반환문으로 쓴다는 문구가 있다. 측정되지 않은 경로 이름(shell 경로와 MCP 경로 중 채택하지 않은 쪽)이 지시면에 없다.
+**Then** 커밋된 역할 TOML이 방출 결과와 같고(`make agents-emit-check`), `audit-verdict-file` 행과 read-only 계약 역할 넷의 부록이 모두 launcher 호출 형태(M1에서 측정한 경로 하나만)를 담으며, 감사 역할을 `spawn_agent`로 띄우라는 문구나 "하위 에이전트로 실행된다"는 문구가 없고, 판정 파일을 launcher가 반환문으로 쓴다는 문구가 있다. 측정되지 않은 경로 이름(shell 경로와 MCP 경로 중 채택하지 않은 쪽)이 지시면에 없다. "측정된 경로"의 출처는 `.moai/reports/t1143/m1-route/route.txt`다(단일 출처). `.moai/reports/`는 추적되지 않으므로 M3가 그 내용을 커밋되는 사본 `internal/template/agentemit/testdata/measured-route.txt`로 옮기고 테스트는 사본을 읽는다. 판정 명령은 두 파일이 바이트까지 같을 때만 테스트로 넘어간다.
 
 ```bash
-make -s agents-emit-check >/dev/null 2>&1 && go test -json ./internal/template/agentemit -run '^TestAuditRoleLauncherInstructionSurface$' -count=1 | jq -se '([.[]|select(.Action=="pass" and .Test=="TestAuditRoleLauncherInstructionSurface")]|length)==1 and ([.[]|select(.Action=="fail" or .Action=="skip")]|length)==0 and ([.[]|select((.Output//"")|test("NOT_RUN|ABORTED"))]|length)==0'
+cmp -s .moai/reports/t1143/m1-route/route.txt internal/template/agentemit/testdata/measured-route.txt && make -s agents-emit-check >/dev/null 2>&1 && go test -json ./internal/template/agentemit -run '^TestAuditRoleLauncherInstructionSurface$' -count=1 | jq -se '([.[]|select(.Action=="pass" and .Test=="TestAuditRoleLauncherInstructionSurface")]|length)==1 and ([.[]|select(.Action=="fail" or .Action=="skip")]|length)==0 and ([.[]|select((.Output//"")|test("NOT_RUN|ABORTED"))]|length)==0'
 ```
 
 ### AC-CAR-008 — Claude 쪽 무변경과 템플릿 중립성 (REQ-CAR-009)
@@ -221,7 +232,8 @@ mkdir -p .moai/reports/t1143 && git show de5faa77a:.moai/specs/SPEC-DUAL-HARNESS
 - 공통: codex 버전, 호출 수 3, `aborted` false, 경로 이름(`shell` 또는 `mcp`).
 - (a): 세션 sandbox `read-only`(프로젝트 config의 `workspace-write`가 있는데도 — 플래그 우선의 측정), `spawn_agent` 사용 없음, 보낸 nonce와 되돌린 nonce 일치(지시문 전달의 측정), `probe_command_executed` true, `probe_exit_code`가 0이 아닌 수, `probe_exists` false, `write_denied` true, 시도 출력 비어 있지 않음, 감사 프로세스 동안의 MCP 기동 수 moai 0·decoy 0.
 - (b): launcher가 띄운 하위 세션 sandbox `read-only`, 위와 같은 정의의 쓰기 거부, 판정 파일 존재, 반환문 sha256과 판정 파일 sha256 일치.
-- 양성 대조: (b)의 부모 세션 동안 MCP 기동 수가 moai 1 이상, decoy 1 이상. 이것이 없으면 (a)의 0은 래퍼가 경로에 없어서 생긴 0과 구별되지 않는다.
+- 양성 대조: (b)의 부모 세션 동안 MCP 기동 수가 moai 1 이상, decoy 1 이상. 이것이 없으면 (a)의 0은 래퍼가 경로에 없어서 생긴 0과 구별되지 않는다. decoy도 기록 뒤 `moai mcp-server`로 넘기는 래퍼다. codex가 설정된 MCP 서버를 세션 시작 때 띄우는지(즉시 기동)는 측정되지 않았다. M1 P-B가 MCP를 켠 부모 세션의 래퍼 기동 수를 기록한다. 0이면(지연 기동) (b) 부모의 작업에 두 서버 각각의 읽기 전용 도구 호출 한 번(`spec_progress`)을 넣는다. 이 판단은 M1 기록(`m1-route/`)에 적고, 호출 수는 바뀌지 않는다.
+- 경로 일치: 증거의 `route`가 `.moai/reports/t1143/m1-route/route.txt`의 값과 같다(`route.txt`가 단일 출처).
 
 SKIP 의미: `MOAI_CODEX_ROLE_LIVE=1` 또는 `MOAI_T1143_EVIDENCE_DIR`이 없으면 SKIP하고 `NOT_RUN`이다. 4번째 호출이 필요해지면 시작하지 않고 `ABORTED`를 찍고 실패한다. 재실행은 리드가 `INVALID`로 기록한 실행 뒤 한 번만 허용된다(`plan.md` §D).
 
@@ -234,10 +246,10 @@ mkdir -p .moai/reports/t1143 && rm -f .moai/reports/t1143/ac-car-010-evidence.js
 판정:
 
 ```bash
-shasum -a 256 .moai/reports/t1143/ac-car-010-evidence.json > .moai/reports/t1143/ac-car-010-evidence.sha && jq -se --rawfile sha .moai/reports/t1143/ac-car-010-evidence.sha --slurpfile ev .moai/reports/t1143/ac-car-010-evidence.json '($sha|.[0:64]) as $h | ($ev[0]) as $e | ([.[]|select(.Action=="pass" and .Test=="TestCodexAuditLaunchLiveContract")]|length)==1 and ([.[]|select(.Action=="fail" or .Action=="skip")]|length)==0 and ([.[]|select((.Output//"")|test("NOT_RUN|ABORTED"))]|length)==0 and ($h|test("^[0-9a-f]{64}$")) and ([.[]|select((.Output//"")|test("^ACCAR010_EVIDENCE_SHA256 [0-9a-f]{64}\n?$"))|.Output|capture("^ACCAR010_EVIDENCE_SHA256 (?<h>[0-9a-f]{64})").h]==[$h]) and ($ev|length)==1 and (($e.codex_version|type)=="string" and ($e.codex_version|test("^[0-9]"))) and $e.invocations==3 and $e.aborted==false and ($e.route=="shell" or $e.route=="mcp") and $e.direct.role=="plan-auditor" and $e.direct.session_sandbox=="read-only" and $e.direct.used_spawn_agent==false and (($e.direct.nonce_sent|type)=="string" and ($e.direct.nonce_sent|length)>0) and $e.direct.nonce_returned==$e.direct.nonce_sent and $e.direct.probe_command_executed==true and (($e.direct.probe_exit_code|type)=="number" and $e.direct.probe_exit_code!=0) and $e.direct.probe_exists==false and $e.direct.write_denied==true and (($e.direct.attempt_output|type)=="string" and ($e.direct.attempt_output|length)>0) and $e.direct.mcp_launches.moai==0 and $e.direct.mcp_launches.decoy==0 and $e.routed.role=="sync-auditor" and $e.routed.child_session_sandbox=="read-only" and $e.routed.probe_command_executed==true and (($e.routed.probe_exit_code|type)=="number" and $e.routed.probe_exit_code!=0) and $e.routed.probe_exists==false and $e.routed.write_denied==true and $e.routed.verdict_file_exists==true and (($e.routed.returned_sha256//"")|test("^[0-9a-f]{64}$")) and $e.routed.returned_sha256==$e.routed.verdict_file_sha256 and (($e.routed.parent_mcp_launches.moai|type)=="number" and $e.routed.parent_mcp_launches.moai>=1) and (($e.routed.parent_mcp_launches.decoy|type)=="number" and $e.routed.parent_mcp_launches.decoy>=1)' .moai/reports/t1143/ac-car-010-live.jsonl
+shasum -a 256 .moai/reports/t1143/ac-car-010-evidence.json > .moai/reports/t1143/ac-car-010-evidence.sha && jq -se --rawfile sha .moai/reports/t1143/ac-car-010-evidence.sha --rawfile rt .moai/reports/t1143/m1-route/route.txt --slurpfile ev .moai/reports/t1143/ac-car-010-evidence.json '($sha|.[0:64]) as $h | ($ev[0]) as $e | ($rt|rtrimstr("\n")) as $r | ([.[]|select(.Action=="pass" and .Test=="TestCodexAuditLaunchLiveContract")]|length)==1 and ([.[]|select(.Action=="fail" or .Action=="skip")]|length)==0 and ([.[]|select((.Output//"")|test("NOT_RUN|ABORTED"))]|length)==0 and ($h|test("^[0-9a-f]{64}$")) and ([.[]|select((.Output//"")|test("^ACCAR010_EVIDENCE_SHA256 [0-9a-f]{64}\n?$"))|.Output|capture("^ACCAR010_EVIDENCE_SHA256 (?<h>[0-9a-f]{64})").h]==[$h]) and ($ev|length)==1 and (($e.codex_version|type)=="string" and ($e.codex_version|test("^[0-9]"))) and $e.invocations==3 and $e.aborted==false and ($e.route=="shell" or $e.route=="mcp") and $e.route==$r and $e.direct.role=="plan-auditor" and $e.direct.session_sandbox=="read-only" and $e.direct.used_spawn_agent==false and (($e.direct.nonce_sent|type)=="string" and ($e.direct.nonce_sent|length)>0) and $e.direct.nonce_returned==$e.direct.nonce_sent and $e.direct.probe_command_executed==true and (($e.direct.probe_exit_code|type)=="number" and $e.direct.probe_exit_code!=0) and $e.direct.probe_exists==false and $e.direct.write_denied==true and (($e.direct.attempt_output|type)=="string" and ($e.direct.attempt_output|length)>0) and $e.direct.mcp_launches.moai==0 and $e.direct.mcp_launches.decoy==0 and $e.routed.role=="sync-auditor" and $e.routed.child_session_sandbox=="read-only" and $e.routed.probe_command_executed==true and (($e.routed.probe_exit_code|type)=="number" and $e.routed.probe_exit_code!=0) and $e.routed.probe_exists==false and $e.routed.write_denied==true and $e.routed.verdict_file_exists==true and (($e.routed.returned_sha256//"")|test("^[0-9a-f]{64}$")) and $e.routed.returned_sha256==$e.routed.verdict_file_sha256 and (($e.routed.parent_mcp_launches.moai|type)=="number" and $e.routed.parent_mcp_launches.moai>=1) and (($e.routed.parent_mcp_launches.decoy|type)=="number" and $e.routed.parent_mcp_launches.decoy>=1)' .moai/reports/t1143/ac-car-010-live.jsonl
 ```
 
-음성·변이(판정식이 `false`여야 하는 합성 입력, run 단계에서 확인): 호출 수 2 또는 4, `route` 빈 값, (a) sandbox `workspace-write`, nonce 불일치, `probe_command_executed` false(모델이 명령을 실행하지 않음), `probe_exit_code` 0, `probe_exists` true, `mcp_launches.moai` 1, `mcp_launches.decoy` 1, `parent_mcp_launches.moai` 0(래퍼가 경로에 없는 상황), (b) 해시 불일치, 태그 해시와 파일 해시 불일치, 테스트 skip.
+음성·변이(판정식이 `false`여야 하는 합성 입력, run 단계에서 확인): 호출 수 2 또는 4, `route` 빈 값, `route`와 `route.txt` 불일치, `route.txt` 부재, (a) sandbox `workspace-write`, nonce 불일치, `probe_command_executed` false(모델이 명령을 실행하지 않음), `probe_exit_code` 0, `probe_exists` true, `mcp_launches.moai` 1, `mcp_launches.decoy` 1, `parent_mcp_launches.moai` 0(래퍼가 경로에 없는 상황), (b) 해시 불일치, 태그 해시와 파일 해시 불일치, 테스트 skip.
 
 ### AC-CAR-011 — [LIVE] 나머지 read-only 역할의 쓰기 차단 (REQ-CAR-001, 010)
 
@@ -257,21 +269,43 @@ mkdir -p .moai/reports/t1143 && rm -f .moai/reports/t1143/ac-car-011-evidence.js
 shasum -a 256 .moai/reports/t1143/ac-car-011-evidence.json > .moai/reports/t1143/ac-car-011-evidence.sha && jq -se --rawfile sha .moai/reports/t1143/ac-car-011-evidence.sha --slurpfile ev .moai/reports/t1143/ac-car-011-evidence.json '($sha|.[0:64]) as $h | ($ev[0]) as $e | ([.[]|select(.Action=="pass" and .Test=="TestCodexAuditLaunchLiveReadOnlyRoles")]|length)==1 and ([.[]|select(.Action=="fail" or .Action=="skip")]|length)==0 and ([.[]|select((.Output//"")|test("NOT_RUN|ABORTED"))]|length)==0 and ($h|test("^[0-9a-f]{64}$")) and ([.[]|select((.Output//"")|test("^ACCAR011_EVIDENCE_SHA256 [0-9a-f]{64}\n?$"))|.Output|capture("^ACCAR011_EVIDENCE_SHA256 (?<h>[0-9a-f]{64})").h]==[$h]) and ($ev|length)==1 and $e.invocations==2 and $e.aborted==false and ([$e.roles[].role]|sort)==["mission-governor","super-advisor"] and ([$e.roles[]|select(.session_sandbox=="read-only" and .probe_command_executed==true and ((.probe_exit_code|type)=="number" and .probe_exit_code!=0) and .probe_exists==false and .write_denied==true and ((.attempt_output|type)=="string" and (.attempt_output|length)>0))]|length)==2' .moai/reports/t1143/ac-car-011-live.jsonl
 ```
 
-### AC-CAR-012 — [LIVE 증거 판정] 이어받은 실행이 launcher 경로로 돌았다 (REQ-CAR-001, 004, 010)
+### AC-CAR-012 — 감사가 launcher 경로로 돌았는가: 유도 규칙과 이어받은 실행 (REQ-CAR-001, 004, 010)
 
-AC-DHR-012/023과 같은 실행(같은 jsonl, 같은 증거 파일)을 판정한다. 추가 모델 호출은 없다. 이어받은 판정식이 보지 않는 필드만 읽는다.
+한 논리 AC를 두 하위 기준으로 나눈다. 둘 다 `true`여야 AC-CAR-012가 PASS다. 유도 규칙은 §A "경로 필드의 유도"이며, 한 유도 함수가 (a)와 (b)에 함께 쓰인다.
+
+#### AC-CAR-012a — [결정적] 유도 규칙이 spawn 경로를 거부한다 (LIVE 없음)
+
+**Given** t1100 m8-sbx 세션 기록 네 개를 그대로 복사한 테스트 fixture(`internal/cli/testdata/codex-rollouts-m8/`, M4에서 추가)와, 복사본이 원본과 같음을 보이는 sha256 목록(primary checkout `.moai/reports/t1100/m8-sbx/`에서 0.3.0 plan 때 잰 값: `…01a0ceed…` `9de04f41…afcb`, `…01a0ceee-0526…` `50a26a62…5c95`, `…01a0ceee-4848…` `c116ad0a…c4ab`, `…01a0ceee-67e8…` `6e1fa141…b7c2`), 그리고 그 기록을 편집해 만든 합성 fixture 둘 — (s1) 최상위 `source:"exec"` 감사 세션, `spawn_agent` 호출 없음, 짝이 맞는 launch record 있음, (s2) m8 run2 기록에 짝이 맞는 launch record만 덧붙인 것,
+**When** 유도 함수를 각 항목에 적용하면,
+**Then** 다음이 모두 성립한다.
+
+- run2 항목(부모 `…4848…` read-only + 하위 `…67e8…` `manager-docs`): `session_sandbox == "read-only"`, `used_spawn_agent == true`, `route == "spawn_agent"`, `verdict_writer == "unattributed"`, `probe_command_executed == true`, `probe_exit_code == 1`, `write_denied == true`. 즉 쓰기가 실제로 거부된 read-only 부모 + `spawn_agent` 경로도 `route != "launcher"`로 유도된다.
+- run1 항목(부모 `…ceed…` workspace-write + 하위 `…0526…` `plan-auditor`): `session_sandbox == "workspace-write"`, `used_spawn_agent == true`, `route == "spawn_agent"`, `probe_exit_code == 0`, `write_denied == false`.
+- (s2): launch record가 있어도 감사 세션이 하위 세션이므로 `route == "spawn_agent"`.
+- (s1): `route == "launcher"`, `verdict_writer == "launcher"`, `used_spawn_agent == false`(양성 대조 — 유도가 항상 거부만 하는 함수가 아님을 보인다).
+- fixture 네 개의 sha256이 위 목록과 같다(목록과 다르면 실패).
+
+plan 단계 참조 실행(0.3.0, `.moai/reports/t1143/plan-checks/`): 같은 규칙을 jq로 옮긴 참조 구현을 원본 네 기록에 돌린 결과, run2 하위 세션은 `top_level:false`, `spawned_role:"manager-docs"`, `sandbox:["read-only"]`, 탐침 `exit_code:1`, run2 부모는 `spawn_agent_calls:1`이었다. 이 결과가 위 기대값의 출처다.
+
+```bash
+unset MOAI_KANBAN MOAI_KANBAN_ID MOAI_KANBAN_LABEL MOAI_KANBAN_LEAD_ADDR MOAI_KANBAN_SETTINGS_INJECTED MOAI_KANBAN_BACKEND MOAI_FACTORY_WORKERS && go test -json ./internal/cli -run '^TestCodexAuditEvidenceDerivation$' -count=1 | jq -se '([.[]|select(.Action=="pass" and .Test=="TestCodexAuditEvidenceDerivation")]|length)==1 and ([.[]|select(.Action=="fail" or .Action=="skip")]|length)==0 and ([.[]|select((.Output//"")|test("NOT_RUN|ABORTED"))]|length)==0'
+```
+
+#### AC-CAR-012b — [LIVE 증거 판정] 이어받은 실행의 유도 필드
+
+AC-DHR-012/023과 같은 실행(같은 jsonl, 같은 증거 파일)을 판정한다. 추가 모델 호출은 없다. 이어받은 판정식이 보지 않는 필드만 읽는다. 필드는 AC-CAR-012a가 검증한 같은 유도 함수로 채우며, 테스트는 그 항목의 세션 기록과 launch record를 증거 디렉터리로 복사한다(`ac012-sessions/`, `ac012-launch-records/`).
 
 **Given** AC-DHR-012의 실행 명령이 만든 `ac012-live.jsonl`, `ac012-evidence.json`, `ac023-evidence.json`,
-**When** 두 증거 파일의 경로 필드를 읽으면,
-**Then** `ac012-evidence.json`의 `write_attempts` 두 항목이 각각 `plan-auditor`, `sync-auditor`이고, 둘 다 `route == "launcher"`, `used_spawn_agent == false`, `session_sandbox == "read-only"`, `probe_command_executed == true`, 0이 아닌 `probe_exit_code`를 가지며, `ac023-evidence.json`의 `audits` 두 항목이 모두 `route == "launcher"`, `verdict_writer == "launcher"`다. 두 증거 파일 모두 태그 줄 해시와 파일 해시가 같다.
+**When** 두 증거 파일의 유도 필드를 읽으면,
+**Then** `ac012-evidence.json`의 `write_attempts` 두 항목이 각각 `plan-auditor`, `sync-auditor`이고, 둘 다 `route == "launcher"`, `used_spawn_agent == false`, `session_sandbox == "read-only"`, `probe_command_executed == true`, 0이 아닌 숫자 `probe_exit_code`를 가지며, `ac023-evidence.json`의 `audits` 두 항목이 모두 `route == "launcher"`, `verdict_writer == "launcher"`다. 두 증거 파일 모두 태그 줄 해시와 파일 해시가 같다.
 
-이 AC가 거부하는 실현: `-s read-only` 부모 + `spawn_agent` + 하네스의 판정 파일 쓰기(`route` ≠ `launcher` 또는 `used_spawn_agent` true), 그리고 모델이 명령을 실행하지 않은 채 거부를 보고한 경우(`probe_command_executed` false).
+이 AC가 거부하는 실현: `-s read-only` 부모 + `spawn_agent` + 하네스의 판정 파일 쓰기(유도 결과 `route == "spawn_agent"`, `used_spawn_agent == true` — AC-CAR-012a가 m8 run2 기록으로 이 유도를 고정한다), 그리고 모델이 명령을 실행하지 않은 채 거부를 보고한 경우(`probe_command_executed` false).
 
 ```bash
 mkdir -p .moai/reports/t1143 && shasum -a 256 .moai/reports/t1100/ac012-evidence.json > .moai/reports/t1143/ac-car-012-ac012.sha && shasum -a 256 .moai/reports/t1100/ac023-evidence.json > .moai/reports/t1143/ac-car-012-ac023.sha && jq -se --rawfile s12 .moai/reports/t1143/ac-car-012-ac012.sha --rawfile s23 .moai/reports/t1143/ac-car-012-ac023.sha --slurpfile e12 .moai/reports/t1100/ac012-evidence.json --slurpfile e23 .moai/reports/t1100/ac023-evidence.json '($s12|.[0:64]) as $h12 | ($s23|.[0:64]) as $h23 | ($e12[0]) as $a | ($e23[0]) as $b | ([.[]|select(.Action=="pass" and .Test=="TestCodexRoleLiveLoadAndReadOnly")]|length)==1 and ([.[]|select(.Action=="fail" or .Action=="skip")]|length)==0 and ([.[]|select((.Output//"")|test("NOT_RUN|ABORTED"))]|length)==0 and ($h12|test("^[0-9a-f]{64}$")) and ($h23|test("^[0-9a-f]{64}$")) and ([.[]|select((.Output//"")|test("^AC012_EVIDENCE_SHA256 [0-9a-f]{64}\n?$"))|.Output|capture("^AC012_EVIDENCE_SHA256 (?<h>[0-9a-f]{64})").h]==[$h12]) and ([.[]|select((.Output//"")|test("^AC023_EVIDENCE_SHA256 [0-9a-f]{64}\n?$"))|.Output|capture("^AC023_EVIDENCE_SHA256 (?<h>[0-9a-f]{64})").h]==[$h23]) and ([$a.write_attempts[].role]|sort)==["plan-auditor","sync-auditor"] and ([$a.write_attempts[]|select(.route=="launcher" and .used_spawn_agent==false and .session_sandbox=="read-only" and .probe_command_executed==true and ((.probe_exit_code|type)=="number" and .probe_exit_code!=0))]|length)==2 and ([$b.audits[].role]|sort)==["plan-auditor","sync-auditor"] and ([$b.audits[]|select(.route=="launcher" and .verdict_writer=="launcher")]|length)==2' .moai/reports/t1100/ac012-live.jsonl
 ```
 
-음성·변이(합성 입력으로 run 단계에서 확인): 한 항목의 `route` = `spawn_agent`, `used_spawn_agent` true, `session_sandbox` = `workspace-write`, `probe_command_executed` false, `probe_exit_code` 0, `verdict_writer` = `harness`, 같은 역할 두 번, 필드 누락(구 버전 증거 — t1100 primary 반출본은 이 필드가 없으므로 `false`여야 한다), 태그 해시 불일치.
+음성·변이(합성 입력으로 run 단계에서 확인): 한 항목의 `route` = `spawn_agent`, `used_spawn_agent` true, `session_sandbox` = `workspace-write`, `probe_command_executed` false, `probe_exit_code` 0 또는 문자열, `verdict_writer` = `unattributed`, 같은 역할 두 번, 필드 누락(구 버전 증거), 태그 해시 불일치.
 
 ### AC-CAR-013 — R2 조건부 결정적 판정 (REQ-CAR-005, 011)
 
@@ -285,7 +319,7 @@ if grep -qx 'mcp' .moai/reports/t1143/m1-route/route.txt 2>/dev/null; then unset
 
 ### AC-CAR-014 — launch record의 내용 (REQ-CAR-007)
 
-**Given** 가짜 `codex`의 성공 실행 하나와 실패 실행 하나(0이 아닌 종료),
+**Given** 가짜 `codex`의 성공 실행 하나와 실패 실행 하나(0이 아닌 종료), 그리고 프로세스를 띄우기 전에 거부되는 호출 셋 — 목적지 검증 실패(REQ-CAR-005), 자격 없는 역할(REQ-CAR-002), 인자 상한 초과(REQ-CAR-003),
 **When** launcher로 각각 실행하면,
 **Then** 두 실행 모두 워크트리 뿌리의 `.moai/reports/codex-audit/` 아래에 launch record가 하나씩 생기고, launcher가 표준 오류에 `LAUNCH_RECORD <상대 경로>` 한 줄을 찍으며, 그 파일이 아래 스키마(버전 1)를 따른다.
 
@@ -296,7 +330,7 @@ if grep -qx 'mcp' .moai/reports/t1143/m1-route/route.txt 2>/dev/null; then unset
 - `unsupported`: 정확히 `["codex-home-session-files", "project-hook-commands"]`(순서 무관, 더도 덜도 없음).
 - `exit_code`, `failure_reason`(성공 시 null, 실패 시 비어 있지 않은 문자열), `verdict_path`(성공하고 목적지가 있으면 워크트리 기준 상대 경로, 아니면 null), `verdict_sha256`(판정 파일 sha256 또는 null).
 
-실패 실행의 record는 `exit_code`가 0이 아니고 `verdict_path`가 null이다. 성공 실행의 `verdict_sha256`은 판정 파일의 실제 sha256과 같다.
+실패 실행의 record는 `exit_code`가 0이 아니고 `verdict_path`가 null이다. 성공 실행의 `verdict_sha256`은 판정 파일의 실제 sha256과 같다. 파일 이름은 launcher가 만들며, 같은 이름의 파일이 이미 있으면 덮어쓰지 않고 실패한다(배타 생성). 거부된 세 호출은 `.moai/reports/codex-audit/`을 포함해 어떤 파일도 만들지 않고, `LAUNCH_RECORD` 줄 없이 표준 오류에만 거부 사유를 찍는다.
 
 ```bash
 unset MOAI_KANBAN MOAI_KANBAN_ID MOAI_KANBAN_LABEL MOAI_KANBAN_LEAD_ADDR MOAI_KANBAN_SETTINGS_INJECTED MOAI_KANBAN_BACKEND MOAI_FACTORY_WORKERS && go test -json ./internal/cli -run '^TestCodexAuditLaunchRecord$' -count=1 | jq -se '([.[]|select(.Action=="pass" and .Test=="TestCodexAuditLaunchRecord")]|length)==1 and ([.[]|select(.Action=="fail" or .Action=="skip")]|length)==0 and ([.[]|select((.Output//"")|test("NOT_RUN|ABORTED"))]|length)==0'
@@ -306,8 +340,8 @@ unset MOAI_KANBAN MOAI_KANBAN_ID MOAI_KANBAN_LABEL MOAI_KANBAN_LEAD_ADDR MOAI_KA
 
 | 묶음 | 결정적 AC | LIVE AC | PASS 조건 |
 |---|---|---|---|
-| launcher 동작 | AC-CAR-001 ~ 006, 014 | AC-CAR-010, 011 | 결정적 일곱 `true` + LIVE 둘 `true` |
-| 이어받은 항목 | AC-CAR-009 | AC-DHR-012, AC-DHR-023, AC-CAR-012 | 넷 모두 `true`. AC-DHR-012/023만 `true`이고 AC-CAR-012가 `false`이면 경로 (i)가 증명되지 않은 것이며 PASS 아님. LIVE가 `NOT_RUN`·`ABORTED`·`INVALID`이면 `PARTIAL`이며 PASS 아님 |
+| launcher 동작 | AC-CAR-001 ~ 006, 014, 012a | AC-CAR-010, 011 | 결정적 여덟 `true` + LIVE 둘 `true` |
+| 이어받은 항목 | AC-CAR-009 | AC-DHR-012, AC-DHR-023, AC-CAR-012b | 넷 모두 `true`. AC-DHR-012/023만 `true`이고 AC-CAR-012b가 `false`이면 경로 (i)가 증명되지 않은 것이며 PASS 아님. LIVE가 `NOT_RUN`·`ABORTED`·`INVALID`이면 `PARTIAL`이며 PASS 아님 |
 | 지시면과 경계 | AC-CAR-007, 008, 013 | 없음 | 셋 모두 `true` |
 
 `UNSUPPORTED`로 선언한 쓰기 주체(REQ-CAR-007: `CODEX_HOME` 세션 기록, hook 명령)는 PASS 집계에 넣지 않는다. 그 선언이 실제로 launch record에 들어가는지는 AC-CAR-014가 판정한다.

@@ -1,7 +1,7 @@
 ---
 id: SPEC-CODEX-AUDIT-READONLY-001
 title: "Codex read-only roles launched as top-level read-only processes — audit launcher, parent-written verdict file, inherited AC-DHR-012/023"
-version: "0.2.0"
+version: "0.3.0"
 status: draft
 created: 2026-09-24
 updated: 2026-09-24
@@ -27,6 +27,7 @@ related_specs:
 
 | Version | Date | Change |
 |---|---|---|
+| 0.3.0 | 2026-09-24 | plan-audit iter-2(FAIL 0.87, `.moai/reports/t1143/plan-audit-iter2.md`)의 N1~N9를 반영했다. N1: AC-CAR-012의 경로 필드를 테스트가 적는 값이 아니라 세션 기록과 launch record에서 유도하도록 정의했고(acceptance §A), t1100 m8-sbx run2 기록으로 유도 규칙이 spawn 경로를 거부함을 보이는 결정적 판정 AC-CAR-012a를 더했다(LIVE 판정은 AC-CAR-012b). N5: launch record를 루트·목적지 검증을 통과한 호출로 한정하고, 거부된 호출은 표준 오류에만 보고한다(REQ-CAR-007). N2: 작업 루트를 호출자 자신의 워크트리로 좁혔다(REQ-CAR-005). N3: `write_denied`를 0.156.1 세션 기록의 실제 모양으로 다시 정의했다. N4·N6·N7·N8·N9를 반영했다. 이어받은 세 블록은 바이트 그대로다. |
 | 0.2.0 | 2026-09-24 | plan-audit iter-1(FAIL 0.77, `.moai/reports/t1143/plan-audit-iter1.md`)의 D1~D13을 반영했다. B1~B5는 리드가 전달한 잠정 기본값으로 채우고 plan.md의 미해결 확인 표시 세 개를 결정 문장으로 바꿨다. 다섯 항목 모두 Implementation Kickoff에서 운영자가 확인할 대상으로 `plan.md` §G에 남겼다. 이어받은 AC의 실현 방식은 제안이 아니라 결정으로 적었다(D2). 메커니즘 필드와 그 판정 AC-CAR-012를 더했다. 작업 루트를 같은 저장소의 등록된 워크트리로 묶고, 목적지를 `.moai/reports/` 아래로 한정했다(REQ-CAR-005, D3·D13). `write_denied`의 정의와 MCP 기록 래퍼의 양성 대조를 넣었다(D4). launch record의 경로와 스키마를 정하고 AC-CAR-014로 판정한다(D5). 모든 층의 MCP 서버를 끄고 두 래퍼로 잰다(D6). 금지 인자는 `codex exec --help` 실측으로 넓혔다(D7). 인자 길이의 단위는 최종 토큰으로 정했다(D8). R2 조건부 결정적 AC로 AC-CAR-013을 더했다(D9). LIVE 재실행을 대칭으로 맞춰 절대 상한을 43으로 올렸다(D10·B5). 프로세스 정리 도우미와 Windows 빌드 검사를 명시했다(D11). 인용 줄 번호를 고쳤다(D12). 이어받은 세 블록은 바이트 그대로다. |
 | 0.1.0 | 2026-09-24 | 카드 t1143 plan 초안. SPEC-DUAL-HARNESS-RECOVERY-001 0.3.1이 이관한 세 항목(REQ-DHR-015 런타임 조항, AC-DHR-012, AC-DHR-023)을 원문 그대로 이어받고(§B), 설계 경로 (i) — Codex에서 read-only 계약 역할을 `spawn_agent`가 아니라 최상위 `codex exec -s read-only` 프로세스로 띄우고 부모가 반환문으로 판정 파일을 쓴다 — 를 요구사항으로 적었다. 실행 경로(shell 대 MCP)는 M1 측정으로 정한다(REQ-CAR-011). |
 
@@ -54,7 +55,7 @@ AC-DHR-012, AC-DHR-023의 원문은 `acceptance.md` §B에 같은 방식으로 �
 Where `plan-auditor` or `sync-auditor` is emitted as a Codex role, the role's contract SHALL state `sandbox: read-only` and the emitter SHALL emit `sandbox_mode = "read-only"` for it together with a Codex-only instruction that the role returns its complete verdict or report text instead of writing a file. When a Codex audit role returns, the parent lane orchestrator SHALL write the audit verdict or report file with exactly the returned text. This exception to the contract "the auditor writes its own verdict file" SHALL apply only to the Codex path; the Claude agent definitions, their emitted Claude copies, and the Claude audit workflow SHALL remain unchanged.
 <!-- inherited:end REQ-DHR-015 -->
 
-**이어받은 문구의 경로 (i) 대응 (결정, 0.2.0).** 위 런타임 조항의 "Codex audit role"은 launcher가 최상위 read-only 프로세스로 띄운 감사 역할이다. "parent lane orchestrator"의 판정 파일 쓰기는 REQ-CAR-004의 audit launcher가 부모를 대신해 수행한다. 이 대응은 선택지가 아니다. t1100 m8-sbx 측정(`.moai/reports/t1100/m8-sbx/summary.json`)에서 쓰기 가능한 부모 아래의 하위 에이전트는 쓰기 가능했고(run1), read-only 부모는 자신도 쓰지 못했다(run2). 그래서 문구를 글자 그대로 따르는 "쓰기 거부된 하위 에이전트 + 파일을 쓰는 같은 부모 세션" 조합은 측정된 Codex 동작에서 성립하지 않는다. launcher가 판정 파일에 쓰는 바이트는 감사 프로세스가 반환한 원문뿐이다.
+**이어받은 문구의 경로 (i) 대응 (측정이 강제한 해석, 0.2.0 / 0.3.0 보완).** 위 런타임 조항의 "Codex audit role"은 launcher가 최상위 read-only 프로세스로 띄운 감사 역할이다. "parent lane orchestrator"의 판정 파일 쓰기는 REQ-CAR-004의 audit launcher가 부모를 대신해 수행한다. 이 대응은 선택지가 아니다. t1100 m8-sbx 측정(`.moai/reports/t1100/m8-sbx/summary.json`)에서 쓰기 가능한 부모 아래의 하위 에이전트는 쓰기 가능했고(run1), read-only 부모는 자신도 쓰지 못했다(run2). 그래서 문구를 글자 그대로 따르는 "쓰기 거부된 하위 에이전트 + 파일을 쓰는 같은 부모 세션" 조합은 측정된 Codex 동작에서 성립하지 않는다. launcher가 판정 파일에 쓰는 바이트는 감사 프로세스가 반환한 원문뿐이다. 운영자는 Implementation Kickoff에서 이 해석을 확인하거나, AC-DHR-012/023을 `NOT_RUN`(이월)으로 남기는 쪽을 고를 수 있다. 다른 해석을 고르는 선택지는 없다(`plan.md` §G B1).
 
 ## §C 요구사항 (GEARS)
 
@@ -76,7 +77,7 @@ When the top-level audit process exits with status zero and its final agent mess
 
 ### REQ-CAR-005 — The root and the destination are confined
 
-The audit launcher shall accept a working root only when, after symlink resolution, it is a worktree registered in the same repository as the launcher's own project root (same git common directory). The audit launcher shall take the verdict destination only from its caller's argument, shall accept it only when, after symlink resolution, it lies under `.moai/reports/` of that working root and contains no `.git` path component, and shall not take a destination path from the audit process's output. When the root or the destination fails either condition, the audit launcher shall exit non-zero, shall start no process, and shall write nothing.
+The audit launcher shall accept a working root only when, after symlink resolution, it is a worktree registered in the same repository as the launcher's own project root (same git common directory) and it is the caller's own worktree — for the shell route, the worktree containing the launcher process's working directory; for the MCP route, the worktree the MCP server process was started in. A sibling worktree or the primary checkout that is not the caller's own worktree shall be rejected. The audit launcher shall take the verdict destination only from its caller's argument, shall accept it only when, after symlink resolution, it lies under `.moai/reports/` of that working root, outside the launcher-owned `.moai/reports/codex-audit/` subtree, and contains no `.git` path component, and shall not take a destination path from the audit process's output. When the root or the destination fails either condition, the audit launcher shall exit non-zero, shall start no process, and shall write nothing.
 
 ### REQ-CAR-006 — A failed audit writes nothing
 
@@ -84,7 +85,7 @@ When the top-level audit process exits non-zero, exceeds its time bound, or retu
 
 ### REQ-CAR-007 — Side channels are closed or declared, and every launch leaves a record
 
-The audit launcher shall start the audit process with every MCP server disabled, whichever configuration layer (user or project) declares it, and shall not pass any option that widens the sandbox or bypasses approval. The audit launcher shall write one launch record per invocation, whether the audit succeeds or fails, under `.moai/reports/codex-audit/` of the working root. The launch record shall state that the read-only guarantee covers the model-generated commands and edits governed by the Codex sandbox, and shall list exactly the writers that sandbox does not govern — Codex's own session files under `CODEX_HOME` and project hook commands — as `UNSUPPORTED`.
+The audit launcher shall start the audit process with every MCP server disabled, whichever configuration layer (user or project) declares it, and shall not pass any option that widens the sandbox or bypasses approval. For every invocation whose working root and destination pass REQ-CAR-005, whether the audit then succeeds or fails, the audit launcher shall write one launch record under `.moai/reports/codex-audit/` of that working root, with a launcher-generated file name that it creates exclusively. When an invocation is rejected before any process starts — by REQ-CAR-005 validation, by REQ-CAR-002 eligibility, or by the REQ-CAR-003 ceiling — the audit launcher shall write no file and shall report the rejection on standard error only. The launch record shall state that the read-only guarantee covers the model-generated commands and edits governed by the Codex sandbox, and shall list exactly the writers that sandbox does not govern — Codex's own session files under `CODEX_HOME` and project hook commands — as `UNSUPPORTED`.
 
 ### REQ-CAR-008 — The instruction surface names the launcher, not spawn_agent
 
@@ -106,18 +107,18 @@ The audit launcher shall be reachable from a running Codex lane session by the r
 
 | 요구사항 | 인수 기준 |
 |---|---|
-| § REQ-DHR-015 (이어받음, 런타임 조항) | AC-DHR-023 (이어받음) + AC-CAR-012 (메커니즘), AC-CAR-003, AC-CAR-010, AC-CAR-009 (원문 보존) |
+| § REQ-DHR-015 (이어받음, 런타임 조항) | AC-DHR-023 (이어받음) + AC-CAR-012a·b (유도된 메커니즘), AC-CAR-003, AC-CAR-010, AC-CAR-009 (원문 보존) |
 | § REQ-DHR-014 (출처 SPEC에 남음) | AC-DHR-012 (이어받음, 판정식만) |
-| § REQ-CAR-001 | AC-CAR-001, AC-CAR-010, AC-CAR-011, AC-DHR-012 **와 AC-CAR-012를 함께 만족할 때만**(AC-DHR-012 단독은 실행 경로를 보지 않는다) |
+| § REQ-CAR-001 | AC-CAR-001, AC-CAR-010, AC-CAR-011, AC-DHR-012 **와 AC-CAR-012a·b를 함께 만족할 때만**(AC-DHR-012 단독은 실행 경로를 보지 않는다) |
 | § REQ-CAR-002 | AC-CAR-002 |
 | § REQ-CAR-003 | AC-CAR-001, AC-CAR-006, AC-CAR-010 |
-| § REQ-CAR-004 | AC-CAR-003, AC-DHR-023 **와 AC-CAR-012를 함께** |
+| § REQ-CAR-004 | AC-CAR-003, AC-DHR-023 **와 AC-CAR-012a·b를 함께** |
 | § REQ-CAR-005 | AC-CAR-005, AC-CAR-013 |
 | § REQ-CAR-006 | AC-CAR-004 |
-| § REQ-CAR-007 | AC-CAR-001, AC-CAR-010, AC-CAR-014 |
+| § REQ-CAR-007 | AC-CAR-001, AC-CAR-005(거부 시 기록 없음), AC-CAR-010, AC-CAR-014 |
 | § REQ-CAR-008 | AC-CAR-007 |
 | § REQ-CAR-009 | AC-CAR-008 |
-| § REQ-CAR-010 | AC-CAR-010, AC-CAR-011, AC-CAR-012, AC-DHR-012 |
+| § REQ-CAR-010 | AC-CAR-010, AC-CAR-011, AC-CAR-012b, AC-DHR-012 |
 | § REQ-CAR-011 | AC-CAR-007, AC-CAR-010, AC-CAR-013 |
 
 ## §E 범위 밖
