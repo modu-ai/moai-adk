@@ -20,7 +20,7 @@ module: "internal/factorymsg"
 - `internal/cli/mcp_codex.go`는 app-server process, initialize, `thread/start`/`thread/resume`, async NDJSON, turn notification, bounded close를 이미 구현한다. Fork/cwd handoff는 이 client seam의 최소 확장 대상이다.
 - `internal/hook/session_start_record.go`는 SessionStart가 실제 session ID를 처음 소유하는 actor임을 명시하고, cwd에서 card ID를 계산하는 기존 패턴을 가진다.
 - `internal/hook/cwd_changed_relocate.go`는 일반 session registry의 cwd를 fail-open으로 갱신하지만 factory lane peer generation과 BOUND receipt는 다루지 않는다. 이를 BOUND 증거로 재해석하면 안 된다.
-- t1074는 factory MCP catalog를 36개로 확장했고 현재 분류는 write 14/read 22다.
+- t1074는 factory MCP catalog를 36개로 확장했고 현재 분류는 write 14/read 22다(plan 시점 관측이다. 현재 총수는 `.claude/rules/moai/core/moai-mcp-tools.md`가, 쓰기/읽기 구성은 `internal/mcp/catalog.go`의 `WriteCapable` 표시가 정하며, 카드 t1143이 39개(쓰기 15, 읽기 24)로 올렸다).
 
 ## 2. Measured branch and dependency baseline
 
