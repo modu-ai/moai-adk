@@ -30,6 +30,18 @@
 - **Kickoff Approval: 아직 요청 전.** 리드 지시에 따라 t1099 가 develop 에 착지한 뒤 요청하며, 그때 spec.md §F.1 의 2(심볼 diff)·3(codex 버전, `runAgentHook` 매핑, 설정 파일 형식)으로 설계 전제를 다시 확인한다.
 - 남은 미측정 전제: Claude 호스트의 JSON block Stop 상한(plan.md 추적 항목 Q8, 독트린 근거만), 사용자 범위 `~/.claude/settings.json` `env` 의 전파(잔여 면), Codex 가 `moai hook agent` 를 부르는 경로의 존재, 파일 부재를 「선언 없음」으로 보는 해석(REQ-HSF-016)이 운영자 의도와 일치하는지.
 
+### 개정 0.3.1 (2026-09-24)
+
+- 계기: plan-audit 2회차 FAIL 0.86 (`.moai/reports/t1152/plan-audit-iter2.md`, 로컬 증거). 차단 결함 N1(major)·N2·N3(minor)과 선택 결함 N4·N7 을 반영했다. N5·N6 은 기록만 요구해 손대지 않았다. 처분 요약은 spec.md HISTORY 0.3.1 행.
+- 운영자 판정(2026-09-24, t1152 레인 AskUserQuestion): (1) N1~N3 을 고친 뒤 그 결함만 보는 3회차 감사로 진행한다. (2) 파일 부재 = 「선언 없음」 해석을 확정한다 — 탈출 장치를 셸 환경 변수로 인정할 수 있다. 다만 「추가 후 제거」 우회를 잔여 위험으로 기록하고 run 시작 시 호스트 동작을 재며, 호스트가 제거된 `env` 값을 훅 환경에 유지하면 운영자에게 돌아가 재판정을 받는다. 기록 위치: plan.md §B.1 Q1 「부재 해석 확인」, spec.md §F.2 「추가 후 제거」 행, plan.md §C Pre-flight 5.
+- 개정 기준 트리: 브랜치 `WT-hook-stdin-failclosed`, HEAD `f5c3d9aa8`. t1099 인용은 계속 `fabc33812` 고정(이번 개정은 t1099 인용을 새로 만들거나 고치지 않았다).
+- 이번 개정에서 이 트리에서 다시 확인한 것: `grep -n harnessModeIsCodex internal/cli/*.go` 의 비테스트 호출처는 `internal/cli/hook.go:292` 하나(정의 `hook_harness_codex.go:30`); `internal/cli/hook.go:45`(`--harness` PersistentFlags), `:455-463`(`runAgentHook` 파싱 실패 분기, `--harness` 판독 없음), `:469-481`(매핑 switch); 배포 래퍼 `internal/template/templates/.claude/hooks/moai/handle-agent-hook.sh:47`·`.sh.tmpl:47`·로컬 `.claude/hooks/moai/handle-agent-hook.sh:47` 모두 `exec moai hook agent "$1"`(`--harness` 없음); `internal/template/templates/.codex/` 는 `agents/` 만 담고 `moai hook`·`--harness` 문자열이 없다; `internal/cli/codex_readiness.go:74` `codexHarnessCommand = "moai hook --harness codex"`.
+- 직접 측정하지 않고 plan-audit 에서 인용한 것: 유효한 stdin + `--harness bogus` 로 `moai hook agent x-validation` 이 exit 0 + PreToolUse allow 를 낸다는 재현(codex 백엔드 실행). Pre-flight 4(c) 에서 다시 잰다.
+- 측정하지 않은 전제(새로 명시): 호스트가 설정 `env` 를 언제 훅 환경으로 전파하고 키·파일 삭제 뒤에도 유지하는지 — 「추가 후 제거」 우회의 성립 조건. run 시작 시 plan.md §C Pre-flight 5 가 선언된 상한(실행 4회, 실행당 `--max-turns 8`, 벽시계 300초) 안에서 잰다. 이번 개정은 라이브 모델·에이전트 실행을 하지 않았다.
+- 0.3.0 의 미측정 목록에서 닫힌 것: 「파일 부재를 선언 없음으로 보는 해석이 운영자 의도와 일치하는지」 — 운영자가 확인했다.
+- REQ 수 16(Tier M 상한 16, N4 는 REQ 안에서 절을 나눠 수를 늘리지 않았다). AC 수 13 + GATE. 명확화 필요 표식 0개(커밋 전 grep).
+- **Kickoff Approval: 여전히 요청 전.** t1099 착지 후 요청하며, run 시작 시 Pre-flight 5 결과가 「유지한다」 또는 「미측정」이면 구현 전에 멈춘다.
+
 ## §E.2 Run-phase Evidence
 
 _<pending run-phase>_

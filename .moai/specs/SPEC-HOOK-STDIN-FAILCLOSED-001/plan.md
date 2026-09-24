@@ -1,7 +1,7 @@
 ---
 id: SPEC-HOOK-STDIN-FAILCLOSED-001
 title: "Plan — 훅 stdin 파싱 실패의 결정 이벤트 fail-closed"
-version: "0.3.0"
+version: "0.3.1"
 created: 2026-09-24
 author: manager-spec (card t1152)
 ---
@@ -13,6 +13,8 @@ author: manager-spec (card t1152)
 0.2.0 개정: plan-audit 1회차(`.moai/reports/t1152/plan-audit.md`)의 D0·D2·D3·D9·D10·D12 를 반영했다. 명확화 필요 표식은 Kickoff 차단 질문(Q2·Q1·Q3)에만 남기고, 나머지(Q4~Q7)는 표식 없는 추적 항목으로 옮겼다.
 
 0.3.0 개정: Kickoff 차단 질문 셋을 판정 결과로 닫았다(§B.1). 명확화 필요 표식은 이제 하나도 남지 않는다. Kickoff Approval 자체는 아직 요청 전이며, 리드 지시에 따라 t1099 착지 후 요청한다(§F M0, spec.md §F.1 의 3).
+
+0.3.1 개정: plan-audit 2회차(`.moai/reports/t1152/plan-audit-iter2.md`, FAIL 0.86)의 차단 결함 N1~N3 과 선택 결함 N4·N7 을 반영했다. §B.1 Q1 에 파일 부재 해석의 운영자 확인과 「추가 후 제거」 잔여 위험의 처분을 기록하고, §C 에 agent 경로의 잘못된 `--harness` 기준선(4(c) 안)과 호스트 `env` 전파·유지 측정(Pre-flight 5)을 추가했으며, M3 의 `runAgentHook` 서술과 §B.2 추적 항목 Q9 를 고쳤다.
 
 ## §A 맥락
 
@@ -35,15 +37,17 @@ spec.md §A 참조. 요약: `internal/cli/hook.go:272-280` 의 stdin 파싱 실�
   - 출처: 운영자 판정, t1152 레인의 AskUserQuestion, 2026-09-24.
   - 판정 내용(동작): 결정 이벤트 4개(PreToolUse·PermissionRequest·Stop·UserPromptSubmit)를 두 하네스 모두에서 fail-closed 로 한다. **예외는 Codex 하네스의 Stop 하나** — 관측 경로(`{}` + exit 0)에 stderr 한 줄과 면제 기록을 더한다(spec.md REQ-HSF-012). 근거는 Q2 측정이다: Codex 에 상한이 없으므로 여기서 차단하면 파싱 실패가 지속되는 동안 턴이 끝나지 않는다.
   - 판정 내용(표현): 예외는 두 번째 이벤트 목록이 아니라 `internal/codexadapter` 안의 **이름 붙은 술어 하나**로 표현한다 — 「Codex 호스트에는 Stop 연속 차단 상한이 없다」(spec.md REQ-HSF-013). 향후 Codex 가 상한을 도입하면 그 술어 하나만 다시 보면 된다. 술어의 식별자 이름은 run-phase 가 정한다.
-  - 판정 내용(탈출 장치): 후보 (i) — **셸 환경 변수 하나**. 이름은 run-phase 에서 `internal/config/envkeys.go` 상수로 정의한다. 같은 키가 `$CLAUDE_PROJECT_DIR/.claude/settings.json` 또는 `.claude/settings.local.json` 의 `env` 블록에 선언돼 있으면 환경 변수를 **무시**한다. 존재하는 설정 파일을 읽지 못하면 활성화를 **인정하지 않는다**(fail-closed). 파일 부재는 「선언 없음」으로 본다 — 이 구분은 판정 문구를 구현 가능하게 옮긴 manager-spec 의 해석이다(spec.md REQ-HSF-016). 거부 사유는 키 이름을 싣지 않는다(REQ-HSF-010).
+  - 판정 내용(탈출 장치): 후보 (i) — **셸 환경 변수 하나**. 이름은 run-phase 에서 `internal/config/envkeys.go` 상수로 정의한다. 같은 키가 `$CLAUDE_PROJECT_DIR/.claude/settings.json` 또는 `.claude/settings.local.json` 의 `env` 블록에 선언돼 있으면 환경 변수를 **무시**한다. 존재하는 설정 파일을 읽지 못하면 활성화를 **인정하지 않는다**(fail-closed). 파일 부재는 「선언 없음」으로 본다 — 이 구분은 판정 문구를 구현 가능하게 옮긴 manager-spec 의 해석으로 시작했고, 0.3.1 에서 운영자가 확인했다(아래 「부재 해석 확인」, spec.md REQ-HSF-016). 거부 사유는 키 이름을 싣지 않는다(REQ-HSF-010).
   - 기록된 잔여 면: 사용자 범위 `~/.claude/settings.json` 의 `env`. 호스트가 이 블록을 훅 환경으로 전파하면 셸 환경 변수와 구별되지 않는다(spec.md §F.2).
+  - **부재 해석 확인: 판정됨 (2026-09-24).** 출처: 운영자 판정, t1152 레인의 AskUserQuestion, plan-audit 2회차 N1 후속. 내용: 설정 파일이 **없으면** 「선언 없음」으로 보고, 탈출 장치를 셸 환경 변수로 인정할 수 있다. 조건 두 가지 — (1) 「추가 후 제거」 우회(설정 `env` 에 키 추가 → 호스트 반영 → 키 삭제 또는 파일 삭제 → 파손 입력)를 잔여 위험으로 기록한다(spec.md §F.2 「추가 후 제거」 행 — 키 삭제 변형은 부재 해석과 무관하게 존재하고, 파일 삭제 변형은 부재 해석이 추가로 연다). (2) run 시작 시 호스트 동작을 측정한다(§C Pre-flight 5). 호스트가 키·파일을 지운 뒤에도 그 `env` 값을 훅 환경에 유지한다고 나오면, 구현을 시작하지 않고 운영자에게 돌아가 재판정을 받는다.
+  - 판정 범위 밖의 선택지(기록만, 채택 아님): 한 세션에서 한 번이라도 선언이 관측된 키는 이후 선언이 사라져도 계속 불인정하는 강화. 파싱 실패 상태에서는 stdin 의 `session_id` 를 읽을 수 없어 stdin 밖의 세션 열쇠와 상태 저장이 필요하다 — 선택지 A2 와 같은 미측정 전제다. Pre-flight 5 가 「유지한다」로 나와 재판정할 때 후보로 올린다.
   - 판정 전 선택지(기록):
     - (A) 네 이벤트 전부 fail-closed + 탈출 장치 — Q2 에 조건부. Codex Stop 상한이 확인되지 않으면 (A1) Codex Stop 만 관측 경로로 두고 예외를 이름 붙은 술어로 표현, 또는 (A2) MoAI 자체 상한(세션 열쇠가 stdin 밖에 있어야 하며 미측정). **A1 이 채택됐다.**
     - (B) PreToolUse·PermissionRequest 만 fail-closed, Stop·UserPromptSubmit 은 fail-open + 기록. 결정 집합의 부분집합을 새로 정의해야 해 단일 목록 제약과 긴장. 채택되지 않았다.
     - 탈출 장치 후보: (i) 환경 변수 + 프로젝트·로컬 `env` 선언 시 무시 — **채택**; (ii) 프로젝트 밖 사용자 범위 파일(예: `~/.moai/` 아래) — 채택되지 않았다; `.moai/config/sections/*.yaml` 키는 출처 제약에 정면으로 걸려 애초에 후보가 아니었다. 이전 판이 이 면을 「ConfigChange 감시의 몫」으로 넘겼던 것은 0.2.0 에서 철회했다.
 - **Q3 — `runAgentHook` 포함 여부: 판정됨 — 포함.**
   - 출처: 운영자 판정, t1152 레인의 AskUserQuestion, 2026-09-24.
-  - 판정 내용: `runAgentHook`(`internal/cli/hook.go:447`, 파싱 실패 분기 `:455-463`)을 범위에 넣는다. action 이 결정 이벤트로 매핑되는 경우(`:469-481` 의 switch — 접미사 `-validation`·`-pre-transformation`·`-pre-implementation` 과 `default` 의 미지 action 이 모두 PreToolUse)는 `runHookEvent` 와 같은 fail-closed 출력을 내고, 관측 이벤트로 매핑되는 경우(`-verification`·`-post-transformation`·`-post-implementation` → PostToolUse, `-completion` → SubagentStop)는 현재 동작을 유지한다(spec.md REQ-HSF-014·015). 매핑은 이 트리(`44dfc25fd`)의 코드를 읽어 확인했다. 현재 이 함수는 `--harness` 플래그를 읽지 않는다 — 플래그는 `hookCmd` 의 PersistentFlags(`internal/cli/hook.go:45`)라 `agent` 하위 명령에도 붙어 있으므로, 하네스 모드 판정을 stdin 앞으로 두는 REQ-HSF-005 를 여기에도 적용한다. Codex 가 실제로 `moai hook agent` 를 부르는 경로가 있는지는 확인하지 않았다.
+  - 판정 내용: `runAgentHook`(`internal/cli/hook.go:447`, 파싱 실패 분기 `:455-463`)을 범위에 넣는다. action 이 결정 이벤트로 매핑되는 경우(`:469-481` 의 switch — 접미사 `-validation`·`-pre-transformation`·`-pre-implementation` 과 `default` 의 미지 action 이 모두 PreToolUse)는 `runHookEvent` 와 같은 fail-closed 출력을 내고, 관측 이벤트로 매핑되는 경우(`-verification`·`-post-transformation`·`-post-implementation` → PostToolUse, `-completion` → SubagentStop)는 현재 동작을 유지한다(spec.md REQ-HSF-014·015). 매핑은 이 트리(`44dfc25fd`)의 코드를 읽어 확인했다. 현재 이 함수는 `--harness` 플래그를 읽지 않는다 — 플래그는 `hookCmd` 의 PersistentFlags(`internal/cli/hook.go:45`)라 `agent` 하위 명령에도 붙어 있으므로, 하네스 모드 판정을 stdin 앞으로 두는 REQ-HSF-005 를 여기에도 적용한다 — `runAgentHook` 에서는 하네스 판독과 잘못된 값의 거부가 **새 동작**이다. 배포 래퍼(`internal/template/templates/.claude/hooks/moai/handle-agent-hook.sh:47`)는 `moai hook agent "$1"` 을 `--harness` 없이 부르므로, codex 모드 agent 경로는 현재 배포 설정에서 도달하지 않는다(추적 항목 Q9).
   - 판정 전 선택지(기록): 포함(권장) / 제외하고 별도 카드. 포함이 채택돼 이 0.3.0 개정이 run 착수 전에 필요한 D-NEW-1 성격의 REQ·AC 추가를 담는다.
 
 ### B.2 추적 항목 — Kickoff 를 막지 않는다
@@ -52,6 +56,7 @@ spec.md §A 참조. 요약: `internal/cli/hook.go:272-280` 의 stdin 파싱 실�
 - **Q5 5 MiB 경로의 호스트 실현성** — 호스트(Claude Code, Codex)가 5 MiB 를 넘는 `tool_input` 을 훅 stdin 으로 실제 넘기는지 측정하지 않았다. 수리의 정당성과 무관하다: 모델이 제어하는 더 싼 경로(중첩 깊이 초과, 약 20 KB)의 파싱 실패가 측정됐다(spec.md §A.3). 측정은 sync-phase `--security --deep` 렌즈의 위협 등급 판단용으로 run 초반에 수행하고 progress.md 에 기록한다. 같은 자리에서 「호스트가 깊게 중첩된 `tool_input` 을 그대로 넘기는가」도 잰다.
 - **Q6 Can Block 11개** — spec.md §B.3 의 이벤트 가운데 결정 집합으로 옮겨야 할 것이 있는지. 이 SPEC 은 옮기지 않는다. 옮기려면 `DecisionBearingEvents()` 를 바꾸는 별도 카드가 필요하다 — 판정만 기록한다.
 - **Q8 Claude 호스트의 JSON block 상한** — `CLAUDE_CODE_STOP_HOOK_BLOCK_CAP` 가 exit 2 가 아닌 JSON `decision:"block"` + exit 0 차단에도 걸리는지 측정하지 않았다. 근거는 저장소 독트린뿐이다(Q2 의 Claude 쪽 항목). 걸리지 않는다면 Claude 하네스의 Stop fail-closed 도 Codex 와 같은 무기한 잠김 위험을 갖는다. Kickoff 를 막지 않는다 — 운영자 판정 A1 이 Claude Stop 을 fail-closed 에 두었다. 측정은 run 초반(Q5 와 같은 자리)에 Q2 와 같은 방식(격리 설정, 기록형 Stop 훅, 연속 block 횟수 계수)으로 수행하고 progress.md 에 남긴다. 상한이 없다고 나오면 REQ-HSF-013 의 술어를 하네스 인자로 일반화할지 운영자 판정을 다시 받는다.
+- **Q9 codex 모드 `moai hook agent` 경로의 도달성과 비대칭** — 배포 래퍼 `internal/template/templates/.claude/hooks/moai/handle-agent-hook.sh:47`(`.sh.tmpl:47` 도 같음)은 `--harness` 없이 부르고, `internal/template/templates/.codex/` 에는 `agents/` 만 있으며, 이 트리에서 `hook agent` 를 부르는 Codex 설정 생성 경로를 grep 으로 찾지 못했다(Codex 쪽 명령 행은 `internal/cli/codex_readiness.go:74` 의 `moai hook --harness codex`, 부재 확정은 아니다). 따라서 AC-HSF-012·013 의 codex 모드 32 경우는 현재 도달하지 않는 경로를 검증하고, 성공 경로의 agent 호출은 Codex 번역을 거치지 않아 도달한다면 실패 경로만 Codex 렌더링을 하는 비대칭이 된다. **범위 변경 없음**(Q3 판정의 포함 범위 유지). 도달 경로를 만들지, 성공 경로를 Codex 번역에 태울지는 별도 카드의 판단이며 판정만 기록한다.
 - **Q7 Claude 하네스의 영속 기록면** — REQ-HSF-008 은 `codexadapter.RecordDiscards` 재사용을 요구하는데, 그 기록면의 경로가 `.moai/logs/codex-adapter.jsonl` 이라 Claude 하네스 사건이 「codex-adapter」 이름의 파일에 쌓인다. **기록면 하나를 재사용하는 쪽을 권장**(새 기록면을 만들면 관측 지점이 둘로 갈린다). 대안(Claude 경로는 stderr 만 남긴다)을 택하면 REQ-HSF-008(b) 와 AC-HSF-007(b) 를 먼저 개정해야 한다 — 판정 기록만으로는 대안을 택할 수 없다.
 
 ## §C 착수 전 점검 (Pre-flight)
@@ -59,7 +64,13 @@ spec.md §A 참조. 요약: `internal/cli/hook.go:272-280` 의 stdin 파싱 실�
 1. t1099 착지 확인: `git merge-base --is-ancestor <t1099 착지 커밋> HEAD` → exit 0.
 2. spec.md §F.1 의 심볼 diff 를 실행하고 결과를 progress.md §E.2 에 붙인다. 달라진 것이 있으면 구현 전에 spec.md §B·acceptance.md 를 먼저 고친다.
 3. 설치된 codex-cli 버전을 기록한다(`codex --version`). Q2 측정 버전 0.156.1 과 다르면 Q2 를 같은 방법으로 다시 재고, 상한이 생겼다면 REQ-HSF-013 의 술어와 spec.md §B.2 행 3 을 먼저 개정한다.
-4. 기준선 측정(구현 전, 별도 커밋): 수리 전 트리에서 (a) `pre-tool` 에 파손 4 형태를 넣었을 때 stdout 이 `{}` 이고 exit 0 이며 디스패치가 0회임을, (b) 관측 하위 명령 22개의 파싱 실패 출력(20개 `{}`, worktree-create·worktree-remove 빈 stdout)을, (c) `moai hook agent` 의 결정 매핑 action(`x-validation`, `x-pre-transformation`, `x-pre-implementation`, 미지 action `foo`)과 관측 매핑 action(`x-verification`, `x-post-transformation`, `x-post-implementation`, `x-completion`)의 파싱 실패 출력(모두 `{}` exit 0)을 재현하고 progress.md 에 기록한다 — 재현이 수리 커밋보다 앞선 커밋에 있어야 순서가 git 이력으로 증명된다(`verification-claim-integrity.md` §2.3).
+4. 기준선 측정(구현 전, 별도 커밋): 수리 전 트리에서 (a) `pre-tool` 에 파손 4 형태를 넣었을 때 stdout 이 `{}` 이고 exit 0 이며 디스패치가 0회임을, (b) 관측 하위 명령 22개의 파싱 실패 출력(20개 `{}`, worktree-create·worktree-remove 빈 stdout)을, (c) `moai hook agent` 의 결정 매핑 action(`x-validation`, `x-pre-transformation`, `x-pre-implementation`, 미지 action `foo`)과 관측 매핑 action(`x-verification`, `x-post-transformation`, `x-post-implementation`, `x-completion`)의 파싱 실패 출력(모두 `{}` exit 0)과, 유효한 stdin(`{}`) + `--harness bogus` 로 `x-validation` 을 실행했을 때의 종료 코드와 stdout(plan-audit 2회차에서 codex 백엔드가 exit 0 + PreToolUse allow 출력을 재현했다 — 이 트리에서 다시 잰다; AC-HSF-012 신규 거부의 기준선)을 재현하고 progress.md 에 기록한다 — 재현이 수리 커밋보다 앞선 커밋에 있어야 순서가 git 이력으로 증명된다(`verification-claim-integrity.md` §2.3).
+5. **호스트의 설정 `env` 전파·유지 측정 (운영자 판정 Q1 의 조건, spec.md §F.2 「추가 후 제거」).** 구현 전에, 4 와 같은 자리에서 수행한다.
+   - 설정: 개발 프로젝트가 아니라 `/tmp` 아래 격리 프로젝트에서 한다(설정 파일을 실제로 고치는 측정이라 `CLAUDE.local.md` §13 과 같은 원칙). 훅이 호출될 때마다 자기 프로세스 환경의 탈출 장치 키 값과 두 설정 파일의 선언 여부를 한 줄씩 기록하는 기록형 훅을 두고 Claude Code 를 비대화형으로 실행한다. 셸 환경에는 키를 두지 않아, 훅이 본 값은 설정 출처에서 온 것뿐이게 한다.
+   - 관측할 것: (a) 설정 `env` 에 키를 추가한 뒤 훅 환경에 언제 나타나는가 — 같은 세션의 다음 훅 호출 / 세션 재시작 뒤 / 나타나지 않음, (b) 키를 삭제한 뒤(변형 1)와 설정 파일을 삭제한 뒤(변형 2) 같은 세션의 이어지는 훅 호출에 값이 남는가. 양성 대조: 셸 환경에만 키를 둔 실행 1회에서 기록형 훅이 값을 봐야 계측기가 동작한 것이다 — 대조가 값을 못 보면 두 변형의 결과를 판정에 쓰지 않는다.
+   - **상한(먼저 선언하고 그 안에서 끝낸다):** 실행은 최대 4회(변형 1, 변형 2, 양성 대조, 재시도 1회). 실행마다 턴 상한 `--max-turns 8` 과, 프로세스를 밖에서 묶는 벽시계 상한 300초(`timeout 300` 또는 동등한 외부 래퍼)를 건다. 상한에 닿은 실행은 「미측정」으로 기록하고, 재시도 1회를 쓴 뒤에는 더 돌리지 않는다.
+   - **판정과 정지 조건:** 설정 파일에서 선언이 사라진 뒤의 훅 호출에 값이 남아 있으면 「유지한다」다. 「유지한다」 또는 「미측정」이면 구현을 시작하지 않고 리드를 거쳐 운영자 재판정을 받는다(메커니즘 (i) 자체의 재검토 포함). 「유지하지 않는다」면 진행하고, 결과·Claude Code 버전·실행 형태·선언한 상한을 progress.md 에 남긴다.
+   - 이 항목이 재지 않는 것: Codex 호스트의 설정면(`.codex/` 아래)이 훅 환경에 변수를 공급하는지 — spec.md §F.2 「출처 제약의 잔여 면」 행에 이미 미측정 잔여 면으로 남아 있다.
 
 ## §D 제약
 
@@ -72,13 +83,13 @@ spec.md §A 참조. 요약: `internal/cli/hook.go:272-280` 의 stdin 파싱 실�
 
 ## §E 자기 검증
 
-run 완료 보고는 acceptance.md 의 AC 마다 명령과 원문 출력을 붙인다. 특히 AC-HSF-003(단일 목록)은 동작 등가 테스트, Go AST 검사, 세 변이(판정 호출 무력화 → 동작 테스트 RED, 중복 `switch` 삽입 → AST 검사 RED, 면제 술어 무력화 → 동작 테스트 RED) 모두를 요구한다 — 하나만으로는 「목록이 없다」를 증명하지 못한다.
+run 완료 보고는 acceptance.md 의 AC 마다 명령과 원문 출력을 붙인다. 특히 AC-HSF-003(단일 목록)은 동작 등가 테스트, Go AST 검사(두 진입점 모두), 네 변이(판정 호출 무력화 → 동작 테스트 RED, 중복 `switch` 삽입 → AST 검사 RED, 면제 술어 무력화 → 동작 테스트 RED, `runAgentHook` 의 리터럴 비교 대체 → AST 검사 RED) 모두를 요구한다 — 하나만으로는 「목록이 없다」를 증명하지 못한다.
 
 ## §F 마일스톤 (결정의 번복 가능성 순)
 
 ### M0 — Kickoff 차단 질문 판정 (Priority High, 사람) — 판정됨, Kickoff 는 대기
 
-Q2(측정)·Q1(A1 + 메커니즘 (i))·Q3(포함)이 2026-09-24 에 판정됐다(§B.1). Q3 포함에 따른 REQ·AC 추가는 0.3.0 개정에 담겼다. 남은 것은 **Implementation Kickoff Approval 자체**이며, 리드 지시에 따라 t1099 가 develop 에 착지한 뒤 요청한다. 그때 spec.md §F.1 의 심볼 diff 와 §F.1 의 3(codex 버전, `runAgentHook` 매핑, 설정 파일 형식)으로 설계 전제를 다시 확인한다. 추적 항목 Q4~Q8 은 Kickoff 를 막지 않는다: Q5·Q8 은 run 초반 측정, Q4·Q6 은 판정 기록, Q7 은 대안을 택할 경우에만 REQ 개정.
+Q2(측정)·Q1(A1 + 메커니즘 (i))·Q3(포함)이 2026-09-24 에 판정됐다(§B.1). Q3 포함에 따른 REQ·AC 추가는 0.3.0 개정에 담겼다. 남은 것은 **Implementation Kickoff Approval 자체**이며, 리드 지시에 따라 t1099 가 develop 에 착지한 뒤 요청한다. 그때 spec.md §F.1 의 심볼 diff 와 §F.1 의 3(codex 버전, `runAgentHook` 매핑, 설정 파일 형식)으로 설계 전제를 다시 확인한다. 0.3.1 에서 운영자가 파일 부재 해석을 확인했고(§B.1 Q1), 그 조건인 호스트 `env` 전파·유지 측정은 run 시작 시 §C Pre-flight 5 가 수행한다 — 「유지한다」면 run 은 거기서 멈춘다. 추적 항목 Q4~Q8 은 Kickoff 를 막지 않는다: Q5·Q8 은 run 초반 측정, Q4·Q6 은 판정 기록, Q7 은 대안을 택할 경우에만 REQ 개정.
 
 ### M1 — 결정 이벤트의 fail-closed 동작 (Priority High)
 
@@ -107,7 +118,7 @@ Q2(측정)·Q1(A1 + 메커니즘 (i))·Q3(포함)이 2026-09-24 에 판정됐다
 
 ### M3 — 하네스 모드 판정 순서 이동 (Priority Medium)
 
-- `harnessModeIsCodex(cmd)` 를 `ReadInput` 앞으로 옮긴다. 잘못된 `--harness` 값의 거부는 그대로 0 이 아닌 종료다 — 다만 이제 stdin 을 읽기 전에 거부된다. `validateCodexHarnessEvent` 는 페이로드가 필요하므로 파싱 성공 뒤에 남는다.
+- `harnessModeIsCodex(cmd)` 를 `ReadInput` 앞으로 옮긴다. `runHookEvent` 에서 잘못된 `--harness` 값의 거부는 그대로 0 이 아닌 종료다 — 다만 이제 stdin 을 읽기 전에 거부된다. `runAgentHook` 은 지금 `--harness` 를 읽지 않으므로(`harnessModeIsCodex` 의 비테스트 호출처는 `internal/cli/hook.go:292` 하나), 이 함수에서는 하네스 판독과 잘못된 값의 거부가 **새 동작**이다 — 유효한 stdin 과 잘못된 `--harness` 의 agent 호출이 성공에서 실패로 바뀐다(REQ-HSF-005, AC-HSF-012). `validateCodexHarnessEvent` 는 페이로드가 필요하므로 파싱 성공 뒤에 남는다.
 
 ### M4 — 테스트 갱신과 추가 (Priority Medium)
 
@@ -135,4 +146,5 @@ Q2(측정)·Q1(A1 + 메커니즘 (i))·Q3(포함)이 2026-09-24 에 판정됐다
 - `6a3603274` (보존 대상 의도)
 - `.moai/reports/t1152/plan-audit.md` (0.2.0 개정 근거, 로컬 증거)
 - `.moai/reports/t1152/q2-codex-stop-cap.md` (0.3.0 Q2 판정 근거, 로컬 증거 — gitignored)
+- `.moai/reports/t1152/plan-audit-iter2.md` (0.3.1 개정 근거, 로컬 증거)
 - `internal/cli/hook.go:447`·`:455-463`·`:469-481` (`runAgentHook`, 이 트리 `44dfc25fd` 기준), `internal/cli/hook.go:45` (`--harness` PersistentFlags)
