@@ -2,12 +2,12 @@
 title: MCP サーバー
 weight: 12
 draft: false
-description: "MoAI-ADK が自身で提供する moai mcp-server（stdio ローカル MCP サーバー）のプロビジョニング、21 ツールカタログ、認証、遅延ロード方針を整理します。"
+description: "MoAI-ADK が自身で提供する moai mcp-server（stdio ローカル MCP サーバー）のプロビジョニング、ツールカタログ、認証、遅延ロード方針を整理します。"
 ---
 
 # MCP サーバー
 
-MoAI-ADK は Claude Code の MCP エコシステムの上に乗り、さらにその上に**独自の MCP サーバー**を1つ載せます。バイナリ1つ（`moai mcp-server`）が stdio ローカルサーバーとして動作し、SPEC ライフサイクル監査、検証スナップショット、ゴールエンジン、クロスモデル監査、codex·GLM 委任など、MoAI-ADK 固有の21個のツールを Claude Code ランタイムに公開します。
+MoAI-ADK は Claude Code の MCP エコシステムの上に乗り、さらにその上に**独自の MCP サーバー**を1つ載せます。バイナリ1つ（`moai mcp-server`）が stdio ローカルサーバーとして動作し、SPEC ライフサイクル監査、検証スナップショット、ゴールエンジン、クロスモデル監査、codex·GLM 委任など、MoAI-ADK 固有のツールを Claude Code ランタイムに公開します。
 
 {{< callout type="info" title="2つのMCP文書の関係" >}}
 [**Claude Code 一般 MCP**](/ja/claude-code/extensibility/mcp)はプラットフォーム自身の MCP（Model Context Protocol）統合を扱います — USB ポートの比喩、サーバー登録、転送タイプ、`/mcp` コマンド、OAuth 認証、遅延ロードの原理。
@@ -29,14 +29,14 @@ Claude Code の MCP エコシステムと MoAI の独自 MCP サーバーは、�
 flowchart TD
     CC["Claude Code ランタイム<br/>(ツール権限 · 遅延ロード · 承認)"]
     CMCP["一般 MCP サーバー<br/>(context7, chrome-devtools, …)"]
-    MMCP["moai mcp-server<br/>(MoAI 自身 · 21 ツール)"]
+    MMCP["moai mcp-server<br/>(MoAI 自身のツール)"]
     CC --> CMCP
     CC --> MMCP
     MMCP --> TOOLS["SPEC lifecycle · 検証 · ゴール · 監査 · codex/GLM 委任"]
     CMCP --> EXT["外部ツール (ライブラリ文書 · ブラウザ自動化 · …)"]
 ```
 
-ここでの要点は、「MoAI は MCP をプロビジョニングしない」という主張が**半分だけの真実**だという点です。外部 MCP サーバー（context7, playwright など）をデフォルトでプロビジョニングしないのは正しいです。しかし MoAI 自身のサーバー1つは `moai init` の時点で default-on で入ります。このサーバーこそが、MoAI の21ツールカタログが Claude Code に届く通路です。
+ここでの要点は、「MoAI は MCP をプロビジョニングしない」という主張が**半分だけの真実**だという点です。外部 MCP サーバー（context7, playwright など）をデフォルトでプロビジョニングしないのは正しいです。しかし MoAI 自身のサーバー1つは `moai init` の時点で default-on で入ります。このサーバーこそが、MoAI のツールカタログが Claude Code に届く通路です。
 
 ## .mcp.json プロビジョニング
 
@@ -113,9 +113,9 @@ flowchart TD
 
 バージョンに関する注意：すでに起動しているサーバーは、その下のバイナリを差し替えても再起動するまで以前の動作を保ちます — サブプロセスは自ら読み直しません。呼び出し側が確認できるのは、`ListTools` の応答に `project_root` が現れるかどうかです。
 
-## 21-ツールカタログ
+## ツールカタログ
 
-`moai mcp-server` が公開する21個のツールは6つのグループに分かれます。呼び出し時点ではすべて `mcp__moai__` 接頭辞が付きます。
+`moai mcp-server` が公開するツールのうち、主要な6グループを以下にまとめます。呼び出し時点ではすべて `mcp__moai__` 接頭辞が付きます。このページの表がすべてではありません。ツール数と全一覧は、インストールされたバイナリが `tools/list` で返す一覧が基準であり、それをまとめた文書が `.claude/rules/moai/core/moai-mcp-tools.md` です。
 
 ### SPEC ライフサイクル
 

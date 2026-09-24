@@ -2,12 +2,12 @@
 title: MCP 서버
 weight: 12
 draft: false
-description: "MoAI-ADK가 자체 제공하는 moai mcp-server(stdio 로컬 MCP 서버)의 프로비저닝, 21-도구 카탈로그, 인증, 지연 로드 방침을 정리합니다."
+description: "MoAI-ADK가 자체 제공하는 moai mcp-server(stdio 로컬 MCP 서버)의 프로비저닝, 도구 카탈로그, 인증, 지연 로드 방침을 정리합니다."
 ---
 
 # MCP 서버
 
-MoAI-ADK는 Claude Code의 MCP 생태계 위에 올라타되, 그 위에 **자체 MCP 서버**를 하나 더 얹습니다. 바이너리 하나(`moai mcp-server`)가 stdio 로컬 서버로 실행되며, SPEC 라이프사이클 감사, 검증 스냅샷, 골 엔진, 교차 모델 감사, codex·GLM 위임 등 MoAI-ADK 고유의 21개 도구를 Claude Code 런타임에 노출합니다.
+MoAI-ADK는 Claude Code의 MCP 생태계 위에 올라타되, 그 위에 **자체 MCP 서버**를 하나 더 얹습니다. 바이너리 하나(`moai mcp-server`)가 stdio 로컬 서버로 실행되며, SPEC 라이프사이클 감사, 검증 스냅샷, 골 엔진, 교차 모델 감사, codex·GLM 위임 등 MoAI-ADK 고유의 도구들을 Claude Code 런타임에 노출합니다.
 
 {{< callout type="info" title="두 MCP 문서의 관계" >}}
 [**Claude Code 일반 MCP**](/ko/claude-code/extensibility/mcp)는 플랫폼 자체의 MCP(Model Context Protocol) 통합을 다룹니다 — USB 포트 비유, 서버 등록, 전송 타입, `/mcp` 명령, OAuth 인증, 지연 로드 원리.
@@ -29,14 +29,14 @@ Claude Code의 MCP 생태계와 MoAI의 자체 MCP 서버는 서로 별개의 �
 flowchart TD
     CC["Claude Code 런타임<br/>(도구 권한 · 지연 로드 · 승인)"]
     CMCP["일반 MCP 서버<br/>(context7, chrome-devtools, …)"]
-    MMCP["moai mcp-server<br/>(MoAI 자체 · 21 도구)"]
+    MMCP["moai mcp-server<br/>(MoAI 자체 도구)"]
     CC --> CMCP
     CC --> MMCP
     MMCP --> TOOLS["SPEC lifecycle · 검증 · 골 · 감사 · codex/GLM 위임"]
     CMCP --> EXT["외부 도구 (라이브러리 문서 · 브라우저 자동화 · …)"]
 ```
 
-핵심은 "MoAI가 MCP를 프로비저닝하지 않는다"는 것이 **반쪽짜리 진실**이라는 점입니다. 외부 MCP 서버(context7, playwright 등)는 기본으로 프로비저닝하지 않는 것이 맞습니다. 하지만 MoAI 자체 서버 하나는 `moai init` 시점에 default-on으로 깔립니다. 이 서버가 곧 MoAI의 21-도구 카탈로그가 Claude Code에 닿는 통로입니다.
+핵심은 "MoAI가 MCP를 프로비저닝하지 않는다"는 것이 **반쪽짜리 진실**이라는 점입니다. 외부 MCP 서버(context7, playwright 등)는 기본으로 프로비저닝하지 않는 것이 맞습니다. 하지만 MoAI 자체 서버 하나는 `moai init` 시점에 default-on으로 깔립니다. 이 서버가 곧 MoAI 도구 카탈로그가 Claude Code에 닿는 통로입니다.
 
 ## .mcp.json 프로비저닝
 
@@ -113,9 +113,9 @@ flowchart TD
 
 버전 주의: 이미 떠 있는 서버는 그 아래 바이너리를 갈아 끼워도 재시작 전까지 예전 동작을 유지합니다 — 서브프로세스는 스스로 다시 읽지 않습니다. 호출자가 확인할 수 있는 방법은 `ListTools` 응답에 `project_root`가 보이는지입니다.
 
-## 21-도구 카탈로그
+## 도구 카탈로그
 
-`moai mcp-server`가 노출하는 21개 도구는 여섯 그룹으로 나뉩니다. 호출 시점에는 모두 `mcp__moai__` 접두사가 붙습니다.
+`moai mcp-server`가 노출하는 도구 가운데 핵심 여섯 그룹을 아래에 정리합니다. 호출 시점에는 모두 `mcp__moai__` 접두사가 붙습니다. 이 페이지의 표가 전체 목록은 아닙니다. 도구 수와 전체 목록은 설치된 바이너리가 `tools/list`로 돌려주는 목록이 기준이며, 이를 정리한 문서는 `.claude/rules/moai/core/moai-mcp-tools.md`입니다.
 
 ### SPEC 라이프사이클
 

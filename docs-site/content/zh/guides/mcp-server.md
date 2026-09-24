@@ -2,12 +2,12 @@
 title: MCP 服务器
 weight: 12
 draft: false
-description: "梳理 MoAI-ADK 自带的 moai mcp-server（stdio 本地 MCP 服务器）的配置、21-工具目录、认证和延迟加载策略。"
+description: "梳理 MoAI-ADK 自带的 moai mcp-server（stdio 本地 MCP 服务器）的配置、工具目录、认证和延迟加载策略。"
 ---
 
 # MCP 服务器
 
-MoAI-ADK 在 Claude Code 的 MCP 生态之上，又叠加了一个**自有的 MCP 服务器**。一个二进制文件（`moai mcp-server`）以 stdio 本地服务器的方式运行，向 Claude Code 运行时暴露 MoAI-ADK 独有的 21 个工具——SPEC 生命周期审计、验证快照、目标引擎、跨模型审计、codex·GLM 委托等。
+MoAI-ADK 在 Claude Code 的 MCP 生态之上，又叠加了一个**自有的 MCP 服务器**。一个二进制文件（`moai mcp-server`）以 stdio 本地服务器的方式运行，向 Claude Code 运行时暴露 MoAI-ADK 独有的工具——SPEC 生命周期审计、验证快照、目标引擎、跨模型审计、codex·GLM 委托等。
 
 {{< callout type="info" title="两份 MCP 文档的关系" >}}
 [**Claude Code 通用 MCP**](/zh/claude-code/extensibility/mcp) 讲的是平台自身的 MCP（Model Context Protocol）集成——USB 端口比喻、服务器注册、传输类型、`/mcp` 命令、OAuth 认证、延迟加载原理。
@@ -29,14 +29,14 @@ Claude Code 的 MCP 生态与 MoAI 的自有 MCP 服务器是各自独立的服�
 flowchart TD
     CC["Claude Code 运行时<br/>(工具权限 · 延迟加载 · 审批)"]
     CMCP["通用 MCP 服务器<br/>(context7, chrome-devtools, …)"]
-    MMCP["moai mcp-server<br/>(MoAI 自有 · 21 工具)"]
+    MMCP["moai mcp-server<br/>(MoAI 自有工具)"]
     CC --> CMCP
     CC --> MMCP
     MMCP --> TOOLS["SPEC lifecycle · 验证 · 目标 · 审计 · codex/GLM 委托"]
     CMCP --> EXT["外部工具 (库文档 · 浏览器自动化 · …)"]
 ```
 
-关键在于，"MoAI 不配置 MCP"是一个**半真半假的说法**。不默认配置外部 MCP 服务器（context7、playwright 等）是对的。但 MoAI 自有的那个服务器在 `moai init` 时就会以 default-on 装上。这个服务器正是 MoAI 的 21-工具目录触达 Claude Code 的通道。
+关键在于，"MoAI 不配置 MCP"是一个**半真半假的说法**。不默认配置外部 MCP 服务器（context7、playwright 等）是对的。但 MoAI 自有的那个服务器在 `moai init` 时就会以 default-on 装上。这个服务器正是 MoAI 的工具目录触达 Claude Code 的通道。
 
 ## .mcp.json 配置
 
@@ -113,9 +113,9 @@ flowchart TD
 
 版本提醒：已经在运行的服务器，即使替换了其下的二进制，在重启前仍保持旧行为——子进程不会自行重新加载。调用方可以检查的是 `ListTools` 的响应中是否出现 `project_root`。
 
-## 21-工具目录
+## 工具目录
 
-`moai mcp-server` 暴露的 21 个工具分为六组。调用时都带 `mcp__moai__` 前缀。
+下面整理了 `moai mcp-server` 暴露的工具中最核心的六组。调用时都带 `mcp__moai__` 前缀。本页的表格并非完整列表。工具数量与完整列表以已安装二进制通过 `tools/list` 返回的列表为准，整理该列表的文档是 `.claude/rules/moai/core/moai-mcp-tools.md`。
 
 ### SPEC 生命周期
 
