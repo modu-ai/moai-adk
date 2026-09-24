@@ -12,7 +12,8 @@ card: t1143
 ## §A 판정 규칙
 
 - 모든 AC는 아래 명령의 마지막 출력이 정확히 `true`일 때만 PASS다. 그 밖의 출력, 명령 실패, 증거 파일 부재는 FAIL이다.
-- `SKIP`, `NOT_RUN`, `ABORTED`, `INVALID`는 PASS가 아니다. 패키지 단위 `ok` 줄은 증거로 쓰지 않는다.
+- `SKIP`, `NOT_RUN`, `ABORTED`, `INVALID`는 어떤 경우에도 PASS가 아니다. 패키지 단위 `ok` 줄은 증거로 쓰지 않는다.
+- 결과 어휘: `NOT_RUN` = 실행되지 않았거나, 실행되었어도 판정 대상 성질이 측정되지 않음. `INVALID` = 리드가 측정 결함(하네스·픽스처·프롬프트의 결함)으로 기록한 실행이며 증거는 보존한다. `ABORTED` = 호출 상한 때문에 멈춤. `FAIL` = 측정되었고 판정식이 `true`가 아님(모델 행동 때문의 불성립 포함). 재실행은 `INVALID`에만 허용된다(`plan.md` §D).
 - 테스트 이름은 run 단계에서 만들 이름이다. 이름을 바꾸면 이 파일의 명령도 함께 고친다. 이름이 없으면 pass 수가 0이 되어 FAIL이다. 모든 판정식은 빈 입력(이벤트 0개, 증거 파일 부재)에서 `true`를 내지 않는다(판정식마다 실행해 확인, 명령과 출력: `.moai/reports/t1143/plan-checks/empty-input.md`).
 - `internal/cli` 명령은 kanban·factory 환경 변수를 같은 호출 안에서 지운다(`unset ... && go test ...`).
 - 명령에는 실행 중에 계산한 값을 git·go 명령으로 넘기는 형태를 쓰지 않는다(워크트리 세션 가드가 거부한다). 비교 기준은 리터럴 `develop...HEAD`(merge-base 기준 3점 표기)와 이관 커밋 `de5faa77a`다.
@@ -28,7 +29,7 @@ card: t1143
 - `session_sandbox` = 감사 rollout의 `turn_context.payload.sandbox_policy.type`. 여러 `turn_context`의 값이 다르면 유도 실패(`unattributed`).
 - `top_level` = 감사 rollout 첫 줄(`session_meta`)의 `payload.source == "exec"`. `payload.source.subagent.thread_spawn`이 있으면 하위 세션이다.
 - `used_spawn_agent` = 대상 rollout 중 어느 하나라도 `response_item`/`function_call`의 `payload.name == "spawn_agent"`를 가지면 true.
-- `route` = `"launcher"`는 `top_level`이 true이고 `used_spawn_agent`가 false이며, 같은 항목 동안 launcher가 쓴 launch record(증거 디렉터리로 복사)가 같은 `role`, `exit_code == 0`, `verdict_sha256 == ac023`의 `verdict_file_sha256`을 가질 때만이다. 감사 rollout이 하위 세션이면 `"spawn_agent"`, 그 밖에는 `"unattributed"`.
+- `route` = `"launcher"`는 `top_level`이 true이고 `used_spawn_agent`가 false이며, 같은 항목 동안 launcher가 쓴 launch record(증거 디렉터리로 복사)가 같은 `role`, `exit_code == 0`, `verdict_sha256 == ac023`의 `verdict_file_raw_sha256`을 가질 때만이다. launch record의 `verdict_sha256`은 판정 파일의 원시 바이트 해시이므로 원시 바이트 해시(`verdict_file_raw_sha256`)와 비교한다. 이어받은 AC-DHR-023 판정식의 `returned_sha256`·`verdict_file_sha256`은 끝 공백을 자른 텍스트의 해시다. 측정된 실행(M4)에서 두 해시는 같았다(`progress.md` §E.2). 감사 rollout이 하위 세션이면 `"spawn_agent"`, 그 밖에는 `"unattributed"`.
 - `verdict_writer` = `"launcher"`는 위 조건의 launch record가 있을 때만이고, 그 밖에는 `"unattributed"`.
 
 **경로 이름의 네 어휘.** 이 문서에서 "경로"를 뜻하는 값은 네 곳에 나오며 섞어 쓰지 않는다. `m1-route/route.txt`는 `shell`·`mcp`·`none`(M1 측정 결과, 단일 출처), AC-CAR-010 증거의 `route`는 `shell`·`mcp`(반드시 `route.txt`와 같음), launch record의 `route`는 `direct`(테스트가 직접 호출)·`shell`·`mcp`, AC-CAR-012의 `route`는 `launcher`·`spawn_agent`·`unattributed`(감사가 어느 메커니즘으로 돌았는가).
@@ -188,7 +189,7 @@ unset MOAI_KANBAN MOAI_KANBAN_ID MOAI_KANBAN_LABEL MOAI_KANBAN_LEAD_ADDR MOAI_KA
 
 **Given** 기존 인자 상한 `config.DefaultCodexInstructionArgBytes`(`internal/config/defaults.go`)와, 최종 인자 토큰 `developer_instructions=<JSON>`의 바이트 길이가 상한과 정확히 같아지도록 만든 시험용 역할 파일, 상한보다 1바이트 길어지도록 만든 시험용 역할 파일(길이는 원문이 아니라 JSON 인코딩 뒤의 최종 토큰으로 잰다 — `internal/cli/codex_launcher.go:176-181` `checkCodexInstructionSize`와 같은 단위),
 **When** 각각 launcher로 실행하면,
-**Then** 상한+1 쪽은 가짜 `codex` 호출 없이 0이 아닌 코드로 끝나고 진단에 측정 길이(상한+1)와 상한이 있으며, 상한과 같은 쪽은 가짜 `codex`가 한 번 호출된다. 테스트는 두 경우의 최종 토큰 길이를 스스로 재어 각각 상한, 상한+1임을 먼저 단정한다.
+**Then** 상한+1 쪽은 가짜 `codex`의 `exec` 호출 없이 0이 아닌 코드로 끝나고 진단에 측정 길이(상한+1)와 상한이 있으며, 상한과 같은 쪽은 가짜 `codex`의 `exec`가 정확히 한 번 호출된다(AC-CAR-001대로 `mcp list --json` 호출이 그보다 먼저 한 번 있다). 테스트는 두 경우의 최종 토큰 길이를 스스로 재어 각각 상한, 상한+1임을 먼저 단정한다.
 
 ```bash
 unset MOAI_KANBAN MOAI_KANBAN_ID MOAI_KANBAN_LABEL MOAI_KANBAN_LEAD_ADDR MOAI_KANBAN_SETTINGS_INJECTED MOAI_KANBAN_BACKEND MOAI_FACTORY_WORKERS && go test -json ./internal/cli -run '^TestCodexAuditLaunchInstructionCeiling$' -count=1 | jq -se '([.[]|select(.Action=="pass" and .Test=="TestCodexAuditLaunchInstructionCeiling")]|length)==1 and ([.[]|select(.Action=="fail" or .Action=="skip")]|length)==0 and ([.[]|select((.Output//"")|test("NOT_RUN|ABORTED"))]|length)==0'
@@ -226,6 +227,8 @@ mkdir -p .moai/reports/t1143 && git show de5faa77a:.moai/specs/SPEC-DUAL-HARNESS
 
 ### AC-CAR-010 — [LIVE] launcher 계약, 실행 경로, MCP 비활성화 (REQ-CAR-001, 003, 007, 011, REQ-DHR-015)
 
+> **[카드 t1172로 이월 — 이 카드에서 충족되지 않음. 본문·판정식·기대값은 바꾸지 않음 (run 종료 뒤 리드 결정)]** M5 실행 1은 리드가 `INVALID — routed to decoy server`로 기록했다(ledger #35·#36). (a) 부분의 관측은 유효한 증거로 남는다. 경로 (b)에 필요한 도구별 MCP 사전 승인의 효과는 측정되지 않았고 이 카드는 그 방향을 채택하지 않았다. 근거: `.moai/reports/t1143/verdict.md`.
+
 **Given** 격리된 임시 저장소, 임시 `CODEX_HOME`(로그인 사본과, 기록 래퍼를 명령으로 둔 decoy MCP 서버를 선언한 사용자 층 `config.toml`), 임시 `MOAI_HOME`, 설치된 codex 바이너리, 실제 `moai` 앞에 놓여 `mcp-server` 기동을 기록한 뒤 실제 `moai`로 넘기는 기록 래퍼, 프로젝트 층 `config.toml`에 `sandbox_mode = "workspace-write"`와 `[mcp_servers.moai]`가 있는 상태, 시험용 `plan-auditor` 역할 파일(방출본의 `developer_instructions` 끝에 실행마다 다른 nonce 한 줄을 덧붙인 것), 실행당 호출 예산 정확히 3,
 **When** (a) 테스트가 launcher를 직접 불러 `plan-auditor`를 띄우고, "개발자 지시문의 nonce를 되돌리고, 탐침 파일 쓰기 명령을 한 번 실행하고, 결과를 한 줄로 반환하라"를 주며, (b) 부모 `codex exec -s workspace-write` 세션 하나를 띄워 M1에서 측정한 경로(shell 또는 MCP)로 launcher를 불러 `sync-auditor`에 같은 탐침 작업을 시키고 판정 파일을 쓰게 하면,
 **Then** 증거 파일 `ac-car-010-evidence.json`에 다음이 기록되고 판정식이 모두 요구한다.
@@ -254,6 +257,8 @@ shasum -a 256 .moai/reports/t1143/ac-car-010-evidence.json > .moai/reports/t1143
 
 ### AC-CAR-011 — [LIVE] 나머지 read-only 역할의 쓰기 차단 (REQ-CAR-001, 010)
 
+> **[카드 t1172로 이월 — `NOT_RUN`. 본문·판정식·기대값은 바꾸지 않음 (run 종료 뒤 리드 결정)]** AC-CAR-010이 멈춘 뒤 리드 지시로 실행하지 않았다(0/2회). 근거: `.moai/reports/t1143/verdict.md`.
+
 **Given** AC-CAR-010과 같은 격리 환경, 실행당 호출 예산 정확히 2,
 **When** launcher로 `mission-governor`와 `super-advisor`를 한 번씩 띄워 탐침 파일 쓰기 명령을 한 번 실행하고 결과를 한 줄로 반환하게 하면,
 **Then** 증거 파일 `ac-car-011-evidence.json`에 호출 수 2와, 두 역할 각각의 세션 sandbox `read-only`, `probe_command_executed` true, 0이 아닌 `probe_exit_code`, 탐침 파일 없음, `write_denied` true, 시도 출력 비어 있지 않음이 기록된다. 재실행 규칙은 AC-CAR-010과 같다.
@@ -276,7 +281,7 @@ shasum -a 256 .moai/reports/t1143/ac-car-011-evidence.json > .moai/reports/t1143
 
 #### AC-CAR-012a — [결정적] 유도 규칙이 spawn 경로를 거부한다 (LIVE 없음)
 
-**Given** t1100 m8-sbx 세션 기록 네 개를 그대로 복사한 테스트 fixture(`internal/cli/testdata/codex-rollouts-m8/`, M4에서 추가)와, 복사본이 원본과 같음을 보이는 sha256 목록(primary checkout `.moai/reports/t1100/m8-sbx/`에서 0.3.0 plan 때 잰 값: `…01a0ceed…` `9de04f41…afcb`, `…01a0ceee-0526…` `50a26a62…5c95`, `…01a0ceee-4848…` `c116ad0a…c4ab`, `…01a0ceee-67e8…` `6e1fa141…b7c2`), 그리고 그 기록을 편집해 만든 합성 fixture 둘 — (s1) 최상위 `source:"exec"` 감사 세션, `spawn_agent` 호출 없음, 짝이 맞는 launch record 있음, (s2) m8 run2 기록에 짝이 맞는 launch record만 덧붙인 것,
+**Given** t1100 m8-sbx 세션 기록 네 개를 그대로 복사한 테스트 fixture(`internal/cli/testdata/codex-rollouts-m8/`, M4에서 추가)와, 복사본이 원본과 같음을 보이는 sha256 목록(primary checkout `.moai/reports/t1100/m8-sbx/`에서 0.3.0 plan 때 잰 값: `…01a0ceed…` `9de04f41b82ecd8712718be8ac3596dbaa4feba9f973b4e750e1e6930af5bcfa`(0.4.0 sync에서 끝 네 자리 오기 `…afcb`를 전체 값으로 바로잡음), `…01a0ceee-0526…` `50a26a62…5c95`, `…01a0ceee-4848…` `c116ad0a…c4ab`, `…01a0ceee-67e8…` `6e1fa141…b7c2`), 그리고 그 기록을 편집해 만든 합성 fixture 둘 — (s1) 최상위 `source:"exec"` 감사 세션, `spawn_agent` 호출 없음, 짝이 맞는 launch record 있음, (s2) m8 run2 기록에 짝이 맞는 launch record만 덧붙인 것,
 **When** 유도 함수를 각 항목에 적용하면,
 **Then** 다음이 모두 성립한다.
 
@@ -293,6 +298,8 @@ unset MOAI_KANBAN MOAI_KANBAN_ID MOAI_KANBAN_LABEL MOAI_KANBAN_LEAD_ADDR MOAI_KA
 ```
 
 #### AC-CAR-012b — [LIVE 증거 판정] 이어받은 실행의 유도 필드
+
+> **[카드 t1171로 이월 — FAIL. 판정식·기대값은 바꾸지 않음 (run 종료 뒤 리드 결정)]** M4 실행 1은 리드가 `INVALID — probe wording conflicts with the role contract`로 기록했고, 재실행은 FAIL로 기록되었다(작업 없는 요청을 거절하는 역할 계약과 역할 로드 탐침의 충돌). 같은 실행을 읽는 AC-DHR-012/023도 같은 이유로 t1171로 이월한다(아래 §B의 원문 블록은 바꾸지 않음). 근거: `.moai/reports/t1143/verdict.md`.
 
 AC-DHR-012/023과 같은 실행(같은 jsonl, 같은 증거 파일)을 판정한다. 추가 모델 호출은 없다. 이어받은 판정식이 보지 않는 필드만 읽는다. 필드는 AC-CAR-012a가 검증한 같은 유도 함수로 채우며, 테스트는 그 항목의 세션 기록과 launch record를 증거 디렉터리로 복사한다(`ac012-sessions/`, `ac012-launch-records/`).
 
@@ -329,7 +336,7 @@ if grep -qx 'mcp' .moai/reports/t1143/m1-route/route.txt 2>/dev/null; then unset
 - `sandbox` = `"read-only"`, `mcp_servers` = `"disabled"`.
 - `covers`: read-only 보장이 Codex sandbox가 다스리는 모델 발행 명령과 편집에 한정된다는 비어 있지 않은 문장.
 - `unsupported`: 정확히 `["codex-home-session-files", "project-hook-commands"]`(순서 무관, 더도 덜도 없음).
-- `exit_code`, `failure_reason`(성공 시 null, 실패 시 비어 있지 않은 문자열), `verdict_path`(성공하고 목적지가 있으면 워크트리 기준 상대 경로, 아니면 null), `verdict_sha256`(판정 파일 sha256 또는 null).
+- `exit_code`, `failure_reason`(성공 시 null, 실패 시 비어 있지 않은 문자열), `verdict_path`(성공하고 목적지가 있으면 워크트리 기준 상대 경로, 아니면 null), `verdict_sha256`(판정 파일 원시 바이트의 sha256, 정규화 없음, 또는 null).
 
 실패 실행의 record는 `exit_code`가 0이 아니고 `verdict_path`가 null이다. 성공 실행의 `verdict_sha256`은 판정 파일의 실제 sha256과 같다. 파일 이름은 launcher가 만들며, 같은 이름의 파일이 이미 있으면 덮어쓰지 않고 실패한다(배타 생성). 거부된 세 호출은 `.moai/reports/codex-audit/`을 포함해 어떤 파일도 만들지 않고, `LAUNCH_RECORD` 줄 없이 표준 오류에만 거부 사유를 찍는다.
 

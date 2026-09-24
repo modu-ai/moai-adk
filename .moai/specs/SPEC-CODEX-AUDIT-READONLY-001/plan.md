@@ -38,7 +38,7 @@ plan 단계에서 읽기 전용으로 확인한 사실이다. 모델 호출은 �
 부모 Codex lane 세션이 launcher를 부를 수 있는 경로는 둘이다.
 
 - **R1 shell 경로**: 부모 세션이 shell 도구로 `moai codex audit ...`을 실행한다. launcher와 그 아래 `codex exec`는 부모의 sandbox(`workspace-write`, `network_access: false`) 안에서 뜬다. 중첩된 `codex exec`가 모델 API에 닿는지, macOS sandbox 안에서 다시 sandbox를 걸 수 있는지는 측정되지 않았다. 네트워크 차단이 측정된 설정이므로 실패 가능성이 있다.
-- **R2 MCP 경로**: moai MCP 서버에 도구 하나를 더하고 서버가 launcher를 부른다. MCP 서버는 Codex 호스트가 띄우는 프로세스이며 shell sandbox 밖에서 돈다는 것이 통상의 이해지만 이 트리에서 측정하지 않았다. 서버의 작업 디렉터리는 primary checkout이므로 워크트리 뿌리를 입력으로 받아야 하며, 그 입력은 REQ-CAR-005의 한정을 받는다(D5.1). 감사는 수 분이 걸리므로 `codex_task`와 같은 비동기 작업 형태(시작·상태·결과)로 둔다.
+- **R2 MCP 경로**: moai MCP 서버에 도구 하나를 더하고 서버가 launcher를 부른다. 측정(M1 P-C): MCP 서버 프로세스는 부모의 shell sandbox 밖에서 돌고, 서버가 띄운 자식 `codex exec -s read-only`는 모델에 닿았다. 측정(M2 첫 항목, `progress.md` §E.2 M2, `.moai/reports/t1143/m2-startdir/moai-launch.log`): `-C <lane 워크트리>`로 시작한 Codex 세션이 띄운 moai `mcp-server`(pid 24313)의 시작 디렉터리는 lane 워크트리였다(`pwd` 기록과 `lsof` `fcwd` = `/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t1143`). 그래서 서버의 시작 워크트리를 호출자 워크트리로 쓰고, 그 입력은 REQ-CAR-005의 한정을 받는다(D5.1). 감사는 수 분이 걸리므로 `codex_task`와 같은 비동기 작업 형태(시작·상태·결과)로 둔다.
 
 M1이 R1을 먼저 재고, R1이 모델에 닿지 못할 때만 R2를 잰다. 결과는 `.moai/reports/t1143/m1-route/route.txt`에 `shell`, `mcp`, `none` 중 하나로 적는다. 이 파일이 경로의 단일 출처다: AC-CAR-013이 분기에 쓰고, AC-CAR-010 판정식이 증거의 `route`와 같은지 비교하며, AC-CAR-007의 지시면 테스트도 이 파일을 읽어 "측정된 경로 하나"를 정한다. 지시면에는 측정으로 동작한 경로 하나만 적는다(REQ-CAR-011). launcher의 핵심 동작(인자 조립, 실행, 원문 쓰기, 목적지 검증, launch record)은 경로와 무관한 하나의 Go 함수로 두고, 경로는 그것을 부르는 얇은 겉면만 다르게 한다.
 
@@ -83,12 +83,12 @@ MCP를 끄면 Codex 경로의 `plan-auditor`는 `spec_audit`, `audit_multi`(교�
 
 **MCP 비활성화 방식 (리드 결정, M1 뒤 2026-09-24).** launcher는 먼저 `codex mcp list --json`(모델 호출 없음)으로 선언된 MCP 서버 이름을 얻는다. 이 명령은 codex 자신의 설정 해석을 쓰므로 시스템·관리 설정 층까지 포함한다. 그다음 이름마다 `-c mcp_servers.<name>.enabled=false`를 `exec` 인자에 넣는다. M1 P-A 측정: 이 방식으로 사용자 층(`userdecoy`)과 프로젝트 층(`projdecoy`) 기록 래퍼의 기동이 모두 0회였다. `-c 'mcp_servers={}'`는 기존 선언과 병합되어 아무 서버도 끄지 못했다(`codex mcp list --json`에서 둘 다 `enabled`). 이름 조회가 실패하면 감사 프로세스를 띄우지 않는다(REQ-CAR-007). 판정은 AC-CAR-001이 가짜 `codex`의 호출 순서(`mcp list` 한 번 + `exec` 한 번)와 이름별 비활성화 인자로 한다. 시스템·관리 층 서버가 실제로 목록에 잡히는지는 M1 픽스처에 그런 층이 없어 측정되지 않았다(잔여 위험).
 
-**launch record (REQ-CAR-007).** launcher는 루트·목적지 검증(REQ-CAR-005)을 통과한 실행마다(감사가 성공하든 실패하든) 워크트리 뿌리의 `.moai/reports/codex-audit/<role>-<UTC YYYYMMDDTHHMMSSZ>-<8자 hex>.launch.json`에 기록을 배타 생성(같은 이름이 있으면 덮어쓰지 않고 실패)으로 남기고, 표준 오류에 `LAUNCH_RECORD <상대 경로>` 한 줄을 찍는다. 프로세스를 띄우기 전에 거부된 호출(검증 실패, 자격 없는 역할, 인자 상한 초과)은 아무 파일도 쓰지 않고 표준 오류에만 사유를 찍는다. 거부된 호출의 루트는 검증되지 않았으므로 그 루트에 기록을 쓰면 REQ-CAR-005가 막는 탈출을 다시 여는 셈이다(plan-audit iter-2 N5). 스키마(버전 1)는 `acceptance.md` AC-CAR-014가 정한다: `schema_version`, `role`, `route`, `started_at`, `ended_at`, `argv`(지시문 값은 sha256·바이트 수로 대체), `sandbox`, `mcp_servers`, `covers`, `unsupported`(정확히 `codex-home-session-files`, `project-hook-commands`), `exit_code`, `failure_reason`, `verdict_path`, `verdict_sha256`. 카드 판정서는 이 기록을 인용한다.
+**launch record (REQ-CAR-007).** launcher는 루트·목적지 검증(REQ-CAR-005)을 통과하고 `codex mcp list`가 성공한 실행마다(감사가 성공하든 실패하든) 워크트리 뿌리의 `.moai/reports/codex-audit/<role>-<UTC YYYYMMDDTHHMMSSZ>-<8자 hex>.launch.json`에 기록을 배타 생성(같은 이름이 있으면 덮어쓰지 않고 실패)으로 남기고, 표준 오류에 `LAUNCH_RECORD <상대 경로>` 한 줄을 찍는다. 감사 프로세스를 띄우기 전에 거부된 호출(검증 실패, 자격 없는 역할, 인자 상한 초과, `mcp list` 실패)은 아무 파일도 쓰지 않고 표준 오류에만 사유를 찍는다. 거부된 호출의 루트는 검증되지 않았으므로 그 루트에 기록을 쓰면 REQ-CAR-005가 막는 탈출을 다시 여는 셈이다(plan-audit iter-2 N5). 스키마(버전 1)는 `acceptance.md` AC-CAR-014가 정한다: `schema_version`, `role`, `route`, `started_at`, `ended_at`, `argv`(지시문 값은 sha256·바이트 수로 대체), `sandbox`, `mcp_servers`, `covers`, `unsupported`(정확히 `codex-home-session-files`, `project-hook-commands`), `exit_code`, `failure_reason`, `verdict_path`, `verdict_sha256`. 카드 판정서는 이 기록을 인용한다.
 
 #### D5.1 작업 루트와 목적지의 한정 (REQ-CAR-005)
 
 - 작업 루트는 심볼릭 링크를 푼 뒤, launcher 자신의 프로젝트 뿌리와 git common directory가 같은 저장소에 **등록된 워크트리**여야 하고(`git worktree list --porcelain`의 경로 집합 + `git rev-parse --git-common-dir` 비교), 동시에 **호출자 자신의 워크트리**여야 한다. R1에서는 launcher 프로세스의 작업 디렉터리를 담은 워크트리, R2에서는 MCP 서버 프로세스가 시작된 워크트리가 호출자 자신의 워크트리다. 같은 저장소의 형제 워크트리나 primary checkout은, 등록되어 있어도 호출자 자신의 것이 아니면 거부한다. 이로써 R2에서 sandbox 안의 부모가 다른 저장소, 임의 디렉터리, 형제 레인의 워크트리, primary checkout을 작업 루트로 지정해 그 트리의 `.moai/reports/`(리드가 읽는 증거 면)에 쓰는 경로를 막는다(plan-audit D3, iter-2 N2).
-- R2 전제의 측정: Codex가 띄운 MCP 서버 프로세스의 시작 디렉터리가 lane 워크트리인지는 측정되지 않았다(Claude 쪽 서버는 primary checkout에서 뜬다고 `moai-mcp-tools.md`가 적는다). M1 P-C는 시험 MCP 서버(`routeprobe`)의 시작 디렉터리가 픽스처 세션 루트(`-C` 디렉터리)임을 기록했지만, 실제 lane 워크트리의 moai MCP 서버로 잰 것은 아니다. 그 측정은 M2 첫 항목이다(§C, LIVE 1회). 시작 디렉터리가 lane 워크트리가 아니면 R2는 호출자 워크트리를 확정할 수 없으므로 채택하지 않고 `route.txt`를 `none`으로 바꾸며 카드를 멈춘다(B4 경로).
+- R2 전제의 측정: M2 첫 항목에서 moai `mcp-server`가 lane 워크트리에서 시작함을 쟀다(`lsof` `fcwd`, 위 D1). 아래는 그 측정 전의 계획 문장이며 이력으로 둔다. M1 P-C는 시험 MCP 서버(`routeprobe`)의 시작 디렉터리가 픽스처 세션 루트(`-C` 디렉터리)임을 기록했지만, 실제 lane 워크트리의 moai MCP 서버로 잰 것은 아니다. 그 측정은 M2 첫 항목이다(§C, LIVE 1회). 시작 디렉터리가 lane 워크트리가 아니면 R2는 호출자 워크트리를 확정할 수 없으므로 채택하지 않고 `route.txt`를 `none`으로 바꾸며 카드를 멈춘다(B4 경로).
 - 목적지는 심볼릭 링크를 푼 뒤 그 작업 루트의 `.moai/reports/` 아래이되 launcher 전용 `.moai/reports/codex-audit/` 밖이어야 하고, `.git` 경로 성분을 가질 수 없다. `AGENTS.md`, `.codex/`, `.claude/` 같은 하네스 배선 경로는 이 조건으로 자동 제외된다(plan-audit D13).
 - 조건을 어기면 프로세스를 띄우지 않고 아무것도 쓰지 않는다. 판정은 AC-CAR-005(공통)와 AC-CAR-013(R2 채택 시 MCP 입력)이 한다.
 
@@ -136,9 +136,9 @@ launcher가 받는 역할은 계약에서 계산한 read-only 역할 넷 전부�
 
 **절대 상한이 이제 구속한다 (리드 결정, M1 뒤 2026-09-24).** 운영자가 확정한 절대 상한 43은 올리지 않는다. M2 측정 행(상한 1)을 더해 항목 상한의 합이 44가 되었으므로, 모든 항목이 상한까지 쓰는 경우에는 항목 상한이 아니라 절대 상한 43이 한도가 된다. 그 경우 마지막으로 실행되는 항목인 AC-CAR-011(M5에서 AC-CAR-010 뒤)이 `INVALID` 재실행 칸을 잃는다: 앞선 항목이 5 + 1 + 28 + 6 = 40을 쓰면 남는 것은 3이고, AC-CAR-011은 첫 실행 2회 뒤 재실행에 필요한 2회를 채울 수 없다. 재실행은 도중에 끊기는 실행을 시작하지 않으므로(REQ-CAR-010) 그 재실행은 시작되지 않는다.
 
-- 재실행은 AC별로 한 번이며, 리드가 이전 실행을 하네스 결함으로 `INVALID` 기록했을 때만 허용된다. 재실행 사유가 모델 행동(예: 명령을 실행하지 않음)이면 `INVALID`가 아니라 FAIL이다.
+- 재실행은 AC별로 한 번이며, 리드가 이전 실행을 측정 결함(하네스·픽스처·프롬프트의 결함)으로 `INVALID` 기록했을 때만 허용된다. 재실행 사유가 모델 행동(예: 명령을 실행하지 않음)이면 `INVALID`가 아니라 FAIL이다. 실행되지 않았거나 판정 대상 성질이 측정되지 않은 항목은 `NOT_RUN`이다.
 - 인증 실패, 네트워크 실패로 끝난 호출도 사용한 호출로 센다.
-- `ABORTED`, `NOT_RUN`, `INVALID`는 PASS가 아니다. `INVALID` 실행의 증거는 지우지 않고 이름을 바꿔 보존한다(t1100 AC-018 선례).
+- `ABORTED`, `NOT_RUN`, `INVALID`는 어떤 경우에도 PASS가 아니다. `INVALID` 실행의 증거는 지우지 않고 이름을 바꿔 보존한다(t1100 AC-018 선례).
 - LIVE 실행 전후 `CODEX_HOME` 로그인 파일의 sha256을 기록한다(t1100 M8 선례). 잔존 `codex exec` 프로세스가 없음을 마감 시점에 확인한다.
 - 모든 LIVE 실행은 격리된 임시 `CODEX_HOME`·`MOAI_HOME`·저장소에서 한다. 실제 프로젝트 트리에 탐침 파일을 쓰지 않는다.
 
@@ -176,6 +176,8 @@ launcher가 받는 역할은 계약에서 계산한 read-only 역할 넷 전부�
 **상태 전이 소유 (리드 확인, 2026-09-24).** `draft → in-progress` 전이는 manager-develop이 첫 run 커밋에서 수행한다(`.claude/rules/moai/development/spec-frontmatter-schema.md` § Status Transition Ownership Matrix). manager-spec은 이 SPEC의 status를 바꾸지 않는다.
 
 **M1 뒤 리드 결정 (2026-09-24).** Kickoff에서 운영자가 B1~B5 기본값을 확정한 뒤(`progress.md` §E.2), M1 결과(route=`mcp`)를 보고 리드가 세 가지를 정했다: (a) MCP 비활성화는 `codex mcp list --json` 이름 조회 + 이름별 `enabled=false`(D5, AC-CAR-001), (b) M2 첫 항목으로 실제 lane 워크트리의 moai MCP 서버 시작 디렉터리 측정(LIVE 1회, 절대 상한 43 유지, §C·§D), (c) 위 상태 전이 소유 확인. AC 수는 바뀌지 않았다(16).
+
+**run 종료 뒤 리드 결정 — 채택하지 않은 방향과 이월 (2026-09-24).** 경로 (b)를 통과시키려고 moai가 생성하는 프로젝트 설정에 도구별 MCP 사전 승인(`[mcp_servers.moai.tools.codex_role_audit] approval_mode = "approve"`)을 두는 방향을 M5에서 재어 보았다. 사전 승인 없이는 `approval_policy = "never"` 아래 moai `writes` 서버가 호출을 거절함을 관측했다. 사전 승인이 그 거절을 뒤집는지는 측정되지 않았고(B는 `INVALID`, B'은 NOT MEASURED, B''은 #37 픽스처를 재구성할 수 없어 `NOT RUN`), 이 카드는 그 방향을 채택하지 않았다. `codex_role_audit`를 읽기 전용으로 표시하는 방안은 리드가 기각했다(승인을 우회하는 부정확한 표시). 이월: 사전 승인 효과, AC-CAR-010(`INVALID`), AC-CAR-011(`NOT_RUN`), 픽스처 입력 반출과 로더 기반 키 이름 검증 → t1172. AC-DHR-012/023·AC-CAR-012b 역할 로드 판정 FAIL → t1171. AC-FLH-015 문구 drift → t1170. LIVE는 39/43에서 끝났다. 근거: `.moai/reports/t1143/verdict.md`.
 
 **거부의 결과.** Kickoff에서 어느 B 항목이든 거부하는 답이 나오면 이 plan-audit 판정은 무효가 된다. manager-spec이 영향받는 REQ·AC를 개정하고, 승인 전에 plan-audit을 다시 돌린다. B 항목 다섯은 AskUserQuestion 한 번의 질문 수 한도(4)를 넘으므로, 승인 질문보다 앞선 별도 라운드에서 묻는다.
 
