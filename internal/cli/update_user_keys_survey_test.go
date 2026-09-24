@@ -147,6 +147,24 @@ func initUserOwnedKeysProject(t *testing.T) string {
 	if err := runInit(cmd, []string{root}); err != nil {
 		t.Fatalf("runInit: %v (stderr: %s)", err, errBuf.String())
 	}
+
+	// Premise: init wrote every carried key with its non-default input, or the
+	// survey would compare defaults with defaults and pass vacuously.
+	got := flattenSections(t, root)
+	for key, want := range map[string]string{
+		"language.yaml:language.conversation_language":       "ko",
+		"language.yaml:language.git_commit_messages":         "ko",
+		"language.yaml:language.code_comments":               "ja",
+		"language.yaml:language.documentation":               "zh",
+		"quality.yaml:constitution.development_mode":         "ddd",
+		"git-strategy.yaml:git_strategy.provider":            "gitlab",
+		"git-strategy.yaml:git_strategy.github_username":     "gh-user",
+		"git-strategy.yaml:git_strategy.gitlab.instance_url": "https://gitlab.example.com",
+	} {
+		if got[key] != want {
+			t.Fatalf("after init: %s = %q, want %q (the fixture no longer exercises the key)", key, got[key], want)
+		}
+	}
 	return root
 }
 
@@ -163,17 +181,6 @@ func TestUpdateForce_UserOwnedKeysSurvive(t *testing.T) {
 
 func TestCleanReinstall_UserOwnedKeysSurvive(t *testing.T) {
 	root := initUserOwnedKeysProject(t)
-	for _, want := range []struct {
-		file, value string
-		path        []string
-	}{
-		{"language.yaml", "ko", []string{"language", "conversation_language"}},
-		{"quality.yaml", "ddd", []string{"constitution", "development_mode"}},
-	} {
-		if got := sectionValue(t, sectionsFile(root, want.file), want.path...); got != want.value {
-			t.Fatalf("after init: %v = %v, want %q (the fixture no longer exercises the key)", want.path, got, want.value)
-		}
-	}
 
 	writeTestFile(t, root, ".moai/config/sections/system.yaml", "moai:\n    version: v2.16.1\n")
 	writeTestFile(t, root, ".claude/agents/moai/manager-strategy.md", "retired\n")
