@@ -263,6 +263,40 @@ FAIL	github.com/modu-ai/moai-adk/internal/hook	0.555s
 변이 B 의 출력에는 부수적으로 요약 로그 행도 찍혔다(`hook_runtime_log_aged=1`) — 새 필드가
 `slog.Info` 요약까지 실제로 도달한다는 관측이다.
 
+#### 영향 패키지 실행 (M4 착지 시점)
+
+범위는 `./internal/cli/... ./internal/hook/... ./internal/config/...` 이고, 판정은 **두 번의
+실행**으로 나뉘었다. 나눈 이유를 적는다 — 한 번에 담지 못한 것이지 범위를 줄인 것이 아니다.
+
+1차(합본, `-timeout 20m`) — **EXIT=1**. `internal/cli` 가 20분 벽에 걸려
+`panic: test timed out after 20m0s` 를 냈고(패키지 벽시계 1201.206s, 실행 중이던 테스트
+`TestRunTemplateSync_EmbeddedTemplatesError`), `internal/hook` 은 `--- FAIL` 1건만 냈다:
+
+```
+--- FAIL: TestSessionStart_MissPathSpendsNoJoinBudgetOnDrift (0.30s)
+    session_start_drift_fill_test.go:583: Handle cost 52.265833ms more on a cache miss than on a hit, want < 50ms (hit=123.754083ms miss=176.019916ms)
+```
+
+둘 다 **부하 의존**이다(측정 시 `load averages: 7.60 8.55 8.66`). 둘 중 어느 것도 이 카드의
+변경이 닿는 경로가 아니다 — M4 의 diff 는 `internal/hook/prune_logs.go` ·
+`internal/hook/hook_sink_prune_test.go`(신규) · `internal/config/defaults.go` 셋뿐이고
+`internal/cli` 에는 한 줄도 없다.
+
+2차(분리 재측정) — 둘 다 **EXIT=0**:
+
+```
+ok  	github.com/modu-ai/moai-adk/internal/cli	1171.767s          # -timeout 40m, 단독
+ok  	github.com/modu-ai/moai-adk/internal/hook	245.745s          # ./internal/hook/... ./internal/config/... 단독
+ok  	github.com/modu-ai/moai-adk/internal/config	8.217s
+```
+
+`internal/cli` 의 `ok` 는 이 SPEC 의 나머지 가드(1 · 2 · 3 · 5 · 6 · 7)가 M4 착지 후에도
+함께 통과한다는 관측이기도 하다 — 여섯 모두 그 패키지에 있다.
+
+**관측하지 않은 것**: 합본 1회 실행으로 전 범위가 동시에 초록인 상태는 보지 못했다.
+`internal/cli` 가 이 머신에서 20분을 넘기기 때문이며, 그 용량 문제 자체는 이 카드가 고치지
+않았다.
+
 ### AC-HDS-016 전수 판정 기록
 
 모집단은 기준선 SHA `bbc855f45` 에 고정된 그물이다:
