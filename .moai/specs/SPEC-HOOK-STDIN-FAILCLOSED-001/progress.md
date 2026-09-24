@@ -42,6 +42,20 @@
 - REQ 수 16(Tier M 상한 16, N4 는 REQ 안에서 절을 나눠 수를 늘리지 않았다). AC 수 13 + GATE. 명확화 필요 표식 0개(커밋 전 grep).
 - **Kickoff Approval: 여전히 요청 전.** t1099 착지 후 요청하며, run 시작 시 Pre-flight 5 결과가 「유지한다」 또는 「미측정」이면 구현 전에 멈춘다.
 
+### 개정 0.3.2 (2026-09-24)
+
+- 계기: plan-audit 3회차 FAIL 0.88 (`.moai/reports/t1152/plan-audit-iter3.md`, 로컬 증거). 차단 결함 N8(major)·N9·N10(minor)과 선택 결함 N11·N12 를 반영했다. 처분 요약은 spec.md HISTORY 0.3.2 행. 1·2회차에서 닫힌 항목(D0~D13, N1~N7)은 다시 열지 않았다.
+- **운영자 판정(2026-09-24, t1152 레인 AskUserQuestion): 3회차 하드 상한을 넘어 4회차 감사로 연장한다.** 이 개정은 그 4회차를 위한 것이다.
+- 개정 기준 트리: 브랜치 `WT-hook-stdin-failclosed`, HEAD `92bdf4a8f`. t1099 인용은 계속 `fabc33812` 고정(이번 개정은 t1099 인용을 새로 만들거나 고치지 않았다).
+- N8: plan.md §C Pre-flight 5 를 다시 짰다. 삭제 뒤 관측은 같은 실행에서 삭제 전에 설정 출처의 값이 훅 환경에서 관측된 경우에만 판정에 쓴다. 같은 세션 전파(A1 키 삭제·A2 파일 삭제)와 세션 시작 전파(B1·B2)를 모두 재고, 판정은 값을 실제로 전달한 경로에서만 내린다. 어느 경로로도 값이 오지 않으면 「전달 없음」으로 따로 닫는다(진행, 버전에 묶인 관측으로 기록, 출처 제약 유지). 「유지한다」·「미측정」이면 정지하고 운영자 재판정.
+- N9 — **이번 개정이 선언하는 상한(제안값, manager-spec 작성, 미승인 — Kickoff 때 운영자가 승인한다)**: 실행 1회 = `claude -p` 프로세스 호출 하나(이어 받는 세션 포함). 예산 최대 6회(양성 대조 1, A1 1, A2 1, B1 1, B2 1, 재시도 1; A2 를 건너뛰면 5회). 실행마다 `timeout -k 10 300 claude -p --max-turns 8 …`. `--max-turns` 가 거부되면 그 실행은 예산 1회를 쓴 「미측정」이고 이후 실행은 벽시계 상한만으로 건다. 0.3.1 의 「실행 4회」 선언을 대체한다(0.3.1 기록은 그대로 둔다).
+- 이번 개정에서 이 호스트에서 직접 관측한 것(모두 `--help`·`--version`·바이너리 판독만, 모델 실행 없음): `command -v timeout gtimeout` → `/opt/homebrew/bin/timeout`, `/opt/homebrew/bin/gtimeout`; `timeout --version` → `timeout (GNU coreutils) 9.9`; `timeout --help` 에 `-k, --kill-after=DURATION`; `claude --version` → `2.1.281 (Claude Code)`; `claude --help | grep -cE 'max-turns'` → `0`; `readlink -f /Users/goos/.local/bin/claude` → `/Users/goos/.local/share/claude/versions/2.1.281`; 그 바이너리에 `grep -a -o -E -- '"--max-turns <turns>"'` → `"--max-turns <turns>"`.
+- N10: AC-HSF-013 에 유효한 stdin + `--harness bogus` 로 `x-verification`·`x-completion` 의 거부 단언과 RED 변이(하네스 판독을 결정 매핑에만 두는 변이)를 더하고, Pre-flight 4(c) 기준선에 같은 입력을 넣었다. 수리 전 트리에서 exit 0 이라는 예상은 측정하지 않았다 — Pre-flight 4(c) 에서 잰다.
+- N11: AC-HSF-003(b1) 에 「판정 호출 결과가 fail-closed 분기 조건식에 쓰인다」를 더하고 인자 조건을 부정 조건으로 좁혔으며, 변이 (c5)(`_ = codexadapter.IsDecisionBearing(event)` + `event != hook.EventPostToolUse && event != hook.EventSubagentStop` 분기)를 더했다. 식별자 존재 확인: `internal/hook/types.go:28`·`:37`. 이 변이가 다른 기준을 모두 통과한다는 것은 문언 대조로 추론했고 실행하지 않았다.
+- N12: AC-HSF-004·012·013 에 `deps.HookProtocol` 스파이의 `ReadInput` 호출 0 회를 직접 관측으로 더했다. 두 진입점이 모두 `deps.HookProtocol.ReadInput(os.Stdin)` 을 부른다는 것을 이 트리에서 확인했다(`internal/cli/hook.go:272`, `:455`).
+- REQ 수 16(Tier M 상한 16) 유지. AC 수 13 + GATE 유지. 명확화 필요 표식 0개(커밋 전 grep).
+- **Kickoff Approval: 여전히 요청 전.** t1099 착지 후 요청하며, 그때 Pre-flight 5 의 상한을 승인 대상으로 함께 올린다.
+
 ## §E.2 Run-phase Evidence
 
 _<pending run-phase>_

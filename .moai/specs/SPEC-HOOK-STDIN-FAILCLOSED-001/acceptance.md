@@ -1,7 +1,7 @@
 ---
 id: SPEC-HOOK-STDIN-FAILCLOSED-001
 title: "Acceptance — 훅 stdin 파싱 실패의 결정 이벤트 fail-closed"
-version: "0.3.1"
+version: "0.3.2"
 created: 2026-09-24
 author: manager-spec (card t1152)
 ---
@@ -15,6 +15,8 @@ author: manager-spec (card t1152)
 0.3.0 개정: 운영자 판정 Q1(A1 — Codex Stop 면제, 탈출 장치 메커니즘 (i))·Q3(`runAgentHook` 포함)과 Q2 측정을 반영했다. AC-HSF-002·003·006·007·008·010 을 개정하고, AC-HSF-011(Codex Stop 면제), AC-HSF-012(`runAgentHook` 결정 매핑), AC-HSF-013(`runAgentHook` 관측 매핑)을 신설했다.
 
 0.3.1 개정: plan-audit 2회차(`.moai/reports/t1152/plan-audit-iter2.md`)의 N1~N3 을 반영했다. N1 — AC-HSF-006 (p1)·(p2) 가 정적 판정만 검증하며 「추가 후 제거」 잔여 위험(spec.md §F.2)을 인증하지 않는다는 한정을 붙였다. N2 — AC-HSF-012 에 유효한 stdin + 잘못된 `--harness` 의 거부를 새 계약으로 단언하고, §1 의 REQ-HSF-005 행에 AC-HSF-012 를 더했다. N3 — AC-HSF-003(b1) 을 `runAgentHook` 의 파싱 실패 분기까지 넓히고 필수 RED 변이 (c4) 를 추가했다. AC 수는 그대로다(13 + GATE).
+
+0.3.2 개정: plan-audit 3회차(`.moai/reports/t1152/plan-audit-iter3.md`)의 N10~N12 를 반영했다. N10 — AC-HSF-013 에 관측 매핑 action(`x-verification`·`x-completion`)의 잘못된 `--harness` 거부를 단언하고 필수 RED 변이를 더했으며, §1 의 REQ-HSF-005 행에 AC-HSF-013 을 더했다. N11 — AC-HSF-003(b1) 이 `IsDecisionBearing` 호출의 존재만이 아니라 그 결과가 fail-closed 분기를 고르는 조건식에 쓰이는지를 보게 하고, 인자 조건을 AST 로 판정되는 부정 조건으로 좁혔으며, 필수 RED 변이 (c5) 를 추가했다. N12 — AC-HSF-004·012·013 의 「stdin 보다 먼저」 증거에 스파이 `HookProtocol` 의 `ReadInput` 호출 0 회를 직접 관측으로 더했다(stderr 경고 부재는 대리 관측으로 남긴다). §E 의 Pre-flight 5 완료 조건을 새 판정 규칙에 맞췄다. AC 수는 그대로다(13 + GATE).
 
 ## §0 공통 입력 — 「파손 4 형태」와 카나리
 
@@ -45,7 +47,7 @@ depth 형태는 run 착수 시 대조군을 함께 잰다: 같은 구성의 깊�
 | REQ-HSF-002 | AC-HSF-003 | RED — 관측 집합이 공집합이라 (a) 가 실패. AST 검사는 수리 전에도 녹색일 수 있으므로 중복 `switch` 변이로 RED 를 따로 관측 | M1 |
 | REQ-HSF-003 | AC-HSF-002 | RED — (c) 실패 | M1 |
 | REQ-HSF-004 | AC-HSF-001 | RED — (c) 실패 | M1 |
-| REQ-HSF-005 | AC-HSF-004, AC-HSF-012 | RED — `pre-tool` 은 `--harness bogus` 에서 stdin 경고가 먼저 나온다(AC-004). `moai hook agent` 는 `--harness` 를 읽지 않아 유효한 stdin + `--harness bogus` 가 exit 0 으로 성공한다(AC-012 — 신규 거부, Pre-flight 4(c)) | M3, M1b |
+| REQ-HSF-005 | AC-HSF-004, AC-HSF-012, AC-HSF-013 | RED — `pre-tool` 은 `--harness bogus` 에서 stdin 경고가 먼저 나온다(AC-004). `moai hook agent` 는 `--harness` 를 읽지 않아 유효한 stdin + `--harness bogus` 가 결정 매핑 action(AC-012)과 관측 매핑 action(AC-013) 모두에서 exit 0 으로 성공한다 — 둘 다 신규 거부, Pre-flight 4(c) | M3, M1b |
 | REQ-HSF-006 | AC-HSF-005 | 녹색(특성 기준) — RED 는 관측 이벤트 출력을 바꾸는 변이로 관측 | 뒤집히지 않아야 함 |
 | REQ-HSF-007 | AC-HSF-006, AC-HSF-010 | RED — 탈출 장치가 없다(AC-006). AC-010 은 수리 전에도 녹색일 수 있으므로 「설정면 선언을 무시하지 않는」 변이로 RED 를 관측 | M2 |
 | REQ-HSF-008 | AC-HSF-007 | RED — stderr 한 줄·기록 모두 없다 | M2 |
@@ -73,15 +75,15 @@ depth 형태는 run 착수 시 대조군을 함께 잰다: 같은 구성의 깊�
 **(a) 동작 등가.** **Given** 착지된 구현, **When** 테스트가 `runHookEvent` 에 연결된 모든 하위 명령(26개)에 malformed 를 넣고, 두 하네스 각각에서 「stdout 이 JSON 으로 파싱되고 §0 의 거부 필드 가운데 하나를 갖는 이벤트 집합」을 관측하면, **Then** Claude 모드에서 관측된 집합은 `codexadapter.DecisionBearingEvents()` 와 원소 단위로 같고, Codex 모드에서 관측된 집합은 `{ev ∈ DecisionBearingEvents() | 면제 술어(Codex, ev) 가 거짓}` 과 원소 단위로 같다 — 기대 집합은 두 원천(집합 함수와 술어)으로 계산하며 이벤트 이름을 테스트에 적지 않는다. 빈 stdout(worktree-create·worktree-remove)과 `{}` 는 거부 필드가 없으므로 집합에 들지 않는다. 술어가 모든 쌍에 거짓을 돌려주도록 퇴화하면 이 기준은 공허하게 통과할 수 있으므로, (Codex, Stop) 의 실제 출력은 AC-HSF-011 이 따로 고정한다.
 
 **(b) AST 검사.** `internal/cli` 의 테스트가 아닌 Go 파일 전부를 `go/parser` 로 읽는 테스트(또는 같은 규칙의 `ast-grep` 규칙)가 다음을 단언한다:
-- (b1) 두 진입점 `runHookEvent` 와 `runAgentHook` **각각**에서, `ReadInput` 호출 결과의 오류 분기(`if err != nil` 블록) 안에, 또는 그 블록이 직접 부르는 같은 패키지 함수 안에(두 진입점이 공유하는 파싱 실패 처리 함수라면 그 함수 안에) `codexadapter.IsDecisionBearing` 호출이 1개 이상 있고, 그 호출의 인자는 이벤트 식별자 리터럴(`hook.EventX`)이 아니라 그 진입점이 결정한 이벤트 값이다(`runAgentHook` 에서는 action 매핑의 결과). 같은 범위 안에 네 결정 이벤트 식별자(`EventPreToolUse`, `EventPermissionRequest`, `EventStop`, `EventUserPromptSubmit`)와의 `==`·`!=` 비교나 그 식별자를 case 식으로 둔 `switch` 가 없다. 두 진입점 가운데 하나라도 조건을 채우지 못하면 (b1) 은 실패다.
+- (b1) 두 진입점 `runHookEvent` 와 `runAgentHook` **각각**에서, `ReadInput` 호출 결과의 오류 분기(`if err != nil` 블록) 안에, 또는 그 블록이 직접 부르는 같은 패키지 함수 안에(두 진입점이 공유하는 파싱 실패 처리 함수라면 그 함수 안에) `codexadapter.IsDecisionBearing` 호출이 1개 이상 있고, 그 호출의 인자는 `hook.EventX` 형태의 선택자 리터럴이 아닌 식이다(의도는 「그 진입점이 결정한 이벤트 값 — `runAgentHook` 에서는 action 매핑의 결과」이지만, 그 의미 조건은 AST 로 판정되지 않으므로 검사하는 것은 이 부정 조건이다). **그리고** 그 호출의 결과가 — 직접, 또는 그 결과를 담은 지역 변수를 거쳐 — fail-closed 출력을 쓰는 분기를 고르는 `if` 조건식이나 `switch` 의 태그·case 식에 쓰인다. 결과를 `_` 에 대입하거나, 어떤 분기 조건식에도 쓰이지 않는 변수에 담는 형태는 이 조건을 채우지 못한다. 같은 범위 안에 네 결정 이벤트 식별자(`EventPreToolUse`, `EventPermissionRequest`, `EventStop`, `EventUserPromptSubmit`)와의 `==`·`!=` 비교나 그 식별자를 case 식으로 둔 `switch` 가 없다. 두 진입점 가운데 하나라도 조건을 채우지 못하면 (b1) 은 실패다.
 - (b2) 원소 타입이 `hook.EventType` 인 슬라이스·배열 리터럴, 키가 `hook.EventType` 인 맵 리터럴, `switch` 문의 case 식 전체, `||` 로 이은 `== hook.EventX` 비교 사슬 가운데 **어느 것도** 네 결정 이벤트 식별자(`EventPreToolUse`, `EventPermissionRequest`, `EventStop`, `EventUserPromptSubmit`) 중 2개 이상을 포함하지 않는다. 하위 명령 표(`hook.go:53-78`, 원소가 구조체인 리터럴)는 원소 타입이 `hook.EventType` 이 아니므로 대상이 아니다.
 - 기준선: 이 트리에서 네 식별자가 `internal/cli` 비테스트 파일에 나타나는 곳은 하위 명령 표 4행(`hook.go:54`·`:57`·`:62`·`:63`)과 `runAgentHook` 매핑 switch 의 대입 2행(`event = hook.EventPreToolUse`, `hook.go:472`·`:479`)뿐이다(2026-09-24, `grep -rnE 'hook\.Event(PreToolUse|PermissionRequest|Stop|UserPromptSubmit)\b' internal/cli --include='*.go' | grep -v _test.go` → 6행, 0.3.0 에서 HEAD `44dfc25fd` 로 다시 잼; `fabc33812` 에서도 6행 — 0.2.0 기록). 매핑 switch 의 case 식은 이벤트 식별자가 아니라 접미사 검사라 (b2) 의 대상이 아니다. run 착수 시 t1099 흡수 후 트리에서 다시 잰다.
 
-**(c) 필수 RED 변이 넷.** run 증거에 다음을 각각 한 번 적용해 빨개지는 것을 관측하고 되돌린다: (c1) 구현의 분류 호출 결과를 `false` 로 바꾸는 변이 → (a) 가 실패한다. (c2) `internal/cli` 비테스트 파일에 `switch event { case hook.EventPreToolUse: … case hook.EventStop: … }` 처럼 **case 를 여러 줄로 나눈** 중복 목록을 넣는 변이 → (b2) 가 실패한다. (c3) 디스패처가 면제 술어 호출을 건너뛰게(술어 결과를 무시하게) 하는 변이 → Codex 모드의 관측 집합에 Stop 이 들어가 (a) 가 실패한다. (c4) `runAgentHook` 의 파싱 실패 분기가 `IsDecisionBearing` 대신 `event == hook.EventPreToolUse` 한 번 비교로 fail-closed 여부를 정하는 변이 → (b1) 이 실패한다. 이 변이는 (a)(`runHookEvent` 의 하위 명령만 관측), (b2)(결정 이벤트 식별자 1개), AC-HSF-012·013(도달 가능한 매핑이 PreToolUse·PostToolUse·SubagentStop 뿐이라 동작이 같다)을 모두 통과하므로, (b1) 이 `runAgentHook` 까지 보지 않으면 REQ-HSF-014 의 「판정은 `IsDecisionBearing` 한 곳」 절을 잡는 기준이 없다. plan-audit 에서 codex 백엔드는 줄 단위 grep 이 이 변이를 놓친다는 것을 재현했다(`duplicate-switch-was-not-detected`) — (b) 가 grep 이 아니라 AST 여야 하는 이유다.
+**(c) 필수 RED 변이 다섯.** run 증거에 다음을 각각 한 번 적용해 빨개지는 것을 관측하고 되돌린다: (c1) 구현의 분류 호출 결과를 `false` 로 바꾸는 변이 → (a) 가 실패한다. (c2) `internal/cli` 비테스트 파일에 `switch event { case hook.EventPreToolUse: … case hook.EventStop: … }` 처럼 **case 를 여러 줄로 나눈** 중복 목록을 넣는 변이 → (b2) 가 실패한다. (c3) 디스패처가 면제 술어 호출을 건너뛰게(술어 결과를 무시하게) 하는 변이 → Codex 모드의 관측 집합에 Stop 이 들어가 (a) 가 실패한다. (c4) `runAgentHook` 의 파싱 실패 분기가 `IsDecisionBearing` 대신 `event == hook.EventPreToolUse` 한 번 비교로 fail-closed 여부를 정하는 변이 → (b1) 이 실패한다. 이 변이는 (a)(`runHookEvent` 의 하위 명령만 관측), (b2)(결정 이벤트 식별자 1개), AC-HSF-012·013(도달 가능한 매핑이 PreToolUse·PostToolUse·SubagentStop 뿐이라 동작이 같다)을 모두 통과하므로, (b1) 이 `runAgentHook` 까지 보지 않으면 REQ-HSF-014 의 「판정은 `IsDecisionBearing` 한 곳」 절을 잡는 기준이 없다. plan-audit 에서 codex 백엔드는 줄 단위 grep 이 이 변이를 놓친다는 것을 재현했다(`duplicate-switch-was-not-detected`) — (b) 가 grep 이 아니라 AST 여야 하는 이유다. (c5) `runAgentHook` 의 파싱 실패 분기에 `_ = codexadapter.IsDecisionBearing(event)` 를 남긴 채, fail-closed 여부는 다른 실제 술어 — 예: `event != hook.EventPostToolUse && event != hook.EventSubagentStop` — 로 고르는 변이 → (b1) 의 「결과가 분기 조건식에 쓰인다」 절이 실패한다. 이 변이는 호출 존재·인자 형태·네 결정 식별자 금지를 모두 채우고, 비교 대상이 관측 이벤트 식별자라 (b2) 도 통과하며, 도달 가능한 매핑에서 동작이 같아 AC-HSF-012·013 도 통과한다 — 결과 사용 조건만이 잡는다.
 
 ### AC-HSF-004 — 하네스 모드는 stdin 보다 먼저 판정된다
 
-**Given** 착지된 구현, **When** `--harness bogus` 와 malformed stdin 으로 `pre-tool` 을 실행하면, **Then** 오류가 `invalid --harness value` 를 담고 0 이 아닌 종료이며, stderr 에 stdin 파싱 경고가 나오지 않는다(판정이 읽기보다 앞섰다는 관측). **When** `--harness codex` 와 malformed stdin 으로 `pre-tool` 을 실행하면, **Then** 출력이 AC-HSF-002 의 Codex 형태다 — 수리 전 트리에서는 같은 입력이 `{}` 였다(Pre-flight 기준선).
+**Given** 착지된 구현, **When** `--harness bogus` 와 malformed stdin 으로 `pre-tool` 을 실행하면, **Then** 오류가 `invalid --harness value` 를 담고 0 이 아닌 종료이며, stderr 에 stdin 파싱 경고가 나오지 않는다. **And** 같은 실행을 `deps.HookProtocol` 을 `ReadInput` 호출 횟수를 세는 스파이로 바꿔 다시 하면 그 호출 횟수가 0 이다 — 판정이 읽기보다 앞섰다는 직접 관측이다. stderr 경고 부재는 stdin 을 읽고 오류를 보류하는 구현도 통과하는 대리 관측이므로 단독 근거로 쓰지 않는다. **When** `--harness codex` 와 malformed stdin 으로 `pre-tool` 을 실행하면, **Then** 출력이 AC-HSF-002 의 Codex 형태다 — 수리 전 트리에서는 같은 입력이 `{}` 였다(Pre-flight 기준선).
 
 ### AC-HSF-005 — 관측 이벤트는 `6a3603274` 동작을 유지한다 (특성 기준)
 
@@ -113,11 +115,11 @@ depth 형태는 run 착수 시 대조군을 함께 잰다: 같은 구성의 깊�
 
 ### AC-HSF-012 — `runAgentHook`: 결정 매핑 action 은 fail-closed 한다
 
-**Given** 탈출 장치 꺼짐, 실제 `hook.NewProtocol()`, 스파이 레지스트리, **When** `moai hook agent` 에 결정 이벤트로 매핑되는 action 4종 — `x-validation`, `x-pre-transformation`, `x-pre-implementation`, 미지 action `foo` — 을 각각 파손 4 형태와 두 하네스 모드(미지정, `codex`)로 실행하면(4 × 4 × 2 = 32 경우), **Then** 모든 경우에서 (a) `RunE` 가 nil(exit 0), (b) 디스패치 0 회, (c) stdout 이 같은 하네스·같은 이벤트(PreToolUse)에 대해 AC-HSF-001(d)·002(d) 가 요구하는 바이트와 같고 거부 필드를 가지며, (d) AC-HSF-001(e1)~(e4) 가 성립하고, (e) AC-HSF-007 의 stderr 한 줄·파싱 실패 전용 키의 기록 한 건·카나리 비노출이 성립한다. **And** `--harness bogus` 와 malformed stdin 으로 `x-validation` 을 실행하면 오류가 `invalid --harness value` 를 담고 0 이 아닌 종료이며 stderr 에 stdin 파싱 경고가 없다(매핑·하네스 판정이 stdin 보다 앞섰다는 관측). **And** 유효한 stdin(`{}`)과 `--harness bogus` 로 `x-validation` 을 실행해도 오류가 `invalid --harness value` 를 담고 0 이 아닌 종료다. 이것은 보존 동작이 아니라 이 SPEC 이 `runAgentHook` 에 새로 도입하는 거부다(REQ-HSF-005) — 수리 전 트리에서는 같은 입력이 exit 0 으로 성공한다(plan-audit 2회차에서 codex 백엔드가 재현, Pre-flight 4(c) 기준선에서 다시 잰다). 수리 전 트리에서 결정 매핑 action 은 `{}` 를 낸다(Pre-flight 4(c)).
+**Given** 탈출 장치 꺼짐, 실제 `hook.NewProtocol()`, 스파이 레지스트리, **When** `moai hook agent` 에 결정 이벤트로 매핑되는 action 4종 — `x-validation`, `x-pre-transformation`, `x-pre-implementation`, 미지 action `foo` — 을 각각 파손 4 형태와 두 하네스 모드(미지정, `codex`)로 실행하면(4 × 4 × 2 = 32 경우), **Then** 모든 경우에서 (a) `RunE` 가 nil(exit 0), (b) 디스패치 0 회, (c) stdout 이 같은 하네스·같은 이벤트(PreToolUse)에 대해 AC-HSF-001(d)·002(d) 가 요구하는 바이트와 같고 거부 필드를 가지며, (d) AC-HSF-001(e1)~(e4) 가 성립하고, (e) AC-HSF-007 의 stderr 한 줄·파싱 실패 전용 키의 기록 한 건·카나리 비노출이 성립한다. **And** `--harness bogus` 와 malformed stdin 으로 `x-validation` 을 실행하면 오류가 `invalid --harness value` 를 담고 0 이 아닌 종료이며 stderr 에 stdin 파싱 경고가 없으며, AC-HSF-004 와 같은 스파이 `HookProtocol` 로 잰 `ReadInput` 호출 횟수가 0 이다(매핑·하네스 판정이 stdin 보다 앞섰다는 직접 관측). **And** 유효한 stdin(`{}`)과 `--harness bogus` 로 `x-validation` 을 실행해도 오류가 `invalid --harness value` 를 담고 0 이 아닌 종료다. 이것은 보존 동작이 아니라 이 SPEC 이 `runAgentHook` 에 새로 도입하는 거부다(REQ-HSF-005) — 수리 전 트리에서는 같은 입력이 exit 0 으로 성공한다(plan-audit 2회차에서 codex 백엔드가 재현, Pre-flight 4(c) 기준선에서 다시 잰다). 수리 전 트리에서 결정 매핑 action 은 `{}` 를 낸다(Pre-flight 4(c)).
 
 ### AC-HSF-013 — `runAgentHook`: 관측 매핑 action 은 현재 동작을 유지한다 (특성 기준)
 
-**Given** 착지된 구현, **When** 관측 이벤트로 매핑되는 action 4종 — `x-verification`, `x-post-transformation`, `x-post-implementation`(PostToolUse), `x-completion`(SubagentStop) — 을 파손 4 형태와 두 하네스 모드로 실행하면(32 경우), **Then** 모든 경우에서 `RunE` 가 nil, 디스패치 0 회, stderr 에 `moai hook agent <action>: invalid stdin JSON` 경고 한 줄, stdout 이 정확히 `{}` 이며, Pre-flight 4(c) 기준선의 수리 전 출력과 바이트 단위로 같다. 필수 RED 변이: 관측 매핑 action 에도 fail-closed 를 적용하는 변이로 이 기준이 실패하는 것을 한 번 관측하고 되돌린다.
+**Given** 착지된 구현, **When** 관측 이벤트로 매핑되는 action 4종 — `x-verification`, `x-post-transformation`, `x-post-implementation`(PostToolUse), `x-completion`(SubagentStop) — 을 파손 4 형태와 두 하네스 모드로 실행하면(32 경우), **Then** 모든 경우에서 `RunE` 가 nil, 디스패치 0 회, stderr 에 `moai hook agent <action>: invalid stdin JSON` 경고 한 줄, stdout 이 정확히 `{}` 이며, Pre-flight 4(c) 기준선의 수리 전 출력과 바이트 단위로 같다. 이 보존은 유효한 하네스 모드(미지정, `codex`)에 대한 것이다. **And** 유효한 stdin(`{}`)과 `--harness bogus` 로 관측 매핑 action `x-verification` 과 `x-completion` 을 각각 실행하면, 오류가 `invalid --harness value` 를 담고 0 이 아닌 종료이며, AC-HSF-004 와 같은 스파이 `HookProtocol` 로 잰 `ReadInput` 호출 횟수가 0 이다. 이것은 보존이 아니라 REQ-HSF-005 가 agent 호출 전체에 새로 도입하는 거부다 — 수리 전 트리에서는 같은 입력이 exit 0 으로 성공한다(Pre-flight 4(c) 기준선). 필수 RED 변이 둘: (1) 관측 매핑 action 에도 fail-closed 를 적용하는 변이로 보존 단언이 실패하는 것, (2) `--harness` 판독을 결정 매핑 action(`IsDecisionBearing(event)` 가 참인 경우)에서만 하는 변이로 이 거부 단언이 실패하는 것을 각각 한 번 관측하고 되돌린다 — (2) 는 AC-HSF-012 를 통과하므로 이 단언만이 잡는다.
 
 ### AC-HSF-GATE — 품질 게이트
 
@@ -137,9 +139,9 @@ depth 형태는 run 착수 시 대조군을 함께 잰다: 같은 구성의 깊�
 
 ## §E 완료 정의
 
-- AC-HSF-001~013 과 GATE 가 명령·원문 출력과 함께 progress.md §E.2 에 기록됐다. 필수 RED 변이(AC-HSF-003(c1)·(c2)·(c3)·(c4), AC-HSF-007, AC-HSF-010(m1)·(m2), AC-HSF-011, AC-HSF-013)의 실패 출력도 함께 기록됐다.
+- AC-HSF-001~013 과 GATE 가 명령·원문 출력과 함께 progress.md §E.2 에 기록됐다. 필수 RED 변이(AC-HSF-003(c1)·(c2)·(c3)·(c4)·(c5), AC-HSF-007, AC-HSF-010(m1)·(m2), AC-HSF-011, AC-HSF-013 의 (1)·(2))의 실패 출력도 함께 기록됐다.
 - Pre-flight 기준선 재현 커밋이 수리 커밋보다 앞선다.
 - plan.md Q2·Q1·Q3 판정이 기록됐다(0.3.0, plan.md §B.1). Q3 포함에 따른 REQ·AC 추가(0.3.0)가 run 착수 전에 착지했다. Implementation Kickoff Approval 은 t1099 착지 후 받았고, 그 시점의 전제 재확인(spec.md §F.1 의 2·3)이 progress.md 에 있다.
 - depth 형태의 대조군(깊이 9000 파싱 성공)이 기록됐다.
-- plan.md §C Pre-flight 5(호스트의 설정 `env` 전파·유지 측정)의 결과가 선언된 상한과 함께 progress.md 에 있고, 판정이 「유지하지 않는다」이거나, 「유지한다」·「미측정」에 대한 운영자 재판정이 기록돼 있다.
+- plan.md §C Pre-flight 5(호스트의 설정 `env` 전파·유지 측정)의 결과가 운영자가 Kickoff 때 승인한 상한, 실제로 쓴 실행 수, 실행별 기록(선언이 있는 동안의 삭제 전 관측 줄 포함)과 함께 progress.md 에 있고, 판정이 「유지하지 않는다」(값을 전달한 경로마다 두 변형 모두 삭제 전 관측이 있음) 또는 「전달 없음」(양성 대조는 값을 봤고 두 전파 경로 모두 선언이 있는 동안 값을 보지 못함)이거나, 「유지한다」·「미측정」에 대한 운영자 재판정이 기록돼 있다. 삭제 전 관측이 없는 실행을 근거로 한 「유지하지 않는다」는 이 조건을 채우지 못한다.
 - `internal/hook` 패키지 diff 가 0 이다.
