@@ -14,16 +14,16 @@ package cli
 // subcommand, so a verb moai synthesized never lands in the child's argv.
 //
 // -w/--worktree is consumed HERE and never forwarded: it points the child's
-// working directory at an EXISTING worktree and never creates one. CODEX_HOME
+// working directory at an existing or newly created worktree. CODEX_HOME
 // reaches the child as an explicit environment entry rather than by ambient
 // inheritance, on both the direct and the new-window path.
 //
 // The readout rows come from M2's codexReadiness VERBATIM (AC-CL-004 — the
 // command surface never re-words a row), and the binary/auth values come from
 // the shared probe, so no second classification path forks here (REQ-CL-007).
-// The launcher never writes: no directory is created, no file mutated
-// (REQ-CL-013). POSIX direct launch replaces moai with Codex so the factory
-// owner PID is preserved; Windows retains the child Start/wait path.
+// The status readout never writes; -w may create a worktree. POSIX direct
+// launch replaces moai with Codex to preserve the factory owner PID; Windows
+// retains the child Start/wait path.
 
 import (
 	"context"
@@ -39,6 +39,8 @@ import (
 	"github.com/modu-ai/moai-adk/internal/config"
 	"github.com/modu-ai/moai-adk/internal/execerr"
 	"github.com/modu-ai/moai-adk/internal/homestate"
+	"github.com/modu-ai/moai-adk/internal/hook"
+	"github.com/modu-ai/moai-adk/internal/session"
 	"github.com/spf13/cobra"
 )
 
@@ -48,12 +50,10 @@ const (
 	// codexUsageDiag is the one-line usage diagnostic every unknown token
 	// receives (AC-CL-002). Byte-identical for all six probe tokens so the
 	// rejection cannot leak which token was seen.
-	codexUsageDiag = "unknown verb - usage: moai codex [cli] [-w <worktree>] [-- codex-args...] | moai codex status | moai codex app"
+	codexUsageDiag = "unknown verb - usage: moai codex [cli] [-w [worktree]] [-- codex-args...] | moai codex status | moai codex app"
 
-	// codexWorktreeValueDiag rejects a -w with no value. moai cc lets a bare
-	// -w mean "auto-generate a name" because claude CREATES the worktree;
-	// this launcher only RESOLVES one, so there is nothing to resolve.
-	codexWorktreeValueDiag = "-w requires a worktree name or path - moai codex resolves an existing worktree and never creates one"
+	// A bare -w creates an automatically named worktree, like moai cc.
+	codexWorktreeValueDiag = "-w could not generate a worktree name"
 
 	// codexInstallHint is the single diagnostic line the launch verbs print
 	// when the codex binary is unresolved (AC-CL-011: exactly one line, exact
@@ -224,14 +224,47 @@ func defaultCodexSpawnLaunch(dir, program string, args []string) error {
 	if err != nil {
 		return fmt.Errorf("spawn tmux window: %w", err)
 	}
-	if env := os.Environ(); factoryLaunchEnabled(env) {
+	env := os.Environ()
+	factory := factoryLaunchEnabled(env)
+	if factory || codexSpawnAnchorFn != nil {
+		runID := launchEnvValue(env, config.EnvMoaiKanbanID)
 		pid, start, identityErr := codexSpawnPaneIdentityFn(paneID)
-		if identityErr == nil {
+		if identityErr == nil && codexSpawnAnchorFn != nil {
+			// A pane left running without its lock would be an unanchored
+			// writer; close it instead.
+			if anchorErr := codexSpawnAnchorFn(pid, start); anchorErr != nil {
+				cleanupErr := codexSpawnCleanupPaneFn(paneID)
+				var clearErr error
+				if factory {
+					// REQ-002d holds on this refusal path too: no run keeps
+					// the launching process's identity.
+					clearErr = clearFactoryRunOwner(dir, runID)
+				}
+				return fmt.Errorf("anchor spawned Codex worktree: %w", errors.Join(anchorErr, cleanupErr, clearErr))
+			}
+		}
+		if identityErr == nil && factory {
 			_, identityErr = registerFactoryLaunchPending(context.Background(), dir, env, pid, start)
+		}
+		if identityErr == nil && factory {
+			// REQ-002b — the pane shape: this launcher returns and exits
+			// immediately, so the record-time stamp names a process that is
+			// already gone by the time anyone reads it. Restamp with the pane
+			// identity the resolver above already probed live, so the run row
+			// and the run's role='lead' peer name one process.
+			identityErr = stampFactoryRunOwner(dir, runID, pid, start)
 		}
 		if identityErr != nil {
 			cleanupErr := codexSpawnCleanupPaneFn(paneID)
-			return fmt.Errorf("register spawned factory launch-pending endpoint: %w", errors.Join(identityErr, cleanupErr))
+			if !factory {
+				return fmt.Errorf("anchor spawned Codex worktree: %w", errors.Join(identityErr, cleanupErr))
+			}
+			// REQ-002d — refuse, and leave no run carrying the launching
+			// process's identity: that identity is known in advance to die, and
+			// a run holding it would be retired while its session was meant to
+			// be alive.
+			clearErr := clearFactoryRunOwner(dir, runID)
+			return fmt.Errorf("register spawned factory launch-pending endpoint: %w", errors.Join(identityErr, cleanupErr, clearErr))
 		}
 	}
 	_, _ = fmt.Fprintf(os.Stdout, "Spawned pane %s running `%s` in %s\n", paneID, command, dir)
@@ -278,6 +311,13 @@ func buildCodexSpawnCommand(program string, args []string) string {
 		config.EnvHome,
 		config.EnvMoaiKanbanID,
 		config.EnvMoaiKanbanBackend,
+		// The rest of the kanban launch facts (moai codex -k): a tmux window
+		// inherits the server's environment, not this process's.
+		config.EnvMoaiKanban,
+		config.EnvMoaiKanbanSpec,
+		config.EnvMoaiKanbanLabel,
+		config.EnvMoaiKanbanLeadAddr,
+		config.EnvMoaiKanbanLeadName,
 		config.EnvMoaiFactoryWorker,
 		config.EnvMoaiFactoryWorkers,
 		config.EnvClaudeProjectDir,
@@ -326,7 +366,7 @@ func stripCodexWorktreeFlag(head []string) ([]string, codexWorktreeArg) {
 		case token == "-w" || token == "--worktree":
 			arg.present = true
 			// The value is the next token unless that token is itself a flag
-			// (a bare -w, which this launcher rejects — see the diagnostic).
+			// (a bare -w triggers an automatically named worktree).
 			if i+1 < len(head) && !strings.HasPrefix(head[i+1], "-") {
 				arg.value = head[i+1]
 				i++
@@ -345,16 +385,11 @@ func stripCodexWorktreeFlag(head []string) ([]string, codexWorktreeArg) {
 }
 
 // resolveCodexWorktreeDir turns the operator's -w value into the directory the
-// child starts in. It RESOLVES and never CREATES: a name that does not name an
-// existing directory is a diagnostic, and the directory is still absent
-// afterwards.
+// child starts in. Existing paths are re-entered; a new short name is created
+// by resolveOrCreateCodexWorktreeDir before the child starts.
 //
-// The asymmetry with `moai cc` is deliberate. There the flag is FORWARDED to
-// claude, which creates the worktree and enters it; codex's top-level help
-// exposes no worktree flag, so a forwarded -w would be an unknown token — the
-// same failure shape a forwarded synthesized verb has. Consuming the flag
-// means moai would have to implement worktree CREATION to match cc, which
-// belongs to the worktree tooling that already owns it.
+// Claude creates its own -w worktree. Codex has no corresponding flag, so
+// MoAI consumes it and uses the existing worktree materializer.
 //
 // Absolute values are validated by the SAME rule cc applies
 // (resolveWorktreeL2Path), so an out-of-prefix path fails with cc's own
@@ -378,14 +413,187 @@ func resolveCodexWorktreeDir(projectRoot, value string) (string, error) {
 
 	info, err := os.Stat(path)
 	if err != nil || !info.IsDir() {
-		return "", fmt.Errorf(
-			"worktree %q does not exist at %s\n"+
-				"  moai codex resolves an existing worktree and never creates one\n"+
-				"  create it first, then re-run this command",
-			value, path,
-		)
+		return "", fmt.Errorf("worktree %q does not exist at %s", value, path)
 	}
 	return path, nil
+}
+
+// codexWorktreeAdd is shared with the session worktree materializer. The
+// function variable also lets tests prove creation without mutating a real
+// repository's worktree registry.
+var codexWorktreeAdd = gitWorktreeAddReal
+
+// codexWorktreeBase resolves a configured base first and otherwise uses the
+// remote default branch. Never branch from whichever shared checkout happens
+// to be active: it may be an unrelated card branch.
+var codexWorktreeBase = func(projectRoot string) (string, error) {
+	if base := config.LoadWorktreeBaseBranch(projectRoot); base != "" && hook.WorktreeBaseBranchResolvable(base) {
+		return base, nil
+	}
+	if out, err := runGitCommand(projectRoot, "symbolic-ref", "--quiet", "--short", "refs/remotes/origin/HEAD"); err == nil {
+		return strings.TrimSpace(out), nil
+	}
+	return "", errors.New("remote default branch is unresolved; configure git_strategy.worktree_base_branch before creating a Codex worktree")
+}
+
+// resolveOrCreateCodexWorktreeDir returns the tree the child starts in and
+// whether this call created it. An existing tree may already have a writer;
+// a created one cannot, so only existing trees go through the writer check.
+func resolveOrCreateCodexWorktreeDir(projectRoot, value string) (string, bool, error) {
+	if projectRoot == "" {
+		return "", false, errors.New("cannot create worktree: project root is unresolved")
+	}
+	if value == "" {
+		value = "codex-" + sessionWorktreeResolveSessionShort()
+	}
+	if filepath.IsAbs(value) {
+		path, err := resolveCodexWorktreeDir(projectRoot, value)
+		return path, false, err
+	}
+	if value == "." || value == ".." || filepath.Base(value) != value || strings.ContainsAny(value, `/\\`) {
+		return "", false, fmt.Errorf("invalid worktree name %q", value)
+	}
+	path := filepath.Join(projectRoot, sessionWorktreeSubdir, value)
+	if info, err := os.Lstat(path); err == nil {
+		if !info.IsDir() {
+			return "", false, fmt.Errorf("worktree path %s is not a directory", path)
+		}
+		return path, false, nil
+	} else if !errors.Is(err, os.ErrNotExist) {
+		return "", false, fmt.Errorf("inspect worktree path: %w", err)
+	}
+	base, err := codexWorktreeBase(projectRoot)
+	if err != nil {
+		return "", false, err
+	}
+	// Resolve the base to a commit BEFORE creating the tree, so the check
+	// below compares the new HEAD with what the base meant at decision time.
+	baseCommit, err := codexResolveBaseCommit(projectRoot, base)
+	if err != nil {
+		return "", false, err
+	}
+	branch := SessionWorktreeBranchPrefix + value
+	if _, err := codexWorktreeAdd(path, branch, base); err != nil {
+		return "", false, fmt.Errorf("create worktree %q: %w", value, err)
+	}
+	if err := codexWorktreeBaseCheck(path, baseCommit, base); err != nil {
+		return "", true, err
+	}
+	return path, true, nil
+}
+
+// Worktree anchor seams. The capture harness pins them open for the
+// launch-mechanics tests, which use plain directories; the anchor tests run
+// the real bodies.
+var (
+	// codexWorktreeWriterCheck refuses a tree another live session is anchored in.
+	codexWorktreeWriterCheck = worktreeWriterRefusal
+	// codexWorktreeAnchorLock places this launch's lock on the tree.
+	codexWorktreeAnchorLock = placeCodexAnchorLock
+	// codexResolveBaseCommit resolves the creation base to a commit.
+	codexResolveBaseCommit = resolveBaseCommitReal
+	// codexWorktreeBaseCheck verifies a created tree starts at that commit.
+	codexWorktreeBaseCheck = verifyCodexWorktreeBase
+	// codexAnchorReplaceHook runs between a launcher's first read of a dead
+	// lock and its replacement guard; tests use it to line two launchers up.
+	codexAnchorReplaceHook func()
+	// codexSpawnAnchorFn, when set, anchors the tree to the spawned pane's
+	// process on the new-window path.
+	codexSpawnAnchorFn func(pid int, start string) error
+)
+
+// codexAnchorReplaceGuardName is the per-tree replacement guard, created
+// exclusively inside the tree's private git directory.
+const codexAnchorReplaceGuardName = "moai-anchor-replace"
+
+// resolveBaseCommitReal resolves base to the commit it names now.
+func resolveBaseCommitReal(projectRoot, base string) (string, error) {
+	out, err := runGitCommand(projectRoot, "rev-parse", "--verify", "--quiet", base+"^{commit}")
+	if err != nil {
+		return "", fmt.Errorf("resolve worktree base %q: %w", base, err)
+	}
+	return strings.TrimSpace(out), nil
+}
+
+// verifyCodexWorktreeBase refuses a created tree whose HEAD is not the
+// resolved base commit. The tree is left in place: it is evidence of what the
+// materializer actually did, and deleting it would destroy that evidence.
+func verifyCodexWorktreeBase(tree, baseCommit, base string) error {
+	out, err := runGitCommand(tree, "rev-parse", "HEAD")
+	if err != nil {
+		return fmt.Errorf("verify worktree base of %s: %w", tree, err)
+	}
+	if head := strings.TrimSpace(out); head != baseCommit {
+		return fmt.Errorf("worktree %s HEAD %s does not match the resolved base %s (%s); refusing to launch - the worktree is left in place for inspection",
+			tree, head, base, baseCommit)
+	}
+	return nil
+}
+
+// @MX:WARN: [AUTO] lock replacement is a read-modify-write on shared git state
+// @MX:REASON: two launchers can see the same dead lock at once; without the
+// exclusive guard and the re-read under it, the later unlock erases the
+// earlier launcher's fresh lock and both believe they own the tree.
+//
+// placeCodexAnchorLock locks tree for pid so the shared anchor decision sees
+// the session for its lifetime. An unlocked tree is locked; a lock already
+// naming pid is kept; a lock whose holder is confirmed dead is replaced, but
+// only under an exclusively created guard and only if the lock is unchanged
+// when re-read under it. A live or undetermined holder is never displaced and
+// nothing is ever forced.
+func placeCodexAnchorLock(tree string, pid int, start string) error {
+	reason := session.CodexAnchorLockReason(filepath.Base(tree), pid, start)
+	lock, err := readWorktreeLock(tree)
+	if err != nil {
+		return fmt.Errorf("anchor worktree %s: %w", tree, err)
+	}
+	if !lock.Locked {
+		return lockCodexTree(tree, reason, pid)
+	}
+	if held, ok := session.LockReasonPID(lock.Reason); ok && held == pid {
+		return nil
+	}
+	if !session.LockHolderConfirmedDead(lock) {
+		return fmt.Errorf("anchor worktree %s: the worktree lock is held (%s); a lock whose holder is live or undetermined is never replaced", tree, lock.Reason)
+	}
+	if codexAnchorReplaceHook != nil {
+		codexAnchorReplaceHook()
+	}
+	gitDir, err := runGitCommand(tree, "rev-parse", "--absolute-git-dir")
+	if err != nil {
+		return fmt.Errorf("anchor worktree %s: locate its git directory: %w", tree, err)
+	}
+	guard := filepath.Join(strings.TrimSpace(gitDir), codexAnchorReplaceGuardName)
+	f, err := os.OpenFile(guard, os.O_CREATE|os.O_EXCL|os.O_WRONLY, 0o600)
+	if err != nil {
+		return fmt.Errorf("anchor worktree %s: another launcher is replacing the worktree lock (%v); if no launcher is running, remove %s and retry", tree, err, guard)
+	}
+	_ = f.Close()
+	defer func() { _ = os.Remove(guard) }()
+	again, err := readWorktreeLock(tree)
+	if err != nil || again != lock {
+		return fmt.Errorf("anchor worktree %s: the worktree lock changed while it was being replaced", tree)
+	}
+	if _, err := runGitCommand(tree, "worktree", "unlock", tree); err != nil {
+		return fmt.Errorf("anchor worktree %s: release the dead holder's lock: %w", tree, err)
+	}
+	return lockCodexTree(tree, reason, pid)
+}
+
+// lockCodexTree writes the lock and reads it back: a lock that does not name
+// pid afterwards belongs to someone else, whatever `git worktree lock` said.
+func lockCodexTree(tree, reason string, pid int) error {
+	if _, err := runGitCommand(tree, "worktree", "lock", "--reason", reason, tree); err != nil {
+		return fmt.Errorf("anchor worktree %s: git worktree lock: %w", tree, err)
+	}
+	after, err := readWorktreeLock(tree)
+	if err != nil {
+		return fmt.Errorf("anchor worktree %s: read back the worktree lock: %w", tree, err)
+	}
+	if held, ok := session.LockReasonPID(after.Reason); !ok || held != pid {
+		return fmt.Errorf("anchor worktree %s: the worktree lock names %q, not this launcher", tree, after.Reason)
+	}
+	return nil
 }
 
 // codexChildEnv is the environment handed to the codex child: the parent's own
@@ -436,8 +644,8 @@ var codexCmd = &cobra.Command{
 		"  moai codex cli        the same launch, named explicitly\n" +
 		"  moai codex status     print the readiness readout (starts nothing)\n" +
 		"  moai codex app        launch the Codex desktop app (codex app)\n" +
-		"  -w <worktree>         launch in an EXISTING worktree instead of the\n" +
-		"                        project root; this never creates one\n" +
+		"  -w [worktree]         re-enter or create a worktree from the remote\n" +
+		"                        default branch; omit name to generate one\n" +
 		"  --spawn               open the launch in a new tmux window\n" +
 		"  -- <codex-args...>    arguments after -- pass to codex verbatim",
 	Example: "  # Launch the Codex CLI here\n" +
@@ -449,7 +657,7 @@ var codexCmd = &cobra.Command{
 		"  # Launch, passing arguments through verbatim\n" +
 		"  moai codex -- --model o3\n" +
 		"\n" +
-		"  # Launch inside an existing worktree\n" +
+		"  # Re-enter or create a worktree\n" +
 		"  moai codex -w feat-login\n" +
 		"\n" +
 		"  # Launch the desktop app in a new tmux window\n" +
@@ -498,6 +706,16 @@ func runCodex(cmd *cobra.Command, args []string) error {
 	if ferr != nil {
 		return ferr
 	}
+	// -k is consumed next, before any factory state is applied, so a -k/-f
+	// mix is refused before either mode touches the environment.
+	head, kanbanEntry, kerr := stripCodexKanbanFlag(head)
+	if kerr == nil && kanbanEntry.enabled && (factoryLead || factoryRole != "" || factoryLane != "") {
+		kerr = errors.New(codexKanbanUsageDiag)
+	}
+	if kerr != nil {
+		_, _ = fmt.Fprintln(cmd.ErrOrStderr(), kerr.Error())
+		return &exitCodeError{code: 1}
+	}
 	var factoryRestore func()
 	if factoryLead || factoryRole != "" || factoryLane != "" {
 		var applyErr error
@@ -535,9 +753,12 @@ func runCodex(cmd *cobra.Command, args []string) error {
 	}
 
 	if kind.launches() {
+		if kanbanEntry.enabled {
+			defer applyCodexKanbanEntry(cmd, kanbanEntry)()
+		}
 		return runCodexLaunch(cmd, kind, tail, spawn, worktree)
 	}
-	if worktree.present || factoryLead || factoryRole != "" || factoryLane != "" {
+	if worktree.present || kanbanEntry.enabled || factoryLead || factoryRole != "" || factoryLane != "" {
 		// A readout starts no process, so it has no working directory to
 		// point anywhere — and no factory role to enter either.
 		return codexUsageFailure(cmd)
@@ -588,19 +809,6 @@ func runCodexLaunch(cmd *cobra.Command, kind codexVerb, tail []string, spawn boo
 		projectRoot = cwd
 	}
 
-	// -w moves the launched session's working directory only. The gate below keeps
-	// reading the project root: the wiring it classifies is a property of the
-	// project, and a linked worktree need not carry a copy of it.
-	dir := projectRoot
-	if worktree.present {
-		resolved, werr := resolveCodexWorktreeDir(projectRoot, worktree.value)
-		if werr != nil {
-			_, _ = fmt.Fprintln(cmd.ErrOrStderr(), werr.Error())
-			return &exitCodeError{code: 1}
-		}
-		dir = resolved
-	}
-
 	// SPEC-CODEX-INIT-001: the init-offer gate — the ONE call site every
 	// launch form passes through right before launching, the bare form
 	// included. The gate takes no spawn argument: both launch paths cross the
@@ -615,10 +823,38 @@ func runCodexLaunch(cmd *cobra.Command, kind codexVerb, tail []string, spawn boo
 	if len(localArgs) > 0 && codexHasDeveloperOverride(tail) {
 		return errors.New(codexDuplicateLocalOverrideDiag)
 	}
+	// Prepare the worktree only after read-only launch validation. A failed
+	// init offer or instruction check must not leave an orphan worktree.
+	dir := projectRoot
+	if worktree.present {
+		resolved, created, werr := resolveOrCreateCodexWorktreeDir(projectRoot, worktree.value)
+		if werr == nil && !created {
+			// An existing tree may already have a writer; refuse to be the second.
+			werr = codexWorktreeWriterCheck(resolved)
+		}
+		if werr != nil {
+			_, _ = fmt.Fprintln(cmd.ErrOrStderr(), werr.Error())
+			return &exitCodeError{code: 1}
+		}
+		dir = resolved
+	}
 	childArgs := append(localArgs, codexChildArgs(kind, tail)...)
 	req := codexLaunchRequest{Program: binaryPath, Args: childArgs, Dir: dir}
 	if spawn {
+		if worktree.present {
+			// The process that becomes Codex is the pane's; it exists only
+			// after the spawn, so the lock is placed from inside it.
+			codexSpawnAnchorFn = func(pid int, start string) error { return codexWorktreeAnchorLock(dir, pid, start) }
+			defer func() { codexSpawnAnchorFn = nil }()
+		}
 		return codexSpawnLaunch(req)
+	}
+	if worktree.present {
+		// The lock names the process that becomes Codex, before it starts.
+		if err := codexWorktreeAnchorLock(dir, codexDirectAnchorPID(), homestate.CurrentProcessFingerprint()); err != nil {
+			_, _ = fmt.Fprintln(cmd.ErrOrStderr(), err.Error())
+			return &exitCodeError{code: 1}
+		}
 	}
 	return codexDirectLaunch(req)
 }

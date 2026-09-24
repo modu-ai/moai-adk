@@ -23,8 +23,9 @@ func TestStalePeerOutcomeMatchesErrStalePeer(t *testing.T) {
 	if !errors.Is(err, ErrStalePeer) {
 		t.Fatalf("stale peer: errors.Is(%v, ErrStalePeer)=false", err)
 	}
-	if err.Error() != staleText {
-		t.Fatalf("stale peer text=%q, want %q", err.Error(), staleText)
+	// t1082 AC-FLH-007: wrong generation joins the ErrStalePeer class as StaleEndpointError (store.go:46-50 contract)
+	if se, ok := StaleEndpoint(err); !ok || se.Current.SessionUUID != b.SessionUUID || se.Current.Generation != b.Generation {
+		t.Fatalf("stale peer err=%v, want StaleEndpointError redirecting to %s generation %d", err, b.SessionUUID, b.Generation)
 	}
 
 	missing := b

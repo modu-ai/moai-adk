@@ -34,7 +34,13 @@ func TestCharacterizeVerifyPeerOutcomes(t *testing.T) {
 			p := b
 			mutate(&p)
 			err := s.verifyPeer(ctx, p)
-			if err == nil || err.Error() != staleText {
+			if name == "wrong generation" {
+				// t1082 AC-FLH-007: wrong generation joins the ErrStalePeer class as StaleEndpointError (store.go:46-50 contract)
+				se, ok := StaleEndpoint(err)
+				if !errors.Is(err, ErrStalePeer) || !ok || se.Current.SessionUUID != b.SessionUUID || se.Current.Generation != b.Generation {
+					t.Fatalf("err=%v, want ErrStalePeer-class StaleEndpointError redirecting to %s generation %d", err, b.SessionUUID, b.Generation)
+				}
+			} else if err == nil || err.Error() != staleText {
 				t.Fatalf("err=%v, want %q", err, staleText)
 			}
 			if errors.Is(err, ErrEndpointLaunchPending) {

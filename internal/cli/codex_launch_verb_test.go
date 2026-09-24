@@ -14,7 +14,7 @@ package cli
 //   - AC-CLV-008 — the rest of the parent environment survives; both launch
 //     paths carry the same CODEX_HOME value
 //   - AC-CLV-010 — -w sets the child's working directory and is not forwarded
-//   - AC-CLV-011 — -w resolves an existing worktree and never creates one
+//   - AC-CLV-011 — -w re-enters or creates a worktree
 //   - AC-CLV-012 — the init offer gate is inherited by the bare form
 //   - AC-CLV-013 — cross-platform property, with the scan mutation-controlled
 //
@@ -409,13 +409,9 @@ func TestCodexLaunchVerb_WorktreeSetsDirAndIsNotForwarded(t *testing.T) {
 	}
 }
 
-// TestCodexLaunchVerb_WorktreeResolvesNeverCreates — the rejection cells.
-// (i) an absolute path outside the accepted prefixes fails with the SAME
-// diagnostic moai cc produces for that input; (ii) a worktree name that does
-// not exist is diagnosed rather than created. Both launch nothing, and (ii)
-// additionally asserts the path is still absent afterwards — a cell that
-// passes while a worktree appeared would mean create, not resolve.
-func TestCodexLaunchVerb_WorktreeResolvesNeverCreates(t *testing.T) {
+// TestCodexLaunchVerb_WorktreeCreation — an out-of-prefix absolute path is
+// rejected, while a fresh name creates a worktree from the resolved base.
+func TestCodexLaunchVerb_WorktreeCreation(t *testing.T) {
 	t.Run("(i) absolute path outside the accepted prefixes", func(t *testing.T) {
 		outside := filepath.Join(t.TempDir(), "elsewhere")
 		if err := os.MkdirAll(outside, 0o755); err != nil {
@@ -445,27 +441,57 @@ func TestCodexLaunchVerb_WorktreeResolvesNeverCreates(t *testing.T) {
 
 	t.Run("(ii) named worktree that does not exist", func(t *testing.T) {
 		root := t.TempDir()
-		missing := filepath.Join(root, ".claude", "worktrees", "never-made")
+		created := filepath.Join(root, ".claude", "worktrees", "new-card")
 		cap := withCodexLaunchCapture(t)
 		withCodexProjectRoot(t, root)
-
-		_, _, err := runCodexCmd(t, "-w", "never-made")
-		if err == nil {
-			t.Fatal("absent worktree accepted, want a diagnostic")
+		oldBase, oldAdd := codexWorktreeBase, codexWorktreeAdd
+		codexWorktreeBase = func(string) (string, error) { return "origin/develop", nil }
+		var gotPath, gotBranch, gotBase string
+		codexWorktreeAdd = func(path, branch, base string) (string, error) {
+			gotPath, gotBranch, gotBase = path, branch, base
+			if err := os.MkdirAll(path, 0o755); err != nil {
+				return "", err
+			}
+			return path, nil
 		}
-		codexWantLaunches(t, cap, 0, 0, 0)
-		if _, statErr := os.Stat(missing); !os.IsNotExist(statErr) {
-			t.Errorf("%s exists after the run (stat err %v) - the flag CREATED a worktree; it must only resolve", missing, statErr)
+		t.Cleanup(func() { codexWorktreeBase, codexWorktreeAdd = oldBase, oldAdd })
+
+		_, _, err := runCodexCmd(t, "-w", "new-card")
+		if err != nil {
+			t.Fatalf("create named worktree: %v", err)
+		}
+		codexWantLaunches(t, cap, 1, 1, 0)
+		if gotPath != created || gotBranch != "WT-new-card" || gotBase != "origin/develop" {
+			t.Errorf("materializer received (%q, %q, %q)", gotPath, gotBranch, gotBase)
+		}
+		if cap.records[0].Dir != created {
+			t.Errorf("child cwd = %q, want %q", cap.records[0].Dir, created)
 		}
 	})
 
 	t.Run("(iii) bare -w with no value", func(t *testing.T) {
 		cap := withCodexLaunchCapture(t)
-		withCodexProjectRoot(t, t.TempDir())
-		if _, _, err := runCodexCmd(t, "-w"); err == nil {
-			t.Fatal("valueless -w accepted, want a diagnostic (there is no name to resolve)")
+		root := t.TempDir()
+		withCodexProjectRoot(t, root)
+		oldBase, oldAdd, oldName := codexWorktreeBase, codexWorktreeAdd, sessionWorktreeResolveSessionShort
+		codexWorktreeBase = func(string) (string, error) { return "origin/develop", nil }
+		sessionWorktreeResolveSessionShort = func() string { return "abc123" }
+		codexWorktreeAdd = func(path, branch, base string) (string, error) {
+			if err := os.MkdirAll(path, 0o755); err != nil {
+				return "", err
+			}
+			return path, nil
 		}
-		codexWantLaunches(t, cap, 0, 0, 0)
+		t.Cleanup(func() {
+			codexWorktreeBase, codexWorktreeAdd, sessionWorktreeResolveSessionShort = oldBase, oldAdd, oldName
+		})
+		if _, _, err := runCodexCmd(t, "-w"); err != nil {
+			t.Fatalf("bare -w: %v", err)
+		}
+		codexWantLaunches(t, cap, 1, 1, 0)
+		if want := filepath.Join(root, ".claude", "worktrees", "codex-abc123"); cap.records[0].Dir != want {
+			t.Errorf("child cwd = %q, want %q", cap.records[0].Dir, want)
+		}
 	})
 }
 

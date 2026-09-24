@@ -13,6 +13,11 @@ import (
 	"github.com/modu-ai/moai-adk/internal/homestate"
 )
 
+// codexDirectAnchorPID is the pid the worktree lock names on the direct
+// path. On POSIX the launcher replaces itself with Codex (syscall.Exec), so
+// the launcher's own pid IS the Codex session's pid for its whole lifetime.
+func codexDirectAnchorPID() int { return os.Getpid() }
+
 // defaultCodexDirectLaunch preserves one process identity across the factory
 // launch and the interactive Codex session. Hook subprocesses can therefore
 // use the stamped owner directly instead of stopping at a sandbox wrapper in

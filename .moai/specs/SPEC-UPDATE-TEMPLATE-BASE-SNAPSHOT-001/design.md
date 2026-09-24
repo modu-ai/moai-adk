@@ -75,16 +75,18 @@ The snapshot transitions through four states:
         └─────────────writes at end───┘
 ```
 
+> **Amendment note (2026-09-24, card t1139).** The diagram above and states 2-4 below describe the superseded original Decision D4 (writes at init end and after every restore, including `runUpdateRestore`). Those points recorded user values as BASE and the next update dropped them. Under Decision D4 as amended (plan.md), the snapshot is written only right after a template deploy — by `moai init` (before the wizard section patches) and by the two `moai update` paths (before the config restore) — so every PRESENT state holds a pure template render. `runUpdateRestore` writes nothing and leaves the snapshot as the last deploy left it. The states and transitions below carry inline amendment marks.
+
 **States**:
 1. **ABSENT** — no `.moai/cache/template-snapshot/sections/` directory exists. Entered: brand-new project before any `moai init`; OR user manually deleted `.moai/cache/`; OR the snapshot write failed best-effort on a prior cycle.
-2. **PRESENT (fresh-install)** — written by `moai init` (REQ-TBS-001). Captures the install-time rendered baseline.
-3. **PRESENT (post-update)** — written/overwritten by `moai update` restore-completion (REQ-TBS-002). Captures "what this update just produced".
-4. **PRESENT (post-restore)** — written/overwritten by `runUpdateRestore` (the lockout-escape path; REQ-TBS-002 third site). Captures the chosen-backup merge result.
+2. **PRESENT (fresh-install)** — written by `moai init` (REQ-TBS-001) right after the template deploy, before the wizard section patches (amended 2026-09-24, card t1139). Captures the install-time template render.
+3. **PRESENT (post-update)** — written/overwritten by `moai update` right after its template deploy, before the config restore (REQ-TBS-002; originally "at restore-completion", amended 2026-09-24, card t1139). Captures the render this update just deployed.
+4. ~~**PRESENT (post-restore)** — written/overwritten by `runUpdateRestore` (the lockout-escape path; REQ-TBS-002 third site). Captures the chosen-backup merge result.~~ *(Removed 2026-09-24, card t1139: `runUpdateRestore` writes no snapshot; the state it leaves is state 2 or 3 from the last deploy.)*
 
 **Transitions**:
-- `ABSENT → PRESENT`: any of the four write triggers fires (init end, three restore-completion sites).
-- `PRESENT → PRESENT`: any update / restore cycle rewrites the snapshot in place. The snapshot is NOT append-only and NOT versioned; it always reflects the most recent deploy. (Versioning is OUT OF SCOPE — see spec.md §F.)
-- `PRESENT → ABSENT`: only by user action (deleting `.moai/cache/`) or filesystem failure. No code path deletes the snapshot. The next update falls back per REQ-TBS-007 and re-creates it at restore end (REQ-TBS-013).
+- `ABSENT → PRESENT`: any of the three write triggers fires (init post-deploy, template-sync post-deploy, clean-install post-deploy). *(Originally four: init end and three restore-completion sites; amended 2026-09-24, card t1139.)*
+- `PRESENT → PRESENT`: any update cycle rewrites the snapshot in place right after its deploy; a `runUpdateRestore` leaves it unchanged (amended 2026-09-24, card t1139). The snapshot is NOT append-only and NOT versioned; it always reflects the most recent deploy. (Versioning is OUT OF SCOPE — see spec.md §F.)
+- `PRESENT → ABSENT`: only by user action (deleting `.moai/cache/`) or filesystem failure. No code path deletes the snapshot. The next update falls back per REQ-TBS-007 and re-creates it right after its deploy (REQ-TBS-013; originally "at restore end", amended 2026-09-24, card t1139).
 
 **Idempotency**: writing the snapshot twice from the same on-disk state produces the same bytes (file copy is deterministic). Running `moai update` twice in succession leaves the snapshot at the same state.
 
@@ -100,11 +102,13 @@ The migration problem: every existing user project has NO snapshot when this fea
    └─ SaveTemplateBase(destDir, projectRoot) is called.
       └─ HasSnapshot(projectRoot) == false → delegates to SaveTemplateDefaults(destDir)
          (today's embedded-raw BASE; the wrong-base behaviour persists for THIS cycle).
-3. Clean + deploy + RestoreMoaiConfig run, using the embedded-raw BASE.
+3. Clean + deploy run.
+   └─ WriteSnapshot(projectRoot) fires right after the deploy, BEFORE the restore
+      (amended 2026-09-24, card t1139; originally step 5 "at the restore-completion site").
+      └─ Snapshot is CREATED at .moai/cache/template-snapshot/sections/ holding the pure render.
+4. RestoreMoaiConfig runs, using the embedded-raw BASE already copied into the backup.
    └─ Merge behaves exactly as it does today (wrong base, but no worse).
-4. Update completes successfully (exit 0). REQ-TBS-013 (a) satisfied.
-5. WriteSnapshot(projectRoot) fires at the restore-completion site.
-   └─ Snapshot is CREATED at .moai/cache/template-snapshot/sections/.
+5. Update completes successfully (exit 0). REQ-TBS-013 (a) satisfied.
 6. NEXT `moai update`:
    └─ SaveTemplateBase finds the snapshot → reads rendered BASE.
       └─ Merge now correctly distinguishes user changes from template changes.

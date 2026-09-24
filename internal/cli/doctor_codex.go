@@ -176,6 +176,19 @@ func checkCodexWiring(root string, verbose bool) DiagnosticCheck {
 	// by the definitions sitting on disk (REQ-CPW-004).
 	halfWired := !wired && codexAgentDefinitionsExist(root)
 
+	// An interrupted wiring change is reported whatever else holds: it is
+	// only ever read here, never recovered (REQ-DHR-004 — doctor writes,
+	// renames, and deletes nothing).
+	journalFinding, hasJournalFinding := codexJournalFinding(root)
+	if !wired && !codexInstalled && hasJournalFinding {
+		// Codex is not in play on this machine, so only the interrupted
+		// change is reported — none of the Codex-in-play findings below.
+		check.Status = codexCheckStatus([]codexFinding{journalFinding})
+		check.Message = joinCodexSummaries([]codexFinding{journalFinding})
+		check.Detail = joinCodexDetails([]codexFinding{journalFinding}, nil)
+		return check
+	}
+
 	if !wired && !codexInstalled {
 		check.Status = uikit.CheckOK
 		if halfWired {
@@ -202,6 +215,9 @@ func checkCodexWiring(root string, verbose bool) DiagnosticCheck {
 	// extraDetail carries observations that are not findings in their own
 	// right (an unreadable sidecar, a verbose-only note).
 	var extraDetail []string
+	if hasJournalFinding {
+		problems = append(problems, journalFinding)
+	}
 
 	if !wired {
 		// Codex IS installed but this project was never wired. Silence here
@@ -1018,4 +1034,31 @@ func pluralCodexEntries(n int) string {
 		return "entry"
 	}
 	return "entries"
+}
+
+// codexJournalFinding reports an interrupted Codex wiring change: journal
+// entries still staged and wiring temp files no entry references
+// (REQ-DHR-004). It only reads; recovery belongs to the command it names.
+func codexJournalFinding(root string) (codexFinding, bool) {
+	r := codexwiring.InspectJournal(root)
+	if r.Err != nil {
+		return codexFinding{
+			summary: "wiring journal unreadable — run " + r.Command,
+			detail:  fmt.Sprintf("%s could not be read (%v); run %s to recover", codexwiring.JournalRelPath, r.Err, r.Command),
+		}, true
+	}
+	if len(r.Incomplete) == 0 && len(r.OrphanTemps) == 0 {
+		return codexFinding{}, false
+	}
+	var items []string
+	for _, e := range r.Incomplete {
+		items = append(items, fmt.Sprintf("incomplete %s of %s (temp %s)", e.Op, e.Path, e.Temp))
+	}
+	for _, tmp := range r.OrphanTemps {
+		items = append(items, "unreferenced temp file "+tmp)
+	}
+	return codexFinding{
+		summary: fmt.Sprintf("interrupted wiring change (%d incomplete, %d orphan temp) — run %s", len(r.Incomplete), len(r.OrphanTemps), r.Command),
+		detail:  "interrupted Codex wiring change: " + strings.Join(items, "; ") + "; run " + r.Command + " to recover (doctor changes nothing)",
+	}, true
 }

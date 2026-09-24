@@ -6,25 +6,46 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"os"
 	"os/exec"
 
+	"github.com/modu-ai/moai-adk/internal/config"
 	"github.com/modu-ai/moai-adk/internal/homestate"
 )
+
+// codexDirectAnchorPID is the pid the worktree lock names on the direct
+// path. Windows has no exec-in-place: the launcher starts the Codex child and
+// waits for it, so the waiting launcher's pid lives exactly as long as the
+// session does. If only the launcher is killed while the child survives, the
+// lock reads as dead too early — the known residual of this platform.
+func codexDirectAnchorPID() int { return os.Getpid() }
 
 func defaultCodexDirectLaunch(cmd *exec.Cmd) error {
 	if err := cmd.Start(); err != nil {
 		return err
 	}
+	runID := launchEnvValue(cmd.Env, config.EnvMoaiKanbanID)
 	start, state := homestate.ProbeProcessIdentity(cmd.Process.Pid)
 	if state != homestate.ProcessIdentityLive || start == "" {
 		_ = cmd.Process.Kill()
 		_ = cmd.Wait()
-		return errors.New("codex child process identity unavailable")
+		// REQ-002d — refuse, and leave no run carrying this launcher's pid.
+		clearErr := clearFactoryRunOwner(cmd.Dir, runID)
+		return errors.Join(errors.New("codex child process identity unavailable"), clearErr)
 	}
 	if _, err := registerFactoryLaunchPending(context.Background(), cmd.Dir, cmd.Env, cmd.Process.Pid, start); err != nil {
 		_ = cmd.Process.Kill()
 		_ = cmd.Wait()
-		return fmt.Errorf("register factory launch-pending endpoint: %w", err)
+		clearErr := clearFactoryRunOwner(cmd.Dir, runID)
+		return fmt.Errorf("register factory launch-pending endpoint: %w", errors.Join(err, clearErr))
+	}
+	// REQ-002b — the spawn shape: this process blocks in cmd.Wait() for the
+	// session's life but is not the session, so the record-time stamp expires
+	// the moment it returns. Restamp with the child's identity.
+	if err := stampFactoryRunOwner(cmd.Dir, runID, cmd.Process.Pid, start); err != nil {
+		_ = cmd.Process.Kill()
+		_ = cmd.Wait()
+		return fmt.Errorf("stamp factory run owner: %w", err)
 	}
 	return cmd.Wait()
 }

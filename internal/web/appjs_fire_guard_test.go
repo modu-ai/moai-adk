@@ -162,14 +162,28 @@ func requireFireGuardPrereqs(t *testing.T) (chromePath string) {
 	if err != nil {
 		t.Skipf("%v — install Google Chrome (or point MOAI_BROWSER_GUARD_CHROME at a chrome binary) to run the app.js fire guard", err)
 	}
-	python3, err := exec.LookPath("python3")
-	if err != nil {
-		t.Skipf("python3 not found in PATH — it executes the committed appjs_fire_probe.py; install python3 to run the app.js fire guard")
-	}
+	python3 := requirePython3(t)
 	if out, err := exec.Command(python3, "-c", "import websockets").CombinedOutput(); err != nil {
 		t.Skipf("python3 lacks the websockets module (%s) — the probe speaks CDP over websockets; pip install websockets (version pinned in the test-browser CI job) to run the app.js fire guard", strings.TrimSpace(string(out)))
 	}
 	return chromePath
+}
+
+// requirePython3 resolves the interpreter that executes the committed
+// appjs_fire_probe.py, and skips — naming the missing prerequisite — when it
+// is absent from PATH. Every test that shells out to the probe calls this
+// first, gated or not: without it an absent interpreter surfaces as a
+// t.Fatalf whose message accuses the committed manifest ("--lint-manifest
+// rejected the committed manifest"), which reads as a real defect on a
+// machine that simply has no python3. A missing prerequisite is "not measured
+// here", never a failure of the thing under test.
+func requirePython3(t *testing.T) (python3 string) {
+	t.Helper()
+	python3, err := exec.LookPath("python3")
+	if err != nil {
+		t.Skipf("python3 not found in PATH — it executes the committed appjs_fire_probe.py; install python3 to run the app.js fire guard")
+	}
+	return python3
 }
 
 // findChrome locates a chrome binary: MOAI_BROWSER_GUARD_CHROME first, then
@@ -376,6 +390,7 @@ func fireGuardOutputTail(b *bytes.Buffer) string {
 // run carries its own report.
 func runFireGuardProbe(t *testing.T, scriptPath, cdpPort, baseURL, label string, extra ...string) (int, fireProbeReport) {
 	t.Helper()
+	requirePython3(t)
 	port := strings.TrimPrefix(strings.TrimPrefix(baseURL, "http://"), "https://")
 	if host, p, err := net.SplitHostPort(port); err == nil && host == "127.0.0.1" {
 		port = p
@@ -592,6 +607,7 @@ func fireGuardProbePath(t *testing.T) string {
 // every `go test` of the package, with no browser and no server.
 func TestAppJsFireSandboxPairing(t *testing.T) {
 	t.Parallel()
+	requirePython3(t)
 	probe := fireGuardProbePath(t)
 
 	// (a) forward: the committed manifest satisfies the rule.
@@ -670,6 +686,7 @@ func TestAppJsFireSandboxPairing(t *testing.T) {
 //
 // Ungated: routing is a wiring property, so it needs no browser.
 func TestAppJsFireSandboxRouting(t *testing.T) {
+	requirePython3(t)
 	primaryBase, primaryRoot := startFireGuardServerAt(t, findRepoRoot(t))
 	sandboxBase, sandboxRoot := startFireGuardSandboxServer(t)
 
@@ -879,6 +896,7 @@ func TestAppJsFireValidationRejectNoWrites(t *testing.T) {
 // instead of leaving a frozen number behind.
 func fireManifestFamilies(t *testing.T) (unmarked, marked []string) {
 	t.Helper()
+	requirePython3(t)
 	out, err := exec.Command("python3", fireGuardProbePath(t),
 		"--print-routing", "--base-url", "http://primary.invalid", "--sandbox-base-url", "http://sandbox.invalid").Output()
 	if err != nil {
@@ -931,6 +949,7 @@ func slicesEqual(a, b []string) bool {
 // so an unreachable port is enough to reach it.
 func TestAppJsFireReductionDeclaration(t *testing.T) {
 	t.Parallel()
+	requirePython3(t)
 	_, marked := fireManifestFamilies(t)
 	if len(marked) == 0 {
 		t.Skip("no sandbox-serving entry in the manifest — this contract has nothing to bind; recorded as not measured, not as a pass")

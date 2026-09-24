@@ -23,7 +23,7 @@ import (
 )
 
 const (
-	SchemaVersion        = 1
+	SchemaVersion        = 2
 	KindDispatchNotice   = "dispatch_notice"
 	KindStatusRequest    = "status_request"
 	KindStatusReport     = "status_report"
@@ -76,9 +76,11 @@ type SendRequest struct {
 }
 type Envelope struct {
 	ID, ProjectKey, RunID, Kind, SenderSession, RecipientSession, TaskRef, CorrelationID string
-	SchemaVersion                                                                        int
-	SenderGeneration, RecipientGeneration                                                int64
-	CreatedAt, ExpiresAt                                                                 time.Time
+	// SenderSlot is the sender's stable lane slot, the idempotency scope.
+	SenderSlot                            string
+	SchemaVersion                         int
+	SenderGeneration, RecipientGeneration int64
+	CreatedAt, ExpiresAt                  time.Time
 }
 type Claim struct {
 	Envelope
@@ -86,8 +88,11 @@ type Claim struct {
 }
 type Status struct {
 	Pending, Claimed, Acknowledged, DeadLetter int
-	Capability, NextDelivery                   string
-	Lanes                                      []LaneStatus `json:"lanes"`
+	// Superseded counts pending or claimed messages whose recipient endpoint
+	// is no longer current; they are not counted as Pending or Claimed.
+	Superseded               int
+	Capability, NextDelivery string
+	Lanes                    []LaneStatus `json:"lanes"`
 }
 
 // LaneStatus keeps process liveness separate from unobserved model activity.
@@ -116,6 +121,10 @@ type Store struct {
 	ownerCurrent            func(int, string) bool
 	recordReject            func(context.Context, string, string) error
 	probeIdentity           func(int) (string, homestate.ProcessIdentityState)
+	// bindStep, when set by a test, runs at each named boundary of the atomic
+	// handoff rebind ("locked", then after each of its five writes); an error
+	// aborts and rolls back the whole transaction.
+	bindStep func(step string) error
 }
 
 func BrokerPath(projectRoot, runID string) (string, error) {
@@ -200,6 +209,10 @@ func OpenExistingWithDeadline(projectRoot, runID string, deadline time.Duration)
 		_ = db.Close()
 		return nil, err
 	}
+	if err := ensureSchema(ctx, db); err != nil {
+		_ = db.Close()
+		return nil, fmt.Errorf("upgrade factory message broker: %w", err)
+	}
 	return s, nil
 }
 
@@ -244,6 +257,10 @@ func OpenWithDeadline(projectRoot, runID string, deadline time.Duration) (*Store
 		_ = db.Close()
 		return nil, fmt.Errorf("initialize factory message broker: %w", err)
 	}
+	if err = ensureSchema(ctx, db); err != nil {
+		_ = db.Close()
+		return nil, fmt.Errorf("upgrade factory message broker: %w", err)
+	}
 	if err = os.Chmod(path, 0o600); err != nil {
 		_ = db.Close()
 		return nil, err
@@ -286,9 +303,35 @@ func ResolveActiveRun(ctx context.Context, projectRoot, explicit string) (_ stri
 		return "", errors.New("NO_ACTIVE_FACTORY")
 	case 1:
 		return runs[0], nil
-	default:
-		return "", errors.New("AMBIGUOUS_FACTORY")
 	}
+	// Reconciliation runs only on the branch that was going to fail anyway, so
+	// a single-active-run join pays nothing. It only ever REMOVES provably-dead
+	// owners from the active set — it never selects among survivors, so the
+	// fail-closed behaviour below is preserved and ambiguity that survives it
+	// is real ambiguity.
+	rec, err := db.ReconcileActiveRuns(ctx, homestate.ReconcileOptions{Fallback: LeadIdentityLookupFor(projectRoot)})
+	if err != nil {
+		return "", err
+	}
+	switch len(rec.Remaining) {
+	case 0:
+		return "", errors.New("NO_ACTIVE_FACTORY")
+	case 1:
+		return rec.Remaining[0].RunID, nil
+	default:
+		return "", errors.New("AMBIGUOUS_FACTORY: " + describeRunOwners(rec.Remaining))
+	}
+}
+
+// describeRunOwners renders the surviving runs with their owner
+// classifications, so the operator reads why each survived rather than an
+// opaque refusal.
+func describeRunOwners(owners []homestate.RunOwner) string {
+	parts := make([]string, 0, len(owners))
+	for _, o := range owners {
+		parts = append(parts, fmt.Sprintf("%s (owner %s)", o.RunID, o.Classification))
+	}
+	return strings.Join(parts, ", ")
 }
 func (s *Store) Close() error { return s.db.Close() }
 
@@ -303,10 +346,10 @@ func closeInto(errp *error, c io.Closer, what string) {
 
 const schema = `
 CREATE TABLE IF NOT EXISTS peers(slot TEXT PRIMARY KEY, project_key TEXT NOT NULL, run_id TEXT NOT NULL, backend TEXT NOT NULL, role TEXT NOT NULL, session_uuid TEXT NOT NULL UNIQUE, generation INTEGER NOT NULL, pid INTEGER NOT NULL, process_start TEXT NOT NULL, updated_at TEXT NOT NULL);
-CREATE TABLE IF NOT EXISTS messages(id TEXT PRIMARY KEY, schema_version INTEGER NOT NULL, project_key TEXT NOT NULL, run_id TEXT NOT NULL, sender_session TEXT NOT NULL, sender_generation INTEGER NOT NULL, recipient_session TEXT NOT NULL, recipient_generation INTEGER NOT NULL, kind TEXT NOT NULL, idem_key TEXT NOT NULL, task_ref TEXT NOT NULL, correlation_id TEXT NOT NULL, created_at TEXT NOT NULL, expires_at TEXT NOT NULL, payload BLOB NOT NULL, state TEXT NOT NULL, claim_token TEXT NOT NULL DEFAULT '', claim_expires_at TEXT, disposition TEXT NOT NULL DEFAULT '', acknowledged_at TEXT, UNIQUE(sender_session,idem_key));
+CREATE TABLE IF NOT EXISTS messages(id TEXT PRIMARY KEY, schema_version INTEGER NOT NULL, project_key TEXT NOT NULL, run_id TEXT NOT NULL, sender_session TEXT NOT NULL, sender_generation INTEGER NOT NULL, recipient_session TEXT NOT NULL, recipient_generation INTEGER NOT NULL, kind TEXT NOT NULL, idem_key TEXT NOT NULL, task_ref TEXT NOT NULL, correlation_id TEXT NOT NULL, created_at TEXT NOT NULL, expires_at TEXT NOT NULL, payload BLOB NOT NULL, state TEXT NOT NULL, claim_token TEXT NOT NULL DEFAULT '', claim_expires_at TEXT, disposition TEXT NOT NULL DEFAULT '', acknowledged_at TEXT, sender_slot TEXT NOT NULL DEFAULT '', UNIQUE(project_key,run_id,sender_slot,idem_key));
 CREATE INDEX IF NOT EXISTS messages_recipient_state ON messages(recipient_session,recipient_generation,state,created_at);
 CREATE TABLE IF NOT EXISTS dead_letters(id INTEGER PRIMARY KEY AUTOINCREMENT, message_id TEXT NOT NULL, reason TEXT NOT NULL, created_at TEXT NOT NULL);
-`
+` + handoffSchema + handoffBindSchema
 
 func (p Peer) validate(projectKey, runID string) error {
 	for name, v := range map[string]string{"project_key": p.ProjectKey, "run_id": p.RunID, "backend": p.Backend, "role": p.Role, "slot": p.Slot, "session_uuid": p.SessionUUID} {
@@ -326,6 +369,17 @@ func (p Peer) validate(projectKey, runID string) error {
 	return nil
 }
 
+// RegisterPeer writes a lane's endpoint row for a turn hook (UserPromptSubmit)
+// or, through RegisterLaunchPending, for a launcher provisional registration.
+// Inside the same write transaction it reads the lane's handoff state: a turn
+// registration is refused while a handoff is not final, and a replaced
+// (tombstoned) session is refused for good (REQ-FLH-018); a launcher
+// registration that commits finalizes an open handoff as NACK/STALE_GENERATION
+// in the same commit (REQ-FLH-017).
+//
+// @MX:WARN: [AUTO] the handoff-state read and finalize must stay inside this write transaction, serialized by BEGIN IMMEDIATE against the handoff rebind
+// @MX:REASON: REQ-FLH-017/018 — moving either before BEGIN lets a registration rotate the endpoint mid-handoff or commit a launch-pending row beside a non-final handoff (AC-FLH-019 (iv)/(v) mutants)
+// @MX:SPEC: SPEC-FACTORY-LANE-WORKTREE-HANDOFF-001
 func (s *Store) RegisterPeer(ctx context.Context, p Peer) (Peer, error) {
 	if p.ProjectKey == "project" {
 		p.ProjectKey = s.projectKey
@@ -366,6 +420,12 @@ func (s *Store) RegisterPeer(ctx context.Context, p Peer) (Peer, error) {
 	var oldGen int64
 	var oldPID int
 	err = tx.QueryRowContext(ctx, `SELECT session_uuid,generation,pid,process_start FROM peers WHERE slot=?`, p.Slot).Scan(&oldSession, &oldGen, &oldPID, &oldStart)
+	launcher := isLaunchPendingSession(p.SessionUUID)
+	if !launcher {
+		if refuse := s.refuseTurnRegistrationDuringHandoff(ctx, tx, p); refuse != nil {
+			return Peer{}, refuse
+		}
+	}
 	if err == nil {
 		if oldSession == p.SessionUUID {
 			if oldPID != p.PID || oldStart != p.ProcessStart {
@@ -396,6 +456,11 @@ func (s *Store) RegisterPeer(ctx context.Context, p Peer) (Peer, error) {
 	if err != nil {
 		return Peer{}, err
 	}
+	if launcher {
+		if err := s.finalizeHandoffOnLauncherRegistration(ctx, tx, p.Slot); err != nil {
+			return Peer{}, err
+		}
+	}
 	if err = tx.Commit(); err != nil {
 		return Peer{}, err
 	}
@@ -416,7 +481,9 @@ func (s *Store) RegisterLaunchPending(ctx context.Context, p Peer) (Peer, error)
 
 // BindLaunchPending atomically replaces the exact launcher-owned provisional
 // row. A bound row is never rotated here; authoritative turn hooks use
-// RegisterPeer for that separate policy.
+// RegisterPeer for that separate policy. A session UUID a handoff rebind
+// tombstoned is refused with STALE_ENDPOINT on any row, inside this write
+// transaction and before the row is read.
 func (s *Store) BindLaunchPending(ctx context.Context, p Peer) (Peer, bool, error) {
 	if p.ProjectKey == "project" {
 		p.ProjectKey = s.projectKey
@@ -432,6 +499,13 @@ func (s *Store) BindLaunchPending(ctx context.Context, p Peer) (Peer, bool, erro
 		return Peer{}, false, err
 	}
 	defer func() { _ = tx.Rollback() }()
+	// t1082 REQ-FLH-010: a tombstoned session UUID is refused for good, before
+	// any row is read or changed, whatever the generation.
+	if tombstoned, err := sessionTombstoned(ctx, tx, p.SessionUUID); err != nil {
+		return Peer{}, false, err
+	} else if tombstoned {
+		return Peer{}, false, staleError(ctx, tx, NackStaleEndpoint, p.Slot)
+	}
 
 	var current Peer
 	err = tx.QueryRowContext(ctx, `SELECT project_key,run_id,backend,role,slot,session_uuid,generation,pid,process_start FROM peers WHERE slot=?`, p.Slot).Scan(
@@ -616,7 +690,7 @@ func (s *Store) verifyPeerOn(ctx context.Context, q queryer, p Peer) error {
 		return err
 	}
 	if n != 1 {
-		return ErrStalePeer
+		return s.staleOrUnregistered(ctx, q, p)
 	}
 	return nil
 }
@@ -663,13 +737,21 @@ func (s *Store) Send(ctx context.Context, r SendRequest) (Envelope, error) {
 		return reject("overflow:backpressure", errors.New("factory broker backpressure"))
 	}
 	now := s.now().UTC()
-	env := Envelope{ID: newID(), SchemaVersion: SchemaVersion, ProjectKey: s.projectKey, RunID: s.runID, Kind: r.Kind, SenderSession: r.From.SessionUUID, RecipientSession: r.To.SessionUUID, SenderGeneration: r.From.Generation, RecipientGeneration: r.To.Generation, TaskRef: r.TaskRef, CorrelationID: r.CorrelationID, CreatedAt: now, ExpiresAt: now.Add(r.TTL)}
-	_, err := s.db.ExecContext(ctx, `INSERT INTO messages(id,schema_version,project_key,run_id,sender_session,sender_generation,recipient_session,recipient_generation,kind,idem_key,task_ref,correlation_id,created_at,expires_at,payload,state) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,'pending')`, env.ID, SchemaVersion, s.projectKey, s.runID, env.SenderSession, env.SenderGeneration, env.RecipientSession, env.RecipientGeneration, env.Kind, r.IdempotencyKey, env.TaskRef, env.CorrelationID, env.CreatedAt.Format(time.RFC3339Nano), env.ExpiresAt.Format(time.RFC3339Nano), r.Payload)
+	env := Envelope{ID: newID(), SchemaVersion: SchemaVersion, ProjectKey: s.projectKey, RunID: s.runID, Kind: r.Kind, SenderSession: r.From.SessionUUID, SenderSlot: r.From.Slot, RecipientSession: r.To.SessionUUID, SenderGeneration: r.From.Generation, RecipientGeneration: r.To.Generation, TaskRef: r.TaskRef, CorrelationID: r.CorrelationID, CreatedAt: now, ExpiresAt: now.Add(r.TTL)}
+	_, err := s.db.ExecContext(ctx, `INSERT INTO messages(id,schema_version,project_key,run_id,sender_session,sender_slot,sender_generation,recipient_session,recipient_generation,kind,idem_key,task_ref,correlation_id,created_at,expires_at,payload,state) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,'pending')`, env.ID, SchemaVersion, s.projectKey, s.runID, env.SenderSession, env.SenderSlot, env.SenderGeneration, env.RecipientSession, env.RecipientGeneration, env.Kind, r.IdempotencyKey, env.TaskRef, env.CorrelationID, env.CreatedAt.Format(time.RFC3339Nano), env.ExpiresAt.Format(time.RFC3339Nano), r.Payload)
 	if err != nil && strings.Contains(err.Error(), "UNIQUE") {
 		var created, expires string
 		var payload []byte
-		err = s.db.QueryRowContext(ctx, `SELECT id,schema_version,project_key,run_id,kind,sender_generation,recipient_session,recipient_generation,task_ref,correlation_id,created_at,expires_at,payload FROM messages WHERE sender_session=? AND idem_key=?`, env.SenderSession, r.IdempotencyKey).Scan(&env.ID, &env.SchemaVersion, &env.ProjectKey, &env.RunID, &env.Kind, &env.SenderGeneration, &env.RecipientSession, &env.RecipientGeneration, &env.TaskRef, &env.CorrelationID, &created, &expires, &payload)
-		if err == nil && (env.Kind != r.Kind || env.RecipientSession != r.To.SessionUUID || env.RecipientGeneration != r.To.Generation || env.TaskRef != r.TaskRef || env.CorrelationID != r.CorrelationID || !bytes.Equal(payload, r.Payload)) {
+		// The idempotency scope is the sender's lane slot, not its session:
+		// a retry after a sender restart returns the original message.
+		err = s.db.QueryRowContext(ctx, `SELECT id,schema_version,project_key,run_id,kind,sender_session,sender_generation,recipient_session,recipient_generation,task_ref,correlation_id,created_at,expires_at,payload FROM messages WHERE project_key=? AND run_id=? AND sender_slot=? AND idem_key=?`, s.projectKey, s.runID, env.SenderSlot, r.IdempotencyKey).Scan(&env.ID, &env.SchemaVersion, &env.ProjectKey, &env.RunID, &env.Kind, &env.SenderSession, &env.SenderGeneration, &env.RecipientSession, &env.RecipientGeneration, &env.TaskRef, &env.CorrelationID, &created, &expires, &payload)
+		// The recipient the request is compared against is the one the original
+		// was sent to: a handoff release may since have moved the row's columns.
+		origSession, origGen := env.RecipientSession, env.RecipientGeneration
+		if err == nil {
+			origSession, origGen = s.originalRecipient(ctx, env)
+		}
+		if err == nil && (env.Kind != r.Kind || origSession != r.To.SessionUUID || origGen != r.To.Generation || env.TaskRef != r.TaskRef || env.CorrelationID != r.CorrelationID || !bytes.Equal(payload, r.Payload)) {
 			return Envelope{}, errors.New("idempotency key collision with different request")
 		}
 		env.CreatedAt, _ = time.Parse(time.RFC3339Nano, created)
@@ -677,6 +759,16 @@ func (s *Store) Send(ctx context.Context, r SendRequest) (Envelope, error) {
 		return env, err
 	}
 	return env, err
+}
+
+// originalRecipient returns the recipient an existing envelope was sent to. A
+// handoff release moves the envelope's recipient columns to the new generation;
+// the request it was sent as still names the original one, recorded in
+// lane_message_releases. With no release row it is the envelope's recipient.
+func (s *Store) originalRecipient(ctx context.Context, env Envelope) (string, int64) {
+	session, gen := env.RecipientSession, env.RecipientGeneration
+	_ = s.db.QueryRowContext(ctx, `SELECT from_session,from_generation FROM lane_message_releases WHERE message_id=?`, env.ID).Scan(&session, &gen)
+	return session, gen
 }
 
 func (s *Store) recordDead(ctx context.Context, messageID, reason string) error {
@@ -727,6 +819,9 @@ func (s *Store) Claim(ctx context.Context, p Peer, limit int, lease time.Duratio
 		return nil, err
 	}
 	defer func() { _ = tx.Rollback() }()
+	if err := s.refuseWhileHandoffPending(ctx, tx, p.Slot); err != nil {
+		return nil, err
+	}
 	if _, err := tx.ExecContext(ctx, `INSERT INTO dead_letters(message_id,reason,created_at) SELECT id,'ttl:expired',? FROM messages WHERE recipient_session=? AND recipient_generation=? AND state IN ('pending','claimed') AND expires_at<=?`, now.Format(time.RFC3339Nano), p.SessionUUID, p.Generation, now.Format(time.RFC3339Nano)); err != nil {
 		return nil, err
 	}
@@ -736,7 +831,7 @@ func (s *Store) Claim(ctx context.Context, p Peer, limit int, lease time.Duratio
 	if _, err := tx.ExecContext(ctx, `UPDATE messages SET state='dead' WHERE recipient_session=? AND recipient_generation=? AND state IN ('pending','claimed') AND expires_at<=?`, p.SessionUUID, p.Generation, now.Format(time.RFC3339Nano)); err != nil {
 		return nil, err
 	}
-	rows, err := tx.QueryContext(ctx, `SELECT id,schema_version,project_key,run_id,kind,sender_session,sender_generation,recipient_session,recipient_generation,task_ref,correlation_id,created_at,expires_at FROM messages WHERE recipient_session=? AND recipient_generation=? AND (state='pending' OR (state='claimed' AND claim_expires_at<=?)) ORDER BY created_at LIMIT ?`, p.SessionUUID, p.Generation, now.Format(time.RFC3339Nano), limit)
+	rows, err := tx.QueryContext(ctx, `SELECT id,schema_version,project_key,run_id,kind,sender_session,sender_slot,sender_generation,recipient_session,recipient_generation,task_ref,correlation_id,created_at,expires_at FROM messages WHERE recipient_session=? AND recipient_generation=? AND (state='pending' OR (state='claimed' AND claim_expires_at<=?)) ORDER BY created_at LIMIT ?`, p.SessionUUID, p.Generation, now.Format(time.RFC3339Nano), limit)
 	if err != nil {
 		return nil, err
 	}
@@ -745,7 +840,7 @@ func (s *Store) Claim(ctx context.Context, p Peer, limit int, lease time.Duratio
 	for rows.Next() {
 		var c Claim
 		var created, expires string
-		if err := rows.Scan(&c.ID, &c.SchemaVersion, &c.ProjectKey, &c.RunID, &c.Kind, &c.SenderSession, &c.SenderGeneration, &c.RecipientSession, &c.RecipientGeneration, &c.TaskRef, &c.CorrelationID, &created, &expires); err != nil {
+		if err := rows.Scan(&c.ID, &c.SchemaVersion, &c.ProjectKey, &c.RunID, &c.Kind, &c.SenderSession, &c.SenderSlot, &c.SenderGeneration, &c.RecipientSession, &c.RecipientGeneration, &c.TaskRef, &c.CorrelationID, &created, &expires); err != nil {
 			return nil, err
 		}
 		c.CreatedAt, _ = time.Parse(time.RFC3339Nano, created)
@@ -769,10 +864,13 @@ func (s *Store) ReadBody(ctx context.Context, p Peer, id, token string) ([]byte,
 	if err := s.verifyPeer(ctx, p); err != nil {
 		return nil, err
 	}
+	if err := s.refuseWhileHandoffPending(ctx, s.db, p.Slot); err != nil {
+		return nil, err
+	}
 	var body []byte
-	err := s.db.QueryRowContext(ctx, `SELECT payload FROM messages WHERE id=? AND recipient_session=? AND recipient_generation=? AND state='claimed' AND claim_token=?`, id, p.SessionUUID, p.Generation, token).Scan(&body)
+	err := s.db.QueryRowContext(ctx, `SELECT payload FROM messages WHERE id=? AND recipient_session=? AND recipient_generation=? AND state='claimed' AND claim_token=? AND NOT EXISTS(SELECT 1 FROM lane_handoffs WHERE slot=? AND `+openHandoffStates+`)`, id, p.SessionUUID, p.Generation, token, p.Slot).Scan(&body)
 	if err != nil {
-		return nil, errors.New("claim identity mismatch")
+		return nil, s.claimMismatch(ctx, p, id, token)
 	}
 	return body, nil
 }
@@ -783,13 +881,16 @@ func (s *Store) RecordDisposition(ctx context.Context, p Peer, id, token, d stri
 	if err := s.verifyPeer(ctx, p); err != nil {
 		return err
 	}
-	r, err := s.db.ExecContext(ctx, `UPDATE messages SET disposition=? WHERE id=? AND recipient_session=? AND recipient_generation=? AND state='claimed' AND claim_token=?`, d, id, p.SessionUUID, p.Generation, token)
+	if err := s.refuseWhileHandoffPending(ctx, s.db, p.Slot); err != nil {
+		return err
+	}
+	r, err := s.db.ExecContext(ctx, `UPDATE messages SET disposition=? WHERE id=? AND recipient_session=? AND recipient_generation=? AND state='claimed' AND claim_token=? AND NOT EXISTS(SELECT 1 FROM lane_handoffs WHERE slot=? AND `+openHandoffStates+`)`, d, id, p.SessionUUID, p.Generation, token, p.Slot)
 	if err != nil {
 		return err
 	}
 	n, _ := r.RowsAffected()
 	if n != 1 {
-		return errors.New("claim identity mismatch")
+		return s.claimMismatch(ctx, p, id, token)
 	}
 	return nil
 }
@@ -797,12 +898,23 @@ func (s *Store) Receipt(ctx context.Context, p Peer, id, token string) error {
 	if err := s.verifyPeer(ctx, p); err != nil {
 		return err
 	}
-	r, err := s.db.ExecContext(ctx, `UPDATE messages SET state='acknowledged',acknowledged_at=? WHERE id=? AND recipient_session=? AND recipient_generation=? AND state='claimed' AND claim_token=? AND disposition IN ('accepted','rejected','duplicate','deferred')`, s.now().UTC().Format(time.RFC3339Nano), id, p.SessionUUID, p.Generation, token)
+	if err := s.refuseWhileHandoffPending(ctx, s.db, p.Slot); err != nil {
+		return err
+	}
+	r, err := s.db.ExecContext(ctx, `UPDATE messages SET state='acknowledged',acknowledged_at=? WHERE id=? AND recipient_session=? AND recipient_generation=? AND state='claimed' AND claim_token=? AND disposition IN ('accepted','rejected','duplicate','deferred') AND NOT EXISTS(SELECT 1 FROM lane_handoffs WHERE slot=? AND `+openHandoffStates+`)`, s.now().UTC().Format(time.RFC3339Nano), id, p.SessionUUID, p.Generation, token, p.Slot)
 	if err != nil {
 		return err
 	}
 	n, _ := r.RowsAffected()
 	if n != 1 {
+		if err := s.claimMismatch(ctx, p, id, token); err != nil {
+			if _, stale := StaleEndpoint(err); stale {
+				return err
+			}
+			if reason, ok := HandoffNackReason(err); ok && reason == NackEndpointHandoffPending {
+				return err
+			}
+		}
 		return errors.New("receipt requires matching claim and persisted disposition")
 	}
 	return nil
@@ -832,24 +944,30 @@ func (s *Store) SettleReceiptControls(ctx context.Context, p Peer) (int, error) 
 }
 func (s *Store) Status(ctx context.Context) (_ Status, err error) {
 	st := Status{Capability: "hook-boundary", NextDelivery: "pending-until-next-turn"}
-	rows, err := s.db.QueryContext(ctx, `SELECT state,count(*) FROM messages WHERE project_key=? AND run_id=? GROUP BY state`, s.projectKey, s.runID)
+	// A message is superseded when its recipient endpoint is no longer the
+	// current one: Send only addresses current endpoints, so a missing match
+	// means the lane re-registered after the message was queued.
+	rows, err := s.db.QueryContext(ctx, `SELECT m.state, EXISTS(SELECT 1 FROM peers p WHERE p.session_uuid=m.recipient_session AND p.generation=m.recipient_generation), count(*) FROM messages m WHERE m.project_key=? AND m.run_id=? GROUP BY 1,2`, s.projectKey, s.runID)
 	if err != nil {
 		return st, err
 	}
 	defer closeInto(&err, rows, "broker rows")
 	for rows.Next() {
 		var state string
+		var current bool
 		var n int
-		if err := rows.Scan(&state, &n); err != nil {
+		if err := rows.Scan(&state, &current, &n); err != nil {
 			return st, err
 		}
-		switch state {
-		case "pending":
-			st.Pending = n
-		case "claimed":
-			st.Claimed = n
-		case "acknowledged":
-			st.Acknowledged = n
+		switch {
+		case (state == "pending" || state == "claimed") && !current:
+			st.Superseded += n
+		case state == "pending":
+			st.Pending += n
+		case state == "claimed":
+			st.Claimed += n
+		case state == "acknowledged":
+			st.Acknowledged += n
 		}
 	}
 	if err := rows.Err(); err != nil {
