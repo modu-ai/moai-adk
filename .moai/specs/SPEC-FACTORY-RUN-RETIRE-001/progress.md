@@ -122,7 +122,7 @@ already carrying the v3 columns, and a blind `ALTER TABLE … ADD COLUMN` then f
 
 ```yaml
 run_complete_at: 2026-09-23
-run_commit_sha: pending-backfill-run
+run_commit_sha: eaa3322a1   # backfilled by card t1146 (sync-audit S1); the run-phase commit, an ancestor of this SPEC's branch
 run_status: implemented
 ac_pass_count: 16          # AC-001..AC-012, AC-013 leg 1, AC-014, AC-015a/b, AC-016 (both legs), AC-017
 ac_fail_count: 0
