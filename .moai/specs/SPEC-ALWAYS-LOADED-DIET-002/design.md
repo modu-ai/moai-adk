@@ -166,7 +166,7 @@ post-state: 246,943 − 108,181 = **138,762** < 150,000.
 
 **감사가 예측한 5,443자 부족은 성립하지 않는다.** 감사의 추정(~16,300)이 과대계상이었고, 실측 가중치는 종전 목표에서 8,796·개정 목표에서 9,019다. 다만 **종전 목표를 그대로 뒀다면** net 은 99,004, 여유는 10,857 → **2,061** 로 깎였다. 그 여유는 §B 가 이미 공개한 휴리스틱 오차(문단 분류가 풀을 과대평가)를 흡수하기에 부족하다 — 여유가 존재했던 이유가 사라지지 않았으므로, 목표를 올려 여유를 복원했다.
 
-**재배분 원칙**: 재유입률이 낮고 풀에 잔량이 있는 파일 7개의 목표만 올렸다(`moai-constitution`·`context-window-management`·`moai-mcp-tools`·`main-checkout-branch-guard`·`goal-directive`·`cache-aware-execution`·`skill-routing`·`native-idiom`). 고율 파일(`kanban-dispatch` 17.44%, `agent-common-protocol` 12.88%)은 **올리지 않았다** — 거기서 더 옮기면 재유입이 같이 늘어 순이득이 적다.
+**재배분 원칙**: 재유입률이 낮고(0.86%~4.37%) 풀에 잔량이 있는 파일 **8개**의 목표만 올렸다 — `moai-constitution`(7,000→8,500)·`context-window-management`(5,000→6,500)·`moai-mcp-tools`(4,000→5,500)·`main-checkout-branch-guard`(3,500→5,000)·`goal-directive`(3,000→4,500)·`cache-aware-execution`(3,000→4,000)·`skill-routing`(1,800→2,200)·`native-idiom`(1,500→2,000). 증가분 합 9,400자. 고율 파일(`kanban-dispatch` 17.44%, `agent-common-protocol` 12.88%)은 **올리지 않았다** — 거기서 더 옮기면 재유입이 같이 늘어 순이득이 적다.
 
 민감도 (실측률이 하한이므로 필수):
 
