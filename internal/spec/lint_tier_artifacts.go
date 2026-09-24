@@ -98,29 +98,60 @@ func parseTierArtifactSets(content string) (map[string][]string, bool) {
 	return sets, true
 }
 
-// tierArtifactTable loads the project's Tier table once per Linter and is
-// shared by the per-SPEC rule and the corpus-warning rule.
-type tierArtifactTable struct {
-	root     string
-	once     sync.Once
+// tierTableState is the parsed Tier table of one project root.
+type tierTableState struct {
 	present  bool
 	sets     map[string][]string
 	readable bool
 }
 
-func (t *tierArtifactTable) load() {
-	t.once.Do(func() {
-		data, err := os.ReadFile(filepath.Join(t.root, filepath.FromSlash(tierArtifactRuleRelPath)))
-		if err != nil {
-			return // absent or unreadable file: feature not configured
+// tierArtifactTable resolves and caches the Tier table per project root for
+// one Linter, shared by the per-SPEC rule and the corpus-warning rule. The
+// root is derived from each SPEC's own spec.md path, so the result does not
+// depend on the working directory the CLI ran from (its BaseDir is
+// cwd-derived); fallbackRoot (from BaseDir) is used only when the SPEC path
+// does not sit under <root>/.moai/specs/<SPEC>/.
+type tierArtifactTable struct {
+	fallbackRoot string
+	mu           sync.Mutex
+	byRoot       map[string]*tierTableState
+}
+
+// stateFor returns the (cached) table state for root.
+func (t *tierArtifactTable) stateFor(root string) *tierTableState {
+	t.mu.Lock()
+	defer t.mu.Unlock()
+	if t.byRoot == nil {
+		t.byRoot = map[string]*tierTableState{}
+	}
+	if st, ok := t.byRoot[root]; ok {
+		return st
+	}
+	st := &tierTableState{}
+	if data, err := os.ReadFile(filepath.Join(root, filepath.FromSlash(tierArtifactRuleRelPath))); err == nil {
+		st.present = true
+		st.sets, st.readable = parseTierArtifactSets(string(data))
+	}
+	// A read error (absent or unreadable file) leaves the feature unconfigured.
+	t.byRoot[root] = st
+	return st
+}
+
+// rootFor maps a SPEC's spec.md path to its project root: the directory that
+// contains .moai/specs/<SPEC>/. Falls back to the BaseDir-derived root.
+func (t *tierArtifactTable) rootFor(specPath string) string {
+	if abs, err := filepath.Abs(specPath); err == nil {
+		specsDir := filepath.Dir(filepath.Dir(abs))
+		if filepath.Base(specsDir) == "specs" && filepath.Base(filepath.Dir(specsDir)) == ".moai" {
+			return filepath.Dir(filepath.Dir(specsDir))
 		}
-		t.present = true
-		t.sets, t.readable = parseTierArtifactSets(string(data))
-	})
+	}
+	return t.fallbackRoot
 }
 
 // lintProjectRoot maps the Linter BaseDir to the project root. The CLI passes
-// <root>/.moai/specs when it exists and <root> otherwise.
+// <root>/.moai/specs when it exists and the cwd otherwise, so this is only the
+// fallback when a SPEC's own path cannot name its root.
 func lintProjectRoot(baseDir string) string {
 	if baseDir == "" {
 		baseDir = "."
@@ -133,7 +164,16 @@ func lintProjectRoot(baseDir string) string {
 }
 
 // normalizeTier folds a frontmatter tier value to S, M, or L; anything else
-// (including empty and numeric values) returns "".
+// (including empty and numeric values) returns "", and the SPEC is not checked.
+//
+// DOCTRINE DIVERGENCE — absent tier. Two clauses say a SPEC without `tier:` is
+// treated as Tier L: `.claude/rules/moai/workflow/spec-workflow.md`
+// § SPEC Complexity Tier (S/M/L) (the backward-compatibility sentence on the
+// optional `tier:` field) and `.claude/rules/moai/development/spec-frontmatter-schema.md`
+// § Optional Fields (the `tier` row). This rule deliberately does NOT check an
+// absent tier: the card's scope was SPECs whose frontmatter declares a tier.
+// Whether to align the code to the doctrine (check absent tier as L) or the
+// doctrine to the code is left to a follow-up.
 func normalizeTier(v string) string {
 	v = strings.ToUpper(strings.Trim(strings.TrimSpace(v), `"'`))
 	switch v {
@@ -154,17 +194,17 @@ func (r *TierArtifactMissingRule) Code() string { return "TierArtifactMissing" }
 
 // Check emits at most one finding per SPEC, listing every missing file.
 func (r *TierArtifactMissingRule) Check(doc *SPECDoc, _ []*SPECDoc) []Finding {
-	r.table.load()
-	if !r.table.readable {
-		return nil
-	}
 	tier := normalizeTier(doc.Frontmatter.Tier)
 	if tier == "" {
 		return nil
 	}
+	st := r.table.stateFor(r.table.rootFor(doc.Path))
+	if !st.readable {
+		return nil
+	}
 	dir := filepath.Dir(doc.Path)
 	var missing []string
-	for _, name := range r.table.sets[tier] {
+	for _, name := range st.sets[tier] {
 		if _, err := os.Stat(filepath.Join(dir, name)); err != nil {
 			missing = append(missing, name)
 		}
@@ -178,7 +218,7 @@ func (r *TierArtifactMissingRule) Check(doc *SPECDoc, _ []*SPECDoc) []Finding {
 		Severity: SeverityWarning,
 		Code:     r.Code(),
 		Message: fmt.Sprintf("%s: tier %s requires %s; missing: %s (artifact set per spec-workflow.md § SPEC Complexity Tier (S/M/L))",
-			filepath.Base(dir), tier, strings.Join(r.table.sets[tier], " + "), strings.Join(missing, ", ")),
+			filepath.Base(dir), tier, strings.Join(st.sets[tier], " + "), strings.Join(missing, ", ")),
 	}}
 }
 
@@ -194,17 +234,36 @@ func (r *TierArtifactTableRule) Code() string { return "TierArtifactSetUnreadabl
 // Check is a no-op; the rule is cross-SPEC (CheckAll).
 func (r *TierArtifactTableRule) Check(_ *SPECDoc, _ []*SPECDoc) []Finding { return nil }
 
-// CheckAll emits one warning when the SSOT is present but unparseable.
-func (r *TierArtifactTableRule) CheckAll(_ []*SPECDoc) []Finding {
-	r.table.load()
-	if !r.table.present || r.table.readable {
-		return nil
+// CheckAll emits one warning per project root whose SSOT is present but
+// unparseable. A normal run spans one root, so this is one corpus warning; with
+// no SPECs it checks the BaseDir-derived root.
+func (r *TierArtifactTableRule) CheckAll(docs []*SPECDoc) []Finding {
+	var roots []string
+	seen := map[string]bool{}
+	for _, doc := range docs {
+		if root := r.table.rootFor(doc.Path); !seen[root] {
+			seen[root] = true
+			roots = append(roots, root)
+		}
 	}
-	return []Finding{{
-		File:     filepath.Join(r.table.root, filepath.FromSlash(tierArtifactRuleRelPath)),
+	if len(roots) == 0 {
+		roots = []string{r.table.fallbackRoot}
+	}
+	var findings []Finding
+	for _, root := range roots {
+		if st := r.table.stateFor(root); st.present && !st.readable {
+			findings = append(findings, r.unreadable(root))
+		}
+	}
+	return findings
+}
+
+func (r *TierArtifactTableRule) unreadable(root string) Finding {
+	return Finding{
+		File:     filepath.Join(root, filepath.FromSlash(tierArtifactRuleRelPath)),
 		Line:     1,
 		Severity: SeverityWarning,
 		Code:     r.Code(),
 		Message:  "tier artifact set could not be read from spec-workflow.md § SPEC Complexity Tier (S/M/L): expected S, M, and L rows under an \"Artifact set\" column; TierArtifactMissing is inactive until the table parses",
-	}}
+	}
 }

@@ -61,6 +61,36 @@ func TestTierArtifactSets_DeployedInEmbeddedTemplates(t *testing.T) {
 	}
 }
 
+// TestLintProjectRoot covers every BaseDir shape of the fallback root: empty,
+// <root>/.moai/specs, and <root> (or any other directory) itself.
+func TestLintProjectRoot(t *testing.T) {
+	root := filepath.Join(string(filepath.Separator), "proj")
+	cases := map[string]string{
+		"":                                      ".",
+		filepath.Join(root, ".moai", "specs"):   root,
+		root:                                    root,
+		filepath.Join(root, "internal", "spec"): filepath.Join(root, "internal", "spec"),
+	}
+	for in, want := range cases {
+		if got := lintProjectRoot(in); got != want {
+			t.Errorf("lintProjectRoot(%q) = %q, want %q", in, got, want)
+		}
+	}
+}
+
+// TestTierArtifactTable_RootFor: a spec.md under <root>/.moai/specs/<SPEC>/
+// names its own root; any other location falls back.
+func TestTierArtifactTable_RootFor(t *testing.T) {
+	root := filepath.Join(string(filepath.Separator), "proj")
+	tbl := &tierArtifactTable{fallbackRoot: "FALLBACK"}
+	if got := tbl.rootFor(filepath.Join(root, ".moai", "specs", "SPEC-X-001", "spec.md")); got != root {
+		t.Errorf("rootFor(.moai/specs path) = %q, want %q", got, root)
+	}
+	if got := tbl.rootFor(filepath.Join(root, "SPEC-X-001", "spec.md")); got != "FALLBACK" {
+		t.Errorf("rootFor(flat path) = %q, want FALLBACK", got)
+	}
+}
+
 // TestParseTierArtifactSets_Strict covers the parser's refusal shapes: a
 // table missing one tier row, and a row whose artifact cell names no file,
 // both report not-ok rather than a partial map.

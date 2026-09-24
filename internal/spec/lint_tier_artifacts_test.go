@@ -59,18 +59,23 @@ func tierProject(t *testing.T, ruleBody string) string {
 
 // addTierSPEC writes a SPEC directory whose spec.md declares tierLine (the
 // literal frontmatter line, or "" for no tier field) plus the extra sibling
-// artifacts named.
+// artifacts named. The fixture pins `era: V3R6` (the current, non-grandfathered
+// era) so an active SPEC's findings are NOT advisory; without it the missing
+// progress.md classifies the fixture as V2.x and every finding is demoted,
+// hiding any regression toward advisory.
 func addTierSPEC(t *testing.T, root, id, tierLine string, siblings ...string) {
 	t.Helper()
 	dir := filepath.Join(root, ".moai", "specs", id)
 	if err := os.MkdirAll(dir, 0o755); err != nil {
 		t.Fatal(err)
 	}
-	fm := "---\nid: " + id + "\ntitle: Tier fixture\nversion: \"0.1.0\"\nstatus: draft\ncreated: 2026-09-24\nupdated: 2026-09-24\nauthor: tester\npriority: P2\nphase: v3.0.0\nmodule: internal/spec\ndependencies: []\ntags: fixture\n"
+	fm := "---\nid: " + id + "\ntitle: Tier fixture\nversion: \"0.1.0\"\nstatus: draft\ncreated: 2026-09-24\nupdated: 2026-09-24\nauthor: tester\npriority: P2\nphase: v3.0.0\nmodule: internal/spec\ndependencies: []\nlifecycle: spec-anchored\ntags: fixture\nera: V3R6\n"
 	if tierLine != "" {
 		fm += tierLine + "\n"
 	}
-	fm += "---\n\n# " + id + "\n"
+	// The Out of Scope section keeps a current-era fixture clean of the
+	// MissingExclusions error, so the fail-open test can assert the lint exit.
+	fm += "---\n\n# " + id + "\n\n### Out of Scope — fixture\n\n- nothing beyond the tier check\n"
 	if err := os.WriteFile(filepath.Join(dir, "spec.md"), []byte(fm), 0o644); err != nil {
 		t.Fatal(err)
 	}
@@ -109,6 +114,11 @@ func TestTierArtifact_LMissingDesignResearch(t *testing.T) {
 	f := got[0]
 	if f.Severity != spec.SeverityWarning {
 		t.Errorf("Severity = %q, want warning", f.Severity)
+	}
+	// Active (draft) SPEC in the current era: the finding must gate --strict.
+	// MUTATION: set Advisory: true at the emission site — this turns red.
+	if f.Advisory {
+		t.Errorf("active current-era SPEC finding is advisory: %+v", f)
 	}
 	for _, want := range []string{"SPEC-TIERL-001", "tier L", "design.md", "research.md", "spec-workflow.md"} {
 		if !strings.Contains(f.Message, want) {
@@ -211,11 +221,16 @@ func TestTierArtifact_UnreadableTableWarnsOnce(t *testing.T) {
 	}
 }
 
-// TestTierArtifact_ClosedSPECIsAdvisory: a completed SPEC with the same gap
-// still reports the finding, but era/terminal-status demotion marks it
-// advisory, so closed history never gates --strict.
+// TestTierArtifact_ClosedSPECIsAdvisory: two current-era SPECs with the same
+// gap, one draft and one completed. Both report the finding; only the
+// completed one is advisory (terminal-status demotion), so closed history
+// never gates --strict while active work still does.
+//
+// MUTATIONS: dropping the completed-status flip makes both non-advisory;
+// forcing Advisory: true makes both advisory — either turns this red.
 func TestTierArtifact_ClosedSPECIsAdvisory(t *testing.T) {
 	root := tierProject(t, tierTableFixture)
+	addTierSPEC(t, root, "SPEC-LIVE-001", "tier: L", "plan.md", "acceptance.md")
 	addTierSPEC(t, root, "SPEC-DONE-001", "tier: L", "plan.md", "acceptance.md")
 	specPath := filepath.Join(root, ".moai", "specs", "SPEC-DONE-001", "spec.md")
 	data, err := os.ReadFile(specPath)
@@ -227,11 +242,63 @@ func TestTierArtifact_ClosedSPECIsAdvisory(t *testing.T) {
 	}
 
 	got := findingsForCode(lintTierProject(t, root), tierArtifactMissingCode)
-	if len(got) != 1 {
-		t.Fatalf("findings = %d, want 1: %+v", len(got), got)
+	if len(got) != 2 {
+		t.Fatalf("findings = %d, want 2: %+v", len(got), got)
 	}
-	if !got[0].Advisory {
-		t.Errorf("completed SPEC finding is not advisory: %+v", got[0])
+	advisory := map[string]bool{}
+	for _, f := range got {
+		advisory[filepath.Base(filepath.Dir(f.File))] = f.Advisory
+	}
+	if advisory["SPEC-LIVE-001"] {
+		t.Errorf("active SPEC finding is advisory: %+v", got)
+	}
+	if !advisory["SPEC-DONE-001"] {
+		t.Errorf("completed SPEC finding is not advisory: %+v", got)
+	}
+}
+
+// TestTierArtifact_SubdirectoryBaseDir reproduces the CLI run from a project
+// subdirectory: `moai spec lint SPEC-X` from <root>/internal/spec passes
+// BaseDir = that subdirectory (it has no .moai/specs), while the lint target
+// is the SPEC's absolute spec.md. The root must come from the SPEC's own path.
+//
+// MUTATION: resolve the root from BaseDir only — findings drop to 0.
+func TestTierArtifact_SubdirectoryBaseDir(t *testing.T) {
+	root := tierProject(t, tierTableFixture)
+	addTierSPEC(t, root, "SPEC-SUBD-001", "tier: L", "plan.md", "acceptance.md")
+	sub := filepath.Join(root, "internal", "spec")
+	if err := os.MkdirAll(sub, 0o755); err != nil {
+		t.Fatal(err)
+	}
+
+	linter := spec.NewLinter(spec.LinterOptions{BaseDir: sub})
+	report, err := linter.Lint([]string{filepath.Join(root, ".moai", "specs", "SPEC-SUBD-001", "spec.md")})
+	if err != nil {
+		t.Fatalf("Lint: %v", err)
+	}
+	if got := findingsForCode(report.Findings, tierArtifactMissingCode); len(got) != 1 {
+		t.Fatalf("findings from subdirectory BaseDir = %d, want 1: %+v", len(got), got)
+	}
+}
+
+// TestTierArtifact_RootBaseDirFallback covers BaseDir = <root> (the CLI shape
+// when a project has no .moai/specs): a SPEC directory directly under the root
+// cannot be mapped through .moai/specs, so the root falls back to BaseDir.
+func TestTierArtifact_RootBaseDirFallback(t *testing.T) {
+	root := tierProject(t, tierTableFixture)
+	addTierSPEC(t, root, "SPEC-FLAT-001", "tier: L", "plan.md", "acceptance.md")
+	flat := filepath.Join(root, "SPEC-FLAT-001")
+	if err := os.Rename(filepath.Join(root, ".moai", "specs", "SPEC-FLAT-001"), flat); err != nil {
+		t.Fatal(err)
+	}
+
+	linter := spec.NewLinter(spec.LinterOptions{BaseDir: root})
+	report, err := linter.Lint([]string{filepath.Join(flat, "spec.md")})
+	if err != nil {
+		t.Fatalf("Lint: %v", err)
+	}
+	if got := findingsForCode(report.Findings, tierArtifactMissingCode); len(got) != 1 {
+		t.Fatalf("findings with BaseDir=<root> = %d, want 1: %+v", len(got), got)
 	}
 }
 

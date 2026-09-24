@@ -128,7 +128,7 @@ func NewLinter(opts LinterOptions) *Linter {
 	// Tier artifact-set table (card t1121): read once per Linter from the
 	// project root's spec-workflow.md and shared by the per-SPEC rule and its
 	// corpus-warning companion.
-	tierTable := &tierArtifactTable{root: lintProjectRoot(opts.BaseDir)}
+	tierTable := &tierArtifactTable{fallbackRoot: lintProjectRoot(opts.BaseDir)}
 
 	l.rules = []Rule{
 		&EARSModalityRule{},
