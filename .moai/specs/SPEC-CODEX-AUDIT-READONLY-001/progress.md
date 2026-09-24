@@ -153,6 +153,45 @@ Gaps (M3):
 - AC-CAR-008의 변이는 커밋 범위(`develop...HEAD`)가 아니라 작업 트리 비교로 보였다. 커밋된 변이로 원문 판정식을 돌리지는 않았다.
 - `factory_lane_handoff_compat_test.go`(다른 SPEC의 AC-FLH-015)와 웹 콘솔 테스트의 고정 수를 이 카드가 바꿨다.
 
+### M4 — 유도 함수, m8 fixture, 이어받은 LIVE 실행 (LIVE 14/14, 누계 20/43)
+
+**Part A (LIVE 없음, 커밋 `b9348f416`).** primary 반출 `.moai/reports/t1100/m8-sbx/`의 세션 기록 넷을 `internal/cli/testdata/codex-rollouts-m8/`로 바이트 그대로 복사했다. 복사 전 토큰 패턴 grep은 네 파일 모두 0건이었다. `shasum -a 256` 결과(원본과 사본 동일):
+
+| 기록 | 측정 sha256 | acceptance AC-CAR-012a 목록 |
+|---|---|---|
+| `…01a0ceed…` | `9de04f41b82ecd8712718be8ac3596dbaa4feba9f973b4e750e1e6930af5bcfa` | `9de04f41…afcb` — 끝자리 불일치(측정값은 `…af5bcfa`로 끝남. 목록의 오기로 보임, plan-audit R4) |
+| `…01a0ceee-0526…` | `50a26a625c9991dae09acfd41a5d6316af9cb3ecf007d202bfb9ec4a688a5c95` | `50a26a62…5c95` 일치 |
+| `…01a0ceee-4848…` | `c116ad0a8b1b0c207535ffa307203a97fff072fc72f2420e74bb54c310b7c4ab` | `c116ad0a…c4ab` 일치 |
+| `…01a0ceee-67e8…` | `6e1fa1411aadb9757f7cfdd50503ca7c379f97383984bac02e3fa521dd2fb7c2` | `6e1fa141…b7c2` 일치 |
+
+테스트는 측정값을 고정한다. 합성 fixture: (s1) run2 하위 기록에서 첫 줄(하위 세션 `session_meta`)을 뺀 최상위 기록 + 짝 launch record, (s2) run2 기록 둘 + 짝 launch record. 유도 함수 `deriveCodexAuditEvidence`(`codex_audit_derive_test.go`)를 결정적 판정과 LIVE 증거 작성이 함께 쓴다(plan-audit R1). RED: 컴파일 실패 `undefined: codexAuditEvidence`(`run/m4-red.log`).
+
+**Part B (LIVE).** 이어받은 테스트 (ii)를 launcher 직접 호출로 바꿨다. 역할마다 `runCodexAudit`(route `direct`, 목적지 `.moai/reports/verdicts/<role>.txt`)를 부르고, 그 항목 동안 새로 생긴 세션 기록과 launch record를 증거 디렉터리로 복사한 뒤, `denied`·`route`·`used_spawn_agent`·`session_sandbox`·`probe_*`·`verdict_writer`를 유도 함수로 계산한다. 격리 `CODEX_HOME`의 로그인은 복사하지 않고 운영자 파일을 가리키는 심볼릭 링크로 바꿨으며(`linkedCodexHome`), 호출마다 운영자 파일의 sha256 전후를 증거의 `ledger`에 남긴다. 쓰이지 않게 된 `codexAuthChanged`를 지웠다. 첫 호출 전에 상한(호출 14, 호출당 330초, 실행 전체 1650초, 호출당 사용자 턴 1)을 `verdict.md`에 적었다.
+
+실행(acceptance 원문 명령 앞에 `unset MOAI_FACTORY_WORKER MOAI_FACTORY_WORKERS MOAI_KANBAN_BACKEND &&`), 2026-09-24T09:24:20Z–09:28:20Z, go test 종료 코드 1, 테스트 236초. 호출 14회, `aborted: false`, 로그인 파일 sha256 14회 모두 전후 `eb7c45bd…ef6630`. 원장 14줄은 `.moai/reports/t1143/verdict.md`.
+
+- (ii) 두 감사 모두 유도 결과 `route: launcher`, `used_spawn_agent: false`, `session_sandbox: read-only`, `top_level: true`, `probe_command_executed: true`, `probe_exit_code: 1`, `denied: true`, `probe_exists: false`. 판정 파일이 반환문과 같다(`returned_sha256 == verdict_file_sha256`, 반환문에 nonce 포함, `verdict_writer: launcher`).
+- (i) 12개 역할 중 `manager-lead`와 `mission-governor`가 NONCE 한 줄 대신 자기 역할 계약의 출력(`LEAD BLOCKED: …`, mission-governor JSON `blocker` 결정)을 반환해 테스트가 실패했다. t1100 실행에서도 같은 두 역할이 같은 이유로 실패했다(primary `.moai/reports/t1100/ac012-evidence.json`). 모델·역할 행동이므로 FAIL로 분류했고 재실행하지 않았다(재실행은 리드가 기록한 INVALID가 있어야 한다).
+
+판정식(원문 그대로):
+
+| AC | 출력 |
+|---|---|
+| AC-CAR-012a | `true` (변이: 유도가 launch record만으로 launcher를 주고 하위 세션 규칙을 뺌 → `false`) |
+| AC-CAR-009 | `true` |
+| AC-DHR-012 | `false` — 두 역할의 NONCE 불일치, 그리고 테스트 pass 이벤트 0 |
+| AC-DHR-023 | `false` — 내용 조건은 모두 충족(진단 `jq -e`로 확인: `true`), 판정식이 요구하는 같은 테스트의 pass 이벤트가 0이라 `false` |
+| AC-CAR-012b | `false` — 유도 필드 조건은 충족(진단 `true`), 같은 이유(pass 이벤트 0) |
+
+검증: `go test ./internal/cli -run 'CodexAudit|CodexRole|Codex|LiveBudget|LiveEvidence|Rollout'`(kanban·factory 변수 전부 제거) 0(`run/m4-test-cli.log`); `go vet ./internal/cli/...` 0; `golangci-lint run ./internal/cli/...` 0, `0 issues.`(`run/m4-lint.log`); `GOOS=windows GOARCH=amd64 go build ./...` 0; `go vet ./internal/cli/...`(windows) 0. 증거 토큰 grep(`.moai/reports/t1143/`, `.moai/reports/t1100/`) 0건(grep 종료 코드 1).
+
+Gaps (M4):
+
+- AC-DHR-012/023, AC-CAR-012b는 PASS가 아니다. (i) 역할 로드 탐침이 역할 계약과 충돌하는 두 역할이 원인이며 M4의 (ii) 변경과 무관하다. 재실행 여부와 탐침 문구 조정은 리드 결정 대기다.
+- 판정 파일 해시 비교는 원시 바이트로 했다(`verdict_file_raw_sha256`). 이어받은 필드 `verdict_file_sha256`은 끝 공백을 자른 값이며 이번 실행에서는 둘이 같았다.
+- (ii)의 `codex mcp list --json`은 빈 목록을 돌려줘 MCP 비활성화 인자가 없었다. 두 층 MCP 비활성화의 LIVE 확인은 AC-CAR-010(M5) 몫이다.
+- 첫 `-run 'Codex…'` 실행은 레인 환경의 `MOAI_KANBAN_BACKEND`·`MOAI_FACTORY_WORKERS`가 남아 `TestCodexSpawn_RealAssemblyThroughStubTmux`가 실패했다. 전부 지운 재실행은 통과했다.
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 _<pending run-phase>_

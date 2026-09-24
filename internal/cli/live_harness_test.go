@@ -407,12 +407,6 @@ func isolatedCodexHome(t *testing.T, trusted ...string) (home string, authHash s
 	return home, sha256Hex(auth)
 }
 
-// codexAuthChanged reports whether Codex rewrote the copied login.
-func codexAuthChanged(home, before string) bool {
-	b, err := os.ReadFile(filepath.Join(home, "auth.json"))
-	return err != nil || sha256Hex(b) != before
-}
-
 // buildLiveMoai builds the moai binary from this tree through the tracker.
 func buildLiveMoai(t *testing.T, procs *liveProcs) string {
 	t.Helper()
