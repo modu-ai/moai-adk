@@ -338,6 +338,189 @@ RED below was captured before the implementation it names, as the sub-step ran.
      `inventory row 8 (moai hook harness-observe-stop) conditional = false, but the renders say opt-in-only = true` → FAIL.
   3. (in-test) inventory without `harness-observe-stop` against the opt-in render → reported.
 
+**Resumption note (evidence provenance).** The agent that wrote `fe4fd9d4d` stopped on the model
+quota with four files uncommitted (backup kept at the primary checkout's
+`.moai/reports/t1099/m2d-partial/`, byte-identical to the worktree when this agent started:
+`cmp` of both new files and `git diff | cmp - tracked.patch` → `IDENTICAL`). Any RED that agent
+observed for those files was lost with it. The resuming agent recorded the partial state's own
+compile RED before writing any production code for it:
+`go test -count=1 -run '^TestStopChainEffectParityGolden' ./internal/cli/` →
+`internal/cli/codex_stop_chain_golden_test.go:188:65: undefined: stopMemberOutcome` …
+`undefined: newCodexStopChain` … `undefined: renderCodexStop` … `FAIL … [build failed]`.
+Where a test below was written after its code, that is said, and mutation evidence stands in.
+Commits `aedeb4fd4` … `629d13eb9`; measured on Darwin arm64, go1.26.8, at those commits. The
+machine was shared with other lanes throughout (load averages 37–49 at the recorded points).
+`git diff --stat fe4fd9d4d 629d13eb9 -- internal/hook .claude/hooks internal/template/templates/.claude/hooks`
+printed nothing: `internal/hook` (Q6) and the Claude hook scripts are unchanged.
+
+**Decisions made in M2d**
+
+- **Q4 — sync-gate port shape: parallel Go implementation, not a shim.** The operator's
+  constraint keeps `sync-phase-quality-gate.sh` byte-identical, so the Claude script cannot become
+  a shim over a Go entry. The decision core is ported to Go (`internal/cli/codex_sync_gate.go`):
+  the self-gates (subject predicate, language marker, code delta) run in-hook on Codex; the checks
+  run out of hook. Equivalence proof: the AC-HPR-002 goldens run the **unmodified** script and the
+  Go member on the same fixtures, and two parity tests read or source the script itself
+  (`TestSyncGateSubjectPredicateMatchesScript` extracts the script's case arm;
+  `TestSyncGateLanguageDetectionMatchesScript` sources `detect_languages`).
+- **Receipt producers (not `moai hook` subcommands).** Sync gate: `moai verify sync-gate`. Codex
+  review gate (**R1 runner**): `moai verify codex-review`. Both are `moai verify` verbs, so the
+  `moai hook` subcommand count (`TestHookCmd_SubcommandCount`, `TestHookCmd_PrePushSubcommandCount`)
+  and the `utilitySubcmds` reverse mapping are unchanged — no amendment needed; both tests passed
+  in the regression run below.
+- **Cap (§D3.8): N = 3, final**, reason in `codexwiring.StopUnmeasuredCap`'s comment: N ≥ 2 keeps
+  the first continuation meaningful; the third Stop gives the agent a retry after a producer run
+  that left a stale receipt; further continuations repeat the same instruction; it matches
+  `goal.DefaultStagnationThreshold`. **Counter directory, final:** `.moai/state/codex-stop-cap/<session-id>.json`
+  (ignored by the distributed `.gitignore`, so writing it never moves the working-tree digest it is
+  keyed by). Only the Stop chain writes it; the producers never do.
+- **Budgets rebalanced after the timing leg** (below): members 2 and 6 from 0.5 s to 1 s, member 3
+  from 2 s to 1 s. Σ member budgets stays 7.2 s and `StopChainOverhead` stays 2.8 s.
+- **Per-run verdict record:** `.moai/state/codex-stop-chain/<session-id>.json`, one status per
+  member (`pass` only for an evaluated gate or goal; `unverified` for a capped gate; `failed` for a
+  failed or cut-off advisory member).
+
+**Sub-step 1 — shared Go entries** (`aedeb4fd4`). `evaluateStopGoal` (runner is a parameter) and
+`harnessObserveStop` extracted; Claude behaviour unchanged. Characterization run:
+`go test -json -count=1 -timeout 20m -run 'StopGoal|HarnessObserve|GoalCancelled|Classify|Propose|Ledger|WireFormat|GateUniformity' ./internal/cli/`
+→ `194 pass`, no `fail`, no `skip`.
+
+**Sub-step 2 — sync-gate core + `moai verify sync-gate`** (`b82562b92`)
+
+- RED: `go test -count=1 -run 'TestSyncGate|TestVerifySyncGate' ./internal/cli/` →
+  `codex_sync_gate_test.go:156: moai verify sync-gate: unknown command "sync-gate" for "verify"` → FAIL.
+  The two parity tests passed on their first run: they are characterizations of the partial's Go
+  core against the script, and their detection is shown by mutation.
+- GREEN: `go test -json -count=1 -run 'TestSyncGate|TestVerifySyncGate|TestVerify' ./internal/cli/` → `35 pass`.
+- Mutations (reverted): drop `chore: sync` from the Go predicate →
+  `codex_sync_gate_test.go:70: subject "chore: sync lockfile": Go predicate = false, script = true`;
+  drop the `.vs` directory probe →
+  `TestSyncGateLanguageDetectionMatchesScript/visual_studio_dir … languages: Go = [], script = [csharp]`.
+
+**Sub-step 3 — R1 runner `moai verify codex-review`** (`910a212d4`)
+
+- RED (compile): `undefined: codexReviewReceiptState` … `undefined: codexVersionProbe` → build failed.
+- GREEN: `go test -json -count=1 -run 'TestVerifyCodexReviewRecordsReceipt|TestVerify|TestCodexReviewGate' ./internal/cli/` → `28 pass`.
+  Verdicts: findings → `fail`; clean → `pass`; review call error → `inconclusive` (mirrors
+  `codex_review_gate.go` step 5); codex missing → error, nothing recorded.
+- Mutation (reverted): record a call error as `pass` →
+  `TestVerifyCodexReviewRecordsReceipt/review_call_errors … verdict = pass, want inconclusive` → FAIL.
+
+**Sub-step 4 — the chain runner** (`592ada346`; `internal/cli/codex_stop_chain.go`, wired into
+`runHookEvent` for `--harness codex` on Stop; member 1 = the registry dispatch, so a dispatch fault
+still reaches the M2c fail-closed writer)
+
+- AC-HPR-002 (`TestStopChainEffectParityGolden`): RED is the compile RED in the resumption note.
+  GREEN, final: `go test -json -count=1 -timeout 15m -run '^TestStopChainEffectParityGolden' ./internal/cli/`
+  → `36 pass` (goal 4, sync gate 6, codex review gate 7, multi review gate 3, cap 2 × 4, plus
+  parents). No `skip`, no `fail`.
+- A flake was found and fixed while running the mutations: under load ~45 the cap golden's
+  sync-gate Nth Stop read `deny/"unmeasured"` unmutated, because the member hit its 0.5 s internal
+  budget and was cut off. The decision goldens now widen the budgets (`budgetFor`, test-only
+  `wideStopBudget`) so they test decisions, not timing; the timing leg tests the budgets. A
+  cut-off member can no longer write the cap counter after it was abandoned (`capStep`/`capReset`
+  check the member context), and the cut-off path reads the tree key without blocking (`TryLock`).
+- AC-HPR-002 mutations, each applied, observed red, reverted (verbatim deciding line):
+  1. merge drops every member deny (Codex path returns `{}`) →
+     `goal/unmet … goal-unmet Codex chain output = {}, want a Stop block`
+  2. goal `unmeasured` allows → `goal/receipt_absent … Codex path decision = allow (class "unmeasured", reason ""), Claude path = deny`
+  3. sync-gate `unmeasured` allows → `sync_gate/sync-phase_commit,_receipt_absent … Codex path decision = allow (class "unmeasured" …), Claude path = deny`
+  4. member-7 missing result writes no discard → `multi_review_gate/result_missing … a missing result must be recorded, got []`
+  5. member-7 missing result blocks → `… Codex path decision = deny (…), Claude path = allow`
+  6. member 6 allows with codex installed and no receipt → `codex_installed,_no_receipt … Codex path decision = allow …, Claude path = deny` (and `stale_receipt,_HEAD_moved`)
+  7. member 6 accepts a receipt recorded under another HEAD (looked up across snapshot keys) →
+     `stale_receipt,_HEAD_moved … Codex path decision = allow (class "", reason ""), Claude path = deny`
+  8. member 6 blocks when codex is missing → `codex_binary_missing … Codex path decision = deny (…), Claude path = allow`
+  9. sync gate requires a receipt on a non-sync HEAD → `HEAD_not_a_sync-phase_commit,_receipt_absent … Codex path decision = deny (class "unmeasured" …), Claude path = allow`
+  10. member 6 skips step 2 → `codex_installed,_no_receipt,_stop_hook_active_true … Codex path decision = deny (class "unmeasured" …), Claude path = allow`
+  11. sync gate ignores `stop_hook_active` → `fresh_failing_receipt,_stop_hook_active_true … Codex path decision = deny (class "gate_failed" …), Claude path = allow`
+  12. cap removed (budgets widened, clean run) → `cap/sync_gate/…Nth_Stop… Stop 3: got deny/"unmeasured", want allow/unverified` and the same for `cap/codex_review_gate`
+  13. `unverified` discard suppressed → `… the cap must write exactly one unverified record, wrote 0` (both gates)
+  14. reset on a fresh receipt removed → `cap/*/a_fresh_receipt_resets_the_count … after a fresh receipt: got allow/"unverified", want a continuation (count reset to 1)` (both gates). The golden was strengthened first: it now invalidates the receipt **without moving the tree key** (a different `go` on PATH / a different codex version, key asserted equal), so only the receipt read can reset the count.
+  15. reset on a key change removed → `cap/*/a_HEAD_change_resets_the_count … got allow/"unverified", want a continuation` (both gates)
+- AC-HPR-003 (`TestStopChainGPTProfileNoClaudeDependency`, gpt-profile init, `.claude/` asserted
+  absent before and after): written with the chain, passed on its first run →
+  `go test -json … -run 'TestStopChainGPTProfileNoClaudeDependency|…'` → `pass`. Mutation
+  (reverted): member 2 resolves `.claude/hooks/moai/sync-phase-quality-gate.sh` and allows when it
+  is absent → `codex_stop_chain_test.go:101: member 2 (sync-phase quality gate): got allow/"" (MUTATION: …), want deny/"gate_failed"`.
+- AC-HPR-005 (`TestStopChainAdvisoryFailureRecorded`): member 4 returns an error, member 5 hangs
+  past a 50 ms budget; the merged decision and reason are byte-equal to the unfailed run, and the
+  record reads `failed` for both. First run failed on the test's own premise (it re-recorded the
+  goal receipt, so the reason's `recorded_at` differed) — fixed in the test, then `pass`. Mutation
+  (reverted): record a failed advisory member as `ok` →
+  `member 4 recorded "ok", want "failed"` / `member 4 was recorded as passed ("ok") although it failed`.
+- Wiring (`TestCodexStopHandlerRunsTheChain`): `moai hook stop --harness codex` with the registry
+  returning `{}` and an unmet goal → stdout carries `"decision":"block"`. Mutation standing in for
+  the pre-M2d handler (registry dispatch only) → `codex Stop stdout = "{}\n\n", want the goal's block`.
+- Cut-off (`TestStopChainGateCutOffNeverAllows`, `629d13eb9`, test-after): goal and gates cut at
+  1 ns → deny/`unmeasured` naming the budget; member 7 → fail-open allow + one record. Mutations:
+  cut-off goal allows → `member 3 cut off: got allow/"unmeasured" …`; member-7 cut-off without a
+  record → `member 7 cut off: got allow/"" with 0 discard(s) …`.
+
+**Sub-step 5 — AC-HPR-016 timing leg** (`59c760ae6`; `TestStopChainMemberCostWithinBudget`,
+`./internal/cli/`, 5 runs per member, fresh chain each run so each pays the tree-key computation;
+fixture: sync-phase HEAD, dirty tree, both receipts, both review gates on, hook opt-in on,
+`MOAI_SECURITY_COMMIT_REVIEW=1`, 200 telemetry records for member 1; member 8 has a positive
+control that it did not skip)
+
+| Member | Run 1 (old budgets, load ~48) | Final run (load ~38) | Declared budget (final) |
+|---|---|---|---|
+| 1 `moai hook stop` | 0 s (no telemetry yet) | 3 ms | 2 s + 0.2 s uncut |
+| 2 sync gate (self-gates + compare) | **679 ms > 0.5 s** | 489 ms | **1 s** |
+| 3 goal (lookup-only) | 428 ms | 381 ms | **1 s** (was 2 s) |
+| 4 security-turn | 79 ms | 77 ms | 0.5 s |
+| 5 security-commit (review on) | 152 ms | 153 ms | 0.5 s |
+| 6 codex review gate (self-gates + compare) | **721 ms > 0.5 s** | 403 ms | **1 s** |
+| 7 multi review gate | 104 ms | 121 ms | 0.5 s |
+| 8 harness-observe-stop | 2 ms | 4 ms | 0.5 s |
+| whole chain | 1.659 s | 1.083 s | deadline 7.2 s (T_stop 10 s − 2.8 s) |
+
+- Run 1 → `member 2 (sync-phase quality gate) observed max 678.720125ms exceeds its declared budget 500ms`,
+  `member 6 (moai hook codex-review-gate) observed max 721.074375ms exceeds its declared budget 500ms` → FAIL.
+- Final: `go test -json -count=1 -timeout 15m -run '^TestStopChainMemberCostWithinBudget$' ./internal/cli/`
+  → `--- PASS: TestStopChainMemberCostWithinBudget (13.67s)`.
+- Mutation (reverted): the telemetry fixture inflated to 400,000 records →
+  `member 1 (moai hook stop) observed max 3.632504917s exceeds its declared budget 2.2s` → FAIL
+  (member 8 also rose to 1.546 s). In-test: the checker reports an observed max 1 ms over member 7's budget.
+- Member 6 in production spawns `codex --version` for its `tool_version` field; the timing leg pins
+  the probe. Measured separately (not a Codex session): 5 × `/usr/bin/time -p codex --version` →
+  `codex-cli 0.156.1`, `real 0.01` each.
+- Sum leg after the rebalance: `go test -json -count=1 ./internal/codexwiring/` → `102 pass`
+  (includes `TestStopChainAggregateBudgetFitsTimeout`, `TestStopChainInventoryMatchesClaudeTemplate`).
+
+**Regression and static checks**
+
+- `go test -json -count=1 -timeout 20m -run 'TestHarnessCodex|TestHookFaultInjection|TestHookCmd|TestHookValidEventTypes|StopGoal|TestCodexReviewGate|TestMultiReviewGate|TestStopChain|TestCodexStop|TestSyncGate|TestVerify|TestGoalCancelled|TestNeedsInput|TestCodexBlank|TestCodexAudit' ./internal/cli/`
+  → `232 pass`, no `fail`, no `skip` (M2c fault injection and the existing Codex Stop tests unchanged).
+- Final batch at `59c760ae6` (`-run 'TestStopChain|TestCodexStop|TestSyncGate|TestVerifySyncGate|TestVerifyCodexReview|TestHookFaultInjection|TestHarnessCodex|TestHookCmd|TestHookValidEventTypes'`)
+  → `96 pass`; each M2d test named above reads `pass`.
+- Coverage of the new files from that batch (`go tool cover -func`): `run` 91.7%, `merge` 90.9%,
+  `goalMember` 94.7%, `syncGateMember` 95.5%, `codexReviewMember` 95.7%, `multiReviewMember` 100%,
+  `unmeasured` 100%, `produceSyncGateReceipt` 82.6%, `produceCodexReviewReceipt` 86.4%. The
+  cut-off paths (`cutOffUnmeasured` 12.5%, `multiCutOff` 0%) were then covered by
+  `TestStopChainGateCutOffNeverAllows`; the package total was not measured (a whole-package
+  coverage run of `internal/cli` was not done).
+- `golangci-lint run ./internal/cli/ ./internal/codexwiring/...` → `0 issues.`; `go vet ./internal/cli/` → no output;
+  `GOOS=windows GOARCH=amd64 go build ./internal/cli/` → no output.
+
+**Gaps and deviations**
+
+- AC-HPR-005's Claude leg is not covered by a MoAI failure record: on Claude each advisory member
+  is its own registration, so a failing one surfaces as Claude Code's own non-blocking hook error,
+  not a MoAI record. Only the Codex leg is tested.
+- Security guardian members 4/5: their opt-in `block` rides `hookSpecificOutput`, which a Stop
+  decision does not read, so both harnesses treat it as advisory; the Codex chain carries their
+  message as `systemMessage` only. Not measured live.
+- The goal member is not under the §D3.8 cap (design). A goal member that is cut off on every
+  Stop continues every Stop, and its own turn ceiling advances only if the abandoned evaluation
+  saves; the timing leg observed it at ≤ 428 ms against 1 s. Residual risk, not closed.
+- A member cut off before its self-gates finish (for example the sync gate's git walk on a very
+  large tree) continues the turn (`unmeasured`, bounded by the cap) even where Claude would have
+  found the gate not applicable.
+- The timing figures come from a machine shared with other lanes; they bound nothing on another
+  machine or in CI.
+- No live Codex run (Q5): whether Codex honours the merged Stop output end-to-end stays unmeasured.
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 _<pending run-phase>_
