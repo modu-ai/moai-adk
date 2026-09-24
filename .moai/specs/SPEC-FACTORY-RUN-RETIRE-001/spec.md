@@ -1,18 +1,19 @@
 ---
 id: SPEC-FACTORY-RUN-RETIRE-001
 title: "Factory run retirement — owner-liveness reconciliation so a dead lead's run leaves 'active'"
-version: "0.12.0"
-status: completed
+version: "0.13.0"
+status: in-progress
 created: 2026-09-23
-updated: 2026-09-24
+updated: 2026-09-25
 author: manager-spec
 priority: P1
 phase: "v3.2.0 target"
 module: "internal/homestate, internal/factorymsg, internal/cli"
 lifecycle: spec-anchored
-tags: "factory, run-lifecycle, liveness, ambiguous-factory, migration, card-t1107"
+tags: "factory, run-lifecycle, liveness, ambiguous-factory, migration, boot-proof, card-t1107, card-t1169"
 tier: L
 card: t1107
+amendment_of: SPEC-FACTORY-RUN-RETIRE-001
 related_specs: [SPEC-FACTORY-MIXED-HOOK-001, SPEC-FACTORY-WORKER-NAMING-001, SPEC-FACTORY-MODE-001]
 ---
 
@@ -190,11 +191,52 @@ is written against the table above.
   a live run" would be false for that entire host.
 - **REQ-006** (Event-driven): **When** a run row carries no owner stamp — the shape of every row
   written before this SPEC lands — the reconciler shall take the run's registered `role='lead'` peer
-  identity (PID plus process start) as the liveness source, and shall classify the owner
-  `indeterminate` when neither source yields an identity.
+  identity (PID plus process start) as the liveness source. **When** neither source yields a
+  complete identity (a PID together with a non-empty process start), the reconciler shall classify
+  the owner `dead` exactly when the REQ-006b boot proof holds for that run, and `indeterminate` in
+  every other case.
+- **REQ-006b** (Event-driven): **When** a run has no complete owner identity from either REQ-006
+  source, the reconciler shall classify its owner `dead` only if **all four** of the following
+  premises are established for that run, and shall classify it `indeterminate` if any premise is
+  false or cannot be established:
+  1. the host's last boot time is available (REQ-006c);
+  2. no lead record exists for the run — established **only** by the filesystem reporting that the
+     run's broker file does not exist; the file existing, a check failing for any other reason, or a
+     broker path that cannot be derived each count as "a record may exist" and decline the proof;
+  3. at least one timestamp is recorded for the run, across the run row (created, updated), its
+     events, its cards (updated), its workers (registered, heartbeat), and its dead letters;
+  4. every one of those recorded timestamps parses as a timestamp and is **strictly earlier** than
+     the host's last boot — a timestamp equal to or later than the boot, or one that does not parse,
+     declines the proof.
+
+  A retirement path that is not supplied with a boot-time source or a lead-record check does not
+  run the proof. A run that carries a complete identity from either source is judged by that
+  identity alone and never reaches the proof; an error while reading the run's recorded timestamps
+  retires nothing. The proof is a **new route to a positive `dead` classification**, not a
+  relaxation of REQ-005: REQ-005 still retires only on `dead`, and the proof yields `dead` only
+  from a positive fact — every process that could have owned the run existed before the current
+  boot — never from the absence of evidence. §C.3 records why this is not the rejected run-lifetime
+  alternative (b).
+- **REQ-006c** (Unwanted): The platform boot-time reader shall not report a boot time it did not
+  read in full. **When** it cannot read its source completely, it shall report the boot time as
+  unavailable — which disables the REQ-006b proof on that host — and shall report the read failure
+  as the cause, distinguishable from a source that was read completely and carries no boot-time
+  record. A long line preceding the boot-time record shall not cause the record to be lost: on the
+  procfs source, a line longer than 64 KiB ahead of the `btime` record (the `intr` line reaches
+  that length on hosts with many interrupt sources) shall not prevent the record from being found.
+  The procfs interpretation shall be reachable from a build-tag-free seam that takes the source's
+  content, so its error and long-line behaviour is exercisable from any host — the reader that uses
+  it sits behind a build constraint that excludes darwin, the only pre-merge platform (§A.2).
 - **REQ-010** (Ubiquitous): Retirement shall be a status transition on the existing `runs` row
   (`active` → `retired`) that preserves the row and appends a `run.retired` event; it shall not
   delete the row.
+- **REQ-010b** (Ubiquitous): Every `run.retired` event, on every retirement path, shall record
+  which proof established the `dead` classification, as a `basis` value that is exactly one of
+  `stamp` (the run row's own owner stamp probed dead), `peer` (the REQ-006 `role='lead'` peer
+  identity probed dead), or `boot` (the REQ-006b boot proof). The existing `classification` key and
+  its value are unchanged; `basis` is an added key. The boot proof is an inference from time, not a
+  probe of a process, so an operator auditing a retirement must be able to tell from the event
+  alone which of the three fired.
 
 ### Failure surface
 
@@ -340,6 +382,30 @@ Rejected for this door: **deferring the stamp and leaving the run unstamped**. A
 residue this SPEC exists to drain — it converts a live-run hazard into a permanent-blocking one
 rather than removing it.
 
+### C.3 Sub-decision — the boot proof is not a run lifetime (added v0.13.0, card t1169)
+
+Card t1168 found five identity-less `active` rows on a real host that REQ-006 as first written left
+`indeterminate` forever: no stamp, no broker, so no identity to probe. REQ-005 correctly refused to
+retire them, and the operator command refused them too, so every `-f` lane join failed
+`AMBIGUOUS_FACTORY` with no remedy short of hand-editing the database
+(`.moai/reports/t1168/verdict.md`, Claim and root-cause challenge). The shipped repair
+(`372c1bb0b`) classifies such a row `dead` under REQ-006b.
+
+Rejected alternative (b) in §C says "time is not evidence of death here; process identity is". The
+boot proof does not contradict it, and the difference is the whole of why it is admissible:
+
+- A **lifetime** compares a run's age against a threshold. An idle live lead exceeds any threshold,
+  so a lifetime retires live runs.
+- The **boot proof** compares every recorded timestamp against one instant — the host's last boot —
+  and a process that existed only before that instant cannot be running after it. It says nothing
+  about age: a run started one second before a reboot is proven dead, and a run idle for a week
+  since the last boot is not.
+
+What it does share with a lifetime is that it reads clocks rather than processes, and that is why
+REQ-006b demands every premise, why a row with any identity never reaches it, and why REQ-010b
+makes each boot-proven retirement distinguishable after the fact. Its residual exposure — a boot
+clock recorded before time synchronisation — is carried in §F.
+
 ## §D Gaps carried from the reproduction
 
 Each Gap in `.moai/reports/t1107/verdict.md` §4 is dispositioned here:
@@ -417,6 +483,20 @@ Each Gap in `.moai/reports/t1107/verdict.md` §4 is dispositioned here:
 - Linux one-second fingerprint resolution (REQ-003b) leaves a narrow same-second PID-reuse case
   indistinguishable. It resolves toward `live`, so the failure mode is a surviving stale run — which
   has the `--factory-run` escape — never a retired live one.
+- **Boot proof on a stale boot clock (added v0.13.0).** The REQ-006b proof trusts the recorded
+  timestamps and the reported boot time to be on one clock. On a host without a battery-backed
+  real-time clock, a run recorded after boot but before time synchronisation corrects the clock can
+  carry timestamps that read earlier than the corrected boot instant, and the proof would then
+  retire a live run. The exposure is bounded to rows with **no identity at all**: current builds
+  stamp every run they record, except the REQ-002d refused launch, which is dead by construction —
+  so it reaches only a lead still running from a binary older than this SPEC's owner stamp, on such
+  a host. The `boot` basis (REQ-010b) is what lets an operator find such a retirement afterwards.
+  Source: `.moai/reports/t1168/verdict.md` Residual-risk.
+- **The linux and windows boot-time sources were cross-compiled, not exercised, before t1168
+  merged.** `TestSystemBootTimeIsInThePast` ran on darwin only; the procfs and windows readers were
+  built for their targets and never run. REQ-006c closes the procfs interpretation on any host
+  through its build-tag-free seam; the windows reader and the live procfs read remain post-merge
+  CI evidence under the §A.2 timing.
 
 ## §G Accepted debt — audit findings recorded and dispositioned
 
@@ -612,3 +692,31 @@ with, met in the run phase and evidenced below rather than asserted:
   ordering is left exactly as it stands; inventing the sentence in order to correct it would
   manufacture the defect. No requirement, no design, and no research text was touched; counts stay
   REQ 16 / AC 17 and `status:` stays `completed`. Commit: this revision.
+- 2026-09-25 — v0.13.0 — manager-spec — **in-place amendment, card t1169**, bringing the SPEC's
+  text up to the **boot proof** card t1168 shipped (`372c1bb0b`, merged into develop) — behaviour
+  the literal REQ-006 did not allow, recorded as the first Residual-risk item of
+  `.moai/reports/t1168/verdict.md`. **REQ-006** now classifies an identity-less owner `dead`
+  exactly when the new **REQ-006b** boot proof holds and `indeterminate` otherwise; REQ-006b states
+  the four premises one by one, each testable, with every unestablishable premise declining the
+  proof. REQ-005 is untouched in text and in spirit: the proof is a new route to a positive
+  `dead`, not a relaxation. **REQ-006c** binds the boot-time reader to report unavailability with
+  its cause and not to lose `btime` behind a long `intr` line — the shipped procfs reader never
+  consults its scan error and uses the scanner's default 64 KiB token limit. **REQ-010b** adds a
+  `basis` key (`stamp` / `peer` / `boot`) to the `run.retired` payload, the decision the lead
+  delegated to this lane and taken as **record it**, because the boot proof reads clocks rather
+  than probing a process. §C.3 records why the proof is not the rejected lifetime alternative (b);
+  §F gains the stale-boot-clock exposure and the cross-compiled-only platform readers. Acceptance
+  gains AC-018 (boot proof and every declining premise), AC-019 (reader error and long-line paths)
+  and AC-020 (`basis` per proof). Counts: REQ 16 → 19, AC 17 → 20 (22 AC identifiers counting
+  AC-015a/b), inside the Tier L ceilings of 25. `status:` moves `completed → in-progress` under the
+  amendment transition (`spec-frontmatter-schema.md` § Status Enum and § Status Transition Ownership
+  Matrix), with `amendment_of:` and the Amendments record below. Commit: this revision.
+
+### Amendments
+
+| Field | Value |
+|---|---|
+| prior completed version | 0.12.0 |
+| prior_completed_sha | `85414b3e6` (`docs(SPEC-FACTORY-RUN-RETIRE-001): sync-phase artifacts, 3-phase close (card t1107)`) — the close commit itself; `progress.md` §E.4 still carries `sync_commit_sha: pending-backfill-sync`, so this value is read from `git log`, not from the progress record |
+| rationale | Card t1168 retired identity-less legacy runs through a boot proof the literal REQ-006 forbade (it required `indeterminate` whenever neither source yields an identity). The behaviour is correct and is kept; the SPEC is brought into line with it, and the two follow-ups t1168 left open — the reader's error and long-line path, and an event that does not say which proof fired — are specified for a run phase. |
+| scope | `spec.md` REQ-006 rewrite, REQ-006b / REQ-006c / REQ-010b added, §C.3, two §F items; `acceptance.md` AC-018..AC-020 with their evidence cells, matrix, traceability and counts; `plan.md` milestone M7; `progress.md` t1169 plan-phase note. `design.md` and `research.md` untouched. No Go source is changed by this amendment. |

@@ -196,6 +196,36 @@ its verbatim output, attributed to that run and that tree.
   after integration. Record darwin locally; record leg 2 as pending with its run id to follow.
 - Affected-package tests: `go test ./internal/homestate/... ./internal/factorymsg/... ./internal/cli/...`.
 
+### M7 — v0.13.0 amendment follow-ups (card t1169; base: develop with `372c1bb0b`)
+
+Ordered by reversibility, like M1-M6: the persisted payload first, the reader second, the
+regression-guard legs last.
+
+1. **`basis` on `run.retired` (REQ-010b, AC-020)** — the one persisted-shape change. The proof that
+   established `dead` is known where the classification is decided (`classifyRuns` in
+   `internal/homestate/factory_run_retire.go`: stamp probe, peer fallback, or `predatesBoot`), so
+   carry it alongside the classification to `retireRun` and write `{"classification":…,"basis":…}`
+   with the tokens `stamp` / `peer` / `boot`. Both retirement paths — `ReconcileActiveRuns` and
+   `RetireRunIfDead` — go through `retireRun`, so one change covers both. The `classification` key
+   and value stay as they are. Test: `TestRetiredEventRecordsProofBasis`.
+2. **procfs reader (REQ-006c, AC-019)** — `internal/homestate/boot_time_unix.go`: move the `btime`
+   interpretation into a build-tag-free function over an `io.Reader` so darwin can test it; report a
+   read error as the cause instead of dropping it (today the loop never reads `sc.Err()`); and stop
+   losing `btime` behind a long `intr` line (today's scanner keeps the 64 KiB default token limit).
+   How the long line is handled is the run phase's choice; the criterion is the 256 KiB leg. Tests:
+   `TestProcStatBootTimeFindsBtimeAfterLongLine`, `…ReportsReadError`, `…WithoutBtimeIsUnavailable`,
+   `…RejectsMalformedBtime`. `platformBootTime` keeps its `(time.Time, bool)` shape for callers;
+   the cause is for the seam and its tests.
+3. **AC-018 missing legs** — the `timestamp_equal_to_boot` subtest and
+   `TestLeadRecordAbsentForTreatsStatErrorAsPossibleRecord` (`internal/factorymsg`); then re-run
+   t1168 mutants 1-3 and new mutants 4-5 on the run tree and record each red.
+
+File set added by M7: `internal/homestate/factory_run_retire.go`, `internal/homestate/boot_time_unix.go`,
+a new build-tag-free file for the procfs interpretation if the run phase splits it out, and the
+package tests. No `internal/cli` change is expected. Affected-package tests:
+`go test ./internal/homestate/... ./internal/factorymsg/...`, plus `GOOS=linux` and `GOOS=windows`
+cross-builds of `./internal/homestate/`.
+
 ## §G Anti-patterns
 
 - Making `AMBIGUOUS_FACTORY` rarer by choosing a run. That is not a fix; it is the defect wearing the

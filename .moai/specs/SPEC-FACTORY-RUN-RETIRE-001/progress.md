@@ -24,6 +24,22 @@ Recorded at the lead's request, in the lead's words:
 > than switching trees mid-audit. Corrective: the lane tells the author to hold before opening an
 > audit window, and the author asks before committing when unsure whether one is open.
 
+### v0.13.0 in-place amendment — plan phase (card t1169, 2026-09-25)
+
+- baseline: worktree `.claude/worktrees/t1169`, branch `WT-retire-boot-proof-spec`, base develop
+  `a0b78213d`, which descends from `372c1bb0b` (the t1168 boot-proof merge).
+- why: card t1168 shipped a boot proof that retires identity-less legacy runs as `dead`; the
+  literal REQ-006 required `indeterminate` for them. Evidence and the residual risks that motivate
+  this card: `.moai/reports/t1168/verdict.md` (local evidence file, primary checkout), Residual-risk.
+- amended: REQ-006 rewritten; REQ-006b (boot-proof premises), REQ-006c (boot-time reader: error
+  cause, long `intr` line), REQ-010b (`basis` = `stamp` / `peer` / `boot` on `run.retired`) added;
+  spec.md §C.3 and two §F items added; acceptance.md AC-018 (regression-guard), AC-019, AC-020 with
+  RED-now cells R-09 / R-10 pinned at `a0b78213d`; plan.md M7.
+- status: `completed → in-progress` (amendment), `amendment_of:` self, Amendments record citing the
+  prior close `85414b3e6`.
+- run phase owes: M7 in plan.md. The t1107 §E.2-§E.4 evidence below is the prior close's and is
+  left untouched; the amendment's run evidence is manager-develop's to add.
+
 ## §E.2 Run-phase Evidence
 
 Tree: branch `WT-factory-run-retire`, worktree `.claude/worktrees/t1107`, base `9b1805a67`.

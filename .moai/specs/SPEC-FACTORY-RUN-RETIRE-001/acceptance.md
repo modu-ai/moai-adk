@@ -50,6 +50,26 @@ not because the criterion is unsatisfiable.
 | R-07 | `grep -rln factory_run_retire test/integration/harness` | *(empty)* | 1 | no test sits on the one path the three-OS CI job runs |
 | R-08 | `grep -c "AC-011 PASS" .moai/specs/SPEC-FACTORY-RUN-RETIRE-001/progress.md` | `0` | 1 | no door invocation has been recorded |
 
+**v0.13.0 cells (card t1169) carry their own criterion-level pin, `a0b78213d`** (branch
+`WT-retire-boot-proof-spec`, which descends from `372c1bb0b`, the t1168 boot-proof merge). The
+document-level pin above does not bind them.
+
+| id | command | verbatim stdout | exit | why red |
+|----|---------|-----------------|------|---------|
+| R-09 | `grep -rl btime internal/homestate --include='*_test.go'` | *(empty)* | 1 | no test on any host exercises the procfs boot-time interpretation: its only reader sits behind `//go:build !windows && !darwin`. Instrument control, same tree: `grep -rl btime internal/homestate` → `internal/homestate/boot_time_unix.go`, exit 0 |
+| R-10 | `grep -rl '"basis"' internal/homestate` | *(empty)* | 1 | the `run.retired` payload carries `classification` only; no proof basis is written anywhere |
+
+Not a RED cell, recorded as the defect's source observation (`a0b78213d`):
+`grep -c "sc.Err" internal/homestate/boot_time_unix.go` → `0`, exit 1 — the scan error is never
+consulted. It is kept out of the ledger because a correct run phase may read the source without a
+`bufio.Scanner` at all, and the count would then stay `0` after the fix — a wrong-reason red.
+
+**AC-018 has no RED-now cell, by disposition.** Its behaviour landed with t1168 before this
+criterion was written, so no pre-implementation tree remains to observe it red on; per
+`verification-completeness.md` §2.1 it is classified a **regression-guard**, not release-blocking,
+and is never recorded as a pass on the strength of a green run alone. Its discriminating evidence is
+the mutant probes it names, which the run phase re-executes on the run tree.
+
 Deliberately **not** used as a RED cell: any `go test -run <NewTestName>` selector. A Go test binary
 given a selector that matches zero tests exits 0 and prints `ok` — a vacuous green dressed as a red,
 which is the exact failure `verification-completeness.md` §2 warns about.
@@ -75,6 +95,9 @@ which is the exact failure `verification-completeness.md` §2 warns about.
 | AC-015 | REQ-004/005 | M6 | release-blocking | R-05 | M6 mutation, both directions |
 | AC-016 | REQ-002b, REQ-013 | M1 | release-blocking | R-01 | M1 restamp makes stamp and lead peer name one process, driven through the build-tag-free seam on all three shapes |
 | AC-017 | REQ-005 | M2/M4 | release-blocking | R-05 | M2/M4 retire only on positive `dead`; an unenumerated classification declines by default |
+| AC-018 | REQ-006, REQ-006b | M7 | regression-guard | none (§C.1 disposition) | already green from t1168; M7 adds the two missing legs and re-runs the mutant probes |
+| AC-019 | REQ-006c | M7 | release-blocking | R-09 | M7 adds the build-tag-free procfs seam and its tests; the long-line leg finds `btime`, the read-error leg names its cause |
+| AC-020 | REQ-010b | M7 | release-blocking | R-10 | M7 writes `basis` on every retirement path; each proof's event carries its own token |
 
 ## §D Acceptance Criteria (Given-When-Then)
 
@@ -259,6 +282,73 @@ which is the exact failure `verification-completeness.md` §2 warns about.
   criterion — if a mutant can satisfy every other criterion while violating REQ-005, the rest of the
   file is too shallow to adopt the requirement on its own.
 
+- **AC-018** (regression-guard, added v0.13.0) Given `active` runs carrying no complete identity
+  from either REQ-006 source, no broker file, and recorded timestamps all strictly earlier than a
+  supplied boot time, When reconciliation runs, Then each is retired `dead` and a live stamped run
+  seeded beside them stays `active`; and When the operator `--retire` names one, Then it is retired
+  `dead` rather than refused. And for each premise of REQ-006b broken on its own, the run stays
+  `active` and is reported `indeterminate`:
+
+  | Broken premise | Test (package `internal/homestate` unless noted) |
+  |---|---|
+  | boot time unavailable | `TestBootProofDeclinesWithoutEveryPremise/boot_time_unknown` |
+  | no boot-time source wired | `TestBootProofDeclinesWithoutEveryPremise/boot_probe_not_wired` |
+  | lead record may exist (check reports it present) | `TestBootProofDeclinesWithoutEveryPremise/lead_record_may_exist`; `internal/factorymsg` `TestResolveActiveRunBootProofDeclinesWhenBrokerExists` |
+  | no lead-record check wired | `TestBootProofDeclinesWithoutEveryPremise/lead-record_check_not_wired` |
+  | broker check fails with an error other than not-exist | **new** — `internal/factorymsg` `TestLeadRecordAbsentForTreatsStatErrorAsPossibleRecord` |
+  | an event / worker heartbeat / card update / run-row update after boot | `TestBootProofDeclinesWithoutEveryPremise/{event_after_boot, worker_heartbeat_after_boot, card_updated_after_boot, run_row_touched_after_boot}` |
+  | a timestamp **equal** to the boot instant | **new** — subtest `timestamp_equal_to_boot` of `TestBootProofDeclinesWithoutEveryPremise` |
+  | a timestamp that does not parse | `TestBootProofDeclinesWithoutEveryPremise/unparsable_timestamp` |
+
+  The retirement legs are `TestReconcileRetiresIdentitylessRunsThatPredateBoot`,
+  `TestBootProofNeverOverridesAnIdentity`, `TestRetireRunIfDeadAcceptsBootProof`, and in
+  `internal/factorymsg` `TestResolveActiveRunReapsPreBootIdentitylessRuns` (the live stamped run is
+  the one joined) and `TestResolveActiveRunPreBootRowsAloneFailClosedAsNoActive` (boot-proven rows
+  alone leave zero `active` rows and resolution fails closed with `NO_ACTIVE_FACTORY`, AC-009's
+  leg).
+
+  Premise 3 of REQ-006b ("at least one timestamp is recorded") has no leg of its own, and that is a
+  stated limit rather than an omission: an existing run row always contributes its own `created_at`,
+  so the premise cannot be broken while the row exists, and an empty timestamp there is the
+  unparseable leg above.
+
+  **Mutant probes.** Mutant 1 — the proof always declines: the four retirement legs go red,
+  reproducing the operator's `AMBIGUOUS_FACTORY` over five `indeterminate` rows (t1168
+  `mutant.txt`). Mutant 2 — the lead-record premise dropped: `lead_record_may_exist` and
+  `TestResolveActiveRunBootProofDeclinesWhenBrokerExists` go red (t1168 `mutant2.txt`). Mutant 3 —
+  post-boot activity ignored: the four `*_after_boot` subtests go red (t1168 `mutant3.txt`).
+  Mutant 4 — "strictly earlier" loosened to "not later": `timestamp_equal_to_boot` goes red.
+  Mutant 5 — the broker check treats any stat error as absence: the stat-error test goes red. The
+  t1168 files are local evidence; the run phase re-executes mutants 1-3 on its own tree rather than
+  citing them, and runs 4-5 for the first time.
+
+- **AC-019** Given the procfs boot-time interpretation driven through its build-tag-free seam with
+  supplied source content, When (i) the `btime` record follows a line longer than 64 KiB (the test
+  uses a 256 KiB `intr` line), Then the boot time is available and equals that record's value;
+  When (ii) the source fails with a read error before the `btime` record, Then the boot time is
+  unavailable **and the reported cause is that read error**; When (iii) the source is read in full
+  and carries no `btime` record, Then the boot time is unavailable with a cause distinct from (ii);
+  When (iv) the `btime` value is malformed or not positive, Then the boot time is unavailable.
+  Tests (new): `TestProcStatBootTimeFindsBtimeAfterLongLine`, `TestProcStatBootTimeReportsReadError`,
+  `TestProcStatBootTimeWithoutBtimeIsUnavailable`, `TestProcStatBootTimeRejectsMalformedBtime`.
+  They carry no build tag, so the darwin pre-merge run executes them — which is the point.
+
+  **Mutant probes.** Discard the read error (treat a failed read as "no record"): (ii) goes red.
+  Return to a line reader with the default 64 KiB limit: (i) goes red. A leg that stays green under
+  its mutant has not tested its clause.
+
+- **AC-020** Given three `active` runs that each die by a different proof — one whose own owner
+  stamp probes `dead`, one unstamped whose `role='lead'` peer identity probes `dead`, and one
+  identity-less run the REQ-006b boot proof retires — When reconciliation runs, Then each run's
+  `run.retired` event payload parses as JSON carrying `"classification":"dead"` and a `basis` of
+  `stamp`, `peer`, and `boot` respectively; and When the operator `--retire` retires a run, Then its
+  event carries the `basis` of the proof that classified it. Test (new):
+  `TestRetiredEventRecordsProofBasis`, with an operator-path subtest.
+
+  **Mutant probes.** Write a constant `basis` (for example always `stamp`): the `peer` and `boot`
+  legs go red. Omit the key: every leg goes red. Drop or rename `classification`: every leg goes
+  red, which is the byte-compatibility half of REQ-010b.
+
 ## §D.1 Mutation criteria (both directions)
 
 - **AC-015a** Given the implemented reconciler, When the liveness guard is removed so that a `live`
@@ -273,8 +363,11 @@ AC-015a alone would pass on one that retires nothing.
 
 ## §D.2 Severity
 
-All 17 criteria are **release-blocking**, including AC-013 leg 1: each either protects a live
-lead's run or establishes that a dead lead's run actually leaves `active`.
+AC-001..AC-017 are **release-blocking**, including AC-013 leg 1: each either protects a live
+lead's run or establishes that a dead lead's run actually leaves `active`. Of the three added at
+v0.13.0, AC-019 and AC-020 are release-blocking for the amendment's run phase, and AC-018 is a
+**regression-guard** (§C.1): its behaviour was merged before the criterion existed, so it gates on
+its mutant probes, never on a green run alone.
 
 **AC-013 leg 2 is the one non-gating obligation.** It is not release-blocking and is never recorded
 as a pass at integration time, because no CI run exists for a card branch before it merges — the
@@ -287,13 +380,14 @@ actually selected by the integration path.
 
 REQ-001→AC-001 · REQ-002→AC-001 · REQ-002b→AC-016 · REQ-002d→AC-012 · REQ-003→AC-003 ·
 REQ-003b→AC-003 · REQ-004→AC-004/AC-015b · REQ-005→AC-005/AC-006/AC-010/AC-015a/**AC-017** ·
-REQ-006→AC-007 · REQ-007→AC-008 · REQ-008→AC-010 · REQ-010→AC-002 · REQ-011→AC-011 ·
-REQ-012→AC-014 · REQ-013→AC-013 (both legs) + AC-016 (the seam) · REQ-014→AC-009.
+REQ-006→AC-007/**AC-018** · REQ-006b→**AC-018** · REQ-006c→**AC-019** · REQ-007→AC-008 ·
+REQ-008→AC-010 · REQ-010→AC-002 · REQ-010b→**AC-020** · REQ-011→AC-011 · REQ-012→AC-014 ·
+REQ-013→AC-013 (both legs) + AC-016 (the seam) · REQ-014→AC-009.
 
 `REQ-009` is absent by design — retired into REQ-005 at v0.4.0, its number left as a gap rather than
 closed by renumbering (`spec.md` §B).
 
-Every one of the 16 REQs in `spec.md` §B has at least one AC; every one of the 17 ACs traces to at
+Every one of the 19 REQs in `spec.md` §B has at least one AC; every one of the 20 ACs traces to at
 least one REQ. The AC count exceeds the Tier M ceiling of 16, so this SPEC is **Tier L** (ceilings
 25/25) — see § D.5 for the arithmetic and `spec.md` §H for the tier-change record.
 
@@ -304,6 +398,9 @@ least one REQ. The AC count exceeds the Tier M ceiling of 16, so this SPEC is **
   reason**, never as a pass, and is confirmed by run id after the develop push.
 - The AC-017 mutant probe run and recorded: with the reject-list mutant in place, AC-005 / AC-006 /
   AC-010 green and AC-017 red. A run that cannot show that divergence has not exercised REQ-005.
+- **v0.13.0 amendment run**: AC-019 and AC-020 recorded PASS with command plus verbatim output,
+  each with its mutant probes observed red; AC-018 recorded as a regression-guard with mutants 1-5
+  observed red on the run tree and restored green — never as a bare pass.
 - `go test ./internal/homestate/... ./internal/factorymsg/... ./internal/cli/...` passes in the run
   tree; CI supplies the full-suite and cross-platform verdict.
 - `golangci-lint run` reports zero findings on the changed packages.
@@ -346,3 +443,9 @@ The LOC and file-count guidance still reads Tier M (~8 files, well under 1000 LO
 is what carries this SPEC over, and per `spec-workflow.md` the ceilings are the binding constraint —
 "exceeding either ceiling is a signal to tier up or to split the SPEC, not to relax the budget". No
 criterion was dropped, merged, or renumbered to avoid the tier change.
+
+**v0.13.0 (card t1169): REQ 16 → 19, AC 17 → 20.** +3 requirements — REQ-006b (the boot proof's
+premises), REQ-006c (the reader), REQ-010b (the event basis) — each suffixed to the requirement it
+refines, per the §G D7 convention. +3 criteria, one per new requirement: AC-018, AC-019, AC-020.
+Both counts stay inside the Tier L ceilings of 25; the AC-identifier count the baseline snapshot
+measures is 22, because AC-015a and AC-015b are separate identifiers.
