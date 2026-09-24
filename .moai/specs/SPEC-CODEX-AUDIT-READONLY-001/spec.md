@@ -1,7 +1,7 @@
 ---
 id: SPEC-CODEX-AUDIT-READONLY-001
 title: "Codex read-only roles launched as top-level read-only processes — audit launcher, parent-written verdict file, inherited AC-DHR-012/023"
-version: "0.1.0"
+version: "0.2.0"
 status: draft
 created: 2026-09-24
 updated: 2026-09-24
@@ -27,6 +27,7 @@ related_specs:
 
 | Version | Date | Change |
 |---|---|---|
+| 0.2.0 | 2026-09-24 | plan-audit iter-1(FAIL 0.77, `.moai/reports/t1143/plan-audit-iter1.md`)의 D1~D13을 반영했다. B1~B5는 리드가 전달한 잠정 기본값으로 채우고 plan.md의 미해결 확인 표시 세 개를 결정 문장으로 바꿨다. 다섯 항목 모두 Implementation Kickoff에서 운영자가 확인할 대상으로 `plan.md` §G에 남겼다. 이어받은 AC의 실현 방식은 제안이 아니라 결정으로 적었다(D2). 메커니즘 필드와 그 판정 AC-CAR-012를 더했다. 작업 루트를 같은 저장소의 등록된 워크트리로 묶고, 목적지를 `.moai/reports/` 아래로 한정했다(REQ-CAR-005, D3·D13). `write_denied`의 정의와 MCP 기록 래퍼의 양성 대조를 넣었다(D4). launch record의 경로와 스키마를 정하고 AC-CAR-014로 판정한다(D5). 모든 층의 MCP 서버를 끄고 두 래퍼로 잰다(D6). 금지 인자는 `codex exec --help` 실측으로 넓혔다(D7). 인자 길이의 단위는 최종 토큰으로 정했다(D8). R2 조건부 결정적 AC로 AC-CAR-013을 더했다(D9). LIVE 재실행을 대칭으로 맞춰 절대 상한을 43으로 올렸다(D10·B5). 프로세스 정리 도우미와 Windows 빌드 검사를 명시했다(D11). 인용 줄 번호를 고쳤다(D12). 이어받은 세 블록은 바이트 그대로다. |
 | 0.1.0 | 2026-09-24 | 카드 t1143 plan 초안. SPEC-DUAL-HARNESS-RECOVERY-001 0.3.1이 이관한 세 항목(REQ-DHR-015 런타임 조항, AC-DHR-012, AC-DHR-023)을 원문 그대로 이어받고(§B), 설계 경로 (i) — Codex에서 read-only 계약 역할을 `spawn_agent`가 아니라 최상위 `codex exec -s read-only` 프로세스로 띄우고 부모가 반환문으로 판정 파일을 쓴다 — 를 요구사항으로 적었다. 실행 경로(shell 대 MCP)는 M1 측정으로 정한다(REQ-CAR-011). |
 
 ## §A 배경과 목적
@@ -53,13 +54,13 @@ AC-DHR-012, AC-DHR-023의 원문은 `acceptance.md` §B에 같은 방식으로 �
 Where `plan-auditor` or `sync-auditor` is emitted as a Codex role, the role's contract SHALL state `sandbox: read-only` and the emitter SHALL emit `sandbox_mode = "read-only"` for it together with a Codex-only instruction that the role returns its complete verdict or report text instead of writing a file. When a Codex audit role returns, the parent lane orchestrator SHALL write the audit verdict or report file with exactly the returned text. This exception to the contract "the auditor writes its own verdict file" SHALL apply only to the Codex path; the Claude agent definitions, their emitted Claude copies, and the Claude audit workflow SHALL remain unchanged.
 <!-- inherited:end REQ-DHR-015 -->
 
-이 SPEC 안에서 위 런타임 조항의 "parent lane orchestrator"는 REQ-CAR-004의 audit launcher가 부모를 대신해 수행한다. launcher는 부모 lane 세션이 부르는 도구이며, 판정 파일에 쓰는 바이트는 감사 프로세스가 반환한 원문뿐이다.
+**이어받은 문구의 경로 (i) 대응 (결정, 0.2.0).** 위 런타임 조항의 "Codex audit role"은 launcher가 최상위 read-only 프로세스로 띄운 감사 역할이다. "parent lane orchestrator"의 판정 파일 쓰기는 REQ-CAR-004의 audit launcher가 부모를 대신해 수행한다. 이 대응은 선택지가 아니다. t1100 m8-sbx 측정(`.moai/reports/t1100/m8-sbx/summary.json`)에서 쓰기 가능한 부모 아래의 하위 에이전트는 쓰기 가능했고(run1), read-only 부모는 자신도 쓰지 못했다(run2). 그래서 문구를 글자 그대로 따르는 "쓰기 거부된 하위 에이전트 + 파일을 쓰는 같은 부모 세션" 조합은 측정된 Codex 동작에서 성립하지 않는다. launcher가 판정 파일에 쓰는 바이트는 감사 프로세스가 반환한 원문뿐이다.
 
 ## §C 요구사항 (GEARS)
 
 ### REQ-CAR-001 — Read-only-contract roles run as top-level read-only processes
 
-Where the Codex harness drives the lane, when the parent lane orchestrator needs the output of a role whose permission contract states `sandbox: read-only`, the audit launcher shall start that role as exactly one top-level `codex exec` process whose sandbox is set to `read-only` by command-line flag, whose approval policy is `never`, and whose working root is the caller's worktree root, and shall not start that role through `spawn_agent`.
+Where the Codex harness drives the lane, when the parent lane orchestrator needs the output of a role whose permission contract states `sandbox: read-only`, the audit launcher shall start that role as exactly one top-level `codex exec` process whose sandbox is set to `read-only` by exactly one command-line sandbox flag, whose approval policy is `never`, and whose working root is the caller's worktree root, and shall not start that role through `spawn_agent`.
 
 ### REQ-CAR-002 — Launchable roles are derived from the permission contract
 
@@ -67,23 +68,23 @@ The audit launcher shall derive the set of launchable roles from the emitted Cod
 
 ### REQ-CAR-003 — Role instructions and effort reach the top-level process
 
-The audit launcher shall deliver to the top-level process the role's `developer_instructions` text and `model_reasoning_effort` value exactly as they appear in the emitted role file. When the delivered instruction argument would exceed the launcher's existing argument ceiling, the audit launcher shall fail closed before starting any process and shall report the measured byte length and the ceiling.
+The audit launcher shall deliver to the top-level process the role's `developer_instructions` text and `model_reasoning_effort` value exactly as they appear in the emitted role file, and shall not merge project-local instruction files into that text. When the byte length of the final `developer_instructions=<JSON>` argument token exceeds the launcher's existing argument ceiling, the audit launcher shall fail closed before starting any process and shall report that measured byte length and the ceiling.
 
 ### REQ-CAR-004 — The parent writes the verdict file with the returned text
 
 When the top-level audit process exits with status zero and its final agent message is non-empty, the audit launcher shall write that message byte-for-byte to the destination the caller named, by a write that leaves either the previous file or the complete new file and never a partial file.
 
-### REQ-CAR-005 — The destination comes from the caller, never from the model
+### REQ-CAR-005 — The root and the destination are confined
 
-The audit launcher shall take the verdict destination only from its caller's argument and shall resolve it, after symlink resolution, inside the caller's worktree root. The audit launcher shall not take a destination path from the audit process's output. When the resolved destination lies outside the worktree root, the audit launcher shall exit non-zero without writing.
+The audit launcher shall accept a working root only when, after symlink resolution, it is a worktree registered in the same repository as the launcher's own project root (same git common directory). The audit launcher shall take the verdict destination only from its caller's argument, shall accept it only when, after symlink resolution, it lies under `.moai/reports/` of that working root and contains no `.git` path component, and shall not take a destination path from the audit process's output. When the root or the destination fails either condition, the audit launcher shall exit non-zero, shall start no process, and shall write nothing.
 
 ### REQ-CAR-006 — A failed audit writes nothing
 
 When the top-level audit process exits non-zero, exceeds its time bound, or returns an empty final message, the audit launcher shall not create or modify the destination file, shall exit non-zero, and shall name the role and the failure reason in its diagnostic.
 
-### REQ-CAR-007 — Side channels outside the Codex sandbox are closed or declared
+### REQ-CAR-007 — Side channels are closed or declared, and every launch leaves a record
 
-The audit launcher shall start the audit process with no MCP server enabled. The launch record shall state that the read-only guarantee covers the model-generated commands and edits governed by the Codex sandbox, and shall list the writers that sandbox does not govern — Codex's own session files under `CODEX_HOME` and project hook commands — as `UNSUPPORTED`. The audit launcher shall not pass any sandbox-bypass or approval-bypass option to the audit process.
+The audit launcher shall start the audit process with every MCP server disabled, whichever configuration layer (user or project) declares it, and shall not pass any option that widens the sandbox or bypasses approval. The audit launcher shall write one launch record per invocation, whether the audit succeeds or fails, under `.moai/reports/codex-audit/` of the working root. The launch record shall state that the read-only guarantee covers the model-generated commands and edits governed by the Codex sandbox, and shall list exactly the writers that sandbox does not govern — Codex's own session files under `CODEX_HOME` and project hook commands — as `UNSUPPORTED`.
 
 ### REQ-CAR-008 — The instruction surface names the launcher, not spawn_agent
 
@@ -95,29 +96,29 @@ The Claude agent definitions (`.claude/agents/moai/*.md` in the project and in t
 
 ### REQ-CAR-010 — LIVE invocations are budgeted and never inflated into PASS
 
-The LIVE verification of this SPEC shall count one invocation per `codex exec` process and shall not start an invocation that would exceed the ceiling of its evidence item. When a ceiling would be exceeded, the verification shall record `ABORTED`, stop that item's remaining steps, and fail. An unexecuted LIVE item shall be recorded `NOT_RUN`. Neither `ABORTED` nor `NOT_RUN` shall be counted as PASS.
+The LIVE verification of this SPEC shall count one invocation per `codex exec` process and shall not start an invocation that would exceed the ceiling of its evidence item. When a ceiling would be exceeded, the verification shall record `ABORTED`, stop that item's remaining steps, and fail. An unexecuted LIVE item shall be recorded `NOT_RUN`, and a run the lead records as invalidated by a harness defect shall be recorded `INVALID`. None of `ABORTED`, `NOT_RUN`, or `INVALID` shall be counted as PASS.
 
 ### REQ-CAR-011 — The launch route is the one measured to work
 
-The audit launcher shall be reachable from a running Codex lane session by the route that the M1 measurement recorded as able to start a read-only top-level process that reaches the model. Where the shell route is recorded as unable, the audit launcher shall be exposed through the moai MCP server and shall take the worktree root as an explicit input. The instruction surface shall name only the route that was measured to work.
+The audit launcher shall be reachable from a running Codex lane session by the route that the M1 measurement recorded as able to start a read-only top-level process that reaches the model. Where the shell route is recorded as unable, the audit launcher shall be exposed through the moai MCP server and shall take the worktree root as an explicit input bound by REQ-CAR-005. When the M1 measurement records both routes as unable, the verification shall start no further LIVE invocation. The instruction surface shall name only the route that was measured to work.
 
 ## §D 추적
 
 | 요구사항 | 인수 기준 |
 |---|---|
-| § REQ-DHR-015 (이어받음, 런타임 조항) | AC-DHR-023 (이어받음), AC-CAR-003, AC-CAR-010, AC-CAR-009 (원문 보존) |
+| § REQ-DHR-015 (이어받음, 런타임 조항) | AC-DHR-023 (이어받음) + AC-CAR-012 (메커니즘), AC-CAR-003, AC-CAR-010, AC-CAR-009 (원문 보존) |
 | § REQ-DHR-014 (출처 SPEC에 남음) | AC-DHR-012 (이어받음, 판정식만) |
-| § REQ-CAR-001 | AC-CAR-001, AC-CAR-010, AC-CAR-011, AC-DHR-012 |
+| § REQ-CAR-001 | AC-CAR-001, AC-CAR-010, AC-CAR-011, AC-DHR-012 **와 AC-CAR-012를 함께 만족할 때만**(AC-DHR-012 단독은 실행 경로를 보지 않는다) |
 | § REQ-CAR-002 | AC-CAR-002 |
 | § REQ-CAR-003 | AC-CAR-001, AC-CAR-006, AC-CAR-010 |
-| § REQ-CAR-004 | AC-CAR-003, AC-DHR-023 |
-| § REQ-CAR-005 | AC-CAR-005 |
+| § REQ-CAR-004 | AC-CAR-003, AC-DHR-023 **와 AC-CAR-012를 함께** |
+| § REQ-CAR-005 | AC-CAR-005, AC-CAR-013 |
 | § REQ-CAR-006 | AC-CAR-004 |
-| § REQ-CAR-007 | AC-CAR-001, AC-CAR-010 |
+| § REQ-CAR-007 | AC-CAR-001, AC-CAR-010, AC-CAR-014 |
 | § REQ-CAR-008 | AC-CAR-007 |
 | § REQ-CAR-009 | AC-CAR-008 |
-| § REQ-CAR-010 | AC-CAR-010, AC-CAR-011, AC-DHR-012 |
-| § REQ-CAR-011 | AC-CAR-007, AC-CAR-010 |
+| § REQ-CAR-010 | AC-CAR-010, AC-CAR-011, AC-CAR-012, AC-DHR-012 |
+| § REQ-CAR-011 | AC-CAR-007, AC-CAR-010, AC-CAR-013 |
 
 ## §E 범위 밖
 
@@ -133,8 +134,9 @@ The audit launcher shall be reachable from a running Codex lane session by the r
 
 ### Out of Scope — sandbox 밖 쓰기 주체의 봉쇄
 
-- Codex가 `CODEX_HOME` 아래에 쓰는 세션 기록과 프로젝트 hook 명령의 쓰기를 막는 일. 이 SPEC은 그것들을 `UNSUPPORTED`로 선언만 한다(REQ-CAR-007).
-- `write-path-scope`(경로 단위 쓰기 제한). Codex sandbox는 이것을 표현하지 못하며, 이 SPEC은 감사자를 read-only로 두고 쓰기를 부모에게 넘기는 방식으로 우회한다.
+- Codex가 `CODEX_HOME` 아래에 쓰는 세션 기록과 프로젝트 hook 명령의 쓰기를 막는 일. 이 SPEC은 그것들을 launch record에 `UNSUPPORTED`로 선언만 한다(REQ-CAR-007).
+- `write-path-scope`(경로 단위 쓰기 제한). Codex sandbox는 이것을 표현하지 못하며, 이 SPEC은 감사자를 read-only로 두고 쓰기를 launcher에게 넘기는 방식으로 우회한다.
+- 감사 판정 내용의 진위(감사자가 읽는 저장소 내용의 프롬프트 주입이 판정문을 오염시키는지). launcher는 반환문을 데이터로 쓸 뿐 해석하거나 실행하지 않는다.
 
 ### Out of Scope — REQ-DHR-013·014의 나머지
 
