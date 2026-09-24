@@ -15,6 +15,7 @@ import (
 	"strconv"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/modu-ai/moai-adk/internal/codexadapter"
 	"github.com/modu-ai/moai-adk/internal/hook"
@@ -181,6 +182,11 @@ func fakeCodexVersion(t *testing.T, v string) {
 	codexVersionProbe = func(context.Context, string) (string, error) { return v, nil }
 	t.Cleanup(func() { codexVersionProbe = prev })
 }
+
+// wideStopBudget widens every member's internal budget for a decision test,
+// so a loaded machine cannot turn it into a timing test. The declared budgets
+// are measured by the AC-HPR-016 timing leg instead.
+func wideStopBudget(int) time.Duration { return time.Minute }
 
 func countDiscards(recs []codexadapter.Discard, keyPart string) int {
 	n := 0
