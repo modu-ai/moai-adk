@@ -1,7 +1,7 @@
 ---
 id: SPEC-HOOK-STDIN-FAILCLOSED-001
 title: "훅 stdin 파싱 실패 시 결정 이벤트 fail-closed — 관측 이벤트의 기존 fail-open 보존"
-version: "0.3.3"
+version: "0.3.4"
 status: draft
 created: 2026-09-24
 updated: 2026-09-24
@@ -30,6 +30,7 @@ related_specs:
 | 0.3.1 | 2026-09-24 | manager-spec (card t1152) | plan-audit 2회차 FAIL(0.86, `.moai/reports/t1152/plan-audit-iter2.md`)의 차단 결함 N1~N3 과 선택 결함 N4·N7 반영. N1: 파일 부재 = 「선언 없음」 해석을 운영자가 확인했다(plan.md §B.1 Q1, 2026-09-24). §F.2 에 「추가 후 제거」 잔여 행(키 삭제·파일 삭제 두 변형, 성립 조건은 호스트의 `env` 전파·유지 방식)을 추가하고, 완화를 과대 서술하던 「완화는 출처 제약 하나에 걸려 있다」를 고쳤다. 호스트 측정은 plan.md §C Pre-flight 5(턴·시간 상한 선언, 「유지한다」면 운영자 재판정). N2: REQ-HSF-005 를 진입점별로 나눠, `runAgentHook` 의 하네스 판독과 잘못된 `--harness` 거부가 새 동작임을 명시. N3: REQ-HSF-014 의 「판정은 `IsDecisionBearing` 한 곳」 절을 acceptance.md AC-HSF-003(b1)·(c4) 로 단언. N4: REQ-HSF-016 의 부정 의무와 긍정 의무를 두 절로 분리(REQ 수 16 유지). N7: codex 모드 agent 경로가 현재 배포 래퍼에서 도달하지 않음을 §F.2 와 plan.md 추적 항목 Q9 에 기록(범위 변경 없음). |
 | 0.3.2 | 2026-09-24 | manager-spec (card t1152) | plan-audit 3회차 FAIL(0.88, `.moai/reports/t1152/plan-audit-iter3.md`)의 차단 결함 N8·N9·N10 과 선택 결함 N11·N12 반영. 운영자가 4회차 감사로 연장했다(2026-09-24, t1152 레인 AskUserQuestion). N8: plan.md §C Pre-flight 5 를 다시 짰다 — 삭제 뒤 관측은 삭제 전에 설정 출처의 값이 훅 환경에서 관측된 경우에만 판정에 쓰고, 같은 세션 전파와 세션 시작 전파를 모두 재며, 어느 경로로도 값이 오지 않으면 「전달 없음」을 세 번째 결과로 따로 닫는다. §F.2 「추가 후 제거」 행과 acceptance.md §E 를 그 규칙에 맞췄다. N9: 실행 1회를 `claude -p` 프로세스 하나로 정의하고 예산을 최대 6회로 다시 세었으며, `timeout -k 10 300` 강제 종료, 숨은 `--max-turns` 플래그 거부 시 처리, 상한이 Kickoff 때 운영자 승인을 받을 제안값임을 적었다. N10: AC-HSF-013 에 관측 매핑 action 의 잘못된 `--harness` 거부 단언을 더했다(REQ-HSF-005). N11: AC-HSF-003(b1) 이 판정 호출 결과가 분기 조건식에 쓰이는지를 보게 하고 변이 (c5) 를 더했다. N12: 「stdin 보다 먼저」 증거에 `ReadInput` 호출 0 회를 더했다. REQ 수 16 유지. |
 | 0.3.3 | 2026-09-24 | manager-spec (card t1152) | plan-audit 4회차 FAIL(0.89, `.moai/reports/t1152/plan-audit-iter4.md`)의 차단 결함 N13·N14 반영. N13: plan.md §C Pre-flight 5 의 판정 전제에 삭제 뒤 기록 요건을 더했다 — 선언이 사라졌음을 보이는 훅 기록이 한 줄 이상 있어야 하고, 삭제가 실행되지 않았거나 삭제 뒤 기록이 0건인 변형은 「미측정」이다. 실행은 `--permission-mode bypassPermissions` 로 띄운다. N14: 판정 2의 셋째 절을 「어느 한 경로라도 확정되지 않았다」로 고치고 판정 3에 두 경로 확정을 전제로 넣어, 네 결과가 모든 경우를 하나씩 덮게 했다. §F.2 「추가 후 제거」 행과 acceptance.md §E 를 맞췄다. 선택 결함 N15·N16·N17 은 열린 채로 둔다. REQ 수 16 유지. |
+| 0.3.4 | 2026-09-24 | manager-spec (card t1152) | Implementation Kickoff Approval 을 기록했다(운영자, t1152 레인 AskUserQuestion, 2026-09-24 — 리드 전달문은 출처가 아니다). 승인 내용: N17·N18 을 측정 전에 닫는다, plan.md §C Pre-flight 5 의 측정 조건(최대 6회, 실행당 `timeout -k 10 300`·`--max-turns 8`, 격리 `/tmp` 프로젝트에서 `--permission-mode bypassPermissions`, 「유지한다」·「미측정」이면 정지·재판정)을 제안대로 승인한다, N15·N16 은 run 에서 테스트를 더해 닫는다. 구현 커밋은 t1099 가 develop 에 착지·흡수된 뒤 시작한다(변경 없음). N17: Pre-flight 5 에 변형별 설정 파일 배치를 정했다 — 기록형 훅은 삭제되지 않는 `.claude/settings.json` 에, 탈출 장치 키는 `.claude/settings.local.json` 에 두고 A2·B2 는 후자만 지운다. N18: 권한 모드를 M0 승인 목록에 넣었다. 리드 조건: 첫 실행 전에 증거 파일이 모든 실행의 명령 원문과 격리(작업 디렉터리·설정 파일·`HOME`·`CLAUDE_CONFIG_DIR`)를 보여야 하고, 보이지 못하면 실행하지 않는다. §F.1 의 3 을 갱신했다. REQ 수 16, AC 수 13 + GATE 유지. |
 
 ---
 
@@ -257,7 +258,7 @@ exit 0 인 이유: 이 트리의 `internal/cli/hook.go:362-365` 이 기록한 �
 
    특히 (a) `DecisionBearingEvents()` 의 원소, (b) HarnessClaude·HarnessCodex 의 fatal_error 열 Outcome, (c) `writeCodexFailClosed` 의 서명과 기록 키, (d) `Render` 의 네 이벤트 출력 형태, (e) `Discard` 필드와 `RecordDiscards` 의 stderr 미러 형식이 §A.4·§B.4 와 같은지 확인한다. 하나라도 다르면 §B 와 acceptance.md 를 먼저 고친다(D-NEW-1 경로).
 
-3. **Kickoff Approval 은 아직 요청되지 않았다.** 운영자 판정 Q1·Q3 과 Q2 측정은 plan.md §B.1 에 기록됐지만, Implementation Kickoff Approval 자체는 리드 지시에 따라 t1099 가 develop 에 착지한 뒤 요청한다. 그 시점에 위 2의 심볼 diff 와 함께 다음 설계 전제를 다시 확인하고 progress.md 에 남긴다: (a) 설치된 codex-cli 버전이 Q2 측정 버전(0.156.1)과 같은지, 다르면 같은 방법으로 Q2 를 다시 재는지, (b) `runAgentHook` 의 action → 이벤트 매핑(`internal/cli/hook.go:469-481`)이 바뀌지 않았는지, (c) `.claude/settings.json`·`.claude/settings.local.json` 의 위치·`env` 블록 형식이 REQ-HSF-007 의 전제와 같은지.
+3. **Kickoff Approval 은 받았고(0.3.4), 구현은 t1099 착지 뒤에 시작한다.** 운영자가 2026-09-24 t1152 레인의 AskUserQuestion 에서 승인했다(판정 내용은 plan.md §F M0, 기록은 progress.md §E.1 「Kickoff 판정」). 구현 커밋은 t1099 가 develop 에 착지하고 이 브랜치가 그것을 흡수한 뒤 시작한다. 그 시점에 위 2의 심볼 diff 와 함께 다음 설계 전제를 다시 확인하고 progress.md 에 남긴다: (a) 설치된 codex-cli 버전이 Q2 측정 버전(0.156.1)과 같은지, 다르면 같은 방법으로 Q2 를 다시 재는지, (b) `runAgentHook` 의 action → 이벤트 매핑(`internal/cli/hook.go:469-481`)이 바뀌지 않았는지, (c) `.claude/settings.json`·`.claude/settings.local.json` 의 위치·`env` 블록 형식이 REQ-HSF-007 의 전제와 같은지.
 
 ### F.2 위험
 

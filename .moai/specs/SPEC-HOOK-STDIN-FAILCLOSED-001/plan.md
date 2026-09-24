@@ -1,7 +1,7 @@
 ---
 id: SPEC-HOOK-STDIN-FAILCLOSED-001
 title: "Plan — 훅 stdin 파싱 실패의 결정 이벤트 fail-closed"
-version: "0.3.3"
+version: "0.3.4"
 created: 2026-09-24
 author: manager-spec (card t1152)
 ---
@@ -19,6 +19,8 @@ author: manager-spec (card t1152)
 0.3.2 개정: plan-audit 3회차(`.moai/reports/t1152/plan-audit-iter3.md`, FAIL 0.88)의 차단 결함 N8·N9·N10 과 선택 결함 N11·N12 를 반영했다. §C Pre-flight 5 를 다시 짰다 — 삭제 전 관측을 판정 전제로 두고, 같은 세션 전파와 세션 시작 전파를 모두 재며, 「전달 없음」을 세 번째 결과로 따로 적었다(N8). 실행 1회를 `claude -p` 프로세스 하나로 정의하고 예산을 다시 세었으며, `timeout -k` 강제 종료와 숨은 `--max-turns` 플래그의 거부 처리를 적고, 상한을 Kickoff 때 운영자가 승인할 제안값으로 표시했다(N9, §F M0). Pre-flight 4(c) 에 관측 매핑 action 의 잘못된 `--harness` 기준선을 더했다(N10).
 
 0.3.3 개정: plan-audit 4회차(`.moai/reports/t1152/plan-audit-iter4.md`, FAIL 0.89)의 차단 결함 N13·N14 를 반영했다. §C Pre-flight 5 의 판정 전제에 삭제 뒤 기록 요건을 더하고(삭제가 실행되지 않았거나 삭제 뒤 기록이 없는 변형은 「미측정」), 경로의 확정을 정의해 판정 네 결과가 모든 경우를 하나씩 덮게 했으며, 실행의 권한 모드를 정했다.
+
+0.3.4 개정: Implementation Kickoff Approval 을 기록했다(§F M0, progress.md §E.1 「Kickoff 판정」). plan-audit 5회차(`.moai/reports/t1152/plan-audit-iter5.md`, PASS-WITH-DEBT 0.91)의 선택 결함 가운데 운영자가 측정 전에 닫으라고 한 N17·N18 을 반영했다 — §C Pre-flight 5 에 변형별 설정 파일 배치와 격리 확인(리드 조건)을 더하고, M0 승인 목록에 권한 모드를 넣었다. N15·N16 은 운영자 판정대로 run 에서 테스트를 더해 닫는다.
 
 ## §A 맥락
 
@@ -71,6 +73,18 @@ spec.md §A 참조. 요약: `internal/cli/hook.go:272-280` 의 stdin 파싱 실�
 4. 기준선 측정(구현 전, 별도 커밋): 수리 전 트리에서 (a) `pre-tool` 에 파손 4 형태를 넣었을 때 stdout 이 `{}` 이고 exit 0 이며 디스패치가 0회임을, (b) 관측 하위 명령 22개의 파싱 실패 출력(20개 `{}`, worktree-create·worktree-remove 빈 stdout)을, (c) `moai hook agent` 의 결정 매핑 action(`x-validation`, `x-pre-transformation`, `x-pre-implementation`, 미지 action `foo`)과 관측 매핑 action(`x-verification`, `x-post-transformation`, `x-post-implementation`, `x-completion`)의 파싱 실패 출력(모두 `{}` exit 0)과, 유효한 stdin(`{}`) + `--harness bogus` 로 `x-validation` 을 실행했을 때의 종료 코드와 stdout(plan-audit 2회차에서 codex 백엔드가 exit 0 + PreToolUse allow 출력을 재현했다 — 이 트리에서 다시 잰다; AC-HSF-012 신규 거부의 기준선), 같은 유효한 stdin(`{}`) + `--harness bogus` 로 관측 매핑 action `x-verification`·`x-completion` 을 실행했을 때의 종료 코드와 stdout(수리 전에는 exit 0 예상; AC-HSF-013 신규 거부의 기준선)을 재현하고 progress.md 에 기록한다 — 재현이 수리 커밋보다 앞선 커밋에 있어야 순서가 git 이력으로 증명된다(`verification-claim-integrity.md` §2.3).
 5. **호스트의 설정 `env` 전파·유지 측정 (운영자 판정 Q1 의 조건, spec.md §F.2 「추가 후 제거」).** 구현 전에, 4 와 같은 자리에서 수행한다. 0.3.2 에서 plan-audit 3회차 N8·N9 에 따라 다시 짰다 — 종전 판은 삭제 전 관측을 요구하지 않아, 호스트가 설정 `env` 를 세션 시작 때만 적용하면 공허하게 「유지하지 않는다」가 나올 수 있었다.
    - 설정: 개발 프로젝트가 아니라 `/tmp` 아래 격리 프로젝트에서 한다(설정 파일을 실제로 고치는 측정이라 `CLAUDE.local.md` §13 과 같은 원칙). 훅이 호출될 때마다 자기 프로세스 환경의 탈출 장치 키 값과, 그 순간 두 설정 파일의 존재 여부·`env` 선언 여부를 한 줄씩 기록하는 기록형 훅을 두고 Claude Code 를 비대화형으로 실행한다. 양성 대조를 뺀 모든 실행에서 셸 환경에는 키를 두지 않아, 훅이 본 값은 설정 출처에서 온 것뿐이게 한다. 세션 안에서 일어나는 키 추가·삭제와 파일 삭제는 세션 안의 도구 호출(모델이 실행하는 셸 명령)로 한다 — 위협 모형이 「모델이 설정 파일을 쓰고 지운다」이기 때문이다. 그 편집·삭제가 권한 확인에 막히지 않도록 모든 실행은 격리 프로젝트에서 `--permission-mode bypassPermissions` 로 띄운다 — 그래도 삭제가 실행되지 않은 변형은 아래 판정 전제에 따라 「미측정」이다. 선언이 있었는지는 타이밍이 아니라 각 기록 줄의 선언 여부 필드로 가른다.
+   - **설정 파일 배치 (0.3.4, N17):** 기록형 훅은 모든 변형에서 격리 프로젝트의 `.claude/settings.json` 에 `PreToolUse`·`PostToolUse`(matcher `*`)로 등록하고, 이 파일에는 탈출 장치 키를 두지 않으며 어느 변형도 이 파일을 고치거나 지우지 않는다. 키를 선언하고 지우는 면은 `.claude/settings.local.json` 하나다. 삭제 대상 파일에 훅이 등록돼 있으면 삭제 뒤 훅이 불리지 않아 삭제 뒤 기록이 구조적으로 0건이 되고 그 변형이 언제나 「미측정」이 되기 때문이다. `PostToolUse` 를 함께 거는 것은 삭제를 실행한 도구 호출 자체가 삭제 뒤 기록 한 줄을 남기게 하기 위해서다.
+
+     | 변형 | 훅 등록 파일 | 키 선언 파일 | 세션 안에서 지우는 것 |
+     |---|---|---|---|
+     | C | `.claude/settings.json` | 없음(셸 환경에만 키, `settings.local.json` 은 `env` 에 키 없이 존재) | 없음 |
+     | A1 | `.claude/settings.json` | `.claude/settings.local.json`(세션 안에서 추가) | `settings.local.json` 의 키 |
+     | A2 | `.claude/settings.json` | `.claude/settings.local.json`(세션 안에서 추가) | `settings.local.json` 파일 |
+     | B1 | `.claude/settings.json` | `.claude/settings.local.json`(실행 전 선언) | `settings.local.json` 의 키 |
+     | B2 | `.claude/settings.json` | `.claude/settings.local.json`(실행 전 선언) | `settings.local.json` 파일 |
+
+     A 계열은 세션 시작 때 `settings.local.json` 이 키 없는 `env` 로 이미 있어야 한다(A2 의 삭제 대상이 존재하도록). 이 배치의 전제 — `settings.local.json` 이 없어도 `settings.json` 의 훅이 계속 불린다 — 는 공식 문서로만 확인했고 이 호스트에서 재지 않았다: 문서는 훅 항목이 설정 단계 사이에서 대체되지 않고 병합되며(<https://code.claude.com/docs/en/hooks> 「Hook entries merge across settings levels rather than replacing each other」), 설정 파일 변경은 파일 감시로 실행 중인 세션에 다시 적재된다고 적는다(<https://code.claude.com/docs/en/settings> 「When edits take effect」). 이 전제가 이 호스트에서 성립하지 않으면 삭제 뒤 기록이 0건이 되고, 그 변형은 판정 전제에 따라 「미측정」이다 — 판정 규칙은 바뀌지 않는다.
+   - **격리 확인 (리드 조건, 0.3.4) — 첫 실행 전:** 증거 파일(`.moai/reports/t1152/preflight5.md`, 로컬 증거)이 모든 실행의 명령 원문을 적고, 각 실행의 작업 디렉터리, 건드리는 설정 파일(두 프로젝트 설정 파일과 기록 파일)의 절대 경로, `HOME`·`CLAUDE_CONFIG_DIR` 과 그 밖에 설정 위치를 바꾸는 변수의 값이 격리 `/tmp` 프로젝트와 격리 설정 디렉터리만 가리킴을 보여야 한다 — 실제 저장소나 사용자 홈의 설정 경로를 가리켜서는 안 된다. 이것을 보이지 못하면 실행하지 않는다. 격리 설정에서 인증이 되지 않으면 실제 설정으로 물러서지 않고 멈춰 리드에게 보고한다. 세션 안에서 모델이 실행할 추가·삭제 명령은 격리 프로젝트 안의 절대 경로로 프롬프트에 미리 적어 둔다.
    - **실행 1회의 정의:** `claude -p` 프로세스 호출 하나. 그 호출이 이어 받는 세션(`--resume`·`--continue`)이 있어도 프로세스가 하나면 1회이고, 한 시나리오가 프로세스 둘을 쓰면 2회로 센다. 아래 설계는 모든 시나리오를 프로세스 하나로 끝내도록 짰다.
    - **실행 목록 — 두 전파 모형을 모두 덮는다:**
      - C 양성 대조: 셸 환경에만 키를 두고 1회. 기록형 훅이 값을 봐야 계측기가 동작한 것이다. 못 보면 아래 어떤 실행의 결과도 판정에 쓰지 않는다(전체 「미측정」).
@@ -83,12 +97,12 @@ spec.md §A 참조. 요약: `internal/cli/hook.go:272-280` 의 stdin 파싱 실�
      3. 「유지하지 않는다」 — A·B 두 경로가 모두 확정됐고, 값을 전달한 경로가 하나 이상 있으며, 그 경로마다 두 변형 모두 판정 전제(삭제 전 관측과 삭제 뒤 기록)를 채운 채 삭제 뒤 값이 없다. 판정은 실제로 값을 전달한 경로에서만 내리며, 전달하지 않은 경로의 실행은 판정에 쓰지 않는다.
      4. 「전달 없음 — 설정 `env` 가 훅 환경에 닿지 않는다」 — 양성 대조가 값을 봤고, A·B 두 경로가 모두 「전달 없음」으로 확정됐다 — A1·B1·B2 모두 선언이 있는 동안의 훅 호출 기록이 한 줄 이상 있는데 어느 것도 값을 보지 못했다. 이 경우 「추가 후 제거」 우회는 이 호스트·버전에서 성립 조건이 없다(값이 애초에 훅 환경에 오지 않는다). 결과는 버전에 묶인 관측이므로, REQ-HSF-007 의 출처 제약은 그대로 두고(버전이 바뀌면 전파가 생길 수 있다) spec.md §F.2 「추가 후 제거」 행의 성립 조건을 「이 버전에서 관측되지 않음」으로 적는다.
    - **정지 조건:** 「유지한다」 또는 「미측정」이면 구현을 시작하지 않고 리드를 거쳐 운영자 재판정을 받는다(메커니즘 (i) 자체의 재검토 포함). 「유지하지 않는다」 또는 「전달 없음」이면 진행하고, 판정·Claude Code 버전·실행별 형태와 기록(삭제 전 관측 줄과 삭제 뒤 기록 줄 포함)·선언한 상한과 실제로 쓴 실행 수를 progress.md 에 남긴다.
-   - **상한 — 제안값이다.** manager-spec 이 정했고 아직 누구도 승인하지 않았다. Kickoff 때 운영자가 함께 승인한다(§F M0). 먼저 선언하고 그 안에서 끝낸다.
+   - **상한 — 승인됨(2026-09-24, Kickoff, §F M0).** manager-spec 이 제안한 값을 운영자가 그대로 승인했다. 먼저 선언하고 그 안에서 끝낸다.
      - 실행 예산: 최대 6회 = C 1 + A1 1 + A2 1 + B1 1 + B2 1 + 재시도 1. A2 를 건너뛰면 5회 안에서 끝난다. 재시도는 전체에서 1회뿐이며, 쓴 뒤에는 더 돌리지 않는다.
      - 실행마다 `timeout -k 10 300 claude -p --max-turns 8 …` 형태로 건다. 벽시계 300초가 지나면 TERM 을 보내고, 10초 유예 뒤에도 살아 있으면 KILL 한다. `timeout` 은 이 호스트에 있다(2026-09-24 관측: `command -v timeout gtimeout` → `/opt/homebrew/bin/timeout`, `/opt/homebrew/bin/gtimeout`; `timeout --version` → `timeout (GNU coreutils) 9.9`; `timeout --help` 에 `-k, --kill-after=DURATION`). run 착수 시 다시 확인하고, 없으면 같은 의미(TERM, 유예, KILL)의 외부 래퍼를 쓰되 그 형태를 progress.md 에 적는다.
      - `--max-turns` 는 숨은 플래그다. Claude Code 2.1.281 의 `claude --help` 에는 나오지 않고(`claude --help | grep -cE 'max-turns'` → `0`), 설치 바이너리 `/Users/goos/.local/share/claude/versions/2.1.281` 에는 `"--max-turns <turns>"` 정의가 있다(2026-09-24 관측). 실행 시 이 플래그가 거부되면 그 실행은 예산 1회를 쓴 「미측정」으로 기록하고, 이후 실행은 플래그 없이 건다 — 구속력 있는 상한은 언제나 바깥의 벽시계다.
      - 상한에 닿은 실행은 「미측정」으로 기록한다.
-   - 이 항목이 재지 않는 것: Codex 호스트의 설정면(`.codex/` 아래)이 훅 환경에 변수를 공급하는지 — spec.md §F.2 「출처 제약의 잔여 면」 행에 이미 미측정 잔여 면으로 남아 있다.
+   - 이 항목이 재지 않는 것: Codex 호스트의 설정면(`.codex/` 아래)이 훅 환경에 변수를 공급하는지 — spec.md §F.2 「출처 제약의 잔여 면」 행에 이미 미측정 잔여 면으로 남아 있다. 또 키를 `.claude/settings.json` 에 선언했다가 그 파일을 지우는 변형은 재지 않는다(훅이 그 파일에 있어 위 배치 이유로 구조적으로 측정할 수 없다) — 결과는 `settings.local.json` 면의 관측이며 progress.md 에 그렇게 적는다. 결과는 비대화형 `claude -p` 형태의 관측이고 대화형 세션으로 일반화하지 않는다.
 
 ## §D 제약
 
@@ -105,9 +119,9 @@ run 완료 보고는 acceptance.md 의 AC 마다 명령과 원문 출력을 붙�
 
 ## §F 마일스톤 (결정의 번복 가능성 순)
 
-### M0 — Kickoff 차단 질문 판정 (Priority High, 사람) — 판정됨, Kickoff 는 대기
+### M0 — Kickoff 차단 질문 판정 (Priority High, 사람) — 판정됨, Kickoff 승인됨(2026-09-24)
 
-Q2(측정)·Q1(A1 + 메커니즘 (i))·Q3(포함)이 2026-09-24 에 판정됐다(§B.1). Q3 포함에 따른 REQ·AC 추가는 0.3.0 개정에 담겼다. 남은 것은 **Implementation Kickoff Approval 자체**이며, 리드 지시에 따라 t1099 가 develop 에 착지한 뒤 요청한다. 그때 spec.md §F.1 의 심볼 diff 와 §F.1 의 3(codex 버전, `runAgentHook` 매핑, 설정 파일 형식)으로 설계 전제를 다시 확인한다. 0.3.1 에서 운영자가 파일 부재 해석을 확인했고(§B.1 Q1), 그 조건인 호스트 `env` 전파·유지 측정은 run 시작 시 §C Pre-flight 5 가 수행한다 — 「유지한다」 또는 「미측정」이면 run 은 거기서 멈춘다. **Kickoff 요청에는 Pre-flight 5 의 상한(실행 예산 최대 6회, 실행당 `timeout -k 10 300` 벽시계와 `--max-turns 8`)을 승인 대상으로 함께 올린다** — 라이브 모델 실행의 비용·범위 선언인데 manager-spec 이 정한 제안값이고 아직 승인되지 않았기 때문이다(0.3.2, plan-audit 3회차 N9). 추적 항목 Q4~Q8 은 Kickoff 를 막지 않는다: Q5·Q8 은 run 초반 측정, Q4·Q6 은 판정 기록, Q7 은 대안을 택할 경우에만 REQ 개정.
+Q2(측정)·Q1(A1 + 메커니즘 (i))·Q3(포함)이 2026-09-24 에 판정됐다(§B.1). Q3 포함에 따른 REQ·AC 추가는 0.3.0 개정에 담겼다. **Implementation Kickoff Approval 은 2026-09-24 에 받았다(0.3.4).** 출처는 t1152 레인에서 운영자가 AskUserQuestion 에 직접 한 답이다. 리드가 앞서 보낸 「Kickoff 는 이 지시로 갈음」 전달문은 리드가 철회했으며 출처가 아니다. 승인 내용: (a) N17·N18 을 측정 전에 닫는다(0.3.4 에서 닫음); (b) 측정 조건을 제안대로 승인한다 — 최대 6회, 실행당 `timeout -k 10 300` 과 `--max-turns 8`, 격리 `/tmp` 프로젝트에서 `--permission-mode bypassPermissions`, 「유지한다」·「미측정」이면 멈추고 다시 판정받는다; (c) N15·N16 은 run 에서 테스트를 더해 닫는다 — `--harness bogus` 거부를 agent action 8개 모두에 단언하고(N15), `runAgentHook` 의 `IsDecisionBearing` 결과를 뒤집거나 무력화하는 변이가 AC-HSF-012 를 RED 로 만들어야 한다(N16). 구현 커밋은 t1099 가 develop 에 착지하고 이 브랜치가 그것을 흡수한 뒤 시작한다(변경 없음). 그때 spec.md §F.1 의 심볼 diff 와 §F.1 의 3(codex 버전, `runAgentHook` 매핑, 설정 파일 형식)으로 설계 전제를 다시 확인한다. 0.3.1 에서 운영자가 파일 부재 해석을 확인했고(§B.1 Q1), 그 조건인 호스트 `env` 전파·유지 측정은 run 시작 시 §C Pre-flight 5 가 수행한다 — 「유지한다」 또는 「미측정」이면 run 은 거기서 멈춘다. **Kickoff 승인 대상에는 Pre-flight 5 의 상한(실행 예산 최대 6회, 실행당 `timeout -k 10 300` 벽시계와 `--max-turns 8`)과 격리 `/tmp` 프로젝트에서의 `--permission-mode bypassPermissions` 를 함께 올렸고, 둘 다 승인됐다** — 라이브 모델 실행의 비용·범위 선언이며 manager-spec 이 정한 제안값이었기 때문이다(0.3.2 N9, 0.3.4 N18). 추적 항목 Q4~Q8 은 Kickoff 를 막지 않는다: Q5·Q8 은 run 초반 측정, Q4·Q6 은 판정 기록, Q7 은 대안을 택할 경우에만 REQ 개정.
 
 ### M1 — 결정 이벤트의 fail-closed 동작 (Priority High)
 

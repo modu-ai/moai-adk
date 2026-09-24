@@ -67,6 +67,25 @@
 - 이번 개정은 라이브 모델·에이전트 실행을 하지 않았다. REQ 수 16, AC 수 13 + GATE 유지.
 - **Kickoff Approval: 여전히 요청 전.**
 
+### Kickoff 판정 (2026-09-24)
+
+- 출처: t1152 레인에서 운영자가 AskUserQuestion 에 직접 답했다(2026-09-24). 리드가 앞서 보낸 「Kickoff 는 이 지시로 갈음」 전달문은 리드가 철회했으며, 이 판정의 출처가 아니다.
+- 판정 대상 트리: 브랜치 `WT-hook-stdin-failclosed`, HEAD `6cad9840f`(0.3.3, plan-audit 5회차 PASS-WITH-DEBT 0.91 — `.moai/reports/t1152/plan-audit-iter5.md`, 로컬 증거).
+- 운영자 답:
+  - (a) 측정을 시작하기 전에 N17·N18 을 닫는다 — 0.3.4 개정(아래)에서 닫았다.
+  - (b) 측정 조건을 제안대로 승인한다 — 최대 6회, 실행당 `timeout -k 10 300` 과 `--max-turns 8`, 격리 `/tmp` 프로젝트에서 `--permission-mode bypassPermissions`, 「유지한다」 또는 「미측정」이면 멈추고 다시 판정받는다.
+  - (c) N15·N16 은 run 에서 테스트를 더해 닫는다 — `--harness bogus` 거부를 agent action 8개 모두에 단언하고, `runAgentHook` 의 `IsDecisionBearing` 결과를 뒤집거나 무력화하는 변이가 AC-HSF-012 를 RED 로 만들어야 한다.
+- 구현 커밋은 t1099 가 develop 에 착지하고 이 브랜치가 그것을 흡수한 뒤 시작한다(변경 없음). 그 시점의 전제 재확인은 spec.md §F.1 의 2·3 이다.
+- 리드 조건(plan.md §C Pre-flight 5 「격리 확인」에 기록): 첫 실행 전에 증거 파일이 모든 실행의 명령 원문과 격리(작업 디렉터리, 건드리는 설정 파일, `HOME`·`CLAUDE_CONFIG_DIR` 류 변수)를 보여야 하며, 보이지 못하면 실행하지 않는다.
+
+### 개정 0.3.4 (2026-09-24)
+
+- 계기: 위 Kickoff 판정. 처분 요약은 spec.md HISTORY 0.3.4 행. 개정 기준 트리: HEAD `6cad9840f`.
+- N17: plan.md §C Pre-flight 5 에 변형별 설정 파일 배치를 정했다. 기록형 훅은 모든 변형에서 `.claude/settings.json` 에 `PreToolUse`·`PostToolUse`(matcher `*`)로 등록하고 이 파일은 고치거나 지우지 않는다. 탈출 장치 키는 `.claude/settings.local.json` 에만 선언하고, A1·B1 은 그 키를, A2·B2 는 그 파일을 지운다. C 는 셸 환경에만 키를 둔다. 결과가 `settings.local.json` 면과 비대화형 `-p` 형태의 관측이라는 한정도 적었다.
+- 설정 병합 전제의 확인 수준: 공식 문서 판독만(모델 실행 없음). <https://code.claude.com/docs/en/hooks> — 「Hook entries merge across settings levels rather than replacing each other」; <https://code.claude.com/docs/en/settings> 「When edits take effect」 — 설정 파일을 감시해 실행 중인 세션에 다시 적재한다. 이 호스트(Claude Code 2.1.281)에서 `settings.local.json` 삭제 뒤에도 `settings.json` 의 훅이 불리는지는 재지 않았다 — 성립하지 않으면 해당 변형은 「미측정」으로 떨어진다(판정 규칙 불변).
+- N18: plan.md §F M0 의 승인 대상에 격리 `/tmp` 프로젝트에서의 `--permission-mode bypassPermissions` 를 넣고 승인됨으로 표시했다.
+- 이번 개정은 라이브 모델·에이전트 실행을 하지 않았다. REQ 수 16, AC 수 13 + GATE 유지. 열린 선택 결함: N15·N16(run 에서 닫음, 위 판정 (c)).
+
 ## §E.2 Run-phase Evidence
 
 _<pending run-phase>_

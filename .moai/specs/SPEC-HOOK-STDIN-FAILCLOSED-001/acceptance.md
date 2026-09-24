@@ -1,7 +1,7 @@
 ---
 id: SPEC-HOOK-STDIN-FAILCLOSED-001
 title: "Acceptance — 훅 stdin 파싱 실패의 결정 이벤트 fail-closed"
-version: "0.3.3"
+version: "0.3.4"
 created: 2026-09-24
 author: manager-spec (card t1152)
 ---
@@ -19,6 +19,8 @@ author: manager-spec (card t1152)
 0.3.2 개정: plan-audit 3회차(`.moai/reports/t1152/plan-audit-iter3.md`)의 N10~N12 를 반영했다. N10 — AC-HSF-013 에 관측 매핑 action(`x-verification`·`x-completion`)의 잘못된 `--harness` 거부를 단언하고 필수 RED 변이를 더했으며, §1 의 REQ-HSF-005 행에 AC-HSF-013 을 더했다. N11 — AC-HSF-003(b1) 이 `IsDecisionBearing` 호출의 존재만이 아니라 그 결과가 fail-closed 분기를 고르는 조건식에 쓰이는지를 보게 하고, 인자 조건을 AST 로 판정되는 부정 조건으로 좁혔으며, 필수 RED 변이 (c5) 를 추가했다. N12 — AC-HSF-004·012·013 의 「stdin 보다 먼저」 증거에 스파이 `HookProtocol` 의 `ReadInput` 호출 0 회를 직접 관측으로 더했다(stderr 경고 부재는 대리 관측으로 남긴다). §E 의 Pre-flight 5 완료 조건을 새 판정 규칙에 맞췄다. AC 수는 그대로다(13 + GATE).
 
 0.3.3 개정: plan-audit 4회차(`.moai/reports/t1152/plan-audit-iter4.md`)의 N13·N14 를 반영해 §E 의 Pre-flight 5 완료 조건에 삭제 뒤 기록 요건과 두 경로 확정 전제를 더했다. AC 수는 그대로다(13 + GATE).
+
+0.3.4 개정: Implementation Kickoff Approval 을 받은 사실(2026-09-24, t1152 레인 운영자 답)에 맞춰 §E 의 Kickoff 조건 문장을 고쳤다. AC 수는 그대로다(13 + GATE).
 
 ## §0 공통 입력 — 「파손 4 형태」와 카나리
 
@@ -143,7 +145,7 @@ depth 형태는 run 착수 시 대조군을 함께 잰다: 같은 구성의 깊�
 
 - AC-HSF-001~013 과 GATE 가 명령·원문 출력과 함께 progress.md §E.2 에 기록됐다. 필수 RED 변이(AC-HSF-003(c1)·(c2)·(c3)·(c4)·(c5), AC-HSF-007, AC-HSF-010(m1)·(m2), AC-HSF-011, AC-HSF-013 의 (1)·(2))의 실패 출력도 함께 기록됐다.
 - Pre-flight 기준선 재현 커밋이 수리 커밋보다 앞선다.
-- plan.md Q2·Q1·Q3 판정이 기록됐다(0.3.0, plan.md §B.1). Q3 포함에 따른 REQ·AC 추가(0.3.0)가 run 착수 전에 착지했다. Implementation Kickoff Approval 은 t1099 착지 후 받았고, 그 시점의 전제 재확인(spec.md §F.1 의 2·3)이 progress.md 에 있다.
+- plan.md Q2·Q1·Q3 판정이 기록됐다(0.3.0, plan.md §B.1). Q3 포함에 따른 REQ·AC 추가(0.3.0)가 run 착수 전에 착지했다. Implementation Kickoff Approval 이 progress.md §E.1 「Kickoff 판정 (2026-09-24)」에 기록돼 있고, t1099 착지·흡수 뒤 구현 전에 한 전제 재확인(spec.md §F.1 의 2·3)이 progress.md 에 있다.
 - depth 형태의 대조군(깊이 9000 파싱 성공)이 기록됐다.
 - plan.md §C Pre-flight 5(호스트의 설정 `env` 전파·유지 측정)의 결과가 운영자가 Kickoff 때 승인한 상한, 실제로 쓴 실행 수, 실행별 기록(선언이 있는 동안의 삭제 전 관측 줄과 선언이 사라진 뒤의 삭제 뒤 기록 줄 포함)과 함께 progress.md 에 있고, 판정이 「유지하지 않는다」(두 경로가 모두 확정됐고, 값을 전달한 경로마다 두 변형 모두 삭제 전 관측과 삭제 뒤 기록이 있음) 또는 「전달 없음」(양성 대조는 값을 봤고 두 전파 경로 모두 선언이 있는 동안 값을 보지 못함)이거나, 「유지한다」·「미측정」에 대한 운영자 재판정이 기록돼 있다. 삭제 전 관측이나 삭제 뒤 기록이 없는 실행을 근거로 한 「유지하지 않는다」, 또는 확정되지 않은 경로가 남은 채 내린 「유지하지 않는다」는 이 조건을 채우지 못한다.
 - `internal/hook` 패키지 diff 가 0 이다.
