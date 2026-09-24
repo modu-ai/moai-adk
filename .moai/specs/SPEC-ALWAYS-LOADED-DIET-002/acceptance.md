@@ -280,6 +280,6 @@ REQ-ALD2-012(제자리 압축 시 의미 보존)에는 **기계 검사가 없다
 
 ## §D.5 완료 정의
 
-MUST-PASS 7개 통과 + 재배치 표 완비 + 두 사본 동등 + `go test ./internal/config/... ./internal/template/...` 통과(템플릿 사본 변경이 임베드·중립성 검사를 건드리므로).
+MUST-PASS **8개** 통과 + 재배치 표 완비(Q1/Q2 양방향) + 두 사본 동등(`CLAUDE.md` 제외) + 파일당 40,000자 초과 목록이 4개에서 늘지 않음 + `go test ./internal/config/... ./internal/template/...` 통과(템플릿 사본 변경이 임베드·중립성 검사를 건드리므로).
 
 🗿 MoAI
