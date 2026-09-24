@@ -33,6 +33,7 @@ var hostileScalarValues = []struct{ label, value string }{
 	{"delete control", "a\x7fb"},
 	{"byte order mark", "a\ufeffb"},
 	{"noncharacter U+FFFE", "a\ufffeb"},
+	{"noncharacter U+FFFF", "a\uffffb"},
 	{"carriage return", "a\rb"},
 	{"C1 control U+009B", "a\u009bb"},
 }
