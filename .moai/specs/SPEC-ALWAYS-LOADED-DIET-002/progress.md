@@ -22,6 +22,7 @@
   - 개정된 배정(`design.md §2.2`): 신규 companion 3개 생성, 이미 초과한 파일에는 쓰지 않는다. 마일스톤 M6.5.
   - 범위: 이미 초과한 룰 4개는 **수리하지 않고 악화만 금지**한다(REQ-015·016).
 - 기준선 추가: 40,000자 초과 룰 파일 **4개**(두 트리 동일).
+- **범위 이탈 공개를 양방향으로 확장**(`acceptance.md §D.3`) — 종전 공개는 축소 방향(참조 대상이 떠남)만 예시로 들었다. 확대 방향(범위를 **좁히던** 비구속 문장이 지워져 남은 조항이 넓어짐)을 방향 2 로 추가했고, 그것이 **결손이 아니라 증가**여서 손실 탐지기에 걸리지 않음을 명시했다. AC-ALD2-004 범위 의존 칸은 Q1(도달)/Q2(폭)의 두 질문을 묻도록 확장. 이 구멍은 감사가 아니라 **SPEC 작성자가 자기 공개에서 찾았고**, 발견 경위를 §D.3 에 남겼다.
 - REQ 16개 / AC 9개(MUST-PASS 8). `moai spec lint SPEC-ALWAYS-LOADED-DIET-002` exit 0, findings 0.
 - plan-audit iteration 1 은 ABORTED(`.moai/reports/t1175/plan-audit-iter1-aborted.md`) — 혼합 세대 읽기. iteration 2 는 커밋 SHA 를 입력으로 받는다.
 - 커밋 대기 → plan-audit iteration 2
