@@ -613,6 +613,11 @@ unmeasured:
 carried_debt:
   - 위 §E.3 base 섹션의 carried_debt(§C DoD N-5, exit-2-as-Then AC 부재, D-Δ1, N2)는 이 개정으로 해소되지 않았다 — 그대로 이월
 
+### 정정 (sync-audit F3, card t1108) — 원문 보존, 아래 덧붙임
+
+- 위 `total_run_phase_files: 4` 항목은 실제로 바뀐 파일 수와 어긋난다. `git diff --name-only 894b7b0a5 HEAD` 는 이 개정에서 9개 경로를 보인다: `.github/workflows/ci.yml`, `.moai/specs/SPEC-APPJS-FIRE-GUARD-001/{acceptance,plan,progress,spec}.md`, `CHANGELOG.md`, `internal/web/appjs_fire_guard_test.go`, `internal/web/appjs_fire_swap_test.go`, `internal/web/testdata/appjs_fire_probe.py`. 나열에서 빠진 것은 `internal/web/appjs_fire_guard_test.go`(M2 기존 파일, `d0d3c07d31`에서 재변경)와 `.moai/specs/SPEC-APPJS-FIRE-GUARD-001/acceptance.md`(`db240a026`, 개정 3 이 AC-AFG-014/015/016 을 추가)다.
+- `preserve_list_post_run_count` 의 「`internal/web/appjs_fire_swap_test.go` 신설(M8)」은 신설 시점이 틀렸다. `git log --diff-filter=A -- internal/web/appjs_fire_swap_test.go` → `d80132034`(M9). M8(`d102a9b2d`)은 이 파일을 아직 만들지 않았다.
+
 ## §E.4 Sync-phase Audit-Ready Signal
 
 ```yaml
@@ -658,6 +663,10 @@ mx_validation:
   reason: 이 sync-phase 에서 변경된 파일은 progress.md·spec.md(frontmatter)·CHANGELOG.md 뿐 — 신규 exported 함수·고 fan_in·위험 패턴 해당 0건. run-phase(§E.3 개정분)의 @MX 스캔은 이미 0적중으로 완료됨
 sync_phase_scope_note: writable set — progress.md(§E.3 개정분 + 본 §E.4 개정분) + spec.md frontmatter(status: in-progress → completed, updated 불변 2026-09-24 유지) + CHANGELOG.md([Unreleased] 1건 추가). spec/plan/acceptance 본문, internal/web/**, .github/workflows/ci.yml 소스 전부 미수정(run-phase에서 이미 완료)
 ```
+
+### 정정 (sync-audit F4, card t1108) — 원문 보존, 아래 덧붙임
+
+- 위 `total_sync_phase_files: 4` 는 실측과 어긋난다. `git show --stat 28f691617`(본 sync 커밋)은 3파일만 보인다: `CHANGELOG.md`, `.moai/specs/SPEC-APPJS-FIRE-GUARD-001/progress.md`, `.moai/specs/SPEC-APPJS-FIRE-GUARD-001/spec.md`. `progress.md` 를 §E.3 개정분과 §E.4 개정분 두 절로 나눠 센 것이 4 로 부풀렸다 — 실제 파일 수는 **3**이다.
 
 ## §F Phase 4 Mode Selection
 
