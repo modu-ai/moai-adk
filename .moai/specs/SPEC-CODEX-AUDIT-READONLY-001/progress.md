@@ -249,9 +249,21 @@ Gaps (M5):
 - (b)의 쓰기 가능 MCP 도구 호출이 `approval_policy="never"`에서 거부됨을 관측했지만, 거부된 서버는 승인 모드를 따로 선언하지 않은 `decoy`다. `moai` 서버(`writes` 모드)도 같이 거부하는지는 이번 실행이 재지 않았다. `internal/codexwiring/configtoml.go`의 주석은 `writes`가 read-only 표시가 없는 도구에 승인을 요구한다고 적지만, 이것은 문서이지 측정이 아니다.
 - AC-CAR-011은 NOT_RUN이다(리드 결정 대기, 호출 0회 사용).
 
+### M5 approval probe — 리드 결정 뒤 (LIVE 2/2, 누계 38/43)
+
+리드 결정(`verdict.md` § "Lead decision after M5"): AC-CAR-010 실행 1은 "INVALID — routed to decoy server"(원장 #35·#36과 결과 줄에 태그), `codex_role_audit`를 read-only로 표시하는 방안은 기각, 이 도구 하나만 프로젝트 `.codex/config.toml`의 도구별 승인 설정으로 사전 승인하는 방향을 채택, AC-CAR-011은 NOT_RUN 유지. 제품 코드와 템플릿은 바꾸지 않고 스크래치 픽스처 설정만 썼다.
+
+도구별 승인 키: `[mcp_servers.<server>.tools.<tool>]`의 `approval_mode`, 값은 `auto` | `prompt` | `writes` | `approve`. 출처: (1) codex-cli 0.156.1 바이너리 문자열 — `McpServerConfig`의 `tools` 필드, `struct McpServerToolConfig`(`approval_mode`, `output_token_limit`), 열거형 `AppToolApproval`(`auto`, `prompt`, `writes`, `approve`). (2) codex 자체 설정 로더(모델 호출 없음): `approval_mode = "bogus"`를 넣은 `codex mcp get moai --json`이 `unknown variant `bogus`, expected one of `auto`, `prompt`, `writes`, `approve` in `mcp_servers.moai.tools.codex_role_audit.approval_mode``로 실패하고, `"approve"`면 정상 적재된다. 필드 이름을 틀리게 쓴 경우(`approval_modex`)는 오류 없이 무시된다(`m5-approval-probe/key-parse-probe.txt`).
+
+- 호출 A(#37): moai 서버만 둔 픽스처, `default_tools_approval_mode = "writes"`, 도구별 승인 없음, 부모 `codex exec -s workspace-write -c approval_policy=never`. `--json` 항목 원문: `{"type":"mcp_tool_call","server":"moai","tool":"codex_role_audit",…,"result":null,"error":{"message":"MCP tool call requires approval, but approval policy is never"},"status":"failed"}`. moai 서버 자신도 쓰기 가능 도구를 이 조건에서 거부한다. 자식 프로세스와 launch record는 없다.
+- 호출 B(#38): A와 다른 점은 `[mcp_servers.moai.tools.codex_role_audit] approval_mode = "approve"` 한 표뿐. 모델이 MCP 호출을 아예 내지 않았다. 최종 메시지 원문: `TOOL-REFUSED The moai codex_role_audit tool is not directly available, and your instructions prohibit calling another tool to discover or invoke it.` 0.156.1에서 MCP 도구는 `exec` 사용자 정의 도구를 거쳐 불리는데(A의 기록: `custom_tool_call` `exec` 안의 `ALL_TOOLS.find(…codex_role_audit…)`), B의 프롬프트가 "다른 도구 금지, shell 명령 금지"라고 적어 모델이 `exec`를 쓰지 않았다. 하네스 프롬프트 결함이므로 B는 INVALID(측정되지 않음)이다.
+- 결론: 도구별 승인 없이 moai `writes` 서버는 `approval_policy=never`에서 `codex_role_audit`를 거부한다(A, 측정). `approval_mode = "approve"`가 호출을 통과시키는지는 측정되지 않았다(B INVALID). 탐침 상한 2회를 다 썼다.
+
+증거: `.moai/reports/t1143/m5-approval-probe/`(픽스처 설정 A·B, 프롬프트, `--json` 출력, 세션 기록 둘, 키 적재 탐침). 로그인 파일 sha256 전후 동일, 남은 `codex exec` 프로세스 0, 토큰 grep 0건. 픽스처와 격리 `CODEX_HOME`은 지웠다.
+
 ## §E.3 Run-phase Audit-Ready Signal
 
-run 단계는 끝나지 않았다. AC-CAR-011이 NOT_RUN이고 AC-CAR-010이 SPEC의 (b) 경로 거부로 FAIL이라 리드 결정이 필요하다.
+run 단계는 끝나지 않았다. AC-CAR-011이 NOT_RUN이고, AC-CAR-010 실행 1은 리드가 INVALID로 기록했으며 재실행되지 않았다. MCP 경로는 도구별 승인 설정이 통과시키는지 측정되지 않았다(approval probe B INVALID).
 
 | AC | 상태 | 근거(판정식 출력과 위치) |
 |---|---|---|
@@ -264,7 +276,7 @@ run 단계는 끝나지 않았다. AC-CAR-011이 NOT_RUN이고 AC-CAR-010이 SPE
 | AC-CAR-007 | PASS | `true`(HEAD 재판정), 변이 m007 `false` — M3 |
 | AC-CAR-008 | PASS | `true`(HEAD 재판정), 작업 트리 변형 변이 `false` — M3 |
 | AC-CAR-009 | PASS | `true`(M4 재실행 뒤) — M4 |
-| AC-CAR-010 | FAIL | `false` — (a) 조건 충족, (b) `codex_role_audit` 호출이 "MCP tool call requires approval, but approval policy is never"로 거부 — M5 |
+| AC-CAR-010 | INVALID (실행 1, 리드 기록 "routed to decoy server"; 재실행 없음) | 판정식 `false`. (a) 조건 충족. (b) 거부. approval probe A: moai `writes` 서버도 같은 문구로 거부 — M5, M5 approval probe |
 | AC-CAR-011 | NOT_RUN | 호출 0회, 리드 지시로 멈춤 — M5 |
 | AC-CAR-012a | PASS | `true`, 변이 `false` — M4 |
 | AC-CAR-012b | FAIL | `false`(M4 재실행; 유도 필드 조건은 충족, 같은 테스트 pass 이벤트 0) — M4 재실행 |
@@ -278,7 +290,8 @@ run_complete_at: null            # run not complete: AC-CAR-011 NOT_RUN, lead de
 run_commit_sha: <backfill>       # the M5 commit carrying this section
 run_status: blocked
 ac_pass_count: 12
-ac_fail_count: 4
+ac_fail_count: 3
+ac_invalid_count: 1              # AC-CAR-010 run 1 (lead-recorded)
 ac_not_run_count: 1
 preserve_list_post_run_count: null   # not measured in this run
 l44_pre_commit_fetch: not_measured
@@ -288,7 +301,7 @@ cross_platform_build:
   darwin: go build/test on this host, exit 0 (run/m5-test-cli.log)
   windows_amd64: GOOS=windows GOARCH=amd64 go build ./... exit 0 (run/m5-windows-build.log)
 total_run_phase_files: 41        # git diff --name-only develop...HEAD | wc -l at 434a39e1f
-live_calls_used: 36              # of the absolute cap 43
+live_calls_used: 38              # of the absolute cap 43
 m1_to_mN_commit_strategy: one or more commits per milestone on WT-codex-audit-readonly, no push
 ```
 
