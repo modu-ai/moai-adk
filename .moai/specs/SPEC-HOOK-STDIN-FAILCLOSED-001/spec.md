@@ -1,7 +1,7 @@
 ---
 id: SPEC-HOOK-STDIN-FAILCLOSED-001
 title: "훅 stdin 파싱 실패 시 결정 이벤트 fail-closed — 관측 이벤트의 기존 fail-open 보존"
-version: "0.1.0"
+version: "0.2.0"
 status: draft
 created: 2026-09-24
 updated: 2026-09-24
@@ -25,14 +25,15 @@ related_specs:
 | Version | Date | Author | Change |
 |---------|------|--------|--------|
 | 0.1.0 | 2026-09-24 | manager-spec (card t1152) | 최초 plan-phase 초안. 결함은 이 트리(HEAD `60017eb83`)의 코드 판독으로 확인했다. t1099 의 결정 이벤트 집합·번역 표·fault writer 는 아직 develop 에 없어 `fabc33812` 고정 SHA 로만 인용한다(§F 전제). |
+| 0.2.0 | 2026-09-24 | manager-spec (card t1152) | plan-audit 1회차 FAIL(0.66, `.moai/reports/t1152/plan-audit.md`) 반영. D1: 관측 이벤트의 보존 출력을 이벤트별로 정정(worktree-create·worktree-remove 는 빈 stdout, 나머지 20개는 `{}`) — REQ-HSF-006, §B.2 행 15·16. D3·D7: REQ-HSF-007 에 탈출 장치 출처 제약 추가, REQ-HSF-010 을 「활성화 절차 대신 운영자 문서 식별자」로 개정, §F.2 의 존재하지 않는 「ConfigChange 감시」 지목 삭제. D4: §A.3 에 중첩 깊이 경로 추가, 5 MiB 경로를 미측정 가설로 낮춤. D8: REQ-HSF-001 에 탈출 장치 조건절 합성. D9: REQ-HSF-008·011 에 기록 키 구분·바이트 수를 명시. D10: Stop 차단 상한 근거를 JSON block 경로로 보강(REQ-HSF-009, §F.2). D11: events.go 줄 번호 정정. D13: runAgentHook 재현을 §D 에 근거로 기록. 판정 대상 질문 분류는 plan.md §B. |
 
 ---
 
 ## §A 배경
 
-### A.1 결함 — 파싱 실패가 모든 이벤트에서 `{}` + exit 0 이 된다
+### A.1 결함 — 파싱 실패가 모든 이벤트에서 기본 출력 + exit 0 이 된다
 
-`internal/cli/hook.go:272-280` (`runHookEvent`) 은 `deps.HookProtocol.ReadInput(os.Stdin)` 이 오류를 돌려주면 stderr 에 경고 한 줄을 쓰고 `writeHookOutput(event, nil, &hook.HookOutput{})` 를 반환한다. 결과는 stdout `{}` 와 exit 0 이며, 이 분기는 **이벤트를 가리지 않는다.** PreToolUse·PermissionRequest·Stop·UserPromptSubmit 처럼 호스트의 다음 동작을 바꾸는 결정 이벤트도 똑같이 `{}` 를 낸다.
+`internal/cli/hook.go:272-280` (`runHookEvent`) 은 `deps.HookProtocol.ReadInput(os.Stdin)` 이 오류를 돌려주면 stderr 에 경고 한 줄을 쓰고 `writeHookOutput(event, nil, &hook.HookOutput{})` 를 반환한다. 결과는 exit 0 이며 stdout 은 대부분의 이벤트에서 `{}` 다(WorktreeCreate·WorktreeRemove 는 빈 stdout — §B.2). 이 분기는 **이벤트를 가리지 않는다.** PreToolUse·PermissionRequest·Stop·UserPromptSubmit 처럼 호스트의 다음 동작을 바꾸는 결정 이벤트도 똑같이 `{}` 를 낸다.
 
 호스트는 `{}` 를 「이 훅은 의견 없음」으로 읽는다. PreToolUse 에서 의견 없음은 호스트 자신의 권한 흐름으로 넘어간다는 뜻이고, 무확인 권한 모드에서는 그것이 곧 허용이다. 따라서 **stdin 페이로드가 깨지면 그 이벤트에 등록된 모든 가드 핸들러가 한 번도 실행되지 않은 채 우회된다**(fail-open). 두 하네스(Claude Code, Codex) 모두 같은 분기를 지난다.
 
@@ -48,27 +49,30 @@ related_specs:
 
 같은 커밋이 `internal/hook/protocol.go:17` 에 `maxHookInputBytes = 5 << 20` 을 두고, 그 주석에 「cap 을 넘는 페이로드는 잘리고 JSON 파싱에 실패하며, 호출자가 우아하게 처리한다(default output, exit 0)」고 적었다. `internal/cli/hook.go:274-277` 의 주석도 같은 의도를 말한다: 깨진 stdin 이 훅 파이프라인을 실패시키면 cobra 가 usage 노이즈와 exit 1 을 내고, 훅이 관찰하는 도구가 가짜 훅 실패를 드러낸다.
 
-이 의도는 **관측 이벤트에 대해서는 여전히 옳다.** PostToolUse 가 깨진 페이로드 때문에 exit 1 을 내면 이미 실행된 도구 호출이 실패로 보이고, 운영자는 존재하지 않는 결함을 쫓는다. 관측 이벤트에서 `{}` 는 막아야 할 것을 흘려보내지 않는다 — 애초에 막을 것이 없기 때문이다.
+이 의도는 **관측 이벤트에 대해서는 여전히 옳다.** PostToolUse 가 깨진 페이로드 때문에 exit 1 을 내면 이미 실행된 도구 호출이 실패로 보이고, 운영자는 존재하지 않는 결함을 쫓는다. 관측 이벤트의 기본 출력은 막아야 할 것을 흘려보내지 않는다 — 애초에 막을 것이 없기 때문이다.
 
 **결정 이벤트에서는 이 의도가 보안 가드와 충돌한다.** 결정 이벤트의 `{}` 는 「이상 없음」이 아니라 「가드가 판단하지 않았는데 판단한 것처럼 통과」다. 이 SPEC 은 `6a3603274` 의 의도를 **결정 이벤트에 한해서만** 바꾼다: 파이프라인을 깨뜨리지 않는다는 원칙(exit 1·usage 노이즈 금지)은 그대로 두고, 출력만 `{}` 에서 명시적 거부로 바꾼다. 거부도 JSON 이고 exit 0 이므로, `6a3603274` 가 없애려 한 증상(usage 노이즈, exit 1, 가짜 도구 실패)은 되살아나지 않는다.
 
 ### A.3 위협 모델 — 누가 stdin 을 깨뜨릴 수 있는가
 
-훅 stdin 은 호스트가 만든다. 그러나 호스트가 만드는 페이로드의 **내용 일부는 모델이 정한다**: PreToolUse 페이로드의 `tool_input` 은 모델이 호출한 도구의 인자 그대로다. 파손 경로는 셋이다.
+훅 stdin 은 호스트가 만든다. 그러나 호스트가 만드는 페이로드의 **내용 일부는 모델이 정한다**: PreToolUse 페이로드의 `tool_input` 은 모델이 호출한 도구의 인자 그대로다. 파손 경로는 넷이다.
 
-| 경로 | 누가 일으키는가 | 성격 |
-|---|---|---|
-| 5 MiB 초과 페이로드 | 모델 — 예: 본문이 5 MiB 를 넘는 Write 호출, 긴 Bash 인자. 프롬프트 인젝션을 받은 모델도 포함 | `io.LimitReader` 가 잘라 JSON 이 깨지고 파싱 오류가 된다(`protocol.go:43-45` → `:59-67`). **모델이 제어 가능한 경로이며 가장 중요한 위협이다** |
-| 호스트 형식 변화 | 호스트 버전 차이 — `normalizeHookInput` 이 새 형식을 거부 | 비악의적이지만 지속적이다. 한 번 발생하면 매 호출마다 재발한다 |
-| 전송 중 절단 | 훅 래퍼·파이프 결함 | 비악의적, 간헐적 |
+| 경로 | 누가 일으키는가 | 비용·근거 | 상태 |
+|---|---|---|---|
+| 중첩 깊이 초과 | 모델 — `tool_input` 안에 배열·객체를 깊게 중첩한 도구 호출. 프롬프트 인젝션을 받은 모델도 포함 | 약 20 KB. `encoding/json` 은 중첩 깊이 10000 을 넘으면 파싱을 거부한다. `ReadInput` 은 `normalizeHookInput(data)` (`internal/hook/protocol.go:58`) 를 부르고, 그 첫 단계가 `map[string]json.RawMessage` 로의 `json.Unmarshal` 이다(`internal/hook/normalize.go:85-88`). 측정(2026-09-24, 저장소 밖 scratchpad 의 독립 Go 프로그램, go1.26.8, 같은 대상 타입): 깊이 9000 → `bytes=18052 err=<nil>`, 깊이 10000 → `bytes=20052 err=invalid character '[' exceeded max depth`, 깊이 10001 → `bytes=20054` 같은 오류. plan-audit 의 독립 측정과 일치한다 | 파싱 실패까지는 **측정됨**. 호스트가 그런 `tool_input` 을 그대로 훅에 넘기는지(예: 자유 형식 객체 인자를 받는 MCP 도구)는 **미측정** |
+| 5 MiB 초과 페이로드 | 모델 — 예: 본문이 5 MiB 를 넘는 Write 호출, 긴 Bash 인자 | `io.LimitReader` 가 잘라(`protocol.go:44`) JSON 이 깨지고 파싱 오류가 된다(`protocol.go:58-60`). 코드 연쇄는 판독으로 확인 | **미측정 가설**. 모델 한 턴의 출력 상한을 감안하면 단일 도구 호출로 5 MiB 에 이르기 어려울 수 있다. 실현성은 plan.md 추적 항목 Q5 |
+| 호스트 형식 변화 | 호스트 버전 차이 — `normalizeHookInput` 이 새 형식을 거부 | 비악의적이지만 지속적이다. 한 번 발생하면 매 호출마다 재발한다 | 과거 사례에 근거한 가정 |
+| 전송 중 절단 | 훅 래퍼·파이프 결함 | 비악의적, 간헐적 | 가정 |
 
-첫 번째 경로가 성립하면, 모델은 가드가 거부했을 도구 호출을 페이로드를 부풀리는 것만으로 가드 전체를 건너뛰고 실행할 수 있다. 이 경로의 실현 가능성 — 호스트가 5 MiB 를 넘는 `tool_input` 을 실제로 훅에 넘기는가 — 은 **이 plan 에서 측정하지 않았다**(plan.md 미해결 질문 Q5). 코드 판독으로 확인한 것은 「넘기면 파싱 오류가 되고, 파싱 오류면 `{}` 가 된다」까지다. run-phase AC-HSF-001 이 이 연쇄를 프로세스 내에서 재현한다.
+모델이 제어하는 경로 가운데 **가장 싼 것은 중첩 깊이 초과**다. 이 경로가 호스트에서 성립하면, 모델은 가드가 거부했을 도구 호출을 인자 하나를 깊게 중첩하는 것만으로 가드 전체를 건너뛰고 실행할 수 있다. 어느 경로가 실제로 가장 중요한지는 호스트 측 측정 전까지 단정하지 않는다. 코드 판독과 측정으로 확인한 것은 「파싱에 실패하는 입력이 있고, 파싱 실패면 결정 이벤트도 `{}` 가 된다」까지다. run-phase AC-HSF-001·002 가 이 연쇄를 네 파손 형태 모두로 프로세스 내에서 재현한다.
 
 fail-closed 가 중요한 이유는 비대칭에 있다. 잘못된 거부는 소리가 난다 — 모델과 사용자가 거부 사유를 보고, 원인을 추적할 수 있다. 잘못된 통과는 소리가 나지 않는다 — 가드가 실행되지 않았다는 사실이 어디에도 드러나지 않는다.
 
 ### A.4 t1099 와의 관계 — 결정 이벤트 목록은 하나만 둔다
 
 card t1099 (SPEC-DUAL-HARNESS-HOOK-PARITY-001, 브랜치 `WT-dual-harness-parity-rebuild`) 가 결정 이벤트 집합, 정규화된 결정 어휘, 하네스별 번역 표, Codex fault writer 를 도입했다. **이 코드는 아직 develop 에 없다**(`git merge-base --is-ancestor fabc33812 HEAD` → exit 1, 이 트리에서 측정). 이 SPEC 은 그것을 고정 SHA `fabc33812` 로만 인용한다.
+
+관측(2026-09-24, plan-audit 측정): t1099 브랜치는 `fabc33812` 이후 `fe4fd9d4d` 로 전진했으나, 이 SPEC 이 인용하는 파일(`decision.go`, `translate.go`, `hook_codex_failclosed.go`, `hook.go`, `diagnostics.go`, `output.go`)의 diff 는 두 커밋 사이에 0 이었다(같은 명령의 전체 diff 는 비어 있지 않아 양성 대조가 섰다). 고정점은 `fabc33812` 로 유지하며, 착지 시점 재확인은 §F.1 이 맡는다.
 
 | 심볼 | 위치 (`fabc33812`) | 이 SPEC 에서의 역할 |
 |---|---|---|
@@ -77,11 +81,12 @@ card t1099 (SPEC-DUAL-HARNESS-HOOK-PARITY-001, 브랜치 `WT-dual-harness-parity
 | 번역 표 `buildTranslationTable` | `internal/codexadapter/decision.go:92-131` (HarnessClaude 행 `:103-108`, HarnessCodex 행 `:114-117`) | 하네스 × 이벤트 × 결정 → 출력 형태 |
 | `Lookup(h, ev, d)` / `Render(ev, o, reason)` | `decision.go:139`, `decision.go:171` | 표 행 조회와 바이트 렌더링 |
 | `TranslateCodex(ev, d, reason)` | `translate.go:42` | Codex 렌더링 단일 진입점 |
-| `writeCodexFailClosed(event, cause)` | `internal/cli/hook_codex_failclosed.go` | Codex fault → fail-closed deny 작성기 + `RecordDiscards` 기록 |
+| `writeCodexFailClosed(event, cause)` | `internal/cli/hook_codex_failclosed.go:34-58` | Codex fault → fail-closed deny 작성기 + `RecordDiscards` 기록. 기록 키 `hook-fault`(`:20`), 기록 길이 `len(causeText)`, Reason 고정 문구(`:44-49`) |
+| `RecordDiscards` / `Discard` | `internal/codexadapter/diagnostics.go:24`, `output.go:77-82` | 영속 기록면. `Discard` 는 내용이 아니라 길이만 싣는 설계다 |
 
-[HARD] 이 SPEC 은 **두 번째 결정 이벤트 목록을 만들지 않는다.** Codex 측은 `codexadapter.IsDecisionBearing` 과 `writeCodexFailClosed` / `TranslateCodex(ev, DecisionFatalError, reason)` 를 그대로 재사용한다. Claude 측도 같은 집합과 같은 번역 표의 HarnessClaude 행(`Lookup(HarnessClaude, ev, DecisionFatalError)` → `Render`)에서 출력을 얻는다 — 손으로 JSON 을 짜지 않는다.
+[HARD] 이 SPEC 은 **두 번째 결정 이벤트 목록을 만들지 않는다.** Codex 측은 `codexadapter.IsDecisionBearing` 과 `writeCodexFailClosed` / `TranslateCodex(ev, DecisionFatalError, reason)` 를 재사용한다(재사용 범위는 plan.md M1·M2). Claude 측도 같은 집합과 같은 번역 표의 HarnessClaude 행(`Lookup(HarnessClaude, ev, DecisionFatalError)` → `Render`)에서 출력을 얻는다 — 손으로 JSON 을 짜지 않는다.
 
-`fabc33812` 의 번역 표에서 fatal_error 열은 두 하네스 모두 네 이벤트에서 `OutcomeDeny` 다(`decision.go:103-108`, `:114-117`). 따라서 두 하네스의 이벤트 집합이 같고, 이 SPEC 에는 하네스별로 다른 목록이 필요하지 않다.
+`fabc33812` 의 번역 표에서 fatal_error 열은 두 하네스 모두 네 이벤트에서 `OutcomeDeny` 다(`decision.go:103-108`, `:114-117`). 따라서 두 하네스의 이벤트 집합이 같고, 이 SPEC 에는 하네스별로 다른 목록이 필요하지 않다(단 plan.md Q1 의 조건부 분기 참조).
 
 ---
 
@@ -90,42 +95,44 @@ card t1099 (SPEC-DUAL-HARNESS-HOOK-PARITY-001, 브랜치 `WT-dual-harness-parity
 ### B.1 판정 기준
 
 - **결정 이벤트 (fail-closed)**: `codexadapter.IsDecisionBearing(ev) == true` 인 이벤트. 다른 기준을 두지 않는다.
-- **관측 이벤트 (기존 `{}` + exit 0 보존)**: 그 밖의 모든 이벤트.
+- **관측 이벤트 (현재 출력 보존)**: 그 밖의 모든 이벤트.
 
 「Claude 호스트가 차단을 받아들이는가」(`.claude/rules/moai/core/hooks-system.md:388` 의 Can Block 목록)는 분류 기준이 **아니다.** Can Block 이면서 관측으로 남는 이벤트가 있으며, 각각의 사유를 표에 적었다. 그 이벤트들을 결정 집합에 넣는 일은 `DecisionBearingEvents()` 자체를 바꾸는 일이고, 그러면 Codex 쪽 번역 표·패리티 검증도 함께 바뀌므로 이 SPEC 의 범위 밖이다(§D).
 
 ### B.2 전체 표 — `internal/hook/types.go` 의 이벤트 상수 30개
 
-열 설명: `sub` = `moai hook` 하위 명령 (`internal/cli/hook.go:53-78`, 모두 `runHookEvent` 로 들어간다, `:90`). `Codex` = `internal/codexadapter/events.go:71-84` 의 EventTable 행(A = adapted, U = recognized/unadapted, — = 행 없음). `CB` = hooks-system.md:388 의 Claude Can Block.
+열 설명: `sub` = `moai hook` 하위 명령 (`internal/cli/hook.go:53-78`, 모두 `runHookEvent` 로 들어간다, `:90`). `Codex` = `internal/codexadapter/events.go:69-84` 의 EventTable 행(A = adapted, U = recognized/unadapted, — = 행 없음). `CB` = hooks-system.md:388 의 Claude Can Block.
+
+「보존」은 **이벤트별 현재 출력**을 그대로 둔다는 뜻이다: stdout `{}` + exit 0 이 기본이고, WorktreeCreate·WorktreeRemove 두 이벤트만 **빈 stdout** + exit 0 이다. `writeHookOutput` 이 그 두 이벤트에서 `input == nil` 이면 아무것도 쓰지 않고 반환하기 때문이다(`internal/cli/hook.go:389-392`). 파싱 실패 분기는 `input` 을 nil 로 넘긴다(`:279`).
 
 | # | 이벤트 (types.go:line) | sub (hook.go:line) | Codex | CB | 분류 | 파싱 실패 시 출력 — Claude | 파싱 실패 시 출력 — Codex | 관측으로 두는 사유 |
 |---|---|---|---|---|---|---|---|---|
 | 1 | PreToolUse (:25) | pre-tool (:54) | A | Y | **결정** | `hookSpecificOutput.permissionDecision:"deny"` + 사유, exit 0 | 같은 형태 (`TranslateCodex` fatal_error), exit 0 | — |
 | 2 | PermissionRequest (:55) | permission-request (:63) | U | Y | **결정** | `hookSpecificOutput.decision.behavior:"deny"` + `message`, exit 0 | 같은 형태, exit 0 | — |
-| 3 | Stop (:34) | stop (:57) | A | Y | **결정** | `{"decision":"block","reason":…}`, exit 0 | 같은 형태, exit 0 | — |
+| 3 | Stop (:34) | stop (:57) | A | Y | **결정** | `{"decision":"block","reason":…}`, exit 0 | 같은 형태, exit 0 (plan.md Q1 의 조건부 분기에 따름) | — |
 | 4 | UserPromptSubmit (:52) | user-prompt-submit (:62) | A | Y | **결정** | `{"decision":"block","reason":…}`, exit 0 | 같은 형태, exit 0 | — |
 | 5 | SessionStart (:22) | session-start (:53) | A | N | 관측 | `{}` exit 0 (보존) | `{}` exit 0 (보존) | 차단 불가 이벤트 |
-| 6 | PostToolUse (:28) | post-tool (:55) | A | N (JSON block 은 사후 피드백) | 관측 | 보존 | 보존 | 도구가 이미 실행됨 — 막을 동작이 없다. `6a3603274` 가 지키려던 바로 그 경우 |
-| 7 | SessionEnd (:31) | session-end (:56) | A | N | 관측 | 보존 | 보존 | 차단 불가 |
-| 8 | SubagentStop (:37) | subagent-stop (:66) | A | Y | 관측 | 보존 | 보존 | 차단 = 서브에이전트 계속 작업. 위험 동작을 막지 않고, 파싱 실패 상태에서 `stop_hook_active` 를 읽을 수 없어 루프 위험만 더한다 (plan Q6) |
-| 9 | PreCompact (:40) | compact (:58) | U | Y | 관측 | 보존 | 보존 | 차단 = 압축 거부. 막을 위해가 없고 거부는 컨텍스트 고갈을 앞당긴다 |
-| 10 | PostToolUseFailure (:43) | post-tool-failure (:59) | — | N | 관측 | 보존 | — | 차단 불가 |
-| 11 | Notification (:46) | notification (:60) | — | N | 관측 | 보존 | — | 차단 불가 |
-| 12 | SubagentStart (:49) | subagent-start (:61) | A | N | 관측 | 보존 | 보존 | 차단 불가 (hooks-system.md:388) |
-| 13 | TeammateIdle (:58) | teammate-idle (:64) | — | Y | 관측 | 보존 | — | 차단 = 팀원 계속 작업. 위험 동작 게이트가 아니다 (plan Q6) |
-| 14 | TaskCompleted (:61) | task-completed (:65) | — | Y | 관측 | 보존 | — | 차단 = 완료 거부. 무결성 게이트이지 위험 동작 게이트가 아니다 (plan Q6) |
-| 15 | WorktreeCreate (:65) | worktree-create (:67) | — | Y | 관측 | 보존 | — | 설정에 미등록(`coverage_table.go` IsActive:false). 이 이벤트는 빈 출력이 이미 생성 중단이다 |
-| 16 | WorktreeRemove (:69) | worktree-remove (:68) | — | N | 관측 | 보존 | — | 차단 불가 |
-| 17 | PostCompact (:73) | post-compact (:69) | U | N | 관측 | 보존 | 보존 | 차단 불가 |
-| 18 | InstructionsLoaded (:77) | instructions-loaded (:70) | — | N | 관측 | 보존 | — | 차단 불가 |
-| 19 | StopFailure (:81) | stop-failure (:71) | — | N | 관측 | 보존 | — | 차단 불가 |
-| 20 | ConfigChange (:85) | config-change (:72) | — | Y | 관측 | 보존 | — | MoAI 핸들러가 무조건 빈 출력(hooks-system.md:105) — 현재 가드가 없다 |
-| 21 | TaskCreated (:89) | task-created (:73) | — | Y | 관측 | 보존 | — | 관측 전용(RETIRE-OBS-ONLY), HOI opt-in 게이트 |
-| 22 | CwdChanged (:93) | cwd-changed (:74) | — | N | 관측 | 보존 | — | 차단 불가 |
-| 23 | FileChanged (:97) | file-changed (:75) | — | N | 관측 | 보존 | — | 차단 불가 |
-| 24 | Elicitation (:101) | elicitation (:76) | — | Y | 관측 | 보존 | — | RETIRE-OBS-ONLY, 설정 미등록 |
-| 25 | ElicitationResult (:105) | elicitation-result (:77) | — | Y | 관측 | 보존 | — | RETIRE-OBS-ONLY, 설정 미등록 |
-| 26 | PermissionDenied (:110) | permission-denied (:78) | — | N | 관측 | 보존 | — | 차단 불가 |
+| 6 | PostToolUse (:28) | post-tool (:55) | A | N (JSON block 은 사후 피드백) | 관측 | `{}` 보존 | `{}` 보존 | 도구가 이미 실행됨 — 막을 동작이 없다. `6a3603274` 가 지키려던 바로 그 경우 |
+| 7 | SessionEnd (:31) | session-end (:56) | A | N | 관측 | `{}` 보존 | `{}` 보존 | 차단 불가 |
+| 8 | SubagentStop (:37) | subagent-stop (:66) | A | Y | 관측 | `{}` 보존 | `{}` 보존 | 차단 = 서브에이전트 계속 작업. 위험 동작을 막지 않고, 파싱 실패 상태에서 `stop_hook_active` 를 읽을 수 없어 루프 위험만 더한다 (plan Q6) |
+| 9 | PreCompact (:40) | compact (:58) | U | Y | 관측 | `{}` 보존 | `{}` 보존 | 차단 = 압축 거부. 막을 위해가 없고 거부는 컨텍스트 고갈을 앞당긴다 |
+| 10 | PostToolUseFailure (:43) | post-tool-failure (:59) | — | N | 관측 | `{}` 보존 | — | 차단 불가 |
+| 11 | Notification (:46) | notification (:60) | — | N | 관측 | `{}` 보존 | — | 차단 불가 |
+| 12 | SubagentStart (:49) | subagent-start (:61) | A | N | 관측 | `{}` 보존 | `{}` 보존 | 차단 불가 (hooks-system.md:388) |
+| 13 | TeammateIdle (:58) | teammate-idle (:64) | — | Y | 관측 | `{}` 보존 | — | 차단 = 팀원 계속 작업. 위험 동작 게이트가 아니다 (plan Q6) |
+| 14 | TaskCompleted (:61) | task-completed (:65) | — | Y | 관측 | `{}` 보존 | — | 차단 = 완료 거부. 무결성 게이트이지 위험 동작 게이트가 아니다 (plan Q6) |
+| 15 | WorktreeCreate (:65) | worktree-create (:67) | — | Y | 관측 | **빈 stdout** exit 0 (보존, hook.go:389-392) | — | 설정에 미등록(`coverage_table.go` IsActive:false). 이 이벤트는 빈 출력이 이미 생성 중단이다 |
+| 16 | WorktreeRemove (:69) | worktree-remove (:68) | — | N | 관측 | **빈 stdout** exit 0 (보존, hook.go:389-392) | — | 차단 불가 |
+| 17 | PostCompact (:73) | post-compact (:69) | U | N | 관측 | `{}` 보존 | `{}` 보존 | 차단 불가 |
+| 18 | InstructionsLoaded (:77) | instructions-loaded (:70) | — | N | 관측 | `{}` 보존 | — | 차단 불가 |
+| 19 | StopFailure (:81) | stop-failure (:71) | — | N | 관측 | `{}` 보존 | — | 차단 불가 |
+| 20 | ConfigChange (:85) | config-change (:72) | — | Y | 관측 | `{}` 보존 | — | MoAI 핸들러가 무조건 빈 출력(hooks-system.md:105) — 현재 가드가 없다 |
+| 21 | TaskCreated (:89) | task-created (:73) | — | Y | 관측 | `{}` 보존 | — | 관측 전용(RETIRE-OBS-ONLY), HOI opt-in 게이트 |
+| 22 | CwdChanged (:93) | cwd-changed (:74) | — | N | 관측 | `{}` 보존 | — | 차단 불가 |
+| 23 | FileChanged (:97) | file-changed (:75) | — | N | 관측 | `{}` 보존 | — | 차단 불가 |
+| 24 | Elicitation (:101) | elicitation (:76) | — | Y | 관측 | `{}` 보존 | — | RETIRE-OBS-ONLY, 설정 미등록 |
+| 25 | ElicitationResult (:105) | elicitation-result (:77) | — | Y | 관측 | `{}` 보존 | — | RETIRE-OBS-ONLY, 설정 미등록 |
+| 26 | PermissionDenied (:110) | permission-denied (:78) | — | N | 관측 | `{}` 보존 | — | 차단 불가 |
 | 27 | PostToolBatch (:114) | 없음 | — | Y | 관측 (도달 불가) | `runHookEvent` 에 도달하지 않음 | — | 하위 명령이 없어 이 경로를 지나지 않는다 |
 | 28 | UserPromptExpansion (:118) | 없음 | — | Y | 관측 (도달 불가) | 도달하지 않음 | — | 같음 |
 | 29 | MessageDisplay (:122) | 없음 | — | N | 관측 (도달 불가) | 도달하지 않음 | — | 같음 |
@@ -133,40 +140,44 @@ card t1099 (SPEC-DUAL-HARNESS-HOOK-PARITY-001, 브랜치 `WT-dual-harness-parity
 
 Codex 전용 `Interrupt` (`internal/codexadapter/events.go:45`) 는 MoAI 디스패처 대응이 없어 이 경로에 들어오지 않는다.
 
+「파싱 실패 시 출력 — Codex」 열의 「—」는 Codex EventTable 에 행이 없다는 뜻이다. `--harness codex` 로 그 하위 명령을 부르면 파싱 실패 분기가 먼저 발화하므로(§A.1), 두 하네스 모드에서 관측 이벤트의 출력은 Claude 열과 같다. AC-HSF-005 는 22개 하위 명령 전부를 두 모드로 잰다.
+
 ### B.3 집계
 
 - 결정 이벤트: **4** (두 하네스 동일 — `DecisionBearingEvents()` 하나에서 나온다)
-- 관측 이벤트: **26** — 그중 `runHookEvent` 로 들어오는 하위 명령 **22**, 하위 명령이 없어 도달하지 않는 **4**
+- 관측 이벤트: **26** — 그중 `runHookEvent` 로 들어오는 하위 명령 **22**(출력 `{}` 20, 빈 stdout 2), 하위 명령이 없어 도달하지 않는 **4**
 - Can Block 이지만 관측으로 두는 이벤트: **11** (SubagentStop, PreCompact, TeammateIdle, TaskCompleted, WorktreeCreate, ConfigChange, TaskCreated, Elicitation, ElicitationResult, PostToolBatch, UserPromptExpansion) — 각각의 사유는 표에 있다. 이들 중 무엇이든 결정 집합으로 옮기려면 `DecisionBearingEvents()` 를 바꾸는 별도 카드가 필요하다.
 
 ### B.4 결정 이벤트의 출력 형태 (fatal_error 행)
 
 네 이벤트 모두 번역 표의 fatal_error 열이 `OutcomeDeny` 이고, `Render` 는 하네스를 인자로 받지 않으므로 두 하네스의 **바이트 형태가 같다**(`fabc33812:internal/codexadapter/decision.go:171-211`). 차이는 사유 문구뿐이다(Codex 는 `TranslateCodex` 가 `MoAI <event> hook failed, so the call was denied fail-closed: <cause>` 로 감싼다, `translate.go:57-61`).
 
-| 이벤트 | 렌더링 결과 | exit |
-|---|---|---|
-| PreToolUse | `{"hookSpecificOutput":{"hookEventName":"PreToolUse","permissionDecision":"deny","permissionDecisionReason":"<사유>"}}` | 0 |
-| PermissionRequest | `{"hookSpecificOutput":{"hookEventName":"PermissionRequest","decision":{"behavior":"deny","message":"<사유>"}}}` | 0 |
-| Stop | `{"decision":"block","reason":"<사유>"}` | 0 |
-| UserPromptSubmit | `{"decision":"block","reason":"<사유>"}` | 0 |
+| 이벤트 | 렌더링 결과 | 거부 필드 | exit |
+|---|---|---|---|
+| PreToolUse | `{"hookSpecificOutput":{"hookEventName":"PreToolUse","permissionDecision":"deny","permissionDecisionReason":"<사유>"}}` | `hookSpecificOutput.permissionDecision == "deny"` | 0 |
+| PermissionRequest | `{"hookSpecificOutput":{"hookEventName":"PermissionRequest","decision":{"behavior":"deny","message":"<사유>"}}}` | `hookSpecificOutput.decision.behavior == "deny"` | 0 |
+| Stop | `{"decision":"block","reason":"<사유>"}` | `decision == "block"` | 0 |
+| UserPromptSubmit | `{"decision":"block","reason":"<사유>"}` | `decision == "block"` | 0 |
 
-exit 0 인 이유: 이 트리의 `internal/cli/hook.go:362-366` 이 기록한 원칙(「JSON deny 는 설계상 exit 0 이다. exit 2 에서는 stdout JSON 이 무시되어 deny 가 사라진다」)과, `writeCodexFailClosed` 의 「returns nil so the process exits 0 and Codex reads the deny」를 따른다.
+exit 0 인 이유: 이 트리의 `internal/cli/hook.go:362-365` 이 기록한 원칙(「JSON deny 는 설계상 exit 0 이다. exit 2 에서는 stdout JSON 이 무시되어 deny 가 사라진다」)과, `writeCodexFailClosed` 의 「returns nil so the process exits 0 and Codex reads the deny」(`fabc33812:internal/cli/hook_codex_failclosed.go:30-33`)를 따른다.
+
+「거부 필드」 열은 AC-HSF-003 의 관측 술어다. `{}` 와 빈 stdout 은 어느 거부 필드도 갖지 않는다.
 
 ---
 
 ## §C 요구사항 (GEARS)
 
-- **REQ-HSF-001** (Event-driven): **When** 훅 디스패처가 결정 이벤트의 stdin 을 파싱하지 못하면(형식 불량, 잘림, 5 MiB 초과로 인한 절단 포함), the hook dispatcher **shall** 그 이벤트의 fail-closed 거부를 stdout 에 쓰고 exit 0 으로 끝내며, 어떤 핸들러에도 디스패치하지 않는다.
-- **REQ-HSF-002** (Ubiquitous): The hook dispatcher **shall** 어떤 이벤트가 결정 이벤트인지를 `codexadapter.IsDecisionBearing` 한 곳으로만 판정한다 — `internal/cli` 와 `internal/hook` 에 결정 이벤트를 나열한 두 번째 목록을 두지 않는다.
-- **REQ-HSF-003** (Where): **Where** 호출이 `--harness codex` 모드이면, the hook dispatcher **shall** 파싱 실패의 fail-closed 출력을 t1099 의 Codex fault 경로(`writeCodexFailClosed` → `TranslateCodex(ev, DecisionFatalError, reason)`)로 만든다.
+- **REQ-HSF-001** (Where + Event-driven): **Where** 탈출 장치(REQ-HSF-007)가 꺼져 있으면(기본값), **When** 훅 디스패처가 결정 이벤트의 stdin 을 파싱하지 못하면(`ReadInput` 이 오류를 돌려주는 모든 경우 — 형식 불량, 잘림, 5 MiB 상한 절단, 중첩 깊이 초과 포함), the hook dispatcher **shall** 그 이벤트의 fail-closed 거부를 stdout 에 쓰고 exit 0 으로 끝내며, 어떤 핸들러에도 디스패치하지 않는다.
+- **REQ-HSF-002** (Ubiquitous): The hook dispatcher **shall** 어떤 이벤트가 결정 이벤트인지를 `codexadapter.IsDecisionBearing` 한 곳으로만 판정한다 — `internal/cli` 와 `internal/hook` 에 결정 이벤트를 나열한 두 번째 목록(슬라이스·배열·맵 리터럴, 여러 결정 이벤트를 나열한 `switch` 나 `||` 비교 사슬)을 두지 않는다.
+- **REQ-HSF-003** (Where): **Where** 호출이 `--harness codex` 모드이면, the hook dispatcher **shall** 파싱 실패의 fail-closed 출력을 t1099 의 Codex fault 경로(`writeCodexFailClosed` → `TranslateCodex(ev, DecisionFatalError, reason)`)로 만든다. 재사용 범위(서명 확장 허용 여부)는 plan.md M1 이 정한다.
 - **REQ-HSF-004** (Where): **Where** 호출이 Claude 모드(`--harness` 미지정 또는 `claude`)이면, the hook dispatcher **shall** 파싱 실패의 fail-closed 출력을 같은 번역 표의 HarnessClaude fatal_error 행(`Lookup(HarnessClaude, ev, DecisionFatalError)` + `Render`)에서 얻으며, 출력 JSON 을 별도로 손으로 조립하지 않는다.
 - **REQ-HSF-005** (Ubiquitous): The hook dispatcher **shall** 하네스 모드를 stdin 을 읽기 **전에** 결정하여, 파싱 실패 분기가 발화하는 시점에 하네스 모드가 이미 알려져 있게 한다. 잘못된 `--harness` 값은 지금과 같이 0 이 아닌 종료로 거부된다.
-- **REQ-HSF-006** (Event-driven): **When** 관측 이벤트의 stdin 을 파싱하지 못하면, the hook dispatcher **shall** 현재 동작(stderr 경고 한 줄, stdout `{}`, exit 0, 디스패치 없음)을 두 하네스 모두에서 그대로 유지한다 — `6a3603274` 의 의도를 관측 이벤트에서 보존한다.
-- **REQ-HSF-007** (Where): **Where** 운영자가 fail-closed 탈출 장치를 켜면, the hook dispatcher **shall** 결정 이벤트의 파싱 실패에도 `{}` + exit 0 을 내되, 탈출 장치가 적용됐다는 사실을 stderr 와 영속 기록에 남긴다. 탈출 장치는 기본값이 꺼짐이다.
-- **REQ-HSF-008** (Event-driven): **When** 파싱 실패로 fail-closed 가 발화하면, the hook dispatcher **shall** 이벤트 이름·하네스 모드·파싱 오류 원인·「fail-closed」임을 담은 stderr 한 줄을 쓰고, t1099 의 `codexadapter.RecordDiscards` 기록 경로를 재사용해 영속 기록을 한 건 남긴다.
-- **REQ-HSF-009** (Ubiquitous): The Stop 이벤트의 fail-closed 출력 **shall** `stop_hook_active` 의 값에 의존하지 않는다 — 파싱이 실패한 페이로드에서 그 값을 읽을 수 없기 때문이다. 반복 차단의 상한은 호스트의 Stop 차단 상한이 정하며, 그 의존 사실을 코드 주석(@MX:WARN)에 남긴다.
-- **REQ-HSF-010** (Ubiquitous): The fail-closed 출력의 사유 문구 **shall** 비어 있지 않으며, 파싱 실패가 원인이라는 것과 탈출 장치를 켜는 방법을 알 수 있게 한다. 빈 사유는 Codex 에서 거부 자체를 무효로 만든다(`fabc33812:decision.go:171-175`).
-- **REQ-HSF-011** (Ubiquitous): The fail-closed 출력 **shall not** 파싱에 실패한 페이로드의 원문을 사유 문구나 영속 기록에 그대로 싣는다 — 원인 오류 메시지와 바이트 길이만 싣는다. 모델이 제어하는 `tool_input` 이 기록면으로 새어 나가지 않게 하기 위함이다.
+- **REQ-HSF-006** (Event-driven): **When** 관측 이벤트의 stdin 을 파싱하지 못하면, the hook dispatcher **shall** 이벤트별 현재 동작을 두 하네스 모드 모두에서 그대로 유지한다 — stderr 경고 한 줄, exit 0, 디스패치 없음, 그리고 stdout 은 worktree-create·worktree-remove 에서 빈 문자열, 나머지 20개 하위 명령에서 `{}`. `6a3603274` 의 의도를 관측 이벤트에서 보존한다.
+- **REQ-HSF-007** (Where + Unwanted): **Where** 운영자가 정당한 활성화 경로로 fail-closed 탈출 장치를 켜면, the hook dispatcher **shall** 결정 이벤트의 파싱 실패에도 `{}` + exit 0 을 내되, 탈출 장치가 적용됐다는 사실을 stderr 와 영속 기록에 남긴다. 탈출 장치는 기본값이 꺼짐이다. The hook dispatcher **shall not** 모델이 쓸 수 있는 프로젝트·로컬 설정면 — `.claude/settings.json` 과 `.claude/settings.local.json` 의 `env` 블록, `.moai/config/` 아래 파일 — 에서 공급된 값을 탈출 장치의 활성화로 취급한다. 활성화 경로의 구체적 메커니즘은 plan.md Q1 에서 정하며, 어떤 메커니즘을 택하든 이 출처 제약을 만족해야 한다.
+- **REQ-HSF-008** (Event-driven): **When** 파싱 실패로 fail-closed 가 발화하면, the hook dispatcher **shall** (a) 이벤트 이름·하네스 모드·파싱 오류 원인·「fail-closed」임을 담은 stderr 한 줄을 쓰고, (b) t1099 의 `codexadapter.RecordDiscards` 기록 경로를 재사용해 영속 기록을 한 건 남기며, 그 기록은 핸들러 fault 기록(키 `hook-fault`)과 구분되는 파싱 실패 전용 키와, 디스패처가 관측한 stdin 바이트 수를 싣는다.
+- **REQ-HSF-009** (Ubiquitous): The Stop 이벤트의 fail-closed 출력 **shall** `stop_hook_active` 의 값에 의존하지 않는다 — 파싱이 실패한 페이로드에서 그 값을 읽을 수 없기 때문이다. 반복 차단의 상한은 호스트의 Stop 차단 상한이 정하며, 그 의존 사실을 코드 주석(@MX:WARN)에 남긴다. Claude 쪽 상한이 exit 2 차단뿐 아니라 JSON `decision:"block"` + exit 0 차단에도 걸린다는 근거는 저장소 독트린이다: `goal-directive.md:13` 이 「런타임의 연속 차단 상한(기본 8, `CLAUDE_CODE_STOP_HOOK_BLOCK_CAP`)이 먼저 block 을 무효화한다」고 적었고, 그 대상인 stop-goal 평가기는 JSON `decision:"block"` 을 exit 0 으로 낸다(`internal/cli/hook_stop_goal.go:120-121`). 이 SPEC 은 그것을 측정하지 않았다(plan.md Q2). Codex 쪽 상한은 plan.md Q2 에서 판정한다.
+- **REQ-HSF-010** (Ubiquitous): The fail-closed 출력의 사유 문구 **shall** 비어 있지 않으며, (a) `fail-closed` 라는 표시, (b) 원인이 stdin 파싱 실패라는 고정 문구, (c) 운영자 문서 식별자(고정 문자열)를 싣는다. 사유 문구는 모델이 읽는 면이므로(PreToolUse 의 `permissionDecisionReason` 등), 탈출 장치의 식별자(환경 변수 이름·설정 키 등)와 활성화 절차는 싣지 않는다 — 활성화 절차는 운영자 문서에만 둔다. 빈 사유는 Codex 에서 거부 자체를 무효로 만든다(`fabc33812:decision.go:171-175`).
+- **REQ-HSF-011** (Unwanted): The fail-closed 출력과 영속 기록 **shall not** 파싱에 실패한 페이로드의 원문이나 그 일부를 싣는다. 입력에서 유래한 정보로 허용되는 것은 파싱 오류 메시지(`encoding/json` 오류가 인용하는 한 글자·숫자 리터럴 수준)와 stdin 바이트 수뿐이다. 모델이 제어하는 `tool_input` 이 사유면·기록면으로 새어 나가지 않게 하기 위함이다.
 
 ---
 
@@ -181,19 +192,23 @@ exit 0 인 이유: 이 트리의 `internal/cli/hook.go:362-366` 이 기록한 �
 
 ### Out of Scope — 다른 stdin 진입점
 
-- `runAgentHook` (`internal/cli/hook.go:447-463`) 의 같은 모양 fail-open 분기. 에이전트 훅 액션의 다수가 PreToolUse 로 매핑되므로 같은 결함 계열이지만, 운영자 판정 전까지는 범위 밖으로 둔다(plan.md Q3 — 포함을 권장).
+- `runAgentHook` (`internal/cli/hook.go:447-463`) 의 같은 모양 fail-open 분기. 에이전트 훅 액션의 다수가 PreToolUse 로 매핑되므로 같은 결함 계열이다. plan-audit 에서 codex 백엔드가 이 트리에서 `foo-validation` 액션에 파손 stdin 을 넣어 `rc=0, stdout={}` 를 재현했다(이 SPEC 저자가 직접 실행한 것은 아니다). 운영자 판정 전까지는 범위 밖으로 둔다(plan.md Q3 — 포함을 권장).
 - `runSpecStatus` (`:526-535`, 파싱 실패 시 exit 1), `runSessionStartCompact` (`:560-568`), harness-observe 계열 `readNormalizedHookInput` (`:707-713`), `security-turn` / codex review gate / multi review gate 의 자체 stdin 처리.
-- 빈 stdin 을 성공으로 처리하는 `ReadInput` 의 동작(`protocol.go:50-54`). 빈 페이로드로 핸들러가 기본 입력을 받아 실행되는 것은 파싱 실패와 다른 경로다(plan.md Q4).
+- 빈 stdin 을 성공으로 처리하는 `ReadInput` 의 동작(`protocol.go:52-56`). 빈 페이로드로 핸들러가 기본 입력을 받아 실행되는 것은 파싱 실패와 다른 경로다(plan.md 추적 항목 Q4).
 
 ### Out of Scope — 프로토콜 계층
 
-- `internal/hook/protocol.go` 의 `ReadInput` · `maxHookInputBytes` · `normalizeHookInput` 변경. 5 MiB 상한은 그대로 둔다. 이 SPEC 은 오류를 받은 **호출자**의 처리만 바꾼다.
+- `internal/hook/protocol.go` 의 `ReadInput` · `maxHookInputBytes` · `normalizeHookInput` 변경. 5 MiB 상한과 `encoding/json` 의 깊이 상한은 그대로 둔다. 이 SPEC 은 오류를 받은 **호출자**의 처리만 바꾼다.
 - `internal/hook` 패키지의 어떤 파일도 수정하지 않는다(t1099 와 같은 원칙: 이음매는 CLI 계층에 둔다).
 
 ### Out of Scope — 핸들러 실패 경로
 
-- 디스패치 오류·타임아웃·출력 매핑 실패의 fail-closed. 그것은 t1099 M2c 가 이미 다룬다(`fabc33812:internal/cli/hook.go:339-345`). Claude 하네스의 디스패치 오류 경로(현재 exit 1)도 이 SPEC 에서 바꾸지 않는다.
-- Stop 체인의 루프 상한 설계(t1099 `@MX:WARN` 이 M2d 의 몫으로 명시한 것).
+- 디스패치 오류·타임아웃·출력 매핑 실패의 fail-closed. 그것은 t1099 M2c 가 이미 다룬다(`fabc33812:internal/cli/hook.go:338-345`). Claude 하네스의 디스패치 오류 경로(현재 exit 1)도 이 SPEC 에서 바꾸지 않는다.
+- Stop 체인의 루프 상한 설계(t1099 `@MX:WARN` 이 M2d 의 몫으로 명시한 것). 단 plan.md Q1 이 MoAI 자체 상한 분기를 택하면 그 분기의 범위는 Q1 판정에서 다시 정한다.
+
+### Out of Scope — 설정 파일 쓰기 방어
+
+- 모델이 `.claude/settings*.json` 이나 `.moai/config/` 를 편집하는 것 자체를 막는 가드. 이 SPEC 은 그 면에서 온 값을 탈출 장치로 인정하지 않을 뿐이다(REQ-HSF-007). `internal/hook/pre_tool.go` 에 그런 가드가 있는지는 plan-audit 의 grep 1회로 찾지 못했을 뿐 부재가 확정되지 않았다(§F.2).
 
 ---
 
@@ -219,18 +234,22 @@ exit 0 인 이유: 이 트리의 `internal/cli/hook.go:362-366` 이 기록한 �
    git diff fabc33812 <착지 병합 커밋> -- \
      internal/codexadapter/decision.go \
      internal/codexadapter/translate.go \
+     internal/codexadapter/diagnostics.go \
+     internal/codexadapter/output.go \
      internal/cli/hook_codex_failclosed.go \
      internal/cli/hook.go
    ```
 
-   특히 (a) `DecisionBearingEvents()` 의 원소, (b) HarnessClaude·HarnessCodex 의 fatal_error 열 Outcome, (c) `writeCodexFailClosed` 의 서명과 기록 키, (d) `Render` 의 네 이벤트 출력 형태가 §B.4 와 같은지 확인한다. 하나라도 다르면 §B 와 acceptance.md 를 먼저 고친다(D-NEW-1 경로).
+   특히 (a) `DecisionBearingEvents()` 의 원소, (b) HarnessClaude·HarnessCodex 의 fatal_error 열 Outcome, (c) `writeCodexFailClosed` 의 서명과 기록 키, (d) `Render` 의 네 이벤트 출력 형태, (e) `Discard` 필드와 `RecordDiscards` 의 stderr 미러 형식이 §A.4·§B.4 와 같은지 확인한다. 하나라도 다르면 §B 와 acceptance.md 를 먼저 고친다(D-NEW-1 경로).
 
 ### F.2 위험
 
 | 위험 | 설명 | 대응 |
 |---|---|---|
-| Stop 루프 | 파싱 실패가 지속되면 매 Stop 이 차단된다. 파싱 실패 상태에서는 `stop_hook_active` 를 읽을 수 없어 가드식 조기 반환도 불가능하다 | Claude 는 호스트 상한(8회 연속 차단 후 해제, `CLAUDE_CODE_STOP_HOOK_BLOCK_CAP`, hooks-system.md:213)이 루프를 끊는다. Codex 쪽 상한은 이 plan 에서 확인하지 못했다(plan Q2). 탈출 장치(REQ-HSF-007)가 최후의 수단이다 |
-| UserPromptSubmit 잠김 | 호스트 형식 변화처럼 지속적인 원인이면 사용자의 모든 프롬프트가 차단되어 세션을 쓸 수 없다 | 차단 사유에 탈출 장치 안내를 싣는다(REQ-HSF-010). 잠김은 소리가 나고, 우회는 소리가 나지 않는다 — 이 비대칭이 fail-closed 를 택하는 근거다 |
-| 호스트 형식 변화의 파급 | `6a3603274` 가 막으려던 상황, 즉 새 호스트 버전에서 페이로드 형식이 바뀌어 매 호출이 파싱 실패하는 경우, 결정 이벤트 전부가 거부된다 | 관측 이벤트는 보존되므로 세션 시작·종료·관측 경로는 영향이 없다. 탈출 장치로 즉시 복구 가능. 기록(REQ-HSF-008)이 원인 진단의 근거가 된다 |
-| 탈출 장치의 남용 | 탈출 장치가 켜진 상태로 남으면 이 SPEC 이 없는 것과 같다 | 기본 꺼짐, 적용될 때마다 stderr·영속 기록. 모델이 켤 수 있는 면인지는 plan Q1 에서 판단한다 |
+| Stop 루프 | 파싱 실패가 지속되면 매 Stop 이 차단된다. 파싱 실패 상태에서는 `stop_hook_active` 도 `session_id` 도 읽을 수 없어 가드식 조기 반환이나 세션별 횟수 계산이 불가능하다 | Claude: 호스트 상한(8회 연속 차단 후 해제, `CLAUDE_CODE_STOP_HOOK_BLOCK_CAP`)이 루프를 끊는다. hooks-system.md:213 은 exit 2 차단을 서술하지만, JSON `decision:"block"` + exit 0 에도 상한이 걸린다는 근거는 `goal-directive.md:13` 과 그 평가기의 출력 형태(`hook_stop_goal.go:120-121`)다 — 저장소 독트린이며 이 SPEC 이 측정하지 않았다. Codex: 상한 유무를 확인하지 못했다 — **Kickoff 차단 질문 Q2**. Q1 은 Q2 결과에 조건부로 판정된다 |
+| UserPromptSubmit 잠김 | 호스트 형식 변화처럼 지속적인 원인이면 사용자의 모든 프롬프트가 차단되어 세션을 쓸 수 없다 | 차단 사유가 파싱 실패와 운영자 문서 식별자를 알린다(REQ-HSF-010). 운영자는 문서에서 탈출 장치를 찾아 켠다. 잠김은 소리가 나고, 우회는 소리가 나지 않는다 — 이 비대칭이 fail-closed 를 택하는 근거다 |
+| 호스트 형식 변화의 파급 | `6a3603274` 가 막으려던 상황, 즉 새 호스트 버전에서 페이로드 형식이 바뀌어 매 호출이 파싱 실패하는 경우, 결정 이벤트 전부가 거부된다 | 관측 이벤트는 보존되므로 세션 시작·종료·관측 경로는 영향이 없다. 탈출 장치로 복구 가능. 기록(REQ-HSF-008)이 원인 진단의 근거가 된다 |
+| 탈출 장치의 남용·자가 활성화 | 탈출 장치가 켜진 상태로 남으면 이 SPEC 이 없는 것과 같다. 모델이 설정 파일의 `env` 블록을 편집해 스스로 켜는 경로도 있다 | 기본 꺼짐, 적용될 때마다 stderr·영속 기록. 모델이 쓸 수 있는 프로젝트·로컬 설정면에서 온 값은 활성화로 인정하지 않는다(REQ-HSF-007, AC-HSF-010). **이 면을 감시하는 ConfigChange 가드는 존재하지 않는다** — §B.2 행 20 이 적었듯 ConfigChange 핸들러는 무조건 빈 출력을 낸다. 따라서 완화는 출처 제약 하나에 걸려 있다 |
+| 출처 제약의 잔여 면 | REQ-HSF-007 이 명시한 면 밖에서 활성화 값이 공급될 수 있다: 사용자 범위 `~/.claude/settings.json` 의 `env`, 호스트를 띄운 셸 환경. 설정 `env` 블록이 훅 프로세스 환경으로 언제 전파되는지(편집 즉시인지, 세션 재시작 후인지)도 측정하지 않았다 | 메커니즘 선택(plan.md Q1)에서 잔여 면을 명시하고, 판정 기록에 남긴다. 설정 파일 쓰기 자체를 막는 가드의 존재 여부는 미확정(§D) |
+| 사유 문구를 통한 우회 절차 노출 | 거부 사유는 모델이 읽는다. 사유에 활성화 절차가 실리면 방어 대상에게 우회 방법을 알려 주는 셈이다 | REQ-HSF-010 이 사유에 운영자 문서 식별자만 싣게 하고, AC-HSF-001(e)·002(e) 가 탈출 장치 식별자의 부재를 단언한다 |
 | 기존 테스트의 의도 역전 | `TestRunHookEvent_MalformedStdinGraceful` 이 pre-tool 로 `6a3603274` 의 의도를 단언한다 | acceptance.md §D 에 갱신 대상과 갱신 방향을 적었다 |
