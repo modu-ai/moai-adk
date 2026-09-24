@@ -109,7 +109,7 @@ The second command must print two lines (`event pre-commit` and the `command`). 
 
 ```yaml
 run_complete_at: 2026-09-24
-run_commit_sha: 00ad53a9e   # M1-M2 code; M3-M4 doc + evidence commit follows (backfill its SHA at sync)
+run_commit_sha: 00ad53a9e, f173cb0b3   # 00ad53a9e = M1-M2 code+tests; f173cb0b3 = M3-M4 doc + evidence
 run_status: complete
 ac_pass_count: 16
 ac_fail_count: 0
@@ -127,4 +127,19 @@ m1_to_mN_commit_strategy: two commits (code+tests+status, then doc+evidence)
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase>_
+```yaml
+sync_complete_at: 2026-09-24
+sync_commit_sha: pending-backfill-sync   # this commit cannot cite its own hash
+sync_status: complete
+b12_self_test_a: "grep -c 'SPEC-ACSNAPSHOT-COMMIT-GUARD-001' CHANGELOG.md (pre-emission) -> 0, no duplicate"
+b12_self_test_b: "grep -oE 'AC-([A-Z0-9]+-)*[0-9]+' .moai/specs/SPEC-ACSNAPSHOT-COMMIT-GUARD-001/acceptance.md | sort -u | wc -l -> 16, matches CHANGELOG entry's stated AC count"
+b12_self_test_c: "ls scripts/ac-baseline/check-staged.sh scripts/ac-baseline/install-hook.sh internal/spec/ac_baseline_commit_guard_test.go .moai/docs/ac-count-baseline-refresh.md -> all exist"
+changelog_entry_position: "top of [Unreleased] > Added, above SPEC-DUAL-HARNESS-RECOVERY-001"
+frontmatter_status_transitions:
+  spec_md: "in-progress -> completed (status field only; updated already read 2026-09-24)"
+  plan_md: "no status field present (frontmatter carries id/title/version/created/author only) - no transition applicable"
+  acceptance_md: "no status field present (frontmatter carries id/title/version/created/author only) - no transition applicable"
+canary_compliance_check: "not applicable - this SPEC defines no forward-looking policy that its own sync tests"
+```
+
+No README or docs-site change: this SPEC ships a repository-local dev-only commit-time guard (`scripts/ac-baseline/`, installed into the shared `.git/config` by the lead after the develop merge, per spec.md §A.4-3), with no user-facing surface. `grep -c 'ac-baseline\|ACSNAPSHOT-COMMIT-GUARD' README.md README.ko.md` → 0; `scripts/ac-baseline` and this SPEC ID do not appear under `docs-site/content`.

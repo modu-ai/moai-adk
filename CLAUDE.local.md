@@ -185,6 +185,7 @@ Never add files directly to the local project directories without also adding th
 scripts/ci-watch/              # Dev-only: CI watch loop scripts (5) — not distributed
 scripts/ci-autofix/            # Dev-only: CI auto-fix scripts (4) — not distributed
 scripts/jev/                   # Dev-only: TypeSafe(Jev) 로컬 전용 도구 (§29) — 템플릿 미러 없음, 사용자 프로젝트로 배포되지 않음
+scripts/ac-baseline/           # Dev-only: 커밋타임 AC-snapshot 가드(check-staged.sh·install-hook.sh) — git config 기반 pre-commit 훅으로 develop 병합 후 리드가 1회 설치, 템플릿 미러 없음, 사용자 프로젝트로 배포되지 않음 (SPEC-ACSNAPSHOT-COMMIT-GUARD-001)
 ~/.moai/.env.typesafe          # Dev-only: TypeSafe API 키 (저장소 밖, chmod 600). settings/config/템플릿에 넣지 않는다 (§29)
 .claude/skills/hns-workflow-ci-loop/                       # Dev-only: CI watch+autofix skill (removed from template; mirror kept). §2.3에 따라 moai-workflow-ci-loop → hns-* 로 이동(2026-08-15): `.claude/skills/moai*` 글롭이 매 update마다 삭제했음
 .claude/rules/local/ci-watch-protocol.md                     # Dev-only: governs scripts/ci-watch (removed from template; mirror kept)
