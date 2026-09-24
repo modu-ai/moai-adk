@@ -79,7 +79,7 @@ func newFactoryRunsCommand() *cobra.Command {
 				return err
 			}
 			defer closeFactoryInto(&err, db, "factory state")
-			opts := homestate.ReconcileOptions{Fallback: factorymsg.LeadIdentityLookupFor(root)}
+			opts := factorymsg.ReconcileOptionsFor(root)
 			if retire != "" {
 				classification, retireErr := db.RetireRunIfDead(cmd.Context(), retire, opts)
 				if retireErr != nil {
