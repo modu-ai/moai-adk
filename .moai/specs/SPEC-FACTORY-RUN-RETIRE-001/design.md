@@ -56,8 +56,9 @@ follow-up write.
 
 The reason is observable rather than stylistic. A stamp written outside the row's own transaction
 can be lost against the row it describes: the row commits `active`, the stamp fails, and the
-result is an `active` run whose owner column is empty. That row is `indeterminate` forever
-(REQ-006), is never auto-retired (REQ-005), and is therefore exactly the residue this SPEC exists
+result is an `active` run whose owner column is empty. While its lead is alive that row is
+`indeterminate` (REQ-006 — the REQ-006b boot proof cannot hold for a run with activity after the
+current boot), is never auto-retired (REQ-005), and is therefore exactly the residue this SPEC exists
 to drain — a second generator of the defect, produced by the fix. Hence REQ-002's transaction
 clause sits at the requirement layer and is recorded as deliberate in `spec.md` §G/D9.
 
@@ -141,7 +142,8 @@ This matches what the pane door already does with the pane itself: on identity e
 code has no reason to perform because it has no run stamp to clean up.
 
 Deliberately rejected for this door: *defer the stamp, leave the run unstamped*. An unstamped run
-is `indeterminate`, is never auto-retired, and accumulates — converting a live-run hazard into a
+of a live lead is `indeterminate` (the REQ-006b boot proof can reach it only after the next reboot),
+is never auto-retired while the host stays up, and accumulates — converting a live-run hazard into a
 permanent-blocking one (`spec.md` §C.2).
 
 ---
@@ -154,8 +156,10 @@ permanent-blocking one (`spec.md` §C.2).
 classify(run) -> live | dead | indeterminate
 ```
 
-The input is a `(pid, process_start)` pair from the primary column, or — when the column is empty
-— from the run's `role='lead'` peer (REQ-006). The probe is the existing
+The input is a `(pid, process_start)` pair from the primary column, or — when the column carries
+no stamp (`lead_pid` below 1) — from the run's `role='lead'` peer (REQ-006). A row with neither
+yields no probe input at all; the REQ-006b boot proof, which reads clocks rather than a process,
+decides it instead. The probe is the existing
 `homestate.ProbeProcessIdentity`, which already returns exactly this trichotomy (M-11): a
 non-live platform state short-circuits, and a live pid whose fingerprint cannot be read degrades to
 `indeterminate` rather than asserting either way.
@@ -164,7 +168,9 @@ non-live platform state short-circuits, and a live pid whose fingerprint cannot 
 |---|---|
 | pid live **and** fingerprint matches the recorded one | `live` |
 | pid dead, or pid live with a **different** fingerprint (reuse) | `dead` |
-| probe error, no fingerprint readable, or **no identity from either source** | `indeterminate` |
+| probe error, or no fingerprint readable for a complete identity | `indeterminate` |
+| **no complete identity from either source** (REQ-006), and every REQ-006b boot-proof premise holds | `dead` |
+| **no complete identity from either source**, and any REQ-006b premise false or unestablished | `indeterminate` |
 
 **The lattice is ordered by consequence, not by confidence.** `indeterminate` sits with `live`, not
 between the two, because the two errors are not symmetric: a stale run that survives has a working
@@ -194,7 +200,7 @@ code change and no test turning red. The positive form fails safe by constructio
 
 This is defect D14, and its blast radius is host-wide rather than an edge case. `ProbeProcessIdentity`
 returns `indeterminate` on any probe error, so on a host where probing routinely fails **every**
-run classifies `indeterminate` — under the earlier draft's narrower operator rule, `--retire` on
+run carrying an identity classifies `indeterminate` — under the earlier draft's narrower operator rule, `--retire` on
 that host would have retired live sessions on request.
 
 One rule, stated once, binding **every** retirement path — the resolution-time reconciler, the
@@ -232,8 +238,10 @@ exists. The result value reports **both** halves of what happened: what was reti
 left with each survivor's classification. The second half is not bookkeeping — it is what
 `ResolveActiveRun` renders into the `AMBIGUOUS_FACTORY` message (§G).
 
-A run whose `lead_pid` is `0` consults the fallback. A run with neither source is `indeterminate`
-and stays.
+A run whose `lead_pid` is below 1 consults the fallback; a partial stamp (`lead_pid` of 1 or more,
+empty `lead_process_start`) does not. A run with neither source yielding a complete identity is
+`indeterminate` and stays, unless REQ-006b proves its owner dead — every premise established, the
+run's broker file absent among them.
 
 **Rejected: move the whole reconciler into `factorymsg`.** It resolves the cycle in the wrong
 direction — the package that does not own the `runs` schema becomes the package that mutates it,
@@ -319,16 +327,21 @@ Three properties a reviewer should check for directly:
 | `RecordRun` | stamp write fails | whole transaction rolls back; no row, no partial stamp |
 | restamp seam | run row missing / update fails | launcher's existing error path; the pre-restamp row is launcher-stamped and correctly reaped |
 | non-replace door | no session identity obtainable | **refuse the launch**, leave no launcher-stamped run (REQ-002d) |
-| `classify` | probe error, unreadable fingerprint | `indeterminate` — never retired |
-| `classify` | neither column nor peer yields an identity | `indeterminate` — never retired |
-| `ReconcileActiveRuns` | fallback lookup errors for one run | that run is `indeterminate`; reconciliation continues over the rest |
+| `classify` | complete identity, but probe error or unreadable fingerprint | `indeterminate` — never retired |
+| `classify` | neither column nor peer yields a complete identity | `dead` if every REQ-006b premise holds; otherwise `indeterminate` — never retired |
+| `classify` | boot proof: boot time unknown, broker file present or unstat-able, a timestamp at or after boot, or one that does not parse | `indeterminate` — never retired |
+| `classify` | boot proof: reading the run's recorded timestamps fails | the error is returned; nothing is retired |
+| `ReconcileActiveRuns` | fallback lookup errors for one run | that run has no peer identity and reaches the boot proof, whose premise 2 then declines (the broker file exists or could not be checked), so it is `indeterminate`; reconciliation continues over the rest |
 | `ResolveActiveRun` | ≥2 survive reconciliation | `AMBIGUOUS_FACTORY` + classifications |
 | `ResolveActiveRun` | 0 active | `NO_ACTIVE_FACTORY` |
 | `moai factory --retire` | target classifies `live` **or** `indeterminate` **or** anything not `dead` | non-zero exit, run stays `active`, classification named as the reason |
 
 Every row whose condition is an *absence of knowledge* exits toward `live`. That is the single
 disposition rule behind the whole table, and it is what makes "never retires a live run" a
-structural property rather than a claim maintained by vigilance.
+structural property rather than a claim maintained by vigilance. The one `dead` exit for an
+identity-less run is not an absence of knowledge: it requires every REQ-006b premise to be
+positively established, and any premise that cannot be established falls back to `indeterminate`
+under the same rule.
 
 ---
 

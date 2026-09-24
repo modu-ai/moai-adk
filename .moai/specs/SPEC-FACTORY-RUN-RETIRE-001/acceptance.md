@@ -57,7 +57,7 @@ document-level pin above does not bind them.
 | id | command | verbatim stdout | exit | why red |
 |----|---------|-----------------|------|---------|
 | R-09 | `grep -rl btime internal/homestate --include='*_test.go'` | *(empty)* | 1 | no test on any host exercises the procfs boot-time interpretation: its only reader sits behind `//go:build !windows && !darwin`. Instrument control, same tree: `grep -rl btime internal/homestate` → `internal/homestate/boot_time_unix.go`, exit 0 |
-| R-10 | `grep -rl '"basis"' internal/homestate` | *(empty)* | 1 | the `run.retired` payload carries `classification` only; no proof basis is written anywhere |
+| R-10 | `grep -rl --exclude='*_test.go' '"basis"' internal/homestate` | *(empty)* | 1 | the `run.retired` payload carries `classification` only; no proof basis is written by any non-test file. Test files are excluded so that the new `TestRetiredEventRecordsProofBasis` cannot turn this cell green on its own. Re-measured with the exclusion at v0.13.1 (HEAD `ae61ccb0f`, whose `internal/` tree equals `a0b78213d`'s — `git diff --quiet a0b78213d HEAD -- internal` exit 0): empty, exit 1. Instrument control, same tree: `grep -rl --exclude='*_test.go' '"classification"' internal/homestate` → `internal/homestate/factory_run_retire.go`, exit 0 |
 
 Not a RED cell, recorded as the defect's source observation (`a0b78213d`):
 `grep -c "sc.Err" internal/homestate/boot_time_unix.go` → `0`, exit 1 — the scan error is never
@@ -95,7 +95,7 @@ which is the exact failure `verification-completeness.md` §2 warns about.
 | AC-015 | REQ-004/005 | M6 | release-blocking | R-05 | M6 mutation, both directions |
 | AC-016 | REQ-002b, REQ-013 | M1 | release-blocking | R-01 | M1 restamp makes stamp and lead peer name one process, driven through the build-tag-free seam on all three shapes |
 | AC-017 | REQ-005 | M2/M4 | release-blocking | R-05 | M2/M4 retire only on positive `dead`; an unenumerated classification declines by default |
-| AC-018 | REQ-006, REQ-006b | M7 | regression-guard | none (§C.1 disposition) | already green from t1168; M7 adds the two missing legs and re-runs the mutant probes |
+| AC-018 | REQ-006, REQ-006b | M7 | regression-guard | none (§C.1 disposition) | already green from t1168; M7 adds the missing legs (equal-to-boot, stat error, underivable path, two partial-stamp legs), the `indeterminate` assertion on every declining leg, and re-runs the mutant probes |
 | AC-019 | REQ-006c | M7 | release-blocking | R-09 | M7 adds the build-tag-free procfs seam and its tests; the long-line leg finds `btime`, the read-error leg names its cause |
 | AC-020 | REQ-010b | M7 | release-blocking | R-10 | M7 writes `basis` on every retirement path; each proof's event carries its own token |
 
@@ -131,9 +131,11 @@ which is the exact failure `verification-completeness.md` §2 warns about.
   still `active` afterwards and the dead-owner run is `retired`. The live owner is a controlled
   long-lived process held open across the measurement, not an assumption.
 
-- **AC-006** Given an `active` run whose owner identity cannot be probed (no stamp and no lead peer),
+- **AC-006** Given an `active` run whose owner identity cannot be probed (no stamp and no lead peer)
+  and for which the REQ-006b boot proof is not established (here: no boot-time source is supplied),
   When reconciliation runs, Then that run is still `active` afterwards and is reported
-  `indeterminate`.
+  `indeterminate`. An identity-less run whose boot proof **does** hold is `dead`, not
+  `indeterminate` — that case is AC-018's.
 
 - **AC-007** Given a factory database created at schema version 2 holding two unstamped `active`
   rows, each with a registered `role='lead'` peer whose PID is dead, When a worker joins with no
@@ -286,8 +288,14 @@ which is the exact failure `verification-completeness.md` §2 warns about.
   from either REQ-006 source, no broker file, and recorded timestamps all strictly earlier than a
   supplied boot time, When reconciliation runs, Then each is retired `dead` and a live stamped run
   seeded beside them stays `active`; and When the operator `--retire` names one, Then it is retired
-  `dead` rather than refused. And for each premise of REQ-006b broken on its own, the run stays
-  `active` and is reported `indeterminate`:
+  `dead` rather than refused. A **partial stamp** (`lead_pid` of 1 or more, empty
+  `lead_process_start`) is not routed to the peer lookup (REQ-006): with no broker file and every
+  timestamp before the boot it is retired `dead`; with a broker file present — seeded with a
+  `role='lead'` peer whose PID is dead — it stays `active` and is reported `indeterminate`. And for
+  each premise of REQ-006b broken on its own, the run stays `active` and is reported
+  `indeterminate`. Every declining leg asserts **both** halves — `status = 'active'` and the
+  `indeterminate` classification (plan.md M7 item 3); a leg that asserts the status alone does not
+  satisfy this criterion:
 
   | Broken premise | Test (package `internal/homestate` unless noted) |
   |---|---|
@@ -296,31 +304,40 @@ which is the exact failure `verification-completeness.md` §2 warns about.
   | lead record may exist (check reports it present) | `TestBootProofDeclinesWithoutEveryPremise/lead_record_may_exist`; `internal/factorymsg` `TestResolveActiveRunBootProofDeclinesWhenBrokerExists` |
   | no lead-record check wired | `TestBootProofDeclinesWithoutEveryPremise/lead-record_check_not_wired` |
   | broker check fails with an error other than not-exist | **new** — `internal/factorymsg` `TestLeadRecordAbsentForTreatsStatErrorAsPossibleRecord` |
+  | broker path cannot be derived (unsafe run id, e.g. `../x`) | **new** — `internal/factorymsg` `TestLeadRecordAbsentForRejectsUnderivableBrokerPath` |
+  | partial stamp whose broker file exists (dead `role='lead'` peer seeded) | **new** — `internal/factorymsg` `TestPartialStampWithBrokerStaysIndeterminate` |
   | an event / worker heartbeat / card update / run-row update after boot | `TestBootProofDeclinesWithoutEveryPremise/{event_after_boot, worker_heartbeat_after_boot, card_updated_after_boot, run_row_touched_after_boot}` |
   | a timestamp **equal** to the boot instant | **new** — subtest `timestamp_equal_to_boot` of `TestBootProofDeclinesWithoutEveryPremise` |
   | a timestamp that does not parse | `TestBootProofDeclinesWithoutEveryPremise/unparsable_timestamp` |
 
-  The retirement legs are `TestReconcileRetiresIdentitylessRunsThatPredateBoot`,
-  `TestBootProofNeverOverridesAnIdentity`, `TestRetireRunIfDeadAcceptsBootProof`, and in
-  `internal/factorymsg` `TestResolveActiveRunReapsPreBootIdentitylessRuns` (the live stamped run is
-  the one joined) and `TestResolveActiveRunPreBootRowsAloneFailClosedAsNoActive` (boot-proven rows
-  alone leave zero `active` rows and resolution fails closed with `NO_ACTIVE_FACTORY`, AC-009's
-  leg).
+  The **four retirement legs** are `TestReconcileRetiresIdentitylessRunsThatPredateBoot` and
+  `TestRetireRunIfDeadAcceptsBootProof` (`internal/homestate`), and
+  `TestResolveActiveRunReapsPreBootIdentitylessRuns` (the live stamped run is the one joined) and
+  `TestResolveActiveRunPreBootRowsAloneFailClosedAsNoActive` (boot-proven rows alone leave zero
+  `active` rows and resolution fails closed with `NO_ACTIVE_FACTORY`, AC-009's leg) in
+  `internal/factorymsg`. The partial-stamp retirement leg is **new** —
+  `internal/factorymsg` `TestPartialStampWithoutBrokerIsBootProven`. Separate from both is the
+  **identity-precedence leg**, `TestBootProofNeverOverridesAnIdentity`: a run with a complete
+  identity is judged by that identity and never reaches the proof, so it stays green under mutant 1.
 
   Premise 3 of REQ-006b ("at least one timestamp is recorded") has no leg of its own, and that is a
   stated limit rather than an omission: an existing run row always contributes its own `created_at`,
   so the premise cannot be broken while the row exists, and an empty timestamp there is the
   unparseable leg above.
 
-  **Mutant probes.** Mutant 1 — the proof always declines: the four retirement legs go red,
-  reproducing the operator's `AMBIGUOUS_FACTORY` over five `indeterminate` rows (t1168
-  `mutant.txt`). Mutant 2 — the lead-record premise dropped: `lead_record_may_exist` and
+  **Mutant probes.** Mutant 1 — the proof always declines: the four retirement legs named above go
+  red (and the new partial-stamp retirement leg with them), reproducing the operator's
+  `AMBIGUOUS_FACTORY` over five `indeterminate` rows (t1168 `mutant.txt`); the identity-precedence
+  leg stays green. Mutant 2 — the lead-record premise dropped: `lead_record_may_exist` and
   `TestResolveActiveRunBootProofDeclinesWhenBrokerExists` go red (t1168 `mutant2.txt`). Mutant 3 —
   post-boot activity ignored: the four `*_after_boot` subtests go red (t1168 `mutant3.txt`).
   Mutant 4 — "strictly earlier" loosened to "not later": `timestamp_equal_to_boot` goes red.
-  Mutant 5 — the broker check treats any stat error as absence: the stat-error test goes red. The
-  t1168 files are local evidence; the run phase re-executes mutants 1-3 on its own tree rather than
-  citing them, and runs 4-5 for the first time.
+  Mutant 5 — the broker check treats a failed check as absence, applied separately at each of its
+  two failure sites: as a stat error, the stat-error test goes red; as an underivable broker path,
+  `TestLeadRecordAbsentForRejectsUnderivableBrokerPath` goes red. Mutant 6 — a partial stamp routed
+  to the peer lookup: `TestPartialStampWithBrokerStaysIndeterminate` goes red, because the seeded
+  dead peer then retires the run. The t1168 files are local evidence; the run phase re-executes
+  mutants 1-3 on its own tree rather than citing them, and runs 4-6 for the first time.
 
 - **AC-019** Given the procfs boot-time interpretation driven through its build-tag-free seam with
   supplied source content, When (i) the `btime` record follows a line longer than 64 KiB (the test
@@ -341,12 +358,15 @@ which is the exact failure `verification-completeness.md` §2 warns about.
   stamp probes `dead`, one unstamped whose `role='lead'` peer identity probes `dead`, and one
   identity-less run the REQ-006b boot proof retires — When reconciliation runs, Then each run's
   `run.retired` event payload parses as JSON carrying `"classification":"dead"` and a `basis` of
-  `stamp`, `peer`, and `boot` respectively; and When the operator `--retire` retires a run, Then its
-  event carries the `basis` of the proof that classified it. Test (new):
+  `stamp`, `peer`, and `boot` respectively; and When the operator `--retire` retires a
+  **boot-proven** identity-less run through `RetireRunIfDead`, Then that run's event carries
+  `"basis":"boot"`. The operator leg uses a boot-proven run deliberately: a stamp-dead run there
+  would carry `stamp` under a correct implementation and under a broken one alike. Test (new):
   `TestRetiredEventRecordsProofBasis`, with an operator-path subtest.
 
   **Mutant probes.** Write a constant `basis` (for example always `stamp`): the `peer` and `boot`
-  legs go red. Omit the key: every leg goes red. Drop or rename `classification`: every leg goes
+  legs go red. Pass a constant `stamp` on the operator path only (`RetireRunIfDead`), leaving the
+  reconciler correct: the operator subtest goes red while the three reconciler legs stay green. Omit the key: every leg goes red. Drop or rename `classification`: every leg goes
   red, which is the byte-compatibility half of REQ-010b.
 
 ## §D.1 Mutation criteria (both directions)
@@ -399,7 +419,7 @@ least one REQ. The AC count exceeds the Tier M ceiling of 16, so this SPEC is **
 - The AC-017 mutant probe run and recorded: with the reject-list mutant in place, AC-005 / AC-006 /
   AC-010 green and AC-017 red. A run that cannot show that divergence has not exercised REQ-005.
 - **v0.13.0 amendment run**: AC-019 and AC-020 recorded PASS with command plus verbatim output,
-  each with its mutant probes observed red; AC-018 recorded as a regression-guard with mutants 1-5
+  each with its mutant probes observed red; AC-018 recorded as a regression-guard with mutants 1-6
   observed red on the run tree and restored green — never as a bare pass.
 - `go test ./internal/homestate/... ./internal/factorymsg/... ./internal/cli/...` passes in the run
   tree; CI supplies the full-suite and cross-platform verdict.

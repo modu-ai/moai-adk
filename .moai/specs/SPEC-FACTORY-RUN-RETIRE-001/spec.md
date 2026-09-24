@@ -1,7 +1,7 @@
 ---
 id: SPEC-FACTORY-RUN-RETIRE-001
 title: "Factory run retirement — owner-liveness reconciliation so a dead lead's run leaves 'active'"
-version: "0.13.0"
+version: "0.13.1"
 status: in-progress
 created: 2026-09-23
 updated: 2026-09-25
@@ -186,15 +186,30 @@ is written against the table above.
   D14 defect was exactly that: an earlier draft bound the reconciler to reject `live` and
   `indeterminate` while binding the operator command to reject `live` alone, so `indeterminate` fell
   through to retirement on the command. The consequence is host-wide rather than an edge case — on
-  a host where the liveness probe fails consistently, **every** run classifies `indeterminate`, so
+  a host where the liveness probe fails consistently, **every** run carrying an identity classifies
+  `indeterminate` (the REQ-006b boot proof reads clocks, not the probe, and is the one exception), so
   `--retire` would retire anything asked of it including live sessions, and §F's "never to retiring
   a live run" would be false for that entire host.
-- **REQ-006** (Event-driven): **When** a run row carries no owner stamp — the shape of every row
-  written before this SPEC lands — the reconciler shall take the run's registered `role='lead'` peer
-  identity (PID plus process start) as the liveness source. **When** neither source yields a
-  complete identity (a PID together with a non-empty process start), the reconciler shall classify
-  the owner `dead` exactly when the REQ-006b boot proof holds for that run, and `indeterminate` in
-  every other case.
+- **REQ-006** (Event-driven): **When** a run row carries no owner stamp — `lead_pid` below 1, the
+  shape of every row written before this SPEC lands — the reconciler shall take the run's registered
+  `role='lead'` peer identity (PID plus process start) as the liveness source. A row whose
+  `lead_pid` is 1 or more carries an owner stamp and shall not be routed to the peer, even when its
+  `lead_process_start` is empty. **When** neither source yields a **complete identity** — a PID of 1
+  or more together with a non-empty process start — the reconciler shall classify the owner `dead`
+  exactly when the REQ-006b boot proof holds for that run, and `indeterminate` in every other case.
+
+  Two row shapes therefore reach the proof: an unstamped row whose peer lookup yields no complete
+  identity, and a **partial stamp** — `lead_pid` of 1 or more with an empty `lead_process_start`.
+  Current builds write the partial stamp whenever the recording process cannot read its own
+  fingerprint: `recordFactoryRunStart` (`internal/cli/factory.go`) stamps
+  `homestate.CurrentProcessFingerprint()`, which returns the empty string on any non-live probe of
+  its own process (`internal/homestate/profile_lease.go`). Sending the partial stamp to the proof
+  without consulting the peer is sound because REQ-006b premise 2 requires the very broker file the
+  peer lookup reads to be absent: a run the proof retires cannot have had a peer record to consult,
+  and a run whose broker file exists stays `indeterminate` — never a more permissive answer than a
+  peer-based classification would have given. The argument holds only while the peer lookup and the
+  premise-2 check name the same broker file; moving the peer store out of that file would break it
+  without any signal, which is why AC-018 carries a partial-stamp leg on each side of premise 2.
 - **REQ-006b** (Event-driven): **When** a run has no complete owner identity from either REQ-006
   source, the reconciler shall classify its owner `dead` only if **all four** of the following
   premises are established for that run, and shall classify it `indeterminate` if any premise is
@@ -217,11 +232,15 @@ is written against the table above.
   from a positive fact — every process that could have owned the run existed before the current
   boot — never from the absence of evidence. §C.3 records why this is not the rejected run-lifetime
   alternative (b).
-- **REQ-006c** (Unwanted): The platform boot-time reader shall not report a boot time it did not
-  read in full. **When** it cannot read its source completely, it shall report the boot time as
-  unavailable — which disables the REQ-006b proof on that host — and shall report the read failure
-  as the cause, distinguishable from a source that was read completely and carries no boot-time
-  record. A long line preceding the boot-time record shall not cause the record to be lost: on the
+- **REQ-006c** (Unwanted): The platform boot-time reader shall not report a boot time from a source
+  whose read failed before the boot-time record was found. **When** a read error occurs before the
+  boot-time record is found, the procfs interpretation seam shall report the boot time as
+  unavailable with that read error as its cause, distinguishable from a source read to its end that
+  carries no boot-time record; the platform reader then reports the boot time unavailable, which
+  disables the REQ-006b proof on that host. The cause is the seam's to report — the platform reader
+  keeps its available/unavailable answer and does not itself carry the cause. Once the boot-time
+  record has been read in full the source need not be read further, and a read failure after that
+  point does not withdraw it. A long line preceding the boot-time record shall not cause the record to be lost: on the
   procfs source, a line longer than 64 KiB ahead of the `btime` record (the `intr` line reaches
   that length on hosts with many interrupt sources) shall not prevent the record from being found.
   The procfs interpretation shall be reachable from a build-tag-free seam that takes the source's
@@ -310,7 +329,7 @@ it is a second entry to the same mechanism, not a second mechanism.
 | **(b) Run lifetime / TTL** | Wrong predicate for this domain. A lead session legitimately idles for hours between dispatches, so any TTL short enough to unblock a user promptly is short enough to retire a live lead's run — a direct REQ-005 violation. A TTL long enough to be safe does not unblock the user at all. Time is not evidence of death here; process identity is. |
 | **(c) Explicit operator command alone** | Necessary but insufficient. The operator meets this defect as an opaque `AMBIGUOUS_FACTORY` refusal; requiring them to already know a maintenance verb exists puts the cure behind the same knowledge gap as the disease. Retained as the `indeterminate`-residue surface (REQ-008), demoted from primary. |
 | **(d) Widen `ResolveActiveRun` to pick one of several active runs** (newest, or the one matching `MOAI_KANBAN_ID`) | Makes the symptom disappear without touching the cause, and silently joins a worker to an arbitrary run. Explicitly forbidden by the card constraint and by REQ-014: two active runs IS ambiguous, and the error is correct. |
-| **(e) Owner identity from the broker `peers` row alone, with no `runs` column** | Simpler (no schema change) and it is the REQ-006 fallback — but it cannot see a run whose record was written and whose launch then failed before the peer was registered (`recordFactoryRunStart` at `internal/cli/cc.go:191` precedes `execOrSpawnClaude`). That path leaves a permanently-`indeterminate` row, i.e. a second generator of the same defect. The stamped column closes it; the peer lookup is kept as the legacy-row fallback where the column is empty. |
+| **(e) Owner identity from the broker `peers` row alone, with no `runs` column** | Simpler (no schema change) and it is the REQ-006 fallback — but it cannot see a run whose record was written and whose launch then failed before the peer was registered (`recordFactoryRunStart` at `internal/cli/cc.go:191` precedes `execOrSpawnClaude`). That path leaves an `indeterminate` row for as long as the host stays up — the REQ-006b boot proof can reach it only after the next reboot — i.e. a second generator of the same defect. The stamped column closes it; the peer lookup is kept as the legacy-row fallback where the column is empty. |
 | **(f) One owner stamp with no per-platform branch** (the first draft's design) | Rejected on measurement, not on taste: §A.1 shows the launcher and the session are the same process on POSIX and two different processes on Windows. A single unconditional stamp therefore names a process that can die while the session lives, which retires a live run — a direct REQ-005 violation — and puts the primary and fallback identity sources on different processes. REQ-002b makes the branch explicit instead. |
 
 ### C.1 Sub-decision — which identity the run row stamps
@@ -377,10 +396,11 @@ REQ-002d, and it matches what the code already does on its failure path: on iden
 REQ-002d adds the run-state half of that refusal — the run must not be left carrying the launcher's
 identity — which the current code has no reason to do because it has no run stamp to clean up yet.
 
-Rejected for this door: **deferring the stamp and leaving the run unstamped**. An unstamped run is
-`indeterminate` under REQ-006, so it is never auto-retired (REQ-005) and accumulates as exactly the
-residue this SPEC exists to drain — it converts a live-run hazard into a permanent-blocking one
-rather than removing it.
+Rejected for this door: **deferring the stamp and leaving the run unstamped**. An unstamped run of a
+live lead is `indeterminate` under REQ-006 — the REQ-006b boot proof cannot hold for a run whose
+activity follows the current boot — so it is never auto-retired while its host stays up (REQ-005)
+and accumulates as exactly the residue this SPEC exists to drain — it converts a live-run hazard
+into a blocking one that only a reboot clears, rather than removing it.
 
 ### C.3 Sub-decision — the boot proof is not a run lifetime (added v0.13.0, card t1169)
 
@@ -473,7 +493,8 @@ Each Gap in `.moai/reports/t1107/verdict.md` §4 is dispositioned here:
   around the launcher's deferred restore paths is not exercised.
 - Same-package semantic clash with t1082 on `internal/factorymsg/store.go` — see §E.
 - `ProbeProcessIdentity` returns `indeterminate` on any probe error. A host where probing routinely
-  fails would never auto-retire anything; this degrades to today's behaviour plus an explicit
+  fails would never auto-retire a run that carries an identity (only an identity-less run the
+  REQ-006b boot proof establishes, which consults no probe); this degrades to today's behaviour plus an explicit
   operator surface, and never to retiring a live run. That last clause is now true **by
   construction** rather than by assertion: REQ-005 binds every retirement path, the operator command
   included, so there is no longer a surface that accepts `indeterminate` (the D14 defect).
@@ -487,11 +508,21 @@ Each Gap in `.moai/reports/t1107/verdict.md` §4 is dispositioned here:
   timestamps and the reported boot time to be on one clock. On a host without a battery-backed
   real-time clock, a run recorded after boot but before time synchronisation corrects the clock can
   carry timestamps that read earlier than the corrected boot instant, and the proof would then
-  retire a live run. The exposure is bounded to rows with **no identity at all**: current builds
-  stamp every run they record, except the REQ-002d refused launch, which is dead by construction —
-  so it reaches only a lead still running from a binary older than this SPEC's owner stamp, on such
-  a host. The `boot` basis (REQ-010b) is what lets an operator find such a retirement afterwards.
+  retire a live run. The exposure is bounded to rows with **no complete identity** (REQ-006) and
+  **no broker file** (REQ-006b premise 2): current builds stamp every run they record with a
+  complete identity, except the REQ-002d refused launch, which is dead by construction, and a
+  record-time fingerprint failure, which writes a PID without a process start (the partial stamp,
+  REQ-006) — so it reaches a lead still running from a binary older than this SPEC's owner stamp,
+  or a partially-stamped lead whose broker file was never created, on such a host. The `boot` basis
+  (REQ-010b) is what lets an operator find such a retirement afterwards.
   Source: `.moai/reports/t1168/verdict.md` Residual-risk.
+- **Known pre-existing defect, out of this amendment's scope — `--retire` on an already-retired
+  run appends a second `run.retired` event.** `RetireRunIfDead` classifies over every status, so on
+  a run already `retired` whose owner still probes `dead`, the `active → retired` update changes no
+  row while the event is appended again. REQ-010 and REQ-010b read as covering only a transition's
+  event, so this is a defect against them, but it predates v0.13.0 and the boot proof does not
+  change it. Recorded (plan-audit iter-1 of card t1169, D11) rather than fixed: a separate card is
+  the lead's call. No v0.13.x acceptance criterion depends on it either way.
 - **The linux and windows boot-time sources were cross-compiled, not exercised, before t1168
   merged.** `TestSystemBootTimeIsInThePast` ran on darwin only; the procfs and windows readers were
   built for their targets and never run. REQ-006c closes the procfs interpretation on any host
@@ -710,7 +741,26 @@ with, met in the run phase and evidenced below rather than asserted:
   and AC-020 (`basis` per proof). Counts: REQ 16 → 19, AC 17 → 20 (22 AC identifiers counting
   AC-015a/b), inside the Tier L ceilings of 25. `status:` moves `completed → in-progress` under the
   amendment transition (`spec-frontmatter-schema.md` § Status Enum and § Status Transition Ownership
-  Matrix), with `amendment_of:` and the Amendments record below. Commit: this revision.
+  Matrix), with `amendment_of:` and the Amendments record below. Commit: `ae61ccb0f`.
+- 2026-09-25 — v0.13.1 — manager-spec — **plan-audit iter-1 revision, card t1169** (verdict FAIL
+  0.80, `.moai/reports/t1169/plan-audit-iter1.md`). **D1 closed**: every statement that an
+  identity-less run is always `indeterminate` now reads "`dead` when the REQ-006b boot proof holds,
+  `indeterminate` otherwise" — `design.md` §E.1 lattice, §F fallback note, §I failure table and the
+  §C.1 / §D stamp-loss notes, `plan.md` M2, `spec.md` §C (alternative (e)), §C.2 and §F, plus
+  `acceptance.md` AC-006's Given and a dated note in `research.md`; the Amendments scope row now
+  includes `design.md`. **D2 closed**: REQ-006 defines "owner stamp" (`lead_pid ≥ 1`) and "complete
+  identity", names the partial stamp and why routing it to the proof is sound, §F's exposure
+  sentence is corrected, and AC-018 gains a partial-stamp leg on each side of premise 2 with
+  mutant 6 (a partial stamp routed to the peer) to separate them. **D3**:
+  M7 item 3 obliges every declining leg to assert the `indeterminate` classification. **D4**:
+  AC-020's operator leg is fixed on a boot-proven run asserting `"basis":"boot"`, with the
+  constant-`stamp`-on-operator-path mutant named. **D6**: REQ-006c's read scope and its reporter
+  (the seam) now match AC-019 (ii) and M7 item 2. **D7-D10**: mutant 1's four retirement legs named
+  and the identity-precedence leg separated; R-10 restricted to non-test files and re-measured;
+  M7's procfs seam file made unconditional; AC-018 gains an underivable-broker-path leg. **D11**
+  (pre-existing: a second `run.retired` on re-retire) recorded in §F as out of scope, not fixed.
+  **D5** (§E.4 `sync_commit_sha` placeholder) is manager-docs' field and is left untouched here.
+  Counts unchanged: REQ 19, AC 20 (22 identifiers). Commit: this revision.
 
 ### Amendments
 
@@ -719,4 +769,4 @@ with, met in the run phase and evidenced below rather than asserted:
 | prior completed version | 0.12.0 |
 | prior_completed_sha | `85414b3e6` (`docs(SPEC-FACTORY-RUN-RETIRE-001): sync-phase artifacts, 3-phase close (card t1107)`) — the close commit itself; `progress.md` §E.4 still carries `sync_commit_sha: pending-backfill-sync`, so this value is read from `git log`, not from the progress record |
 | rationale | Card t1168 retired identity-less legacy runs through a boot proof the literal REQ-006 forbade (it required `indeterminate` whenever neither source yields an identity). The behaviour is correct and is kept; the SPEC is brought into line with it, and the two follow-ups t1168 left open — the reader's error and long-line path, and an event that does not say which proof fired — are specified for a run phase. |
-| scope | `spec.md` REQ-006 rewrite, REQ-006b / REQ-006c / REQ-010b added, §C.3, two §F items; `acceptance.md` AC-018..AC-020 with their evidence cells, matrix, traceability and counts; `plan.md` milestone M7; `progress.md` t1169 plan-phase note. `design.md` and `research.md` untouched. No Go source is changed by this amendment. |
+| scope | `spec.md` REQ-006 rewrite, REQ-006b / REQ-006c / REQ-010b added, §C.3, three §F items, and the qualifiers in §C, §C.2 and REQ-005's rationale; `acceptance.md` AC-018..AC-020 with their evidence cells, matrix, traceability and counts, and AC-006's Given; `plan.md` milestones M2 and M7; `design.md` §C.1, §D, §E.1, §E.2, §F and §I (every statement that an identity-less run is always `indeterminate`); `research.md` one dated note under M-08's legacy-row sentence; `progress.md` t1169 plan-phase note. No Go source is changed by this amendment. |
