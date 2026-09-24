@@ -1,7 +1,7 @@
 ---
 id: SPEC-HOOK-DIAG-SINK-001
 title: "훅 경로 진단 레코드의 파일 싱크 기록 — 무신호 해소"
-version: "0.3.1"
+version: "0.3.3"
 status: draft
 created: 2026-09-24
 updated: 2026-09-24
@@ -59,6 +59,30 @@ tier: M
   run-phase 실 바이너리 관측 몫 — 을 §4.1 과 `acceptance.md` §Gaps 에 적었다.
   요구사항·AC 수는 불변(15 / 16). `internal/cli/logging.go` 의 `defaultLogLevel` 행 번호
   인용을 14 → 15 로 정정했다(나머지 8건의 행 번호 인용은 재측정 결과 정확).
+- 2026-09-24 — AC-HDS-016 모집단 재설계 (v0.3.2). 델타 감사가 두 겹의 결함을 실측했다.
+  **(a) 기준선 미재현** — v0.3.1 이 적은 "`io.Discard` 3행(세 파일)"은 실측 **2행**이었고
+  `factory_messages.go` 는 그 집합에 없었다(그 주석은 토큰을 쓰지 않고 산문으로 서술한다).
+  재지 않고 적은 값이다. **(b) 모집단 미폐쇄** — 토큰으로 모집단을 잡는데 대상 하나가 그
+  토큰을 안 쓰므로 같은 계열이 사정거리 밖에 남았고, 실제로 `pre_tool.go:442`(폐기를 사실로
+  놓고 설계 판단을 얹은 주석)가 두 명령 어디에도 안 잡혔다. **D1 과 같은 계열의 반대
+  방향**(과다 포착 ↔ 과소 포착)이다. 정확한 토큰 일치를 포기하고 **과다 포착 그물
+  (`git grep -niE 'discard' <SHA> -- internal/hook`, 22행/13파일) + 전수 판정 기록**으로
+  바꿨다 — 기계적 축은 판정 기록 행 수 = 그물 크기와 지정 4행의 분류이고, 무엇이 갱신
+  대상인지는 사람이 읽는다. 그물은 **기준선 SHA 에 고정**한다(M1 이 주석을 고치면 그물이
+  움직여 행 수 일치가 공허해진다). `session_start.go:420` 은 판정 유보로 명시했다.
+  요구사항·AC 수 불변(15 / 16).
+- 2026-09-24 — 그물 차이 귀속 정정 (v0.3.3). v0.3.2 가 "감사 측정 21 과 그물 22 의 차이는
+  하위 디렉터리 `quality/gate.go` 1행"이라고 적었으나 **틀렸다** — 감사 명령도
+  `internal/hook/` 을 재귀로 훑으므로 `quality/` 는 이미 포함돼 있었고, 실제 원인은 감사
+  명령의 **주석 한정 필터**(`| grep -E '//'`)다. 떨어진 1행은
+  `internal/hook/handoff_inject.go:92` 의 사용자 표시 문자열이다. 이 오답이 확증처럼 보인
+  이유는 **두 설명이 각각 다른 1행을 빼고 똑같이 21 을 내기** 때문이며, 수치 재현을 설명의
+  참으로 읽은 것이 오류의 성질이다. 아울러 §Gaps 에 (a) 그물이 주석뿐 아니라 **문자열
+  리터럴도 포착**한다는 사실(모집단을 "주석 집합"으로 읽으면 그물을 다시 좁히려는 유혹이
+  생기고, 그 순간 AC-016 초판의 과소 포착이 재현된다)과 (b) 이 SPEC 에서 모집단 경계가
+  네 번 문제가 된 계열(과다 포착 → 과소 포착 → 형식 불일치 → 귀속 오류)을 적었다.
+  `quality/gate.go` 포함 결정은 이 귀속과 독립이므로 그대로 유지한다.
+  요구사항·AC 수 불변(15 / 16), 그물 크기 22 불변.
 
 ## 1. 배경 (Context)
 
@@ -150,10 +174,14 @@ info/debug 171곳은 훅이 아니어도 기본 설정에서 침묵한다. 이�
   있고 `PruneStats` 가 건수를 보고한다.
 - `internal/config/defaults.go:262` — `DefaultTraceRetentionDays = 30`(보존 상수 선례).
 - `internal/config/envkeys.go:485` — `EnvClaudeProjectDir = "CLAUDE_PROJECT_DIR"`.
-- `internal/hook/` 주석 3곳 — **현재의 폐기 동작을 사실로 서술하므로 M1 이후 거짓이 된다.**
-  `instructions_loaded.go`(감사 행을 따로 쓰는 이유), `config_change.go`(`runReload` 기록
-  근거), `factory_messages.go`(열화 반환 직전 — **"Closing that is card t1144"** 라고 적혀
-  있고 이 SPEC 이 바로 그 카드다). 지우지 않고 새 사실로 갱신한다(AC-HDS-016).
+- `internal/hook/` 의 **`discard` 언급 22행 / 13파일**(기준선 `bbc855f45` 실측) — 이 중
+  일부가 **현재의 폐기 동작을 사실로 서술하므로 M1 이후 거짓이 된다.** 확인된 갱신 대상 4곳:
+  `instructions_loaded.go:48`(감사 행을 따로 쓰는 이유), `config_change.go:192`(`runReload`
+  기록 근거), `factory_messages.go:144`(열화 반환 직전 — **"Closing that is card t1144"**,
+  이 SPEC 이 바로 그 카드), `pre_tool.go:442`(폐기를 사실로 놓고 `gateNotice` 를 slog 대신
+  구조화 출력에 태우는 **설계 판단**을 얹었다). `session_start.go:420` 은 폐기 주체를 셸
+  래퍼 stderr 로 돌리는 과거형 서술이라 **판정 유보**다. 지우지 않고 새 사실로 갱신하며,
+  전수 판독은 AC-HDS-016 이 판정한다.
 - `internal/cli/logging_test.go` — **기존 통과 테스트 2종. 둘 다 이 SPEC 과 직접 맞물린다.**
   - `TestLoggingHandlerSelection` — `resolveLoggingDecision` 의 **결정값**(`dest`)을 단언하는
     표 구동 테스트. 훅 케이스 3건(`hook_discards`, `hook_behind_a_flag_discards`,

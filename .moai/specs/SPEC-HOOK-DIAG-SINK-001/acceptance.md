@@ -1,4 +1,4 @@
-# SPEC-HOOK-DIAG-SINK-001 — 인수 기준 (v0.3.1)
+# SPEC-HOOK-DIAG-SINK-001 — 인수 기준 (v0.3.3)
 
 > **개정 사유 (v0.3.0)**: 감사 D2·D3. 두 가지를 고쳤다.
 >
@@ -216,18 +216,25 @@ REQ-HDS-001 이 훅 목적지를 바꾸므로 **이 3건은 M1 에서 반드시 
 
 ### (2) 주석 — M1 에서 거짓이 된다 (테스트는 깨지지 않으므로 더 조용하다)
 
-같은 검사가 프로덕션 주석 3곳을 찾아냈다. 전부 **현재의 폐기 동작을 사실로 서술**한다.
+`resolveLoggingDecision` 역방향 검사가 프로덕션 주석 **3곳**을 찾아냈고, 델타 감사가 그 검사의
+사정거리 밖에서 **1곳을 더** 찾아냈다(합 4곳). 전부 **현재의 폐기 동작을 사실로 서술**한다.
 
 | 위치 | 서술 | M1 이후 |
 |---|---|---|
-| `internal/hook/instructions_loaded.go` (`appendRuleLoadAudit` 직전) | "The slog record above never reaches a reader … routes every `moai hook` invocation to io.Discard, unconditionally" | 거짓 — warn 이상은 싱크에 도달한다 |
-| `internal/hook/config_change.go` (`runReload` 기록 근거) | "routes EVERY record emitted under `moai hook` to io.Discard, unconditionally … MOAI_LOG_LEVEL does not re-open the carve-out" | 앞 절은 거짓, `MOAI_LOG_LEVEL` 절은 **참으로 남는다**(REQ-HDS-002) |
-| `internal/hook/factory_messages.go` (열화 반환 직전) | "a hook process discards slog records too …, so a degraded inspection is still not reported anywhere. **Closing that is card t1144.**" | 거짓 — 이 SPEC 이 바로 그 카드다 |
+| `internal/hook/instructions_loaded.go:48` (`appendRuleLoadAudit` 직전) | "The slog record above never reaches a reader … routes every `moai hook` invocation to io.Discard, unconditionally" | 거짓 — warn 이상은 싱크에 도달한다 |
+| `internal/hook/config_change.go:192` (`runReload` 기록 근거) | "routes EVERY record emitted under `moai hook` to io.Discard, unconditionally … MOAI_LOG_LEVEL does not re-open the carve-out" | 앞 절은 거짓, `MOAI_LOG_LEVEL` 절은 **참으로 남는다**(REQ-HDS-002) |
+| `internal/hook/factory_messages.go:144` (열화 반환 직전) | "a hook process discards slog records too …, so a degraded inspection is still not reported anywhere. **Closing that is card t1144.**" | 거짓 — 이 SPEC 이 바로 그 카드다 |
+| `internal/hook/pre_tool.go:442` (`gateNotice` 선언 직전) — **델타 감사 추가 적발** | "the `moai hook` path installs a discarding handler, so a log record here would be silent by construction" | 거짓 — 그리고 이 주석은 폐기를 **설계 근거**로 삼는다(`gateNotice` 를 slog 대신 구조화 출력에 태우는 이유) |
 
-세 주석 모두 **자기 옆 코드가 존재하는 이유**를 설명한다(감사 행을 따로 쓰는 이유 등). 따라서
-지우는 것이 아니라 **새 사실로 갱신**한다 — 감사 행이 필요한 이유는 남고(싱크는 레벨 게이트
-뒤에 있으며 구조화 감사 행과 용도가 다르다), "어디에도 도달하지 않는다"는 부분이 바뀐다.
-AC-HDS-016 이 판정한다.
+**이 네 번째가 모집단 설계를 바꿨다.** `pre_tool.go:442` 는 `io.Discard` 도 `card t1144` 도
+쓰지 않아 v0.3.1 의 두 토큰 명령 어디에도 잡히지 않았다 — 토큰으로 모집단을 잡으면 같은
+계열이 조용히 빠진다는 실증이다. AC-HDS-016 이 그래서 **과다 포착 그물 + 전수 판정 기록**
+으로 바뀌었다(22행 / 13파일).
+
+네 주석 모두 **자기 옆 코드가 존재하는 이유**를 설명한다(감사 행을 따로 쓰는 이유,
+`gateNotice` 가 구조화 출력을 타는 이유). 따라서 지우는 것이 아니라 **새 사실로 갱신**한다 —
+그 이유는 남고(싱크는 레벨 게이트 뒤에 있으며 구조화 출력·감사 행과 용도가 다르다),
+"어디에도 도달하지 않는다"는 부분이 바뀐다. AC-HDS-016 이 판정한다.
 
 > 이 저장소는 거짓 주석을 결함으로 다룬다 — `SPEC-HOOK-TRACE-FLUSH-001` 이 `fan_in=24`
 > 거짓 수치를 별도 요구사항으로 고친 선례가 있다.
@@ -508,24 +515,99 @@ grep **3**. 판정: 1단 = 1 · 2단 exit 0 · grep 여전히 3.
 > 그것만으로는 변별력이 없고, **grep 3 유지**가 "케이스를 삭제해서 통과시키는" 경로를 막는
 > 축이다. 기대값이 실제로 싱크를 가리키는지는 run-phase 감사 몫이다.
 
-### AC-HDS-016 — 폐기 동작을 사실로 서술하는 주석 3곳이 갱신된다
+### AC-HDS-016 — 폐기 동작을 서술하는 주석이 전수 판독되고, 갱신 대상이 갱신된다
 
-**Given** `internal/hook` 의 주석 3곳이 "훅 경로는 모든 slog 레코드를 `io.Discard` 로
-보내므로 어디에도 도달하지 않는다"를 **사실로** 서술하고 있고,
-**When** M1 이 그 사실을 바꾸면,
-**Then** 세 주석이 새 사실을 반영하도록 갱신되어 있다 — 특히
-`internal/hook/factory_messages.go` 의 "Closing that is card t1144" 는 이 SPEC 이 그 카드
-이므로 "아직 닫히지 않았다"는 뜻으로 남겨둘 수 없다.
+**Given** 기준선 SHA `bbc855f45` 에서 아래 **그물**이 `internal/hook` 비테스트 Go 파일의
+`discard` 언급 **22행(13개 파일)** 을 반환하고,
+**When** M1 이 훅 경로의 폐기 동작을 바꾸면,
+**Then** 그 22행 **전수**에 대한 판정 기록이 존재하고(행당 정확히 한 건), 각 행이
+`갱신 대상` / `무관` / `판정 유보` 중 하나로 분류되어 있으며, `갱신 대상` 으로 분류된 행은
+실제로 갱신되어 있다.
 
 ```
-grep -rn 'io\.Discard' --include='*.go' internal/hook/ | grep -v _test.go
-grep -rn 'card t1144' --include='*.go' internal/hook/ | grep -v _test.go
+git grep -niE 'discard' bbc855f45 -- internal/hook | grep '\.go:' | grep -v _test.go
 ```
 
-기준선(HEAD `9b973bc04`): 첫 명령 **3행**(instructions_loaded.go · config_change.go ·
-factory_messages.go), 둘째 명령 **1행**(factory_messages.go). 판정: 두 명령의 출력이 새
-사실과 모순되지 않는다 — 기계적 축은 `card t1144` 문구가 미완료 서술로 남아 있지 않을
-것이고, 나머지는 run-phase 감사가 읽어 판정한다(§ Gaps).
+기준선(HEAD `bbc855f45`, 실측): **22행 / 13파일**. 파일별 분포 —
+`branch_guard.go` 4 · `session_start.go` 3 · `session_start_record.go` 2 · `registry.go` 2 ·
+`pre_tool.go` 2 · `handoff_inject.go` 2 · `user_prompt_submit.go` 1 ·
+`session_start_kanban.go` 1 · `session_start_drift_fill.go` 1 · `quality/gate.go` 1 ·
+`instructions_loaded.go` 1 · `factory_messages.go` 1 · `config_change.go` 1.
+
+**판정 기록의 위치와 형식** (이것이 고정되지 않으면 "행 수 일치"를 셀 대상이 없다):
+`progress.md` §E.2 안의 표 하나, 행당 `<file>:<line> | 갱신 대상|무관|판정 유보 | <근거>`.
+`<file>:<line>` 은 위 그물 명령이 출력한 값을 그대로 쓴다.
+
+```
+# 기계적 축 1 — 전수 완결성
+git grep -niE 'discard' bbc855f45 -- internal/hook | grep '\.go:' | grep -v _test.go | wc -l   # = 22
+grep -cE '^\| internal/hook/.*\.go:[0-9]+ \|' .moai/specs/SPEC-HOOK-DIAG-SINK-001/progress.md  # = 22
+
+# 기계적 축 2 — 지정 4행의 분류
+grep -E '^\| internal/hook/(config_change\.go:192|instructions_loaded\.go:48|factory_messages\.go:144|pre_tool\.go:442) \| 갱신 대상 \|' \
+  .moai/specs/SPEC-HOOK-DIAG-SINK-001/progress.md | wc -l                                       # = 4
+grep -cE '^\| internal/hook/session_start\.go:420 \| 판정 유보 \|' \
+  .moai/specs/SPEC-HOOK-DIAG-SINK-001/progress.md                                               # = 1
+```
+
+**판정**: 위 네 수치가 각각 22 / 22 / 4 / 1 (기계적 축) **AND** `갱신 대상` 으로 분류된 행이
+실제로 갱신됨 (run-phase 감사의 사람 판독).
+
+| 그물 행 | 요구 분류 | 근거 |
+|---|---|---|
+| `internal/hook/config_change.go:192` | 갱신 대상 | `io.Discard` 로 "EVERY record" 라우팅을 사실로 서술. 단 `MOAI_LOG_LEVEL` 절은 **참으로 남는다**(REQ-HDS-002) |
+| `internal/hook/instructions_loaded.go:48` | 갱신 대상 | "routes every `moai hook` invocation to io.Discard, unconditionally" |
+| `internal/hook/factory_messages.go:144` | 갱신 대상 | "a hook process discards slog records too … still not reported anywhere. **Closing that is card t1144**" — 이 SPEC 이 그 카드이므로 미완료 서술로 남길 수 없다 |
+| `internal/hook/pre_tool.go:442` | 갱신 대상 | "the `moai hook` path installs a discarding handler, so a log record here would be silent by construction" — 폐기를 사실로 놓고 그 위에 **설계 판단**(`gateNotice` 를 slog 대신 구조화 출력에 태움)을 얹었다 |
+| `internal/hook/session_start.go:420` | **판정 유보** | 아래 유보 사유 참조 |
+
+**[HARD] `session_start.go:420` 은 판정을 유보한다.** "in slog, whose stderr the hook wrappers
+discard. The failure was recorded and invisible" — **과거형 서술**이고, 폐기 주체를
+`resolveLoggingDecision` 이 아니라 **셸 래퍼의 stderr 처리**로 돌린다. 이 SPEC 은 stderr 를
+열지 않으므로(REQ-HDS-002) M1 이후 이 문장이 거짓이 되는지 **단정할 수 없다.** 사람 판독
+대상으로만 올리고, 갱신 여부는 run-phase 감사가 정한다 — 이 불확실성 자체가 기록이다.
+
+> **왜 토큰 일치가 아니라 과다 포착 그물인가 (v0.3.2 개정 사유).** v0.3.1 은 모집단을
+> `io.Discard` + `card t1144` 두 토큰으로 잡았는데, **두 겹으로 틀렸다.**
+>
+> **(a) 기준선이 재현되지 않았다.** "첫 명령 3행(세 파일)"이라고 적었으나 실측은 **2행**
+> (`config_change.go:192` · `instructions_loaded.go:48`)이고, `factory_messages.go` 는 그
+> 집합에 **없다** — 그 주석은 `io.Discard` 토큰을 쓰지 않고 산문으로만 서술한다.
+> 재지 않고 적은 값이었다.
+>
+> **(b) 모집단이 닫혀 있지 않았다.** 토큰으로 모집단을 잡는데 대상 하나가 그 토큰을 안
+> 쓴다면 같은 계열의 다른 주석도 사정거리 밖이다. 실제로 `pre_tool.go:442` 가 두 명령
+> 어디에도 안 잡혔다 — AC-016 이 존재하는 이유에 정확히 해당하는 주석인데도.
+> **D1 과 같은 계열의 반대 방향이다**(D1 = 과다 포착, 이것 = 과소 포착).
+>
+> 그래서 **정확한 그물을 포기하고 과다 포착 + 기록된 판독**으로 바꿨다. 그물은 무관한
+> 행을 함께 잡고, **그중에는 주석이 아닌 행도 있다** — 예: `pre_tool.go:623` "the return is
+> intentionally discarded"(자문용 반환값 폐기 주석, 이 SPEC 과 무관), `branch_guard.go` 4행,
+> 그리고 `handoff_inject.go:92` 의 **사용자 표시 문자열**. 그것이 **설계 의도**다:
+> 무엇이 갱신 대상인지는 여전히 사람이 읽지만, **누락이 조용히 일어나지 않는다.**
+
+> **[HARD] 그물은 기준선 SHA 에 고정한다.** M1 이 주석을 고치면 그물 자체가 움직인다 —
+> `갱신 대상` 행은 갱신 후 `discard` 를 더는 안 쓸 수 있어 현재 트리 그물에서 빠지고,
+> 그러면 행 수 일치 판정이 공허해진다. `git grep <SHA>` 형태가 그 이동을 막는다
+> (실측: 워킹트리 `grep -rn` 과 `git grep bbc855f45` 둘 다 22행 — 같은 모집단이다).
+
+> **감사 측정과의 차이 (21 vs 22) — 원인은 주석 한정 필터다.** 감사가 보고한 21 은
+> **주석으로 한정한 수**였다(`… | grep -E '//'`). 그 필터가 떨어뜨린 1행은
+> `internal/hook/handoff_inject.go:92` 의 **사용자 표시 문자열**이다 —
+> `"or run \`moai handoff clear\` to discard it.\n"`. 그물(22)은 이 행을 포함한다.
+>
+> **[HARD] 이 절의 초판 귀속(“원인은 `quality/gate.go` 1행”)은 틀렸다** — 감사의 명령도
+> `internal/hook/` 을 재귀로 훑으므로 `quality/` 는 애초에 포함돼 있었다. 그 오답이
+> 확증처럼 보인 이유는 **두 설명이 각각 다른 1행을 빼고 똑같이 21 을 내기 때문**이다:
+> `quality/gate.go:903` 도 1행(주석), `handoff_inject.go:92` 도 1행(문자열). 수치가
+> 재현된다는 것은 **그 설명이 옳다는 증거가 아니다** — 같은 값에 닿는 뺄셈이 둘 이상 있을
+> 때, 실제로 어느 쪽이 일어났는지는 상대의 명령을 보지 않고는 정해지지 않는다. 초판은
+> 그것을 보지 않고 "원인 규명됨"이라고 적었다.
+>
+> **`quality/gate.go` 포함 결정은 그대로 유지한다** — 이 귀속과 독립인 판단이다.
+> `internal/hook/quality` 는 도달성 측정에서 OTHER-ONLY(훅 경로에 오지 않음, `spec.md` §1.1)
+> 이므로 그 행의 판정은 `무관` 이 될 공산이 크지만, 제외 조항을 두는 쪽이 **조항을 잘못
+> 쓸 위험**을 새로 만든다. 판정 기록 한 줄이 더 드는 비용이 더 싸다.
 
 > 주석은 테스트를 깨뜨리지 않으므로 **AC-HDS-015 보다 조용히 틀린다**. 이 저장소가 거짓
 > 주석을 결함으로 다루는 선례는 `SPEC-HOOK-TRACE-FLUSH-001`(`fan_in=24` 거짓 수치 정정).
@@ -551,8 +633,23 @@ go test ./internal/cli/... ./internal/hook/... ./internal/config/... -count=1
   2단을 모두 통과한다. 두 단 판정식은 "가드가 사라지거나 개명되는" 실패만 막으며, **그
   테스트가 무엇을 단언하는지의 적합성은 run-phase 감사 몫이다.** AC-HDS-002 의 반증 절차가
   이 Gap 을 부분적으로만 메운다 — 가드 1 하나에 대해서만 행동을 겨눴음을 보인다.
-- **AC-HDS-016 의 주석 판정은 대부분 사람이 읽어야 한다.** 기계적 축은 `card t1144` 문구
-  하나뿐이고, 나머지 두 주석이 *새 사실을 정확히* 서술하는지는 감사 판단이다.
+- **[HARD] 그물은 "주석 집합"이 아니다 — 문자열 리터럴도 포착한다.** 22행 중
+  `internal/hook/handoff_inject.go:92` 는 주석이 아니라 **사용자 표시 문자열**이다
+  (`"or run \`moai handoff clear\` to discard it.\n"`). 판정 기록에서 `무관` 으로 처리될
+  것이므로 설계는 그대로 유효하지만, 모집단의 성격을 "주석 22곳"으로 읽으면 그물을 다시
+  좁히려는 유혹이 생긴다 — 좁히는 순간 AC-016 초판의 과소 포착이 재현된다.
+- **[HARD] 이 SPEC 에서 모집단 경계는 네 번 문제가 됐다.** run-phase 는 같은 자리를 먼저
+  본다: **과다 포착**(D1) → **과소 포착**(AC-016 초판의 토큰 모집단) → **형식 불일치**
+  (지정행의 짧은 이름 대 그물 출력의 전체 경로) → **귀속 오류**(21 vs 22 의 원인을 재지
+  않고 추정). 네 번 모두 "모집단을 무엇으로 정의했는가"에서 갈렸고, 마지막 것은 **수치가
+  재현된다는 사실을 설명이 옳다는 증거로 읽은** 오류다.
+- **AC-HDS-016 의 그물은 의도적으로 과다 포착하므로, 무엇이 갱신 대상인지는 사람이 읽는다.**
+  기계적 축은 **전수 판독의 완결성**(판정 기록 행 수 = 그물 22행)과 **지정 4행의 분류**뿐이고,
+  `갱신 대상` 으로 분류된 주석이 *새 사실을 정확히* 서술하는지는 감사 판단이다. 이 AC 가
+  막는 것은 "틀린 갱신"이 아니라 **"조용한 누락"** 이다.
+- **판정 기록의 내용 정확성은 기계로 보지 않는다.** 22행 전부를 `무관` 으로 적어도 행 수
+  일치는 통과한다 — 지정 4행의 분류 고정이 그 최악의 경우를 부분적으로만 막는다(4/22).
+  나머지 18행의 분류 타당성은 run-phase 감사 몫이다.
 - **빌드 실패 시 `-list` 의 행동은 미관측이다.** 컴파일이 깨진 트리에서 1단이 어떤 값을
   내는지 재지 않았다(`ac-baseline.md` Gaps 와 동일). 품질 게이트가 그 상태를 먼저 잡을
   것으로 보지만, 그것은 추론이지 측정이 아니다.
@@ -576,7 +673,9 @@ go test ./internal/cli/... ./internal/hook/... ./internal/config/... -count=1
 - [ ] 각 판정 명령의 출력이 progress.md §E.2 에 인용되고, 기준선에는 HEAD `9b973bc04` 가 동반됨
 - [ ] AC-HDS-002 의 반증 절차가 실제로 수행되고 FAIL→PASS 두 출력이 인용됨
 - [ ] AC-HDS-015 의 grep 이 3 을 유지함 (케이스 삭제로 통과시키지 않았음)
-- [ ] AC-HDS-016 의 주석 3곳이 갱신됨
+- [ ] AC-HDS-016 의 판정 기록이 progress.md §E.2 에 **22행 전수**로 존재하고(행당 한 건,
+      `<file>:<line> | 갱신 대상|무관|판정 유보 | 근거` 형식), 지정 4행이 요구 분류를 가지며,
+      `session_start.go:420` 이 `판정 유보` 로 기록됨
 - [ ] 품질 게이트 3종 exit 0
 - [ ] `spec.md` §4 의 범위 제외가 전부 지켜짐 — 특히 stdout/stderr 미개방, 템플릿 트리 미수정
 - [ ] `internal/template/templates/` 하위 diff 0
