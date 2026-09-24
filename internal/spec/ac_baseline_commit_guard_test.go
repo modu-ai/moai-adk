@@ -546,6 +546,16 @@ func guardCheckerSubtests(t *testing.T) {
 			r.stage(acLocalClausePath, replaceLine(carrier, acCounterEndSentinel, "   exit 2\n   "+acCounterEndSentinel))
 		}},
 	}
+	// The cause phrase each fault must name (AC-ABG-007 "naming the fault").
+	faultCause := map[string]string{
+		"sentinel_absent":         "counter sentinel pair absent",
+		"sentinel_duplicated":     "expected exactly one counter sentinel pair",
+		"end_before_begin":        "END sentinel precedes BEGIN",
+		"empty_body":              "empty body",
+		"baseline_absent":         "absent from the index",
+		"baseline_line_malformed": "snapshot record malformed",
+		"counter_exit_2":          "counter exited 2",
+	}
 	for _, f := range faults {
 		f := f
 		t.Run("fault/"+f.kind, func(t *testing.T) {
@@ -564,6 +574,10 @@ func guardCheckerSubtests(t *testing.T) {
 			}
 			if hit == "" {
 				t.Fatalf("fault must print a %q line naming the file; stderr=%q", guardNotChecked, errb)
+			}
+			cause, ok := faultCause[f.kind]
+			if !ok || !strings.Contains(hit, cause) {
+				t.Fatalf("fault line must name its cause %q; got %q", cause, hit)
 			}
 			t.Logf("fault line: %s", hit)
 		})
@@ -622,6 +636,18 @@ func guardCheckerSubtests(t *testing.T) {
 		_, errb, code := r.check()
 		if code == 0 || !strings.Contains(errb, guardRejectLine) || !strings.Contains(errb, "live=0") {
 			t.Fatalf("measured count must follow the STAGED carrier (live=0); exit=%d stderr=%q", code, errb)
+		}
+	})
+
+	// A manual run from a subdirectory must enumerate the same index paths as
+	// a run from the top (the hook always starts at the top; people do not).
+	t.Run("manual_run_from_subdirectory", func(t *testing.T) {
+		r := seedCommon(t, nil)
+		r.stage(guardSpecX, three)
+		sub := filepath.Join(r.dir, ".moai", "specs")
+		_, errb, code := r.runIn(sub, nil, "sh", filepath.Join("..", "..", filepath.FromSlash(guardCheckerRel)))
+		if code == 0 || !strings.Contains(errb, guardRejectLine) || !strings.Contains(errb, guardSpecX) {
+			t.Fatalf("run from a subdirectory must still reject the staged amendment; exit=%d stderr=%q", code, errb)
 		}
 	})
 
@@ -750,6 +776,42 @@ func guardCommitSubtests(t *testing.T) {
 		r := installed(t)
 		r.write(guardSpecX, three) // left unstaged
 		commitRejected(t, r, r.dir, "commit", "-a", "-m", "x")
+	})
+
+	// A checker that dies in its enumeration part (a syntax error exits 2)
+	// must not block an unrelated commit: the installed command forwards only
+	// exit 1 as a rejection. A real reject must still block afterwards.
+	t.Run("commit/broken_checker_fails_open", func(t *testing.T) {
+		r := installed(t)
+		checker := filepath.Join(r.dir, filepath.FromSlash(guardCheckerRel))
+		good, err := os.ReadFile(checker)
+		if err != nil {
+			t.Fatalf("read checker copy: %v", err)
+		}
+		enumOpen := `if [ "${1:-}" != "--files" ]; then`
+		broken := strings.Replace(string(good), enumOpen, enumOpen+"\n\tif then", 1)
+		if broken == string(good) {
+			t.Fatalf("enumeration opener not found; the break would be a no-op")
+		}
+		writeTempFile(t, checker, []byte(broken), 0o755)
+		if _, errb, code := r.runIn(r.dir, nil, "sh", guardCheckerRel); code == 0 || code == 1 {
+			t.Fatalf("broken checker must die with a non-0, non-1 status to exercise the path; exit=%d stderr=%q", code, errb)
+		}
+
+		r.stage("README.txt", "unrelated\n")
+		before := r.head()
+		_, errb, code := r.runIn(r.dir, nil, "git", "commit", "-m", "unrelated")
+		t.Logf("broken checker, unrelated commit: exit=%d stderr=%q", code, errb)
+		if code != 0 || r.head() == before {
+			t.Fatalf("a dying checker must not block an unrelated commit; exit=%d stderr=%q", code, errb)
+		}
+		if !strings.Contains(errb, guardNotChecked+" (checker exited") {
+			t.Fatalf("a dying checker must print %q; stderr=%q", guardNotChecked+" (checker exited <code>)", errb)
+		}
+
+		writeTempFile(t, checker, good, 0o755)
+		r.stage(guardSpecX, three)
+		commitRejected(t, r, r.dir, "commit", "-m", "x")
 	})
 
 	t.Run("commit/pathspec_only", func(t *testing.T) {

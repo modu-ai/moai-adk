@@ -94,6 +94,14 @@ AC-ABG-016 form deviation: the worktree-session guard refused the single `-run '
 | Transition-table refactor | `TestACBaselineComparisonTransitions` | `--- PASS` — table lifted to `acComparisonTransitionCases`, no assertion changed | PASS |
 | Shared repo config untouched | no `git config` without `-C <tempdir>` was run against the real repo | — | PASS (by construction) |
 
+### Post-audit fixes (sync-auditor PASS-WITH-DEBT 87.8 at `27a65f59e`, `.moai/reports/t1150/verdict.md`)
+
+- F1: the installed hook command now forwards only exit 1 as a rejection; any other non-zero checker exit prints `ac-baseline-guard: NOT CHECKED (checker exited <code>)` and exits 0. RED before the fix (`f1-red-run.txt`): `broken checker, unrelated commit: exit=1 stderr="scripts/ac-baseline/check-staged.sh: line 53: syntax error near unexpected token `then'…"`. After: `exit=0 … ac-baseline-guard: NOT CHECKED (checker exited 2)`, and the restored checker still rejects a real amendment in the same subtest.
+- F2: enumeration pathspec is root-anchored (`:/.moai/specs`). RED (`f2-red-run.txt`): `run from a subdirectory must still reject the staged amendment; exit=0 stderr=""`.
+- F4: each `fault/*` subtest now asserts its cause phrase. No RED: this only tightens assertions on output the checker already produced.
+- F3: CHANGELOG entry corrected (NOT CHECKED is not a pass; exit 3 is HALT; the linked-worktree leg uses `git add` + `git commit -m`; the reject covers live/excluded, COUNT↔HALT and id-set changes).
+- Selector `go test ./internal/spec -run TestACBaselineCommitGuard -count=1 -v` → exit 0, `ok  	github.com/modu-ai/moai-adk/internal/spec	24.221s`, 45 `    --- PASS`, 0 FAIL/SKIP (`ac-selector-run-2.txt`); `go vet ./internal/spec/...` empty, exit 0; `golangci-lint run ./internal/spec/...` → `0 issues.`
+
 ### Hand-off to the lead (post-merge, not a close gate — spec.md §A.4-3)
 
 After this branch is merged into local `develop`, from any tree of this repository:

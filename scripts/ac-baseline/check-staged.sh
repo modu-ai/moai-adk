@@ -65,7 +65,9 @@ if [ "${1:-}" != "--files" ]; then
 	trap 'rm -f "$list" "$state"' EXIT
 	trap 'exit 1' INT TERM
 
-	if ! git diff --cached --name-only -z --no-renames --diff-filter=M HEAD -- .moai/specs >"$list" 2>/dev/null </dev/null; then
+	# ':/' anchors the pathspec at the tree root, so a manual run from a
+	# subdirectory enumerates the same paths the hook does from the top.
+	if ! git diff --cached --name-only -z --no-renames --diff-filter=M HEAD -- :/.moai/specs >"$list" 2>/dev/null </dev/null; then
 		say "$tag NOT CHECKED (git diff --cached failed): staged acceptance.md amendments were not compared"
 		exit 0
 	fi

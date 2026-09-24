@@ -40,7 +40,11 @@ if [ "$major" -lt "$need_major" ] || { [ "$major" -eq "$need_major" ] && [ "$min
 fi
 
 # The hook command runs from the top of whichever worktree is committing.
-cmd='if [ -f scripts/ac-baseline/check-staged.sh ]; then sh scripts/ac-baseline/check-staged.sh; else echo "ac-baseline-guard: NOT CHECKED (scripts/ac-baseline/check-staged.sh absent in this tree; it is armed once the tree absorbs develop)" >&2; fi'
+# Only the checker's exit 1 (a measured mismatch) is forwarded as a rejection;
+# any other non-zero exit (a syntax error, a missing tool, a signal) is a tool
+# fault and fails open, so one broken checker copy cannot stall every commit.
+# The command carries no interpolated path: it is a fixed string.
+cmd='if [ -f scripts/ac-baseline/check-staged.sh ]; then sh scripts/ac-baseline/check-staged.sh; rc=$?; if [ "$rc" -eq 0 ] || [ "$rc" -eq 1 ]; then exit "$rc"; fi; echo "ac-baseline-guard: NOT CHECKED (checker exited $rc)" >&2; exit 0; else echo "ac-baseline-guard: NOT CHECKED (scripts/ac-baseline/check-staged.sh absent in this tree; it is armed once the tree absorbs develop)" >&2; fi'
 
 git config --local --replace-all "hook.$name.event" pre-commit || exit 1
 git config --local --replace-all "hook.$name.command" "$cmd" || exit 1
