@@ -615,7 +615,7 @@ carried_debt:
 
 ### 정정 (sync-audit F3, card t1108) — 원문 보존, 아래 덧붙임
 
-- 위 `total_run_phase_files: 4` 항목은 실제로 바뀐 파일 수와 어긋난다. `git diff --name-only 894b7b0a5 HEAD` 는 이 개정에서 9개 경로를 보인다: `.github/workflows/ci.yml`, `.moai/specs/SPEC-APPJS-FIRE-GUARD-001/{acceptance,plan,progress,spec}.md`, `CHANGELOG.md`, `internal/web/appjs_fire_guard_test.go`, `internal/web/appjs_fire_swap_test.go`, `internal/web/testdata/appjs_fire_probe.py`. 나열에서 빠진 것은 `internal/web/appjs_fire_guard_test.go`(M2 기존 파일, `d0d3c07d31`에서 재변경)와 `.moai/specs/SPEC-APPJS-FIRE-GUARD-001/acceptance.md`(`db240a026`, 개정 3 이 AC-AFG-014/015/016 을 추가)다.
+- 위 `total_run_phase_files: 4` 항목은 실제로 바뀐 파일 수와 어긋난다. `git diff --name-only 894b7b0a5 HEAD` 는 이 개정에서 9개 경로를 보인다: `.github/workflows/ci.yml`, `.moai/specs/SPEC-APPJS-FIRE-GUARD-001/{acceptance,plan,progress,spec}.md`, `CHANGELOG.md`, `internal/web/appjs_fire_guard_test.go`, `internal/web/appjs_fire_swap_test.go`, `internal/web/testdata/appjs_fire_probe.py`. 나열에서 빠진 것은 `internal/web/appjs_fire_guard_test.go`(M2 기존 파일, `d80132034`(M9)에서 재변경)와 `.moai/specs/SPEC-APPJS-FIRE-GUARD-001/acceptance.md`(`db240a026`, 개정 3 이 AC-AFG-014/015/016 을 추가)다.
 - `preserve_list_post_run_count` 의 「`internal/web/appjs_fire_swap_test.go` 신설(M8)」은 신설 시점이 틀렸다. `git log --diff-filter=A -- internal/web/appjs_fire_swap_test.go` → `d80132034`(M9). M8(`d102a9b2d`)은 이 파일을 아직 만들지 않았다.
 
 ## §E.4 Sync-phase Audit-Ready Signal
