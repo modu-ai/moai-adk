@@ -1,7 +1,7 @@
 ---
 id: SPEC-CODEX-AUDIT-READONLY-001
 title: "Codex read-only roles launched as top-level read-only processes — audit launcher, parent-written verdict file, inherited AC-DHR-012/023"
-version: "0.3.0"
+version: "0.4.0"
 status: draft
 created: 2026-09-24
 updated: 2026-09-24
@@ -27,6 +27,7 @@ related_specs:
 
 | Version | Date | Change |
 |---|---|---|
+| 0.4.0 | 2026-09-24 | M1 측정(route=`mcp`, `progress.md` §E.2 M1) 뒤 리드 결정 반영. (a) MCP 비활성화 방식: launcher가 `codex mcp list --json`으로 선언된 서버 이름을 얻고 이름마다 `-c mcp_servers.<name>.enabled=false`를 준다(M1 P-A 측정: 두 층 래퍼 기동 0. `-c 'mcp_servers={}'`는 병합되어 아무것도 끄지 않음). REQ-CAR-007과 AC-CAR-001을 이에 맞췄다. (b) M2 첫 항목으로 실제 lane 워크트리에서 moai MCP 서버의 시작 디렉터리 측정(LIVE 1회, 절대 상한 43 안). (c) `draft → in-progress` 전이는 첫 run 커밋에서 manager-develop 몫이다. AC 수는 그대로(16). 이어받은 세 블록은 바이트 그대로다. |
 | 0.3.0 | 2026-09-24 | plan-audit iter-2(FAIL 0.87, `.moai/reports/t1143/plan-audit-iter2.md`)의 N1~N9를 반영했다. N1: AC-CAR-012의 경로 필드를 테스트가 적는 값이 아니라 세션 기록과 launch record에서 유도하도록 정의했고(acceptance §A), t1100 m8-sbx run2 기록으로 유도 규칙이 spawn 경로를 거부함을 보이는 결정적 판정 AC-CAR-012a를 더했다(LIVE 판정은 AC-CAR-012b). N5: launch record를 루트·목적지 검증을 통과한 호출로 한정하고, 거부된 호출은 표준 오류에만 보고한다(REQ-CAR-007). N2: 작업 루트를 호출자 자신의 워크트리로 좁혔다(REQ-CAR-005). N3: `write_denied`를 0.156.1 세션 기록의 실제 모양으로 다시 정의했다. N4·N6·N7·N8·N9를 반영했다. 이어받은 세 블록은 바이트 그대로다. |
 | 0.2.0 | 2026-09-24 | plan-audit iter-1(FAIL 0.77, `.moai/reports/t1143/plan-audit-iter1.md`)의 D1~D13을 반영했다. B1~B5는 리드가 전달한 잠정 기본값으로 채우고 plan.md의 미해결 확인 표시 세 개를 결정 문장으로 바꿨다. 다섯 항목 모두 Implementation Kickoff에서 운영자가 확인할 대상으로 `plan.md` §G에 남겼다. 이어받은 AC의 실현 방식은 제안이 아니라 결정으로 적었다(D2). 메커니즘 필드와 그 판정 AC-CAR-012를 더했다. 작업 루트를 같은 저장소의 등록된 워크트리로 묶고, 목적지를 `.moai/reports/` 아래로 한정했다(REQ-CAR-005, D3·D13). `write_denied`의 정의와 MCP 기록 래퍼의 양성 대조를 넣었다(D4). launch record의 경로와 스키마를 정하고 AC-CAR-014로 판정한다(D5). 모든 층의 MCP 서버를 끄고 두 래퍼로 잰다(D6). 금지 인자는 `codex exec --help` 실측으로 넓혔다(D7). 인자 길이의 단위는 최종 토큰으로 정했다(D8). R2 조건부 결정적 AC로 AC-CAR-013을 더했다(D9). LIVE 재실행을 대칭으로 맞춰 절대 상한을 43으로 올렸다(D10·B5). 프로세스 정리 도우미와 Windows 빌드 검사를 명시했다(D11). 인용 줄 번호를 고쳤다(D12). 이어받은 세 블록은 바이트 그대로다. |
 | 0.1.0 | 2026-09-24 | 카드 t1143 plan 초안. SPEC-DUAL-HARNESS-RECOVERY-001 0.3.1이 이관한 세 항목(REQ-DHR-015 런타임 조항, AC-DHR-012, AC-DHR-023)을 원문 그대로 이어받고(§B), 설계 경로 (i) — Codex에서 read-only 계약 역할을 `spawn_agent`가 아니라 최상위 `codex exec -s read-only` 프로세스로 띄우고 부모가 반환문으로 판정 파일을 쓴다 — 를 요구사항으로 적었다. 실행 경로(shell 대 MCP)는 M1 측정으로 정한다(REQ-CAR-011). |
@@ -85,7 +86,7 @@ When the top-level audit process exits non-zero, exceeds its time bound, or retu
 
 ### REQ-CAR-007 — Side channels are closed or declared, and every launch leaves a record
 
-The audit launcher shall start the audit process with every MCP server disabled, whichever configuration layer (user or project) declares it, and shall not pass any option that widens the sandbox or bypasses approval. For every invocation whose working root and destination pass REQ-CAR-005, whether the audit then succeeds or fails, the audit launcher shall write one launch record under `.moai/reports/codex-audit/` of that working root, with a launcher-generated file name that it creates exclusively. When an invocation is rejected before any process starts — by REQ-CAR-005 validation, by REQ-CAR-002 eligibility, or by the REQ-CAR-003 ceiling — the audit launcher shall write no file and shall report the rejection on standard error only. The launch record shall state that the read-only guarantee covers the model-generated commands and edits governed by the Codex sandbox, and shall list exactly the writers that sandbox does not govern — Codex's own session files under `CODEX_HOME` and project hook commands — as `UNSUPPORTED`.
+The audit launcher shall start the audit process with every MCP server disabled, whichever configuration layer (system, managed, user, or project) declares it, by first obtaining the declared server names from Codex itself and then disabling each declared server by name, and shall not pass any option that widens the sandbox or bypasses approval. When the declared server names cannot be obtained, the audit launcher shall start no audit process and shall report the failure on standard error. For every invocation whose working root and destination pass REQ-CAR-005, whether the audit then succeeds or fails, the audit launcher shall write one launch record under `.moai/reports/codex-audit/` of that working root, with a launcher-generated file name that it creates exclusively. When an invocation is rejected before any process starts — by REQ-CAR-005 validation, by REQ-CAR-002 eligibility, or by the REQ-CAR-003 ceiling — the audit launcher shall write no file and shall report the rejection on standard error only. The launch record shall state that the read-only guarantee covers the model-generated commands and edits governed by the Codex sandbox, and shall list exactly the writers that sandbox does not govern — Codex's own session files under `CODEX_HOME` and project hook commands — as `UNSUPPORTED`.
 
 ### REQ-CAR-008 — The instruction surface names the launcher, not spawn_agent
 

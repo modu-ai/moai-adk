@@ -131,13 +131,14 @@ shasum -a 256 .moai/reports/t1100/ac023-evidence.json > .moai/reports/t1100/ac02
 
 **Given** read-only 계약 역할 `plan-auditor`의 방출된 역할 파일과 가짜 `codex`,
 **When** launcher로 `plan-auditor`를 한 번 실행하면,
-**Then** 가짜 `codex`가 정확히 한 번 호출되고, 기록된 인자가 아래 허용 목록 안에만 있다.
+**Then** 가짜 `codex`가 정확히 두 번 호출된다: 먼저 `mcp list --json` 한 번(선언된 MCP 서버 이름 조회), 그다음 `exec` 한 번. 가짜 `codex`는 `mcp list --json`에 이름 셋(`alpha`, `beta`, `moai`)을 담은 목록을 돌려준다. `exec` 호출에 기록된 인자는 아래 허용 목록 안에만 있다.
 
 - 첫 토큰 `exec`. sandbox 지정 토큰(`-s`/`--sandbox`)이 정확히 하나 있고 그 값이 `read-only`다.
-- `-c` 키는 `approval_policy`(값 `"never"`), `model_reasoning_effort`(역할 파일 값과 같음), `developer_instructions`(역할 파일의 문자열과 바이트가 같음), 그리고 M1에서 정한 MCP 비활성화 키뿐이다. `sandbox_mode`, `sandbox_workspace_write.*`, `sandbox_permissions` 등 다른 키는 없다.
-- `-C`의 값이 호출자 워크트리 뿌리다. `--json`이 있다. `-o`가 있으면 그 값은 워크트리 뿌리 밖의 OS 임시 경로다. `--ignore-user-config`는 M1이 MCP 비활성화에 쓰기로 정한 경우에만 허용된다.
+- `-c` 키는 `approval_policy`(값 `"never"`), `model_reasoning_effort`(역할 파일 값과 같음), `developer_instructions`(역할 파일의 문자열과 바이트가 같음), 그리고 `mcp list`가 돌려준 이름마다 정확히 하나씩인 `mcp_servers.<name>.enabled=false`뿐이다(이 시험에서 `alpha`, `beta`, `moai` 셋, 빠짐도 중복도 없음). `mcp_servers={}` 같은 테이블 재정의(M1 측정: 병합되어 아무것도 끄지 않음), `sandbox_mode`, `sandbox_workspace_write.*`, `sandbox_permissions` 등 다른 키는 없다.
+- `-C`의 값이 호출자 워크트리 뿌리다. `--json`이 있다. `-o`가 있으면 그 값은 워크트리 뿌리 밖의 OS 임시 경로다. `--ignore-user-config`는 허용 목록 밖이다(M1이 이름별 비활성화를 채택했고, 이 옵션은 사용자 층의 프로젝트 trust 항목까지 버린다).
 - 다음 토큰은 하나도 없다. codex-cli 0.156.1 `codex exec --help`에 나오는 sandbox·승인·쓰기 범위를 바꾸거나 우회하는 옵션: `--dangerously-bypass-approvals-and-sandbox`, `--dangerously-bypass-hook-trust`, `--approve-for-me`, `--add-dir`, `--worktree`, `-p`/`--profile`, `--enable`, `--disable`, `--ignore-rules`, `--skip-git-repo-check`. 그리고 `workspace-write`, `danger-full-access`, `spawn_agent` 문자열.
 - 허용 목록 밖의 토큰이 하나라도 있으면 실패다(열거된 금지 목록은 대표 사례이며, 판정은 허용 목록으로 한다).
+- 음성 사례: 가짜 `codex`의 `mcp list --json`이 0이 아닌 코드로 끝나거나 JSON이 아니면 launcher는 `exec`를 부르지 않고 0이 아닌 코드로 끝나며, 표준 오류에 사유를 찍고, launch record를 포함해 어떤 파일도 쓰지 않는다. 목록이 빈 배열이면 `exec` 인자에 `mcp_servers.*` 재정의가 없다.
 
 ```bash
 unset MOAI_KANBAN MOAI_KANBAN_ID MOAI_KANBAN_LABEL MOAI_KANBAN_LEAD_ADDR MOAI_KANBAN_SETTINGS_INJECTED MOAI_KANBAN_BACKEND MOAI_FACTORY_WORKERS && go test -json ./internal/cli -run '^TestCodexAuditLaunchArgv$' -count=1 | jq -se '([.[]|select(.Action=="pass" and .Test=="TestCodexAuditLaunchArgv")]|length)==1 and ([.[]|select(.Action=="fail" or .Action=="skip")]|length)==0 and ([.[]|select((.Output//"")|test("NOT_RUN|ABORTED"))]|length)==0'
