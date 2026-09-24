@@ -233,6 +233,23 @@ func logFireTally(t *testing.T, stage string, tl fireVariantTally, n int) {
 	}
 }
 
+// Amendment 3 (plan.md §A000): the CI green step sets this switch so
+// TestAppJsFirePostSwapSettleWait starts at stage 2. Only the exact value "1"
+// selects that path; unset, empty, and anything else keep the B1 order.
+const (
+	fireSettleStage2Env    = "MOAI_BROWSER_GUARD_SETTLE_STAGE2"
+	fireSettlePathLocalB1  = "local-b1"
+	fireSettlePathCIStage2 = "ci-stage2"
+)
+
+// fireSettleStartPath maps the switch's raw value to the measurement path.
+func fireSettleStartPath(raw string) string {
+	if raw == "1" {
+		return fireSettlePathCIStage2
+	}
+	return fireSettlePathLocalB1
+}
+
 // TestAppJsFirePostSwapSettleWait is AC-AFG-014: under a tab-scoped CPU
 // throttle of 12x the post-swap indicator fires 10/10 on the committed probe
 // with all four premise legs true every time, while M1 (path poll) and M2 (no
@@ -245,6 +262,11 @@ func logFireTally(t *testing.T, stage string, tl fireVariantTally, n int) {
 //     three variants, and the amplification must be SHOWN to take effect: the
 //     committed probe's click -> htmx:afterSettle times are recorded 10x
 //     without and 10x with it, and the amplified median must be larger.
+//
+// With MOAI_BROWSER_GUARD_SETTLE_STAGE2=1 (the CI path, amendment 3) the
+// unamplified M1/M2 runs are skipped: the committed probe still runs 10x
+// unamplified as the effect baseline, then stage 2 decides with the same
+// conditions.
 //
 // The same test observes AC-AFG-014 (d): the late-listener copy misses
 // htmx:afterSettle deterministically, and the probe must exit 1 naming
@@ -265,9 +287,9 @@ func TestAppJsFirePostSwapSettleWait(t *testing.T) {
 		{"M2", fireMutantNoWait(t)},
 	}
 
-	measure := func(stage string, extra ...string) map[string]fireVariantTally {
+	measure := func(stage string, only int, extra ...string) map[string]fireVariantTally {
 		out := map[string]fireVariantTally{}
-		for _, v := range variants {
+		for _, v := range variants[:only] {
 			tl := runFireSettleVariant(t, strings.ToLower(stage)+"-"+v.name, v.script, cdpPort, baseURL, runs, extra...)
 			tl.name = v.name
 			logFireTally(t, stage, tl, runs)
@@ -276,14 +298,28 @@ func TestAppJsFirePostSwapSettleWait(t *testing.T) {
 		return out
 	}
 
+	raw, set := os.LookupEnv(fireSettleStage2Env)
+	path := fireSettleStartPath(raw)
+	t.Logf("AC-AFG-014 path=%s %s=%q (set=%v)", path, fireSettleStage2Env, raw, set)
+
 	throttled := []string{"--cpu-throttle", throttle}
-	stage1 := measure("stage1[throttle=12x,amplification=none]", throttled...)
+	var stage1 map[string]fireVariantTally
+	if path == fireSettlePathCIStage2 {
+		// Only the committed probe: the amplification-effect baseline.
+		stage1 = measure("stage1[throttle=12x,amplification=none,baseline-only]", 1, throttled...)
+	} else {
+		stage1 = measure("stage1[throttle=12x,amplification=none]", len(variants), throttled...)
+	}
 	decided := stage1
 	decidingStage := "stage1"
-	if stage1["M1"].red != runs || stage1["M2"].red != runs {
-		t.Logf("AC-AFG-014: stage 1 did not make M1 and M2 each %d/%d red (M1 %d, M2 %d) — stage 2: settle-delay amplification %s ms on all three variants",
-			runs, runs, stage1["M1"].red, stage1["M2"].red, amplifiedSettle)
-		stage2 := measure("stage2[throttle=12x,amplification="+amplifiedSettle+"ms]",
+	if path == fireSettlePathCIStage2 || stage1["M1"].red != runs || stage1["M2"].red != runs {
+		if path == fireSettlePathCIStage2 {
+			t.Logf("AC-AFG-014: %s — stage 2 from the start: settle-delay amplification %s ms on all three variants", path, amplifiedSettle)
+		} else {
+			t.Logf("AC-AFG-014: stage 1 did not make M1 and M2 each %d/%d red (M1 %d, M2 %d) — stage 2: settle-delay amplification %s ms on all three variants",
+				runs, runs, stage1["M1"].red, stage1["M2"].red, amplifiedSettle)
+		}
+		stage2 := measure("stage2[throttle=12x,amplification="+amplifiedSettle+"ms]", len(variants),
 			append(throttled, "--settle-delay-ms", amplifiedSettle)...)
 		without, with := stage1["normal"].elapsed, stage2["normal"].elapsed
 		t.Logf("AC-AFG-014 amplification effect: click->afterSettle ms WITHOUT %v (median %.1f), WITH %v (median %.1f)",
@@ -490,5 +526,29 @@ func TestAppJsFireSwapPremiseLegs(t *testing.T) {
 				}
 			}
 		})
+	}
+}
+
+// TestAppJsFireSettleStartPath pins the amendment 3 switch: only the exact
+// value "1" selects the CI path (start at stage 2); unset, empty, and every
+// other value keep the local B1 order. Ungated — no browser.
+func TestAppJsFireSettleStartPath(t *testing.T) {
+	t.Parallel()
+	cases := []struct {
+		raw  string
+		want string
+	}{
+		{"", fireSettlePathLocalB1},
+		{"1", fireSettlePathCIStage2},
+		{" 1", fireSettlePathLocalB1},
+		{"1 ", fireSettlePathLocalB1},
+		{"true", fireSettlePathLocalB1},
+		{"0", fireSettlePathLocalB1},
+		{"01", fireSettlePathLocalB1},
+	}
+	for _, c := range cases {
+		if got := fireSettleStartPath(c.raw); got != c.want {
+			t.Errorf("fireSettleStartPath(%q) = %q, want %q", c.raw, got, c.want)
+		}
 	}
 }

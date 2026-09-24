@@ -517,6 +517,27 @@ AC-AFG-014 (d) 만료 대기(늦은 리스너 사본, 스로틀 12배): `exit 1`
 
 **미측정:** 2단계 경로의 완주 소요 시간(두 판 모두 상한에 끊김), CI 러너에서의 분포. 두 판 모두 부하 45~63 의 개발 기계 값이다.
 
+### M10 재개 — 개정 3(CI 는 2단계부터) 구현 + CI 모드 측정 (card t1108, 2026-09-24)
+
+리드 결정 (b) → SPEC 개정 3 `db240a026`. 구현: `internal/web/appjs_fire_swap_test.go` 에 스위치 `MOAI_BROWSER_GUARD_SETTLE_STAGE2`(정확히 `1` 일 때만 `ci-stage2`)와 무게이트 테스트 `TestAppJsFireSettleStartPath` 를 더했다. CI 경로는 증폭 없는 정상 판 10회(효과 기준선)만 남기고 증폭 없는 M1·M2 를 건너뛴 뒤 2단계(1000 ms)에서 판정한다. `ci.yml` 그린 단계에 스위치 env 한 행, `-run 'AppJs.*Fire'`, `-timeout 17m`.
+
+기록 주체: 구현 에이전트가 첫 CI 모드 측정 도중 사용량 한도(429)로 끊겨, 이후 측정·기록·커밋은 오케스트레이터가 직접 했다.
+
+| ID | 명령 (모두 `MOAI_BROWSER_GUARD=1 MOAI_BROWSER_GUARD_SETTLE_STAGE2=1 go test ./internal/web/ -run 'AppJs.*Fire' -v -count=1`) | 결과 | 시작→종료 load(1분) | exit |
+|---|---|---|---|---|
+| M10-7 | `-timeout 10m` (`logs/m10b-ci-10m.log`) | `panic: test timed out after 10m0s`, `TestAppJsFirePostSwapSettleWait (8m2s)`, `FAIL … 600.515s` | 57.75 → 13.01 | 1 |
+| M10-8 | 상한 미상(에이전트 판, `logs/m10b-ci-measure.log`) | `ok … 744.632s`, PASS 19 · SKIP 0 | 17.68 → 21.35 | 0 |
+| M10-9 | `-timeout 15m` (`logs/m10b-ci-15m.log`) | `ok … 818.927s`, PASS 19 · SKIP 0 — 상한까지 81 s 뿐이라 더 올림 | 6.70 → 13.59 | 0 |
+| M10-10 | `-timeout 17m` (`logs/m10b-ci-17m.log`, **판정 판**) | `ok … 766.926s`, PASS 19 · SKIP 0, `path=ci-stage2 … ="1" (set=true)` | 16.70 → 10.46 | 0 |
+
+M10-10 의 AC-AFG-014 (CI 2단계 경로): 정상 판 증폭 없음 `fired 10/10`(median 376.2 ms), 증폭 `fired 10/10`(median 1307.4 ms > 376.2), M1 `red 10/10`(사유 ×10 `c_swap_events, d_swap_inserted_trigger`), M2 `red 10/10`(같은 사유 ×10). (d) 만료 사본 단언 포함 테스트 PASS. AC-AFG-015 (iii) `false_legs=[c_swap_events] settle=expired`.
+
+여유(측정값): job 상한 1200 s − (그린 단계 최대 관측 818.9 s + 나머지 ≈ 48 s) = **333 s**; 판정 판 기준 1200 − (766.9 + 48) = 385 s. 테스트 상한 1020 s 대 최대 관측 818.9 s = 201 s(25 %). 상한이 끝까지 차도 1020 + 48 = 1068 s < 1200 s (132 s). 나머지 48 s 는 CI run 35822558948 job 107057337181 의 단계 시각(설정+Chrome+lint ≈ 21 s, 레드 ≈ 27 s).
+
+그 밖: `go vet ./internal/web/` 출력 없음 · `golangci-lint run ./internal/web/...` `0 issues.` · `go test ./internal/web/ -run 'AppJs' -count=1` `ok … 2.086s` · ruff `All checks passed!` · `gofmt -l internal/web/` 출력 없음 · YAML `safe_load` 성공(job 9개: 기존 8 + `test-browser`) · AC-006: `git diff --numstat 3e35fbacf -- .github/workflows/ci.yml` → `188	0`, 삭제 행 `0`, 기존 8개 job 키 행번호·순서 불변 · `--primary-entries-only` `3`.
+
+**Gap:** `actionlint .github/workflows/ci.yml` 는 워크트리 가드가 거부해 이번 트리에서 재지 못했다(직전 10m 판에서는 exit 0). 모든 측정은 부하가 걸린 개발 기계 값이며 CI 러너 소요는 리드 일괄 push 뒤 `test-browser` 로그로 확인한다(M10.5).
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 run_complete_at: 2026-09-22
