@@ -16,11 +16,114 @@
 
 ## §E.2 Run-phase Evidence
 
-_<pending run-phase>_
+Run by manager-develop (cycle_type=tdd), 2026-09-24, worktree `.claude/worktrees/t1150`, branch `WT-ac-snapshot-guard`, base `60017eb83`. Machine: darwin, `git version 2.54.0 (Apple Git-157)`. Code measured: the tree committed as `00ad53a9e` (scripts, tests, fixtures unchanged after that commit; only the doc and this file changed afterwards). The shared repository git config was never written; every real-commit test ran in a `t.TempDir()` repo with `GIT_*` stripped, `GIT_CONFIG_GLOBAL=/dev/null`, `GIT_CONFIG_NOSYSTEM=1`, per-test `HOME` on the `exec.Cmd`.
+
+Raw outputs are in `.moai/reports/t1150/` (gitignored by `.gitignore:235 .moai/reports/*`, so they live only in this worktree; the lines below are quoted verbatim from them).
+
+### M0 — premise probe (before any implementation)
+
+Command: `go test ./internal/spec -run 'TestACBaselineCommitGuard/commit/premise_probe' -count=1 -v` → exit 0 (`m0-premise-probe.txt`):
+
+```
+    ac_baseline_commit_guard_test.go:174: leg1 hooksPath=/dev/null: exit=1 stderr="PROBE-FIRED\n"
+    ac_baseline_commit_guard_test.go:188: leg2 hookdir present: exit=1 hookdir_marker_written=true stderr="PROBE-FIRED\n"
+    ac_baseline_commit_guard_test.go:197: leg3 linked worktree: exit=1 stderr="PROBE-FIRED\n"
+    --- PASS: TestACBaselineCommitGuard/commit/premise_probe (1.12s)
+```
+
+A config-defined pre-commit hook fired and aborted the commit (HEAD unchanged, asserted) under `core.hooksPath=/dev/null`, alongside an executable hookdir `pre-commit` (which ALSO ran — marker written), and from a linked worktree via `git commit -a`. Premise holds; no blocker.
+
+### RED (scripts absent)
+
+Command: `go test ./internal/spec -run 'TestACBaselineCommitGuard' -count=1 -v` → exit 1 (`red-run.txt`): 42 subtests `--- FAIL`, only `commit/premise_probe` (a git probe, not the guard) passing. Representative verbatim lines:
+
+```
+    ac_baseline_commit_guard_test.go:339: want exit 0 and exactly one "ac-baseline-guard: checked 1" line; exit=127 stderr="sh: scripts/ac-baseline/check-staged.sh: No such file or directory\n"
+    ac_baseline_commit_guard_test.go:387: baseline edited but not staged must still reject; exit=127 stderr="sh: scripts/ac-baseline/check-staged.sh: No such file or directory\n"
+    --- FAIL: TestACBaselineCommitGuard/reject_count_move (0.48s)
+FAIL	github.com/modu-ai/moai-adk/internal/spec	32.533s
+```
+
+The first RED run showed two reject subtests passing vacuously on the exit-127 of the absent script; they were tightened to require the guard's own `ac-baseline-guard: REJECT` line before GREEN (above is the re-run).
+
+### Mutation probes (after GREEN, each reverted; `cmp` confirmed the restore)
+
+| Mutant in `check-staged.sh` | Subtests that went red |
+|---|---|
+| exact lookup `($1 "") == want` → regex `$1 ~ want` | `hostile_path` |
+| fail-open `exit 0` → `exit 1` | all seven `fault/*` |
+| malformed-record `continue` → `exit 0` (fault swallows a later mismatch) | `mixed/mismatch_plus_fault` |
+| `git show ":$p"` → `cat "$p"` (working tree instead of index) | `index_only/mm_unstaged_criterion`, `index_only/staged_criterion_reverted_tree` |
+| `git show ":$carrier"` → `cat "$carrier"` | `index_only/counter_from_index` |
+
+The regex mutant also exposed a real gap: an erroring lookup `awk` left `rec` empty and the file counted as checked with no problem. Fixed before commit — any lookup result other than `COUNT …`/`HALT …`/`ABSENT`/`MALFORMED` is now a `NOT CHECKED (snapshot lookup failed)` fault.
+
+### GREEN — AC matrix
+
+Selector command (AC-ABG-001..014, 016): `go test ./internal/spec -run 'TestACBaselineCommitGuard' -count=1 -v` → exit 0, `ok  	github.com/modu-ai/moai-adk/internal/spec	23.808s`; 43 `    --- PASS` lines, 0 `--- FAIL`, 0 `--- SKIP`, 0 `no tests to run` (`ac-selector-run.txt`).
+
+| AC | Actual Output (verbatim `--- PASS` lines) | Status |
+|---|---|---|
+| AC-ABG-001 | `--- PASS: TestACBaselineCommitGuard/reject_count_move (0.40s)` | PASS |
+| AC-ABG-002 | `--- PASS: TestACBaselineCommitGuard/pass_count_unchanged (0.39s)` | PASS |
+| AC-ABG-003 | `pass_new_file (0.34s)`, `pass_unrecorded_counts (0.71s)`, `pass_unrecorded_halts (0.52s)` — all `--- PASS` | PASS |
+| AC-ABG-004 | `pass_with_staged_baseline (0.60s)`, `reject_unstaged_baseline (0.48s)` — both `--- PASS` | PASS |
+| AC-ABG-005 | `noop_unrelated (0.53s)`, `noop_archive (0.40s)`, `noop_depth2 (0.46s)` — all `--- PASS` | PASS |
+| AC-ABG-006 | 10 table rows `parity/count-stable`, `parity/count-moved`, `parity/count-state-moved-live-to-excluded`, `parity/b:_count-to-halt`, `parity/c:_halt-to-count`, `parity/e:_halting-id-set-moved`, `parity/halt-stable`, `parity/absent-and-counts:_report,_do_not_fail`, `parity/absent-and-halts:_report,_do_not_fail_(§3.5_rule_4)`, `parity/d:_recorded-COUNT_starts_halting` + `parity/halt_ids_unsorted` — all `--- PASS` | PASS |
+| AC-ABG-007 | `fault/sentinel_absent`, `fault/sentinel_duplicated`, `fault/end_before_begin`, `fault/empty_body`, `fault/baseline_absent`, `fault/baseline_line_malformed`, `fault/counter_exit_2` — all `--- PASS`; e.g. logged `ac-baseline-guard: NOT CHECKED (counter exited 2): .moai/specs/SPEC-X-001/acceptance.md` | PASS |
+| AC-ABG-008 | `--- PASS: TestACBaselineCommitGuard/mixed/mismatch_plus_fault (0.69s)` | PASS |
+| AC-ABG-009 | `index_only/mm_unstaged_criterion (0.77s)`, `index_only/staged_criterion_reverted_tree (0.60s)`, `index_only/counter_from_index (0.48s)` — all `--- PASS` | PASS |
+| AC-ABG-010 | `--- PASS: TestACBaselineCommitGuard/hostile_path (0.46s)` (no `pwned` under the temp root; right record `live=2` named) | PASS |
+| AC-ABG-011 | `commit/premise_probe (0.81s)`, `commit/hookdir_present (1.11s)`, `commit/hookspath_devnull (0.74s)`, `commit/linked_worktree (0.63s)` — all `--- PASS`; logged `reject case: hookdir marker written=true`, `pass case: exit=0 hookdir marker written=true` | PASS |
+| AC-ABG-012 | `commit/all_flag (0.56s)`, `commit/pathspec_only (0.86s)` — both `--- PASS` | PASS |
+| AC-ABG-013 | `install/idempotent (0.55s)`, `install/old_git (0.59s)`, `install/missing_script (0.54s)` — all `--- PASS` | PASS |
+| AC-ABG-014 | `--- PASS: TestACBaselineCommitGuard/install/managed_untouched (1.28s)` | PASS |
+| AC-ABG-015 | `grep -c 'hook.ac-baseline-guard' .moai/docs/ac-count-baseline-refresh.md` → `2` (exit 0); §7 names `NOT CHECKED`, `--no-verify`, `SKIP_MOAI_PRECOMMIT`, the lead as install owner (§7.2), the completion-report quoting obligation (§7.3), and `sh scripts/ac-baseline/install-hook.sh` | PASS |
+| AC-ABG-016 | selector sweep above (43 PASS, 0 SKIP); `grep -c 'moai-ac-prefix' scripts/ac-baseline/check-staged.sh` → `0`; `git diff --name-only 60017eb83 -- internal/template/templates .github/workflows` → empty; corpus gate: `--- PASS: TestACCounterFullCorpusMatchesBaseline (12.52s)` and `--- PASS: TestACBaselineComparisonTransitions (0.00s)` | PASS (form deviation below) |
+
+AC-ABG-016 form deviation: the worktree-session guard refused the single `-run 'TestACCounterFullCorpusMatchesBaseline|TestACBaselineComparisonTransitions'` invocation (it cannot statically verify a `|` inside the argument), so the two tests ran as two separate `go test ./internal/spec -run <Name> -count=1 -v` invocations, each exit 0 (`corpus-gate-run.txt`, `transitions-run.txt`). The corpus run reports this SPEC's own file as `absent-from-snapshot .moai/specs/SPEC-ACSNAPSHOT-COMMIT-GUARD-001/acceptance.md: COUNT 16` — a report, not a failure, as planned.
+
+### Invariants and package-level checks
+
+| Check | Command | Output | Status |
+|---|---|---|---|
+| Whole affected package | `go test ./internal/spec/... -count=1` | `ok  	github.com/modu-ai/moai-adk/internal/spec	169.829s` (exit 0) | PASS |
+| vet | `go vet ./internal/spec/...` | (empty, exit 0) | PASS |
+| lint | `golangci-lint run ./internal/spec/...` | `0 issues.` (exit 0) | PASS |
+| Repo-tree write guard | `TestNoTestWritesRepoTree` | first package run flagged 5 textual false positives (temp-repo writes via a `.moai/`-tainted identifier); routed through a parameter-scoped `writeTempFile` helper → `--- PASS: TestNoTestWritesRepoTree (0.03s)` | PASS |
+| Transition-table refactor | `TestACBaselineComparisonTransitions` | `--- PASS` — table lifted to `acComparisonTransitionCases`, no assertion changed | PASS |
+| Shared repo config untouched | no `git config` without `-C <tempdir>` was run against the real repo | — | PASS (by construction) |
+
+### Hand-off to the lead (post-merge, not a close gate — spec.md §A.4-3)
+
+After this branch is merged into local `develop`, from any tree of this repository:
+
+```
+sh scripts/ac-baseline/install-hook.sh
+git config --get-regexp '^hook\.ac-baseline-guard\.'
+```
+
+The second command must print two lines (`event pre-commit` and the `command`). Then observe one rejected and one passing commit in a develop-absorbed tree and record it as a post-merge observation.
 
 ## §E.3 Run-phase Audit-Ready Signal
 
-_<pending run-phase>_
+```yaml
+run_complete_at: 2026-09-24
+run_commit_sha: 00ad53a9e   # M1-M2 code; M3-M4 doc + evidence commit follows (backfill its SHA at sync)
+run_status: complete
+ac_pass_count: 16
+ac_fail_count: 0
+preserve_list_post_run_count: 0   # no existing test deleted or weakened; one table lifted verbatim
+l44_pre_commit_fetch: not-run     # lane pushes nothing; lead batches the develop push
+l44_post_push_fetch: not-applicable
+new_warnings_or_lints_introduced: 0
+cross_platform_build:
+  darwin: measured (this machine)
+  linux: not-measured (CI)
+  windows: not-measured; real-commit and installer subtests skip on windows by design (plan.md R7)
+total_run_phase_files: 12   # 2 scripts, 1 new test, 1 refactored test, 5 fixtures, spec.md, cascade doc, progress.md
+m1_to_mN_commit_strategy: two commits (code+tests+status, then doc+evidence)
+```
 
 ## §E.4 Sync-phase Audit-Ready Signal
 

@@ -62,3 +62,48 @@ MOAI_AC_BASELINE_REGENERATE=1 go test ./internal/spec -run TestACCounterBaseline
 ## 6. 판정 금지선 — 재생성이 바꾸지 않는 것
 
 스냅샷 재생성은 **관측을 다시 찍는 것**이지 판정을 다시 쓰는 것이 아니다. 부재는 report-only 로 남고(필수 출력), 기록된 파일의 vanish / count-move / state-move / halt 식별자 집합 이동은 하드 실패로 남는다 (REQ-ABR-006; 원본 계약 `SPEC-AC-COUNT-DISCRIMINATOR-001` spec.md §3.5 rules 1–4). 자동 흡수는 없다 — 축복 행위는 변수를 걸고 diff 를 읽고 커밋하는 **사람의 검토된 실행**이다.
+
+## 7. 커밋 시점 기계 게이트 — `ac-baseline-guard`
+
+> SPEC-ACSNAPSHOT-COMMIT-GUARD-001 (card t1150, 2026-09-24). §2 의 네 번째 행(제자리 개정)이 문서만으로는 막히지 않았다 — t1106 개정과 t1139 개정이 이틀 사이에 develop CI 를 두 번 빨갛게 만들었다. 이 게이트는 그 행 하나를 커밋 순간에 기계로 막는다.
+
+### 7.1 무엇을 검사하는가
+
+git 의 config 정의 훅(`hook.ac-baseline-guard.event = pre-commit`)이 커밋마다 `scripts/ac-baseline/check-staged.sh` 를 실행한다.
+
+- **대상**: 인덱스에서 `HEAD` 대비 상태가 `M` 인 depth-1 `.moai/specs/<dir>/acceptance.md` 만 본다. `_archive/` 와 depth-2 경로, 새 파일(`A`), 삭제(`D`)는 대상이 아니다 — 삭제와 `_archive/` 이동은 여전히 CI 게이트가 잡는다.
+- **판정 재료는 전부 인덱스에서 읽는다**: 카운터(스테이징된 `manager-docs.md` 의 sentinel 블록 — 사본이 따로 없다), 개정된 `acceptance.md` 블롭, 스냅샷 `.moai/reports/t338/ac-count-baseline.txt`. 그래서 §3 같은 커밋 규칙을 지킨 커밋, 곧 재생성된 스냅샷을 **같이 스테이징한** 커밋은 구조상 통과한다. 작업 트리에서만 고치고 스테이징하지 않은 스냅샷은 소용이 없다.
+- **비교 규칙은 CI 와 같다**(`acComparison`): `live` 나 `excluded` 가 움직이면, COUNT↔HALT 상태가 바뀌면, HALT 식별자 집합이 바뀌면 거절한다. 스냅샷에 기록이 없는 파일은 보고만 하고 통과시킨다.
+- **거절 메시지**는 파일 경로, 기록값과 스테이징값, §1 재생성 명령, 이 문서 경로를 함께 적는다. 게이트는 스냅샷을 쓰거나 재생성하지 않는다 — 재생성은 여전히 §1·§6 의 사람 검토 절차다.
+- 대상 파일이 없는 커밋은 아무것도 출력하지 않고 통과한다(체커가 있는 트리 기준).
+
+### 7.2 설치 — 리드가 develop 병합 뒤 한 번
+
+[HARD] **설치 주체는 리드이며, 이 카드 브랜치가 로컬 `develop` 에 병합된 뒤 한 번만 실행한다.** 레인은 공유 git 설정을 건드리지 않는다.
+
+```
+sh scripts/ac-baseline/install-hook.sh
+```
+
+- `.git/config`(모든 링크된 워크트리가 공유하는 설정)에 `hook.ac-baseline-guard.event` 와 `hook.ac-baseline-guard.command` 두 키만 쓴다. 여러 번 실행해도 키마다 값은 하나로 남는다.
+- git 2.54 미만이면 발견한 버전과 요구 버전을 적고 아무것도 쓰지 않은 채 실패한다.
+- `.git/hooks/*`, 관리형 훅의 출처 파일 `.git/hooks/.moai-pre-commit.sha256`, `core.hooksPath` 는 건드리지 않는다. 이 저장소는 `core.hooksPath=/dev/null` 이라 관리형 hookdir 훅은 돌지 않지만, config 정의 훅은 그 설정과 무관하게 실행된다.
+- 설치 확인: `git config --get-regexp '^hook\.ac-baseline-guard\.'` 가 두 줄을 출력해야 한다. 설치 후 실제 거절 커밋 한 번과 통과 커밋 한 번을 develop 을 흡수한 트리에서 관찰해 기록하는 것은 리드의 병합 후 관찰이며, 이 SPEC 의 완료 조건은 아니다.
+
+### 7.3 `NOT CHECKED` — 검사하지 못했다는 뜻이지 통과가 아니다
+
+게이트는 도구 결함에서 **열린 채로 실패한다**(fail open). 카운터 sentinel 이 없거나 중복되거나 순서가 뒤집혔을 때, 카운터 본문이 비었을 때, 스냅샷이 인덱스에 없을 때, 그 파일의 스냅샷 행이 깨졌을 때, 카운터가 0·3 이외의 코드로 끝났을 때는 `ac-baseline-guard: NOT CHECKED (<원인>): <경로>` 한 줄을 stderr 에 쓰고 커밋을 막지 않는다. 막지 않는 이유는 공유 설정에 걸린 훅이 결함 하나로 모든 레인의 커밋을 한꺼번에 세우지 않게 하기 위해서다 — CI 게이트는 그대로 최종 판정자로 남는다. 다만 같은 커밋의 다른 파일에서 실측 불일치가 나오면 그 불일치가 우선해 커밋은 거절된다.
+
+체커 스크립트가 없는 트리에서도 같은 줄이 나온다. 설치 시점부터 **아직 develop 을 흡수하지 않은 레인 워크트리**와 **`main` 에 체크아웃된 primary 체크아웃**은 커밋할 때마다 `NOT CHECKED` 를 출력하고 막히지 않는다. 트리가 develop 을 흡수하면 사라지고, primary 체크아웃은 스크립트를 실은 릴리스가 `main` 에 들어갈 때까지 계속 출력한다. 의도된 소음이다.
+
+[HARD] **레인의 완료 보고는 커밋 중에 본 `NOT CHECKED` 줄을 그대로 인용한다.** 이 줄은 커밋한 세션의 stderr 에만 나타나므로, 보고에 옮겨 적지 않으면 "검사하지 못함"이 "통과"로 읽힌다(`.claude/rules/moai/core/verification-claim-integrity.md` §1).
+
+### 7.4 우회
+
+- 유일한 우회는 `git commit --no-verify` 다. 터미널의 사람은 쓸 수 있지만, Claude 세션은 쓸 수 없다 — PreToolUse 가드(`internal/hook/pre_tool.go`)가 `git commit` 과 `--no-verify` 를 함께 담은 명령을 거부한다. 에이전트 세션에서 거절을 풀려면 스냅샷을 재생성해 같은 커밋에 스테이징하는 것이 정석이다.
+- 그 가드의 거부 메시지가 권하는 `SKIP_MOAI_PRECOMMIT=1` 은 관리형 hookdir 훅만 읽는 변수라 **이 게이트를 우회하지 못한다.** 게이트 전용 우회 변수는 따로 두지 않았다.
+
+### 7.5 막지 않는 것
+
+- 충돌 없이 끝나는 `git merge` 는 `pre-commit` 이 아니라 `pre-merge-commit` 을 실행하므로 통합 창의 병합은 게이트를 거치지 않는다. 병합되는 브랜치의 커밋들은 만들어질 때 이미 검사를 받았다. 충돌을 풀고 `git commit` 으로 마무리하는 병합은 검사된다.
+- 카운터 문법이나 corpus glob 을 바꾸는 §2 세 번째 행은 대상이 아니다. 게이트는 스테이징된 카운터를 읽지만 비교는 개정된 파일에만 한다.
