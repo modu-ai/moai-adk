@@ -445,7 +445,7 @@ func runCleanReinstall(ctx context.Context, projectRoot string, opts CleanReinst
 	// handling is deliberately unchanged.
 	homeDir, _ := userHomeDirFn()
 	goBinPath := detectGoBinPathForUpdate(homeDir)
-	projectName, userName := loadUpdateIdentity(projectRoot)
+	userValues := loadUpdateUserValues(projectRoot)
 	tmplCtx := template.NewTemplateContext(
 		template.WithGoBinPath(goBinPath),
 		template.WithResolvedMoaiPath(resolveMoaiExecutable()),
@@ -457,10 +457,9 @@ func runCleanReinstall(ctx context.Context, projectRoot string, opts CleanReinst
 		// Step 4 removes only deprecated paths, so git-strategy.yaml is still on
 		// disk here; without the mode the reinstall renders the template default.
 		template.WithGitMode(config.LoadGitMode(projectRoot)),
-		// Card t1139: render project.yaml / user.yaml with the names the
-		// project already carries, for the same reason as the mode above.
-		template.WithProject(projectName, projectRoot),
-		template.WithUser(userName),
+		// Cards t1139 / t1147: render the section files with the user-owned
+		// values the project already carries, for the same reason as the mode.
+		userValues,
 	)
 
 	if deployErr := deployWithMirrorNotice(ctx, deployer, projectRoot, mgr, tmplCtx, errOut); deployErr != nil {
