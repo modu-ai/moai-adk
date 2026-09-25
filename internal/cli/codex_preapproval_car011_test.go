@@ -211,7 +211,7 @@ func preApprovalRunCar011Live(t *testing.T) {
 		if preApprovalLiveCount(rows) >= preApprovalMaxLiveCalls {
 			stop("absolute LIVE budget exceeded")
 		}
-		if err := preApprovalPrepareArm(t, f, authPath, role, inputs.Home, inputs.Project, inputs.RootState); err != nil {
+		if err := preApprovalPrepareArm(f, authPath, role, inputs.Home, inputs.Project, inputs.RootState); err != nil {
 			stop(err.Error())
 		}
 		beforeAuth := fileSHA256OrEmpty(authPath)
@@ -416,6 +416,56 @@ func TestCodexPreApprovalCar011PostStartupFailuresStop(t *testing.T) {
 				t.Fatalf("successful check changed ledger: %d", len(persisted))
 			}
 		})
+	}
+}
+
+func TestCodexPreApprovalCar011GitStatusFailureStops(t *testing.T) {
+	tempRoot := canonicalDir(t, t.TempDir())
+	root := filepath.Join(tempRoot, "fixture")
+	if err := os.Mkdir(root, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	token := preApprovalSentinel(t, root)
+	statusCalls, cleanCalls := 0, 0
+	git := func(args ...string) (string, error) {
+		if len(args) < 4 || args[0] != "-C" || args[1] != root {
+			return "", fmt.Errorf("unexpected git args: %v", args)
+		}
+		switch args[2] {
+		case "rev-parse":
+			return root + "\n", nil
+		case "clean":
+			cleanCalls++
+			return "", nil
+		case "status":
+			statusCalls++
+			return "", errors.New("injected status exit 42")
+		default:
+			return "", fmt.Errorf("unexpected git args: %v", args)
+		}
+	}
+	f := &preApprovalFixture{tempRoot: tempRoot, root: root, token: token,
+		codexHome: filepath.Join(tempRoot, "codex-home"), git: git}
+	ledgerPath := filepath.Join(tempRoot, "ledger.json")
+	rows := []map[string]any{{"kind": "startup", "fixture": "car011", "started_ns": int64(1), "ended_ns": int64(2)},
+		{"kind": "live", "fixture": "disc-control", "started_ns": int64(3), "ended_ns": int64(4)}}
+	if err := preApprovalWriteLedger(ledgerPath, rows); err != nil {
+		t.Fatal(err)
+	}
+	err := preApprovalCar011Preflight(ledgerPath, &rows, func() error {
+		return preApprovalPrepareArm(f, "unused-auth", "mission-governor",
+			[]byte("user-config"), []byte("project-config"), []byte("root-state"))
+	})
+	if err == nil || !strings.Contains(err.Error(), "injected status exit 42") {
+		t.Fatalf("git status failure not returned: %v", err)
+	}
+	stored, err := preApprovalReadLedger(ledgerPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if statusCalls != 1 || cleanCalls != 1 || len(stored) != 3 || stored[2]["kind"] != "stop" ||
+		stored[2]["fixture"] != "car011" || preApprovalLiveCount(stored) != 1 {
+		t.Fatalf("pre-LIVE failure escaped stop: status=%d clean=%d rows=%v", statusCalls, cleanCalls, stored)
 	}
 }
 

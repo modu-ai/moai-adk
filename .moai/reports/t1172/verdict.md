@@ -677,3 +677,27 @@ ok  github.com/modu-ai/moai-adk/internal/cli 0.825s
 ```
 
 위 두 음성 대조는 가짜 버전 `0.158.0`과 누락된 반출 파일을 사용했다. 두 경우 모두 사전 시작 검사 1행과 기존 LIVE 1행을 보존하고 `stop` 1행을 추가했다. 실제 모델 도구 결과와 수정 코드의 독립 재감사는 아직 없다.
+
+### M4 감사 F2 후속 수리 (실모델 0회)
+
+독립 감사는 새 car011 시작 검사 뒤 `git status`가 실패하면 루트 상태 확인의 내부 `t.Fatal`이 장부 정지를 건너뛰는 결함을 재현했다. 루트 상태 읽기를 오류 반환형으로 분리하고, 호출자는 그 오류를 받아 `stop`을 남긴다. 시작 검사 단계의 기존 검증용 래퍼는 오류를 그대로 테스트 실패로 보고한다.
+
+```text
+$ go test ./internal/cli -run '^TestCodexPreApprovalCar011(GitStatusFailureStops|PostStartupFailuresStop|PreparationBoundary|ExportIntegrity)$' -count=1 -v -timeout=90s
+=== RUN   TestCodexPreApprovalCar011PreparationBoundary
+--- PASS: TestCodexPreApprovalCar011PreparationBoundary (0.00s)
+=== RUN   TestCodexPreApprovalCar011ExportIntegrity
+--- PASS: TestCodexPreApprovalCar011ExportIntegrity (0.00s)
+=== RUN   TestCodexPreApprovalCar011PostStartupFailuresStop
+=== RUN   TestCodexPreApprovalCar011PostStartupFailuresStop/fake_version
+=== RUN   TestCodexPreApprovalCar011PostStartupFailuresStop/missing_export
+--- PASS: TestCodexPreApprovalCar011PostStartupFailuresStop (0.00s)
+    --- PASS: TestCodexPreApprovalCar011PostStartupFailuresStop/fake_version (0.00s)
+    --- PASS: TestCodexPreApprovalCar011PostStartupFailuresStop/missing_export (0.00s)
+=== RUN   TestCodexPreApprovalCar011GitStatusFailureStops
+--- PASS: TestCodexPreApprovalCar011GitStatusFailureStops (0.00s)
+PASS
+ok  github.com/modu-ai/moai-adk/internal/cli 0.821s
+```
+
+회귀 테스트는 임시 루트에서 `git clean` 다음 `git status` 오류를 주입했다. 함수가 오류를 반환하고 장부가 기존 startup 1행·LIVE 1행을 보존하며 `stop` 1행을 추가했다. 실제 Codex를 사용한 LIVE 호출은 실행하지 않았고 독립 재감사 결과도 아직 없다.

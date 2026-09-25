@@ -105,9 +105,17 @@ func preApprovalRunSplit(procs *liveProcs, cmd *exec.Cmd) ([]byte, []byte, error
 
 func preApprovalRootState(t *testing.T, root string, git func(...string) (string, error)) []byte {
 	t.Helper()
-	status, err := git("-C", root, "status", "--porcelain", "--ignored")
+	state, err := preApprovalRootStateResult(root, git)
 	if err != nil {
 		t.Fatal(err)
+	}
+	return state
+}
+
+func preApprovalRootStateResult(root string, git func(...string) (string, error)) ([]byte, error) {
+	status, err := git("-C", root, "status", "--porcelain", "--ignored")
+	if err != nil {
+		return nil, fmt.Errorf("fixture git status: %w", err)
 	}
 	var paths []string
 	err = filepath.WalkDir(root, func(path string, d os.DirEntry, walkErr error) error {
@@ -127,9 +135,9 @@ func preApprovalRootState(t *testing.T, root string, git func(...string) (string
 		return nil
 	})
 	if err != nil {
-		t.Fatal(err)
+		return nil, fmt.Errorf("fixture root walk: %w", err)
 	}
-	return []byte("status:\n" + status + "files:\n" + strings.Join(paths, "\n") + "\n")
+	return []byte("status:\n" + status + "files:\n" + strings.Join(paths, "\n") + "\n"), nil
 }
 
 func preApprovalSHA(data []byte) string {

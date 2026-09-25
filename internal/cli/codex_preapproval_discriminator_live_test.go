@@ -328,7 +328,7 @@ func preApprovalM1aBaseline(evidenceDir string, rows []map[string]any) bool {
 	return preApprovalSHA(files) == preApprovalM1aFilesSHA256
 }
 
-func preApprovalPrepareArm(t *testing.T, f *preApprovalFixture, authPath string, arm string, home, project, rootState []byte) error {
+func preApprovalPrepareArm(f *preApprovalFixture, authPath string, arm string, home, project, rootState []byte) error {
 	if err := preApprovalCleanFixture(f.root, f.tempRoot, f.token, f.worktrees, f.git); err != nil {
 		return err
 	}
@@ -341,7 +341,11 @@ func preApprovalPrepareArm(t *testing.T, f *preApprovalFixture, authPath string,
 	if err := os.WriteFile(filepath.Join(f.root, ".fixture-sentinel"), []byte(f.token), 0o600); err != nil {
 		return err
 	}
-	if got := preApprovalRootState(t, f.root, f.git); !bytes.Equal(got, rootState) {
+	got, err := preApprovalRootStateResult(f.root, f.git)
+	if err != nil {
+		return err
+	}
+	if !bytes.Equal(got, rootState) {
 		return fmt.Errorf("%s root state changed after clean", arm)
 	}
 	if err := os.RemoveAll(f.codexHome); err != nil {
@@ -699,7 +703,7 @@ func TestCodexPreApprovalDiscriminatorLive(t *testing.T) {
 		if allLive >= preApprovalMaxLiveCalls {
 			stop("absolute LIVE budget exceeded")
 		}
-		if err := preApprovalPrepareArm(t, f, authPath, arm, home, project, rootState); err != nil {
+		if err := preApprovalPrepareArm(f, authPath, arm, home, project, rootState); err != nil {
 			stop(err.Error())
 		}
 		if fileSHA256OrEmpty(authPath) != authBefore {
