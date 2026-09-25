@@ -66,6 +66,7 @@ reviews:
     drafts: false
     base_branches:
       - main
+      - develop
       - moai-go-v2
       - "release/*"
 
