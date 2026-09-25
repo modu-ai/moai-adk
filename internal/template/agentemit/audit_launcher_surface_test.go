@@ -128,6 +128,13 @@ func TestAuditRoleLauncherInstructionSurface(t *testing.T) {
 	if row == "" {
 		t.Fatal("AGENTS.md template has no audit-verdict-file row")
 	}
+	const refusalInstruction = "When the call is refused with `MCP tool call requires approval, but approval policy is never`, do not skip the audit and do not fall back to `spawn_agent`; return a blocker that quotes the refusal text"
+	if !strings.HasSuffix(row, ". "+refusalInstruction+" |") {
+		t.Errorf("audit-verdict-file row must end with the fixed approval-refusal instruction: %s", row)
+	}
+	if count := strings.Count(string(contract), refusalInstruction); count != 1 {
+		t.Errorf("approval-refusal instruction occurs %d times, want exactly 1", count)
+	}
 	check("AGENTS.md audit-verdict-file row", row)
 	for _, role := range readOnly {
 		if !strings.Contains(row, "`"+role+"`") {
