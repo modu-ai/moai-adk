@@ -53,7 +53,8 @@
 `codex_audit_mcp.go`가 들어갔다. 셸과 MCP가 같은 `runCodexAudit` 코어를
 쓰며, `codex exec -s read-only`를 최상위 프로세스로 실행한다. `-c`로
 MCP 서버를 끄고 역할 파일의 지시문 크기·워크트리·목적지를 제한하며,
-성공한 반환문을 런처가 `.moai/reports/`에 기록한다. MCP job 상태는
+`--out` 또는 MCP `out`을 지정하면 결과를 `.moai/reports/`에 기록한다. 생략하면
+CLI는 stdout으로, MCP는 job output으로 반환한다. MCP job 상태는
 서버 프로세스의 메모리에만 있으므로 서버 재시작 후 같은 job ID 조회는
 지원하지 않는다. 파일 수 19→21은 이 두 신규 파일에서 발생했다.
 

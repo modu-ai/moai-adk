@@ -120,7 +120,7 @@
 - **`internal/codextools` (2 파일)** — 비테스트 import가 0인 패키지입니다. 네이티브·지연 디스패처
   도구 레지스트리를 인증된 대화 하나에 묶는 역할을 패키지 주석이 밝히지만, 트리 안의 소비자는
   자기 테스트뿐입니다(§ `modules.md` 네거티브 스페이스).
-- **`internal/template` (31 파일)** — 도메인(카탈로그·모델 정책), 데이터(589개 파일의
+- **`internal/template` (31 파일)** — 도메인(카탈로그·모델 정책), 데이터(591개 파일의
   `//go:embed all:templates` 트리), 인프라(배포기)를 동시에 수행하고, 하위에 두 개의
   **기계 방출기**(`agentemit` · `commandemit`)를 품습니다.
 - **`internal/core`** — 이름과 달리 응집된 core가 아닙니다. `core/git`은 인프라,
