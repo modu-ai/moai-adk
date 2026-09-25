@@ -50,6 +50,16 @@ A fifth, `CLAUDE_CODE_WORKFLOW_MAX_CONCURRENT_AGENTS` (v2.1.269), raises the Wor
 tool's per-run concurrent-agent limit and is documented with the rest of the workflow
 ceilings in `.claude/rules/moai/workflow/dynamic-workflows.md`.
 
+Claude Code v2.1.280-2.1.281 added four more operator controls. MoAI does not set
+them in its distributed settings:
+
+| Variable | Version | What it does |
+|---|---|---|
+| `CLAUDE_CODE_MAX_MCP_DESCRIPTION_LENGTH` | v2.1.280 | Changes the default 2,048-character cap on each MCP tool description and server instructions across the session. Raising it can increase tool-schema context cost. |
+| `CLAUDE_CODE_AUTO_MODE_SERVER` | v2.1.281 for direct Anthropic API | `0` opts out of server-side auto-mode classification and charges local classifier use; `1` opts in. Other supported API/cloud/gateway hosts began defaulting to the server-side classifier in v2.1.278. |
+| `CLAUDE_CODE_DISABLE_DANGEROUS_RM_TIMEOUT` | v2.1.281 | `1` disables the two-minute timeout that otherwise denies an unanswered dangerous-`rm` prompt in auto or bypass mode. |
+| `CLAUDE_CODE_DISABLE_SUBSTITUTION_RM_PROMPT` | v2.1.281 | `1` disables the additional prompt for recursive `rm` whose target consists only of command-substitution output, even when a Bash allow rule matches. |
+
 #### OpenTelemetry surface additions (v2.1.268-2.1.274)
 
 MoAI configures no Claude Code telemetry; these are recorded so a deployment that does
@@ -60,6 +70,15 @@ run OTel knows what changed rather than rediscovering it.
 - `OTEL_LOG_RAW_API_BODIES=file:<dir>` gained an `index.jsonl` plus `request_body_id` / `message.id` event attributes linking each response to its request file and transcript message (v2.1.274).
 - `OTEL_LOG_TOOL_DETAILS=1` now also includes real agent, skill, plugin and MCP-server names on cost and token metrics (v2.1.273).
 - `OTEL_METRICS_INCLUDE_REPOSITORY` tags metrics and events with `vcs.*` repository attributes; commit events gain `vcs.ref.head.*` when `OTEL_LOG_TOOL_DETAILS` is also set (v2.1.269).
+
+Claude Code v2.1.282 reports ignored or disabling telemetry variables from
+project `.claude/settings.json` and `.claude/settings.local.json` in diagnostics.
+Repository settings cannot enable telemetry, select its destination, or expose
+content with `CLAUDE_CODE_ENABLE_TELEMETRY`, `OTEL_EXPORTER_OTLP_*`, or
+`OTEL_LOG_*`; use managed settings, the launch environment, or user settings
+for those choices. A repository may set an exporter selector such as
+`OTEL_LOGS_EXPORTER=none` to turn a signal off unless a higher-priority source
+sets that variable. MoAI does not emit telemetry variables in its template.
 
 ### MCP Configuration
 
@@ -92,6 +111,7 @@ MCP tools (when a user configures their own `.mcp.json`) are deferred by default
 | `requiredMaximumVersion` | v2.1.163+ | Managed | Hard version-ceiling — refuses to start above the cap. Likewise an org/admin decision. |
 | `effortLevel` | v2.1.110+ | User/Project/Local | Intentionally NOT shipped in `settings.json.tmpl`. The launcher passes a profile effort of `low`, `medium`, `high`, or `xhigh` as an `effortLevel` in the transient `--settings` file it injects — a launch DEFAULT an in-session `/effort` or `/model` change may replace. A resolved `max` is never written there (the settings key does not accept `max`): it travels as the `--effort max` launch argument, which applies to that session only, and an operator-supplied `--effort` anywhere in the argv suppresses it. Do NOT pin the level through `CLAUDE_CODE_EFFORT_LEVEL`: that variable is an OVERRIDE, so while it is set Claude Code refuses every in-session effort change for the rest of the session. Pinning a fixed high effort level project-wide would also force elevated token cost on every user session. |
 | `workflowSizeGuideline` | v2.1.219+ | Any settings file | Sets the advisory Dynamic workflow size guideline (`small` / `medium` / `large` / `unrestricted`; default `medium` — aim for fewer than 10 agents, lowered from 15 in v2.1.271; the default drops to `small` on Pro plans); the `/config` row is hidden while one is set. MoAI does not pin a size — the choice is left to the user/org (see `.claude/rules/moai/workflow/dynamic-workflows.md`). |
+| `maxProseWidth` | v2.1.282+ | Claude Code setting | Caps prose width in wide terminals; tables and code blocks still use the full width. MoAI leaves this display preference to the user. |
 
 Reference: https://code.claude.com/docs/en/settings.
 
@@ -376,4 +396,3 @@ Removing a built-in style is a breaking change and requires a major version bump
 - StatusLine uses relative paths only (no env var expansion)
 - Template sources (.tmpl files) belong in `internal/template/templates/` only
 - Local projects should contain rendered results, not template sources
-
