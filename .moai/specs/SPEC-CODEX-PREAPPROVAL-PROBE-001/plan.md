@@ -25,6 +25,7 @@ plan 단계에서 확인한 사실이다. 모델에 닿은 호출은 0회다. `c
 | `codex mcp get moai --json`은 `enabled_tools`·`disabled_tools`·timeout 필드만 보이고 승인 관련 필드는 보이지 않는다 | 임시 프로젝트에서 실행, 출력 전문은 verdict §Plan |
 | 틀린 enum 값(`"bogus"`)은 로더가 거부하고, 틀린 필드 이름(`approval_modex`)은 `codex mcp get`이 조용히 무시한다 | t1143 verdict 156–168행 |
 | `codex exec --strict-config`는 틀린 필드 이름을 적재 단계에서 거부한다: `unknown configuration field \`mcp_servers.moai.tools.codex_role_audit.approval_modex\``, exit 1, 세션 없음. `-c` 재정의의 모르는 키도 같은 방식으로 거부한다(`stream_max_retries`) | `plan-checks/typo-strict-exec.err` |
+| 대상 `codex-cli 0.157.0` 재측정: 정상 설정은 non-git 시작 게이트(`Not inside a trusted directory…`)에 도달한다. 오타는 `Error: <임시 경로>/.codex/config.toml:<행>:<열>: unknown configuration field \`mcp_servers.moai.tools.codex_role_audit.approval_modex\``, 잘못된 enum은 같은 접두사에 `unknown variant \`bogus\``를 낸다. 세 경우 모두 exit 1이다 | 2026-09-25, 로그인 없는 임시 `CODEX_HOME`, 접속 불가 제공자, 이 worktree의 `codex-cli 0.157.0`; 로더 3경우 직접 실행 |
 | `codex --strict-config mcp get`, `codex --strict-config debug prompt-input`은 "not supported" | 실행 출력 |
 | git 저장소가 아닌 디렉터리에 `CODEX_HOME` 신뢰 항목을 두면 `codex debug prompt-input`은 기본 sandbox를 `workspace-write`로 렌더한다(신뢰 항목이 없으면 `read-only`). 같은 디렉터리에서 `codex exec`는 `Not inside a trusted directory and --skip-git-repo-check was not specified.`로 시작을 거부한다 | `plan-checks/prompt-input-{trusted,untrusted}.txt`, `plan-checks/ok-strict-exec.err`, `plan-checks/codexhome-config.toml` |
 | git 저장소 루트에서는 신뢰 항목 없이 시작 검사를 통과한다. 접속 불가 제공자로 돌리면 `thread.started`·`turn.started` 뒤에 `Reconnecting... waiting for network` 오류만 나오고 `item.*` 이벤트 0개, `timeout 90`으로 끝났다(exit 124). 끝난 뒤 남은 프로세스 없음 | `plan-checks/repo-exec.out`, `ps` 필터 출력 없음 |
@@ -90,7 +91,7 @@ writer는 이미 있는 `[mcp_servers.moai]` 표를 바이트 그대로 둔다(�
 - 입력: 테스트가 손으로 쓴 문자열이 아니라 제품 함수가 만든 설정 바이트(채택 갈래의 writer 출력). A2에서는 opt-in을 **켠** writer 출력을 쓴다(D13). A1·A2에서는 로더에 넣는 바이트에 도구별 표가 정확히 한 번 있음을 테스트가 먼저 단언한다(하위 테스트 `generated_config_has_table`). N 갈래에서도 writer 출력의 기존 키(`command`, `args`, `env_vars`, `default_tools_approval_mode`)를 같은 방식으로 검증한다.
 - 환경 변수 이름(`MOAI_CODEX_BIN`, `MOAI_CODEX_PREAPPROVAL_LIVE`, `MOAI_T1172_EVIDENCE_DIR`)은 테스트 전용이므로 기존 `envT1143EvidenceDir`처럼 해당 패키지 테스트 파일의 이름 있는 상수로 둔다(D26). 제품 코드가 읽는 환경 변수는 새로 만들지 않는다.
 - 양성 대조: 같은 픽스처에서 `approval_modex`로 바꾼 설정이 `unknown configuration field` + 그 점 경로로 보고되어야 한다. 보고되지 않으면 테스트는 실패한다(skip 아님). 프로젝트 층이 아예 적재되지 않는 픽스처였다면 여기서 드러난다.
-- 판정 기준: 정상 설정 → 표준 오류에 `Error loading config`도 `unknown configuration field`도 없다. 오타 설정 → 둘 다 있고 점 경로가 정확히 일치한다.
+- 판정 기준: 정상 설정 → `Not inside a trusted directory` 게이트에 닿고, 로더 오류 접두사와 `unknown configuration field`·`unknown variant`는 없다. 오타 설정은 두 형식만 허용한다: (1) 0.157.0의 한 행 `Error: … unknown configuration field \`mcp_servers.moai.tools.codex_role_audit.approval_modex\``; (2) 과거 원자료의 첫 행 `Error loading config.toml:` 바로 다음 행에 같은 진단. 잘못된 enum도 같은 형식 안에서 `unknown variant \`bogus\``를 요구한다. 세 경우 모두 exit 1이므로 exit만 판정하지 않는다. 접두사만 있는 일반 오류나 떨어진 위치의 진단을 붙인 무관한 로그는 실패시킨다.
 - codex가 없을 때: `exec.LookPath`(또는 테스트용 재정의 환경 변수 `MOAI_CODEX_BIN`) 실패 시 `CODEX_NOT_INSTALLED: <이유>`로 skip한다. skip은 AC 판정에서 PASS가 아니다.
 - 프로세스는 `timeout` 성격의 context로 묶고, 기록한 pid(프로세스 그룹)만 정리한다.
 

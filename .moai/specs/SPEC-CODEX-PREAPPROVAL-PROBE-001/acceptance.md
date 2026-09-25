@@ -136,7 +136,7 @@ jq -se --rawfile ad .moai/reports/t1172/adoption.txt '($ad|rtrimstr("\n")) as $a
 
 ### AC-CPP-008 — 생성 설정의 키 이름이 Codex 로더를 통과하고, 양성 대조가 오타를 잡는다 (maps REQ-CPP-007)
 
-**Given** codex가 설치된 환경, **When** 로더 검증 테스트를 돌리면, **Then** 부모 테스트와 하위 테스트 `generated_config`, `positive_control_misspelled_key`, `positive_control_bad_enum`이 pass이고 skip이 없으며, 채택 갈래에서는 `generated_config_has_table`(로더에 넣는 바이트에 도구별 표가 정확히 한 번 있음, A2는 켠 출력)도 pass다. `generated_config`는 제품 writer가 만든 바이트를 쓰며, 양성 대조는 `unknown configuration field` 문구와 정확한 점 경로 `mcp_servers.moai.tools.codex_role_audit.approval_modex`를 확인한다. 이 오타 표는 채택 갈래와 무관하게 테스트가 writer 출력 뒤에 덧붙여 만든다(N 갈래에서도 같은 대조를 쓴다).
+**Given** codex가 설치된 환경, **When** 로더 검증 테스트를 돌리면, **Then** 부모 테스트와 하위 테스트 `generated_config`, `positive_control_misspelled_key`, `positive_control_bad_enum`, `diagnostic_matcher_controls`가 pass이고 skip이 없으며, 채택 갈래에서는 `generated_config_has_table`(로더에 넣는 바이트에 도구별 표가 정확히 한 번 있음, A2는 켠 출력)도 pass다. `generated_config`는 제품 writer가 만든 바이트를 쓰며, 로더 오류 접두사(`Error: ` 또는 `Error loading config.toml:`)와 `unknown configuration field`·정확한 점 경로 `mcp_servers.moai.tools.codex_role_audit.approval_modex`가 모두 없고 `Not inside a trusted directory` 게이트에 도달한다. 오타 대조는 0.157.0의 `Error: ` 행에 `unknown configuration field`·정확한 점 경로가 함께 있거나, 과거의 `Error loading config.toml:` 바로 다음 행에 같은 진단이 있음을 확인한다. 잘못된 enum 대조는 같은 두 형식 안에서 `unknown variant \`bogus\``를 확인한다. 이 오타 표는 채택 갈래와 무관하게 테스트가 writer 출력 뒤에 덧붙여 만든다(N 갈래에서도 같은 대조를 쓴다). `diagnostic_matcher_controls`는 두 허용 형식 각각에 대한 오타·enum 진단을 참으로, 접두사만 있는 일반 오류·떨어진 위치의 진단·다른 점 경로·다른 enum 값을 거짓으로 확인한다. 세 실제 실행의 종료 코드가 모두 1일 수 있으므로 종료 코드만으로 통과시키지 않는다.
 
 실행:
 
@@ -147,10 +147,10 @@ go test -json ./internal/codexwiring -run '^TestGeneratedConfigKeysLoadInCodex$'
 판정:
 
 ```bash
-jq -se --rawfile ad .moai/reports/t1172/adoption.txt '($ad|rtrimstr("\n")) as $a | ([.[]|select(.Action=="pass" and .Test=="TestGeneratedConfigKeysLoadInCodex")]|length)==1 and ([.[]|select(.Action=="pass" and .Test=="TestGeneratedConfigKeysLoadInCodex/generated_config")]|length)==1 and ([.[]|select(.Action=="pass" and .Test=="TestGeneratedConfigKeysLoadInCodex/positive_control_misspelled_key")]|length)==1 and ([.[]|select(.Action=="pass" and .Test=="TestGeneratedConfigKeysLoadInCodex/positive_control_bad_enum")]|length)==1 and ([.[]|select(.Action=="fail" or .Action=="skip")]|length)==0 and ($a=="not-adopted" or ([.[]|select(.Action=="pass" and .Test=="TestGeneratedConfigKeysLoadInCodex/generated_config_has_table")]|length)==1)' .moai/reports/t1172/ac-cpp-008.jsonl | grep -qx true && echo true
+jq -se --rawfile ad .moai/reports/t1172/adoption.txt '($ad|rtrimstr("\n")) as $a | ([.[]|select(.Action=="pass" and .Test=="TestGeneratedConfigKeysLoadInCodex")]|length)==1 and ([.[]|select(.Action=="pass" and .Test=="TestGeneratedConfigKeysLoadInCodex/generated_config")]|length)==1 and ([.[]|select(.Action=="pass" and .Test=="TestGeneratedConfigKeysLoadInCodex/positive_control_misspelled_key")]|length)==1 and ([.[]|select(.Action=="pass" and .Test=="TestGeneratedConfigKeysLoadInCodex/positive_control_bad_enum")]|length)==1 and ([.[]|select(.Action=="pass" and .Test=="TestGeneratedConfigKeysLoadInCodex/diagnostic_matcher_controls")]|length)==1 and ([.[]|select(.Action=="fail" or .Action=="skip")]|length)==0 and ($a=="not-adopted" or ([.[]|select(.Action=="pass" and .Test=="TestGeneratedConfigKeysLoadInCodex/generated_config_has_table")]|length)==1)' .moai/reports/t1172/ac-cpp-008.jsonl | grep -qx true && echo true
 ```
 
-음성·변이(plan 단계에서 합성 스트림으로 확인): 양성 대조 하위 테스트 skip → `false`. run 단계에서 테스트가 FAIL해야 하는 변이: 오타 설정을 정상 키로 되돌림(대조 불발), 픽스처에서 `CODEX_HOME` 신뢰 항목 제거(프로젝트 층 미적재 → 대조 불발), writer 출력 대신 고정 문자열 사용(코드 검사).
+음성·변이(plan 단계에서 합성 스트림으로 확인): 양성 대조 하위 테스트 skip → `false`. run 단계에서 테스트가 FAIL해야 하는 변이: 오타 설정을 정상 키로 되돌림(대조 불발), 픽스처에서 `CODEX_HOME` 신뢰 항목 제거(프로젝트 층 미적재 → 대조 불발), writer 출력 대신 고정 문자열 사용(코드 검사), `diagnostic_matcher_controls` 하위 테스트 생략, 일반 오류 문구만 보고 오타를 통과시킴.
 
 ### AC-CPP-009 — codex가 없으면 이유를 적고 skip하며, pass로 세지 않는다 (maps REQ-CPP-007)
 
