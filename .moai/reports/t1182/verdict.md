@@ -12,6 +12,21 @@ moai cc 도움말, moai glm의 auto 모드 거부 사유, 네 언어의 런처 �
 - go vet ./internal/cli/ → 출력 없음, exit 0. gofmt -l 대상 Go 4파일 → 출력 없음, exit 0. git diff --check → 출력 없음, exit 0.
 - git diff a520187f1 -- internal/cli/cc.go internal/cli/glm.go의 추가 줄에서 지정된 플랜·모델 버전 문자열을 검색 → 일치 없음. git diff --name-only a520187f1...HEAD → SPEC 세 파일, 지정한 코드·테스트·문서 8파일만 표시.
 - git diff --name-only a520187f1..origin/develop -- 지정한 코드·테스트·문서 8파일 → 출력 없음, exit 0.
+- 개정 AC-006 명령: git diff origin/develop...HEAD -- internal/cli/cc.go internal/cli/glm.go | grep '^+' | grep -v '^+++' | grep -cE 'Sonnet|Opus|Fable|[0-9]\.[0-9]|\b(Pro|Max|Team|Enterprise)\b' → 출력 0. grep 파이프라인 exit 1은 일치 줄이 없다는 뜻이다.
+- 개정 AC-007의 git diff --name-only origin/develop...HEAD → 아래 12경로, 허용 목록 밖 0건:
+    .moai/reports/t1182/verdict.md
+    .moai/specs/SPEC-LAUNCHER-AUTOMODE-WORDING-001/plan.md
+    .moai/specs/SPEC-LAUNCHER-AUTOMODE-WORDING-001/progress.md
+    .moai/specs/SPEC-LAUNCHER-AUTOMODE-WORDING-001/spec.md
+    docs-site/content/en/cli-reference/launchers.md
+    docs-site/content/ja/cli-reference/launchers.md
+    docs-site/content/ko/cli-reference/launchers.md
+    docs-site/content/zh/cli-reference/launchers.md
+    internal/cli/cc.go
+    internal/cli/cc_test.go
+    internal/cli/glm.go
+    internal/cli/glm_new_test.go
+- git rev-list --count --left-right origin/develop...HEAD → 4 5. AC-006/007의 내용은 통과했으나 SPEC의 origin/develop 흡수 선행 조건은 미충족이다.
 
 ## Baseline-attribution
 
@@ -19,7 +34,7 @@ moai cc 도움말, moai glm의 auto 모드 거부 사유, 네 언어의 런처 �
 
 ## Gaps
 
-origin/develop 통합과 원격 PR 검증은 아직 수행하지 않았다. 격리 작업트리에서 git merge --no-edit origin/develop을 시도했으나 PreToolUse BRANCH_GUARD_VIOLATION이 명령 실행 전에 차단했다. 부모 에이전트가 통합을 맡는다.
+origin/develop 통합과 원격 PR 검증은 아직 수행하지 않았다. 격리 작업트리에서 git merge --no-edit origin/develop을 시도했으나 PreToolUse BRANCH_GUARD_VIOLATION이 명령 실행 전에 차단했다. 부모 에이전트가 통합한 뒤 개정 AC-006/007을 다시 실행해야 최종 PASS를 선언할 수 있다.
 
 ## Residual-risk
 

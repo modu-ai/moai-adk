@@ -18,10 +18,12 @@ Command: `moai spec lint SPEC-LAUNCHER-AUTOMODE-WORDING-001` (2026-09-25, pre-co
 - gofmt -l internal/cli/cc.go internal/cli/glm.go internal/cli/cc_test.go internal/cli/glm_new_test.go → no output, exit 0.
 - git diff --check → no output, exit 0.
 - git diff --name-only a520187f1..origin/develop -- the eight implementation/test/doc paths → no output, exit 0. The current upstream develop did not change these paths since the SPEC baseline.
+- Revised AC-006 command: git diff origin/develop...HEAD -- internal/cli/cc.go internal/cli/glm.go | grep '^+' | grep -v '^+++' | grep -cE 'Sonnet|Opus|Fable|[0-9]\.[0-9]|\b(Pro|Max|Team|Enterprise)\b' → output 0; grep pipeline exit 1 means no matching added line. Revised AC-007 command, git diff --name-only origin/develop...HEAD → 12 paths, all within the SPEC allowlist (the card report, three SPEC files, four locale pages, two Go sources, two Go tests).
+- git rev-list --count --left-right origin/develop...HEAD → 4 5. The revised AC-006/007 content checks pass, but their stated precondition of absorbing current origin/develop is still pending.
 
 ## §E.3 Run-phase Audit-Ready Signal
 
-Six requested surfaces and two focused tests were committed together in 7b69ab3ca. The evidence above checks wording and the existing GLM rejection path. This isolated branch is 40 commits behind origin/develop; its eight implementation/test/doc paths have no upstream changes since the SPEC base. An attempted merge was blocked before execution by the PreToolUse BRANCH_GUARD_VIOLATION hook, which treats tool-spawned subagents as primary-checkout actors. Upstream integration is delegated to the main thread; sync-phase review remains open.
+Six requested surfaces and two focused tests were committed together in 7b69ab3ca. The evidence above checks wording and the existing GLM rejection path. An attempted merge was blocked before execution by the PreToolUse BRANCH_GUARD_VIOLATION hook, which treats tool-spawned subagents as primary-checkout actors. The main thread owns upstream integration, after which AC-006/007 must be rerun to satisfy their precondition. Sync-phase review remains open.
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
