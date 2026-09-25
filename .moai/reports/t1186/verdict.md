@@ -11,14 +11,15 @@ Codex 백그라운드 작업의 자체 제한시간을 세션 생성 시점부�
 - go test ./internal/cli -run 'TestCodexTask(BackgroundHandshakeHonorsTaskBound|MCPEOFAbortsStalledHandshake|BackgroundProcessBound|_BackgroundDetachedSessionHonorsTurnBound|_BackgroundHandshakeStillBoundToRequest|_BackgroundDetachedSessionIsCancellable)$' -count=3 -timeout=45s → ok github.com/modu-ai/moai-adk/internal/cli 4.443s, exit 0.
 - go test ./internal/cli -run 'TestCodexTask_(ForegroundSessionStillBoundToRequest|BackgroundSessionOutlivesRequestContext)$' -count=1 -timeout=20s → ok github.com/modu-ai/moai-adk/internal/cli 0.840s, exit 0.
 - gofmt -l internal/cli/codex_task.go internal/cli/codex_task_process_context_test.go 및 git diff --check → 출력 없음, exit 0.
+- t1187 PR #1726이 병합된 develop을 통합한 1346273b7에서 go test ./internal/cli -run 'Test(CodexTaskBackgroundOwnsProcessPastRequest|CodexTaskServerExitStopsBackgroundProcess|CodexTaskMCPEOFAbortsStalledHandshake|CodexTaskBackgroundHandshakeHonorsTaskBound|CodexTaskBackgroundProcessBound|MCPEOFReaderPreservesFinalBytes)$' -count=1 -timeout=45s → ok github.com/modu-ai/moai-adk/internal/cli 2.147s, exit 0. 같은 head의 graph-freshness GitHub Actions는 SUCCESS이고 git diff --check origin/develop...HEAD는 출력 없음이었다.
 
 ## Baseline-attribution
 
-기준은 WT-codex-task-background-context 작업트리의 ee78515a9이다. RED와 GREEN, 형제 테스트는 이 작업트리에서 직접 실행했다.
+RED와 GREEN, 형제 테스트의 기준은 WT-codex-task-background-context 작업트리의 ee78515a9이다. develop 통합 뒤 집중 테스트와 graph 검사의 기준은 1346273b7이다.
 
 ## Gaps
 
-이 검증은 실제 shell 자식 프로세스와 MCP 핸들러를 사용하지만, 운영자의 Codex 계정으로 원격 모델 턴을 실행한 것은 아니다. 원격 PR·CI 검증은 수행하지 않았다.
+이 검증은 실제 shell 자식 프로세스와 MCP 핸들러를 사용하지만, 운영자의 Codex 계정으로 원격 모델 턴을 실행한 것은 아니다. graph-freshness 외의 전체 CI 검증은 수행하지 않았다. CodeRabbit 현재 head 리뷰도 아직 완료되지 않았다.
 
 ## Residual-risk
 
