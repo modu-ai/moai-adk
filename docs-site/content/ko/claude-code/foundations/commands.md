@@ -42,7 +42,7 @@ description: "Claude Code의 슬래시 명령어 — 내장 명령, 커스텀 �
 | `/memory` | `CLAUDE.md` + 자동 메모리 로드 목록/토글 | v2.1.59+ |
 | `/compact` | 같은 대화를 유지한 채 지금까지의 내용을 요약해 컨텍스트 확보 | 기본 |
 | `/clear` (별칭: `/reset`, `/new`) | 컨텍스트를 비우고 새 대화 시작 | 기본 |
-| `/agents` | 서브에이전트 안내 — v2.1.198부터 마법사 대신 Claude에게 요청하거나 `.claude/agents/`를 직접 편집하라는 안내만 표시, v2.1.281부터 명령 메뉴와 `/help`에서 빠짐 | v2.1.139+ |
+| `/agents` | 서브에이전트 안내 — v2.1.198부터 마법사 대신 Claude에게 요청하거나 `.claude/agents/`를 직접 편집하라는 안내만 표시, v2.1.281부터 명령 메뉴와 `/help`에서 빠짐 | v1.0.60+ |
 | `/mcp` | MCP 서버 연결 및 OAuth 인증 관리 | v2.1.186+ |
 | `/plugin` | 플러그인 관리 | 기본 |
 | `/effort [low\|medium\|high\|xhigh\|max\|ultracode\|auto]` | 모델의 추론 강도 또는 오케스트레이션 설정 | 기본 |
