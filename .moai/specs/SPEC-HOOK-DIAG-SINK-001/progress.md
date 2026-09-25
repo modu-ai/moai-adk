@@ -689,8 +689,17 @@ docs_not_touched:
      config_change.go 는 리드 지시로 이 sync 가 건드리지 않는다(develop 충돌 예정)."
 merge_window_carry_forward:                # 이 sync 의 수리 대상이 아니다 — 병합 창이 읽을 기록
   - id: MW-1
-    what: "origin/develop 이 M1 이 편집한 internal/hook 파일 4개 중 2개를 이미 바꿨다 —
-      instructions_loaded.go(카드 t1160) · config_change.go. 텍스트 충돌이 예상된다."
+    what: "origin/develop 이 M1 이 편집한 internal/hook 파일 4개 중 2개를 이미 바꿨다.
+      텍스트 충돌이 예상된다."
+    measured: |
+      git fetch origin develop && git log --oneline HEAD..origin/develop -- <경로>
+      (HEAD = 9d6bc91fe 직전 상태, 이 sync 트리)
+        internal/hook/instructions_loaded.go → 3fd0cc5ee (card t1160)
+        internal/hook/config_change.go       → 50de6b866 (card t1165)
+      양성 대조: 같은 형태를 internal/hook 전체에 걸어 4행 — 0 이 아니므로 위 두 줄의
+      1행씩은 부재-미측정이 아니라 실제 접촉이다.
+      리드 배차문은 config_change.go 의 소유 카드를 명명하지 않았다. t1165 는 이 sync 의
+      독립 측정이다.
     beyond_text: "t1160 이 더한 주석은 이 SPEC 이 제거하는 `io.Discard` 전제에서 추론한다.
       충돌을 기계적으로 봉합하면 틀린 서술이 develop 에 남는다 — 병합자가 문장 자체를
       읽어야 한다."
