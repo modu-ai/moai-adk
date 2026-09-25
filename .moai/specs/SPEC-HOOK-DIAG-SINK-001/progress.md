@@ -553,8 +553,8 @@ git grep -niE 'discard' bbc855f45 -- internal/hook | grep '\.go:' | grep -v _tes
 
 ```yaml
 run_complete_at: 2026-09-25T08:40+09:00
-run_commit_sha: PLACEHOLDER-M5   # M5 커밋 SHA. 이 블록이 그 커밋에 함께 들어가므로 자기 참조가
-                                 # 불가능하다 — sync 가 backfill 한다
+run_commit_sha: bedc731d6        # M5 커밋 SHA. 이 블록이 그 커밋에 함께 들어가므로 자기 참조가
+                                 # 불가능했다 — sync 가 backfill 했다(§E.4 backfill 항 참조)
 run_status: PASS
 ac_pass_count: 16
 ac_fail_count: 0
@@ -622,4 +622,97 @@ residual_risk:
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_(pending sync-phase)_
+```yaml
+sync_complete_at: 2026-09-25T10:05+09:00
+sync_commit_sha: pending-backfill-sync   # 커밋은 자기 해시를 인용할 수 없다. 이 sync 커밋 직후의
+                                         # 후속 커밋이 실제 SHA 를 채운다(spec-frontmatter-schema.md
+                                         # § SHA placeholder backfill exemption)
+sync_status: PASS
+b12_self_test_a:                         # 중복 방출 방지 — 방출 전 grep
+  command: "git show HEAD:CHANGELOG.md | grep -c 'SPEC-HOOK-DIAG-SINK-001'"
+  observed: "0"
+  verdict: PASS                          # 0 이므로 방출 진행. 방출 후 working tree 재측정 = 1
+  post_emission: "grep -c 'SPEC-HOOK-DIAG-SINK-001' CHANGELOG.md → 1"
+b12_self_test_b:                         # AC 수 일치
+  command: "grep -oE 'AC-([A-Z0-9]+-)*[0-9]+' .moai/specs/SPEC-HOOK-DIAG-SINK-001/acceptance.md | sort -u | wc -l"
+  observed: "17"
+  disambiguation: "17 은 고유 토큰 수이고 AC 는 16 건이다. 17번째 토큰은 산문 안의 약칭
+    `AC-016`(3곳: acceptance.md:580 · 640 · 642)이며 AC-HDS-016 을 가리키는 별칭이지 17번째
+    기준이 아니다. `grep -oE 'AC-HDS-[0-9]+' … | sort -u | wc -l` → 16."
+  ac_total: 16
+  changelog_states: 16
+  verdict: PASS                          # 0 이 아니므로 공허 비교가 아니다
+b12_self_test_c:                         # CHANGELOG 가 주장하는 경로 전수 존재 확인
+  command: "ls internal/cli/logging.go internal/cli/hook_sink.go internal/hook/prune_logs.go internal/config/defaults.go"
+  observed: "4 경로 전부 존재 (exit 0)"
+  verdict: PASS
+changelog_entry_position: "[Unreleased] → ### Fixed 최상단 (CHANGELOG.md:73). 이 저장소의
+  관례대로 최신 항목이 절 머리에 온다. Added 에는 중복 방출하지 않았다 — 결함(훅 진단 소실)
+  해소가 이 SPEC 의 성격이고, 새 파일 서술은 같은 항목의 하위 항목이 담는다."
+frontmatter_status_transitions:
+  spec_md: "in-progress → implemented → completed (이 sync 커밋 1건에 병합). updated: 2026-09-24 → 2026-09-25"
+  plan_md: "해당 없음 — 이 파일에 frontmatter 블록이 없다(관측: 1행이 `# SPEC-… 구현 계획`)"
+  acceptance_md: "해당 없음 — 동일"
+  progress_md: "해당 없음 — 상태는 본문 §E 절이 나른다(스키마 doctrine 대로)"
+  note: "「4 산출물 원자 전이」의 실제 적용 범위는 spec.md 하나다. 나머지 3개는
+    spec-frontmatter-schema.md § Artifact Statelessness 가 status 축에서 무상태로 규정한
+    파일이고, 이 트리에서는 frontmatter 블록 자체가 없다. 없는 필드를 전이했다고 적지 않는다."
+canary_compliance_check:
+  applicable: false
+  reason: "이 SPEC 은 자기 sync 가 시험할 전방향 정책을 정의하지 않는다 — 산출물은 런타임
+    동작 1건(목적지 교체)과 가드 7건이고, 다른 카드에 의무를 부과하는 조항이 없다."
+run_sha_backfill:
+  field: "§E.3 run_commit_sha"
+  was: "PLACEHOLDER-M5"
+  now: "bedc731d6"
+  authority: "§E.3 블록 자신이 `sync 가 backfill 한다`고 지정했다. D3 SHA placeholder backfill
+    exemption 과 같은 계열의 기계적 채움이며, §E.3 의 다른 필드는 건드리지 않았다."
+docs_touched:
+  - "CHANGELOG.md — [Unreleased] ### Fixed 신규 항목 1건(+하위 3건)"
+  - ".moai/project/codemaps/entry-points.md — 문장 1건 정정 + 헤더 「문장 정정」 스탬프 1행"
+  - ".moai/specs/SPEC-HOOK-DIAG-SINK-001/spec.md — frontmatter status/updated"
+  - ".moai/specs/SPEC-HOOK-DIAG-SINK-001/progress.md — §E.3 SHA backfill + 본 §E.4"
+docs_not_touched:
+  - "internal/template/templates/** — 변경 불필요. 실측: `grep -rn 'hook-runtime'
+     internal/template/templates/` 무출력(exit 1), 그리고 `.moai/logs/.gitkeep` 이 이미
+     디렉터리를 스캐폴드한다. 싱크 경로는 Go 상수이므로 템플릿에 나타날 자리가 없다."
+  - "docs-site/** (ko/en/ja/zh) — 손대지 않았다. 이 사이트에는 `.moai/logs/` 인벤토리를
+     나열하는 참조 페이지가 없고(실측: `.moai/logs` 언급은 agent-model-audit.jsonl ·
+     navigator-sync.log · ci-autofix/ · task-metrics.jsonl 처럼 각 기능 페이지 안에서만
+     나타난다), hook-runtime.log 는 자기 기능 페이지를 갖지 않는 내부 진단 파일이다.
+     4-locale 동시 갱신 의무를 지는 변경을 귀속할 페이지가 없어 CHANGELOG 를 사용자 통지
+     경로로 삼았다. 이 판단은 감사가 뒤집을 수 있는 자리다."
+  - ".moai/docs/hook-development.md — 실측상 로깅 목적지를 서술하지 않는다(`grep -n logs`
+     무출력). 정정할 문장이 없다."
+  - "internal/hook/ 주석 4곳 — M1 이 이미 정정했다. 그중 instructions_loaded.go ·
+     config_change.go 는 리드 지시로 이 sync 가 건드리지 않는다(develop 충돌 예정)."
+merge_window_carry_forward:                # 이 sync 의 수리 대상이 아니다 — 병합 창이 읽을 기록
+  - id: MW-1
+    what: "origin/develop 이 M1 이 편집한 internal/hook 파일 4개 중 2개를 이미 바꿨다 —
+      instructions_loaded.go(카드 t1160) · config_change.go. 텍스트 충돌이 예상된다."
+    beyond_text: "t1160 이 더한 주석은 이 SPEC 이 제거하는 `io.Discard` 전제에서 추론한다.
+      충돌을 기계적으로 봉합하면 틀린 서술이 develop 에 남는다 — 병합자가 문장 자체를
+      읽어야 한다."
+    owner: "병합 창(리드). 이 sync 는 두 파일을 열지 않았다."
+  - id: MW-2
+    what: "AC-HDS-016 의 판정 그물이 `bbc855f45` 에 핀돼 있어, 22행 기록은 그 이후 develop 이
+      더한 주석 행을 담을 수 없다."
+    required: "흡수 후 그물을 다시 떠서 누락 행을 대조해야 한다. 재측정 없이 22행을 그대로
+      인용하는 것은 사라진 트리에 대한 수치 인용이다."
+    owner: "병합 창(리드)."
+known_items:                               # 기록만 한다 — 이 sync 가 고치지 않는다
+  - "`hook_discards` / `hook_behind_a_flag_discards` 두 서브테스트 이름이 낡았다 — 지금 그
+     둘은 싱크를 단언한다. 운영자가 세 차례 제안을 받고 세 차례 평범한 마일스톤을 택했으므로
+     개명하지 않았다."
+  - "AC-HDS-004 · 005 · 006 · 009 의 RED 는 관측되지 않았고 재현 불가다(§E.3 ac_caveats).
+     sync 가 그 상태를 바꾸지 않았다."
+gaps:                                      # 이 sync 가 관측하지 않은 것
+  - "Go 테스트를 실행하지 않았다. 이 sync 는 Go 파일을 한 줄도 바꾸지 않았다
+     (변경: CHANGELOG.md · entry-points.md · spec.md frontmatter · progress.md).
+     따라서 run-phase 의 affected-package 판정을 그대로 물려받고 다시 재지 않았다."
+  - "acceptance.md 를 바꾸지 않았으므로 `./internal/spec/...` 재측정 범위도 열지 않았다."
+  - "push 하지 않았고 PR 도 열지 않았다. origin/develop 은 126 커밋 앞서 있으며 흡수는
+     병합 창의 일이다. 원격 CI 판정은 이 기록에 없다."
+  - "docs-site 를 손대지 않기로 한 판단(위 docs_not_touched)은 이 sync 의 판단이고,
+     사용자 통지가 CHANGELOG 로 충분한지는 감사·운영자가 뒤집을 수 있다."
+```
