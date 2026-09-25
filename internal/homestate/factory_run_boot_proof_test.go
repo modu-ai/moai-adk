@@ -2,6 +2,7 @@ package homestate
 
 import (
 	"context"
+	"encoding/json"
 	"path/filepath"
 	"testing"
 	"time"
@@ -118,6 +119,11 @@ func TestBootProofDeclinesWithoutEveryPremise(t *testing.T) {
 		{"unparsable timestamp", operatorBootOpts(), func(t *testing.T, db *FactoryDB) {
 			mustExec(t, db, `INSERT INTO events(run_id,kind,payload_json,created_at) VALUES('glm','x','{}','not-a-time')`)
 		}},
+		// Premise 4 demands "strictly earlier": an instant equal to the boot
+		// is not proven to predate it.
+		{"timestamp equal to boot", operatorBootOpts(), func(t *testing.T, db *FactoryDB) {
+			mustExec(t, db, `INSERT INTO events(run_id,kind,payload_json,created_at) VALUES('glm','card.completed','{}',?)`, operatorBoot.Format(time.RFC3339Nano))
+		}},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
@@ -126,11 +132,15 @@ func TestBootProofDeclinesWithoutEveryPremise(t *testing.T) {
 			if tc.extra != nil {
 				tc.extra(t, db)
 			}
-			if _, err := db.ReconcileActiveRuns(context.Background(), tc.opts); err != nil {
+			rec, err := db.ReconcileActiveRuns(context.Background(), tc.opts)
+			if err != nil {
 				t.Fatalf("reconcile: %v", err)
 			}
 			if st := runStatus(t, db, "glm"); st != "active" {
 				t.Fatalf("glm status = %q, want \"active\" (proof premise missing)", st)
+			}
+			if c := remainingClassification(rec, "glm"); c != OwnerIndeterminate {
+				t.Fatalf("glm classification = %q, want %q (proof premise missing)", c, OwnerIndeterminate)
 			}
 		})
 	}
@@ -177,4 +187,99 @@ func TestSystemBootTimeIsInThePast(t *testing.T) {
 	if !boot.Before(time.Now()) || boot.Before(time.Date(2000, 1, 1, 0, 0, 0, 0, time.UTC)) {
 		t.Fatalf("SystemBootTime = %v, not a plausible past instant", boot)
 	}
+}
+
+// remainingClassification reads one run's classification from a
+// reconciliation's surviving set; a run absent from it reports "".
+func remainingClassification(rec Reconciliation, runID string) OwnerClassification {
+	for _, o := range rec.Remaining {
+		if o.RunID == runID {
+			return o.Classification
+		}
+	}
+	return ""
+}
+
+// retiredPayload decodes the single run.retired event recorded for a run.
+func retiredPayload(t *testing.T, db *FactoryDB, runID string) map[string]string {
+	t.Helper()
+	rows, err := db.DB.Query(`SELECT payload_json FROM events WHERE run_id=? AND kind='run.retired'`, runID)
+	if err != nil {
+		t.Fatalf("read run.retired for %s: %v", runID, err)
+	}
+	defer func() { _ = rows.Close() }()
+	var payloads []string
+	for rows.Next() {
+		var raw string
+		if err := rows.Scan(&raw); err != nil {
+			t.Fatalf("scan run.retired for %s: %v", runID, err)
+		}
+		payloads = append(payloads, raw)
+	}
+	if err := rows.Err(); err != nil {
+		t.Fatalf("iterate run.retired for %s: %v", runID, err)
+	}
+	if len(payloads) != 1 {
+		t.Fatalf("%s carries %d run.retired events, want 1", runID, len(payloads))
+	}
+	var got map[string]string
+	if err := json.Unmarshal([]byte(payloads[0]), &got); err != nil {
+		t.Fatalf("run.retired payload %q for %s is not a JSON object of strings: %v", payloads[0], runID, err)
+	}
+	return got
+}
+
+// AC-020 (REQ-010b) — every run.retired event names the proof that
+// established dead. Three runs each die by a different proof; the operator leg
+// retires a boot-proven run, because a stamp-dead run there would carry
+// "stamp" under a correct implementation and under a broken one alike.
+func TestRetiredEventRecordsProofBasis(t *testing.T) {
+	const preBoot = "2026-09-01T00:00:00Z"
+	t.Run("reconciler", func(t *testing.T) {
+		db := openBareFactory(t)
+		// Own owner stamp, probed dead.
+		mustExec(t, db, `INSERT INTO runs(run_id,lead_session_id,lead_backend,status,manifest_json,created_at,updated_at,lead_pid,lead_process_start) VALUES('run-stamp','','claude','active','{}',?,?,4242,'start-stamp')`, preBoot, preBoot)
+		// Unstamped: the role='lead' peer identity, probed dead.
+		mustExec(t, db, `INSERT INTO runs(run_id,lead_session_id,lead_backend,status,manifest_json,created_at,updated_at,lead_pid,lead_process_start) VALUES('run-peer','','claude','active','{}',?,?,0,'')`, preBoot, preBoot)
+		// No identity from any source: the boot proof.
+		mustExec(t, db, `INSERT INTO runs(run_id,lead_session_id,lead_backend,status,manifest_json,created_at,updated_at,lead_pid,lead_process_start) VALUES('run-boot','','claude','active','{}',?,?,0,'')`, preBoot, preBoot)
+		opts := operatorBootOpts()
+		opts.Classify = fixedClassifier(OwnerDead)
+		opts.Fallback = func(runID string) (int, string, bool) {
+			if runID == "run-peer" {
+				return 5151, "start-peer", true
+			}
+			return 0, "", false
+		}
+
+		rec, err := db.ReconcileActiveRuns(context.Background(), opts)
+		if err != nil {
+			t.Fatalf("reconcile: %v", err)
+		}
+		if len(rec.Retired) != 3 {
+			t.Fatalf("retired = %+v, want all three runs", rec.Retired)
+		}
+		for runID, basis := range map[string]string{"run-stamp": "stamp", "run-peer": "peer", "run-boot": "boot"} {
+			got := retiredPayload(t, db, runID)
+			if got["classification"] != "dead" {
+				t.Errorf("%s classification = %q, want \"dead\" (payload %v)", runID, got["classification"], got)
+			}
+			if got["basis"] != basis {
+				t.Errorf("%s basis = %q, want %q (payload %v)", runID, got["basis"], basis, got)
+			}
+		}
+	})
+	t.Run("operator retire of a boot-proven run", func(t *testing.T) {
+		db := openBareFactory(t)
+		seedOperatorLegacyRows(t, db)
+
+		c, err := db.RetireRunIfDead(context.Background(), "tl4rkl", operatorBootOpts())
+		if err != nil || c != OwnerDead {
+			t.Fatalf("retire = (%s, %v), want dead", c, err)
+		}
+		got := retiredPayload(t, db, "tl4rkl")
+		if got["classification"] != "dead" || got["basis"] != "boot" {
+			t.Fatalf("payload = %v, want classification dead and basis boot", got)
+		}
+	})
 }
