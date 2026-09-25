@@ -331,7 +331,7 @@ Three properties a reviewer should check for directly:
 | `classify` | neither column nor peer yields a complete identity | `dead` if every REQ-006b premise holds; otherwise `indeterminate` — never retired |
 | `classify` | boot proof: boot time unknown, broker file present or unstat-able, a timestamp at or after boot, or one that does not parse | `indeterminate` — never retired |
 | `classify` | boot proof: reading the run's recorded timestamps fails | the error is returned; nothing is retired |
-| `ReconcileActiveRuns` | fallback lookup errors for one run | that run has no peer identity and reaches the boot proof, whose premise 2 then declines (the broker file exists or could not be checked), so it is `indeterminate`; reconciliation continues over the rest |
+| `ReconcileActiveRuns` | fallback lookup fails for one run for a reason other than the broker file not existing | that run has no peer identity and reaches the boot proof, whose premise 2 then declines (the broker file exists or could not be checked), so it is `indeterminate`; reconciliation continues over the rest |
 | `ResolveActiveRun` | ≥2 survive reconciliation | `AMBIGUOUS_FACTORY` + classifications |
 | `ResolveActiveRun` | 0 active | `NO_ACTIVE_FACTORY` |
 | `moai factory --retire` | target classifies `live` **or** `indeterminate` **or** anything not `dead` | non-zero exit, run stays `active`, classification named as the reason |
