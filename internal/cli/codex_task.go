@@ -262,19 +262,30 @@ func handleCodexTask(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToo
 		"sandboxPolicy": codexSandboxPolicy(writeGranted),
 	}
 
-	// A background app-server must outlive the MCP request. Bound the entire
-	// subprocess lifetime, including its handshake, before spawning it.
-	sessionCtx := ctx
-	var cancelSession context.CancelFunc
+	// The SESSION's context decides the codex child's lifetime: the production
+	// runner spawns it with exec.CommandContext and stops reading stdout when
+	// that context ends (card t1186). A foreground session stays on the request
+	// context. A background session must outlive the request — the host ends it
+	// the moment this handler returns — so it gets a detached context the job
+	// goroutine cancels on exit. Until hand-off the request still bounds the
+	// handshake through the AfterFunc tie, exactly as before.
+	sessionCtx, cancelSession := ctx, context.CancelFunc(func() {})
+	untieRequest := func() bool { return true }
 	if background {
-		sessionCtx, cancelSession = context.WithTimeout(context.WithoutCancel(ctx), config.DefaultCodexTaskTimeout)
+		sessionCtx, cancelSession = context.WithCancel(context.WithoutCancel(ctx))
+		untieRequest = context.AfterFunc(ctx, cancelSession)
 	}
+
 	notifyMCPProgress(ctx, token, 0.2, "codex 세션 오픈 중...")
 	session, err := openCodexSessionOn(sessionCtx, binaryPath, turnParams, resumeThreadID)
+	if background && !untieRequest() && err == nil {
+		// The request ended before hand-off; the session is already being torn
+		// down, so report that instead of starting a job on a dead session.
+		_ = session.close()
+		err = errors.New("codex_task request was cancelled before the background job was handed off")
+	}
 	if err != nil {
-		if cancelSession != nil {
-			cancelSession()
-		}
+		cancelSession()
 		var sErr *codexSessionError
 		result.Status = codexJobStatusFailed
 		if errors.As(err, &sErr) {
@@ -340,7 +351,7 @@ func handleCodexTask(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToo
 	// stays bounded by the codex_task timeout runCodexTaskTurn applies.
 	codexLiveJobCancels.Store(rec.ID, cancelSession)
 	codexBackgroundJobs.Add(1)
-	go runCodexBackgroundJob(sessionCtx, registry, rec.ID, session, turnParams)
+	go runCodexBackgroundJob(sessionCtx, cancelSession, registry, rec.ID, session, turnParams)
 
 	result.Status = codexJobStatusRunning
 	result.JobID = rec.ID
@@ -355,24 +366,16 @@ func handleCodexTask(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToo
 // The live-session entry is removed and the session closed on EVERY exit path,
 // so a terminal record is never left with a live entry the cancel path could
 // still address.
-func runCodexBackgroundJob(ctx context.Context, registry *codexJobRegistry, jobID string, session *codexSessionHandle, params map[string]any) {
+func runCodexBackgroundJob(ctx context.Context, cancelSession context.CancelFunc, registry *codexJobRegistry, jobID string, session *codexSessionHandle, params map[string]any) {
 	defer func() {
 		codexLiveJobSessions.Delete(jobID)
 		_ = session.close()
-		if value, ok := codexLiveJobCancels.LoadAndDelete(jobID); ok {
-			value.(context.CancelFunc)()
-		}
+		codexLiveJobCancels.Delete(jobID)
+		cancelSession()
 		codexBackgroundJobs.Done()
 	}()
 
 	out, runErr := runCodexTaskTurn(ctx, session, params)
-	// The parent deadline here is ours (installed before opening the detached
-	// app-server), not the MCP caller's. Preserve the task-bound diagnosis even
-	// when CommandContext closes stdout at that same instant.
-	if errors.Is(ctx.Err(), context.DeadlineExceeded) {
-		out.Summary = codexTaskTimeoutMessage()
-		runErr = ctx.Err()
-	}
 
 	// A job cancelled while the turn was in flight keeps its cancelled status:
 	// the turn returning afterwards must not overwrite it with completed or
