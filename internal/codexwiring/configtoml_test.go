@@ -21,6 +21,7 @@ func TestEnsureMCPTableCreatesWhenAbsent(t *testing.T) {
 		`args = ["mcp-server"]`,
 		`env_vars = ["MOAI_HOME", "MOAI_KANBAN_ID", "MOAI_SESSION_PID", "MOAI_KANBAN_BACKEND", "MOAI_FACTORY_WORKER", "MOAI_FACTORY_WORKERS", "CLAUDE_PROJECT_DIR", "CLAUDE_CODE_SESSION_ID"]`,
 		`default_tools_approval_mode = "writes"`,
+		`tools = { factory_msg_send = { approval_mode = "approve" }, factory_msg_receipt = { approval_mode = "approve" } }`,
 	} {
 		if !strings.Contains(body, want) {
 			t.Errorf("canonical table missing %q:\n%s", want, out)

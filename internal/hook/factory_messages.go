@@ -58,7 +58,12 @@ func registerFactoryHookPeer(ctx context.Context, input *HookInput, mode factory
 	}
 	role, slot := "lead", "lead"
 	if label := strings.TrimSpace(os.Getenv(config.EnvMoaiFactoryWorker)); label != "" {
-		role = "worker"
+		role = "agent"
+		// A persisted legacy lane keeps its original role during handoff.
+		// New launches use agent-n, but old broker rows still need to bind.
+		if strings.HasPrefix(label, "lane-") || strings.HasPrefix(label, "worker-") {
+			role = "worker"
+		}
 		slot = label
 	} else if os.Getenv(config.EnvMoaiFactoryWorkers) == "" {
 		return ""
@@ -105,7 +110,7 @@ func registerFactoryHookPeer(ctx context.Context, input *HookInput, mode factory
 		if !bound {
 			return ""
 		}
-		return fmt.Sprintf("factory messaging bound: run=%s slot=%s generation=%d; messages arrive at turn boundaries, not idle wake", runID, p.Slot, p.Generation)
+		return fmt.Sprintf("factory messaging bound: run=%s slot=%s generation=%d; managed launch polls the inbox and starts host turns", runID, p.Slot, p.Generation)
 	}
 	p, err := s.RegisterPeer(ctx, want)
 	if err != nil {
@@ -114,7 +119,7 @@ func registerFactoryHookPeer(ctx context.Context, input *HookInput, mode factory
 		}
 		return "factory messaging degraded: " + err.Error()
 	}
-	return fmt.Sprintf("factory messaging bound: run=%s slot=%s generation=%d; messages arrive at turn boundaries, not idle wake", runID, p.Slot, p.Generation)
+	return fmt.Sprintf("factory messaging bound: run=%s slot=%s generation=%d; managed launch polls the inbox and starts host turns", runID, p.Slot, p.Generation)
 }
 
 func factoryHookBatch(ctx context.Context, input *HookInput, event EventType) (string, bool, string) {

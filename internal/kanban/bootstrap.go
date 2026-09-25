@@ -244,13 +244,13 @@ func isCompanionRole(role string) bool {
 // shapes share the one worker numbering (a live `lane-3` or `agent-3` claim
 // takes number 3). See SplitFactoryLaneLabel, IsLegacyFactoryLabel, and
 // CanonicalFactoryLabel.
-const factoryLaneRole = "worker"
+const factoryLaneRole = "agent"
 
 // factoryLegacyLaneRole and factoryLegacyAgentRole are the read-only legacy
 // prefixes of factory worker labels.
 const (
 	factoryLegacyLaneRole  = "lane"
-	factoryLegacyAgentRole = "agent"
+	factoryLegacyAgentRole = "worker"
 )
 
 // FactoryLaneLabel joins the worker prefix and a number into the label a
@@ -272,7 +272,7 @@ func FactoryLaneLabel(n int) string {
 // join through the one deprecation-hint site (the claim canonicalizes it to
 // `worker-<n>`).
 func FactoryAgentLabel(n int) string {
-	return factoryLegacyAgentRole + "-" + strconv.Itoa(n)
+	return FactoryLaneLabel(n)
 }
 
 // splitFactoryPrefixedLabel parses `<prefix>-<n>` (n >= 1) and reports the
@@ -295,7 +295,7 @@ func splitFactoryPrefixedLabel(label string) (prefix string, n int, ok bool) {
 // and reports whether the value has that shape at all.
 func SplitFactoryAgentLabel(label string) (n int, ok bool) {
 	prefix, n, ok := splitFactoryPrefixedLabel(label)
-	if !ok || prefix != factoryLegacyAgentRole {
+	if !ok || prefix != factoryLaneRole {
 		return 0, false
 	}
 	return n, true
@@ -310,7 +310,7 @@ func SplitFactoryAgentLabel(label string) (n int, ok bool) {
 // three).
 func SplitFactoryLaneLabel(label string) (n int, ok bool) {
 	prefix, n, ok := splitFactoryPrefixedLabel(label)
-	if !ok || (prefix != factoryLaneRole && prefix != factoryLegacyLaneRole) {
+	if !ok || (prefix != factoryLegacyAgentRole && prefix != factoryLegacyLaneRole) {
 		return 0, false
 	}
 	return n, true
@@ -319,10 +319,10 @@ func SplitFactoryLaneLabel(label string) (n int, ok bool) {
 // factoryLabelNumber parses any factory worker label shape — canonical
 // `worker-<n>` or legacy `lane-<n>` / `agent-<n>` — into its number.
 func factoryLabelNumber(label string) (n int, ok bool) {
-	if n, ok := SplitFactoryLaneLabel(label); ok {
+	if n, ok := SplitFactoryAgentLabel(label); ok {
 		return n, true
 	}
-	return SplitFactoryAgentLabel(label)
+	return SplitFactoryLaneLabel(label)
 }
 
 // IsLegacyFactoryLabel reports whether label is one of the pre-rename worker

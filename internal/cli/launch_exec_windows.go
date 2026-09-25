@@ -31,6 +31,9 @@ import (
 // REQ-CGH-001: this Windows path makes `moai cc` / `moai glm` launch correctly on
 // Windows rather than failing with EWINDOWS at the unguarded syscall.Exec call.
 func execOrSpawnClaude(claudeBin string, args, env []string) error {
+	if factoryLaunchEnabled(env) {
+		return runManagedFactoryClaude(claudeBin, args, env)
+	}
 	// args[0] is the program name (argv[0] convention); the child's actual
 	// arguments are args[1:].
 	var childArgs []string

@@ -37,7 +37,7 @@ func init() {
 }
 
 var glmCmd = &cobra.Command{
-	Use:   "glm [-p profile] [-k [SPEC-ID] | -k --name <role> | -f | -f worker | -f worker-<n>] [-- claude-args...]",
+	Use:   "glm [-p profile] [-k [SPEC-ID] | -k --name <role> | -f | -f agent | -f agent-<n>] [-- claude-args...]",
 	Short: "Launch Claude Code with GLM backend",
 	Long: `Launch Claude Code with GLM backend.
 
@@ -76,17 +76,17 @@ Kanban Mode:
 
 Factory Mode (dedicated -f entry):
   -f, --factory                Enter as the LEAD of a factory run (one
-                                worker, worker-1, grown afterwards with the
+                                agent, agent-1, grown afterwards with the
                                 forms below). The lead routes operator-picked
-                                cards to free workers over cross-session
+                                cards to free agents over cross-session
                                 messages — each card goes WHOLE to one
-                                worker, which carries it through
+                                agent, which carries it through
                                 plan -> run -> sync in-session.
-  -f worker                    Join the running factory as a WORKER: the
-                                next free worker-<n> label is claimed for
+  -f agent                     Join the running factory as an AGENT: the
+                                next free agent-<n> label is claimed for
                                 this session.
-  -f worker-<n>                Launch exactly one additional worker —
-                                worker n — and connect it to the lead socket
+  -f agent-<n>                 Launch exactly one additional agent —
+                                agent n — and connect it to the lead socket
                                 of the running factory. A number whose
                                 label is held by a live session is
                                 bumped to the next free number.
@@ -118,9 +118,9 @@ Examples:
   moai glm -p work         # Use 'work' profile with GLM
   moai glm -k              # Kanban lead on GLM: seeds the chain
   moai glm -k --name run           # Kanban companion on GLM (the GLM-recommended role)
-  moai glm -f              # Factory lead on GLM: one worker (worker-1)
-  moai glm -f worker       # Join the running factory as the next free worker (GLM backend)
-  moai glm -f worker-2     # Add worker 2 to the running factory (GLM backend)
+  moai glm -f              # Factory lead on GLM: one agent (agent-1)
+  moai glm -f agent        # Join the running factory as the next free agent (GLM backend)
+  moai glm -f agent-2      # Add agent 2 to the running factory (GLM backend)
 
 Mixed Claude/GLM teammate roles require verified teammate routing support.
 Use 'moai cc' to switch back to Claude backend.`,

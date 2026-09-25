@@ -67,7 +67,7 @@ type kanbanEntryParse struct {
 	FactoryWorkers int    // the factory count (explicit or the default)
 	FactoryRun     string // explicit --factory-run selector for mixed factory joins
 	// FactoryAutoNumber marks a worker number the launcher chose itself
-	// (`-f worker`), as opposed to one the operator typed (`-f worker-<n>`,
+	// (`-f agent`), as opposed to one the operator typed (`-f agent-<n>`,
 	// `--name worker-<n>`); the claim reports legacy collisions differently.
 	FactoryAutoNumber bool
 	Rest              []string // args with -k and its consumed value removed

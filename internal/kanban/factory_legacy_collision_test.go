@@ -28,7 +28,7 @@ func TestClaimFactoryWorkerExplicitLegacyCollisionNamesTheRow(t *testing.T) {
 	alive := func(int) bool { return true }
 
 	cases := []struct{ held, request string }{
-		{"agent-3", "worker-3"}, // canonical request vs legacy agent row
+		{"worker-3", "agent-3"}, // canonical request vs legacy worker row
 		{"lane-3", "lane-3"},    // legacy alias request vs legacy lane row
 		{"lane-2", "agent-2"},   // cross-shape legacy collision
 	}
@@ -60,24 +60,24 @@ func TestClaimFactoryWorkerReportsSkippedLegacyRows(t *testing.T) {
 	t.Run("auto", func(t *testing.T) {
 		t.Parallel()
 		root := t.TempDir()
-		seedFactoryRegistry(t, root, "worker-1", "lane-2", "agent-4")
+		seedFactoryRegistry(t, root, "agent-1", "lane-2", "worker-4")
 		// `-f worker` asks for one past the highest live claim of any shape.
-		got, err := ClaimFactoryWorker(root, "worker-5", true, 4242, alive)
-		if err != nil || got.Label != "worker-5" {
-			t.Fatalf("auto claim = (%+v, %v), want worker-5", got, err)
+		got, err := ClaimFactoryWorker(root, "agent-5", true, 4242, alive)
+		if err != nil || got.Label != "agent-5" {
+			t.Fatalf("auto claim = (%+v, %v), want agent-5", got, err)
 		}
-		if !slices.Equal(got.SkippedLegacy, []string{"lane-2", "agent-4"}) {
-			t.Errorf("auto claim skipped %v, want [lane-2 agent-4]", got.SkippedLegacy)
+		if !slices.Equal(got.SkippedLegacy, []string{"lane-2", "worker-4"}) {
+			t.Errorf("auto claim skipped %v, want [lane-2 worker-4]", got.SkippedLegacy)
 		}
 	})
 
 	t.Run("explicit bump", func(t *testing.T) {
 		t.Parallel()
 		root := t.TempDir()
-		seedFactoryRegistry(t, root, "worker-3", "lane-4")
-		got, err := ClaimFactoryWorker(root, "worker-3", false, 4242, alive)
-		if err != nil || got.Label != "worker-5" {
-			t.Fatalf("explicit claim = (%+v, %v), want worker-5", got, err)
+		seedFactoryRegistry(t, root, "agent-3", "lane-4")
+		got, err := ClaimFactoryWorker(root, "agent-3", false, 4242, alive)
+		if err != nil || got.Label != "agent-5" {
+			t.Fatalf("explicit claim = (%+v, %v), want agent-5", got, err)
 		}
 		if !slices.Equal(got.SkippedLegacy, []string{"lane-4"}) {
 			t.Errorf("explicit bump skipped %v, want [lane-4]", got.SkippedLegacy)
@@ -87,10 +87,10 @@ func TestClaimFactoryWorkerReportsSkippedLegacyRows(t *testing.T) {
 	t.Run("no legacy rows, no report", func(t *testing.T) {
 		t.Parallel()
 		root := t.TempDir()
-		seedFactoryRegistry(t, root, "worker-1")
-		got, err := ClaimFactoryWorker(root, "worker-2", true, 4242, alive)
-		if err != nil || got.Label != "worker-2" || len(got.SkippedLegacy) != 0 {
-			t.Errorf("clean auto claim = (%+v, %v), want worker-2 with nothing skipped", got, err)
+		seedFactoryRegistry(t, root, "agent-1")
+		got, err := ClaimFactoryWorker(root, "agent-2", true, 4242, alive)
+		if err != nil || got.Label != "agent-2" || len(got.SkippedLegacy) != 0 {
+			t.Errorf("clean auto claim = (%+v, %v), want agent-2 with nothing skipped", got, err)
 		}
 	})
 }

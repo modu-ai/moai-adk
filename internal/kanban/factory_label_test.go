@@ -9,7 +9,7 @@ func TestFactoryLaneLabelJoinSplitRoundTrips(t *testing.T) {
 
 	for _, n := range []int{1, 2, 9, 10, 42, 100} {
 		label := FactoryLaneLabel(n)
-		got, ok := SplitFactoryLaneLabel(label)
+		got, ok := SplitFactoryAgentLabel(label)
 		if !ok || got != n {
 			t.Errorf("round trip %d -> %q -> (%d, %v)", n, label, got, ok)
 		}

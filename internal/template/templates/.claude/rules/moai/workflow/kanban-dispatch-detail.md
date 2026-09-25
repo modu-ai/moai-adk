@@ -29,7 +29,7 @@ The lead and lane sessions keep **only orchestration** in their context windows.
 
 The pair most easily confused: a **column** names a phase of the work (`run`); a **lane** names who carries one card through those phases (the `run` session in `.claude/worktrees/t0`). One is a stage on the board, the other is a stream through the stages.
 
-Factory Mode companions are labelled `worker-1..worker-N` — `lane` stays the prose term for the slot. A factory lane owns a card end to end rather than one column (§ Factory in-lane 3-stage); in Kanban Mode a lane is one column's session carrying its column's cards.
+Factory Mode companions are labelled `agent-1..agent-N` — `lane` stays the prose term for the slot. A factory lane owns a card end to end rather than one column (§ Factory in-lane 3-stage); in Kanban Mode a lane is one column's session carrying its column's cards.
 
 ## The board
 
@@ -179,7 +179,9 @@ Discipline:
 
 ## Factory in-lane 3-stage
 
-Factory Mode (`moai cc -f <N>` / `moai glm -f <N>`) trades the per-column board for whole-card ownership: one lead plus `worker-1..worker-N` sessions, each lane owning one card end to end. Lanes are launched by hand like kanban companions; the lead keeps the run-id, the queue, and the verdict.
+Factory transport is selected per peer pair. Two Claude Code sessions use native `SendMessage`/`ListAgents`, including native Windows named pipes and WSL 2 Unix sockets when the documented version and configuration gates pass. When either peer is Codex, use `factory_msg_send` through the MoAI broker. The managed launchers poll the broker and submit received metadata to the live host session; a broker send result proves persistence, while `factory_msg_receipt` proves that the recipient handled the envelope. A permission prompt can still stop tool execution, so the lead must inspect pending and claimed counts before treating a dispatch as received. Public Factory roles are `lead` and `agent-1..agent-N`; `-f agent` claims the next free number.
+
+Factory Mode (`moai cc -f` / `moai glm -f` / `moai codex -f`) assigns whole cards to one lead and `agent-1..agent-N` sessions, each lane owning one card end to end. Lanes are launched by hand like kanban companions; the lead keeps the run-id, the queue, and the verdict.
 
 - **Routing.** The lead routes a card WHOLE to a free lane — free means the lane's previous card reached `done` and its evidence was read. A lane busy on a card is not addressed; with every lane busy, the card waits in the queue rather than being dispatched. The address block is unchanged; `cmd` names the entry stage the class prescribes (`/moai plan` for C, `/moai run` for B, the direct close for A), and the lane proceeds through the remaining stages without further dispatches.
 - **Serial stages, sub-agent execution.** Plan completes before run begins, run before sync — a lane never runs two stages of the same card concurrently. Within a stage it fans out sub-agents per § Per-card fan-out and sub-agent execution.

@@ -1,0 +1,68 @@
+<!doctype html>
+<html lang="ko">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>MoAI Factory 세션 통신 구현 및 실측</title>
+<style>body{font:16px/1.65 system-ui,sans-serif;max-width:1060px;margin:0 auto;padding:32px;color:#17243a;background:#f6f8fc}h1,h2{line-height:1.25}h1{font-size:2rem}h2{border-bottom:2px solid #d7e0ef;padding-bottom:7px;margin-top:38px}header,.box{background:#fff;border:1px solid #dbe3f0;border-radius:16px;padding:22px;margin:16px 0;box-shadow:0 3px 14px #23314a0a}.tag{display:inline-block;border-radius:99px;padding:3px 10px;font-size:.8rem;font-weight:700;background:#dfeafb;color:#124b87}.pass{background:#e1f5ea;color:#12613a}.gap{background:#fff1dc;color:#93510c}table{width:100%;border-collapse:collapse;background:#fff}th,td{border:1px solid #dbe3f0;padding:11px;text-align:left;vertical-align:top}th{background:#edf3fb}code,pre{font-family:ui-monospace,monospace}pre{white-space:pre-wrap;overflow-wrap:anywhere;background:#122039;color:#e8f2ff;padding:16px;border-radius:10px;font-size:.82rem}a{color:#145baf}small{color:#52637a}</style></head>
+<body><header><span class="tag">2026-09-25 · 격리 작업트리 실측</span><h1>MoAI Factory 세션 통신 구현 및 검증</h1><p>Claude Code끼리는 네이티브 세션 메시지, Codex가 포함된 lead ↔ agent 조합은 MoAI Factory 브로커를 사용한다. Codex 수신은 MoAI가 소유한 App Server 스레드에 입력한다. 공개 역할 이름은 <code>lead</code>와 <code>agent-1..n</code>이다.</p><p><strong>결론:</strong> macOS에서 Codex lead ↔ Codex agent의 테스트 카드 배차·상태 보고·양쪽 수신 확인을 실측했다. Codex Factory의 브로커 송신·수신 확인 도구를 좁게 승인하도록 설정한 뒤, lead와 agent 양쪽의 무인 수신 확인을 실측했다. GLM으로 구동한 Claude Code와 Codex의 양방향 카드 배차·상태 보고도 실측했다. Windows 실세션과 Anthropic 계정 Claude Code의 혼합 경로는 아직 미실측이다.</p></header>
+<h2>통신 경로</h2><table><tr><th>조합</th><th>경로</th><th>이번 검증</th></tr><tr><td>Claude Code ↔ Claude Code<br>macOS · Linux · WSL 2 · Windows 네이티브</td><td>Claude Code <code>SendMessage</code>. 같은 호스트의 Unix 소켓 또는 Windows named pipe. 버전과 설정 조건 적용.</td><td><span class="tag gap">공식 계약 확인, 이번 코드 실세션 미실측</span></td></tr><tr><td>Codex ↔ Codex</td><td><code>factory_msg_*</code> 브로커 → MoAI 폴러 → Codex App Server <code>turn/start</code> → TUI 스레드</td><td><span class="tag pass">macOS 실세션 수신·수신 확인</span></td></tr><tr><td>Claude Code ↔ Codex</td><td><code>factory_msg_*</code> 브로커 → 각 호스트의 관리 런처. Claude 쪽은 <code>stream-json</code>, Codex 쪽은 App Server.</td><td><span class="tag pass">macOS에서 GLM/Claude Code ↔ Codex 양방향 배차·보고 실측</span></td></tr></table>
+<h2>구현</h2><div class="box"><ul><li><code>-f agent</code>가 다음 빈 <code>agent-n</code>을 차지하고 <code>-f agent-n</code>이 번호를 지정한다. 공개 <code>-f worker</code> 입력은 거부한다. 기존 저장 행의 <code>worker-n</code>과 <code>lane-n</code>은 번호 충돌 방지를 위해 읽는다.</li><li>Factory Codex 런처가 로컬 인증 WebSocket App Server와 TUI를 함께 소유한다. 런처가 브로커 엔드포인트를 스레드 ID와 프로세스 소유권으로 등록한다.</li><li>브로커 수신 폴러가 메타데이터를 실제 Codex 스레드에 넣는다. 본문은 모델이 <code>factory_msg_body</code>로 별도 조회하고 <code>factory_msg_receipt</code>로 확인한다.</li><li>Codex 초기 모델 턴을 <code>thread/inject_items</code>로 대체해 준비 과정의 모델 호출을 없앴다.</li><li>새로 생성하는 Codex 프로젝트 설정은 <code>factory_msg_send</code>와 <code>factory_msg_receipt</code>만 <code>approval_mode="approve"</code>로 지정한다. 나머지 MCP 도구는 기존 <code>writes</code> 승인 정책을 따른다. 기존 사용자 소유 설정은 자동으로 덮어쓰지 않는다.</li><li>Claude 전용 두 엔드포인트의 <code>factory_msg_send</code>를 거부해 네이티브 통신 정책을 지킨다. <code>--spawn</code> Factory Codex는 새 창 안의 MoAI 런처가 세션을 소유하도록 바꿨다.</li></ul></div>
+<h2>실측 증거</h2><div class="box"><p><strong>기준:</strong> 격리 프로젝트 <code>/tmp/moai-factory-managed-LGHavH</code>, 수정한 소스에서 빌드한 <code>/tmp/moai-factory-managed-codex</code>, macOS, Codex CLI 0.156.1. 사용자 프로젝트의 카드나 코드 파일은 수정하지 않았다.</p><pre>MOAI_FACTORY_LIVE_ROOT=/tmp/moai-factory-managed-LGHavH MOAI_FACTORY_LIVE_RUN=tlw5qe go test ./internal/cli -run '^TestManagedCodexFactoryBrokerLive$' -count=1 -v -timeout=110s
+=== RUN   TestManagedCodexFactoryBrokerLive
+    managed_codex_factory_live_test.go:36: sent message_id=1101471f321e1d77c994a4f8fcfc5a10 to 01a0d5af-ca67-7632-bc5a-49f360ef0346
+    managed_codex_factory_live_test.go:41: acknowledged=1 pending=0 claimed=0
+--- PASS: TestManagedCodexFactoryBrokerLive (40.15s)</pre><p>이어 Codex lead TUI에서 <code>factory_msg_send</code>로 <code>agent-1</code>에 보낸 메시지가 agent TUI의 새 턴으로 표시됐다. agent는 <code>factory_msg_body</code>와 <code>factory_msg_receipt</code>를 호출했다. 이후 같은 런의 브로커 상태를 다시 읽었다.</p><pre>MOAI_FACTORY_LIVE_ROOT=/tmp/moai-factory-managed-LGHavH MOAI_FACTORY_LIVE_RUN=tlw5qe go test ./internal/cli -run '^TestManagedCodexFactoryStatusLive$' -count=1 -v -timeout=20s
+capability=managed-host-poll acknowledged=2 pending=0 claimed=0 lanes=3
+--- PASS: TestManagedCodexFactoryStatusLive (0.05s)</pre><p>첫 번째 수신 확인과 두 번째 Codex → Codex 수신 확인을 합쳐 2건이다. 두 번째는 TUI의 MCP 송신·수신 확인 승인 후 완료됐다.</p></div>
+<h2>최신 Codex 양방향 무인 수신 실측</h2><div class="box"><p><strong>기준:</strong> 같은 격리 프로젝트의 새 Factory run <code>tlw792</code>. <code>lead</code>와 <code>agent-1</code>을 수정한 런처로 각각 기동하고, 프로젝트의 MoAI MCP 설정에서 브로커 송신·수신 확인 도구에만 <code>approval_mode="approve"</code>를 적용했다. 테스트는 각각 별도의 프로세스 소유자를 등록해 브로커 메시지를 보냈다.</p><pre>MOAI_FACTORY_LIVE_ROOT=/tmp/moai-factory-managed-LGHavH MOAI_FACTORY_LIVE_RUN=tlw792 MOAI_FACTORY_LIVE_TO_SLOT=lead go test ./internal/cli -run '^TestManagedCodexFactoryBrokerLive$' -count=1 -v -timeout=110s
+sent message_id=6783dd0fdf406184d20a362ce80d8286 to 01a0d5cd-d268-7cd1-84bd-789a24114a29
+acknowledged=1 pending=0 claimed=0
+--- PASS: TestManagedCodexFactoryBrokerLive (14.11s)
+
+MOAI_FACTORY_LIVE_ROOT=/tmp/moai-factory-managed-LGHavH MOAI_FACTORY_LIVE_RUN=tlw792 MOAI_FACTORY_LIVE_TO_SLOT=agent-1 go test ./internal/cli -run '^TestManagedCodexFactoryBrokerLive$' -count=1 -v -timeout=110s
+sent message_id=7df2a26cfb5716961e0a17d769ef7a12 to 01a0d5cd-f22c-7752-a450-a0fc9452b669
+acknowledged=2 pending=0 claimed=0
+--- PASS: TestManagedCodexFactoryBrokerLive (16.11s)</pre><p>두 TUI 모두 <code>factory_msg_body</code>와 <code>factory_msg_receipt</code> 호출 및 <code>factory_msg_receipt: ok</code>를 표시했고, 해당 실행 출력에서 MoAI MCP 승인창은 관측되지 않았다. 앞선 <code>approval_mode="auto"</code> 시도는 실제 승인창에서 멈췄으므로 통과 증거에 포함하지 않는다. 테스트 송신자는 모델이 아니라 브로커 API를 호출한 별도 프로세스이므로, 이 실측은 양쪽 자동 <em>수신</em>과 확인을 증명하며 모델의 자동 <em>발신</em> 전체를 증명하지 않는다.</p></div>
+<h2>실제 카드 배차와 상태 보고</h2><div class="box"><p><strong>기준:</strong> 격리 프로젝트의 Factory run <code>tlw7dy</code>. <code>moai todo add '[FACTORY-LIVE] agent-1 배차 수신·상태 보고 확인. 파일 수정·커밋·푸시 없음.' --pick</code>으로 테스트 카드 <code>t1</code>을 발행했다. Codex lead TUI에 agent-1 배차를 지시했고, agent TUI에는 수신 확인과 lead에게 <code>status_report</code> 회신만 지시했다.</p><ol><li>lead가 <code>factory_msg_send(kind=dispatch_notice, task_ref=t1)</code>를 호출했고 반환값은 <code>factory_msg_send: ok</code>였다.</li><li>agent-1의 새 턴이 자동 시작됐다. agent가 <code>factory_msg_body</code>로 지시를 읽고 <code>factory_msg_receipt: ok</code>를 받은 뒤 <code>factory_msg_send(kind=status_report, task_ref=t1, to_slot=lead)</code>를 호출했다.</li><li>lead의 새 턴이 자동 시작됐다. lead가 보고 본문을 읽고 <code>factory_msg_receipt: ok</code>를 받았다. 양쪽 TUI에서 MoAI MCP 승인창은 관측되지 않았다.</li></ol><pre>MOAI_FACTORY_LIVE_ROOT=/tmp/moai-factory-managed-LGHavH MOAI_FACTORY_LIVE_RUN=tlw7dy go test ./internal/cli -run '^TestManagedCodexFactoryStatusLive$' -count=1 -v -timeout=20s
+capability=managed-host-poll acknowledged=2 pending=0 claimed=0 lanes=2
+--- PASS: TestManagedCodexFactoryStatusLive (0.05s)
+
+moai todo list --json  # 격리 프로젝트
+"id":"t1","state":"picked"</pre><p><strong>판정 범위:</strong> 카드 발행, 배차, 자동 수신, 수신 확인, 상태 보고의 왕복은 통과했다. 카드가 <code>picked</code>로 남은 것은 이 시험이 작업 수행·완료 판정·병합을 요청하지 않았기 때문이다. 실제 코드 작업, 증거 평가, PR·병합 요청까지 통과했다는 주장은 하지 않는다.</p></div>
+<h2>GLM/Claude Code ↔ Codex 혼합 호스트 실측</h2><div class="box"><p><strong>GLM lead → Codex agent-1 → GLM lead:</strong> 격리 run <code>tlw7lh</code>에서 테스트 카드 <code>t2</code> 발행 후 GLM lead가 <code>dispatch_notice</code>를 보냈다(메시지 ID <code>bc7b669992c36c209a417bb1e10f554f</code>). Codex agent가 본문 조회·<code>accepted</code> 수신 확인·<code>status_report</code> 송신을 수행했고, GLM lead가 자동으로 보고를 읽어 확인했다.</p><pre>MOAI_FACTORY_LIVE_ROOT=/tmp/moai-factory-managed-LGHavH MOAI_FACTORY_LIVE_RUN=tlw7lh go test ./internal/cli -run '^TestManagedCodexFactoryStatusLive$' -count=1 -v -timeout=20s
+capability=managed-host-poll acknowledged=2 pending=0 claimed=0 lanes=2
+--- PASS: TestManagedCodexFactoryStatusLive (0.04s)</pre><p><strong>Codex lead → GLM agent-1 → Codex lead:</strong> 격리 run <code>tlw7ov</code>에서 테스트 카드 <code>t3</code> 발행 후 Codex lead가 <code>dispatch_notice</code>를 보냈다. GLM agent가 본문 조회·수신 확인·<code>status_report</code> 송신을 했고(보고 ID <code>09813749429c01e03d8082aa10363d83</code>), Codex lead가 자동으로 보고를 읽어 확인했다. Codex TUI에서 MoAI MCP 승인창은 관측되지 않았다.</p><pre>MOAI_FACTORY_LIVE_ROOT=/tmp/moai-factory-managed-LGHavH MOAI_FACTORY_LIVE_RUN=tlw7ov go test ./internal/cli -run '^TestManagedCodexFactoryStatusLive$' -count=1 -v -timeout=20s
+capability=managed-host-poll acknowledged=2 pending=0 claimed=0 lanes=2
+--- PASS: TestManagedCodexFactoryStatusLive (0.04s)</pre><p><strong>런처 회귀 수정:</strong> <code>moai glm -f agent --factory-run &lt;id&gt; -- --model glm-5.3</code>에서 생성한 <code>--name agent-1</code>을 <code>--</code> 뒤에 붙이면 agent로 판별되지 않아 live lead와 충돌했다. 이름을 <code>--</code> 앞에 넣고 파서 테스트를 추가한 뒤 같은 명령으로 GLM agent를 정상 기동했다.</p></div>
+<h2>검증 범위</h2><div class="box"><pre>go test ./internal/cli -run 'TestFactoryMsgSendRejectsClaudeOnlyRun|TestFactoryMsgSendStoresCodexInboxWithoutPeerBody|TestFactoryAgentVocabulary|TestCodex.*Spawn' -count=1 -timeout=40s
+ok  github.com/modu-ai/moai-adk/internal/cli  2.159s
+
+go test ./internal/kanban -run Factory -count=1 -timeout=60s
+ok  github.com/modu-ai/moai-adk/internal/kanban  5.557s
+
+go test ./internal/hook -run 'TestFactoryGuide|TestFactoryBootstrapNotice|TestFactoryLeadNotice|TestFactoryWorkerNotice|TestFactoryMessagesLocaleFallback|TestKanbanNameChoices' -count=1 -timeout=35s
+ok  github.com/modu-ai/moai-adk/internal/hook  2.276s
+
+GOOS=windows GOARCH=amd64 go build -o /tmp/moai-factory-managed-windows.exe ./cmd/moai
+exit 0</pre><p>Windows 빌드는 실행 검증이 아니다. 큰 범위의 hook Factory 테스트는 기존 handoff 경합 테스트가 제한 시간에 걸렸고, 그 실행에서 일부 구식 worker 표기 기대값도 실패했다. 이 실행을 전체 통과로 취급하지 않는다.</p></div>
+<p class="box"><code>[claude-code:unrecognized_model]</code> 경고는 GLM 세션을 종료시키지 않았다. 이후 <code>--model glm-5.3</code>으로 살아 있는 관리 세션을 확인하고 양방향 혼합 실측을 완료했다. 경고가 모델 메타데이터 표시에 미치는 영향은 별도 점검 대상이다.</p>
+<h2>최종 코드 검증</h2><div class="box"><p>마지막 파서 수정과 문서 동기화 이후 변경 영향 범위만 다시 검사했다. Windows 결과는 교차 빌드이며 Windows 런타임 통신 증거가 아니다.</p><pre>go test ./internal/codexwiring -count=1 -timeout=60s
+ok github.com/modu-ai/moai-adk/internal/codexwiring 0.935s
+
+go test ./internal/cli -run 'TestManagedCodexOptions|TestFactoryAppClient|TestFactoryMsg|TestFactoryAgent|TestFactoryFlag|TestFactory.*Name|TestCodex.*Spawn|TestParseLauncherEntry|TestResolveFactory|TestManagedFactoryInputAndInboxClaim|TestCodexInit|TestDoctorCodex' -count=1 -timeout=90s
+ok github.com/modu-ai/moai-adk/internal/cli 6.889s
+
+go test ./internal/hook -run 'TestFactoryGuide|TestFactoryBootstrapNotice|TestFactoryLeadNotice|TestFactoryWorkerNotice|TestFactoryMessagesLocaleFallback|TestKanbanNameChoices|TestFactoryLaneHandoffInteractiveStateMachine' -count=1 -timeout=60s
+ok github.com/modu-ai/moai-adk/internal/hook 6.318s
+
+go test ./internal/kanban -run Factory -count=1 -timeout=60s
+ok github.com/modu-ai/moai-adk/internal/kanban 5.260s
+
+go test ./internal/template -run 'Test.*(Mirror|Parity|CodexAgents|Embed)' -count=1 -timeout=90s
+ok github.com/modu-ai/moai-adk/internal/template 1.800s
+
+GOOS=windows GOARCH=amd64 go build -o /tmp/moai-factory-managed-windows.exe ./cmd/moai
+exit 0
+
+go build -o /tmp/moai-factory-managed-codex ./cmd/moai
+exit 0</pre></div>
+<h2>남은 위험과 완료 기준</h2><table><tr><th>우선순위</th><th>남은 일</th><th>통과 기준</th></tr><tr><td>높음</td><td>기존 프로젝트의 MoAI MCP 설정</td><td>사용자 소유 설정은 보존하며, Factory 자동 처리에 필요한 두 도구의 승인 모드를 안내·진단한다. 설정이 없으면 승인 대기 상태를 lead에 표시.</td></tr><tr><td>중간</td><td>Anthropic 계정 Claude Code ↔ Codex 추가 검증</td><td>계정 한도가 풀린 뒤 같은 배차·보고 흐름을 Anthropic 백엔드에서도 재실측.</td></tr><tr><td>높음</td><td>카드 처리와 병합 요청</td><td>테스트 카드 발행, agent 처리, 증거 기록, lead의 완료 판정 및 병합 요청을 실측. 수신 확인만으로 카드 완료 판정 금지.</td></tr><tr><td>중간</td><td>Windows 네이티브와 WSL 2 실행</td><td>각 호스트에서 Claude 네이티브 통신과 Codex 포함 브로커 경로를 별도로 실측.</td></tr><tr><td>중간</td><td>사용자 안내·템플릿 전수 동기화</td><td>기존 worker/구식 플랫폼 설명을 실제 배포 템플릿과 안내에서 제거하고 관련 테스트 통과.</td></tr></table>
+<h2>공식 계약</h2><div class="box"><p><a href="https://learn.chatgpt.com/docs/app-server">Codex App Server 문서</a>: <code>thread/start</code>, <code>thread/inject_items</code>, <code>turn/start</code>, <code>turn/completed</code>, WebSocket 인증과 실험적 전송 상태. <a href="https://code.claude.com/docs/en/cross-session-messaging">Claude Code 세션 메시지 문서</a>: macOS/Linux/WSL 2 소켓, Windows named pipe, <code>claude -p</code> 수신, 권한 대화상자와 버전 조건.</p><p><small>이 보고서의 “실측”은 위 기준 환경에서 관측한 결과만 뜻한다. 공식 문서의 지원 범위와 Windows 런타임 실측은 구분했다.</small></p></div></body></html>

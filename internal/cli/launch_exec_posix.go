@@ -28,6 +28,9 @@ import (
 // (launch_exec_windows.go) spawns a child and propagates its exit code instead,
 // mirroring the reexecNewBinary pattern in update.go.
 func execOrSpawnClaude(claudeBin string, args, env []string) error {
+	if factoryLaunchEnabled(env) {
+		return runManagedFactoryClaude(claudeBin, args, env)
+	}
 	launchEnv := withSessionPID(env, os.Getpid())
 	root := launchProjectRoot()
 	pending, err := registerFactoryLaunchPending(context.Background(), root, launchEnv, os.Getpid(), homestate.CurrentProcessFingerprint())

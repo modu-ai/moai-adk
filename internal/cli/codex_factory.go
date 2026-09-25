@@ -1,8 +1,8 @@
 package cli
 
-// codex_factory.go — `moai codex -f` / `moai codex -f worker`: the factory
+// codex_factory.go — `moai codex -f` / `moai codex -f agent`: the factory
 // entry for the Codex door (card t865, operator goal 2026-09-16 decision 4:
-// the first factory combination is the fixed 1:1 — codex lead + cc worker).
+// the first factory combination is the fixed 1:1 — codex lead + cc agent).
 //
 // The codex launcher uses DisableFlagParsing with a closed-set verb table,
 // so the factory token is intercepted BEFORE the verb lookup exactly as
@@ -14,12 +14,11 @@ package cli
 // Shapes accepted (mirroring the cc surface post-N-removal):
 //
 //	-f                → the factory lead (env only; the cli verb launches)
-//	-f worker         → join the running factory as the next free worker-<n>
-//	-f worker-<n>     → join as exactly worker n
+//	-f agent          → join the running factory as the next free agent-<n>
+//	-f agent-<n>      → join as exactly agent n
 //
-// Legacy spellings still parse (keep-alias): `-f agent` behaves as `-f
-// worker`, and `-f lane-<n>` / `-f agent-<n>` as `-f worker-<n>`; the claim
-// canonicalizes them and prints a deprecation hint.
+// Persisted worker-<n> and lane-<n> rows remain readable for collision
+// detection. Their public -f spellings are retired.
 //
 // A numeric count is rejected with the same error text the cc surface emits.
 
@@ -91,9 +90,6 @@ func stripCodexFactoryFlag(head []string) (rest []string, lead bool, role string
 // isFactoryLaneShape reports the worker label shapes only: the canonical
 // worker-<n> and the legacy lane-<n> / agent-<n> spellings.
 func isFactoryLaneShape(v string) bool {
-	if _, ok := kanban.SplitFactoryLaneLabel(v); ok {
-		return true
-	}
 	_, ok := kanban.SplitFactoryAgentLabel(v)
 	return ok
 }
@@ -101,7 +97,7 @@ func isFactoryLaneShape(v string) bool {
 // isFactoryRoleToken reports the role token: `worker`, or its legacy
 // spelling `agent`.
 func isFactoryRoleToken(v string) bool {
-	return v == factoryWorkerRoleToken || v == factoryLegacyAgentRoleToken
+	return v == factoryWorkerRoleToken
 }
 
 // codexHeadTokenIsVerb reports whether the token could legally occupy the
@@ -121,11 +117,6 @@ func applyCodexFactoryEntry(cmd *cobra.Command, role string, lane string) (func(
 	if role != "" {
 		next := kanban.NextFactoryWorkerNumber(loadFactoryRegistry(factoryRegistryPath(launchProjectRoot())), factoryProcessAlive)
 		lane = kanban.FactoryLaneLabel(next)
-		if role == factoryLegacyAgentRoleToken {
-			// Routed through the legacy label so the claim prints the
-			// deprecation hint, exactly as the cc/glm doors do.
-			lane = kanban.FactoryAgentLabel(next)
-		}
 	}
 	if lane != "" {
 		final, claimErr := resolveFactoryWorkerName(launchProjectRoot(), lane, role != "", cmd.ErrOrStderr())

@@ -76,6 +76,9 @@ type SendRequest struct {
 }
 type Envelope struct {
 	ID, ProjectKey, RunID, Kind, SenderSession, RecipientSession, TaskRef, CorrelationID string
+	// Duplicate reports that Send returned an existing idempotent message.
+	// It is transient and must not start a second recipient turn.
+	Duplicate bool `json:"duplicate,omitempty"`
 	// SenderSlot is the sender's stable lane slot, the idempotency scope.
 	SenderSlot                            string
 	SchemaVersion                         int
@@ -756,6 +759,7 @@ func (s *Store) Send(ctx context.Context, r SendRequest) (Envelope, error) {
 		}
 		env.CreatedAt, _ = time.Parse(time.RFC3339Nano, created)
 		env.ExpiresAt, _ = time.Parse(time.RFC3339Nano, expires)
+		env.Duplicate = err == nil
 		return env, err
 	}
 	return env, err
@@ -943,7 +947,7 @@ func (s *Store) SettleReceiptControls(ctx context.Context, p Peer) (int, error) 
 	return int(n), nil
 }
 func (s *Store) Status(ctx context.Context) (_ Status, err error) {
-	st := Status{Capability: "hook-boundary", NextDelivery: "pending-until-next-turn"}
+	st := Status{Capability: "native-claude", NextDelivery: "native-cross-session"}
 	// A message is superseded when its recipient endpoint is no longer the
 	// current one: Send only addresses current endpoints, so a missing match
 	// means the lane re-registered after the message was queued.
@@ -978,6 +982,13 @@ func (s *Store) Status(ctx context.Context) (_ Status, err error) {
 		return st, err
 	}
 	st.Lanes, err = s.laneRoster(ctx)
+	for _, lane := range st.Lanes {
+		if lane.Backend == "codex" {
+			st.Capability = "managed-host-poll"
+			st.NextDelivery = "pending-until-host-turn"
+			break
+		}
+	}
 	return st, err
 }
 

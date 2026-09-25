@@ -14,7 +14,7 @@ Kanban Mode is entered with `moai cc -k` (or `moai glm -k`), which elects one le
 
 The lead session works through the `manager-lead` agent: it holds the operator dialogue (the session's `AskUserQuestion` stays the user channel) while dispatching parallel work in the background — neither blocks the other. Lead and lane sessions orchestrate only; real work runs in sub-agents (design intent + spawn rules: `kanban-dispatch-detail.md` § Design intent, § The lead works through manager-lead).
 
-One boundary: nudge delivery rides on cross-session messaging, absent on native Windows and off under some providers, versions, and flags (`cross-session-messaging.md` § Availability constraints) — an absent channel fails quietly; the lead surfaces it, and the queue keeps working without it.
+One boundary: nudge delivery rides on cross-session messaging, available on native Windows with Claude Code v2.1.234+ and on macOS/Linux/WSL 2 with v2.1.224+, subject to provider, version, and configuration gates (`cross-session-messaging.md` § Availability constraints) — an absent channel fails quietly; the lead surfaces it, and the queue keeps working without it.
 
 ## The board
 
@@ -263,13 +263,13 @@ The completion signal is the branch name, merge SHA, and evidence path.
 
 ## Factory Mode — the card travels whole
 
-`moai cc -f <N>` launches one lead plus lane sessions labelled `worker-1..worker-N` ("lane" stays the prose term for the slot; `worker-<n>` is the session label, and `-f worker` joins as the next free one). No per-column companions: the lead routes each card WHOLE to a free lane, which carries it `plan → run → sync` in-session — serial stages, each stage's execution spawned as sub-agents — and owns it end to end. A/B/C collapse into the lane (the class still names which ceremonies are skipped — `plan` for A and B — but no card changes sessions). Queue, evidence-reading, integration, and disposal rules are unchanged. Mechanics: `kanban-dispatch-detail.md` § Factory in-lane 3-stage.
+`moai cc -f <N>` launches one lead plus agent sessions labelled `agent-1..agent-N` (`-f agent` joins as the next free one). No per-column companions: the lead routes each card WHOLE to a free lane, which carries it `plan → run → sync` in-session — serial stages, each stage's execution spawned as sub-agents — and owns it end to end. A/B/C collapse into the lane (the class still names which ceremonies are skipped — `plan` for A and B — but no card changes sessions). Queue, evidence-reading, integration, and disposal rules are unchanged. Mechanics: `kanban-dispatch-detail.md` § Factory in-lane 3-stage.
 
 **Lane spawn authority (standing).** A lane is an orchestrator for its card: it spawns, with the Agent tool and WITHOUT asking, the specialist the Status Transition Ownership Matrix names for the stage at hand — plan-phase artifacts to `manager-spec`, implementation to `manager-develop`, sync-phase docs to `manager-docs`, plus the chain's prescribed auditors. Depth-1 only: agents a lane spawns are leaf workers and never spawn further agents. This authority is part of the lane's bootstrap context (the SessionStart join notice carries it verbatim), and it is deliberately NOT a per-dispatch grant: the runtime's default "don't spawn unless the user asks" guidance does not bind a lane, and a lead's approval can neither grant nor revoke what the bootstrap already grants — the lead is not the lane's user. The same authority binds kanban companion sessions. Observed defect this closes: two lanes refused to spawn `manager-spec` under the default guidance and fell back to editing SPEC bodies directly, routing artifact writes around the ownership matrix.
 
 ## Boundaries — what this protocol does not do
 
-- **No board state store.** The queue is a plain file; column position is held by the lead within a card's run and re-derived from SPEC status after a clear. Persistent board state, per-card worktree lifecycle, WIP limits, and card/frontmatter reconciliation are separate work, not assumed here.
+- **No board state store.** The Todo queue is accessed through `moai todo`; column position is held by the lead within a card's run and re-derived from SPEC status after a clear. Persistent board state, per-card worktree lifecycle, WIP limits, and card/frontmatter reconciliation are separate work, not assumed here.
 - **No session spawning.** The lead addresses sessions the operator launched — it never creates one (sub-agents are not sessions).
 - **No gate bypass.** Kickoff approval before run-phase entry, and every other approval gate, is unchanged by being inside a dispatch cycle.
 - **No question delegation.** Companion sessions return blocker reports; the operator is asked by the lead, through `AskUserQuestion`.

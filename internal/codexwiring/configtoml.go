@@ -21,9 +21,12 @@ const (
 	mcpServerEnvVarsValue = `["MOAI_HOME", "MOAI_KANBAN_ID", "MOAI_SESSION_PID", "MOAI_KANBAN_BACKEND", "MOAI_FACTORY_WORKER", "MOAI_FACTORY_WORKERS", "CLAUDE_PROJECT_DIR", "CLAUDE_CODE_SESSION_ID"]`
 	// mcpApprovalMode is the capability-based approval mode: `writes` prompts
 	// for tools NOT marked read-only (MCP ReadOnlyHint annotation) — the
-	// approval set therefore rides on server annotations, never on tool-name
-	// enumeration (spec §A.4).
+	// approval set normally rides on server annotations. Factory exchange is
+	// the narrow per-tool exception below.
 	mcpApprovalMode = "writes"
+	// Factory message exchange needs no idle human approval. This override is
+	// confined to the two broker writes; all other MCP tools retain "writes".
+	mcpFactoryToolsValue = `{ factory_msg_send = { approval_mode = "approve" }, factory_msg_receipt = { approval_mode = "approve" } }`
 )
 
 // StatusLineAllowlist is the fixed allowlist of the 29 canonical Codex TUI
@@ -86,7 +89,8 @@ var (
 // ensured. Create-if-absent ONLY (plan D2): an existing table is user-owned
 // and byte-invariant — divergence from the canonical shape is the doctor's to
 // report, never the writer's to repair (REQ-CW-004/005). The table carries no
-// tool-name enumeration: the approval policy rides on server annotations.
+// enabled/disabled tool allowlists. The two Factory broker writes use a
+// per-tool approval override so a managed session can receive unattended.
 func EnsureMCPTable(content []byte) []byte {
 	body := string(content)
 	if tablePresent(body, mcpMoaiTableRe) {
@@ -96,7 +100,8 @@ func EnsureMCPTable(content []byte) []byte {
 		"command = \"" + mcpServerCommandValue + "\"\n" +
 		"args = [\"" + mcpServerArgValue + "\"]\n" +
 		"env_vars = " + mcpServerEnvVarsValue + "\n" +
-		"default_tools_approval_mode = \"" + mcpApprovalMode + "\"\n"
+		"default_tools_approval_mode = \"" + mcpApprovalMode + "\"\n" +
+		"tools = " + mcpFactoryToolsValue + "\n"
 	return []byte(appendSection(body, table))
 }
 
@@ -166,12 +171,13 @@ type MCPTableStatus struct {
 	Canonical bool
 }
 
-// canonicalMCPAssignments are the four assignments EnsureMCPTable writes.
+// canonicalMCPAssignments are the assignments EnsureMCPTable writes.
 var canonicalMCPAssignments = []string{
 	"command = \"" + mcpServerCommandValue + "\"",
 	"args = [\"" + mcpServerArgValue + "\"]",
 	"env_vars = " + mcpServerEnvVarsValue,
 	"default_tools_approval_mode = \"" + mcpApprovalMode + "\"",
+	"tools = " + mcpFactoryToolsValue,
 }
 
 // InspectMCPTable reads the [mcp_servers.moai] table status of a config.toml

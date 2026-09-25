@@ -11,8 +11,8 @@ import (
 func TestFactoryLaneLabelProducesWorkerNotation(t *testing.T) {
 	t.Parallel()
 
-	if got := FactoryLaneLabel(3); got != "worker-3" {
-		t.Errorf("FactoryLaneLabel(3) = %q, want %q", got, "worker-3")
+	if got := FactoryLaneLabel(3); got != "agent-3" {
+		t.Errorf("FactoryLaneLabel(3) = %q, want %q", got, "agent-3")
 	}
 }
 
@@ -47,9 +47,9 @@ func TestLegacyFactoryLabelDetectionAndCanonicalization(t *testing.T) {
 		canonical string
 		ok        bool
 	}{
-		{"lane-3", true, "worker-3", true},
-		{"agent-2", true, "worker-2", true},
-		{"worker-5", false, "worker-5", true},
+		{"lane-3", true, "agent-3", true},
+		{"agent-2", false, "agent-2", true},
+		{"worker-5", true, "agent-5", true},
 		{"plan", false, "", false},
 		{"lane-0", false, "", false},
 		{"", false, "", false},
@@ -95,16 +95,16 @@ func TestClaimFactoryWorkerNameCanonicalizesAndRespectsLegacyClaims(t *testing.T
 	t.Run("legacy request claims the canonical label", func(t *testing.T) {
 		t.Parallel()
 		got, err := ClaimFactoryWorkerName(t.TempDir(), "lane-2", 101, alive)
-		if err != nil || got != "worker-2" {
-			t.Fatalf("claim lane-2 = (%q, %v), want worker-2", got, err)
+		if err != nil || got != "agent-2" {
+			t.Fatalf("claim lane-2 = (%q, %v), want agent-2", got, err)
 		}
 	})
 
 	t.Run("legacy agent request claims the canonical label", func(t *testing.T) {
 		t.Parallel()
 		got, err := ClaimFactoryWorkerName(t.TempDir(), "agent-1", 101, alive)
-		if err != nil || got != "worker-1" {
-			t.Fatalf("claim agent-1 = (%q, %v), want worker-1", got, err)
+		if err != nil || got != "agent-1" {
+			t.Fatalf("claim agent-1 = (%q, %v), want agent-1", got, err)
 		}
 	})
 

@@ -199,7 +199,7 @@ func factoryLeadNotice(runID string, workers int, root, lang string) string {
 // label first), so the formats pin the argument order with explicit %[n]
 // indices rather than positional verbs.
 func factoryWorkerNotice(label string, workers int, lang string) string {
-	if _, ok := kanban.SplitFactoryLaneLabel(label); !ok {
+	if _, ok := kanban.CanonicalFactoryLabel(label); !ok {
 		return ""
 	}
 	m := factoryMessagesFor(lang)
