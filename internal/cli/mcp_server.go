@@ -107,6 +107,7 @@ func runMCPServer() error {
 		return fmt.Errorf("register MCP runtime before serving: %w", err)
 	}
 	s := newMoaiMCPServer()
+	defer stopCodexBackgroundJobs()
 	// ServeStdio blocks until the stdin stream closes; the goal.go blocking-RunE
 	// pattern. opts remain extensible (error logger, etc.) without API churn.
 	return server.ServeStdio(s)
