@@ -309,7 +309,7 @@ func ResolveActiveRun(ctx context.Context, projectRoot, explicit string) (_ stri
 	// owners from the active set — it never selects among survivors, so the
 	// fail-closed behaviour below is preserved and ambiguity that survives it
 	// is real ambiguity.
-	rec, err := db.ReconcileActiveRuns(ctx, homestate.ReconcileOptions{Fallback: LeadIdentityLookupFor(projectRoot)})
+	rec, err := db.ReconcileActiveRuns(ctx, ReconcileOptionsFor(projectRoot))
 	if err != nil {
 		return "", err
 	}

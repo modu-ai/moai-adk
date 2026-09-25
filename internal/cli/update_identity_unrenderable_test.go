@@ -224,14 +224,16 @@ func TestIdentityLoader_AcceptedNamesRenderVerbatim(t *testing.T) {
 	if len(accepted) < 80 {
 		t.Errorf("kept only %d of %d corpus names; ordinary printable names must pass", len(accepted), len(corpus))
 	}
-	for _, want := range []string{"cost$5", "my$app", "a{{b", "👩\u200d💻 x", "구스", "a\tb"} {
+	for _, want := range []string{"cost$5", "my$app", "a{{b", "👩\u200d💻 x", "구스", "a\tb", "a\"b", "a\\b", "a\nb"} {
 		if !accepted[want] {
 			t.Errorf("%q was dropped; init renders it verbatim, so the update must keep it", want)
 		}
 	}
-	// Negative controls: the hand-edit names the render cannot carry are
-	// dropped, so a vacuous "keep everything" rule fails.
-	for _, want := range []string{"$TEAM", "{{.Version}}", "a\"b", "a\\b", "a\nb"} {
+	// Since card t1162 the templates escape the name, so `"`, `\`, and a line
+	// break render verbatim and are positive controls above. Negative
+	// controls: the hand-edit names the renderer's unexpanded-token guard
+	// rejects are dropped, so a vacuous "keep everything" rule fails.
+	for _, want := range []string{"$TEAM", "{{.Version}}"} {
 		if accepted[want] {
 			t.Errorf("%q was kept; the render cannot carry it verbatim", want)
 		}

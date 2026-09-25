@@ -9,6 +9,8 @@
 **부분 재측정**: worktree `.claude/worktrees/t1092`, 브랜치 `WT-codemaps-restamp`, base `08113ff0f`, 2026-09-23 — 카드 t1092, 앵커 `598e8f748` 이후 착지분을 반영. § MCP 서버 표면의 도구 수 30→36(신규 `factory_msg_{send,list,body,receipt,status}` 5개 + `jev_ask` 1개, 목록·신규 절 갱신)과 § Cobra 명령 트리에 `moai worktree new <name>` 신규 서브커맨드 서술을 더했습니다. § Cobra 명령 트리의 등록 수치(`AddCommand` 카운트 등)는 이번 변경에서 움직이지 않아(신규 서브커맨드는 `worktree` 자식 패키지의 `WorktreeCmd.AddCommand`이지 루트 3수치가 세는 자리가 아님) 다시 재지 않았습니다. § `main()`·§ 훅·§ 웹 콘솔·§ HOME 상태·§ CI 종료 코드 절은 이 카드 변경과 무관해 손대지 않았습니다.
 **문장 정정**: 카드 t1144(SPEC-HOOK-DIAG-SINK-001), worktree `.claude/worktrees/t1144`, 브랜치 `WT-hook-diag-channel`, run-phase HEAD `bedc731d6`, 2026-09-25 — § 훅의 「룰 적재 감사 행」 단락이 `moai hook` 의 로깅 목적지를 `io.Discard` 라고 **사실로** 서술하고 있었고, 그 카드가 목적지를 `.moai/logs/hook-runtime.log` 싱크로 바꿨으므로 그 한 문장만 정정했습니다. 이 파일의 어떤 수치도 다시 재지 않았습니다 — 정정 범위는 문장 하나입니다.
 
+**부분 재측정**: worktree `.claude/worktrees/t1151`, 브랜치 `WT-codemaps-refresh2`, base `60017eb83`, 2026-09-24 — 카드 t1151, 앵커 `ee4e6d22f`(card t1132) 이후 착지분(주로 card t1100 SPEC-DUAL-HARNESS-RECOVERY-001)을 반영. § Cobra 명령 트리에 `moai tool disable codex` 신규 서브커맨드 서술을 더했습니다. § Cobra 명령 트리의 등록 수치(`AddCommand` 카운트 등)는 이번 변경에서 움직이지 않아(신규 서브커맨드는 이미 등록된 `tool` 부모 아래 자식 `AddCommand`이지 세 루트 수치가 세는 자리가 아님) 다시 재지 않았습니다. § MCP 서버 표면·§ `main()`·§ 훅·§ 웹 콘솔·§ HOME 상태·§ CI 종료 코드 절은 이 카드 변경과 무관해 손대지 않았습니다.
+
 ---
 
 ## `main()`
@@ -78,6 +80,13 @@ root.go Execute()
      런처(`moai cc -w <name>` / `EnterWorktree`) 몫이다.
    - (철수) 숨은 스킬 제안 명령 1개 — SPEC-JEV-GUARD-001(card t1083)이 Consumer B를
      철수하며 등록도 함께 뺐습니다. 측정 게이트 통과 전에는 재등록될 수 없습니다(§ `modules.md` Jev 계열).
+   - **이 판에서 `tool` 아래 신규 서브커맨드가 더했다** — `moai tool disable codex`
+     (`internal/cli/tool.go`, `newToolDisableCodexCmd`)는 MoAI가 이 프로젝트에 실제로
+     기록한 Codex 배선 부분만(자기 훅 핸들러·`hooks.json` 설명, `[mcp_servers.moai]`/
+     `[tui]` 표나 자기가 넣은 `status_line` 줄, 만든 그대로 바뀌지 않은 배선 파일 전체)
+     골라 제거하고, 증명 못 하는 부분은 사유와 함께 그대로 남긴다(`internal/codexwiring/unwire.go`).
+     `--dry-run`은 아무것도 쓰지 않고 계획만 출력한다. `moai update`는 disable 이후
+     다시 wiring하지 않으며, 재활성화는 `moai tool enable codex`(기존 verb) 몫이다.
 2. **자기 파일의 `init()`에서 스스로 등록** — `AddCommand`를 호출하는 파일이 **70개**입니다
    (`grep -rl "AddCommand" internal/cli --include='*.go' | grep -v _test`).
    `hook.go`, `todo.go`, `kanban.go`, `glm.go`, `cc.go`, `update.go`, `doctor.go`, `spec.go`,

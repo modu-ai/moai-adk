@@ -208,8 +208,8 @@ func TestRealSetCodexShape(t *testing.T) {
 		}
 
 		// Read-only roles must be constrained by the runtime sandbox, not body prose.
-		// The audit roles are read-only on Codex: the parent writes their
-		// verdict file from the returned text.
+		// The read-only roles are started by the audit launcher on Codex; it
+		// writes their verdict file from the returned text.
 		wantSandbox := "workspace-write"
 		switch name {
 		case "mission-governor", "super-advisor", "plan-auditor", "sync-auditor":

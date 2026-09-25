@@ -24,6 +24,26 @@ Recorded at the lead's request, in the lead's words:
 > than switching trees mid-audit. Corrective: the lane tells the author to hold before opening an
 > audit window, and the author asks before committing when unsure whether one is open.
 
+### v0.13.0 in-place amendment — plan phase (card t1169, 2026-09-25)
+
+- baseline: worktree `.claude/worktrees/t1169`, branch `WT-retire-boot-proof-spec`, base develop
+  `a0b78213d`, which descends from `372c1bb0b` (the t1168 boot-proof merge).
+- why: card t1168 shipped a boot proof that retires identity-less legacy runs as `dead`; the
+  literal REQ-006 required `indeterminate` for them. Evidence and the residual risks that motivate
+  this card: `.moai/reports/t1168/verdict.md` (local evidence file, primary checkout), Residual-risk.
+- amended: REQ-006 rewritten; REQ-006b (boot-proof premises), REQ-006c (boot-time reader: error
+  cause, long `intr` line), REQ-010b (`basis` = `stamp` / `peer` / `boot` on `run.retired`) added;
+  spec.md §C.3 and two §F items added; acceptance.md AC-018 (regression-guard), AC-019, AC-020 with
+  RED-now cells R-09 / R-10 pinned at `a0b78213d`; plan.md M7.
+- status: `completed → in-progress` (amendment), `amendment_of:` self, Amendments record citing the
+  prior close `85414b3e6`.
+- run phase owes: M7 in plan.md. The t1107 §E.2-§E.4 evidence below is the prior close's and is
+  left untouched; the amendment's run evidence is manager-develop's to add.
+- Implementation Kickoff Approval (run entry): granted by the operator in the lane window on
+  2026-09-25. Operator's answer, verbatim: "run, sync 모두 진행". Plan-audit standing at kickoff:
+  iter-2 PASS-WITH-DEBT (`.moai/reports/t1169/plan-audit-iter2.md`), debts N1 / N2 carried into the
+  run delegation and resolved there — see §E.2.6.
+
 ## §E.2 Run-phase Evidence
 
 Tree: branch `WT-factory-run-retire`, worktree `.claude/worktrees/t1107`, base `9b1805a67`.
@@ -118,11 +138,121 @@ already carrying the v3 columns, and a blind `ALTER TABLE … ADD COLUMN` then f
 `duplicate column name: lead_pid`. Caught by `TestFactoryV1ClaimedRowsUpgradeToV2`.
 `migrateFactoryV2ToV3` now reads `PRAGMA table_info(runs)` and adds only the missing columns.
 
+### E.2.6 v0.13.x amendment run (card t1169, plan.md M7)
+
+Base: branch `WT-retire-boot-proof-spec` at `e5f020cc3` (its `internal/` tree equals `a0b78213d`'s).
+Host: darwin. Every command below ran in this worktree against the tree at the commit named.
+
+**Commits.** RED `09c99c071` (tests plus a signature-only `procStatBootTime` stub) → GREEN
+`1610e0ee7` (implementation) → this evidence commit. The RED commit precedes the GREEN commit in the
+graph, so the ordering is witnessed by git rather than asserted (verification-claim-integrity §2.3).
+
+**RED (on `09c99c071`)** — `go test ./internal/homestate/ -run 'ProcStat|TestRetiredEventRecordsProofBasis|TestBootProofDeclinesWithoutEveryPremise' -count=1`, exit 1:
+
+```
+--- FAIL: TestProcStatBootTimeFindsBtimeAfterLongLine (0.00s)
+    boot_time_procstat_test.go:20: procStatBootTime: procfs stat carries no btime record, want the btime after the 262149-byte intr line
+--- FAIL: TestProcStatBootTimeReportsReadError (0.00s)
+    boot_time_procstat_test.go:38: cause = procfs stat carries no btime record, want the read error procfs read failed mid-stream
+--- FAIL: TestProcStatBootTimeRejectsMalformedBtime (0.00s)
+--- FAIL: TestProcStatBootTimeAcceptsUnterminatedFinalLine (0.00s)
+--- FAIL: TestRetiredEventRecordsProofBasis (0.01s)
+        factory_run_boot_proof_test.go:268: run-stamp basis = "", want "stamp" (payload map[classification:dead])
+        factory_run_boot_proof_test.go:268: run-peer basis = "", want "peer" (payload map[classification:dead])
+        factory_run_boot_proof_test.go:268: run-boot basis = "", want "boot" (payload map[classification:dead])
+        factory_run_boot_proof_test.go:282: payload = map[classification:dead], want classification dead and basis boot
+FAIL	github.com/modu-ai/moai-adk/internal/homestate	0.479s
+```
+
+`TestProcStatBootTimeWithoutBtimeIsUnavailable` passed on the stub, which returns "no btime record":
+leg (iii) discriminates only together with leg (ii), which requires the two causes to differ. The
+AC-018 legs passed on RED by design — they are regression guards (`go test ./internal/factorymsg/
+-run 'PartialStamp|LeadRecordAbsentFor' -count=1 -v` → four `--- PASS` lines, `ok … 7.712s`). Their
+discriminating evidence is the mutant table below.
+
+**GREEN (on `1610e0ee7`).**
+
+| Command | Exit | Output tail |
+|---|---|---|
+| `go test ./internal/homestate/... ./internal/factorymsg/... -count=1` | 0 | `ok …/internal/homestate 17.806s` / `ok …/internal/factorymsg 50.592s` |
+| `go test ./internal/cli/ -run 'FactoryRuns\|Abandon\|LaneHandoffRecover\|EnterSelectedFactoryRun\|ResolveActiveRun' -count=1` | 0 | `ok …/internal/cli 20.835s` — the selector matches 4 tests (`go test -list` with the same pattern prints 4), so this is not a zero-match green |
+| `go vet ./internal/homestate/... ./internal/factorymsg/... ./internal/cli/` | 0 | (no output) |
+| `golangci-lint run ./internal/homestate/... ./internal/factorymsg/...` | 0 | `0 issues.` |
+| `GOOS=linux go build ./internal/homestate/ ./internal/factorymsg/` | 0 | (no output) |
+| `GOOS=windows go build ./internal/homestate/ ./internal/factorymsg/` | 0 | (no output) |
+| `GOOS=linux go vet ./internal/homestate/` | 0 | (no output) |
+| `GOOS=windows go vet ./internal/homestate/` | 0 | (no output) |
+
+**RED-now cells re-run on `1610e0ee7`.** R-09 `grep -rl btime internal/homestate --include='*_test.go'`
+→ `internal/homestate/boot_time_procstat_test.go`, exit 0 (was empty, exit 1). R-10
+`grep -rl --exclude='*_test.go' '"basis"' internal/homestate` → `internal/homestate/factory_run_retire.go`,
+exit 0 (was empty, exit 1).
+
+**Mutant probes.** Each mutant changed one production site; then
+`go test ./internal/homestate/ -count=1` and `go test ./internal/factorymsg/ -count=1 -run
+'BootProof|PreBoot|PartialStamp|LeadRecordAbsentFor|ResolveActiveRun'` ran; then the original file
+bytes were written back. Every mutant edit carried the marker `T1169-MUTANT`. After the run:
+`grep -rn T1169-MUTANT internal/` → no output, exit 1; the worktree status was empty; and the suite
+re-ran green (`ok homestate 14.698s`, `ok factorymsg 45.912s`). The generic `grep -rn MUTANT
+internal/` count is 11 both before and after — pre-existing comments in other packages. Per-mutant
+logs: `.moai/reports/t1169/mutant-M*.log` (local evidence, not committed); the failing test names are
+copied here.
+
+| Mutant | Edit | Failing tests |
+|---|---|---|
+| M1 proof always declines | `predatesBoot` returns `false` first | TestReconcileRetiresIdentitylessRunsThatPredateBoot, TestRetireRunIfDeadAcceptsBootProof, TestResolveActiveRunReapsPreBootIdentitylessRuns, TestResolveActiveRunPreBootRowsAloneFailClosedAsNoActive, TestPartialStampWithoutBrokerIsBootProven, TestRetiredEventRecordsProofBasis/{reconciler, operator_retire_of_a_boot-proven_run}, and — through their positive controls — TestPartialStampWithBrokerStaysIndeterminate, TestLeadRecordAbsentFor{TreatsStatErrorAsPossibleRecord, RejectsUnderivableBrokerPath}. **Stayed green:** TestBootProofNeverOverridesAnIdentity (the identity-precedence leg) |
+| M2 lead-record premise dropped | `\|\| !opts.LeadRecordAbsent(runID)` → `\|\| false` | TestBootProofDeclinesWithoutEveryPremise/lead_record_may_exist, TestResolveActiveRunBootProofDeclinesWhenBrokerExists, TestPartialStampWithBrokerStaysIndeterminate, TestLeadRecordAbsentForTreatsStatErrorAsPossibleRecord, TestLeadRecordAbsentForRejectsUnderivableBrokerPath |
+| M3 post-boot activity ignored | `perr != nil \|\| !at.Before(boot)` → `perr != nil` | TestBootProofDeclinesWithoutEveryPremise/{event_after_boot, worker_heartbeat_after_boot, card_updated_after_boot, run_row_touched_after_boot, timestamp_equal_to_boot}, TestResolveActiveRunAmbiguityNamesClassifications |
+| M4 strictly-earlier → not-later | `!at.Before(boot)` → `at.After(boot)` | TestBootProofDeclinesWithoutEveryPremise/timestamp_equal_to_boot |
+| M5a stat error as absence | `errors.Is(err, fs.ErrNotExist)` → `err != nil && !errors.Is(err, fs.ErrExist)` | TestLeadRecordAbsentForTreatsStatErrorAsPossibleRecord |
+| M5b underivable path as absence | the `BrokerPath` error branch returns `true` | TestLeadRecordAbsentForRejectsUnderivableBrokerPath |
+| M6 partial stamp routed to peer | fallback also taken when `start` is empty | TestPartialStampWithBrokerStaysIndeterminate |
+| M19a read error discarded | the read-error branch returns `errProcStatNoBtime` | TestProcStatBootTimeReportsReadError |
+| M19b default 64 KiB scanner | the seam rewritten over `bufio.Scanner` | TestProcStatBootTimeFindsBtimeAfterLongLine |
+| M20a constant basis `stamp` | the payload writes `BasisStamp` | TestRetiredEventRecordsProofBasis/{reconciler, operator_retire_of_a_boot-proven_run} |
+| M20b operator path constant `stamp` | `RetireRunIfDead` passes `BasisStamp` | TestRetiredEventRecordsProofBasis/operator_retire_of_a_boot-proven_run only — `/reconciler` stayed green |
+| M20c `basis` key omitted | payload `{"classification":…}` only | TestRetiredEventRecordsProofBasis/{reconciler, operator_retire_of_a_boot-proven_run} |
+| M20d `classification` key renamed | payload key `state` | TestRetiredEventRecordsProofBasis/{reconciler, operator_retire_of_a_boot-proven_run} |
+
+The first forms of M3 and M5a did not compile (an unused variable; unused imports) and are not
+counted. Both were re-expressed as compiling edits and re-run
+(`.moai/reports/t1169/mutants-summary-rerun.log`); the table carries the re-run.
+
+**AC standing for the amendment.**
+
+| AC | Standing | Basis |
+|---|---|---|
+| AC-018 | regression-guard: green on the run tree; mutants 1-6 (5 as 5a and 5b) each observed red and restored | mutant table |
+| AC-019 | PASS | RED on `09c99c071`, GREEN on `1610e0ee7`, M19a and M19b red |
+| AC-020 | PASS | RED on `09c99c071`, GREEN on `1610e0ee7`, M20a-d red; M20b isolates the operator leg |
+
+**Plan-audit debts carried into this run.** N1:
+`TestLeadRecordAbsentFor{TreatsStatErrorAsPossibleRecord, RejectsUnderivableBrokerPath}` assert the
+function's `false` AND the end-to-end reconcile outcome (`active` plus `OwnerIndeterminate`, read from
+`Reconciliation.Remaining`), each beside a positive-control run that the same options retire `dead`.
+N2: `TestPartialStampWithBrokerStaysIndeterminate` seeds the `role='lead'` peer with a dead PID and a
+non-empty `process_start` (the test fails outright if that fingerprint is empty) and dates every run
+timestamp before boot; its positive control retires, so premise 2 is the only declining premise, and
+M6 turns the leg red. Residual-risk note: the `RecordRun` comment in `internal/homestate/runtime.go`
+now names the REQ-006b boot proof instead of "indeterminate forever".
+
+**Files changed** (`git diff --stat a0b78213d HEAD -- internal`): 7 files, +463 / −27 —
+`internal/homestate/{boot_time_procstat.go (new), boot_time_procstat_test.go (new), boot_time_unix.go,
+factory_run_boot_proof_test.go, factory_run_retire.go, runtime.go}` and
+`internal/factorymsg/factory_run_boot_proof_legs_test.go (new)`. No `internal/cli` change. No
+acceptance.md change, so the AC snapshot is not regenerated.
+
+**Gaps.** The factorymsg boot-proof legs read the host's real boot time and skip where the host
+reports none; on this darwin host they ran. The linux `platformBootTime` over a live `/proc/stat` and
+the windows reader were cross-built and vetted, not executed — they land on the post-merge three-OS
+CI run (spec.md §F). The full repository suite was not run locally, by design. No independent
+reviewer has read this run yet.
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 ```yaml
 run_complete_at: 2026-09-23
-run_commit_sha: pending-backfill-run
+run_commit_sha: eaa3322a1   # backfilled by card t1146 (sync-audit S1); the run-phase commit, an ancestor of this SPEC's branch
 run_status: implemented
 ac_pass_count: 16          # AC-001..AC-012, AC-013 leg 1, AC-014, AC-015a/b, AC-016 (both legs), AC-017
 ac_fail_count: 0
@@ -140,11 +270,32 @@ total_run_phase_files: 17
 m1_to_mN_commit_strategy: single run-phase commit covering M1-M6
 ```
 
+### E.3.1 Run-phase Audit-Ready Signal — v0.13.x amendment (card t1169)
+
+```yaml
+run_complete_at: 2026-09-25
+run_commit_sha: 1610e0ee7   # GREEN implementation commit; RED tests at 09c99c071
+run_status: implemented
+ac_pass_count: 2              # AC-019, AC-020
+ac_regression_guard_count: 1  # AC-018 — mutants 1-6 observed red and restored, never a bare pass
+ac_fail_count: 0
+preserve_list_post_run_count: 0
+l44_pre_commit_fetch: n/a (no push in this phase)
+l44_post_push_fetch: n/a (no push in this phase)
+new_warnings_or_lints_introduced: 0
+cross_platform_build:
+  darwin_arm64: pass (tests executed)
+  linux_cross_build_and_vet: pass
+  windows_cross_build_and_vet: pass
+total_run_phase_files: 7
+m1_to_mN_commit_strategy: M7 as a RED commit then a GREEN commit, then this evidence commit
+```
+
 ## §E.4 Sync-phase Audit-Ready Signal
 
 ```yaml
 sync_complete_at: 2026-09-24
-sync_commit_sha: pending-backfill-sync   # a commit cannot cite its own hash; the lead reads it off the sync commit
+sync_commit_sha: 85414b3e6   # a commit cannot cite its own hash; backfilled by card t1169
 sync_status: audit-ready
 changelog_entry_position: "CHANGELOG.md `## [Unreleased]` → `### Fixed`, first entry (the defect and the retirement mechanism) AND `### Added`, first entry (the `moai factory runs` operator surface)"
 frontmatter_status_transitions:
@@ -199,3 +350,52 @@ not_done:
   - "S1 and S2 are handed back rather than fixed - both require editing an artifact this agent does not own."
   - "No docs-site page authored (S3)."
 ```
+
+### E.4.1 Sync-phase Audit-Ready Signal — v0.13.x amendment (card t1169)
+
+```yaml
+sync_complete_at: 2026-09-25
+sync_commit_sha: 1cef167ff   # a commit cannot cite its own hash; backfilled by card t1169 (verified: `git show --stat 1cef167ff` moves spec.md status in-progress -> completed)
+sync_status: audit-ready
+changelog_entry_position: "CHANGELOG.md `## [Unreleased]` -> `### Fixed`, new entry (the REQ-006 boot-proof correction and the `basis` field), placed directly after the t1107 SPEC-FACTORY-RUN-RETIRE-001 Fixed entry it amends"
+frontmatter_status_transitions:
+  spec_md: "in-progress -> completed"    # merged into this single sync commit; version stays 0.13.1, no body text touched
+  plan_md: "n/a - no frontmatter block"
+  acceptance_md: "n/a - no frontmatter block"
+  progress_md: "n/a - no frontmatter block"
+  updated_field: "unchanged - spec.md `updated:` was already 2026-09-25 before this commit"
+b12_self_test_a: "grep -c 'SPEC-FACTORY-RUN-RETIRE-001' CHANGELOG.md -> 2 before emission (the two t1107 entries at lines 27 and 84; a fresh grep after this commit finds 3, confirming the new entry is additive, not a duplicate of either existing one)"
+b12_self_test_b: "grep -oE 'AC-([A-Z0-9]+-)*[0-9]+' acceptance.md | sort -u | wc -l -> 20 (AC-001..AC-020), non-zero so not a vacuous match; this amendment's own entry cites AC-018/AC-019/AC-020 specifically, the three criteria acceptance.md SS-C.2 attributes to M7"
+b12_self_test_c: "every path cited in the new CHANGELOG entry verified present via ls before commit - internal/homestate/{boot_time_procstat.go,boot_time_unix.go,factory_run_retire.go,runtime.go}, internal/factorymsg/factory_run_boot_proof_legs_test.go"
+canary_compliance_check: "n/a - this SPEC defines no forward-looking policy that its own sync would test"
+
+docs_synchronised:
+  changelog: "1 new entry under Fixed, immediately after the t1107 entry it amends"
+  readme_4_locale: "not changed - the README factory-mode paragraph already describes run retirement at the behavioural level (\"a run whose lead has died is retired automatically\"); it names no owner-classification mechanism (identity stamp vs REQ-006b boot proof) and no event-payload field, so the boot-proof correction and the `basis` key add nothing the README states"
+  docs_site: "not changed - measured, not assumed: grep -rln 'run\\.retired|factory runs|basis' docs-site/ README*.md .moai/docs/ returns only the four README files (already assessed above); docs-site/ has no factory-runs page (confirmed at the t1107 sync, S3, unchanged since)"
+  codemaps: "not restamped - the amendment's run phase touched only internal/homestate and internal/factorymsg (7 files, no internal/cli); graph freshness threshold unchanged from the t1107 sync assessment"
+
+mx_tag_check:
+  scope: "internal/homestate/{boot_time_procstat.go (new),boot_time_unix.go,factory_run_boot_proof_test.go,factory_run_retire.go,runtime.go}, internal/factorymsg/factory_run_boot_proof_legs_test.go (new)"
+  finding: "CORRECTED (sync-audit F1, card t1169 post-audit fix): the prior sentence here read '@MX 0 hits, both before and after' and cited `git show a0b78213d:internal/homestate/factory_run_retire.go | grep -c @MX -> 0'; both claims were false and unmeasured against their own cited commands. Measured (this commit): `grep -n '@MX' internal/homestate/*.go internal/factorymsg/*.go` -> factory_run_retire.go:216-217 carries `@MX:WARN` + `@MX:REASON` on `retireRun` (unrelated to this amendment - pre-existing, unchanged by it), and internal/factorymsg carries multiple @MX:WARN/@MX:ANCHOR/@MX:REASON/@MX:SPEC blocks across dispatch.go, handoff.go, handoff_bind.go, handoff_abandon.go, schema_migrate.go, store.go. `git show a0b78213d:internal/homestate/factory_run_retire.go | grep -c @MX` -> 2 (not 0). The conclusion this section drew from the false premise still holds on the correct premise: neither `ProofBasis` nor its three constants (BasisStamp/BasisPeer/BasisBoot) meets the @MX trigger criteria in `.claude/rules/moai/workflow/mx-tag-protocol.md` - they are not high fan-in (>=3 callers), not a dangerous pattern (goroutine/complexity>=15), and not untested public functions; the package's existing @MX usage marks specific risk-bearing call sites (concurrency ordering, transaction boundaries) rather than every exported symbol, and the new constants match that convention by carrying none. Adding tags to them would be scope creep against the package's own pattern, not a repair of anything this amendment broke. Also note: the commit message of `1cef167ff` (the original sync commit) repeats the same false @MX claim; that message is not rewritten (commits are immutable), and this correction is the record that the commit's @MX line is superseded."
+
+sync_phase_verification:
+  spec_lint: "moai spec lint SPEC-FACTORY-RUN-RETIRE-001 (pre-commit) -> 'No findings - all SPEC documents are valid', exit 0"
+  spec_audit: "moai spec audit --json --filter-spec SPEC-FACTORY-RUN-RETIRE-001 (pre-commit) -> total_specs 1, modern_era_clean 1, one INFO EraAutoDetected finding (H-4), no drift - both re-run after this commit with an unchanged result"
+  scope: "CORRECTED (sync-audit F5, card t1169 post-audit fix): the prior scope command (`git diff --name-only a0b78213d HEAD -- ...`) spans the whole card range (plan+run+sync) and its claim 'spec.md (frontmatter only)' held only for the sync commit in isolation, not for that command's actual range (which also carries plan-phase spec.md body edits). Correct command for the sync commit alone: `git show --stat 1cef167ff` -> .moai/specs/SPEC-FACTORY-RUN-RETIRE-001/{progress.md,spec.md} and CHANGELOG.md, 3 files changed; spec.md's diff in that commit is frontmatter-only (`status: in-progress -> completed`), progress.md carries this section, CHANGELOG.md carries 1 new entry; no Go source touched by the sync commit itself. Build-commit attribution for the spec_lint/spec_audit citations above (§2.2 tool-provenance attribution): both were run pre-commit against a binary built from this same tree's HEAD, then re-run post-commit from a binary built at HEAD `1d87b6c31` (card t1169 post-audit fix commit) with unchanged results - see this file's Post-sync-audit fixes subsection below for the verbatim re-run output."
+```
+
+### §E.4.2 Post-sync-audit fixes (card t1169)
+
+**Post-sync-audit test fixes (commit `1d87b6c31`, manager-develop, card t1169).** Addresses sync-audit findings F2 and F4 (`.moai/reports/t1169/verdict.md`); tests only, no production or SPEC change.
+
+- **F2 closed**: `TestResolveActiveRunBootProofDeclinesWhenBrokerExists` now asserts both halves AC-018 requires of a declining leg — status stays `active` AND the `AMBIGUOUS_FACTORY` error renders each run as `<run-id> (owner indeterminate)` (the `describeRunOwners` format). Mutation check: rendering the classification as `dead` in `describeRunOwners` failed the leg (`want it to classify "legacy-a (owner indeterminate)"`); production file restored.
+- **F4 mitigated (skip, not a fix)**: `TestLeadRecordAbsentForTreatsStatErrorAsPossibleRecord` builds its premise from POSIX ENOTDIR; on Windows, when the premise cannot be built, it `t.Skip`s with the reason; elsewhere an unbuilt premise still `t.Fatalf`s. Gap: Windows branch only type-checked (`GOOS=windows go vet` exit 0), never run.
+- Verification (darwin, tree of `1d87b6c31`): `go test ./internal/factorymsg/... -count=1` exit 0, `ok github.com/modu-ai/moai-adk/internal/factorymsg 43.950s`; `go test ./internal/homestate/... -count=1` exit 0, `ok github.com/modu-ai/moai-adk/internal/homestate 13.180s`; `go vet ./internal/factorymsg/` exit 0; `GOOS=windows go vet ./internal/factorymsg/` exit 0; `golangci-lint run ./internal/factorymsg/...` -> `0 issues.`, exit 0.
+- Residual (pre-existing helper): `deadIdentity` depends on `/bin/sh`; `TestPartialStampWithBrokerStaysIndeterminate` (new in this card) uses it, as do pre-existing tests, so a Windows run of `internal/factorymsg` carries that same pre-existing risk.
+
+**F1/F3/F5 corrections (this commit, manager-docs, card t1169 — a commit cannot cite its own hash).** `.moai/reports/t1169/verdict.md` F1 (false @MX claim in §E.4.1 and in the `1cef167ff` commit message), F3 (CHANGELOG premise wording and mutant count), and F5 (§E.4.1 scope command/claim mismatch and missing build-commit attribution) corrected in place above and in `CHANGELOG.md`; `sync_commit_sha: pending-backfill-sync` backfilled to `1cef167ff`. F6-F9 accepted as recorded in the verdict (informational, no action required).
+
+- @MX re-measurement (this commit's tree): `grep -n '@MX' internal/homestate/*.go internal/factorymsg/*.go` -> factory_run_retire.go:216-217 (`@MX:WARN`/`@MX:REASON`, pre-existing, unrelated to this amendment) plus multiple `internal/factorymsg` blocks (dispatch.go, handoff.go, handoff_bind.go, handoff_abandon.go, schema_migrate.go, store.go). `git show a0b78213d:internal/homestate/factory_run_retire.go | grep -c @MX` -> `2`.
+- Post-commit lint/audit re-run, binary built from this commit's tree (`go build -o <bin> ./cmd/moai`, build commit `1d87b6c31` at build time, HEAD at re-run `1d87b6c31`): `<bin> spec lint` -> exit 0, `0 error(s), 4837 warning(s)` (unchanged from pre-commit), `grep -c SPEC-FACTORY-RUN-RETIRE-001` on the output -> `0`; `<bin> spec audit --json --filter-spec SPEC-FACTORY-RUN-RETIRE-001` -> exit 0, `total_specs: 1, modern_era_clean: 1`, one INFO `EraAutoDetected` finding (`H-4 (§E.2 + §E.4 + sync_commit_sha)`), no drift (unchanged from pre-commit).
+

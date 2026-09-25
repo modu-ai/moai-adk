@@ -72,6 +72,22 @@ type fireProbeReport struct {
 
 	P6PopoverAfterSwapFired bool `json:"p6_popover_after_swap_fired"`
 
+	// card t1108 — the real boost swap, its afterSettle wait, and the
+	// REQ-AFG-016 premise self-check, leg by leg.
+	P5SwapClicked          bool            `json:"p5_swap_clicked"`
+	P5SettleWait           string          `json:"p5_settle_wait"`
+	P5SettleElapsedMs      *float64        `json:"p5_settle_elapsed_ms"`
+	P5SettleDelayMs        *float64        `json:"p5_settle_delay_ms"`
+	P5SwapPremise          map[string]bool `json:"p5_swap_premise"`
+	P5SwapPremiseFalseLegs []string        `json:"p5_swap_premise_false_legs"`
+	CPUThrottleRate        float64         `json:"cpu_throttle_rate"`
+	// card t1167 — written only when the settle wait ended "document
+	// replaced": did the navigated document finish loading within the bound?
+	P5ReplacedDocumentReady *bool `json:"p5_replaced_document_ready"`
+	// Written only by the late-listener fixture copy: did the DOM condition
+	// confirm the swap before the listeners were attached?
+	MutantSwapConfirmedByDOM *bool `json:"mutant_swap_confirmed_by_dom"`
+
 	// card t1106 — the driven/excluded accounting REQ-AFG-014 (1) requires of
 	// every run, and the sandbox-serving entry's observations.
 	ReductionDeclared bool     `json:"reduction_declared"`
@@ -484,10 +500,43 @@ func TestAppJsHandlersFireRuntime(t *testing.T) {
 	if len(report.P7LoadReferenceErrors) != 0 {
 		t.Errorf("load ReferenceErrors on /specs: %v", report.P7LoadReferenceErrors)
 	}
-	// (c) an indicator exercised after the hx-boost swap (REQ-AFG-007).
+	// (c) an indicator exercised after the hx-boost swap (REQ-AFG-007) — and
+	// the swap must be a real one: all four REQ-AFG-016 premise legs true in
+	// the report (card t1108). A post-swap flip after a full navigation is not
+	// re-wiring, so the indicator alone does not satisfy (c).
 	if !report.P6PopoverAfterSwapFired {
 		t.Error("no indicator fired after the hx-boost swap (p6_popover_after_swap_fired=false) — REQ-AFG-007 requires a post-swap indicator")
 	}
+	for _, problem := range fireSwapPremiseProblems(report) {
+		t.Errorf("(c) the swap is not a proven real swap: %s", problem)
+	}
+}
+
+// fireSwapPremiseLegs are the four REQ-AFG-016 legs, named as the probe
+// reports them (PREMISE_LEGS in testdata/appjs_fire_probe.py).
+var fireSwapPremiseLegs = []string{"a_boost_ancestor", "b_same_document", "c_swap_events", "d_swap_inserted_trigger"}
+
+// fireSwapPremiseProblems lists every way a report fails to prove a real swap:
+// a leg missing from the report, a leg that is false, a non-empty false-leg
+// list, or a settle wait that did not observe the event. Empty means proven.
+func fireSwapPremiseProblems(r fireProbeReport) []string {
+	var problems []string
+	for _, leg := range fireSwapPremiseLegs {
+		v, ok := r.P5SwapPremise[leg]
+		switch {
+		case !ok:
+			problems = append(problems, fmt.Sprintf("premise leg %s is absent from the report", leg))
+		case !v:
+			problems = append(problems, fmt.Sprintf("premise leg %s is false", leg))
+		}
+	}
+	if len(r.P5SwapPremiseFalseLegs) != 0 {
+		problems = append(problems, fmt.Sprintf("p5_swap_premise_false_legs=%v", r.P5SwapPremiseFalseLegs))
+	}
+	if r.P5SettleWait != "observed" {
+		problems = append(problems, fmt.Sprintf("p5_settle_wait=%q (want observed)", r.P5SettleWait))
+	}
+	return problems
 }
 
 // TestAppJsHandlersFireSelectorMiss is AC-AFG-004's green path: a manifest

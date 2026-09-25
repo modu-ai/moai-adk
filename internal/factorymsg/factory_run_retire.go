@@ -1,6 +1,8 @@
 package factorymsg
 
 import (
+	"errors"
+	"io/fs"
 	"os"
 	"strings"
 	"time"
@@ -43,4 +45,28 @@ func LeadPeerIdentity(projectRoot, runID string) (pid int, processStart string, 
 // cannot be closed.
 func LeadIdentityLookupFor(projectRoot string) homestate.LeadIdentityLookup {
 	return func(runID string) (int, string, bool) { return LeadPeerIdentity(projectRoot, runID) }
+}
+
+// LeadRecordAbsentFor reports that a run has no broker database at all, so no
+// lead-peer record can exist. Any stat outcome other than "does not exist"
+// answers false: a broker the fallback could not read is not an absent one.
+func LeadRecordAbsentFor(projectRoot string) func(runID string) bool {
+	return func(runID string) bool {
+		path, err := BrokerPath(projectRoot, runID)
+		if err != nil {
+			return false
+		}
+		_, err = os.Stat(path)
+		return errors.Is(err, fs.ErrNotExist)
+	}
+}
+
+// ReconcileOptionsFor is the option set every production retirement path
+// passes: the lead-peer fallback plus both premises of the boot proof.
+func ReconcileOptionsFor(projectRoot string) homestate.ReconcileOptions {
+	return homestate.ReconcileOptions{
+		Fallback:         LeadIdentityLookupFor(projectRoot),
+		BootTime:         homestate.SystemBootTime,
+		LeadRecordAbsent: LeadRecordAbsentFor(projectRoot),
+	}
 }

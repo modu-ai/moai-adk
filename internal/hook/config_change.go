@@ -222,7 +222,13 @@ const (
 // must never disturb the hook's own outcome — the handler has already decided
 // by the time this is called.
 func appendConfigChangeAudit(input *HookInput, result, detail string) {
-	projectDir := resolveProjectRootFromInputOrEnv(input, "config_change")
+	// The write-side resolver, never input.CWD first: a session whose cwd is a
+	// subdirectory would otherwise grow a stray <subdir>/.moai/logs/ tree
+	// (card t1165).
+	projectDir := ""
+	if input != nil {
+		projectDir = resolveProjectRoot(input)
+	}
 	if projectDir == "" {
 		return
 	}
