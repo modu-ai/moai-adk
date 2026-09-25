@@ -21,12 +21,12 @@ import (
 // the push branch stops exiting early, which is the behaviour this SPEC
 // changes. Running the script covers both.
 //
-// Three target selections, each pinned by a fixture where the WRONG target
-// gives the opposite verdict:
+// Both event shapes judge the checked-out tree. A PR checks its merge preview;
+// a push checks the landed commit and catches a squash-orphaned stamp:
 //
-//	push          → HEAD              (stamp off HEAD fails even though the object exists)
-//	ordinary PR   → origin/<base_ref> (stamp on head-only fails — base ancestry is strict)
-//	release/* PR  → HEAD              (stamp on head-only passes — the checkout IS the merge preview)
+//	push          → HEAD (stamp off HEAD fails even though the object exists)
+//	ordinary PR   → HEAD (a new stamp on the PR branch passes)
+//	release/* PR  → HEAD (the checkout is the merge preview)
 const graphFreshnessWorkflowRelPath = ".github/workflows/graph-freshness.yml"
 
 const reachabilityStepName = "Guard codemaps stamp reachability (pre-merge)"
@@ -56,15 +56,24 @@ func TestGraphFreshnessReachabilityGuard_TargetSelection(t *testing.T) {
 		}
 	})
 
-	t.Run("ordinary PR judges base ancestry, not HEAD", func(t *testing.T) {
+	t.Run("ordinary PR accepts a new stamp in merge preview", func(t *testing.T) {
 		repo := newGuardRepo(t)
-		// Stamp reachable from HEAD but NOT from origin/main: under a squash
-		// merge only base-reachable content survives, so this must fail.
+		// Stamp reachable from HEAD but not origin/main. The PR cannot
+		// already contain its new stamp in the target base branch.
 		stamp := guardHeadOnlyCommit(t, repo)
 		writeGuardProvenance(t, repo, stamp)
 		code := runGuard(t, script, repo, map[string]string{"GITHUB_BASE_REF": "main", "GITHUB_HEAD_REF": "feature/x"})
-		if code == 0 {
-			t.Fatalf("ordinary PR guard exited 0 on a head-only stamp — the target was relaxed to HEAD")
+		if code != 0 {
+			t.Fatalf("ordinary PR guard exited %d on a reachable new stamp — the target must be merge-preview HEAD", code)
+		}
+	})
+
+	t.Run("ordinary PR rejects a resolvable stamp outside merge preview", func(t *testing.T) {
+		repo := newGuardRepo(t)
+		stamp := guardSideCommit(t, repo)
+		writeGuardProvenance(t, repo, stamp)
+		if code := runGuard(t, script, repo, map[string]string{"GITHUB_BASE_REF": "main", "GITHUB_HEAD_REF": "feature/x"}); code == 0 {
+			t.Fatal("ordinary PR guard accepted a stamp that merge-preview HEAD cannot reach")
 		}
 	})
 
