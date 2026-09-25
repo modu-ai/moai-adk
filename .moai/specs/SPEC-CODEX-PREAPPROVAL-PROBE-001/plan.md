@@ -28,7 +28,7 @@ plan 단계에서 확인한 사실이다. 모델에 닿은 호출은 0회다. `c
 | git 저장소가 아닌 디렉터리에 `CODEX_HOME` 신뢰 항목을 두면 `codex debug prompt-input`은 기본 sandbox를 `workspace-write`로 렌더한다(신뢰 항목이 없으면 `read-only`). 같은 디렉터리에서 `codex exec`는 `Not inside a trusted directory and --skip-git-repo-check was not specified.`로 시작을 거부한다 | `plan-checks/prompt-input-{trusted,untrusted}.txt`, `plan-checks/ok-strict-exec.err`, `plan-checks/codexhome-config.toml` |
 | git 저장소 루트에서는 신뢰 항목 없이 시작 검사를 통과한다. 접속 불가 제공자로 돌리면 `thread.started`·`turn.started` 뒤에 `Reconnecting... waiting for network` 오류만 나오고 `item.*` 이벤트 0개, `timeout 90`으로 끝났다(exit 124). 끝난 뒤 남은 프로세스 없음 | `plan-checks/repo-exec.out`, `ps` 필터 출력 없음 |
 
-**이 표가 확립하지 않는 것.** (1) 비git 디렉터리 신뢰 항목이 `exec` 게이트에서 통하지 않는 이유(경로 정규화인지, git 루트만 인정하는지)는 가르지 않았다. 픽스처를 git 저장소로 만들면 이 질문은 필요 없다. (2) 접속 불가 제공자 아래서 moai MCP 서버가 세션 시작 때 뜨는지는 재지 않았다(시작 검사에 쓴 트리는 신뢰되지 않아 프로젝트 층 MCP가 적재되지 않았을 수 있다). M1-a가 첫 측정으로 잰다. (3) `approval_mode = "approve"`가 `approval_policy = "never"`를 이기는지는 여전히 측정되지 않았다. 이것이 M1-b의 질문이다.
+**이 표가 확립하지 않는 것.** (1) 비git 디렉터리 신뢰 항목이 `exec` 게이트에서 통하지 않는 이유(경로 정규화인지, git 루트만 인정하는지)는 가르지 않았다. 픽스처를 git 저장소로 만들면 이 질문은 필요 없다. (2) 접속 불가 제공자 아래서 moai MCP 서버가 세션 시작 때 뜨는지는 위 표의 실행으로는 재지 않았다(신뢰되지 않은 트리였다). plan-audit iter 1이 신뢰 항목이 있는 git 픽스처에서 이것을 쟀다: 기본 모델로 moai 기동 1회, `item.` 0회, stderr 0바이트(`.moai/reports/t1172/plan-audit-iter1-probes/startup-default-model.jsonl`, `moai-launches.log`). 같은 측정에서 `model = "gpt-5"`는 비모델 `item.completed`(`type:"error"`)를 1회 냈고(`startup-model-gpt5.jsonl`), 서버는 루트에 `.moai/state/config-cache.json`을 썼다. M1-a는 이것을 실제 픽스처에서 다시 확인할 뿐이다. 기동 0이 나오면 그 픽스처는 측정 결함이므로 LIVE를 시작하지 않고 리드에게 보고한다(대체 기준은 두지 않는다). (3) `approval_mode = "approve"`가 `approval_policy = "never"`를 이기는지는 여전히 측정되지 않았다. 이것이 M1-b의 질문이다.
 
 ## §B 결정 (바뀔 가능성이 큰 것부터)
 
@@ -44,24 +44,33 @@ plan 단계에서 확인한 사실이다. 모델에 닿은 호출은 0회다. `c
 
 대조가 `RAN`이면(쓰기 승인 모드에서도 호출이 통과) 사전 승인은 필요 없다는 뜻이다. 판별 결과로 쓰지 않고 `NOT DISCRIMINATING`으로 적은 뒤 리드에게 보고한다. #37과 다른 결과이므로 무엇이 달라졌는지부터 가려야 한다.
 
-**D1-sub (A2일 때만).** [NEEDS CLARIFICATION: A2를 고르면 켜는 수단 — moai 설정 섹션의 키 하나인가, `moai codex` 계열 동사의 플래그인가, 사용자가 직접 표를 적는 문서 안내인가]
+D1(A1 대 A2) 자체는 여기서 정하지 않는다. 판별 결과가 `RAN`이고 대조가 `REFUSED`일 때만 운영자에게 묻는다. 운영자 결정은 리드가 받아 `verdict.md`에 `OPERATOR-DECISION adoption=<값> card=t1172 recorded_by=lead at=<UTC RFC 3339>` 한 줄로 적는다(AC-CPP-006). 이 줄은 리드의 기록이며, 운영자 결정의 증거는 그 줄이 가리키는 대화다.
+
+**D1-sub (A2일 때만) — 잠정 — 운영자 Kickoff 확정 필요.** 켜는 수단은 `.moai/config/sections/` 아래 YAML 파일의 불리언 키 하나이고, Codex 설정 생성기(`internal/codexwiring`)가 그 키를 읽는다. `moai update`가 섹션 파일을 보존하므로 선택이 업데이트 뒤에도 남는다. 키 이름과 파일은 run M2에서 기존 섹션 구조에 맞춰 정하고 progress.md에 적는다.
 
 ### D2. 기존 사용자 소유 표 (REQ-CPP-006)
 
-writer는 이미 있는 `[mcp_servers.moai]` 표를 바이트 그대로 둔다(기존 규칙 유지). 그래서 A1을 골라도 이미 초기화된 프로젝트는 사전 승인을 받지 못한다. 의사 점검(`InspectMCPTable`)이 도구별 표의 부재를 보고할지는 운영자가 정한다.
+writer는 이미 있는 `[mcp_servers.moai]` 표를 바이트 그대로 둔다(기존 규칙 유지). 그래서 A1을 골라도 이미 초기화된 프로젝트는 사전 승인을 받지 못한다.
 
-[NEEDS CLARIFICATION: A1 또는 A2 채택 시, 기존 표에 도구별 표가 없는 프로젝트를 `moai doctor`가 보고해야 하는가(정규형 판정에 포함) 아니면 조용히 두는가]
+**잠정 — 운영자 Kickoff 확정 필요.** A1 또는 A2가 채택되고(A2는 켠 경우만) 프로젝트의 `[mcp_servers.moai]` 표에 도구별 표가 없으면, `moai doctor`는 실패가 아닌 WARNING으로 보고하고, 더할 표(`[mcp_servers.moai.tools.codex_role_audit]` `approval_mode = "approve"`)를 고침 안내로 보여 준다. N 갈래에서는 보고하지 않는다.
+
+운영자가 Kickoff에서 D1-sub 또는 D2를 바꾸면, run 전에 이 SPEC을 고치고 plan-audit를 다시 받는다.
 
 ### D3. 판별 프로브 설계 (REQ-CPP-001–004)
 
 - **두 팔을 모두 새로 잰다.** #37은 재구성할 수 없으므로 대조 결과로 다시 쓰지 않는다. 대조 팔은 "이 픽스처에서 거부가 재현된다"는 양성 대조 역할도 한다.
-- **같은 경로, 순차 실행.** 두 팔은 같은 루트 경로, 같은 `CODEX_HOME` 경로를 쓴다. 팔마다 `CODEX_HOME`을 같은 씨앗(로그인 사본 + 같은 `config.toml`)에서 새로 만든다. 그래야 인자 벡터의 `-C <root>`와 `CODEX_HOME` 경로가 두 팔에서 같다.
+- **같은 경로, 순차 실행, 루트 재사용.** 두 팔은 같은 루트 경로, 같은 `CODEX_HOME` 경로를 쓴다. 팔마다 `CODEX_HOME`을 같은 씨앗(로그인 사본 + 같은 `config.toml`)에서 새로 만든다. 그래야 인자 벡터의 `-C <root>`와 `CODEX_HOME` 경로가 두 팔에서 같다. 루트는 새로 만들지 않고 재사용한다(새로 만들면 커밋 시각이 달라져 HEAD가 바뀐다).
+- **루트 상태 초기화와 반출 (D8).** moai MCP 서버는 기동 때 루트에 `.moai/state/config-cache.json`을 쓴다(감사 측정). 그래서 시작 검사와 LIVE 호출 **각각의 직전에** 하네스가 루트에서 `git clean -ffdx`를 돌리고, 그 팔의 `.codex/config.toml`을 반출본 바이트로 다시 쓴다. 이 시점의 루트 상태(`git status --porcelain --ignored` 출력과 `.git` 밖 파일 목록)를 `root-state.txt`로 반출하고, 두 팔의 `root-state.txt`는 같아야 한다(팔 diff에 들어가므로). 하네스는 매 호출 직전에 그 순간의 루트 상태 해시를 장부 행 `inputs_sha256.root_state`에 적는다. 반출본 해시와 다르면 호출하지 않고 `stop` 행을 남긴다.
 - **루트는 git 저장소.** 커밋 하나(README 한 파일)를 가진 저장소를 만들고 `.codex/`는 추적하지 않는다. 그래서 두 팔의 HEAD가 같다. 루트의 신뢰 항목도 `CODEX_HOME` `config.toml`에 넣는다(프로젝트 층 설정을 적재시키기 위함). 픽스처 저장소 생성은 테스트 코드 안에서 한다.
+- **모델 고정 (D11).** `CODEX_HOME` `config.toml`에 `model` 키를 두지 않고, 인자에도 `-m`/`--model`을 주지 않는다. 시작 검사와 LIVE가 같은 기본 모델을 쓴다. `model = "gpt-5"` 같은 설정은 비모델 `error` 항목을 만든다(감사 측정).
+- **장부와 해시 연결 (D6, D7).** 모든 시작 검사·LIVE 호출·정지는 `.moai/reports/t1172/ledger.json` 한 파일에 행으로 적는다. 행 필드: `kind`(`startup`·`live`·`stop`), `fixture`(`disc-control`·`disc-treatment`·`car010`·`car011`), `label`, `started_ns`·`ended_ns`(정수 epoch 나노초 — 문자열 시각 비교를 쓰지 않는다), `argv`(배열), `exit`, `bound_by`(`test` 또는 `launcher`), `inputs_sha256`(`codex_home_config`·`project_config`·`argv`·`prompt`·`root_state`·`moai_binary`), 시작 검사 행만 `provider_base_url`·`auth_file_present`, LIVE 행만 `auth_sha256_before`·`auth_sha256_after`, `stop` 행만 `reason`. `inputs_sha256`은 **그 호출이 실제로 쓴 바이트**를 해시한 값이고, 판정식은 이것을 반출본의 해시와 비교한다. 반출 매니페스트(`export-manifest.json`)는 `exported_ns`와 반출 파일별 sha256을 담고, 팔 diff 메타(`arm-diff.meta.json`)는 `written_ns`를 담는다.
+- **시작 검사의 안전 (D9).** 시작 검사용 `CODEX_HOME`에는 반출된 `config.toml`만 두고 로그인 파일을 두지 않는다. 제공자는 `-c 'model_providers.dead={name="dead",base_url="http://127.0.0.1:9/v1",wire_api="responses",stream_max_retries=0,request_max_retries=0}' -c 'model_provider="dead"'`로 준다. 호출당 `timeout 20`.
 - **MCP 서버는 moai 하나.** decoy는 두지 않는다. 서버 명령은 기동을 기록한 뒤 이 워크트리에서 빌드한 moai로 넘기는 래퍼다. 빌드 커밋과 바이너리 sha256을 반출한다.
 - **자식 프로세스가 생기지 않게.** 요청의 `out`을 `AGENTS.md`로 준다. 호출이 통과하면 launcher는 목적지 검증(`.moai/reports/` 아래가 아님)에서 거부하고, 프로세스를 띄우지 않으며 launch record도 쓰지 않는다(REQ-CAR-007). 그래서 팔 하나는 `codex exec` 한 개다. 통과했다는 증거는 도구 결과의 launcher 거부 문구다.
 - **프롬프트.** `exec` custom tool을 통해 `codex_role_audit`를 정확히 한 번 부르라고 한다. shell 명령, 다른 도구, 파일 변경은 금지한다. #38의 결함(exec 통로까지 금지)을 되풀이하지 않는다. 두 팔의 프롬프트는 바이트 같다.
-- **반출 → 비교 → 시작 검사 → LIVE** 순서를 코드로 강제한다. 앞 단계가 실패하면 뒤 단계는 시작하지 않는다.
-- **결과 분류.** `REFUSED` = moai/`codex_role_audit` `mcp_tool_call` 항목의 오류가 Codex의 승인 거부 문구. `RAN` = 같은 항목의 결과·오류가 moai 서버의 문구(launcher 거부). `NOT MEASURED` = 그런 항목 0개. `INVALID` = 리드가 측정 결함으로 기록. `ABORTED` = 상한 때문에 멈춤.
+- **반출 → 비교 → 시작 검사 → LIVE** 순서를 코드로 강제한다. 앞 단계가 실패하면 뒤 단계는 시작하지 않고, 장부에 `stop` 행(사유 포함)을 남긴다. `stop` 행 뒤에는 LIVE 행이 없어야 한다(AC-CPP-012). 이 거부 경로는 가짜 codex로 결정적 테스트를 한다(`TestCodexPreApprovalGateRefusals`: 입력 하나 삭제, `argv.txt` 한 줄 추가, 시작 검사 표준 오류에 게이트 문구 — 각 경우 가짜 codex의 LIVE 기동 0회와 `stop` 행을 단언).
+- **팔 diff 생성 (D5).** 하네스는 `exec.Command("diff", "-r", "inputs/control", "inputs/treatment")`를 작업 디렉터리 `discriminator/`에서 돌려 `arm-diff.txt`를 만든다(셸을 거치지 않으므로 셸 함수 `diff --color`의 영향이 없다). 판정식은 `command diff -r`로 같은 출력을 다시 만든다.
+- **결과 분류.** `REFUSED` = moai/`codex_role_audit` `mcp_tool_call` 항목의 오류가 Codex의 승인 거부 문구. `RAN` = 같은 항목의 결과 문구가 moai 서버에서 온 것 — moai의 `toolErr`가 붙이는 접두사 `codex_role_audit: `(`internal/cli/mcp_server.go:975`, `Text: tool + ": " + err.Error()`)로 시작하고, 이어서 launcher의 거부 문구 `codex audit sync-auditor: destination rejected: ` 또는 `codex audit sync-auditor: working root rejected: `가 온다(`internal/cli/codex_audit_launch.go:165`, `:171`, `:175`). 요청의 역할은 `sync-auditor`로 고정한다. Codex 쪽 timeout 같은 다른 오류는 `RAN`이 아니라 `INVALID` 후보다. `NOT MEASURED` = 그런 항목 0개. `INVALID` = 리드가 측정 결함으로 기록. `ABORTED` = 상한 때문에 멈춤.
 - **판별 결과의 단일 출처**는 `.moai/reports/t1172/discriminator/outcome.txt`(`REFUSED`·`RAN`·`NOT MEASURED`·`NOT DISCRIMINATING` 중 하나). D1 분기와 AC-CPP-006이 이 파일을 읽는다.
 
 ### D4. 거부 시 지시 (REQ-CPP-008, F4)
@@ -72,7 +81,8 @@ writer는 이미 있는 `[mcp_servers.moai]` 표를 바이트 그대로 둔다(�
 
 - 경로: `codex exec --strict-config`. `codex mcp get`은 승인 필드를 보이지 않으므로 되읽기 수단이 못 된다(§A).
 - 픽스처: git 저장소가 **아닌** 임시 디렉터리 + 그 경로의 `CODEX_HOME` 신뢰 항목 + 그 안 `.codex/config.toml`. 이 형태에서는 설정 적재가 시작 게이트보다 먼저 일어나고(§A: 오타는 적재 오류, 정상 키는 게이트 문구), 게이트가 세션을 막으므로 네트워크 요청도 없다. 제공자도 접속 불가 주소로 준다(이중 안전).
-- 입력: 테스트가 손으로 쓴 문자열이 아니라 제품 함수가 만든 설정 바이트(채택 갈래의 writer 출력). N 갈래에서도 writer 출력의 기존 키(`command`, `args`, `env_vars`, `default_tools_approval_mode`)를 같은 방식으로 검증한다.
+- 입력: 테스트가 손으로 쓴 문자열이 아니라 제품 함수가 만든 설정 바이트(채택 갈래의 writer 출력). A2에서는 opt-in을 **켠** writer 출력을 쓴다(D13). A1·A2에서는 로더에 넣는 바이트에 도구별 표가 정확히 한 번 있음을 테스트가 먼저 단언한다(하위 테스트 `generated_config_has_table`). N 갈래에서도 writer 출력의 기존 키(`command`, `args`, `env_vars`, `default_tools_approval_mode`)를 같은 방식으로 검증한다.
+- 환경 변수 이름(`MOAI_CODEX_BIN`, `MOAI_CODEX_PREAPPROVAL_LIVE`, `MOAI_T1172_EVIDENCE_DIR`)은 테스트 전용이므로 기존 `envT1143EvidenceDir`처럼 해당 패키지 테스트 파일의 이름 있는 상수로 둔다(D26). 제품 코드가 읽는 환경 변수는 새로 만들지 않는다.
 - 양성 대조: 같은 픽스처에서 `approval_modex`로 바꾼 설정이 `unknown configuration field` + 그 점 경로로 보고되어야 한다. 보고되지 않으면 테스트는 실패한다(skip 아님). 프로젝트 층이 아예 적재되지 않는 픽스처였다면 여기서 드러난다.
 - 판정 기준: 정상 설정 → 표준 오류에 `Error loading config`도 `unknown configuration field`도 없다. 오타 설정 → 둘 다 있고 점 경로가 정확히 일치한다.
 - codex가 없을 때: `exec.LookPath`(또는 테스트용 재정의 환경 변수 `MOAI_CODEX_BIN`) 실패 시 `CODEX_NOT_INSTALLED: <이유>`로 skip한다. skip은 AC 판정에서 PASS가 아니다.
@@ -89,6 +99,8 @@ AC-CAR-010/011의 본문·판정식은 경로 치환 하나만 적용해 그대�
 | 픽스처 입력 반출(REQ-CPP-001)과 시작 검사(REQ-CPP-003)를 AC-CAR-010/011에도 적용 | #39·B''의 재구성 불가 재발 방지 |
 | 부모 프롬프트가 `exec` custom tool 통로를 허용 | #38 교훈 |
 | `route.txt`를 `.moai/reports/t1172/m1-route/route.txt`에 둔다(값 `mcp`, t1143 반출본과 sha256 `97c5f37f…a679ee` 같음) | 치환된 판정식이 이 경로를 읽는다 |
+| AC-CAR-010·011의 입력을 `.moai/reports/t1172/car010/inputs/`·`car011/inputs/`에 7종(D3과 같은 이름) 반출하고, AC-CAR-010 부모의 `--json` 출력 전체를 `car010/parent.jsonl`로 남긴다 | AC-CPP-013이 decoy 표의 `enabled_tools`, 프로젝트 층 도구별 표, 부모의 `codex_role_audit` 호출 서버가 `moai`뿐임을 확인한다(이월 판정식은 건드리지 않음) |
+| AC-CAR-010·011의 시작 검사·LIVE 행을 공용 `ledger.json`에 `fixture` `car010`·`car011`로 적는다. 하네스가 띄운 호출은 `bound_by: test`, launcher가 띄운 자식은 `bound_by: launcher` | AC-CPP-004의 순서 검사와 AC-CPP-014의 상한 검사가 네 픽스처 모두에 걸린다(D12, D16) |
 
 증거 디렉터리 환경 변수 이름 `MOAI_T1143_EVIDENCE_DIR`는 기존 테스트의 상수이므로 이름은 그대로 두고 값만 `../../.moai/reports/t1172`로 준다(치환 결과와 같음).
 
@@ -113,7 +125,8 @@ AC-CAR-010/011의 본문·판정식은 경로 치환 하나만 적용해 그대�
 | AC-CAR-011 | 2 | +2 | 330 s | 800 s(`-timeout=900s` 안) | 호출당 1 |
 | **절대 상한** | **14** | | | | |
 
-- 시작 검사(REQ-CPP-003)는 LIVE가 아니다. 별도 장부 G에 적고 상한 8회(픽스처 넷 × 1, 재실행 대비 × 2), 호출당 `timeout 20`. 모델 요청 0이 조건이다. 한 번이라도 모델 응답(`item.*` 이벤트)이 보이면 즉시 멈추고 `ABORTED`로 적는다.
+- 시작 검사(REQ-CPP-003)는 LIVE가 아니다. `ledger.json`에 `kind: startup`으로 적고 상한 8회(픽스처 넷 × 1, 재실행 대비 × 2), 호출당 `timeout 20`(AC-CPP-014는 정리 여유 5 s를 더해 25 s까지 허용). 모델 끝점에 닿지 않는 것이 조건이다. 비모델 `error` 항목 밖의 `item.*` 이벤트가 한 번이라도 보이면 즉시 멈추고 `ABORTED`로 적는다.
+- 상한은 장부의 정수 시각으로 AC-CPP-014가 판정한다. 픽스처별 LIVE 호출 수 상한: `disc-*` 합계 4, `car010` 6, `car011` 4(재실행 포함), 전체 14.
 - 키 이름 로더 테스트(REQ-CPP-007)의 `codex exec`는 게이트에서 끝나 모델 요청이 없다. LIVE가 아니며 장부 G에도 넣지 않는다(결정적 테스트).
 - 정지 규칙: 상한에 닿으면 다음 호출을 시작하지 않고 `ABORTED`. 전제(`mcp_tool_call` moai/`codex_role_audit` 1개 이상)가 없으면 `NOT MEASURED`. 판별 프로브가 두 번째로도 `NOT MEASURED`이면 LIVE를 더 하지 않고 "pre-approval effect not measured"로 멈춘 뒤 N 갈래로 간다.
 - 프로세스 정리: 테스트가 기록한 pid(프로세스 그룹)만 죽인다. 이름으로 찾아 죽이지 않는다.
@@ -130,20 +143,23 @@ AC-CAR-010/011의 본문·판정식은 경로 치환 하나만 적용해 그대�
 
 ### M1 — 판별 프로브 (Priority High, 결정 변경 가능성 가장 큼)
 
-- M1-a (LIVE 없음): 픽스처 생성·반출·팔 비교·시작 검사를 하는 하네스를 `internal/cli`의 LIVE 게이트 테스트로 만든다(환경 변수 `MOAI_CODEX_PREAPPROVAL_LIVE=1`, `MOAI_T1172_EVIDENCE_DIR`가 없으면 `NOT_RUN`으로 skip). 반출·비교 로직은 LIVE 없이 결정적으로 시험한다. 시작 검사를 넷 픽스처(판별 대조, 판별 처치, AC-CAR-010 부모, AC-CAR-011)에 돌려 moai·decoy 기동 수를 적는다. 접속 불가 제공자 아래에서 MCP 서버가 뜨지 않으면(측정 결과 0) 멈추고 리드에게 보고한다. 대체 기준은 리드가 정한다.
+- M1-a (LIVE 없음): 픽스처 생성·반출·팔 비교·시작 검사를 하는 하네스를 `internal/cli`의 LIVE 게이트 테스트로 만든다(환경 변수 `MOAI_CODEX_PREAPPROVAL_LIVE=1`, `MOAI_T1172_EVIDENCE_DIR`가 없으면 `NOT_RUN`으로 skip). 반출·비교 로직은 LIVE 없이 결정적으로 시험한다. 시작 검사를 넷 픽스처(판별 대조, 판별 처치, AC-CAR-010 부모, AC-CAR-011)에 돌려 moai·decoy 기동 수를 적는다. 감사 측정으로 기동 1이 확인되어 있으므로, 여기서 0이 나오면 픽스처 결함으로 보고 LIVE 없이 멈추고 리드에게 보고한다(대체 기준 없음). 게이트 거부 경로의 가짜 codex 테스트(`TestCodexPreApprovalGateRefusals`, AC-CPP-012)도 이 마일스톤에서 만든다.
 - M1-b (LIVE 2): 판별 프로브 두 호출. `outcome.txt` 작성.
-- 운영자 결정 지점: `outcome.txt`가 `RAN`이고 대조가 `REFUSED`이면 D1(A1/A2)과 D2를 운영자가 정한다. 아니면 N.
+- 운영자 결정 지점: `outcome.txt`가 `RAN`이고 대조가 `REFUSED`이면 D1(A1/A2)을 운영자가 정하고, D1-sub·D2 잠정 기본값을 확정하거나 바꾼다(바꾸면 SPEC 개정 + plan-audit 재실행). 아니면 N.
 
 ### M2 — 조건부 방출과 로더 검증 (Priority High)
 
 - 채택 갈래에 맞춰 `internal/codexwiring`의 writer와 정규형 목록을 바꾼다(N이면 코드 변경 없음). 기존 표 바이트 불변 테스트 유지.
 - 키 이름 로더 테스트(D5)를 `internal/codexwiring`에 둔다. N 갈래에서도 둔다(기존 키 검증 + 양성 대조).
+- A1·A2 갈래: `moai doctor`의 WARNING(D2 잠정 기본값)과 그 테스트 `TestDoctorCodexPreApprovalWarning`(`internal/cli`). A2: 설정 섹션 불리언 키(D1-sub 잠정 기본값).
+- 방출 테스트는 writer 출력 바이트에서 `[mcp_servers.moai.tools.*]` 헤더 집합을 직접 단언한다(하위 테스트 `tool_tables_exact`, D22).
 - 재측정 범위: `./internal/codexwiring/...`, `./internal/cli -run 'Doctor|Codex'`.
 
 ### M3 — 거부 시 지시 (Priority Medium)
 
 - `AGENTS.md.tmpl` 행 수정(D4). `internal/template/agentemit` 지시면 테스트 갱신. 중립성 판정.
-- 재측정 범위: `./internal/template/agentemit/...`, `./internal/template/...` 중 AGENTS 렌더 테스트.
+- 재측정 범위: `./internal/template/agentemit/...`, `./internal/template/...` 중 AGENTS 렌더 테스트, `./internal/config -run 'Budget'`(`TestCodexNestedTemplateDiscoveryBudget`가 `AGENTS.md.tmpl` 크기를 잰다, D21).
+- 새 문장은 마침표 없이 한 문장으로 쓰고, 그 안에 거부 문구(`requires approval`), `skip`, `spawn_agent`, `blocker`를 함께 담는다(AC-CPP-010이 이 문장만 따로 본다, D19).
 
 ### M4 — 이월 LIVE (Priority Medium)
 
@@ -159,7 +175,8 @@ AC-CAR-010/011의 본문·판정식은 경로 치환 하나만 적용해 그대�
 
 | 위험 | 대응 |
 |---|---|
-| 접속 불가 제공자 아래에서 MCP 서버가 늦게 떠서 시작 검사가 기동 0을 보인다 | M1-a 첫 측정. 0이면 리드 보고 후 결정 |
+| 실제 픽스처에서 시작 검사가 moai 기동 0을 보인다(감사 측정은 1) | 픽스처 결함으로 보고 LIVE 없이 멈추고 리드에게 보고 |
+| 처치 결과가 moai 문구도 거부 문구도 아니다(Codex timeout 등) | `RAN`으로 세지 않는다. 리드가 `INVALID` 여부를 기록 |
 | 처치 호출에서 모델이 도구를 부르지 않는다(`NOT MEASURED`) | 프롬프트가 `exec` 통로를 허용. 두 번째 `NOT MEASURED`면 LIVE 종료 |
 | 픽스처 git 저장소 생성이 워크트리 세션 가드에 막힌다 | 저장소 생성은 테스트 프로세스 안(`t.TempDir()`)에서 한다. 셸 명령으로 만들지 않는다 |
 | codex 버전이 올라가 `--strict-config` 동작이나 거부 문구가 바뀐다 | Pre-flight 3에서 버전 고정 확인. 로더 테스트는 양성 대조가 먼저 실패하므로 조용히 통과하지 않는다 |

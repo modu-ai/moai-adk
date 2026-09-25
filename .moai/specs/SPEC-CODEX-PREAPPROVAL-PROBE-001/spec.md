@@ -1,7 +1,7 @@
 ---
 id: SPEC-CODEX-PREAPPROVAL-PROBE-001
 title: "Codex per-tool pre-approval of codex_role_audit — discriminating probe, conditional emission, loader key-name check, refusal instruction, carried AC-CAR-010/011"
-version: "0.1.0"
+version: "0.2.0"
 status: draft
 created: 2026-09-25
 updated: 2026-09-25
@@ -25,6 +25,7 @@ related_specs:
 
 | Version | Date | Change |
 |---|---|---|
+| 0.2.0 | 2026-09-25 | plan-audit iter 1(FAIL 0.70, `.moai/reports/t1172/plan-audit-iter1.md`)의 D1–D27 반영. D1: plan.md의 미해결 확인 표시 두 개를 **잠정 기본값**(운영자 Kickoff 확정 필요)으로 바꿨다 — D1-sub(A2일 때만)=`.moai/config/sections/` YAML의 불리언 키, D2=`moai doctor` WARNING+고침 안내(REQ-CPP-005/006). D1(A1 대 A2) 자체는 여전히 판별 결과 뒤 운영자 결정이다. REQ-CPP-003 문구(D24), REQ-CPP-005에 `NOT DISCRIMINATING`(D23), F4 인용 118행(D18), 감사 측정 사실(신뢰된 git 픽스처에서 moai 기동 1·`item` 0, `model = "gpt-5"`의 비모델 `item` 오류, 서버가 루트에 `.moai/state/config-cache.json`을 씀)을 §A에 반영했다. AC-CPP-012(게이트 거부 시 LIVE 0회), AC-CPP-013(이월 픽스처 조건), AC-CPP-014(장부 상한)를 더했다(AC 14 + 이월 2 = 16, Tier M 상한 안). |
 | 0.1.0 | 2026-09-25 | 카드 t1172 plan 초안. 선행 SPEC-CODEX-AUDIT-READONLY-001이 이월한 네 항목(도구별 사전 승인 효과 `NOT MEASURED`, AC-CAR-010 `INVALID`, AC-CAR-011 `NOT_RUN`, 픽스처 입력 반출·비모델 신뢰 검사·템플릿 기본값 운영자 승인·키 이름 로더 검증)과 sync-audit F4를 받았다. 리드의 HARD 조건 여섯 개를 REQ와 AC로 옮겼다. AC-CAR-010/011의 본문·판정식은 경로 치환 한 가지(`reports/t1143` → `reports/t1172`)만 적용해 바이트 그대로 이어받았고, 치환은 AC-CPP-011이 기계적으로 검사한다. |
 
 ## §A 배경과 목적
@@ -37,7 +38,7 @@ MCP tool call requires approval, but approval policy is never
 
 리드는 이 도구를 read-only로 표시하는 방안을 기각했다(쓰기 도구를 읽기 도구로 적는 부정직한 표시). 대신 moai가 만드는 설정이 이 도구 하나만 도구별 표(`[mcp_servers.moai.tools.codex_role_audit]` `approval_mode = "approve"`)로 사전 승인하는 방향을 골랐다. 도구는 쓰기 도구로 남는다.
 
-그 표가 `approval_policy = "never"`를 이기는지는 아직 측정되지 않았다. #38은 프롬프트가 codex-cli 0.156.1이 MCP 도구에 닿는 통로인 `exec` custom tool을 막아 `INVALID`였다. #39는 픽스처 루트가 git 저장소가 아니었고 `CODEX_HOME` 신뢰 항목이 통하지 않아 세션이 시작되지 않았다(`NOT MEASURED`). B''는 #37의 `CODEX_HOME` 설정, 루트의 저장소 여부, moai 빌드 커밋을 반출하지 않아 재구성할 수 없었다(`NOT RUN`). 근거: primary checkout에 반출된 `.moai/reports/t1143/verdict.md`(sha256 `00eea6419da680ac9b178a01e2bd316001a0611de7139a22242d9525f8fb18ae`, 128–278행)와 `.moai/reports/t1143/sync-audit.md`(sha256 `93f8bedb6694e803164c85382ee120b2aa612be842f8ec76812472aedb86cca3`, F4는 137행).
+그 표가 `approval_policy = "never"`를 이기는지는 아직 측정되지 않았다. #38은 프롬프트가 codex-cli 0.156.1이 MCP 도구에 닿는 통로인 `exec` custom tool을 막아 `INVALID`였다. #39는 픽스처 루트가 git 저장소가 아니었고 `CODEX_HOME` 신뢰 항목이 통하지 않아 세션이 시작되지 않았다(`NOT MEASURED`). B''는 #37의 `CODEX_HOME` 설정, 루트의 저장소 여부, moai 빌드 커밋을 반출하지 않아 재구성할 수 없었다(`NOT RUN`). 근거: primary checkout에 반출된 `.moai/reports/t1143/verdict.md`(sha256 `00eea6419da680ac9b178a01e2bd316001a0611de7139a22242d9525f8fb18ae`, 128–278행)와 `.moai/reports/t1143/sync-audit.md`(sha256 `93f8bedb6694e803164c85382ee120b2aa612be842f8ec76812472aedb86cca3`, F4는 118행).
 
 이 SPEC의 목적은 넷이다.
 
@@ -51,7 +52,8 @@ plan 단계에서 모델 호출 없이 잰 사실(명령과 출력은 `.moai/rep
 - `codex mcp get moai --json`의 출력에는 `default_tools_approval_mode`도 도구별 표도 나오지 않는다. 그래서 이 명령으로는 해석된 도구별 승인을 되읽을 수 없다.
 - `codex exec --strict-config`는 설정 파일의 모르는 필드를 적재 단계에서 거부한다. 철자가 틀린 `approval_modex`를 넣으면 세션을 시작하지 않고 `unknown configuration field \`mcp_servers.moai.tools.codex_role_audit.approval_modex\``로 끝난다(exit 1). `codex --strict-config mcp …`와 `codex --strict-config debug …`는 지원되지 않는다.
 - git 저장소가 아닌 디렉터리에 `CODEX_HOME` 신뢰 항목을 두면 `codex debug prompt-input`은 그 디렉터리를 신뢰한 것으로 다룬다(기본 sandbox가 `workspace-write`로 렌더됨, 신뢰 항목이 없으면 `read-only`). 그러나 같은 디렉터리에서 `codex exec`는 `Not inside a trusted directory and --skip-git-repo-check was not specified.`로 시작을 거부한다. #39를 모델 호출 없이 재현한 것이다.
-- git 저장소 루트에서는 신뢰 항목이 없어도 `codex exec`가 시작 검사를 통과한다. 접속할 수 없는 모델 제공자(`127.0.0.1:9`)를 주면 `thread.started`, `turn.started` 뒤에 접속 실패만 되풀이되고, 모델 응답과 `item.*` 이벤트는 0개였다. 시작 검사와 설정 적재를 모델 요청 없이 확인하는 방법이 이것이다.
+- git 저장소 루트에서는 신뢰 항목이 없어도 `codex exec`가 시작 검사를 통과한다. 접속할 수 없는 모델 제공자(`127.0.0.1:9`)를 주면 `thread.started`, `turn.started` 뒤에 접속 실패만 되풀이되고, 모델 응답과 `item.*` 이벤트는 0개였다. 요청은 나가지만 모델 끝점에 닿지 못하므로 응답이 없다. 이 실행은 신뢰 항목이 없는 루트여서 프로젝트 층 적재와 MCP 기동은 보이지 않았다.
+- plan-audit iter 1이 같은 조건(로그인 파일 없는 `CODEX_HOME`, 제공자 `127.0.0.1:9`, 신뢰 항목이 있는 git 루트, 기동 기록 래퍼)으로 잰 결과: 기본 모델에서 `thread.started` 1회, `item.` 0회, stderr 0바이트, moai `mcp-server` 기동 1회. 설정에 `model = "gpt-5"`를 두면 모델 응답이 아닌 `item.completed`(`type:"error"`, "Model metadata for `gpt-5` not found…")가 1회 나온다. 또 moai MCP 서버는 기동하면서 픽스처 루트에 `.moai/state/config-cache.json`을 쓴다(원자료 `.moai/reports/t1172/plan-audit-iter1-probes/`).
 
 ## §B 요구사항 (GEARS)
 
@@ -65,7 +67,7 @@ When both arms' inputs have been exported, the probe harness shall write the ver
 
 ### REQ-CPP-003 — 모델 요청 없는 시작 검사를 먼저 통과한다
 
-When an arm's fixture is prepared, the probe harness shall run a startup check against that fixture that makes no model request — a `codex exec` invocation under `--strict-config` whose model provider is unreachable, bounded by a timeout — and shall require that the session started, that the configuration loaded without an error, that no model response and no item event occurred, and that the moai MCP server was launched. When the startup check fails for either arm, the probe harness shall start no discriminating LIVE invocation. The startup check shall not be counted as a LIVE invocation and shall be recorded in its own ledger with its own cap.
+When an arm's fixture is prepared, the probe harness shall run a startup check against that fixture that cannot reach a model endpoint and receives no model response — a `codex exec` invocation under `--strict-config` whose model provider is the unreachable address `http://127.0.0.1:9/v1`, whose `CODEX_HOME` holds no login file, with the same model setting as the LIVE invocation, bounded by a timeout — and shall require that the session started, that the configuration loaded without an error, that no item event other than a non-model `error` item occurred, and that the moai MCP server was launched. When the startup check fails for either arm, the probe harness shall start no discriminating LIVE invocation. The startup check shall not be counted as a LIVE invocation and shall be recorded in its own ledger with its own cap.
 
 ### REQ-CPP-004 — LIVE 상한과 정지 규칙을 먼저 적는다
 
@@ -73,11 +75,11 @@ The probe harness shall run under caps declared in writing before the first LIVE
 
 ### REQ-CPP-005 — 채택 형태는 운영자가 정한다
 
-Where the treatment arm is measured `RAN` and the control arm is measured `REFUSED`, the adoption form of the per-tool pre-approval — a template default or an opt-in — shall be the one the operator selects, and the SPEC shall not pre-decide it. When the treatment arm is measured `REFUSED` or `NOT MEASURED`, the adoption decision shall be `not adopted` and moai shall emit no per-tool pre-approval.
+Where the treatment arm is measured `RAN` and the control arm is measured `REFUSED`, the adoption form of the per-tool pre-approval — a template default or an opt-in — shall be the one the operator selects, and the SPEC shall not pre-decide it. When the treatment arm is measured `REFUSED` or `NOT MEASURED`, or when the control arm is measured `RAN` (`NOT DISCRIMINATING`), the adoption decision shall be `not adopted` and moai shall emit no per-tool pre-approval. Where the operator selects the opt-in form, the opt-in shall be a boolean key in a `.moai/config/sections/` YAML file that the Codex configuration generator reads, so the choice persists across `moai update` (잠정 — 운영자 Kickoff 확정 필요).
 
 ### REQ-CPP-006 — 사전 승인은 이 도구 하나로 한정하고 도구는 쓰기 도구로 남는다
 
-Where the per-tool pre-approval is adopted, the moai-generated Codex configuration shall pre-approve `codex_role_audit` and no other tool, shall keep `default_tools_approval_mode = "writes"` for the server, and shall not change the tool's write-capable annotation. The configuration writer shall keep an existing user-owned `[mcp_servers.moai]` table byte-invariant.
+Where the per-tool pre-approval is adopted, the moai-generated Codex configuration shall pre-approve `codex_role_audit` and no other tool, shall keep `default_tools_approval_mode = "writes"` for the server, and shall not change the tool's write-capable annotation. The configuration writer shall keep an existing user-owned `[mcp_servers.moai]` table byte-invariant. Where the per-tool pre-approval is adopted and a project's `[mcp_servers.moai]` table exists without the per-tool table, `moai doctor` shall report a warning, not a failure, together with a hint naming the table to add (잠정 — 운영자 Kickoff 확정 필요).
 
 ### REQ-CPP-007 — 생성 설정의 키 이름을 Codex 로더로 검증한다
 
@@ -103,16 +105,16 @@ Where the per-tool pre-approval is adopted, the tree shall contain the landed t1
 
 | REQ | AC |
 |---|---|
-| § REQ-CPP-001 | AC-CPP-002 |
-| § REQ-CPP-002 | AC-CPP-003 |
-| § REQ-CPP-003 | AC-CPP-004 |
-| § REQ-CPP-004 | AC-CPP-005 |
+| § REQ-CPP-001 | AC-CPP-002, AC-CPP-012 |
+| § REQ-CPP-002 | AC-CPP-003, AC-CPP-012 |
+| § REQ-CPP-003 | AC-CPP-004, AC-CPP-012 |
+| § REQ-CPP-004 | AC-CPP-005, AC-CPP-012, AC-CPP-014 |
 | § REQ-CPP-005 | AC-CPP-006 |
 | § REQ-CPP-006 | AC-CPP-007 |
 | § REQ-CPP-007 | AC-CPP-008, AC-CPP-009 |
 | § REQ-CPP-008 | AC-CPP-010 |
-| § REQ-CPP-009 | AC-CPP-011, AC-CAR-010, AC-CAR-011 |
-| § REQ-CPP-010 | AC-CPP-005, AC-CAR-010, AC-CAR-011 |
+| § REQ-CPP-009 | AC-CPP-011, AC-CPP-013, AC-CAR-010, AC-CAR-011 |
+| § REQ-CPP-010 | AC-CPP-005, AC-CPP-014, AC-CAR-010, AC-CAR-011 |
 | § REQ-CPP-011 | AC-CPP-001 |
 
 ## §D 제외 사항
