@@ -170,4 +170,20 @@ m1_to_mN_commit_strategy: "2 commits — docs-site card commit, then progress/st
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase>_
+```yaml
+sync_complete_at: 2026-09-25
+sync_commit_sha: pending-backfill-sync   # a commit cannot cite its own hash; backfilled in the immediately following commit
+sync_status: audit-ready
+b12_self_test_a: pass   # grep -c SPEC-DOCS-OTEL-AGENTS-001 CHANGELOG.md -> 0 before this append
+b12_self_test_b: pass   # grep -oE AC-DOA-[0-9]+ acceptance.md | sort -u | wc -l -> 9; CHANGELOG entry states 9/9
+b12_self_test_c: pass   # every path named in the CHANGELOG entry (spec.md, progress.md) verified via ls
+changelog_entry_position: "### Fixed, first entry under [Unreleased]"
+frontmatter_status_transitions:
+  spec_md: "in-progress -> completed (status + updated only; body untouched)"
+  plan_md: "no transition — plan.md carries no independent status field for this SPEC"
+  acceptance_md: "no transition — acceptance.md carries no independent status field for this SPEC"
+  progress_md: "this §E.4 write; run-phase §E.2/§E.3 untouched"
+canary_compliance_check:
+  applicable: false
+  reason: "this SPEC defines no forward-looking policy of its own to self-test"
+```
