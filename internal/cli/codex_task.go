@@ -387,12 +387,7 @@ func runCodexBackgroundJob(ctx context.Context, cancelSession context.CancelFunc
 	}()
 
 	out, runErr := runCodexTaskTurn(ctx, session, params)
-	if errors.Is(context.Cause(ctx), errCodexTaskSessionDeadline) {
-		// The child can close stdout at the deadline before the turn's
-		// select observes ctx.Done. Report the deadline, not that EOF race.
-		out.Summary = codexTaskTimeoutMessage()
-		runErr = errors.New(out.Summary)
-	}
+	out, runErr = codexBackgroundDeadlineResult(ctx, out, runErr)
 
 	// A job cancelled while the turn was in flight keeps its cancelled status:
 	// the turn returning afterwards must not overwrite it with completed or
@@ -409,6 +404,16 @@ func runCodexBackgroundJob(ctx context.Context, cancelSession context.CancelFunc
 		r.Status = codexJobStatusCompleted
 		r.Output = out.Summary
 	})
+}
+
+func codexBackgroundDeadlineResult(ctx context.Context, out ReviewOutput, runErr error) (ReviewOutput, error) {
+	if runErr != nil && errors.Is(context.Cause(ctx), errCodexTaskSessionDeadline) {
+		// The child can close stdout at the deadline before the turn's
+		// select observes ctx.Done. Report the deadline, not that EOF race.
+		out.Summary = codexTaskTimeoutMessage()
+		runErr = errors.New(out.Summary)
+	}
+	return out, runErr
 }
 
 // appendCodexNote joins two result notes, keeping both statements rather than
