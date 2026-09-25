@@ -107,11 +107,11 @@ M3 과 같은 규율: 파일 단위 순차 + 파일마다 해시 재측정.
 
 템플릿 사본에 라이브와 동일한 `paths:` frontmatter 를 넣는다(REQ-ALD2-008). M1~M5 어디에도 의존하지 않으므로 아무 때나 할 수 있고, M5 의 `skill-routing.md` 작업과 같은 커밋에 묶는 것이 자연스럽다.
 
-### M6.5 — 신규 companion 3개 생성 (우선순위: High · M3 와 함께 움직인다)
+### M6.5 — 신규 companion 2개 생성 (우선순위: High · M3 와 함께 움직인다)
 
-`design.md §2.2` 의 배정에 따라 신규 companion 3개를 만든다 — `kanban-dispatch.md` 용(~16,000), `session-handoff.md` 용(~10,000), `agent-common-protocol.md` 의 넘침분용(~7,000).
+`design.md §4.1` 의 절 단위 재배치 표에 따라 신규 companion 2개를 만든다 — `kanban-dispatch.md` 용(5,121), `session-handoff.md` 용(5,442). `agent-common-protocol.md` 의 이동분 7,108자는 기존 reference 에 넣는다(31,207 → 38,315, 한도 미만).
 
-**M3 와 분리된 마일스톤이 아니라 M3 의 선행 조건이다.** 이 셋이 없으면 M3 의 세 파일은 갈 곳이 없다. 순서상 M3 착수 시점에 해당 companion 을 먼저 만들고 절을 옮긴다.
+**M3 와 분리된 마일스톤이 아니라 M3 의 선행 조건이다.** 이 둘이 없으면 M3 의 `kanban-dispatch.md` 와 `session-handoff.md` 이동분은 갈 곳이 없다. 순서상 M3 착수 시점에 해당 companion 을 먼저 만들고 절을 옮긴다.
 
 각 신규 companion 이 지는 것: domain-keyed `paths:`(REQ-ALD2-004) · stub 3요소(REQ-ALD2-005) · 원본에 없던 내용 금지(REQ-ALD2-006, "작업 전 크기"는 0) · 40,000자 미만(REQ-ALD2-014) · 템플릿 미러 동시 생성(REQ-ALD2-007).
 
@@ -127,7 +127,7 @@ M3 과 같은 규율: 파일 단위 순차 + 파일마다 해시 재측정.
 
 ## §D. 기술적 접근
 
-- 기제는 M1(companion 재배치)·M1′(`CLAUDE.md` 중복 제거)·M2(제자리 압축) 셋이다. **목적지는 수용량으로 고른다** — 여유 있는 기존 companion 우선, 없으면 신규 companion, 이미 40,000자를 넘긴 파일에는 쓰지 않는다(`design.md §2` 개정판). M6.5 에서 신규 companion 3개가 생긴다.
+- 기제는 M1(companion 재배치)·M1′(`CLAUDE.md` 중복 제거)·M2(제자리 압축) 셋이다. **목적지는 수용량으로 고른다** — 여유 있는 기존 companion 우선, 없으면 신규 companion, 이미 40,000자를 넘긴 파일에는 쓰지 않는다(`design.md §2`, 최종 배정은 §4.1). M6.5 에서 신규 companion 2개가 생긴다.
 - 구속 조항 줄은 **축자 동결**된다. 재작성도, 재배치도, 재들여쓰기도 하지 않는다.
 
   **이것은 규율이지 검사가 아니다 — 둘을 구분해 둔다.** AC-ALD2-002 의 해시가 강제하는 것은 이보다 **느슨하다**: 파이프라인의 `sed` 가 들여쓰기를 정규화하고 `sort` 가 파일 내 순서를 정규화하므로, **재들여쓰기와 파일 내 재배치는 해시를 깨지 않고 통과한다.** 검사가 실제로 금지하는 것은 셋뿐이다 — 16파일 밖으로 내보내기, 삭제, 문구 수정(AC-ALD2-002 § 이 해시가 구속하는 것).
