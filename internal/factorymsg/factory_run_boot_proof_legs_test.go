@@ -4,6 +4,7 @@ import (
 	"context"
 	"os"
 	"path/filepath"
+	"runtime"
 	"testing"
 
 	"github.com/modu-ai/moai-adk/internal/homestate"
@@ -123,7 +124,8 @@ func TestPartialStampWithBrokerStaysIndeterminate(t *testing.T) {
 
 // AC-018 — a broker check that fails for any reason other than "does not
 // exist" answers "a record may exist". A regular file where the run's broker
-// directory belongs makes the stat fail with ENOTDIR.
+// directory belongs makes the stat fail with ENOTDIR (POSIX only; see the
+// Windows skip below).
 func TestLeadRecordAbsentForTreatsStatErrorAsPossibleRecord(t *testing.T) {
 	root := bootProofSandbox(t)
 	seedPreBootRun(t, root, "run-blocked", 0, "")
@@ -144,6 +146,16 @@ func TestLeadRecordAbsentForTreatsStatErrorAsPossibleRecord(t *testing.T) {
 		t.Fatalf("broker path: %v", err)
 	}
 	if _, err := os.Stat(path); err == nil || os.IsNotExist(err) {
+		// The premise rests on POSIX ENOTDIR: stat through a regular-file path
+		// component fails with an error that is not "does not exist". On
+		// Windows the same construction is expected to fail with
+		// ERROR_PATH_NOT_FOUND, which Go classifies as fs.ErrNotExist, so the
+		// premise cannot be built there and no portable substitute exists
+		// (permission denial is not expressible through os.Chmod on Windows).
+		// Skip only in that case; on every other OS an unbuilt premise fails.
+		if runtime.GOOS == "windows" && err != nil {
+			t.Skipf("stat %s = %v: this construction cannot produce a non-not-exist stat error on Windows", path, err)
+		}
 		t.Fatalf("stat %s = %v, want an error other than not-exist (the leg's premise)", path, err)
 	}
 
