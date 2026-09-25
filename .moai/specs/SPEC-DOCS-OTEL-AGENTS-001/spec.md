@@ -2,7 +2,7 @@
 id: SPEC-DOCS-OTEL-AGENTS-001
 title: "docs-site: drop the project-settings telemetry row and restate /agents as a reminder-only command (CC 2.1.281 / 2.1.282)"
 version: "0.2.0"
-status: draft
+status: in-progress
 created: 2026-09-25
 updated: 2026-09-25
 author: manager-spec
