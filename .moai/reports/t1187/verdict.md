@@ -7,7 +7,8 @@ card: t1187 · branch `WT-codemaps-source-refresh` · worktree `.claude/worktree
 `origin/develop` `a8a9b9376`의 기술 변경을 코드맵 본문 다섯 파일에 반영했다.
 `bd71c59e4` 스탬프 이후 변한 설명 대상 소스 41개를 본문 커밋
 `c6a9fcaf6`으로 흡수한 뒤 그 커밋을 스탬프했다. codemaps 층은 fresh다.
-PR #1726 리뷰 수정 뒤 최신 본문 커밋 `1a43800ba`로 다시 스탬프했다.
+PR #1726 첫 리뷰 수정 뒤 본문 커밋 `1a43800ba`로 다시 스탬프했다.
+후속 리뷰 수정 뒤 현재 본문 커밋 `65cc8df48`로 다시 스탬프했다.
 
 ## Evidence
 
@@ -38,8 +39,9 @@ PR #1726 리뷰 수정 뒤 최신 본문 커밋 `1a43800ba`로 다시 스탬프�
 
 - `mx-index`와 `edges.jsonl`은 새 워크트리에서 absent이며 갱신하거나 fresh로 판정하지 않았다.
 - Windows 런타임이나 실제 Factory 배차 동작은 이 문서 카드의 검증 대상이 아니다.
-- 원격 push·develop 병합·CI는 이 레인에서 하지 않았다. 병합은 스탬프 대상
-  `c6a9fcaf6`이 이력에 남는 방식이어야 한다. squash로 버리면 비교 불가가 된다.
+- 초기 레인 판정 시 원격 push·develop 병합·CI는 하지 않았다. 현재 병합도
+  아직 확인하지 않았다. 병합은 현 스탬프 대상 `65cc8df48`이 이력에 남는
+  merge commit 방식이어야 한다. squash로 버리면 비교 불가가 된다.
 
 ## Residual-risk
 
@@ -70,3 +72,20 @@ PR #1726 리뷰 수정 뒤 최신 본문 커밋 `1a43800ba`로 다시 스탬프�
 같은 바이너리의 `graph check --json` → codemaps `value=0 verdict=fresh`,
 citations `value=0 verdict=fresh`. 전체 exit 1은 앞서와 같이
 `mx-index`·`edges`의 `absent` 때문이다. `git diff --check` → exit 0.
+
+## PR #1726 두 번째 리뷰 후속 확인
+
+- `modules.md`의 감사 결과 파일 기록은 `--out` 또는 MCP `out`을 지정한 경우로
+  바로잡았다. `internal/cli/codex_audit_launch.go`의 `p.dest != ""` 조건을
+  확인했다. 출력 경로를 생략하면 CLI는 stdout, MCP는 job output을 쓴다.
+- `overview.md`의 현재 임베드 템플릿 설명을 591개로 고쳤다.
+  `find internal/template/templates -type f | wc -l` → `591`.
+- 문서 수정 커밋 `65cc8df48cd561898d212d77db2a07a939b0b03c`을
+  `moai graph stamp codemaps --commit 65cc8df48`로 기록했다.
+  `git merge-base --is-ancestor 65cc8df48cd561898d212d77db2a07a939b0b03c HEAD`
+  → exit 0. `moai graph check --json` → codemaps `value=0 verdict=fresh`,
+  citations `value=0 verdict=fresh`. 전체 검사 exit 1은 새 워크트리의
+  `mx-index`·`edges`가 absent이기 때문이다.
+- GitHub 저장소 API에서 `allow_merge_commit=true`를 확인했다. PR은 merge commit으로
+  병합하고, 병합 뒤 `git merge-base --is-ancestor 65cc8df48 origin/develop`과
+  `moai graph check --json`을 다시 확인한다. 아직 병합 결과는 주장하지 않는다.
