@@ -172,7 +172,7 @@ m1_to_mN_commit_strategy: "2 commits — docs-site card commit, then progress/st
 
 ```yaml
 sync_complete_at: 2026-09-25
-sync_commit_sha: pending-backfill-sync   # a commit cannot cite its own hash; backfilled in the immediately following commit
+sync_commit_sha: e0f74372b   # backfilled: SHA of the sync commit itself
 sync_status: audit-ready
 b12_self_test_a: pass   # grep -c SPEC-DOCS-OTEL-AGENTS-001 CHANGELOG.md -> 0 before this append
 b12_self_test_b: pass   # grep -oE AC-DOA-[0-9]+ acceptance.md | sort -u | wc -l -> 9; CHANGELOG entry states 9/9
