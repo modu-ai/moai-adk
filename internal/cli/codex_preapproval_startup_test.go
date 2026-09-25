@@ -165,6 +165,12 @@ func TestCodexPreApprovalStartupPreserve(t *testing.T) {
 	preApprovalRunStartup(t, true)
 }
 
+// preApprovalRunCar011Startup prepares only the carried read-only role fixture.
+// The other three fixtures have already consumed their M1-b startup allowance.
+func preApprovalRunCar011Startup(t *testing.T) *preApprovalFixture {
+	return preApprovalRunStartupFor(t, true, "car011")
+}
+
 func preApprovalAppendStartup(t *testing.T, path string, rows *[]map[string]any, entry preApprovalStartupRow, stopReason string) {
 	t.Helper()
 	body, err := json.Marshal(entry)
@@ -282,8 +288,12 @@ func TestCodexPreApprovalStartupLedgerRetention(t *testing.T) {
 }
 
 func preApprovalRunStartup(t *testing.T, preserveLedger bool) *preApprovalFixture {
+	return preApprovalRunStartupFor(t, preserveLedger, "")
+}
+
+func preApprovalRunStartupFor(t *testing.T, preserveLedger bool, only string) *preApprovalFixture {
 	t.Helper()
-	if os.Getenv(envCodexPreApprovalLive) != "1" {
+	if os.Getenv(envCodexPreApprovalLive) != "1" && !(only == "car011" && os.Getenv(envCodexRoleLive) == "1") {
 		t.Skip("NOT_RUN " + envCodexPreApprovalLive + " is not 1")
 	}
 	evidenceDir := os.Getenv(envT1172EvidenceDir)
@@ -312,20 +322,44 @@ func preApprovalRunStartup(t *testing.T, preserveLedger bool) *preApprovalFixtur
 		if !preApprovalM1aBaseline(evidenceDir, prior) {
 			t.Fatal("M1-a startup ledger or raw evidence differs from the recorded baseline")
 		}
-		attempt, readErr = preApprovalNextAttempt(prior)
-		if readErr != nil {
-			t.Fatal(readErr)
+		if only == "" {
+			attempt, readErr = preApprovalNextAttempt(prior)
+			if readErr != nil {
+				t.Fatal(readErr)
+			}
+		} else if only == "car011" {
+			attempt, readErr = preApprovalNextCarAttempt(prior, only)
+			if readErr != nil {
+				t.Fatal(readErr)
+			}
+		} else {
+			t.Fatalf("unsupported startup fixture %q", only)
 		}
-		if attempt == 2 {
+		if attempt == 2 && only == "" {
 			for _, name := range []string{"evidence.json", "outcome.txt", "live.jsonl"} {
 				if _, err := os.Stat(filepath.Join(evidenceDir, "discriminator", "attempt-1", name)); err != nil {
 					t.Fatalf("attempt-1 archive required before retry: %s: %v", name, err)
 				}
 			}
 		}
-		if preApprovalStartupCount(prior)+4 > preApprovalMaxStartupCalls {
+		if attempt == 2 && only == "car011" {
+			for _, name := range []string{"ac-car-011-evidence.json", "ac-car-011-live.jsonl"} {
+				if _, err := os.Stat(filepath.Join(evidenceDir, "car011", "attempt-1", name)); err != nil {
+					t.Fatalf("car011 attempt-1 archive required before retry: %s: %v", name, err)
+				}
+			}
+		}
+		startupNeed := 4
+		if only != "" {
+			startupNeed = 1
+		}
+		if preApprovalStartupCount(prior)+startupNeed > preApprovalMaxStartupCalls {
 			rows = prior
-			preApprovalAppendStop(t, ledgerPath, &rows, "disc", "startup invocation budget would be exceeded")
+			fixture := "disc"
+			if only != "" {
+				fixture = only
+			}
+			preApprovalAppendStop(t, ledgerPath, &rows, fixture, "startup invocation budget would be exceeded")
 			t.Fatal("startup invocation budget would be exceeded")
 		}
 		rows = prior
@@ -365,9 +399,20 @@ func preApprovalRunStartup(t *testing.T, preserveLedger bool) *preApprovalFixtur
 	if err := os.WriteFile(filepath.Join(root, "README"), []byte("preapproval fixture\n"), 0o600); err != nil {
 		t.Fatal(err)
 	}
+	if only == "car011" {
+		installAuditRoles(t, root)
+	}
 	for _, args := range [][]string{{"-C", root, "add", "README"}, {"-C", root, "commit", "-q", "-m", "fixture"}} {
 		if out, err := git(args...); err != nil {
 			t.Fatalf("fixture git: %v: %s", err, out)
+		}
+	}
+	if only == "car011" {
+		if out, err := git("-C", root, "add", ".codex/agents/moai"); err != nil {
+			t.Fatalf("fixture role add: %v: %s", err, out)
+		}
+		if out, err := git("-C", root, "commit", "-q", "-m", "audit roles"); err != nil {
+			t.Fatalf("fixture role commit: %v: %s", err, out)
 		}
 	}
 	token := preApprovalSentinel(t, root)
@@ -414,7 +459,11 @@ func preApprovalRunStartup(t *testing.T, preserveLedger bool) *preApprovalFixtur
 	prompt := []byte(preApprovalDiscriminatorPrompt(root))
 	liveArgv := preApprovalArgvBytes(preApprovalDiscriminatorArgs(root, string(prompt)))
 	for pass := 0; pass < 2; pass++ {
-		for _, name := range []string{"disc-control", "disc-treatment", "car010", "car011"} {
+		fixtures := []string{"disc-control", "disc-treatment", "car010", "car011"}
+		if only != "" {
+			fixtures = []string{only}
+		}
+		for _, name := range fixtures {
 			if err := preApprovalCleanFixture(root, tempRoot, token, worktrees, git); err != nil {
 				t.Fatal(err)
 			}
@@ -439,11 +488,14 @@ func preApprovalRunStartup(t *testing.T, preserveLedger bool) *preApprovalFixtur
 				t.Fatal(err)
 			}
 			user := "[projects." + strconv.Quote(root) + "]\ntrust_level = \"trusted\"\n"
-			if name == "car010" {
+			if name == "car010" || only == "car011" {
 				user += "\n[mcp_servers.decoy]\ncommand = " + strconv.Quote(filepath.Join(binDir, "decoy")) + "\nargs = [\"mcp-server\"]\nenabled_tools = [\"spec_progress\"]\n"
 			}
 			if err := os.WriteFile(filepath.Join(codexHome, "config.toml"), []byte(user), 0o600); err != nil {
 				t.Fatal(err)
+			}
+			if only == "car011" {
+				t.Setenv(codexHomeEnvVar, codexHome)
 			}
 			rootState := preApprovalRootState(t, root, git)
 			if pass == 0 {
@@ -477,6 +529,14 @@ func preApprovalRunStartup(t *testing.T, preserveLedger bool) *preApprovalFixtur
 					for _, label := range labels {
 						labelPrompt := []byte(fmt.Sprintf("Run the %s read-only audit route for this fixture. Report the result without changing files.", label))
 						labelArgv := preApprovalArgvBytes(preApprovalDiscriminatorArgs(root, string(labelPrompt)))
+						if only == "car011" {
+							labelPrompt = []byte(preApprovalCar011Prompt(label))
+							args, argErr := preApprovalCar011Args(root, label, codexBin)
+							if argErr != nil {
+								t.Fatalf("car011 %s argv: %v", label, argErr)
+							}
+							labelArgv = preApprovalArgvBytes(args)
+						}
 						preApprovalExport(t, manifest, inputDir, label+"/argv.txt", labelArgv)
 						preApprovalExport(t, manifest, inputDir, label+"/prompt.txt", labelPrompt)
 					}
@@ -567,12 +627,21 @@ func preApprovalRunStartup(t *testing.T, preserveLedger bool) *preApprovalFixtur
 			t.Logf("%s startup exit=%d moai=%d decoy=%d items=0", name, exitCode, moaiLaunches, decoyLaunches)
 		}
 		if pass == 0 {
-			preApprovalWriteJSON(t, filepath.Join(evidenceDir, "discriminator", "export-manifest.json"), discManifest)
+			if only == "" {
+				preApprovalWriteJSON(t, filepath.Join(evidenceDir, "discriminator", "export-manifest.json"), discManifest)
+			}
 			for name, manifest := range carManifests {
+				if only != "" && name != only {
+					continue
+				}
 				preApprovalWriteJSON(t, filepath.Join(evidenceDir, name, "export-manifest.json"), manifest)
 			}
 			if preserveLedger {
-				for _, group := range []string{"discriminator", "car010", "car011"} {
+				groups := []string{"discriminator", "car010", "car011"}
+				if only != "" {
+					groups = []string{only}
+				}
+				for _, group := range groups {
 					body, err := os.ReadFile(filepath.Join(evidenceDir, group, "export-manifest.json"))
 					if err != nil {
 						t.Fatal(err)
@@ -595,6 +664,9 @@ func preApprovalRunStartup(t *testing.T, preserveLedger bool) *preApprovalFixtur
 					}
 				}
 			}
+			if only != "" {
+				continue
+			}
 			discDir := filepath.Join(evidenceDir, "discriminator")
 			diff := exec.Command("diff", "-r", "inputs/control", "inputs/treatment")
 			diff.Dir = discDir
@@ -611,7 +683,11 @@ func preApprovalRunStartup(t *testing.T, preserveLedger bool) *preApprovalFixtur
 			preApprovalWriteJSON(t, filepath.Join(discDir, "arm-diff.meta.json"), map[string]int64{"written_ns": time.Now().UnixNano()})
 		}
 	}
-	if startupCalls != 4 {
+	wantStartups := 4
+	if only != "" {
+		wantStartups = 1
+	}
+	if startupCalls != wantStartups {
 		t.Fatalf("startup stopped after %d entries; see ledger.json", startupCalls)
 	}
 	return &preApprovalFixture{evidenceDir: evidenceDir, tempRoot: tempRoot, root: root,

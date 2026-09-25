@@ -591,3 +591,46 @@ ok  github.com/modu-ai/moai-adk/internal/cli 87.667s
 ### Residual-risk
 
 실제 Codex `--json`의 MCP 결과 구조가 합성 분류 입력과 다를 수 있다. LIVE 도중 실패하면 `stop` 행을 기록하고 같은 증거 디렉터리를 재사용하지 않도록 하네스가 거부한다.
+
+## 2026-09-25 현재 실측·M4 준비 상태
+
+### Claim
+
+Codex CLI 0.157.0의 첫 판별 시도에서 대조 호출은 도구 승인을 거부했고 처치 호출은 `codex_role_audit` 서버까지 도달했다. 이 측정은 `approval_mode = "approve"`의 판별 효과를 보여 주지만, 채택 형태 A1/A2는 아직 운영자가 정하지 않았다. 이월 AC-CAR-011은 실모델 호출 전 준비 코드와 결정적 경계 테스트만 작성했으며 LIVE 결과는 없다. 이 절은 위 M1-a·M1-b 준비 당시의 미측정 문구보다 나중 상태를 기록한다.
+
+### Evidence
+
+```text
+$ jq -r '"rows=\(length) startup=\(map(select(.kind=="startup"))|length) live=\(map(select(.kind=="live"))|length) stop=\(map(select(.kind=="stop"))|length)",(.[] | select(.kind=="live") | "\(.fixture) attempt=\(.attempt) exit=\(.exit) auth_equal=\(.auth_sha256_before==.auth_sha256_after)")' .moai/reports/t1172/ledger.json
+rows=10 startup=8 live=2 stop=0
+disc-control attempt=1 exit=0 auth_equal=true
+disc-treatment attempt=1 exit=0 auth_equal=true
+
+$ jq -r '"version=\(.codex_version) attempt=\(.attempt) calls=\(.invocations) aborted=\(.aborted) export=\(.export_complete) diff=\(.arm_diff_ok) auth_equal=\(.auth_sha256_before==.auth_sha256_after)", (.arms | to_entries[] | "\(.key) calls=\(.value.moai_role_audit_calls) outcome=\(.value.outcome) children=\(.value.child_processes) turns=\(.value.user_turns) text=\(.value.error_text // .value.result_text)")' .moai/reports/t1172/discriminator/evidence.json
+version=0.157.0 attempt=1 calls=2 aborted=false export=true diff=true auth_equal=true
+control calls=1 outcome=REFUSED children=0 turns=1 text=MCP tool call requires approval, but approval policy is never
+treatment calls=1 outcome=RAN children=0 turns=1 text=codex_role_audit: codex audit sync-auditor: destination rejected: AGENTS.md is outside the report tree
+
+$ cat .moai/reports/t1172/discriminator/outcome.txt
+RAN
+
+$ go test ./internal/cli -run '^TestCodexPreApprovalCar011(PreparationBoundary|ExportIntegrity)$' -count=1 -v
+--- PASS: TestCodexPreApprovalCar011PreparationBoundary (0.00s)
+--- PASS: TestCodexPreApprovalCar011ExportIntegrity (0.00s)
+PASS
+ok  github.com/modu-ai/moai-adk/internal/cli 0.816s
+```
+
+### Baseline-attribution
+
+장부와 판별 원자료는 이 worktree의 `.moai/reports/t1172/`에서 이번 확인 때 읽었다. M4 결정적 테스트는 `WT-codex-preapproval-probe`의 HEAD `6bff41fd1` 위에 아직 커밋되지 않은 하네스 변경을 대상으로 실행했다. 호출 상한은 SPEC plan §D의 LIVE 14회, 시작 검사 16회다. 현재 장부는 각각 2회와 8회다. 모델에 닿는 신규 호출은 이 M4 작업에서 실행하지 않았다.
+
+### Gaps
+
+- A1/A2 채택 결정 행은 아직 없으며 M2 writer·doctor 변경과 채택 갈래의 AC-CAR-010 실행도 남았다. M3 지시면의 독립 감사 기록은 별도 보고서에 있다.
+- AC-CAR-011의 두 역할 LIVE 호출과 그 전용 시작 검사 1회는 아직 실행하지 않았다. 이월 AC의 결과를 PASS로 세지 않는다.
+- Windows 런타임과 실제 운영 프로젝트 설정 전파는 이 측정 범위 밖이다.
+
+### Residual-risk
+
+처치의 `RAN`은 안전한 거부 목적지까지 서버 함수가 실행된 관측이다. 실제 감사 자식이 완료되는지와 다른 역할의 read-only 샌드박스가 쓰기를 거부하는지는 각 이월 AC의 LIVE 호출로 따로 측정해야 한다. M4 준비 코드도 독립 감사가 남아 있다.

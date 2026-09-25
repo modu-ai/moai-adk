@@ -387,6 +387,11 @@ func TestCodexAuditLaunchLiveContract(t *testing.T) {
 
 // TestCodexAuditLaunchLiveReadOnlyRoles is AC-CAR-011.
 func TestCodexAuditLaunchLiveReadOnlyRoles(t *testing.T) {
+	if strings.HasSuffix(filepath.Clean(os.Getenv(envT1143EvidenceDir)), filepath.Join(".moai", "reports", "t1172")) {
+		t.Setenv(envT1172EvidenceDir, os.Getenv(envT1143EvidenceDir))
+		preApprovalRunCar011Live(t)
+		return
+	}
 	f := newCodexAuditLiveFixture(t, true) // the same isolated environment as AC-CAR-010
 	budget := newLiveBudget(codexAuditLive011Budget, codexAuditLive011Window)
 	var roles []liveAuditItem
