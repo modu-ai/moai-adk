@@ -33,7 +33,7 @@ The genuine Claude Code `/config` slash command (distinct from MoAI's `.moai`-pr
 - Toggle-key behavior (within the `/config` settings selector): Enter AND Space both change the currently-selected setting, and Esc now saves-and-closes the selector (it no longer reverts unsaved changes).
 
 
-#### Claude Code environment variables (v2.1.268-2.1.274)
+#### Claude Code environment variables (v2.1.268-2.1.282)
 
 Four environment variables landed in this window that a MoAI deployment may need to
 know about. MoAI sets none of them — each is a per-machine or per-organization
@@ -50,17 +50,17 @@ A fifth, `CLAUDE_CODE_WORKFLOW_MAX_CONCURRENT_AGENTS` (v2.1.269), raises the Wor
 tool's per-run concurrent-agent limit and is documented with the rest of the workflow
 ceilings in `.claude/rules/moai/workflow/dynamic-workflows.md`.
 
-Claude Code v2.1.280-2.1.281 added four more operator controls. MoAI does not set
-them in its distributed settings:
+Claude Code v2.1.280-2.1.281 added three more operator controls and changed a fourth.
+MoAI does not set any of them in its distributed settings:
 
 | Variable | Version | What it does |
 |---|---|---|
 | `CLAUDE_CODE_MAX_MCP_DESCRIPTION_LENGTH` | v2.1.280 | Changes the default 2,048-character cap on each MCP tool description and server instructions across the session. Raising it can increase tool-schema context cost. |
-| `CLAUDE_CODE_AUTO_MODE_SERVER` | v2.1.281 for direct Anthropic API | `0` opts out of server-side auto-mode classification and charges local classifier use; `1` opts in. Other supported API/cloud/gateway hosts began defaulting to the server-side classifier in v2.1.278. |
+| `CLAUDE_CODE_AUTO_MODE_SERVER` | v2.1.273; scope changed v2.1.278, v2.1.281, v2.1.282 | Selects the auto-mode classifier: `1` uses the server-side classifier, `0` opts out (the local classifier then counts toward usage). v2.1.273 made Bedrock, Vertex and Foundry default to the local classifier; v2.1.278 made Claude API, Enterprise, Bedrock, Vertex, Foundry and gateways default to the server-side classifier; v2.1.281 made the variable apply on a direct Anthropic API connection; v2.1.282 made that connection default to the server-side classifier when telemetry is off. |
 | `CLAUDE_CODE_DISABLE_DANGEROUS_RM_TIMEOUT` | v2.1.281 | `1` disables the two-minute timeout that otherwise denies an unanswered dangerous-`rm` prompt in auto or bypass mode. |
 | `CLAUDE_CODE_DISABLE_SUBSTITUTION_RM_PROMPT` | v2.1.281 | `1` disables the additional prompt for recursive `rm` whose target consists only of command-substitution output, even when a Bash allow rule matches. |
 
-#### OpenTelemetry surface additions (v2.1.268-2.1.274)
+#### OpenTelemetry surface additions (v2.1.268-2.1.282)
 
 MoAI configures no Claude Code telemetry; these are recorded so a deployment that does
 run OTel knows what changed rather than rediscovering it.
