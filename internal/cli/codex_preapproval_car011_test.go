@@ -17,6 +17,40 @@ import (
 
 var preApprovalCar011Roles = []string{"mission-governor", "super-advisor"}
 
+// An error after the non-model startup must be terminal in the shared ledger.
+// Write the row atomically before returning the error to the test driver.
+func preApprovalCar011Preflight(ledgerPath string, rows *[]map[string]any, check func() error) error {
+	if err := check(); err != nil {
+		entry := map[string]any{"kind": "stop", "fixture": "car011", "reason": err.Error(), "started_ns": time.Now().UnixNano()}
+		next := append(append([]map[string]any{}, *rows...), entry)
+		if writeErr := preApprovalWriteLedger(ledgerPath, next); writeErr != nil {
+			return fmt.Errorf("car011 preflight %v; stop ledger write failed: %w", err, writeErr)
+		}
+		*rows = next
+		return err
+	}
+	return nil
+}
+
+func preApprovalCar011Version(procs *liveProcs, bin, home string) (string, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+	cmd := liveCommand(ctx, bin, "--version")
+	cmd.Env = []string{"PATH=" + os.Getenv("PATH"), "CODEX_HOME=" + home}
+	out, err := procs.run(cmd)
+	if err != nil {
+		return "", fmt.Errorf("codex --version: %w: %s", err, out)
+	}
+	return strings.TrimPrefix(strings.TrimSpace(string(out)), "codex-cli "), nil
+}
+
+func preApprovalCar011RequireVersion(version string) error {
+	if version != "0.157.0" {
+		return fmt.Errorf("Codex version %q differs from 0.157.0", version)
+	}
+	return nil
+}
+
 // The preparation-only entry never links operator auth or starts a LIVE turn.
 // Use a copied baseline directory when validating the fixture implementation.
 func TestCodexPreApprovalCar011StartupOnly(t *testing.T) {
@@ -103,26 +137,38 @@ func preApprovalRunCar011Live(t *testing.T) {
 	}
 	_, authPath := linkedCodexHome(t)
 	f := preApprovalRunCar011Startup(t)
-	dir := filepath.Join(f.evidenceDir, "car011")
-	inputs, err := preApprovalReadCar011Exports(dir)
-	if err != nil {
-		t.Fatal(err)
-	}
 	ledgerPath := filepath.Join(f.evidenceDir, "ledger.json")
 	rows, err := preApprovalReadLedger(ledgerPath)
 	if err != nil {
-		t.Fatal(err)
+		t.Fatalf("ABORTED: car011 ledger unreadable after startup: %v", err)
 	}
-	version := codexRoleVersion(t, f.procs, f.codexBin, []string{"PATH=" + os.Getenv("PATH"), "CODEX_HOME=" + f.codexHome})
-	if version != "0.157.0" {
-		t.Fatalf("Codex version %q differs from 0.157.0", version)
-	}
-	fixtureHead, err := f.git("-C", f.root, "rev-parse", "HEAD")
-	if err != nil || string(inputs.Repo) != "is_repo=true\nhead="+strings.TrimSpace(fixtureHead)+"\n" {
-		t.Fatal("car011 exported repository differs from fresh fixture")
-	}
-	if !bytes.Contains(inputs.Build, []byte("sha256="+f.moaiHash+"\n")) {
-		t.Fatal("car011 exported moai binary differs")
+	dir := filepath.Join(f.evidenceDir, "car011")
+	var inputs preApprovalCar011Inputs
+	version := ""
+	err = preApprovalCar011Preflight(ledgerPath, &rows, func() error {
+		var readErr error
+		inputs, readErr = preApprovalReadCar011Exports(dir)
+		if readErr != nil {
+			return fmt.Errorf("car011 export: %w", readErr)
+		}
+		version, readErr = preApprovalCar011Version(f.procs, f.codexBin, f.codexHome)
+		if readErr != nil {
+			return readErr
+		}
+		if readErr = preApprovalCar011RequireVersion(version); readErr != nil {
+			return readErr
+		}
+		fixtureHead, gitErr := f.git("-C", f.root, "rev-parse", "HEAD")
+		if gitErr != nil || string(inputs.Repo) != "is_repo=true\nhead="+strings.TrimSpace(fixtureHead)+"\n" {
+			return errors.New("car011 exported repository differs from fresh fixture")
+		}
+		if !bytes.Contains(inputs.Build, []byte("sha256="+f.moaiHash+"\n")) {
+			return errors.New("car011 exported moai binary differs")
+		}
+		return nil
+	})
+	if err != nil {
+		t.Fatalf("ABORTED: %v", err)
 	}
 	stop := func(reason string) {
 		preApprovalAppendStop(t, ledgerPath, &rows, "car011", reason)
@@ -327,6 +373,49 @@ func TestCodexPreApprovalCar011ExportIntegrity(t *testing.T) {
 	}
 	if _, err := preApprovalReadCar011Exports(dir); err == nil {
 		t.Fatal("mutated export snapshot accepted")
+	}
+}
+
+func TestCodexPreApprovalCar011PostStartupFailuresStop(t *testing.T) {
+	for _, tc := range []struct {
+		name  string
+		check func(string) error
+	}{
+		{"fake_version", func(string) error { return preApprovalCar011RequireVersion("0.158.0") }},
+		{"missing_export", func(dir string) error {
+			_, err := preApprovalReadCar011Exports(dir)
+			return err
+		}},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			dir := t.TempDir()
+			ledgerPath := filepath.Join(dir, "ledger.json")
+			rows := []map[string]any{
+				{"kind": "startup", "fixture": "car011", "started_ns": int64(1), "ended_ns": int64(2)},
+				{"kind": "live", "fixture": "disc-control", "started_ns": int64(3), "ended_ns": int64(4)},
+			}
+			if err := preApprovalWriteLedger(ledgerPath, rows); err != nil {
+				t.Fatal(err)
+			}
+			if err := preApprovalCar011Preflight(ledgerPath, &rows, func() error { return tc.check(dir) }); err == nil {
+				t.Fatal("post-startup failure accepted")
+			}
+			persisted, err := preApprovalReadLedger(ledgerPath)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if len(persisted) != 3 || persisted[0]["kind"] != "startup" || persisted[1]["kind"] != "live" ||
+				persisted[2]["kind"] != "stop" || persisted[2]["fixture"] != "car011" ||
+				preApprovalNumber(persisted[2]["started_ns"]) <= 0 || preApprovalLiveCount(persisted) != 1 {
+				t.Fatalf("stop was not persisted after prior calls: %+v", persisted)
+			}
+			if err := preApprovalCar011Preflight(ledgerPath, &persisted, func() error { return nil }); err != nil {
+				t.Fatal(err)
+			}
+			if len(persisted) != 3 {
+				t.Fatalf("successful check changed ledger: %d", len(persisted))
+			}
+		})
 	}
 }
 

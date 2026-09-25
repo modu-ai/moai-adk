@@ -655,3 +655,25 @@ files=9 labels=mission-governor/argv.txt,super-advisor/argv.txt
 ```
 
 비모델 시작 검사는 접속 불가 제공자를 사용했고 새 장부 행의 `startup_id`는 `attempt-1/car011-1790317735358820000`이다. 이 격리 사본의 성공을 원본 장부의 AC-CAR-011 LIVE 완료로 세지 않는다. 원본에서 실제 두 역할을 실행하려면 같은 준비를 원본 장부에 먼저 수행해야 한다.
+
+### M4 감사 F1 후속 수리 (실모델 0회)
+
+독립 감사는 car011 시작 검사 행이 기록된 뒤 Codex 버전 불일치가 발생하면 `stop` 없이 테스트가 종료되는 결함을 재현했다. 이제 반출 읽기·버전·저장소 HEAD·moai 빌드 해시 확인을 하나의 사전 점검으로 묶고, 오류가 나면 기존 호출 행을 보존한 채 원자적으로 `stop`을 기록한다. 장부 자체를 읽을 수 없는 손상은 기존 호출 수를 안전하게 복원할 수 없으므로 별도 오류로 끝난다.
+
+```text
+$ go test ./internal/cli -run '^TestCodexPreApprovalCar011(PostStartupFailuresStop|PreparationBoundary|ExportIntegrity)$' -count=1 -v -timeout=90s
+=== RUN   TestCodexPreApprovalCar011PreparationBoundary
+--- PASS: TestCodexPreApprovalCar011PreparationBoundary (0.00s)
+=== RUN   TestCodexPreApprovalCar011ExportIntegrity
+--- PASS: TestCodexPreApprovalCar011ExportIntegrity (0.00s)
+=== RUN   TestCodexPreApprovalCar011PostStartupFailuresStop
+=== RUN   TestCodexPreApprovalCar011PostStartupFailuresStop/fake_version
+=== RUN   TestCodexPreApprovalCar011PostStartupFailuresStop/missing_export
+--- PASS: TestCodexPreApprovalCar011PostStartupFailuresStop (0.00s)
+    --- PASS: TestCodexPreApprovalCar011PostStartupFailuresStop/fake_version (0.00s)
+    --- PASS: TestCodexPreApprovalCar011PostStartupFailuresStop/missing_export (0.00s)
+PASS
+ok  github.com/modu-ai/moai-adk/internal/cli 0.825s
+```
+
+위 두 음성 대조는 가짜 버전 `0.158.0`과 누락된 반출 파일을 사용했다. 두 경우 모두 사전 시작 검사 1행과 기존 LIVE 1행을 보존하고 `stop` 1행을 추가했다. 실제 모델 도구 결과와 수정 코드의 독립 재감사는 아직 없다.
