@@ -22,6 +22,20 @@ const (
 	OwnerIndeterminate OwnerClassification = "indeterminate"
 )
 
+// ProofBasis names which proof established a run's classification (REQ-010b).
+// It is written into every run.retired event so an operator can tell a probed
+// death from the boot proof, which infers death from time alone.
+type ProofBasis string
+
+const (
+	// BasisStamp — the run row's own owner stamp was probed.
+	BasisStamp ProofBasis = "stamp"
+	// BasisPeer — the REQ-006 role='lead' peer identity was probed.
+	BasisPeer ProofBasis = "peer"
+	// BasisBoot — the REQ-006b boot proof held; no process was probed.
+	BasisBoot ProofBasis = "boot"
+)
+
 // ErrRunOwnerNotDead reports a refused retirement: the named run's owner did
 // not classify dead, so no retirement path may touch it.
 var ErrRunOwnerNotDead = errors.New("factory run owner is not dead")
@@ -44,6 +58,9 @@ type RunOwner struct {
 	CreatedAt        string
 	UpdatedAt        string
 	Classification   OwnerClassification
+	// Basis names the proof behind Classification; it is empty when no
+	// identity was found and the boot proof did not hold.
+	Basis ProofBasis
 }
 
 // Reconciliation reports both halves of a reconciliation pass: what was
@@ -160,16 +177,17 @@ func (f *FactoryDB) classifyRuns(ctx context.Context, opts ReconcileOptions, sta
 	classify := opts.classifier()
 	for i := range owners {
 		o := &owners[i]
-		pid, start := o.LeadPID, o.LeadProcessStart
+		pid, start, basis := o.LeadPID, o.LeadProcessStart, BasisStamp
 		// lead_pid = 0 is the legacy-row sentinel: consult the run's
 		// registered role='lead' peer instead (REQ-006).
 		if pid < 1 && opts.Fallback != nil {
 			if fpid, fstart, ok := opts.Fallback(o.RunID); ok {
-				pid, start = fpid, fstart
+				pid, start, basis = fpid, fstart, BasisPeer
 			}
 		}
 		if pid >= 1 && strings.TrimSpace(start) != "" {
 			o.Classification = classify(pid, start)
+			o.Basis = basis
 			continue
 		}
 		// Neither source yields an identity.
@@ -180,6 +198,7 @@ func (f *FactoryDB) classifyRuns(ctx context.Context, opts ReconcileOptions, sta
 		}
 		if dead {
 			o.Classification = OwnerDead
+			o.Basis = BasisBoot
 		}
 	}
 	return owners, nil
@@ -255,7 +274,7 @@ func (f *FactoryDB) ReconcileActiveRuns(ctx context.Context, opts ReconcileOptio
 		if !retirable(o.Classification) {
 			continue
 		}
-		if err := f.retireRun(ctx, o.RunID, o.Classification); err != nil {
+		if err := f.retireRun(ctx, o.RunID, o.Classification, o.Basis); err != nil {
 			return Reconciliation{}, err
 		}
 		o.Status = "retired"
@@ -287,7 +306,7 @@ func (f *FactoryDB) RetireRunIfDead(ctx context.Context, runID string, opts Reco
 		if !retirable(o.Classification) {
 			return o.Classification, fmt.Errorf("%w: run %s owner classified %s", ErrRunOwnerNotDead, runID, o.Classification)
 		}
-		if err := f.retireRun(ctx, runID, o.Classification); err != nil {
+		if err := f.retireRun(ctx, runID, o.Classification, o.Basis); err != nil {
 			return o.Classification, err
 		}
 		return o.Classification, nil
@@ -296,9 +315,10 @@ func (f *FactoryDB) RetireRunIfDead(ctx context.Context, runID string, opts Reco
 }
 
 // retireRun transitions one active run to 'retired' and appends a run.retired
-// event. The row is preserved: deleting it would make the retirement itself
-// unobservable.
-func (f *FactoryDB) retireRun(ctx context.Context, runID string, c OwnerClassification) error {
+// event carrying the classification and the proof basis that established it
+// (REQ-010b). The row is preserved: deleting it would make the retirement
+// itself unobservable.
+func (f *FactoryDB) retireRun(ctx context.Context, runID string, c OwnerClassification, basis ProofBasis) error {
 	now := time.Now().UTC().Format(time.RFC3339Nano)
 	tx, err := f.DB.BeginTx(ctx, nil)
 	if err != nil {
@@ -308,7 +328,7 @@ func (f *FactoryDB) retireRun(ctx context.Context, runID string, c OwnerClassifi
 	if _, err := tx.ExecContext(ctx, `UPDATE runs SET status='retired', updated_at=? WHERE run_id=? AND status='active'`, now, runID); err != nil {
 		return err
 	}
-	payload := fmt.Sprintf(`{"classification":%q}`, string(c))
+	payload := fmt.Sprintf(`{"classification":%q,"basis":%q}`, string(c), string(basis))
 	if _, err := tx.ExecContext(ctx, `INSERT INTO events(run_id,kind,payload_json,created_at) VALUES(?,'run.retired',?,?)`, runID, payload, now); err != nil {
 		return err
 	}
