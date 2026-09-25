@@ -634,3 +634,24 @@ ok  github.com/modu-ai/moai-adk/internal/cli 0.816s
 ### Residual-risk
 
 처치의 `RAN`은 안전한 거부 목적지까지 서버 함수가 실행된 관측이다. 실제 감사 자식이 완료되는지와 다른 역할의 read-only 샌드박스가 쓰기를 거부하는지는 각 이월 AC의 LIVE 호출로 따로 측정해야 한다. M4 준비 코드도 독립 감사가 남아 있다.
+
+### M4 준비 경로 추가 실측 (실모델 0회)
+
+원본 장부와 M1-a 원자료 12개를 임시 `.moai/reports/t1172/`에 복사해 준비 전용 테스트를 돌렸다. 원본 장부는 실행 전후 모두 `rows=10 startup=8 live=2`였다.
+
+```text
+$ MOAI_CAR011_PREPARE_ONLY=1 MOAI_CODEX_PREAPPROVAL_LIVE=1 MOAI_T1172_EVIDENCE_DIR=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/t1172-car011-yy9mtchj/.moai/reports/t1172 go test ./internal/cli -run '^TestCodexPreApprovalCar011StartupOnly$' -count=1 -v -timeout=90s
+=== RUN   TestCodexPreApprovalCar011StartupOnly
+    codex_preapproval_startup_test.go:171: car011 startup exit=-1 moai=1 decoy=1 items=0
+--- PASS: TestCodexPreApprovalCar011StartupOnly (26.22s)
+PASS
+ok  github.com/modu-ai/moai-adk/internal/cli 27.044s
+
+$ jq -r '"rows=\(length) startup=\(map(select(.kind=="startup"))|length) live=\(map(select(.kind=="live"))|length)"' /var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/t1172-car011-yy9mtchj/.moai/reports/t1172/ledger.json
+rows=11 startup=9 live=2
+
+$ jq -r '"files=\(.files|length) labels=\([.files|keys[]|select(endswith("/argv.txt"))]|join(","))"' /var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/t1172-car011-yy9mtchj/.moai/reports/t1172/car011/export-manifest.json
+files=9 labels=mission-governor/argv.txt,super-advisor/argv.txt
+```
+
+비모델 시작 검사는 접속 불가 제공자를 사용했고 새 장부 행의 `startup_id`는 `attempt-1/car011-1790317735358820000`이다. 이 격리 사본의 성공을 원본 장부의 AC-CAR-011 LIVE 완료로 세지 않는다. 원본에서 실제 두 역할을 실행하려면 같은 준비를 원본 장부에 먼저 수행해야 한다.

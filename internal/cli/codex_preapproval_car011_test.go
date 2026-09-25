@@ -17,6 +17,15 @@ import (
 
 var preApprovalCar011Roles = []string{"mission-governor", "super-advisor"}
 
+// The preparation-only entry never links operator auth or starts a LIVE turn.
+// Use a copied baseline directory when validating the fixture implementation.
+func TestCodexPreApprovalCar011StartupOnly(t *testing.T) {
+	if os.Getenv("MOAI_CAR011_PREPARE_ONLY") != "1" {
+		t.Skip("NOT_RUN MOAI_CAR011_PREPARE_ONLY is not 1")
+	}
+	preApprovalRunCar011Startup(t)
+}
+
 type preApprovalCar011Inputs struct {
 	Manifest                              preApprovalManifest
 	ExportID, ExportSHA256                string
