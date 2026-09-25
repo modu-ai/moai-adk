@@ -26,15 +26,16 @@ moai cc 도움말, moai glm의 auto 모드 거부 사유, 네 언어의 런처 �
     internal/cli/cc_test.go
     internal/cli/glm.go
     internal/cli/glm_new_test.go
-- git rev-list --count --left-right origin/develop...HEAD → 4 5. AC-006/007의 내용은 통과했으나 SPEC의 origin/develop 흡수 선행 조건은 미충족이다.
+- 부모 에이전트의 origin/develop 병합 커밋 0d8fa76fc 이후 git rev-list --count --left-right origin/develop...HEAD → 0 7, exit 0. 위 개정 AC-006 명령을 재실행한 결과 0, grep exit 1(일치 없음). AC-007 명령은 위 12개 허용 경로를 다시 출력하고 exit 0이었다. 선행 조건이 충족되어 AC-006과 AC-007 모두 PASS다.
+- 병합 후 go test ./internal/cli/ -run 'TestCharacterize_CC_HelpFlag|TestCharacterize_GLM_AutoMode' -count=1 -timeout=90s → ok github.com/modu-ai/moai-adk/internal/cli 0.674s, exit 0. 인라인 Python AC-001..004 → AC-001..004 PASS; locale link/default line: [47, 47, 47, 47], exit 0. git diff --check origin/develop...HEAD → 출력 없음, exit 0.
 
 ## Baseline-attribution
 
-기준 커밋은 SPEC 작성 시의 develop a520187f1이다. 현재 구현 커밋은 격리 작업트리 WT-auto-mode-help의 7b69ab3ca이며 위 명령은 이 작업트리에서 직접 실행했다.
+최초 기준 커밋은 SPEC 작성 시의 develop a520187f1이다. 구현 커밋은 7b69ab3ca, 병합 후 재검증 기준은 격리 작업트리 WT-auto-mode-help의 0d8fa76fc이다. 위 명령은 해당 작업트리에서 직접 실행했다.
 
 ## Gaps
 
-origin/develop 통합과 원격 PR 검증은 아직 수행하지 않았다. 격리 작업트리에서 git merge --no-edit origin/develop을 시도했으나 PreToolUse BRANCH_GUARD_VIOLATION이 명령 실행 전에 차단했다. 부모 에이전트가 통합한 뒤 개정 AC-006/007을 다시 실행해야 최종 PASS를 선언할 수 있다.
+원격 PR·CI 검증은 이 카드 작업트리에서 수행하지 않았다.
 
 ## Residual-risk
 
