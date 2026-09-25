@@ -1,7 +1,7 @@
 ---
 id: SPEC-LAUNCHER-AUTOMODE-WORDING-001
 title: "Correct the auto permission-mode requirement wording and the acceptEdits 'project default' claim in the moai cc / moai glm launchers and the launchers CLI reference"
-version: "0.1.0"
+version: "0.1.1"
 status: in-progress
 created: 2026-09-25
 updated: 2026-09-25
@@ -24,6 +24,7 @@ related_specs: [SPEC-AUT-PERMMODES-001]
 | Version | Date | Author | Change |
 |---|---|---|---|
 | "0.1.0" | 2026-09-25 | manager-spec | Initial plan-phase draft (Tier S: spec.md + plan.md + progress.md; AC inline in §3). Premise measured on branch `WT-auto-mode-help`, base develop `a520187f1`. |
+| "0.1.1" | 2026-09-25 | manager-spec | AC-006/AC-007 compare the current PR diff with `origin/develop` after the required branch merge. |
 
 ## §1 Context and Problem
 
@@ -90,8 +91,8 @@ Each AC is binary and mechanically checkable on the run-phase tree.
 - **AC-003** (REQ-004) — Given the four `launchers.md` files, When `grep -c "Team 플랜\|Team plan\|Team プラン\|Team 方案\|(프로젝트 기본)\|(project default)\|(プロジェクトデフォルト)\|(项目默认)\|4\.6"` runs over `docs-site/content/{ko,en,ja,zh}/cli-reference/launchers.md`, Then every file reports `0`.
 - **AC-004** (REQ-004, parity) — Given the four `launchers.md` files, When `grep -c "code.claude.com/docs/en/permission-modes"` and `grep -c "acceptEdits\`.*moai init"` run on each, Then each file reports `1` for both, and all four matches sit on the same line number (the permission-mode sentence).
 - **AC-005** (REQ-001, REQ-003) — Given the run-phase tree, When `go test ./internal/cli/ -run 'TestCharacterize_CC_HelpFlag|TestCharacterize_GLM_AutoMode'` runs (plus any test the run phase adds to pin the new wording, named in progress §E.2), Then it exits 0, and at least one test asserts the help output contains `moai init default` and `permission-modes docs` and at least one asserts the GLM stderr contains `supported Claude model` and does not contain `4.6`.
-- **AC-006** (REQ-005) — Given the branch diff against its base, When `git diff a520187f1 -- internal/cli/cc.go internal/cli/glm.go | grep '^+' | grep -v '^+++' | grep -cE 'Sonnet|Opus|Fable|[0-9]\.[0-9]|\b(Pro|Max|Team|Enterprise)\b'` runs, Then it prints `0`.
-- **AC-007** (REQ-006) — Given the branch diff against its base, When `git diff --name-only a520187f1...HEAD` runs, Then every listed path is one of the six targets, a `internal/cli/*_test.go` file, or under `.moai/specs/SPEC-LAUNCHER-AUTOMODE-WORDING-001/` (the card verdict under `.moai/reports/t1182/` is also permitted).
+- **AC-006** (REQ-005) — Given the branch after absorbing the current `origin/develop`, When `git diff origin/develop...HEAD -- internal/cli/cc.go internal/cli/glm.go | grep '^+' | grep -v '^+++' | grep -cE 'Sonnet|Opus|Fable|[0-9]\.[0-9]|\b(Pro|Max|Team|Enterprise)\b'` runs, Then it prints `0`.
+- **AC-007** (REQ-006) — Given the branch after absorbing the current `origin/develop`, When `git diff --name-only origin/develop...HEAD` runs, Then every listed path is one of the six targets, a `internal/cli/*_test.go` file, or under `.moai/specs/SPEC-LAUNCHER-AUTOMODE-WORDING-001/` (the card verdict under `.moai/reports/t1182/` is also permitted).
 
 ## §4 Exclusions
 
