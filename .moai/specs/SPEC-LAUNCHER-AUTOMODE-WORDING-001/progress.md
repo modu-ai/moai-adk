@@ -21,7 +21,7 @@ Command: `moai spec lint SPEC-LAUNCHER-AUTOMODE-WORDING-001` (2026-09-25, pre-co
 
 ## §E.3 Run-phase Audit-Ready Signal
 
-Six requested surfaces and two focused tests are changed together. The evidence above checks wording and the existing GLM rejection path. The worktree still needs an implementation commit and upstream integration; sync-phase review remains open.
+Six requested surfaces and two focused tests were committed together in 7b69ab3ca. The evidence above checks wording and the existing GLM rejection path. This isolated branch is 40 commits behind origin/develop; its eight implementation/test/doc paths have no upstream changes since the SPEC base. An attempted merge was blocked before execution by the PreToolUse BRANCH_GUARD_VIOLATION hook, which treats tool-spawned subagents as primary-checkout actors. Upstream integration is delegated to the main thread; sync-phase review remains open.
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
