@@ -624,8 +624,9 @@ residual_risk:
 
 ```yaml
 sync_complete_at: 2026-09-25T10:05+09:00
-sync_commit_sha: pending-backfill-sync   # 커밋은 자기 해시를 인용할 수 없다. 이 sync 커밋 직후의
-                                         # 후속 커밋이 실제 SHA 를 채운다(spec-frontmatter-schema.md
+sync_commit_sha: b51cc0d57               # sync 커밋. 그 커밋 안에서는 자기 해시를 인용할 수 없어
+                                         # placeholder(`pending-backfill-sync`)로 두고 직후 커밋이
+                                         # 채웠다(spec-frontmatter-schema.md
                                          # § SHA placeholder backfill exemption)
 sync_status: PASS
 b12_self_test_a:                         # 중복 방출 방지 — 방출 전 grep
