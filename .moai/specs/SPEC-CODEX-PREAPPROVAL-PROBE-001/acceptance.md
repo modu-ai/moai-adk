@@ -56,13 +56,31 @@ git merge-base --is-ancestor 51d3e5be6 HEAD && git merge-base --is-ancestor a0b7
 
 ### AC-CPP-002 — 판별 LIVE 전에 입력이 모두 반출되었고, LIVE는 반출본을 그대로 썼다 (maps REQ-CPP-001)
 
-**Given** 판별 프로브가 끝난 증거 디렉터리, **When** 두 팔의 입력 7종, 반출 매니페스트, 장부의 판별 LIVE 행을 맞대 보면, **Then** 열네 파일이 모두 비어 있지 않고, 두 팔 모두 저장소이며 HEAD와 빌드가 기록되어 있고, `CODEX_HOME` 설정에 신뢰 항목이 있고, 매니페스트의 파일 해시가 실제 파일 해시와 같고, 판별 묶음의 앞선 시도마다 리드의 무효 기록이 있고 마지막 시도에는 없으며, 마지막 시도의 판별 LIVE 행이 팔마다 정확히 하나씩이며 모두 반출 뒤에 시작했고, 각 행이 실제로 쓴 인자 벡터가 `argv.txt`와 같고 설정·프롬프트·루트 상태·moai 바이너리 해시가 반출본과 같다.
+**Given** 판별 프로브가 끝난 증거 디렉터리, **When** 두 팔의 입력 7종, 반출 매니페스트, 장부의 판별 LIVE 행을 맞대 보면, **Then** 열네 파일이 모두 비어 있지 않고, 두 팔 모두 저장소이며 HEAD와 빌드가 기록되어 있고, `CODEX_HOME` 설정에 신뢰 항목이 있고, 매니페스트의 파일 해시가 실제 파일 해시와 같고, 판별 묶음의 앞선 시도마다 리드의 무효 기록이 있고 마지막 시도에는 없으며, 마지막 시도의 판별 LIVE 행이 팔마다 정확히 하나씩이며 모두 반출 뒤에 시작했고, 각 행이 실제로 쓴 인자 벡터가 `argv.txt`와 같고 설정·프롬프트·루트 상태·moai 바이너리 해시가 반출본과 같다. 두 팔의 인자는 모두 `exec`, `--strict-config`, `-s workspace-write`, `-c approval_policy="never"`, `-C <같은 절대 루트>`, `--json`, 반출된 단일 행 프롬프트 순서의 열 개 인자다. 아래 두 판정 명령이 각각 `true`여야 PASS다.
+
+인자 계약 판정:
+
+```bash
+python3 - <<'PY'
+from pathlib import Path
+base = Path('.moai/reports/t1172/discriminator/inputs')
+arms = ('control', 'treatment')
+vectors = [(base / arm / 'argv.txt').read_text().splitlines() for arm in arms]
+prefix = ['exec', '--strict-config', '-s', 'workspace-write', '-c', 'approval_policy="never"', '-C']
+ok = all(len(v) == 10 and v[:7] == prefix and Path(v[7]).is_absolute() and v[8] == '--json' and v[9] == (base / arm / 'prompt.txt').read_text() for arm, v in zip(arms, vectors))
+ok = ok and vectors[0][7] == vectors[1][7]
+print(str(ok).lower())
+raise SystemExit(not ok)
+PY
+```
+
+반출·장부 판정:
 
 ```bash
 [ "$(for a in control treatment; do for f in codex-home-config.toml project-config.toml repo.txt moai-build.txt argv.txt prompt.txt root-state.txt; do [ -s ".moai/reports/t1172/discriminator/inputs/$a/$f" ] && echo ok; done; done | grep -c ok)" = 14 ] && cat .moai/reports/t1172/discriminator/inputs/control/repo.txt .moai/reports/t1172/discriminator/inputs/treatment/repo.txt | grep -cx 'is_repo=true' | grep -qx 2 && cat .moai/reports/t1172/discriminator/inputs/control/repo.txt .moai/reports/t1172/discriminator/inputs/treatment/repo.txt | grep -Ecx 'head=[0-9a-f]{40}' | grep -qx 2 && cat .moai/reports/t1172/discriminator/inputs/control/moai-build.txt .moai/reports/t1172/discriminator/inputs/treatment/moai-build.txt | grep -Ecx 'sha256=[0-9a-f]{64}' | grep -qx 2 && cat .moai/reports/t1172/discriminator/inputs/control/moai-build.txt .moai/reports/t1172/discriminator/inputs/treatment/moai-build.txt | grep -Ecx 'commit=[0-9a-f]{7,40}' | grep -qx 2 && cat .moai/reports/t1172/discriminator/inputs/control/codex-home-config.toml .moai/reports/t1172/discriminator/inputs/treatment/codex-home-config.toml | grep -Ec '^trust_level = "trusted"$' | grep -qx 2 && shasum -a 256 .moai/reports/t1172/discriminator/inputs/control/* .moai/reports/t1172/discriminator/inputs/treatment/* > .moai/reports/t1172/discriminator/inputs.sha && jq -e --slurpfile l .moai/reports/t1172/ledger.json --rawfile s .moai/reports/t1172/discriminator/inputs.sha --rawfile ac .moai/reports/t1172/discriminator/inputs/control/argv.txt --rawfile at .moai/reports/t1172/discriminator/inputs/treatment/argv.txt --rawfile mc .moai/reports/t1172/discriminator/inputs/control/moai-build.txt --rawfile mt .moai/reports/t1172/discriminator/inputs/treatment/moai-build.txt '.exported_ns as $e | ($s|split("\n")|map(select(length>0)|capture("^(?<h>[0-9a-f]{64})  .*/inputs/(?<p>.+)$"))|map({(.p):.h})|add) as $fs | {control:$ac, treatment:$at} as $argv | {control:($mc|capture("sha256=(?<x>[0-9a-f]{64})").x), treatment:($mt|capture("sha256=(?<x>[0-9a-f]{64})").x)} as $bin | ($l[0]|map(select(.kind=="live" and (.fixture|startswith("disc-"))))) as $disc | ($disc|map(.attempt)|max) as $fa | ($disc|map(select(.attempt==$fa))) as $live | ($e|type)=="number" and .files==$fs and ($fs|length)==14 and ($fa|type)=="number" and ([range(1;$fa)]|all(. as $a | ($l[0]|map(select(.kind=="invalidate" and .fixture=="disc" and .attempt==$a and .recorded_by=="lead"))|length)>=1)) and ($l[0]|map(select(.kind=="invalidate" and .fixture=="disc" and .attempt==$fa))|length)==0 and ($live|map(.fixture)|sort)==["disc-control","disc-treatment"] and ($live|all(.started_ns > $e)) and ($live|all((.fixture|ltrimstr("disc-")) as $a | ((.argv|join("\n"))+"\n")==$argv[$a] and .inputs_sha256.codex_home_config==$fs[$a+"/codex-home-config.toml"] and .inputs_sha256.project_config==$fs[$a+"/project-config.toml"] and .inputs_sha256.argv==$fs[$a+"/argv.txt"] and .inputs_sha256.prompt==$fs[$a+"/prompt.txt"] and .inputs_sha256.root_state==$fs[$a+"/root-state.txt"] and .inputs_sha256.moai_binary==$bin[$a]))' .moai/reports/t1172/discriminator/export-manifest.json >/dev/null && echo true
 ```
 
-음성·변이(plan 단계에서 확인, verdict §Plan iter-3): 입력 하나 삭제(완성된 트리에서 한 파일만 지움), 처치 LIVE가 쓴 인자에 `--extra` 추가(반출본과 불일치), LIVE 시작이 반출보다 앞섬, 기록 없는 재실행(plan-audit iter 2의 `rerun-disc` 그대로, 그리고 시도 2 표시만 있고 무효 기록 없는 경우) → 모두 `false`. 리드 무효 기록이 있는 재실행 → `true`.
+음성·변이(plan 단계에서 확인, verdict §Plan iter-3): 입력 하나 삭제(완성된 트리에서 한 파일만 지움), 처치 LIVE가 쓴 인자에 `--extra` 추가(반출본과 불일치), LIVE 시작이 반출보다 앞섬, 기록 없는 재실행(plan-audit iter 2의 `rerun-disc` 그대로, 그리고 시도 2 표시만 있고 무효 기록 없는 경우) → 모두 `false`. 리드 무효 기록이 있는 재실행 → `true`. 0.157.0 인자 계약 판정에는 별도로 `--ask-for-approval` 추가, `approval_policy="never"` 제거, 두 팔의 루트 차이, 프롬프트 불일치를 넣으면 모두 `false`여야 한다.
 
 ### AC-CPP-003 — 두 팔의 차이는 도구별 표 하나다 (maps REQ-CPP-002)
 

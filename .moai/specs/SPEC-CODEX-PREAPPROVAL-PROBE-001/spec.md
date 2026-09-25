@@ -1,7 +1,7 @@
 ---
 id: SPEC-CODEX-PREAPPROVAL-PROBE-001
 title: "Codex per-tool pre-approval of codex_role_audit — discriminating probe, conditional emission, loader key-name check, refusal instruction, carried AC-CAR-010/011"
-version: "0.5.1"
+version: "0.5.2"
 status: draft
 created: 2026-09-25
 updated: 2026-09-25
@@ -25,6 +25,7 @@ related_specs:
 
 | Version | Date | Change |
 |---|---|---|
+| 0.5.2 | 2026-09-25 | `codex-cli 0.157.0`의 `codex exec` 인자 계약을 반영했다. `--ask-for-approval`은 이 하위 명령에서 거부되므로, 판별 LIVE는 지원되는 `-c approval_policy="never"`로 무인 승인 정책을 고정한다. 반출 인자와 장부가 이 명령을 증명하도록 AC-CPP-002를 보강했다. |
 | 0.5.1 | 2026-09-25 | Codex CLI 0.157.0의 비모델 로더 실측에 맞춰 AC-CPP-008 진단 형식을 개정했다. 정상 설정은 non-git 게이트에 도달하고, 오타·잘못된 enum은 `Error:`로 시작한다. 오류 판정은 이 형식과 이전 `Error loading config.toml:` 형식만 허용하며 진단 본문을 함께 검사한다. |
 | 0.5.0 | 2026-09-25 | 운영자 Kickoff 결정 확정: D1-sub는 `.moai/config/sections/` YAML 불리언 키, D2는 기존 사용자 소유 표에 대한 `moai doctor` WARNING과 수동 추가 안내. D1의 A1/A2 선택은 판별 LIVE 뒤에 남긴다. 이 실행의 CLI 고정 버전을 설치된 `codex-cli 0.157.0`으로 개정하며, 0.156.1에서 얻은 과거 시작 검사 근거는 새 버전에서 다시 확인한다. |
 | 0.4.0 | 2026-09-25 | plan-audit iter 3(FAIL 0.81, `.moai/reports/t1172/plan-audit-iter3.md`) 뒤 리드 조건부 PASS-WITH-DEBT — 추가 plan-audit 없이 기계 게이트로 확인. D-N11: 이월 AC의 인자·프롬프트를 호출 라벨마다(`inputs/<라벨>/argv.txt`, `prompt.txt`) 반출하고, AC-CPP-013은 각 LIVE 행을 자기 라벨의 파일과만 비교한다(REQ-CPP-009). D-N12: AC-CPP-010은 행 전체를 "베이스 행 + 고정 문장"과 바이트 비교한다. D-N13: 장부 행에 테스트 임시 디렉터리(`temp_root`)를 적고 픽스처 루트가 그 아래임을 확인한다(REQ-CPP-004). D-N14: 한 토큰짜리 모델 지정(`--model=…`, `-m…`, `-c model=…`)도 거부한다. D-N15: `OPERATOR-CONFIRM`은 모든 갈래에서 Kickoff, 첫 LIVE 전에 기록한다. D-N16: 호출마다 사용자 턴 1개를 판정한다. AC 수는 그대로 16. |
@@ -56,6 +57,7 @@ plan 단계에서 모델 호출 없이 잰 사실(명령과 출력은 `.moai/rep
 - `codex mcp get moai --json`의 출력에는 `default_tools_approval_mode`도 도구별 표도 나오지 않는다. 그래서 이 명령으로는 해석된 도구별 승인을 되읽을 수 없다.
 - `codex exec --strict-config`는 설정 파일의 모르는 필드를 적재 단계에서 거부한다. 철자가 틀린 `approval_modex`를 넣으면 세션을 시작하지 않고 `unknown configuration field \`mcp_servers.moai.tools.codex_role_audit.approval_modex\``로 끝난다(exit 1). `codex --strict-config mcp …`와 `codex --strict-config debug …`는 지원되지 않는다.
 - 이번 대상 `codex-cli 0.157.0`의 별도 비모델 재측정에서 정상 설정은 `Not inside a trusted directory and --skip-git-repo-check was not specified.` 게이트에 닿았고, 오타 설정은 `Error: <임시 경로>/.codex/config.toml:<행>:<열>: unknown configuration field \`mcp_servers.moai.tools.codex_role_audit.approval_modex\``, 잘못된 enum은 같은 `Error:` 형식으로 `unknown variant \`bogus\``를 냈다. 세 경우 모두 exit 1이므로 종료 코드만으로는 구별하지 않는다.
+- 같은 설치본의 `codex exec --help`는 `-c`·`--strict-config`·`-s`·`-C`·`--json`을 보여 준다. `codex exec --ask-for-approval never --help`는 `unexpected argument '--ask-for-approval'`로 exit 2이고, `codex exec --strict-config -s workspace-write -c 'approval_policy="never"' --help`는 exit 0이다. 판별 명령은 승인 정책 `never`를 지원되는 설정 재정의로 전달한다.
 - git 저장소가 아닌 디렉터리에 `CODEX_HOME` 신뢰 항목을 두면 `codex debug prompt-input`은 그 디렉터리를 신뢰한 것으로 다룬다(기본 sandbox가 `workspace-write`로 렌더됨, 신뢰 항목이 없으면 `read-only`). 그러나 같은 디렉터리에서 `codex exec`는 `Not inside a trusted directory and --skip-git-repo-check was not specified.`로 시작을 거부한다. #39를 모델 호출 없이 재현한 것이다.
 - git 저장소 루트에서는 신뢰 항목이 없어도 `codex exec`가 시작 검사를 통과한다. 접속할 수 없는 모델 제공자(`127.0.0.1:9`)를 주면 `thread.started`, `turn.started` 뒤에 접속 실패만 되풀이되고, 모델 응답과 `item.*` 이벤트는 0개였다. 요청은 나가지만 모델 끝점에 닿지 못하므로 응답이 없다. 이 실행은 신뢰 항목이 없는 루트여서 프로젝트 층 적재와 MCP 기동은 보이지 않았다.
 - plan-audit iter 1이 같은 조건(로그인 파일 없는 `CODEX_HOME`, 제공자 `127.0.0.1:9`, 신뢰 항목이 있는 git 루트, 기동 기록 래퍼)으로 잰 결과: 기본 모델에서 `thread.started` 1회, `item.` 0회, stderr 0바이트, moai `mcp-server` 기동 1회. 설정에 `model = "gpt-5"`를 두면 모델 응답이 아닌 `item.completed`(`type:"error"`, "Model metadata for `gpt-5` not found…")가 1회 나온다. 또 moai MCP 서버는 기동하면서 픽스처 루트에 `.moai/state/config-cache.json`을 쓴다(원자료 `.moai/reports/t1172/plan-audit-iter1-probes/`).

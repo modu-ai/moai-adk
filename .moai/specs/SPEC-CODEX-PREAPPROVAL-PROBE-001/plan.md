@@ -26,6 +26,7 @@ plan 단계에서 확인한 사실이다. 모델에 닿은 호출은 0회다. `c
 | 틀린 enum 값(`"bogus"`)은 로더가 거부하고, 틀린 필드 이름(`approval_modex`)은 `codex mcp get`이 조용히 무시한다 | t1143 verdict 156–168행 |
 | `codex exec --strict-config`는 틀린 필드 이름을 적재 단계에서 거부한다: `unknown configuration field \`mcp_servers.moai.tools.codex_role_audit.approval_modex\``, exit 1, 세션 없음. `-c` 재정의의 모르는 키도 같은 방식으로 거부한다(`stream_max_retries`) | `plan-checks/typo-strict-exec.err` |
 | 대상 `codex-cli 0.157.0` 재측정: 정상 설정은 non-git 시작 게이트(`Not inside a trusted directory…`)에 도달한다. 오타는 `Error: <임시 경로>/.codex/config.toml:<행>:<열>: unknown configuration field \`mcp_servers.moai.tools.codex_role_audit.approval_modex\``, 잘못된 enum은 같은 접두사에 `unknown variant \`bogus\``를 낸다. 세 경우 모두 exit 1이다 | 2026-09-25, 로그인 없는 임시 `CODEX_HOME`, 접속 불가 제공자, 이 worktree의 `codex-cli 0.157.0`; 로더 3경우 직접 실행 |
+| `codex exec --ask-for-approval never --help`는 exit 2, `unexpected argument '--ask-for-approval'`. `codex exec --strict-config -s workspace-write -c 'approval_policy="never"' --help`는 exit 0이고 도움말은 `-c`·`-s`·`-C`·`--json`을 열거한다 | 이 worktree의 `codex-cli 0.157.0`에서 두 명령 실행, 2026-09-25 |
 | `codex --strict-config mcp get`, `codex --strict-config debug prompt-input`은 "not supported" | 실행 출력 |
 | git 저장소가 아닌 디렉터리에 `CODEX_HOME` 신뢰 항목을 두면 `codex debug prompt-input`은 기본 sandbox를 `workspace-write`로 렌더한다(신뢰 항목이 없으면 `read-only`). 같은 디렉터리에서 `codex exec`는 `Not inside a trusted directory and --skip-git-repo-check was not specified.`로 시작을 거부한다 | `plan-checks/prompt-input-{trusted,untrusted}.txt`, `plan-checks/ok-strict-exec.err`, `plan-checks/codexhome-config.toml` |
 | git 저장소 루트에서는 신뢰 항목 없이 시작 검사를 통과한다. 접속 불가 제공자로 돌리면 `thread.started`·`turn.started` 뒤에 `Reconnecting... waiting for network` 오류만 나오고 `item.*` 이벤트 0개, `timeout 90`으로 끝났다(exit 124). 끝난 뒤 남은 프로세스 없음 | `plan-checks/repo-exec.out`, `ps` 필터 출력 없음 |
@@ -64,6 +65,7 @@ writer는 이미 있는 `[mcp_servers.moai]` 표를 바이트 그대로 둔다(�
 
 - **두 팔을 모두 새로 잰다.** #37은 재구성할 수 없으므로 대조 결과로 다시 쓰지 않는다. 대조 팔은 "이 픽스처에서 거부가 재현된다"는 양성 대조 역할도 한다.
 - **같은 경로, 순차 실행, 루트 재사용.** 두 팔은 같은 루트 경로, 같은 `CODEX_HOME` 경로를 쓴다. 팔마다 `CODEX_HOME`을 같은 씨앗(로그인 사본 + 같은 `config.toml`)에서 새로 만든다. 그래야 인자 벡터의 `-C <root>`와 `CODEX_HOME` 경로가 두 팔에서 같다. 루트는 새로 만들지 않고 재사용한다(새로 만들면 커밋 시각이 달라져 HEAD가 바뀐다).
+- **판별 LIVE 인자.** 두 팔은 `codex exec --strict-config -s workspace-write -c 'approval_policy="never"' -C <root> --json <prompt>`를 같은 순서로 쓴다. `argv.txt`에는 실행 파일 뒤의 인자 열 개를 한 줄에 하나씩 적고, 장부 `argv`에는 같은 배열을 적는다. `<root>`는 두 팔이 공유하는 픽스처 git 루트이며 `<prompt>`는 반출된 `prompt.txt`와 바이트 같다. `--ask-for-approval`은 `codex exec`가 받지 않으므로 어느 반출본이나 실제 호출에도 넣지 않는다. 시작 검사는 접속 불가 제공자 재정의를 더하므로 이 LIVE 인자 고정과 구분한다.
 - **루트 상태 초기화와 반출 (D8).** moai MCP 서버는 기동 때 루트에 `.moai/state/config-cache.json`을 쓴다(감사 측정). 그래서 시작 검사와 LIVE 호출 **각각의 직전에** 하네스가 루트에서 `git clean -ffdx`를 돌리고, 그 팔의 `.codex/config.toml`을 반출본 바이트로 다시 쓴다. 이 시점의 루트 상태(`git status --porcelain --ignored` 출력과 `.git` 밖 파일 목록)를 `root-state.txt`로 반출하고, 두 팔의 `root-state.txt`는 같아야 한다(팔 diff에 들어가므로). 하네스는 매 호출 직전에 그 순간의 루트 상태 해시를 장부 행 `inputs_sha256.root_state`에 적는다. 반출본 해시와 다르면 호출하지 않고 `stop` 행을 남긴다.
 - **초기화 대상 보호 (D-N6).** `git clean -ffdx`는 반드시 `git -C <root> clean -ffdx` 형태로만 부르고, 그 전에 다음을 모두 단언한다: `<root>`가 비어 있지 않은 절대 경로다, `t.TempDir()`(따라서 `os.TempDir()`) 아래에 있다, `git -C <root> rev-parse --show-toplevel`이 `<root>`와 같다, 이 저장소의 어떤 워크트리 경로(`git worktree list --porcelain`의 `worktree` 줄)와도 같거나 그 아래가 아니다, 픽스처를 만들 때 쓴 표지 파일 `<root>/.fixture-sentinel`(내용: 하네스가 만든 무작위 토큰)이 있고 내용이 같다. 하나라도 어긋나면 초기화를 거부하고 `stop` 행을 남긴다. 모든 시작 검사·LIVE 행에 `fixture_root`(그 절대 경로)와 `fixture_sentinel: true`(표지 확인 결과)를 적는다(AC-CPP-014). 거부 경로는 가짜 codex 테스트의 하위 테스트 `clean_refuses_non_fixture_root`가 빈 경로·상대 경로·임시 디렉터리 밖 경로·표지 없는 경로 넷을 주고 초기화가 일어나지 않음을 단언한다(AC-CPP-012).
 - **루트는 git 저장소.** 커밋 하나(README 한 파일)를 가진 저장소를 만들고 `.codex/`는 추적하지 않는다. 그래서 두 팔의 HEAD가 같다. 루트의 신뢰 항목도 `CODEX_HOME` `config.toml`에 넣는다(프로젝트 층 설정을 적재시키기 위함). 픽스처 저장소 생성은 테스트 코드 안에서 한다.
@@ -118,7 +120,7 @@ AC-CAR-010/011의 본문·판정식은 경로 치환 하나만 적용해 그대�
 
 1. `git -C <worktree> rev-parse --show-toplevel`이 이 워크트리, 브랜치 `WT-codex-preapproval-probe`.
 2. AC-CPP-001 `true`(보안 수리가 조상).
-3. `codex --version` = `codex-cli 0.157.0`. 다르면 멈추고 보고한다. §A의 0.156.1 측정은 과거 기준이므로 M1-a의 비모델 시작 검사와 로더 게이트를 0.157.0으로 다시 통과시킨 뒤에만 LIVE를 시작한다.
+3. `codex --version` = `codex-cli 0.157.0`. `codex exec --help`가 `-c`·`-s`·`-C`·`--json`을 보여 주고, `--ask-for-approval`은 지원하지 않는지도 확인한다. 다르면 멈추고 보고한다. §A의 0.156.1 측정은 과거 기준이므로 M1-a의 비모델 시작 검사와 로더 게이트를 0.157.0으로 다시 통과시킨 뒤에만 LIVE를 시작한다.
 4. 로그인 파일 sha256을 적는다(LIVE 전후 비교용).
 5. `make build`로 moai를 빌드하고 커밋·sha256을 적는다.
 
