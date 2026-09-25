@@ -37,7 +37,7 @@ description: "Claude Code 的斜杠命令 —— 整理内置命令、用 Markdo
 | 命令 | 用途 | 版本 |
 | :--- | :--- | :--- |
 | `/goal <condition>` | 设定完成条件后跨多回合自主推进（Haiku 定期检查） | v2.1.139+ |
-| `/workflows` | 动态工作流执行列表管理 UI | v2.1.139+ |
+| `/workflows` | 动态工作流执行列表管理 UI | v2.1.154+ |
 | `/rewind`（别名：`/checkpoint`、`/undo`） | 把代码与对话回退到之前的检查点 | v2.1.191+ |
 | `/context [all]` | 分析当前上下文窗口用量 | 基础 |
 | `/memory` | `CLAUDE.md` + 自动记忆加载列表/开关 | v2.1.59+ |
@@ -48,7 +48,7 @@ description: "Claude Code 的斜杠命令 —— 整理内置命令、用 Markdo
 | `/plugin` | 插件管理 | 基础 |
 | `/effort [low\|medium\|high\|xhigh\|max\|ultracode\|auto]` | 设置模型推理强度或编排 | 基础 |
 | `/model` | 选择 AI 模型 | 基础 |
-| `/background`（别名：`/bg`） | 后台执行 | v2.1.139+ |
+| `/background`（别名：`/bg`） | 后台执行 | v2.1.141 时已存在；引入版本未确认 |
 | `/fork <directive>` | 继承对话的分叉子智能体 | v2.1.161+ |
 | `/recap` | 会话摘要 | 基础 |
 | `/btw` | 侧边提问 | v2.1.187+ |
@@ -74,6 +74,7 @@ description: "Claude Code 的斜杠命令 —— 整理内置命令、用 Markdo
 
 ### 命令可用性说明
 
+- [v2.1.154 更新日志](https://github.com/anthropics/claude-code/blob/v2.1.154/CHANGELOG.md)明确记载了动态工作流与 `/workflows` 的引入。[v2.1.141 更新日志](https://github.com/anthropics/claude-code/blob/v2.1.141/CHANGELOG.md)记载了 `/bg` 的修复，能证明当时已有该命令，但无法确定引入版本。
 - 同一功能常有多个名称（别名）。
 - 部分命令的可见性随平台、套餐、环境而异。
 - `ultracode` 目前既是工作流触发关键词（pre-v2.1.160 为 `workflow`），也是一个 `/effort` 等级。

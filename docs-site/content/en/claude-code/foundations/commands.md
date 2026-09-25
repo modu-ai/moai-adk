@@ -36,7 +36,7 @@ Frequently used commands by category. The full list is available by typing `/` i
 | Command | Purpose | Version |
 | :--- | :--- | :--- |
 | `/goal <condition>` | Set a completion condition and proceed autonomously across turns (Haiku checks periodically) | v2.1.139+ |
-| `/workflows` | Management UI for dynamic workflow runs | v2.1.139+ |
+| `/workflows` | Management UI for dynamic workflow runs | v2.1.154+ |
 | `/rewind` (aliases: `/checkpoint`, `/undo`) | Revert code and conversation to an earlier checkpoint | v2.1.191+ |
 | `/context [all]` | Analyze current context window usage | Base |
 | `/memory` | List/toggle `CLAUDE.md` + auto-memory loads | v2.1.59+ |
@@ -47,7 +47,7 @@ Frequently used commands by category. The full list is available by typing `/` i
 | `/plugin` | Manage plugins | Base |
 | `/effort [low\|medium\|high\|xhigh\|max\|ultracode\|auto]` | Set the model's reasoning intensity or orchestration | Base |
 | `/model` | Select the AI model | Base |
-| `/background` (alias: `/bg`) | Run in the background | v2.1.139+ |
+| `/background` (alias: `/bg`) | Run in the background | Present by v2.1.141; introduction unconfirmed |
 | `/fork <directive>` | A forked subagent that inherits the conversation | v2.1.161+ |
 | `/recap` | Session recap | Base |
 | `/btw` | Side questions | v2.1.187+ |
@@ -73,6 +73,7 @@ Frequently used commands by category. The full list is available by typing `/` i
 
 ### Notes on Command Availability
 
+- The [v2.1.154 changelog](https://github.com/anthropics/claude-code/blob/v2.1.154/CHANGELOG.md) introduces dynamic workflows and `/workflows`. The [v2.1.141 changelog](https://github.com/anthropics/claude-code/blob/v2.1.141/CHANGELOG.md) describes a `/bg` fix, which confirms the command existed by then but does not date its introduction.
 - The same functionality often goes by multiple names (aliases).
 - Some commands are exposed differently depending on platform, plan, and environment.
 - `ultracode` is currently a workflow trigger keyword (it was `workflow` pre-v2.1.160) and simultaneously an `/effort` level.

@@ -37,7 +37,7 @@ description: "Claude Code のスラッシュコマンド — 組み込みコマ�
 | コマンド | 用途 | バージョン |
 | :--- | :--- | :--- |
 | `/goal <condition>` | 完了条件を設定し、複数ターンにわたって自律進行 (Haiku が定期的に確認) | v2.1.139+ |
-| `/workflows` | ダイナミックワークフローの実行一覧管理 UI | v2.1.139+ |
+| `/workflows` | ダイナミックワークフローの実行一覧管理 UI | v2.1.154+ |
 | `/rewind` (別名: `/checkpoint`, `/undo`) | コードと会話を以前のチェックポイントへ巻き戻す | v2.1.191+ |
 | `/context [all]` | 現在のコンテキストウィンドウ使用量を分析 | 標準 |
 | `/memory` | `CLAUDE.md` + 自動メモリのロード一覧/トグル | v2.1.59+ |
@@ -48,7 +48,7 @@ description: "Claude Code のスラッシュコマンド — 組み込みコマ�
 | `/plugin` | プラグイン管理 | 標準 |
 | `/effort [low\|medium\|high\|xhigh\|max\|ultracode\|auto]` | モデルの推論強度またはオーケストレーション設定 | 標準 |
 | `/model` | AI モデルの選択 | 標準 |
-| `/background` (別名: `/bg`) | バックグラウンド実行 | v2.1.139+ |
+| `/background` (別名: `/bg`) | バックグラウンド実行 | v2.1.141 時点で確認、導入版は未確認 |
 | `/fork <directive>` | 会話を継承したフォークサブエージェント | v2.1.161+ |
 | `/recap` | セッション要約 | 標準 |
 | `/btw` | サイド質問 | v2.1.187+ |
@@ -74,6 +74,7 @@ description: "Claude Code のスラッシュコマンド — 組み込みコマ�
 
 ### コマンドの可用性に関する補足
 
+- [v2.1.154 の変更履歴](https://github.com/anthropics/claude-code/blob/v2.1.154/CHANGELOG.md)には、動的ワークフローと `/workflows` の導入が記されています。[v2.1.141 の変更履歴](https://github.com/anthropics/claude-code/blob/v2.1.141/CHANGELOG.md)には `/bg` の修正が記されており、この時点でコマンドが存在したことは確認できますが、導入版は特定できません。
 - 同じ機能を複数の名前で呼べる場合が多くあります (別名)。
 - 一部のコマンドはプラットフォーム、プラン、環境によって表示されるかどうかが変わります。
 - `ultracode` は現在ワークフローのトリガーキーワード (v2.1.160 より前は `workflow` でした) であると同時に、`/effort` のレベルでもあります。
