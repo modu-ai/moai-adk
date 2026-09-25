@@ -136,7 +136,9 @@ its verbatim output, attributed to that run and that tree.
   closure that opens the run's broker and reads its `role='lead'` peer. Rejected alternative: moving
   the whole reconciler into `factorymsg`, which would put a `runs`-table writer outside the package
   that owns the schema.
-- A run with `lead_pid = 0` consults the fallback; a run with neither source is `indeterminate`.
+- A run with `lead_pid` below 1 consults the fallback; a partial stamp (`lead_pid` of 1 or more,
+  empty `lead_process_start`) does not. A run with neither source yielding a complete identity is
+  `indeterminate` unless the REQ-006b boot proof holds, in which case it is `dead` (M7, spec.md §C.3).
 
 ### M3 — Resolver wiring and the failure message (user-facing)
 
@@ -195,6 +197,52 @@ its verbatim output, attributed to that run and that tree.
   `develop` and this project does not push `WT-` branches, so leg 2 lands only on the develop push
   after integration. Record darwin locally; record leg 2 as pending with its run id to follow.
 - Affected-package tests: `go test ./internal/homestate/... ./internal/factorymsg/... ./internal/cli/...`.
+
+### M7 — v0.13.0 amendment follow-ups (card t1169; base: develop with `372c1bb0b`)
+
+Ordered by reversibility, like M1-M6: the persisted payload first, the reader second, the
+regression-guard legs last.
+
+1. **`basis` on `run.retired` (REQ-010b, AC-020)** — the one persisted-shape change. The proof that
+   established `dead` is known where the classification is decided (`classifyRuns` in
+   `internal/homestate/factory_run_retire.go`: stamp probe, peer fallback, or `predatesBoot`), so
+   carry it alongside the classification to `retireRun` and write `{"classification":…,"basis":…}`
+   with the tokens `stamp` / `peer` / `boot`. Both retirement paths — `ReconcileActiveRuns` and
+   `RetireRunIfDead` — go through `retireRun`, so one change covers both. The `classification` key
+   and value stay as they are. Test: `TestRetiredEventRecordsProofBasis`, whose operator-path
+   subtest retires a **boot-proven** run through `RetireRunIfDead` and asserts `"basis":"boot"` —
+   a stamp-dead run there would let a constant `stamp` on the operator path pass (AC-020).
+2. **procfs reader (REQ-006c, AC-019)** — `internal/homestate/boot_time_unix.go`: move the `btime`
+   interpretation into a build-tag-free function over an `io.Reader` so darwin can test it; report a
+   read error as the cause instead of dropping it (today the loop never reads `sc.Err()`); and stop
+   losing `btime` behind a long `intr` line (today's scanner keeps the 64 KiB default token limit).
+   How the long line is handled is the run phase's choice; the criterion is the 256 KiB leg. Tests:
+   `TestProcStatBootTimeFindsBtimeAfterLongLine`, `…ReportsReadError`, `…WithoutBtimeIsUnavailable`,
+   `…RejectsMalformedBtime`. Reporting split, as REQ-006c states it: the **seam** reports the read
+   error as the cause; `platformBootTime` keeps its `(time.Time, bool)` shape for callers and
+   reports only "unavailable". A read error before `btime` is found makes the boot time
+   unavailable; once `btime` has been read the seam may return without reading further.
+3. **AC-018 missing legs** — the `timestamp_equal_to_boot` subtest,
+   `TestLeadRecordAbsentForTreatsStatErrorAsPossibleRecord` and
+   `TestLeadRecordAbsentForRejectsUnderivableBrokerPath` (`internal/factorymsg`; an unsafe run id such
+   as `../x` makes `BrokerPath` fail, and the check must answer "a record may exist"), and the two
+   partial-stamp legs `TestPartialStampWithoutBrokerIsBootProven` and
+   `TestPartialStampWithBrokerStaysIndeterminate` (`internal/factorymsg`, so premise 2 is checked
+   against the real broker path the peer lookup reads — REQ-006). **Test obligation for every
+   declining leg**: each `TestBootProofDeclinesWithoutEveryPremise` subtest, and each new declining
+   leg above, asserts the run's classification is `OwnerIndeterminate` (read from the
+   reconciliation's remaining set, or from the `AMBIGUOUS_FACTORY` text on the `factorymsg` legs) in
+   addition to `status = 'active'`. Today's subtests assert the status alone; the added assertion is
+   green on the current code, so the legs stay regression guards, but AC-018's "reported
+   `indeterminate`" is then asserted rather than implied. Then re-run t1168 mutants 1-3 and new
+   mutants 4-6 on the run tree and record each red.
+
+File set added by M7: `internal/homestate/factory_run_retire.go`, `internal/homestate/boot_time_unix.go`,
+a new build-tag-free file for the procfs interpretation (required by REQ-006c — the seam cannot stay
+in `boot_time_unix.go`, whose `!windows && !darwin` constraint would keep its tests from compiling
+on darwin), and the package tests. No `internal/cli` change is expected. Affected-package tests:
+`go test ./internal/homestate/... ./internal/factorymsg/...`, plus `GOOS=linux` and `GOOS=windows`
+cross-builds of `./internal/homestate/`.
 
 ## §G Anti-patterns
 
