@@ -13,6 +13,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"regexp"
 	"strings"
 	"syscall"
 	"testing"
@@ -30,10 +31,49 @@ type preApprovalLedgerRow struct {
 	Reason string `json:"reason,omitempty"`
 }
 
+type preApprovalStartupProof struct {
+	Fixture  string
+	Stdout   []byte
+	Stderr   []byte
+	Launches map[string]int
+}
+
+func preApprovalStartupValid(proof preApprovalStartupProof) bool {
+	if proof.Launches["moai"] < 1 || (proof.Fixture == "car010" && proof.Launches["decoy"] < 1) {
+		return false
+	}
+	if bytes.Contains(proof.Stderr, []byte("Error loading config")) ||
+		bytes.Contains(proof.Stderr, []byte("Error: ")) ||
+		bytes.Contains(proof.Stderr, []byte("unknown configuration field")) ||
+		bytes.Contains(proof.Stderr, []byte("unknown variant")) ||
+		bytes.Contains(proof.Stderr, []byte("Not inside a trusted directory")) {
+		return false
+	}
+	threadStarts := 0
+	for _, line := range bytes.Split(bytes.TrimSpace(proof.Stdout), []byte("\n")) {
+		var event struct {
+			Type string `json:"type"`
+			Item struct {
+				Type string `json:"type"`
+			} `json:"item"`
+		}
+		if err := json.Unmarshal(line, &event); err != nil {
+			return false
+		}
+		if event.Type == "thread.started" {
+			threadStarts++
+		}
+		if strings.HasPrefix(event.Type, "item.") && event.Item.Type != "error" {
+			return false
+		}
+	}
+	return threadStarts == 1
+}
+
 // preApprovalGate stops before any LIVE call when exported inputs, the arm
 // comparison, or the non-model startup check fail. The caller owns the actual
 // Codex invocation; the gate cannot create it until every check succeeds.
-func preApprovalGate(inputs []string, diffOutput, startupOutput string, invoke func() error) []preApprovalLedgerRow {
+func preApprovalGate(inputs []string, diffOutput string, startup preApprovalStartupProof, invoke func() error) []preApprovalLedgerRow {
 	stop := func(reason string) []preApprovalLedgerRow {
 		return []preApprovalLedgerRow{{Kind: "stop", Reason: reason}}
 	}
@@ -45,9 +85,7 @@ func preApprovalGate(inputs []string, diffOutput, startupOutput string, invoke f
 	if !preApprovalOnlyProjectConfigDiff(diffOutput) {
 		return stop("arm diff exceeds project config table")
 	}
-	if strings.Contains(startupOutput, "Not inside a trusted directory") ||
-		strings.Contains(startupOutput, `"type":"item.started"`) ||
-		strings.Contains(startupOutput, `"type":"item.completed"`) {
+	if !preApprovalStartupValid(startup) {
 		return stop("startup check failed")
 	}
 	if err := invoke(); err != nil {
@@ -56,24 +94,28 @@ func preApprovalGate(inputs []string, diffOutput, startupOutput string, invoke f
 	return []preApprovalLedgerRow{{Kind: "live"}}
 }
 
+var preApprovalHunk = regexp.MustCompile(`^[0-9]+a[0-9]+(,[0-9]+)?$`)
+
 func preApprovalOnlyProjectConfigDiff(output string) bool {
-	if !strings.HasPrefix(output, "diff -r inputs/control/project-config.toml inputs/treatment/project-config.toml\n") {
+	if !strings.HasSuffix(output, "\n") {
 		return false
 	}
-	var additions []string
-	for _, line := range strings.Split(strings.TrimSuffix(output, "\n"), "\n")[1:] {
-		if strings.HasPrefix(line, "diff ") || strings.HasPrefix(line, "Only in ") {
-			return false
-		}
-		if strings.HasPrefix(line, "< ") || strings.HasPrefix(line, "! ") {
-			return false
-		}
-		if strings.HasPrefix(line, "> ") && strings.TrimSpace(line) != ">" {
-			additions = append(additions, strings.TrimPrefix(line, "> "))
-		}
+	lines := strings.Split(strings.TrimSuffix(output, "\n"), "\n")
+	if len(lines) != 4 && len(lines) != 5 {
+		return false
 	}
-	return len(additions) == 2 && additions[0] == "[mcp_servers.moai.tools.codex_role_audit]" &&
-		additions[1] == `approval_mode = "approve"`
+	if lines[0] != "diff -r inputs/control/project-config.toml inputs/treatment/project-config.toml" ||
+		!preApprovalHunk.MatchString(lines[1]) {
+		return false
+	}
+	if len(lines) == 5 {
+		if lines[2] != "> " {
+			return false
+		}
+		lines = append(lines[:2], lines[3:]...)
+	}
+	return lines[2] == "> [mcp_servers.moai.tools.codex_role_audit]" &&
+		lines[3] == `> approval_mode = "approve"`
 }
 
 // The destructive clean is intentionally inaccessible until every assertion
@@ -125,6 +167,7 @@ func preApprovalSentinel(t *testing.T, root string) string {
 }
 
 func TestCodexPreApprovalGateRefusals(t *testing.T) {
+	validStartup := preApprovalStartupProof{Fixture: "disc-control", Stdout: []byte("{\"type\":\"thread.started\"}\n"), Launches: map[string]int{"moai": 1}}
 	newInputs := func(t *testing.T) []string {
 		t.Helper()
 		root := t.TempDir()
@@ -146,12 +189,12 @@ func TestCodexPreApprovalGateRefusals(t *testing.T) {
 		}
 	}
 	for _, tc := range []struct {
-		name, diff, startup string
-		remove              bool
+		name, diff string
+		remove     bool
 	}{
-		{"missing_input", validDiff, "startup safe", true},
-		{"arm_diff_exceeds", "diff -r inputs/control/argv.txt inputs/treatment/argv.txt\n1a2\n> extra\n", "startup safe", false},
-		{"startup_check_fails", validDiff, "Not inside a trusted directory", false},
+		{"missing_input", validDiff, true},
+		{"arm_diff_exceeds", "diff -r inputs/control/argv.txt inputs/treatment/argv.txt\n1a2\n> extra\n", false},
+		{"startup_check_fails", validDiff, false},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			inputs := newInputs(t)
@@ -167,17 +210,77 @@ func TestCodexPreApprovalGateRefusals(t *testing.T) {
 					t.Fatal(err)
 				}
 			}
-			startupOutput := tc.startup
+			startup := validStartup
 			if tc.name == "startup_check_fails" {
 				out, err := exec.Command(fakeCodex, "exec", "--strict-config", "-c", `model_provider="dead"`).CombinedOutput()
 				if err != nil {
 					t.Fatal(err)
 				}
-				startupOutput = string(out)
+				startup.Stderr = out
 			}
-			rows := preApprovalGate(inputs, tc.diff, startupOutput, func() error {
+			rows := preApprovalGate(inputs, tc.diff, startup, func() error {
 				return exec.Command(fakeCodex, "exec", "--json", "LIVE").Run()
 			})
+			if tc.name == "arm_diff_exceeds" {
+				diffRoot := t.TempDir()
+				for _, arm := range []string{"control", "treatment"} {
+					if err := os.MkdirAll(filepath.Join(diffRoot, "inputs", arm), 0o700); err != nil {
+						t.Fatal(err)
+					}
+					project := []byte("base\n")
+					binary := []byte{0, 1}
+					if arm == "treatment" {
+						project = append(project, []byte("\n[mcp_servers.moai.tools.codex_role_audit]\napproval_mode = \"approve\"\n")...)
+						binary = []byte{0, 2}
+					}
+					if err := os.WriteFile(filepath.Join(diffRoot, "inputs", arm, "project-config.toml"), project, 0o600); err != nil {
+						t.Fatal(err)
+					}
+					if err := os.WriteFile(filepath.Join(diffRoot, "inputs", arm, "z.bin"), binary, 0o600); err != nil {
+						t.Fatal(err)
+					}
+				}
+				diff := exec.Command("diff", "-r", "inputs/control", "inputs/treatment")
+				diff.Dir = diffRoot
+				actualDiff, diffErr := diff.CombinedOutput()
+				if e, ok := diffErr.(*exec.ExitError); !ok || e.ExitCode() != 1 || !bytes.Contains(actualDiff, []byte("Binary files ")) {
+					t.Fatalf("binary diff fixture failed: %v: %s", diffErr, actualDiff)
+				}
+				for _, mutation := range []string{
+					string(actualDiff),
+					validDiff + "Only in inputs/control: extra.txt\n",
+				} {
+					mutantRows := preApprovalGate(inputs, mutation, validStartup, func() error {
+						return exec.Command(fakeCodex, "exec", "--json", "LIVE").Run()
+					})
+					if len(mutantRows) != 1 || mutantRows[0].Kind != "stop" {
+						t.Fatalf("extra arm diff accepted: %q", mutation)
+					}
+				}
+			}
+			if tc.name == "startup_check_fails" {
+				for _, mutation := range []preApprovalStartupProof{
+					{},
+					{Fixture: "disc-control", Stdout: []byte("arbitrary text"), Launches: map[string]int{"moai": 1}},
+					{Fixture: "disc-control", Stdout: validStartup.Stdout},
+					{Fixture: "disc-control", Stdout: []byte("{\"type\":\"thread.started\"}\n{\"type\":\"thread.started\"}\n"), Launches: map[string]int{"moai": 1}},
+					{Fixture: "disc-control", Stdout: validStartup.Stdout, Stderr: []byte("Error: unknown variant `bogus`"), Launches: map[string]int{"moai": 1}},
+					{Fixture: "disc-control", Stdout: []byte("{\"type\":\"thread.started\"}\n{\"type\":\"item.completed\",\"item\":{\"type\":\"command_execution\"}}\n"), Launches: map[string]int{"moai": 1}},
+					{Fixture: "car010", Stdout: validStartup.Stdout, Launches: map[string]int{"moai": 1}},
+				} {
+					mutantRows := preApprovalGate(inputs, validDiff, mutation, func() error {
+						return exec.Command(fakeCodex, "exec", "--json", "LIVE").Run()
+					})
+					if len(mutantRows) != 1 || mutantRows[0].Kind != "stop" {
+						t.Fatalf("invalid startup proof accepted: %+v", mutation)
+					}
+				}
+				positiveCalls := 0
+				positive := preApprovalGate(inputs, validDiff, validStartup, func() error { positiveCalls++; return nil })
+				if positiveCalls != 1 || len(positive) != 1 || positive[0].Kind != "live" {
+					t.Fatalf("valid startup proof did not reach callback: rows=%v calls=%d", positive, positiveCalls)
+				}
+			}
 			log, err := os.ReadFile(launchLog)
 			if err != nil && !os.IsNotExist(err) {
 				t.Fatal(err)

@@ -497,3 +497,51 @@ ok  github.com/modu-ai/moai-adk/internal/cli 87.810s
 ### Residual-risk
 
 가짜 Codex의 중단 경로가 통과한 것과 실제 Codex의 배차·승인 결과는 별개다. 종료 상한에서 MCP가 한 번 기동해도 이후 도구 호출의 승인 정책은 바뀌지 않을 수 있다. 첫 LIVE 전에 실사용 인자 재반출, 마지막 네 시작 검사, 장부 해시·시각 판정을 다시 닫아야 한다.
+
+## M1-a 감사 F1·F2 수리 증거 — 2026-09-25
+
+### Claim
+
+독립 감사 `sync-audit.md`의 F1·F2 재현 입력을 이제 LIVE 콜백 전에 거부한다. F1의 실제 `diff -r` 바이너리 차이 추가와 F2의 빈·임의 시작 검사, MCP 기동 0회, car010 decoy 0회, 설정 적재 오류, 비허용 도구 이벤트를 음성 대조로 확인했다. 이 기록은 독립 재감사의 PASS 판정이 아니다.
+
+### Evidence
+
+```text
+unset MOAI_KANBAN MOAI_KANBAN_ID MOAI_KANBAN_LABEL MOAI_KANBAN_LEAD_ADDR MOAI_KANBAN_SETTINGS_INJECTED MOAI_KANBAN_BACKEND MOAI_FACTORY_WORKER MOAI_FACTORY_WORKERS && go test ./internal/cli -run '^TestCodexPreApprovalGateRefusals$' -count=1 -v -timeout=40s
+--- PASS: TestCodexPreApprovalGateRefusals (0.57s)
+    --- PASS: TestCodexPreApprovalGateRefusals/missing_input (0.00s)
+    --- PASS: TestCodexPreApprovalGateRefusals/arm_diff_exceeds (0.00s)
+    --- PASS: TestCodexPreApprovalGateRefusals/startup_check_fails (0.56s)
+    --- PASS: TestCodexPreApprovalGateRefusals/clean_refuses_non_fixture_root (0.00s)
+    --- PASS: TestCodexPreApprovalGateRefusals/kills_only_recorded_pids (0.00s)
+PASS
+ok  github.com/modu-ai/moai-adk/internal/cli 1.378s
+
+AC-CPP-012 JSON 판정 명령(acceptance.md) 출력
+true
+
+unset MOAI_KANBAN MOAI_KANBAN_ID MOAI_KANBAN_LABEL MOAI_KANBAN_LEAD_ADDR MOAI_KANBAN_SETTINGS_INJECTED MOAI_KANBAN_BACKEND MOAI_FACTORY_WORKER MOAI_FACTORY_WORKERS && MOAI_CODEX_PREAPPROVAL_LIVE=1 MOAI_T1172_EVIDENCE_DIR=.moai/reports/t1172 go test ./internal/cli -run '^TestCodexPreApprovalStartup$' -count=1 -v -timeout=150s
+    codex_preapproval_startup_test.go:342: disc-control startup exit=-1 moai=1 decoy=0 items=0
+    codex_preapproval_startup_test.go:342: disc-treatment startup exit=-1 moai=1 decoy=0 items=0
+    codex_preapproval_startup_test.go:342: car010 startup exit=-1 moai=1 decoy=1 items=0
+    codex_preapproval_startup_test.go:342: car011 startup exit=-1 moai=1 decoy=0 items=0
+--- PASS: TestCodexPreApprovalStartup (87.25s)
+PASS
+ok  github.com/modu-ai/moai-adk/internal/cli 87.840s
+```
+
+F1 대조는 두 팔의 `project-config.toml`에 허용 표를 추가하고 `z.bin`에 다른 바이트를 넣어 실제 `diff -r`로 생성했다. 전체 출력에 `Binary files ... differ`가 포함된 것을 확인한 후 게이트의 `stop` 행과 LIVE 기동 0회를 단언했다. F2 대조는 구조화된 시작 검사 결과의 `thread.started` 정확히 1개와 moai 기동 1회 이상을 양성 조건으로 삼았다. car010에는 decoy 기동도 필요하다.
+
+### Baseline-attribution
+
+이번 수리는 worktree `WT-codex-preapproval-probe`의 독립 감사 커밋 `abb5d158c` 위에서 측정했다. 실제 시작 검사는 설치된 Codex CLI 0.157.0, 인증 없는 `CODEX_HOME`, 접속 불가 제공자 주소 `http://127.0.0.1:9/v1`에서 재실행했다.
+
+### Gaps
+
+- 독립 재감사 결과를 아직 받지 않았다. M1-b LIVE는 실행하지 않았다.
+- 실제 LIVE 호출 인자·프롬프트로 다시 반출하고 마지막 시작 검사·장부 해시 판정을 닫는 작업이 남았다.
+- 원시 JSONL·장부·매니페스트는 이 worktree의 ignored 로컬 산출물이다.
+
+### Residual-risk
+
+테스트 하네스의 양성 시작 검사와 실제 사전 승인 효과는 서로 다른 판정이다. 독립 재감사와 LIVE 전 입력 일치 검사를 통과하기 전에는 승인 동작을 주장할 수 없다.

@@ -333,10 +333,9 @@ func TestCodexPreApprovalStartup(t *testing.T) {
 				t.Fatal(err)
 			}
 			preApprovalWriteJSON(t, filepath.Join(startupDir, name+".launches.json"), map[string]int{"moai": moaiLaunches, "decoy": decoyLaunches})
-			if strings.Contains(string(out), `"type":"item.`) || moaiLaunches == 0 ||
-				(name == "car010" && decoyLaunches == 0) || end-start > int64(25*time.Second) ||
-				strings.Contains(string(stderr), "Not inside a trusted directory") ||
-				strings.Contains(string(stderr), "unknown configuration field") {
+			proof := preApprovalStartupProof{Fixture: name, Stdout: out, Stderr: stderr,
+				Launches: map[string]int{"moai": moaiLaunches, "decoy": decoyLaunches}}
+			if !preApprovalStartupValid(proof) || end-start > int64(25*time.Second) {
 				ledger = append(ledger, preApprovalStartupRow{Kind: "stop", Fixture: name, Reason: "startup MCP launch or non-model gate failed"})
 				break
 			}
