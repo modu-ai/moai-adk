@@ -39,6 +39,10 @@ Recorded at the lead's request, in the lead's words:
   prior close `85414b3e6`.
 - run phase owes: M7 in plan.md. The t1107 §E.2-§E.4 evidence below is the prior close's and is
   left untouched; the amendment's run evidence is manager-develop's to add.
+- Implementation Kickoff Approval (run entry): granted by the operator in the lane window on
+  2026-09-25. Operator's answer, verbatim: "run, sync 모두 진행". Plan-audit standing at kickoff:
+  iter-2 PASS-WITH-DEBT (`.moai/reports/t1169/plan-audit-iter2.md`), debts N1 / N2 carried into the
+  run delegation and resolved there — see §E.2.6.
 
 ## §E.2 Run-phase Evidence
 
@@ -134,6 +138,116 @@ already carrying the v3 columns, and a blind `ALTER TABLE … ADD COLUMN` then f
 `duplicate column name: lead_pid`. Caught by `TestFactoryV1ClaimedRowsUpgradeToV2`.
 `migrateFactoryV2ToV3` now reads `PRAGMA table_info(runs)` and adds only the missing columns.
 
+### E.2.6 v0.13.x amendment run (card t1169, plan.md M7)
+
+Base: branch `WT-retire-boot-proof-spec` at `e5f020cc3` (its `internal/` tree equals `a0b78213d`'s).
+Host: darwin. Every command below ran in this worktree against the tree at the commit named.
+
+**Commits.** RED `09c99c071` (tests plus a signature-only `procStatBootTime` stub) → GREEN
+`1610e0ee7` (implementation) → this evidence commit. The RED commit precedes the GREEN commit in the
+graph, so the ordering is witnessed by git rather than asserted (verification-claim-integrity §2.3).
+
+**RED (on `09c99c071`)** — `go test ./internal/homestate/ -run 'ProcStat|TestRetiredEventRecordsProofBasis|TestBootProofDeclinesWithoutEveryPremise' -count=1`, exit 1:
+
+```
+--- FAIL: TestProcStatBootTimeFindsBtimeAfterLongLine (0.00s)
+    boot_time_procstat_test.go:20: procStatBootTime: procfs stat carries no btime record, want the btime after the 262149-byte intr line
+--- FAIL: TestProcStatBootTimeReportsReadError (0.00s)
+    boot_time_procstat_test.go:38: cause = procfs stat carries no btime record, want the read error procfs read failed mid-stream
+--- FAIL: TestProcStatBootTimeRejectsMalformedBtime (0.00s)
+--- FAIL: TestProcStatBootTimeAcceptsUnterminatedFinalLine (0.00s)
+--- FAIL: TestRetiredEventRecordsProofBasis (0.01s)
+        factory_run_boot_proof_test.go:268: run-stamp basis = "", want "stamp" (payload map[classification:dead])
+        factory_run_boot_proof_test.go:268: run-peer basis = "", want "peer" (payload map[classification:dead])
+        factory_run_boot_proof_test.go:268: run-boot basis = "", want "boot" (payload map[classification:dead])
+        factory_run_boot_proof_test.go:282: payload = map[classification:dead], want classification dead and basis boot
+FAIL	github.com/modu-ai/moai-adk/internal/homestate	0.479s
+```
+
+`TestProcStatBootTimeWithoutBtimeIsUnavailable` passed on the stub, which returns "no btime record":
+leg (iii) discriminates only together with leg (ii), which requires the two causes to differ. The
+AC-018 legs passed on RED by design — they are regression guards (`go test ./internal/factorymsg/
+-run 'PartialStamp|LeadRecordAbsentFor' -count=1 -v` → four `--- PASS` lines, `ok … 7.712s`). Their
+discriminating evidence is the mutant table below.
+
+**GREEN (on `1610e0ee7`).**
+
+| Command | Exit | Output tail |
+|---|---|---|
+| `go test ./internal/homestate/... ./internal/factorymsg/... -count=1` | 0 | `ok …/internal/homestate 17.806s` / `ok …/internal/factorymsg 50.592s` |
+| `go test ./internal/cli/ -run 'FactoryRuns\|Abandon\|LaneHandoffRecover\|EnterSelectedFactoryRun\|ResolveActiveRun' -count=1` | 0 | `ok …/internal/cli 20.835s` — the selector matches 4 tests (`go test -list` with the same pattern prints 4), so this is not a zero-match green |
+| `go vet ./internal/homestate/... ./internal/factorymsg/... ./internal/cli/` | 0 | (no output) |
+| `golangci-lint run ./internal/homestate/... ./internal/factorymsg/...` | 0 | `0 issues.` |
+| `GOOS=linux go build ./internal/homestate/ ./internal/factorymsg/` | 0 | (no output) |
+| `GOOS=windows go build ./internal/homestate/ ./internal/factorymsg/` | 0 | (no output) |
+| `GOOS=linux go vet ./internal/homestate/` | 0 | (no output) |
+| `GOOS=windows go vet ./internal/homestate/` | 0 | (no output) |
+
+**RED-now cells re-run on `1610e0ee7`.** R-09 `grep -rl btime internal/homestate --include='*_test.go'`
+→ `internal/homestate/boot_time_procstat_test.go`, exit 0 (was empty, exit 1). R-10
+`grep -rl --exclude='*_test.go' '"basis"' internal/homestate` → `internal/homestate/factory_run_retire.go`,
+exit 0 (was empty, exit 1).
+
+**Mutant probes.** Each mutant changed one production site; then
+`go test ./internal/homestate/ -count=1` and `go test ./internal/factorymsg/ -count=1 -run
+'BootProof|PreBoot|PartialStamp|LeadRecordAbsentFor|ResolveActiveRun'` ran; then the original file
+bytes were written back. Every mutant edit carried the marker `T1169-MUTANT`. After the run:
+`grep -rn T1169-MUTANT internal/` → no output, exit 1; the worktree status was empty; and the suite
+re-ran green (`ok homestate 14.698s`, `ok factorymsg 45.912s`). The generic `grep -rn MUTANT
+internal/` count is 11 both before and after — pre-existing comments in other packages. Per-mutant
+logs: `.moai/reports/t1169/mutant-M*.log` (local evidence, not committed); the failing test names are
+copied here.
+
+| Mutant | Edit | Failing tests |
+|---|---|---|
+| M1 proof always declines | `predatesBoot` returns `false` first | TestReconcileRetiresIdentitylessRunsThatPredateBoot, TestRetireRunIfDeadAcceptsBootProof, TestResolveActiveRunReapsPreBootIdentitylessRuns, TestResolveActiveRunPreBootRowsAloneFailClosedAsNoActive, TestPartialStampWithoutBrokerIsBootProven, TestRetiredEventRecordsProofBasis/{reconciler, operator_retire_of_a_boot-proven_run}, and — through their positive controls — TestPartialStampWithBrokerStaysIndeterminate, TestLeadRecordAbsentFor{TreatsStatErrorAsPossibleRecord, RejectsUnderivableBrokerPath}. **Stayed green:** TestBootProofNeverOverridesAnIdentity (the identity-precedence leg) |
+| M2 lead-record premise dropped | `\|\| !opts.LeadRecordAbsent(runID)` → `\|\| false` | TestBootProofDeclinesWithoutEveryPremise/lead_record_may_exist, TestResolveActiveRunBootProofDeclinesWhenBrokerExists, TestPartialStampWithBrokerStaysIndeterminate, TestLeadRecordAbsentForTreatsStatErrorAsPossibleRecord, TestLeadRecordAbsentForRejectsUnderivableBrokerPath |
+| M3 post-boot activity ignored | `perr != nil \|\| !at.Before(boot)` → `perr != nil` | TestBootProofDeclinesWithoutEveryPremise/{event_after_boot, worker_heartbeat_after_boot, card_updated_after_boot, run_row_touched_after_boot, timestamp_equal_to_boot}, TestResolveActiveRunAmbiguityNamesClassifications |
+| M4 strictly-earlier → not-later | `!at.Before(boot)` → `at.After(boot)` | TestBootProofDeclinesWithoutEveryPremise/timestamp_equal_to_boot |
+| M5a stat error as absence | `errors.Is(err, fs.ErrNotExist)` → `err != nil && !errors.Is(err, fs.ErrExist)` | TestLeadRecordAbsentForTreatsStatErrorAsPossibleRecord |
+| M5b underivable path as absence | the `BrokerPath` error branch returns `true` | TestLeadRecordAbsentForRejectsUnderivableBrokerPath |
+| M6 partial stamp routed to peer | fallback also taken when `start` is empty | TestPartialStampWithBrokerStaysIndeterminate |
+| M19a read error discarded | the read-error branch returns `errProcStatNoBtime` | TestProcStatBootTimeReportsReadError |
+| M19b default 64 KiB scanner | the seam rewritten over `bufio.Scanner` | TestProcStatBootTimeFindsBtimeAfterLongLine |
+| M20a constant basis `stamp` | the payload writes `BasisStamp` | TestRetiredEventRecordsProofBasis/{reconciler, operator_retire_of_a_boot-proven_run} |
+| M20b operator path constant `stamp` | `RetireRunIfDead` passes `BasisStamp` | TestRetiredEventRecordsProofBasis/operator_retire_of_a_boot-proven_run only — `/reconciler` stayed green |
+| M20c `basis` key omitted | payload `{"classification":…}` only | TestRetiredEventRecordsProofBasis/{reconciler, operator_retire_of_a_boot-proven_run} |
+| M20d `classification` key renamed | payload key `state` | TestRetiredEventRecordsProofBasis/{reconciler, operator_retire_of_a_boot-proven_run} |
+
+The first forms of M3 and M5a did not compile (an unused variable; unused imports) and are not
+counted. Both were re-expressed as compiling edits and re-run
+(`.moai/reports/t1169/mutants-summary-rerun.log`); the table carries the re-run.
+
+**AC standing for the amendment.**
+
+| AC | Standing | Basis |
+|---|---|---|
+| AC-018 | regression-guard: green on the run tree; mutants 1-6 (5 as 5a and 5b) each observed red and restored | mutant table |
+| AC-019 | PASS | RED on `09c99c071`, GREEN on `1610e0ee7`, M19a and M19b red |
+| AC-020 | PASS | RED on `09c99c071`, GREEN on `1610e0ee7`, M20a-d red; M20b isolates the operator leg |
+
+**Plan-audit debts carried into this run.** N1:
+`TestLeadRecordAbsentFor{TreatsStatErrorAsPossibleRecord, RejectsUnderivableBrokerPath}` assert the
+function's `false` AND the end-to-end reconcile outcome (`active` plus `OwnerIndeterminate`, read from
+`Reconciliation.Remaining`), each beside a positive-control run that the same options retire `dead`.
+N2: `TestPartialStampWithBrokerStaysIndeterminate` seeds the `role='lead'` peer with a dead PID and a
+non-empty `process_start` (the test fails outright if that fingerprint is empty) and dates every run
+timestamp before boot; its positive control retires, so premise 2 is the only declining premise, and
+M6 turns the leg red. Residual-risk note: the `RecordRun` comment in `internal/homestate/runtime.go`
+now names the REQ-006b boot proof instead of "indeterminate forever".
+
+**Files changed** (`git diff --stat a0b78213d HEAD -- internal`): 7 files, +463 / −27 —
+`internal/homestate/{boot_time_procstat.go (new), boot_time_procstat_test.go (new), boot_time_unix.go,
+factory_run_boot_proof_test.go, factory_run_retire.go, runtime.go}` and
+`internal/factorymsg/factory_run_boot_proof_legs_test.go (new)`. No `internal/cli` change. No
+acceptance.md change, so the AC snapshot is not regenerated.
+
+**Gaps.** The factorymsg boot-proof legs read the host's real boot time and skip where the host
+reports none; on this darwin host they ran. The linux `platformBootTime` over a live `/proc/stat` and
+the windows reader were cross-built and vetted, not executed — they land on the post-merge three-OS
+CI run (spec.md §F). The full repository suite was not run locally, by design. No independent
+reviewer has read this run yet.
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 ```yaml
@@ -154,6 +268,27 @@ cross_platform_build:
   linux: deferred to the develop-push CI run
 total_run_phase_files: 17
 m1_to_mN_commit_strategy: single run-phase commit covering M1-M6
+```
+
+### E.3.1 Run-phase Audit-Ready Signal — v0.13.x amendment (card t1169)
+
+```yaml
+run_complete_at: 2026-09-25
+run_commit_sha: 1610e0ee7   # GREEN implementation commit; RED tests at 09c99c071
+run_status: implemented
+ac_pass_count: 2              # AC-019, AC-020
+ac_regression_guard_count: 1  # AC-018 — mutants 1-6 observed red and restored, never a bare pass
+ac_fail_count: 0
+preserve_list_post_run_count: 0
+l44_pre_commit_fetch: n/a (no push in this phase)
+l44_post_push_fetch: n/a (no push in this phase)
+new_warnings_or_lints_introduced: 0
+cross_platform_build:
+  darwin_arm64: pass (tests executed)
+  linux_cross_build_and_vet: pass
+  windows_cross_build_and_vet: pass
+total_run_phase_files: 7
+m1_to_mN_commit_strategy: M7 as a RED commit then a GREEN commit, then this evidence commit
 ```
 
 ## §E.4 Sync-phase Audit-Ready Signal
