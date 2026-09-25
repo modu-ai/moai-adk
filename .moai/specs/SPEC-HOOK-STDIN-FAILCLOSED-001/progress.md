@@ -88,7 +88,135 @@
 
 ## §E.2 Run-phase Evidence
 
-_<pending run-phase>_
+### Pre-flight 3·4 기준선 (구현 전, 2026-09-25)
+
+범위: plan.md §C 의 3·4 항목만 수행했다. 1(t1099 착지 확인)·2(심볼 diff)·5(설정 `env` 전파 측정)는 이번에 하지 않았다. Go 소스·테스트·템플릿·규칙 파일은 건드리지 않았고, 라이브 모델·에이전트 실행(`claude -p`, `codex exec`)도 하지 않았다.
+
+**[HARD] 이 기준선은 t1099 를 흡수하기 전에 잰 것이다.** t1099 는 `internal/cli/hook.go` 의 디스패치 오류 경로를 바꾸므로, run 착수 시 t1099 를 흡수한 병합 트리에서 같은 측정을 다시 하고 이 기록과 대조해야 한다. 이 표를 병합 트리의 수리 전 기준선으로 그대로 인용하지 않는다.
+
+#### 측정 대상 빌드
+
+- 트리 HEAD: `0aa6b14f0bbbd9a371e1dae97c2bc5b588441468` (브랜치 `WT-hook-stdin-failclosed`, 빌드 시점 `git status --short` 빈 출력)
+- 빌드: 이 트리에서 `go build -o <scratch>/pf4/moai-t1152 ./cmd/moai` → `build_exit=0`. 툴체인 `go version go1.26.8 darwin/arm64`. 모든 측정은 이 바이너리를 경로로 직접 호출했다(설치본 `moai` 를 쓰지 않음, `verification-claim-integrity.md` §2.2). ldflags 없이 빌드했으므로 바이너리의 `version` 출력에는 커밋이 박혀 있지 않다 — 판정 빌드의 커밋은 위 HEAD 로 귀속한다.
+- `<scratch>` = `/private/tmp/claude-501/-Users-goos-MoAI-moai-adk-go--claude-worktrees-develop/a99d4f42-56e7-4b79-a6cc-04004cb1829e/scratchpad` (머신 로컬 스크래치 — 아래 판정에 쓴 명령과 출력은 이 파일에 옮겨 적었다).
+
+#### Pre-flight 3 — codex-cli 버전
+
+```
+$ command -v codex; codex --version
+/Users/goos/.local/bin/codex
+codex-cli 0.156.1
+```
+
+Q2 측정 버전(0.156.1)과 같다. Q2 재측정은 필요 없고, REQ-HSF-013 술어·spec.md §B.2 행 3 개정 사유도 생기지 않았다. run 착수 시 버전이 바뀌어 있으면 그때 plan.md §C 3 에 따라 다시 잰다.
+
+#### Pre-flight 4 — 측정 방법
+
+- 각 호출마다 `<scratch>/pf4/proj.XXXXXX` 아래 새 임시 디렉터리를 만들고, 작업 디렉터리와 `CLAUDE_PROJECT_DIR`·`MOAI_PROJECT_DIR` 를 모두 그 디렉터리로 두었다. `HOME` 은 바꾸지 않았다. 셸에서 물려받은 `MOAI_KANBAN_BACKEND`·`MOAI_KANBAN_SETTINGS_INJECTED`·`MOAI_FACTORY_WORKER`·`MOAI_FACTORY_WORKERS` 는 러너 안에서 `unset` 했다.
+- 호출 형태: `( cd "$d" && CLAUDE_PROJECT_DIR="$d" MOAI_PROJECT_DIR="$d" "$BIN" hook <하위 명령> [인자] < <페이로드> > <label>.stdout 2> <label>.stderr )`. 각 줄의 `rc` 는 그 종료 코드, `stdout(nB)` 는 바이트 수와 앞 200바이트, `stderr` 는 앞 220바이트, `canary_in_out` 은 stdout·stderr 에 `CANARY` 문자열이 있는지, `files_in_projdir` 는 호출 뒤 임시 디렉터리 안 파일 수다.
+- 페이로드(acceptance.md §0 의 파손 4 형태, 스크래치 러너가 생성 — 인라인 heredoc 아님):
+  - malformed: `{"broken":"CANARY-MALFORMED` (27 B)
+  - truncated: `{"hook_event_name":"PreToolUse","tool_name":"Bash","tool_input":{"note":"CANARY-TRUNCATED",` — 카나리 뒤에서 자름, 닫는 중괄호 없음 (91 B)
+  - oversize: `{"hook_event_name":"PreToolUse","tool_input":{"note":"CANARY-OVERSIZE","content":"` + `a` × 6 MiB + `"}}` (6,291,541 B)
+  - depth: `{"hook_event_name":"PreToolUse","tool_input":{"note":"CANARY-DEPTH","x":` + `[`×10001 + `]`×10001 + `}}` (20,076 B)
+  - depth9000(대조군, acceptance.md §0 의 run 착수 시 대조를 미리 한 번 잰 것): 같은 구성, 깊이 9000 (18,078 B)
+  - valid: `{}` (2 B)
+- 관측 한계: **디스패치 횟수는 바깥에서 관측할 수 없다.** 프로세스 경계에서 보이는 것은 stdout `{}` 와 stderr 의 `emitting default output` 경고뿐이며, 이것이 파싱 실패 분기(디스패치 없음)를 탔다는 관측 가능한 표지다. 디스패치 0회의 직접 관측은 run 의 스파이 레지스트리 테스트(AC-HSF-001 등) 몫이다.
+
+#### Pre-flight 4 — 결과 (판정에 쓴 출력 원문, stdout `{}` 는 줄바꿈 포함 3 B)
+
+(a) `pre-tool` × 파손 4 형태 + 깊이 9000 대조군:
+
+```
+a_pretool_malformed | rc=0 | stdout(3B)={}  | stderr=moai hook PreToolUse: invalid stdin JSON (hook: invalid JSON input: unexpected end of JSON input); emitting default output  | canary_in_out=no | files_in_projdir=0
+a_pretool_truncated | rc=0 | stdout(3B)={}  | stderr=moai hook PreToolUse: invalid stdin JSON (hook: invalid JSON input: unexpected end of JSON input); emitting default output  | canary_in_out=no | files_in_projdir=0
+a_pretool_oversize | rc=0 | stdout(3B)={}  | stderr=moai hook PreToolUse: invalid stdin JSON (hook: invalid JSON input: unexpected end of JSON input); emitting default output  | canary_in_out=no | files_in_projdir=0
+a_pretool_depth | rc=0 | stdout(3B)={}  | stderr=moai hook PreToolUse: invalid stdin JSON (hook: invalid JSON input: invalid character '[' exceeded max depth); emitting default output  | canary_in_out=no | files_in_projdir=0
+a_pretool_depth9000 | rc=0 | stdout(83B)={"hookSpecificOutput":{"hookEventName":"PreToolUse","permissionDecision":"allow"}}  | stderr= | canary_in_out=no | files_in_projdir=0
+```
+
+(b) 관측 하위 명령 22개 × malformed:
+
+```
+b_session-start | rc=0 | stdout(3B)={}  | stderr=moai hook SessionStart: invalid stdin JSON (hook: invalid JSON input: unexpected end of JSON input); emitting default output  | canary_in_out=no | files_in_projdir=0
+b_post-tool | rc=0 | stdout(3B)={}  | stderr=moai hook PostToolUse: invalid stdin JSON (hook: invalid JSON input: unexpected end of JSON input); emitting default output  | canary_in_out=no | files_in_projdir=0
+b_session-end | rc=0 | stdout(3B)={}  | stderr=moai hook SessionEnd: invalid stdin JSON (hook: invalid JSON input: unexpected end of JSON input); emitting default output  | canary_in_out=no | files_in_projdir=0
+b_subagent-stop | rc=0 | stdout(3B)={}  | stderr=moai hook SubagentStop: invalid stdin JSON (hook: invalid JSON input: unexpected end of JSON input); emitting default output  | canary_in_out=no | files_in_projdir=0
+b_compact | rc=0 | stdout(3B)={}  | stderr=moai hook PreCompact: invalid stdin JSON (hook: invalid JSON input: unexpected end of JSON input); emitting default output  | canary_in_out=no | files_in_projdir=0
+b_post-tool-failure | rc=0 | stdout(3B)={}  | stderr=moai hook PostToolUseFailure: invalid stdin JSON (hook: invalid JSON input: unexpected end of JSON input); emitting default output  | canary_in_out=no | files_in_projdir=0
+b_notification | rc=0 | stdout(3B)={}  | stderr=moai hook Notification: invalid stdin JSON (hook: invalid JSON input: unexpected end of JSON input); emitting default output  | canary_in_out=no | files_in_projdir=0
+b_subagent-start | rc=0 | stdout(3B)={}  | stderr=moai hook SubagentStart: invalid stdin JSON (hook: invalid JSON input: unexpected end of JSON input); emitting default output  | canary_in_out=no | files_in_projdir=0
+b_teammate-idle | rc=0 | stdout(3B)={}  | stderr=moai hook TeammateIdle: invalid stdin JSON (hook: invalid JSON input: unexpected end of JSON input); emitting default output  | canary_in_out=no | files_in_projdir=0
+b_task-completed | rc=0 | stdout(3B)={}  | stderr=moai hook TaskCompleted: invalid stdin JSON (hook: invalid JSON input: unexpected end of JSON input); emitting default output  | canary_in_out=no | files_in_projdir=0
+b_worktree-create | rc=0 | stdout(0B)= | stderr=moai hook WorktreeCreate: invalid stdin JSON (hook: invalid JSON input: unexpected end of JSON input); emitting default output  | canary_in_out=no | files_in_projdir=0
+b_worktree-remove | rc=0 | stdout(0B)= | stderr=moai hook WorktreeRemove: invalid stdin JSON (hook: invalid JSON input: unexpected end of JSON input); emitting default output  | canary_in_out=no | files_in_projdir=0
+b_post-compact | rc=0 | stdout(3B)={}  | stderr=moai hook PostCompact: invalid stdin JSON (hook: invalid JSON input: unexpected end of JSON input); emitting default output  | canary_in_out=no | files_in_projdir=0
+b_instructions-loaded | rc=0 | stdout(3B)={}  | stderr=moai hook InstructionsLoaded: invalid stdin JSON (hook: invalid JSON input: unexpected end of JSON input); emitting default output  | canary_in_out=no | files_in_projdir=0
+b_stop-failure | rc=0 | stdout(3B)={}  | stderr=moai hook StopFailure: invalid stdin JSON (hook: invalid JSON input: unexpected end of JSON input); emitting default output  | canary_in_out=no | files_in_projdir=0
+b_config-change | rc=0 | stdout(3B)={}  | stderr=moai hook ConfigChange: invalid stdin JSON (hook: invalid JSON input: unexpected end of JSON input); emitting default output  | canary_in_out=no | files_in_projdir=0
+b_task-created | rc=0 | stdout(3B)={}  | stderr=moai hook TaskCreated: invalid stdin JSON (hook: invalid JSON input: unexpected end of JSON input); emitting default output  | canary_in_out=no | files_in_projdir=0
+b_cwd-changed | rc=0 | stdout(3B)={}  | stderr=moai hook CwdChanged: invalid stdin JSON (hook: invalid JSON input: unexpected end of JSON input); emitting default output  | canary_in_out=no | files_in_projdir=0
+b_file-changed | rc=0 | stdout(3B)={}  | stderr=moai hook FileChanged: invalid stdin JSON (hook: invalid JSON input: unexpected end of JSON input); emitting default output  | canary_in_out=no | files_in_projdir=0
+b_elicitation | rc=0 | stdout(3B)={}  | stderr=moai hook Elicitation: invalid stdin JSON (hook: invalid JSON input: unexpected end of JSON input); emitting default output  | canary_in_out=no | files_in_projdir=0
+b_elicitation-result | rc=0 | stdout(3B)={}  | stderr=moai hook ElicitationResult: invalid stdin JSON (hook: invalid JSON input: unexpected end of JSON input); emitting default output  | canary_in_out=no | files_in_projdir=0
+b_permission-denied | rc=0 | stdout(3B)={}  | stderr=moai hook PermissionDenied: invalid stdin JSON (hook: invalid JSON input: unexpected end of JSON input); emitting default output  | canary_in_out=no | files_in_projdir=0
+```
+
+`pre-tool` 외 결정 이벤트 하위 명령 × malformed, 그리고 `pre-tool --harness codex` × malformed:
+
+```
+d_permission-request | rc=0 | stdout(3B)={}  | stderr=moai hook PermissionRequest: invalid stdin JSON (hook: invalid JSON input: unexpected end of JSON input); emitting default output  | canary_in_out=no | files_in_projdir=0
+d_stop | rc=0 | stdout(3B)={}  | stderr=moai hook Stop: invalid stdin JSON (hook: invalid JSON input: unexpected end of JSON input); emitting default output  | canary_in_out=no | files_in_projdir=0
+d_user-prompt-submit | rc=0 | stdout(3B)={}  | stderr=moai hook UserPromptSubmit: invalid stdin JSON (hook: invalid JSON input: unexpected end of JSON input); emitting default output  | canary_in_out=no | files_in_projdir=0
+d_pretool_codex | rc=0 | stdout(3B)={}  | stderr=moai hook PreToolUse: invalid stdin JSON (hook: invalid JSON input: unexpected end of JSON input); emitting default output  | canary_in_out=no | files_in_projdir=0
+```
+
+(c) `hook agent <action>` × malformed, 그리고 유효한 stdin `{}` + `--harness bogus`:
+
+```
+c_agent_x-validation | rc=0 | stdout(3B)={}  | stderr=moai hook agent x-validation: invalid stdin JSON (hook: invalid JSON input: unexpected end of JSON input); emitting default output  | canary_in_out=no | files_in_projdir=0
+c_agent_x-pre-transformation | rc=0 | stdout(3B)={}  | stderr=moai hook agent x-pre-transformation: invalid stdin JSON (hook: invalid JSON input: unexpected end of JSON input); emitting default output  | canary_in_out=no | files_in_projdir=0
+c_agent_x-pre-implementation | rc=0 | stdout(3B)={}  | stderr=moai hook agent x-pre-implementation: invalid stdin JSON (hook: invalid JSON input: unexpected end of JSON input); emitting default output  | canary_in_out=no | files_in_projdir=0
+c_agent_foo | rc=0 | stdout(3B)={}  | stderr=moai hook agent foo: invalid stdin JSON (hook: invalid JSON input: unexpected end of JSON input); emitting default output  | canary_in_out=no | files_in_projdir=0
+c_agent_x-verification | rc=0 | stdout(3B)={}  | stderr=moai hook agent x-verification: invalid stdin JSON (hook: invalid JSON input: unexpected end of JSON input); emitting default output  | canary_in_out=no | files_in_projdir=0
+c_agent_x-post-transformation | rc=0 | stdout(3B)={}  | stderr=moai hook agent x-post-transformation: invalid stdin JSON (hook: invalid JSON input: unexpected end of JSON input); emitting default output  | canary_in_out=no | files_in_projdir=0
+c_agent_x-post-implementation | rc=0 | stdout(3B)={}  | stderr=moai hook agent x-post-implementation: invalid stdin JSON (hook: invalid JSON input: unexpected end of JSON input); emitting default output  | canary_in_out=no | files_in_projdir=0
+c_agent_x-completion | rc=0 | stdout(3B)={}  | stderr=moai hook agent x-completion: invalid stdin JSON (hook: invalid JSON input: unexpected end of JSON input); emitting default output  | canary_in_out=no | files_in_projdir=0
+c_agent_bogus_x-validation | rc=0 | stdout(83B)={"hookSpecificOutput":{"hookEventName":"PreToolUse","permissionDecision":"allow"}}  | stderr= | canary_in_out=no | files_in_projdir=0
+c_agent_bogus_x-verification | rc=0 | stdout(55B)={"hookSpecificOutput":{"hookEventName":"PostToolUse"}}  | stderr= | canary_in_out=no | files_in_projdir=0
+c_agent_bogus_x-completion | rc=0 | stdout(3B)={}  | stderr= | canary_in_out=no | files_in_projdir=0
+```
+
+#### 계획의 예상과 대조
+
+| 항목 | plan.md §C 4 의 예상 | 관측 | 일치 |
+|---|---|---|---|
+| (a) `pre-tool` 파손 4 형태 | stdout `{}`, exit 0, 디스패치 0 | 4 형태 모두 stdout `{}`·rc=0·stderr 파싱 실패 경고. 디스패치 횟수는 바깥에서 관측 불가(위 관측 한계) | 예(디스패치 0 은 표지로만) |
+| (b) 관측 하위 명령 22개 | 20개 `{}`, worktree-create·worktree-remove 빈 stdout | 20개 `{}`, 두 개 0 B, 전부 rc=0 | 예 |
+| (c) 결정 매핑 action 4종 × malformed | `{}` exit 0 | 4종 모두 `{}` rc=0 | 예 |
+| (c) 관측 매핑 action 4종 × malformed | `{}` exit 0 | 4종 모두 `{}` rc=0 | 예 |
+| (c) `x-validation` + `{}` + `--harness bogus` | exit 0 + PreToolUse allow (plan-audit 2회차 codex 재현) | rc=0, `permissionDecision:"allow"` | 예 — AC-HSF-012 신규 거부의 기준선 |
+| (c) `x-verification`·`x-completion` + `{}` + `--harness bogus` | exit 0 | 둘 다 rc=0. `x-verification` 은 `{"hookSpecificOutput":{"hookEventName":"PostToolUse"}}`, `x-completion` 은 `{}` | 예 — AC-HSF-013 신규 거부의 기준선 |
+| `permission-request`·`stop`·`user-prompt-submit` × malformed | (수리 대상 — 수리 전 `{}` 예상) | 셋 다 `{}` rc=0 | 예 |
+| `pre-tool --harness codex` × malformed | `{}` (AC-HSF-004 가 적은 수리 전 값) | `{}` rc=0 | 예 |
+
+예상에서 어긋난 것은 없다. 덧붙여 기록할 관측:
+
+- malformed·truncated·oversize 세 형태의 stderr 원인 문자열이 모두 `unexpected end of JSON input` 으로 같다. oversize 는 5 MiB 상한에서 잘려 조기 종료로 보고된다(acceptance.md §0 의 서술과 일치). depth 만 `invalid character '[' exceeded max depth` 로 다르다.
+- 깊이 9000 대조군은 파싱에 성공해 디스패치됐고(PreToolUse allow 출력, 경고 없음), depth 형태의 실패가 깊이 상한 때문임을 뒷받침한다. acceptance.md §0 은 이 대조를 `ReadInput` 수준에서 run 착수 시 재라고 하므로, 이 CLI 수준 관측은 그 대조를 대신하지 않는다.
+- 모든 경우에서 카나리 문자열이 stdout·stderr 에 나타나지 않았다(수리 전 경고 문자열은 페이로드 원문을 싣지 않는다).
+- `--harness bogus` 는 `hook agent` 에서 경고 없이 받아들여진다 — 수리 전 `runAgentHook` 에는 하네스 판정이 없다.
+
+#### 격리 확인
+
+- 모든 호출 뒤 임시 프로젝트 디렉터리 안 파일 수가 0이었다(위 각 줄 `files_in_projdir=0`).
+- 측정 뒤 이 워크트리에서 `git status --short` → 빈 출력(저장소에 쓰인 것 없음).
+
+#### 미측정·잔여
+
+- 디스패치 횟수(위 관측 한계). run 의 스파이 테스트 몫.
+- `--harness bogus` + malformed stdin 조합(AC-HSF-004·AC-HSF-012 의 「판정이 읽기보다 앞선다」 관측)은 plan.md §C 4 의 목록에 없어 재지 않았다.
+- Pre-flight 1·2·5 는 이번 범위 밖이다. 특히 1(t1099 착지)이 성립하기 전에는 구현을 시작하지 않는다.
 
 ## §E.3 Run-phase Audit-Ready Signal
 
