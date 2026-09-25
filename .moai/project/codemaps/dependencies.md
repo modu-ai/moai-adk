@@ -1,5 +1,11 @@
 # 의존성 그래프
 
+**현재 재측정 — t1187, `origin/develop` `a8a9b9376` (2026-09-25).**
+아래 import 엣지는 같은 `go list -f` 명령으로 다시 셌다. 비테스트 소스
+변경 41개 중 Codex 감사 런처와 Factory 런 은퇴가 기존 `internal/cli`·
+`internal/homestate`·`internal/factorymsg` 경계를 사용하며, 새 Go 패키지는
+늘지 않았다.
+
 > `/moai codemaps`로 생성됐습니다. 내부 엣지만 대상이며 stdlib·서드파티는 제거했습니다.
 
 **최초 측정 트리**: worktree `.claude/worktrees/t592`, 브랜치 `WT-home-state-rollout`, HEAD `e7bd89ee3`, 2026-09-10
@@ -8,8 +14,8 @@
 **정기 재측정**: worktree `.claude/worktrees/t1069`, 브랜치 `WT-graph-restamp`, HEAD `0314801c2`, 2026-09-22 — 엣지 수(371→378 · 227→234), fan-in 표에서 움직인 두 행(`internal/defs` 11→12 · `internal/paths` 11→12), fan-out 표에서 움직인 두 행(`internal/cli` 63→65 · `internal/web` 15→16)과 하나의 정정(`internal/spec` — 앞 판 행이 3으로 적혔으나 스탬프 트리에서도 4였다), 작은 fan-in 표의 `internal/stateanchor` 2→3(소비자에 `internal/session` 합류)과 신규 세 행(`internal/jev` · `internal/jevcred` · `internal/jevmeasure`). § 순환은 같은 방법으로 재확인해 세 쌍 그대로였고, § 외부 의존성은 `go.mod`가 스탬프 이후 한 줄도 바뀌지 않은 것으로 확인했습니다.
 **부분 재측정**: worktree `.claude/worktrees/t1092`, 브랜치 `WT-codemaps-restamp`, base `08113ff0f`, 2026-09-23 — 카드 t1092. 엣지 수(378→381 · 234→237). 신규 패키지 `internal/factorymsg`는 fan-in 2(`internal/cli` · `internal/hook`이 import)로 작은 fan-in 표(상위 14 밖)에 속하며, fan-out 상위 표에는 두 소비자 쪽 수치 변화가 반영됐지만 순위표 자체는 움직이지 않았습니다(`internal/cli`·`internal/hook` 모두 기존에도 상위권). § 순환·§ 외부 의존성·상호 참조 쌍 목록은 이번 변경과 무관해 손대지 않았습니다.
 
-두 가지 해상도로 봅니다 — 패키지 단위 **381 엣지**, 이를 `internal/<X>` · `pkg/<X>` · `cmd/<X>`
-최상위로 접고 self-edge를 제거한 **237 엣지**. 아래 표는 후자 기준입니다.
+두 가지 해상도로 봅니다 — 패키지 단위 **386 엣지**, 이를 `internal/<X>` · `pkg/<X>` · `cmd/<X>`
+최상위로 접고 self-edge를 제거한 **241 엣지**. 아래 표는 후자 기준입니다.
 
 산출:
 
@@ -17,7 +23,7 @@
 $ go list -f '{{.ImportPath}} {{join .Imports " "}}' ./... \
   | awk '{src=$1; for(i=2;i<=NF;i++) if ($i ~ /^github\.com\/modu-ai\/moai-adk\//) print src, $i}' \
   | wc -l
-381
+386
 ```
 
 > 앵커 `25a3212a9` 판은 이 자리에 1638을 적었습니다. 위 명령으로 재현되지 않고 그 판의
@@ -31,7 +37,7 @@ $ go list -f '{{.ImportPath}} {{join .Imports " "}}' ./... \
 | # | 패키지 | 피import | 레이어 |
 |---|---|---|---|
 | 1 | `internal/config` | 22 | data |
-| 2 | `internal/defs` | 12 | cross-cutting |
+| 2 | `internal/defs` | 13 | cross-cutting |
 | 2 | `internal/paths` | 12 | cross-cutting |
 | 4 | `internal/atomicfile` | 11 | cross-cutting |
 | 5 | `pkg/models` | 8 | cross-cutting |
@@ -42,7 +48,7 @@ $ go list -f '{{.ImportPath}} {{join .Imports " "}}' ./... \
 | 8 | `internal/hook` | 6 | **presentation** |
 | 11 | `pkg/version` | 5 | cross-cutting |
 | 11 | `internal/statusline` | 5 | **presentation** |
-| 11 | `internal/spec` | 5 | domain |
+| 11 | `internal/spec` | 6 | domain |
 | 11 | `internal/lsp` | 5 | infrastructure |
 
 산출은 최상위 집계 엣지 목록의 목적지 열을 `sort | uniq -c | sort -rn` 한 것입니다.
@@ -79,10 +85,10 @@ $ go list -f '{{.ImportPath}} {{join .Imports " "}}' ./... \
 | `internal/jevmeasure` | 0 | **이 판에서 새로 들어왔고, 0은 설계다 — 그러나 종류가 다른 0이다.** 테스트 시점 가드도 빌드타임 도구도 아니고, 측정 게이트가 실행되지 않은 **게이트 미실행 상태**라 소비자가 원리상 아직 없다. 게이트가 통과하면 소비자가 붙는 것이 이 0의 의미다(`modules.md` §네거티브 스페이스) |
 | `internal/harness/rosterguard` · `internal/harness/cellguard` | 0 | **t999 판에서 새로 들어왔고, 0이 정상이다.** 테스트 시점 가드라 비테스트 소비자가 원리상 없다 — `internal/template/agentemit` · `commandemit`과 같은 이유이고 `codextools`와는 다른 이유다(`modules.md` §네거티브 스페이스) |
 
-`internal/homestate`는 leaf가 아니라 최상위 fan-in **4**(`cli` · `hook` · `kanban` · `web`)의
+`internal/homestate`는 leaf가 아니라 최상위 fan-in **6**의
 data/persistence seam입니다. 패키지 단위로 풀면 직접 소비자는 `internal/cli`,
 `internal/cli/ptycaptest`, `internal/hook`, `internal/hook/handoff`, `internal/kanban`,
-`internal/web` 여섯이며, 이 표면들이 프로젝트 키 경로·Factory 인계·프로필 lease·migration
+`internal/web`, `internal/factorymsg` 등의 표면이며, 이 표면들이 프로젝트 키 경로·Factory 인계·프로필 lease·migration
 admission 계약을 공유합니다.
 
 두 방출기(`internal/template/agentemit`, `internal/template/commandemit`)는 이 표에 **나타나지
@@ -101,7 +107,8 @@ admission 계약을 공유합니다.
 | 4 | `internal/core` | 12 |
 | 5 | `internal/statusline` | 8 |
 | 6 | `internal/settings` | 7 |
-| 7 | `internal/kanban` · `feedback` | 6 각 |
+| 7 | `internal/kanban` | 7 |
+| 8 | `internal/feedback` | 6 |
 | 9 | `internal/update` · `spec` · `harness` | 4 각 |
 | 12 | `internal/template` · `session` · `ralph` · `profile` · `lsp` · `loop` · `graph` · `config` | 3 각 |
 

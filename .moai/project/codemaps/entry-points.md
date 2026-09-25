@@ -1,5 +1,15 @@
 # 진입점
 
+**현재 갱신 — t1187, `origin/develop` `a8a9b9376` (2026-09-25).**
+`moai codex audit <role> [--out <path>]`와 MCP의
+`codex_role_audit`·`codex_role_audit_status`·`codex_role_audit_result`가
+`runCodexAudit`을 공유한다(`internal/cli/codex_audit_launch.go`,
+`codex_audit_mcp.go`). 호출자의 등록된 워크트리와 `.moai/reports/` 아래
+목적지를 먼저 검증하고, 허용된 읽기 전용 역할을 별도 `codex exec -s read-only`
+프로세스로 띄운다. MCP 경로는 job ID를 즉시 반환하며 status/result로
+완료를 읽는다. 런처가 결과를 그대로 쓴다. 모델의 읽기 전용 샌드박스가
+프로젝트 훅 명령이나 Codex HOME 기록까지 막는다는 뜻은 아니다.
+
 > `/moai codemaps`로 생성됐습니다.
 
 **최초 측정 트리**: worktree `.claude/worktrees/t592`, 브랜치 `WT-home-state-rollout`, HEAD `e7bd89ee3`, 2026-09-10
@@ -210,13 +220,14 @@ agent-stop-audit 선례대록대로 침묵하고 계속합니다.
 - **명령**: `internal/cli/mcp_server.go`의 `newMCPServerCmd()` — `root.go`에서 등록. stdio
   JSON-RPC이고 `mark3labs/mcp-go` SDK는 전송만 담당합니다. **기본 off**이며 `.mcp.json`
   프로비저닝은 opt-in입니다.
-- **도구 수**: `mcp_server.go` 안 `add(...)` 호출 **35회** + `registerJevAskTool(add)`를 통한
-  1회(총 **36**), 그중 대부분은 이름 리터럴이고 2개는 상수 경유 — `claudeAuditToolName`과
-  `auditMultiToolName`. 카탈로그 `internal/mcp/catalog.go`도 `Name:` 선언 **36개**를 가지며
-  두 수가 일치합니다(이 판에서 30→36, 아래 신규 6개 몫).
+- **도구 수**: `mcp_server.go` 안 `add(...)` 호출 35회 +
+  `registerJevAskTool(add)` 1회 + `codexRoleAuditTools()` 루프 3회로
+  총 **39개**입니다. 카탈로그 `internal/mcp/catalog.go`의 `Name:` 선언도
+  **39개**입니다(2026-09-25 재측정).
 - **도구 목록**: `session_list`, `goal_status`, `goal_arm`, `spec_progress`, `verify_snapshot`,
   `verify_trend`, `spec_audit`, `spec_drift`, `audit_cache`,
-  `codex_{audit,setup,task,job_status,job_result,job_cancel}`, `claude_audit`,
+  `codex_{audit,setup,task,job_status,job_result,job_cancel}`,
+  `codex_role_audit{,_status,_result}`, `claude_audit`,
   `glm_{task,job_status,job_result,job_cancel,audit}`, `audit_multi`,
   `session_msg_{register,list,send,poll}`,
   `factory_msg_{send,list,body,receipt,status}`, `jev_ask`,
