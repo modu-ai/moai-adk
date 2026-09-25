@@ -15,7 +15,8 @@ plan 단계에서 확인한 사실이다. 모델에 닿은 호출은 0회다. `c
 
 | 사실 | 근거 |
 |---|---|
-| 설치된 codex는 `codex-cli 0.156.1` | `codex --version` |
+| 초기 plan 프로브는 `codex-cli 0.156.1`에서 측정했다. 이 결과는 과거 버전의 근거다 | 당시 `codex --version`, `verdict.md` §Plan |
+| 이번 LIVE 대상 CLI는 `codex-cli 0.157.0`이다 | 이 worktree의 `codex --version` → `codex-cli 0.157.0` (2026-09-25); 운영자 버전 선택 |
 | 베이스 `0356e8117`에 t1143 보안 수리 `51d3e5be6`(F1–F3, F5)와 병합 `a0b78213d`가 조상으로 들어 있다 | `git merge-base --is-ancestor` 두 번 모두 성공 |
 | 생성 설정 writer는 `internal/codexwiring/configtoml.go` `EnsureMCPTable`(표가 없을 때만 만든다, 있으면 바이트 그대로). 표에는 `default_tools_approval_mode = "writes"`(`:99`)가 들어가고, 의사 점검용 정규형 목록도 같은 값을 적는다(`:174`). 호출처는 `internal/codexwiring/ownership.go:125` 하나, 의사 점검은 `internal/cli/doctor_codex.go:297` | 해당 줄 판독, `grep -rn 'EnsureMCPTable('` |
 | `codex_role_audit`는 `mcp.WithReadOnlyHintAnnotation(false)`로 선언된 쓰기 도구다 | `internal/cli/codex_audit_mcp.go:204` |
@@ -46,17 +47,17 @@ plan 단계에서 확인한 사실이다. 모델에 닿은 호출은 0회다. `c
 
 D1(A1 대 A2) 자체는 여기서 정하지 않는다. 판별 결과가 `RAN`이고 대조가 `REFUSED`일 때만 운영자에게 묻는다. 운영자 결정은 리드가 받아 `verdict.md`에 `OPERATOR-DECISION adoption=<값> card=t1172 recorded_by=lead at=<UTC RFC 3339>` 한 줄로 적는다(AC-CPP-006). 이 줄은 리드의 기록이며, 운영자 결정의 증거는 그 줄이 가리키는 대화다.
 
-**D1-sub (A2일 때만) — 잠정 — 운영자 Kickoff 확정 필요.** 켜는 수단은 `.moai/config/sections/` 아래 YAML 파일의 불리언 키 하나이고, Codex 설정 생성기(`internal/codexwiring`)가 그 키를 읽는다. `moai update`가 섹션 파일을 보존하므로 선택이 업데이트 뒤에도 남는다. 키 이름과 파일은 run M2에서 기존 섹션 구조에 맞춰 정하고 progress.md에 적는다.
+**D1-sub (A2일 때만) — 운영자 Kickoff 확정: `config-section-boolean`.** 켜는 수단은 `.moai/config/sections/` 아래 YAML 파일의 불리언 키 하나이고, Codex 설정 생성기(`internal/codexwiring`)가 그 키를 읽는다. `moai update`가 섹션 파일을 보존하므로 선택이 업데이트 뒤에도 남는다. 키 이름과 파일은 run M2에서 기존 섹션 구조에 맞춰 정하고 progress.md에 적는다.
 
 ### D2. 기존 사용자 소유 표 (REQ-CPP-006)
 
 writer는 이미 있는 `[mcp_servers.moai]` 표를 바이트 그대로 둔다(기존 규칙 유지). 그래서 A1을 골라도 이미 초기화된 프로젝트는 사전 승인을 받지 못한다.
 
-**잠정 — 운영자 Kickoff 확정 필요.** A1 또는 A2가 채택되고(A2는 켠 경우만) 프로젝트의 `[mcp_servers.moai]` 표에 도구별 표가 없으면, `moai doctor`는 실패가 아닌 WARNING으로 보고하고, 더할 표(`[mcp_servers.moai.tools.codex_role_audit]` `approval_mode = "approve"`)를 고침 안내로 보여 준다. N 갈래에서는 보고하지 않는다.
+**운영자 Kickoff 확정: `doctor-warning`.** A1 또는 A2가 채택되고(A2는 켠 경우만) 프로젝트의 `[mcp_servers.moai]` 표에 도구별 표가 없으면, `moai doctor`는 실패가 아닌 WARNING으로 보고하고, 더할 표(`[mcp_servers.moai.tools.codex_role_audit]` `approval_mode = "approve"`)를 수동 추가 안내로 보여 준다. N 갈래에서는 보고하지 않는다.
 
-운영자가 Kickoff에서 D1-sub 또는 D2를 바꾸면, run 전에 이 SPEC을 고치고 plan-audit를 다시 받는다.
+운영자가 확정한 D1-sub·D2와 다른 구현을 하려면, run 전에 이 SPEC을 고치고 plan-audit를 다시 받는다.
 
-**확정 기록 (D-N9, D-N15).** 확정 시점은 하나다: **Kickoff, 첫 LIVE 호출 전**, 판별 결과와 무관하게 모든 갈래에서. 운영자가 D1-sub·D2를 확정하거나 바꾸면 리드가 `verdict.md`에 `OPERATOR-CONFIRM d1sub=<값> d2=<값> card=t1172 recorded_by=lead at=<UTC RFC 3339>` 한 줄을 적는다(잠정 기본값을 그대로 쓰면 `d1sub=config-section-boolean d2=doctor-warning`). AC-CPP-006은 모든 갈래에서 이 줄이 정확히 하나이고 그 시각이 장부의 첫 LIVE 시작보다 앞서기를 요구한다. M1-b 뒤의 운영자 결정 지점에서 정하는 것은 D1(A1/A2)뿐이며, 그 결정은 `OPERATOR-DECISION` 줄(판별 마지막 시도가 끝난 뒤의 시각)로 남는다. 잠정 조항은 확정 줄이 생기기 전에도 적힌 그대로 구속하며, 확정 값이 기본값과 다르면 SPEC을 고치고 재감사한 뒤에야 run을 이어 간다.
+**확정 기록 (D-N9, D-N15).** 운영자는 첫 LIVE 호출 전에 D1-sub·D2를 `config-section-boolean`·`doctor-warning`으로 확정했다. 리드는 첫 LIVE 전에 `verdict.md`에 `OPERATOR-CONFIRM d1sub=config-section-boolean d2=doctor-warning card=t1172 recorded_by=lead at=<UTC RFC 3339>` 한 줄을 적는다. AC-CPP-006은 모든 갈래에서 이 줄이 정확히 하나이고 그 시각이 장부의 첫 LIVE 시작보다 앞서기를 요구한다. M1-b 뒤의 운영자 결정 지점에서 정하는 것은 D1(A1/A2)뿐이며, 그 결정은 `OPERATOR-DECISION` 줄(판별 마지막 시도가 끝난 뒤의 시각)로 남는다. 이 기록은 운영자 답변을 반출한 것으로 취급하며, 판별 결과나 LIVE 성공의 증거로 취급하지 않는다.
 
 ### D3. 판별 프로브 설계 (REQ-CPP-001–004)
 
@@ -116,7 +117,7 @@ AC-CAR-010/011의 본문·판정식은 경로 치환 하나만 적용해 그대�
 
 1. `git -C <worktree> rev-parse --show-toplevel`이 이 워크트리, 브랜치 `WT-codex-preapproval-probe`.
 2. AC-CPP-001 `true`(보안 수리가 조상).
-3. `codex --version` = `codex-cli 0.156.1`. 다르면 멈추고 보고한다(§A의 측정이 이 버전 기준).
+3. `codex --version` = `codex-cli 0.157.0`. 다르면 멈추고 보고한다. §A의 0.156.1 측정은 과거 기준이므로 M1-a의 비모델 시작 검사와 로더 게이트를 0.157.0으로 다시 통과시킨 뒤에만 LIVE를 시작한다.
 4. 로그인 파일 sha256을 적는다(LIVE 전후 비교용).
 5. `make build`로 moai를 빌드하고 커밋·sha256을 적는다.
 
@@ -158,7 +159,7 @@ AC-CAR-010/011의 본문·판정식은 경로 치환 하나만 적용해 그대�
 
 - 채택 갈래에 맞춰 `internal/codexwiring`의 writer와 정규형 목록을 바꾼다(N이면 코드 변경 없음). 기존 표 바이트 불변 테스트 유지.
 - 키 이름 로더 테스트(D5)를 `internal/codexwiring`에 둔다. N 갈래에서도 둔다(기존 키 검증 + 양성 대조).
-- A1·A2 갈래: `moai doctor`의 WARNING(D2 잠정 기본값)과 그 테스트 `TestDoctorCodexPreApprovalWarning`(`internal/cli`). A2: 설정 섹션 불리언 키(D1-sub 잠정 기본값).
+- A1·A2 갈래: `moai doctor`의 WARNING과 수동 추가 안내(D2 확정값), 그 테스트 `TestDoctorCodexPreApprovalWarning`(`internal/cli`). A2: 설정 섹션 불리언 키(D1-sub 확정값).
 - 방출 테스트는 writer 출력 바이트에서 `[mcp_servers.moai.tools.*]` 헤더 집합을 직접 단언한다(하위 테스트 `tool_tables_exact`, D22).
 - 재측정 범위: `./internal/codexwiring/...`, `./internal/cli -run 'Doctor|Codex'`.
 

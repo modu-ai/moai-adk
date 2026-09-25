@@ -1,7 +1,7 @@
 ---
 id: SPEC-CODEX-PREAPPROVAL-PROBE-001
 title: "Codex per-tool pre-approval of codex_role_audit — discriminating probe, conditional emission, loader key-name check, refusal instruction, carried AC-CAR-010/011"
-version: "0.4.0"
+version: "0.5.0"
 status: draft
 created: 2026-09-25
 updated: 2026-09-25
@@ -25,6 +25,7 @@ related_specs:
 
 | Version | Date | Change |
 |---|---|---|
+| 0.5.0 | 2026-09-25 | 운영자 Kickoff 결정 확정: D1-sub는 `.moai/config/sections/` YAML 불리언 키, D2는 기존 사용자 소유 표에 대한 `moai doctor` WARNING과 수동 추가 안내. D1의 A1/A2 선택은 판별 LIVE 뒤에 남긴다. 이 실행의 CLI 고정 버전을 설치된 `codex-cli 0.157.0`으로 개정하며, 0.156.1에서 얻은 과거 시작 검사 근거는 새 버전에서 다시 확인한다. |
 | 0.4.0 | 2026-09-25 | plan-audit iter 3(FAIL 0.81, `.moai/reports/t1172/plan-audit-iter3.md`) 뒤 리드 조건부 PASS-WITH-DEBT — 추가 plan-audit 없이 기계 게이트로 확인. D-N11: 이월 AC의 인자·프롬프트를 호출 라벨마다(`inputs/<라벨>/argv.txt`, `prompt.txt`) 반출하고, AC-CPP-013은 각 LIVE 행을 자기 라벨의 파일과만 비교한다(REQ-CPP-009). D-N12: AC-CPP-010은 행 전체를 "베이스 행 + 고정 문장"과 바이트 비교한다. D-N13: 장부 행에 테스트 임시 디렉터리(`temp_root`)를 적고 픽스처 루트가 그 아래임을 확인한다(REQ-CPP-004). D-N14: 한 토큰짜리 모델 지정(`--model=…`, `-m…`, `-c model=…`)도 거부한다. D-N15: `OPERATOR-CONFIRM`은 모든 갈래에서 Kickoff, 첫 LIVE 전에 기록한다. D-N16: 호출마다 사용자 턴 1개를 판정한다. AC 수는 그대로 16. |
 | 0.3.0 | 2026-09-25 | plan-audit iter 2(FAIL 0.79, `.moai/reports/t1172/plan-audit-iter2.md`)의 D-N1–D-N10 반영. D-N1: LIVE 행에 시도 번호(`attempt`)를 두고, 리드가 적는 `invalidate` 행으로 무효가 된 시도를 표시하며, 판정식은 마지막 유효 시도만 보고 창 상한은 시도마다 잰다(REQ-CPP-010). D-N2: 픽스처마다 마지막 반출 뒤의 마지막 시작 검사만 반출본과 대조하고, 채택 갈래의 car010은 M2 뒤에 다시 반출·시작 검사한다. D-N5: REQ-CPP-008에 고정 규범 문장을 두고 AC-CPP-010이 그 문장을 그대로 요구한다. D-N6: 픽스처 초기화는 테스트 임시 디렉터리 아래 표지 파일이 있는 픽스처 루트에서만 한다(REQ-CPP-004). D-N3·D-N4·D-N7·D-N8·D-N9·D-N10도 반영. AC 수는 그대로 16. |
 | 0.2.0 | 2026-09-25 | plan-audit iter 1(FAIL 0.70, `.moai/reports/t1172/plan-audit-iter1.md`)의 D1–D27 반영. D1: plan.md의 미해결 확인 표시 두 개를 **잠정 기본값**(운영자 Kickoff 확정 필요)으로 바꿨다 — D1-sub(A2일 때만)=`.moai/config/sections/` YAML의 불리언 키, D2=`moai doctor` WARNING+고침 안내(REQ-CPP-005/006). D1(A1 대 A2) 자체는 여전히 판별 결과 뒤 운영자 결정이다. REQ-CPP-003 문구(D24), REQ-CPP-005에 `NOT DISCRIMINATING`(D23), F4 인용 118행(D18), 감사 측정 사실(신뢰된 git 픽스처에서 moai 기동 1·`item` 0, `model = "gpt-5"`의 비모델 `item` 오류, 서버가 루트에 `.moai/state/config-cache.json`을 씀)을 §A에 반영했다. AC-CPP-012(게이트 거부 시 LIVE 0회), AC-CPP-013(이월 픽스처 조건), AC-CPP-014(장부 상한)를 더했다(AC 14 + 이월 2 = 16, Tier M 상한 안). |
@@ -77,11 +78,11 @@ The probe harness shall run under caps declared in writing before the first LIVE
 
 ### REQ-CPP-005 — 채택 형태는 운영자가 정한다
 
-Where the treatment arm is measured `RAN` and the control arm is measured `REFUSED`, the adoption form of the per-tool pre-approval — a template default or an opt-in — shall be the one the operator selects, and the SPEC shall not pre-decide it. When the treatment arm is measured `REFUSED` or `NOT MEASURED`, or when the control arm is measured `RAN` (`NOT DISCRIMINATING`), the adoption decision shall be `not adopted` and moai shall emit no per-tool pre-approval. Where the operator selects the opt-in form, the opt-in shall be a boolean key in a `.moai/config/sections/` YAML file that the Codex configuration generator reads, so the choice persists across `moai update` (잠정 — 운영자 Kickoff 확정 필요; 확정은 `verdict.md`의 `OPERATOR-CONFIRM` 줄로 남고, 다른 값이면 이 SPEC을 개정하고 재감사한다).
+Where the treatment arm is measured `RAN` and the control arm is measured `REFUSED`, the adoption form of the per-tool pre-approval — a template default or an opt-in — shall be the one the operator selects, and the SPEC shall not pre-decide it. When the treatment arm is measured `REFUSED` or `NOT MEASURED`, or when the control arm is measured `RAN` (`NOT DISCRIMINATING`), the adoption decision shall be `not adopted` and moai shall emit no per-tool pre-approval. Where the operator selects the opt-in form, the opt-in shall be a boolean key in a `.moai/config/sections/` YAML file that the Codex configuration generator reads, so the choice persists across `moai update` (운영자 Kickoff 결정: `d1sub=config-section-boolean`; 리드는 첫 LIVE 전에 `verdict.md`의 `OPERATOR-CONFIRM` 줄로 기록한다).
 
 ### REQ-CPP-006 — 사전 승인은 이 도구 하나로 한정하고 도구는 쓰기 도구로 남는다
 
-Where the per-tool pre-approval is adopted, the moai-generated Codex configuration shall pre-approve `codex_role_audit` and no other tool, shall keep `default_tools_approval_mode = "writes"` for the server, and shall not change the tool's write-capable annotation. The configuration writer shall keep an existing user-owned `[mcp_servers.moai]` table byte-invariant. Where the per-tool pre-approval is adopted and a project's `[mcp_servers.moai]` table exists without the per-tool table, `moai doctor` shall report a warning, not a failure, together with a hint naming the table to add (잠정 — 운영자 Kickoff 확정 필요; 확정은 `verdict.md`의 `OPERATOR-CONFIRM` 줄로 남고, 다른 값이면 이 SPEC을 개정하고 재감사한다).
+Where the per-tool pre-approval is adopted, the moai-generated Codex configuration shall pre-approve `codex_role_audit` and no other tool, shall keep `default_tools_approval_mode = "writes"` for the server, and shall not change the tool's write-capable annotation. The configuration writer shall keep an existing user-owned `[mcp_servers.moai]` table byte-invariant. Where the per-tool pre-approval is adopted and a project's `[mcp_servers.moai]` table exists without the per-tool table, `moai doctor` shall report a warning, not a failure, together with a hint naming the table to add (운영자 Kickoff 결정: `d2=doctor-warning`; 리드는 첫 LIVE 전에 `verdict.md`의 `OPERATOR-CONFIRM` 줄로 기록한다).
 
 ### REQ-CPP-007 — 생성 설정의 키 이름을 Codex 로더로 검증한다
 
