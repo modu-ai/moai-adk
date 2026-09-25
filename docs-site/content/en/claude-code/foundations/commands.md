@@ -42,7 +42,7 @@ Frequently used commands by category. The full list is available by typing `/` i
 | `/memory` | List/toggle `CLAUDE.md` + auto-memory loads | v2.1.59+ |
 | `/compact` | Summarize the conversation so far to free context while keeping the same dialogue | Base |
 | `/clear` (aliases: `/reset`, `/new`) | Clear the context and start a new conversation | Base |
-| `/agents` | Subagent pointer — since v2.1.198 prints a reminder to ask Claude or edit `.claude/agents/` directly instead of opening a wizard; hidden from the command menu and `/help` since v2.1.281 | v2.1.139+ |
+| `/agents` | Subagent pointer — since v2.1.198 prints a reminder to ask Claude or edit `.claude/agents/` directly instead of opening a wizard; hidden from the command menu and `/help` since v2.1.281 | v1.0.60+ |
 | `/mcp` | Manage MCP server connections and OAuth authentication | v2.1.186+ |
 | `/plugin` | Manage plugins | Base |
 | `/effort [low\|medium\|high\|xhigh\|max\|ultracode\|auto]` | Set the model's reasoning intensity or orchestration | Base |
