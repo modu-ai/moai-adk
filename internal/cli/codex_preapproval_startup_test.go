@@ -187,7 +187,7 @@ func preApprovalAppendStartup(t *testing.T, path string, rows *[]map[string]any,
 	*rows = next
 }
 
-func preApprovalAppendStartupStop(t *testing.T, path string, rows *[]map[string]any, fixture, reason string) {
+func preApprovalAppendStop(t *testing.T, path string, rows *[]map[string]any, fixture, reason string) {
 	t.Helper()
 	next := append(append([]map[string]any{}, *rows...), map[string]any{"kind": "stop", "fixture": fixture, "reason": reason, "started_ns": time.Now().UnixNano()})
 	if err := preApprovalWriteLedger(path, next); err != nil {
@@ -254,10 +254,30 @@ func TestCodexPreApprovalStartupLedgerRetention(t *testing.T) {
 	for preApprovalStartupCount(capRows) < preApprovalMaxStartupCalls {
 		preApprovalAppendStartup(t, capPath, &capRows, preApprovalStartupRow{Kind: "startup", Fixture: "car011"}, "")
 	}
-	preApprovalAppendStartupStop(t, capPath, &capRows, "car011", "startup invocation budget exceeded")
+	preApprovalAppendStop(t, capPath, &capRows, "car011", "startup invocation budget exceeded")
 	retained, err = preApprovalReadLedger(capPath)
 	if err != nil || preApprovalStartupCount(retained) != preApprovalMaxStartupCalls || retained[len(retained)-1]["kind"] != "stop" {
 		t.Fatalf("budget refusal changed startup count: rows=%d err=%v", preApprovalStartupCount(retained), err)
+	}
+	stopNS := preApprovalNumber(retained[len(retained)-1]["started_ns"])
+	if stopNS <= 0 {
+		t.Fatal("stop row has no timestamp")
+	}
+	earlier := append([]map[string]any{{"kind": "live", "fixture": "disc-control", "started_ns": stopNS - 1}}, retained...)
+	if err := preApprovalWriteLedger(filepath.Join(dir, "earlier-ledger.json"), earlier); err != nil {
+		t.Fatalf("LIVE before stop was rejected: %v", err)
+	}
+	untimed := append(append([]map[string]any{}, retained[:len(retained)-1]...), map[string]any{"kind": "stop", "fixture": "car011"})
+	if err := preApprovalWriteLedger(filepath.Join(dir, "untimed-ledger.json"), untimed); err == nil {
+		t.Fatal("untimed stop was written")
+	}
+	late := append(append([]map[string]any{}, retained...), map[string]any{"kind": "live", "fixture": "disc-control", "started_ns": stopNS + 1})
+	if err := preApprovalWriteLedger(capPath, late); err == nil {
+		t.Fatal("LIVE after stop was written")
+	}
+	unchanged, err := preApprovalReadLedger(capPath)
+	if err != nil || len(unchanged) != len(retained) {
+		t.Fatalf("refused LIVE changed ledger: rows=%d err=%v", len(unchanged), err)
 	}
 }
 
@@ -305,7 +325,7 @@ func preApprovalRunStartup(t *testing.T, preserveLedger bool) *preApprovalFixtur
 		}
 		if preApprovalStartupCount(prior)+4 > preApprovalMaxStartupCalls {
 			rows = prior
-			preApprovalAppendStartupStop(t, ledgerPath, &rows, "disc", "startup invocation budget would be exceeded")
+			preApprovalAppendStop(t, ledgerPath, &rows, "disc", "startup invocation budget would be exceeded")
 			t.Fatal("startup invocation budget would be exceeded")
 		}
 		rows = prior
@@ -473,7 +493,7 @@ func preApprovalRunStartup(t *testing.T, preserveLedger bool) *preApprovalFixtur
 			cmd.Env = []string{"PATH=" + os.Getenv("PATH"), "HOME=" + t.TempDir(), "CODEX_HOME=" + codexHome, "MOAI_HOME=" + t.TempDir(), "LANG=C"}
 			if preserveLedger {
 				if preApprovalStartupCount(rows) >= preApprovalMaxStartupCalls {
-					preApprovalAppendStartupStop(t, ledgerPath, &rows, name, "startup invocation budget exceeded")
+					preApprovalAppendStop(t, ledgerPath, &rows, name, "startup invocation budget exceeded")
 					t.Fatal("startup invocation budget exceeded")
 				}
 			}

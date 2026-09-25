@@ -65,6 +65,26 @@ func preApprovalReadLedger(path string) ([]map[string]any, error) {
 }
 
 func preApprovalWriteLedger(path string, rows []map[string]any) error {
+	var stopNS int64
+	for _, row := range rows {
+		if row["kind"] != "stop" {
+			continue
+		}
+		ns := preApprovalNumber(row["started_ns"])
+		if ns <= 0 {
+			return errors.New("stop row lacks a valid started_ns")
+		}
+		if stopNS == 0 || ns < stopNS {
+			stopNS = ns
+		}
+	}
+	if stopNS != 0 {
+		for _, row := range rows {
+			if row["kind"] == "live" && (preApprovalNumber(row["started_ns"]) <= 0 || preApprovalNumber(row["started_ns"]) >= stopNS) {
+				return errors.New("LIVE row starts after stop")
+			}
+		}
+	}
 	b, err := json.MarshalIndent(rows, "", "  ")
 	if err != nil {
 		return err
@@ -613,10 +633,7 @@ func TestCodexPreApprovalDiscriminatorLive(t *testing.T) {
 		AuthSHA256Before: authBefore}
 	windowStart := time.Now()
 	stop := func(reason string) {
-		rows = append(rows, map[string]any{"kind": "stop", "fixture": "disc", "reason": reason})
-		if err := preApprovalWriteLedger(ledgerPath, rows); err != nil {
-			t.Fatal(err)
-		}
+		preApprovalAppendStop(t, ledgerPath, &rows, "disc", reason)
 		t.Fatalf("ABORTED: %s", reason)
 	}
 	for _, arm := range []string{"control", "treatment"} {
