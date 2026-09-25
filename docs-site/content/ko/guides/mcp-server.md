@@ -2,12 +2,12 @@
 title: MCP 서버
 weight: 12
 draft: false
-description: "MoAI-ADK가 자체 제공하는 moai mcp-server(stdio 로컬 MCP 서버)의 프로비저닝, 21-도구 카탈로그, 인증, 지연 로드 방침을 정리합니다."
+description: "MoAI-ADK가 자체 제공하는 moai mcp-server(stdio 로컬 MCP 서버)의 프로비저닝, 도구 카탈로그, 인증, 지연 로드 방침을 정리합니다."
 ---
 
 # MCP 서버
 
-MoAI-ADK는 Claude Code의 MCP 생태계 위에 올라타되, 그 위에 **자체 MCP 서버**를 하나 더 얹습니다. 바이너리 하나(`moai mcp-server`)가 stdio 로컬 서버로 실행되며, SPEC 라이프사이클 감사, 검증 스냅샷, 골 엔진, 교차 모델 감사, codex·GLM 위임 등 MoAI-ADK 고유의 21개 도구를 Claude Code 런타임에 노출합니다.
+MoAI-ADK는 Claude Code의 MCP 생태계 위에 올라타되, 그 위에 **자체 MCP 서버**를 하나 더 얹습니다. 바이너리 하나(`moai mcp-server`)가 stdio 로컬 서버로 실행되며, SPEC 라이프사이클 감사, 검증 스냅샷, 골 엔진, 교차 모델 감사, codex·GLM 위임 등 MoAI-ADK 고유의 도구들을 Claude Code 런타임에 노출합니다.
 
 {{< callout type="info" title="두 MCP 문서의 관계" >}}
 [**Claude Code 일반 MCP**](/ko/claude-code/extensibility/mcp)는 플랫폼 자체의 MCP(Model Context Protocol) 통합을 다룹니다 — USB 포트 비유, 서버 등록, 전송 타입, `/mcp` 명령, OAuth 인증, 지연 로드 원리.
@@ -29,14 +29,14 @@ Claude Code의 MCP 생태계와 MoAI의 자체 MCP 서버는 서로 별개의 �
 flowchart TD
     CC["Claude Code 런타임<br/>(도구 권한 · 지연 로드 · 승인)"]
     CMCP["일반 MCP 서버<br/>(context7, chrome-devtools, …)"]
-    MMCP["moai mcp-server<br/>(MoAI 자체 · 21 도구)"]
+    MMCP["moai mcp-server<br/>(MoAI 자체 도구)"]
     CC --> CMCP
     CC --> MMCP
     MMCP --> TOOLS["SPEC lifecycle · 검증 · 골 · 감사 · codex/GLM 위임"]
     CMCP --> EXT["외부 도구 (라이브러리 문서 · 브라우저 자동화 · …)"]
 ```
 
-핵심은 "MoAI가 MCP를 프로비저닝하지 않는다"는 것이 **반쪽짜리 진실**이라는 점입니다. 외부 MCP 서버(context7, playwright 등)는 기본으로 프로비저닝하지 않는 것이 맞습니다. 하지만 MoAI 자체 서버 하나는 `moai init` 시점에 default-on으로 깔립니다. 이 서버가 곧 MoAI의 21-도구 카탈로그가 Claude Code에 닿는 통로입니다.
+핵심은 "MoAI가 MCP를 프로비저닝하지 않는다"는 것이 **반쪽짜리 진실**이라는 점입니다. 외부 MCP 서버(context7, playwright 등)는 기본으로 프로비저닝하지 않는 것이 맞습니다. 하지만 MoAI 자체 서버 하나는 `moai init` 시점에 default-on으로 깔립니다. 이 서버가 곧 MoAI 도구 카탈로그가 Claude Code에 닿는 통로입니다.
 
 ## .mcp.json 프로비저닝
 
@@ -113,9 +113,9 @@ flowchart TD
 
 버전 주의: 이미 떠 있는 서버는 그 아래 바이너리를 갈아 끼워도 재시작 전까지 예전 동작을 유지합니다 — 서브프로세스는 스스로 다시 읽지 않습니다. 호출자가 확인할 수 있는 방법은 `ListTools` 응답에 `project_root`가 보이는지입니다.
 
-## 21-도구 카탈로그
+## 도구 카탈로그
 
-`moai mcp-server`가 노출하는 21개 도구는 여섯 그룹으로 나뉩니다. 호출 시점에는 모두 `mcp__moai__` 접두사가 붙습니다.
+`moai mcp-server`가 노출하는 도구를 계열별로 아래에 정리합니다. 호출 시점에는 모두 `mcp__moai__` 접두사가 붙습니다. 이 페이지는 도구 수를 적지 않습니다. 도구 수와 목록의 기준은 설치된 바이너리가 `tools/list`로 돌려주는 목록이며, 이를 정리한 문서는 `.claude/rules/moai/core/moai-mcp-tools.md`입니다. 두 쪽이 이 페이지와 다르면 그쪽을 따르세요.
 
 ### SPEC 라이프사이클
 
@@ -151,6 +151,7 @@ manager-develop가 run-phase 자가 검증(이음매 §E)에서 쓰며, sync-aud
 | 도구 | 목적 | 소비 에이전트 | CLI 등가물 |
 |------|------|---------------|------------|
 | `mcp__moai__audit_multi` | 다중 감사자 수렴 (claude + codex + glm) | plan-auditor, sync-auditor | — (MCP 전용 수렴 진입점) |
+| `mcp__moai__claude_audit` | Claude 구독 백엔드 단독 감사 (`claude -p`, 읽기 전용 격리, 구조화 출력) | plan-auditor, sync-auditor, GPT·GLM 세션에서는 `audit_multi`가 자동 호출 | — |
 | `mcp__moai__codex_audit` | codex 백엔드 단일 감사 (네이티브/적대적) | plan-auditor, sync-auditor | — |
 | `mcp__moai__glm_audit` | GLM (z.ai) 백엔드 단일 감사 | plan-auditor, sync-auditor | — |
 | `mcp__moai__audit_cache` | plan-audit PASS 캐시 (compute_hash / lookup / store, 프로세스 간 공유) | sync-auditor | `moai audit cache` |
@@ -169,6 +170,16 @@ manager-develop가 run-phase 자가 검증(이음매 §E)에서 쓰며, sync-aud
 
 codex 위임 도구군은 super-advisor에 배선되어 있습니다 — 수시 고추론 자문 에이전트가 백그라운드 교차 모델 위임의 자연스러운 소비자이기 때문입니다. `codex_task`로 작업을 위임하고, `codex_job_status` / `codex_job_result`로 완료를 폴링하고, `codex_job_cancel`로 중단합니다. codex는 선택적(optional)입니다 — 누락되거나 사용 불가면 fail-open `inconclusive`를 반환하며, hard error가 아닙니다.
 
+### codex 읽기 전용 역할
+
+| 도구 | 목적 | 소비 에이전트 | CLI 등가물 |
+|------|------|---------------|------------|
+| `mcp__moai__codex_role_audit` | 읽기 전용 역할 하나를 최상위 `codex exec` 프로세스로 기동 (읽기 전용 샌드박스, MCP 서버 전부 비활성). 작업 ID를 곧바로 돌려줌 | Codex 레인 오케스트레이터 | — |
+| `mcp__moai__codex_role_audit_status` | 역할 작업의 상태와 시각 읽기 | Codex 레인 오케스트레이터 | — |
+| `mcp__moai__codex_role_audit_result` | 끝난 역할 작업의 종료 코드, 반환 텍스트 또는 판정서 경로, 기동 기록 경로 읽기 | Codex 레인 오케스트레이터 | — |
+
+Codex 레인은 `plan-auditor`, `sync-auditor` 같은 읽기 전용 역할을 `spawn_agent`가 아니라 이 도구군으로 띄웁니다. 레인 셸 안에서 중첩된 `codex exec`는 모델에 닿지 못하기 때문에 CLI 등가물이 없습니다. 작업은 서버 프로세스 안에 살므로 프로세스가 끝나면 함께 끝납니다.
+
 ### GLM 위임 (백그라운드 작업)
 
 | 도구 | 목적 | 소비 에이전트 | CLI 등가물 |
@@ -179,6 +190,46 @@ codex 위임 도구군은 super-advisor에 배선되어 있습니다 — 수시 
 | `mcp__moai__glm_job_cancel` | 실행 중인 백그라운드 GLM 작업 중단 | super-advisor | — |
 
 GLM 위임 도구군은 codex 위임과 같은 모양으로 super-advisor에 배선되어 있습니다. `glm_task`는 `background`가 거짓이면 완료된 텍스트를 그대로 돌려주고, 참이면 즉시 작업 ID를 돌려줍니다(이후 `glm_job_status`·`glm_job_result`·`glm_job_cancel`로 관찰·중단). 응답 토큰 상한은 `max_tokens`로 덮을 수 있고, 기본 상한값이 서버 쪽에 정해져 있습니다. 백그라운드 작업은 서버 프로세스 안에 살므로 프로세스가 끝나면 함께 끝납니다. GLM도 선택적입니다 — 키가 없거나 z.ai에 닿지 않으면 구조화된 fail-open 결과를 반환할 뿐, 도구 에러가 아닙니다.
+
+### 코드 질의
+
+| 도구 | 목적 | 소비 에이전트 | CLI 등가물 |
+|------|------|---------------|------------|
+| `mcp__moai__graph_file_api` | 소스 파일 하나의 공개 선언을 시그니처와 함께 나열 (본문은 싣지 않음) | 모든 에이전트 | — |
+| `mcp__moai__graph_find_code` | 심볼의 호출 지점과 호출자를 코드 유래 간선 층에서 검색 (간선마다 해석 신뢰도 포함) | 모든 에이전트 | — |
+| `mcp__moai__graph_trace_calls` | 심볼에서 호출자·피호출자 방향으로 지정 깊이까지 호출 간선 추적 | 모든 에이전트 | — |
+| `mcp__moai__graph_shortest_path` | 두 심볼 사이의 최단 호출 경로 (최대 8홉, 홉마다 행 번호와 신뢰도) | 모든 에이전트 | — |
+
+모든 답에는 계산 기준이 된 트리 루트와 커밋이 함께 실립니다. 간선 층은 `moai graph build`가 만든 `edges.jsonl`입니다.
+
+### 판단 (게이트, 표시 전용)
+
+| 도구 | 목적 | 소비 에이전트 | CLI 등가물 |
+|------|------|---------------|------------|
+| `mcp__moai__jev_ask` | 주어진 상태 하나에 대해 형식이 정해진 질문을 던지고 확률이 붙은 답을 받음 | 배포 기본값(`workflow.jev.enabled: false`)에서는 사용 불가 | — (MCP 전용) |
+
+도구 자체는 항상 등록되지만, 게이트가 꺼져 있으면 요청을 만들지도 네트워크를 호출하지도 않습니다. 답은 사람이 읽는 참고 신호일 뿐이며, 완료 판정·병합 승인·큐 변경·게이트 입력으로 쓰지 않습니다.
+
+### 팩토리 메시징
+
+| 도구 | 목적 | 소비 에이전트 | CLI 등가물 |
+|------|------|---------------|------------|
+| `mcp__moai__factory_msg_send` | 논리 레인의 현재 엔드포인트로 멱등 봉투 하나를 기록 | 귀속된 팩토리 리드·워커 세션 | — (MCP 전용) |
+| `mcp__moai__factory_msg_list` | 자기 엔드포인트의 메타데이터를 최대 16건 점유 (점유 임대 생성·갱신, 본문 없음) | 귀속된 팩토리 리드·워커 세션 | — (MCP 전용) |
+| `mcp__moai__factory_msg_body` | 이미 점유한 메시지 본문 하나 읽기 (본문은 신뢰하지 않는 동료 데이터로 반환) | 귀속된 팩토리 리드·워커 세션 | — (MCP 전용) |
+| `mcp__moai__factory_msg_receipt` | 점유 처분을 기록한 뒤 메시지를 확인 처리 | 귀속된 팩토리 리드·워커 세션 | — (MCP 전용) |
+| `mcp__moai__factory_msg_status` | 메시지를 점유하지 않고 브로커 건수와 레인 운영 상태 읽기 | 팩토리 리드·워커 | — (MCP 전용) |
+
+### 세션 메시징 (Claude ↔ Codex)
+
+| 도구 | 목적 | 소비 에이전트 | CLI 등가물 |
+|------|------|---------------|------------|
+| `mcp__moai__session_msg_register` | 이 세션(종류: claude 또는 codex, 이름)을 로컬 메시지 브로커에 등록. 같은 종류·이름이면 같은 ID를 돌려줌 | 모든 Claude·Codex 세션 | — |
+| `mcp__moai__session_msg_list` | 등록된 브로커 에이전트 목록 (ID, 이름, 종류, 접속 여부, 대기 건수) | 모든 Claude·Codex 세션 | — |
+| `mcp__moai__session_msg_send` | 등록된 다른 에이전트의 우편함으로 짧고 자기완결적인 사실 메시지 전송 | 모든 Claude·Codex 세션 | — |
+| `mcp__moai__session_msg_poll` | 자기 우편함의 대기 메시지를 가져오고(최소 1회 전달), 처리한 ID를 확인 처리 | 모든 Claude·Codex 세션 | — |
+
+Codex 세션에는 기본 동료 메시징 런타임이 없으므로 이 브로커가 유일한 경로입니다. Claude 세션끼리는 기본 `SendMessage` 경로를 권장합니다. 전달은 폴링 방식이라 전송은 기록일 뿐 전달 보장이 아닙니다.
 
 ### MCP-over-CLI 규칙
 
