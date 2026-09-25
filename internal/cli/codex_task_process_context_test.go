@@ -333,6 +333,84 @@ while IFS= read -r line; do :; done
 	}
 }
 
+// A live request must not leave a background child waiting forever for
+// initialize. The task's own timeout covers the handshake as well as the turn.
+func TestCodexTaskBackgroundHandshakeHonorsTaskBound(t *testing.T) {
+	root := t.TempDir()
+	withCodexProjectDir(t, root)
+	withCodexTaskTimeout(t, 100*time.Millisecond)
+	bin := filepath.Join(root, "codex-app-server")
+	pidFile := filepath.Join(root, "handshake-bound-child.pid")
+	t.Setenv("MOAI_TEST_CHILD_PID_PATH", pidFile)
+	script := "#!/bin/sh\nprintf '%s\\n' \"$$\" > \"$MOAI_TEST_CHILD_PID_PATH\"\nwhile IFS= read -r line; do :; done\n"
+	if err := os.WriteFile(bin, []byte(script), 0o700); err != nil {
+		t.Fatal(err)
+	}
+	prevLook, prevSession := codexLookPath, codexSession
+	codexLookPath = func(string) (string, error) { return bin, nil }
+	codexSession = realCodexSessionRunner{}
+	t.Cleanup(func() { codexLookPath, codexSession = prevLook, prevSession })
+	t.Cleanup(func() {
+		if raw, err := os.ReadFile(pidFile); err == nil {
+			if pid, err := strconv.Atoi(strings.TrimSpace(string(raw))); err == nil && syscall.Kill(pid, 0) == nil {
+				if child, err := os.FindProcess(pid); err == nil {
+					_ = child.Kill()
+					_ = child.Release()
+				}
+			}
+		}
+	})
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	type outcome struct {
+		res *mcp.CallToolResult
+		err error
+	}
+	done := make(chan outcome, 1)
+	go func() {
+		res, err := handleCodexTask(ctx, mcp.CallToolRequest{Params: mcp.CallToolParams{
+			Arguments: map[string]any{"prompt": "stall handshake", "background": true},
+		}})
+		done <- outcome{res, err}
+	}()
+	select {
+	case got := <-done:
+		if got.err != nil {
+			t.Fatalf("Go error: %v", got.err)
+		}
+		result := structuredMap(t, got.res)
+		if result["status"] != codexJobStatusFailed {
+			t.Fatalf("status=%v, want failed", result["status"])
+		}
+		if message, _ := result["error"].(string); !strings.Contains(message, "timed out after 100ms") {
+			t.Fatalf("handshake error should name the task bound, got %q", message)
+		}
+		if result["job_id"] != nil {
+			t.Fatalf("a failed handshake must not create a job: %+v", result)
+		}
+		raw, err := os.ReadFile(pidFile)
+		if err != nil {
+			t.Fatalf("real child never reached the handshake: %v", err)
+		}
+		pid, err := strconv.Atoi(strings.TrimSpace(string(raw)))
+		if err != nil {
+			t.Fatal(err)
+		}
+		if err := syscall.Kill(pid, 0); err != syscall.ESRCH {
+			t.Fatalf("timed-out handshake child pid %d remains live: %v", pid, err)
+		}
+	case <-time.After(700 * time.Millisecond):
+		cancel()
+		select {
+		case <-done:
+		case <-time.After(2 * time.Second):
+			t.Error("handler remained blocked after request cancellation")
+		}
+		t.Fatal("background handshake outlived the 100ms task bound")
+	}
+}
+
 func TestCodexTaskBackgroundProcessBound(t *testing.T) {
 	root := t.TempDir()
 	withCodexProjectDir(t, root)
