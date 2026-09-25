@@ -760,7 +760,6 @@ Hook 配置的详细内容见 [Hooks 指南](/zh/advanced/hooks-guide)。
 |------|-----|------|
 | `ENABLE_TOOL_SEARCH` | `"1"`, `"auto"`, `"auto:N"`, `"true"`, `"false"` | 控制工具搜索（MoAI 默认值：`"1"`） |
 | `CLAUDE_AUTOCOMPACT_PCT_OVERRIDE` | `1`-`100` | 自动压缩触发百分比（默认：约 95%） |
-| `CLAUDE_CODE_ENABLE_TELEMETRY` | `"1"` | 启用 OpenTelemetry 数据收集 |
 | `CLAUDE_CODE_DISABLE_BACKGROUND_TASKS` | `"1"` | 禁用后台任务 |
 | `DISABLE_AUTOUPDATER` | `"1"` | 禁用自动更新 |
 | `HTTP_PROXY` | URL | HTTP 代理服务器 |
