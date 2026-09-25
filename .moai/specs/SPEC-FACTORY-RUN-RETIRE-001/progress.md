@@ -350,3 +350,38 @@ not_done:
   - "S1 and S2 are handed back rather than fixed - both require editing an artifact this agent does not own."
   - "No docs-site page authored (S3)."
 ```
+
+### E.4.1 Sync-phase Audit-Ready Signal — v0.13.x amendment (card t1169)
+
+```yaml
+sync_complete_at: 2026-09-25
+sync_commit_sha: pending-backfill-sync   # a commit cannot cite its own hash; the lead reads it off the sync commit
+sync_status: audit-ready
+changelog_entry_position: "CHANGELOG.md `## [Unreleased]` -> `### Fixed`, new entry (the REQ-006 boot-proof correction and the `basis` field), placed directly after the t1107 SPEC-FACTORY-RUN-RETIRE-001 Fixed entry it amends"
+frontmatter_status_transitions:
+  spec_md: "in-progress -> completed"    # merged into this single sync commit; version stays 0.13.1, no body text touched
+  plan_md: "n/a - no frontmatter block"
+  acceptance_md: "n/a - no frontmatter block"
+  progress_md: "n/a - no frontmatter block"
+  updated_field: "unchanged - spec.md `updated:` was already 2026-09-25 before this commit"
+b12_self_test_a: "grep -c 'SPEC-FACTORY-RUN-RETIRE-001' CHANGELOG.md -> 2 before emission (the two t1107 entries at lines 27 and 84; a fresh grep after this commit finds 3, confirming the new entry is additive, not a duplicate of either existing one)"
+b12_self_test_b: "grep -oE 'AC-([A-Z0-9]+-)*[0-9]+' acceptance.md | sort -u | wc -l -> 20 (AC-001..AC-020), non-zero so not a vacuous match; this amendment's own entry cites AC-018/AC-019/AC-020 specifically, the three criteria acceptance.md SS-C.2 attributes to M7"
+b12_self_test_c: "every path cited in the new CHANGELOG entry verified present via ls before commit - internal/homestate/{boot_time_procstat.go,boot_time_unix.go,factory_run_retire.go,runtime.go}, internal/factorymsg/factory_run_boot_proof_legs_test.go"
+canary_compliance_check: "n/a - this SPEC defines no forward-looking policy that its own sync would test"
+
+docs_synchronised:
+  changelog: "1 new entry under Fixed, immediately after the t1107 entry it amends"
+  readme_4_locale: "not changed - the README factory-mode paragraph already describes run retirement at the behavioural level (\"a run whose lead has died is retired automatically\"); it names no owner-classification mechanism (identity stamp vs REQ-006b boot proof) and no event-payload field, so the boot-proof correction and the `basis` key add nothing the README states"
+  docs_site: "not changed - measured, not assumed: grep -rln 'run\\.retired|factory runs|basis' docs-site/ README*.md .moai/docs/ returns only the four README files (already assessed above); docs-site/ has no factory-runs page (confirmed at the t1107 sync, S3, unchanged since)"
+  codemaps: "not restamped - the amendment's run phase touched only internal/homestate and internal/factorymsg (7 files, no internal/cli); graph freshness threshold unchanged from the t1107 sync assessment"
+
+mx_tag_check:
+  scope: "internal/homestate/{boot_time_procstat.go (new),boot_time_unix.go,factory_run_boot_proof_test.go,factory_run_retire.go,runtime.go}, internal/factorymsg/factory_run_boot_proof_legs_test.go (new)"
+  finding: "grep -rn '@MX' internal/homestate/*.go internal/factorymsg/*.go -> 0 hits, both before and after this amendment's run phase (git show a0b78213d:internal/homestate/factory_run_retire.go | grep -c @MX -> 0). Neither package carries any @MX annotation anywhere, including the 20 pre-existing exported functions/types in factory_run_retire.go untouched by this amendment (e.g. ClassifyRuns, ReconcileActiveRuns, RetireRunIfDead). The new exported type `ProofBasis` (internal/homestate/factory_run_retire.go) and its three constants (BasisStamp/BasisPeer/BasisBoot) carry godoc comments but no @MX tag, matching the file's existing convention rather than diverging from it - adding tags here alone would be scope creep against an un-annotated package, not a repair of something this amendment broke"
+
+sync_phase_verification:
+  spec_lint: "moai spec lint SPEC-FACTORY-RUN-RETIRE-001 (pre-commit) -> 'No findings - all SPEC documents are valid', exit 0"
+  spec_audit: "moai spec audit --json --filter-spec SPEC-FACTORY-RUN-RETIRE-001 (pre-commit) -> total_specs 1, modern_era_clean 1, one INFO EraAutoDetected finding (H-4), no drift - both re-run after this commit with an unchanged result"
+  scope: "git diff --name-only a0b78213d HEAD -- .moai/specs/SPEC-FACTORY-RUN-RETIRE-001 CHANGELOG.md - spec.md (frontmatter only), progress.md (this section), CHANGELOG.md (1 new entry); no Go source touched by sync"
+```
+

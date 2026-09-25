@@ -2,7 +2,7 @@
 id: SPEC-FACTORY-RUN-RETIRE-001
 title: "Factory run retirement — owner-liveness reconciliation so a dead lead's run leaves 'active'"
 version: "0.13.1"
-status: in-progress
+status: completed
 created: 2026-09-23
 updated: 2026-09-25
 author: manager-spec
