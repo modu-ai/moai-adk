@@ -49,6 +49,42 @@ func testContext(platform string) *TemplateContext {
 
 // --- settings.json.tmpl tests ---
 
+// Claude Code treats a Bash pattern containing "*" plus a trailing ":*" as a
+// literal prefix. Keep the root, home, and Windows path variants as wildcards.
+func TestSettingsTemplateDenyWildcardSyntax(t *testing.T) {
+	want := []string{
+		"Bash(rm -rf /*)",
+		"Bash(rm -rf ~/*)",
+		"Bash(rm -rf C\\:/*)",
+	}
+	for _, platform := range []string{"darwin", "linux", "windows"} {
+		t.Run(platform, func(t *testing.T) {
+			var settings struct {
+				Permissions struct {
+					Deny []string `json:"deny"`
+				} `json:"permissions"`
+			}
+			rendered := renderTemplate(t, ".claude/settings.json.tmpl", testContext(platform))
+			if err := json.Unmarshal([]byte(rendered), &settings); err != nil {
+				t.Fatalf("rendered settings.json: %v", err)
+			}
+			present := make(map[string]bool, len(settings.Permissions.Deny))
+			for _, rule := range settings.Permissions.Deny {
+				present[rule] = true
+				if strings.HasPrefix(rule, "Bash(") && strings.HasSuffix(rule, ":*)") &&
+					strings.Contains(strings.TrimSuffix(rule, ":*)"), "*") {
+					t.Errorf("Bash deny rule mixes wildcard with legacy prefix syntax: %q", rule)
+				}
+			}
+			for _, rule := range want {
+				if !present[rule] {
+					t.Errorf("missing Bash deny rule %q", rule)
+				}
+			}
+		})
+	}
+}
+
 // TestSettingsTemplateGitModeGating is the F2 [HIGH] security regression guard:
 // git_mode MUST gate the AI git-write permissions in the deployed settings.json.
 //   - manual   -> AI cannot commit / push / tag
