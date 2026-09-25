@@ -545,3 +545,49 @@ F1 대조는 두 팔의 `project-config.toml`에 허용 표를 추가하고 `z.b
 ### Residual-risk
 
 테스트 하네스의 양성 시작 검사와 실제 사전 승인 효과는 서로 다른 판정이다. 독립 재감사와 LIVE 전 입력 일치 검사를 통과하기 전에는 승인 동작을 주장할 수 없다.
+
+## M1-b 비모델 하네스 준비 — 2026-09-25
+
+### Claim
+
+M1-b 판별 하네스의 비모델 선행 경로가 기존 M1-a 장부와 원자료를 보존하면서 고유 시작 검사 원자료와 반출 스냅샷을 만든다. 실모델 판별 호출은 실행하지 않았다.
+
+### Evidence
+
+```
+$ go test ./internal/cli -run '^(TestCodexPreApprovalGateRefusals|TestCodexPreApprovalArgvShape|TestCodexPreApprovalLivePreflight|TestCodexPreApprovalM1aBaseline)$' -count=1 -v -timeout=60s
+--- PASS: TestCodexPreApprovalLivePreflight (0.00s)
+--- PASS: TestCodexPreApprovalM1aBaseline (0.00s)
+--- PASS: TestCodexPreApprovalGateRefusals (0.24s)
+--- PASS: TestCodexPreApprovalArgvShape (0.03s)
+PASS
+ok  github.com/modu-ai/moai-adk/internal/cli 1.094s
+```
+
+`TestCodexPreApprovalM1aBaseline`은 M1-a 원본을 복사한 뒤 첫 장부 행 변이와 원자료 변이를 각각 거부했다. `TestCodexPreApprovalLivePreflight`는 재시도 무효 기록·상한·시작 검사 해시와 루트·반출 해시·승인 거부와 서버 실행 문구의 합성 대조를 통과했다.
+
+```
+$ MOAI_CODEX_PREAPPROVAL_LIVE=1 MOAI_T1172_EVIDENCE_DIR=/tmp/t1172-export.iBxWjH/.moai/reports/t1172 go test ./internal/cli -run '^TestCodexPreApprovalStartupPreserve$' -count=1 -v -timeout=150s
+disc-control startup exit=-1 moai=1 decoy=0 items=0
+disc-treatment startup exit=-1 moai=1 decoy=0 items=0
+car010 startup exit=-1 moai=1 decoy=1 items=0
+car011 startup exit=-1 moai=1 decoy=0 items=0
+--- PASS: TestCodexPreApprovalStartupPreserve (87.07s)
+PASS
+ok  github.com/modu-ai/moai-adk/internal/cli 87.667s
+```
+
+실행 직전 `/tmp` 증거 디렉터리에 기존 `ledger.json`과 M1-a 원자료 12개를 복사했다. 실행 후 장부 8행(원본 4행 + 신규 4행), 신규 `startup_id` 네 개, 고유 시작 검사 원자료 12개, 묶음별 반출 스냅샷 세 개를 확인했다. 기존 원자료 12개의 경로·SHA 출력 해시는 `c8653794d64014487c9f05d3e54f07e4b5fb61cf783f5e18f6460bb0e6a4b937`로 원본과 같았다. 신규 네 행의 stdout/stderr/launches 및 export 해시는 각 원자료와 모두 일치했다(`rows=4 export_snapshots=3 startup_raw=12 hashes=all_match`). `git diff --check`는 출력 없이 exit 0이었다.
+
+### Baseline-attribution
+
+위 검사는 worktree `WT-codex-preapproval-probe`, 설치된 Codex CLI 0.157.0, 접속 불가 제공자 `http://127.0.0.1:9/v1`을 사용한 이 실행의 관측이다. M1-a 장부·원자료 원본은 `.moai/reports/t1172/`에서 격리된 `/tmp/t1172-export.iBxWjH/`로 복사했으며 원본에는 이 실측이 쓰지 않았다.
+
+### Gaps
+
+- `TestCodexPreApprovalDiscriminatorLive`를 실행하지 않았다. 승인 정책 효과, 실제 MCP 도구 결과, LIVE 장부와 증거 해시는 미측정이다.
+- 독립 plan audit의 수정 문서 최종 판정과 실제 LIVE 허가가 남았다. 이 절의 PASS는 비모델 하네스 경로에만 해당한다.
+
+### Residual-risk
+
+실제 Codex `--json`의 MCP 결과 구조가 합성 분류 입력과 다를 수 있다. LIVE 도중 실패하면 `stop` 행을 기록하고 같은 증거 디렉터리를 재사용하지 않도록 하네스가 거부한다.

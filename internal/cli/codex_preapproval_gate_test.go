@@ -334,3 +334,44 @@ func TestCodexPreApprovalGateRefusals(t *testing.T) {
 		}
 	})
 }
+
+func TestCodexPreApprovalArgvShape(t *testing.T) {
+	bin, err := exec.LookPath("codex")
+	if err != nil {
+		t.Skipf("CODEX_NOT_INSTALLED: %v", err)
+	}
+	root := filepath.Join(t.TempDir(), "fixture")
+	prompt := preApprovalDiscriminatorPrompt(root)
+	args := preApprovalDiscriminatorArgs(root, prompt)
+	want := []string{"exec", "--strict-config", "-s", "workspace-write", "-c", `approval_policy="never"`, "-C", root, "--json", prompt}
+	if len(args) != len(want) || !bytes.Equal(preApprovalArgvBytes(args), preApprovalArgvBytes(want)) {
+		t.Fatalf("discriminator argv shape changed: %q", args)
+	}
+	if !preApprovalArgvMatches(root, []byte(prompt), preApprovalArgvBytes(args)) {
+		t.Fatal("valid exported argv rejected")
+	}
+	mutations := []struct {
+		name, root, prompt string
+		args               []string
+	}{
+		{"unsupported_flag", root, prompt, append(append([]string{}, args[:1]...), append([]string{"--ask-for-approval", "never"}, args[1:]...)...)},
+		{"missing_never", root, prompt, append(append([]string{}, args[:5]...), args[6:]...)},
+		{"root_mismatch", filepath.Join(t.TempDir(), "other"), prompt, append([]string{}, args...)},
+		{"prompt_mismatch", root, prompt + " changed", append([]string{}, args...)},
+	}
+	for _, mutation := range mutations {
+		if preApprovalArgvMatches(mutation.root, []byte(mutation.prompt), preApprovalArgvBytes(mutation.args)) {
+			t.Fatalf("invalid argv accepted: %s", mutation.name)
+		}
+	}
+	bad := exec.Command(bin, "exec", "--ask-for-approval", "never", "--help")
+	badOutput, badErr := bad.CombinedOutput()
+	if badErr == nil || !bytes.Contains(badOutput, []byte("unexpected argument")) {
+		t.Fatalf("unsupported exec approval spelling unexpectedly accepted: %v: %s", badErr, badOutput)
+	}
+	good := exec.Command(bin, "exec", "--strict-config", "-s", "workspace-write", "-c", `approval_policy="never"`, "--help")
+	goodOutput, goodErr := good.CombinedOutput()
+	if goodErr != nil || !bytes.Contains(goodOutput, []byte("Run Codex non-interactively")) {
+		t.Fatalf("supported argv prefix rejected: %v: %s", goodErr, goodOutput)
+	}
+}

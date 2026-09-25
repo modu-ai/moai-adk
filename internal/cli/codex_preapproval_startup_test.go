@@ -37,6 +37,13 @@ type preApprovalStartupRow struct {
 	EnvAuthPresent  bool              `json:"env_auth_present"`
 	MoaiLaunches    int               `json:"moai_launches"`
 	DecoyLaunches   int               `json:"decoy_launches"`
+	Passed          bool              `json:"passed"`
+	StdoutSHA256    string            `json:"stdout_sha256"`
+	StderrSHA256    string            `json:"stderr_sha256"`
+	LaunchesSHA256  string            `json:"launches_sha256"`
+	StartupID       string            `json:"startup_id,omitempty"`
+	ExportID        string            `json:"export_id,omitempty"`
+	ExportSHA256    string            `json:"export_sha256,omitempty"`
 	Reason          string            `json:"reason,omitempty"`
 }
 
@@ -44,6 +51,16 @@ type preApprovalManifest struct {
 	ExportedNS int64             `json:"exported_ns"`
 	Files      map[string]string `json:"files"`
 }
+
+type preApprovalFixture struct {
+	evidenceDir, tempRoot, root, codexHome, codexBin, moaiBin, moaiHash, launchLog, token string
+	worktrees                                                                             []string
+	git                                                                                   func(...string) (string, error)
+	procs                                                                                 *liveProcs
+	attempt                                                                               int
+}
+
+const preApprovalMaxStartupCalls = 16
 
 func preApprovalWriteJSON(t *testing.T, path string, value any) {
 	t.Helper()
@@ -119,10 +136,36 @@ func preApprovalSHA(data []byte) string {
 	return hex.EncodeToString(sum[:])
 }
 
+func preApprovalDiscriminatorPrompt(root string) string {
+	return fmt.Sprintf("Use the exec custom tool to call the moai MCP tool codex_role_audit exactly once with role %q, worktree_root %q, task %q, and out %q. Do not call any other tool, use shell commands, or change files. Report the tool refusal or result verbatim.",
+		"sync-auditor", root, "Return a read-only audit verdict.", "AGENTS.md")
+}
+
+func preApprovalDiscriminatorArgs(root, prompt string) []string {
+	return []string{"exec", "--strict-config", "-s", "workspace-write", "-c", `approval_policy="never"`, "-C", root, "--json", prompt}
+}
+
+func preApprovalArgvBytes(args []string) []byte { return []byte(strings.Join(args, "\n") + "\n") }
+
+func preApprovalArgvMatches(root string, prompt, exported []byte) bool {
+	return bytes.Equal(exported, preApprovalArgvBytes(preApprovalDiscriminatorArgs(root, string(prompt))))
+}
+
 // TestCodexPreApprovalStartup measures MCP launch only. Its CODEX_HOME has no
 // login file or auth environment, and the provider points at a closed local
 // port. Any model item is a stop, never evidence of preflight success.
 func TestCodexPreApprovalStartup(t *testing.T) {
+	preApprovalRunStartup(t, false)
+}
+
+// TestCodexPreApprovalStartupPreserve exercises M1-b's non-model startup
+// preparation without proceeding to either LIVE discriminator arm.
+func TestCodexPreApprovalStartupPreserve(t *testing.T) {
+	preApprovalRunStartup(t, true)
+}
+
+func preApprovalRunStartup(t *testing.T, preserveLedger bool) *preApprovalFixture {
+	t.Helper()
 	if os.Getenv(envCodexPreApprovalLive) != "1" {
 		t.Skip("NOT_RUN " + envCodexPreApprovalLive + " is not 1")
 	}
@@ -130,7 +173,7 @@ func TestCodexPreApprovalStartup(t *testing.T) {
 	if evidenceDir == "" {
 		t.Skip("NOT_RUN " + envT1172EvidenceDir + " is empty")
 	}
-	if !filepath.IsAbs(evidenceDir) {
+	if !filepath.IsAbs(evidenceDir) && !strings.HasPrefix(evidenceDir, "../") {
 		evidenceDir = filepath.Join("../..", evidenceDir)
 	}
 	var err error
@@ -140,6 +183,36 @@ func TestCodexPreApprovalStartup(t *testing.T) {
 	}
 	if err := os.MkdirAll(evidenceDir, 0o755); err != nil {
 		t.Fatal(err)
+	}
+	attempt := 1
+	if preserveLedger {
+		prior, readErr := preApprovalReadLedger(filepath.Join(evidenceDir, "ledger.json"))
+		if readErr != nil {
+			t.Fatal(readErr)
+		}
+		if !preApprovalM1aBaseline(evidenceDir, prior) {
+			t.Fatal("M1-a startup ledger or raw evidence differs from the recorded baseline")
+		}
+		attempt, readErr = preApprovalNextAttempt(prior)
+		if readErr != nil {
+			t.Fatal(readErr)
+		}
+		if attempt == 2 {
+			for _, name := range []string{"evidence.json", "outcome.txt", "live.jsonl"} {
+				if _, err := os.Stat(filepath.Join(evidenceDir, "discriminator", "attempt-1", name)); err != nil {
+					t.Fatalf("attempt-1 archive required before retry: %s: %v", name, err)
+				}
+			}
+		}
+		priorStarts := 0
+		for _, row := range prior {
+			if row["kind"] == "startup" {
+				priorStarts++
+			}
+		}
+		if priorStarts+4 > preApprovalMaxStartupCalls {
+			t.Fatal("startup invocation budget would be exceeded")
+		}
 	}
 	codexBin := os.Getenv("MOAI_CODEX_BIN")
 	if codexBin == "" {
@@ -222,8 +295,8 @@ func TestCodexPreApprovalStartup(t *testing.T) {
 	}
 	repoText := []byte("is_repo=true\nhead=" + strings.TrimSpace(fixtureHead) + "\n")
 	buildText := []byte("commit=" + strings.TrimSpace(commit) + "\nsha256=" + moaiHash + "\n")
-	prompt := []byte("Call codex_role_audit exactly once through the exec custom tool. Do not use shell commands or change files.\n")
-	liveArgv := []byte("exec\n-C\n" + root + "\n--json\n--ask-for-approval\nnever\n")
+	prompt := []byte(preApprovalDiscriminatorPrompt(root))
+	liveArgv := preApprovalArgvBytes(preApprovalDiscriminatorArgs(root, string(prompt)))
 	for pass := 0; pass < 2; pass++ {
 		for _, name := range []string{"disc-control", "disc-treatment", "car010", "car011"} {
 			if err := preApprovalCleanFixture(root, tempRoot, token, worktrees, git); err != nil {
@@ -286,8 +359,10 @@ func TestCodexPreApprovalStartup(t *testing.T) {
 						labels = []string{"direct", "parent"}
 					}
 					for _, label := range labels {
-						preApprovalExport(t, manifest, inputDir, label+"/argv.txt", liveArgv)
-						preApprovalExport(t, manifest, inputDir, label+"/prompt.txt", prompt)
+						labelPrompt := []byte(fmt.Sprintf("Run the %s read-only audit route for this fixture. Report the result without changing files.", label))
+						labelArgv := preApprovalArgvBytes(preApprovalDiscriminatorArgs(root, string(labelPrompt)))
+						preApprovalExport(t, manifest, inputDir, label+"/argv.txt", labelArgv)
+						preApprovalExport(t, manifest, inputDir, label+"/prompt.txt", labelPrompt)
 					}
 				}
 				continue
@@ -317,25 +392,42 @@ func TestCodexPreApprovalStartup(t *testing.T) {
 			row := preApprovalStartupRow{Kind: "startup", Fixture: name, TempRoot: tempRoot, FixtureRoot: root,
 				FixtureSentinel: true, StartedNS: start, EndedNS: end, Argv: append([]string{codexBin}, args...),
 				Exit: exitCode, BoundBy: "test", ProviderBaseURL: "http://127.0.0.1:9/v1", MoaiLaunches: moaiLaunches,
-				DecoyLaunches: decoyLaunches, InputsSHA256: map[string]string{"codex_home_config": preApprovalSHA([]byte(user)),
+				DecoyLaunches: decoyLaunches, StdoutSHA256: preApprovalSHA(out), StderrSHA256: preApprovalSHA(stderr),
+				InputsSHA256: map[string]string{"codex_home_config": preApprovalSHA([]byte(user)),
 					"project_config": preApprovalSHA([]byte(project)), "moai_binary": moaiHash,
 					"argv": preApprovalSHA(liveArgv), "prompt": preApprovalSHA(prompt), "root_state": preApprovalSHA(rootState)},
 			}
-			ledger = append(ledger, row)
 			startupDir := filepath.Join(evidenceDir, "startup")
 			if err := os.MkdirAll(startupDir, 0o755); err != nil {
 				t.Fatal(err)
 			}
-			if err := os.WriteFile(filepath.Join(startupDir, name+".jsonl"), out, 0o600); err != nil {
+			baseName := name
+			if preserveLedger {
+				row.StartupID = fmt.Sprintf("attempt-%d/%s-%d", attempt, name, start)
+				startupDir = filepath.Join(startupDir, fmt.Sprintf("attempt-%d", attempt))
+				baseName = fmt.Sprintf("%s-%d", name, start)
+				if err := os.MkdirAll(startupDir, 0o755); err != nil {
+					t.Fatal(err)
+				}
+			}
+			if err := os.WriteFile(filepath.Join(startupDir, baseName+".jsonl"), out, 0o600); err != nil {
 				t.Fatal(err)
 			}
-			if err := os.WriteFile(filepath.Join(startupDir, name+".err"), stderr, 0o600); err != nil {
+			if err := os.WriteFile(filepath.Join(startupDir, baseName+".err"), stderr, 0o600); err != nil {
 				t.Fatal(err)
 			}
-			preApprovalWriteJSON(t, filepath.Join(startupDir, name+".launches.json"), map[string]int{"moai": moaiLaunches, "decoy": decoyLaunches})
+			launchesPath := filepath.Join(startupDir, baseName+".launches.json")
+			preApprovalWriteJSON(t, launchesPath, map[string]int{"moai": moaiLaunches, "decoy": decoyLaunches})
+			launchesBytes, err := os.ReadFile(launchesPath)
+			if err != nil {
+				t.Fatal(err)
+			}
+			row.LaunchesSHA256 = preApprovalSHA(launchesBytes)
 			proof := preApprovalStartupProof{Fixture: name, Stdout: out, Stderr: stderr,
 				Launches: map[string]int{"moai": moaiLaunches, "decoy": decoyLaunches}}
-			if !preApprovalStartupValid(proof) || end-start > int64(25*time.Second) {
+			row.Passed = preApprovalStartupValid(proof) && end-start <= int64(25*time.Second)
+			ledger = append(ledger, row)
+			if !row.Passed {
 				ledger = append(ledger, preApprovalStartupRow{Kind: "stop", Fixture: name, Reason: "startup MCP launch or non-model gate failed"})
 				break
 			}
@@ -345,6 +437,30 @@ func TestCodexPreApprovalStartup(t *testing.T) {
 			preApprovalWriteJSON(t, filepath.Join(evidenceDir, "discriminator", "export-manifest.json"), discManifest)
 			for name, manifest := range carManifests {
 				preApprovalWriteJSON(t, filepath.Join(evidenceDir, name, "export-manifest.json"), manifest)
+			}
+			if preserveLedger {
+				for _, group := range []string{"discriminator", "car010", "car011"} {
+					body, err := os.ReadFile(filepath.Join(evidenceDir, group, "export-manifest.json"))
+					if err != nil {
+						t.Fatal(err)
+					}
+					var export preApprovalManifest
+					if err := json.Unmarshal(body, &export); err != nil || export.ExportedNS <= 0 {
+						t.Fatalf("invalid %s export manifest: %v", group, err)
+					}
+					snapshot := filepath.Join(evidenceDir, group, "exports", fmt.Sprintf("export-%d", export.ExportedNS), "export-manifest.json")
+					if err := os.MkdirAll(filepath.Dir(snapshot), 0o755); err != nil {
+						t.Fatal(err)
+					}
+					if _, err := os.Stat(snapshot); err == nil {
+						t.Fatal("attempt export snapshot already exists")
+					} else if !os.IsNotExist(err) {
+						t.Fatal(err)
+					}
+					if err := os.WriteFile(snapshot, body, 0o600); err != nil {
+						t.Fatal(err)
+					}
+				}
 			}
 			discDir := filepath.Join(evidenceDir, "discriminator")
 			diff := exec.Command("diff", "-r", "inputs/control", "inputs/treatment")
@@ -362,14 +478,70 @@ func TestCodexPreApprovalStartup(t *testing.T) {
 			preApprovalWriteJSON(t, filepath.Join(discDir, "arm-diff.meta.json"), map[string]int64{"written_ns": time.Now().UnixNano()})
 		}
 	}
-	data, err := json.MarshalIndent(ledger, "", "  ")
-	if err != nil {
-		t.Fatal(err)
-	}
-	if err := os.WriteFile(filepath.Join(evidenceDir, "ledger.json"), append(data, '\n'), 0o600); err != nil {
-		t.Fatal(err)
-	}
 	if len(ledger) != 4 {
 		t.Fatalf("startup stopped after %d entries; see ledger.json", len(ledger))
 	}
+	if preserveLedger {
+		for i := range ledger {
+			group := ledger[i].Fixture
+			if strings.HasPrefix(group, "disc-") {
+				group = "discriminator"
+			}
+			current, err := os.ReadFile(filepath.Join(evidenceDir, group, "export-manifest.json"))
+			if err != nil {
+				t.Fatal(err)
+			}
+			var export preApprovalManifest
+			if err := json.Unmarshal(current, &export); err != nil || export.ExportedNS <= 0 {
+				t.Fatalf("invalid %s export manifest: %v", group, err)
+			}
+			ledger[i].ExportID = fmt.Sprintf("export-%d", export.ExportedNS)
+			snapshot := filepath.Join(evidenceDir, group, "exports", ledger[i].ExportID, "export-manifest.json")
+			body, err := os.ReadFile(snapshot)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if !bytes.Equal(body, current) {
+				t.Fatal("attempt export differs from current manifest")
+			}
+			ledger[i].ExportSHA256 = preApprovalSHA(body)
+		}
+	}
+	ledgerPath := filepath.Join(evidenceDir, "ledger.json")
+	var rows []map[string]any
+	if preserveLedger {
+		rows, err = preApprovalReadLedger(ledgerPath)
+		if err != nil && !os.IsNotExist(err) {
+			t.Fatal(err)
+		}
+		priorStarts := 0
+		for _, row := range rows {
+			if row["kind"] == "startup" {
+				priorStarts++
+			}
+		}
+		if priorStarts+len(ledger) > preApprovalMaxStartupCalls {
+			t.Fatal("startup invocation budget exceeded")
+		}
+	}
+	for _, entry := range ledger {
+		body, err := json.Marshal(entry)
+		if err != nil {
+			t.Fatal(err)
+		}
+		var row map[string]any
+		decoder := json.NewDecoder(bytes.NewReader(body))
+		decoder.UseNumber()
+		if err := decoder.Decode(&row); err != nil {
+			t.Fatal(err)
+		}
+		rows = append(rows, row)
+	}
+	if err := preApprovalWriteLedger(ledgerPath, rows); err != nil {
+		t.Fatal(err)
+	}
+	return &preApprovalFixture{evidenceDir: evidenceDir, tempRoot: tempRoot, root: root,
+		codexHome: filepath.Join(tempRoot, "codex-home"), codexBin: codexBin,
+		moaiBin: moaiBin, moaiHash: moaiHash, launchLog: launchLog, token: token,
+		worktrees: worktrees, git: git, procs: procs, attempt: attempt}
 }
