@@ -31,7 +31,7 @@ var projectRootDocFiles = []string{
 
 // The docs site repeats the project_root tool inventory in four languages.
 // Keep each list tied to tools/list rather than a hand-maintained count.
-var docsSiteProjectRootLine = regexp.MustCompile("(?m)^## [^\\n]*project_root[^\\n]*\\n\\n([^\\n]+)")
+var docsSiteProjectRootLine = regexp.MustCompile(`(?m)^## [^\n]*project_root[^\n]*\n\n([^\n]+)`)
 
 func TestDocsSiteProjectRootMatchesServer(t *testing.T) {
 	declared := toolsDeclaringProjectRoot(t)
