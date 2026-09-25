@@ -86,6 +86,22 @@
 - N18: plan.md §F M0 의 승인 대상에 격리 `/tmp` 프로젝트에서의 `--permission-mode bypassPermissions` 를 넣고 승인됨으로 표시했다.
 - 이번 개정은 라이브 모델·에이전트 실행을 하지 않았다. REQ 수 16, AC 수 13 + GATE 유지. 열린 선택 결함: N15·N16(run 에서 닫음, 위 판정 (c)).
 
+### Pre-flight 5 재판정 (2026-09-25)
+
+- 측정 판정: **「유지한다」 (plan.md §C 5 판정 1).** 증거 `.moai/reports/t1152/preflight5.md` §1·§2 (로컬 증거, gitignored). 측정 주체와 실행 경로: 가드 거부로 레인이 `claude -p` 를 직접 띄우지 못해 운영자가 실행기 `/tmp/t1152-pf5/run.sh` 를 실행했고, 레인이 결과 파일을 읽어 판정했다(증거 파일 §1). Claude Code 2.1.281, 비대화형 `claude -p`, 격리 `/tmp` 프로젝트, `--permission-mode bypassPermissions`, 실행당 `timeout -k 10 300`·`--max-turns 8`.
+- 판정 근거(요지 — 원문 기록은 §E.2 「Pre-flight 5 결과」): 양성 대조 C 가 탐침을 봤고, A1 에서 키를 지운 뒤 기록 3줄(`local_declares:false`)이 탐침 `on` 이었다. 셸 환경에는 키가 없었다.
+- 돌리지 않은 변형: A2·B1·B2. 판정 규칙상 판정 1 이 우선해 결론이 A1 하나로 섰기 때문이다. 예산 사용 2/6 — 모델 호출 0회로 끝난 인증 실패 4건은 2026-09-24 운영자 판정 두 건(첫 건, 이어 둘째·셋째 건)과 그 판정의 적용(2026-09-25 넷째 건)으로 예산에서 뺐다(증거 파일 §1, `/tmp/t1152-pf5/logs/runs.txt`).
+- 정지 조건 발동: 구현을 시작하지 않고 운영자 재판정을 받았다.
+- **운영자 재판정 (2026-09-25, t1152 레인 AskUserQuestion): 탈출 장치 없음 — 결정 이벤트는 파싱 실패 시 언제나 거부한다.** Codex Stop 면제는 그대로다. 지속적인 파싱 실패(예: 호스트 형식 변화)는 moai 갱신이나 훅 비활성화(`disableAllHooks`)로 복구하고 운영자 문서에 적는다. 거부 사유는 원인(stdin 파싱 실패)과 운영자 문서 식별자만 싣는다.
+
+### 개정 0.4.0 (2026-09-25)
+
+- 계기: 위 재판정. 처분 요약은 spec.md HISTORY 0.4.0 행. 개정 기준 트리: 브랜치 `WT-hook-stdin-failclosed`, HEAD `39ee312cf`.
+- 삭제(번호 유지, 「삭제됨 (0.4.0, Pre-flight 5 결과)」 표시): REQ-HSF-007·016, AC-HSF-006·010.
+- 개정: REQ-HSF-001(탈출 장치 조건절 제거, 실행 시점 스위치 금지 절 추가), REQ-HSF-010(사유는 원인·문서 식별자만, 복구 절차 미기재), REQ-HSF-011(탈출 적용 기록면 삭제), AC-HSF-001(Given 정리, (e4) 를 카나리·복구 절차 문구 부재로), AC-HSF-003((b3) AST 검사·(c6) 변이 신설), AC-HSF-007·011·012(Given·키 목록 정리), acceptance.md §1·§E, spec.md §D(Out of Scope — 탈출 장치 추가)·§F.1 3(c)·§F.2(잠김과 복구 경로, 유지 측정 결과, `disableAllHooks` 잔여 위험), plan.md §B.1 Q1 재판정·§C 5 완료 기록·§D·§E·M0·M1b·M2·M4·§G·§H.
+- REQ: 16 번호 중 살아 있는 것 14(Tier M 상한 16). AC: 13 번호 중 살아 있는 것 11 + GATE.
+- 이번 개정은 코드·테스트·라이브 모델 실행을 하지 않았다. 새로 생긴 전제: 파싱 실패 처리 경로가 환경 변수·설정 파일을 읽지 않는다는 AC-HSF-003(b3) 의 범위를 t1099 흡수 트리에서 먼저 잰다(spec.md §F.1 3(c)).
+
 ## §E.2 Run-phase Evidence
 
 ### Pre-flight 3·4 기준선 (구현 전, 2026-09-25)
@@ -217,6 +233,39 @@ c_agent_bogus_x-completion | rc=0 | stdout(3B)={}  | stderr= | canary_in_out=no 
 - 디스패치 횟수(위 관측 한계). run 의 스파이 테스트 몫.
 - `--harness bogus` + malformed stdin 조합(AC-HSF-004·AC-HSF-012 의 「판정이 읽기보다 앞선다」 관측)은 plan.md §C 4 의 목록에 없어 재지 않았다.
 - Pre-flight 1·2·5 는 이번 범위 밖이다. 특히 1(t1099 착지)이 성립하기 전에는 구현을 시작하지 않는다.
+
+### Pre-flight 5 결과 (2026-09-25) — 「유지한다」
+
+기록자: manager-spec (0.4.0 개정, 오케스트레이터 재위임). 측정 원문은 레인이 증거 파일에 옮겨 적은 것을 판독했고, 이 개정에서 측정을 다시 하지 않았다.
+
+- 증거: `.moai/reports/t1152/preflight5.md` (로컬 증거, gitignored). 실행기와 훅 기록: `/tmp/t1152-pf5/` (머신 로컬 스크래치 — 판정에 쓴 줄은 아래에 옮겼다).
+- 선언 상한(승인됨): 최대 6회, 실행당 `timeout -k 10 300`·`--max-turns 8`, 모델 `haiku`, 격리 `HOME=/tmp/t1152-pf5/home`·`CLAUDE_CONFIG_DIR=/tmp/t1152-pf5/cfg`, `env -i` 로 상속 환경 제거. 실제 사용: 2/6 (C 1, A1 1). 인증 실패 4건(모델 호출 0회)은 운영자 판정으로 예산 제외.
+- 격리 차이(증거 파일 §1 기록): 격리 `HOME` 에 macOS 키체인 경로 심볼릭 링크 하나(`/tmp/t1152-pf5/home/Library/Keychains` → 사용자 키체인)를 더했다. 자격 증명 저장소이며 설정 파일이 아니다.
+
+C (양성 대조, 셸 환경에만 키) — 11:57:48–11:58:00, exit 0:
+
+```
+{"ts":"11:57:57","event":"PreToolUse","tool":"Bash","probe":"on","local_exists":true,"local_declares":false}
+{"ts":"11:57:58","event":"PostToolUse","tool":"Bash","probe":"on","local_exists":true,"local_declares":false}
+```
+
+A1 (같은 세션: `settings.local.json` `env` 에 키 추가 → 키 삭제, 셸 환경에는 키 없음) — 11:59:46–12:00:09, exit 0:
+
+```
+{"ts":"11:59:52","event":"PreToolUse","tool":"Bash","probe":"","local_exists":true,"local_declares":false}
+{"ts":"11:59:56","event":"PostToolUse","tool":"Bash","probe":"on","local_exists":true,"local_declares":true}
+{"ts":"11:59:58","event":"PreToolUse","tool":"Bash","probe":"on","local_exists":true,"local_declares":true}
+{"ts":"11:59:58","event":"PostToolUse","tool":"Bash","probe":"on","local_exists":true,"local_declares":true}
+{"ts":"12:00:01","event":"PreToolUse","tool":"Bash","probe":"on","local_exists":true,"local_declares":true}
+{"ts":"12:00:04","event":"PostToolUse","tool":"Bash","probe":"on","local_exists":true,"local_declares":false}
+{"ts":"12:00:06","event":"PreToolUse","tool":"Bash","probe":"on","local_exists":true,"local_declares":false}
+{"ts":"12:00:06","event":"PostToolUse","tool":"Bash","probe":"on","local_exists":true,"local_declares":false}
+```
+
+- 판정 전제: 삭제 전 관측 충족(선언 중 탐침 `on` 4줄), 삭제 뒤 기록 충족(`local_declares:false` 3줄). 경로 A = 「전달」.
+- 판정: **1 「유지한다」** — 키를 지운 뒤에도 그 세션의 훅 환경에 값이 남았다. A2·B1·B2 는 판정 1 이 우선해 돌리지 않았다.
+- 처분: 정지 → 운영자 재판정(§E.1 「Pre-flight 5 재판정」) → spec 0.4.0 에서 탈출 장치 제거.
+- 한계: 이 호스트·Claude Code 2.1.281·비대화형 `-p`·`settings.local.json` 면의 키 삭제 변형 한 번의 관측이다.
 
 ## §E.3 Run-phase Audit-Ready Signal
 
