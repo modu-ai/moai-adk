@@ -146,6 +146,17 @@ func TestCharacterize_CC_HelpFlag(t *testing.T) {
 			if called {
 				t.Errorf("launchClaudeFunc must not be called when %s is present", flag)
 			}
+			help := buf.String()
+			for _, want := range []string{"moai init default", "permission-modes docs"} {
+				if !strings.Contains(help, want) {
+					t.Errorf("help for %s missing %q", flag, want)
+				}
+			}
+			for _, stale := range []string{"project default", "Team plan", "Sonnet/Opus 4.6"} {
+				if strings.Contains(help, stale) {
+					t.Errorf("help for %s retains stale wording %q", flag, stale)
+				}
+			}
 		})
 	}
 }

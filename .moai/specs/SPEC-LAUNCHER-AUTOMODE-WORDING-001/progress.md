@@ -12,11 +12,16 @@ Command: `moai spec lint SPEC-LAUNCHER-AUTOMODE-WORDING-001` (2026-09-25, pre-co
 
 ## §E.2 Run-phase Evidence
 
-_<pending run-phase>_
+- go test ./internal/cli/ -run 'TestCharacterize_CC_HelpFlag|TestCharacterize_GLM_AutoMode' -count=1 -timeout=90s → ok github.com/modu-ai/moai-adk/internal/cli 0.843s (exit 0). Help test checks the new init default and documentation reference; both GLM flag spellings check the version-free reason.
+- Inline Python AC-001..004 check over the two Go files and four locale pages → AC-001..004 PASS; locale link/default line: [47, 47, 47, 47] (exit 0).
+- go vet ./internal/cli/ → no output, exit 0.
+- gofmt -l internal/cli/cc.go internal/cli/glm.go internal/cli/cc_test.go internal/cli/glm_new_test.go → no output, exit 0.
+- git diff --check → no output, exit 0.
+- git diff --name-only a520187f1..origin/develop -- the eight implementation/test/doc paths → no output, exit 0. The current upstream develop did not change these paths since the SPEC baseline.
 
 ## §E.3 Run-phase Audit-Ready Signal
 
-_<pending run-phase>_
+Six requested surfaces and two focused tests are changed together. The evidence above checks wording and the existing GLM rejection path. The worktree still needs an implementation commit and upstream integration; sync-phase review remains open.
 
 ## §E.4 Sync-phase Audit-Ready Signal
 

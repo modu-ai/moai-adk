@@ -2,7 +2,7 @@
 id: SPEC-LAUNCHER-AUTOMODE-WORDING-001
 title: "Correct the auto permission-mode requirement wording and the acceptEdits 'project default' claim in the moai cc / moai glm launchers and the launchers CLI reference"
 version: "0.1.0"
-status: draft
+status: in-progress
 created: 2026-09-25
 updated: 2026-09-25
 author: manager-spec
