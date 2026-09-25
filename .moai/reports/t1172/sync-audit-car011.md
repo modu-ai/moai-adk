@@ -1,10 +1,10 @@
 # t1172 AC-CAR-011 독립 사전 감사
 
-판정: **FAIL** (기능 60/100). 기준 커밋: `517ea54f2`. 감사 범위는 AC-CAR-011 실행 준비와 AC-CPP-004·013·014 연결이다. 실제 모델 LIVE는 실행하지 않았다.
+판정: **FAIL** (기능 60/100). 현재 기준 커밋: `e0079d62a`. 감사 범위는 AC-CAR-011 실행 준비와 AC-CPP-004·013·014 연결이다. 실제 모델 LIVE는 실행하지 않았다.
 
 ## Claim
 
-결정적 경계 테스트와 Codex 0.157.0 비모델 시작 검사는 통과했다. 그러나 시작 검사 뒤 버전 불일치가 생기면 테스트가 실패하면서도 공용 장부에 `stop` 행을 남기지 않는다. `plan.md` §D의 앞 단계 실패 시 `stop` 기록 계약을 어기며, 이미 소비한 car011 시작 검사 횟수 때문에 같은 증거 디렉터리의 재실행도 거부된다. LIVE 결과 자체는 미검증이다.
+결정적 경계 테스트와 Codex 0.157.0 비모델 시작 검사는 통과했다. 첫 감사에서 발견한 버전 불일치 시 `stop` 누락은 수리됐다. 하지만 시작 검사 뒤 픽스처 초기화 중 `git status`가 실패하면 공용 장부에 `stop` 행을 남기지 않는 별도 우회가 재현됐다. `plan.md` §D의 앞 단계 실패 시 `stop` 기록 계약을 어긴다. LIVE 결과 자체는 미검증이다.
 
 ## Evidence
 
@@ -42,17 +42,18 @@ $ gofmt -l internal/cli/codex_preapproval_car011_test.go internal/cli/codex_prea
 
 ## Baseline-attribution
 
-이 감사는 `/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t1172`의 `git rev-parse --short HEAD` 결과 `517ea54f2`에서 수행했다. 임시 사본의 시작 검사 8→9, 원본 8 유지가 관찰됐다. 선행 커밋 `a4a67655d`에는 준비 전용 테스트 진입점 9줄이 없었고, 해당 진입점은 `517ea54f2`에서 추가됐다. 단위 테스트는 현재 작업본에서 실행했으며 당시 `git status --short`는 빈 출력이었다.
+첫 감사는 `/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t1172`의 `git rev-parse --short HEAD` 결과 `517ea54f2`에서 수행했다. 후속 감사는 `e0079d62a`에서 수행했다. 두 감사 모두 임시 장부 사본에서 시작 검사 8→9, 원본 8 유지가 관찰됐다. 선행 커밋 `a4a67655d`에는 준비 전용 테스트 진입점 9줄이 없었고, 해당 진입점은 `517ea54f2`에서 추가됐다. 각 재현 당시 `git status --short`는 빈 출력이었다.
 
 ## Findings
 
-- **F1 [High, blocking, confidence high]** `internal/cli/codex_preapproval_car011_test.go:107-129`: 시작 검사 후 사전 조건 오류가 장부 `stop` 없이 끝난다. **필수 수정:** 장부를 확보한 즉시 공통 중단 경로를 만들고, 반출·버전·repo·build 검사 실패를 그 경로로 보내라. 반출 읽기보다 장부 읽기를 먼저 해야 하는 경로도 포함한다. 실제 모델을 띄우지 않는 버전 변이 테스트에서 `startup=9`, `live=2`, `stop=1`, 마지막 행 `stop`을 확인하라.
+- **F1 [High, resolved in e0079d62a, confidence high]** 기존 `internal/cli/codex_preapproval_car011_test.go:107-129`: 시작 검사 후 반출·버전·repo·build 검사 실패 시 `stop` 누락. 비모델 버전 변이 재검사에서 `stop=1`을 확인했다.
+- **F2 [High, blocking, confidence high]** `internal/cli/codex_preapproval_discriminator_live_test.go:344` → `internal/cli/codex_preapproval_startup_test.go:103-105` → `internal/cli/codex_preapproval_car011_test.go:214`: `preApprovalPrepareArm` 내부 `preApprovalRootState(t,...)`가 `git status` 실패에 `t.Fatal`로 테스트를 바로 끝내서 호출자의 `stop` 경로를 우회한다. **필수 수정:** 초기화에서 루트 상태 수집 오류를 반환해 호출자의 `stop(err.Error())`로 보내고, 시작 검사 뒤 `git status` 실패 변이에서 `startup=9`, `live=2`, `stop=1`, 마지막 행 `stop`을 확인하라.
 
 ## Dimension Scores
 
 | 차원 | 점수 | 판정 | 근거 |
 |---|---:|---|---|
-| Functionality (40%) | 60/100 | FAIL | 위 버전 변이: 시작 검사 성공 뒤 `stop=0` |
+| Functionality (40%) | 60/100 | FAIL | Iteration 2의 `git status` 변이: 시작 검사 성공 뒤 `stop=0` |
 | Security (25%) | 미산정 | UNVERIFIED | 인증 해시 경로만 정적 확인, LIVE 및 비밀 노출 검사 미실행 |
 | Craft (20%) | 미산정 | UNVERIFIED | 집중 검사 통과; 5.3%는 선택한 테스트로 잰 패키지 전체 수치여서 이 변경의 전체 커버리지 판정에 쓰지 않음 |
 | Consistency (15%) | 100/100 | PASS | `gofmt -l` 출력 없음; `go vet ./internal/cli` exit 0 |
@@ -68,3 +69,42 @@ F1을 고쳐도 첫 역할과 둘째 역할의 실제 세션 동작, 샌드박�
 ## Iteration history
 
 - Iteration 1: `517ea54f2` — F1 재현, FAIL.
+- Iteration 2: `e0079d62a` — F1 수리 확인, F2 재현, FAIL. 실제 모델 호출 0회.
+
+### Iteration 2 증거
+
+F1의 버전 변이를 같은 임시 장부 사본에서 다시 돌린 출력:
+
+```text
+$ go test ./internal/cli -run '^TestCodexAuditLaunchLiveReadOnlyRoles$' -count=1 -v -timeout=90s
+exit= 1
+=== RUN   TestCodexAuditLaunchLiveReadOnlyRoles
+    codex_preapproval_startup_test.go:171: car011 startup exit=-1 moai=1 decoy=1 items=0
+    codex_preapproval_car011_test.go:171: ABORTED: Codex version "0.158.0" differs from 0.157.0
+--- FAIL: TestCodexAuditLaunchLiveReadOnlyRoles (25.13s)
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/cli	25.725s
+ledger_counts= {"live": 2, "startup": 9, "stop": 1}
+last_kind= stop
+stop_reason= Codex version "0.158.0" differs from 0.157.0
+orig_counts= {"live": 2, "startup": 8, "stop": 0}
+```
+
+픽스처의 3번째 `git status`만 exit 42로 답하는 래퍼를 사용했다. 첫 두 번은 시작 검사 준비, 3번째는 그 검사 뒤 첫 역할 직전의 `preApprovalPrepareArm` 호출이다. 관찰 출력:
+
+```text
+$ go test ./internal/cli -run '^TestCodexAuditLaunchLiveReadOnlyRoles$' -count=1 -v -timeout=90s
+exit= 1
+=== RUN   TestCodexAuditLaunchLiveReadOnlyRoles
+    codex_preapproval_startup_test.go:171: car011 startup exit=-1 moai=1 decoy=1 items=0
+--- FAIL: TestCodexAuditLaunchLiveReadOnlyRoles (25.61s)
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/cli	26.207s
+FAIL
+git_status_count= 3
+ledger_counts= {"live": 2, "startup": 9, "stop": 0}
+last_kind= startup
+orig_counts= {"live": 2, "startup": 8, "stop": 0}
+```
+
+`go test ./internal/cli -run '^TestCodexPreApprovalCar011(PostStartupFailuresStop|PreparationBoundary|ExportIntegrity)$' -count=1 -v`는 `fake_version`, `missing_export`를 포함해 모두 PASS했다. 이 테스트가 F2의 간접 `t.Fatal` 경로를 덮지는 않는다. 장부 파일 자체가 읽히지 않는 경우에는 같은 파일에 원자적으로 `stop`을 쓸 수 없으므로 별도 잔여 위험으로 둔다.
