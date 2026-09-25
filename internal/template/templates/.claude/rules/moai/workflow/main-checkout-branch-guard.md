@@ -4,13 +4,6 @@ Branch-state isolation rules for the primary project checkout. The checkout is *
 
 > **Loading scope**: Intentionally always-loaded — the guard binds any turn that performs git work, which is not predictable from file paths.
 
-## Why This Matters
-
-`HEAD` is shared mutable state and a read of it goes stale immediately, so a branch switch, reset,
-or stash in the primary checkout reaches every concurrent reader mid-operation. Neither resulting
-failure raises an error; both surface later as "commits I did not make" or "my changes are on the
-wrong branch". The full mechanism: `main-checkout-branch-guard-detail.md` § Why the race is quiet.
-
 ## Rules
 
 [ZONE:Evolvable] [HARD] The orchestrator MUST NOT change branch state in the primary project checkout. Specifically forbidden there:
@@ -18,7 +11,7 @@ wrong branch". The full mechanism: `main-checkout-branch-guard-detail.md` § Why
 | Forbidden | Why |
 |-----------|-----|
 | `git checkout <branch>` / `git switch` | relocates every concurrent session's tree |
-| `git checkout -b` / `git switch -c` / `git branch <name>` / any mutating `git branch` form (flag classification: § Mechanical Enforcement) | same, plus leaves a branch other sessions did not expect |
+| `git checkout -b` / `git switch -c` / `git branch <name>` / any mutating `git branch` form (flag classification: § Mechanical Enforcement below) | same, plus leaves a branch other sessions did not expect |
 | `git reset --hard` / `git checkout -- <path>` | discards work the orchestrator cannot see the provenance of |
 | `git stash` | the stash is repository-global; it silently absorbs other sessions' uncommitted changes |
 | `git rebase` / `git merge` onto the checked-out branch | rewrites or advances shared history mid-operation |
@@ -29,25 +22,6 @@ wrong branch". The full mechanism: `main-checkout-branch-guard-detail.md` § Why
 - `git fetch` (updates remote-tracking refs only; never touches the working tree)
 - Commits **to the branch already checked out**, staged by explicit pathspec rather than `git add -A`
 - `git push` of the already-checked-out branch
-
-## Procedure — Isolate With a Worktree
-
-When work needs a different branch, create a worktree instead of switching:
-
-```bash
-git worktree add -b <branch> <worktree-path> origin/main
-git -C <worktree-path> add <paths>
-git -C <worktree-path> commit -m "<message>"
-git -C <worktree-path> push -u origin <branch>
-```
-
-Drive the worktree with `git -C <path>` rather than `cd`. A `cd` inside a compound command changes the shell's working directory for that invocation only, which makes subsequent commands read the wrong tree if the pattern is copied without the `cd`.
-
-Remove the worktree when the branch is merged:
-
-```bash
-git worktree remove <worktree-path>
-```
 
 ## Staleness Rule
 
@@ -66,17 +40,6 @@ Process-registry lookups are not a reliable emptiness signal — a registry can 
 
 Treat concurrency as the default assumption. The load-bearing check is the staleness rule above: compare `HEAD` before and after, and let a moved `HEAD` be the evidence.
 
-## Verification
-
-```bash
-# Confirm the intended tree before writing to it
-git -C <worktree-path> rev-parse --show-toplevel
-git -C <worktree-path> branch --show-current
-
-# Confirm the push shipped exactly what was intended
-git rev-list --count --left-right origin/<branch>...HEAD
-```
-
 ## Mechanical Enforcement
 
 A PreToolUse hook applies this doctrine conditionally — a static `settings.json` deny cannot scope
@@ -87,28 +50,25 @@ to the primary checkout and would lock out legitimate worktree flows.
   Disabled, no `git rev-parse` subprocess runs at all.
 - **Deny sentinel.** Every deny on this path is prefixed `BRANCH_GUARD_VIOLATION:`, so the
   orchestrator can match the source without parsing the reason string.
-- **Query-vs-mutate discrimination.** The `git branch` matcher denies every mutating form — a
-  mutating flag anywhere, a short-flag cluster containing one, or a positional branch-name
-  operand with no list action selected — and passes read-only queries. An unclassifiable form
-  under-matches and passes: under-match is the accepted fail-open direction.
+- **Query-vs-mutate discrimination.** The `git branch` matcher denies every mutating form and
+  passes read-only queries; an unclassifiable form under-matches and passes, under-match being the
+  accepted fail-open direction.
 - **Fail-open.** The deny fires only on positive evidence — primary checkout confirmed, a
   branch-state pattern matched, agent not exempt. Any uncertainty falls through to allow and
   appends to `.moai/logs/branch-guard-audit.log`.
 - **Exemptions are unreachable from a tool-spawned subagent.** Both axes work, but neither value
-  reaches one: `AgentType` is populated only for a main-thread `claude --agent manager-git` launch,
-  and `MOAI_BRANCH_GUARD_EXEMPT=1` is read from the hook process's own environment, which is spawned
-  before the guarded command runs. Exporting it inside that command is a no-op. Reading a
-  `BRANCH_GUARD_VIOLATION` as "the exemption is broken" is a misdiagnosis — use a worktree instead.
+  reaches one, so exporting `MOAI_BRANCH_GUARD_EXEMPT=1` inside the guarded command is a no-op.
+  Reading a `BRANCH_GUARD_VIOLATION` as "the exemption is broken" is a misdiagnosis — use a
+  worktree instead.
 
-Pattern set, the primary-vs-worktree discriminant, quoted-span scan scope, and the originating SPEC
-IDs: `main-checkout-branch-guard-detail.md` § Mechanical enforcement.
+Flag classification, the pattern set, the primary-vs-worktree discriminant, and quoted-span scan
+scope: `main-checkout-branch-guard-detail.md` § Mechanical enforcement.
 
 ## Cross-references
 
 - `.claude/rules/moai/workflow/worktree-integration.md` — worktree systems, lifecycle, and the disposal contract
-- `.claude/rules/moai/workflow/worktree-state-guard.md` — worktree state validation
 - `.claude/rules/moai/core/agent-common-protocol.md` § Pre-Spawn Sync Check — divergence check before spawning a write-capable agent
-- `.claude/rules/moai/core/verification-claim-integrity.md` — why an unobserved "no concurrent session" claim is a defect claim
+- `main-checkout-branch-guard-detail.md` — the lazy companion. Load it for § Why the race is quiet (relocated § Why This Matters) · § Mechanical enforcement · § Procedure — Isolate With a Worktree · § Verification
 
 ---
 

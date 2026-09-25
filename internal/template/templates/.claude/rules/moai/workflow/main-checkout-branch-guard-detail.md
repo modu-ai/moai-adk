@@ -145,3 +145,41 @@ flows. The hook applies the doctrine conditionally.
 
 Classification: Lazy companion — rationale and implementation detail only. Every prohibition and
 every permitted-operation clause stays in `main-checkout-branch-guard.md`.
+
+## Why This Matters
+
+`HEAD` is shared mutable state and a read of it goes stale immediately, so a branch switch, reset,
+or stash in the primary checkout reaches every concurrent reader mid-operation. Neither resulting
+failure raises an error; both surface later as "commits I did not make" or "my changes are on the
+wrong branch". The full mechanism: `main-checkout-branch-guard-detail.md` § Why the race is quiet.
+
+## Procedure — Isolate With a Worktree
+
+When work needs a different branch, create a worktree instead of switching:
+
+```bash
+git worktree add -b <branch> <worktree-path> origin/main
+git -C <worktree-path> add <paths>
+git -C <worktree-path> commit -m "<message>"
+git -C <worktree-path> push -u origin <branch>
+```
+
+Drive the worktree with `git -C <path>` rather than `cd`. A `cd` inside a compound command changes the shell's working directory for that invocation only, which makes subsequent commands read the wrong tree if the pattern is copied without the `cd`.
+
+Remove the worktree when the branch is merged:
+
+```bash
+git worktree remove <worktree-path>
+```
+
+## Verification
+
+```bash
+# Confirm the intended tree before writing to it
+git -C <worktree-path> rev-parse --show-toplevel
+git -C <worktree-path> branch --show-current
+
+# Confirm the push shipped exactly what was intended
+git rev-list --count --left-right origin/<branch>...HEAD
+```
+
