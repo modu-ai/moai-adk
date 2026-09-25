@@ -36,7 +36,7 @@ description: "Claude Code의 슬래시 명령어 — 내장 명령, 커스텀 �
 | 명령 | 용도 | 버전 |
 | :--- | :--- | :--- |
 | `/goal <condition>` | 완료 조건을 세우고 여러 턴에 걸쳐 자율 진행 | v2.1.139+ |
-| `/workflows` | 다이내믹 워크플로우 실행 목록 관리 UI | v2.1.139+ |
+| `/workflows` | 다이내믹 워크플로우 실행 목록 관리 UI | v2.1.154+ |
 | `/rewind` (별칭: `/checkpoint`, `/undo`) | 코드와 대화를 이전 체크포인트로 되돌리기 | v2.1.191+ |
 | `/context [all]` | 현재 컨텍스트 윈도우 사용량 분석 | 기본 |
 | `/memory` | `CLAUDE.md` + 자동 메모리 로드 목록/토글 | v2.1.59+ |
@@ -47,7 +47,7 @@ description: "Claude Code의 슬래시 명령어 — 내장 명령, 커스텀 �
 | `/plugin` | 플러그인 관리 | 기본 |
 | `/effort [low\|medium\|high\|xhigh\|max\|ultracode\|auto]` | 모델의 추론 강도 또는 오케스트레이션 설정 | 기본 |
 | `/model` | AI 모델 선택 | 기본 |
-| `/background` (별칭: `/bg`) | 백그라운드 실행 | v2.1.139+ |
+| `/background` (별칭: `/bg`) | 백그라운드 실행 | v2.1.141에서 확인; 도입 버전 미확인 |
 | `/fork <directive>` | 대화를 상속한 포크 서브에이전트 | v2.1.161+ |
 | `/recap` | 세션 요약 | 기본 |
 | `/btw` | 사이드 질문 | v2.1.187+ |
@@ -73,6 +73,7 @@ description: "Claude Code의 슬래시 명령어 — 내장 명령, 커스텀 �
 
 ### 명령 가용성 참고
 
+- [v2.1.154 변경 기록](https://github.com/anthropics/claude-code/blob/v2.1.154/CHANGELOG.md)은 다이내믹 워크플로우와 `/workflows` 도입을 명시합니다. [v2.1.141 변경 기록](https://github.com/anthropics/claude-code/blob/v2.1.141/CHANGELOG.md)의 `/bg` 수정 항목은 당시 명령이 있었음을 보여 주지만, 도입 버전을 특정하지는 못합니다.
 - 같은 기능을 여러 이름으로 부를 수 있는 경우가 많습니다 (별칭).
 - 일부 명령은 플랫폼, 플랜, 환경에 따라 노출 여부가 달라집니다.
 - `ultracode`는 현재 워크플로우 트리거 키워드(pre-v2.1.160에는 `workflow`였음)이면서 동시에 `/effort` 레벨입니다.
