@@ -1,7 +1,7 @@
 ---
 id: SPEC-HOOK-STDIN-FAILCLOSED-001
 title: "Plan — 훅 stdin 파싱 실패의 결정 이벤트 fail-closed"
-version: "0.4.0"
+version: "0.4.1"
 created: 2026-09-24
 author: manager-spec (card t1152)
 ---
@@ -23,6 +23,8 @@ author: manager-spec (card t1152)
 0.3.4 개정: Implementation Kickoff Approval 을 기록했다(§F M0, progress.md §E.1 「Kickoff 판정」). plan-audit 5회차(`.moai/reports/t1152/plan-audit-iter5.md`, PASS-WITH-DEBT 0.91)의 선택 결함 가운데 운영자가 측정 전에 닫으라고 한 N17·N18 을 반영했다 — §C Pre-flight 5 에 변형별 설정 파일 배치와 격리 확인(리드 조건)을 더하고, M0 승인 목록에 권한 모드를 넣었다. N15·N16 은 운영자 판정대로 run 에서 테스트를 더해 닫는다.
 
 0.4.0 개정: §C Pre-flight 5 를 수행했고 결과는 「유지한다」였다(`.moai/reports/t1152/preflight5.md`). 정지 조건에 따라 운영자 재판정을 받았다 — **탈출 장치 없이 결정 이벤트는 언제나 거부한다**(Codex Stop 면제 유지, 2026-09-25). §B.1 Q1 에 재판정을 기록하고 폐기된 탈출 장치 판정을 표시했으며, §C 5 를 완료 기록으로 줄이고, M2 에서 탈출 장치를 빼고 복구 절차의 문서화를 넣었다. §D·§E·§G·M1b·M4 를 맞췄다.
+
+0.4.1 개정: plan-audit 6회차(`.moai/reports/t1152/plan-audit-iter6.md`, FAIL 0.87)의 N23 을 반영해 M0 의 미래형 Pre-flight 5 문장을 지웠다. 차단 결함 N19~N21 은 acceptance.md(AC-HSF-001(e4)·(e5), AC-HSF-003(b3))와 spec.md §F.1 3(c) 에서 고쳤다. 마일스톤 순서·범위는 그대로다.
 
 ## §A 맥락
 
@@ -97,7 +99,7 @@ run 완료 보고는 acceptance.md 의 AC 마다 명령과 원문 출력을 붙�
 
 ### M0 — Kickoff 차단 질문 판정 (Priority High, 사람) — 판정됨, Kickoff 승인됨(2026-09-24)
 
-Q2(측정)·Q1(A1 + 메커니즘 (i))·Q3(포함)이 2026-09-24 에 판정됐다(§B.1). **0.4.0: Pre-flight 5 결과 「유지한다」에 따라 운영자가 2026-09-25 에 탈출 장치 없음으로 재판정했다(§B.1 Q1 「재판정」) — 이 절의 메커니즘 (i)·부재 해석·Pre-flight 5 관련 서술은 기록으로만 남는다.** Q3 포함에 따른 REQ·AC 추가는 0.3.0 개정에 담겼다. **Implementation Kickoff Approval 은 2026-09-24 에 받았다(0.3.4).** 출처는 t1152 레인에서 운영자가 AskUserQuestion 에 직접 한 답이다. 리드가 앞서 보낸 「Kickoff 는 이 지시로 갈음」 전달문은 리드가 철회했으며 출처가 아니다. 승인 내용: (a) N17·N18 을 측정 전에 닫는다(0.3.4 에서 닫음); (b) 측정 조건을 제안대로 승인한다 — 최대 6회, 실행당 `timeout -k 10 300` 과 `--max-turns 8`, 격리 `/tmp` 프로젝트에서 `--permission-mode bypassPermissions`, 「유지한다」·「미측정」이면 멈추고 다시 판정받는다; (c) N15·N16 은 run 에서 테스트를 더해 닫는다 — `--harness bogus` 거부를 agent action 8개 모두에 단언하고(N15), `runAgentHook` 의 `IsDecisionBearing` 결과를 뒤집거나 무력화하는 변이가 AC-HSF-012 를 RED 로 만들어야 한다(N16). 구현 커밋은 t1099 가 develop 에 착지하고 이 브랜치가 그것을 흡수한 뒤 시작한다(변경 없음). 그때 spec.md §F.1 의 심볼 diff 와 §F.1 의 3(codex 버전, `runAgentHook` 매핑, 설정 파일 형식)으로 설계 전제를 다시 확인한다. 0.3.1 에서 운영자가 파일 부재 해석을 확인했고(§B.1 Q1), 그 조건인 호스트 `env` 전파·유지 측정은 run 시작 시 §C Pre-flight 5 가 수행한다 — 「유지한다」 또는 「미측정」이면 run 은 거기서 멈춘다. **Kickoff 승인 대상에는 Pre-flight 5 의 상한(실행 예산 최대 6회, 실행당 `timeout -k 10 300` 벽시계와 `--max-turns 8`)과 격리 `/tmp` 프로젝트에서의 `--permission-mode bypassPermissions` 를 함께 올렸고, 둘 다 승인됐다** — 라이브 모델 실행의 비용·범위 선언이며 manager-spec 이 정한 제안값이었기 때문이다(0.3.2 N9, 0.3.4 N18). 추적 항목 Q4~Q8 은 Kickoff 를 막지 않는다: Q5·Q8 은 run 초반 측정, Q4·Q6 은 판정 기록, Q7 은 대안을 택할 경우에만 REQ 개정.
+Q2(측정)·Q1(A1 + 메커니즘 (i))·Q3(포함)이 2026-09-24 에 판정됐다(§B.1). **0.4.0: Pre-flight 5 결과 「유지한다」에 따라 운영자가 2026-09-25 에 탈출 장치 없음으로 재판정했다(§B.1 Q1 「재판정」) — 이 절의 메커니즘 (i)·부재 해석·Pre-flight 5 관련 서술은 기록으로만 남는다.** Q3 포함에 따른 REQ·AC 추가는 0.3.0 개정에 담겼다. **Implementation Kickoff Approval 은 2026-09-24 에 받았다(0.3.4).** 출처는 t1152 레인에서 운영자가 AskUserQuestion 에 직접 한 답이다. 리드가 앞서 보낸 「Kickoff 는 이 지시로 갈음」 전달문은 리드가 철회했으며 출처가 아니다. 승인 내용: (a) N17·N18 을 측정 전에 닫는다(0.3.4 에서 닫음); (b) 측정 조건을 제안대로 승인한다 — 최대 6회, 실행당 `timeout -k 10 300` 과 `--max-turns 8`, 격리 `/tmp` 프로젝트에서 `--permission-mode bypassPermissions`, 「유지한다」·「미측정」이면 멈추고 다시 판정받는다; (c) N15·N16 은 run 에서 테스트를 더해 닫는다 — `--harness bogus` 거부를 agent action 8개 모두에 단언하고(N15), `runAgentHook` 의 `IsDecisionBearing` 결과를 뒤집거나 무력화하는 변이가 AC-HSF-012 를 RED 로 만들어야 한다(N16). 구현 커밋은 t1099 가 develop 에 착지하고 이 브랜치가 그것을 흡수한 뒤 시작한다(변경 없음). 그때 spec.md §F.1 의 심볼 diff 와 §F.1 의 3(codex 버전, `runAgentHook` 매핑, 설정 파일 형식)으로 설계 전제를 다시 확인한다. **Kickoff 승인 대상에는 Pre-flight 5 의 상한(실행 예산 최대 6회, 실행당 `timeout -k 10 300` 벽시계와 `--max-turns 8`)과 격리 `/tmp` 프로젝트에서의 `--permission-mode bypassPermissions` 를 함께 올렸고, 둘 다 승인됐다** — 라이브 모델 실행의 비용·범위 선언이며 manager-spec 이 정한 제안값이었기 때문이다(0.3.2 N9, 0.3.4 N18). 추적 항목 Q4~Q8 은 Kickoff 를 막지 않는다: Q5·Q8 은 run 초반 측정, Q4·Q6 은 판정 기록, Q7 은 대안을 택할 경우에만 REQ 개정.
 
 ### M1 — 결정 이벤트의 fail-closed 동작 (Priority High)
 

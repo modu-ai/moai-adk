@@ -97,10 +97,18 @@
 ### 개정 0.4.0 (2026-09-25)
 
 - 계기: 위 재판정. 처분 요약은 spec.md HISTORY 0.4.0 행. 개정 기준 트리: 브랜치 `WT-hook-stdin-failclosed`, HEAD `39ee312cf`.
-- 삭제(번호 유지, 「삭제됨 (0.4.0, Pre-flight 5 결과)」 표시): REQ-HSF-007·016, AC-HSF-006·010.
+- 삭제(번호 유지, 「삭제됨 (0.4.0, Pre-flight 5 결과)」 표시): REQ-HSF-007·016, AC-HSF-006 [RETIRED]·AC-HSF-010 [RETIRED].
 - 개정: REQ-HSF-001(탈출 장치 조건절 제거, 실행 시점 스위치 금지 절 추가), REQ-HSF-010(사유는 원인·문서 식별자만, 복구 절차 미기재), REQ-HSF-011(탈출 적용 기록면 삭제), AC-HSF-001(Given 정리, (e4) 를 카나리·복구 절차 문구 부재로), AC-HSF-003((b3) AST 검사·(c6) 변이 신설), AC-HSF-007·011·012(Given·키 목록 정리), acceptance.md §1·§E, spec.md §D(Out of Scope — 탈출 장치 추가)·§F.1 3(c)·§F.2(잠김과 복구 경로, 유지 측정 결과, `disableAllHooks` 잔여 위험), plan.md §B.1 Q1 재판정·§C 5 완료 기록·§D·§E·M0·M1b·M2·M4·§G·§H.
 - REQ: 16 번호 중 살아 있는 것 14(Tier M 상한 16). AC: 13 번호 중 살아 있는 것 11 + GATE.
 - 이번 개정은 코드·테스트·라이브 모델 실행을 하지 않았다. 새로 생긴 전제: 파싱 실패 처리 경로가 환경 변수·설정 파일을 읽지 않는다는 AC-HSF-003(b3) 의 범위를 t1099 흡수 트리에서 먼저 잰다(spec.md §F.1 3(c)).
+
+### 개정 0.4.1 (2026-09-25)
+
+- 계기: plan-audit 6회차 FAIL 0.87(`.moai/reports/t1152/plan-audit-iter6.md`, HEAD `719c884df` 측정) — 차단 결함 N19·N20·N21, 선택 결함 N22·N23·N24. 반복 상한을 넘은 회차라 STOP 신호였다.
+- **운영자 판정 (2026-09-25, t1152 레인 AskUserQuestion): 명시적 연장.** N19~N21(선택으로 N23)을 고친 뒤, N19~N21 만 보는 좁은 7회차 감사를 받는다.
+- 처분: N19 — AC-HSF-003(b3) 에 기록 싱크 루트 해석 허용 목록을 명시(`resolveHookProjectRoot` 호출, 인자가 `config.EnvClaudeProjectDir` 인 `os.Getenv`; 이 트리 `internal/cli/hook.go:681-690` 에서 본문을 확인), 범위를 `internal/cli` 안 직접 호출의 전이적 폐포로 넓힘(N22 함께 닫음), spec.md §F.1 3(c) 를 맞춤. N20 — 삭제 AC 식별자 모든 출현 바로 뒤에 `[RETIRED]`, 짧은 별칭 5개를 정식 식별자로 풀어 씀. N21 — AC-HSF-001(e4) 를 사유 문자열 전체의 바이트 단위 일치로, (d)·AC-HSF-002(d) 의 기대 바이트를 테스트가 조립한 사유로 계산, 복구 안내 덧붙임 필수 RED 변이 추가, 카나리·`disableAllHooks` 부재를 (e5) 로. N23 — plan.md M0 의 미래형 Pre-flight 5 문장 삭제. N24(선택)는 열어 둔다.
+- AC 계수(manager-docs § B12 계수기): 수정 전 `go test ./internal/spec -run TestACCounterFullCorpusMatchesBaseline -count=1 -v` → `absent-from-snapshot .moai/specs/SPEC-HOOK-STDIN-FAILCLOSED-001/acceptance.md: COUNT 18`; 수정 뒤 같은 명령 → `COUNT 11`, `--- PASS`. 선언(살아 있는 AC 11 + GATE — GATE 는 계수 패턴에 걸리지 않는다)과 일치.
+- 이번 개정은 코드·테스트 코드·라이브 모델 실행을 하지 않았다. REQ·AC 수 변화 없음.
 
 ## §E.2 Run-phase Evidence
 
