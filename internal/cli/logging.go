@@ -9,9 +9,16 @@ import (
 	"github.com/modu-ai/moai-adk/internal/config"
 )
 
-// defaultLogLevel is the minimum record level admitted on the non-hook path when
-// MOAI_LOG_LEVEL is unset or unrecognized. warn-and-above reaches the operator;
-// info and debug stay silent unless the variable lowers the bar.
+// defaultLogLevel is the minimum record level admitted when MOAI_LOG_LEVEL is
+// unset or unrecognized. warn-and-above reaches the operator; info and debug
+// stay silent unless the variable lowers the bar.
+//
+// Both paths share it, the hook sink included (REQ-HDS-004): warn-and-above are
+// the records that would have been read had the hook path not discarded them,
+// while info and debug are silent everywhere else too. Admitting them to the
+// sink by default would grow .moai/logs/ on every one of the dozens-to-hundreds
+// of hook invocations a session makes, and recover nothing anyone would have
+// seen.
 const defaultLogLevel = slog.LevelWarn
 
 // loggingDecision records where log records go and the minimum level admitted
@@ -49,16 +56,28 @@ func resolveLogLevel() slog.Level {
 
 // resolveLoggingDecision chooses the log destination for one CLI invocation.
 //
-// The `moai hook` path discards every record: stdout carries the hook's
-// structured JSON contract and stderr is read by the Claude Code runtime, so a
-// stray record corrupts the exchange. That carve-out is unconditional —
-// MOAI_LOG_LEVEL does not re-open it.
+// The `moai hook` path reaches NEITHER standard stream: stdout carries the
+// hook's structured JSON contract and stderr is read by the Claude Code
+// runtime, so a stray record corrupts the exchange. That carve-out is
+// unconditional — MOAI_LOG_LEVEL does not re-open it.
+//
+// The variable is not inert on this path, though: it governs the LEVEL here
+// exactly as it does elsewhere (REQ-HDS-005), so lowering it admits info and
+// debug records to the sink. The two axes are separate — the variable moves the
+// minimum level and never the destination.
+//
+// The records are no longer thrown away, though. They go to a lazy-open append
+// file under the resolved project root (hookSink), because discarding them left
+// every diagnostic a hook emits unreadable anywhere: a hook that reported an
+// anomaly and a hook that reported nothing were indistinguishable. The sink is
+// fail-open — an unresolvable root degrades it back to discarding rather than
+// failing the hook.
 //
 // Every other subcommand writes to stderr, never stdout, which stays reserved
 // for machine-readable output (--format=json / sarif payloads).
 func resolveLoggingDecision(args []string) loggingDecision {
 	if isHookCommand(args) {
-		return loggingDecision{dest: io.Discard, level: defaultLogLevel}
+		return loggingDecision{dest: newHookSink(resolveHookProjectRoot()), level: resolveLogLevel()}
 	}
 	return loggingDecision{dest: os.Stderr, level: resolveLogLevel()}
 }
