@@ -1,7 +1,7 @@
 ---
 id: SPEC-CODEX-PREAPPROVAL-PROBE-001
 title: "Codex per-tool pre-approval of codex_role_audit — discriminating probe, conditional emission, loader key-name check, refusal instruction, carried AC-CAR-010/011"
-version: "0.2.0"
+version: "0.3.0"
 status: draft
 created: 2026-09-25
 updated: 2026-09-25
@@ -25,6 +25,7 @@ related_specs:
 
 | Version | Date | Change |
 |---|---|---|
+| 0.3.0 | 2026-09-25 | plan-audit iter 2(FAIL 0.79, `.moai/reports/t1172/plan-audit-iter2.md`)의 D-N1–D-N10 반영. D-N1: LIVE 행에 시도 번호(`attempt`)를 두고, 리드가 적는 `invalidate` 행으로 무효가 된 시도를 표시하며, 판정식은 마지막 유효 시도만 보고 창 상한은 시도마다 잰다(REQ-CPP-010). D-N2: 픽스처마다 마지막 반출 뒤의 마지막 시작 검사만 반출본과 대조하고, 채택 갈래의 car010은 M2 뒤에 다시 반출·시작 검사한다. D-N5: REQ-CPP-008에 고정 규범 문장을 두고 AC-CPP-010이 그 문장을 그대로 요구한다. D-N6: 픽스처 초기화는 테스트 임시 디렉터리 아래 표지 파일이 있는 픽스처 루트에서만 한다(REQ-CPP-004). D-N3·D-N4·D-N7·D-N8·D-N9·D-N10도 반영. AC 수는 그대로 16. |
 | 0.2.0 | 2026-09-25 | plan-audit iter 1(FAIL 0.70, `.moai/reports/t1172/plan-audit-iter1.md`)의 D1–D27 반영. D1: plan.md의 미해결 확인 표시 두 개를 **잠정 기본값**(운영자 Kickoff 확정 필요)으로 바꿨다 — D1-sub(A2일 때만)=`.moai/config/sections/` YAML의 불리언 키, D2=`moai doctor` WARNING+고침 안내(REQ-CPP-005/006). D1(A1 대 A2) 자체는 여전히 판별 결과 뒤 운영자 결정이다. REQ-CPP-003 문구(D24), REQ-CPP-005에 `NOT DISCRIMINATING`(D23), F4 인용 118행(D18), 감사 측정 사실(신뢰된 git 픽스처에서 moai 기동 1·`item` 0, `model = "gpt-5"`의 비모델 `item` 오류, 서버가 루트에 `.moai/state/config-cache.json`을 씀)을 §A에 반영했다. AC-CPP-012(게이트 거부 시 LIVE 0회), AC-CPP-013(이월 픽스처 조건), AC-CPP-014(장부 상한)를 더했다(AC 14 + 이월 2 = 16, Tier M 상한 안). |
 | 0.1.0 | 2026-09-25 | 카드 t1172 plan 초안. 선행 SPEC-CODEX-AUDIT-READONLY-001이 이월한 네 항목(도구별 사전 승인 효과 `NOT MEASURED`, AC-CAR-010 `INVALID`, AC-CAR-011 `NOT_RUN`, 픽스처 입력 반출·비모델 신뢰 검사·템플릿 기본값 운영자 승인·키 이름 로더 검증)과 sync-audit F4를 받았다. 리드의 HARD 조건 여섯 개를 REQ와 AC로 옮겼다. AC-CAR-010/011의 본문·판정식은 경로 치환 한 가지(`reports/t1143` → `reports/t1172`)만 적용해 바이트 그대로 이어받았고, 치환은 AC-CPP-011이 기계적으로 검사한다. |
 
@@ -67,19 +68,19 @@ When both arms' inputs have been exported, the probe harness shall write the ver
 
 ### REQ-CPP-003 — 모델 요청 없는 시작 검사를 먼저 통과한다
 
-When an arm's fixture is prepared, the probe harness shall run a startup check against that fixture that cannot reach a model endpoint and receives no model response — a `codex exec` invocation under `--strict-config` whose model provider is the unreachable address `http://127.0.0.1:9/v1`, whose `CODEX_HOME` holds no login file, with the same model setting as the LIVE invocation, bounded by a timeout — and shall require that the session started, that the configuration loaded without an error, that no item event other than a non-model `error` item occurred, and that the moai MCP server was launched. When the startup check fails for either arm, the probe harness shall start no discriminating LIVE invocation. The startup check shall not be counted as a LIVE invocation and shall be recorded in its own ledger with its own cap.
+When an arm's fixture is prepared, the probe harness shall run a startup check against that fixture that cannot reach a model endpoint and receives no model response — a `codex exec` invocation under `--strict-config` that defines and selects the unreachable model provider `http://127.0.0.1:9/v1`, whose `CODEX_HOME` holds no login file and whose environment carries no authentication variable, with no model override in its arguments or in either configuration file (the same model setting as the LIVE invocation), bounded by a timeout — and shall require that the session started, that the configuration loaded without an error, that no item event other than a non-model `error` item occurred, and that the moai MCP server was launched. When the startup check fails for either arm, the probe harness shall start no discriminating LIVE invocation. The startup check shall not be counted as a LIVE invocation and shall be recorded in the ledger with its own cap. When a fixture's inputs are exported again (for example the car010 project configuration after the adopted writer change), the startup check shall be run again after that export and before the fixture's next LIVE invocation.
 
 ### REQ-CPP-004 — LIVE 상한과 정지 규칙을 먼저 적는다
 
-The probe harness shall run under caps declared in writing before the first LIVE invocation: per-invocation timeout, total wall-clock, one user turn per invocation, and an exact invocation count for the discriminator and for each carried LIVE acceptance criterion. The discriminator prompt shall permit the `exec` custom-tool path through which the Codex CLI reaches MCP tools. An arm's result shall be classified as `REFUSED`, `RAN`, `NOT MEASURED`, `INVALID`, or `ABORTED`; an arm with zero `mcp_tool_call` items addressed to server `moai`, tool `codex_role_audit` shall be `NOT MEASURED`. When a cap would be exceeded, the probe harness shall start no further invocation and shall record `ABORTED`. The probe harness shall terminate only process identifiers it recorded itself.
+The probe harness shall run under caps declared in writing before the first LIVE invocation: per-invocation timeout, total wall-clock, one user turn per invocation, and an exact invocation count for the discriminator and for each carried LIVE acceptance criterion. The discriminator prompt shall permit the `exec` custom-tool path through which the Codex CLI reaches MCP tools. An arm's result shall be classified as `REFUSED`, `RAN`, `NOT MEASURED`, `INVALID`, or `ABORTED`; an arm with zero `mcp_tool_call` items addressed to server `moai`, tool `codex_role_audit` shall be `NOT MEASURED`. When a cap would be exceeded, the probe harness shall start no further invocation and shall record `ABORTED`. The probe harness shall terminate only process identifiers it recorded itself. The probe harness shall run a destructive fixture reset only against a fixture root that is a non-empty absolute path under the test's temporary directory, is the top level of its own git repository, lies outside every worktree of this repository, and carries the sentinel file written when the fixture was created; otherwise it shall refuse the reset and start no invocation.
 
 ### REQ-CPP-005 — 채택 형태는 운영자가 정한다
 
-Where the treatment arm is measured `RAN` and the control arm is measured `REFUSED`, the adoption form of the per-tool pre-approval — a template default or an opt-in — shall be the one the operator selects, and the SPEC shall not pre-decide it. When the treatment arm is measured `REFUSED` or `NOT MEASURED`, or when the control arm is measured `RAN` (`NOT DISCRIMINATING`), the adoption decision shall be `not adopted` and moai shall emit no per-tool pre-approval. Where the operator selects the opt-in form, the opt-in shall be a boolean key in a `.moai/config/sections/` YAML file that the Codex configuration generator reads, so the choice persists across `moai update` (잠정 — 운영자 Kickoff 확정 필요).
+Where the treatment arm is measured `RAN` and the control arm is measured `REFUSED`, the adoption form of the per-tool pre-approval — a template default or an opt-in — shall be the one the operator selects, and the SPEC shall not pre-decide it. When the treatment arm is measured `REFUSED` or `NOT MEASURED`, or when the control arm is measured `RAN` (`NOT DISCRIMINATING`), the adoption decision shall be `not adopted` and moai shall emit no per-tool pre-approval. Where the operator selects the opt-in form, the opt-in shall be a boolean key in a `.moai/config/sections/` YAML file that the Codex configuration generator reads, so the choice persists across `moai update` (잠정 — 운영자 Kickoff 확정 필요; 확정은 `verdict.md`의 `OPERATOR-CONFIRM` 줄로 남고, 다른 값이면 이 SPEC을 개정하고 재감사한다).
 
 ### REQ-CPP-006 — 사전 승인은 이 도구 하나로 한정하고 도구는 쓰기 도구로 남는다
 
-Where the per-tool pre-approval is adopted, the moai-generated Codex configuration shall pre-approve `codex_role_audit` and no other tool, shall keep `default_tools_approval_mode = "writes"` for the server, and shall not change the tool's write-capable annotation. The configuration writer shall keep an existing user-owned `[mcp_servers.moai]` table byte-invariant. Where the per-tool pre-approval is adopted and a project's `[mcp_servers.moai]` table exists without the per-tool table, `moai doctor` shall report a warning, not a failure, together with a hint naming the table to add (잠정 — 운영자 Kickoff 확정 필요).
+Where the per-tool pre-approval is adopted, the moai-generated Codex configuration shall pre-approve `codex_role_audit` and no other tool, shall keep `default_tools_approval_mode = "writes"` for the server, and shall not change the tool's write-capable annotation. The configuration writer shall keep an existing user-owned `[mcp_servers.moai]` table byte-invariant. Where the per-tool pre-approval is adopted and a project's `[mcp_servers.moai]` table exists without the per-tool table, `moai doctor` shall report a warning, not a failure, together with a hint naming the table to add (잠정 — 운영자 Kickoff 확정 필요; 확정은 `verdict.md`의 `OPERATOR-CONFIRM` 줄로 남고, 다른 값이면 이 SPEC을 개정하고 재감사한다).
 
 ### REQ-CPP-007 — 생성 설정의 키 이름을 Codex 로더로 검증한다
 
@@ -87,7 +88,7 @@ The test suite shall validate the key names of the moai-generated Codex configur
 
 ### REQ-CPP-008 — 무인 lane은 거부를 blocker로 돌려준다 (F4)
 
-The deployed Codex instruction surface for starting read-only audit roles shall state what a lane does when `codex_role_audit` is refused for approval: the lane shall not skip the audit, shall not fall back to `spawn_agent`, and shall return a blocker that quotes the refusal text. The template text shall carry no SPEC identifier, card identifier, or date.
+The deployed Codex instruction surface for starting read-only audit roles shall state what a lane does when `codex_role_audit` is refused for approval: the lane shall not skip the audit, shall not fall back to `spawn_agent`, and shall return a blocker that quotes the refusal text. The instruction shall carry exactly this sentence, once: "When the call is refused with `MCP tool call requires approval, but approval policy is never`, do not skip the audit and do not fall back to `spawn_agent`; return a blocker that quotes the refusal text". The template text shall carry no SPEC identifier, card identifier, or date.
 
 ### REQ-CPP-009 — 이월된 AC-CAR-010/011을 고친 픽스처로 다시 돌린다
 
@@ -95,7 +96,7 @@ The carried acceptance criteria AC-CAR-010 and AC-CAR-011 shall be run with thei
 
 ### REQ-CPP-010 — LIVE 결과는 부풀리지 않는다
 
-The verification shall count one `codex exec` process as one LIVE invocation, shall not start any invocation that would exceed the absolute cap declared in `plan.md` §D, and shall never report `SKIP`, `NOT_RUN`, `NOT MEASURED`, `INVALID`, or `ABORTED` as a pass. A rerun shall be allowed only after the lead records the previous run `INVALID`.
+The verification shall count one `codex exec` process as one LIVE invocation, shall not start any invocation that would exceed the absolute cap declared in `plan.md` §D, and shall never report `SKIP`, `NOT_RUN`, `NOT MEASURED`, `INVALID`, or `ABORTED` as a pass. A rerun shall be allowed only after the lead records the previous attempt `INVALID` in the ledger, at most once per group (the discriminator pair, AC-CAR-010, AC-CAR-011); each LIVE invocation shall carry its attempt number, the per-attempt invocation counts and wall-clock windows of `plan.md` §D shall apply to each attempt separately, the absolute cap shall count every attempt, and every acceptance judgement shall read only the last attempt that the lead has not invalidated.
 
 ### REQ-CPP-011 — 선행 보안 수리가 들어간 트리에서만 채택한다
 

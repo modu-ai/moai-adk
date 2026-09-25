@@ -56,15 +56,20 @@ writer는 이미 있는 `[mcp_servers.moai]` 표를 바이트 그대로 둔다(�
 
 운영자가 Kickoff에서 D1-sub 또는 D2를 바꾸면, run 전에 이 SPEC을 고치고 plan-audit를 다시 받는다.
 
+**확정 기록 (D-N9).** Kickoff에서 운영자가 D1-sub·D2를 확정하거나 바꾸면, 리드가 `verdict.md`에 `OPERATOR-CONFIRM d1sub=<값> d2=<값> card=t1172 recorded_by=lead at=<UTC RFC 3339>` 한 줄을 적는다(잠정 기본값을 그대로 쓰면 `d1sub=config-section-boolean d2=doctor-warning`). 판별 결과가 `RAN`이면 AC-CPP-006이 이 줄을 요구한다. 잠정 조항은 확정 줄이 생기기 전에도 적힌 그대로 구속하며, 확정 값이 기본값과 다르면 SPEC을 고치고 재감사한 뒤에야 run을 이어 간다.
+
 ### D3. 판별 프로브 설계 (REQ-CPP-001–004)
 
 - **두 팔을 모두 새로 잰다.** #37은 재구성할 수 없으므로 대조 결과로 다시 쓰지 않는다. 대조 팔은 "이 픽스처에서 거부가 재현된다"는 양성 대조 역할도 한다.
 - **같은 경로, 순차 실행, 루트 재사용.** 두 팔은 같은 루트 경로, 같은 `CODEX_HOME` 경로를 쓴다. 팔마다 `CODEX_HOME`을 같은 씨앗(로그인 사본 + 같은 `config.toml`)에서 새로 만든다. 그래야 인자 벡터의 `-C <root>`와 `CODEX_HOME` 경로가 두 팔에서 같다. 루트는 새로 만들지 않고 재사용한다(새로 만들면 커밋 시각이 달라져 HEAD가 바뀐다).
 - **루트 상태 초기화와 반출 (D8).** moai MCP 서버는 기동 때 루트에 `.moai/state/config-cache.json`을 쓴다(감사 측정). 그래서 시작 검사와 LIVE 호출 **각각의 직전에** 하네스가 루트에서 `git clean -ffdx`를 돌리고, 그 팔의 `.codex/config.toml`을 반출본 바이트로 다시 쓴다. 이 시점의 루트 상태(`git status --porcelain --ignored` 출력과 `.git` 밖 파일 목록)를 `root-state.txt`로 반출하고, 두 팔의 `root-state.txt`는 같아야 한다(팔 diff에 들어가므로). 하네스는 매 호출 직전에 그 순간의 루트 상태 해시를 장부 행 `inputs_sha256.root_state`에 적는다. 반출본 해시와 다르면 호출하지 않고 `stop` 행을 남긴다.
+- **초기화 대상 보호 (D-N6).** `git clean -ffdx`는 반드시 `git -C <root> clean -ffdx` 형태로만 부르고, 그 전에 다음을 모두 단언한다: `<root>`가 비어 있지 않은 절대 경로다, `t.TempDir()`(따라서 `os.TempDir()`) 아래에 있다, `git -C <root> rev-parse --show-toplevel`이 `<root>`와 같다, 이 저장소의 어떤 워크트리 경로(`git worktree list --porcelain`의 `worktree` 줄)와도 같거나 그 아래가 아니다, 픽스처를 만들 때 쓴 표지 파일 `<root>/.fixture-sentinel`(내용: 하네스가 만든 무작위 토큰)이 있고 내용이 같다. 하나라도 어긋나면 초기화를 거부하고 `stop` 행을 남긴다. 모든 시작 검사·LIVE 행에 `fixture_root`(그 절대 경로)와 `fixture_sentinel: true`(표지 확인 결과)를 적는다(AC-CPP-014). 거부 경로는 가짜 codex 테스트의 하위 테스트 `clean_refuses_non_fixture_root`가 빈 경로·상대 경로·임시 디렉터리 밖 경로·표지 없는 경로 넷을 주고 초기화가 일어나지 않음을 단언한다(AC-CPP-012).
 - **루트는 git 저장소.** 커밋 하나(README 한 파일)를 가진 저장소를 만들고 `.codex/`는 추적하지 않는다. 그래서 두 팔의 HEAD가 같다. 루트의 신뢰 항목도 `CODEX_HOME` `config.toml`에 넣는다(프로젝트 층 설정을 적재시키기 위함). 픽스처 저장소 생성은 테스트 코드 안에서 한다.
-- **모델 고정 (D11).** `CODEX_HOME` `config.toml`에 `model` 키를 두지 않고, 인자에도 `-m`/`--model`을 주지 않는다. 시작 검사와 LIVE가 같은 기본 모델을 쓴다. `model = "gpt-5"` 같은 설정은 비모델 `error` 항목을 만든다(감사 측정).
-- **장부와 해시 연결 (D6, D7).** 모든 시작 검사·LIVE 호출·정지는 `.moai/reports/t1172/ledger.json` 한 파일에 행으로 적는다. 행 필드: `kind`(`startup`·`live`·`stop`), `fixture`(`disc-control`·`disc-treatment`·`car010`·`car011`), `label`, `started_ns`·`ended_ns`(정수 epoch 나노초 — 문자열 시각 비교를 쓰지 않는다), `argv`(배열), `exit`, `bound_by`(`test` 또는 `launcher`), `inputs_sha256`(`codex_home_config`·`project_config`·`argv`·`prompt`·`root_state`·`moai_binary`), 시작 검사 행만 `provider_base_url`·`auth_file_present`, LIVE 행만 `auth_sha256_before`·`auth_sha256_after`, `stop` 행만 `reason`. `inputs_sha256`은 **그 호출이 실제로 쓴 바이트**를 해시한 값이고, 판정식은 이것을 반출본의 해시와 비교한다. 반출 매니페스트(`export-manifest.json`)는 `exported_ns`와 반출 파일별 sha256을 담고, 팔 diff 메타(`arm-diff.meta.json`)는 `written_ns`를 담는다.
-- **시작 검사의 안전 (D9).** 시작 검사용 `CODEX_HOME`에는 반출된 `config.toml`만 두고 로그인 파일을 두지 않는다. 제공자는 `-c 'model_providers.dead={name="dead",base_url="http://127.0.0.1:9/v1",wire_api="responses",stream_max_retries=0,request_max_retries=0}' -c 'model_provider="dead"'`로 준다. 호출당 `timeout 20`.
+- **모델 고정 (D11, D-N3).** `CODEX_HOME` `config.toml`과 프로젝트 `.codex/config.toml` 어디에도 `model` 키를 두지 않고, 인자에도 `-m`/`--model`이나 `-c model=…`을 주지 않는다. 시작 검사와 LIVE가 같은 기본 모델을 쓴다. `model = "gpt-5"` 같은 설정은 비모델 `error` 항목을 만든다(감사 측정).
+- **장부와 해시 연결 (D6, D7).** 모든 시작 검사·LIVE 호출·정지는 `.moai/reports/t1172/ledger.json` 한 파일에 행으로 적는다. 행 필드: `kind`(`startup`·`live`·`stop`·`invalidate`), `fixture`(`disc-control`·`disc-treatment`·`car010`·`car011`; `invalidate` 행은 묶음 이름 `disc`·`car010`·`car011`), `label`, LIVE 행만 `attempt`(1부터 시작하는 정수 시도 번호, 재실행마다 1 증가), `fixture_root`·`fixture_sentinel`(시작 검사·LIVE 행), `started_ns`·`ended_ns`(정수 epoch 나노초 — 문자열 시각 비교를 쓰지 않는다), `argv`(배열), `exit`, `bound_by`(`test` 또는 `launcher`), `inputs_sha256`(`codex_home_config`·`project_config`·`argv`·`prompt`·`root_state`·`moai_binary`), 시작 검사 행만 `provider_base_url`·`auth_file_present`·`env_auth_present`(인증 환경 변수가 시작 검사 프로세스 환경에 있었는지), LIVE 행만 `auth_sha256_before`·`auth_sha256_after`, `stop` 행만 `reason`, `invalidate` 행만 `attempt`·`recorded_by: "lead"`·`recorded_ns`·`reason`. `inputs_sha256`은 **그 호출이 실제로 쓴 바이트**를 해시한 값이고, 판정식은 이것을 반출본의 해시와 비교한다. 반출 매니페스트는 픽스처 묶음마다 하나(`discriminator/export-manifest.json`, `car010/export-manifest.json`, `car011/export-manifest.json`)이고 `exported_ns`와 반출 파일별 sha256을 담는다. 다시 반출하면 매니페스트를 새로 쓴다(`exported_ns`가 바뀐다). 팔 diff 메타(`arm-diff.meta.json`)는 `written_ns`를 담는다. 판별 증거 `evidence.json`은 그 판정이 읽은 시도 번호 `attempt`와 `recorded_pids`·`killed_pids`(하네스가 기록한 pid와 실제로 종료한 pid)를 담는다.
+- **재실행 (D-N1).** 리드가 한 시도를 `INVALID`로 판정하면, 다음 시도 전에 리드가 장부에 `invalidate` 행(`fixture`는 묶음 이름, `attempt`는 무효가 된 번호, `recorded_ns`는 그 시도의 마지막 끝과 다음 시도의 첫 시작 사이)을 적는다. 다음 시도는 번호를 1 올린다. 묶음마다 재실행은 한 번(시도 번호 최대 2). 판별 결과 파일(`evidence.json`·`outcome.txt`·`live.jsonl`)과 시작 검사 원자료는 마지막 시도의 것이고, 이전 시도의 것은 `attempt-<n>/` 아래로 옮겨 보존한다. 장부 행은 지우지 않는다. 판정식은 묶음별로 마지막 시도만 보고, 무효 시도가 기록 없이 남아 있으면 거짓이다.
+- **재반출과 시작 검사 순서 (D-N2).** 픽스처 입력이 바뀌면 다시 반출하고(매니페스트 `exported_ns` 갱신), 그 뒤 그 픽스처의 시작 검사를 다시 돌린 다음에야 LIVE를 시작한다. AC-CPP-004는 픽스처마다 **마지막** 시작 검사 행만 반출본과 대조하고, 그 행이 마지막 반출 뒤에 시작해 마지막 시도의 첫 LIVE 전에 끝났기를 요구한다. 이전 시작 검사 행(예: M1-a의 car010)은 기록으로 남고 대조 대상이 아니다.
+- **시작 검사의 안전 (D9, D-N3).** 시작 검사용 `CODEX_HOME`에는 반출된 `config.toml`만 두고 로그인 파일을 두지 않으며, 프로세스 환경에서 인증 변수(`OPENAI_API_KEY` 등 `*_API_KEY`)를 지운다(`env_auth_present: false`로 기록). 제공자는 `-c 'model_providers.dead={name="dead",base_url="http://127.0.0.1:9/v1",wire_api="responses",stream_max_retries=0,request_max_retries=0}' -c 'model_provider="dead"'`로 준다. 호출당 `timeout 20`.
 - **MCP 서버는 moai 하나.** decoy는 두지 않는다. 서버 명령은 기동을 기록한 뒤 이 워크트리에서 빌드한 moai로 넘기는 래퍼다. 빌드 커밋과 바이너리 sha256을 반출한다.
 - **자식 프로세스가 생기지 않게.** 요청의 `out`을 `AGENTS.md`로 준다. 호출이 통과하면 launcher는 목적지 검증(`.moai/reports/` 아래가 아님)에서 거부하고, 프로세스를 띄우지 않으며 launch record도 쓰지 않는다(REQ-CAR-007). 그래서 팔 하나는 `codex exec` 한 개다. 통과했다는 증거는 도구 결과의 launcher 거부 문구다.
 - **프롬프트.** `exec` custom tool을 통해 `codex_role_audit`를 정확히 한 번 부르라고 한다. shell 명령, 다른 도구, 파일 변경은 금지한다. #38의 결함(exec 통로까지 금지)을 되풀이하지 않는다. 두 팔의 프롬프트는 바이트 같다.
@@ -118,15 +123,15 @@ AC-CAR-010/011의 본문·판정식은 경로 치환 하나만 적용해 그대�
 
 첫 LIVE 호출 전에 이 표를 `.moai/reports/t1172/verdict.md`에 옮겨 적는다. 단위는 `codex exec` 프로세스 하나다.
 
-| 항목 | 기본 호출 수 | 재실행(리드가 `INVALID` 기록 뒤 1회만) | 호출당 timeout | 총 벽시계 | 모델 턴 |
+| 항목 | 시도당 호출 수 | 재실행(리드가 `invalidate` 행을 적은 뒤 1회, 시도 2) | 호출당 timeout | 시도당 벽시계 창 | 모델 턴 |
 |---|---|---|---|---|---|
 | 판별 프로브(대조 1 + 처치 1) | 2 | +2 | 330 s | 900 s | 호출당 사용자 턴 1 |
 | AC-CAR-010 | 3 | +3 | 330 s(테스트가 띄운 호출), 자식은 launcher 상한 `config.DefaultCodexAuditTimeout` | 1100 s(`-timeout=1200s` 안) | 호출당 1 |
 | AC-CAR-011 | 2 | +2 | 330 s | 800 s(`-timeout=900s` 안) | 호출당 1 |
-| **절대 상한** | **14** | | | | |
+| **절대 상한(모든 시도 합계)** | **14** | | | | |
 
 - 시작 검사(REQ-CPP-003)는 LIVE가 아니다. `ledger.json`에 `kind: startup`으로 적고 상한 8회(픽스처 넷 × 1, 재실행 대비 × 2), 호출당 `timeout 20`(AC-CPP-014는 정리 여유 5 s를 더해 25 s까지 허용). 모델 끝점에 닿지 않는 것이 조건이다. 비모델 `error` 항목 밖의 `item.*` 이벤트가 한 번이라도 보이면 즉시 멈추고 `ABORTED`로 적는다.
-- 상한은 장부의 정수 시각으로 AC-CPP-014가 판정한다. 픽스처별 LIVE 호출 수 상한: `disc-*` 합계 4, `car010` 6, `car011` 4(재실행 포함), 전체 14.
+- 상한은 장부의 정수 시각으로 AC-CPP-014가 판정한다. 호출 수와 벽시계 창은 **시도마다 따로** 잰다(판별 시도당 대조 1 + 처치 1·900 s, car010 시도당 테스트 호출 2 + launcher 자식 1·1100 s, car011 시도당 2·800 s). 묶음마다 시도는 최대 2(재실행 1회). 호출당 330 s는 테스트가 띄운 모든 호출에 모든 시도에서 적용된다. 절대 상한 14는 무효 시도를 포함한 전체 LIVE 행 수다.
 - 키 이름 로더 테스트(REQ-CPP-007)의 `codex exec`는 게이트에서 끝나 모델 요청이 없다. LIVE가 아니며 장부 G에도 넣지 않는다(결정적 테스트).
 - 정지 규칙: 상한에 닿으면 다음 호출을 시작하지 않고 `ABORTED`. 전제(`mcp_tool_call` moai/`codex_role_audit` 1개 이상)가 없으면 `NOT MEASURED`. 판별 프로브가 두 번째로도 `NOT MEASURED`이면 LIVE를 더 하지 않고 "pre-approval effect not measured"로 멈춘 뒤 N 갈래로 간다.
 - 프로세스 정리: 테스트가 기록한 pid(프로세스 그룹)만 죽인다. 이름으로 찾아 죽이지 않는다.
@@ -143,7 +148,7 @@ AC-CAR-010/011의 본문·판정식은 경로 치환 하나만 적용해 그대�
 
 ### M1 — 판별 프로브 (Priority High, 결정 변경 가능성 가장 큼)
 
-- M1-a (LIVE 없음): 픽스처 생성·반출·팔 비교·시작 검사를 하는 하네스를 `internal/cli`의 LIVE 게이트 테스트로 만든다(환경 변수 `MOAI_CODEX_PREAPPROVAL_LIVE=1`, `MOAI_T1172_EVIDENCE_DIR`가 없으면 `NOT_RUN`으로 skip). 반출·비교 로직은 LIVE 없이 결정적으로 시험한다. 시작 검사를 넷 픽스처(판별 대조, 판별 처치, AC-CAR-010 부모, AC-CAR-011)에 돌려 moai·decoy 기동 수를 적는다. 감사 측정으로 기동 1이 확인되어 있으므로, 여기서 0이 나오면 픽스처 결함으로 보고 LIVE 없이 멈추고 리드에게 보고한다(대체 기준 없음). 게이트 거부 경로의 가짜 codex 테스트(`TestCodexPreApprovalGateRefusals`, AC-CPP-012)도 이 마일스톤에서 만든다.
+- M1-a (LIVE 없음): 픽스처 생성·반출·팔 비교·시작 검사를 하는 하네스를 `internal/cli`의 LIVE 게이트 테스트로 만든다(환경 변수 `MOAI_CODEX_PREAPPROVAL_LIVE=1`, `MOAI_T1172_EVIDENCE_DIR`가 없으면 `NOT_RUN`으로 skip). 반출·비교 로직은 LIVE 없이 결정적으로 시험한다. 시작 검사를 넷 픽스처(판별 대조, 판별 처치, AC-CAR-010 부모, AC-CAR-011)에 돌려 moai·decoy 기동 수를 적는다. 감사 측정으로 기동 1이 확인되어 있으므로, 여기서 0이 나오면 픽스처 결함으로 보고 LIVE 없이 멈추고 리드에게 보고한다(대체 기준 없음). 게이트 거부 경로의 가짜 codex 테스트(`TestCodexPreApprovalGateRefusals`, AC-CPP-012)도 이 마일스톤에서 만든다. 하위 테스트는 다섯이다: `missing_input`, `arm_diff_exceeds`, `startup_check_fails`, `clean_refuses_non_fixture_root`(D-N6), `kills_only_recorded_pids`(정리 경로가 하네스가 기록한 pid만 종료함을 가짜 프로세스로 단언, D-N8).
 - M1-b (LIVE 2): 판별 프로브 두 호출. `outcome.txt` 작성.
 - 운영자 결정 지점: `outcome.txt`가 `RAN`이고 대조가 `REFUSED`이면 D1(A1/A2)을 운영자가 정하고, D1-sub·D2 잠정 기본값을 확정하거나 바꾼다(바꾸면 SPEC 개정 + plan-audit 재실행). 아니면 N.
 
@@ -159,12 +164,12 @@ AC-CAR-010/011의 본문·판정식은 경로 치환 하나만 적용해 그대�
 
 - `AGENTS.md.tmpl` 행 수정(D4). `internal/template/agentemit` 지시면 테스트 갱신. 중립성 판정.
 - 재측정 범위: `./internal/template/agentemit/...`, `./internal/template/...` 중 AGENTS 렌더 테스트, `./internal/config -run 'Budget'`(`TestCodexNestedTemplateDiscoveryBudget`가 `AGENTS.md.tmpl` 크기를 잰다, D21).
-- 새 문장은 마침표 없이 한 문장으로 쓰고, 그 안에 거부 문구(`requires approval`), `skip`, `spawn_agent`, `blocker`를 함께 담는다(AC-CPP-010이 이 문장만 따로 본다, D19).
+- 행에 더할 문장은 REQ-CPP-008이 고정한 그대로다: "When the call is refused with `MCP tool call requires approval, but approval policy is never`, do not skip the audit and do not fall back to `spawn_agent`; return a blocker that quotes the refusal text". AC-CPP-010은 이 문장이 바이트 그대로 있는지, `requires approval`이 행에 한 번만 나오는지, 반대 뜻 구절(`skip the audit and fall back`, `no blocker`)이 없는지를 본다(D-N5).
 
 ### M4 — 이월 LIVE (Priority Medium)
 
 - AC-CAR-011 (LIVE 2): 모든 갈래.
-- AC-CAR-010 (LIVE 3): A1/A2 갈래만. N이면 `NOT_RUN`.
+- AC-CAR-010 (LIVE 3): A1/A2 갈래만. N이면 `NOT_RUN`. 순서(D-N2): M2 writer 변경이 끝난 뒤 car010 입력을 채택 갈래의 writer 출력으로 **다시 반출**하고(`car010/export-manifest.json` 갱신), car010 시작 검사를 **다시** 돌린 다음 LIVE를 시작한다. M1-a의 car010 시작 검사는 decoy 기동을 일찍 재는 용도로 남고, AC-CPP-004는 마지막 시작 검사만 대조한다.
 - 픽스처 수정은 D6.
 
 ### 마지막 — 기계적 정리 (Priority Low)
