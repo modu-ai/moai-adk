@@ -439,8 +439,12 @@ func (h *preToolHandler) Handle(ctx context.Context, input *HookInput) (*HookOut
 	// gateNotice carries a passing quality gate's non-blocking notice (for
 	// example an ast-grep step that skipped because sg is absent) to this
 	// handler's response. It rides the hook's structured output rather than
-	// slog: the `moai hook` path installs a discarding handler, so a log
-	// record here would be silent by construction.
+	// slog because the notice is FOR THE CALLER: the `moai hook` path routes
+	// slog to a file sink (.moai/logs/hook-runtime.log) that never reaches
+	// stdout or stderr, so a log record here would still not arrive with the
+	// response. The notice is also below the sink's warn level gate — a passing
+	// gate is not an anomaly — so at default configuration slog would carry it
+	// nowhere at all.
 	var gateNotice string
 
 	// Handle Bash commands
