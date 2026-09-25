@@ -42,7 +42,7 @@ Frequently used commands by category. The full list is available by typing `/` i
 | `/memory` | List/toggle `CLAUDE.md` + auto-memory loads | v2.1.59+ |
 | `/compact` | Summarize the conversation so far to free context while keeping the same dialogue | Base |
 | `/clear` (aliases: `/reset`, `/new`) | Clear the context and start a new conversation | Base |
-| `/agents` | Manage subagent configuration (v2.1.198 removed the creation wizard — ask Claude or edit `.claude/agents/` directly; official docs still document the tabbed UI as of 2026-07) | v2.1.139+ |
+| `/agents` | Subagent pointer — since v2.1.198 prints a reminder to ask Claude or edit `.claude/agents/` directly instead of opening a wizard; hidden from the command menu and `/help` since v2.1.281 | v1.0.60+ |
 | `/mcp` | Manage MCP server connections and OAuth authentication | v2.1.186+ |
 | `/plugin` | Manage plugins | Base |
 | `/effort [low\|medium\|high\|xhigh\|max\|ultracode\|auto]` | Set the model's reasoning intensity or orchestration | Base |
@@ -120,9 +120,9 @@ flowchart TD
     E --> G["From scratch<br>with a new topic"]
 ```
 
-### /agents — Managing Subagents
+### /agents — Where Subagent Creation Went
 
-`/agents` is a command to inspect the **subagents** you call within a session. As of v2.1.198, the interactive wizard that used to create new subagents has been removed — there are now two ways to create a new subagent.
+`/agents` no longer opens a screen for creating or managing subagents. Since v2.1.198, typing it only prints a reminder to ask Claude or to edit `.claude/agents/` (or `~/.claude/agents/` for personal ones) directly, and since v2.1.281 it is hidden from the command menu and `/help`. There are two ways to create a new subagent.
 
 1. Ask Claude in natural language, like "make me a code-review subagent"
 2. Create a markdown file directly under `.claude/agents/`
