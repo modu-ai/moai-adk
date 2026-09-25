@@ -538,7 +538,7 @@ git grep -niE 'discard' bbc855f45 -- internal/hook | grep '\.go:' | grep -v _tes
 | internal/hook/registry.go:114 | 무관 | 종전 `ctx.Err()`-우선 순서가 핸들러의 **유효 출력**을 버렸다는 과거 결함 서술 |
 | internal/hook/registry.go:321 | 무관 | 권한 사다리 없이는 핸들러의 `"ask"` 가 버려지고 pre-seed `"allow"` 가 나간다는 서술 |
 | internal/hook/session_start.go:333 | 무관 | 종전 cold 세션이 bounded join 을 다 치르고 **계산 결과**를 버렸다는 latency 서술 |
-| internal/hook/session_start.go:420 | 판정 유보 | `acceptance.md` 의 지정 유보 행. **과거형**이고 폐기 주체를 `resolveLoggingDecision` 이 아니라 **셸 래퍼의 stderr 처리**로 돌린다. 이 SPEC 은 stderr 를 열지 않으므로(REQ-HDS-002) M1 이후 이 문장이 거짓이 되는지 단정할 수 없다 — 갱신하지 않았고, 처분은 감사 몫이다 |
+| internal/hook/session_start.go:420 | 갱신 대상 | **재분류(F2).** 종전 `판정 유보` 는 「과거형이고 폐기 주체가 셸 래퍼의 stderr 처리이므로 거짓이 되는지 단정할 수 없다」는 전제 위에 있었는데, 그 전제의 두 절이 모두 성립하지 않는다 — 폐기 주체는 base 트리에서도 `resolveLoggingDecision`(`internal/cli/logging.go`) 이지 셸 래퍼가 아니었고(주석의 원인 귀속 자체가 틀렸다), 문제의 레코드는 `session_start.go:766` 의 `slog.Warn` 이라 싱크의 기본 admit 레벨(warn) 위에 있어 M1 이후 「기록됐지만 보이지 않는다」가 거짓이 된다. 갱신함: 폐기 주체를 `resolveLoggingDecision` 으로 바로잡고, warn 이므로 `.moai/logs/hook-runtime.log` 에 닿는다는 사실을 서술하면서, 그럼에도 이 의무(세션과 함께 사용자에게 알린다)의 표면은 싱크가 아니라 아래 notice 라는 주석의 원래 목적을 보존 |
 | internal/hook/session_start.go:454 | 무관 | `writeKanbanSessionRecord` 가 **모든 실패**를 버려 세션 시작이 그것에 gate 하지 않는다는 fail-open 서술 |
 | internal/hook/session_start_drift_fill.go:12 | 무관 | 캐시 writer 부재로 cold 세션이 join 결과를 버렸다는 과거 결함 서술 |
 | internal/hook/session_start_kanban.go:202 | 무관 | dropped 카드를 **운영자가** 버렸다는 큐 상태 정의 |
@@ -547,7 +547,8 @@ git grep -niE 'discard' bbc855f45 -- internal/hook | grep '\.go:' | grep -v _tes
 | internal/hook/user_prompt_submit.go:76 | 무관 | 2 rune 미만 파생 제목을 버린다는 `titleMinRunes` 상수 주석 |
 
 지정 4행은 전부 `갱신 대상` 으로 분류되고 실제로 갱신됐으며, `session_start.go:420` 은
-`판정 유보` 로 기록했다. **나머지 18행의 분류 타당성은 감사 몫이다**(`acceptance.md` §Gaps).
+처음 `판정 유보` 로 기록했다가 감사 결함 F2 를 받아 `갱신 대상` 으로 재분류하고 갱신했다(사유는
+해당 행). **나머지 18행의 분류 타당성은 감사 몫이다**(`acceptance.md` §Gaps).
 
 ## §E.3 Run-phase Audit-Ready Signal
 
