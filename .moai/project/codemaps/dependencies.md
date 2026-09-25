@@ -38,7 +38,7 @@ $ go list -f '{{.ImportPath}} {{join .Imports " "}}' ./... \
 |---|---|---|---|
 | 1 | `internal/config` | 22 | data |
 | 2 | `internal/defs` | 13 | cross-cutting |
-| 2 | `internal/paths` | 12 | cross-cutting |
+| 3 | `internal/paths` | 12 | cross-cutting |
 | 4 | `internal/atomicfile` | 11 | cross-cutting |
 | 5 | `pkg/models` | 8 | cross-cutting |
 | 5 | `internal/core` | 8 | domain |
@@ -46,10 +46,11 @@ $ go list -f '{{.ImportPath}} {{join .Imports " "}}' ./... \
 | 8 | `internal/template` | 6 | domain |
 | 8 | `internal/kanban` | 6 | domain |
 | 8 | `internal/hook` | 6 | **presentation** |
-| 11 | `pkg/version` | 5 | cross-cutting |
-| 11 | `internal/statusline` | 5 | **presentation** |
-| 11 | `internal/spec` | 6 | domain |
-| 11 | `internal/lsp` | 5 | infrastructure |
+| 8 | `internal/homestate` | 6 | data |
+| 8 | `internal/spec` | 6 | domain |
+| 13 | `pkg/version` | 5 | cross-cutting |
+| 13 | `internal/statusline` | 5 | **presentation** |
+| 13 | `internal/lsp` | 5 | infrastructure |
 
 산출은 최상위 집계 엣지 목록의 목적지 열을 `sort | uniq -c | sort -rn` 한 것입니다.
 

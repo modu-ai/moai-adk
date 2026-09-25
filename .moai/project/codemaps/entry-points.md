@@ -1,9 +1,10 @@
 # 진입점
 
 **현재 갱신 — t1187, `origin/develop` `a8a9b9376` (2026-09-25).**
-`moai codex audit <role> [--out <path>]`와 MCP의
-`codex_role_audit`·`codex_role_audit_status`·`codex_role_audit_result`가
-`runCodexAudit`을 공유한다(`internal/cli/codex_audit_launch.go`,
+CLI `moai codex audit <role> [--out <path>]`는 `runCodexAudit`을 호출하고,
+MCP `codex_role_audit`는 같은 런처의 `prepareCodexAudit`·`plan.run`으로
+감사를 시작한다. `codex_role_audit_status`·`codex_role_audit_result`는
+서버에 있는 job을 읽는다(`internal/cli/codex_audit_launch.go`,
 `codex_audit_mcp.go`). 호출자의 등록된 워크트리와 `.moai/reports/` 아래
 목적지를 먼저 검증하고, 허용된 읽기 전용 역할을 별도 `codex exec -s read-only`
 프로세스로 띄운다. MCP 경로는 job ID를 즉시 반환하며 status/result로
