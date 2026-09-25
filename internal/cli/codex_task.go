@@ -68,6 +68,13 @@ func codexTaskTimeoutMessage() string {
 		" (the bound codex_task imposes on its own turns); the turn was abandoned and the session torn down"
 }
 
+var errCodexTaskSessionDeadline = errors.New("codex_task session deadline")
+
+func codexTaskHandshakeTimeoutMessage() string {
+	return "codex_task handshake timed out after " + config.DefaultCodexTaskTimeout.String() +
+		" (the bound codex_task imposes on background sessions); the session was torn down"
+}
+
 // codexTaskCallerEndedMessage names the CALLER's context as what ended the turn
 // (t514 / GH #1687). It exists because the timeout wording above was reported
 // for turns that ended in milliseconds: both causes reach the same select arm,
@@ -126,7 +133,7 @@ func runCodexTaskTurn(ctx context.Context, session *codexSessionHandle, params m
 		// caller ended the turn and the bound is not what happened to it.
 		msg := codexTaskTimeoutMessage()
 		nextStep := "re-run with a narrower prompt, or raise the codex_task bound"
-		if parentErr := parent.Err(); parentErr != nil {
+		if parentErr := parent.Err(); parentErr != nil && !errors.Is(context.Cause(parent), errCodexTaskSessionDeadline) {
 			msg = codexTaskCallerEndedMessage(parentErr)
 			nextStep = "re-run with a context that outlives the turn; the codex_task bound was never reached"
 		}
@@ -186,6 +193,19 @@ type CodexTaskResult struct {
 // with no entry here is stale (a previous server lifetime), which is exactly the
 // case REQ-CX2-012 requires the cancel path to refuse rather than signal.
 var codexLiveJobSessions sync.Map // job id (string) → *codexSessionHandle
+
+// The request context ends when a background tool call returns. Keep a
+// separate, bounded process lifetime and cancel it when the MCP server exits.
+var codexLiveJobCancels sync.Map // job id (string) → context.CancelFunc
+var codexBackgroundJobs sync.WaitGroup
+
+func stopCodexBackgroundJobs() {
+	codexLiveJobCancels.Range(func(_, value any) bool {
+		value.(context.CancelFunc)()
+		return true
+	})
+	codexBackgroundJobs.Wait()
+}
 
 // handleCodexTask is the handler for the `codex_task` MCP tool (REQ-CX2-006).
 //
@@ -254,12 +274,13 @@ func handleCodexTask(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToo
 	// that context ends (card t1186). A foreground session stays on the request
 	// context. A background session must outlive the request — the host ends it
 	// the moment this handler returns — so it gets a detached context the job
-	// goroutine cancels on exit. Until hand-off the request still bounds the
-	// handshake through the AfterFunc tie, exactly as before.
+	// goroutine cancels on exit. The task deadline also covers the handshake,
+	// while the request still bounds it through the AfterFunc tie.
 	sessionCtx, cancelSession := ctx, context.CancelFunc(func() {})
 	untieRequest := func() bool { return true }
 	if background {
-		sessionCtx, cancelSession = context.WithCancel(context.WithoutCancel(ctx))
+		sessionCtx, cancelSession = context.WithTimeoutCause(
+			context.WithoutCancel(ctx), config.DefaultCodexTaskTimeout, errCodexTaskSessionDeadline)
 		untieRequest = context.AfterFunc(ctx, cancelSession)
 	}
 
@@ -275,7 +296,9 @@ func handleCodexTask(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToo
 		cancelSession()
 		var sErr *codexSessionError
 		result.Status = codexJobStatusFailed
-		if errors.As(err, &sErr) {
+		if background && ctx.Err() == nil && errors.Is(context.Cause(sessionCtx), errCodexTaskSessionDeadline) {
+			result.Error = codexTaskHandshakeTimeoutMessage()
+		} else if errors.As(err, &sErr) {
 			result.Error = sErr.summary
 		} else {
 			result.Error = err.Error()
@@ -335,9 +358,10 @@ func handleCodexTask(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToo
 	// cancelled within milliseconds of being created, every time, and reported
 	// the failure as a 10-minute bound expiry. Values (the progress token among
 	// them) are carried through; only the cancellation is dropped. The turn
-	// stays bounded by the codex_task timeout runCodexTaskTurn applies, and the
-	// job goroutine owns cancelSession, so the session (and its child) ends with
-	// the job on every path — completion, the bound, or codex_job_cancel.
+	// stays bounded by the session deadline, including its handshake; the turn
+	// also retains its own bound through runCodexTaskTurn.
+	codexLiveJobCancels.Store(rec.ID, cancelSession)
+	codexBackgroundJobs.Add(1)
 	go runCodexBackgroundJob(sessionCtx, cancelSession, registry, rec.ID, session, turnParams)
 
 	result.Status = codexJobStatusRunning
@@ -357,10 +381,13 @@ func runCodexBackgroundJob(ctx context.Context, cancelSession context.CancelFunc
 	defer func() {
 		codexLiveJobSessions.Delete(jobID)
 		_ = session.close()
+		codexLiveJobCancels.Delete(jobID)
 		cancelSession()
+		codexBackgroundJobs.Done()
 	}()
 
 	out, runErr := runCodexTaskTurn(ctx, session, params)
+	out, runErr = codexBackgroundDeadlineResult(ctx, out, runErr)
 
 	// A job cancelled while the turn was in flight keeps its cancelled status:
 	// the turn returning afterwards must not overwrite it with completed or
@@ -377,6 +404,16 @@ func runCodexBackgroundJob(ctx context.Context, cancelSession context.CancelFunc
 		r.Status = codexJobStatusCompleted
 		r.Output = out.Summary
 	})
+}
+
+func codexBackgroundDeadlineResult(ctx context.Context, out ReviewOutput, runErr error) (ReviewOutput, error) {
+	if runErr != nil && errors.Is(context.Cause(ctx), errCodexTaskSessionDeadline) {
+		// The child can close stdout at the deadline before the turn's
+		// select observes ctx.Done. Report the deadline, not that EOF race.
+		out.Summary = codexTaskTimeoutMessage()
+		runErr = errors.New(out.Summary)
+	}
+	return out, runErr
 }
 
 // appendCodexNote joins two result notes, keeping both statements rather than
