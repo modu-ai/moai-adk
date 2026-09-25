@@ -760,7 +760,6 @@ The `env` section sets environment variables that control Claude Code's behavior
 |------|-----|------|
 | `ENABLE_TOOL_SEARCH` | `"auto"`, `"auto:N"`, `"true"`, `"false"` | Controls tool search |
 | `CLAUDE_AUTOCOMPACT_PCT_OVERRIDE` | `1`-`100` | Auto-compact trigger percentage (default: ~95%) |
-| `CLAUDE_CODE_ENABLE_TELEMETRY` | `"1"` | Enables OpenTelemetry data collection |
 | `CLAUDE_CODE_DISABLE_BACKGROUND_TASKS` | `"1"` | Disables background tasks |
 | `DISABLE_AUTOUPDATER` | `"1"` | Disables auto-updates |
 | `HTTP_PROXY` | URL | HTTP proxy server |
