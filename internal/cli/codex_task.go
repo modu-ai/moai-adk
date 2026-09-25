@@ -249,9 +249,30 @@ func handleCodexTask(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToo
 		"sandboxPolicy": codexSandboxPolicy(writeGranted),
 	}
 
+	// The SESSION's context decides the codex child's lifetime: the production
+	// runner spawns it with exec.CommandContext and stops reading stdout when
+	// that context ends (card t1186). A foreground session stays on the request
+	// context. A background session must outlive the request — the host ends it
+	// the moment this handler returns — so it gets a detached context the job
+	// goroutine cancels on exit. Until hand-off the request still bounds the
+	// handshake through the AfterFunc tie, exactly as before.
+	sessionCtx, cancelSession := ctx, context.CancelFunc(func() {})
+	untieRequest := func() bool { return true }
+	if background {
+		sessionCtx, cancelSession = context.WithCancel(context.WithoutCancel(ctx))
+		untieRequest = context.AfterFunc(ctx, cancelSession)
+	}
+
 	notifyMCPProgress(ctx, token, 0.2, "codex 세션 오픈 중...")
-	session, err := openCodexSessionOn(ctx, binaryPath, turnParams, resumeThreadID)
+	session, err := openCodexSessionOn(sessionCtx, binaryPath, turnParams, resumeThreadID)
+	if background && !untieRequest() && err == nil {
+		// The request ended before hand-off; the session is already being torn
+		// down, so report that instead of starting a job on a dead session.
+		_ = session.close()
+		err = errors.New("codex_task request was cancelled before the background job was handed off")
+	}
 	if err != nil {
+		cancelSession()
 		var sErr *codexSessionError
 		result.Status = codexJobStatusFailed
 		if errors.As(err, &sErr) {
@@ -292,6 +313,7 @@ func handleCodexTask(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToo
 	})
 	if err != nil {
 		_ = session.close()
+		cancelSession()
 		return toolErr(codexTaskToolName, err), nil
 	}
 
@@ -303,6 +325,7 @@ func handleCodexTask(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToo
 	if _, err := registry.update(rec.ID, func(r *CodexJobRecord) { r.Status = codexJobStatusRunning }); err != nil {
 		codexLiveJobSessions.Delete(rec.ID)
 		_ = session.close()
+		cancelSession()
 		return toolErr(codexTaskToolName, err), nil
 	}
 
@@ -312,8 +335,10 @@ func handleCodexTask(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToo
 	// cancelled within milliseconds of being created, every time, and reported
 	// the failure as a 10-minute bound expiry. Values (the progress token among
 	// them) are carried through; only the cancellation is dropped. The turn
-	// stays bounded by the codex_task timeout runCodexTaskTurn applies.
-	go runCodexBackgroundJob(context.WithoutCancel(ctx), registry, rec.ID, session, turnParams)
+	// stays bounded by the codex_task timeout runCodexTaskTurn applies, and the
+	// job goroutine owns cancelSession, so the session (and its child) ends with
+	// the job on every path — completion, the bound, or codex_job_cancel.
+	go runCodexBackgroundJob(sessionCtx, cancelSession, registry, rec.ID, session, turnParams)
 
 	result.Status = codexJobStatusRunning
 	result.JobID = rec.ID
@@ -328,10 +353,11 @@ func handleCodexTask(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToo
 // The live-session entry is removed and the session closed on EVERY exit path,
 // so a terminal record is never left with a live entry the cancel path could
 // still address.
-func runCodexBackgroundJob(ctx context.Context, registry *codexJobRegistry, jobID string, session *codexSessionHandle, params map[string]any) {
+func runCodexBackgroundJob(ctx context.Context, cancelSession context.CancelFunc, registry *codexJobRegistry, jobID string, session *codexSessionHandle, params map[string]any) {
 	defer func() {
 		codexLiveJobSessions.Delete(jobID)
 		_ = session.close()
+		cancelSession()
 	}()
 
 	out, runErr := runCodexTaskTurn(ctx, session, params)
