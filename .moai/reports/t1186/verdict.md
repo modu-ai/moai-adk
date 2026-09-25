@@ -12,10 +12,11 @@ Codex 백그라운드 작업의 자체 제한시간을 세션 생성 시점부�
 - go test ./internal/cli -run 'TestCodexTask_(ForegroundSessionStillBoundToRequest|BackgroundSessionOutlivesRequestContext)$' -count=1 -timeout=20s → ok github.com/modu-ai/moai-adk/internal/cli 0.840s, exit 0.
 - gofmt -l internal/cli/codex_task.go internal/cli/codex_task_process_context_test.go 및 git diff --check → 출력 없음, exit 0.
 - t1187 PR #1726이 병합된 develop을 통합한 1346273b7에서 go test ./internal/cli -run 'Test(CodexTaskBackgroundOwnsProcessPastRequest|CodexTaskServerExitStopsBackgroundProcess|CodexTaskMCPEOFAbortsStalledHandshake|CodexTaskBackgroundHandshakeHonorsTaskBound|CodexTaskBackgroundProcessBound|MCPEOFReaderPreservesFinalBytes)$' -count=1 -timeout=45s → ok github.com/modu-ai/moai-adk/internal/cli 2.147s, exit 0. 같은 head의 graph-freshness GitHub Actions는 SUCCESS이고 git diff --check origin/develop...HEAD는 출력 없음이었다.
+- CodeRabbit이 지적한 성공 턴 덮어쓰기 회귀에 대해 TestCodexBackgroundDeadlinePreservesSuccessfulTurn 및 TestCodexBackgroundDeadlineOverridesFailedTurn을 추가했다. 수정 전 `go test ./internal/cli -run '^TestCodexBackgroundDeadline' -count=1` → `undefined: codexBackgroundDeadlineResult`, FAIL. 수정 후 관련 테스트 묶음 `go test ./internal/cli -run '^(TestCodexBackgroundDeadline|TestCodexTask_BackgroundTurnTimeoutReachesTerminalStatus$|TestCodexTask_BackgroundDetachedSessionHonorsTurnBound$|TestCodexTaskBackgroundOwnsProcessPastRequest$|TestCodexTaskServerExitStopsBackgroundProcess$|TestCodexTaskMCPEOFAbortsStalledHandshake$|TestCodexTaskBackgroundHandshakeHonorsTaskBound$|TestCodexTaskBackgroundProcessBound$|TestMCPEOFReaderPreservesFinalBytes$)' -count=1 -timeout=90s` → `ok github.com/modu-ai/moai-adk/internal/cli 2.991s`, exit 0. `gofmt -d`와 `git diff --check`는 출력 없음이었다.
 
 ## Baseline-attribution
 
-RED와 GREEN, 형제 테스트의 기준은 WT-codex-task-background-context 작업트리의 ee78515a9이다. develop 통합 뒤 집중 테스트와 graph 검사의 기준은 1346273b7이다.
+RED와 GREEN, 형제 테스트의 기준은 WT-codex-task-background-context 작업트리의 ee78515a9이다. develop 통합 뒤 집중 테스트와 graph 검사의 기준은 1346273b7이다. CodeRabbit 회귀 테스트의 RED 기준은 9bcfe24e5, GREEN 기준은 7cc54a404이다.
 
 ## Gaps
 
