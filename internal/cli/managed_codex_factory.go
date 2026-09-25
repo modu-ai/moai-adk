@@ -221,6 +221,16 @@ func managedCodexOptions(args []string) (appArgs []string, model string, err err
 	return appArgs, model, nil
 }
 
+// These overrides belong to the two Codex processes owned by this Factory
+// session. Project and user config retain their ordinary approval behavior.
+func factoryMoAIMCPApprovalArgs() []string {
+	return []string{
+		"-c", `mcp_servers.moai.default_tools_approval_mode="approve"`,
+		"-c", `mcp_servers.moai.tools.factory_msg_send.approval_mode="approve"`,
+		"-c", `mcp_servers.moai.tools.factory_msg_receipt.approval_mode="approve"`,
+	}
+}
+
 // runManagedFactoryCodex owns both the App Server control connection and the
 // interactive TUI. A separate connection can start turns on the same thread;
 // the broker remains the source of the message body and receipt.
@@ -266,6 +276,7 @@ func runManagedFactoryCodex(req codexLaunchRequest) (err error) {
 	}
 	args := []string{"app-server", "--listen", url, "--ws-auth", "capability-token", "--ws-token-file", tokenFile}
 	args = append(args, appOptions...)
+	args = append(args, factoryMoAIMCPApprovalArgs()...)
 	server := exec.Command(req.Program, args...)
 	server.Dir, server.Env, server.Stderr = req.Dir, env, os.Stderr
 	if err := server.Start(); err != nil {
@@ -346,6 +357,7 @@ func runManagedFactoryCodex(req codexLaunchRequest) (err error) {
 	}
 	bound = true
 	tuiArgs := append([]string{"resume", "--remote", url, "--remote-auth-token-env", factoryAppTokenEnv}, req.Args...)
+	tuiArgs = append(tuiArgs, factoryMoAIMCPApprovalArgs()...)
 	tui := exec.Command(req.Program, append(tuiArgs, threadID)...)
 	tui.Dir = req.Dir
 	tui.Env = append(env, factoryAppTokenEnv+"="+token)

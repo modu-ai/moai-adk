@@ -21,6 +21,21 @@ func TestManagedCodexOptionsPreserveModelAndConfig(t *testing.T) {
 	}
 }
 
+func TestFactoryMoAIMCPApprovalArgsOnlyTargetMoAI(t *testing.T) {
+	args := factoryMoAIMCPApprovalArgs()
+	if len(args) != 6 {
+		t.Fatalf("Factory approval args=%v", args)
+	}
+	for i := 0; i < len(args); i += 2 {
+		if args[i] != "-c" || !strings.HasPrefix(args[i+1], "mcp_servers.moai.") || !strings.HasSuffix(args[i+1], `="approve"`) {
+			t.Fatalf("Factory approval override %q is not MoAI-scoped", args[i:i+2])
+		}
+	}
+	if !strings.Contains(strings.Join(args, " "), "default_tools_approval_mode") {
+		t.Fatal("Factory MoAI MCP server default must be approved")
+	}
+}
+
 func TestFactoryAppClientWaitTurnTracksSpecificCompletion(t *testing.T) {
 	client := &factoryAppClient{events: make(chan factoryAppReply, 2), busy: true}
 	client.events <- factoryAppReply{Method: "turn/completed", Params: json.RawMessage(`{"turn":{"id":"other","status":"completed"}}`)}
