@@ -1,7 +1,7 @@
 ---
 id: SPEC-CODEX-PREAPPROVAL-PROBE-001
 title: "Codex per-tool pre-approval of codex_role_audit — discriminating probe, conditional emission, loader key-name check, refusal instruction, carried AC-CAR-010/011"
-version: "0.5.4"
+version: "0.5.5"
 status: draft
 created: 2026-09-25
 updated: 2026-09-25
@@ -25,6 +25,8 @@ related_specs:
 
 | Version | Date | Change |
 |---|---|---|
+| 0.5.5 | 2026-09-25 | 재시도할 때 이전 무효 시도의 LIVE를 최신 반출과 잘못 비교하지 않도록 반출별 매니페스트 사본과 장부 해시를 연결했다. 최종 시도의 사본만 최신 반출본과 비교한다. |
+| 0.5.4 | 2026-09-25 | 각 LIVE가 참조한 시작 검사의 고유 원자료와 성공 조건을 재검증하고, M1-a 원본 장부 네 행·원자료 12개를 고정 해시로 보존한다. |
 | 0.5.3 | 2026-09-25 | M1-a와 M1-b가 서로 다른 테스트 임시 루트를 쓰므로 기존 시작 검사 행을 보존하고 새 루트에서 다시 검사하도록 명시했다. M1-a 4회, 판별 시도별 4회씩 최대 8회, car010·car011 시도별 최대 2회씩 4회를 합한 시작 검사 절대 상한은 16회다. 각 LIVE는 같은 임시 루트의 앞선 시작 검사와 짝을 이룬다. |
 | 0.5.2 | 2026-09-25 | `codex-cli 0.157.0`의 `codex exec` 인자 계약을 반영했다. `--ask-for-approval`은 이 하위 명령에서 거부되므로, 판별 LIVE는 지원되는 `-c approval_policy="never"`로 무인 승인 정책을 고정한다. 반출 인자와 장부가 이 명령을 증명하도록 AC-CPP-002를 보강했다. |
 | 0.5.1 | 2026-09-25 | Codex CLI 0.157.0의 비모델 로더 실측에 맞춰 AC-CPP-008 진단 형식을 개정했다. 정상 설정은 non-git 게이트에 도달하고, 오타·잘못된 enum은 `Error:`로 시작한다. 오류 판정은 이 형식과 이전 `Error loading config.toml:` 형식만 허용하며 진단 본문을 함께 검사한다. |
@@ -75,7 +77,7 @@ When both arms' inputs have been exported, the probe harness shall write the ver
 
 ### REQ-CPP-003 — 모델 요청 없는 시작 검사를 먼저 통과한다
 
-When an arm's fixture is prepared, the probe harness shall run a startup check against that fixture that cannot reach a model endpoint and receives no model response — a `codex exec` invocation under `--strict-config` that defines and selects the unreachable model provider `http://127.0.0.1:9/v1`, whose `CODEX_HOME` holds no login file and whose environment carries no authentication variable, with no model override in its arguments or in either configuration file (the same model setting as the LIVE invocation), bounded by a timeout — and shall require that the session started, that the configuration loaded without an error, that no item event other than a non-model `error` item occurred, and that the moai MCP server was launched. When the startup check fails for either arm, the probe harness shall start no discriminating LIVE invocation. The startup check shall not be counted as a LIVE invocation and shall be recorded in the ledger with its own cap. An earlier test's startup rows shall remain in the ledger and count toward that cap even if its temporary fixture has been removed. Before each LIVE invocation, the ledger shall identify an earlier successful startup check for the same fixture in the same temporary and fixture roots, whose retained per-invocation output proves the check and whose loaded input hashes match the current export. The four original M1-a startup rows and their output shall remain intact when later checks are appended. When a fixture's inputs are exported again (for example the car010 project configuration after the adopted writer change), the startup check shall be run again after that export and before the fixture's next LIVE invocation.
+When an arm's fixture is prepared, the probe harness shall run a startup check against that fixture that cannot reach a model endpoint and receives no model response — a `codex exec` invocation under `--strict-config` that defines and selects the unreachable model provider `http://127.0.0.1:9/v1`, whose `CODEX_HOME` holds no login file and whose environment carries no authentication variable, with no model override in its arguments or in either configuration file (the same model setting as the LIVE invocation), bounded by a timeout — and shall require that the session started, that the configuration loaded without an error, that no item event other than a non-model `error` item occurred, and that the moai MCP server was launched. When the startup check fails for either arm, the probe harness shall start no discriminating LIVE invocation. The startup check shall not be counted as a LIVE invocation and shall be recorded in the ledger with its own cap. An earlier test's startup rows shall remain in the ledger and count toward that cap even if its temporary fixture has been removed. Before each LIVE invocation, the ledger shall identify an earlier successful startup check for the same fixture in the same temporary and fixture roots, whose retained per-invocation output proves the check and whose loaded input hashes match the export snapshot for that attempt. The export snapshot used by each startup and LIVE invocation shall remain available after a retry; only the latest valid attempt is judged against the current export. The four original M1-a startup rows and their output shall remain intact when later checks are appended. When a fixture's inputs are exported again (for example the car010 project configuration after the adopted writer change), the startup check shall be run again after that export and before the fixture's next LIVE invocation.
 
 ### REQ-CPP-004 — LIVE 상한과 정지 규칙을 먼저 적는다
 
