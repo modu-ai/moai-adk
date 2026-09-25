@@ -11,6 +11,9 @@
 - go test ./internal/template -run '^TestSettingsTemplateDenyWildcardSyntax$' -count=1 -v -timeout=60s → macOS, Linux, Windows 렌더링 하위 테스트 모두 PASS.
 - go test ./internal/template -count=1 -timeout=90s → ok github.com/modu-ai/moai-adk/internal/template 65.953s.
 - git diff --cached --check → 출력 없음, exit 0.
+- 커밋 코드로 go build -o /tmp/moai-t1185 ./cmd/moai → exit 0. /tmp/t1185-iUOrUe/project에서 HOME을 별도 임시 경로로 두고 해당 바이너리의 init . --non-interactive --language go --name t1185-test --no-hooks --llm claude 실행 → exit 0.
+- 생성된 .claude/settings.json에서 3개 규칙이 수정된 형태임을 확인했다. Claude Code 2.1.282의 claude --print --settings /tmp/t1185-iUOrUe/project/.claude/settings.json --model haiku 'Reply OK' 실행 → exit 0, deny 문법 경고 0건. 작업공간이 미신뢰라 permissions.allow 111건을 무시한다는 별도 안내는 출력됐다.
+- 같은 생성 파일의 3개 규칙만 이전 문법으로 되돌린 /tmp/t1185-iUOrUe/project/old-settings.json을 --settings로 지정해 재기동 → exit 0, 해당 deny 문법 경고 정확히 3건. 미신뢰 작업공간에서도 이 경고가 표시되는 양성 대조다.
 
 ## Baseline-attribution
 
@@ -18,7 +21,7 @@
 
 ## Gaps
 
-수정된 템플릿으로 새 프로젝트를 생성해 Claude Code를 다시 기동하는 실세션 검증은 수행하지 않았다. 테스트는 렌더링된 규칙 문자열과 JSON을 확인한다.
+작업공간 신뢰 승인은 수행하지 않았다. 실세션 결과는 경고 제거를 확인하지만, 모든 파괴적 명령 변형에 대한 차단 동작까지 시험하지는 않았다.
 
 ## Residual-risk
 
