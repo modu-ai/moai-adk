@@ -121,7 +121,7 @@ Never generate URLs not found in WebSearch results, never present uncertain info
 
 ## 13. Progressive Disclosure System
 
-Bodies retired to their canonical rules; load on the named trigger. Anti-hallucination policy and GLM web-tool routing: `moai-constitution.md` § URL Verification · `glm-web-tooling.md` · `dynamic-workflows.md` (`/deep-research`). Error recovery, archived-agent rejection and token-limit resume: `agent-common-protocol.md` § Error Recovery Pattern · `archived-agent-rejection.md` §C · `session-handoff.md`. Thinking modes, MCP configuration and dynamic workflows: `moai-constitution.md` § Opus 5.5 Prompt Philosophy · `settings-management.md` · `dynamic-workflows.md` · Skill("moai-foundation-thinking"). Progressive-disclosure token budget: `skill-authoring.md` § Progressive Disclosure.
+Bodies retired to their canonical rules; load on the named trigger. Anti-hallucination policy and GLM web-tool routing: `moai-constitution.md` § URL Verification · `glm-web-tooling.md` · `dynamic-workflows.md` (`/deep-research`). Error recovery, archived-agent rejection and token-limit resume: `agent-common-protocol-reference.md` § Error Recovery Pattern · `archived-agent-rejection.md` §C · `session-handoff.md`. Thinking modes, MCP configuration and dynamic workflows: `moai-constitution.md` § Opus 5.5 Prompt Philosophy · `settings-management.md` · `dynamic-workflows.md` · Skill("moai-foundation-thinking"). Progressive-disclosure token budget: `skill-authoring.md` § Progressive Disclosure.
 
 ---
 

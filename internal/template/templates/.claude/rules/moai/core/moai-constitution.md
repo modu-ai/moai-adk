@@ -123,7 +123,7 @@ Rules:
 
 ## Tool Selection Priority
 
-Prefer the dedicated tool over a general alternative when one is fit for purpose — it improves accuracy and reduces round-trip latency. The canonical tool-by-task table lives in `.claude/rules/moai/core/agent-common-protocol.md` § Tool Selection by Task (that table is the single source of truth; this section intentionally carries no duplicate list).
+Prefer the dedicated tool over a general alternative when one is fit for purpose — it improves accuracy and reduces round-trip latency. The canonical tool-by-task table lives in `.claude/rules/moai/core/agent-common-protocol-reference.md` § Tool Selection by Task (that table is the single source of truth; this section intentionally carries no duplicate list).
 
 ## Error Handling Protocol
 
