@@ -8,6 +8,7 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"os"
 	"os/exec"
@@ -164,6 +165,102 @@ func TestCodexPreApprovalStartupPreserve(t *testing.T) {
 	preApprovalRunStartup(t, true)
 }
 
+func preApprovalAppendStartup(t *testing.T, path string, rows *[]map[string]any, entry preApprovalStartupRow, stopReason string) {
+	t.Helper()
+	body, err := json.Marshal(entry)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var row map[string]any
+	decoder := json.NewDecoder(bytes.NewReader(body))
+	decoder.UseNumber()
+	if err := decoder.Decode(&row); err != nil {
+		t.Fatal(err)
+	}
+	next := append(append([]map[string]any{}, *rows...), row)
+	if stopReason != "" {
+		next = append(next, map[string]any{"kind": "stop", "fixture": entry.Fixture, "reason": stopReason, "started_ns": time.Now().UnixNano()})
+	}
+	if err := preApprovalWriteLedger(path, next); err != nil {
+		t.Fatal(err)
+	}
+	*rows = next
+}
+
+func preApprovalAppendStartupStop(t *testing.T, path string, rows *[]map[string]any, fixture, reason string) {
+	t.Helper()
+	next := append(append([]map[string]any{}, *rows...), map[string]any{"kind": "stop", "fixture": fixture, "reason": reason, "started_ns": time.Now().UnixNano()})
+	if err := preApprovalWriteLedger(path, next); err != nil {
+		t.Fatal(err)
+	}
+	*rows = next
+}
+
+func preApprovalExportReference(evidenceDir, fixture string) (string, string, error) {
+	group := fixture
+	if strings.HasPrefix(group, "disc-") {
+		group = "discriminator"
+	}
+	current, err := os.ReadFile(filepath.Join(evidenceDir, group, "export-manifest.json"))
+	if err != nil {
+		return "", "", err
+	}
+	var export preApprovalManifest
+	if err := json.Unmarshal(current, &export); err != nil || export.ExportedNS <= 0 {
+		return "", "", fmt.Errorf("invalid %s export manifest: %v", group, err)
+	}
+	id := fmt.Sprintf("export-%d", export.ExportedNS)
+	snapshot, err := os.ReadFile(filepath.Join(evidenceDir, group, "exports", id, "export-manifest.json"))
+	if err != nil {
+		return "", "", err
+	}
+	if !bytes.Equal(snapshot, current) {
+		return "", "", errors.New("export snapshot differs from current manifest")
+	}
+	return id, preApprovalSHA(snapshot), nil
+}
+
+func preApprovalStartupCount(rows []map[string]any) int {
+	count := 0
+	for _, row := range rows {
+		if row["kind"] == "startup" {
+			count++
+		}
+	}
+	return count
+}
+
+func TestCodexPreApprovalStartupLedgerRetention(t *testing.T) {
+	dir := t.TempDir()
+	ledgerPath := filepath.Join(dir, "ledger.json")
+	rawPath := filepath.Join(dir, "failed.jsonl")
+	if err := os.WriteFile(rawPath, []byte(`{"type":"thread.started"}`+"\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	rows := []map[string]any{{"kind": "startup", "fixture": "disc-control"}}
+	if err := preApprovalWriteLedger(ledgerPath, rows); err != nil {
+		t.Fatal(err)
+	}
+	preApprovalAppendStartup(t, ledgerPath, &rows, preApprovalStartupRow{Kind: "startup", Fixture: "disc-treatment", Passed: false}, "startup MCP launch or non-model gate failed")
+	retained, err := preApprovalReadLedger(ledgerPath)
+	if err != nil || len(retained) != 3 || preApprovalStartupCount(retained) != 2 || retained[2]["kind"] != "stop" {
+		t.Fatalf("failed attempt was not recorded: rows=%+v err=%v", retained, err)
+	}
+	if _, err := os.Stat(rawPath); err != nil {
+		t.Fatalf("failed attempt raw output was lost: %v", err)
+	}
+	capPath := filepath.Join(dir, "cap-ledger.json")
+	var capRows []map[string]any
+	for preApprovalStartupCount(capRows) < preApprovalMaxStartupCalls {
+		preApprovalAppendStartup(t, capPath, &capRows, preApprovalStartupRow{Kind: "startup", Fixture: "car011"}, "")
+	}
+	preApprovalAppendStartupStop(t, capPath, &capRows, "car011", "startup invocation budget exceeded")
+	retained, err = preApprovalReadLedger(capPath)
+	if err != nil || preApprovalStartupCount(retained) != preApprovalMaxStartupCalls || retained[len(retained)-1]["kind"] != "stop" {
+		t.Fatalf("budget refusal changed startup count: rows=%d err=%v", preApprovalStartupCount(retained), err)
+	}
+}
+
 func preApprovalRunStartup(t *testing.T, preserveLedger bool) *preApprovalFixture {
 	t.Helper()
 	if os.Getenv(envCodexPreApprovalLive) != "1" {
@@ -184,9 +281,11 @@ func preApprovalRunStartup(t *testing.T, preserveLedger bool) *preApprovalFixtur
 	if err := os.MkdirAll(evidenceDir, 0o755); err != nil {
 		t.Fatal(err)
 	}
+	ledgerPath := filepath.Join(evidenceDir, "ledger.json")
+	var rows []map[string]any
 	attempt := 1
 	if preserveLedger {
-		prior, readErr := preApprovalReadLedger(filepath.Join(evidenceDir, "ledger.json"))
+		prior, readErr := preApprovalReadLedger(ledgerPath)
 		if readErr != nil {
 			t.Fatal(readErr)
 		}
@@ -204,15 +303,12 @@ func preApprovalRunStartup(t *testing.T, preserveLedger bool) *preApprovalFixtur
 				}
 			}
 		}
-		priorStarts := 0
-		for _, row := range prior {
-			if row["kind"] == "startup" {
-				priorStarts++
-			}
-		}
-		if priorStarts+4 > preApprovalMaxStartupCalls {
+		if preApprovalStartupCount(prior)+4 > preApprovalMaxStartupCalls {
+			rows = prior
+			preApprovalAppendStartupStop(t, ledgerPath, &rows, "disc", "startup invocation budget would be exceeded")
 			t.Fatal("startup invocation budget would be exceeded")
 		}
+		rows = prior
 	}
 	codexBin := os.Getenv("MOAI_CODEX_BIN")
 	if codexBin == "" {
@@ -279,7 +375,7 @@ func preApprovalRunStartup(t *testing.T, preserveLedger bool) *preApprovalFixtur
 	if !strings.Contains(baseProject, filepath.Join(binDir, "moai")) {
 		t.Fatal("writer did not emit replaceable moai command")
 	}
-	var ledger []preApprovalStartupRow
+	startupCalls := 0
 	discManifest := preApprovalManifest{ExportedNS: time.Now().UnixNano(), Files: map[string]string{}}
 	carManifests := map[string]*preApprovalManifest{
 		"car010": {Files: map[string]string{}},
@@ -375,6 +471,12 @@ func preApprovalRunStartup(t *testing.T, preserveLedger bool) *preApprovalFixtur
 			cmd := liveCommand(ctx, codexBin, args...)
 			cmd.Dir = root
 			cmd.Env = []string{"PATH=" + os.Getenv("PATH"), "HOME=" + t.TempDir(), "CODEX_HOME=" + codexHome, "MOAI_HOME=" + t.TempDir(), "LANG=C"}
+			if preserveLedger {
+				if preApprovalStartupCount(rows) >= preApprovalMaxStartupCalls {
+					preApprovalAppendStartupStop(t, ledgerPath, &rows, name, "startup invocation budget exceeded")
+					t.Fatal("startup invocation budget exceeded")
+				}
+			}
 			start := time.Now().UnixNano()
 			out, stderr, runErr := preApprovalRunSplit(procs, cmd)
 			end := time.Now().UnixNano()
@@ -426,10 +528,21 @@ func preApprovalRunStartup(t *testing.T, preserveLedger bool) *preApprovalFixtur
 			proof := preApprovalStartupProof{Fixture: name, Stdout: out, Stderr: stderr,
 				Launches: map[string]int{"moai": moaiLaunches, "decoy": decoyLaunches}}
 			row.Passed = preApprovalStartupValid(proof) && end-start <= int64(25*time.Second)
-			ledger = append(ledger, row)
+			if preserveLedger {
+				row.ExportID, row.ExportSHA256, err = preApprovalExportReference(evidenceDir, name)
+				if err != nil {
+					preApprovalAppendStartup(t, ledgerPath, &rows, row, "export reference failed: "+err.Error())
+					t.Fatal(err)
+				}
+			}
+			stopReason := ""
 			if !row.Passed {
-				ledger = append(ledger, preApprovalStartupRow{Kind: "stop", Fixture: name, Reason: "startup MCP launch or non-model gate failed"})
-				break
+				stopReason = "startup MCP launch or non-model gate failed"
+			}
+			preApprovalAppendStartup(t, ledgerPath, &rows, row, stopReason)
+			startupCalls++
+			if !row.Passed {
+				t.Fatal(stopReason)
 			}
 			t.Logf("%s startup exit=%d moai=%d decoy=%d items=0", name, exitCode, moaiLaunches, decoyLaunches)
 		}
@@ -478,67 +591,8 @@ func preApprovalRunStartup(t *testing.T, preserveLedger bool) *preApprovalFixtur
 			preApprovalWriteJSON(t, filepath.Join(discDir, "arm-diff.meta.json"), map[string]int64{"written_ns": time.Now().UnixNano()})
 		}
 	}
-	if len(ledger) != 4 {
-		t.Fatalf("startup stopped after %d entries; see ledger.json", len(ledger))
-	}
-	if preserveLedger {
-		for i := range ledger {
-			group := ledger[i].Fixture
-			if strings.HasPrefix(group, "disc-") {
-				group = "discriminator"
-			}
-			current, err := os.ReadFile(filepath.Join(evidenceDir, group, "export-manifest.json"))
-			if err != nil {
-				t.Fatal(err)
-			}
-			var export preApprovalManifest
-			if err := json.Unmarshal(current, &export); err != nil || export.ExportedNS <= 0 {
-				t.Fatalf("invalid %s export manifest: %v", group, err)
-			}
-			ledger[i].ExportID = fmt.Sprintf("export-%d", export.ExportedNS)
-			snapshot := filepath.Join(evidenceDir, group, "exports", ledger[i].ExportID, "export-manifest.json")
-			body, err := os.ReadFile(snapshot)
-			if err != nil {
-				t.Fatal(err)
-			}
-			if !bytes.Equal(body, current) {
-				t.Fatal("attempt export differs from current manifest")
-			}
-			ledger[i].ExportSHA256 = preApprovalSHA(body)
-		}
-	}
-	ledgerPath := filepath.Join(evidenceDir, "ledger.json")
-	var rows []map[string]any
-	if preserveLedger {
-		rows, err = preApprovalReadLedger(ledgerPath)
-		if err != nil && !os.IsNotExist(err) {
-			t.Fatal(err)
-		}
-		priorStarts := 0
-		for _, row := range rows {
-			if row["kind"] == "startup" {
-				priorStarts++
-			}
-		}
-		if priorStarts+len(ledger) > preApprovalMaxStartupCalls {
-			t.Fatal("startup invocation budget exceeded")
-		}
-	}
-	for _, entry := range ledger {
-		body, err := json.Marshal(entry)
-		if err != nil {
-			t.Fatal(err)
-		}
-		var row map[string]any
-		decoder := json.NewDecoder(bytes.NewReader(body))
-		decoder.UseNumber()
-		if err := decoder.Decode(&row); err != nil {
-			t.Fatal(err)
-		}
-		rows = append(rows, row)
-	}
-	if err := preApprovalWriteLedger(ledgerPath, rows); err != nil {
-		t.Fatal(err)
+	if startupCalls != 4 {
+		t.Fatalf("startup stopped after %d entries; see ledger.json", startupCalls)
 	}
 	return &preApprovalFixture{evidenceDir: evidenceDir, tempRoot: tempRoot, root: root,
 		codexHome: filepath.Join(tempRoot, "codex-home"), codexBin: codexBin,

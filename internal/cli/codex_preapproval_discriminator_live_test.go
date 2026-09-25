@@ -69,7 +69,23 @@ func preApprovalWriteLedger(path string, rows []map[string]any) error {
 	if err != nil {
 		return err
 	}
-	return os.WriteFile(path, append(b, '\n'), 0o600)
+	f, err := os.CreateTemp(filepath.Dir(path), ".ledger-*")
+	if err != nil {
+		return err
+	}
+	defer os.Remove(f.Name())
+	if err := f.Chmod(0o600); err != nil {
+		f.Close()
+		return err
+	}
+	if _, err := f.Write(append(b, '\n')); err != nil {
+		f.Close()
+		return err
+	}
+	if err := f.Close(); err != nil {
+		return err
+	}
+	return os.Rename(f.Name(), path)
 }
 
 func preApprovalReadExports(dir string) (preApprovalManifest, []string, error) {
