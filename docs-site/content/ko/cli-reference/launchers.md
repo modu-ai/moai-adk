@@ -44,7 +44,7 @@ moai cc [-p profile] [-w [name]] [-- claude-args...]
 
 백엔드 조합은 토큰 여력을 먼저 보고 정합니다. 한 가지 출발점은 리드는 GLM, plan은 Claude(Opus), run은 GLM, sync는 Claude(Opus) 로 두어 판단이 무거운 단계에만 Opus를 배치하는 방식입니다. 다른 조합을 쓰거나 한쪽 백엔드로 통일하는 것도 똑같이 괜찮습니다.
 
-권한 모드는 `default`, `acceptEdits`(프로젝트 기본), `plan`, `auto`, `bypassPermissions`, `dontAsk` 중 하나입니다. `auto` 모드에서는 백그라운드 분류기가 동작을 검사하며, Team 플랜과 Sonnet/Opus 4.6 이상이 필요합니다.
+권한 모드는 `default`, `acceptEdits`(`moai init` 기본값), `plan`, `auto`, `bypassPermissions`, `dontAsk` 중 하나입니다. `auto` 모드에서는 백그라운드 분류기가 동작을 검사합니다. 지원하는 플랜과 모델은 [Claude Code 권한 모드 문서](https://code.claude.com/docs/en/permission-modes)에서 확인할 수 있습니다.
 
 ## moai glm — GLM 백엔드
 
