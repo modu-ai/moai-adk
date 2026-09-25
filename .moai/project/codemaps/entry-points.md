@@ -7,6 +7,7 @@
 **정기 재측정**: worktree `.claude/worktrees/t1069`, 브랜치 `WT-graph-restamp`, HEAD `0314801c2`, 2026-09-22 — § Cobra 명령 트리의 등록 수치 세 개(자기 파일 등록 파일 70 불변, `AddCommand` 219→220, `rootCmd.AddCommand` 65→66, `root.go init()` 30→31)와 그 판에서 새로 더해진 숨은 명령 1개(스킬 제안 앵커 — 이후 card t1083이 철수), init 위자드 질문 4→5, § 훅과 § 웹 콘솔의 신규 seam 단락. 훅의 개수 네 가지(38·48·26·30)와 § MCP 서버 표면(도구 30), § HOME 상태 절, § CI 종료 코드 절은 같은 명령으로 재확인해 변동이 없었습니다.
 **부분 재측정**: worktree `.claude/worktrees/t1083`, 브랜치 `WT-jev-guard-green`, sync-phase HEAD `dd19e6b90`, 2026-09-22 — card t1083(SPEC-JEV-GUARD-001)이 Consumer B의 숨은 스킬 제안 명령을 철수하며 § Cobra 명령 트리의 세 수치를 다시 봤습니다(`root.go init()` `rootCmd.AddCommand` 31→30, 비테스트 `AddCommand(` 220→219, `rootCmd.AddCommand(` 66→65, 자기 파일 등록 파일 70 불변 — 수치는 비테스트 파일만 대상으로 센 값: `find internal/cli -name '*.go' -not -name '*_test.go' -print0 | xargs -0 grep -h 'AddCommand(' | wc -l` = 219, 같은 형태에 `rootCmd\.AddCommand(` = 65). § MCP 서버 표면(도구 수)과 § 훅·§ 웹 콘솔 절은 이 카드 변경과 무관해 손대지 않았습니다.
 **부분 재측정**: worktree `.claude/worktrees/t1092`, 브랜치 `WT-codemaps-restamp`, base `08113ff0f`, 2026-09-23 — 카드 t1092, 앵커 `598e8f748` 이후 착지분을 반영. § MCP 서버 표면의 도구 수 30→36(신규 `factory_msg_{send,list,body,receipt,status}` 5개 + `jev_ask` 1개, 목록·신규 절 갱신)과 § Cobra 명령 트리에 `moai worktree new <name>` 신규 서브커맨드 서술을 더했습니다. § Cobra 명령 트리의 등록 수치(`AddCommand` 카운트 등)는 이번 변경에서 움직이지 않아(신규 서브커맨드는 `worktree` 자식 패키지의 `WorktreeCmd.AddCommand`이지 루트 3수치가 세는 자리가 아님) 다시 재지 않았습니다. § `main()`·§ 훅·§ 웹 콘솔·§ HOME 상태·§ CI 종료 코드 절은 이 카드 변경과 무관해 손대지 않았습니다.
+**문장 정정**: 카드 t1144(SPEC-HOOK-DIAG-SINK-001), worktree `.claude/worktrees/t1144`, 브랜치 `WT-hook-diag-channel`, run-phase HEAD `bedc731d6`, 2026-09-25 — § 훅의 「룰 적재 감사 행」 단락이 `moai hook` 의 로깅 목적지를 `io.Discard` 라고 **사실로** 서술하고 있었고, 그 카드가 목적지를 `.moai/logs/hook-runtime.log` 싱크로 바꿨으므로 그 한 문장만 정정했습니다. 이 파일의 어떤 수치도 다시 재지 않았습니다 — 정정 범위는 문장 하나입니다.
 
 **부분 재측정**: worktree `.claude/worktrees/t1151`, 브랜치 `WT-codemaps-refresh2`, base `60017eb83`, 2026-09-24 — 카드 t1151, 앵커 `ee4e6d22f`(card t1132) 이후 착지분(주로 card t1100 SPEC-DUAL-HARNESS-RECOVERY-001)을 반영. § Cobra 명령 트리에 `moai tool disable codex` 신규 서브커맨드 서술을 더했습니다. § Cobra 명령 트리의 등록 수치(`AddCommand` 카운트 등)는 이번 변경에서 움직이지 않아(신규 서브커맨드는 이미 등록된 `tool` 부모 아래 자식 `AddCommand`이지 세 루트 수치가 세는 자리가 아님) 다시 재지 않았습니다. § MCP 서버 표면·§ `main()`·§ 훅·§ 웹 콘솔·§ HOME 상태·§ CI 종료 코드 절은 이 카드 변경과 무관해 손대지 않았습니다.
 
@@ -196,8 +197,10 @@ args: ["-c", "[ -f \"$0\" ] && exec bash \"$0\"; ...missing 로그 후 exit 0",
 
 **룰 적재 감사 행** — `internal/hook/instructions_loaded.go`가 이벤트 1건당 `.moai/logs/rule-load-audit.jsonl`에
 JSONL 한 줄을 씁니다. 호스트가 주는 `LoadReason`·`Globs`·`TriggerFilePath` 필드는 전에는 버려져서
-`paths:` 글롭 매칭이 런타임에 관측 불가능했고, slog 기록은 `moai hook` 호출이 로깅을 io.Discard로
-보내기 때문에 독자에게 도달하지 않습니다 — 그래서 영구 행이 유일한 관측면입니다. 실패는
+`paths:` 글롭 매칭이 런타임에 관측 불가능했고, 이 자리의 slog 기록도 독자에게 도달하지 않습니다.
+카드 t1144(SPEC-HOOK-DIAG-SINK-001) 이후 `moai hook` 의 로깅은 `io.Discard` 가 아니라
+`.moai/logs/hook-runtime.log` 싱크로 갑니다만, 그 싱크는 기본값에서 warn 이상만 받고 이 기록은
+Info 이므로 여전히 아무 곳에도 쓰이지 않습니다 — 그래서 영구 행이 유일한 관측면입니다. 실패는
 agent-stop-audit 선례대록대로 침묵하고 계속합니다.
 
 ---
