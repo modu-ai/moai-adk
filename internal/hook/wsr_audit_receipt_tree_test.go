@@ -212,6 +212,105 @@ func TestWSR008_GuardActiveOnConfigOrphanedWorktree(t *testing.T) {
 	}
 }
 
+// noGitOnPath empties PATH so git cannot be found. Callers are non-parallel.
+func noGitOnPath(t *testing.T) {
+	t.Helper()
+	t.Setenv("PATH", t.TempDir())
+	if _, err := exec.LookPath("git"); err == nil {
+		t.Fatal("premise: git must not be resolvable from the emptied PATH")
+	}
+}
+
+const wsrNoGate = "workflow:\n  audit:\n    enabled: true\n"
+
+// AC-WSR-009: with the primary unidentifiable the guard fails closed: the first
+// stop is refused, the re-entrant stop notices without blocking, the spawn is
+// denied, every text names the assumed cause, and nothing is written. A tree
+// that is not config-orphaned gets none of this.
+func TestWSR009_GuardFailsClosedWithoutStore(t *testing.T) {
+	check := func(t *testing.T, fx wsrFixture) {
+		t.Helper()
+		wsrStart(t, fx.W, "a9")
+		msg := wsrVerdict("SPEC-X-001", "")
+		first := wsrStop(t, fx.W, "a9", msg, false)
+		reentry := wsrStop(t, fx.W, "a9", msg, true)
+		spawnOK, spawnReason := denied(wsrSpawn(t, fx.W))
+
+		if !wsrBlocked(first) || !strings.Contains(first.Reason, auditReceiptViolation) {
+			t.Errorf("first stop must be refused with %s, got %+v", auditReceiptViolation, first)
+		}
+		if reentry == nil || wsrBlocked(reentry) || !strings.Contains(reentry.SystemMessage, auditReceiptViolation) {
+			t.Errorf("re-entrant stop must notice without blocking, got %+v", reentry)
+		}
+		if !spawnOK || !strings.Contains(spawnReason, auditReceiptViolation) {
+			t.Errorf("spawn must be denied with %s, got denied=%v reason=%q", auditReceiptViolation, spawnOK, spawnReason)
+		}
+		texts := []string{}
+		if first != nil {
+			texts = append(texts, first.Reason)
+		}
+		if reentry != nil {
+			texts = append(texts, reentry.SystemMessage)
+		}
+		texts = append(texts, spawnReason)
+		for _, s := range texts {
+			if !strings.Contains(s, "assumed `required`") || !strings.Contains(s, "could not be identified") {
+				t.Errorf("text must state the gate was assumed required because the primary could not be identified: %q", s)
+			}
+		}
+		if _, err := os.Stat(filepath.Join(fx.P, ".moai", "state", "audit-receipts")); !os.IsNotExist(err) {
+			t.Errorf("no audit-receipts directory may exist under P/.moai/state (stat err=%v)", err)
+		}
+		entries, err := os.ReadDir(filepath.Join(fx.W, ".moai"))
+		if err != nil || len(entries) != 0 {
+			t.Errorf("W/.moai must still be an empty directory (entries=%d err=%v)", len(entries), err)
+		}
+	}
+	t.Run("admin HEAD deleted", func(t *testing.T) {
+		fx := newWSRHookFixture(t, wsrNoGate)
+		if err := os.MkdirAll(filepath.Join(fx.W, ".moai"), 0o755); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.Remove(filepath.Join(fx.P, ".git", "worktrees", "W", "HEAD")); err != nil {
+			t.Fatal(err)
+		}
+		check(t, fx)
+	})
+	t.Run("no git", func(t *testing.T) {
+		fx := newWSRHookFixture(t, wsrNoGate)
+		if err := os.MkdirAll(filepath.Join(fx.W, ".moai"), 0o755); err != nil {
+			t.Fatal(err)
+		}
+		noGitOnPath(t)
+		check(t, fx)
+	})
+	t.Run("tracked .moai worktree has no fail-closed", func(t *testing.T) {
+		env := wsrGitEnv(t)
+		base, _ := filepath.EvalSymlinks(t.TempDir())
+		tp := filepath.Join(base, "T")
+		if err := os.MkdirAll(tp, 0o755); err != nil {
+			t.Fatal(err)
+		}
+		wsrGit(t, env, tp, "init", "-q", "-b", "main")
+		wsrWrite(t, filepath.Join(tp, ".moai", "config", "sections", "workflow.yaml"), wsrNoGate)
+		wsrGit(t, env, tp, "add", ".moai/config/sections/workflow.yaml")
+		wsrGit(t, env, tp, "commit", "-q", "-m", "init")
+		wt := filepath.Join(base, "WT")
+		wsrGit(t, env, tp, "worktree", "add", "-q", "-b", "wt", wt)
+		wsrStart(t, wt, "a9t")
+		msg := wsrVerdict("SPEC-X-001", "")
+		if out := wsrStop(t, wt, "a9t", msg, false); wsrBlocked(out) {
+			t.Errorf("WT first stop must not be refused, got %s", out.Reason)
+		}
+		if out := wsrStop(t, wt, "a9t", msg, true); out != nil && strings.Contains(out.SystemMessage, auditReceiptViolation) {
+			t.Errorf("WT re-entrant stop must emit no notice, got %q", out.SystemMessage)
+		}
+		if ok, reason := denied(wsrSpawn(t, wt)); ok {
+			t.Errorf("WT spawn must be allowed, got denied: %s", reason)
+		}
+	})
+}
+
 // AC-WSR-007: rejections of different trees coexist in one store; a PASS in P
 // clears only P's; the spawn check reads only its own tree's rejections.
 func TestWSR007_RejectionsArePerTree(t *testing.T) {
