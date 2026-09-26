@@ -51,6 +51,8 @@
 
 **이 절은 늦게 쓰였다.** 구현은 `3c40e0aa2`(M1)부터 `625679ace`까지 이미 커밋돼 있었고, 기록만 비어 있었다. 아래 수치는 전부 **이 record-closing 실행에서 이 트리(`WT-rules-diet` · HEAD `625679ace`)에서 다시 쟀다** — `verdict.md` 나 감사 보고서에서 옮겨 적은 값이 아니다. 옮겨 적은 항목은 그 자리에 **인용임을 명시**했다.
 
+**[추가 실행 2026-09-26 — 재측정]** AC 매트릭스의 **두 행만** 더 나중 ref 에서 왔다: `AC-ALD2-006`(좁힌 Given 재측정)과 `AC-ALD2-008`(사후 재도출)은 **판정 ref `cb8466d09`** 에서 쟀다. 다른 모든 행의 귀속은 위 문단 그대로(HEAD `625679ace`)이며, 이 실행이 다시 확인한 것은 세 불변식(18파일 합계 `197897 total` · 동결 해시 `d97b33d9…18c6c3` 170줄 · AC 수 9)뿐이다.
+
 ### 실행 범위와 커밋
 
 - 분기점 `a0b78213d`(로컬 `develop`), 기준선 ref `172ef22eb`(plan phase 마지막 커밋), 최종 ref `625679ace`. 미푸시.
@@ -66,9 +68,9 @@
 | AC-ALD2-003 | MUST-PASS | `§AC-ALD2-003.1` 2단계(hunk 계수 + 기준선 본문 바이트 대조) | `TOUCHED_LIVE=30` · `PAIRS_WITH_TEMPLATE=30 TOTAL_HUNKS=32 DIVERGING_PAIRS=11` · `TOTAL: inherited=29 card-created=3` | **PASS** — card-created 3건 전부 PERMITTED, UNCLASSIFIED 0. **수리로 달성됐다**(아래) |
 | AC-ALD2-004 | MUST-PASS | `design.md §4` 재배치 표 판독 | 표는 `217` 행부터 존재, §4 구간 표 행 185, 빈 칸 스캔 적중 0 | **PASS (인용 + 구조 확인)** — 칸 내용의 **판단 축**(Q1/Q2 적정성)은 이 실행에서 재도출하지 않았다 |
 | AC-ALD2-005 | MUST-PASS | 절 제목 역방향 grep(`acceptance.md §AC-ALD2-005`) | 이 실행에서 **전수 재실행하지 않았다**. 인용: 초과 파일 앵커 미수리 10건(선례 규칙 3 에 따라 FAIL 아닌 기록 사항) | **PASS-WITH-DEBT** — 네 인용 형식 전체에 대한 트리 전수 최종 스윕이 없다(Gap) |
-| AC-ALD2-006 | MUST-PASS | `grep -m1 '^paths:' <companion>` — 이 카드가 수정한 companion 전수 | 자기 참조(self-keyed) **2건**: `core/verification-claim-integrity-detail.md` → `paths: "**/verification-claim-integrity*.md"`, `workflow/session-handoff-examples.md` → `paths: "**/session-handoff.md"` | **FAIL** — 아래 단서 참조 |
+| AC-ALD2-006 | MUST-PASS | `grep -m1 '^paths:' <companion>` — **좁힌 Given**(이 카드가 한 절을 옮겨 넣은 companion) 전수 11개 | 11개 모두 부모 stub 경로 하나만 담지 않는다. self-keyed 0건 | **PASS** (재측정, ref `cb8466d09`) — 종전 FAIL 은 아래 `### AC-ALD2-006 재측정` 이 보존한다 |
 | AC-ALD2-007 | SHOULD-PASS | 신규 stub 2개의 3요소 판독 | (a) 포인터 줄 — `kanban-dispatch.md:9`, `session-handoff.md:7` 모두 절을 이름으로 호명 + 로드 트리거 있음. (b) companion 소유 경계 — 두 신규 companion 모두 `> Owns:` 줄 보유. (c) 분리를 기록하는 stub 푸터 — `kanban-dispatch.md` 푸터는 `kanban-dispatch-detail.md` 만 적고 신규 mechanics companion 을 적지 않으며, `session-handoff.md` 푸터(`Status: HARD operational rule …`)는 분리를 전혀 적지 않는다 | **PASS-WITH-DEBT** — (a)(b) 충족, (c) 2건 미충족 |
-| AC-ALD2-008 | MUST-PASS | `wc -m` 작업 전/후 차 ≤ 옮긴 절 합계 + 500 | 이 실행에서 **재도출하지 않았다** — 옮긴 절별 문자 합계는 M1·M3·M4·M5 이동 시점의 측정이고, 그것을 다시 만들려면 이동을 다시 돌려야 한다 | **미검증(UNVERIFIED)** — PASS 로 적지 않는다 |
+| AC-ALD2-008 | MUST-PASS | companion 11개 각각 `post − pre ≤ 옮긴절합계 + 500`. `pre`/`post` 는 `git show <ref>:<path> \| wc -m`, 옮긴절합계는 **기준선 stub 안의 그 절 본문** 문자수 | 11/11 통과. 최소 여유 `agent-common-protocol-reference` **+176**, 최대 `kanban-dispatch-mechanics` +4,250. 합계 delta 40,582 vs 옮긴절합계 47,980 | **PASS** (사후 재도출, ref `172ef22eb` → `cb8466d09`) — 종전 UNVERIFIED 는 아래 `### AC-ALD2-008 재도출` 이 보존한다 |
 | AC-ALD2-009 | MUST-PASS | `acceptance.md §AC-ALD2-009` 의 두 `find … wc -m … awk '$1>=40000'` | 두 트리 동일하게 4개: `worktree-integration.md 61435` · `session-handoff-examples.md 41615` · `kanban-dispatch-detail.md 41034` · `spec-workflow.md 40797`. 기준선 대비 각 동일 또는 감소(41616→41615 · 41036→41034 · 40799→40797), 신규 초과 0 | **PASS** — (a) 이 카드가 쓴 파일 중 목록에 든 것 0, (b) 목록 길이 4 (래칫 유지) |
 
 ### 불변식 행
@@ -98,7 +100,9 @@
 
 또한 **승계 분기는 이 AC 의 판정 대상 밖이며, 그 결정이 분기를 해소했다는 뜻은 아니다.** 승계 29 hunk 중 셋(`verification-claim-integrity.md` 의 `3c3` · `5c5` · `21c21`)은 열거된 18개 허용 클래스로 **덮이지 않는다** — 숨기지 않고 이름을 적는다. 처분은 후속 카드다.
 
-### AC-ALD2-006 FAIL — 이 실행이 새로 측정한 것
+### AC-ALD2-006 FAIL — 넓은 Given 아래의 종전 기록 (재측정으로 **대체됐으나 지우지 않는다**)
+
+> **이 절은 종전 상태 그대로 남는다.** 아래 `### AC-ALD2-006 재측정` 이 좁힌 Given 으로 다시 재어 PASS 를 얻었지만, 좁힘이 정당한지는 이 FAIL 이 보이는 동안에만 판단될 수 있다. 좁힘 뒤 남는 PASS 만 있는 기록은 「처음부터 통과했다」와 구별되지 않는다.
 
 `verdict.md` 는 AC-ALD2-006 을 판정하지 않았다. 이 record-closing 실행이 이 카드가 수정한 companion 전수에 `grep -m1 '^paths:'` 를 돌려 **자기 참조 2건**을 관측했고, 둘 다 `acceptance.md §AC-ALD2-006` 의 FAIL 예(부모 stub 경로 하나만 담는 값)와 같은 모양이다.
 
@@ -110,6 +114,76 @@
 그럼에도 **FAIL 로 적는다.** AC-ALD2-006 의 Given 은 「이 SPEC 이 수정한 각 companion 파일」이고, 두 파일은 수정됐다. AC-ALD2-003 이 0.7.0 에서 얻은 `card-created` 한정어를 AC-ALD2-006 은 갖고 있지 않으므로, 문언대로 읽으면 통과하지 않는다. 이 기록을 「승계라서 대상 밖」으로 스스로 완화하는 것은 기준을 자기 산출물에 맞춰 재단하는 일이다(같은 판단을 `§AC-ALD2-003.2` 가 `codification` 토큰 제거로 이미 한 번 내렸다).
 
 **따라서 후속 판정이 필요하고, 그것은 이 에이전트의 소관이 아니다.** AC-ALD2-006 에 `card-created` 대칭 한정어를 넣을지(AC-ALD2-003 과의 정합) 아니면 두 `paths:` 값을 domain-keyed 로 고칠지는 SPEC 본문 개정 또는 범위 확대이며, 어느 쪽도 run phase 의 소유 범위 밖이다 — blocker 로 올린다.
+
+### AC-ALD2-006 재측정 — 좁힌 Given 아래에서 무엇을 쟀는가
+
+**순서를 먼저 적는다.** 종전 측정은 **넓은 Given**(「이 SPEC 이 **수정한** 각 companion」) 아래에서 돌았고 self-keyed 2건으로 **FAIL** 이었다(위 절). `cb8466d09` 이 Given 을 `REQ-ALD2-004` 의 When 에 맞춰 **「한 절을 옮겨 넣은」** 으로 좁혔고, 그 좁힘이 이 재측정보다 **먼저** 커밋됐다 — 순서를 커밋 그래프가 증언하게 하려는 의도이며(`verification-claim-integrity.md §2.3`), 그 성질을 지키려고 `cb8466d09` 을 amend 하지 않고 이 재측정을 별도 커밋에 실었다.
+
+**판정 ref 는 `cb8466d09`, 기준선 ref 는 `172ef22eb`.**
+
+#### 대상 집합을 스스로 판정했다 — 이름 목록이 아니라 순증으로 가른다
+
+`cb8466d09` 저자가 보고한 「순증 11개 · `1/1` 4개」를 **주장으로 받아 재현**했다. 발동 조건은 「diff 파일 목록에 이름이 있는가」가 아니라 **내용의 순증**이다.
+
+- `git show <ref>:<path> | wc -m` 을 두 ref 에서 돌려 companion 15개의 문자 델타를 쟀다. 순증 **11개**(+850 ~ +7,432), 나머지 **4개**는 `−1` · `−2` · `+10` · `+64`.
+- 그 4개는 diff 본문을 읽어 **한 줄 편집**임을 확인했다 — 앵커 수리 3건(`verification-claim-integrity-detail` `agent-common-protocol.md`→`agent-common-protocol-reference.md` · `session-handoff-examples` `session-handoff.md`→`session-handoff-format.md` · `kanban-dispatch-detail` 같은 형태)과 **`paths:` 확장 1건**(`cache-aware-execution-reference`, +64 의 정체가 그 한 줄). 절의 유입은 없다.
+- 가장 작은 순증 둘(`skill-routing-detail` +850 · `goal-directive-detail` +976)도 diff 를 읽어 **`##` 절 통째 유입**임을 확인했다 — 문자량만으로 절 유입을 단정하지 않았다.
+
+#### 11개 전수 판정 — `grep -m1 '^paths:'`
+
+| companion | `paths:` | 판정 |
+|---|---|---|
+| `core/agent-common-protocol-reference` | `**/agent-common-protocol.md,**/.claude/agents/moai/*.md,**/.claude/skills/moai/workflows/*.md` | PASS |
+| `core/askuser-protocol-reference` | `**/askuser-protocol.md,**/.claude/skills/moai/workflows/*.md,**/.claude/output-styles/moai/*.md` | PASS |
+| `workflow/session-handoff-format` | `**/session-handoff*.md,**/.claude/output-styles/moai/*.md,**/.moai/state/handoff/**` | PASS |
+| `workflow/cross-session-messaging-detail` | `**/cross-session-messaging*.md,**/kanban-dispatch*.md` | PASS (단서 — 아래) |
+| `workflow/context-window-management-detail` | `**/context-window-management*.md,**/session-handoff*.md,**/internal/statusline/**` | PASS |
+| `workflow/kanban-dispatch-mechanics` | `**/kanban-dispatch*.md,**/.claude/agents/moai/manager-lead.md,**/.moai/state/integration/**` | PASS |
+| `core/moai-mcp-tools-catalogue` | `**/moai-mcp-tools.md,**/internal/cli/mcp_server.go,**/.claude/agents/moai/*.md` | PASS |
+| `workflow/main-checkout-branch-guard-detail` | `**/main-checkout-branch-guard*.md,**/internal/hook/branch_guard.go,**/internal/hook/pre_tool.go` | PASS |
+| `core/native-idiom-and-register-detail` | `**/native-idiom-and-register.md,**/.claude/skills/moai-domain-humanize/**` | PASS |
+| `workflow/skill-routing-detail` | `**/skill-routing.md,**/skill-authoring.md,**/agent-authoring.md` | PASS (단서 — 아래) |
+| `workflow/goal-directive-detail` | `**/.moai/state/goal/**,**/.claude/skills/moai/workflows/goal.md,**/goal-directive.md,**/goal-directive-detail.md` | PASS (선례) |
+
+**11개 중 self-keyed 0건 → PASS.** AC 가 적은 FAIL 형태(부모 stub 경로 **하나만** 담는 값)는 11개 어디에도 없다.
+
+**단서 2건을 PASS 안에 적는다 — 반올림하지 않는다.** `cross-session-messaging-detail` 과 `skill-routing-detail` 은 Then 의 첫째 절(부모 경로만 담지 않는다)을 만족하지만, 부모 밖 항목이 **전부 형제 룰·독트린 문서**다(`kanban-dispatch*.md` · `skill-authoring.md` · `agent-authoring.md`). 즉 그 룰이 지배하는 **작업 세션**이 아니라 **문서를 편집하는 세션**에 도달한다 — self-keyed 의 해악이 사라진 것이 아니라 희석된 형태다. 선례 `goal-directive-detail` 은 `.moai/state/goal/**` 이라는 **작업 산출물 경로**를 담아 그 축을 넘는다. 둘째 절(「그 companion 이 다루는 작업이 건드리는 도메인 경로」)이 이 둘에 대해 확립됐는지는 이 실행이 판정하지 않았다 — Gap 으로 적는다.
+
+#### 범위 밖 2건 — 고치지 않고 후속 후보로 이름만 남긴다
+
+`core/verification-claim-integrity-detail.md`(`**/verification-claim-integrity*.md`)와 `workflow/session-handoff-examples.md`(`**/session-handoff.md`)는 절의 유입이 없어(각 `1/1`, 문자 델타 `+10` · `−1`) 좁힌 Given 의 대상에서 내려왔다. **두 값은 여전히 self-keyed 이고, 이 실행은 고치지 않았다** — `acceptance.md §AC-ALD2-006.4` 가 이름 붙인 **선존 결함 후속 후보** 그대로다. 발행은 운영자·리드 소관이다.
+
+### AC-ALD2-008 재도출 — 「불가」를 철회하고 사후에 쟀다
+
+**종전 기록은 UNVERIFIED 였고, 그 근거는 「옮긴 절별 문자 합계는 이동 시점의 측정이라 다시 만들 수 없다」였다.** 리드가 그 근거를 받지 않았고, 근거가 실제로 틀렸다 — 기준선 ref `172ef22eb` 와 재배치 커밋이 **모두 그래프에 있으므로** 절 본문은 사후에 복원된다. 종전 판정과 그 근거를 지우지 않고 여기에 적어 둔다.
+
+**방법**: companion 이 **획득한 절 제목**을 diff 에서 뽑고(`git diff <base> <judge> -- <companion> | grep '^+#'`), 각 제목을 **기준선 stub 사본**(`git show 172ef22eb:<stub>`)에서 찾아, 그 절 본문(제목 줄부터 같거나 상위 레벨의 다음 제목 전까지)의 문자수를 센다. `pre`/`post` 는 같은 두 ref 에서 `wc -m`.
+
+| companion | pre | post | delta | 옮긴절합계 | 허용(+500) | 여유 |
+|---|---|---|---|---|---|---|
+| `core/agent-common-protocol-reference` | 31,207 | 38,639 | 7,432 | 7,108 | 7,608 | **+176** |
+| `core/askuser-protocol-reference` | 15,646 | 21,080 | 5,434 | 5,124 | 5,624 | +190 |
+| `workflow/session-handoff-format` | 0 | 5,266 | 5,266 | 6,926 | 7,426 | +2,160 |
+| `workflow/cross-session-messaging-detail` | 15,221 | 19,006 | 3,785 | 4,295 | 4,795 | +1,010 |
+| `workflow/context-window-management-detail` | 7,486 | 11,742 | 4,256 | 5,120 | 5,620 | +1,364 |
+| `workflow/kanban-dispatch-mechanics` | 0 | 5,224 | 5,224 | 8,974 | 9,474 | +4,250 |
+| `core/moai-mcp-tools-catalogue` | 11,424 | 15,495 | 4,071 | 5,429 | 5,929 | +1,858 |
+| `workflow/main-checkout-branch-guard-detail` | 9,984 | 11,348 | 1,364 | 1,272 | 1,772 | +408 |
+| `core/native-idiom-and-register-detail` | 2,509 | 4,433 | 1,924 | 1,920 | 2,420 | +496 |
+| `workflow/skill-routing-detail` | 1,351 | 2,201 | 850 | 847 | 1,347 | +497 |
+| `workflow/goal-directive-detail` | 20,283 | 21,259 | 976 | 965 | 1,465 | +489 |
+| **합계** | | | **40,582** | **47,980** | | |
+
+**11/11 통과 → PASS.** 이 AC 가 재는 것은 「원본에 없던 내용의 획득」이며, 전체적으로 companion 은 옮긴 절의 합보다 **7,398자 적게** 자랐다(이동 중 압축의 흔적이고, 압축은 이 AC 의 위험 방향이 아니다).
+
+#### 절 두 개는 제목 대조로 보이지 않았다 — 그 둘을 따로 쟀다
+
+제목 키 조회가 `NOT_FOUND` 를 낸 절이 넷 있었고, **그중 둘이 판정을 뒤집을 수 있는 자리**였다(그 둘을 0으로 두면 `cross-session-messaging-detail` −158, `context-window-management-detail` −60 으로 FAIL 로 읽힌다). 원인은 획득이 아니라 **이동 단위가 절이 아니라 절 안의 문단 블록**이라는 것이다 — 제목이 목적지에서 새로 붙었으므로 기준선에 그 제목이 없다.
+
+- `cross-session-messaging-detail ## The stopped-teammate registry` ← 기준선 `cross-session-messaging.md` 의 `## Rules` 안 `**Mechanism layer (landed).**` 블록(`git diff -U0` 훅 `@@ -51,15 +39,9 @@` → 기준선 51~65행). **1,168자.**
+- `context-window-management-detail ## Snapshot confidence` ← 기준선 `context-window-management.md` 의 `## Detection Heuristics` 안 `**Where the number comes from…**` 한 줄(훅 `@@ -108 +66,9 @@` → 기준선 108행). **1,424자.**
+
+두 값을 더한 뒤 각각 여유 **+1,010** · **+1,364** 로 통과한다. 남은 `NOT_FOUND` 둘은 판정에 영향이 없다: `## Relocated bodies …` 2건은 목적지에서 새로 쓴 **묶음 제목**(접합부이므로 500 여유에 귀속되고 크레딧 0), `kanban-dispatch-mechanics ## Factory Mode mechanics` 는 기준선의 `## Factory Mode — the card travels whole` 이 이동 중 **개명**된 것이라 크레딧 0 으로 **과소** 계상됐고 그래도 여유 +4,250 이다.
 
 ### plan-audit 이력 — 점수가 내려간 구간을 남긴다
 
@@ -134,7 +208,11 @@ iter4 0.890 에서 iter5 0.71 로 **점수가 내려갔다.** 원인은 새 결�
 - **`design.md §4.0` 열 재조정 미확정** — 구조적 하한 `F` 가 단일값이 아니라 세 값 구간 `{170,528 · 171,695 · 172,863}` 으로 남는다.
 - **전체 테스트 스위트를 로컬에서 돌리지 않았다** — 상시 금지(`CLAUDE.local.md §4`, 2026-08-15 load 413 사고). 전 패키지 판정은 통합 브랜치 CI 몫이다.
 - **AC-ALD2-005 의 트리 전수 최종 스윕 없음** — 앵커 스윕은 절이 움직이는 시점의 절 단위였고, 네 인용 형식(절 제목 · 파일+절 · 줄번호 · 산문 언급) 전체에 대한 최종 스윕은 돌지 않았다.
-- **AC-ALD2-008 재도출 불가** — 이 기록 실행에서 옮긴 절별 문자 합계를 다시 만들 수 없어 미검증으로 남긴다.
+- ~~**AC-ALD2-008 재도출 불가** — 이 기록 실행에서 옮긴 절별 문자 합계를 다시 만들 수 없어 미검증으로 남긴다.~~ **[철회 — 재도출 실행 2026-09-26]** 근거가 틀렸다(기준선 ref 와 재배치 커밋이 그래프에 있으므로 절 본문은 사후 복원된다). `### AC-ALD2-008 재도출` 로 대체. 지우지 않고 남기는 이유는 **재도출 가능한 것을 불가로 적은 것 자체가 결함**이고, 그 결함이 보이지 않으면 다음 실행이 같은 이유로 또 닫기 때문이다.
+- **AC-ALD2-006 Then 의 둘째 절이 2건에서 미확립** — `cross-session-messaging-detail` · `skill-routing-detail` 은 부모 밖 항목이 전부 형제 룰·독트린 문서다. 「그 companion 이 다루는 작업이 건드리는 도메인 경로」인지는 이 실행이 판정하지 않았고, 선례(`goal-directive-detail`)가 담은 작업 산출물 경로에 해당하는 항목은 없다.
+- **AC-ALD2-008 의 절 경계는 제목 레벨로 잘랐다** — 제목 줄부터 같거나 상위 레벨 다음 제목 전까지. 문단 블록 이동 2건은 `git diff -U0` 훅의 행 범위로 잘랐고(정확한 경계), 그 둘이 판정을 가르는 자리였다는 사실을 본문에 적었다.
+- **AC-ALD2-008 의 `## Cross-references` 크레딧은 과대 계상일 수 있다** — 기준선 stub 의 그 절을 통째로 크레딧했으나 stub 은 자기 `Cross-references` 를 유지한다. 두 건(`session-handoff-format` 1,549 · `kanban-dispatch-mechanics` 842)을 **0 으로 두고 다시 봐도 각각 여유 +611 · +3,408** 로 통과하므로 판정은 이 선택에 의존하지 않는다.
+- **AC-ALD2-008 은 이 카드가 절을 옮겨 넣은 11개만 쟀다** — 유입 없는 companion 4개는 대상이 아니다(delta 최대 +64).
 - **린트 미실행** — 이 카드의 Go 파일 기여가 0개(실측)여서 새 린트 표면이 없다는 판단이며, `golangci-lint` 를 이 실행에서 돌리지는 않았다. 판단이지 측정이 아니다.
 
 ### 프로세스 결함 1건 — 기록해 반복을 막는다
@@ -145,13 +223,14 @@ iter4 0.890 에서 iter5 0.71 로 **점수가 내려갔다.** 원인은 새 결�
 
 ```yaml
 run_complete_at: 2026-09-26
-run_commit_sha: pending-backfill-run   # 이 기록 커밋은 자기 해시를 인용할 수 없다; 후속 커밋에서 backfill
-run_status: fail                        # MUST-PASS AC-ALD2-006 FAIL + AC-ALD2-008 미검증 → `completed` 로 닫히지 않는다
+run_commit_sha: 13e6adb1b               # run 기록 종결 커밋. 그 커밋 자신은 자기 해시를 인용할 수 없어 `pending-backfill-run` 이었고, 이 재측정 커밋이 backfill 했다
+run_status: pass-with-debt              # FAIL 0 · UNVERIFIED 0. MUST-PASS AC-ALD2-005 가 PASS-WITH-DEBT 로 남아 `pass` 가 아니다
 ac_total_count: 9
-ac_pass_count: 5                        # AC-ALD2-001 · -002 · -003 · -004 · -009
-ac_fail_count: 1                        # AC-ALD2-006 (MUST-PASS)
+ac_pass_count: 7                        # AC-ALD2-001 · -002 · -003 · -004 · -006(재측정) · -008(재도출) · -009
+ac_fail_count: 0                        # 종전 1건(AC-ALD2-006)은 좁힌 Given 재측정으로 PASS — 종전 FAIL 기록은 §E.2 에 보존
 ac_pass_with_debt_count: 2              # AC-ALD2-005 (MUST-PASS) · AC-ALD2-007 (SHOULD-PASS)
-ac_unverified_count: 1                  # AC-ALD2-008 (MUST-PASS)
+ac_unverified_count: 0                  # 종전 1건(AC-ALD2-008)은 사후 재도출로 PASS — 종전 UNVERIFIED 근거는 §E.2 Gaps 에 철회 표기로 보존
+remeasurement_ref: cb8466d09            # AC-ALD2-006 · -008 재측정 판정 ref (기준선 172ef22eb). 좁힘 커밋을 amend 하지 않아 순서가 커밋 그래프에 남는다
 preserve_list_post_run_count: 0         # plan.md 는 §A.5 PRESERVE 목록을 선언하지 않는다(범위는 18파일 + companion + 템플릿 미러로 서술)
 l44_pre_commit_fetch: not-run           # 워크트리 격리 레인; 커밋 직전 재판독은 `git rev-parse --short HEAD`(625679ace) + `git branch --show-current`(WT-rules-diet)로 수행
 l44_post_push_fetch: not-run            # push 자체를 하지 않는다 — 레인 push 금지(운영자 지시 2026-09-01), develop 일괄 push 는 리드 소관
@@ -172,7 +251,8 @@ evidence_paths:
   - .moai/reports/t1175/pool-census.md           # 재배치 가능 풀 census
   - .moai/reports/t1175/plan-audit-iter5.md       # FAIL 0.71
   - .moai/reports/t1175/plan-audit-iter6.md       # PASS-WITH-DEBT 0.85
-blockers:
+blockers: []                            # 종전 2건 모두 닫혔다 — 이력은 아래 closed_blockers 에 남긴다
+closed_blockers:
   - id: BLK-ALD2-006
     ac: AC-ALD2-006
     summary: >
@@ -180,11 +260,25 @@ blockers:
       session-handoff-examples.md)의 paths: 가 self-keyed 다. 두 값은 기준선 ref 172ef22eb 에서
       바이트 동일한 승계 값이며 이 카드가 만들지 않았다. AC-ALD2-006 은 AC-ALD2-003 이 가진
       card-created 한정어가 없어 문언대로 FAIL 한다.
-    owner: manager-spec          # AC 본문 개정, 또는 범위 확대 판정 — run phase 소유 범위 밖
+    owner: manager-spec
+    resolution: >
+      cb8466d09 이 AC-ALD2-006 의 Given 을 REQ-ALD2-004 의 When(「한 절이 옮겨질 때」)에 맞춰
+      좁혔고, 이 실행이 좁힌 대상 11개를 전수 재측정해 self-keyed 0건으로 PASS 를 얻었다.
+      두 self-keyed 값은 **고쳐지지 않았다** — 범위에서 내려왔을 뿐이며
+      acceptance.md §AC-ALD2-006.4 의 선존 결함 후속 후보로 남는다(발행은 운영자·리드 소관).
+      좁힘의 정당성 판정은 sync phase 감사의 것이다.
   - id: BLK-ALD2-008
     ac: AC-ALD2-008
     summary: 옮긴 절별 문자 합계를 이 실행에서 재도출할 수 없어 MUST-PASS 가 미검증으로 남는다.
-    owner: lead                  # 재측정 범위 지정 필요
+    owner: lead
+    resolution: >
+      근거가 틀렸다 — 기준선 ref 172ef22eb 와 재배치 커밋(7bcdce760 및 형제)이 모두 그래프에
+      있으므로 절 본문은 사후에 복원된다. 절 제목을 기준선 stub 사본에서 조회해 11개 전수를
+      재도출했고 11/11 통과. 제목으로 보이지 않는 문단 블록 이동 2건은 git diff -U0 훅의 행
+      범위로 따로 쟀다(1,168자 · 1,424자) — 그 둘이 판정을 가르는 자리였다.
+follow_up_candidates:
+  - "self-keyed paths 2건 — core/verification-claim-integrity-detail.md · workflow/session-handoff-examples.md (선존, 이 카드가 만들지 않음)"
+  - "AC-ALD2-006 Then 둘째 절 미확립 2건 — cross-session-messaging-detail · skill-routing-detail (부모 밖 항목이 전부 형제 문서)"
 ```
 
 ## §E.4 Sync-phase Audit-Ready Signal
