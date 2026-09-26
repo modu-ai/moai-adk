@@ -15,6 +15,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/modu-ai/moai-adk/internal/config"
 	"github.com/modu-ai/moai-adk/internal/kanban"
 )
 
@@ -91,6 +92,12 @@ func TestAxisACanaryHomeSweep_TodoFamily(t *testing.T) {
 	t.Setenv("MOAI_KANBAN_LABEL", "")
 	t.Setenv("MOAI_KANBAN_LEAD_ADDR", "")
 	t.Setenv("MOAI_KANBAN_SETTINGS_INJECTED", "")
+	// The child's TestMain keeps an inherited sandbox MOAI_HOME, and without the
+	// marker sandboxes a fresh one: either way home state misses the canary HOME.
+	// Marker set with MOAI_HOME empty leaves the child's MOAI_HOME unset, so home
+	// state derives from the canary HOME this sweep reads (card t1229).
+	t.Setenv(moaiHomeSandboxEnv, canary)
+	t.Setenv(config.EnvHome, "")
 
 	// Locate the repository root (the child needs the package pattern).
 	dir, err := filepath.Abs(".")

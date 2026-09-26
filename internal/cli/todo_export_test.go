@@ -17,6 +17,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/modu-ai/moai-adk/internal/config"
 	"github.com/modu-ai/moai-adk/internal/kanban"
 )
 
@@ -240,6 +241,9 @@ func TestTodoExportJSON_SurvivesSubsequentVerbs(t *testing.T) {
 // nothing would send an operator into a downgrade with no queue, and they
 // would discover it after swapping binaries.
 func TestTodoExportJSON_FailurePathsSurface(t *testing.T) {
+	// Queue state is staged under a temp project root; drop the TestMain
+	// MOAI_HOME sandbox so it resolves project-locally (card t1229).
+	t.Setenv(config.EnvHome, "")
 	if runtime.GOOS == "windows" {
 		t.Skip("a read-only directory does not block file creation on Windows")
 	}

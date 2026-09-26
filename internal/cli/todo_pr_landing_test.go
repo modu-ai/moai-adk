@@ -26,6 +26,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/modu-ai/moai-adk/internal/config"
 	"github.com/modu-ai/moai-adk/internal/kanban"
 )
 
@@ -365,6 +366,9 @@ func TestTodoPR_NoRecordRendersEmptyEvidenceCell(t *testing.T) {
 // property — and the POSITIVE CONTROL is what stops the exclusion emptying the
 // assertion: the set must be non-empty and must contain the queue database.
 func TestTodoPR_ProjectRootUnchangedWithEvidence(t *testing.T) {
+	// The fixture root is a temp dir; drop the TestMain MOAI_HOME sandbox so the
+	// queue state stays project-local under that root (card t1229).
+	t.Setenv(config.EnvHome, "")
 	root, store := todoFixture(t)
 	ids := seedQueue(t, store, "first landed card", "second landed card")
 	recordLanding(t, store, ids[0], operatorEvidence("c9f712232aabbccddeeff00112233445566778899"))

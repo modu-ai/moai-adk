@@ -24,6 +24,7 @@
 package hook
 
 import (
+	"fmt"
 	"os"
 	"testing"
 
@@ -52,10 +53,42 @@ import (
 // would otherwise send every parallel test's write to the real project tree
 // instead of its temp dir (card t1165). Tests that need a value set it with
 // t.Setenv, which restores this cleared state afterwards.
+//
+// The same reasoning covers the profile-lease store (card t1229). SessionStart
+// enriches the row named by MOAI_PROFILE_LEASE_TOKEN (or inserts one when
+// CLAUDE_CONFIG_DIR is set), and SessionEnd releases every row carrying the
+// input's session id — "" included. Both resolve the database under MOAI_HOME,
+// so a run launched from a lane session rewrote that lane's live lease with a
+// test session id and a pid that exits with `go test`. MOAI_HOME therefore
+// points at a directory owned by this binary, and the two lane variables are
+// cleared. A helper process re-executed from this binary inherits the marker
+// and keeps the MOAI_HOME its parent test chose rather than minting its own.
 func TestMain(m *testing.M) {
 	_ = os.Unsetenv(config.EnvClaudeProjectDir)
+	_ = os.Unsetenv("MOAI_PROFILE_LEASE_TOKEN")
+	_ = os.Unsetenv(config.EnvClaudeConfigDir)
+	moaiHome := ""
+	if os.Getenv(moaiHomeSandboxEnv) == "" {
+		dir, err := os.MkdirTemp("", "moai-hook-test-home-")
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "TestMain: create MOAI_HOME sandbox: %v\n", err)
+			os.Exit(1)
+		}
+		moaiHome = dir
+		_ = os.Setenv(config.EnvHome, dir)
+		_ = os.Setenv(moaiHomeSandboxEnv, dir)
+	}
 	deferredScanSeamMu.Lock()
 	deferredScansAsync = false
 	deferredScanSeamMu.Unlock()
-	goleak.VerifyTestMain(m)
+	goleak.VerifyTestMain(m, goleak.Cleanup(func(code int) {
+		if moaiHome != "" {
+			_ = os.RemoveAll(moaiHome)
+		}
+		os.Exit(code)
+	}))
 }
+
+// moaiHomeSandboxEnv marks a process whose MOAI_HOME was already sandboxed by
+// this package's TestMain (card t1229).
+const moaiHomeSandboxEnv = "MOAI_HOOK_TEST_HOME_SANDBOX"
