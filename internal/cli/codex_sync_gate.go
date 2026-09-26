@@ -343,7 +343,7 @@ func produceSyncGateReceipt(ctx context.Context, root string) (verify.Receipt, e
 		cmd.Dir = root
 		if out, rerr := cmd.CombinedOutput(); rerr != nil {
 			bits |= 1 << i
-			_, _ = fmt.Fprintf(os.Stderr, "sync gate: %s failed: %s\n", c.Label, strings.TrimSpace(tailString(string(out), 400)))
+			_, _ = fmt.Fprintf(os.Stderr, "sync gate: %s failed: %s\n", c.Label, strings.TrimSpace(tailOfString(string(out), 400)))
 		}
 	}
 	verdict := "pass"
@@ -378,7 +378,7 @@ func syncGateFailedLabel(checks [2]*syncCheck, bits int) string {
 	return "check failed (exit bits " + strconv.Itoa(bits) + ")"
 }
 
-func tailString(s string, n int) string {
+func tailOfString(s string, n int) string {
 	if len(s) <= n {
 		return s
 	}
