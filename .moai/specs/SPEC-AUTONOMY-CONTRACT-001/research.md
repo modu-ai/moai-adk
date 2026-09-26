@@ -93,3 +93,18 @@ snapshot regeneration at plan time.
   on `internal/template/templates/.moai/config/sections/workflow.yaml` → `exit=1` (no match); on a copy with
   `# see SPEC-AUTONOMY-CONTRACT-001` appended → line 263 printed, `exit=0`. The single-segment pattern
   `SPEC-[A-Z][A-Z0-9]+-[0-9]{3}` did **not** match the planted multi-segment ID (`exit=1`), so it is not used.
+
+## Iteration-3 measurements (plan-audit iteration 2 follow-up)
+
+- Frozen-file sources (design.md § Frozen Files): `.claude/rules/moai/core/zone-registry.md` has 57
+  `zone: Frozen` entries (first at line 83) over 12 distinct `file:` values; `internal/hook/pre_tool.go:1231`
+  declares `var frozenInstructionFiles = []string{"CLAUDE.md", "CLAUDE.local.md"}`, applied by basename in
+  `checkHarnessFrozenZone` (loop at line 1242).
+- AC-013 semantics: `go list ./internal/contract` → `directory not found`, `list_exit=1`;
+  `./internal/atomicfile` → `list_exit=0`, `deps_exit=0`, `noexecnet_exit=0`; `./internal/config` →
+  prints `net`, `noexecnet_exit=1`.
+- AC pass convention: `go test -v -count=1 -run '^TestAC_CONTRACT_999' ./internal/atomicfile/` →
+  exit 0, `ok … [no tests to run]`, zero `--- PASS:` lines; `-run '^TestReplace_OntoAbsentDestination'`
+  → `--- PASS: TestReplace_OntoAbsentDestination (0.00s)`.
+- Extended template scan (adds `A-Q[0-9]`, `[Tt]his repository`): current template → `exit=1`; copy with
+  two planted comment lines → both printed (263, 264), `exit=0`.

@@ -9,8 +9,9 @@
 - Frontmatter: `id: SPEC-AUTONOMY-CONTRACT-001`, `status: draft`, `tier: L`.
 - Card: t1234 (AUTONOMY-A1). Base: develop `ca1d5dc43`, branch `WT-contract-schema`.
 - Schema draft for A2-A4: `design.md` § Contract Schema.
-- Open decisions for plan-audit: plan.md §B D1-D8.
+- Open decisions for plan-audit: plan.md §B D1-D9.
 - Revision 0.2.0 after plan-audit iteration 1 (FAIL 0.74, report `.moai/reports/plan-audit/SPEC-AUTONOMY-CONTRACT-001-review-1.md`).
+- Revision 0.3.0 after plan-audit iteration 2 (FAIL 0.84, report `.moai/reports/plan-audit/SPEC-AUTONOMY-CONTRACT-001-review-2.md`) plus lead-approved schema additions B1-B9.
 
 ## §E.2 Run-phase Evidence
 

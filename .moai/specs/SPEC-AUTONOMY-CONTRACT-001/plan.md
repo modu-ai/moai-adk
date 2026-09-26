@@ -31,8 +31,8 @@ configuration/template). Milestones >= 3 and files >= 10, so run-phase routes to
 - **D5 — Human-presence checks raise the bar; they do not stop an agent.** Interactive terminal, typed
   token, and refusal on agent-environment markers (`CLAUDECODE`, `CLAUDE_CODE_SESSION_ID`). A pty
   wrapper and `unset` defeat them; the binding protection is the A3 precondition in spec.md §C.2 (a
-  PreToolUse deny on `moai contract sign` from agent tool calls). No Codex marker is identifiable in
-  the repository, so none ships (design.md § Agent-Environment Markers).
+  PreToolUse deny on `moai contract sign` from agent tool calls, owned by A2/t1235). No Codex marker is
+  identifiable in the repository, so none ships (design.md § Agent-Environment Markers).
 - **D6 — Unsigned-draft acceptance hash mismatch refuses signing** instead of overwriting, so a draft
   reviewed against older acceptance criteria cannot be signed silently. A **signed** contract whose
   acceptance changed is re-bound through `sign --resign` (REQ-CONTRACT-022) with the same human
@@ -42,9 +42,14 @@ configuration/template). Milestones >= 3 and files >= 10, so run-phase routes to
   requirement's ID `REQ-CONTRACT-021` was reused for the agent-environment refusal so that the REQ
   sequence stays contiguous (MP-1) without a withdrawn-placeholder heading that lint would collect as a
   modality-less requirement.
-- **D8 — Epic ordering.** A3 must not land "signature replaces Kickoff" before A2 enforces push
-  serialization and the second-review stop (spec.md §C.1). No A2/A3/A4 SPEC exists yet; the lead tracks
-  cards t1235–t1237.
+- **D8 — Epic ordering and owners.** A1 → A2 → A3 (card t1236 carries t1235 as predecessor). A2
+  (t1235) owns push-serialization enforcement and the PreToolUse deny on agent-invoked
+  `moai contract sign`; both are hard preconditions for A3 activation. A4 (t1237) owns the
+  "second review not performed → stop before push" rule and the performed record (spec.md §C.1).
+- **D9 — Receipt signing path (lead-approved).** Non-human deciders sign non-interactively with a
+  validated `kickoff-receipt.json`, only under `mode: contract`. A1 records `receipt.provenance: file`;
+  autonomous Kickoff must not activate until `moai contract revoke` and moai-issued receipts exist (A3,
+  spec.md §C.6). Residual risk: a Jev call cannot be proven (spec.md §H).
 
 ## §C. Pre-flight
 
@@ -79,17 +84,19 @@ change). Covers REQ-CONTRACT-001..004.
 
 ### M2 — Configuration keys and defaults (Priority High)
 
-`workflow.autonomy` struct, defaults, fail-safe reader for invalid `mode` / `second_review`, template
-and local YAML. Covers REQ-CONTRACT-015, REQ-CONTRACT-016.
+`workflow.autonomy` struct including `kickoff.{decider, jev_min_confidence, on_disagree}`, defaults,
+fail-safe reader for every enum/range key, neutral template comments (no decision IDs, no
+repository-specific statements), template and local YAML. Covers REQ-CONTRACT-015, REQ-CONTRACT-016.
 
 ### M3 — Validation rules and verify core (Priority High)
 
 Action vocabulary (allowed / forbidden / unknown), escalation completeness, ownership and invariant
 well-formedness (glob matcher; registry rule IDs passed in by the caller), non-empty actions,
 reobserve, budget, plan-audit verdict, second-review and push-develop config coupling, reason-code
-collection. The core package imports neither `os/exec`, `net`, `internal/config`,
+collection, derived sets (`effective_never`, `scratch`, `frozen_files`, `signable_contract_sha256`),
+kickoff receipt decode, validator, and agreement rule. The core package imports neither `os/exec`, `net`, `internal/config`,
 `internal/constitution` (the last two measured to pull in `net`), nor `internal/spec`. Covers
-REQ-CONTRACT-006, 007, 008, 009, 017, 018, 020.
+REQ-CONTRACT-006, 007, 008, 009, 017, 018, 020, 023, 025.
 
 ### M4 — Acceptance binding and AC counter port (Priority Medium)
 
@@ -101,7 +108,9 @@ LF/BOM-normalized hash, Go port of the published counter applied to normalized b
 `internal/contract/sign`: agent-marker refusal, TTY refusal, typed confirmation, git identity and
 HEAD seams, sign-time measurement and refusals, `--resign` re-binding with `old → new` summary, batch
 mode with de-duplication and shared `batch_id`, atomic writes, Kickoff-neutral notice in both modes.
-Covers REQ-CONTRACT-010..013, REQ-CONTRACT-019, REQ-CONTRACT-021, REQ-CONTRACT-022.
+Receipt path (`--signer`/`--receipt`, `mode: contract` gate, provenance `file`). Closed sign refusal
+codes. Covers REQ-CONTRACT-010..013, REQ-CONTRACT-019, REQ-CONTRACT-021, REQ-CONTRACT-022,
+REQ-CONTRACT-024.
 
 ### M6 — CLI wiring and output (Priority Low — mechanical)
 
@@ -115,6 +124,7 @@ registry and passes values into the core. Covers REQ-CONTRACT-014 (and the CLI h
 | AC counter port drifts from the published awk counter | Verify reports `ac_count_mismatch` on untouched files, or misses a real change | Parity test (corpus + per-branch fixtures + ambiguity positive control) in `./internal/spec`; the SHA-256 is the primary tamper authority, the count is a secondary cross-check |
 | Schema churn after A2-A4 start | Rework in three SPECs | `schema_version`; additive changes only; changes land as amendments to `design.md` § Contract Schema |
 | An agent obtains a TTY with a one-line pty wrapper and unsets the markers | Agent-produced signature | A1 only raises the bar (spec.md §C.2); hard precondition for A3: a PreToolUse deny on `moai contract sign` from agent tool calls must exist before the signature replaces Kickoff |
+| A receipt is hand- or agent-written | Autonomous Kickoff on a forged approval | A1 records `provenance: file`; §C.6 forbids activation until A3's moai-issued receipts and `revoke` exist; residual risk stated in spec.md §H |
 | A3 lands before A2's enforcement | Signed `push-develop` authorizes unserialized pushes / pushes without second review | Binding ordering constraint in spec.md §C.1; until then the notice (REQ-CONTRACT-019) prints in both modes and Kickoff stays |
 | Line-ending differences across platforms | Spurious hash mismatch on windows checkouts | CRLF→LF and BOM normalization before hashing; cross-platform CI |
 | Operators read the signature as authorizing Kickoff skip before A3 lands | Confusion | REQ-CONTRACT-019 notice in both modes; A1 changes no gate |
