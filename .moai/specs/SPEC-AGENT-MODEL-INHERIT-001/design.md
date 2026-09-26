@@ -22,9 +22,12 @@ mapping.
 | D3 | Retire LR-03 and LR-12 in the agent linter; keep LR-13 as a value check on an optional key. | Keeping LR-03 as a warning would flag every MoAI agent; inverting it into "must not declare effort" would reject user agents (REQ-AMI-007). |
 | D4 | Move the retained-agent roster to one model-free list and re-point rosterguard and `config.retainedAgentNames` at it. | Deleting rosterguard's roster check would silence a guard unrelated to model policy (research.md §D). |
 | D5 | Codex/GLM tools: resolution becomes pin > backend default. | Keeping a hidden per-agent cell for the codex/GLM path would re-create the matrix under another name. |
-| D6 | Retire `internal/harness/cellguard` with the matrix. | Its only comparison target is the deleted matrix; re-pointing it has nothing to bind. docs-site tables that restated cells are rewritten or deleted (Q6). |
-| D7 | Remove the whole agent-settings panel (`agentfm` tab) and `internal/settings/agentfm`; delete `v4manifest` badge/tier-suggestion helpers only if a grep shows no remaining consumer. | Keeping a read-only panel still renders model/effort per agent — the thing being removed. Extent confirmed by Q1. |
-| D8 | Migration: template drops the keys; `moai update` removes them from a user's `llm.yaml` with a line in the update report, and configuration loading ignores them in any case. | "Ignore only" leaves dead, misleading config in every user project; "hard error" breaks update for users who edited the block. Final choice is Q2. |
+| D6 | Retire `internal/harness/cellguard` with the matrix. | Its only comparison target is the deleted matrix; re-pointing it has nothing to bind. docs-site tables that restated cells are rewritten or deleted in M8 (REQ-AMI-026). |
+| D7 | Remove the whole agent-settings tab (`agentfm`) — UI and handler/API — and `internal/settings/agentfm`; delete `v4manifest` badge/tier-suggestion helpers only if a grep shows no remaining consumer. Operator Q1 (2026-09-26). | A read-only agent list was offered and declined. |
+| D8 | Migration: template drops the keys; `moai update` removes them from a user's `llm.yaml` and `workflow.yaml` with a line per key in the update report, and configuration loading ignores them in any case. Operator Q2 (2026-09-26). | "Ignore only" was offered and declined; "hard error" breaks update for users who edited the block. |
+| D10 | `--profile` on `init`/`update` stays as an accepted flag that does nothing but print a deprecation warning. Operator Q4. | Removing the flag breaks scripts that pass it. |
+| D11 | Harness v4 manifest `model`/`effort` become optional in `v4manifest` validation; `/moai:harness` generation emits neither; the Runner passes neither to `agent()`. Operator Q5. | Keeping them required would force every generated manifest to name a model. |
+| D12 | `workflow_agents`, `model_routing`, `model_routing_profiles`, `performance_tier` and the workflow-script `agent()` model/effort literals are removed with their validators (`config/model_routing.go`, agentlint `workflow_lint.go` routing checks, `ApplyPerformanceTier`). Main-session `model_policy` persistence is unchanged. Operator Q3. | These assign subagent model/effort under another name. |
 | D9 | No new `[HARD]` clause is added. The replacement statement ("subagents inherit; pass no model or effort") lives as one plain sentence in `agent-common-protocol.md` and in `model-policy.md` § Valid Model Field Values. | A new always-loaded HARD clause spends budget t1175 just reclaimed. |
 
 ## §C Migration behaviour under `moai update` (D8 default)
@@ -34,8 +37,9 @@ mapping.
 | Keys absent | No change. |
 | Keys present, untouched since deploy | The 3-way merge already drops them (template base had them, new template does not); update report names them as removed. |
 | Keys present, user-edited (e.g. `agent_overrides` pins) | Removed by an explicit strip step; the pre-update backup keeps the original; update report lists each removed key and its value. |
-| `performance_tier` | Per Q3. |
-| `workflow.yaml` `agent_model_guard` | Ignored (no YAML ships it). |
+| `performance_tier` | Removed like the other keys (Q3). |
+| `workflow.yaml` `workflow_agents` / `model_routing` / `model_routing_profiles` | Removed, listed in the update report (Q2/Q3). |
+| `workflow.yaml` `agent_model_guard` | Removed if present and listed in the update report; ignored on load in any case. |
 
 The strip reuses the existing write-time retired-key precedent (`stripRetiredLLMKeys`, which
 already drops `plan_type` and `claude_models`), relocated so it no longer depends on
@@ -71,10 +75,11 @@ registry row is deleted.
 
 | Area | Remove | Keep / re-point |
 |---|---|---|
-| config | `LLMConfig.{Profile,Profiles,HarnessAgents,AgentOverrides}`, `profile.go` (profile enum, overrides validation), `AgentModelGuard*` | `retainedAgentNames` → roster SSOT (D4); `PerformanceTier` per Q3 |
+| config | `LLMConfig.{Profile,Profiles,HarnessAgents,AgentOverrides,PerformanceTier}`, `profile.go` (profile enum, overrides validation), `AgentModelGuard*`, `model_routing.go` + `WorkflowAgents`/`ModelRouting*` fields (D12) | `retainedAgentNames` → roster SSOT (D4) |
 | template | `profile_matrix.go` (matrix, groups, resolvers, `ApplyProfile`, harness classes); per-agent GLM helpers if orphaned | `ApplyHarness`, `stripRetiredLLMKeys` (relocated), session GLM helpers |
-| cli | `model.go` + root registration; `--profile` handling (Q4); `update_wizard` `ApplyProfile` call; nil-map normalisation for removed maps | main-session model policy path; codex/GLM default resolution (D5) |
+| cli | `model.go` + root registration; `--profile` reduced to a deprecation warning (D10); `update_wizard` `ApplyProfile` call; `ApplyPerformanceTier` callers; agentlint routing checks; nil-map normalisation for removed maps | main-session model policy path; codex/GLM default resolution (D5) |
 | hook | `agent_model_guard.go`, its `pre_tool.go` wiring, `prune_logs` audit-file entry | comment references in sibling guards reworded |
 | web | agentfm panel, handlers, app seams, settings tab, templ blocks, `settings/agentfm` | preference-profile CRUD, main-session controls |
-| harness | `cellguard` package (D6) | `rosterguard` (re-pointed), `v4manifest` validator per Q5 |
+| harness | `cellguard` package (D6); required-field checks for specialist `model`/`effort` (D11) | `rosterguard` (re-pointed), `v4manifest` validator with optional fields |
+| workflows / docs | `agent()` model/effort literals in `.claude/workflows/*.js` (D12); 48 docs-site pages (M8) | everything else |
 | emitter | manifest `model_reasoning_effort` emission (D2) | everything else |

@@ -24,7 +24,7 @@ card t1175, which lands before this run starts.
 ## §C Pre-flight (run entry)
 
 1. t1175 merged into local develop; absorb develop (`git merge develop` inside this worktree) — REQ-AMI-001.
-2. Re-measure overlap with `WT-role-naming-docs` — REQ-AMI-002; halt on a touched shared file — REQ-AMI-003.
+2. Re-measure overlap with `WT-role-naming-docs` and halt on a touched shared file — REQ-AMI-002.
 3. Re-run every research.md inventory command on the absorbed tree and record the counts in progress.md §E.2.
 4. Baseline: `TestAlwaysLoadedTokenBudget` headroom, `make agents-emit-check`, affected-package `go test`.
 
@@ -43,7 +43,7 @@ patterns are gone from both trees.
 ## §F Milestones
 
 ### M0 — Run entry and baseline (Priority High)
-REQ-AMI-001..003. No edits. Output: progress.md §E.2 table of re-measured counts, overlap list, budget headroom.
+REQ-AMI-001, REQ-AMI-002. No edits. Output: progress.md §E.2 table of re-measured counts, overlap list, budget headroom.
 
 ### M1 — Retention seams first (Priority High)
 REQ-AMI-018..021. Characterisation tests pinning today's main-session model/effort resolution,
@@ -55,7 +55,8 @@ milestone, so they come first.
 ### M2 — Configuration schema and migration (Priority High)
 REQ-AMI-014..017. Remove the `LLMConfig` fields and profile validation; template `llm.yaml`
 drops the keys and comments; relocate the retired-key strip and extend it to the four keys;
-update report lines (D8, Q2); `--profile` flags per Q4; `update_wizard` stops writing
+update report lines (D8); `performance_tier` and the `workflow.yaml` routing keys and their
+validators (D12); `--profile` becomes a deprecation-warning no-op (D10); `update_wizard` stops writing
 `llm.profile`. Tests for each row of design.md §C.
 
 ### M3 — Hook guard removal (Priority High)
@@ -71,23 +72,24 @@ mirrors in `cli/glm.go`. Update or delete the tests found in M0.
 ### M5 — Web console removal (Priority Medium)
 REQ-AMI-012/013. Remove the agentfm tab, handlers, app seams, templ blocks (regenerate
 `*_templ.go`), `internal/settings/agentfm`, orphaned `v4manifest` display helpers. Test that the
-preference-profile routes and main-session controls still respond as before. Extent per Q1.
+preference-profile routes and main-session controls still respond as before. The whole tab
+goes, UI and API (D7).
 
 ### M6 — Agent frontmatter and Codex emission (Priority Medium)
 REQ-AMI-004..007. In one commit: strip `model:`/`effort:` from 12 template agents, set the
 Codex manifest `model_reasoning_effort.emit: false` (D2), retire LR-03/LR-12 (D3), adapt
 `haiku_effort_guard_test` and agentemit golden tests, run `make agents-emit` and
 `make agents-emit-check`; then strip the 12 local moai agents and the 10 local harness agents.
-Harness manifests/validator per Q5; dynamic-workflow `agent()` literals and
-`workflow_agents`/`model_routing*` per Q3.
+Harness v4 manifest fields become optional and generation stops emitting them (D11); the
+dynamic-workflow `agent()` model/effort literals are removed from template and local scripts (D12).
 
 ### M7 — Doctrine text (Priority Low — mechanical, overlaps t1175)
 REQ-AMI-008, 022..025. Apply design.md §D H1–H16 template-first, then local; `make build`;
 `TestAlwaysLoadedTokenBudget` before/after; template-neutrality guard; zone-registry check.
 
 ### M8 — docs-site and records (Priority Low)
-Per Q6: rewrite or remove the 48 docs-site pages in four locales in one change set, or file a
-follow-up card and leave a pointer. CHANGELOG and superseded-SPEC status belong to sync.
+REQ-AMI-026. Rewrite or remove the 48 docs-site pages in four locales in one change set, add a
+redirect for every removed page, and run the oss-docs verify recipe. CHANGELOG and superseded-SPEC status belong to sync.
 
 ## §G Anti-patterns
 
@@ -100,4 +102,4 @@ follow-up card and leave a pointer. CHANGELOG and superseded-SPEC status belong 
 ## §H Cross-references
 
 research.md (inventory and overlap), design.md (decisions, migration, HARD-clause table),
-acceptance.md (criteria), progress.md §E.1 (open questions Q1–Q6).
+acceptance.md (criteria), progress.md §E.1 (operator answers Q1–Q6, resolved 2026-09-26).

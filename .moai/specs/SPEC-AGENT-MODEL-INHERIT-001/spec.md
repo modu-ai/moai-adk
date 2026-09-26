@@ -1,7 +1,7 @@
 ---
 id: SPEC-AGENT-MODEL-INHERIT-001
 title: "Subagents inherit the main session's model and effort — remove per-agent model/effort assignment"
-version: "0.1.0"
+version: "0.2.0"
 status: draft
 created: 2026-09-26
 updated: 2026-09-26
@@ -21,6 +21,7 @@ related_specs: [SPEC-MODEL-PROFILE-MATRIX-001, SPEC-MODEL-PROFILE-MATRIX-002, SP
 | Version | Date | Author | Description |
 |---------|------|--------|-------------|
 | 0.1.0 | 2026-09-26 | manager-spec | Initial draft for card t1246 (operator decision 2026-09-26). Inventory measured at develop `d6992e3a0` (research.md). Run is gated on card t1175 merging to develop. |
+| 0.2.0 | 2026-09-26 | manager-spec | Operator answers Q1–Q6 folded in (progress.md §E.1). Q1 whole agent-settings tab removed (REQ-AMI-012); Q2 update strips leftover keys and reports them (REQ-AMI-015); Q3 `workflow_agents` / `model_routing` / `model_routing_profiles` / `performance_tier` / workflow `agent()` literals in scope (REQ-AMI-008, REQ-AMI-014); Q4 `--profile` kept as a no-op with a deprecation warning (REQ-AMI-017); Q5 harness manifest `model`/`effort` optional and no longer generated (REQ-AMI-004, REQ-AMI-007); Q6 docs-site in scope as M8 (REQ-AMI-026). REQ-AMI-003 folded into REQ-AMI-001/002 to hold the Tier L ceiling. |
 
 ---
 
@@ -46,35 +47,34 @@ main-session model/effort and the GLM alias mapping, and migrates existing user 
 
 ### B.1 Run entry
 
-- **REQ-AMI-001** (Event-driven): **When** the run phase starts, it shall first confirm that card t1175 (`SPEC-ALWAYS-LOADED-DIET-002`) is merged into the local develop branch, absorb develop into this branch, and re-measure every inventory count in research.md §B–§G against the absorbed tree before editing any file.
-- **REQ-AMI-002** (Event-driven): **When** the run phase starts, it shall re-measure the file overlap with branch `WT-role-naming-docs` (card t1257) using `git diff --name-only <merge-base>...WT-role-naming-docs` and record the intersection with this SPEC's touch set in progress.md.
-- **REQ-AMI-003** (Event-detected): **When** REQ-AMI-001 finds t1175 not merged, or REQ-AMI-002 finds that t1257 has already changed a file in this SPEC's touch set, the run phase shall halt with a blocker report naming the files and shall edit nothing.
+- **REQ-AMI-001** (Event-driven): **When** the run phase starts, it shall first confirm that card t1175 (`SPEC-ALWAYS-LOADED-DIET-002`) is merged into the local develop branch, absorb develop into this branch, and re-measure every inventory count in research.md §B–§G against the absorbed tree before editing any file; **when** t1175 is not merged, it shall halt with a blocker report and edit nothing.
+- **REQ-AMI-002** (Event-driven): **When** the run phase starts, it shall re-measure the file overlap with branch `WT-role-naming-docs` (card t1257) using `git diff --name-only <merge-base>...WT-role-naming-docs` and record the intersection with this SPEC's touch set in progress.md; **when** that intersection contains a file the t1257 branch has already changed, the run phase shall halt with a blocker report naming the files and shall edit nothing.
 
 ### B.2 Agent definitions
 
-- **REQ-AMI-004** (Ubiquitous): Every agent definition file under `internal/template/templates/.claude/agents/` and under `.claude/agents/` (the `moai/` and `harness/` directories) shall carry neither a `model:` nor an `effort:` frontmatter key.
+- **REQ-AMI-004** (Ubiquitous): Every agent definition file under `internal/template/templates/.claude/agents/` and under `.claude/agents/` (the `moai/` and `harness/` directories) shall carry neither a `model:` nor an `effort:` frontmatter key, and `/moai:harness` shall write neither key into a generated specialist agent file nor a `model`/`effort` value into a generated harness v4 manifest.
 - **REQ-AMI-005** (Ubiquitous): The Codex agent files under `internal/template/templates/.codex/agents/moai/` shall be regenerated only by `make agents-emit` from the template agent definitions, shall carry neither a `model` nor a `model_reasoning_effort` key, and `make agents-emit-check` shall exit 0.
 - **REQ-AMI-006** (Ubiquitous): The agent linter shall not report a missing `effort:` key as a finding, and shall not compare an agent's effort against a canonical per-agent matrix.
-- **REQ-AMI-007** (Where): **Where** a user-authored agent file declares `model:` or `effort:`, MoAI shall leave that file unchanged and shall not report the declaration as an error.
+- **REQ-AMI-007** (Where): **Where** a user-authored agent file or an existing harness v4 manifest declares `model`/`effort`, MoAI shall leave that file unchanged, shall parse and validate it without error (the manifest fields become optional), and shall not report the declaration as an error.
 
 ### B.3 Spawn-time assignment
 
-- **REQ-AMI-008** (Ubiquitous): MoAI doctrine (rules, skills, workflow definitions, output styles) shall not instruct the orchestrator or any agent to pass a `model` or `effort` value when spawning a subagent.
+- **REQ-AMI-008** (Ubiquitous): MoAI doctrine (rules, skills, output styles) shall not instruct the orchestrator or any agent to pass a `model` or `effort` value when spawning a subagent, and the dynamic-workflow scripts under `.claude/workflows/` (template and local) shall pass no `model` or `effort` option to `agent()`.
 - **REQ-AMI-009** (Ubiquitous): The `moai` binary shall not provide a per-agent model/effort resolver, a `moai model profile` command, or a per-agent profile matrix.
 - **REQ-AMI-010** (Ubiquitous): The PreToolUse hook shall not observe, audit, advise on, or deny subagent spawns on the basis of their model, and shall not write `.moai/logs/agent-model-audit.jsonl`.
 - **REQ-AMI-011** (Where): **Where** a project's `workflow.yaml` still carries `workflow.agent_model_guard`, loading the configuration shall succeed and the key shall have no effect.
 
 ### B.4 Web console
 
-- **REQ-AMI-012** (Ubiquitous): The `moai web` console shall not render a subagent model/effort or profile-selector panel, and shall not accept a form submission that writes agent frontmatter `model`/`effort` or `llm.profile`/`llm.agent_overrides`.
+- **REQ-AMI-012** (Ubiquitous): The `moai web` console shall carry no agent-settings tab — neither its UI (tab, panel, profile selector, per-agent model/effort controls) nor its handler/API path — and shall not write agent frontmatter `model`/`effort` or `llm.profile`/`llm.agent_overrides` on any request.
 - **REQ-AMI-013** (Ubiquitous): The `moai web` console's user-preference profile routes (`/profile/create`, `/profile/delete`, rename) and the main-session model/effort controls shall keep their current behaviour.
 
 ### B.5 Configuration and migration
 
-- **REQ-AMI-014** (Ubiquitous): The template `llm.yaml` shall not carry the `profile`, `profiles`, `harness_agents`, or `agent_overrides` keys or their explanatory comment blocks.
-- **REQ-AMI-015** (Event-driven): **When** `moai update` runs on a project whose `llm.yaml` carries any of the keys in REQ-AMI-014, the update shall leave the project in a state where those keys have no effect on any spawn, and shall report the disposition of each such key in its output.
+- **REQ-AMI-014** (Ubiquitous): The template `llm.yaml` shall not carry the `profile`, `profiles`, `harness_agents`, `agent_overrides`, or `performance_tier` keys, the template `workflow.yaml` shall not carry the `workflow_agents`, `model_routing`, or `model_routing_profiles` keys, and neither shall carry their explanatory comment blocks.
+- **REQ-AMI-015** (Event-driven): **When** `moai update` runs on a project whose `llm.yaml` or `workflow.yaml` carries any of the keys in REQ-AMI-014, or whose `workflow.yaml` carries `agent_model_guard`, the update shall remove each such key from the user's file, keep the original in the pre-update backup, and list every removed key in the update report.
 - **REQ-AMI-016** (Event-driven): **When** `moai init` or `moai update` runs with the main-session model policy set, it shall persist the main-session setting and shall not write `llm.profile`.
-- **REQ-AMI-017** (Event-detected): **When** a user passes `--profile` to `moai init` or `moai update`, the command shall follow the operator decision recorded for Q4 in progress.md §E.1 (reject with an error naming the removal, or accept as a no-op with a deprecation warning), and shall never write `llm.profile`.
+- **REQ-AMI-017** (Event-detected): **When** a user passes `--profile` to `moai init` or `moai update`, the command shall accept the flag, shall emit a deprecation warning stating that subagents now inherit the main session's model and effort, shall complete otherwise unchanged, and shall never write `llm.profile`.
 
 ### B.6 Retained behaviour
 
@@ -89,6 +89,7 @@ main-session model/effort and the GLM alias mapping, and migrates existing user 
 - **REQ-AMI-023** (Ubiquitous): Every change to a file with a template mirror shall be made first under `internal/template/templates/`, then in the local copy, with `make build` after the template edits; local-only files (`.claude/agents/harness/*`, `hns-*` skills, dev-only workflows) shall be edited locally only.
 - **REQ-AMI-024** (Ubiquitous): Template edits shall pass the template-neutrality guard — no SPEC IDs, card IDs, internal dates, or single-programming-language bias introduced under `internal/template/templates/**`.
 - **REQ-AMI-025** (Ubiquitous): `TestAlwaysLoadedTokenBudget` shall pass after the change, and progress.md shall record its before and after headroom.
+- **REQ-AMI-026** (Ubiquitous): The docs-site pages that describe per-agent model/effort assignment (the 48 pages of research.md §F, four locales) shall be rewritten or removed in one change set, every removed page's URL shall carry a redirect, and the four locales shall keep section parity.
 
 ## §C Dependencies
 
@@ -112,11 +113,14 @@ main-session model/effort and the GLM alias mapping, and migrates existing user 
 ### Out of Scope — SPEC history
 - Released CHANGELOG entries and other SPECs' records under `.moai/specs/**` are not rewritten; status changes on superseded SPECs belong to the sync phase.
 
-## §E Conditional scope (pending operator answers — progress.md §E.1)
+## §E Resolved scope (operator answers 2026-09-26 — progress.md §E.1)
 
-- Q3 decides whether `workflow_agents`, `model_routing`, `model_routing_profiles`, `performance_tier`, and the dynamic-workflow `agent()` model/effort literals are removed (default in this plan: removed, as they assign subagent model/effort).
-- Q5 decides whether harness v4 manifest `model`/`effort` fields become optional and ignored.
-- Q6 decides whether the 48 docs-site pages are updated in this SPEC or a follow-up card.
+- Q1: the whole agent-settings tab (UI + API) is removed — REQ-AMI-012.
+- Q2: `moai update` strips leftover keys and lists them in the update report — REQ-AMI-015.
+- Q3: `workflow_agents`, `model_routing`, `model_routing_profiles`, `performance_tier`, and the dynamic-workflow `agent()` model/effort values are removed — REQ-AMI-008, REQ-AMI-014.
+- Q4: `--profile` stays as a no-op with a deprecation warning — REQ-AMI-017.
+- Q5: harness v4 manifest `model`/`effort` become optional; `/moai:harness` stops generating them; existing manifests still parse — REQ-AMI-004, REQ-AMI-007.
+- Q6: the 48 docs-site pages are in scope as M8 — REQ-AMI-026.
 
 ## §F Known residual
 
