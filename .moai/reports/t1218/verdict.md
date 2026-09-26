@@ -34,6 +34,8 @@ CI의 census 호출은 `test` 잡의 테스트 단계 안에 있는 `bash script
 | 변이된 `test-census.sh` 를 픽스처에 | exit 0, `SPEC-FIXTURE-100%25` 가 `SPEC-FIXTURE-100%` 로 출력됨 → CI 단계는 초록 |
 | 변이된 트리에서 `census-check.sh` | exit 1, diff 가 notice 줄 하나를 가리킴 |
 
+**독립 감사 재측정** — 감사자가 m1·m2와 totals 변이 m4(`failed=` 제거)를 다시 돌렸다. `census-check.sh`는 셋 모두 exit 1이었다. Actions 셸 흉내(`bash --noprofile --norc -eo pipefail`)에서도 결과가 같았고, actionlint v1.7.10도 rc=0이었다.
+
 **연결** — `ci.yml`의 `test` 잡에 `Check test census against its fixture` 단계(`run: bash scripts/ci-census/census-check.sh`)를 넣었다. `Run tests with coverage` 바로 앞, 인덱스 8이다. 이 잡은 이미 `scripts/ci-census/**` 경로 필터에 걸려 있어, census만 바꾼 PR에서도 실행된다.
 
 ```
@@ -57,5 +59,9 @@ actionlint .github/workflows/ci.yml → 출력 없음(exit 0)
 
 ## Residual-risk
 
-- `census-check.sh`는 픽스처 하나의 출력을 통째로 비교한다. 픽스처가 담지 않은 형태로 census가 망가지면 이 검사도 놓친다.
-- 새 단계가 실패하면 그 뒤의 테스트 단계는 돌지 않는다. census가 망가진 PR에서는 테스트 결과를 같은 실행에서 볼 수 없다.
+- `census-check.sh`는 픽스처 하나의 출력을 통째로 비교한다. 픽스처가 담지 않은 형태로 census가 망가지면 이 검사도 놓친다. 독립 감사(`audit.md` F1)가 실제로 살아남는 totals 변이 두 개를 찾았다.
+  - passed 집계에서 `.Test != null` 조건 제거: 픽스처에 패키지 수준 pass 이벤트가 없어서 차이가 나지 않는다.
+  - nothing-ran 조건을 `== null`에서 `!= null`로 뒤집기: 픽스처에서 skip 테스트 수와 테스트 없는 패키지 수가 둘 다 1이라 서로 뒤바뀌어도 같다.
+  두 변이 모두 census와 `census-check.sh`가 exit 0으로 끝나 CI를 통과한다. 고치려면 픽스처를 보강하고 `expected.txt`를 갱신해야 한다. 이 카드 범위 밖이라 후속 후보로 남긴다.
+- 새 단계가 실패하면 같은 잡의 뒤 단계가 돌지 않는다. 테스트 단계뿐 아니라 Codecov 업로드도 건너뛴다. `needs: test`인 `test-integration`(3개 OS) 잡도 돌지 않는다(감사 F2). census가 망가진 PR에서는 이 결과들을 같은 실행에서 볼 수 없다.
+- 픽스처 검사는 `test` 잡이 도는 ubuntu에서만 돈다. release 워크플로의 macOS·Windows 레그에서만 드러나는 census 결함은 잡지 못한다(감사 F4).

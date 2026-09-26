@@ -204,7 +204,7 @@ jobs:
       # test-census.sh is a reporter: it exits 0 on any readable stream, so a
       # census whose output is wrong never turns the test step below red.
       # census-check.sh diffs the census output on a committed fixture against
-      # the expected text, and is the only thing that fails when it breaks.
+      # the expected text, so a breakage the fixture exercises fails here.
       - name: Check test census against its fixture
         shell: bash
         run: bash scripts/ci-census/census-check.sh
