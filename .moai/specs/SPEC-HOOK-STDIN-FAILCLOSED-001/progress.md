@@ -685,7 +685,7 @@ internal/cli/hook_stdin_failclosed.go
 
 ```yaml
 sync_complete_at: 2026-09-26
-sync_commit_sha: pending-backfill-sync
+sync_commit_sha: bfed76aef3198e321ede3b2f892323834aa8d2a7
 sync_status: audit-ready
 b12_self_test_a: "grep -c SPEC-HOOK-STDIN-FAILCLOSED-001 CHANGELOG.md -> 0 (pre-edit)"
 b12_self_test_b: "AC identifier count via canonical grep -> 13 (11 live + 2 [RETIRED])"
