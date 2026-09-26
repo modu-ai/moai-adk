@@ -7,7 +7,7 @@
 # census logic verifiable WITHOUT a CI run: the census is the thing that
 # turns a CI artifact into evidence, so it must itself carry evidence.
 #
-# The fixture deliberately contains all five shapes the census must
+# The fixture deliberately contains all seven shapes the census must
 # distinguish:
 #
 #   1. a test that called t.Skip           -> SKIPPED TEST
@@ -17,6 +17,11 @@
 #   5. a package that failed to compile    -> BUILD FAILED
 #   6. an AC snapshot absent report logged by a PASSING test (repeated, one
 #      copy CRLF-terminated, one carrying '%') -> one ::notice per report
+#   7. a passing package with a package-level pass event and a second
+#      skipped test -> keeps the totals line honest: counting package-level
+#      pass events inflates passed, and counting packages with skipped tests
+#      as nothing-ran inflates nothing-ran, because this fixture has two such
+#      packages but only one package with no test files
 #
 # Shapes 1 and 2 are the pair REQ-CTO-006 requires be detected by a SINGLE
 # Action=="skip" pass and labelled apart by the presence of the Test field.
