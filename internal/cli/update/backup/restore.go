@@ -34,6 +34,12 @@ type RetainedKeyRef struct {
 	// Key is the dotted key path within the section document
 	// (e.g. "evolution.max_active_learnings").
 	Key string
+	// KeptOverDefault marks a key the new template carries whose user value
+	// the merge kept although it differs from the template's. Reported only
+	// on an update whose BASE replaced an unattested snapshot: without a real
+	// BASE a template default change on an untouched key cannot be told from
+	// a customization, so the kept value is listed for the user (card t1216).
+	KeptOverDefault bool
 }
 
 // RestoreMoaiConfig restores the user's backed-up configuration sections into
@@ -61,6 +67,9 @@ func RestoreMoaiConfig(projectRoot, backupDir string, recordFallback MergeFallba
 		return err
 	}
 	for _, ref := range refs {
+		if ref.KeptOverDefault {
+			continue // not a retained key; this legacy text has no line for it
+		}
 		_, _ = fmt.Fprint(retainedKeySink, retainedKeyAdvisoryLine(ref.Key))
 	}
 	return nil
@@ -81,6 +90,8 @@ func RestoreMoaiConfigRetained(projectRoot, backupDir string, recordFallback Mer
 	if info, err := os.Stat(templateDefaultsDir); err == nil && info.IsDir() {
 		has3Way = true
 	}
+	_, markerErr := os.Stat(filepath.Join(templateDefaultsDir, UnattestedBaseMarker))
+	reportKept := has3Way && markerErr == nil
 
 	// Walk through backup files (only sections/*.yaml)
 	sectionsBackupDir := filepath.Join(backupDir, "sections")
@@ -161,6 +172,13 @@ func RestoreMoaiConfigRetained(projectRoot, backupDir string, recordFallback Mer
 				if mergeErr == nil {
 					for _, key := range retainedKeys {
 						retained = append(retained, RetainedKeyRef{Section: relPath, Key: key})
+					}
+					if reportKept {
+						// Best-effort: the merged bytes decoded moments ago.
+						kept, _ := keptOverTemplateKeys(newData, merged)
+						for _, key := range kept {
+							retained = append(retained, RetainedKeyRef{Section: relPath, Key: key, KeptOverDefault: true})
+						}
 					}
 					// REQ-UN-009: reset the merge-history counter on success so the
 					// next failure starts a fresh 3-strike count.
