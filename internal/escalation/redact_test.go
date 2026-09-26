@@ -88,6 +88,30 @@ func TestCommandCredentialsAreMasked(t *testing.T) {
 	}
 }
 
+// Re-audit N2: class 6 classifies the raw command and masks only what it
+// renders or hashes. A push-develop-authorized push whose refspec source
+// carries a credential word, or whose URL carries a credential, writes no
+// record and leaks nothing.
+func TestAuthorizedPushNotMisclassifiedByMask(t *testing.T) {
+	for _, cmd := range []string{
+		"git push origin WT-token-rotation:develop",
+		"git push https://user:" + fakeSecret + "@github.com/o/r.git HEAD:develop",
+	} {
+		t.Run(cmd[:24], func(t *testing.T) {
+			isolateStore(t)
+			w := armedWith(t, "t9001", nil, "")
+			escalation.Observe(contractSettings(t, w), escalation.Event{Hook: escalation.HookPreToolUse, CWD: w.Root,
+				ToolName: "Bash", Command: cmd})
+			if rs, raw := recordsOfClass(t, w, escalation.ClassIrreversibleAction); len(rs) != 0 {
+				t.Errorf("authorized push tripped class 6:\n%s", strings.Join(raw, "\n"))
+			}
+			if l := leakedSurfaces(t, w, fakeSecretCore); len(l) != 0 {
+				t.Errorf("secret written to: %v", l)
+			}
+		})
+	}
+}
+
 // Masking is deterministic: two different secrets in the same position give
 // the same masked command, so a streak keyed on it is not split.
 func TestMaskCommandIsStable(t *testing.T) {

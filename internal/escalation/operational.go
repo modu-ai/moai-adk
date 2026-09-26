@@ -45,7 +45,9 @@ var (
 // It only records; the existing denylist still decides the call.
 func (r *run) classIrreversibleAction() {
 	a := r.st.Armed
-	cmd := MaskCommand(strings.TrimSpace(whitespaceRe.ReplaceAllString(r.ev.Command, " ")))
+	// Classify the raw command (masking can rewrite a refspec such as
+	// `x-token:develop`); mask only what is rendered or hashed (re-audit N2).
+	cmd := strings.TrimSpace(whitespaceRe.ReplaceAllString(r.ev.Command, " "))
 	if cmd == "" {
 		return
 	}
@@ -65,12 +67,13 @@ func (r *run) classIrreversibleAction() {
 	if why == "" {
 		return
 	}
+	shown := MaskCommand(cmd)
 	cdata, _ := os.ReadFile(a.ContractPath)
 	r.writeRecord(Record{
 		Kind: KindContract, Class: ClassIrreversibleAction, EscalateOn: ClassIrreversibleAction,
-		Fingerprint: Fingerprint(ClassIrreversibleAction, cmd),
+		Fingerprint: Fingerprint(ClassIrreversibleAction, shown),
 		ContractRef: contractRef(ContractLine(cdata, "actions"), cdata, "actions"),
-		Observation: fmt.Sprintf("Bash `%s` %s (observed before execution)", cmd, why),
+		Observation: fmt.Sprintf("Bash `%s` %s (observed before execution)", shown, MaskCommand(why)),
 		Options: []string{
 			"Do not run it; leave the action to the operator",
 			"Amend the contract's actions and re-sign it",
