@@ -6,6 +6,10 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"github.com/modu-ai/moai-adk/internal/contract"
+	"github.com/modu-ai/moai-adk/internal/contract/sign"
+	"github.com/modu-ai/moai-adk/internal/contract/sign/signtest"
 )
 
 // loadAutonomyFixture writes body as the workflow.yaml of a fresh temp project,
@@ -40,10 +44,10 @@ func warningFor(s AutonomySettings, key string) string {
 	return ""
 }
 
-// TestAC_CONTRACT_019 covers the configuration sub-cases of AC-CONTRACT-019.
-// The clause "a human-path sign still succeeds while the receipt path refuses
-// with kickoff_decider_jev_sole" is the signer's behavior (M5) and is asserted
-// there, not here.
+// TestAC_CONTRACT_019 covers AC-CONTRACT-019: the configuration sub-cases,
+// and the signer clause "a human-path sign still succeeds while the receipt
+// path refuses with kickoff_decider_jev_sole", exercised through
+// internal/contract/sign with the settings ResolveAutonomy returns.
 func TestAC_CONTRACT_019(t *testing.T) {
 	t.Run("defaults_without_autonomy_section", func(t *testing.T) {
 		for name, body := range map[string]string{
@@ -158,6 +162,47 @@ func TestAC_CONTRACT_019(t *testing.T) {
 		if s.Decider != "jev" {
 			t.Errorf("decider = %q, want jev (no fallback)", s.Decider)
 		}
+	})
+
+	// The signer clause of AC-CONTRACT-019: with decider: jev resolved
+	// through ResolveAutonomy, a human-path sign still succeeds while the
+	// receipt path refuses with kickoff_decider_jev_sole.
+	t.Run("decider_jev_human_sign_succeeds_receipt_refuses", func(t *testing.T) {
+		s := loadAutonomyFixture(t, "workflow:\n  autonomy:\n    mode: contract\n"+
+			"    contract:\n      push_develop: true\n"+
+			"    kickoff:\n      decider: jev\n")
+		optionsFor := func(p *signtest.Project) sign.Options {
+			o := p.Options()
+			o.Mode, o.BatchSign, o.SecondReview, o.PushDevelop = s.Mode, s.BatchSign, s.SecondReview, s.PushDevelop
+			o.Decider = s.Decider
+			o.DeciderJevSole = errors.Is(s.DeciderError, ErrKickoffDeciderJevSole)
+			o.JevEnabled, o.JevMinConfidence = s.JevEnabled, s.JevMinConfidence
+			o.BudgetDefault = contract.Budget{Turns: s.BudgetDefault.Turns, Operations: s.BudgetDefault.Operations,
+				AuditRetries: s.BudgetDefault.AuditRetries}
+			return o
+		}
+
+		human := signtest.New(t)
+		seams, rec := signtest.Seams(true, map[string]string{}, signtest.SpecID)
+		res, err := sign.Sign(optionsFor(human), seams)
+		if err != nil || res.Refusal != "" {
+			t.Fatalf("human-path sign under decider jev: err %v refusal %q\n%s", err, res.Refusal, rec.Out.String())
+		}
+
+		receipt := signtest.New(t)
+		o := optionsFor(receipt)
+		o.Signer, o.ReceiptPath = "llm", signtest.ReceiptRel()
+		receipt.WriteReceipt(receipt.Receipt(o, nil))
+		snap := receipt.Snapshot()
+		seams, rec = signtest.Seams(false, map[string]string{})
+		res, err = sign.Sign(o, seams)
+		if err != nil {
+			t.Fatalf("receipt-path sign: unexpected error %v", err)
+		}
+		if res.Refusal != contract.RefuseKickoffDeciderJevSole {
+			t.Errorf("receipt-path refusal = %q, want %s\n%s", res.Refusal, contract.RefuseKickoffDeciderJevSole, rec.Out.String())
+		}
+		receipt.AssertUnchanged(t, snap)
 	})
 }
 
