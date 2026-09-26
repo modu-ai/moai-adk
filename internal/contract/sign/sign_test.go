@@ -426,13 +426,13 @@ func TestSign_FlowStyleAcceptanceStillSigns(t *testing.T) {
 func TestSign_UsageAndIOErrors(t *testing.T) {
 	p := signtest.New(t)
 	cases := map[string]func(o *sign.Options){
-		"no_ids":            func(o *sign.Options) { o.SpecIDs = nil },
-		"bad_signer":        func(o *sign.Options) { o.Signer = "robot" },
-		"invalid_spec_id":   func(o *sign.Options) { o.SpecIDs = []string{"../etc"} },
-		"missing_contract":  func(o *sign.Options) { o.SpecIDs = []string{"SPEC-ABSENT-001"} },
-		"no_project_root":   func(o *sign.Options) { o.ProjectRoot = "" },
-		"no_markers_human":  func(o *sign.Options) { o.AgentMarkers = nil },
-		"receipt_no_path":   func(o *sign.Options) { o.Signer, o.Mode, o.Decider = "llm", "contract", "llm" },
+		"no_ids":             func(o *sign.Options) { o.SpecIDs = nil },
+		"bad_signer":         func(o *sign.Options) { o.Signer = "robot" },
+		"invalid_spec_id":    func(o *sign.Options) { o.SpecIDs = []string{"../etc"} },
+		"missing_contract":   func(o *sign.Options) { o.SpecIDs = []string{"SPEC-ABSENT-001"} },
+		"no_project_root":    func(o *sign.Options) { o.ProjectRoot = "" },
+		"no_markers_human":   func(o *sign.Options) { o.AgentMarkers = nil },
+		"receipt_no_path":    func(o *sign.Options) { o.Signer, o.Mode, o.Decider = "llm", "contract", "llm" },
 		"human_with_receipt": func(o *sign.Options) { o.ReceiptPath = signtest.ReceiptRel() },
 	}
 	for name, mut := range cases {

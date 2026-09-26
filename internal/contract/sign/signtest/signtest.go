@@ -331,11 +331,11 @@ func (p *Project) ReceiptOptions(decider, signer string) sign.Options {
 
 // Recorder observes the interactive seams of one Sign call.
 type Recorder struct {
-	Out          bytes.Buffer
-	ReadLines    int
-	TTYCalls     int
-	lines        []string
-	env          map[string]string
+	Out       bytes.Buffer
+	ReadLines int
+	TTYCalls  int
+	lines     []string
+	env       map[string]string
 }
 
 // Seams returns seams that report tty for the terminal check, answer
