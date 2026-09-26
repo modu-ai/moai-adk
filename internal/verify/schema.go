@@ -38,6 +38,15 @@ type CheckEntry struct {
 	RecordedAt time.Time   `json:"recorded_at"`
 	DurationMS int64       `json:"duration_ms"`
 	Conditions *Conditions `json:"conditions,omitempty"`
+
+	// ConfigDigest, ToolVersion, and Verdict are the receipt extension
+	// (receipt.go): an entry that sets them can stand in for a check the Stop
+	// chain cannot run within its hook timeout. They are omitted when empty, so
+	// an entry written without them keeps the pre-extension JSON shape and an
+	// older reader sees nothing new.
+	ConfigDigest string `json:"config_digest,omitempty"`
+	ToolVersion  string `json:"tool_version,omitempty"`
+	Verdict      string `json:"verdict,omitempty"`
 }
 
 // Snapshot is the per-key diagnostic snapshot document persisted as one JSON
