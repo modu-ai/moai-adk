@@ -7,14 +7,21 @@ it green.
 **No criterion here depends on work this SPEC does not own** — the defect (finding N5) that caused
 the split. R6 is answered (spec.md §C.5) and R5 was resolved by *removing* scope: receipt issuance is
 A3's, so the receipt-path criteria are excluded rather than carried (spec.md §C.4, §H.4).
-`AC-AP-011` [RETIRED] and `AC-AP-012` [RETIRED] were retired at v0.1.1 and their ids are **not**
+`AC-AP-011 [RETIRED]` and `AC-AP-012 [RETIRED]` were retired at v0.1.1 and their ids are **not**
 re-used; the gap in the numbering is deliberate. Twelve criteria: AC-AP-001..010, AC-AP-013,
 AC-AP-014.
 
 The `[RETIRED]` and `[REF]` tokens above and below are the AC-counter's reserved markers, not
-decoration: without them the counter tallies these mentions as live criteria and reports 15 where
-this document claims 12. Measured with the staged-commit guard, the tally is 12 live + 2 retired +
-1 referenced.
+decoration, and their **placement inside the code span is load-bearing**: the marker must sit
+adjacent to the identifier with only spaces or tabs between, and a closing backtick breaks that
+adjacency — the token goes **inside** the code span, not after it. Measured with the canonical
+counter on this file: `live=12 excluded=3 ambiguous=0`, exit 0 — 12 live criteria, 3 excluded (2
+retired here, 1 referenced from another SPEC). Unmarked, the same file reported 15.
+
+Marking only *some* occurrences of an identifier is worse than marking none: the counter resolves
+per identifier and halts with `AMBIGUOUS` rather than emitting a count, so every occurrence of a
+retired or referenced identifier in this file carries its token — including the ones in this
+paragraph's own neighbourhood, which is how that halt was observed here before it was fixed.
 
 Every criterion is evaluated against fixtures. Per A1's required ordering (spec.md §E C4) the
 `push-develop` action is not activated until A4 lands, and a signed contract confers no autonomy
@@ -120,8 +127,8 @@ until A3 — so no criterion here asserts that any autonomy was granted.
 
 ## §D — No receipt exemption (REQ-AP-003; the withdrawn REQ-AP-006)
 
-`AC-AP-011` [RETIRED] and `AC-AP-012` [RETIRED] (receipt path allowed / forged receipt) are
-**retired**, and the transferred `AC-AE-025` [REF] is **not carried** — receipt issuance is A3's
+`AC-AP-011 [RETIRED]` and `AC-AP-012 [RETIRED]` (receipt path allowed / forged receipt) are
+**retired**, and the transferred `AC-AE-025 [REF]` is **not carried** — receipt issuance is A3's
 (spec.md §C.4, §H.4). Their ids are not re-used.
 
 The positive obligation that replaces them is already carried by **AC-AP-005**, whose fixture set
@@ -174,7 +181,7 @@ Every requirement has at least one criterion and every criterion maps one requir
 | REQ-AP-010 | AC-AP-013 |
 
 Nine live requirements, twelve criteria. Every live requirement has ≥1 criterion; every criterion
-maps exactly one requirement. `AC-AP-011` [RETIRED] / `AC-AP-012` [RETIRED] retired with
+maps exactly one requirement. `AC-AP-011 [RETIRED]` / `AC-AP-012 [RETIRED]` retired with
 REQ-AP-006.
 
 ## §H — Quality gates and Definition of Done
