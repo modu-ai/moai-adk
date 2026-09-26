@@ -474,9 +474,6 @@ func TestAC_CONTRACT_017(t *testing.T) {
 				t.Errorf("%s: verify want exit 0\n%s", id, res)
 			}
 		}
-		if n := strings.Count(res.stdout, "signature:"); n > 0 {
-			t.Logf("unexpected signature echo count %d", n)
-		}
 	})
 	t.Run("one invalid draft refuses the whole batch", func(t *testing.T) {
 		p := newContractProject(t, batchOn)

@@ -12,7 +12,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"os"
 	"slices"
 	"strings"
 	"testing"
@@ -115,10 +114,7 @@ func runContract(t *testing.T, p *signtest.Project, o contractRun, args ...strin
 	cmd.SetArgs(args)
 	err := cmd.Execute()
 	res.stdout, res.stderr = out.String(), errb.String()
-	switch {
-	case err == nil:
-		res.code = 0
-	default:
+	if err != nil {
 		if code, ok := ResolveExitCode(err); ok {
 			res.code = code
 		} else {
@@ -298,13 +294,4 @@ func receiptSigned(t *testing.T) *signtest.Project {
 		t.Fatalf("receipt sign: want exit 0\n%s", res)
 	}
 	return p
-}
-
-// readFileOrEmpty returns a project file's bytes, or nil when it is absent.
-func readFileOrEmpty(p *signtest.Project, rel string) []byte {
-	data, err := os.ReadFile(p.Path(rel))
-	if err != nil {
-		return nil
-	}
-	return data
 }
