@@ -83,7 +83,7 @@ func Observe(s config.AutonomySettings, ev Event) {
 	if !Active(s) {
 		return
 	}
-	observe(s, ev, time.Now())
+	observeInto(s, ev, time.Now(), nil)
 }
 
 // run is the per-event detector state, held under the card lock.
@@ -98,10 +98,12 @@ type run struct {
 	st    CardState
 	dirty bool
 	env   *VerifyEnv
-	head  *string
+	// checkpoint receives the on-demand checkpoint result; nil on hooks.
+	checkpoint *CheckpointResult
+	head       *string
 }
 
-func observe(s config.AutonomySettings, ev Event, now time.Time) {
+func observeInto(s config.AutonomySettings, ev Event, now time.Time, checkpoint *CheckpointResult) {
 	root, ok := FindWorktreeRoot(ev.CWD)
 	if !ok {
 		return
@@ -124,7 +126,7 @@ func observe(s config.AutonomySettings, ev Event, now time.Time) {
 		slog.Warn("escalation: card log unreadable", "card", card, "error", err)
 		return
 	}
-	r := &run{s: s, ev: ev, now: now, root: root, card: card, files: files, lg: lg}
+	r := &run{s: s, ev: ev, now: now, root: root, card: card, files: files, lg: lg, checkpoint: checkpoint}
 	defer func() {
 		if p := recover(); p != nil {
 			r.notChecked("detector", fmt.Sprintf("panic: %v", p))
@@ -178,6 +180,9 @@ func (r *run) detect() {
 			r.checkpointNotObserved()
 		}
 	}
+	if r.lg.Armed() && r.ev.Hook == HookCheckpoint && r.checkpoint != nil {
+		r.classNewAPI()
+	}
 	if r.ev.Hook == HookPostToolUse && (isWriteTool(r.ev.ToolName) || isShellTool(r.ev.ToolName)) {
 		r.classBudgetOperations()
 	}
@@ -200,7 +205,7 @@ func (r *run) checkArmed() {
 	}
 	digest := SHA256Hex(data)
 	cache := r.st.VerifyCache
-	if !r.isCommitCheckpoint() && cache != nil && cache.ContractDigest == digest {
+	if !r.isCommitCheckpoint() && r.ev.Hook != HookCheckpoint && cache != nil && cache.ContractDigest == digest {
 		if cache.State != contract.StateSignedValid {
 			r.disarm(DisarmSignatureInvalid, "cached verify: "+strings.Join(cache.Reasons, ", "))
 		}

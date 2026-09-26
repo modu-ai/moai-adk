@@ -11,9 +11,11 @@
 package escalationtest
 
 import (
+	"bytes"
 	"fmt"
 	"io"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"slices"
 	"strings"
@@ -77,6 +79,45 @@ func NewWorktreeIn(t testing.TB, parent, card string) *Worktree {
 	w.Write(".git/HEAD", "ref: refs/heads/"+Branch+"\n")
 	w.Write(".git/refs/heads/"+Branch, HeadSHA+"\n")
 	return w
+}
+
+// NewGitWorktree creates a worktree directory named card holding a real git
+// repository on branch main (for the on-demand checkpoint, which reads
+// history). Git runs with a scrubbed environment and no global or system
+// configuration.
+func NewGitWorktree(t testing.TB, card string) *Worktree {
+	t.Helper()
+	w := &Worktree{t: t, Root: filepath.Join(t.TempDir(), card), Card: card}
+	if err := os.MkdirAll(w.Root, 0o755); err != nil {
+		t.Fatalf("escalationtest: mkdir: %v", err)
+	}
+	w.Git("init", "-q", "-b", "main")
+	w.Git("config", "user.name", OperatorName)
+	w.Git("config", "user.email", OperatorEmail)
+	w.Git("config", "commit.gpgsign", "false")
+	return w
+}
+
+// Git runs git in the worktree with a scrubbed environment and returns its
+// standard output.
+func (w *Worktree) Git(args ...string) string {
+	w.t.Helper()
+	cmd := exec.Command("git", args...)
+	cmd.Dir = w.Root
+	cmd.Env = append(signtest.ScrubbedEnv(), "GIT_CONFIG_GLOBAL="+os.DevNull, "GIT_CONFIG_NOSYSTEM=1")
+	var out, errb bytes.Buffer
+	cmd.Stdout, cmd.Stderr = &out, &errb
+	if err := cmd.Run(); err != nil {
+		w.t.Fatalf("escalationtest: git %v: %v: %s", args, err, errb.String())
+	}
+	return out.String()
+}
+
+// Commit stages everything and commits with message msg.
+func (w *Worktree) Commit(msg string) {
+	w.t.Helper()
+	w.Git("add", "-A")
+	w.Git("commit", "-q", "-m", msg)
 }
 
 // Path returns the absolute path of a slash-separated worktree-relative path.
