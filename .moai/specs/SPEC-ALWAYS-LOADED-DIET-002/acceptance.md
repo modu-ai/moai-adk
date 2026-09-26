@@ -20,11 +20,11 @@
 
 ---
 
-### AC-ALD2-001 — 18파일 합계가 한도 아래
+### AC-ALD2-001 — 18파일 합계가 **구조적 하한** 아래
 
 **Given** 구현이 완료된 워크트리에서,
 **When** 경고가 세는 18개 경로에 `wc -m` 을 실행하고 `total` 줄을 읽을 때,
-**Then** 합계는 **150,000 미만**이다.
+**Then** 합계는 **171,695 미만**이다 — §AC-ALD2-001.1 이 실측 성분에서 도출한 구조적 하한이다.
 
 ```bash
 wc -m CLAUDE.md AGENTS.md \
@@ -45,7 +45,66 @@ wc -m CLAUDE.md AGENTS.md \
   .claude/rules/moai/workflow/skill-routing.md | tail -1
 ```
 
-기준선(2026-09-25, 이 트리): `246943 total`. 목표: `< 150000`.
+기준선(2026-09-25, 이 트리, ref `172ef22eb`): `246943 total` — `.moai/reports/t1175/run-baseline-pre.md`. 문턱: `< 171695`.
+
+**[개정 — 리드 판정] 종전 목표 `< 150,000` 은 이 SPEC 자신의 동결 규칙 아래서 도달 불가였다.** 수치를 지우지 않고 남긴다 — 조용히 바뀐 목표는 골대 이동과 구별되지 않는다.
+
+- 종전 문구: **Then** 합계는 **150,000 미만**이다.
+- 폐기 사유(한 줄): **150,000 은 §AC-ALD2-001.1 이 도출한 구조적 하한 171,695 보다 21,695 낮다** — 구속 조항 동결(AC-ALD2-002)을 지키는 어떤 실행도 그 아래로 내려갈 수 없으므로, 만족 가능한 문장이 아니었다.
+- **150,000 은 여전히 런타임의 한도다**(REQ-ALD2-001 · `spec.md §A`). 이 개정이 바꾸는 것은 **이 카드의 판정 문턱**뿐이고, 런타임 한도는 그대로 남아 이 카드가 닫힌 뒤에도 미달로 남는다. 그 잔여는 §AC-ALD2-001.3 이 채무로 적는다.
+
+#### §AC-ALD2-001.1 문턱의 산술 도출
+
+성분마다 명령과 출처를 붙인다. 붙지 않은 수치는 문턱이 아니라 Gap 이다(`verification-claim-integrity.md §2`).
+
+| 기호 | 값 | 무엇인가 | 명령 · 출처 |
+|---|---:|---|---|
+| `B` | 246,943 | 18파일 기준선 합계 | 위 `wc -m` 블록의 `total` — `.moai/reports/t1175/run-baseline-pre.md` |
+| `P절` | 93,641 | **M1 이 닿는** 절 단위 이동 가능 풀(L1 서문 제외) | 파일별 "구속 조항 줄이 0인 절" 자수 합 — `design.md §4.0` 표 합계 |
+| `P문단` | 170,847 | 문단 단위 비구속 풀 | `design.md §1` 표 합계(검산 74,297 + 170,847 + 1,799 = 246,943) |
+| `P_M2` | 77,206 | `= P문단 − P절`. 구속 조항과 **같은 절**에 있어 M1 이 못 닿고 M2 만 닿는 산문 | `design.md §4.0` 본문 |
+| `J` | 12,026 | M1 이 지배 관계 판단에서 **기각한** 절의 자수 합(자수가 적힌 13행) | `design.md §4.3` 기각 표 |
+| `A` | 8,489 | `AGENTS.md` 절 단위 풀 전량 — REQ-ALD2-011 이 companion 생성을 금지하므로 M1 이 못 닿는다 | `design.md §4.0` 표 행 |
+| `y` | 3,092 ÷ 28,717 = **10.77%** | M2 **실측 수율**. 하드랩된 구속 줄이 문단 전체를 동결시켜 이 값에 묶였다 | `.moai/reports/t1175/verdict.md` § Why AC-ALD2-001 fails 항 2 |
+| `R` | 8,400 `= 24 × 350` | **최소** 포인터 재유입(목적지당 한 줄로 묶었을 때) | `.moai/reports/t1175/pool-census.md` 산정 A |
+
+```
+M1 이 닿는 상한   = P절 − J − A        = 93,641 − 12,026 − 8,489 = 73,126
+M2 기저(M1 미달분) = P_M2 + J + A       = 77,206 + 12,026 + 8,489 = 97,721
+M2 가 닿는 상한   = 97,721 × 10.77%                             = 10,522
+문턱 F            = B − 73,126 − 10,522 + R
+                  = 246,943 − 73,126 − 10,522 + 8,400           = 171,695
+```
+
+느슨한 쪽 두 단계도 같은 성분으로 재현된다 — 어디서 조여졌는지 보이도록 함께 적는다.
+
+| 단계 | 쓰는 풀 | 문턱 | 종전 목표 150,000 과의 관계 |
+|---|---|---:|---|
+| `F₀` census 만 | 106,148(`pool-census.md`, 조건 1 전용, L1 서문 포함) | **149,195** | 150,000 이 **805 위** — 이 단계만 보면 도달 가능해 보였다 |
+| `F₁` + 입도 정정 · M2 수율 | 93,641 / 77,206 | **153,389** | 150,000 이 **3,389 아래** |
+| **`F₂ = F`** + 기각 실측 · `AGENTS.md` | 73,126 / 97,721 | **171,695** | 150,000 이 **21,695 아래** |
+
+**F 가 무엇의 하한인지 — 읽는 방향을 못 바꾸게 적어 둔다.** F 는 **풀 상한을 뒤집은 값**이다. "이보다 낮은 합계는 구조상 불가능하다"를 말하고, **"F 까지는 갈 수 있다"를 말하지 않는다.** 그래서 `< F` 는 통과 조건이면서 **교차 검사**다 — 합계가 F 밑으로 내려갔다면 풀이 허용하는 양보다 많이 제거됐다는 뜻이고, 그것은 동결 대상이 사라졌다는 신호다(AC-ALD2-002 와 대조할 자리).
+
+#### §AC-ALD2-001.2 이번 실행의 판정
+
+측정값 `197897 total`(`.moai/reports/t1175/verdict.md` 증거 표, 같은 18파일 `wc -m`). 감축 49,046.
+
+**판정: FAIL — F 를 26,202 초과한다**(197,897 − 171,695).
+
+문턱을 달성분 197,897 에 맞추지 않는다. 그렇게 적으면 구성상 반드시 통과하므로 아무것도 재지 않는다. 미달은 미달로 적는다.
+
+#### §AC-ALD2-001.3 이 문턱이 업고 있는 Gap — 허용 풀은 측정되지 않았다
+
+[HARD] F 의 M1 항은 **조건 1 기준 풀에서 실측 기각분만 뺀 값**이다. `plan.md §C` M1 의 **조건 2(역방향 인용) · 조건 3(목적지 `paths:` 도달) · 조건 4(목적지 40,000자 수용량)** 은 각각 풀을 더 줄이는데, 줄어드는 양은 **이 카드에서 측정되지 않았다.** 재려면 절마다 앵커 스윕과 목적지 수용량을 다시 걸어야 하고, 그것이 M1 을 처음부터 다시 하는 일이다(`pool-census.md § Gaps`).
+
+정리하면 허용 풀 `A_adm` 에 대해 **`A_adm ≤ 73,126`** 만 확립됐고, `A_adm` 자체는 미측정이다. 귀결 셋:
+
+- 참 하한은 **F 이상**이며, 얼마나 위인지는 모른다.
+- §AC-ALD2-001.2 의 초과분 26,202 는 그 미측정 구간과 **구별되지 않는다.** 노력 부족으로도 구조적 불가로도 **확립되지 않았다** — 어느 쪽이라고 적으면 관측 없는 주장이다.
+- 판정을 닫는 유일한 길은 조건 2·3·4 를 실측해 `A_adm` 을 확정하는 것이고, 그것은 **후속 카드**다.
+
+기각 표 18행 중 **5행은 자수가 적혀 있지 않다**(`cache-aware-execution.md` L1 서문 마지막 문장 · `kanban-dispatch.md` 의 2항목 · 같은 파일 Factory 문단 · `CLAUDE.md §9` 의 `@` import 2줄 · `AGENTS.md` 전 절). `J = 12,026` 은 그 다섯을 0 으로 세므로 **과소계상**이고, 그 방향은 F 를 **낮춘다** — 즉 F 는 이 축에서도 보수적이다.
 
 ---
 
@@ -99,22 +158,108 @@ grep -rhE '\[HARD\]|MUST|shall ' CLAUDE.md AGENTS.md \
 
 ---
 
-### AC-ALD2-003 — template ↔ live 미러 동등
+### AC-ALD2-003 — template ↔ live 미러: **이 카드가 만든 구조 변경 중 미미러 0건**
 
-**Given** 이 SPEC 이 수정한 룰 파일 목록이,
-**When** 각 파일에 대해 라이브 사본과 템플릿 사본을 `diff` 할 때,
-**Then** 모든 쌍이 차이 0 이다. 특히 `skill-routing.md` 의 템플릿 사본은 라이브와 동일한 `paths:` frontmatter 를 갖는다.
+**Given** 이 SPEC 이 건드린 라이브 룰 파일과 그 템플릿 사본의 쌍 전체가,
+**When** 쌍마다 **hunk 단위**로 아래 §AC-ALD2-003.1 의 열거된 허용 분기 클래스에 대고 분류할 때,
+**Then** **분류 불가(UNCLASSIFIED) hunk 가 0 건**이다. 그리고 `skill-routing.md` 의 템플릿 사본은 라이브와 동일한 `paths:` frontmatter 를 갖는다.
 
 **판정 대상에서 `CLAUDE.md` 는 제외된다.** 두 사본에는 이 카드보다 앞선 의미 분기가 있고(라이브 루트가 낡은 쪽 — `spec.md §D`), 그 해소는 별도 카드다. 제외는 **범위 결정이지 두 사본이 일치한다는 주장이 아니다** — `CLAUDE.md` 의 두 사본은 각각 독립적으로 감축되고, 각각 AC-ALD2-002 의 구속 조항 동결을 지킨다.
 
+**[개정 — 리드 판정] 종전 문구 `모든 쌍이 차이 0` 은 어떤 실행으로도 만족 불가였다.** 수치·문구를 지우지 않고 남긴다.
+
+- 종전 문구: **Then** 모든 쌍이 차이 0 이다.
+- 폐기 사유(한 줄): **템플릿 중립성이 금지하는 내용을 라이브 사본은 정당하게 담으므로**(`CLAUDE.local.md §2.1` · CI 가드 `.github/workflows/template-neutrality-check.yaml` · 카탈로그 `.moai/docs/template-internal-isolation-doctrine.md §25.1`), `diff` 0 과 중립성은 동시에 성립할 수 없었다 — 기준선 ref `172ef22eb` 에서 이미 30쌍 중 **11쌍이 그 사유로 분기**해 있었다(`.moai/reports/t1175/verdict.md`).
+
+#### §AC-ALD2-003.1 판정 명령
+
+두 단계로 나눈다(워크트리 격리 가드가 git 을 낀 복합문을 거부하므로).
+
 ```bash
-for f in $(git diff --name-only HEAD~1 -- '.claude/rules/moai/**' | sed 's|^\.claude/|internal/template/templates/.claude/|'); do :; done
-# 실제 판정: 수정한 룰마다
-diff .claude/rules/moai/<path> internal/template/templates/.claude/rules/moai/<path> && echo OK
-head -4 internal/template/templates/.claude/rules/moai/workflow/skill-routing.md   # paths: 존재 확인
+# 1단계 — 건드린 라이브 룰 목록
+git diff --name-only 172ef22eb HEAD -- '.claude/rules/moai/' > touched.txt   # 이 실행: 30행
+
+# 2단계 — 쌍마다 hunk 분류. 라이브 쪽이 허용 클래스 토큰을 담고 템플릿 쪽이 담지 않으면 PERMITTED,
+#          그 밖의 hunk 는 UNCLASSIFIED. UNCLASSIFIED 가 1건이라도 있으면 FAIL.
+while read -r f; do
+  diff "$f" "internal/template/templates/$f"
+done < touched.txt
+# 각 변경 hunk 를 §AC-ALD2-003.2 표의 정규식에 대고 분류한다.
+
+# 3단계 — skill-routing.md frontmatter
+head -4 internal/template/templates/.claude/rules/moai/workflow/skill-routing.md
 ```
 
-기준선: 현재 `skill-routing.md` 템플릿 사본에는 frontmatter 가 **없다**(실측 확인됨). 목표: 라이브와 동일.
+**분류는 줄 단위가 아니라 hunk 단위다.** 중립성 편집은 §25.2 의 `Forbidden 예시 → Allowed Substitution 예시` 표와 같은 **치환 쌍**으로 나타나므로, 라이브 줄에 금지 토큰이 있고 그 자리를 메운 템플릿 줄에는 없는 것이 정상이다. 줄 단위로 세면 그 템플릿 줄이 "토큰이 없다"는 이유로 미분류가 되어, 정상 치환이 FAIL 로 읽힌다.
+
+#### §AC-ALD2-003.2 허용 분기 클래스 — 열거이며 열린 문이 아니다
+
+[HARD] 아래 16개 클래스 **밖의 분기는 전부 FAIL 이다.** "중립성 관련"이라는 포괄 항목을 두지 않는다 — 그런 항목은 무엇이든 통과시키므로 판정 표면이 사라진다.
+
+**N군 — 내부 흔적 제거**(`.moai/docs/template-internal-isolation-doctrine.md §25.1` 의 금지 클래스 C1-C8, 그리고 `internal/template/template_neutrality_audit_test.go` 의 이진 CI 클래스):
+
+| 클래스 | 카탈로그 근거 | 라이브 쪽 정규식 |
+|---|---|---|
+| `N1-spec-id` | §25.1 금지 1 (SPEC ID) | `SPEC-[A-Z0-9][A-Z0-9-]*-[0-9]{3}` · 맨명사 `SPEC ID` |
+| `N2-req-token` | §25.1 금지 2 (REQ 토큰) | `REQ-[A-Z0-9]` · 맨명사 `REQ token` |
+| `N3-ac-token` | §25.1 금지 3 (AC 토큰) | `\bAC-[A-Z0-9][A-Z0-9-]*[0-9]` · 맨명사 `AC token` |
+| `N4-audit-citation` | §25.1 금지 4 (audit 인용) | `[Aa]udit [0-9]` · `Finding [A-Z][0-9]` · `plan-audit` · `sync-audit` · `iter[0-9]` |
+| `N5-internal-date` | §25.1 금지 5 (내부 날짜) | `20[0-9]{2}-[0-9]{2}-[0-9]{2}` |
+| `N6-internal-path` | §25.1 금지 6 (내부 archive 경로) | `\.moai/(backups\|reports\|specs\|state)/` |
+| `N7-commit-sha` | §25.1 금지 7 (커밋 SHA) | `\b[0-9a-f]{9,40}\b` |
+| `N8-memory-ref` | §25.1 금지 8 (memory 참조) | `feedback_` · `~/\.claude/projects/` |
+| `N9-macos-path` | CI 이진 클래스 `C1-macos-bias-path` | `/Users/` |
+| `N10-claude-local` | CI 이진 클래스 `C5-claude-local-ref` | `CLAUDE\.local\.md` |
+| `N11-pr-number` | CI 이진 클래스 `C6-pr-number-ref` | `PR #[0-9]+` |
+| `N12-card-id` | §25.1 금지 1-3 과 같은 종류의 내부 추적 식별자 | `\bcard t[0-9]+\b` · `\bt[0-9]{3,4}\b` |
+| `N13-section-ref` | §25.1 금지 4 의 내부 절번호 인용 형태 | `§[0-9A-Z]` |
+
+**G군 — 템플릿 일반화**(§25.1 **허용** 클래스 3 "도메인-중립적 예시", 그리고 `CLAUDE.local.md §15` 16개 프로그래밍 언어 중립성):
+
+| 클래스 | 근거 | 라이브 쪽 정규식 / 판정 |
+|---|---|---|
+| `G1-lang-specific` | §15 (Go 편향 금지) | `\bgo test\b` · `golangci-lint` · `gofmt` · `\bgo vet\b` · `\binternal/` · `coverage [0-9]` · `[0-9]{2}% of statements` |
+| `G2-moai-cli-internal` | §25.1 허용 3 | `moai spec ` · `moai cg\b` · `moai migrate` · `moai hook ` · `moai integration ` |
+| `G3-template-self-ref` | 템플릿 사본이 자기를 "template" 으로 지칭하지 않는다 | 라이브 쪽에만 `\btemplate\b` |
+| `G4-live-only-referent` | 템플릿 트리에 없는 파일은 가리킬 수 없다 | 라이브 쪽이 지목한 `.md` 가 `internal/template/templates/` 아래에 **부재**(파일 존재 검사, 정규식 아님) |
+| `G5-moai-domain-term` | §25.1 허용 3 | `frontmatter` · `lifecycle drift` · `Mx-close` · `close debt` · `codification` |
+
+공백만 다른 hunk 는 `whitespace-only` 로 통과한다. 템플릿 쪽에만 줄이 **추가된** hunk(`insert`)는 어떤 N·G 클래스로도 통과하지 못한다 — 원본에 없던 내용을 사본이 획득한 것이므로 AC-ALD2-008 과 같은 축이다.
+
+#### §AC-ALD2-003.3 승계된 분기(inherited divergence) 취급
+
+[HARD] 쌍의 분기 줄 수가 **오른** 것은, 늘어난 줄이 **(i) 그 자체로 허용 클래스에 속하고 (ii) 내용이 옮겨 온 원본 파일에서 기준선 ref `172ef22eb` 에 이미 분기해 있던 것**일 때에만 허용된다. **두 조건을 모두** 만족해야 한다 — (ii)만으로는 부족하다. 재배치는 기존 분기를 목적지로 **운반**하는데, 운반된 것이 중립성 사유가 아닌 실질 분기라면 이 카드가 그것을 **새 자리로 퍼뜨린** 것이기 때문이다.
+
+검토자가 (ii)를 확립하는 방법:
+
+```bash
+git show 172ef22eb:<원본-라이브-경로> > /tmp/base-live.md
+git show 172ef22eb:internal/template/templates/<원본-라이브-경로> > /tmp/base-tmpl.md
+diff /tmp/base-live.md /tmp/base-tmpl.md     # 늘어난 줄이 이 출력에 있으면 (ii) 성립
+```
+
+이 실행에서 분기 줄 수가 오른 쌍 셋이 그 표본이다(`.moai/reports/t1175/verdict.md` 실측):
+
+| 쌍 | 기준선 → 현재 | (i) 허용 클래스 | (ii) 원본 선존 | 판정 |
+|---|---|---|---|---|
+| `cross-session-messaging.md` | 2 → 6 | 충족 | 충족 | 허용 |
+| `cross-session-messaging-detail.md` | 8 → 9 | 충족 | 충족 | 허용 |
+| `main-checkout-branch-guard-detail.md` | 11 → 16 | **미충족** | 충족 | **FAIL** |
+
+#### §AC-ALD2-003.4 이번 실행의 판정
+
+```
+$ git diff --name-only 172ef22eb HEAD -- '.claude/rules/moai/' | wc -l
+30
+$ # hunk 분류 (§AC-ALD2-003.2 표 적용)
+TOTAL hunks=37 unclassified=3
+```
+
+**판정: FAIL — UNCLASSIFIED 3건, 전부 `main-checkout-branch-guard-detail.md` 한 쌍에.** 원인 하나다: 템플릿 사본이 `moai cc -w <name>` 대신 맨 `git worktree add -b <branch> <worktree-path> origin/main` + `git -C <worktree-path> push -u origin <branch>` 를 지시한다 — 배포되는 독트린이 금지하는 절차다. 기준선 ref 에서 stub 38행이 이미 같은 방향으로 분기해 있었고(`moai cc -w` 對 `git worktree add -b`), 이 카드의 재배치가 그 분기를 companion 으로 옮겼다. §AC-ALD2-003.3 의 (i)을 만족하지 않으므로 승계로도 면제되지 않는다.
+
+**나머지 29쌍은 전부 통과한다** — 37 hunk 중 34 hunk 가 열거된 클래스로 분류된다. `skill-routing.md` 은 3 → **0**(기준선에서 템플릿 사본에 frontmatter 가 없었고, 이제 라이브와 동일한 `paths:` 를 갖는다). **이 카드가 만든 구조 변경 중 미미러는 0건**이며, 유일한 FAIL 은 **운반된 선존 결함**이다.
+
+수리는 이 카드의 손댈 범위 밖이다(SPEC 산출물만 편집한다). `.moai/reports/t1175/verdict.md § Residual risk` 가 이미 후속으로 적어 둔 항목이며, 후속 카드가 템플릿 사본의 그 절차를 `moai cc -w` 로 되돌린다.
 
 ---
 
@@ -255,7 +400,7 @@ find .claude/rules/moai -name '*.md' -exec wc -m {} + \
 - **(b) 목록 길이가 4를 넘으면 FAIL** (REQ-ALD2-016). 래칫이며, 어떤 경로로 늘었든 무관하다.
 - **(c) 위 4개가 그대로 남아 있는 것은 PASS 다** (REQ-ALD2-015 — `spec.md §D`). 이 카드는 넷을 수리하지 않고 **악화만 금지**한다. 넷이 줄어드는 것은 당연히 PASS 이며, 이 카드가 그것을 목표로 삼지 않을 뿐이다.
 
-**이 AC 는 AC-ALD2-001 과 독립이다.** 합계가 150,000 아래여도 파일 하나가 40,000을 넘으면 FAIL 이고, 그 역도 같다. 두 축을 한 기준에 접지 않는 이유는 계량기가 서로 다르기 때문이다 — 합계는 Claude Code 런타임이, 파일당은 `moai hook instructions-loaded` 가 잰다(`spec.md §A` 표).
+**이 AC 는 AC-ALD2-001 과 독립이다.** 합계가 AC-ALD2-001 의 문턱(171,695) 아래여도 파일 하나가 40,000을 넘으면 FAIL 이고, 그 역도 같다. 두 축을 한 기준에 접지 않는 이유는 계량기가 서로 다르기 때문이다 — 합계는 Claude Code 런타임이, 파일당은 `moai hook instructions-loaded` 가 잰다(`spec.md §A` 표).
 
 **이 AC 가 통과해도 확립되지 않는 것**: 40,000 미만이라는 사실은 그 파일이 **적절한 크기**라는 뜻이 아니다. 한도는 상한이지 목표가 아니며, 39,207자로 끝나는 파일(`design.md §2.2` 의 `agent-common-protocol-reference.md`)은 여유가 793자뿐이라 다음 카드가 조금만 더해도 다시 넘긴다.
 
@@ -335,7 +480,9 @@ AC-ALD2-002 의 동결 해시는 구속 *줄*을 지킨다. 그 줄을 **범위 
 
 iter3 감사가 지목한, 작성자가 공개하지 않았던 잔여다. **재유입은 문자량이 아니라 절 개수에 비례한다** — 포인터 줄은 옮긴 절마다 하나씩 생기지, 옮긴 문자 1,000자마다 하나씩 생기지 않는다. 그런데 §3.1 의 파일별 율은 `포인터 자수 ÷ companion 자수` 로 정의돼 있어, **기존 분리의 절 입도를 대리 변수로 암묵 가정**한다. 이 카드의 분리가 기존보다 잘게 쪼개면 절 수가 늘어 재유입이 율보다 커지고, 굵게 쪼개면 작아진다.
 
-감사는 이것이 판정까지 살아남지 않는다고 봤고 동의한다 — AC-ALD2-001 은 **실제 합계**를 재지 추정을 재지 않으며, 여유 11,238 이 흡수한다. §3.3 민감도 표의 ×1.5·×2.0 행이 이 축의 변동도 함께 덮는다.
+감사는 이것이 판정까지 살아남지 않는다고 봤고, **판정 축에 대해서는** 지금도 그렇다 — AC-ALD2-001 은 **실제 합계**를 재지 추정을 재지 않는다. 다만 종전에 여기 적혀 있던 근거는 폐기됐다.
+
+> **[개정 — 리드 판정]** 종전 문장은 "여유 11,238 이 흡수한다"였다. 그 여유는 `design.md §3.3` 의 투영을 **종전 목표 150,000** 에 대고 뺀 값이고, 그 목표가 §AC-ALD2-001.1 에서 도달 불가로 확정되면서 **여유 자체가 정의되지 않는 수치가 됐다.** 지금 이 잔여를 흡수하는 것은 예산 여유가 아니라 **문턱의 보수성**이다 — F 는 §AC-ALD2-001.3 이 적은 두 방향(허용 풀 미측정, 기각 5행 과소계상)에서 낮은 쪽으로 잡혀 있고, 입도 변동이 재유입을 키우면 합계가 올라 F 에서 더 멀어질 뿐 F 를 아래로 깨지 않는다. 즉 이 잔여는 통과를 위태롭게 하는 방향으로 작용하지 않는다.
 
 **적어 두는 이유**: 이 잔여는 투영을 약화시키지 않고 **정직성을 강화한다.** §3.1 은 이미 "실측률은 하한"이라고 적었는데, 그 근거로 든 것은 분모 오염 하나뿐이었다. 입도는 **하한을 만드는 두 번째 기제**이며, 한계를 밝힌 공개가 그 한계의 일부만 예시하면 나머지에 대해 거짓 안심을 준다 — §D.3 이 방향 1 만 예시해 방향 2 를 놓쳤던 것과 같은 모양이다.
 
