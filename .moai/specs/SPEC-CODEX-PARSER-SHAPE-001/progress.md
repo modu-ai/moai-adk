@@ -66,6 +66,26 @@
   implemented (manager-develop) — resolving the blocker reported in §E.2.
   (3) AC-CPS-014 (d): one live codex review call is authorized for the live
   observation.
+- 2026-09-26 · spec v0.2.4 (manager-spec, card t1203): the candidate (b)
+  native disambiguation mechanism authored per decision (2) of the run-resume
+  entry above — resolving the AC-CPS-004 BLOCKED row of §E.2. REQ-CPS-005
+  amended in place: the native review request pins its output format (the (d)
+  family, REQ-CPS-012, applied to the native request), the no-recognized-
+  signal fall-through on native downgrades to `inconclusive`, the target the
+  request reviews is unchanged, and the live-honours-the-pin claim carries
+  the same live-observation burden REQ-CPS-012 states. AC-CPS-004 amended in
+  place with two-cell adoption: RED-now re-executed on this tree `0ff644530`
+  via the committed fixture test (`N1`/`N2` review/start = `pass`/0 observed —
+  the silent pass the mechanism removes; turn/start lines the positive
+  control), green path = plan.md M4, mutant probe sharpened the criterion
+  (M-A pinned-pass class, M-B prose-token keying). AC-CPS-016 added: the
+  pinned native format observed in live output — regression-guard, pending
+  its OWN operator authorization (the authorized AC-CPS-014 call is
+  adversarial-only; the orchestrator surfaces the native-call question).
+  AC-CPS-008 gains a scope note (its guard fixture bodies state the pinned
+  line; assertion unchanged). REQ 15 / AC 16. Implementation is M4's
+  (manager-develop); this amendment establishes nothing about whether live
+  codex honours the pin.
 
 ## §E.2 Run-phase Evidence
 

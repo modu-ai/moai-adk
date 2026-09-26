@@ -14,6 +14,11 @@
 > v0.2.2 (card t1203): repair of plan-audit iter-2 defects
 > (`.moai/reports/t1203/plan-audit-iter2.md`). Wording and check commands only;
 > the four-axis wording in §C (M0 scope) and §G anti-pattern 8 is corrected (N1).
+>
+> v0.2.4 (card t1203): M4 added — the implementation milestone for candidate
+> (b)'s native disambiguation mechanism (spec.md REQ-CPS-005 as amended;
+> acceptance.md AC-CPS-004 two-cell), authorized by the operator run-resume
+> decision recorded in progress.md §E.1.
 
 ## §A Context
 
@@ -45,7 +50,8 @@ run produced a parsed finding (t1203 §1–§3; spec.md §A.6).
    it as the defect — and it is the operator's (spec.md §C.1).
 3. **The disambiguation problem** (verdict.md §E4): on native, a clean review
    (V9) and a shape-changed review (V2–V6) are indistinguishable to the parser,
-   so (b) cannot be extended to native as-is.
+   so (b) cannot be extended to native as-is. v0.2.4: the mechanism is now
+   specified (REQ-CPS-005's native format pin); M4 implements it.
 4. **V8** (verdict.md §E3): verdict survives, findings empty, both modes. **As
    the parser currently stands, neither (a) nor (b) detects it** — the measured
    §E3 state, and not a claim about the direction (a): a widening under (a) does
@@ -240,7 +246,10 @@ AC-CPS-013 and returns them to release-blocking (acceptance.md §C.1).
 
 For (b), the disambiguation mechanism of REQ-CPS-005 is part of M2, not a
 prerequisite assumed to exist: without it, extending (b) to native turns a
-genuine clean review into `inconclusive` (verdict.md §E4).
+genuine clean review into `inconclusive` (verdict.md §E4). v0.2.4: the (b)
+implementation itself now lives in M4 below — M2 closed the other three
+candidates with (b) BLOCKED pending this mechanism's authoring
+(`progress.md` §E.2).
 
 Closes the AC matching the selected candidate(s): AC-CPS-004 / AC-CPS-005 /
 AC-CPS-006 / AC-CPS-012 / AC-CPS-013 / AC-CPS-014, plus AC-CPS-011 where #1718 is
@@ -252,6 +261,64 @@ Regression coverage for the properties no candidate may break: the clean-review
 native path stays `pass` (AC-CPS-008), the adversarial path is unchanged
 (AC-CPS-009 — applies as written only if the operator keeps REQ-CPS-010), the exact-count assertions remain exact (AC-CPS-007), and
 `next_steps` is untouched (AC-CPS-010).
+
+### M4 — implement candidate (b): the native format pin and the downgrade
+
+Added in v0.2.4, on the operator's run-resume decision (progress.md §E.1). It
+implements REQ-CPS-005 as amended and closes AC-CPS-004. It is numbered after
+M3 because M3's commit (`54fe08135`) is already in the run record — renumbering
+would break the recorded SHAs — not because it is mechanical; it carries M2's
+decision weight and runs under the same RED-GREEN-REFACTOR discipline
+(cycle_type=tdd), one commit, no push, no amend.
+
+1. **Feasibility preflight — blocker path named.** The native request
+   (`buildCodexReviewParams`, `codexMethodReviewStart`) carries `threadId` and
+   `target` and no prompt; the `custom` target variant is the only variant
+   whose measured schema documents an instructions field, and substituting it
+   changes WHAT is reviewed — the silent-other-review shape
+   (`coerceCodexReviewTarget`'s comment). First establish a carrier for the
+   format instruction on the native request surface that does not change the
+   target variant (REQ-CPS-005's "without changing which changes the request
+   asks codex to review"). If the measured request surface admits no such
+   carrier, STOP and return a blocker report naming the measured rejection;
+   substituting the `custom` variant to carry the pin is not an implementation
+   of this milestone.
+2. **RED.** Extend the tests before implementing: (i) a pinned-format
+   recognition test mirroring `TestCodexAdversarialFormat_IsRecognized`,
+   sharing the pin constants with the request builder; (ii) the downgrade
+   case — a no-signal native body yields `inconclusive` (the committed
+   witnesses are the fixture test's N1/N2 review/start rows, measured `pass`/0
+   on tree `0ff644530`, AC-CPS-004's RED-now); (iii) the pass case — a body
+   stating the pinned `Verdict: pass` line yields `pass`. Capture the failing
+   output verbatim before GREEN.
+3. **GREEN.** Implement the pin constants and their injection into the native
+   request, and change the native fall-through (`codexUnrecognizedVerdict`)
+   to return `inconclusive`. The `(reviewText, method)` signature of
+   `synthesizeReviewOutput` is load-bearing (its NOTE) and stays.
+4. **Guard fixture update — AC-CPS-008's witness, not a relaxation.**
+   `TestGuard_CleanNativeReviewStaysPass`'s fixture bodies state the pinned
+   `Verdict: pass` line; the assertion (`pass`/0, no contradiction) is
+   unchanged (AC-CPS-008's scope note). The fixture test's N1/N2 expected rows
+   move to `inconclusive` on review/start — the same test already moved to
+   AC-CPS-012's values after (a) (AC-CPS-011 check 1 selector note); the
+   before/after rows are recorded. `internal/cli/codex_findings_parse_test.go`
+   is NOT touched (AC-CPS-007).
+5. **Mutant and guard checks.** Execute the two AC-CPS-004 mutants live and
+   record command and output: (M-A) drop the pinned-pass class — the pass-case
+   guard must fail; (M-B) key the downgrade on the word `fail` — the
+   downgrade case whose body avoids the word must fail. Re-run the fixture
+   selector (S1/S2/S2p unchanged; N1/N2 review/start → `inconclusive`) and
+   the guard selector.
+6. **Files.** `internal/cli/mcp_codex.go` (pin constants, native request
+   injection, fall-through); `internal/cli/codex_parser_shape_guards_test.go`
+   (fixture bodies); `internal/cli/codex_1718_fixtures_test.go` (N1/N2
+   expected rows); a new/adjoining test file for the pin recognition test.
+   Nothing else.
+
+Closes AC-CPS-004. AC-CPS-016 stays open — its live native call needs its own
+operator authorization (acceptance.md AC-CPS-016, Authorization), and the
+orchestrator surfaces that question; M4 itself establishes nothing about
+whether live codex honours the pin.
 
 ## §G Anti-patterns
 

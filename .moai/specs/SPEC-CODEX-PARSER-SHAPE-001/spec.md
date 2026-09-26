@@ -1,7 +1,7 @@
 ---
 id: SPEC-CODEX-PARSER-SHAPE-001
 title: "codex review parser — output-shape coupling and its silent failure"
-version: "0.2.3"
+version: "0.2.4"
 status: in-progress
 created: 2026-09-20
 updated: 2026-09-26
@@ -69,6 +69,25 @@ tags: "codex, review-parser, shape-coupling, silent-pass, verdict-findings-contr
   selector's change of meaning after (a) is recorded. Wording only — no
   requirement changed, no candidate decision; REQ and AC counts unchanged
   (15 / 15).
+- 2026-09-26 · v0.2.4 · manager-spec · The candidate (b) native disambiguation
+  mechanism is authored into the SPEC, per the operator run-resume decision
+  recorded in `progress.md` §E.1 (decision taken at worktree `52ab653c8`; the
+  record commit is `f1bd21fc4`), resolving the AC-CPS-004 BLOCKED row of
+  `progress.md` §E.2. REQ-CPS-005 is amended in place: the native review
+  request pins its output format — the (d) family (REQ-CPS-012) applied to the
+  native request — so that a body stating `pass` in the pinned form is
+  distinguishable from a body carrying no recognized signal, which the native
+  fall-through downgrades to `inconclusive`; the target the request reviews is
+  unchanged; and the claim that live native codex honours the pin rests on a
+  recorded live observation (AC-CPS-016, new). AC-CPS-004 is amended in place
+  with two-cell adoption content — its RED-now was re-executed on tree
+  `0ff644530` through the committed fixture test and is quoted verbatim in
+  acceptance.md — and with the mutant probe that sharpened it. AC-CPS-008
+  carries a scope note: its guard fixture bodies state the pinned verdict
+  line, so the guard keeps testing REQ-CPS-009 as written. REQ count unchanged
+  (15); AC count 15 → 16. No figure is introduced that is absent from the
+  evidence files; the one new observation (the RED-now run) is recorded
+  verbatim in acceptance.md.
 
 ---
 
@@ -140,7 +159,9 @@ establish four facts that this SPEC rests on.
    In native mode, a bullet-less body means codex found nothing to block on. A
    genuinely clean review (V9) and a shape-changed review (V2–V6) are
    indistinguishable to the parser. Candidate (b) therefore cannot be extended to
-   native without a prior disambiguation mechanism.
+   native without a prior disambiguation mechanism. (Specified as of v0.2.4:
+   REQ-CPS-005's native format pin — the (d) family applied to the native
+   request.)
 4. **V8 is the sharpest cell.** A body that changed bullet shape but still
    carries a `Verdict: fail` line yields verdict `fail` with `findings=0` in
    **both** modes. The gate blocks correctly while the review content is silently
@@ -383,10 +404,49 @@ selected candidate.
 
 ### Behavioural requirements, conditional on the selected candidate
 
-**REQ-CPS-005** — Where candidate (b) is selected, the native review path shall
-distinguish a body carrying no recognized signal because codex found nothing to
-block on from a body carrying no recognized signal because its shape was not
-recognized, before any body is downgraded from `pass`.
+**REQ-CPS-005** — Where candidate (b) is selected, the native review request
+shall specify an output format the recognizers of §A.2 accept — a first-line
+verdict statement in the form `codexStatedVerdict` reads, and findings as
+bracketed-severity bullets — without changing which changes the request asks
+codex to review; and the native review path shall distinguish, before any body
+is downgraded from `pass`, a body that states `pass` in that pinned form —
+codex found nothing to block on, and it remains `pass` — from a body carrying
+no recognized signal — its shape was not recognized, or the pin was not
+followed — which the native fall-through reports as `inconclusive` rather than
+as a silent `pass`.
+
+> **Mechanism note (v0.2.4).** The disambiguation rides on what the request
+> asks for, because §E4 (t1053 verdict) records that V9 and V2–V6 are
+> byte-indistinguishable to a parser that reads the body alone. The mechanism
+> is the (d) family (REQ-CPS-012) applied to the native request: once the
+> request names the format, `Verdict: pass` is a recognized signal
+> (`codexStatedVerdict` already reads it), so the pinned clean review never
+> reaches the fall-through. The input classes and their outcomes:
+>
+> - **V1 and the (a)-widened shapes** — recognized before and after; unchanged
+>   (REQ-CPS-007, AC-CPS-006).
+> - **V9, following the pin** — states `Verdict: pass`; recognized; stays
+>   `pass`. This is REQ-CPS-009's protected class.
+> - **V2–V6-class bodies carrying no recognized signal on native** —
+>   downgraded from silent `pass` to `inconclusive`. The review text remains
+>   in `Summary` verbatim, so the content is lost from `findings` only, never
+>   from the output.
+> - **Bodies whose prose states FAIL in a shape no recognizer reads** — the
+>   same downgrade. Making the FAIL recognizable is (a)'s work, already landed
+>   for the measured shapes.
+>
+> **Failure mode (stated, not hidden).** A body that ignores the pin —
+> including a genuinely clean review — carries no recognized signal and is
+> downgraded. The downgrade is therefore only as sound as the live evidence
+> behind the pin. The fall-through is keyed on the absence of a recognized
+> signal, and on nothing in the prose: no token (the word `fail`, a severity
+> word, a greeting) may key it.
+>
+> **Live burden.** The claim that the live native review honours the pinned
+> format shall rest on a live observation recorded verbatim (AC-CPS-016), not
+> on a fixture, not on a test compiled from this tree, and not on reading the
+> request text — the same exclusions REQ-CPS-012 states for the adversarial
+> pin.
 
 **REQ-CPS-006** — Where candidate (c) is selected, when a synthesized review
 output carries a blocking verdict together with an empty findings list **and no
@@ -425,6 +485,15 @@ exact count is the measured defence against partial shape drift (§A.5).
 
 **REQ-CPS-009** — A review body carrying no findings because codex found nothing
 to block on shall not be reported as `inconclusive` on the native path.
+
+> **Scope note (v0.2.4; not a revision).** With the REQ-CPS-005 mechanism, the
+> way a native review states "nothing to block on" is the pinned verdict line,
+> and this requirement binds every body that states `pass` in that form. A body
+> that ignores the pin states nothing recognizable; (b) downgrades it. That
+> downgrade is the mechanism's stated failure mode, not a breach of this
+> requirement — and it is why AC-CPS-016's live observation is load-bearing.
+> The AC-CPS-008 guard's fixture bodies state the pinned line, so the guard
+> keeps testing this requirement as written.
 
 **REQ-CPS-010** — The adversarial path's existing behaviour for an unrecognized
 body shall not change; it already returns `inconclusive` (verdict.md §E3), and no
@@ -495,6 +564,12 @@ Trade-offs:
   v0.2.0: "nothing to do there" describes the mechanism, not its adequacy — the
   adversarial `inconclusive` that (b) already produces is the output #1718
   reports as the defect (t1203 §4; §C.1).
+  v0.2.4: the native disambiguation mechanism is now specified — REQ-CPS-005
+  pins the native request's output format, the (d) family applied to the native
+  request. Its coverage stays in the "Inferred" column until the remedy runs
+  (plan.md §F M4) and the live native observation (AC-CPS-016) exists; the
+  mechanism's stated failure mode is the downgrade of a clean review whose
+  body ignores the pin. No count in the table above changes: nothing has run.
 - **(c)** keys on `verdict == fail && len(findings) == 0 && GateUnmet == ""` — a
   state that is self-contradictory whatever the body looks like.
 

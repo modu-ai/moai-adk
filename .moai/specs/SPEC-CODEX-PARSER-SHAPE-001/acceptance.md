@@ -34,6 +34,16 @@
 > changed; the criterion count is unchanged (15). The M3/M4 rows of the mutant
 > table cite one further local record, `.moai/reports/t1203/run/n7-spec-v023.log`
 > (tree `264d1d163`).
+>
+> v0.2.4 (card t1203): the candidate (b) native disambiguation mechanism is
+> authored into the SPEC (REQ-CPS-005 as amended), resolving the AC-CPS-004
+> BLOCKED row of `progress.md` §E.2 per the operator run-resume decision.
+> AC-CPS-004 is amended in place with its two-cell adoption content — RED-now
+> re-executed on tree `0ff644530` through the committed fixture test, quoted
+> verbatim — and the mutant probe that sharpened it. AC-CPS-016 is added (the
+> pinned native format observed in live output; regression-guard, pending its
+> own operator authorization). AC-CPS-008 carries a scope note. Criterion
+> count 15 → 16.
 
 ## §A Gating criteria — satisfied BEFORE run-phase entry
 
@@ -162,15 +172,127 @@ recorded as not-applicable with the selection as the reason.
 
 ### AC-CPS-004 — candidate (b): native disambiguation before downgrade
 
-**Given** candidate (b) is selected,
-**When** the native path receives a body carrying no recognized signal,
-**Then** the implementation distinguishes "codex found nothing to block on" (the
-V9 shape) from "the shape was not recognized" (the V2–V6 shapes) before any
-downgrade from `pass`, and a V9-shaped body still yields `pass`.
+**Given** candidate (b) is selected and the native review request pins its
+output format (REQ-CPS-005 as amended),
+**When** the native path receives a body,
+**Then** all three of the following hold:
 
-A change that downgrades both cases identically fails this criterion — that is
-the byte-level indistinguishability recorded in verdict.md §E4, not a
-verification detail.
+- a body stating `Verdict: pass` in the pinned form, with no findings, yields
+  `pass` — REQ-CPS-009's class, expressed through the pin;
+- a body carrying no recognized signal — no verdict statement in a form any
+  recognizer reads, no recognizable findings — yields `inconclusive`, and the
+  downgrade is keyed on the absence of a recognized signal and on nothing in
+  the prose;
+- a body carrying recognized signals (the V1 shapes and the (a)-widened
+  shapes) is unchanged in verdict and findings (REQ-CPS-007, AC-CPS-006).
+
+A change that downgrades both disambiguation classes identically fails this
+criterion — that is the byte-level indistinguishability recorded in verdict.md
+§E4, not a verification detail. **Release-blocking**: its RED-now below is
+re-executable on the current tree (all four §2.1 elements of
+verification-completeness.md present).
+
+- **RED-now.** Command, run from the repository root (single invocation):
+
+  ```
+  go test -count=1 -v -run '^TestCodex1718Fixtures$' ./internal/cli/
+  ```
+
+  Tree `0ff644530`; exit `0`; stdout verbatim and complete:
+
+  ```
+  === RUN   TestCodex1718Fixtures
+      codex_1718_fixtures_test.go:86: SYNTH S1.txt turn/start verdict=fail findings=3
+      codex_1718_fixtures_test.go:86: SYNTH S1.txt review/start verdict=fail findings=3
+      codex_1718_fixtures_test.go:86: SYNTH S2.txt turn/start verdict=fail findings=1
+      codex_1718_fixtures_test.go:86: SYNTH S2.txt review/start verdict=fail findings=1
+      codex_1718_fixtures_test.go:86: SYNTH S2p.txt turn/start verdict=fail findings=1
+      codex_1718_fixtures_test.go:86: SYNTH S2p.txt review/start verdict=fail findings=1
+      codex_1718_fixtures_test.go:86: SYNTH N1.txt turn/start verdict=inconclusive findings=0
+      codex_1718_fixtures_test.go:86: SYNTH N1.txt review/start verdict=pass findings=0
+      codex_1718_fixtures_test.go:86: SYNTH N2.txt turn/start verdict=inconclusive findings=0
+      codex_1718_fixtures_test.go:86: SYNTH N2.txt review/start verdict=pass findings=0
+  --- PASS: TestCodex1718Fixtures (0.00s)
+  PASS
+  ok  	github.com/modu-ai/moai-adk/internal/cli	0.888s
+  ```
+
+  Red for the stated reason: the criterion requires a no-signal native body to
+  be reported `inconclusive` under the pinned request, and the stdout shows
+  `N1.txt review/start verdict=pass findings=0` and the same for N2 — the
+  silent pass the mechanism removes. The command exits `0` because the fixture
+  test asserts today's behaviour; the red is in the observed values, not the
+  exit code, and the same run's `turn/start` lines (`inconclusive`) are the
+  positive control showing the probe distinguishes the paths. The request half
+  is also unmet: the only output-format pin in the tree is the adversarial one
+  (commit `83046be7c`); `buildCodexReviewParams` sends the native request with
+  `threadId` and `target` and no format instruction. Both halves are
+  re-executable on the current tree.
+
+- **Green path.** plan.md §F M4 — the native request gains the format pin and
+  the native fall-through returns `inconclusive`. The same selector then
+  prints `N1.txt review/start verdict=inconclusive findings=0` and the same
+  for N2, with S1, S2, and S2p unchanged in verdict and findings;
+  `TestGuard_CleanNativeReviewStaysPass` — whose fixture bodies state the
+  pinned `Verdict: pass` line (AC-CPS-008's scope note) — still asserts
+  `pass`/0; and a pinned-format recognition test, sharing constants with the
+  request builder as `TestCodexAdversarialFormat_IsRecognized` does for (d),
+  holds the pin and the recognizers in step.
+
+- **Mutant probe.** Two mutants were writable against the pre-amendment
+  criterion, and both are killed by the sharpened form — the criterion is
+  adopted in the sharpened form. (M-A) *downgrade every no-signal native body,
+  the pinned pass included* — satisfies a criterion that checks only the
+  downgrade case, and is killed by the first Then clause: the pinned
+  `Verdict: pass` body must stay `pass`. (M-B) *key the downgrade on a prose
+  token (the word `fail`)* — satisfies both original cases and is killed by
+  the second Then clause's keying clause: a no-signal body that mentions no
+  `fail` (a findings body in a shape no recognizer reads, whose text avoids
+  the word) must be downgraded too. M4 executes both mutants live and records
+  command and output, as the M3 guards were proven (`progress.md` §E.2,
+  `guard-mutants.log`).
+
+### AC-CPS-016 — candidate (b): the pinned native format is observed in live output
+
+**Given** candidate (b) is selected, the native request pins its output format
+(REQ-CPS-005 as amended), and AC-CPS-004 holds,
+**When** a live native codex review is invoked through the moai MCP path
+against a target known to produce findings,
+**Then** the returned body is recorded verbatim together with the invocation,
+the tree, and the codex CLI version, and its synthesized output matches the
+pinned classes: a clean target yields a body that states the pinned verdict
+line and is reported `pass`, and a findings-carrying body yields a findings
+list whose exact count matches the findings stated in that body.
+
+**Where the record lives.** As AC-CPS-014: the verbatim body goes to
+`.moai/reports/<run-card-id>/ac-cps-016-live-body.md` — a gitignored path,
+because a live body carries the target project's content (spec.md §E). The
+committed record — `progress.md` §E.2 — carries the invocation, the tree SHA,
+the codex CLI version, the sha256 of the verbatim body file, the synthesized
+verdict and findings count, and the path above; it never carries the body text.
+
+[HARD] **What cannot satisfy this criterion** — the same exclusions as
+AC-CPS-001 and AC-CPS-014: a fixture, any test compiled from the tree, reading
+the request text, or an inference from the codex CLI version. A live
+observation taken **before** the pin existed cannot satisfy it either: the
+2026-09-21 record (`.moai/reports/t1053/live-convention-20260921.md`, tree
+`a5c3f5dc6`) measures the unpinned convention and is evidence about that only.
+
+**Authorization.** The operator's 2026-09-26 run-resume decision authorized
+one live codex review call for AC-CPS-014 (adversarial). The live **native**
+call this criterion requires is a separate call and needs its own operator
+authorization; until it is given, this criterion stays open with the
+NOT-MEASURED disposition AC-CPS-014 carried in `progress.md` §E.2.
+
+- **RED-now.** No live native observation under the pin exists. The only live
+  native observation on record predates any pin (the 2026-09-21 record above),
+  so there is nothing to re-execute and no pass to record — the same
+  disposition as E-1718 and as AC-CPS-014's population observation. This
+  criterion is a **regression-guard**: recorded with its live observation,
+  never used as a release gate, and never recorded as a pass on the pre-pin
+  record (§C.1 guard classification, AC-CPS-014 row).
+- **Green path.** M4's implementation lands (AC-CPS-004), then one authorized
+  live native call is recorded at the paths named above.
 
 ### AC-CPS-005 — candidate (c): verdict/findings contradiction is reported, and the unmet-gate state is NOT
 
@@ -594,6 +716,15 @@ loosening it erases the defence silently.
 nothing to block on,
 **Then** the emitted verdict is `pass` — not `inconclusive`.
 
+**Scope (v0.2.4).** With (b)'s mechanism (REQ-CPS-005), the body that says
+this is the one stating `Verdict: pass` in the pinned form; the guard's
+fixture bodies state that line (`TestGuard_CleanNativeReviewStaysPass`,
+updated by M4). Prose-only bodies that state nothing recognizable are the
+downgrade class, and AC-CPS-004's second Then clause governs them — that
+governance is the mechanism's stated failure mode (spec.md REQ-CPS-005
+mechanism note), not a relaxation of this criterion. The assertion itself —
+`pass`/0 with no contradiction — is unchanged.
+
 ### AC-CPS-009 — the adversarial path is unchanged
 
 **Given** any candidate has been implemented,
@@ -624,7 +755,7 @@ behaviour card t1052 closed.
 | REQ-CPS-002 (comparison recorded verbatim) | AC-CPS-002 |
 | REQ-CPS-003 (candidates presented, not chosen) | AC-CPS-003 |
 | REQ-CPS-004 (ordering criterion is coverage) | AC-CPS-003 |
-| REQ-CPS-005 (candidate (b) disambiguation) | AC-CPS-004 |
+| REQ-CPS-005 (candidate (b) disambiguation — native format pin + downgrade) | AC-CPS-004 (in-tree, release-blocking), AC-CPS-016 (live, regression-guard) |
 | REQ-CPS-006 (candidate (c) contradiction, `GateUnmet == ""` scoped) | AC-CPS-005 |
 | REQ-CPS-006a (unmet gate is NOT a contradiction) | AC-CPS-005 control case |
 | REQ-CPS-007 (candidate (a) widening) | AC-CPS-006 |
@@ -694,6 +825,11 @@ behaviour card t1052 closed.
 - [ ] Where (d) is selected: AC-CPS-014's live observation recorded at the
       paths it names — as a regression-guard, not a release gate, and not
       recorded as a pass on the population figures
+- [ ] Where (b) is selected: AC-CPS-004 satisfied (release-blocking, RED-now
+      `0ff644530`), and AC-CPS-016's live observation recorded at the paths it
+      names once its own operator authorization is given — as a
+      regression-guard, not a release gate, and not recorded as a pass on the
+      pre-pin record
 - [ ] The unselected criteria recorded as not-applicable with the selection as
       the reason
 - [ ] AC-CPS-007 through AC-CPS-010 satisfied
