@@ -107,6 +107,21 @@ const (
 	// single source of truth.
 	DefaultHookDispatcherTimeout = 30 * time.Second
 
+	// DefaultStopParseCapLimit is N, the number of consecutive stdin-parse-
+	// failure Stops under the Claude harness that keep the fail-closed deny;
+	// the next one is answered with no opinion (SPEC-HOOK-STOP-PARSE-CAP-001
+	// REQ-SPC-002/003). It is deliberately not a config key or an environment
+	// variable: no runtime switch may move the deny/release boundary
+	// (REQ-SPC-004).
+	DefaultStopParseCapLimit = 8
+
+	// DefaultStopParseCapExpiry is how long a stop-parse count record stays
+	// live after its last update; an older record counts as absent and is
+	// swept (SPEC-HOOK-STOP-PARSE-CAP-001 REQ-SPC-007). It exceeds the working
+	// time of one long turn, so an expiry between two parse-failure Stops does
+	// not keep resetting the count.
+	DefaultStopParseCapExpiry = 60 * time.Minute
+
 	// DefaultTraceFlushTimeout bounds how long a hook process waits at teardown
 	// for the async trace writer to drain to disk before abandoning the wait
 	// (SPEC-HOOK-TRACE-FLUSH-001 REQ-HTF-006). It is the single source of truth

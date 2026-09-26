@@ -379,7 +379,7 @@ func TestRunAgentHook_ReadInputError(t *testing.T) {
 			if err != nil {
 				t.Errorf("a ReadInput failure must exit 0, got err: %v", err)
 			}
-			if reason, ok := denyReason(hook.EventPreToolUse, stdout); !ok || reason != expectedFailClosedReason() {
+			if reason, ok := denyReason(hook.EventPreToolUse, stdout); !ok || reason != expectedClaudeFailClosedReason() {
 				t.Errorf("stdout = %q, want the PreToolUse fail-closed deny", stdout)
 			}
 			return

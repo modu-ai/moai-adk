@@ -1,7 +1,7 @@
 ---
 id: SPEC-HOOK-STDIN-FAILCLOSED-001
 title: "Plan — 훅 stdin 파싱 실패의 결정 이벤트 fail-closed"
-version: "0.4.2"
+version: "0.4.3"
 created: 2026-09-24
 author: manager-spec (card t1152)
 ---
@@ -43,7 +43,7 @@ spec.md §A 참조. 요약: `internal/cli/hook.go:272-280` 의 stdin 파싱 실�
   - 방법: 격리된 `CODEX_HOME` 에 사용자 범위 Stop 훅 하나(stdin 을 기록하고 `{"decision":"block","reason":…}` 출력, exit 0)를 두고 `codex exec` 를 실행했다.
   - 관측: Stop 훅이 **191회 연속** 차단했고 Codex 는 약 10분 동안 스스로 멈추지 않았다. 측정자가 프로세스를 종료했다. `stop_hook_active` 는 1번째 호출에서 `false`, 2~191번째에서 `true` 였다(`jq -r '.stop_hook_active' … | sort | uniq -c` → `1 false` / `190 true`). 음성 대조(차단 없는 Stop 훅)는 1회로 끝났다.
   - 관측 범위(한계): 기본 설정만, 비대화형 `exec` 만, 모델 `gpt-6-astra` 만. 「191회·약 10분 동안 상한 미발동」이지 무한의 증명이 아니다. 대화형 TUI 와 사용자 설정의 상한 키 유무는 재지 않았다.
-  - Claude 쪽: JSON `decision:"block"` + exit 0 이 `CLAUDE_CODE_STOP_HOOK_BLOCK_CAP` 에 걸리는지는 **여전히 미측정**이며 저장소 독트린(`goal-directive.md:13`, `internal/cli/hook_stop_goal.go:120-121`)에만 근거한다. Kickoff 차단 사유로 두지 않고 잔여 위험(spec.md §F.2)과 추적 항목 Q8 로 옮겼다.
+  - Claude 쪽: JSON `decision:"block"` + exit 0 이 `CLAUDE_CODE_STOP_HOOK_BLOCK_CAP` 에 걸리는지는 **(판정 시점에) 미측정**이었고 저장소 독트린(`goal-directive.md:13`, `internal/cli/hook_stop_goal.go:120-121`)에만 근거했다. Kickoff 차단 사유로 두지 않고 잔여 위험(spec.md §F.2)과 추적 항목 Q8 로 옮겼다. **(0.4.3)** 이후 t1230·t1272 가 측정했다 — 결과는 아래 Q8.
   - 판정 전 선택지(기록): (a) Kickoff 전에 측정 — **이것이 실행됐다(Codex 쪽)**; (b) 측정 없이 Q1 을 조건부로 판정하고 측정을 run Pre-flight 로 넘긴다.
 - **Q1 — Stop·UserPromptSubmit 의 fail-closed 포함 여부와 탈출 장치 메커니즘: 판정됨 — 선택지 A1. 탈출 장치는 0.4.0 재판정으로 없앴다(아래 「재판정」).**
   - 출처: 운영자 판정, t1152 레인의 AskUserQuestion, 2026-09-24.
@@ -69,6 +69,7 @@ spec.md §A 참조. 요약: `internal/cli/hook.go:272-280` 의 stdin 파싱 실�
 - **Q5 5 MiB 경로의 호스트 실현성** — 호스트(Claude Code, Codex)가 5 MiB 를 넘는 `tool_input` 을 훅 stdin 으로 실제 넘기는지 측정하지 않았다. 수리의 정당성과 무관하다: 모델이 제어하는 더 싼 경로(중첩 깊이 초과, 약 20 KB)의 파싱 실패가 측정됐다(spec.md §A.3). 측정은 sync-phase `--security --deep` 렌즈의 위협 등급 판단용으로 run 초반에 수행하고 progress.md 에 기록한다. 같은 자리에서 「호스트가 깊게 중첩된 `tool_input` 을 그대로 넘기는가」도 잰다.
 - **Q6 Can Block 11개** — spec.md §B.3 의 이벤트 가운데 결정 집합으로 옮겨야 할 것이 있는지. 이 SPEC 은 옮기지 않는다. 옮기려면 `DecisionBearingEvents()` 를 바꾸는 별도 카드가 필요하다 — 판정만 기록한다.
 - **Q8 Claude 호스트의 JSON block 상한** — `CLAUDE_CODE_STOP_HOOK_BLOCK_CAP` 가 exit 2 가 아닌 JSON `decision:"block"` + exit 0 차단에도 걸리는지 측정하지 않았다. 근거는 저장소 독트린뿐이다(Q2 의 Claude 쪽 항목). 걸리지 않는다면 Claude 하네스의 Stop fail-closed 도 Codex 와 같은 무기한 잠김 위험을 갖는다. Kickoff 를 막지 않는다 — 운영자 판정 A1 이 Claude Stop 을 fail-closed 에 두었다. 측정은 run 초반(Q5 와 같은 자리)에 Q2 와 같은 방식(격리 설정, 기록형 Stop 훅, 연속 block 횟수 계수)으로 수행하고 progress.md 에 남긴다. 상한이 없다고 나오면 REQ-HSF-013 의 술어를 하네스 인자로 일반화할지 운영자 판정을 다시 받는다.
+  - **(0.4.3) 측정됨 — 이 SPEC 의 run-phase 가 아니라 후속 카드가 쟀다.** Claude Code 2.1.283, `claude -p --model haiku`, 팔당 1회. (1) t1230 2차(상한 변수 unset, 모조 훅): JSON block + exit 0 과 exit 2 두 팔 모두 훅 9회 실행·9회 차단 뒤 턴 종료(`num_turns 10`). (2) t1272 B팔(unset, 실제 `moai hook stop` 경로에 파손 stdin): Stop 16회, 마지막 무도구 구간 9회 뒤 종료 — 기본 상한은 도구 사용 없이 이어진 차단만 세는 것으로 보인다(해석, 업스트림 미확인). (3) t1272 A팔(`CAP=200`, 칸반·팩토리·무한 goal 세션에 런처가 주입하는 값): Stop 23회, 무도구 차단 17회 이상에서 끊기지 않고 `--max-turns 30` 에서 `error_max_turns`. 증거 `.moai/reports/t1230/verdict.md`, `.moai/reports/t1272/verdict.md`(로컬). 판정: 술어 일반화(D2)는 채택하지 않고, 리드 판정 D1(2026-09-26)에 따라 moai 자체 상한을 SPEC-HOOK-STOP-PARSE-CAP-001 이 도입한다.
 - **Q9 codex 모드 `moai hook agent` 경로의 도달성과 비대칭** — 배포 래퍼 `internal/template/templates/.claude/hooks/moai/handle-agent-hook.sh:47`(`.sh.tmpl:47` 도 같음)은 `--harness` 없이 부르고, `internal/template/templates/.codex/` 에는 `agents/` 만 있으며, 이 트리에서 `hook agent` 를 부르는 Codex 설정 생성 경로를 grep 으로 찾지 못했다(Codex 쪽 명령 행은 `internal/cli/codex_readiness.go:74` 의 `moai hook --harness codex`, 부재 확정은 아니다). 따라서 AC-HSF-012·013 의 codex 모드 32 경우는 현재 도달하지 않는 경로를 검증하고, 성공 경로의 agent 호출은 Codex 번역을 거치지 않아 도달한다면 실패 경로만 Codex 렌더링을 하는 비대칭이 된다. **범위 변경 없음**(Q3 판정의 포함 범위 유지). 도달 경로를 만들지, 성공 경로를 Codex 번역에 태울지는 별도 카드의 판단이며 판정만 기록한다.
 - **Q7 Claude 하네스의 영속 기록면** — REQ-HSF-008 은 `codexadapter.RecordDiscards` 재사용을 요구하는데, 그 기록면의 경로가 `.moai/logs/codex-adapter.jsonl` 이라 Claude 하네스 사건이 「codex-adapter」 이름의 파일에 쌓인다. **기록면 하나를 재사용하는 쪽을 권장**(새 기록면을 만들면 관측 지점이 둘로 갈린다). 대안(Claude 경로는 stderr 만 남긴다)을 택하면 REQ-HSF-008(b) 와 AC-HSF-007(b) 를 먼저 개정해야 한다 — 판정 기록만으로는 대안을 택할 수 없다.
 
@@ -114,7 +115,7 @@ Q2(측정)·Q1(A1 + 메커니즘 (i))·Q3(포함)이 2026-09-24 에 판정됐다
   - 주의: 이 함수의 소유자는 t1099 다. t1099 착지 전에 이 확장이 필요해지면 t1099 레인과 조율하고, 착지 후라면 이 브랜치에서 확장하되 `@MX:ANCHOR`(fan_in) 를 갱신한다. 확장 대신 파싱 실패 전용 작성기를 새로 두는 것도 허용되지만, 그 경우에도 출력은 `TranslateCodex` 를 거쳐야 한다(REQ-HSF-003).
 - Claude: 번역 표 HarnessClaude fatal_error 행에서 렌더링. `TranslateCodex` 를 하네스 인자를 받는 형태로 일반화할지, CLI 쪽에서 `Lookup` + `Render` 를 직접 부를지는 구현 판단이다 — 어느 쪽이든 표를 거친다. 일반화한다면 t1099 의 `@MX:ANCHOR`(fan_in) 를 갱신한다.
 - 사유 문구: `fail-closed` 표시, stdin 파싱 실패 고정 문구, 운영자 문서 식별자를 run-phase 상수로 정의한다. 그 밖의 안내(복구 절차 등)는 싣지 않는다(REQ-HSF-010, 0.4.0).
-- Stop 경로에 `@MX:WARN`(REQ-HSF-009): Claude 쪽은 호스트 상한 의존과 그 근거가 미측정 독트린이라는 사실, Codex 쪽은 면제와 Q2 측정 근거를 적는다.
+- Stop 경로에 `@MX:WARN`(REQ-HSF-009): Claude 쪽은 호스트 상한 의존과 그 근거가 미측정 독트린이라는 사실, Codex 쪽은 면제와 Q2 측정 근거를 적는다. **(0.4.3 정정) Claude 쪽은 이제 측정됐다 — REQ-HSF-009 와 §F.2 「Stop 루프 — Claude」(t1230·t1272). 「미측정 독트린」 서술은 기록으로만 남으며, 주석 개정은 SPEC-HOOK-STOP-PARSE-CAP-001 REQ-SPC-013 이 소유한다.**
 
 ### M1b — `runAgentHook` 의 같은 처리 (Priority High)
 
