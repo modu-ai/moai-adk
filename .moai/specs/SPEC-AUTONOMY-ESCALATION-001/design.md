@@ -3,22 +3,25 @@
 Decisions most likely to change come first. Everything here is a proposal for the run
 phase; spec.md states only the observable behavior.
 
-## §A — Record layer: where needs-decision lives (lead ruling 09-26 #4)
+## §A — Record layer (lead rulings 09-26 #4 and (2) #6)
 
 The queue store cannot carry a fourth state (research.md P10), and doctrine forbids a
 machine acting on a card. Settled shape:
 
-- One JSON record per trip at `.moai/reports/<card-id>/escalations/<timestamp>.json`, schema in
-  spec.md §I. With the card id unresolved (plan.md Q9), the record lands under
-  `.moai/reports/<SPEC-ID>/escalations/` with `card_id: "unresolved"`.
-- "Needs-decision" = "the card has at least one record with `status: open`", derived by reading
-  records; nothing in the queue changes.
+- One Markdown file per class and fingerprint at
+  `.moai/reports/<card-id>/escalation/<class>-<fingerprint>.md`, YAML frontmatter per spec.md
+  §I.1, body sections Observation / Options / Not observed. A re-trip after resolution gets a
+  `-<n>` suffix so a resolved decision is never overwritten.
+- Dedup is a file lookup: the same class and fingerprint with `status: open` means increment
+  `occurrences` and `updated_at` in place.
+- "Needs-decision" = "the card has at least one `contract` or `operational` record with
+  `status: open`"; `revoke` records (A3) never count.
 - The factory record layer (F1) ingests these files later; M1 does not wait for it.
 
 ## §B — Activation
 
-- Config. `mode` and `escalation.budget_default` are defined by A1 (draft `8f77d9a33`
-  § Configuration); this SPEC adds one key beside them:
+- Config. `mode` and `escalation.budget_default` are defined by A1 (§ Configuration of the A1
+  draft); this SPEC adds one key beside them:
 
   ```yaml
   workflow:
@@ -34,6 +37,7 @@ machine acting on a card. Settled shape:
 
 | Class | Hook point | Cost class |
 |---|---|---|
+| 10 contract-void (runs first) | every hook and checkpoint under `contract` mode, before resolution | PreToolUse: file stat + signature-block presence; commit checkpoint: A1 verify |
 | 1 acceptance-change | commit checkpoint (PostToolUse, in-process A1 verify) | file hash + counter |
 | 2a invariant command | PostToolUse Bash (exit status observed, command not re-run) | string compare |
 | 2b frozen-file | PreToolUse write tools | path match |
@@ -44,7 +48,6 @@ machine acting on a card. Settled shape:
 | 7 budget | PostToolUse (operations), Stop (turns), checkpoint (audit retries) | counter |
 | 8 same-diagnostic ×3 | PostToolUse Bash failure | fingerprint count |
 | 9 audit cap | commit checkpoint (reads verdict files) | file read |
-| 10 contract-void | every armed hook and checkpoint (compare with state file) | file stat + A1 verify |
 
 ### C.1 Checkpoints and hook budget
 
@@ -61,7 +64,7 @@ subprocess.
 The detector never runs `go test` or any contract command. It compares the executed Bash
 command string with each contract invariant string and reads the recorded exit status. An
 invariant no tool call executed since the previous checkpoint is listed as not-observed
-(REQ-AE-019, spec.md §F O10).
+(REQ-AE-022, spec.md §F O10).
 
 ### C.3 Class 6 placement against the denylist anchor
 
@@ -79,10 +82,10 @@ patterns (reused by reference, not copied).
 `graph.FileAPI` reads the working tree. The before-side is obtained by materializing the
 base-commit blob (`git show <base>:<path>`) to a temp file under the scratch area and extracting
 from it with the same extractor. Card base = merge-base of HEAD with the integration branch the
-git strategy configuration names (spec.md REQ-AE-009). New package = directory with source files
-at HEAD absent at base. CLI-verb / MCP-tool / config-key recognizers are per language; the
-first run ships one for Go (command registration, tool-name literal, config yaml tag) and every
-other language reports those sub-kinds as not-observed. Unsupported language or CGO-less build →
+git strategy configuration names (REQ-AE-009). New package = directory with source files at HEAD
+absent at base. CLI-verb / MCP-tool / config-key recognizers are per language; the first run
+ships one for Go (command registration, tool-name literal, config yaml tag) and every other
+language reports those sub-kinds as not-observed. Unsupported language or CGO-less build →
 not-observed.
 
 ### C.5 Class 5 inputs
@@ -90,32 +93,60 @@ not-observed.
 Recorded verdict files under `.moai/reports/<card-id>/`; `audit_multi` JSON results when
 persisted. `disagreement_flag` nil → not-observed.
 
-### C.6 Counters and state file
+### C.6 Card state file — where "previously observed" lives (lead ruling 09-26 (2) #4)
+
+`<worktree root>/.moai/state/escalation/<card-id>.json`, one per card, written by the detector
+only. It holds:
+
+- `contract` — the last contract observed signed-valid for this card: SPEC ID, path,
+  `contract_sha256`, and the time it was observed; empty until the first signed-valid
+  observation.
+- `disarmed` — whether a `contract-void` record has already been written for that contract, so
+  the loss escalates exactly once.
+- counters for class 7 (operations, turns, audit retries per audit kind) and the failure
+  fingerprint history for class 8.
+
+Order on every hook and checkpoint under `contract` mode:
+
+1. Read the card state file.
+2. If it names a signed-valid contract and `disarmed` is false, check that contract (stat and
+   signature-block presence on PreToolUse; A1 verify at the commit checkpoint). On absence,
+   missing signature, or a non-acceptance `signed-invalid`, write the `contract-void` record,
+   set `disarmed`, and append the audit line.
+3. Only then run the resolver (§C.8). Its `not-armed` line, if any, follows the `contract-void`
+   record, never replaces it.
 
 Operations: PostToolUse write-capable and Bash calls. Turns: Stop hook events. Audit retries:
-audit verdict files beyond the first, per audit kind. The state file (beside the escalation
-directory) holds these counters, the failure-fingerprint history, and the last observed contract
-state per SPEC (needed by class 10).
-
-Option (not decided): the A1 draft projects a signed contract onto `mission.MissionContract`
-(`ResourceLimits.MaxOperations` = `budget.operations`, `StopConditions` = `escalate_on`) so that
-this detector could reuse `ValidateMissionDecision` (`internal/mission/policy.go:200`) for the
-budget and action checks instead of its own counters.
+audit verdict files beyond the first, per audit kind.
 
 ### C.7 Contract input
 
 Class detection reads the contract through A1's verify (state + reasons + measured acceptance
 values), never by re-parsing the schema itself. Only the source-line mapping for the record's
-`tripped.line` reads the file text directly, because verify output carries no line numbers
+`contract_ref` reads the file text directly, because verify output carries no line numbers
 (spec.md §F O6).
 
-### C.8 Contract resolver (lead ruling 09-26 #2)
+### C.8 Contract resolver (lead rulings 09-26 #2 and (2) #1)
 
-One function takes the tool call's working directory and returns one of: armed (with the
-contract path), not-armed (zero signed candidates), or ambiguous (candidate list). It finds the
-worktree root, globs `.moai/specs/*/contract.yaml`, and counts files carrying a `signature`
-block. It never reads the branch name. Keeping it one function is what lets the F1
-worktree↔card record replace it later without touching the class detectors.
+One function takes the tool call's working directory and returns armed (with the contract path)
+or not-armed (with the layer and reason). Layer (a): find the worktree root, take its directory
+base name as the card id, and read that card's `spec_id` from the queue store (read-only; the
+queue file resolves against the primary checkout from every linked worktree). Layer (b): in that
+SPEC's directory, accept `contract.yaml` only if it carries a `signature` block and the SPEC's
+`spec.md` `status` is neither `completed` nor `archived`. Exactly one survivor arms. It never
+reads the branch name. Keeping it one function is what lets the F1 worktree↔card record replace
+layer (a) later without touching the class detectors.
+
+### C.9 Exemption root sources (REQ-AE-013)
+
+| Root | Source | When undeterminable |
+|---|---|---|
+| `.moai/reports/<card-id>/` | card id from the worktree directory name | never — the card id always comes from the path |
+| `.moai/state/` | worktree root | never |
+| OS temporary directory | `os.TempDir()` plus the resolved form of `$TMPDIR` | never |
+| session scratchpad | hook input field or environment variable the runtime supplies, if any | outside-root writes are listed not-observed |
+| auto-memory store | the store path `moai memory doctor` resolves (every candidate store) | outside-root writes are listed not-observed |
+| `ownership.scratch` | resolved contract | not applicable without a contract |
 
 ## §D — Alternatives considered
 
@@ -125,52 +156,11 @@ worktree↔card record replace it later without touching the class detectors.
 - **Silently disarm on contract loss** — rejected by lead ruling 09-26 #1b.
 - **Resolve the SPEC from the branch name** — rejected by lead ruling 09-26 #2; `WT-<slug>`
   branches do not carry the card or SPEC.
+- **Count every signed contract in the tree** — rejected by lead ruling 09-26 (2) #1: closed
+  SPECs keep their signed contracts, so the count converged to permanent not-armed.
+- **One JSON record per trip under `escalations/`** — superseded by lead ruling 09-26 (2) #6.
 
-## §G — A3 preconditions (lead assignment 09-26; separate from the detector)
-
-### G.1 Push serializer (REQ-AE-024)
-
-- **Resource.** The existing slot lease, resource name `push-develop` (a valid slot resource
-  name), record at `.moai/state/slot-leases/push-develop.json` in the primary checkout, root
-  resolved by `kanban.ResolveSlotLeaseRoot` — the same record `moai slot status --resource
-  push-develop` reads. No new record format, lock, or verb.
-- **Activation.** Only under `autonomy.mode: contract` with `push-develop` in the resolved
-  contract's `actions`. It does not depend on `workflow.slot_lease.enabled`, which keeps gating
-  the generic slot guard only.
-- **Matcher.** A Bash command whose program is `git`, subcommand `push`, and whose refspec
-  targets `develop` (with the same quote handling as `checkSlotLease`).
-- **Admit.** Free, expired (declared bound elapsed), stale (owning session gone), or held by the
-  calling session → admit and write the lease for the calling session with bound
-  `workflow.slot_lease.default_max_duration`; a takeover names the displaced holder (the slot
-  lease's existing rule).
-- **Deny.** Held by a different live session within its bound → deny with
-  `PUSH_SERIALIZATION_VIOLATION: push-develop held by <holder>`. The agent waits and retries;
-  no escalation record is written, because serialization is expected traffic, not a contract
-  breach.
-- **Release.** PostToolUse on the admitted push: a non-zero exit releases immediately (nothing is
-  in flight). Otherwise the holder releases with `moai slot release --resource push-develop`
-  after reading the CI result for the pushed head; a forgotten release costs at most the bound.
-- **Fail direction.** Unreadable record, unresolvable root, unknown caller → allow plus an audit
-  line (the slot guard's fail-open), because an overlapping push costs one cancelled CI run
-  while a stuck deny halts the lane.
-
-### G.2 Contract-sign guard (REQ-AE-025)
-
-- **Placement.** A PreToolUse Bash check independent of `workflow.autonomy.mode`, placed with the
-  other deny guards and called before the class 6 detector.
-- **Parse.** Split the command into shell words with quote removal (not quoted-span scrubbing,
-  which would erase `'moai'`); strip leading `NAME=value` assignments and the `env`, `command`,
-  `exec`, `nohup` prefixes; take the program word's basename; skip global flags; match
-  `moai` + `contract` + `sign`. For `sh|bash|zsh -c <string>`, parse `<string>` once more.
-- **Unclassifiable.** Command substitution, a variable in program position, `eval`, or nesting
-  beyond one `-c` level, when the words `contract` and `sign` both occur → deny (fail closed),
-  reason marked unclassified. A classified invocation whose program is not `moai` (e.g.
-  `echo "moai contract sign"`) passes.
-- **Receipt path.** Allowed only in the form A1 defines (R5). Until A1 defines it, no
-  `moai contract sign` form is allowed.
-- **Why fail closed here and fail open in G.1.** A wrongly allowed signature voids the contract
-  model; a wrongly denied sign costs the operator one terminal command, which is where signing
-  belongs anyway.
+(The former §G — push serializer and contract-sign guard — moved to card t1245; spec.md §K.)
 
 ## §F — Proposed package
 

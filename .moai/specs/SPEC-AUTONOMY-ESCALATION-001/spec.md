@@ -1,7 +1,7 @@
 ---
 id: SPEC-AUTONOMY-ESCALATION-001
 title: "Contract-mode escalation detector: mechanical detection of the six escalate_on classes plus operational trips, reported as an escalation record without blocking or mutating the queue"
-version: "0.2.1"
+version: "0.3.0"
 status: draft
 created: 2026-09-26
 updated: 2026-09-26
@@ -22,32 +22,21 @@ related_specs: [SPEC-AUTONOMY-TIERS-001, SPEC-ACSNAPSHOT-COMMIT-GUARD-001]
 - **2026-09-26** — v0.1.0 plan-phase draft (card t1235, contract-based autonomous harness
   track A2). Base tree `develop` at `ca1d5dc43`. Every "existing asset" premise in the
   card's design table was measured against this tree before any requirement was written;
-  the measured table (asset → exists? → file:line) lives in `research.md` §B. Three
-  premises did not hold as stated and reshaped scope — see §B.2.
-- **2026-09-26** — v0.1.1 contract-field alignment (card t1235). Every contract field this SPEC
-  references is aligned to the A1 schema draft, `design.md` § Contract Schema of
-  SPEC-AUTONOMY-CONTRACT-001 at commit `8f77d9a33` (not yet plan-audited; referenced, not
-  copied). `escalate_on` must hold exactly the six tokens, so per-class disabling was removed;
-  class 1 consumes A1's own verify reasons; class 6 reads push authority from `push-develop`.
-  The dependency tag on contract-reading requirements became 「A1 plan-audit 통과본으로 재확인」.
-- **2026-09-26** — v0.2.0 after plan-audit iteration 1 (FAIL 0.79) and the lead rulings of the
-  same day (§H). Lane-owned defects D4-D16 repaired: card base and per-language sub-kind coverage
-  (REQ-AE-009), operation/turn definitions and a readable-signed-contract budget source
-  (REQ-AE-012), detector state file as an effect (REQ-AE-003), REQ-AE-018 restated as a
-  detector-side prohibition, not-observed set widened (REQ-AE-019), explicit hook budget (C4),
-  O10. Lead rulings folded in: contract resolution from the worktree root (REQ-AE-002, D1),
-  post-signing immutability and a `contract-void` operational escalation instead of silent
-  disarming (REQ-AE-021, REQ-AE-023, D2/Q6), fixed exemptions plus `ownership.scratch`
-  (REQ-AE-022, D3), record location and schema (REQ-AE-015, Q1), audit-retry cap from
-  `budget.audit_retries` for both audits (REQ-AE-014, Q4), and the `frozen-files` union
-  (REQ-AE-007, Q7). Requirements 20 → 23, criteria 22 → 25 (renumbered, mapping in
-  acceptance.md §A).
-- **2026-09-26** — v0.2.1, same iteration-2 revision. The lead assigned two items left unowned
-  by the A1 second audit to this SPEC, both marked **A3 precondition** and kept distinct from the
-  escalation detector (§D.5, §J): push serialization for `push-develop` (REQ-AE-024) and a deny
-  on agent-invoked `moai contract sign` (REQ-AE-025). Requirements 23 → 25 and criteria stay at
-  25 by merging four criteria (mapping in acceptance.md §A); the SPEC now sits at both Tier L
-  ceilings, so any further scope should go to a separate SPEC.
+  the measured table (asset → exists? → file:line) lives in `research.md` §B.
+- **2026-09-26** — v0.1.1 contract-field alignment to the A1 schema draft, SPEC-AUTONOMY-CONTRACT-001
+  `design.md` § Contract Schema at commit `8f77d9a33` (referenced, not copied). Dependency tag
+  「A1 plan-audit 통과본으로 재확인」 introduced.
+- **2026-09-26** — v0.2.0 after plan-audit iteration 1 (FAIL 0.79): lane-owned defects D4-D16
+  repaired; lead rulings 09-26 #1-#6 folded in (§H).
+- **2026-09-26** — v0.2.1 added two A3 preconditions (push serializer, contract-sign guard).
+  **Moved out at v0.3.0** (§K).
+- **2026-09-26** — v0.3.0 after plan-audit iteration 2 (FAIL 0.82), the last-iteration revision.
+  Lead rulings 09-26 (2) folded in (§H): the contract resolver narrows by card id and then by SPEC
+  status (N1, N3); `contract-void` is detected before the resolver can disarm (N2); the record
+  format becomes one Markdown file per class and fingerprint with a YAML frontmatter, and gains
+  revoke kinds for A3 (§I); the two A3 preconditions and the mission-validator projection move to
+  card t1245 (§K). Requirements renumbered contiguously in document order, 25 → 23; criteria
+  25 → 23. Old → new mapping: acceptance.md §A.
 
 ## §B — Problem
 
@@ -56,8 +45,8 @@ related_specs: [SPEC-AUTONOMY-TIERS-001, SPEC-ACSNAPSHOT-COMMIT-GUARD-001]
 A contract-mode run (a SPEC carrying a `contract.yaml`, schema owned by card t1234 / A1)
 lets an agent proceed without per-step human questions **as long as it stays inside the
 contract**. Staying inside is only a guarantee if leaving is detected mechanically. The
-contract names six `escalate_on` classes; the card adds three operational trips, and the lead
-ruling of 09-26 adds a fourth operational trip for a contract that goes void mid-run:
+contract names six `escalate_on` classes; the card adds three operational trips, and lead ruling
+09-26 #1b adds a fourth operational trip for a contract that goes void mid-run:
 
 | # | Class | Kind |
 |---|---|---|
@@ -70,7 +59,7 @@ ruling of 09-26 adds a fourth operational trip for a contract that goes void mid
 | 7 | budget-exceeded | operational |
 | 8 | same-diagnostic-repeat (3 consecutive) | operational |
 | 9 | audit-fail-at-retry-cap | operational |
-| 10 | contract-void | operational (lead ruling 09-26) |
+| 10 | contract-void | operational |
 
 When a class trips, the card becomes *needs-decision* and an escalation record captures the
 observation, the options, and the line that tripped. Escalation is a **report, not a
@@ -83,16 +72,13 @@ question**: the agent continues other work.
    `internal/kanban/backlog_schema_freeze_test.go:3-5,70` pins the three-state CHECK and
    states the landing must "admit no fourth state". Queue doctrine additionally forbids a
    machine acting on a card (`kanban-dispatch.md` § Entry into the board). The
-   needs-decision marking is therefore a **record beside the queue** (REQ-AE-015).
+   needs-decision marking is therefore a **record beside the queue** (REQ-AE-018).
 2. **The AC-snapshot guard is not reusable as a detector.** `scripts/ac-baseline/check-staged.sh:1-4`
-   declares itself a local-only dev tool with no template mirror; it compares an AC count
-   against a corpus snapshot (`.moai/reports/t338/ac-count-baseline.txt`, line 25), not a
-   per-SPEC contract hash. Class 1 consumes A1's own verify of the contract's recorded hash and
-   count (§F O7).
+   declares itself a local-only dev tool; it compares an AC count against a corpus snapshot
+   (line 25), not a per-SPEC contract hash. Class 1 consumes A1's own verify (§F O7).
 3. **`graph_file_api` reads the working tree only.** `internal/graph/codequery.go:65-81`
-   opens the file at `projectRoot/relPath` via `os.Lstat`; it has no commit parameter. A
-   before/after comparison therefore needs the before-side extracted from the base commit's
-   blob by some other route (design.md §C.4).
+   opens the file at `projectRoot/relPath`; it has no commit parameter. The before-side of a
+   comparison is extracted from the base commit's blob by another route (design.md §C.4).
 
 Four further assets exist only as doctrine or partial coverage (frozen-file guard scoped to
 the harness-learner identity only; `audit_multi` disagreement is a tri-state pointer; the
@@ -108,35 +94,40 @@ nothing observable changes.
 
 ## §D — Requirements (GEARS)
 
-25 requirements (REQ-AE-001 … REQ-AE-023 for the escalation detector, REQ-AE-024 and
-REQ-AE-025 for the two A3 preconditions). Requirements whose predicate reads a `contract.yaml` field, an A1 verify
-result, or an A1-owned configuration key carry the tag 「A1 plan-audit 통과본으로 재확인」;
-every such field is listed once, in §F, against the A1 draft at `8f77d9a33`.
+23 requirements, numbered in document order. Requirements whose predicate reads a
+`contract.yaml` field, an A1 verify result, or an A1-owned configuration key carry the tag
+「A1 plan-audit 통과본으로 재확인」; every such field is listed once, in §F.
 
 Definitions used below. The **worktree root** is the top-level directory of the git worktree
-containing the tool call's working directory. The **resolved contract** is the one
-`contract.yaml` REQ-AE-002 selects. An **operation** is one write-capable or Bash tool call
-observed at PostToolUse — the unit A1's mission projection maps to `MaxOperations`; a **turn**
-is one Stop hook event; an **audit retry** is one audit verdict file for the card beyond the
-first.
+containing the tool call's working directory. The **card id** is the base name of that worktree
+directory (`kanban-dispatch.md`: the worktree directory keeps the card id). The **card's SPEC**
+is the `spec_id` the queue store records for that card id (`internal/kanban/backlog_store.go:81`).
+The **resolved contract** is the one `contract.yaml` REQ-AE-002 selects. An **operation** is one
+write-capable or Bash tool call observed at PostToolUse — the unit A1's mission projection maps
+to `MaxOperations`; a **turn** is one Stop hook event; an **audit retry** is one audit verdict
+file for the card beyond the first. The **card state file** is
+`<worktree root>/.moai/state/escalation/<card-id>.json` (design.md §C.6).
 
-### D.1 — Activation and contract resolution
+### D.1 — Activation, contract resolution, and effects
 
 - **REQ-AE-001** (Capability gate) — Where `workflow.autonomy.mode` is absent, empty,
   unrecognized, or `guided`, the escalation detector shall perform no detection, write no
   escalation record, and add no subprocess to any hook invocation, so that hook output is
   byte-identical to the pre-change behavior. 「A1 plan-audit 통과본으로 재확인」
 - **REQ-AE-002** (Capability gate + event) — Where `workflow.autonomy.mode` is `contract`,
-  when a hook or checkpoint fires, the escalation detector shall resolve the contract by
-  locating the worktree root from the tool call's working directory and counting the
-  `.moai/specs/*/contract.yaml` files under it that carry a signature block: exactly one arms
-  detection against it; zero appends one `not-armed` line to the detector audit log; two or
-  more append one `not-armed` line plus one warning line naming every candidate. The branch
-  name shall never be an input to resolution. 「A1 plan-audit 통과본으로 재확인」
+  when a hook or checkpoint fires, the escalation detector shall first run the contract-void
+  check of REQ-AE-017 and then resolve the contract in two layers inside one resolver: (a) take
+  the card id from the worktree directory name and the card's SPEC from the queue store; (b)
+  within that SPEC, count its `contract.yaml` only if it carries a signature block and the SPEC's
+  `status` is neither `completed` nor `archived`. Exactly one surviving contract arms detection
+  against it; every other outcome — no card id, no queue record, no `spec_id`, a terminal SPEC
+  status, an unsigned or absent contract — appends one `not-armed` line naming the layer and
+  the reason to the detector audit log. The branch name shall never be an input.
+  「A1 plan-audit 통과본으로 재확인」
 - **REQ-AE-003** (Ubiquitous) — The escalation detector shall never deny, ask about, or
   alter a tool call; its only effects shall be the escalation records (which carry the
-  needs-decision marking), the detector audit log, and the detector state file (the budget
-  counters, the failure-fingerprint history, and the last observed contract state).
+  needs-decision marking), the detector audit log, and the card state file (budget counters,
+  failure-fingerprint history, and the last observed contract state).
 - **REQ-AE-004** (Event-detected) — When the escalation detector faults internally (a
   panic, an unreadable input, a timeout), the detector shall let the tool call proceed,
   shall append a `not-checked` line naming the class and the fault, and shall not write an
@@ -157,12 +148,12 @@ first.
 - **REQ-AE-007** (Capability gate + event) — Where the contract's `invariants` contains
   `frozen-files`, when a write-capable tool call targets a path in the frozen set — the union
   of the constitution zone registry's Frozen-zone target files, the hook's
-  `frozenInstructionFiles`, and the contract's `ownership.never` — the escalation detector
-  shall trip class `invariant-violation` (sub-kind `frozen-file`) regardless of the calling
-  agent's identity. 「A1 plan-audit 통과본으로 재확인」
+  `frozenInstructionFiles` (matched by base name), and the contract's `ownership.never` — the
+  escalation detector shall trip class `invariant-violation` (sub-kind `frozen-file`)
+  regardless of the calling agent's identity. 「A1 plan-audit 통과본으로 재확인」
 - **REQ-AE-008** (Event-driven) — When a write-capable tool call targets a path inside the
   worktree root that matches no `ownership.write` pattern, or matches any `ownership.never`
-  pattern, and is not exempt under REQ-AE-022, the escalation detector shall trip class
+  pattern, and is not exempt under REQ-AE-013, the escalation detector shall trip class
   `ownership-move`, with a `never` match taking precedence in the record.
   「A1 plan-audit 통과본으로 재확인」
 - **REQ-AE-009** (Capability gate + event) — Where `workflow.autonomy.escalation.new_api_detector`
@@ -172,7 +163,7 @@ first.
   list every observed addition by kind and path. The **card base** is the merge-base of HEAD
   with the integration branch the project's git strategy configuration names (the development
   branch where one is configured, otherwise the default branch); where no such branch resolves
-  or the merge-base is empty, class 4 is not-observed (REQ-AE-019). Sub-kind coverage is per
+  or the merge-base is empty, class 4 is not-observed (REQ-AE-022). Sub-kind coverage is per
   language: new package and new exported declaration apply to every language the declaration
   extractor supports; new CLI verb, new MCP tool name, and new configuration key apply only to
   languages for which the detector carries a registration recognizer, and every other language
@@ -187,125 +178,99 @@ first.
   and it is not a push of `develop` authorized by the `push-develop` token in the contract's
   `actions`, the escalation detector shall trip class `irreversible-action` before the command
   executes, whether or not the existing denylist then denies it. 「A1 plan-audit 통과본으로 재확인」
-- **REQ-AE-021** (State-driven) — While the resolved contract carries a signature block, when a
+- **REQ-AE-012** (State-driven) — While the resolved contract carries a signature block, when a
   write-capable tool call targets that SPEC's `contract.yaml` or `acceptance.md`, the escalation
   detector shall trip class `ownership-move` even where `ownership.write` covers the path (lead
-  ruling 09-26: both files are implicitly `never` after signing). 「A1 plan-audit 통과본으로 재확인」
-- **REQ-AE-022** (Ubiquitous) — The escalation detector shall exempt from class 3 every write
-  under the resolved card's evidence directory `.moai/reports/<card-id>/` (or
-  `.moai/reports/<SPEC-ID>/` when the card id is unresolved), under `.moai/state/`, under the
-  operating system's temporary directory, under the session scratchpad, under the auto-memory
-  store, and under any glob in the contract's optional `ownership.scratch`; a write outside the
-  worktree root that none of these exemptions covers shall trip `ownership-move`.
+  ruling 09-26 #1a: both files are implicitly `never` after signing). 「A1 plan-audit 통과본으로 재확인」
+- **REQ-AE-013** (Ubiquitous) — The escalation detector shall exempt from class 3 every write
+  under `.moai/reports/<card-id>/`, under `.moai/state/`, under the operating system's temporary
+  directory, under the session scratchpad, under the auto-memory store, and under any glob in the
+  contract's optional `ownership.scratch`. A write outside the worktree root that none of these
+  covers shall trip `ownership-move` when every exemption root was determined, and shall be listed
+  as not-observed when one or more roots could not be determined (design.md §C.9).
   「A1 plan-audit 통과본으로 재확인」
 
 ### D.3 — Operational trips
 
-- **REQ-AE-012** (Event-driven) — When the card's observed turn count, operation count, or
+- **REQ-AE-014** (Event-driven) — When the card's observed turn count, operation count, or
   audit-retry count exceeds the contract's `budget.turns` / `budget.operations` /
   `budget.audit_retries` (or, where no resolved contract with a readable `budget` block exists,
   the `workflow.autonomy.escalation.budget_default` value), the escalation detector shall trip
   class `budget-exceeded` naming the exceeded dimension. 「A1 plan-audit 통과본으로 재확인」
-- **REQ-AE-013** (Event-driven) — When the same failure fingerprint (normalized failing
+- **REQ-AE-015** (Event-driven) — When the same failure fingerprint (normalized failing
   command plus diagnostic key) is observed on three consecutive failing attempts with no
   intervening success of that command, the escalation detector shall trip class
   `same-diagnostic-repeat`.
-- **REQ-AE-014** (Event-driven) — When a plan-audit or a sync-audit verdict file for the card
+- **REQ-AE-016** (Event-driven) — When a plan-audit or a sync-audit verdict file for the card
   records FAIL at iteration `budget.audit_retries + 1` of that audit, the escalation detector
   shall trip class `audit-fail-at-retry-cap`; no separate configuration key supplies this
-  ceiling (lead ruling 09-26). 「A1 plan-audit 통과본으로 재확인」
-- **REQ-AE-023** (Event-detected) — When a contract recorded in the detector state file as
-  signed-valid is later observed absent, without its signature block, or `signed-invalid` for
-  any reason other than the four acceptance reasons of REQ-AE-005, the escalation detector shall
-  write exactly one escalation record of operational class `contract-void` naming the observed
-  condition and stating that contract classes 2-6 are disarmed for that SPEC, shall append the
-  disarming to the audit log, and shall keep classes 7-10 active; no `escalate_on` token is
-  added. 「A1 plan-audit 통과본으로 재확인」
+  ceiling (lead ruling 09-26 #5). 「A1 plan-audit 통과본으로 재확인」
+- **REQ-AE-017** (Event-detected) — When the card state file records a contract as observed
+  signed-valid earlier in this card, and the contract is now absent, without its signature block,
+  or reported by A1 verify as `signed-invalid` for a reason other than the four acceptance
+  reasons of REQ-AE-005, the escalation detector shall — before REQ-AE-002 resolution can report
+  not-armed — write exactly one escalation record of class `contract-void` naming the observed
+  condition, record in the same record and in the audit log that contract classes 2-6 are
+  disarmed for that card, and keep classes 7-10 active; no `escalate_on` token is added. On the
+  PreToolUse path only absence and a missing signature block are checked (file stat and block
+  presence); the digest check runs at the commit checkpoint (C4). 「A1 plan-audit 통과본으로 재확인」
 
 ### D.4 — Reporting and marking
 
-- **REQ-AE-015** (Ubiquitous) — The escalation detector shall write each escalation record as
-  one JSON file at `.moai/reports/<card-id>/escalations/<timestamp>.json` (or under
-  `.moai/reports/<SPEC-ID>/escalations/` with `card_id: "unresolved"` when the card id is
-  unresolved) conforming to the schema in §I, shall treat a card as needs-decision exactly when
-  at least one of its records has `status: open`, and shall not add a state to, rewrite,
-  reorder, or drop any queue item.
-- **REQ-AE-016** (Event-driven) — When any class trips, the escalation record shall carry the
+- **REQ-AE-018** (Ubiquitous) — The escalation detector shall write each escalation record as
+  one Markdown file at `.moai/reports/<card-id>/escalation/<class>-<fingerprint>.md` whose YAML
+  frontmatter conforms to the schema in §I, shall treat a card as needs-decision exactly when at
+  least one of its records of kind `contract` or `operational` has `status: open`, and shall not
+  add a state to, rewrite, reorder, or drop any queue item.
+- **REQ-AE-019** (Event-driven) — When any class trips, the escalation record shall carry the
   class, the observation (event or command plus verbatim evidence), at least two options for the
   decider, the tripped line as `contract.yaml:<line>` with the matching `escalate_on` token (or
-  the configuration key or verify reason, for the operational classes), the SPEC ID, the card id
-  or `unresolved`, and the HEAD commit at detection. 「A1 plan-audit 통과본으로 재확인」
-- **REQ-AE-017** (State-driven) — While an open escalation record with the same class and the
-  same observation fingerprint exists for the card, the escalation detector shall not write a
-  second record for that trip and shall increment the existing record's occurrence count.
-- **REQ-AE-018** (Ubiquitous) — The escalation detector shall present an escalation as a
+  the configuration key or verify reason, for the operational classes), the SPEC ID, the card
+  id, and the HEAD commit at detection. 「A1 plan-audit 통과본으로 재확인」
+- **REQ-AE-020** (State-driven) — While an escalation record for the same class and fingerprint
+  exists with `status: open`, the escalation detector shall not write a second record for that
+  trip and shall increment the existing record's `occurrences`; when the existing record has
+  `status: resolved`, a new trip shall be written as `<class>-<fingerprint>-<n>.md` with the next
+  free ordinal, leaving the resolved record and its `decider` unchanged.
+- **REQ-AE-021** (Ubiquitous) — The escalation detector shall present an escalation as a
   record, shall not route it through the user question channel, and shall not block, pause,
   or require acknowledgement before the triggering agent's next tool call.
-- **REQ-AE-019** (Ubiquitous) — The escalation detector shall label every detection it could not
+- **REQ-AE-022** (Ubiquitous) — The escalation detector shall label every detection it could not
   complete (an unavailable CI verdict, an unsupported language for declaration extraction or
-  registration recognition, an unresolvable card base, an unreadable contract field, a
-  `constitution:` invariant, which has no mechanical violation signal, a command-kind invariant
-  that no tool call executed since the previous checkpoint) as not-observed, and shall never
-  render not-observed as agreement or as absence of a trip. 「A1 plan-audit 통과본으로 재확인」
-- **REQ-AE-020** (Event-detected) — When the contract resolved at a first observation (no
-  signed-valid state yet recorded for it) is `signed-invalid` for any reason other than the four
-  acceptance reasons of REQ-AE-005, the escalation detector shall not arm contract classes 2-6
-  for that SPEC, shall append a `not-armed` line and a warning line carrying the verify reason
-  codes, and shall keep operational classes 7-9 active against
-  `workflow.autonomy.escalation.budget_default`. 「A1 plan-audit 통과본으로 재확인」
-
-### D.5 — A3 preconditions (distinct from the escalation detector)
-
-These two components deny tool calls, which the escalation detector never does (REQ-AE-003).
-They are separate components that share only the contract resolver (REQ-AE-002); neither writes
-an escalation record. Mechanics: design.md §G.
-
-- **REQ-AE-024** (A3 precondition; Capability gate + event) — Where `workflow.autonomy.mode` is
-  `contract` and the resolved contract's `actions` contains `push-develop`, when a Bash tool call
-  is a push of `develop`, the push serializer shall admit it only if the `push-develop` slot lease
-  (the record `moai slot` maintains) is free, expired, stale, or held by the calling session —
-  acquiring it for the calling session on admission — and shall otherwise deny it with a reason
-  prefixed `PUSH_SERIALIZATION_VIOLATION:` naming the live holder, as a wait rather than an
-  escalation; it shall release the lease when the admitted push exits non-zero, hold it
-  otherwise until the holder releases it after reading the CI result for the pushed head or the
-  declared bound elapses, and fail open (allow plus an audit line) when the lease record cannot
-  be read. 「A1 plan-audit 통과본으로 재확인」
-- **REQ-AE-025** (A3 precondition; Ubiquitous) — The contract-sign guard shall deny, regardless
-  of `workflow.autonomy.mode`, every Bash tool call that invokes `moai contract sign`, with a
-  reason prefixed `CONTRACT_SIGN_AGENT_VIOLATION:`, recognizing the invocation through shell
-  quoting, leading environment assignments, the `env` / `command` / `exec` / `nohup` prefixes,
-  any path to an executable named `moai`, and one level of `sh -c` / `bash -c` / `zsh -c`;
-  when a command carries the words `contract` and `sign` but its structure cannot be classified
-  (command substitution, a variable in program position, `eval`, or nesting deeper than one
-  level) the guard shall deny it (fail closed); and where A1 defines a moai-issued receipt path
-  for non-interactive signing, the guard shall allow an invocation on that path.
+  registration recognition, an unresolvable card base, an unreadable contract field, an
+  undetermined exemption root, a `constitution:` invariant, which has no mechanical violation
+  signal, a command-kind invariant that no tool call executed since the previous checkpoint) as
+  not-observed, and shall never render not-observed as agreement or as absence of a trip.
   「A1 plan-audit 통과본으로 재확인」
+- **REQ-AE-023** (Event-detected) — When the contract resolved at a first observation (no
+  signed-valid state yet recorded in the card state file) is `signed-invalid` for any reason
+  other than the four acceptance reasons of REQ-AE-005, the escalation detector shall not arm
+  contract classes 2-6 for that card, shall append a `not-armed` line and a warning line
+  carrying the verify reason codes, and shall keep operational classes 7-9 active against
+  `workflow.autonomy.escalation.budget_default`. 「A1 plan-audit 통과본으로 재확인」
 
 ## §E — Constraints
 
 - **C1 — Default preserves today.** `workflow.autonomy.mode` and
   `workflow.autonomy.escalation.budget_default` belong to A1's configuration (A1 draft
-  § Configuration at `8f77d9a33`: default `guided`, invalid value → `guided` plus a warning);
-  this SPEC reads them and adds only `workflow.autonomy.escalation.new_api_detector`. No
-  behavior, file, or hook output changes under `guided` (REQ-AE-001). `MOAI_AUTONOMY_TIER`
-  (`internal/config/envkeys.go:148`) keeps its meaning (hook block strength) and is neither read
-  nor renamed by this SPEC.
+  § Configuration: default `guided`, invalid value → `guided` plus a warning); this SPEC reads
+  them and adds only `workflow.autonomy.escalation.new_api_detector`. No behavior, file, or hook
+  output changes under `guided` (REQ-AE-001). `MOAI_AUTONOMY_TIER`
+  (`internal/config/envkeys.go:148`) keeps its meaning and is neither read nor renamed.
 - **C2 — Name distinct from the harness escalation block.** `harness.escalation`
   (`internal/config/types.go:1199-1243`) already names harness-level escalation
   (minimal→thorough). The keys read here live under `workflow.autonomy.escalation` and the two
   are never merged.
-- **C3 — Detection only, except two assigned A3 preconditions.** No existing gate is rewired,
-  weakened, or strengthened; the destructive denylist, deny rules, and branch guard keep deciding
-  exactly as they do now. The only new denials are the two A3 preconditions (REQ-AE-024,
-  REQ-AE-025), assigned to this SPEC by the lead because A3 depends on them.
+- **C3 — Detection only.** This SPEC adds no denial of any kind. No existing gate is rewired,
+  weakened, or strengthened; the destructive denylist, deny rules, and branch guard keep
+  deciding exactly as they do now.
 - **C4 — Hook budget.** Under `contract` mode, detector work on the PreToolUse path is
-  in-memory path and string matching bounded by the existing hook bind budget; the HEAD commit
-  REQ-AE-016 records on that path is read from the repository's HEAD and ref files, never
-  through a subprocess. The commit checkpoint that runs inside a PostToolUse hook is limited to
-  in-process work (A1 verify, verdict-file reads) within the hook's configured timeout; a
-  timeout is a REQ-AE-004 fault. Class 4, which needs git blob reads and declaration
-  extraction, runs only at the on-demand checkpoint (surface per open question Q2), never
-  inside a hook.
+  in-memory path and string matching plus file stats, bounded by the existing hook bind budget;
+  the HEAD commit REQ-AE-019 records on that path is read from the repository's HEAD and ref
+  files, and the queue lookup of REQ-AE-002 reads the queue store once per hook, never through a
+  subprocess. The commit checkpoint inside a PostToolUse hook is limited to in-process work (A1
+  verify, verdict-file reads) within the hook's configured timeout; a timeout is a REQ-AE-004
+  fault. Class 4 runs only at the on-demand checkpoint (open question Q2), never inside a hook.
 - **C5 — Template neutrality.** Any template content added carries no card id, SPEC id,
   internal date, or commit SHA and favors no programming language.
 - **C6 — Heuristic honesty.** Class 4 is a heuristic; its misses are expected and are
@@ -316,79 +281,66 @@ an escalation record. Mechanics: design.md §G.
 This SPEC does not design the contract schema and does not copy it. **Source of every field
 below:** the A1 draft, SPEC-AUTONOMY-CONTRACT-001 `design.md` § Contract Schema at commit
 `8f77d9a33` (branch `WT-contract-schema`; read-only copy for this card at
-`.moai/reports/t1235/a1-design-8f77d9a33.md`). That draft has **not** been plan-audited; every
-requirement tagged 「A1 plan-audit 통과본으로 재확인」 is re-checked against the plan-audit-passed
-version before run-phase M2, and so is every row of §F.1 whether or not a tag cites it.
+`.moai/reports/t1235/a1-design-8f77d9a33.md`). The plan-audit of iteration 2 compared a later A1
+commit, `4208a3a3b`, which this lane did not read. That draft has **not** been plan-audited;
+every requirement tagged 「A1 plan-audit 통과본으로 재확인」 and every row of §F.1 is re-checked
+against the plan-audit-passed version before run-phase M2.
 
-### F.1 Fields consumed (names as in the `8f77d9a33` draft)
+### F.1 Fields consumed
 
 | Draft field / surface | Consumed by |
 |---|---|
-| `.moai/specs/<SPEC-ID>/contract.yaml` (file location) and presence of the `signature` block | REQ-AE-002, REQ-AE-021, REQ-AE-023 |
-| verify `state` (`unsigned` / `signed-valid` / `signed-invalid`) and `reasons[]` | REQ-AE-005, REQ-AE-020, REQ-AE-023 |
+| `.moai/specs/<SPEC-ID>/contract.yaml` (file location) and presence of the `signature` block | REQ-AE-002, REQ-AE-012, REQ-AE-017 |
+| verify `state` (`unsigned` / `signed-valid` / `signed-invalid`) and `reasons[]` | REQ-AE-005, REQ-AE-017, REQ-AE-023 |
 | `acceptance.sha256`, `acceptance.ac_count` (with verify's measured counterparts) | REQ-AE-005 |
-| `invariants[]` — kinds `constitution:<glob>`, `frozen-files`, command (any other string) | REQ-AE-006, REQ-AE-007, REQ-AE-019 |
-| `ownership.write[]`, `ownership.never[]` | REQ-AE-007, REQ-AE-008, REQ-AE-021 |
-| `ownership.scratch[]` (requested, R2 — not in the draft) | REQ-AE-022 |
-| `review.second_model` (`codex` / `glm` / `none`) | REQ-AE-010 |
-| `actions[]` closed vocabulary; `push-develop` token; `push_requires_window` (R6) | REQ-AE-011, REQ-AE-024 |
-| receipt path for non-interactive signing (requested, R5 — not in the draft) | REQ-AE-025 |
-| `budget.turns`, `budget.operations`, `budget.audit_retries` | REQ-AE-012, REQ-AE-014 |
-| `escalate_on[]` six tokens (used as the record's tripped-line token) | REQ-AE-016 |
-| `workflow.autonomy.mode`, `workflow.autonomy.escalation.budget_default` (A1 § Configuration) | REQ-AE-001, REQ-AE-012, REQ-AE-020 |
+| `invariants[]` — kinds `constitution:<glob>`, `frozen-files`, command (any other string) | REQ-AE-006, REQ-AE-007, REQ-AE-022 |
+| `ownership.write[]`, `ownership.never[]` | REQ-AE-007, REQ-AE-008, REQ-AE-012 |
+| `ownership.scratch[]` (R2) | REQ-AE-013 |
+| `review.second_model` | REQ-AE-010 |
+| `actions[]` closed vocabulary; `push-develop` token | REQ-AE-011 |
+| `budget.turns`, `budget.operations`, `budget.audit_retries` | REQ-AE-014, REQ-AE-016 |
+| `escalate_on[]` six tokens (the record's tripped-line token) | REQ-AE-019 |
+| contract lifecycle relative to SPEC `status` (R7) | REQ-AE-002 |
+| `workflow.autonomy.mode`, `workflow.autonomy.escalation.budget_default` (A1 § Configuration) | REQ-AE-001, REQ-AE-014, REQ-AE-023 |
 
-### F.2 Open items — where the draft differs from the assumptions, and requests to A1
+### F.2 Open items and requests to A1
 
-- **O1 — `escalate_on` is fixed, not selective.** The draft requires exactly the six tokens
-  (`escalate_on_incomplete` otherwise); per-class disabling is gone.
+- **O1 — `escalate_on` is fixed, not selective.** The draft requires exactly the six tokens;
+  per-class disabling is gone.
 - **O2 — `invariants` has three kinds.** `constitution:<glob>` has no mechanical violation
-  signal here (not-observed, REQ-AE-019). `frozen-files` is now defined by lead ruling (R4).
+  signal here (not-observed, REQ-AE-022). `frozen-files` is defined by lead ruling 09-26 #6 (R4).
 - **O3 — `actions` names capabilities, not push targets.** Push authority is read from
-  `push-develop` only (which A1 additionally gates on `workflow.autonomy.contract.push_develop`);
-  tags and releases have no token and always trip.
-- **O4 — `budget` is filled at sign time.** A signed contract always carries it; the
-  `budget_default` fallback applies only where no resolved contract with a readable budget exists.
-- **O5 — Configuration ownership.** `mode` and `escalation.budget_default` are A1's keys;
-  this SPEC adds only `escalation.new_api_detector`.
-- **O6 — Line addressability is not provided.** The draft's `show --json` / `verify --json`
-  object carries no source line numbers; REQ-AE-016's `contract.yaml:<line>` is mapped by this
-  detector from the file text.
-- **O7 — Acceptance measurement already exists in A1.** A1 specifies an acceptance hash rule
-  and a Go port of the AC counter with a parity test; class 1 consumes A1's verify result.
+  `push-develop` only; tags and releases have no token and always trip class 6.
+- **O4 — `budget` is filled at sign time.** The `budget_default` fallback applies only where no
+  resolved contract with a readable budget exists.
+- **O5 — Configuration ownership.** `mode` and `escalation.budget_default` are A1's keys; this
+  SPEC adds only `escalation.new_api_detector`.
+- **O6 — Line addressability is not provided.** Verify output carries no source line numbers;
+  the record's contract line reference is mapped by this detector from the file text.
+- **O7 — Acceptance measurement already exists in A1.** Class 1 consumes A1's verify result.
 - **O8 — Fields present in the draft and not assumed by the design-source:** `schema_version`,
-  `spec_id`, `plan_audit`, `signature` (with `contract_digest_mismatch`). A signed contract that
-  turns invalid mid-run now escalates as `contract-void` (REQ-AE-023, lead ruling 09-26).
-- **O9 — Mission projection.** The draft projects the contract onto `mission.MissionContract`
-  so that A2 "can reuse `ValidateMissionDecision`" (present at `internal/mission/policy.go:200`).
-  This SPEC does not commit to that reuse; it is a design option (design.md §C.6).
-- **O10 — Who runs command invariants.** The draft describes command-kind invariants as
-  "opaque to A1, run by A2/run-phase". This SPEC never executes them (C4, design.md §C.2); it
-  observes executions the agent performs and reports an unexecuted invariant as not-observed
-  (REQ-AE-019). If the plan-audit-passed A1 schema makes execution an A2 obligation, REQ-AE-006
-  and C4 need amendment.
+  `spec_id`, `plan_audit`, `signature`. A signed contract that turns invalid mid-run escalates as
+  `contract-void` (REQ-AE-017).
+- **O10 — Who runs command invariants.** The draft calls command-kind invariants "opaque to A1,
+  run by A2/run-phase". This SPEC never executes them (C4); it observes executions and reports an
+  unexecuted invariant as not-observed. If the plan-audit-passed A1 makes execution an A2
+  obligation, REQ-AE-006 and C4 need amendment.
 
-Requests to A1 that follow from the lead rulings of 09-26 (§H):
+(O9, the mission-validator projection, moved to card t1245 — §K.)
 
-- **R1 — Immutable after signing.** A1 states that once `signature` is present, the SPEC's
-  `contract.yaml` and `acceptance.md` are implicitly `never` for the run, and that the
-  signature carries a hash that lets a consumer detect tampering (the draft's
-  `signature.contract_sha256` / `contract_digest_mismatch` may already satisfy the hash half).
-  Consumed by REQ-AE-021 and REQ-AE-023.
-- **R2 — `ownership.scratch[]`.** An optional glob set of additional write exemptions.
-  Consumed by REQ-AE-022.
-- **R3 — `budget.audit_retries` scope.** A1 states the field bounds plan-audit and sync-audit
-  retries alike. Consumed by REQ-AE-012 and REQ-AE-014.
-- **R4 — `frozen-files` definition.** A1 defines the token as the union of the constitution zone
-  registry's Frozen-zone target files, the hook's `frozenInstructionFiles`, and the contract's
-  `ownership.never`. Consumed by REQ-AE-007.
-- **R5 — Receipt path for non-interactive signing.** The `8f77d9a33` draft has no receipt path:
-  `sign` refuses a non-terminal stdin and `interactive-tty` is its only method (draft lines
-  80, 189, 194; the word "receipt" does not occur in the copy). A1 defines the moai-issued
-  receipt path and how a guard recognizes it. Consumed by REQ-AE-025; until it exists, the
-  guard denies every `moai contract sign` invocation.
-- **R6 — Which window `push_requires_window` means.** The draft says `push-develop` "implies
-  `push_requires_window`" without naming the mechanism. This SPEC implements it as the
-  `push-develop` slot lease (REQ-AE-024); A1 confirms or names another. Consumed by REQ-AE-024.
+- **R1 — Immutable after signing.** Once `signature` is present, the SPEC's `contract.yaml` and
+  `acceptance.md` are implicitly `never`, and the signature carries a hash for tamper detection.
+  Consumed by REQ-AE-012, REQ-AE-017.
+- **R2 — `ownership.scratch[]`.** Optional glob set of additional write exemptions. REQ-AE-013.
+- **R3 — `budget.audit_retries` scope.** Bounds plan-audit and sync-audit alike. REQ-AE-014,
+  REQ-AE-016.
+- **R4 — `frozen-files` definition.** Union of the zone registry's Frozen-zone target files, the
+  hook's `frozenInstructionFiles` (base-name match), and `ownership.never`. REQ-AE-007.
+- **R7 — A contract becomes terminal when its SPEC is completed.** A1 states that a signed
+  contract whose SPEC `status` is `completed` (or `archived`) no longer binds any run, so a
+  resolver may ignore it. Consumed by REQ-AE-002 (lead ruling 09-26 (2) #1).
+
+(R5 and R6 concerned the moved A3 preconditions and went with them to card t1245 — §K.)
 
 Also depends on A1 landing on `develop` before run-phase begins (card text: "plan 은 병행 가능,
 run 은 A1 develop 병합 뒤").
@@ -397,28 +349,33 @@ run 은 A1 develop 병합 뒤").
 
 ### Out of Scope — rewiring or adding gates
 
-- Turning any escalation trip into a deny, an ask, or a block (that is track A3); the two A3
-  preconditions of §D.5 are the only denials this SPEC adds.
+- Turning any escalation trip into a deny, an ask, or a block (that is track A3).
 - Adding a plain-push-to-`main` or `git tag` deny rule; class 6 reports the attempt only.
-- Detecting a `moai contract sign` reached through a script file, an alias, or a build-and-run
-  of the source tree; those invocations are not visible in the Bash command string (A1's
-  terminal-only signing remains the backstop, §J).
+- Push serialization and the contract-sign deny (moved to card t1245, §K).
 
 ### Out of Scope — the closure report
 
 - Aggregating escalation records into a closure or completion report (track A4).
 
-### Out of Scope — the contract schema
+### Out of Scope — the contract schema and revocation
 
 - Defining, validating, signing, or versioning `contract.yaml` (track A1, card t1234); §F.2
   lists requests only.
 - Detecting violation of a `constitution:<glob>` invariant; it is reported as not-observed.
+- Implementing `moai contract revoke` or writing revoke records; §I only reserves their kind
+  for A3.
 
 ### Out of Scope — queue state changes and the F1 record layer
 
-- Adding a `needs-decision` value to the queue state enum, or any queue column.
+- Adding a `needs-decision` value to the queue state enum, or any queue column; the resolver only
+  reads the queue.
 - Automatically resolving, dismissing, or acting on an escalation.
 - Migrating escalation records into the factory worktree↔card record (F1 ingests the files later).
+
+### Out of Scope — mission-validator projection
+
+- Projecting the contract onto `mission.MissionContract` and reusing `ValidateMissionDecision`
+  (moved to card t1245, §K).
 
 ### Out of Scope — reviving the ac-baseline guard as a product feature
 
@@ -426,72 +383,93 @@ run 은 A1 develop 병합 뒤").
 
 ### Out of Scope — a CI poller
 
-- Fetching CI results from a remote. Class 5 consumes a recorded CI verdict when one
-  exists and reports not-observed otherwise.
+- Fetching CI results from a remote. Class 5 consumes a recorded CI verdict when one exists and
+  reports not-observed otherwise.
 
-## §H — Lead rulings 09-26
+## §H — Lead rulings
 
-Each ruling is recorded with the reason it was needed; the reasons are the plan-audit
-iteration-1 findings (`.moai/reports/t1235/plan-audit-iter1.md`) it closes.
+Each ruling is recorded with the reason it was needed; the reasons are the plan-audit findings it
+closes (`.moai/reports/t1235/plan-audit-iter1.md`, `plan-audit-iter2.md`).
 
-| # | Ruling | Reason | Carried by |
+| Ruling | Decision | Reason | Carried by |
 |---|---|---|---|
-| 1a | After signing, `contract.yaml` and `acceptance.md` are implicitly `never`; a write to either trips `ownership-move`. | D2: an agent could edit the contract, which `ownership.write` must cover, and turn detection off without any record. | REQ-AE-021, R1 |
-| 1b | A contract that disappears, loses its signature, or fails its hash is never silently disarmed: exactly one escalation through the operational path, no seventh `escalate_on` token, and the disarming itself recorded. | D2 / Q6: the former REQ-AE-020 disarmed with only a log line, contradicting REQ-AE-019. | REQ-AE-023 |
-| 2 | Resolve the contract from the tool call's worktree root: count signed `.moai/specs/*/contract.yaml`; one arms, zero is not-armed, two or more is not-armed plus a warning; every not-armed outcome is an observable line; never the branch name; resolver isolated for a later move to the F1 record. | D1: no rule said which SPEC's contract a tool call is judged against. | REQ-AE-002, design.md §C.8 |
-| 3 | Fixed default exemptions (card evidence dir, `.moai/state/`, OS temp, session scratchpad, auto-memory store) plus an optional contract `ownership.scratch`. | D3: ordinary writes outside `ownership.write` would keep every card permanently needs-decision. | REQ-AE-022, R2 |
-| 4 | The needs-decision record lives at `.moai/reports/<card>/escalations/<ts>.json` with a schema in this SPEC; F1 ingests these files later; M1 does not wait for F1. | Q1 blocked M1. | REQ-AE-015, §I |
-| 5 | No new configuration key for the audit ceiling; `budget.audit_retries` applies to plan-audit and sync-audit. | Q4: no sync-audit ceiling source existed. | REQ-AE-014, R3 |
-| 6 | `frozen-files` = registry Frozen-zone target files ∪ `frozenInstructionFiles` ∪ `ownership.never`. | Q7: the draft left the set undefined. | REQ-AE-007, R4 |
+| lead ruling 09-26 #1a | After signing, `contract.yaml` and `acceptance.md` are implicitly `never`. | D2: editing the contract, which `ownership.write` must cover, could turn detection off with no record. | REQ-AE-012, R1 |
+| lead ruling 09-26 #1b | Contract loss is never silently disarmed: one escalation through the operational path, no seventh `escalate_on` token, disarming recorded. | D2 / Q6. | REQ-AE-017 |
+| lead ruling 09-26 #2 | Resolve from the worktree root, never the branch name; not-armed outcomes are logged; resolver is one function. | D1. | REQ-AE-002 (narrowed by (2) #1) |
+| lead ruling 09-26 #3 | Fixed default exemptions plus optional `ownership.scratch`. | D3. | REQ-AE-013, R2 |
+| lead ruling 09-26 #4 | Needs-decision lives in an escalation record beside the queue; F1 ingests later; M1 does not wait. | Q1. Its path and format are superseded by (2) #6. | REQ-AE-018 |
+| lead ruling 09-26 #5 | No new audit-ceiling key; `budget.audit_retries` for both audits. | Q4. | REQ-AE-016, R3 |
+| lead ruling 09-26 #6 | `frozen-files` = registry Frozen targets ∪ `frozenInstructionFiles` ∪ `ownership.never`. | Q7. | REQ-AE-007, R4 |
+| lead ruling 09-26 (2) #1 | Resolver narrows in two layers: the worktree directory name is the card id and selects that card's SPEC; within it, count only signed contracts of SPECs not `completed`/`archived`; arm on exactly one, log not-armed otherwise; one function; ask A1 for R7. | N1: signed contracts stay in the tree after their SPEC closes, so counting every signed contract converged to permanent not-armed from the second contract card on. N3/Q9: no card id source existed, so card-evidence writes were not exempt. | REQ-AE-002, REQ-AE-013, R7 |
+| lead ruling 09-26 (2) #2 | Push serialization uses the `moai slot` `push-develop` lease; nothing changes here because of (2) #3. | N6. | §K |
+| lead ruling 09-26 (2) #3 | Split: REQ-AE-024, REQ-AE-025, AC-AE-022..025, and the mission-validator projection move to card t1245. | N5: the receipt-path criterion could only turn green after A3, which starts after this SPEC — this SPEC could never complete. N7: the projection had no owner. Tier L ceilings left no room for the N1/N2 criteria. | §K |
+| lead ruling 09-26 (2) #4 | `contract-void` is detected before the resolver decides not-armed, from the card state file. | N2: with the resolver first, a removed signature or deleted file ended as not-armed and class 10 never ran — the silent disarm D2 was meant to close. | REQ-AE-017, design.md §C.6 |
+| lead ruling 09-26 (2) #6 | Record path `.moai/reports/<card-id>/escalation/<class>-<fingerprint>.md` with YAML frontmatter (card, class, fingerprint, contract line ref, status open\|resolved, decider); revoke kinds for A3. Supersedes the `escalations/<ts>.json` form of #4. | A per-class, per-fingerprint file makes dedup a file lookup and gives A3 and F1 one stable, parseable surface. | REQ-AE-018, REQ-AE-020, §I |
 
-## §I — Escalation record schema
+(Ruling (2) #5 was a stale reference repair in design.md; it changes no requirement.)
 
-One file per record, `.moai/reports/<card-id>/escalations/<timestamp>.json`, where
-`<timestamp>` is the detection time in UTC as `YYYYMMDDTHHMMSSZ` followed by a short
-fingerprint suffix so two trips in one second do not collide.
+## §I — Escalation record format
+
+One file per class and fingerprint:
+`.moai/reports/<card-id>/escalation/<class>-<fingerprint>.md`, with `-<n>` appended for a re-trip
+after resolution (REQ-AE-020). `<fingerprint>` is the first 16 lowercase hex characters of the
+SHA-256 of the class plus the normalized observation.
+
+### I.1 Frontmatter (machine-readable, YAML)
 
 | Field | Type | Rule |
 |---|---|---|
 | `schema_version` | int | `1` |
-| `card_id` | string | resolved card id, or `"unresolved"` |
-| `spec_id` | string | the resolved contract's SPEC ID, or `""` for an operational trip with no resolved contract |
-| `class` | string | one of the ten class names in §B.1 |
-| `kind` | string | `contract` or `operational` |
-| `tripped` | object | `{ "file": "contract.yaml", "line": <int>, "token": "<escalate_on token>" }` for contract classes; `{ "config_key": "<key>" }` or `{ "verify_reason": "<code>" }` for operational classes |
-| `observation` | object | `{ "event": "<hook or checkpoint>", "command": "<string or empty>", "evidence": "<verbatim excerpt>" }` |
-| `options` | string[] | at least two entries |
-| `not_observed` | string[] | every detection this record could not complete (REQ-AE-019) |
-| `head_sha` | string | HEAD at detection |
-| `detected_at` | string | UTC RFC 3339 |
-| `fingerprint` | string | stable hash of `class` + normalized observation (REQ-AE-017) |
+| `card` | string | card id (worktree directory name) |
+| `spec` | string | the resolved contract's SPEC ID, or `""` when no contract was resolved |
+| `kind` | string | `contract`, `operational`, or `revoke` |
+| `class` | string | a §B.1 class name for `contract` / `operational`; a revoke class (I.2) for `revoke` |
+| `fingerprint` | string | 16 lowercase hex characters, equal to the file name's fingerprint |
+| `contract_ref` | string | `contract.yaml:<line>` for contract classes; `config:<key>` or `verify:<reason>` for operational classes; `""` for revoke records without a line |
+| `escalate_on` | string | the matching token for contract classes, otherwise `""` |
+| `status` | string | `open` or `resolved` |
+| `decider` | string | `""` while open; the person or role that resolved it once resolved |
 | `occurrences` | int | ≥ 1 |
-| `status` | string | `open` when written; changing it is a human act outside this SPEC |
+| `head_sha` | string | HEAD at first detection |
+| `detected_at` | string | UTC RFC 3339, first detection |
+| `updated_at` | string | UTC RFC 3339, last change |
+| `not_observed` | string list | every detection this record could not complete (REQ-AE-022) |
 
-A card is needs-decision exactly when one of its records has `status: open` (REQ-AE-015).
+The body carries three Markdown sections in order: `## Observation` (event or command plus
+verbatim evidence), `## Options` (at least two numbered options), `## Not observed`.
 
-## §J — A3 preconditions (lead assignment 09-26)
+### I.2 Revoke kinds (reserved for A3)
 
-Two items from the A1 second audit had no owner; the lead assigned them here because A3 (gate
-rewiring) cannot start without them. They are **A3 preconditions**, not escalation classes: they
-deny, they never write escalation records, and they are tested separately (acceptance.md §G).
+`kind: revoke` records document a `moai contract revoke` (track A3). This SPEC reserves the kind
+and two class names and never writes them:
 
-| Item | Why A3 needs it | Requirement | Reuse |
-|---|---|---|---|
-| Push serialization | Back-to-back pushes of `develop` cancel the in-flight CI run of the earlier push, so its verdict never arrives. | REQ-AE-024 | `moai slot` lease record, liveness, bound, and takeover rules (`.claude/rules/moai/workflow/resource-slot-lease.md`; `internal/cli/slot.go`, `internal/hook/slot_lease_guard.go`) |
-| Agent-invoked signing denied | A contract signed by the agent it binds is no contract. | REQ-AE-025 | The quoted-span and command-extraction helpers the branch and integration guards already use (`internal/hook/branch_guard.go:197`, `internal/hook/integration_lock_guard.go:122`) |
+| Class | Meaning |
+|---|---|
+| `revoke-operator` | a person revoked the contract directly |
+| `revoke-on-decision` | a decider revoked the contract while resolving an open escalation record |
 
-Bypass shapes for REQ-AE-025 and the matcher's answer to each:
+A revoke record carries `status: resolved` and a non-empty `decider`; it never makes a card
+needs-decision (REQ-AE-018). A3 may add revoke classes; this table is the reserved minimum.
 
-| Shape | Example | Matcher |
-|---|---|---|
-| Quoting | `'moai' contract "sign"` | caught (shell-word unquoting) |
-| Environment prefix | `FOO=1 moai contract sign`, `env FOO=1 moai contract sign` | caught |
-| Wrapper prefix | `command moai …`, `exec moai …`, `nohup moai …` | caught |
-| Path to the binary | `~/go/bin/moai contract sign`, `./bin/moai contract sign` | caught (basename `moai`) |
-| One-level shell | `sh -c 'moai contract sign'`, `bash -c …`, `zsh -c …` | caught (the `-c` string is parsed once) |
-| Global flags before the verb | `moai --no-color contract sign` | caught (flags skipped before `contract`) |
-| Command substitution, variable as program, `eval`, deeper nesting | `$(which moai) contract sign`, `$M contract sign`, `eval "moai contract sign"` | not classified → **denied (fail closed)** when the words `contract` and `sign` both occur |
-| Script file, alias, `go run ./cmd/moai contract sign` | — | not visible or not classified; script and alias invisible (Out of Scope), `go run` form denied by the fail-closed rule because both words occur |
+A card is needs-decision exactly when one of its `contract` or `operational` records has
+`status: open`.
 
-A1's own `sign` refuses a non-terminal stdin, and an agent's Bash call has none, so this guard is
-defense in depth rather than the only barrier.
+## §K — Moved to A2b (card t1245)
+
+Lead ruling 09-26 (2) #3 moved the following out of this SPEC to card **t1245** (A2b). They are
+not requirements of this SPEC any more; numbers below are the v0.2.1 identifiers.
+
+| What it was | Former id (v0.2.1) |
+|---|---|
+| Push serializer on the `moai slot` `push-develop` lease (A3 precondition) | REQ-AE-024 |
+| PreToolUse deny on agent-invoked `moai contract sign`, with the receipt-path allowance (A3 precondition) | REQ-AE-025 |
+| Push serializer criteria (second push denied / first unaffected; release and stale reclaim) | AC-AE-022, AC-AE-023 |
+| Contract-sign guard criteria (bypass shapes and controls; receipt path allowed) | AC-AE-024, AC-AE-025 |
+| Their mechanics, milestone, and bypass-shape table | design.md §G, plan.md M6, spec.md §J |
+| Receipt path; which window `push_requires_window` means | A1 requests R5, R6 |
+| Projecting the contract onto `mission.MissionContract` and reusing `ValidateMissionDecision` (`internal/mission/policy.go:200`) | O9 / N7 — mission-validator projection |
+
+Because of the split, plan-audit iteration-2 findings **N4** (sign-guard bypass through `script`,
+`timeout`, `sudo` and similar wrappers) and **N8** (the sign deny contradicting the "nothing
+changes under `guided`" promise) no longer apply to this SPEC; they travel with REQ-AE-025 to
+card t1245. N5, N6, and N7 likewise moved with their items.

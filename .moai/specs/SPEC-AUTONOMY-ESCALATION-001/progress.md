@@ -5,10 +5,12 @@
 - plan_status: audit-ready
 - plan_complete_at: 2026-09-26
 - Tier: L. Artifacts: spec.md, plan.md, acceptance.md, design.md, research.md (+ this file).
-- Requirements: 25 (REQ-AE-001 … REQ-AE-025). Acceptance criteria: 25 (AC-AE-001 … AC-AE-025).
-  Both at the Tier L ceiling.
-- v0.2.1: two A3 preconditions assigned by the lead (push serializer REQ-AE-024, contract-sign
-  guard REQ-AE-025), kept distinct from the detector; A1 requests R5-R6 added.
+- Requirements: 23 (REQ-AE-001 … REQ-AE-023). Acceptance criteria: 23 (AC-AE-001 … AC-AE-023).
+- v0.3.0: plan-audit iteration 2 (FAIL 0.82) repaired; lead rulings 09-26 (2) folded in
+  (spec.md §H): two-layer resolver, contract-void before resolution, Markdown record with YAML
+  frontmatter and revoke kinds; A1 request R7 added. The v0.2.1 A3 preconditions, their
+  criteria, R5-R6, and the mission-validator projection moved to card t1245 (spec.md §K).
+- v0.2.1: two A3 preconditions assigned by the lead (since moved to card t1245).
 - v0.2.0: plan-audit iteration 1 (FAIL 0.79) lane-owned defects D4-D16 repaired; lead rulings
   09-26 #1-#6 folded in (spec.md §H); A1 requests R1-R4 listed in spec.md §F.2.
 - Base tree: `develop` at `ca1d5dc43`. Card: t1235.
