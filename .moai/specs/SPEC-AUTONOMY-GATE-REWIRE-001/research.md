@@ -1,4 +1,4 @@
-# research.md — SPEC-AUTONOMY-GATE-REWIRE-001 (v0.3.1)
+# research.md — SPEC-AUTONOMY-GATE-REWIRE-001 (v0.3.2)
 
 측정 트리: 워크트리 `.claude/worktrees/t1236`, 브랜치 `WT-contract-gate-rewire`, HEAD `ca1d5dc43` (develop 과 동일). 측정일 2026-09-26. 아래 수치는 모두 이 트리에서 이 실행에 잰 값이다. **t1175 흡수 후 run phase 진입 시 전부 재측정한다**(`plan.md §C` M0).
 
@@ -123,15 +123,17 @@ grep -rhcE "Kickoff" $T/CLAUDE.md $T/.claude/rules $T/.claude/skills/moai $T/.cl
 | `MOAI_AUTONOMY_TIER` (semi-auto/automatic/fully-autonomous) | `SPEC-AUTONOMY-TIERS-001` (completed) | 권한 번들 축. `workflow.autonomy.mode` 와 다른 축 → SSOT 에 두 축의 구분을 한 줄로 적는다 |
 | `/moai goal --auto` 승인형 자율 미션 | `SKILL.md` goal 항목 | 목표 루프 축. 계약 서명이 goal 을 무장하는지 여부는 본문 결정 D-4(자동 무장 없음) |
 
-## §7. A1 기준선 — 0.5.1 `65e0a9167`
+## §7. A1 기준선 — 0.5.2 `25283ebf8`
 
-**기준선: A1 0.5.1, 커밋 `65e0a9167`** (`docs(SPEC-AUTONOMY-CONTRACT-001): v0.5.1 decider llm|llm+jev, A1 schema / A3 rules split, card field, store path (t1234)`). `git show 65e0a9167:<path>` 로 스크래치에 뽑아 형제 워크트리 `.claude/worktrees/t1234` 의 파일과 `cmp` 했고 spec·design 모두 같았다(출력 `wt design == 65e0a9167`, `wt spec == 65e0a9167`). 아래 줄 번호는 이 커밋의 파일 기준이다.
+**기준선: A1 0.5.2, 커밋 `25283ebf8`** (`docs(SPEC-AUTONOMY-CONTRACT-001): v0.5.2 conditional A3-lift wording, store cross-check comment, A2b attributions (t1234)`). `git show 25283ebf8:<path>` 로 스크래치에 뽑아 형제 워크트리 `.claude/worktrees/t1234` 의 파일과 `cmp` 했고 spec·design·acceptance 모두 같았다(출력 `wt spec == 25283ebf8`, `wt design == 25283ebf8`, `wt acc == 25283ebf8`). `git diff --stat 65e0a9167 25283ebf8 -- .moai/specs/SPEC-AUTONOMY-CONTRACT-001/` → 4 files, 37 insertions, 31 deletions.
 
-**이력(참고만)**: `8f77d9a33`(0.1.0 초안), `98cb7879d`(0.2.0), `4208a3a3b`(0.3.0, 감사 iter-1 이 읽은 판), `652243c72`(0.4.0), `6d98ca466`(0.4.1, v0.3.0 의 기준), `67a2f55cb`(0.5.0, 단일 결정자안 — 운영자 재결정으로 대체). 판단의 근거는 0.5.1 이다.
+**0.5.2 가 바꾼 것(`65e0a9167` 대비)**: §C.8·REQ-CONTRACT-024·REQ-CONTRACT-019·AC-CONTRACT-016 (t) 가 「A3 의 개정이 착지하기 전에는 A1 이 거절, 착지하면 A3 가 그 거절을 없애고 `llm+jev` 영수증은 A3 의 교차 확인 결과를 따른다」로 조건부화됐고, (t) 의 대체 테스트는 A3 소유로 적혔다(「A3 owns the replacing test」). design.md:89 의 `moai-store` 출처 값 예상은 삭제됐다(「A3 verifies receipts against its store …, not via a new provenance value」). 이 덕분에 A3 는 A1 SPEC 문서를 고칠 필요가 없다 — v0.3.1 의 `design.md §2` 27행과 그에 걸린 M7b 보류를 없앴다.
 
-**소유 경계(리드 결정 2026-09-26, A1 0.5.1 §C.8)**: A1 은 **스키마** — 결정자 값 집합과 파생, 영수증 필드, 구조·일관성 검증기. A3 는 **규칙** — 교차 확인 합의, Jev 쪽 실패의 `llm` 대체, 결과 `outcome` 도출. A1 design § Cross-check Rules(401-413)는 A3 소유 규칙을 참고로 옮겨 적은 것이며 A1 이 평가하지 않는다.
+**이력(참고만)**: `8f77d9a33`(0.1.0 초안), `98cb7879d`(0.2.0), `4208a3a3b`(0.3.0, 감사 iter-1 이 읽은 판), `652243c72`(0.4.0), `6d98ca466`(0.4.1, v0.3.0 의 기준), `67a2f55cb`(0.5.0, 단일 결정자안 — 운영자 재결정으로 대체), `65e0a9167`(0.5.1, v0.3.1 의 기준). 판단의 근거는 0.5.2 이다. 아래 표의 줄 번호는 `65e0a9167` 기준이며, 0.5.2 에서는 spec 쪽이 1~3줄 밀렸다(§C.6 191, §C.8 217, REQ-CONTRACT-015 371, REQ-CONTRACT-019 412, REQ-CONTRACT-024 460; design § Kickoff Receipt 348, § Cross-check Rules 402, § Signing Flow 경로 선택 435, § Configuration 503).
 
-0.5.1 이 확정한 항목 — 이 SPEC 은 재확인 표지 없이 「A1 0.5.1 (65e0a9167)」로 인용한다:
+**소유 경계(리드 결정 2026-09-26, A1 0.5.2 §C.8)**: A1 은 **스키마** — 결정자 값 집합과 파생, 영수증 필드, 구조·일관성 검증기. A3 는 **규칙** — 교차 확인 합의, Jev 쪽 실패의 `llm` 대체, 결과 `outcome` 도출. A1 design § Cross-check Rules(401-413)는 A3 소유 규칙을 참고로 옮겨 적은 것이며 A1 이 평가하지 않는다.
+
+0.5.1 이 확정했고 0.5.2 가 유지한 항목 — 이 SPEC 은 「A1 0.5.2 (25283ebf8)」로 인용한다:
 
 | 항목 | A1 0.5.1 의 값 | 이 SPEC |
 |---|---|---|
@@ -142,8 +144,8 @@ grep -rhcE "Kickoff" $T/CLAUDE.md $T/.claude/rules $T/.claude/skills/moai $T/.cl
 | 영수증 필드 | `requested_decider`·`effective_decider` ∈ `llm \| llm+jev`, `fallback{applied, reason}`, `llm_answer`, `jev_answer`(교차 확인에서만), `outcome ∈ approve\|reject\|human`, `inputs{…, plan_audit_report}`; 고정 경로 `.moai/specs/<SPEC-ID>/kickoff-receipt.json`(design § Kickoff Receipt 348-399) | REQ-GR-009·010·011·012 |
 | 대체 사유 닫힌 집합 | `jev_disabled`·`jev_low_confidence`·`jev_malformed_response`·`jev_call_failed`·`jev_key_missing`, 허용되는 차이는 `llm+jev` → `llm` 뿐(필드 규칙 4·5) | REQ-GR-010 R2, AC-GR-025 |
 | 검증기의 범위 | 구조·일관성만(필드 규칙 1-9); `outcome: approve` 는 `llm_answer: approve` 를 요구(규칙 9) | REQ-GR-010 |
-| 임시 규칙 | 서명기 단계 (1): `effective_decider: llm+jev` → `receipt_requires_human`, 「A3 lifts this A1 rule when it amends the principle」(spec §C.8 216-, REQ-CONTRACT-024) | REQ-GR-025 |
-| 저장소 위치 | `$MOAI_HOME/db/<project-key>/contract/`(spec §C.6, design 89 주석) — 리드 결정 R10 과 같음 | REQ-GR-012 |
+| 임시 규칙 | 서명기 단계 (1): A3 의 개정이 착지하기 전에는 `effective_decider: llm+jev` → `receipt_requires_human`, 착지하면 A3 가 그 거절을 없애고 교차 확인 결과를 따름 — 「A3 lifts this A1 rule, and replaces its test」(0.5.2 spec §C.8, REQ-CONTRACT-024, acceptance AC-CONTRACT-016 (t)) | REQ-GR-025, AC-GR-017 |
+| 저장소 위치 | `$MOAI_HOME/db/<project-key>/contract/`(spec §C.6, 0.5.2 design 89 주석 — 「A3 verifies receipts against its store」) — 리드 결정 R10 과 같음 | REQ-GR-012, REQ-GR-007 |
 | `frozen-files` | design § Frozen Files — zone-registry Frozen 항목의 파일 + `**/CLAUDE.md`·`**/CLAUDE.local.md` + 계약 `ownership.never` | REQ-GR-009 (f) |
 | verify | 상태 `unsigned \| signed-valid \| signed-invalid`, 폐쇄 사유 코드, exit 0/1/2 | REQ-GR-007 |
 | push 리스 | `push-develop` 은 `moai slot` 리스 `push-develop` 을 잡은 상태의 push, `push_requires_lease: true`(REQ-CONTRACT-018), 강제는 A2b | REQ-GR-021 |
@@ -195,9 +197,11 @@ v0.1.0 은 서명을 대화형 터미널의 운영자 행위로 적었다. 자�
 
 ### §9.6 plan-audit 판정 파일의 실제 모양
 
+**v0.3.2 보강(D30)**: 같은 파서가 `plan_artifact_hash:` 키 줄도 읽고(`audit_review.go` 96행 `case "plan_artifact_hash"`), `audit_cache.go` 의 `ComputeHash` 가 plan 산출물(`planArtifactNames`)의 해시를 낸다. 전제조건 (a) 는 이 두 가지를 재사용해 판정을 현재 산출물에 묶는다. 그 줄은 run-gate 경로의 `FileAuditCache.Store` 가 `<SPEC-ID>-review-<N>.md` 에 덧붙이는 형식이며, 카드 증거 경로 보고서에 그 줄을 쓰는 쪽은 아직 없다(`plan.md §C`).
+
 `internal/runtime/audit_review.go` `ResolveLatestPlanAudit` 는 `<reportDir>/<SPEC-ID>-review-<N>.md` 를 찾고 `Verdict:`·`Overall Score:` 키 줄을 읽으며 점수를 `strconv.ParseFloat` 로 파싱한다. 그러나 이 카드의 감사 보고서는 `.moai/reports/t1236/plan-audit-1.md` 이고 점수 줄은 `Overall Score: 0.71 (Tier L PASS threshold 0.85)` 처럼 괄호 주석이 붙는다 — 그대로면 파싱 오류다. 그래서 REQ-GR-009 (a) 는 카드 증거 경로의 `plan-audit-<N>.md`·`plan-audit-iter<N>.md` 를 고르고, 파싱이 안 되면 전제조건 실패(→ 사람)로 처리하는 보수적 규칙을 택했다(`design.md §8`). 이 보수적 규칙(가장 높은 N, 파싱 실패 → 사람)은 리드가 승인했다(2026-09-26). 두 보고서 명명 규칙의 통일은 이 SPEC 범위 밖이며 **후속 카드 후보**다(`spec.md §D`). A1 0.5.0 영수증 예시의 `plan_audit_report.path` 도 `internal/runtime` 쪽 명명(`.moai/reports/plan-audit/<SPEC-ID>-review-<N>.md`)이다 — A1 은 저장소 상대 경로와 해시 일치만 요구하므로 모순은 아니다.
 
-## §10. v0.3.0·v0.3.1 추가 조사
+## §10. v0.3.0~v0.3.2 추가 조사
 
 ### §10.1 A2 에스컬레이션 기록 형식 — 리드가 정한 최종 형식을 인용
 
@@ -213,7 +217,7 @@ v0.1.0 은 서명을 대화형 터미널의 운영자 행위로 적었다. 자�
 
 | 출처 | 소유 카드 |
 |---|---|
-| A1 0.5.1 `65e0a9167` §B Out of Scope, §C.1, §C.2 (0.4.1 부터 같음) | **A2b (t1245)** |
+| A1 0.5.2 `25283ebf8` §B Out of Scope, §C.1, §C.2 (0.4.1 부터 같음) | **A2b (t1245)** |
 | A2 `d8926ff9a` spec.md REQ-AE-024·025, design §G.1·G.2 | A2 (t1235) — 낡은 초안 |
 | 리드 결정(2026-09-26, v0.3.1 지시) | **A2b (t1245)** — 「A1 0.4.1 is correct」 |
 
@@ -237,9 +241,33 @@ v0.3.0 은 세 출처의 불일치를 보고만 했다. 리드가 A2b 로 확정
 
 **현재 남은 스키마 상충: 없음.** 결정 규칙은 이 SPEC 이 소유하고 A1 은 `outcome` 의 일관성만 검증하므로 두 문서가 규칙을 이중으로 정의하지 않는다.
 
-### §10.4 상충은 아니지만 리드 확인이 필요한 A1↔A3 항목
+### §10.4 A1↔A3 확인 항목과 reject/human 소비자 실측
 
-- **A1 SPEC 문언의 개정 주체.** REQ-GR-025 의 연동 커밋이 A1 서명기의 임시 규칙을 풀면, A1 SPEC 의 세 곳 — spec §C.8(「A3 lifts this A1 rule」), REQ-CONTRACT-024(`effective_decider` 가 `llm+jev` 이면 거절), acceptance 의 sign 거절 경우 (t)(두 답이 모두 approve 여도 `receipt_requires_human`) — 가 코드와 어긋난다. 같은 방식으로 REQ-CONTRACT-019(spec 409-413, 「until A3 amends this requirement」)의 알림 문언은 M8 에서 개정 대상이다. A1 은 누가 그 문언을 고치는지 정하지 않았다. 이 SPEC 은 `design.md §2` 27행에 **리드 확인 뒤에만** 쓰는 조건부 행으로 올렸고, 확인이 없으면 연동 커밋 전체를 보류한다(`plan.md §C`) — 선택하지 않고 보고한다.
-- **출처 값 `moai-store`.** A1 design 89행 주석은 「A3 adds moai-store: `$MOAI_HOME/db/<project-key>/contract/`」라고 예상한다. 이 SPEC 은 출처 값을 더하지 않고 kickoff-check 의 저장소 대조로 판정한다(REQ-GR-007). 값을 더하려면 서명기가 서명 시점에 `receipts.jsonl` 의 대응 줄을 확인해야 하며, 출처 값은 봉인에 들어가므로 A1 의 일관성 표(§ Signature Seal)도 바뀐다 — 선택하지 않고 보고한다.
-- **`reject` 와 운영자 결정 「`llm` 거절 → 사람」.** A1 0.5.1 의 `outcome` 집합과 § Cross-check Rules(참고)는 `llm` reject → `reject` 로 적는다. 이 SPEC 은 그 값을 쓰되 `reject` 와 `human` 이 모두 Kickoff 를 사람에게 보낸다고 명시해 운영자 결정을 효과로 충족한다(REQ-GR-010). 두 값을 다르게 다루는 소비자가 생기면 이 등가가 깨진다.
-- **plan-audit 보고서 경로의 예시.** A1 영수증 예시의 `plan_audit_report.path` 는 `internal/runtime` 명명(`.moai/reports/plan-audit/<SPEC-ID>-review-<N>.md`)이고, 이 SPEC 의 decide 는 카드 증거 경로의 `plan-audit-<N>.md` 를 고른다. A1 은 저장소 상대 경로와 해시 일치만 요구하므로 모순은 아니며, 명명 통일은 후속 카드 후보다(§9.6).
+- **A1 SPEC 문언의 개정 주체 — 해소됨(A1 0.5.2 `25283ebf8`).** 0.5.2 가 §C.8·REQ-CONTRACT-024·REQ-CONTRACT-019·AC-CONTRACT-016 (t) 를 「A3 착지 전/후」 조건부로 적어, 임시 규칙을 풀어도 A1 문서가 코드와 어긋나지 않는다. A3 는 A1 서명기 코드와 (t) 의 대체 테스트(AC-GR-017 `TestSignInterimRuleFollowsDoctrine`)만 바꾼다.
+- **출처 값 `moai-store` — 해소됨(A1 0.5.2).** 0.5.2 design 89행이 그 예상을 지우고 「A3 는 저장소 대조로 판정」이라고 적었다 — 이 SPEC 의 REQ-GR-007 과 같다.
+- **임시 규칙의 상수 조건화 — A1 확인 필요.** 이 SPEC 은 A1 서명기 단계 (1) 을 상수 `jevDoctrineAmended` 로 조건화해 연동을 한 비트로 줄인다(REQ-GR-025, D34). A1 0.5.2 의 「A3 removes this refusal」을 이 방식으로 구현하는 것이 받아들여지는지 A1 에 재확인한다 **[A1 개정본으로 재확인 — `25283ebf8`]**.
+- **plan-audit 보고서 경로의 예시.** A1 영수증 예시의 `plan_audit_report.path` 는 `internal/runtime` 명명(`.moai/reports/plan-audit/<SPEC-ID>-review-<N>.md`)이고, decide 는 카드 증거 경로의 `plan-audit-<N>.md` 를 고른다. A1 은 저장소 상대 경로와 해시 일치만 요구하므로 모순은 아니며, 명명 통일은 후속 카드 후보다(§9.6).
+
+**reject 와 human 을 다르게 다루는 소비자 실측(리드 요청, 2026-09-26).** t1236 세션에서 형제 워크트리를 읽기 전용으로 잰 결과:
+
+| # | 명령 | 관측 |
+|---|---|---|
+| 1 | `grep -rlE 'receipt_rejected\|receipt_requires_human\|OutcomeReject\|OutcomeHuman' <t1234>/internal <t1235>/internal <t1245>/internal <t1235>/.moai/specs/SPEC-AUTONOMY-ESCALATION-001` | `t1234/internal/contract/refusals.go` 한 파일, exit 0 |
+| 2 | `grep -nE 'receipt_rejected\|receipt_requires_human' t1234/internal/contract/refusals.go` | `:27 RefuseReceiptRequiresHuman = "receipt_requires_human"`, `:28 RefuseReceiptRejected = "receipt_rejected"` |
+| 3 | `grep -rnE 'ReceiptRejected\|ReceiptRequiresHuman' t1234/internal`(테스트 제외) | `refusals.go:27,28,50,51`(선언과 목록)뿐 — 두 값을 다르게 소비하는 분기 없음 |
+| 4 | A1 design.md(t1234, 당시 0.5.1) 393~397행 | 서명기: `approve` → 서명, `reject` → `receipt_rejected` 거절, `human` → `receipt_requires_human` 거절. 둘 다 exit 1(서명 거절), 차이는 거절 코드 문자열뿐 |
+| 5 | A2 `SPEC-AUTONOMY-ESCALATION-001`(t1235) | `receipt_rejected`·`receipt_requires_human`·`outcome` 일치 0건 |
+| 6 | t1245(A2b) | A2b SPEC 디렉터리 없음, 코드 일치 없음 |
+
+`refusals.go:27-28/50-51` 은 **t1234 working-copy observation, uncommitted** — 정본으로 인용할 수 없다. A1 의 코드 커밋 SHA 가 생기면 그 SHA 에 대해 다시 잰다. 결론: 지금 `reject` 와 `human` 을 다르게 다루는 소비자는 없고, 차이는 A1 거절 코드 문자열뿐이다. A2b SPEC 부재라는 공백은 run 전제(t1245 병합)로 닫히며, `plan.md §C` 의 pre-flight 항목이 A2b SPEC 착지 뒤 같은 측정을 다시 한다. 앞으로 두 값을 구별하는 소비자가 생기면 REQ-GR-004 의 동일 취급이 깨지므로 리드에게 올린다.
+
+### §10.5 작성자 배제의 데이터 원천 실측 (D28)
+
+| 명령(트리 `1b071a573`) | 관측 |
+|---|---|
+| `git log -4 --format='%h %(trailers:key=Authored-By-Agent,valueonly)\|' -- .moai/specs/SPEC-AUTONOMY-GATE-REWIRE-001` | `1b071a573 \|`, `781ddc355 \|`, `62a65f709 \|`, `ca1e39f6f \|` — 네 커밋 모두 빈 값 |
+| `git log -1 --format=%B 1b071a573 \| tail -6` | 본문 끝이 `card: t1236` / `Authored-By-Agent: manager-spec` / (빈 줄) / `🗿 MoAI` — 트레일러는 있으나 뒤따르는 빈 줄과 서명 줄 때문에 git 의 트레일러 블록으로 인식되지 않는다 |
+| `grep -n 'Authored-By-Agent' internal/spec/lint_ownership.go` | 256행 `authoredByAgentLine = regexp.MustCompile(`(?mi)^\s*Authored-By-Agent:\s*(\S+)\s*$`)`, 260행 `func parseAuthoredByAgent(body string) string` — 줄 단위 정규식이라 위치와 무관하게 값을 읽는다 |
+| `grep -rnE 'Session-Id:\|Authored-By-Session' internal` (감사 보고서 인용) | 0건 — 커밋에 세션 식별자를 남기는 장치가 없다 |
+
+따라서 작성자 배제는 `parseAuthoredByAgent` 로 읽은 작성 에이전트 집합과 판단 파일의 결정자 신고값을 비교한다(REQ-GR-010). 세션 식별자 조건은 원천이 없어 삭제했다. 결정자 신원은 자기 신고라 거짓 신고를 막지 못한다 — 남는 위험으로 기록한다.

@@ -1,6 +1,6 @@
-# design.md — SPEC-AUTONOMY-GATE-REWIRE-001 (v0.3.1)
+# design.md — SPEC-AUTONOMY-GATE-REWIRE-001 (v0.3.2)
 
-A1 기준: 0.5.1 (`65e0a9167`) — 스키마(결정자 값 집합, 파생 기본값, 영수증 필드, 구조 검증, `card` 필드)는 A1, 결정 규칙은 A3. A2 기준: 리드가 전달한 최종 형식(A2 개정본 대기). A2b(t1245): push 직렬화·에이전트발 `sign` 차단·팩토리 에이전트 세션의 `decide` 거절(리드 결정 2026-09-26).
+A1 기준: 0.5.2 (`25283ebf8`) — 스키마(결정자 값 집합, 파생 기본값, 영수증 필드, 구조 검증, `card` 필드)는 A1, 결정 규칙은 A3. A2 기준: 리드가 전달한 최종 형식(A2 개정본 대기). A2b(t1245): push 직렬화·에이전트발 `sign` 차단·팩토리 에이전트 세션의 `decide` 거절(리드 결정 2026-09-26).
 
 ## §1. 설계의 뼈대
 
@@ -50,18 +50,17 @@ Where `workflow.autonomy.mode: contract` — <지시>. See `.claude/rules/moai/w
 | 15 | `.claude/rules/moai/core/moai-mcp-tools.md` | `jev_ask` 행 문장 개정 | 013·025 | **예** |
 | 16 | `.claude/rules/moai/core/moai-mcp-tools-catalogue.md` | `jev_ask` 행 문장 개정 | 013·025 | 아니오 |
 | 17 | `.moai/config/sections/workflow.yaml` | `jev:` 주석 개정 | 013·025 | — |
-| 18 | `.moai/specs/SPEC-JEV-CORE-001/spec.md` (템플릿 사본 없음) | REQ-JEVC-012 개정 표지 + HISTORY 행 + `version` | 013·025 | — |
+| 18 | `.moai/specs/SPEC-JEV-CORE-001/spec.md` (템플릿 사본 없음) | REQ-JEVC-011·012 개정 표지, `### Out of Scope — authority` 두 항목, HISTORY 행, `version` — **manager-spec 이 작성**(§11.2) | 013·025 | — |
 | 19 | `CLAUDE.local.md` (템플릿 사본 없음, 로컬 전용) | §29 3등급 문장 한 줄 예외 — **운영자가 레인 세션에서 확인한 뒤에만** | 013 | — |
 | 20 | `internal/contract/receipt/` (신규) + 테스트 | 사건 저장소·체인·검증 | 012 | — |
 | 21 | `internal/contract/kickoff/` (신규) + 테스트 | 전제조건·결정 규칙 R1~R5·decide·kickoff-check·활성 판정·연동 상수 | 007~011·025 | — |
 | 22 | `internal/contract/revoke/` (신규) + 테스트 | revoke | 022 | — |
-| 23 | `internal/contract/sign/` (A1 패키지) | 서명·재봉인 직후 사건 추가, 실패 시 서명 파일 미기록 — 요구는 A1 0.5.1 (65e0a9167) §C.6 이 A3 에 넘김, 추가 지점은 A3 소관. A1 임시 규칙(`effective_decider: llm+jev` → `receipt_requires_human`) 해제 — REQ-GR-025 연동 커밋에서만 | 012·025 | — |
+| 23 | `internal/contract/sign/` (A1 패키지) + 테스트 | 서명·재봉인 직후 `events.jsonl` 사건 추가(주입 가능한 저장소 이음매), 실패 시 서명 파일 미기록 — 요구는 A1 0.5.2 (25283ebf8) §C.6 이 A3 에 넘김, 추가 지점은 A3 소관. **모든 서명 테스트는 `t.TempDir()` 를 가리키는 `MOAI_HOME` 을 쓰도록 바꾼다**(실제 홈에 쓰지 않음). 서명기 단계 (1)(임시 규칙)을 상수 `jevDoctrineAmended` 로 조건화(M7, 상수 거짓이라 동작 불변)하고, AC-CONTRACT-016 (t) 를 A3 의 대체 테스트로 교체(AC-GR-017) | 012·025 |
 | 24 | `internal/cli/contract_decide.go`, `contract_kickoff_check.go`, `contract_revoke.go` + 테스트 | A1 `contract` Cobra 명령에 하위 명령 추가 | 007·011·022 | — |
 | 25 | `internal/template/contract_mode_blocks_test.go`, `contract_mode_guided_test.go` (신규, 템플릿 사본 없음) | 가드·보존·동등·변경 집합 | 002·023·024 | — |
 | 26 | `.moai/specs/SPEC-AUTONOMY-GATE-REWIRE-001/**` | 진행 기록 | — | — |
-| 27 | `.moai/specs/SPEC-AUTONOMY-CONTRACT-001/spec.md`·`acceptance.md` (A1 SPEC, 템플릿 사본 없음) | 임시 규칙 문언(§C.8, REQ-CONTRACT-024, acceptance 의 sign 거절 경우 (t))의 개정 표지 — REQ-GR-025 연동 커밋에서만. REQ-CONTRACT-019 알림 문언 — M8 에서만. **둘 다 리드 확인 뒤에만**(`research.md §10.4`) | 025 | — |
 
-행 2~14 가 블록 방식(추가형)이고, 15~19 는 원칙 개정(비추가형, §11), 20~25 는 코드, 27 은 A1 SPEC 의 조건부 개정 표지다. 이 목록 밖의 파일 변경은 AC-GR-003 이 실패로 잡는다(D13).
+행 2~14 가 블록 방식(추가형)이고, 15~19 는 원칙 개정(비추가형, §11), 20~25 는 코드다. A1 SPEC 문서는 편집 대상이 아니다 — A1 0.5.2 가 임시 규칙과 알림 문언을 「A3 가 착지하기 전/후」 조건부로 적어 두었다. 이 목록 밖의 파일 변경은 AC-GR-003 이 실패로 잡는다(D13).
 
 ## §3. SSOT — `contract-autonomy.md`
 
@@ -78,7 +77,7 @@ paths: "**/.moai/specs/**/contract.yaml,**/.moai/specs/**/kickoff-receipt.json,*
 
 절 구성(영어 — 규칙 본문 언어 정책). 각 절 제목은 AC-GR-005 가 절 단위로 검사하는 앵커다.
 
-1. `## Scope and activation` — 적용 조건, 무효값 → guided, `MOAI_AUTONOMY_TIER` 와 다른 축, 판독은 `moai contract show --json`(D-1).
+1. `## Scope and activation` — 적용 조건, 무효값 → guided, `MOAI_AUTONOMY_TIER` 와 다른 축, 판독은 `moai contract kickoff-check --json`(D-1 — `show --json` 에는 결정자 필드가 없다).
 2. `## The signing gate` — kickoff-check 가 plan→run 게이트. 사람 결정자 절차(서명 명령 보고 → 턴 닫기 → 운영자 서명 → 다음 턴 kickoff-check). 사람의 개입은 서명 시점으로 옮겨진다.
 3. `## Equivalence clause (human signature only)` — 사람 서명에 한정한 등가. 비인간 서명은 §7.1 조건으로만.
 4. `## Gate disposition` — 게이트 이름별 처분표(guided / contract).
@@ -123,7 +122,7 @@ AC 명령은 워크트리 세션 가드에 막히지 않도록 `go test` 한 줄
 
 | 절 | 필수 토큰 |
 |---|---|
-| The signing gate | `kickoff-check`, `AskUserQuestion`(「내지 않는다」 문맥), `interactive terminal` |
+| The signing gate | `kickoff-check`, `AskUserQuestion`(「내지 않는다」 문맥), `interactive terminal`, `reject`, `human decision required` |
 | Equivalence clause | `signer_kind: human`, `interactive-tty` |
 | Gate disposition | `Socratic`, `approach`, `assumption`, `plan-audit`, `quality gate`, `gate-sync-2` |
 | Gates a contract never touches | `question-channel`, `sync-auditor`, `/clear` |
@@ -138,12 +137,14 @@ AC 명령은 워크트리 세션 가드에 막히지 않도록 `go test` 한 줄
 |---|---|---|
 | 기존 텍스트 무수정, 블록 추가 | 블록 밖 보존을 기계로 판정 | guided 세션도 블록을 읽는다(§4 상한). 모델이 조건문을 오독할 가능성은 텍스트 검사로 배제되지 않는다 |
 | Frozen 태그 문단에는 사람 서명 등가만 | A-Q1 은 사람의 승인이 서명 시점으로 옮겨질 뿐이라 방어 가능. `llm`·`llm+jev` 결정자에는 사람이 없으므로 「user approval」과 등가로 선언할 수 없다(D4). zone-registry 미등록은 약한 증거로만 취급 | 비인간 서명 경로는 그 문단의 별도 개정 전까지 비활성 |
-| 판정을 Go 로(kickoff-check) | A1 이 저장소 대조 거절을 A3 에 맡겼다(A1 0.5.1 §C.6) | 같은 권한의 행위자는 저장소 체인 전체를 다시 쓸 수 있다 |
-| 모든 서명 사건을 저장소에 | A1 `supersedes` 는 재봉인 때 다시 쓸 수 있어 증거가 아니다(A1 0.5.1 §C.6·§H) | 저장소 추가가 A1 서명기 경로를 바꾼다 — A1 감사 통과본과 대조 필요 |
-| 결정 규칙 R1~R5 는 A3 소유, 스키마는 A1 | 리드 결정 2026-09-26 — 규칙을 두 SPEC 에서 규범적으로 정의하면 어긋난다(D8). A1 0.5.1 은 결정자 값 집합·파생 기본값·영수증 필드·검증만 소유 | A1 은 기록된 `outcome` 이 답과 모순되지 않는지만 본다 — 규칙 위반 영수증을 A1 이 잡지 못하므로 규칙의 정확성은 A3 의 테스트(AC-GR-019·025)와 moai 발급(kickoff-check 의 저장소 대조)에 달렸다 |
+| 판정을 Go 로(kickoff-check) | A1 이 저장소 대조 거절을 A3 에 맡겼다(A1 0.5.2 §C.6) | 같은 권한의 행위자는 저장소 체인 전체를 다시 쓸 수 있다 |
+| 모든 서명 사건을 저장소에 | A1 `supersedes` 는 재봉인 때 다시 쓸 수 있어 증거가 아니다(A1 0.5.2 §C.6·§H) | 저장소 추가가 A1 서명기 경로를 바꾼다 — A1 감사 통과본과 대조 필요 |
+| 결정 규칙 R1~R5 는 A3 소유, 스키마는 A1 | 리드 결정 2026-09-26 — 규칙을 두 SPEC 에서 규범적으로 정의하면 어긋난다(D8). A1 0.5.2 는 결정자 값 집합·파생 기본값·영수증 필드·검증만 소유 | A1 은 기록된 `outcome` 이 답과 모순되지 않는지만 본다 — 규칙 위반 영수증을 A1 이 잡지 못하므로 규칙의 정확성은 A3 의 테스트(AC-GR-019·025)와 moai 발급(kickoff-check 의 저장소 대조)에 달렸다 |
 | Jev 단독 거절, 교차 확인만 허용 | 운영자 재결정 2026-09-26 | 교차 확인은 두 신호가 모두 승인해야 시작하므로 자율 시작 빈도는 `llm` 단독보다 낮다 |
-| `reject` 와 `human` 을 구분해 기록 | A1 0.5.1 의 `outcome` 집합, § Cross-check Rules(참고). 운영자 결정 「`llm` 거절 → 사람」은 두 값 모두 Kickoff 를 사람에게 보내는 효과로 충족 | 기록을 읽는 쪽이 두 값을 다르게 다루면 효과가 갈릴 수 있다 — SSOT 가 두 값의 효과가 같음을 명시한다 |
-| 원칙 개정과 두 해제를 한 커밋으로 | 리드 결정 2026-09-26 — 어느 하나만 착지하면 원칙과 코드가 어긋난다(REQ-GR-025) | `CLAUDE.local.md §29` 한 줄은 운영자 확인 때문에 늦을 수 있다 — 로컬 전용이라 제품 동작과 무관 |
+| `reject` 와 `human` 을 구분해 기록 | A1 0.5.2 의 `outcome` 집합, § Cross-check Rules(참고). 운영자 결정 「`llm` 거절 → 사람」은 두 값 모두 Kickoff 를 사람에게 보내는 효과로 충족 | 기록을 읽는 쪽이 두 값을 다르게 다루면 효과가 갈릴 수 있다 — SSOT 가 두 값의 효과가 같음을 명시한다 |
+| 원칙 개정과 두 해제를 한 커밋으로, §29 포함 | 리드 결정 2026-09-26(D32·D33) — 어느 하나만 착지하면 원칙과 코드가 어긋난다(REQ-GR-025) | 운영자 확인이 늦으면 연동 전체가 늦어진다. 두 작성자가 차례로 쓰므로 한 커밋 조립 전 두 결과를 따로 검증해야 한다(§11.2) |
+| plan-audit 판정을 산출물 해시에 묶음 | A1 §C.7 이 판정의 증거 결합을 A3 에 넘겼다 — 보고서 파일 해시만으로는 판정 뒤 산출물 수정을 막지 못한다(D30) | 카드 증거 경로 보고서에 `plan_artifact_hash:` 줄을 쓰는 쪽이 없으면 전제조건 (a) 가 늘 실패해 결과가 사람이다 — 안전한 방향의 공백(`plan.md §C`) |
+| 작성자 배제는 트레일러 판독기 + 자기 신고 | 세션 식별자를 커밋에 남기는 장치가 없다(D28). git 트레일러 파서는 이 저장소 커밋의 값을 보지 못하고, `internal/spec` 의 정규식 판독기는 본다 | 판단 파일의 결정자 신원은 자기 신고라 거짓 신고를 막지 못한다 |
 | Jev 실패는 `llm` 단독으로 대체 | 운영자 재결정 — 쓸 수 없는 신호 때문에 멈추지 않는다 | 대체 동안 두 번째 신호가 없다. 대체 사유가 영수증과 저장소에 남으므로 빈도는 사후에 잴 수 있다 |
 | 두 번째 리뷰 정지는 A4 | A1 §C.1 | A4 착지 전 contract 모드 Push 단계 비활성 |
 | `mission-governor` 미사용 | 그 정의가 승인을 배제(리드 L3) | 주 LLM 역할의 품질은 새 컨텍스트 판단 역할의 프롬프트에 달림 |
@@ -158,15 +159,19 @@ AC 명령은 워크트리 세션 가드에 막히지 않도록 `go test` 한 줄
 | # | 조건 | 소유 | 기계 확인 |
 |---|---|---|---|
 | 1 | `moai contract revoke` 존재 | A3 | `internal/cli` 명령 트리 테스트 |
-| 2 | moai 발급 영수증 — `decide` + 저장소(`receipts.jsonl`·`events.jsonl`), 모든 서명 사건 기록 | A3 (A1 0.5.1 §C.6 이 넘긴 요구) | `internal/contract/receipt` 테스트 |
-| 3 | A1 영수증 서명 경로(`sign --signer <kind> --receipt`)가 `llm` 영수증과 대체 영수증(요청 `llm+jev` → `effective_decider: llm`)을 서명 | A1 — A1 0.5.1 (65e0a9167) REQ-CONTRACT-024(출처 `file`), design § Kickoff Receipt 필드 규칙 3·4 | A1 테스트 |
-| 4 | push 직렬화 강제 + 에이전트발 대화형 `sign` 차단 + 팩토리 에이전트 세션의 `decide` 거절 | A2b (t1245) — 리드 결정 2026-09-26, A1 0.5.1 §C.1·§C.2 와 일치 **[A2b SPEC 으로 재확인]** | A2b 테스트 |
-| 5 | Jev 원칙 개정 + 규칙 R3 해제 + A1 임시 규칙 해제 — **한 커밋**(REQ-GR-025), **전체 활성의 조건 아님** | A3 | 개정 표지, 상수 `jevDoctrineAmended = true`, 서명기의 `llm+jev` 거절 단계 부재가 같은 커밋에서 처음 나타남 |
+| 2 | moai 발급 영수증 — `decide` + 저장소(`receipts.jsonl`·`events.jsonl`), 모든 서명 사건 기록 | A3 (A1 0.5.2 §C.6 이 넘긴 요구) | `internal/contract/receipt` 테스트 |
+| 3 | A1 영수증 서명 경로(`sign --signer <kind> --receipt`)가 `llm` 영수증과 대체 영수증(요청 `llm+jev` → `effective_decider: llm`)을 서명 | A1 — A1 0.5.2 (25283ebf8) REQ-CONTRACT-024(출처 `file`), design § Kickoff Receipt 필드 규칙 3·4 | A1 테스트 |
+| 4 | push 직렬화 강제 + 에이전트발 대화형 `sign` 차단 + 팩토리 에이전트 세션의 `decide` 거절 | A2b (t1245) — 리드 결정 2026-09-26, A1 0.5.2 §C.1·§C.2 와 일치 **[A2b SPEC 으로 재확인]** | A2b 테스트 |
+| 5 | Jev 원칙 개정(§29 포함) + 규칙 R3 해제 + A1 임시 규칙 해제 — **한 커밋**(REQ-GR-025), **전체 활성의 조건 아님** | A3 | 상수 `jevDoctrineAmended` 한 비트(R3 와 A1 서명기 단계 (1) 이 함께 읽음)와 개정 표지 전부가 같은 커밋에서 처음 참 |
 | 6 | `orchestration-mode-selection.md` Frozen 태그 문단의 비인간 서명 개정 | 운영자의 명시적 개정 결정(이 SPEC 범위 밖) | 문단에 비인간 결정자 서명이 명시됨 |
 
-**코드상 표현.** `internal/contract/kickoff` 에 컴파일 상수 `autonomousKickoffEnabled`(기본 `false`)와 `jevDoctrineAmended`(기본 `false`)를 둔다. 판정 함수는 두 값을 인자로 받고 CLI 가 상수를 넘긴다(테스트가 모든 상태를 주입할 수 있게). 비활성 동안 kickoff-check 는 `llm`·`llm+jev` 서명을 `autonomous-kickoff-inactive` 로 거절한다. AC-GR-017 은 두 가지를 본다. (i) 순서: `autonomousKickoffEnabled = true` 커밋(M8)이 조건 1·2 를 착지시킨 커밋들의 **엄격한 후손**(같은 커밋 아님). (ii) 연동: 트리에서 세 표지 — `SPEC-JEV-CORE-001` 개정 표지(와 나머지 세 원칙 위치), `jevDoctrineAmended = true`, 서명기의 임시 규칙 부재 — 가 모두 있거나 모두 없고, 이력에서 셋이 **처음 나타나는 커밋이 같다**. 조건 3·4 는 A1·A2b 테스트가 develop 에 있는지로, 조건 6 은 해당 문단의 문언으로 확인하며, 셋 중 하나라도 불충족이면 M8 은 보류한다.
+**코드상 표현.** `internal/contract/kickoff` 에 컴파일 상수 `autonomousKickoffEnabled`(기본 `false`)와 `jevDoctrineAmended`(기본 `false`, 내보내기)를 둔다. 판정 함수는 두 값을 인자로 받고 CLI 가 상수를 넘긴다(테스트가 모든 상태를 주입할 수 있게). 비활성 동안 kickoff-check 는 `llm`·`llm+jev` 서명을 `autonomous-kickoff-inactive` 로 거절한다. A1 서명기 단계 (1) 은 M7 에서 `jevDoctrineAmended` 가 거짓일 때만 적용되도록 조건화한다 — 상수가 거짓이므로 A1 의 현재 동작은 그대로다.
 
-**개발 순서**: M6 revoke → M7 저장소·decide·kickoff-check·서명기 사건 추가 → M7b 연동 커밋(원칙 개정 + R3 해제 + A1 임시 규칙 해제) → (조건 3·4·6 충족 대기) → M8 활성.
+**「A1 임시 규칙 해제」의 표지 (D34).** 문자열이 아니라 동작이다: `internal/contract/sign` 의 테스트 `TestSignInterimRuleFollowsDoctrine` 가 상수 거짓일 때 `effective_decider: llm+jev`·두 답 approve·`outcome: approve` 영수증이 `receipt_requires_human` 으로 거절되고, 참일 때 같은 영수증은 서명되며 `reject`·`human` 은 각각 `receipt_rejected`·`receipt_requires_human` 임을 본다. 이 테스트는 매 커밋의 CI 에서 돌므로, 임시 규칙 단계를 앞 커밋에서 조용히 지우는 변이는 그 커밋에서 「상수 거짓인데 서명됨」으로 FAIL 한다. 이 테스트가 A1 AC-CONTRACT-016 (t) 의 대체다(A1 0.5.2 (25283ebf8) acceptance 「A3 owns the replacing test」).
+
+AC-GR-017 은 두 가지를 본다. (i) 순서: `autonomousKickoffEnabled = true` 커밋(M8)이 조건 1·2 를 착지시킨 커밋들의 **엄격한 후손**(같은 커밋 아님). (ii) 연동: 트리에서 개정 표지 전부(REQ-GR-013 의 위치, §29 포함)와 `jevDoctrineAmended = true` 가 모두 있거나 모두 없고, 이력에서 둘이 **처음 나타나는 커밋이 같다**. 조건 3·4 는 A1·A2b 테스트가 develop 에 있는지로, 조건 6 은 해당 문단의 문언으로 확인하며, 셋 중 하나라도 불충족이면 M8 은 보류한다.
+
+**개발 순서**: M6 revoke → M7 저장소·decide·kickoff-check·서명기 사건 추가 → M7b 연동 커밋(원칙 개정 + `jevDoctrineAmended = true`, §11.2 순서) → (조건 3·4·6 충족 대기) → M8 활성.
 
 ### §7.2 역할
 
@@ -186,7 +191,7 @@ AC 명령은 워크트리 세션 가드에 막히지 않도록 `go test` 한 줄
 
 A3 가 만드는 동사다 — A1 의 동사는 `show`·`verify`·`sign` 뿐이다. 정상 경로는 리드 세션의 LLM 이 도구 호출로 부르는 것이고, `MOAI_FACTORY_ROLE=agent` 세션에서의 거절은 A2b 의 가드다 **[A2b SPEC 으로 재확인]**.
 
-입력: `<card>`(카드 id — 계약의 `card` 필드와 같아야 한다, A1 0.5.1 (65e0a9167) design § Card Field), `--spec <SPEC-ID>`, `--judgement <file|->`(JSON: 결정자 신고 `agent`·`model`, `answer` ∈ approve/reject/escalate, 계약 줄 참조가 있는 `reasons[]`, `confidence`), `--json`.
+입력: `<card>`(카드 id — 계약의 `card` 필드와 같아야 한다, A1 0.5.2 (25283ebf8) design § Card Field), `--spec <SPEC-ID>`, `--judgement <file|->`(JSON: 결정자 신고 `agent`·`model`, `answer` ∈ approve/reject/escalate, 계약 줄 참조가 있는 `reasons[]`, `confidence`), `--json`.
 
 출력: `$MOAI_HOME/db/<project-key>/contract/receipts.jsonl` 에 영수증 한 줄, 같은 디렉터리 `events.jsonl` 에 `decide` 사건 한 줄, 그리고 A1 서명 경로의 입력인 `.moai/specs/<SPEC-ID>/kickoff-receipt.json`(영수증 줄의 본문과 바이트 동일). 이 셋 밖에는 쓰지 않는다.
 
@@ -194,19 +199,19 @@ A3 가 만드는 동사다 — A1 의 동사는 `show`·`verify`·`sign` 뿐이�
 
 1. 저장소 체인 검증. 깨졌으면 exit 1, 쓰기 없음.
 2. `<card>` 와 계약 `card` 필드 대조. 다르면 exit 2 `card-mismatch`, 쓰기 없음.
-3. 설정 결정자 판독(A1 설정 판독기, D-1). `jev` 이면 **R5**: exit 2 `decider-jev-refused`, 쓰기 없음, Jev 미호출. `human` 이면 exit 0, `outcome: human`, 사유 `decider-human`.
+3. 설정 결정자 판독(A1 설정 판독기, D-1). `jev` 이면 **R5**: exit 2 `decider-jev-refused`, 쓰기 없음, Jev 미호출. `human` 이면 `outcome: human`, 사유 `decider-human` — **결정하지 않는 경로**라 `events.jsonl` 사건만 쓰고 exit 0.
 4. 입력 해시 측정(`contract.yaml` 서명 대상 digest, `acceptance.md`, plan-audit 판정 파일, 판단 파일).
-5. 전제조건 (a)~(f) 평가(REQ-GR-009). (a) 의 파싱 규칙은 `internal/runtime` 의 plan-audit 판독과 같다 — `Verdict:`·`Overall Score:` 키 줄, 점수는 순수 부동소수여야 하며 뒤에 괄호 주석이 붙어 파싱이 안 되면 **실패로** 처리(보수적, 리드 승인). 실패 → Jev 미호출, `outcome: human`, `reason: precondition:<x>`.
-6. 작성자 배제: `moai session current` 의 세션 식별자와 판단 신고값, plan-phase 커밋 `Authored-By-Agent:` 트레일러를 비교(REQ-GR-010) — 충돌이면 `outcome: human`(`author-decider-conflict`).
+5. 전제조건 (a)~(f) 평가(REQ-GR-009). (a) 의 판독은 `internal/runtime` 의 plan-audit 판독(`parsePlanAuditSnapshot`)과 같은 키 줄 규칙이다 — `Verdict:` 값이 정확히 `PASS` 또는 `PASS-WITH-DEBT`, `Overall Score:` 는 순수 부동소수(괄호 주석이 붙어 파싱이 안 되면 **실패**, 보수적·리드 승인)이고 Tier 문턱 이상, `plan_artifact_hash:` 가 같은 패키지의 plan-artifact 해시(`ComputeHash`)로 잰 현재 값과 같아야 한다. 실패 → Jev 미호출, `outcome: human`, `reason: precondition:<x>`, 사건만 쓴다(결정하지 않는 경로).
+6. 작성자 배제: SPEC 디렉터리를 건드린 커밋들(`git log --format=%B -- <SPEC dir>`)의 본문을 `internal/spec` 의 `parseAuthoredByAgent`(`lint_ownership.go`)로 읽어 작성 에이전트 집합을 만든다 — `git log --format=%(trailers)` 는 이 저장소 커밋에서 빈 값을 낸다(`research.md §10.5`). 판단 파일의 `agent` 가 `manager-spec` 이거나 그 집합에 들면 `author-decider-conflict`, 트레일러를 가진 커밋이 없으면 `author-check-unmeasured` — 둘 다 `outcome: human`, 사건만 쓴다(결정하지 않는 경로).
 7. 설정 결정자 `llm` 이면 **R4**: `llm` 답이 approve → `approve`, reject → `reject`, escalate → `human`.
 8. 설정 결정자 `llm+jev` 이면 Jev 호출. 쓸 수 없으면 — 도달 불가·호출 실패(`jev_call_failed`), 자격 증명 없음(`jev_key_missing`), `workflow.jev.enabled: false`(`jev_disabled`), 응답 형식 오류(`jev_malformed_response`), 신뢰도 < `jev_min_confidence`(`jev_low_confidence`) — **R2**: `effective_decider: llm`, `fallback{applied: true, reason}` 로 R4 를 적용. Jev 가 답했으면: `jevDoctrineAmended` 가 `false` 면 **R3** `outcome: human`(`jev-doctrine-not-amended`); 아니면 **R1** 두 답이 모두 approve → `approve`, 모두 reject → `reject`, 불일치나 escalate → `human`(`cross-check-disagree`).
-9. 영수증(A1 필드: `requested_decider`·`effective_decider`·`fallback`·`llm_answer`·`jev_answer`·`outcome`·`inputs` — A1 0.5.1 (65e0a9167) design § Kickoff Receipt)을 `receipts.jsonl` 에 추가하고, 그 줄 해시를 담은 `decide` 사건을 `events.jsonl` 에 추가한 뒤, 같은 본문을 `kickoff-receipt.json` 에 쓴다. exit 0.
+9. **결정하는 경로(7·8)에서만**: 영수증(A1 필드만: `requested_decider`·`effective_decider`·`fallback`·`llm_answer`·`jev_answer`·`outcome`·`inputs` — A1 0.5.2 (25283ebf8) design § Kickoff Receipt; 사유 코드는 넣지 않는다 — 필드 규칙 1 의 strict decode 가 모르는 필드를 거절한다)을 `receipts.jsonl` 에 추가하고, 그 줄 해시와 사유 코드를 담은 `decide` 사건을 `events.jsonl` 에 추가한 뒤, 같은 본문을 `kickoff-receipt.json` 에 쓴다. exit 0.
 
-`reject` 와 `human` 은 모두 kickoff-check 를 통과하지 못하고 Kickoff 를 사람에게 보낸다. 규칙 R1~R5 는 A1 0.5.1 (65e0a9167) design § Cross-check Rules(A3 소유, 참고)와 일치한다 — 정본은 이 SPEC 이다.
+`reject` 와 `human` 은 모두 kickoff-check 를 통과하지 못하고(A1 서명기가 둘 다 거절하고, 위조 서명이 있어도 kickoff-check 가 `receipt-not-approved` 로 거절) Kickoff 를 사람에게 보낸다 — 오케스트레이터는 둘을 구별하지 않고 사람 서명 절차로 간다(REQ-GR-004). 규칙 R1~R5 는 A1 0.5.2 (25283ebf8) design § Cross-check Rules(A3 소유, 참고)와 일치한다 — 정본은 이 SPEC 이다.
 
 ## §9. 저장소 (REQ-GR-012)
 
-위치 `$MOAI_HOME/db/<project-key>/contract/` — 리드 결정 R10(2026-09-26): A2 의 무장 상태·감사 로그와 같은 디렉터리. `$MOAI_HOME` 은 `internal/homestate` 가 해석하는 moai 홈이고 `<project-key>` 는 `homestate.ProjectKey` 가 만든다(`research.md §9.5`). 테스트는 `MOAI_HOME` 을 `t.TempDir()` 로 주어 루트를 해석하므로 실제 홈에 쓰지 않는다. A1 0.5.1 (65e0a9167) §C.6 도 같은 위치를 적는다.
+위치 `$MOAI_HOME/db/<project-key>/contract/` — 리드 결정 R10(2026-09-26): A2 의 무장 상태·감사 로그와 같은 디렉터리. `$MOAI_HOME` 은 `internal/homestate` 가 해석하는 moai 홈이고 `<project-key>` 는 `homestate.ProjectKey` 가 만든다(`research.md §9.5`). 테스트는 `MOAI_HOME` 을 `t.TempDir()` 로 주어 루트를 해석하므로 실제 홈에 쓰지 않는다. A1 0.5.2 (25283ebf8) §C.6 도 같은 위치를 적는다.
 
 | 파일 | 담는 것 |
 |---|---|
@@ -253,13 +258,32 @@ A3 가 만드는 동사다 — A1 의 동사는 `show`·`verify`·`sign` 뿐이�
 
 | 위치 | 현재 문장(요지) | 개정 |
 |---|---|---|
+| `SPEC-JEV-CORE-001` REQ-JEVC-011 | 표시 전용 — 답이 파일 등을 바꾸지 않는다 | 개정 표지, 같은 한 곳 예외: 교차 확인 두 번째 신호의 답을 moai 가 Kickoff 영수증과 저장소에 기록하는 일 |
+| `SPEC-JEV-CORE-001` `### Out of Scope — authority` 두 항목(현재 154~156행) | Jev 답이 운영자 게이트에 닿는 경로는 범위 밖, v0.2.0 개정 뒤에도 게이트가 「선택하는」 답은 제외 | 두 항목 모두에 같은 한 곳 예외를 명시한다 — 개정 뒤 그 SPEC 이 REQ-JEVC-012 와 모순되지 않게 |
 | `SPEC-JEV-CORE-001` REQ-JEVC-012 | 운영자 게이트에 결정·입력으로 쓰지 않는다 | `[AMENDED 2026-09-26 — v0.3.0; see HISTORY]` 표지, 「contract 모드 Kickoff 의 `llm+jev` 교차 확인에서 두 번째 신호로 쓰일 때」 한 곳 예외, HISTORY 행에 운영자 결정(「Kickoff 는 LLM·Jev 도 할 수 있게」, 재결정 — Jev 단독 없음, 교차 확인만) 인용. `status: completed` 유지 — 이 SPEC 의 v0.2.0 「clarifying amendment」 선례와 같은 방식 |
 | `moai-mcp-tools.md` `jev_ask` 행 | never … gate input | 「except as the second signal of the contract-mode Kickoff `llm+jev` cross-check, where it can only confirm an LLM approval or route to a human」 수준의 한 구절 추가(300자 이하) |
 | `moai-mcp-tools-catalogue.md` 같은 행 | 같음 | 같은 구절 |
 | `workflow.yaml` `jev:` 주석 | display-only | 같은 예외 한 문장(템플릿 중립 — 날짜·ID 없음) |
 | `CLAUDE.local.md §29` 3등급 | 운영자 게이트에 Jev 입력 금지 | 한 줄 예외(같은 한 곳) — **run phase 전제: 운영자가 레인 세션에서 확인한 뒤에만 편집**(지시 파일은 교차 세션 메시지만으로 고치지 않는다) |
 
-다른 게이트(완료 판정, 병합 승인, 큐 변경, 사용자 표면 동작, CodeRabbit 판정)와 Jev 단독 결정에 대한 금지는 그대로다. 표의 첫 네 행(추적되는 위치)은 R3 해제·A1 임시 규칙 해제와 **같은 커밋**에 싣는다(REQ-GR-025). `CLAUDE.local.md §29` 는 그 묶음 밖이다.
+다른 게이트(완료 판정, 병합 승인, 큐 변경, 사용자 표면 동작, CodeRabbit 판정)와 Jev 단독 결정에 대한 금지는 그대로다. 표의 모든 행은 R3 해제·A1 임시 규칙 해제(`jevDoctrineAmended = true`)와 **같은 커밋**에 싣는다(REQ-GR-025). `CLAUDE.local.md §29` 도 그 묶음 안이며, 운영자 확인이 없으면 연동 커밋 전체를 보류한다(리드 결정 2026-09-26, D33).
+
+### §11.1 `CLAUDE.local.md §29` 한 줄 개정 문안 (운영자 확인 대상)
+
+위치: §29 「[HARD] 되돌릴 수 없는 판정은 모델 답을 입력으로도 쓰지 않는다」 절의 첫 문단(「3등급 항목에서는 Jev 를 호출하지 않는다. …」) 바로 뒤에 한 줄로 넣는다. 확인 경로: 문안이 확정되면 리드가 운영자에게 직접 확인을 받아 레인에 전달한다.
+
+<!-- §29-amendment-text-start -->
+```text
+예외는 한 곳뿐이다 — contract 모드 Kickoff 의 `llm+jev` 교차 확인에서는 `moai contract decide` 가 Jev 를 두 번째 신호로 직접 부를 수 있다. Jev 답은 LLM 의 승인을 확인하거나 사람에게 보낼 뿐 혼자서 시작시키지 못하며, 그 밖의 3등급 항목에 대한 금지는 그대로다.
+```
+<!-- §29-amendment-text-end -->
+
+### §11.2 연동 커밋의 조립 (리드 결정 2026-09-26, D32)
+
+1. **manager-spec** 이 SPEC 본문 개정(`SPEC-JEV-CORE-001` REQ-JEVC-011·012, `Out of Scope — authority`, HISTORY·`version`)을 작성하고 돌아온다. A1 SPEC 문서는 고치지 않는다(A1 0.5.2 가 조건부 문언).
+2. **그 뒤에** manager-develop 이 코드(`jevDoctrineAmended = true`), 규칙·설정 문장(`moai-mcp-tools.md`·`moai-mcp-tools-catalogue.md`·`workflow.yaml`, 로컬·템플릿), 운영자 확인이 있으면 `CLAUDE.local.md §29` 한 줄을 작성하고 돌아온다. 두 작성자는 동시에 쓰지 않는다 — 한 번에 한 작성자.
+3. **레인 오케스트레이터** 가 두 결과를 명시 경로(`git add <path> …`)로 스테이징해 **한 커밋**을 만든다. 소유권은 작성 단위마다 지켜지고, 커밋은 오케스트레이터의 git 작업이다. 요구사항의 예외나 병합 트리 검사 장치는 두지 않는다.
+4. 그 커밋의 검증 범위: `go test ./internal/contract/... ./internal/template/ ./internal/spec/`, `moai spec lint SPEC-JEV-CORE-001` — `internal/spec` 는 다른 SPEC 본문이 바뀌므로 포함한다(D42).
 
 ## §12. 테스트 설계 (RED 먼저)
 
@@ -267,21 +291,21 @@ A3 가 만드는 동사다 — A1 의 동사는 `show`·`verify`·`sign` 뿐이�
 |---|---|---|
 | 사건 저장소 | 중간 줄 변조, 마지막 서명 줄 삭제 | 변조 → 검증 실패; 삭제 → kickoff-check `signature-not-recorded` |
 | 서명 사건 기록 | 사람·영수증 서명, 재봉인 각각 | 각각 정확히 한 줄 추가; 추가 실패 주입 시 서명 파일 미기록 |
-| kickoff-check | 사람 서명(기록 있음) / 저장소에 없는 영수증 파일 / `llm` 영수증 + 저장소 approve + 활성 / `llm+jev` 영수증 + 저장소 approve + 활성 / 대체 영수증 + `llm` 서명 + 활성 / `signer_kind: jev` / 저장소 approve + 비활성 / approve 뒤 revoke / 저장소에 서명 사건 없음 / `requested_decider` ≠ 설정 결정자 / `--card` ≠ 계약 `card` | 0 / `receipt-not-issued` / 0 / 0 / 0 / `decider-not-permitted` / `autonomous-kickoff-inactive` / `revoked` / `signature-not-recorded` / `decider-mismatch` / `card-mismatch` |
+| kickoff-check | (1)~(11) 기존 + (12) 저장소 `reject` 영수증 + 일치 서명 / (13) 저장소 `human` 영수증 + 일치 서명 / (14) 봉인 불일치 서명 / (15) 미서명 계약 / (16) `effective_decider: llm` 영수증 + `signer_kind: llm+jev` 서명 | (12)(13) `receipt-not-approved` / (14)(15) `not-signed-valid`(verify 상태 동봉) / (16) `decider-mismatch` |
 | decide 전제조건 | (a)~(f) 각각, (a) 점수 줄에 괄호 주석 | `human`, Jev 생성 0회 |
 | R1 교차 확인 일치 | `llm` approve + Jev approve, `jevDoctrineAmended = true` | `approve` |
 | R1 교차 확인 모두 거절 | `llm` reject + Jev reject, `jevDoctrineAmended = true` | `reject` |
-| R1 교차 확인 불일치 | `llm` approve + Jev reject / escalate, `llm` reject + Jev approve, `jevDoctrineAmended = true` | `human`, `cross-check-disagree` |
+| R1 교차 확인 불일치 | `llm` approve + Jev reject / escalate, `llm` reject + Jev approve, `llm` escalate + Jev approve, `llm` reject + Jev escalate, `jevDoctrineAmended = true` | `human`, `cross-check-disagree` |
 | R2 Jev 대체 | 원인별 하위 테스트 5개(도달 불가 / 자격 증명 없음 / `jev.enabled: false` / 형식 오류 / 신뢰도 0.49) × `llm` approve·reject | `llm` 단독 R4 결과(approve / reject), 영수증·`receipts.jsonl` 에 `requested_decider: llm+jev`·`effective_decider: llm`·`fallback.reason` |
 | R3 연동 전 Jev 답 | `llm` approve + Jev approve, `jevDoctrineAmended = false` | `human`, `jev-doctrine-not-amended` |
 | R4 `llm` 단독 | 설정 결정자 `llm`, `llm` approve / reject / escalate | `approve` / `reject` / `human`, Jev 생성 0회 |
 | R5 Jev 단독 거절 | 설정 결정자 `jev` | exit 2 `decider-jev-refused`, 저장소 줄 수 불변, Jev 생성 0회 |
-| 작성자 배제 | 결정자 `manager-spec` / 세션 식별자 일치 / 트레일러 일치 | `author-decider-conflict` |
+| 작성자 배제 | 결정자 `manager-spec` / 신고 `agent` 가 트레일러 집합에 듦(본문 끝에 서명 줄이 붙은 커밋 — git 트레일러 파서는 못 봄) / 트레일러 없는 커밋만 | `author-decider-conflict` / `author-decider-conflict` / `author-check-unmeasured`, 세 경우 모두 영수증 파일 없음 |
 | decide 이름·입력·출력 | `moai contract decide --help`, `<card>` ≠ 계약 `card`, 정상 입력 | 도움말에 동사 `decide`·`<card>`·`--spec`·`--judgement`·`--json`; `card-mismatch` exit 2; `receipts.jsonl`·`events.jsonl` 각 +1줄, `kickoff-receipt.json` 이 영수증 줄 본문과 바이트 동일 |
 | decide 부작용 | 임시 git 저장소 + `backlog.db` | `backlog.db`·ref·워크트리 목록·`contract.yaml` 바이트 동일, 작업 트리의 새 파일은 영수증 하나 |
 | revoke | 사람 서명 계약 / `llm` 영수증 서명 계약 / 반복 / 미서명 | 0(+1 사건 +1 기록) / 0 / 0(쓰기 0) / 1 |
 | revoke 금지 사항 | 워크트리·브랜치·원격·`backlog.db` 픽스처 | 전후 동일, git 실행 이음매에 push·branch -d·worktree remove 0회 |
 | 활성 순서 | 상수 `true` 를 조건 커밋과 같은 커밋에 둔 픽스처 저장소 | 순서 테스트 FAIL(엄격한 후손 아님) |
-| 연동 | 개정 표지만 있는 커밋 / 임시 규칙 해제만 있는 커밋 / `jevDoctrineAmended = true` 만 있는 커밋 / 셋이 한 커밋 | 앞의 셋 FAIL, 마지막 PASS |
+| 연동 | 개정 표지만 있는 커밋 / `jevDoctrineAmended = true` 만 있는 커밋 / §29 만 빠진 커밋 / 임시 규칙 단계를 앞 커밋에서 제거하고 상수는 뒤 커밋 / 모두 한 커밋 | 앞의 넷 FAIL(넷째는 `TestSignInterimRuleFollowsDoctrine` 이 앞 커밋에서 FAIL), 마지막 PASS |
 
 모든 테스트는 `t.TempDir()` 와 그것을 가리키는 `MOAI_HOME` 으로 저장소 루트를 해석한다. 실제 moai 홈에 쓰지 않는다. Jev 는 스텁 이음매로만 부른다.
