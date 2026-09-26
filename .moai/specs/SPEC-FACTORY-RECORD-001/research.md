@@ -76,7 +76,7 @@ in that tree and will drift; the quoted identifiers are the durable anchors.
   then insert), `:248` (`ClaimFactoryWorker`), `:225` (prune), and the legacy import
   (`homestate/factory.go:424`). Every insert sets `heartbeat_at = registered_at`.
 - `grep -rn "UPDATE workers" internal --include='*.go'` returns nothing: no code ever refreshes
-  `heartbeat_at`. REQ-FR-013 is the first writer of a live heartbeat.
+  `heartbeat_at`. REQ-FR-012 is the first writer of a live heartbeat.
 
 ## R7. The messaging dispatch record
 
@@ -116,44 +116,76 @@ in that tree and will drift; the quoted identifiers are the durable anchors.
 
 ## R11. A1 (card t1234) — where its contract lives and how F1 shares the store
 
-- Branch `WT-contract-schema`, worktree `.claude/worktrees/t1234` (locked), head `6d98ca466`,
-  `SPEC-AUTONOMY-CONTRACT-001` v0.4.1 `status: draft`. Not on develop: `.moai/specs` on this tree has no
-  `SPEC-AUTONOMY-CONTRACT-001` directory.
-- The contract is a file, `.moai/specs/<SPEC-ID>/contract.yaml` (A1 spec.md §B, from line 45 at
-  `6d98ca466`). A1 creates no database table.
-- A1 spec.md:100-103 (`6d98ca466`): "The factory redesign's `factory.db` card records are not
-  implemented or modified here ... the storage itself is F1." §C.4 (`:158-163`): a factory card record
+Re-read on 2026-09-26 at the branch tip, replacing the first reading of `6d98ca466` (v0.4.1, two
+versions stale):
+
+- `git rev-parse WT-contract-schema` → `de8aee45697d5e23c710fdcc9edc62c0489838ab` (short `de8aee456`).
+  The last documentation commit on that branch is `65e0a9167` ("v0.5.1 decider llm|llm+jev, A1 schema /
+  A3 rules split, card field, store path"); `086dfb2fd` and `de8aee456` are run-phase code commits.
+  `SPEC-AUTONOMY-CONTRACT-001` reads `version: "0.5.1"`, `status: in-progress` (spec.md:4-5 at
+  `de8aee456`). Not on develop: `.moai/specs` on this tree has no `SPEC-AUTONOMY-CONTRACT-001` directory.
+- The contract is a file, `.moai/specs/<SPEC-ID>/contract.yaml` (A1 spec.md:51 at `de8aee456`). A1
+  creates no database table.
+- A1 spec.md:108-111 (`de8aee456`): "The factory redesign's `factory.db` card records are not
+  implemented or modified here ... the storage itself is F1." §C.4 (`:166-171`): a factory card record
   carries a pointer only — SPEC ID, signed contract digest, signing time — never a copy.
-- A1 design.md:491-505 (`6d98ca466`) § F1 Reference Shape: `contract_ref { spec_id, contract_sha256,
+- A1 design.md:539-553 (`de8aee456`) § F1 Reference Shape: `contract_ref { spec_id, contract_sha256,
   signed_at }`; "F1 decides storage; A1 guarantees the three fields are stable and available from
   `show --json`."
-- **Sharing, concretely:** same project directory (`ProjectDir`), different artifacts. F1 adds three
-  nullable-by-default text columns to `cards` for the pointer. There is no shared table and no
-  migration-ordering dependency: A1 has no schema, so F1's factory.db migration can land before or after
-  A1. F1 does not import A1's package (it has not landed) and does not verify the digest; a stale-pointer
-  check is a reader concern for A1/A3 (`moai contract verify`).
+- New in v0.5.1 and relevant here (A1 spec.md:30, HISTORY 0.5.1, at `de8aee456`): the decider set is
+  `human | llm | llm+jev` (Jev is never a sole decider); a required top-level `card` field sits inside
+  the canonical digest; and lead decision R10 — "the moai-owned store path is
+  `$MOAI_HOME/db/<project-key>/contract/` (A3-owned; A1 does not create it)" (also spec.md:96, :195,
+  :204).
+- **Sharing, concretely:** same project directory (`ProjectDir`, R1), different artifacts. F1 adds four
+  text columns to `cards` for the pointer (A1's three fields plus the R15 store-event locator). There is
+  no shared table and no migration-ordering dependency: A1 has no schema, so F1's factory.db migration
+  can land before or after A1. F1 does not import A1's package and does not verify the digest; a
+  stale-pointer check is a reader concern for A1/A3 (`moai contract verify`). F1 does not copy A1's new
+  `card` field into the pointer: the pointer sits on the card row, which already names the card.
 
-## R12. A3 (card t1236) receipt store
+## R12. A3 (card t1236) signing-event store
 
-- Branch `WT-contract-gate-rewire`, head `781ddc355`, `SPEC-AUTONOMY-GATE-REWIRE-001` spec.md:93
-  REQ-GR-012: an append-only hash-chained JSONL store at `~/.moai/db/<project-key>/contract/receipts.jsonl`
-  recording every signing event and decide receipt.
-- That is also under `ProjectDir`, as a separate file. F1 does not write it. Open question for the F3
-  Decider (plan.md §C.7): whether an `llm`/`jev` Kickoff decision in the factory record must cite a line
-  of that store.
+- `git rev-parse WT-contract-gate-rewire` → `781ddc3554c4aa9cdf2f152eeab4b7b7eca5a03e`;
+  `SPEC-AUTONOMY-GATE-REWIRE-001` `version: "0.3.0"`. spec.md:93 REQ-GR-012: an append-only
+  hash-chained JSONL store at `~/.moai/db/<project-key>/contract/receipts.jsonl` recording every signing
+  event (human, receipt, re-seal), decide receipt, and revoke; each line carries the previous line's
+  hash. Its own citation of A1 still names `6d98ca466` — A3's text, not F1's to correct.
+- That store is under `ProjectDir/contract` as a separate file. F1 never writes it. Open question for
+  the F3 Decider (plan.md §C.7): whether a non-human Kickoff decision in the factory record must cite a
+  line of that store.
 
 ## R13. Audit verdict files carry no machine-readable verdict line today
 
 - `.moai/docs/audit-artifact-convention.md:35-44`: card verdicts live at
   `.moai/reports/<card-id>/plan-audit.md`, `plan-audit-iter<N>.md`, `sync-audit.md`.
 - `:70-84` "What": the file carries "the verdict token and score" in prose; no fixed line format and no
-  audited-SHA field is required. REQ-FR-009 needs one; plan.md §C.4 records the format decision.
+  audited-SHA field is required. The document is mirrored at
+  `internal/template/templates/.moai/docs/audit-artifact-convention.md`.
+- Measured: `grep -c "audited_sha" .claude/agents/moai/plan-auditor.md` → `0` (exit 1);
+  `grep -c "audited_sha" internal/template/templates/.claude/agents/moai/sync-auditor.md` → `0`
+  (exit 1). Emitted Codex definitions exist at
+  `internal/template/templates/.codex/agents/moai/{plan,sync}-auditor.toml` and are regenerated by
+  `make agents-emit`.
+- Consequence (plan-audit iteration 1, D6): without a producer, E-VERDICT refuses every audit exit
+  forever. REQ-FR-011 therefore makes the producer part of this SPEC.
 
 ## R14. Test-environment constraint
 
 - Lead instruction for this card: do not run whole-package `./internal/cli` or `./internal/hook` tests
   — they write the real `~/.moai` profile-leases database. `homestate` tests already use
   `t.TempDir()` project roots. CLI-level ACs must run with a `-run` filter and an isolated MoAI home.
+
+## R15. The moai-owned contract store (lead decision R10)
+
+- Lead decision R10 (2026-09-26, recorded in A1 HISTORY 0.5.1 at `de8aee456`): A2 armed state and A3
+  signing events live under `$MOAI_HOME/db/<project-key>/contract/`.
+- `ProjectDir` (`internal/homestate/paths.go:142-153`) resolves to `$MOAI_HOME/db/<project-key>/`
+  under the default layout, so the store is `ProjectDir/contract`, the sibling of `factory/` and
+  `todo/`. No helper returns that path on this tree: `grep -rn '"contract"' internal/homestate/paths.go`
+  → no output, exit 1.
+- F1's pointer names a store line by its SHA-256 (A3 lines are hash-chained, so a line hash is a stable
+  locator) rather than by file name or line number, which A3 still owns.
 
 ## Reuse analysis
 
