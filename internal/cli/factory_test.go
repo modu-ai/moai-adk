@@ -39,6 +39,30 @@ var factoryAmbientEnvKeys = []string{
 	config.EnvClaudeCodeMaxConcurrentSubagents,
 }
 
+// factoryEnvPinnedEnv exempts a re-executed helper child from the TestMain
+// ambient clear. A parent that deliberately composes factory env for an
+// os.Args[0] child — codex_launcher_exec_posix_test.go builds the
+// preserves-factory-owner exec chain this way — sets it in cmd.Env: for that
+// child the keys are the payload under test, not ambient lane state, and
+// clearing them leaves the helper asserting on an empty run id (the
+// merge-window remeasure failure of TestCodexDirectPOSIXExecPreservesFactoryOwner,
+// card t1252). Same carry-to-re-exec-children pattern as profileBaseDirEnv.
+const factoryEnvPinnedEnv = "MOAI_CLI_TEST_FACTORY_ENV_PINNED"
+
+// clearFactoryAmbientEnv clears the factory/kanban ambient family for this
+// process, unless factoryEnvPinnedEnv marks a re-executed helper whose parent
+// composed the family deliberately. TestMain calls it before any test runs so
+// tests that never call clearFactoryTestEnv (todo round-trips, golden
+// captures) cannot stamp a live run_id/owner into their fixtures (t1252).
+func clearFactoryAmbientEnv() {
+	if os.Getenv(factoryEnvPinnedEnv) != "" {
+		return
+	}
+	for _, key := range factoryAmbientEnvKeys {
+		_ = os.Unsetenv(key)
+	}
+}
+
 // clearFactoryTestEnv isolates the factory signal variables from this test
 // binary's ambient environment, on the same t.Setenv-restore contract as
 // clearKanbanLauncherEnv (a developer running tests inside a factory session
@@ -83,6 +107,25 @@ func TestFactoryAmbientEnvClearedInTestMain(t *testing.T) {
 			t.Fatalf("%s=%q survived TestMain: the todo runtime stamps this "+
 				"value into golden fixtures (card t1252)", key, v)
 		}
+	}
+}
+
+// TestFactoryEnvPinnedSkipsTestMainClear covers the factoryEnvPinnedEnv branch
+// of clearFactoryAmbientEnv: a re-executed helper whose parent composed
+// factory env must keep it. The unpinned branch is covered end-to-end by
+// TestFactoryAmbientEnvClearedInTestMain (this process went through TestMain
+// with no marker); the marker side is evaluated only at binary start, so a
+// same-process guard cannot reach it through TestMain — hence this direct
+// call. Removing the marker check fails this test and re-breaks
+// TestCodexDirectPOSIXExecPreservesFactoryOwner in a lane session.
+func TestFactoryEnvPinnedSkipsTestMainClear(t *testing.T) {
+	t.Setenv(factoryEnvPinnedEnv, "1")
+	t.Setenv(config.EnvMoaiKanbanID, "pinned-run")
+	clearFactoryAmbientEnv()
+	if got := os.Getenv(config.EnvMoaiKanbanID); got != "pinned-run" {
+		t.Fatalf("%s=%q after clearFactoryAmbientEnv with pin marker; the "+
+			"marker must keep a parent-composed family intact",
+			config.EnvMoaiKanbanID, got)
 	}
 }
 

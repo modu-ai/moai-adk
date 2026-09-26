@@ -351,10 +351,9 @@ func TestMain(m *testing.M) {
 	// Factory/kanban ambient env must not reach any test (card t1252): a lane
 	// session carries MOAI_FACTORY_WORKER/MOAI_KANBAN_ID, and the todo runtime
 	// stamping records them into golden fixtures. UnderLaneEnv twins re-set
-	// what they need via t.Setenv, so this clear strips only the ambient copy.
-	for _, key := range factoryAmbientEnvKeys {
-		_ = os.Unsetenv(key)
-	}
+	// what they need via t.Setenv, so this clear strips only the ambient copy
+	// and leaves a pinned helper child's composed family alone.
+	clearFactoryAmbientEnv()
 	// Git fixtures must not inherit a hook's or lane's repository (GH #1691).
 	if err := gitenv.ScrubProcess(); err != nil {
 		restoreMoaiHome()
