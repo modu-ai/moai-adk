@@ -130,6 +130,33 @@ func (w *Worktree) WriteMode(mode string, modeAbsent bool) {
 	w.Write(".moai/config/sections/workflow.yaml", b.String())
 }
 
+// WriteContractMode writes a workflow.yaml selecting mode contract with
+// push_develop true (matching Policy), plus any extra lines under
+// workflow.autonomy (each indented by the caller relative to autonomy, e.g.
+// "escalation:\n  budget_default:\n    operations: 1").
+func (w *Worktree) WriteContractMode(autonomyExtra string) {
+	w.t.Helper()
+	var b strings.Builder
+	b.WriteString("workflow:\n  autonomy:\n    mode: contract\n    contract:\n      push_develop: true\n")
+	for _, l := range strings.Split(strings.TrimRight(autonomyExtra, "\n"), "\n") {
+		if l != "" {
+			b.WriteString("    " + l + "\n")
+		}
+	}
+	w.Write(".moai/config/sections/workflow.yaml", b.String())
+}
+
+// Replace rewrites the first occurrence of old with new in a
+// worktree-relative file and fails the test when old is absent.
+func (w *Worktree) Replace(rel, old, new string) {
+	w.t.Helper()
+	data := string(w.Read(rel))
+	if !strings.Contains(data, old) {
+		w.t.Fatalf("escalationtest: %s does not contain %q", rel, old)
+	}
+	w.Write(rel, strings.Replace(data, old, new, 1))
+}
+
 // SpecOptions selects the variant of an added SPEC.
 type SpecOptions struct {
 	// Card is written as the contract's card field; default the worktree's.

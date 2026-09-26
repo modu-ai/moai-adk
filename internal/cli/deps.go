@@ -253,7 +253,12 @@ func InitDependencies() {
 	secPolicy := hook.DefaultSecurityPolicy()
 	secPolicy.MergeExtraPatterns(security.LoadExtraSecurityConfig(cwd))
 	deps.HookRegistry.Register(hook.NewPreToolHandlerWithScanner(deps.Config, secPolicy, securityScanner))
-	deps.HookRegistry.Register(hook.NewPostToolHandlerWithMxValidatorAndTimeout(diagnosticsCollector, astAnalyzer, cwd, 500*time.Millisecond))
+	// WithEscalationConfig hands the contract-mode escalation detector the
+	// configuration without giving the handler a cfg (which would change its
+	// lint_as_instruction default).
+	deps.HookRegistry.Register(hook.WithEscalationConfig(
+		hook.NewPostToolHandlerWithMxValidatorAndTimeout(diagnosticsCollector, astAnalyzer, cwd, 500*time.Millisecond),
+		deps.Config))
 	// The regex security guardian runs in this process alongside the post-tool
 	// handler; the registry accumulates its additionalContext next to the
 	// post-tool handler's systemMessage, so neither advisory is dropped. It

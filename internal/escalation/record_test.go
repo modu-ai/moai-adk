@@ -6,6 +6,7 @@ import (
 	"path/filepath"
 	"regexp"
 	"testing"
+	"time"
 
 	"github.com/modu-ai/moai-adk/internal/config"
 	"github.com/modu-ai/moai-adk/internal/escalation"
@@ -36,8 +37,18 @@ func sampleRecord(card string) escalation.Record {
 	}
 }
 
-// writeAt places a record's encoding at its path (the writer proper lands
-// in a later milestone; this criterion's M1 half is the path and marking).
+// writeTrip writes a trip through the detector's record writer.
+func writeTrip(t *testing.T, root string, r escalation.Record) string {
+	t.Helper()
+	p, err := escalation.WriteRecord(root, r, time.Date(2026, 1, 2, 3, 4, 5, 0, time.UTC))
+	if err != nil {
+		t.Fatalf("WriteRecord: %v", err)
+	}
+	return p
+}
+
+// writeAt places a record's encoding at its path by hand — the way a decider
+// edits a record or a person authors a revoke record.
 func writeAt(t *testing.T, path string, r escalation.Record) {
 	t.Helper()
 	data, err := r.Marshal()
@@ -52,7 +63,7 @@ func writeAt(t *testing.T, path string, r escalation.Record) {
 	}
 }
 
-// AC-AE-021 path half (REQ-AE-018): a record lands at
+// AC-AE-021 (REQ-AE-018): a record written by the detector's writer lands at
 // <worktree root>/.moai/reports/<card>/escalation/<class>-<fingerprint>.md,
 // the queue store is untouched, and the card is needs-decision exactly while a
 // contract or operational record is open.
@@ -88,7 +99,9 @@ func TestRecordPathAndQueueUntouched(t *testing.T) {
 		t.Fatalf("NeedsDecision before any record = %v, %v; want false", nd, err)
 	}
 
-	writeAt(t, path, r)
+	if got := writeTrip(t, w.Root, r); got != path {
+		t.Fatalf("writer wrote %q, want %q", got, path)
+	}
 	nd, err = escalation.NeedsDecision(w.Root, "t9001")
 	if err != nil || !nd {
 		t.Fatalf("NeedsDecision with an open contract record = %v, %v; want true", nd, err)
@@ -96,7 +109,7 @@ func TestRecordPathAndQueueUntouched(t *testing.T) {
 
 	// Another card's open record never marks this card.
 	other := sampleRecord("t9002")
-	writeAt(t, escalation.RecordPath(w.Root, "t9002", other.Class, other.Fingerprint, 0), other)
+	writeTrip(t, w.Root, other)
 
 	// Resolving it clears the marking.
 	r.Status = escalation.StatusResolved
@@ -112,8 +125,7 @@ func TestRecordPathAndQueueUntouched(t *testing.T) {
 	op.Kind, op.Class, op.EscalateOn = escalation.KindOperational, escalation.ClassBudgetExceeded, ""
 	op.Fingerprint = escalation.Fingerprint(escalation.ClassBudgetExceeded, "operations")
 	op.ContractRef = "config:workflow.autonomy.escalation.budget_default.operations"
-	opPath := escalation.RecordPath(w.Root, "t9001", op.Class, op.Fingerprint, 0)
-	writeAt(t, opPath, op)
+	opPath := writeTrip(t, w.Root, op)
 	nd, err = escalation.NeedsDecision(w.Root, "t9001")
 	if err != nil || !nd {
 		t.Fatalf("NeedsDecision with an open operational record = %v, %v; want true", nd, err)

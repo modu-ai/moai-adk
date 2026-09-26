@@ -412,6 +412,12 @@ func (h *preToolHandler) EventType() EventType {
 // "deny" with a reason if the tool is denied, "ask" if user confirmation is
 // needed, or "allow" otherwise.
 func (h *preToolHandler) Handle(ctx context.Context, input *HookInput) (*HookOutput, error) {
+	// Contract-mode escalation detector (SPEC-AUTONOMY-ESCALATION-001). It
+	// records only and returns nothing, so it introduces no conditional return
+	// above the destructive-command denylist; it is inert (no file read)
+	// unless workflow.autonomy.mode is contract.
+	observeEscalation(h.cfg, string(EventPreToolUse), input)
+
 	// No policy means allow everything (subject to the same permission-mode
 	// awareness as the "no dangerous pattern found" path below — a nil
 	// policy trivially finds nothing dangerous).
