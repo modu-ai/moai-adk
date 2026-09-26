@@ -427,7 +427,7 @@ $ git diff --name-only 0356e8117..HEAD | grep -E '^(\.claude/rules/|CLAUDE\.md|A
 
 ```yaml
 sync_complete_at: 2026-09-26
-sync_commit_sha: "pending-backfill-sync"  # 이 커밋 자신의 SHA는 커밋 전에 알 수 없다 — 후속 백필 커밋에서 실제 SHA로 교체(spec-frontmatter-schema.md D3 예외)
+sync_commit_sha: "5e99cff6b"  # 백필됨 — 직전 sync 커밋 자신의 SHA(spec-frontmatter-schema.md D3 예외)
 sync_status: complete
 b12_self_test_a: not_applicable   # CHANGELOG 항목을 내지 않았으므로 pre-emission grep 대상 자체가 없다 — pass를 자칭하지 않는다(VCI: 관측되지 않은 검사를 pass로 적지 않는다)
 b12_self_test_b: not_applicable   # AC count match 검사는 emission을 전제한다. 참고: acceptance.md 내 distinct AC-ID 토큰은 7개(001·002·003·004·006·008·009; 010·011은 삭제, 005·007은 RETIRED 표식)
