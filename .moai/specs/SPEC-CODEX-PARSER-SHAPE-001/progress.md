@@ -18,6 +18,15 @@
   predicate is scoped with `GateUnmet == ""` plus a mandatory control case
   (REQ-CPS-006a); AC-CPS-006 now requires exact count and content plus a
   partial-drift case.
+- 2026-09-26 · v0.2.0 amendment (card t1203, GitHub #1718; worktree
+  `.claude/worktrees/t1203`, branch `WT-codex-parser-shape`): the #1718 real case
+  added from `.moai/reports/t1203/verdict.md` (tree `df526c9a9`) — spec.md §A.6,
+  §A.4 conclusion scoped, §C #1718 coverage table, candidate (d), §C.1 conflict;
+  REQ-CPS-012..014; AC-CPS-011..015. Status stays `draft`. The pending Kickoff
+  decision now covers BOTH the §C candidate selection AND the REQ-CPS-010
+  question (keep as written, or revise — spec.md §C.1, REQ-CPS-013); neither is
+  taken here. The plan-audit verdict from before this amendment does not cover
+  it; a fresh plan-audit is due.
 
 ## §E.2 Run-phase Evidence
 

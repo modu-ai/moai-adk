@@ -3,6 +3,10 @@
 > Plan-phase artifact. Every measured statement traces to
 > `.moai/reports/t1053/verdict.md` by section. No figure appears here that is not
 > in that file, and nothing here re-runs those measurements.
+>
+> v0.2.0 (card t1203): the #1718 real case adds a second evidence base,
+> `.moai/reports/t1203/verdict.md` (tree `df526c9a9`), cited as `t1203 §N`. The
+> same rule binds it.
 
 ## §A Context
 
@@ -16,6 +20,13 @@ The card is measurement-first: the offline measurement is complete (verdict.md
 §E3, eighteen measurements), and the one measurement that would decide urgency —
 whether the live convention still matches the fixture — was blocked all day by a
 codex account usage limit (verdict.md §E1, §6).
+
+v0.2.0: GitHub #1718 supplied the live different-shape case the t1053
+measurements lacked. Two real adversarial bodies from another project
+(moai-cowork) carry the verdict behind a persona greeting and the findings as a
+table or as bold severity-word bullets; both synthesize as `inconclusive`/0 on
+the adversarial path, and across 142 of that project's codex-gate sessions no
+run produced a parsed finding (t1203 §1–§3; spec.md §A.6).
 
 ## §B Known issues carried into the plan
 
@@ -36,6 +47,11 @@ codex account usage limit (verdict.md §E1, §6).
    it regardless of shape. (c) exists because of V8 (verdict.md §A2).
 5. **The exact-count tests are the measured defence against partial drift**
    (verdict.md §4, §A3) and look like a tidy-up target. See §G anti-pattern 1.
+6. **The #1718 case** (t1203 §1–§4; spec.md §A.6): on the raw bodies no
+   candidate has measured coverage; (c) catches only the ctrlB shape (body2 with
+   its greeting removed, measured `fail`/0 in both modes). The adversarial
+   `inconclusive` that REQ-CPS-010 freezes is what #1718 reports as the defect
+   (spec.md §C.1).
 
 ## §C Pre-flight — the gate that sits ahead of everything
 
@@ -45,7 +61,9 @@ codex account usage limit (verdict.md §E1, §6).
 `.moai/reports/t1053/live-convention-20260921.md` (tree `a5c3f5dc6`, codex-cli
 0.155.1). The convention has not drifted, so the risk is **prospective, not
 currently active** — which sets urgency, not treatment (verdict.md §A1), and
-leaves the §C candidate space unchanged. Two tolerated sub-shape differences
+leaves the §C candidate space unchanged. **Scope narrowed in v0.2.0:** that
+conclusion holds for the 2026-09-21 moai-adk-go measurement only; in the
+moai-cowork project the risk is measured as active (t1203 §3, §4; spec.md §A.4). Two tolerated sub-shape differences
 (line range with the end discarded; absolute path) are recorded in spec.md §A.4.
 The requirement below is retained because it governs any re-measurement.
 
@@ -58,7 +76,8 @@ What M0 does **not** decide: the prescription. The lead's recorded reasoning
 (verdict.md §A1) is that the live comparison sets **urgency**, not **treatment** —
 if the convention matches, the future-change exposure remains; if it differs, the
 same treatment is simply more urgent. The eighteen offline measurements already
-narrowed the treatment space to the three candidates.
+narrowed the treatment space to the three candidates (a)–(c); candidate (d) was
+added in v0.2.0 from the #1718 case and is entirely inferred.
 
 [HARD] M0 also does not close verdict.md §6's first Gap. That Gap records that
 the convention was unmeasured on the measurement day, and that fact is permanent.
@@ -103,14 +122,21 @@ which is why it is first and why it gates the Kickoff.
 
 Closes AC-CPS-001, AC-CPS-002.
 
-### M1 — candidate selection (operator decision at the Kickoff gate)
+### M1 — candidate selection and the REQ-CPS-010 decision (operator decisions at the Kickoff gate)
 
-The operator selects one or more of (a), (b), (c). The selection is recorded in
-the SPEC's progress record together with the reason given.
+The operator selects one or more of (a), (b), (c), (d). The selection is recorded
+in the SPEC's progress record together with the reason given.
+
+[HARD] **The Kickoff now carries a second decision (v0.2.0).** The operator must
+also decide whether REQ-CPS-010 is kept as written or revised (spec.md §C.1,
+REQ-CPS-013). The two are coupled: keeping REQ-CPS-010 excludes (d) and any part
+of (a) that changes adversarial-path behaviour. This plan presents both options
+and resolves neither; the choice and its reason are recorded in the progress
+record before any adversarial-affecting candidate is implemented.
 
 Candidates ordered below **by measured failure-shape coverage** (verdict.md §E3,
-§A2). **That ordering criterion is coverage, and nothing else** — it is not a
-recommendation, not a cost ranking, and not a plan-side preference.
+§A2; t1203 §1). **That ordering criterion is coverage, and nothing else** — it is
+not a recommendation, not a cost ranking, and not a plan-side preference.
 
 The coverage column is split: **measured** shapes are those a probe actually
 exercised, **inferred** shapes are those the mechanism suggests but nothing ran.
@@ -118,22 +144,29 @@ An inferred shape carries no weight in the ordering.
 
 | Order | Candidate | Measured coverage | Inferred, NOT measured |
 |---|---|---|---|
-| 1 | (a) reduce shape dependence | **V2 and V8**, both modes — widening `codexFindingBullet` / `codexFindingLine` to accept numbered-list markers turned native V2 from `pass`/0 into `fail`/2 and V8 from `fail`/0 into `fail`/1, with V1 (`fail`/2) and V9 (`pass`/0) unchanged as regression controls (verdict.md §A5) | V3 bold severity, V4 heading-per-finding, V5 JSON, V6 severity-as-word — **each needs a different recognizer change and none was exercised** |
-| 2 | (c) verdict/findings contradiction detection | **V8**, both modes — the measured V8 output is `fail` with `findings=0` (verdict.md §E3), which is the contradiction itself; the only candidate that catches it | — |
-| 3 | (b) shape-change detection → inconclusive | native V2–V6 are measured as silent `pass`/0 (verdict.md §E3), so the failure shape is measured; the remedy is not — adversarial is already implemented and native is blocked on a prior disambiguation mechanism (verdict.md §E4) | that a native downgrade can be made without turning V9 into `inconclusive` |
+| 1= | (a) reduce shape dependence | **V2 and V8**, both modes — widening `codexFindingBullet` / `codexFindingLine` to accept numbered-list markers turned native V2 from `pass`/0 into `fail`/2 and V8 from `fail`/0 into `fail`/1, with V1 (`fail`/2) and V9 (`pass`/0) unchanged as regression controls (verdict.md §A5) | V3 bold severity, V4 heading-per-finding, V5 JSON, V6 severity-as-word — **each needs a different recognizer change and none was exercised**; the #1718 raw bodies and ctrlB — **three further distinct changes** (relaxed line-head verdict anchor, localized verdict label, table / bold severity-word findings), none exercised (spec.md §C #1718 table) |
+| 1= | (c) verdict/findings contradiction detection | **V8** and **ctrlB**, both modes — each measured as `fail` with `findings=0` (verdict.md §E3; t1203 §1), which is the contradiction itself. On the raw #1718 bodies it catches nothing (measured `inconclusive`/0 — no blocking verdict survives) | — |
+| 3= | (b) shape-change detection → inconclusive | native V2–V6 are measured as silent `pass`/0 (verdict.md §E3), so the failure shape is measured; the remedy is not — adversarial is already implemented, and that implemented output is what #1718 reports as the defect (t1203 §4); native is blocked on a prior disambiguation mechanism (verdict.md §E4) | that a native downgrade can be made without turning V9 into `inconclusive` |
+| 3= | (d) pin the output format in the adversarial prompt | none — the failure shape is measured (#1718 raw bodies `inconclusive`/0; population, t1203 §1, §3), no remedy was exercised | that codex honours a format instruction over a project persona instruction; that the pinned format holds across projects. Requires the REQ-CPS-010 revision option |
 
-**The ordering is unchanged, and this is a stated conclusion rather than a
-default.** Two things were weighed against it and neither moves it *on this
+**The ordering changed in v0.2.0, and the change is stated rather than left to be
+noticed.** Before the #1718 case, (a)'s measured half (V2 + V8) strictly
+contained (c)'s (V8), which put (a) first. Adding ctrlB — a real-body shape,
+measured under (c) and not under (a) — ends that containment: (a) and (c) now
+cover two measured shapes each, overlapping at V8, and neither contains the
+other. On the stated criterion they are **tied** (`1=`); the listing order inside
+the tie carries no meaning. (b) and (d) are likewise tied (`3=`): for each, the
+failure shape is measured and the remedy is not.
+
+Two things were weighed against this order and neither moves it *on this
 criterion*:
 
-- Removing (a)'s inferred half does not move (a): its measured half (V2 + V8)
-  strictly contains (c)'s measured coverage (V8).
+- (a)'s inferred half — now including the three #1718 recognizer changes — adds
+  nothing, because inferred shapes carry no weight.
 - (c)'s shape-independence (§C trade-offs — it catches the contradiction
   regardless of shape, because it keys on
   `verdict == fail && len(findings) == 0 && GateUnmet == ""` rather than on any
-  recognizer) does not move (c) up either, because the stated
-  criterion is **measured failure-shape coverage** and shape-independence is not
-  a coverage count. It is a property of a different kind.
+  recognizer) is not a coverage count. It is a property of a different kind.
 
 [HARD] **That is a limitation of the criterion, not a verdict on (c).** Coverage
 counting cannot express "bounded by an enumerated shape set" versus "not bounded
@@ -144,34 +177,44 @@ selecting for durability rather than for measured breadth has a sound reason to
 take (c) first, and this order is not an argument against that — it is not a
 recommendation (see the criterion sentence above).
 
-(b) stays last because its remedy — unlike (a)'s and (c)'s — is the one nothing
-has yet exercised on the native path.
+[HARD] **ctrlB coverage is not #1718 coverage.** (c)'s ctrlB cell is a real body
+with its greeting removed; codex did not emit it verbatim. On the raw #1718
+bodies, no candidate has measured coverage (spec.md §C #1718 table). An operator
+selecting to close #1718 as reported is selecting unexercised work under any
+candidate.
 
 [HARD] **A wider (a) is not a measured (a).** Only the numbered-list widening was
-run. An operator selecting (a) for V3–V6 is selecting four unexercised recognizer
-changes, and the run phase measures each of them rather than inheriting the V2/V8
-result.
+run. An operator selecting (a) for V3–V6 or for the #1718 shapes is selecting
+unexercised recognizer changes, and the run phase measures each of them rather
+than inheriting the V2/V8 result.
 
-Closes AC-CPS-003.
+Closes AC-CPS-003, AC-CPS-015.
 
 ### M2 — implement the selected candidate(s)
 
-Scoped to whichever of (a) / (b) / (c) the operator selected. The per-candidate
-behavioural requirements are REQ-CPS-005 (b), REQ-CPS-006 (c), REQ-CPS-007 (a);
-only the selected ones apply.
+Scoped to whichever of (a) / (b) / (c) / (d) the operator selected. The
+per-candidate behavioural requirements are REQ-CPS-005 (b), REQ-CPS-006 (c),
+REQ-CPS-007 (a), REQ-CPS-012 (d); only the selected ones apply.
+
+Where a selected candidate is claimed to address #1718, M2 first commits the
+sanitized reductions of both #1718 shapes and shows each reproduces its raw
+body's measured output on the unmodified parser (REQ-CPS-014, AC-CPS-011) —
+before any recognizer or prompt change, so the RED observation is taken on a
+fixture the tree actually carries.
 
 For (b), the disambiguation mechanism of REQ-CPS-005 is part of M2, not a
 prerequisite assumed to exist: without it, extending (b) to native turns a
 genuine clean review into `inconclusive` (verdict.md §E4).
 
 Closes the AC matching the selected candidate(s): AC-CPS-004 / AC-CPS-005 /
-AC-CPS-006.
+AC-CPS-006 / AC-CPS-012 / AC-CPS-013 / AC-CPS-014, plus AC-CPS-011 where #1718 is
+claimed.
 
 ### M3 — preserved-behaviour guards (mechanical; lowest change likelihood)
 
 Regression coverage for the properties no candidate may break: the clean-review
 native path stays `pass` (AC-CPS-008), the adversarial path is unchanged
-(AC-CPS-009), the exact-count assertions remain exact (AC-CPS-007), and
+(AC-CPS-009 — applies as written only if the operator keeps REQ-CPS-010), the exact-count assertions remain exact (AC-CPS-007), and
 `next_steps` is untouched (AC-CPS-010).
 
 ## §G Anti-patterns
@@ -194,11 +237,19 @@ native path stays `pass` (AC-CPS-008), the adversarial path is unchanged
    (verdict.md §E3, §7).
 5. **Citing the installed binary.** It predates this tree (`f67d2193f`). Compile
    from the tree.
+6. **Reading ctrlB as #1718.** ctrlB is body2 with its greeting removed; (c)
+   catching it says nothing about the raw bodies, on which (c) catches nothing
+   (t1203 §1, §4).
+7. **Committing the raw #1718 bodies as fixtures.** They carry another project's
+   absolute paths and content. Fixtures are sanitized reductions that first prove
+   they reproduce the raw bodies' measured output (REQ-CPS-014).
 
 ## §H Cross-references
 
 - `.moai/reports/t1053/verdict.md` — the evidence base (§E1–§E4, §4, §5, §6, §7,
   §A1–§A5)
+- `.moai/reports/t1203/verdict.md` — the #1718 real case (§1–§5), tree
+  `df526c9a9`
 - `internal/cli/mcp_codex.go` — `codexStatedVerdict`, `codexScoredVerdict`,
   `codexFindingBullet`, `codexFindingLine`, `codexFindingsOf`,
   `codexVerdictSignalsOf`, `codexUnrecognizedVerdict`

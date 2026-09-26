@@ -123,7 +123,7 @@
 .moai/specs/SPEC-CODEX-LAUNCHER-001/acceptance.md  COUNT 17  live=17 excluded=0 ambiguous=0
 .moai/specs/SPEC-CODEX-LOCALMD-001/acceptance.md  COUNT 12  live=12 excluded=0 ambiguous=0
 .moai/specs/SPEC-CODEX-MIRROR-DOCTOR-001/acceptance.md  COUNT 15  live=15 excluded=0 ambiguous=0
-.moai/specs/SPEC-CODEX-PARSER-SHAPE-001/acceptance.md  COUNT 10  live=10 excluded=0 ambiguous=0
+.moai/specs/SPEC-CODEX-PARSER-SHAPE-001/acceptance.md  COUNT 15  live=15 excluded=0 ambiguous=0
 .moai/specs/SPEC-CODEX-PARTIAL-WIRING-001/acceptance.md  COUNT 9  live=9 excluded=0 ambiguous=0
 .moai/specs/SPEC-CODEX-PHASE2-001/acceptance.md  COUNT 18  live=18 excluded=0 ambiguous=0
 .moai/specs/SPEC-CODEX-REVIEW-TARGET-001/acceptance.md  COUNT 11  live=11 excluded=0 ambiguous=0
