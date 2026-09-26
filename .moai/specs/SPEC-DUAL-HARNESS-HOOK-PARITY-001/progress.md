@@ -853,6 +853,93 @@ Base HEAD `92a4ac964` (M2g). Measured on Darwin arm64, go1.26.8.
 `blocked:M1`, 4 are `unverified`, 2 carry a Claude `UNSUPPORTED` marker, the 9 live-leg checks
 skip (NOT_RUN), and no row yet has an effect-verified, attributed verdict record.
 
+### M2i — mechanical tail and regression (2026-09-26)
+
+Base HEAD `e722a1493` (M2h). Measured on Darwin arm64, go1.26.8, load 28–52.
+
+**Mechanical tail.** `RenderHooks` needed no code change — it derives from the table, and
+`TestRenderHooks_InterruptInstalled` shows the Interrupt handler rendered. `make build` → exit 0
+(`agents-emit-check` passed, `catalog.yaml updated successfully (13408 bytes)` with no tracked
+change, `go build … -o bin/moai`). Doc comments were updated with the code (`events.go` census,
+`hook.go` Codex-only table, `hook_codex_interrupt.go`, `codex_stop_chain.go` statuses,
+`parity_verdict.go`). Codemaps: a partial re-measure of the two rows this card changed
+(`.moai/project/codemaps/modules.md`: `internal/codexadapter` 5→7, `internal/template` 31→34,
+both counted with `find <pkg> -name '*.go' -not -name '*_test.go' | wc -l` on this tree);
+`provenance.json` untouched. `bin/moai graph check --root <worktree>` → `codemaps … value=28
+threshold=40 verdict=fresh`, `citations … value=0 verdict=fresh`; exit 1 only from the
+`mx-index` and `edges` layers, both `absent (… fresh worktree state)`.
+
+**hook.go regions touched (for the t1152 absorption, per the lead):** one insertion, lines
+96–114 of `internal/cli/hook.go` inside `init()` (the Codex-only subcommand table, between the
+event-subcommand loop and the `list` subcommand). Nothing in 278–307, 472–493, or 523–542.
+`runHookEvent` is unchanged; the other M2e edits are in `hook_harness_codex.go` (a 3-line guard at
+the top of `writeHookOutputCodex` plus two new functions at the end of the file) and the new
+`hook_codex_interrupt.go`.
+
+**Regression — whole `internal/cli` package.** Two runs, because the lead's isolation form
+(arriving mid-run) changes the outcome of tests unrelated to this SPEC:
+
+1. Environment-scrubbed, not `MOAI_HOME`-isolated
+   (`unset MOAI_AUTONOMY_TIER MOAI_FACTORY_WORKER MOAI_FACTORY_WORKERS MOAI_KANBAN_BACKEND MOAI_KANBAN_SETTINGS_INJECTED MOAI_LAUNCH_PROVIDER MOAI_PROFILE_LEASE_TOKEN MOAI_SESSION_PID MOAI_CONFIG_SOURCE CLAUDE_CODE_SESSION_ID CLAUDE_CODE_SESSION_ATTENDED && go test -json -count=1 -timeout 60m ./internal/cli/`),
+   stopped by the agent after 25 minutes when the lead's lease-isolation constraint arrived:
+   **5180 pass, 46 skip, 0 fail** at the stop — partial, not a package verdict.
+2. The lead's isolated form, whole package
+   (`unset MOAI_PROFILE_LEASE_TOKEN CLAUDE_CONFIG_DIR <the variables above> && MOAI_HOME=<scratch dir> go test -json -count=1 -timeout 70m ./internal/cli/`;
+   the scratch dir is a literal path because the worktree guard refuses `$(mktemp -d)`):
+   package `fail` after 1805.7 s — **7144 pass, 59 skip, 59 fail records over 49 top-level
+   tests**. None is a regression from this SPEC:
+   - 36 of the 49 passed in run 1 (e.g. `TestCodexSpawn_RealAssemblyThroughStubTmux` — the
+     launcher forwards the injected `MOAI_HOME` into the asserted tmux command; the GLM-key tests
+     read a key file other tests left in the shared `MOAI_HOME`: `loadGLMKey() = "header-test",
+     want "loaded-key"`).
+   - The other 13 (todo queue-root, export, archive, temp-origin tests, which run 1 had not
+     reached) fail because the queue resolves into the injected `MOAI_HOME`
+     (`fallback queue = "…/moaihome-cli/…"`). Re-run with `MOAI_HOME` unset (and
+     `MOAI_PROFILE_LEASE_TOKEN` / `CLAUDE_CONFIG_DIR` unset), filtered to those tests — no hook
+     test in the filter: **17 pass, 0 fail**.
+   - Every SPEC test passed in run 2: `TestCodexCompactCheckpointRoundTrip`,
+     `TestCodexPermissionRequestDenyPreserved`, `TestCodexInterruptRecordsCancellation`,
+     `TestHarnessCodexCompactSubcommandAccepted`, both subcommand-count tests,
+     `TestHookValidEventTypes_AllHaveSubcommands`, `TestCodexGoalContinueUntilMet`,
+     `TestGoalCancellationPrecedence`, `TestGoalHostOverrideNotSuccess`,
+     `TestCodexGoalBudgetTerminationRecorded`, `TestParityIsolationDetector`, the three
+     `TestCodexLiveAxis_*`, `TestStopChainEffectParityGolden`, `TestStopChainMemberCostWithinBudget`,
+     `TestHookFaultInjection`, and the `TestDoctorExitCode_Codex*` pair that failed in the
+     merge-repair run; the nine `TestLive*` read `skip`.
+
+**Other packages and static checks**
+
+- `go test -count=1 -cover ./internal/codexadapter/ ./internal/codexwiring/ ./internal/goal/ ./internal/verify/`
+  → `ok … codexadapter coverage: 88.4%`, `ok … codexwiring 86.2%`, `ok … goal 78.0%`,
+  `ok … verify 84.6%`.
+- `go test -count=1 -timeout 25m -cover ./internal/template/` → `ok … template 159.015s coverage: 82.8%`.
+  The new code, from the M2h tests alone (`go tool cover -func`): `obligationVerdict` 94.9%,
+  `ReadGoTestActions` 93.8%, `PathExists` 92.9%, `AggregateParityVerdict` 83.3%,
+  `IndexCLICommands` 81.2%, `LoadObligationRegistry` 100%.
+- `go vet` on the six changed packages → exit 0 (darwin); `GOOS=windows GOARCH=amd64 go vet` on
+  cli/codexadapter/goal/template → exit 0; `GOOS=linux go vet ./internal/cli/` → exit 0;
+  `GOOS=windows GOARCH=amd64 go build ./...` → exit 0.
+- `golangci-lint run ./internal/cli/ ./internal/codexadapter/... ./internal/codexwiring/... ./internal/goal/... ./internal/template/`
+  → `0 issues.`
+- `bin/moai spec lint SPEC-DUAL-HARNESS-HOOK-PARITY-001` → `✓ No findings — all SPEC documents are valid`.
+- A diff-stat of `internal/hook`, `.claude/hooks`, and `internal/template/templates` from the
+  merge `f75957505` to `e722a1493` printed nothing.
+
+**Gaps**
+
+- No whole-package `internal/cli` run is green in a single invocation: run 1 was stopped at
+  5180 tests; run 2 carries 49 environment-induced failures, each re-attributed above. CI is the
+  package verdict.
+- Package coverage of `internal/goal` (78.0%) and `internal/template` (82.8%) is below 85%. This
+  SPEC changed no production code in `internal/goal`; no pre-change baseline for either package
+  was measured in this run, so no delta is claimed.
+- **Lease database exposure.** The merge-repair whole-package run (09:25–09:55), the M2e/M2f
+  targeted runs, and run 1 above executed `internal/cli` tests without the `MOAI_HOME`
+  isolation, before the lead's constraint arrived; whether any of them overwrote rows in
+  `~/.moai/run/profile-leases.db` was not measured (its mtime moves with every session on the
+  machine and attributes nothing).
+- Live legs: all NOT_RUN (Q5).
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 _<pending run-phase>_
