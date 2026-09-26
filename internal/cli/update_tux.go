@@ -243,7 +243,7 @@ func renderRetainedKeyAdvisory(w io.Writer, all []backup.RetainedKeyRef, verbose
 	// customizations.
 	if len(kept) > 0 {
 		_, _ = fmt.Fprintf(w, "  %s %d setting(s) kept values that differ from the current template default "+
-			"(no attested merge base this once; a changed default was not applied — adopt it by hand if wanted):\n",
+			"(no attested merge base this once; where a default itself changed, the new default was not applied — adopt it by hand if wanted):\n",
 			uikit.SymWarning(), len(kept))
 		for _, ref := range kept {
 			_, _ = fmt.Fprintln(w, paintToken(fmt.Sprintf("    · %s: %s", ref.Section, ref.Key), th.Dim, false))

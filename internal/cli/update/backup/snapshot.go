@@ -165,8 +165,10 @@ func snapshotSectionsDigest(projectRoot string) (string, error) {
 // snapshotUnattested reports whether the snapshot's sections/ tree is NOT the
 // one the last WriteSnapshot call attested: no attestation (left by a binary
 // that predates it) or a tree rewritten since (an older binary run after a
-// newer one). A tree that cannot be read is not reported here — the BASE copy
-// reads the same files and surfaces that error itself.
+// newer one). A tree whose digest cannot be computed counts as unattested too:
+// copying it anyway would stop at the unreadable file and leave a partial
+// BASE, which is the loss this gate exists to prevent (card t1216 sync-audit
+// F1).
 //
 // @MX:NOTE: [AUTO] trust gate for the merge BASE (card t1216) — binaries before card t1139 wrote the snapshot AFTER the restore, so it holds user values; a BASE equal to a user value makes the 3-way merge replace that value with the template default
 func snapshotUnattested(projectRoot string) bool {
@@ -175,7 +177,7 @@ func snapshotUnattested(projectRoot string) bool {
 		return true
 	}
 	got, err := snapshotSectionsDigest(projectRoot)
-	return err == nil && strings.TrimSpace(string(want)) != got
+	return err != nil || strings.TrimSpace(string(want)) != got
 }
 
 // HasSnapshot reports whether a usable snapshot exists: true iff
