@@ -309,6 +309,20 @@ type ReviewOutput struct {
 	// consumer's JSON changes, and the fail-open verdict itself is preserved.
 	GateUnmet string `json:"gate_unmet,omitempty"`
 
+	// Contradiction records that the review is self-contradictory: a blocking
+	// verdict survived the parse while no finding did, and no GateUnmet explains
+	// the pair. That is the V8 shape — the verdict line was recognized but the
+	// findings were written in a shape no recognizer reads, so a consumer
+	// reading Findings alone would see a clean review
+	// (SPEC-CODEX-PARSER-SHAPE-001 REQ-CPS-006).
+	//
+	// It is a separate field rather than a SynthesisNote because the
+	// convergence layer reads a non-empty SynthesisNote as a disagreement flag;
+	// this record is about lost content, not about signals that disagreed.
+	// Additive + omitempty (the SynthesisNote/GateUnmet precedent): no existing
+	// consumer's JSON changes unless the contradiction is present.
+	Contradiction string `json:"contradiction,omitempty"`
+
 	// AuditReceipt carries the id of the receipt the server recorded for THIS
 	// call, so an auditor can cite evidence that the audit ran rather than
 	// asserting it. Present only where the audited tree explicitly declared
@@ -793,6 +807,13 @@ func openCodexSessionResolved(ctx context.Context, binaryPath string, params map
 	if cwd, ok := params["cwd"].(string); ok && cwd != "" {
 		threadParams["cwd"] = cwd
 	}
+	// The session-level instruction carrier (SPEC-CODEX-PARSER-SHAPE-001 M4):
+	// whatever the review path stashes here reaches the thread every turn of
+	// this session runs on. Only the native review path populates it — see
+	// codexReviewSessionParams.
+	if instr, ok := params["developerInstructions"].(string); ok && instr != "" {
+		threadParams["developerInstructions"] = instr
+	}
 	if me := resolve(params); me.Model != "" {
 		threadParams["model"] = me.Model
 	}
@@ -1089,8 +1110,34 @@ func runCodexAuditReviewRPC(ctx context.Context, binaryPath, method string, para
 	return runCodexReviewRPCResolved(ctx, binaryPath, method, params, resolveCodexAuditModelEffort)
 }
 
+// codexReviewSessionParams returns the session-open params for a review path,
+// carrying the native format pin (SPEC-CODEX-PARSER-SHAPE-001 M4, REQ-CPS-005
+// as amended) when the review is native. ReviewStartParams declares only
+// {delivery, target, threadId} (measured, codex-cli 0.157.0
+// generate-json-schema) — no prompt, no instructions field — so exactly as the
+// session model does (REQ-CX2-002: "for the review path the thread is the
+// only place a model can reach codex"), the format instruction rides the
+// thread the review opens, as ThreadStartParams.developerInstructions
+// (measured string|null, same schema). The pin is additive and does NOT
+// change which changes the request asks codex to review: the target and its
+// variant are untouched, and the custom-substitution route the SPEC forbids
+// is not taken. The adversarial path pins its own format in the turn prompt
+// (codexAdversarialReviewPrompt) and carries no native pin; the caller's map
+// is not mutated.
+func codexReviewSessionParams(method string, params map[string]any) map[string]any {
+	if method != codexMethodReviewStart {
+		return params
+	}
+	out := make(map[string]any, len(params)+1)
+	for k, v := range params {
+		out[k] = v
+	}
+	out["developerInstructions"] = codexNativeReviewFormatPin
+	return out
+}
+
 func runCodexReviewRPCResolved(ctx context.Context, binaryPath, method string, params map[string]any, resolve func(map[string]any) config.ModelEffort) (ReviewOutput, error) {
-	sess, err := openCodexSessionResolved(ctx, binaryPath, params, "", resolve)
+	sess, err := openCodexSessionResolved(ctx, binaryPath, codexReviewSessionParams(method, params), "", resolve)
 	if err != nil {
 		var sErr *codexSessionError
 		if errors.As(err, &sErr) {
@@ -1575,6 +1622,32 @@ var codexStatedVerdict = regexp.MustCompile(`(?mi)^[\s>#]*[*_]{0,2}verdict[*_]{0
 // recognizer would not close the hole, it would widen it.
 var codexScoredVerdict = regexp.MustCompile(`(?m)^[\s>#*_]*(PASS|FAIL|INCONCLUSIVE)\b[ \t]+[01]\.\d+\b`)
 
+// codexGreetedVerdict reads the verdict label when a greeting precedes it on
+// its line: "<greeting>, **verdict: fail**" — a shape GitHub #1718 observed on
+// the adversarial path, where a target project's own instructions put a
+// greeting ahead of codex's reply (SPEC-CODEX-PARSER-SHAPE-001 candidate (a)).
+//
+// It is a separate recognizer so codexStatedVerdict keeps its line-head
+// contract. The relaxation is exactly one clause wide: the text before the
+// label is a single comma-terminated span that opens the line, and the label
+// must follow that comma directly and name the verdict with the same separator
+// codexStatedVerdict requires. "Hello team, the verdict on caching is open and
+// the tests pass" names no verdict — the word after the comma is not the
+// label — and is not read as one.
+var codexGreetedVerdict = regexp.MustCompile(`(?mi)^[^\s*#|>\-,][^\n,]*,[ \t]+[*_]{0,2}verdict[*_]{0,2}[ \t]*[:\-–—]+[*_]{0,2}[ \t]*[*_]{0,2}(pass|fail|inconclusive)\b`)
+
+// codexLocalizedVerdict reads a verdict stated under the Korean label 판정
+// ("판정은 **FAIL**이야", "판정: pass") — the other #1718 shape. The label may
+// sit anywhere on a line outside a table (no '|' before it), because a
+// greeting and a possessive typically precede it.
+//
+// The narrowness comes from the statement form instead of the position: the
+// verdict word must follow the label (optionally with its topic particle)
+// either after a colon or wrapped in emphasis. "판정 기준상 **FAIL** 사유는
+// 없어" (a mention of the criterion) and "판정은 fail 여부를 가리기 어렵다"
+// (an unemphasized ordinary word) state no verdict and are not read as one.
+var codexLocalizedVerdict = regexp.MustCompile(`(?mi)^[^|\n]*?판정(?:은|는)?[ \t]*(?::[ \t]*[*_]{0,2}|[*_]{2})(pass|fail|inconclusive)\b`)
+
 // codexVerdictSignal is one verdict reading taken from a review body, kept
 // alongside the name of the signal that produced it. The name exists so a
 // divergence can be described in the operator's terms rather than as two bare
@@ -1598,6 +1671,12 @@ func codexVerdictSignalsOf(reviewText string) []codexVerdictSignal {
 	}
 	for _, m := range codexScoredVerdict.FindAllStringSubmatch(reviewText, -1) {
 		signals = append(signals, codexVerdictSignal{"scored verdict line", strings.ToLower(m[1])})
+	}
+	for _, m := range codexGreetedVerdict.FindAllStringSubmatch(reviewText, -1) {
+		signals = append(signals, codexVerdictSignal{"greeting-prefixed verdict label", strings.ToLower(m[1])})
+	}
+	for _, m := range codexLocalizedVerdict.FindAllStringSubmatch(reviewText, -1) {
+		signals = append(signals, codexVerdictSignal{"localized verdict label", strings.ToLower(m[1])})
 	}
 	if codexFindingBullet.MatchString(reviewText) {
 		signals = append(signals, codexVerdictSignal{"severity-tagged finding bullet", "fail"})
@@ -1647,20 +1726,27 @@ func adoptConservativeVerdict(signals []codexVerdictSignal) string {
 // codexUnrecognizedVerdict is the value adopted when a review body matches NO
 // known signal — the governing decision of SPEC-CODEX-VERDICT-SYNTH-001 §0.
 //
-// Native review mode (review/start) keeps "pass": a bullet-less body there is
-// codex saying it found nothing to block on, which is an observation and must be
-// reported as one. Adversarial mode (turn/start) sends a prompt that specifies no
-// output format at all, so an unrecognized body there means nothing was observed
-// — and "we could not tell" is inconclusive, never a pass. Any other method is
-// treated as unknown and takes the conservative value.
+// Both review modes now report "inconclusive" for an unrecognized body
+// (SPEC-CODEX-PARSER-SHAPE-001 M4, AC-CPS-004): each request pins an output
+// format — adversarial in the turn prompt (candidate (d),
+// codexAdversarialReviewPrompt), native on the thread it opens (candidate (b),
+// codexReviewSessionParams) — so a body matching no recognized signal means
+// the pin was not followed or the shape was never produced, and neither state
+// is evidence of a clean review. A genuinely clean review states `Verdict:
+// pass` in the pinned form, which codexStatedVerdict reads before this
+// fall-through is ever reached (REQ-CPS-009, expressed through the pin);
+// codexReviewTextIsBlank already short-circuits absence before the
+// synthesizer (REQ-CBR-004). The native "pass" default this function carried
+// before M4 — a bullet-less body read as codex saying nothing blocks — was
+// the silent pass #1718-adjacent bodies laundered reviews through, and is
+// what candidate (b) removes.
 //
-// This is deliberately NOT keyed on which formats are currently recognized.
-// Adding a recognizer must never require touching this function; that coupling is
-// how a single CLI version's output conventions became the gate's verdict.
+// This is deliberately NOT keyed on which formats are currently recognized,
+// and on NOTHING in the prose — no token (the word "fail", a severity word, a
+// greeting) may key the downgrade. Adding a recognizer must never require
+// touching this function; that coupling is how a single CLI version's output
+// conventions became the gate's verdict.
 func codexUnrecognizedVerdict(method string) string {
-	if method == codexMethodReviewStart {
-		return "pass"
-	}
 	return VerdictInconclusive
 }
 
@@ -1689,7 +1775,7 @@ func synthesizeReviewOutput(reviewText, method string) ReviewOutput {
 	if verdict == "" {
 		verdict = codexUnrecognizedVerdict(method)
 	}
-	return ReviewOutput{
+	return flagVerdictFindingsContradiction(ReviewOutput{
 		Verdict:  verdict,
 		Summary:  strings.TrimSpace(reviewText),
 		Findings: codexFindingsOf(reviewText),
@@ -1706,7 +1792,7 @@ func synthesizeReviewOutput(reviewText, method string) ReviewOutput {
 		// and asked only for findings[] — filling it was never in that scope.
 		NextSteps:     []string{},
 		SynthesisNote: describeSignalDivergence(signals, verdict),
-	}
+	})
 }
 
 // codexFindingLine matches ONE severity-tagged finding bullet ("- [P1] message")
@@ -1724,6 +1810,52 @@ var codexFindingLine = regexp.MustCompile(`(?m)^([ \t]*)[-*][ \t]+\[([A-Za-z]+\d
 // extension allowlist would silently drop anchors for every language it forgot.
 var codexPathLineRef = regexp.MustCompile(`([\w./@+-]+\.[A-Za-z0-9]+):([0-9]+)`)
 
+// codexFindingTableRow and codexFindingBoldBullet read the two finding shapes
+// GitHub #1718 observed when a target project's instructions shaped codex's
+// adversarial reply (SPEC-CODEX-PARSER-SHAPE-001 candidate (a)): a markdown
+// table row whose FIRST cell is exactly a bold severity word
+// ("| **High** | [a.md:28](…) | … |"), and a bullet led by a bold severity
+// word followed by a separator ("- **Medium · [a.yaml:38](<…>) · …").
+//
+// Both are anchored on the bold severity word from a closed vocabulary rather
+// than on any bold text: "- **High-level summary**" and "The risk is **High**"
+// are not findings. The severity word is kept verbatim, as the bracketed form
+// keeps "P1" verbatim. Neither shape adds a verdict signal — only the
+// bracketed bullet carries the fail signal it always has; a verdict for these
+// bodies comes from a stated verdict line.
+var (
+	codexFindingTableRow   = regexp.MustCompile(`^[ \t]*\|[ \t]*\*\*(Critical|High|Medium|Low)\*\*[ \t]*\|(.*)$`)
+	codexFindingBoldBullet = regexp.MustCompile(`^([ \t]*)[-*][ \t]+\*\*(Critical|High|Medium|Low)(?:\*\*)?[ \t]*[·:—–][*_]*[ \t]*(.*)$`)
+)
+
+// codexTableRowMessage joins a finding row's remaining cells into one message,
+// in column order, dropping empty cells.
+func codexTableRowMessage(rest string) string {
+	var cells []string
+	for _, c := range strings.Split(rest, "|") {
+		if c = strings.TrimSpace(c); c != "" {
+			cells = append(cells, c)
+		}
+	}
+	return strings.Join(cells, " — ")
+}
+
+// codexFindingLineOf matches one line against every finding shape and returns
+// the indent (for continuation joining; "" plus ok=false for a table row, which
+// has no continuation), the severity, and the message.
+func codexFindingLineOf(ln string) (indent, sev, msg string, continues, ok bool) {
+	if m := codexFindingLine.FindStringSubmatch(ln); m != nil {
+		return m[1], m[2], strings.TrimSpace(m[3]), true, true
+	}
+	if m := codexFindingBoldBullet.FindStringSubmatch(ln); m != nil {
+		return m[1], m[2], strings.TrimSpace(m[3]), true, true
+	}
+	if m := codexFindingTableRow.FindStringSubmatch(ln); m != nil {
+		return "", m[1], codexTableRowMessage(m[2]), false, true
+	}
+	return "", "", "", false, false
+}
+
 // codexFindingsOf parses codex's review prose into structured findings
 // (#1632 axis 1). Each severity-tagged bullet becomes one Finding carrying the
 // verbatim severity, the message as title/body, and the first path:line anchor
@@ -1737,14 +1869,13 @@ func codexFindingsOf(reviewText string) []Finding {
 	var cur *Finding
 	var curIndent string
 	for _, ln := range strings.Split(reviewText, "\n") {
-		m := codexFindingLine.FindStringSubmatch(ln)
-		if m == nil {
+		indent, sev, msg, continues, ok := codexFindingLineOf(ln)
+		if !ok {
 			if cur != nil && strings.TrimSpace(ln) != "" && strings.HasPrefix(ln, curIndent+" ") {
 				cur.Body += "\n" + strings.TrimSpace(ln)
 			}
 			continue
 		}
-		indent, sev, msg := m[1], m[2], strings.TrimSpace(m[3])
 		f := Finding{Severity: sev, Title: msg, Body: msg}
 		if pm := codexPathLineRef.FindStringSubmatch(msg); pm != nil && !strings.Contains(pm[1], "://") {
 			f.File = pm[1]
@@ -1753,10 +1884,38 @@ func codexFindingsOf(reviewText string) []Finding {
 			}
 		}
 		findings = append(findings, f)
-		cur = &findings[len(findings)-1]
-		curIndent = indent
+		cur, curIndent = nil, ""
+		if continues {
+			cur = &findings[len(findings)-1]
+			curIndent = indent
+		}
 	}
 	return findings
+}
+
+// codexContradictionNote is the Contradiction value: what was observed, and
+// where the lost content can still be read.
+const codexContradictionNote = "codex stated a fail verdict but no finding was recognized: " +
+	"the review's findings are in a shape the parser does not read, so the findings list is " +
+	"empty while the review is not clean — read the summary for codex's own findings"
+
+// flagVerdictFindingsContradiction reports the V8 state: verdict fail, zero
+// findings, and no GateUnmet (SPEC-CODEX-PARSER-SHAPE-001 candidate (c)).
+//
+// It reads the OUTPUT, never the body, which is why it holds for shapes no one
+// has enumerated: whatever recognizer failed, a surviving blocking verdict
+// with nothing behind it is a contradiction.
+//
+// [HARD] The GateUnmet conjunct is load-bearing. applyGateUnmet turns a
+// fail-open inconclusive into fail with an empty findings list when a gate is
+// declared `required` — a correctly functioning gate, not a parser defect.
+// Dropping the conjunct would report every unmet required gate as lost
+// content (REQ-CPS-006a).
+func flagVerdictFindingsContradiction(out ReviewOutput) ReviewOutput {
+	if out.Verdict == "fail" && len(out.Findings) == 0 && out.GateUnmet == "" {
+		out.Contradiction = codexContradictionNote
+	}
+	return out
 }
 
 // describeSignalDivergence names every signal and the value adopted, but ONLY
@@ -1777,16 +1936,61 @@ func describeSignalDivergence(signals []codexVerdictSignal, adopted string) stri
 	return "codex signals diverged: " + strings.Join(parts, ", ") + "; adopted " + adopted
 }
 
+// codexAdversarialVerdictFormat and codexAdversarialFindingFormat are the
+// output format the adversarial request pins (SPEC-CODEX-PARSER-SHAPE-001
+// candidate (d)).
+const (
+	codexAdversarialVerdictFormat = "Verdict: <pass|fail|inconclusive>"
+	codexAdversarialFindingFormat = "- [P1] <message> — <path>:<line>"
+)
+
+// codexNativeReviewFormatPin is the output-format instruction the native
+// review request carries (SPEC-CODEX-PARSER-SHAPE-001 candidate (b),
+// REQ-CPS-005 as amended). The mechanism is the (d) family applied to the
+// native request: once the request names the format, `Verdict: pass` is a
+// recognized signal (codexStatedVerdict already reads it), so the pinned
+// clean review never reaches the fall-through, and a body carrying no
+// recognized signal — the pin unfollowed — is downgraded to inconclusive
+// instead of a silent pass. It is built FROM the adversarial pin constants,
+// so both requests ask for one format and the pinned lines are exactly the
+// shapes codexStatedVerdict and codexFindingLine accept
+// (TestCodexNativeFormatPin_SharesConstantsWithBuilder keeps that true).
+// Whether live codex honours the pin is not established by this tree — only a
+// recorded live observation (AC-CPS-016) can show that.
+const codexNativeReviewFormatPin = "Use exactly this output format so the review can be parsed: " +
+	"the first line of your response is `" + codexAdversarialVerdictFormat + "` — one of " +
+	"`Verdict: pass`, `Verdict: fail`, or `Verdict: inconclusive` — with no greeting or " +
+	"other text before it; then each finding on its own line as `" + codexAdversarialFindingFormat +
+	"`, with the severity tag P0 to P3 in brackets, and any further detail, confidence, or " +
+	"recommendation on indented lines below it. Do not put findings in a table."
+
 // codexAdversarialReviewPrompt builds the adversarial-review prompt text the
 // adversarial mode sends to codex turn/start (design.md §3 M2 / report §3.4).
 // Generic + focused: a red-team security + correctness review of the change.
+//
+// The request pins its output format (SPEC-CODEX-PARSER-SHAPE-001 candidate
+// (d)): without one, a target project's own instructions shape the reply, and
+// GitHub #1718 observed bodies whose verdict and findings no recognizer read.
+// The pinned lines are the shapes codexStatedVerdict and codexFindingLine
+// accept; TestCodexAdversarialFormat_IsRecognized keeps the two in step.
+// Whether live codex honours the pin against project instructions is not
+// established by anything in this tree — only a recorded live observation
+// (AC-CPS-014) can show that. The parser's handling of a body that ignores the
+// pin is unchanged.
 func codexAdversarialReviewPrompt(focus string) string {
 	prompt := "Perform an adversarial code review of the proposed change. " +
 		"Hunt for security flaws (injection, auth bypass, secret leakage, unsafe " +
 		"destructive operations), correctness bugs (edge cases, error handling, " +
 		"concurrency), and scope creep. Report concrete findings with severity, " +
 		"file/line, confidence, and a recommendation. If the change is sound, " +
-		"return verdict pass with an empty findings list."
+		"return verdict pass with an empty findings list. " +
+		"Use exactly this output format so the review can be parsed: the first line " +
+		"of your response is `" + codexAdversarialVerdictFormat + "` — one of " +
+		"`Verdict: pass`, `Verdict: fail`, or `Verdict: inconclusive` — with no " +
+		"greeting or other text before it; then each finding on its own line as `" +
+		codexAdversarialFindingFormat + "`, with the severity tag P0 to P3 in " +
+		"brackets, and any further detail, confidence, or recommendation on indented " +
+		"lines below it. Do not put findings in a table."
 	if focus != "" {
 		prompt += " Focus area: " + focus + "."
 	}
