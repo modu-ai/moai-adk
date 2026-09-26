@@ -731,6 +731,11 @@ func NumeralExemptions() []NumeralExempt {
 		"OBSERVED, not adjudicated: the same sentence's live tail (\"since grown to 11\") is itself stale, " +
 		"and the adopted noun class does not reach it — no noun follows that numeral."
 
+	const t1171Fixture = "HISTORICAL CITATION: a captured test fixture — a byte-frozen copy of an emitted codex agent " +
+		"definition or a recorded codex session, quoting roster counts as they stood at capture (the 17→8 " +
+		"consolidation sentence; \"13 retained agents\" in the recorded session). " +
+		"Editing it would invalidate the capture; the live sources are exempted above on their own rows."
+
 	return []NumeralExempt{
 		// ── Historical citations ───────────────────────────────────────────
 		{ID: "manager-docs-then-8", Path: ".claude/agents/moai/manager-docs.md", Reason: historicalConsolidation},
@@ -757,6 +762,16 @@ func NumeralExemptions() []NumeralExempt {
 			Reason: "HISTORICAL CITATION: two comments — the 17→8 consolidation, and \"all 7 retained agents live " +
 				"directly in moai/\" describing the folder layout after a superseded split.",
 		},
+		// Captured codex role/rollout fixtures (card t1171): byte-frozen copies of
+		// emitted agent definitions and a recorded session, kept verbatim so the
+		// role-load predicate is tested against real input.
+		{ID: "t1171-fixture-roles-manager-design", Path: "internal/cli/testdata/codex-rollouts-t1171/roles/manager-design.toml", Reason: t1171Fixture},
+		{ID: "t1171-fixture-roles-manager-docs", Path: "internal/cli/testdata/codex-rollouts-t1171/roles/manager-docs.toml", Reason: t1171Fixture},
+		{ID: "t1171-fixture-roles-manager-spec", Path: "internal/cli/testdata/codex-rollouts-t1171/roles/manager-spec.toml", Reason: t1171Fixture},
+		{ID: "t1171-fixture-roles-other-manager-design", Path: "internal/cli/testdata/codex-rollouts-t1171/roles-other-version/manager-design.toml", Reason: t1171Fixture},
+		{ID: "t1171-fixture-roles-other-manager-docs", Path: "internal/cli/testdata/codex-rollouts-t1171/roles-other-version/manager-docs.toml", Reason: t1171Fixture},
+		{ID: "t1171-fixture-roles-other-manager-spec", Path: "internal/cli/testdata/codex-rollouts-t1171/roles-other-version/manager-spec.toml", Reason: t1171Fixture},
+		{ID: "t1171-fixture-real-rollout-8d51", Path: "internal/cli/testdata/codex-rollouts-t1171/real/rollout-2026-09-24T18-40-19-01a0d2c9-8d51-7623-a979-b364671a0205.jsonl", Reason: t1171Fixture},
 		{
 			ID:     "embed-catalog-test-consolidation-comment",
 			Path:   "internal/template/embed_catalog_test.go",
