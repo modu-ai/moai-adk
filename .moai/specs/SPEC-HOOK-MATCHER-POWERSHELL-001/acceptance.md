@@ -14,11 +14,11 @@ Verification layer. Each criterion is binary. Test commands run in the env-scrub
 | AC-HMP-006 | REQ-HMP-007 | Branch-guard PowerShell deny test RED then GREEN |
 | AC-HMP-007 | REQ-HMP-008 | Integration-lock and slot-lease PowerShell deny tests RED then GREEN |
 | AC-HMP-008 | REQ-HMP-009 | Wrongly-typed `tool_input` cases equal the M0-recorded Bash outputs, no panic; unparseable stdin keeps the t1152 fail-closed deny for both tool names |
-| AC-HMP-009 | REQ-HMP-010 | Indirection tests pass under the D2 outcome on both guards; encoded command not decoded; destructive deny list unaffected by D2 |
+| AC-HMP-009 | REQ-HMP-010 | Indirection tests: allow + one audit line whose reason contains `unclassifiable` on both guards (D2=A); encoded command not decoded; destructive deny list unaffected by D2 |
 | AC-HMP-010 | REQ-HMP-011 | Evidence record kind matches Bash for a PowerShell `go test` payload; unrecognized response shape records no pass |
 | AC-HMP-011 | REQ-HMP-014 | Static check: every `TestHMP*` test and every listed modified test calls `t.Setenv("MOAI_HOME", …)` and no `t.Parallel`; positive control fails the check; swept count ≥ 1 |
 | AC-HMP-012 | REQ-HMP-015, REQ-HMP-016 | `.moai/reports/t1224/live/` holds 3 arm outputs; payload keys recorded before M1 when arm B captured a payload; verdict records PASS, FAIL (blocker), or INCONCLUSIVE with the failed condition |
-| AC-HMP-013 | REQ-HMP-002 | Wrapper test: PowerShell payload above the soft cap produces the warning per D6; Bash control unchanged; comment names the delivered matcher |
+| AC-HMP-013 | REQ-HMP-002 | Wrapper test: PowerShell payload above the soft cap produces no warning (D6=A); Bash control unchanged; comment names the delivered matcher |
 
 ## Scenarios
 
@@ -85,15 +85,13 @@ And given a truncated PreToolUse stdin whose visible prefix names `PowerShell`, 
 When `moai hook pre-tool` reads each
 Then both receive the same SPEC-HOOK-STDIN-FAILCLOSED-001 fail-closed deny
 
-### AC-HMP-009 — Unclassifiable indirection follows D2
+### AC-HMP-009 — Unclassifiable indirection is allowed and logged (D2=A)
 
 Given branch guard enabled in a primary checkout and a PowerShell payload using a construct M0 found unclassified (for example `iex "git switch probe"`)
 When the pre-tool handler runs
-Then under D2=(A) the call is allowed and exactly one `powershell-unclassified` line is appended to `.moai/logs/branch-guard-audit.log`
-Or under D2=(B) the call is denied with a reason naming the construct
+Then the call is allowed and exactly one `powershell-unclassified` line is appended to `.moai/logs/branch-guard-audit.log`, and that line's reason field contains the literal word `unclassifiable`
 And given the integration lock held by another live session and a PowerShell payload `iex "git merge --no-ff WT-x"` in the release worktree
-Then under D2=(A) the call is allowed and exactly one `powershell-unclassified` line is appended to `.moai/logs/integration-lock-audit.log`
-Or under D2=(B) the call is denied with a reason naming the construct
+Then the call is allowed and exactly one `powershell-unclassified` line is appended to `.moai/logs/integration-lock-audit.log`, and that line's reason field contains the literal word `unclassifiable`
 And a payload `pwsh -EncodedCommand <base64 of "git status">` takes the same D2 path (the payload is not decoded)
 And a PowerShell payload `terraform destroy` behind the same construct is still denied whenever the deny list matches its text
 
@@ -122,11 +120,11 @@ And if every validity condition holds (including arm C's `binary-version.txt` SH
 Or if every validity condition holds and any of those observables is absent or contradicted — the verdict records FAIL naming the arm and observable, and a blocker report is returned
 Or if a validity condition fails — the verdict records INCONCLUSIVE naming that condition, with no LIVE claim made
 
-### AC-HMP-013 — Wrapper follows D6
+### AC-HMP-013 — Wrapper warning stays Bash-only (D6=A)
 
 Given the rendered pre-tool wrapper, a stub `moai` first on `PATH` that exits 0, and `MOAI_HOOK_STDERR_LOG` under a per-test temp project's `.moai/logs/`
 When a PowerShell payload whose command contains 6 metacharacters (`a | b | c | d | e | f | g`) is piped to it
-Then under D6=(A) no `[moai:bash-risk]` warning is written, and under D6=(B) the warning is written
+Then no `[moai:bash-risk]` warning is written
 And a Bash payload with the same command still produces the warning
 And the wrapper's matcher-scope comment names the matcher delivered by REQ-HMP-001 in both the template and the local copy
 
