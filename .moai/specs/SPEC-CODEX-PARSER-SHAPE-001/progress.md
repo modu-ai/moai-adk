@@ -34,6 +34,13 @@
   adversarial outcome acceptable?" and excludes no candidate under either answer
   (spec.md §C.1). Both Kickoff decisions remain pending. Next: delta plan-audit
   (iter-2, the last under the Tier M ceiling) limited to D1–D14.
+- 2026-09-26 · v0.2.2 repair (card t1203): plan-audit iter-2
+  (`.moai/reports/t1203/plan-audit-iter2.md`, FAIL 0.83) — blocking N4-P4, N5,
+  N1 and optional N2, N3, N6 addressed in wording and check commands only; no
+  candidate chosen, REQ 15 / AC 15 unchanged. Iter-2 was the Tier M ceiling, so
+  the next step is the orchestrator's escalation choice (PASS-with-debt, scope
+  reduction, or an explicit extension), not an automatic re-audit. Both Kickoff
+  decisions remain pending.
 
 ## §E.2 Run-phase Evidence
 

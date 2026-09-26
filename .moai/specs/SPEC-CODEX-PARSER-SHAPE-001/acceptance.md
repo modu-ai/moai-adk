@@ -14,6 +14,15 @@
 > RED-now cells added or re-pinned in v0.2.1 were measured on tree `77b01ef4b`;
 > at measurement time the working tree differed from that commit only in
 > `spec.md` and `plan.md` of this SPEC, which none of those commands reads.
+>
+> v0.2.2 (card t1203): repair of plan-audit iter-2 defects
+> (`.moai/reports/t1203/plan-audit-iter2.md`). AC-CPS-011's structural commands
+> move out of the table into a verbatim evidence ledger, S1 gains a FAIL-statement
+> check and a location-link check, and the fidelity check gets a named test
+> selector with a non-empty-sweep condition. The criterion count is unchanged
+> (15). The mutant table in AC-CPS-011 cites one further local record,
+> `.moai/reports/t1203/repro/mutant-checks.log`, and no figure in it appears
+> anywhere else.
 
 ## §A Gating criteria — satisfied BEFORE run-phase entry
 
@@ -281,26 +290,116 @@ SHA:
    review/start, and S2′ yields `fail` with `findings=0` on both paths — the
    outputs E-1718 recorded for body1, body2, and ctrlB. N1 and N2 are
    synthesized and their outputs recorded, with no expected value: they are the
-   pre-change baseline AC-CPS-012 compares against.
+   pre-change baseline AC-CPS-012 compares against. Command, run from the
+   repository root:
+
+   ```
+   go test -count=1 -v -run '^TestCodex1718Fixtures$' ./internal/cli/
+   ```
+
+   Pass condition: exit `0`; stdout carries the line
+   `--- PASS: TestCodex1718Fixtures`; stdout does **not** carry
+   `[no tests to run]`; and stdout carries ten synthesis lines, one per fixture
+   file per path (five files × turn/start and review/start), each naming the
+   file, the path, the verdict, and the findings count. A run missing any of
+   these is an empty or partial sweep and does not close this check — a selector
+   that matches no test also exits `0` and prints `ok`.
 2. **Structural properties** — so that a reduction with the right outputs but
-   none of the #1718 shape cannot pass. `F` = `internal/cli/testdata/codex-1718`.
+   none of the #1718 shape cannot pass. The table states each property and its
+   pass condition; the commands themselves are recorded only in the evidence
+   ledger below it, verbatim, one command per line, run from the repository
+   root. A reader copies the ledger line, never a table cell. In the ledger every
+   command is exactly what the shell receives: inside the single-quoted regular
+   expressions, `\|` is a literal pipe character and a bare `|` is alternation.
 
-   | # | Property | Files | Command | Pass condition |
+   | # | Property | Files | Ledger | Pass condition |
    |---|---|---|---|---|
-   | P1 | a greeting precedes the verdict on line 1 | S1, S2 | `grep -nE '^[^[:space:]*#\|>-][^,]*, .*(판정\|[Vv]erdict)' F/<file>` | stdout's first line begins `1:`; exit `0` |
-   | P2 | no verdict label opens any line | S1, S2 | `grep -cE '^[[:space:]]*(\*\*)?([Vv]erdict\|판정)' F/<file>` | stdout `0`; exit `1` |
-   | P3 | the label is localized, not English | S1 | `grep -c '판정' F/S1.txt`, then `grep -ci 'verdict' F/S1.txt` | first ≥ `1`, exit `0`; second `0`, exit `1` |
-   | P4 | findings are table rows with a bold severity word | S1 | `grep -cE '^\|[^\|]*\*\*(Critical\|High\|Medium\|Low)\*\*[^\|]*\|' F/S1.txt` | equals S1's declared finding count, and that count is ≥ `2` |
-   | P5 | findings are bold severity-word bullets with a `[path:line](<…>)` link | S2 | `grep -cE '^- \*\*(Critical\|High\|Medium\|Low) · \[[^]]+:[0-9]+\]\(<[^>]+>\)' F/S2.txt` | equals S2's declared finding count, and that count is ≥ `1` |
-   | P6 | no bracketed-severity bullet anywhere | all five | `grep -cE '^- \[P[0-9]\]' F/<file>` | stdout `0`; exit `1` |
-   | P7 | S2′ differs from S2 only on line 1 | S2, S2p | `diff F/S2.txt F/S2p.txt` | the only hunk header is `1c1`; exit `1`; and the fixture test asserts line 1 of S2p equals line 1 of S2 with its greeting prefix removed |
-   | P8 | negatives mention a verdict and an ordinary `fail`/`pass` on one line, state none | N1, N2 | `grep -cE '[Vv]erdict[^:]* (fail\|pass)' F/<file>`, then `grep -cE '[Vv]erdict[[:space:]]*[:：]\|판정' F/<file>` | first ≥ `1`, exit `0`; second `0`, exit `1` |
-   | P9 | placement of the mention | N1 / N2 | `grep -cE '^[Vv]erdict' F/N1.txt` / `grep -cE '^[^[:space:]][^,]*, .*[Vv]erdict' F/N2.txt` | each ≥ `1`, exit `0` |
+   | P1 | a greeting precedes the verdict on line 1 | S1, S2 | P1-S1, P1-S2 | stdout's first line begins `1:`; exit `0` |
+   | P2 | no verdict label opens any line | S1, S2 | P2-S1, P2-S2 | stdout `0`; exit `1` |
+   | P3 | the label is localized, not English | S1 | P3a, P3b | P3a ≥ `1`, exit `0`; P3b `0`, exit `1` |
+   | P4 | findings are table rows with a bold severity word | S1 | P4 | equals S1's declared finding count, and that count is ≥ `2` |
+   | P5 | findings are bold severity-word bullets with a `[path:line](<…>)` link | S2 | P5 | equals S2's declared finding count, and that count is ≥ `1` |
+   | P6 | no bracketed-severity bullet anywhere | all five | P6-S1 … P6-N2 | stdout `0`; exit `1` for each |
+   | P7 | S2′ differs from S2 only on line 1 | S2, S2p | P7 | the only hunk header is `1c1`; exit `1`; and the fixture test asserts line 1 of S2p equals line 1 of S2 with its greeting prefix removed |
+   | P8 | negatives mention a verdict and an ordinary `fail`/`pass` on one line, state none | N1, N2 | P8a-N1, P8a-N2, P8b-N1, P8b-N2 | each P8a ≥ `1`, exit `0`; each P8b `0`, exit `1` |
+   | P9 | placement of the mention | N1 / N2 | P9-N1, P9-N2 | each ≥ `1`, exit `0` |
+   | P10 | the S1 prose states FAIL under the localized label | S1 | P10 | ≥ `1`; exit `0` |
+   | P11 | every S1 finding row carries a `[path:line](…)` location link | S1 | P11 | equals S1's declared finding count — the same count P4 must equal |
 
-   (In the table `\|` stands for a literal `|` in the regex; the recorded command
-   uses a bare `|`.) A declared finding count is the count the fixture test
-   asserts for that file; P4 and P5 tie the structure to that assertion, so a
-   one-line prose fixture fails them.
+   Evidence ledger (AC-CPS-011 check 2):
+
+   ```
+   # P1-S1
+   grep -nE '^[^[:space:]*#|>-][^,]*, .*(판정|[Vv]erdict)' internal/cli/testdata/codex-1718/S1.txt
+   # P1-S2
+   grep -nE '^[^[:space:]*#|>-][^,]*, .*(판정|[Vv]erdict)' internal/cli/testdata/codex-1718/S2.txt
+   # P2-S1
+   grep -cE '^[[:space:]]*(\*\*)?([Vv]erdict|판정)' internal/cli/testdata/codex-1718/S1.txt
+   # P2-S2
+   grep -cE '^[[:space:]]*(\*\*)?([Vv]erdict|판정)' internal/cli/testdata/codex-1718/S2.txt
+   # P3a
+   grep -c '판정' internal/cli/testdata/codex-1718/S1.txt
+   # P3b
+   grep -ci 'verdict' internal/cli/testdata/codex-1718/S1.txt
+   # P4
+   grep -cE '^\|[^|]*\*\*(Critical|High|Medium|Low)\*\*[^|]*\|' internal/cli/testdata/codex-1718/S1.txt
+   # P5
+   grep -cE '^- \*\*(Critical|High|Medium|Low) · \[[^]]+:[0-9]+\]\(<[^>]+>\)' internal/cli/testdata/codex-1718/S2.txt
+   # P6-S1
+   grep -cE '^- \[P[0-9]\]' internal/cli/testdata/codex-1718/S1.txt
+   # P6-S2
+   grep -cE '^- \[P[0-9]\]' internal/cli/testdata/codex-1718/S2.txt
+   # P6-S2p
+   grep -cE '^- \[P[0-9]\]' internal/cli/testdata/codex-1718/S2p.txt
+   # P6-N1
+   grep -cE '^- \[P[0-9]\]' internal/cli/testdata/codex-1718/N1.txt
+   # P6-N2
+   grep -cE '^- \[P[0-9]\]' internal/cli/testdata/codex-1718/N2.txt
+   # P7
+   diff internal/cli/testdata/codex-1718/S2.txt internal/cli/testdata/codex-1718/S2p.txt
+   # P8a-N1
+   grep -cE '[Vv]erdict[^:]* (fail|pass)' internal/cli/testdata/codex-1718/N1.txt
+   # P8a-N2
+   grep -cE '[Vv]erdict[^:]* (fail|pass)' internal/cli/testdata/codex-1718/N2.txt
+   # P8b-N1
+   grep -cE '[Vv]erdict[[:space:]]*[:：]|판정' internal/cli/testdata/codex-1718/N1.txt
+   # P8b-N2
+   grep -cE '[Vv]erdict[[:space:]]*[:：]|판정' internal/cli/testdata/codex-1718/N2.txt
+   # P9-N1
+   grep -cE '^[Vv]erdict' internal/cli/testdata/codex-1718/N1.txt
+   # P9-N2
+   grep -cE '^[^[:space:]][^,]*, .*[Vv]erdict' internal/cli/testdata/codex-1718/N2.txt
+   # P10
+   grep -cE '판정[^|]*\*\*FAIL\*\*' internal/cli/testdata/codex-1718/S1.txt
+   # P11
+   grep -cE '^\|[^|]*\*\*(Critical|High|Medium|Low)\*\*[^|]*\|[^|]*\[[^]]+:[0-9]+\]\(' internal/cli/testdata/codex-1718/S1.txt
+   ```
+
+   A declared finding count is the count the fixture test asserts for that file;
+   P4, P5, and P11 tie the structure to that assertion, so a one-line prose
+   fixture fails them. In P1 the pipe sits inside a bracket expression, where it
+   is an ordinary character either way; in P4 and P11 the escaped `\|` anchors a
+   literal table pipe — written bare, `^|` and the trailing `|` become empty
+   alternatives and the pattern matches every line (plan-audit iter-2 N4-P4).
+
+   **Which check kills which mutant.** Each mutant below satisfies the checks
+   not named in its row; the named checks are what reject it. Executed on
+   2026-09-26 against sanitized scratch copies outside the tree (tree
+   `51a41e187`), grep checks only — the parser fidelity check was **not**
+   executed on these copies; command lines, stdout, and exit codes are recorded
+   in t1203 `repro/mutant-checks.log` (gitignored, as the rest of `repro/`).
+   Declared finding count taken as `3` for the faithful copy and `2` for M2.
+
+   | Mutant | Shape | P4 | P10 | P11 | Killed by |
+   |---|---|---|---|---|---|
+   | faithful S1 (sanitized body1; control) | greeting + `판정은 **FAIL**` + three linked bold-severity rows | `3` / exit 0 | `1` / exit 0 | `3` / exit 0 | none — passes, as it must |
+   | M1 | two-line prose; no table, no FAIL, no link | `0` / exit 1 | `0` / exit 1 | `0` / exit 1 | P4, P10, P11 |
+   | M2 | two bold-severity table rows; no FAIL statement, no location link | `2` / exit 0 | `0` / exit 1 | `0` / exit 1 | P10, P11 (P4 alone passes it) |
+   | one-line BAD | one sentence stating FAIL; no table | `0` / exit 1 | `1` / exit 0 | `0` / exit 1 | P4, P11 |
+
+   The same log records the v0.2.1 transcription of P4 (bare pipes) on the same
+   copies: `12`, `2`, `6`, `1` — it counts lines, not rows, which is the N4-P4
+   defect this ledger removes.
 3. **Sanitization** — the fixtures carry no absolute user path and no content of
    the originating project. Command:
    `grep -rniE '(/Users/|/home/|/private/|/var/folders/|[A-Za-z]:\\Users|cowork|SKILL\.md|test-cases\.yaml|oai-mem-citation|구스|오뽜|영실)' internal/cli/testdata/codex-1718/`

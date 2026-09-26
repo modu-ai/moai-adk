@@ -1,7 +1,7 @@
 ---
 id: SPEC-CODEX-PARSER-SHAPE-001
 title: "codex review parser — output-shape coupling and its silent failure"
-version: "0.2.1"
+version: "0.2.2"
 status: draft
 created: 2026-09-20
 updated: 2026-09-26
@@ -44,6 +44,21 @@ tags: "codex, review-parser, shape-coupling, silent-pass, verdict-findings-contr
   re-executable RED-now, structural property checks, a sanitization check, and
   negative fixtures; the guard classification of AC-CPS-011..014 is stated
   before and after AC-CPS-011 closes. REQ and AC counts are unchanged (15 / 15).
+- 2026-09-26 · v0.2.2 · manager-spec · Repair of the plan-audit iter-2 defects
+  recorded in `.moai/reports/t1203/plan-audit-iter2.md` (FAIL 0.83). Wording and
+  check commands only — no candidate chosen, no requirement changed. AC-CPS-011's
+  structural commands move into a verbatim evidence ledger and the table
+  transcription rule is deleted (N4-P4); S1 gains a FAIL-statement check and a
+  location-link check bound to the declared finding count, with a mutant →
+  killing-check table (N5, D4); the "four axes at once" wording in §A.4, §A.6,
+  and plan.md is corrected — project and path differ, the #1718 bodies' date
+  differs, the population's date range includes 2026-09-21, and the #1718 CLI
+  version is not recorded (N1). The v0.2.1 entry above is kept as written; its
+  "all four co-varying axes" is superseded by this correction. Also: the
+  consequence of a "not acceptable" answer to the REQ-CPS-013 question is stated
+  (N2), "single evidence base" becomes "primary evidence base" (N3), and the
+  fidelity check gets a named test selector with a non-empty-sweep condition
+  (N6). REQ and AC counts are unchanged (15 / 15).
 
 ---
 
@@ -63,7 +78,7 @@ indistinguishable, in the emitted output, from a clean review.
 
 ### A.1 Evidence base
 
-The single evidence base for this SPEC is `.moai/reports/t1053/verdict.md`,
+The primary evidence base for this SPEC is `.moai/reports/t1053/verdict.md`,
 measured against tree `8b55fc8f0` (verdict.md §3). Section references in this
 document (`verdict.md §E3`, `§A2`, and so on) point into that file. Nothing in
 this SPEC re-runs those measurements, and no number appears here that is not
@@ -160,14 +175,18 @@ establish four facts that this SPEC rests on.
   combination — **moai-adk-go · native path · 2026-09-21 · codex-cli 0.155.1** —
   and not for codex output in general.
 
-  The #1718 case (§A.6) is a measured counter-observation, and it differs from
-  the 2026-09-21 observation on **four axes at once**: the project (moai-cowork),
-  the path (#1718 reports the adversarial path, turn/start; for the population
-  sessions the path is a Gap, §A.6), the date (2026-09-14 .. 2026-09-25), and the
-  codex CLI version (not recorded for the moai-cowork sessions). Because the four
-  co-vary, **no single axis is measured as the one that separates the two
-  observations.** "The project decides the shape" is an inference, not a
-  measurement.
+  The #1718 case (§A.6) is a measured counter-observation, and the two
+  observations do not hold the project or the path constant. The project
+  differs (moai-cowork against moai-adk-go). The path differs as #1718 reports
+  it — adversarial (turn/start) for its two bodies, against the native path of
+  2026-09-21; for the population sessions the path is a Gap (§A.6). The date
+  differs for the two #1718 bodies, whose codex sessions are dated 2026-09-25
+  (t1203 §1), but it is not a clean separator for the population: that range,
+  2026-09-14 .. 2026-09-25, includes 2026-09-21 (t1203 §3). The codex CLI
+  version is recorded for 2026-09-21 (codex-cli 0.155.1) and is not recorded for
+  #1718 or the population, so whether it differs is not established. **Which
+  axis separates the two observations is unmeasured.** "The project decides the
+  shape" is an inference, not a measurement.
 
   For the moai-cowork bodies the risk is measured as active in one specific
   sense: across 142 codex-gate final bodies not one parser run produced a
@@ -288,10 +307,13 @@ is not a first-line count.
   that project (measured, t1203 §1, §3).
 - The two live observations differ: the 2026-09-21 moai-adk-go call was
   same-shape (§A.4), the moai-cowork bodies are not (measured, t1203 §1, §3).
-  **What separates them is not measured.** Project, path (native in 2026-09-21,
-  adversarial in #1718), date, and codex CLI version all differ between the two,
-  so "the live convention differs by project" is an **inference**, confounded
-  with the other three axes (§A.4).
+  **What separates them is not measured.** Project and path (native in
+  2026-09-21, adversarial as #1718 reports it) differ, and so does the date of
+  the two #1718 bodies; the population's date range includes 2026-09-21, and the
+  codex CLI version is not recorded for #1718, so neither date nor version is
+  established as a separating axis. "The live convention differs by project" is
+  therefore an **inference**, confounded with path and not separated from date
+  or version (§A.4).
 - The shape is set by the target project's instructions, not by the codex CLI
   version (**inferred, not measured**, t1203 §4, §5).
 - The adversarial prompt specifying no output format (the
@@ -549,6 +571,12 @@ operator's answer is not read as a candidate choice:
 | (b) | none — the mechanism already exists on adversarial | unchanged | measured (existing behaviour, verdict.md §E3) |
 | (c) | a recognized `fail` with no findings and no `GateUnmet` would be reported as self-contradictory | unchanged — an unrecognized body yields `inconclusive`, which the predicate does not match | deduced from the predicate; (c) not executed |
 | (d) | the request asks codex for a recognizable format; if codex follows it, bodies become recognizable | unchanged | inferred |
+
+Under "Not acceptable", none of (a)–(d) as described changes the handling of a
+body that stays unrecognized (third column), so none of them alone satisfies the
+revised requirement; the revision names the change that implements it, which
+may be added alongside any candidate. This states a consequence of the answer,
+not a preference among candidates: no candidate is excluded under either answer.
 
 ---
 

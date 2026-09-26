@@ -10,6 +10,10 @@
 >
 > v0.2.1 (card t1203): repair of plan-audit iter-1 defects D1–D14
 > (`.moai/reports/t1203/plan-audit.md`). Wording and structure only.
+>
+> v0.2.2 (card t1203): repair of plan-audit iter-2 defects
+> (`.moai/reports/t1203/plan-audit-iter2.md`). Wording and check commands only;
+> the four-axis wording in §C (M0 scope) and §G anti-pattern 8 is corrected (N1).
 
 ## §A Context
 
@@ -70,8 +74,11 @@ observation did not change the §C candidate space (candidate (d) was added
 later, in v0.2.0, from the #1718 case). **Scope, re-drawn in v0.2.1:** the
 conclusion holds for **moai-adk-go · native path (`mode = "native"`) · 2026-09-21
 · codex-cli 0.155.1** only (`live-convention-20260921.md` §1, §3). The #1718
-observation differs on project, path, date, and CLI version at once, so no single
-axis is measured as the separating one; "differs by project" is an inference.
+observation differs on project and path (adversarial as #1718 reports it), and
+its two bodies on date; the population's date range includes 2026-09-21 and the
+#1718 codex CLI version is not recorded, so whether date or version separates
+the observations is not established. Which axis separates them is unmeasured;
+"differs by project" is an inference.
 For the moai-cowork bodies the risk is measured as active in the sense that no
 parser run produced a finding (t1203 §3), measured on session-log final bodies
 whose identity to the parser's `reviewText` is a Gap (spec.md §A.6). The
@@ -276,8 +283,10 @@ native path stays `pass` (AC-CPS-008), the adversarial path is unchanged
    they reproduce the raw bodies' measured output and pass the sanitization check
    (REQ-CPS-014, AC-CPS-011).
 8. **Reading "differs by project" as measured.** The 2026-09-21 and #1718
-   observations differ on project, path, date, and CLI version at once; which
-   axis separates them is an inference (spec.md §A.4, §A.6).
+   observations do not hold project and path constant; the #1718 bodies' date
+   differs, the population's date range includes 2026-09-21, and the #1718
+   codex CLI version is not recorded. Which axis separates them is unmeasured,
+   and "differs by project" is an inference (spec.md §A.4, §A.6).
 
 ## §H Cross-references
 
