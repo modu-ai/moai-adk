@@ -23,6 +23,15 @@ func ProjectKey(projectRoot string) string {
 	return projectKeyFromCanonicalRoot(CanonicalProjectRoot(projectRoot))
 }
 
+// ProjectKeyForCanonicalRoot returns the project key of a root that is
+// already canonical (the root CanonicalProjectRoot would return). It exists
+// for callers on a per-tool-call hook path that derive the canonical root
+// from the repository's files without starting git, and must still land on
+// exactly the key ProjectKey computes.
+func ProjectKeyForCanonicalRoot(canonicalRoot string) string {
+	return projectKeyFromCanonicalRoot(canonicalRoot)
+}
+
 func projectKeyFromCanonicalRoot(root string) string {
 	sum := sha256.Sum256([]byte(root))
 	base := filepath.Base(root)
