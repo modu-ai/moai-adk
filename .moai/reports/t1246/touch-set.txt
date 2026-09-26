@@ -81,6 +81,7 @@ docs-site/content/ja/getting-started/cli.md
 docs-site/content/ja/getting-started/init-wizard.md
 docs-site/content/ja/getting-started/introduction.md
 docs-site/content/ja/getting-started/migration.md
+docs-site/content/ja/multi-llm/_index.md
 docs-site/content/ja/multi-llm/model-policy.md
 docs-site/content/ko/advanced/agent-guide.md
 docs-site/content/ko/advanced/config-sections.md
@@ -111,6 +112,7 @@ docs-site/content/zh/getting-started/cli.md
 docs-site/content/zh/getting-started/init-wizard.md
 docs-site/content/zh/getting-started/introduction.md
 docs-site/content/zh/getting-started/migration.md
+docs-site/content/zh/multi-llm/_index.md
 docs-site/content/zh/multi-llm/model-policy.md
 internal/cli/agentlint/agent_lint.go
 internal/cli/agentlint/agent_lint_test.go
@@ -132,10 +134,25 @@ internal/cli/model.go
 internal/cli/profile_setup_schema_options_test.go
 internal/cli/profile_setup_translations.go
 internal/cli/update.go
+internal/cli/update_clean_install.go
+internal/cli/update_template_sync.go
 internal/cli/update_wizard.go
+internal/cli/wizard/agent_wiring_question_test.go
+internal/cli/wizard/jev_question_test.go
+internal/cli/wizard/model_policy_default_test.go
 internal/cli/wizard/model_policy_matrix_agreement_test.go
+internal/cli/wizard/profile_questions_test.go
+internal/cli/wizard/profile_translations_test.go
+internal/cli/wizard/question_removal_test.go
 internal/cli/wizard/questions.go
+internal/cli/wizard/questions_test.go
+internal/cli/wizard/restructure_test.go
 internal/cli/wizard/translations.go
+internal/cli/wizard/translations_completeness_test.go
+internal/cli/wizard/unified_form_test.go
+internal/cli/wizard/wizard.go
+internal/cli/wizard/wizard_test.go
+internal/config/audit_models.go
 internal/config/defaults.go
 internal/config/defaults_test.go
 internal/config/model_routing.go
@@ -231,6 +248,7 @@ internal/web/agentfm_ordering_test.go
 internal/web/agentfm_policy_test.go
 internal/web/agentfm_polish_test.go
 internal/web/app.go
+internal/web/assets/i18n.js
 internal/web/console_ux_fix_test.go
 internal/web/crosssession_test.go
 internal/web/fieldsets.templ
@@ -238,6 +256,7 @@ internal/web/fieldsets_states_test.go
 internal/web/fieldsets_templ.go
 internal/web/g3_profile_matrix_test.go
 internal/web/handlers.go
+internal/web/i18n_untranslated_allowlist_test.go
 internal/web/m5_agentfm_test.go
 internal/web/main_test.go
 internal/web/mcp_audit_surface_test.go

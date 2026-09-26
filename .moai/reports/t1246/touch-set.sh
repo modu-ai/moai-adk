@@ -28,4 +28,12 @@ G='ResolveAgentModelEffort|ResolveHarnessAgentModelEffort|DefaultProfileMatrix|P
     docs-site/content/en/cost-optimization/_index.md docs-site/content/ko/cost-optimization/_index.md \
     docs-site/content/en/multi-llm/_index.md \
     docs-site/content/ko/claude-code/foundations/features-overview.md
+  # plan-audit iter-3 additions (R1 ModelEffort relocation target, R2 web i18n agent descriptions,
+  # R3/R9 update hosts and seams, R7 ja/zh multi-llm index, R8 init-wizard question surface)
+  ls internal/config/audit_models.go \
+    internal/web/assets/i18n.js internal/web/i18n_untranslated_allowlist_test.go \
+    internal/cli/update_template_sync.go internal/cli/update_clean_install.go \
+    docs-site/content/ja/multi-llm/_index.md docs-site/content/zh/multi-llm/_index.md \
+    internal/cli/wizard/wizard.go
+  grep -lE 'model_policy' internal/cli/wizard/*_test.go
 } | grep -vE '^\.claude/(agent-memory|worktrees)/|/testdata/codex-rollouts' | LC_ALL=C sort -u

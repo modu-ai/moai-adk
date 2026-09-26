@@ -194,7 +194,9 @@ Docs residue outside that pattern (plan-audit iter-2 N7), added to the touch set
 `docs-site/content/{en,ja,ko,zh}/advanced/harness-v4-builder.md` (generated specialists shown with
 `model:`/`effort:`, e.g. en:70), `docs-site/content/{en,ko}/cost-optimization/_index.md`,
 `docs-site/content/en/multi-llm/_index.md` ("the per-agent model (and effort) assignment table"),
-`docs-site/content/ko/claude-code/foundations/features-overview.md` — 8 pages. `claude-code/agentic/sub-agents.md`
+`docs-site/content/ko/claude-code/foundations/features-overview.md`, and (plan-audit iter-3 R7)
+`docs-site/content/ja/multi-llm/_index.md:81` ("エージェント別モデル割り当て表") and
+`docs-site/content/zh/multi-llm/_index.md:80` ("各代理的模型分配表") — **10 pages** listed explicitly. `claude-code/agentic/sub-agents.md`
 hits are Claude Code feature examples and stay out of scope.
 
 Local verify-judge effort channel (plan-audit iter-2 N3), local-only (no template mirror):
@@ -209,8 +211,11 @@ agent-authoring residue (N8): `agent-authoring.md:219` ("Control reasoning depth
 `:333` (cross-reference to dynamic-workflows § Purpose-driven model+effort selection), both trees.
 
 Profile-setup wording (N9): `internal/cli/wizard/translations.go:444/456/468/480` and
-`internal/cli/profile_setup_translations.go:165/260` label the retained `model_policy` preference
-"Agent model policy — … assigning optimal models to each agent".
+`internal/cli/profile_setup_translations.go:165-166` (en), `:260-261` (ko), `:356-357` (ja), `:452-453` (zh)
+label the retained `model_policy` preference "Agent model policy — … assigning optimal models to each agent".
+The sibling `effort_level` descriptions (en: "Per-agent effort comes from the agent model policy instead.";
+`grep -nF 'agent model policy instead'` → `wizard/translations.go:445`, `profile_setup_translations.go:181`)
+sit at `wizard/translations.go:445/457/469/481` and `profile_setup_translations.go:181/277/373/469` — 8 lines.
 
 ## §G. Always-loaded budget baseline
 
@@ -249,12 +254,12 @@ The touch set is a committed file produced by a committed, read-only script:
   doctrine/docs pattern, Go/templ symbol pattern, workflow scripts, harness manifests, and an
   explicit list for files no pattern reaches).
 - Output: `.moai/reports/t1246/touch-set.txt` — `sh .moai/reports/t1246/touch-set.sh > .moai/reports/t1246/touch-set.txt`
-  → exit 0, **252** paths at `d6992e3a0` (revision after plan-audit iter-2; iter-1 revision had 238).
+  → exit 0, **271** paths (revision after plan-audit iter-3; iter-2 revision had 252, iter-1 238).
   `cut -d/ -f1-2 touch-set.txt | LC_ALL=C sort | uniq -c`: 22 `.claude/agents`, 2 `.claude/commands`,
   1 `.claude/hooks`, 12 `.claude/rules`, 8 `.claude/skills`, 5 `.claude/workflows`, 1 `.moai/docs`,
-  2 `.moai/project`, 1 `CHANGELOG.md`, 60 `docs-site/content`, 24 `internal/cli`, 11 `internal/config`,
+  2 `.moai/project`, 1 `CHANGELOG.md`, 62 `docs-site/content`, 38 `internal/cli`, 12 `internal/config`,
   10 `internal/harness`, 6 `internal/hook`, 5 `internal/settings`, 2 `internal/spec`,
-  54 `internal/template`, 26 `internal/web`.
+  54 `internal/template`, 28 `internal/web`.
 - Collation: the script sorts with `LC_ALL=C`; `LC_ALL=C sort -c touch-set.txt` → exit 0. The gate
   must therefore run `LC_ALL=C sort` and `LC_ALL=C comm -12`.
 
@@ -296,6 +301,14 @@ Update ordering (plan-audit iter-2 N1), measured in `internal/cli/update.go` and
 - Clean-install path: `update_clean_install.go:511` `RestoreMoaiConfig`, then `:554`
   `stripRetiredV2DenyEntries` — post-merge.
 
+- Clean-reinstall restore: `backup.RestoreMoaiConfig` (`update/backup/restore.go:64-75`) is a wrapper
+  around `RestoreMoaiConfigRetained` that prints every retained key through `retainedKeySink` before
+  returning — so on host (c) the strip must call the `Retained` variant and filter, or each stripped
+  key would be reported as retained first. The clean-reinstall path is reached for a v2-fingerprinted
+  project (`update.go:~405-424`, `runCleanReinstall`).
+- Seams: `runTemplateSyncWithProgress` returns `(true, nil)` for both the version match (:773-776) and
+  the user cancel (:795-799); `confirmViaPreview` (:849) is a plain function (no test seam today).
+
 Hence design D14's three hosts: inside "Restore Settings" between :620 and :638 (filtering the
 strip's keys out of the retained list), inside the `syncSkipped` branch for the version-match reason
 only (own backup first), and the clean-install site.
@@ -333,3 +346,22 @@ calibration matrix), `docs-truth-catalog` (:217), `manager-design-catalog-citati
 Failure modes if a site outlives its anchor: `check.go:77` "block anchor … not found … (the anchor moved
 or the block was deleted)"; `check.go:168` CountPattern "matched %d times …, want exactly 1".
 Disposition per site and milestone: design.md §F.
+
+Plan-audit iter-3 additions (R1/R2):
+
+- `grep -rn 'retainedAgentNames' --include=*.go internal | grep -v _test` → `config/profile.go:138/142/182`
+  and `rosterguard/registry.go:52` (the site anchor). The only reader is `validateAgentOverrides`
+  (profile.go:182), removed with the override feature; the variable goes with it (design D4).
+- Lint baseline: `golangci-lint run ./internal/config/...` → `0 issues.`, exit 0 (this tree, `b084d6789`).
+  `.golangci.yml` enables `unused`, so a surviving unreferenced `retainedAgentNames` would fail the gate.
+- `config.ModelEffort` (profile.go:73) stays: `config/audit_models.go:67/75/82` (audit pin fields),
+  `config/defaults.go:1120`, `cli/mcp_claude.go:181-182`, `cli/mcp_codex.go:211-254`, `cli/mcp_glm.go:172-180`.
+- `shipped-key-inventory` (registry.go:203, Note :207 "Derived llm.profiles.* key inventory"): roster names
+  in `internal/config/testdata/shipped_key_inventory.yaml` = 13; after filtering lines matching
+  `profiles|harness_agents|agent_overrides|model_routing` = 7 (e2e-tester, manager-design, manager-develop,
+  manager-docs, manager-spec, plan-auditor, super-advisor). Site removed at M5.
+- `web-i18n-agent-descriptions` (registry.go:137, `internal/web/assets/i18n.js`, ClaimMembership, "One
+  agentdesc.* key per definition file"): `agentdesc.` has one consumer, `agentFMRow`
+  (`fieldsets.templ:694`, generated `fieldsets_templ.go:3195`), deleted in M2;
+  `grep -cE 'agentfm|agentdesc' internal/web/assets/i18n.js` → 149; the `agentdesc.` exemption lives in
+  `internal/web/i18n_untranslated_allowlist_test.go:260-268`. Site, keys and exemption removed at M2.

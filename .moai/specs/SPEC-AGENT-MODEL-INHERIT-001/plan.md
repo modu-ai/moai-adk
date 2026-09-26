@@ -8,7 +8,7 @@ created: 2026-09-26
 
 ## §A Context
 
-Tier **L**: ≥3 milestones and well over 10 files (touch set 252 paths at `d6992e3a0`,
+Tier **L**: ≥3 milestones and well over 10 files (touch set 271 paths,
 research.md §I). The decisions most likely to change — retention seams, the migration strip
 step, the main-session persistence boundary — are fixed in M1. Code removal then runs
 **consumer-first**: every milestone deletes the last consumers of a symbol before, or in the same
@@ -54,13 +54,14 @@ REQ-AMI-012, REQ-AMI-014 (step only), REQ-AMI-017..020. Characterisation tests w
 any removal: main-session `resolveLaunchEffort` over preference-profile inputs; GLM alias
 mapping and session reasoning; audit-pin precedence; web preference-profile
 create/rename/delete and main-session effort save (status codes and written files). Additive
-changes: the model-free roster SSOT with rosterguard and `config.retainedAgentNames` re-pointed
-(D4), adding the roster SSOT registry row and re-pointing `profile-matrix-order` and
-`config-retained-agent-names` (design §F); codex/GLM task and audit resolution re-pointed to
+changes: the model-free roster SSOT with rosterguard re-pointed (D4), adding the roster SSOT
+registry row and re-pointing `profile-matrix-order` (design §F); codex/GLM task and audit resolution re-pointed to
 pin > backend default, removing those `ResolveAgentModelEffort` consumers and their test
 references (D5); the strip step at its three hosts (D14 a/b/c) with the retained-key filter and
-the update-report lines, tested per design §C row including the version-matched and
-user-cancel rows. Nothing is deleted yet except the re-pointed call sites.
+the update-report lines, tested per design §C row including the version-matched, user-cancel
+and clean-reinstall rows. Test seams: `runTemplateSyncWithProgress` returns a skip reason
+(`none` / `versionMatch` / `userCancel`), and `confirmViaPreview` is reached through a
+package-level function variable the cancel test replaces (D14). Nothing is deleted yet except the re-pointed call sites.
 
 ### M2 — Web console removal (Priority High)
 REQ-AMI-011. Delete the agentfm tab, handlers, app seams, templ blocks (regenerate
@@ -70,8 +71,10 @@ and the `v4manifest` display helpers once orphaned (D7). Consumers removed here:
 `ApplyPerformanceTier`, `EffectiveProfile`, `AgentOverrides`, `IsValidPerformanceTier`,
 `ValidPerformanceTiers`, `WorkflowAgents`, and the web test files that reference them. The
 rosterguard sites `v4manifest-agent-tiers`, `v4manifest-tier-test`, `web-agentfm-display-rank`,
-`web-agentfm-display-rank-test` and the `web-agentfm-subset-count` exemption leave in the same
-milestone (design §F). M1 characterisation tests stay green.
+`web-agentfm-display-rank-test`, `web-i18n-agent-descriptions` and the `web-agentfm-subset-count`
+exemption leave in the same milestone (design §F), together with the `agentfm.*` /
+`fieldDesc.agentfm.*` / `agentdesc.*` keys in `internal/web/assets/i18n.js` and the `agentdesc.`
+exemption in `i18n_untranslated_allowlist_test.go`. M1 characterisation tests stay green.
 
 ### M3 — Hook guard removal (Priority High)
 REQ-AMI-009, REQ-AMI-010. Delete `agent_model_guard.go` and its test, `pre_tool.go` wiring,
@@ -83,9 +86,10 @@ gitignore-artifact test row; reword sibling-guard comments. Test that a config c
 REQ-AMI-005, REQ-AMI-008 (command), REQ-AMI-015, REQ-AMI-016. Delete `moai model` (`model.go`,
 root registration); reduce `--profile` / `--model-policy` / `--high` / `--medium-alias` /
 `--low` to deprecation warnings (D10/D13); drop the agent model-policy question from the
-init/update wizards and the `update_wizard` `ApplyProfile` + system.yaml `model_policy` write;
-rewrite the retained `moai profile setup` `model_policy` label to main-session wording in four
-locales (design H24); retire agentlint LR-03/LR-12 and the routing checks in `workflow_lint.go` /
+init/update wizards (`wizard/questions.go`, `wizard/wizard.go:484`, and the wizard tests that name it —
+the `grep -lE 'model_policy' internal/cli/wizard/*_test.go` list in the touch set; operator Q7) and the `update_wizard` `ApplyProfile` + system.yaml `model_policy` write;
+rewrite the retained `moai profile setup` `model_policy` and `effort_level` wording to main-session
+terms in four locales (design H24, 20 lines); retire agentlint LR-03/LR-12 and the routing checks in `workflow_lint.go` /
 `sentinels.go` (and dispose of the `agentlint-section-marker` exemption if its comment goes); retire
 the routing surfaces in `internal/spec/lint_haiku_residual.go`; retire `cellguard` (D6); remove
 the nil-map normalisation in `cli/glm.go` and resolver citations in `mcp_server.go` tool
@@ -95,10 +99,13 @@ routing keys remains outside `internal/config` and `internal/template`.
 ### M5 — Producers and schema (Priority Medium)
 REQ-AMI-008 (resolver/matrix), REQ-AMI-013. Delete `profile_matrix.go` resolvers and matrix, the
 `model_policy.go` perf-tier helpers (D12/D13), the config fields, `profile.go` override
-validation, `model_routing.go`, per-agent GLM helpers left orphaned (grep-proven); template
+validation together with `retainedAgentNames` (its only reader), `model_routing.go`, per-agent GLM
+helpers left orphaned (grep-proven); relocate `ModelEffort` beside `audit_models.go` before
+`profile.go` goes (the audit pins keep using it); template
 `llm.yaml` and `workflow.yaml` drop the keys and comment blocks; regenerate
 `internal/config/testdata/shipped_key_inventory.yaml`; rewrite `.moai/project/product.md:149`
-and `tech.md:17`; remove the rosterguard sites `profile-matrix-order`,
+and `tech.md:17`; remove the rosterguard sites `config-retained-agent-names`,
+`shipped-key-inventory`, `profile-matrix-order`,
 `profile-matrix-group-membership`, `profile-matrix-test-expectations`, `template-llm-yaml`,
 `product-md-profile-matrix-size`, `tech-md-profile-matrix-size` (design §F). Re-run the M1
 characterisation tests.
@@ -122,8 +129,8 @@ template-first, then local; remove the rosterguard sites `model-policy-profile-m
 zone-registry check; run the AC-AMI-007 greps and add a §D row for any residual hit.
 
 ### M8 — docs-site (Priority Low)
-REQ-AMI-025. Rewrite or remove the docs-site pages (60 in the touch set at `d6992e3a0`: 52 by
-pattern + 8 listed in research.md §I, re-measured at M0) in
+REQ-AMI-025. Rewrite or remove the docs-site pages (62 in the touch set at `d6992e3a0`: 52 by
+pattern + 10 listed in research.md §F, re-measured at M0) in
 four locales in one change set, add a redirect for every removed page, keep only deprecation
 notes for `--profile` / `--model-policy`, and run the oss-docs verify recipe. CHANGELOG and the
 §C supersession closures belong to sync.
@@ -144,7 +151,7 @@ never after the milestone that deletes the symbol.
 | `LLMConfig.{Profile,Profiles,HarnessAgents,AgentOverrides,PerformanceTier}` / `EffectiveProfile` | web M2 · cli/glm.go, cli/model.go, agentlint M4 · template M5 | M5 |
 | `WorkflowAgents` / `ModelRouting*` | settings schema M2 · agentlint, spec haiku lint M4 | M5 |
 | agent frontmatter `effort:` | agentlint LR-03 M4 · emitter manifest M6 (same commit as strip) | M6 |
-| rosterguard registry sites (design §F) | sites leave with their surface: M1 re-point, M2 web/v4manifest, M5 matrix/config/llm.yaml/project docs, M7 model-policy | same milestone |
+| rosterguard registry sites (design §F) | sites leave with their surface: M1 re-point, M2 web/v4manifest/i18n, M5 matrix/config/retainedAgentNames/shipped inventory/llm.yaml/project docs, M7 model-policy | same milestone |
 
 **Test files.** `go vet` compiles `_test.go`, so the rule above binds tests too: **each milestone
 removes or adapts every `_test.go` reference, in any package, to a symbol it deletes.** Measured
@@ -174,4 +181,4 @@ with the same command without `grep -v _test.go` (`grep -rlE "<symbol>" --includ
 
 research.md (inventory, overlap, touch set, persistence measurements), design.md (decisions,
 migration, HARD-clause table), acceptance.md (criteria), progress.md §E.1 (operator answers
-Q1–Q6, resolved 2026-09-26).
+Q1–Q7, resolved 2026-09-26).
