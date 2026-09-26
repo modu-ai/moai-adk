@@ -238,6 +238,15 @@ func TestResolveAutonomy_DeciderBranches(t *testing.T) {
 	}
 }
 
+// TestAutonomy_CacheSchemaBumped guards the config cache hazard recorded on
+// configCacheSchemaVersion: a cache written before WorkflowConfig gained
+// Autonomy must not be served over a workflow.yaml that sets its keys.
+func TestAutonomy_CacheSchemaBumped(t *testing.T) {
+	if configCacheSchemaVersion < 7 {
+		t.Errorf("configCacheSchemaVersion = %d, want >= 7 — Workflow gained Autonomy without a cache schema bump", configCacheSchemaVersion)
+	}
+}
+
 func TestResolveAutonomy_SecondReviewSetAndPassThrough(t *testing.T) {
 	for _, v := range []string{"required", "advisory", "off"} {
 		var wf WorkflowConfig
