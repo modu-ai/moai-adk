@@ -36,6 +36,7 @@ func TestBuildAutoUpdateFunc_HonorsSkipBinaryUpdateEnv(t *testing.T) {
 			// update cache from short-circuiting either arm.
 			version.Version = fmt.Sprintf("v97.97.%d", time.Now().UnixNano()%10000)
 			t.Setenv("HOME", t.TempDir())
+			t.Setenv(config.EnvHome, "")
 			t.Setenv(config.EnvSkipBinaryUpdate, tc.skip)
 
 			checked, replaced := false, false
