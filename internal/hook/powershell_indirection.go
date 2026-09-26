@@ -36,7 +36,7 @@ const (
 	constructEncodedCommand    = "encoded-command"
 	constructInvokeExpression  = "invoke-expression"
 	constructStartProcess      = "start-process"
-	constructDynamicResolution = "dynamic-resolution" // wired by REQ-HGF-005 (M3)
+	constructDynamicResolution = "dynamic-resolution"
 )
 
 // unclassifiedEvent tags the audit line and unclassifiedReason is its reason
@@ -53,12 +53,24 @@ var gitWordPattern = regexp.MustCompile(`(?i)\bgit\b`)
 // "&" is PowerShell's call operator, not a separator, so it is kept.
 var commandSegmentSeparators = regexp.MustCompile(`&&|\|\||[;|\n]`)
 
+// callOperatorSubexpression matches a PowerShell call operator in command
+// position followed directly by a parenthesized subexpression — the
+// executable is resolved at RUNTIME (REQ-HGF-005, the measured form is
+// `& (Get-Command git) switch probe`). Matched on the quote-collapsed text,
+// so a `& (` carried inside quoted prose never fires it.
+var callOperatorSubexpression = regexp.MustCompile(`(?:^|[(;&|][ \t]*|\n[ \t]*)&[ \t]*\(`)
+
 // powerShellIndirection returns the name of an indirection construct in a
 // PowerShell command that runs git out of the guards' sight, or "" when there
 // is none. Constructs are matched on the quote-collapsed text, so a construct
 // named inside a string argument (Write-Output "pwsh -enc …") does not count;
 // the git operand of Invoke-Expression / Start-Process is matched on the raw
 // text, because it usually sits inside the quoted string being executed.
+//
+// The dynamic-resolution construct (REQ-HGF-005) covers a call operator whose
+// target is a parenthesized subexpression: the resolved executable is a
+// runtime fact, so the call is allowed with one audit line rather than
+// judged — the same treatment encoded commands get.
 func powerShellIndirection(command string) string {
 	scanned := strings.ToLower(substituteQuotedArguments(command))
 	for _, segment := range commandSegmentSeparators.Split(scanned, -1) {
@@ -73,9 +85,15 @@ func powerShellIndirection(command string) string {
 		switch strings.TrimLeft(tok, "({&") {
 		case "iex", "invoke-expression":
 			return constructInvokeExpression
-		case "start-process":
+		// saps and start are documented Start-Process aliases (REQ-HGF-006);
+		// the git-word gate above still bounds their over-match — no git,
+		// no line.
+		case "start-process", "saps", "start":
 			return constructStartProcess
 		}
+	}
+	if callOperatorSubexpression.MatchString(scanned) {
+		return constructDynamicResolution
 	}
 	return ""
 }
