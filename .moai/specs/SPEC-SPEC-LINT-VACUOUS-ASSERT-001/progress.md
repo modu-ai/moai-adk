@@ -69,7 +69,7 @@ debts_discharged: [N1, N2, N3, N4]
 
 ```yaml
 sync_complete_at: 2026-09-26
-sync_commit_sha: pending-backfill-sync
+sync_commit_sha: 0e03588fc
 sync_status: audit-ready
 frontmatter_status_transitions.spec_md: "in-progress -> implemented -> completed (single sync commit)"
 frontmatter_status_transitions.stateless_artifacts: "plan.md, acceptance.md carry no status field (Artifact Statelessness)"
