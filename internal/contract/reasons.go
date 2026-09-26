@@ -1,5 +1,7 @@
 package contract
 
+import "slices"
+
 // Verify reason codes — the closed set of design.md § Verify Reason Codes.
 // Emitted in `verify --json` / `show --json` as `reasons: [...]`, sorted and
 // de-duplicated. Adding a code is a schema amendment, not a local change.
@@ -29,13 +31,54 @@ const (
 	ReasonSignatureAcceptanceMismatch = "signature_acceptance_mismatch"
 )
 
+var reasonCodes = []string{
+	ReasonSchemaInvalid,
+	ReasonSpecIDMismatch,
+	ReasonUnsigned,
+	ReasonContractDigestMismatch,
+	ReasonAcceptanceMissing,
+	ReasonAcceptanceHashMismatch,
+	ReasonACCountMismatch,
+	ReasonACCountAmbiguous,
+	ReasonActionsEmpty,
+	ReasonUnknownAction,
+	ReasonForbiddenAction,
+	ReasonPushDevelopDisabled,
+	ReasonSecondReviewMissing,
+	ReasonEscalateOnIncomplete,
+	ReasonOwnershipInvalid,
+	ReasonInvariantUnresolved,
+	ReasonBudgetInvalid,
+	ReasonReobserveIncomplete,
+	ReasonPlanAuditNotPassing,
+	ReasonReceiptMismatch,
+	ReasonSignatureSealMismatch,
+	ReasonSignatureInconsistent,
+	ReasonSignatureAcceptanceMismatch,
+}
+
 // ReasonCodes returns the closed set of verify reason codes in design order.
 // The returned slice is a fresh copy.
 func ReasonCodes() []string {
-	return nil
+	return slices.Clone(reasonCodes)
 }
 
 // IsReasonCode reports whether s belongs to the closed reason-code set.
 func IsReasonCode(s string) bool {
-	return false
+	return slices.Contains(reasonCodes, s)
+}
+
+// reasonSet accumulates reason codes; sorted returns them sorted and
+// de-duplicated, never nil.
+type reasonSet map[string]struct{}
+
+func (s reasonSet) add(code string) { s[code] = struct{}{} }
+
+func (s reasonSet) sorted() []string {
+	out := make([]string, 0, len(s))
+	for code := range s {
+		out = append(out, code)
+	}
+	slices.Sort(out)
+	return out
 }
