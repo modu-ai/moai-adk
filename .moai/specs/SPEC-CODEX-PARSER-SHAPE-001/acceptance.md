@@ -23,6 +23,17 @@
 > (15). The mutant table in AC-CPS-011 cites one further local record,
 > `.moai/reports/t1203/repro/mutant-checks.log`, and no figure in it appears
 > anywhere else.
+>
+> v0.2.3 (card t1203): wording fixes reported by the run phase
+> (`.moai/specs/SPEC-CODEX-PARSER-SHAPE-001/progress.md` §E.2; evidence
+> `.moai/reports/t1203/run/n7-mutants.log`, test `TestCodex1718_P10RejectsMutants`).
+> P10 is bound to line 1 and gains a PASS-negative companion P10b (N7); the
+> mutant scope, the regex note, and the declared-count definition are corrected
+> (N8–N10); AC-CPS-013 is re-anchored to where its first clause is true; the
+> AC-CPS-011 check 1 selector's change of meaning is recorded. No requirement
+> changed; the criterion count is unchanged (15). The M3/M4 rows of the mutant
+> table cite one further local record, `.moai/reports/t1203/run/n7-spec-v023.log`
+> (tree `264d1d163`).
 
 ## §A Gating criteria — satisfied BEFORE run-phase entry
 
@@ -304,13 +315,23 @@ SHA:
    file, the path, the verdict, and the findings count. A run missing any of
    these is an empty or partial sweep and does not close this check — a selector
    that matches no test also exits `0` and prints `ok`.
+
+   Note on the selector's meaning over time: at `6a89f3d83`, the commit this
+   check closed on, `^TestCodex1718Fixtures$` asserted the raw-output
+   reproduction above (E-1718). From the candidate (a) change on, the same test
+   asserts AC-CPS-012's values instead (S1, S2, S2′ `fail` with their declared
+   finding counts). A run of this selector on a later tree is therefore
+   AC-CPS-012 evidence, not a re-run of this check; this check's closure record
+   is the `6a89f3d83` run.
 2. **Structural properties** — so that a reduction with the right outputs but
    none of the #1718 shape cannot pass. The table states each property and its
    pass condition; the commands themselves are recorded only in the evidence
    ledger below it, verbatim, one command per line, run from the repository
    root. A reader copies the ledger line, never a table cell. In the ledger every
    command is exactly what the shell receives: inside the single-quoted regular
-   expressions, `\|` is a literal pipe character and a bare `|` is alternation.
+   expressions, outside bracket expressions, `\|` is a literal pipe and a bare
+   `|` is alternation; inside a bracket expression `|` is an ordinary character
+   either way.
 
    | # | Property | Files | Ledger | Pass condition |
    |---|---|---|---|---|
@@ -323,7 +344,7 @@ SHA:
    | P7 | S2′ differs from S2 only on line 1 | S2, S2p | P7 | the only hunk header is `1c1`; exit `1`; and the fixture test asserts line 1 of S2p equals line 1 of S2 with its greeting prefix removed |
    | P8 | negatives mention a verdict and an ordinary `fail`/`pass` on one line, state none | N1, N2 | P8a-N1, P8a-N2, P8b-N1, P8b-N2 | each P8a ≥ `1`, exit `0`; each P8b `0`, exit `1` |
    | P9 | placement of the mention | N1 / N2 | P9-N1, P9-N2 | each ≥ `1`, exit `0` |
-   | P10 | the S1 prose states FAIL under the localized label | S1 | P10 | ≥ `1`; exit `0` |
+   | P10 | S1 line 1 states **FAIL** under the localized label, and no line states **PASS** under it | S1 | P10, P10b | P10: stdout's first line begins `1:`, exit `0`; P10b: stdout `0`, exit `1` |
    | P11 | every S1 finding row carries a `[path:line](…)` location link | S1 | P11 | equals S1's declared finding count — the same count P4 must equal |
 
    Evidence ledger (AC-CPS-011 check 2):
@@ -370,32 +391,53 @@ SHA:
    # P9-N2
    grep -cE '^[^[:space:]][^,]*, .*[Vv]erdict' internal/cli/testdata/codex-1718/N2.txt
    # P10
-   grep -cE '판정[^|]*\*\*FAIL\*\*' internal/cli/testdata/codex-1718/S1.txt
+   grep -nE '^[^|]*판정[^|]*\*\*FAIL\*\*' internal/cli/testdata/codex-1718/S1.txt
+   # P10b
+   grep -cE '판정[^|]*\*\*PASS\*\*' internal/cli/testdata/codex-1718/S1.txt
    # P11
    grep -cE '^\|[^|]*\*\*(Critical|High|Medium|Low)\*\*[^|]*\|[^|]*\[[^]]+:[0-9]+\]\(' internal/cli/testdata/codex-1718/S1.txt
    ```
 
-   A declared finding count is the count the fixture test asserts for that file;
+   A declared finding count is the number of findings the file states, declared
+   as a constant in the fixture test (`codex1718S1DeclaredFindings` = 3,
+   `codex1718S2DeclaredFindings` = 1) independently of the parser's output;
    P4, P5, and P11 tie the structure to that assertion, so a one-line prose
    fixture fails them. In P1 the pipe sits inside a bracket expression, where it
    is an ordinary character either way; in P4 and P11 the escaped `\|` anchors a
    literal table pipe — written bare, `^|` and the trailing `|` become empty
    alternatives and the pattern matches every line (plan-audit iter-2 N4-P4).
 
-   **Which check kills which mutant.** Each mutant below satisfies the checks
-   not named in its row; the named checks are what reject it. Executed on
+   **Which check kills which mutant.** Among P4, P10 (with P10b) and P11, each
+   mutant below satisfies the checks not named in its row; the named checks are
+   what reject it. The first four rows were executed on
    2026-09-26 against sanitized scratch copies outside the tree (tree
    `51a41e187`), grep checks only — the parser fidelity check was **not**
    executed on these copies; command lines, stdout, and exit codes are recorded
    in t1203 `repro/mutant-checks.log` (gitignored, as the rest of `repro/`).
-   Declared finding count taken as `3` for the faithful copy and `2` for M2.
+   Declared finding count taken as `3` for the faithful copy and `2` for M2. In
+   those four rows the P10 cell is the v0.2.2 form of P10
+   (`grep -cE '판정[^|]*\*\*FAIL\*\*'`, not bound to line 1) and P10b was not
+   executed; they are kept as recorded.
 
-   | Mutant | Shape | P4 | P10 | P11 | Killed by |
-   |---|---|---|---|---|---|
-   | faithful S1 (sanitized body1; control) | greeting + `판정은 **FAIL**` + three linked bold-severity rows | `3` / exit 0 | `1` / exit 0 | `3` / exit 0 | none — passes, as it must |
-   | M1 | two-line prose; no table, no FAIL, no link | `0` / exit 1 | `0` / exit 1 | `0` / exit 1 | P4, P10, P11 |
-   | M2 | two bold-severity table rows; no FAIL statement, no location link | `2` / exit 0 | `0` / exit 1 | `0` / exit 1 | P10, P11 (P4 alone passes it) |
-   | one-line BAD | one sentence stating FAIL; no table | `0` / exit 1 | `1` / exit 0 | `0` / exit 1 | P4, P11 |
+   The M3 and M4 rows are the plan-audit iter-3 N7 mutants, which passed that
+   unbound P10. They were built as `TestCodex1718_P10RejectsMutants` builds them
+   (line 1 replaced, the committed S1's remaining lines kept, one line appended)
+   and measured with the v0.2.3 P10 and P10b on tree `264d1d163`, together with
+   a re-measurement of the committed S1 as control; command lines and stdout in
+   `.moai/reports/t1203/run/n7-spec-v023.log`, the P10/P10b pair also in the
+   run-phase record `.moai/reports/t1203/run/n7-mutants.log`. Declared finding
+   count taken as `3` for S1 and M4 and `4` for M3 (M3 appends a fourth linked
+   bold-severity row).
+
+   | Mutant | Shape | P4 | P10 | P10b | P11 | Killed by |
+   |---|---|---|---|---|---|---|
+   | faithful S1 (sanitized body1; control) | greeting + `판정은 **FAIL**` + three linked bold-severity rows | `3` / exit 0 | `1` / exit 0 (v0.2.2 form) | not executed | `3` / exit 0 | none — passes, as it must |
+   | M1 | two-line prose; no table, no FAIL, no link | `0` / exit 1 | `0` / exit 1 (v0.2.2 form) | not executed | `0` / exit 1 | P4, P10, P11 |
+   | M2 | two bold-severity table rows; no FAIL statement, no location link | `2` / exit 0 | `0` / exit 1 (v0.2.2 form) | not executed | `0` / exit 1 | P10, P11 (P4 alone passes it) |
+   | one-line BAD | one sentence stating FAIL; no table | `0` / exit 1 | `1` / exit 0 (v0.2.2 form) | not executed | `0` / exit 1 | P4, P11 |
+   | committed S1 (control, tree `264d1d163`) | the fixture as committed | `3` / exit 0 | first line `1:…` / exit 0 | `0` / exit 1 | `3` / exit 0 | none — passes, as it must |
+   | M3 | FAIL stated only inside an appended table cell; line 1 states no verdict | `4` / exit 0 | no output / exit 1 | `0` / exit 1 | `4` / exit 0 | P10 |
+   | M4 | line 1 states `판정은 **PASS**`; an appended prose line mentions a bold FAIL | `3` / exit 0 | first line `12:…` / exit 0 (does not begin `1:`) | `1` / exit 0 | `3` / exit 0 | P10, P10b |
 
    The same log records the v0.2.1 transcription of P4 (bare pipes) on the same
    copies: `12`, `2`, `6`, `1` — it counts lines, not rows, which is the N4-P4
@@ -463,23 +505,38 @@ fails; it does not pass on the surviving subset (§A.5, AC-CPS-006).
 
 ### AC-CPS-013 — candidate (c) on the #1718 shapes: what it catches, and what it does not
 
-**Given** candidate (c) is selected and AC-CPS-011 holds,
-**When** S1, S2, and S2′ are synthesized with an empty `GateUnmet`,
-**Then** S2′ is reported as self-contradictory on both paths (its output is
-`fail` with `findings=0`); S1 and S2 are **not** reported as self-contradictory,
-because no blocking verdict survives on them; and the run-phase record states that
-(c) alone leaves the raw #1718 shapes at `inconclusive`/0 (turn/start) and
+**Given** candidate (c) is selected and AC-CPS-011 holds, and the evaluation
+point is either the commit at which (c) landed before (a) (`562126b1f`), or —
+on a later tree — a V8-shaped body (a blocking verdict with no finding parsed)
+that (a) does not cover,
+**When** S1, S2, and S2′ are synthesized with an empty `GateUnmet` at
+`562126b1f` (and, on a later tree, the V8-shaped body is synthesized the same
+way),
+**Then** S2′ at `562126b1f` — and the V8-shaped body on any later tree — is
+reported as self-contradictory on both paths (its output is `fail` with
+`findings=0`); S1 and S2 are **not** reported as self-contradictory, because no
+blocking verdict survives on them at `562126b1f`; and the run-phase record states
+that (c) alone leaves the raw #1718 shapes at `inconclusive`/0 (turn/start) and
 `pass`/0 (review/start).
 
-The second half is load-bearing: it keeps (c)'s ctrlB coverage from being
+The evaluation point is fixed because the two candidates interact: with (a) also
+selected, S2′'s finding is recovered from `ce1df7f6f` on, S2′ yields `fail`/1,
+and "S2′ is reported as self-contradictory" is false on the final tree — the
+contradiction report is correctly absent there, not missing.
+
+The last clause is load-bearing: it keeps (c)'s ctrlB coverage from being
 reported as #1718 coverage (plan.md §G anti-pattern 6).
 
 - **RED-now.** Until AC-CPS-011 closes: E-1718 — ctrlB yields `fail`/0 on both
   paths with nothing marking it contradictory — red because (c) does not exist
   yet; regression-guard. From AC-CPS-011's closure: the S2′ row of that closure
-  observation (§C.1 guard classification); release-blocking.
-- **Green path.** M2 under (c): the contradiction report appears on S2′ and only
-  there; the AC-CPS-005 control case still holds.
+  observation (§C.1 guard classification); release-blocking. Both are
+  observations of the parser before (c), unchanged by this re-anchoring.
+- **Green path.** M2 under (c), recorded at `562126b1f` before (a) lands: the
+  contradiction report appears on S2′ and only there; the AC-CPS-005 control
+  case still holds. On later trees the criterion is kept green by a V8-shaped
+  body that (a) does not cover
+  (`TestSynthesizeReviewOutput_V8ContradictionIsReported`), not by S2′.
 
 ### AC-CPS-014 — candidate (d): the pinned format is observed in live output
 

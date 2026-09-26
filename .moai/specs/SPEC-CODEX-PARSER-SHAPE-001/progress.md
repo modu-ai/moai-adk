@@ -50,6 +50,10 @@
   four candidates — (a), (b), (c), (d) — selected.
 - 2026-09-26 · Implementation Kickoff Approval: HELD by the operator. The run
   phase has NOT started; `status` stays `draft`.
+- 2026-09-26 · spec v0.2.3 (manager-spec, card t1203): run-phase acceptance
+  wording fixes applied — N7 (P10 bound to line 1 + P10b), N8, N9, N10,
+  AC-CPS-013 re-anchored, AC-CPS-011 check 1 selector note; AC count 15
+  unchanged; AC-CPS-004 / REQ-CPS-005 untouched.
 - REQ-CPS-010 decision: keep — reason: the operator judged the #1718 adversarial outcome (`inconclusive` with an empty findings list for a body whose prose states FAIL) acceptable — source: operator answer via the card t1203 lane question channel on 2026-09-26, recorded in this progress.md §E.1
 
 ## §E.2 Run-phase Evidence

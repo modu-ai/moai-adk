@@ -1,7 +1,7 @@
 ---
 id: SPEC-CODEX-PARSER-SHAPE-001
 title: "codex review parser — output-shape coupling and its silent failure"
-version: "0.2.2"
+version: "0.2.3"
 status: in-progress
 created: 2026-09-20
 updated: 2026-09-26
@@ -59,6 +59,16 @@ tags: "codex, review-parser, shape-coupling, silent-pass, verdict-findings-contr
   (N2), "single evidence base" becomes "primary evidence base" (N3), and the
   fidelity check gets a named test selector with a non-empty-sweep condition
   (N6). REQ and AC counts are unchanged (15 / 15).
+- 2026-09-26 · v0.2.3 · manager-spec · acceptance.md wording fixes reported by
+  the run phase (`progress.md` §E.2/§E.3; evidence
+  `.moai/reports/t1203/run/n7-mutants.log`, test
+  `TestCodex1718_P10RejectsMutants`). P10 is bound to line 1 with a PASS-negative
+  companion P10b, and the mutant table gains M3/M4 (N7); mutant scope, regex note,
+  and declared-count definition corrected (N8–N10); AC-CPS-013 re-anchored to
+  `562126b1f` or a V8-shaped body (a) does not cover; the AC-CPS-011 check 1
+  selector's change of meaning after (a) is recorded. Wording only — no
+  requirement changed, no candidate decision; REQ and AC counts unchanged
+  (15 / 15).
 
 ---
 
