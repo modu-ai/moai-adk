@@ -39,8 +39,8 @@ and record it in the progress record; do not continue quietly or send that teamm
 **Mechanism layer (landed).** The prohibition above is mechanically enforced at the PreToolUse
 layer: a send addressed to a live entry in the session's stop registry is refused with a
 sentinel-prefixed deny (`STOPPED_TEAMMATE_VIOLATION:`). The deny layer is opt-in
-(`workflow.agent_stop_guard.enabled`, default false) and is a kill switch for the DENY only —
-recording and audit continue whatever it holds. Deliberate revival stays possible through an
+(`workflow.agent_stop_guard.enabled`, template default false) and is a kill switch for the DENY
+only — recording and audit continue whatever it holds. Deliberate revival stays possible through an
 explicit fresh spawn carrying the same name. A `STOPPED_TEAMMATE_VIOLATION` deny is never a bug to
 route around: it means the doctrine held — route coordination through the owning orchestrator, or
 respawn the name deliberately. Registry path, audit rows, and the entry lifecycle:

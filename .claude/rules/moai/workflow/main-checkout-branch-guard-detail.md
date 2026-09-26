@@ -160,9 +160,10 @@ wrong branch". The full mechanism: `main-checkout-branch-guard-detail.md` § Why
 
 ## Procedure — Isolate With a Worktree
 
-When work needs a different branch, use the launcher instead of switching:
+When work needs a different branch, use the launcher instead of switching — `moai worktree new` creates the tree, `moai cc -w` enters it:
 
 ```bash
+moai worktree new <name>
 moai cc -w <name>
 git -C <worktree-path> add <paths>
 git -C <worktree-path> commit -m "<message>"
