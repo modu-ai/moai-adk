@@ -11,7 +11,7 @@ All measurements on `WT-role-naming-code` @ `e62c3e183` (= local develop at plan
 
 ## §1 Census summary
 
-Full census: `.moai/reports/t1256/census.md`; reproducible with `python3 .moai/reports/t1256/census.py` (writes `raw/census.tsv`, 16,608 rows).
+Full census: `.moai/reports/t1256/census.md`; reproducible with the tracked `python3 .moai/specs/SPEC-ROLE-NAMING-CODE-001/census.py` (default output `.moai/reports/t1256/raw/census.tsv`, overridable with `--out`; 16,608 rows).
 
 Rename-candidate tokens (lead, leader, worker, role-sense agent, CJK lead/worker):
 

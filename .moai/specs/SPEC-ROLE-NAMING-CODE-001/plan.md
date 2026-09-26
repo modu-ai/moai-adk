@@ -34,7 +34,7 @@ Every item below is resolved. Sources: the operator's answers of 2026-09-26 rela
 1. Kickoff approval recorded. §B carries no open item; the approval confirms the plan as written.
 2. REQ-RNC-014 record: develop SHA; t1242 deletion landed (halt t1242-file milestones if not); t1245 constants present (selects the M4 branch); t1193 state — if t1193 has landed on develop or is about to, report to the leader before editing any of the six overlap files (R3).
 3. Re-read the two sibling SPECs this plan cites from their landed copies on develop and confirm the cited REQ numbers and wording still hold: SPEC-AUTONOMY-PRECONDITION-001 REQ-AP-011/-012/-013 (plan time: branch `WT-push-serialize-sign` @ `e0a471d1e`, status draft) and SPEC-CODEX-FACTORY-RETIRE-001 REQ-CFR-006/-007/-015/-020 (plan time: branch `WT-codex-factory-retire` @ `d2fc5cd69`, status draft). A changed number or wording is a blocker report to the leader before M1.
-4. Absorb local develop into the card worktree; re-measure the census (`python3 .moai/reports/t1256/census.py`, run from the worktree root) and record the new counts next to the plan-time counts.
+4. Absorb local develop into the card worktree; re-measure the census (`python3 .moai/specs/SPEC-ROLE-NAMING-CODE-001/census.py --out <untracked path>`, run from the worktree root) and record the new counts next to the plan-time counts.
 5. Measure and record the CG-mode / Agent Teams user-facing string population for AC-RNC-023, with the exact command AC-RNC-023 fixes.
 6. Characterization tests pass on the absorbed tree for the packages the milestones touch (`go test ./internal/kanban/... ./internal/cli/... ./internal/hook/... ./internal/factorymsg/... ./internal/homestate/...` — scoped, never `./...`).
 
@@ -87,7 +87,7 @@ The decisions with the widest blast radius (O2 run boundary, legacy retire, the 
 ### M5 — Mechanical rename and guards (Priority Low)
 - Role-sense Go identifiers and comments renamed (REQ-RNC-019, operator O7). Retained env name constants commented "name kept under REQ-RNC-011; value follows leader/lane"; allowlisted legacy-value literals commented refuse/detect-only.
 - Test fixtures to the new vocabulary, with one rejection test per legacy spelling (REQ-RNC-020).
-- Vocabulary guard test with word-boundary `lead` matching, `MOAI_*` token exclusion, and file:line-bound allowlist entries (REQ-RNC-018); unrelated-sense diff check (REQ-RNC-016, -017).
+- Vocabulary guard test with word-boundary `lead` matching, `MOAI_*` token exclusion, and allowlist entries bound to file + exact literal, the line number recorded only (REQ-RNC-018); unrelated-sense diff check (REQ-RNC-016, -017).
 - ACs: AC-RNC-015, -017, -018, -019, -020.
 
 ### M6 — Sync-phase lifecycle records (Priority Low)
@@ -103,7 +103,7 @@ The decisions with the widest blast radius (O2 run boundary, legacy retire, the 
 | R2 | Stamp/guard value drift on the role marker → guard silently denies nothing | REQ-RNC-012 binds the value through t1245's equality assertion plus constant-only stamp/compare sites; AC-RNC-014 asserts the `lane` deny, a red run of the assertion, and names every stamp/compare site |
 | R3 | t1193 overlaps six files (`internal/cli/factory.go`, `internal/factorymsg/store.go`, `internal/hook/factory_messages.go`, `internal/hook/session_start_factory.go`, `internal/cli/codex_launcher.go`, `internal/codexwiring/configtoml.go`) and adds 49 lines of worker/lead vocabulary; it is out of the ordering pending the operator's decision | Pre-flight re-checks t1193's status (§C.2, AC-RNC-015); if it lands first, this run absorbs and converts its vocabulary; if it is live and unlanded, report to the leader before editing the overlap files |
 | R4 | Mid-run binary reinstall — a routine act in this repository — now breaks a running factory or kanban run until it is relaunched (REQ-RNC-022, -025, O2) | The refusal names the run and the relaunch step; REQ-RNC-024 makes the named retire step work on a legacy-only run; the leader schedules the develop push that carries this change between runs |
-| R5 | Guard test allowlist grows into a loophole | Allowlist entries limited to refuse/detect literals, their error text, and non-role senses, each bound to a file:line the guard re-checks (REQ-RNC-018); AC-RNC-018 records the count and fails on a stale entry |
+| R5 | Guard test allowlist grows into a loophole | Allowlist entries limited to refuse/detect literals, their error text, and non-role senses, each bound to a file and the exact literal the guard re-checks; a line number is recorded only and is not part of the binding (REQ-RNC-018); AC-RNC-018 records the count and fails on a stale entry |
 | R6 | Heuristic census undercounts multi-line user-facing strings | Pre-flight re-measure plus the guard test, which reads compiled string constants rather than lines |
 | R7 | Operator retraining churn (third change in five days) with no hint path | Operator chose rejection knowingly (O0); every rejection names the canonical form |
 | R8 | Card t1240 starts before its card text is amended (O4) and ships `-f agent` | O4 is the leader's queue edit; the ordering places t1240 after this run, whose rejection path would refuse `-f agent` at t1240's first test |

@@ -30,7 +30,16 @@
   - N6: AC-RNC-019 adds the M5 census re-run recording remaining identifier-internal role-sense rows, each tagged with its exclusion, untagged count 0.
   - N7: allowlist entries bound to file + exact literal; line numbers are recorded only (REQ-RNC-018, AC-RNC-018).
   - N8: AC-RNC-025 SessionStart case split into (a) label trigger with no record and (b) record trigger with a `leader` label.
-- Status: ready for plan-audit iteration 3 (final)
+- Plan-audit iteration 3 (final, Tier L ceiling): FAIL 0.89 (`.moai/reports/t1256/plan-audit-iter3.md`, audited at `7c2b4d528`) — mandatory gates 7/7, blocking P1 only (plan.md M5 and R5 still described the allowlist as file:line-bound), optional P2–P4.
+- Post-audit fixes (2026-09-26), no REQ or AC added (both stay at 25):
+  - P1: plan.md M5 and R5 now state allowlist entries are bound to file + exact literal, the line number recorded only — consistent with REQ-RNC-018 and AC-RNC-018.
+  - P2: census script committed at `.moai/specs/SPEC-ROLE-NAMING-CODE-001/census.py` with an `--out` argument (default output under the ignored `.moai/reports/t1256/raw/`); output byte-identical to the report copy on the current tree (16608 rows). AC-RNC-019, plan.md §C pre-flight step 4, and research.md §1 reference the tracked path.
+- Accepted debt (operator override, not fixed at plan close):
+  - P3: REQ-RNC-022's empty-`run_id` legacy-claim clause has no dedicated AC-RNC-022 case. Run phase should add the Given/When/Then (live legacy claim with `run_id=''`, owner `worker-5` → factory leader launch proceeds, claim not counted as a lane) when implementing AC-RNC-022.
+  - P4: AC-RNC-025(a) requires "no session record file is created", which REQ-RNC-025 implies ("instead of re-deriving") but does not state; wording alignment deferred.
+- Plan-audit final state: iteration 3 FAIL 0.89 → operator override to **PASS-WITH-DEBT** after the P1 fix, decided by the operator in the lane window on 2026-09-26; no re-audit.
+- Implementation Kickoff: approved by the operator on 2026-09-26, progression mode semi-autonomous.
+- Status: plan closed; frontmatter `status: draft` left for manager-develop's `draft → in-progress` at run entry.
 
 ## §E.2 Run-phase Evidence
 
