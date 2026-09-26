@@ -160,12 +160,19 @@ func (f *FactoryDB) reconcileUnavailable(ctx context.Context, tx *sql.Tx, runID 
 	return func() { _ = markRecordUnavailableReconciled(path, ids) }, nil
 }
 
+// recordUnavailableRewriteHook is a test seam called between the rewrite's
+// read of the log and its replacement of the file. It is nil in production.
+var recordUnavailableRewriteHook func()
+
 // markRecordUnavailableReconciled rewrites the log with the given entries
 // marked reconciled (write-to-temp, then rename).
 func markRecordUnavailableReconciled(path string, ids map[string]bool) error {
 	entries, err := readRecordUnavailableFile(path)
 	if err != nil {
 		return err
+	}
+	if recordUnavailableRewriteHook != nil {
+		recordUnavailableRewriteHook()
 	}
 	var buf bytes.Buffer
 	for _, e := range entries {
