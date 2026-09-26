@@ -1,7 +1,7 @@
 ---
 id: SPEC-MCP-WORKTREE-UNTRACKED-001
 title: "Accept a linked worktree as project_root when the repository keeps .moai/ out of git"
-version: "0.4.0"
+version: "0.5.0"
 status: draft
 created: 2026-09-26
 updated: 2026-09-26
@@ -26,6 +26,7 @@ tags: "mcp, worktree, project-root, untracked-moai, audit, validator"
 | 0.2.0 | 2026-09-26 | manager-spec (t1202) | Revision for plan-audit iter-1 (FAIL 0.62, D1–D16): per-tool `.moai` inventory, four access classes, source-root and primary-checkout predicates, design (b) premise corrected. |
 | 0.3.0 | 2026-09-26 | manager-spec (t1202) | Scope reduction after plan-audit iter-2 (FAIL 0.78), lead decision option B. Kept: validator acceptance of a registered linked worktree whose primary checkout is a MoAI root, and tree operations resolving to the worktree. Moved to follow-up card t1213: configuration/catalogue source-root routing and state-write destinations. Fixed D17 (today's acceptance path is untouched), D19, D21, D23, D24. |
 | 0.4.0 | 2026-09-26 | manager-spec (t1202) | Delta plan-audit (FAIL 0.86, blocked by D27). Closes the silent audit-gate weakening in this SPEC: the `workflow.audit.gates` read of a linked worktree lacking its own workflow config comes from the primary checkout, fail-closed when the primary cannot be resolved (REQ-MWU-011/012). Tree-operation and gate conditions are keyed on durable properties, not on the acceptance branch (D29). Lead decision D30 = B: catalogue/state tools on a config-orphaned root carry a `_root` warning (REQ-MWU-013). Added the no-subprocess and documentation checks (D28, D31); tree-operation git environment recorded as out of scope (D33). |
+| 0.5.0 | 2026-09-26 | manager-spec (t1202) | Delta-2 plan-audit (FAIL 0.87, blocked by D34). "Config-orphaned" now requires positive, git-free evidence of a linked worktree top level (`<root>/.git` file pointing into `<common-dir>/worktrees/`); fail-closed (REQ-MWU-012) applies only to such roots, and every other root keeps today's gate behaviour with no git inspection (D34, D35). Warning moved to a distinct `_root.worktree_warning` field (D36); `spec_audit` always carries `_root` (D41); gate routing pinned to MCP call sites, `CodexGateRequired` unchanged (D43); `codex_audit` tool description added to REQ-MWU-010 (D39). ACs widened, count unchanged (D37, D38, D42). |
 
 ## §1 Problem
 
@@ -208,7 +209,8 @@ see §6; what stays in scope for them is the REQ-MWU-013 warning.
   matches against, and the primary path in symlink-canonical form, and shall run
   every git inspection with `GIT_DIR`, `GIT_WORK_TREE`, `GIT_COMMON_DIR`,
   `GIT_INDEX_FILE`, and `GIT_CEILING_DIRECTORIES` removed from the child
-  environment.
+  environment and `LC_ALL=C` set, deciding outcomes by exit status and output
+  shape rather than by message text.
 
 - **REQ-MWU-007 (Ubiquitous, sibling entries).** The validator shall decide
   REQ-MWU-002 on the listed entry that matches the candidate only; any other
@@ -228,7 +230,11 @@ see §6; what stays in scope for them is the REQ-MWU-013 warning.
   absent or empty `project_root` shall remain unchanged for both the fallback
   and the pass-through variants.
 
-- **REQ-MWU-010 (Ubiquitous, documentation).** The shared input description text
+- **REQ-MWU-010 (Ubiquitous, documentation).** The `codex_audit` tool description
+  (`internal/cli/mcp_server.go`, which today says the gate is read from "the
+  reviewed tree") and any other tool description that names the source of
+  `workflow.audit.gates` shall state that a worktree without its own workflow
+  config takes the gate from the primary checkout. The shared input description text
   (`projectRootDescCommon`) and `.claude/rules/moai/core/moai-mcp-tools.md`
   § The `project_root` input shall state the linked-worktree acceptance, that the
   audit gate of a worktree without its own workflow config is read from the
@@ -241,42 +247,57 @@ see §6; what stays in scope for them is the REQ-MWU-013 warning.
 ### §4.4 Config-orphaned roots — audit gate and catalogue warning
 
 A **config-orphaned root** is a tool root that has no
-`.moai/config/sections/workflow.yaml` and that git reports to be a linked
-worktree (its git dir differs from its git common dir). The property is durable:
-a state write that later creates other paths under the root's `.moai` (for
-example an audit receipt) does not change it, so every condition below keys on
-this property and never on which validator branch accepted the root.
+`.moai/config/sections/workflow.yaml` and that carries **positive evidence of
+being a linked worktree top level**: `<root>/.git` is a regular file whose
+`gitdir:` line names a directory whose parent directory is named `worktrees`
+(the `<common-dir>/worktrees/<name>` layout git writes for a linked worktree).
+The determination reads that one file and runs no git subprocess, so it does not
+depend on git being installed, on locale, or on git's error text. Every other
+shape is **not** config-orphaned and gets no evidence: a `.git` directory (a
+primary checkout), no `.git` at all (a subdirectory or a non-repository), a
+`.git` file pointing under `modules/` (a submodule), or a `.git` file that is
+unreadable or has no `gitdir:` line. The property is durable: a state write that
+later creates other paths under the root's `.moai` (for example an audit
+receipt) does not change it, so every condition below keys on this property and
+never on which validator branch accepted the root.
 
 - **REQ-MWU-011 (State-driven, gate from primary).** While an audit root is
   config-orphaned, the three §3.1 gate reads shall resolve `workflow.audit.gates`
   from the workflow config of the primary checkout identified by REQ-MWU-004,
-  and only that key; every other key keeps its current source.
+  and only that key; every other key keeps its current source. The routing is
+  done at the MCP call sites; `auditreceipt.CodexGateRequired` itself is not
+  changed, so the hook-side receipt guard keeps today's behaviour.
 
-- **REQ-MWU-012 (Event-driven, gate read fails closed).** When an audit root has
-  no `.moai/config/sections/workflow.yaml` and the config-orphan determination or
-  the REQ-MWU-004 primary identification cannot complete (git unavailable, a
-  non-zero exit other than "not a git repository", unexpected output, or an
-  ambiguous layout), the §3.1 gate reads shall treat the codex gate as
-  `required`, so a codex no-verdict yields a gate-unmet `fail` rather than a
-  fail-open result. A root that git reports is not inside a repository, or that
-  is the primary checkout itself, keeps today's gate behavior. The inspection
-  runs with the same scrubbed environment as REQ-MWU-006.
+- **REQ-MWU-012 (Event-driven, gate read fails closed on a worktree only).** When
+  an audit root is config-orphaned and the REQ-MWU-004 primary identification
+  cannot complete — git unavailable, a non-zero exit, output of an unexpected
+  shape, or an ambiguous layout — the §3.1 gate reads shall treat the codex gate
+  as `required`, so a codex no-verdict yields a gate-unmet `fail` rather than a
+  fail-open result. The primary identification runs only for a config-orphaned
+  root, with the REQ-MWU-006 scrubbed environment plus `LC_ALL=C`, and its
+  failure is decided by exit status and output shape, never by message text. A
+  root that is not config-orphaned keeps today's gate behaviour and triggers no
+  git inspection for the gate read.
 
 - **REQ-MWU-013 (State-driven, catalogue/state warning).** While the root a
   catalogue or state tool (`spec_progress`, `spec_audit`, `spec_drift`,
-  `verify_snapshot`, `verify_trend`) answers for is config-orphaned — or the
-  config-orphan determination cannot complete — the response shall carry a
-  `_root` block with a `warning` stating that the answer was read from the
-  worktree tree and may be empty because `.moai` is not tracked in that
-  repository, so an empty result is distinguishable from "no SPECs". `spec_audit`,
-  which carries no `_root` block today, gains one for this purpose.
+  `verify_snapshot`, `verify_trend`) answers for is config-orphaned, the
+  response's `_root` block shall carry a `worktree_warning` field stating that
+  the answer was read from the worktree tree and may be empty because `.moai` is
+  not tracked in that repository, so an empty result is distinguishable from
+  "no SPECs". The existing `_root.warning` fallback notice keeps its key and text
+  and is never overwritten; both fields appear when both conditions hold.
+  `spec_audit` attaches the `_root` block on every call, as the other catalogue
+  tools do; its existing result fields keep their names and values.
 
 ## §5 Constraints
 
 - The reject-never-fall-back contract of the `project_root` input is binding.
 - The validator runs a git subprocess only on the no-`.moai` branch; the
-  existing branch gains no subprocess. The gate read runs one scrubbed git
-  inspection only for an audit root without `.moai/config/sections/workflow.yaml`.
+  existing branch gains no subprocess. The config-orphan determination reads one
+  file and runs no subprocess; the gate read runs scrubbed git inspections
+  (REQ-MWU-006, `LC_ALL=C`) only for a config-orphaned root. The REQ-MWU-013
+  warning needs the determination only, never a git inspection.
 - Template text stays neutral across the 16 supported programming languages and
   free of internal development state (no SPEC IDs, card ids, dates, commit SHAs).
 - No creation path writes, copies, or links `.moai` as part of this SPEC.

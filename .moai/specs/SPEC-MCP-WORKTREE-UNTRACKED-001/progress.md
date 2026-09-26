@@ -8,7 +8,7 @@ Card: t1202 | Branch: WT-worktree-moai-root | Base: origin/develop `df526c9a9` |
 plan_status: audit-ready
 plan_complete_at: 2026-09-26
 tier: M
-spec_version: "0.4.0"
+spec_version: "0.5.0"
 artifacts: [spec.md, plan.md, acceptance.md, progress.md]
 spec_id_check: "Bash regex PASS on SPEC-MCP-WORKTREE-UNTRACKED-001; ID absent from .moai/specs (count 0)"
 baseline_tree: df526c9a9
@@ -16,9 +16,29 @@ premise_evidence: .moai/reports/t1202/verdict.md
 plan_audit_iter1: ".moai/reports/t1202/plan-audit.md — FAIL 0.62"
 plan_audit_iter2: ".moai/reports/t1202/plan-audit-iter2.md — FAIL 0.78; lead decision: option B (scope reduction)"
 plan_audit_delta: ".moai/reports/t1202/plan-audit-delta.md — FAIL 0.86 (blocked by D27)"
+plan_audit_delta2: ".moai/reports/t1202/plan-audit-delta2.md — FAIL 0.87 (blocked by D34)"
 deferred_to: t1213
 recommendation: "design (a) alone; operator decides at Kickoff (plan.md §C, 2 open decisions)"
 ```
+
+### Delta-2 audit map (spec v0.4.0 → v0.5.0)
+
+Source: `.moai/reports/t1202/plan-audit-delta2.md` (FAIL 0.87, blocked by D34; D27/D29 confirmed closed).
+
+| Item | Change |
+|---|---|
+| D34 | "Config-orphaned" requires positive, git-free evidence: `<root>/.git` is a file whose `gitdir:` names `<common-dir>/worktrees/<name>`. REQ-MWU-012 fails closed only for such roots; every other root (non-repository, primary checkout, subdirectory, submodule) keeps today's gate path and runs no git for it. The undefined "primary checkout itself" exception is removed. AC-MWU-015 widened: (i) fail-closed on worktree evidence incl. git absent from `PATH`; (ii) `inconclusive` for non-git dir, repository primary, and primary with git absent. |
+| D35 | No "not a repository" classification remains. Primary identification runs with scrubbed `GIT_*` plus `LC_ALL=C` and decides by exit status and output shape (REQ-MWU-006, REQ-MWU-012). |
+| D36 | Warning moved to `_root.worktree_warning`; the fallback `_root.warning` keeps key and text. AC-MWU-016 asserts both present under `CLAUDE_PROJECT_DIR = W`. |
+| D37 | AC-MWU-016 now calls `verify_snapshot`. |
+| D38 | AC-MWU-014 requires a non-empty `audit_receipt`. |
+| D39 | REQ-MWU-010 and AC-MWU-013 cover the `codex_audit` tool description (and any other description naming the gate source); plan M5. |
+| D40 | spec §5 wording: the determination reads one file; git inspections only for config-orphaned roots; the warning needs no git. |
+| D41 | `spec_audit` attaches `_root` on every call; existing result fields unchanged. |
+| D42 | AC-MWU-014: `audit_multi` must return `overall_verdict: fail` with `gate_unmet` naming codex. |
+| D43 | Receipt-id routing pinned to the MCP call site (`mcp_audit_receipt.go`); `auditreceipt.CodexGateRequired` unchanged, hook guard unaffected (REQ-MWU-011, plan §B.3). |
+| D32 | No action (auditor: optional, no hand edit). AC count unchanged at 16, so the baseline was not regenerated. |
+| Residual (b) of delta-2 | A subdirectory of a worktree has no `.git` file, so it is never config-orphaned — the server-cwd-in-subdirectory case no longer reads the primary's gate. |
 
 ### Delta-audit map (spec v0.3.0 → v0.4.0)
 

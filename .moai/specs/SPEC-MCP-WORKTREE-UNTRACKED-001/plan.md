@@ -68,7 +68,11 @@ instead of falling back.
 
 Expected files: `mcp_project_root.go` (plus a sibling for the scrubbed git
 helper and config-orphan predicate), `mcp_codex.go`, `mcp_convergence.go`,
-`mcp_audit_receipt.go` (or `audit_pin.go` as the shared gate seam),
+`mcp_audit_receipt.go` (the receipt-id gate read is routed at this MCP call
+site; `auditreceipt.CodexGateRequired` is NOT changed, so the hook-side receipt
+guard in `internal/hook/audit_receipt_guard.go` keeps today's behaviour and
+stays with card t1213), `audit_pin.go` (shared gate seam for the other two
+reads),
 `mcp_server.go` (warning on catalogue/state responses, `_root` on
 `spec_audit`), two or three test files, the two rule-doc copies — about 9–11
 files, roughly 400–700 LOC with tests. Tier M. REQs 13, ACs 16 (at the Tier M
@@ -148,14 +152,20 @@ Still for the operator:
 
 ### M4b — Priority High — Config-orphan predicate, gate read, warning
 
-- Shared predicate (scrubbed git, fail-closed classification) used by the three
-  §3.1 gate reads (REQ-MWU-011/012) and by the catalogue/state `_root` warning
-  (REQ-MWU-013). Only `workflow.audit.gates` is routed; no write destination
-  changes. AC-MWU-014, AC-MWU-015, AC-MWU-016, including the second-call case
+- Shared config-orphan predicate (reads `<root>/.git` only; no subprocess) used
+  by the three §3.1 gate reads (REQ-MWU-011/012) and by the catalogue/state
+  `_root.worktree_warning` (REQ-MWU-013). Primary identification (scrubbed git,
+  `LC_ALL=C`, exit status and output shape only) runs only for config-orphaned
+  roots and fails closed there; every other root keeps today's gate path. Only
+  `workflow.audit.gates` is routed; no write destination changes; the existing
+  `_root.warning` key is untouched. AC-MWU-014, AC-MWU-015, AC-MWU-016, including the second-call case
   after `W/.moai/state/` exists.
 
 ### M5 — Priority Medium — Descriptions and rule doc
 
+- Update the `codex_audit` tool description in `internal/cli/mcp_server.go`
+  (today: gate read from "the reviewed tree") and any other tool description
+  naming the gate source.
 - Update `projectRootDescCommon`; update § The `project_root` input in both
   copies of `moai-mcp-tools.md` (linked-worktree row; sentences that the audit gate of a
   worktree without its own workflow config is read from the primary checkout,
@@ -176,7 +186,10 @@ Still for the operator:
 - Answering a graph query from the primary checkout's graph.
 - Keying the gate read or the warning on "accepted through REQ-MWU-002" — the
   first receipt write flips later calls to the REQ-MWU-001 branch.
-- Treating a failed config-orphan determination as "no gate" (fail-open).
+- Failing closed on a root without worktree evidence (non-repository, primary
+  checkout, subdirectory, submodule) — those keep today's behaviour.
+- Classifying "not a repository" from git's (localized) message text.
+- Writing the worktree warning into the existing `_root.warning` key.
 - Calling an unscrubbed git helper.
 
 ## §H Cross-References

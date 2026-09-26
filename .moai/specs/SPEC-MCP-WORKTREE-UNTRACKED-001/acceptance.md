@@ -115,8 +115,10 @@ a `.moai/` directory present in `P` (including
   `projectRootDescCommon` each state (a) linked-worktree acceptance, (b) that the
   audit gate of a worktree without its own workflow config is read from the
   primary checkout, and (c) that other configuration, the catalogue, and state
-  are read from the accepted tree; and the neutrality guards pass with no SPEC
-  ID, card id, or date in the template copy.
+  are read from the accepted tree; the `codex_audit` tool description (and any
+  other tool description naming the source of `workflow.audit.gates`) states
+  (b) and no longer says the gate comes only from "the reviewed tree"; and the
+  neutrality guards pass with no SPEC ID, card id, or date in the template copy.
 
 ### Audit gate and catalogue warning
 
@@ -127,40 +129,55 @@ a `.moai/` directory present in `P` (including
   When `codex_audit` is called with `project_root = W`, and `audit_multi` is
   called with `project_root = W` using stub backends that return a Claude
   `pass` and no codex verdict,
-  Then `codex_audit` returns verdict `fail` with a non-empty `gate_unmet`, and
-  `audit_multi` returns an `overall_verdict` other than `pass`;
+  Then `codex_audit` returns verdict `fail` with a non-empty `gate_unmet` and a
+  non-empty `audit_receipt` (the receipt-id read also saw the primary's gate),
+  and `audit_multi` returns `overall_verdict: fail` with a `gate_unmet` that
+  names codex;
   and When both calls are repeated after the first `codex_audit` call has created
-  `W/.moai/state/` (the receipt write), Then the same two results hold.
+  `W/.moai/state/` (the receipt write), Then the same results hold.
 
-- **AC-MWU-015 (gate read fails closed; non-worktree unchanged; REQ-MWU-012).**
-  Given the AC-MWU-006 `--separate-git-dir` repository with a linked worktree
+- **AC-MWU-015 (fail-closed only with worktree evidence; every other root unchanged; REQ-MWU-012).**
+  Given a codex seam that produces no verdict in every case below:
+  (i) Given the AC-MWU-006 `--separate-git-dir` repository with a linked worktree
   `W3` into which a bare `.moai/` directory (no `workflow.yaml`) has been placed,
-  so that `project_root = W3` is accepted through REQ-MWU-001,
-  When `codex_audit` is called with `project_root = W3` and the codex seam
-  produces no verdict,
-  Then the result is verdict `fail` with a non-empty `gate_unmet`;
-  and Given the AC-MWU-012 non-git directory with only `.moai/`, When the same
-  call is made, Then the result is the fail-open `inconclusive` it returns today
-  (no gate applied).
+  so that `project_root = W3` is accepted through REQ-MWU-001, When
+  `codex_audit` is called with `project_root = W3`, Then the result is verdict
+  `fail` with a non-empty `gate_unmet`; and with a `PATH` from which git cannot
+  be found, the same call on fixture F's `W` (after a bare `.moai/` is placed in
+  it) also returns `fail` with a non-empty `gate_unmet`.
+  (ii) Given each of the following roots with a bare `.moai/` and no
+  `workflow.yaml` — the AC-MWU-012 non-git directory; a git repository's primary
+  checkout; and that primary checkout run again with a `PATH` from which git
+  cannot be found — When `codex_audit` is called on it, Then the result is the
+  fail-open `inconclusive` it returns today, with no `gate_unmet`.
 
 - **AC-MWU-016 (catalogue/state warning; REQ-MWU-013).**
   Given fixture F,
-  When `spec_progress`, `spec_audit`, `spec_drift`, and `verify_trend` are each
-  called with `project_root = W`, and again after `W/.moai/state/` exists,
-  Then every response carries a `_root` block whose `warning` states the answer
-  was read from the worktree tree and may be empty because `.moai` is not
+  When `spec_progress`, `spec_audit`, `spec_drift`, `verify_snapshot`, and
+  `verify_trend` are each called with `project_root = W`, and again after
+  `W/.moai/state/` exists,
+  Then every response carries a `_root` block whose `worktree_warning` states the
+  answer was read from the worktree tree and may be empty because `.moai` is not
   tracked;
-  and Given the primary `P` passed as `project_root`, Then no such warning is
-  present.
+  and Given the primary `P` passed as `project_root`, Then no `worktree_warning`
+  is present, and `spec_audit` still carries a `_root` block;
+  and Given no `project_root` and, in a non-parallel test, `CLAUDE_PROJECT_DIR`
+  set to `W`, When `spec_progress` is called, Then the `_root` block carries both
+  the existing fallback `warning` (unchanged text) and the `worktree_warning`.
 
 ## §D.1 Edge cases
 
 - A worktree whose own `.moai` exists (tracked repository, a partially tracked
   `.moai` such as tracked config with ignored specs, or a directory created later
   by a state write) takes the REQ-MWU-001 branch, as it does today; whether it is
-  config-orphaned depends only on its own `workflow.yaml` (REQ-MWU-011..013).
+  config-orphaned depends only on its own `workflow.yaml` and its `.git` file
+  (REQ-MWU-011..013).
+- A subdirectory of a worktree, a submodule root (`.git` file under `modules/`),
+  and any root with a `.git` directory are never config-orphaned, so their gate
+  reads are unchanged and run no git inspection.
 - A bare primary or submodule-internal git dir is rejected by the validator
-  (REQ-MWU-004) and makes the gate read fail closed (REQ-MWU-012).
+  (REQ-MWU-004); only a config-orphaned root whose primary cannot be identified
+  makes the gate read fail closed (REQ-MWU-012).
 
 ## §D.2 Quality gate
 
