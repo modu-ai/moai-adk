@@ -82,6 +82,7 @@ $ go list -f '{{.ImportPath}} {{join .Imports " "}}' ./... \
 | `internal/jev` | 2 | **이 판에서 새로 들어왔다.** 소비자는 `internal/cli`(doctor·todo admission·숨은 suggest 앵커 세 파일)와 `internal/jevmeasure`(살아 있는 `Answerer` 구현) |
 | `internal/jevcred` | 2 | **이 판에서 새로 들어왔다.** 소비자는 `internal/cli`와 `internal/web` — 위자드·doctor 쪽과 콘솔 Jev 패널이 각각 하나씩이며, 두 표면이 하나의 reader를 공유하는 것이 이 패키지의 요건이다 |
 | `internal/mission` | 1 | 소비자는 `internal/cli` 하나 — 실제로는 `internal/cli/goal.go` 한 파일이다 |
+| `internal/contract` | 1 | **t1238 판에서 새로 들어왔다.** 비테스트 소비자는 `internal/cli/contract.go` 한 파일과 같은 계열의 `internal/contract/sign`뿐이다. 코어는 표준 라이브러리와 `gopkg.in/yaml.v3`만 import 하는 leaf이며(`go list -f '{{.Imports}}' ./internal/contract`), 부수효과를 지는 `internal/contract/sign`은 코어와 `internal/atomicfile`을 import 한다 — 방향은 sign→core 한쪽뿐이다. `internal/hook`은 Frozen 지시 파일 목록을 테스트에서만 고정하므로 이 칸에 들어오지 않는다 |
 | `internal/codextools` | 0 | 비테스트 소비자 없음(`modules.md` §네거티브 스페이스) |
 | `internal/jevmeasure` | 0 | **이 판에서 새로 들어왔고, 0은 설계다 — 그러나 종류가 다른 0이다.** 테스트 시점 가드도 빌드타임 도구도 아니고, 측정 게이트가 실행되지 않은 **게이트 미실행 상태**라 소비자가 원리상 아직 없다. 게이트가 통과하면 소비자가 붙는 것이 이 0의 의미다(`modules.md` §네거티브 스페이스) |
 | `internal/harness/rosterguard` · `internal/harness/cellguard` | 0 | **t999 판에서 새로 들어왔고, 0이 정상이다.** 테스트 시점 가드라 비테스트 소비자가 원리상 없다 — `internal/template/agentemit` · `commandemit`과 같은 이유이고 `codextools`와는 다른 이유다(`modules.md` §네거티브 스페이스) |

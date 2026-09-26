@@ -10,6 +10,8 @@ import (
 	"path/filepath"
 	"testing"
 	"time"
+
+	"github.com/modu-ai/moai-adk/internal/gitenv"
 )
 
 // TestMain keeps the source tree clean. builder.Build writes
@@ -22,6 +24,10 @@ import (
 // performed, so the os.Getwd()-basename assertions elsewhere in the package are
 // preserved. Tests that need a real write target t.TempDir().
 func TestMain(m *testing.M) {
+	// Git fixtures must not inherit a hook's or lane's repository (GH #1691).
+	if err := gitenv.ScrubProcess(); err != nil {
+		panic(err)
+	}
 	_, preErr := os.Stat(".moai")
 	moaiPreExisted := preErr == nil
 

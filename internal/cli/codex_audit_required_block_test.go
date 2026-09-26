@@ -89,7 +89,7 @@ func TestCodexAudit_EngineDefaultRequiredIsNotOptIn(t *testing.T) {
 // AC-CAG-005: a real pass or fail verdict is left untouched under required.
 func TestCodexAudit_RequiredGateLeavesRealVerdicts(t *testing.T) {
 	for name, tc := range map[string]struct{ body, want string }{
-		"pass": {"clean change, no findings", "pass"},
+		"pass": {realCleanReview, "pass"},
 		"fail": {issue1632ReviewBody, "fail"},
 	} {
 		t.Run(name, func(t *testing.T) {
