@@ -66,11 +66,86 @@ slot-serialized go test) is inherently serial.
 
 ## §E.2 Run-phase Evidence
 
-_<pending run-phase>_
+Run phase executed 2026-09-26 by manager-develop (card t1253, serial mode, worktree
+`.claude/worktrees/t1253`, branch `WT-cli-test-duration`). RED-now evidence at M1 entry:
+`.moai/reports/t1253/red-evidence.txt` (no `-timeout` on any COVERED surface at baseline
+HEAD b3ade47e3). Attribution discipline: every row below names (a) command, (b) verbatim
+output, (c) HEAD SHA measured against.
+
+### AC matrix
+
+| AC | Status | Command | Verbatim output (excerpt) | Measured against |
+|----|--------|---------|---------------------------|------------------|
+| AC-001 | PASS | `make -n test; make -n test-verbose; make -n test-codex-live; make -n test-race-short` + `grep -c '\-timeout' Makefile scripts/ci-mirror/lib/go.sh` | 4 recipe dry-runs each show an explicit flag (`-timeout 60m` ×3, `-timeout 10m` ×1); `Makefile:4` + `scripts/ci-mirror/lib/go.sh:1` → 5/5 COVERED surfaces flagged | 2f458a2c9 |
+| AC-002 | PASS | `grep -n 'go test' CLAUDE.local.md` | L265: `` `go test -timeout 30m ./internal/<pkg>/...` `` + D2 pointer; L394: same substitution; L396/397 (`-count=1 ./...` / `-race ./...`) byte-unchanged; L532 untouched | 2f458a2c9 |
+| AC-003 | PASS | read spec.md §B.1 (arithmetic re-check) | D1: 885.287×3.62=3204.7≈3205s; cross-check 1118.093×2.868=3206.7≈3207s (convergent ~3.2ks); 30m=1800s < 3205s shown insufficient; 60m=3600s at 1.12x headroom. D2: 1800/1118.093=1.61x. D3: unmeasured-subset gap disclosed explicitly. Every figure attributed (measure-meta.txt / run 36228023389) | 2f458a2c9 |
+| AC-004 | PASS | single compound `unset <16 vars> && go test -json -count=1 -timeout 35m ./internal/cli/` (slot-serialized, env-scrubbed) | exit 0; `ok github.com/modu-ai/moai-adk/internal/cli 1435.826s`; events pass=7595 (7594 leaf + 1 package-level marker), skip=50, fail=0; `panic: test timed out` → 0 matches; stderr 0 bytes. Count reconciliation vs baseline 7594/50: identical at leaf level. Full record: `.moai/reports/t1253/go-test-cli-post-summary.txt`; raw stream `go-test-cli-post.json` (8.15MB), stderr `go-test-cli-post.stderr.txt` | 2f458a2c9 |
+| AC-005 | PASS | `git diff --name-only b4f798dcc..HEAD; git status --short` | changed set = `.moai/specs/SPEC-CLI-TEST-TIMEOUT-001/{spec,plan,acceptance,progress}.md` + `plan-audit-iter-{1,2}.md` + `Makefile` + `CLAUDE.local.md` + `scripts/ci-mirror/lib/go.sh`; `ci.yml` / `release-pr-multi-os.yml` absent; working tree clean | 2f458a2c9 |
+| AC-006 | PASS | read spec.md §D | all three premise elements present: t1252 named with file-disjointness claim (`internal/cli/main_test.go` vs 3 target files; base-touch confirmed — last touched by t1232 58e522b90, inside base) + baseline-pre-t1252 caveat; t1219 merge-order note (§6 edit = package-test recipe lines only, disjoint from full-suite lines); §13 L532 element with ownership assigned to t1219 + explicit this-SPEC-does-not-touch | 2f458a2c9 |
+| AC-007 | PASS | read spec.md §C | three rejections recorded with quantified evidence: package split (662 test files / 4,246 funcs / 184,704 lines / 273 source files, Tier L); slow-test repair (top-25 = 278.6s = 25% cap); narrowing `test-race-short` below D1 (no `-short` measurement). Each names follow-up-card disposition | 2f458a2c9 |
+| AC-008 | PASS | `grep -n 'timeout' Makefile scripts/ci-mirror/lib/go.sh CLAUDE.local.md` | every introduced `-timeout` occurrence (Makefile L104/107/110/194, go.sh L25, CLAUDE.local.md L265/394) carries an adjacent D1/D2/D3 + `.moai/reports/t1253/measure-meta.txt` pointer in the same line; no bare constant | 2f458a2c9 |
+| AC-009 | PASS | `grep -n 'go test' Makefile`; `grep -rn 'go test' scripts/ci-mirror/ scripts/ac-baseline/`; `grep -n 'go test' CLAUDE.local.md`; CI workflow inspection (read-only) | every discovered go-test invocation maps to exactly one §B.3 row: Makefile L39/48→row 9, L52/59→row 10, L67→row 11, L104→row 1, L107→row 2, L110→row 4, L180→row 7, L184→row 8, L193/194→row 3; go.sh L25→row 5; check-staged.sh L26→row 12; CLAUDE.local.md L161/164→row 18, L265→row 14, L394→row 15, L396/397→row 16, L532→row 17; CI workflows→row 13; L112 `coverage`→row 6 (transitive). No unlisted go-test surface found. (`scripts/ci-mirror/lib/rust.sh` cargo-test lines are not go-test surfaces — out of inventory scope) | 2f458a2c9 |
+
+9/9 PASS (0 FAIL).
+
+### Non-AC self-verification
+
+- **E2 cross-platform build — N/A (justified)**: zero Go files changed (Makefile, shell,
+  Markdown only); no build surface moved. `git diff --stat b4f798dcc..HEAD` confirms no
+  `.go` path in the changed set (AC-005 evidence).
+- **E3 coverage — N/A (justified)**: no Go code surface changed; no coverage attribution
+  is possible or required for Makefile/shell/Markdown edits.
+- **E4 subagent-boundary grep — N/A (justified)**: no Go code; the grep domain does not
+  exist in this change set.
+- **E5 spec lint**: `moai spec lint SPEC-CLI-TEST-TIMEOUT-001` → `✓ No findings — all
+  SPEC documents are valid`, exit 0 (this run, HEAD 2f458a2c9). golangci-lint N/A —
+  Makefile recipes, Markdown prose, and a POSIX-sh script carry no Go lint surface.
+- **E6 commits + push state**: M1 `585648d08`, M2 `2f458a2c9`, M3/M-final `pending —
+  see §E.3` (backfilled after this commit). **No push was performed** (git-flow card
+  mode: push is the lead's batch act).
+- **E7 blockers**: none.
+- **E8 RED evidence**: `.moai/reports/t1253/red-evidence.txt` — verbatim pre-change greps
+  at HEAD b3ade47e3: `grep -n 'timeout' Makefile scripts/ci-mirror/lib/go.sh` → no match
+  (exit 1); `grep -n 'go test.*timeout' CLAUDE.local.md` → no match (exit 1); full go-test
+  line listings captured. Post-change GREEN = the AC-004 run + the AC-001/002/008 greps.
 
 ## §E.3 Run-phase Audit-Ready Signal
 
-_<pending run-phase>_
+```yaml
+run_status: complete
+run_complete_at: 2026-09-26
+run_commit_sha: pending-backfill-run
+ac_pass_count: 9
+ac_fail_count: 0
+preserve_list_post_run_count: 5
+preserve_list_surfaces:
+  - .github/workflows/ci.yml (REQ-SCOPE-008, untouched)
+  - .github/workflows/release-pr-multi-os.yml (REQ-SCOPE-008, untouched)
+  - CLAUDE.local.md §6 full-suite lines L396/397 (t1219 ownership, REQ-COORD-009)
+  - CLAUDE.local.md §13 mention L532 (t1219 ownership, spec.md §D)
+  - spec.md/plan.md/acceptance.md body content (frontmatter-only edit: status+updated axis)
+l44_pre_commit_fetch: n/a (git-flow card mode — lane never pushes; HEAD re-read
+  immediately before each commit per staleness rule: b3ade47e3 before M1, 585648d08 before M2)
+l44_post_push_fetch: n/a (no push performed by lane)
+new_warnings_or_lints_introduced: 0 (spec lint exit 0, no findings; no Go lint surface)
+cross_platform_build:
+  result: n/a
+  justification: zero .go files changed; no build surface moved
+coverage:
+  result: n/a
+  justification: no Go code surface changed
+total_run_phase_files: 5
+m1_to_m3_commit_strategy: one commit per milestone (M1 585648d08, M2 2f458a2c9,
+  M-final = this commit; SHA backfill follows per the D3 placeholder exemption)
+evidence_paths:
+  - .moai/reports/t1253/red-evidence.txt
+  - .moai/reports/t1253/go-test-cli-post-summary.txt
+  - .moai/reports/t1253/go-test-cli-post.json
+  - .moai/reports/t1253/go-test-cli-post.stderr.txt
+  - .moai/reports/t1253/measure-meta.txt
+slot_lease: go-test-heavy acquired (worker-66, session 09210812-6e27-462b-80ff-272ec5f0c16d,
+  bound ends 2026-09-26T10:44:18Z) and released after the AC-004 run completed exit 0
+```
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
