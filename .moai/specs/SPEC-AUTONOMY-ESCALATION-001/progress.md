@@ -17,6 +17,9 @@
 - v0.4.2: plan-audit iteration 4 (FAIL 0.83) Q3-Q5 and m2 repaired; lead ruling 09-26 (5)
   folded in (Q1, Q2): one audit log per card, authoritative for arming. §F pinned to A1 v0.5.2
   `25283ebf8` (single pin); R8, R9, R10 closed. Requirements 23, criteria 25.
+- v0.4.3: plan-audit iteration 5 (PASS-WITH-DEBT 0.87) R1, R2, n1, n2 closed in plan: per-card
+  lock, widened "log does not show armed" reading, digest always compared, §G corrected. R1 and
+  R2 are derived from the design text; first observed in run milestone M5. Counts unchanged.
 - v0.3.0: plan-audit iteration 2 (FAIL 0.82) repaired; lead rulings 09-26 (2) folded in
   (spec.md §H): two-layer resolver, contract-void before resolution, Markdown record with YAML
   frontmatter and revoke kinds; A1 request R7 added. The v0.2.1 A3 preconditions, their

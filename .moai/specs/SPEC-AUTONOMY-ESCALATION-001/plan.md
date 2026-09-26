@@ -108,7 +108,10 @@ delta; E8 RED output before GREEN.
 | The landed A1 renames the `card` field or changes its pattern | Pre-flight step 2 stops the run; the resolver is one function, so only step 2 of design.md §C.8 changes |
 | A1 plan-audit changes a consumed field | spec.md §F.1 full-row re-check in pre-flight step 2 |
 | A contract copied between SPECs keeps a stale `card` value | Two claimants → not-armed plus a warning naming both (REQ-AE-002); an armed card that gains a second claimant disarms with `card-mismatch` (REQ-AE-017) |
-| Bash rewrites the state file and recomputes the unkeyed chain | Accepted residual: evidence only against naive edits (spec.md §G) |
+| Bash rewrites the state file and recomputes the unkeyed chain, or edits the last log line | Accepted residual: the chain catches only edits to lines that have a successor (spec.md §G) |
+| Two hooks of one card append at once | Per-card exclusive lock (design.md §C.6); lock timeout is a REQ-AE-004 fault. Derived from the design text; first observed in M5 (AC-AE-019) |
+| Card log emptied or tail-truncated | Judged against unaccounted evidence of arming; digest always compared (REQ-AE-017). Derived from the design text; first observed in M5 (AC-AE-018 (d), AC-AE-020 (d)) |
+| Two worktrees share a base name (L1 vs L2 parent) or differ only in case on a case-insensitive store | Accepted residual: treated as one card; the lock keeps the shared files consistent (design.md §C.6) |
 | Bash deletes the card state, the card log, and the card's contract/disarm records | Accepted residual: no trace, and the next arming restarts the class 7 counters (spec.md §G) |
 | Contract store unresolvable (no home directory) | REQ-AE-004 fault, `not-checked`, nothing arms (design.md §C.6) |
 | PreToolUse latency under contract mode | Contract `card` reads, digest check, cached verify, ref-file reads; verify re-runs only on a digest change (C4) |

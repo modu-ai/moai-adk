@@ -1,7 +1,7 @@
 ---
 id: SPEC-AUTONOMY-ESCALATION-001
 title: "Contract-mode escalation detector: mechanical detection of the six escalate_on classes plus operational trips, reported as an escalation record without blocking or mutating the queue"
-version: "0.4.2"
+version: "0.4.3"
 status: draft
 created: 2026-09-26
 updated: 2026-09-26
@@ -51,6 +51,12 @@ related_specs: [SPEC-AUTONOMY-TIERS-001, SPEC-ACSNAPSHOT-COMMIT-GUARD-001]
   the C4 operation list. Lead ruling 09-26 (5) folded in (resolves Q1 and Q2): one audit log per
   card, and a card's own log entries — not the state file — decide whether it is armed. Criteria
   24 → 25 (two merged, three added; mapping in acceptance.md §A).
+- **2026-09-26** — v0.4.3 after plan-audit iteration 5 (PASS-WITH-DEBT 0.87), closing R1, R2,
+  n1, n2: a per-card exclusive lock serializes a card's state writes and log appends; a card log
+  that does not show the card armed (absent, empty, or tail-truncated) is judged against
+  unaccounted evidence of arming; the state-file digest is always compared; a broken chain is
+  `state-tamper` whatever the arming status; §G states what the chain does and does not catch.
+  Counts unchanged: 23 requirements, 25 criteria.
 
 ## §B — Problem
 
@@ -247,13 +253,19 @@ arms or disarms a card by itself.
   block and `signature_acceptance_mismatch`), `terminal-status` (the SPEC's A1-derived `terminal`
   became true, including a completion at sync), `card-mismatch` (the contract's `card` field no
   longer equals the card id, or resolution no longer yields exactly one contract), and
-  `state-tamper` (the card state file is missing, lacks its arming value, or does not match the
-  digest in the card log's latest state entry, or the card log's own hash chain is broken). When
-  the card audit log file is absent, the detector shall read the card as never armed unless prior
-  evidence of arming exists — a card state file carrying an arming value, or a record of kind
-  `contract` or of class `detection-disarmed` under `.moai/reports/<card-id>/escalation/` — in
-  which case it shall write the `state-tamper` record and start a new log. Entries in another
-  card's log shall never affect this card. A second disarm reason observed after the first
+  `state-tamper` (the card state file is missing or lacks its arming value while the log shows the
+  card armed). Independently of whether the log shows the card armed, the detector shall judge
+  `state-tamper` when the card log's hash chain is broken, and whenever the card state file exists
+  but does not match the digest in the log's latest state entry. When the card audit log does not
+  show the card armed — it is absent, empty, or ends before an arming that other evidence records
+  — the detector shall read the card as never armed unless evidence of arming exists that the log
+  does not account for (design.md §C.6 step 3: a card state file naming an arming the log has no
+  `armed` entry for, a `detection-disarmed` record whose fingerprint no `disarmed` entry carries,
+  or a `contract`-kind record while the log holds no `armed` entry), in which case it shall write
+  the `state-tamper` record and append a `disarmed` entry, starting a new log if none exists.
+  The detector shall hold a per-card exclusive lock while it reads or writes that card's state
+  file and log, so concurrent hooks of one card append in sequence; failing to take the lock is a
+  REQ-AE-004 fault, never a tamper. Entries in another card's log shall never affect this card. A second disarm reason observed after the first
   increments that record's `occurrences` and writes nothing new.
   「A1 plan-audit 통과본으로 재확인」
 
@@ -308,7 +320,8 @@ arms or disarms a card by itself.
   `.moai/specs/*/contract.yaml` under the worktree root for its `card` field; reading the
   frontmatter `status` of each candidate SPEC's `spec.md` for A1's `terminal`; reading the card
   state file and checking its digest against the latest state entry in the card's own audit log
-  (reading that card's log, which no other card writes, and appending to it); path and glob
+  (reading that card's log, which no other card writes, and appending to it under a per-card
+  exclusive lock); path and glob
   matching against the
   cached derived lists; reading HEAD from the repository's HEAD and ref files. It calls A1 verify
   in-process — A1 § Non-Functional Constraints states verify completes without subprocesses or
@@ -432,12 +445,14 @@ run 은 A1 develop 병합 뒤").
 - Local single-user: the goal is tamper evidence, not tamper prevention. Class 3 sees only
   write-capable tool calls, so a Bash edit is seen, if at all, by the digest check at the next hook
   (REQ-AE-017), never at the moment of the write.
-- The hash chain is unkeyed, so it is evidence only against naive edits: it catches an edit made
-  without recomputing the chain, and it does not catch a Bash edit that rewrites the card state
-  file and appends a recomputed chain line to the card audit log.
-- File removal is a bypass route. Deleting the card audit log alone is caught only while prior
-  evidence of arming survives (REQ-AE-017); deleting the card state file, the card audit log, and
-  any `contract`-kind or `detection-disarmed` record of the card via Bash leaves no trace: the card
+- The hash chain is unkeyed and backward-linked, so it is evidence only against naive edits: it
+  catches an edit to any line that has a successor; it does not catch truncation of trailing
+  lines, an edit to the last line, or a Bash edit that rewrites the card state file and appends a
+  recomputed chain line to the card audit log.
+- Truncation and file removal are bypass routes. Deleting, emptying, or tail-truncating the card
+  audit log is caught only while evidence of arming the log no longer accounts for survives
+  (REQ-AE-017); removing or emptying the card state file, the card audit log, and any
+  `contract`-kind or `detection-disarmed` record of the card via Bash leaves no trace: the card
   reads as never armed, and the next arming restarts the class 7 budget counters from zero.
 
 ### Out of Scope — reviving the ac-baseline guard as a product feature
@@ -475,8 +490,9 @@ closes (`.moai/reports/t1235/plan-audit-iter1.md`, `-iter2.md`, `-iter3.md`).
 | lead instruction 09-26 (A1 re-pin) | Pin §F to A1 v0.5.0 at `67a2f55cb` instead of `6d98ca466`; re-check only the decider and agreement/disagreement surfaces. | A1 changed its kickoff decider section. The decider text this row added is withdrawn by (4) #1. | §F |
 | lead ruling 09-26 (4) #1 | Operator's final decision: the decider value set is {`human`, `llm`, `llm+jev`}; judgment rules (agreement, fallback, disagreement handling) belong to A3 (card t1236), and A1 v0.5.1 is schema only. This SPEC defines no decider rule and says only that the decider value follows the A1 schema; the record's `decider` field is preserved verbatim and not validated against a value list. | Decider rules are A3's; restating any of them here would pin a rule this SPEC does not own. | §F, §I.1 `decider`, REQ-AE-010, and the criterion numbered AC-AE-012 since v0.4.2 |
 | lead instruction 09-26 (plan-audit iteration 4) | Fix Q3, Q4, Q5 and m2: judge contract-store writes before every class 3 exemption; state the unkeyed-chain and deletion limits plainly; re-pin §F and close R8, R9, R10 citing A1 lines — first to v0.5.1 `65e0a9167`, then by a follow-up instruction to v0.5.2 `25283ebf8` (single pin), which also resolves the two stale A2 sentences; add the `spec.md` `status` read to C4. | `plan-audit-iter4.md` Q3 (store under a temp root was exempt), Q4 (residual risk overstated the chain), Q5 (A1 v0.5.1 landed after v0.4.1). | REQ-AE-013, §G, §F, C4, AC-AE-010 |
+| lead instruction 09-26 (plan-audit iteration 5) | Close R1 and R2 before Kickoff, plus n1 and n2: a per-card exclusive lock around every state write and log append; the missing-log reading widened to "the log does not show armed" (absent, empty, tail-truncated) against unaccounted evidence; the state-file digest always compared; a broken chain is `state-tamper` whatever the arming status; §G corrected to what the chain catches; the card-id collision cases (L1/L2 parents, case-insensitive store) named as residual risk; (4) #2 marked superseded. R1 and R2 are derived from the design text; both are first observed in run milestone M5 (AC-AE-019 concurrent clause; AC-AE-018 (d), AC-AE-020 (d)). | `plan-audit-iter5.md` R1 (same-card concurrent appends could break the chain and read as tamper), R2 (an emptied or tail-truncated log disarmed silently), n1, n2. | REQ-AE-017, §G, C4, design.md §C.6/§C.11, AC-AE-018/019/020 |
 | lead ruling 09-26 (5) | Option (a) for plan-audit iteration-4 Q1/Q2: one audit log per card inside the contract store, named `<card-id>.log.jsonl` from the worktree directory name byte for byte; the card's own log entries, not the state file, decide whether the card is armed. A disarm counts only when the log carries a disarm entry; a state file that lost its arming value while the log says armed is `state-tamper`; another card's appends never touch this card's chain; a missing log reads as never armed unless prior evidence of arming exists, in which case it is `state-tamper`. | Q1: the trigger read the state file, so emptying it disarmed silently instead of tripping `state-tamper`. Q2: one shared chain across cards and lanes let a legitimate append by another card break this card's check. | REQ-AE-017, definitions, design.md §C.6/§C.11, AC-AE-018/019/020 |
-| lead ruling 09-26 (4) #2 | R10 closed: the moai-owned store is `$MOAI_HOME/db/<project-key>/contract/`, outside the repository and every worktree, in the queue database's home layout. The card state file and the detector audit log with its hash chain move there; A3's signing-event store uses the same place. The store is not a project path: a tool-call write there is judged by the outside-root rule. | Supersedes the `.moai/state/escalation/` carve-out of (3) #4. | REQ-AE-013, REQ-AE-017, §F.2 R10, §G |
+| lead ruling 09-26 (4) #2 — superseded by lead ruling 09-26 (5) and the iteration-4 lead instruction | R10 closed: the moai-owned store is `$MOAI_HOME/db/<project-key>/contract/`, outside the repository and every worktree, in the queue database's home layout. The card state file and the detector audit log with its hash chain move there; A3's signing-event store uses the same place. The store is not a project path: a tool-call write there is judged by the outside-root rule. | Supersedes the `.moai/state/escalation/` carve-out of (3) #4. | REQ-AE-013, REQ-AE-017, §F.2 R10, §G |
 
 ## §I — Escalation record format
 

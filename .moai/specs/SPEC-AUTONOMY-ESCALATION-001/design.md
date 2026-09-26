@@ -102,7 +102,7 @@ not-observed.
 Recorded verdict files under `.moai/reports/<card-id>/`; `audit_multi` JSON results when
 persisted. `disagreement_flag` nil → not-observed.
 
-### C.6 Card state and card audit log — where "armed" lives (lead rulings (2) #4, (3) #2, (4) #2, (5))
+### C.6 Card state and card audit log — where "armed" lives (lead rulings (2) #4, (3) #2, (4) #2, (5); plan-audit iteration 5 R1, R2, n1)
 
 Two files per card, both in the contract store `$MOAI_HOME/db/<project-key>/contract/escalation/`
 and both written by the detector only:
@@ -111,11 +111,16 @@ and both written by the detector only:
 |---|---|---|
 | card audit log | `<card-id>.log.jsonl` | **authoritative**: append-only, hash-chained entries that decide whether the card is armed |
 | card state file | `<card-id>.json` | cache: arming snapshot, verify cache, counters |
+| card lock | `<card-id>.lock` | per-card exclusive lock serializing every read-modify-write of the two files above |
 
 `<card-id>` is the worktree directory base name, byte for byte — no case folding, no escaping,
 no hashing. It is already a valid file name on the host, because the worktree directory exists
-under that name, and two worktrees of one project cannot share a directory name, so no two cards
-share a file. The store is outside the repository and every worktree, in the queue database's
+under that name. By definition the same base name is the same card, so two worktrees that share a
+base name share one card's files — which can happen, because an L1 tree
+(`.claude/worktrees/<name>`) and an L2 tree (`~/.moai/worktrees/<project>/<name>`) have different
+parents. On a case-insensitive store (the macOS default), ids differing only in case — `T1` and
+`t1` — also share one set of files. Both are accepted residual risks: the same name is treated as
+one card, and the per-card lock below keeps the shared files consistent. The store is outside the repository and every worktree, in the queue database's
 home layout, and shared with A3's signing-event store. `$MOAI_HOME` and `<project-key>` resolve
 exactly as the queue database resolves them (research.md P17); because the key derives from the
 project root, every worktree of one project shares one store. Where the store cannot be
@@ -144,26 +149,43 @@ entry. Nothing in the card state file can change that answer.
 - counters for class 7 (operations, turns, audit retries per audit kind) and the failure
   fingerprint history for class 8.
 
-Order on every hook and checkpoint under `contract` mode:
+**Per-card lock (plan-audit iteration 5 R1 — derived from the design text; first observed in run
+milestone M5, AC-AE-019).** Every hook takes an exclusive lock on `<card-id>.lock` before it reads
+the card state file, and holds it through the state write, its `state` entry, and every other log
+append of that hook; it releases the lock when the hook's detector work ends. Two hooks for the
+same card — parallel tool calls in one turn, or a background subagent in the same worktree —
+therefore append in sequence and never compute `prev` from the same predecessor, and no counter
+update is lost. A lock that cannot be taken within the hook's configured timeout is a REQ-AE-004
+fault (`not-checked`), never a tamper.
 
-1. Read this card's audit log. If the file is absent: when prior evidence of arming exists — a
-   card state file carrying an `armed` value, or a record of kind `contract` or class
-   `detection-disarmed` under `.moai/reports/<card-id>/escalation/` — write the `state-tamper`
-   record and start a new log whose first entry is `disarmed`; otherwise treat the card as never
-   armed. If the file is present, verify its chain (§C.11).
-2. If the log shows the card armed, check the card state file against the log's latest `state`
-   entry. A missing file, a missing `armed` value, a digest mismatch, or a broken chain is
+Order on every hook and checkpoint under `contract` mode (under the lock):
+
+1. Read this card's audit log and verify its chain (§C.11). A broken chain is `state-tamper`
+   whatever the log shows about arming.
+2. Whenever the card state file exists, compare its bytes with the log's latest `state` entry,
+   regardless of whether the log shows the card armed. A digest mismatch, or a state file with no
+   `state` entry in the log, is `state-tamper`.
+3. If the log does not show the card armed — the file is absent, empty, or ends before an arming
+   that other evidence records (plan-audit iteration 5 R2 — derived from the design text; first
+   observed in run milestone M5, AC-AE-018 and AC-AE-020) — and evidence of arming exists that
+   the log does not account for, judge `state-tamper`, write the record, and append a `disarmed`
+   entry (starting a new log if none exists). Unaccounted evidence is: a card state file whose
+   `armed` value names a `signature.contract_sha256` with no matching `armed` entry in the log; a
+   `detection-disarmed` record under `.moai/reports/<card-id>/escalation/` whose fingerprint
+   appears in no `disarmed` entry; or a record of kind `contract` there while the log holds no
+   `armed` entry. Without such evidence the card is read as never armed.
+4. If the log shows the card armed, a missing card state file or a missing `armed` value is
    `state-tamper` — never a disarm by itself.
-3. Otherwise evaluate the remaining disarm reasons against the arming: the armed contract file is
+5. Otherwise evaluate the remaining disarm reasons against the arming: the armed contract file is
    gone (`contract-absent`); verify is no longer `signed-valid` (`signature-invalid`) — verify
    runs fresh at every commit checkpoint, so an `acceptance.md` edit that leaves the contract
    bytes unchanged is still seen there, and on PreToolUse only when the contract bytes differ
    from the cached digest; the SPEC's `terminal` is true (`terminal-status`); the contract's
    `card` no longer equals the card id, or another non-terminal contract claims the card
    (`card-mismatch`).
-4. On the first reason found (steps 1-3), write the `detection-disarmed` record and append the
+6. On the first reason found (steps 1-5), write the `detection-disarmed` record and append the
    `disarmed` log entry. Classes 7-9 keep counting against the budget recorded at arming.
-5. Only then run the resolver (§C.8) for an unarmed card. Its `not-armed` line, if any, follows
+7. Only then run the resolver (§C.8) for an unarmed card. Its `not-armed` line, if any, follows
    the disarm entry, never replaces it.
 
 A new arming (a later signed-valid contract for the same card) appends a new `armed` entry and
@@ -238,20 +260,24 @@ distinct decisions. Inputs, hashed together with the class name:
 Every line of `<card-id>.log.jsonl` carries `prev`, the SHA-256 of the previous line of the same
 file. Each write of the card state file is followed by one `state` entry carrying the SHA-256 of
 the new bytes. A chain is broken when any `prev` does not match its predecessor or a line does
-not parse. Because each card has its own file, another card's appends never touch this card's
-chain (no shared-log serialization is needed, and a legitimate append by one card cannot trip
-`state-tamper` on another).
+not parse. Each card has its own file, so another card's appends never touch this card's chain
+and a legitimate append by one card cannot trip `state-tamper` on another. Appends by two hooks
+of the **same** card are serialized by the per-card lock (§C.6); without it they could compute
+`prev` from the same predecessor and break the chain.
 
 Tamper evidence, and its limits:
 
 - A write-capable tool call to either file trips `ownership-move` before any exemption applies
   (REQ-AE-013), even when the store sits under the OS temporary directory.
-- A Bash edit is seen only at the next hook, and only if it did not recompute the chain: the chain
-  is unkeyed, so rewriting the state file and appending a matching `state` entry is not caught.
-- Deleting the log alone is caught while prior evidence of arming survives (§C.6 step 1).
-  Deleting the log, the state file, and every `contract`-kind or `detection-disarmed` record of
-  the card leaves no trace; the card reads as never armed and the next arming restarts the class
-  7 counters. The store is local and single-user: the goal is tamper evidence, not prevention.
+- A Bash edit is seen only at the next hook. The chain catches an edit to any line that has a
+  successor; it does not catch truncation of trailing lines or an edit to the last line, and,
+  being unkeyed, it does not catch a rewrite that recomputes it. Rewriting the state file and
+  appending (or editing the last line into) a matching `state` entry is therefore not caught.
+- Deleting, emptying, or tail-truncating the log is caught only while evidence of arming that
+  the log no longer accounts for survives (§C.6 step 3). Removing or emptying the log together
+  with the state file and every `contract`-kind or `detection-disarmed` record of the card leaves
+  no trace; the card reads as never armed and the next arming restarts the class 7 counters. The
+  store is local and single-user: the goal is tamper evidence, not prevention.
 
 ## §D — Alternatives considered
 
