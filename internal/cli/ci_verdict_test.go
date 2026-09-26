@@ -166,6 +166,31 @@ func TestCIVerdictDegradation(t *testing.T) {
 	}
 }
 
+// F1 (sync-audit): a crafted traversal head in --from-json input is rejected
+// — fail-CLOSED for malformed input (input validation, not gh degradation):
+// one-line message, non-zero exit, zero files written.
+func TestCIVerdictFromJSONRejectsTraversalHead(t *testing.T) {
+	root := t.TempDir()
+	in := filepath.Join(t.TempDir(), "evil.json")
+	body := `{"head_sha":"../../../evil","conclusion":"failure","run_id":"run-1","observed_at":"2026-09-26T12:00:00Z","producer":"test"}`
+	if err := os.WriteFile(in, []byte(body), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	out, err := runCIVerdict(t, defaultGhRunner, root, "--from-json", in)
+	if err == nil {
+		t.Fatalf("traversal head accepted (exit 0)\n%s", out)
+	}
+	if n := len(strings.Split(strings.TrimSpace(err.Error()), "\n")); n != 1 {
+		t.Errorf("rejection message is not one line (%d): %q", n, err.Error())
+	}
+	if files := verdictFiles(t, root); len(files) != 0 {
+		t.Errorf("rejected input wrote records: %v", files)
+	}
+	if _, err := os.Stat(filepath.Join(root, "evil.json")); !os.IsNotExist(err) {
+		t.Errorf("record escaped the record directory: %v", err)
+	}
+}
+
 // REQ-CV-005: the producer's source path contains no escalation checkpoint,
 // hook, or detector reference — it writes evidence files and nothing else.
 func TestCIVerdictNoDetectorReference(t *testing.T) {

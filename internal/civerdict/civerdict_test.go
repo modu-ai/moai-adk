@@ -107,6 +107,9 @@ func TestValidateRejects(t *testing.T) {
 		{"bad-conclusion", func(r *civerdict.Record) { r.Conclusion = "cancelled" }},
 		{"empty-conclusion", func(r *civerdict.Record) { r.Conclusion = "" }},
 		{"bad-observed-at", func(r *civerdict.Record) { r.ObservedAt = "yesterday" }},
+		{"traversal-head", func(r *civerdict.Record) { r.HeadSHA = "../../evil" }},
+		{"short-head", func(r *civerdict.Record) { r.HeadSHA = "0123456789abcdef" }},
+		{"uppercase-head", func(r *civerdict.Record) { r.HeadSHA = "0123456789ABCDEF0123456789ABCDEF01234567" }},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {

@@ -366,7 +366,7 @@ func (r *run) classContradictoryEvidence() []string {
 // A success or neutral conclusion at the head is a completed observation and
 // is not listed (REQ-CV-008).
 //
-// @MX:NOTE: [SYNC] the detector's public-behavior CI seam — reads only the civerdict package's on-disk records (SPEC-CI-VERDICT-PRODUCER-001); a schema change there re-shapes this limb's not_observed vocabulary
+// @MX:NOTE: [AUTO] the detector's public-behavior CI seam — reads only the civerdict package's on-disk records (SPEC-CI-VERDICT-PRODUCER-001); a schema change there re-shapes this limb's not_observed vocabulary
 func (r *run) ciLimb(cdata []byte) []string {
 	var notObs []string
 	head := r.headSHA()

@@ -16,6 +16,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"regexp"
 	"time"
 )
 
@@ -37,6 +38,11 @@ const (
 // field when the caller does not override it.
 const ProducerID = "moai ci-verdict"
 
+// headRe pins head_sha to a full lowercase 40-hex git SHA. The head is the
+// record's filename stem, so validating it here is path-traversal defense
+// (sync-audit F1): a crafted head can never escape .moai/state/ci-verdicts/.
+var headRe = regexp.MustCompile(`^[0-9a-f]{40}$`)
+
 // Record is one recorded CI verdict for a head (REQ-CV-004): the head SHA is
 // both the record's filename stem and its pinned head, ObservedAt is RFC 3339.
 type Record struct {
@@ -47,11 +53,11 @@ type Record struct {
 	Producer   string `json:"producer"`
 }
 
-// Validate reports whether the record satisfies REQ-CV-004: a head SHA, a
-// known conclusion, and an RFC 3339 observed_at.
+// Validate reports whether the record satisfies REQ-CV-004: a full lowercase
+// 40-hex head SHA, a known conclusion, and an RFC 3339 observed_at.
 func (r Record) Validate() error {
-	if r.HeadSHA == "" {
-		return fmt.Errorf("civerdict: head_sha is empty")
+	if !headRe.MatchString(r.HeadSHA) {
+		return fmt.Errorf("civerdict: head_sha %q is not a full 40-hex git SHA", r.HeadSHA)
 	}
 	switch r.Conclusion {
 	case ConclusionSuccess, ConclusionFailure, ConclusionNeutral:
