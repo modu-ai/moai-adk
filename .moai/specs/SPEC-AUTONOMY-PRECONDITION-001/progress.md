@@ -617,4 +617,29 @@ load discipline).
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase>_
+```yaml
+sync_complete_at: 2026-09-26
+sync_commit_sha: "pending-backfill-sync"   # D3 placeholder — backfilled in the following commit
+sync_status: complete
+b12_self_test_a: 0        # grep -c 'SPEC-AUTONOMY-PRECONDITION-001' CHANGELOG.md before emission
+b12_self_test_b: 16       # live AC count from acceptance.md (AC-AP-001..010, 013..018; 011/012 retired, AC-AE-025 referenced-only) — CHANGELOG entry cites 16
+b12_self_test_c: pass     # all named paths verified via ls before emission
+changelog_entry_position: "[Unreleased] → ### Added — first entry"
+frontmatter_status_transitions:
+  spec_md: "in-progress → completed"   # 3-phase close, single sync commit
+  updated: 2026-09-26
+canary_compliance_check:
+  mx_tag_validation: "sync sub-step — pass (annotations carried by implementation commits; no new dangerous patterns unannotated)"
+  docs_site: "no-change decision — no user-facing CLI surface added; the guard/serializer are behavioral and the distributed paths-scoped rule is their documentation"
+  spec_body: "untouched (frontmatter status+updated only, per ownership policy)"
+```
+
+Sync summary: CHANGELOG [Unreleased] entry emitted (push serializer, contract sign/decide
+guard with the `MOAI_FACTORY_ROLE=worker` role gate, distributed rule + template mirror,
+mission-validator projection); docs-site/README no-change decision recorded; the single sync
+commit carries the `in-progress → completed` 3-phase close on spec.md frontmatter. Implementation
+surface: `internal/hook/push_serializer.go` (+tests), `internal/hook/contract_sign_guard.go`
+(+tests), `internal/config/envkeys.go` (`EnvFactoryRole` / `FactoryRoleWorker`), carrier pin
+tests in `internal/cli` + `internal/kanban`, `.claude/rules/moai/workflow/contract-sign-guard.md`
++ template mirror, `internal/contract/projection_mission.go` (+test + golden baseline), one
+attributable adjacent edit (`hmpGoLiteralExclusions` entry, §E.2).
