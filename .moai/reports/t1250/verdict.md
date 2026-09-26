@@ -43,3 +43,8 @@ sync: `CHANGELOG.md` [Unreleased] › Added 항목 1개. doctor 점검을 이름
 | 패키지 전체 | `go test ./internal/cli/ -count=1 -timeout 15m` | **판정 없음**: `--- FAIL` 0건, 15분 타임아웃(실행 중 테스트 `TestTodoSweepSelectorMatchesFamily`, load avg ~23). 그 테스트 단독 → `ok 0.788s`. 이전 에이전트 전체 실행도 10분 타임아웃(다른 무관 테스트, 단독 PASS). 전체 판정은 develop push 후 CI 몫 |
 
 잔여 위험: `claudeAiMcpEverConnected` 는 연결 이력이라 계정에서 지운 커넥터도 경고될 수 있다. 이름 매칭이라 다른 이름의 같은 제공자는 놓친다. 프로젝트 로컬 `projects[..].mcpServers` 와 플러그인 서버는 보지 않는다. 음성 대조의 비활성 경우 메시지는 커넥터 없음과 같은 `no overlap` 이라 둘을 출력으로는 구분할 수 없다.
+
+## Merge-tree re-measurement (worker-56, 2026-09-26)
+- absorbed local develop e62c3e183 → HEAD eabd1d783, tree bd79204f49e7e439b3f0ceed8bbff0af741591ac
+- go vet ./internal/cli/ → exit 0 (merge-vet.txt)
+- go test -count=1 ./internal/cli/ -run 'MCPProvider|DoctorGolden|BinaryLag' → ok (merge-targeted.txt); DoctorGolden pass unchanged, no golden regen
