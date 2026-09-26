@@ -56,10 +56,21 @@ func CanonicalProjectRoot(projectRoot string) string {
 		} else if root, ok := primaryCheckoutRootFromCommonDir(dirs.CommonDir); ok {
 			projectRoot = root
 		} else if out, err := scrubbedGit(projectRoot, "worktree", "list", "--porcelain").Output(); err == nil {
-			// Git lists the primary checkout first, even with external metadata.
+			// Git lists the primary checkout first. A --separate-git-dir
+			// repository records no checkout location at all: the first entry
+			// is the metadata directory itself, and nothing leads back to the
+			// primary checkout. Such a linked worktree keeps its own root
+			// rather than rooting state inside git's metadata (t1221); it
+			// therefore does not converge on the primary checkout's key.
 			first, _, _ := strings.Cut(string(out), "\n")
 			if root, ok := strings.CutPrefix(first, "worktree "); ok {
-				projectRoot = root
+				if sameDir(root, dirs.CommonDir) {
+					if top, err := scrubbedGit(projectRoot, "rev-parse", "--show-toplevel").Output(); err == nil {
+						projectRoot = strings.TrimSpace(string(top))
+					}
+				} else {
+					projectRoot = root
+				}
 			}
 		}
 	}
@@ -67,6 +78,18 @@ func CanonicalProjectRoot(projectRoot string) string {
 		projectRoot = resolved
 	}
 	return filepath.Clean(projectRoot)
+}
+
+// sameDir reports whether a and b name the same directory once cleaned and
+// symlink-resolved (git may spell a path through /private on macOS).
+func sameDir(a, b string) bool {
+	resolve := func(p string) string {
+		if r, err := filepath.EvalSymlinks(p); err == nil {
+			p = r
+		}
+		return filepath.Clean(p)
+	}
+	return resolve(a) == resolve(b)
 }
 
 // scrubbedGit builds `git -C dir args...` without the caller's repository-
