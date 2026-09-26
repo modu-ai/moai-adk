@@ -536,11 +536,11 @@ func splitPSTokens(segment string) []string {
 			}
 			continue
 		}
-		switch {
-		case c == '\'' || c == '"':
+		switch c {
+		case '\'', '"':
 			quote = c
 			cur.WriteByte(c)
-		case c == ' ' || c == '\t':
+		case ' ', '\t':
 			if cur.Len() > 0 {
 				toks = append(toks, cur.String())
 				cur.Reset()
