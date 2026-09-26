@@ -1,0 +1,529 @@
+package mission // import "github.com/modu-ai/moai-adk/internal/mission"
+
+
+CONSTANTS
+
+const (
+	GovernanceDecision GovernanceReceiptKind = "decision"
+	GovernanceAudit    GovernanceReceiptKind = "audit"
+
+	GovernanceRecommended GovernanceReceiptStatus = "recommended"
+	GovernancePassed      GovernanceReceiptStatus = "passed"
+	GovernanceFailed      GovernanceReceiptStatus = "failed"
+)
+
+VARIABLES
+
+var (
+	ErrDeliveryUnsupported    = errors.New("mission delivery: provider_unsupported")
+	ErrDeliveryAlreadyApplied = errors.New("mission delivery: operation_already_applied")
+)
+
+FUNCTIONS
+
+func CanReplaceRuntimeOwner(capability RuntimeCapability, priorOwnerEffectsStopped bool) bool
+func ClearAutoMission(projectRoot, sessionID string) error
+func IsDeliveryAlreadyApplied(err error) bool
+func IsDeliveryUnsupported(err error) bool
+func RequiredEvidenceForAction(action Action) []string
+func SaveAutoMission(projectRoot string, mission AutoMission) error
+func ValidateAutoMissionIntegrity(state *AutoMission) error
+func ValidateMissionSessionID(sessionID string) error
+func WriteCompletionReceipt(root, path string, receipt CompletionReceipt) error
+func WriteGovernanceReceipt(root, path string, receipt GovernanceReceipt) error
+func WriteIntegrationLease(path string, lease IntegrationLease) error
+
+TYPES
+
+type Action string
+
+const (
+	ActionPublish       Action = "publish"
+	ActionPick          Action = "pick"
+	ActionDispatch      Action = "dispatch"
+	ActionCommit        Action = "commit"
+	ActionLocalMerge    Action = "local_develop_merge"
+	ActionBatchPush     Action = "batch_push"
+	ActionReleaseBranch Action = "release_branch"
+	ActionReleasePR     Action = "release_pr"
+	ActionMainMerge     Action = "main_merge"
+	ActionForcePush     Action = "force_push"
+)
+type AutoMission struct {
+	SessionID       string               `json:"session_id"`
+	Text            string               `json:"text"`
+	MissionMode     MissionMode          `json:"mission_mode"`
+	ProgressionMode goal.ProgressionMode `json:"progression_mode"`
+	State           MissionState         `json:"state"`
+	Contract        *MissionContract     `json:"contract,omitempty"`
+	ContractHash    string               `json:"contract_hash,omitempty"`
+	Snapshot        *MissionSnapshot     `json:"snapshot,omitempty"`
+	LastBlocker     string               `json:"last_blocker,omitempty"`
+	OperationIDs    []string             `json:"operation_ids,omitempty"`
+}
+
+func LoadAutoMission(projectRoot, sessionID string) (*AutoMission, error)
+
+type AuxiliarySignal struct {
+	QuestionID  string  `json:"question_id"`
+	Kind        string  `json:"kind"`
+	Noul        bool    `json:"noul,omitempty"`
+	Probability float64 `json:"probability"`
+}
+    AuxiliarySignal is ONE model-produced advisory signal the governor was
+    shown, recorded as a separate item alongside the binding fields so a
+    reader of the receipt can see what evidence accompanied the decision.
+    It is deliberately plain-typed (no import of the judgment package):
+    the receipt records what was displayed, and a display-only signal never
+    becomes a completion-predicate element or a piece of the landed-ancestry or
+    authoritative-readback evidence the binding fields carry.
+
+    @MX:NOTE: [AUTO] deliberately absent from validateGovernanceBinding — the
+    binding fields decide, the auxiliary item only records; the integrity digest
+    still covers it so a receipt cannot gain or lose a recorded signal silently.
+    @MX:SPEC: SPEC-JEV-GOAL-DIST-001
+
+type BoundaryDecision struct {
+	Proceed         bool
+	Blocked         bool
+	AskUserQuestion bool
+	Report          string
+}
+
+func SuppressAutoMissionQuestions(insideSealedScope bool, reason string) BoundaryDecision
+    SuppressAutoMissionQuestions encodes the approved-auto boundary: inside the
+    sealed scope work proceeds with no prompt; outside it stops with a blocker
+    report and no side effect. It never manufactures new authority.
+
+type CapabilityDeliveryOwner struct {
+	Provider DeliveryProvider
+	Action   Action
+	Target   string
+}
+
+func (o CapabilityDeliveryOwner) Apply(ctx context.Context, operationID string) error
+
+func (o CapabilityDeliveryOwner) Readback(ctx context.Context, operationID string) (bool, error)
+
+func (o CapabilityDeliveryOwner) Snapshot(ctx context.Context) (DeliverySnapshot, error)
+
+type CardIntegrationInput struct {
+	OwnerRole            string
+	LauncherEntered      bool
+	WorktreeBranch       string
+	IntegrationWorktree  string
+	IntegrationLeaseHeld bool
+	LocalDevelopBaseSHA  string
+	CardHeadSHA          string
+	ExplicitPaths        []string
+	SweepStaging         bool
+	LanePush             bool
+	CardPullRequest      bool
+	MergeStrategy        string
+	LocalDevelopMergeSHA string
+}
+
+type CardIntegrationReceipt struct {
+	LocalDevelopBaseSHA  string
+	CardHeadSHA          string
+	LocalDevelopMergeSHA string
+	OwnerRole            string
+}
+
+func IntegrateCardIntoLocalDevelop(in CardIntegrationInput) (CardIntegrationReceipt, error)
+
+type CompletionExpectation struct {
+	MissionID, ContractHash, SnapshotHash, HeadSHA string
+	RequiredEvidence                               []string
+	RequireLandedAncestry                          bool
+	Now                                            time.Time
+}
+
+type CompletionReceipt struct {
+	Version        int             `json:"version"`
+	MissionID      string          `json:"mission_id"`
+	ContractHash   string          `json:"contract_hash"`
+	SnapshotHash   string          `json:"snapshot_hash"`
+	HeadSHA        string          `json:"head_sha"`
+	Issuer         string          `json:"issuer"`
+	Status         string          `json:"status"`
+	Evidence       map[string]bool `json:"evidence"`
+	LandedAncestry bool            `json:"landed_ancestry"`
+	ExpiresAt      time.Time       `json:"expires_at"`
+	Integrity      string          `json:"integrity"`
+}
+
+func LoadCompletionReceipt(root, path string, exp CompletionExpectation) (CompletionReceipt, error)
+
+type Decision struct {
+	DecisionID       string
+	MissionID        string
+	ContractHash     string
+	PolicyVersion    string
+	SnapshotHash     string
+	EvidenceRevision int64
+	Action           Action
+	Targets          []string
+	RequiredEvidence []string
+	Evidence         map[string]string
+	OperationSpecs   []OperationSpec
+	AdvisorProse     string
+	ExpiresAt        time.Time
+}
+
+type DeliveryProvider interface {
+	Capability(Action) bool
+	Snapshot(context.Context, Action, string) (DeliverySnapshot, error)
+	Apply(context.Context, Action, string, string) error
+	Readback(context.Context, Action, string, string) (bool, error)
+}
+
+type DeliverySnapshot struct {
+	HeadSHA, LocalDevelopSHA, OriginDevelopSHA, ReleaseHeadSHA, MainLandedSHA string
+	LocalMergesReady, OriginReadback, DevelopCIPassed                         bool
+	ReleaseAuditPassed, ReleaseReviewPassed, ReleaseCIPassed                  bool
+	ProtectedMain, MainContainsRelease                                        bool
+}
+    DeliverySnapshot contains provider-read authoritative state. Callers do not
+    supply gate booleans directly to an effect; CapabilityDeliveryOwner always
+    obtains this snapshot from the configured provider immediately beforehand.
+
+type DevelopBatchInput struct {
+	OwnerRole            string
+	IntegrationLeaseHeld bool
+	LocalDevelopHeadSHA  string
+	LocalMergeSHAs       []string
+	BatchPushCount       int
+	OriginDevelopSHA     string
+	CISHA                string
+	CIPassed             bool
+	ReleaseHeadSHA       string
+	ReleaseTarget        string
+	ReleaseAuditPassed   bool
+	ReleaseReviewPassed  bool
+	ReleaseCIPassed      bool
+	MainLandedSHA        string
+	MainContainsRelease  bool
+	ProtectedMain        bool
+}
+
+type DevelopBatchReceipt struct {
+	OriginDevelopSHA string
+	ReleaseHeadSHA   string
+	MainLandedSHA    string
+}
+
+func ValidateDevelopBatchMerge(in DevelopBatchInput) (DevelopBatchReceipt, error)
+
+type DispatchInput struct {
+	MissionID        string
+	CardID           string
+	CardState        string
+	CardRevision     int64
+	ExpectedRevision int64
+	Lane             string
+	LaneAvailable    bool
+	LaneOwner        string
+	LeaseHeld        bool
+}
+
+type DispatchRegistry struct {
+	// Has unexported fields.
+}
+
+func NewDispatchRegistry() *DispatchRegistry
+
+func (r *DispatchRegistry) Count() int
+
+func (r *DispatchRegistry) Dispatch(in DispatchInput) (DispatchResult, error)
+
+type DispatchResult struct {
+	DispatchID string
+	CardID     string
+	Lane       string
+	Applied    bool
+}
+
+type FinalizationInput struct {
+	Current            MissionState
+	Revoked            bool
+	InFlightEffects    int
+	RequiredEvidence   map[string]bool
+	MainLandedAncestry bool
+	AgentIdle          bool
+	LeaseExpired       bool
+}
+
+type FinalizationResult struct {
+	State             MissionState
+	AllowNewWork      bool
+	ReconcileInFlight bool
+	Reason            string
+}
+
+func FinalizeOrRevokeMission(in FinalizationInput) FinalizationResult
+
+type GitEffect struct {
+	Action              Action
+	Repository          string
+	IntegrationWorktree string
+	WorktreeBranch      string
+	ExplicitPaths       []string
+	CommitMessage       string
+	CardSHA             string
+	BaseSHA             string
+	LeasePath           string
+	SessionID           string
+}
+
+type GitOwnerAdapter struct {
+	GitBinary string
+	Effect    GitEffect
+}
+
+func (o GitOwnerAdapter) Apply(ctx context.Context, operationID string) error
+
+func (o GitOwnerAdapter) Readback(ctx context.Context, operationID string) (bool, error)
+
+func (o GitOwnerAdapter) Snapshot(ctx context.Context) (string, string, error)
+
+func (o GitOwnerAdapter) ValidateIntegrationLease() error
+
+type GovernanceEvidence struct {
+	Decision GovernanceReceipt
+	Audit    GovernanceReceipt
+}
+
+func LoadGovernanceReceipts(root, decisionPath, auditPath string, exp GovernanceExpectation) (GovernanceEvidence, error)
+
+type GovernanceExpectation struct {
+	MissionID, ContractHash, SnapshotHash, HeadSHA string
+	Action                                         Action
+	Targets                                        []string
+	Now                                            time.Time
+}
+
+type GovernanceReceipt struct {
+	Version          int                     `json:"version"`
+	Kind             GovernanceReceiptKind   `json:"kind"`
+	MissionID        string                  `json:"mission_id"`
+	ContractHash     string                  `json:"contract_hash"`
+	SnapshotHash     string                  `json:"snapshot_hash"`
+	Action           Action                  `json:"action"`
+	Targets          []string                `json:"targets"`
+	ExpiresAt        time.Time               `json:"expires_at"`
+	Issuer           string                  `json:"issuer"`
+	HeadSHA          string                  `json:"head_sha"`
+	Status           GovernanceReceiptStatus `json:"status"`
+	AuxiliarySignals []AuxiliarySignal       `json:"auxiliary_signals,omitempty"`
+	Integrity        string                  `json:"integrity"`
+}
+    GovernanceReceipt is untrusted until LoadGovernanceReceipts validates its
+    content digest and binds every execution-relevant field to the current
+    contract and snapshot. Advisor prose is intentionally not part of it.
+
+    AuxiliarySignals is deliberately absent from validateGovernanceBinding:
+    the binding fields decide, the auxiliary item only records. The integrity
+    digest still covers it (canonicalGovernanceReceipt keeps it), so a receipt
+    cannot gain or lose a recorded signal without breaking its integrity.
+
+func ParseGovernanceReceipt(raw []byte) (GovernanceReceipt, error)
+
+type GovernanceReceiptKind string
+
+type GovernanceReceiptStatus string
+
+type IntegrationLease struct {
+	SessionID string `json:"session_id"`
+	BaseSHA   string `json:"base_sha"`
+}
+
+type MissionContract struct {
+	MissionID          string         `json:"mission_id"`
+	Goal               string         `json:"goal"`
+	CompletionEvidence []string       `json:"completion_evidence"`
+	Scope              []string       `json:"scope"`
+	AllowedActions     []Action       `json:"allowed_actions"`
+	MergeTarget        string         `json:"merge_target"`
+	ResourceLimits     ResourceLimits `json:"resource_limits"`
+	ProhibitedActions  []Action       `json:"prohibited_actions"`
+	StopConditions     []string       `json:"stop_conditions"`
+	RecoveryConditions []string       `json:"recovery_conditions"`
+	RevocationBehavior string         `json:"revocation_behavior"`
+	PolicyVersion      string         `json:"policy_version"`
+	Approved           bool           `json:"approved"`
+}
+
+type MissionMode string
+
+const ModeAuto MissionMode = "auto"
+type MissionRuntimeProbe interface {
+	StartSupported(context.Context) bool
+	ReconnectSupported(context.Context) bool
+	ReplaceSupported(context.Context) bool
+	CredentialValid(context.Context) bool
+	ProcessIdentitySupported(context.Context) bool
+}
+
+type MissionSnapshot struct {
+	MissionID        string
+	ContractHash     string
+	PolicyVersion    string
+	SnapshotHash     string
+	EvidenceRevision int64
+	Evidence         map[string]string
+	State            MissionState
+	OperationsUsed   int
+}
+
+type MissionState string
+
+const (
+	StateDraft     MissionState = "draft"
+	StateApproved  MissionState = "approved"
+	StateRunning   MissionState = "running"
+	StateBlocked   MissionState = "blocked"
+	StateRevoking  MissionState = "revoking"
+	StateCompleted MissionState = "completed"
+	StateFailed    MissionState = "failed"
+)
+type OperationInvoker interface {
+	Invoke(context.Context, OperationReceipt) error
+}
+
+type OperationReadback interface {
+	OperationApplied(context.Context, OperationReceipt) (bool, error)
+}
+
+type OperationReceipt struct {
+	OperationID  string
+	MissionID    string
+	DecisionID   string
+	Action       Action
+	Targets      []string
+	SnapshotHash string
+	State        ReceiptState
+	ReasonCode   string
+}
+
+func ReconcileMissionOperation(ctx context.Context, receipt OperationReceipt, readback OperationReadback, invoker OperationInvoker) (OperationReceipt, error)
+    ReconcileMissionOperation checks authoritative state before every possible
+    retry. An observation error is ambiguous and therefore blocks; only an
+    explicit not-applied readback permits reusing the same stable operation ID.
+
+func ValidateMissionDecision(sealed SealedContract, snapshot MissionSnapshot, decision Decision, now time.Time) (OperationReceipt, error)
+    ValidateMissionDecision treats every Decision field as untrusted data.
+    It never calls a tool or performs a state change; a caller may persist the
+    prepared receipt only after this complete fail-closed validation succeeds.
+
+type OperationSpec struct {
+	Action Action
+	Target string
+}
+
+type ReceiptState string
+
+const (
+	ReceiptPrepared        ReceiptState = "prepared"
+	ReceiptInvoked         ReceiptState = "invoked"
+	ReceiptObservedApplied ReceiptState = "observed_applied"
+	ReceiptReconciled      ReceiptState = "reconciled"
+	ReceiptDenied          ReceiptState = "denied"
+)
+type ResourceLimits struct {
+	MaxOperations int `json:"max_operations"`
+	MaxRetries    int `json:"max_retries"`
+}
+
+type RuntimeCapability struct {
+	Mode                     RuntimeMode
+	CanStart                 bool
+	CanReconnect             bool
+	CanReplace               bool
+	CredentialValid          bool
+	ProcessIdentitySupported bool
+}
+
+func ProbeMissionRuntimeCapability(ctx context.Context, probe MissionRuntimeProbe) RuntimeCapability
+
+type RuntimeLease struct {
+	MissionID    string
+	ContractHash string
+	SnapshotHash string
+	OwnerID      string
+	Version      int64
+}
+
+func TakeoverRuntimeLease(current RuntimeLease, newOwner string, priorOwnerEffectsStopped bool, contractHash, snapshotHash string) (RuntimeLease, error)
+
+type RuntimeMode string
+
+const (
+	RuntimeDurable           RuntimeMode = "durable"
+	RuntimeActiveSessionOnly RuntimeMode = "active-session-only"
+)
+type SealedContract struct {
+	Contract MissionContract
+	Version  string
+	Hash     string
+	Bytes    []byte
+}
+
+func SealMissionContract(contract MissionContract) (SealedContract, error)
+
+type SupervisionPlan struct {
+	MissionID, ContractHash string
+	MaxOperations           int
+	Steps                   []SupervisionStep
+	CompletionEvidence      []string
+	RequireLandedAncestry   bool
+}
+
+type SupervisionSnapshot struct{ Hash string }
+
+type SupervisionStep struct {
+	Action Action `json:"action"`
+	Target string `json:"target"`
+}
+
+type SupervisorEngine interface {
+	Snapshot(context.Context, SupervisionStep) (SupervisionSnapshot, error)
+	Governance(context.Context, SupervisionStep, SupervisionSnapshot) error
+	Validate(context.Context, SupervisionStep, SupervisionSnapshot) error
+	Execute(context.Context, SupervisionStep, SupervisionSnapshot) (OperationReceipt, error)
+	Readback(context.Context, SupervisionStep, OperationReceipt) error
+	Finalize(context.Context, SupervisionPlan, SupervisorState) error
+}
+    SupervisorEngine splits every iteration into the required trust boundaries.
+    Governance is evidence loading, Validate is deterministic policy, Execute is
+    the owning role, and Readback is authoritative observation after the effect.
+
+type SupervisorState struct {
+	MissionID, ContractHash string
+	State                   MissionState
+	NextStep                int
+	OperationIDs            []string
+	Blocker                 string
+	AskUserQuestion         bool
+}
+
+func SuperviseAutoMission(ctx context.Context, plan SupervisionPlan, store SupervisorStateStore, engine SupervisorEngine) (SupervisorState, error)
+    SuperviseAutoMission runs a bounded, persist-before-advance loop. It never
+    prompts: a missing capability or authority is durably blocked for later
+    explicit re-approval instead of being broadened in process.
+
+type SupervisorStateStore interface {
+	Load(context.Context, string) (SupervisorState, error)
+	Save(context.Context, SupervisorState) error
+}
+
+type UnsupportedDeliveryProvider struct{}
+
+func (UnsupportedDeliveryProvider) Apply(context.Context, Action, string, string) error
+
+func (UnsupportedDeliveryProvider) Capability(Action) bool
+
+func (UnsupportedDeliveryProvider) Readback(context.Context, Action, string, string) (bool, error)
+
+func (UnsupportedDeliveryProvider) Snapshot(context.Context, Action, string) (DeliverySnapshot, error)
+

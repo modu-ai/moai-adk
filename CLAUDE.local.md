@@ -262,7 +262,7 @@ Language policy는 `.claude/rules/moai/development/coding-standards.md`에 정�
 
 ### Before Commit
 - [ ] Code in English
-- [ ] 변경 대상 패키지 테스트 통과 (`go test ./internal/<pkg>/...`) — **전체 스위트(`go test ./...`)를 로컬에서 돌리지 않는다**. 레인 여러 개가 동시에 돌려 load 413까지 치솟고 다른 워크스페이스를 마비시킨 사고(2026-08-15)가 있다. 전 패키지 판정은 CI 몫이며, 깨끗한 환경에서 PR head를 돌리므로 근거로도 더 강하다. 예외는 §4.1의 통합 검증 — 그때는 **직렬로 1건씩**
+- [ ] 변경 대상 패키지 테스트 통과 (`go test -timeout 30m ./internal/<pkg>/...`; `-timeout 30m` = D2 derivation — 로컬 단일 패키지 최악 1118.093s 실측 대비 1.61x 여유, baseline `.moai/reports/t1253/measure-meta.txt`, SPEC-CLI-TEST-TIMEOUT-001) — **전체 스위트(`go test ./...`)를 로컬에서 돌리지 않는다**. 레인 여러 개가 동시에 돌려 load 413까지 치솟고 다른 워크스페이스를 마비시킨 사고(2026-08-15)가 있다. 전 패키지 판정은 CI 몫이며, 깨끗한 환경에서 PR head를 돌리므로 근거로도 더 강하다. 예외는 §4.1의 통합 검증 — 그때는 **직렬로 1건씩**
 - [ ] Linting passing (`golangci-lint run`)
 - [ ] Templates regenerated (`make build`)
 
@@ -391,7 +391,7 @@ Never use `filepath.Join(cwd, userPath)` when `userPath` can be absolute.
 
 ### Go Test Execution Rules
 
-- [HARD] After fixing ANY test, run the AFFECTED packages (`go test ./internal/<pkg>/...`), then push and read CI for the full-suite verdict — see §4. Do NOT run `go test ./...` locally: parallel lanes doing so drove load to 413 and stalled the machine (2026-08-15)
+- [HARD] After fixing ANY test, run the AFFECTED packages (`go test -timeout 30m ./internal/<pkg>/...`; `-timeout 30m` = D2 derivation — 1.61x headroom over the measured local single-package worst case 1118.093s, baseline `.moai/reports/t1253/measure-meta.txt`, SPEC-CLI-TEST-TIMEOUT-001), then push and read CI for the full-suite verdict — see §4. Do NOT run `go test ./...` locally: parallel lanes doing so drove load to 413 and stalled the machine (2026-08-15)
 - Do not declare success after fixing only the initially failing tests
 - Run `go test -count=1 ./...` to disable test caching when debugging flaky tests
 - Run `go test -race ./...` for concurrency safety on any code touching goroutines or channels

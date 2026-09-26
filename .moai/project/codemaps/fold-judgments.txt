@@ -86,3 +86,9 @@ omission internal/cli/wizard/questions.go
 # internal/config/types.go · internal/template/profile_matrix.go — 다섯 모두 이번 판 이전의
 # 본문에 이미 이름이 있는 파일이라 「이름 없이 접힌다」는 fold 판정이 성립하지 않고,
 # 이번 변경분은 그 기존 서술의 수치·문장을 갱신한 것입니다. 새 판정을 내리지 않습니다.
+
+# --- 2026-09-26 refresh (worktree t1274, base cf4b82755, card t1274) ---
+# 이번 판은 새 fold/omission 판정이 없다. internal/escalation 과 그 하위 escalationtest 는
+# modules.md 의 business/domain 표에 신규 행으로 서술됐고(이름이 문서에 있으므로 fold 성립 안 함),
+# 나머지 앵커(4a05fd3d6) 이후 변경 52개는 기존 행(cli·hook·config·auditreceipt·doctor* 클러스터)의
+# 수치·문장 갱신이다. 위 판정들은 이번 판에서 문서 본문과 대조해 그대로 성립함을 확인했다.
