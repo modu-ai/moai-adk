@@ -128,7 +128,78 @@ change is required, and package confirmation is deferred to run milestone M4.
 
 ## §E.2 Run-phase Evidence
 
-_<pending run-phase>_
+### M1 — Push serializer (REQ-AP-001, REQ-AP-002, REQ-AP-007; design.md §B)
+
+Implemented in `internal/hook/push_serializer.go` (+ `push_serializer_test.go`,
+`push_serializer_units_test.go`; call-site wiring in `internal/hook/pre_tool.go`
+PreToolUse and `internal/hook/post_tool.go` PostToolUse). Commit
+`6e831c5a0` (this tree, branch `WT-push-serialize-sign`, parent `a98139343`).
+Measured 2026-09-26 by the M1 run lane.
+
+- **E8 — RED evidence (verbatim, captured BEFORE any implementation existed):**
+
+  ```
+  $ go test ./internal/hook/ -run 'TestPushSerial|TestPushLease'
+  # github.com/modu-ai/moai-adk/internal/hook [github.com/modu-ai/moai-adk/internal/hook.test]
+  internal/hook/push_serializer_test.go:62:35: undefined: PushShowJSON
+  internal/hook/push_serializer_test.go:65:15: undefined: DecodePushShowJSON
+  internal/hook/push_serializer_test.go:100:17: undefined: checkPushSerializer
+  internal/hook/push_serializer_test.go:109:16: undefined: checkPushSerializer
+  internal/hook/push_serializer_test.go:143:17: undefined: DecodePushShowJSON
+  internal/hook/push_serializer_test.go:149:19: undefined: checkPushSerializer
+  internal/hook/push_serializer_test.go:153:18: undefined: checkPushSerializer
+  internal/hook/push_serializer_test.go:189:20: undefined: checkPushSerializer
+  internal/hook/push_serializer_test.go:198:30: too many arguments in call to mustJSON
+  FAIL	github.com/modu-ai/moai-adk/internal/hook [build failed]
+  ```
+
+  The named AC tests were written first; the API they name did not exist.
+
+- **E1 — AC matrix** (command: `go test ./internal/hook/ -run
+  'TestPushSerial|TestPushLease|...' -v`, this run, this tree):
+
+  | AC | Test | Result |
+  |----|------|--------|
+  | AC-AP-001 | `TestPushSerializationDeniesSecondPush` | `--- PASS: TestPushSerializationDeniesSecondPush (0.43s)` |
+  | AC-AP-002 | `TestPushSerializationInactiveWhenNotArmed` (5 conditions incl. armed (e)) | `--- PASS: TestPushSerializationInactiveWhenNotArmed (2.13s)` |
+  | AC-AP-003 | `TestPushLeaseReleasedOnFailedPush` | `--- PASS: TestPushLeaseReleasedOnFailedPush (0.48s)` |
+  | AC-AP-004 | `TestPushLeaseReclaimAndFailOpen` (3 limbs) | `--- PASS: TestPushLeaseReclaimAndFailOpen (1.25s)` |
+
+  Full run: `ok github.com/modu-ai/moai-adk/internal/hook 8.369s` — 13 test
+  functions, 4 AC tests + 9 unit tables, swept count non-empty (`--- PASS:` lines above).
+
+- **E2 — builds:** `go build ./...` → exit 0; `GOOS=windows GOARCH=amd64 go
+  build ./...` → exit 0 (both re-measured after wiring; `WINDOWS_OK` / `NATIVE_OK`).
+- **E3 — coverage:** `go test -coverprofile` over the AC + unit runs →
+  push_serializer.go per-function: 9 functions at 100%,
+  `releasePushLeaseOnFailure` 94.7% (only the defensive release-error
+  advisory limb uncovered). New-file aggregate is above the 85% gate. Whole
+  `internal/hook` package coverage under the FULL suite: measured separately
+  (see the run log line in the completion report).
+- **E4 — subagent boundary:** `grep -rn 'AskUserQuestion'
+  internal/hook/push_serializer*.go` → 0 rows. pre_tool.go/post_tool.go
+  insertions (+35 lines) add none; pre-existing rows in those files are the
+  AskUserQuestion observer, untouched.
+- **E5 — lint:** `golangci-lint run --timeout=2m` after the change →
+  `0 issues.` — identical to the pre-change baseline (`0 issues.` measured in
+  pre-flight). No new issue.
+- **E6 — commits:** `6e831c5a0` (M1 code + tests + spec.md draft→in-progress).
+  No push (lane mode: push is the lead's).
+- **E7 — blockers:** none. One design-note below.
+
+**Design note — production activation seam (design.md §E record).** The
+activation triple is read from the `moai contract show --json` document via
+`DecodePushShowJSON`; which contract governs a session is the contract
+resolver of SPEC-AUTONOMY-ESCALATION-001 REQ-AE-002 (card t1235), not yet in
+this tree. The PreToolUse/PostToolUse call sites therefore resolve activation
+through the `pushShowJSONLoader` seam, whose nil default keeps the serializer
+inactive — the same inert posture as the opt-in guards beside it: on the
+inactive path no record is read and no audit line is written. All four ACs are
+fixture-based and fully exercisable without the resolver (acceptance.md §G:
+"the fixture stands in for A1's command"). The AC-AP-002 conditions (b)/(c)
+(action present with the field false, field absent) are likewise
+fixture-expressible because the real derivation folds the field into the
+action's presence (`internal/contract/derived.go` `fillDerived`).
 
 ## §E.3 Run-phase Audit-Ready Signal
 
