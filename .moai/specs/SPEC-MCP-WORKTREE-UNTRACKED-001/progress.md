@@ -8,16 +8,30 @@ Card: t1202 | Branch: WT-worktree-moai-root | Base: origin/develop `df526c9a9` |
 plan_status: audit-ready
 plan_complete_at: 2026-09-26
 tier: M
-spec_version: "0.3.0"
+spec_version: "0.4.0"
 artifacts: [spec.md, plan.md, acceptance.md, progress.md]
 spec_id_check: "Bash regex PASS on SPEC-MCP-WORKTREE-UNTRACKED-001; ID absent from .moai/specs (count 0)"
 baseline_tree: df526c9a9
 premise_evidence: .moai/reports/t1202/verdict.md
 plan_audit_iter1: ".moai/reports/t1202/plan-audit.md — FAIL 0.62"
 plan_audit_iter2: ".moai/reports/t1202/plan-audit-iter2.md — FAIL 0.78; lead decision: option B (scope reduction)"
+plan_audit_delta: ".moai/reports/t1202/plan-audit-delta.md — FAIL 0.86 (blocked by D27)"
 deferred_to: t1213
-recommendation: "design (a) alone; operator decides at Kickoff (plan.md §C, 3 decisions)"
+recommendation: "design (a) alone; operator decides at Kickoff (plan.md §C, 2 open decisions)"
 ```
+
+### Delta-audit map (spec v0.3.0 → v0.4.0)
+
+| Item | Change |
+|---|---|
+| D27 | New spec §3.1 (three gate readers) and REQ-MWU-011/012: on a config-orphaned root the `workflow.audit.gates` read comes from the primary checkout; an incomplete determination or ambiguous layout treats the codex gate as `required` (fail closed). Only that key; write destinations stay with t1213. AC-MWU-014 (codex_audit `fail` + `gate_unmet`; audit_multi not `pass`) and AC-MWU-015 (fail-closed; non-worktree unchanged). |
+| D29 | "Config-orphaned root" = no own `workflow.yaml` AND linked worktree — durable across receipt writes. REQ-MWU-008 no longer conditioned on the acceptance branch. AC-MWU-014 and AC-MWU-016 repeat after `W/.moai/state/` exists. |
+| D30 (lead decision B) | REQ-MWU-013 + AC-MWU-016: `_root` warning on `spec_progress` / `spec_audit` / `spec_drift` / `verify_*` for a config-orphaned root; `spec_audit` gains `_root`. plan §C records the lead decision; the "no warning" default is withdrawn. |
+| D28 | AC-MWU-012: bare-`.moai` dirs accepted under a PATH without the VCS binary and a bogus `GIT_DIR`. |
+| D31 | REQ-MWU-010 text extended; AC-MWU-013 checks all three statements in both rule copies and `projectRootDescCommon`. |
+| D32 | Not hand-edited: the sanctioned regeneration command writes the HEAD at regeneration time into the header (tool behavior; auditor marked no-action). Regenerated again in this commit. |
+| D33 | spec §6 new H3: tree-operation `GIT_*` scrubbing is out of scope; REQ-MWU-006/012 scrub only the validator and the gate inspection. |
+| AC budget | Old AC-004 and AC-005 merged; ACs renumbered 001–016 (Tier M ceiling). REQ sections reordered so REQ-MWU-001..013 appear in order. |
 
 ### Revision map for plan-audit iter-1 (spec v0.1.0 → v0.2.0)
 

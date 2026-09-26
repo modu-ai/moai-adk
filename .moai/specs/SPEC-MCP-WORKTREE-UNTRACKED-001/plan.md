@@ -9,7 +9,10 @@ keeps `.moai/` untracked, and omitting the input silently acts on the primary
 checkout. Premise measured LIVE (`.moai/reports/t1202/verdict.md`). After
 plan-audit iter-2 (FAIL 0.78) the lead chose scope reduction: this SPEC keeps
 validator acceptance plus tree operations; configuration/catalogue routing and
-state writes move to card t1213 (spec.md §6).
+state writes move to card t1213 (spec.md §6). After the delta audit (FAIL 0.86,
+D27) this SPEC also enforces the primary's audit gate on a config-orphaned
+worktree, fail-closed, and — lead decision D30 = B — warns on catalogue/state
+answers read from such a worktree (spec.md §4.4).
 
 ## §B Known Issues and measurement record
 
@@ -20,7 +23,19 @@ state writes move to card t1213 (spec.md §6).
   (`.moai/specs/<id>` only) in `mcp_project_root_test.go` and bare `.moai`
   directories in `mcp_glm_test.go`, `mcp_build_identity_test.go`,
   `mcp_audit_write_capability_test.go`, `mcp_shortest_path_test.go` — the
-  REQ-MWU-001 branch must keep all of them green (AC-MWU-013/014).
+  REQ-MWU-001 branch must keep all of them green (AC-MWU-012/013).
+- Audit-gate readers (spec.md §3.1): `applyGateUnmet` (`mcp_codex.go`),
+  `workflowAuditGates` → `enforceRequiredGateUnmet` (`mcp_convergence.go`),
+  `recordAuditReceipt` → `auditreceipt.CodexGateRequired`
+  (`mcp_audit_receipt.go`, `internal/auditreceipt/store.go`); all read the root's
+  raw `workflow.yaml` through `loadWorkflowAuditSection` (`audit_pin.go`), which
+  returns zero gates when the file is absent. Receipt writes create
+  `<root>/.moai/state/audit-receipts/` (`auditreceipt` `StateDir`), which is why
+  every new condition keys on the config-orphaned property rather than the
+  acceptance branch (plan-audit delta D27/D29).
+- `_root` provenance: `rootProvenanceMap` (`mcp_project_root.go`) is attached by
+  `spec_progress`, `spec_drift`, `verify_snapshot`, `verify_trend`; `spec_audit`
+  returns the audit result without it (REQ-MWU-013 adds it).
 - Tree operations: `mcp_codex.go` (`params["cwd"] = root`),
   `collectReviewDiff` in `mcp_review_material.go`, `mcp_glm.go`,
   `mcp_audit_multi.go` / `mcp_convergence.go`, `auditBuildIdentity` in
@@ -51,29 +66,38 @@ instead of falling back.
 
 ### B.3 Tier
 
-Expected files: `mcp_project_root.go` (or a sibling file for the git helper),
-one or two test files, the two rule-doc copies — 4–6 files, roughly 250–400 LOC
-with tests. Tier M stays (upper end of S by LOC, but five-plus files and a
-security-relevant boundary). Recount after M1.
+Expected files: `mcp_project_root.go` (plus a sibling for the scrubbed git
+helper and config-orphan predicate), `mcp_codex.go`, `mcp_convergence.go`,
+`mcp_audit_receipt.go` (or `audit_pin.go` as the shared gate seam),
+`mcp_server.go` (warning on catalogue/state responses, `_root` on
+`spec_audit`), two or three test files, the two rule-doc copies — about 9–11
+files, roughly 400–700 LOC with tests. Tier M. REQs 13, ACs 16 (at the Tier M
+ceiling). Recount after M1.
 
 ## §C Operator decisions (Kickoff)
 
 Resolved inside the reduced scope (no operator input needed):
 
 - Registration requirement: an unlisted or prunable worktree is rejected
-  (REQ-MWU-002/003, AC-MWU-006).
+  (REQ-MWU-002/003, AC-MWU-005).
 - Graph tools on a worktree without its own artifact: existing "graph layer
-  absent" error, no auto-build (REQ-MWU-008, AC-MWU-012).
+  absent" error, no auto-build (REQ-MWU-008, AC-MWU-011).
+
+Decided by the lead (recorded, not open):
+
+- **Catalogue/state warning (delta D30) — lead decision B.** Catalogue and state
+  tools on a config-orphaned root carry a `_root` warning so an empty catalogue
+  is distinguishable from "no SPECs" (REQ-MWU-013, AC-MWU-016). The former
+  default ("defer to t1213, no warning in this SPEC", under which catalogue tools
+  returned zero SPECs on the worktree with no signal) is withdrawn.
+- **Audit gate (delta D27).** Not an operator option: the primary's
+  `workflow.audit.gates` is enforced on a config-orphaned worktree and the read
+  fails closed (REQ-MWU-011/012). Routing of the remaining configuration,
+  catalogue, and state stays with card t1213.
 
 Still for the operator:
 
-1. **Interim behavior until t1213 lands** (spec.md §6, first Out of Scope
-   block): catalogue tools on an accepted worktree read its empty catalogue,
-   configuration reads see defaults (a primary-declared `required` codex gate is
-   not seen), and a state write creates `.moai` under the worktree. Recommended
-   default: **accept the interim and schedule t1213 next**. Alternative: pull a
-   `_root` warning for linked-worktree acceptance into this SPEC — adds one
-   requirement (REQ-MWU-011) and one criterion (AC-MWU-015).
+1. *(resolved — see above)*
 2. **Design (b)** — issue #1716 lists it as acceptable. Recommended default:
    **not built; recorded as a rejected alternative in spec.md §2**.
    Alternative: file a backlog card for (b). Changes nothing in this SPEC.
@@ -94,7 +118,7 @@ Still for the operator:
 
 ## §E Self-Verification (run-phase exit)
 
-- E1: AC-MWU-001..014 matrix with verbatim command output.
+- E1: AC-MWU-001..016 matrix with verbatim command output.
 - E2: RED-first predicates of AC-MWU-001 with their outputs.
 - E3: `diff` of the two rule copies exits 0.
 - E4: `go vet ./internal/cli/` and `golangci-lint run ./internal/cli/...` clean.
@@ -119,14 +143,24 @@ Still for the operator:
 
 ### M4 — Priority Medium — Confirm tree operations
 
-- Verify each §3 access receives the worktree path (AC-MWU-002, AC-MWU-012);
+- Verify each §3 access receives the worktree path (AC-MWU-002, AC-MWU-011);
   change a handler only where it does not.
+
+### M4b — Priority High — Config-orphan predicate, gate read, warning
+
+- Shared predicate (scrubbed git, fail-closed classification) used by the three
+  §3.1 gate reads (REQ-MWU-011/012) and by the catalogue/state `_root` warning
+  (REQ-MWU-013). Only `workflow.audit.gates` is routed; no write destination
+  changes. AC-MWU-014, AC-MWU-015, AC-MWU-016, including the second-call case
+  after `W/.moai/state/` exists.
 
 ### M5 — Priority Medium — Descriptions and rule doc
 
 - Update `projectRootDescCommon`; update § The `project_root` input in both
-  copies of `moai-mcp-tools.md` (linked-worktree row, and a sentence that
-  configuration, catalogue, and state are still read from the accepted tree),
+  copies of `moai-mcp-tools.md` (linked-worktree row; sentences that the audit gate of a
+  worktree without its own workflow config is read from the primary checkout,
+  and that other configuration, the catalogue, and state are still read from
+  the accepted tree),
   neutral wording; `make build`.
 
 ### M6 — Priority Low — Verification batch
@@ -140,6 +174,9 @@ Still for the operator:
 - Rejecting a valid worktree because some other listed entry is stale.
 - Falling back to the primary when a git inspection errors.
 - Answering a graph query from the primary checkout's graph.
+- Keying the gate read or the warning on "accepted through REQ-MWU-002" — the
+  first receipt write flips later calls to the REQ-MWU-001 branch.
+- Treating a failed config-orphan determination as "no gate" (fail-open).
 - Calling an unscrubbed git helper.
 
 ## §H Cross-References

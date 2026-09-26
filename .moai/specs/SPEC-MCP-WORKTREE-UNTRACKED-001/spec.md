@@ -1,7 +1,7 @@
 ---
 id: SPEC-MCP-WORKTREE-UNTRACKED-001
 title: "Accept a linked worktree as project_root when the repository keeps .moai/ out of git"
-version: "0.3.0"
+version: "0.4.0"
 status: draft
 created: 2026-09-26
 updated: 2026-09-26
@@ -25,6 +25,7 @@ tags: "mcp, worktree, project-root, untracked-moai, audit, validator"
 | 0.1.0 | 2026-09-26 | manager-spec (t1202) | Initial plan-phase draft. Compares design (a) validator-side acceptance against design (b) creation-side provisioning and recommends (a). |
 | 0.2.0 | 2026-09-26 | manager-spec (t1202) | Revision for plan-audit iter-1 (FAIL 0.62, D1–D16): per-tool `.moai` inventory, four access classes, source-root and primary-checkout predicates, design (b) premise corrected. |
 | 0.3.0 | 2026-09-26 | manager-spec (t1202) | Scope reduction after plan-audit iter-2 (FAIL 0.78), lead decision option B. Kept: validator acceptance of a registered linked worktree whose primary checkout is a MoAI root, and tree operations resolving to the worktree. Moved to follow-up card t1213: configuration/catalogue source-root routing and state-write destinations. Fixed D17 (today's acceptance path is untouched), D19, D21, D23, D24. |
+| 0.4.0 | 2026-09-26 | manager-spec (t1202) | Delta plan-audit (FAIL 0.86, blocked by D27). Closes the silent audit-gate weakening in this SPEC: the `workflow.audit.gates` read of a linked worktree lacking its own workflow config comes from the primary checkout, fail-closed when the primary cannot be resolved (REQ-MWU-011/012). Tree-operation and gate conditions are keyed on durable properties, not on the acceptance branch (D29). Lead decision D30 = B: catalogue/state tools on a config-orphaned root carry a `_root` warning (REQ-MWU-013). Added the no-subprocess and documentation checks (D28, D31); tree-operation git environment recorded as out of scope (D33). |
 
 ## §1 Problem
 
@@ -141,9 +142,28 @@ The graph artifact lives under `.moai` but is derived from the tree's own code,
 so it is read from the worktree only: a worktree without one gets the existing
 "graph layer absent" error, never the primary's graph.
 
-The configuration, catalogue, and state accesses of the same tools (SPEC
-catalogue, `config/sections/*.yaml`, `state/verify`, `state/audit-receipts`,
-`state/audit-multi`) are deferred to card t1213 — see §6.
+### §3.1 Audit-gate reads (in scope, one key)
+
+The explicit audit gate `workflow.audit.gates` is read from the audited root's
+raw `.moai/config/sections/workflow.yaml`; an absent file yields no gate, and an
+absent explicit gate is deliberately not treated as `required`
+(`internal/cli/audit_pin.go` `loadWorkflowAuditSection`). A worktree of an
+untracked-`.moai` repository has no such file, so without a change a primary
+that declares `gates.codex: required` would see that gate ignored on the
+worktree — `codex_audit` would return a fail-open `inconclusive` instead of a
+gate-unmet `fail`, and `audit_multi` could return `overall_verdict: pass`
+without codex. Today the same call is rejected, so this would turn a loud
+refusal into a silent pass. The three reads that decide it:
+
+| Reader | Tool | Code site |
+|---|---|---|
+| `applyGateUnmet` → `workflowAuditPins(root).Gates` | `codex_audit` | `mcp_codex.go` |
+| `workflowAuditGates(cfg.ProjectRoot)` → `enforceRequiredGateUnmet` | `audit_multi` | `mcp_convergence.go` |
+| `recordAuditReceipt` → `auditreceipt.CodexGateRequired(root)` (receipt id exposure) | `codex_audit`, `audit_multi` | `mcp_audit_receipt.go`, `internal/auditreceipt/store.go` |
+
+Only the gate key is routed (REQ-MWU-011/012). The other configuration keys
+(audit pins, `llm.yaml`), the catalogue, and state are deferred to card t1213 —
+see §6; what stays in scope for them is the REQ-MWU-013 warning.
 
 ## §4 Requirements (GEARS)
 
@@ -197,10 +217,10 @@ catalogue, `config/sections/*.yaml`, `state/verify`, `state/audit-receipts`,
 
 ### §4.2 Tree operations
 
-- **REQ-MWU-008 (State-driven, tree operations).** While a call's `project_root`
-  was accepted through REQ-MWU-002, every access in §3 shall act on the accepted
-  worktree path, and the graph tools shall never answer from the primary
-  checkout's graph artifact.
+- **REQ-MWU-008 (Ubiquitous, tree operations).** Every access in §3 shall act
+  on the root the validator returned, whichever branch accepted it, and the
+  graph tools shall read the graph artifact only under that root, never from the
+  primary checkout's graph artifact.
 
 ### §4.3 Compatibility and documentation
 
@@ -210,17 +230,53 @@ catalogue, `config/sections/*.yaml`, `state/verify`, `state/audit-receipts`,
 
 - **REQ-MWU-010 (Ubiquitous, documentation).** The shared input description text
   (`projectRootDescCommon`) and `.claude/rules/moai/core/moai-mcp-tools.md`
-  § The `project_root` input shall state the linked-worktree acceptance and that
-  configuration, catalogue, and state are still read from the accepted tree; the
+  § The `project_root` input shall state the linked-worktree acceptance, that the
+  audit gate of a worktree without its own workflow config is read from the
+  primary checkout, and that other configuration, the catalogue, and state are
+  still read from the accepted tree; the
   rule file and its template mirror under `internal/template/templates/` shall
   stay byte-identical, and the template copy shall carry no SPEC ID, card id, or
   date.
 
+### §4.4 Config-orphaned roots — audit gate and catalogue warning
+
+A **config-orphaned root** is a tool root that has no
+`.moai/config/sections/workflow.yaml` and that git reports to be a linked
+worktree (its git dir differs from its git common dir). The property is durable:
+a state write that later creates other paths under the root's `.moai` (for
+example an audit receipt) does not change it, so every condition below keys on
+this property and never on which validator branch accepted the root.
+
+- **REQ-MWU-011 (State-driven, gate from primary).** While an audit root is
+  config-orphaned, the three §3.1 gate reads shall resolve `workflow.audit.gates`
+  from the workflow config of the primary checkout identified by REQ-MWU-004,
+  and only that key; every other key keeps its current source.
+
+- **REQ-MWU-012 (Event-driven, gate read fails closed).** When an audit root has
+  no `.moai/config/sections/workflow.yaml` and the config-orphan determination or
+  the REQ-MWU-004 primary identification cannot complete (git unavailable, a
+  non-zero exit other than "not a git repository", unexpected output, or an
+  ambiguous layout), the §3.1 gate reads shall treat the codex gate as
+  `required`, so a codex no-verdict yields a gate-unmet `fail` rather than a
+  fail-open result. A root that git reports is not inside a repository, or that
+  is the primary checkout itself, keeps today's gate behavior. The inspection
+  runs with the same scrubbed environment as REQ-MWU-006.
+
+- **REQ-MWU-013 (State-driven, catalogue/state warning).** While the root a
+  catalogue or state tool (`spec_progress`, `spec_audit`, `spec_drift`,
+  `verify_snapshot`, `verify_trend`) answers for is config-orphaned — or the
+  config-orphan determination cannot complete — the response shall carry a
+  `_root` block with a `warning` stating that the answer was read from the
+  worktree tree and may be empty because `.moai` is not tracked in that
+  repository, so an empty result is distinguishable from "no SPECs". `spec_audit`,
+  which carries no `_root` block today, gains one for this purpose.
+
 ## §5 Constraints
 
 - The reject-never-fall-back contract of the `project_root` input is binding.
-- The git subprocess runs only on the no-`.moai` branch; the existing branch
-  gains no subprocess.
+- The validator runs a git subprocess only on the no-`.moai` branch; the
+  existing branch gains no subprocess. The gate read runs one scrubbed git
+  inspection only for an audit root without `.moai/config/sections/workflow.yaml`.
 - Template text stays neutral across the 16 supported programming languages and
   free of internal development state (no SPEC IDs, card ids, dates, commit SHAs).
 - No creation path writes, copies, or links `.moai` as part of this SPEC.
@@ -232,9 +288,12 @@ This section records what is out of scope for this SPEC.
 ### Out of Scope — configuration, catalogue, and state routing (deferred to card t1213)
 
 - Routing configuration and catalogue reads (`.moai/specs`,
-  `.moai/config/sections/*.yaml` — audit pins, audit gates, `llm.yaml`, the
-  gate-required check used for receipt ids) of a linked-worktree root to the
-  primary checkout's `.moai`.
+  `.moai/config/sections/*.yaml` — audit pins, `llm.yaml`, and every key other
+  than `workflow.audit.gates`, which REQ-MWU-011 routes) of a linked-worktree
+  root to the primary checkout's `.moai`.
+- The hook-side gate read of the auditor receipt guard
+  (`internal/hook/audit_receipt_guard.go` → `CodexGateRequired(tree)`), which
+  runs in the hook process rather than the MCP tools.
 - Choosing the destination of state writes and their paired reads
   (`verify_snapshot` record/load, `verify_trend`, audit receipts written by
   `codex_audit` and `audit_multi`, `audit_multi` convergence state), including
@@ -243,12 +302,19 @@ This section records what is out of scope for this SPEC.
 - Handling a worktree-local untracked `.moai/specs` versus the primary
   catalogue.
 - Interim behavior until t1213 lands, stated so it is not mistaken for intent:
-  on a root accepted through REQ-MWU-002, catalogue tools return the worktree's
-  (empty) catalogue; configuration reads see no worktree config and use
-  defaults, so a primary-declared `required` audit gate is not seen; and a state
-  write creates `.moai` under the worktree, after which later calls take the
-  REQ-MWU-001 branch. `plan.md` §C decision 1 asks the operator to accept this
-  interim or pull a warning signal forward.
+  on a config-orphaned root, catalogue and state tools read the worktree tree —
+  the catalogue is typically empty — and say so through the REQ-MWU-013 warning;
+  audit pins and `llm.yaml` fall back to their defaults; and a state write
+  creates `.moai` under the worktree, after which later calls take the
+  REQ-MWU-001 branch while the root stays config-orphaned. The explicit audit
+  gate is **not** part of this interim (REQ-MWU-011/012).
+
+### Out of Scope — git environment of tree operations
+
+- Scrubbing inherited `GIT_*` variables from the git invocations of the §3 tree
+  operations (`collectReviewDiff`, `auditBuildIdentity`, codex's own git use).
+  REQ-MWU-006 scrubs the validator and REQ-MWU-012 the gate inspection only;
+  tree-operation behavior under an inherited `GIT_DIR` is unchanged by this SPEC.
 
 ### Out of Scope — design (b) creation-side provisioning
 
