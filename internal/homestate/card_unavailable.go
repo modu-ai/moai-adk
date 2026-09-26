@@ -68,6 +68,11 @@ func AppendRecordUnavailable(root string, e RecordUnavailableEntry) error {
 	if err := os.MkdirAll(filepath.Dir(path), 0o700); err != nil {
 		return err
 	}
+	unlock, err := lockRecordUnavailable(path)
+	if err != nil {
+		return err
+	}
+	defer unlock()
 	f, err := os.OpenFile(path, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0o600)
 	if err != nil {
 		return err
@@ -160,6 +165,17 @@ func (f *FactoryDB) reconcileUnavailable(ctx context.Context, tx *sql.Tx, runID 
 	return func() { _ = markRecordUnavailableReconciled(path, ids) }, nil
 }
 
+// lockRecordUnavailable takes the exclusive lock (the admission-lock
+// primitive: flock on unix, LockFileEx on windows) that serializes appends to
+// the unavailable-record log with its reconciliation rewrite.
+func lockRecordUnavailable(path string) (func(), error) {
+	impl, err := acquireAdmissionLock(path + ".lock")
+	if err != nil {
+		return nil, fmt.Errorf("lock %s: %w", filepath.Base(path), err)
+	}
+	return func() { _ = impl.release() }, nil
+}
+
 // recordUnavailableRewriteHook is a test seam called between the rewrite's
 // read of the log and its replacement of the file. It is nil in production.
 var recordUnavailableRewriteHook func()
@@ -167,6 +183,13 @@ var recordUnavailableRewriteHook func()
 // markRecordUnavailableReconciled rewrites the log with the given entries
 // marked reconciled (write-to-temp, then rename).
 func markRecordUnavailableReconciled(path string, ids map[string]bool) error {
+	// The read and the rename run under the same lock as every append, so an
+	// entry appended mid-rewrite cannot land in the file the rename replaces.
+	unlock, err := lockRecordUnavailable(path)
+	if err != nil {
+		return err
+	}
+	defer unlock()
 	entries, err := readRecordUnavailableFile(path)
 	if err != nil {
 		return err
