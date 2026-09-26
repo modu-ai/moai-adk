@@ -86,7 +86,7 @@ signature:                           # written ONLY by `sign`; excluded from the
   receipt:                                                   # present only when method=receipt
     path: kickoff-receipt.json                               # relative to the SPEC directory (fixed name)
     sha256: "<64 lowercase hex>"                             # raw bytes of the receipt file
-    provenance: file                                         # v1 value set: file   (A3 adds moai-store: $MOAI_HOME/db/<project-key>/contract/)
+    provenance: file                                         # value set: file. A3 verifies receipts against its store ($MOAI_HOME/db/<project-key>/contract/), not via a new provenance value
   batch_id: "<opaque id>"                                    # present only for batch signing
   supersedes: "<64 lowercase hex>"                           # previous contract_sha256 on --resign
   seal: "<64 lowercase hex>"                                 # see § Signature Seal; covers every field above
@@ -110,7 +110,7 @@ Signature consistency rules (checked by verify, reason code `signature_inconsist
 | `method` | `signer_kind` | `receipt` block | `receipt.provenance` |
 |---|---|---|---|
 | `interactive-tty` | `human` | absent | — |
-| `receipt` | `llm` or `llm+jev` | present | `file` (the only v1 value; any other value is inconsistent in A1) |
+| `receipt` | `llm` or `llm+jev` | present | `file` (the only value; any other value is inconsistent — A3 adds no provenance value, it cross-checks the receipt against its store) |
 
 Any other combination is `signature_inconsistent`. In addition, `signature.acceptance_sha256` must equal
 the measured acceptance hash (reason code `signature_acceptance_mismatch`).
@@ -224,7 +224,7 @@ enforces that a push of the integration branch happens while this session holds 
 
 ### Action Vocabulary
 
-| Contract token | Status | Mission action (forward reference for A2) |
+| Contract token | Status | Mission action (forward reference for A2b, t1245) |
 |---|---|---|
 | `commit` | allowed | `commit` |
 | `worktree` | allowed | (no mission equivalent — contract-only) |
@@ -238,7 +238,7 @@ enforces that a push of the integration branch happens while this session holds 
 | anything else | unknown | — |
 
 The forbidden set is fixed by the schema, not by configuration. An empty list is `actions_empty`.
-Mission-mappability is not required in A1; A2 decides whether its projection requires at least one
+Mission-mappability is not required in A1; A2b (t1245) decides whether its projection requires at least one
 mappable action.
 
 ### Digest
@@ -303,7 +303,7 @@ Closed set; `sign` prints the code and a one-line cause and exits 1 (REQ-CONTRAC
 | `receipt_invalid` | a structural or consistency rule fails (§ Kickoff Receipt, rules 1, 2, 5, 6, 7, 9) |
 | `receipt_signer_mismatch` | the decider fields do not match the configuration or `--signer`, or a fallback is unrecorded (§ Kickoff Receipt, rules 3-4) |
 | `receipt_input_mismatch` | an input hash differs from the current file / signable digest |
-| `receipt_requires_human` | the recorded `outcome` is `human`, or the effective decider is `llm+jev` (interim A1 rule, lifted by A3) |
+| `receipt_requires_human` | the recorded `outcome` is `human`, or — while A3's principle amendment has not landed — the effective decider is `llm+jev` (interim A1 rule, removed by A3 when it lands) |
 | `receipt_rejected` | the recorded `outcome` is `reject` |
 | `verify_failed` | any other verify rule fails (the verify codes are printed) |
 
@@ -390,9 +390,10 @@ A fallback receipt instead carries `"effective_decider": "llm"`,
 | 8 | `inputs.contract_sha256` equals `show --json`'s `signable_contract_sha256`; `inputs.acceptance_sha256` and `inputs.plan_audit_report.sha256` equal the current files' SHA-256 | `receipt_input_mismatch` |
 | 9 | `outcome` ∈ `approve | reject | human`; `outcome: approve` requires `llm_answer.answer: approve` (a Jev approval never suffices alone) | `receipt_invalid` |
 
-After the validator accepts a receipt, the signer applies, in order: (1) **interim A1 rule** — an
-`effective_decider` of `llm+jev` (Jev actually answered) → refuse `receipt_requires_human`, even when
-both answers approve; A3 lifts this rule when it amends the Jev display-only principle; (2) the recorded
+After the validator accepts a receipt, the signer applies, in order: (1) **interim A1 rule** — while
+A3's amendment of the Jev display-only principle has not landed, an `effective_decider` of `llm+jev` (Jev
+actually answered) → refuse `receipt_requires_human`, even when both answers approve; once A3 lands its
+amendment, A3 removes this step and an `llm+jev` receipt follows A3's cross-check result; (2) the recorded
 outcome: `approve` → sign; `reject` → refuse `receipt_rejected`; `human` → refuse
 `receipt_requires_human`. A recorded fallback (requested `llm+jev` → effective `llm`) passes step 1. A1 does not check that
 the outcome follows the cross-check rules below — that consistency is A3's to enforce, together with
@@ -409,8 +410,8 @@ Recorded here so A3 starts from the operator's decision; A1 does not evaluate th
   `kickoff.jev_min_confidence` —, `jev_malformed_response`, `jev_call_failed`, `jev_key_missing`) →
   fall back to `llm` alone, recorded as requested `llm+jev` → effective `llm` with the reason.
 - Interim rule until A3 amends the shipped "Jev is display-only" principle: an `llm+jev` receipt in
-  which Jev answered → `human`. **This one is enforced by A1 today** (signer step 1 above); A3 lifts it
-  when it amends the principle.
+  which Jev answered → `human`. **While A3's amendment has not landed, A1 enforces this one** (signer
+  step 1 above); A3 removes that enforcement when its amendment lands.
 
 ## Agent-Environment Markers
 
@@ -427,7 +428,7 @@ and §C.6 of spec.md.
 Codex: no Codex session-marker constant exists in this repository (`CODEX_HOME` appears, but it is a
 user configuration location that users also set in ordinary shells). A1 ships no Codex marker;
 run-phase may add one only after measuring, from a Codex exec'd command, a variable that Codex sets and
-ordinary shells do not. The A2 sign deny (spec.md §C.2) is the Codex-side protection.
+ordinary shells do not. The A2b (t1245) sign deny (spec.md §C.2) is the Codex-side protection.
 
 ## Signing Flow
 
@@ -488,7 +489,7 @@ adopt or revise:
 
 Known issue: `internal/mission/policy.go` `targetInsideScope` is exact-or-prefix
 (`target == allowed || HasPrefix(target, allowed+"/")`), so a glob such as `internal/foo/**` never
-contains `internal/foo/x.go`. A2 must translate trailing `/**` to a prefix and decide how to treat
+contains `internal/foo/x.go`. A2b must translate trailing `/**` to a prefix and decide how to treat
 globs with inner wildcards, and must require at least one mission-mappable action (the mission sealer
 rejects an empty `AllowedActions` as `incomplete_contract`).
 

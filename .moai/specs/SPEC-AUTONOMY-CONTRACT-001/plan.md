@@ -37,7 +37,7 @@ configuration/template). Milestones >= 3 and files >= 10, so run-phase routes to
   reviewed against older acceptance criteria cannot be signed silently. A **signed** contract whose
   acceptance changed is re-bound through `sign --resign` (REQ-CONTRACT-022) with the same human
   confirmation and an `old → new` summary.
-- **D7 — Mission-validator projection deferred to A2.** Its only consumer is A2, and it needs a
+- **D7 — Mission-validator projection deferred to A2b (t1245).** Its only consumer is A2b, and it needs a
   glob-to-prefix scope translation (design.md § Forward Note — Mission Projection). The withdrawn
   requirement's ID `REQ-CONTRACT-021` was reused for the agent-environment refusal so that the REQ
   sequence stays contiguous (MP-1) without a withdrawn-placeholder heading that lint would collect as a
@@ -53,7 +53,8 @@ configuration/template). Milestones >= 3 and files >= 10, so run-phase routes to
   (Jev is never a sole decider; configured `jev` is a configuration error). A1 validates the receipt's
   structure and internal consistency and signs only on a recorded `outcome: approve` that carries an LLM
   `approve`; the cross-check rules that derive the outcome and the Jev-failure fallback decision are A3's,
-  while the interim "Jev answered → human" rule is enforced by A1 until A3 lifts it (spec.md §C.8). The signature seal covers method, signer
+  while the interim "Jev answered → human" rule is enforced by A1 while A3's principle amendment has not
+  landed, and removed by A3 when it lands (spec.md §C.8). The signature seal covers method, signer
   kind, and provenance. A1 records `receipt.provenance: file`; autonomous Kickoff must not activate until
   `moai contract revoke` and moai-issued receipts (`$MOAI_HOME/db/<project-key>/contract/`) exist (A3,
   spec.md §C.6). Residual risk: a Jev call cannot be proven (spec.md §H).
