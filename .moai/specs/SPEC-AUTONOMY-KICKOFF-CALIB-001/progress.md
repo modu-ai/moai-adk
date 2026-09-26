@@ -55,7 +55,7 @@
 
 - sync_status: audit-ready
 - sync_complete_at: 2026-09-26T17:56:42+09:00
-- sync_commit_sha: pending-backfill-sync (본 필드가 담기는 커밋 자신의 SHA 는 커밋 전에 알 수 없음 — D3 자기참조 면제, 직후 커밋에서 실측 SHA 로 backfill)
+- sync_commit_sha: `2e871e222` (커밋 1 — 본 필드가 담기는 커밋 자신의 SHA 는 커밋 전에 알 수 없어 플레이스홀더로 착지한 뒤 직후 커밋에서 backfill한 것; D3 자기참조 면제)
 - 코드 제로 판정: 본 SPEC 은 제품 코드를 변경하지 않았다. `git diff --name-only 38148d891..HEAD` = 5파일 전부 `.moai/specs/SPEC-AUTONOMY-KICKOFF-CALIB-001/` 하위(acceptance·plan·progress·research·spec.md)이고, 비-SPEC 파일 수(`| grep -vcE '^\.moai/specs/'`) = 0 — `internal/`·템플릿·README·docs-site 변경 없음 (sync 페이즈 직접 재측정, 본 트리 HEAD `7c26395e1`, 2026-09-26)
 - CHANGELOG 결정: NO-ENTRY. `grep -c 'SPEC-AUTONOMY-KICKOFF-CALIB-001' CHANGELOG.md` = 0(기존 항목 부재를 직접 확인)이고, 본 카드는 내부 도그푸드 측정(사전 등록 설계·실행·판정)으로 사용자 대면 동작 변화 0건 — 항목을 새로 만들지 않는다 (B12 배출 전 0건 확인 원칙)
 - AC 정합: acceptance.md AC 14건(AC-CALIB-001..014, sync 재측정) — CHANGELOG 항목이 없으므로 정산(reconcile) 대상 없음
