@@ -97,6 +97,15 @@ cmd/moai/main.go                        cli.ResolveExitCode → os.Exit(2)
 JSON deny는 `hookSpecificOutput` 안에 살고 exit 0으로 나갑니다 — exit 2에서는 stdout JSON이
 무시되어 deny가 유실되기 때문입니다.
 
+**t1274 판 추가 — 계약 모드 이탈 관측 옆길(card t1235, SPEC-AUTONOMY-ESCALATION-001).**
+같은 훅 디스패치에서 갈라져 나가는 관측 전용 옆길이 하나 더 있다. `internal/hook/escalation_observe.go`가
+internal/escalation 패키지의 `Active` 게이트(contract 모드인가?)를 지나 계약 이벤트를 조립해 같은 패키지의 `Observe`로
+넘긴다. 이 옆길은 **위의 종료 코드 계약에 영향을 주지 않는다** — 감지기는 아무 값도 반환하지 않고(결정 불개입),
+고장(panic·입력 불가·락 시간 초과)은 `not-checked` 로그 한 줄로만 남는다. 산출물은 두 갈래:
+에스컬레이션 기록 `<worktree>/.moai/reports/<card>/escalation/<class>-<fingerprint>.md`(재발생은 새 ordinal),
+해시 체인 카드 로그와 상태 캐시 `$MOAI_HOME/db/<project-key>/contract/escalation/<card>.{log.jsonl,json}`.
+기록·해시에 들어가는 명령 텍스트는 `MaskCommand`로 자격증이 마스킹된 뒤다.
+
 ---
 
 ## C. 템플릿 — 임베드에서 사용자 디스크까지

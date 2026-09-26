@@ -168,6 +168,28 @@ decision.
   > `AC-IFU-003`'s import count: that is a declared proxy and says nothing about clause wording.
 
 - Thin `CLAUDE.md` to import + mechanism layer + import (REQ-IFU-002).
+- **Create `TestClaudeImportResolution_AgentsLocalSentinel` in `./internal/cli/` (REQ-IFU-023,
+  `AC-IFU-019`).** A new test is written here, not assumed: the symbol has 0 declarations at
+  commit `20c73990d`. It builds a throwaway fixture project whose `AGENTS.local.md` carries a
+  unique sentinel and whose `CLAUDE.md` carries `@AGENTS.local.md`, runs one headless
+  `claude -p` session in that fixture asking for the sentinel, and asserts the sentinel appears
+  in the response — resolution, not the presence of the directive line.
+  - **Environment.** It needs a real `claude` binary with working credentials and skips where
+    either is absent. CI provisions neither, so it records the test as `--- SKIP:`, never
+    `--- PASS:`, so the criterion is discharged by a local run only.
+  - **Recording.** Run `go test ./internal/cli/ -run '^TestClaudeImportResolution_AgentsLocalSentinel$' -v`
+    locally and record the command and its verbatim output in `progress.md` §E.2, including the
+    `--- PASS: TestClaudeImportResolution_AgentsLocalSentinel ` line. A `--- SKIP:` read or a
+    `no tests to run` read is not a result; the task stays open until the PASS line is on disk.
+    That CI never executes this test is named debt item 3 in `acceptance.md` §D.3.1.
+- **Headless measurements of `AC-IFU-019`, `AC-IFU-020`, and `AC-IFU-027` — owned here, after
+  the `CLAUDE.md` thinning and `make build`, in the same environment as the test above.** Each
+  runs against a throwaway fixture and each result is recorded separately in `progress.md` §E.2
+  with command and verbatim output, under the M1 rule that a negative result is a result:
+  `AC-IFU-019` one result (the sentinel response); `AC-IFU-020` two results (the `moai init` leg
+  and the `moai update` leg); `AC-IFU-027` six results (two sentinels under each of `moai cc`,
+  bare `claude`, `moai glm`) plus the launcher-source `git diff --stat`. M1 owns only
+  `AC-IFU-021` and `AC-IFU-022`; before this task, these three had no owner.
 - Add the C5 neutrality allowlist change (REQ-IFU-015).
 - `make build`, then both mirrors, then **three** budget checks, all with `--- PASS:` reads:
   per-file 24,576 (AC-IFU-005), nested-sum 32,768 (AC-IFU-006), and the always-loaded surface
