@@ -50,3 +50,7 @@ $ go vet ./internal/cli/ && golangci-lint run ./internal/cli/
 ## 잔여 위험
 
 - `readStdinWithTimeout` 의 판별도 같은 모양이다. 현재는 무해하지만 나중에 분기 행동이 바뀌면 드러날 수 있다.
+
+## 후속
+
+- 감사 F1(`update_version_test.go:676` `isTerminalStdin` 헬퍼 + AC-UVF-013 상시 SKIP) → 후속 카드 **t1271** 로 발행됨(리드).
