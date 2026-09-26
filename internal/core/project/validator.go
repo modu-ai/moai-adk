@@ -364,9 +364,14 @@ func CarryManifestForward(root, backupDir string) error {
 // It returns the number of entries it restored.
 func HealManifestFromBackups(root string) (int, error) {
 	root = filepath.Clean(root)
-	// A corrupt live manifest is the update's own concern; Load would move
-	// it aside, so leave it for the code that already handles it.
-	if data, err := os.ReadFile(filepath.Join(root, defs.MoAIDir, defs.ManifestJSON)); err != nil || !json.Valid(data) {
+	// A live manifest Load cannot parse is the update's own concern; Load
+	// would move it aside, so leave it for the code that already handles it.
+	data, err := os.ReadFile(filepath.Join(root, defs.MoAIDir, defs.ManifestJSON))
+	if err != nil {
+		return 0, nil
+	}
+	var probe manifest.Manifest
+	if json.Unmarshal(data, &probe) != nil {
 		return 0, nil
 	}
 	mgr := manifest.NewManager()

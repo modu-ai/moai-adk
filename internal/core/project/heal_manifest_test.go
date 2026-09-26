@@ -120,4 +120,16 @@ func TestHealManifestFromBackupsWithoutBackupsIsNoop(t *testing.T) {
 	if n, err := HealManifestFromBackups(root); err != nil || n != 0 {
 		t.Errorf("corrupt backup: %d, %v", n, err)
 	}
+	// A live manifest that is valid JSON but not a manifest is the update's
+	// concern: the heal must leave it where it is, not move it aside.
+	for _, body := range []string{"[]", `{"files":[]}`, `{"version":3,"files":{}}`} {
+		live := filepath.Join(defs.MoAIDir, defs.ManifestJSON)
+		writeFile(t, root, live, body)
+		if n, err := HealManifestFromBackups(root); err != nil || n != 0 {
+			t.Errorf("%s: %d, %v", body, n, err)
+		}
+		if got := readFile(t, filepath.Join(root, live)); got != body {
+			t.Errorf("%s: live manifest changed to %q", body, got)
+		}
+	}
 }
