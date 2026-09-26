@@ -107,6 +107,63 @@ func TestUpdate_LegacySnapshot_KeepsGitStrategyCustomizations(t *testing.T) {
 	}
 }
 
+// keptOverDefaultNoticeHeader is the fixed fragment of the one-time notice an
+// update prints when it merged against the embedded fallback BASE.
+const keptOverDefaultNoticeHeader = "differ from the current template default"
+
+// noticeLines returns the notice header line plus its "section: key" item
+// lines from one update's output.
+func noticeLines(out string) []string {
+	var lines []string
+	in := false
+	for _, l := range strings.Split(out, "\n") {
+		switch {
+		case strings.Contains(l, keptOverDefaultNoticeHeader):
+			in = true
+			lines = append(lines, l)
+		case in && strings.Contains(l, "· "):
+			lines = append(lines, l)
+		default:
+			in = false
+		}
+	}
+	return lines
+}
+
+// TestUpdate_LegacySnapshot_NoticeListsKeptKeysOnce: the fallback update keeps
+// every value that differs from the current template, so a template default
+// change on a key the user never touched sticks at its old value from then on.
+// That update must list those keys once; the next update, which merges against
+// the attested snapshot the first one wrote, prints none of the notice.
+func TestUpdate_LegacySnapshot_NoticeListsKeptKeysOnce(t *testing.T) {
+	root := initUserOwnedKeysProject(t)
+	editGitStrategyToGitFlow(t, root)
+	plantLegacyPostRestoreSnapshot(t, root)
+
+	first, err := runForcedTemplateSyncResult(t, root)
+	if err != nil {
+		t.Fatalf("update #1: %v\n%s", err, first)
+	}
+	got := strings.Join(noticeLines(first), "\n")
+	for _, want := range []string{
+		keptOverDefaultNoticeHeader,
+		"git-strategy.yaml: git_strategy.worktree_base_branch",
+		"git-strategy.yaml: git_strategy.manual.workflow",
+	} {
+		if !strings.Contains(got, want) {
+			t.Errorf("update #1 notice lacks %q; notice lines:\n%s", want, got)
+		}
+	}
+
+	second, err := runForcedTemplateSyncResult(t, root)
+	if err != nil {
+		t.Fatalf("update #2: %v\n%s", err, second)
+	}
+	if lines := noticeLines(second); len(lines) != 0 {
+		t.Errorf("update #2 printed %d notice line(s), want 0:\n%s", len(lines), strings.Join(lines, "\n"))
+	}
+}
+
 // TestUpdate_CurrentSnapshot_KeepsGitStrategyCustomizations is the positive
 // control for the harness above: with the snapshot this build writes, the
 // same edits already survive, so a failure of the legacy case is attributable
