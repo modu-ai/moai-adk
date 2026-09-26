@@ -7,8 +7,8 @@
 // this predicate reads the role's own session record (rollout JSONL) and
 // compares the sha256 of its "developer" response_item body against the
 // role's own developer_instructions, extracted from the role TOML by a
-// TOML-specification parse (never a regular-expression extraction —
-// REQ-RLP-003).
+// line scanner that follows the TOML string rules for the top-level keys
+// (never a regular-expression extraction — REQ-RLP-003).
 //
 // @MX:ANCHOR: [AUTO] codexRoleLoadPredicate is the SSOT for role-load
 // decisions across every role, including the two contract-refusal roles.
