@@ -17,9 +17,14 @@ package cli
 
 import (
 	"context"
+	"errors"
 	"fmt"
+	"io"
 	"os"
+	"os/signal"
 	"path/filepath"
+	"sync/atomic"
+	"syscall"
 	"time"
 
 	"github.com/mark3labs/mcp-go/mcp"
@@ -84,9 +89,12 @@ provision the entry (M4).`,
 }
 
 // runMCPServer builds the moai MCP server and serves it over stdio (blocking,
-// until the stdio stream closes). REQ-MCP-001. ServeStdio owns its context
-// internally (derived from os signals); there is no ctx to thread here.
+// until the stdio stream closes). REQ-MCP-001.
 func runMCPServer() error {
+	return runMCPServerWithIO(os.Stdin, os.Stdout)
+}
+
+func runMCPServerWithIO(stdin io.Reader, stdout io.Writer) error {
 	projectDir := resolveProjectDir()
 	admissionLock, lockErr := homestate.AcquireAdmissionLock(projectDir)
 	if lockErr != nil {
@@ -107,9 +115,48 @@ func runMCPServer() error {
 		return fmt.Errorf("register MCP runtime before serving: %w", err)
 	}
 	s := newMoaiMCPServer()
-	// ServeStdio blocks until the stdin stream closes; the goal.go blocking-RunE
-	// pattern. opts remain extensible (error logger, etc.) without API churn.
-	return server.ServeStdio(s)
+	defer stopCodexBackgroundJobs()
+	// ServeStdio waits for in-flight tool workers on EOF before cancelling its
+	// internal context. A worker stalled in an app-server handshake would keep
+	// that wait (and our shutdown cleanup) blocked. Cancel on EOF before waiting.
+	signalCtx, stopSignals := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+	defer stopSignals()
+	ctx, cancel := context.WithCancel(signalCtx)
+	defer cancel()
+	reader := &mcpEOFReader{Reader: stdin, cancel: cancel}
+	err := server.NewStdioServer(s).Listen(ctx, reader, stdout)
+	if reader.eof.Load() && errors.Is(err, context.Canceled) {
+		return nil // EOF is normal MCP shutdown, not a command failure.
+	}
+	return err
+}
+
+// mcpEOFReader forwards every byte unchanged and ends the request context when
+// the host closes stdin, including while a tool handler is still running.
+type mcpEOFReader struct {
+	io.Reader
+	cancel     context.CancelFunc
+	eof        atomic.Bool
+	pendingEOF atomic.Bool
+}
+
+func (r *mcpEOFReader) Read(p []byte) (int, error) {
+	if r.pendingEOF.Swap(false) {
+		r.eof.Store(true)
+		r.cancel()
+		return 0, io.EOF
+	}
+	n, err := r.Reader.Read(p)
+	if err == io.EOF {
+		if n > 0 {
+			// Process the final bytes before ending an in-flight tool request.
+			r.pendingEOF.Store(true)
+			return n, nil
+		}
+		r.eof.Store(true)
+		r.cancel()
+	}
+	return n, err
 }
 
 // newMoaiMCPServer constructs the MCP server instance, advertises the moai
@@ -267,7 +314,7 @@ func registerMoaiMCPTools(s *server.MCPServer, projectDir string) {
 	// OPTIONAL + experimental (R1).
 	add("codex_audit", mcp.NewTool(
 		"codex_audit",
-		mcp.WithDescription("Run a codex code review. mode=native → codex review/start; mode=adversarial → codex turn/start + an adversarial-review prompt. Returns a review-output schema (verdict/summary/findings/next_steps). codex is OPTIONAL; a missing or unavailable codex yields verdict 'inconclusive' (fail-open) — EXCEPT where the reviewed tree explicitly sets workflow.audit.gates.codex to 'required', in which case a review that produced no verdict returns verdict 'fail' with a non-empty 'gate_unmet' and isError false, the same fail-closed rule the convergence result applies. A 'required' tree also gets an 'audit_receipt' id on the result: cite it in the auditor verdict line, because a PASS the receipt store cannot corroborate is refused."),
+		mcp.WithDescription("Run a codex code review. mode=native → codex review/start; mode=adversarial → codex turn/start + an adversarial-review prompt. Returns a review-output schema (verdict/summary/findings/next_steps). codex is OPTIONAL; a missing or unavailable codex yields verdict 'inconclusive' (fail-open) — EXCEPT where the governing workflow.audit.gates.codex is explicitly 'required', in which case a review that produced no verdict returns verdict 'fail' with a non-empty 'gate_unmet' and isError false, the same fail-closed rule the convergence result applies. The gate is read from the reviewed tree's own workflow config; a linked worktree without its own workflow config takes it from the primary checkout instead, and treats it as 'required' when that primary cannot be identified. A 'required' gate also puts an 'audit_receipt' id on the result: cite it in the auditor verdict line. Where the reviewed tree carries its own workflow config, a PASS the receipt store cannot corroborate is refused; on a worktree that takes the gate from its primary checkout, that refusal is not guaranteed."),
 		mcp.WithString("mode", mcp.Enum(codexModeNative, codexModeAdversarial), mcp.Description("Audit mode: 'native' (codex review/start) or 'adversarial' (codex turn/start + red-team prompt). Defaults to native.")),
 		mcp.WithString("target", mcp.Enum(codexTargetUncommitted, codexTargetBaseBranch), mcp.Description("What codex reviews: 'uncommittedChanges' or 'baseBranch'. For 'baseBranch' the branch name is resolved SERVER-SIDE and cannot be supplied here — it is read from the reviewed tree, the remote default head first and then 'main', the same chain the GLM backend uses so both review the same change. A tree where neither resolves returns 'inconclusive' naming that cause rather than reviewing something else.")),
 		mcp.WithString("focus", mcp.Description("Adversarial-only focus area (e.g. 'concurrency', 'auth').")),
@@ -335,7 +382,9 @@ func registerMoaiMCPTools(s *server.MCPServer, projectDir string) {
 		mcp.WithString("prompt", mcp.Required(), mcp.Description("The task to give codex.")),
 		mcp.WithBoolean("background", mcp.Description("Run the turn in the background and return a job id immediately. Background jobs live inside this server process and do not survive its exit.")),
 		mcp.WithBoolean("write", mcp.Description("Request that codex be allowed to modify the working tree. Honored only when the project has opted in (workflow.codex.task.allow_write: true); otherwise the turn runs read-only and the result states the refusal.")),
-		mcp.WithBoolean("resume_last", mcp.Description("Continue the most recently recorded codex thread for this project instead of opening a new one. When no thread is recorded, a new one is opened and the result says so.")),
+		mcp.WithBoolean("resume_last", mcp.Description("Continue a recorded codex thread instead of opening a new one. With work_key, only records carrying that work_key are considered. Without a selector, the call resumes the thread only when exactly one thread is recorded; when more than one thread is recorded it is refused (error_code resume_ambiguous) with candidates to pass back as thread_id or work_key. When no thread is recorded, a new one is opened and the result says so.")),
+		mcp.WithString("thread_id", mcp.Description("Resume exactly this codex thread. Limited to threads recorded in this project's codex job registry; any other id is refused (error_code thread_not_recorded) without starting codex. Takes precedence over resume_last and work_key.")),
+		mcp.WithString("work_key", mcp.Description("Caller-chosen work-item key (for example a card id), up to 128 bytes. Recorded on background jobs, and scopes resume_last to records carrying this work_key, so parallel work items do not resume each other's threads.")),
 		mcp.WithReadOnlyHintAnnotation(false),
 	), handleCodexTask)
 
@@ -819,7 +868,7 @@ func handleVerifyTrend(_ context.Context, req mcp.CallToolRequest) (*mcp.CallToo
 
 // handleSpecAudit wraps spec.Audit (audit.go:156).
 func handleSpecAudit(_ context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
-	root, err := resolveToolProjectRoot(req)
+	root, source, err := resolveToolProjectRootWithSource(req)
 	if err != nil {
 		return toolErr("spec_audit", err), nil
 	}
@@ -833,7 +882,10 @@ func handleSpecAudit(_ context.Context, req mcp.CallToolRequest) (*mcp.CallToolR
 	if auditErr != nil {
 		return toolErr("spec_audit", auditErr), nil
 	}
-	return toolJSON("spec_audit", result), nil
+	// spec_audit carries the _root block like the other catalogue tools; the
+	// audit result's own fields keep their names and values
+	// (SPEC-MCP-WORKTREE-UNTRACKED-001 REQ-MWU-013).
+	return toolJSON("spec_audit", withRootBlock(result, rootProvenanceMap(root, source))), nil
 }
 
 // handleSpecDrift wraps spec.Audit (audit.go:156), filtered to modern-era drift.

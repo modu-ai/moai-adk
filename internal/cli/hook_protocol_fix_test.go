@@ -57,8 +57,12 @@ func TestReadStdinLines_PipedInput(t *testing.T) {
 // TestRunHookEvent_MalformedStdinGraceful is the G7 regression test: a
 // malformed stdin payload must yield exit 0 (nil error), a single valid JSON
 // object on stdout, and NO dispatch — never a cobra error with usage noise.
+// pre-tool is decision-bearing, so that object is a fail-closed deny rather
+// than the default output (SPEC-HOOK-STDIN-FAILCLOSED-001); observation events
+// keep the default output (TestStdinFailClosed_ObservationEventsPreserved).
 func TestRunHookEvent_MalformedStdinGraceful(t *testing.T) {
 	// Not parallel: swaps global deps + os.Stdin/os.Stdout.
+	t.Setenv("CLAUDE_PROJECT_DIR", t.TempDir())
 	origDeps := deps
 	defer func() { deps = origDeps }()
 
@@ -119,5 +123,8 @@ func TestRunHookEvent_MalformedStdinGraceful(t *testing.T) {
 	}
 	if dec.More() {
 		t.Errorf("stdout carries more than one JSON value: %q", trimmed)
+	}
+	if reason, ok := denyReason(hook.EventPreToolUse, trimmed); !ok || reason != expectedFailClosedReason() {
+		t.Errorf("stdout = %q, want the PreToolUse fail-closed deny", trimmed)
 	}
 }

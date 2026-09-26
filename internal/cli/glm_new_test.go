@@ -210,6 +210,9 @@ func TestLoadGLMConfig_AbsentLLMYAMLFallsToDefaults(t *testing.T) {
 // --- Tests for getGLMEnvPath ---
 
 func TestGetGLMEnvPath_ReturnsExpectedPath(t *testing.T) {
+	// .env.glm resolves under a temp HOME; drop the TestMain MOAI_HOME
+	// sandbox so the lookup derives from HOME (card t1229).
+	t.Setenv(config.EnvHome, "")
 	tmpHome := t.TempDir()
 	t.Setenv("HOME", tmpHome)
 	t.Setenv("USERPROFILE", tmpHome)
@@ -222,6 +225,10 @@ func TestGetGLMEnvPath_ReturnsExpectedPath(t *testing.T) {
 }
 
 func TestGetGLMEnvPath_ContainsMoaiDir(t *testing.T) {
+	// Resolve under a temp HOME rather than the TestMain MOAI_HOME sandbox,
+	// whose path carries no .moai segment (card t1229).
+	t.Setenv("HOME", t.TempDir())
+	t.Setenv(config.EnvHome, "")
 	path := getGLMEnvPath()
 	if path == "" {
 		t.Skip("cannot determine home directory")
@@ -237,6 +244,9 @@ func TestGetGLMEnvPath_ContainsMoaiDir(t *testing.T) {
 // --- Tests for saveGLMKey (additional coverage for edge cases) ---
 
 func TestSaveGLMKey_DirectoryCreation(t *testing.T) {
+	// .env.glm resolves under a temp HOME; drop the TestMain MOAI_HOME
+	// sandbox so the lookup derives from HOME (card t1229).
+	t.Setenv(config.EnvHome, "")
 	tmpHome := t.TempDir()
 	t.Setenv("HOME", tmpHome)
 	t.Setenv("USERPROFILE", tmpHome)
@@ -262,6 +272,9 @@ func TestSaveGLMKey_DirectoryCreation(t *testing.T) {
 }
 
 func TestSaveGLMKey_FileContainsHeader(t *testing.T) {
+	// .env.glm resolves under a temp HOME; drop the TestMain MOAI_HOME
+	// sandbox so the lookup derives from HOME (card t1229).
+	t.Setenv(config.EnvHome, "")
 	tmpHome := t.TempDir()
 	t.Setenv("HOME", tmpHome)
 	t.Setenv("USERPROFILE", tmpHome)
@@ -315,6 +328,9 @@ func TestIsTestEnvironment_WithEnvVarNotSet(t *testing.T) {
 // --- Tests for loadGLMKey ---
 
 func TestLoadGLMKey_ValidFile(t *testing.T) {
+	// .env.glm resolves under a temp HOME; drop the TestMain MOAI_HOME
+	// sandbox so the lookup derives from HOME (card t1229).
+	t.Setenv(config.EnvHome, "")
 	tmpHome := t.TempDir()
 	t.Setenv("HOME", tmpHome)
 	t.Setenv("USERPROFILE", tmpHome)
@@ -338,6 +354,9 @@ func TestLoadGLMKey_ValidFile(t *testing.T) {
 }
 
 func TestLoadGLMKey_MissingFile(t *testing.T) {
+	// .env.glm resolves under a temp HOME; drop the TestMain MOAI_HOME
+	// sandbox so the lookup derives from HOME (card t1229).
+	t.Setenv(config.EnvHome, "")
 	tmpHome := t.TempDir()
 	t.Setenv("HOME", tmpHome)
 	t.Setenv("USERPROFILE", tmpHome)
@@ -349,6 +368,9 @@ func TestLoadGLMKey_MissingFile(t *testing.T) {
 }
 
 func TestLoadGLMKey_SingleQuoted(t *testing.T) {
+	// .env.glm resolves under a temp HOME; drop the TestMain MOAI_HOME
+	// sandbox so the lookup derives from HOME (card t1229).
+	t.Setenv(config.EnvHome, "")
 	tmpHome := t.TempDir()
 	t.Setenv("HOME", tmpHome)
 	t.Setenv("USERPROFILE", tmpHome)
@@ -372,6 +394,9 @@ func TestLoadGLMKey_SingleQuoted(t *testing.T) {
 }
 
 func TestLoadGLMKey_Unquoted(t *testing.T) {
+	// .env.glm resolves under a temp HOME; drop the TestMain MOAI_HOME
+	// sandbox so the lookup derives from HOME (card t1229).
+	t.Setenv(config.EnvHome, "")
 	tmpHome := t.TempDir()
 	t.Setenv("HOME", tmpHome)
 	t.Setenv("USERPROFILE", tmpHome)
@@ -395,6 +420,9 @@ func TestLoadGLMKey_Unquoted(t *testing.T) {
 }
 
 func TestLoadGLMKey_EmptyFile(t *testing.T) {
+	// .env.glm resolves under a temp HOME; drop the TestMain MOAI_HOME
+	// sandbox so the lookup derives from HOME (card t1229).
+	t.Setenv(config.EnvHome, "")
 	tmpHome := t.TempDir()
 	t.Setenv("HOME", tmpHome)
 	t.Setenv("USERPROFILE", tmpHome)
@@ -418,6 +446,9 @@ func TestLoadGLMKey_EmptyFile(t *testing.T) {
 }
 
 func TestLoadGLMKey_OnlyComments(t *testing.T) {
+	// .env.glm resolves under a temp HOME; drop the TestMain MOAI_HOME
+	// sandbox so the lookup derives from HOME (card t1229).
+	t.Setenv(config.EnvHome, "")
 	tmpHome := t.TempDir()
 	t.Setenv("HOME", tmpHome)
 	t.Setenv("USERPROFILE", tmpHome)
@@ -443,6 +474,9 @@ func TestLoadGLMKey_OnlyComments(t *testing.T) {
 // --- Tests for getGLMAPIKey ---
 
 func TestGetGLMAPIKey_FromSavedFile(t *testing.T) {
+	// .env.glm resolves under a temp HOME; drop the TestMain MOAI_HOME
+	// sandbox so the lookup derives from HOME (card t1229).
+	t.Setenv(config.EnvHome, "")
 	tmpHome := t.TempDir()
 	t.Setenv("HOME", tmpHome)
 	t.Setenv("USERPROFILE", tmpHome)
@@ -468,6 +502,9 @@ func TestGetGLMAPIKey_FromSavedFile(t *testing.T) {
 }
 
 func TestGetGLMAPIKey_FromEnvFallback(t *testing.T) {
+	// .env.glm resolves under a temp HOME; drop the TestMain MOAI_HOME
+	// sandbox so the lookup derives from HOME (card t1229).
+	t.Setenv(config.EnvHome, "")
 	tmpHome := t.TempDir()
 	t.Setenv("HOME", tmpHome)
 	t.Setenv("USERPROFILE", tmpHome)
@@ -481,6 +518,9 @@ func TestGetGLMAPIKey_FromEnvFallback(t *testing.T) {
 }
 
 func TestGetGLMAPIKey_NoSource(t *testing.T) {
+	// .env.glm resolves under a temp HOME; drop the TestMain MOAI_HOME
+	// sandbox so the lookup derives from HOME (card t1229).
+	t.Setenv(config.EnvHome, "")
 	tmpHome := t.TempDir()
 	t.Setenv("HOME", tmpHome)
 	t.Setenv("USERPROFILE", tmpHome)
@@ -597,6 +637,12 @@ func TestCharacterize_GLM_AutoModeRejected(t *testing.T) {
 	if !strings.Contains(err.Error(), "auto mode is not available with GLM") {
 		t.Errorf("error message should mention auto mode limitation, got: %v", err)
 	}
+	if !strings.Contains(buf.String(), "supported Claude model") || strings.Contains(buf.String(), "4.6") {
+		t.Errorf("stderr should describe current eligibility without a model version, got: %s", buf.String())
+	}
+	if !strings.Contains(buf.String(), "use 'moai cc --permission-mode auto' instead") {
+		t.Errorf("stderr should preserve the moai cc hint, got: %s", buf.String())
+	}
 }
 
 // TestCharacterize_GLM_AutoModeEqualsSyntaxRejected verifies the --permission-mode=auto
@@ -623,6 +669,9 @@ func TestCharacterize_GLM_AutoModeEqualsSyntaxRejected(t *testing.T) {
 	}
 	if called {
 		t.Error("unifiedLaunchFunc must NOT be called when --permission-mode=auto is requested")
+	}
+	if !strings.Contains(buf.String(), "supported Claude model") || strings.Contains(buf.String(), "4.6") {
+		t.Errorf("stderr should describe current eligibility without a model version, got: %s", buf.String())
 	}
 }
 

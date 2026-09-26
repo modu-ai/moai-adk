@@ -201,6 +201,14 @@ jobs:
       # Moved to release-pr-multi-os.yml's windows leg at release time
       # (SPEC-V3R6-CI-PR-SPEEDUP-001).
 
+      # test-census.sh is a reporter: it exits 0 on any readable stream, so a
+      # census whose output is wrong never turns the test step below red.
+      # census-check.sh diffs the census output on a committed fixture against
+      # the expected text, so a breakage the fixture exercises fails here.
+      - name: Check test census against its fixture
+        shell: bash
+        run: bash scripts/ci-census/census-check.sh
+
       # `-json` writes a per-test event stream to a FILE, so the console keeps
       # its one-line-per-package shape while the run stops being unreadable
       # after the fact: without it, rc=0 cannot distinguish "the test passed"

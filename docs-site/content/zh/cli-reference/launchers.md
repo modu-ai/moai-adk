@@ -44,7 +44,7 @@ moai cc [-p profile] [-w [name]] [-- claude-args...]
 
 后端组合先看 token 余量再定。一个可用的起点是：主控用 GLM、plan 用 Claude（Opus）、run 用 GLM、sync 用 Claude（Opus），只把 Opus 放在判断吃重的阶段。换别的组合、或统一到一个后端，同样没有问题。
 
-权限模式为 `default`、`acceptEdits`(项目默认)、`plan`、`auto`、`bypassPermissions`、`dontAsk` 之一。`auto` 模式由后台分类器检查动作,需要 Team 方案 + Sonnet/Opus 4.6 及以上。
+权限模式为 `default`、`acceptEdits`（`moai init` 的默认值）、`plan`、`auto`、`bypassPermissions`、`dontAsk` 之一。`auto` 模式由后台分类器审查操作。支持的方案和模型请参阅 [Claude Code 权限模式文档](https://code.claude.com/docs/en/permission-modes)。
 
 ## moai glm —— GLM 后端
 

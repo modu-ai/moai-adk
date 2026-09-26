@@ -304,6 +304,7 @@ func TestBuildAutoUpdateFunc_NilDeps(t *testing.T) {
 }
 
 func TestBuildAutoUpdateFunc_NoUpdateAvailable(t *testing.T) {
+	t.Setenv(config.EnvSkipBinaryUpdate, "")
 	origDeps := deps
 	defer func() { deps = origDeps }()
 
@@ -330,6 +331,7 @@ func TestBuildAutoUpdateFunc_NoUpdateAvailable(t *testing.T) {
 }
 
 func TestBuildAutoUpdateFunc_UpdateAvailableButNoOrchestrator(t *testing.T) {
+	t.Setenv(config.EnvSkipBinaryUpdate, "")
 	origDeps := deps
 	defer func() { deps = origDeps }()
 
@@ -357,6 +359,7 @@ func TestBuildAutoUpdateFunc_UpdateAvailableButNoOrchestrator(t *testing.T) {
 }
 
 func TestBuildAutoUpdateFunc_UpdateCheckError(t *testing.T) {
+	t.Setenv(config.EnvSkipBinaryUpdate, "")
 	origDeps := deps
 	defer func() { deps = origDeps }()
 
@@ -389,6 +392,7 @@ func TestBuildAutoUpdateFunc_UpdateCheckError(t *testing.T) {
 }
 
 func TestBuildAutoUpdateFunc_SuccessfulUpdate(t *testing.T) {
+	t.Setenv(config.EnvSkipBinaryUpdate, "")
 	origDeps := deps
 	defer func() { deps = origDeps }()
 
@@ -1555,6 +1559,9 @@ func TestFindProjectRoot_FromNestedDir(t *testing.T) {
 
 // getGLMEnvPath — test with valid HOME
 func TestGetGLMEnvPath_Valid(t *testing.T) {
+	// .env.glm resolves under a temp HOME; drop the TestMain MOAI_HOME
+	// sandbox so the lookup derives from HOME (card t1229).
+	t.Setenv(config.EnvHome, "")
 	tmpHome := t.TempDir()
 	t.Setenv("HOME", tmpHome)
 
@@ -2074,6 +2081,9 @@ func TestSaveLLMSection_Success(t *testing.T) {
 
 // saveGLMKey — test saving key to file
 func TestSaveGLMKey_WritesFile(t *testing.T) {
+	// .env.glm resolves under a temp HOME; drop the TestMain MOAI_HOME
+	// sandbox so the lookup derives from HOME (card t1229).
+	t.Setenv(config.EnvHome, "")
 	tmpHome := t.TempDir()
 	t.Setenv("HOME", tmpHome)
 	t.Setenv("USERPROFILE", tmpHome)
@@ -2874,6 +2884,9 @@ func TestSaveTemplateDefaults_VerifyContent(t *testing.T) {
 
 // runGLM — test with "setup" subcommand for API key saving
 func TestRunGLM_SavesKey(t *testing.T) {
+	// .env.glm resolves under a temp HOME; drop the TestMain MOAI_HOME
+	// sandbox so the lookup derives from HOME (card t1229).
+	t.Setenv(config.EnvHome, "")
 	tmpHome := t.TempDir()
 	t.Setenv("HOME", tmpHome)
 	t.Setenv("USERPROFILE", tmpHome)
@@ -3717,6 +3730,9 @@ func TestSaveLLMSection_WritesConfig(t *testing.T) {
 // --- getGLMEnvPath: with HOME ---
 
 func TestGetGLMEnvPath_WithHOME(t *testing.T) {
+	// .env.glm resolves under a temp HOME; drop the TestMain MOAI_HOME
+	// sandbox so the lookup derives from HOME (card t1229).
+	t.Setenv(config.EnvHome, "")
 	t.Setenv("HOME", "/test/home")
 	path := getGLMEnvPath()
 	if !strings.Contains(path, ".moai") || !strings.Contains(path, ".env.glm") {
@@ -4112,6 +4128,9 @@ func TestEnsureGlobalSettingsEnv_NoFile(t *testing.T) {
 // --- saveGLMKey: permissions check ---
 
 func TestSaveGLMKey_Permissions(t *testing.T) {
+	// .env.glm resolves under a temp HOME; drop the TestMain MOAI_HOME
+	// sandbox so the lookup derives from HOME (card t1229).
+	t.Setenv(config.EnvHome, "")
 	tmpDir := t.TempDir()
 	t.Setenv("HOME", tmpDir)
 	t.Setenv("USERPROFILE", tmpDir)
@@ -4840,6 +4859,9 @@ func TestCleanMoaiManagedPaths_NonExistentPaths(t *testing.T) {
 // --- saveGLMKey: more path coverage ---
 
 func TestSaveGLMKey_CreatesDirectory(t *testing.T) {
+	// .env.glm resolves under a temp HOME; drop the TestMain MOAI_HOME
+	// sandbox so the lookup derives from HOME (card t1229).
+	t.Setenv(config.EnvHome, "")
 	tmpDir := t.TempDir()
 	t.Setenv("HOME", tmpDir)
 	t.Setenv("USERPROFILE", tmpDir)
@@ -6108,6 +6130,9 @@ func TestPersistTeamMode_Phase6(t *testing.T) {
 // --- saveGLMKey ---
 
 func TestSaveGLMKey_Phase6(t *testing.T) {
+	// .env.glm resolves under a temp HOME; drop the TestMain MOAI_HOME
+	// sandbox so the lookup derives from HOME (card t1229).
+	t.Setenv(config.EnvHome, "")
 	tmpDir := t.TempDir()
 	t.Setenv("HOME", tmpDir)
 	t.Setenv("USERPROFILE", tmpDir)
@@ -6130,6 +6155,9 @@ func TestSaveGLMKey_Phase6(t *testing.T) {
 // --- loadGLMKey ---
 
 func TestLoadGLMKey_Phase6(t *testing.T) {
+	// .env.glm resolves under a temp HOME; drop the TestMain MOAI_HOME
+	// sandbox so the lookup derives from HOME (card t1229).
+	t.Setenv(config.EnvHome, "")
 	tmpDir := t.TempDir()
 	t.Setenv("HOME", tmpDir)
 
@@ -6149,6 +6177,9 @@ func TestLoadGLMKey_Phase6(t *testing.T) {
 }
 
 func TestLoadGLMKey_NoFile(t *testing.T) {
+	// .env.glm resolves under a temp HOME; drop the TestMain MOAI_HOME
+	// sandbox so the lookup derives from HOME (card t1229).
+	t.Setenv(config.EnvHome, "")
 	tmpDir := t.TempDir()
 	t.Setenv("HOME", tmpDir)
 
@@ -6171,6 +6202,9 @@ func TestDetectGoBinPathForUpdate_Phase6(t *testing.T) {
 // --- getGLMAPIKey ---
 
 func TestGetGLMAPIKey_FromEnv(t *testing.T) {
+	// .env.glm resolves under a temp HOME; drop the TestMain MOAI_HOME
+	// sandbox so the lookup derives from HOME (card t1229).
+	t.Setenv(config.EnvHome, "")
 	tmpDir := t.TempDir()
 	t.Setenv("HOME", tmpDir)
 	t.Setenv("TEST_GLM_KEY_PHASE6", "env-api-key")
@@ -6182,6 +6216,9 @@ func TestGetGLMAPIKey_FromEnv(t *testing.T) {
 }
 
 func TestGetGLMAPIKey_FromFile(t *testing.T) {
+	// .env.glm resolves under a temp HOME; drop the TestMain MOAI_HOME
+	// sandbox so the lookup derives from HOME (card t1229).
+	t.Setenv(config.EnvHome, "")
 	tmpDir := t.TempDir()
 	t.Setenv("HOME", tmpDir)
 

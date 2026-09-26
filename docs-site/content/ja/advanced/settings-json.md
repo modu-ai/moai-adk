@@ -326,6 +326,22 @@ Claude Code を開くときの基本権限モードです。有効な値は次�
 }
 ```
 
+#### PowerShell ツール向けの deny ルール
+
+Claude Code は、シェルコマンドを別の PowerShell ツールで実行することもできます（多くの Windows 環境では既定で有効、macOS と Linux ではオプトイン）。このツールのルールは独自の `PowerShell(...)` 名前空間に属します。そのため `Bash(...)` の deny ルールは、同じコマンドが PowerShell ツール経由で実行された場合には効きません。MoAI-ADK のテンプレートでは、破壊的な deny ルールを両方のツールに宣言しています。たとえば `Bash(git push --force:*)` と `PowerShell(git push --force:*)` の組です。危険な Git、ディスクフォーマット、システムコマンド、DB 削除のルールがこれに当たります。
+
+次の 3 種類の Bash deny ルールには、意図的に PowerShell 版を用意していません。
+
+| ルール | PowerShell 版を置かない理由 |
+|------|------|
+| ファイルシステムのルート削除（`rm -rf /`、`rm -rf ~`、`C:/` の削除） | Claude Code の組み込み保護が、PowerShell ツール経由の `Remove-Item` や `cmd` によるシステムパス削除を、どの権限モードでもすでに拒否している |
+| `kill -9` | Windows の PowerShell では `kill` が `Stop-Process` のエイリアスなので、`kill -9` と書いたルールは一致しない可能性がある |
+| `TRUNCATE` | PowerShell のルールは大文字と小文字を区別せずに照合されるため、通常のファイルユーティリティ `truncate` まで遮断してしまう |
+
+組み込み保護のうち、`cmd` 経由で実行した `rd` や `del` によるルート・ホームディレクトリ・ワイルドカード対象の削除を止める検査は Claude Code v2.1.283 以降でのみ働き、Claude Code を起動する環境で `CLAUDE_CODE_DISABLE_POWERSHELL_CMD_RM_DENY=1` を設定すると無効になります（`Remove-Item` によるシステムパス削除の拒否はそのまま残ります）。macOS や Linux で `pwsh` からネイティブの `rm` を実行する場合は、文書化された組み込み保護の対象外です。
+
+チームで PowerShell ツールを使う場合、シェルコマンドの deny ルールを独自に追加するときは、対応する `PowerShell(...)` ルールも併せて追加してください。
+
 ### additionalDirectories
 
 Claude がアクセスできる追加の作業ディレクトリです。
@@ -760,7 +776,6 @@ Claude Code 下部に表示されるステータスバーを設定します。
 |------|-----|------|
 | `ENABLE_TOOL_SEARCH` | `"1"`, `"auto"`, `"auto:N"`, `"true"`, `"false"` | ツール検索の制御 (MoAI デフォルト値: `"1"`) |
 | `CLAUDE_AUTOCOMPACT_PCT_OVERRIDE` | `1`-`100` | 自動圧縮トリガーの百分率 (デフォルト値: ~95%) |
-| `CLAUDE_CODE_ENABLE_TELEMETRY` | `"1"` | OpenTelemetry データ収集の有効化 |
 | `CLAUDE_CODE_DISABLE_BACKGROUND_TASKS` | `"1"` | バックグラウンド作業の無効化 |
 | `DISABLE_AUTOUPDATER` | `"1"` | 自動アップデートの無効化 |
 | `HTTP_PROXY` | URL | HTTP プロキシサーバー |

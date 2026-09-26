@@ -160,6 +160,23 @@ state, while `body` and `status` are read-only. `list` deliberately returns meta
 peer text enters model context only through an explicit `body` call and remains untrusted.
 
 
+## Linked worktrees of a repository that keeps `.moai` untracked
+
+| Situation | What to pass | What happens |
+|---|---|---|
+| Linked worktree of a repository that does not track `.moai` (the worktree has no `.moai` of its own) | `project_root: <git rev-parse --show-toplevel>` | accepted when git lists it as a worktree of a primary checkout that has `.moai`; the call acts on the worktree |
+
+Such a worktree has no `.moai` of its own, yet it is still accepted: the path must
+be the top level of a worktree that `git worktree list` registers, and the
+repository's primary checkout must have `.moai`. Anything else — a subdirectory, an
+unregistered or prunable worktree, an ambiguous layout such as a separate git
+directory, or git being unavailable — is rejected. On such a worktree without its
+own workflow config, the explicit audit gate (`workflow.audit.gates`) is read from
+the primary checkout, and it is treated as `required` when the primary cannot be
+identified. Other configuration, the SPEC catalogue, and state are still read from
+the accepted tree, so catalogue and state answers there carry a
+`_root.worktree_warning` that an empty result may only mean `.moai` is not tracked.
+
 ---
 
 Classification: Lazy companion — catalogue tables and per-family guidance only. The preference rule
