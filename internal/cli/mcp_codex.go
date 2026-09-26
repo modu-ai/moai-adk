@@ -309,6 +309,20 @@ type ReviewOutput struct {
 	// consumer's JSON changes, and the fail-open verdict itself is preserved.
 	GateUnmet string `json:"gate_unmet,omitempty"`
 
+	// Contradiction records that the review is self-contradictory: a blocking
+	// verdict survived the parse while no finding did, and no GateUnmet explains
+	// the pair. That is the V8 shape — the verdict line was recognized but the
+	// findings were written in a shape no recognizer reads, so a consumer
+	// reading Findings alone would see a clean review
+	// (SPEC-CODEX-PARSER-SHAPE-001 REQ-CPS-006).
+	//
+	// It is a separate field rather than a SynthesisNote because the
+	// convergence layer reads a non-empty SynthesisNote as a disagreement flag;
+	// this record is about lost content, not about signals that disagreed.
+	// Additive + omitempty (the SynthesisNote/GateUnmet precedent): no existing
+	// consumer's JSON changes unless the contradiction is present.
+	Contradiction string `json:"contradiction,omitempty"`
+
 	// AuditReceipt carries the id of the receipt the server recorded for THIS
 	// call, so an auditor can cite evidence that the audit ran rather than
 	// asserting it. Present only where the audited tree explicitly declared
@@ -1682,7 +1696,7 @@ func synthesizeReviewOutput(reviewText, method string) ReviewOutput {
 	if verdict == "" {
 		verdict = codexUnrecognizedVerdict(method)
 	}
-	return ReviewOutput{
+	return flagVerdictFindingsContradiction(ReviewOutput{
 		Verdict:  verdict,
 		Summary:  strings.TrimSpace(reviewText),
 		Findings: codexFindingsOf(reviewText),
@@ -1699,7 +1713,7 @@ func synthesizeReviewOutput(reviewText, method string) ReviewOutput {
 		// and asked only for findings[] — filling it was never in that scope.
 		NextSteps:     []string{},
 		SynthesisNote: describeSignalDivergence(signals, verdict),
-	}
+	})
 }
 
 // codexFindingLine matches ONE severity-tagged finding bullet ("- [P1] message")
@@ -1750,6 +1764,31 @@ func codexFindingsOf(reviewText string) []Finding {
 		curIndent = indent
 	}
 	return findings
+}
+
+// codexContradictionNote is the Contradiction value: what was observed, and
+// where the lost content can still be read.
+const codexContradictionNote = "codex stated a fail verdict but no finding was recognized: " +
+	"the review's findings are in a shape the parser does not read, so the findings list is " +
+	"empty while the review is not clean — read the summary for codex's own findings"
+
+// flagVerdictFindingsContradiction reports the V8 state: verdict fail, zero
+// findings, and no GateUnmet (SPEC-CODEX-PARSER-SHAPE-001 candidate (c)).
+//
+// It reads the OUTPUT, never the body, which is why it holds for shapes no one
+// has enumerated: whatever recognizer failed, a surviving blocking verdict
+// with nothing behind it is a contradiction.
+//
+// [HARD] The GateUnmet conjunct is load-bearing. applyGateUnmet turns a
+// fail-open inconclusive into fail with an empty findings list when a gate is
+// declared `required` — a correctly functioning gate, not a parser defect.
+// Dropping the conjunct would report every unmet required gate as lost
+// content (REQ-CPS-006a).
+func flagVerdictFindingsContradiction(out ReviewOutput) ReviewOutput {
+	if out.Verdict == "fail" && len(out.Findings) == 0 && out.GateUnmet == "" {
+		out.Contradiction = codexContradictionNote
+	}
+	return out
 }
 
 // describeSignalDivergence names every signal and the value adopted, but ONLY
