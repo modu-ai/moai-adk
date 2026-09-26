@@ -2,7 +2,7 @@
 id: SPEC-WORKTREE-STATE-ROOT-001
 title: "State and catalogue roots for a config-orphaned linked worktree"
 version: "0.2.1"
-status: draft
+status: in-progress
 created: 2026-09-26
 updated: 2026-09-26
 author: manager-spec (card t1213)

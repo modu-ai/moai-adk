@@ -34,3 +34,24 @@ _<pending run-phase>_
 ## §E.4 Sync-phase Audit-Ready Signal
 
 _<pending sync-phase>_
+
+## §F Phase 4 Mode Selection
+
+Input parameters: tier M; scope ~12-16 files (Go source + tests in internal/auditreceipt,
+internal/hook, internal/cli, internal/spec, one rule file + template mirror); domains 3
+(Go source, rule doc, template mirror); language mix mostly Go; concurrency benefit LOW
+(coding-heavy, milestones depend on one shared store-root answer); Agent Teams not requested.
+
+| Mode | Selected | Rationale |
+|---|---|---|
+| direct | no | multi-file semantic change, not a typo |
+| serial | yes | coding-heavy; M2-M7 all consume the M1 store-root function |
+| fanout | no | not research-heavy; parallel writers would share `internal/cli` |
+| sweep | no | not a uniform mechanical transform |
+
+Decision: serial
+
+Justification: every milestone routes through one store-root answer introduced first, so
+the work is sequential by dependency; Anthropic's coding-task parallelism caveat applies.
+Implementation Kickoff Approval was granted by the operator on 2026-09-26 with all five
+plan.md §C decisions at their recommended defaults, progression autonomous.
