@@ -285,7 +285,27 @@ func TestAC_CONTRACT_014(t *testing.T) {
 		}
 		p.AssertUnchanged(t, snap)
 	})
-	t.Run("human path, stdin is an empty pipe (</dev/null)", func(t *testing.T) {
+	t.Run("human path, stdin is the null device (</dev/null)", func(t *testing.T) {
+		p := newContractProject(t, cfgGuided)
+		devNull, err := os.Open(os.DevNull)
+		if err != nil {
+			t.Fatal(err)
+		}
+		origStdin := os.Stdin
+		os.Stdin = devNull
+		t.Cleanup(func() { os.Stdin = origStdin; _ = devNull.Close() })
+		snap := p.Snapshot()
+		res := runContract(t, p, contractRun{realTTY: true, env: map[string]string{}}, "sign", signtest.SpecID)
+		assertRefusal(t, res, contract.RefuseNotTTY)
+		if !strings.Contains(res.stdout, "interactive terminal") {
+			t.Errorf("the output must state that signing requires an interactive terminal\n%s", res)
+		}
+		if res.reads != 0 {
+			t.Errorf("no confirmation may be read from the null device (reads=%d)", res.reads)
+		}
+		p.AssertUnchanged(t, snap)
+	})
+	t.Run("human path, stdin is an empty pipe", func(t *testing.T) {
 		p := newContractProject(t, cfgGuided)
 		r, w, err := os.Pipe()
 		if err != nil {
@@ -693,6 +713,30 @@ func TestAC_CONTRACT_024(t *testing.T) {
 			"sign", "--resign", signtest.SpecID)
 		assertRefusal(t, res, contract.RefuseNotTTY)
 		p.AssertUnchanged(t, snap)
+	})
+	t.Run("resign refuses a contract body edited after signing", func(t *testing.T) {
+		p := humanSigned(t)
+		rel := signtest.SpecRel(signtest.SpecID, contract.ContractFile)
+		body := string(p.ReadFile(rel))
+		const line = "    - \"internal/fixture/**\"\n"
+		tampered := strings.Replace(body, line, line+"    - \"internal/widened/**\"\n", 1)
+		if tampered == body {
+			t.Fatalf("fixture has no ownership.write line %q to edit", line)
+		}
+		p.WriteFile(rel, tampered)
+		wantVerify(t, p, 1, contract.ReasonContractDigestMismatch)
+
+		snap := p.Snapshot()
+		res := runContract(t, p, humanRun(signtest.SpecID), "sign", "--resign", signtest.SpecID)
+		assertRefusal(t, res, contract.RefuseVerifyFailed)
+		if !strings.Contains(res.stdout, contract.ReasonContractDigestMismatch) {
+			t.Errorf("the refusal must name %s\n%s", contract.ReasonContractDigestMismatch, res)
+		}
+		if res.reads != 0 {
+			t.Errorf("no confirmation may be read for a tampered contract (reads=%d)", res.reads)
+		}
+		p.AssertUnchanged(t, snap)
+		wantVerify(t, p, 1, contract.ReasonContractDigestMismatch)
 	})
 	t.Run("resign an unsigned draft", func(t *testing.T) {
 		p := newContractProject(t, cfgGuided)

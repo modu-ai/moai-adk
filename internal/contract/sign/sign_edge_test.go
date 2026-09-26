@@ -168,6 +168,19 @@ func TestSign_DefaultStdinSeams(t *testing.T) {
 		seams.IsTTY, seams.ReadLine = nil, nil
 		assertRefuses(t, p, p.Options(), seams, rec, contract.RefuseNotTTY)
 	})
+	t.Run("null_device_is_not_a_terminal", func(t *testing.T) {
+		p := signtest.New(t)
+		devNull, err := os.Open(os.DevNull)
+		if err != nil {
+			t.Fatal(err)
+		}
+		old := os.Stdin
+		os.Stdin = devNull
+		t.Cleanup(func() { os.Stdin = old; _ = devNull.Close() })
+		seams, rec := humanSeams()
+		seams.IsTTY, seams.ReadLine = nil, nil
+		assertRefuses(t, p, p.Options(), seams, rec, contract.RefuseNotTTY)
+	})
 	for name, input := range map[string]string{"with_newline": signtest.SpecID + "\r\n", "without_newline": signtest.SpecID} {
 		t.Run("line_reader_"+name, func(t *testing.T) {
 			p := signtest.New(t)
