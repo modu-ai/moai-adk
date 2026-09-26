@@ -39,12 +39,13 @@ const codexRoleBodyKey = "developer_instructions"
 var ErrCodexRoleBodyKeyAbsent = errors.New("codex role body: developer_instructions key absent")
 
 // codexRoleBodyExtractTOML extracts the developer_instructions value from a
-// role TOML source per the TOML 1.0 multi-line-literal-string specification:
-// a newline immediately following the opening ''' delimiter is trimmed, and
-// no such trimming happens when the string's content begins on the same
-// line as the opening delimiter. This function never uses the regexp
-// package — it is a TOML-specification parse, not a regular-expression
-// extraction (REQ-RLP-003).
+// role TOML source per the TOML 1.0 multi-line-literal-string
+// specification: a newline immediately following the opening
+// triple-single-quote delimiter is trimmed, and no such trimming happens
+// when the string's content begins on the same line as the opening
+// delimiter. This function never uses the regexp package — it is a
+// TOML-specification parse, not a regular-expression extraction
+// (REQ-RLP-003).
 func codexRoleBodyExtractTOML(src string) (string, error) {
 	lines := strings.Split(src, "\n")
 	for i := 0; i < len(lines); i++ {
