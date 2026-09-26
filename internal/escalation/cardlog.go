@@ -21,6 +21,10 @@ const (
 	LineState      = "state"
 	LineDisarmed   = "disarmed"
 	LineNotChecked = "not-checked"
+	// LineNotObserved lists detections that could not be completed
+	// (REQ-AE-022): at a write whose judgment needs an undetermined root or
+	// an unreadable field, and at every commit checkpoint.
+	LineNotObserved = "not-observed"
 	// LineNotArmed and LineWarning are declared with the resolver.
 )
 
@@ -44,6 +48,8 @@ type LogEntry struct {
 	Detail  string   `json:"detail,omitempty"`
 	Specs   []string `json:"specs,omitempty"`
 	Reasons []string `json:"reasons,omitempty"`
+	// not-observed
+	NotObserved []string `json:"not_observed,omitempty"`
 	// Prev is the SHA-256 of the previous line of the same file ("" first).
 	Prev string `json:"prev"`
 }

@@ -11,13 +11,16 @@
 package escalationtest
 
 import (
+	"fmt"
 	"io"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 	"testing"
 	"time"
 
+	"github.com/modu-ai/moai-adk/internal/constitution"
 	"github.com/modu-ai/moai-adk/internal/contract"
 	"github.com/modu-ai/moai-adk/internal/contract/sign"
 	"github.com/modu-ai/moai-adk/internal/contract/sign/signtest"
@@ -168,6 +171,50 @@ type SpecOptions struct {
 	Unsigned bool
 	// Verdict is the draft's plan_audit.verdict; default PASS.
 	Verdict string
+	// Edit, when set, rewrites the draft contract text before signing.
+	Edit func(draft string) string
+}
+
+// RegistryRelPath is where WriteRegistry puts the zone registry, the default
+// path the contract CLI and the detector read.
+const RegistryRelPath = ".claude/rules/moai/core/zone-registry.md"
+
+// RegistryEntry is one zone-registry rule.
+type RegistryEntry struct {
+	ID, Zone, File string
+}
+
+// WriteRegistry writes a zone registry holding entries; signing and the
+// detector both read it from the worktree.
+func (w *Worktree) WriteRegistry(entries ...RegistryEntry) {
+	w.t.Helper()
+	var b strings.Builder
+	b.WriteString("# registry\n\n```yaml\n")
+	for i, e := range entries {
+		fmt.Fprintf(&b, "- id: %s\n  zone: %s\n  file: %s\n  anchor: \"#a%d\"\n  clause: clause %d\n  canary_gate: true\n",
+			e.ID, e.Zone, e.File, i, i)
+	}
+	b.WriteString("```\n")
+	w.Write(RegistryRelPath, b.String())
+}
+
+// registry returns the rule IDs and distinct Frozen files of the worktree's
+// registry, or empty lists without one.
+func (w *Worktree) registry() (ids, frozen []string) {
+	reg, err := constitution.LoadRegistry(w.Path(RegistryRelPath), w.Root)
+	if err != nil {
+		return nil, nil
+	}
+	for _, r := range reg.Entries {
+		ids = append(ids, r.ID)
+	}
+	for _, r := range reg.FilterByZone(constitution.ZoneFrozen) {
+		if !slices.Contains(frozen, r.File) {
+			frozen = append(frozen, r.File)
+		}
+	}
+	slices.Sort(frozen)
+	return ids, frozen
 }
 
 // AddSpec writes spec.md, acceptance.md, and contract.yaml for id and, unless
@@ -184,6 +231,9 @@ func (w *Worktree) AddSpec(id string, o SpecOptions) {
 	dir := ".moai/specs/" + id + "/"
 	draft := signtest.DraftContract(signtest.Draft{SpecID: id, Verdict: o.Verdict})
 	draft = strings.Replace(draft, "card: "+signtest.Card+"\n", "card: "+o.Card+"\n", 1)
+	if o.Edit != nil {
+		draft = o.Edit(draft)
+	}
 	w.Write(dir+"acceptance.md", signtest.Acceptance)
 	w.Write(dir+contract.ContractFile, draft)
 	if !o.Unsigned {
@@ -198,17 +248,20 @@ func (w *Worktree) AddSpec(id string, o SpecOptions) {
 func (w *Worktree) sign(id string) {
 	w.t.Helper()
 	p := Policy()
+	ids, frozen := w.registry()
 	opts := sign.Options{
-		ProjectRoot:      w.Root,
-		SpecIDs:          []string{id},
-		Mode:             p.Mode,
-		SecondReview:     p.SecondReview,
-		PushDevelop:      p.PushDevelop,
-		Decider:          "human",
-		JevEnabled:       true,
-		JevMinConfidence: 0.5,
-		BudgetDefault:    p.BudgetDefault,
-		AgentMarkers:     append([]string(nil), signtest.Markers...),
+		RegistryRuleIDs:     ids,
+		RegistryFrozenFiles: frozen,
+		ProjectRoot:         w.Root,
+		SpecIDs:             []string{id},
+		Mode:                p.Mode,
+		SecondReview:        p.SecondReview,
+		PushDevelop:         p.PushDevelop,
+		Decider:             "human",
+		JevEnabled:          true,
+		JevMinConfidence:    0.5,
+		BudgetDefault:       p.BudgetDefault,
+		AgentMarkers:        append([]string(nil), signtest.Markers...),
 	}
 	answered := false
 	seams := sign.Seams{

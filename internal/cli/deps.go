@@ -266,7 +266,7 @@ func InitDependencies() {
 	// `moai hook security-scan` subcommand it fronted stays registered.
 	deps.HookRegistry.Register(hook.NewPostToolGuardianHandler())
 	deps.HookRegistry.Register(hook.NewCompactHandler())
-	deps.HookRegistry.Register(hook.NewPostToolUseFailureHandler())
+	deps.HookRegistry.Register(hook.WithEscalationConfig(hook.NewPostToolUseFailureHandler(), deps.Config))
 	deps.HookRegistry.Register(hook.NewNotificationHandlerWithConfig(deps.Config))
 	// Config-ful constructor so project-context additionalContext injection is
 	// live in production (the no-config constructor left buildContext dead).

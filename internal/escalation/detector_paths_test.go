@@ -87,11 +87,12 @@ func TestOwnershipMoveInsideRoot(t *testing.T) {
 		t.Errorf("records did not cover both the write miss and the never match")
 	}
 
-	// A write outside the worktree root is not judged in this milestone.
+	// A write outside the worktree root but under the OS temporary directory
+	// is exempt (REQ-AE-013).
 	escalation.Observe(s, escalation.Event{Hook: escalation.HookPreToolUse, CWD: w.Root, ToolName: "Write",
 		FilePath: filepath.Join(filepath.Dir(w.Root), "elsewhere.txt")})
-	if n := len(records(t, w)); n != 2 {
-		t.Errorf("outside-root write changed records: %v", records(t, w))
+	if rs, _ := recordsOfClass(t, w, escalation.ClassOwnershipMove); len(rs) != 2 {
+		t.Errorf("outside-root temp write changed ownership-move records: %v", records(t, w))
 	}
 }
 

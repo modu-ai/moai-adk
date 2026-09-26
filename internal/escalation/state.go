@@ -45,6 +45,7 @@ type Arming struct {
 	EffectiveNever []string        `json:"effective_never"`
 	Scratch        []string        `json:"scratch"`
 	Write          []string        `json:"write"`
+	Invariants     []string        `json:"invariants"`
 	Budget         contract.Budget `json:"budget"`
 	ArmedAt        string          `json:"armed_at"`
 }
@@ -60,6 +61,9 @@ type VerifyCache struct {
 // their classes in a later milestone).
 type Counters struct {
 	Operations int `json:"operations"`
+	// ExecutedInvariants are the command-kind invariants a tool call executed
+	// since the previous commit checkpoint (REQ-AE-022).
+	ExecutedInvariants []string `json:"executed_invariants,omitempty"`
 }
 
 // ReadCardState reads the card state file; ok is false when it is absent.

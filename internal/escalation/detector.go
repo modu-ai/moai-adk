@@ -60,6 +60,13 @@ type Event struct {
 	FilePath string
 	// Command is the shell command of a shell tool, "" otherwise.
 	Command string
+	// Failed is true when the observed call completed with a failure
+	// (PostToolUseFailure, or a non-zero exit status the runtime reported).
+	Failed bool
+	// ScratchpadDir is the session scratchpad root when the runtime supplies
+	// one; "" means undetermined, and an outside-root write that only the
+	// scratchpad could have covered is then listed not-observed (REQ-AE-013).
+	ScratchpadDir string
 }
 
 // Observe runs the escalation detector for one hook event. It never denies,
@@ -160,8 +167,16 @@ func (r *run) detect() {
 			}
 		}
 	}
-	if r.lg.Armed() && r.ev.Hook == HookPreToolUse && isWriteTool(r.ev.ToolName) {
-		r.classOwnershipMove()
+	if r.lg.Armed() && r.ev.Hook == HookPreToolUse && isWriteTool(r.ev.ToolName) && r.ev.FilePath != "" {
+		w := r.writeTarget()
+		r.classFrozenFile(w)
+		r.classOwnershipMove(w)
+	}
+	if r.lg.Armed() && r.ev.Hook == HookPostToolUse && isShellTool(r.ev.ToolName) {
+		r.classInvariantCommand()
+		if r.isCommitCheckpoint() {
+			r.checkpointNotObserved()
+		}
 	}
 	if r.ev.Hook == HookPostToolUse && (isWriteTool(r.ev.ToolName) || isShellTool(r.ev.ToolName)) {
 		r.classBudgetOperations()
@@ -244,53 +259,6 @@ func (r *run) classAcceptanceChange(rep contract.Report, contractBytes []byte) {
 	})
 }
 
-// classOwnershipMove trips class 3 for a write-capable call to a path inside
-// the worktree root that no ownership.write glob covers or an effective_never
-// glob matches. Writes outside the root and the full exemption set of
-// REQ-AE-013 arrive with class 3's own milestone.
-func (r *run) classOwnershipMove() {
-	a := r.st.Armed
-	target := r.ev.FilePath
-	if target == "" {
-		return
-	}
-	if !filepath.IsAbs(target) {
-		target = filepath.Join(r.ev.CWD, target)
-	}
-	rel, err := filepath.Rel(r.root, target)
-	if err != nil || rel == ".." || strings.HasPrefix(rel, ".."+string(filepath.Separator)) {
-		return
-	}
-	rel = filepath.ToSlash(rel)
-	if strings.HasPrefix(rel, ".moai/reports/"+r.card+"/") || strings.HasPrefix(rel, ".moai/state/") ||
-		matchAny(a.Scratch, rel) != "" {
-		return
-	}
-	glob := matchAny(a.EffectiveNever, rel)
-	if glob == "" && matchAny(a.Write, rel) != "" {
-		return
-	}
-	cdata, _ := os.ReadFile(a.ContractPath)
-	line := 0
-	matched := "ownership.write"
-	if glob != "" {
-		matched = glob
-		line = ContractItemLine(cdata, glob, "ownership", "never")
-	} else {
-		line = ContractLine(cdata, "ownership", "write")
-	}
-	r.writeRecord(Record{
-		Kind: KindContract, Class: ClassOwnershipMove, EscalateOn: ClassOwnershipMove,
-		Fingerprint: Fingerprint(ClassOwnershipMove, rel, matched),
-		ContractRef: contractRef(line, cdata, "ownership"),
-		Observation: fmt.Sprintf("%s %s (tripped by %s)", r.ev.ToolName, rel, matched),
-		Options: []string{
-			"Revert the write and keep within ownership.write",
-			"Amend the contract's ownership and re-sign it",
-		},
-	})
-}
-
 // classBudgetOperations counts one operation and trips class 7 when the count
 // exceeds the budget: the armed contract's, else the budget recorded at the
 // last arming, else workflow.autonomy.escalation.budget_default (REQ-AE-014).
@@ -349,6 +317,9 @@ func (r *run) arm(res Resolution) {
 	}
 	if rep.Contract != nil && rep.Contract.Ownership != nil {
 		a.Write = slices.Clone(rep.Contract.Ownership.Write)
+	}
+	if rep.Contract != nil {
+		a.Invariants = slices.Clone(rep.Contract.Invariants)
 	}
 	if rep.Budget != nil {
 		a.Budget = *rep.Budget
@@ -449,7 +420,7 @@ func (r *run) headSHA() string {
 
 // isCommitCheckpoint reports whether the event is a commit's PostToolUse.
 func (r *run) isCommitCheckpoint() bool {
-	return r.ev.Hook == HookPostToolUse && isShellTool(r.ev.ToolName) && gitCommitRe.MatchString(r.ev.Command)
+	return r.ev.Hook == HookPostToolUse && isShellTool(r.ev.ToolName) && !r.ev.Failed && gitCommitRe.MatchString(r.ev.Command)
 }
 
 // contractRef renders contract.yaml:<line>, falling back to the section key
