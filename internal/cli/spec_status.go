@@ -12,6 +12,7 @@ import (
 	"github.com/modu-ai/moai-adk/internal/execerr"
 	"github.com/modu-ai/moai-adk/internal/spec"
 	"github.com/spf13/cobra"
+	"golang.org/x/term"
 )
 
 // specIDPattern matches SPEC-XXX patterns in git commit messages
@@ -289,15 +290,17 @@ func getSPECIDsFromGitLog(projectRoot string) ([]string, error) {
 	return result, nil
 }
 
-// stdinIsTerminal reports whether stdin is a terminal (TTY). Uses the
-// os.ModeCharDevice check (dependency-free). In a non-TTY context (CI, piping)
-// an interactive fmt.Scanln prompt would hang; callers gate on this to abort.
+// stdinIsTerminal reports whether stdin is a terminal (TTY). In a non-TTY
+// context (CI, piping, </dev/null) an interactive fmt.Scanln prompt would hang
+// or read EOF; callers gate on this to abort.
 func stdinIsTerminal() bool {
-	fi, err := os.Stdin.Stat()
-	if err != nil {
-		return false
-	}
-	return (fi.Mode() & os.ModeCharDevice) != 0
+	return isTerminalFile(os.Stdin)
+}
+
+// isTerminalFile asks the terminal driver rather than checking
+// os.ModeCharDevice: /dev/null is a character device but not a terminal.
+func isTerminalFile(f *os.File) bool {
+	return term.IsTerminal(int(f.Fd()))
 }
 
 // stdinIsTerminalFn is the overridable TTY-detection hook (tests inject a
