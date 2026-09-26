@@ -204,4 +204,21 @@ gaps:
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase>_
+```yaml
+sync_complete_at: 2026-09-26
+sync_commit_sha: pending-backfill-sync
+sync_status: completed
+b12_self_test_a: "grep -c SPEC-FACTORY-RECORD-001 CHANGELOG.md -> 0 before emission"
+b12_self_test_b: "distinct AC ids in acceptance.md -> 25; CHANGELOG entry cites 25"
+b12_self_test_c: "every path cited in the entry verified with ls"
+changelog_entry_position: "[Unreleased] ### Added, first entry"
+docs_site: "no page covers the moai factory subcommands; none created (factory-mode.md covers the launcher only)"
+frontmatter_status_transitions:
+  spec.md: in-progress -> completed
+carried_debt:
+  - internal/homestate coverage 76.2% < 85% (69.0% at base 04ca1a98c)
+  - D7, D10, D11, D12 (see §E.2 / §E.3)
+  - push-gate no-fetch test is skipped on Windows (POSIX-only wrapper)
+  - record-unavailable.jsonl lock serializes only moai writers
+sync_audit: "Tier L sync-audit deferred until the Opus limit resets (lead decision; model not lowered)"
+```
