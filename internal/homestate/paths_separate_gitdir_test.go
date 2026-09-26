@@ -10,12 +10,25 @@ import (
 	"github.com/modu-ai/moai-adk/internal/paths"
 )
 
-// separateGitDirFixture builds `git init --separate-git-dir meta repo` plus one
-// linked worktree wt, all under t.TempDir(), and returns their resolved paths.
-// In this shape `git worktree list` names meta — the metadata directory — as
-// the main worktree and nothing records where repo is, so a linked worktree
-// cannot be traced back to the primary checkout (t1221, t1208 audit F2).
-func separateGitDirFixture(t *testing.T) (repo, meta, wt string) {
+// Repositories whose `git worktree list` names a git directory as the main
+// worktree (t1221, t1208 audit F2): --separate-git-dir (the metadata dir), bare
+// (the bare repository), submodule (.git/modules/<name>). For these,
+// CanonicalProjectRoot roots a linked worktree at that git directory. That is
+// the key every sibling worktree already shares, so it is kept (lead decision
+// D); what must not happen is state being WRITTEN inside the git directory.
+
+func runFixtureGit(t *testing.T, args ...string) {
+	t.Helper()
+	cmd := exec.Command("git", args...)
+	cmd.Env = append(cmd.Environ(), "GIT_CONFIG_GLOBAL=/dev/null", "GIT_CONFIG_SYSTEM=/dev/null",
+		"GIT_AUTHOR_NAME=t", "GIT_AUTHOR_EMAIL=t@example.invalid",
+		"GIT_COMMITTER_NAME=t", "GIT_COMMITTER_EMAIL=t@example.invalid")
+	if out, err := cmd.CombinedOutput(); err != nil {
+		t.Skipf("fixture: git %v: %v: %s", args, err, out)
+	}
+}
+
+func resolvedTemp(t *testing.T) string {
 	t.Helper()
 	if _, err := exec.LookPath("git"); err != nil {
 		t.Skipf("git not on PATH: %v", err)
@@ -24,56 +37,123 @@ func separateGitDirFixture(t *testing.T) (repo, meta, wt string) {
 	if err != nil {
 		t.Fatalf("resolve temp: %v", err)
 	}
-	repo, meta, wt = filepath.Join(base, "repo"), filepath.Join(base, "meta"), filepath.Join(base, "wt")
-	for _, args := range [][]string{
-		{"init", "--initial-branch=main", "--separate-git-dir", meta, repo},
-		{"-C", repo, "commit", "--allow-empty", "-m", "seed"},
-		{"-C", repo, "worktree", "add", wt, "-b", "linked"},
-	} {
-		cmd := exec.Command("git", args...)
-		cmd.Env = append(cmd.Environ(), "GIT_CONFIG_GLOBAL=/dev/null", "GIT_CONFIG_SYSTEM=/dev/null",
-			"GIT_AUTHOR_NAME=t", "GIT_AUTHOR_EMAIL=t@example.invalid",
-			"GIT_COMMITTER_NAME=t", "GIT_COMMITTER_EMAIL=t@example.invalid")
-		if out, err := cmd.CombinedOutput(); err != nil {
-			t.Skipf("separate-git-dir fixture: git %v: %v: %s", args, err, out)
+	return base
+}
+
+// separateGitDirFixture: `git init --separate-git-dir meta repo` plus two
+// linked worktrees wa and wb.
+func separateGitDirFixture(t *testing.T) (repo, meta, wa, wb string) {
+	t.Helper()
+	base := resolvedTemp(t)
+	repo, meta = filepath.Join(base, "repo"), filepath.Join(base, "meta")
+	wa, wb = filepath.Join(base, "wa"), filepath.Join(base, "wb")
+	runFixtureGit(t, "init", "--initial-branch=main", "--separate-git-dir", meta, repo)
+	runFixtureGit(t, "-C", repo, "commit", "--allow-empty", "-m", "seed")
+	runFixtureGit(t, "-C", repo, "worktree", "add", wa, "-b", "la")
+	runFixtureGit(t, "-C", repo, "worktree", "add", wb, "-b", "lb")
+	return repo, meta, wa, wb
+}
+
+// bareFixture: a bare repository x.git (cloned from a seeded repo so it has a
+// commit) plus two linked worktrees w1 and w2.
+func bareFixture(t *testing.T) (bare, w1, w2 string) {
+	t.Helper()
+	base := resolvedTemp(t)
+	seed := filepath.Join(base, "seed")
+	bare, w1, w2 = filepath.Join(base, "x.git"), filepath.Join(base, "w1"), filepath.Join(base, "w2")
+	runFixtureGit(t, "init", "--initial-branch=main", seed)
+	runFixtureGit(t, "-C", seed, "commit", "--allow-empty", "-m", "seed")
+	runFixtureGit(t, "clone", "-q", "--bare", seed, bare)
+	runFixtureGit(t, "-C", bare, "worktree", "add", w1, "-b", "l1")
+	runFixtureGit(t, "-C", bare, "worktree", "add", w2, "-b", "l2")
+	return bare, w1, w2
+}
+
+// Sibling linked worktrees keep sharing one key, and the primary checkout of a
+// separate-git-dir repository keeps its own key: no existing key moves.
+func TestGitDirRootedWorktreesKeepSharedKey(t *testing.T) {
+	t.Run("separate_git_dir", func(t *testing.T) {
+		repo, meta, wa, wb := separateGitDirFixture(t)
+		if ka, kb := homestate.ProjectKey(wa), homestate.ProjectKey(wb); ka != kb {
+			t.Errorf("sibling linked worktrees split: %s -> %q, %s -> %q", wa, ka, wb, kb)
 		}
-	}
-	return repo, meta, wt
+		if got := homestate.CanonicalProjectRoot(wa); got != meta {
+			t.Errorf("CanonicalProjectRoot(linked worktree) = %q, want the shared root %q (existing key)", got, meta)
+		}
+		if got := homestate.CanonicalProjectRoot(repo); got != repo {
+			t.Errorf("CanonicalProjectRoot(primary checkout) = %q, want %q", got, repo)
+		}
+	})
+	t.Run("bare", func(t *testing.T) {
+		bare, w1, w2 := bareFixture(t)
+		if k1, k2 := homestate.ProjectKey(w1), homestate.ProjectKey(w2); k1 != k2 {
+			t.Errorf("sibling linked worktrees split: %s -> %q, %s -> %q", w1, k1, w2, k2)
+		}
+		if got := homestate.CanonicalProjectRoot(w1); got != bare {
+			t.Errorf("CanonicalProjectRoot(linked worktree) = %q, want the bare repository %q (existing key)", got, bare)
+		}
+	})
 }
 
-// TestCanonicalProjectRootSeparateGitDirLinkedWorktree pins lead decision A for
-// t1221: a linked worktree of a separate-git-dir repository resolves to its own
-// checkout, never to the metadata directory git names as the main worktree.
-// The primary checkout keeps resolving to itself, so its existing key is
-// unchanged. The two still do NOT converge on one key — git keeps no record
-// that would allow it — which is a documented limitation, not a regression.
-func TestCanonicalProjectRootSeparateGitDirLinkedWorktree(t *testing.T) {
-	repo, meta, wt := separateGitDirFixture(t)
-
-	if got := homestate.CanonicalProjectRoot(wt); got != wt {
-		t.Errorf("CanonicalProjectRoot(linked worktree) = %q, want its own checkout %q (meta dir is %q)", got, wt, meta)
-	}
-	if got := homestate.CanonicalProjectRoot(repo); got != repo {
-		t.Errorf("CanonicalProjectRoot(primary checkout) = %q, want %q (existing key must not move)", got, repo)
+// A linked worktree of a bare repository is not the canonical tree, so a
+// migration-class mutation from it is still refused.
+func TestRefuseMutationFromBareLinkedWorktree(t *testing.T) {
+	_, w1, _ := bareFixture(t)
+	if err := homestate.RefuseMutationFromNonCanonicalTree(w1); err == nil {
+		t.Fatalf("RefuseMutationFromNonCanonicalTree(%s) = nil, want a refusal", w1)
 	}
 }
 
-// TestEnsureProjectLayoutSeparateGitDirDoesNotWriteIntoMetadata shows the harm
-// the wrong root caused: under a temp root, ProjectDir places state at
-// <root>/.moai/db/<key>, so a root of meta wrote .moai into git's own metadata
-// directory. Not parallel: t.Setenv.
-func TestEnsureProjectLayoutSeparateGitDirDoesNotWriteIntoMetadata(t *testing.T) {
-	_, meta, wt := separateGitDirFixture(t)
-	t.Setenv(paths.EnvHome, "")
-	t.Setenv("HOME", t.TempDir())
+// Under a temp root, state goes to <root>/.moai/db/<key>. When the root is a
+// git directory that would write inside git's own metadata; state must go to
+// the home layout instead. A plain temp repository keeps the root layout, so
+// the temp branch is narrowed, not disabled. Not parallel: t.Setenv.
+func TestEnsureProjectLayoutNeverWritesIntoGitDir(t *testing.T) {
+	cases := []struct {
+		name  string
+		build func(t *testing.T) (worktree, gitDir string)
+	}{
+		{"separate_git_dir", func(t *testing.T) (string, string) {
+			_, meta, wa, _ := separateGitDirFixture(t)
+			return wa, meta
+		}},
+		{"bare", func(t *testing.T) (string, string) {
+			bare, w1, _ := bareFixture(t)
+			return w1, bare
+		}},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			worktree, gitDir := tc.build(t)
+			t.Setenv(paths.EnvHome, "")
+			t.Setenv("HOME", t.TempDir())
+			if err := homestate.EnsureProjectLayout(worktree); err != nil {
+				t.Fatalf("EnsureProjectLayout(%s): %v", worktree, err)
+			}
+			if _, err := os.Stat(filepath.Join(gitDir, ".moai")); err == nil {
+				t.Fatalf("EnsureProjectLayout wrote .moai into the git directory %s", gitDir)
+			}
+			dir, err := homestate.ProjectDir(worktree)
+			if err != nil {
+				t.Fatalf("ProjectDir: %v", err)
+			}
+			if _, err := os.Stat(dir); err != nil {
+				t.Fatalf("project state dir %s not created: %v", dir, err)
+			}
+		})
+	}
 
-	if err := homestate.EnsureProjectLayout(wt); err != nil {
-		t.Fatalf("EnsureProjectLayout(linked worktree): %v", err)
-	}
-	if _, err := os.Stat(filepath.Join(meta, ".moai")); err == nil {
-		t.Fatalf("EnsureProjectLayout wrote .moai into the git metadata directory %s", meta)
-	}
-	if _, err := os.Stat(filepath.Join(wt, ".moai", "db")); err != nil {
-		t.Fatalf("expected project state under the linked worktree %s: %v", wt, err)
-	}
+	t.Run("plain_temp_repo_keeps_root_layout", func(t *testing.T) {
+		base := resolvedTemp(t)
+		repo := filepath.Join(base, "plain")
+		runFixtureGit(t, "init", "--initial-branch=main", repo)
+		t.Setenv(paths.EnvHome, "")
+		t.Setenv("HOME", t.TempDir())
+		if err := homestate.EnsureProjectLayout(repo); err != nil {
+			t.Fatalf("EnsureProjectLayout(%s): %v", repo, err)
+		}
+		if _, err := os.Stat(filepath.Join(repo, ".moai", "db")); err != nil {
+			t.Fatalf("plain temp repo lost the root layout: %v", err)
+		}
+	})
 }

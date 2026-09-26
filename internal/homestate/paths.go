@@ -16,7 +16,9 @@ import (
 )
 
 // ProjectKey returns a stable, readable key for a project. Linked worktrees
-// converge on the primary checkout through the repository common directory.
+// share one key through the repository common directory — the primary
+// checkout's key in an ordinary repository; see CanonicalProjectRoot for the
+// layouts where that shared root is a git directory instead.
 func ProjectKey(projectRoot string) string {
 	return projectKeyFromCanonicalRoot(CanonicalProjectRoot(projectRoot))
 }
@@ -38,7 +40,12 @@ func projectKeyFromCanonicalRoot(root string) string {
 	return fmt.Sprintf("%s-%x", base, sum[:4])
 }
 
-// CanonicalProjectRoot normalizes a worktree path to the primary checkout.
+// CanonicalProjectRoot normalizes a worktree path to the root every worktree of
+// the repository shares: the primary checkout in an ordinary repository. In a
+// --separate-git-dir, bare, or submodule repository git records no checkout
+// for the main worktree, so a linked worktree resolves to the git directory
+// itself (the metadata dir, the bare repo, .git/modules/<name>). That root is a
+// key, not a place to write: ProjectDir never lays state out inside it (t1221).
 func CanonicalProjectRoot(projectRoot string) string {
 	if projectRoot == "" {
 		projectRoot = "."
@@ -56,21 +63,11 @@ func CanonicalProjectRoot(projectRoot string) string {
 		} else if root, ok := primaryCheckoutRootFromCommonDir(dirs.CommonDir); ok {
 			projectRoot = root
 		} else if out, err := scrubbedGit(projectRoot, "worktree", "list", "--porcelain").Output(); err == nil {
-			// Git lists the primary checkout first. A --separate-git-dir
-			// repository records no checkout location at all: the first entry
-			// is the metadata directory itself, and nothing leads back to the
-			// primary checkout. Such a linked worktree keeps its own root
-			// rather than rooting state inside git's metadata (t1221); it
-			// therefore does not converge on the primary checkout's key.
+			// Git lists the main worktree first. With --separate-git-dir, bare
+			// or submodule layouts that entry is the git directory itself.
 			first, _, _ := strings.Cut(string(out), "\n")
 			if root, ok := strings.CutPrefix(first, "worktree "); ok {
-				if sameDir(root, dirs.CommonDir) {
-					if top, err := scrubbedGit(projectRoot, "rev-parse", "--show-toplevel").Output(); err == nil {
-						projectRoot = strings.TrimSpace(string(top))
-					}
-				} else {
-					projectRoot = root
-				}
+				projectRoot = root
 			}
 		}
 	}
@@ -78,18 +75,6 @@ func CanonicalProjectRoot(projectRoot string) string {
 		projectRoot = resolved
 	}
 	return filepath.Clean(projectRoot)
-}
-
-// sameDir reports whether a and b name the same directory once cleaned and
-// symlink-resolved (git may spell a path through /private on macOS).
-func sameDir(a, b string) bool {
-	resolve := func(p string) string {
-		if r, err := filepath.EvalSymlinks(p); err == nil {
-			p = r
-		}
-		return filepath.Clean(p)
-	}
-	return resolve(a) == resolve(b)
 }
 
 // scrubbedGit builds `git -C dir args...` without the caller's repository-
@@ -157,7 +142,7 @@ func insideTempRoots(path string) bool {
 func ProjectDir(projectRoot string) (string, error) {
 	canonical := CanonicalProjectRoot(projectRoot)
 	key := projectKeyFromCanonicalRoot(canonical)
-	if !explicitMoaiHome() && insideTempRoots(canonical) {
+	if rootLayout(canonical) {
 		return filepath.Join(canonical, ".moai", "db", key), nil
 	}
 	home, err := paths.MoaiHome()
@@ -165,6 +150,22 @@ func ProjectDir(projectRoot string) (string, error) {
 		return "", err
 	}
 	return filepath.Join(home, "db", key), nil
+}
+
+// rootLayout reports whether project state lives under <canonical>/.moai
+// rather than the home layout: a temp-rooted project with no explicit
+// MOAI_HOME — unless the canonical root is a git directory, which is a key and
+// never a place to write (t1221). The three callers share this one predicate so
+// the directories they create cannot disagree about where state lives.
+func rootLayout(canonical string) bool {
+	return !explicitMoaiHome() && insideTempRoots(canonical) && !isGitDir(canonical)
+}
+
+// isGitDir reports whether dir is itself a git directory (a --separate-git-dir
+// metadata dir, a bare repository, .git/modules/<name>), not a work tree.
+func isGitDir(dir string) bool {
+	out, err := scrubbedGit(dir, "rev-parse", "--is-inside-git-dir").Output()
+	return err == nil && strings.TrimSpace(string(out)) == "true"
 }
 
 func explicitMoaiHome() bool {
@@ -266,7 +267,7 @@ func EnsureHomeLayout() error {
 // permissions and records the canonical root used to derive the key.
 func EnsureProjectLayout(projectRoot string) error {
 	canonical := CanonicalProjectRoot(projectRoot)
-	if explicitMoaiHome() || !insideTempRoots(canonical) {
+	if !rootLayout(canonical) {
 		if err := EnsureHomeLayout(); err != nil {
 			return err
 		}
@@ -283,7 +284,7 @@ func EnsureProjectLayout(projectRoot string) error {
 			return err
 		}
 	}
-	if explicitMoaiHome() || !insideTempRoots(canonical) {
+	if !rootLayout(canonical) {
 		searchPath, err := SearchDBPath(projectRoot)
 		if err != nil {
 			return err
