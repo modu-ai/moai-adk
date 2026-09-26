@@ -58,7 +58,8 @@ flowchart TD
 
 | 옵션 | 형상 | 판정 |
 |---|---|---|
-| **A — 런처 시딩 (권고)** | `moai cc -w <name>` (워크트리 생성 경로)가 새 트리에 `.codex/hooks.json`을 moai 소유 항목만 담아 시딩. 생성 로직은 `internal/cli/update_codex_wiring.go`의 기존 배선 생성을 재사용. 멱등: 파일이 이미 있으면 건드리지 않음(사용자 항목 보존 서술과 정합 — 새 파일에는 보존할 사용자 항목이 없음). 기존 워크트리는 존재하지 않을 때만 시딩되므로 소급 무해 | **M1 채택 권고** — 최소 변경, 사용자 파일 무오염, 런처가 이미 [HARD] 유일한 생성 경로 |
+| **A — materializer 시딩 (권고 · 리드 조정 반영)** | 시딩 주체는 `moai worktree new`가 쓰는 **공용 트리 생성 경로(materializer)** — 레인 트리는 전부 이 경로로 만들어지므로 여기에 두면 오늘 이후 생성되는 모든 트리가 시딩을 받는다. (`moai cc -w`/`moai codex -w`는 기존 트리를 해석만 하므로 런처에 두면 안 된다 — 이미 만들어진 레인 트리가 누락된다.) 새 트리에 `.codex/hooks.json`을 moai 소유 항목만 담아 시딩, 생성 로직은 `internal/cli/update_codex_wiring.go` 재사용. 멱등: 파일이 이미 있으면 건드리지 않음(사용자 항목 보존 서술과 정합 — 새 파일에는 보존할 사용자 항목이 없음) | **M1 채택 권고** — 최소 변경, 사용자 파일 무오염, 모든 생성 경로 단일 진입점 |
+| A-보완 — 기존 트리 채움 | 조정 시점에 이미 존재하는 워크트리(오늘 레인들이 만든 트리 포함)는 materializer를 다시 지나지 않는다. 보완 채택: **런처 진입 시 부재면 같은 멱등 시딩 로직으로 채운다** (진입당 stat 1회의 저렴한 비용, 사용자 항목 부재 시에만 동작하므로 오염 없음) | 채택 — 기존 트리가 P1 전제를 영원히 못 갖는 갭을 닫음 |
 | B — 심볼릭 링크 | 워크트리의 hooks.json이 primary 것을 가리킴 | **기각** — primary 파일의 사용자 소유 항목이 워크트리 프로젝트에서도 실행되는 부작용 + 링크의 관리 주체 불명 + Codex trust 판단이 cwd 기준이라 링크가 우연히 작동하는지도 미측정 |
 | C — 추적 파일(템플릿) 전환 | `internal/template/templates/.codex/hooks.json`을 넣어 모든 체크아웃·워크트리에 포함 | **후속 카드 후보** — hooks.json은 "moai 소유 + 사용자 소유가 같은 파일에 섞이는" 런타임 보존 계약(description 문구 실측, research §C.4)을 가진다. 템플릿화하려면 .claude 쪽 settings.json/settings.local.json 분리에 상응하는 Codex 측 분리 규칙 설계가 선행돼야 함 — M1 범위 초과, 별도 카드로 |
 
@@ -106,8 +107,8 @@ mkdir -p /tmp/t1273-live/proj                  # 스크래치 프로젝트
 |---|---|---|
 | `internal/cli/handoff.go` | `newHandoffShowCmd` + 하위 등록 | 신규 (P3) |
 | `internal/cli/handoff_show_test.go` (신설) | pending/consumed/없음 3분기·--json·멱등 | 신규 테스트 |
-| 워크트리 런처 (`internal/cli/worktree/` — `moai cc -w` 생성 경로) | 새 트리에 `.codex/hooks.json` 시딩 (D2.5 옵션 A; `update_codex_wiring.go` 생성 로직 재사용, 존재 시 무시) | 신규 (P1 전제, 독립 가치) |
-| 워크트리 시딩 테스트 (신설) | 시딩·멱등(기존 파일 보존)· 실패 fail-open | 신규 테스트 |
+| 워크트리 materializer (`moai worktree new` 트리 생성 경로) + 런처 진입 보완 | 새 트리에 `.codex/hooks.json` 시딩 (D2.5 옵션 A; `update_codex_wiring.go` 생성 로직 재사용, 존재 시 무시) + 기존 트리 진입 시 부재면 채움 | 신규 (P1 전제, 독립 가치) |
+| 워크트리 시딩 테스트 (신설) | 시딩·멱등(기존 파일 보존)·런처 보완·실패 fail-open | 신규 테스트 |
 | `internal/codexadapter/output.go` | `additionalContextEvents` + `EventSessionStart` (전제 1·2 통과 시만) | 1행 (P1, 조건부) |
 | `internal/codexadapter/output_test.go` | SessionStart 매핑 케이스 | 조건부 |
 | `.moai/specs/SPEC-HANDOFF-NEUTRAL-001/*` | plan/design/acceptance/spec | 문서 |
