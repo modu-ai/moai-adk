@@ -1,4 +1,4 @@
-# design.md — SPEC-AUTONOMY-GATE-REWIRE-001 (v0.3.2)
+# design.md — SPEC-AUTONOMY-GATE-REWIRE-001 (v0.3.3)
 
 A1 기준: 0.5.2 (`25283ebf8`) — 스키마(결정자 값 집합, 파생 기본값, 영수증 필드, 구조 검증, `card` 필드)는 A1, 결정 규칙은 A3. A2 기준: 리드가 전달한 최종 형식(A2 개정본 대기). A2b(t1245): push 직렬화·에이전트발 `sign` 차단·팩토리 에이전트 세션의 `decide` 거절(리드 결정 2026-09-26).
 
@@ -55,7 +55,7 @@ Where `workflow.autonomy.mode: contract` — <지시>. See `.claude/rules/moai/w
 | 20 | `internal/contract/receipt/` (신규) + 테스트 | 사건 저장소·체인·검증 | 012 | — |
 | 21 | `internal/contract/kickoff/` (신규) + 테스트 | 전제조건·결정 규칙 R1~R5·decide·kickoff-check·활성 판정·연동 상수 | 007~011·025 | — |
 | 22 | `internal/contract/revoke/` (신규) + 테스트 | revoke | 022 | — |
-| 23 | `internal/contract/sign/` (A1 패키지) + 테스트 | 서명·재봉인 직후 `events.jsonl` 사건 추가(주입 가능한 저장소 이음매), 실패 시 서명 파일 미기록 — 요구는 A1 0.5.2 (25283ebf8) §C.6 이 A3 에 넘김, 추가 지점은 A3 소관. **모든 서명 테스트는 `t.TempDir()` 를 가리키는 `MOAI_HOME` 을 쓰도록 바꾼다**(실제 홈에 쓰지 않음). 서명기 단계 (1)(임시 규칙)을 상수 `jevDoctrineAmended` 로 조건화(M7, 상수 거짓이라 동작 불변)하고, AC-CONTRACT-016 (t) 를 A3 의 대체 테스트로 교체(AC-GR-017) | 012·025 |
+| 23 | `internal/contract/sign/` (A1 패키지) + 테스트 | 서명·재봉인 직후 `events.jsonl` 사건 추가(주입 가능한 저장소 이음매), 실패 시 서명 파일 미기록 — 요구는 A1 0.5.2 (25283ebf8) §C.6 이 A3 에 넘김, 추가 지점은 A3 소관. **모든 서명 테스트는 `t.TempDir()` 를 가리키는 `MOAI_HOME` 을 쓰도록 바꾼다**(실제 홈에 쓰지 않음). 서명기 단계 (1)(임시 규칙)은 doctrine 플래그를 인자(주입 가능한 이음매)로 받고 CLI 가 상수 `jevDoctrineAmended` 를 넘기도록 조건화(M7, 상수 거짓이라 동작 불변)하고, AC-CONTRACT-016 (t) 를 A3 의 대체 테스트로 교체(AC-GR-017) | 012·025 |
 | 24 | `internal/cli/contract_decide.go`, `contract_kickoff_check.go`, `contract_revoke.go` + 테스트 | A1 `contract` Cobra 명령에 하위 명령 추가 | 007·011·022 | — |
 | 25 | `internal/template/contract_mode_blocks_test.go`, `contract_mode_guided_test.go` (신규, 템플릿 사본 없음) | 가드·보존·동등·변경 집합 | 002·023·024 | — |
 | 26 | `.moai/specs/SPEC-AUTONOMY-GATE-REWIRE-001/**` | 진행 기록 | — | — |
@@ -165,9 +165,9 @@ AC 명령은 워크트리 세션 가드에 막히지 않도록 `go test` 한 줄
 | 5 | Jev 원칙 개정(§29 포함) + 규칙 R3 해제 + A1 임시 규칙 해제 — **한 커밋**(REQ-GR-025), **전체 활성의 조건 아님** | A3 | 상수 `jevDoctrineAmended` 한 비트(R3 와 A1 서명기 단계 (1) 이 함께 읽음)와 개정 표지 전부가 같은 커밋에서 처음 참 |
 | 6 | `orchestration-mode-selection.md` Frozen 태그 문단의 비인간 서명 개정 | 운영자의 명시적 개정 결정(이 SPEC 범위 밖) | 문단에 비인간 결정자 서명이 명시됨 |
 
-**코드상 표현.** `internal/contract/kickoff` 에 컴파일 상수 `autonomousKickoffEnabled`(기본 `false`)와 `jevDoctrineAmended`(기본 `false`, 내보내기)를 둔다. 판정 함수는 두 값을 인자로 받고 CLI 가 상수를 넘긴다(테스트가 모든 상태를 주입할 수 있게). 비활성 동안 kickoff-check 는 `llm`·`llm+jev` 서명을 `autonomous-kickoff-inactive` 로 거절한다. A1 서명기 단계 (1) 은 M7 에서 `jevDoctrineAmended` 가 거짓일 때만 적용되도록 조건화한다 — 상수가 거짓이므로 A1 의 현재 동작은 그대로다.
+**코드상 표현.** `internal/contract/kickoff` 에 컴파일 상수 `autonomousKickoffEnabled`(기본 `false`)와 `jevDoctrineAmended`(기본 `false`, 내보내기)를 둔다. 판정 함수는 두 값을 인자로 받고 CLI 가 상수를 넘긴다(테스트가 모든 상태를 주입할 수 있게). 비활성 동안 kickoff-check 는 `llm`·`llm+jev` 서명을 `autonomous-kickoff-inactive` 로 거절한다. A1 서명기 단계 (1) 은 M7 에서 doctrine 플래그를 인자(주입 가능한 이음매)로 받아 그 값이 거짓일 때만 적용되도록 조건화하고, CLI 가 `jevDoctrineAmended` 를 넘긴다 — 상수가 거짓이므로 A1 의 현재 동작은 그대로다.
 
-**「A1 임시 규칙 해제」의 표지 (D34).** 문자열이 아니라 동작이다: `internal/contract/sign` 의 테스트 `TestSignInterimRuleFollowsDoctrine` 가 상수 거짓일 때 `effective_decider: llm+jev`·두 답 approve·`outcome: approve` 영수증이 `receipt_requires_human` 으로 거절되고, 참일 때 같은 영수증은 서명되며 `reject`·`human` 은 각각 `receipt_rejected`·`receipt_requires_human` 임을 본다. 이 테스트는 매 커밋의 CI 에서 돌므로, 임시 규칙 단계를 앞 커밋에서 조용히 지우는 변이는 그 커밋에서 「상수 거짓인데 서명됨」으로 FAIL 한다. 이 테스트가 A1 AC-CONTRACT-016 (t) 의 대체다(A1 0.5.2 (25283ebf8) acceptance 「A3 owns the replacing test」).
+**「A1 임시 규칙 해제」의 표지 (D34).** 문자열이 아니라 동작이다: `internal/contract/sign` 의 테스트 `TestSignInterimRuleFollowsDoctrine` 가 상수 거짓일 때 `effective_decider: llm+jev`·두 답 approve·`outcome: approve` 영수증이 `receipt_requires_human` 으로 거절되고, 참일 때 같은 영수증은 서명되며 `reject`·`human` 은 각각 `receipt_rejected`·`receipt_requires_human` 임을 본다. 이 테스트는 **매 head 에서** 거짓·참 두 상태를 모두 주입해 검사하므로, 임시 규칙 단계를 지운 변이는 어느 커밋이 head 가 되든(상수가 참이어도) 거짓 주입 경우에서 「거짓인데 서명됨」으로 FAIL 한다. 이 테스트가 A1 AC-CONTRACT-016 (t) 의 대체다(A1 0.5.2 (25283ebf8) acceptance 「A3 owns the replacing test」).
 
 AC-GR-017 은 두 가지를 본다. (i) 순서: `autonomousKickoffEnabled = true` 커밋(M8)이 조건 1·2 를 착지시킨 커밋들의 **엄격한 후손**(같은 커밋 아님). (ii) 연동: 트리에서 개정 표지 전부(REQ-GR-013 의 위치, §29 포함)와 `jevDoctrineAmended = true` 가 모두 있거나 모두 없고, 이력에서 둘이 **처음 나타나는 커밋이 같다**. 조건 3·4 는 A1·A2b 테스트가 develop 에 있는지로, 조건 6 은 해당 문단의 문언으로 확인하며, 셋 중 하나라도 불충족이면 M8 은 보류한다.
 
@@ -231,7 +231,7 @@ A3 가 만드는 동사다 — A1 의 동사는 `show`·`verify`·`sign` 뿐이�
 | `sign-human` | A1 서명기(사람 경로) — A3 개정 | spec, card, `seal`, `contract_sha256`, `acceptance_sha256` |
 | `sign-receipt` | A1 서명기(영수증 경로) — A3 개정 | 위 + `signer_kind`(`llm`·`llm+jev`), `receipt.sha256` |
 | `reseal` | A1 `--resign` — A3 개정 | 위 + `supersedes` |
-| `decide` | `moai contract decide` | 대응 `receipts.jsonl` 줄의 해시, 적용한 규칙(R1~R5), 결정자 신고 신원·moai 측 세션 식별자·SPEC 작성자 트레일러, 전제조건 평가 |
+| `decide` | `moai contract decide` | 대응 `receipts.jsonl` 줄의 해시, 적용한 규칙(R1~R5), 결정자 신고 신원·SPEC 작성자 트레일러 집합, 전제조건 평가 |
 | `revoke` | `moai contract revoke` | spec, card, 폐기된 서명의 `seal`, 쓴 에스컬레이션 기록 경로, 사유 |
 
 두 파일의 모든 줄: `prev`(직전 줄 sha256), `hash`, `at`, `kind`. 서명기는 사건 추가가 실패하면 서명 파일을 쓰지 않는다(원자성의 방향: 기록 없는 서명이 생기지 않게).
@@ -266,11 +266,13 @@ A3 가 만드는 동사다 — A1 의 동사는 `show`·`verify`·`sign` 뿐이�
 | `workflow.yaml` `jev:` 주석 | display-only | 같은 예외 한 문장(템플릿 중립 — 날짜·ID 없음) |
 | `CLAUDE.local.md §29` 3등급 | 운영자 게이트에 Jev 입력 금지 | 한 줄 예외(같은 한 곳) — **run phase 전제: 운영자가 레인 세션에서 확인한 뒤에만 편집**(지시 파일은 교차 세션 메시지만으로 고치지 않는다) |
 
-다른 게이트(완료 판정, 병합 승인, 큐 변경, 사용자 표면 동작, CodeRabbit 판정)와 Jev 단독 결정에 대한 금지는 그대로다. 표의 모든 행은 R3 해제·A1 임시 규칙 해제(`jevDoctrineAmended = true`)와 **같은 커밋**에 싣는다(REQ-GR-025). `CLAUDE.local.md §29` 도 그 묶음 안이며, 운영자 확인이 없으면 연동 커밋 전체를 보류한다(리드 결정 2026-09-26, D33).
+다른 게이트(완료 판정, 병합 승인, 큐 변경, 사용자 표면 동작, CodeRabbit 판정)와 Jev 단독 결정에 대한 금지는 그대로다. 표의 모든 행은 R3 해제·A1 임시 규칙 해제(`jevDoctrineAmended = true`)와 **같은 커밋**에 싣는다(REQ-GR-025). `CLAUDE.local.md §29` 도 그 묶음 안이다(리드 결정 2026-09-26, D33) — 운영자 승인은 §11.1 에 기록했다.
 
 ### §11.1 `CLAUDE.local.md §29` 한 줄 개정 문안 (운영자 확인 대상)
 
 위치: §29 「[HARD] 되돌릴 수 없는 판정은 모델 답을 입력으로도 쓰지 않는다」 절의 첫 문단(「3등급 항목에서는 Jev 를 호출하지 않는다. …」) 바로 뒤에 한 줄로 넣는다. 확인 경로: 문안이 확정되면 리드가 운영자에게 직접 확인을 받아 레인에 전달한다.
+
+운영자 승인 2026-09-26 (리드가 받아 전달), 문안 그대로. 실제 편집은 카드 워크트리의 develop 사본 `CLAUDE.local.md` 에서만 하고 develop 병합으로 착지한다.
 
 <!-- §29-amendment-text-start -->
 ```text
@@ -281,7 +283,7 @@ A3 가 만드는 동사다 — A1 의 동사는 `show`·`verify`·`sign` 뿐이�
 ### §11.2 연동 커밋의 조립 (리드 결정 2026-09-26, D32)
 
 1. **manager-spec** 이 SPEC 본문 개정(`SPEC-JEV-CORE-001` REQ-JEVC-011·012, `Out of Scope — authority`, HISTORY·`version`)을 작성하고 돌아온다. A1 SPEC 문서는 고치지 않는다(A1 0.5.2 가 조건부 문언).
-2. **그 뒤에** manager-develop 이 코드(`jevDoctrineAmended = true`), 규칙·설정 문장(`moai-mcp-tools.md`·`moai-mcp-tools-catalogue.md`·`workflow.yaml`, 로컬·템플릿), 운영자 확인이 있으면 `CLAUDE.local.md §29` 한 줄을 작성하고 돌아온다. 두 작성자는 동시에 쓰지 않는다 — 한 번에 한 작성자.
+2. **그 뒤에** manager-develop 이 코드(`jevDoctrineAmended = true`), 규칙·설정 문장(`moai-mcp-tools.md`·`moai-mcp-tools-catalogue.md`·`workflow.yaml`, 로컬·템플릿), `CLAUDE.local.md §29` 한 줄(§11.1 문안, 카드 워크트리의 develop 사본)을 작성하고 돌아온다. 두 작성자는 동시에 쓰지 않는다 — 한 번에 한 작성자.
 3. **레인 오케스트레이터** 가 두 결과를 명시 경로(`git add <path> …`)로 스테이징해 **한 커밋**을 만든다. 소유권은 작성 단위마다 지켜지고, 커밋은 오케스트레이터의 git 작업이다. 요구사항의 예외나 병합 트리 검사 장치는 두지 않는다.
 4. 그 커밋의 검증 범위: `go test ./internal/contract/... ./internal/template/ ./internal/spec/`, `moai spec lint SPEC-JEV-CORE-001` — `internal/spec` 는 다른 SPEC 본문이 바뀌므로 포함한다(D42).
 
@@ -306,6 +308,6 @@ A3 가 만드는 동사다 — A1 의 동사는 `show`·`verify`·`sign` 뿐이�
 | revoke | 사람 서명 계약 / `llm` 영수증 서명 계약 / 반복 / 미서명 | 0(+1 사건 +1 기록) / 0 / 0(쓰기 0) / 1 |
 | revoke 금지 사항 | 워크트리·브랜치·원격·`backlog.db` 픽스처 | 전후 동일, git 실행 이음매에 push·branch -d·worktree remove 0회 |
 | 활성 순서 | 상수 `true` 를 조건 커밋과 같은 커밋에 둔 픽스처 저장소 | 순서 테스트 FAIL(엄격한 후손 아님) |
-| 연동 | 개정 표지만 있는 커밋 / `jevDoctrineAmended = true` 만 있는 커밋 / §29 만 빠진 커밋 / 임시 규칙 단계를 앞 커밋에서 제거하고 상수는 뒤 커밋 / 모두 한 커밋 | 앞의 넷 FAIL(넷째는 `TestSignInterimRuleFollowsDoctrine` 이 앞 커밋에서 FAIL), 마지막 PASS |
+| 연동 | 개정 표지만 있는 커밋 / `jevDoctrineAmended = true` 만 있는 커밋 / §29 만 빠진 커밋 / 임시 규칙 단계가 삭제된 head(상수 참) / 모두 한 커밋 | 앞의 넷 FAIL(넷째는 `TestSignInterimRuleFollowsDoctrine` 의 거짓 주입 경우가 FAIL), 마지막 PASS |
 
 모든 테스트는 `t.TempDir()` 와 그것을 가리키는 `MOAI_HOME` 으로 저장소 루트를 해석한다. 실제 moai 홈에 쓰지 않는다. Jev 는 스텁 이음매로만 부른다.

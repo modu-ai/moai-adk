@@ -1,4 +1,4 @@
-# plan.md — SPEC-AUTONOMY-GATE-REWIRE-001 (v0.3.2)
+# plan.md — SPEC-AUTONOMY-GATE-REWIRE-001 (v0.3.3)
 
 ## §A. 맥락
 
@@ -43,7 +43,7 @@ Push 단계(REQ-GR-021)와 자율 Kickoff 활성(M8)에만 걸리는 추가 조�
 - A1 REQ-CONTRACT-019 의 서명 알림 — A1 0.5.2 가 「A3 가 게이트 재배선을 착지하면 A3 가 개정하거나 제거」로 조건부화했다. M8 에서 A1 서명기 패키지(`design.md §2` 23행) 안에서 바꾸며 A1 SPEC 문서는 고치지 않는다.
 - 카드 증거 경로 plan-audit 보고서에 `plan_artifact_hash:` 줄을 쓰는 쪽 — 없으면 전제조건 (a) 가 늘 실패해 자율 Kickoff 결과가 늘 사람이다(안전한 방향). 그 줄을 쓰는 장치(예: 감사 PASS 뒤 `internal/runtime` 의 기존 기록 경로)는 이 SPEC 의 편집 허용 목록 밖이므로, M8 착수 전 리드가 있는지 확인한다.
 
-**`CLAUDE.local.md §29` 와 연동 커밋(리드 결정 2026-09-26, D33)**: §29 한 줄은 연동 묶음 안이다. 문안(`design.md §11.1`)이 확정되면 리드가 운영자에게 직접 확인을 받아 레인에 전달하고, 레인은 그 확인을 `progress.md` 에 기록한다. 확인이 없으면 M7b 연동 커밋 전체를 보류한다 — 교차 세션 메시지만으로 지시 파일을 고치지 않는다. A1 SPEC 문서는 A1 0.5.2 의 조건부 문언 덕분에 연동 커밋의 편집 대상이 아니다(v0.3.1 의 27행 보류는 해제).
+**`CLAUDE.local.md §29` 와 연동 커밋(리드 결정 2026-09-26, D33)**: §29 한 줄은 연동 묶음 안이다. 운영자가 문안(`design.md §11.1`)을 그대로 승인했고(2026-09-26, 리드가 받아 전달), 레인은 그 승인을 `progress.md` 에 기록한다. 실제 §29 편집은 카드 워크트리의 develop 사본 `CLAUDE.local.md` 에서만 하고 develop 병합으로 착지한다. A1 SPEC 문서는 A1 0.5.2 의 조건부 문언 덕분에 연동 커밋의 편집 대상이 아니다(v0.3.1 의 27행 보류는 해제).
 
 **run 착수 전 점검(pre-flight)**: A2b(t1245) SPEC 이 착지하면, `reject` 와 `human` 을 다르게 다루는 소비자가 생겼는지 다시 잰다(`research.md §10.4` 의 명령을 A1 코드 커밋 SHA·A2b 병합본에 대해). 하나라도 있으면 REQ-GR-004 의 동일 취급이 깨지므로 리드에게 올린다.
 
@@ -104,7 +104,7 @@ acceptance.md 의 AC 전부를 PASS/FAIL 표로, 명령·원문 출력·exit 코
 
 ### M7b — Jev 원칙 개정 연동 커밋 (Priority High)
 
-`design.md §11` 의 모든 위치와 `jevDoctrineAmended = true`(R3 와 A1 서명기 단계 (1) 의 해제 — 둘 다 M7 에서 이 상수로 조건화됨)를 **한 커밋**으로 싣는다(REQ-GR-025, AC-GR-017). 조립 순서는 리드 결정 2026-09-26(D32): ① manager-spec 이 `SPEC-JEV-CORE-001` 본문(REQ-JEVC-011·012, `Out of Scope — authority` 두 항목, HISTORY·`version`)을 작성하고 돌아온다 → ② 그 뒤 manager-develop 이 상수·규칙·설정 문장과(운영자 확인이 있으면) `CLAUDE.local.md §29` 한 줄을 작성하고 돌아온다 — 동시에 쓰지 않는다 → ③ 레인 오케스트레이터가 두 결과를 명시 경로로 스테이징해 한 커밋을 만든다. 운영자의 §29 확인이 없으면 이 커밋 전체를 보류한다(D33). 검증 범위: `go test ./internal/contract/... ./internal/template/ ./internal/spec/`, `moai spec lint SPEC-JEV-CORE-001`(D42).
+`design.md §11` 의 모든 위치와 `jevDoctrineAmended = true`(R3 와 A1 서명기 단계 (1) 의 해제 — 둘 다 M7 에서 이 상수로 조건화됨)를 **한 커밋**으로 싣는다(REQ-GR-025, AC-GR-017). 조립 순서는 리드 결정 2026-09-26(D32): ① manager-spec 이 `SPEC-JEV-CORE-001` 본문(REQ-JEVC-011·012, `Out of Scope — authority` 두 항목, HISTORY·`version`)을 작성하고 돌아온다 → ② 그 뒤 manager-develop 이 상수·규칙·설정 문장과 `CLAUDE.local.md §29` 한 줄(운영자 승인 문안, 카드 워크트리의 develop 사본)을 작성하고 돌아온다 — 동시에 쓰지 않는다 → ③ 레인 오케스트레이터가 두 결과를 명시 경로로 스테이징해 한 커밋을 만든다. §29 줄은 이 커밋에 반드시 포함된다(D33, 운영자 승인 2026-09-26). 검증 범위: `go test ./internal/contract/... ./internal/template/ ./internal/spec/`, `moai spec lint SPEC-JEV-CORE-001`(D42).
 
 ### M8 — 자율 Kickoff 활성 (Priority Medium, 보류 가능)
 

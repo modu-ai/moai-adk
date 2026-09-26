@@ -4,7 +4,7 @@
 
 - plan_status: audit-ready
 - plan_complete_at: 2026-09-26
-- spec_version: 0.3.2 (revision base 1b071a573 = v0.3.1; plan-audit iter-2 FAIL 0.77 → `.moai/reports/t1236/plan-audit-2.md`, dispositions D26-D42 in plan.md §J; iter-1 dispositions in plan.md §I)
+- spec_version: 0.3.3 (operator-approved one-time 4th audit exception limited to D43-D46; base 710530d67); prior 0.3.2 (revision base 1b071a573 = v0.3.1; plan-audit iter-2 FAIL 0.77 → `.moai/reports/t1236/plan-audit-2.md`, dispositions D26-D42 in plan.md §J; iter-1 dispositions in plan.md §I)
 - tier: L (spec.md, plan.md, acceptance.md, design.md, research.md)
 - requirements: 25 (REQ-GR-001..025, contiguous, no new IDs in v0.3.2) / acceptance criteria: 25 (AC-GR-001..025)
 - a1_reference_baseline: 25283ebf8 (SPEC-AUTONOMY-CONTRACT-001 0.5.2, schema owner; conditional interim-rule wording, A3 owns the AC-CONTRACT-016 (t) replacement test); history 8f77d9a33 / 98cb7879d / 4208a3a3b / 652243c72 / 6d98ca466 / 67a2f55cb / 65e0a9167
@@ -16,7 +16,7 @@
 - open_clarifications: none (defaults D-2, D-4 recorded; operator may override)
 - lead_confirmations_pending: A1 acceptance of the jevDoctrineAmended gating of signer step (1) (marker, research.md §10.4); a producer of `plan_artifact_hash:` for card-path plan-audit reports before M8 (plan.md §C)
 - run_preconditions: t1234 (A1 >= 0.5.2), t1235 (A2, with final escalation format), t1245 (A2b) merged into develop; t1175 merged and absorbed; BASE recorded in §E.2; pre-flight: re-measure reject/human consumers after the A2b SPEC lands
-- operator_confirmation_29: not yet recorded (required before the M7b linkage commit)
+- operator_confirmation_29: approved 2026-09-26, text verbatim as design.md §11.1 (relayed by lead); edit lands only on the develop copy of CLAUDE.local.md in the card worktree, via the develop merge
 - autonomous_kickoff_activation: see design.md §7.1 (single source)
 - Implementation Kickoff Approval: not requested at plan phase
 

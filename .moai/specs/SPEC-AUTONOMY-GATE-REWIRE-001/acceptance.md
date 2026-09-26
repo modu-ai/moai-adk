@@ -1,4 +1,4 @@
-# acceptance.md — SPEC-AUTONOMY-GATE-REWIRE-001 (v0.3.2)
+# acceptance.md — SPEC-AUTONOMY-GATE-REWIRE-001 (v0.3.3)
 
 모든 AC 는 Given-When-Then 이며 명령과 기대 출력으로 판정한다. 명령은 워크트리 세션 가드를 통과하도록 **한 줄짜리 단순 명령**만 쓴다 — `git` 을 `$( )`·`<( )`·heredoc 안에 두지 않는다. `git` 이 필요한 검사는 Go 테스트 안에서 실행하고, 기준 ref 는 환경 변수 `MOAI_GR_BASE`(= `progress.md §E.2` 에 기록된 `BASE` SHA)로 넘긴다. 브랜치 이름을 기준으로 쓰지 않는다.
 
@@ -200,9 +200,9 @@ go test ./internal/cli/ -run 'TestContract(Decide|KickoffCheck|Revoke)' -count=1
 
 ### AC-GR-016 — kickoff-check 판정 (REQ-GR-004·007)
 
-- **Given** 임시 저장소 픽스처 16종: (1) 사람 서명 + `events.jsonl` `sign-human` 사건, (2) 에이전트가 쓴 영수증 파일로 한 `llm` 서명(`receipts.jsonl` 에 없음), (3) `receipts.jsonl` 의 `outcome: approve` 영수증(`effective_decider: llm`)과 일치하는 `llm` 서명 + 활성, (4) 같은 조건의 `llm+jev` 영수증(R1)과 `llm+jev` 서명 + 활성, (5) 대체 영수증(`requested_decider: llm+jev` → `effective_decider: llm`)과 일치하는 `llm` 서명 + 활성, (6) `signer_kind: jev` 서명, (7) (3) + 비활성, (8) (3) + 그 뒤 `revoke` 사건, (9) `events.jsonl` 에 서명 사건이 없는 사람 서명, (10) 설정 결정자가 `llm` 인데 영수증의 `requested_decider` 가 `llm+jev`, (11) `--card` 가 계약 `card` 필드와 다름, (12) 저장소의 `outcome: reject` 영수증과 해시가 일치하도록 위조한 `llm` 서명 + 활성, (13) 저장소의 `outcome: human` 영수증과 일치하도록 위조한 `llm+jev` 서명 + 활성, (14) 봉인 불일치 서명(`signed-invalid`), (15) 미서명 계약(`unsigned`), (16) `effective_decider: llm` 영수증과 `signer_kind: llm+jev` 서명 + 활성
+- **Given** 임시 저장소 픽스처 16종: (1) 사람 서명 + `events.jsonl` `sign-human` 사건, (2) 에이전트가 쓴 영수증 파일로 한 `llm` 서명(`receipts.jsonl` 에 없음), (3) `receipts.jsonl` 의 `outcome: approve` 영수증(`effective_decider: llm`)과 일치하는 `llm` 서명 + 활성, (4) 같은 조건의 `llm+jev` 영수증(R1)과 `llm+jev` 서명 + 활성, (5) 대체 영수증(`requested_decider: llm+jev` → `effective_decider: llm`)과 일치하는 `llm` 서명 + 활성, (6) `signer_kind: jev` 서명, (7) (3) + 비활성, (8) (3) + 그 뒤 `revoke` 사건, (9) `events.jsonl` 에 서명 사건이 없는 사람 서명, (10) 설정 결정자가 `llm` 인데 영수증의 `requested_decider` 가 `llm+jev`, (11) `--card` 가 계약 `card` 필드와 다름, (12) 저장소의 `outcome: reject` 영수증과 해시가 일치하도록 위조한 `llm` 서명 + 그 서명과 일치하는 체인이 맞는 위조 `sign-receipt` 사건 줄 + 활성, (13) 저장소의 `outcome: human` 영수증과 일치하도록 위조한 `llm+jev` 서명 + 체인이 맞는 위조 `sign-receipt` 사건 줄 + 활성, (14) 봉인 불일치 서명(`signed-invalid`), (15) 미서명 계약(`unsigned`), (16) `effective_decider: llm` 영수증과 `signer_kind: llm+jev` 서명 + 활성
 - **When** `moai contract kickoff-check <SPEC-ID> --card <card> --json` 을 실행한다(활성 여부는 판정 함수의 인자로 주입)
-- **Then** (1)·(3)·(4)·(5) exit 0; (2) exit 1 `receipt-not-issued`; (6) exit 1 `decider-not-permitted`; (7) exit 1 `autonomous-kickoff-inactive`; (8) exit 1 `revoked`; (9) exit 1 `signature-not-recorded`; (10)·(16) exit 1 `decider-mismatch`; (11) exit 1 `card-mismatch`; (12)·(13) exit 1 `receipt-not-approved` — `reject` 와 `human` 이 같은 사유로 거절돼 둘 다 사람 결정으로 간다; (14)·(15) exit 1 `not-signed-valid` 이고 `--json` 에 A1 verify 상태(`signed-invalid`·`unsigned`)가 있다. `--json` 에는 늘 `autonomous_kickoff_enabled`·`jev_doctrine_amended` 가 있다. 어느 경우에도 파일이 생기거나 바뀌지 않는다
+- **Then** (1)·(3)·(4)·(5) exit 0; (2) exit 1 `receipt-not-issued`; (6) exit 1 `decider-not-permitted`; (7) exit 1 `autonomous-kickoff-inactive`; (8) exit 1 `revoked`; (9) exit 1 `signature-not-recorded`; (10)·(16) exit 1 `decider-mismatch`; (11) exit 1 `card-mismatch`; (12)·(13) exit 1 `receipt-not-approved` — `reject` 와 `human` 이 같은 사유로 거절돼 둘 다 사람 결정으로 간다; (14)·(15) exit 1 `not-signed-valid` 이고 `--json` 에 A1 verify 상태(`signed-invalid`·`unsigned`)가 있다. 기대 사유는 모두 REQ-GR-007 의 우선순위로 정한 대표 사유이고, `--json` 의 사유 목록은 성립하는 사유를 모두 담는다 — (6) 의 목록에는 `decider-not-permitted` 와 함께 `not-signed-valid` 도 있고(A1 일관성 표상 `method: receipt` 에 `signer_kind: jev` 는 `signature_inconsistent`), (12)(13) 은 위조 사건 줄 덕분에 `signature-not-recorded` 가 성립하지 않아 `receipt-not-approved` 가 사유를 가른다. `--json` 에는 늘 `autonomous_kickoff_enabled`·`jev_doctrine_amended` 가 있다. 어느 경우에도 파일이 생기거나 바뀌지 않는다
 
 ```bash
 go test ./internal/contract/kickoff/ -run 'TestKickoffCheck' -count=1 -v
@@ -214,13 +214,13 @@ go test ./internal/contract/kickoff/ -run 'TestKickoffCheck' -count=1 -v
 
 - **Given** 이 브랜치의 이력, 상수 `autonomousKickoffEnabled`·`jevDoctrineAmended`, REQ-GR-013 의 개정 위치 전부(`CLAUDE.local.md §29` 포함), A1 서명기 단계 (1)(임시 규칙, 상수로 조건화됨)
 - **When** 순서 테스트, 연동 테스트, 서명기 대체 테스트를 실행한다
-- **Then** 순서: `autonomousKickoffEnabled = false` 이면 그 상태를 `t.Log` 로 출력하고 `llm`·`llm+jev` 서명이 거절됨을 확인해 통과하고(공허 통과 아님), `true` 이면 그 값을 넣은 커밋이 (i) `internal/contract/revoke` 를 처음 추가한 커밋과 (ii) `internal/contract/receipt` 를 처음 추가한 커밋의 **엄격한 후손**(같은 커밋 아님)이어야 통과한다. 연동: 트리에서 개정 표지 전부와 `jevDoctrineAmended = true` 가 모두 있거나 모두 없어야 하고, 이력에서 둘이 **처음 나타나는 커밋이 같아야** 한다. 서명기 대체 테스트(A1 AC-CONTRACT-016 (t) 의 대체): 상수 거짓이면 `effective_decider: llm+jev`·두 답 approve·`outcome: approve` 영수증이 `receipt_requires_human` 으로 거절되고, 참이면 같은 영수증은 서명되며 `outcome: reject`·`human` 인 `llm+jev` 영수증은 각각 `receipt_rejected`·`receipt_requires_human` 이다. 픽스처 저장소 다섯 개 — 상수를 조건 커밋과 같은 커밋에 둔 것, 개정 표지만 있는 커밋, `jevDoctrineAmended = true` 만 있는 커밋, `CLAUDE.local.md §29` 만 빠진 커밋, 임시 규칙 단계를 앞 커밋에서 지우고 상수는 뒤 커밋에서 바꾼 것 — 에서 FAIL 을 관측한다(마지막은 앞 커밋의 서명기 대체 테스트가 「상수 거짓인데 서명됨」으로 FAIL)
+- **Then** 순서: `autonomousKickoffEnabled = false` 이면 그 상태를 `t.Log` 로 출력하고 `llm`·`llm+jev` 서명이 거절됨을 확인해 통과하고(공허 통과 아님), `true` 이면 그 값을 넣은 커밋이 (i) `internal/contract/revoke` 를 처음 추가한 커밋과 (ii) `internal/contract/receipt` 를 처음 추가한 커밋의 **엄격한 후손**(같은 커밋 아님)이어야 통과한다. 연동: 트리에서 개정 표지 전부와 `jevDoctrineAmended = true` 가 모두 있거나 모두 없어야 하고, 이력에서 둘이 **처음 나타나는 커밋이 같아야** 한다. 서명기 대체 테스트(A1 AC-CONTRACT-016 [REF] (t) 의 대체, 매 head 에서 doctrine 플래그의 거짓·참을 모두 주입): 거짓 주입이면 `effective_decider: llm+jev`·두 답 approve·`outcome: approve` 영수증이 `receipt_requires_human` 으로 거절되고, 참 주입이면 같은 영수증은 서명되며 `outcome: reject`·`human` 인 `llm+jev` 영수증은 각각 `receipt_rejected`·`receipt_requires_human` 이다. 픽스처 저장소 다섯 개 — 상수를 조건 커밋과 같은 커밋에 둔 것, 개정 표지만 있는 커밋, `jevDoctrineAmended = true` 만 있는 커밋, `CLAUDE.local.md §29` 만 빠진 커밋, 임시 규칙 단계가 삭제된 head(상수 참) — 에서 FAIL 을 관측한다(마지막은 그 head 에서 서명기 대체 테스트의 거짓 주입 경우가 「거짓인데 서명됨」으로 FAIL)
 
 ```bash
 go test ./internal/contract/kickoff/ ./internal/contract/sign/ -run 'TestAutonomousKickoffActivationOrder|TestJevAmendmentLinkage|TestSignInterimRuleFollowsDoctrine' -count=1 -v
 ```
 
-기대: 세 테스트 `--- PASS`. 모두 아직 없는 테스트다(run 에서 RED). A1 영수증 경로·A2b 가드·Frozen 문단 개정(`design.md §7.1` 3·4·6행)은 이 테스트가 보지 않는다 — 그 셋은 M8 착수 전 리드가 develop 에서 확인하고 `progress.md` 에 근거를 적는다. 임시 규칙과 대체 테스트 소유는 A1 0.5.2 (25283ebf8) spec §C.8, REQ-CONTRACT-024, acceptance AC-CONTRACT-016 (t)(「A3 owns the replacing test」).
+기대: 세 테스트 `--- PASS`. 모두 아직 없는 테스트다(run 에서 RED). A1 영수증 경로·A2b 가드·Frozen 문단 개정(`design.md §7.1` 3·4·6행)은 이 테스트가 보지 않는다 — 그 셋은 M8 착수 전 리드가 develop 에서 확인하고 `progress.md` 에 근거를 적는다. 임시 규칙과 대체 테스트 소유는 A1 0.5.2 (25283ebf8) spec §C.8, REQ-CONTRACT-024, acceptance AC-CONTRACT-016 [REF] (t)(「A3 owns the replacing test」).
 
 ### AC-GR-018 — decide 전제조건과 판정의 산출물 결합 (REQ-GR-009·011)
 
