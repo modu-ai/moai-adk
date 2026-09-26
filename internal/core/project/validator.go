@@ -2,6 +2,7 @@ package project
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"log/slog"
@@ -10,6 +11,7 @@ import (
 	"time"
 
 	"github.com/modu-ai/moai-adk/internal/defs"
+	"github.com/modu-ai/moai-adk/internal/manifest"
 	"gopkg.in/yaml.v3"
 )
 
@@ -278,4 +280,55 @@ func BackupExistingProject(root string) (string, error) {
 	}
 
 	return backupDir, nil
+}
+
+// CarryManifestForward restores the manifest a --force backup moved aside, so
+// the files the previous deployment recorded outside .moai/ keep their
+// provenance: without it every one of them reads as untracked and is recorded
+// user_created and skipped. A template_managed file whose content no longer
+// matches its recorded hash was edited by the user and is reclassified
+// user_modified, so the redeploy leaves it alone. A missing or invalid backup
+// manifest carries nothing.
+func CarryManifestForward(root, backupDir string) error {
+	if backupDir == "" {
+		return nil
+	}
+	data, err := os.ReadFile(filepath.Join(backupDir, defs.ManifestJSON))
+	if errors.Is(err, os.ErrNotExist) {
+		return nil
+	}
+	if err != nil {
+		return fmt.Errorf("read backed-up manifest: %w", err)
+	}
+	if !json.Valid(data) {
+		return nil
+	}
+	moaiDir := filepath.Join(filepath.Clean(root), defs.MoAIDir)
+	if err := os.MkdirAll(moaiDir, defs.DirPerm); err != nil {
+		return fmt.Errorf("create %s: %w", defs.MoAIDir, err)
+	}
+	if err := os.WriteFile(filepath.Join(moaiDir, defs.ManifestJSON), data, defs.FilePerm); err != nil {
+		return fmt.Errorf("carry manifest forward: %w", err)
+	}
+
+	mgr := manifest.NewManager()
+	if _, err := mgr.Load(root); err != nil {
+		return fmt.Errorf("load carried manifest: %w", err)
+	}
+	changes, err := mgr.DetectChanges()
+	if err != nil {
+		return fmt.Errorf("detect edits since last deploy: %w", err)
+	}
+	files := mgr.Manifest().Files
+	for _, c := range changes {
+		entry := files[c.Path]
+		// An empty NewHash is a deleted file: the redeploy restores it.
+		if c.NewHash == "" || entry.Provenance != manifest.TemplateManaged {
+			continue
+		}
+		entry.Provenance = manifest.UserModified
+		entry.CurrentHash = c.NewHash
+		files[c.Path] = entry
+	}
+	return mgr.Save()
 }
