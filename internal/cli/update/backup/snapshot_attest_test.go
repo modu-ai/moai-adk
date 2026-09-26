@@ -117,3 +117,38 @@ func TestSaveTemplateBase_SnapshotRewrittenAfterWriteFallsBack(t *testing.T) {
 	}
 	assertEmbeddedDefaultsBase(t, destDir)
 }
+
+// TestSaveTemplateBase_UnattestedMarkerFollowsTheBase: the fallback leaves the
+// marker the restore reads to list kept values, and an attested BASE written
+// into the same directory afterwards (two updates in one second share a backup
+// directory) clears it.
+func TestSaveTemplateBase_UnattestedMarkerFollowsTheBase(t *testing.T) {
+	t.Parallel()
+	projectRoot := t.TempDir()
+	writeSections(t, projectRoot, map[string]string{"quality.yaml": "test_coverage_target: 80\n"})
+	if err := WriteSnapshot(projectRoot); err != nil {
+		t.Fatalf("WriteSnapshot: %v", err)
+	}
+	if err := os.Remove(snapshotAttestPath(projectRoot)); err != nil {
+		t.Fatalf("drop attestation: %v", err)
+	}
+	destDir := t.TempDir()
+	marker := filepath.Join(destDir, UnattestedBaseMarker)
+
+	if err := SaveTemplateBase(destDir, projectRoot); err != nil {
+		t.Fatalf("SaveTemplateBase (unattested): %v", err)
+	}
+	if _, err := os.Stat(marker); err != nil {
+		t.Fatalf("fallback BASE carries no marker: %v", err)
+	}
+
+	if err := WriteSnapshot(projectRoot); err != nil {
+		t.Fatalf("WriteSnapshot: %v", err)
+	}
+	if err := SaveTemplateBase(destDir, projectRoot); err != nil {
+		t.Fatalf("SaveTemplateBase (attested): %v", err)
+	}
+	if _, err := os.Stat(marker); !os.IsNotExist(err) {
+		t.Errorf("attested BASE kept the stale marker (stat err = %v)", err)
+	}
+}
