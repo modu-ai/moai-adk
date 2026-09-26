@@ -31,7 +31,7 @@ configuration/template). Milestones >= 3 and files >= 10, so run-phase routes to
 - **D5 — Human-presence checks raise the bar; they do not stop an agent.** Interactive terminal, typed
   token, and refusal on agent-environment markers (`CLAUDECODE`, `CLAUDE_CODE_SESSION_ID`). A pty
   wrapper and `unset` defeat them; the binding protection is the A3 precondition in spec.md §C.2 (a
-  PreToolUse deny on `moai contract sign` from agent tool calls, owned by A2/t1235). No Codex marker is
+  PreToolUse deny on `moai contract sign` from agent tool calls, owned by A2b/t1245). No Codex marker is
   identifiable in the repository, so none ships (design.md § Agent-Environment Markers).
 - **D6 — Unsigned-draft acceptance hash mismatch refuses signing** instead of overwriting, so a draft
   reviewed against older acceptance criteria cannot be signed silently. A **signed** contract whose
@@ -42,12 +42,16 @@ configuration/template). Milestones >= 3 and files >= 10, so run-phase routes to
   requirement's ID `REQ-CONTRACT-021` was reused for the agent-environment refusal so that the REQ
   sequence stays contiguous (MP-1) without a withdrawn-placeholder heading that lint would collect as a
   modality-less requirement.
-- **D8 — Epic ordering and owners.** A1 → A2 → A3 (card t1236 carries t1235 as predecessor). A2
-  (t1235) owns push-serialization enforcement and the PreToolUse deny on agent-invoked
-  `moai contract sign`; both are hard preconditions for A3 activation. A4 (t1237) owns the
-  "second review not performed → stop before push" rule and the performed record (spec.md §C.1).
+- **D8 — Required epic ordering and owners.** A1 → A2 (t1235) + A2b (t1245) → A3 (t1236). A2b (t1245)
+  owns push-serialization enforcement — a `moai slot` lease on resource `push-develop`, not the merge
+  window — and the PreToolUse deny on agent-invoked `moai contract sign`; both are hard preconditions for
+  A3 activation. A4 (t1237) owns the "second review not performed → stop before push" rule and the
+  performed record, and `push-develop` activates only after A4 (spec.md §C.1). This states the required
+  ordering, not the current content of the queue.
 - **D9 — Receipt signing path (lead-approved).** Non-human deciders sign non-interactively with a
-  validated `kickoff-receipt.json`, only under `mode: contract`. A1 records `receipt.provenance: file`;
+  validated `kickoff-receipt.json`, only under `mode: contract`; in A1 any Jev decision routes to a
+  human (Jev stays display-only until A3 amends the doctrine, spec.md §C.8), so only an `llm` receipt can
+  sign. The signature seal covers method, signer kind, and provenance. A1 records `receipt.provenance: file`;
   autonomous Kickoff must not activate until `moai contract revoke` and moai-issued receipts exist (A3,
   spec.md §C.6). Residual risk: a Jev call cannot be proven (spec.md §H).
 

@@ -1,7 +1,8 @@
 # design.md — SPEC-AUTONOMY-CONTRACT-001
 
 > Tier L design. The section **§ Contract Schema** is the single addressable schema draft for the
-> downstream SPECs A2 (escalation detectors and guards), A3 (gate rewiring, revocation, receipt
+> downstream SPECs A2 (escalation detectors, card t1235), A2b (push serialization and the
+> `moai contract sign` deny, card t1245), A3 (gate rewiring, revocation, receipt
 > issuance), and A4 (closure report, second-review stop). Anything those SPECs need from the contract
 > is defined here; if a downstream SPEC needs a new field, it is an amendment to this section, not a
 > parallel definition.
@@ -87,11 +88,31 @@ signature:                           # written ONLY by `sign`; excluded from the
     provenance: file                                         # v1 value set: file   (A3 adds moai-store)
   batch_id: "<opaque id>"                                    # present only for batch signing
   supersedes: "<64 lowercase hex>"                           # previous contract_sha256 on --resign
+  seal: "<64 lowercase hex>"                                 # see § Signature Seal; covers every field above
 ```
 
 The signature stores the digest of the contract **body** (a file cannot contain its own whole-file
 hash) and the hash of `acceptance.md`; together they pin both files as they were at signing (B1). The
 record that a second-model review was performed is A4's addition (spec.md §C.1).
+
+### Signature Seal
+
+`seal = SHA-256( canonical_json(signature without seal) ‖ contract_sha256 )`, lowercase hex, where
+`canonical_json` marshals the typed signature block with its fixed field order (absent optional fields
+omitted) and `‖` is byte concatenation with the 64-character hex digest. The seal covers `signer_kind`,
+`operator`, `signed_at`, `head_sha`, `contract_sha256`, `acceptance_sha256`, `method`, `receipt.*`
+(`path`, `sha256`, `provenance`), `batch_id`, and `supersedes`. It is keyless: it detects an edit made
+without recomputation; it does not stop a forger who recomputes it (spec.md §H).
+
+Signature consistency rules (checked by verify, reason code `signature_inconsistent`):
+
+| `method` | `signer_kind` | `receipt` block | `receipt.provenance` |
+|---|---|---|---|
+| `interactive-tty` | `human` | absent | — |
+| `receipt` | `llm`, `jev`, or `llm+jev` | present | `file` (the only v1 value; any other value is inconsistent in A1) |
+
+Any other combination is `signature_inconsistent`. In addition, `signature.acceptance_sha256` must equal
+the measured acceptance hash (reason code `signature_acceptance_mismatch`).
 
 ### Field rules (normative)
 
@@ -115,6 +136,9 @@ record that a second-model review was performed is A4's addition (spec.md §C.1)
 | `escalate_on[]` | token set | exactly the six tokens | `escalate_on_incomplete` |
 | `plan_audit.verdict` | enum | `PASS \| PASS-WITH-DEBT` for a signable/valid contract | `plan_audit_not_passing` |
 | `signature` | block | present; `contract_sha256` equals recomputed digest | `unsigned` / `contract_digest_mismatch` |
+| `signature.seal` | hex64 | equals recomputation (§ Signature Seal) | `signature_seal_mismatch` |
+| `signature.method` / `signer_kind` / `receipt` / `receipt.provenance` | block | consistency table (§ Signature Seal) | `signature_inconsistent` |
+| `signature.acceptance_sha256` | hex64 | equals measured acceptance hash | `signature_acceptance_mismatch` |
 | `signature.receipt` | block | when `method: receipt`: file exists at the fixed path and its SHA-256 equals `sha256` | `receipt_mismatch` |
 
 ### Glob Semantics
@@ -137,28 +161,45 @@ Computed by the verifier and reported by `show` / `show --json` (REQ-CONTRACT-01
 |---|---|
 | `effective_never` | `ownership.never` ∪ {`.moai/specs/<ID>/contract.yaml`, `.moai/specs/<ID>/acceptance.md`} when the contract is signed; `ownership.never` when unsigned. The two files are immutable during a run even when a `write` glob matches them; A2 enforces. |
 | `scratch` | `ownership.scratch` (empty list when absent). |
-| `frozen_files` | § Frozen Files, when the `frozen-files` invariant is present; empty list otherwise. |
-| `push_requires_window` | `true` when `actions` contains `push-develop`. |
+| `frozen_files` | § Frozen Files, when the `frozen-files` invariant is present; empty list otherwise. Every element is a glob under § Glob Semantics. |
+| `push_requires_lease` | `true` when `actions` contains `push-develop`: the push must hold a `moai slot` lease on resource `push-develop` (§ Push Lease). |
+| `terminal` | `true` when `spec.md` frontmatter `status` (quoted or unquoted) is `completed` or `archived`. A terminal contract is excluded from detection and signature resolution (A2); it is reported, not treated as invalid. |
 | `signable_contract_sha256` | Digest of the contract as `sign` would sign it now (acceptance binding measured, budget filled); the value a kickoff receipt's `inputs.contract_sha256` must carry. |
 
 ### Frozen Files
 
 The `frozen-files` invariant token denotes the sorted union of three sources (B3), each measured in this
-tree at plan time:
+tree at plan time. **Every element of the union is a glob under § Glob Semantics**, so A2 applies one
+matching rule to the whole set:
 
 1. **Charter zone registry, Frozen entries** — the distinct `file:` values of entries with
    `zone: Frozen` in `.claude/rules/moai/core/zone-registry.md` (first such entry at line 83; 57
-   entries over 12 distinct files at HEAD `ca1d5dc43`). Resolved by the caller through the
+   entries over 12 distinct files at HEAD `ca1d5dc43`), each emitted as a literal repo-relative path
+   (a glob with no wildcard, matching exactly that path). Resolved by the caller through the
    constitution registry loader and passed to the verifier.
 2. **Frozen instruction files** — `frozenInstructionFiles` at `internal/hook/pre_tool.go:1231`
-   (`{"CLAUDE.md", "CLAUDE.local.md"}`), matched by **basename** exactly as the hook's
-   `checkHarnessFrozenZone` does (`pre_tool.go:1242-1246`). The verification core carries its own copy
-   (it must not import `internal/hook`); a test inside `internal/hook` pins the copy to the variable.
-3. **The contract's `ownership.never`.**
+   (`{"CLAUDE.md", "CLAUDE.local.md"}`) is a **basename** list (`checkHarnessFrozenZone`,
+   `pre_tool.go:1242-1246`), emitted as `**/CLAUDE.md` and `**/CLAUDE.local.md` so the glob keeps the
+   basename-anywhere semantics (`**` matches zero segments, so the root files are covered). The
+   verification core carries its own copy (it must not import `internal/hook`); a test inside
+   `internal/hook` pins the copy to the variable.
+3. **The contract's `ownership.never`** — already globs, emitted unchanged.
 
 Not included: `frozenZonePrefixes` in the same file (`.claude/commands/`, `.claude/hooks/`,
 `.claude/output-styles/`), which the hook applies only to the harness-learner identity. A2 may widen the
 set by amending this section.
+
+### Push Lease
+
+Lead decision (2026-09-26): `push-develop` is serialized with a `moai slot` lease, not with the
+integration (merge) window — the push happens outside the merge window and is a different resource.
+Measured in this tree: `moai slot` has the verbs `acquire | status | release` (`internal/cli/slot.go:86`,
+`:111`, `:243`, `:298`); a resource is named with `--resource` (`slot.go:163`), validated by
+`^[a-z0-9-]{1,64}$` (`internal/kanban/slot_lease.go:63`); the lease record lives in the primary
+checkout's `.moai/state/slot-leases`, visible from every linked worktree; exit code 3 means the resource
+is held by another session. The resource name for a contract push is the fixed string `push-develop`
+(valid under that pattern). A1 only declares the requirement (`push_requires_lease`); A2b (t1245)
+enforces that a push of the integration branch happens while this session holds the lease.
 
 ### Action Vocabulary
 
@@ -167,7 +208,7 @@ set by amending this section.
 | `commit` | allowed | `commit` |
 | `worktree` | allowed | (no mission equivalent — contract-only) |
 | `local-merge-develop` | allowed | `local_develop_merge` |
-| `push-develop` | allowed when `push_develop: true`; implies `push_requires_window` | `batch_push` |
+| `push-develop` | allowed when `push_develop: true`; implies `push_requires_lease` | `batch_push` |
 | `push-main` | **forbidden** | — |
 | `merge-main` | **forbidden** | `main_merge` |
 | `force-push` | **forbidden** | `force_push` |
@@ -213,7 +254,8 @@ Closed set, emitted in `show --json` / `verify --json` as `reasons: [...]` (sort
 `acceptance_hash_mismatch`, `ac_count_mismatch`, `ac_count_ambiguous`, `actions_empty`,
 `unknown_action`, `forbidden_action`, `push_develop_disabled`, `second_review_missing`,
 `escalate_on_incomplete`, `ownership_invalid`, `invariant_unresolved`, `budget_invalid`,
-`reobserve_incomplete`, `plan_audit_not_passing`, `receipt_mismatch`.
+`reobserve_incomplete`, `plan_audit_not_passing`, `receipt_mismatch`, `signature_seal_mismatch`,
+`signature_inconsistent`, `signature_acceptance_mismatch`.
 
 Verify collects every applicable code rather than stopping at the first, except that a
 `schema_invalid` decode failure stops evaluation.
@@ -236,6 +278,7 @@ Closed set; `sign` prints the code and a one-line cause and exits 1 (REQ-CONTRAC
 | `batch_disabled` | more than one distinct ID with `batch_sign: false` |
 | `batch_non_human` | more than one distinct ID on the receipt path |
 | `mode_not_contract` | receipt path while `mode` is not `contract` |
+| `kickoff_decider_jev_disabled` | receipt path while `kickoff.decider` is `jev` or `llm+jev` and `workflow.jev.enabled` is false (the configuration error of REQ-CONTRACT-015) |
 | `receipt_invalid` | receipt fails strict decode, is not at the fixed path, or a decision lacks a valid `reason_refs` entry |
 | `receipt_signer_mismatch` | receipt `signer` ≠ `--signer` or ≠ `kickoff.decider` |
 | `receipt_input_mismatch` | an input hash differs from the current file / signable digest |
@@ -257,7 +300,8 @@ Closed set; `sign` prints the code and a one-line cause and exits 1 (REQ-CONTRAC
   "signable_contract_sha256": "…",
   "acceptance": { "sha256": "…", "measured_sha256": "…", "ac_count": 9, "measured_ac_count": 9 },
   "actions": ["commit", "local-merge-develop", "push-develop", "worktree"],
-  "push_requires_window": true,
+  "push_requires_lease": true,
+  "terminal": false,
   "effective_never": ["…"],
   "scratch": ["…"],
   "frozen_files": ["…"],
@@ -313,14 +357,18 @@ path is repo-relative and its current SHA-256 equals the recorded one.
 
 ### Agreement Rule
 
-Evaluated after the field rules, with `min = kickoff.jev_min_confidence`:
+Evaluated after the field rules, in order, with `min = kickoff.jev_min_confidence`:
 
+0. **A1 rule (spec.md §C.8):** any `jev` decision, whatever its answer or confidence, is treated as
+   unmeasured → `receipt_requires_human`. Jev stays display-only until A3 amends the shipped doctrine;
+   rules 2 and the `llm+jev` clause of rule 4 are defined now for A3 and are unreachable in A1.
 1. Any `escalate` → `receipt_requires_human`.
 2. A `jev` decision with `confidence < min` is treated as unmeasured → `receipt_requires_human`.
 3. Any `reject` → `receipt_rejected` when `on_disagree: reject`, else `receipt_requires_human`.
-4. Otherwise every decision is `approve` → accepted. (`llm+jev` therefore needs both to approve.)
+4. Otherwise every decision is `approve` → accepted. (Under A3, `llm+jev` needs both to approve.)
 
-A1 has no confidence threshold for the `llm` decider; its confidence is recorded only.
+A1 has no confidence threshold for the `llm` decider; its confidence is recorded only. In A1 only an
+`llm` receipt can be accepted.
 
 ## Agent-Environment Markers
 
@@ -344,7 +392,8 @@ ordinary shells do not. The A2 sign deny (spec.md §C.2) is the Codex-side prote
 Path selection: `--signer` absent or `human` → human path; `llm | jev | llm+jev` → receipt path.
 
 1. Human path: refuse `agent_marker`, then `not_tty`. Receipt path: refuse `batch_non_human` for more
-   than one ID and `mode_not_contract` unless `mode: contract`.
+   than one ID, `mode_not_contract` unless `mode: contract`, and `kickoff_decider_jev_disabled` when
+   `kickoff.decider` is `jev`/`llm+jev` while `workflow.jev.enabled` is false.
 2. Resolve each SPEC ID (de-duplicated) to its directory; load and strictly decode `contract.yaml`
    (a symlink resolving outside the SPEC directory is an I/O error, exit 2).
 3. Branch on signature state:
@@ -366,7 +415,8 @@ Path selection: `--signer` absent or `human` → human path; `llm | jev | llm+je
    `confirmation_mismatch`. Receipt path: validate the receipt (REQ-CONTRACT-023) against the signable
    digest and current files; refuse with its code. No prompt.
 8. Compute the digest; write the signature block (`signer_kind`, `method`, and for the receipt path
-   `receipt.{path, sha256, provenance: file}`); write each file atomically; print the
+   `receipt.{path, sha256, provenance: file}`), then compute and write `seal` last; write each file
+   atomically; print the
    REQ-CONTRACT-019 notice (both modes, both paths).
 
 Batch mode (human path only): steps 2-6 run for every ID before step 7; one confirmation; step 8 per
@@ -433,7 +483,9 @@ This repository's local `.moai/config/sections/workflow.yaml` sets `batch_sign: 
 
 Reader behavior: absent section/key → defaults above; an out-of-set or out-of-range value for `mode`,
 `second_review`, `decider`, `on_disagree`, or `jev_min_confidence` → `guided`, `required`, `human`,
-`human`, `0.50` respectively, plus a warning naming the key (fail toward the stricter value). No
+`human`, `0.50` respectively, plus a warning naming the key (fail toward the stricter value).
+`kickoff.decider: jev | llm+jev` while `workflow.jev.enabled: false` (the shipped key, template
+`workflow.yaml` `jev:` / `enabled: false`) is a configuration error naming both keys — no fallback. No
 environment variable is introduced; `MOAI_AUTONOMY_TIER` is untouched.
 
 ## F1 Reference Shape

@@ -1,7 +1,7 @@
 ---
 id: SPEC-AUTONOMY-CONTRACT-001
 title: "Contract-based autonomy A1 — contract schema, acceptance binding, and human signature (moai contract sign/show/verify)"
-version: "0.3.0"
+version: "0.4.0"
 status: draft
 created: 2026-09-26
 updated: 2026-09-26
@@ -24,6 +24,7 @@ related_specs: [SPEC-GTD-AUTONOMY-001, SPEC-AUTONOMY-TIERS-001, SPEC-AUTONOMY-RU
 | 0.1.0 | 2026-09-26 | manager-spec | Initial plan-phase draft (card t1234, AUTONOMY-A1). Operator decisions A-Q1..A-Q4 (2026-09-26) recorded in §C. |
 | 0.2.0 | 2026-09-26 | manager-spec | Plan-audit iteration 1 (FAIL 0.74) revisions: mission-validator projection deferred to A2 (former REQ-021 withdrawn; ID 021 reused for agent-environment refusal); re-sign after acceptance change defined (REQ-022); human-presence claim restated; A2-before-A3 ordering recorded; Kickoff notice printed in both modes; verify isolated in its own package; second_review fallback, non-empty actions, and ownership coverage semantics specified. |
 | 0.3.0 | 2026-09-26 | manager-spec | Plan-audit iteration 2 (FAIL 0.84) revisions and lead-approved schema additions. **ID reuse record:** AC-CONTRACT-024 was reused in 0.2.0 (was "mission-contract projection", now "re-sign after an acceptance change", mapped to REQ-CONTRACT-022); REQ-CONTRACT-021 was reused likewise. Both reuses happened before implementation; citations of REQ-CONTRACT-021 or AC-CONTRACT-024 in the iteration-1 plan-audit report refer to the withdrawn meanings. Other changes: enforcement owners aligned with cards (A2 = t1235 push serialization + sign deny; A4 = t1237 second-review stop; ordering A1 → A2 → A3); AC pass convention requires a `--- PASS:` line; kickoff receipt format, non-interactive receipt signing path, `workflow.autonomy.kickoff` config, post-signing immutability, `ownership.scratch`, and `frozen-files` definition added (REQ-CONTRACT-023..025); autonomous-Kickoff activation preconditions and residual-risk section added; `moai contract revoke` declared out of scope (A3). |
+| 0.4.0 | 2026-09-26 | manager-spec | Plan-audit iteration 3 (FAIL 0.84) delta, lead-authorized iteration 4: signature seal and signature consistency rules (R1); Jev answers route to a human until A3 reconciles the display-only doctrine, and a Jev decider with `workflow.jev.enabled: false` is a config error (R2, §C.8); card-state assertions replaced by required-ordering statements, with push serialization and the sign deny owned by A2b (card t1245) (R3); `frozen_files` elements typed as globs (R4); jev confidence pinned in AC-016 (R5); push serialization re-specified as a `moai slot` lease on resource `push-develop` (`push_requires_window` renamed `push_requires_lease`); terminal contract state for `completed`/`archived` SPECs. |
 
 ## §A. User Story
 
@@ -36,7 +37,7 @@ approved acceptance criteria is detected mechanically.
 A1 is the foundation of the contract-autonomy epic. It delivers only the **contract artifact and its
 integrity**: the schema, the acceptance binding, the signature (human, or receipt-based for an
 automated decider), the kickoff receipt format and its validator, and the three read/sign commands.
-The detectors and guards that act on a contract (A2), the gate rewiring that makes the signature
+The detectors and guards that act on a contract (A2, A2b), the gate rewiring that makes the signature
 replace Kickoff (A3), and the closure report and second-review stop (A4) consume this SPEC's schema
 and are separate SPECs.
 
@@ -60,13 +61,15 @@ In scope:
 - The declarative representation of post-signing immutability, `ownership.scratch`, the `frozen-files`
   invariant, the push-serialization requirement, and the second-review requirement.
 
-### Out of Scope — Escalation detectors and guards (A2, card t1235)
+### Out of Scope — Escalation detectors and guards (A2, card t1235; A2b, card t1245)
 
 - Acceptance-hash watching during a run, the ownership path check at PreToolUse (including the
   post-signing immutability of `contract.yaml` and `acceptance.md`), new-API detection through the
-  code graph, contradiction detection, **push-serialization enforcement**, and the **PreToolUse deny on
-  agent-invoked `moai contract sign`** belong to A2. A1 supplies the verify primitive and the schema
-  those detectors read; it enforces nothing at tool-call time.
+  code graph, and contradiction detection belong to A2 (t1235). **Push-serialization enforcement** and
+  the **PreToolUse deny on agent-invoked `moai contract sign`** belong to A2b (t1245). A1 supplies the
+  verify primitive and the schema those detectors read; it enforces nothing at tool-call time.
+- A2 resolves which contract a detection applies to; contracts of terminal SPECs (REQ-CONTRACT-014)
+  are excluded from that resolution and from signature resolution.
 - The `workflow.autonomy.escalation.new_api_detector` key is not introduced by A1 (see §C.3).
 
 ### Out of Scope — Mission-validator projection (A2)
@@ -113,9 +116,12 @@ In scope:
 
 - **A-Q1** — Signing the contract replaces the Implementation Kickoff Approval. A1 builds the
   signature; A3 (t1236) performs the replacement.
-- **A-Q2** — Pushing `develop` is allowed inside a contract, but pushes are serialized the same way
-  the merge window is. A1 represents the permission (`push-develop` action plus the
-  `push_develop` configuration switch); **A2 (t1235) enforces serialization.**
+- **A-Q2** — Pushing `develop` is allowed inside a contract, but pushes are serialized. Lead decision
+  (2026-09-26): the serialization mechanism is a `moai slot` lease on the resource `push-develop`, not
+  the integration (merge) window — the push happens outside the merge window and is a different
+  resource. A1 represents the permission (`push-develop` action plus the `push_develop` configuration
+  switch) and the lease requirement (`push_requires_lease`, REQ-CONTRACT-018); **A2b (t1245) enforces
+  serialization.**
 - **A-Q3** — A second-model review is required by default; when it has not been performed, the run
   stops before any push. A1 represents the requirement (`second_review: required` plus a mandatory
   `review.second_model`, which names the planned reviewer). **A4 (t1237) owns the stop and the record
@@ -123,11 +129,13 @@ In scope:
   receipt of its choosing).
 - **A-Q4** — The distributed template ships `mode: guided`.
 
-**Binding ordering: A1 → A2 → A3.** A3 shall not activate "signature replaces Kickoff" until A2 has
-landed both push-serialization enforcement and the PreToolUse deny on agent-invoked
-`moai contract sign`; the A4 second-review stop is likewise required before a signed `push-develop`
-action is exercised. Until then a signed contract and `mode: contract` confer no autonomy: the Kickoff
-gate stays in force (REQ-CONTRACT-019). Card t1236 carries t1235 as its predecessor.
+**Required ordering: A1 → A2 (t1235) + A2b (t1245) → A3 (t1236).** A3 shall not activate "signature
+replaces Kickoff" until A2 and A2b have landed — in particular A2b's push-serialization enforcement and
+PreToolUse deny on agent-invoked `moai contract sign`. A4 (t1237) owns the stop before push when the
+second review was not performed, and the `push-develop` action shall not be activated until A4 has
+landed. Until then a signed contract and `mode: contract` confer no autonomy: the Kickoff gate stays in
+force (REQ-CONTRACT-019). This is the ordering the epic requires; it is not a statement about the
+current content of the queue.
 
 ### §C.2 Human presence
 
@@ -138,7 +146,7 @@ is agent-proof: a one-line pseudo-terminal wrapper gives an agent's shell a term
 and an agent can unset environment variables.
 
 **Hard precondition for A3.** Before A3 makes the signature replace Implementation Kickoff Approval, the
-PreToolUse deny on `moai contract sign` issued from agent tool calls shall exist; A2 (t1235) owns it.
+PreToolUse deny on `moai contract sign` issued from agent tool calls shall exist; A2b (t1245) owns it.
 
 ### §C.3 Why `new_api_detector` is not reserved in A1
 
@@ -178,6 +186,9 @@ receipts are issued and stored by moai itself — moai calls Jev directly and ap
 LLM decision record to a moai-owned append-only store (A3). A receipt authored as agent-written JSON
 shall not activate autonomous Kickoff. A1 provides only the receipt format, the validator, and a
 signature that records the receipt's provenance as `file` (REQ-CONTRACT-024), so that A3 can refuse it.
+The provenance, method, and signer kind are covered by the signature seal (REQ-CONTRACT-011): editing
+any of them without recomputing the seal makes `verify` report `signature_seal_mismatch`. The seal is
+keyless, so a forger who recomputes it passes `verify`; only A3's moai-owned store can expose that.
 
 ### §C.7 Plan-audit verdict is self-reported
 
@@ -186,6 +197,20 @@ signature that records the receipt's provenance as `file` (REQ-CONTRACT-024), so
 previous verdict forward (the summary shows it as carried). A3 and A4 shall bind the verdict to
 evidence before relying on it. The receipt path binds a plan-audit report hash (REQ-CONTRACT-023), which
 is the first such binding.
+
+### §C.8 Jev is display-only until A3 reconciles the doctrine
+
+The product ships the principle that a Jev answer is display-only — never an input to a completion
+verdict, a merge approval, a queue mutation, or a gate — at
+`internal/template/templates/.moai/config/sections/workflow.yaml:171-173`,
+`.claude/rules/moai/core/moai-mcp-tools.md:75`, and
+`.claude/rules/moai/core/moai-mcp-tools-catalogue.md:138`. The operator decision of 2026-09-26
+authorizes a Kickoff-only exception, but A1 does not make it: the receipt validator treats **any** Jev
+decision as unmeasured and routes it to a human (`receipt_requires_human`, REQ-CONTRACT-023), so `jev`
+and `llm+jev` receipts cannot sign in A1. Forward note for A3 (t1236): amend the display-only statement
+in all three locations, citing the operator decision, before any Jev answer gates Kickoff. Separately, a
+Jev decider while the capability is off (`workflow.jev.enabled: false`) is a configuration error, not a
+fallback (REQ-CONTRACT-015).
 
 ## §D. Requirements (GEARS)
 
@@ -238,8 +263,10 @@ The contract's `escalate_on` list shall contain all six triggers — `acceptance
 
 When `moai contract verify <SPEC-ID>` runs, the verifier shall report the contract valid only when the
 contract decodes strictly, satisfies every schema rule, carries a signature whose recorded digest
-equals the recomputed digest, binds an `acceptance.md` whose current hash and AC count equal the
-recorded ones, and — for a receipt-signed contract — finds the recorded receipt file with its recorded
+equals the recomputed digest, carries a signature seal equal to its recomputation, satisfies the
+signature consistency rules (method, signer kind, receipt presence, provenance), carries a
+`signature.acceptance_sha256` equal to the measured acceptance hash, binds an `acceptance.md` whose
+current hash and AC count equal the recorded ones, and — for a receipt-signed contract — finds the recorded receipt file with its recorded
 hash; otherwise it shall report invalid with every applicable reason code from the closed set in
 `design.md` § Verify Reason Codes.
 
@@ -262,8 +289,10 @@ after the operator types the confirmation token shown in the prompt.
 When the signer signs a contract, it shall record, inside the contract's `signature` block, the signer
 kind (`human`, `llm`, `jev`, or `llm+jev`), the operator name and email from git configuration, the
 signing time in UTC RFC 3339 form, the HEAD commit at signing, the contract digest, the acceptance
-hash, the signing method, for a receipt signature the receipt path, hash, and provenance, and — when it
-replaces an earlier signature — the digest that signature carried.
+hash, the signing method, for a receipt signature the receipt path, hash, and provenance, when it
+replaces an earlier signature the digest that signature carried, and a seal — a SHA-256 over the
+canonical form of every other signature field together with the contract digest — so that an edit to
+any signature field is detectable.
 
 ### REQ-CONTRACT-012 — Sign-time binding and refusal
 
@@ -286,8 +315,10 @@ refuse an invocation naming more than one distinct SPEC ID.
 ### REQ-CONTRACT-014 — Show
 
 When `moai contract show <SPEC-ID>` runs, the command shall print the contract's sections, its
-signature state (`unsigned`, `signed-valid`, or `signed-invalid`), the verify reason codes, and the
-derived sets defined in `design.md` § Derived Fields; with `--json` it shall print the same information
+signature state (`unsigned`, `signed-valid`, or `signed-invalid`), the verify reason codes, the
+derived sets defined in `design.md` § Derived Fields, and a `terminal` flag that is true when the SPEC's
+`spec.md` frontmatter `status` is `completed` or `archived` (such a contract is terminal and is excluded
+from detection and signature resolution); with `--json` it shall print the same information
 as a single JSON object whose field names are stable for downstream consumers.
 
 ### REQ-CONTRACT-015 — Configuration keys and defaults
@@ -303,7 +334,8 @@ The configuration shall expose `workflow.autonomy.mode` (`guided | contract`),
 `decider: human`, `jev_min_confidence: 0.50`, and `on_disagree: human`. When `mode`, `second_review`,
 `decider`, `on_disagree`, or `jev_min_confidence` holds a value outside its set or range, the reader
 shall fall back to `guided`, `required`, `human`, `human`, or `0.50` respectively and emit a warning
-naming the key.
+naming the key. When `decider` is `jev` or `llm+jev` while `workflow.jev.enabled` is false, the reader
+shall report a configuration error naming both keys and shall not fall back.
 
 ### REQ-CONTRACT-016 — Template default and neutrality
 
@@ -322,8 +354,9 @@ verifier shall accept `none`.
 
 Where `workflow.autonomy.contract.push_develop` is false, the verifier shall report a contract whose
 `actions` list includes `push-develop` as invalid. The `push-develop` action shall denote a push of
-the integration branch performed while holding the integration window; the verifier shall expose
-this as a derived `push_requires_window: true` field in `show --json` output for A2 to enforce.
+the integration branch performed while holding a `moai slot` lease on the resource `push-develop`
+(not the integration merge window); the verifier shall expose this as a derived
+`push_requires_lease: true` field in `show --json` output for A2b to enforce.
 
 ### REQ-CONTRACT-019 — Kickoff-neutral notice in every mode
 
@@ -364,7 +397,9 @@ that references contract lines, and a confidence), the hashes of its inputs (the
 digest, `acceptance.md`, and the plan-audit report), and for a Jev decider the raw response and the
 request hash. The receipt validator shall accept a receipt only when it decodes strictly, its input
 hashes equal the current files' hashes, its signer kind equals `workflow.autonomy.kickoff.decider`, and
-its decisions satisfy the agreement rule in `design.md` § Agreement Rule; otherwise it shall return one
+its decisions satisfy the agreement rule in `design.md` § Agreement Rule, under which any Jev decision
+is treated as unmeasured and routes to a human until A3 reconciles the display-only doctrine (§C.8);
+otherwise it shall return one
 receipt refusal code from `design.md` § Sign Refusal Codes.
 
 ### REQ-CONTRACT-024 — Receipt signing path
@@ -417,7 +452,8 @@ denotes the union defined in `design.md` § Frozen Files, resolved from sources 
   file-provenance receipt.
 - **Local single-user tamper-proofing is impossible.** Anyone who can write the working tree can edit
   and re-sign a contract, rewrite a receipt, or unset the agent markers. A1's goal is that forgery
-  leaves a trace — a digest mismatch, a `supersedes` chain, a recorded receipt hash and provenance, a
-  git history entry — not that forgery is prevented.
+  leaves a trace, not that forgery is prevented. An edit to any contract or signature field without
+  recomputing the digest and the seal is detected by `verify`; a forger who recomputes both (the seal
+  is keyless) passes `verify`, and the remaining traces are the `supersedes` chain and git history.
 - **The human path is not agent-proof** (§C.2) until A2's PreToolUse deny exists, and even then only for
   tool calls the hook observes.
