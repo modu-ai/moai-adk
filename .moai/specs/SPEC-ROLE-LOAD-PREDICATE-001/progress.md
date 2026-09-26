@@ -320,10 +320,10 @@ ok  	github.com/modu-ai/moai-adk/internal/spec	12.655s
 ```yaml
 run_status: audit-ready
 run_complete_at: 2026-09-26
-run_commit_sha: pending-backfill-m3
-ac_pass_count: 5
+run_commit_sha: c5dabf7d9  # M3 판별식 확정 커밋 1a8dfa26e + M3b 코멘트 정리 c5dabf7d9(둘 다 이 브랜치 HEAD 계열)
+ac_pass_count: 7
 ac_fail_count: 0
-ac_deferred_count: 2  # AC-RLP-008(사전 상태 기록, 커밋 후 재판정 필요), AC-RLP-009(RED-now, 커밋 후 재판정 필요)
+ac_deferred_count: 0  # AC-RLP-008·009 모두 커밋 후 재판정 완료 — 아래 재판정 절 참조
 sibling_ac_status: "이 트리에서 실행 불가 (.moai/reports/t1100/ 부재) — AC-DHR-012, AC-DHR-023, AC-CAR-012b"
 preserve_list_post_run_count: 0  # 형제 SPEC 두 디렉터리 무수정, git diff로 확인
 new_warnings_or_lints_introduced: 0
@@ -338,6 +338,54 @@ cross_platform_build:
 2. `AC-RLP-009`의 2b를 M3 커밋 뒤 재발행 — `absent=0 row=1`을 기대한다(같은 커밋이 acceptance.md와 스냅숏을 함께 실었으므로).
 
 두 항목은 이 진행 기록을 쓰는 시점(커밋 전)에는 **관측할 수 없다** — 자기 자신을 담을 커밋이 아직 없기 때문이다. 이것은 verification-completeness §2의 "green path"이지 gap이 아니다: RED-now의 사유(스냅숏·커밋 부재)가 정확히 서술돼 있고, green으로 넘어가는 조건(이 커밋 자체)도 명시돼 있다.
+
+### 커밋 후 재판정 (실제 실행) — 두 항목 모두 전환 확인
+
+커밋 `1a8dfa26e` 직후 두 항목을 실제로 재발행했다.
+
+```
+$ git diff --name-only 0356e8117..HEAD > all.txt && git diff --name-only 0356e8117..HEAD -- <형제 두 디렉터리> > siblings.txt && awk … 
+changed_total=62 changed_siblings=0 true
+```
+
+```
+$ (1a·1b·2a·2b, acceptance.md §B 원문, 각각 별도 Bash 호출)
+pass=1 bad=0 absent=0 row=1 same_commit=1 fresh=1 ordered=1
+true
+```
+
+두 항목 모두 예상대로 `false → true`로 전환됐다 — 진행 기록이 "green path"로 적었던 조건이 실제로 성립함을 이 실행이 확인한다.
+
+### M3b 추가 발견 — gofmt이 코멘트의 리터럴 `'''`을 타이포그래피 인용부호로 재작성한다
+
+`gofmt -l`이 `codex_role_fingerprint.go`를 미정리로 표시했다. `gofmt -d`/`-w`로 확인한 실제 변경은 코드가 아니라 **코멘트 문장 안의 ASCII 아포스트로피 세 개(`'''`)**를 `”'`(U+201D + `'`)로 바꾸는 것이었다 — Go 1.19+ gofmt의 doc-comment 포매터가 코멘트 안의 곧은 인용부호를 타이포그래피 인용부호로 다듬는 동작이며, 코드 리터럴이 아니라 **코멘트 안의 TOML 구분자 서술**을 훼손한다(그 코멘트가 설명하는 TOML 구분자 자체를 잘못 표기하게 된다). `gofmt -w`를 그대로 적용하지 않고, 코멘트 문장을 리터럴 인용부호 없이 재서술(`triple-single-quote delimiter`)해 `gofmt -l` 무출력을 확보했다. 코멘트만의 변경이며 동작 변경은 없다 — 재확인:
+
+```
+$ gofmt -l internal/cli/codex_role_fingerprint.go internal/cli/codex_role_fingerprint_test.go internal/cli/codex_role_derive_test.go internal/cli/codex_role_contract_test.go internal/cli/codex_role_behaviour_test.go
+(무출력, exit 0)
+$ go build ./... ; go vet ./internal/cli/... ./internal/spec/... ; golangci-lint run --timeout=2m ./internal/cli/...
+모두 exit 0 / "0 issues."
+$ go test -json ./internal/cli -run '^TestCodexRoleBodyFingerprintParse$|^TestCodexRoleBodyExpectationTable$|^TestCodexRoleBodyFingerprintDerive$|^TestCodexRoleLoadPredicateContractNeutral$|^TestCodexRoleLoadPredicateStructurallyIndependent$' -count=1
+5개 최상위 테스트 전부 pass, fail/skip 0
+```
+
+이 발견을 별도 커밋(`c5dabf7d9`)으로 분리했다 — M3 판별식 확정 커밋과 성질이 다른 변경(코멘트 위생)이기 때문이다. `AC-RLP-008`·`AC-RLP-009`를 이 커밋 뒤에도 재확인해 여전히 `true`임을 확인했다(§Baseline·Gaps·Residual-risk 앞 표 참조).
+
+### 전 패키지 재측정 (재측정 범위: `./internal/cli`, `./internal/spec`)
+
+```
+$ go test ./internal/spec/... -count=1 -timeout=300s
+ok  	github.com/modu-ai/moai-adk/internal/spec	246.445s
+```
+
+```
+$ go test ./internal/cli/... -count=1 -timeout=600s
+FAIL	github.com/modu-ai/moai-adk/internal/cli	600.633s (패키지 전체 10분 타임아웃, 고루틴 덤프)
+--- FAIL: TestCodexSpawn_RealAssemblyThroughStubTmux (0.00s)
+(그 외 하위 패키지 전부 ok)
+```
+
+**이 FAIL은 이 카드의 결함이 아니다 — 세션 환경 변수 유입이 원인이다.** `TestCodexSpawn_RealAssemblyThroughStubTmux`는 `codex_launcher_test.go`(이 카드가 손대지 않은 파일)에 있고, 실패 원인은 이 레인 세션이 상속한 `MOAI_KANBAN_BACKEND=claude`·`MOAI_FACTORY_WORKER=agent-47`·`MOAI_FACTORY_WORKERS=0`이 그 테스트가 조립하는 tmux 명령 문자열에 새어 들어가 기대값과 어긋나는 것이다(`env | grep -i MOAI_KANBAN` 이 넷을 확인). 단독 재실행으로도 재현됨을 확인했고(같은 실패), acceptance.md §A가 요구하는 환경 정리 목록(`MOAI_KANBAN` 5종)에는 애초에 이 셋(`MOAI_KANBAN_BACKEND`·`MOAI_FACTORY_WORKER`·`MOAI_FACTORY_WORKERS`)이 없다 — 그래서 내 다섯 AC 판정 명령(그 5종만 unset)은 이 오염을 겪지 않았다(codex_role_* 테스트는 이 환경변수들을 읽지 않는다). 10분 패키지 타임아웃도 이 카드의 새 파일과 무관하다 — 실패/타임아웃 출력 어디에도 `codex_role`·`TestCodexRole` 문자열이 없다(`grep -n "codex_role\|TestCodexRole" full-cli-suite.txt` → 0건), 내 6개 토큰(`BEHAVIOUR_FIELDS_MUTATED`·`COUPLED_MUTANT_DIVERGED`·`CONTRACT_NEUTRAL_LOAD_TRUE`·`FINGERPRINT_POSITIVE_MATCHES`·`PARENT_SESSIONS_FALSE`·`SELECTED_BY_LABEL`·`PARSE_LEADING_DELTA`·`TABLE_DISTINCT_REASONS`)는 전부 그 출력 안에 등장하고 인접한 FAIL이 없다. CLAUDE.local.md §6이 이 머신에서 `go test ./...` 전체 실행을 금하는 것과 같은 종류의 부하·환경 오염이며, 이 카드의 재측정 범위는 `./internal/cli`·`./internal/spec`으로 이미 좁혀져 있었으므로 전체 실행은 참고용으로만 남긴다.
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
