@@ -2,7 +2,7 @@
 id: SPEC-CODEX-RESUME-SCOPE-001
 title: "codex_task resume_last must not resume another work item's thread — explicit selector plus refuse-on-ambiguity"
 version: "0.2.0"
-status: in-progress
+status: completed
 created: 2026-09-26
 updated: 2026-09-26
 author: manager-spec

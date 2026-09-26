@@ -70,4 +70,20 @@ m1_to_mN_commit_strategy: "M1 구현+테스트+status 전이 1커밋, progress �
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase>_
+```yaml
+sync_complete_at: 2026-09-26
+sync_commit_sha: pending-backfill-sync   # a commit cannot cite its own hash
+sync_status: complete
+b12_self_test_a: "grep -c SPEC-CODEX-RESUME-SCOPE-001 CHANGELOG.md -> 0 before emission"
+b12_self_test_b: "distinct AC ids in acceptance.md = 15; CHANGELOG entry cites AC-CRS-001..015 (15)"
+b12_self_test_c: "ls of every path cited in the entry -> all present"
+changelog_entry_position: "[Unreleased] / ### Changed, first entry"
+frontmatter_status_transitions:
+  spec_md: "in-progress -> completed"
+  plan_md: "no status field"
+  acceptance_md: "no status field"
+docs_sync: "none — grep 'resume_last' over docs-site/content/ and .claude/rules -> 0 files"
+cross_spec_note: "SPEC-CODEX-PHASE2-001 HISTORY +1 line (REQ-CX2-008 narrowed)"
+known_unrelated_residual: "TestCodexSpawn_RealAssemblyThroughStubTmux fails only under lane env (MOAI_KANBAN_*/MOAI_FACTORY_*); passes scrubbed"
+push: not-performed   # lead batch push
+```
