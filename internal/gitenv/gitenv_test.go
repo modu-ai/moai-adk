@@ -2,6 +2,7 @@ package gitenv
 
 import (
 	"os"
+	"runtime"
 	"slices"
 	"strings"
 	"testing"
@@ -64,6 +65,44 @@ func TestScrub_RemovesEveryRepoScopingVar(t *testing.T) {
 	}
 	if len(got) != 0 {
 		t.Errorf("scrubbing only repo-scoping vars should leave nothing; got %v", got)
+	}
+}
+
+// Windows environment names are case-insensitive (getenv "isn't case
+// sensitive in the Windows operating system"; os/exec de-duplicates Env
+// case-insensitively there), so a child reads Git_Dir as GIT_DIR. On Windows
+// every spelling must go; elsewhere a differently-cased name is a different
+// variable and must survive. scrub is exercised directly so both branches run
+// on any host; Scrub's own choice of branch is pinned separately below.
+func TestScrub_CaseFolding(t *testing.T) {
+	in := []string{"Git_Dir=/leak", "git_work_tree=/leak", "gIt_InDeX_fIlE=/leak", "GIT_DIR=/leak", "Git_Author_Name=A"}
+
+	folded := names(scrub(in, true))
+	for _, name := range []string{"Git_Dir", "git_work_tree", "gIt_InDeX_fIlE", "GIT_DIR"} {
+		if slices.Contains(folded, name) {
+			t.Errorf("foldCase=true: %s survived the scrub", name)
+		}
+	}
+	if !slices.Contains(folded, "Git_Author_Name") {
+		t.Errorf("foldCase=true: identity variable Git_Author_Name was removed: %v", folded)
+	}
+
+	exact := names(scrub(in, false))
+	for _, name := range []string{"Git_Dir", "git_work_tree", "gIt_InDeX_fIlE", "Git_Author_Name"} {
+		if !slices.Contains(exact, name) {
+			t.Errorf("foldCase=false: %s was removed, but it is a different variable off Windows", name)
+		}
+	}
+	if slices.Contains(exact, "GIT_DIR") {
+		t.Errorf("foldCase=false: GIT_DIR survived the scrub")
+	}
+}
+
+// Scrub folds case exactly when the host is Windows.
+func TestScrub_FoldsCaseOnlyOnWindows(t *testing.T) {
+	survived := slices.Contains(names(Scrub([]string{"Git_Dir=/leak"})), "Git_Dir")
+	if onWindows := runtime.GOOS == "windows"; survived == onWindows {
+		t.Errorf("GOOS=%s: Git_Dir survived=%v, want %v", runtime.GOOS, survived, !onWindows)
 	}
 }
 
