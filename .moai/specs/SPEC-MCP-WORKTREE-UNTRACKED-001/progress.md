@@ -248,7 +248,7 @@ deferred_to: t1213
 
 ```yaml
 sync_complete_at: 2026-09-26
-sync_commit_sha: pending-backfill-sync
+sync_commit_sha: 586c5a949
 sync_status: complete
 sync_base_head: 8322fb928
 b12_self_test_a: "grep -c 'SPEC-MCP-WORKTREE-UNTRACKED-001' CHANGELOG.md -> 0 before emission"
