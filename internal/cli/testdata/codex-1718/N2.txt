@@ -1,0 +1,2 @@
+Hello team, the verdict on caching is still open and the old tests pass anyway.
+Nothing else stood out in the diff.
