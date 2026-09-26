@@ -1,7 +1,7 @@
 ---
 id: SPEC-INSTRUCTION-FILES-UNIFY-001
 title: "Instruction-file unification — AGENTS.md as the harness-neutral contract"
-version: "0.3.0"
+version: "0.3.1"
 status: draft
 priority: P1
 phase: "v3.3.0 target"
@@ -21,6 +21,7 @@ tier: L
 | 0.1.0 | 2026-09-26 | Initial plan-phase draft. Encodes the operator-approved design decision 2 (lead report 2026-09-26) plus the M0 measurement results recorded at `.moai/reports/t1243/m0/verdict.md`. |
 | 0.2.0 | 2026-09-26 | Lead directives 1 and 2 applied: the ancestor-discovery observation is labelled unconfirmed and may not serve as a premise; the `.tmpl` invariant (card t925) and the nested-sum 32,768-byte budget added as REQ-IFU-024 / REQ-IFU-025; worktree duplicate-load scoped out to t1219. |
 | 0.3.0 | 2026-09-26 | **B1/B2 carve, by operator decision.** The nine requirements `REQ-IFU-007~012` and `REQ-IFU-020~022` — everything touching a user-owned file — transferred verbatim to `SPEC-LOCAL-INSTRUCTIONS-MIGRATE-001` (card t1259 owns its plan phase). This SPEC retains 16: `REQ-IFU-001~006`, `013~019`, `023~025`. **The carve's cause is arithmetic, not the recorded debt:** the plan-audit of commit `1140bcd1d` found `REQ-IFU-001` and `REQ-IFU-005` covered by no criterion, the fix needs two new criteria, and the SPEC stood at the Tier L ceiling of 25/25 with no tier above L. Also applied from that audit: frontmatter repaired to the canonical 12-field schema (MP-3), five vacuously-passable `go test -run` patterns repaired and given positive indicators (D1), two new criteria added for the uncovered requirements (D2), `AC-IFU-022`'s positive control defined (D5), the `AGENTS.md` mirror-divergence figure re-measured (D4), `plan.md` §G's mis-citation corrected (D6), and §C reordered so requirement ids ascend in document order (D8). |
+| 0.3.1 | 2026-09-26 | **Plan-audit iter-2 repairs (subject `653e53572`, PASS-WITH-DEBT 0.853 with two blocking defects).** D9 (critical): the D1 vacuity class survived in `AC-IFU-010` and `AC-IFU-012`, both blocking, both passing against the unimplemented tree by prefix-substring accident; repaired as a **class** — both-end pattern anchoring plus a trailing-space delimiter on every asserted `--- PASS:` line, the rule stated at the head of `acceptance.md` with a passable enumeration command, and applied additionally to `AC-IFU-016`, `AC-IFU-025`, and the sibling SPEC's `AC-IFU-011`. `AC-IFU-010` additionally had the wrong assertion (it required `BETA` absent, i.e. exclusive precedence, where `REQ-IFU-006` and design.md §C specify read **order**); corrected to ordering. D12 (major): three sibling-SPEC `AC-` tokens in prose made the AC-count guard read 23 live criteria against 20 declared — marked `[REF]`, counter now reports 20. D10 stale `M4` citation → `M3`. D11 design.md §C annotated so `REQ-IFU-007`/`008` read as the sibling's. D13 plan.md M3 now names the package-scoped always-loaded invocation. Also: §D.2 derivation made one-way and the set-diff command's blindness to row pairing stated; two close items added. |
 
 > **[HARD] The id gaps in this SPEC are the carve's footprint, not an error.** `REQ-IFU-007~012`
 > and `REQ-IFU-020~022` are absent here because they live in

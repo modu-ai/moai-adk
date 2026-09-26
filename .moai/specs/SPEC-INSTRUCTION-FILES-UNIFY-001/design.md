@@ -138,12 +138,20 @@ failure mode is silent truncation.
 The local-instruction loop in `internal/cli/codex_launcher.go` ranges over
 `[]string{codexClaudeLocalName, codexLocalInstructionName}` — `CLAUDE.local.md` first. Both
 constants already exist in `codex_contract.go`, and the contract comment already
-calls `AGENTS.local.md` the Codex-only local input. The change is the iteration order plus
-a deprecation advisory on the fallback branch (REQ-IFU-006, REQ-IFU-007).
+calls `AGENTS.local.md` the Codex-only local input.
 
-The provenance preamble keeps the literal filename of the file read (REQ-IFU-008): a
-preamble naming `AGENTS.local.md` while `CLAUDE.local.md` was read makes the fallback
-invisible in exactly the situation the advisory exists to surface.
+**This SPEC's change is the iteration order alone (REQ-IFU-006).** The deprecation advisory on
+the fallback branch is `REQ-IFU-007`, and **as of v0.3.0 that requirement is
+`SPEC-LOCAL-INSTRUCTIONS-MIGRATE-001`'s** (card t1259) — the obligation is unchanged and its
+criterion travelled with it; this SPEC's dependency on it is a cross-SPEC one, recorded in
+plan.md §C.1. The two lanes edit the same function, which is why §C.1 exists and why M2
+(plan.md §E) states the advisory is not written here. Annotated in the §A.3 style above.
+
+The provenance preamble keeps the literal filename of the file read — **`REQ-IFU-008`, also
+the sibling's** (same annotation, same reason): a preamble naming `AGENTS.local.md` while
+`CLAUDE.local.md` was read makes the fallback invisible in exactly the situation the advisory
+exists to surface. It is described here because §C is shared context both SPECs read (§ above),
+not because this SPEC implements it.
 
 Two further constants in the same file are touched by the new structure and are named here
 so they are not discovered late:

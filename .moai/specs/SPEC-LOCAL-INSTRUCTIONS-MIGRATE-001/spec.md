@@ -1,7 +1,7 @@
 ---
 id: SPEC-LOCAL-INSTRUCTIONS-MIGRATE-001
 title: "Local-instruction migration — CLAUDE.local.md to AGENTS.local.md, with advisories and docs"
-version: "0.1.0"
+version: "0.1.1"
 status: draft
 priority: P1
 phase: "v3.3.0 target"
@@ -19,6 +19,7 @@ tier: M
 | Version | Date | Change |
 |---------|------|--------|
 | 0.1.0 | 2026-09-26 | **Created by carve from `SPEC-INSTRUCTION-FILES-UNIFY-001` at commit `1140bcd1d`, by operator decision (via the lead, 2026-09-26).** Nine requirements — `REQ-IFU-007~012` and `REQ-IFU-020~022`, everything in that SPEC touching a **user-owned file** — and the seven acceptance criteria covering them are transferred here **verbatim**. Nothing was dropped and nothing was renumbered: the ids keep their `IFU` infix so every existing cross-reference, traceability row, and audit citation still resolves. Card **t1259** owns this SPEC's plan phase; the artifacts here exist to preserve the authored clauses and give that card real coordinates, and are **not a completed plan phase**. Repairs applied during the carve, both from the plan-audit of `1140bcd1d`: D3 (`REQ-IFU-021` now names which `CLAUDE.local.md` copy migrates, and states one unit throughout) and the frontmatter schema (canonical 12 fields, so this SPEC parses from birth). |
+| 0.1.1 | 2026-09-26 | **Plan-audit iter-2 repairs (subject `653e53572`).** D14: `AC-IFU-007`'s two clauses were jointly unsatisfiable at their own boundary — a 4,381-character reduction from the measured 44,381 lands on exactly 40,000 and fails `< 40000`; floor corrected to 4,382, and the **same off-by-one repaired in `REQ-IFU-021` here**, which the audit did not name. D9 class (found by the cross-SPEC sweep, not in the audit's B2 note): `AC-IFU-011` arrived from the carve with the head-only pattern `'^TestCodexLocalInstructions'`, which matches 22 pre-existing sibling tests and made the criterion unfailable; both-end anchoring plus the asserted-line delimiter applied, the rule stated at the head of `acceptance.md`, and the advisory half declared as a test this SPEC creates. D12 class (also found by the cross-SPEC sweep, also absent from the audit's B2 note): sibling-SPEC `AC-` tokens in prose made this file's AC counter read **10** live criteria against 7 declared — `[REF]`-marked, counter now reports 7. Typo `discharegable` → `dischargeable`. Still **not a completed plan phase** — t1259 owns that. |
 
 > **[HARD] What is NOT done here, and is t1259's to do.** This SPEC's plan phase is unfinished by
 > design. Specifically open: the Tier judgment is provisional (`tier: M` on 9 requirements);
@@ -118,7 +119,7 @@ repository's own copy.
 > **The unit is characters throughout.** The parent SPEC mixed 61,908 **bytes** with a 44,381
 > **character** count and a 40,000 cap, which made the reduction read as ~35% when against the
 > canonical copy it is ~10%. The measuring command is `wc -m`, and the required reduction is
-> 44,381 → under 40,000 characters, i.e. at least 4,381 characters. The canonical copy does
+> 44,381 → under 40,000 characters, i.e. at least 4,382 characters (44,381 - 4,382 = 39,999; a 4,381 reduction lands on 40,000 and fails the cap — corrected at v0.1.1, with `AC-IFU-007`). The canonical copy does
 > **not** already satisfy the cap.
 
 ---

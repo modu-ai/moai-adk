@@ -152,7 +152,11 @@ decision.
 - `make build`, then both mirrors, then **three** budget checks, all with `--- PASS:` reads:
   per-file 24,576 (AC-IFU-005), nested-sum 32,768 (AC-IFU-006), and the always-loaded surface
   (AC-IFU-025). They are three different limits with three different owners and none
-  substitutes for another. Raising `project_doc_max_bytes` is not an available remedy — the
+  substitutes for another. **The third is run package-scoped locally** —
+  `go test ./internal/config/ -run '^TestAlwaysLoadedTokenBudget$' -v` — because
+  `AC-IFU-025`'s own command is the CI full suite (`make build && go test ./...`), which §F
+  forbids running locally. The criterion is discharged by CI; M3 needs the guard's local
+  `--- PASS:` read, and that invocation is what supplies it. Raising `project_doc_max_bytes` is not an available remedy — the
   override is silently ignored until the user is `trusted`, and a distributed user's first
   session is untrusted by construction.
 

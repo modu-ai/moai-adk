@@ -17,6 +17,40 @@ a **positive indicator**. The absence of an error is never the passing condition
 > `1140bcd1d` found five criteria failing exactly this way; three of them named a guard that
 > already existed under a different symbol.
 >
+> **[HARD] Anchor both ends, on the pattern *and* on the asserted line.** The rule above is
+> necessary and was not sufficient: a pattern anchored only at the head (`'^TestFoo'`) matches
+> every sibling whose name merely *starts* with `TestFoo`, and the asserted string
+> `--- PASS: TestFoo` is then satisfied as a **substring** of `--- PASS: TestFoo_Bar (0.00s)`.
+> A criterion built that way passes against an unimplemented tree, which is the same vacuity
+> in a new shape. So every `-run` pattern here is anchored at **both** ends (`'^TestFoo$'`, or
+> an alternation of both-end-anchored symbols), and every asserted `--- PASS:` line carries
+> the delimiter Go prints after the test name — a single space, written as
+> `` `--- PASS: TestFoo ` `` — so no longer symbol can satisfy it.
+>
+> **The rule binds the class, not a list.** The plan-audit of commit `653e5357295cfbb2eb3831a982871b6a9b90a00c`
+> found this defect surviving in `AC-IFU-010`, `AC-IFU-012`, `AC-IFU-016` and `AC-IFU-025` here
+> and in `AC-IFU-011 [REF]` of the sibling SPEC, *after* the five instances the prior audit enumerated
+> had been repaired — the repair reached the instances and not the generator. The enumeration
+> commands are therefore recorded rather than the fix list. Run from `.moai/specs/`, over both
+> SPECs' artifacts; **each must return nothing** (`grep` exit 1):
+>
+> ```
+> grep -nE "^[^>].*-run '" SPEC-*/*.md | grep -vE "\$'"
+> grep -hE '^[^>]' SPEC-*/*.md | grep -oE '\-\-\- PASS: [A-Za-z_0-9]+.' | grep -vE ' $'
+> ```
+>
+> The `^[^>]` filter is load-bearing, not cosmetic: it scopes the sweep to **assertion clauses**
+> and excludes blockquote lines, which is where every repair note quotes the old defective
+> pattern verbatim — including this note. Without it the commands report their own documentation
+> as a defect and the check can never pass, which is worse than having no check. Measured
+> 2026-09-26 on this commit: both return nothing.
+>
+> **The general defect is wider than `go test`.** Any assertion satisfiable by something other
+> than the thing under test is vacuous: a `grep -c` whose pattern also matches this SPEC's own
+> prose, a count satisfied by an unrelated file, a `--- PASS:` satisfied by a sibling. When
+> writing or repairing a criterion, the question is not "does this command pass when the work is
+> done" but "can this command pass when it is **not**".
+>
 > **Symbols, not line numbers.** Test and source locations are cited by symbol. Any line
 > number that appears is illustrative of where the symbol stood on 2026-09-26 against base
 > develop `553e224f3`, and is not part of the assertion — `origin/develop` is ~93 commits
@@ -54,7 +88,7 @@ named: the deployer strips the `.tmpl` suffix, so a template-side `ls` asserts n
 what the user receives. (REQ-IFU-001)
 
 > Added at v0.3.0. The plan-audit of `1140bcd1d` found `REQ-IFU-001` cited by no criterion
-> while §D.2 claimed `001→015`; `AC-IFU-015` asserted nothing about `AGENTS.md` being
+> while §D.2 claimed `001→015`; `AC-IFU-015 [REF]` asserted nothing about `AGENTS.md` being
 > deployed, and it has since moved to the sibling SPEC.
 
 ### D.2 The `.tmpl` invariant
@@ -75,7 +109,7 @@ ceiling guard runs
 go test ./internal/config/ -run '^TestCodexContractByteCeiling$' -v
 ```
 
-Then the output contains `--- PASS: TestCodexContractByteCeiling` and does not contain
+Then the output contains `--- PASS: TestCodexContractByteCeiling ` and does not contain
 `no tests to run`. The symbol is declared in `internal/config/token_budget_guard_test.go`.
 
 [HARD] The assertion is on the **filename set**, recursively, not on a path the criterion
@@ -110,7 +144,7 @@ value is `<= 24576` (`CodexContractByteCeiling`, declared in
 go test ./internal/config/ -run '^TestCodexNestedTemplateDiscoveryBudget$' -v
 ```
 
-Then the output contains `--- PASS: TestCodexNestedTemplateDiscoveryBudget`, does not contain
+Then the output contains `--- PASS: TestCodexNestedTemplateDiscoveryBudget `, does not contain
 `no tests to run`, and every reported chain sum is `<= 32768`. The symbol is declared in
 `internal/config/token_budget_guard_test.go`. The guard names no path and walks for the
 filename Codex keys on, so a new instruction file anywhere in the tree is in scope. Raising
@@ -140,14 +174,53 @@ reports `>= 1`. (REQ-IFU-017)
 
 **AC-IFU-010** — Given a fixture project carrying both `AGENTS.local.md` (sentinel `ALPHA`)
 and `CLAUDE.local.md` (sentinel `BETA`), When the launcher assembles
-`developer_instructions`, Then the assembled value contains `ALPHA` and does not contain
-`BETA`. Verified by
-`go test ./internal/cli/ -run '^TestCodexLocalInstructions' -v`, whose output must contain
-`--- PASS: TestCodexLocalInstructions` and must not contain `no tests to run`.
-(REQ-IFU-006)
+`developer_instructions`, Then the assembled value contains **both** sentinels and `ALPHA`
+appears **before** `BETA` — as does `AGENTS.local.md` before `CLAUDE.local.md` in the two
+provenance preambles. Verified by
 
+```
+go test ./internal/cli/ -run '^TestCodexLocalInstructions_AgentsLocalReadFirst$|^TestCodexLocalInstructions_DualFileMatrix$' -v
+```
+
+whose output must contain **both** `--- PASS: TestCodexLocalInstructions_AgentsLocalReadFirst `
+and `--- PASS: TestCodexLocalInstructions_DualFileMatrix `, and must not contain
+`no tests to run`. (REQ-IFU-006)
+
+> **[HARD] v0.3.1 repair — this criterion was vacuous and its assertion contradicted its own
+> requirement.** Two separate defects, both found by the plan-audit of `653e53572`:
+>
+> (a) **Vacuity.** The pattern was `'^TestCodexLocalInstructions'`, head-anchored only, and
+> `TestCodexLocalInstructions` does not exist as a symbol. Measured 2026-09-26 against
+> `653e53572`: `go test ./internal/cli/ -run '^TestCodexLocalInstructions' -v | grep -c --
+> '--- PASS: TestCodexLocalInstructions'` → **74** — the pattern runs 22 pre-existing sibling
+> tests and the asserted string is a substring of each of their PASS lines, none of which
+> asserts a read order. The criterion passed against a tree whose order is the **opposite** of
+> what it requires.
+>
+> (b) **Wrong assertion.** The criterion required `BETA` to be **absent**, i.e. exclusive
+> precedence. `REQ-IFU-006` — its own and only cited requirement — requires the launcher to
+> "read `AGENTS.local.md` **ahead of** `CLAUDE.local.md`", and design.md §C states the change is
+> "the iteration order". Both files are still read and concatenated; asserting `BETA` absent
+> would have failed a correct implementation and demanded a behaviour neither the requirement
+> nor the design asks for. The assertion is now ordering, which is what `REQ-IFU-006` says.
+>
+> **The two named symbols, and why both.** `TestCodexLocalInstructions_AgentsLocalReadFirst`
+> **does not exist yet and this criterion requires its creation in M2** (the `AC-IFU-016`
+> pattern): it is the test that carries the ALPHA/BETA ordering assertion, and its `--- PASS:`
+> line is what distinguishes "written and passing" from "still absent".
+> `TestCodexLocalInstructions_DualFileMatrix` **does** exist
+> (`internal/cli/codex_local_instructions_test.go`) and today asserts the **old** order —
+> it builds its expectation by iterating `[]string{"CLAUDE.local.md", codexLocalInstructionName}`,
+> so it passes only while `CLAUDE.local.md` comes first. Naming it here is deliberate: M2 must
+> invert that expectation, and without this clause the change could land with a new passing
+> test beside an old passing test asserting the opposite. A repository cannot hold both.
+> `TestCodexLocalInstructions_LargeBodySlicesAndFreshRead` carries the same order expectation
+> and M2 updates it in the same change; it is not named in the assertion because
+> `AC-IFU-025`'s CI full-suite run is what catches it, and naming every affected test here
+> would duplicate that.
+>
 > v0.3.0: this criterion previously also cited the no-coexistence requirement. That requirement
-> moved to `SPEC-LOCAL-INSTRUCTIONS-MIGRATE-001`, where `AC-IFU-013` and `AC-IFU-014` assert it
+> moved to `SPEC-LOCAL-INSTRUCTIONS-MIGRATE-001`, where `AC-IFU-013 [REF]` and `AC-IFU-014 [REF]` assert it
 > directly, so the citation went with it; the read-order assertion here is `REQ-IFU-006`'s
 > alone. The assertion itself is unchanged.
 >
@@ -157,11 +230,33 @@ and `CLAUDE.local.md` (sentinel `BETA`), When the launcher assembles
 > to stay true to be worth running.
 
 **AC-IFU-012** — Given the updated link test, When
-`go test ./internal/cli/ -run '^TestCodexContractLink' -v` runs, Then its output contains
-`--- PASS: TestCodexContractLink`, does not contain `no tests to run`, and the assertions are
-inverted to: executing imports of `AGENTS.local.md` in `CLAUDE.md` = 1, and in `AGENTS.md` =
-0. Both halves are asserted; dropping the `AGENTS.md` half would permit the neutral contract
-to pull a local file into the discovered chain. (REQ-IFU-002, REQ-IFU-016)
+
+```
+go test ./internal/cli/ -run '^TestCodexContractLinkCreation$' -v
+```
+
+runs, Then its output contains `--- PASS: TestCodexContractLinkCreation `, does not contain
+`no tests to run`, and the test asserts **both** of: executing imports of `AGENTS.local.md` in
+`CLAUDE.md` = 1, and executing imports of `AGENTS.local.md` in `AGENTS.md` = 0. Both halves are
+asserted; dropping the `AGENTS.md` half would permit the neutral contract to pull a local file
+into the discovered chain. (REQ-IFU-002, REQ-IFU-016)
+
+> **[HARD] v0.3.1 repair — vacuous pattern, and one asserted half does not exist yet.** The
+> pattern was `'^TestCodexContractLink'`, head-anchored only; no symbol
+> `TestCodexContractLink` exists. Measured 2026-09-26 against `653e53572`:
+> `go test ./internal/cli/ -run '^TestCodexContractLink' -v | grep -c -- '--- PASS:
+> TestCodexContractLink'` → **11**, all from pre-existing sub-tests of
+> `TestCodexContractLinkCreation`. The declared symbol is
+> `TestCodexContractLinkCreation` (`internal/cli/codex_contract_link_test.go`).
+>
+> **The `CLAUDE.md` half is an assertion M2 adds to that test; it is not one the test carries
+> today.** Read at `653e53572`, the test asserts `codexTestExecImports(…codexClaudeRelPath,
+> codexLinkAgentsDirective) != 1` — that is `@AGENTS.md` in `CLAUDE.md`, a different directive —
+> and `codexTestExecImports(…codexAgentsRelPath, codexTestLocalImportDirective) != 0`, which is
+> the `AGENTS.md` half of this criterion. So the `AGENTS.md` half exists and the
+> `CLAUDE.md`/`@AGENTS.local.md` half must be written. The previous wording ("the assertions are
+> inverted to") read as though both were already in place, which is how a criterion that
+> requires new work comes to pass before the work is done.
 
 ### D.6 Guard and learner surfaces
 
@@ -170,11 +265,18 @@ to pull a local file into the discovered chain. (REQ-IFU-002, REQ-IFU-016)
 all four of `CLAUDE.md`, `CLAUDE.local.md`, `AGENTS.md`, `AGENTS.local.md`; and When
 
 ```
-go test ./internal/hook/ -run '^TestFrozenInstructionFiles' -v
+go test ./internal/hook/ -run '^TestFrozenInstructionFiles$' -v
 ```
 
-runs, Then its output contains `--- PASS: TestFrozenInstructionFiles` and does not contain
+runs, Then its output contains `--- PASS: TestFrozenInstructionFiles ` and does not contain
 `no tests to run`, with one sub-case per entry in the set. (REQ-IFU-013)
+
+> v0.3.1 repair (the D9 class sweep): the pattern was head-anchored only and the asserted line
+> carried no delimiter. No `TestFrozenInstructionFiles*` symbol exists today, so this criterion
+> was **not** vacuous in the measured sense — it fails correctly against the current tree — but
+> it was vacuous by construction: once M2 creates the guard, any later
+> `TestFrozenInstructionFiles_Something` would have satisfied both clauses while the guard
+> itself was deleted. Anchored for the class, not for an observed failure.
 
 > **[HARD] This test does not exist yet, and the criterion is written to require its
 > creation.** Verified 2026-09-26: `grep -rn 'HARNESS_FROZEN\|frozenInstruction'
@@ -191,8 +293,8 @@ runs, Then its output contains `--- PASS: TestFrozenInstructionFiles` and does n
 go test ./internal/harness/curator/ -run '^TestSurfaceForTier_Tier3$|^TestPrepareTierDispatch_Tier3$' -v
 ```
 
-runs, Then its output contains **both** `--- PASS: TestSurfaceForTier_Tier3` and
-`--- PASS: TestPrepareTierDispatch_Tier3`, does not contain `no tests to run`, and the
+runs, Then its output contains **both** `--- PASS: TestSurfaceForTier_Tier3 ` and
+`--- PASS: TestPrepareTierDispatch_Tier3 `, does not contain `no tests to run`, and the
 Tier-3 entry's `Path` is `AGENTS.local.md`. Both symbols are declared in
 `internal/harness/curator/dispatch_test.go`. (REQ-IFU-014)
 
@@ -206,7 +308,7 @@ go test ./internal/template/agentemit/ -run '^TestNeutralityByInheritance$' -v
 
 and `.github/workflows/template-neutrality-check.yaml` run over a template fixture containing
 the literal `AGENTS.local.md`, Then the test output contains
-`--- PASS: TestNeutralityByInheritance`, does not contain `no tests to run`, and the workflow
+`--- PASS: TestNeutralityByInheritance `, does not contain `no tests to run`, and the workflow
 passes; and over a fixture containing `CLAUDE.local.md`, Then the guard fails naming C5.
 (REQ-IFU-015)
 
@@ -322,8 +424,14 @@ way it comes out. (REQ-IFU-025)
 
 **AC-IFU-025** — Given the whole change, When `make build && go test ./...` runs in CI on
 the PR head, Then it exits `0`; and Then the run includes
-`--- PASS: TestAlwaysLoadedTokenBudget` (declared in
-`internal/config/token_budget_guard_test.go`). (all)
+`--- PASS: TestAlwaysLoadedTokenBudget ` — with the trailing space, so that
+`TestAlwaysLoadedTokenBudget_OverBudgetFails` (a real sibling in the same file) cannot satisfy
+the clause on its own — declared in `internal/config/token_budget_guard_test.go`. (all)
+
+> v0.3.1 repair (the D9 class sweep): the asserted line carried no delimiter, so deleting the
+> real guard while keeping `_OverBudgetFails` would have left this clause passing. This criterion
+> has no `-run` pattern to anchor — it reads a full-suite CI run — so the delimiter on the
+> asserted line is the whole fix.
 
 > The always-loaded clause is added at v0.3.0 and costs no criterion slot. Root `AGENTS.md`
 > is itself inside the always-loaded surface that guard measures, and this SPEC moves that
@@ -331,7 +439,7 @@ the PR head, Then it exits `0`; and Then the run includes
 > sections into `AGENTS.md`. Both named ceilings (`AC-IFU-005` per-file 24,576, `AC-IFU-006`
 > nested-sum 32,768) are different limits with different owners, so neither would catch it.
 > Card t1175 is concurrently retuning that same budget; without this clause an
-> always-loaded overrun would arrive during M4 with no criterion and no owner.
+> always-loaded overrun would arrive during M3 — the milestone that rewrites the always-loaded surface — with no criterion and no owner. (v0.3.1: this note said M4, a milestone the B1/B2 carve deleted; plan.md §E now carries M1-M3 only.)
 
 ---
 
@@ -354,6 +462,21 @@ asserted independently of it.** A mapping appears here only if the cited criteri
 requirement in its own text. The v0.2.0 table claimed two mappings (`001→015`, `005→019`) that
 the cited criteria contradicted, and closed with a coverage claim nothing had verified — an
 unobserved coverage claim under `verification-claim-integrity.md` §1.1 surface 3.
+
+[HARD] **Derivation is one-way, and the table is never the record.** The criterion bodies are
+authoritative; this table is their projection. On any disagreement between a row and the cited
+criterion's own citation line, the **body wins** — the repair is to re-derive the row from the
+body (or, where the body's citation is itself wrong, to fix the citation and then re-derive).
+Editing the row to agree with a body it misreports is prohibited, and so is reading this table
+to learn what a criterion covers: read the criterion.
+
+[HARD] **The verification command below does NOT check this table, and must not be cited as
+though it did.** It compares two id **sets** — the ids cited anywhere in this file against the
+ids declared in `spec.md` — so it is silent on pairing: a row naming two ids that both exist
+elsewhere in the file passes it. That is exactly the v0.2.0 defect shape named above, and it is
+why the derivation rule is `[HARD]` rather than delegated to the command. Re-deriving every row
+from its criterion's citation line is a **manual step at close**, recorded as done; the command
+is a necessary check on set membership and nothing more.
 
 | REQ | Covered by |
 |---|---|
@@ -393,6 +516,16 @@ mirrors; every test-invoking criterion's `--- PASS: <TestName>` line captured ra
 its exit code alone; the §D.2 verification command run and its empty output recorded; CI
 green on the PR head; and AC-IFU-021 and AC-IFU-022 recorded in `progress.md` §E.2 with
 command and verbatim output **whichever way they come out**.
+
+Two further close items, both added at v0.3.1 because a guard that is not re-run at close is a
+guard that held once:
+
+- **The anchoring sweep re-run** — both enumeration commands from the `[HARD]` block at the top
+  of this file, over **both** SPECs' artifacts, with their output recorded. A criterion added or
+  edited during the run phase is exactly where this class comes back.
+- **The §D.2 table re-derived row by row** from each cited criterion's own citation line, and
+  the fact that it was re-derived (not merely diffed) recorded. The verification command does not
+  check pairing; this step is what does.
 
 Conditional item — **if `AC-IFU-021` confirms ancestor discovery for `AGENTS.local.md` in a
 real linked worktree**, the finding and its verbatim evidence are handed to card **t1219**,

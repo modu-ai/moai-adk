@@ -10,6 +10,30 @@ passing condition. This extends to `go test`: `-run` takes an unanchored regexp 
 when it matches nothing, so a criterion invoking a test names the test's **symbol**, runs with
 `-v`, and asserts `--- PASS: <TestName>` appears in the output.
 
+> **[HARD] Anchor both ends, on the pattern and on the asserted line.** Naming the symbol is
+> necessary and not sufficient: a head-only anchor (`'^TestFoo'`) matches every sibling starting
+> with `TestFoo`, and the asserted `--- PASS: TestFoo` is satisfied as a **substring** of
+> `--- PASS: TestFoo_Bar (0.00s)`. So every `-run` pattern here is anchored at both ends
+> (`'^TestFoo$'`, or an alternation of both-end-anchored symbols) and every asserted line carries
+> the single space Go prints after the test name (`` `--- PASS: TestFoo ` ``). The enumeration
+> commands, recorded instead of a fix list — run from `.moai/specs/`, **each must return nothing**
+> (`grep` exit 1):
+>
+> ```
+> grep -nE "^[^>].*-run '" SPEC-*/*.md | grep -vE "\$'"
+> grep -hE '^[^>]' SPEC-*/*.md | grep -oE '\-\-\- PASS: [A-Za-z_0-9]+.' | grep -vE ' $'
+> ```
+>
+> The `^[^>]` filter scopes the sweep to assertion clauses and excludes blockquote lines, where
+> repair notes quote the old defective pattern verbatim — including this one. Without it the
+> commands flag their own documentation and the check can never pass. Measured 2026-09-26: both
+> return nothing. `AC-IFU-011` arrived carrying this defect (see its note) — a criterion
+> transferred verbatim carries its defects verbatim too.
+>
+> **The general defect is wider than `go test`**: any assertion satisfiable by something other
+> than the thing under test is vacuous. When writing a criterion, ask not "does this pass when
+> the work is done" but "can this pass when it is **not**".
+
 > **Carve note.** The seven criteria below are transferred **verbatim** from
 > `SPEC-INSTRUCTION-FILES-UNIFY-001` at commit `1140bcd1d`, retaining their `AC-IFU-*` ids so
 > existing cross-references and audit citations still resolve. `AC-IFU-007` additionally carries
@@ -27,9 +51,39 @@ when it matches nothing, so a criterion invoking a test names the test's **symbo
 assembles `developer_instructions`, Then the assembled value contains that file's content
 AND a deprecation advisory naming `moai migrate local-instructions`, AND the provenance
 preamble contains the literal string `CLAUDE.local.md` rather than a substituted name.
-Verified by `go test ./internal/cli/ -run '^TestCodexLocalInstructions' -v`, whose output must
-contain `--- PASS: TestCodexLocalInstructions` and must not contain `no tests to run`.
+Verified by
+
+```
+go test ./internal/cli/ -run '^TestCodexLocalInstructions_FallbackAdvisory$|^TestCodexLocalInstructions_DualFileMatrix$' -v
+```
+
+whose output must contain **both** `--- PASS: TestCodexLocalInstructions_FallbackAdvisory ` and
+`--- PASS: TestCodexLocalInstructions_DualFileMatrix `, and must not contain `no tests to run`.
 (REQ-IFU-007, REQ-IFU-008)
+
+> **[HARD] v0.1.1 repair — the transferred pattern was vacuous.** The criterion arrived with
+> `-run '^TestCodexLocalInstructions'`, head-anchored only, asserting `--- PASS:
+> TestCodexLocalInstructions`. No symbol of that exact name exists. Measured 2026-09-26 against
+> `653e53572`: that command runs 22 pre-existing sibling tests and the asserted string matches
+> **74** of their PASS lines, none of which asserts a deprecation advisory — the criterion could
+> not fail before the work or after it. This is the same class the plan-audit of `653e53572`
+> found in the parent SPEC's `AC-IFU-010 [REF]` and `AC-IFU-012 [REF]`; it reached this file because the
+> carve transferred the criterion verbatim, which is the correct transfer policy and is why the
+> anchoring rule now binds at the top of this file rather than per criterion.
+>
+> **Both ends anchored, and the asserted line carries Go's trailing space**, so no longer
+> sibling name can satisfy it. `TestCodexLocalInstructions_FallbackAdvisory` **does not exist
+> yet and this criterion requires its creation** — it is the test that asserts the advisory
+> naming `moai migrate local-instructions`, which is new behaviour this SPEC adds.
+> `TestCodexLocalInstructions_DualFileMatrix` **does** exist and already asserts the provenance
+> preamble's literal filename (`<!-- source: CLAUDE.local.md -->`), which is the `REQ-IFU-008`
+> half; naming it keeps that half attributed to the test that actually carries it rather than to
+> the new one.
+>
+> The recorded debt below is unchanged by this repair: the criterion still decides two outcomes
+> under one verdict. Anchoring makes it capable of failing; it does not make it capable of
+> saying which half failed. Naming one test per half is a partial mitigation and is noted as an
+> input to the unfold decision, not as the unfold.
 
 > **Recorded debt — this criterion decides two distinct outcomes under one verdict.** A
 > failure does not say which of them occurred: (a) the deprecation advisory is missing, so
@@ -85,11 +139,24 @@ contains the migration advisory. (REQ-IFU-011, REQ-IFU-012)
 **AC-IFU-007** — Given this repository's migrated local file, When
 `wc -m < AGENTS.local.md` runs, Then the value is `< 40000`; and When the pre-migration
 canonical copy is measured with `git show origin/develop:CLAUDE.local.md | wc -m`, Then the
-**before** and **after** values are both recorded and the reduction is at least 4,381
+**before** and **after** values are both recorded and the reduction is at least **4,382**
 characters. (REQ-IFU-021)
 
+> **v0.1.1 repair — the two clauses were jointly unsatisfiable at the stated bound.** The
+> reduction floor read "at least 4,381", and from the measured before-value of 44,381 a reduction
+> of exactly 4,381 lands on 40,000, which fails `< 40000`. They are simultaneously satisfiable
+> only at a reduction of 4,382 or more: 44,381 − 4,382 = 39,999. The floor is now 4,382, and the
+> **same off-by-one is repaired in `REQ-IFU-021` (spec.md), which carried it too** — the audit
+> named only this file, and a `<`-boundary slip travels with the sentence that states it.
+>
+> The floor is kept rather than dropped, even though `after < 40000` already implies it: it is
+> the clause a reader checks the arithmetic against, so stating it makes the boundary auditable
+> instead of inferred. Both bounds were re-checked against every other numeric clause in this
+> SPEC — the remaining ones (`AC-IFU-023`'s locale-count equality, `AC-IFU-013`'s exit `0`) carry
+> no `<`/`<=` boundary, so this was the only instance of the shape.
+
 > **D3 repair, applied at the carve.** The criterion previously asserted only the post-state
-> (`< 40000`) against an unnamed copy. Two things made that discharegable without doing the
+> (`< 40000`) against an unnamed copy. Two things made that dischargeable without doing the
 > work: the SPEC named neither which `CLAUDE.local.md` copy migrates — and that file's §0
 > exists precisely because its copies diverge — nor which unit the 40,000 cap measures, while
 > the surrounding prose mixed 61,908 bytes with 44,381 characters.
@@ -160,7 +227,7 @@ here.
 
 > **[HARD] Provisional — t1259 completes this section.** The transferred criteria are all
 > present and their traceability closes, but a Definition of Done also needs this SPEC's own
-> whole-change CI assertion (the parent's `AC-IFU-025` stayed with the parent, since it asserts
+> whole-change CI assertion (the parent's `AC-IFU-025 [REF]` stayed with the parent, since it asserts
 > that SPEC's always-loaded budget clause), and the operator-gate wording for the
 > repository-own migration. Both are plan-phase work this carve does not perform.
 
