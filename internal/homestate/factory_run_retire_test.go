@@ -80,8 +80,9 @@ func TestRecordRunStampsSessionOwnerIdentity(t *testing.T) {
 	if err := db.DB.QueryRow(`SELECT value FROM meta WHERE key='schema_version'`).Scan(&version); err != nil {
 		t.Fatalf("read schema version: %v", err)
 	}
-	if version != "3" {
-		t.Fatalf("schema_version = %q, want \"3\"", version)
+	// The chain continues past v3 into the F1 card-record step (v4).
+	if version != "4" {
+		t.Fatalf("schema_version = %q, want \"4\"", version)
 	}
 }
 
@@ -278,8 +279,9 @@ INSERT INTO runs(run_id,status,created_at,updated_at) VALUES('old-2','active','t
 	if err := db.DB.QueryRow(`SELECT value FROM meta WHERE key='schema_version'`).Scan(&version); err != nil {
 		t.Fatalf("read schema version: %v", err)
 	}
-	if version != "3" {
-		t.Fatalf("schema_version = %q, want \"3\"", version)
+	// The chain continues past v3 into the F1 card-record step (v4).
+	if version != "4" {
+		t.Fatalf("schema_version = %q, want \"4\"", version)
 	}
 	var pid int
 	if err := db.DB.QueryRow(`SELECT lead_pid FROM runs WHERE run_id='old-1'`).Scan(&pid); err != nil {
