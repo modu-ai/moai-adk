@@ -11,6 +11,9 @@
   renamed `detection-disarmed`, in-process verify at PreToolUse, state file carved out of the
   `.moai/state/` exemption with a hash-chain tamper check, B1-B6. §F re-pinned to A1 v0.5.0 at
   `67a2f55cb` (lead instruction; decider surfaces re-checked). New A1 requests R8-R10.
+- v0.4.1: lead ruling 09-26 (4): decider rules removed (value follows the A1 schema; judgment
+  rules are A3's); R10 closed — card state and detector audit log move to
+  `$MOAI_HOME/db/<project-key>/contract/`. Counts unchanged.
 - Run-phase additionally blocked on A1 request R9 (`card` field); without it nothing arms.
 - v0.3.0: plan-audit iteration 2 (FAIL 0.82) repaired; lead rulings 09-26 (2) folded in
   (spec.md §H): two-layer resolver, contract-void before resolution, Markdown record with YAML

@@ -7,7 +7,8 @@ first, mechanical wiring last. No time estimates; priority labels only.
 
 - Base: `develop` at `ca1d5dc43`; worktree `.claude/worktrees/t1235`, branch `WT-escalation-detector`.
 - Tier L (ten detection classes across PreToolUse, PostToolUse, Stop and checkpoint surfaces, a
-  record layer, a contract-reading resolver, a state file with a tamper chain, config, template
+  record layer, a contract-reading resolver, a card state file with a tamper chain in the
+  moai-owned contract store, config, template
   default; expected > 15 files).
 - Run-phase entry gate: card t1234 (A1, contract schema) merged into `develop`, and A1 request R9
   (`card` field) satisfied. Plan may proceed in parallel; run may not (card text).
@@ -37,9 +38,11 @@ first, mechanical wiring last. No time estimates; priority labels only.
 ## §C — Pre-flight (run phase)
 
 1. `git merge-base --is-ancestor <A1 merge commit> HEAD` → exit 0 (A1 present).
-2. Re-check **every row of spec.md §F.1**, every open item, and requests R1-R4 and R7-R10 against
-   the A1 that landed — not only the tagged requirements. If a field is renamed or missing, or an
-   item resolved differently (in particular R9's field name or R10's store path), stop and return
+2. Re-check **every row of spec.md §F.1**, every open item, and requests R1-R4 and R7-R9 against
+   the A1 that landed — not only the tagged requirements — and confirm the contract store path
+   (`$MOAI_HOME/db/<project-key>/contract/`, R10 closed) against A3's signing-event store. If a
+   field is renamed or missing, or an item resolved differently (in particular R9's field name),
+   stop and return
    a blocker to the orchestrator for a mid-run spec amendment.
 3. Capture the AC-AE-001 golden baseline in its own commit before any detector code.
 
@@ -69,14 +72,15 @@ delta; E8 RED output before GREEN.
 
 - Writer with frontmatter, per-class fingerprints (design.md §C.10), occurrence counting and
   post-resolution re-trip naming; `not-armed` / `not-checked` / warning audit lines; card state
-  file with the arming snapshot and the audit hash chain (design.md §C.6, §C.11); in-process
+  file and detector audit log with its hash chain in the contract store (design.md §C.6,
+  §C.11); in-process
   verify at PreToolUse on first observation; class 1.
 - ACs: AC-AE-005, AC-AE-006, AC-AE-020, AC-AE-021, AC-AE-022, AC-AE-024.
 
 ### M3 — Path and command classes (PreToolUse / PostToolUse)
 
-- Classes 2a, 2b (A1 `frozen_files`), 3 with `effective_never`, exemptions with the
-  `.moai/state/escalation/` carve-out and their root sources, unreadable field handling.
+- Classes 2a, 2b (A1 `frozen_files`), 3 with `effective_never`, exemptions and their root
+  sources, contract-store writes judged as outside-root, unreadable field handling.
 - ACs: AC-AE-007, AC-AE-008, AC-AE-009, AC-AE-010, AC-AE-023.
 
 ### M4 — New-architecture/API detector (Priority Medium, heuristic)
@@ -103,7 +107,8 @@ delta; E8 RED output before GREEN.
 | A1 declines or renames R9 (`card`) | Pre-flight step 2 stops the run; the resolver is one function, so only step 2 of design.md §C.8 changes |
 | A1 plan-audit changes a consumed field | spec.md §F.1 full-row re-check in pre-flight step 2 |
 | A contract copied between SPECs keeps a stale `card` value | Two claimants → not-armed plus a warning naming both (REQ-AE-002); an armed card that gains a second claimant disarms with `card-mismatch` (REQ-AE-017) |
-| Bash deletes both the state file and the audit log | Residual until the moai-owned store exists (R10; spec.md §G) |
+| Bash deletes both the state file and the audit log | Accepted residual: local single-user, tamper evidence not prevention (spec.md §G) |
+| Contract store unresolvable (no home directory) | REQ-AE-004 fault, `not-checked`, nothing arms (design.md §C.6) |
 | PreToolUse latency under contract mode | Contract `card` reads, digest check, cached verify, ref-file reads; verify re-runs only on a digest change (C4) |
 | Class 4 false positives on refactors that move declarations | Record lists additions only by kind; sync-audit remains the backstop (C6) |
 | Class 6 regex misses an obfuscated push | Residual risk; blocking belongs to A3 |
@@ -124,5 +129,5 @@ delta; E8 RED output before GREEN.
 - **Q8** [RESOLVED — lead ruling 09-26 #2, resolution input replaced by (3) #1].
 - **Q9** [RESOLVED — lead ruling 09-26 (3) #1: the worktree directory name is the card id; the
   contract's `card` field, not the queue, links it to a SPEC].
-- **Q10** A1 requests R8 (projection owner label), R9 (`card` field inside the signed digest),
-  and R10 (moai-owned store path) — accepted by A1/A3, or answered otherwise?
+- **Q10** A1 requests R8 (projection owner label) and R9 (`card` field inside the signed digest)
+  — accepted by A1, or answered otherwise? (R10 closed by lead ruling 09-26 (4) #2.)

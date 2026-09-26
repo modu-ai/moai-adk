@@ -102,12 +102,17 @@ not-observed.
 Recorded verdict files under `.moai/reports/<card-id>/`; `audit_multi` JSON results when
 persisted. `disagreement_flag` nil → not-observed.
 
-### C.6 Card state file — where "previously armed" lives (lead rulings (2) #4, (3) #2, (3) #4)
+### C.6 Card state file — where "previously armed" lives (lead rulings (2) #4, (3) #2, (4) #2)
 
-`<worktree root>/.moai/state/escalation/<card-id>.json`, one per card, written by the detector
-only. The path is carved out of the `.moai/state/` exemption (REQ-AE-013): a write-capable tool
-call there trips `ownership-move`. Once A1 or A3 names the moai-owned store (request R10), the
-file moves there and the carve-out follows it. It holds:
+`$MOAI_HOME/db/<project-key>/contract/escalation/<card-id>.json`, one per card, written by the
+detector only. The directory is the moai-owned contract store (R10 closed): outside the
+repository and every worktree, in the queue database's home layout, and shared with A3's
+signing-event store. `$MOAI_HOME` and `<project-key>` resolve exactly as the queue database
+resolves them (research.md P17); because the key derives from the project root, every worktree
+of one project shares one store, and the card id in the file name keeps cards apart. Where the
+store cannot be resolved, the detector cannot record an arming: that is a REQ-AE-004 fault
+(`not-checked`), and nothing arms. The store is not a project path, so no `ownership` glob
+matches it; a tool-call write there is an outside-root write (§C.9). It holds:
 
 - `armed` — the arming snapshot: SPEC ID, contract path, `signature.contract_sha256`, the digest
   of the contract file bytes, card id, the derived `frozen_files` (with the registry Frozen list
@@ -172,11 +177,15 @@ without touching the class detectors.
 | Root | Source | When undeterminable |
 |---|---|---|
 | `.moai/reports/<card-id>/` | card id from the worktree directory name | never — the card id always comes from the path |
-| `.moai/state/` except `.moai/state/escalation/` | worktree root | never |
+| `.moai/state/` | worktree root | never |
 | OS temporary directory | `os.TempDir()` plus the resolved form of `$TMPDIR` | never |
 | session scratchpad | hook input field or environment variable the runtime supplies, if any | outside-root writes are listed not-observed |
 | auto-memory store | the store path `moai memory doctor` resolves (every candidate store) | outside-root writes are listed not-observed |
 | `ownership.scratch` | A1-derived `scratch` from the resolved contract | not applicable without a contract |
+
+The contract store is deliberately absent from this table: it is not an exemption root, so a
+tool-call write into it — the only way an agent could edit the card state without Bash — trips
+`ownership-move` under the outside-root rule.
 
 ### C.10 Fingerprint inputs per class
 
@@ -198,15 +207,16 @@ distinct decisions. Inputs, hashed together with the class name:
 
 ### C.11 State-file tamper detection
 
-Every detector write to the card state file appends one line to
-`<worktree root>/.moai/logs/escalation-audit.jsonl` carrying the SHA-256 of the file's new
-bytes and the previous line's hash (a hash chain). At step 1 of §C.6 the detector hashes the
+Every detector write to the card state file appends one line to the detector audit log
+`$MOAI_HOME/db/<project-key>/contract/escalation-audit.jsonl` carrying the card id, the SHA-256
+of the file's new bytes, and the previous line's hash (a hash chain). The same log carries the
+`not-armed`, `not-checked`, and warning lines. At step 1 of §C.6 the detector hashes the
 state file and compares it with the last chain entry. A mismatch, a state file missing while the
 chain's last entry is an arming, or a broken chain is `state-tamper`. A write-capable tool call
 to either file already trips `ownership-move` (REQ-AE-013); the chain covers Bash writes, which
-are seen only at the next hook (spec.md §G Out of Scope — tamper through Bash). An audit log
-deleted together with the state file leaves no chain and reads as never armed; that residual is
-closed only by the moai-owned store (R10).
+are seen only at the next hook (spec.md §G Out of Scope — tamper through Bash). The store is
+local and single-user, so the goal is tamper evidence, not tamper prevention: deleting both files
+via Bash leaves no trace, and the card then reads as never armed.
 
 ## §D — Alternatives considered
 
@@ -223,6 +233,8 @@ closed only by the moai-owned store (R10).
   almost never filled, so nearly every card would stay not-armed.
 - **Keep the state file inside the `.moai/state/` exemption** — rejected by lead ruling 09-26
   (3) #4: an agent could rewrite "previously armed" and disarm silently.
+- **Keep the state file in the worktree with a carve-out** — superseded by lead ruling 09-26
+  (4) #2: the moai-owned store keeps it out of every project path and out of worktree disposal.
 - **One JSON record per trip under `escalations/`** — superseded by lead ruling 09-26 (2) #6.
 
 (The former §G — push serializer and contract-sign guard — moved to card t1245; spec.md §K.)
