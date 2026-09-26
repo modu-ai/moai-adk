@@ -65,7 +65,7 @@ Claude Code 의 PowerShell 도구 호출은 기존 PreToolUse matcher `Write|Edi
 
 ## 후속 카드용 재현 (F1~F3, EncodedCommand)
 
-이 절은 리드의 요청(2026-09-26)으로 추가했다. 프로브는 트리에 쓰지 않고 `go test -overlay` 로 컴파일할 때만 끼워 넣는다. 프로브 사본은 `.moai/reports/t1224/followup-probe_test.go` 에 있다(sha256 `868c34db…`). 오버레이 파일에는 `{"Replace":{"<worktree>/internal/hook/zz_audit_probe_test.go":"<probe path>"}}` 한 항목만 둔다.
+이 절은 리드의 요청(2026-09-26)으로 추가했다. 프로브는 트리에 쓰지 않고 `go test -overlay` 로 컴파일할 때만 끼워 넣는다. 프로브 사본은 `.moai/reports/t1224/followup-probe_test.go.txt` (컴파일 대상에서 빠지도록 .txt 확장자 — 오버레이에 쓸 때 원래 이름으로 지정) 에 있다(sha256 `868c34db…`). 오버레이 파일에는 `{"Replace":{"<worktree>/internal/hook/zz_audit_probe_test.go":"<probe path>"}}` 한 항목만 둔다.
 
 ```
 go test -count=1 -overlay <overlay.json> ./internal/hook/ -run TestAuditProbe -v -o /dev/null
