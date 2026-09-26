@@ -90,9 +90,10 @@ Facts available from t1244 artifacts (no new sweep performed in plan phase):
 
 1. **C-C synthetic control** — recommended primary: variance by construction, baseline 50%,
    power satisfiable at achievable N (§3).
-2. **C-B best qualifying natural surface** — pin as primary INSTEAD of C-C only if its census
-   baseline is ≤ 90% and N is achievable (pinning rule REQ-DM-002 prefers the lowest qualifying
-   baseline, natural preferred at a tie, for ecological validity); otherwise supplementary.
+2. **C-B best qualifying natural surface** — pin as primary whenever it qualifies (census
+   baseline ≤ 90% AND N achievable): a qualifying natural surface beats the synthetic control
+   (REQ-DM-002, ecological validity); the lowest baseline breaks ties among qualifying naturals.
+   The synthetic control is the fallback when no natural candidate qualifies.
 3. **C-A** — context only; future-window supplement at best.
 
 ## §3. Power-arithmetic framework (worked arithmetic)
@@ -127,12 +128,15 @@ total items N ≈ n_d / π_d.
 
 | π_d | π | n_d required | N total |
 |---|---|---|---|
-| 0.15 | 0.833 | ≈ 29 | ≈ 191 |
+| 0.15 | 0.833 | ≈ 18 | ≈ 118 |
 | 0.20 | 0.750 | ≈ 32 | ≈ 160 |
 | 0.30 | 0.667 | ≈ 71 | ≈ 236 |
 
+All three rows share the stated parameters — two-sided α = 0.05, 80% power, Δ = 10%p (one
+parameter set per row set; no row uses a different power level).
+
 **Planning conclusion carried into the SPEC body:** target the pinned population at N = 200
-(headroom over the 160–240 envelope); the minimum interpretable batch is N = 120 (balanced 60/60),
+(headroom over the 120–240 envelope); the minimum interpretable batch is N = 120 (balanced 60/60),
 at which the minimum detectable difference rises to ≈ 11–12%p at π_d = 0.20 — a number the verdict
 must quote when reading a null result at small N. The committed TEST is the exact discordant-pair
 binomial (§4); the arithmetic above is the planning envelope only.
@@ -207,6 +211,6 @@ supplement is a pre-declared conditional RULE in the criteria commit, not a post
 - **NC-1** — the mode-comparison minimum difference (5%p, REQ-DM-007) and the band increment
   (+10%p) are measurement-before judgment values, chosen from the t1244 family precedent; the
   operator may change them BEFORE the criteria commit only, with a HISTORY record. Default: keep.
-- **NC-2** — the pinning rule's natural-over-synthetic tie-break (REQ-DM-002) is a judgment value
+- **NC-2** — the pinning rule's natural-over-synthetic precedence (REQ-DM-002) is a judgment value
   grounded in ecological validity. Default: keep. Both are body decisions under the
   autonomy policy (REQ-DM-014), not operator blockers.

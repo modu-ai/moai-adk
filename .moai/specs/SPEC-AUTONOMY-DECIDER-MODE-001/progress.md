@@ -9,8 +9,16 @@
 - plan_status: audit-ready
 - plan_complete_at: 2026-09-26
 - spec_version: 0.1.0 (initial plan-phase authoring)
-- plan_audit: (pending — the plan-audit gate follows this authoring; verdict and any repair
-  iterations recorded here when they land)
+- plan_audit: FAIL (iter-1, 2026-09-26, score 0.91 — Tier M threshold 0.80 met but 2 blocking
+  findings: D1 research.md §3 π_d=0.15 row unreproducible from the stated formula [stated
+  params yield n_d≈18/N≈118 vs claimed 29/191; 0.20/0.30 rows reproduce], D2 REQ-DM-002
+  pinning-rule natural-vs-synthetic precedence reads two ways across spec.md/plan.md/research.md.
+  MP-1..7 all PASS; D3 minor blocking: AC-DM-016 lacks the pool-fidelity Gaps-row requirement.
+  Repair list + delta-scoped re-audit scope: .moai/reports/t1261/plan-audit-iter1.md)
+- iter1_repair_adoption: D4 (AC-DM-002 command coverage over research.md §3 rows) adopted by lane
+  per the card t1266 autonomy policy — closes the AC dead zone where a D1-class value error in
+  research.md sat invisible to the AC layer; D5–D7 remain operator-discretion items in the
+  iter-1 report, not adopted this iteration
 - tier: M (spec.md, plan.md, acceptance.md, research.md — measurement-design card, zero code
   deliverables; progress.md present at every tier)
 - requirements: 15 (REQ-DM-001..015, continuous) / acceptance criteria: 16 (AC-DM-001..016;
@@ -33,7 +41,7 @@
   a valid exit) → criteria_commit BEFORE any judge call
 - power_arithmetic_seed: baseline > 90% kills baseline+10%p (t1244 structural lesson);
   balanced 50/50 → band (b) = 60% meaningful; two-arm Δ = 10%p at α = 0.05 / 80% power needs
-  ≈ 160–240 items at plausible discordant rates — target N = 200, minimum interpretable batch
+  ≈ 120–240 items at plausible discordant rates (π_d 0.15–0.30) — target N = 200, minimum interpretable batch
   N = 120 (MDE ≈ 11–12%p there)
 - predicate_preregistered: McNemar-style discordant-pair exact binomial (two-sided α = 0.05);
   per-arm accuracy always alongside both constant baselines; wrong-automation ≤ 10%; band shape
@@ -77,7 +85,9 @@
   `[NEEDS CLARIFICATION: ...]` markers carried
 - scope_guard: product code, `internal/`, `internal/template/` untouched — instruments live
   under `.moai/reports/t1261/` (untracked during work); AC-DM-011 checks the commit set
-- plan_artifact_hash: (recorded at plan-audit entry)
+- plan_artifact_hash: 3cabee24a6e5dc2f5b2c09202797f11d893d46bd617747b08c49ae5439b46387
+  (sha256 over cat acceptance.md plan.md research.md spec.md, exact bytes; measured at
+  plan-audit iter-1 entry, 2026-09-26, tree @ e611a99a1)
 - Implementation Kickoff Approval: not requested at plan phase (run entry follows the
   plan-audit gate and the autonomous-kickoff disposition)
 

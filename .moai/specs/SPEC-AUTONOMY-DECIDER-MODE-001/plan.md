@@ -18,9 +18,10 @@ steps come last.
   constant baseline 50% by construction; (C-A) recorded as context (t1244 sweep fact: no more
   kickoff rounds in the snapshot).
 - Compute the REQ-DM-003 power arithmetic per candidate: baseline vs +10%p satisfiability
-  (baseline ≤ 90%), required N for Δ = 10%p at α = 0.05 / 80% power (envelope ≈ 160–240 at
-  plausible discordant rates; target N = 200; minimum interpretable batch N = 120).
-- Apply the REQ-DM-002 pinning rule (lowest qualifying baseline; natural preferred at a tie) and
+  (baseline ≤ 90%), required N for Δ = 10%p at α = 0.05 / 80% power (envelope ≈ 120–240 at
+  plausible discordant rates π_d 0.15–0.30; target N = 200; minimum interpretable batch N = 120).
+- Apply the REQ-DM-002 pinning rule (a qualifying natural surface beats synthetic; the lowest
+  baseline breaks ties among qualifying naturals) and
   pin ONE population — or declare 판별 불가 with per-candidate evidence (a valid exit).
 - Write the criteria — pinned population, predicate (REQ-DM-006), composite rule and mapping
   thresholds (REQ-DM-007), llm arm pool model+quota (REQ-DM-009), bands re-derived from the
@@ -75,7 +76,7 @@ steps come last.
 
 | Decision | Choice | Rationale |
 |---|---|---|
-| Population primary | Synthetic control (C-C) recommended primary; C-B natural surface pins instead only if its census baseline ≤ 90% AND N achievable | Only C-C guarantees label variance and a beatable baseline by construction; natural surfaces inherit operator habit bias — the exact t1244 failure shape. Natural preferred at a tie for ecological validity (REQ-DM-002). |
+| Population primary | Synthetic control (C-C) recommended primary absent a qualifying natural; a C-B natural surface pins instead whenever it qualifies (census baseline ≤ 90% AND N achievable — a qualifying natural beats synthetic) | Only C-C guarantees label variance and a beatable baseline by construction; natural surfaces inherit operator habit bias — the exact t1244 failure shape. Natural preferred whenever it qualifies, for ecological validity (REQ-DM-002); the lowest baseline breaks ties among qualifying naturals. |
 | Comparison test | McNemar-style discordant-pair exact binomial, two-sided α = 0.05 | Paired design by construction; exact test valid at the modest achievable N where the normal approximation is not (research.md §4). |
 | Confidence fields | Jev: response registry `probabilities` authoritative; instrument `confidence` auxiliary. LLM arm: field declared in the criteria commit from its response format | t1244 sync-audit D3 found the two Jev fields diverge systematically; declaring BEFORE measurement is the fix (REQ-DM-006). |
 | Composite rule | llm label + Jev label: agree → label; disagree → `hold`. Confidence-gating NOT applied inside the composite | Mirrors the A1 §C.8 cross-check shape; `jev_min_confidence` is precisely the value the A5 family lacks evidence for — importing it into the composite would measure a threshold nobody has grounded (REQ-DM-007/008). |

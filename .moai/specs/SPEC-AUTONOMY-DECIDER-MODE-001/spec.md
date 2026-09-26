@@ -130,11 +130,11 @@ power-arithmetic verdict — undercounts surface as recorded exclusions, never s
 ### REQ-DM-002 — Pinning rule and the 판별 불가 exit (Ubiquitous)
 
 The measurement shall apply this pre-fixed pinning rule, committed before measurement: **pin the
-qualifying candidate with the lowest measured constant baseline; when a natural corpus candidate
-and the synthetic control both qualify, prefer the natural one (ecological validity); qualify =
-constant baseline ≤ 90% AND the required N from the REQ-DM-003 arithmetic is achievable within
-the REQ-DM-013 caps.** The synthetic control (baseline 50% by construction) is the recommended
-primary absent a qualifying natural candidate. **If NO candidate qualifies, the card's VALID
+best qualifying candidate: a qualifying natural corpus surface always outranks the synthetic
+control (ecological validity); among multiple qualifying natural surfaces, the lowest measured
+constant baseline is the tie-break; qualify = constant baseline ≤ 90% AND the required N from the
+REQ-DM-003 arithmetic is achievable within the REQ-DM-013 caps.** The synthetic control (baseline
+50% by construction) is the recommended primary absent a qualifying natural candidate. **If NO candidate qualifies, the card's VALID
 termination is a documented 판별 불가 verdict** carrying: the per-candidate census numbers, the
 per-candidate arithmetic, and why each fails — a result, not a failure (t1244 ended exactly this
 way and its verdict is the format precedent). The 판별 불가 path satisfies this SPEC's acceptance
@@ -151,8 +151,9 @@ structurally unsatisfiable. The arithmetic seed (worked in research.md §3): a c
 above 90% makes any baseline+10%p condition unsatisfiable — the t1244 lesson; at a balanced 50/50
 construction the baseline is 50% and the +10%p band becomes 60% — meaningful again; detecting a
 two-arm accuracy difference of Δ = 10%p at two-sided α = 0.05 with 80% power needs roughly N ≈
-160 items at a discordant-pair rate of 0.20 (envelope ≈ 160–240 across plausible discordant
-rates), so the pinned population targets N = 200, with N = 120 the minimum interpretable batch
+120–240 items across plausible discordant-pair rates (π_d 0.15–0.30; ≈ 118 at 0.15, ≈ 160 at
+0.20, ≈ 236 at 0.30), so the pinned population targets N = 200, with N = 120 the minimum
+interpretable batch
 (minimum detectable difference ≈ 11–12%p there — quoted whenever a null is read at that size).
 The committed test itself is the exact discordant-pair binomial (REQ-DM-006); this arithmetic is
 the planning envelope and is committed as such.
@@ -362,7 +363,7 @@ and read `--- PENDING-RUN` until then — which is not a FAIL.
 
 - **Judgment values are pre-registered, not proven.** The +10%p band increment and the δ = 5%p
   mode-comparison minimum are measurement-before judgment values from the A5 family precedent
-  (NC-1); the natural-over-synthetic tie-break is an ecological-validity judgment (NC-2). Both
+  (NC-1); the natural-over-synthetic precedence is an ecological-validity judgment (NC-2). Both
   are changeable only before the criteria commit, with a HISTORY record.
 - **Synthetic-vs-natural validity gap.** A judge's measured quality on constructed defects bounds
   its quality on real gate decisions only weakly; the verdict's Residual-risk must state this

@@ -34,16 +34,17 @@ Expected: all three counts ≥ 1.
 
 - **Given** spec.md and research.md
 - **When** reading for the structural-limit statement (baseline > 90% kills baseline+10%p), the
-  balanced-50% restoration (band = 60% becomes meaningful), the two-arm N envelope (≈160–240;
-  target 200; minimum batch 120 with its MDE ≈ 11–12%p), and the pre-measurement commitment
-  requirement
-- **Then** all four elements exist
+  balanced-50% restoration (band = 60% becomes meaningful), the two-arm N envelope (≈120–240;
+  target 200; minimum batch 120 with its MDE ≈ 11–12%p), the pre-measurement commitment
+  requirement, AND the research.md §3 worked rows at the stated parameters (π_d = 0.15 →
+  n_d ≈ 18 / N ≈ 118, all rows one parameter set)
+- **Then** all six elements exist
 
 ```bash
-grep -c "90%" .moai/specs/SPEC-AUTONOMY-DECIDER-MODE-001/spec.md; grep -c "60%" .moai/specs/SPEC-AUTONOMY-DECIDER-MODE-001/spec.md; grep -c "160" .moai/specs/SPEC-AUTONOMY-DECIDER-MODE-001/spec.md; grep -c "N = 120" .moai/specs/SPEC-AUTONOMY-DECIDER-MODE-001/spec.md
+grep -c "90%" .moai/specs/SPEC-AUTONOMY-DECIDER-MODE-001/spec.md; grep -c "60%" .moai/specs/SPEC-AUTONOMY-DECIDER-MODE-001/spec.md; grep -c "120–240" .moai/specs/SPEC-AUTONOMY-DECIDER-MODE-001/spec.md; grep -c "N = 120" .moai/specs/SPEC-AUTONOMY-DECIDER-MODE-001/spec.md; grep -c "≈ 18" .moai/specs/SPEC-AUTONOMY-DECIDER-MODE-001/research.md; grep -c "120–240" .moai/specs/SPEC-AUTONOMY-DECIDER-MODE-001/research.md
 ```
 
-Expected: all four counts ≥ 1.
+Expected: all six counts ≥ 1.
 
 ### AC-DM-003 — Predicate pre-fixed with confidence fields [PLAN] — maps REQ-DM-006
 
@@ -247,9 +248,12 @@ evidence. `--- PENDING-RUN` until then.
 - **When** reading for: the exact discordant-pair test applied as committed (or its 판별 불가 /
   measurement-impossible valid exit with per-candidate evidence), constant baselines alongside
   every accuracy figure, the REQ-DM-007 mapping applied verbatim with the pool named, and the
-  5-section format (Claim / Evidence / Baseline-attribution / Gaps / Residual-risk)
-- **Then** all hold — a verdict citing a metric not present in the criteria commit, or reporting
-  an accuracy without its constant baseline alongside, is a FAIL
+  5-section format (Claim / Evidence / Baseline-attribution / Gaps / Residual-risk) — and,
+  whenever the mode recommendation is issued from the committed primary pool alone (no supplement
+  batch ran), a Gaps/Residual-risk row naming the pool-fidelity limitation
+- **Then** all hold — a verdict citing a metric not present in the criteria commit, reporting
+  an accuracy without its constant baseline alongside, or making a primary-pool-only
+  recommendation without the pool-fidelity Gaps/Residual-risk row, is a FAIL
 
 ```bash
 grep -c "Baseline-attribution" .moai/reports/t1261/verdict.md 2>/dev/null || echo "verdict-absent"
