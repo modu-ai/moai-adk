@@ -42,8 +42,10 @@ grep -n "integrationLockAuditRelPath is" internal/hook/powershell_indirection.go
 grep -n "Dangerous command blocked" internal/hook/pre_tool.go | head -2
 # 6. M0 availability probe (outside worktree!)
 which pwsh || echo "pwsh absent — M0 records INCONCLUSIVE per REQ-HGF-010 Where gate"
-# 7. retired/superseded SPEC conflict scan
-grep -rn "superseded" .moai/specs/SPEC-HOOK-MATCHER-POWERSHELL-001/spec.md | head -3
+# 7. referenced-SPEC status scan (every referenced SPEC must be non-superseded / non-archived / non-rejected)
+for s in SPEC-HOOK-MATCHER-POWERSHELL-001 SPEC-WORKTREE-BRANCH-GUARD-FLAGCLASS-001 SPEC-GUARD-COMMENT-SCAN-001 SPEC-POWERSHELL-DENY-PARITY-001 SPEC-V3R6-TOOL-POLICY-SSOT-001; do
+  printf '%s: ' "$s"; grep -m1 '^status:' ".moai/specs/$s/spec.md"
+done
 ```
 
 Absorption duty: `git merge develop` (local) before M1; re-measure every line number spec.md §C cites and update the SPEC citations if moved (report, don't silently renumber).
@@ -76,7 +78,7 @@ Per `.claude/rules/moai/development/manager-develop-prompt-template.md` §E, wit
 ## §F Milestones (priority-ordered; decisions most likely to change come first)
 
 ### M0 (Priority High — measurement; feeds M5, blocks nothing else)
-F5 spelling measurement, **outside any worktree** (scratch dir under `/tmp`; the worktree session guard refuses `pwsh`). Recipe: acceptance.md §E verbatim (B64 of `Write-Output ok` as UTF-16LE, loop over the candidate spellings including `/enc` and U+2013 `–enc`). **Caps declared up front** (card constraint + t1152 lesson): one loop of 12 candidates, wall-clock ≤ 10 min, ≤ 2 turns, foreground only, `timeout 60` per pwsh invocation, no background load. Deliverable: accepted-set table + detector comparison recorded in progress.md §E.2 (committed) and `.moai/reports/t1255/` (local detail). pwsh absent → INCONCLUSIVE record, detector unchanged (REQ-HGF-010 `Where` gate is explicit).
+F5 spelling measurement, **outside any worktree** (scratch dir under `/tmp`; the worktree session guard refuses `pwsh`). Recipe: acceptance.md §E verbatim (B64 of `Write-Output ok` as UTF-16LE, loop over the candidate spellings including `/enc` and U+2013 `–enc`). **Caps declared up front** (card constraint + t1152 lesson): one loop of 11 candidate spellings plus the attached-colon form `-enc:<B64>` as a separate 12th invocation (acceptance.md §E recipe — recipe/cap/plan counts identical), wall-clock ≤ 10 min, ≤ 2 turns, foreground only, `timeout 60` per pwsh invocation, no background load. Deliverable: accepted-set table + detector comparison recorded in progress.md §E.2 (committed) and `.moai/reports/t1255/` (local detail). pwsh absent → INCONCLUSIVE record, detector unchanged (REQ-HGF-010 `Where` gate is explicit).
 
 ### M1 (Priority High — RED before any detector change)
 Port the probe into committed tests: new `internal/hook/branch_guard_psforms_test.go` following the `branch_guard_flagclass_test.go` family shape, reusing the `hmp*` fixtures. One table-driven case per mutant-matrix row (acceptance.md §D), asserting the **post-fix** expectation. Run the scoped selector on the absorbed base and capture the verbatim RED output per form family into progress.md (plan.md §E8). No detector edits in this milestone.

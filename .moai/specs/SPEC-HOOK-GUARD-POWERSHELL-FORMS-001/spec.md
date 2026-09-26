@@ -1,7 +1,7 @@
 ---
 id: SPEC-HOOK-GUARD-POWERSHELL-FORMS-001
 title: "Classify the PowerShell tool-call forms the shell guards pass without record (t1224 debts F1-F5)"
-version: "0.1.0"
+version: "0.2.0"
 status: draft
 created: 2026-09-26
 updated: 2026-09-26
@@ -22,6 +22,7 @@ depends_on: [SPEC-HOOK-MATCHER-POWERSHELL-001]
 | Version | Date | Author | Change |
 |---|---|---|---|
 | 0.1.0 | 2026-09-26 | manager-spec | Initial draft for card t1255 (t1224 follow-up debts F1-F5 + denylist-wrapping side issue). Per-form detection decision table (§A.3) resolved from the probe evidence re-measured on this tree at `19b5321c1`; 14 requirements, 14 acceptance criteria. |
+| 0.2.0 | 2026-09-26 | manager-spec | Plan-audit iter-1 PASS-WITH-DEBT 0.85 (`.moai/reports/plan-audit/SPEC-HOOK-GUARD-POWERSHELL-FORMS-001-review-1.md`, audited commit `2286d77c3`) commission fixes: D1 git-word gate qualifier added to REQ-HGF-005; D2 AC-HGF-010/012 RED cells wired to four-element ledger rows E-18/E-19 (empty-sweep selector run + progress.md §E.2 placeholder read, both measured at `2286d77c3`); D3 AC-HGF-014 diff range switched to the merge-base recompute form + empty-sweep non-vacuous rule; D4 M0 candidate count reconciled to 11 loop spellings + 1 attached-colon `-enc:<B64>` = 12; D5 AC-HGF-001 E-09 citation corrected (wrapper-form control, not the plain form); D6 §E cross-references extended with the deny-pattern SSOT family; D8 pre-flight conflict scan widened to all referenced SPECs. D7 (commit trailer) is the lane's. REQ count (14) and AC count (14) unchanged. |
 
 ## §A Background
 
@@ -74,7 +75,7 @@ F5: the `-EncodedCommand` spellings pwsh accepts are unmeasured; the detector (`
 
 ### B.2 Unclassifiable forms (F3, aliases)
 
-- **REQ-HGF-005** — **When** a PowerShell command resolves its executable dynamically through a parenthesized subexpression in call position (the measured form is `& (Get-Command git) switch probe`), the branch guard shall allow the call and append exactly one unclassifiable audit line whose reason contains the literal word `unclassifiable` — the resolved executable is decided at runtime and a deny would fire without positive evidence, mirroring the encoded-command treatment of REQ-HMP-010.
+- **REQ-HGF-005** — **When** a PowerShell command that names `git` in its command text resolves its executable dynamically through a parenthesized subexpression in call position (the measured form is `& (Get-Command git) switch probe`), the branch guard shall allow the call and append exactly one unclassifiable audit line whose reason contains the literal word `unclassifiable` — the resolved executable is decided at runtime and a deny would fire without positive evidence, mirroring the encoded-command treatment of REQ-HMP-010 — and a call-position parenthesized subexpression form carrying no `git` word in the command text (e.g. `& (Get-Command node) serve`) shall earn no audit line (REQ-HGF-008).
 - **REQ-HGF-006** — **When** a PowerShell command names `Start-Process` through a documented alias (`saps`, `start`) while `git` is named as the program or inside its argument list, the unclassifiable policy shall produce exactly the same audit line (event `powershell-unclassified`, construct `start-process`) that the fully spelled form already produces.
 
 ### B.3 Deny-list literal payloads (부수)
@@ -138,4 +139,4 @@ M4 (REQ-HGF-007/008 + AC-HGF-007/008/009) is a self-contained subset: if the ope
 
 - 14 requirements (B.1-B.5), 14 acceptance criteria in `acceptance.md` (AC-HGF-001..014; 12 release-blocking two-cell, 2 regression-guard). Mutant matrix (both-way: legitimate-path no-change + disguise detection) is acceptance.md §D — mandatory per the card for every detection this SPEC extends.
 - plan-auditor focus questions are listed in plan.md §H.
-- Cross-references: SPEC-HOOK-MATCHER-POWERSHELL-001 (parent — D2 policy, matcher registration, REQ-HMP-010); SPEC-WORKTREE-BRANCH-GUARD-FLAGCLASS-001 (query-vs-mutate verdict family the expanded forms reuse); SPEC-GUARD-COMMENT-SCAN-001 (data-vs-command collapse family); `.claude/rules/moai/development/verification-completeness.md` (two-cell adoption); `.moai/reports/t1224/verdict.md` (baseline evidence).
+- Cross-references: SPEC-HOOK-MATCHER-POWERSHELL-001 (parent — D2 policy, matcher registration, REQ-HMP-010); SPEC-WORKTREE-BRANCH-GUARD-FLAGCLASS-001 (query-vs-mutate verdict family the expanded forms reuse); SPEC-GUARD-COMMENT-SCAN-001 (data-vs-command collapse family); SPEC-POWERSHELL-DENY-PARITY-001 (t1211 — the Claude Code **permission-rule** namespace, `PowerShell(...)` deny rules; a different layer from this SPEC's hook-side Go deny list — no scope overlap); SPEC-V3R6-TOOL-POLICY-SSOT-001 (the tool-policy SSOT — REQ-HGF-007 reuses the hook-side deny-list pattern set whose provenance traces through the parent SPEC's §A.3 classification, not the permission namespace); `.claude/rules/moai/development/verification-completeness.md` (two-cell adoption); `.moai/reports/t1224/verdict.md` (baseline evidence).
