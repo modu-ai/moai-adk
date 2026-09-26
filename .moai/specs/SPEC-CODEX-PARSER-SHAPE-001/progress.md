@@ -127,7 +127,7 @@ the same; ctrlA `fail`/1 both; ctrlB `fail`/0 both — identical to E-1718.
 | AC-CPS-011 | PASS | `go test -count=1 -v -run '^TestCodex1718Fixtures$' ./internal/cli/` at `6a89f3d83` (M2); structural properties + P10 mutants re-run on HEAD → `ok` (`m4-green.log`, `m4-blast2.log`) | exit 0, ten SYNTH rows (pre-M4 values at the time); ledger P1–P11 at their pass conditions (`ac011-ledger.log`) |
 | AC-CPS-012 | PASS | same selector at `ce1df7f6f` (M2); re-run on HEAD → `ok`, S rows unchanged in verdict and findings (`m4-green.log`) | S1 `fail`/3, S2 `fail`/1, S2p `fail`/1 on both paths with exact content. RED before GREEN in `red-a.log`. **M4 before/after rows:** N1/N2 review/start `pass`/0 (before, `m4-rednow.log`) → `inconclusive`/0 (after, `m4-green.log`); turn/start rows unchanged |
 | AC-CPS-013 | PASS (remeasured on HEAD under the v0.2.3 re-anchored wording) | `-run 'Contradiction'` on HEAD `861e08912` → `m4-ac013.log`, `--- PASS` ×4, exit 0 | `TestSynthesizeReviewOutput_V8ContradictionIsReported` holds: the V8-shaped body is reported self-contradictory on both paths; the S2p-at-`562126b1f` clause stands as recorded at M2. The M4 downgrade does not touch it — a V8 body states a blocking verdict, which `codexStatedVerdict` reads before any fall-through |
-| AC-CPS-014 (d) | **NOT MEASURED** | — | requires a live codex call the operator has not authorized; no live call was made |
+| AC-CPS-014 (d) | **NOT MEASURED — authorized, attempted, blocked** | `mcp__moai__codex_audit` (mode=adversarial, target=baseBranch, project_root=this worktree) on 2026-09-26 | authorized by the run-resume decision (§E.1, `f1bd21fc4`); attempt 1 blocked BEFORE any body was produced — account usage limit until 2026-09-28 14:37, and the running MCP server binary (`a8a9b9376`) predates the (d) pin commit `83046be7c` (pin string grep: 0 in binary tree vs 1 in card HEAD), so a call would exercise the unpinned request. Verbatim tool result + both preconditions recorded in `.moai/reports/t1203/run/ac014-attempt1.md`; retry path = post-integration rebuilt binary after quota reset |
 | AC-CPS-015 | PASS | checks 1–4 (M1) | check 1 `1`/exit 0; D = `802ac54d2c17a6dc9afd07dfa44832389cdba944`; R = `6a89f3d8304ab37dc57a84b9ca17fe81062499c8`; `git merge-base --is-ancestor D R` exit 0; D ≠ R. Authorship remains reviewable, not mechanically proven |
 | AC-CPS-016 (b, live) | **NOT MEASURED — pending its own operator authorization** | — | the in-tree half (AC-CPS-004) holds; the live native observation this criterion requires is a separate call from the authorized AC-CPS-014 adversarial call. External quota blocks until 2026-09-28 14:37 AND the acceptance.md Authorization clause requires its own operator grant; no live call was made |
 
@@ -229,7 +229,7 @@ touch (`harness.go`, `agentlint`, …) — baseline, unchanged.
 ```yaml
 run_complete_at: 2026-09-26
 run_commit_sha: 861e08912
-run_status: partial — (a) (b) (c) (d) all implemented; AC-CPS-014 / AC-CPS-016 live observations pending their operator authorizations
+run_status: partial — (a) (b) (c) (d) all implemented; AC-CPS-014 live observation authorized (§E.1) and attempted but blocked (account quota until 2026-09-28 14:37 + running server binary predates the (d) pin — .moai/reports/t1203/run/ac014-attempt1.md); AC-CPS-016 pending its own operator authorization
 ac_pass_count: 11   # 004 005 006 007 008 009 010 011 012 013 (remeasured on HEAD per v0.2.3 re-anchoring) 015
 ac_fail_count: 0
 ac_blocked: []
