@@ -5,6 +5,7 @@
 ```yaml
 plan_audit_iter1: "FAIL 0.77 — repaired D1-D18 in v0.2.0"
 plan_audit_iter2: "FAIL 0.84 — repaired D19-D25 in v0.3.0"
+plan_audit_iter3: "FAIL 0.87 — blocker D26 repaired in v0.3.1 (with D27, D28); re-audit pending operator decision"
 plan_complete_at: "2026-09-26"
 plan_status: draft-awaiting-plan-audit-iter3
 tier: L

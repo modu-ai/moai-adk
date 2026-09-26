@@ -18,7 +18,7 @@ deny); A3 (card t1236) is independent.
 |---|---|---|
 | R1 | A1 receipt fields change again after v0.5.1 | display decoder keyed on v0.5.1 fields; any unrecognized field listed under Not Performed, never dropped; validity from A1 verify only |
 | R2 | A2 does not export a record reader or a read-only class-4 comparison | M0 pre-flight checks the exported surface; missing comparison → New APIs `not observed` plus a follow-up card, not a copy of A2 logic |
-| R3 | Currency is path-based and can stop a push because of another card's commit | fail-safe direction; `STALE` names the commit so the operator can re-run the second review and the report |
+| R3 | Currency is path-based and can stop a candidate card's push because of another card's commit in the same range | fail-safe direction; `STALE` names the commit so the operator can re-run that card's second review and report. Candidacy is own-card (REQ-CLOSURE-015), so closed cards already on the remote are not re-evaluated; the accepted residual is that a code-only commit touching a closed card's governed paths is not attributed to it (spec.md §H) |
 | R4 | A fail-closed PreToolUse check blocks a push on a transient git error | only under `mode: contract`, only for integration-branch pushes; bounded timeout; reason code names the cause |
 | R5 | Evidence lives in gitignored per-worktree directories | one card evidence home for writers and readers (spec.md §C.7, design.md §C.3); undetermined → stop |
 | R6 | Agents forge local records | accepted residual risk (spec.md §H); verdict path denied to agents; codex receipt shown as corroboration |

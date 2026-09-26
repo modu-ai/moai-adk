@@ -216,6 +216,12 @@
   the decision is deny with `second_review_not_performed`.
 - **Given** the not-ready fixture and `git push origin WT-feature`, **Then** no readiness evaluation runs
   (evaluation counter seam stays 0).
+- **Given** a second contract `SPEC-FIXTURE-002` (card `c0`, `status: completed`, `ownership.write:
+  [src/**]`, `push-develop`, no second-review record and no closure report) already present on
+  `origin/develop`, and a range whose only change under `src/` is `src/b.go` from card c1's work, with
+  c1 ready (performed `pass` review, current closure report), **When** the hook receives
+  `git push origin develop`, **Then** the decision is not a deny on A4's account and the evaluation seam
+  records `SPEC-FIXTURE-001` only (an out-of-range contract is not a candidate even when paths overlap).
 
 ### AC-CLOSURE-016 — Readiness code set
 
@@ -312,8 +318,9 @@
 
 - Two queue entries map to the same SPEC: the contract's `card` field decides the card; the other
   entry is ignored.
-- A `completed` SPEC's contract still enters the push set when the range changes its paths; terminal
-  status is not an exclusion (AC-CLOSURE-015).
+- A `completed` SPEC's contract is a candidate when a range commit changes its own SPEC directory (the
+  card closes in this push); a contract terminal on the remote whose SPEC directory is unchanged in the
+  range is not a candidate even when its governed paths overlap the pushed change (AC-CLOSURE-015).
 - A `second-review.jsonl` line with an unknown `schema_version` is skipped and listed under Not
   Performed; it never counts as performed.
 

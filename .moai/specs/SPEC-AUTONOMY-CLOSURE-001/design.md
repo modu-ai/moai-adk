@@ -29,7 +29,7 @@ All three live in the **card evidence directory** `<card evidence home>/.moai/re
   "contract_sha256": "<signature.contract_sha256, or \"\">",
   "head_sha": "<HEAD of project_root at audit time>",
   "target": "baseBranch",
-  "scope": { "base_branch": "<name from resolveReviewBaseBranchName>", "base_sha": "<merge-base of head and base_branch>",
+  "scope": { "base_branch": "<name from resolveReviewBaseBranchName>", "base_sha": "<merge-base as computed by resolveReviewMergeBase>",
              "head_sha": "<same as head_sha>",
              "changed_files": 7, "diff_sha256": "<SHA-256 of git diff base..head>" },
   "backends": [
@@ -134,13 +134,17 @@ Undetermined → `push_check_undetermined` → deny.
 1. Source commit `S` = the resolved source of the classified refspec, in the tree of §C.1.
 2. Range `<remote>/I..S` (non-merge commits, `git log --no-merges --name-only`). A missing
    remote-tracking ref → undetermined.
-3. Candidates: every `.moai/specs/<ID>/contract.yaml` **in the tree of `S`** (`git show S:<path>`,
-   passed to A1 `Verify` as inputs), signed, `actions` containing `push-develop`. **No terminal
-   filter:** the sync commit sets `status: completed` inside the card worktree before the merge, so in
-   `S` every normally-closed card is terminal; excluding terminal SPECs would exempt exactly the cards
-   the stop exists for. Membership is scoped by the range (step 4) instead.
-4. In the push: a range commit changes a governed path of the contract or a path under
-   `.moai/specs/<ID>/`.
+3. Contracts considered: every `.moai/specs/<ID>/contract.yaml` **in the tree of `S`**
+   (`git show S:<path>`, passed to A1 `Verify` as inputs), signed, `actions` containing `push-develop`.
+4. Candidate (own-card membership) when either holds:
+   - a range commit changes a path under the contract's own `.moai/specs/<ID>/` — every plan, run,
+     and sync commit of the card and any in-place amendment does, so a card closing in this push is a
+     candidate even though its sync commit made it `completed` in `S`; or
+   - the SPEC is non-terminal in `S` and a range commit changes one of its governed paths.
+   A contract terminal on `<remote>/I` whose SPEC directory is unchanged in the range is therefore not
+   a candidate, even when a range commit from another card changes its governed paths. Rationale
+   (plan-audit D26): without this bound every closed contract governing a shared path entered the set
+   and was stale by construction, denying every later push that touched the path.
 
 ### §C.3 Card evidence home
 

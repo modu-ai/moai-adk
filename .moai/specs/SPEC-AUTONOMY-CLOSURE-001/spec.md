@@ -1,7 +1,7 @@
 ---
 id: SPEC-AUTONOMY-CLOSURE-001
 title: "Contract-based autonomy A4 — closure report, second-review record, human verdict, and stop before push (moai contract report)"
-version: "0.3.0"
+version: "0.3.1"
 status: draft
 created: 2026-09-26
 updated: 2026-09-26
@@ -25,6 +25,8 @@ related_specs: [SPEC-AUDIT-PARTICIPANT-COUNT-001, SPEC-CODEX-AUDIT-GATE-AXES-001
 | 0.1.0 | 2026-09-26 | manager-spec | Initial plan-phase draft (card t1237, AUTONOMY-A4). A1 read at `67a2f55cb` (v0.5.0), A2 escalation record format at `8c9ee29b7` (v0.3.0 §I). Lead amendment 2026-09-26: the stop before push when the second review was not performed is owned here. |
 | 0.2.0 | 2026-09-26 | manager-spec | Plan-audit iteration 1 (FAIL 0.77) repairs D1-D18. A1 re-pinned to `65e0a9167` (v0.5.1): v0.5.1 receipt fields and `outcome` (D2), card taken from the signed contract `card` field (D3, D4). Push range taken from the pushed source ref with a fail-closed classifier (D5); one evidence-currency rule shared by the second review and the closure report (D6, D16); second-review record binds its reviewed scope (D7); command invariants never render as passed without evidence (D8); one card evidence home for writers and readers (D9); acceptance criteria cut to 25 (D10); plan-audit discovery covers both report streams (D11); residual-risk and guided-mode wording fixed (D13, D18); `audit_multi` card failure paths defined (D17); template markers named (D14). Lead decisions 2026-09-26 on OQ-1 and OQ-2 folded in (D1). |
 | 0.3.0 | 2026-09-26 | manager-spec | Plan-audit iteration 2 (FAIL 0.84) repairs D19-D25: the push set no longer excludes terminal SPECs, so a card synced to `completed` before merge is still evaluated (D19); `--all` and `--mirror` are undetermined under contract mode everywhere (D20); `push_check_undetermined` exits 1 in `push-check` (D21); REQ-016 wording (D22); the second-review scope records the base the review backend resolved (D23); AC-010 states which receipt fixtures are written after signing (D24); A1 tip re-read (D25). |
+| 0.3.1 | 2026-09-26 | manager-spec | Plan-audit iteration 3 (FAIL 0.87) blocker D26: push-set membership is own-card — a contract is a candidate only when a range commit changes its own SPEC directory, or it is non-terminal in the source commit and a range commit changes its governed paths; closed cards already on the remote are not re-evaluated because another card touched overlapping paths. Optional D27 (scope base wording) and D28 (A1 tip row) folded in. |
+| 0.3.1 | 2026-09-26 | manager-spec | 운영자 승인 4차 예외(D26 한정): the operator approved a one-time fourth plan-audit iteration limited to D26. |
 
 ## §A. User Story
 
@@ -270,11 +272,14 @@ available in every mode; the push guard is inert under `guided`.
   Bash tool call contains a `git push` whose destination is or may be the integration branch, the
   PreToolUse hook shall take the push range from the remote-tracking integration ref to the pushed
   source commit, read candidate contracts from the source commit's tree, evaluate push readiness for
-  every signed contract that lists `push-develop` and whose governed paths or SPEC directory are
-  changed by a non-merge commit in that range — whatever the SPEC's `status` in the source commit,
-  because the sync commit sets `completed` before the card is merged — and deny the call with a reason
+  every signed contract that lists `push-develop` and is a candidate on an own-card basis — a
+  non-merge commit in that range changes a path under the contract's own `.moai/specs/<SPEC-ID>/`
+  (whatever the SPEC's `status` in the source commit, because the sync commit sets `completed` before
+  the card is merged), or the SPEC is non-terminal in the source commit and a non-merge commit in that
+  range changes one of its governed paths — so that a contract terminal on the remote integration ref
+  whose SPEC directory is unchanged in the range is not a candidate, and deny the call with a reason
   beginning `CLOSURE_PUSH_STOP:` followed by the sorted, de-duplicated readiness codes when any
-  contract is not ready.
+  candidate is not ready.
 - **REQ-CLOSURE-016** (Ubiquitous) — The push readiness evaluator shall report a contract not ready
   with every applicable code from exactly this set: `contract_invalid` (A1 verify is not
   `signed-valid`); `closure_report_missing` (no closure report JSON in the card evidence directory);
@@ -378,8 +383,10 @@ available in every mode; the push guard is inert under `guided`.
 - **Only Bash-tool pushes are observed.** A terminal push, a push through another shell tool, or a
   push with git hooks disabled is not stopped by the PreToolUse guard (this repository sets
   `core.hooksPath` to `/dev/null`, research.md §B.8).
-- **Currency is path-based.** Another card's commit that changes a path in this contract's governed
-  paths makes this contract's review and report stale; this errs toward stopping, and the remedy is a
-  fresh second review and report.
+- **Currency is path-based, candidacy is own-card.** While a card is a candidate in a push, another
+  card's commit in the range that changes one of its governed paths makes its review and report stale;
+  this errs toward stopping, and the remedy is a fresh second review and report of that card. A closed
+  card is not re-evaluated because a later card touches its paths: a code-only commit that changes a
+  closed card's governed paths without touching its SPEC directory is not attributed to that contract.
 - **Class-4 comparison is a heuristic** (A2 C6); an empty New APIs list is evidence of no detected
   addition, not of no addition.
