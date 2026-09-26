@@ -5,7 +5,7 @@
 - plan_status: audit-ready
 - plan_complete_at: 2026-09-26
 - Tier: L. Artifacts: spec.md, plan.md, acceptance.md, design.md, research.md (+ this file).
-- Requirements: 23 (REQ-AE-001 … REQ-AE-023). Acceptance criteria: 24 (AC-AE-001 … AC-AE-024).
+- Requirements: 23 (REQ-AE-001 … REQ-AE-023). Acceptance criteria: 25 (AC-AE-001 … AC-AE-025).
 - v0.4.0: plan-audit iteration 3 (FAIL 0.83) repaired; lead rulings 09-26 (3) folded in
   (spec.md §H): card-field resolver without the queue `spec_id`, unified disarm rule with class 10
   renamed `detection-disarmed`, in-process verify at PreToolUse, state file carved out of the
@@ -14,7 +14,9 @@
 - v0.4.1: lead ruling 09-26 (4): decider rules removed (value follows the A1 schema; judgment
   rules are A3's); R10 closed — card state and detector audit log move to
   `$MOAI_HOME/db/<project-key>/contract/`. Counts unchanged.
-- Run-phase additionally blocked on A1 request R9 (`card` field); without it nothing arms.
+- v0.4.2: plan-audit iteration 4 (FAIL 0.83) Q3-Q5 and m2 repaired; lead ruling 09-26 (5)
+  folded in (Q1, Q2): one audit log per card, authoritative for arming. §F re-pinned to A1 v0.5.1
+  `65e0a9167`; R8, R9, R10 closed. Requirements 23, criteria 25.
 - v0.3.0: plan-audit iteration 2 (FAIL 0.82) repaired; lead rulings 09-26 (2) folded in
   (spec.md §H): two-layer resolver, contract-void before resolution, Markdown record with YAML
   frontmatter and revoke kinds; A1 request R7 added. The v0.2.1 A3 preconditions, their

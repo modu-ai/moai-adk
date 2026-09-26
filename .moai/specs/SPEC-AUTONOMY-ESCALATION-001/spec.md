@@ -1,7 +1,7 @@
 ---
 id: SPEC-AUTONOMY-ESCALATION-001
 title: "Contract-mode escalation detector: mechanical detection of the six escalate_on classes plus operational trips, reported as an escalation record without blocking or mutating the queue"
-version: "0.4.1"
+version: "0.4.2"
 status: draft
 created: 2026-09-26
 updated: 2026-09-26
@@ -44,6 +44,13 @@ related_specs: [SPEC-AUTONOMY-TIERS-001, SPEC-ACSNAPSHOT-COMMIT-GUARD-001]
   SPEC (the `decider` value follows the A1 schema; judgment rules are A3's), and request R10
   closed — the card state and the detector audit log move to the moai-owned store
   `$MOAI_HOME/db/<project-key>/contract/`.
+- **2026-09-26** — v0.4.2 after plan-audit iteration 4 (FAIL 0.83), findings Q3-Q5 and m2 only
+  (Q1 and Q2 await a lead design ruling): contract-store writes are judged before every class 3
+  exemption; the §G residual risk states what an unkeyed chain can and cannot show; §F re-pinned
+  to A1 v0.5.1 at `65e0a9167`, which closes R8, R9, and R10; the `spec.md` `status` read joins
+  the C4 operation list. Lead ruling 09-26 (5) folded in (resolves Q1 and Q2): one audit log per
+  card, and a card's own log entries — not the state file — decide whether it is armed. Criteria
+  24 → 25 (two merged, three added; mapping in acceptance.md §A).
 
 ## §B — Problem
 
@@ -106,7 +113,7 @@ no loss of detection on an armed card happens silently. Under the distributed de
 23 requirements, numbered in document order. Requirements whose predicate reads a
 `contract.yaml` field, an A1 verify result, or an A1-owned configuration key carry the tag
 「A1 plan-audit 통과본으로 재확인」; every such field is listed once, in §F, against the A1 final
-at `67a2f55cb`.
+at `65e0a9167` (v0.5.1).
 
 Definitions used below. The **worktree root** is the top-level directory of the git worktree
 containing the tool call's working directory. The **card id** is the base name of that worktree
@@ -117,10 +124,12 @@ is one audit verdict file for the card beyond the first. The **contract store** 
 moai-owned directory `$MOAI_HOME/db/<project-key>/contract/`, outside the repository and every
 worktree, with `$MOAI_HOME` and `<project-key>` resolved exactly as the queue database resolves
 them (research.md P17). The **card state file** is `<contract store>/escalation/<card-id>.json`
-and the **detector audit log** is `<contract store>/escalation-audit.jsonl` (design.md §C.6,
-§C.11). A card is **armed**
-from the moment the card state file records a resolved signed-valid contract until a
-`detection-disarmed` record is written for it.
+and the **card audit log** is `<contract store>/escalation/<card-id>.log.jsonl`, one per card; in
+both names `<card-id>` is the worktree directory base name, byte for byte, with no case folding or
+escaping (design.md §C.6, §C.11). The card audit log is the authoritative record of arming: a
+card is **armed** exactly while its own log's most recent `armed` entry has no later `disarmed`
+entry. The card state file is a cache of the arming snapshot and counters; its content never
+arms or disarms a card by itself.
 
 ### D.1 — Activation, contract resolution, and effects
 
@@ -139,7 +148,7 @@ from the moment the card state file records a resolved signed-valid contract unt
   「A1 plan-audit 통과본으로 재확인」
 - **REQ-AE-003** (Ubiquitous) — The escalation detector shall never deny, ask about, or
   alter a tool call; its only effects shall be the escalation records (which carry the
-  needs-decision marking), the detector audit log, and the card state file.
+  needs-decision marking), the card audit log, and the card state file.
 - **REQ-AE-004** (Event-detected) — When the escalation detector faults internally (a
   panic, an unreadable input, a timeout), the detector shall let the tool call proceed,
   shall append a `not-checked` line naming the class and the fault, and shall not write an
@@ -197,15 +206,18 @@ from the moment the card state file records a resolved signed-valid contract unt
   targets a path in the A1-derived `effective_never` list — which adds the SPEC's `contract.yaml`
   and `acceptance.md` once signed — the escalation detector shall trip class `ownership-move` even
   where `ownership.write` covers the path. 「A1 plan-audit 통과본으로 재확인」
-- **REQ-AE-013** (Ubiquitous) — The escalation detector shall exempt from class 3 every write
-  under `.moai/reports/<card-id>/`, under `.moai/state/`, under the operating system's
-  temporary directory, under the session scratchpad, under the auto-memory store, and under any
-  glob in the A1-derived `scratch` list. A write outside the worktree root that none of these
+- **REQ-AE-013** (Ubiquitous) — The escalation detector shall judge a write-capable tool call
+  targeting the contract store first, before any exemption below is applied: it trips
+  `ownership-move`, is never exempt — not even when the store lies under the operating system's
+  temporary directory, the session scratchpad, or another exemption root — and is never listed as
+  not-observed, because the store path is always determined by its own resolution rule (and an
+  unresolvable store is a REQ-AE-004 fault, design.md §C.6). The detector's own writes there are
+  not tool calls and are never judged. Every other write is then exempt from class 3 when it
+  falls under `.moai/reports/<card-id>/`, under `.moai/state/`, under the operating system's
+  temporary directory, under the session scratchpad, under the auto-memory store, or under any
+  glob in the A1-derived `scratch` list; a write outside the worktree root that none of these
   covers shall trip `ownership-move` when every exemption root was determined, and shall be
-  listed as not-observed when one or more roots could not be determined (design.md §C.9). The
-  contract store is not a project path and not an exemption root, so no `ownership` glob ever
-  matches it and a write-capable tool call targeting it is judged by that outside-root rule; the
-  detector's own writes there are not tool calls and are never judged. 「A1 plan-audit 통과본으로 재확인」
+  listed as not-observed when one or more roots could not be determined (design.md §C.9). 「A1 plan-audit 통과본으로 재확인」
 
 ### D.3 — Operational trips
 
@@ -223,18 +235,26 @@ from the moment the card state file records a resolved signed-valid contract unt
   records FAIL at iteration `budget.audit_retries + 1` of that audit, the escalation detector
   shall trip class `audit-fail-at-retry-cap`; no separate configuration key supplies this
   ceiling. 「A1 plan-audit 통과본으로 재확인」
-- **REQ-AE-017** (Event-detected) — When the card state file records the card as armed and a hook
+- **REQ-AE-017** (Event-detected) — When the card's own audit log shows the card armed and a hook
   or checkpoint — before REQ-AE-002 resolution can report not-armed — observes any disarm reason,
   the escalation detector shall write exactly one `detection-disarmed` record for that arming,
-  naming the reason, record the disarming in the same record and the audit log, and keep classes
-  7-9 active. The disarm reasons are: `contract-absent` (the armed contract file is gone),
+  naming the reason, append a `disarmed` entry to that card's audit log, and keep classes 7-9
+  active. A card counts as disarmed only once its log carries that `disarmed` entry; a card state
+  file that has lost its arming value, or whose bytes differ from the digest in the log's latest
+  state entry, while the log still shows the card armed is judged `state-tamper`, never read as a
+  disarm. The disarm reasons are: `contract-absent` (the armed contract file is gone),
   `signature-invalid` (A1 verify no longer reports `signed-valid`, including a removed signature
   block and `signature_acceptance_mismatch`), `terminal-status` (the SPEC's A1-derived `terminal`
   became true, including a completion at sync), `card-mismatch` (the contract's `card` field no
   longer equals the card id, or resolution no longer yields exactly one contract), and
-  `state-tamper` (the card state file's content does not match the digest the detector audit
-  log last recorded, or the file is gone while that log shows the card armed). A second disarm reason
-  observed after the first increments that record's `occurrences` and writes nothing new.
+  `state-tamper` (the card state file is missing, lacks its arming value, or does not match the
+  digest in the card log's latest state entry, or the card log's own hash chain is broken). When
+  the card audit log file is absent, the detector shall read the card as never armed unless prior
+  evidence of arming exists — a card state file carrying an arming value, or a record of kind
+  `contract` or of class `detection-disarmed` under `.moai/reports/<card-id>/escalation/` — in
+  which case it shall write the `state-tamper` record and start a new log. Entries in another
+  card's log shall never affect this card. A second disarm reason observed after the first
+  increments that record's `occurrences` and writes nothing new.
   「A1 plan-audit 통과본으로 재확인」
 
 ### D.4 — Reporting and marking
@@ -285,8 +305,11 @@ from the moment the card state file records a resolved signed-valid contract unt
 - **C3 — Detection only.** This SPEC adds no denial of any kind. No existing gate is rewired,
   weakened, or strengthened.
 - **C4 — Hook budget.** Under `contract` mode the PreToolUse path performs: reading each
-  `.moai/specs/*/contract.yaml` under the worktree root for its `card` field; reading the card
-  state file and checking its digest against the audit log; path and glob matching against the
+  `.moai/specs/*/contract.yaml` under the worktree root for its `card` field; reading the
+  frontmatter `status` of each candidate SPEC's `spec.md` for A1's `terminal`; reading the card
+  state file and checking its digest against the latest state entry in the card's own audit log
+  (reading that card's log, which no other card writes, and appending to it); path and glob
+  matching against the
   cached derived lists; reading HEAD from the repository's HEAD and ref files. It calls A1 verify
   in-process — A1 § Non-Functional Constraints states verify completes without subprocesses or
   network access so that A2 can call it from a PreToolUse hook — at first arming (REQ-AE-023)
@@ -304,22 +327,23 @@ from the moment the card state file records a resolved signed-valid contract unt
 ## §F — Dependency on A1
 
 This SPEC does not design the contract schema and does not copy it. **Source of every field
-below:** SPEC-AUTONOMY-CONTRACT-001 v0.5.0 `design.md` § Contract Schema at commit `67a2f55cb`
-(branch `WT-contract-schema`; read with
-`git show 67a2f55cb:.moai/specs/SPEC-AUTONOMY-CONTRACT-001/design.md`). The earlier pins
-`8f77d9a33`, `4208a3a3b`, and `6d98ca466` (v0.4.1) are superseded. Between `6d98ca466` and
-`67a2f55cb` only the kickoff decider section changed, and no field in §F.1 changed. This SPEC
+below:** SPEC-AUTONOMY-CONTRACT-001 v0.5.1 `design.md` § Contract Schema and `spec.md` at
+commit `65e0a9167` (branch `WT-contract-schema`; read with
+`git show 65e0a9167:.moai/specs/SPEC-AUTONOMY-CONTRACT-001/design.md` and the same for
+`spec.md`). The earlier pins `8f77d9a33`, `4208a3a3b`, `6d98ca466` (v0.4.1), and `67a2f55cb`
+(v0.5.0) are superseded. Every row of §F.1 is present at `65e0a9167`; the closed reason set there
+adds `card_invalid`, which REQ-AE-017 absorbs as `signature-invalid`. This SPEC
 defines no decider rule: the decider value follows the A1 schema, and judgment rules
 (agreement, fallback, disagreement handling) are owned by A3 (card t1236), per lead ruling
 09-26 (4) #1. Tags 「A1 plan-audit 통과본으로 재확인」 are
 kept by lead instruction; every row of §F.1 is re-checked in run-phase pre-flight.
 
-### F.1 Fields consumed (confirmed present at `67a2f55cb` unless marked as a request)
+### F.1 Fields consumed (confirmed present at `65e0a9167`)
 
 | A1 field / surface | Consumed by |
 |---|---|
 | `.moai/specs/<SPEC-ID>/contract.yaml` (file location) | REQ-AE-002, REQ-AE-017 |
-| `card` field (**request R9 — absent at `67a2f55cb`**) | REQ-AE-002, REQ-AE-017 |
+| `card` field (A1 `design.md:22`, `:124`, § Card Field `:148-163`) | REQ-AE-002, REQ-AE-017 |
 | verify `state` and `reasons[]` (closed set incl. `signature_acceptance_mismatch`, `signature_seal_mismatch`, `signature_inconsistent`) | REQ-AE-005, REQ-AE-017, REQ-AE-023 |
 | `acceptance.sha256` / `ac_count` with `acceptance.measured_sha256` / `measured_ac_count` | REQ-AE-005 |
 | `signature.contract_sha256` | REQ-AE-023 |
@@ -344,22 +368,28 @@ kept by lead instruction; every row of §F.1 is re-checked in run-phase pre-flig
   `new_api_detector`. **O6** verify output carries no line numbers; `contract_ref` lines are mapped
   from the file text. **O7** class 1 consumes A1 verify's measured values. **O10** command-kind
   invariants are observed, never executed; unexecuted ones are not-observed.
-- **R1-R4, R7** — satisfied at `67a2f55cb`: `effective_never` (R1), `ownership.scratch` (R2), shared
+- **R1-R4, R7** — satisfied at `65e0a9167`: `effective_never` (R1), `ownership.scratch` (R2), shared
   `audit_retries` (R3), `frozen_files` union with `**/` basename globs (R4), derived `terminal`
   excluded from resolution (R7). The registry Frozen list inside `frozen_files` is supplied by the
   caller through the constitution registry loader (A1 § Frozen Files 1); the detector obtains it
   once at arming and caches it (design.md §C.6).
-- **R8 — Mission-projection owner label (new).** A1 at `67a2f55cb` still names the projection
-  "(A2)" ("Out of Scope — Mission-validator projection (A2)", "Forward Note — Mission Projection
-  (for A2)"). A1 relabels the owner as A2b (card t1245), which took it over (§K).
-- **R9 — `card` field inside the signed digest (new).** A1 adds a required `card:` string to the
-  contract body, strictly decoded and covered by `signature.contract_sha256`, so that editing it
-  is a digest mismatch rather than a silent re-assignment. Until R9 lands, no contract carries the
-  field, every card resolves not-armed, and REQ-AE-002 / REQ-AE-017 cannot arm or disarm.
-- **R10 — Path of the moai-owned store — CLOSED (lead ruling 09-26 (4) #2).** The store is
-  `$MOAI_HOME/db/<project-key>/contract/`, in the same home layout as the queue database. The
-  card state file, the disarm state, and the detector audit log (with its hash chain) live
-  there; A3's signing-event store uses the same place.
+- **R8 — Mission-projection owner label — CLOSED at `65e0a9167`.** A1 `spec.md:78` reads "Out of
+  Scope — Mission-validator projection (A2b, card t1245)" and `design.md:469` reads "Forward Note
+  — Mission Projection (for A2b, t1245)". A1-side residue, not a defect of this SPEC: two older
+  sentences still name A2 — `spec.md:178` ("The mission-validator projection is deferred to A2.")
+  and `design.md:241` ("A2 decides whether its projection requires …"). Correcting them is an A1
+  lane item.
+- **R9 — `card` field inside the signed digest — CLOSED at `65e0a9167`.** A1 `design.md:22`
+  declares `card` REQUIRED and covered by the digest; `design.md:124` fixes the pattern
+  `^[A-Za-z0-9][A-Za-z0-9_-]{0,63}$` with reason code `card_invalid`; § Card Field
+  (`design.md:148-163`) states that the resolver arms only when `card` equals the worktree
+  directory name and that editing `card` after signing changes the digest; A1 `spec.md:261-262`
+  carries the same requirement.
+- **R10 — Path of the moai-owned store — CLOSED (lead ruling 09-26 (4) #2; A1 `65e0a9167`).** The
+  store is `$MOAI_HOME/db/<project-key>/contract/` (A1 `design.md:89`; `spec.md:94-96`, `:195`,
+  `:204`), in the same home layout as the queue database. The card state file, the disarm state,
+  and the per-card audit logs (each with its own hash chain) live there; A3's signing-event store uses the
+  same place.
 
 Also depends on A1 landing on `develop` before run-phase begins (card text: "plan 은 병행 가능,
 run 은 A1 develop 병합 뒤").
@@ -398,11 +428,16 @@ run 은 A1 develop 병합 뒤").
 
 ### Out of Scope — tamper through Bash
 
-- A card state file or detector audit log altered by a Bash command is caught only by the digest
-  check at the next hook (REQ-AE-017), never at the moment of the write; class 3 sees only
-  write-capable tool calls.
-- Local single-user: the goal is tamper evidence, not tamper prevention; deleting both via Bash
-  leaves no trace.
+- Local single-user: the goal is tamper evidence, not tamper prevention. Class 3 sees only
+  write-capable tool calls, so a Bash edit is seen, if at all, by the digest check at the next hook
+  (REQ-AE-017), never at the moment of the write.
+- The hash chain is unkeyed, so it is evidence only against naive edits: it catches an edit made
+  without recomputing the chain, and it does not catch a Bash edit that rewrites the card state
+  file and appends a recomputed chain line to the card audit log.
+- File removal is a bypass route. Deleting the card audit log alone is caught only while prior
+  evidence of arming survives (REQ-AE-017); deleting the card state file, the card audit log, and
+  any `contract`-kind or `detection-disarmed` record of the card via Bash leaves no trace: the card
+  reads as never armed, and the next arming restarts the class 7 budget counters from zero.
 
 ### Out of Scope — reviving the ac-baseline guard as a product feature
 
@@ -437,7 +472,9 @@ closes (`.moai/reports/t1235/plan-audit-iter1.md`, `-iter2.md`, `-iter3.md`).
 | lead ruling 09-26 (3) #4 | Move the prior-state file into the moai-owned store if A1/A3 names one; otherwise remove its path from the exemption list. | P4: the state file sat inside the `.moai/state/` exemption, so an agent could rewrite it unrecorded. No store path is named at `67a2f55cb`, so the path is carved out and R10 asks for the store. | REQ-AE-013, REQ-AE-017, R10 — superseded by (4) #2 |
 | lead ruling 09-26 (3) #5 | Apply B1-B6: re-pin §F to `6d98ca466`; an `acceptance.md` edit during run is a contract violation, so the void is correct, distinct from plan-phase edits before signing; `terminal` per A1; projection owner request; verify at PreToolUse; `frozen_files` from A1. | B1-B6 of `plan-audit-iter3.md`. | REQ-AE-005, 007, 012, §F |
 | lead instruction 09-26 (A1 re-pin) | Pin §F to A1 v0.5.0 at `67a2f55cb` instead of `6d98ca466`; re-check only the decider and agreement/disagreement surfaces. | A1 changed its kickoff decider section. The decider text this row added is withdrawn by (4) #1. | §F |
-| lead ruling 09-26 (4) #1 | Operator's final decision: the decider value set is {`human`, `llm`, `llm+jev`}; judgment rules (agreement, fallback, disagreement handling) belong to A3 (card t1236), and A1 v0.5.1 is schema only. This SPEC defines no decider rule and says only that the decider value follows the A1 schema; the record's `decider` field is preserved verbatim and not validated against a value list. | Decider rules are A3's; restating any of them here would pin a rule this SPEC does not own. | §F, §I.1 `decider`, REQ-AE-010, AC-AE-013 |
+| lead ruling 09-26 (4) #1 | Operator's final decision: the decider value set is {`human`, `llm`, `llm+jev`}; judgment rules (agreement, fallback, disagreement handling) belong to A3 (card t1236), and A1 v0.5.1 is schema only. This SPEC defines no decider rule and says only that the decider value follows the A1 schema; the record's `decider` field is preserved verbatim and not validated against a value list. | Decider rules are A3's; restating any of them here would pin a rule this SPEC does not own. | §F, §I.1 `decider`, REQ-AE-010, and the criterion numbered AC-AE-012 since v0.4.2 |
+| lead instruction 09-26 (plan-audit iteration 4) | Fix Q3, Q4, Q5 and m2: judge contract-store writes before every class 3 exemption; state the unkeyed-chain and deletion limits plainly; re-pin §F to A1 v0.5.1 `65e0a9167` and close R8, R9, R10 citing A1 lines; add the `spec.md` `status` read to C4. | `plan-audit-iter4.md` Q3 (store under a temp root was exempt), Q4 (residual risk overstated the chain), Q5 (A1 v0.5.1 landed after v0.4.1). | REQ-AE-013, §G, §F, C4, AC-AE-010 |
+| lead ruling 09-26 (5) | Option (a) for plan-audit iteration-4 Q1/Q2: one audit log per card inside the contract store, named `<card-id>.log.jsonl` from the worktree directory name byte for byte; the card's own log entries, not the state file, decide whether the card is armed. A disarm counts only when the log carries a disarm entry; a state file that lost its arming value while the log says armed is `state-tamper`; another card's appends never touch this card's chain; a missing log reads as never armed unless prior evidence of arming exists, in which case it is `state-tamper`. | Q1: the trigger read the state file, so emptying it disarmed silently instead of tripping `state-tamper`. Q2: one shared chain across cards and lanes let a legitimate append by another card break this card's check. | REQ-AE-017, definitions, design.md §C.6/§C.11, AC-AE-018/019/020 |
 | lead ruling 09-26 (4) #2 | R10 closed: the moai-owned store is `$MOAI_HOME/db/<project-key>/contract/`, outside the repository and every worktree, in the queue database's home layout. The card state file and the detector audit log with its hash chain move there; A3's signing-event store uses the same place. The store is not a project path: a tool-call write there is judged by the outside-root rule. | Supersedes the `.moai/state/escalation/` carve-out of (3) #4. | REQ-AE-013, REQ-AE-017, §F.2 R10, §G |
 
 ## §I — Escalation record format
@@ -498,7 +535,7 @@ not requirements of this SPEC any more; numbers below are the v0.2.1 identifiers
 | Push serializer on the `moai slot` `push-develop` lease (A3 precondition) | REQ-AE-024 |
 | PreToolUse deny on agent-invoked `moai contract sign`, with the receipt-path allowance (A3 precondition) | REQ-AE-025 |
 | Push serializer criteria (second push denied / first unaffected; release and stale reclaim) | v0.2.1 AC-AE-022, AC-AE-023 (numbers since reused) |
-| Contract-sign guard criteria (bypass shapes and controls; receipt path allowed) | v0.2.1 AC-AE-024, AC-AE-025 (024 since reused) |
+| Contract-sign guard criteria (bypass shapes and controls; receipt path allowed) | v0.2.1 AC-AE-024, AC-AE-025 (numbers since reused) |
 | Their mechanics, milestone, and bypass-shape table | design.md §G, plan.md M6, spec.md §J |
 | Receipt path; which window `push_requires_window` means | A1 requests R5, R6 |
 | Projecting the contract onto `mission.MissionContract` and reusing `ValidateMissionDecision` (`internal/mission/policy.go:200`) | O9 / N7 — mission-validator projection (A1 relabel requested as R8) |
