@@ -15,6 +15,8 @@
 #   3. a failing test with captured output -> FAILED
 #   4. a package-level failure with no failing test (TestMain exit) -> FAILED PKG
 #   5. a package that failed to compile    -> BUILD FAILED
+#   6. an AC snapshot absent report logged by a PASSING test (repeated, one
+#      copy CRLF-terminated, one carrying '%') -> one ::notice per report
 #
 # Shapes 1 and 2 are the pair REQ-CTO-006 requires be detected by a SINGLE
 # Action=="skip" pass and labelled apart by the presence of the Test field.

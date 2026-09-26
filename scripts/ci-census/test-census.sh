@@ -160,11 +160,12 @@ echo "=== totals: packages=$packages passed=$passed skipped=$skipped nothing-ran
 # The AC corpus test reports a SPEC missing from the AC snapshot with t.Logf
 # and does not fail, by contract. A passing test's output appears nowhere in
 # this census, so the report was invisible in CI; re-raise each line as a
-# GitHub ::notice (an annotation, never a failure). '%' is the workflow-command
-# escape character and must be encoded; the other escapes need a newline or a
-# carriage return, which a single log line cannot carry.
+# GitHub ::notice (an annotation, never a failure). A log line can still end in
+# a carriage return, so CRs are dropped before de-duplication (a CRLF copy of a
+# line would otherwise survive sort -u and render broken); '%' is the
+# workflow-command escape character and is encoded.
 jq -r 'select(.Action=="output" and ((.Output // "") | contains("absent-from-snapshot "))) | .Output' "$stream" |
-	sed -n 's/.*absent-from-snapshot //p' | sort -u |
+	tr -d '\r' | sed -n 's/.*absent-from-snapshot //p' | sort -u |
 	while IFS= read -r ln; do
 		[ -z "$ln" ] && continue
 		echo "::notice title=AC snapshot absent::$(printf '%s' "$ln" | sed 's/%/%25/g') (matched by the AC corpus glob but absent from the AC snapshot - reported, not failed)"
