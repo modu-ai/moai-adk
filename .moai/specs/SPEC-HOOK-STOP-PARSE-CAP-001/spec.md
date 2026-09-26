@@ -2,7 +2,7 @@
 id: SPEC-HOOK-STOP-PARSE-CAP-001
 title: "Claude Stop 파싱 실패 차단의 moai 자체 상한 — 호스트 상한에 기대지 않는 루프 한계와 사유 문구 개정"
 version: "0.2.1"
-status: in-progress
+status: completed
 created: 2026-09-26
 updated: 2026-09-26
 author: manager-spec (card t1272)

@@ -183,4 +183,24 @@ cascade_outside_acceptance_D: "hook_stdin_failclosed_ast_test.go AC-HSF-003 (b3)
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase>_
+```yaml
+sync_complete_at: 2026-09-26
+sync_commit_sha: pending-backfill   # a commit cannot name its own SHA; read it from the branch log
+sync_status: audit-ready-with-gap
+b12_self_test_a: "grep -c SPEC-HOOK-STOP-PARSE-CAP-001 CHANGELOG.md -> 0 before emission"
+b12_self_test_b: "distinct AC ids in acceptance.md = 19; CHANGELOG entry states 19"
+b12_self_test_c: "ls of all 7 paths cited in the entry -> all exist"
+changelog_entry_position: "[Unreleased] > Added, first bullet"
+frontmatter_status_transitions:
+  spec_md: "in-progress -> completed (plan.md / acceptance.md / progress.md carry no frontmatter)"
+  updated: "2026-09-26 (unchanged date)"
+docs_impact:
+  readme: none      # grep for hook-stdin-fail-closed / stop-parse terms in README*.md -> 0 files
+  docs_site: none   # same grep over docs-site/ -> 0 files; 'fail-closed' hits are unrelated goal-arm text
+  operator_doc: ".moai/docs/hook-stdin-fail-closed.md + template mirror updated in run commit 34aa7d440"
+carried_items:
+  - "AC-SPC-015 (iii) M5c — /clear session-id change not measured; needs interactive operator run (setup /private/tmp/t1272-m5a/proj)"
+  - "plan-audit iter3 optional O1/O2 executed as checks; acceptance.md wording not updated (manager-spec)"
+  - "AST guard carve-out in internal/cli/hook_stdin_failclosed_ast_test.go lies outside acceptance.md §D list (manager-spec)"
+  - "M1 commit aaa7f2b7d lacks Authored-By-Agent trailer (spec lint INFO OwnershipTransitionUnmeasured)"
+```
