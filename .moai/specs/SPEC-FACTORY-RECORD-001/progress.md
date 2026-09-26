@@ -206,7 +206,7 @@ gaps:
 
 ```yaml
 sync_complete_at: 2026-09-26
-sync_commit_sha: pending-backfill-sync
+sync_commit_sha: bf1f680b34f4e00e5528714ced90759fc1e5a38c
 sync_status: completed
 b12_self_test_a: "grep -c SPEC-FACTORY-RECORD-001 CHANGELOG.md -> 0 before emission"
 b12_self_test_b: "distinct AC ids in acceptance.md -> 25; CHANGELOG entry cites 25"
