@@ -136,7 +136,7 @@ entries:
     audit: "destructive filesystem wipe (unix root)"
     source: ".claude/settings.json#permissions.deny"
   - tool: "Bash"
-    args_pattern: "rm -rf /*:*"
+    args_pattern: "rm -rf /\\* *"
     risk_tier: irreversible
     decision: deny
     owner_agent: orchestrator
@@ -150,21 +150,21 @@ entries:
     audit: "destructive filesystem wipe (home directory)"
     source: ".claude/settings.json#permissions.deny"
   - tool: "Bash"
-    args_pattern: "rm -rf ~/*:*"
+    args_pattern: "rm -rf ~/\\* *"
     risk_tier: irreversible
     decision: deny
     owner_agent: orchestrator
     audit: "destructive filesystem wipe (home contents)"
     source: ".claude/settings.json#permissions.deny"
   - tool: "Bash"
-    args_pattern: "rm -rf C\\:/:*"
+    args_pattern: "rm -rf C:/:*"
     risk_tier: irreversible
     decision: deny
     owner_agent: orchestrator
     audit: "destructive filesystem wipe (Windows drive root)"
     source: ".claude/settings.json#permissions.deny"
   - tool: "Bash"
-    args_pattern: "rm -rf C\\:/*:*"
+    args_pattern: "rm -rf C:/\\* *"
     risk_tier: irreversible
     decision: deny
     owner_agent: orchestrator
@@ -173,21 +173,21 @@ entries:
 
   # --- §D.1c Windows-specific destructive ---
   - tool: "Bash"
-    args_pattern: "del /S /Q C\\:/:*"
+    args_pattern: "del /S /Q C:/:*"
     risk_tier: irreversible
     decision: deny
     owner_agent: orchestrator
     audit: "Windows recursive delete (drive root)"
     source: ".claude/settings.json#permissions.deny"
   - tool: "Bash"
-    args_pattern: "rmdir /S /Q C\\:/:*"
+    args_pattern: "rmdir /S /Q C:/:*"
     risk_tier: irreversible
     decision: deny
     owner_agent: orchestrator
     audit: "Windows rmdir recursive (drive root)"
     source: ".claude/settings.json#permissions.deny"
   - tool: "Bash"
-    args_pattern: "Remove-Item -Recurse -Force C\\:/:*"
+    args_pattern: "Remove-Item -Recurse -Force C:/:*"
     risk_tier: irreversible
     decision: deny
     owner_agent: orchestrator

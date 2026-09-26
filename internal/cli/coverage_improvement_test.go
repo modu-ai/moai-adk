@@ -304,6 +304,7 @@ func TestBuildAutoUpdateFunc_NilDeps(t *testing.T) {
 }
 
 func TestBuildAutoUpdateFunc_NoUpdateAvailable(t *testing.T) {
+	t.Setenv(config.EnvSkipBinaryUpdate, "")
 	origDeps := deps
 	defer func() { deps = origDeps }()
 
@@ -330,6 +331,7 @@ func TestBuildAutoUpdateFunc_NoUpdateAvailable(t *testing.T) {
 }
 
 func TestBuildAutoUpdateFunc_UpdateAvailableButNoOrchestrator(t *testing.T) {
+	t.Setenv(config.EnvSkipBinaryUpdate, "")
 	origDeps := deps
 	defer func() { deps = origDeps }()
 
@@ -357,6 +359,7 @@ func TestBuildAutoUpdateFunc_UpdateAvailableButNoOrchestrator(t *testing.T) {
 }
 
 func TestBuildAutoUpdateFunc_UpdateCheckError(t *testing.T) {
+	t.Setenv(config.EnvSkipBinaryUpdate, "")
 	origDeps := deps
 	defer func() { deps = origDeps }()
 
@@ -389,6 +392,7 @@ func TestBuildAutoUpdateFunc_UpdateCheckError(t *testing.T) {
 }
 
 func TestBuildAutoUpdateFunc_SuccessfulUpdate(t *testing.T) {
+	t.Setenv(config.EnvSkipBinaryUpdate, "")
 	origDeps := deps
 	defer func() { deps = origDeps }()
 
