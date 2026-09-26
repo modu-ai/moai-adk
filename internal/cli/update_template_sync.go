@@ -675,6 +675,20 @@ func runTemplateSyncWithReporter(cmd *cobra.Command, reporter project.ProgressRe
 					_, _ = fmt.Fprintf(out, "  %s .gitignore merge warning: %v\n", uikit.SymWarning(), mergeErr)
 				} else {
 					_, _ = fmt.Fprintf(out, "  %s .gitignore user patterns preserved\n", uikit.SymSuccess())
+					// card t1276 F1 (lead-approved option A): the EntryMerge
+					// rewrote .gitignore as template + user entries AFTER the
+					// deploy tracked its render — re-record the merged output
+					// so the manifest matches the tree. Must go through the
+					// SAME in-memory mgr the later mergeable retrack saves:
+					// a fresh manager would save the new hash here and then
+					// have it overwritten by the stale entry that mgr still
+					// carries. The merge itself is what preserves the user's
+					// entries, and a user who edits .gitignore outside any
+					// update is not in this path, so their drift still reads
+					// user_modified (two-way).
+					if retrackErr := retrackManifestFiles(projectRoot, mgr, errOut, []string{".gitignore"}); retrackErr != nil {
+						_, _ = fmt.Fprintf(errOut, "  manifest retrack (.gitignore): %v\n", retrackErr)
+					}
 				}
 			}
 			// Merge user-customized files using 3-way merge engine, then settle
