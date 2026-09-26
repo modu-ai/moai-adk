@@ -264,7 +264,7 @@ workflow:
 | `contract.second_review` | 为 `required` 时，契约的 `review.second_model` 为 `none` 或为空即判定无效。`advisory` 和 `off` 不做此检查 |
 | `contract.push_develop` | 为 `false`（默认）时，包含 `push-develop` 操作的契约判定为无效 |
 | `kickoff.decider` | 启动决策者：`human`、`llm` 或 `llm+jev`。省略时由模式推导。单独使用 `jev` 属于配置错误，回执签署会被拒绝 |
-| `kickoff.jev_min_confidence` | 接受 Jev 判断的最低置信度。默认 `0.50` |
+| `kickoff.jev_min_confidence` | 预留给启动回执签发方，作为其接受 Jev 判断的最低置信度。本版本只读取并校验该值，不影响签署与校验。默认 `0.50` |
 | `escalation.budget_default` | 契约中没有 `budget` 时，签署时填入的默认预算 |
 
 **取值无效时。** 键缺失时使用上述默认值。若 `mode`、`second_review`、`decider` 或 `jev_min_confidence` 填写了不允许的值，则回退到更严格的默认值（`guided`、`required`、`human`、`0.50`），并通过警告指出被替换的键。

@@ -264,7 +264,7 @@ workflow:
 | `contract.second_review` | `required` makes a contract invalid when its `review.second_model` is `none` or empty. `advisory` and `off` skip this check |
 | `contract.push_develop` | When `false` (default), a contract containing the `push-develop` action is invalid |
 | `kickoff.decider` | Who makes the kickoff decision: `human`, `llm`, or `llm+jev`. Derived from the mode when omitted. `jev` alone is a configuration error, and receipt signing is refused |
-| `kickoff.jev_min_confidence` | Minimum confidence at which a Jev judgment is accepted. Default `0.50` |
+| `kickoff.jev_min_confidence` | Reserved for the kickoff receipt issuer as the minimum confidence at which it accepts a Jev judgment. In this release the value is only read and validated; it does not affect signing or verification. Default `0.50` |
 | `escalation.budget_default` | Default budget filled in at signing time when a contract has no `budget` |
 
 **Invalid values.** An absent key takes the default above. An unrecognized value for `mode`, `second_review`, `decider`, or `jev_min_confidence` falls back to the stricter default (`guided`, `required`, `human`, `0.50`), with a warning naming the key.

@@ -264,7 +264,7 @@ workflow:
 | `contract.second_review` | `required` 이면 계약의 `review.second_model` 이 `none` 이거나 비어 있을 때 무효로 판정합니다. `advisory` · `off` 는 이 검사를 하지 않습니다 |
 | `contract.push_develop` | `false`(기본)이면 계약의 `push-develop` 작업을 무효로 판정합니다 |
 | `kickoff.decider` | 착수 결정 주체. `human` · `llm` · `llm+jev`. 생략하면 모드에서 파생됩니다. `jev` 단독은 설정 오류이며 영수증 서명이 거부됩니다 |
-| `kickoff.jev_min_confidence` | Jev 판단을 받아들이는 최소 신뢰도. 기본 `0.50` |
+| `kickoff.jev_min_confidence` | 착수 영수증을 발급하는 쪽이 Jev 판단을 받아들일 최소 신뢰도로 쓰도록 예약된 값. 이번 릴리스에서는 값을 읽어 형식만 검사하며, 서명과 검증에는 영향을 주지 않습니다. 기본 `0.50` |
 | `escalation.budget_default` | 계약에 `budget` 이 없을 때 서명 시점에 채워 넣는 기본 예산 |
 
 **값이 틀렸을 때.** 키가 없으면 위 기본값을 씁니다. `mode` · `second_review` · `decider` · `jev_min_confidence` 에 허용되지 않은 값을 적으면 더 엄격한 기본값(`guided` · `required` · `human` · `0.50`)으로 되돌리고, 어느 키를 바꿨는지 경고로 알립니다.

@@ -264,7 +264,7 @@ workflow:
 | `contract.second_review` | `required` の場合、契約の `review.second_model` が `none` または空だと無効と判定します。`advisory`・`off` ではこの検査を行いません |
 | `contract.push_develop` | `false`（既定）の場合、`push-develop` 作業を含む契約は無効と判定されます |
 | `kickoff.decider` | 着手を決める主体。`human`・`llm`・`llm+jev`。省略時はモードから導出されます。`jev` 単独は設定エラーで、レシート署名は拒否されます |
-| `kickoff.jev_min_confidence` | Jev の判断を受け入れる最小信頼度。既定は `0.50` |
+| `kickoff.jev_min_confidence` | 着手レシートの発行側が Jev の判断を受け入れる最小信頼度として使うために予約された値。このリリースでは値を読み込んで形式を検査するだけで、署名と検証には影響しません。既定は `0.50` |
 | `escalation.budget_default` | 契約に `budget` がない場合に、署名時に補われる既定の予算 |
 
 **値が不正な場合。** キーがなければ上記の既定値を使います。`mode`・`second_review`・`decider`・`jev_min_confidence` に許可されていない値を書くと、より厳しい既定値（`guided`・`required`・`human`・`0.50`）に戻し、どのキーを置き換えたかを警告で示します。
