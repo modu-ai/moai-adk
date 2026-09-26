@@ -2,7 +2,7 @@
 id: SPEC-HOOK-MATCHER-POWERSHELL-001
 title: "Run the shell-command guard hooks for the PowerShell tool, not only for Bash"
 version: "0.2.2"
-status: draft
+status: in-progress
 created: 2026-09-26
 updated: 2026-09-26
 author: manager-spec
