@@ -24,7 +24,7 @@ exists. One commit. A linked worktree `W` made with `git worktree add`. `W` has 
 without `.moai`.
 
 **F-noid — primary not identifiable.** Fixture F where the primary checkout cannot be
-identified, in two variants reused from SPEC-MCP-WORKTREE-UNTRACKED-001 AC-MWU-015:
+identified, in two variants reused from SPEC-MCP-WORKTREE-UNTRACKED-001 AC-MWU-015 [REF]:
 (a) a `PATH` from which git cannot be found; (b) the `HEAD` file inside `W`'s admin
 directory `P/.git/worktrees/<W>/` deleted while `commondir` and `gitdir` stay, so the
 scrubbed git inspection exits non-zero. As in that predecessor criterion, `W` carries
@@ -80,19 +80,29 @@ the detector (fail-open) without a real review.
   not exist.
   Cell 2 — Given fixture F2, When `audit_multi` runs for session `S` with
   `project_root = W` (Claude `fail`, codex `pass`) and then with `project_root = W2`
-  (Claude `pass`, codex `pass`), and `runMultiReviewGate` is then fed
-  `{"session_id":"S","cwd":W2}` with `CLAUDE_PROJECT_DIR` unset and the detector
-  seam recording, Then two convergence results for `S` exist in `P`'s store — tree
-  identities `W` (`fail`) and `W2` (`pass`) — and the gate emits `"decision":"block"`.
+  (Claude `pass`, codex `pass`), and `runMultiReviewGate` is then fed, in two
+  separate calls with `CLAUDE_PROJECT_DIR` unset and the detector seam recording,
+  (2a) `{"session_id":"S","cwd":W2}` and (2b) `{"session_id":"S","cwd":P}`, Then two
+  convergence results for `S` exist in `P`'s store — tree identities `W` (`fail`)
+  and `W2` (`pass`) — and the gate emits `"decision":"block"` in both 2a and 2b.
+  Cell 2b is the reader half of REQ-WSR-007: a gate whose input resolves to `P`
+  finds a `fail` that `audit_multi` wrote for `W`.
   RED-now: cell 1 — the file is written to `W/.moai/state/audit-multi/S.json` and
   carries no tree identity (`persistConvergenceResult` / `convergenceStateDirFor`,
   `internal/cli/mcp_convergence.go:903-927`); cell 2 — each result lands in its own
   worktree's store, and the gate on `W2` reads its opt-in flag from `W2`, where no
-  `workflow.yaml` exists, so it emits `{}`.
+  `workflow.yaml` exists, so it emits `{}` (2a); the gate on `P` reads its flag from
+  `P` (enabled) and calls the detector, but `P/.moai/state/audit-multi/S.json` does
+  not exist, so it emits `{}` (2b).
   Discriminating mutant (the v0.1.0 design — shared store keyed by session id
   only): cell 2's second write replaces the first at one `S.json`, the store holds a
   single `pass` result, and the gate emits `{}` instead of blocking. Derived from
   the session-only path at `mcp_convergence.go:910`, not executed at plan time.
+  Second discriminating mutant ("P gate reads only `S.json`" — `W`'s result is
+  stored under the tree-qualified name of plan.md §F, but a gate resolved to a
+  non-orphaned root still loads only `<store>/audit-multi/S.json`): cell 2b finds no
+  `S.json` in `P`'s store and emits `{}` instead of blocking. Derived from
+  `loadConvergenceResult` (`multi_review_gate.go:113-127`), not executed at plan time.
   Command: `go test ./internal/cli/ -run TestWSR002 -count=1`.
 
 - **AC-WSR-003 (primary not identifiable on write and read; REQ-WSR-004, REQ-WSR-006).**
@@ -138,7 +148,7 @@ the detector (fail-open) without a real review.
   (`internal/cli/mcp_project_root_worktree_ac_test.go:296`), which asserts the phrases
   "still read from the accepted tree" (L300) and "that refusal is not guaranteed"
   (L315) that REQ-WSR-016 removes: those two assertions are replaced by the
-  AC-WSR-015 phrases. `TestConfigOrphanedWorktree_CatalogueWarning` (AC-MWU-016)
+  AC-WSR-015 phrases. `TestConfigOrphanedWorktree_CatalogueWarning` (AC-MWU-016 [REF])
   asserts only the presence of the `worktree_warning` key and the unchanged
   `_root.warning` text (L238, L256-L266), so it passes unedited. Any other existing
   test that fails is a blocker report, not an edit.
@@ -268,11 +278,12 @@ the detector (fail-open) without a real review.
   Discriminating mutant (the v0.1.0 design — shared store, rejections without tree
   identity): `A2`'s corroborated PASS clears every `plan-auditor` rejection in the
   store (`ClearRejectionsForRole`, `internal/auditreceipt/store.go:300`, called at
-  `audit_receipt_guard.go:116`), so the spawn with `cwd = W` is allowed — the silent
-  cross-tree clearing; `A3`'s record replaces `A1`'s because the file name keys on
-  agent type and SPEC ID only (`store.go:410-415`), so one record remains; and the
-  spawn with `cwd = P` is denied because `ListRejections` returns the whole store
-  (`store.go:270`). Derived from the cited code, not executed at plan time.
+  `audit_receipt_guard.go:116`), deleting `A1`'s record — the silent cross-tree
+  clearing; `A3` then writes a new record (the file name keys on agent type and SPEC
+  ID only, `store.go:410-415`), so one record (`W2`'s) remains, and because
+  `ListRejections` returns the whole store (`store.go:270`) the spawns with
+  `cwd = W` and `cwd = P` are both denied — the "two records" and "`cwd = P`
+  allowed" predicates fail. Derived from the cited code, not executed at plan time.
   Command: `go test ./internal/hook/ -run TestWSR007 -count=1`.
 
 - **AC-WSR-008 (guard active on a config-orphaned worktree; REQ-WSR-003, REQ-WSR-006, REQ-WSR-009).**
@@ -449,7 +460,8 @@ the detector (fail-open) without a real review.
   review gates' input-to-root mapping, and the optional M0 probe (plan.md §D)
   captures the real payload.
 - A session that audited several trees must clear each tree's `fail` before its
-  multi-review gate allows (REQ-WSR-007); AC-WSR-002 cell 2 pins the block.
+  multi-review gate allows (REQ-WSR-007); AC-WSR-002 cell 2 pins the block, and its cell 2b pins that a gate resolved to
+  `P` finds the `fail` written for `W`.
 
 ## §D.2 Definition of Done
 

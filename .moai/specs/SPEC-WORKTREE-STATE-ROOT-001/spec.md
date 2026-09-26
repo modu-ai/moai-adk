@@ -1,7 +1,7 @@
 ---
 id: SPEC-WORKTREE-STATE-ROOT-001
 title: "State and catalogue roots for a config-orphaned linked worktree"
-version: "0.2.0"
+version: "0.2.1"
 status: draft
 created: 2026-09-26
 updated: 2026-09-26
@@ -24,6 +24,7 @@ tags: "worktree, untracked-moai, state-root, audit-receipt, review-gate, catalog
 |---|---|---|---|
 | 0.1.0 | 2026-09-26 | manager-spec (t1213) | Initial plan-phase draft. Takes over the configuration/catalogue/state items SPEC-MCP-WORKTREE-UNTRACKED-001 §6 deferred to card t1213, grounded in the re-measurement of t1202 plan-audit-iter2 D18 and D25. |
 | 0.2.0 | 2026-09-26 | manager-spec (t1213) | Plan-audit iter-1 revision (FAIL 0.71). Closes D1 (rejection records carry and are filtered by tree identity — REQ-WSR-003 widened to every record routed into a shared store), D2 (predecessor tests that break named; plan R4 corrected), D3 (change-detector seam in the review-gate criterion), D4 (`spec_drift` / `spec_audit` union predicates with a non-empty-findings premise), D5 (guard behaviour with an unresolved store: no marker or rejection, re-entrant stop, spawn denial — REQ-WSR-010), D6 (convergence results carry tree identity, never replace another tree's, and the gate blocks on any fail — REQ-WSR-003, REQ-WSR-007), D7 (`audit_multi` skip cell), D8 (decision-1 rationale narrowed to store reachability), D9 (`moai verify record`, rejection path, drift/audit, tool descriptions observed), D10 (criterion selector), and optional D11–D14 (unattributed observation removed, review-gate activation risk, `_root` tool list enumerated, REQ-WSR-001 stated as behaviour). Adds the review-gate root measurement matrix requested by the lead (acceptance AC-WSR-006) and the shared `project_root` parameter description to REQ-WSR-016. REQ and AC counts unchanged (16 / 16); AC-WSR-006 and the former AC-WSR-007 were merged into the matrix, and AC-WSR-007 now carries the rejection tree-identity criterion. |
+| 0.2.1 | 2026-09-26 | manager-spec (t1213) | Plan-audit iter-2 (FAIL 0.78) accepted by the operator as PASS-with-debt; conditions applied. N1: AC-WSR-002 cell 2 gains cell 2b (gate input `cwd = P` must block on the `fail` `audit_multi` wrote for `W`) and the named mutant "P gate reads only `S.json`". N2: plan.md decision 2 and new risk R9 state the fail-closed spawn denial's blast radius (repositories without the receipt gate, permanent under separate-git-dir layouts, broader than the MCP side) and the release path (`workflow.yaml` in `W`). N3: `[REF]` markers on the two predecessor AC citations. N4: AC-WSR-007 mutant derivation corrected. No REQ change; REQ and AC counts unchanged (16 / 16). |
 
 ## §1 Problem
 
