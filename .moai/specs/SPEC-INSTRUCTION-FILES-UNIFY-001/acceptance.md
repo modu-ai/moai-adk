@@ -661,16 +661,28 @@ members are not named is not a debt list, it is a disclaimer.
    block of this file states this plainly rather than implying a live check. A criterion added or
    edited during the run phase is exactly where the class returns, and nothing mechanical will
    catch it in the interim.
+3. **CI never executes `TestClaudeImportResolution_AgentsLocalSentinel`, so `AC-IFU-019`'s
+   durable check has local-run evidence only.** The test needs a live `claude` with credentials
+   and skips without one. CI runs the suite as `go test -json … ./...`
+   (`.github/workflows/ci.yml:229` in the `test` job, `:311` in the race job), so the skip is
+   recorded in the event stream, and `scripts/ci-census/test-census.sh` lists it as a
+   `SKIPPED TEST` row — but the census is a reporter that exits `0` by contract
+   (`test-census.sh:52-54`), and no step fails, warns, or annotates on a skip. A green CI run is
+   therefore indistinguishable from a run in which this check did not execute, and a regression
+   in Claude Code's import resolution would pass CI. The check stays live only while someone runs
+   it locally with `claude` present; `plan.md` M3 owns that run and records its
+   `--- PASS: TestClaudeImportResolution_AgentsLocalSentinel ` line in `progress.md` §E.2. This
+   is accepted as debt, not closed by this SPEC.
 
 **Deferred to card t1270 (out of this SPEC's plan scope; coordinates recorded here so t1270 can
 pick them up without re-deriving them):**
 
-3. **D21 (t1270) — `AC-IFU-009` asserts the removal of the superseded budget sentence and not the presence
+4. **D21 (t1270) — `AC-IFU-009` asserts the removal of the superseded budget sentence and not the presence
    of its replacement.** `REQ-IFU-017`'s first half ("shall state that the budget is charged
    against project instruction files only") is satisfiable by deleting the old sentence and writing
    nothing. The repair is a third clause greping both mirrors for the replacement phrasing; the
    existing `grep -c 'truncat'` clause discharges the requirement's **second** half, not its first.
-4. **D22 (t1270) — three criteria narrower than the requirement they cite.** `AC-IFU-020` asserts
+5. **D22 (t1270) — three criteria narrower than the requirement they cite.** `AC-IFU-020` asserts
    `moai init` where `REQ-IFU-004` names `init` **and** `update`, and `update` is the likelier
    regression surface because it re-deploys over an existing tree. `AC-IFU-027` asserts the
    `AGENTS.local.md` sentinel where `REQ-IFU-005` names both `AGENTS.md` **and**
@@ -687,8 +699,8 @@ pick them up without re-deriving them):**
    gained a durable Go test, `TestClaudeImportResolution_AgentsLocalSentinel`, rather than a
    narrowed `REQ-IFU-023`. That test needs a live `claude` and skips without one, so CI will show
    it skipped, not passed — the check survives the run phase as a re-runnable local gate, and a
-   skipped run discharges nothing. No criterion id was added; the count stays at 20.
-5. **The `moai spec lint` anchoring rule itself — card t1269.** `VacuousAssertionRule` in
+   skipped run discharges nothing (named debt item 3). No criterion id was added; the count stays at 20.
+6. **The `moai spec lint` anchoring rule itself — card t1269.** `VacuousAssertionRule` in
    `internal/spec/lint_vacuous_assertion.go`, registered in the rule slice in
    `internal/spec/lint.go`, with two-arm fixtures — one arm carrying a conformant criterion that
    must pass, one carrying each unanchored shape that must be caught. [HARD] **t1269 has not landed,
