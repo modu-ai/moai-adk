@@ -7,7 +7,7 @@
 ### M1.1 — RED 선관측 (테스트 먼저)
 - AC-HN-001..007(+4b) 테스트 작성 → `unset … && go test …` FAIL 출력 관측 → `.moai/reports/t1273/red-*.txt` 저장 (첫 줄 = 관측 시점 HEAD SHA).
 - **Fixture 계약**: 저장소는 factory.db이므로 fixture는 `SavePending` 호출/homestate 세팅으로 만든다 — legacy `pending.json` fixture는 호환 분기 검증(AC-HN-004b)에만.
-- 판정 패키지: `internal/cli/` (show), 워크트리 생성 패키지 (시딩 — 실제 materializer 소재는 이 시점에 실측 확정해 acceptance 표에 회기).
+- 판정 패키지: `internal/cli/` (show·시딩 — 워크트리 materializer는 `internal/cli/session_worktree.go` 소재, 재심사 실측 `session_worktree.go:205`; 시딩 테스트도 이 패키지에 둔다).
 
 ### M1.2 — `moai handoff show` (P3)
 - `internal/homestate/handoff.go`: 소비 이력 최신 조회 함수 1개(status='consumed', consumed_at DESC) — 폴백 소스.
@@ -50,7 +50,7 @@
 ## §D 검증 계획 (레인-로컬·대상 한정)
 
 - `go test ./internal/cli/ -count=1 -run 'TestHandoff*'` + `TestRenderHandoffContext` 등 기존 형제.
-- `go test ./internal/worktree/ -count=1` (시딩 추가 후 관련 그룹) / `./internal/codexadapter/`.
+- `go test ./internal/cli/ -count=1 -run 'TestNew_Seeds\|TestEnterWorktree_Seeds'` (시딩 그룹) / `./internal/codexadapter/`.
 - `go vet`·`gofmt -l`·`golangci-lint run` 대상 패키지.
 - 전체 스위트는 develop push 후 CI (레인에서 `go test ./...` 금지).
 

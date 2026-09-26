@@ -70,7 +70,7 @@ P1은 **옵션 A가 착지된 뒤에만** 매핑 추가가 의미를 갖는다 (
 `moai handoff save`는 이미 CLI다 — Codex 세션도 shell에서 호출할 수 있다. M1은 코드 변경 없이 **문서화**로 이 방향을 연다:
 
 - Codex 세션이 인계를 남기는 절차: 응답 본문에 6블록 렌더 → `moai handoff save --stdin --spec <ID> --phase <phase>` 로 파이프. 세션-하네스 판별 불필요 (파일이 곧 매체).
-- Claude 인젝터는 pending row의 출처(어느 하네스가 save했는지)를 묻지 않으므로 Codex가 저장한 인계를 다음 Claude 세션이 자동 소비한다 — **역방향은 이미 무상태로 성립**. 이 비대칭(정방향만 새 공사)이 M1의 실제 범위다.
+- Claude 인젝터는 pending row의 출처(어느 하네스가 save했는지)를 묻지 않으므로 Codex가 저장한 인계를 다음 Claude 세션이 자동 소비한다 — **역방향은 이미 무상태로 성립**. 이 비대칭(정방향만 새 공사)이 M1의 실제 범위다. 소비 조건 실측(handoff_inject.go:52-100): 주입·소비는 `mode=="auto"` ∧ pending present ∧ !stale ∧ `input.Source=="clear"`의 넷뿐이며, `SavedBySession`은 기록·반환만 되고 claim/소비 판정에 쓰이지 않는다(claim은 claim_token SQLite CAS) — 저장자 신원을 검사하는 경로는 존재하지 않는다. startup/resume 세션은 notice-only 힌트만 내고 이것도 출처 무관이다.
 
 ### D4 — 6블록 형식 불변 (M1 경계)
 
@@ -78,7 +78,7 @@ M1은 렌더 형식을 바꾸지 않는다. `show`는 저장된 Body를 **바이
 
 ### D5 — AGENTS.md 소비 계약은 M3으로 이월
 
-Codex 세션이 pending.json을 스스로 발견하게 하는 AGENTS.md 문구(예: "세션 시작 시 `moai handoff show`를 먼저 확인하라")는 t1243(지시 파일 통합)과 같은 파일을 다룬다 — M3(t1243 병합 후)에 배치한다. M1이 제공하는 것: 그 문구가 호출할 도구(`show`). 문구 초안(2-3줄, 영문)은 M3 착수 시 제출.
+Codex 세션이 저장된 인계를 스스로 발견하게 하는 AGENTS.md 문구(예: "세션 시작 시 `moai handoff show`를 먼저 확인하라")는 t1243(지시 파일 통합)과 같은 파일을 다룬다 — M3(t1243 병합 후)에 배치한다. M1이 제공하는 것: 그 문구가 호출할 도구(`show`). 문구 초안(2-3줄, 영문)은 M3 착수 시 제출.
 
 ## §C — LIVE 검증 절차서 (9/28 14:37 이후 · 격리)
 

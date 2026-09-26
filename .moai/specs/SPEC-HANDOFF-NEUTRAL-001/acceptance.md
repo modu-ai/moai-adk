@@ -20,12 +20,12 @@
 | AC-HN-003 | 003 | R | `go test ./internal/cli/ -count=1 -run 'TestHandoffShow_JSONOutput' -v` | PASS — JSON에 body·spec·phase·출처(pending/consumed) 포함 | 동일 |
 | AC-HN-004 | 004 | R | `go test ./internal/cli/ -count=1 -run 'TestHandoffShow_LocaleHeader' -v` | PASS — 저장 언어(ko·en)별 헤더 분기, 본문 미변경 | 동일 |
 | AC-HN-004b | 004 | R | `go test ./internal/cli/ -count=1 -run 'TestHandoffShow_LegacyCompatRead' -v` | PASS — legacy pending.json이 있고 DB가 비었을 때 읽기 호환 경로가 그것을 재출력 (호환 분기의 명시적 검증) | 동일 |
-| AC-HN-005 | 005 | R | 시딩 패키지 `-run 'TestNew_SeedsCodexHooksJson' -v` (소재: `internal/cli/worktree/` 생성 경로 — M1.1에서 실측 확정 후 이 표에 회기) | PASS — 새 워크트리에 `.codex/hooks.json` 존재, moai 소유 커맨드 포함 (생성 로직 `internal/codexwiring` 재사용) | 시딩 코드 부재로 신규 테스트 FAIL |
-| AC-HN-006 | 006 | R | `-run 'TestEnterWorktree_SeedsMissingCodexHooks' -v` (동일·소재 확정) | PASS — 부재 트리 진입 시 채워짐, 존재 트리 진입 시 바이트 불변 | 동일 |
-| AC-HN-007 | 007 | R | 시딩 패키지 `-run 'TestNew_SeedFailureFailOpen' -v` | PASS — 시딩 강제 실패(경로 오염)에도 워크트리 생성 성공 + stderr 진단 | 동일 |
+| AC-HN-005 | 005 | R | `go test ./internal/cli/ -count=1 -run 'TestNew_SeedsCodexHooksJson' -v` (materializer 소재: `internal/cli/session_worktree.go`, 재심사 실측) | PASS — 새 워크트리에 `.codex/hooks.json` 존재, moai 소유 커맨드 포함 (생성 로직 `internal/codexwiring` wire.go 재사용) | 시딩 코드 부재로 신규 테스트 FAIL |
+| AC-HN-006 | 006 | R | `go test ./internal/cli/ -count=1 -run 'TestEnterWorktree_SeedsMissingCodexHooks' -v` | PASS — 부재 트리 진입 시 채워짐, 존재 트리 진입 시 바이트 불변 | 동일 |
+| AC-HN-007 | 007 | R | `go test ./internal/cli/ -count=1 -run 'TestNew_SeedFailureFailOpen' -v` | PASS — 시딩 강제 실패(경로 오염)에도 워크트리 생성 성공 + stderr 진단 | 동일 |
 | AC-HN-008 | 008 | R (조건부) | `go test ./internal/codexadapter/ -count=1 -run 'TestMapOutput_SessionStartAdditionalContext' -v` | 관문 (b) 통과 시에만 테스트가 작성되고 PASS | 관문 (b) 기각 시 본 AC는 REQ-HN-008과 함께 기각 종결 (기각 사유 기록, 테스트 미작성) |
 | AC-HN-009 | 009 | G | (LIVE 절차 — design §C) 관문당 관측 출력을 `.moai/reports/t1273/live-*.txt` | 관문 (a) moai 훅 발화 관측 / (b) 마커 도달 또는 부재 / (c) 길이·강등 여부 — 각각 관측 기록 | 쿼터 회복(9/28 14:37) 전 실행 불가 — 외부 의존이므로 regression-guard |
-| AC-HN-010 | 010 | R (보존) | `go test ./internal/cli/ ./internal/hook/ ./internal/codexadapter/ -count=1 -run 'TestHandoffSave_(WritesJSONNotMarkdown\|Schema\|Stdin\|RequiresBody)\|TestHandoffClear\|TestHandoffCmdRegistered\|TestRenderHandoffContext\|TestMapOutput' -v` | 열거한 **실존** 테스트 전부 PASS — M1이 save 표면·렌더 형식·어댑터 매핑을 건드리지 않았음 | red 없음(보존 AC) — 구현 후에도 변함없이 통과함이 green 판정 |
+| AC-HN-010 | 010 | R (보존) | `go test ./internal/cli/ ./internal/hook/ ./internal/codexadapter/ -count=1 -run 'TestHandoffSave_(WritesJSONNotMarkdown\|Schema\|Stdin\|RequiresBody)\|TestHandoffClear\|TestHandoffCmdRegistered\|TestRenderHandoffContext\|TestMapOutput' -v` | 열거한 **실존** 테스트 전부 PASS — M1이 save 표면·렌더 형식·어댑터 매핑을 건드리지 않았음. 주석(재심사 R1): `TestMapOutput` 패턴은 관문 (b) 채택 전까지 이 트리에서 0건 스윕이다 — 기각 분기에서는 이 패턴을 제외한 나머지가 "전부"의 판정 집합이고, 채택 분기에서는 AC-HN-008 테스트가 이를 채운다 | red 없음(보존 AC) — 구현 후에도 변함없이 통과함이 green 판정 |
 | AC-HN-011 | 011 | R | `grep -c "moai handoff save" .moai/specs/SPEC-HANDOFF-NEUTRAL-001/design.md` | ≥ 1 — 방향 중립(Codex→Claude save 경로) 문서화가 design §D3에 존재 | red 없음(문서 AC) — 본 문서가 이미 조건을 충족하면 run-phase에서 위반 시에만 red |
 | AC-HN-012 | (형식) | R | `go vet ./internal/cli/ ./internal/codexadapter/ ./internal/homestate/ && gofmt -l internal/cli/handoff.go internal/codexadapter/output.go` | vet exit 0, gofmt 빈 목록 | red 없음(형식 게이트) |
 

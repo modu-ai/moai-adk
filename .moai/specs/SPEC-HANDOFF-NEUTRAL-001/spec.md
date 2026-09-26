@@ -8,7 +8,7 @@ updated: 2026-09-26
 author: worker-61 (lane session, card t1273)
 priority: P1
 phase: "v3.0.0"
-module: "internal/cli, internal/codexadapter, internal/worktree"
+module: "internal/cli, internal/codexadapter, internal/homestate"
 lifecycle: spec-anchored
 tags: "handoff, codex, harness-neutral, cross-session"
 tier: L
@@ -73,7 +73,7 @@ Codex→Claude 방향( Codex 세션이 `moai handoff save --stdin`으로 남긴 
 
 - Template-First: M1은 템플릿 배포 파일을 만들지 않는다 (show는 CLI 동사, 시딩은 런타임 생성물 — 둘 다 `internal/template/templates/` 무접촉).
 - 16-프로그래밍-언어 중립·4-로케일(en/ko/ja/zh) 표 유지 — show 헤더 현지화는 기존 `handoffLocaleStrings` 관례 준수.
-- 검증은 레인-로컬 대상 테스트만 (`go test ./internal/cli/ -run …`, `./internal/codexadapter/`, `./internal/worktree/` 관련 그룹). 전체 스위트는 CI.
+- 검증은 레인-로컬 대상 테스트만 (`go test ./internal/cli/ -run …`, `./internal/codexadapter/`, `./internal/homestate/` 관련 그룹). 전체 스위트는 CI.
 - 커밋 메시지에 카드 id(t1273) 포함, push 금지(리드 일괄).
 
 ### §5.1 Out of Scope
