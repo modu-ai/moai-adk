@@ -6,10 +6,12 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strings"
 
 	gitcore "github.com/modu-ai/moai-adk/internal/core/git"
+	"github.com/modu-ai/moai-adk/internal/gitenv"
 	"github.com/modu-ai/moai-adk/internal/paths"
 )
 
@@ -48,12 +50,12 @@ func CanonicalProjectRoot(projectRoot string) string {
 	if dirs, err := gitcore.ResolveGitDirs(projectRoot); err == nil && dirs.CommonDir != "" {
 		if dirs.GitDir == dirs.CommonDir {
 			// Metadata may live outside the checkout (--separate-git-dir).
-			if out, err := gitcore.ExecCommand("git", "-C", projectRoot, "rev-parse", "--show-toplevel").Output(); err == nil {
+			if out, err := scrubbedGit(projectRoot, "rev-parse", "--show-toplevel").Output(); err == nil {
 				projectRoot = strings.TrimSpace(string(out))
 			}
 		} else if root, ok := primaryCheckoutRootFromCommonDir(dirs.CommonDir); ok {
 			projectRoot = root
-		} else if out, err := gitcore.ExecCommand("git", "-C", projectRoot, "worktree", "list", "--porcelain").Output(); err == nil {
+		} else if out, err := scrubbedGit(projectRoot, "worktree", "list", "--porcelain").Output(); err == nil {
 			// Git lists the primary checkout first, even with external metadata.
 			first, _, _ := strings.Cut(string(out), "\n")
 			if root, ok := strings.CutPrefix(first, "worktree "); ok {
@@ -65,6 +67,15 @@ func CanonicalProjectRoot(projectRoot string) string {
 		projectRoot = resolved
 	}
 	return filepath.Clean(projectRoot)
+}
+
+// scrubbedGit builds `git -C dir args...` without the caller's repository-
+// locating variables: an inherited GIT_DIR / GIT_WORK_TREE (git exports them
+// into hooks) would otherwise answer about the caller's checkout (t1208).
+func scrubbedGit(dir string, args ...string) *exec.Cmd {
+	cmd := gitcore.ExecCommand("git", append([]string{"-C", dir}, args...)...)
+	cmd.Env = gitenv.Env()
+	return cmd
 }
 
 // primaryCheckoutRootFromCommonDir handles Git's ordinary linked-worktree
