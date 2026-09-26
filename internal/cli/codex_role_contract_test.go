@@ -62,6 +62,38 @@ func codexRoleLastAssistantText(t *testing.T, path string) string {
 	return last
 }
 
+// codexRoleUniformityViolations checks pred against every role in roles with
+// three matched sets built from the role list itself: {} (nothing matched),
+// {role} (only this role), and every OTHER role. A uniform predicate returns
+// false, true, false respectively for every role. It returns one entry per
+// violation, naming the role and the matched set that exposed it.
+func codexRoleUniformityViolations(pred func(codexRoleLoadInput) bool, roles []string) []string {
+	var out []string
+	for _, r := range roles {
+		others := map[string]bool{}
+		for _, o := range roles {
+			if o != r {
+				others[o] = true
+			}
+		}
+		checks := []struct {
+			label   string
+			matched map[string]bool
+			want    bool
+		}{
+			{"empty", map[string]bool{}, false},
+			{"self", map[string]bool{r: true}, true},
+			{"others", others, false},
+		}
+		for _, c := range checks {
+			if got := pred(codexRoleLoadInput{Role: r, Matched: c.matched}); got != c.want {
+				out = append(out, fmt.Sprintf("%s/%s=%v", r, c.label, got))
+			}
+		}
+	}
+	return out
+}
+
 // TestCodexRoleLoadPredicateContractNeutral — AC-RLP-004 (REQ-RLP-002).
 func TestCodexRoleLoadPredicateContractNeutral(t *testing.T) {
 	root := repoRoot(t)
@@ -164,25 +196,39 @@ func TestCodexRoleLoadPredicateContractNeutral(t *testing.T) {
 	})
 
 	t.Run("role_name_branch_mutant_rejected", func(t *testing.T) {
-		// A mutant that special-cases manager-lead/mission-governor (e.g.
-		// returning true only for those two, or excluding them) would
-		// necessarily diverge from the uniform predicate's per-role verdict
-		// on at least one of the ten remaining roles. Demonstrate the
-		// divergence directly: a role-name-branching variant that treats
-		// ONLY the two contract-refusal roles as loaded (ignoring the
-		// other ten) disagrees with the uniform predicate on every one of
-		// the other ten roles.
-		branchingMutant := func(role string) bool {
-			return role == "manager-lead" || role == "mission-governor"
-		}
-		diverged := 0
+		// Run the PRODUCTION predicate through a uniformity check over all
+		// twelve roles: a role is loaded exactly when its own name is in the
+		// matched set, and never otherwise. A predicate that special-cases a
+		// role by name — forcing it true, or forcing it false — violates the
+		// check for that role (card t1260: the earlier form only inspected a
+		// lambda defined in this test, so a branch planted in the production
+		// predicate passed here).
+		roles := make([]string, 0, len(cases))
 		for _, c := range cases {
-			if branchingMutant(c.role) != true { // uniform predicate always says true here
-				diverged++
-			}
+			roles = append(roles, c.role)
 		}
-		if diverged == 0 {
-			t.Fatal("expected the role-name-branching mutant to diverge from the uniform predicate on at least one role")
+		if v := codexRoleUniformityViolations(codexRoleLoadPredicate, roles); len(v) != 0 {
+			t.Fatalf("codexRoleLoadPredicate is not uniform across roles: %v", v)
+		}
+
+		// Positive controls: the same check rejects both branch directions.
+		forceTrue := func(in codexRoleLoadInput) bool {
+			if in.Role == "manager-lead" || in.Role == "mission-governor" {
+				return true
+			}
+			return in.Matched[in.Role]
+		}
+		forceFalse := func(in codexRoleLoadInput) bool {
+			if in.Role == "manager-lead" || in.Role == "mission-governor" {
+				return false
+			}
+			return in.Matched[in.Role]
+		}
+		if v := codexRoleUniformityViolations(forceTrue, roles); len(v) == 0 {
+			t.Fatal("uniformity check failed to reject a force-true role-name branch")
+		}
+		if v := codexRoleUniformityViolations(forceFalse, roles); len(v) == 0 {
+			t.Fatal("uniformity check failed to reject a force-false role-name branch")
 		}
 	})
 
