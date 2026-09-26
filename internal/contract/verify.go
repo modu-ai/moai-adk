@@ -12,10 +12,11 @@ const (
 // Policy carries the workflow.autonomy values verify depends on. The caller
 // (CLI) reads configuration; this package never imports internal/config.
 type Policy struct {
-	SecondReview string // required | advisory | off
+	SecondReview string // required | advisory | off (anything else reads as required)
 	PushDevelop  bool   // workflow.autonomy.contract.push_develop
-	Mode         string // guided | contract
-	// BudgetDefault is workflow.autonomy.escalation.budget_default.
+	Mode         string // guided | contract (reported only)
+	// BudgetDefault is workflow.autonomy.escalation.budget_default; it fills
+	// an absent budget in the signable digest.
 	BudgetDefault Budget
 }
 
@@ -31,13 +32,12 @@ type Inputs struct {
 	ReceiptPresent      bool
 	Policy              Policy
 	RegistryRuleIDs     []string // constitution registry rule IDs
-	RegistryFrozenFiles []string // registry Frozen-zone file paths
-	SpecStatus          string   // spec.md frontmatter status
+	RegistryFrozenFiles []string // registry Frozen-zone file paths (literal, repo-relative)
+	SpecStatus          string   // spec.md frontmatter status, raw (quotes allowed)
 }
 
 // Report is the verify result. JSON field names are the stable names of
-// design.md § show --json / verify --json; later milestones add the derived
-// fields to this struct.
+// design.md § `show --json` object; slices marshal as [] and never null.
 type Report struct {
 	SpecID        string   `json:"spec_id"`
 	Card          string   `json:"card"`
@@ -51,8 +51,8 @@ type Report struct {
 	// RecordedContractSHA256 is signature.contract_sha256 (empty when unsigned).
 	RecordedContractSHA256 string `json:"recorded_contract_sha256"`
 	// SignableContractSHA256 is the digest `sign` would record now
-	// (acceptance binding measured, budget filled). Not computed in M1:
-	// it needs the acceptance measurement and the budget default.
+	// (acceptance binding measured, budget filled). Empty when no signable
+	// binding exists: acceptance section or file absent, or the count unusable.
 	SignableContractSHA256 string `json:"signable_contract_sha256"`
 
 	Acceptance        ReportAcceptance `json:"acceptance"`
@@ -66,11 +66,14 @@ type Report struct {
 	Mode              string           `json:"mode"`
 	Budget            *Budget          `json:"budget"`
 	Signature         *SignatureView   `json:"signature"`
+
 	// Contract is the decoded contract (nil when decoding failed).
 	Contract *Contract `json:"-"`
 }
 
-// ReportAcceptance is the recorded and measured acceptance binding.
+// ReportAcceptance is the recorded and measured acceptance binding. The
+// recorded values are null when the contract omits them; the measured count
+// is 0 when acceptance.md is absent or its count is unusable.
 type ReportAcceptance struct {
 	SHA256          *string `json:"sha256"`
 	MeasuredSHA256  string  `json:"measured_sha256"`
@@ -78,7 +81,9 @@ type ReportAcceptance struct {
 	MeasuredACCount int     `json:"measured_ac_count"`
 }
 
-// SignatureView is the signature as show --json reports it.
+// SignatureView is the signature as show --json reports it: every field
+// present (receipt null when absent, batch_id/supersedes "" when absent),
+// the digests and the seal left out.
 type SignatureView struct {
 	SignerKind string   `json:"signer_kind"`
 	Operator   Operator `json:"operator"`
@@ -105,6 +110,22 @@ func ValidSpecID(id string) bool {
 	return specIDRe.MatchString(id)
 }
 
+// newReport returns a report carrying the caller-derived values and empty
+// (non-nil) slices, so an undecodable contract still marshals `[]`.
+func newReport(in Inputs) Report {
+	return Report{
+		SpecID:         in.SpecID,
+		Reasons:        []string{},
+		Actions:        []string{},
+		EffectiveNever: []string{},
+		Scratch:        []string{},
+		FrozenFiles:    []string{},
+		Terminal:       isTerminal(in.SpecStatus),
+		SecondReview:   in.Policy.SecondReview,
+		Mode:           in.Policy.Mode,
+	}
+}
+
 // Verify evaluates a contract against its inputs. It is pure: no file,
 // process, or network access. It never returns an error; every problem is a
 // reason code. See the package documentation for the rules implemented.
@@ -114,7 +135,7 @@ func ValidSpecID(id string) bool {
 // writes, and by the downstream escalation hooks; its reason set and State
 // semantics are a published contract (design.md § Verify Reason Codes).
 func Verify(in Inputs) Report {
-	r := Report{SpecID: in.SpecID, Reasons: []string{}}
+	r := newReport(in)
 
 	c, err := Decode(in.Contract)
 	if err != nil {
@@ -149,6 +170,10 @@ func Verify(in Inputs) Report {
 		}
 		reasons.add(ReasonSchemaInvalid)
 	}
+	checkFieldRules(c, in, reasons)
+
+	measured := measureAcceptance(in)
+	checkAcceptanceBinding(c, measured, signed, reasons)
 
 	digest, err := Digest(c)
 	if err != nil {
@@ -163,7 +188,10 @@ func Verify(in Inputs) Report {
 		if c.Signature.ContractSHA256 != digest {
 			reasons.add(ReasonContractDigestMismatch)
 		}
+		checkSignature(c.Signature, measured, in, reasons)
 	}
+
+	fillDerived(&r, c, in, measured)
 
 	r.Reasons = reasons.sorted()
 	switch {

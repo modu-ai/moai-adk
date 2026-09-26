@@ -219,9 +219,11 @@ func TestVerify_SignatureConsistency(t *testing.T) {
 	more := map[string]func(*Signature){
 		"receipt method, human signer":           func(s *Signature) { *s = receiptSignature(digest); s.SignerKind = "human" },
 		"receipt method, llm+jev signer is fine": nil,
-		"interactive-tty with a receipt block":   func(s *Signature) { s.Receipt = &Receipt{Path: ReceiptFile, SHA256: strings.Repeat("5", 64), Provenance: "file"} },
-		"unknown method":                         func(s *Signature) { s.Method = "email" },
-		"empty signer_kind":                      func(s *Signature) { s.SignerKind = "" },
+		"interactive-tty with a receipt block": func(s *Signature) {
+			s.Receipt = &Receipt{Path: ReceiptFile, SHA256: strings.Repeat("5", 64), Provenance: "file"}
+		},
+		"unknown method":    func(s *Signature) { s.Method = "email" },
+		"empty signer_kind": func(s *Signature) { s.SignerKind = "" },
 	}
 	for name, edit := range more {
 		t.Run(name, func(t *testing.T) {
