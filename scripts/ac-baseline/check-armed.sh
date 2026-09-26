@@ -9,8 +9,8 @@
 # would with a guard that ran and found nothing. Silence therefore carries no
 # information, and the only fix is a surface that speaks when the guard cannot.
 #
-# Read-only: reads two git config keys, the git version, and one file's
-# existence. Writes nothing, changes no config, blocks nothing. Always exits 0
+# Read-only: reads two git config keys, the git version, one file's existence,
+# and the installer's cmd= line (parsed, never executed). Writes nothing, changes no config, blocks nothing. Always exits 0
 # so a SessionStart wiring can never stall or fail a session.
 #
 # Output contract: SILENT when armed. One line per fault to stderr otherwise,
@@ -23,6 +23,7 @@ name=ac-baseline-guard
 need_major=2
 need_minor=54
 checker=scripts/ac-baseline/check-staged.sh
+installer=scripts/ac-baseline/install-hook.sh
 faults=0
 
 warn() {
@@ -44,8 +45,34 @@ git rev-parse --git-dir >/dev/null 2>&1 || {
 if [ -z "$(git config --get "hook.$name.event" 2>/dev/null)" ]; then
 	warn "NOT ARMED: git config hook.$name.event is unset — run scripts/ac-baseline/install-hook.sh"
 fi
-if [ -z "$(git config --get "hook.$name.command" 2>/dev/null)" ]; then
+# The trailing x keeps $(...) from stripping trailing newlines, so the
+# comparison below sees every byte of the value (t1206, t1197 F1). Both sides
+# end in exactly the one newline git config and sed each print.
+got=$(git config --get "hook.$name.command" 2>/dev/null; echo x)
+got=${got%x}
+top=$(git rev-parse --show-toplevel 2>/dev/null)
+# An empty value comes back as that one newline alone; drop it before the
+# emptiness test so an empty command still reads as unset (t1206 audit D1).
+nl='
+'
+if [ -z "${got%"$nl"}" ]; then
 	warn "NOT ARMED: git config hook.$name.command is unset — run scripts/ac-baseline/install-hook.sh"
+elif [ -n "$top" ]; then
+	# 1b. Byte identity with what the installer in this tree writes (t1197, t1150
+	#     F9). A present-but-different command (hand-edited to `true`, or an older
+	#     installer's copy left behind) runs silently and says nothing, so presence
+	#     alone proves nothing. The installer is PARSED, never executed: running an
+	#     older copy of it would rewrite the shared config. Its cmd= line is a
+	#     single-quoted literal with no embedded quote, which install-hook.sh
+	#     keeps so this one sed can read it. Skipped without a work tree (bare
+	#     repository, cwd inside .git), exactly as step 3 is.
+	want=$(sed -n "s/^cmd='\(.*\)'\$/\1/p" "$top/$installer" 2>/dev/null; echo x)
+	want=${want%x}
+	if [ -z "$want" ]; then
+		warn "cannot read the expected hook command from $installer — cannot confirm hook.$name.command is current"
+	elif [ "$got" != "$want" ]; then
+		warn "STALE: git config hook.$name.command differs from what $installer writes — rerun scripts/ac-baseline/install-hook.sh"
+	fi
 fi
 
 # 2. The git version floor. Config-defined hooks are what this guard rides on;
@@ -69,7 +96,7 @@ esac
 
 # 3. The checker file, resolved against the repository top level rather than the
 #    caller's cwd: a SessionStart hook does not promise to start at the top.
-top=$(git rev-parse --show-toplevel 2>/dev/null)
+#    ($top was resolved in step 1.)
 if [ -n "$top" ] && [ ! -f "$top/$checker" ]; then
 	warn "$checker is absent from this tree — every commit here prints NOT CHECKED and is never blocked, until the tree absorbs develop"
 fi
