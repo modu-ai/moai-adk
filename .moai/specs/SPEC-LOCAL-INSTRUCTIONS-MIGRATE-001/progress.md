@@ -193,6 +193,131 @@ whole evidence for not shipping a snapshot.
   integration is a lead-granted window into `develop` rather than a per-phase PR; the two
   regimes are not reconciled here and the lead's dispatch governs.
 
+### plan-audit iter1 — PASS-WITH-DEBT 0.85, four blocking defects repaired (v0.2.1)
+
+Report: `.moai/reports/t1259/plan-audit-iter1.md`, written at `b8fb023e8` against tree
+`5ba87003f`. Tier L threshold 0.85; all seven must-pass criteria clean; traceability 1.00;
+Testability 0.65 carried the four defects. All nine of the plan phase's own re-measurements
+reproduced under the auditor's independent runs.
+
+Three shapes the plan phase explicitly referred to the audit were **accepted** and are not
+revisited: the `REQ-IFU-010a`/`010b` split under one id, excluding `AC-IFU-031` from the coverage
+table, and withdrawing the fixed reduction floor (judged to *strengthen* the criterion).
+
+**D1 — `AC-IFU-023` locale parity — repaired, equality replaced by equal-delta.** Re-measured in
+this tree rather than carried: `advanced/claude-md-guide.md` ko=10 vs en/ja/zh=18;
+`getting-started/quickstart.md` ko=14 vs 10; the other four pages equal. Two of six already
+unequal, in opposite directions, by 8 and by 4 sections — so an equality assertion either absorbs
+an unscoped twelve-section restructure into M4 or fails a correct implementation.
+
+Chose **equal-delta against a recorded baseline** over the audit's narrower alternative. Narrowing
+to "the sections the change adds" would have left M4 free to land 24 files whose locale structure
+diverges *further* with nothing to catch it — the audit's own residual-risk note. Equal-delta keeps
+the property the clause existed to protect (the four locales move in step) without asserting one
+that was false before the change. The baseline table is recorded in `acceptance.md` and is
+**re-measured at M4** against that milestone's base, not read from the table; what the table pins is
+the *shape* (two pages unequal, four equal), so a differing shape is a signal to re-read the
+criterion rather than to adjust numbers silently.
+
+Deliberately **not** done, per the dispatch: widening `REQ-IFU-020` to cover the restructure. It is
+real work needing an owner who can decide whether ko is missing eight sections or en/ja/zh carry
+eight they should not — a question this SPEC has no basis to answer.
+
+**D2 — `AC-IFU-029` discriminated nothing — repaired with BOTH of the audit's options.**
+Reproduced at `5ba87003f` with none of the work done:
+
+```
+$ unset MOAI_KANBAN MOAI_KANBAN_ID MOAI_KANBAN_LABEL MOAI_KANBAN_LEAD_ADDR MOAI_KANBAN_SETTINGS_INJECTED \
+    && go test ./internal/cli/ -run '^TestCodexLocalInstructions_DualFileMatrix$' -v
+--- PASS: TestCodexLocalInstructions_DualFileMatrix (0.01s)
+PASS
+ok  github.com/modu-ai/moai-adk/internal/cli
+```
+
+`REQ-IFU-008` is satisfied at `codex_launcher.go:138`. It is now declared a **preservation
+requirement** in `spec.md` §C.1 and `AC-IFU-029` is labelled a **regression guard** with that
+baseline recorded — so a later failure is meaningful and §D.3's "all ten criteria pass" no longer
+hands out a free pass. The audit offered declaration *or* extension; both are applied, because
+declaration alone leaves the criterion unable to fail. The extension requires the new
+`FallbackAdvisory` test to assert the preamble too, which is red today and closes the real risk the
+preservation framing exposes: the advisory is emitted from the same launch path that builds the
+payload, so this SPEC's own change is the one most likely to break that preamble.
+
+**D3 — `AC-IFU-031` cited a head this lane never produces — repaired by re-siting the evidence.**
+The criterion read "Given the whole change on its PR head" while `plan.md` §C states the lane does
+not push. Under the git-flow lane protocol the card branch opens no PR; only `release/vX.Y.Z` PRs
+to `main`, and that head carries many cards. Evidence re-sited on the `origin/develop` run carrying
+this lane's merge SHA — how every other card here closes. The criterion's substance is untouched:
+clean environment, both the Go suite and the docs-site build, a named head rather than "CI was
+green". The §E.1 Route A/B disclosure below was the right call and is not what this repairs — the
+disclosure lived here while the unsatisfiable obligation lived in `acceptance.md`, which is the
+artifact the run phase reads.
+
+**D4 — `AC-IFU-024` `grep -c` → `grep -n -C1`.** A count cannot show which occurrences they are or
+what sentence surrounds them, so the assertion's second half was not decidable from the output the
+verdict was read from. Passing condition restated per line.
+
+**D5 (optional) — applied.** Measured the premise rather than accepting it: `doctor.go:74`
+`out := cmd.OutOrStdout()` with `printer.New(printer.WithWriters(out, cmd.ErrOrStderr()))` at `:80`;
+`update.go:153` likewise stdout. Recorded the rule this implies — **each command's own report
+stream**, not "diagnostics go to stderr" — and why the launcher differs (its stdout is
+payload-adjacent, so an advisory there becomes model context). `design.md` §B needs no change: it
+scopes its stderr claim to the launcher's fallback branch.
+
+**D6 (optional) — applied.** `REQ-IFU-012` now leads with `When`, matching its eight siblings.
+
+### Gaps the audit left open — two closed, three not mine to close
+
+**`moai spec lint` — CLOSED, and the auditor's budget problem is explained.** It did not finish in
+the auditor's 120s because it was run without an argument, which scans the whole corpus. Scoped to
+this SPEC it completes in seconds:
+
+```
+$ timeout 180 moai spec lint SPEC-LOCAL-INSTRUCTIONS-MIGRATE-001
+✓ No findings — all SPEC documents are valid
+exit=0
+```
+
+Run twice — before the repairs and after — with the same result. This is an observed pass, not an
+absence of signal.
+
+**AC counter — CLOSED, re-run here rather than carried from the orchestrator.** After the repairs:
+counter `10`, `grep -c '^\*\*AC-IFU-'` `10` — agree. The criterion COUNT did not move (10 before,
+10 after; no criterion was added or removed by these repairs), and this SPEC is an
+absent-from-snapshot row and therefore report-only, so no baseline cascade applies. Traceability
+diff re-run: empty output, exit 0.
+
+**Blocking dependencies — CLOSED by the orchestrator, not by me, at `a9e5f9d5a`.** That commit
+landed on this branch mid-repair (see the divergence note below) and records both measurements in
+`.moai/reports/t1259/blocking-dependencies.md`: the parent SPEC is `status: draft` on
+`origin/develop` AND its loop at `codex_launcher.go:125` still reads `codexClaudeLocalName` first,
+so REQ-IFU-006 is absent from the code as well as the status; t1175 is likewise absent. **Both
+run-phase dependencies in `plan.md` §B are unmet**, which does not affect the plan phase but does
+bind M2's dispatch.
+
+**Still open, and not this lane's to close:** whether `internal/cli` is green as a whole at this
+HEAD — only the named tests were run, per the affected-packages-only discipline.
+
+**Tree divergence observed and reported, not absorbed quietly.** `HEAD` moved from `b8fb023e8` to
+`a9e5f9d5a` between the start of these repairs and staging. Inspected before proceeding:
+`git diff --name-only b8fb023e8..HEAD` → one file, `.moai/reports/t1259/blocking-dependencies.md`,
+disjoint from the three artifacts this commit stages. The writer is the orchestrator closing an
+audit gap, not a stray session. Staging by explicit pathspec means the foreign commit cannot be
+lost by this one. Recorded because a HEAD move on an actively-worked tree is reportable whatever
+its cause.
+
+### For iter2
+
+- **D1's residual risk is reduced, not eliminated.** Equal-delta catches a page whose locales move
+  by different amounts. It does not catch M4 leaving `claude-md-guide.md` and `quickstart.md` as
+  unequal as it found them — by design, since repairing that is out of scope. If iter2 judges the
+  pre-existing divergence itself unacceptable to ship alongside this change, the answer is a
+  sibling card, not a wider `REQ-IFU-020`.
+- **`AC-IFU-029` is now half guard, half verification.** That is deliberate and labelled, but it
+  means one criterion carries two severities — the guard half cannot fail before the work, the
+  extension half cannot pass before it. An auditor preferring one severity per criterion would
+  split it; the Tier L ceiling (25) leaves room.
+
 ## §E.2 Run-phase Evidence
 
 _<pending run-phase>_

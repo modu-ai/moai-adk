@@ -1,7 +1,7 @@
 ---
 id: SPEC-LOCAL-INSTRUCTIONS-MIGRATE-001
 title: "Local-instruction migration — CLAUDE.local.md to AGENTS.local.md, with advisories and docs"
-version: "0.2.0"
+version: "0.2.1"
 status: draft
 priority: P1
 phase: "v3.3.0 target"
@@ -21,13 +21,16 @@ tier: L
 | 0.1.0 | 2026-09-26 | **Created by carve from `SPEC-INSTRUCTION-FILES-UNIFY-001` at commit `1140bcd1d`, by operator decision (via the lead, 2026-09-26).** Nine requirements — `REQ-IFU-007~012` and `REQ-IFU-020~022`, everything in that SPEC touching a **user-owned file** — and the seven acceptance criteria covering them are transferred here **verbatim**. Nothing was dropped and nothing was renumbered: the ids keep their `IFU` infix so every existing cross-reference, traceability row, and audit citation still resolves. Card **t1259** owns this SPEC's plan phase; the artifacts here exist to preserve the authored clauses and give that card real coordinates, and are **not a completed plan phase**. Repairs applied during the carve, both from the plan-audit of `1140bcd1d`: D3 (`REQ-IFU-021` now names which `CLAUDE.local.md` copy migrates, and states one unit throughout) and the frontmatter schema (canonical 12 fields, so this SPEC parses from birth). |
 | 0.1.1 | 2026-09-26 | **Plan-audit iter-2 repairs (subject `653e53572`).** D14: `AC-IFU-007`'s two clauses were jointly unsatisfiable at their own boundary — a 4,381-character reduction from the measured 44,381 lands on exactly 40,000 and fails `< 40000`; floor corrected to 4,382, and the **same off-by-one repaired in `REQ-IFU-021` here**, which the audit did not name. D9 class (found by the cross-SPEC sweep, not in the audit's B2 note): `AC-IFU-011` arrived from the carve with the head-only pattern `'^TestCodexLocalInstructions'`, which matches 22 pre-existing sibling tests and made the criterion unfailable; both-end anchoring plus the asserted-line delimiter applied, the rule stated at the head of `acceptance.md`, and the advisory half declared as a test this SPEC creates. D12 class (also found by the cross-SPEC sweep, also absent from the audit's B2 note): sibling-SPEC `AC-` tokens in prose made this file's AC counter read **10** live criteria against 7 declared — `[REF]`-marked, counter now reports 7. Typo `discharegable` → `dischargeable`. Still **not a completed plan phase** — t1259 owns that. |
 | 0.2.0 | 2026-09-26 | **Plan phase completed by card t1259.** Tier raised **M → L** on the measured file-count axis (35 files affected; the Tier L threshold is >15) — `design.md` and `research.md` are added accordingly. `REQ-IFU-010` split into two clauses, resolving the inherited `AC-IFU-014` contradiction (design.md §A). `REQ-IFU-020`'s `memory` page disambiguated: it resolved to **two** files per locale, and the criterion named neither. `REQ-IFU-021`'s before-value **re-measured in this tree: 44,740 characters, not the carve's 44,381** — and the fixed reduction floor is replaced with a derived one, because a hard-coded floor drifts with the file it measures. Both recorded debts unfolded (`AC-IFU-029`, `AC-IFU-030`), `AC-IFU-015` promoted to blocking, whole-change CI criterion `AC-IFU-031` authored. |
+| 0.2.1 | 2026-09-26 | **plan-audit iter1 repairs (PASS-WITH-DEBT 0.85, report `.moai/reports/t1259/plan-audit-iter1.md` at `b8fb023e8`).** Four blocking defects, all in the acceptance layer, all repaired. **D1** — `AC-IFU-023`'s locale-parity clause asserted equality over a set already unequal (`claude-md-guide.md` ko=10 vs 18; `quickstart.md` ko=14 vs 10); equality replaced by **equal-delta against a recorded baseline**, which keeps the locales-in-step property without pulling an unscoped twelve-section restructure into M4. **D2** — `AC-IFU-029` passed before any work; `REQ-IFU-008` is now declared a **preservation requirement** here and the criterion a **regression guard** with its baseline recorded, AND extended to the new fallback path so it has a red-able half. **D3** — `AC-IFU-031` cited a PR head this lane never produces; re-sited on the `origin/develop` run carrying the lane's merge SHA. **D4** — `AC-IFU-024` used `grep -c` for a per-sentence assertion; now `grep -n -C1`, judged per line. Optional **D5** (stdout-vs-stderr rationale) and **D6** (`REQ-IFU-012` leading `When`) also applied. |
 
-> **Plan phase complete (v0.2.0, card t1259).** Every item the carve left open is now either
+> **Plan phase complete (v0.2.1, card t1259; plan-audit iter1 repairs applied).** Every item the carve left open is now either
 > applied or explicitly deferred with a reason; `progress.md` §E.1 is the itemised record. The
 > Tier judgment is taken (L, on measured file count), the milestones are re-sequenced for this
 > SPEC's own dependency order, both recorded debts are unfolded, and the parent `research.md`
 > Q4 is answered. What remains open by design: no plan-audit has run against this SPEC yet, and
-> the `SPEC-INSTRUCTION-FILES-UNIFY-001` M2 sequencing dependency (plan.md §B) is unchanged.
+> the `SPEC-INSTRUCTION-FILES-UNIFY-001` M2 sequencing dependency (plan.md §B) is unchanged. One
+> plan-audit has run (iter1, PASS-WITH-DEBT 0.85); its four blocking defects are repaired at
+> v0.2.1 and iter2 has not run.
 ---
 
 ## §A Context
@@ -77,6 +80,13 @@ repository's own copy.
 - **REQ-IFU-008** — The Codex provenance preamble shall name the literal filename of the
   file it actually read, never a normalized or substituted name.
 
+  > **[HARD] This is a preservation requirement, not new behaviour.** It is already satisfied at
+  > `internal/cli/codex_launcher.go:138` (`fmt.Fprintf(&payload, "<!-- source: %s -->\n", name)`),
+  > measured at `5ba87003f`. `AC-IFU-029` is therefore labelled a **regression guard** rather than
+  > a verification, with its passing baseline recorded, and is extended to the new
+  > fallback-advisory path — the advisory is emitted from the same launch path that builds the
+  > payload, so the change most likely to break this preamble is this SPEC's own.
+
 ### C.2 Migration
 
 - **REQ-IFU-009** — The system shall provide an explicit migration verb
@@ -92,8 +102,8 @@ repository's own copy.
     reason. It shall not choose between them.
 - **REQ-IFU-011** — `moai update` shall not move, rename, or delete either local
   instruction file; where both exist, it shall emit an advisory only.
-- **REQ-IFU-012** — `moai doctor` shall report the same advisory as `moai update` when both
-  local instruction files exist or when only `CLAUDE.local.md` exists.
+- **REQ-IFU-012** — When both local instruction files exist, or when only `CLAUDE.local.md`
+  exists, `moai doctor` shall report the same advisory as `moai update`.
 
 ### C.3 Documentation and this repository
 

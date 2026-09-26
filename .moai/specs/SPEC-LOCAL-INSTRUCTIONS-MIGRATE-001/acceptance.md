@@ -63,16 +63,20 @@ go test ./internal/cli/ -run '^TestCodexLocalInstructions_FallbackAdvisory$' -v
 whose output must contain `--- PASS: TestCodexLocalInstructions_FallbackAdvisory ` and must not
 contain `no tests to run`. (REQ-IFU-007)
 
-**AC-IFU-029** — Given the same fixture, When the launcher assembles `developer_instructions`,
-Then the provenance preamble contains the literal string `CLAUDE.local.md` rather than a
-substituted or normalized name. Verified by
+**AC-IFU-029** — [REGRESSION GUARD — passes before the work; see the v0.2.1 note] Given the same
+fixture, When the launcher assembles `developer_instructions`, Then the provenance preamble
+contains the literal string `CLAUDE.local.md` rather than a substituted or normalized name, **and
+still does so on the new fallback-advisory path**. Verified by
 
 ```
-go test ./internal/cli/ -run '^TestCodexLocalInstructions_DualFileMatrix$' -v
+go test ./internal/cli/ -run '^TestCodexLocalInstructions_DualFileMatrix$|^TestCodexLocalInstructions_FallbackAdvisory$' -v
 ```
 
-whose output must contain `--- PASS: TestCodexLocalInstructions_DualFileMatrix ` and must not
-contain `no tests to run`. (REQ-IFU-008)
+whose output must contain **both** `--- PASS: TestCodexLocalInstructions_DualFileMatrix ` and
+`--- PASS: TestCodexLocalInstructions_FallbackAdvisory `, and must not contain `no tests to run`.
+`TestCodexLocalInstructions_FallbackAdvisory` — the test `AC-IFU-011` requires this SPEC to create
+— must therefore assert the literal preamble alongside the advisory, so that emitting the advisory
+cannot regress the preamble the same payload carries. (REQ-IFU-008)
 
 > **[HARD] v0.1.1 repair — the transferred pattern was vacuous.** The criterion arrived with
 > `-run '^TestCodexLocalInstructions'`, head-anchored only, asserting `--- PASS:
@@ -97,6 +101,32 @@ contain `no tests to run`. (REQ-IFU-008)
 > under one verdict. Anchoring makes it capable of failing; it does not make it capable of
 > saying which half failed. Naming one test per half is a partial mitigation and is noted as an
 > input to the unfold decision, not as the unfold.
+
+> **[HARD] v0.2.1 — `AC-IFU-029` passed before any work, so it discriminated nothing.** The v0.1.1
+> repair fixed the sibling-match face of vacuity and left the already-satisfied face untouched: the
+> criterion was well-anchored and still could not fail. Measured at `5ba87003f`, with none of this
+> SPEC's work done:
+>
+> ```
+> $ unset MOAI_KANBAN MOAI_KANBAN_ID MOAI_KANBAN_LABEL MOAI_KANBAN_LEAD_ADDR MOAI_KANBAN_SETTINGS_INJECTED \
+>     && go test ./internal/cli/ -run '^TestCodexLocalInstructions_DualFileMatrix$' -v
+> --- PASS: TestCodexLocalInstructions_DualFileMatrix (0.01s)
+> PASS
+> ok  github.com/modu-ai/moai-adk/internal/cli
+> ```
+>
+> `REQ-IFU-008` is already satisfied at `internal/cli/codex_launcher.go:138`
+> (`fmt.Fprintf(&payload, "<!-- source: %s -->\n", name)`). That is the honest reading and it is
+> now stated where it binds: **`REQ-IFU-008` is a preservation requirement, not new behaviour**
+> (`spec.md` §C.1), and `AC-IFU-029` is a **regression guard**, labelled as such above with the
+> passing baseline recorded here — so a *later* failure is meaningful and a run phase reading §D.3
+> no longer gets a free pass on one of ten criteria.
+>
+> **Both repairs the audit offered are applied, not one.** Declaring the guard is honest but leaves
+> the criterion unable to fail; extending it to the new `FallbackAdvisory` path adds a half that
+> **is** red today, because that test does not exist. The pairing also closes the real risk the
+> preservation framing exposes: the advisory is emitted from the same launch path that builds the
+> payload, so the change most likely to break the preamble is precisely this SPEC's own.
 
 > **Debt discharged at v0.2.0 — the fold is undone.** The note this replaces recorded that the
 > criterion decided two outcomes under one verdict: (a) the advisory is missing, so the user is
@@ -139,6 +169,23 @@ the last, and the two digests compared. (REQ-IFU-011)
 read, Then **each** of the two contains the migration advisory naming
 `moai migrate local-instructions`. A criterion satisfied by one of the two is a fail: the
 parity across both commands is the assertion. (REQ-IFU-012)
+
+> **v0.2.1 — why stdout here and stderr in `design.md` §B, which is a deliberate asymmetry.**
+> Measured at `5ba87003f`: `internal/cli/doctor.go:74` `out := cmd.OutOrStdout()` with the printer
+> constructed `printer.New(printer.WithWriters(out, cmd.ErrOrStderr()))` at `:80` — stdout is the
+> report stream, stderr carries per-check progress; `internal/cli/update.go:153` is likewise
+> `out := cmd.OutOrStdout()`.
+>
+> So the rule is not "operator diagnostics go to stderr" — it is **each command's own report
+> stream**. For `update` and `doctor` that is stdout, because the advisory is part of what those
+> commands are reporting. For the launcher (`AC-IFU-011`) it is stderr, because that command's
+> stdout is adjacent to the `developer_instructions` payload and an advisory written there would
+> become model context rather than an operator message (`design.md` §B).
+>
+> Recorded because the audit was right that a run phase applying "diagnostics go to stderr"
+> uniformly would fail a correct implementation of this criterion, and nothing in the SPEC said why
+> the streams differ. `design.md` §B is not wrong and needs no change: it scopes its stderr claim
+> to the launcher's fallback branch, which is the only surface it discusses.
 
 > **Debt discharged at v0.2.0 — the fold is undone, and the data-integrity half is promoted.**
 > The note this replaces recorded three outcomes under one verdict: (a) `moai update` mutated the
@@ -204,18 +251,49 @@ here — see the v0.2.0 note. (REQ-IFU-021)
 > before/after pair is what stops the criterion being discharged by measuring an
 > already-compliant copy.
 
-**AC-IFU-024** — Given the migrated repository-local file, When its §0 is read, Then it
-names `AGENTS.local.md` as the file whose canonical copy it discriminates, and
-`grep -c 'CLAUDE.local.md' AGENTS.local.md` reports only historical-reference occurrences,
-each within a sentence marking it as a retired filename. (REQ-IFU-022)
+**AC-IFU-024** — Given the migrated repository-local file, When its §0 is read, Then it names
+`AGENTS.local.md` as the file whose canonical copy it discriminates; and When
+`grep -n -C1 'CLAUDE.local.md' AGENTS.local.md` is run, Then **every numbered occurrence in that
+output** sits within a sentence marking the name as retired or historical. The verdict is read per
+line, not in aggregate: one unmarked occurrence fails the criterion however many marked ones
+surround it. (REQ-IFU-022)
+
+> **v0.2.1 — the named command could not show what the criterion asserted.** It read `grep -c`,
+> which emits a single integer: it cannot say which occurrences they are, and it cannot show the
+> sentence around any of them, so the second half of the assertion was not decidable from the
+> output the verdict was supposedly read from. `grep -n -C1` puts the occurrences and their
+> surrounding lines in that output, and the passing condition is restated per line so a count can
+> no longer stand in for the judgment.
 
 ### D.4 Documentation
 
 **AC-IFU-023** — Given the docs-site, When `grep -c 'AGENTS.local.md'` is run against each of
 the 24 files `docs-site/content/{ko,en,ja,zh}/<page>` for the six `<page>` **paths** named in
-`REQ-IFU-020`, Then every one of the 24 reports a non-zero count, and the per-page `^## `
-section count is equal across the four locales. All 24 paths are asserted to exist before the
-grep runs — a missing file must fail the criterion rather than be skipped. (REQ-IFU-020)
+`REQ-IFU-020`, Then every one of the 24 reports a non-zero count. All 24 paths are asserted to
+exist before the grep runs — a missing file must fail the criterion rather than be skipped.
+
+And When the per-page `^## ` section count is measured across the four locales, Then each page's
+four counts **differ from the recorded pre-change baseline below by the same delta** — the same
+number of new sections landed in every locale of a page. Equality across locales is **not**
+asserted, because two pages are already unequal (see the v0.2.1 note). A page whose locales move
+by different amounts fails, whatever its absolute counts. (REQ-IFU-020)
+
+Pre-change baseline, measured in this worktree at `5ba87003f`, 2026-09-26, with
+`for L in ko en ja zh; do grep -c '^## ' docs-site/content/$L/<page>; done`:
+
+| Page | ko | en | ja | zh |
+|---|---|---|---|---|
+| `advanced/claude-md-guide.md` | 10 | 18 | 18 | 18 |
+| `advanced/codex-dual-harness.md` | 6 | 6 | 6 | 6 |
+| `advanced/harness-learning.md` | 6 | 6 | 6 | 6 |
+| `claude-code/context-memory/memory.md` | 7 | 7 | 7 | 7 |
+| `getting-started/quickstart.md` | 14 | 10 | 10 | 10 |
+| `cli-reference/update.md` | 7 | 7 | 7 | 7 |
+
+The baseline is re-measured at M4 against that milestone's own base, not read from this table —
+the pages are live and sibling cards edit them. The table records the **shape** the criterion was
+written against (two pages already unequal, four equal); a base whose shape differs is a signal to
+re-read this criterion, not to adjust the numbers silently.
 
 > **[HARD] v0.2.0 — the criterion named a page that resolves to two files, and a directory that
 > holds none.** Measured 2026-09-26 in this worktree: the six stems were cited against
@@ -231,10 +309,35 @@ grep runs — a missing file must fail the criterion rather than be skipped. (RE
 > (the Claude Code memory-file concept page). The three-file instruction structure belongs to
 > the latter, which is the one `REQ-IFU-020` now names by path.
 
-**AC-IFU-031** — Given the whole change on its PR head, When CI completes, Then every required
-check reports success, and the run includes both `go test ./internal/cli/...` and the docs-site
-build. The verdict is read from the PR head's own run — a local pass, or a run against an
-earlier head, does not discharge it. (REQ-IFU-007 … REQ-IFU-012, REQ-IFU-020 … REQ-IFU-022)
+> **[HARD] v0.2.1 — the parity half was unmeasured, and it fails on current state.** The repair
+> above fixed the glob half of this criterion and left its second clause unchecked. Measured at
+> `5ba87003f`: `advanced/claude-md-guide.md` is ko=10 against en/ja/zh=18, and
+> `getting-started/quickstart.md` is ko=14 against 10 — two of six pages already unequal, in
+> opposite directions, by 8 and by 4 sections.
+>
+> An equality assertion over a set that is currently unequal has only bad outcomes: it either
+> pulls an unscoped twelve-section locale restructure into M4, or it fails an implementation that
+> does exactly what `REQ-IFU-020` asks. Neither `REQ-IFU-020` nor any Out of Scope clause asks for
+> that restructure, and `spec.md` §D scopes the docs work to *describing the three-file structure*.
+>
+> **Equality is replaced by equal-delta against a recorded baseline.** This keeps the property the
+> clause was actually there to protect — the four locales stay in step with each other as this
+> change lands — without asserting a property that was already false before the change. It is the
+> stronger of the two repairs the audit offered: narrowing to "the sections the change adds" would
+> have let M4 land 24 files whose locale structure diverges *further* with nothing to catch it
+> (the audit's own residual-risk note). Equal-delta catches exactly that.
+>
+> **Deliberately NOT done: widening `REQ-IFU-020`.** Bringing `claude-md-guide.md` and
+> `quickstart.md` into locale parity is real work with a real owner, and it is not this SPEC's.
+> It belongs in a card of its own, where someone can decide whether ko is missing eight sections
+> or en/ja/zh carry eight it should not have — a question this SPEC has no basis to answer.
+
+**AC-IFU-031** — Given this lane's merge landed on `origin/develop`, When the CI run for the
+`develop` head **carrying this lane's merge SHA** completes, Then every required check reports
+success, and the run includes both `go test ./internal/cli/...` and the docs-site build. The
+verdict is read from that run, identified by its head SHA — a local pass, or a run against a
+`develop` head predating this lane's merge, does not discharge it.
+(REQ-IFU-007 … REQ-IFU-012, REQ-IFU-020 … REQ-IFU-022)
 
 > **Authored at v0.2.0.** The carve recorded that this SPEC had no whole-change assertion of its
 > own, the parent's `AC-IFU-025 [REF]` having stayed with the parent because it asserts that
@@ -243,6 +346,23 @@ earlier head, does not discharge it. (REQ-IFU-007 … REQ-IFU-012, REQ-IFU-020 �
 > a clean environment rather than the lane's machine. Its requirement citation is deliberately
 > the full set — it is a whole-change criterion, and §D.2 treats it as covering none of them
 > individually.
+>
+> **[HARD] v0.2.1 — the evidence was sited on a PR head this lane never produces.** As authored it
+> read "Given the whole change on its PR head", while `plan.md` §C in the same artifact set states
+> *"The lane does not push. Integration is a lead-granted window; push is the lead's batch."* Under
+> `.claude/rules/local/gitflow-lane-protocol.md` the card branch opens no PR at all: only
+> `release/vX.Y.Z` PRs to `main`, and that head carries many cards, so it cannot attribute a
+> verdict to this one. A Definition-of-Done item the lane is structurally unable to discharge is
+> worst discovered at close, which is exactly when it would have been.
+>
+> The criterion's substance is unchanged — clean environment rather than the lane's machine, both
+> the Go suite and the docs-site build, a named head rather than "CI was green". Only the source of
+> the head moved, onto what this regime actually produces: the `origin/develop` run carrying the
+> lane's merge SHA, which is how every other card in this repository closes.
+>
+> `progress.md` §E.1 disclosed the Route A/B tension correctly and deferred it to the lead's
+> dispatch. That disclosure was the right call and is not what this repairs: the disclosure lived in
+> `progress.md` while the unsatisfiable obligation lived here, and the run phase reads here.
 
 ---
 
