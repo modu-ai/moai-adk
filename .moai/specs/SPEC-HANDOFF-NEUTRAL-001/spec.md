@@ -2,7 +2,7 @@
 id: SPEC-HANDOFF-NEUTRAL-001
 title: "핸드오프 하네스 중립화 — Claude Code↔Codex 교차 인계 무손실"
 version: "0.1.0"
-status: draft
+status: in-progress
 created: 2026-09-26
 updated: 2026-09-26
 author: worker-61 (lane session, card t1273)
