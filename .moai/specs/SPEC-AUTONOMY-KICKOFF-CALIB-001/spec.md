@@ -1,7 +1,7 @@
 ---
 id: SPEC-AUTONOMY-KICKOFF-CALIB-001
 title: "계약 기반 자율 하네스 A5 — Kickoff 판단 모드 보정: jev_min_confidence 근거 측정 설계 (카드 t1244, AUTONOMY-A5)"
-version: "0.1.0"
+version: "0.1.1"
 status: draft
 created: 2026-09-26
 updated: 2026-09-26
@@ -22,6 +22,7 @@ related_specs: [SPEC-AUTONOMY-GATE-REWIRE-001, SPEC-AUTONOMY-TIERS-001, SPEC-JEV
 
 | 날짜 | 버전 | 변경 | 작성 |
 |---|---|---|---|
+| 2026-09-26 | 0.1.1 | spec lint 수리 — ERROR MissingExclusions(`Out of Scope` 절 신설)와 WARNING CoverageIncomplete 10건(§D 를 REQ↔AC 매핑 표로 교체, 전 AC 표지). 본문 요구사항 변화 없음 | manager-spec |
 | 2026-09-26 | 0.1.0 | 최초 작성 (plan phase — 측정 설계 전등록). 기준 트리: 본 카드 워크트리 브랜치 `WT-kickoff-decider-eval` HEAD `38148d891` (로컬 develop 계열). 모집단 추출 술어의 실측 가능성 프루브를 본 카드 귀속으로 실행 — 후보 148건·응답 짝 148/148(100%)·세션 87파일·파싱 오류 0건(2026-09-26, `.moai/reports/t1244/probe/`). 판정 기준·LIVE 상한·양성 대조를 측정 전에 본문에 고정. 코드 변경 없음 — 제품 코드·`internal/`·템플릿은 이 SPEC 이 만지지 않는다 | manager-spec |
 
 ## §A. 배경
@@ -48,6 +49,15 @@ A5 는 과거 운영자가 Implementation Kickoff Approval 게이트에서 실�
 1. **설계 층(이 SPEC 본문)** — 모집단 정의와 추출 술어, 분석 단위와 라벨 공간, 한국어 원문 규율, 양성 대조 두 팔, 상수 응답 기준선, 사전 등록 판정 기준, LIVE 호출 상한, run 진입 전제와 증거 배치. 전부 측정 전에 고정한다.
 2. **실행 층(run-phase, 지연)** — 위 설계의 실행. 산출물은 전부 미추적 증거 영역 `.moai/reports/t1244/` 아래의 일회용 도구와 원시 출력이다. 제품 코드·`internal/`·템플릿 미러는 만지지 않는다. 실행 창: A1 병합 확인 + 운영자 Kickoff 게이트 통과 후.
 3. **범위 밖** — 결정자 구현, `jev_min_confidence` 기본값의 코드·설정 변경(측정 결과를 반영하는 변경은 후속 카드), A3 규칙·문서 개정, Jev 원칙 개정(A3 REQ-GR-013 소유), t943 실험의 재실행.
+
+### Out of Scope
+
+- **결정자 구현** — `moai contract decide`·`kickoff-check` 등 결정 경로의 구현은 A3(t1236) 소유다. 이 카드는 판사 출력과 운영자 라벨의 대조만 하고 어떤 결정 경로도 만들지 않는다.
+- **`internal/contract` 코드·`workflow.autonomy` 설정 기본값 변경** — `jev_min_confidence` 기본값(0.50)의 정의와 변경은 A1 0.5.2 소유다. 측정 결과를 설정이나 코드에 반영하는 일은 후속 카드다.
+- **A3 규칙·문서 개정** — R3 해제와 Jev 원칙 개정(REQ-GR-013·025 연동 커밋)은 A3 소유다. A5 의 판정서는 그 판단의 근거로 읽힐 수 있을 뿐 개정 자체를 하지 않는다.
+- **t943 실험의 재실행** — `CLAUDE.local.md` §30 이 카드 전제 판정 영역의 재실험을 금지했다. A5 의 모집단·과업·라벨 공간은 t943 과 다르므로 재실험이 아니지만, 카드 전제 판정에 대한 어떤 재측정도 하지 않는다.
+- **영어 번역 표본에 의한 보조 측정** — §30 영어 대조군이 이미 쟀고 결론을 바꾸지 못했다. A5 는 한국어 원문만 잰다.
+- **「전체 이력」 주장** — 전사본은 보존 기간 안에서 잘리는 단면이다. 스냅샷 일자 밖의 시점에 대해 모집단을 단정하는 주장은 이 측정이 만들지 않는다.
 
 ## §C. 요구사항
 
@@ -91,9 +101,22 @@ The 측정은 run-phase 에서만 실행되며 shall 진입 시 다음을 확인
 
 The 측정 shall `CLAUDE.local.md` §30 이 기각한 실험(카드 전제 판정의 모델 신뢰도 점수)을 **재실행하지 않는다** — 모집단(운영자 Kickoff 결정 vs 카드 전제 소멸), 과업(결정 예측 vs 전제 판정), 라벨 공간이 모두 다르므로 이것은 재실험이 아니라 다른 소스에 대한 같은 규율의 적용이다. §30 의 표를 인용할 때는 **상시 상수 기준선 행을 함께** 인용한다(예: 2-class 58.9% 는 상수 75.0% 옆에서만 읽힌다). §30 의 기각이 덮는 「판정으로 쓰는 것」 경계를 존중한다 — A5 가 긍정 결과를 내도 그 적용처는 `llm+jev` 교차 확인의 두 번째 신호 한 곳(A3 REQ-GR-013 범위)뿐이며, Jev 단독 결정이나 다른 게이트의 자동 판정을 열지 않는다. 표시(display) 용법이 허용 영역이라는 t943 §9 의 경계도 그대로다. A5 의 기각 결과는 1급 결과다 — 이 측정은 기각으로 끝나는 것이 설계상 흔한 출구다
 
-## §D. 수용 기준
+## §D. 수용 기준과 REQ↔AC 매핑
 
 수용 기준 전체는 `acceptance.md`(AC-CALIB-001~010, REQ 와 1:1)에 있다. 플랜 페이즈에서 판정 가능한 AC(문서·프로토콜 존재 검사)와 run-phase 에서 처음으로 판정 가능한 AC(측정 실행 규율)를 구분해 적어 뒀다.
+
+| AC | [PLAN]/[RUN] | 커버하는 REQ |
+|---|---|---|
+| AC-CALIB-001 | [PLAN] — 술어·프루브 수치의 귀속 기록 존재 | REQ-CALIB-001 |
+| AC-CALIB-002 | [PLAN] — 라벨 공간·매핑·복합 처리 문언 존재 | REQ-CALIB-002 |
+| AC-CALIB-003 | [PLAN] — 번역 금지 조항 존재 | REQ-CALIB-003 |
+| AC-CALIB-004 | [PLAN] — 파이프라인 대조 명세 존재 / 이행은 [RUN] | REQ-CALIB-004 |
+| AC-CALIB-005 | [PLAN] — 판사 대조·양팔 무효 문언 존재 / 이행은 [RUN] | REQ-CALIB-005 |
+| AC-CALIB-006 | [PLAN] — 기준선 동시 보고 문언 존재 / 산출은 [RUN] | REQ-CALIB-006 |
+| AC-CALIB-007 | [PLAN] — 판정 기준 수치의 사전 등록 존재 / 적용은 [RUN] | REQ-CALIB-007 |
+| AC-CALIB-008 | [PLAN] — 상한 선언 명세 존재 / 선언·준수는 [RUN] | REQ-CALIB-008 |
+| AC-CALIB-009 | [PLAN] — A1 병합 확인 명령 지금 실행(2026-09-26 exit 0) / (b) 운영자 승인은 [RUN] | REQ-CALIB-009 |
+| AC-CALIB-010 | [PLAN] — 비재실행·인용 규율·변경 집합 무결 | REQ-CALIB-010 |
 
 ## §E. 잔여 위험과 미해결 표지
 

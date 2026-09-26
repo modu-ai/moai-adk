@@ -1,10 +1,13 @@
 # progress.md — SPEC-AUTONOMY-KICKOFF-CALIB-001
 
+> 본문 판정 기록(2026-09-26, 저작 당시): [PLAN] AC 10건 전부 재실행 통과 — AC-CALIB-001..008·010 grep 카운트 양성, AC-CALIB-009 `git merge-base --is-ancestor e4ea8eb05 HEAD` exit 0.
+
 ## §E.1 Plan-phase Audit-Ready Signal
 
 - plan_status: audit-ready
 - plan_complete_at: 2026-09-26
-- spec_version: 0.1.0 (initial plan-phase draft)
+- spec_version: 0.1.1 (lint fixes: `### Out of Scope` 절 신설·§D REQ↔AC 매핑 표·acceptance.md `maps REQ-…` 선언 — 0.1.0 초안에서 요구사항 변화 없음)
+- lint_status: `moai spec lint SPEC-AUTONOMY-KICKOFF-CALIB-001` → `✓ No findings` (2026-09-26, 설치본 `~/go/bin/moai`)
 - tier: M (spec.md, plan.md, acceptance.md, research.md — 측정 설계 카드, 코드 산출물 없음)
 - requirements: 10 (REQ-CALIB-001..010, 연속) / acceptance criteria: 10 (AC-CALIB-001..010, 1:1; [PLAN] 10건 중 AC-CALIB-009는 지금 실행 가능, [RUN] 이행 검사는 run 기록 대상)
 - card: t1244 (AUTONOMY-A5 — Kickoff 판단 모드 보정)
