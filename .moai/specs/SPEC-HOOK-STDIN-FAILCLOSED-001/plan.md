@@ -1,7 +1,7 @@
 ---
 id: SPEC-HOOK-STDIN-FAILCLOSED-001
 title: "Plan — 훅 stdin 파싱 실패의 결정 이벤트 fail-closed"
-version: "0.4.1"
+version: "0.4.2"
 created: 2026-09-24
 author: manager-spec (card t1152)
 ---
@@ -25,6 +25,8 @@ author: manager-spec (card t1152)
 0.4.0 개정: §C Pre-flight 5 를 수행했고 결과는 「유지한다」였다(`.moai/reports/t1152/preflight5.md`). 정지 조건에 따라 운영자 재판정을 받았다 — **탈출 장치 없이 결정 이벤트는 언제나 거부한다**(Codex Stop 면제 유지, 2026-09-25). §B.1 Q1 에 재판정을 기록하고 폐기된 탈출 장치 판정을 표시했으며, §C 5 를 완료 기록으로 줄이고, M2 에서 탈출 장치를 빼고 복구 절차의 문서화를 넣었다. §D·§E·§G·M1b·M4 를 맞췄다.
 
 0.4.1 개정: plan-audit 6회차(`.moai/reports/t1152/plan-audit-iter6.md`, FAIL 0.87)의 N23 을 반영해 M0 의 미래형 Pre-flight 5 문장을 지웠다. 차단 결함 N19~N21 은 acceptance.md(AC-HSF-001(e4)·(e5), AC-HSF-003(b3))와 spec.md §F.1 3(c) 에서 고쳤다. 마일스톤 순서·범위는 그대로다.
+
+0.4.2 개정: §C 3 에 리드 판정(2026-09-26)을 기록했다 — run 시점 설치본 codex-cli 0.157.0 에서 Q2 를 다시 재지 않고 0.156.1 에 묶인 관측으로 남긴다(spec.md §F.2 「Q2 의 버전 한정」). 0.157.0 재측정은 리드의 후속 카드 몫이다. 마일스톤 순서·범위는 그대로다.
 
 ## §A 맥락
 
@@ -74,7 +76,7 @@ spec.md §A 참조. 요약: `internal/cli/hook.go:272-280` 의 stdin 파싱 실�
 
 1. t1099 착지 확인: `git merge-base --is-ancestor <t1099 착지 커밋> HEAD` → exit 0.
 2. spec.md §F.1 의 심볼 diff 를 실행하고 결과를 progress.md §E.2 에 붙인다. 달라진 것이 있으면 구현 전에 spec.md §B·acceptance.md 를 먼저 고친다.
-3. 설치된 codex-cli 버전을 기록한다(`codex --version`). Q2 측정 버전 0.156.1 과 다르면 Q2 를 같은 방법으로 다시 재고, 상한이 생겼다면 REQ-HSF-013 의 술어와 spec.md §B.2 행 3 을 먼저 개정한다.
+3. 설치된 codex-cli 버전을 기록한다(`codex --version`). Q2 측정 버전 0.156.1 과 다르면 Q2 를 같은 방법으로 다시 재고, 상한이 생겼다면 REQ-HSF-013 의 술어와 spec.md §B.2 행 3 을 먼저 개정한다. — 0.4.2: run 시점 설치본은 0.157.0 이었다. 리드 판정(2026-09-26)으로 이 run 에서는 재측정하지 않고 버전에 묶인 관측으로 남기며, 0.157.0 재측정은 후속 카드가 맡는다(spec.md §F.2 「Q2 의 버전 한정」).
 4. 기준선 측정(구현 전, 별도 커밋): 수리 전 트리에서 (a) `pre-tool` 에 파손 4 형태를 넣었을 때 stdout 이 `{}` 이고 exit 0 이며 디스패치가 0회임을, (b) 관측 하위 명령 22개의 파싱 실패 출력(20개 `{}`, worktree-create·worktree-remove 빈 stdout)을, (c) `moai hook agent` 의 결정 매핑 action(`x-validation`, `x-pre-transformation`, `x-pre-implementation`, 미지 action `foo`)과 관측 매핑 action(`x-verification`, `x-post-transformation`, `x-post-implementation`, `x-completion`)의 파싱 실패 출력(모두 `{}` exit 0)과, 유효한 stdin(`{}`) + `--harness bogus` 로 `x-validation` 을 실행했을 때의 종료 코드와 stdout(plan-audit 2회차에서 codex 백엔드가 exit 0 + PreToolUse allow 출력을 재현했다 — 이 트리에서 다시 잰다; AC-HSF-012 신규 거부의 기준선), 같은 유효한 stdin(`{}`) + `--harness bogus` 로 관측 매핑 action `x-verification`·`x-completion` 을 실행했을 때의 종료 코드와 stdout(수리 전에는 exit 0 예상; AC-HSF-013 신규 거부의 기준선)을 재현하고 progress.md 에 기록한다 — 재현이 수리 커밋보다 앞선 커밋에 있어야 순서가 git 이력으로 증명된다(`verification-claim-integrity.md` §2.3).
 5. **호스트의 설정 `env` 전파·유지 측정 — 완료(2026-09-25), 결과 「유지한다」 → 탈출 장치 제거.** 운영자 판정 Q1 의 조건이었던 측정이다. 절차 원문(변형 C·A1·A2·B1·B2, 판정 전제, 판정 네 결과, 정지 조건, 승인된 상한)은 0.3.4 판(커밋 `39ee312cf` 의 이 파일)에 있다.
    - 증거: `.moai/reports/t1152/preflight5.md` (로컬 증거, gitignored). 실행 기록: `/tmp/t1152-pf5/logs/` (머신 로컬 스크래치).
