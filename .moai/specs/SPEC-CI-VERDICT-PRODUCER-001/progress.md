@@ -156,7 +156,7 @@ Residual-risk：
 
 ```yaml
 sync_complete_at: 2026-09-26
-sync_commit_sha: pending-backfill-sync
+sync_commit_sha: 5984038bf
 sync_status: complete
 b12_self_test_a: "grep -c 'SPEC-CI-VERDICT-PRODUCER-001' CHANGELOG.md = 0 (pre-emission) — no duplicate"
 b12_self_test_b: "acceptance.md distinct AC = 8 (AC-CV-001..008; AC-AE-012 is an external cross-reference, not counted); CHANGELOG entry references 8 AC-CV criteria — match"
