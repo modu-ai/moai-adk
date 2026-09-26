@@ -1,9 +1,10 @@
 // audit_role_exception_test.go — the Codex-only audit-role exception.
 //
-// On Codex the two audit roles state a read-only sandbox_mode (not applied to
-// a spawned subagent, which inherits the parent session's sandbox) and return
-// their verdict text; the parent lane orchestrator writes the verdict or
-// report file with exactly that text. The exception is Codex-only: the Claude agent
+// On Codex the two audit roles state a read-only sandbox_mode and return their
+// verdict text; they are started by the audit launcher as a top-level
+// read-only process (a spawned subagent would inherit the parent session's
+// sandbox), and the launcher writes the verdict or report file with exactly
+// that text. The exception is Codex-only: the Claude agent
 // definitions (the local copy under the repository .claude tree and the
 // neutral template copy) carry no trace of it, and the Claude audit workflow
 // is untouched.
@@ -23,10 +24,11 @@ import (
 const auditReturnMarker = "Return the complete verdict or report text as your final response"
 
 // parentWriteRowMarker and parentWriteMarker identify the parent-side
-// instruction on the surface Codex reads natively (the deployed AGENTS.md).
+// instruction on the surface Codex reads natively (the deployed AGENTS.md):
+// the launcher the parent starts writes the file from the returned text.
 const (
 	parentWriteRowMarker = "| audit-verdict-file |"
-	parentWriteMarker    = "writes the verdict or report file with exactly the returned text"
+	parentWriteMarker    = "the launcher writes the verdict or report file with exactly the returned text"
 )
 
 // codexAuditRoles are the roles the exception covers, by name.

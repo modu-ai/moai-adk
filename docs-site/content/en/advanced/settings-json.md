@@ -326,6 +326,22 @@ The list of commands that will **never run** under any circumstances.
 }
 ```
 
+#### deny rules for the PowerShell tool
+
+Claude Code can also run shell commands through a separate PowerShell tool (on by default on most Windows setups, opt-in on macOS and Linux). Its rules live in their own `PowerShell(...)` namespace: a `Bash(...)` deny rule does not block the same command when it runs through the PowerShell tool. The MoAI-ADK template therefore declares each destructive deny rule for both tools, for example `Bash(git push --force:*)` and `PowerShell(git push --force:*)`. This covers the dangerous Git, disk formatting, system command, and DB deletion rules.
+
+Three kinds of Bash deny rules intentionally have no PowerShell counterpart:
+
+| Rule | Why there is no PowerShell counterpart |
+|------|------|
+| Filesystem-root deletion (`rm -rf /`, `rm -rf ~`, deletions of `C:/`) | Claude Code's built-in protection already denies `Remove-Item` and `cmd` deletions of system paths through the PowerShell tool, in every permission mode |
+| `kill -9` | In PowerShell on Windows, `kill` is an alias of `Stop-Process`, so a rule written as `kill -9` may never match |
+| `TRUNCATE` | PowerShell rules match case-insensitively, so it would also block the ordinary `truncate` file utility |
+
+The part of the built-in protection that stops `rd` and `del` run through `cmd` from removing root, home, or wildcard targets requires Claude Code v2.1.283 or later, and is turned off when `CLAUDE_CODE_DISABLE_POWERSHELL_CMD_RM_DENY=1` is set in the environment that launches Claude Code (the `Remove-Item` system-path deny stays in place). Native `rm` run from `pwsh` on macOS or Linux is outside the documented built-in protection.
+
+If your team uses the PowerShell tool, add a matching `PowerShell(...)` rule whenever you add your own deny rule for a shell command.
+
 ### additionalDirectories
 
 Additional working directories Claude can access.
@@ -760,7 +776,6 @@ The `env` section sets environment variables that control Claude Code's behavior
 |------|-----|------|
 | `ENABLE_TOOL_SEARCH` | `"auto"`, `"auto:N"`, `"true"`, `"false"` | Controls tool search |
 | `CLAUDE_AUTOCOMPACT_PCT_OVERRIDE` | `1`-`100` | Auto-compact trigger percentage (default: ~95%) |
-| `CLAUDE_CODE_ENABLE_TELEMETRY` | `"1"` | Enables OpenTelemetry data collection |
 | `CLAUDE_CODE_DISABLE_BACKGROUND_TASKS` | `"1"` | Disables background tasks |
 | `DISABLE_AUTOUPDATER` | `"1"` | Disables auto-updates |
 | `HTTP_PROXY` | URL | HTTP proxy server |

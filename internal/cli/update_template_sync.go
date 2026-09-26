@@ -320,10 +320,11 @@ func runTemplateSyncWithReporter(cmd *cobra.Command, reporter project.ProgressRe
 	// renders, so the project's git mode is read here, while the file exists.
 	// Without it every render falls back to the template default (manual).
 	gitMode := config.LoadGitMode(projectRoot)
-	// Card t1139: the same holds for the project and user names that
-	// project.yaml / user.yaml render. A name the render cannot carry verbatim
-	// comes back "" (see loadUpdateIdentity for when the merge then keeps it).
-	projectName, userName := loadUpdateIdentity(projectRoot)
+	// Cards t1139 / t1147: the same holds for the user-owned values the other
+	// section files render (names, languages, development mode, git provider).
+	// A value the render cannot carry verbatim falls back to the default (see
+	// loadUpdateUserValues for when the merge then keeps it).
+	userValues := loadUpdateUserValues(projectRoot)
 
 	// Define deployment steps
 	steps := []struct {
@@ -369,8 +370,7 @@ func runTemplateSyncWithReporter(cmd *cobra.Command, reporter project.ProgressRe
 					template.WithVersion(version.GetVersion()),
 					template.WithHookOptIn(readHookOptInEnabled(projectRoot)),
 					template.WithGitMode(gitMode),
-					template.WithProject(projectName, projectRoot),
-					template.WithUser(userName),
+					userValues,
 				)
 
 				// SPEC-V3R6-UPDATE-PROGRESS-001 M1: tui.ProgressLine replaces
@@ -452,8 +452,7 @@ func runTemplateSyncWithReporter(cmd *cobra.Command, reporter project.ProgressRe
 					template.WithVersion(version.GetVersion()),
 					template.WithHookOptIn(readHookOptInEnabled(projectRoot)),
 					template.WithGitMode(gitMode),
-					template.WithProject(projectName, projectRoot),
-					template.WithUser(userName),
+					userValues,
 				)
 
 				if deployErr := deployWithMirrorNotice(ctx, deployer, projectRoot, mgr, tmplCtx, errOut); deployErr != nil {

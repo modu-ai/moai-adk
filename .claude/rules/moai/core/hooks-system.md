@@ -33,7 +33,7 @@ Active settings.json keys: 20. RETIRE-OBS-ONLY (Go-only): 4.
 | SubagentStop | Agent type | Yes | Runs when a subagent terminates |
 | Notification | Type | No | Runs when notifications sent. Matchers: permission_prompt, idle_prompt, auth_success, elicitation_dialog, elicitation_complete, elicitation_response, agent_needs_input, agent_completed (last two added CC 2.1.198 — fire for background agents). **Go-only observability tap (see sub-table below).** |
 | UserPromptSubmit | No | Yes | Runs when user submits a prompt, before processing |
-| PermissionRequest | Tool name | Yes | Runs when permission dialog appears |
+| PermissionRequest | Tool name | Yes | Runs when permission dialog appears. Since Claude Code v2.1.280, `type: "agent"` is rejected for this event; use a command or HTTP hook for permission decisions. |
 | PermissionDenied | Tool name | No | Runs after auto mode denies a tool call. Return {retry: true} to retry (v2.1.89+) |
 | TeammateIdle | No | Yes | Runs when agent team teammate is about to go idle |
 | TaskCompleted | No | Yes | Runs when a task is being marked complete. **Go-only observability tap (see sub-table below).** |
@@ -170,6 +170,7 @@ Call a tool on a connected MCP server to make validation decisions.
 - Request: Hook event data passed as MCP tool arguments
 - Response: JSON with optional `decision`, `reason`, `additionalContext`
 - Same blocking behavior as command hooks
+- Since v2.1.281, a blocking event waits for a still-connecting MCP server before invoking this hook, up to the MCP connection timeout. Budget that startup wait on latency-sensitive gates.
 - Available since v2.1.85+
 
 ### Async Command Hooks (async: true)

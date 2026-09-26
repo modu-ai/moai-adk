@@ -326,6 +326,22 @@ Claude 工作时是否在 spinner 中显示提示。设为 `false` 禁用提示�
 }
 ```
 
+#### 针对 PowerShell 工具的 deny 规则
+
+Claude Code 还可以通过单独的 PowerShell 工具执行 shell 命令（在大多数 Windows 环境中默认启用，在 macOS 和 Linux 上需手动开启）。该工具的规则属于独立的 `PowerShell(...)` 命名空间，因此当同一条命令经由 PowerShell 工具执行时，`Bash(...)` deny 规则不会拦截它。为此，MoAI-ADK 模板为两种工具分别声明了每条破坏性 deny 规则，例如 `Bash(git push --force:*)` 与 `PowerShell(git push --force:*)`。危险 Git、磁盘格式化、系统命令和数据库删除规则都在此列。
+
+以下三类 Bash deny 规则有意不设 PowerShell 对应规则：
+
+| 规则 | 不设 PowerShell 对应规则的原因 |
+|------|------|
+| 删除文件系统根目录（`rm -rf /`、`rm -rf ~`、删除 `C:/`） | Claude Code 的内置保护已在所有权限模式下拒绝经由 PowerShell 工具用 `Remove-Item` 或 `cmd` 删除系统路径 |
+| `kill -9` | 在 Windows 的 PowerShell 中，`kill` 是 `Stop-Process` 的别名，写成 `kill -9` 的规则可能永远匹配不到 |
+| `TRUNCATE` | PowerShell 规则不区分大小写，会连普通的文件工具 `truncate` 一并拦截 |
+
+内置保护中阻止经由 `cmd` 运行的 `rd`、`del` 删除根目录、主目录或通配符目标的检查，需要 Claude Code v2.1.283 或更高版本；若在启动 Claude Code 的环境中设置 `CLAUDE_CODE_DISABLE_POWERSHELL_CMD_RM_DENY=1`，该检查即被关闭（`Remove-Item` 删除系统路径的拒绝仍然有效）。在 macOS 或 Linux 上通过 `pwsh` 运行原生 `rm`，不在文档所述的内置保护范围之内。
+
+如果团队使用 PowerShell 工具，在自行添加 shell 命令的 deny 规则时，请同时添加对应的 `PowerShell(...)` 规则。
+
 ### additionalDirectories
 
 Claude 可访问的额外工作目录。
@@ -760,7 +776,6 @@ Hook 配置的详细内容见 [Hooks 指南](/zh/advanced/hooks-guide)。
 |------|-----|------|
 | `ENABLE_TOOL_SEARCH` | `"1"`, `"auto"`, `"auto:N"`, `"true"`, `"false"` | 控制工具搜索（MoAI 默认值：`"1"`） |
 | `CLAUDE_AUTOCOMPACT_PCT_OVERRIDE` | `1`-`100` | 自动压缩触发百分比（默认：约 95%） |
-| `CLAUDE_CODE_ENABLE_TELEMETRY` | `"1"` | 启用 OpenTelemetry 数据收集 |
 | `CLAUDE_CODE_DISABLE_BACKGROUND_TASKS` | `"1"` | 禁用后台任务 |
 | `DISABLE_AUTOUPDATER` | `"1"` | 禁用自动更新 |
 | `HTTP_PROXY` | URL | HTTP 代理服务器 |

@@ -2,14 +2,17 @@ package project
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"log/slog"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 
 	"github.com/modu-ai/moai-adk/internal/defs"
+	"github.com/modu-ai/moai-adk/internal/manifest"
 	"gopkg.in/yaml.v3"
 )
 
@@ -278,4 +281,73 @@ func BackupExistingProject(root string) (string, error) {
 	}
 
 	return backupDir, nil
+}
+
+// CarryManifestForward restores the manifest a --force backup moved aside, so
+// the files the previous deployment recorded outside .moai/ keep their
+// provenance: without it every one of them reads as untracked and is recorded
+// user_created and skipped. A template_managed file whose content no longer
+// matches its recorded hash was edited by the user and is reclassified
+// user_modified, so the redeploy leaves it alone; so is one that is not a
+// regular file or cannot be read, since it cannot be shown unedited. Keys
+// outside the project root are carried unread. A missing or unloadable backup
+// manifest carries nothing, so --force still runs as it did without one.
+func CarryManifestForward(root, backupDir string) error {
+	if backupDir == "" {
+		return nil
+	}
+	data, err := os.ReadFile(filepath.Join(backupDir, defs.ManifestJSON))
+	if errors.Is(err, os.ErrNotExist) {
+		return nil
+	}
+	if err != nil {
+		return fmt.Errorf("read backed-up manifest: %w", err)
+	}
+	if !json.Valid(data) {
+		return nil
+	}
+	moaiDir := filepath.Join(filepath.Clean(root), defs.MoAIDir)
+	if err := os.MkdirAll(moaiDir, defs.DirPerm); err != nil {
+		return fmt.Errorf("create %s: %w", defs.MoAIDir, err)
+	}
+	if err := os.WriteFile(filepath.Join(moaiDir, defs.ManifestJSON), data, defs.FilePerm); err != nil {
+		return fmt.Errorf("carry manifest forward: %w", err)
+	}
+
+	mgr := manifest.NewManager()
+	if _, err := mgr.Load(root); err != nil {
+		// Valid JSON that is not a manifest: carry nothing, and remove what
+		// Load and the copy left behind so the deploy starts from none.
+		_ = os.Remove(filepath.Join(moaiDir, defs.ManifestJSON))
+		_ = os.Remove(filepath.Join(moaiDir, defs.ManifestJSON+".corrupt"))
+		return nil
+	}
+	files := mgr.Manifest().Files
+	for rel, entry := range files {
+		if entry.Provenance != manifest.TemplateManaged {
+			continue
+		}
+		clean := filepath.Clean(filepath.FromSlash(rel))
+		if filepath.IsAbs(clean) || clean == ".." || strings.HasPrefix(clean, ".."+string(filepath.Separator)) {
+			continue
+		}
+		path := filepath.Join(root, clean)
+		info, err := os.Lstat(path)
+		if errors.Is(err, os.ErrNotExist) {
+			continue // deleted: the redeploy restores it
+		}
+		current := ""
+		if err == nil && info.Mode().IsRegular() {
+			current, _ = manifest.HashFile(path)
+		}
+		if current == entry.CurrentHash {
+			continue
+		}
+		entry.Provenance = manifest.UserModified
+		if current != "" {
+			entry.CurrentHash = current
+		}
+		files[rel] = entry
+	}
+	return mgr.Save()
 }

@@ -74,7 +74,7 @@ func writeConfigFixture(t *testing.T, projectDir, name, content string) *HookInp
 func TestRegistryShutdownJoinsConfigChangeAsyncWork(t *testing.T) {
 	t.Parallel()
 
-	projectDir := t.TempDir()
+	projectDir := newMoaiProjectRoot(t)
 	input := writeConfigFixture(t, projectDir, "broken.yaml", "a: [1, 2\n  bad: : :\n")
 
 	reg := NewRegistry(config.NewConfigManager())
@@ -110,7 +110,7 @@ func TestConfigChangeAuditRecordsBothOutcomes(t *testing.T) {
 
 	t.Run("valid config records reloaded", func(t *testing.T) {
 		t.Parallel()
-		projectDir := t.TempDir()
+		projectDir := newMoaiProjectRoot(t)
 		input := writeConfigFixture(t, projectDir, "good.yaml", "development_mode: tdd\ncoverage_target: 85\n")
 
 		h := NewConfigChangeHandler().(*configChangeHandler)
@@ -130,7 +130,7 @@ func TestConfigChangeAuditRecordsBothOutcomes(t *testing.T) {
 
 	t.Run("invalid config records rejected", func(t *testing.T) {
 		t.Parallel()
-		projectDir := t.TempDir()
+		projectDir := newMoaiProjectRoot(t)
 		input := writeConfigFixture(t, projectDir, "bad.yaml", "a: [1, 2\n  bad: : :\n")
 
 		h := NewConfigChangeHandler().(*configChangeHandler)

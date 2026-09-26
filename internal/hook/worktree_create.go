@@ -151,8 +151,10 @@ func (h *worktreeCreateHandler) Handle(ctx context.Context, input *HookInput) (*
 // registerEntry persists the worktree to the registry so other sessions can
 // inspect active worktrees. Non-blocking on error (failures are logged).
 func (h *worktreeCreateHandler) registerEntry(input *HookInput, path, branch string) {
-	if input.CWD != "" {
-		registerWorktree(input.CWD, path, branch, input.AgentName)
+	// Write-side resolver, never input.CWD: a subdirectory cwd would otherwise
+	// grow a stray <subdir>/.moai/state/worktrees.json (card t1165).
+	if root := resolveProjectRoot(input); root != "" {
+		registerWorktree(root, path, branch, input.AgentName)
 	}
 }
 

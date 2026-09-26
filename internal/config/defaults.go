@@ -261,6 +261,19 @@ const (
 	// always preserved (EC-3).
 	DefaultTraceRetentionDays = 30
 
+	// DefaultHookRuntimeLogRetentionDays is the age threshold (in days) past
+	// which the `moai hook` path's log sink (.moai/logs/hook-runtime.log,
+	// written by internal/cli/hook_sink.go) is pruned at SessionEnd
+	// (SPEC-HOOK-DIAG-SINK-001 REQ-HDS-009 / REQ-HDS-010). The sink is an
+	// append-only file with no rotation of its own, so this threshold is the
+	// only thing bounding its growth.
+	//
+	// It is a SEPARATE constant from DefaultTraceRetentionDays rather than a
+	// reuse of it: the two artifacts age for different reasons (a trace is one
+	// session's record, the sink is a rolling diagnostic tail), so REQ-HDS-010
+	// gives the sink its own named knob. They happen to share a value today.
+	DefaultHookRuntimeLogRetentionDays = 30
+
 	// Home disk/clean defaults (SPEC-V3R6-MOAI-CLEAN-HOME-001). These are the
 	// compiled-in configuration surface for the `moai doctor` Home Disk Usage
 	// check and `moai clean --home`: DefaultHomeDiskWarnBytes is the cleanable-
@@ -464,6 +477,17 @@ var DefaultMultiReviewGateTimeout = 900 * time.Second
 // is not — and so a test can shorten it, which is what keeps the criterion that
 // verifies the bound cheap to run instead of a ten-minute test.
 var DefaultCodexTaskTimeout = 600 * time.Second
+
+// DefaultCodexAuditTimeout bounds ONE read-only audit process started by the
+// Codex audit launcher (`moai codex audit`). An audit reads a SPEC and its
+// tree and can take minutes; past this bound the launcher terminates the
+// process group and writes no verdict. Not a const so a test can shorten it.
+var DefaultCodexAuditTimeout = 20 * time.Minute
+
+// DefaultCodexAuditListTimeout bounds the `codex mcp list --json` lookup the
+// audit launcher runs before the audit to learn which MCP servers to disable.
+// The lookup makes no model call, so its bound is short.
+var DefaultCodexAuditListTimeout = 30 * time.Second
 
 // DefaultCodexHandoffRelocationTimeout bounds ONE headless lane relocation
 // request — initialize, thread/fork or thread/start, and the thread/started

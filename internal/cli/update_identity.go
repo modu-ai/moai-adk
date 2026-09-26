@@ -1,9 +1,10 @@
 package cli
 
-// update_identity.go — the project.name / user.name the update render context
-// carries (card t1139). The update renders project.yaml / user.yaml with the
-// names the project already has, so an unchanged name stays byte-identical
-// across the update instead of rendering empty.
+// update_identity.go — the user-owned section values the update render context
+// carries: project.name / user.name (card t1139) and the language, development
+// mode, and git provider values (card t1147). The update renders the section
+// files with the values the project already has, so an unchanged value stays
+// byte-identical across the update instead of reverting to the template default.
 
 import (
 	"gopkg.in/yaml.v3"
@@ -14,11 +15,60 @@ import (
 )
 
 const (
-	projectSectionTemplate = ".moai/config/sections/project.yaml.tmpl"
-	userSectionTemplate    = ".moai/config/sections/user.yaml.tmpl"
+	projectSectionTemplate     = ".moai/config/sections/project.yaml.tmpl"
+	userSectionTemplate        = ".moai/config/sections/user.yaml.tmpl"
+	languageSectionTemplate    = ".moai/config/sections/language.yaml.tmpl"
+	qualitySectionTemplate     = ".moai/config/sections/quality.yaml.tmpl"
+	gitStrategySectionTemplate = ".moai/config/sections/git-strategy.yaml.tmpl"
 )
 
-// @MX:NOTE: [AUTO] single identity source for all three update render contexts (template-sync validate + deploy, clean-reinstall deploy); the accept rule decides whether a name survives the update
+// @MX:NOTE: [AUTO] single source of user-owned values for all three update render contexts (template-sync validate + deploy, clean-reinstall deploy); rendersVerbatim decides whether a value survives the update
+// loadUpdateUserValues returns one context option carrying every user-owned
+// section value the update renders with: the names from loadUpdateIdentity,
+// plus conversation_language, the output languages, development_mode, and the
+// git provider, github_username, and gitlab.instance_url (card t1147). Each of
+// the latter is carried under the same exact round-trip rule as the names
+// (see loadUpdateIdentity): its option is applied only if rendering its
+// section template with it parses back to exactly the stored value. An empty,
+// unknown, or non-round-tripping value leaves the template default, and the
+// 3-way merge then keeps a hand edit as a customization.
+func loadUpdateUserValues(projectRoot string) template.ContextOption {
+	projectName, userName := loadUpdateIdentity(projectRoot)
+	opts := []template.ContextOption{
+		template.WithProject(projectName, projectRoot),
+		template.WithUser(userName),
+	}
+	if fsys, err := template.EmbeddedTemplates(); err == nil {
+		renderer := template.NewRenderer(fsys)
+		v := config.LoadUpdateRenderValues(projectRoot)
+		for _, k := range []struct {
+			tmpl, value string
+			opt         template.ContextOption
+			path        []string
+		}{
+			{languageSectionTemplate, v.ConversationLanguage, template.WithLanguage(v.ConversationLanguage), []string{"language", "conversation_language"}},
+			{languageSectionTemplate, v.GitCommitMessages, template.WithOutputLanguages(v.GitCommitMessages, "", ""), []string{"language", "git_commit_messages"}},
+			{languageSectionTemplate, v.CodeComments, template.WithOutputLanguages("", v.CodeComments, ""), []string{"language", "code_comments"}},
+			{languageSectionTemplate, v.Documentation, template.WithOutputLanguages("", "", v.Documentation), []string{"language", "documentation"}},
+			{qualitySectionTemplate, v.DevelopmentMode, template.WithDevelopmentMode(v.DevelopmentMode), []string{"constitution", "development_mode"}},
+			{gitStrategySectionTemplate, v.GitProvider, template.WithGitProvider(v.GitProvider), []string{"git_strategy", "provider"}},
+			{gitStrategySectionTemplate, v.GitHubUsername, template.WithGitHubUsername(v.GitHubUsername), []string{"git_strategy", "github_username"}},
+			{gitStrategySectionTemplate, v.GitLabInstanceURL, template.WithGitLabInstanceURL(v.GitLabInstanceURL), []string{"git_strategy", "gitlab", "instance_url"}},
+		} {
+			// Each value is checked alone, so one unrenderable value cannot
+			// break the parse of its neighbours in the same file.
+			if k.value != "" && rendersVerbatim(renderer, k.tmpl, template.NewTemplateContext(k.opt), k.value, k.path...) {
+				opts = append(opts, k.opt)
+			}
+		}
+	}
+	return func(c *template.TemplateContext) {
+		for _, opt := range opts {
+			opt(c)
+		}
+	}
+}
+
 // loadUpdateIdentity returns the project and user names for the update render
 // context, read from the project's existing config. A name is kept iff the
 // embedded section template, rendered through the same renderer the update
@@ -32,18 +82,18 @@ const (
 //     produces for it — round-trips through the same render, so it is kept and
 //     the merge sees NEW == BASE == OLD.
 //   - A name whose stored form does not round-trip renders "". When it is a
-//     hand edit no render could have written ("$TEAM", "{{.Version}}", `"`,
-//     `\`), its BASE differs from the user's value and the 3-way merge keeps
-//     the user's value as a customization.
+//     hand edit no render could have written ("$TEAM", "{{.Version}}" — the
+//     renderer's unexpanded-token guard rejects both), its BASE differs from
+//     the user's value and the 3-way merge keeps the user's value as a
+//     customization.
 //
-// Known limitation: a stored value that does not round-trip AND equals BASE
-// is erased — the merge takes the empty render. project.yaml.tmpl does not
-// escape the name inside its double-quoted scalar, so a --name carrying a YAML
-// backslash escape (`a\\b`, `a\nb`, `Kim \"Goos\"`) is stored by init as a
-// different string that is also the snapshot BASE; the next update empties
-// project.name. Pinned by TestUpdateForce_KnownLimitation_InitEscapedProjectName;
-// the fix (escape identity values in the init/project template render) is a
-// follow-up.
+// The section templates escape the name inside its double-quoted scalar
+// (yamlEscape, card t1162), so a name carrying `"` or `\` renders and parses
+// back verbatim; init stores it unaltered and the update keeps it. The
+// remaining gap is a stored value that does not round-trip AND equals BASE:
+// the merge takes the empty render. An init render no longer produces such a
+// value: a name the renderer rejects makes the deploy return the render error
+// instead of writing the file.
 func loadUpdateIdentity(projectRoot string) (projectName, userName string) {
 	fsys, err := template.EmbeddedTemplates()
 	if err != nil {
@@ -60,29 +110,37 @@ func loadUpdateIdentity(projectRoot string) (projectName, userName string) {
 		template.WithProject(projectName, projectRoot),
 		template.WithUser(userName),
 	)
-	if !rendersVerbatim(renderer, projectSectionTemplate, "project", projectName, ctx) {
+	if !rendersVerbatim(renderer, projectSectionTemplate, ctx, projectName, "project", "name") {
 		projectName = ""
 	}
-	if !rendersVerbatim(renderer, userSectionTemplate, "user", userName, ctx) {
+	if !rendersVerbatim(renderer, userSectionTemplate, ctx, userName, "user", "name") {
 		userName = ""
 	}
 	return projectName, userName
 }
 
 // rendersVerbatim reports whether rendering tmpl with ctx succeeds and the
-// output's <key>.name parses back as exactly name.
-func rendersVerbatim(renderer template.Renderer, tmpl, key, name string, ctx *template.TemplateContext) bool {
-	if name == "" {
+// output's value at path parses back as exactly value. The empty value is
+// always accepted.
+func rendersVerbatim(renderer template.Renderer, tmpl string, ctx *template.TemplateContext, value string, path ...string) bool {
+	if value == "" {
 		return true
 	}
 	out, err := renderer.Render(tmpl, ctx)
 	if err != nil {
 		return false
 	}
-	var doc map[string]map[string]any
-	if err := yaml.Unmarshal(out, &doc); err != nil {
+	var node any
+	if err := yaml.Unmarshal(out, &node); err != nil {
 		return false
 	}
-	got, ok := doc[key]["name"].(string)
-	return ok && got == name
+	for _, key := range path {
+		m, ok := node.(map[string]any)
+		if !ok {
+			return false
+		}
+		node = m[key]
+	}
+	got, ok := node.(string)
+	return ok && got == value
 }

@@ -349,14 +349,14 @@ claude        # 또는 moai cc — 프로젝트 안에서 Claude Code 실행
 
 ### MCP 서버
 
-`moai init`은 기본으로 **정확히 하나**의 활성 MCP 엔트리를 깐다 — 자체 `moai mcp-server`(로컬 stdio 서버)다. 이 서버가 여섯 그룹으로 묶인 21개 MoAI 도구를 Claude Code에 노출한다. 문서에 기록되었지만 비활성인 네 엔트리(`context7`, `chrome-devtools`, `playwright`, `ast-grep`)는 `moai mcp add <이름>`으로 켠다. `moai mcp add|remove|list` CLI가 atomic-RWM seam으로 엔트리를 관리하므로, 사용자가 `.mcp.json`을 직접 손편집할 일은 없다.
+`moai init`은 기본으로 **정확히 하나**의 활성 MCP 엔트리를 깐다 — 자체 `moai mcp-server`(로컬 stdio 서버)다. 이 서버가 MoAI 도구들을 Claude Code에 노출한다. 아래 표는 주요 그룹만 싣는다 — 전체 목록은 [MCP 서버 가이드](https://adk.mo.ai.kr/ko/guides/mcp-server)에 있고, 도구 수와 목록의 기준은 설치된 바이너리가 `tools/list`로 돌려주는 목록이다. 문서에 기록되었지만 비활성인 네 엔트리(`context7`, `chrome-devtools`, `playwright`, `ast-grep`)는 `moai mcp add <이름>`으로 켠다. `moai mcp add|remove|list` CLI가 atomic-RWM seam으로 엔트리를 관리하므로, 사용자가 `.mcp.json`을 직접 손편집할 일은 없다.
 
 | 그룹 | 도구 | 목적 |
 |------|------|------|
 | SPEC 라이프사이클 | `spec_progress`, `spec_audit`, `spec_drift` | 시대 분류 + 드리프트 감지 |
 | 검증 | `verify_snapshot`, `verify_trend` | 키별 증거 스냅샷 |
 | 골 + 세션 | `goal_arm`, `goal_status`, `session_list` | 자율 루프 + 다중 세션 조율 |
-| 교차 모델 감사 | `audit_multi`, `codex_audit`, `glm_audit`, `audit_cache` | 다중 감사자 수렴 |
+| 교차 모델 감사 | `audit_multi`, `claude_audit`, `codex_audit`, `glm_audit`, `audit_cache` | 다중 감사자 수렴 |
 | codex 위임 | `codex_task`, `codex_setup`, `codex_job_*` | 백그라운드 교차 모델 작업 |
 | GLM 위임 | `glm_task`, `glm_job_status`, `glm_job_result`, `glm_job_cancel` | GLM(z.ai) 백그라운드 작업 위임 |
 
