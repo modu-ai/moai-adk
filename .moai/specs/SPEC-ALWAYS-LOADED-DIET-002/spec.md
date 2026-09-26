@@ -2,7 +2,7 @@
 id: SPEC-ALWAYS-LOADED-DIET-002
 title: "지시문 예산 두 축 — 18파일 합계 150,000자 미만 + 룰 파일당 40,000자 미만, 구속 조항 무손실"
 version: "0.8.0"
-status: draft
+status: in-progress
 created: 2026-09-25
 updated: 2026-09-26
 author: manager-spec

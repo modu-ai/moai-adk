@@ -49,11 +49,143 @@
 
 ## §E.2 Run-phase Evidence
 
-_<pending run-phase>_
+**이 절은 늦게 쓰였다.** 구현은 `3c40e0aa2`(M1)부터 `625679ace`까지 이미 커밋돼 있었고, 기록만 비어 있었다. 아래 수치는 전부 **이 record-closing 실행에서 이 트리(`WT-rules-diet` · HEAD `625679ace`)에서 다시 쟀다** — `verdict.md` 나 감사 보고서에서 옮겨 적은 값이 아니다. 옮겨 적은 항목은 그 자리에 **인용임을 명시**했다.
+
+### 실행 범위와 커밋
+
+- 분기점 `a0b78213d`(로컬 `develop`), 기준선 ref `172ef22eb`(plan phase 마지막 커밋), 최종 ref `625679ace`. 미푸시.
+- 카드 기여 파일 **85개**(`git diff --name-only a0b78213d HEAD | wc -l` = 85). **Go 소스 0개** — 라이브 룰 30 + 템플릿 미러 30 + 에이전트 정의 6(라이브 3 · 템플릿 3) + Codex 방출 3 + SPEC 산출물 6 + 나머지.
+- 마일스톤 8개(M1 · M2 · M3 · M4 · M5 · M6 · M6.5 · M7)를 커밋 4개에 실었다: `3c40e0aa2`(M1 재배치 표) · `4ab0511b4`(M2) · `7bcdce760`(M3 + M6.5) · `276391646`(M4 · M5 · M6 · M7). 이후 `0acfa28e1`(미러 수리) + SPEC 산출물 커밋 4개(`14a5a3caf` · `f0893dc36` · `87fd59092` · `625679ace`).
+
+### AC 판정 매트릭스
+
+| AC | 심각도 | 판정 명령 | Actual Output | Status |
+|---|---|---|---|---|
+| AC-ALD2-001 | MUST-PASS | `acceptance.md §AC-ALD2-001` 의 18경로 `wc -m … \| tail -1` | `  197897 total` | **PASS** (기록 술어 — 아래 단서 참조) |
+| AC-ALD2-002 | MUST-PASS | `acceptance.md §AC-ALD2-002` 의 `grep -rhE … \| sed \| sort \| shasum -a 256`, 줄 수 `wc -l` | `170` · `d97b33d960c9801d4ec145ca263ed788425b337f43c585594c8d527c1318c6c3` | **PASS** — 기준선과 바이트 동일 |
+| AC-ALD2-003 | MUST-PASS | `§AC-ALD2-003.1` 2단계(hunk 계수 + 기준선 본문 바이트 대조) | `TOUCHED_LIVE=30` · `PAIRS_WITH_TEMPLATE=30 TOTAL_HUNKS=32 DIVERGING_PAIRS=11` · `TOTAL: inherited=29 card-created=3` | **PASS** — card-created 3건 전부 PERMITTED, UNCLASSIFIED 0. **수리로 달성됐다**(아래) |
+| AC-ALD2-004 | MUST-PASS | `design.md §4` 재배치 표 판독 | 표는 `217` 행부터 존재, §4 구간 표 행 185, 빈 칸 스캔 적중 0 | **PASS (인용 + 구조 확인)** — 칸 내용의 **판단 축**(Q1/Q2 적정성)은 이 실행에서 재도출하지 않았다 |
+| AC-ALD2-005 | MUST-PASS | 절 제목 역방향 grep(`acceptance.md §AC-ALD2-005`) | 이 실행에서 **전수 재실행하지 않았다**. 인용: 초과 파일 앵커 미수리 10건(선례 규칙 3 에 따라 FAIL 아닌 기록 사항) | **PASS-WITH-DEBT** — 네 인용 형식 전체에 대한 트리 전수 최종 스윕이 없다(Gap) |
+| AC-ALD2-006 | MUST-PASS | `grep -m1 '^paths:' <companion>` — 이 카드가 수정한 companion 전수 | 자기 참조(self-keyed) **2건**: `core/verification-claim-integrity-detail.md` → `paths: "**/verification-claim-integrity*.md"`, `workflow/session-handoff-examples.md` → `paths: "**/session-handoff.md"` | **FAIL** — 아래 단서 참조 |
+| AC-ALD2-007 | SHOULD-PASS | 신규 stub 2개의 3요소 판독 | (a) 포인터 줄 — `kanban-dispatch.md:9`, `session-handoff.md:7` 모두 절을 이름으로 호명 + 로드 트리거 있음. (b) companion 소유 경계 — 두 신규 companion 모두 `> Owns:` 줄 보유. (c) 분리를 기록하는 stub 푸터 — `kanban-dispatch.md` 푸터는 `kanban-dispatch-detail.md` 만 적고 신규 mechanics companion 을 적지 않으며, `session-handoff.md` 푸터(`Status: HARD operational rule …`)는 분리를 전혀 적지 않는다 | **PASS-WITH-DEBT** — (a)(b) 충족, (c) 2건 미충족 |
+| AC-ALD2-008 | MUST-PASS | `wc -m` 작업 전/후 차 ≤ 옮긴 절 합계 + 500 | 이 실행에서 **재도출하지 않았다** — 옮긴 절별 문자 합계는 M1·M3·M4·M5 이동 시점의 측정이고, 그것을 다시 만들려면 이동을 다시 돌려야 한다 | **미검증(UNVERIFIED)** — PASS 로 적지 않는다 |
+| AC-ALD2-009 | MUST-PASS | `acceptance.md §AC-ALD2-009` 의 두 `find … wc -m … awk '$1>=40000'` | 두 트리 동일하게 4개: `worktree-integration.md 61435` · `session-handoff-examples.md 41615` · `kanban-dispatch-detail.md 41034` · `spec-workflow.md 40797`. 기준선 대비 각 동일 또는 감소(41616→41615 · 41036→41034 · 40799→40797), 신규 초과 0 | **PASS** — (a) 이 카드가 쓴 파일 중 목록에 든 것 0, (b) 목록 길이 4 (래칫 유지) |
+
+### 불변식 행
+
+| 불변식 | 판정 명령 | Actual Output | Status |
+|---|---|---|---|
+| 구속 조항 축자 동결 (REQ-ALD2-002 · -003 · -011 · -013) | AC-ALD2-002 파이프라인 | 170줄 · `d97b33d9…18c6c3` — 기준선과 동일 | **HOLDS** |
+| 파일당 40,000자 래칫 (REQ-ALD2-015 · -016) | AC-ALD2-009 파이프라인 | 두 트리 4개, 신규 초과 0, 크기 비증가 | **HOLDS** |
+| 이 카드가 만든 구조 변경의 미러 (REQ-ALD2-007) | AC-ALD2-003 census | card-created 3, UNCLASSIFIED 0 | **HOLDS**(수리 후) |
+| 영향 패키지 테스트 | `go test ./internal/config/... ./internal/template/... ./internal/spec/...` | `ok internal/config 2.644s` · `ok internal/template 59.096s` · `ok internal/template/agentemit 0.366s` · `ok internal/spec (cached)` · 나머지 `ok`/`(cached)`, 실패 0 | **HOLDS** |
+| 빌드 + 임베드 | `make build` → exit 0; `git status --short` | `catalog.yaml updated successfully (13408 bytes)` · `go build -ldflags … -o bin/moai ./cmd/moai`, exit 0. `git status --short` **빈 출력** → `catalog.yaml` 내용 불변 | **HOLDS** |
+| 크로스 플랫폼 | `GOOS=windows GOARCH=amd64 go build ./...` | 출력 없음, exit 0 | **HOLDS** |
+
+### 헤드라인 AC 를 정직하게 적는다 — PASS 가 무엇이 아닌가
+
+**AC-ALD2-001 의 PASS 는 「런타임 한도를 지켰다」가 아니다.** 이 AC 는 0.7.0(iter5 수리)에서 **문턱이 아니라 기록 술어**로 제자리 개정됐다 — 측정하고, 기준선 `B = 246,943` 대비 감축을 적고, 런타임 한도 150,000 에 대한 잔여를 귀속과 함께 채무로 남기는 것이 판정 대상 전부다.
+
+- 측정 `total` = **197,897** · 감축 = **49,046** · 런타임 한도 대비 잔여 = **47,897**.
+- **잔여 47,897 의 성격은 확립되지 않았다.** 노력 부족으로도 구조적 불가로도 **아니다** — 허용 풀 `A_adm` 이 구성상 미측정이기 때문이며(`acceptance.md §AC-ALD2-001.3`), 어느 쪽이라고 적으면 관측 없는 주장이 된다.
+- FAIL 조건 4(`B − total > 0`)는 **래칫 방향만 본다.** 1자만 줄인 실행도 통과하므로 이 PASS 는 노력의 충분성을 재지 않는다.
+- 폐기된 두 수치를 함께 남긴다: 종전 문턱 `< 150,000`(0.6.0 이전) → 구조적 하한 `< 171,695`(0.6.0) → 기록 술어(0.7.0). 조용히 바뀐 목표는 골대 이동과 구별되지 않는다.
+
+**AC-ALD2-003 의 깨끗함은 관측된 것이 아니라 수리로 달성됐다.** 순서를 적어 둔다 — 이 구별이 사라지면 다음 감사가 「처음부터 0건이었다」로 읽는다.
+
+1. `0acfa28e1` 이 `main-checkout-branch-guard-detail.md` 의 미분류 3 hunk(런처 동사 축)와 `cross-session-messaging.md` 의 `42,43` 분기를 수리했다.
+2. `f0893dc36` 이 `cross-session-messaging-detail.md` 템플릿 사본의 `150a151` 중복 빈 줄을 제거했다.
+
+또한 **승계 분기는 이 AC 의 판정 대상 밖이며, 그 결정이 분기를 해소했다는 뜻은 아니다.** 승계 29 hunk 중 셋(`verification-claim-integrity.md` 의 `3c3` · `5c5` · `21c21`)은 열거된 18개 허용 클래스로 **덮이지 않는다** — 숨기지 않고 이름을 적는다. 처분은 후속 카드다.
+
+### AC-ALD2-006 FAIL — 이 실행이 새로 측정한 것
+
+`verdict.md` 는 AC-ALD2-006 을 판정하지 않았다. 이 record-closing 실행이 이 카드가 수정한 companion 전수에 `grep -m1 '^paths:'` 를 돌려 **자기 참조 2건**을 관측했고, 둘 다 `acceptance.md §AC-ALD2-006` 의 FAIL 예(부모 stub 경로 하나만 담는 값)와 같은 모양이다.
+
+- `core/verification-claim-integrity-detail.md` — `paths: "**/verification-claim-integrity*.md"` (부모 stub 계열만)
+- `workflow/session-handoff-examples.md` — `paths: "**/session-handoff.md"` (부모 stub 만)
+
+**귀속(provenance)**: 두 값은 **기준선 ref `172ef22eb` 에서 바이트 동일**하다(`git show 172ef22eb:<path> | grep -m1 '^paths:'` — 두 건 모두 현재 값과 같은 출력). 즉 **이 카드가 만든 값이 아니라 승계된 값**이고, 이 카드는 그 파일들의 본문만 고쳤다.
+
+그럼에도 **FAIL 로 적는다.** AC-ALD2-006 의 Given 은 「이 SPEC 이 수정한 각 companion 파일」이고, 두 파일은 수정됐다. AC-ALD2-003 이 0.7.0 에서 얻은 `card-created` 한정어를 AC-ALD2-006 은 갖고 있지 않으므로, 문언대로 읽으면 통과하지 않는다. 이 기록을 「승계라서 대상 밖」으로 스스로 완화하는 것은 기준을 자기 산출물에 맞춰 재단하는 일이다(같은 판단을 `§AC-ALD2-003.2` 가 `codification` 토큰 제거로 이미 한 번 내렸다).
+
+**따라서 후속 판정이 필요하고, 그것은 이 에이전트의 소관이 아니다.** AC-ALD2-006 에 `card-created` 대칭 한정어를 넣을지(AC-ALD2-003 과의 정합) 아니면 두 `paths:` 값을 domain-keyed 로 고칠지는 SPEC 본문 개정 또는 범위 확대이며, 어느 쪽도 run phase 의 소유 범위 밖이다 — blocker 로 올린다.
+
+### plan-audit 이력 — 점수가 내려간 구간을 남긴다
+
+| iteration | 판정 | 입력 커밋 | 처분 |
+|---|---|---|---|
+| iter1 | ABORTED (혼합 세대 읽기) | — | 재실행 |
+| iter2 | FAIL 0.805 | `c95124a5a` | 수리 → v0.3.0 |
+| iter3 | FAIL 0.845 | `19b1e63e5` | 수리 → v0.4.0 |
+| iter4 | **PASS-WITH-DEBT 0.890** | `07eb0c703` | 수리 → v0.5.0 |
+| iter5 | **FAIL 0.71** | — | 수리 → v0.7.0 (`f0893dc36`) |
+| iter6 | **PASS-WITH-DEBT 0.85** | — | 채무 D16~D19 해소 → v0.8.0 (`625679ace`) |
+
+iter4 0.890 에서 iter5 0.71 로 **점수가 내려갔다.** 원인은 새 결함이 아니라 AC-ALD2-001·003 의 문턱이 구성상 만족 불가였음이 iter5 에서 드러난 것이고, 그 수리가 문턱 형식 자체의 폐기(기록 술어 교체)였다. 하락을 지우지 않고 남기는 이유는, 두 PASS-WITH-DEBT 만 남기면 이 SPEC 이 단조롭게 개선된 것으로 읽히기 때문이다.
+
+- **iter6 채무 D16~D19 는 `625679ace` 에서 닫혔다**(문구 층 한정, AC/REQ id 불변).
+- **D15 는 열려 있다** — `verdict.md` 의 마일스톤 분해 합이 실측 델타와 20 어긋난다. 어떤 AC 도 그 파일을 읽지 않으므로 이 카드에서 다루지 않았고, 채무로 남는다.
+
+### Gaps — 관측하지 않은 것을 이름으로 적는다
+
+- **허용 풀 `A_adm` 미측정.** 잔여 47,897 이 노력 부족인지 구조적 불가인지 가를 근거가 없다(`§AC-ALD2-001.3`).
+- **승계 29 hunk 미분류.** 그중 셋(`3c3` · `5c5` · `21c21`)은 18개 허용 클래스 **밖**임이 확인됐고, 나머지 26 은 분류 자체를 하지 않았다.
+- **`design.md §4.0` 열 재조정 미확정** — 구조적 하한 `F` 가 단일값이 아니라 세 값 구간 `{170,528 · 171,695 · 172,863}` 으로 남는다.
+- **전체 테스트 스위트를 로컬에서 돌리지 않았다** — 상시 금지(`CLAUDE.local.md §4`, 2026-08-15 load 413 사고). 전 패키지 판정은 통합 브랜치 CI 몫이다.
+- **AC-ALD2-005 의 트리 전수 최종 스윕 없음** — 앵커 스윕은 절이 움직이는 시점의 절 단위였고, 네 인용 형식(절 제목 · 파일+절 · 줄번호 · 산문 언급) 전체에 대한 최종 스윕은 돌지 않았다.
+- **AC-ALD2-008 재도출 불가** — 이 기록 실행에서 옮긴 절별 문자 합계를 다시 만들 수 없어 미검증으로 남긴다.
+- **린트 미실행** — 이 카드의 Go 파일 기여가 0개(실측)여서 새 린트 표면이 없다는 판단이며, `golangci-lint` 를 이 실행에서 돌리지는 않았다. 판단이지 측정이 아니다.
+
+### 프로세스 결함 1건 — 기록해 반복을 막는다
+
+`f0893dc36`(`docs(…): repair plan-audit iter5 defects`)이 SPEC 산출물 5개와 함께 **구현 편집 1건**을 실었다 — `internal/template/templates/.claude/rules/moai/workflow/cross-session-messaging-detail.md` 에서 빈 줄 1개 삭제(`git show --stat f0893dc36` 의 6번째 파일, `1 -`). 그 결과 **미러 수리가 문서 수리와 커밋 경계로 분리되지 않는다.** 착지를 막는 결함은 아니고, AC-ALD2-003 의 「수리로 달성」 순서를 이 절이 따로 적어야 하는 이유가 바로 그것이다. 다음에는 미러 수리를 자기 커밋으로 낸다.
 
 ## §E.3 Run-phase Audit-Ready Signal
 
-_<pending run-phase>_
+```yaml
+run_complete_at: 2026-09-26
+run_commit_sha: pending-backfill-run   # 이 기록 커밋은 자기 해시를 인용할 수 없다; 후속 커밋에서 backfill
+run_status: fail                        # MUST-PASS AC-ALD2-006 FAIL + AC-ALD2-008 미검증 → `completed` 로 닫히지 않는다
+ac_total_count: 9
+ac_pass_count: 5                        # AC-ALD2-001 · -002 · -003 · -004 · -009
+ac_fail_count: 1                        # AC-ALD2-006 (MUST-PASS)
+ac_pass_with_debt_count: 2              # AC-ALD2-005 (MUST-PASS) · AC-ALD2-007 (SHOULD-PASS)
+ac_unverified_count: 1                  # AC-ALD2-008 (MUST-PASS)
+preserve_list_post_run_count: 0         # plan.md 는 §A.5 PRESERVE 목록을 선언하지 않는다(범위는 18파일 + companion + 템플릿 미러로 서술)
+l44_pre_commit_fetch: not-run           # 워크트리 격리 레인; 커밋 직전 재판독은 `git rev-parse --short HEAD`(625679ace) + `git branch --show-current`(WT-rules-diet)로 수행
+l44_post_push_fetch: not-run            # push 자체를 하지 않는다 — 레인 push 금지(운영자 지시 2026-09-01), develop 일괄 push 는 리드 소관
+new_warnings_or_lints_introduced: unmeasured   # Go 기여 0개라 새 린트 표면 없음으로 판단; golangci-lint 는 이 실행에서 미실행
+cross_platform_build:
+  darwin_arm64: pass                    # make build → exit 0, catalog.yaml 내용 불변(git status 빈 출력)
+  windows_amd64: pass                   # GOOS=windows GOARCH=amd64 go build ./... → exit 0, 출력 없음
+  go_files_changed: 0                   # git diff --name-only a0b78213d HEAD -- '*.go' → 0
+total_run_phase_files: 85               # git diff --name-only a0b78213d HEAD | wc -l
+m1_to_mN_commit_strategy: >
+  마일스톤 8개(M1·M2·M3·M4·M5·M6·M6.5·M7)를 커밋 4개에 묶었다 —
+  3c40e0aa2(M1) · 4ab0511b4(M2) · 7bcdce760(M3+M6.5) · 276391646(M4·M5·M6·M7).
+  이어 0acfa28e1(미러 수리) + SPEC 산출물 4개(14a5a3caf · f0893dc36 · 87fd59092 · 625679ace).
+  이 기록 커밋이 draft → in-progress 전이를 뒤늦게 적용한다(M1 시점에 누락됐다).
+evidence_paths:
+  - .moai/reports/t1175/verdict.md              # run 판정서(이 절의 수치는 인용이 아니라 재측정)
+  - .moai/reports/t1175/run-baseline-pre.md      # 기준선 B = 246,943 (ref 172ef22eb)
+  - .moai/reports/t1175/pool-census.md           # 재배치 가능 풀 census
+  - .moai/reports/t1175/plan-audit-iter5.md       # FAIL 0.71
+  - .moai/reports/t1175/plan-audit-iter6.md       # PASS-WITH-DEBT 0.85
+blockers:
+  - id: BLK-ALD2-006
+    ac: AC-ALD2-006
+    summary: >
+      이 카드가 수정한 companion 2개(verification-claim-integrity-detail.md ·
+      session-handoff-examples.md)의 paths: 가 self-keyed 다. 두 값은 기준선 ref 172ef22eb 에서
+      바이트 동일한 승계 값이며 이 카드가 만들지 않았다. AC-ALD2-006 은 AC-ALD2-003 이 가진
+      card-created 한정어가 없어 문언대로 FAIL 한다.
+    owner: manager-spec          # AC 본문 개정, 또는 범위 확대 판정 — run phase 소유 범위 밖
+  - id: BLK-ALD2-008
+    ac: AC-ALD2-008
+    summary: 옮긴 절별 문자 합계를 이 실행에서 재도출할 수 없어 MUST-PASS 가 미검증으로 남는다.
+    owner: lead                  # 재측정 범위 지정 필요
+```
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
