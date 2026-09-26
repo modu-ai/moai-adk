@@ -152,7 +152,7 @@ slot_lease: go-test-heavy acquired (worker-66, session 09210812-6e27-462b-80ff-2
 ```yaml
 sync_status: complete
 sync_complete_at: 2026-09-26
-sync_commit_sha: pending-backfill-sync
+sync_commit_sha: 3ce9eaa80
 sync_status_note: 3-phase close rides the single sync commit (in-progress -> implemented ->
   completed merged close); real SHA backfilled in the follow-up commit per the D3 placeholder
   exemption (spec-frontmatter-schema.md).
