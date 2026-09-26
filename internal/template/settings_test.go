@@ -50,7 +50,8 @@ func testContext(platform string) *TemplateContext {
 // --- settings.json.tmpl tests ---
 
 // Claude Code treats a Bash pattern containing "*" plus a trailing ":*" as a
-// literal prefix. Keep the root, home, and Windows path variants as wildcards.
+// literal prefix and warns on startup. Keep one syntax per rule while
+// preserving the literal-"*" scope of the root, home, and Windows variants.
 func TestSettingsTemplateDenyWildcardSyntax(t *testing.T) {
 	// The legacy "/*:*" rules matched a literal "*" (Claude Code reports the
 	// middle "*" as unexpanded). "\*" keeps that literal match in the
