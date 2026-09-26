@@ -740,7 +740,7 @@ func runMultiAudit(ctx context.Context, claudeVerdict ReviewOutput, target, focu
 	// engine's distributed default (codex required) is not an opt-in. Runs
 	// BEFORE persist so the state file the multi-review-gate Stop hook reads
 	// carries the enforced verdict.
-	enforcementGates := workflowAuditGates(cfg.ProjectRoot)
+	enforcementGates, gateAssumedNote := workflowAuditGates(cfg.ProjectRoot)
 	// The actual Claude backend is a default-required independent audit. Unlike
 	// the legacy optional backends, an unavailable required Claude review must
 	// not fall through to a caller-supplied or secondary-model verdict.
@@ -748,6 +748,9 @@ func runMultiAudit(ctx context.Context, claudeVerdict ReviewOutput, target, focu
 		enforcementGates.Claude = config.AuditGateRequired
 	}
 	result = enforceRequiredGateUnmet(result, verdicts, enforcementGates)
+	if gateAssumedNote != "" && result.GateUnmet != "" {
+		result.ResidualRiskNote = gateAssumedNote + " | " + result.ResidualRiskNote
+	}
 
 	// ── audit receipt (SPEC-CODEX-AUDIT-GATE-AXES-001 axis (b)) ──
 	// A receipt is recorded only when codex actually took part: a fan-out that
@@ -867,15 +870,20 @@ func explicitGateFor(gates config.AuditGates, backend string) string {
 // performGLMAudit uses. Absent file, unreadable file, and parse errors all
 // yield zero gates — the enforcement fails OPEN on config trouble, so a broken
 // workflow.yaml can never invent a block.
-func workflowAuditGates(projectRoot string) config.AuditGates {
+//
+// A config-orphaned worktree root takes the gate from its primary checkout;
+// when that primary cannot be identified the codex gate is assumed `required`
+// and the second return value says so (SPEC-MCP-WORKTREE-UNTRACKED-001
+// REQ-MWU-011/012). Every other root keeps the behaviour above.
+func workflowAuditGates(projectRoot string) (config.AuditGates, string) {
 	root := strings.TrimSpace(projectRoot)
 	if root == "" {
 		root = resolveProjectDir()
 	}
 	if root == "" {
-		return config.AuditGates{}
+		return config.AuditGates{}, ""
 	}
-	return workflowAuditPins(root).Gates
+	return resolveAuditGates(root)
 }
 
 // ─── DQ-1: state-file persistence ───

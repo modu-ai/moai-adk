@@ -44,7 +44,10 @@ const projectRootDescCommon = "Optional project or worktree root to act on. Supp
 	"`git rev-parse --show-toplevel`. In a worktree session you MUST pass it: the server's own resolution names " +
 	"the PRIMARY checkout, so omitting it acts on the wrong tree. An unusable path is rejected, never silently " +
 	"replaced by a default, and an accepted path is canonicalized — symlinks resolved — so the call acts on the " +
-	"real directory rather than on the spelling that reached it. "
+	"real directory rather than on the spelling that reached it. A linked worktree of a repository that does not " +
+	"track .moai is accepted too, when git registers it as a worktree of a primary checkout that has .moai. On such " +
+	"a worktree without its own workflow config, the audit gate (workflow.audit.gates) is read from the primary " +
+	"checkout; other configuration, the SPEC catalogue, and state are still read from the accepted tree. "
 
 // projectRootDesc describes the parameter on a tool whose absent case falls back
 // to resolveProjectDir() — the tools that already resolved a root before this
@@ -125,6 +128,12 @@ func rootProvenanceMap(root, source string) map[string]any {
 			", which froze at server spawn; a session that moved worktrees is reading another tree; " +
 			"pass project_root = git rev-parse --show-toplevel"
 	}
+	// A separate key, never folded into "warning": a config-orphaned worktree
+	// answers from a tree whose .moai is not tracked, so an empty catalogue there
+	// is not "no SPECs" (SPEC-MCP-WORKTREE-UNTRACKED-001 REQ-MWU-013).
+	if isConfigOrphanedRoot(root) {
+		prov["worktree_warning"] = worktreeWarning
+	}
 	return prov
 }
 
@@ -181,11 +190,14 @@ func validateProjectRoot(raw string) (string, error) {
 		return "", fmt.Errorf("project_root %q cannot be canonicalized: %w", raw, err)
 	}
 
+	// Branch 1 (unchanged, no subprocess): a tree with its own .moai directory.
 	moaiDir := filepath.Join(canonical, ".moai")
-	moaiInfo, err := os.Stat(moaiDir)
-	if err != nil || !moaiInfo.IsDir() {
-		return "", fmt.Errorf("project_root %q has no .moai directory, so it is not a MoAI project root", raw)
+	if moaiInfo, err := os.Stat(moaiDir); err == nil && moaiInfo.IsDir() {
+		return canonical, nil
 	}
 
-	return canonical, nil
+	// Branch 2 (SPEC-MCP-WORKTREE-UNTRACKED-001): a linked worktree of a
+	// repository that keeps .moai untracked has none of its own; accept it only
+	// when git lists it as a worktree of a primary checkout that has .moai.
+	return validateLinkedWorktreeRoot(raw, canonical)
 }

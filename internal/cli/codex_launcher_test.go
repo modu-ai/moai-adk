@@ -828,7 +828,28 @@ func TestCodexApp_RealChildExitCodePropagates(t *testing.T) {
 // must be the token-by-token shell-quoted codex line, and a tmux failure
 // wraps without launching anything else.
 func TestCodexSpawn_RealAssemblyThroughStubTmux(t *testing.T) {
+	checkCodexSpawnRealAssembly(t)
+}
+
+// TestCodexSpawn_RealAssemblyUnderLaneEnv runs the same assertion with the
+// variables a factory lane session exports. The expected command is built
+// for an unset environment, so the check itself must pin every variable the
+// spawn command forwards; otherwise it fails only inside a lane (card t1217).
+func TestCodexSpawn_RealAssemblyUnderLaneEnv(t *testing.T) {
+	t.Setenv(config.EnvMoaiFactoryWorker, "lane-7")
+	t.Setenv(config.EnvMoaiFactoryWorkers, "3")
+	t.Setenv(config.EnvMoaiKanbanBackend, "claude")
+	checkCodexSpawnRealAssembly(t)
+}
+
+func checkCodexSpawnRealAssembly(t *testing.T) {
+	t.Helper()
 	requireTmuxSpawnEnv(t)
+	// The expected command below is the unset-environment form; pin every
+	// forwarded variable empty so the caller's shell cannot add assignments.
+	for _, key := range codexSpawnForwardedEnv {
+		t.Setenv(key, "")
+	}
 	fixture := codexAppMessageFixture(t)
 	withCodexGateOpen(t)
 
