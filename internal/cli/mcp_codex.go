@@ -1582,6 +1582,32 @@ var codexStatedVerdict = regexp.MustCompile(`(?mi)^[\s>#]*[*_]{0,2}verdict[*_]{0
 // recognizer would not close the hole, it would widen it.
 var codexScoredVerdict = regexp.MustCompile(`(?m)^[\s>#*_]*(PASS|FAIL|INCONCLUSIVE)\b[ \t]+[01]\.\d+\b`)
 
+// codexGreetedVerdict reads the verdict label when a greeting precedes it on
+// its line: "<greeting>, **verdict: fail**" — a shape GitHub #1718 observed on
+// the adversarial path, where a target project's own instructions put a
+// greeting ahead of codex's reply (SPEC-CODEX-PARSER-SHAPE-001 candidate (a)).
+//
+// It is a separate recognizer so codexStatedVerdict keeps its line-head
+// contract. The relaxation is exactly one clause wide: the text before the
+// label is a single comma-terminated span that opens the line, and the label
+// must follow that comma directly and name the verdict with the same separator
+// codexStatedVerdict requires. "Hello team, the verdict on caching is open and
+// the tests pass" names no verdict — the word after the comma is not the
+// label — and is not read as one.
+var codexGreetedVerdict = regexp.MustCompile(`(?mi)^[^\s*#|>\-,][^\n,]*,[ \t]+[*_]{0,2}verdict[*_]{0,2}[ \t]*[:\-–—]+[*_]{0,2}[ \t]*[*_]{0,2}(pass|fail|inconclusive)\b`)
+
+// codexLocalizedVerdict reads a verdict stated under the Korean label 판정
+// ("판정은 **FAIL**이야", "판정: pass") — the other #1718 shape. The label may
+// sit anywhere on a line outside a table (no '|' before it), because a
+// greeting and a possessive typically precede it.
+//
+// The narrowness comes from the statement form instead of the position: the
+// verdict word must follow the label (optionally with its topic particle)
+// either after a colon or wrapped in emphasis. "판정 기준상 **FAIL** 사유는
+// 없어" (a mention of the criterion) and "판정은 fail 여부를 가리기 어렵다"
+// (an unemphasized ordinary word) state no verdict and are not read as one.
+var codexLocalizedVerdict = regexp.MustCompile(`(?mi)^[^|\n]*?판정(?:은|는)?[ \t]*(?::[ \t]*[*_]{0,2}|[*_]{2})(pass|fail|inconclusive)\b`)
+
 // codexVerdictSignal is one verdict reading taken from a review body, kept
 // alongside the name of the signal that produced it. The name exists so a
 // divergence can be described in the operator's terms rather than as two bare
@@ -1605,6 +1631,12 @@ func codexVerdictSignalsOf(reviewText string) []codexVerdictSignal {
 	}
 	for _, m := range codexScoredVerdict.FindAllStringSubmatch(reviewText, -1) {
 		signals = append(signals, codexVerdictSignal{"scored verdict line", strings.ToLower(m[1])})
+	}
+	for _, m := range codexGreetedVerdict.FindAllStringSubmatch(reviewText, -1) {
+		signals = append(signals, codexVerdictSignal{"greeting-prefixed verdict label", strings.ToLower(m[1])})
+	}
+	for _, m := range codexLocalizedVerdict.FindAllStringSubmatch(reviewText, -1) {
+		signals = append(signals, codexVerdictSignal{"localized verdict label", strings.ToLower(m[1])})
 	}
 	if codexFindingBullet.MatchString(reviewText) {
 		signals = append(signals, codexVerdictSignal{"severity-tagged finding bullet", "fail"})
@@ -1731,6 +1763,52 @@ var codexFindingLine = regexp.MustCompile(`(?m)^([ \t]*)[-*][ \t]+\[([A-Za-z]+\d
 // extension allowlist would silently drop anchors for every language it forgot.
 var codexPathLineRef = regexp.MustCompile(`([\w./@+-]+\.[A-Za-z0-9]+):([0-9]+)`)
 
+// codexFindingTableRow and codexFindingBoldBullet read the two finding shapes
+// GitHub #1718 observed when a target project's instructions shaped codex's
+// adversarial reply (SPEC-CODEX-PARSER-SHAPE-001 candidate (a)): a markdown
+// table row whose FIRST cell is exactly a bold severity word
+// ("| **High** | [a.md:28](…) | … |"), and a bullet led by a bold severity
+// word followed by a separator ("- **Medium · [a.yaml:38](<…>) · …").
+//
+// Both are anchored on the bold severity word from a closed vocabulary rather
+// than on any bold text: "- **High-level summary**" and "The risk is **High**"
+// are not findings. The severity word is kept verbatim, as the bracketed form
+// keeps "P1" verbatim. Neither shape adds a verdict signal — only the
+// bracketed bullet carries the fail signal it always has; a verdict for these
+// bodies comes from a stated verdict line.
+var (
+	codexFindingTableRow   = regexp.MustCompile(`^[ \t]*\|[ \t]*\*\*(Critical|High|Medium|Low)\*\*[ \t]*\|(.*)$`)
+	codexFindingBoldBullet = regexp.MustCompile(`^([ \t]*)[-*][ \t]+\*\*(Critical|High|Medium|Low)(?:\*\*)?[ \t]*[·:—–][*_]*[ \t]*(.*)$`)
+)
+
+// codexTableRowMessage joins a finding row's remaining cells into one message,
+// in column order, dropping empty cells.
+func codexTableRowMessage(rest string) string {
+	var cells []string
+	for _, c := range strings.Split(rest, "|") {
+		if c = strings.TrimSpace(c); c != "" {
+			cells = append(cells, c)
+		}
+	}
+	return strings.Join(cells, " — ")
+}
+
+// codexFindingLineOf matches one line against every finding shape and returns
+// the indent (for continuation joining; "" plus ok=false for a table row, which
+// has no continuation), the severity, and the message.
+func codexFindingLineOf(ln string) (indent, sev, msg string, continues, ok bool) {
+	if m := codexFindingLine.FindStringSubmatch(ln); m != nil {
+		return m[1], m[2], strings.TrimSpace(m[3]), true, true
+	}
+	if m := codexFindingBoldBullet.FindStringSubmatch(ln); m != nil {
+		return m[1], m[2], strings.TrimSpace(m[3]), true, true
+	}
+	if m := codexFindingTableRow.FindStringSubmatch(ln); m != nil {
+		return "", m[1], codexTableRowMessage(m[2]), false, true
+	}
+	return "", "", "", false, false
+}
+
 // codexFindingsOf parses codex's review prose into structured findings
 // (#1632 axis 1). Each severity-tagged bullet becomes one Finding carrying the
 // verbatim severity, the message as title/body, and the first path:line anchor
@@ -1744,14 +1822,13 @@ func codexFindingsOf(reviewText string) []Finding {
 	var cur *Finding
 	var curIndent string
 	for _, ln := range strings.Split(reviewText, "\n") {
-		m := codexFindingLine.FindStringSubmatch(ln)
-		if m == nil {
+		indent, sev, msg, continues, ok := codexFindingLineOf(ln)
+		if !ok {
 			if cur != nil && strings.TrimSpace(ln) != "" && strings.HasPrefix(ln, curIndent+" ") {
 				cur.Body += "\n" + strings.TrimSpace(ln)
 			}
 			continue
 		}
-		indent, sev, msg := m[1], m[2], strings.TrimSpace(m[3])
 		f := Finding{Severity: sev, Title: msg, Body: msg}
 		if pm := codexPathLineRef.FindStringSubmatch(msg); pm != nil && !strings.Contains(pm[1], "://") {
 			f.File = pm[1]
@@ -1760,8 +1837,11 @@ func codexFindingsOf(reviewText string) []Finding {
 			}
 		}
 		findings = append(findings, f)
-		cur = &findings[len(findings)-1]
-		curIndent = indent
+		cur, curIndent = nil, ""
+		if continues {
+			cur = &findings[len(findings)-1]
+			curIndent = indent
+		}
 	}
 	return findings
 }

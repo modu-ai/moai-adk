@@ -39,16 +39,24 @@ type codex1718Synthesis struct {
 }
 
 // codex1718Expected is the synthesis table TestCodex1718Fixtures asserts,
-// row for row. Before any candidate change these are the outputs E-1718
-// recorded for the raw bodies (body1 → S1, body2 → S2, ctrlB → S2p), and the
-// N1/N2 baseline AC-CPS-012 compares against.
+// row for row.
+//
+// History, kept because the table changed meaning once: the commit that
+// introduced these fixtures asserted the PRE-change outputs — the values E-1718
+// recorded for the raw bodies (S1 and S2 inconclusive/0 on turn/start and
+// pass/0 on review/start, S2p fail/0 on both) — which closed AC-CPS-011's
+// fidelity check. Candidate (a) then widened the recognizers, and the rows
+// below are the post-(a) expectation (AC-CPS-012): every S-fixture yields fail
+// with its declared finding count on both paths. N1 and N2 are unchanged from
+// the pre-change baseline — a widening that reads either as a stated verdict
+// fails this table.
 var codex1718Expected = []codex1718Synthesis{
-	{"S1.txt", codexMethodTurnStart, VerdictInconclusive, 0},
-	{"S1.txt", codexMethodReviewStart, "pass", 0},
-	{"S2.txt", codexMethodTurnStart, VerdictInconclusive, 0},
-	{"S2.txt", codexMethodReviewStart, "pass", 0},
-	{"S2p.txt", codexMethodTurnStart, "fail", 0},
-	{"S2p.txt", codexMethodReviewStart, "fail", 0},
+	{"S1.txt", codexMethodTurnStart, "fail", codex1718S1DeclaredFindings},
+	{"S1.txt", codexMethodReviewStart, "fail", codex1718S1DeclaredFindings},
+	{"S2.txt", codexMethodTurnStart, "fail", codex1718S2DeclaredFindings},
+	{"S2.txt", codexMethodReviewStart, "fail", codex1718S2DeclaredFindings},
+	{"S2p.txt", codexMethodTurnStart, "fail", codex1718S2DeclaredFindings},
+	{"S2p.txt", codexMethodReviewStart, "fail", codex1718S2DeclaredFindings},
 	{"N1.txt", codexMethodTurnStart, VerdictInconclusive, 0},
 	{"N1.txt", codexMethodReviewStart, "pass", 0},
 	{"N2.txt", codexMethodTurnStart, VerdictInconclusive, 0},
@@ -64,9 +72,10 @@ func readCodex1718Fixture(t *testing.T, name string) string {
 	return string(b)
 }
 
-// TestCodex1718Fixtures is AC-CPS-011 check 1 (fidelity): every fixture file is
-// synthesized on both review paths, one SYNTH line per file per path, and each
-// row must equal codex1718Expected.
+// TestCodex1718Fixtures synthesizes every fixture file on both review paths,
+// one SYNTH line per file per path, and each row must equal codex1718Expected.
+// It was AC-CPS-011 check 1 (fidelity) at the commit that introduced the
+// fixtures, and is the AC-CPS-012 verdict/count table since candidate (a).
 func TestCodex1718Fixtures(t *testing.T) {
 	if len(codex1718Expected) != 10 {
 		t.Fatalf("expected table has %d rows, want 10 (five files × two paths)", len(codex1718Expected))
