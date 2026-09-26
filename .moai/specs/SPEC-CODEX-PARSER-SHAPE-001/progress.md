@@ -248,7 +248,23 @@ m1_to_mN_commit_strategy: one commit per milestone step, no push, no amend
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase>_
+```yaml
+sync_complete_at: 2026-09-26
+sync_commit_sha: pending-backfill-sync   # placeholder per the D3 backfill exemption; real SHA backfilled in the following commit
+sync_status: complete — CHANGELOG entry emitted under [Unreleased] ### Added (newest-first); no README / docs-site surface states the codex review verdict-synthesis semantics or the removed native-default-pass behavior (sweep: 4 README locales + docs-site codex surfaces — 0 rows), so CHANGELOG is the only doc change; spec.md frontmatter status in-progress → completed on the sync commit (updated: already 2026-09-26, value unchanged)
+b12_self_test_a: pass — grep -c 'SPEC-CODEX-PARSER-SHAPE-001' CHANGELOG.md → 0 before emission (no duplicate entry)
+b12_self_test_b: pass — acceptance.md live AC identifiers = 16 (AC-CPS-001..016, zero reserved-token exclusions); CHANGELOG entry states 16 criteria, 11 measured PASS, AC-CPS-014 / AC-CPS-016 explicitly NOT measured (deferred, regression-guard class) — no live observation claimed as passed
+b12_self_test_c: pass — every path named in the CHANGELOG entry verified present: internal/cli/mcp_codex.go, internal/cli/testdata/codex-1718/ (N1, N2, S1, S2, S2p), .moai/reports/t1203/run/ac014-attempt1.md (read, cited as evidence)
+changelog_entry_position: CHANGELOG.md [Unreleased] ### Added — first bullet (newest-first convention)
+frontmatter_status_transitions:
+  spec_md: in-progress → completed (the single sync commit; the implemented intermediate is merged per the 3-phase close)
+  plan_md: n/a (status-stateless artifact)
+  acceptance_md: n/a (status-stateless artifact)
+  progress_md: n/a (body sections carry no status field)
+canary_compliance_check:
+  mx_tag_validation: pass — sync sub-step: all M2–M4 additions in internal/cli/mcp_codex.go are unexported single-caller functions (codexReviewSessionParams, codexUnrecognizedVerdict, flagVerdictFindingsContradiction) plus one struct field (ReviewOutput.Contradiction); no new exported symbol, no fan_in >= 3 symbol → no @MX additions required; existing tags untouched
+  doc_surfaces_swept: README.md, README.ko.md, README.ja.md, README.zh.md, docs-site/content/{en,ko,ja,zh}/advanced/{codex-dual-harness,multi-model-audit}.md — none documents codex review verdict synthesis; the multi-model-audit inconclusive prose describes backend-gate convergence, a different layer, and remains accurate
+```
 
 ## §F Phase 4 Mode Selection
 
