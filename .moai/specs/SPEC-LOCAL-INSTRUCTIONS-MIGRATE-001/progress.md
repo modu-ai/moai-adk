@@ -318,6 +318,132 @@ its cause.
   extension half cannot pass before it. An auditor preferring one severity per criterion would
   split it; the Tier L ceiling (25) leaves room.
 
+### plan-audit iter2 — PASS-WITH-DEBT 0.92, both remaining items repaired (v0.2.2)
+
+Report: `.moai/reports/t1259/plan-audit-iter2.md` at `28476f1a9`, against tree `bac73d358`. Five of
+six iter1 repairs confirmed closed and mechanically re-verified. Three judgment calls were
+vindicated on the auditor's own terms and are not revisited: equal-delta over narrowing (it
+re-measured all 24 section counts independently, byte-for-byte match, and worked the three
+staleness cases), applying both D2 options (verified genuinely red at `bac73d358`), and **not**
+splitting `AC-IFU-029` — both halves assert the same property on the same requirement, so splitting
+would put two criteria on `REQ-IFU-008` and regress the one-to-one traceability just achieved.
+
+**D3-residual — repaired by grounding the whole clause against the workflow files once**, which is
+what the audit asked for after this criterion's evidence pointed at something absent twice.
+Measured here, not carried:
+
+```
+$ grep -rn 'hugo\|vercel' .github/workflows/
+(no output; exit 1)          # across all 20 workflow files
+$ grep -n '^on:' -A4 .github/workflows/ci.yml
+  push:  branches: [main, develop]
+$ sed -n '229p' .github/workflows/ci.yml
+  go test -json -coverprofile=coverage.out -covermode=atomic ./... > test-stream.json || rc=$?
+```
+
+The criterion now names what the develop head actually produces: `CI` (whose `test` job runs
+`go test ./...`, covering `./internal/cli/...`) and `spec-lint` (which has its own `push` trigger on
+`.moai/specs/**`).
+
+**The docs-site build clause is dropped, not re-sited** — and the reason improved mid-repair. I
+wrote "whether Vercel builds is unmeasured"; the orchestrator then measured it at `0d7c7e44e`
+(`.moai/reports/t1259/d3-ci-surface.md`) and Vercel **does** build it, configured in-repo
+(`docs-site/vercel.json`, `framework: hugo`, `buildCommand: hugo --minify --gc`). I corrected the
+note rather than shipping a stale claim — asserting "unmeasured" about something now measured is
+the same defect class one more time.
+
+The measurement strengthens the drop rather than reversing it, with three grounded reasons in place
+of one absent one: the deployment is a different system with a different head (not a job in the
+Actions run the criterion names); `ignoreCommand` makes it conditional on the push touching
+`docs-site`, so an unconditional assertion is false on most pushes; and `github.silent: true` means
+it never reports onto the commit, so its result is not readable from the surface the other checks
+are read from. The premise a re-sited clause would still need — **whether the Vercel project
+deploys `develop` at all** — is project-side configuration absent from this tree and remains unread.
+
+**A second gap closed by that same commit, and it changed my wording.** `develop` is **not
+protected**: `gh api …/branches/develop/protection` → `404 Branch not protected`. So "every required
+check passes" has no referent on `develop` — there is no required-check set, only workflow runs that
+block nothing. The criterion names workflow runs by file, and a `[HARD]` note now records why that
+phrasing is deliberate and warns against carrying `main`'s protected posture onto `develop`.
+
+**But one finding the audit did not have changes what replaces it.** `docs i18n parity check` fires
+on a `develop` push filtered to `docs-site/content/**`, so it *does* run for M4 — and naming it as a
+required check would have repeated the defect in a third form, because it is **advisory by
+construction**:
+
+```
+$ sed -n '71,74p' .github/workflows/docs-i18n-check.yml
+          elif [[ "${{ github.event_name }}" == "push" ]]; then
+            # push to main/develop: warn-only during Phase 1 rollout ...
+            echo "strict=false" >> "$GITHUB_OUTPUT"
+```
+
+The file's own header says `ADVISORY ONLY — NOT BLOCKING`, Phase 1 of a declared rollout with 35
+pre-existing drifts. So it is named at its real weight: it must have **run and its log been read**,
+never that it passed. The path-filter coupling is stated rather than assumed.
+
+The residual gap is written into the criterion rather than left implicit: M4 lands 24 locale files
+whose content no *blocking* check inspects. `AC-IFU-023` is what actually decides that work; a
+future card flipping the parity check to Phase 2 strict would close it, and this SPEC does not
+pretend to.
+
+Sidelight worth recording: those 35 declared pre-existing drifts independently corroborate `D1`'s
+baseline — the `claude-md-guide.md` and `quickstart.md` divergence is known, tracked, and owned
+elsewhere, which is why equal-delta rather than equality was the right shape.
+
+**N1 — repaired, and the repair corrected an overclaim of my own.** The v0.2.1 alternation made
+this file's `no tests to run` guard permanently silent, since one branch always matches. Split into
+two commands, two symbols, two reads. I first wrote "two exit codes" — then measured, and it is
+wrong:
+
+```
+$ go test ./internal/cli/ -run '^TestCodexLocalInstructions_FallbackAdvisory$' -v
+testing: warning: no tests to run
+PASS
+ok  github.com/modu-ai/moai-adk/internal/cli  0.813s [no tests to run]
+exit=0
+```
+
+`go test` exits `0` and prints `PASS` on a selector matching nothing, so the exit code is not the
+discriminator — the marker is, which is why the head block prescribes reading it. The criterion now
+says so explicitly with this output recorded. The generalized lesson is in the v0.2.2 note: **an
+alternation is the wrong shape for a conjunction** — `-run` takes a disjunction, so each added
+branch weakens the selector's ability to report absence while the assertion it serves is "both must
+pass". N symbols need N commands.
+
+### Verification after these repairs
+
+```
+$ AC counter → 10 ;  grep -c '^\*\*AC-IFU-' → 10          (agree; COUNT unmoved)
+$ diff <(grep -o 'REQ-IFU-[0-9]\{3\}' acceptance.md | sort -u) \
+       <(grep -o '^- \*\*REQ-IFU-[0-9]\{3\}' spec.md | grep -o 'REQ-IFU-[0-9]\{3\}' | sort -u)
+  (empty output, exit 0)
+$ moai spec lint SPEC-LOCAL-INSTRUCTIONS-MIGRATE-001 → ✓ No findings, exit 0
+```
+
+No criterion was added or removed, so no baseline cascade applies (this SPEC remains an
+absent-from-snapshot, report-only row).
+
+### Gaps — carried forward, NOT closed by assertion
+
+- **Whether the Vercel project deploys `develop` at all — unread.** The build command and git
+  integration are in-repo and measured; which branches trigger a deployment is project-side
+  configuration, absent from this tree. This is the premise a re-sited build clause would have
+  needed, and the reason dropping was the sound close.
+- **Both external readings decay silently.** Branch protection and Vercel project settings are
+  mutable outside this repository, and nothing in the tree changes when they move. The two figures
+  recorded in `AC-IFU-031`'s notes (`develop` unprotected; Vercel builds conditionally) are pinned
+  to `0d7c7e44e` and are to be **re-read at close**, not cited from there.
+- **Full `internal/cli` state unrun.** Only the two named selectors were run, per affected-packages
+  discipline.
+- Parent-SPEC M2 and t1175 landing states — measured unmet at `a9e5f9d5a`; unchanged.
+
+**Tree divergence, second occurrence — reported, not absorbed.** `HEAD` moved `28476f1a9` →
+`0d7c7e44e` mid-repair. Inspected before staging: one file,
+`.moai/reports/t1259/d3-ci-surface.md`, disjoint from the three artifacts staged here; the writer is
+the orchestrator closing the two gaps iter2 recorded. Its content contradicted a claim I had already
+written, which is why the correction above exists — the divergence check is what caught it.
+
 ## §E.2 Run-phase Evidence
 
 _<pending run-phase>_

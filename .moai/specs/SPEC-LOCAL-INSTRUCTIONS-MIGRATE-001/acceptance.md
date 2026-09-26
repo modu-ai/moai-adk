@@ -69,11 +69,29 @@ contains the literal string `CLAUDE.local.md` rather than a substituted or norma
 still does so on the new fallback-advisory path**. Verified by
 
 ```
-go test ./internal/cli/ -run '^TestCodexLocalInstructions_DualFileMatrix$|^TestCodexLocalInstructions_FallbackAdvisory$' -v
+go test ./internal/cli/ -run '^TestCodexLocalInstructions_DualFileMatrix$' -v
+go test ./internal/cli/ -run '^TestCodexLocalInstructions_FallbackAdvisory$' -v
 ```
 
-whose output must contain **both** `--- PASS: TestCodexLocalInstructions_DualFileMatrix ` and
-`--- PASS: TestCodexLocalInstructions_FallbackAdvisory `, and must not contain `no tests to run`.
+**Two symbols, two commands, two separate reads** — `plan.md` §C's "two mirrors, two commands"
+applied to tests. Each command's own output must contain its own `--- PASS: <symbol> ` line and
+must **not** contain `no tests to run`.
+
+[HARD] **The `no tests to run` marker is the discriminator here, not the exit code.** Measured
+against the absent test at `bac73d358`:
+
+```
+$ go test ./internal/cli/ -run '^TestCodexLocalInstructions_FallbackAdvisory$' -v
+testing: warning: no tests to run
+PASS
+ok  github.com/modu-ai/moai-adk/internal/cli  0.813s [no tests to run]
+exit=0
+```
+
+`go test` exits `0` and prints `PASS` on a selector matching nothing, so reading the exit code
+alone passes a run that tested nothing — which is why this file's head block prescribes the marker
+read in the first place. A single alternation defeats even that: one branch always matches, so the
+marker never appears however absent the other test is (see the v0.2.2 note).
 `TestCodexLocalInstructions_FallbackAdvisory` — the test `AC-IFU-011` requires this SPEC to create
 — must therefore assert the literal preamble alongside the advisory, so that emitting the advisory
 cannot regress the preamble the same payload carries. (REQ-IFU-008)
@@ -127,6 +145,20 @@ cannot regress the preamble the same payload carries. (REQ-IFU-008)
 > **is** red today, because that test does not exist. The pairing also closes the real risk the
 > preservation framing exposes: the advisory is emitted from the same launch path that builds the
 > payload, so the change most likely to break the preamble is precisely this SPEC's own.
+
+> **[HARD] v0.2.2 — the v0.2.1 repair silenced its own positive control (audit iter2, N1).** The
+> extension was written as one alternation, `'^…_DualFileMatrix$|^…_FallbackAdvisory$'`. Because one
+> branch always matches, `go test` never prints `no tests to run` and never exits non-zero — so the
+> file's own [HARD] anti-vacuity guard was inert in the very criterion being repaired for vacuity.
+> Measured at `bac73d358` with the required test entirely absent: exit `0`, `PASS`, no marker. The
+> criterion still failed correctly, but only through a reader applying the prose "must contain
+> both" — a mechanical control reduced to prose.
+>
+> Split into two commands so each symbol carries its own exit code and its own marker read. The
+> lesson generalizes past this line: **an alternation is the wrong shape for a conjunction.** `-run`
+> takes a disjunction, so every added branch weakens the selector's ability to report absence,
+> while the assertion it serves ("both must pass") is a conjunction. Where a criterion needs N
+> symbols, it needs N commands.
 
 > **Debt discharged at v0.2.0 — the fold is undone.** The note this replaces recorded that the
 > criterion decided two outcomes under one verdict: (a) the advisory is missing, so the user is
@@ -332,12 +364,66 @@ re-read this criterion, not to adjust the numbers silently.
 > It belongs in a card of its own, where someone can decide whether ko is missing eight sections
 > or en/ja/zh carry eight it should not have — a question this SPEC has no basis to answer.
 
-**AC-IFU-031** — Given this lane's merge landed on `origin/develop`, When the CI run for the
-`develop` head **carrying this lane's merge SHA** completes, Then every required check reports
-success, and the run includes both `go test ./internal/cli/...` and the docs-site build. The
-verdict is read from that run, identified by its head SHA — a local pass, or a run against a
+**AC-IFU-031** — Given this lane's merge landed on `origin/develop`, When the workflow runs for
+the `develop` head **carrying this lane's merge SHA** complete, Then:
+
+- **`CI` (`.github/workflows/ci.yml`) reports success**, and its `test` job ran — that job executes
+  `go test ./...` (`ci.yml:229`), which is what covers `./internal/cli/...`. The sibling jobs on the
+  same workflow (`lint`, `build`, `test-race`, `test-integration`, `constitution-check`) are part of
+  that success.
+- **`spec-lint` (`.github/workflows/spec-lint.yml`) reports success**, which fires on a `develop`
+  push touching `.moai/specs/**` — this SPEC's own artifacts.
+- **`docs i18n parity check` (`.github/workflows/docs-i18n-check.yml`) has RUN and its log is
+  read** — recorded, not gated. It is **advisory and non-blocking by construction**: `strict=false`
+  on a push to `main`/`develop` (`docs-i18n-check.yml:71-74`), Phase 1 of a declared rollout with 35
+  pre-existing drifts. Its verdict is therefore evidence to read, never a pass condition, and its
+  `paths: docs-site/content/**` filter means it fires only because M4's own commit touches those
+  files — state that coupling when recording it rather than assuming the run happened.
+
+The verdict is read from those runs, identified by the head SHA — a local pass, or a run against a
 `develop` head predating this lane's merge, does not discharge it.
 (REQ-IFU-007 … REQ-IFU-012, REQ-IFU-020 … REQ-IFU-022)
+
+> **[HARD] Named as workflow runs, not as "required checks", and that wording is load-bearing.**
+> `develop` is **not a protected branch** — measured at `0d7c7e44e`:
+> `gh api repos/modu-ai/moai-adk/branches/develop/protection` → `404 Branch not protected`. There is
+> therefore no required-check set on `develop` for a clause to refer to; what exists is the set of
+> workflow runs the push triggers, and nothing blocks on their result. Do not carry `main`'s posture
+> (protected, `enforce_admins: true`) onto `develop`. Both readings are mutable outside this
+> repository and decay silently — re-read them at close rather than citing these.
+
+> **[HARD] The docs-site build clause is DROPPED, not re-sited, and this is deliberate.** No
+> workflow in this repository builds the docs-site: `grep -rn 'hugo\|vercel' .github/workflows/`
+> returns nothing (exit 1) across all 20 workflow files; `docs-i18n-check.yml` has no build step;
+> `ci.yml`'s `build` job builds the Go binary. Docs-site publishing is Vercel — a different system
+> with its own head.
+>
+> Vercel **does** build it, and the configuration is in-repo (`docs-site/vercel.json`:
+> `"framework": "hugo"`, `"buildCommand": "hugo --minify --gc"`) — measured at `0d7c7e44e`,
+> `.moai/reports/t1259/d3-ci-surface.md`. That measurement does not rescue the clause; it supplies
+> three better reasons to drop it than "unmeasured" was:
+>
+> 1. **Different system, different head.** The deployment is not a job inside the Actions run this
+>    criterion names, so "the run includes the docs-site build" is false by construction.
+> 2. **Conditional.** `ignoreCommand` skips the build unless the push changed something under
+>    `docs-site`, so an unconditional assertion is false on most `develop` pushes.
+> 3. **`github.silent: true`** — the deployment does not report onto the commit, so its result is
+>    not readable from the surface the other checks are read from.
+>
+> And the premise a re-sited clause would need is still missing: **whether the Vercel project
+> deploys `develop` at all** is project-side configuration, absent from this tree and unread. So
+> re-siting would rest on an unverified premise while dropping needs none.
+>
+> The clause is not silently deleted: what replaces it is `docs i18n parity check`, the one
+> docs-side signal that demonstrably fires on this exact head — recorded at its real weight
+> (advisory) rather than promoted to a gate it is not.
+>
+> **What this leaves uncovered, stated rather than papered over.** M4 lands 24 locale files whose
+> *content* no blocking check inspects: the Go suite says nothing about docs, and the parity check
+> cannot fail the run. `AC-IFU-023` is the criterion that actually decides M4's docs work; this one
+> asserts only that the integration ran and that the docs signal was read. A future card flipping
+> the parity check to Phase 2 strict would close the gap; this SPEC does not, and does not pretend
+> to.
 
 > **Authored at v0.2.0.** The carve recorded that this SPEC had no whole-change assertion of its
 > own, the parent's `AC-IFU-025 [REF]` having stayed with the parent because it asserts that

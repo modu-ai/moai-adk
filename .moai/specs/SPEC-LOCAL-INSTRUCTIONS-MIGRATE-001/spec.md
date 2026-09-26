@@ -1,7 +1,7 @@
 ---
 id: SPEC-LOCAL-INSTRUCTIONS-MIGRATE-001
 title: "Local-instruction migration — CLAUDE.local.md to AGENTS.local.md, with advisories and docs"
-version: "0.2.1"
+version: "0.2.2"
 status: draft
 priority: P1
 phase: "v3.3.0 target"
@@ -22,15 +22,17 @@ tier: L
 | 0.1.1 | 2026-09-26 | **Plan-audit iter-2 repairs (subject `653e53572`).** D14: `AC-IFU-007`'s two clauses were jointly unsatisfiable at their own boundary — a 4,381-character reduction from the measured 44,381 lands on exactly 40,000 and fails `< 40000`; floor corrected to 4,382, and the **same off-by-one repaired in `REQ-IFU-021` here**, which the audit did not name. D9 class (found by the cross-SPEC sweep, not in the audit's B2 note): `AC-IFU-011` arrived from the carve with the head-only pattern `'^TestCodexLocalInstructions'`, which matches 22 pre-existing sibling tests and made the criterion unfailable; both-end anchoring plus the asserted-line delimiter applied, the rule stated at the head of `acceptance.md`, and the advisory half declared as a test this SPEC creates. D12 class (also found by the cross-SPEC sweep, also absent from the audit's B2 note): sibling-SPEC `AC-` tokens in prose made this file's AC counter read **10** live criteria against 7 declared — `[REF]`-marked, counter now reports 7. Typo `discharegable` → `dischargeable`. Still **not a completed plan phase** — t1259 owns that. |
 | 0.2.0 | 2026-09-26 | **Plan phase completed by card t1259.** Tier raised **M → L** on the measured file-count axis (35 files affected; the Tier L threshold is >15) — `design.md` and `research.md` are added accordingly. `REQ-IFU-010` split into two clauses, resolving the inherited `AC-IFU-014` contradiction (design.md §A). `REQ-IFU-020`'s `memory` page disambiguated: it resolved to **two** files per locale, and the criterion named neither. `REQ-IFU-021`'s before-value **re-measured in this tree: 44,740 characters, not the carve's 44,381** — and the fixed reduction floor is replaced with a derived one, because a hard-coded floor drifts with the file it measures. Both recorded debts unfolded (`AC-IFU-029`, `AC-IFU-030`), `AC-IFU-015` promoted to blocking, whole-change CI criterion `AC-IFU-031` authored. |
 | 0.2.1 | 2026-09-26 | **plan-audit iter1 repairs (PASS-WITH-DEBT 0.85, report `.moai/reports/t1259/plan-audit-iter1.md` at `b8fb023e8`).** Four blocking defects, all in the acceptance layer, all repaired. **D1** — `AC-IFU-023`'s locale-parity clause asserted equality over a set already unequal (`claude-md-guide.md` ko=10 vs 18; `quickstart.md` ko=14 vs 10); equality replaced by **equal-delta against a recorded baseline**, which keeps the locales-in-step property without pulling an unscoped twelve-section restructure into M4. **D2** — `AC-IFU-029` passed before any work; `REQ-IFU-008` is now declared a **preservation requirement** here and the criterion a **regression guard** with its baseline recorded, AND extended to the new fallback path so it has a red-able half. **D3** — `AC-IFU-031` cited a PR head this lane never produces; re-sited on the `origin/develop` run carrying the lane's merge SHA. **D4** — `AC-IFU-024` used `grep -c` for a per-sentence assertion; now `grep -n -C1`, judged per line. Optional **D5** (stdout-vs-stderr rationale) and **D6** (`REQ-IFU-012` leading `When`) also applied. |
+| 0.2.2 | 2026-09-26 | **plan-audit iter2 repairs (PASS-WITH-DEBT 0.92, report `.moai/reports/t1259/plan-audit-iter2.md` at `28476f1a9`).** Five of six iter1 repairs confirmed; two items remained. **D3-residual** — `AC-IFU-031` still asserted a docs-site build no workflow performs (`grep -rn 'hugo\|vercel' .github/workflows/` → nothing across 20 files). The whole clause is now grounded against the workflow files once, as the audit asked: `CI` and `spec-lint` named as the checks that actually run on a `develop` push, the docs-site build clause **dropped** rather than re-sited onto an unmeasured Vercel behaviour, and `docs i18n parity check` named in its true weight — it fires on this head but is **advisory, `strict=false`** by construction, so it is read, never gated. **N1** — the v0.2.1 alternation silenced this file's own `no tests to run` guard; split into two commands, and the marker is documented as the discriminator since `go test` exits `0` on a selector matching nothing. |
 
-> **Plan phase complete (v0.2.1, card t1259; plan-audit iter1 repairs applied).** Every item the carve left open is now either
+> **Plan phase complete (v0.2.2, card t1259; plan-audit iter1 + iter2 repairs applied).** Every item the carve left open is now either
 > applied or explicitly deferred with a reason; `progress.md` §E.1 is the itemised record. The
 > Tier judgment is taken (L, on measured file count), the milestones are re-sequenced for this
 > SPEC's own dependency order, both recorded debts are unfolded, and the parent `research.md`
 > Q4 is answered. What remains open by design: no plan-audit has run against this SPEC yet, and
 > the `SPEC-INSTRUCTION-FILES-UNIFY-001` M2 sequencing dependency (plan.md §B) is unchanged. One
-> plan-audit has run (iter1, PASS-WITH-DEBT 0.85); its four blocking defects are repaired at
-> v0.2.1 and iter2 has not run.
+> Two plan-audits have run — iter1 PASS-WITH-DEBT 0.85, iter2 PASS-WITH-DEBT 0.92. All six iter1
+> defects and both iter2 items are repaired (v0.2.1, v0.2.2); a scoped iter3 on the two iter2 lines
+> has not run.
 ---
 
 ## §A Context
