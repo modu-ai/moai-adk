@@ -326,6 +326,20 @@ The list of commands that will **never run** under any circumstances.
 }
 ```
 
+#### deny rules for the PowerShell tool
+
+Claude Code can also run shell commands through a separate PowerShell tool (on by default on most Windows setups, opt-in on macOS and Linux). Its rules live in their own `PowerShell(...)` namespace: a `Bash(...)` deny rule does not block the same command when it runs through the PowerShell tool. The MoAI-ADK template therefore declares each destructive deny rule for both tools, for example `Bash(git push --force:*)` and `PowerShell(git push --force:*)`. This covers the dangerous Git, disk formatting, system command, and DB deletion rules.
+
+Three kinds of Bash deny rules intentionally have no PowerShell counterpart:
+
+| Rule | Why there is no PowerShell counterpart |
+|------|------|
+| Filesystem-root deletion (`rm -rf /`, `rm -rf ~`, deletions of `C:/`) | Claude Code's built-in protection already denies `Remove-Item` and `cmd` deletions of system paths through the PowerShell tool, in every permission mode |
+| `kill -9` | In PowerShell on Windows, `kill` is an alias of `Stop-Process`, so a rule written as `kill -9` may never match |
+| `TRUNCATE` | PowerShell rules match case-insensitively, so it would also block the ordinary `truncate` file utility |
+
+If your team uses the PowerShell tool, add a matching `PowerShell(...)` rule whenever you add your own deny rule for a shell command.
+
 ### additionalDirectories
 
 Additional working directories Claude can access.

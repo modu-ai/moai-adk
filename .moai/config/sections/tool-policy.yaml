@@ -427,6 +427,273 @@ entries:
     audit: "interactive rebase behind a git global option (-C, -c, --git-dir, --work-tree)"
     source: "global-option prefix form of git rebase -i:*"
 
+  # --- §D.1h PowerShell-tool counterparts ---
+  # The PowerShell tool has its own permission namespace: a Bash(...) deny does
+  # not stop the same command issued through the PowerShell tool. Each entry
+  # mirrors a Bash deny above with the same pattern. Bash denies deliberately
+  # left without a counterpart:
+  #   - filesystem-root removals (rm -rf on /, ~, C:/; del/rmdir/Remove-Item on
+  #     C:/) - Claude Code's built-in Remove-Item / cmd system-path check
+  #     already denies them on the PowerShell tool in every mode;
+  #   - kill -9:* - `kill` is a PowerShell alias of Stop-Process on Windows, so
+  #     the rule may never match after alias canonicalization (unmeasured);
+  #   - TRUNCATE:* - PowerShell rules match case-insensitively, so it would
+  #     also block the lowercase `truncate` file utility.
+  # The closed-world guard in internal/template/settings_powershell_deny_test.go
+  # fails when a Bash deny has neither a counterpart nor an exclusion.
+  - tool: "PowerShell"
+    args_pattern: "Clear-Disk:*"
+    risk_tier: irreversible
+    decision: deny
+    owner_agent: orchestrator
+    audit: "PowerShell-tool counterpart of Bash(Clear-Disk:*)"
+    source: "Bash deny of the same pattern"
+  - tool: "PowerShell"
+    args_pattern: "Format-Volume:*"
+    risk_tier: irreversible
+    decision: deny
+    owner_agent: orchestrator
+    audit: "PowerShell-tool counterpart of Bash(Format-Volume:*)"
+    source: "Bash deny of the same pattern"
+  - tool: "PowerShell"
+    args_pattern: "git push --force:*"
+    risk_tier: irreversible
+    decision: deny
+    owner_agent: orchestrator
+    audit: "PowerShell-tool counterpart of Bash(git push --force:*)"
+    source: "Bash deny of the same pattern"
+  - tool: "PowerShell"
+    args_pattern: "git push -f:*"
+    risk_tier: irreversible
+    decision: deny
+    owner_agent: orchestrator
+    audit: "PowerShell-tool counterpart of Bash(git push -f:*)"
+    source: "Bash deny of the same pattern"
+  - tool: "PowerShell"
+    args_pattern: "git push --force-with-lease:*"
+    risk_tier: irreversible
+    decision: deny
+    owner_agent: orchestrator
+    audit: "PowerShell-tool counterpart of Bash(git push --force-with-lease:*)"
+    source: "Bash deny of the same pattern"
+  - tool: "PowerShell"
+    args_pattern: "git reset --hard:*"
+    risk_tier: irreversible
+    decision: deny
+    owner_agent: orchestrator
+    audit: "PowerShell-tool counterpart of Bash(git reset --hard:*)"
+    source: "Bash deny of the same pattern"
+  - tool: "PowerShell"
+    args_pattern: "git clean -fd:*"
+    risk_tier: irreversible
+    decision: deny
+    owner_agent: orchestrator
+    audit: "PowerShell-tool counterpart of Bash(git clean -fd:*)"
+    source: "Bash deny of the same pattern"
+  - tool: "PowerShell"
+    args_pattern: "git clean -fdx:*"
+    risk_tier: irreversible
+    decision: deny
+    owner_agent: orchestrator
+    audit: "PowerShell-tool counterpart of Bash(git clean -fdx:*)"
+    source: "Bash deny of the same pattern"
+  - tool: "PowerShell"
+    args_pattern: "git rebase -i:*"
+    risk_tier: irreversible
+    decision: deny
+    owner_agent: orchestrator
+    audit: "PowerShell-tool counterpart of Bash(git rebase -i:*)"
+    source: "Bash deny of the same pattern"
+  - tool: "PowerShell"
+    args_pattern: "git * push --force*"
+    risk_tier: irreversible
+    decision: deny
+    owner_agent: orchestrator
+    audit: "PowerShell-tool counterpart of Bash(git * push --force*)"
+    source: "Bash deny of the same pattern"
+  - tool: "PowerShell"
+    args_pattern: "git * push -f*"
+    risk_tier: irreversible
+    decision: deny
+    owner_agent: orchestrator
+    audit: "PowerShell-tool counterpart of Bash(git * push -f*)"
+    source: "Bash deny of the same pattern"
+  - tool: "PowerShell"
+    args_pattern: "git * push --force-with-lease*"
+    risk_tier: irreversible
+    decision: deny
+    owner_agent: orchestrator
+    audit: "PowerShell-tool counterpart of Bash(git * push --force-with-lease*)"
+    source: "Bash deny of the same pattern"
+  - tool: "PowerShell"
+    args_pattern: "git * reset --hard*"
+    risk_tier: irreversible
+    decision: deny
+    owner_agent: orchestrator
+    audit: "PowerShell-tool counterpart of Bash(git * reset --hard*)"
+    source: "Bash deny of the same pattern"
+  - tool: "PowerShell"
+    args_pattern: "git * clean -fd*"
+    risk_tier: irreversible
+    decision: deny
+    owner_agent: orchestrator
+    audit: "PowerShell-tool counterpart of Bash(git * clean -fd*)"
+    source: "Bash deny of the same pattern"
+  - tool: "PowerShell"
+    args_pattern: "git * clean -fdx*"
+    risk_tier: irreversible
+    decision: deny
+    owner_agent: orchestrator
+    audit: "PowerShell-tool counterpart of Bash(git * clean -fdx*)"
+    source: "Bash deny of the same pattern"
+  - tool: "PowerShell"
+    args_pattern: "git * rebase -i*"
+    risk_tier: irreversible
+    decision: deny
+    owner_agent: orchestrator
+    audit: "PowerShell-tool counterpart of Bash(git * rebase -i*)"
+    source: "Bash deny of the same pattern"
+  - tool: "PowerShell"
+    args_pattern: "format:*"
+    risk_tier: irreversible
+    decision: deny
+    owner_agent: orchestrator
+    audit: "PowerShell-tool counterpart of Bash(format:*)"
+    source: "Bash deny of the same pattern"
+  - tool: "PowerShell"
+    args_pattern: "chmod -R 777:*"
+    risk_tier: irreversible
+    decision: deny
+    owner_agent: orchestrator
+    audit: "PowerShell-tool counterpart of Bash(chmod -R 777:*)"
+    source: "Bash deny of the same pattern"
+  - tool: "PowerShell"
+    args_pattern: "chmod 777:*"
+    risk_tier: irreversible
+    decision: deny
+    owner_agent: orchestrator
+    audit: "PowerShell-tool counterpart of Bash(chmod 777:*)"
+    source: "Bash deny of the same pattern"
+  - tool: "PowerShell"
+    args_pattern: "dd:*"
+    risk_tier: irreversible
+    decision: deny
+    owner_agent: orchestrator
+    audit: "PowerShell-tool counterpart of Bash(dd:*)"
+    source: "Bash deny of the same pattern"
+  - tool: "PowerShell"
+    args_pattern: "mkfs:*"
+    risk_tier: irreversible
+    decision: deny
+    owner_agent: orchestrator
+    audit: "PowerShell-tool counterpart of Bash(mkfs:*)"
+    source: "Bash deny of the same pattern"
+  - tool: "PowerShell"
+    args_pattern: "fdisk:*"
+    risk_tier: irreversible
+    decision: deny
+    owner_agent: orchestrator
+    audit: "PowerShell-tool counterpart of Bash(fdisk:*)"
+    source: "Bash deny of the same pattern"
+  - tool: "PowerShell"
+    args_pattern: "reboot:*"
+    risk_tier: irreversible
+    decision: deny
+    owner_agent: orchestrator
+    audit: "PowerShell-tool counterpart of Bash(reboot:*)"
+    source: "Bash deny of the same pattern"
+  - tool: "PowerShell"
+    args_pattern: "shutdown:*"
+    risk_tier: irreversible
+    decision: deny
+    owner_agent: orchestrator
+    audit: "PowerShell-tool counterpart of Bash(shutdown:*)"
+    source: "Bash deny of the same pattern"
+  - tool: "PowerShell"
+    args_pattern: "init:*"
+    risk_tier: irreversible
+    decision: deny
+    owner_agent: orchestrator
+    audit: "PowerShell-tool counterpart of Bash(init:*)"
+    source: "Bash deny of the same pattern"
+  - tool: "PowerShell"
+    args_pattern: "systemctl:*"
+    risk_tier: irreversible
+    decision: deny
+    owner_agent: orchestrator
+    audit: "PowerShell-tool counterpart of Bash(systemctl:*)"
+    source: "Bash deny of the same pattern"
+  - tool: "PowerShell"
+    args_pattern: "killall:*"
+    risk_tier: irreversible
+    decision: deny
+    owner_agent: orchestrator
+    audit: "PowerShell-tool counterpart of Bash(killall:*)"
+    source: "Bash deny of the same pattern"
+  - tool: "PowerShell"
+    args_pattern: "DROP DATABASE:*"
+    risk_tier: irreversible
+    decision: deny
+    owner_agent: orchestrator
+    audit: "PowerShell-tool counterpart of Bash(DROP DATABASE:*)"
+    source: "Bash deny of the same pattern"
+  - tool: "PowerShell"
+    args_pattern: "DROP TABLE:*"
+    risk_tier: irreversible
+    decision: deny
+    owner_agent: orchestrator
+    audit: "PowerShell-tool counterpart of Bash(DROP TABLE:*)"
+    source: "Bash deny of the same pattern"
+  - tool: "PowerShell"
+    args_pattern: "DELETE FROM:*"
+    risk_tier: irreversible
+    decision: deny
+    owner_agent: orchestrator
+    audit: "PowerShell-tool counterpart of Bash(DELETE FROM:*)"
+    source: "Bash deny of the same pattern"
+  - tool: "PowerShell"
+    args_pattern: "mongo:*"
+    risk_tier: irreversible
+    decision: deny
+    owner_agent: orchestrator
+    audit: "PowerShell-tool counterpart of Bash(mongo:*)"
+    source: "Bash deny of the same pattern"
+  - tool: "PowerShell"
+    args_pattern: "mongosh:*"
+    risk_tier: irreversible
+    decision: deny
+    owner_agent: orchestrator
+    audit: "PowerShell-tool counterpart of Bash(mongosh:*)"
+    source: "Bash deny of the same pattern"
+  - tool: "PowerShell"
+    args_pattern: "redis-cli FLUSHALL:*"
+    risk_tier: irreversible
+    decision: deny
+    owner_agent: orchestrator
+    audit: "PowerShell-tool counterpart of Bash(redis-cli FLUSHALL:*)"
+    source: "Bash deny of the same pattern"
+  - tool: "PowerShell"
+    args_pattern: "redis-cli FLUSHDB:*"
+    risk_tier: irreversible
+    decision: deny
+    owner_agent: orchestrator
+    audit: "PowerShell-tool counterpart of Bash(redis-cli FLUSHDB:*)"
+    source: "Bash deny of the same pattern"
+  - tool: "PowerShell"
+    args_pattern: "psql -c DROP:*"
+    risk_tier: irreversible
+    decision: deny
+    owner_agent: orchestrator
+    audit: "PowerShell-tool counterpart of Bash(psql -c DROP:*)"
+    source: "Bash deny of the same pattern"
+  - tool: "PowerShell"
+    args_pattern: "mysql -e DROP:*"
+    risk_tier: irreversible
+    decision: deny
+    owner_agent: orchestrator
+    audit: "PowerShell-tool counterpart of Bash(mysql -e DROP:*)"
+    source: "Bash deny of the same pattern"
+
   # --- §D.1g Secret-path deny (Read/Write/Edit/Grep/Glob on secrets + credentials) ---
   - tool: "Read"
     args_pattern: "./secrets/**"

@@ -128,6 +128,20 @@ flowchart TD
 
 Bash 규칙에서 `*`는 와일드카드입니다. `Bash(npm run *)`는 `npm run build`, `npm run test` 모두에 매칭됩니다. 주의할 점은 `*` **앞의 공백**입니다. `Bash(ls *)`는 `ls -la`에는 매칭되지만 `lsof`에는 매칭되지 않습니다. 반면 `Bash(ls*)`는 둘 다 매칭됩니다. 의도를 정확히 적으려면 공백을 신경 써야 합니다.
 
+### PowerShell 도구용 deny 규칙
+
+Claude Code는 셸 명령을 별도의 PowerShell 도구로 실행하기도 합니다(대부분의 Windows 환경에서는 기본으로 켜져 있고, macOS와 Linux에서는 직접 켜야 합니다). 이 도구의 규칙은 `PowerShell(...)`이라는 별도 이름공간을 씁니다. 그래서 `Bash(...)` deny 규칙은 같은 명령이 PowerShell 도구로 실행될 때는 막지 못합니다. 이 때문에 MoAI-ADK 템플릿은 파괴적인 deny 규칙을 두 도구 모두에 적어 둡니다. `Bash(git push --force:*)`와 `PowerShell(git push --force:*)`를 함께 두는 식입니다. 위험한 Git, 디스크 포맷, 시스템 명령, DB 삭제 규칙이 여기에 해당합니다.
+
+다음 세 가지 Bash deny 규칙에는 일부러 PowerShell 짝을 두지 않았습니다.
+
+| 규칙 | PowerShell 짝을 두지 않는 이유 |
+|------|------|
+| 파일시스템 루트 삭제(`rm -rf /`, `rm -rf ~`, `C:/` 삭제) | Claude Code의 내장 보호 장치가 PowerShell 도구를 거친 `Remove-Item`과 `cmd`의 시스템 경로 삭제를 모든 권한 모드에서 이미 거부합니다 |
+| `kill -9` | Windows의 PowerShell에서 `kill`은 `Stop-Process`의 별칭이라, `kill -9`로 적은 규칙이 아예 매칭되지 않을 수 있습니다 |
+| `TRUNCATE` | PowerShell 규칙은 대소문자를 가리지 않고 매칭하므로, 평범한 파일 유틸리티 `truncate`까지 막아 버립니다 |
+
+팀에서 PowerShell 도구를 쓴다면, 셸 명령용 deny 규칙을 직접 추가할 때 짝이 되는 `PowerShell(...)` 규칙도 함께 넣어 두세요.
+
 ## Step 3: settings.json과 settings.local.json 나누기
 
 이 단계가 실무에서 가장 자주 부딪히는 함정입니다. MoAI-ADK는 `moai update`로 템플릿을 덮어쓸 때 Project 범위의 `.claude/settings.json`을 **새 버전으로 교체**합니다. 여기에 개인 설정을 적어 두면 업데이트 한 번에 날아갑니다.

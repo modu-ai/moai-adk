@@ -326,6 +326,20 @@ Claude Code を開くときの基本権限モードです。有効な値は次�
 }
 ```
 
+#### PowerShell ツール向けの deny ルール
+
+Claude Code は、シェルコマンドを別の PowerShell ツールで実行することもできます（多くの Windows 環境では既定で有効、macOS と Linux ではオプトイン）。このツールのルールは独自の `PowerShell(...)` 名前空間に属します。そのため `Bash(...)` の deny ルールは、同じコマンドが PowerShell ツール経由で実行された場合には効きません。MoAI-ADK のテンプレートでは、破壊的な deny ルールを両方のツールに宣言しています。たとえば `Bash(git push --force:*)` と `PowerShell(git push --force:*)` の組です。危険な Git、ディスクフォーマット、システムコマンド、DB 削除のルールがこれに当たります。
+
+次の 3 種類の Bash deny ルールには、意図的に PowerShell 版を用意していません。
+
+| ルール | PowerShell 版を置かない理由 |
+|------|------|
+| ファイルシステムのルート削除（`rm -rf /`、`rm -rf ~`、`C:/` の削除） | Claude Code の組み込み保護が、PowerShell ツール経由の `Remove-Item` や `cmd` によるシステムパス削除を、どの権限モードでもすでに拒否している |
+| `kill -9` | Windows の PowerShell では `kill` が `Stop-Process` のエイリアスなので、`kill -9` と書いたルールは一致しない可能性がある |
+| `TRUNCATE` | PowerShell のルールは大文字と小文字を区別せずに照合されるため、通常のファイルユーティリティ `truncate` まで遮断してしまう |
+
+チームで PowerShell ツールを使う場合、シェルコマンドの deny ルールを独自に追加するときは、対応する `PowerShell(...)` ルールも併せて追加してください。
+
 ### additionalDirectories
 
 Claude がアクセスできる追加の作業ディレクトリです。
