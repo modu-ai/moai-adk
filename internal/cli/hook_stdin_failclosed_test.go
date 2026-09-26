@@ -17,6 +17,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"io"
+	"io/fs"
 	"os"
 	"path/filepath"
 	"strings"
@@ -26,6 +27,7 @@ import (
 
 	"github.com/modu-ai/moai-adk/internal/codexadapter"
 	"github.com/modu-ai/moai-adk/internal/hook"
+	"github.com/modu-ai/moai-adk/internal/template"
 )
 
 // readCountingProtocol wraps the real protocol and counts ReadInput calls, the
@@ -793,5 +795,40 @@ func TestStdinFailClosed_DepthControl(t *testing.T) {
 	}
 	if _, err := p.ReadInput(bytes.NewReader(depthPayload(hook.EventPreToolUse, "ctl", 10001))); err == nil {
 		t.Fatal("depth 10001 parsed; the depth form does not exercise a parse failure")
+	}
+}
+
+// stdinFailClosedDocPath is the project-relative path the fail-closed reason
+// points at. It is written as a literal here, not read from the
+// implementation's constant, so a change to that constant is observed.
+const stdinFailClosedDocPath = ".moai/docs/hook-stdin-fail-closed.md"
+
+// TestStdinFailClosed_DocPointerIsDeployed pins the reason's document pointer
+// to a path a user can actually open: the constant must be that
+// project-relative path, and the embedded template tree — what init and
+// update deploy — must carry a file at exactly that path. An identifier with
+// no resolution rule, or a path with no deployed file, both fail here.
+func TestStdinFailClosed_DocPointerIsDeployed(t *testing.T) {
+	if stdinParseFailClosedDocID != stdinFailClosedDocPath {
+		t.Errorf("document pointer = %q, want the deployed path %q", stdinParseFailClosedDocID, stdinFailClosedDocPath)
+	}
+	want := "fail-closed: hook stdin could not be parsed as JSON (" + stdinFailClosedDocPath + ")"
+	if got := expectedFailClosedReason(); got != want {
+		t.Errorf("assembled reason = %q, want %q", got, want)
+	}
+
+	fsys, err := template.EmbeddedTemplates()
+	if err != nil {
+		t.Fatalf("embedded templates: %v", err)
+	}
+	body, err := fs.ReadFile(fsys, stdinFailClosedDocPath)
+	if err != nil {
+		t.Fatalf("embedded templates lack %s: %v", stdinFailClosedDocPath, err)
+	}
+	if len(bytes.TrimSpace(body)) == 0 {
+		t.Errorf("embedded %s is empty", stdinFailClosedDocPath)
+	}
+	if !bytes.Contains(body, []byte(stdinFailClosedDocPath)) {
+		t.Errorf("embedded %s does not name its own path, so a reader cannot match it to the reason", stdinFailClosedDocPath)
 	}
 }

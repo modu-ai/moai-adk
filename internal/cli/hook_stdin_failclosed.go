@@ -21,8 +21,11 @@ const (
 	stdinParseFailureCause = "hook stdin could not be parsed as JSON"
 	// stdinParseFailClosedDocID names the operator document that explains
 	// recovery (REQ-HSF-010 (c)). Recovery steps live in that document, never
-	// in the reason the model reads.
-	stdinParseFailClosedDocID = "moai-doc:hook-stdin-fail-closed"
+	// in the reason the model reads. The value is the project-relative path
+	// init and update deploy the document to (the template mirror under
+	// internal/template/templates/.moai/docs/), so the pointer resolves in a
+	// user's project without any lookup rule.
+	stdinParseFailClosedDocID = ".moai/docs/hook-stdin-fail-closed.md"
 
 	// stdinParseFailClosedDiscardKey marks a parse-failure fail-closed record
 	// in the adapter's sink, distinct from hookFaultDiscardKey.
