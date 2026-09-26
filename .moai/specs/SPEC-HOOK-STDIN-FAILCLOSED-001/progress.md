@@ -645,4 +645,55 @@ open_gaps:
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase>_
+기록자: manager-docs (card t1152, sync-phase). 측정 트리: 브랜치 `WT-hook-stdin-failclosed`.
+
+### Claim
+
+- 운영자 문서 `.moai/docs/hook-stdin-fail-closed.md` 를 신설했다 — `moai-doc:hook-stdin-fail-closed` 식별자가 가리키는 본문(무엇이 바뀌었는지·사유 문구가 담는 것과 담지 않는 것·복구 두 경로·fail-closed 를 택한 이유). spec.md §A.4 라인 235 가 이 작성 의무를 sync-phase 로 명시했다.
+- `CHANGELOG.md` `[Unreleased] ### Changed` 최상단에 SPEC 항목을 추가했다.
+- `progress.md` §E.4(이 절)를 작성하고, `spec.md` frontmatter `status: in-progress → completed` 전이를 이 커밋에 싣는다(`updated:` 는 이미 2026-09-26 로 최신).
+- `internal/template/templates/` 아래 미러는 추가하지 않았다 — 이웃 문서 `.moai/docs/hook-development.md` 도 템플릿 미러가 없음을 확인했다(대조: `find . -name hook-development.md` → `.moai/docs/hook-development.md` 단일 결과).
+
+### Evidence
+
+```
+$ grep -c "SPEC-HOOK-STDIN-FAILCLOSED-001" CHANGELOG.md   # 작성 전 self-test (1)
+0
+$ grep -oE 'AC-([A-Z0-9]+-)*[0-9]+' .moai/specs/SPEC-HOOK-STDIN-FAILCLOSED-001/acceptance.md | sort -u | wc -l   # self-test (2)
+      13
+$ ls .moai/docs/hook-stdin-fail-closed.md
+.moai/docs/hook-stdin-fail-closed.md
+$ ls .moai/docs/hook-development.md internal/cli/hook_stdin_failclosed.go
+.moai/docs/hook-development.md
+internal/cli/hook_stdin_failclosed.go
+```
+
+### Baseline-attribution
+
+측정은 이 sync 커밋을 만드는 이번 실행에서, 이 워크트리(`WT-hook-stdin-failclosed`)에 대해 수행했다. `acceptance.md` 의 AC 식별자 카운트는 13(2건은 spec.md HISTORY 0.4.0 에 따라 [RETIRED] — AC-HSF-006·AC-HSF-010; 살아 있는 AC 는 11). CHANGELOG self-test (1)의 사전 카운트 0 은 이 편집 이전에 중복이 없었음을 확인한 것이다.
+
+### Gaps
+
+- `go build -o <scratch>/moai-tree ./cmd/moai && <scratch>/moai-tree spec lint --strict SPEC-HOOK-STDIN-FAILCLOSED-001` 는 이 절 작성 직후 별도 커맨드로 실행하며, 그 출력은 이 커밋 본문이 아니라 완료 보고에 원문으로 싣는다(아래 「검증」 참조 — 이 절 자체는 그 실행 전에 초안된다).
+- `internal/template/` 변경이 없으므로 `go test ./internal/template/...` 는 이번 사이클에서 실행하지 않았다(범위 밖 — Gap 이 아니라 해당 없음).
+- `sync_commit_sha` 는 커밋이 자기 해시를 알 수 없어 `pending-backfill-sync` 로 남기고, 후속 커밋에서 백필한다(`spec-frontmatter-schema.md` § SHA placeholder backfill exemption).
+
+### Residual-risk
+
+- 운영자 문서의 복구 절차(§ 복구, `.moai/docs/hook-stdin-fail-closed.md`)는 코드가 직접 참조하지 않는 산문이다 — 문서와 실제 `disableAllHooks` 동작·`moai update` 동작이 갈릴 수 있고, 이는 acceptance.md 범위 밖(REQ-HSF-010 은 "식별자만" 요구하며 문서 본문 정확성은 리뷰 몫).
+- Q2(코덱스 Stop 무상한) 는 버전 불일치(0.156.1 측정 vs 0.157.0 설치본)로 재측정하지 않았다는 사실을 CHANGELOG·이 절 모두에 남겼다 — spec.md HISTORY 0.4.2 판정과 동일.
+
+```yaml
+sync_complete_at: 2026-09-26
+sync_commit_sha: pending-backfill-sync
+sync_status: audit-ready
+b12_self_test_a: "grep -c SPEC-HOOK-STDIN-FAILCLOSED-001 CHANGELOG.md -> 0 (pre-edit)"
+b12_self_test_b: "AC identifier count via canonical grep -> 13 (11 live + 2 [RETIRED])"
+b12_self_test_c: "file paths verified via ls: .moai/docs/hook-stdin-fail-closed.md, internal/cli/hook_stdin_failclosed.go"
+changelog_entry_position: "[Unreleased] > ### Changed, first bullet"
+frontmatter_status_transitions:
+  spec_md: "in-progress -> completed"
+canary_compliance_check:
+  template_mirror_required: false
+  rationale: "internal/docs/hook-stdin-fail-closed.md has no template mirror in this tree; sibling .moai/docs/hook-development.md likewise has none"
+```

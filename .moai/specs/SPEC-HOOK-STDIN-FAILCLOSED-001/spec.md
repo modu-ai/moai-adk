@@ -2,7 +2,7 @@
 id: SPEC-HOOK-STDIN-FAILCLOSED-001
 title: "훅 stdin 파싱 실패 시 결정 이벤트 fail-closed — 관측 이벤트의 기존 fail-open 보존"
 version: "0.4.2"
-status: in-progress
+status: completed
 created: 2026-09-24
 updated: 2026-09-26
 author: manager-spec (card t1152)
