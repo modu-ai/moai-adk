@@ -16,153 +16,37 @@ package cli
 // complete is a rejection (validator) or a fail-closed gate (gate read).
 
 import (
-	"bufio"
 	"bytes"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"os"
-	"os/exec"
 	"path/filepath"
+	"sort"
 	"strings"
 
 	"github.com/modu-ai/moai-adk/internal/auditreceipt"
 	"github.com/modu-ai/moai-adk/internal/config"
+	"github.com/modu-ai/moai-adk/internal/spec"
 )
 
-// scrubbedGitVars are removed from every git inspection's environment, so a
-// variable inherited from the server process cannot redirect git at another
-// repository (REQ-MWU-006).
-var scrubbedGitVars = []string{"GIT_DIR", "GIT_WORK_TREE", "GIT_COMMON_DIR", "GIT_INDEX_FILE", "GIT_CEILING_DIRECTORIES"}
+// The git inspection helpers, the config-orphaned predicate, and primary
+// identification live in internal/auditreceipt so the hook package reaches the
+// same answer (SPEC-WORKTREE-STATE-ROOT-001 REQ-WSR-001). These names keep the
+// call sites of this package unchanged.
+var runScrubbedGit = auditreceipt.RunScrubbedGit
 
-// scrubbedGitEnv returns the process environment minus scrubbedGitVars and any
-// locale override, with LC_ALL=C set.
-func scrubbedGitEnv() []string {
-	env := make([]string, 0, len(os.Environ())+1)
-	for _, kv := range os.Environ() {
-		name, _, _ := strings.Cut(kv, "=")
-		drop := name == "LC_ALL"
-		for _, v := range scrubbedGitVars {
-			if name == v {
-				drop = true
-			}
-		}
-		if !drop {
-			env = append(env, kv)
-		}
-	}
-	return append(env, "LC_ALL=C")
+func singleGitPath(out string) (string, error) { return auditreceipt.SingleGitPath(out) }
+
+func identifyPrimaryCheckout(dir string) (string, []auditreceipt.WorktreeEntry, error) {
+	return auditreceipt.IdentifyPrimaryCheckout(dir)
 }
 
-// runScrubbedGit runs `git -C dir args...` in the scrubbed environment and
-// returns stdout. Any failure — git missing, non-zero exit — is an error; the
-// caller never inspects git's message text.
-func runScrubbedGit(dir string, args ...string) (string, error) {
-	cmd := exec.Command("git", append([]string{"-C", dir}, args...)...)
-	cmd.Env = scrubbedGitEnv()
-	out, err := cmd.Output()
-	if err != nil {
-		return "", err
-	}
-	return string(out), nil
-}
+func isConfigOrphanedRoot(root string) bool { return auditreceipt.IsConfigOrphanedRoot(root) }
 
-// singleGitPath parses output that must be exactly one non-empty absolute path
-// line, and returns it canonicalized. Any other shape is an error.
-func singleGitPath(out string) (string, error) {
-	lines := strings.Split(strings.TrimRight(out, "\n"), "\n")
-	if len(lines) != 1 || strings.TrimSpace(lines[0]) == "" || !filepath.IsAbs(lines[0]) {
-		return "", errors.New("unexpected git output shape")
-	}
-	return filepath.EvalSymlinks(lines[0])
-}
-
-// worktreeListEntry is one `git worktree list --porcelain` record.
-type worktreeListEntry struct {
-	path     string // canonical; "" when the listed path cannot be canonicalized
-	prunable bool
-}
-
-// parseWorktreePorcelain parses `git worktree list --porcelain`. Every record
-// must open with a `worktree <path>` line; any other shape is an error. A
-// listed path that cannot be canonicalized (a deleted directory) is kept with
-// an empty canonical path so it simply never matches (REQ-MWU-007).
-func parseWorktreePorcelain(out string) ([]worktreeListEntry, error) {
-	var entries []worktreeListEntry
-	inRecord := false
-	sc := bufio.NewScanner(strings.NewReader(out))
-	for sc.Scan() {
-		line := sc.Text()
-		if line == "" {
-			inRecord = false
-			continue
-		}
-		if !inRecord {
-			path, ok := strings.CutPrefix(line, "worktree ")
-			if !ok || !filepath.IsAbs(path) {
-				return nil, errors.New("unexpected git worktree list shape")
-			}
-			canon, err := filepath.EvalSymlinks(path)
-			if err != nil {
-				canon = ""
-			}
-			entries = append(entries, worktreeListEntry{path: canon})
-			inRecord = true
-			continue
-		}
-		if line == "prunable" || strings.HasPrefix(line, "prunable ") {
-			entries[len(entries)-1].prunable = true
-		}
-	}
-	if err := sc.Err(); err != nil {
-		return nil, err
-	}
-	if len(entries) == 0 {
-		return nil, errors.New("git worktree list returned no entries")
-	}
-	return entries, nil
-}
-
-// errAmbiguousLayout marks a repository whose primary checkout cannot be
-// identified unambiguously (--separate-git-dir, a submodule-internal git dir,
-// a bare repository).
-var errAmbiguousLayout = errors.New("ambiguous repository layout (separate git dir, submodule, or bare repository)")
-
-// identifyPrimaryCheckout returns the primary checkout of the repository that
-// contains dir, plus the porcelain worktree listing (REQ-MWU-004): the parent
-// of the git common dir, accepted only when the common dir is named `.git`, the
-// parent's own `.git` resolves to that same common dir, and the parent is the
-// first listed worktree.
-func identifyPrimaryCheckout(dir string) (string, []worktreeListEntry, error) {
-	out, err := runScrubbedGit(dir, "rev-parse", "--path-format=absolute", "--git-common-dir")
-	if err != nil {
-		return "", nil, fmt.Errorf("git could not inspect the repository: %w", err)
-	}
-	common, err := singleGitPath(out)
-	if err != nil {
-		return "", nil, fmt.Errorf("git could not inspect the repository: %w", err)
-	}
-	if filepath.Base(common) != ".git" {
-		return "", nil, errAmbiguousLayout
-	}
-	primary := filepath.Dir(common)
-	primaryGit, err := filepath.EvalSymlinks(filepath.Join(primary, ".git"))
-	if err != nil || primaryGit != common {
-		return "", nil, errAmbiguousLayout
-	}
-	listOut, err := runScrubbedGit(dir, "worktree", "list", "--porcelain")
-	if err != nil {
-		return "", nil, fmt.Errorf("git could not list worktrees: %w", err)
-	}
-	entries, err := parseWorktreePorcelain(listOut)
-	if err != nil {
-		return "", nil, err
-	}
-	if entries[0].path != primary {
-		return "", nil, errAmbiguousLayout
-	}
-	return primary, entries, nil
-}
+// gateAssumedRequiredNote is the gate_unmet / residual-note wording for a
+// config-orphaned root whose primary checkout could not be identified
+// (REQ-MWU-012), distinguishable from a primary that declares `required`.
+const gateAssumedRequiredNote = auditreceipt.GateAssumedRequiredNote
 
 // validateLinkedWorktreeRoot is the second acceptance branch of
 // validateProjectRoot, reached only when canonical has no .moai directory
@@ -198,69 +82,16 @@ func validateLinkedWorktreeRoot(raw, canonical string) (string, error) {
 		return reject("its primary checkout " + primary + " has no .moai directory")
 	}
 	for _, e := range entries[1:] {
-		if e.path != canonical {
+		if e.Path != canonical {
 			continue // other entries — stale or not — are not a reason to reject
 		}
-		if e.prunable {
+		if e.Prunable {
 			return reject("it is listed as a prunable worktree")
 		}
 		return canonical, nil
 	}
 	return reject("it is not a registered worktree of " + primary)
 }
-
-// isConfigOrphanedRoot reports whether root has no workflow config of its own
-// AND carries positive, git-free evidence of being a linked worktree top level
-// (spec §4.4): `<root>/.git` is a regular file whose `gitdir:` path — resolved
-// against root when relative, never against the process working directory —
-// names an existing directory whose parent is named `worktrees` and which holds
-// a `commondir` file. Two file reads, no subprocess. There is deliberately no
-// check that the admin directory points back at root: such a check could only
-// move a root toward today's fail-open gate.
-func isConfigOrphanedRoot(root string) bool {
-	if strings.TrimSpace(root) == "" {
-		return false
-	}
-	if _, err := os.Stat(filepath.Join(root, ".moai", "config", "sections", "workflow.yaml")); err == nil {
-		return false
-	}
-	dotGit := filepath.Join(root, ".git")
-	info, err := os.Lstat(dotGit)
-	if err != nil || !info.Mode().IsRegular() {
-		return false
-	}
-	data, err := os.ReadFile(dotGit)
-	if err != nil {
-		return false
-	}
-	gitdir := ""
-	for _, line := range strings.Split(string(data), "\n") {
-		if v, ok := strings.CutPrefix(strings.TrimSpace(line), "gitdir:"); ok {
-			gitdir = strings.TrimSpace(v)
-			break
-		}
-	}
-	if gitdir == "" {
-		return false
-	}
-	if !filepath.IsAbs(gitdir) {
-		gitdir = filepath.Join(root, gitdir)
-	}
-	adminInfo, err := os.Stat(gitdir)
-	if err != nil || !adminInfo.IsDir() {
-		return false
-	}
-	if filepath.Base(filepath.Dir(filepath.Clean(gitdir))) != "worktrees" {
-		return false
-	}
-	cdInfo, err := os.Stat(filepath.Join(gitdir, "commondir"))
-	return err == nil && cdInfo.Mode().IsRegular()
-}
-
-// gateAssumedRequiredNote is the gate_unmet / residual-note wording for a
-// config-orphaned root whose primary checkout could not be identified
-// (REQ-MWU-012), distinguishable from a primary that declares `required`.
-const gateAssumedRequiredNote = "workflow.audit.gates.codex assumed `required` because the primary checkout of this worktree could not be identified"
 
 // resolveAuditGates returns the workflow.audit.gates block that governs an
 // audit of root (REQ-MWU-011/012). A root that is not config-orphaned reads its
@@ -311,7 +142,220 @@ func withRootBlock(data any, rootBlock map[string]any) any {
 	return m
 }
 
-// worktreeWarning is the _root.worktree_warning text of REQ-MWU-013.
+// worktreeWarning is the _root.worktree_warning text on a config-orphaned
+// worktree (REQ-MWU-013, reworded by SPEC-WORKTREE-STATE-ROOT-001 REQ-WSR-015):
+// the answer now comes from the union catalogue and the primary's state store,
+// and `sources` lists what was actually read.
 const worktreeWarning = "project_root is a linked worktree whose repository does not track .moai; " +
-	"this answer was read from the worktree tree and may be empty because .moai is not tracked there — " +
-	"an empty result does not mean the project has no SPECs"
+	"the SPEC catalogue answered here is the union of this worktree's and its primary checkout's .moai/specs " +
+	"(each record names its source), and state is kept in the primary checkout's .moai/state under this " +
+	"worktree's tree identity — `sources` lists what was actually read"
+
+// Tool-description notes for a config-orphaned worktree (REQ-WSR-016).
+const (
+	worktreeCatalogueDescNote = " On a linked worktree of a repository that does not track .moai, the catalogue is " +
+		"the union of the worktree's and the primary checkout's .moai/specs: each record and finding names its source " +
+		"(worktree or primary), and a SPEC present in both is reported once, from the worktree, with the primary copy " +
+		"named as shadowed. When that primary cannot be identified only the worktree is read and _root says so."
+	worktreeStateDescNote = " On a linked worktree of a repository that does not track .moai, this tool's state is " +
+		"kept in the primary checkout's .moai/state under the worktree's own tree identity; when that primary cannot " +
+		"be identified nothing is written and the result says why."
+)
+
+// Catalogue source tags (REQ-WSR-011).
+const (
+	catalogueSourceWorktree = "worktree"
+	catalogueSourcePrimary  = "primary"
+)
+
+// stateRootBlock is the _root block of a state tool (verify_snapshot,
+// verify_trend): the provenance map, plus — on a config-orphaned root — the
+// store root actually read (REQ-WSR-015).
+func stateRootBlock(root, source, store string) map[string]any {
+	prov := rootProvenanceMap(root, source)
+	if isConfigOrphanedRoot(root) {
+		prov["sources"] = []map[string]string{{"source": "store", "dir": store}}
+	}
+	return prov
+}
+
+// catalogueView names the catalogues a SPEC catalogue tool answers over. For a
+// root that is not config-orphaned it is that root alone, exactly as before.
+// For a config-orphaned worktree it is the worktree plus its primary checkout
+// (REQ-WSR-011), or the worktree alone with primaryErr set when the primary
+// cannot be identified (REQ-WSR-014).
+type catalogueView struct {
+	root       string
+	primary    string
+	orphaned   bool
+	primaryErr error
+}
+
+func resolveCatalogueView(root string) catalogueView {
+	if !isConfigOrphanedRoot(root) {
+		return catalogueView{root: root}
+	}
+	primary, err := auditreceipt.StoreRoot(root)
+	return catalogueView{root: root, primary: primary, orphaned: true, primaryErr: err}
+}
+
+// hasPrimary reports whether the primary catalogue is read.
+func (v catalogueView) hasPrimary() bool { return v.orphaned && v.primaryErr == nil }
+
+// rootBlock is the catalogue tool's _root block: the provenance map, plus on a
+// config-orphaned root the catalogue sources actually read and, when the
+// primary could not be identified, a statement that its catalogue was not read
+// and why (REQ-WSR-014/015). The existing `warning` key is never touched.
+func (v catalogueView) rootBlock(source string) map[string]any {
+	prov := rootProvenanceMap(v.root, source)
+	if !v.orphaned {
+		return prov
+	}
+	sources := []map[string]string{{"source": catalogueSourceWorktree, "dir": v.root}}
+	if v.hasPrimary() {
+		sources = append(sources, map[string]string{"source": catalogueSourcePrimary, "dir": v.primary})
+	} else {
+		prov["primary_catalogue"] = "not read: " + v.primaryErr.Error()
+	}
+	prov["sources"] = sources
+	return prov
+}
+
+// catalogueSpecIDs returns the SPEC directory names under root/.moai/specs.
+func catalogueSpecIDs(root string) map[string]bool {
+	ids := map[string]bool{}
+	entries, err := os.ReadDir(filepath.Join(root, ".moai", "specs"))
+	if err != nil {
+		return ids
+	}
+	for _, e := range entries {
+		if e.IsDir() && strings.HasPrefix(e.Name(), "SPEC-") {
+			ids[e.Name()] = true
+		}
+	}
+	return ids
+}
+
+// shadowedPrimaryCopies names the primary copies of SPEC IDs present in both
+// catalogues; the worktree copy is the one reported (REQ-WSR-012).
+func (v catalogueView) shadowedPrimaryCopies() []map[string]string {
+	out := []map[string]string{}
+	if !v.hasPrimary() {
+		return out
+	}
+	primaryIDs := catalogueSpecIDs(v.primary)
+	ids := []string{}
+	for id := range catalogueSpecIDs(v.root) {
+		if primaryIDs[id] {
+			ids = append(ids, id)
+		}
+	}
+	sort.Strings(ids)
+	for _, id := range ids {
+		out = append(out, map[string]string{
+			"spec_id": id,
+			"source":  catalogueSourcePrimary,
+			"path":    filepath.Join(v.primary, ".moai", "specs", id),
+		})
+	}
+	return out
+}
+
+// toJSONMap re-shapes a value as a JSON object map (numbers kept verbatim).
+func toJSONMap(v any) map[string]any {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return map[string]any{}
+	}
+	dec := json.NewDecoder(bytes.NewReader(b))
+	dec.UseNumber()
+	var m map[string]any
+	if err := dec.Decode(&m); err != nil || m == nil {
+		return map[string]any{}
+	}
+	return m
+}
+
+// unionSpecDocs answers spec_progress over the union catalogue: every worktree
+// record tagged `worktree`, every primary record whose SPEC ID the worktree
+// does not also carry tagged `primary` (REQ-WSR-011/012/013).
+func (v catalogueView) unionSpecDocs() ([]map[string]any, error) {
+	wRecs, err := spec.ListDocs(v.root)
+	if err != nil {
+		return nil, err
+	}
+	out := make([]map[string]any, 0, len(wRecs))
+	seen := map[string]bool{}
+	for _, rec := range wRecs {
+		m := toJSONMap(rec)
+		m["source"] = catalogueSourceWorktree
+		out = append(out, m)
+		seen[filepath.Base(filepath.Dir(rec.Path))] = true
+	}
+	if !v.hasPrimary() {
+		return out, nil
+	}
+	pRecs, err := spec.ListDocs(v.primary)
+	if err != nil {
+		return nil, err
+	}
+	for _, rec := range pRecs {
+		if seen[filepath.Base(filepath.Dir(rec.Path))] {
+			continue // shadowed by the worktree copy
+		}
+		m := toJSONMap(rec)
+		m["source"] = catalogueSourcePrimary
+		out = append(out, m)
+	}
+	return out, nil
+}
+
+// unionAudit runs spec.Audit per catalogue and merges the results: the counts
+// add, the primary run excludes every SPEC ID the worktree carries (so a
+// shadowed SPEC counts once), and every finding names its source
+// (REQ-WSR-011/012).
+func (v catalogueView) unionAudit(opts spec.AuditOptions) (*spec.AuditResult, []map[string]any, error) {
+	opts.BaseDir = v.root
+	wRes, err := spec.Audit(opts)
+	if err != nil {
+		return nil, nil, err
+	}
+	merged := *wRes
+	findings := tagFindings(wRes.DriftFindings, catalogueSourceWorktree, nil)
+	if v.hasPrimary() {
+		worktreeIDs := catalogueSpecIDs(v.root)
+		pOpts := opts
+		pOpts.BaseDir = v.primary
+		pOpts.ExcludeSpecs = worktreeIDs
+		pRes, err := spec.Audit(pOpts)
+		if err != nil {
+			return nil, nil, err
+		}
+		merged.TotalSpecs += pRes.TotalSpecs
+		merged.Grandfathered += pRes.Grandfathered
+		merged.ModernEraClean += pRes.ModernEraClean
+		if merged.TotalSpecs != 1 {
+			merged.TokensSpent = nil
+		} else if wRes.TotalSpecs == 0 {
+			merged.TokensSpent = pRes.TokensSpent
+		}
+		findings = append(findings, tagFindings(pRes.DriftFindings, catalogueSourcePrimary, worktreeIDs)...)
+	}
+	merged.DriftFindings = nil
+	return &merged, findings, nil
+}
+
+// tagFindings renders findings as JSON maps carrying their catalogue source,
+// dropping any whose SPEC ID is in skip (a copy shadowed by the worktree).
+func tagFindings(fs []spec.DriftFinding, source string, skip map[string]bool) []map[string]any {
+	out := make([]map[string]any, 0, len(fs))
+	for _, f := range fs {
+		if skip[f.SpecID] {
+			continue
+		}
+		m := toJSONMap(f)
+		m["source"] = source
+		out = append(out, m)
+	}
+	return out
+}

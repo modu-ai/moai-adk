@@ -110,9 +110,19 @@ func TestCharacterize_ReviewTextPath(t *testing.T) {
 		// shares the blank-output wording with the rows above (acceptance.md §C)
 		// and is therefore distinguishable from state C (AC-CBR-005).
 		{"exactly-empty", "", VerdictInconclusive, codexBlankReviewSummary},
-		// UNCHANGED by this SPEC — the control (state B).
-		{"real-clean-review", "The change introduces no blocking issues.", "pass",
+		// CHANGED by SPEC-CODEX-PARSER-SHAPE-001 M4 (AC-CPS-004): this row was
+		// the state-B control {"pass", ...} — pre-pin, prose like this WAS the
+		// clean-review convention (the 2026-09-21 live record measured it).
+		// The native request now pins its output format, so this prose is the
+		// no-signal class and is downgraded; a real clean review states the
+		// pinned `Verdict: pass` line (realCleanReview in
+		// codex_blank_review_test.go carries that form now).
+		{"prose-no-signal", "The change introduces no blocking issues.", VerdictInconclusive,
 			"The change introduces no blocking issues."},
+		// UNCHANGED by this SPEC — the state-B control, expressed through the
+		// pin: a real clean review states the pinned verdict line.
+		{"real-clean-review", realCleanReview, "pass",
+			realCleanReview},
 		// UNCHANGED by this SPEC — findings still outrank everything.
 		{"finding-bullet", "- [P1] injection at vuln.go:5", "fail",
 			"- [P1] injection at vuln.go:5"},
