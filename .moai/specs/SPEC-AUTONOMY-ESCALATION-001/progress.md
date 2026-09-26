@@ -130,6 +130,57 @@ M2 decisions (SPEC/plan-recommended options; none user-visible under the default
   changing the handler's `lint_as_instruction` nil-config default (one line in `internal/cli/deps.go`).
 - Q5: class 5 is M5; no CI producer is consumed in M2.
 
+### M3 — Path and command classes (cycle tdd)
+
+Commit: `dc76e9f55`. Same env-scrub prefix on every command. Raw outputs:
+`.moai/reports/t1235/run-m3/` (gitignored). `acceptance.md` unchanged.
+
+| AC | Test (package) | Command | Actual output | HEAD | Status |
+|---|---|---|---|---|---|
+| AC-AE-007 | `TestInvariantCommandFailureTrips` (`internal/escalation`) | `go test -count=1 ./internal/escalation -run '^(TestInvariantCommandFailureTrips\|TestOwnershipMoveTrips\|TestOwnershipExemptionsAndOutsideRoot\|TestUnreadableContractFieldIsNotObserved)$' -v` | `--- PASS: TestInvariantCommandFailureTrips (0.06s)` | `dc76e9f55` | PASS |
+| AC-AE-009 | `TestOwnershipMoveTrips` (`internal/escalation`) | same invocation | `--- PASS: TestOwnershipMoveTrips (0.05s)` | `dc76e9f55` | PASS |
+| AC-AE-010 | `TestOwnershipExemptionsAndOutsideRoot` (`internal/escalation`) | same invocation | `--- PASS: TestOwnershipExemptionsAndOutsideRoot (0.07s)` | `dc76e9f55` | PASS |
+| AC-AE-024 | `TestUnreadableContractFieldIsNotObserved` (`internal/escalation`) | same invocation | `--- PASS: TestUnreadableContractFieldIsNotObserved (0.02s)` / `ok github.com/modu-ai/moai-adk/internal/escalation 0.563s` | `dc76e9f55` | PASS |
+| AC-AE-008 | `TestFrozenFileUnionTrips` (`internal/hook`) | `go test -count=1 ./internal/hook -run '^(TestFrozenFileUnionTrips\|TestInvariantFailureReachesDetectorFromHooks\|TestEscalationGuidedGolden\|TestFirstObservationVerifiedAtPreToolUse)$' -v` | `--- PASS: TestFrozenFileUnionTrips (0.83s)` / `ok github.com/modu-ai/moai-adk/internal/hook 3.126s` | `dc76e9f55` | PASS |
+| AC-AE-001 / AC-AE-025 (regression) | `TestEscalationGuidedGolden`, `TestFirstObservationVerifiedAtPreToolUse` (`internal/hook`) | same invocation | `--- PASS: TestEscalationGuidedGolden (0.75s)`, `--- PASS: TestFirstObservationVerifiedAtPreToolUse (0.55s)` | `dc76e9f55` | PASS |
+
+AC-AE-008 "existing harness-learner deny tests still pass": no test in `internal/hook` names the
+harness-learner deny (grep for `HARNESS_FROZEN` / `harness-learner` over `internal/hook/*_test.go`
+found none); the whole `internal/hook` package passed (`ok … 388.807s coverage: 86.2%`) and
+`go test -count=1 ./internal/harness/` → `ok … 0.891s`.
+
+RED before GREEN (E8): compile RED `classes_m3_test.go:60:45: undefined: escalation.LineNotObserved`,
+`:66:35: unknown field Failed in struct literal of type escalation.Event` (exit 1), and in the same
+run the hook assertion RED `escalation_frozen_test.go:80: frozen-file records = 0 (…), want 3`;
+assertion RED after adding the API fields only: `classes_m3_test.go:98: invariant-violation records = []`,
+`:158: … record does not name post-signing immutability`, `:207: ownership-move records = 0 ([]), want 3`,
+`:274: unreadable ownership still tripped` (exit 1); wiring RED
+`escalation_failure_wiring_test.go:65: invariant-violation records = 0 ([]), want 1` for both subtests (exit 1).
+
+Other E-items at `dc76e9f55` tree:
+- E2: `GOOS=windows GOARCH=amd64 go build ./...` exit 0; `GOOS=darwin GOARCH=arm64 go build ./...` exit 0; `GOOS=linux GOARCH=amd64 go build ./...` exit 0.
+- E3: `go test -count=1 -race -cover ./internal/escalation/` → `coverage: 87.1% of statements`; whole `internal/hook` (under `moai slot` lease `go-test-hook`) → `coverage: 86.2% of statements`; 6 targeted `internal/cli` deps/hook tests PASS.
+- E4: `grep -rn "AskUserQuestion\|mcp__askuser" internal/escalation/ internal/hook/escalation_observe.go` exit 1.
+- E5: `golangci-lint run --new-from-rev=7ec8e9e12 ./internal/escalation/... ./internal/hook/... ./internal/cli/...` → `0 issues.`
+
+M3 decisions:
+- Session scratchpad root: no runtime field or environment variable supplies it (none found in
+  `internal/`); the hook passes none, so in production it is undeterminable and an outside-root
+  write that no other root covers is listed not-observed, never tripped (REQ-AE-013 as written).
+  Tests supply the root through `Event.ScratchpadDir`.
+- Auto-memory roots mirror `moai memory doctor`'s candidate set; the slug rule is duplicated in
+  `escalation.MemorySlug` (the CLI's is unexported), tagged `@MX:NOTE` to keep them equal.
+- AC-AE-024's premise (a signed contract whose ownership cannot be decoded while the rest verifies)
+  is unreachable through A1 verify, which rejects undecodable ownership; M3 reads "unreadable" as
+  the arming snapshot's ownership globs being unreadable (absent/empty `write`).
+- Invariant command failure is observed from PostToolUseFailure and from a PostToolUse
+  `tool_response.exit_code != 0`; the failure handler gets the config through `WithEscalationConfig`.
+- Not-observed items are card-log lines of kind `not-observed` (the "checkpoint output").
+- Not-armed log growth (orchestrator question): the SPEC specifies one line per hook firing, not
+  dedup — REQ-AE-002: "when a hook or checkpoint fires, … zero appends one `not-armed` line";
+  REQ-AE-023: "on `unsigned` it shall append a `not-armed` line"; AC-AE-003: "each writes exactly
+  one `not-armed` line" per processed call. Behavior left per-call; carried as a sync-audit item.
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 _<pending run-phase>_
