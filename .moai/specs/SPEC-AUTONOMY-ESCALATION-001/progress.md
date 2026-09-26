@@ -216,6 +216,59 @@ M4 decisions and the open item:
   kind + qualified name). Only added/modified source files count; a new package is a directory with
   source added at HEAD and no file at base.
 
+### M5 — Evidence, irreversible action, operational trips, unified disarm (cycle tdd)
+
+Commit: `51088d547`. Same env-scrub prefix. Raw outputs: `.moai/reports/t1235/run-m5/` (gitignored).
+`acceptance.md` unchanged.
+
+| AC | Test (package) | Actual output | HEAD | Status |
+|---|---|---|---|---|
+| AC-AE-004 | `TestDetectorNeverAltersToolCall` (`internal/hook`) | `--- PASS: TestDetectorNeverAltersToolCall (0.81s)` | `51088d547` | PASS (class 4 tripped via `escalation.Checkpoint`, the only class-4 path) |
+| AC-AE-012 | `TestContradictoryEvidenceTrips` (`internal/escalation`) | `--- PASS: TestContradictoryEvidenceTrips (0.05s)` | `51088d547` | PARTIAL — (a)(b)(d)(e) PASS; (c) not satisfiable: no on-disk CI verdict producer exists, CI limb not-observed per Q5 ruling |
+| AC-AE-013 | `TestIrreversibleActionTrips` (`internal/hook`) | `--- PASS: TestIrreversibleActionTrips (0.16s)` | `51088d547` | PASS |
+| AC-AE-014 | `TestBudgetExceededTrips` (`internal/escalation`) | `--- PASS: TestBudgetExceededTrips (0.07s)` | `51088d547` | PASS |
+| AC-AE-015 | `TestSameDiagnosticRepeatTrips`, `TestAuditFailAtRetryCapTrips` (`internal/escalation`) | `--- PASS: TestSameDiagnosticRepeatTrips (0.03s)`, `--- PASS: TestAuditFailAtRetryCapTrips (0.02s)` | `51088d547` | PASS |
+| AC-AE-016 | `TestDisarmContractLossWritesOneRecord` | `--- PASS: TestDisarmContractLossWritesOneRecord (0.06s)` | `51088d547` | PASS |
+| AC-AE-017 | `TestDisarmTransitions` | `--- PASS: TestDisarmTransitions (0.04s)` | `51088d547` | PASS |
+| AC-AE-018 | `TestStateTamperJudgedFromCardLog` | `--- PASS: TestStateTamperJudgedFromCardLog (0.05s)` | `51088d547` | PASS (cases a-d) |
+| AC-AE-019 | `TestOtherCardLogDoesNotAffectThisCard`, `TestSameCardConcurrentHooksKeepChain` | `--- PASS: … (0.21s)`, `--- PASS: … (0.01s)` | `51088d547` | PASS |
+| AC-AE-020 | `TestMissingCardLogReading` | `--- PASS: TestMissingCardLogReading (0.04s)`, `ok github.com/modu-ai/moai-adk/internal/escalation 0.875s` | `51088d547` | PASS (cases a-d) |
+
+Commands: `go test -count=1 ./internal/escalation -run '^(TestContradictoryEvidenceTrips|…|TestMissingCardLogReading)$' -v`;
+`go test -count=1 ./internal/hook -run '^(TestDetectorNeverAltersToolCall|TestIrreversibleActionTrips|TestEscalationGuidedGolden)$' -v`
+(`--- PASS: TestEscalationGuidedGolden (0.37s)`, `ok … internal/hook 1.712s`).
+
+Per-card lock mutant (R1): lock replaced by a no-op, `go test -count=40 … -run '^TestSameCardConcurrentHooksKeepChain$'`
+→ 40/40 FAIL with `disarm_m5_test.go:353: chain broken by concurrent hooks` and `:360: operations 0 -> 1, want +2`;
+restored → `ok` at `-count=40`.
+
+RED before GREEN (E8): compile RED `operational_m5_test.go:37:51: unknown field Diagnostic in struct literal`,
+`:92:59: undefined: escalation.HookStop`; assertion RED `disarm_m5_test.go:108: detection-disarmed records = [], want one disarm:terminal-status`,
+`:192: … want one disarm:state-tamper` (×4), `:257: state-tamper records = 0, want 1`, `operational_m5_test.go:96: turns record = []`,
+`:116: same-diagnostic records = []`; hook RED `escalation_m5_test.go:75: irreversible-action records = 0 ([]), want 5`,
+`:220: class contradictory-evidence did not trip` (and irreversible, same-diagnostic, audit-cap) (exit 1).
+`TestIrreversibleActionRecognizer` (escalation-level table) was added after GREEN for coverage; its behavior's RED is the hook-level one above.
+
+Other E-items at `51088d547` tree:
+- E2: `GOOS=windows GOARCH=amd64 go build ./...` exit 0; `GOOS=darwin GOARCH=arm64 go build ./...` exit 0; `GOOS=linux GOARCH=amd64 go build ./...` exit 0.
+- E3: `go test -count=1 -race -cover ./internal/escalation/` → `coverage: 88.3% of statements`; whole `internal/hook` (slot lease `go-test-hook`) → `ok … 278.472s coverage: 86.2% of statements`; 6 targeted `internal/cli` deps/hook tests PASS.
+- E4: `grep -rn "AskUserQuestion\|mcp__askuser" internal/escalation/*.go internal/hook/escalation_observe.go | grep -v _test` exit 1.
+- E5: `golangci-lint run --new-from-rev=13a94c311 ./internal/escalation/... ./internal/hook/... ./internal/cli/...` → `0 issues.` (after fixing 3 test-file findings).
+
+M5 decisions:
+- Q5: no on-disk producer of recorded CI verdicts exists (`grep` for check-runs / statusCheckRollup / ci-verdict producers
+  in `internal`, `cmd`, `pkg`, `scripts` found none; `scripts/ci-watch` writes nothing under `.moai/`). The CI limb is listed
+  not-observed at every commit checkpoint; AC-AE-012 clause (c) cannot pass as written — open item.
+- Class 5 reads persisted `audit_multi` results at `<worktree>/.moai/state/audit-multi/*.json` (the path
+  `internal/cli/mcp_convergence.go` persists); the "first verdict" is the first pass/fail entry of a backend other than the
+  contract's `review.second_model`.
+- Class 9 reads the audit-artifact convention files `.moai/reports/<card>/{plan,sync}-audit[-iterN].md` (verdict line
+  `Verdict: …`); FAIL at iteration ≥ `audit_retries+1` trips.
+- State-tamper judgments record the evidence they consumed (`accounted`) in the disarmed entry; a chain break before the
+  last state-tamper entry is treated as judged. After a disarm the resolver may re-arm the same contract in the same event
+  (design.md §C.6 step 7), starting a new episode.
+- Class 8 diagnostic key: first non-empty failure line (excluding "Exit code"), digits normalized.
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 _<pending run-phase>_
