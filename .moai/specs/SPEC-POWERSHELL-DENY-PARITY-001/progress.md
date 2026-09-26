@@ -129,7 +129,7 @@ Other checks: `go vet ./internal/template/ ./internal/config/toolpolicy/` → ex
 
 ```yaml
 run_complete_at: 2026-09-26
-run_commit_sha: backfill
+run_commit_sha: d601647e0   # C1 evidence+status 49c0fe453; C2 guard+rules+docs d601647e0
 run_status: complete
 branch: P
 ac_pass_count: 13
