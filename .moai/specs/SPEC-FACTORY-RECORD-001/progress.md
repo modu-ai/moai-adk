@@ -122,6 +122,63 @@ it without the two literals.
   (INSERT), card_transition.go (updateCardRow), fr_fixture_test.go (frPlace), fr_schema_test.go
   (frTableColumns, frDump).
 
+### Follow-ups ordered by the lead before sync (HEAD `c0624427a`)
+
+**1. Unavailable-log append vs rewrite race (data-loss path).**
+
+- `dc2566c89` — behavior-neutral seam: a nil `recordUnavailableRewriteHook` called between the
+  rewrite's read of `record-unavailable.jsonl` and its rename (production code; the hook is nil, so
+  no behavior change — `TestFR_RecordUnavailable*` still `ok`). Needed so the RED commit could be
+  test-only and the race reproduced by ordering, not timing.
+- `b679814e4` — RED, test-only (`internal/homestate/fr_unavailable_race_test.go`). Command
+  `go test ./internal/homestate -run 'TestFR_UnavailableLog' -count=1 -v`, observed:
+  `fr_unavailable_race_test.go:60: the entry appended during the rewrite was lost: [{ID:first ... Reconciled:true}]`
+  / `--- FAIL: TestFR_UnavailableLogAppendSurvivesRewrite`. (The concurrent-appends companion passed
+  on the unfixed code — it is probabilistic and serves as the `-race` run, not as the RED.)
+- `14a23a6d4` — fix: appends and the whole read→temp→rename rewrite run under one exclusive file
+  lock (`record-unavailable.jsonl.lock`, the existing admission-lock primitive: flock / LockFileEx).
+  Command `go test ./internal/homestate -run 'TestFR_' -count=1 -race -v`, observed:
+  `--- PASS: TestFR_UnavailableLogAppendSurvivesRewrite`, `--- PASS: TestFR_UnavailableLogConcurrentAppendsNoLoss`,
+  `ok github.com/modu-ai/moai-adk/internal/homestate 19.695s`. `GOOS=windows GOARCH=amd64 go build ./internal/homestate` exit 0.
+  AC-023/024/025 re-run: `--- PASS` ×5.
+- Ordering: `git merge-base --is-ancestor dc2566c89 b679814e4` exit 0; `… b679814e4 14a23a6d4` exit 0.
+
+**2. Push gate never runs `git fetch`.**
+
+- `984773644` — `internal/cli/factory_push_nofetch_test.go` (`TestFR_AC018_PushGateNeverFetches`):
+  a recording git wrapper first on PATH logs every call of `moai factory decide --gate push`; it fails
+  on any `fetch` and, as a positive control, requires the log to contain the gate's `remote` and
+  `merge-base --is-ancestor` reads. Current code passes: `--- PASS: TestFR_AC018_PushGateNeverFetches`.
+- The current code already passed, so the RED step was mutant-based (neither mutant committed):
+  (a) a `gitRead(ctx, dir, "fetch", "--quiet", remote)` inserted in `verifyPushed` →
+  `the push gate ran git fetch: "-C …/repo fetch --quiet origin"` / `--- FAIL`;
+  (b) a blind recorder (wrapper logs nothing) → `positive control: recorder did not see the push gate's git reads (remote=false ancestry=false)` / `--- FAIL`.
+  Both reverted; the test passes again. POSIX only (skipped on windows: the wrapper is a shell script).
+
+### Coverage debt (follow-up card candidate)
+
+`go test -cover ./internal/homestate/ -count=1` → `coverage: 76.2% of statements` on this branch
+(re-measured after the follow-ups at `984773644`); the same command on a copy of base
+`04ca1a98c` extracted with `git archive` → `coverage: 69.0% of statements` (that copy also failed
+`TestTempDiscriminantParity`, an environment premise tied to the copy living under a temp root). The
+85% DoD line is not met and was not met before this SPEC. Candidate follow-up card: raise
+`internal/homestate` coverage to 85% (largest untested areas pre-date F1).
+
+### Design deviations (implemented differently from design.md; ACs govern)
+
+1. **plan-auditor instruction placement** — the verdict-file lines sit in a new section before
+   `## MCP Audit Tools`, not in the output-format section, because that section follows the
+   receipt-citation block and AC-020 (i) forbids the instruction after it.
+2. **Version compare first** — the stale-version check runs before the legacy, reserved-edge, and
+   table checks (design pseudocode had it at the UPDATE), because AC-006 requires the losing writer
+   to get a stale-version error, not an illegal-transition error.
+3. **Abandon keeps every other column** — `abandon` changes only state, version, and `updated_at`
+   (lease and decision fields stay, inert on a terminal card), per AC-016's "every other column
+   unchanged".
+4. **AC-025 failure scenario in a second project root** — the goal path's lane-ownership check
+   refuses a second card for `worker-3` in the same queue, so the d4 failure/drift scenario runs in
+   a fresh root.
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 ```yaml
@@ -141,7 +198,8 @@ total_run_phase_files: 37  # net diff against 04ca1a98c, including spec.md and p
 m1_to_mN_commit_strategy: RED test-only commit then GREEN per milestone (M1-M6), M6 preceded by a characterization commit, M7 cleanup
 gaps:
   - homestate package coverage 76.2% < 85% (pre-existing 69.0% baseline)
-  - REQ-FR-025 log append vs. reconcile rewrite race is not guarded by a lock (residual)
+  - (closed by 14a23a6d4) REQ-FR-025 log append vs. reconcile rewrite race — now serialized by a file lock
+  - push-gate no-fetch test is POSIX-only (skipped on windows)
 ```
 
 ## §E.4 Sync-phase Audit-Ready Signal
