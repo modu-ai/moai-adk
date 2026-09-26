@@ -287,6 +287,7 @@ func TestFR_AC006_RacingWritersExactlyOneWins(t *testing.T) {
 	for i := 0; i < 50; i++ {
 		cardID := fmt.Sprintf("race-%02d", i)
 		c := frFixtureCard(repo, cardID, CardPicked, CardAssigned)
+		c.Version = 1
 		frPlace(t, db, c)
 		var wg sync.WaitGroup
 		errs := make([]error, 2)
@@ -331,6 +332,7 @@ func TestFR_AC019_ReservedCIEdgesRefused(t *testing.T) {
 	for _, pair := range [][2]string{{CardPushed, CardCIGreen}, {CardCIGreen, CardDone}} {
 		cardID := "reserved-" + pair[0]
 		c := frFixtureCard(repo, cardID, pair[0], pair[1])
+		c.Version = 1
 		frPlace(t, db, c)
 		before := frRowDump(t, db, frRun, cardID)
 		for _, withClaim := range []bool{false, true} {
