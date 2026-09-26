@@ -246,4 +246,30 @@ deferred_to: t1213
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase>_
+```yaml
+sync_complete_at: 2026-09-26
+sync_commit_sha: pending-backfill-sync
+sync_status: complete
+sync_base_head: 8322fb928
+b12_self_test_a: "grep -c 'SPEC-MCP-WORKTREE-UNTRACKED-001' CHANGELOG.md -> 0 before emission"
+b12_self_test_b: "acceptance.md distinct AC ids = 16 (AC-MWU-001..016), no [RETIRED]/[REF] markers; CHANGELOG entry cites 16"
+b12_self_test_c: "ls of every CHANGELOG-claimed path (internal/cli/mcp_worktree_root.go, both moai-mcp-tools.md copies) -> all exist"
+changelog_entry_position: "[Unreleased] ### Fixed, first bullet"
+frontmatter_status_transitions:
+  spec_md: "in-progress -> completed (updated already 2026-09-26)"
+  plan_md: "n/a (stateless on the status axis)"
+  acceptance_md: "n/a (stateless on the status axis)"
+  progress_md: "n/a (no frontmatter)"
+docs_synced:
+  - docs-site/content/{ko,en,ja,zh}/guides/mcp-server.md (linked-worktree row + paragraph, same commit)
+docs_not_changed:
+  - "docs-site */advanced/multi-model-audit.md: mentions project_root only as a pointer to the MCP server page; no claim contradicted"
+mx_tag_validation: "no new @MX tags added in sync; code unchanged in sync (markdown-only commit)"
+deferred_to: t1213
+deferred_scope: "state writes, SPEC catalogue and non-gate config routing to the primary checkout; hook-side audit-receipt guard"
+tests_run_in_sync: none
+```
+
+Sync-phase note: no package-wide `go test ./internal/cli` or `./internal/hook`
+run was made (known profile-leases.db leak into the real `~/.moai`); this commit
+changes markdown only.

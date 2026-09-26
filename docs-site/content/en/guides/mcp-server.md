@@ -105,9 +105,12 @@ The caller is the only party that holds the answer. That is why it is an input r
 |-----------|--------------|--------------|
 | Session in a worktree | `project_root: <git rev-parse --show-toplevel>` | the call acts on that tree |
 | Session in the primary checkout | nothing | resolves exactly as it always has |
+| Linked worktree of a repository that does not track `.moai` (the worktree has no `.moai` of its own) | `project_root: <git rev-parse --show-toplevel>` | accepted when git lists it as a worktree of a primary checkout that has `.moai`; the call acts on the worktree |
 | Path that is not a MoAI project root | — | the call is **rejected** with an error naming the path |
 
 The rejection is deliberate, not a rough edge. A silent fallback to the default would send a caller who mistyped its own worktree path back to auditing the primary checkout while reporting success — the exact failure the parameter exists to prevent.
+
+A linked worktree of a repository that keeps `.moai` out of git has no `.moai` of its own, and it is still accepted — but only when the path is the top level of a worktree that `git worktree list` registers and the repository's primary checkout has `.moai`. A subdirectory, an unregistered or prunable worktree, an ambiguous layout such as a separate git directory, or a machine where git is unavailable is rejected. On such a worktree, when it has no workflow config of its own, the explicit audit gate (`workflow.audit.gates`) is read from the primary checkout; when the primary cannot be identified, the gate is treated as `required`, so a missing verdict fails rather than passes. Other configuration, the SPEC catalog, and state are still read from the worktree itself, so catalog and state answers there carry a `_root.worktree_warning`: an empty result may only mean that `.moai` is not tracked.
 
 For `audit_multi` the root reaches **both** backends of the fan-out: codex receives it as the directory it reviews in, and the GLM path uses it to collect the diff it sends to z.ai. Passing it is what keeps the two secondary opinions about the same tree — without it they can review different ones.
 
