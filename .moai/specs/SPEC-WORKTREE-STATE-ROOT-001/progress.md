@@ -221,7 +221,24 @@ m1_to_mN_commit_strategy: "per-milestone commits, unpushed (e065ef1e9, a086e87bd
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase>_
+```yaml
+sync_complete_at: 2026-09-26
+sync_commit_sha: pending-backfill
+sync_status: audit-ready
+b12_self_test_a: "grep -c 'SPEC-WORKTREE-STATE-ROOT-001' CHANGELOG.md → 0 before emission"
+b12_self_test_b: "live AC ids in acceptance.md = 16 (AC-WSR-001..016; AC-MWU-015/016 are [REF] citations of the predecessor SPEC, excluded); CHANGELOG cites 16"
+b12_self_test_c: "every path named in the entry verified with ls → paths-ok"
+changelog_entry_position: "[Unreleased] ### Fixed, first entry"
+frontmatter_status_transitions:
+  spec_md: "in-progress → completed (updated: 2026-09-26, unchanged date)"
+  plan_md: "no status field in frontmatter — not touched"
+  acceptance_md: "no status field in frontmatter — not touched"
+docs_sync:
+  rule_and_tool_descriptions: "already updated in c2024b4f0 (REQ-WSR-016) — not duplicated"
+  docs_site: "guides/mcp-server.md + advanced/multi-model-audit.md × ko/en/ja/zh — stale 'catalogue and state read from the worktree' / 'verdict under the project_root tree' statements corrected"
+  readme: none
+mx_tag_validation: "@MX:ANCHOR on auditreceipt.StoreRoot (fan_in >= 3: direct auditreceipt.StoreRoot calls in 8 non-test files across internal/cli and internal/hook); no goroutines added; no tag added or removed in sync"
+```
 
 ## §F Phase 4 Mode Selection
 
