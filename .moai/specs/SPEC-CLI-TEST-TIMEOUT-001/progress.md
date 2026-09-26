@@ -114,7 +114,7 @@ output, (c) HEAD SHA measured against.
 ```yaml
 run_status: complete
 run_complete_at: 2026-09-26
-run_commit_sha: pending-backfill-run
+run_commit_sha: 9a937b381
 ac_pass_count: 9
 ac_fail_count: 0
 preserve_list_post_run_count: 5
