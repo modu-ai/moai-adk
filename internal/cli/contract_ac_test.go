@@ -298,6 +298,9 @@ func TestAC_CONTRACT_014(t *testing.T) {
 		snap := p.Snapshot()
 		res := runContract(t, p, contractRun{realTTY: true, env: map[string]string{}}, "sign", signtest.SpecID)
 		assertRefusal(t, res, contract.RefuseNotTTY)
+		if !strings.Contains(res.stdout, "interactive terminal") {
+			t.Errorf("the output must state that signing requires an interactive terminal\n%s", res)
+		}
 		p.AssertUnchanged(t, snap)
 	})
 	t.Run("receipt path, mode guided", func(t *testing.T) {
@@ -718,6 +721,28 @@ func TestAC_CONTRACT_025(t *testing.T) {
 			p.AssertUnchanged(t, snap)
 		})
 	}
+	t.Run("human path with both markers unset", func(t *testing.T) {
+		// The env seam carries neither key at all (not set to ""), so every
+		// marker lookup is an absent key rather than an empty value.
+		p := newContractProject(t, cfgGuided)
+		env := map[string]string{}
+		if _, ok := env["CLAUDECODE"]; ok {
+			t.Fatal("premise: CLAUDECODE must be absent from the env seam")
+		}
+		if _, ok := env["CLAUDE_CODE_SESSION_ID"]; ok {
+			t.Fatal("premise: CLAUDE_CODE_SESSION_ID must be absent from the env seam")
+		}
+		res := runContract(t, p, contractRun{tty: true, env: env, stdin: signtest.SpecID + "\n"}, "sign", signtest.SpecID)
+		if res.code != 0 {
+			t.Errorf("want exit 0 with the markers unset\n%s", res)
+		}
+		if strings.Contains(res.stdout, string(contract.RefuseAgentMarker)) {
+			t.Errorf("no agent_marker refusal may be reported with the markers unset\n%s", res)
+		}
+		if vres, rep, _ := verifyJSON(t, p, signtest.SpecID); vres.code != 0 || rep.State != contract.StateSignedValid {
+			t.Errorf("the contract must be signed after an unset-marker sign: verify exit=%d state=%q", vres.code, rep.State)
+		}
+	})
 	t.Run("human path with both markers empty", func(t *testing.T) {
 		p := newContractProject(t, cfgGuided)
 		res := runContract(t, p, contractRun{tty: true, env: map[string]string{"CLAUDECODE": "", "CLAUDE_CODE_SESSION_ID": ""},
