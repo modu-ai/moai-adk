@@ -163,6 +163,17 @@ func (h *postToolHandler) Handle(ctx context.Context, input *HookInput) (*HookOu
 		metrics["input_size"] = len(input.ToolInput)
 	}
 
+	// Push serializer release (SPEC-AUTONOMY-PRECONDITION-001 REQ-AP-002,
+	// design.md §B Release). A failed admitted push of `develop` releases the
+	// push-develop lease immediately — nothing is in flight. Inactive until
+	// the contract resolver is wired into pushShowJSONLoader (the activation
+	// document does not resolve, so nothing else here runs); every other
+	// uncertainty keeps the record and lets its declared bound expire it.
+	if IsShellTool(input.ToolName) {
+		root := resolveProjectRootFromEnvAt("post-tool push-serializer release", slog.LevelDebug)
+		releasePushLeaseOnFailure(input, root, pushSerializerShow(root), os.Stderr)
+	}
+
 	// Collect Agent (formerly Task) subagent metrics.
 	// Best-effort: errors are logged internally and never propagated.
 	// Since v2.1.63 Claude Code renamed Task → Agent; accept both for backward compatibility.

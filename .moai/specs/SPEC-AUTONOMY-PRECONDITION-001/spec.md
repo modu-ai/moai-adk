@@ -2,7 +2,7 @@
 id: SPEC-AUTONOMY-PRECONDITION-001
 title: "A3 preconditions: serialize develop pushes behind the push-develop slot lease, deny the human contract-signing path at the tool-call boundary, deny the non-interactive sign path and decide from agent-role sessions, and project the contract onto the mission validator"
 version: "0.1.3"
-status: draft
+status: in-progress
 created: 2026-09-26
 updated: 2026-09-26
 author: manager-spec
