@@ -167,6 +167,9 @@ func New(t testing.TB) *Project {
 	p.Git("config", "user.name", OperatorName)
 	p.Git("config", "user.email", OperatorEmail)
 	p.Git("config", "commit.gpgsign", "false")
+	// A commit otherwise starts a detached `git maintenance run --auto` that
+	// keeps writing .git after the commit returns, racing Snapshot's walk.
+	p.Git("config", "maintenance.auto", "false")
 	p.Git("add", "-A")
 	p.Git("commit", "-q", "-m", "fixture")
 	p.Head = strings.TrimSpace(p.Git("rev-parse", "HEAD"))
