@@ -340,6 +340,94 @@ alias limbs.
    under a slot lease with `-timeout 22m` → `ok ... 1015.058s`, zero
    failures. The verdict surface remains CI.
 
+### M3 — Documentation of the mode-independent deny (REQ-AP-010; design.md §C.6a, §C.7)
+
+Files created: `.claude/rules/moai/workflow/contract-sign-guard.md`,
+`internal/template/templates/.claude/rules/moai/workflow/contract-sign-guard.md`
+(byte-identical apart from the front-matter `paths:` value), and the AC test
+`internal/template/contract_sign_guard_rule_test.go`. Run on lane
+`WT-push-serialize-sign`, TDD cycle_type, HEAD baseline `81f351c6f`.
+
+- **E1 — AC-AP-013 matrix row:**
+
+  | AC | Status | Verification Command | Actual Output |
+  |----|--------|---------------------|---------------|
+  | AC-AP-013 | PASS | `go test ./internal/template/ -run TestContractSignGuard -count=1 -v` | `--- PASS: TestContractSignGuardRuleDocumentsModeIndependence (0.00s)` / `ok  github.com/modu-ai/moai-adk/internal/template  0.401s` |
+
+  The test reads both files from disk and asserts: (a) the required
+  mode-independence statements — "mode-independent", "guided", "escalation
+  detector", "nothing changes under", the sentinel
+  `CONTRACT_SIGN_AGENT_VIOLATION:`, and the `MOAI_FACTORY_ROLE` marker — are
+  present in BOTH trees; (b) parity: byte-identical after stripping the
+  front-matter `paths:` line; (c) neutrality: no SPEC id, card id, internal
+  date, or commit SHA in either file. All four AC limbs are covered by
+  mechanically observed assertions, not reads.
+
+- **E2 — builds:** `make build` on the unmodified baseline tree → exit 0
+  (pre-flight); post-mirror `make build` → `BUILD_EXIT=0` with catalog
+  regenerated unchanged; `go build ./...` → `GO_BUILD_OK`;
+  `GOOS=windows GOARCH=amd64 go build ./...` → `GOOS_WINDOWS_OK`. All
+  measured on this tree this run.
+
+- **E3 — coverage: n/a.** The milestone adds zero executable statements —
+  two markdown documentation files and one test file. There is no production
+  Go surface to cover; stated explicitly rather than omitted.
+
+- **E4 — boundary grep on the new files:**
+  `grep -nE 'Audit [0-9]|Finding A[0-9]|spec\.md §|plan\.md §|design\.md §|acceptance\.md §|goos|backups'`
+  over both new rule files → no output (clean). Neutrality greps:
+  `grep -c 'SPEC-'` both files → `0`; `grep -cE 'REQ-[A-Z]|AC-[A-Z]|t[0-9]{3,4}|[0-9]{4}-[0-9]{2}-[0-9]{2}'`
+  both files → `0`; hex-run scan (`\b[0-9a-f]{7,40}\b`) → empty.
+  §25.3 five-item checklist (C1 SPEC-id / C2 REQ-AC token / C3 audit
+  citation / C4 date + short-sha / C5 memory-archive path) passed manually
+  against the staged diff; the automated backstop
+  (`TestTemplateNoInternalContentLeak`, `TestRuleProvenance*`) ran green
+  inside the package battery below.
+
+- **E5 — lint:** `golangci-lint run --timeout=2m` → `0 issues.` — identical
+  to the pre-change baseline measured in pre-flight on the unmodified tree
+  at `81f351c6f`.
+
+- **E6 — commits:** one M3 commit follows `81f351c6f` on
+  `WT-push-serialize-sign` (`7d766dcd1` — rule file + mirror + AC test),
+  plus the §E.2 evidence commit carrying this section. No push (lane mode:
+  push is the lead's).
+
+- **E7 — blockers:** none.
+
+- **E8 — verbatim RED output (captured BEFORE the rule files existed):**
+
+  ```
+  $ go test ./internal/template/ -run TestContractSignGuard -count=1 -v
+  === RUN   TestContractSignGuardRuleDocumentsModeIndependence
+      contract_sign_guard_rule_test.go:65: CONTRACT_SIGN_GUARD_RULE_DRIFT: local rule file unreadable /…/.claude/rules/moai/workflow/contract-sign-guard.md: open /…/.claude/rules/moai/workflow/contract-sign-guard.md: no such file or directory
+  --- FAIL: TestContractSignGuardRuleDocumentsModeIndependence (0.00s)
+  FAIL
+  FAIL	github.com/modu-ai/moai-adk/internal/template	0.708s
+  ```
+
+  RED is red for the right stated reason: neither the rule file nor its
+  mirror exists on the pre-implementation tree — exactly the RED-now state
+  acceptance.md records ("neither the rule file nor its mirror exists").
+
+**Design notes.**
+
+1. **The pair is deliberately NOT enrolled in the byte-parity allowlist** of
+   `rule_template_mirror_test.go`: that test requires full byte identity,
+   while AC-AP-013 requires the two trees to differ in the front-matter
+   `paths:` value. The parity invariant for this pair lives in the AC test
+   itself (byte-identical apart from the paths line), which is the AC's own
+   definition.
+2. **The required statements are asserted as neutral prose strings** — no
+   SPEC id or REQ token appears in either documented file, satisfying the
+   neutrality limb and the §25 CI guard simultaneously. The AC's limb 2
+   (state that the companion promise is scoped in words to the escalation
+   detector) is carried by the phrases "escalation detector" and "nothing
+   changes under", without citing the tracking tokens.
+3. **`paths:` scoping mirrors the guard's code surface**: the rule loads
+   when a session touches `contract_sign_guard.go`, its tests, or the rule
+   itself — a guard's documentation does not earn always-loaded budget.
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 _<pending run-phase>_
