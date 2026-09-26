@@ -16,6 +16,7 @@
 //	Contract, Acceptance, Ownership, Review, Budget, PlanAudit  // contract body
 //	Signature, Operator, Receipt                               // signature block
 //	Policy, Inputs, Report                                     // verify I/O
+//	ACCountResult                                              // AC counter outcome
 //
 // Functions:
 //
@@ -30,11 +31,14 @@
 //	ResolveSpecDir(projectRoot, specID string) (string, error)
 //	LoadDir(specDir string) (Inputs, error)        // reads contract.yaml (+ acceptance.md, receipt)
 //	ReasonCodes() []string / IsReasonCode(string) bool  // closed reason-code set
+//	NormalizeAcceptance(raw []byte) []byte         // strip one leading BOM, CRLF → LF
+//	AcceptanceHash(raw []byte) string              // lowercase-hex SHA-256 of normalized bytes
+//	CountAC(normalized []byte) (ACCountResult, error)  // Go port of the MOAI-AC-COUNTER awk program
 //
 // Constants: the 23 Reason* codes, State* values, Section* names,
 // ContractFile / AcceptanceFile / ReceiptFile, SchemaVersion, SpecIDPattern.
 // Sentinel errors: ErrSchemaInvalid, ErrContractMissing,
-// ErrPathEscapesSpecDir, ErrInvalidSpecID. LoadDir errors are I/O errors
+// ErrPathEscapesSpecDir, ErrInvalidSpecID, ErrACPrefixInvalid. LoadDir errors are I/O errors
 // (the CLI maps them to exit 2), never reasons.
 //
 // # Verify semantics implemented so far (milestone M1)
