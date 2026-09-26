@@ -162,10 +162,25 @@ func rootLayout(canonical string) bool {
 }
 
 // isGitDir reports whether dir is itself a git directory (a --separate-git-dir
-// metadata dir, a bare repository, .git/modules/<name>), not a work tree.
+// metadata dir, a bare repository, .git/modules/<name>), not a work tree. It
+// compares git's own gitdir for dir against dir: `--is-inside-git-dir` would
+// answer false wherever core.worktree is set, which a submodule's git
+// directory always carries (t1221 re-audit F1).
 func isGitDir(dir string) bool {
-	out, err := scrubbedGit(dir, "rev-parse", "--is-inside-git-dir").Output()
-	return err == nil && strings.TrimSpace(string(out)) == "true"
+	out, err := scrubbedGit(dir, "rev-parse", "--absolute-git-dir").Output()
+	return err == nil && sameDir(strings.TrimSpace(string(out)), dir)
+}
+
+// sameDir reports whether a and b name the same directory once cleaned and
+// symlink-resolved (git may spell a path through /private on macOS).
+func sameDir(a, b string) bool {
+	resolve := func(p string) string {
+		if r, err := filepath.EvalSymlinks(p); err == nil {
+			p = r
+		}
+		return filepath.Clean(p)
+	}
+	return resolve(a) == resolve(b)
 }
 
 func explicitMoaiHome() bool {

@@ -69,6 +69,23 @@ func bareFixture(t *testing.T) (bare, w1, w2 string) {
 	return bare, w1, w2
 }
 
+// submoduleFixture: a superproject with submodule sub and one linked worktree
+// of the submodule. Returns the linked worktree and the submodule's git
+// directory (<super>/.git/modules/sub).
+func submoduleFixture(t *testing.T) (worktree, gitDir string) {
+	t.Helper()
+	base := resolvedTemp(t)
+	src, super := filepath.Join(base, "subsrc"), filepath.Join(base, "super")
+	worktree = filepath.Join(base, "swa")
+	runFixtureGit(t, "init", "--initial-branch=main", src)
+	runFixtureGit(t, "-C", src, "commit", "--allow-empty", "-m", "seed")
+	runFixtureGit(t, "init", "--initial-branch=main", super)
+	runFixtureGit(t, "-C", super, "commit", "--allow-empty", "-m", "seed")
+	runFixtureGit(t, "-C", super, "-c", "protocol.file.allow=always", "submodule", "add", "-q", src, "sub")
+	runFixtureGit(t, "-C", filepath.Join(super, "sub"), "worktree", "add", worktree, "-b", "la")
+	return worktree, filepath.Join(super, ".git", "modules", "sub")
+}
+
 // Sibling linked worktrees keep sharing one key, and the primary checkout of a
 // separate-git-dir repository keeps its own key: no existing key moves.
 func TestGitDirRootedWorktreesKeepSharedKey(t *testing.T) {
@@ -121,6 +138,16 @@ func TestEnsureProjectLayoutNeverWritesIntoGitDir(t *testing.T) {
 			bare, w1, _ := bareFixture(t)
 			return w1, bare
 		}},
+		// A submodule's git directory always carries core.worktree, under which
+		// `rev-parse --is-inside-git-dir` answers false (t1221 re-audit F1).
+		{"submodule", func(t *testing.T) (string, string) {
+			return submoduleFixture(t)
+		}},
+		{"separate_git_dir_with_core_worktree", func(t *testing.T) (string, string) {
+			repo, meta, wa, _ := separateGitDirFixture(t)
+			runFixtureGit(t, "-C", repo, "config", "core.worktree", repo)
+			return wa, meta
+		}},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
@@ -139,6 +166,21 @@ func TestEnsureProjectLayoutNeverWritesIntoGitDir(t *testing.T) {
 			}
 			if _, err := os.Stat(dir); err != nil {
 				t.Fatalf("project state dir %s not created: %v", dir, err)
+			}
+			// The home layout is complete, not just the project dir: all
+			// three call sites must agree the root layout does not apply.
+			runDir, err := homestate.RunProjectDir(worktree)
+			if err != nil {
+				t.Fatalf("RunProjectDir: %v", err)
+			}
+			searchPath, err := homestate.SearchDBPath(worktree)
+			if err != nil {
+				t.Fatalf("SearchDBPath: %v", err)
+			}
+			for _, p := range []string{filepath.Join(runDir, "locks"), filepath.Dir(searchPath)} {
+				if _, err := os.Stat(p); err != nil {
+					t.Fatalf("home layout dir %s not created: %v", p, err)
+				}
 			}
 		})
 	}
