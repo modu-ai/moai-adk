@@ -136,7 +136,7 @@ entries:
     audit: "destructive filesystem wipe (unix root)"
     source: ".claude/settings.json#permissions.deny"
   - tool: "Bash"
-    args_pattern: "rm -rf /*:*"
+    args_pattern: "rm -rf /\\* *"
     risk_tier: irreversible
     decision: deny
     owner_agent: orchestrator
@@ -150,7 +150,7 @@ entries:
     audit: "destructive filesystem wipe (home directory)"
     source: ".claude/settings.json#permissions.deny"
   - tool: "Bash"
-    args_pattern: "rm -rf ~/*:*"
+    args_pattern: "rm -rf ~/\\* *"
     risk_tier: irreversible
     decision: deny
     owner_agent: orchestrator
@@ -164,7 +164,7 @@ entries:
     audit: "destructive filesystem wipe (Windows drive root)"
     source: ".claude/settings.json#permissions.deny"
   - tool: "Bash"
-    args_pattern: "rm -rf C\\:/*:*"
+    args_pattern: "rm -rf C\\:/\\* *"
     risk_tier: irreversible
     decision: deny
     owner_agent: orchestrator
