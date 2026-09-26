@@ -32,6 +32,7 @@ import (
 	"github.com/spf13/cobra"
 	"gopkg.in/yaml.v3"
 
+	"github.com/modu-ai/moai-adk/internal/auditreceipt"
 	"github.com/modu-ai/moai-adk/internal/factorymsg"
 	"github.com/modu-ai/moai-adk/internal/goal"
 	"github.com/modu-ai/moai-adk/internal/homestate"
@@ -245,7 +246,7 @@ func registerMoaiMCPTools(s *server.MCPServer, projectDir string) {
 	// --- spec_progress → spec.ListDocs (listdocs.go:36) — the SPEC scanner ---
 	add("spec_progress", mcp.NewTool(
 		"spec_progress",
-		mcp.WithDescription("List SPEC documents + frontmatter under a project root (SPEC lifecycle distribution source). Wraps spec.ListDocs."),
+		mcp.WithDescription("List SPEC documents + frontmatter under a project root (SPEC lifecycle distribution source). Wraps spec.ListDocs."+worktreeCatalogueDescNote),
 		projectRootOption(),
 		mcp.WithReadOnlyHintAnnotation(true),
 	), handleSpecProgress)
@@ -253,7 +254,7 @@ func registerMoaiMCPTools(s *server.MCPServer, projectDir string) {
 	// --- verify_snapshot → verify.Load (store.go:38) + verify.RecordCheck (store.go:107) ---
 	add("verify_snapshot", mcp.NewTool(
 		"verify_snapshot",
-		mcp.WithDescription("Read (or record into) the per-key verification snapshot. Wraps verify.Load (+ verify.RecordCheck when a check is supplied). First CLI/MCP surface for verify."),
+		mcp.WithDescription("Read (or record into) the per-key verification snapshot. Wraps verify.Load (+ verify.RecordCheck when a check is supplied). First CLI/MCP surface for verify."+worktreeStateDescNote),
 		projectRootOption(),
 		mcp.WithString("key", mcp.Required(), mcp.Description("Snapshot key (HEAD:digest form).")),
 		mcp.WithString("command", mcp.Description("When set, RECORD a check entry via verify.RecordCheck instead of reading.")),
@@ -263,7 +264,7 @@ func registerMoaiMCPTools(s *server.MCPServer, projectDir string) {
 	// --- verify_trend → verify.Load (store.go:38) — the per-key check history ---
 	add("verify_trend", mcp.NewTool(
 		"verify_trend",
-		mcp.WithDescription("Read the per-key verification check history (trend). Wraps verify.Load, surfacing the Checks sequence."),
+		mcp.WithDescription("Read the per-key verification check history (trend). Wraps verify.Load, surfacing the Checks sequence."+worktreeStateDescNote),
 		projectRootOption(),
 		mcp.WithString("key", mcp.Required(), mcp.Description("Snapshot key whose check trend is read.")),
 		mcp.WithReadOnlyHintAnnotation(true),
@@ -272,7 +273,7 @@ func registerMoaiMCPTools(s *server.MCPServer, projectDir string) {
 	// --- spec_audit → spec.Audit (audit.go:156) ---
 	add("spec_audit", mcp.NewTool(
 		"spec_audit",
-		mcp.WithDescription("Run the SPEC lifecycle audit (era classification + drift detection). Wraps spec.Audit."),
+		mcp.WithDescription("Run the SPEC lifecycle audit (era classification + drift detection). Wraps spec.Audit."+worktreeCatalogueDescNote),
 		mcp.WithString("filter_spec", mcp.Description("Optional SPEC-ID filter (exact match).")),
 		mcp.WithString("filter_era", mcp.Description("Optional era filter (e.g. V3R6).")),
 		mcp.WithBoolean("include_grandfathered", mcp.Description("Surface grandfathered (V2.x/V3R2-R4/V3R5) SPECs as INFO.")),
@@ -283,7 +284,7 @@ func registerMoaiMCPTools(s *server.MCPServer, projectDir string) {
 	// --- spec_drift → spec.Audit (audit.go:156), modern-era drift view ---
 	add("spec_drift", mcp.NewTool(
 		"spec_drift",
-		mcp.WithDescription("Read SPEC lifecycle drift (modern-era V3R6 drift findings only). Wraps spec.Audit, filtered to drift."),
+		mcp.WithDescription("Read SPEC lifecycle drift (modern-era V3R6 drift findings only). Wraps spec.Audit, filtered to drift."+worktreeCatalogueDescNote),
 		projectRootOption(),
 		mcp.WithReadOnlyHintAnnotation(true),
 	), handleSpecDrift)
@@ -314,7 +315,7 @@ func registerMoaiMCPTools(s *server.MCPServer, projectDir string) {
 	// OPTIONAL + experimental (R1).
 	add("codex_audit", mcp.NewTool(
 		"codex_audit",
-		mcp.WithDescription("Run a codex code review. mode=native → codex review/start; mode=adversarial → codex turn/start + an adversarial-review prompt. Returns a review-output schema (verdict/summary/findings/next_steps). codex is OPTIONAL; a missing or unavailable codex yields verdict 'inconclusive' (fail-open) — EXCEPT where the governing workflow.audit.gates.codex is explicitly 'required', in which case a review that produced no verdict returns verdict 'fail' with a non-empty 'gate_unmet' and isError false, the same fail-closed rule the convergence result applies. The gate is read from the reviewed tree's own workflow config; a linked worktree without its own workflow config takes it from the primary checkout instead, and treats it as 'required' when that primary cannot be identified. A 'required' gate also puts an 'audit_receipt' id on the result: cite it in the auditor verdict line. Where the reviewed tree carries its own workflow config, a PASS the receipt store cannot corroborate is refused; on a worktree that takes the gate from its primary checkout, that refusal is not guaranteed."),
+		mcp.WithDescription("Run a codex code review. mode=native → codex review/start; mode=adversarial → codex turn/start + an adversarial-review prompt. Returns a review-output schema (verdict/summary/findings/next_steps). codex is OPTIONAL; a missing or unavailable codex yields verdict 'inconclusive' (fail-open) — EXCEPT where the governing workflow.audit.gates.codex is explicitly 'required', in which case a review that produced no verdict returns verdict 'fail' with a non-empty 'gate_unmet' and isError false, the same fail-closed rule the convergence result applies. The gate is read from the reviewed tree's own workflow config; a linked worktree without its own workflow config takes it from the primary checkout instead, and treats it as 'required' when that primary cannot be identified. A 'required' gate also puts an 'audit_receipt' id on the result: cite it in the auditor verdict line. A PASS the receipt store cannot corroborate is refused by the hook-side receipt guard, which reads the gate the same way — from the primary checkout on a worktree without its own workflow config."+worktreeStateDescNote),
 		mcp.WithString("mode", mcp.Enum(codexModeNative, codexModeAdversarial), mcp.Description("Audit mode: 'native' (codex review/start) or 'adversarial' (codex turn/start + red-team prompt). Defaults to native.")),
 		mcp.WithString("target", mcp.Enum(codexTargetUncommitted, codexTargetBaseBranch), mcp.Description("What codex reviews: 'uncommittedChanges' or 'baseBranch'. For 'baseBranch' the branch name is resolved SERVER-SIDE and cannot be supplied here — it is read from the reviewed tree, the remote default head first and then 'main', the same chain the GLM backend uses so both review the same change. A tree where neither resolves returns 'inconclusive' naming that cause rather than reviewing something else.")),
 		mcp.WithString("focus", mcp.Description("Adversarial-only focus area (e.g. 'concurrency', 'auth').")),
@@ -510,7 +511,7 @@ func registerMoaiMCPTools(s *server.MCPServer, projectDir string) {
 	// per-auditor overrides (defaults: claude+codex required, glm advisory).
 	add(auditMultiToolName, mcp.NewTool(
 		auditMultiToolName,
-		mcp.WithDescription("Run source-aware Claude/Codex/GLM audit convergence. Claude-origin sessions may reuse an in-session claude_verdict; GPT/GLM/unknown origins ignore caller Claude output and run a fresh subscription-backed Claude audit. Returns a ConvergenceResult with per-backend source and provenance."),
+		mcp.WithDescription("Run source-aware Claude/Codex/GLM audit convergence. Claude-origin sessions may reuse an in-session claude_verdict; GPT/GLM/unknown origins ignore caller Claude output and run a fresh subscription-backed Claude audit. Returns a ConvergenceResult with per-backend source and provenance."+worktreeStateDescNote),
 		mcp.WithObject("claude_verdict", mcp.Description("Conditional Claude-main anchor (review-output schema). Ignored for GPT/GLM/unknown launch providers, which run an independent Claude subscription audit.")),
 		mcp.WithString("target", mcp.Description("Optional review target (file path, diff ref, or scope label).")),
 		mcp.WithString("focus", mcp.Description("Optional focus area (e.g. 'concurrency', 'auth', 'secret handling').")),
@@ -804,6 +805,20 @@ func handleSpecProgress(_ context.Context, req mcp.CallToolRequest) (*mcp.CallTo
 	if err != nil {
 		return toolErr("spec_progress", err), nil
 	}
+	// A config-orphaned worktree answers over the union of its own and its
+	// primary checkout's catalogue (SPEC-WORKTREE-STATE-ROOT-001 REQ-WSR-011..015).
+	if view := resolveCatalogueView(root); view.orphaned {
+		docs, err := view.unionSpecDocs()
+		if err != nil {
+			return toolErr("spec_progress", err), nil
+		}
+		return toolJSON("spec_progress", map[string]any{
+			"count":    len(docs),
+			"specs":    docs,
+			"shadowed": view.shadowedPrimaryCopies(),
+			"_root":    view.rootBlock(source),
+		}), nil
+	}
 	records, err := spec.ListDocs(root)
 	if err != nil {
 		return toolErr("spec_progress", err), nil
@@ -822,6 +837,14 @@ func handleVerifySnapshot(_ context.Context, req mcp.CallToolRequest) (*mcp.Call
 	if err != nil {
 		return toolErr("verify_snapshot", err), nil
 	}
+	// A config-orphaned worktree keeps its snapshots in its primary checkout's
+	// store; with that primary unidentifiable there is no store and the call
+	// fails rather than reading or writing another root
+	// (SPEC-WORKTREE-STATE-ROOT-001 REQ-WSR-002/004/006).
+	store, err := auditreceipt.StoreRoot(root)
+	if err != nil {
+		return toolErr("verify_snapshot", err), nil
+	}
 	key := req.GetString("key", "")
 	if key == "" {
 		return toolErr("verify_snapshot", fmt.Errorf("key must not be empty")), nil
@@ -832,17 +855,17 @@ func handleVerifySnapshot(_ context.Context, req mcp.CallToolRequest) (*mcp.Call
 			Command:  cmd,
 			ExitCode: req.GetInt("exit_code", 0),
 		}
-		snap, err := verify.RecordCheck(root, key, entry)
+		snap, err := verify.RecordCheck(store, key, entry)
 		if err != nil {
 			return toolErr("verify_snapshot", err), nil
 		}
-		return toolJSON("verify_snapshot", map[string]any{"action": "record", "snapshot": snap, "_root": rootProvenanceMap(root, source)}), nil
+		return toolJSON("verify_snapshot", map[string]any{"action": "record", "snapshot": snap, "_root": stateRootBlock(root, source, store)}), nil
 	}
-	snap, err := verify.Load(root, key)
+	snap, err := verify.Load(store, key)
 	if err != nil {
 		return toolErr("verify_snapshot", err), nil
 	}
-	return toolJSON("verify_snapshot", map[string]any{"action": "load", "snapshot": snap, "_root": rootProvenanceMap(root, source)}), nil
+	return toolJSON("verify_snapshot", map[string]any{"action": "load", "snapshot": snap, "_root": stateRootBlock(root, source, store)}), nil
 }
 
 // handleVerifyTrend wraps verify.Load (store.go:38), surfacing the Checks trend.
@@ -855,7 +878,11 @@ func handleVerifyTrend(_ context.Context, req mcp.CallToolRequest) (*mcp.CallToo
 	if key == "" {
 		return toolErr("verify_trend", fmt.Errorf("key must not be empty")), nil
 	}
-	snap, err := verify.Load(root, key)
+	store, err := auditreceipt.StoreRoot(root) // the writer's store (REQ-WSR-006)
+	if err != nil {
+		return toolErr("verify_trend", err), nil
+	}
+	snap, err := verify.Load(store, key)
 	if err != nil {
 		return toolErr("verify_trend", err), nil
 	}
@@ -863,7 +890,7 @@ func handleVerifyTrend(_ context.Context, req mcp.CallToolRequest) (*mcp.CallToo
 	if snap != nil {
 		checks = snap.Checks
 	}
-	return toolJSON("verify_trend", map[string]any{"key": key, "checks": checks, "_root": rootProvenanceMap(root, source)}), nil
+	return toolJSON("verify_trend", map[string]any{"key": key, "checks": checks, "_root": stateRootBlock(root, source, store)}), nil
 }
 
 // handleSpecAudit wraps spec.Audit (audit.go:156).
@@ -877,6 +904,17 @@ func handleSpecAudit(_ context.Context, req mcp.CallToolRequest) (*mcp.CallToolR
 		FilterSpec:           req.GetString("filter_spec", ""),
 		FilterEra:            req.GetString("filter_era", ""),
 		IncludeGrandfathered: req.GetBool("include_grandfathered", false),
+	}
+	if view := resolveCatalogueView(root); view.orphaned {
+		merged, findings, err := view.unionAudit(opts)
+		if err != nil {
+			return toolErr("spec_audit", err), nil
+		}
+		out := toJSONMap(merged)
+		out["drift_findings"] = findings
+		out["shadowed"] = view.shadowedPrimaryCopies()
+		out["_root"] = view.rootBlock(source)
+		return toolJSON("spec_audit", out), nil
 	}
 	result, auditErr := spec.Audit(opts)
 	if auditErr != nil {
@@ -893,6 +931,19 @@ func handleSpecDrift(_ context.Context, req mcp.CallToolRequest) (*mcp.CallToolR
 	root, source, err := resolveToolProjectRootWithSource(req)
 	if err != nil {
 		return toolErr("spec_drift", err), nil
+	}
+	if view := resolveCatalogueView(root); view.orphaned {
+		merged, findings, err := view.unionAudit(spec.AuditOptions{})
+		if err != nil {
+			return toolErr("spec_drift", err), nil
+		}
+		return toolJSON("spec_drift", map[string]any{
+			"total_specs":    merged.TotalSpecs,
+			"modern_clean":   merged.ModernEraClean,
+			"drift_findings": findings,
+			"shadowed":       view.shadowedPrimaryCopies(),
+			"_root":          view.rootBlock(source),
+		}), nil
 	}
 	result, err := spec.Audit(spec.AuditOptions{BaseDir: root})
 	if err != nil {
