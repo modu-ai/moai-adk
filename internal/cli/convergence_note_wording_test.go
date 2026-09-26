@@ -30,6 +30,16 @@ func TestConvergenceNoteMatchesBlockDecision(t *testing.T) {
 			wantNotIn:   []string{"NOT a block", "advisory"},
 		},
 		{
+			name: "required fail against advisory pass blocks",
+			verdicts: []PerBackendVerdict{
+				{Backend: BackendCodex, Gate: config.AuditGateRequired, Verdict: "fail"},
+				{Backend: BackendGLM, Gate: config.AuditGateAdvisory, Verdict: "pass"},
+			},
+			wantOverall: overallVerdictFail,
+			wantIn:      []string{"required-backend FAIL: codex"},
+			wantNotIn:   []string{"NOT a block"},
+		},
+		{
 			name: "advisory-only conflict does not block",
 			verdicts: []PerBackendVerdict{
 				{Backend: BackendClaude, Gate: config.AuditGateRequired, Verdict: "pass"},

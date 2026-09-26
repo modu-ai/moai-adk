@@ -415,7 +415,8 @@ func collectFailOpen(vs []PerBackendVerdict) []string {
 // describeRequiredFails names the required backends that FAILED, for the
 // AC-AMM-007 "residual_risk_note records which backend(s) failed" requirement.
 // Used in the no-split case (all required agree on fail) where disagreement_flag
-// is false but the Verification Matrix still needs to name the failures.
+// is false but the Verification Matrix still needs to name the failures, and as
+// the leading reason of a split that includes a required FAIL (describeDisagreement).
 func describeRequiredFails(fails []PerBackendVerdict) string {
 	names := make([]string, 0, len(fails))
 	for _, v := range fails {
