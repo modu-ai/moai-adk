@@ -16,6 +16,7 @@ import (
 	"bytes"
 	"os"
 	"path/filepath"
+	"runtime"
 	"testing"
 
 	"github.com/modu-ai/moai-adk/internal/defs"
@@ -116,6 +117,53 @@ func TestSaveTemplateBase_SnapshotRewrittenAfterWriteFallsBack(t *testing.T) {
 		t.Fatalf("SaveTemplateBase: %v", err)
 	}
 	assertEmbeddedDefaultsBase(t, destDir)
+}
+
+// TestSaveTemplateBase_UnreadableSnapshotFallsBack: a snapshot whose digest
+// cannot be computed is not proven, so it must not be used as BASE. Using it
+// half-way is worse than not at all: the copy stops at the unreadable file,
+// the files copied before it (possibly rewritten with user values by an older
+// binary) become a partial BASE, and the merge reads those user values as
+// unchanged and drops them — the loss this card fixes (sync-audit F1).
+func TestSaveTemplateBase_UnreadableSnapshotFallsBack(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("chmod-based unreadability does not deny access on Windows")
+	}
+	if os.Geteuid() == 0 {
+		t.Skip("chmod-based unreadability is ineffective when running as root")
+	}
+	t.Parallel()
+	projectRoot := t.TempDir()
+	writeSections(t, projectRoot, map[string]string{
+		"a-git-strategy.yaml": "git_strategy:\n  worktree_base_branch: \"\"\n",
+		"z-system.yaml":       "version: \"3.0.1\"\n",
+	})
+	if err := WriteSnapshot(projectRoot); err != nil {
+		t.Fatalf("WriteSnapshot: %v", err)
+	}
+	// An older binary's post-restore rewrite, then an unreadable file after it.
+	snapSections := filepath.Join(SnapshotDir(projectRoot), "sections")
+	if err := os.WriteFile(filepath.Join(snapSections, "a-git-strategy.yaml"),
+		[]byte("git_strategy:\n  worktree_base_branch: develop\n"), defs.FilePerm); err != nil {
+		t.Fatalf("rewrite snapshot: %v", err)
+	}
+	bad := filepath.Join(snapSections, "z-system.yaml")
+	if err := os.Chmod(bad, 0); err != nil {
+		t.Fatalf("chmod: %v", err)
+	}
+	t.Cleanup(func() { _ = os.Chmod(bad, 0o644) })
+
+	destDir := t.TempDir()
+	if err := SaveTemplateBase(destDir, projectRoot); err != nil {
+		t.Fatalf("SaveTemplateBase: %v (an unproven snapshot must fall back, not fail half-copied)", err)
+	}
+	if got := readSectionsTree(t, destDir)["a-git-strategy.yaml"]; got != nil {
+		t.Errorf("BASE carries the snapshot's user value %q", got)
+	}
+	assertEmbeddedDefaultsBase(t, destDir)
+	if _, err := os.Stat(filepath.Join(destDir, UnattestedBaseMarker)); err != nil {
+		t.Errorf("fallback BASE carries no marker: %v", err)
+	}
 }
 
 // TestSaveTemplateBase_UnattestedMarkerFollowsTheBase: the fallback leaves the
