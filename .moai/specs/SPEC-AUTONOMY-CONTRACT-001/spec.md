@@ -1,7 +1,7 @@
 ---
 id: SPEC-AUTONOMY-CONTRACT-001
 title: "Contract-based autonomy A1 — contract schema, acceptance binding, and human signature (moai contract sign/show/verify)"
-version: "0.5.0"
+version: "0.5.1"
 status: in-progress
 created: 2026-09-26
 updated: 2026-09-26
@@ -27,6 +27,7 @@ related_specs: [SPEC-GTD-AUTONOMY-001, SPEC-AUTONOMY-TIERS-001, SPEC-AUTONOMY-RU
 | 0.4.0 | 2026-09-26 | manager-spec | Plan-audit iteration 3 (FAIL 0.84) delta, lead-authorized iteration 4: signature seal and signature consistency rules (R1); Jev answers route to a human until A3 reconciles the display-only doctrine, and a Jev decider with `workflow.jev.enabled: false` is a config error (R2, §C.8); card-state assertions replaced by required-ordering statements, with push serialization and the sign deny owned by A2b (card t1245) (R3); `frozen_files` elements typed as globs (R4); jev confidence pinned in AC-016 (R5); push serialization re-specified as a `moai slot` lease on resource `push-develop` (`push_requires_window` renamed `push_requires_lease`); terminal contract state for `completed`/`archived` SPECs. |
 | 0.4.1 | 2026-09-26 | manager-spec | Plan-audit iteration 4 text fixes (operator: text only): §C.6 and §H now state one consistent residual-risk statement (a full keyless re-seal is not caught by verify; `supersedes` is not a trace; traces are git history and, after A3, a store recording every signing event including human signatures); stale A2 attributions changed to A2b (t1245); REQ-015 states that the Jev-decider configuration error does not block loading or commands and refuses only the receipt signing path. |
 | 0.5.0 | 2026-09-26 | manager-spec | Operator decision 2026-09-26 (relayed by lead, confirmed in lane): kickoff decider is a single choice `human | llm | jev` (`llm+jev` and `on_disagree` removed); an absent decider derives `human` under `guided` and `llm` under `contract`; `decider: jev` falls back automatically to `llm` on Jev failure, missing key, `workflow.jev.enabled: false`, low confidence, or malformed response, recorded in the receipt (requested/effective decider + reason), with silent fallback refused; the former `kickoff_decider_jev_disabled` configuration error is replaced by the fallback reason `jev_disabled`; rule 0 (a deciding Jev answer routes to a human) is kept, and §C.8 states why the fallback cannot bypass it; F-Q2/F-Q4 recorded as forward notes only; the template omits `kickoff.decider` (was an explicit `decider: human`, which would have kept `human` after a switch to `mode: contract`), so the effective decider derives from the mode (REQ-016, AC-020). REQ and AC counts unchanged (25/25). |
+| 0.5.1 | 2026-09-26 | manager-spec | Operator re-decision 2026-09-26 (relayed by lead), supersedes 0.5.0 single-choice decider: the decider set is `human | llm | llm+jev` (Jev is never a sole decider; a configured `jev` is a configuration error, code `kickoff_decider_jev_sole`, loading still succeeds and only the receipt signing path is refused); `llm+jev` falls back to `llm` on a Jev-side failure, recorded in the receipt. Lead decision (same day) splits ownership: A1 owns the decider value set, its derivation, the receipt fields, and a structural/consistency validator; A3 (t1236) owns the cross-check agreement rules, the fallback decision, and the interim "Jev answered → human" rule (§B Out of Scope, §C.8). The receipt records an `outcome` (A3-derived); A1 signs only on `approve`, which must carry an LLM `approve`, and its receipt path cannot activate autonomous Kickoff by itself (§C.6). Operator confirmation in lane (same day): the interim rule stays in A1 — a receipt whose effective decider is `llm+jev` (Jev actually answered) is refused with `receipt_requires_human` even when both approve, until A3 amends the display-only principle and lifts the rule; a recorded fallback to `llm` still signs (REQ-024, §C.8, AC-015 r3, AC-016 t). Also (A2 t1235 follow-ups, lead-approved): R8 — mission-projection owner corrected to A2b (t1245); R9 — required top-level `card` field inside the canonical digest (pattern `^[A-Za-z0-9][A-Za-z0-9_-]{0,63}$`, reason code `card_invalid`, reported by `show --json`; covered by the digest and, through `signature.contract_sha256`, by the seal); R10 — the moai-owned store path is `$MOAI_HOME/db/<project-key>/contract/` (A3-owned; A1 does not create it). REQ and AC counts unchanged (25/25). |
 
 ## §A. User Story
 
@@ -74,19 +75,25 @@ In scope:
   are excluded from that resolution and from signature resolution.
 - The `workflow.autonomy.escalation.new_api_detector` key is not introduced by A1 (see §C.3).
 
-### Out of Scope — Mission-validator projection (A2)
+### Out of Scope — Mission-validator projection (A2b, card t1245)
 
 - Projecting a signed SPEC contract onto the `/moai goal --auto` mission contract so that the mission
-  decision validator can judge individual operations is deferred to A2, its only consumer. The
+  decision validator can judge individual operations is deferred to A2b (t1245), its only consumer. The
   projection needs a glob-to-prefix scope translation that the mission validator's exact-or-prefix
-  containment check requires. Forward note for A2: `design.md` § Forward Note — Mission Projection.
+  containment check requires. Forward note for A2b: `design.md` § Forward Note — Mission Projection.
 - A1 records no `mission_contract_sha256`; the contract digest is the sole tamper authority.
 
 ### Out of Scope — Revocation and receipt issuance (A3, card t1236)
 
 - `moai contract revoke` is not part of A1; A3 owns it.
+- The kickoff decision rules (lead decision 2026-09-26): the `llm+jev` cross-check agreement (both
+  approve → start; disagreement → a human) and the Jev-failure → `llm` fallback decision. A1 owns the
+  receipt schema, its structural validator, and — until A3 amends the display-only principle — the
+  interim refusal of any receipt in which Jev answered (§C.8); A3 lifts that A1 rule when it amends the
+  principle.
 - Issuing kickoff receipts from moai itself — moai calling Jev directly and appending the Jev result
-  together with the LLM decision record to a moai-owned append-only store — is A3. A1 validates a
+  together with the LLM decision record to a moai-owned append-only store at
+  `$MOAI_HOME/db/<project-key>/contract/` — is A3. A1 does not create that store. A1 validates a
   receipt **file**; it cannot establish who wrote it.
 
 ### Out of Scope — Gate rewiring (A3) and closure report (A4, card t1237)
@@ -182,17 +189,20 @@ card's contract reference as stale. Detail: `design.md` § F1 Reference Shape.
 
 ### §C.6 Autonomous Kickoff activation preconditions (binding)
 
-A contract signed by a non-human decider (`llm` or `jev`) shall not be used to activate
+A contract signed by a non-human decider (`llm` or `llm+jev`) shall not be used to activate
 autonomous Kickoff until **both** hold: (a) `moai contract revoke` exists (A3, t1236), and (b) kickoff
 receipts are issued and stored by moai itself — moai calls Jev directly and appends the result with the
-LLM decision record to a moai-owned append-only store (A3). A receipt authored as agent-written JSON
-shall not activate autonomous Kickoff. A1 provides only the receipt format, the validator, and a
-signature that records the receipt's provenance as `file` (REQ-CONTRACT-024), so that A3 can refuse it.
+LLM decision record to a moai-owned append-only store at `$MOAI_HOME/db/<project-key>/contract/` (A3;
+A1 does not create it). A receipt authored as agent-written JSON
+shall not activate autonomous Kickoff. A1 provides only the receipt format, the structural validator,
+and a signature that records the receipt's provenance as `file` (REQ-CONTRACT-024), so that A3 can refuse
+it; A1's receipt path therefore cannot activate autonomous Kickoff by itself.
 The provenance, method, and signer kind are covered by the signature seal (REQ-CONTRACT-011): editing
 any of them without recomputing the seal makes `verify` report `signature_seal_mismatch`. A full keyless
 re-seal is not caught by `verify`, and A1 leaves no mechanical trace of it; `supersedes` is not a trace,
 because the forger rewrites and re-seals it too. The only traces are git history (when the pre-forgery
-contract was committed) and, after A3, the moai-owned store. Forward requirement for A3 (t1236): that
+contract was committed) and, after A3, the moai-owned store (`$MOAI_HOME/db/<project-key>/contract/`).
+Forward requirement for A3 (t1236): that
 store shall record every signing event, including human signatures — not only receipt issuance.
 
 ### §C.7 Plan-audit verdict is self-reported
@@ -203,30 +213,40 @@ previous verdict forward (the summary shows it as carried). A3 and A4 shall bind
 evidence before relying on it. The receipt path binds a plan-audit report hash (REQ-CONTRACT-023), which
 is the first such binding.
 
-### §C.8 Jev is display-only until A3 reconciles the doctrine
+### §C.8 Kickoff deciders — A1 owns the schema, A3 owns the rules
 
-The product ships the principle that a Jev answer is display-only — never an input to a completion
-verdict, a merge approval, a queue mutation, or a gate — at
+Operator decision (2026-09-26, re-decided the same day; the set is final): **Jev is never a sole
+decider.** The deciders are `human` (the `guided` path), `llm` (the LLM alone; the `contract` default),
+and `llm+jev` (the LLM cross-checked by Jev). Lead decision (2026-09-26) splits the ownership:
+
+- **A1 owns the schema** — the decider value set and its derivation (REQ-CONTRACT-015), and the kickoff
+  receipt's fields plus a validator that checks structure and internal consistency only
+  (REQ-CONTRACT-023). A configured `decider: jev` is a configuration error, because Jev is never a sole
+  decider.
+- **A3 (t1236) owns the rules** — the cross-check agreement (both approve → start; a disagreement → a
+  human) and the decision to fall back to `llm` when the Jev side fails. A1 records what a receipt says
+  about these rules (the requested and effective decider, the fallback flag and reason, both answers,
+  and a recorded outcome); it does not compute them.
+- **Interim A1 rule (operator, confirmed in lane 2026-09-26).** Until A3 amends the shipped "Jev is
+  display-only" principle, A1 refuses any receipt whose effective decider is `llm+jev` — i.e. Jev
+  actually answered — with `receipt_requires_human`, even when both answers approve (REQ-CONTRACT-024).
+  A recorded fallback (requested `llm+jev` → effective `llm`) is unaffected, because no Jev answer is an
+  input there. Forward note for A3: **A3 lifts this A1 rule when it amends the principle.**
+
+The shipped display-only principle lives at
 `internal/template/templates/.moai/config/sections/workflow.yaml:171-173`,
 `.claude/rules/moai/core/moai-mcp-tools.md:75`, and
-`.claude/rules/moai/core/moai-mcp-tools-catalogue.md:138`. The operator decision of 2026-09-26
-authorizes a Kickoff-only exception, but A1 does not make it: the receipt validator routes a receipt
-whose deciding answer came from Jev to a human (`receipt_requires_human`, REQ-CONTRACT-023, rule 0), so
-a `jev` receipt cannot sign in A1. Forward note for A3 (t1236): amend the display-only statement in all
-three locations, citing the operator decision, before any Jev answer gates Kickoff.
+`.claude/rules/moai/core/moai-mcp-tools-catalogue.md:138`. Forward note for A3: amend all three
+locations, citing the operator decision, before any Jev answer takes part in Kickoff.
 
-**Jev-to-LLM fallback (operator decision 2026-09-26).** When `decider: jev` and the Jev answer is not
-usable — the call failed, the key is missing, `workflow.jev.enabled` is false, the confidence is below
-`jev_min_confidence`, or the response is malformed — the decider falls back automatically to `llm`,
-and the receipt records it: requested decider `jev`, effective decider `llm`, and one reason from the
-closed set in `design.md` § Kickoff Receipt. A fallback that is not recorded is refused
-(`receipt_signer_mismatch`). The two rules do not conflict: rule 0 applies when a Jev answer would decide;
-the fallback applies when there is no usable Jev answer, and then no Jev answer is an input — the `llm`
-decision is. A producer that claims a Jev failure it did not have reaches only the `llm` path, which is
-acceptable **only because `llm` is itself a permitted decider in A1** (an operator could configure it
-directly); the fallback therefore cannot make a Jev answer a gate input, and the recorded reason keeps
-the claim visible. A1 can check some reasons against evidence (`design.md` § Kickoff Receipt) but not
-all.
+**What A1's receipt path does with the recorded outcome.** The receipt carries an `outcome` field
+(`approve | reject | human`) whose derivation is A3's. A1 checks only that the outcome is a member of
+that set and consistent with the recorded answers — in particular an `approve` outcome requires an LLM
+`approve`, so a Jev approval never suffices alone — then signs only on `approve` from an effective `llm`
+decider, and refuses with `receipt_rejected`, or `receipt_requires_human` on `human` and on any effective
+`llm+jev` receipt (the interim rule above). Because autonomous Kickoff is gated on A3
+(§C.6), a signature produced by A1's receipt path records an approval and activates nothing by itself;
+the REQ-CONTRACT-019 notice prints on this path as on the human path.
 
 Forward notes (context only, no A1 requirement): in autonomous mode the local merge becomes automatic
 (F-Q2), and Jev becomes a first-class decision judge (F-Q4); both belong to A3 and the F-series and
@@ -237,7 +257,11 @@ depend on the doctrine amendment above.
 ### REQ-CONTRACT-001 — Contract location and schema version
 
 The contract shall be a YAML document stored at `.moai/specs/<SPEC-ID>/contract.yaml`, carrying a
-`schema_version` field and a `spec_id` field equal to the name of the SPEC directory that contains it.
+`schema_version` field, a `spec_id` field equal to the name of the SPEC directory that contains it, and a
+required `card` field naming the card the contract belongs to (one path segment matching the pattern in
+`design.md` § Card Field; a missing or non-matching value is `card_invalid`). The `card` field is part of
+the contract body, so it is covered by the canonical digest and, through the recorded digest, by the
+signature seal.
 
 ### REQ-CONTRACT-002 — Required sections
 
@@ -307,7 +331,7 @@ after the operator types the confirmation token shown in the prompt.
 ### REQ-CONTRACT-011 — Signature record
 
 When the signer signs a contract, it shall record, inside the contract's `signature` block, the signer
-kind (`human`, `llm`, or `jev`), the operator name and email from git configuration, the
+kind (`human`, `llm`, or `llm+jev`), the operator name and email from git configuration, the
 signing time in UTC RFC 3339 form, the HEAD commit at signing, the contract digest, the acceptance
 hash, the signing method, for a receipt signature the receipt path, hash, and provenance, when it
 replaces an earlier signature the digest that signature carried, and a seal — a SHA-256 over the
@@ -347,16 +371,17 @@ The configuration shall expose `workflow.autonomy.mode` (`guided | contract`),
 `workflow.autonomy.contract.batch_sign`, `workflow.autonomy.contract.second_review`
 (`required | advisory | off`), `workflow.autonomy.contract.push_develop`,
 `workflow.autonomy.escalation.budget_default` (`turns`, `operations`, `audit_retries`), and
-`workflow.autonomy.kickoff.decider` (a single choice: `human | llm | jev`), and
+`workflow.autonomy.kickoff.decider` (`human | llm | llm+jev`), and
 `workflow.autonomy.kickoff.jev_min_confidence` (0.0–1.0). When the section or a key is absent, the
 reader shall apply `mode: guided`, `batch_sign: false`, `second_review: required`,
 `push_develop: false`, budget `60 / 40 / 2`, and `jev_min_confidence: 0.50`; when `decider` is absent or
 empty, the reader shall derive the effective decider from the effective mode — `human` under `guided`,
-`llm` under `contract`. When `mode`, `second_review`, `decider`, or `jev_min_confidence` holds a value
-outside its set or range (including the retired `llm+jev`), the reader shall fall back to `guided`,
-`required`, `human`, or `0.50` respectively and emit a warning naming the key. A `decider: jev` while
-`workflow.jev.enabled` is false is not a configuration error: the reader returns `jev`, and the Jev-to-LLM
-fallback (§C.8) applies at signing with reason `jev_disabled`.
+`llm` under `contract`. When `mode`, `second_review`, `decider` (other than `jev`), or
+`jev_min_confidence` holds a value outside its set or range, the reader shall fall back to `guided`,
+`required`, `human`, or `0.50` respectively and emit a warning naming the key. When `decider` is `jev`,
+the reader shall report a configuration error naming the key and stating that Jev is never a sole
+decider, shall not fall back, and loading shall still succeed; no command is blocked, and only the
+receipt signing path is refused (`kickoff_decider_jev_sole`).
 
 ### REQ-CONTRACT-016 — Template default and neutrality
 
@@ -415,25 +440,32 @@ refuse with `not_signed` and leave the file unchanged.
 ### REQ-CONTRACT-023 — Kickoff receipt format and validation
 
 The kickoff receipt shall be a JSON document with the fields defined in `design.md` § Kickoff Receipt,
-carrying the requested decider, the effective decider (the signer kind), a fallback reason when the two
-differ, exactly one decision (answer `approve | reject | escalate`, a reason that references contract
-lines, and a confidence), the hashes of its inputs (the signable contract digest, `acceptance.md`, and the
-plan-audit report), and for a Jev decision or a Jev fallback attempt the raw response and the request
-hash. The receipt validator shall accept a receipt only when it decodes strictly, its input hashes equal
-the current files' hashes, its requested decider equals the effective `workflow.autonomy.kickoff.decider`,
-its effective decider equals the requested one or — only for a requested `jev` — is `llm` with a recorded
-fallback reason from the closed set, and its decision satisfies the agreement rule in `design.md`
-§ Agreement Rule, under which a deciding Jev answer routes to a human until A3 reconciles the
-display-only doctrine (§C.8); otherwise it shall return one receipt refusal code from `design.md`
-§ Sign Refusal Codes.
+carrying the requested decider, the effective decider, a fallback flag and — when the flag is set — a
+fallback reason from the closed set of five, an LLM answer, an optional Jev answer (with its raw
+response, request hash, and confidence), a recorded outcome, the hashes of its inputs (the signable
+contract digest, `acceptance.md`, and the plan-audit report), and contract-line references for each
+answer. The receipt validator shall check structure and internal consistency only, and shall accept a
+receipt only when it decodes strictly; its input hashes equal the current files' hashes; its requested
+decider equals the effective `workflow.autonomy.kickoff.decider`; the fallback flag is set exactly when
+the effective decider differs from the requested one, which is permitted only as requested `llm+jev` →
+effective `llm`; the fallback reason is present exactly when the flag is set; the Jev answer is present
+exactly when the effective decider is `llm+jev`; every confidence lies in [0, 1]; and the outcome is one
+of `approve | reject | human`, with `approve` requiring an LLM `approve`. The cross-check agreement rules
+that derive the outcome are A3's (§C.8) and are not evaluated by A1. Otherwise the validator shall
+return one receipt refusal code from `design.md` § Sign Refusal Codes.
 
 ### REQ-CONTRACT-024 — Receipt signing path
 
-Where the signer is `llm` or `jev`, `moai contract sign --signer <kind> --receipt <path>`
-shall run non-interactively, shall sign only while `workflow.autonomy.mode` is `contract` and the
-receipt validator accepts the receipt, shall record the receipt path, its SHA-256, and the provenance
-`file` in the signature, and shall otherwise refuse with a code from `design.md` § Sign Refusal Codes
-without modifying any file.
+Where the signer is `llm` or `llm+jev`, `moai contract sign --signer <kind> --receipt <path>`
+shall run non-interactively, shall sign only while `workflow.autonomy.mode` is `contract`, the configured
+decider is not `jev`, the receipt validator accepts the receipt, the receipt's effective decider is not
+`llm+jev`, and the recorded outcome is `approve` (refusing with `receipt_requires_human` when the
+effective decider is `llm+jev` — the interim rule of §C.8, which A3 lifts when it amends the Jev
+display-only principle — and otherwise with `receipt_rejected` on `reject` and `receipt_requires_human`
+on `human`), shall record the
+receipt path, its SHA-256, and the provenance `file` in the signature, and shall otherwise refuse with a
+code from `design.md` § Sign Refusal Codes without modifying any file. A signature from this path does
+not by itself activate autonomous Kickoff (§C.6).
 
 ### REQ-CONTRACT-025 — Post-signing immutability, scratch, and frozen files
 
@@ -471,7 +503,7 @@ denotes the union defined in `design.md` § Frozen Files, resolved from sources 
 
 ## §H. Residual Risk
 
-- **A Jev call cannot be proven.** A1 validates a receipt file's shape, hashes, and agreement rule. It
+- **A Jev call cannot be proven.** A1 validates a receipt file's shape, hashes, and internal consistency. It
   cannot prove that a Jev request was made or that the raw response came from Jev; a receipt can be
   written by hand or by an agent. This is why §C.6 forbids activating autonomous Kickoff on a
   file-provenance receipt.
@@ -481,7 +513,8 @@ denotes the union defined in `design.md` § Frozen Files, resolved from sources 
   recomputing the digest and the seal is detected by `verify`. A full keyless re-seal is not caught by
   `verify`, and A1 leaves no mechanical trace of it; `supersedes` is not a trace, because the forger
   rewrites and re-seals it too. The only traces are git history (when the pre-forgery contract was
-  committed) and, after A3, the moai-owned store recording every signing event, including human
+  committed) and, after A3, the moai-owned store (`$MOAI_HOME/db/<project-key>/contract/`) recording every
+  signing event, including human
   signatures (§C.6).
 - **The human path is not agent-proof** (§C.2) until A2b's (t1245) PreToolUse deny exists, and even then
   only for tool calls the hook observes.

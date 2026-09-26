@@ -49,11 +49,25 @@ configuration/template). Milestones >= 3 and files >= 10, so run-phase routes to
   performed record, and `push-develop` activates only after A4 (spec.md §C.1). This states the required
   ordering, not the current content of the queue.
 - **D9 — Receipt signing path (lead-approved).** Non-human deciders sign non-interactively with a
-  validated `kickoff-receipt.json`, only under `mode: contract`; in A1 any Jev decision routes to a
-  human (Jev stays display-only until A3 amends the doctrine, spec.md §C.8), so only an `llm` receipt can
-  sign. The signature seal covers method, signer kind, and provenance. A1 records `receipt.provenance: file`;
-  autonomous Kickoff must not activate until `moai contract revoke` and moai-issued receipts exist (A3,
+  validated `kickoff-receipt.json`, only under `mode: contract`. Deciders are `human | llm | llm+jev`
+  (Jev is never a sole decider; configured `jev` is a configuration error). A1 validates the receipt's
+  structure and internal consistency and signs only on a recorded `outcome: approve` that carries an LLM
+  `approve`; the cross-check rules that derive the outcome and the Jev-failure fallback decision are A3's,
+  while the interim "Jev answered → human" rule is enforced by A1 until A3 lifts it (spec.md §C.8). The signature seal covers method, signer
+  kind, and provenance. A1 records `receipt.provenance: file`; autonomous Kickoff must not activate until
+  `moai contract revoke` and moai-issued receipts (`$MOAI_HOME/db/<project-key>/contract/`) exist (A3,
   spec.md §C.6). Residual risk: a Jev call cannot be proven (spec.md §H).
+- **D10 — M1 repair list for v0.5.1 (M1 is committed at `f40dea185`).** The `card` field (R9) changes
+  these committed M1 behaviors, which run-phase must repair before M2: (1) the `Contract` type has no
+  `card` field, so strict decode currently rejects a contract carrying `card:` as `schema_invalid` — add
+  `card` (yaml/json `card`) after `spec_id` in the fixed field order; (2) the required-section check does
+  not list `card` — a missing or empty `card`, or one not matching `^[A-Za-z0-9][A-Za-z0-9_-]{0,63}$`,
+  must yield `card_invalid`; (3) the reason-code closed set lacks `card_invalid` — add it; (4) the
+  canonical digest now includes `card`, so every golden digest pinned in the M1 tests changes and must be
+  regenerated, and a card-edit digest case is added (AC-CONTRACT-004); (5) the verify/show JSON object
+  lacks `card` — add it (AC-CONTRACT-001, AC-CONTRACT-018); (6) every M1 fixture contract needs a
+  `card:` line. The kickoff decider/receipt changes of v0.5.1 touch no M1 code (the receipt validator is
+  M3, signing is M5).
 
 ## §C. Pre-flight
 
@@ -98,7 +112,7 @@ Action vocabulary (allowed / forbidden / unknown), escalation completeness, owne
 well-formedness (glob matcher; registry rule IDs passed in by the caller), non-empty actions,
 reobserve, budget, plan-audit verdict, second-review and push-develop config coupling, reason-code
 collection, derived sets (`effective_never`, `scratch`, `frozen_files`, `signable_contract_sha256`),
-kickoff receipt decode, validator, and agreement rule. The core package imports neither `os/exec`, `net`, `internal/config`,
+kickoff receipt decode and structural/consistency validator (the cross-check rules are A3's). The core package imports neither `os/exec`, `net`, `internal/config`,
 `internal/constitution` (the last two measured to pull in `net`), nor `internal/spec`. Covers
 REQ-CONTRACT-006, 007, 008, 009, 017, 018, 020, 023, 025.
 

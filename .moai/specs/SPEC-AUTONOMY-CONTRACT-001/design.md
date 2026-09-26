@@ -19,6 +19,7 @@ Strictly decoded: unknown fields are a `schema_invalid` error (REQ-CONTRACT-003)
 ```yaml
 schema_version: 1
 spec_id: SPEC-EXAMPLE-001            # MUST equal the containing directory name
+card: t1234                          # REQUIRED card id; covered by the digest (see § Card Field)
 
 acceptance:
   file: acceptance.md                # fixed value in v1 (relative to the SPEC directory)
@@ -75,7 +76,7 @@ plan_audit:
   verdict: PASS                      # PASS | PASS-WITH-DEBT | FAIL — self-reported (spec.md §C.7)
 
 signature:                           # written ONLY by `sign`; excluded from the digest
-  signer_kind: human                 # human | llm | jev   (receipt path: the receipt's effective decider)
+  signer_kind: human                 # human | llm | llm+jev   (receipt path: the receipt's effective decider)
   operator: { name: "Jane Doe", email: "jane@example.com" }  # from git config user.name / user.email
   signed_at: "2026-09-26T09:00:00Z"                          # UTC RFC 3339
   head_sha: "<40 or 64 lowercase hex>"                       # HEAD at signing (informational; not re-checked)
@@ -85,7 +86,7 @@ signature:                           # written ONLY by `sign`; excluded from the
   receipt:                                                   # present only when method=receipt
     path: kickoff-receipt.json                               # relative to the SPEC directory (fixed name)
     sha256: "<64 lowercase hex>"                             # raw bytes of the receipt file
-    provenance: file                                         # v1 value set: file   (A3 adds moai-store)
+    provenance: file                                         # v1 value set: file   (A3 adds moai-store: $MOAI_HOME/db/<project-key>/contract/)
   batch_id: "<opaque id>"                                    # present only for batch signing
   supersedes: "<64 lowercase hex>"                           # previous contract_sha256 on --resign
   seal: "<64 lowercase hex>"                                 # see § Signature Seal; covers every field above
@@ -109,7 +110,7 @@ Signature consistency rules (checked by verify, reason code `signature_inconsist
 | `method` | `signer_kind` | `receipt` block | `receipt.provenance` |
 |---|---|---|---|
 | `interactive-tty` | `human` | absent | — |
-| `receipt` | `llm` or `jev` | present | `file` (the only v1 value; any other value is inconsistent in A1) |
+| `receipt` | `llm` or `llm+jev` | present | `file` (the only v1 value; any other value is inconsistent in A1) |
 
 Any other combination is `signature_inconsistent`. In addition, `signature.acceptance_sha256` must equal
 the measured acceptance hash (reason code `signature_acceptance_mismatch`).
@@ -120,6 +121,7 @@ the measured acceptance hash (reason code `signature_acceptance_mismatch`).
 |---|---|---|---|
 | `schema_version` | int | `== 1` | `schema_invalid` |
 | `spec_id` | string | equals directory name; passes the SPEC ID regex | `spec_id_mismatch` |
+| `card` | string | present, non-empty, matches `^[A-Za-z0-9][A-Za-z0-9_-]{0,63}$` (§ Card Field) | `card_invalid` |
 | `acceptance.file` | string | `== "acceptance.md"` | `schema_invalid` |
 | `acceptance.sha256` | hex64 | equals measured hash | `acceptance_hash_mismatch` (`acceptance_missing` if the file is absent) |
 | `acceptance.ac_count` | int >= 1 | equals measured count | `ac_count_mismatch` / `ac_count_ambiguous` (0 recorded → `schema_invalid`) |
@@ -140,6 +142,25 @@ the measured acceptance hash (reason code `signature_acceptance_mismatch`).
 | `signature.method` / `signer_kind` / `receipt` / `receipt.provenance` | block | consistency table (§ Signature Seal) | `signature_inconsistent` |
 | `signature.acceptance_sha256` | hex64 | equals measured acceptance hash | `signature_acceptance_mismatch` |
 | `signature.receipt` | block | when `method: receipt`: file exists at the fixed path and its SHA-256 equals `sha256` | `receipt_mismatch` |
+
+### Card Field
+
+`card` is a REQUIRED top-level string naming the card the contract belongs to. A2's resolver arms a
+contract only when its `card` equals the name of the worktree directory the session runs in; without the
+field no card arms.
+
+- **Pattern** `^[A-Za-z0-9][A-Za-z0-9_-]{0,63}$`. Why this shape: the value is compared with a worktree
+  directory name, so it must be exactly one path segment — no `/`, and no `.` so that `.` and `..` cannot
+  occur; the first character is alphanumeric so the value cannot be read as a flag; 64 characters is the
+  same bound the resource-lease names already use. No project-specific prefix is hard-coded: any card id
+  scheme that fits one path segment is accepted.
+- **Reason code** `card_invalid` for a missing, empty, or non-matching value.
+- **Integrity chain.** `card` is part of the contract body, so it is included in the canonical digest
+  (§ Digest); the digest is recorded as `signature.contract_sha256`; the seal covers that recorded value
+  (§ Signature Seal). Editing `card` after signing therefore makes the recomputed digest differ
+  (`contract_digest_mismatch`), and also editing `signature.contract_sha256` to match without re-sealing
+  breaks the seal (`signature_seal_mismatch`).
+- `show --json` reports it as `card`.
 
 ### Glob Semantics
 
@@ -254,7 +275,7 @@ Closed set, emitted in `show --json` / `verify --json` as `reasons: [...]` (sort
 `acceptance_hash_mismatch`, `ac_count_mismatch`, `ac_count_ambiguous`, `actions_empty`,
 `unknown_action`, `forbidden_action`, `push_develop_disabled`, `second_review_missing`,
 `escalate_on_incomplete`, `ownership_invalid`, `invariant_unresolved`, `budget_invalid`,
-`reobserve_incomplete`, `plan_audit_not_passing`, `receipt_mismatch`, `signature_seal_mismatch`,
+`reobserve_incomplete`, `plan_audit_not_passing`, `receipt_mismatch`, `card_invalid`, `signature_seal_mismatch`,
 `signature_inconsistent`, `signature_acceptance_mismatch`.
 
 Verify collects every applicable code rather than stopping at the first, except that a
@@ -278,11 +299,12 @@ Closed set; `sign` prints the code and a one-line cause and exits 1 (REQ-CONTRAC
 | `batch_disabled` | more than one distinct ID with `batch_sign: false` |
 | `batch_non_human` | more than one distinct ID on the receipt path |
 | `mode_not_contract` | receipt path while `mode` is not `contract` |
-| `receipt_invalid` | receipt fails strict decode, is not at the fixed path, a decision lacks a valid `reason_refs` entry, or a fallback record fails its evidence check (§ Kickoff Receipt) |
-| `receipt_signer_mismatch` | receipt `signer` ≠ `--signer`; `requested_decider` ≠ the effective `kickoff.decider`; or `signer` ≠ `requested_decider` without a permitted, recorded fallback (silent fallback) |
+| `kickoff_decider_jev_sole` | receipt path while the configured `kickoff.decider` is `jev` (a configuration error: Jev is never a sole decider) |
+| `receipt_invalid` | a structural or consistency rule fails (§ Kickoff Receipt, rules 1, 2, 5, 6, 7, 9) |
+| `receipt_signer_mismatch` | the decider fields do not match the configuration or `--signer`, or a fallback is unrecorded (§ Kickoff Receipt, rules 3-4) |
 | `receipt_input_mismatch` | an input hash differs from the current file / signable digest |
-| `receipt_requires_human` | agreement rule routes to a human |
-| `receipt_rejected` | the single decision is `reject` |
+| `receipt_requires_human` | the recorded `outcome` is `human`, or the effective decider is `llm+jev` (interim A1 rule, lifted by A3) |
+| `receipt_rejected` | the recorded `outcome` is `reject` |
 | `verify_failed` | any other verify rule fails (the verify codes are printed) |
 
 ### `show --json` / `verify --json` object (stable field names)
@@ -290,6 +312,7 @@ Closed set; `sign` prints the code and a one-line cause and exits 1 (REQ-CONTRAC
 ```json
 {
   "spec_id": "SPEC-EXAMPLE-001",
+  "card": "t1234",
   "schema_version": 1,
   "state": "signed-valid",
   "valid": true,
@@ -325,70 +348,69 @@ addition; `verify --json` prints this object only.
 ## Kickoff Receipt
 
 `.moai/specs/<SPEC-ID>/kickoff-receipt.json` (fixed name; `--receipt` must resolve to it). Strictly
-decoded JSON:
+decoded JSON. A1 owns the fields and a validator that checks **structure and internal consistency
+only**; the rules that decide the outcome belong to A3 (spec.md §C.8).
 
 ```json
 {
   "receipt_version": 1,
   "spec_id": "SPEC-EXAMPLE-001",
-  "requested_decider": "jev",
-  "signer": "llm",
-  "fallback_reason": "jev_low_confidence",
+  "requested_decider": "llm+jev",
+  "effective_decider": "llm+jev",
+  "fallback": { "applied": false },
   "issued_at": "2026-09-26T09:00:00Z",
   "inputs": {
     "contract_sha256": "<signable_contract_sha256>",
     "acceptance_sha256": "<acceptance.md hash>",
     "plan_audit_report": { "path": ".moai/reports/plan-audit/SPEC-EXAMPLE-001-review-2.md", "sha256": "<raw bytes>" }
   },
-  "jev_attempt": { "request_sha256": "<hex>", "raw_response": "<verbatim response body>", "confidence": 0.30 },
-  "decisions": [
-    { "decider": "llm", "answer": "approve", "confidence": 0.82,
-      "reason": "Scope and actions match plan.md; no new API.", "reason_refs": ["contract.yaml:12", "contract.yaml:27"] }
-  ]
+  "llm_answer": { "answer": "approve", "confidence": 0.82,
+                  "reason": "Scope and actions match plan.md; no new API.",
+                  "reason_refs": ["contract.yaml:12", "contract.yaml:27"] },
+  "jev_answer": { "answer": "approve", "confidence": 0.71, "reason": "…", "reason_refs": ["contract.yaml:27"],
+                  "request_sha256": "<hex64>", "raw_response": "<verbatim response body>" },
+  "outcome": "approve"
 }
 ```
 
-The example is a Jev-to-LLM fallback. Without a fallback, `requested_decider` equals `signer`,
-`fallback_reason` and `jev_attempt` are absent, and a `jev` decision carries
-`"jev": { "request_sha256": …, "raw_response": … }`.
+A fallback receipt instead carries `"effective_decider": "llm"`,
+`"fallback": { "applied": true, "reason": "jev_disabled" }`, and no `jev_answer`.
 
-Rules: `requested_decider` and `signer` ∈ `llm | jev`; `signer` equals `requested_decider`, except that
-`requested_decider: jev` with `signer: llm` is the Jev-to-LLM fallback and then `fallback_reason` is
-required; `fallback_reason` is absent otherwise. `decisions` holds exactly one entry and its `decider`
-equals `signer`; `answer` ∈ `approve | reject | escalate`; `confidence` ∈ [0, 1]; `reason` non-blank;
-`reason_refs` non-empty, each `contract.yaml:<line>` with `1 <= line <=` the draft's line count; a `jev`
-decision carries non-empty `jev.request_sha256` (hex64) and `jev.raw_response`; the `plan_audit_report`
-path is repo-relative and its current SHA-256 equals the recorded one.
+### Field rules (A1 validator — structure and internal consistency)
 
-Fallback reasons (closed set) and the evidence A1 checks (a failed check is `receipt_invalid`):
-
-| `fallback_reason` | Meaning | Evidence check in A1 |
+| # | Rule | Refusal code |
 |---|---|---|
-| `jev_disabled` | `workflow.jev.enabled` is false | the loaded config has `workflow.jev.enabled: false` |
-| `jev_low_confidence` | Jev answered with confidence below `jev_min_confidence` | `jev_attempt` present with `confidence < kickoff.jev_min_confidence` |
-| `jev_malformed_response` | Jev returned a response that could not be parsed | `jev_attempt.raw_response` present and non-empty |
-| `jev_call_failed` | the Jev request failed (network, HTTP, timeout) | none — not checkable from a file |
-| `jev_key_missing` | no Jev credential available | none — not checkable from a file |
+| 1 | Strict decode; `receipt_version == 1`; `spec_id` equals the SPEC directory; path is the fixed `kickoff-receipt.json` | `receipt_invalid` |
+| 2 | `requested_decider`, `effective_decider` ∈ `llm | llm+jev` | `receipt_invalid` |
+| 3 | `requested_decider` equals the effective `kickoff.decider`; `effective_decider` equals `--signer` | `receipt_signer_mismatch` |
+| 4 | `fallback.applied` is true exactly when `effective_decider` ≠ `requested_decider`, and the only permitted difference is `llm+jev` → `llm` (a difference without `applied: true` is a silent fallback) | `receipt_signer_mismatch` |
+| 5 | `fallback.reason` is present exactly when `fallback.applied`, and is one of `jev_disabled`, `jev_low_confidence`, `jev_malformed_response`, `jev_call_failed`, `jev_key_missing` | `receipt_invalid` |
+| 6 | `llm_answer` is always present; `jev_answer` is present exactly when `effective_decider` is `llm+jev` | `receipt_invalid` |
+| 7 | Each answer: `answer` ∈ `approve | reject | escalate`; `confidence` ∈ [0, 1]; `reason` non-blank; `reason_refs` non-empty, each `contract.yaml:<line>` with `1 <= line <=` the draft's line count; `jev_answer` also carries non-empty `raw_response` and a hex64 `request_sha256` | `receipt_invalid` |
+| 8 | `inputs.contract_sha256` equals `show --json`'s `signable_contract_sha256`; `inputs.acceptance_sha256` and `inputs.plan_audit_report.sha256` equal the current files' SHA-256 | `receipt_input_mismatch` |
+| 9 | `outcome` ∈ `approve | reject | human`; `outcome: approve` requires `llm_answer.answer: approve` (a Jev approval never suffices alone) | `receipt_invalid` |
 
-The unchecked reasons are the residual risk stated in spec.md §C.8: a false failure claim leads only to
-the `llm` path, which is itself a permitted decider in A1.
+After the validator accepts a receipt, the signer applies, in order: (1) **interim A1 rule** — an
+`effective_decider` of `llm+jev` (Jev actually answered) → refuse `receipt_requires_human`, even when
+both answers approve; A3 lifts this rule when it amends the Jev display-only principle; (2) the recorded
+outcome: `approve` → sign; `reject` → refuse `receipt_rejected`; `human` → refuse
+`receipt_requires_human`. A recorded fallback (requested `llm+jev` → effective `llm`) passes step 1. A1 does not check that
+the outcome follows the cross-check rules below — that consistency is A3's to enforce, together with
+moai-issued receipts (spec.md §C.6).
 
-### Agreement Rule
+### Cross-check Rules (A3-owned, informative)
 
-Evaluated after the field rules and the fallback checks, in order, on the single decision:
+Recorded here so A3 starts from the operator's decision; A1 does not evaluate them.
 
-0. **A1 rule (spec.md §C.8):** when `signer` is `jev` — a Jev answer would decide — the receipt routes to
-   a human → `receipt_requires_human`, whatever the answer or confidence. Jev stays display-only until A3
-   amends the shipped doctrine. (A Jev answer below `jev_min_confidence` is not a decision at all: the
-   producer must record the `jev_low_confidence` fallback to `llm` instead.)
-1. `escalate` → `receipt_requires_human`.
-2. `reject` → `receipt_rejected`.
-3. `approve` → accepted.
-
-A1 has no confidence threshold for the `llm` decider; its confidence is recorded only. In A1 a receipt
-can be accepted only when `signer` is `llm` — either configured directly or reached through a recorded
-fallback. The former `on_disagree` key is removed: with a single decider there is no disagreement to
-resolve.
+- `llm`: the LLM answer decides — `approve` → `approve`, `reject` → `reject`, `escalate` → `human`.
+- `llm+jev`: both `approve` → `approve`; any disagreement or `escalate` → `human`; both `reject` →
+  `reject`. A Jev approval never suffices without an LLM approval.
+- Jev-side failure under `llm+jev` (`jev_disabled`, `jev_low_confidence` — a Jev confidence below
+  `kickoff.jev_min_confidence` —, `jev_malformed_response`, `jev_call_failed`, `jev_key_missing`) →
+  fall back to `llm` alone, recorded as requested `llm+jev` → effective `llm` with the reason.
+- Interim rule until A3 amends the shipped "Jev is display-only" principle: an `llm+jev` receipt in
+  which Jev answered → `human`. **This one is enforced by A1 today** (signer step 1 above); A3 lifts it
+  when it amends the principle.
 
 ## Agent-Environment Markers
 
@@ -409,11 +431,12 @@ ordinary shells do not. The A2 sign deny (spec.md §C.2) is the Codex-side prote
 
 ## Signing Flow
 
-Path selection: `--signer` absent or `human` → human path; `llm | jev` → receipt path.
+Path selection: `--signer` absent or `human` → human path; `llm | llm+jev` → receipt path.
 
 1. Human path: refuse `agent_marker`, then `not_tty`. Receipt path: refuse `batch_non_human` for more
-   than one ID and `mode_not_contract` unless `mode: contract`. (`--signer` names the receipt's
-   effective decider, so a recorded Jev-to-LLM fallback is signed with `--signer llm`.)
+   than one ID, `mode_not_contract` unless `mode: contract`, and `kickoff_decider_jev_sole` when the
+   configured decider is `jev`. (`--signer` names the receipt's effective decider, so a recorded
+   `llm+jev` → `llm` fallback is signed with `--signer llm`.)
 2. Resolve each SPEC ID (de-duplicated) to its directory; load and strictly decode `contract.yaml`
    (a symlink resolving outside the SPEC directory is an I/O error, exit 2).
 3. Branch on signature state:
@@ -443,9 +466,9 @@ Batch mode (human path only): steps 2-6 run for every ID before step 7; one conf
 file with a shared `batch_id`. A write failure after some files were written is reported with the
 exact written/unwritten split (atomic per file, not across files).
 
-## Forward Note — Mission Projection (for A2)
+## Forward Note — Mission Projection (for A2b, t1245)
 
-Deferred from A1 (spec.md §B Out of Scope — Mission-validator projection). Drafted mapping, for A2 to
+Deferred from A1 (spec.md §B Out of Scope — Mission-validator projection). Drafted mapping, for A2b to
 adopt or revise:
 
 | MissionContract field | Source |
@@ -487,7 +510,7 @@ workflow:
       second_review: required # required | advisory | off
       push_develop: false     # allow the push-develop action in contracts
     kickoff:
-      # decider: human | llm | jev   (omitted: human in guided, llm in contract)
+      # decider: human | llm | llm+jev   (omitted: human in guided, llm in contract)
       jev_min_confidence: 0.50
     escalation:
       budget_default: { turns: 60, operations: 40, audit_retries: 2 }
@@ -504,11 +527,13 @@ Reader behavior: absent section/key → defaults above, except `decider`: when i
 effective decider is derived from the effective mode — `human` under `guided`, `llm` under `contract`.
 An explicit value always wins. The template omits the key (REQ-CONTRACT-016), so a project initialized
 from it gets `human` under `guided` and `llm` after switching to `mode: contract`. An out-of-set or
-out-of-range value for `mode`, `second_review`, `decider` (including the retired `llm+jev`), or
-`jev_min_confidence` → `guided`, `required`, `human`, `0.50` respectively, plus a warning naming the key
-(fail toward the stricter value). `kickoff.decider: jev` while `workflow.jev.enabled: false` (the shipped
-key, template `workflow.yaml` `jev:` / `enabled: false`) loads without error; the Jev-to-LLM fallback
-applies at signing with reason `jev_disabled`. No
+out-of-range value for `mode`, `second_review`, `decider` (other than `jev`), or `jev_min_confidence` →
+`guided`, `required`, `human`, `0.50` respectively, plus a warning naming the key (fail toward the
+stricter value). `kickoff.decider: jev` is a configuration error naming the key (Jev is never a sole
+decider): loading still succeeds, no fallback is applied, no command is blocked, and only the receipt
+signing path is refused with `kickoff_decider_jev_sole`. `llm+jev` while `workflow.jev.enabled: false`
+(the shipped key) loads without error; the Jev-side fallback to `llm` is A3's decision and is recorded in
+the receipt with reason `jev_disabled`. No
 environment variable is introduced; `MOAI_AUTONOMY_TIER` is untouched.
 
 ## F1 Reference Shape
