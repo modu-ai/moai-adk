@@ -374,6 +374,9 @@ func TestPersistTeamMode_UpdatesMode(t *testing.T) {
 // =============================================================================
 
 func TestSaveGLMKey_WithTmpHome(t *testing.T) {
+	// .env.glm resolves under a temp HOME; drop the TestMain MOAI_HOME
+	// sandbox so the lookup derives from HOME (card t1229).
+	t.Setenv(config.EnvHome, "")
 	tmpDir := t.TempDir()
 	t.Setenv("HOME", tmpDir)
 
@@ -396,6 +399,9 @@ func TestSaveGLMKey_WithTmpHome(t *testing.T) {
 }
 
 func TestSaveGLMKey_WithSpecialChars(t *testing.T) {
+	// .env.glm resolves under a temp HOME; drop the TestMain MOAI_HOME
+	// sandbox so the lookup derives from HOME (card t1229).
+	t.Setenv(config.EnvHome, "")
 	tmpDir := t.TempDir()
 	t.Setenv("HOME", tmpDir)
 
@@ -498,6 +504,9 @@ func TestGetGLMEnvPath_EndsWithEnvGLM(t *testing.T) {
 }
 
 func TestGetGLMEnvPath_WithCustomHome(t *testing.T) {
+	// .env.glm resolves under a temp HOME; drop the TestMain MOAI_HOME
+	// sandbox so the lookup derives from HOME (card t1229).
+	t.Setenv(config.EnvHome, "")
 	tmpDir := t.TempDir()
 	t.Setenv("HOME", tmpDir)
 
