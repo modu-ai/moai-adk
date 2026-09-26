@@ -858,6 +858,9 @@ type AutonomyKickoffConfig struct {
 // AutonomyEscalationConfig mirrors workflow.autonomy.escalation.*.
 type AutonomyEscalationConfig struct {
 	BudgetDefault AutonomyBudgetConfig `yaml:"budget_default"`
+	// NewAPIDetector selects the escalation detector's class-4
+	// (new-architecture-or-api) implementation: graph | off. "" is absent.
+	NewAPIDetector string `yaml:"new_api_detector"`
 }
 
 // AutonomyBudgetConfig mirrors workflow.autonomy.escalation.budget_default.*.
