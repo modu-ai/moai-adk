@@ -1,10 +1,10 @@
 # Hook stdin parse failure: fail-closed on decision events
 
 Operator document named in the hook's own denial reason by its path,
-`.moai/docs/hook-stdin-fail-closed.md`. When a hook denies a decision with
-the reason `fail-closed: hook stdin could not be parsed as JSON
-(.moai/docs/hook-stdin-fail-closed.md)`, this page explains what happened and
-how to recover.
+`.moai/docs/hook-stdin-fail-closed.md`. When a hook denies a decision with a
+reason that starts `fail-closed: hook stdin could not be parsed as JSON` and
+ends `(.moai/docs/hook-stdin-fail-closed.md)`, this page explains what
+happened and how to recover.
 
 ## What changed
 
@@ -28,14 +28,58 @@ default-output path, because the Codex host has no bound on how many
 consecutive `Stop` blocks it will accept — an unparseable payload there could
 otherwise deny every turn indefinitely with no way for the session to end.
 
+## Stop under Claude Code: MoAI's own limit
+
+Claude Code's `Stop` is denied fail-closed too, but MoAI does not rely on the
+host's limit on consecutive `Stop` blocks to end that loop. Measured, that
+limit ended the turn only when no tool use came in between the blocks, and a
+session started with a raised limit (kanban, factory, or an infinite goal)
+kept going to its turn limit. So MoAI counts the loop itself:
+
+- **N=8.** The first 8 consecutive `Stop` calls whose stdin cannot be parsed
+  are denied. From the 9th on, the hook answers with no opinion (`{}`), which
+  lets the turn end, writes one stderr line, and records the release in
+  `.moai/logs/codex-adapter.jsonl` under the key
+  `stdin-parse-stop-cap-released`.
+- **The release persists.** Once past 8, every further unparseable `Stop`
+  keeps getting the no-opinion answer — a payload that cannot be parsed does
+  not reveal where one turn ends and the next begins. Tool use in between does
+  not reset the count.
+- **Only two things reset it:** a `Stop` whose stdin parses, which deletes
+  the count, and 60 minutes passing since the count was last updated, after
+  which the record counts as absent and is swept.
+- **What is counted together.** The count is kept per session: the
+  `CLAUDE_CODE_SESSION_ID` value in the hook's environment when it is set and
+  not blank, otherwise the Claude Code process that owns the session (found by
+  walking up from the hook past any wrapper shells). If neither can be
+  determined, the count is not applied and every unparseable `Stop` stays
+  denied.
+- **Where the count lives.** One small JSON file per session under
+  `.moai/state/stop-parse-cap/`, named by a hash of the session key — the
+  session id itself is not stored. If that directory or a record cannot be
+  used (not a directory, a symbolic link, unwritable), the count is not
+  applied and the denial stays; the hook says so on stderr.
+- **Independent of the host's limit.** The limit of 8 is fixed in MoAI. It
+  does not read `CLAUDE_CODE_STOP_HOOK_BLOCK_CAP` or any other setting, and
+  no setting changes it.
+
+Only `Stop` is limited this way. The other three decision events block a tool
+call or a prompt rather than the end of a turn, so their denial cannot keep a
+turn going on its own. Under Codex none of this applies — Codex's `Stop` is
+exempt, as described above.
+
 ## What the denial reason tells you, and does not
 
-The denial's reason string carries exactly three things: the `fail-closed`
-marker, a fixed statement that the cause was a stdin parse failure, and this
-document's path. It carries no recovery steps and none of the failing
-payload's content — the reason string is read by the model that produced the
-tool call, so recovery instructions or excerpted input would hand a
-model-controlled channel a way to see, or work around, why it was denied.
+The denial's reason string carries the `fail-closed` marker, a fixed
+statement that the cause was a stdin parse failure, and this document's path.
+Under Claude Code it also tells the model not to edit hook scripts or
+settings files to get past the denial, and to stop and tell a human
+operator: a model handed the bare denial has been seen reading the hook
+configuration and trying to edit it. The reason carries no recovery steps and
+none of the failing payload's content — the reason string is read by the
+model that produced the tool call, so recovery instructions or excerpted
+input would hand a model-controlled channel a way to see, or work around, why
+it was denied.
 
 ## Recovery
 
