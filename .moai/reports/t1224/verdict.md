@@ -62,3 +62,45 @@ Claude Code 의 PowerShell 도구 호출은 기존 PreToolUse matcher `Write|Edi
   - F7: `pre_tool.go:507` 의 ANCHOR 문구와 `LogBashEvidence` 등 이름이 여전히 Bash 만 가리킨다.
 - F8: 소스 가드는 문자열 리터럴만 본다.
 - 형제 카드 후보 D4 두 건(`IsWriteOperation` 의 PowerShell 판정, Git Bash 없는 Windows 의 훅 실행)은 발행 여부가 운영자 몫이다.
+
+## 후속 카드용 재현 (F1~F3, EncodedCommand)
+
+이 절은 리드의 요청(2026-09-26)으로 추가했다. 프로브는 트리에 쓰지 않고 `go test -overlay` 로 컴파일할 때만 끼워 넣는다. 프로브 사본은 `.moai/reports/t1224/followup-probe_test.go` 에 있다(sha256 `868c34db…`). 오버레이 파일에는 `{"Replace":{"<worktree>/internal/hook/zz_audit_probe_test.go":"<probe path>"}}` 한 항목만 둔다.
+
+```
+go test -count=1 -overlay <overlay.json> ./internal/hook/ -run TestAuditProbe -v -o /dev/null
+```
+
+HEAD `f4d62e5c3` 에서 실행했고 결과는 `ok … 5.989s` 이다. 관측 출력은 원문 그대로 옮겼다. 브랜치 가드 쪽은 브랜치 가드가 켜진 primary 체크아웃 픽스처에서 도구를 PowerShell 로 두고 쟀다.
+
+```
+BRANCH "pwsh -Command \"git switch probe\""       -> decision="allow" unclassifiedLines=0 construct=""   # F2
+BRANCH "powershell -c \"git switch probe\""       -> decision="allow" unclassifiedLines=0 construct=""   # F2
+BRANCH "& 'git' switch probe"                     -> decision="allow" unclassifiedLines=0 construct=""   # 인용 호출 대상
+BRANCH "& \"git.exe\" switch probe"               -> decision="allow" unclassifiedLines=0 construct=""   # F1
+BRANCH "saps git -ArgumentList 'switch','probe'"  -> decision="allow" unclassifiedLines=0 construct=""   # Start-Process 별칭
+BRANCH "git swi`tch probe"                        -> decision="allow" unclassifiedLines=0 construct=""   # 백틱 이스케이프
+BRANCH "git.exe switch probe"                     -> decision="allow" unclassifiedLines=0 construct=""   # F1
+BRANCH "& (Get-Command git) switch probe"         -> decision="allow" unclassifiedLines=0 construct=""   # F3
+BRANCH "cmd /c git switch probe"                  -> decision="deny"  (BRANCH_GUARD_VIOLATION)            # 대조군: 이미 잡힘
+BRANCH "$c = 'git switch probe'; iex $c"          -> decision="allow" unclassifiedLines=1 construct="invoke-expression"  # D2 대로 동작
+ILOCK  "iex \"git status\""                       -> decision="allow" unclassifiedLines=1   # F4: merge 가 아닌 명령도 기록
+ILOCK  "Start-Process git -ArgumentList 'log'"    -> decision="allow" unclassifiedLines=1   # F4
+DENYLIST Bash       "eval \"terraform destroy\""  -> allow   # 기존 Bash 동작(기준선)
+DENYLIST PowerShell "iex \"terraform destroy\""   -> allow   # Bash eval 과 같음
+DENYLIST PowerShell "terraform destroy"           -> deny  "Dangerous command blocked: (?i)terraform\\s+destroy"
+DENYLIST PowerShell "Start-Process terraform -ArgumentList 'destroy'" -> allow
+```
+
+위험 명령 차단 목록도 간접 호출(`iex "…"`, `Start-Process … -ArgumentList`) 안의 명령은 보지 못한다. Bash 의 `eval "…"` 과 같은 수준이고 이 카드가 새로 만든 약점은 아니지만, 후속 카드에서 함께 다룰 만하다.
+
+**-EncodedCommand 철자는 측정하지 않았다.** 워크트리 세션 가드가 `pwsh` 호출을 거부하므로 워크트리 밖 스크래치 폴더에서 재현한다. 아래 명령은 `ok` 를 base64(UTF-16LE)로 인코딩한 값을 쓴다.
+
+```
+B64=$(printf 'Write-Output ok' | iconv -t UTF-16LE | base64)
+for s in -e -ec -en -enc -enco -encodedc -EncodedCommand -ENC --EncodedCommand /enc –enc; do
+  printf '%s -> ' "$s"; pwsh -NoProfile -NonInteractive $s "$B64" 2>&1 | head -1
+done
+```
+
+`ok` 를 출력하는 철자가 pwsh 가 받아들이는 집합이다. 이 집합을 `powershell_indirection.go` 의 검출기와 대조한다. 목록 끝의 `–enc` 는 유니코드 대시(U+2013)로 쓴 형태다.
