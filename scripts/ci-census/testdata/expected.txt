@@ -11,6 +11,7 @@ FAILED PKG    example.com/censusfix/gamma
   FAIL	example.com/censusfix/gamma	0.393s
 NOTHING RAN   example.com/censusfix/beta
 SKIPPED TEST  example.com/censusfix/alpha  TestAlphaSkips
-=== totals: packages=4 passed=1 skipped=1 nothing-ran=1 failed=1 build-failed=1 ===
+SKIPPED TEST  example.com/censusfix/epsilon  TestEpsilonSkips
+=== totals: packages=5 passed=2 skipped=2 nothing-ran=1 failed=1 build-failed=1 ===
 ::notice title=AC snapshot absent::.moai/specs/SPEC-FIXTURE-001/acceptance.md: COUNT 3 (matched by the AC corpus glob but absent from the AC snapshot - reported, not failed)
 ::notice title=AC snapshot absent::.moai/specs/SPEC-FIXTURE-100%25/acceptance.md: HALT AC-FIXTURE-001 AC-FIXTURE-002 (matched by the AC corpus glob but absent from the AC snapshot - reported, not failed)
