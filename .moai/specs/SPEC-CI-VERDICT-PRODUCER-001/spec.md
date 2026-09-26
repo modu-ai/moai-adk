@@ -2,7 +2,7 @@
 id: SPEC-CI-VERDICT-PRODUCER-001
 title: "CI verdict producer: a moai CLI verb that records remote CI conclusions per head SHA as on-disk evidence the escalation detector's contradictory-evidence CI limb consumes, making AC-AE-012(c) of SPEC-AUTONOMY-ESCALATION-001 re-judgeable as written"
 version: "0.1.0"
-status: draft
+status: in-progress
 created: 2026-09-26
 updated: 2026-09-26
 author: manager-spec
