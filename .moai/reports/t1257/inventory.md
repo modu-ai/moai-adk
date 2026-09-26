@@ -915,6 +915,8 @@ C3(`internal/template/templates/.codex/agents/moai/*.toml`) 10 개는 C2 에서 
 
 ## 11. 운영자에게 물을 것
 
+> 2026-09-26 운영자가 일곱 질문 모두에 답했다. 결정은 `SPEC-ROLE-NAMING-DOCS-001` v0.2.0 의 `research.md` §F 와 `progress.md` §E.1 에 기록돼 있다(요지: Q1 `lane` 정식·별칭 즉시 제거, Q2 칸반 companion 유지, Q3 승격 조항 개정, Q4 `manager-lead` 유지, Q5 첫 등장 한정어, Q6 zh 主导·泳道, Q7 보조 역할 정의 한 줄). 아래는 v0.1.0 시점의 질문 원문이다.
+
 SPEC `SPEC-ROLE-NAMING-DOCS-001` 의 `research.md` §F 와 같은 목록이다. 치환 마일스톤은 Q1~Q5 가 답해지고 t1256 결론이 확정될 때까지 열리지 않는다.
 
 1. **Q1 — worker → lane 되돌리기의 범위.** t1085/t1102 가 확정한 `worker-N` · `-f worker` 표기를 `lane-N` · `-f lane` 으로 되돌리는가, 아니면 산문의 역할 단어만 lane 으로 하고 식별자는 `worker-N` 으로 두는가? (코드 계층 t1256 이 정할 일이지만 문서 계층이 그 결과를 그대로 따라야 한다.)
