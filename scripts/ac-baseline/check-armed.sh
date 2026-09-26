@@ -49,14 +49,15 @@ got=$(git config --get "hook.$name.command" 2>/dev/null)
 top=$(git rev-parse --show-toplevel 2>/dev/null)
 if [ -z "$got" ]; then
 	warn "NOT ARMED: git config hook.$name.command is unset — run scripts/ac-baseline/install-hook.sh"
-else
+elif [ -n "$top" ]; then
 	# 1b. Byte identity with what the installer in this tree writes (t1197, t1150
 	#     F9). A present-but-different command (hand-edited to `true`, or an older
 	#     installer's copy left behind) runs silently and says nothing, so presence
 	#     alone proves nothing. The installer is PARSED, never executed: running an
 	#     older copy of it would rewrite the shared config. Its cmd= line is a
 	#     single-quoted literal with no embedded quote, which install-hook.sh
-	#     keeps so this one sed can read it.
+	#     keeps so this one sed can read it. Skipped without a work tree (bare
+	#     repository, cwd inside .git), exactly as step 3 is.
 	want=$(sed -n "s/^cmd='\(.*\)'\$/\1/p" "$top/$installer" 2>/dev/null)
 	if [ -z "$want" ]; then
 		warn "cannot read the expected hook command from $installer — cannot confirm hook.$name.command is current"
