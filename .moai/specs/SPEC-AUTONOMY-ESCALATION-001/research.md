@@ -12,7 +12,7 @@ actually holds.
 
 | # | Asset named in the design table | Exists? | Evidence (file:line) | Consequence for scope |
 |---|---|---|---|---|
-| P1 | AC snapshot commit guard (`scripts/ac-baseline`) | **Yes, but local-only and a different comparison** | `scripts/ac-baseline/check-staged.sh:1-4` ("Local-only dev tool: no template mirror, never distributed"); `:25` baseline = `.moai/reports/t338/ac-count-baseline.txt`; counter body extracted from `manager-docs.md` sentinels (`:117-143`) | Mechanism not reusable in a distributed detector. Class 1 compares against the contract's own `sha256` / `ac_count` (REQ-AE-005). Whether the AC counting rule should be shared with the guard is open question Q3. |
+| P1 | AC snapshot commit guard (`scripts/ac-baseline`) | **Yes, but local-only and a different comparison** | `scripts/ac-baseline/check-staged.sh:1-4` ("Local-only dev tool: no template mirror, never distributed"); `:25` baseline = `.moai/reports/t338/ac-count-baseline.txt`; counter body extracted from `manager-docs.md` sentinels (`:117-143`) | Mechanism not reusable in a distributed detector. Class 1 consumes A1 verify's recorded-vs-measured `acceptance.sha256` / `acceptance.ac_count` (REQ-AE-005); A1 ships its own Go port of the counter (P15), so the guard is not reused. |
 | P2 | `frozenInstructionFiles` hook | **Yes, but identity-scoped** | `internal/hook/pre_tool.go:1230-1231` (`CLAUDE.md`, `CLAUDE.local.md`); `:1236-1258` `checkHarnessFrozenZone` returns early unless `agentID == harnessLearnerIdentity` (`:1237-1239`); prefix zones `:1225-1228` | The *path set* is reusable; the *trigger* is not (it fires only for harness-learner). REQ-AE-007 trips for any caller and does not change the existing deny. |
 | P3 | Constitution zone registry | **Yes (doc)** | `.claude/rules/moai/core/zone-registry.md:33-36` (`zone_class` enum, Frozen → `canary_gate`) | Not a runtime check. Used only as the source of truth for what "frozen" means; no requirement reads it at runtime. |
 | P4 | Status-transition ownership matrix → PreToolUse path check | **Matrix + advisory PostToolUse hook exist; no per-contract path check** | `.claude/hooks/moai/status-transition-ownership.sh:1-5` (PostToolUse, invoker vs matrix, advisory) | Class 3 (REQ-AE-008) is new detection logic; the existing hook is not extended or rewired. |
@@ -26,7 +26,14 @@ actually holds.
 | P12 | Budget counters (class 7) | **Partial** | `internal/goal/schema.go:35-44` goal `Ceiling` / `MaxTurns` (default 30) exists only when a goal is armed | No operation counter exists; the detector counts operations itself (design.md §C.6). |
 | P13 | Existing `autonomy` config key | **No `workflow.autonomy` key** | `grep -n autonomy .moai/config/sections/workflow.yaml` and the template copy → 0 lines; `MOAI_AUTONOMY_TIER` at `internal/config/envkeys.go:139-148`, reader `internal/config/autonomy.go:8-9` | New key has no collision. `harness.escalation` at `internal/config/types.go:1199-1243` is a homonym with a different meaning (C2). |
 
+| P14 | Mission contract sealing / decision validation (named by the A1 draft) | **Yes** | `internal/mission/contract.go:32` `MissionContract`, `:80` `SealMissionContract`; `internal/mission/policy.go:200` `ValidateMissionDecision` | Available as a design option for budget/action checks (design.md §C.6); not committed to. |
+| P15 | A1 contract schema | **Draft only, not on `develop`** | A1 `design.md` § Contract Schema at commit `8f77d9a33` (branch `WT-contract-schema`), read from the read-only copy `.moai/reports/t1235/a1-design-8f77d9a33.md` (lines 8-190 schema, 238-254 configuration) | All contract-reading requirements are tagged 「A1 plan-audit 통과본으로 재확인」; the draft is not plan-audited. |
+
 ## §C — Gaps in this measurement
+
+- The A1 draft was read from a copy the lead placed in this worktree; its byte identity with
+  `8f77d9a33:.moai/specs/SPEC-AUTONOMY-CONTRACT-001/design.md` was not re-verified from here
+  (the t1234 worktree is outside this session's scope).
 
 - The deny-list classification of `git tag` was read from the local `.claude/settings.json`
   only; the distributed template `settings.json.tmpl` was not read.

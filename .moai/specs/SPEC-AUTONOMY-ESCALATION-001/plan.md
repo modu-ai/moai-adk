@@ -26,9 +26,10 @@ first, mechanical wiring last. No time estimates; priority labels only.
 ## §C — Pre-flight (run phase)
 
 1. `git merge-base --is-ancestor <A1 merge commit> HEAD` → exit 0 (A1 present).
-2. Re-read every 「A1 스키마 확정 후 재조정」 requirement against A1's landed schema; if a field in
-   spec.md §F is renamed or missing, stop and return a blocker to the orchestrator for a
-   mid-run spec amendment.
+2. Re-check every 「A1 plan-audit 통과본으로 재확인」 requirement against the plan-audit-passed A1
+   schema (spec.md §F lists each field as drafted at `8f77d9a33`); if a field is renamed or
+   missing, or an open item O1-O9 resolved differently, stop and return a blocker to the
+   orchestrator for a mid-run spec amendment.
 3. Capture the AC-AE-001 golden baseline in its own commit before any detector code.
 
 ## §D — Constraints
@@ -47,7 +48,8 @@ E4 subagent-boundary grep; E5 lint delta; E8 RED output before GREEN.
 ### M1 — Record layer and activation gate (Priority High, most change-prone)
 
 - Decide the escalation record location and the needs-decision derivation (design.md §A; open
-  question Q1). Add `workflow.autonomy` config parsing with the inert default.
+  question Q1). Read `workflow.autonomy.mode` through A1's config reader (inert under `guided`);
+  add only the `escalation.new_api_detector` key.
 - ACs: AC-AE-001, AC-AE-002.
 
 ### M2 — Report writer, dedup, fault handling, acceptance-change
@@ -69,18 +71,19 @@ E4 subagent-boundary grep; E5 lint delta; E8 RED output before GREEN.
 
 ### M5 — Evidence, irreversible action, operational trips, escalate_on gating
 
-- Classes 5, 6, 7, 8, 9 and per-class disabling from `escalate_on`.
+- Classes 5, 6, 7, 8, 9 and invalid-contract handling (REQ-AE-020).
 - ACs: AC-AE-004, AC-AE-014, AC-AE-015, AC-AE-016, AC-AE-017, AC-AE-018, AC-AE-022.
 
 ### M6 — Template default and documentation (mechanical)
 
-- Template `workflow.yaml` gains the `autonomy` block with `mode: guided`; `make build`.
+- Template `workflow.yaml` gains `autonomy.escalation.new_api_detector: graph` under the block
+  A1 introduces (A1 owns `mode: guided` and `budget_default`); `make build`.
 
 ## §G — Risks
 
 | Risk | Mitigation |
 |---|---|
-| A1 schema diverges from the assumed fields | Tagged requirements + pre-flight step 2 |
+| A1 plan-audit changes the `8f77d9a33` draft | Tagged requirements + spec.md §F open items + pre-flight step 2 |
 | PreToolUse latency under contract mode | Pure in-memory checks on the hot path; checkpoints for heavy work |
 | Class 4 false positives on refactors that move declarations | Report lists additions only by kind; sync-audit remains the backstop (C6) |
 | Class 6 regex misses an obfuscated push | Reported as residual risk; blocking belongs to A3 |
@@ -91,8 +94,13 @@ E4 subagent-boundary grep; E5 lint delta; E8 RED output before GREEN.
 - **Q1** Where does the needs-decision record live — card evidence area, or the A1/F1 shared
   record layer? Blocks M1.
 - **Q2** Is a new CLI verb for on-demand checkpoints acceptable, given it is itself a class-4 event?
-- **Q3** Should the AC counting rule be shared with the local-only ac-baseline guard, or
-  re-implemented in the product path?
+- **Q3** [RESOLVED by the A1 draft `8f77d9a33`] A1 ships the AC counter Go port and verify's
+  measured values; class 1 consumes them (spec.md §F O7).
 - **Q4** Sync-audit retry ceiling source — no config key was located; is it the same tier map?
 - **Q5** Does "recorded CI failure" have an existing on-disk producer, or is class 5's CI limb
   expected to stay not-observed until one exists?
+- **Q6** A signed contract that turns `signed-invalid` mid-run for a non-acceptance reason
+  (e.g. `contract_digest_mismatch`) is specified as not-armed (REQ-AE-020). Should it instead
+  trip an escalation? The design-source ("change => contract void") leans that way, but no
+  class token covers it and adding one would be a seventh `escalate_on` token owned by A1.
+- **Q7** Which file set does the A1 `frozen-files` invariant resolve to (spec.md §F O2)?

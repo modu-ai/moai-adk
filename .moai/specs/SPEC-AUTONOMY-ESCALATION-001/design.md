@@ -18,15 +18,14 @@ machine acting on a card. Proposed shape:
 
 ## §B — Activation
 
-- Config (template default shown):
+- Config. `mode` and `escalation.budget_default` are defined by A1 (draft `8f77d9a33`
+  § Configuration); this SPEC adds one key beside them:
 
   ```yaml
   workflow:
     autonomy:
-      mode: guided            # guided | contract
       escalation:
-        new_api_detector: graph   # graph | off
-        budget_default: { turns: 60, operations: 40, audit_retries: 2 }
+        new_api_detector: graph   # graph | off   (added by this SPEC)
   ```
 
 - The mode check is the first statement on every detector path; `guided` returns before
@@ -86,6 +85,18 @@ persisted. `disagreement_flag` nil → not-observed.
 Turns: goal ceiling state when a goal is armed, else the detector's own PostToolUse turn
 counter. Operations: detector-counted write/Bash tool calls. Audit retries: count of audit
 verdict files for the card. Counters live beside the escalation index.
+
+Option (not decided): the A1 draft projects a signed contract onto `mission.MissionContract`
+(`ResourceLimits.MaxOperations` = `budget.operations`, `StopConditions` = `escalate_on`) so that
+this detector could reuse `ValidateMissionDecision` (`internal/mission/policy.go:200`) for the
+budget and action checks instead of its own counters.
+
+### C.7 Contract input
+
+Class detection reads the contract through A1's verify (state + reasons + measured acceptance
+values), never by re-parsing the schema itself. Only the source-line mapping for the report's
+`contract.yaml:<line>` reads the file text directly, because verify output carries no line
+numbers (spec.md §F O6).
 
 ## §D — Report shape
 

@@ -8,6 +8,8 @@
 - Requirements: 20 (REQ-AE-001 … REQ-AE-020). Acceptance criteria: 22 (AC-AE-001 … AC-AE-022).
 - Base tree: `develop` at `ca1d5dc43`. Card: t1235.
 - Run-phase blocked on card t1234 (A1 contract schema) landing on `develop`.
+- v0.1.1: contract field names aligned to the A1 draft at `8f77d9a33` (not plan-audited);
+  dependent requirements tagged 「A1 plan-audit 통과본으로 재확인」; open items O1-O9 in spec.md §F.
 
 ## §E.2 Run-phase Evidence
 
