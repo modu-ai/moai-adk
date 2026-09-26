@@ -229,7 +229,26 @@ func renderUpdateOutcome(w io.Writer, fileCount int, detail updateOutcomeDetail,
 // updateVerboseMode ledger recordMergeFallback reads): the summary plus one
 // dim line per key, so the full list never interleaves with the progress
 // redraw and stays expandable without a second run.
-func renderRetainedKeyAdvisory(w io.Writer, refs []backup.RetainedKeyRef, verbose bool, th tui.Theme) {
+func renderRetainedKeyAdvisory(w io.Writer, all []backup.RetainedKeyRef, verbose bool, th tui.Theme) {
+	var refs, kept []backup.RetainedKeyRef
+	for _, ref := range all {
+		if ref.KeptOverDefault {
+			kept = append(kept, ref)
+		} else {
+			refs = append(refs, ref)
+		}
+	}
+	// Card t1216: listed whatever --verbose says — this update is the only
+	// one that can tell the user, and after it the kept values read as
+	// customizations.
+	if len(kept) > 0 {
+		_, _ = fmt.Fprintf(w, "  %s %d setting(s) kept values that differ from the current template default "+
+			"(no attested merge base this once; where a default itself changed, the new default was not applied — adopt it by hand if wanted):\n",
+			uikit.SymWarning(), len(kept))
+		for _, ref := range kept {
+			_, _ = fmt.Fprintln(w, paintToken(fmt.Sprintf("    · %s: %s", ref.Section, ref.Key), th.Dim, false))
+		}
+	}
 	if len(refs) == 0 {
 		return
 	}

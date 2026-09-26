@@ -50,12 +50,26 @@ func testContext(platform string) *TemplateContext {
 // --- settings.json.tmpl tests ---
 
 // Claude Code treats a Bash pattern containing "*" plus a trailing ":*" as a
-// literal prefix. Keep the root, home, and Windows path variants as wildcards.
+// literal prefix and warns on startup. Keep one syntax per rule while
+// preserving the literal-"*" scope of the root, home, and Windows variants.
 func TestSettingsTemplateDenyWildcardSyntax(t *testing.T) {
+	// The legacy "/*:*" rules matched a literal "*" (Claude Code reports the
+	// middle "*" as unexpanded). "\*" keeps that literal match in the
+	// space-suffix syntax; an unescaped "/*" would widen the rule to every
+	// absolute or home path.
 	want := []string{
+		"Bash(rm -rf /\\* *)",
+		"Bash(rm -rf ~/\\* *)",
+		"Bash(rm -rf C:/:*)",
+		"Bash(rm -rf C:/\\* *)",
+		"Bash(del /S /Q C:/:*)",
+		"Bash(rmdir /S /Q C:/:*)",
+		"Bash(Remove-Item -Recurse -Force C:/:*)",
+	}
+	widened := []string{
 		"Bash(rm -rf /*)",
 		"Bash(rm -rf ~/*)",
-		"Bash(rm -rf C\\:/*)",
+		"Bash(rm -rf C:/*)",
 	}
 	for _, platform := range []string{"darwin", "linux", "windows"} {
 		t.Run(platform, func(t *testing.T) {
@@ -71,14 +85,25 @@ func TestSettingsTemplateDenyWildcardSyntax(t *testing.T) {
 			present := make(map[string]bool, len(settings.Permissions.Deny))
 			for _, rule := range settings.Permissions.Deny {
 				present[rule] = true
-				if strings.HasPrefix(rule, "Bash(") && strings.HasSuffix(rule, ":*)") &&
+				shell := strings.HasPrefix(rule, "Bash(") || strings.HasPrefix(rule, "PowerShell(")
+				if shell && strings.HasSuffix(rule, ":*)") &&
 					strings.Contains(strings.TrimSuffix(rule, ":*)"), "*") {
-					t.Errorf("Bash deny rule mixes wildcard with legacy prefix syntax: %q", rule)
+					t.Errorf("shell deny rule mixes wildcard with legacy prefix syntax: %q", rule)
+				}
+				// Claude Code does not unescape "\:"; the backslash is matched
+				// literally, so a real "C:/" command never matches the rule.
+				if shell && strings.Contains(rule, "\\:") {
+					t.Errorf("shell deny rule escapes ':' and cannot match a real drive path: %q", rule)
 				}
 			}
 			for _, rule := range want {
 				if !present[rule] {
 					t.Errorf("missing Bash deny rule %q", rule)
+				}
+			}
+			for _, rule := range widened {
+				if present[rule] {
+					t.Errorf("Bash deny rule %q widens the literal-* scope to every path", rule)
 				}
 			}
 		})
