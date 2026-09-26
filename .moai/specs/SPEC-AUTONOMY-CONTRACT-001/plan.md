@@ -129,7 +129,7 @@ registry and passes values into the core. Covers REQ-CONTRACT-014 (and the CLI h
 | Schema churn after A2-A4 start | Rework in three SPECs | `schema_version`; additive changes only; changes land as amendments to `design.md` § Contract Schema |
 | An agent obtains a TTY with a one-line pty wrapper and unsets the markers | Agent-produced signature | A1 only raises the bar (spec.md §C.2); hard precondition for A3: a PreToolUse deny on `moai contract sign` from agent tool calls must exist before the signature replaces Kickoff |
 | A receipt is hand- or agent-written | Autonomous Kickoff on a forged approval | A1 records `provenance: file`; §C.6 forbids activation until A3's moai-issued receipts and `revoke` exist; residual risk stated in spec.md §H |
-| A3 lands before A2's enforcement | Signed `push-develop` authorizes unserialized pushes / pushes without second review | Binding ordering constraint in spec.md §C.1; until then the notice (REQ-CONTRACT-019) prints in both modes and Kickoff stays |
+| A3 lands before A2b's (t1245) enforcement | Signed `push-develop` authorizes unserialized pushes / pushes without second review | Binding ordering constraint in spec.md §C.1; until then the notice (REQ-CONTRACT-019) prints in both modes and Kickoff stays |
 | Line-ending differences across platforms | Spurious hash mismatch on windows checkouts | CRLF→LF and BOM normalization before hashing; cross-platform CI |
 | Operators read the signature as authorizing Kickoff skip before A3 lands | Confusion | REQ-CONTRACT-019 notice in both modes; A1 changes no gate |
 

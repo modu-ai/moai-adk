@@ -1,7 +1,7 @@
 ---
 id: SPEC-AUTONOMY-CONTRACT-001
 title: "Contract-based autonomy A1 — contract schema, acceptance binding, and human signature (moai contract sign/show/verify)"
-version: "0.4.0"
+version: "0.4.1"
 status: draft
 created: 2026-09-26
 updated: 2026-09-26
@@ -25,6 +25,7 @@ related_specs: [SPEC-GTD-AUTONOMY-001, SPEC-AUTONOMY-TIERS-001, SPEC-AUTONOMY-RU
 | 0.2.0 | 2026-09-26 | manager-spec | Plan-audit iteration 1 (FAIL 0.74) revisions: mission-validator projection deferred to A2 (former REQ-021 withdrawn; ID 021 reused for agent-environment refusal); re-sign after acceptance change defined (REQ-022); human-presence claim restated; A2-before-A3 ordering recorded; Kickoff notice printed in both modes; verify isolated in its own package; second_review fallback, non-empty actions, and ownership coverage semantics specified. |
 | 0.3.0 | 2026-09-26 | manager-spec | Plan-audit iteration 2 (FAIL 0.84) revisions and lead-approved schema additions. **ID reuse record:** AC-CONTRACT-024 was reused in 0.2.0 (was "mission-contract projection", now "re-sign after an acceptance change", mapped to REQ-CONTRACT-022); REQ-CONTRACT-021 was reused likewise. Both reuses happened before implementation; citations of REQ-CONTRACT-021 or AC-CONTRACT-024 in the iteration-1 plan-audit report refer to the withdrawn meanings. Other changes: enforcement owners aligned with cards (A2 = t1235 push serialization + sign deny; A4 = t1237 second-review stop; ordering A1 → A2 → A3); AC pass convention requires a `--- PASS:` line; kickoff receipt format, non-interactive receipt signing path, `workflow.autonomy.kickoff` config, post-signing immutability, `ownership.scratch`, and `frozen-files` definition added (REQ-CONTRACT-023..025); autonomous-Kickoff activation preconditions and residual-risk section added; `moai contract revoke` declared out of scope (A3). |
 | 0.4.0 | 2026-09-26 | manager-spec | Plan-audit iteration 3 (FAIL 0.84) delta, lead-authorized iteration 4: signature seal and signature consistency rules (R1); Jev answers route to a human until A3 reconciles the display-only doctrine, and a Jev decider with `workflow.jev.enabled: false` is a config error (R2, §C.8); card-state assertions replaced by required-ordering statements, with push serialization and the sign deny owned by A2b (card t1245) (R3); `frozen_files` elements typed as globs (R4); jev confidence pinned in AC-016 (R5); push serialization re-specified as a `moai slot` lease on resource `push-develop` (`push_requires_window` renamed `push_requires_lease`); terminal contract state for `completed`/`archived` SPECs. |
+| 0.4.1 | 2026-09-26 | manager-spec | Plan-audit iteration 4 text fixes (operator: text only): §C.6 and §H now state one consistent residual-risk statement (a full keyless re-seal is not caught by verify; `supersedes` is not a trace; traces are git history and, after A3, a store recording every signing event including human signatures); stale A2 attributions changed to A2b (t1245); REQ-015 states that the Jev-decider configuration error does not block loading or commands and refuses only the receipt signing path. |
 
 ## §A. User Story
 
@@ -187,8 +188,11 @@ LLM decision record to a moai-owned append-only store (A3). A receipt authored a
 shall not activate autonomous Kickoff. A1 provides only the receipt format, the validator, and a
 signature that records the receipt's provenance as `file` (REQ-CONTRACT-024), so that A3 can refuse it.
 The provenance, method, and signer kind are covered by the signature seal (REQ-CONTRACT-011): editing
-any of them without recomputing the seal makes `verify` report `signature_seal_mismatch`. The seal is
-keyless, so a forger who recomputes it passes `verify`; only A3's moai-owned store can expose that.
+any of them without recomputing the seal makes `verify` report `signature_seal_mismatch`. A full keyless
+re-seal is not caught by `verify`, and A1 leaves no mechanical trace of it; `supersedes` is not a trace,
+because the forger rewrites and re-seals it too. The only traces are git history (when the pre-forgery
+contract was committed) and, after A3, the moai-owned store. Forward requirement for A3 (t1236): that
+store shall record every signing event, including human signatures — not only receipt issuance.
 
 ### §C.7 Plan-audit verdict is self-reported
 
@@ -335,7 +339,9 @@ The configuration shall expose `workflow.autonomy.mode` (`guided | contract`),
 `decider`, `on_disagree`, or `jev_min_confidence` holds a value outside its set or range, the reader
 shall fall back to `guided`, `required`, `human`, `human`, or `0.50` respectively and emit a warning
 naming the key. When `decider` is `jev` or `llm+jev` while `workflow.jev.enabled` is false, the reader
-shall report a configuration error naming both keys and shall not fall back.
+shall report a configuration error naming both keys and shall not fall back; configuration loading
+still succeeds and the error is surfaced, no command is blocked, and only the receipt signing path is
+refused (`kickoff_decider_jev_disabled`).
 
 ### REQ-CONTRACT-016 — Template default and neutrality
 
@@ -453,7 +459,10 @@ denotes the union defined in `design.md` § Frozen Files, resolved from sources 
 - **Local single-user tamper-proofing is impossible.** Anyone who can write the working tree can edit
   and re-sign a contract, rewrite a receipt, or unset the agent markers. A1's goal is that forgery
   leaves a trace, not that forgery is prevented. An edit to any contract or signature field without
-  recomputing the digest and the seal is detected by `verify`; a forger who recomputes both (the seal
-  is keyless) passes `verify`, and the remaining traces are the `supersedes` chain and git history.
-- **The human path is not agent-proof** (§C.2) until A2's PreToolUse deny exists, and even then only for
-  tool calls the hook observes.
+  recomputing the digest and the seal is detected by `verify`. A full keyless re-seal is not caught by
+  `verify`, and A1 leaves no mechanical trace of it; `supersedes` is not a trace, because the forger
+  rewrites and re-seals it too. The only traces are git history (when the pre-forgery contract was
+  committed) and, after A3, the moai-owned store recording every signing event, including human
+  signatures (§C.6).
+- **The human path is not agent-proof** (§C.2) until A2b's (t1245) PreToolUse deny exists, and even then
+  only for tool calls the hook observes.
