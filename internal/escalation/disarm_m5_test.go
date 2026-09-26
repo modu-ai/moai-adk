@@ -291,7 +291,7 @@ func TestOtherCardLogDoesNotAffectThisCard(t *testing.T) {
 	preWrite(s, w1, "internal/fixture/a.go")
 	contractB := w2.Path(".moai/specs/SPEC-B-001/contract.yaml")
 	saved, _ := os.ReadFile(contractB)
-	for i := 0; cardLog(t, w2).Entries == nil || len(cardLog(t, w2).Entries) < 50; i++ {
+	for i := 0; len(cardLog(t, w2).Entries) < 50; i++ {
 		switch i {
 		case 10:
 			_ = os.Remove(contractB) // disarm t9002
