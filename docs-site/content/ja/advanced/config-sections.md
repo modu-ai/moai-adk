@@ -238,6 +238,37 @@ workflow:
 
 小さな一回きりのプロジェクトで、セッションごとに出るバックログ要約がノイズに感じられるときにこのキーを使います。キュー自体の運用方法は [moai todo](/ja/utility-commands/moai-todo/) のページにあります。
 
+## workflow.yaml — autonomy
+
+SPEC の自律実行契約（`contract.yaml`）をどのように署名し、どこまで縛るかを決めます。契約を扱うコマンドは [moai contract](/ja/cli-reference/contract/) です。名前は似ていますが、[自律性ティア（`MOAI_AUTONOMY_TIER`）](/ja/advanced/autonomy-tier/)とは無関係の設定です。
+
+```yaml
+workflow:
+    autonomy:
+        mode: guided              # guided | contract
+        contract:
+            batch_sign: false       # 複数の SPEC を一度の確認で署名
+            second_review: required # required | advisory | off
+            push_develop: false     # 契約で push-develop 作業を許可
+        kickoff:
+            # decider: human | llm | llm+jev   (省略時: guided は human、contract は llm)
+            jev_min_confidence: 0.50
+        escalation:
+            budget_default: { turns: 60, operations: 40, audit_retries: 2 }
+```
+
+| キー | 説明 |
+|------|------|
+| `mode` | `guided`（既定）または `contract`。レシートによる署名（`--signer llm`）は `contract` でのみ使えます |
+| `contract.batch_sign` | `true` の場合、複数の SPEC を一度の確認で署名します。既定は `false` |
+| `contract.second_review` | `required` の場合、契約の `review.second_model` が `none` または空だと無効と判定します。`advisory`・`off` ではこの検査を行いません |
+| `contract.push_develop` | `false`（既定）の場合、`push-develop` 作業を含む契約は無効と判定されます |
+| `kickoff.decider` | 着手を決める主体。`human`・`llm`・`llm+jev`。省略時はモードから導出されます。`jev` 単独は設定エラーで、レシート署名は拒否されます |
+| `kickoff.jev_min_confidence` | Jev の判断を受け入れる最小信頼度。既定は `0.50` |
+| `escalation.budget_default` | 契約に `budget` がない場合に、署名時に補われる既定の予算 |
+
+**値が不正な場合。** キーがなければ上記の既定値を使います。`mode`・`second_review`・`decider`・`jev_min_confidence` に許可されていない値を書くと、より厳しい既定値（`guided`・`required`・`human`・`0.50`）に戻し、どのキーを置き換えたかを警告で示します。
+
 ## crosssession.yaml — セッション間メッセージ
 
 自分の他の Claude Code セッションから届くメッセージを、このセッションがどう扱うかを決めます。`moai cc` · `moai glm` のランチャーが起動時にこれらの値を一時的な `--settings` ファイルへ移し、ウェブコンソールは設定 seam を通じてこのファイルを編集します。ランチャーを経由せず素の `claude` で起動したセッションは、このファイルを読みません。

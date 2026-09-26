@@ -106,6 +106,9 @@ func ValidCard(card string) bool {
 }
 
 // ValidSpecID reports whether id matches SpecIDPattern.
+//
+// @MX:ANCHOR: [AUTO] SPEC-ID trust-boundary check.
+// @MX:REASON: ResolveSpecDir, Verify, the receipt validator, and the signer all gate on it; widening SpecIDPattern widens the path boundary.
 func ValidSpecID(id string) bool {
 	return specIDRe.MatchString(id)
 }

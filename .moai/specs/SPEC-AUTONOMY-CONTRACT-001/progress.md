@@ -49,7 +49,25 @@ Peer cross-validation (read-only agent, not an author; logs .moai/state/verify/t
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase>_
+```yaml
+sync_complete_at: 2026-09-26
+sync_commit_sha: pending-backfill
+sync_status: audit-ready
+b12_self_test_a: "grep -c 'SPEC-AUTONOMY-CONTRACT-001' CHANGELOG.md -> 0 before emission"
+b12_self_test_b: "distinct AC ids in acceptance.md = 25; CHANGELOG entry cites 25 (AC-CONTRACT-001..025)"
+b12_self_test_c: "every path cited in the CHANGELOG entry verified with ls before commit"
+changelog_entry_position: "[Unreleased] > Added, first bullet"
+frontmatter_status_transitions:
+  spec_md: "in-progress -> completed (updated: 2026-09-26, already current)"
+  plan_md: "no frontmatter; no transition applies"
+  acceptance_md: "no frontmatter; no transition applies"
+  progress_md: "no frontmatter; no transition applies"
+docs_synced:
+  - docs-site/content/{ko,en,ja,zh}/cli-reference/contract.md (new)
+  - docs-site/content/{ko,en,ja,zh}/cli-reference/_meta.yaml (contract entry)
+  - docs-site/content/{ko,en,ja,zh}/advanced/config-sections.md (workflow.yaml autonomy section)
+mx_tags_added: "6 @MX:ANCHOR (Decode, ResolveSpecDir, LoadDir, Canonical, NormalizeAcceptance, ValidSpecID) — comment-only"
+```
 
 ## §F Phase 4 Mode Selection
 

@@ -13,6 +13,9 @@ import (
 // sorted lexicographically; reobserve keeps its author order. The input is
 // not modified. The signature block is carried over unchanged (Digest drops
 // it); the decode-time presence set is not copied.
+//
+// @MX:ANCHOR: [AUTO] Canonical form behind the contract digest.
+// @MX:REASON: Digest, the derived sets (derived.go), and the signer's body comparison all depend on this ordering; changing it changes every recorded contract_sha256.
 func Canonical(c Contract) Contract {
 	out := c
 	out.present = nil

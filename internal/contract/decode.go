@@ -25,6 +25,9 @@ func schemaErr(format string, a ...any) error {
 // define at any depth. The decoded contract records which sections carried a
 // non-null value, so HasSection can tell an absent section from one whose
 // value happens to be the zero value.
+//
+// @MX:ANCHOR: [AUTO] The one strict decoder for contract.yaml.
+// @MX:REASON: Called by Verify, DigestBytes, the signer (sign.go), and the signer's re-render check (render.go); loosening it changes what every consumer accepts.
 func Decode(raw []byte) (*Contract, error) {
 	root, err := parseSingleDocument(raw)
 	if err != nil {

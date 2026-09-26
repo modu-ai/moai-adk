@@ -238,6 +238,37 @@ workflow:
 
 Reach for this key when the per-session backlog summary reads as noise on a small, one-off project. How to operate the queue itself is on the [moai todo](/en/utility-commands/moai-todo/) page.
 
+## workflow.yaml — autonomy
+
+Sets how a SPEC's autonomy contract (`contract.yaml`) is signed and bounded. The command that works with contracts is [moai contract](/en/cli-reference/contract/). Despite the similar name, this is unrelated to the [autonomy tier (`MOAI_AUTONOMY_TIER`)](/en/advanced/autonomy-tier/).
+
+```yaml
+workflow:
+    autonomy:
+        mode: guided              # guided | contract
+        contract:
+            batch_sign: false       # sign several SPECs with one confirmation
+            second_review: required # required | advisory | off
+            push_develop: false     # allow the push-develop action in contracts
+        kickoff:
+            # decider: human | llm | llm+jev   (omitted: human in guided, llm in contract)
+            jev_min_confidence: 0.50
+        escalation:
+            budget_default: { turns: 60, operations: 40, audit_retries: 2 }
+```
+
+| Key | Description |
+|-----|-------------|
+| `mode` | `guided` (default) or `contract`. Receipt-based signing (`--signer llm`) is open only in `contract` |
+| `contract.batch_sign` | When `true`, several SPECs are signed with one confirmation. Default `false` |
+| `contract.second_review` | `required` makes a contract invalid when its `review.second_model` is `none` or empty. `advisory` and `off` skip this check |
+| `contract.push_develop` | When `false` (default), a contract containing the `push-develop` action is invalid |
+| `kickoff.decider` | Who makes the kickoff decision: `human`, `llm`, or `llm+jev`. Derived from the mode when omitted. `jev` alone is a configuration error, and receipt signing is refused |
+| `kickoff.jev_min_confidence` | Minimum confidence at which a Jev judgment is accepted. Default `0.50` |
+| `escalation.budget_default` | Default budget filled in at signing time when a contract has no `budget` |
+
+**Invalid values.** An absent key takes the default above. An unrecognized value for `mode`, `second_review`, `decider`, or `jev_min_confidence` falls back to the stricter default (`guided`, `required`, `human`, `0.50`), with a warning naming the key.
+
 ## crosssession.yaml — cross-session messaging
 
 Decides how this session treats messages from your other Claude Code sessions. The `moai cc` · `moai glm` launchers translate these values into a transient `--settings` file at launch, and the web console edits this file through the settings seam. A session launched without the launcher — a bare `claude` command — does not read this file.

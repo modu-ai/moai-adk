@@ -21,6 +21,9 @@ var (
 // ResolveSpecDir returns <projectRoot>/.moai/specs/<specID>. The ID is
 // validated against SpecIDPattern first, so a caller-supplied ID can never
 // name a path outside `.moai/specs/`.
+//
+// @MX:ANCHOR: [AUTO] Path boundary for caller-supplied SPEC IDs.
+// @MX:REASON: The contract CLI, the signer, and the signtest harness resolve SPEC directories here; the ID check is what keeps a path inside .moai/specs/.
 func ResolveSpecDir(projectRoot, specID string) (string, error) {
 	if !ValidSpecID(specID) {
 		return "", fmt.Errorf("%w: %q", ErrInvalidSpecID, specID)
@@ -37,6 +40,9 @@ func ResolveSpecDir(projectRoot, specID string) (string, error) {
 // All returned errors are I/O errors (the CLI maps them to exit 2), never
 // verify reasons. LoadDir leaves Policy, the registry values, and SpecStatus
 // for the caller to fill.
+//
+// @MX:ANCHOR: [AUTO] The one reader of a SPEC's contract inputs.
+// @MX:REASON: The contract CLI, the signer, and the signtest harness load through it; its symlink containment is the ErrPathEscapesSpecDir guarantee.
 func LoadDir(specDir string) (Inputs, error) {
 	abs, err := filepath.Abs(specDir)
 	if err != nil {

@@ -85,6 +85,9 @@ func longest(expr string) *regexp.Regexp {
 
 // NormalizeAcceptance strips one leading UTF-8 BOM and replaces every CRLF
 // with LF. The input is never modified; the result never aliases it.
+//
+// @MX:ANCHOR: [AUTO] Normalization under the acceptance hash and AC count.
+// @MX:REASON: AcceptanceHash, the Verify AC rule (rules.go), and the signer all normalize here; any change moves every signed acceptance_sha256.
 func NormalizeAcceptance(raw []byte) []byte {
 	b := bytes.TrimPrefix(raw, utf8BOM)
 	return bytes.ReplaceAll(b, crlf, lf)

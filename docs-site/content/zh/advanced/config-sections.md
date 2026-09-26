@@ -238,6 +238,37 @@ workflow:
 
 在小型一次性项目里,每次会话都弹出的待办摘要读起来像噪音时,就用这个键。队列本身的用法在 [moai todo](/zh/utility-commands/moai-todo/) 页面。
 
+## workflow.yaml — autonomy
+
+决定如何签署 SPEC 的自主执行契约（`contract.yaml`）以及约束的范围。处理契约的命令是 [moai contract](/zh/cli-reference/contract/)。它与名称相近的[自主性层级（`MOAI_AUTONOMY_TIER`）](/zh/advanced/autonomy-tier/)互不相关。
+
+```yaml
+workflow:
+    autonomy:
+        mode: guided              # guided | contract
+        contract:
+            batch_sign: false       # 一次确认签署多个 SPEC
+            second_review: required # required | advisory | off
+            push_develop: false     # 允许契约中的 push-develop 操作
+        kickoff:
+            # decider: human | llm | llm+jev   (省略时 guided 为 human，contract 为 llm)
+            jev_min_confidence: 0.50
+        escalation:
+            budget_default: { turns: 60, operations: 40, audit_retries: 2 }
+```
+
+| 键 | 说明 |
+|----|------|
+| `mode` | `guided`（默认）或 `contract`。基于回执的签署（`--signer llm`）仅在 `contract` 下可用 |
+| `contract.batch_sign` | 为 `true` 时，一次确认即可签署多个 SPEC。默认 `false` |
+| `contract.second_review` | 为 `required` 时，契约的 `review.second_model` 为 `none` 或为空即判定无效。`advisory` 和 `off` 不做此检查 |
+| `contract.push_develop` | 为 `false`（默认）时，包含 `push-develop` 操作的契约判定为无效 |
+| `kickoff.decider` | 启动决策者：`human`、`llm` 或 `llm+jev`。省略时由模式推导。单独使用 `jev` 属于配置错误，回执签署会被拒绝 |
+| `kickoff.jev_min_confidence` | 接受 Jev 判断的最低置信度。默认 `0.50` |
+| `escalation.budget_default` | 契约中没有 `budget` 时，签署时填入的默认预算 |
+
+**取值无效时。** 键缺失时使用上述默认值。若 `mode`、`second_review`、`decider` 或 `jev_min_confidence` 填写了不允许的值，则回退到更严格的默认值（`guided`、`required`、`human`、`0.50`），并通过警告指出被替换的键。
+
 ## crosssession.yaml — 会话间消息
 
 决定本会话如何对待来自你其他 Claude Code 会话的消息。`moai cc` · `moai glm` 启动器会在启动时把这些取值写入一个临时的 `--settings` 文件，Web 控制台则通过设置 seam 编辑本文件。不经启动器、直接用 `claude` 起的会话不会读取本文件。
