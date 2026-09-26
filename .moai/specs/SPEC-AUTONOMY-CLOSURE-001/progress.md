@@ -4,8 +4,9 @@
 
 ```yaml
 plan_audit_iter1: "FAIL 0.77 — repaired D1-D18 in v0.2.0"
+plan_audit_iter2: "FAIL 0.84 — repaired D19-D25 in v0.3.0"
 plan_complete_at: "2026-09-26"
-plan_status: draft-awaiting-plan-audit-iter2
+plan_status: draft-awaiting-plan-audit-iter3
 tier: L
 artifacts: [spec.md, plan.md, acceptance.md, design.md, research.md, progress.md]
 requirement_count: 25

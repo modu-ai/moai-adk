@@ -29,7 +29,8 @@ All three live in the **card evidence directory** `<card evidence home>/.moai/re
   "contract_sha256": "<signature.contract_sha256, or \"\">",
   "head_sha": "<HEAD of project_root at audit time>",
   "target": "baseBranch",
-  "scope": { "base_sha": "<merge-base with the integration branch>", "head_sha": "<same as head_sha>",
+  "scope": { "base_branch": "<name from resolveReviewBaseBranchName>", "base_sha": "<merge-base of head and base_branch>",
+             "head_sha": "<same as head_sha>",
              "changed_files": 7, "diff_sha256": "<SHA-256 of git diff base..head>" },
   "backends": [
     { "backend": "claude", "gate": "required", "verdict": "pass" },
@@ -47,7 +48,11 @@ All three live in the **card evidence directory** `<card evidence home>/.moai/re
 Sources: `backends[]`, `participant_count`, `disagreement_flag` (nullable, kept as `null`),
 `audit_receipt`, `build_commit` come from the `ConvergenceResult` the handler already builds
 (research.md §B.2); `spec_id` from the queue store (card → SPEC); `contract_card` and
-`contract_sha256` from A1 `Verify` on that SPEC; `head_sha` and `scope` from git in `project_root`.
+`contract_sha256` from A1 `Verify` on that SPEC; `head_sha` from git in `project_root`; `scope` from
+the same base resolution the `baseBranch` review backends use (`resolveReviewBaseBranchName` →
+remote default head, then `main`, `internal/cli/mcp_review_material.go:131`; merge base as in
+`resolveReviewMergeBase`, `:92`), so the recorded scope is the reviewed scope even where the remote
+default head is not the integration branch.
 
 Failure paths (spec.md REQ-CLOSURE-012): unknown card or card without SPEC → record written with
 `spec_id: ""` (the reader classifies it `unbound`); contract absent → `contract_card: ""`,
@@ -118,7 +123,7 @@ time; otherwise A4's:
 | `git [-C p] [-c k=v] push <remote> <src>:<dst>` (optional leading `+`) | dst normalized (`refs/heads/X` → `X`); src = named ref, `HEAD`, or SHA | evaluate when dst = `I` |
 | `git push <remote> <name>` / `+<name>` / `refs/heads/<name>` | dst = src = `<name>` | evaluate when name = `I` |
 | `git push` / `git push <remote>` | dst = upstream of the tree's current branch | evaluate when upstream branch = `I`; unresolvable upstream → undetermined |
-| `--all`, `--mirror` | may include `I` | evaluate with src = local `I` when it exists; otherwise undetermined |
+| `--all`, `--mirror` | may include `I` | undetermined (deny under contract mode) |
 | `--tags`, `--delete`, refspec with dst ≠ `I` | not an integration push | not evaluated (A2 class 6 still reports) |
 | `git push` inside `sh -c`, `bash -c`, `$(…)`, backticks, `eval`, or with a `$VAR` operand | cannot be proven | undetermined |
 
@@ -130,7 +135,10 @@ Undetermined → `push_check_undetermined` → deny.
 2. Range `<remote>/I..S` (non-merge commits, `git log --no-merges --name-only`). A missing
    remote-tracking ref → undetermined.
 3. Candidates: every `.moai/specs/<ID>/contract.yaml` **in the tree of `S`** (`git show S:<path>`,
-   passed to A1 `Verify` as inputs), signed, SPEC not terminal, `actions` containing `push-develop`.
+   passed to A1 `Verify` as inputs), signed, `actions` containing `push-develop`. **No terminal
+   filter:** the sync commit sets `status: completed` inside the card worktree before the merge, so in
+   `S` every normally-closed card is terminal; excluding terminal SPECs would exempt exactly the cards
+   the stop exists for. Membership is scoped by the range (step 4) instead.
 4. In the push: a range commit changes a governed path of the contract or a path under
    `.moai/specs/<ID>/`.
 
@@ -163,7 +171,7 @@ A range with no in-push contract is ready. A push is ready when no in-push contr
 | Surface | Ready | Not ready | Error |
 |---|---|---|---|
 | PreToolUse hook | fall through to remaining guards | deny `CLOSURE_PUSH_STOP: <SPEC-ID>=<code>[,<code>]…[; …]` | deny with `push_check_undetermined` |
-| `moai contract push-check` | exit 0, `ready` | exit 1, one line per SPEC with codes | exit 2 |
+| `moai contract push-check` | exit 0, `ready` | exit 1, one line per SPEC with codes (undetermined included) | exit 2 on usage error only |
 | `moai contract push-check` under `guided` | exit 0, `inactive (mode guided)` | — | — |
 
 ## §D. Second-review selection (REQ-CLOSURE-013)

@@ -9,7 +9,7 @@ Line numbers are anchors at that base and drift.
 | Dependency | Source read | Exact SHA read | In this tree? |
 |---|---|---|---|
 | A1 — SPEC-AUTONOMY-CONTRACT-001 v0.5.1 | `git show 65e0a9167:.moai/specs/SPEC-AUTONOMY-CONTRACT-001/{design,spec,acceptance}.md` (v0.5.1 per `sed -n 4p` of spec.md → `version: "0.5.1"`) | `65e0a9167` | no — `ls internal/contract` → absent |
-| A1 branch tip at iteration 2 | `git rev-parse --short WT-contract-schema` → `086dfb2fd`; `git diff --stat 65e0a9167 086dfb2fd -- .moai/specs/SPEC-AUTONOMY-CONTRACT-001` → empty (the tip adds M4 code only) | — | no |
+| A1 branch tip at iteration 3 | `git rev-parse --short WT-contract-schema` → `25283ebf8` (v0.5.2). `git diff --stat 65e0a9167 200683e45 -- .moai/specs/SPEC-AUTONOMY-CONTRACT-001` → empty. `25283ebf8` changes wording only: the provenance comment, A2b attributions, and the interim `llm+jev` rule stated as "while A3's amendment has not landed" — no field, code, or rule A4 consumes changes. `65e0a9167` stays the cited schema. | — | no |
 | A2 — SPEC-AUTONOMY-ESCALATION-001 v0.3.0 | `git show 8c9ee29b7:.moai/specs/SPEC-AUTONOMY-ESCALATION-001/{spec,design}.md` | `8c9ee29b7` | no — `git merge-base --is-ancestor 8c9ee29b7 HEAD` → not ancestor |
 | A3 — card t1236 | not read | — | no |
 

@@ -1,7 +1,7 @@
 ---
 id: SPEC-AUTONOMY-CLOSURE-001
 title: "Contract-based autonomy A4 — closure report, second-review record, human verdict, and stop before push (moai contract report)"
-version: "0.2.0"
+version: "0.3.0"
 status: draft
 created: 2026-09-26
 updated: 2026-09-26
@@ -24,6 +24,7 @@ related_specs: [SPEC-AUDIT-PARTICIPANT-COUNT-001, SPEC-CODEX-AUDIT-GATE-AXES-001
 |---------|------|--------|--------|
 | 0.1.0 | 2026-09-26 | manager-spec | Initial plan-phase draft (card t1237, AUTONOMY-A4). A1 read at `67a2f55cb` (v0.5.0), A2 escalation record format at `8c9ee29b7` (v0.3.0 §I). Lead amendment 2026-09-26: the stop before push when the second review was not performed is owned here. |
 | 0.2.0 | 2026-09-26 | manager-spec | Plan-audit iteration 1 (FAIL 0.77) repairs D1-D18. A1 re-pinned to `65e0a9167` (v0.5.1): v0.5.1 receipt fields and `outcome` (D2), card taken from the signed contract `card` field (D3, D4). Push range taken from the pushed source ref with a fail-closed classifier (D5); one evidence-currency rule shared by the second review and the closure report (D6, D16); second-review record binds its reviewed scope (D7); command invariants never render as passed without evidence (D8); one card evidence home for writers and readers (D9); acceptance criteria cut to 25 (D10); plan-audit discovery covers both report streams (D11); residual-risk and guided-mode wording fixed (D13, D18); `audit_multi` card failure paths defined (D17); template markers named (D14). Lead decisions 2026-09-26 on OQ-1 and OQ-2 folded in (D1). |
+| 0.3.0 | 2026-09-26 | manager-spec | Plan-audit iteration 2 (FAIL 0.84) repairs D19-D25: the push set no longer excludes terminal SPECs, so a card synced to `completed` before merge is still evaluated (D19); `--all` and `--mirror` are undetermined under contract mode everywhere (D20); `push_check_undetermined` exits 1 in `push-check` (D21); REQ-016 wording (D22); the second-review scope records the base the review backend resolved (D23); AC-010 states which receipt fixtures are written after signing (D24); A1 tip re-read (D25). |
 
 ## §A. User Story
 
@@ -239,7 +240,8 @@ available in every mode; the push guard is inert under `guided`.
   MCP server shall append one second-review record to the card evidence directory's
   `second-review.jsonl` carrying the card argument, the SPEC ID and contract card the queue store and
   contract yield (empty when either is absent), the signed contract digest (empty when absent or
-  unsigned), the audited commit, the requested `target`, the reviewed scope (base commit, head commit,
+  unsigned), the audited commit, the requested `target`, the reviewed scope (the base branch and base
+  commit resolved by the same base-resolution function the review backends use, head commit,
   changed-file count, diff digest), each backend's name, gate, and verdict, the participant count, the
   disagreement flag, the audit receipt ID, the build commit, and the recording time; when the append
   fails, the returned result shall carry a non-empty `second_review_record_error`; and when the
@@ -268,8 +270,9 @@ available in every mode; the push guard is inert under `guided`.
   Bash tool call contains a `git push` whose destination is or may be the integration branch, the
   PreToolUse hook shall take the push range from the remote-tracking integration ref to the pushed
   source commit, read candidate contracts from the source commit's tree, evaluate push readiness for
-  every signed contract of a non-terminal SPEC that lists `push-develop` and whose governed paths or
-  SPEC directory are changed by a non-merge commit in that range, and deny the call with a reason
+  every signed contract that lists `push-develop` and whose governed paths or SPEC directory are
+  changed by a non-merge commit in that range — whatever the SPEC's `status` in the source commit,
+  because the sync commit sets `completed` before the card is merged — and deny the call with a reason
   beginning `CLOSURE_PUSH_STOP:` followed by the sorted, de-duplicated readiness codes when any
   contract is not ready.
 - **REQ-CLOSURE-016** (Ubiquitous) — The push readiness evaluator shall report a contract not ready
@@ -280,8 +283,8 @@ available in every mode; the push guard is inert under `guided`.
   verdict is `reject` or `amend-contract`, whether current or stale); `push_check_undetermined`
   (REQ-CLOSURE-017); and, where `second_review` is `required`, `second_review_not_performed`
   (REQ-CLOSURE-013 state `not performed`), `second_review_stale` (state `stale`), and
-  `second_review_failed` (state `performed` with verdict `fail`). No recorded human verdict shall not
-  produce a code.
+  `second_review_failed` (state `performed` with verdict `fail`). The absence of a recorded human
+  verdict shall produce no readiness code.
 - **REQ-CLOSURE-017** (Event-detected) — When, under contract mode, a `git push` destination cannot be
   proven different from the integration branch (a bare `git push` without a resolvable upstream,
   `--all`, `--mirror`, a refspec with an unresolvable source, a push inside `sh -c`, command
@@ -295,9 +298,11 @@ available in every mode; the push guard is inert under `guided`.
   state `not required`.
 - **REQ-CLOSURE-019** (Event-driven) — When `moai contract push-check [<remote> <refspec>...]` runs, it
   shall perform the same evaluation as the hook for the given push (or, without arguments, for a push
-  of the local integration branch to its upstream) and exit 0 when every in-range contract is ready, 1
-  when any is not ready (printing each SPEC ID with its codes), and 2 on a usage or I/O error; under
-  `guided` it shall print one line stating that the check is inactive and exit 0.
+  of the local integration branch to its upstream) and exit 0 when every in-range contract is ready;
+  exit 1 when any contract is not ready or the push is undetermined, printing each SPEC ID with its
+  codes, or `push_check_undetermined` with its cause when no SPEC can be named; and exit 2 only on a
+  usage error (unknown flag, malformed argument). Under `guided` it shall print one line stating that
+  the check is inactive and exit 0.
 
 ### D.4 Human verdict
 
@@ -368,7 +373,8 @@ available in every mode; the push guard is inert under `guided`.
   a wrapper (`sh -c`, variable indirection, a script file) evades it. The enforcement of "only a human
   records a verdict" is the terminal and agent-marker check of REQ-CLOSURE-020.
 - **A record states what was requested.** `target: baseBranch` records the review the caller asked
-  for; a backend that interprets the target differently is not detected by A4.
+  for, and the scope records the base the server resolved for it; a backend that interprets the target
+  differently from that resolution is not detected by A4.
 - **Only Bash-tool pushes are observed.** A terminal push, a push through another shell tool, or a
   push with git hooks disabled is not stopped by the PreToolUse guard (this repository sets
   `core.hooksPath` to `/dev/null`, research.md §B.8).

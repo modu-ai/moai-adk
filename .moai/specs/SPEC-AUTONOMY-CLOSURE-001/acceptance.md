@@ -140,11 +140,13 @@
   `llm_answer` approve 0.82, `outcome: approve`; (b) requested and effective `llm+jev` with both
   answers, `outcome: human`; (c) requested `llm+jev`, effective `llm`, `fallback: {applied: true,
   reason: jev_low_confidence}`, no `jev_answer`, `outcome: approve`; (d) receipt (a) plus an unknown
-  top-level field `extra_answer`; (e) a contract signed with method `receipt` and no receipt file —
+  top-level field `extra_answer`; (e) a contract signed with method `receipt` and no receipt file.
+  Fixture (a) is the receipt the contract was signed with; (b), (c), and (d) are written over it after
+  signing (A1 v0.5.1 refuses to sign (b) and (d)), so their A1 verify status is `signed-invalid` —
   **When** the report is built for each, **Then** Kickoff shows for (a)-(c) both deciders, each present
   answer with answer and confidence, the fallback flag and reason, the outcome, and the A1 verify
-  status; (d) renders as (a) plus a `receipt-field-unrecognized` entry naming `extra_answer`; (e)
-  states `missing`.
+  status (`signed-valid` for (a), `signed-invalid` for (b)-(d)); (d) renders the fields of (a) plus a
+  `receipt-field-unrecognized` entry naming `extra_answer`; (e) states `missing`.
 - **Given** a contract signed on the human path, **Then** Kickoff shows method `interactive-tty`,
   signer kind `human`, and no receipt.
 
@@ -209,6 +211,9 @@
   `SPEC-FIXTURE-001=` and `second_review_not_performed`.
 - **Given** the same fixture with a performed `pass` record at the card HEAD, **Then** the hook does not
   deny on A4's account for `git push origin develop`.
+- **Given** the not-ready fixture whose `spec.md` carries `status: completed` in the pushed commit (the
+  sync commit landed before the merge), **When** the hook receives `git push origin develop`, **Then**
+  the decision is deny with `second_review_not_performed`.
 - **Given** the not-ready fixture and `git push origin WT-feature`, **Then** no readiness evaluation runs
   (evaluation counter seam stays 0).
 
@@ -227,11 +232,11 @@
 
 ### AC-CLOSURE-017 — Undetermined denies
 
-- **Given** `mode: contract`, **When** the hook receives each of `git push --all origin`,
+- **Given** `mode: contract` and a ready fixture (performed `pass` review, current closure report) with
+  a local `develop` present, **When** the hook receives each of `git push --all origin`,
   `git push --mirror origin`, `sh -c "git push origin develop"`, `git push origin "$BR"`,
   `git push origin $(git branch --show-current)`, and a bare `git push` in a tree whose current branch
-  has no upstream, **Then** each decision is deny with `push_check_undetermined` unless the form is
-  resolvable per design.md §C.1 (`--all` with a local `develop` present is evaluated, not undetermined).
+  has no upstream, **Then** every decision is deny with `push_check_undetermined`.
 - **Given** a git seam returning an error for the range listing, or a missing `origin/develop` ref,
   **Then** deny with `push_check_undetermined`.
 
@@ -246,7 +251,9 @@
 - **Given** a ready fixture, **When** `moai contract push-check` runs, **Then** exit 0 and `ready`;
   **Given** the not-ready fixture, **Then** exit 1 printing `SPEC-FIXTURE-001` with its codes; **Given**
   `moai contract push-check origin HEAD:develop` from a tree on `main`, **Then** the same result as the
-  hook for that push; **Given** an unknown flag, **Then** exit 2; **Given** `mode: guided`, **Then**
+  hook for that push; **Given** `moai contract push-check --all origin` or a missing `origin/develop`
+  ref, **Then** exit 1 printing `push_check_undetermined`; **Given** an unknown flag, **Then** exit 2;
+  **Given** `mode: guided`, **Then**
   exit 0 and one line containing `inactive`.
 
 ### AC-CLOSURE-020 — Human verdict recording
@@ -305,7 +312,8 @@
 
 - Two queue entries map to the same SPEC: the contract's `card` field decides the card; the other
   entry is ignored.
-- A terminal SPEC's contract never enters the push set.
+- A `completed` SPEC's contract still enters the push set when the range changes its paths; terminal
+  status is not an exclusion (AC-CLOSURE-015).
 - A `second-review.jsonl` line with an unknown `schema_version` is skipped and listed under Not
   Performed; it never counts as performed.
 
