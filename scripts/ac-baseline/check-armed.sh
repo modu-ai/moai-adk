@@ -51,7 +51,11 @@ fi
 got=$(git config --get "hook.$name.command" 2>/dev/null; echo x)
 got=${got%x}
 top=$(git rev-parse --show-toplevel 2>/dev/null)
-if [ -z "$got" ]; then
+# An empty value comes back as that one newline alone; drop it before the
+# emptiness test so an empty command still reads as unset (t1206 audit D1).
+nl='
+'
+if [ -z "${got%"$nl"}" ]; then
 	warn "NOT ARMED: git config hook.$name.command is unset — run scripts/ac-baseline/install-hook.sh"
 elif [ -n "$top" ]; then
 	# 1b. Byte identity with what the installer in this tree writes (t1197, t1150

@@ -100,6 +100,46 @@ func TestACBaselineCheckArmed(t *testing.T) {
 		wantStale(t, out, errs, code)
 	})
 
+	// A same-length substitution defeats any comparison weaker than byte
+	// equality (length-only, prefix-only) — t1206 audit D2.
+	t.Run("stale/same_length_substitution", func(t *testing.T) {
+		r := armedRepo(t)
+		want := r.git("config", "--get", checkArmedKey)
+		mutated := strings.Replace(want, "check-staged.sh", "check-stagex.sh", 1)
+		if mutated == want || len(mutated) != len(want) {
+			t.Fatalf("fixture premise: substitution must change bytes and keep length")
+		}
+		r.git("config", "--local", checkArmedKey, mutated)
+		out, errs, code := r.checkArmed(r.dir)
+		wantStale(t, out, errs, code)
+	})
+
+	// The installer is resolved against the work-tree top, not the caller's
+	// cwd; a SessionStart hook does not promise to start at the top (D3).
+	t.Run("stale/from_subdirectory", func(t *testing.T) {
+		r := armedRepo(t)
+		r.git("config", "--local", checkArmedKey, "true")
+		out, errs, code := r.checkArmed(filepath.Join(r.dir, "scripts"))
+		wantStale(t, out, errs, code)
+	})
+
+	// An empty command value is an unarmed guard wherever the report runs
+	// from, including without a work tree (t1206 audit D1).
+	for _, where := range []string{"top", "git_dir"} {
+		t.Run("empty_command/"+where, func(t *testing.T) {
+			r := armedRepo(t)
+			r.git("config", "--local", checkArmedKey, "")
+			dir := r.dir
+			if where == "git_dir" {
+				dir = filepath.Join(r.dir, ".git")
+			}
+			out, errs, code := r.checkArmed(dir)
+			if code != 0 || out != "NOT-ARMED 1" || len(errs) != 1 || !strings.Contains(errs[0], "command is unset") {
+				t.Fatalf("want one command-unset line and NOT-ARMED 1; got out=%q exit=%d stderr=%q", out, code, errs)
+			}
+		})
+	}
+
 	t.Run("repair/reinstall_clears_stale", func(t *testing.T) {
 		r := armedRepo(t)
 		r.git("config", "--local", checkArmedKey, "true")
