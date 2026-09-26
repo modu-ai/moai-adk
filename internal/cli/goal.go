@@ -861,7 +861,11 @@ func runGoalMissionOperation(cmd *cobra.Command, sessionID string, jsonOutput bo
 			if _, err := authoritativeDispatchEvidence(cmd.Context(), store, root, sessionID, itemID, linkedCardID, gitOpts.Lane, gitOpts.RunID, revision); err != nil {
 				return err
 			}
-			return kanban.RecordFactoryCardAssignment(root, gitOpts.RunID, linkedCardID, gitOpts.Lane, "")
+			if err := kanban.RecordFactoryCardAssignment(root, gitOpts.RunID, linkedCardID, gitOpts.Lane, ""); err != nil {
+				return err
+			}
+			mirrorFactoryAssignment(cmd.Context(), cmd.ErrOrStderr(), root, store, gitOpts.RunID, linkedCardID, gitOpts.Lane)
+			return nil
 		}}
 	} else if action == mission.ActionCommit || action == mission.ActionLocalMerge {
 		owner = gtdCLIOwner{readback: func() (bool, error) { return gitOwner.Readback(cmd.Context(), receipt.OperationID) }, apply: func() error { return gitOwner.Apply(cmd.Context(), receipt.OperationID) }}

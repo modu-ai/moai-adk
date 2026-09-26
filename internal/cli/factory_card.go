@@ -178,6 +178,9 @@ type factoryCardView struct {
 type factoryStatusReport struct {
 	Run   string            `json:"run"`
 	Cards []factoryCardView `json:"cards"`
+	// Unavailable lists the dispatch mirror writes that failed and have not
+	// been reconciled by a later successful write (REQ-FR-025).
+	Unavailable []homestate.RecordUnavailableEntry `json:"unavailable"`
 }
 
 func factoryCardViewOf(c homestate.Card, now time.Time) factoryCardView {
@@ -236,6 +239,11 @@ func newFactoryStatusCommand() *cobra.Command {
 			} else if !errors.Is(statErr, os.ErrNotExist) {
 				return fmt.Errorf("factory status: %w", statErr)
 			}
+			entries, err := homestate.ReadRecordUnavailable(root, report.Run)
+			if err != nil {
+				return fmt.Errorf("factory status: %w", err)
+			}
+			report.Unavailable = append([]homestate.RecordUnavailableEntry{}, entries...)
 			if jsonOut {
 				enc := json.NewEncoder(cmd.OutOrStdout())
 				enc.SetIndent("", "  ")
@@ -275,6 +283,9 @@ func writeFactoryStatusText(w io.Writer, r factoryStatusReport) {
 		if c.Question != "" {
 			_, _ = fmt.Fprintf(w, "  question: %s (resumes to %s)\n", c.Question, dash(c.Resume))
 		}
+	}
+	for _, e := range r.Unavailable {
+		_, _ = fmt.Fprintf(w, "%s run=%s card=%s lane=%s at=%s error=%s\n", factoryRecordUnavailableTag, e.RunID, e.CardID, e.Lane, e.At, e.Error)
 	}
 }
 

@@ -280,7 +280,7 @@ func staleErr(cur Card, expected int64) error {
 
 // withCardTx runs fn inside one write transaction (the database's DSN takes
 // the write lock at BEGIN). fn may return a post-commit callback.
-func (f *FactoryDB) withCardTx(ctx context.Context, _ string, fn func(tx *sql.Tx) (func(), error)) error {
+func (f *FactoryDB) withCardTx(ctx context.Context, runID string, fn func(tx *sql.Tx) (func(), error)) error {
 	var tx *sql.Tx
 	if err := retryFactoryBusy(ctx, func() error {
 		var err error
@@ -290,7 +290,23 @@ func (f *FactoryDB) withCardTx(ctx context.Context, _ string, fn func(tx *sql.Tx
 		return err
 	}
 	defer func() { _ = tx.Rollback() }()
+	// Every successful record write for the run first reconciles the dispatch
+	// mirror writes that failed before it (REQ-FR-025): one record.drift event
+	// per unreconciled entry, committed with this write or not at all.
+	reconciled, err := f.reconcileUnavailable(ctx, tx, runID, time.Now().UTC())
+	if err != nil {
+		return err
+	}
 	after, err := fn(tx)
+	if reconciled != nil {
+		inner := after
+		after = func() {
+			reconciled()
+			if inner != nil {
+				inner()
+			}
+		}
+	}
 	var keep *committedRefusal
 	if err != nil && !errors.As(err, &keep) {
 		return err
