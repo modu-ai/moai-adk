@@ -2589,6 +2589,30 @@
 - path: "workflow.auto_clear.token_threshold"
   class: W
   evidence: reader
+- path: "workflow.autonomy.contract.batch_sign"
+  class: W
+  evidence: reader
+- path: "workflow.autonomy.contract.push_develop"
+  class: W
+  evidence: reader
+- path: "workflow.autonomy.contract.second_review"
+  class: W
+  evidence: reader
+- path: "workflow.autonomy.escalation.budget_default.audit_retries"
+  class: W
+  evidence: reader
+- path: "workflow.autonomy.escalation.budget_default.operations"
+  class: W
+  evidence: reader
+- path: "workflow.autonomy.escalation.budget_default.turns"
+  class: W
+  evidence: reader
+- path: "workflow.autonomy.kickoff.jev_min_confidence"
+  class: W
+  evidence: reader
+- path: "workflow.autonomy.mode"
+  class: W
+  evidence: reader
 - path: "workflow.audit.claude.effort"
   class: W
   evidence: reader

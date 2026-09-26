@@ -66,6 +66,9 @@ func todoFixture(t *testing.T) (root string, store *kanban.BacklogStore) {
 	t.Helper()
 	root = t.TempDir()
 	t.Setenv("CLAUDE_PROJECT_DIR", root)
+	// root is a temp dir; drop the TestMain MOAI_HOME sandbox so queue state
+	// stays project-local under it, where these tests read it (card t1229).
+	t.Setenv(config.EnvHome, "")
 	initGitRepo(t, root)
 	store = kanban.NewBacklogStore(todoBacklogPath(root))
 	return root, store

@@ -235,7 +235,7 @@ func (h *postToolHandler) Handle(ctx context.Context, input *HookInput) (*HookOu
 	// (SPEC-STOP-EVIDENCE-WRITER-001). Bash test results + Edit/Write path-kind
 	// feed the session ledger that GATE-001's runEvidenceGate already consumes.
 	// Best-effort, additive — never blocks, never alters HookOutput.
-	if input.ToolName == "Bash" || input.ToolName == "Edit" || input.ToolName == "Write" {
+	if IsShellTool(input.ToolName) || input.ToolName == "Edit" || input.ToolName == "Write" {
 		logEvidence(input)
 	}
 
@@ -245,7 +245,7 @@ func (h *postToolHandler) Handle(ctx context.Context, input *HookInput) (*HookOu
 	// alone leaves the author believing the suite ran. Advisory-only and
 	// fail-open — appends to systemMessage, never sets Decision, and returns the
 	// message untouched for every non-Bash or non-test event.
-	if input.ToolName == "Bash" {
+	if IsShellTool(input.ToolName) {
 		systemMessage = maybeZeroExecutionAdvisory(input, systemMessage)
 	}
 

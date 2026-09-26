@@ -572,6 +572,16 @@ Hooks は `.claude/settings.json` ファイルの `hooks` セクションで設�
             "timeout": 5
           }
         ]
+      },
+      {
+        "matcher": "PowerShell",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"$CLAUDE_PROJECT_DIR/.claude/hooks/moai/handle-pre-tool.sh\"",
+            "timeout": 5
+          }
+        ]
       }
     ],
     "PostToolUse": [
@@ -642,6 +652,9 @@ Hooks は `.claude/settings.json` ファイルの `hooks` セクションで設�
 | `"Write"` | Write ツールにのみマッチ |
 | `"Write\|Edit"` | Write または Edit ツールにマッチ |
 | `"Bash"` | Bash ツールにのみマッチ |
+| `"PowerShell"` | PowerShell ツールにのみマッチ |
+
+MoAI-ADK は `PreToolUse` の `handle-pre-tool.sh` を、`Write|Edit|Bash` マッチャーと、それとは別の `PowerShell` マッチャーの 2 か所に登録します。Claude Code はシェルコマンドを PowerShell ツール(`CLAUDE_CODE_USE_POWERSHELL_TOOL=1`)でも実行できますが、`Bash` マッチャーはこのツールの呼び出しでは発火しません。両方のマッチャーを置くことで、危険なコマンドの拒否、ブランチガード、統合ウィンドウのロックといったシェルコマンド用のガードが、どちらのツールを経由しても同じように働きます。`PostToolUse` のマッチャーは変わりません。
 
 ## カスタム Hook の書き方
 

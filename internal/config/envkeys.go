@@ -493,6 +493,13 @@ const (
 	// overwritten by whichever session started most recently.
 	EnvClaudeCodeSessionID = "CLAUDE_CODE_SESSION_ID"
 
+	// EnvClaudeCode is set to a non-empty value in the environment of every
+	// process Claude Code spawns (its Bash tool, hooks). The contract signer
+	// treats it, together with EnvClaudeCodeSessionID, as an agent-harness
+	// marker: a human-path `moai contract sign` refuses to run while either
+	// is set (SPEC-AUTONOMY-CONTRACT-001 REQ-CONTRACT-021).
+	EnvClaudeCode = "CLAUDECODE"
+
 	// EnvClaudeConfigDir is the Claude Code configuration directory.
 	EnvClaudeConfigDir = "CLAUDE_CONFIG_DIR"
 
