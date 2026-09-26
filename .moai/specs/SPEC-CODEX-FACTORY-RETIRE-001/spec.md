@@ -1,7 +1,7 @@
 ---
 id: SPEC-CODEX-FACTORY-RETIRE-001
 title: "Retire the interactive-TUI codex factory path (moai codex -k / -f)"
-version: "0.2.0"
+version: "0.3.0"
 status: draft
 created: 2026-09-26
 updated: 2026-09-26
@@ -32,6 +32,11 @@ related_specs: [SPEC-DUAL-HARNESS-RECOVERY-001, SPEC-FACTORY-MIXED-HOOK-001, SPE
   (REQ-009), develop-parent budget baseline (REQ-021), pinned absence evidence,
   scoped design guarantee plus a known-limitation exclusion, extended supersession
   list; ACs revised per `.moai/reports/plan-audit/SPEC-CODEX-FACTORY-RETIRE-001-review-1.md`.
+- 2026-09-26 · v0.3.0 · manager-spec · plan-audit iter-2 FAIL (0.83) revision (final
+  allowed iteration): card-scoped three-dot diff guards replace literal-base diffs
+  (AC-017/021/023), RESERVED exemption in AC-020, lead env shape in AC-025, REQ-023
+  narrowed to the six foreign paths, lead-authored M5 confirmation file and AC-024
+  reclassified as a regression-guard; per `…-review-2.md`.
 
 ## §0 Governing principle [HARD]
 
@@ -214,9 +219,12 @@ config, docs), not by net growth.
 - **REQ-CFR-022** — When a MoAI hook runs under `--harness codex`, the hook shall not
   register, bind, or rotate a factory peer, whatever lane keys its environment carries;
   the same hook without `--harness codex` shall keep registering exactly as before.
-- **REQ-CFR-023** — The run lane shall not modify, revert, move, or remove any path in
-  the develop worktree before the lead's confirmation of the M5 disposition is recorded
-  in `progress.md` §E.2.
+- **REQ-CFR-023** — The run lane shall not modify, revert, move, preserve-to-patch, or
+  remove any of the six foreign paths listed in plan.md §M5 before the lead's
+  confirmation of the M5 disposition exists as a lead-authored file and is cited in
+  `progress.md` §E.2. This prohibition covers only those six paths and the M5
+  patch/move steps; the lane's normal integration of its own card into develop
+  (`git merge --no-ff` inside the integration window) is not restricted by it.
 
 ## §C Decisions recorded here (not deferred)
 

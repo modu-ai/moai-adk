@@ -5,8 +5,27 @@ Every criterion is binary. `<base>` is the `run_base:` value the run lane record
 binary built from the tree under test with `go build -o <scratch>/moai ./cmd/moai`.
 Every grep-count criterion carries a positive control that must be non-zero, so a zero
 cannot come from a wrong path or pattern. Every `go test` criterion runs with `-v` and
-names the tests it expects, so an empty selection cannot pass (`[no tests to run]`
-fails the criterion).
+names the tests it expects, so an empty selection cannot pass (`[no tests to run]` or
+`[no test files]` fails the criterion).
+
+**Card-scoped change guard.** "This card did not change path P" is measured with the
+three-dot diff `git diff --exit-code develop...HEAD -- P`, evaluated on the card branch
+**before** it is merged into develop (after any absorption of develop). Three-dot diff
+compares HEAD with `merge-base(develop, HEAD)`, so commits other cards landed on develop
+never enter the range, while the card's own commits and its absorb-merge resolution do.
+It is never measured as `git diff <literal SHA>`. Controls measured on this tree
+(HEAD `b82332ea2`→`621050a0d` lineage, local develop `c630de892` which is 6 non-merge
+commits past the plan base `553e224f3`):
+- foreign-commit exclusion: `git diff --exit-code --stat 553e224f3 develop -- internal/cli`
+  exits 1 (19 files changed by other cards), while
+  `git log --no-merges --name-only --format= develop..HEAD -- internal/cli` prints 0
+  lines — the literal-base form would be polluted, the card-scoped form is not;
+- card-commit detection: `git diff --exit-code --stat develop...HEAD -- .moai/specs/SPEC-CODEX-FACTORY-RETIRE-001`
+  exits 1 (the card's own commits touch that path), so the same command fires on a path
+  the card does change.
+
+After the merge the range is empty by construction; post-merge evidence is tree identity
+(`git rev-parse <merge>^{tree}` equal to the re-measured tree), not this guard.
 
 ## §D.0 Red at arrival (measured on `553e224f3`)
 
@@ -17,10 +36,12 @@ fails the criterion).
 | 007 | `codex_direct_posix.go:39` registers launch-pending under lane env | M1 |
 | 008, 010 | No backend check on join/lead run selection (`factory.go:245`) | M1 |
 | 011, 012, 016 | The symbols exist (positive controls below) | M2, M3 |
+| 014 | `internal/cli/codex_factory_test.go` still exists (the `ls … missing` clause is red) | M2 |
+| 020 | The fixture carries no explicit target-existence assertion; `pathExists(target)` guards skip silently (`factory_handoff_abandon_test.go:140,159`) | M3 |
 | 019 | 26 line matches + 5 folded matches on the file set | M4 |
 | 025 | `registerFactoryHookPeer` is harness-agnostic (`factory_messages.go:53-116`) | M1 |
-| 003, 004, 009, 013-015, 017, 018, 020-023 | Preservation guards: green before and must stay green | — (mutant probes stated in each) |
-| 024 | Foreign files still present in the develop worktree (lead report) | M5 |
+| 003, 004, 009, 013, 015, 017, 018, 021-023 | Preservation guards: green before and must stay green | — (mutant probes stated in each) |
+| 024 | Foreign files still present in the develop worktree (lead report). Regression-guard, not release-blocking (see the AC) | M5 |
 
 ## §D AC Matrix
 
@@ -88,10 +109,12 @@ dropping any single key from the scrub list turns exactly that key's assertion r
 **When** a codex direct launch (seam-captured) and a codex spawn launch (tmux seam and
 pane-identity seam faked) run,
 **Then** the run's launch-pending peer count is 0 and its `lead_pid` /
-`lead_process_start` are unchanged; and, as the positive control under the same
-environment, `go test ./internal/cli -run '^TestFactoryLauncherRegistersLaunchPendingPeers$' -count=1 -v`
-prints `--- PASS: TestFactoryLauncherRegistersLaunchPendingPeers` (the cc path still
-registers, with a `claude` run fixture).
+`lead_process_start` are unchanged; and, as the positive control,
+`go test ./internal/cli -run '^TestFactoryLauncherRegistersLaunchPendingPeers$' -count=1 -v`
+prints `--- PASS: TestFactoryLauncherRegistersLaunchPendingPeers` — that test calls the
+shared helper `registerFactoryLaunchPending` directly (`factory_mixed_test.go:18-60`),
+so it proves the **shared helper still registers** under a lane environment; it does not
+exercise the cc launcher path, and its run fixture's backend is an opaque string (D4).
 
 ### AC-CFR-008 — joining a codex run is refused (maps REQ-CFR-010)
 
@@ -121,13 +144,18 @@ recorded before the call.
 
 ### AC-CFR-025 — codex-harness hooks register no factory peer (maps REQ-CFR-022)
 
-**Given** an isolated `MOAI_HOME`, an active run `r1` (`lead_backend = 'claude'`), and
-`MOAI_KANBAN_ID=r1`, `MOAI_FACTORY_WORKER=worker-1` in the environment,
-**When** the session-start and user-prompt-submit hooks run once with `--harness codex`
-and once without it, each with a distinct session id,
-**Then** after the `--harness codex` runs the peer row count for `(r1, worker-1)` is 0
-and no endpoint was rotated; after the Claude runs it is 1 (positive control). Mutant:
-removing the codex-harness guard turns the first count to 1.
+**Given** an isolated `MOAI_HOME` and an active run `r1` (`lead_backend = 'claude'`),
+and each of two environment shapes:
+(a) worker shape — `MOAI_KANBAN_ID=r1`, `MOAI_FACTORY_WORKER=worker-1`;
+(b) lead shape — `MOAI_KANBAN_ID=r1`, `MOAI_FACTORY_WORKERS=2`, `MOAI_FACTORY_WORKER`
+unset (the branch that registers slot `lead`, `factory_messages.go:59-65`),
+**When** for each shape the session-start and user-prompt-submit hooks run once with
+`--harness codex` and once without it, each with a distinct session id,
+**Then** after the `--harness codex` runs the peer row count is 0 for `(r1, worker-1)` in
+shape (a) and 0 for `(r1, lead)` in shape (b), and no endpoint was rotated; after the
+Claude runs each count is 1 (positive control). Mutants: removing the codex-harness
+guard turns both first counts to 1; a guard that only fires when `MOAI_FACTORY_WORKER`
+is set leaves shape (b) at 1 and fails.
 
 ### M2 — dead entry code
 
@@ -154,11 +182,13 @@ runs,
 **Given** the tree under test,
 **When** `grep -c 'syscall.Exec' internal/cli/codex_direct_posix.go`,
 `head -1 internal/cli/codex_direct_posix.go internal/cli/codex_direct_windows.go`, and
-`go test ./internal/cli -run '^(TestWorktreeLaunchRejectsConcurrentWriter|TestCodexWorktreeAnchorLockAndBase|TestCodexSpawnAnchorsToPanePID|TestCodexLaunchVerb_StatusStaysTheReadout|TestCodexLocalInstructions_DirectSpawnAndAppSharePrefix|TestCodexTask_ForegroundReturnsOutput|TestSessionMsgSendPollAckHandlers|TestCodexRoleLoadNegativeControl)$' -count=1 -v`
+`go test ./internal/cli -run '^(TestWorktreeLaunchRejectsConcurrentWriter|TestCodexWorktreeAnchorLockAndBase|TestCodexSpawnAnchorsToPanePID|TestCodexLaunchVerb_StatusStaysTheReadout|TestCodexLocalInstructions_DirectSpawnAndAppSharePrefix|TestCodexTask_ForegroundReturnsOutput|TestSessionMsgSendPollAckHandlers|TestCodexRoleLoadNegativeControl|TestCodexAuditVerbRunsInCallerWorktree)$' -count=1 -v`
 run,
 **Then** the grep prints ≥ 1; the build-tag lines are `//go:build !windows` and
 `//go:build windows` respectively; the test run exits 0 and prints exactly one
-top-level `--- PASS: <name>` line for each of the eight named tests (8 lines).
+top-level `--- PASS: <name>` line for each of the nine named tests (9 lines;
+`TestCodexAuditVerbRunsInCallerWorktree` in `codex_audit_launch_test.go` covers
+`moai codex audit` / `codex_audit`).
 
 ### AC-CFR-014 — shared-code test survives its host file (maps REQ-CFR-017)
 
@@ -188,23 +218,26 @@ control).
 
 ### AC-CFR-017 — factory state sources are byte-identical (maps REQ-CFR-014, REQ-CFR-015)
 
-**Given** the tree under test,
-**When** `git diff --exit-code <base> -- internal/factorymsg internal/homestate ':!*_test.go'`
-runs,
-**Then** it exits 0 with empty output. This covers every multi-line `CREATE TABLE`
-body (including `runs.lead_backend`, `internal/homestate/factory.go:36`), every
-`ALTER TABLE` (`factory.go:226-228`), and every index statement. Positive control:
-`git grep -c 'lead_backend' <base> -- internal/homestate/factory.go` prints ≥ 1, and
-a scratch edit of one column name in that file makes the diff command exit 1.
+**Given** the card branch before its merge into develop (after any absorption),
+**When** `git diff --exit-code develop...HEAD -- internal/factorymsg internal/homestate ':!*_test.go'`
+runs (the card-scoped guard defined at the top of this file),
+**Then** it exits 0 with empty output. Because it is a whole-file diff of every
+production source in both packages, it covers every multi-line `CREATE TABLE` body
+(including `runs.lead_backend`, `internal/homestate/factory.go:36`), every `ALTER TABLE`
+(`factory.go:226-228`), and every index statement — and it is blind to other cards'
+changes to those packages on develop. Controls: the two card-scoped-guard controls
+above, plus `git grep -c 'lead_backend' 553e224f3 -- internal/homestate/factory.go`
+prints ≥ 1 (the guarded column is inside the swept files).
 
 ### AC-CFR-018 — shared factory core still passes (maps REQ-CFR-014)
 
 **Given** the tree under test and a scratch `MOAI_HOME`,
-**When** `go test ./internal/factorymsg ./internal/kanban -count=1`,
+**When** `go test ./internal/factorymsg ./internal/kanban -count=1 -v`,
 `MOAI_HOME=<scratch> go test ./internal/hook -run 'Factory' -count=1 -v`,
 `go test ./internal/cli -run '^(TestFactoryLaneHandoffOperatorAbandon|TestFactoryLeadNoticeUsesOperationalStatus|TestFactoryRunSelectionAtomicSlotsAndArgv)$' -count=1 -v`
 and `<bin> factory handoff abandon-lane --help` run,
-**Then** the first command prints one `ok` line per package; the hook run exits 0,
+**Then** the first command prints one `ok` line per package, at least one `--- PASS`
+line, and no `[no test files]`; the hook run exits 0,
 contains `--- PASS: TestFactoryLaneHandoffInteractiveStateMachine`, and does not print
 `[no tests to run]`; the cli run prints `--- PASS:` for each of the three named tests;
 and the help command exits 0.
@@ -215,10 +248,18 @@ and the help command exits 0.
 **When** `go test ./internal/cli -run '^TestFactoryLaneHandoffOperatorAbandon$' -count=1 -v`
 runs,
 **Then** it exits 0 and prints four `--- PASS: TestFactoryLaneHandoffOperatorAbandon/`
-subtest lines; the fixture asserts, before each abandon call, that the target
-worktree path exists and the target branch ref resolves. Mutant (run once in M3 and
-recorded in `progress.md` §E.2): a fixture that skips the worktree/branch step makes
-this command exit non-zero.
+subtest lines, and the fixture asserts before each abandon call:
+- for the three states that have a target — `WT_READY`, `SWITCH_PENDING_INTERACTIVE`,
+  `SWITCH_PENDING_HEADLESS` — that the target worktree path exists and the target
+  branch ref resolves; the existing `if pathExists(target)` guards
+  (`factory_handoff_abandon_test.go:140,159`) become unconditional assertions for these
+  three, so a missing target fails instead of skipping;
+- for `RESERVED` — explicitly exempt from the existence assertion, because by design no
+  target exists yet (`handoffPointReserved = "reserved" // reservation committed, target not created`,
+  `factory_lane_handoff_recover.go:27` on `553e224f3`) — that the
+  target path does **not** exist.
+Mutant (run once in M3 and recorded in `progress.md` §E.2): a fixture that skips the
+worktree/branch step makes this command exit non-zero.
 
 ### M4 — docs, config, budget
 
@@ -235,15 +276,16 @@ this command exit non-zero.
 **Then** check 1 prints 0 lines, check 2 prints `0`, and both `cmp` calls exit 0.
 Positive controls on `553e224f3` (the same commands through `git show 553e224f3:<path>`):
 check 1 prints 26 lines and check 2 prints `5` (AGENTS.md 1 + four locales 1 each).
-`git diff --name-only <base>..HEAD -- docs-site/content` lists all four locale copies
+`git diff --name-only develop...HEAD -- docs-site/content` (card-scoped) lists all four locale copies
 of each edited page.
 
 ### AC-CFR-021 — generated codex MCP table unchanged (maps REQ-CFR-020)
 
-**Given** the tree under test,
-**When** `git diff <base> -- internal/codexwiring/configtoml.go .codex/config.toml` and
-`grep -c MOAI_KANBAN_ID internal/codexwiring/configtoml.go` run,
-**Then** the diff is empty and the grep prints 1.
+**Given** the card branch before its merge into develop,
+**When** `git diff --exit-code develop...HEAD -- internal/codexwiring/configtoml.go .codex/config.toml`
+and `grep -c MOAI_KANBAN_ID internal/codexwiring/configtoml.go` run,
+**Then** the diff exits 0 and the grep prints 1 (controls: the card-scoped-guard pair
+at the top of this file).
 
 ### AC-CFR-022 — always-loaded budget holds on the merge tree (maps REQ-CFR-021)
 
@@ -256,12 +298,13 @@ the figure on `<merge>^1`; both figures are recorded in `progress.md` §E.2.
 
 ### AC-CFR-023 — no agent emission drift (maps REQ-CFR-016)
 
-**Given** the tree under test,
+**Given** the card branch before its merge into develop,
 **When** `make agents-emit-check` and
-`git diff --stat <base> -- internal/template/templates/.codex/agents internal/template/templates/.claude/agents .claude/agents`
+`git diff --exit-code --stat develop...HEAD -- internal/template/templates/.codex/agents internal/template/templates/.claude/agents .claude/agents`
 run,
-**Then** the check exits 0 and the diff is empty (no agent edit is planned; a
-non-empty diff requires a matching `make agents-emit` regeneration and a re-plan note).
+**Then** the check exits 0 and the diff exits 0 (no agent edit is planned; a non-zero
+diff requires a matching `make agents-emit` regeneration and a re-plan note). Controls:
+the card-scoped-guard pair at the top of this file.
 
 ### M5 — merge window
 
@@ -272,16 +315,25 @@ non-empty diff requires a matching `make agents-emit` regeneration and a re-plan
 `git -C <primary>/.claude/worktrees/develop status --porcelain` (run by the lead from
 the primary checkout) are read,
 **Then** all of the following hold:
-1. §E.2 contains an `m5_lead_confirmation:` line with an ISO-8601 timestamp and a
-   message or dispatch reference;
-2. the patch's sha256 line in §E.2 appears **after** that confirmation line, and the
-   patch file's modification time is not earlier than the confirmation timestamp;
+1. the lead-authored confirmation file `<primary>/.moai/reports/t1242/m5-lead-confirm.md`
+   exists and carries the lead's message id (or the dispatch reference) and a verbatim
+   quote of the confirmation; §E.2 contains an `m5_lead_confirmation:` line that cites
+   that file path and the same message id, recorded **before** plan.md §M5 step 1;
+2. the patch's sha256 line in §E.2 appears after that confirmation line;
 3. `<primary>/.moai/reports/t1242/foreign-6.patch` exists, its sha256 equals the
    recorded one, and `grep -c factoryQueueCodexMessage` on it prints ≥ 1;
 4. both `factory-cross-host-push-20260924.{md,html}` exist under
    `<primary>/.moai/reports/t1242/`;
 5. the develop worktree's porcelain status lists none of the six paths.
-A patch with no preceding confirmation line fails item 2 regardless of its content.
+A patch with no preceding confirmation citation fails item 2 regardless of its content.
+
+**Classification: regression-guard, not release-blocking**
+(`verification-completeness.md` §2.1, undecidable disposition). The ordering in items 1-2
+is written by the lane that performs the step, and a file's modification time can be
+changed by `touch` or a copy, so the order of events is not mechanically provable after
+the fact; mtime is advisory only and is not a pass condition. The binding evidence is
+the lead-authored confirmation file and the lead's own read of the develop worktree
+(item 5), which the lead performs before approving the merge.
 
 ## §D.1 Edge cases
 

@@ -106,9 +106,14 @@ ACs: AC-CFR-011..015.
    `handoffGit`, `targetSnapshot`) into a kept test file. Rebuild `wtReady` so it
    **still materializes a real target worktree and branch** (git through `handoffGit`)
    and then drives the handoff to `WT_READY` through the `factorymsg` Store API
-   (`ReserveHandoff`, `MarkHandoffWTReady`, `MarkHandoffSwitchPending*`). The fixture
-   asserts, before any abandon call, that the target path exists and the target
-   branch ref resolves. Run the abandon-lane tests green **before** deleting anything,
+   (`ReserveHandoff`, `MarkHandoffWTReady`, `MarkHandoffSwitchPending*`). Before each
+   abandon call the fixture asserts, for `WT_READY`, `SWITCH_PENDING_INTERACTIVE` and
+   `SWITCH_PENDING_HEADLESS`, that the target path exists and the target branch ref
+   resolves — the `if pathExists(target)` guards at `factory_handoff_abandon_test.go:140,159`
+   become unconditional assertions for these three states so a missing target fails
+   instead of skipping. `RESERVED` is exempt: it has no target by design
+   (`handoffPointReserved`), so for it the fixture asserts the target path does **not**
+   exist. Run the abandon-lane tests green **before** deleting anything,
    and run the AC-CFR-020 mutant once (fixture without the worktree step → test FAILs).
 2. Delete `factory_lane_handoff.go`, `_switch.go`, `_bind.go`, `_recover.go` and their
    eight test files.
@@ -154,9 +159,14 @@ The six paths, as provided by the lead (research §R6):
 Steps (by explicit pathspec only; the patch and reports land in the **primary
 checkout's** `.moai/reports/t1242/`, which is gitignored):
 
-0. Record the lead's confirmation in `progress.md` §E.2 as
-   `m5_lead_confirmation: <ISO-8601 timestamp> <message or dispatch reference>`. No
-   later step runs without this line.
+0. The **lead** writes `<primary>/.moai/reports/t1242/m5-lead-confirm.md` (its message
+   id or dispatch reference plus a verbatim quote of the confirmation). The lane then
+   records, in `progress.md` §E.2 and **before step 1**,
+   `m5_lead_confirmation: <ISO-8601 timestamp> <that file path> <message id>`. No later
+   step runs without both. (REQ-CFR-023 binds only the six paths below and these
+   patch/move steps; the lane's own `git merge --no-ff` of the card into develop is not
+   gated by this confirmation. When both happen in the same integration window, do M5
+   first, then the card merge.)
 1. `moai integration acquire --name <lane> --card t1242`.
 2. Confirm no live writer holds the develop worktree (`moai session list --json`
    filtered to its cwd; liveness-probe each pid; a live or indeterminate entry stops
