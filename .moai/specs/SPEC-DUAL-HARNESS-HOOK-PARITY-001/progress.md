@@ -650,6 +650,88 @@ a handler fault on the real subcommand is fail-closed) PASS; AC-HPR-011 unit
 (`TestCodexInterruptRecordsCancellation`, incl. the `grep -rn EventInterrupt internal/hook`
 invariant as a subtest) PASS. The live legs are M2g (NOT_RUN).
 
+### M2f — goal parity (2026-09-26)
+
+Base HEAD `1fd697bd0` (M2e). Measured on Darwin arm64, go1.26.8, on the shared machine.
+
+**What changed.** The Codex Stop chain's goal member already ran the existing evaluator in
+lookup-only mode (M2d). M2f found one defect and closed it: when the goal member allowed, it
+recorded `pass` in the per-run verdict record whatever the reason — so a cancelled goal and a goal
+ended by its turn ceiling both read as a pass. `goalAllowStatus` (`codex_stop_chain.go`) now reads
+the goal state the evaluation just persisted: only `satisfied` records `pass`; `cancelled` records
+`cancelled`; `ceiling-exit` / `unsatisfiable` record the new `terminated`; anything else
+`not-applicable`. The design-§D6 consumer inventory gained that site as a row (designed-in
+maintenance, not an amendment).
+
+**RED**
+
+- Compile: `codex_goal_parity_test.go:282:34: undefined: stopStatusTerminated` → build failed.
+- Runtime (constants added, `goalAllowStatus` not yet written):
+  `codex_goal_parity_test.go:185: Stop 1: a cancelled goal was recorded "pass"`;
+  `codex_goal_parity_test.go:283: a goal ended by its budget was recorded "pass", want "terminated"` → FAIL.
+  The same run also failed `TestCodexGoalContinueUntilMet` on the test's own defect (it searched
+  the rendered JSON for a command containing `&&`, which JSON escapes as `&&`); the test
+  now decodes the reason first. `TestGoalHostOverrideNotSuccess` and the clear leg passed on the
+  first run — characterizations of existing behaviour, shown to detect by mutations 4 and 5.
+- `TestGoalBudgetTerminationNotSuccess` (`./internal/goal/`) passed on its first run — a
+  characterization of the evaluator's existing exits; detection shown by mutation 6.
+
+**GREEN**
+
+- `go test -json -count=1 -timeout 20m -run 'TestCodexGoalContinueUntilMet|TestGoalCancellationPrecedence|TestGoalHostOverrideNotSuccess|TestCodexGoalBudgetTerminationRecorded|TestStopChainEffectParityGolden|TestCodexInterruptRecordsCancellation' ./internal/cli/`
+  → `49 pass`; no `skip`, no `fail` (the M2d goldens included, so the record change did not move
+  any Claude-vs-Codex decision).
+- `go test -count=1 -v -run 'TestGoalBudgetTerminationNotSuccess|TestGoalStatusConsumersHandleCancelled' ./internal/goal/`
+  → `--- PASS: TestGoalBudgetTerminationNotSuccess` (turn ceiling, wall-clock bound, stagnation),
+  `--- PASS: TestGoalStatusConsumersHandleCancelled`, `ok … goal 3.728s`.
+
+**AC legs**
+
+- AC-HPR-012 golden (`TestCodexGoalContinueUntilMet`): fresh failing receipt → Stop block whose
+  reason names the failed condition, recorded `unmet`; tree moved (no matching receipt) → block
+  naming `moai verify record`, recorded `unmeasured`, and the sentinel the condition would create
+  is absent (nothing executed in the hook); fresh passing receipt → allow, goal `satisfied`,
+  recorded `pass`. PASS.
+- AC-HPR-013 precedence (`TestGoalCancellationPrecedence`): Interrupt leg — the unmet goal blocks,
+  `moai hook interrupt --harness codex` runs, and two later Stops both allow with the goal
+  `cancelled`, `TurnsUsed` unchanged (the loop does not resume); Clear leg — `moai goal clear`
+  (`runGoalClear`) removes the state, the next Stop allows, no verdict file exists, and the member
+  is not recorded `pass`. Neither leg writes a cancellation record by hand. PASS.
+- AC-HPR-014 (`TestGoalBudgetTerminationNotSuccess`, `./internal/goal/`) PASS, plus the Codex-chain
+  leg `TestCodexGoalBudgetTerminationRecorded` (ceiling 2: turn 1 continues, turn 2 allows, status
+  `ceiling-exit`, verdict file persisted, recorded `terminated`) PASS.
+- AC-HPR-015 (`TestGoalHostOverrideNotSuccess`): a `stop_hook_active: true` Stop leaves the unmet
+  goal unsatisfied on the Codex path (and on the Claude evaluator), and eight blocked Stops — the
+  host's consecutive-block cap — leave it unsatisfied. PASS. Measured by the added log line:
+  `after 8 host-capped Stops the goal reads "ceiling-exit" after 8 evaluation(s)`.
+
+**The uncapped goal member (M2d residual), re-examined.** The §D3.8 cap does not cover the goal
+member by design. The measurement above shows what bounds it instead: with the receipt unchanged,
+each evaluation has the same fingerprint, and the stagnation guard (threshold 3) ends the loop as
+`ceiling-exit` — the goal stops blocking and is recorded `terminated`, never `pass`. That bound
+holds only when the evaluation completes and saves. A goal member cut off by its budget on every
+Stop never saves, so neither the turn count nor the fingerprint advances and it continues every
+Stop — still open, and still bounded only by the host.
+
+**Mutations (each applied, observed red, reverted; the file restored from the kept copy)**
+
+1. The evaluator re-executes on a receipt miss (`realCmdRunner{}` in place of the lookup-only
+   runner; AC-HPR-012) →
+   `codex_goal_parity_test.go:130: receipt absent: Codex output = {"decision":"block","reason":"mechanical condition failed: cmd \"touch …/executed && test -f …/done.flag\" exited 1 (want 0): "}, want a continuation naming "moai verify record"` → FAIL.
+2. A met goal keeps blocking (AC-HPR-012) →
+   `codex_goal_parity_test.go:143: met goal: Codex output = {"decision":"block","reason":"mutant"}, want allow` → FAIL.
+3. The Interrupt producer leaves the goal armed (the cancellation branch disabled; AC-HPR-013) →
+   `codex_goal_parity_test.go:192: Stop 1 after the interrupt blocked: {"decision":"block","reason":"mechanical condition failed: cmd \"false\" exited 1 (want 0): …"}` → FAIL.
+4. `stop_hook_active: true` marks the goal satisfied (AC-HPR-015) →
+   `codex_goal_parity_test.go:241: Codex: a stop_hook_active turn marked the unmet goal "satisfied"`;
+   `codex_goal_parity_test.go:265: after the host's block cap the goal reads "satisfied", want an unsatisfied status` → FAIL.
+5. The goal member records `pass` for every allow (the pre-M2f behaviour) →
+   `codex_goal_parity_test.go:198: Stop 1: a cancelled goal was recorded "pass"`;
+   `codex_goal_parity_test.go:296: a goal ended by its budget was recorded "pass", want "terminated"` → FAIL.
+6. A turn-ceiling exit writes `satisfied` (`evaluate.go`; AC-HPR-014) →
+   `budget_termination_test.go:62: a turn ceiling exit wrote status "satisfied"` → FAIL. After the
+   revert, a diff of `internal/goal/evaluate.go` against HEAD printed nothing.
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 _<pending run-phase>_

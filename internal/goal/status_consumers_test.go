@@ -49,6 +49,8 @@ var expectedStatusConsumers = []statusConsumerSite{
 	// Codex Interrupt path (§D7)"), added when the producer landed.
 	{"internal/cli/hook_codex_interrupt.go|type interruptRecord", []string{"Status"}, "field type only (status before the interrupt)"},
 	{"internal/cli/hook_codex_interrupt.go|recordCodexInterrupt", []string{"Goal.Status", "StatusArmed", "StatusCancelled"}, "the cancelled producer: armed → cancelled; any other status recorded, never overwritten"},
+	// M2f: the Codex Stop chain's goal-member record reader.
+	{"internal/cli/codex_stop_chain.go|(*codexStopChain).goalAllowStatus", []string{"Goal.Status", "StatusCancelled", "StatusCeilingExit", "StatusSatisfied", "StatusUnsatisfiable"}, "records cancelled as cancelled, never pass; only satisfied records pass"},
 	{"internal/hook/session_start_compact.go|renderCompactReinject", []string{"Goal.Status", "StatusArmed"}, "acts only on armed; internal/hook untouched (REQ-7)"},
 	{"internal/hook/handoff_inject.go|rearmEmbeddedGoal", []string{"Goal.Status", "StatusArmed"}, "writes armed; internal/hook untouched (REQ-7)"},
 	{"internal/hook/stop_failure.go|disarmGoalOnUnrecoverable", []string{"ClearGoal"}, "failure path, not cancellation; internal/hook untouched (REQ-7)"},

@@ -28,6 +28,7 @@ import (
 	"github.com/modu-ai/moai-adk/internal/codexadapter"
 	"github.com/modu-ai/moai-adk/internal/codexwiring"
 	"github.com/modu-ai/moai-adk/internal/config"
+	"github.com/modu-ai/moai-adk/internal/goal"
 	"github.com/modu-ai/moai-adk/internal/hook"
 	"github.com/modu-ai/moai-adk/internal/hook/security"
 	"github.com/modu-ai/moai-adk/internal/verify"
@@ -52,6 +53,8 @@ const (
 	stopStatusFailed        = "failed"         // advisory member failed or was cut off
 	stopStatusFailOpen      = "fail-open"      // reviewer or result missing: allowed, recorded
 	stopStatusAdvisoryFail  = "advisory-fail"  // gate failed under an advisory mode
+	stopStatusTerminated    = "terminated"     // goal loop ended by its budget (ceiling, wall clock, stagnation) or proved unsatisfiable
+	stopStatusCancelled     = "cancelled"      // goal cancelled by the user (Codex Interrupt)
 )
 
 // Gate ids for the §D3.8 cap counter.
@@ -449,7 +452,7 @@ func (c *codexStopChain) goalMember(ctx context.Context) stopMemberOutcome {
 	case !found:
 		return stopMemberOutcome{Decision: codexadapter.DecisionAllow, Status: stopStatusNotApplicable}
 	case !block:
-		return stopMemberOutcome{Decision: codexadapter.DecisionAllow, Status: stopStatusPass}
+		return stopMemberOutcome{Decision: codexadapter.DecisionAllow, Status: c.goalAllowStatus()}
 	}
 	reason := verdict.Reason
 	if reason == "" {
@@ -468,6 +471,28 @@ func (c *codexStopChain) goalMember(ctx context.Context) stopMemberOutcome {
 	}
 	return stopMemberOutcome{Decision: codexadapter.DecisionDeny, Class: reasonUnmeasured,
 		Reason: "goal: condition not measured on this tree. " + strings.Join(steps, "; ") + "; then end the turn again.\n" + reason}
+}
+
+// goalAllowStatus records why the goal member allowed, read from the goal
+// state the evaluation just persisted. Only a satisfied goal records a pass: a
+// cancelled goal, one ended by its budget, and one whose status is outside the
+// vocabulary must never read as success in the verdict record
+// (SPEC-DUAL-HARNESS-HOOK-PARITY-001 M2f, REQ-HPR-015/016/017).
+func (c *codexStopChain) goalAllowStatus() string {
+	g, err := goal.LoadGoal(c.root, c.input.SessionID)
+	if err != nil || g == nil {
+		return stopStatusNotApplicable
+	}
+	switch g.Status {
+	case goal.StatusSatisfied:
+		return stopStatusPass
+	case goal.StatusCancelled:
+		return stopStatusCancelled
+	case goal.StatusCeilingExit, goal.StatusUnsatisfiable:
+		return stopStatusTerminated
+	default:
+		return stopStatusNotApplicable
+	}
 }
 
 // ── member 2: sync-phase quality gate (receipt, behind its self-gates) ──
