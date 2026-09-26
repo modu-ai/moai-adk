@@ -9,19 +9,21 @@ The queue store cannot carry a fourth state (research.md P10), and doctrine forb
 machine acting on a card. Settled shape:
 
 - One Markdown file per class and fingerprint at
-  `.moai/reports/<card-id>/escalation/<class>-<fingerprint>.md`, YAML frontmatter per spec.md
-  §I.1, body sections Observation / Options / Not observed. A re-trip after resolution gets a
-  `-<n>` suffix so a resolved decision is never overwritten.
+  `<worktree root>/.moai/reports/<card-id>/escalation/<class>-<fingerprint>.md`, YAML
+  frontmatter per spec.md §I.1, body sections Observation / Options / Not observed. A re-trip
+  after resolution gets a `-<n>` suffix so a resolved decision is never overwritten.
+- The directory is gitignored and lives in the card worktree. The lead reads it before the
+  worktree is disposed; the factory record layer (F1) ingests the files later. M1 does not wait
+  for F1.
 - Dedup is a file lookup: the same class and fingerprint with `status: open` means increment
   `occurrences` and `updated_at` in place.
 - "Needs-decision" = "the card has at least one `contract` or `operational` record with
   `status: open`"; `revoke` records (A3) never count.
-- The factory record layer (F1) ingests these files later; M1 does not wait for it.
 
 ## §B — Activation
 
-- Config. `mode` and `escalation.budget_default` are defined by A1 (§ Configuration of the A1
-  draft); this SPEC adds one key beside them:
+- Config. `mode` and `escalation.budget_default` are defined by A1 (A1 § Configuration); this
+  SPEC adds one key beside them:
 
   ```yaml
   workflow:
@@ -37,10 +39,10 @@ machine acting on a card. Settled shape:
 
 | Class | Hook point | Cost class |
 |---|---|---|
-| 10 contract-void (runs first) | every hook and checkpoint under `contract` mode, before resolution | PreToolUse: file stat + signature-block presence; commit checkpoint: A1 verify |
-| 1 acceptance-change | commit checkpoint (PostToolUse, in-process A1 verify) | file hash + counter |
+| 10 detection-disarmed (runs first) | every hook and checkpoint under `contract` mode, before resolution | state-file digest check; contract read; in-process A1 verify only when the contract bytes differ from the cached digest |
+| 1 acceptance-change | commit checkpoint and any hook whose cached verify is invalidated (in-process A1 verify) | file hash + counter |
 | 2a invariant command | PostToolUse Bash (exit status observed, command not re-run) | string compare |
-| 2b frozen-file | PreToolUse write tools | path match |
+| 2b frozen-file | PreToolUse write tools | glob match against cached `frozen_files` |
 | 3 ownership-move | PreToolUse write tools | glob match |
 | 4 new-arch/API | on-demand checkpoint only | git blob read + extraction |
 | 5 contradictory-evidence | commit checkpoint (reads recorded verdict files) | file read |
@@ -55,9 +57,16 @@ A **commit checkpoint** runs inside the PostToolUse hook of a commit on the card
 does only in-process work within the hook's configured timeout (spec.md C4). The **on-demand
 checkpoint** is the only place class 4 runs; its surface is a proposed CLI verb
 (`moai escalation check`, open question Q2) — adding a verb is itself a class-4 event, which is
-why it is flagged rather than chosen silently. On the PreToolUse path the HEAD commit a record
-needs is read from `.git/HEAD` and the ref it names (or the worktree's `gitdir` file), with no
+why it is flagged rather than chosen silently. On every hook path the HEAD commit a record needs
+is read from `.git/HEAD` and the ref it names (or the worktree's `gitdir` file), with no
 subprocess.
+
+PreToolUse reads, in order: each `.moai/specs/*/contract.yaml` under the worktree root (only
+for the `card` field and, when needed, the bytes to digest); the SPEC's `spec.md` frontmatter
+`status` through A1's `terminal` derivation; the card state file and the audit log tail for the
+digest check; HEAD and ref files. A1 verify is called in-process — A1 states verify runs
+without subprocesses or network access so a PreToolUse hook can call it — only at first arming
+and when the contract digest changed (lead ruling 09-26 (3) #3).
 
 ### C.2 Invariant commands are observed, never executed
 
@@ -93,77 +102,133 @@ not-observed.
 Recorded verdict files under `.moai/reports/<card-id>/`; `audit_multi` JSON results when
 persisted. `disagreement_flag` nil → not-observed.
 
-### C.6 Card state file — where "previously observed" lives (lead ruling 09-26 (2) #4)
+### C.6 Card state file — where "previously armed" lives (lead rulings (2) #4, (3) #2, (3) #4)
 
 `<worktree root>/.moai/state/escalation/<card-id>.json`, one per card, written by the detector
-only. It holds:
+only. The path is carved out of the `.moai/state/` exemption (REQ-AE-013): a write-capable tool
+call there trips `ownership-move`. Once A1 or A3 names the moai-owned store (request R10), the
+file moves there and the carve-out follows it. It holds:
 
-- `contract` — the last contract observed signed-valid for this card: SPEC ID, path,
-  `contract_sha256`, and the time it was observed; empty until the first signed-valid
-  observation.
-- `disarmed` — whether a `contract-void` record has already been written for that contract, so
-  the loss escalates exactly once.
+- `armed` — the arming snapshot: SPEC ID, contract path, `signature.contract_sha256`, the digest
+  of the contract file bytes, card id, the derived `frozen_files` (with the registry Frozen list
+  obtained through the constitution registry loader at arming), `effective_never`, `scratch`, the
+  budget, and the time armed; empty until the first signed-valid arming.
+- `verify_cache` — the last verify state and reasons, keyed by the contract byte digest.
+- `disarmed` — the reason and record fingerprint once a `detection-disarmed` record is written
+  for the current arming, so further conditions only increment `occurrences`.
 - counters for class 7 (operations, turns, audit retries per audit kind) and the failure
   fingerprint history for class 8.
 
 Order on every hook and checkpoint under `contract` mode:
 
-1. Read the card state file.
-2. If it names a signed-valid contract and `disarmed` is false, check that contract (stat and
-   signature-block presence on PreToolUse; A1 verify at the commit checkpoint). On absence,
-   missing signature, or a non-acceptance `signed-invalid`, write the `contract-void` record,
-   set `disarmed`, and append the audit line.
-3. Only then run the resolver (§C.8). Its `not-armed` line, if any, follows the `contract-void`
-   record, never replaces it.
+1. Read the card state file and check it against the audit log (§C.11). A mismatch while the
+   audit log shows the card armed is the `state-tamper` disarm reason.
+2. If the state names an arming and `disarmed` is empty, evaluate the disarm reasons against it:
+   the armed contract file is gone (`contract-absent`); verify is no longer `signed-valid`
+   (`signature-invalid`) — verify runs fresh at every commit checkpoint, so an `acceptance.md`
+   edit that leaves the contract bytes unchanged is still seen there, and on PreToolUse only when
+   the contract bytes differ from the cached digest; the SPEC's `terminal` is
+   true (`terminal-status`); the contract's `card` no longer equals the card id, or another
+   non-terminal contract claims the card (`card-mismatch`). On the first reason found, write the
+   `detection-disarmed` record, set `disarmed`, and append the audit line. Classes 7-9 keep
+   counting against the budget recorded at arming.
+3. Only then run the resolver (§C.8) for an unarmed card. Its `not-armed` line, if any, follows
+   the disarm record, never replaces it.
+
+A new arming (a later signed-valid contract for the same card) starts a new arming episode:
+`armed` is replaced, `disarmed` cleared, and a later loss writes a new disarm record.
 
 Operations: PostToolUse write-capable and Bash calls. Turns: Stop hook events. Audit retries:
 audit verdict files beyond the first, per audit kind.
 
 ### C.7 Contract input
 
-Class detection reads the contract through A1's verify (state + reasons + measured acceptance
-values), never by re-parsing the schema itself. Only the source-line mapping for the record's
-`contract_ref` reads the file text directly, because verify output carries no line numbers
-(spec.md §F O6).
+Class detection reads the contract through A1's verify (state, reasons, measured acceptance
+values, derived lists), never by re-parsing the schema itself. Only the `card` field lookup and
+the source-line mapping for `contract_ref` read the file text directly — the first because the
+resolver must choose which contract to verify, the second because verify output carries no line
+numbers (spec.md §F O6).
 
-### C.8 Contract resolver (lead rulings 09-26 #2 and (2) #1)
+### C.8 Contract resolver (lead ruling 09-26 (3) #1)
 
 One function takes the tool call's working directory and returns armed (with the contract path)
-or not-armed (with the layer and reason). Layer (a): find the worktree root, take its directory
-base name as the card id, and read that card's `spec_id` from the queue store (read-only; the
-queue file resolves against the primary checkout from every linked worktree). Layer (b): in that
-SPEC's directory, accept `contract.yaml` only if it carries a `signature` block and the SPEC's
-`spec.md` `status` is neither `completed` nor `archived`. Exactly one survivor arms. It never
-reads the branch name. Keeping it one function is what lets the F1 worktree↔card record replace
-layer (a) later without touching the class detectors.
+or not-armed (with the reason):
+
+1. Find the worktree root; its directory base name is the card id.
+2. Read every `.moai/specs/*/contract.yaml` under the worktree root and keep those whose `card`
+   field equals the card id.
+3. Drop those whose SPEC's A1 `terminal` is true (`completed` / `archived`, quoted or unquoted).
+4. Zero survivors → `not-armed` (no claimant). Two or more → `not-armed` plus a warning naming
+   every SPEC ID. Exactly one → the arming step (REQ-AE-023): in-process A1 verify; arm on
+   `signed-valid`; otherwise `not-armed`, plus a warning with the reason codes on `signed-invalid`.
+
+It never reads the branch name or the queue. Keeping the queue out is deliberate: `spec_id` was
+filled on 0 of 119 live cards (plan-audit iteration 3, P1), and keeping it filled is F1's
+concern. Keeping the resolver one function lets F1's worktree↔card record replace step 1 later
+without touching the class detectors.
 
 ### C.9 Exemption root sources (REQ-AE-013)
 
 | Root | Source | When undeterminable |
 |---|---|---|
 | `.moai/reports/<card-id>/` | card id from the worktree directory name | never — the card id always comes from the path |
-| `.moai/state/` | worktree root | never |
+| `.moai/state/` except `.moai/state/escalation/` | worktree root | never |
 | OS temporary directory | `os.TempDir()` plus the resolved form of `$TMPDIR` | never |
 | session scratchpad | hook input field or environment variable the runtime supplies, if any | outside-root writes are listed not-observed |
 | auto-memory store | the store path `moai memory doctor` resolves (every candidate store) | outside-root writes are listed not-observed |
-| `ownership.scratch` | resolved contract | not applicable without a contract |
+| `ownership.scratch` | A1-derived `scratch` from the resolved contract | not applicable without a contract |
+
+### C.10 Fingerprint inputs per class
+
+The fingerprint must stay stable across repeated observations of one decision and differ across
+distinct decisions. Inputs, hashed together with the class name:
+
+| Class | Normalized observation |
+|---|---|
+| 1 | the sorted set of acceptance reason codes |
+| 2a | the invariant string |
+| 2b, 3 | the repository-relative target path and the matching glob |
+| 4 | addition kind and qualified name |
+| 5 | the pair of disagreeing verdict sources |
+| 6 | the normalized command (whitespace collapsed, remote and ref kept) |
+| 7 | the exceeded dimension only — never the observed count, so a growing count increments one record |
+| 8 | the failure fingerprint (normalized command plus diagnostic key) |
+| 9 | the audit kind |
+| 10 | the arming's `signature.contract_sha256` — so one arming yields one record whatever the reason |
+
+### C.11 State-file tamper detection
+
+Every detector write to the card state file appends one line to
+`<worktree root>/.moai/logs/escalation-audit.jsonl` carrying the SHA-256 of the file's new
+bytes and the previous line's hash (a hash chain). At step 1 of §C.6 the detector hashes the
+state file and compares it with the last chain entry. A mismatch, a state file missing while the
+chain's last entry is an arming, or a broken chain is `state-tamper`. A write-capable tool call
+to either file already trips `ownership-move` (REQ-AE-013); the chain covers Bash writes, which
+are seen only at the next hook (spec.md §G Out of Scope — tamper through Bash). An audit log
+deleted together with the state file leaves no chain and reads as never armed; that residual is
+closed only by the moai-owned store (R10).
 
 ## §D — Alternatives considered
 
 - **Add a `needs-decision` queue state** — rejected: schema freeze test and doctrine.
 - **Reuse `scripts/ac-baseline` directly** — rejected: local-only, corpus comparison.
 - **Deny on trip** — rejected: that is A3; this SPEC is detection only.
-- **Silently disarm on contract loss** — rejected by lead ruling 09-26 #1b.
+- **Silently disarm on contract loss** — rejected by lead ruling 09-26 #1b; generalized to every
+  disarm reason by (3) #2.
 - **Resolve the SPEC from the branch name** — rejected by lead ruling 09-26 #2; `WT-<slug>`
   branches do not carry the card or SPEC.
 - **Count every signed contract in the tree** — rejected by lead ruling 09-26 (2) #1: closed
   SPECs keep their signed contracts, so the count converged to permanent not-armed.
+- **Resolve through the queue `spec_id`** — rejected by lead ruling 09-26 (3) #1: the field is
+  almost never filled, so nearly every card would stay not-armed.
+- **Keep the state file inside the `.moai/state/` exemption** — rejected by lead ruling 09-26
+  (3) #4: an agent could rewrite "previously armed" and disarm silently.
 - **One JSON record per trip under `escalations/`** — superseded by lead ruling 09-26 (2) #6.
 
 (The former §G — push serializer and contract-sign guard — moved to card t1245; spec.md §K.)
 
 ## §F — Proposed package
 
-Detector logic in `internal/escalation` (resolver, class detectors, record writer, state file);
-hook wiring in `internal/hook`. Test names in acceptance.md bind to these packages; a rename is
-recorded in progress.md §E.2.
+Detector logic in `internal/escalation` (resolver, class detectors, record writer, state file,
+audit chain); hook wiring in `internal/hook`. Test names in acceptance.md bind to these
+packages; a rename is recorded in progress.md §E.2.

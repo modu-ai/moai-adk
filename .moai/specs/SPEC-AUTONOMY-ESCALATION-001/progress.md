@@ -5,7 +5,13 @@
 - plan_status: audit-ready
 - plan_complete_at: 2026-09-26
 - Tier: L. Artifacts: spec.md, plan.md, acceptance.md, design.md, research.md (+ this file).
-- Requirements: 23 (REQ-AE-001 … REQ-AE-023). Acceptance criteria: 23 (AC-AE-001 … AC-AE-023).
+- Requirements: 23 (REQ-AE-001 … REQ-AE-023). Acceptance criteria: 24 (AC-AE-001 … AC-AE-024).
+- v0.4.0: plan-audit iteration 3 (FAIL 0.83) repaired; lead rulings 09-26 (3) folded in
+  (spec.md §H): card-field resolver without the queue `spec_id`, unified disarm rule with class 10
+  renamed `detection-disarmed`, in-process verify at PreToolUse, state file carved out of the
+  `.moai/state/` exemption with a hash-chain tamper check, B1-B6. §F re-pinned to A1 v0.5.0 at
+  `67a2f55cb` (lead instruction; decider surfaces re-checked). New A1 requests R8-R10.
+- Run-phase additionally blocked on A1 request R9 (`card` field); without it nothing arms.
 - v0.3.0: plan-audit iteration 2 (FAIL 0.82) repaired; lead rulings 09-26 (2) folded in
   (spec.md §H): two-layer resolver, contract-void before resolution, Markdown record with YAML
   frontmatter and revoke kinds; A1 request R7 added. The v0.2.1 A3 preconditions, their
