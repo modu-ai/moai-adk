@@ -33,6 +33,11 @@ func execsGitFixture(b []byte) bool {
 	return false
 }
 
+// testMainDecl matches a TestMain declared at the start of a line. A string
+// literal that merely contains "func TestMain(" (as this file's own fixtures
+// do) is not a declaration and must not count as one.
+var testMainDecl = regexp.MustCompile(`(?m)^func TestMain\(`)
+
 // scrubCall is the TestMain line that removes the inherited repository.
 var scrubCall = regexp.MustCompile(`gitenv\.ScrubProcess\(\)`)
 
@@ -51,7 +56,7 @@ func scanTestDir(dir string) (execsGit, scrubbed bool, err error) {
 		if execsGitFixture(b) {
 			execsGit = true
 		}
-		if strings.Contains(string(b), "func TestMain(") && scrubCall.Match(b) {
+		if testMainDecl.Match(b) && scrubCall.Match(b) {
 			scrubbed = true
 		}
 	}
@@ -166,6 +171,15 @@ func TestScanTestDir_Detects(t *testing.T) {
 		if execsGit, _, err := scanTestDir(shapeDir); err != nil || !execsGit {
 			t.Fatalf("%s shape: execsGit=%v err=%v, want true", name, execsGit, err)
 		}
+	}
+
+	// A TestMain that exists only inside a string literal is not a scrub.
+	literal := "package p\n\nvar s = \"func TestMain(m *testing.M) { _ = gitenv.ScrubProcess() }\"\n"
+	if err := os.WriteFile(filepath.Join(dir, "literal_test.go"), []byte(literal), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if _, scrubbed, _ := scanTestDir(dir); scrubbed {
+		t.Fatal("a TestMain inside a string literal was counted as a scrub")
 	}
 
 	mainFile := "package p\n\nfunc TestMain(m *testing.M) { _ = gitenv.ScrubProcess() }\n"
