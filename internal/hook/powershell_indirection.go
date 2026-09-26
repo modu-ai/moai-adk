@@ -126,7 +126,7 @@ func powerShellParameterName(arg string) (string, bool) {
 		return "", false
 	}
 	name, _, _ = strings.Cut(name, ":")
-	return name, name != ""
+	return strings.ToLower(name), name != ""
 }
 
 // isEncodedCommandParameter matches the documented aliases -e and -ec and any
