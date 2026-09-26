@@ -53,4 +53,15 @@
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase>_
+- sync_status: audit-ready
+- sync_complete_at: 2026-09-26T17:56:42+09:00
+- sync_commit_sha: pending-backfill-sync (본 필드가 담기는 커밋 자신의 SHA 는 커밋 전에 알 수 없음 — D3 자기참조 면제, 직후 커밋에서 실측 SHA 로 backfill)
+- 코드 제로 판정: 본 SPEC 은 제품 코드를 변경하지 않았다. `git diff --name-only 38148d891..HEAD` = 5파일 전부 `.moai/specs/SPEC-AUTONOMY-KICKOFF-CALIB-001/` 하위(acceptance·plan·progress·research·spec.md)이고, 비-SPEC 파일 수(`| grep -vcE '^\.moai/specs/'`) = 0 — `internal/`·템플릿·README·docs-site 변경 없음 (sync 페이즈 직접 재측정, 본 트리 HEAD `7c26395e1`, 2026-09-26)
+- CHANGELOG 결정: NO-ENTRY. `grep -c 'SPEC-AUTONOMY-KICKOFF-CALIB-001' CHANGELOG.md` = 0(기존 항목 부재를 직접 확인)이고, 본 카드는 내부 도그푸드 측정(사전 등록 설계·실행·판정)으로 사용자 대면 동작 변화 0건 — 항목을 새로 만들지 않는다 (B12 배출 전 0건 확인 원칙)
+- AC 정합: acceptance.md AC 14건(AC-CALIB-001..014, sync 재측정) — CHANGELOG 항목이 없으므로 정산(reconcile) 대상 없음
+- frontmatter: status draft → completed — terminal 전환을 본 sync 커밋이 담는다 (3페이즈 close 관례상 최종 전환은 sync 커밋 몫. draft→in-progress 가 run 커밋에 실리지 않은 경위는 §E.3 Deviations 행 — 결과 상태는 관례와 동일). `updated:` 는 당일이라 값 불변
+- b12 self-test: ① diff 비-SPEC 파일 수 = 0 (직접 재측정) ② CHANGELOG 매치 수 = 0 (직접 재측정) ③ acceptance.md AC 유니크 수 = 14 (직접 재측정) ④ spec lint — 아래 행
+- spec lint: `moai spec lint SPEC-AUTONOMY-KICKOFF-CALIB-001` → "✓ No findings — all SPEC documents are valid", exit 0 (frontmatter 전환 직후 본 트리에서 실행)
+- 산출물: SPEC 아티팩트 5파일 + 런 증거 `.moai/reports/t1244/`(untracked — verdict.md 5-섹션·run-record.md·extract/·runs/·judge_control.jsonl·judge_main.jsonl·scrub_scan.py·judge_batch.py). 트리 변경 없음 — 커밋 대상 아님
+- Gaps: 런 증거 파일의 내용 정합은 §E.2/§E.3 가 담당하며 sync 는 존재 확인만 수행 — 내용 재감사는 sync-audit 몫. 그 외 sync 관측면(diff·CHANGELOG·AC 수·lint·frontmatter)은 전부 관측됨
+- Next: sync-audit → 리드 develop 병합 창 (병합 후 push 는 리드 일괄)

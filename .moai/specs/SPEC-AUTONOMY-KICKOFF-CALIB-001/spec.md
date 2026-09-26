@@ -2,7 +2,7 @@
 id: SPEC-AUTONOMY-KICKOFF-CALIB-001
 title: "계약 기반 자율 하네스 A5 — Kickoff 판단 모드 보정: jev_min_confidence 근거 측정 설계 (카드 t1244, AUTONOMY-A5)"
 version: "0.2.1"
-status: draft
+status: completed
 created: 2026-09-26
 updated: 2026-09-26
 author: manager-spec
