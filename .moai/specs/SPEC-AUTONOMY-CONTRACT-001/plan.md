@@ -88,7 +88,7 @@ change). Covers REQ-CONTRACT-001..004.
 
 ### M2 — Configuration keys and defaults (Priority High)
 
-`workflow.autonomy` struct including `kickoff.{decider, jev_min_confidence, on_disagree}`, defaults,
+`workflow.autonomy` struct including `kickoff.{decider, jev_min_confidence}`, defaults,
 fail-safe reader for every enum/range key, neutral template comments (no decision IDs, no
 repository-specific statements), template and local YAML. Covers REQ-CONTRACT-015, REQ-CONTRACT-016.
 
