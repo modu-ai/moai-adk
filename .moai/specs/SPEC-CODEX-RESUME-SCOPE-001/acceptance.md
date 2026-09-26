@@ -17,7 +17,7 @@ card: t1201
   - **에코 fixture** — `codexTaskScript` 의 모든 `tid-fake` 를 요청한 스레드 id 로 바꾼 변형(run 단계에서 스레드 id 를 인자로 받는 테스트 도우미로 만든다). 요청 id 와 응답 id 가 같은 경우이며, `turn/start` 의 `threadId`·결과의 `thread_id`·`resumed_thread: true` 를 단언할 수 있다. 측정상 이 변형에서 `turn/start="thr-5" result.thread_id=thr-5 resumed_thread=true` 가 관측됐다.
 - "codex 프로세스를 띄우지 않는다"는 fixture 세션의 송신 기록(`sess.sent`)에 메시지가 0개임으로 판정한다.
 - "거부 결과"는 REQ-CRS-010 의 모양이다: 결과의 `status` 가 `"failed"`, `error_code` 가 해당 코드, `CallToolResult.IsError` 가 false.
-- 레코드를 심을 때 같은 `updated_at` 이 생기지 않도록 생성 사이에 간격을 두거나, 동률 정렬을 판정하는 기준에서는 동률을 의도적으로 만든다.
+- 레코드를 심을 때 같은 `updated_at` 이 생기지 않도록 생성 사이에 간격을 두거나, 동률 정렬을 판정하는 기준에서는 동률을 의도적으로 만든다. `registry.create` 는 현재 시각을 쓰므로, 동률 레코드(AC-CRS-011)는 `updated_at` 을 고정 시각으로 채운 레코드를 `registry.write` 로 직접 기록해 만든다(`write` 는 받은 레코드를 그대로 저장한다).
 - 설계는 혼합안으로 잠정 확정됐으므로(`plan.md` §B) 아래 15개 기준 전부가 판정 대상이다.
 
 ### AC ↔ 요구사항 매핑
