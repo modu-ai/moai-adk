@@ -8,13 +8,15 @@ Card: t1202 | Branch: WT-worktree-moai-root | Base: origin/develop `df526c9a9` |
 plan_status: audit-ready
 plan_complete_at: 2026-09-26
 tier: M
-spec_version: "0.2.0"
+spec_version: "0.3.0"
 artifacts: [spec.md, plan.md, acceptance.md, progress.md]
 spec_id_check: "Bash regex PASS on SPEC-MCP-WORKTREE-UNTRACKED-001; ID absent from .moai/specs (count 0)"
 baseline_tree: df526c9a9
 premise_evidence: .moai/reports/t1202/verdict.md
 plan_audit_iter1: ".moai/reports/t1202/plan-audit.md — FAIL 0.62"
-recommendation: "design (a) alone; operator decides at Kickoff (plan.md §C, 7 decisions)"
+plan_audit_iter2: ".moai/reports/t1202/plan-audit-iter2.md — FAIL 0.78; lead decision: option B (scope reduction)"
+deferred_to: t1213
+recommendation: "design (a) alone; operator decides at Kickoff (plan.md §C, 3 decisions)"
 ```
 
 ### Revision map for plan-audit iter-1 (spec v0.1.0 → v0.2.0)
@@ -37,6 +39,21 @@ recommendation: "design (a) alone; operator decides at Kickoff (plan.md §C, 7 d
 | D14 | Pattern labels changed to Event-driven. |
 | D15 | plan §B.3 file estimate and recount-after-M1 rule. |
 | D16 | spec §2.1 describes the check as registration + common-dir, not containment; §2.2 names the `WorktreeCreate` hook as a MoAI entry point. |
+
+### Scope-reduction map for plan-audit iter-2 (spec v0.2.0 → v0.3.0)
+
+| Item | Change |
+|---|---|
+| Scope (lead option B) | Kept validator acceptance + tree operations. Removed REQ-008 (config/catalogue), REQ-010 (state writes), REQ-011 (no-flip), REQ-012 (dual-root provenance) and AC-011/013/014 of v0.2.0; deferral recorded in spec §6 with card t1213. REQs renumbered contiguously 001–010. |
+| D17 | The existing `.moai`-directory branch is first and untouched (REQ-MWU-001, no subprocess); the linked-worktree branch runs only when it fails. New AC-MWU-013: non-git dirs with bare `.moai` or only `.moai/specs/<id>` stay accepted; AC-MWU-014 names the existing fixtures. |
+| D18, D20 (C/S rows), D25 | Out of scope → t1213. Inventory trimmed to tree operations; the audit_multi receipt write and gate read are listed in the t1213 exclusion. D20 build-identity row added as a tree operation. |
+| D19 | Entry points corrected to 6 with call sites; plan §B.1 records the materializer-caller command. |
+| D21 | AC-MWU-001 asserts through the existing `validateProjectRoot(string) (string, error)` only; plan M2 states the RED test compiles pre-fix and fails with the rejection, not a build error. |
+| D22 | Moot — the decision it referenced moved to t1213. |
+| D23 | REQ-MWU-007 + AC-MWU-011: a dangling or prunable sibling entry is excluded, never a rejection reason. |
+| D24 | One-line boundary in acceptance §D.1. |
+| D26 | No change; baseline regenerated again with the sanctioned command. |
+| §C decisions | Registration and graph decisions resolved in scope; remaining operator list: interim behavior until t1213, design (b), worktree base branch — each with a recommended default; no clarification markers. |
 
 ## §E.2 Run-phase Evidence
 
