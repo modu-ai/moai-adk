@@ -1,7 +1,7 @@
 ---
 id: SPEC-HOOK-STOP-PARSE-CAP-001
 title: "Claude Stop 파싱 실패 차단의 moai 자체 상한 — 호스트 상한에 기대지 않는 루프 한계와 사유 문구 개정"
-version: "0.1.0"
+version: "0.2.0"
 status: draft
 created: 2026-09-26
 updated: 2026-09-26
@@ -25,6 +25,7 @@ related_specs:
 | Version | Date | Author | Change |
 |---------|------|--------|--------|
 | 0.1.0 | 2026-09-26 | manager-spec (card t1272) | 최초 plan-phase 초안. 근거는 t1230 판정서와 이 카드의 LIVE 재현(`.moai/reports/t1272/verdict.md`, 로컬 증거)이고, 설계는 리드 판정 D1(2026-09-26)과 사유 문구 개정 지시를 따른다. 기준 트리 `e464fd5d0`. SPEC-HOOK-STDIN-FAILCLOSED-001 의 낡은 측정 서술(F6)은 같은 카드에서 그 SPEC 0.4.3 으로 정정했고, 그 SPEC 의 REQ-HSF-010 문구는 Claude 하네스에 한해 이 SPEC 의 REQ-SPC-010 이 대체한다. |
+| 0.2.0 | 2026-09-26 | manager-spec (card t1272) | plan-audit 1차(FAIL 0.79, `.moai/reports/t1272/plan-audit.md`) 수리. 리드 판정(2026-09-26): G1 — 만료 60분, 이름 붙은 상수 하나. D3 — 셈 열쇠를 `CLAUDE_CODE_SESSION_ID`(비어 있지 않을 때) 우선, 없으면 정본 세션 소유자 해석으로 바꾸고(REQ-SPC-014 신설), 훅 환경의 그 변수 존재를 실경로에서 재는 AC-SPC-016 을 더했다. D1 — 대체 경로를 원시 부모 pid 가 아닌 래퍼 셸을 건너뛰는 해석으로 고치고, 합성 프로세스 트리 차단 AC(AC-SPC-007 (iii))와 배포 래퍼 사슬 경유 M5 로 바꿨으며, §F 에 Windows 기대 동작을 적었다. D2 — 기록 파일 이름을 열쇠의 일방향 해시로 정하고(REQ-SPC-015 신설) 정리 대상을 그 이름 형식의 일반 파일로 좁혔다. D4·D5·D7·D9·D10 반영, D8 은 D3 으로 해소. REQ 13→15, AC 15→16(옛 AC-SPC-007·008 의 범위를 열쇠 해석과 기록 사용 불가로 재편). |
 
 ---
 
@@ -53,11 +54,17 @@ SPEC-HOOK-STDIN-FAILCLOSED-001(이하 「선행 SPEC」)은 훅 stdin 을 파싱
 
 - **D1**: moai 가 연속된 stdin 파싱 실패 Stop 을 스스로 센다. 열쇠는 부모 프로세스 id(호스트 프로세스)와 그에 대응하는 상태 기록이다. 셈이 N=8 을 넘으면 무의견 기본 출력으로 답해 차단을 멈추고 그 사실을 기록한다. 요건: 도구 사용이 셈을 초기화하지 않는다, 파싱에 성공한 Stop 은 초기화한다, 상태 기록은 호스트 프로세스별이며 만료와 정리 경로를 갖는다, 호스트 상한 값에 의존하지 않는다.
 - **사유 문구 개정**: fail-closed 사유는 모델에게 훅·설정 파일을 편집하지 말고 사람에게 알리라고 말해야 한다. 선행 SPEC REQ-HSF-010 의 고정 문구를 이 SPEC 이 대체한다. **Claude 쪽만** 바꾸며, Codex 번역 틀은 건드리지 않는다(카드 t1233 의 범위).
+- **수리 판정 (2026-09-26, 구속력 있음)**: (G1) 만료 시간은 60분이며 이름 붙은 상수 하나로 둔다. (D3) 셈 열쇠는 `CLAUDE_CODE_SESSION_ID` 가 있고 비어 있지 않으면 그 값, 없거나 비어 있으면 정본 세션 소유자 해석(`session.ResolveOwnerPID`)의 결과다. `/clear` 뒤 세션 id 가 바뀌면 셈은 이월되지 않는 것이 의도이며, 바뀌는지는 측정 항목이다. (D1) 대체 경로에 원시 부모 pid 를 쓰지 않는다. (D2) 정리는 기록 파일 이름 형식에 정확히 맞는 일반 파일만 지운다. 위 D1 문단의 「부모 프로세스 id(호스트 프로세스)」와 「호스트 프로세스별」은 이 판정에 따라 「셈 열쇠별」로 읽는다.
 - 대안 D2(호스트 상한 값을 읽어 Claude Stop 을 면제)는 환경 변수가 거부를 통과로 바꾸는 스위치가 되어 REQ-HSF-001 의 금지 절과 부딪히고 발견 2 도 막지 못해 채택하지 않았다. D3(문서화만)도 채택하지 않았다.
 
-### A.4 왜 moai 가 호스트 프로세스를 열쇠로 쓰는가
+### A.4 셈 열쇠를 무엇으로 정하는가
 
-파싱이 실패한 페이로드에서는 `session_id` 도 `stop_hook_active` 도 읽을 수 없다(선행 SPEC §F.2). 남는 식별자는 훅 프로세스 자신의 환경뿐이다. 배포되는 Stop 훅 설정은 `bash -c '… exec bash "$0"'` 로 래퍼를 부르고(`.claude/settings.json` `Stop` 항목), 래퍼 `.claude/hooks/moai/handle-stop.sh` 는 `exec moai hook stop` 으로 끝난다. 두 단계 모두 `exec` 이므로 moai 프로세스의 부모는 호스트(Claude Code) 프로세스다. 같은 가정을 SessionStart 의 프로필 임대 등록이 이미 쓰고 있다(`internal/hook/session_start.go` `registerProfileLease` 의 `os.Getppid()`). 이 판독은 이 트리의 파일 내용으로 확인했고, 실제 프로세스 트리를 관측하지는 않았다.
+파싱이 실패한 페이로드에서는 `session_id` 도 `stop_hook_active` 도 읽을 수 없다(선행 SPEC §F.2). 남는 식별자는 훅 프로세스 자신의 환경과 프로세스 조상이다.
+
+1. **세션 id 환경 변수 (1순위).** 저장소는 `CLAUDE_CODE_SESSION_ID` 를 「Claude Code 가 자신이 띄우는 모든 하위 프로세스(Bash 도구, 훅, stdio MCP 서버)의 환경에 찍는 세션 UUID이며, 훅 stdin 의 `session_id` 와 같다」고 문서화한다(`internal/config/envkeys.go` `EnvClaudeCodeSessionID`). 이 값을 열쇠로 쓰면 PID 재사용, 래퍼 셸 개수, `/clear` 뒤 이월 문제가 함께 줄어든다. **다만 훅 프로세스 환경에 이 변수가 있다는 것은 문서 서술일 뿐 이 카드에서 관측하지 않았다** — plan-audit 은 Bash 도구의 하위 프로세스에서만 값을 봤다. 실경로(`moai hook stop`)에서의 존재는 AC-SPC-016 이 잰다.
+2. **세션 소유자 프로세스 (대체).** 변수가 없거나 비어 있으면 저장소의 정본 해석 `session.ResolveOwnerPID`(`internal/session/session_pid.go`)가 돌려주는 프로세스를 열쇠로 쓴다. 이 해석은 moai 에서 위로 올라가며 래퍼 셸(`sh`·`bash`·`zsh`·`cmd`·`powershell` 등)을 건너뛰고 가장 가까운 비래퍼 조상을 고른다. 그 파일의 주석이 적듯 「런타임의 `sh -c` 와 래퍼의 `exec` 가 접히는지에 따라 세션과 moai 사이에 셸이 0개 이상 끼인다」. 원시 `os.Getppid()` 는 그 셸 하나를 열쇠로 삼아 호출마다 다른 값을 낼 수 있으므로 쓰지 않는다. 해석하지 못하면 `(0, false)` 이며, 이 SPEC 은 그것을 「열쇠 없음」으로 다룬다(REQ-SPC-008).
+
+배포되는 Stop 훅 설정은 `bash -c '… exec bash "$0"'` 로 래퍼를 부르고(`internal/template/templates/.claude/settings.json.tmpl` Stop 항목), 래퍼 `handle-stop.sh` 는 `exec moai hook stop` 으로 끝난다. macOS/Linux 에서는 정적 판독상 이 사슬이 접혀 moai 의 부모가 호스트 프로세스가 될 가능성이 높지만, 실제 프로세스 트리는 관측하지 않았다. 대체 경로가 셸을 건너뛰므로 이 판독이 틀려도 열쇠는 바뀌지 않는다.
 
 ---
 
@@ -66,30 +73,34 @@ SPEC-HOOK-STDIN-FAILCLOSED-001(이하 「선행 SPEC」)은 훅 stdin 을 파싱
 | 용어 | 뜻 |
 |---|---|
 | 파싱 실패 Stop | Claude 하네스(`--harness` 미지정 또는 `claude`)에서 `moai hook stop` 이 stdin 을 파싱하지 못한 호출. 선행 SPEC REQ-HSF-001 의 「`ReadInput` 이 오류를 돌려주는 모든 경우」와 같다 |
-| 호스트 프로세스 | 훅 프로세스의 부모 프로세스. §A.4 의 `exec` 사슬에서는 Claude Code 프로세스다 |
-| 셈 기록 | 호스트 프로세스 하나에 대응하는 상태 기록. 연속 파싱 실패 Stop 의 횟수와 마지막 갱신 시각을 담는다 |
+| 셈 열쇠 | 셈 기록 하나를 고르는 식별자. 세션 열쇠(`CLAUDE_CODE_SESSION_ID` 값) 또는 프로세스 열쇠(세션 소유자 프로세스) 중 하나이며 REQ-SPC-014 가 고른다. 두 종류는 값이 같아 보여도 서로 다른 열쇠다 |
+| 세션 소유자 프로세스 | `session.ResolveOwnerPID` 가 돌려주는 프로세스 — 래퍼 셸을 건너뛴 가장 가까운 조상(§A.4). 이 SPEC 에서 「호스트 프로세스」는 이것을 뜻한다 |
+| 셈 기록 | 셈 열쇠 하나에 대응하는 상태 기록. 연속 파싱 실패 Stop 의 횟수, 마지막 갱신 시각, 열쇠 종류를 담는다 |
+| 기록 파일 이름 | 셈 열쇠에서 일방향 해시로 만든 고정 길이·고정 문자 집합의 이름(REQ-SPC-015). 구체 형식은 plan.md §C |
 | 상태 영역 | 셈 기록이 놓이는 프로젝트 로컬 디렉터리. 프로젝트 루트는 선행 SPEC 의 영속 기록과 같은 방식으로 정한다(구체 경로는 plan.md §C) |
 | N | 차단을 유지하는 연속 파싱 실패 Stop 의 최대 횟수. 8 로 고정한다 |
 | 상한 해제 응답 | N 을 넘은 파싱 실패 Stop 에 내는 무의견 기본 출력(stdout `{}`, exit 0) |
-| 만료 시간 | 마지막 갱신 뒤 이 시간이 지난 셈 기록은 없는 것으로 본다. 값은 plan.md §B 가 정한다 |
+| 만료 시간 | 마지막 갱신 뒤 이 시간이 지난 셈 기록은 없는 것으로 본다. **60분**이며 이름 붙은 상수 하나로 둔다(리드 판정 G1, 위치는 plan.md §B.1) |
 
 ---
 
 ## §C 요구사항 (GEARS)
 
-- **REQ-SPC-001** (Event-driven): **When** Claude 하네스에서 파싱 실패 Stop 이 발생하면, the hook dispatcher **shall** 그 호출의 호스트 프로세스에 대응하는 셈 기록의 연속 횟수를 1 늘리고 마지막 갱신 시각을 현재로 바꾼 뒤, 늘어난 횟수로 REQ-SPC-002 와 REQ-SPC-003 중 하나를 적용한다. 셈 기록이 없으면 횟수 1 에서 시작한다.
+- **REQ-SPC-001** (Event-driven): **When** Claude 하네스에서 파싱 실패 Stop 이 발생하면, the hook dispatcher **shall** 그 호출의 셈 열쇠(REQ-SPC-014)에 대응하는 셈 기록의 연속 횟수를 1 늘리고 마지막 갱신 시각을 현재로 바꾼 뒤, 늘어난 횟수로 REQ-SPC-002 와 REQ-SPC-003 중 하나를 적용한다. 셈 기록이 없으면 횟수 1 에서 시작한다.
 - **REQ-SPC-002** (State-driven): **While** 늘어난 횟수가 N(8) 이하이면, the hook dispatcher **shall** 선행 SPEC REQ-HSF-001·004·008 이 정한 Claude Stop fail-closed 거부를 그대로 낸다 — 디스패치 없음, exit 0, stderr 한 줄, 파싱 실패 fail-closed 키의 영속 기록 한 건. 사유 문구만 REQ-SPC-010 을 따른다.
-- **REQ-SPC-003** (State-driven): **While** 늘어난 횟수가 N 을 넘으면, the hook dispatcher **shall** 상한 해제 응답(stdout `{}`, exit 0)을 내고, 디스패치하지 않으며, 이벤트·하네스·파싱 오류 원인·연속 횟수·N 을 담은 stderr 한 줄과, 기존 세 키(`stdin-parse-fail-closed`·`stdin-parse-exempt`·`hook-fault`)와 구분되는 상한 해제 전용 키로 영속 기록 한 건을 남긴다. 횟수는 계속 늘어나며, REQ-SPC-005 의 초기화나 REQ-SPC-007 의 만료가 일어나기 전까지 이후의 파싱 실패 Stop 도 상한 해제 응답을 받는다 — 파싱할 수 없는 Stop 에서는 턴 경계를 알아낼 방법이 없기 때문이다.
-- **REQ-SPC-004** (Unwanted): The hook dispatcher **shall not** 차단 유지와 상한 해제를 가르는 데 `CLAUDE_CODE_STOP_HOOK_BLOCK_CAP` 나 그 밖의 환경 변수·설정 키를 읽는다. N 은 코드 안의 이름 붙은 상수 하나이며, 이 판정을 바꾸는 실행 시점 스위치를 두지 않는다(선행 SPEC REQ-HSF-001 의 금지 절과 같은 원칙).
-- **REQ-SPC-005** (Event-driven): **When** Claude 하네스의 `moai hook stop` 이 stdin 을 파싱하는 데 성공하면, the hook dispatcher **shall** 디스패치 전에 그 호스트 프로세스의 셈 기록을 지운다. 이후 Stop 핸들러의 결과(차단·통과·오류)는 셈에 영향을 주지 않는다.
+- **REQ-SPC-003** (State-driven): **While** 늘어난 횟수가 N 을 넘으면, the hook dispatcher **shall** 상한 해제 응답(stdout `{}`, exit 0)을 내고, 디스패치하지 않으며, 이벤트·하네스·파싱 오류 원인·연속 횟수·N·열쇠 종류(세션/프로세스)를 담은 stderr 한 줄과, 기존 세 키(`stdin-parse-fail-closed`·`stdin-parse-exempt`·`hook-fault`)와 구분되는 상한 해제 전용 키로 영속 기록 한 건을 남긴다. 횟수는 계속 늘어나며, REQ-SPC-005 의 초기화나 REQ-SPC-007 의 만료가 일어나기 전까지 이후의 파싱 실패 Stop 도 상한 해제 응답을 받는다 — 파싱할 수 없는 Stop 에서는 턴 경계를 알아낼 방법이 없기 때문이다.
+- **REQ-SPC-004** (Unwanted): The hook dispatcher **shall not** 차단 유지와 상한 해제를 가르거나 N·만료 시간의 값을 정하는 데 `CLAUDE_CODE_STOP_HOOK_BLOCK_CAP` 나 그 밖의 환경 변수·설정 키를 읽는다. N 과 만료 시간은 각각 코드 안의 이름 붙은 상수 하나이며, 이 판정을 바꾸는 실행 시점 스위치를 두지 않는다(선행 SPEC REQ-HSF-001 의 금지 절과 같은 원칙). 이 경로에서 허용되는 환경 변수 읽기는 REQ-SPC-014 의 열쇠 선택 하나뿐이며, 그것은 어느 기록을 쓸지만 고르고 문턱은 정하지 않는다 — 호출마다 다른 값을 주면 셈이 늘 1 이 되어 차단이 이어지므로(fail-closed 쪽) 거부를 통과로 바꾸는 스위치가 되지 않는다.
+- **REQ-SPC-005** (Event-driven): **When** Claude 하네스의 `moai hook stop` 이 stdin 을 파싱하는 데 성공하면, the hook dispatcher **shall** 디스패치 전에 그 호출의 셈 열쇠에 대응하는 셈 기록을 지운다. 기록이 없으면 아무 파일도, 상태 영역 디렉터리도 만들지 않는다. 삭제에 실패하면 응답을 바꾸지 않고 실패 사유를 담은 stderr 한 줄만 남긴다. 셈 열쇠를 정할 수 없으면 아무것도 하지 않는다. 이후 Stop 핸들러의 결과(차단·통과·오류)는 셈에 영향을 주지 않는다.
 - **REQ-SPC-006** (Unwanted): The hook dispatcher **shall not** Stop 이외의 이벤트 호출(PreToolUse·PostToolUse 등 도구 사용에 딸린 호출을 포함하며, 그 호출의 파싱 성공·실패를 가리지 않는다)로 셈 기록을 늘리거나 지운다.
-- **REQ-SPC-007** (Event-driven): **When** 셈 기록에 접근할 때 그 기록의 마지막 갱신 시각이 만료 시간보다 오래됐으면, the hook dispatcher **shall** 그 기록을 없는 것으로 보고 지우며, 같은 접근에서 상태 영역에 남은 다른 호스트 프로세스의 만료된 셈 기록도 지운다. 정리는 훅의 응답을 바꾸지 않고, 정리 실패는 stderr 한 줄로만 남는다.
-- **REQ-SPC-008** (Event-driven): **When** 호스트 프로세스를 식별할 수 없거나(부모 프로세스 id 가 1 이하) 셈 기록을 읽고 쓸 수 없으면(상태 영역 생성·쓰기 실패), the hook dispatcher **shall** 상한을 적용하지 않고 REQ-SPC-002 의 fail-closed 거부를 내며, 셈을 적용하지 못한 사유를 담은 stderr 한 줄을 남긴다. 내용을 해석할 수 없는 셈 기록은 없는 것으로 보고 새 기록으로 덮어쓴다. 셈 기록의 쓰기는 읽는 쪽이 반쯤 쓰인 내용을 보지 않는 방식으로 한다.
+- **REQ-SPC-007** (Event-driven): **When** 셈 기록에 접근할 때 그 기록의 마지막 갱신 시각이 만료 시간(60분)보다 오래됐으면, the hook dispatcher **shall** 그 기록을 없는 것으로 보고 지우며, 같은 접근에서 상태 영역에 남은 다른 열쇠의 만료된 셈 기록도 지운다. 정리 대상은 이름이 기록 파일 이름 형식(REQ-SPC-015)에 정확히 맞고 심볼릭 링크가 아닌 일반 파일로 한정한다 — 심볼릭 링크는 따라가지도 지우지도 않고, 형식에 맞지 않는 이름의 파일과 내용을 해석할 수 없는 다른 열쇠의 파일은 남긴다. 상태 영역 자체가 심볼릭 링크이거나 디렉터리가 아니면 정리를 하지 않는다. 정리는 훅의 응답을 바꾸지 않고, 정리 실패는 stderr 한 줄로만 남는다.
+- **REQ-SPC-008** (Event-driven): **When** 셈 열쇠를 정할 수 없거나(REQ-SPC-014 의 두 순위 모두 값을 주지 못함) 셈 기록을 읽고 쓸 수 없으면(상태 영역 생성·쓰기 실패, 상태 영역이 심볼릭 링크이거나 디렉터리가 아님, 자기 기록 자리가 일반 파일이 아님), the hook dispatcher **shall** 상한을 적용하지 않고 REQ-SPC-002 의 fail-closed 거부를 내며, 셈을 적용하지 못한 사유를 담은 stderr 한 줄을 남긴다. 이때 심볼릭 링크의 대상은 읽거나 고치지 않는다. 일반 파일이지만 내용을 해석할 수 없는 자기 기록은 없는 것으로 보고 새 기록으로 덮어쓴다. 셈 기록의 쓰기는 읽는 쪽이 반쯤 쓰인 내용을 보지 않는 방식으로 한다.
 - **REQ-SPC-009** (Where): **Where** 호출이 `--harness codex` 모드이면, the hook dispatcher **shall** 선행 SPEC 의 동작 — (Codex, Stop) 면제(REQ-HSF-012·013), Codex fail-closed 출력의 바이트, 그 사유 문구 — 을 바꾸지 않으며, 셈 기록을 만들거나 읽지 않는다.
 - **REQ-SPC-010** (Where): **Where** 호출이 Claude 하네스이면, the fail-closed 거부의 사유 문구 **shall** 다음 고정 문자열과 바이트 단위로 같다 — `fail-closed: hook stdin could not be parsed as JSON. Do not edit hook scripts or settings files to get past this; stop and tell a human operator (.moai/docs/hook-stdin-fail-closed.md)`. 이 문자열은 선행 SPEC REQ-HSF-010 의 (a) `fail-closed` 표시, (b) 원인 고정 문구, (c) 운영자 문서 식별자를 그대로 싣고, 거기에 훅·설정 파일을 편집하지 말고 사람에게 알리라는 지시를 더한다. 복구 절차(moai 갱신, `disableAllHooks` 등 훅 비활성화 방법)와 파싱에 실패한 페이로드에서 유래한 내용은 싣지 않는다. 이 요구는 Claude 하네스의 네 결정 이벤트(PreToolUse·PermissionRequest·Stop·UserPromptSubmit)와 `moai hook agent` 의 Claude 모드 fail-closed 에 적용된다.
 - **REQ-SPC-011** (Unwanted): The 상한 해제 응답의 stderr 줄과 영속 기록 **shall not** 파싱에 실패한 페이로드의 원문이나 그 일부를 싣는다. 입력에서 유래해 허용되는 정보는 선행 SPEC REQ-HSF-011 과 같다(파싱 오류 메시지, stdin 바이트 수).
-- **REQ-SPC-012** (Ubiquitous): The 운영자 문서 `hook-stdin-fail-closed.md`(템플릿 원본 `internal/template/templates/.moai/docs/`) **shall** Claude Stop 의 moai 자체 상한 — N 값, N 을 넘은 뒤 상한 해제 응답이 이어진다는 것, 파싱에 성공한 Stop 과 만료만이 셈을 되돌린다는 것, 셈 기록이 놓이는 곳 — 과, 이 상한이 호스트 상한 값과 무관하다는 사실을 적는다.
+- **REQ-SPC-012** (Ubiquitous): The 운영자 문서 `hook-stdin-fail-closed.md`(템플릿 원본 `internal/template/templates/.moai/docs/`) **shall** Claude Stop 의 moai 자체 상한 — N 값, N 을 넘은 뒤 상한 해제 응답이 이어진다는 것, 파싱에 성공한 Stop 과 만료(60분)만이 셈을 되돌린다는 것, 셈 열쇠의 선택 규칙(세션 id 우선, 없으면 세션 소유자 프로세스), 셈 기록이 놓이는 곳 — 과, 이 상한이 호스트 상한 값과 무관하다는 사실을 적는다.
 - **REQ-SPC-013** (Ubiquitous): The 코드 주석 **shall** 측정 사실과 일치한다 — `internal/codexadapter/stop_cap.go` `HostLacksStopBlockCap` 주석의 「Claude Code 는 측정되지 않았다」 문장과 `internal/cli/hook_stdin_failclosed.go` 의 Stop 루프 `@MX:WARN`(현재 「호스트 상한만이 루프를 묶는다」)을, t1230·t1272 측정(기본 상한은 도구 사용 없이 이어진 차단에만 걸린다는 해석, 200 주입 조건)과 이 SPEC 의 moai 자체 상한을 반영해 고친다. 이 수정은 run-phase 과제다.
+- **REQ-SPC-014** (Ubiquitous): The hook dispatcher **shall** 셈 열쇠를 다음 순서로 정한다 — (1) 훅 프로세스 환경의 `CLAUDE_CODE_SESSION_ID` 가 있고 앞뒤 공백을 뺀 값이 비어 있지 않으면 그 값을 세션 열쇠로, (2) 그렇지 않으면 저장소의 정본 세션 소유자 해석이 돌려준 프로세스를 프로세스 열쇠로. 원시 부모 프로세스 id 를 열쇠로 쓰지 않으며, 두 종류의 열쇠는 값이 같아도 서로 다른 셈 기록에 대응한다.
+- **REQ-SPC-015** (Ubiquitous): The 셈 기록의 파일 이름 **shall** 열쇠 종류와 열쇠 값으로부터 일방향 해시로 만든 고정 길이·고정 문자 집합의 이름이며, 상태 영역 바로 아래에 놓인다. 세션 id 에 든 어떤 문자(`/`·`\`·`..`·NUL·제어 문자 포함)도 파일 경로를 상태 영역 밖으로 옮기거나 경로 구성 요소를 늘리지 못한다. 기록과 stderr 줄에는 열쇠 종류만 싣고 세션 id 원문은 싣지 않는다.
 
 ---
 
@@ -116,6 +127,11 @@ SPEC-HOOK-STDIN-FAILCLOSED-001(이하 「선행 SPEC」)은 훅 stdin 을 파싱
 
 - 모델이 `.claude/settings*.json`·훅 스크립트·셈 기록 자체를 편집하는 것을 막는 가드. 이 SPEC 은 사유 문구로 그 시도를 줄이려 할 뿐 막지 않는다(선행 SPEC §D 「설정 파일 쓰기 방어」와 같은 경계). 발견 3 의 bypass 세션 위험은 §F 의 잔여 위험으로 남는다.
 
+### Out of Scope — 세션 id 의 해석과 보정
+
+- `CLAUDE_CODE_SESSION_ID` 의 형식(UUID 여부) 검증과, 그 값과 페이로드 `session_id` 의 일치 확인. 파싱 실패에서는 페이로드를 읽을 수 없고, 형식은 이 SPEC 이 보장받은 계약이 아니다 — 값은 해시로만 쓰인다(REQ-SPC-015).
+- `/clear` 뒤에도 환경 변수가 바뀌지 않는 경우의 셈 이월 보정. 바뀌는지는 측정 항목이며(plan.md M5c), 바뀌지 않으면 §F 의 잔여 위험으로 남는다.
+
 ### Out of Scope — 선행 SPEC 의 상태와 AC
 
 - 선행 SPEC 의 `status: completed` 는 유지한다. 그 SPEC 의 acceptance.md 는 고치지 않는다 — Claude 하네스 사유 문구를 바이트로 비교하는 AC-HSF-001(d)·(e4) 와 AC-HSF-013 의 Claude 모드 행의 기대값은 이 SPEC 의 run-phase 가 테스트에서 REQ-SPC-010 문자열로 바꾸며, 그 추적은 이 SPEC 의 acceptance.md 가 소유한다.
@@ -135,11 +151,13 @@ SPEC-HOOK-STDIN-FAILCLOSED-001(이하 「선행 SPEC」)은 훅 stdin 을 파싱
 
 | 위험 | 설명 | 대응 |
 |---|---|---|
-| 부모 프로세스 id 재사용 | 호스트가 끝난 뒤 같은 id 를 받은 다른 호스트가 남은 셈 기록을 이어받을 수 있다. 그러면 새 세션의 첫 파싱 실패 Stop 이 N 보다 이르게 상한 해제 응답을 받는다 | 만료(REQ-SPC-007)가 재사용 창을 만료 시간으로 묶는다. 프로세스 시작 시각 같은 신원 정보를 열쇠에 더하는 방안은 plan.md §C 에 선택지로 적고 이 SPEC 의 요구로 두지 않는다 |
-| 한 호스트 안의 여러 Stop 발생원 | in-process 팀원처럼 한 호스트 프로세스가 여러 대화의 Stop 을 낼 수 있다면 셈이 섞인다 — 한쪽의 파싱 성공이 다른 쪽 셈을 지우거나, 두 쪽 실패가 합산돼 이르게 해제된다 | 잔여 위험으로 기록한다. in-process 팀원의 Stop 이 같은 부모 프로세스에서 `moai hook stop` 으로 오는지는 재지 않았다 |
-| 같은 프로젝트의 동시 세션 | 호스트 프로세스가 다르면 셈 기록이 따로 있으므로 서로 영향이 없다. 같은 호스트의 Stop 두 개가 동시에 셈 기록을 읽고 쓰면 증가 한 번이 사라질 수 있다 | 증가가 사라지는 쪽은 차단이 한 번 더 이어지는 방향(fail-closed 쪽)이다. 잠금은 두지 않는다 |
-| `exec` 가 아닌 래퍼 | 사용자가 래퍼를 `exec` 없이 고치면 moai 의 부모가 호출마다 새 셸이 되어 셈이 매번 1 에서 시작한다 | 그 경우 상한이 걸리지 않고 오늘의 동작(호스트 상한만)으로 돌아간다 — fail-closed 쪽이다. t1272 의 LIVE 훅 래퍼(`hook.sh`)도 파이프로 moai 를 불러 이 모양이었으므로, run-phase 의 LIVE 재측정은 `exec` 형 래퍼로 한다(plan.md M4) |
-| 셈 기록 조작 | 셈 기록은 프로젝트 상태 영역의 파일이므로 쓰기 권한이 있는 모델이 큰 횟수를 써 넣어 Stop 차단을 즉시 해제할 수 있다 | 풀리는 것은 Stop 한 게이트이고, 도구 호출을 막는 결정 이벤트 거부는 영향이 없다. 설정 편집으로 모든 훅을 끄는 면(`disableAllHooks`)이 이미 있으므로 새로 여는 면은 그보다 좁다. 잔여 위험으로 기록한다 |
+| 프로세스 열쇠의 PID 재사용 — 해제 상태 이어받기 | 세션 열쇠를 쓸 수 없어 프로세스 열쇠로 떨어진 경우에만 해당한다. 호스트가 끝난 뒤 60분 안에 같은 id 를 받은 다른 호스트는 남은 셈 기록을 이어받는다. 그 기록이 상한 해제 상태(횟수 9 이상)였다면 새 호스트의 **첫** 파싱 실패 Stop 이 차단 없이 무의견 응답을 받는다 — 파싱 성공이나 만료 전까지 Stop 한 게이트가 풀린 채로 시작하는 fail-open 쪽 결과다 | 잔여 위험으로 명시하며, 이 동작은 AC-SPC-006 대조가 「같은 열쇠, 횟수 9, 59분 전 기록 → 첫 호출이 해제」로 고정해 우연이 아니라 진술된 동작으로 둔다. 창은 만료 시간(60분)으로 묶이고, 세션 열쇠가 있으면 생기지 않는다. 프로세스 지문을 기록에 더하는 보강은 plan.md §C 5 의 선택지다 |
+| `/clear` 뒤의 이월 | 세션 열쇠에서 `/clear` 뒤 `CLAUDE_CODE_SESSION_ID` 가 바뀌면 새 기록에서 1 부터 센다(의도). 바뀌지 않으면 해제 상태를 포함한 셈이 새 대화로 이월된다. 프로세스 열쇠에서는 같은 호스트 프로세스이므로 늘 이월된다 | 바뀌는지는 plan.md M5c 의 측정 항목(AC-SPC-015 (iii), 관측)이다. 측정 전까지 이월 가능성은 잔여 위험이다 |
+| 한 호스트 안의 여러 Stop 발생원 | in-process 팀원처럼 한 호스트 프로세스가 여러 대화의 Stop 을 낸다면, 프로세스 열쇠에서는 셈이 섞인다. 세션 열쇠에서는 팀원 훅의 환경에 팀원 자신의 세션 id 가 찍히는지에 달려 있다 | 잔여 위험으로 기록한다. 팀원 훅 환경의 세션 id 는 재지 않았다 |
+| 같은 열쇠의 동시 Stop | 열쇠가 다르면 셈 기록이 따로 있어 서로 영향이 없다. 같은 열쇠의 Stop 두 개가 동시에 셈 기록을 읽고 쓰면 증가 한 번이 사라질 수 있다 | 증가가 사라지는 쪽은 차단이 한 번 더 이어지는 방향(fail-closed 쪽)이다. 잠금은 두지 않는다 |
+| 셸이 아닌 래퍼 | 대체 경로는 래퍼 셸을 건너뛰므로 `exec` 여부는 열쇠를 바꾸지 않는다. 다만 사용자가 래퍼 목록에 없는 프로그램(예: 인터프리터)으로 moai 를 부르면 그 프로그램이 호출마다 새 프로세스라 프로세스 열쇠가 매번 달라진다 | 그 경우 셈이 늘 1 이라 오늘의 동작(호스트 상한만)으로 돌아간다 — fail-closed 쪽이다. 세션 열쇠가 있으면 래퍼 모양과 무관하다 |
+| Windows | 세션 열쇠가 있으면 다른 플랫폼과 같다. 대체 경로에서는 Git Bash 의 `exec` 가 프로세스를 대체하지 않고 에뮬레이션하므로 호스트와 moai 사이에 `bash` 프로세스가 남는다. 해석은 Toolhelp32 로 조상을 읽고 `bash`·`sh`·`cmd`·`powershell`·`pwsh` 를 건너뛰므로 호스트를 찾을 것으로 **기대**한다 | Windows 에서는 재지 않았다. 조상 탐색이 실패하면 「열쇠 없음」이 되어 차단이 유지된다(REQ-SPC-008, 오늘의 동작). 완료 정의에 `GOOS=windows` 빌드가 있다 |
+| 셈 기록 조작 | 셈 기록은 프로젝트 상태 영역의 파일이므로 쓰기 권한이 있는 모델이 큰 횟수를 써 넣어 Stop 차단을 즉시 해제할 수 있다. 상태 영역이나 기록을 심볼릭 링크로 바꿔 moai 의 삭제 경로를 다른 곳으로 돌리려는 시도도 가능하다 | 풀리는 것은 Stop 한 게이트이고, 도구 호출을 막는 결정 이벤트 거부는 영향이 없다. 설정 편집으로 모든 훅을 끄는 면(`disableAllHooks`)이 이미 있으므로 새로 여는 면은 그보다 좁다. 삭제 경로는 링크를 따라가지 않고 이름 형식에 맞는 일반 파일만 지우므로(REQ-SPC-007) 상태 영역 밖을 지우지 못하며, 링크로 바뀐 상태 영역은 상한 없이 차단을 유지한다(REQ-SPC-008). 잔여 위험으로 기록한다 |
 | 상한 해제 뒤의 지속 해제 | N 을 넘은 뒤에는 파싱 성공이나 만료 전까지 그 호스트의 파싱 실패 Stop 이 계속 통과한다 — Stop 에 걸린 가드 핸들러가 그동안 실행되지 않는다 | 파싱할 수 없는 Stop 에서 턴 경계를 알아낼 방법이 없으므로 D1 을 문자 그대로 적용한 결과다. 매 해제가 stderr 와 전용 기록으로 소리를 낸다(REQ-SPC-003) |
 | 증거의 폭 | 호스트 상한 관측은 Claude Code 2.1.283, `-p` 비대화형, haiku 한 모델, 팔당 1회다. 「도구 사용이 셈을 초기화한다」는 해석이다 | 이 SPEC 의 상한은 호스트 상한의 의미와 무관하게 동작하도록 요구되므로(REQ-SPC-004) 해석이 틀려도 설계는 유효하다. 업스트림이 상한 의미를 바꾸면 A.1 표가 낡는다 |
-| 사유 문구의 효과 | 새 사유 문구가 모델의 훅 편집 시도를 실제로 줄이는지는 재지 않았다 | 효과 측정은 plan.md M4 의 LIVE 재측정에서 관측 항목으로 둔다(차단 AC 아님) |
+| 사유 문구의 효과 | 새 사유 문구가 모델의 훅 편집 시도를 실제로 줄이는지는 재지 않았다 | 효과 측정은 plan.md M5b 의 LIVE 재측정에서 관측 항목으로 둔다(차단 AC 아님) |

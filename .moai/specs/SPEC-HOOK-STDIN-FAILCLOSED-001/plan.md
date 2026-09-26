@@ -115,7 +115,7 @@ Q2(측정)·Q1(A1 + 메커니즘 (i))·Q3(포함)이 2026-09-24 에 판정됐다
   - 주의: 이 함수의 소유자는 t1099 다. t1099 착지 전에 이 확장이 필요해지면 t1099 레인과 조율하고, 착지 후라면 이 브랜치에서 확장하되 `@MX:ANCHOR`(fan_in) 를 갱신한다. 확장 대신 파싱 실패 전용 작성기를 새로 두는 것도 허용되지만, 그 경우에도 출력은 `TranslateCodex` 를 거쳐야 한다(REQ-HSF-003).
 - Claude: 번역 표 HarnessClaude fatal_error 행에서 렌더링. `TranslateCodex` 를 하네스 인자를 받는 형태로 일반화할지, CLI 쪽에서 `Lookup` + `Render` 를 직접 부를지는 구현 판단이다 — 어느 쪽이든 표를 거친다. 일반화한다면 t1099 의 `@MX:ANCHOR`(fan_in) 를 갱신한다.
 - 사유 문구: `fail-closed` 표시, stdin 파싱 실패 고정 문구, 운영자 문서 식별자를 run-phase 상수로 정의한다. 그 밖의 안내(복구 절차 등)는 싣지 않는다(REQ-HSF-010, 0.4.0).
-- Stop 경로에 `@MX:WARN`(REQ-HSF-009): Claude 쪽은 호스트 상한 의존과 그 근거가 미측정 독트린이라는 사실, Codex 쪽은 면제와 Q2 측정 근거를 적는다.
+- Stop 경로에 `@MX:WARN`(REQ-HSF-009): Claude 쪽은 호스트 상한 의존과 그 근거가 미측정 독트린이라는 사실, Codex 쪽은 면제와 Q2 측정 근거를 적는다. **(0.4.3 정정) Claude 쪽은 이제 측정됐다 — REQ-HSF-009 와 §F.2 「Stop 루프 — Claude」(t1230·t1272). 「미측정 독트린」 서술은 기록으로만 남으며, 주석 개정은 SPEC-HOOK-STOP-PARSE-CAP-001 REQ-SPC-013 이 소유한다.**
 
 ### M1b — `runAgentHook` 의 같은 처리 (Priority High)
 
