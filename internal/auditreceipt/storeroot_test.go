@@ -109,6 +109,60 @@ func TestWSR014_StoreRootPerRoot(t *testing.T) {
 	}
 }
 
+// The parsers reject every output shape they are not built for, and the
+// predicate needs positive linked-worktree evidence.
+func TestStoreRootHelpers_RejectUnexpectedShapes(t *testing.T) {
+	for _, out := range []string{"", "relative/path\n", "/a\n/b\n", "   \n"} {
+		if _, err := SingleGitPath(out); err == nil {
+			t.Errorf("SingleGitPath(%q) accepted an unexpected shape", out)
+		}
+	}
+	for _, out := range []string{"", "HEAD abc\n", "worktree relative\n"} {
+		if _, err := parseWorktreePorcelain(out); err == nil {
+			t.Errorf("parseWorktreePorcelain(%q) accepted an unexpected shape", out)
+		}
+	}
+	entries, err := parseWorktreePorcelain("worktree /nonexistent-p\nHEAD x\n\nworktree /nonexistent-w\nprunable gitdir file points to non-existent location\n")
+	if err != nil || len(entries) != 2 || entries[0].Path != "" || !entries[1].Prunable {
+		t.Errorf("parseWorktreePorcelain: want 2 entries, uncanonicalizable paths empty, second prunable; got %+v %v", entries, err)
+	}
+
+	base := t.TempDir()
+	cases := map[string]func(dir string){
+		"empty root":        func(string) {},
+		"own workflow.yaml": func(d string) { srWrite(t, filepath.Join(d, ".moai", "config", "sections", "workflow.yaml"), "x") },
+		".git directory":    func(d string) { _ = os.MkdirAll(filepath.Join(d, ".git"), 0o755) },
+		"no gitdir line":    func(d string) { srWrite(t, filepath.Join(d, ".git"), "nothing\n") },
+		"gitdir missing":    func(d string) { srWrite(t, filepath.Join(d, ".git"), "gitdir: missing\n") },
+		"parent not worktrees": func(d string) {
+			_ = os.MkdirAll(filepath.Join(d, "admin", "x"), 0o755)
+			srWrite(t, filepath.Join(d, "admin", "x", "commondir"), "..\n")
+			srWrite(t, filepath.Join(d, ".git"), "gitdir: admin/x\n")
+		},
+		"no commondir": func(d string) {
+			_ = os.MkdirAll(filepath.Join(d, "worktrees", "x"), 0o755)
+			srWrite(t, filepath.Join(d, ".git"), "gitdir: worktrees/x\n")
+		},
+	}
+	if IsConfigOrphanedRoot("") {
+		t.Error(`IsConfigOrphanedRoot("") = true`)
+	}
+	for name, setup := range cases {
+		dir := filepath.Join(base, strings.ReplaceAll(name, " ", "-"))
+		if err := os.MkdirAll(dir, 0o755); err != nil {
+			t.Fatal(err)
+		}
+		setup(dir)
+		if IsConfigOrphanedRoot(dir) {
+			t.Errorf("%s: IsConfigOrphanedRoot = true, want false", name)
+		}
+	}
+	cause := errors.New("cause")
+	if !errors.Is(&UnresolvedStoreError{Root: "/w", Cause: cause}, cause) {
+		t.Error("UnresolvedStoreError must unwrap to its cause")
+	}
+}
+
 // Records of different trees coexist in one store; list and clear are per
 // tree; a legacy record without tree identity belongs to the store root.
 func TestRejectionsInSharedStoreArePerTree(t *testing.T) {
