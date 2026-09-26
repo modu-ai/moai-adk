@@ -6,10 +6,11 @@
 
 - plan_status: audit-ready
 - plan_complete_at: 2026-09-26
-- spec_version: 0.2.0 (리드 중간 지시 2건 접어넣음: REQ-CALIB-011 아웃바운드 스크럽·REQ-CALIB-012 자율 Kickoff 세 조건 — REQ-CALIB-009 (b) 대체. 0.1.1 lint 수리, 0.1.0 초안)
-- lint_status: `moai spec lint SPEC-AUTONOMY-KICKOFF-CALIB-001` → `✓ No findings` (2026-09-26, 설치본 `~/go/bin/moai` — 0.1.1 시점 기준, 0.2.0 커밋 전 재실행 결과를 HISTORY 와 함께 기록)
+- spec_version: 0.2.1 (plan-audit iter-1 수리 D1–D4 + 부수 MINOR D7–D13; 0.2.0 리드 중간 지시 2건 접기 — REQ-CALIB-011 아웃바운드 스크럽·REQ-CALIB-012 자율 Kickoff 세 조건; 0.1.1 lint 수리; 0.1.0 초안)
+- plan_audit: iter-1 **PASS-WITH-DEBT 0.83** (Tier M 문턱 0.80, BLOCKING 0·SHOULD-FIX 4·MINOR 9) — 보고서 `.moai/reports/plan-audit/SPEC-AUTONOMY-KICKOFF-CALIB-001-review-1.md`, 감사 대상 `7502b84b4`. D1–D4·D5–D13 처분: HISTORY 0.2.1. artifact hash 는 이 수리로 이동 — 재심사 시 재-pin
+- lint_status: 0.2.0 트리에서 `✓ No findings`(감사 Claim 5 독립 재실행과 저자 실행 일치); 0.2.1 수리 커밋 직후 재실행 결과를 HISTORY 0.2.1 다음 기록으로 남긴다 — 0.2.0 때 예고만 남긴 것(D10)의 이행
 - tier: M (spec.md, plan.md, acceptance.md, research.md — 측정 설계 카드, 코드 산출물 없음)
-- requirements: 14 (REQ-CALIB-001..014, 연속) / acceptance criteria: 14 (AC-CALIB-001..014, 1:1; [PLAN] 11건 — AC-CALIB-009는 지금 실행 가능, [RUN] 3건 AC-CALIB-012·013·014는 run 기록 대상 `--- PENDING-RUN`)
+- requirements: 12 (REQ-CALIB-001..012, 연속) / acceptance criteria: 14 (AC-CALIB-001..014; AC-013·014 는 REQ-CALIB-012 를 함께 커버 — 감사 D5 가 짚은 0.2.0 오기 「14 REQ」의 수리; [PLAN] 11건, [RUN] 3건 AC-CALIB-012·013·014는 run 기록 대상 `--- PENDING-RUN`)
 - card: t1244 (AUTONOMY-A5 — Kickoff 판단 모드 보정)
 - measurement_target: `workflow.autonomy.kickoff.jev_min_confidence` (A1 0.5.2 정의, 기본 0.50; 소비처 A3 R2 `jev_low_confidence`)
 - population: 과거 운영자 Implementation Kickoff Approval 결정 라운드 — 세션 전사본 코퍼스(루트 A 335디렉터리 + 루트 B 4디렉터리, 2026-09-26 실측)

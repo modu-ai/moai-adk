@@ -1,6 +1,6 @@
 # acceptance.md — SPEC-AUTONOMY-KICKOFF-CALIB-001 (v0.2.0)
 
-모든 AC 는 Given-When-Then 이며 명령과 기대 출력으로 판정한다. 명령은 워크트리 세션 가드를 통과하도록 **한 줄짜리 단순 명령**만 쓴다 — `git` 을 `$( )`·`<( )`·heredoc 안에 두지 않는다. `git` 이 필요한 검사는 기준 ref 를 환경 변수로 넘긴다(`MOAI_CALIB_BASE` = progress.md §E.2 의 `BASE` SHA).
+모든 AC 는 Given-When-Then 이며 명령과 기대 출력으로 판정한다. 명령은 워크트리 세션 가드를 통과하도록 **한 줄짜리 단순 명령**만 쓴다 — `git` 을 `$( )`·`<( )`·heredoc 안에 두지 않는다. `git` 이 필요한 검사는 기준 ref 를 환경 변수로 넘긴다(`MOAI_CALIB_BASE` — 본 카드의 분기점 `38148d891`; develop 흡수 후 재생성 시에는 그 시점 분기점으로 갱신).
 
 **빈 선택은 통과가 아니다.** grep 계열 AC 는 매칭 건수를 함께 출력해 0 이 아님을 보이고, 0 이 나오면 FAIL 이다.
 
@@ -23,14 +23,14 @@ grep -c "148" .moai/specs/SPEC-AUTONOMY-KICKOFF-CALIB-001/spec.md; ls .moai/repo
 ### AC-CALIB-002 — 라벨 매핑의 사전 고정 [PLAN] — maps REQ-CALIB-002
 
 - **Given** spec.md
-- **When** 라벨 공간 4값·매핑 규칙·복합 응답 처리·매핑 불가 재결 규칙의 존재를 읽는다
-- **Then** `approve`·`hold`·`modify`·`other` 네 값과 `compound` 표지, 「판사 실행 전에 규칙을 추가로 정해 일괄 소급 적용」 문장이 모두 있다
+- **When** 라벨 공간 4값·매핑 규칙·복합 응답 처리·매핑 불가 재결 규칙·동시 적중 선결 규칙의 존재를 읽는다
+- **Then** `approve`·`hold`·`modify`·`other` 네 값과 `compound` 표지, 「판사 실행 전에 규칙을 추가로 정해 일괄 소급 적용」·「텍스트 순서상 첫 동사」 문장이 모두 있다
 
 ```bash
-grep -c "compound" .moai/specs/SPEC-AUTONOMY-KICKOFF-CALIB-001/spec.md; grep -c "일괄 소급 적용" .moai/specs/SPEC-AUTONOMY-KICKOFF-CALIB-001/spec.md
+grep -c "compound" .moai/specs/SPEC-AUTONOMY-KICKOFF-CALIB-001/spec.md; grep -c "일괄 소급 적용" .moai/specs/SPEC-AUTONOMY-KICKOFF-CALIB-001/spec.md; grep -c "텍스트 순서상 첫 동사" .moai/specs/SPEC-AUTONOMY-KICKOFF-CALIB-001/spec.md
 ```
 
-기대: 두 카운트 모두 1 이상.
+기대: 세 카운트 모두 1 이상.
 
 ### AC-CALIB-003 — 번역 금지 조항 [PLAN] — maps REQ-CALIB-003
 
@@ -127,10 +127,10 @@ grep -c "모든 킥오프 승인은 자율적으로 진행한다" .moai/specs/SP
 grep -c "재실행하지 않는다" .moai/specs/SPEC-AUTONOMY-KICKOFF-CALIB-001/spec.md; grep -c "상시 상수 기준선" .moai/specs/SPEC-AUTONOMY-KICKOFF-CALIB-001/spec.md
 ```
 
-기대: 두 카운트 모두 1 이상. 파일 범위는 `MOAI_CALIB_BASE=<BASE>` 로:
+기대: 두 카운트 모두 1 이상. 파일 범위는 분기점 기준으로(감사 D11 — 구체값 지정; 감사가 `38148d891` 로 0파일 독립 검증함):
 
 ```bash
-MOAI_CALIB_BASE=<BASE> git diff --name-only "$MOAI_CALIB_BASE" HEAD -- internal/ internal/template/ | wc -l
+MOAI_CALIB_BASE=38148d891 git diff --name-only "$MOAI_CALIB_BASE" HEAD -- internal/ internal/template/ | wc -l
 ```
 
 기대: `0`.
@@ -142,10 +142,10 @@ MOAI_CALIB_BASE=<BASE> git diff --name-only "$MOAI_CALIB_BASE" HEAD -- internal/
 - **Then** 다섯 요소가 모두 있다
 
 ```bash
-grep -c "AKIA" .moai/specs/SPEC-AUTONOMY-KICKOFF-CALIB-001/spec.md; grep -c "세션 덤프는 결코 보내지 않는다" .moai/specs/SPEC-AUTONOMY-KICKOFF-CALIB-001/spec.md; grep -c "발화한 적 없는 스캐너" .moai/specs/SPEC-AUTONOMY-KICKOFF-CALIB-001/spec.md; grep -c "스크럽 없는 전송은 없다" .moai/specs/SPEC-AUTONOMY-KICKOFF-CALIB-001/spec.md
+grep -c "AKIA" .moai/specs/SPEC-AUTONOMY-KICKOFF-CALIB-001/spec.md; grep -c "세션 덤프는 결코 보내지 않는다" .moai/specs/SPEC-AUTONOMY-KICKOFF-CALIB-001/spec.md; grep -c "발화한 적 없는 스캐너" .moai/specs/SPEC-AUTONOMY-KICKOFF-CALIB-001/spec.md; grep -c "스크럽 없는 전송은 없다" .moai/specs/SPEC-AUTONOMY-KICKOFF-CALIB-001/spec.md; grep -c "하한 패턴 집합" .moai/specs/SPEC-AUTONOMY-KICKOFF-CALIB-001/spec.md
 ```
 
-기대: 네 카운트 모두 1 이상.
+기대: 다섯 카운트 모두 1 이상.
 
 ### AC-CALIB-012 — 스크럽 이행: 양성 대조와 페이로드별 스캔 [RUN] — maps REQ-CALIB-011
 
