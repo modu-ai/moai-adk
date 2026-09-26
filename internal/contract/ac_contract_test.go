@@ -1,14 +1,16 @@
 package contract
 
 import (
+	"encoding/json"
 	"os"
 	"path/filepath"
 	"regexp"
 	"slices"
+	"strings"
 	"testing"
 )
 
-// TestAC_CONTRACT_001 — location, version, spec_id (REQ-CONTRACT-001).
+// TestAC_CONTRACT_001 — location, version, spec_id, card (REQ-CONTRACT-001).
 func TestAC_CONTRACT_001(t *testing.T) {
 	t.Run("loads by SPEC ID and decodes", func(t *testing.T) {
 		root := t.TempDir()
@@ -46,7 +48,53 @@ func TestAC_CONTRACT_001(t *testing.T) {
 		if !r.Valid || r.State != StateSignedValid || len(r.Reasons) != 0 {
 			t.Errorf("valid fixture: valid=%v state=%q reasons=%v", r.Valid, r.State, r.Reasons)
 		}
+		if r.Card != fixtureCard {
+			t.Errorf("Report.Card = %q, want %q", r.Card, fixtureCard)
+		}
+		data, err := json.Marshal(r)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if !strings.Contains(string(data), `"card":"t1234"`) {
+			t.Errorf("report JSON %s lacks \"card\":\"t1234\"", data)
+		}
 	})
+
+	invalidCards := map[string]fixtureOpts{
+		"no card key":         {omit: map[string]bool{sectionCard: true}},
+		`card: ""`:            {card: strPtr("")},
+		"card: ../x":          {card: strPtr("../x")},
+		"card: a/b":           {card: strPtr("a/b")},
+		"card: -x":            {card: strPtr("-x")},
+		"65-character card":   {card: strPtr(strings.Repeat("a", 65))},
+		"card with a dot":     {card: strPtr("t1.2")},
+		"card with a space":   {card: strPtr("t 1")},
+		"card with backslash": {card: strPtr(`a\b`)},
+	}
+	for name, o := range invalidCards {
+		t.Run("card_invalid: "+name, func(t *testing.T) {
+			r := Verify(fixtureInputs(signFixture(renderFixture(o))))
+			if r.Valid || !slices.Contains(r.Reasons, ReasonCardInvalid) {
+				t.Errorf("valid=%v reasons=%v, want %s", r.Valid, r.Reasons, ReasonCardInvalid)
+			}
+			if slices.Contains(r.Reasons, ReasonSchemaInvalid) {
+				t.Errorf("reasons=%v: an invalid card is card_invalid, not schema_invalid", r.Reasons)
+			}
+		})
+	}
+
+	validCards := []string{"FEAT_7-b", "t1234", strings.Repeat("a", 64), "A", "0"}
+	for _, card := range validCards {
+		t.Run("card accepted: "+card, func(t *testing.T) {
+			r := Verify(fixtureInputs(signFixture(renderFixture(fixtureOpts{card: strPtr(card)}))))
+			if slices.Contains(r.Reasons, ReasonCardInvalid) {
+				t.Errorf("card %q: reasons=%v, want no %s", card, r.Reasons, ReasonCardInvalid)
+			}
+			if !r.Valid || r.Card != card {
+				t.Errorf("card %q: valid=%v card=%q reasons=%v", card, r.Valid, r.Card, r.Reasons)
+			}
+		})
+	}
 
 	t.Run("spec_id differs from directory", func(t *testing.T) {
 		body := renderFixture(fixtureOpts{specID: "SPEC-OTHER-001"})
@@ -182,6 +230,12 @@ func TestAC_CONTRACT_004(t *testing.T) {
 
 	t.Run("budget.turns 60 -> 61 changes the digest", func(t *testing.T) {
 		if d := digestOf(t, renderFixture(fixtureOpts{turns: 61})); d == c || !hex64.MatchString(d) {
+			t.Errorf("digest %q, want a different 64-hex digest than %s", d, c)
+		}
+	})
+
+	t.Run("card t1234 -> t1235 changes the digest", func(t *testing.T) {
+		if d := digestOf(t, renderFixture(fixtureOpts{card: strPtr("t1235")})); d == c || !hex64.MatchString(d) {
 			t.Errorf("digest %q, want a different 64-hex digest than %s", d, c)
 		}
 	})

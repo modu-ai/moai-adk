@@ -15,6 +15,9 @@ import (
 
 const fixtureSpecID = "SPEC-FIXTURE-001"
 
+// fixtureCard is the card id every fixture contract carries by default.
+const fixtureCard = "t1234"
+
 // fixtureAcceptance is the acceptance.md the valid fixture binds to.
 const fixtureAcceptance = "# acceptance.md — SPEC-FIXTURE-001\n\n" +
 	"### AC-FIXTURE-001 — first\n\nGiven a fixture, when it runs, then it passes.\n\n" +
@@ -27,6 +30,7 @@ func fixtureAcceptanceSHA256() string {
 
 type fixtureOpts struct {
 	specID         string          // default fixtureSpecID
+	card           *string         // default fixtureCard; omit["card"] drops the key
 	schemaVersion  int             // default 1
 	omit           map[string]bool // top-level section names, or "ownership.scratch"
 	reverseSets    bool            // reverse actions, ownership.write, ownership.scratch
@@ -79,6 +83,13 @@ func renderFixture(o fixtureOpts) string {
 	comment("fixture contract")
 	line("schema_version: %d", o.schemaVersion)
 	line("spec_id: %s", o.specID)
+	if !skip(sectionCard) {
+		card := fixtureCard
+		if o.card != nil {
+			card = *o.card
+		}
+		line("card: %q", card)
+	}
 	if !skip(SectionAcceptance) {
 		comment("acceptance binding")
 		line("acceptance:")
@@ -143,6 +154,12 @@ func renderFixture(o fixtureOpts) string {
 	}
 	return b.String()
 }
+
+// sectionCard is the fixture omit key for the top-level card field.
+const sectionCard = "card"
+
+// strPtr returns a pointer to s (fixture option helper).
+func strPtr(s string) *string { return &s }
 
 // sigVariant selects one of two distinct signature blocks, so a test can show
 // that changing the signature leaves the body digest untouched.

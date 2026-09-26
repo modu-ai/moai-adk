@@ -162,8 +162,11 @@ func TestValidSpecID(t *testing.T) {
 
 func TestReasonCodes_ClosedSet(t *testing.T) {
 	codes := ReasonCodes()
-	if len(codes) != 23 {
-		t.Fatalf("ReasonCodes has %d entries, want 23", len(codes))
+	if len(codes) != 24 {
+		t.Fatalf("ReasonCodes has %d entries, want 24", len(codes))
+	}
+	if !slices.Contains(codes, ReasonCardInvalid) {
+		t.Errorf("ReasonCodes lacks %s", ReasonCardInvalid)
 	}
 	seen := map[string]bool{}
 	for _, c := range codes {

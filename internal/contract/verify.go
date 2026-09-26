@@ -38,6 +38,7 @@ type Inputs struct {
 // fields to this struct.
 type Report struct {
 	SpecID        string   `json:"spec_id"`
+	Card          string   `json:"card"`
 	SchemaVersion int      `json:"schema_version"`
 	State         string   `json:"state"`
 	Valid         bool     `json:"valid"`

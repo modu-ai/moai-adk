@@ -29,6 +29,7 @@ const (
 	ReasonSignatureSealMismatch       = "signature_seal_mismatch"
 	ReasonSignatureInconsistent       = "signature_inconsistent"
 	ReasonSignatureAcceptanceMismatch = "signature_acceptance_mismatch"
+	ReasonCardInvalid                 = "card_invalid"
 )
 
 var reasonCodes = []string{
