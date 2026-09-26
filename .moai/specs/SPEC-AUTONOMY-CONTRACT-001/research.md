@@ -9,17 +9,18 @@ The card requires reusing the sealed mission contract behind `/moai goal --auto`
 
 | File | What it provides | Reuse decision |
 |---|---|---|
-| `internal/mission/contract.go` | `MissionContract` (JSON-tagged), closed `Action` constants, `SealMissionContract`: completeness check → clone + sort set fields → `json.Marshal` → SHA-256 → `SealedContract{Hash, Bytes}` | **Reused two ways.** (1) The technique (clone, sort, marshal, hash) is the SPEC contract digest algorithm. (2) The function itself is called on the SPEC contract's mission projection; its hash is recorded as `signature.mission_contract_sha256`. |
-| `internal/mission/policy.go` | `ValidateMissionDecision(sealed, snapshot, decision, now)` — fail-closed decision validator; per-action required evidence; scope containment (`targetInsideScope`) | **Enabled, not called in A1.** The projection exists so A2 can call this validator on a signed SPEC contract instead of writing a second one. |
+| `internal/mission/contract.go` | `MissionContract` (JSON-tagged), closed `Action` constants, `SealMissionContract`: completeness check → clone + sort set fields → `json.Marshal` → SHA-256 → `SealedContract{Hash, Bytes}` | **Technique reused.** Clone, sort set fields, marshal, SHA-256 is the SPEC contract digest algorithm. Calling `SealMissionContract` on a mission projection is **deferred to A2** (iteration-1 plan-audit D3/D17). |
+| `internal/mission/policy.go` | `ValidateMissionDecision(sealed, snapshot, decision, now)` — fail-closed decision validator; per-action required evidence; scope containment (`targetInsideScope`) | **Deferred to A2.** Its scope check is exact-or-prefix (`targetInsideScope`, policy.go:112-118), so a projected glob such as `internal/foo/**` would reject every in-scope target; A2 owns the glob-to-prefix translation (design.md § Forward Note — Mission Projection). |
 | `internal/mission/receipt.go` | `OperationReceipt` and the receipt state machine | Not reused in A1 (runtime operations are A2's domain). |
 | `internal/mission/completion_receipt.go` | `Integrity` field digest pattern: zero the integrity field, canonicalize maps, marshal, SHA-256, compare with `crypto/subtle`; atomic write through `internal/atomicfile` | **Pattern reused.** The signature block's `contract_sha256` follows the same "digest over everything except the integrity-bearing field" rule, compared in constant time; writes go through `internal/atomicfile`. |
 | `internal/mission/governance_receipt.go` | Path-contained receipt writer (`containedGovernancePath`), binding validation against expectations | Path-containment approach reused for resolving `.moai/specs/<ID>/contract.yaml` (reject symlink escape / `..`). |
 | `internal/mission/auto_state.go` | Session-scoped mission state under `.moai/state/` | Not reused: a SPEC contract is a committed artifact, not session state. |
 
-What is **new** (no mission equivalent): the YAML schema and strict decoding; the SPEC-contract fields
+What is **new** (no mission equivalent), or deferred: the YAML schema and strict decoding; the SPEC-contract fields
 without a mission counterpart (`ownership.never`, `invariants`, `reobserve`, `review`, `plan_audit`);
 the acceptance hash and AC count binding; the human-presence signing flow and signature block; batch
-signing; the `moai contract` CLI; the `workflow.autonomy` configuration; the reason-code verifier.
+signing; the `moai contract` CLI; the `workflow.autonomy` configuration; the reason-code verifier; the
+agent-environment refusal. Deferred to A2: the mission projection and its sealed hash.
 
 Vocabulary mismatch observed: the mission action names use underscores (`local_develop_merge`,
 `batch_push`) while the operator-approved design uses hyphenated tokens (`local-merge-develop`,
@@ -76,3 +77,19 @@ snapshot regeneration at plan time.
 - `SPEC-AUTONOMY-TIERS-001` (completed, Tier M) — `MOAI_AUTONOMY_TIER` mode token and permission bundle;
   orthogonal axis.
 - `SPEC-AUTONOMY-RUN-GOAL-001` (completed, Tier M) — run-phase goal wrapping with Kickoff preserved.
+
+## Iteration-2 measurements (plan-audit iteration 1 follow-up)
+
+- `go list -deps ./internal/constitution | grep -xE 'os/exec|net'` → `net`; `go list -deps ./internal/config`
+  → `net`; `go list -deps gopkg.in/yaml.v3 | grep -cxE 'os/exec|net'` → `0`. Hence the verification core
+  takes config values and registry rule IDs as inputs and imports neither package (design.md § Package
+  Layout).
+- `go.mod` has no doublestar glob dependency (only `gopkg.in/yaml.v3` among the relevant libraries);
+  the ownership matcher is built on the standard library.
+- Agent markers: `internal/config/envkeys.go:494` defines `EnvClaudeCodeSessionID = "CLAUDE_CODE_SESSION_ID"`;
+  `CLAUDECODE` was observed set in this session's Bash environment. No Codex session-marker constant was
+  found in `internal/` (only `CODEX_HOME`, a user configuration location).
+- Template scan: `grep -nE 'SPEC(-[A-Z][A-Z0-9]*)+-[0-9]{3}|(^|[^A-Za-z0-9])t[0-9]{3,}([^0-9]|$)|20[0-9]{2}-[0-9]{2}-[0-9]{2}'`
+  on `internal/template/templates/.moai/config/sections/workflow.yaml` → `exit=1` (no match); on a copy with
+  `# see SPEC-AUTONOMY-CONTRACT-001` appended → line 263 printed, `exit=0`. The single-segment pattern
+  `SPEC-[A-Z][A-Z0-9]+-[0-9]{3}` did **not** match the planted multi-segment ID (`exit=1`), so it is not used.

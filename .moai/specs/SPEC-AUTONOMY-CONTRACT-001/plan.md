@@ -7,27 +7,44 @@ the sign/show/verify commands. Downstream A2/A3/A4 consume `design.md` § Contra
 this SPEC changes an existing gate: under A1 alone, Implementation Kickoff Approval behaves exactly
 as today in both modes.
 
-Tier L justification: a new package plus CLI, config, and template surfaces (~18 files including
-tests), an estimated >1000 LOC with tests, a schema that three later SPECs depend on (stability
+Tier L justification: a new verification package, a signing sub-package, CLI, config, and template
+surfaces (~18 files including tests), an estimated >1000 LOC with tests, a schema that three later SPECs depend on (stability
 matters more than speed), and three independent domains (schema/integrity, CLI/TTY interaction,
 configuration/template). Milestones >= 3 and files >= 10, so run-phase routes to manager-lead.
 
 ## §B. Known Issues and Open Decisions for plan-audit
 
 - **D1 — AC counter port vs subprocess.** Verify must not spawn processes (A2 calls it from hooks), so
-  the published awk counter is ported to Go and pinned by a full-corpus parity test. Two
-  implementations of one measurement is a known hazard; the parity test is the mitigation.
+  the published awk counter is ported to Go and pinned by a parity test over the full corpus plus one
+  synthetic fixture per counter branch (prefix, `[RETIRED]`, `[REF]`, ambiguity, CRLF, BOM), with a
+  positive control that the ambiguity fixture is ambiguous in both implementations. The test lives in
+  `internal/spec` (beside the unexported extractor); `internal/contract` never imports `internal/spec`,
+  so no import cycle arises.
 - **D2 — `escalate_on` must be the full six.** Chosen so a contract cannot silently opt out of an
   escalation. Alternative (allow subsets) rejected as weakening A-Q3-style guarantees; revisit only if
   A2 finds a trigger inapplicable to some SPEC class.
 - **D3 — Template defaults for `batch_sign` and `push_develop` are `false`.** The card fixes only
   `second_review: required` and `mode: guided`. `false` is chosen because a user project may have no
-  integration branch; this repository sets both to `true` locally.
+  integration branch; this repository sets both to `true` locally (asserted by AC-CONTRACT-020).
 - **D4 — `review.second_model` value set is `codex | glm | none`.** `multi` (the `audit_multi` fan-out)
   is not included; adding it later is an additive schema change.
-- **D5 — Human presence = interactive terminal + typed token.** Not an identity proof (spec.md §B).
-- **D6 — Draft acceptance hash mismatch refuses signing** instead of overwriting, so a contract
-  reviewed against older acceptance criteria cannot be signed silently.
+- **D5 — Human-presence checks raise the bar; they do not stop an agent.** Interactive terminal, typed
+  token, and refusal on agent-environment markers (`CLAUDECODE`, `CLAUDE_CODE_SESSION_ID`). A pty
+  wrapper and `unset` defeat them; the binding protection is the A3 precondition in spec.md §C.2 (a
+  PreToolUse deny on `moai contract sign` from agent tool calls). No Codex marker is identifiable in
+  the repository, so none ships (design.md § Agent-Environment Markers).
+- **D6 — Unsigned-draft acceptance hash mismatch refuses signing** instead of overwriting, so a draft
+  reviewed against older acceptance criteria cannot be signed silently. A **signed** contract whose
+  acceptance changed is re-bound through `sign --resign` (REQ-CONTRACT-022) with the same human
+  confirmation and an `old → new` summary.
+- **D7 — Mission-validator projection deferred to A2.** Its only consumer is A2, and it needs a
+  glob-to-prefix scope translation (design.md § Forward Note — Mission Projection). The withdrawn
+  requirement's ID `REQ-CONTRACT-021` was reused for the agent-environment refusal so that the REQ
+  sequence stays contiguous (MP-1) without a withdrawn-placeholder heading that lint would collect as a
+  modality-less requirement.
+- **D8 — Epic ordering.** A3 must not land "signature replaces Kickoff" before A2 enforces push
+  serialization and the second-review stop (spec.md §C.1). No A2/A3/A4 SPEC exists yet; the lead tracks
+  cards t1235–t1237.
 
 ## §C. Pre-flight
 
@@ -68,38 +85,42 @@ and local YAML. Covers REQ-CONTRACT-015, REQ-CONTRACT-016.
 ### M3 — Validation rules and verify core (Priority High)
 
 Action vocabulary (allowed / forbidden / unknown), escalation completeness, ownership and invariant
-well-formedness (constitution registry resolution), reobserve, budget, plan-audit verdict,
-second-review and push-develop config coupling, reason-code collection. Covers REQ-CONTRACT-006,
-007, 008, 017, 018, 020.
+well-formedness (glob matcher; registry rule IDs passed in by the caller), non-empty actions,
+reobserve, budget, plan-audit verdict, second-review and push-develop config coupling, reason-code
+collection. The core package imports neither `os/exec`, `net`, `internal/config`,
+`internal/constitution` (the last two measured to pull in `net`), nor `internal/spec`. Covers
+REQ-CONTRACT-006, 007, 008, 009, 017, 018, 020.
 
 ### M4 — Acceptance binding and AC counter port (Priority Medium)
 
-LF/BOM-normalized hash, Go port of the published counter, full-corpus parity test. Covers
-REQ-CONTRACT-005.
+LF/BOM-normalized hash, Go port of the published counter applied to normalized bytes, parity test
+(corpus + per-branch fixtures) in `internal/spec`. Covers REQ-CONTRACT-005.
 
 ### M5 — Signing core (Priority Medium)
 
-TTY refusal, typed confirmation, git identity and HEAD seams, sign-time measurement and refusals,
-`--resign`, mission projection + `SealMissionContract`, batch mode with shared `batch_id`, atomic
-writes. Covers REQ-CONTRACT-010..013, REQ-CONTRACT-019, REQ-CONTRACT-021.
+`internal/contract/sign`: agent-marker refusal, TTY refusal, typed confirmation, git identity and
+HEAD seams, sign-time measurement and refusals, `--resign` re-binding with `old → new` summary, batch
+mode with de-duplication and shared `batch_id`, atomic writes, Kickoff-neutral notice in both modes.
+Covers REQ-CONTRACT-010..013, REQ-CONTRACT-019, REQ-CONTRACT-021, REQ-CONTRACT-022.
 
 ### M6 — CLI wiring and output (Priority Low — mechanical)
 
-`moai contract sign|show|verify`, `--json`, exit codes, guided-mode notice. Covers REQ-CONTRACT-009,
-REQ-CONTRACT-014.
+`moai contract sign|show|verify`, `--json`, exit codes; the CLI loads config and the constitution
+registry and passes values into the core. Covers REQ-CONTRACT-014 (and the CLI half of 009).
 
 ## §G. Risks
 
 | Risk | Impact | Mitigation |
 |---|---|---|
-| AC counter port drifts from the published awk counter | Verify reports `ac_count_mismatch` on untouched files, or misses a real change | Full-corpus parity test in `./internal/spec` or `./internal/contract`; the SHA-256 is the primary tamper authority, the count is a secondary cross-check |
+| AC counter port drifts from the published awk counter | Verify reports `ac_count_mismatch` on untouched files, or misses a real change | Parity test (corpus + per-branch fixtures + ambiguity positive control) in `./internal/spec`; the SHA-256 is the primary tamper authority, the count is a secondary cross-check |
 | Schema churn after A2-A4 start | Rework in three SPECs | `schema_version`; additive changes only; changes land as amendments to `design.md` § Contract Schema |
-| An agent obtains a TTY (e.g. a tmux pane driven by an agent) | Agent-produced signature | Out of scope for A1 (documented); A2 may add a PreToolUse deny on `moai contract sign` |
+| An agent obtains a TTY with a one-line pty wrapper and unsets the markers | Agent-produced signature | A1 only raises the bar (spec.md §C.2); hard precondition for A3: a PreToolUse deny on `moai contract sign` from agent tool calls must exist before the signature replaces Kickoff |
+| A3 lands before A2's enforcement | Signed `push-develop` authorizes unserialized pushes / pushes without second review | Binding ordering constraint in spec.md §C.1; until then the notice (REQ-CONTRACT-019) prints in both modes and Kickoff stays |
 | Line-ending differences across platforms | Spurious hash mismatch on windows checkouts | CRLF→LF and BOM normalization before hashing; cross-platform CI |
-| Operators read the signature as authorizing Kickoff skip before A3 lands | Confusion | REQ-CONTRACT-019 notice; A1 changes no gate |
+| Operators read the signature as authorizing Kickoff skip before A3 lands | Confusion | REQ-CONTRACT-019 notice in both modes; A1 changes no gate |
 
 ## §H. Cross-References
 
-- `design.md` § Contract Schema, § Verify Reason Codes, § Signing Flow, § Mission-Contract Projection.
+- `design.md` § Contract Schema, § Verify Reason Codes, § Signing Flow, § Agent-Environment Markers, § Glob Semantics, § Package Layout, § Forward Note — Mission Projection.
 - `research.md` § Reuse Analysis.
 - `.claude/rules/moai/workflow/spec-workflow.md` § SPEC Complexity Tier.
