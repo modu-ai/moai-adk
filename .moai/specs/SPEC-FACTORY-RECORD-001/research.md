@@ -123,6 +123,10 @@ Re-read on 2026-09-26 at the branch tip. The branch moved twice during this plan
   `8a7cb0e22`). `SPEC-AUTONOMY-CONTRACT-001` reads `version: "0.5.2"`, `status: completed`
   (spec.md:4-5 at `8a7cb0e22`); the branch carries its sync close (`f4e3d0731`) and a later RED test
   commit. Not on develop: `.moai/specs` on this tree has no `SPEC-AUTONOMY-CONTRACT-001` directory.
+- Equivalent to `25283ebf8` (pin used by sibling lanes) except the `status: in-progress → completed`
+  line in A1 spec.md. Verified: `git diff 25283ebf8 8a7cb0e22 -- .moai/specs/SPEC-AUTONOMY-CONTRACT-001/spec.md`
+  → one hunk, `@@ -5 +5 @@ version: "0.5.2"`, `-status: in-progress` / `+status: completed`
+  (1 insertion, 1 deletion); the same diff on `design.md` prints nothing.
 - The contract is a file, `.moai/specs/<SPEC-ID>/contract.yaml` (A1 spec.md:52 at `8a7cb0e22`). A1
   creates no database table.
 - A1 spec.md:109-112 (`8a7cb0e22`): "The factory redesign's `factory.db` card records are not
