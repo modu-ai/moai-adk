@@ -428,6 +428,135 @@ Files created: `.claude/rules/moai/workflow/contract-sign-guard.md`,
    when a session touches `contract_sign_guard.go`, its tests, or the rule
    itself — a guard's documentation does not earn always-loaded budget.
 
+### M4 — mission-validator projection (REQ-AP-008 / AC-AP-014)
+
+Landing package: `internal/contract` (A1's own package, design.md §E's first
+choice — the AC's default location, so no rename to record). Files:
+`internal/contract/projection_mission.go`,
+`internal/contract/projection_mission_test.go`,
+`internal/contract/testdata/mission_surface_baseline.txt`.
+
+**Exported-surface baseline (AC-AP-014 limb 5 — captured FIRST, at M4
+milestone start, before any edit; tree `d0d915f3f`):**
+
+```
+$ go doc -all ./internal/mission > /tmp/t1245-mission-baseline.txt   # exit 0, 529 lines
+$ shasum -a 256 /tmp/t1245-mission-baseline.txt
+24d4fdf334e9f0b8fabc5923e4602ccde138a212d0122aa55c4251c8283464c1  /tmp/t1245-mission-baseline.txt
+```
+
+The byte-identical copy is committed as the limb-5 golden at
+`internal/contract/testdata/mission_surface_baseline.txt` (same sha256,
+re-measured after the change: `24d4fdf3…`), and the AC test compares a fresh
+`go doc -all ./internal/mission` against it on every run. Post-change
+re-diff: `diff baseline after` → empty, "mission surface IDENTICAL".
+
+- **E1 — AC-AP-014 matrix:**
+
+  | AC | Status | Verification Command | Actual Output |
+  |----|--------|---------------------|---------------|
+  | AC-AP-014 (limbs 1-5, five subtests) | PASS --- 5/5 limbs | `go test ./internal/contract/ -run TestContractProjectsOntoMissionValidator -count=1 -v` | `--- PASS: TestContractProjectsOntoMissionValidator (0.05s)` + all five limb subtests PASS (limb 2's five refusal cases and limb 5's surface baseline included) |
+  | AC-AP-014 limb 1 | PASS | same | `limb_1_signed-valid_contract_is_not_refused_incomplete_contract … PASS` — `Approved=true`, `MaxOperations=40>0`, `mission.SealMissionContract` accepts (no `incomplete_contract`) |
+  | AC-AP-014 limb 2 | PASS | same | baseline decision returns `ReceiptPrepared`; the five single-field mutants return exactly `mission decision: {mission_not_running, mission_mismatch, policy_mismatch, stale_snapshot, expired_decision}` — the verdicts are mission's own refusal vocabulary, not a local re-implementation |
+  | AC-AP-014 limb 3 | PASS | same | `internal/foo/x.go` accepted; `internal/foobar/x.go` refused `mission decision: scope_expansion` — `/**`→prefix neither narrows nor widens |
+  | AC-AP-014 limb 4 | PASS | same | `internal/*/x.go` → error naming `ownership.write` and the glob; injected unmapped key `future_field` → named by `unmappedProjectionKeys`; `card` on `DeliberatelyNotProjected`, fixture carries `card: t1245`, projection succeeds |
+  | AC-AP-014 limb 5 | PASS | `go doc -all ./internal/mission` vs committed golden (test subtest + independent `diff`) | byte-identical; golden sha256 `24d4fdf334e9f0b8fabc5923e4602ccde138a212d0122aa55c4251c8283464c1` unchanged |
+
+  Limb-4 note (recorded per the AC's "unmapped field" wording): Go structs are
+  closed, so a contract field that is neither projected nor enumerated cannot
+  be constructed at the struct level; the projection derives its field
+  inventory from the live struct via reflection
+  (`contractInventoryKeys`) and fails closed on any inventory key absent
+  from the projected set and `DeliberatelyNotProjected`. The
+  naming-the-field behavior is therefore asserted at the key-list level
+  (`unmappedProjectionKeys` with `future_field` appended), which is the only
+  constructible form of that input; a schema amendment adding a field makes
+  every projection fail closed loudly until the mapping tables are updated.
+
+- **E2 — cross-platform build:**
+
+  ```
+  $ go build ./...                          → host build OK (exit 0)
+  $ GOOS=windows GOARCH=amd64 go build ./... → windows build OK (exit 0)
+  ```
+
+- **E3 — coverage (projection package = `internal/contract`, ≥85%):**
+
+  ```
+  $ go test -cover ./internal/contract/ ./internal/mission/ -count=1
+  ok  github.com/modu-ai/moai-adk/internal/contract  0.560s  coverage: 96.3% of statements
+  ok  github.com/modu-ai/moai-adk/internal/mission   5.552s  coverage: 88.1% of statements
+  ```
+
+  Scoped suite: `go test ./internal/contract/ ./internal/mission/ -count=1`
+  → both `ok`. Full suite NOT run locally (lane discipline; CI on
+  `origin/develop` is the verdict surface).
+
+- **E4 — subagent boundary grep (non-test Go sources only):**
+
+  ```
+  $ grep -rn 'AskUserQuestion\|mcp__askuser' internal/contract/ --include='*.go' | grep -v "_test.go" | grep -v '^\s*//'
+  (no output — exit 1, 0 matches)
+  ```
+
+  (The word `AskUserQuestion` appears only inside the limb-5 golden text
+  file — `go doc` output quoting mission's `SupervisorState.AskUserQuestion`
+  field — which is a testdata fixture, not code.)
+
+- **E5 — lint:** `golangci-lint run --timeout=2m` → `0 issues.` — identical
+  to the pre-change baseline measured in pre-flight on the unmodified tree
+  at `d0d915f3f`.
+
+- **E6 — commits:** one M4 commit `21506ceb0` (projection + AC test + limb-5
+  golden) on `WT-push-serialize-sign`, child of `d0d915f3f`; plus the §E.2
+  evidence commit carrying this section. No push (lane mode: push is the
+  lead's).
+
+- **E7 — blockers:** none.
+
+- **E8 — verbatim RED output (captured BEFORE the projection existed):**
+
+  ```
+  $ go test ./internal/contract/ -run TestContractProjectsOntoMissionValidator -count=1
+  # github.com/modu-ai/moai-adk/internal/contract [github.com/modu-ai/moai-adk/internal/contract.test]
+  internal/contract/projection_mission_test.go:65:13: undefined: ProjectToMission
+  internal/contract/projection_mission_test.go:116:20: undefined: ProjectToMission
+  internal/contract/projection_mission_test.go:198:13: undefined: ProjectToMission
+  internal/contract/projection_mission_test.go:213:11: undefined: contractInventoryKeys
+  internal/contract/projection_mission_test.go:214:18: undefined: unmappedProjectionKeys
+  internal/contract/projection_mission_test.go:218:15: undefined: unmappedProjectionKeys
+  internal/contract/projection_mission_test.go:228:23: undefined: DeliberatelyNotProjected
+  internal/contract/projection_mission_test.go:229:76: undefined: DeliberatelyNotProjected
+  internal/contract/projection_mission_test.go:231:16: undefined: ProjectToMission
+  FAIL	github.com/modu-ai/moai-adk/internal/contract [build failed]
+  FAIL
+  ```
+
+  RED is red for the right stated reason: the projection symbols do not
+  exist on the pre-implementation tree — exactly the RED-now state
+  acceptance.md records ("no projection exists"). The test was written and
+  its RED captured before any implementation line was authored; the
+  implementation (`projection_mission.go`) was derived afterward to satisfy
+  the test.
+
+**Design notes.**
+
+1. **`Approved` is derived from the seal, not trusted**: the projection
+   recomputes `ComputeSeal` and checks the consistency table
+   (`signedValid`), so a tampered or unsigned signature fails closed at the
+   projection boundary naming `signature`, before mission ever sees it.
+2. **`worktree` action is dropped, not failed**: it has no mission
+   counterpart and dropping it only narrows allowed actions (fail-closed
+   direction); correction 2's "at least one mission-mappable action" guard
+   fires only when the mapped list would be empty (error naming `actions`).
+3. **Unmapped fields are detected via a reflection-derived inventory**, so a
+   future schema amendment fails every projection loudly until the mapping
+   tables are updated — the fail-closed semantic REQ-AP-008 asks for, given
+   that Go's struct decoder cannot carry an unknown field.
+4. **`mission_contract_sha256` is not produced** (A1 `:85` — the contract
+   digest remains the sole tamper authority); recorded so a later reader
+   does not add it.
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 _<pending run-phase>_
