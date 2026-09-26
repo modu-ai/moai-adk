@@ -1,7 +1,7 @@
 ---
 id: SPEC-ROLE-NAMING-CODE-001
 title: "Research — role naming unification (code + CLI)"
-version: "0.1.0"
+version: "0.2.0"
 created: 2026-09-26
 ---
 
@@ -57,7 +57,11 @@ Two persisted vocabularies already coexist for the lane role (`worker` in `peers
 
 ## §5 Adjacent cards
 
-See `.moai/reports/t1256/conflicts.md`. Summary: t1242 (retire codex factory; freezes schema and Codex allowlist; deletes `codex_factory.go`, `codex_kanban.go`) → t1193 (PR #1722, overlaps 6 census files, 196 behind develop) → t1245 (role marker, value `worker` decided at its Kickoff) → t1256 run → t1240 (F2, should be built on `-f lane`) → t1257 body edits.
+See `.moai/reports/t1256/conflicts.md`. Plan-time proposal there: t1242 → t1193 → t1245 → t1256 run → t1240 → t1257.
+
+Ordering adopted by the leader on 2026-09-26 (plan.md §B): t1242 (retire codex factory; freezes schema and Codex allowlist; deletes `codex_factory.go`, `codex_kanban.go`) → t1245 (role marker, lands with value `worker`) → t1256 run (converts it to `lane`) → t1240 (F2, card text amended by the leader to `-f lane`) → t1257 body edits. t1193 (PR #1722, overlaps 6 census files, 196 behind develop) is excluded pending the operator's decision; its overlap is plan.md risk R3.
+
+Zh vocabulary note: the census above covers the code layer only. The doc-layer inventory of card t1257 (`.moai/reports/t1257/inventory.md` on `WT-role-naming-docs` @ `ffc83b3b1`, :747) finds four zh words for the lead role (主导 · 主控 · 领导 · 负责人); that unification is t1257's.
 
 ## §6 History of this axis
 
@@ -72,4 +76,5 @@ See `.moai/reports/t1256/conflicts.md`. Summary: t1242 (retire codex factory; fr
 
 - The lead's baseline file counts (worker 28 · lane 69 · lead 63 · leader 13 · agent 182) differ from a re-measure on the same commit (29 · 72 · 64 · 15 · 201); the lead's exact command is not recorded, so the cause is not established.
 - Whether any external script or operator habit depends on the `MOAI_*` variable names — not measurable from the tree.
-- Whether t1193 will land or be dropped — a leader decision.
+- Whether t1193 will land or be dropped — an operator decision, pending.
+- How often this repository reinstalls the `moai` binary mid-run (the cost REQ-RNC-022 introduces) — not measured; stated as risk R4.
